@@ -205,7 +205,7 @@
           <p><b>대상.</b> 종목 하나, <code>전체</code>(현금성 제외 모든 종목에 같은 충격), <code>환율</code>(원/달러 점프, 원화 약세는 +). <b>반복.</b> <i>분기</i>는 그 날짜부터 3개월마다 목표일까지 반복합니다(실적). 기본 날짜는 추정치이니 공시로 확인해 고쳐 주세요.</p>
         </div>
       </div>
-      <div class="card"><h2>펼친 일정 (목표일까지)</h2><div id="eventSchedule" class="small"></div></div>
+      <details class="card" id="schedCard"><summary><b>펼친 일정 (목표일까지)</b> <span class="muted small" id="schedSum"></span></summary><div id="eventSchedule" class="small" style="margin-top:8px"></div></details>
       <div class="card aicard"><div class="row between wrap"><h2>AI 사건 점검 (GPT, 무료)</h2><button data-aire="events" class="sm">다시 분석</button></div><div id="aiOut-events" class="aiout small"></div></div>
     </div>
 

@@ -536,13 +536,36 @@
     $("#eventTable").innerHTML = head + body;
     renderSchedule();
   }
+  // 실적 발표일 → 그 직전 분기 (10월 발표 = 3분기 실적). 회계연도가 다른 회사(NVDA 등)는 회사 기준 분기와 다를 수 있음
+  function quarterOf(d) {
+    let y = +d.slice(0, 4), q = Math.ceil(+d.slice(5, 7) / 3) - 1;
+    if (q === 0) { q = 4; y--; }
+    return { y, q, label: `${String(y).slice(2)}년 ${q}Q` };
+  }
   function renderSchedule() {
     try {
       const m = buildModelNow();
-      if (!m) { $("#eventSchedule").textContent = "종목 시세가 있어야 일정을 펼칠 수 있습니다."; return; }
+      if (!m) { $("#eventSchedule").textContent = "종목 시세가 있어야 일정을 펼칠 수 있습니다."; $("#schedSum").textContent = ""; return; }
       const list = m.model.eventList.sort((a, b) => (a.date < b.date ? -1 : 1));
       const lab = { ALL: "전체", FX: "환율" };
-      $("#eventSchedule").innerHTML = list.length ? `<table class="grid"><tr><th class="l">거래일</th><th class="l">대상</th><th class="l">종류</th><th>확률</th><th>평균</th><th>±</th></tr>${list.map((x) => `<tr><td class="l">${x.date}</td><td class="l">${lab[x.event.target] || esc(x.event.target)}</td><td class="l">${esc(x.event.kind)}</td><td>${x.event.prob}%</td><td>${x.event.mean}%</td><td>${x.event.sd}%</td></tr>`).join("")}</table>` : "켜진 사건이 없거나 모두 지난 날짜입니다.";
+      if (!list.length) { $("#eventSchedule").textContent = "켜진 사건이 없거나 모두 지난 날짜입니다."; $("#schedSum").textContent = "· 없음"; return; }
+      // 요약: 종류별 건수
+      const byKind = {}; list.forEach((x) => (byKind[x.event.kind] = (byKind[x.event.kind] || 0) + 1));
+      $("#schedSum").textContent = "· " + Object.entries(byKind).map(([k, n]) => `${k} ${n}건`).join(", ");
+      // 대상별 한 줄: 날짜 순서로 칩을 늘어놓는다 (가장 가까운 사건은 강조)
+      const groups = new Map(); list.forEach((x) => { const t = x.event.target; if (!groups.has(t)) groups.set(t, []); groups.get(t).push(x); });
+      const next = list[0];
+      const chip = (x) => {
+        const e = x.event, earn = /실적/.test(e.kind), q = earn ? quarterOf(x.date) : null;
+        const tip = `${x.date} ${e.kind}${q ? " (" + q.label + ")" : ""} · 확률 ${e.prob}% · 평균 ${e.mean}% · ±${e.sd}%`;
+        const txt = earn ? `<b>${q.label}</b><span>${x.date.slice(2, 7).replace("-", ".")}</span>` : `<b>${esc(e.kind)}</b><span>${x.date.slice(2).replace(/-/g, ".")} · ${e.mean > 0 ? "+" : ""}${e.mean}%±${e.sd}</span>`;
+        return `<span class="chip ${earn ? "earn" : "once"} ${x === next ? "next" : ""}" title="${esc(tip)}">${txt}</span>`;
+      };
+      $("#eventSchedule").innerHTML = [...groups].map(([t, xs]) => {
+        const earn = xs.filter((x) => /실적/.test(x.event.kind)), e0 = earn[0]?.event;
+        const sub = earn.length ? `분기 실적 ${earn.length}회${e0 ? ` · 회당 ±${e0.sd}%` : ""}` : `${xs.length}건`;
+        return `<div class="schedrow"><div class="schedhead"><b>${lab[t] || esc(t)}</b> <span class="muted">${sub}</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`;
+      }).join("") + `<p class="muted small">회색 칩은 분기 실적(발표 예상 월, 직전 분기 실적), 주황 칩은 한 번 있는 사건입니다. 테두리가 진한 칩이 가장 가까운 사건입니다. 칩을 길게 누르거나 마우스를 올리면 확률·영향이 나옵니다. NVDA처럼 회계연도가 다른 회사는 회사 발표 분기 이름과 다를 수 있습니다.</p>`;
     } catch (e) { $("#eventSchedule").textContent = e.message; }
   }
   function onEventEdit(e) {
