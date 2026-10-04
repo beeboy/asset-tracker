@@ -11,11 +11,12 @@
   }
 }
 * { box-sizing: border-box; }
-/* iOS 27 상단 강제 블러 회피: 맨 위에 헤더 색의 고정 바(6px 이상) */
-body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: max(6px, env(safe-area-inset-top)); background: var(--card); z-index: 20; pointer-events: none; }
-body { padding-top: max(6px, env(safe-area-inset-top)); }
+/* iOS 27 상단 강제 블러 회피: 맨 위에 헤더 색의 고정 바. 블러가 바 아래로 1~2pt 번져서 안전 영역보다 2px 더 내린다 */
+:root { --topbar: max(8px, calc(env(safe-area-inset-top) + 2px)); }
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: var(--topbar); background: var(--card); z-index: 20; pointer-events: none; }
+body { padding-top: var(--topbar); }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
-header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: max(6px, env(safe-area-inset-top)); z-index: 5; flex-wrap: wrap; }
+header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: var(--topbar); z-index: 5; flex-wrap: wrap; }
 .brand { font-weight: 700; font-size: 16px; }
 .headkpi { flex: 1; display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; }
 .headkpi b { font-size: 15px; }

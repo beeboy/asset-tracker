@@ -132,6 +132,25 @@
     return ["하락 추세", "약세 전환 주의", "약한 상승", "상승 추세"][k];
   }
 
+  // 스무딩: 최근 years 년 로그가격에 직선을 맞춘 값 (연 성장률 slope, 날짜별 맞춘 가격 fitAt)
+  function smoothFit(dates, close, years = 3) {
+    if (!dates.length) return null;
+    const cut = iso(new Date(parseDate(dates[dates.length - 1]).getTime() - years * 365.25 * 86400e3));
+    const t = [], y = [];
+    dates.forEach((d, i) => { if (d >= cut && close[i] > 0) { t.push(parseDate(d).getTime() / (365.25 * 86400e3)); y.push(Math.log(close[i])); } });
+    if (t.length < 20) return null;
+    const mt = mean(t), my = mean(y); let sxy = 0, sxx = 0;
+    for (let i = 0; i < t.length; i++) { sxy += (t[i] - mt) * (y[i] - my); sxx += (t[i] - mt) ** 2; }
+    const b = sxx > 0 ? sxy / sxx : 0, a = my - b * mt;
+    return { slope: b, n: t.length, from: cut, fitAt: (d) => (d >= cut ? Math.exp(a + b * parseDate(d).getTime() / (365.25 * 86400e3)) : null) };
+  }
+  // 추세 (칼만·EMA): 칼만 기울기와 EMA50·EMA200 간격으로 본 기울기의 평균 (연, 로그)
+  function trendGrowth(ind) {
+    const s = ind.sig, k = s.slope_ann;
+    if (!s.ema200) return k;
+    return (k + Math.log(s.ema50 / s.ema200) / (75 / TD)) / 2; // EMA50 과 EMA200 의 무게중심 차이 약 75거래일
+  }
+
   // ------------------------------------------------------------ 전망 모형 입력 만들기
   // holdings: [{ticker, shares, price0, ccy, valueKrw}], series: {sym: {dates, adj}}, fxSym(ccy)
   function buildModel(opt) {
@@ -263,6 +282,17 @@
     for (const f of factors) {
       f.volDiff = f.evVar ? Math.sqrt(Math.max(f.vol ** 2 - f.evVar, 0.5 * f.vol ** 2)) : f.vol;
     }
+    // 추종 시나리오: 스무딩(3년 직선) 또는 추세(칼만·EMA)의 연 성장률을 그대로 이어 간다.
+    // 중앙값 성장률이 g 가 되도록 산술 기대수익으로 바꾸고, 이력이 1년보다 짧으면 기준 시나리오와 섞는다
+    for (const f of factors) {
+      const s = series[f.key];
+      if (f.kind === "fx" || f.cash || f.n < 5 || !s) { f.mu.smooth = f.mu.trend = f.mu.base; continue; }
+      const sf = smoothFit(s.dates, s.adj, yrsWin), ind = indicators(s.dates, s.adj);
+      f.gSmooth = sf ? sf.slope : null; f.gTrend = ind ? trendGrowth(ind) : null;
+      const w = Math.min(1, f.n / TD);
+      const conv = (g) => (g == null ? f.mu.base : w * (Math.exp(Math.max(-0.9, Math.min(1.2, g)) + 0.5 * f.volDiff ** 2) - 1) + (1 - w) * f.mu.base);
+      f.mu.smooth = conv(f.gSmooth); f.mu.trend = conv(f.gTrend);
+    }
     const byDay = new Map();
     for (const s of sched) { if (!byDay.has(s.day)) byDay.set(s.day, []); byDay.get(s.day).push(s.ev); }
 
@@ -286,6 +316,8 @@
 
     const port = new Float64Array(M * nPaths), noContrib = new Float64Array(nPaths), annuity = new Float64Array(nPaths);
     const stock = holdings.map(() => new Float64Array(M * nPaths));
+    const valK = holdings.map(() => new Float64Array(M * nPaths)), fxLv = new Float64Array(M * nPaths);
+    const usd0 = Number(opt.usdKrw0) || 1, usdCol = factors.findIndex((f) => f.kind === "fx" && f.key === "KRW=X");
     const firstHit = new Int32Array(nPaths).fill(-1), mddArr = new Float64Array(nPaths), touched = new Uint8Array(nPaths);
     const z = new Float64Array(F), x = new Float64Array(F), lg = new Float64Array(F), lr = new Float64Array(F);
     const boostUntil = new Int32Array(F), boostMult = new Float64Array(F);
@@ -295,7 +327,7 @@
       lg.fill(0); boostUntil.fill(-1); boostMult.fill(1);
       for (let a = 0; a < A; a++) { h[a] = v0[a]; G[a] = 1; S[a] = 0; }
       let peak = V0, mdd = 0;
-      port[p] = V0; for (let a = 0; a < A; a++) stock[a][p] = holdings[a].price0;
+      port[p] = V0; fxLv[p] = usd0; for (let a = 0; a < A; a++) { stock[a][p] = holdings[a].price0; valK[a][p] = v0[a]; }
       for (let d = 0; d < D; d++) {
         for (let f = 0; f < F; f++) z[f] = rng.normal();
         let chi = 0; for (let k = 0; k < nu; k++) { const g = rng.normal(); chi += g * g; }
@@ -331,8 +363,8 @@
         if (V > peak) peak = V; else mdd = Math.min(mdd, V / peak - 1);
         if (V >= goal) { touched[p] = 1; if (firstHit[p] < 0) firstHit[p] = d + 1; }
         if (k > 0) {
-          port[k * nPaths + p] = V;
-          for (let a = 0; a < A; a++) stock[a][k * nPaths + p] = holdings[a].price0 * Math.exp(lg[a]);
+          port[k * nPaths + p] = V; fxLv[k * nPaths + p] = usdCol >= 0 ? usd0 * Math.exp(lg[usdCol]) : usd0;
+          for (let a = 0; a < A; a++) { stock[a][k * nPaths + p] = holdings[a].price0 * Math.exp(lg[a]); valK[a][k * nPaths + p] = h[a]; }
         }
       }
       mddArr[p] = mdd;
@@ -353,6 +385,8 @@
       return out;
     };
     const bands = bandsOf(port);
+    const perUsd = (arr) => arr.map((v, i) => v / fxLv[i]);
+    const bandsUsd = bandsOf(perUsd(port));
     const term = Array.from(port.subarray((M - 1) * nPaths)).sort((a, b) => a - b);
     const invested = V0 + monthly * Math.max(0, M - 2);
     const nMonthsContrib = Math.max(0, M - 2);
@@ -374,7 +408,7 @@
     }
     const mdds = Array.from(mddArr).sort((a, b) => a - b);
     return {
-      V0, invested, monthsContrib: nMonthsContrib, bands,
+      V0, invested, monthsContrib: nMonthsContrib, bands, bandsUsd,
       p_goal: term.filter((v) => v >= goal).length / nPaths,
       p_touch: touched.reduce((s, x) => s + x, 0) / nPaths,
       p_loss: term.filter((v) => v < invested).length / nPaths,
@@ -384,10 +418,10 @@
       stocks: holdings.map((hd, a) => {
         const b = bandsOf(stock[a]);
         let up = 0; for (let p = 0; p < nPaths; p++) if (stock[a][(M - 1) * nPaths + p] > hd.price0) up++;
-        return { ticker: hd.ticker, bands: b, p_up: up / nPaths };
+        return { ticker: hd.ticker, bands: b, p_up: up / nPaths, valBands: bandsOf(valK[a]), valBandsUsd: bandsOf(perUsd(valK[a])) };
       }),
     };
   }
 
-  window.Model = { TD, indicators, buildModel, simulate, addMonths, quantileSorted, mean, std };
+  window.Model = { TD, indicators, buildModel, simulate, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();
