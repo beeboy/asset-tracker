@@ -1,0 +1,4 @@
+{
+ "proxy": "",
+ "_설명": "개발자용. 브라우저가 Yahoo 시세를 받을 때 먼저 쓸 중계 주소 (예: https://<이름>.workers.dev/?url= ). 비우면 공개 중계를 씁니다. proxy/cloudflare-worker.js 참고."
+}
