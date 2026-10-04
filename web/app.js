@@ -238,7 +238,7 @@
   async function ghCollect(add) {
     if (!GH || !ghToken() || ghBusy) return false;
     ghBusy = true;
-    const btns = [$("#btnCollect"), $("#btnCollectTop")]; btns.forEach((b) => (b.disabled = true));
+    const btns = [$("#btnCollect")]; btns.forEach((b) => b && (b.disabled = true));
     try {
       const before = (await ghApi("contents/data/index.json?ref=main", { raw: true })).updated;
       await ghApi("actions/workflows/collect.yml/dispatches", { method: "POST", body: JSON.stringify({ ref: "main", inputs: { add_tickers: add.join(",") } }) });
@@ -260,7 +260,7 @@
       }
       logLine("수집이 오래 걸립니다. 잠시 뒤 '최신 데이터 불러오기'를 눌러 주세요." + ghLink("진행 상황 보기"), false, true);
     } catch (e) { logLine("GitHub 수집 실행 실패: " + esc(e.message) + ". 시세 수집 아래 설정의 GitHub 연결을 확인하세요.", false, true); }
-    finally { ghBusy = false; btns.forEach((b) => (b.disabled = false)); }
+    finally { ghBusy = false; btns.forEach((b) => b && (b.disabled = false)); }
     return false;
   }
   const ghLink = (txt) => (GH ? ` <a href="${GH.actions}" target="_blank" rel="noopener">${txt}</a>` : "");
@@ -310,7 +310,7 @@
   let bBusy = false;
   async function browserCollect(newSyms) {
     if (bBusy) return; bBusy = true;
-    const btns = [$("#btnCollect"), $("#btnCollectTop")]; btns.forEach((b) => b && (b.disabled = true));
+    const btns = [$("#btnCollect")]; btns.forEach((b) => b && (b.disabled = true));
     const x = loadExtra(), held = S.state.holdings.map((h) => h.ticker);
     const need = [...new Set([...newSyms, ...held.filter((t) => !S.prices[t])])];
     let ok = 0, bad = [];
@@ -336,18 +336,18 @@
   async function collectStatic(manual) {
     if (GH && ghToken()) { if (manual) await ghCollect(missingTickers()); return; } // 개발자용
     if (manual) { try { await reload(); } catch (e) { /* 무시 */ } return browserCollect([]); }
-    const btns = [$("#btnCollect"), $("#btnCollectTop")]; btns.forEach((b) => (b.disabled = true));
+    const btns = [$("#btnCollect")]; btns.forEach((b) => b && (b.disabled = true));
     try {
       await reload(); markDirty(); renderAll();
       logLine(`최신 데이터를 불러왔습니다 (서버 수집 ${S.dataUpdated ? new Date(S.dataUpdated).toLocaleString() : "-"}).`);
     } catch (e) { logLine("불러오기 실패: " + e.message, false); }
     const miss = missingTickers();
     if (miss.length) browserCollect(miss);
-    btns.forEach((b) => (b.disabled = false));
+    btns.forEach((b) => b && (b.disabled = false));
   }
   async function collect(quotesOnly, list) {
     if (MODE === "static") return collectStatic(!quotesOnly);
-    const btns = [$("#btnCollect"), $("#btnQuotes"), $("#btnCollectTop")]; btns.forEach((b) => (b.disabled = true));
+    const btns = [$("#btnCollect"), $("#btnQuotes")]; btns.forEach((b) => b && (b.disabled = true));
     const syms = symbolsToCollect(list);
     logLine(`${quotesOnly ? "현재가" : "일봉+현재가"} 수집 시작: ${syms.join(", ")}`);
     try {
@@ -359,7 +359,7 @@
       if (missingFx.length) { const r2 = await api("/api/collect", { symbols: missingFx, years: 3, quotes_only: false }); r2.log.forEach((l) => logLine(l.msg, l.ok)); await reload(); }
       markDirty(); renderAll();
     } catch (e) { logLine("수집 실패: " + e.message + " (인터넷 연결 또는 프로그램 창 확인)", false); }
-    btns.forEach((b) => (b.disabled = false));
+    btns.forEach((b) => b && (b.disabled = false));
   }
   function setAuto(min) {
     clearInterval(autoTimer); autoTimer = null;
@@ -1291,11 +1291,11 @@
 
   // ------------------------------------------------------------ 추세
   function renderTrend() {
-    const sel = $("#trendTicker"), keys = Object.keys(S.prices).filter((k) => !k.includes("=")).sort((a, b) => {
+    const sel = $("#trendTicker"), keys = Object.keys(S.prices).filter((k) => S.state.holdings.some((h) => h.ticker === k && Number(h.shares) > 0)).sort((a, b) => { // 보유 종목만 (비교용 QQQ·SPY 등은 빼고)
       const ha = S.state.holdings.findIndex((h) => h.ticker === a), hb = S.state.holdings.findIndex((h) => h.ticker === b);
       return (ha < 0 ? 99 : ha) - (hb < 0 ? 99 : hb);
     });
-    const cur = sel.value || keys[0];
+    const cur = keys.includes(sel.value) ? sel.value : keys[0];
     sel.innerHTML = keys.map((k) => `<option ${k === cur ? "selected" : ""}>${esc(k)}</option>`).join("");
     const sig = [];
     for (const k of keys) { const p = S.prices[k], ind = Model.indicators(p.dates, p.adj); if (ind) sig.push([k, ind.sig, ind]); }
@@ -1387,7 +1387,6 @@
   function bind() {
     $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
     $("#btnCollect").onclick = () => collect(false);
-    $("#btnCollectTop").onclick = () => collect(false);
     $("#btnQuotes").onclick = () => collect(true);
     $("#autoRefresh").value = String(S.state.ui.auto_refresh_min || 0);
     $("#autoRefresh").onchange = (e) => { S.state.ui.auto_refresh_min = +e.target.value; setAuto(+e.target.value); save(false); };
