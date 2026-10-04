@@ -2,60 +2,99 @@
  "NVDA": {
   "symbol": "NVDA",
   "currency": "USD",
-  "name": null,
+  "name": "NVIDIA Corporation",
   "regular": 233.95,
+  "regular_time": 1790971201,
+  "prev_close": 230.86,
   "pre": 236.04,
   "post": 234.2218,
   "last": 234.2218,
-  "last_time": 1790985540,
+  "last_time": 1790985598,
   "last_session": "post",
-  "fetched": 1791089646
+  "fetched": 1791093181
  },
  "SGOV": {
   "symbol": "SGOV",
   "currency": "USD",
-  "name": null,
+  "name": "iShares 0-3 Month Treasury Bond ETF",
   "regular": 100.44,
+  "regular_time": 1790971214,
+  "prev_close": 100.41,
   "pre": 100.4301,
   "post": 100.45,
   "last": 100.45,
-  "last_time": 1790985540,
+  "last_time": 1790985594,
   "last_session": "post",
-  "fetched": 1791089646
+  "fetched": 1791093181
  },
  "SPCX": {
   "symbol": "SPCX",
   "currency": "USD",
-  "name": null,
+  "name": "Space Exploration Technologies Corp.",
   "regular": 158.96,
+  "regular_time": 1790971201,
+  "prev_close": 148.07,
   "pre": 149.54,
   "post": 159.12,
   "last": 159.12,
-  "last_time": 1790985540,
+  "last_time": 1790985599,
   "last_session": "post",
-  "fetched": 1791089646
+  "fetched": 1791093181
  },
  "TSLA": {
   "symbol": "TSLA",
   "currency": "USD",
-  "name": null,
+  "name": "Tesla, Inc.",
   "regular": 370.59,
+  "regular_time": 1790971200,
+  "prev_close": 354.11,
   "pre": 360.02,
   "post": 371.4476,
   "last": 371.4476,
-  "last_time": 1790985540,
+  "last_time": 1790985599,
   "last_session": "post",
-  "fetched": 1791089646
+  "fetched": 1791093180
  },
  "KRW=X": {
   "symbol": "KRW=X",
   "currency": "KRW",
+  "name": "USD/KRW",
   "regular": 1342.51,
+  "regular_time": 1790975891,
+  "prev_close": 1359.84,
   "pre": null,
   "post": null,
   "last": 1342.51,
-  "last_time": 1790985540,
+  "last_time": 1790975880,
   "last_session": "regular",
-  "fetched": 1791089646
+  "fetched": 1791093181
+ },
+ "QQQ": {
+  "symbol": "QQQ",
+  "currency": "USD",
+  "name": "Invesco QQQ Trust",
+  "regular": 749.58,
+  "regular_time": 1790971200,
+  "prev_close": 742.03,
+  "pre": 751.31,
+  "post": 749.56,
+  "last": 749.56,
+  "last_time": 1790985599,
+  "last_session": "post",
+  "fetched": 1791093181
+ },
+ "SPY": {
+  "symbol": "SPY",
+  "currency": "USD",
+  "name": "State Street SPDR S&P 500 ETF Trust",
+  "regular": 769.64,
+  "regular_time": 1790971200,
+  "prev_close": 763.99,
+  "pre": 770.98,
+  "post": 769.86,
+  "last": 769.86,
+  "last_time": 1790985594,
+  "last_session": "post",
+  "fetched": 1791093181
  }
 }
