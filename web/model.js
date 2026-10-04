@@ -307,7 +307,8 @@
     const F = factors.length, A = holdings.length, D = days.length, M = monthIdx.length;
     const nu = Math.max(3, Number(dof) || 5), tAdj = Math.sqrt((nu - 2) / nu);
     const rng = makeRng(seed);
-    const sig = factors.map((f) => f.volDiff / Math.sqrt(TD));
+    // 사건을 빼고 계산할 때는 실적 몫을 뺀 변동성 대신 과거 변동성 그대로 (실적 위험이 사라진 것처럼 보이지 않게)
+    const sig = factors.map((f) => (withEvents ? f.volDiff : f.vol) / Math.sqrt(TD));
     const muD = factors.map((f) => Math.log(1 + f.mu[scenario]) / TD);
     const fxCol = holdings.map((h) => factors.findIndex((f) => f.kind === "fx" && f.key === opt.fxOf(h.ccy)));
     const v0 = holdings.map((h) => h.valueKrw), V0 = v0.reduce((s, x) => s + x, 0);

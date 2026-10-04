@@ -13,6 +13,7 @@
 <link rel="manifest" href="manifest.json">
 <title>내 자산 관찰·전망</title>
 <link rel="stylesheet" href="style.css">
+<script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
 <body>
 <header>
@@ -182,7 +183,7 @@
         <div class="card"><h2>목표 도달 확률 (연도별 누적)</h2><div id="fcYears"></div></div>
         <div class="card"><h2>사건 반영 효과</h2><div id="fcEvents"></div></div>
       </div>
-      <div class="card"><h2>종목별 가격 전망 (현지 통화)</h2><div id="fcStocks" class="smallmult"></div></div>
+      <details class="card" id="fcStocksCard"><summary><b>종목별 가격 전망 (현지 통화)</b> <span class="muted small" id="fcStocksSum"></span></summary><div id="fcStocks" class="smallmult" style="margin-top:8px"></div></details>
       <details class="card"><summary><b>모형에 쓴 값</b></summary>
         <div class="tablewrap"><table id="fcParams" class="grid"></table></div>
         <p class="muted small">기대수익률은 과거 평균을 사전값(시세 수집 아래 설정 → 모형 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다. 스무딩·추세 추종 시나리오는 3년 스무딩 또는 칼만·EMA 추세의 성장률이 중앙값이 되도록 하고(연 -60%~+230% 범위로 제한), 이력이 1년 미만이면 기준 시나리오와 섞습니다.</p>
@@ -191,7 +192,17 @@
     </div>
 
     <div class="ana" id="ana-events" style="display:none">
-      <details class="card" id="evCard"><summary><b>기업 사건 (실적 · 규제 · 보호예수 해제 등)</b> <span class="muted small" id="evSum"></span></summary>
+      <div class="card">
+        <div class="row between wrap"><h2 style="margin:0">기업 사건 (실적 · 규제 · 보호예수 해제 등)</h2><span class="muted small" id="evSum"></span></div>
+        <div id="evTiles" class="evtiles"></div>
+        <p class="muted small">데이터에 있는 사건을 자동으로 넣었습니다. 날짜는 추정치이며, 타일을 누르면 그 사건을 전망에 넣거나 뺍니다.</p>
+      </div>
+      <div class="card">
+        <div class="row between wrap"><h2 style="margin:0">사건을 넣은 예상 그래프</h2><div class="row seg" id="evView"></div></div>
+        <div id="evChart" class="chartbox" style="margin-top:8px"></div>
+        <p class="muted small" id="evNote"></p>
+      </div>
+      <details class="card" id="evCard"><summary><b>사건 직접 편집</b> <span class="muted small">(옵션)</span></summary>
         <div class="row between" style="margin-top:8px">
           <span class="muted small">사건 날짜에 대상 가격이 확률만큼 한 번 점프합니다. 분기는 목표일까지 3개월마다 반복. 날짜는 추정치입니다.</span>
           <button id="btnAddEvent" class="primary sm">사건 추가</button>

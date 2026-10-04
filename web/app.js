@@ -635,8 +635,30 @@
       <td><button class="danger" data-del="${i}">삭제</button></td></tr>`).join("");
     $("#eventTable").innerHTML = head + body;
     const on = S.state.events.filter((e) => e.on).length;
-    $("#evSum").textContent = `· ${S.state.events.length}건${on < S.state.events.length ? ` (켜짐 ${on}건)` : ""}`;
+    $("#evSum").textContent = `${S.state.events.length}건${on < S.state.events.length ? ` · 켜짐 ${on}건` : ""}`;
+    renderEvTiles();
     renderSchedule();
+  }
+  // 사건 타일: 다음 날짜, 반복 횟수, 영향을 한눈에. 누르면 켜고 끈다
+  function nextOcc(e) {
+    const t = today(), goal = S.state.goal.date;
+    if (e.repeat !== "quarterly") return { next: e.date >= t ? e.date : null, n: e.date >= t && e.date <= goal ? 1 : 0 };
+    let next = null, n = 0;
+    for (let k = 0, d = e.date; d <= goal && k < 400; k++, d = Model.addMonths(e.date, 3 * k)) { if (d < t) continue; if (!next) next = d; n++; }
+    return { next, n };
+  }
+  function renderEvTiles() {
+    const lab = { ALL: "전체 종목", FX: "원/달러 환율" };
+    const items = S.state.events.map((e, i) => ({ e, i, ...nextOcc(e) })).sort((a, b) => ((a.next || "9") < (b.next || "9") ? -1 : 1));
+    const first = items.find((x) => x.e.on && x.next);
+    $("#evTiles").innerHTML = items.map(({ e, i, next, n }) => {
+      const earn = /실적/.test(e.kind), q = earn && next ? quarterOf(next) : null;
+      const eff = (e.mean ? `평균 <b class="${e.mean > 0 ? "good" : "bad"}">${e.mean > 0 ? "+" : ""}${e.mean}%</b> ` : "방향 중립 ") + `±${e.sd}%` + (Number(e.prob) < 100 ? ` · 확률 ${e.prob}%` : "") + (e.vol_mult && e.vol_mult !== 1 && e.vol_days ? ` · 변동성 ${e.vol_mult}배 ${e.vol_days}일` : "");
+      const when = next ? `${next}${q ? ` (${q.label})` : ""}${e.repeat === "quarterly" ? ` · 남은 ${n}회` : ""}` : "지난 사건";
+      return `<button type="button" class="evtile ${earn ? "earn" : "once"} ${e.on ? "" : "off"} ${next ? "" : "past"} ${first && first.i === i ? "next" : ""}" data-evt="${i}" title="누르면 ${e.on ? "끄기" : "켜기"}">
+        <div class="top"><span class="tk">${lab[e.target] || esc(e.target)}</span><span class="kd">${esc(e.kind)}${e.repeat === "quarterly" ? " · 분기" : ""}</span></div>
+        <div class="dt">${when}</div><div class="ef">${eff}</div>${e.note ? `<div class="nt">${esc(e.note)}</div>` : ""}</button>`;
+    }).join("") || `<p class="muted">사건이 없습니다.</p>`;
   }
   // 실적 발표일 → 그 직전 분기 (10월 발표 = 3분기 실적). 회계연도가 다른 회사(NVDA 등)는 회사 기준 분기와 다를 수 있음
   function quarterOf(d) {
@@ -670,6 +692,38 @@
       }).join("") + `<p class="muted small">회색 칩은 분기 실적(발표 예상 월, 직전 분기 실적), 주황 칩은 한 번 있는 사건입니다. 테두리가 진한 칩이 가장 가까운 사건입니다. 칩을 길게 누르거나 마우스를 올리면 확률·영향이 나옵니다. NVDA처럼 회계연도가 다른 회사는 회사 발표 분기 이름과 다를 수 있습니다.</p>`;
     } catch (e) { $("#eventSchedule").textContent = e.message; }
   }
+  // 사건을 넣은 예상 그래프: 포트폴리오 또는 사건이 있는 종목. 사건 반영(띠·실선)과 사건 제외(점선) 비교
+  function renderEvChart() {
+    const host = $("#evChart"); if (!host) return;
+    if (!lastForecast) { host.innerHTML = "<p class='muted'>전망을 계산하는 중입니다…</p>"; return; }
+    const { b, withEv: R, noEv, hasEv } = lastForecast, md = b.model, fx = md.monthDates;
+    const tks = b.holdings.map((h, i) => ({ t: h.ticker, i })).filter(({ t }) => md.eventList.some((x) => x.event.target === t || x.event.target === "ALL"));
+    const views = [["port", "포트폴리오"], ...tks.map(({ t }) => [t, t])];
+    let cur = $("#evView .on")?.dataset.v; if (!views.some(([v]) => v === cur)) cur = "port";
+    $("#evView").innerHTML = views.map(([v, n]) => `<button data-v="${esc(v)}" class="${v === cur ? "on" : ""}">${esc(n)}</button>`).join("");
+    if (!hasEv) { host.innerHTML = "<p class='muted'>켜진 사건이 없습니다. 위 타일을 눌러 켜 주세요.</p>"; $("#evNote").textContent = ""; return; }
+    const g = S.state.goal;
+    if (cur === "port") {
+      Charts.lineChart(host, { x: fx, height: 300, yfmt: krwAxis,
+        bands: [{ lo: R.bands.p5, hi: R.bands.p95, color: "var(--band)", opacity: 0.12, name: "사건 반영 5~95%" }, { lo: R.bands.p25, hi: R.bands.p75, color: "var(--band)", opacity: 0.24, name: "사건 반영 25~75%" }],
+        series: [{ name: "사건 반영 중앙값", y: R.bands.p50, color: "var(--c1)", width: 2.2 }, { name: "사건 제외 중앙값", y: noEv.bands.p50, color: "var(--fg)", width: 1.3, dash: "5 4" },
+          { name: "사건 제외 5%·95%", y: noEv.bands.p5, color: "var(--muted)", width: 1, dash: "2 3" }, { name: "", y: noEv.bands.p95, color: "var(--muted)", width: 1, dash: "2 3" }],
+        hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }],
+        markers: md.eventList.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) });
+      $("#evNote").innerHTML = `목표 달성 확률 <b>${pct(noEv.p_goal, 0)} → ${pct(R.p_goal, 0)}</b>, 목표일 중앙값 ${krw(noEv.terminal.p50)} → <b>${krw(R.terminal.p50)}원</b>, 나쁜 경우 5% ${krw(noEv.terminal.p5)} → <b>${krw(R.terminal.p5)}원</b> (사건 제외 → 반영). 삼각형은 사건 날짜입니다.`;
+    } else {
+      const i = b.holdings.findIndex((h) => h.ticker === cur), s1 = R.stocks[i], s0 = noEv.stocks[i], h = b.holdings[i], c = C[i % C.length];
+      const p = S.prices[cur], kk = p ? Math.max(0, p.dates.length - 130) : 0;
+      Charts.lineChart(host, { x: fx, height: 300, log: true, yfmt: priceAxis([s1.bands.p5, s1.bands.p95]),
+        bands: [{ lo: s1.bands.p5, hi: s1.bands.p95, color: c, opacity: 0.12, name: "사건 반영 5~95%" }, { lo: s1.bands.p25, hi: s1.bands.p75, color: c, opacity: 0.24, name: "사건 반영 25~75%" }],
+        series: [...(p ? [{ name: "과거", x: [...p.dates.slice(kk), md.startDate], y: [...p.close.slice(kk), h.price0], color: "var(--fg)", width: 1.2 }] : []),
+          { name: "사건 반영 중앙값", y: s1.bands.p50, color: c, width: 2.2 }, { name: "사건 제외 중앙값", y: s0.bands.p50, color: "var(--fg)", width: 1.3, dash: "5 4" }],
+        vlines: [{ x: md.startDate, label: "오늘" }],
+        markers: md.eventList.filter((e) => e.event.target === cur || e.event.target === "ALL").map((e) => ({ x: e.date, label: `${e.date} ${e.event.kind}` })) });
+      const T = s1.bands.p50.length - 1, at = (bb, k) => nf(bb[k][Math.min(T, 6)], 2);
+      $("#evNote").innerHTML = `${esc(cur)} (${h.ccy}) 6개월 뒤 중앙값 ${at(s0.bands, "p50")} → <b>${at(s1.bands, "p50")}</b>, 나쁜 경우 5% ${at(s0.bands, "p5")} → <b>${at(s1.bands, "p5")}</b>; 목표일 중앙값 ${nf(s0.bands.p50[T], 2)} → <b>${nf(s1.bands.p50[T], 2)}</b> (사건 제외 → 반영).`;
+    }
+  }
   function onEventEdit(e) {
     const tr = e.target.closest("tr[data-i]"); if (!tr) return;
     const ev = S.state.events[+tr.dataset.i], f = e.target.dataset.f; if (!f) return;
@@ -677,7 +731,7 @@
     else if (["prob", "mean", "sd", "vol_mult", "vol_days"].includes(f)) ev[f] = e.target.value === "" ? 0 : Number(e.target.value);
     else ev[f] = e.target.value;
     save(f !== "note");
-    if (e.type === "change") renderSchedule();
+    if (e.type === "change") { renderEvTiles(); renderSchedule(); }
   }
 
   // ------------------------------------------------------------ 전망
@@ -752,10 +806,28 @@
       const rows = [["목표 달성 확률", pct(noEv.p_goal, 0), pct(R.p_goal, 0)], ["목표일 중앙값", krw(noEv.terminal.p50), krw(R.terminal.p50)],
         ["하위 5%", krw(noEv.terminal.p5), krw(R.terminal.p5)], ["상위 5%", krw(noEv.terminal.p95), krw(R.terminal.p95)], ["원금 손실 확률", pct(noEv.p_loss, 0), pct(R.p_loss, 0)]];
       $("#fcEvents").innerHTML = `<table class="grid"><tr><th class="l"></th><th>사건 제외</th><th>사건 반영</th></tr>${rows.map((r) => `<tr><td class="l">${r[0]}</td><td>${r[1]}</td><td><b>${r[2]}</b></td></tr>`).join("")}</table>
-        <p class="muted small">같은 난수로 사건만 빼고 다시 계산한 비교입니다. 켜진 사건 ${md.eventList.length}건 (반복 포함).</p>`;
+        <p class="muted small">같은 난수로 사건만 빼고 다시 계산한 비교입니다(사건 제외 쪽은 실적 변동을 평소 변동성에 그대로 둠). 켜진 사건 ${md.eventList.length}건 (반복 포함).</p>`;
     } else $("#fcEvents").innerHTML = `<p class="muted">켜진 사건이 없습니다. '기업 사건'에서 추가하세요.</p>`;
 
-    // 종목별
+    $("#fcStocksSum").textContent = R.stocks.map((x) => `${x.ticker} 오를 확률 ${pct(x.p_up, 0)}`).join(" · ");
+    if ($("#fcStocksCard").open) renderFcStocks();
+    // 모형 값
+    const scen = m.scenario;
+    $("#fcParams").innerHTML = `<tr><th class="l">요인</th><th>비중</th><th>표본 (일)</th><th>과거 변동성</th><th>모형 변동성</th><th>사건 제외 평소 변동성</th><th>과거 평균 (연)</th><th>3년 스무딩 (연)</th><th>칼만·EMA 추세 (연)</th><th>사전값 비중</th><th>적용 기대수익 (${scenName(scen)})</th></tr>` +
+      md.factors.map((f, i) => `<tr><td class="l">${f.kind === "fx" ? "환율 " + f.key : esc(f.key)}${f.cash ? ' <span class="tag">현금성</span>' : ""}</td>
+        <td>${f.kind === "asset" ? pct(b.holdings[i].valueKrw / R.V0) : "-"}</td><td>${f.n}</td><td>${pct(f.volRaw)}</td><td>${pct(f.vol)}</td><td>${pct(f.volDiff)}</td>
+        <td>${pct(f.muHist)}</td><td>${f.gSmooth == null ? "-" : spct(Math.exp(f.gSmooth) - 1)}</td><td>${f.gTrend == null ? "-" : spct(Math.exp(f.gTrend) - 1)}</td><td>${f.shrink == null ? "-" : pct(1 - f.shrink, 0)}</td><td><b>${pct(f.mu[scen])}</b></td></tr>`).join("") +
+      `<tr><td class="l muted" colspan="11">상관행렬 ${md.corrShrink > 0 ? `(양의 정부호 보정 ${pct(md.corrShrink, 0)})` : ""}: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
+    renderStrategy();
+    if (curAna() === "fx") renderFx();
+    if (curAna() === "events") renderEvChart();
+    aiRefresh();
+  }
+
+  // 종목별 가격 전망 (접어 둔 카드를 펼칠 때 그린다)
+  function renderFcStocks() {
+    if (!lastForecast) return;
+    const { b, withEv: R } = lastForecast, md = b.model, fx = md.monthDates;
     const host = $("#fcStocks"); host.innerHTML = "";
     R.stocks.forEach((s, i) => {
       const box = document.createElement("div"), h = b.holdings[i];
@@ -770,16 +842,6 @@
       });
     });
 
-    // 모형 값
-    const scen = m.scenario;
-    $("#fcParams").innerHTML = `<tr><th class="l">요인</th><th>비중</th><th>표본 (일)</th><th>과거 변동성</th><th>모형 변동성</th><th>사건 제외 평소 변동성</th><th>과거 평균 (연)</th><th>3년 스무딩 (연)</th><th>칼만·EMA 추세 (연)</th><th>사전값 비중</th><th>적용 기대수익 (${scenName(scen)})</th></tr>` +
-      md.factors.map((f, i) => `<tr><td class="l">${f.kind === "fx" ? "환율 " + f.key : esc(f.key)}${f.cash ? ' <span class="tag">현금성</span>' : ""}</td>
-        <td>${f.kind === "asset" ? pct(b.holdings[i].valueKrw / R.V0) : "-"}</td><td>${f.n}</td><td>${pct(f.volRaw)}</td><td>${pct(f.vol)}</td><td>${pct(f.volDiff)}</td>
-        <td>${pct(f.muHist)}</td><td>${f.gSmooth == null ? "-" : spct(Math.exp(f.gSmooth) - 1)}</td><td>${f.gTrend == null ? "-" : spct(Math.exp(f.gTrend) - 1)}</td><td>${f.shrink == null ? "-" : pct(1 - f.shrink, 0)}</td><td><b>${pct(f.mu[scen])}</b></td></tr>`).join("") +
-      `<tr><td class="l muted" colspan="11">상관행렬 ${md.corrShrink > 0 ? `(양의 정부호 보정 ${pct(md.corrShrink, 0)})` : ""}: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
-    renderStrategy();
-    if (curAna() === "fx") renderFx();
-    aiRefresh();
   }
 
   // ------------------------------------------------------------ 종목별 전략 (규칙 기반)
@@ -899,14 +961,22 @@
       return L.join("\n");
     }
     if (kind === "events") {
-      const list = md.eventList.slice().sort((a, b2) => (a.date < b2.date ? -1 : 1)).slice(0, 14);
-      L.push(`내 포트폴리오 전망 모형에 넣은 기업 사건(실적·규제·보호예수 해제 등) 가정이야. ${head}`);
+      // 화면의 타일·그래프와 같은 값만 보낸다 (펼친 반복 일정 대신 사건 단위로, 꺼진 사건도 표시)
+      const nm = (t) => (t === "ALL" ? "전체 종목" : t === "FX" ? "원/달러 환율" : t);
+      L.push(`내 포트폴리오 전망 모형에 넣은 기업 사건 가정과 그 효과야. ${head}`);
       L.push("보유 비중: " + b.holdings.map((h) => `${h.ticker} ${pct(h.valueKrw / V0, 0)}`).join(", "));
-      L.push("사건 (날짜 / 대상 / 종류 / 발생 확률 / 평균 영향 / 불확실성 ±):");
-      list.forEach((e) => L.push(`- ${e.date} / ${e.event.target === "ALL" ? "전체" : e.event.target === "FX" ? "환율" : e.event.target} / ${e.event.kind} / ${e.event.prob}% / ${e.event.mean}% / ${e.event.sd}%`));
-      if (!list.length) L.push("- (켜진 사건 없음)");
-      if (hasEv) L.push(`사건 반영 전후 목표 확률 ${pct(noEv.p_goal, 0)} → ${pct(R.p_goal, 0)}, 하위5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원.`);
-      L.push("요청: 1) 가정한 확률·영향 크기가 과거 사례에 비춰 적절한지, 2) 빠진 중요한 사건(실적 발표, 규제, 보호예수, 지수 편입, 거시 일정 등), 3) 사건 전후 대응 방법. 날짜가 확실하지 않으면 확인이 필요하다고 표시해 줘. " + tail);
+      L.push("사건 (대상 / 종류 / 다음 날짜(추정) / 반복 / 발생 확률 / 평균 영향 / 불확실성 ± / 변동성 확대 / 상태):");
+      S.state.events.forEach((e) => { const o = nextOcc(e);
+        L.push(`- ${nm(e.target)} / ${e.kind} / ${o.next || "지남"} / ${e.repeat === "quarterly" ? `분기마다, 목표일까지 ${o.n}회` : "한 번"} / ${e.prob}% / ${e.mean > 0 ? "+" : ""}${e.mean}% / ±${e.sd}% / ${e.vol_mult && e.vol_mult !== 1 && e.vol_days ? `${e.vol_mult}배 ${e.vol_days}거래일` : "없음"} / ${e.on ? "켜짐" : "꺼짐(모형 제외)"}`); });
+      if (!S.state.events.length) L.push("- (사건 없음)");
+      L.push("참고: 평균 영향 0%인 실적은 방향 없이 변동만 키운다는 뜻이고, 실적 변동은 과거 변동성에 이미 들어 있어 그만큼 평소 변동성에서 뺐다.");
+      if (hasEv) {
+        L.push(`몬테카를로 결과 (사건 제외 → 반영): 목표 확률 ${pct(noEv.p_goal, 0)} → ${pct(R.p_goal, 0)}, 목표일 중앙값 ${krw(noEv.terminal.p50)} → ${krw(R.terminal.p50)}원, 하위5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원.`);
+        R.stocks.forEach((s2, i) => { const s0 = noEv.stocks[i]; if (!md.eventList.some((x) => x.event.target === s2.ticker || x.event.target === "ALL")) return;
+          const k = Math.min(6, s2.bands.p50.length - 1);
+          L.push(`- ${s2.ticker} 6개월 뒤 가격 중앙값 ${nf(s0.bands.p50[k], 2)} → ${nf(s2.bands.p50[k], 2)}, 하위5% ${nf(s0.bands.p5[k], 2)} → ${nf(s2.bands.p5[k], 2)}`); });
+      }
+      L.push("요청: 위 목록과 숫자만 근거로 1) 켜진 사건별로 가정한 확률·영향 크기가 과거 사례에 비춰 적절한지(사건 이름과 숫자를 그대로 인용), 2) 사건이 결과를 얼마나 바꾸는지 해석, 3) 목록에 없지만 넣을 만한 사건(있다면 '추가 고려'로 구분, 날짜는 확인 필요 표시), 4) 사건 전후 대응. 목록에 없는 사건을 이미 있는 것처럼 말하지 마. " + tail);
       return L.join("\n");
     }
     if (kind === "alloc") {
@@ -925,15 +995,44 @@
   // AI 답 정리: JSON 으로 온 답, <think> 블록, 답 전체를 감싼 ```markdown 코드 블록, 무료 서비스가 덧붙인 광고 문구
   function cleanAi(t) {
     t = String(t ?? "").replace(/\r/g, "").trim();
+    // 따옴표로 감싼 JSON 문자열, JSON 객체, 줄바꿈이 \n 글자로 온 답
+    if (/^"[\s\S]*"$/.test(t)) { try { const j = JSON.parse(t); if (typeof j === "string") t = j.trim(); } catch (e) { /* 그대로 */ } }
     if (/^\{[\s\S]*\}$/.test(t)) {
       try { const j = JSON.parse(t); t = String(j.choices?.[0]?.message?.content ?? j.message?.content ?? j.content ?? j.response ?? j.text ?? t); } catch (e) { /* 그대로 */ }
     }
-    t = t.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-    const fence = t.match(/^```[ \t]*(markdown|md|text)?[ \t]*\n([\s\S]*?)\n?```\s*$/i);
-    if (fence) t = fence[2];
+    if (!t.includes("\n") && /\\n/.test(t)) t = t.replace(/\\n/g, "\n").replace(/\\t/g, "  ").replace(/\\"/g, '"');
+    t = t.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/^[\s\S]*?<\/think>/i, "").trim();
+    // 답 전체를 감싼 코드 블록 (닫는 ``` 가 잘려 없어도)
+    const fence = t.match(/^```[ \t]*(markdown|md|text|html)?[ \t]*\n([\s\S]*?)\n?(```\s*)?$/i);
+    if (fence && (t.match(/```/g) || []).length <= 2) t = fence[2];
     const ad = t.search(/\n[^\n]*(Support Pollinations|Powered by Pollinations|🌸\s*\**\s*Ad\b)/i);
     if (ad >= 0) t = t.slice(0, ad).replace(/\n\s*(-{3,}|\*{3,})\s*$/, "");
-    return t.trim();
+    return tex2txt(html2md(t)).trim();
+  }
+  // HTML 로 온 답은 마크다운으로 바꿔 같은 방식으로 그린다 (태그가 글자로 보이지 않게)
+  function html2md(t) {
+    if (!/<\/?(h[1-6]|p|ul|ol|li|br|div|table|tr|td|th|strong|em|b|i|hr|blockquote|span|section|article)\b[^>]*>/i.test(t)) return t;
+    const ent = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", nbsp: " " };
+    return t.replace(/<(script|style|head)\b[\s\S]*?<\/\1>/gi, "")
+      .replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, (_, x) => `\n### ${x.replace(/<[^>]+>/g, "").trim()}\n`)
+      .replace(/<li[^>]*>/gi, "\n- ").replace(/<\/li>/gi, "")
+      .replace(/<br\s*\/?>/gi, "\n").replace(/<hr[^>]*>/gi, "\n---\n")
+      .replace(/<\/?(strong|b)\b[^>]*>/gi, "**").replace(/<\/?(em|i)\b[^>]*>/gi, "*")
+      .replace(/<\/(p|div|ul|ol|table|tr|blockquote|section|article)>/gi, "\n").replace(/<\/t[dh]>/gi, " · ")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_, k) => ent[k])
+      .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+  // LaTeX 수식 (\( \), \[ \], $…$) 을 읽을 수 있는 글자로
+  function tex2txt(t) {
+    if (!/\\\(|\\\[|\$[^$\n]+\$|\\(frac|text|times|approx|cdot|left|right)/.test(t)) return t;
+    const conv = (x) => { let y = x, prev;
+      do { prev = y; y = y.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)").replace(/\\(text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, "$2"); } while (y !== prev);
+      return y.replace(/\\left|\\right/g, "").replace(/\\times/g, "×").replace(/\\cdot/g, "·").replace(/\\approx/g, "≈").replace(/\\(le|leq)\b/g, "≤").replace(/\\(ge|geq)\b/g, "≥")
+        .replace(/\\%/g, "%").replace(/\\sigma/g, "σ").replace(/\\mu/g, "μ").replace(/\\Delta/g, "Δ").replace(/\\to\b|\\rightarrow/g, "→").replace(/\\,|\;|\\!/g, " ")
+        .replace(/\^\{([^{}]*)\}/g, "^$1").replace(/_\{([^{}]*)\}/g, "_$1").replace(/[{}]/g, "").replace(/\\([a-zA-Z]+)/g, "$1").trim(); };
+    return t.replace(/\$\$([\s\S]+?)\$\$/g, (_, x) => conv(x)).replace(/\\\[([\s\S]+?)\\\]/g, (_, x) => conv(x)).replace(/\\\(([\s\S]+?)\\\)/g, (_, x) => conv(x))
+      .replace(/\$([^$\n]*\\[a-zA-Z][^$\n]*)\$/g, (_, x) => conv(x)).replace(/\\(frac|text)\s*\{[^\n]*/g, (x) => conv(x));
   }
   function md2html(t) {
     const inline = (x) => esc(x)
@@ -954,6 +1053,7 @@
         while (++i < lines.length && !/^```/.test(lines[i].trim())) code.push(lines[i]);
         // 마크다운을 코드 블록에 담아 보낸 답은 소스 대신 렌더링한다
         if (/^(markdown|md|text)?$/.test(lang) && code.some((c) => /^\s*(#{1,6}\s|[-*+•]\s|\d+[.)]\s|\|)/.test(c) || /\*\*/.test(c))) out.push(md2html(code.join("\n")));
+        else if (lang === "html") out.push(md2html(html2md(code.join("\n"))));
         else out.push(`<pre>${esc(code.join("\n"))}</pre>`);
         continue;
       }
@@ -998,16 +1098,17 @@
     if (off || aiBusy[kind]) return;
     const q = aiPromptFor(kind);
     if (!q) { box.innerHTML = "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>"; return; }
-    const key = hashStr("v3|" + q), cache = aiCache(), c = cache[kind];
+    const key = hashStr("v4|" + q), cache = aiCache(), c = cache[kind];
     if (!force && aiFail[kind] && aiFail[kind].key === key && Date.now() - aiFail[kind].at < 120000) return; // 방금 실패한 같은 질문은 자동으로 다시 묻지 않음
     if (!force && c && c.key === key && c.text) { box.innerHTML = md2html(cleanAi(c.text)) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석</p>`; return; }
     aiBusy[kind] = true; box.innerHTML = "<p class='muted'>AI가 분석하는 중입니다… (보통 10~30초)</p>";
-    const sys = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 아주 간결하게 답한다. 요청 항목마다 ### 소제목 하나와 한 줄짜리 글머리표 2~3개만 쓰고, 전체 15줄을 넘기지 않는다. 서론·반복·일반론은 빼고 핵심 숫자는 **굵게**. 표, 코드 블록(```), HTML 태그는 쓰지 않는다(좁은 휴대폰 화면). 마지막 줄은 '투자 권유 아님.'";
+    const sys = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 아주 간결하게 답한다. 요청 항목마다 ### 소제목 하나와 한 줄짜리 글머리표 2~3개만 쓰고, 전체 15줄을 넘기지 않는다. 서론·반복·일반론은 빼고 핵심 숫자는 **굵게**. 표, 코드 블록(```), HTML 태그, 수식(LaTeX, $ 기호)은 쓰지 않고 일반 마크다운 글로만 쓴다(좁은 휴대폰 화면). 마지막 줄은 '투자 권유 아님.'";
     const run = async () => {
       const tries = [
-        async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 700 }) });
+        async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 1200 }) });
           if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.choices?.[0]?.message?.content || ""; },
-        async () => { const r = await fetch("https://text.pollinations.ai/" + encodeURIComponent(q) + "?model=openai&private=true&system=" + encodeURIComponent(sys)); if (!r.ok) throw new Error("응답 " + r.status); return r.text(); },
+        async () => { const r = await fetch("https://text.pollinations.ai/" + encodeURIComponent(q) + "?model=openai&private=true&system=" + encodeURIComponent(sys)); if (!r.ok) throw new Error("응답 " + r.status);
+          const x = await r.text(); if (/^\s*<(!doctype|html)/i.test(x)) throw new Error("AI 서비스가 웹 페이지를 돌려줌"); return x; },
       ];
       let text = "", err = null;
       for (const t of tries) {
@@ -1237,6 +1338,9 @@
     segClick("#anaNav", renderAnalysis);
     $("#btnAlloc").onclick = runAlloc;
     $("#eventTable").addEventListener("input", onEventEdit);
+    $("#evTiles").addEventListener("click", (e) => { const t = e.target.closest("[data-evt]"); if (!t) return; const ev = S.state.events[+t.dataset.evt]; ev.on = !ev.on; save(); renderEvents(); if (curAna() === "events") runForecast(); });
+    segClick("#evView", renderEvChart);
+    $("#fcStocksCard").addEventListener("toggle", (e) => { if (e.target.open) renderFcStocks(); });
     $("#eventTable").addEventListener("change", onEventEdit);
     $("#eventTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d && armed(d)) { S.state.events.splice(+d.dataset.del, 1); save(); renderEvents(); } });
     $("#btnAddEvent").onclick = () => {
