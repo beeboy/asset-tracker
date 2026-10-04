@@ -17,8 +17,8 @@
 <nav id="tabs">
   <button data-tab="dash" class="on">① 관찰 대시보드</button>
   <button data-tab="analysis">② 분석·전략</button>
-  <button data-tab="settings">③ 설정</button>
-  <button data-tab="quotes">④ 시세 수집</button>
+  <button data-tab="quotes">③ 시세 수집</button>
+  <button data-tab="settings">④ 설정</button>
 </nav>
 <main>
   <section id="tab-quotes" class="tab">
@@ -57,7 +57,7 @@
 
   <!-- ② 관찰 대시보드 -->
   <section id="tab-dash" class="tab on">
-    <div class="card" id="dashEmpty" style="display:none"><b>보유 수량을 넣어 주세요.</b> <span class="small">④ 시세 수집 화면에서 종목별 수량(과 매수 단가)만 넣으면 나머지는 자동으로 계산됩니다.</span> <button class="primary" onclick="document.querySelector('#tabs button[data-tab=quotes]').click()">수량 입력하러 가기</button></div>
+    <div class="card" id="dashEmpty" style="display:none"><b>보유 수량을 넣어 주세요.</b> <span class="small">③ 시세 수집 화면에서 종목별 수량(과 매수 단가)만 넣으면 나머지는 자동으로 계산됩니다.</span> <button class="primary" onclick="document.querySelector('#tabs button[data-tab=quotes]').click()">수량 입력하러 가기</button></div>
     <div class="kpis" id="goalKpis"></div>
     <details class="card opt" id="goalOpt"><summary>목표 수정 (옵션)</summary>
       <div class="row wrap goalrow">
@@ -121,7 +121,7 @@
       <div class="card" id="aiAutoCard">
         <div class="row between wrap"><h2>AI 자동 전략 분석 (GPT, 무료·로그인 없음)</h2><button id="btnAiAuto">다시 분석</button></div>
         <div id="aiAuto" class="aiout small"></div>
-        <p class="muted small">위 계산 결과를 질문으로 만들어 무료 공개 AI 서비스(Pollinations, OpenAI GPT 모델)에 보내고 답을 여기에 보여 줍니다. 수량은 보내지 않고 비중(%)과 지표만 보냅니다. 같은 입력이면 저장해 둔 답을 다시 씁니다. 끄려면 ③ 설정 → 표시 옵션.</p>
+        <p class="muted small">위 계산 결과를 질문으로 만들어 무료 공개 AI 서비스(Pollinations, OpenAI GPT 모델)에 보내고 답을 여기에 보여 줍니다. 수량은 보내지 않고 비중(%)과 지표만 보냅니다. 같은 입력이면 저장해 둔 답을 다시 씁니다. 끄려면 ④ 설정 → 표시 옵션.</p>
       </div>
       <div class="card"><h2>포트폴리오 진단</h2><div id="stratSummary"></div></div>
       <div id="stratCards" class="stratgrid"></div>
@@ -172,7 +172,7 @@
       <div class="card"><h2>종목별 가격 전망 (현지 통화)</h2><div id="fcStocks" class="smallmult"></div></div>
       <details class="card"><summary><b>모형에 쓴 값</b></summary>
         <div class="tablewrap"><table id="fcParams" class="grid"></table></div>
-        <p class="muted small">기대수익률은 과거 평균을 사전값(③ 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다.</p>
+        <p class="muted small">기대수익률은 과거 평균을 사전값(④ 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다.</p>
       </details>
     </div>
 

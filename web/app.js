@@ -99,7 +99,7 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
       if (MODE === "static") {
-        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 ③ 설정의 내보내기/불러오기"; }
+        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 ④ 설정의 내보내기/불러오기"; }
         catch (e) { $("#footer").textContent = "브라우저 저장 실패: " + e.message; }
         return;
       }
@@ -230,7 +230,7 @@
         return true;
       }
       logLine("수집이 오래 걸립니다. 잠시 뒤 '최신 데이터 불러오기'를 눌러 주세요." + ghLink("진행 상황 보기"), false, true);
-    } catch (e) { logLine("GitHub 수집 실행 실패: " + esc(e.message) + ". ③ 설정 탭의 GitHub 연결을 확인하세요.", false, true); }
+    } catch (e) { logLine("GitHub 수집 실행 실패: " + esc(e.message) + ". ④ 설정 탭의 GitHub 연결을 확인하세요.", false, true); }
     finally { ghBusy = false; btns.forEach((b) => (b.disabled = false)); }
     return false;
   }
@@ -574,7 +574,7 @@
     // 직접 입력한 현재가 때문에 오늘 평가액이 시세 기준과 크게 다르면 알린다 (차트가 오늘에서 꺾이는 원인)
     const manual = b.holdings.filter((h) => { const src = S.state.holdings.find((x) => x.ticker === h.ticker); const mk = src && curPrice({ ...src, price: null }).v; return src && Number(src.price) > 0 && mk && Math.abs(h.price0 / mk - 1) > 0.05; });
     const Hh = history(), lastHist = Hh.total[Hh.total.length - 1];
-    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 ④ 시세 수집에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
+    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 ③ 시세 수집에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
     $("#fcWarn").style.display = $("#fcWarn").innerHTML ? "block" : "none";
     $("#fcStatus").textContent = `${lastForecast.at.toLocaleString()} 계산 · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초` + (fcDirty ? " · 입력이 바뀌었습니다. 다시 계산하세요." : "");
     const contrib = Number(g.monthly_contribution) || 0;
@@ -749,7 +749,7 @@
   // ------------------------------------------------------------ 비중안 비교
   async function runAlloc() {
     const st = $("#allocStatus"), btn = $("#btnAlloc");
-    if (!S.prices.QQQ) { st.textContent = "QQQ 시세가 없어 비교할 수 없습니다. ④ 시세 수집에서 QQQ를 수집 목록에 넣어 주세요."; return; }
+    if (!S.prices.QQQ) { st.textContent = "QQQ 시세가 없어 비교할 수 없습니다. ③ 시세 수집에서 QQQ를 수집 목록에 넣어 주세요."; return; }
     btn.disabled = true; st.textContent = "계산 중... (안 5개)"; await new Promise((r) => setTimeout(r, 30));
     try {
       const g = S.state.goal, m = S.state.model, { rows } = valuation();
@@ -933,7 +933,7 @@
       $("#modeNote").innerHTML = `시세는 평일 30분마다 자동으로 모이고, '시세 수집'을 누르면 지금 시세를 바로 받습니다. 입력한 종목·수량·매수 단가는 <b>이 브라우저에만</b> 저장됩니다.`;
       $("#modeNote").style.display = "block";
       logLine(`웹 데이터 수집 시각: ${S.dataUpdated ? new Date(S.dataUpdated).toLocaleString() : "-"}`);
-      if (S.firstVisit) logLine("처음 여셨습니다. 보유 종목의 수량(과 매수 단가)을 넣어 주세요. 저장해 둔 파일이 있으면 ③ 설정의 '입력값 불러오기'를 쓰면 됩니다.", false);
+      if (S.firstVisit) logLine("처음 여셨습니다. 보유 종목의 수량(과 매수 단가)을 넣어 주세요. 저장해 둔 파일이 있으면 ④ 설정의 '입력값 불러오기'를 쓰면 됩니다.", false);
       const miss = missingTickers();
       if (miss.length) {
         if (GH && ghToken()) ghCollect(miss);
