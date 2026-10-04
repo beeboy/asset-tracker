@@ -696,7 +696,6 @@
     if (risky[top] > 0.45) tips.push(`**집중도**: ${b.holdings[top].ticker} 한 종목이 **${pct(w[top], 0)}**입니다. 하위 5% 결과가 ${krw(R.terminal.p5)}원까지 내려갑니다. '비중안 비교'에서 줄였을 때를 확인해 보세요.`);
     if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장에서 살 여력과 심리적 완충을 위해 3~5%를 권합니다.`);
     tips.push(`**낙폭**: 최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}. 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
-    $("#aiPrompt").textContent = aiPrompt();
     $("#stratSummary").innerHTML = `<div class="md small">${md2html(tips.map((t) => "- " + t).join("\n"))}</div>`;
 
     const total = V0;
@@ -880,14 +879,7 @@
   }
   // 지금 보고 있는 분석 화면의 AI 분석을 채운다
   function aiRefresh() { if ($("#tabs .on")?.dataset.tab === "analysis") aiAuto(curAna(), false); }
-  async function askAi(kind) {
-    const q = aiPrompt(); if (!q) return toast("먼저 전망을 계산해 주세요");
-    try { await navigator.clipboard.writeText(q); } catch (e) { /* 복사 실패는 무시 */ }
-    const enc = encodeURIComponent(q);
-    const url = { claude: "https://claude.ai/new?q=" + enc, chatgpt: "https://chatgpt.com/?q=" + enc, gemini: "https://gemini.google.com/app", grok: "https://grok.com/?q=" + enc, copilot: "https://copilot.microsoft.com/?q=" + enc, meta: "https://www.meta.ai/" }[kind];
-    if (url) window.open(url, "_blank", "noopener");
-    toast(["copy", "gemini", "meta"].includes(kind) ? "질문을 복사했습니다. 붙여넣기 하세요." : "질문을 채워 열었습니다 (복사도 해 둠)");
-  }
+
 
   // ------------------------------------------------------------ 비중안 비교
   async function runAlloc() {
@@ -1084,7 +1076,6 @@
     $("#trendTicker").onchange = renderTrend;
     segClick("#anaNav", renderAnalysis);
     $("#btnAlloc").onclick = runAlloc;
-    $("#aiBtns").addEventListener("click", (e) => { const b2 = e.target.closest("[data-ai]"); if (b2) askAi(b2.dataset.ai); });
     $("#eventTable").addEventListener("input", onEventEdit);
     $("#eventTable").addEventListener("change", onEventEdit);
     $("#eventTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d && armed(d)) { S.state.events.splice(+d.dataset.del, 1); save(); renderEvents(); } });
