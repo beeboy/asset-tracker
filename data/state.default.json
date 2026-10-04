@@ -6,28 +6,28 @@
    "shares": 0,
    "price": null,
    "avg_cost": null,
-   "note": "수량을 입력하세요"
+   "note": ""
   },
   {
    "ticker": "NVDA",
    "shares": 0,
    "price": null,
    "avg_cost": null,
-   "note": "수량을 입력하세요"
+   "note": ""
   },
   {
    "ticker": "SPCX",
    "shares": 0,
    "price": null,
    "avg_cost": null,
-   "note": "수량을 입력하세요"
+   "note": ""
   },
   {
    "ticker": "SGOV",
    "shares": 0,
    "price": null,
    "avg_cost": null,
-   "note": "수량을 입력하세요"
+   "note": ""
   }
  ],
  "goal": {

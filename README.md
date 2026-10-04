@@ -11,7 +11,8 @@
 - 시세는 GitHub Actions(`.github/workflows/collect.yml`)가 평일 30분마다 Yahoo Finance 에서 받아 `data/` 에 커밋합니다.
 - **보유 수량·평균 매수가·목표·사건은 브라우저(localStorage)에만 저장**되고 저장소에는 올라가지 않습니다.
   다른 기기에서 쓰려면 ⑥ 모형 설정 탭의 *입력값 내보내기 → 불러오기*를 쓰세요.
-- 새 종목은 Actions → collect → **Run workflow** 에서 *추가 티커* 칸에 넣으면 수집 목록(`data/tickers.json`)에 더해집니다.
+- ⑥ 설정 탭에서 GitHub 토큰(Fine-grained, 이 저장소만, Actions: Read and write)을 한 번 넣어 두면, 종목을 추가하거나 '최신 데이터 불러오기'를 누를 때 화면에서 바로 수집 작업을 실행하고 끝나면 자동으로 반영합니다. 토큰은 그 브라우저에만 저장됩니다.
+- 토큰 없이도 Actions → collect → **Run workflow** 의 *추가 티커* 칸으로 종목을 더할 수 있습니다.
 
 처음 한 번 설정:
 1. Settings → Pages → Source: **Deploy from a branch**, Branch: `main` / `(root)` → Save

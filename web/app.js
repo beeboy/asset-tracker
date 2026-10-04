@@ -85,6 +85,7 @@
   }
   function normalize(st) {
     st.holdings = st.holdings || [];
+    st.holdings.forEach((h) => { if (h.note === "수량을 입력하세요") h.note = ""; }); // 예전 기본 문구 정리
     st.goal = Object.assign({ amount: 1e9, date: Model.addMonths(today(), 36), start_date: today(), monthly_contribution: 0 }, st.goal || {});
     st.events = st.events || [];
     st.model = Object.assign({}, DEFAULT_MODEL, st.model || {});
@@ -188,24 +189,68 @@
     const fx = new Set(["KRW=X"]); ts.forEach((t) => { const f = fxOf(ccyOf(t)); if (f) fx.add(f); });
     return [...new Set([...ts, ...fx])];
   }
+  // GitHub 토큰(이 브라우저에만 저장)이 있으면 화면에서 바로 수집 작업을 실행하고, 끝나면 새 데이터를 불러온다
+  const TOKEN_KEY = "asset-tracker-gh-token";
+  const ghToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } };
+  async function ghApi(path, opt = {}) {
+    const r = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/${path}`, {
+      ...opt, cache: "no-store",
+      headers: { Accept: opt.raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", Authorization: "Bearer " + ghToken(), "X-GitHub-Api-Version": "2022-11-28", ...(opt.body ? { "Content-Type": "application/json" } : {}) },
+    });
+    if (!r.ok) {
+      const msg = r.status === 401 ? "토큰이 맞지 않습니다" : r.status === 403 || r.status === 404 ? "토큰 권한 부족 (Actions 읽기·쓰기 필요)" : "GitHub 오류 " + r.status;
+      throw new Error(msg);
+    }
+    return r.status === 204 ? null : opt.raw ? r.json() : r.json();
+  }
+  let ghBusy = false;
+  async function ghCollect(add) {
+    if (!GH || !ghToken() || ghBusy) return false;
+    ghBusy = true;
+    const btns = [$("#btnCollect"), $("#btnCollectTop")]; btns.forEach((b) => (b.disabled = true));
+    try {
+      const before = (await ghApi("contents/data/index.json?ref=main", { raw: true })).updated;
+      await ghApi("actions/workflows/collect.yml/dispatches", { method: "POST", body: JSON.stringify({ ref: "main", inputs: { add_tickers: add.join(",") } }) });
+      logLine(`GitHub에서 시세 수집을 시작했습니다${add.length ? " (새 종목 " + esc(add.join(", ")) + ")" : ""}. 보통 1분 안팎 걸리며 끝나면 자동으로 반영합니다.`, true, true);
+      const t0 = Date.now();
+      while (Date.now() - t0 < 6 * 60000) {
+        await new Promise((r) => setTimeout(r, 12000));
+        const idx = await ghApi("contents/data/index.json?ref=main", { raw: true });
+        if (idx.updated === before) continue;
+        // Pages 반영을 기다리지 않고 저장소에서 바로 읽는다
+        const prices = {};
+        await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await ghApi("contents/data/prices/" + encodeURIComponent(f) + "?ref=main", { raw: true }); } catch (e) { /* 무시 */ } }));
+        S.prices = prices; S.quotes = await ghApi("contents/data/quotes.json?ref=main", { raw: true }); S.dataUpdated = idx.updated;
+        S.tickerCfg = await ghApi("contents/data/tickers.json?ref=main", { raw: true });
+        fcDirty = true; renderAll();
+        const still = add.filter((t) => !S.prices[t]);
+        logLine(`수집 완료 (${new Date(idx.updated).toLocaleString()}).` + (still.length ? ` 시세를 찾지 못한 종목: ${still.join(", ")} (티커 확인)` : ""), !still.length);
+        return true;
+      }
+      logLine("수집이 오래 걸립니다. 잠시 뒤 '최신 데이터 불러오기'를 눌러 주세요." + ghLink("진행 상황 보기"), false, true);
+    } catch (e) { logLine("GitHub 수집 실행 실패: " + esc(e.message) + ". ⑥ 설정 탭의 GitHub 연결을 확인하세요.", false, true); }
+    finally { ghBusy = false; btns.forEach((b) => (b.disabled = false)); }
+    return false;
+  }
   const ghLink = (txt) => (GH ? ` <a href="${GH.actions}" target="_blank" rel="noopener">${txt}</a>` : "");
   function missingTickers() {
     if (MODE !== "static") return [];
     const have = new Set((S.tickerCfg?.tickers || []).map((t) => t.toUpperCase()));
     return S.state.holdings.map((h) => h.ticker).filter((t) => !have.has(t));
   }
-  async function collectStatic() {
+  async function collectStatic(manual) {
+    if (GH && ghToken()) { if (manual) await ghCollect(missingTickers()); return; }
     const btns = [$("#btnCollect"), $("#btnCollectTop")]; btns.forEach((b) => (b.disabled = true));
     try {
       await reload(); fcDirty = true; renderAll();
       logLine(`최신 데이터를 불러왔습니다 (서버 수집 ${S.dataUpdated ? new Date(S.dataUpdated).toLocaleString() : "-"}).`);
     } catch (e) { logLine("불러오기 실패: " + e.message, false); }
     const miss = missingTickers();
-    if (miss.length) logLine(`수집 목록에 없는 종목: ${esc(miss.join(", "))}. GitHub에서 'Run workflow'를 누르고 추가 티커 칸에 넣으면 다음부터 함께 수집합니다.${ghLink("수집 실행 페이지 열기")}`, false, true);
+    if (miss.length) logLine(`시세가 없는 종목: ${esc(miss.join(", "))}. ⑥ 설정 탭에서 GitHub를 한 번 연결해 두면 종목을 추가할 때 자동으로 받아옵니다.`, false, true);
     btns.forEach((b) => (b.disabled = false));
   }
   async function collect(quotesOnly, list) {
-    if (MODE === "static") return collectStatic();
+    if (MODE === "static") return collectStatic(!quotesOnly);
     const btns = [$("#btnCollect"), $("#btnQuotes"), $("#btnCollectTop")]; btns.forEach((b) => (b.disabled = true));
     const syms = symbolsToCollect(list);
     logLine(`${quotesOnly ? "현재가" : "일봉+현재가"} 수집 시작: ${syms.join(", ")}`);
@@ -228,11 +273,12 @@
     const { rows, total } = valuation();
     const fx = fxNow("USD"), fq = S.quotes["KRW=X"];
     $("#fxLine").textContent = `원/달러 ${nf(fx, 2)}${fq?.last_time ? " (" + new Date(fq.last_time * 1000).toLocaleString() + ")" : ""}`;
-    const head = `<tr><th class="l">티커</th><th class="l">이름</th><th>수량</th><th>현재가</th><th>단가 입력</th><th>평균 매수가</th><th>통화</th><th>평가액 (원)</th><th>비중</th><th>전일 대비</th><th>손익</th><th class="l">메모</th><th></th></tr>`;
+    const head = `<tr><th></th><th class="l">티커</th><th class="l">이름</th><th>수량</th><th>현재가</th><th>단가 입력</th><th>평균 매수가</th><th>통화</th><th>평가액 (원)</th><th>비중</th><th>전일 대비</th><th>손익</th><th class="l">메모</th></tr>`;
     const body = rows.map((r, i) => {
       const p = r.p, tag = p.src ? `<span class="tag ${p.src === "manual" ? "manual" : ""}">${SESS[p.src] || p.src}</span>` : "";
       const pl = r.pl != null ? `<span class="${cls(r.pl)}">${nf(r.pl, 0)} ${r.ccy} (${spct(r.plPct)})</span><br><span class="muted small">${krw(r.pl * (r.fx || 1))}원</span>` : `<span class="muted">-</span>`;
       return `<tr data-i="${i}">
+        <td><button class="danger" data-del="${i}" title="이 종목 삭제">삭제</button></td>
         <td class="l"><b>${esc(r.h.ticker)}</b></td><td class="l small">${esc(r.name).slice(0, 28)}</td>
         <td><input data-f="shares" type="number" step="any" value="${r.h.shares ?? ""}"></td>
         <td>${p.v != null ? nf(p.v, 2) : "-"}${tag}</td>
@@ -240,11 +286,10 @@
         <td><input data-f="avg_cost" type="number" step="any" placeholder="선택" value="${r.h.avg_cost ?? ""}"></td>
         <td>${r.ccy}</td><td><b>${nf(r.valueKrw)}</b></td><td>${pct(r.w)}</td>
         <td class="${cls(r.dayChg)}">${spct(r.dayChg, 2)}</td><td>${pl}</td>
-        <td class="l"><input data-f="note" class="wide" value="${esc(r.h.note)}"></td>
-        <td><button class="danger" data-del="${i}" title="삭제">삭제</button></td></tr>`;
+        <td class="l"><input data-f="note" class="wide" placeholder="메모" value="${esc(r.h.note)}"></td></tr>`;
     }).join("");
     const plTot = rows.filter((r) => r.pl != null).reduce((s, r) => s + r.pl * (r.fx || 1), 0);
-    const foot = `<tr><td class="l"><b>합계</b></td><td></td><td></td><td></td><td></td><td></td><td></td><td><b>${nf(total)}</b></td><td>100%</td><td></td><td>${rows.some((r) => r.pl != null) ? `<span class="${cls(plTot)}">${krw(plTot)}원</span>` : ""}</td><td></td><td></td></tr>`;
+    const foot = `<tr><td></td><td class="l"><b>합계</b></td><td></td><td></td><td></td><td></td><td></td><td></td><td><b>${nf(total)}</b></td><td>100%</td><td></td><td>${rows.some((r) => r.pl != null) ? `<span class="${cls(plTot)}">${krw(plTot)}원</span>` : ""}</td><td></td></tr>`;
     $("#holdTable").innerHTML = head + body + foot;
   }
   function onHoldEdit(e) {
@@ -265,14 +310,26 @@
     $("#addTicker").value = $("#addShares").value = $("#addAvg").value = "";
     save(); renderAll();
     if (!S.prices[t]) {
-      if (MODE === "static") { showTab("quotes"); logLine(`${esc(t)} 시세가 아직 없습니다. GitHub에서 수집 목록에 추가해 주세요 (Run workflow → 추가 티커에 ${esc(t)}). 그 전까지는 단가 입력칸에 직접 넣으면 평가에 반영됩니다.${ghLink("수집 실행 페이지 열기")}`, false, true); }
+      if (MODE === "static") {
+        showTab("quotes");
+        if (GH && ghToken()) await ghCollect([t]);
+        else logLine(`${esc(t)} 시세가 아직 없습니다. ⑥ 설정 탭에서 GitHub를 한 번 연결하면 자동으로 받아옵니다. 그 전까지는 단가 입력칸에 직접 넣으면 평가에 반영됩니다.`, false, true);
+      }
       else await collect(false, [t]);
     }
   }
-  async function delHolding(i) {
+  // 확인 창(confirm) 대신 두 번 누르기: 앱 안 브라우저는 확인 창을 막는 경우가 있다
+  function armed(btn) {
+    if (btn.dataset.armed) return true;
+    btn.dataset.armed = "1"; const old = btn.textContent; btn.textContent = "한 번 더";
+    setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = old; } }, 3000);
+    return false;
+  }
+  async function delHolding(i, btn) {
+    if (!armed(btn)) return;
     const h = S.state.holdings[i];
-    if (!confirm(`${h.ticker} 종목을 목록에서 삭제할까요?`)) return;
     S.state.holdings.splice(i, 1);
+    toast(`${h.ticker} 삭제함`);
     save(); renderAll();
   }
 
@@ -486,7 +543,31 @@
   }
 
   // ------------------------------------------------------------ ⑥ 설정
+  function renderGh() {
+    const box = $("#ghBox"); if (!box) return;
+    if (MODE !== "static") { box.closest(".card").style.display = "none"; return; }
+    const has = !!ghToken();
+    box.innerHTML = `<p class="small">${has ? "<b class='good'>연결됨.</b> 종목을 추가하거나 '최신 데이터 불러오기'를 누르면 GitHub에서 바로 수집하고 자동으로 반영합니다." : "한 번만 연결해 두면 새 종목 시세를 화면에서 바로 받아옵니다."} 토큰은 이 브라우저에만 저장됩니다.</p>
+      <div class="row wrap"><input id="ghToken" type="password" size="40" placeholder="${has ? "새 토큰으로 바꾸려면 붙여넣기" : "GitHub 토큰 붙여넣기 (github_pat_...)"}">
+      <button id="ghSave" class="primary">저장</button>${has ? '<button id="ghTest">연결 확인</button><button id="ghDel" class="danger">연결 해제</button>' : ""}</div>
+      <details class="small" ${has ? "" : "open"}><summary>토큰 만드는 법 (1분)</summary><ol>
+      <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub 토큰 만들기</a> 페이지를 엽니다 (Fine-grained token).</li>
+      <li>Token name 아무거나, Expiration 원하는 기간, Repository access → <b>Only select repositories</b> → <b>${GH ? esc(GH.repo) : "asset-tracker"}</b>.</li>
+      <li>Permissions → Repository permissions → <b>Actions: Read and write</b> (Contents는 Read-only 자동).</li>
+      <li>Generate token → 복사해서 위 칸에 붙여넣고 저장.</li></ol></details>`;
+    $("#ghSave").onclick = async () => {
+      const v = $("#ghToken").value.trim(); if (!v) return toast("토큰을 붙여넣어 주세요");
+      try { localStorage.setItem(TOKEN_KEY, v); } catch (e) { return toast("브라우저 저장 실패"); }
+      try { await ghApi("actions/workflows/collect.yml"); toast("GitHub 연결됨"); renderGh(); const miss = missingTickers(); if (miss.length) { showTab("quotes"); ghCollect(miss); } }
+      catch (e) { toast("연결 실패: " + e.message); renderGh(); }
+    };
+    if (has) {
+      $("#ghTest").onclick = async () => { try { await ghApi("actions/workflows/collect.yml"); toast("정상 연결"); } catch (e) { toast("연결 실패: " + e.message); } };
+      $("#ghDel").onclick = (e) => { if (armed(e.target)) { try { localStorage.removeItem(TOKEN_KEY); } catch (er) { /* 무시 */ } renderGh(); } };
+    }
+  }
   function renderSettings() {
+    renderGh();
     const m = S.state.model;
     $("#modelForm").innerHTML = MODEL_FIELDS.map(([k, lab, desc, type]) => type === "bool"
       ? `<div><label><span>${lab}</span><input type="checkbox" data-k="${k}" ${m[k] ? "checked" : ""}></label><span class="desc">${desc}</span></div>`
@@ -525,7 +606,7 @@
     $("#autoRefresh").onchange = (e) => { S.state.ui.auto_refresh_min = +e.target.value; setAuto(+e.target.value); save(false); };
     $("#holdTable").addEventListener("input", onHoldEdit);
     $("#holdTable").addEventListener("change", onHoldEdit);
-    $("#holdTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d) delHolding(+d.dataset.del); });
+    $("#holdTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d) delHolding(+d.dataset.del, d); });
     $("#btnAdd").onclick = addHolding;
     $("#addAvg").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     $("#addShares").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
@@ -534,7 +615,7 @@
     $("#trendTicker").onchange = renderTrend;
     $("#eventTable").addEventListener("input", onEventEdit);
     $("#eventTable").addEventListener("change", onEventEdit);
-    $("#eventTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d && confirm("이 사건을 삭제할까요?")) { S.state.events.splice(+d.dataset.del, 1); save(); renderEvents(); } });
+    $("#eventTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d && armed(d)) { S.state.events.splice(+d.dataset.del, 1); save(); renderEvents(); } });
     $("#btnAddEvent").onclick = () => {
       S.state.events.push({ id: "e" + Date.now(), on: true, date: Model.addMonths(today(), 1), target: S.state.holdings[0]?.ticker || "ALL", kind: "기타", repeat: "none", prob: 100, mean: 0, sd: 5, vol_mult: 1, vol_days: 0, note: "" });
       save(); renderEvents();
@@ -544,7 +625,7 @@
     $("#rebalance").onchange = (e) => { S.state.model.rebalance_yearly = e.target.checked; save(); };
     $("#btnForecast").onclick = runForecast;
     $("#modelForm").addEventListener("change", onModelEdit);
-    $("#btnResetModel").onclick = () => { if (confirm("모형 설정을 기본값으로 되돌릴까요?")) { S.state.model = { ...DEFAULT_MODEL }; save(); renderSettings(); } };
+    $("#btnResetModel").onclick = (e) => { if (armed(e.target)) { S.state.model = { ...DEFAULT_MODEL }; save(); renderSettings(); } };
     $("#btnExport").onclick = () => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([JSON.stringify(S.state, null, 1)], { type: "application/json" }));
@@ -567,12 +648,15 @@
     if (MODE === "static") {
       $("#btnQuotes").style.display = "none";
       $("#btnCollect").textContent = $("#btnCollectTop").textContent = "최신 데이터 불러오기";
-      $("#modeNote").innerHTML = `웹 버전: 시세는 GitHub가 정해진 시간마다 자동으로 수집합니다. 지금 바로 수집하려면${ghLink("GitHub 수집 실행")}${GH ? "" : " GitHub Actions의 collect 작업을 실행"}하세요. 보유 수량·목표·사건은 <b>이 브라우저에만</b> 저장되고 저장소에는 올라가지 않습니다.`;
+      $("#modeNote").innerHTML = `웹 버전: 시세는 GitHub가 평일 30분마다 자동으로 수집합니다. ${ghToken() ? "'최신 데이터 불러오기'를 누르면 지금 바로 수집합니다." : "⑥ 설정 탭에서 GitHub를 연결하면 새 종목과 현재가를 화면에서 바로 받아옵니다."} 보유 수량·목표·사건은 <b>이 브라우저에만</b> 저장되고 저장소에는 올라가지 않습니다.`;
       $("#modeNote").style.display = "block";
       logLine(`웹 데이터 수집 시각: ${S.dataUpdated ? new Date(S.dataUpdated).toLocaleString() : "-"}`);
       if (S.firstVisit) logLine("처음 여셨습니다. 아래 표에 보유 수량을 넣거나, ⑥ 모형 설정 탭의 '입력값 불러오기'로 저장해 둔 JSON을 불러오세요.", false);
       const miss = missingTickers();
-      if (miss.length) logLine(`수집 목록에 없는 종목: ${esc(miss.join(", "))}.${ghLink("수집 실행 페이지 열기")}`, false, true);
+      if (miss.length) {
+        if (GH && ghToken()) ghCollect(miss);
+        else logLine(`시세가 없는 종목: ${esc(miss.join(", "))}. ⑥ 설정 탭에서 GitHub를 연결하면 자동으로 받아옵니다.`, false, true);
+      }
       return;
     }
     const newest = Object.values(S.quotes).reduce((m, q) => Math.max(m, q.fetched || 0), 0);

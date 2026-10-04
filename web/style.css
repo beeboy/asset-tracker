@@ -79,3 +79,10 @@ footer { text-align: center; padding: 10px; }
 .toast { position: fixed; right: 16px; bottom: 16px; background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .3s; z-index: 10; }
 .toast.on { opacity: .92; }
 .log a{color:var(--accent)} .help a{color:var(--accent)}
+@media (max-width: 700px) {
+  header { position: static; gap: 6px 12px; padding: 8px 12px; }
+  .brand { width: 100%; }
+  .headkpi { gap: 4px 12px; font-size: 12px; } .headkpi b { font-size: 13px; } .headkpi .muted { display: none; }
+  .headact { display: none; }
+  main { padding: 10px 8px 30px; } .card { padding: 12px; }
+}
