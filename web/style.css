@@ -13,9 +13,9 @@
 * { box-sizing: border-box; }
 /* iOS 27 상단 강제 블러 회피: 맨 위에 헤더 색의 고정 바. 블러가 바 아래로 1~2pt 번져서 안전 영역보다 2px 더 내린다 */
 :root { --topbar: max(8px, calc(env(safe-area-inset-top) + 2px)); }
-/* 홈 화면에 추가한 앱 형태(standalone)에서는 iOS 블러가 더 남아 2pt 더 내린다 */
-@media all and (display-mode: standalone) { :root { --topbar: max(10px, calc(env(safe-area-inset-top) + 4px)); } }
-html.standalone { --topbar: max(10px, calc(env(safe-area-inset-top) + 4px)); }
+/* 홈 화면에 추가한 앱 형태(standalone)에서는 iOS 블러가 더 남아 웹보다 4pt 더 내린다 */
+@media all and (display-mode: standalone) { :root { --topbar: max(12px, calc(env(safe-area-inset-top) + 6px)); } }
+html.standalone { --topbar: max(12px, calc(env(safe-area-inset-top) + 6px)); }
 body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: var(--topbar); background: var(--card); z-index: 20; pointer-events: none; }
 body { padding-top: var(--topbar); }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }

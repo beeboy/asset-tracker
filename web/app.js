@@ -1089,9 +1089,66 @@
   }
   function hashStr(s2) { let h = 0; for (let i = 0; i < s2.length; i++) h = (Math.imul(31, h) + s2.charCodeAt(i)) | 0; return String(h >>> 0); }
   function aiCache() { let c = {}; try { c = JSON.parse(localStorage.getItem(AI_KEY) || "{}"); } catch (e) { /* 무시 */ } if (c.key) c = { strategy: c }; return c; }
+  // AI 를 쓸 수 없을 때 보여 줄 규칙 기반 해설 (같은 숫자로 만든 짧은 요약)
+  function ruleText(kind) {
+    const g = S.state.goal, L = [], B = (x) => `**${x}**`;
+    try {
+      if (kind === "trend") {
+        const { rows } = valuation();
+        S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]).forEach((t) => { const s2 = sigOf(t), r = rows.find((x) => x.h.ticker === t); if (!s2) return;
+          const sig = s2.vol_hist < 0.03 ? "현금성이라 추세 신호를 보지 않습니다." : s2.close < s2.ema200 && (s2.slope_z < 0 || s2.ema50 < s2.ema200) ? "가격이 EMA200 아래이고 추세도 약해 추가 매수는 반등 확인 뒤가 안전합니다."
+            : s2.close > s2.ema200 && s2.slope_z > 1 ? "EMA200 위에서 기울기도 뚜렷해 보유 유지 쪽입니다." : s2.dev_from_kalman > 0.1 ? "칼만 추세보다 10% 넘게 높아 단기 과열 구간입니다."
+            : s2.dev_from_kalman < -0.1 ? "칼만 추세보다 10% 넘게 낮아 눌림 구간입니다." : "뚜렷한 신호 없이 추세선 근처입니다.";
+          L.push(`### ${t} · ${s2.trend}`, `- 비중 ${pct(r?.w, 0)}, 칼만 추세 대비 ${B(spct(s2.dev_from_kalman))}, 기울기 연 ${spct(s2.slope_ann, 0)} (z ${s2.slope_z.toFixed(1)}), 고점 대비 ${pct(s2.drawdown, 0)}`, `- ${sig}`); });
+        L.push("- 추세 지표는 뒤늦게 반응하고 횡보장에서 신호가 자주 바뀝니다.");
+      } else if (kind === "dash") {
+        const { rows, total } = valuation(), H = history(), k = H.dates.length - 1, j3 = Math.max(0, k - 756), yrs = yearsBetween(today(), g.date);
+        L.push("### 과거", `- 현재 ${B(krw(total) + "원")}, ${H.dates[j3]} ${krw(H.total[j3])}원에서 ${spct(total / H.total[j3] - 1, 0)}`, `- 목표까지 필요한 연수익률 ${B(pct((g.amount / total) ** (1 / yrs) - 1))}`);
+        const top = rows.filter((r) => r.valueKrw > 0).sort((a, b2) => b2.w - a.w)[0]; if (top) L.push(`- 가장 큰 비중 ${top.h.ticker} ${pct(top.w, 0)}: 결과가 이 종목에 크게 좌우됩니다.`);
+        const Fs = [["모형", fcReady(S.state.model.scenario)], ["추세 반영", fcReady("trend")], ["스무딩", fcReady("smooth")]].filter(([, f]) => f && f.R);
+        if (Fs.length) { L.push("### 미래 기준별"); Fs.forEach(([n, f]) => L.push(`- ${n}: 목표 확률 ${B(pct(f.R.p_goal, 0))}, 목표일 중앙값 ${krw(f.R.terminal.p50)}원`));
+          L.push("- 추세·스무딩은 최근 성장률을 그대로 잇는 낙관적 가정이고, 모형은 과거 수익률을 보수적으로 줄인 값입니다."); }
+      } else if (kind === "fx") {
+        const F = fxInfo(); if (!F) return ""; const sg = F.sg;
+        L.push("### 환율", `- 현재 ${B(nf(F.now, 1) + "원")}, 칼만 추세 대비 ${spct(sg.dev_from_kalman)}, 판정 ${sg.trend}`, `- 1년 범위 ${nf(F.lo1, 0)}~${nf(F.hi1, 0)}원, 1년 변화 ${spct(sg.ret_1y)}`,
+          "### 내 노출", `- 달러 자산 ${B(pct(F.usdW, 0))}: 원화가 10% 강해지면 평가액 약 ${pct(F.usdW * 0.1, 1)} 감소`, `- ${F.usdW > 0.8 ? "달러 비중이 높아 원화 자산이나 환헤지 상품으로 일부 나누는 것을 검토할 만합니다." : "달러 비중이 과하지 않습니다."}`);
+      } else if (kind === "alloc") {
+        if (!lastAlloc) return ""; const o = lastAlloc.out, bp = o.reduce((a, b2) => (b2.R.p_goal > a.R.p_goal ? b2 : a)), bs = o.reduce((a, b2) => (b2.R.terminal.p5 > a.R.terminal.p5 ? b2 : a));
+        L.push("### 비교", `- 목표 확률이 가장 높은 안: ${B(bp.name)} (${pct(bp.R.p_goal, 0)})`, `- 나쁜 경우(하위 5%)가 가장 나은 안: ${B(bs.name)} (${krw(bs.R.terminal.p5)}원)`,
+          `- ${bp === bs ? "두 기준 모두 같은 안이 앞섭니다." : "확률과 안전성이 다른 안을 가리키니 감당할 낙폭을 먼저 정하세요."}`, "- 옮길 때는 여러 번 나눠 팔고, 해외주식 양도차익 연 250만원 공제를 해마다 쓰세요.");
+      } else {
+        if (!lastForecast) return ""; const { b, withEv: R, noEv, hasEv } = lastForecast, md = b.model, V0 = R.V0;
+        if (kind === "events") {
+          const on = S.state.events.filter((e) => e.on);
+          L.push("### 켜진 사건", ...on.map((e) => `- ${e.target} ${e.kind}: ${e.repeat === "quarterly" ? "분기마다 " : ""}${e.mean ? `평균 ${e.mean}%` : "방향 중립"} ±${e.sd}%${e.prob < 100 ? `, 확률 ${e.prob}%` : ""}`));
+          if (hasEv) L.push("### 효과", `- 목표 확률 ${pct(noEv.p_goal, 0)} → ${B(pct(R.p_goal, 0))}, 하위 5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원`);
+          L.push("- 날짜는 추정이니 실적 발표일·보호예수 해제일은 공시로 확인하세요.");
+        } else if (kind === "forecast") {
+          L.push("### 결과", `- 목표 확률 ${B(pct(R.p_goal, 0))}, 목표일 중앙값 ${krw(R.terminal.p50)}원 (목표의 ${pct(R.terminal.p50 / g.amount, 0)})`, `- 나쁜 경우 5% ${krw(R.terminal.p5)}원, 원금 손실 확률 ${pct(R.p_loss, 0)}`);
+          const hv = b.holdings.map((h, i) => ({ t: h.ticker, v: md.factors[i].vol, w: h.valueKrw / V0 })).sort((a, b2) => b2.v * b2.w - a.v * a.w)[0];
+          L.push("### 시사점", `- 위험의 대부분은 ${hv.t} (비중 ${pct(hv.w, 0)}, 변동성 ${pct(hv.v, 0)})에서 나옵니다.`, R.req50 ? `- 확률 50%에 필요한 월 적립은 약 ${krw(R.req50)}원입니다.` : "- 월 적립을 늘리거나 목표일을 늦추면 확률이 오릅니다.");
+        } else if (kind === "strategy") {
+          L.push("- 위 '포트폴리오 진단'과 종目별 카드가 같은 계산값으로 만든 규칙 기반 의견입니다.".replace("目", "목"), `- 목표 확률 ${B(pct(R.p_goal, 0))}, 목표일 중앙값 ${krw(R.terminal.p50)}원`);
+        } else return "";
+      }
+    } catch (e) { return ""; }
+    return L.join("\n");
+  }
+  // 무료 AI 순서: 개발자 중계(config.json "ai", 키는 중계에만) → Puter (한 번 로그인하면 자동) → Pollinations. 모두 안 되면 규칙 기반 해설
+  let puterP = null;
+  function loadPuter() { return (puterP ||= new Promise((res, rej) => { if (window.puter) return res(window.puter); const sc = document.createElement("script"); sc.src = "https://js.puter.com/v2/"; sc.onload = () => res(window.puter); sc.onerror = () => { puterP = null; rej(new Error("Puter를 불러오지 못함")); }; document.head.appendChild(sc); })); }
+  const puterText = (r) => (typeof r === "string" ? r : r?.message?.content?.[0]?.text ?? r?.message?.content ?? r?.text ?? String(r ?? ""));
+  async function askPuter(sys, q) { const P = await loadPuter(); return puterText(await P.ai.chat([{ role: "system", content: sys }, { role: "user", content: q }])); }
+  const puterReady = () => { try { return !!window.puter?.auth?.isSignedIn?.(); } catch (e) { return false; } };
   const aiBusy = {}, aiFail = {};
   let aiQueue = Promise.resolve(); // 공개 엔드포인트는 동시 요청을 막을 수 있어 한 번에 하나씩
-  async function aiAuto(kind, force) {
+  const AI_SYS = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 아주 간결하게 답한다. 요청 항목마다 ### 소제목 하나와 한 줄짜리 글머리표 2~3개만 쓰고, 전체 15줄을 넘기지 않는다. 서론·반복·일반론은 빼고 핵심 숫자는 **굵게**. 표, 코드 블록(```), HTML 태그, 수식(LaTeX, $ 기호)은 쓰지 않고 일반 마크다운 글로만 쓴다(좁은 휴대폰 화면). 마지막 줄은 '투자 권유 아님.'";
+  function showFallback(box, kind, why) {
+    const r = ruleText(kind);
+    loadPuter().catch(() => {}); // 버튼을 누르면 바로 로그인 창이 뜨도록 미리 불러 둔다
+    box.innerHTML = (r ? md2html(r) : "") + `<p class="muted small">무료 AI에 연결하지 못해 계산값으로 만든 해설을 보여 줍니다 (${esc(why)}). <button class="sm" data-puter="${kind}">Puter 무료 AI로 분석</button></p>`;
+  }
+  async function aiAuto(kind, force, viaPuter) {
     const box = $("#aiOut-" + kind); if (!box) return;
     const off = S.state.ui.ai_auto === false;
     $$(".aicard, #aiAutoCard").forEach((c) => (c.style.display = off ? "none" : "block"));
@@ -1099,33 +1156,33 @@
     const q = aiPromptFor(kind);
     if (!q) { box.innerHTML = "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>"; return; }
     const key = hashStr("v4|" + q), cache = aiCache(), c = cache[kind];
-    if (!force && aiFail[kind] && aiFail[kind].key === key && Date.now() - aiFail[kind].at < 120000) return; // 방금 실패한 같은 질문은 자동으로 다시 묻지 않음
-    if (!force && c && c.key === key && c.text) { box.innerHTML = md2html(cleanAi(c.text)) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석</p>`; return; }
+    if (!force && aiFail[kind] && aiFail[kind].key === key && Date.now() - aiFail[kind].at < 600000) { showFallback(box, kind, aiFail[kind].why); return; } // 방금 실패한 같은 질문은 자동으로 다시 묻지 않음
+    if (!force && c && c.key === key && c.text) { box.innerHTML = md2html(cleanAi(c.text)) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석${c.src ? " · " + esc(c.src) : ""}</p>`; return; }
     aiBusy[kind] = true; box.innerHTML = "<p class='muted'>AI가 분석하는 중입니다… (보통 10~30초)</p>";
-    const sys = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 아주 간결하게 답한다. 요청 항목마다 ### 소제목 하나와 한 줄짜리 글머리표 2~3개만 쓰고, 전체 15줄을 넘기지 않는다. 서론·반복·일반론은 빼고 핵심 숫자는 **굵게**. 표, 코드 블록(```), HTML 태그, 수식(LaTeX, $ 기호)은 쓰지 않고 일반 마크다운 글로만 쓴다(좁은 휴대폰 화면). 마지막 줄은 '투자 권유 아님.'";
+    const sys = AI_SYS;
+    const timed = (pr) => { let tm; return Promise.race([pr, new Promise((_, rej) => { tm = setTimeout(() => rej(new Error("시간 초과")), 90000); })]).finally(() => clearTimeout(tm)); };
     const run = async () => {
-      const tries = [
-        async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 1200 }) });
-          if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.choices?.[0]?.message?.content || ""; },
-        async () => { const r = await fetch("https://text.pollinations.ai/" + encodeURIComponent(q) + "?model=openai&private=true&system=" + encodeURIComponent(sys)); if (!r.ok) throw new Error("응답 " + r.status);
-          const x = await r.text(); if (/^\s*<(!doctype|html)/i.test(x)) throw new Error("AI 서비스가 웹 페이지를 돌려줌"); return x; },
-      ];
-      let text = "", err = null;
-      for (const t of tries) {
-        try { let tm; text = (await Promise.race([t(), new Promise((_, rej) => { tm = setTimeout(() => rej(new Error("시간 초과")), 90000); })])).trim(); clearTimeout(tm); if (text) break; }
-        catch (e) { err = e; }
+      const tries = [];
+      // 로그인 창은 버튼을 누를 때만 (Puter 는 첫 사용 때 무료 계정 확인 창을 띄움)
+      if (viaPuter) tries.push(["Puter", () => askPuter(sys, q)]);
+      if (S.config?.ai) tries.push(["AI 중계", async () => { const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: sys, prompt: q }) }); if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.text || ""; }]);
+      if (!viaPuter && puterReady()) tries.push(["Puter", () => askPuter(sys, q)]);
+      tries.push(["Pollinations", async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 1200 }) });
+          if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.choices?.[0]?.message?.content || ""; }]);
+      let text = "", err = null, src = "";
+      for (const [nm, t] of tries) {
+        try { text = cleanAi(await timed(t())); if (text) { src = nm; break; } }
+        catch (e) { err = new Error(`${nm} ${e?.message || e}`); }
       }
-      return { text, err };
+      return { text, err, src };
     };
-    const job = aiQueue.then(run); aiQueue = job.catch(() => {});
-    let { text, err } = await job;
+    const job = viaPuter ? run() : aiQueue.then(run); if (!viaPuter) aiQueue = job.catch(() => {});
+    const { text, err, src } = await job;
     aiBusy[kind] = false;
-    text = cleanAi(text);
-    if (!text) aiFail[kind] = { key, at: Date.now() };
-    if (!text) { box.innerHTML = `<p class="bad">AI 서비스에 연결하지 못했습니다 (${esc(err?.message || "빈 응답")}). 잠시 뒤 '다시 분석'을 눌러 주세요.</p>`; return; }
-    const cc = aiCache(); cc[kind] = { key, text, at: Date.now() };
+    if (!text) { const why = err?.message || "빈 응답"; aiFail[kind] = { key, at: Date.now(), why }; showFallback(box, kind, why); return; }
+    const cc = aiCache(); cc[kind] = { key, text, at: Date.now(), src };
     try { localStorage.setItem(AI_KEY, JSON.stringify(cc)); } catch (e) { /* 무시 */ }
-    box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석</p>`;
+    box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석 · ${esc(src)}</p>`;
   }
   // 지금 보고 있는 분석 화면의 AI 분석을 채운다
   function aiRefresh() { if ($("#tabs .on")?.dataset.tab === "analysis") aiAuto(curAna(), false); }
@@ -1355,7 +1412,7 @@
     $("#btnResetModel").onclick = (e) => { if (armed(e.target)) { S.state.model = { ...DEFAULT_MODEL }; save(); renderSettings(); } };
     $("#optAi").checked = S.state.ui.ai_auto !== false;
     $("#optAi").onchange = (e) => { S.state.ui.ai_auto = e.target.checked; save(false); };
-    ["#tab-analysis", "#tab-dash"].forEach((t) => $(t).addEventListener("click", (e) => { const b2 = e.target.closest("[data-aire]"); if (b2) aiAuto(b2.dataset.aire, true); }));
+    ["#tab-analysis", "#tab-dash"].forEach((t) => $(t).addEventListener("click", (e) => { const b2 = e.target.closest("[data-aire]"); if (b2) aiAuto(b2.dataset.aire, true); const b3 = e.target.closest("[data-puter]"); if (b3) aiAuto(b3.dataset.puter, true, true); }));
     $("#optManual").checked = !!S.state.ui.manual_price;
     $("#optManual").onchange = (e) => { S.state.ui.manual_price = e.target.checked; save(); renderAll(); };
     $("#btnExport").onclick = () => {
