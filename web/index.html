@@ -51,7 +51,7 @@
         <input id="addAvg" type="number" step="any" placeholder="평균 매수가 (선택)" size="14">
         <button id="btnAdd" class="primary">종목 추가</button>
       </div>
-      <p class="muted small">현재가는 수집한 시세(프리·정규·애프터 중 가장 최근)를 씁니다. <b>단가 입력</b>칸에 값을 넣으면 그 값으로 평가하고, 비우면 다시 자동 시세를 씁니다. 평균 매수가는 선택이며 넣으면 손익을 보여 줍니다. 한국 주식은 <code>005930.KS</code>, 코스닥은 <code>.KQ</code>를 붙입니다.</p>
+      <p class="muted small">현재가는 수집한 시세(프리·정규·애프터 중 가장 최근)를 씁니다. <b>현재가 직접 입력</b>칸은 시세 대신 쓸 <b>현재</b> 가격입니다(예: 주간거래 시간). 비우면 자동 시세를 씁니다. 내가 산 가격은 <b>평균 매수가</b>칸에 넣으세요(선택, 손익 표시). 한국 주식은 <code>005930.KS</code>, 코스닥은 <code>.KQ</code>를 붙입니다.</p>
     </div>
   </section>
 
@@ -121,6 +121,7 @@
         <button id="btnForecast" class="primary">전망 계산</button>
       </div>
       <div id="fcStatus" class="muted small"></div>
+      <div id="fcWarn" class="help small bad" style="display:none;padding:8px 12px"></div>
     </div>
     <div class="kpis" id="fcKpis"></div>
     <div class="card">

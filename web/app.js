@@ -273,8 +273,11 @@
     const { rows, total } = valuation();
     const fx = fxNow("USD"), fq = S.quotes["KRW=X"];
     $("#fxLine").textContent = `원/달러 ${nf(fx, 2)}${fq?.last_time ? " (" + new Date(fq.last_time * 1000).toLocaleString() + ")" : ""}`;
-    const head = `<tr><th></th><th class="l">티커</th><th class="l">이름</th><th>수량</th><th>현재가</th><th>단가 입력</th><th>평균 매수가</th><th>통화</th><th>평가액 (원)</th><th>비중</th><th>전일 대비</th><th>손익</th><th class="l">메모</th></tr>`;
+    const head = `<tr><th></th><th class="l">티커</th><th class="l">이름</th><th>수량</th><th>현재가</th><th>현재가 직접 입력</th><th>평균 매수가</th><th>통화</th><th>평가액 (원)</th><th>비중</th><th>전일 대비</th><th>손익</th><th class="l">메모</th></tr>`;
     const body = rows.map((r, i) => {
+      const mk = r.p.src === "manual" ? curPrice({ ...r.h, price: null }).v : null;
+      const gap = mk ? r.p.v / mk - 1 : 0;
+      const warn = Math.abs(gap) > 0.05 ? `<br><span class="bad small">시세 ${nf(mk, 2)}와 ${spct(gap, 0)} 차이</span>` : "";
       const p = r.p, tag = p.src ? `<span class="tag ${p.src === "manual" ? "manual" : ""}">${SESS[p.src] || p.src}</span>` : "";
       const pl = r.pl != null ? `<span class="${cls(r.pl)}">${nf(r.pl, 0)} ${r.ccy} (${spct(r.plPct)})</span><br><span class="muted small">${krw(r.pl * (r.fx || 1))}원</span>` : `<span class="muted">-</span>`;
       return `<tr data-i="${i}">
@@ -282,7 +285,7 @@
         <td class="l"><b>${esc(r.h.ticker)}</b></td><td class="l small">${esc(r.name).slice(0, 28)}</td>
         <td><input data-f="shares" type="number" step="any" value="${r.h.shares ?? ""}"></td>
         <td>${p.v != null ? nf(p.v, 2) : "-"}${tag}</td>
-        <td><input data-f="price" type="number" step="any" placeholder="자동" value="${r.h.price ?? ""}"></td>
+        <td><input data-f="price" type="number" step="any" placeholder="비우면 자동" value="${r.h.price ?? ""}">${warn}</td>
         <td><input data-f="avg_cost" type="number" step="any" placeholder="선택" value="${r.h.avg_cost ?? ""}"></td>
         <td>${r.ccy}</td><td><b>${nf(r.valueKrw)}</b></td><td>${pct(r.w)}</td>
         <td class="${cls(r.dayChg)}">${spct(r.dayChg, 2)}</td><td>${pl}</td>
@@ -313,7 +316,7 @@
       if (MODE === "static") {
         showTab("quotes");
         if (GH && ghToken()) await ghCollect([t]);
-        else logLine(`${esc(t)} 시세가 아직 없습니다. ⑥ 설정 탭에서 GitHub를 한 번 연결하면 자동으로 받아옵니다. 그 전까지는 단가 입력칸에 직접 넣으면 평가에 반영됩니다.`, false, true);
+        else logLine(`${esc(t)} 시세가 아직 없습니다. ⑥ 설정 탭에서 GitHub를 한 번 연결하면 자동으로 받아옵니다. 그 전까지는 '현재가 직접 입력'칸에 넣으면 평가에 반영됩니다.`, false, true);
       }
       else await collect(false, [t]);
     }
@@ -454,6 +457,11 @@
     $("#scenario").value = m.scenario; $("#nPaths").value = String(m.n_paths); $("#rebalance").checked = !!m.rebalance_yearly;
     if (!lastForecast) { $("#fcStatus").textContent = "전망 계산을 눌러 주세요."; return; }
     const { b, withEv: R, noEv, hasEv } = lastForecast, g = S.state.goal, md = b.model;
+    // 직접 입력한 현재가 때문에 오늘 평가액이 시세 기준과 크게 다르면 알린다 (차트가 오늘에서 꺾이는 원인)
+    const manual = b.holdings.filter((h) => { const src = S.state.holdings.find((x) => x.ticker === h.ticker); const mk = src && curPrice({ ...src, price: null }).v; return src && Number(src.price) > 0 && mk && Math.abs(h.price0 / mk - 1) > 0.05; });
+    const Hh = history(), lastHist = Hh.total[Hh.total.length - 1];
+    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 ① 탭에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
+    $("#fcWarn").style.display = $("#fcWarn").innerHTML ? "block" : "none";
     $("#fcStatus").textContent = `${lastForecast.at.toLocaleString()} 계산 · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초` + (fcDirty ? " · 입력이 바뀌었습니다. 다시 계산하세요." : "");
     const contrib = Number(g.monthly_contribution) || 0;
     $("#fcKpis").innerHTML = [
