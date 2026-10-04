@@ -15,9 +15,9 @@
   </div>
 </header>
 <nav id="tabs">
-  <button data-tab="dash" class="on">① 관찰 대시보드</button>
-  <button data-tab="analysis">② 분석·전략</button>
-  <button data-tab="quotes">③ 시세 수집</button>
+  <button data-tab="dash" class="on">관찰 대시보드</button>
+  <button data-tab="analysis">분석·전략</button>
+  <button data-tab="quotes">시세 수집</button>
 </nav>
 <main>
   <section id="tab-quotes" class="tab">
@@ -70,9 +70,9 @@
   </section>
 
 
-  <!-- ② 관찰 대시보드 -->
+  <!-- 관찰 대시보드 -->
   <section id="tab-dash" class="tab on">
-    <div class="card" id="dashEmpty" style="display:none"><b>보유 수량을 넣어 주세요.</b> <span class="small">③ 시세 수집 화면에서 종목별 수량(과 매수 단가)만 넣으면 나머지는 자동으로 계산됩니다.</span> <button class="primary" onclick="document.querySelector('#tabs button[data-tab=quotes]').click()">수량 입력하러 가기</button></div>
+    <div class="card" id="dashEmpty" style="display:none"><b>보유 수량을 넣어 주세요.</b> <span class="small">시세 수집 화면에서 종목별 수량(과 매수 단가)만 넣으면 나머지는 자동으로 계산됩니다.</span> <button class="primary" onclick="document.querySelector('#tabs button[data-tab=quotes]').click()">수량 입력하러 가기</button></div>
     <div class="kpis" id="goalKpis"></div>
     <details class="card opt" id="goalOpt"><summary>목표 수정 (옵션)</summary>
       <div class="row wrap goalrow">
@@ -110,12 +110,12 @@
     </div>
   </section>
 
-  <!-- ③ 분석·전략 -->
+  <!-- 분석·전략 -->
   <section id="tab-analysis" class="tab">
     <div class="card">
       <div class="row wrap between">
         <div class="row seg" id="anaNav">
-          <button data-a="strategy" class="on">종목별 전략</button><button data-a="trend">추세 (칼만·EMA)</button><button data-a="forecast">3년 전망</button><button data-a="events">기업 사건</button><button data-a="alloc">비중안 비교</button>
+          <button data-a="strategy" class="on">종목별 전략</button><button data-a="trend">추세 (칼만·EMA)</button><button data-a="forecast">3년 전망</button><button data-a="events">기업 사건</button><button data-a="fx">환율</button><button data-a="alloc">비중안 비교</button>
         </div>
       </div>
       <details class="opt"><summary>계산 옵션 (기본: 기준 시나리오, 3,000경로, 재조정 없음)</summary>
@@ -136,7 +136,7 @@
       <div class="card" id="aiAutoCard">
         <div class="row between wrap"><h2>AI 자동 전략 분석 (GPT, 무료·로그인 없음)</h2><button data-aire="strategy" class="sm">다시 분석</button></div>
         <div id="aiOut-strategy" class="aiout small"></div>
-        <p class="muted small">위 계산 결과를 질문으로 만들어 무료 공개 AI 서비스(Pollinations, OpenAI GPT 모델)에 보내고 답을 여기에 보여 줍니다. 수량은 보내지 않고 비중(%)과 지표만 보냅니다. 같은 입력이면 저장해 둔 답을 다시 씁니다. 끄려면 ③ 시세 수집 아래 설정 → 표시 옵션.</p>
+        <p class="muted small">위 계산 결과를 질문으로 만들어 무료 공개 AI 서비스(Pollinations, OpenAI GPT 모델)에 보내고 답을 여기에 보여 줍니다. 수량은 보내지 않고 비중(%)과 지표만 보냅니다. 같은 입력이면 저장해 둔 답을 다시 씁니다. 끄려면 시세 수집 아래 설정 → 표시 옵션.</p>
       </div>
       <div class="card"><h2>포트폴리오 진단</h2><div id="stratSummary"></div></div>
       <div id="stratCards" class="stratgrid"></div>
@@ -189,7 +189,7 @@
       <div class="card"><h2>종목별 가격 전망 (현지 통화)</h2><div id="fcStocks" class="smallmult"></div></div>
       <details class="card"><summary><b>모형에 쓴 값</b></summary>
         <div class="tablewrap"><table id="fcParams" class="grid"></table></div>
-        <p class="muted small">기대수익률은 과거 평균을 사전값(③ 시세 수집 아래 설정 → 모형 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다.</p>
+        <p class="muted small">기대수익률은 과거 평균을 사전값(시세 수집 아래 설정 → 모형 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다.</p>
       </details>
     </div>
 
@@ -207,6 +207,17 @@
         </div>
       </div>
       <div class="card"><h2>펼친 일정 (목표일까지)</h2><div id="eventSchedule" class="small"></div></div>
+    </div>
+
+    <div class="ana" id="ana-fx" style="display:none">
+      <div class="kpis" id="fxKpis"></div>
+      <div class="card aicard"><div class="row between wrap"><h2>AI 환율 해설 (GPT, 무료)</h2><button data-aire="fx" class="sm">다시 분석</button></div><div id="aiOut-fx" class="aiout small"></div></div>
+      <div class="card">
+        <div class="row between wrap"><h2>원/달러 환율 (과거 + 전망)</h2><div class="row seg" id="fxRange"><button data-r="252">1년</button><button data-r="780" class="on">3년</button></div></div>
+        <div id="fxChart" class="chartbox"></div>
+        <p class="muted small">검은 선은 실제 환율, 굵은 파란 선은 칼만 필터 추세, 점선은 EMA50·EMA200입니다. 오늘 오른쪽 띠는 모형 설정의 환율 기대 변화와 과거 변동성으로 그린 목표일까지의 범위(진한 띠 25~75%, 옅은 띠 5~95%)입니다. 환율이 오르면(원화 약세) 달러 자산의 원화 평가액이 오릅니다.</p>
+      </div>
+      <div class="card"><h2>환율이 바뀌면 내 평가액은</h2><div class="tablewrap"><table id="fxSens" class="grid"></table></div><p class="muted small">주가는 그대로 두고 환율만 바뀐다고 본 값입니다.</p></div>
     </div>
 
     <div class="ana" id="ana-alloc" style="display:none">

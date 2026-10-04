@@ -107,7 +107,7 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
       if (MODE === "static") {
-        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 ③ 시세 수집 아래 설정의 내보내기/불러오기"; }
+        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 시세 수집 아래 설정의 내보내기/불러오기"; }
         catch (e) { $("#footer").textContent = "브라우저 저장 실패: " + e.message; }
         return;
       }
@@ -191,11 +191,11 @@
     const prog = g.amount ? total / g.amount : 0;
     const latest = Object.values(S.quotes).reduce((m, q) => Math.max(m, q.fetched || 0), 0);
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span>평가액 <b>${krw(total)}원</b></span><span>목표 대비 <b>${pct(prog)}</b></span>${my ? `<span>내 수익률 <b class="${cls(my.r)}">${spct(my.r)}</b></span>` : ""}<span>원/달러 <b>${nf(fx, 1)}</b></span>
+    $("#headKpi").innerHTML = `<span>평가액 <b>${krw(total)}원</b></span><span>목표 대비 <b>${pct(prog)}</b></span>${my ? `<span>내 수익률 <b class="${cls(my.r)}">${spct(my.r)}</b></span>` : ""}
       <span class="muted">최근 수집 ${latest ? new Date(latest * 1000).toLocaleString() : "-"}</span>`;
   }
 
-  // ------------------------------------------------------------ ① 시세·종목
+  // ------------------------------------------------------------ 시세·종목
   function logLine(msg, ok = true, html = false) {
     const box = $("#collectLog"), div = document.createElement("div");
     div.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span> ${html ? msg : esc(msg)}`;
@@ -246,7 +246,7 @@
         return true;
       }
       logLine("수집이 오래 걸립니다. 잠시 뒤 '최신 데이터 불러오기'를 눌러 주세요." + ghLink("진행 상황 보기"), false, true);
-    } catch (e) { logLine("GitHub 수집 실행 실패: " + esc(e.message) + ". ③ 시세 수집 아래 설정의 GitHub 연결을 확인하세요.", false, true); }
+    } catch (e) { logLine("GitHub 수집 실행 실패: " + esc(e.message) + ". 시세 수집 아래 설정의 GitHub 연결을 확인하세요.", false, true); }
     finally { ghBusy = false; btns.forEach((b) => (b.disabled = false)); }
     return false;
   }
@@ -425,7 +425,7 @@
     save(); renderAll();
   }
 
-  // ------------------------------------------------------------ ② 목표·현황
+  // ------------------------------------------------------------ 목표·현황
   function yearsBetween(a, b) { return (Date.parse(b) - Date.parse(a)) / (365.25 * 86400e3); }
   function renderGoalInputs() {
     const g = S.state.goal;
@@ -483,7 +483,7 @@
       const md = []; for (let k = 0; k <= 36 && Model.addMonths(today(), k) <= g.date; k++) md.push(Model.addMonths(today(), k));
       if (md[md.length - 1] !== g.date) md.push(g.date);
       if (V0 > 0) opt.series.push({ name: "필요 경로", x: [last, ...md], y: [H.total[H.total.length - 1], ...md.map((d) => V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date))))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
-      $("#histNote").textContent = fdates ? "오른쪽은 ② 분석·전략의 3년 전망(환율·사건 포함) 결과입니다." : "② 분석·전략 탭을 열면 전망 띠가 함께 그려집니다.";
+      $("#histNote").textContent = fdates ? "오른쪽은 분석·전략의 3년 전망(환율·사건 포함) 결과입니다." : "분석·전략 탭을 열면 전망 띠가 함께 그려집니다.";
     } else {
       if (mode !== "each" && g.amount <= maxV * 1.05) opt.hlines.push({ y: g.amount, label: "목표" });
       $("#histNote").textContent = "현재 보유 수량을 과거에 그대로 적용한 값입니다(매매 이력 미반영). 원화 환산은 그날 환율을 씁니다. 늦게 상장한 종목은 상장일부터 합계에 들어갑니다.";
@@ -515,7 +515,7 @@
     if (e.type === "change") renderGoalInputs();
   }
 
-  // ------------------------------------------------------------ ③ 사건
+  // ------------------------------------------------------------ 사건
   function renderEvents() {
     const opts = [...S.state.holdings.map((h) => h.ticker), "ALL", "FX"];
     const lab = { ALL: "전체", FX: "환율" };
@@ -555,7 +555,7 @@
     if (e.type === "change") renderSchedule();
   }
 
-  // ------------------------------------------------------------ ④ 전망
+  // ------------------------------------------------------------ 전망
   function buildModelNow() {
     const g = S.state.goal, start = today();
     if (g.date <= start) throw new Error("목표일이 오늘 이후여야 합니다.");
@@ -595,7 +595,7 @@
     // 직접 입력한 현재가 때문에 오늘 평가액이 시세 기준과 크게 다르면 알린다 (차트가 오늘에서 꺾이는 원인)
     const manual = b.holdings.filter((h) => { const src = S.state.holdings.find((x) => x.ticker === h.ticker); const mk = src && curPrice({ ...src, price: null }).v; return src && Number(src.price) > 0 && mk && Math.abs(h.price0 / mk - 1) > 0.05; });
     const Hh = history(), lastHist = Hh.total[Hh.total.length - 1];
-    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 ③ 시세 수집에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
+    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 시세 수집에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
     $("#fcWarn").style.display = $("#fcWarn").innerHTML ? "block" : "none";
     $("#fcStatus").textContent = `${lastForecast.at.toLocaleString()} 계산 · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초` + (fcDirty ? " · 입력이 바뀌었습니다. 다시 계산하세요." : "");
     const contrib = Number(g.monthly_contribution) || 0;
@@ -655,6 +655,7 @@
         <td>${pct(f.muHist)}</td><td>${f.shrink == null ? "-" : pct(1 - f.shrink, 0)}</td><td><b>${pct(f.mu[scen])}</b></td></tr>`).join("") +
       `<tr><td class="l muted" colspan="9">상관행렬 ${md.corrShrink > 0 ? `(양의 정부호 보정 ${pct(md.corrShrink, 0)})` : ""}: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
     renderStrategy();
+    if (curAna() === "fx") renderFx();
     aiRefresh();
   }
 
@@ -668,7 +669,7 @@
     const soon = (t) => md.eventList.filter((e) => (e.event.target === t || e.event.target === "ALL") && yearsBetween(md.startDate, e.date) <= 0.34);
     const tips = [];
     tips.push(`**목표 확률 ${pct(R.p_goal, 0)}** (${$("#scenario").selectedOptions[0].textContent.split(" ")[0]} 시나리오). 필요한 연수익률 **${pct(req)}**, 전망 중앙값의 연수익률 **${pct(medC)}**.`);
-    if (R.p_goal < 0.5 && R.req50 != null) tips.push(`**적립**: 지금 비중 그대로 확률 50%를 맞추려면 매월 약 **${krw(R.req50)}원**을 더 넣어야 합니다 (월 적립은 ① 관찰 대시보드의 목표 수정에서 입력).`);
+    if (R.p_goal < 0.5 && R.req50 != null) tips.push(`**적립**: 지금 비중 그대로 확률 50%를 맞추려면 매월 약 **${krw(R.req50)}원**을 더 넣어야 합니다 (월 적립은 관찰 대시보드의 목표 수정에서 입력).`);
     if (risky[top] > 0.45) tips.push(`**집중도**: ${b.holdings[top].ticker} 한 종목이 **${pct(w[top], 0)}**입니다. 하위 5% 결과가 ${krw(R.terminal.p5)}원까지 내려갑니다. '비중안 비교'에서 줄였을 때를 확인해 보세요.`);
     if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장에서 살 여력과 심리적 완충을 위해 3~5%를 권합니다.`);
     tips.push(`**낙폭**: 최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}. 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
@@ -729,6 +730,16 @@
       keys.forEach((t) => { const s2 = sigOf(t), r = rows.find((x) => x.h.ticker === t); if (!s2) return;
         L.push(`- ${t}: ${pct(r?.w, 0)} / ${s2.trend} / ${nf(s2.close, 2)} / ${spct(s2.dev_from_kalman)} / ${spct(s2.slope_ann, 0)} / ${s2.slope_z.toFixed(2)} / ${nf(s2.ema50, 2)} / ${s2.ema200 ? nf(s2.ema200, 2) : "-"} / ${pct(s2.vol_ewma, 0)} / ${pct(s2.drawdown, 0)} / ${spct(s2.ret_1m)} / ${spct(s2.ret_3m)} / ${spct(s2.ret_1y)}`); });
       L.push("요청: 1) 종목별 추세가 지금 어떤 국면인지(상승 지속, 조정, 반등, 하락)와 근거, 2) 칼만 수준·EMA 기준으로 매수·축소를 고려할 가격대나 신호, 3) 추세 지표의 한계와 주의점. " + tail);
+      return L.join("\n");
+    }
+    if (kind === "fx") {
+      const F = fxInfo(); if (!F) return "";
+      const sg = F.sg;
+      L.push(`원/달러 환율과 내 포트폴리오의 환율 노출이야 (${today()} 기준). 나는 한국 거주자이고 목표는 원화 ${krw(g.amount)}원, 목표일 ${g.date}.`);
+      L.push(`현재 ${nf(F.now, 1)}원, 칼만 추세 수준 ${nf(sg.kalman_level, 1)} (괴리 ${spct(sg.dev_from_kalman)}), 칼만 기울기 연 ${spct(sg.slope_ann, 1)} (z ${sg.slope_z.toFixed(2)}), EMA50 ${nf(sg.ema50, 1)}, EMA200 ${sg.ema200 ? nf(sg.ema200, 1) : "-"}, 추세 판정 ${sg.trend}.`);
+      L.push(`변화: 1개월 ${spct(sg.ret_1m)}, 3개월 ${spct(sg.ret_3m)}, 1년 ${spct(sg.ret_1y)}. 1년 범위 ${nf(F.lo1, 0)}~${nf(F.hi1, 0)}. EWMA 변동성 연 ${pct(sg.vol_ewma, 1)}.`);
+      L.push(`달러 자산 비중 ${pct(F.usdW, 0)}. 원화가 10% 강세가 되면 원화 평가액이 약 ${pct(F.usdW * 0.1, 1)} 줄어. 모형의 목표일 환율 중앙값 ${nf(F.at(F.T, "p50"), 0)} (5~95% ${nf(F.at(F.T, "p5"), 0)}~${nf(F.at(F.T, "p95"), 0)}).`);
+      L.push("요청: 1) 지금 환율 수준과 추세 해석, 2) 앞으로 1년 환율에 영향을 줄 요인(금리차, 경상수지, 위험 선호 등), 3) 달러 자산 비중이 이 정도일 때 환헤지·원화 자산 분산·달러 매도 시점 등 대응 방법. " + tail);
       return L.join("\n");
     }
     if (!lastForecast) return "";
@@ -858,7 +869,7 @@
   // ------------------------------------------------------------ 비중안 비교
   async function runAlloc() {
     const st = $("#allocStatus"), btn = $("#btnAlloc");
-    if (!S.prices.QQQ) { st.textContent = "QQQ 시세가 없어 비교할 수 없습니다. ③ 시세 수집에서 QQQ를 수집 목록에 넣어 주세요."; return; }
+    if (!S.prices.QQQ) { st.textContent = "QQQ 시세가 없어 비교할 수 없습니다. 시세 수집에서 QQQ를 수집 목록에 넣어 주세요."; return; }
     btn.disabled = true; st.textContent = "계산 중... (안 5개)"; await new Promise((r) => setTimeout(r, 30));
     try {
       const g = S.state.goal, m = S.state.model, { rows } = valuation();
@@ -891,7 +902,54 @@
     btn.disabled = false;
   }
 
-  // ------------------------------------------------------------ ⑤ 추세
+  // ------------------------------------------------------------ 환율 (원/달러)
+  function fxInfo() {
+    const p = S.prices["KRW=X"]; if (!p || p.close.length < 30) return null;
+    const ind = Model.indicators(p.dates, p.close), sg = ind.sig, now = fxNow("USD") || sg.close;
+    const { rows, total } = valuation();
+    const usdW = total ? rows.filter((r) => r.ccy === "USD").reduce((a, r) => a + (r.valueKrw || 0), 0) / total : 0;
+    const g = S.state.goal, T = Math.max(0.01, yearsBetween(today(), g.date));
+    const ff = lastForecast && lastForecast.b.model.factors.find((f) => f.kind === "fx" && f.key === "KRW=X");
+    const vol = ff ? ff.vol : sg.vol_hist * (Number(S.state.model.fx_vol_mult) || 1), mu = ff ? ff.mu[S.state.model.scenario] : (Number(S.state.model.fx_drift) || 0) / 100;
+    const z = { p5: -1.645, p25: -0.674, p50: 0, p75: 0.674, p95: 1.645 };
+    const at = (t, k) => now * Math.exp((mu - vol * vol / 2) * t + z[k] * vol * Math.sqrt(t));
+    const i0 = Math.max(0, p.dates.length - 253), hi1 = Math.max(...p.close.slice(i0)), lo1 = Math.min(...p.close.slice(i0));
+    return { p, ind, sg, now, usdW, total, T, vol, mu, at, hi1, lo1, goalDate: g.date };
+  }
+  function renderFx() {
+    const F = fxInfo();
+    if (!F) { $("#fxKpis").innerHTML = ""; $("#fxChart").textContent = "환율 시세가 없습니다. 시세 수집을 눌러 주세요."; return; }
+    const { sg, now, usdW, total, T, at } = F;
+    const effect1y = sg.ret_1y != null ? usdW * sg.ret_1y : null;
+    $("#fxKpis").innerHTML = [
+      ["현재 원/달러", nf(now, 1), `칼만 추세 ${nf(sg.kalman_level, 1)} (${spct(sg.dev_from_kalman)})`],
+      ["1개월 · 3개월", `<span class="${cls(sg.ret_1m)}">${spct(sg.ret_1m)}</span>`, `3개월 <span class="${cls(sg.ret_3m)}">${spct(sg.ret_3m)}</span>`],
+      ["1년 변화", `<span class="${cls(sg.ret_1y)}">${spct(sg.ret_1y)}</span>`, `1년 범위 ${nf(F.lo1, 0)}~${nf(F.hi1, 0)}`],
+      ["추세", sg.trend.replace(" (추세 판단 대상 아님)", ""), `기울기 연 ${spct(sg.slope_ann, 1)} · 오르면 원화 약세`],
+      ["변동성 (연)", pct(sg.vol_ewma, 1), `모형 적용 ${pct(F.vol, 1)}`],
+      ["달러 자산 비중", pct(usdW, 0), `${krw(total * usdW)}원`],
+      ["지난 1년 환율 효과", effect1y == null ? "-" : `<span class="${cls(effect1y)}">${spct(effect1y)}</span>`, "원화 평가액에 더해진 몫 (근사)"],
+      ["목표일 환율 중앙값", nf(at(T, "p50"), 0), `${F.goalDate} · 5~95% ${nf(at(T, "p5"), 0)}~${nf(at(T, "p95"), 0)}`],
+      ["원화 10% 강세면", `<span class="bad">${krw(-total * usdW * 0.1)}원</span>`, "주가 변동 없이 환율만"],
+    ].map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("");
+    const n = +($("#fxRange .on")?.dataset.r || 780), ind = F.ind, k0 = Math.max(0, ind.dates.length - n), x = ind.dates.slice(k0);
+    const md = []; for (let k = 1; Model.addMonths(today(), k) <= F.goalDate; k++) md.push(Model.addMonths(today(), k));
+    if (md[md.length - 1] !== F.goalDate) md.push(F.goalDate);
+    const fd = [today(), ...md], ft = fd.map((d) => yearsBetween(today(), d)), band = (k) => ft.map((t) => at(t, k));
+    Charts.lineChart($("#fxChart"), { x, height: 300, yfmt: (v) => nf(v, 0),
+      bands: [{ x: fd, lo: band("p5"), hi: band("p95"), color: "var(--band)", opacity: 0.13, name: "전망 5~95%" }, { x: fd, lo: band("p25"), hi: band("p75"), color: "var(--band)", opacity: 0.25, name: "25~75%" }],
+      series: [{ name: "칼만 추세", y: ind.level.slice(k0), color: "var(--c1)", width: 3 }, { name: "원/달러", y: ind.close.slice(k0), color: "var(--fg)", width: 1 },
+        { name: "EMA50", y: ind.ema50.slice(k0), color: "var(--c3)", dash: "4 3" }, ...(ind.dates.length >= 200 ? [{ name: "EMA200", y: ind.ema200.slice(k0), color: "var(--c2)", dash: "6 3" }] : []),
+        { name: "전망 중앙값", x: fd, y: band("p50"), color: "var(--c1)", width: 1.6, dash: "2 2" }],
+      vlines: [{ x: today(), label: "오늘" }] });
+    const steps = [-0.15, -0.1, -0.05, 0.05, 0.1, 0.15];
+    $("#fxSens").innerHTML = `<tr><th class="l">환율 변화</th><th>원/달러</th><th>평가액 변화</th><th>평가액</th><th>목표 대비</th></tr>` + steps.map((c) => {
+      const d = total * usdW * c, v = total + d;
+      return `<tr><td class="l">${c < 0 ? "원화 강세" : "원화 약세"} ${spct(c, 0)}</td><td>${nf(now * (1 + c), 0)}</td><td class="${cls(d)}">${krw(d)}원</td><td>${krw(v)}원</td><td>${pct(v / S.state.goal.amount)}</td></tr>`;
+    }).join("");
+  }
+
+  // ------------------------------------------------------------ 추세
   function renderTrend() {
     const sel = $("#trendTicker"), keys = Object.keys(S.prices).filter((k) => !k.includes("=")).sort((a, b) => {
       const ha = S.state.holdings.findIndex((h) => h.ticker === a), hb = S.state.holdings.findIndex((h) => h.ticker === b);
@@ -920,7 +978,7 @@
         <td class="bad">${pct(s.drawdown)}</td><td class="${cls(s.ret_1m)}">${spct(s.ret_1m)}</td><td class="${cls(s.ret_3m)}">${spct(s.ret_3m)}</td><td class="${cls(s.ret_1y)}">${spct(s.ret_1y)}</td></tr>`).join("");
   }
 
-  // ------------------------------------------------------------ ⑥ 설정
+  // ------------------------------------------------------------ 설정
   function renderGh() {
     const box = $("#ghBox"); if (!box) return;
     if (MODE !== "static") { $("#devCard").style.display = "none"; return; }
@@ -970,7 +1028,8 @@
     $$(".ana").forEach((el) => (el.style.display = el.id === "ana-" + a ? "block" : "none"));
     if (a === "trend") { renderTrend(); aiRefresh(); }
     if (a === "events") renderSchedule();
-    if (a === "strategy" || a === "forecast" || a === "events") { if (!lastForecast || fcDirty) runForecast(); else renderForecast(); }
+    if (a === "fx") renderFx();
+    if (a === "strategy" || a === "forecast" || a === "events" || a === "fx") { if (!lastForecast || fcDirty) runForecast(); else renderForecast(); }
     if (a === "alloc") { if (!lastAlloc || allocDirty) runAlloc(); else aiRefresh(); }
     try { localStorage.setItem("ana", a); } catch (e) { /* 무시 */ }
   }
@@ -998,7 +1057,7 @@
     $("#addAvg").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     $("#addShares").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     ["#goalAmount", "#goalDate", "#startDate", "#goalYears", "#monthly"].forEach((s) => { $(s).addEventListener("change", onGoalEdit); });
-    segClick("#histRange", renderDash); segClick("#histStep", renderDash); segClick("#histMode", renderDash); segClick("#trendRange", renderTrend);
+    segClick("#histRange", renderDash); segClick("#histStep", renderDash); segClick("#histMode", renderDash); segClick("#trendRange", renderTrend); segClick("#fxRange", renderFx);
     $("#trendTicker").onchange = renderTrend;
     segClick("#anaNav", renderAnalysis);
     $("#btnAlloc").onclick = runAlloc;
@@ -1030,7 +1089,7 @@
       const f = e.target.files[0]; if (!f) return;
       try { S.state = normalize(JSON.parse(await f.text())); save(); renderAll(); toast("불러왔습니다"); } catch (err) { alert("파일을 읽지 못했습니다: " + err.message); }
     };
-    let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const t = $("#tabs .on").dataset.tab; if (t === "dash") renderDash(); if (t === "analysis") { if (curAna() === "trend") renderTrend(); else if (lastForecast) renderForecast(); } }, 200); });
+    let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const t = $("#tabs .on").dataset.tab; if (t === "dash") renderDash(); if (t === "analysis") { if (curAna() === "trend") renderTrend(); else if (curAna() === "fx" && !lastForecast) renderFx(); else if (lastForecast) renderForecast(); } }, 200); });
   }
 
   async function init() {
