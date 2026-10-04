@@ -6,7 +6,7 @@
 //       data/config.json 의 "proxy" 에 "https://<이름>.workers.dev/?url=", "ai" 에 "https://<이름>.workers.dev/ai" 를 넣고 커밋.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/v8\/finance\/chart\//;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
-const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"];
+const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
 export default {
   async fetch(req, env) {
     const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
@@ -24,16 +24,18 @@ export default {
       const make = (model, think) => JSON.stringify({ ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}), contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: { maxOutputTokens: 4096, temperature: 0.4, ...(think ? { thinkingConfig: /gemini-3/.test(model) ? { thinkingLevel: "low" } : { thinkingBudget: 0 } } : {}) } });
       const call = (model, think) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_KEY.trim() }, body: make(model, think) });
-      let last = null;
+      const errs = []; let st = 502;
       for (const model of [...new Set([env.GEMINI_MODEL, ...MODELS].filter(Boolean))]) {
         let r = await call(model, true), j = await r.json().catch(() => ({}));
-        if (r.status === 400 && /thinking/i.test(j.error?.message || "")) { r = await call(model, false); j = await r.json().catch(() => ({})); }
+        if (r.status === 400) { r = await call(model, false); j = await r.json().catch(() => ({})); } // 생각 설정을 거절하면 설정 없이
+        if (r.status === 503 || r.status === 429) { await new Promise((ok) => setTimeout(ok, 1500)); r = await call(model, false); j = await r.json().catch(() => ({})); } // 붐비면 잠깐 뒤 한 번 더
         const text = (j.candidates?.[0]?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || "").join("");
         if (r.ok && text) return out({ text, model });
-        last = { error: `Gemini ${model} ${r.status}: ${j.error?.message || j.candidates?.[0]?.finishReason || "빈 응답"}`, colo: req.cf?.colo, st: r.ok ? 502 : r.status };
-        if (r.status === 401 || r.status === 403) break; // 키 문제는 다른 모델도 같다. 없음(404)·붐빔(429·503)·기타는 다음 모델로
+        errs.push(`${model} ${r.status}: ${(j.error?.message || j.candidates?.[0]?.finishReason || "빈 응답").slice(0, 160)}`);
+        if (errs.length === 1) st = r.ok ? 502 : r.status;
+        if (r.status === 401 || r.status === 403) break; // 키 문제는 다른 모델도 같다
       }
-      return out({ error: last.error, colo: last.colo }, last.st);
+      return out({ error: "Gemini " + errs.join(" / "), colo: req.cf?.colo }, st);
     }
     const target = u.searchParams.get("url") || "";
     if (!ALLOW.test(target)) return new Response("not allowed", { status: 400, headers: cors });
