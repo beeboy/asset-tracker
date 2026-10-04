@@ -741,7 +741,7 @@
     const q = aiPrompt(); if (!q) return toast("먼저 전망을 계산해 주세요");
     try { await navigator.clipboard.writeText(q); } catch (e) { /* 복사 실패는 무시 */ }
     const enc = encodeURIComponent(q);
-    const url = { claude: "https://claude.ai/new?q=" + enc, chatgpt: "https://chatgpt.com/?q=" + enc, gemini: "https://gemini.google.com/app", copilot: "https://copilot.microsoft.com/?q=" + enc, meta: "https://www.meta.ai/" }[kind];
+    const url = { claude: "https://claude.ai/new?q=" + enc, chatgpt: "https://chatgpt.com/?q=" + enc, gemini: "https://gemini.google.com/app", grok: "https://grok.com/?q=" + enc, copilot: "https://copilot.microsoft.com/?q=" + enc, meta: "https://www.meta.ai/" }[kind];
     if (url) window.open(url, "_blank", "noopener");
     toast(["copy", "gemini", "meta"].includes(kind) ? "질문을 복사했습니다. 붙여넣기 하세요." : "질문을 채워 열었습니다 (복사도 해 둠)");
   }
