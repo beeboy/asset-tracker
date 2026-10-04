@@ -96,3 +96,5 @@ details.card summary { cursor: pointer; }
 #anaNav { flex-wrap: wrap; }
 details.opt > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; margin-top: 4px; }
 details.card.opt { padding: 10px 16px; }
+.aiout { background: var(--bg); border-radius: 8px; padding: 8px 14px; min-height: 40px; }
+.aiout h4 { margin: 10px 0 4px; font-size: 13.5px; } .aiout p { margin: 4px 0; } .aiout ul, .aiout ol { margin: 4px 0 6px 18px; padding: 0; }

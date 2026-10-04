@@ -651,6 +651,7 @@
     if (cashW < 0.03) tips.push(`현금성 자산이 ${pct(cashW, 1)}입니다. 하락장에서 살 여력과 심리적 완충을 위해 3~5%를 권합니다.`);
     tips.push(`최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}: 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
     $("#aiPrompt").textContent = aiPrompt();
+    if (curAna() === "strategy" && $("#tabs .on").dataset.tab === "analysis") aiAuto(false);
     $("#stratSummary").innerHTML = `<ul class="small">${tips.map((t) => `<li>${t}</li>`).join("")}</ul>`;
 
     const total = V0;
@@ -692,6 +693,49 @@
     if (ev.length) lines.push("6개월 내 사건: " + ev.map((e) => `${e.date} ${e.event.target} ${e.event.kind}`).join(", "));
     lines.push("요청: 1) 종목별로 보유·비중 축소·추가 매수 중 무엇이 맞는지 이유와 함께, 2) 목표 확률을 높이면서 위험을 줄이는 비중 조정안, 3) 앞으로 3개월 동안 할 일 3가지. 한국 거주자 세금(해외주식 양도세 250만원 공제)도 고려해서 한국어로 간단히 답해 줘.");
     return lines.join("\n");
+  }
+  // 페이지 안 자동 분석: 키 없이 쓰는 공개 AI 엔드포인트 (Pollinations, OpenAI 호환). 같은 질문의 답은 저장해 재사용
+  const AI_KEY = "asset-tracker-ai";
+  function md2html(t) {
+    const out = []; let list = null;
+    const inline = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    for (const raw of String(t).split(/\r?\n/)) {
+      const l = raw.trim(), m = l.match(/^([-*•]|\d+[.)])\s+(.*)$/);
+      if (m) { if (!list) { list = m[1].match(/\d/) ? "ol" : "ul"; out.push(`<${list}>`); } out.push(`<li>${inline(m[2])}</li>`); continue; }
+      if (list) { out.push(`</${list}>`); list = null; }
+      if (!l) continue;
+      const h = l.match(/^#{1,4}\s+(.*)$/);
+      out.push(h ? `<h4>${inline(h[1])}</h4>` : `<p>${inline(l)}</p>`);
+    }
+    if (list) out.push(`</${list}>`);
+    return out.join("");
+  }
+  function hashStr(s2) { let h = 0; for (let i = 0; i < s2.length; i++) h = (Math.imul(31, h) + s2.charCodeAt(i)) | 0; return String(h >>> 0); }
+  let aiBusy = false;
+  async function aiAuto(force) {
+    const box = $("#aiAuto"); if (!box) return;
+    $("#aiAutoCard").style.display = S.state.ui.ai_auto === false ? "none" : "block";
+    if (S.state.ui.ai_auto === false || aiBusy) return;
+    const q = aiPrompt(); if (!q) return;
+    const key = hashStr(q);
+    let cache = {}; try { cache = JSON.parse(localStorage.getItem(AI_KEY) || "{}"); } catch (e) { /* 무시 */ }
+    if (!force && cache.key === key && cache.text) { box.innerHTML = md2html(cache.text) + `<p class="muted small">${new Date(cache.at).toLocaleString()} 분석</p>`; return; }
+    aiBusy = true; box.innerHTML = "<p class='muted'>AI가 분석하는 중입니다… (보통 10~30초)</p>";
+    const sys = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 짧고 구체적으로 답한다. 과장하지 말고, 마지막에 '투자 권유가 아님'을 한 줄로 덧붙인다.";
+    const tries = [
+      async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true }) });
+        if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.choices?.[0]?.message?.content || ""; },
+      async () => { const r = await fetch("https://text.pollinations.ai/" + encodeURIComponent(q) + "?model=openai&private=true&system=" + encodeURIComponent(sys)); if (!r.ok) throw new Error("응답 " + r.status); return r.text(); },
+    ];
+    let text = "", err = null;
+    for (const t of tries) {
+      try { const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 90000); text = (await Promise.race([t(), new Promise((_, rej) => ctl.signal.addEventListener("abort", () => rej(new Error("시간 초과"))))])).trim(); clearTimeout(tm); if (text) break; }
+      catch (e) { err = e; }
+    }
+    aiBusy = false;
+    if (!text) { box.innerHTML = `<p class="bad">AI 서비스에 연결하지 못했습니다 (${esc(err?.message || "빈 응답")}). 잠시 뒤 '다시 분석'을 누르거나 아래 ChatGPT 버튼을 쓰세요.</p>`; return; }
+    try { localStorage.setItem(AI_KEY, JSON.stringify({ key, text, at: Date.now() })); } catch (e) { /* 무시 */ }
+    box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석</p>`;
   }
   async function askAi(kind) {
     const q = aiPrompt(); if (!q) return toast("먼저 전망을 계산해 주세요");
@@ -860,6 +904,9 @@
     $("#btnForecast").onclick = runForecast;
     $("#modelForm").addEventListener("change", onModelEdit);
     $("#btnResetModel").onclick = (e) => { if (armed(e.target)) { S.state.model = { ...DEFAULT_MODEL }; save(); renderSettings(); } };
+    $("#optAi").checked = S.state.ui.ai_auto !== false;
+    $("#optAi").onchange = (e) => { S.state.ui.ai_auto = e.target.checked; save(false); };
+    $("#btnAiAuto").onclick = () => aiAuto(true);
     $("#optManual").checked = !!S.state.ui.manual_price;
     $("#optManual").onchange = (e) => { S.state.ui.manual_price = e.target.checked; save(); renderAll(); };
     $("#btnExport").onclick = () => {
