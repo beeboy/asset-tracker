@@ -1,0 +1,11 @@
+{
+ "tickers": [
+  "TSLA",
+  "NVDA",
+  "SPCX",
+  "SGOV",
+  "QQQ",
+  "SPY"
+ ],
+ "history_years": 3
+}

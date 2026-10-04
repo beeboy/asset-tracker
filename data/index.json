@@ -1,0 +1,12 @@
+{
+ "updated": "2026-10-04T05:48:24+00:00",
+ "prices": {
+  "KRW=X": "KRW_X.json",
+  "NVDA": "NVDA.json",
+  "QQQ": "QQQ.json",
+  "SGOV": "SGOV.json",
+  "SPCX": "SPCX.json",
+  "SPY": "SPY.json",
+  "TSLA": "TSLA.json"
+ }
+}

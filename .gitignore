@@ -1,0 +1,6 @@
+# 개인 입력값은 저장소에 올리지 않는다 (보유 수량·평균단가·목표)
+data/state.json
+data/backup/
+*.tmp
+*.log
+__pycache__/

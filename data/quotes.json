@@ -1,0 +1,61 @@
+{
+ "NVDA": {
+  "symbol": "NVDA",
+  "currency": "USD",
+  "name": null,
+  "regular": 233.95,
+  "pre": 236.04,
+  "post": 234.2218,
+  "last": 234.2218,
+  "last_time": 1790985540,
+  "last_session": "post",
+  "fetched": 1791089646
+ },
+ "SGOV": {
+  "symbol": "SGOV",
+  "currency": "USD",
+  "name": null,
+  "regular": 100.44,
+  "pre": 100.4301,
+  "post": 100.45,
+  "last": 100.45,
+  "last_time": 1790985540,
+  "last_session": "post",
+  "fetched": 1791089646
+ },
+ "SPCX": {
+  "symbol": "SPCX",
+  "currency": "USD",
+  "name": null,
+  "regular": 158.96,
+  "pre": 149.54,
+  "post": 159.12,
+  "last": 159.12,
+  "last_time": 1790985540,
+  "last_session": "post",
+  "fetched": 1791089646
+ },
+ "TSLA": {
+  "symbol": "TSLA",
+  "currency": "USD",
+  "name": null,
+  "regular": 370.59,
+  "pre": 360.02,
+  "post": 371.4476,
+  "last": 371.4476,
+  "last_time": 1790985540,
+  "last_session": "post",
+  "fetched": 1791089646
+ },
+ "KRW=X": {
+  "symbol": "KRW=X",
+  "currency": "KRW",
+  "regular": 1342.51,
+  "pre": null,
+  "post": null,
+  "last": 1342.51,
+  "last_time": 1790985540,
+  "last_session": "regular",
+  "fetched": 1791089646
+ }
+}
