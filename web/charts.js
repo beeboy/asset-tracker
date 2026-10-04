@@ -21,8 +21,8 @@
   //       hlines: [{y, label, color}], vlines: [{x, label}], yfmt, height, log, markers: [{x, label, color}]}
   function lineChart(host, opt) {
     host.innerHTML = "";
-    const W = Math.max(320, host.clientWidth || 600), H = opt.height || 280;
-    const m = { l: 64, r: 12, t: 12, b: 28 };
+    const W = Math.max(220, host.clientWidth || 600), H = opt.height || 280;
+    const m = { l: W < 480 ? 54 : 64, r: W < 480 ? 26 : 20, t: 12, b: 28 };
     const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: "chart" }, host);
     const xs = [], ys = [];
     const collect = (x, y) => { for (let i = 0; i < y.length; i++) if (y[i] != null && isFinite(y[i])) { xs.push(toT(x[i])); ys.push(y[i]); } };

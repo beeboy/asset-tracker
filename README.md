@@ -10,10 +10,10 @@
 - 주소: `https://<GitHub 아이디>.github.io/asset-tracker/`
 - 시세는 GitHub Actions(`.github/workflows/collect.yml`)가 평일 30분마다 Yahoo Finance 에서 받아 `data/` 에 커밋합니다.
 - 사용자가 넣는 것은 **종목·수량·매수 단가(선택)** 뿐이고, 나머지는 기본값으로 자동 계산합니다. 세부 선택은 각 화면의 *옵션*에 접혀 있습니다.
-- 입력값은 브라우저(localStorage)에만 저장되고 저장소에는 올라가지 않습니다. 다른 기기로 옮길 때는 ④ 설정의 *내보내기 → 불러오기*.
+- 입력값은 브라우저(localStorage)에만 저장되고 저장소에는 올라가지 않습니다. 다른 기기로 옮길 때는 ③ 시세 수집 아래 설정의 *내보내기 → 불러오기*.
 - 새 종목은 추가하는 순간 브라우저가 공개 CORS 중계를 거쳐 Yahoo 시세를 바로 받습니다(토큰 불필요). 안정적으로 쓰려면 개발자가 `proxy/cloudflare-worker.js` 를 배포하고 `data/config.json` 의 `proxy` 에 주소를 넣으세요.
-- 화면: ① 관찰 대시보드(첫 화면) ② 분석·전략(종목별 전략, 칼만·EMA 추세, 3년 전망, 기업 사건, 비중안 비교, AI 의견 받기) ③ 시세 수집 ④ 설정.
-- 개발자용: ④ 설정 맨 아래 *GitHub 연결*에 토큰(Fine-grained, 이 저장소만, Actions: Read and write)을 넣으면 '시세 수집'이 Actions 수집을 직접 실행합니다.
+- 화면: ① 관찰 대시보드(첫 화면) ② 분석·전략(종목별 전략, 칼만·EMA 추세, 3년 전망, 기업 사건, 비중안 비교, 화면마다 무료 AI 자동 분석) ③ 시세 수집(아래에 설정).
+- 개발자용: ③ 시세 수집 아래 설정의 *개발자용 GitHub 연결*에 토큰(Fine-grained, 이 저장소만, Actions: Read and write)을 넣으면 '시세 수집'이 Actions 수집을 직접 실행합니다.
 
 처음 한 번 설정:
 1. Settings → Pages → Source: **Deploy from a branch**, Branch: `main` / `(root)` → Save
