@@ -133,11 +133,6 @@
     </div>
 
     <div class="ana" id="ana-strategy">
-      <div class="card" id="aiAutoCard">
-        <div class="row between wrap"><h2>AI 자동 전략 분석 (GPT, 무료·로그인 없음)</h2><button data-aire="strategy" class="sm">다시 분석</button></div>
-        <div id="aiOut-strategy" class="aiout small"></div>
-        <p class="muted small">위 계산 결과를 질문으로 만들어 무료 공개 AI 서비스(Pollinations, OpenAI GPT 모델)에 보내고 답을 여기에 보여 줍니다. 수량은 보내지 않고 비중(%)과 지표만 보냅니다. 같은 입력이면 저장해 둔 답을 다시 씁니다. 끄려면 시세 수집 아래 설정 → 표시 옵션.</p>
-      </div>
       <div class="card"><h2>포트폴리오 진단</h2><div id="stratSummary"></div></div>
       <div id="stratCards" class="stratgrid"></div>
       <div class="card">
@@ -154,11 +149,15 @@
         </div>
         <details class="opt"><summary>보낼 질문 보기</summary><pre id="aiPrompt" class="small" style="white-space:pre-wrap"></pre></details>
       </div>
+      <div class="card" id="aiAutoCard">
+        <div class="row between wrap"><h2>AI 자동 전략 분석 (GPT, 무료·로그인 없음)</h2><button data-aire="strategy" class="sm">다시 분석</button></div>
+        <div id="aiOut-strategy" class="aiout small"></div>
+        <p class="muted small">무료 공개 AI(Pollinations, GPT)의 요약입니다. 수량은 보내지 않습니다.</p>
+      </div>
       <p class="muted small">추세 판정, 비중, 변동성, 전망 확률, 다가오는 사건을 규칙으로 조합한 자동 의견입니다. 확률 모형의 결과이며 투자 권유가 아닙니다.</p>
     </div>
 
     <div class="ana" id="ana-trend" style="display:none">
-      <div class="card aicard"><div class="row between wrap"><h2>AI 추세 해설 (GPT, 무료)</h2><button data-aire="trend" class="sm">다시 분석</button></div><div id="aiOut-trend" class="aiout small"></div></div>
       <div class="card">
         <div class="row between wrap">
           <div class="row"><label>종목 <select id="trendTicker"></select></label></div>
@@ -172,11 +171,11 @@
         <div class="tablewrap"><table id="sigTable" class="grid"></table></div>
         <p class="muted small">칼만 필터: 로그가격을 "수준 + 기울기" 상태로 보고 잡음을 걸러 추세를 추정합니다(잡음 분산은 최대우도 격자 탐색). 기울기 z = 연 기울기 ÷ 추정 표준편차. 추세 판정은 가격&gt;EMA200, EMA50&gt;EMA200, z&gt;1 중 몇 개가 맞는지로 정합니다.</p>
       </div>
+      <div class="card aicard"><div class="row between wrap"><h2>AI 추세 해설 (GPT, 무료)</h2><button data-aire="trend" class="sm">다시 분석</button></div><div id="aiOut-trend" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-forecast" style="display:none">
       <div class="kpis" id="fcKpis"></div>
-      <div class="card aicard"><div class="row between wrap"><h2>AI 전망 해설 (GPT, 무료)</h2><button data-aire="forecast" class="sm">다시 분석</button></div><div id="aiOut-forecast" class="aiout small"></div></div>
       <div class="card">
         <h2>원화 평가액 전망 (환율·기업 사건 포함)</h2>
         <div id="fcChart" class="chartbox"></div>
@@ -191,10 +190,10 @@
         <div class="tablewrap"><table id="fcParams" class="grid"></table></div>
         <p class="muted small">기대수익률은 과거 평균을 사전값(시세 수집 아래 설정 → 모형 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다.</p>
       </details>
+      <div class="card aicard"><div class="row between wrap"><h2>AI 전망 해설 (GPT, 무료)</h2><button data-aire="forecast" class="sm">다시 분석</button></div><div id="aiOut-forecast" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-events" style="display:none">
-      <div class="card aicard"><div class="row between wrap"><h2>AI 사건 점검 (GPT, 무료)</h2><button data-aire="events" class="sm">다시 분석</button></div><div id="aiOut-events" class="aiout small"></div></div>
       <div class="card">
         <div class="row between">
           <h2>기업 사건 (실적 · 규제 · 보호예수 해제 등)</h2>
@@ -207,17 +206,18 @@
         </div>
       </div>
       <div class="card"><h2>펼친 일정 (목표일까지)</h2><div id="eventSchedule" class="small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>AI 사건 점검 (GPT, 무료)</h2><button data-aire="events" class="sm">다시 분석</button></div><div id="aiOut-events" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-fx" style="display:none">
       <div class="kpis" id="fxKpis"></div>
-      <div class="card aicard"><div class="row between wrap"><h2>AI 환율 해설 (GPT, 무료)</h2><button data-aire="fx" class="sm">다시 분석</button></div><div id="aiOut-fx" class="aiout small"></div></div>
       <div class="card">
         <div class="row between wrap"><h2>원/달러 환율 (과거 + 전망)</h2><div class="row seg" id="fxRange"><button data-r="252">1년</button><button data-r="780" class="on">3년</button></div></div>
         <div id="fxChart" class="chartbox"></div>
         <p class="muted small">검은 선은 실제 환율, 굵은 파란 선은 칼만 필터 추세, 점선은 EMA50·EMA200입니다. 오늘 오른쪽 띠는 모형 설정의 환율 기대 변화와 과거 변동성으로 그린 목표일까지의 범위(진한 띠 25~75%, 옅은 띠 5~95%)입니다. 환율이 오르면(원화 약세) 달러 자산의 원화 평가액이 오릅니다.</p>
       </div>
       <div class="card"><h2>환율이 바뀌면 내 평가액은</h2><div class="tablewrap"><table id="fxSens" class="grid"></table></div><p class="muted small">주가는 그대로 두고 환율만 바뀐다고 본 값입니다.</p></div>
+      <div class="card aicard"><div class="row between wrap"><h2>AI 환율 해설 (GPT, 무료)</h2><button data-aire="fx" class="sm">다시 분석</button></div><div id="aiOut-fx" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-alloc" style="display:none">

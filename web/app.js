@@ -713,14 +713,14 @@
     });
     const ev = md.eventList.filter((e) => yearsBetween(md.startDate, e.date) <= 0.5).slice(0, 8);
     if (ev.length) lines.push("6개월 내 사건: " + ev.map((e) => `${e.date} ${e.event.target} ${e.event.kind}`).join(", "));
-    lines.push("요청: 1) 종목별로 보유·비중 축소·추가 매수 중 무엇이 맞는지 이유와 함께, 2) 목표 확률을 높이면서 위험을 줄이는 비중 조정안, 3) 앞으로 3개월 동안 할 일 3가지. 한국 거주자 세금(해외주식 양도세 250만원 공제)도 고려해서 한국어로 간단히 답해 줘.");
+    lines.push("요청: 1) 종목별로 보유·비중 축소·추가 매수 중 무엇이 맞는지 이유와 함께, 2) 목표 확률을 높이면서 위험을 줄이는 비중 조정안, 3) 앞으로 3개월 동안 할 일 3가지. 한국 거주자 세금(해외주식 양도세 250만원 공제)도 고려해서 한국어 마크다운으로 아주 짧게 답해 줘.");
     return lines.join("\n");
   }
   // 페이지별 질문: 수량은 넣지 않고 비중(%)과 지표만
   function sigOf(t) { const p = S.prices[t]; return p ? Model.indicators(p.dates, p.adj)?.sig : null; }
   function aiPromptFor(kind) {
     if (kind === "strategy") return aiPrompt();
-    const g = S.state.goal, L = [], tail = "한국어 마크다운(소제목, 글머리표, 필요하면 표)으로 간단히 답해 줘.";
+    const g = S.state.goal, L = [], tail = "한국어 마크다운으로 아주 짧게 답해 줘.";
     if (kind === "trend") {
       const keys = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]);
       if (!keys.length) return "";
@@ -830,13 +830,13 @@
     if (off || aiBusy[kind]) return;
     const q = aiPromptFor(kind);
     if (!q) { box.innerHTML = "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>"; return; }
-    const key = hashStr(q), cache = aiCache(), c = cache[kind];
+    const key = hashStr("v2|" + q), cache = aiCache(), c = cache[kind];
     if (!force && c && c.key === key && c.text) { box.innerHTML = md2html(c.text) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석</p>`; return; }
     aiBusy[kind] = true; box.innerHTML = "<p class='muted'>AI가 분석하는 중입니다… (보통 10~30초)</p>";
-    const sys = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 짧고 구체적으로 답한다. 마크다운(### 소제목, 글머리표, **굵게**, 필요하면 표)으로 정리한다. 과장하지 말고, 마지막에 '투자 권유가 아님'을 한 줄로 덧붙인다.";
+    const sys = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 아주 간결하게 답한다. 요청 항목마다 ### 소제목 하나와 한 줄짜리 글머리표 2~3개만 쓰고, 전체 15줄을 넘기지 않는다. 서론·반복·일반론은 빼고 핵심 숫자는 **굵게**. 마지막 줄은 '투자 권유 아님.'";
     const run = async () => {
       const tries = [
-        async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true }) });
+        async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 700 }) });
           if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.choices?.[0]?.message?.content || ""; },
         async () => { const r = await fetch("https://text.pollinations.ai/" + encodeURIComponent(q) + "?model=openai&private=true&system=" + encodeURIComponent(sys)); if (!r.ok) throw new Error("응답 " + r.status); return r.text(); },
       ];
