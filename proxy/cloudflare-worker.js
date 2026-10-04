@@ -6,7 +6,7 @@
 //       data/config.json 의 "proxy" 에 "https://<이름>.workers.dev/?url=", "ai" 에 "https://<이름>.workers.dev/ai" 를 넣고 커밋.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/v8\/finance\/chart\//;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
-const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"];
+const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"];
 export default {
   async fetch(req, env) {
     const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
@@ -20,15 +20,18 @@ export default {
       if (req.method !== "POST" && !test) return out({ error: "POST 만 받습니다. 점검은 /ai?test=1" }, 400);
       const { system = "", prompt = "" } = test ? { prompt: "한국어로 '연결 성공' 한 마디만" } : await req.json().catch(() => ({}));
       if (!prompt || prompt.length > 12000) return out({ error: "질문이 비었거나 너무 깁니다" }, 400);
-      const body = JSON.stringify({ ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}), contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 4096, temperature: 0.4 } });
+      // 생각(thinking)을 줄여 빠르게: 3세대는 thinkingLevel, 그 전 모델은 thinkingBudget. 거절하면 설정 없이 다시
+      const make = (model, think) => JSON.stringify({ ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}), contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.4, ...(think ? { thinkingConfig: /gemini-3/.test(model) ? { thinkingLevel: "low" } : { thinkingBudget: 0 } } : {}) } });
+      const call = (model, think) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_KEY.trim() }, body: make(model, think) });
       let last = null;
       for (const model of [...new Set([env.GEMINI_MODEL, ...MODELS].filter(Boolean))]) {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_KEY.trim() }, body });
-        const j = await r.json().catch(() => ({}));
+        let r = await call(model, true), j = await r.json().catch(() => ({}));
+        if (r.status === 400 && /thinking/i.test(j.error?.message || "")) { r = await call(model, false); j = await r.json().catch(() => ({})); }
         const text = (j.candidates?.[0]?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || "").join("");
         if (r.ok && text) return out({ text, model });
         last = { error: `Gemini ${model} ${r.status}: ${j.error?.message || j.candidates?.[0]?.finishReason || "빈 응답"}`, colo: req.cf?.colo, st: r.ok ? 502 : r.status };
-        if (r.status !== 404 && r.status !== 400) break; // 모델이 없을 때만 다음 모델로
+        if (r.status === 401 || r.status === 403) break; // 키 문제는 다른 모델도 같다. 없음(404)·붐빔(429·503)·기타는 다음 모델로
       }
       return out({ error: last.error, colo: last.colo }, last.st);
     }

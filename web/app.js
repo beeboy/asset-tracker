@@ -85,6 +85,7 @@
         const d = await api("/api/data");
         S.prices = d.prices || {}; S.quotes = d.quotes || {};
         if (!S.state) S.state = normalize(d.state || {});
+        S.config = d.config || {};
         return;
       } catch (e) { if (S.state) throw e; MODE = "static"; }
     }
@@ -1155,9 +1156,11 @@
     if (off || aiBusy[kind]) return;
     const q = aiPromptFor(kind);
     if (!q) { box.innerHTML = "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>"; return; }
-    const key = hashStr("v4|" + q), cache = aiCache(), c = cache[kind];
+    const key = hashStr("v5|" + q), cache = aiCache(), c = cache[kind];
+    // 시세가 조금 바뀌어 질문 숫자가 달라져도, 입력(종목·수량·목표·사건·시나리오)이 같고 6시간 안이면 저장된 답을 그대로 쓴다 (빠르고 요청 수 절약)
+    const sig = hashStr("v5|" + kind + JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd]), S.state.model.scenario, today()]));
     if (!force && aiFail[kind] && aiFail[kind].key === key && Date.now() - aiFail[kind].at < 600000) { showFallback(box, kind, aiFail[kind].why); return; } // 방금 실패한 같은 질문은 자동으로 다시 묻지 않음
-    if (!force && c && c.key === key && c.text) { box.innerHTML = md2html(cleanAi(c.text)) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석${c.src ? " · " + esc(c.src) : ""}</p>`; return; }
+    if (!force && c && c.text && (c.key === key || (c.sig === sig && Date.now() - c.at < 6 * 3600e3))) { box.innerHTML = md2html(cleanAi(c.text)) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석${c.src ? " · " + esc(c.src) : ""}</p>`; return; }
     aiBusy[kind] = true; box.innerHTML = "<p class='muted'>AI가 분석하는 중입니다… (보통 10~30초)</p>";
     const sys = AI_SYS;
     const timed = (pr) => { let tm; return Promise.race([pr, new Promise((_, rej) => { tm = setTimeout(() => rej(new Error("시간 초과")), 90000); })]).finally(() => clearTimeout(tm)); };
@@ -1165,9 +1168,15 @@
       const tries = [];
       // 로그인 창은 버튼을 누를 때만 (Puter 는 첫 사용 때 무료 계정 확인 창을 띄움)
       if (viaPuter) tries.push(["Puter", () => askPuter(sys, q)]);
-      if (S.config?.ai) tries.push(["AI 중계", async () => { const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: sys, prompt: q }) }); const j = await r.json().catch(() => ({})); if (!r.ok || !j.text) throw new Error("응답 " + r.status + (j.error ? ": " + j.error : "")); return j.text; }]);
+      if (S.config?.ai) tries.push(["AI 중계", async () => {
+        for (let k = 0; ; k++) { // 붐빔(429·503)이면 잠깐 쉬고 한 번 더
+          const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: sys, prompt: q }) }); const j = await r.json().catch(() => ({}));
+          if (r.ok && j.text) return j.text;
+          if (k < 1 && (r.status === 429 || r.status >= 500)) { await new Promise((ok) => setTimeout(ok, 3000)); continue; }
+          throw new Error("응답 " + r.status + (j.error ? ": " + j.error : ""));
+        } }]);
       if (!viaPuter && puterReady()) tries.push(["Puter", () => askPuter(sys, q)]);
-      tries.push(["Pollinations", async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 1200 }) });
+      if (!S.config?.ai) tries.push(["Pollinations", async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 1200 }) });
           if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.choices?.[0]?.message?.content || ""; }]);
       let text = "", err = null, src = "";
       for (const [nm, t] of tries) {
@@ -1180,7 +1189,7 @@
     const { text, err, src } = await job;
     aiBusy[kind] = false;
     if (!text) { const why = err?.message || "빈 응답"; aiFail[kind] = { key, at: Date.now(), why }; showFallback(box, kind, why); return; }
-    const cc = aiCache(); cc[kind] = { key, text, at: Date.now(), src };
+    const cc = aiCache(); cc[kind] = { key, sig, text, at: Date.now(), src };
     try { localStorage.setItem(AI_KEY, JSON.stringify(cc)); } catch (e) { /* 무시 */ }
     box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석 · ${esc(src)}</p>`;
   }

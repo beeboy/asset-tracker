@@ -209,7 +209,7 @@ def all_data() -> dict:
         if d:
             prices[d["symbol"]] = d
     return {"state": read_json(STATE, None) or read_json(STATE_DEFAULT, {}), "prices": prices, "quotes": read_json(QUOTES, {}),
-            "server_time": datetime.now().isoformat(timespec="seconds")}
+            "config": read_json(STATE_DEFAULT.parent / "config.json", {}), "server_time": datetime.now().isoformat(timespec="seconds")}
 
 
 def save_state(state: dict):
