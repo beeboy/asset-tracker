@@ -1,5 +1,5 @@
 {
- "proxy": "",
- "ai": "",
+ "proxy": "https://asset-ai.drinker.workers.dev/?url=",
+ "ai": "https://asset-ai.drinker.workers.dev/ai",
  "_설명": "개발자용. proxy: 브라우저가 Yahoo 시세를 받을 때 먼저 쓸 중계 주소 (예: https://<이름>.workers.dev/?url= ). ai: 페이지 AI 분석용 중계 주소 (예: https://<이름>.workers.dev/ai , 키는 중계 비밀값 GEMINI_KEY). 비우면 공개 서비스를 씁니다. proxy/cloudflare-worker.js 참고."
 }
