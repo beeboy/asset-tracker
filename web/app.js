@@ -1165,7 +1165,7 @@
       const tries = [];
       // 로그인 창은 버튼을 누를 때만 (Puter 는 첫 사용 때 무료 계정 확인 창을 띄움)
       if (viaPuter) tries.push(["Puter", () => askPuter(sys, q)]);
-      if (S.config?.ai) tries.push(["AI 중계", async () => { const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: sys, prompt: q }) }); if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.text || ""; }]);
+      if (S.config?.ai) tries.push(["AI 중계", async () => { const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: sys, prompt: q }) }); const j = await r.json().catch(() => ({})); if (!r.ok || !j.text) throw new Error("응답 " + r.status + (j.error ? ": " + j.error : "")); return j.text; }]);
       if (!viaPuter && puterReady()) tries.push(["Puter", () => askPuter(sys, q)]);
       tries.push(["Pollinations", async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 1200 }) });
           if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.choices?.[0]?.message?.content || ""; }]);

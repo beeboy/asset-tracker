@@ -12,16 +12,21 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const u = new URL(req.url);
     if (u.pathname === "/ai") {
-      if (req.method !== "POST" || !env.GEMINI_KEY) return new Response("not allowed", { status: 400, headers: cors });
-      const { system = "", prompt = "" } = await req.json().catch(() => ({}));
-      if (!prompt || prompt.length > 8000) return new Response("bad prompt", { status: 400, headers: cors });
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${env.GEMINI_KEY}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 1500, temperature: 0.4 } }),
+      const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
+      if (!env.GEMINI_KEY) return out({ error: "중계에 GEMINI_KEY 비밀값이 없습니다 (Settings → Variables and Secrets)" }, 400);
+      // 브라우저로 /ai?test=1 을 열면 Gemini 연결을 바로 점검한다
+      const test = req.method === "GET" && u.searchParams.has("test");
+      if (req.method !== "POST" && !test) return out({ error: "POST 만 받습니다. 점검은 /ai?test=1" }, 400);
+      const { system = "", prompt = "" } = test ? { prompt: "한국어로 '연결 성공' 한 마디만" } : await req.json().catch(() => ({}));
+      if (!prompt || prompt.length > 12000) return out({ error: "질문이 비었거나 너무 깁니다" }, 400);
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_KEY.trim() },
+        body: JSON.stringify({ ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}), contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 2048, temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } } }),
       });
       const j = await r.json().catch(() => ({}));
       const text = (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
-      return new Response(JSON.stringify({ text }), { status: r.ok ? 200 : r.status, headers: { ...cors, "Content-Type": "application/json" } });
+      if (!r.ok || !text) return out({ error: `Gemini ${r.status}: ${j.error?.message || j.candidates?.[0]?.finishReason || "빈 응답"}`, colo: req.cf?.colo }, r.ok ? 502 : r.status);
+      return out({ text, model: MODEL });
     }
     const target = u.searchParams.get("url") || "";
     if (!ALLOW.test(target)) return new Response("not allowed", { status: 400, headers: cors });
