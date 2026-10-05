@@ -278,6 +278,8 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/data"):
             with LOCK:
                 return self.send_json(all_data())
+        if self.path.startswith("/api/beyora"):
+            return self.send_json(read_json(DATA / "beyora.json", {"cats": [], "posts": []}))
         if self.path.startswith("/api/news"):
             news = read_json(DATA / "news.json", {})
             try:
@@ -305,6 +307,10 @@ class Handler(SimpleHTTPRequestHandler):
                 with LOCK:
                     return self.send_json(collect(b.get("symbols", []), float(b.get("years", 3)),
                                                   bool(b.get("quotes_only"))))
+            if self.path == "/api/beyora":
+                with LOCK:
+                    write_json(DATA / "beyora.json", {"cats": b.get("cats") or [], "posts": b.get("posts") or []})
+                return self.send_json({"ok": True})
             if self.path == "/api/delete_prices":
                 with LOCK:
                     f = price_file(b["symbol"])

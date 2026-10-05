@@ -278,8 +278,8 @@
       headers: { Accept: opt.raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", Authorization: "Bearer " + ghToken(), "X-GitHub-Api-Version": "2022-11-28", ...(opt.body ? { "Content-Type": "application/json" } : {}) },
     });
     if (!r.ok) {
-      const msg = r.status === 401 ? "토큰이 맞지 않습니다" : r.status === 403 || r.status === 404 ? "토큰 권한 부족 (Actions 읽기·쓰기 필요)" : "GitHub 오류 " + r.status;
-      throw new Error(msg);
+      const msg = r.status === 401 ? "토큰이 맞지 않습니다" : r.status === 403 || r.status === 404 ? `토큰 권한 부족 (${opt.need || "Actions"} 읽기·쓰기 필요)` : "GitHub 오류 " + r.status;
+      throw Object.assign(new Error(msg), { status: r.status });
     }
     return r.status === 204 ? null : opt.raw ? r.json() : r.json();
   }
@@ -1404,118 +1404,221 @@
   // 상자 하나: 위에 출처(증권사·종목)와 시각, 제목(원문 링크), 요약
   const newsBox = (it, tag, sub) => `<div class="nitem"><div class="ntop"><span class="tk">${esc(tag || it.source || "")}</span>${it.time ? `<span class="kd">${ago(it.time)}</span>` : ""}</div>
     <a class="nt" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer">${esc(it.title || it.orig)}</a>${it.summary ? `<p class="nsum small">${esc(it.summary)}</p>` : ""}${sub ? `<div class="nmeta">${esc(sub)}</div>` : ""}</div>`;
-  const BIG_BROKER = /Goldman|Morgan Stanley|JP ?Morgan|J\.P\. Morgan|Bank of America|BofA|Citi|Wells Fargo|UBS|Barclays|Deutsche|골드만|모건스탠리|모건 스탠리|JP모건|제이피모건|뱅크오브아메리카|뱅크 오브 아메리카|씨티|웰스파고|바클레이즈|도이치/i;
   async function renderInsight() {
-    renderBeyora();
+    renderBeyora(); bvLoad();
     const N = await loadNews();
     const none = (t) => `<div class="nitem empty">${t}</div>`;
-    if (!N) {
-      $("#newsMedia").innerHTML = $("#newsBroker").innerHTML = none("아직 모은 뉴스가 없습니다. 한 시간마다 자동으로 모읍니다.");
-      $("#newsFuture").innerHTML = ""; $("#newsNote").textContent = ""; return;
-    }
-    const rg = $("#newsRange .on")?.dataset.r || "realtime", sec = N[rg] || {};
-    const empty = none("해당 기사가 없습니다.");
-    $("#newsMedia").innerHTML = (sec.media || []).slice(0, 3).map((it) => newsBox(it)).join("") || empty;
-    // 증권사: 대형 증권사·투자은행 기사를 먼저
-    const big = (it) => BIG_BROKER.test(`${it.broker || ""} ${it.title || ""} ${it.orig || ""}`);
-    const bk = [...(sec.broker || [])].sort((a, b) => big(b) - big(a));
-    $("#newsBroker").innerHTML = bk.slice(0, 3).map((it) => newsBox(it, it.broker || it.source, it.broker ? it.source : "")).join("") || empty;
-    // 미래 가치: 내 보유 종목을 돌아가며 최대 3개
+    if (!N) { $("#newsFuture").innerHTML = none("아직 모은 기사가 없습니다. 한 시간마다 자동으로 모읍니다."); $("#newsNote").textContent = ""; return; }
+    // 미래 가치: 내 보유 종목을 돌아가며 최대 4개
     const held = S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker);
     const fut = (N.future || []).filter((f) => !PURGED.has(f.ticker) && (!held.length || held.includes(f.ticker))).sort((a, b) => held.indexOf(a.ticker) - held.indexOf(b.ticker));
     const lists = fut.map((f) => (f.items || []).map((it) => ({ it, f }))), pick = [];
-    for (let k = 0; pick.length < 3 && lists.some((l) => l[k]); k++) for (const l of lists) if (l[k] && pick.length < 3) pick.push(l[k]);
+    for (let k = 0; pick.length < 4 && lists.some((l) => l[k]); k++) for (const l of lists) if (l[k] && pick.length < 4) pick.push(l[k]);
     $("#newsFuture").innerHTML = pick.map(({ it, f }) => newsBox(it, f.ticker, [it.source, f.view].filter(Boolean).join(" · "))).join("") || none("보유 종목 관련 기사가 아직 없습니다.");
-    $("#newsNote").textContent = `${N.updated ? new Date(N.updated).toLocaleString() + " 수집" : ""}${rg === "weekly" && sec.updated ? ` · 주간 목록 ${new Date(sec.updated).toLocaleString()}` : ""} · 한 시간마다 자동으로 모으고 무료 AI로 한글 번역·요약합니다${N.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열립니다.`;
+    const fu = N.future_meta?.updated || N.updated;
+    $("#newsNote").textContent = `${fu ? new Date(fu).toLocaleString() + " 수집" : ""} · 자동으로 모으고 무료 AI로 한글 번역·요약합니다${N.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열립니다.`;
   }
 
-  // ------------------------------------------------------------ 미래 설계 Beyora (블로그, 이 브라우저에만 저장)
-  const BV_KEY = "beyora-blog";
+  // ------------------------------------------------------------ 미래 설계 Beyora (블로그)
+  // 글은 저장소의 data/beyora.json 에 둔다. 누구나 읽고, 개발자 토큰이 있는 브라우저(또는 내 PC 프로그램)만 쓴다.
+  // 이 브라우저의 "beyora-blog" 에는 아직 저장소에 못 올린 글만 남고, 올리고 나면 비운다.
+  const BV_KEY = "beyora-blog", BV_VIEWS = "beyora-views", BV_SORT = "beyora-sort";
   const BV_BASE = [["past", "과거"], ["now", "현재"], ["future", "미래"]];
-  let BV = null;
-  const bv = () => { if (!BV) { try { BV = JSON.parse(localStorage.getItem(BV_KEY) || "null"); } catch (e) { BV = null; } if (!BV || !Array.isArray(BV.posts)) BV = { cats: [], posts: [] }; BV.cats = BV.cats || []; } return BV; };
-  function bvSave() { try { localStorage.setItem(BV_KEY, JSON.stringify(bv())); } catch (e) { toast("저장하지 못했습니다: " + e.message); } }
-  const bvS = { cat: "all", view: "list", id: null };
+  const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "null") ?? d; } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast("브라우저 저장 실패: " + e.message); } };
+  const bvNorm = (x) => ({ cats: Array.isArray(x?.cats) ? x.cats.filter((c) => c && c.id) : [], posts: Array.isArray(x?.posts) ? x.posts.filter((p) => p && p.id) : [] });
+  // 같은 글은 더 최근에 고친 쪽
+  function bvMergeInto(D, x) {
+    x = bvNorm(x);
+    x.cats.forEach((c) => { if (!D.cats.some((y) => y.id === c.id)) D.cats.push({ ...c }); });
+    x.posts.forEach((p) => { const i = D.posts.findIndex((y) => y.id === p.id); if (i < 0) D.posts.push({ ...p }); else if ((p.updated || "") > (D.posts[i].updated || "")) D.posts[i] = { ...p, views: Math.max(p.views || 0, D.posts[i].views || 0) }; });
+    return D;
+  }
+  let BVR = null, bvLoading = null, bvBusy = false;
+  const bvLocal = () => bvNorm(lsGet(BV_KEY, null));
+  const bvRemoteOk = () => MODE === "local" || !!(GH && ghToken()); // 저장소(또는 내 PC 파일)에 쓸 수 있나
+  const bvCanWrite = () => bvRemoteOk() || (MODE === "static" && !GH); // GitHub Pages 가 아닌 곳에서는 예전처럼 이 브라우저에 쓴다
+  // 화면에 보이는 글 = 저장소 글 + 이 브라우저에만 있는 글, 조회수는 이 브라우저에서 아직 못 올린 만큼 더한다
+  function bv() {
+    const D = bvMergeInto(bvNorm(null), BVR), pv = lsGet(BV_VIEWS, {}), loc = new Set(bvLocal().posts.map((p) => p.id));
+    bvMergeInto(D, bvLocal());
+    D.posts.forEach((p) => { p.views = (p.views || 0) + (pv[p.id] || 0); p._local = loc.has(p.id); });
+    return D;
+  }
+  const bvS = { cat: "all", view: "list", id: null, sort: lsGet(BV_SORT, "new"), msg: "" };
   const bvCats = () => [...BV_BASE, ...bv().cats.map((c) => [c.id, c.name])];
   const bvCatName = (k) => bvCats().find(([c]) => c === k)?.[1] || "분류 없음";
-  const bvList = () => bv().posts.filter((p) => bvS.cat === "all" || p.cat === bvS.cat).sort((a, b) => (a.created < b.created ? 1 : -1)); // 최신 글 먼저
+  const bvSorted = (D) => D.posts.filter((p) => bvS.cat === "all" || p.cat === bvS.cat)
+    .sort((a, b) => (bvS.sort === "views" ? (b.views || 0) - (a.views || 0) : 0) || (a.created < b.created ? 1 : a.created > b.created ? -1 : 0));
   const bvTime = (t) => (t ? new Date(t).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
-  const bvExcerpt = (t) => String(t || "").replace(/[#>*`_|-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  const BV_IMG = /\.(jpe?g|png|gif|webp|avif|svg|bmp)(\?\S*)?$/i;
+  const bvHost = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } };
+  const bvThumb = (t) => { const m = String(t || "").match(/!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)|^\s*(https?:\/\/\S+\.(?:jpe?g|png|gif|webp|avif|svg|bmp)(?:\?\S*)?)\s*$/im); return m ? m[1] || m[2] : ""; };
+  const bvExcerpt = (t) => String(t || "").replace(/!\[[^\]]*\]\([^)]*\)/g, " ").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/https?:\/\/\S+/g, " ")
+    .replace(/[#>*`_|-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  // 본문: 이미지 주소(또는 ![설명](주소))는 그림으로, 다른 주소와 [글자](주소)는 링크 버튼으로
+  function bvHtml(body) {
+    const src = String(body || "").replace(/\r/g, "").replace(/!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g, "\n![$1]($2)\n");
+    const out = [], buf = [], flush = () => { if (buf.length) { out.push(md2html(buf.join("\n"))); buf.length = 0; } };
+    for (const line of src.split("\n")) {
+      const l = line.trim(), m = l.match(/^!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/) || (/^https?:\/\/\S+$/.test(l) && BV_IMG.test(l) ? [l, "", l] : null);
+      if (m) { flush(); out.push(`<figure class="bvimg"><img src="${esc(m[2])}" alt="${esc(m[1])}" loading="lazy" referrerpolicy="no-referrer">${m[1] ? `<figcaption>${esc(m[1])}</figcaption>` : ""}</figure>`); continue; }
+      buf.push(line.replace(/(^|[\s(])(https?:\/\/[^\s<>()]+)/g, (all, pre, u) => (pre === "(" ? all : `${pre}[${bvHost(u)}](${u})`)));
+    }
+    flush();
+    return out.join("").replace(/<a href=/g, '<a class="bvlink" href=');
+  }
+  // 저장소에서 읽기: 토큰이 있으면 GitHub API(바로 최신), 없으면 Pages 의 ../data/beyora.json
+  async function bvFetch(needSha) {
+    if (MODE === "local") return { data: await api("/api/beyora") };
+    if (GH && ghToken()) {
+      try {
+        const j = await ghApi("contents/data/beyora.json?ref=main", { need: "Contents" });
+        if (j.encoding !== "base64") return { data: await ghApi("contents/data/beyora.json?ref=main", { raw: true, need: "Contents" }), sha: j.sha };
+        const bin = atob(String(j.content || "").replace(/\s/g, ""));
+        return { data: JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))) || "{}"), sha: j.sha };
+      } catch (e) { if (e.status === 404) return { data: {}, sha: null }; if (needSha) throw e; }
+    }
+    if (needSha || !GH && MODE === "static") return { data: {} };
+    const r = await fetch("../data/beyora.json?t=" + Date.now(), { cache: "no-store" });
+    return { data: r.ok ? await r.json() : {} };
+  }
+  async function bvPut(D, sha, msg) {
+    if (MODE === "local") return api("/api/beyora", D);
+    const bytes = new TextEncoder().encode(JSON.stringify(D, null, 1) + "\n"); let bin = "";
+    bytes.forEach((b) => { bin += String.fromCharCode(b); });
+    return ghApi("contents/data/beyora.json", { method: "PUT", need: "Contents", body: JSON.stringify({ message: msg, content: btoa(bin), branch: "main", ...(sha ? { sha } : {}) }) });
+  }
+  function bvLoad(force) {
+    if (bvLoading && !force) return bvLoading;
+    bvLoading = bvFetch(false).then(({ data }) => { BVR = bvNorm(data); }).catch((e) => { bvS.msg = "글을 불러오지 못했습니다: " + e.message; })
+      .then(() => { renderBeyora(); const L = bvLocal(); if (bvRemoteOk() && (L.posts.length || L.cats.length)) bvSync(); });
+    return bvLoading;
+  }
+  // 이 브라우저에 쌓인 글·카테고리·조회수를 저장소에 올린다 (op: 지울 글 del, 지울 카테고리 delcat)
+  async function bvSync(op = {}) {
+    if (!bvRemoteOk() || bvBusy) { if (bvBusy) setTimeout(() => bvSync(op), 1500); return false; }
+    bvBusy = true; bvS.msg = MODE === "local" ? "저장하는 중…" : "저장소에 저장하는 중…"; renderBeyora();
+    try {
+      for (let n = 0; n < 3; n++) {
+        const { data, sha } = await bvFetch(true), D = bvMergeInto(bvNorm(data), bvLocal()), pv = lsGet(BV_VIEWS, {});
+        D.posts.forEach((p) => { if (pv[p.id]) p.views = (p.views || 0) + pv[p.id]; delete p._local; });
+        if (op.del) D.posts = D.posts.filter((p) => p.id !== op.del);
+        if (op.delcat) D.cats = D.cats.filter((c) => c.id !== op.delcat);
+        const what = op.del ? "글 삭제" : op.delcat ? "카테고리 삭제" : op.title ? `글 저장: ${op.title}` : "글 저장";
+        try { await bvPut(D, sha, "Beyora " + what); }
+        catch (e) { if ((e.status === 409 || e.status === 422) && n < 2) continue; throw e; }
+        BVR = D; lsSet(BV_KEY, null); lsSet(BV_VIEWS, null);
+        bvS.msg = (MODE === "local" ? "저장됨 " : "저장소에 저장됨 ") + new Date().toLocaleTimeString() + (MODE === "local" ? "" : " · 다른 사람 화면에는 1~2분 뒤 보입니다");
+        return true;
+      }
+    } catch (e) { bvS.msg = "저장소에 저장하지 못했습니다 (" + e.message + "). 글은 이 브라우저에 남아 있고 다음에 다시 올립니다."; toast("저장소 저장 실패"); }
+    finally { bvBusy = false; renderBeyora(); }
+    return false;
+  }
   function renderBeyora() {
     const host = $("#bvBody"); if (!host) return;
-    $("#bvNew").style.display = bvS.view === "list" ? "" : "none";
-    if (bvS.view === "edit") {
-      const p = bvS.id ? bv().posts.find((x) => x.id === bvS.id) : null;
+    const D = bv(), can = bvCanWrite(), stat = bvS.msg ? `<p class="muted small bvstat">${esc(bvS.msg)}</p>` : "";
+    $("#bvNew").style.display = bvS.view === "list" && can ? "" : "none";
+    if (bvS.view === "edit" && can) {
+      const p = bvS.id ? D.posts.find((x) => x.id === bvS.id) : null;
       const cur = p?.cat || (bvS.cat !== "all" ? bvS.cat : "future");
       host.innerHTML = `<div class="bvedit">
         <select id="bvCat">${bvCats().map(([k, n]) => `<option value="${esc(k)}" ${k === cur ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
         <input id="bvTitle" class="t" placeholder="제목" value="${esc(p?.title || "")}">
+        <div class="row wrap bvtools"><button type="button" class="sm" data-bv="img">🖼 이미지 링크</button><button type="button" class="sm" data-bv="link">🔗 링크</button><span class="muted small">이미지 주소는 글과 목록에 그림으로, 다른 주소는 링크 버튼으로 보입니다.</span></div>
         <textarea id="bvText" placeholder="내용을 적어 주세요. 빈 줄로 문단을 나누고, # 소제목, - 목록, **굵게** 를 쓸 수 있습니다.">${esc(p?.body || "")}</textarea>
         <div class="row"><button class="primary" data-bv="save">${p ? "수정 저장" : "글 올리기"}</button><button data-bv="cancel">취소</button></div></div>`;
       $("#bvTitle").focus(); return;
     }
     if (bvS.view === "post") {
-      const p = bv().posts.find((x) => x.id === bvS.id);
+      const p = D.posts.find((x) => x.id === bvS.id);
       if (p) {
-        const list = bvList(), i = list.findIndex((x) => x.id === p.id), prev = i >= 0 ? list[i + 1] : null, next = i > 0 ? list[i - 1] : null;
+        const list = bvSorted(D), i = list.findIndex((x) => x.id === p.id), prev = i >= 0 ? list[i + 1] : null, next = i > 0 ? list[i - 1] : null;
         const nav = (q, cls, lab) => `<button class="${cls}" data-bvgo="${q ? esc(q.id) : ""}" ${q ? "" : "disabled"}><span>${lab}</span><b>${q ? esc(q.title || "(제목 없음)") : "없음"}</b></button>`;
         host.innerHTML = `<div class="bvart">
-          <div class="row between wrap"><button class="sm" data-bv="list">← 목록</button><div class="row"><button class="sm" data-bv="edit">수정</button><button class="sm danger" data-bv="del">삭제</button></div></div>
-          <div style="margin-top:12px"><span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span></div>
+          <div class="row between wrap"><button class="sm" data-bv="list">← 목록</button>${can ? '<div class="row"><button class="sm" data-bv="edit">수정</button><button class="sm danger" data-bv="del">삭제</button></div>' : ""}</div>
+          <div style="margin-top:12px"><span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span>${p._local ? ' <span class="bvcat">이 브라우저에만</span>' : ""}</div>
           <h1>${esc(p.title || "(제목 없음)")}</h1>
-          <div class="body md">${md2html(p.body || "")}</div>
+          <div class="body md">${bvHtml(p.body)}</div>
           <div class="bvmeta"><span>작성 ${bvTime(p.created)}${p.updated && p.updated !== p.created ? ` · 수정 ${bvTime(p.updated)}` : ""}</span><span>조회수 ${nf(p.views || 0)}</span></div>
-          <div class="bvnav">${nav(prev, "pv", "← 이전 글")}${nav(next, "nx", "다음 글 →")}</div></div>`;
+          <div class="bvnav">${nav(bvS.sort === "new" ? prev : next, "pv", bvS.sort === "new" ? "← 이전 글" : "← 앞 글")}${nav(bvS.sort === "new" ? next : prev, "nx", bvS.sort === "new" ? "다음 글 →" : "뒤 글 →")}</div></div>` + stat;
         return;
       }
       bvS.view = "list";
     }
-    const list = bvList(), custom = bv().cats.find((c) => c.id === bvS.cat);
-    host.innerHTML = `<div class="row seg wrap bvcats">${[["all", "전체"], ...bvCats()].map(([k, n]) => `<button data-bvcat="${esc(k)}" class="${k === bvS.cat ? "on" : ""}">${esc(n)}</button>`).join("")}<button class="add" data-bv="addcat">+ 카테고리</button></div>`
-      + (custom ? `<p class="small" style="margin:0 0 8px"><button class="sm danger" data-bv="delcat">'${esc(custom.name)}' 카테고리 지우기</button> <span class="muted">글은 지워지지 않고 '전체'에 남습니다.</span></p>` : "")
-      + (list.length ? `<div class="bvlist">${list.map((p) => `<button type="button" class="bvpost" data-bvgo="${esc(p.id)}">
-          <span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span><span class="ttl">${esc(p.title || "(제목 없음)")}</span>
-          <span class="ex">${esc(bvExcerpt(p.body))}</span><span class="ft">${bvTime(p.created)} · 조회 ${nf(p.views || 0)}</span></button>`).join("")}</div>`
-        : `<p class="muted small">아직 글이 없습니다. '글쓰기'로 지난 투자를 돌아보고(과거), 지금의 생각을 적고(현재), 앞으로의 계획을 세워(미래) 보세요. 글은 이 브라우저에만 저장되고, 설정의 '입력값 내보내기'에 함께 담깁니다.</p>`);
+    const list = bvSorted(D), custom = D.cats.find((c) => c.id === bvS.cat);
+    const cnt = (k) => (k === "all" ? D.posts.length : D.posts.filter((p) => p.cat === k).length);
+    const localN = D.posts.filter((p) => p._local).length;
+    host.innerHTML = `<div class="row seg wrap bvcats">${[["all", "전체"], ...bvCats()].map(([k, n]) => `<button data-bvcat="${esc(k)}" class="${k === bvS.cat ? "on" : ""}">${esc(n)} <span class="n">${cnt(k)}</span></button>`).join("")}${can ? '<button class="add" data-bv="addcat">+ 카테고리</button>' : ""}</div>`
+      + `<div class="row between wrap bvbar"><span class="muted small">${list.length}개의 글</span><div class="row seg" id="bvSort"><button data-bvsort="new" class="${bvS.sort === "new" ? "on" : ""}">최신순</button><button data-bvsort="views" class="${bvS.sort === "views" ? "on" : ""}">조회순</button></div></div>`
+      + (custom && can ? `<p class="small" style="margin:0 0 8px"><button class="sm danger" data-bv="delcat">'${esc(custom.name)}' 카테고리 지우기</button> <span class="muted">글은 지워지지 않고 '전체'에 남습니다.</span></p>` : "")
+      + (list.length ? `<div class="bvlist">${list.map((p) => { const th = bvThumb(p.body); return `<button type="button" class="bvpost${th ? " hasimg" : ""}" data-bvgo="${esc(p.id)}">
+          ${th ? `<img class="th" src="${esc(th)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span><span class="ttl">${esc(p.title || "(제목 없음)")}</span>
+          <span class="ex">${esc(bvExcerpt(p.body))}</span><span class="ft">${bvTime(p.created)} · 조회 ${nf(p.views || 0)}${p._local ? " · 이 브라우저에만" : ""}</span></button>`; }).join("")}</div>`
+        : `<p class="muted small">${BVR || !GH ? "아직 글이 없습니다." : "글을 불러오는 중…"}${can && (BVR || !GH) ? " '글쓰기'로 지난 투자를 돌아보고(과거), 지금의 생각을 적고(현재), 앞으로의 계획을 세워(미래) 보세요." : ""}</p>`)
+      + (localN && !bvRemoteOk() && GH ? `<p class="muted small">이 브라우저에만 있는 글 ${localN}개는 설정 > 개발자용에 GitHub 토큰을 넣으면 저장소로 올라갑니다.</p>` : "") + stat;
   }
   function bvOpen(id) {
-    const p = bv().posts.find((x) => x.id === id); if (!p) return;
-    p.views = (p.views || 0) + 1; bvSave();
-    bvS.view = "post"; bvS.id = id; renderBeyora();
+    if (!bv().posts.some((x) => x.id === id)) return;
+    const pv = lsGet(BV_VIEWS, {}); pv[id] = (pv[id] || 0) + 1; lsSet(BV_VIEWS, pv);
+    bvS.view = "post"; bvS.id = id; bvS.msg = ""; renderBeyora();
     $("#beyora").scrollIntoView({ block: "start", behavior: "smooth" });
   }
+  // 이 브라우저의 글 묶음을 고친다 (저장소에 올리기 전 임시 보관)
+  function bvLocalEdit(fn) { const L = bvLocal(); fn(L); lsSet(BV_KEY, L.posts.length || L.cats.length ? L : null); }
+  function bvInsert(txt) {
+    const ta = $("#bvText"), s = ta.selectionStart ?? ta.value.length, e = ta.selectionEnd ?? s;
+    ta.value = ta.value.slice(0, s) + txt + ta.value.slice(e); ta.focus(); ta.selectionStart = ta.selectionEnd = s + txt.length;
+  }
+  const bvAskUrl = (q) => { const u = (prompt(q) || "").trim(); if (u && !/^https?:\/\/\S+$/i.test(u)) { toast("https:// 로 시작하는 주소를 넣어 주세요"); return ""; } return u; };
   function onBeyora(e) {
     const go = e.target.closest("[data-bvgo]"); if (go) { if (go.dataset.bvgo) bvOpen(go.dataset.bvgo); return; }
     const c = e.target.closest("[data-bvcat]"); if (c) { bvS.cat = c.dataset.bvcat; renderBeyora(); return; }
+    const so = e.target.closest("[data-bvsort]"); if (so) { bvS.sort = so.dataset.bvsort; lsSet(BV_SORT, bvS.sort); renderBeyora(); return; }
     const b = e.target.closest("[data-bv]"); if (!b) return;
-    const a = b.dataset.bv, D = bv();
+    const a = b.dataset.bv;
     if (a === "list") { bvS.view = "list"; renderBeyora(); }
     else if (a === "edit") { bvS.view = "edit"; renderBeyora(); }
     else if (a === "cancel") { bvS.view = bvS.id ? "post" : "list"; renderBeyora(); }
-    else if (a === "del") { if (!armed(b)) return; D.posts = D.posts.filter((x) => x.id !== bvS.id); bvSave(); bvS.view = "list"; bvS.id = null; renderBeyora(); toast("글을 지웠습니다"); }
-    else if (a === "save") {
+    else if (a === "img") { const u = bvAskUrl("이미지 주소 (https://...jpg, png 등)"); if (u) bvInsert(`\n![](${u})\n`); }
+    else if (a === "link") { const u = bvAskUrl("링크 주소 (https://...)"); if (u) { const t = (prompt("버튼에 보일 글자 (비우면 사이트 이름)") || "").trim().replace(/[[\]]/g, ""); bvInsert(`[${t || bvHost(u)}](${u})`); } }
+    else if (a === "del") {
+      if (!armed(b)) return; const id = bvS.id;
+      bvLocalEdit((L) => { L.posts = L.posts.filter((x) => x.id !== id); });
+      bvS.view = "list"; bvS.id = null; renderBeyora(); toast("글을 지웠습니다");
+      bvSync({ del: id });
+    } else if (a === "save") {
       const title = $("#bvTitle").value.trim(), body = $("#bvText").value.replace(/\s+$/, ""), cat = $("#bvCat").value, now = new Date().toISOString();
       if (!title && !body.trim()) { toast("제목이나 내용을 적어 주세요"); return; }
-      let p = bvS.id && D.posts.find((x) => x.id === bvS.id);
-      if (p) Object.assign(p, { title, body, cat, updated: now });
-      else { p = { id: "p" + Date.now().toString(36), title, body, cat, created: now, updated: now, views: 0 }; D.posts.push(p); }
-      bvSave(); bvS.view = "post"; bvS.id = p.id; renderBeyora();
+      const old = bvS.id && bv().posts.find((x) => x.id === bvS.id);
+      const p = old ? { ...old, title, body, cat, updated: now } : { id: "p" + Date.now().toString(36), title, body, cat, created: now, updated: now, views: 0 };
+      if (old) p.views = (BVR?.posts.find((x) => x.id === p.id)?.views) || 0; // 조회수는 저장소 값 + 이 브라우저 몫을 따로 더한다
+      delete p._local;
+      bvLocalEdit((L) => { L.posts = L.posts.filter((x) => x.id !== p.id); L.posts.push(p); });
+      bvS.view = "post"; bvS.id = p.id; renderBeyora();
+      bvSync({ title: p.title });
     } else if (a === "addcat") {
       const name = (prompt("새 카테고리 이름") || "").trim(); if (!name) return;
       const have = bvCats().find(([, n]) => n === name);
-      if (have) bvS.cat = have[0]; else { const id = "c" + Date.now().toString(36); D.cats.push({ id, name }); bvS.cat = id; bvSave(); }
-      renderBeyora();
+      if (have) { bvS.cat = have[0]; renderBeyora(); return; }
+      const id = "c" + Date.now().toString(36);
+      bvLocalEdit((L) => L.cats.push({ id, name })); bvS.cat = id; renderBeyora(); bvSync();
     } else if (a === "delcat") {
-      if (!armed(b)) return; D.cats = D.cats.filter((x) => x.id !== bvS.cat); bvS.cat = "all"; bvSave(); renderBeyora();
+      if (!armed(b)) return; const id = bvS.cat;
+      bvLocalEdit((L) => { L.cats = L.cats.filter((x) => x.id !== id); }); bvS.cat = "all"; renderBeyora(); bvSync({ delcat: id });
     }
   }
+  const bvExport = () => { const D = bv(); D.posts.forEach((p) => delete p._local); return D; };
   // 내보내기 파일에 담긴 글을 합친다 (같은 글은 더 최근에 고친 쪽)
   function bvMerge(x) {
     if (!x || !Array.isArray(x.posts)) return;
-    const D = bv();
-    (x.cats || []).forEach((c) => { if (c && c.id && !D.cats.some((y) => y.id === c.id)) D.cats.push(c); });
-    x.posts.forEach((p) => { if (!p || !p.id) return; const i = D.posts.findIndex((y) => y.id === p.id); if (i < 0) D.posts.push(p); else if ((p.updated || "") > (D.posts[i].updated || "")) D.posts[i] = p; });
-    bvSave();
+    const have = bv(), y = bvNorm(x);
+    y.posts = y.posts.filter((p) => { const h = have.posts.find((q) => q.id === p.id); return !h || (p.updated || "") > (h.updated || ""); });
+    y.cats = y.cats.filter((c) => !have.cats.some((q) => q.id === c.id));
+    y.posts.forEach((p) => { delete p._local; p.views = BVR?.posts.find((q) => q.id === p.id)?.views || 0; });
+    if (!y.posts.length && !y.cats.length) return;
+    bvLocalEdit((L) => bvMergeInto(L, y)); renderBeyora(); bvSync();
   }
 
   // ------------------------------------------------------------ 비중안 비교
@@ -1644,18 +1747,18 @@
     const box = $("#ghBox"); if (!box) return;
     if (MODE !== "static") { $("#devCard").style.display = "none"; return; }
     const has = !!ghToken();
-    box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
+    box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). 인사이트의 Beyora 글도 이 토큰으로 저장소(data/beyora.json)에 저장되고, 토큰이 없는 사람은 읽기만 합니다. ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
       <div class="row wrap"><input id="ghToken" type="password" size="40" placeholder="${has ? "새 토큰으로 바꾸려면 붙여넣기" : "GitHub 토큰 붙여넣기 (github_pat_...)"}">
       <button id="ghSave" class="primary">저장</button>${has ? '<button id="ghTest">연결 확인</button><button id="ghDel" class="danger">연결 해제</button>' : ""}</div>
       <details class="small" ${has ? "" : "open"}><summary>토큰 만드는 법 (1분)</summary><ol>
       <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub 토큰 만들기</a> 페이지를 엽니다 (Fine-grained token).</li>
       <li>Token name 아무거나, Expiration 원하는 기간, Repository access → <b>Only select repositories</b> → <b>${GH ? esc(GH.repo) : "asset-tracker"}</b>.</li>
-      <li>Permissions → Repository permissions → <b>Actions: Read and write</b> (Contents는 Read-only 자동).</li>
+      <li>Permissions → Repository permissions → <b>Actions: Read and write</b>, <b>Contents: Read and write</b> (Beyora 글을 저장소에 저장).</li>
       <li>Generate token → 복사해서 위 칸에 붙여넣고 저장.</li></ol></details>`;
     $("#ghSave").onclick = async () => {
       const v = $("#ghToken").value.trim(); if (!v) return toast("토큰을 붙여넣어 주세요");
       try { localStorage.setItem(TOKEN_KEY, v); } catch (e) { return toast("브라우저 저장 실패"); }
-      try { await ghApi("actions/workflows/collect.yml"); toast("GitHub 연결됨"); renderGh(); const miss = missingTickers(); if (miss.length) { showTab("quotes"); ghCollect(miss); } }
+      try { await ghApi("actions/workflows/collect.yml"); toast("GitHub 연결됨"); renderGh(); bvLoad(true); const miss = missingTickers(); if (miss.length) { showTab("quotes"); ghCollect(miss); } }
       catch (e) { toast("연결 실패: " + e.message); renderGh(); }
     };
     if (has) {
@@ -1727,8 +1830,8 @@
     $("#eventTable").addEventListener("input", onEventEdit);
     $("#evTiles").addEventListener("click", (e) => { const t = e.target.closest("[data-evt]"); if (!t) return; const ev = S.state.events[+t.dataset.evt]; ev.on = !ev.on; save(); renderEvents(); if (curAna() === "events") runForecast(); });
     segClick("#evView", renderEvChart);
-    segClick("#newsRange", renderInsight);
     $("#beyora").addEventListener("click", onBeyora);
+    $("#beyora").addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.classList.add("broken"); }, true); // 열리지 않는 이미지 주소는 숨긴다
     $("#bvNew").onclick = () => { bvS.view = "edit"; bvS.id = null; renderBeyora(); };
     segClick("#xfNav", () => { renderEvTiles(); renderXf(); });
     $("#fcStocksCard").addEventListener("toggle", (e) => { if (e.target.open) renderFcStocks(); });
@@ -1752,7 +1855,7 @@
     $("#optManual").onchange = (e) => { S.state.ui.manual_price = e.target.checked; save(); renderAll(); };
     $("#btnExport").onclick = () => {
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([JSON.stringify({ ...S.state, beyora: bv() }, null, 1)], { type: "application/json" }));
+      a.href = URL.createObjectURL(new Blob([JSON.stringify({ ...S.state, beyora: bvExport() }, null, 1)], { type: "application/json" }));
       a.download = `자산입력-${today()}.json`; a.click();
     };
     $("#fileImport").onchange = async (e) => {
