@@ -275,6 +275,7 @@
   const TOKEN_KEY = "asset-tracker-gh-token";
   const ghToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } };
   async function ghApi(path, opt = {}) {
+    if (!GH) throw new Error("저장소 주소를 알 수 없습니다. 페이지를 새로 고침해 주세요");
     const r = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/${path}`, {
       ...opt, cache: "no-store",
       headers: { Accept: opt.raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", Authorization: "Bearer " + ghToken(), "X-GitHub-Api-Version": "2022-11-28", ...(opt.body ? { "Content-Type": "application/json" } : {}) },
