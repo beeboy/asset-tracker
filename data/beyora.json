@@ -9,5 +9,15 @@
    "name": "테스트2"
   }
  ],
- "posts": []
+ "posts": [
+  {
+   "id": "pmuuvoolg",
+   "title": "naeilo",
+   "body": "© naeilo\n\nSee Tomorrow, Today.\n오늘, 내일을 보다.",
+   "cat": "now",
+   "created": "2026-10-05T06:38:05.188Z",
+   "updated": "2026-10-05T06:38:05.188Z",
+   "views": 0
+  }
+ ]
 }
