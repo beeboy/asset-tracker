@@ -1482,14 +1482,20 @@
       const tks = [...new Set(fresh.filter((x) => x.scope === sc).map((x) => x.ticker))];
       for (const x of rr(tks.map((t) => rr(Object.keys(INS_CAT).map((c) => fresh.filter((y) => y.scope === sc && y.ticker === t && y.cat === c)))))) if (pick.length < room) pick.push(x);
     }
-    if (!pick.length) { insSave(o); return false; }
+    // 종목을 지워 상자가 4개보다 적어지면, 새 기사가 없어도 예전에 보여 준 기사(안 읽은 것 → 읽은 것, 보유 종목 → 관련 업계)로 채운다
+    const backfill = () => {
+      if (o.cur.length >= INS_N) return;
+      const old = items.filter((x) => !o.cur.includes(x.id)).sort((a, b) => !!o.read[a.id] - !!o.read[b.id] || (a.scope !== "held") - (b.scope !== "held") || (o.shown[b.id] || 0) - (o.shown[a.id] || 0));
+      o.cur = [...o.cur, ...old.slice(0, INS_N - o.cur.length).map((x) => x.id)];
+    };
+    if (!pick.length) { backfill(); insSave(o); return false; }
     pick.forEach((x, i) => (o.shown[x.id] = now - i)); // 위에 놓을 순서대로
     if (mode === "refresh" || mode === "top") { // 남길 기존 기사: 안 읽은 것 먼저, 그 안에서는 최근에 불러온 것 먼저
       const n = mode === "top" ? Math.max(INS_N, o.cur.length) : INS_N;
       const keep = (mode === "top" ? o.cur : o.cur.sort((a, b) => !!o.read[a] - !!o.read[b] || (o.shown[b] || 0) - (o.shown[a] || 0))).slice(0, Math.max(0, n - pick.length));
       o.cur = [...pick.map((x) => x.id), ...keep];
     } else o.cur = [...o.cur, ...pick.map((x) => x.id)];
-    insSave(o);
+    backfill(); insSave(o);
     return true;
   }
   async function renderInsight(more, after) { // after: 새 종목 기사를 받은 직후 (다시 받지 않는다)
