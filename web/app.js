@@ -256,7 +256,7 @@
     const { total } = valuation(), g = S.state.goal, fx = fxNow("USD");
     const prog = g.amount ? total / g.amount : 0;
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span>평가액 <b>${krw(total)}원</b></span><span>목표 대비 <b>${pct(prog)}</b></span>${my ? `<span>수익률 <b class="${cls(my.r)}">${spct(my.r)}</b></span>` : ""}`;
+    $("#headKpi").innerHTML = `<span>평가액 <b>${krw(total)}원</b></span><span>목표 대비 <b>${pct(prog)}</b></span>${my ? `<span>수익 <b class="${cls(my.r)}">${spct(my.r)}</b></span>` : ""}`;
   }
 
   // ------------------------------------------------------------ 시세·종목
