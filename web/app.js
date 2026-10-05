@@ -22,7 +22,50 @@
     ["seed", "난수 시드", "같은 시드면 같은 결과 (비교용)"],
     ["earnings_adjust", "반복 사건만큼 평소 변동성 줄이기", "분기 반복 사건(실적)의 분산을 평소 변동성에서 빼 이중 계산 방지", "bool"],
   ];
-  const KINDS = ["실적", "규제", "보호예수 해제", "소송", "신제품·행사", "지수 편입·제외", "기타"];
+  const KINDS = ["실적", "규제", "보호예수 해제", "소송", "신제품·행사", "리콜", "지수 편입·제외", "차량 인도량", "FOMC 금리 결정", "물가(CPI) 발표", "고용 지표", "금리 급등",
+    "OPEC+ 회의", "유가 급등", "금값 급등", "원자재 급등", "선거", "관세·정책", "전쟁·지정학", "기타"];
+  // 외부 요인 묶음. 요인 사건(factor)은 요인 충격 × 종목별 민감도만큼 움직인다
+  const CATS = [["corp", "기업 실적·공시"], ["rate", "금리·거시경제"], ["tsla", "테슬라 인도량"], ["product", "신제품·리콜"], ["oil", "유가"], ["gold", "금값"], ["cmdty", "원자재"], ["politics", "정치·선거"], ["war", "전쟁·지정학"]];
+  const catName = (c) => (CATS.find(([k]) => k === c) || [, c])[1];
+  const FACTORS = {
+    mkt: { sym: "SPY", name: "미국 시장 (S&P500, SPY)", unit: "%", shock: -5, shockTxt: "S&P500 -5%" },
+    rate: { sym: "^TNX", name: "미국 10년 국채 금리", unit: "bp", shock: 25, shockTxt: "10년 금리 +0.25%p" },
+    oil: { sym: "CL=F", name: "WTI 유가", unit: "%", shock: 10, shockTxt: "유가 +10%" },
+    gold: { sym: "GC=F", name: "금 선물", unit: "%", shock: 10, shockTxt: "금값 +10%" },
+    cmdty: { sym: "DBC", name: "원자재 지수 (DBC)", unit: "%", shock: 10, shockTxt: "원자재 +10%" },
+  };
+  const FACTOR_SYMS = Object.values(FACTORS).map((f) => f.sym);
+  const CAT_FACTOR = { rate: "rate", oil: "oil", gold: "gold", cmdty: "cmdty", politics: "mkt", war: "mkt" };
+  const catOfKind = (k) => (/신제품|리콜/.test(k) ? "product" : /인도량/.test(k) ? "tsla" : /FOMC|CPI|고용|금리/.test(k) ? "rate" : /OPEC|유가/.test(k) ? "oil" : /금값/.test(k) ? "gold" : /원자재/.test(k) ? "cmdty" : /선거|관세/.test(k) ? "politics" : /전쟁/.test(k) ? "war" : "corp");
+  // 기본 외부 요인 사건 (날짜·크기는 추정. 시장 요인은 S&P500 기준 %, 금리는 bp)
+  const EXT_EVENTS = [
+    { id: "x_fomc", cat: "rate", factor: "mkt", target: "ALL", kind: "FOMC 금리 결정", date: "2026-10-28", repeat: "6w", prob: 100, mean: 0, sd: 1.0, vol_mult: 1, vol_days: 0, note: "6주마다 (날짜 근사). 발표일 S&P500 ±1.0% 가정" },
+    { id: "x_cpi", cat: "rate", factor: "mkt", target: "ALL", kind: "물가(CPI) 발표", date: "2026-10-14", repeat: "monthly", prob: 100, mean: 0, sd: 0.8, vol_mult: 1, vol_days: 0, note: "매달 중순 (날짜 근사). S&P500 ±0.8%" },
+    { id: "x_jobs", cat: "rate", factor: "mkt", target: "ALL", kind: "고용 지표", date: "2026-11-06", repeat: "monthly", prob: 100, mean: 0, sd: 0.6, vol_mult: 1, vol_days: 0, note: "매달 첫 금요일 무렵. S&P500 ±0.6%" },
+    { id: "x_rate", cat: "rate", factor: "rate", target: "ALL", kind: "금리 급등", date: "2027-03-15", repeat: "yearly", prob: 20, mean: 40, sd: 20, vol_mult: 1.2, vol_days: 20, note: "해마다 20% 확률로 10년 금리 +0.4%p (bp 단위)" },
+    { id: "x_dlv", cat: "tsla", target: "TSLA", kind: "차량 인도량", date: "2027-01-04", repeat: "quarterly", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "분기 첫 달 2일 무렵 발표 (날짜 추정)" },
+    { id: "x_gtc", cat: "product", target: "NVDA", kind: "신제품·행사", date: "2027-03-16", repeat: "yearly", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "GTC 신제품 발표 (날짜 추정)" },
+    { id: "x_tprod", cat: "product", target: "TSLA", kind: "신제품·행사", date: "2027-06-15", repeat: "yearly", prob: 60, mean: 0, sd: 6, vol_mult: 1, vol_days: 0, note: "로보택시·옵티머스 등 공개 행사 (가정)" },
+    { id: "x_recall", cat: "product", target: "TSLA", kind: "리콜", date: "2027-02-15", repeat: "yearly", prob: 40, mean: -2, sd: 3, vol_mult: 1, vol_days: 0, note: "대규모 리콜·조사 (가정)" },
+    { id: "x_ship", cat: "product", target: "SPCX", kind: "신제품·행사", date: "2026-12-15", repeat: "quarterly", prob: 70, mean: 0, sd: 5, vol_mult: 1, vol_days: 0, note: "스타십 발사·신규 서비스 (가정)" },
+    { id: "x_opec", cat: "oil", factor: "oil", target: "ALL", kind: "OPEC+ 회의", date: "2026-11-30", repeat: "semi", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "반년마다. 유가 ±4% (날짜 추정)" },
+    { id: "x_oil", cat: "oil", factor: "oil", target: "ALL", kind: "유가 급등", date: "2027-05-17", repeat: "yearly", prob: 15, mean: 25, sd: 12, vol_mult: 1.2, vol_days: 20, note: "해마다 15% 확률로 유가 +25% (중동·감산)" },
+    { id: "x_gold", cat: "gold", factor: "gold", target: "ALL", kind: "금값 급등", date: "2027-08-16", repeat: "yearly", prob: 20, mean: 10, sd: 6, vol_mult: 1, vol_days: 0, note: "해마다 20% 확률로 금값 +10% (안전자산 쏠림)" },
+    { id: "x_cmdty", cat: "cmdty", factor: "cmdty", target: "ALL", kind: "원자재 급등", date: "2027-07-15", repeat: "yearly", prob: 15, mean: 12, sd: 8, vol_mult: 1, vol_days: 0, note: "해마다 15% 확률로 원자재 +12% (공급망)" },
+    { id: "x_mid", cat: "politics", factor: "mkt", target: "ALL", kind: "선거", date: "2026-11-04", repeat: "none", prob: 100, mean: 0, sd: 1.5, vol_mult: 1.2, vol_days: 15, note: "미국 중간선거 결과 (11/3 투표)" },
+    { id: "x_pres", cat: "politics", factor: "mkt", target: "ALL", kind: "선거", date: "2028-11-08", repeat: "none", prob: 100, mean: 0, sd: 2, vol_mult: 1.3, vol_days: 20, note: "미국 대통령 선거 결과 (11/7 투표)" },
+    { id: "x_tariff", cat: "politics", factor: "mkt", target: "ALL", kind: "관세·정책", date: "2027-04-05", repeat: "yearly", prob: 20, mean: -3, sd: 3, vol_mult: 1.4, vol_days: 20, note: "해마다 20% 확률로 관세·규제 충격 S&P500 -3%" },
+    { id: "x_war", cat: "war", factor: "mkt", target: "ALL", kind: "전쟁·지정학", date: "2027-09-15", repeat: "yearly", prob: 10, mean: -5, sd: 4, vol_mult: 1.6, vol_days: 30, note: "해마다 10% 확률로 전쟁·분쟁 충격 S&P500 -5% (날짜는 임의)" },
+  ];
+  const REPEATS = [["none", "한 번"], ["monthly", "매달"], ["6w", "6주"], ["quarterly", "분기"], ["semi", "반년"], ["yearly", "매년"]];
+  const repName = (r) => (REPEATS.find(([k]) => k === r) || [, "한 번"])[1];
+  // 과거 반응을 볼 날짜 (공개 기록 기준, 미국 장 마감 기준으로 반영된 날)
+  const REF_DAYS = {
+    rate: ["2023-11-01", "2023-12-13", "2024-01-31", "2024-03-20", "2024-05-01", "2024-06-12", "2024-07-31", "2024-09-18", "2024-11-07", "2024-12-18", "2025-01-29", "2025-03-19", "2025-05-07", "2025-06-18", "2025-07-30", "2025-09-17", "2025-10-29", "2025-12-10", "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17", "2026-07-29", "2026-09-16"].map((d) => [d, "FOMC 결정"]),
+    product: [["2023-11-30", "테슬라 사이버트럭 첫 인도 행사"], ["2023-12-13", "테슬라 오토파일럿 200만 대 리콜"], ["2024-03-19", "엔비디아 GTC 2024 (블랙웰) 다음 날"], ["2024-10-11", "테슬라 로보택시 공개 다음 날"], ["2025-03-18", "엔비디아 GTC 2025 기조연설"]],
+    politics: [["2024-11-06", "미국 대선 결과"], ["2025-04-03", "상호관세 발표 다음 날"], ["2025-04-04", "관세 충격 이틀째"], ["2025-04-09", "관세 90일 유예"]],
+    war: [["2023-10-09", "하마스 이스라엘 공격 뒤 첫 거래일"], ["2024-04-15", "이란의 이스라엘 공격 뒤 첫 거래일"], ["2024-10-01", "이란 미사일 공격"], ["2025-06-13", "이스라엘의 이란 공습"], ["2025-06-23", "미국의 이란 핵시설 공습 뒤 첫 거래일"]],
+  };
   const SESS = { pre: "프리", regular: "정규", post: "애프터", close: "종가", manual: "수동" };
 
   let S = { state: null, prices: {}, quotes: {} };
@@ -110,6 +153,9 @@
     st.holdings.forEach((h) => { if (h.note === "수량을 입력하세요") h.note = ""; }); // 예전 기본 문구 정리
     st.goal = Object.assign({ amount: 1e9, date: Model.addMonths(today(), 36), start_date: today(), monthly_contribution: 0 }, st.goal || {});
     st.events = st.events || [];
+    // 외부 요인 기본 사건을 한 번 넣는다 (이미 지운 사건은 다시 넣지 않도록 버전으로 표시)
+    if ((st.ext_ver || 0) < 1) { const have = new Set(st.events.map((e) => e.id)); EXT_EVENTS.forEach((e) => { if (!have.has(e.id)) st.events.push({ on: true, ...e }); }); st.ext_ver = 1; }
+    st.events.forEach((e) => { if (!e.cat) e.cat = catOfKind(e.kind || ""); });
     st.model = Object.assign({}, DEFAULT_MODEL, st.model || {});
     st.ui = Object.assign({ auto_refresh_min: 0, manual_price: false }, st.ui || {});
     return st;
@@ -216,7 +262,7 @@
   function symbolsToCollect(list) {
     const ts = list || S.state.holdings.map((h) => h.ticker);
     const fx = new Set(["KRW=X"]); ts.forEach((t) => { const f = fxOf(ccyOf(t)); if (f) fx.add(f); });
-    return [...new Set([...ts, ...fx])];
+    return [...new Set([...ts, ...fx, ...(list ? [] : FACTOR_SYMS)])];
   }
   // GitHub 토큰(이 브라우저에만 저장)이 있으면 화면에서 바로 수집 작업을 실행하고, 끝나면 새 데이터를 불러온다
   const TOKEN_KEY = "asset-tracker-gh-token";
@@ -554,7 +600,7 @@
           tick.forEach((t) => { const b2 = vb(t); if (!b2) return; const hi = lo.map((v, k) => v + b2.p50[k]); opt.bands.push({ x: fd, lo, hi, color: col(t), opacity: 0.28 }); lo = hi; });
           opt.series.push({ name: "종목 중앙값 합", x: fd, y: lo, color: "var(--fg)", width: 1, dash: "3 3" });
         }
-        notes.push(`오른쪽은 <b>${BASIS[basis]}</b>${basis === "model" ? ` (${scenName(scen)} 시나리오)` : " 전망"}입니다. 환율·기업 사건을 넣은 ${nf(S.state.model.n_paths)}경로 몬테카를로이며 ${mode === "total" ? "진한 띠 25~75%, 옅은 띠 5~95%, 점선은 중앙값입니다." : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%입니다." : "쌓은 띠는 종목별 중앙값입니다(합계 중앙값과 조금 다를 수 있음)."}`);
+        notes.push(`오른쪽은 <b>${BASIS[basis]}</b>${basis === "model" ? ` (${scenName(scen)} 시나리오)` : " 전망"}입니다. 환율·외부 요인을 넣은 ${nf(S.state.model.n_paths)}경로 몬테카를로이며 ${mode === "total" ? "진한 띠 25~75%, 옅은 띠 5~95%, 점선은 중앙값입니다." : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%입니다." : "쌓은 띠는 종목별 중앙값입니다(합계 중앙값과 조금 다를 수 있음)."}`);
         if (basis === "trend") notes.push("추세 반영: 종목마다 칼만 기울기와 EMA50·EMA200 기울기의 평균 성장률이 목표일까지 이어진다고 봅니다.");
         if (basis === "smooth") notes.push("스무딩: 종목마다 과거 3년 로그가격에 맞춘 추세선의 성장률이 이어진다고 봅니다.");
         if (Number(g.monthly_contribution) > 0) notes.push(`월 적립 ${krw(Number(g.monthly_contribution))}원 포함.`);
@@ -614,17 +660,25 @@
     if (e.type === "change") renderGoalInputs();
   }
 
-  // ------------------------------------------------------------ 사건
+  // ------------------------------------------------------------ 외부 요인 (사건)
+  const tgtLab = (e) => (e.factor && e.factor !== "none" ? (e.factor === "mkt" ? "시장 전체" : FACTORS[e.factor]?.name || e.factor) : { ALL: "전체 종목", FX: "원/달러 환율" }[e.target] || e.target);
+  const effTxt = (e) => {
+    const u = e.factor === "rate" ? "bp" : "%", base = e.factor && e.factor !== "none" ? (e.factor === "mkt" ? "S&P500 " : (FACTORS[e.factor]?.name.split(" (")[0] || "") + " ") : "";
+    return base + (e.mean ? `평균 <b class="${(e.factor === "rate" || e.factor === "oil" ? -e.mean : e.mean) > 0 ? "good" : "bad"}">${e.mean > 0 ? "+" : ""}${e.mean}${u}</b> ` : "방향 중립 ") + `±${e.sd}${u}`;
+  };
   function renderEvents() {
     const opts = [...S.state.holdings.map((h) => h.ticker), "ALL", "FX"];
     const lab = { ALL: "전체", FX: "환율" };
-    const head = `<tr><th>사용</th><th>날짜</th><th class="l">대상</th><th class="l">종류</th><th class="l">반복</th><th>발생 확률 %</th><th>평균 영향 %</th><th>불확실성 ±%</th><th>변동성 배수</th><th>지속 (거래일)</th><th class="l">메모</th><th></th></tr>`;
+    const fopts = [["none", "직접 (종목)"], ...Object.entries(FACTORS).map(([k, f]) => [k, f.name.split(" (")[0]])];
+    const head = `<tr><th>사용</th><th class="l">묶음</th><th>날짜</th><th class="l">대상</th><th class="l">요인</th><th class="l">종류</th><th class="l">반복</th><th>발생 확률 %</th><th>평균 영향</th><th>불확실성 ±</th><th>변동성 배수</th><th>지속 (거래일)</th><th class="l">메모</th><th></th></tr>`;
     const body = S.state.events.map((e, i) => `<tr data-i="${i}">
       <td><input type="checkbox" data-f="on" ${e.on ? "checked" : ""}></td>
+      <td class="l"><select data-f="cat">${CATS.map(([k, n]) => `<option value="${k}" ${k === e.cat ? "selected" : ""}>${n}</option>`).join("")}</select></td>
       <td><input type="date" class="date" data-f="date" value="${e.date || ""}"></td>
       <td class="l"><select data-f="target">${[...new Set([...opts, e.target])].map((o) => `<option value="${esc(o)}" ${o === e.target ? "selected" : ""}>${lab[o] || esc(o)}</option>`).join("")}</select></td>
+      <td class="l"><select data-f="factor">${fopts.map(([k, n]) => `<option value="${k}" ${k === (e.factor || "none") ? "selected" : ""}>${n}</option>`).join("")}</select></td>
       <td class="l"><select data-f="kind">${[...new Set([...KINDS, e.kind])].map((o) => `<option ${o === e.kind ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></td>
-      <td class="l"><select data-f="repeat"><option value="none" ${e.repeat !== "quarterly" ? "selected" : ""}>한 번</option><option value="quarterly" ${e.repeat === "quarterly" ? "selected" : ""}>분기</option></select></td>
+      <td class="l"><select data-f="repeat">${REPEATS.map(([k, n]) => `<option value="${k}" ${k === (e.repeat || "none") ? "selected" : ""}>${n}</option>`).join("")}</select></td>
       <td><input type="number" data-f="prob" min="0" max="100" value="${e.prob ?? 100}" style="width:5em"></td>
       <td><input type="number" data-f="mean" step="any" value="${e.mean ?? 0}" style="width:5em"></td>
       <td><input type="number" data-f="sd" step="any" min="0" value="${e.sd ?? 0}" style="width:5em"></td>
@@ -637,27 +691,158 @@
     $("#evSum").textContent = `${S.state.events.length}건${on < S.state.events.length ? ` · 켜짐 ${on}건` : ""}`;
     renderEvTiles();
     renderSchedule();
+    renderXf();
   }
   // 사건 타일: 다음 날짜, 반복 횟수, 영향을 한눈에. 누르면 켜고 끈다
   function nextOcc(e) {
-    const t = today(), goal = S.state.goal.date;
-    if (e.repeat !== "quarterly") return { next: e.date >= t ? e.date : null, n: e.date >= t && e.date <= goal ? 1 : 0 };
-    let next = null, n = 0;
-    for (let k = 0, d = e.date; d <= goal && k < 400; k++, d = Model.addMonths(e.date, 3 * k)) { if (d < t) continue; if (!next) next = d; n++; }
-    return { next, n };
+    const y = new Date(Date.parse(today()) - 864e5).toISOString().slice(0, 10); // 오늘 당일도 다음 사건으로 본다
+    const list = Model.occurrences(e, y, S.state.goal.date);
+    return { next: list[0] || null, n: list.length };
   }
+  const curCat = () => $("#xfNav .on")?.dataset.c || "all";
   function renderEvTiles() {
-    const lab = { ALL: "전체 종목", FX: "원/달러 환율" };
-    const items = S.state.events.map((e, i) => ({ e, i, ...nextOcc(e) })).sort((a, b) => ((a.next || "9") < (b.next || "9") ? -1 : 1));
+    const cat = curCat();
+    const items = S.state.events.map((e, i) => ({ e, i, ...nextOcc(e) })).filter(({ e }) => cat === "all" || e.cat === cat).sort((a, b) => ((a.next || "9") < (b.next || "9") ? -1 : 1));
     const first = items.find((x) => x.e.on && x.next);
     $("#evTiles").innerHTML = items.map(({ e, i, next, n }) => {
       const earn = /실적/.test(e.kind), q = earn && next ? quarterOf(next) : null;
-      const eff = (e.mean ? `평균 <b class="${e.mean > 0 ? "good" : "bad"}">${e.mean > 0 ? "+" : ""}${e.mean}%</b> ` : "방향 중립 ") + `±${e.sd}%` + (Number(e.prob) < 100 ? ` · 확률 ${e.prob}%` : "") + (e.vol_mult && e.vol_mult !== 1 && e.vol_days ? ` · 변동성 ${e.vol_mult}배 ${e.vol_days}일` : "");
-      const when = next ? `${next}${q ? ` (${q.label})` : ""}${e.repeat === "quarterly" ? ` · 남은 ${n}회` : ""}` : "지난 사건";
-      return `<button type="button" class="evtile ${earn ? "earn" : "once"} ${e.on ? "" : "off"} ${next ? "" : "past"} ${first && first.i === i ? "next" : ""}" data-evt="${i}" title="누르면 ${e.on ? "끄기" : "켜기"}">
-        <div class="top"><span class="tk">${lab[e.target] || esc(e.target)}</span><span class="kd">${esc(e.kind)}${e.repeat === "quarterly" ? " · 분기" : ""}</span></div>
+      const eff = effTxt(e) + (Number(e.prob) < 100 ? ` · 확률 ${e.prob}%` : "") + (e.vol_mult && e.vol_mult !== 1 && e.vol_days ? ` · 변동성 ${e.vol_mult}배 ${e.vol_days}일` : "");
+      const when = next ? `${next}${q ? ` (${q.label})` : ""}${e.repeat && e.repeat !== "none" ? ` · ${repName(e.repeat)} · 남은 ${n}회` : ""}` : "지난 사건";
+      return `<button type="button" class="evtile ${e.repeat && e.repeat !== "none" ? "earn" : "once"} ${e.on ? "" : "off"} ${next ? "" : "past"} ${first && first.i === i ? "next" : ""}" data-evt="${i}" title="누르면 ${e.on ? "끄기" : "켜기"}">
+        <div class="top"><span class="tk">${esc(tgtLab(e))}</span><span class="kd">${esc(e.kind)}</span></div>
         <div class="dt">${when}</div><div class="ef">${eff}</div>${e.note ? `<div class="nt">${esc(e.note)}</div>` : ""}</button>`;
-    }).join("") || `<p class="muted">사건이 없습니다.</p>`;
+    }).join("") || `<p class="muted">이 묶음에 사건이 없습니다. 아래 '사건 직접 편집'에서 추가할 수 있습니다.</p>`;
+  }
+
+  // ---- 요인별 분석: 대리 지표(금리·유가·금·원자재·시장)에 대한 종목별 민감도, 과거 반응일
+  let betaCache = null;
+  // 날짜가 같은 날끼리 맞춘 일별 변화 (가격은 로그수익률, 금리는 bp 변화)
+  function alignedChanges(symA, symB, rateB, years = 3) {
+    const A = S.prices[symA], B = S.prices[symB]; if (!A || !B) return null;
+    const cut = Model.addMonths(today(), -12 * years), mb = new Map(B.dates.map((d, i) => [d, B.adj[i]]));
+    const xs = [], ys = [], ds = []; let pa = null, pb = null;
+    for (let i = 0; i < A.dates.length; i++) {
+      const d = A.dates[i]; if (d < cut || !mb.has(d)) continue;
+      const a = A.adj[i], b = mb.get(d);
+      if (pa != null && a > 0 && pa > 0 && b != null && pb != null && (rateB || (b > 0 && pb > 0))) { ys.push(Math.log(a / pa)); xs.push(rateB ? (b - pb) * 100 : Math.log(b / pb)); ds.push(d); }
+      pa = a; pb = b;
+    }
+    return { x: xs, y: ys, d: ds };
+  }
+  function factorBetas() {
+    const stamp = Object.values(S.prices).map((p) => p.dates.at(-1)).join() + S.state.holdings.map((h) => h.ticker).join();
+    if (betaCache && betaCache.stamp === stamp) return betaCache;
+    const out = { stamp, beta: {}, stat: {} }, tks = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]);
+    for (const [fk, F] of Object.entries(FACTORS)) {
+      out.beta[fk] = {}; out.stat[fk] = {};
+      if (!S.prices[F.sym]) continue;
+      for (const t of tks) {
+        if (t === F.sym) { out.beta[fk][t] = 1; out.stat[fk][t] = { beta: 1, corr: 1, n: 0 }; continue; }
+        const r = alignedChanges(t, F.sym, fk === "rate"); if (!r || r.y.length < 30) continue;
+        const n = r.y.length, mx = Model.mean(r.x), my = Model.mean(r.y);
+        let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++) { sxy += (r.x[i] - mx) * (r.y[i] - my); sxx += (r.x[i] - mx) ** 2; syy += (r.y[i] - my) ** 2; }
+        const corr = sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0;
+        let beta = sxx ? sxy / sxx : 0;
+        // 시장 외 요인은 시장(SPY) 움직임을 뺀 순수 민감도 (두 변수 회귀)
+        if (fk !== "mkt" && S.prices.SPY && t !== "SPY") {
+          const m2 = alignedChanges(t, "SPY", false), mm = new Map(m2 ? m2.d.map((d, i) => [d, m2.x[i]]) : []);
+          const X1 = [], X2 = [], Y = []; r.d.forEach((d, i) => { if (mm.has(d)) { X1.push(r.x[i]); X2.push(mm.get(d)); Y.push(r.y[i]); } });
+          if (Y.length > 30) {
+            const a1 = Model.mean(X1), a2 = Model.mean(X2), ay = Model.mean(Y); let s11 = 0, s22 = 0, s12 = 0, s1y = 0, s2y = 0;
+            for (let i = 0; i < Y.length; i++) { const u = X1[i] - a1, v = X2[i] - a2, w = Y[i] - ay; s11 += u * u; s22 += v * v; s12 += u * v; s1y += u * w; s2y += v * w; }
+            const det = s11 * s22 - s12 * s12; if (det > 0) beta = (s1y * s22 - s2y * s12) / det;
+          }
+        }
+        const w = n / (n + 60), prior = fk === "mkt" ? 1 : 0; // 이력이 짧으면 기본값 쪽으로 당긴다
+        out.beta[fk][t] = w * beta + (1 - w) * prior; out.stat[fk][t] = { beta: out.beta[fk][t], raw: beta, corr, n };
+      }
+    }
+    return (betaCache = out);
+  }
+  // 하루 수익률 (그날 종가 / 전 거래일 종가). 그날 거래가 없으면 다음 거래일
+  function dayRet(sym, d) {
+    const p = S.prices[sym]; if (!p) return null;
+    const i = p.dates.findIndex((x) => x >= d); if (i <= 0) return null;
+    if ((Date.parse(p.dates[i]) - Date.parse(d)) / 864e5 > 4) return null;
+    return p.adj[i] / p.adj[i - 1] - 1;
+  }
+  function absAvg(sym) { const p = S.prices[sym]; if (!p || p.adj.length < 30) return null; const k = Math.max(1, p.adj.length - 756); let s2 = 0, n = 0; for (let i = k; i < p.adj.length; i++) { s2 += Math.abs(p.adj[i] / p.adj[i - 1] - 1); n++; } return s2 / n; }
+  function refDays(cat) {
+    if (cat === "tsla") { // 분기 첫 달 2일 무렵 인도량 발표 → 그날(주말이면 다음 거래일) 반응
+      const out = [], p = S.prices.TSLA; if (!p) return out;
+      for (let y = +p.dates[0].slice(0, 4); y <= +today().slice(0, 4); y++) for (const mo of ["01", "04", "07", "10"]) { const d = `${y}-${mo}-02`; if (d > p.dates[0] && d <= today()) out.push([d, `${String(mo === "01" ? y - 1 : y).slice(2)}년 ${mo === "01" ? 4 : +mo / 3 | 0}Q 인도량`]); }
+      return out;
+    }
+    return REF_DAYS[cat] || [];
+  }
+  function renderXf() {
+    const cat = curCat(), host = $("#xfAnalysis"); if (!host) return;
+    if (cat === "all") { host.innerHTML = ""; host.style.display = "none"; return; }
+    host.style.display = "block";
+    const { rows, total } = valuation(), held = rows.filter((r) => r.valueKrw > 0), H = [];
+    H.push(`<h2>${esc(catName(cat))} 분석</h2>`);
+    const fk = CAT_FACTOR[cat], F = FACTORS[fk];
+    if (F) {
+      const p = S.prices[F.sym];
+      if (!p) H.push(`<p class="muted small">${esc(F.name)} 시세가 아직 없습니다. 다음 자동 수집 뒤에 나옵니다.</p>`);
+      else {
+        const last = p.close.at(-1), at = (k) => p.close[Math.max(0, p.close.length - 1 - k)], ch = (k) => (fk === "rate" ? `${((last - at(k)) * 100) >= 0 ? "+" : ""}${nf((last - at(k)) * 100)}bp` : spct(last / at(k) - 1));
+        H.push(`<p class="small"><b>${esc(F.name)}</b> ${fk === "rate" ? nf(last, 2) + "%" : nf(last, 2)} · 1개월 ${ch(21)} · 3개월 ${ch(63)} · 1년 ${ch(252)} <span class="muted">(${p.dates.at(-1)})</span></p><div id="xfChart" class="chartbox"></div>`);
+        const B = factorBetas(), st = B.stat[fk] || {};
+        let port = 0;
+        const tr = held.map((r) => { const t = r.h.ticker, s2 = st[t]; if (!s2) return `<tr><td class="l">${esc(t)}</td><td colspan="3" class="muted">이력 부족</td></tr>`;
+          const effPct = fk === "rate" ? s2.beta * F.shock : s2.beta * Math.log(1 + F.shock / 100);
+          port += r.w * effPct;
+          return `<tr><td class="l">${esc(t)}</td><td>${s2.corr.toFixed(2)}</td><td>${fk === "rate" ? spct(s2.beta * 10, 2) : s2.beta.toFixed(2)}</td><td class="${cls(effPct)}">${spct(Math.exp(effPct) - 1)}</td></tr>`; }).join("");
+        H.push(`<div class="tablewrap"><table class="grid"><tr><th class="l">종목</th><th>상관</th><th>민감도${fk === "mkt" ? " (베타)" : fk === "rate" ? " (+10bp당, 시장 제외)" : " (시장 제외)"}</th><th>${esc(F.shockTxt)}일 때</th></tr>${tr}
+          <tr><td class="l"><b>내 포트폴리오</b></td><td></td><td></td><td class="${cls(port)}"><b>${spct(Math.exp(port) - 1)}</b> (${krw(total * (Math.exp(port) - 1))}원)</td></tr></table></div>
+          <p class="muted small">최근 3년 일별 변화로 구한 값입니다. ${fk === "mkt" ? "베타 1.5는 시장이 1% 움직일 때 평균 1.5% 움직인다는 뜻입니다." : "시장 전체 움직임을 뺀 뒤 이 요인만의 영향을 본 값이라, 시장과 같이 움직이는 몫은 '정치·선거·전쟁'의 시장 베타에 들어 있습니다."} ${fk === "rate" ? "금리 민감도는 10년 금리가 0.1%p(10bp) 오를 때의 수익률입니다." : ""} 이력이 짧은 종목은 기본값 쪽으로 당겼습니다.</p>`);
+      }
+    }
+    const refs = refDays(cat), tks = ["SPY", ...held.map((r) => r.h.ticker).filter((t) => t !== "SPY")].filter((t) => S.prices[t]);
+    if (refs.length && tks.length) {
+      const rr = refs.map(([d, n]) => ({ d, n, r: tks.map((t) => dayRet(t, d)) })).filter((x) => x.r.some((v) => v != null));
+      if (rr.length) {
+        const avg = tks.map((t, j) => { const v = rr.map((x) => x.r[j]).filter((x) => x != null); return v.length ? v.reduce((s2, x) => s2 + Math.abs(x), 0) / v.length : null; });
+        const norm = tks.map(absAvg);
+        H.push(`<h3 style="margin-top:12px">과거 같은 일이 있던 날의 하루 변동</h3><div class="tablewrap"><table class="grid"><tr><th class="l">날짜</th><th class="l">일</th>${tks.map((t) => `<th>${esc(t)}</th>`).join("")}</tr>
+          ${rr.slice(-12).reverse().map((x) => `<tr><td class="l">${x.d}</td><td class="l">${esc(x.n)}</td>${x.r.map((v) => `<td class="${cls(v)}">${spct(v)}</td>`).join("")}</tr>`).join("")}
+          <tr><td class="l" colspan="2"><b>평균 크기 (부호 무시)</b></td>${avg.map((v) => `<td><b>${pct(v)}</b></td>`).join("")}</tr>
+          <tr><td class="l muted" colspan="2">평소 하루 평균 크기</td>${norm.map((v) => `<td class="muted">${pct(v)}</td>`).join("")}</tr></table></div>
+          <p class="muted small">${rr.length}번 중 최근 ${Math.min(12, rr.length)}번. 평소보다 크게 움직였다면 그만큼 전망에 사건으로 넣을 이유가 있습니다. 날짜는 공개 기록 기준이며 장 마감 뒤 발표는 다음 거래일에 반영됩니다.</p>`);
+      }
+    }
+    if (H.length === 1) H.push(`<p class="muted small">이 묶음은 종목별 사건(실적·보호예수·규제 등)으로 반영합니다. 과거 실적 발표일 자료가 없어 반응 분석은 생략합니다.</p>`);
+    host.innerHTML = H.join("");
+    if (F && S.prices[F.sym] && $("#xfChart")) {
+      const p = S.prices[F.sym], k = Math.max(0, p.dates.length - 756);
+      Charts.lineChart($("#xfChart"), { x: p.dates.slice(k), height: 170, legend: false, yfmt: (v) => (fk === "rate" ? nf(v, 2) + "%" : nf(v, v < 100 ? 1 : 0)), series: [{ name: F.name, y: p.close.slice(k), color: "var(--c2)", width: 1.5 }] });
+    }
+  }
+  // 요인 묶음별 영향: 같은 난수로 '사건 없음'과 '그 묶음만 켬'을 비교
+  let xfEff = null, xfBusy = false;
+  async function runXfEffect() {
+    const host = $("#xfEffect"); if (!host || !lastForecast) return;
+    if (xfEff && xfEff.fc === lastForecast) return drawXfEffect();
+    if (xfBusy) return; xfBusy = true;
+    const { b } = lastForecast, common = { ...simCommon(b, S.state.model.scenario) }; common.nPaths = Math.min(common.nPaths, 1500);
+    const cats = CATS.map(([k]) => k).filter((c) => b.model.eventList.some((x) => (x.event.cat || "corp") === c));
+    host.innerHTML = "<p class='muted small'>요인별 영향을 계산하는 중입니다…</p>";
+    const res = { fc: lastForecast, none: null, all: null, by: {} };
+    const run = (set) => Model.simulate(b.model, { ...common, withEvents: true, cats: set });
+    await new Promise((r) => setTimeout(r, 20));
+    res.none = run(new Set()); res.all = run(null);
+    for (const c of cats) { await new Promise((r) => setTimeout(r, 0)); if (lastForecast !== res.fc) { xfBusy = false; return; } res.by[c] = run(new Set([c])); }
+    xfEff = res; xfBusy = false; drawXfEffect();
+  }
+  function drawXfEffect() {
+    const host = $("#xfEffect"); if (!host || !xfEff) return;
+    const { none, all, by } = xfEff, md = lastForecast.b.model;
+    const cnt = (c) => md.eventList.filter((x) => (x.event.cat || "corp") === c).length;
+    const row = (n, R, k) => `<tr><td class="l">${n}</td><td>${k ?? ""}</td><td class="${cls(R.p_goal - none.p_goal)}">${spct(R.p_goal - none.p_goal, 0).replace("%", "%p")}</td><td class="${cls(R.terminal.p50 - none.terminal.p50)}">${R.terminal.p50 >= none.terminal.p50 ? "+" : ""}${krw(R.terminal.p50 - none.terminal.p50)}</td><td class="${cls(R.terminal.p5 - none.terminal.p5)}">${R.terminal.p5 >= none.terminal.p5 ? "+" : ""}${krw(R.terminal.p5 - none.terminal.p5)}</td></tr>`;
+    host.innerHTML = `<div class="tablewrap"><table class="grid"><tr><th class="l">요인</th><th>반영 횟수</th><th>목표 확률</th><th>목표일 중앙값</th><th>나쁜 경우 5%</th></tr>
+      ${Object.entries(by).map(([c, R]) => row(esc(catName(c)), R, cnt(c))).join("")}${row("<b>모두 반영</b>", all, md.eventList.length)}</table></div>
+      <p class="muted small">외부 요인을 하나도 넣지 않은 전망(목표 확률 ${pct(none.p_goal, 0)}, 중앙값 ${krw(none.terminal.p50)}원) 대비 변화입니다. 같은 난수로 묶음 하나씩만 켜서 계산했고(경로 ${nf(Math.min(S.state.model.n_paths, 1500))}개), 반복 사건은 그만큼 평소 변동성을 줄여 이중 계산을 피했습니다.</p>`;
   }
   // 실적 발표일 → 그 직전 분기 (10월 발표 = 3분기 실적). 회계연도가 다른 회사(NVDA 등)는 회사 기준 분기와 다를 수 있음
   function quarterOf(d) {
@@ -676,22 +861,23 @@
       const byKind = {}; list.forEach((x) => (byKind[x.event.kind] = (byKind[x.event.kind] || 0) + 1));
       $("#schedSum").textContent = "· " + Object.entries(byKind).map(([k, n]) => `${k} ${n}건`).join(", ");
       // 대상별 한 줄: 날짜 순서로 칩을 늘어놓는다 (가장 가까운 사건은 강조)
-      const groups = new Map(); list.forEach((x) => { const t = x.event.target; if (!groups.has(t)) groups.set(t, []); groups.get(t).push(x); });
+      const groups = new Map(); list.forEach((x) => { const t = tgtLab(x.event); if (!groups.has(t)) groups.set(t, []); groups.get(t).push(x); });
       const next = list[0];
       const chip = (x) => {
         const e = x.event, earn = /실적/.test(e.kind), q = earn ? quarterOf(x.date) : null;
         const tip = `${x.date} ${e.kind}${q ? " (" + q.label + ")" : ""} · 확률 ${e.prob}% · 평균 ${e.mean}% · ±${e.sd}%`;
-        const txt = earn ? `<b>${q.label}</b><span>${x.date.slice(2, 7).replace("-", ".")}</span>` : `<b>${esc(e.kind)}</b><span>${x.date.slice(2).replace(/-/g, ".")} · ${e.mean > 0 ? "+" : ""}${e.mean}%±${e.sd}</span>`;
-        return `<span class="chip ${earn ? "earn" : "once"} ${x === next ? "next" : ""}" title="${esc(tip)}">${txt}</span>`;
+        const u = e.factor === "rate" ? "bp" : "%";
+        const txt = earn ? `<b>${q.label}</b><span>${x.date.slice(2, 7).replace("-", ".")}</span>` : `<b>${esc(e.kind)}</b><span>${x.date.slice(2).replace(/-/g, ".")} · ${e.mean > 0 ? "+" : ""}${e.mean}${u}±${e.sd}${Number(e.prob) < 100 ? ` (${e.prob}%)` : ""}</span>`;
+        return `<span class="chip ${e.repeat && e.repeat !== "none" ? "earn" : "once"} ${x === next ? "next" : ""}" title="${esc(tip)}">${txt}</span>`;
       };
       $("#eventSchedule").innerHTML = [...groups].map(([t, xs]) => {
         const earn = xs.filter((x) => /실적/.test(x.event.kind)), e0 = earn[0]?.event;
-        const sub = earn.length ? `분기 실적 ${earn.length}회${e0 ? ` · 회당 ±${e0.sd}%` : ""}` : `${xs.length}건`;
-        return `<div class="schedrow"><div class="schedhead"><b>${lab[t] || esc(t)}</b> <span class="muted">${sub}</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`;
+        const sub = earn.length && earn.length === xs.length ? `분기 실적 ${earn.length}회${e0 ? ` · 회당 ±${e0.sd}%` : ""}` : `${xs.length}건`;
+        return `<div class="schedrow"><div class="schedhead"><b>${esc(t)}</b> <span class="muted">${sub}</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`;
       }).join("") + `<p class="muted small">회색 칩은 분기 실적(발표 예상 월, 직전 분기 실적), 주황 칩은 한 번 있는 사건입니다. 테두리가 진한 칩이 가장 가까운 사건입니다. 칩을 길게 누르거나 마우스를 올리면 확률·영향이 나옵니다. NVDA처럼 회계연도가 다른 회사는 회사 발표 분기 이름과 다를 수 있습니다.</p>`;
     } catch (e) { $("#eventSchedule").textContent = e.message; }
   }
-  // 사건을 넣은 예상 그래프: 포트폴리오 또는 사건이 있는 종목. 사건 반영(띠·실선)과 사건 제외(점선) 비교
+  // 사건을 넣은 예상 그래프: 포트폴리오 또는 사건이 있는 종목. 요인 반영(띠·실선)과 요인 제외(점선) 비교
   function renderEvChart() {
     const host = $("#evChart"); if (!host) return;
     if (!lastForecast) { host.innerHTML = "<p class='muted'>전망을 계산하는 중입니다…</p>"; return; }
@@ -704,23 +890,23 @@
     const g = S.state.goal;
     if (cur === "port") {
       Charts.lineChart(host, { x: fx, height: 300, yfmt: krwAxis,
-        bands: [{ lo: R.bands.p5, hi: R.bands.p95, color: "var(--band)", opacity: 0.12, name: "사건 반영 5~95%" }, { lo: R.bands.p25, hi: R.bands.p75, color: "var(--band)", opacity: 0.24, name: "사건 반영 25~75%" }],
-        series: [{ name: "사건 반영 중앙값", y: R.bands.p50, color: "var(--c1)", width: 2.2 }, { name: "사건 제외 중앙값", y: noEv.bands.p50, color: "var(--fg)", width: 1.3, dash: "5 4" },
-          { name: "사건 제외 5%·95%", y: noEv.bands.p5, color: "var(--muted)", width: 1, dash: "2 3" }, { name: "", y: noEv.bands.p95, color: "var(--muted)", width: 1, dash: "2 3" }],
+        bands: [{ lo: R.bands.p5, hi: R.bands.p95, color: "var(--band)", opacity: 0.12, name: "요인 반영 5~95%" }, { lo: R.bands.p25, hi: R.bands.p75, color: "var(--band)", opacity: 0.24, name: "요인 반영 25~75%" }],
+        series: [{ name: "요인 반영 중앙값", y: R.bands.p50, color: "var(--c1)", width: 2.2 }, { name: "요인 제외 중앙값", y: noEv.bands.p50, color: "var(--fg)", width: 1.3, dash: "5 4" },
+          { name: "요인 제외 5%·95%", y: noEv.bands.p5, color: "var(--muted)", width: 1, dash: "2 3" }, { name: "", y: noEv.bands.p95, color: "var(--muted)", width: 1, dash: "2 3" }],
         hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }],
         markers: md.eventList.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) });
-      $("#evNote").innerHTML = `목표 달성 확률 <b>${pct(noEv.p_goal, 0)} → ${pct(R.p_goal, 0)}</b>, 목표일 중앙값 ${krw(noEv.terminal.p50)} → <b>${krw(R.terminal.p50)}원</b>, 나쁜 경우 5% ${krw(noEv.terminal.p5)} → <b>${krw(R.terminal.p5)}원</b> (사건 제외 → 반영). 삼각형은 사건 날짜입니다.`;
+      $("#evNote").innerHTML = `목표 달성 확률 <b>${pct(noEv.p_goal, 0)} → ${pct(R.p_goal, 0)}</b>, 목표일 중앙값 ${krw(noEv.terminal.p50)} → <b>${krw(R.terminal.p50)}원</b>, 나쁜 경우 5% ${krw(noEv.terminal.p5)} → <b>${krw(R.terminal.p5)}원</b> (요인 제외 → 반영). 삼각형은 사건 날짜입니다.`;
     } else {
       const i = b.holdings.findIndex((h) => h.ticker === cur), s1 = R.stocks[i], s0 = noEv.stocks[i], h = b.holdings[i], c = C[i % C.length];
       const p = S.prices[cur], kk = p ? Math.max(0, p.dates.length - 130) : 0;
       Charts.lineChart(host, { x: fx, height: 300, log: true, yfmt: priceAxis([s1.bands.p5, s1.bands.p95]),
-        bands: [{ lo: s1.bands.p5, hi: s1.bands.p95, color: c, opacity: 0.12, name: "사건 반영 5~95%" }, { lo: s1.bands.p25, hi: s1.bands.p75, color: c, opacity: 0.24, name: "사건 반영 25~75%" }],
+        bands: [{ lo: s1.bands.p5, hi: s1.bands.p95, color: c, opacity: 0.12, name: "요인 반영 5~95%" }, { lo: s1.bands.p25, hi: s1.bands.p75, color: c, opacity: 0.24, name: "요인 반영 25~75%" }],
         series: [...(p ? [{ name: "과거", x: [...p.dates.slice(kk), md.startDate], y: [...p.close.slice(kk), h.price0], color: "var(--fg)", width: 1.2 }] : []),
-          { name: "사건 반영 중앙값", y: s1.bands.p50, color: c, width: 2.2 }, { name: "사건 제외 중앙값", y: s0.bands.p50, color: "var(--fg)", width: 1.3, dash: "5 4" }],
+          { name: "요인 반영 중앙값", y: s1.bands.p50, color: c, width: 2.2 }, { name: "요인 제외 중앙값", y: s0.bands.p50, color: "var(--fg)", width: 1.3, dash: "5 4" }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: md.eventList.filter((e) => e.event.target === cur || e.event.target === "ALL").map((e) => ({ x: e.date, label: `${e.date} ${e.event.kind}` })) });
       const T = s1.bands.p50.length - 1, at = (bb, k) => nf(bb[k][Math.min(T, 6)], 2);
-      $("#evNote").innerHTML = `${esc(cur)} (${h.ccy}) 6개월 뒤 중앙값 ${at(s0.bands, "p50")} → <b>${at(s1.bands, "p50")}</b>, 나쁜 경우 5% ${at(s0.bands, "p5")} → <b>${at(s1.bands, "p5")}</b>; 목표일 중앙값 ${nf(s0.bands.p50[T], 2)} → <b>${nf(s1.bands.p50[T], 2)}</b> (사건 제외 → 반영).`;
+      $("#evNote").innerHTML = `${esc(cur)} (${h.ccy}) 6개월 뒤 중앙값 ${at(s0.bands, "p50")} → <b>${at(s1.bands, "p50")}</b>, 나쁜 경우 5% ${at(s0.bands, "p5")} → <b>${at(s1.bands, "p5")}</b>; 목표일 중앙값 ${nf(s0.bands.p50[T], 2)} → <b>${nf(s1.bands.p50[T], 2)}</b> (요인 제외 → 반영).`;
     }
   }
   function onEventEdit(e) {
@@ -730,7 +916,7 @@
     else if (["prob", "mean", "sd", "vol_mult", "vol_days"].includes(f)) ev[f] = e.target.value === "" ? 0 : Number(e.target.value);
     else ev[f] = e.target.value;
     save(f !== "note");
-    if (e.type === "change") { renderEvTiles(); renderSchedule(); }
+    if (e.type === "change") { renderEvTiles(); renderSchedule(); if (f === "cat") renderXf(); }
   }
 
   // ------------------------------------------------------------ 전망
@@ -742,7 +928,7 @@
     if (!holdings.length) return null;
     const series = {};
     for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
-    const model = Model.buildModel({ holdings, series, fxOf, settings: S.state.model, events: S.state.events, startDate: start, goalDate: g.date });
+    const model = Model.buildModel({ holdings, series, fxOf, settings: S.state.model, events: S.state.events, betas: factorBetas().beta, startDate: start, goalDate: g.date });
     return { holdings, model };
   }
   async function runForecast() {
@@ -804,22 +990,22 @@
     if (hasEv) {
       const rows = [["목표 달성 확률", pct(noEv.p_goal, 0), pct(R.p_goal, 0)], ["목표일 중앙값", krw(noEv.terminal.p50), krw(R.terminal.p50)],
         ["하위 5%", krw(noEv.terminal.p5), krw(R.terminal.p5)], ["상위 5%", krw(noEv.terminal.p95), krw(R.terminal.p95)], ["원금 손실 확률", pct(noEv.p_loss, 0), pct(R.p_loss, 0)]];
-      $("#fcEvents").innerHTML = `<table class="grid"><tr><th class="l"></th><th>사건 제외</th><th>사건 반영</th></tr>${rows.map((r) => `<tr><td class="l">${r[0]}</td><td>${r[1]}</td><td><b>${r[2]}</b></td></tr>`).join("")}</table>
-        <p class="muted small">같은 난수로 사건만 빼고 다시 계산한 비교입니다(사건 제외 쪽은 실적 변동을 평소 변동성에 그대로 둠). 켜진 사건 ${md.eventList.length}건 (반복 포함).</p>`;
-    } else $("#fcEvents").innerHTML = `<p class="muted">켜진 사건이 없습니다. '기업 사건'에서 추가하세요.</p>`;
+      $("#fcEvents").innerHTML = `<table class="grid"><tr><th class="l"></th><th>요인 제외</th><th>요인 반영</th></tr>${rows.map((r) => `<tr><td class="l">${r[0]}</td><td>${r[1]}</td><td><b>${r[2]}</b></td></tr>`).join("")}</table>
+        <p class="muted small">같은 난수로 사건만 빼고 다시 계산한 비교입니다(요인 제외 쪽은 실적 변동을 평소 변동성에 그대로 둠). 켜진 사건 ${md.eventList.length}건 (반복 포함).</p>`;
+    } else $("#fcEvents").innerHTML = `<p class="muted">켜진 사건이 없습니다. '외부 요인'에서 켜 주세요.</p>`;
 
     $("#fcStocksSum").textContent = R.stocks.map((x) => `${x.ticker} 오를 확률 ${pct(x.p_up, 0)}`).join(" · ");
     if ($("#fcStocksCard").open) renderFcStocks();
     // 모형 값
     const scen = m.scenario;
-    $("#fcParams").innerHTML = `<tr><th class="l">요인</th><th>비중</th><th>표본 (일)</th><th>과거 변동성</th><th>모형 변동성</th><th>사건 제외 평소 변동성</th><th>과거 평균 (연)</th><th>3년 스무딩 (연)</th><th>칼만·EMA 추세 (연)</th><th>사전값 비중</th><th>적용 기대수익 (${scenName(scen)})</th></tr>` +
+    $("#fcParams").innerHTML = `<tr><th class="l">요인</th><th>비중</th><th>표본 (일)</th><th>과거 변동성</th><th>모형 변동성</th><th>요인 제외 평소 변동성</th><th>과거 평균 (연)</th><th>3년 스무딩 (연)</th><th>칼만·EMA 추세 (연)</th><th>사전값 비중</th><th>적용 기대수익 (${scenName(scen)})</th></tr>` +
       md.factors.map((f, i) => `<tr><td class="l">${f.kind === "fx" ? "환율 " + f.key : esc(f.key)}${f.cash ? ' <span class="tag">현금성</span>' : ""}</td>
         <td>${f.kind === "asset" ? pct(b.holdings[i].valueKrw / R.V0) : "-"}</td><td>${f.n}</td><td>${pct(f.volRaw)}</td><td>${pct(f.vol)}</td><td>${pct(f.volDiff)}</td>
         <td>${pct(f.muHist)}</td><td>${f.gSmooth == null ? "-" : spct(Math.exp(f.gSmooth) - 1)}</td><td>${f.gTrend == null ? "-" : spct(Math.exp(f.gTrend) - 1)}</td><td>${f.shrink == null ? "-" : pct(1 - f.shrink, 0)}</td><td><b>${pct(f.mu[scen])}</b></td></tr>`).join("") +
       `<tr><td class="l muted" colspan="11">상관행렬 ${md.corrShrink > 0 ? `(양의 정부호 보정 ${pct(md.corrShrink, 0)})` : ""}: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
     renderStrategy();
     if (curAna() === "fx") renderFx();
-    if (curAna() === "events") renderEvChart();
+    if (curAna() === "events") { renderEvChart(); runXfEffect(); }
     aiRefresh();
   }
 
@@ -853,7 +1039,7 @@
     const soon = (t) => md.eventList.filter((e) => (e.event.target === t || e.event.target === "ALL") && yearsBetween(md.startDate, e.date) <= 0.34);
     const tips = [];
     tips.push(`**목표 확률 ${pct(R.p_goal, 0)}** (${scenName(S.state.model.scenario)} 시나리오). 필요한 연수익률 **${pct(req)}**, 전망 중앙값의 연수익률 **${pct(medC)}**.`);
-    if (R.p_goal < 0.5 && R.req50 != null) tips.push(`**적립**: 지금 비중 그대로 확률 50%를 맞추려면 매월 약 **${krw(R.req50)}원**을 더 넣어야 합니다 (월 적립은 관찰 대시보드의 목표 수정에서 입력).`);
+    if (R.p_goal < 0.5 && R.req50 != null) tips.push(`**적립**: 지금 비중 그대로 확률 50%를 맞추려면 매월 약 **${krw(R.req50)}원**을 더 넣어야 합니다 (월 적립은 자산 추이의 목표 수정에서 입력).`);
     if (risky[top] > 0.45) tips.push(`**집중도**: ${b.holdings[top].ticker} 한 종목이 **${pct(w[top], 0)}**입니다. 하위 5% 결과가 ${krw(R.terminal.p5)}원까지 내려갑니다. '비중안 비교'에서 줄였을 때를 확인해 보세요.`);
     if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장에서 살 여력과 심리적 완충을 위해 3~5%를 권합니다.`);
     tips.push(`**낙폭**: 최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}. 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
@@ -888,7 +1074,7 @@
     const lines = [];
     lines.push(`내 미국·한국 주식 포트폴리오의 종목별 투자 전략을 조언해 줘. 아래는 내 도구가 계산한 값이야 (${md.startDate} 기준, 원화).`);
     lines.push(`목표: ${krw(g.amount)}원, 목표일 ${g.date} (${yrs.toFixed(1)}년). 현재 평가액 ${krw(V0)}원, 필요한 연수익률 ${pct((g.amount / V0) ** (1 / yrs) - 1)}.`);
-    lines.push(`몬테카를로 전망(환율·기업 사건 포함): 목표 달성 확률 ${pct(R.p_goal, 0)}, 목표일 중앙값 ${krw(R.terminal.p50)}원, 하위5% ${krw(R.terminal.p5)}원, 상위5% ${krw(R.terminal.p95)}원, 최대낙폭 중앙값 ${pct(R.mdd_median, 0)}.`);
+    lines.push(`몬테카를로 전망(환율·외부 요인 포함): 목표 달성 확률 ${pct(R.p_goal, 0)}, 목표일 중앙값 ${krw(R.terminal.p50)}원, 하위5% ${krw(R.terminal.p5)}원, 상위5% ${krw(R.terminal.p95)}원, 최대낙폭 중앙값 ${pct(R.mdd_median, 0)}.`);
     lines.push("종목 (비중 / 추세 / 칼만 기울기 연율 / 변동성 / 고점 대비 / 1년 수익률 / 목표일까지 오를 확률):");
     b.holdings.forEach((h, i) => {
       const p = S.prices[h.ticker], sg = p ? Model.indicators(p.dates, p.adj)?.sig : null, f = md.factors[i];
@@ -930,7 +1116,7 @@
         const ind = Model.indicators(p.dates, p.adj), sf = Model.smoothFit(p.dates, p.adj, 3), sg = ind?.sig;
         L.push(`- ${r.h.ticker}: ${pct(r.w, 0)} / ${pct(c3)}${n < 252 ? ` (상장 ${n}거래일)` : ""} / ${sg?.ret_1y != null ? spct(sg.ret_1y, 0) : "-"} / ${sg ? pct(sg.drawdown, 0) : "-"} / ${ind ? spct(Math.exp(Model.trendGrowth(ind)) - 1, 0) : "-"} / ${sf ? spct(Math.exp(sf.slope) - 1, 0) : "-"}`);
       });
-      L.push("미래 전망 (몬테카를로, 환율·기업 사건 포함) 기준별: 목표 달성 확률 / 목표일 중앙값 / 하위5% / 상위5%:");
+      L.push("미래 전망 (몬테카를로, 환율·외부 요인 포함) 기준별: 목표 달성 확률 / 목표일 중앙값 / 하위5% / 상위5%:");
       Fs.forEach(([nm, f]) => L.push(`- ${nm}: ${pct(f.R.p_goal, 0)} / ${krw(f.R.terminal.p50)}원 / ${krw(f.R.terminal.p5)}원 / ${krw(f.R.terminal.p95)}원`));
       L.push(`종목별 목표일 원화 평가액 중앙값 (${Fs.map(([nm]) => nm.split(" ")[0]).join(" / ")}):`);
       Fs[0][1].R.stocks.forEach((s2, i) => L.push(`- ${s2.ticker}: ${Fs.map(([, f]) => krw(f.R.stocks[i]?.valBands.p50.at(-1)) + "원").join(" / ")}`));
@@ -951,7 +1137,7 @@
     const { b, withEv: R, noEv, hasEv } = lastForecast, md = b.model, V0 = R.V0, yrs = yearsBetween(md.startDate, g.date), scen = S.state.model.scenario;
     const head = `목표 ${krw(g.amount)}원, 목표일 ${g.date} (${yrs.toFixed(1)}년), 현재 평가액 ${krw(V0)}원, 필요한 연수익률 ${pct((g.amount / V0) ** (1 / yrs) - 1)}, 월 적립 ${krw(Number(g.monthly_contribution) || 0)}원.`;
     if (kind === "forecast") {
-      L.push(`내 포트폴리오의 3년 몬테카를로 전망 결과야 (다변량 t 분포, 환율·기업 사건 포함, ${nf(S.state.model.n_paths)}경로, ${scenName(scen)} 시나리오). ${head}`);
+      L.push(`내 포트폴리오의 3년 몬테카를로 전망 결과야 (다변량 t 분포, 환율·외부 요인 포함, ${nf(S.state.model.n_paths)}경로, ${scenName(scen)} 시나리오). ${head}`);
       L.push(`목표 달성 확률 ${pct(R.p_goal, 0)}, 중간에 한 번이라도 도달 ${pct(R.p_touch, 0)}, 목표일 중앙값 ${krw(R.terminal.p50)}원, 하위5% ${krw(R.terminal.p5)}원, 상위5% ${krw(R.terminal.p95)}원, 원금 손실 확률 ${pct(R.p_loss, 0)}, 최대낙폭 중앙값 ${pct(R.mdd_median, 0)}.`);
       L.push("연도별 누적 도달 확률: " + R.byYear.map((y) => `${y.year}년 내 ${pct(y.p, 0)}`).join(", "));
       L.push("종목 (비중 / 적용 기대수익 연 / 모형 변동성 / 오를 확률):");
@@ -960,22 +1146,19 @@
       return L.join("\n");
     }
     if (kind === "events") {
-      // 화면의 타일·그래프와 같은 값만 보낸다 (펼친 반복 일정 대신 사건 단위로, 꺼진 사건도 표시)
-      const nm = (t) => (t === "ALL" ? "전체 종목" : t === "FX" ? "원/달러 환율" : t);
-      L.push(`내 포트폴리오 전망 모형에 넣은 기업 사건 가정과 그 효과야. ${head}`);
+      // 화면의 타일·표와 같은 값만 보낸다 (펼친 반복 일정 대신 사건 단위로, 꺼진 사건도 표시)
+      L.push(`내 포트폴리오 전망 모형에 넣은 외부 요인(기업 사건, 금리·거시, 테슬라 인도량, 신제품·리콜, 유가, 금값, 원자재, 정치·선거, 전쟁) 가정과 그 효과야. ${head}`);
       L.push("보유 비중: " + b.holdings.map((h) => `${h.ticker} ${pct(h.valueKrw / V0, 0)}`).join(", "));
-      L.push("사건 (대상 / 종류 / 다음 날짜(추정) / 반복 / 발생 확률 / 평균 영향 / 불확실성 ± / 변동성 확대 / 상태):");
-      S.state.events.forEach((e) => { const o = nextOcc(e);
-        L.push(`- ${nm(e.target)} / ${e.kind} / ${o.next || "지남"} / ${e.repeat === "quarterly" ? `분기마다, 목표일까지 ${o.n}회` : "한 번"} / ${e.prob}% / ${e.mean > 0 ? "+" : ""}${e.mean}% / ±${e.sd}% / ${e.vol_mult && e.vol_mult !== 1 && e.vol_days ? `${e.vol_mult}배 ${e.vol_days}거래일` : "없음"} / ${e.on ? "켜짐" : "꺼짐(모형 제외)"}`); });
+      const B = factorBetas();
+      L.push("종목별 민감도 (최근 3년 일별, 시장 외 요인은 시장 움직임 제외): " + b.holdings.map((h) => `${h.ticker} 시장베타 ${(B.stat.mkt[h.ticker]?.beta ?? NaN).toFixed(2)}, 금리+10bp ${spct((B.stat.rate[h.ticker]?.beta ?? NaN) * 10, 2)}, 유가+10% ${spct((B.stat.oil[h.ticker]?.beta ?? NaN) * 0.0953, 2)}, 금+10% ${spct((B.stat.gold[h.ticker]?.beta ?? NaN) * 0.0953, 2)}, 원자재+10% ${spct((B.stat.cmdty[h.ticker]?.beta ?? NaN) * 0.0953, 2)}`).join("; "));
+      L.push("사건 (묶음 / 대상 / 종류 / 다음 날짜(추정) / 반복 / 발생 확률 / 평균 영향 / 불확실성 ± / 변동성 확대 / 상태). 요인 사건의 영향은 요인 단위(시장=S&P500 %, 금리=bp, 유가·금·원자재=%)이고 종목별 민감도만큼 반영:");
+      S.state.events.forEach((e) => { const o = nextOcc(e), u = e.factor === "rate" ? "bp" : "%";
+        L.push(`- ${catName(e.cat)} / ${tgtLab(e)} / ${e.kind} / ${o.next || "지남"} / ${e.repeat && e.repeat !== "none" ? `${repName(e.repeat)}, 목표일까지 ${o.n}회` : "한 번"} / ${e.prob}% / ${e.mean > 0 ? "+" : ""}${e.mean}${u} / ±${e.sd}${u} / ${e.vol_mult && e.vol_mult !== 1 && e.vol_days ? `${e.vol_mult}배 ${e.vol_days}거래일` : "없음"} / ${e.on ? "켜짐" : "꺼짐(모형 제외)"}`); });
       if (!S.state.events.length) L.push("- (사건 없음)");
-      L.push("참고: 평균 영향 0%인 실적은 방향 없이 변동만 키운다는 뜻이고, 실적 변동은 과거 변동성에 이미 들어 있어 그만큼 평소 변동성에서 뺐다.");
-      if (hasEv) {
-        L.push(`몬테카를로 결과 (사건 제외 → 반영): 목표 확률 ${pct(noEv.p_goal, 0)} → ${pct(R.p_goal, 0)}, 목표일 중앙값 ${krw(noEv.terminal.p50)} → ${krw(R.terminal.p50)}원, 하위5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원.`);
-        R.stocks.forEach((s2, i) => { const s0 = noEv.stocks[i]; if (!md.eventList.some((x) => x.event.target === s2.ticker || x.event.target === "ALL")) return;
-          const k = Math.min(6, s2.bands.p50.length - 1);
-          L.push(`- ${s2.ticker} 6개월 뒤 가격 중앙값 ${nf(s0.bands.p50[k], 2)} → ${nf(s2.bands.p50[k], 2)}, 하위5% ${nf(s0.bands.p5[k], 2)} → ${nf(s2.bands.p5[k], 2)}`); });
-      }
-      L.push("요청: 위 목록과 숫자만 근거로 1) 켜진 사건별로 가정한 확률·영향 크기가 과거 사례에 비춰 적절한지(사건 이름과 숫자를 그대로 인용), 2) 사건이 결과를 얼마나 바꾸는지 해석, 3) 목록에 없지만 넣을 만한 사건(있다면 '추가 고려'로 구분, 날짜는 확인 필요 표시), 4) 사건 전후 대응. 목록에 없는 사건을 이미 있는 것처럼 말하지 마. " + tail);
+      L.push("참고: 평균 영향 0인 사건은 방향 없이 변동만 키운다는 뜻이고, 반복 사건의 변동은 과거 변동성에 이미 들어 있어 그만큼 평소 변동성에서 뺐다.");
+      if (hasEv) L.push(`몬테카를로 결과 (요인 제외 → 반영): 목표 확률 ${pct(noEv.p_goal, 0)} → ${pct(R.p_goal, 0)}, 목표일 중앙값 ${krw(noEv.terminal.p50)} → ${krw(R.terminal.p50)}원, 하위5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원.`);
+      if (xfEff && xfEff.fc === lastForecast) L.push("묶음별 영향 (그 묶음만 켰을 때 목표 확률 변화): " + Object.entries(xfEff.by).map(([c, X]) => `${catName(c)} ${spct(X.p_goal - xfEff.none.p_goal, 0)}p`).join(", "));
+      L.push("요청: 위 목록과 숫자만 근거로 1) 요인 묶음별로 가정한 확률·영향 크기가 과거 사례에 비춰 적절한지(사건 이름과 숫자를 그대로 인용), 2) 내 포트폴리오가 가장 민감한 외부 요인과 그 이유, 3) 목록에 없지만 넣을 만한 요인(있다면 '추가 고려'로 구분, 날짜는 확인 필요 표시), 4) 요인별 대응. 목록에 없는 사건을 이미 있는 것처럼 말하지 마. " + tail);
       return L.join("\n");
     }
     if (kind === "alloc") {
@@ -1118,10 +1301,14 @@
       } else {
         if (!lastForecast) return ""; const { b, withEv: R, noEv, hasEv } = lastForecast, md = b.model, V0 = R.V0;
         if (kind === "events") {
-          const on = S.state.events.filter((e) => e.on);
-          L.push("### 켜진 사건", ...on.map((e) => `- ${e.target} ${e.kind}: ${e.repeat === "quarterly" ? "분기마다 " : ""}${e.mean ? `평균 ${e.mean}%` : "방향 중립"} ±${e.sd}%${e.prob < 100 ? `, 확률 ${e.prob}%` : ""}`));
+          const on = S.state.events.filter((e) => e.on), byCat = {};
+          on.forEach((e) => (byCat[e.cat] = (byCat[e.cat] || 0) + 1));
+          L.push("### 켜진 외부 요인", ...Object.entries(byCat).map(([c, n]) => `- ${catName(c)} ${n}건`));
           if (hasEv) L.push("### 효과", `- 목표 확률 ${pct(noEv.p_goal, 0)} → ${B(pct(R.p_goal, 0))}, 하위 5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원`);
-          L.push("- 날짜는 추정이니 실적 발표일·보호예수 해제일은 공시로 확인하세요.");
+          if (xfEff && xfEff.fc === lastForecast) { const w = Object.entries(xfEff.by).sort((a, b2) => a[1].terminal.p5 - b2[1].terminal.p5)[0]; if (w) L.push(`- 나쁜 경우를 가장 크게 끌어내리는 요인: ${B(catName(w[0]))}`); }
+          const Bt = factorBetas(), hi = b.holdings.map((h) => [h.ticker, Bt.stat.mkt[h.ticker]?.beta]).filter((x) => x[1] != null).sort((a, b2) => b2[1] - a[1])[0];
+          if (hi) L.push(`- 시장 충격(정치·전쟁·거시)에 가장 민감한 종목: ${B(hi[0])} (베타 ${hi[1].toFixed(2)})`);
+          L.push("- 날짜는 추정이니 실적·인도량·FOMC·선거 날짜는 공시와 일정표로 확인하세요.");
         } else if (kind === "forecast") {
           L.push("### 결과", `- 목표 확률 ${B(pct(R.p_goal, 0))}, 목표일 중앙값 ${krw(R.terminal.p50)}원 (목표의 ${pct(R.terminal.p50 / g.amount, 0)})`, `- 나쁜 경우 5% ${krw(R.terminal.p5)}원, 원금 손실 확률 ${pct(R.p_loss, 0)}`);
           const hv = b.holdings.map((h, i) => ({ t: h.ticker, v: md.factors[i].vol, w: h.valueKrw / V0 })).sort((a, b2) => b2.v * b2.w - a.v * a.w)[0];
@@ -1195,6 +1382,42 @@
   function aiRefresh() { if ($("#tabs .on")?.dataset.tab === "analysis") aiAuto(curAna(), false); }
 
 
+  // ------------------------------------------------------------ 인사이트 (뉴스)
+  // data/news.json: GitHub Actions(웹) 또는 내 PC 서버가 한 시간마다 RSS·Yahoo 뉴스·유튜브 RSS 를 모아 AI 중계로 한글 번역·요약해 둔 파일
+  let NEWS = null, newsAt = 0;
+  async function loadNews(force) {
+    if (!force && NEWS && Date.now() - newsAt < 10 * 60000) return NEWS;
+    try {
+      const r = await fetch(MODE === "local" ? "/api/news" : "../data/news.json?t=" + Date.now(), { cache: "no-store" });
+      if (r.ok) { NEWS = await r.json(); newsAt = Date.now(); }
+    } catch (e) { /* 없으면 아래에서 안내 */ }
+    return NEWS;
+  }
+  const ago = (t) => { const m = (Date.now() - Date.parse(t)) / 60000; if (!isFinite(m)) return ""; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
+  const newsLi = (it) => `<li><a href="${esc(it.link)}" target="_blank" rel="noopener noreferrer">${esc(it.title || it.orig)}</a>
+    <div class="nmeta">${esc(it.broker ? it.broker + " · " : "")}${esc(it.source || "")}${it.time ? " · " + ago(it.time) : ""}</div>${it.summary ? `<div class="nsum">${esc(it.summary)}</div>` : ""}</li>`;
+  async function renderInsight() {
+    const N = await loadNews();
+    if (!N) {
+      const msg = "<li class='muted'>아직 모은 뉴스가 없습니다. 한 시간마다 자동으로 모읍니다.</li>";
+      $("#newsMedia").innerHTML = $("#newsBroker").innerHTML = msg; $("#newsFuture").innerHTML = $("#newsYt").innerHTML = ""; $("#newsNote").textContent = ""; return;
+    }
+    const rg = $("#newsRange .on")?.dataset.r || "realtime", sec = N[rg] || {};
+    const empty = "<li class='muted'>해당 기사가 없습니다.</li>";
+    $("#newsMedia").innerHTML = (sec.media || []).slice(0, 5).map(newsLi).join("") || empty;
+    $("#newsBroker").innerHTML = (sec.broker || []).slice(0, 5).map(newsLi).join("") || empty;
+    // 미래 가치: 내 보유 종목 순서대로 (수집 목록에 없는 종목은 다음 수집 때부터)
+    const held = S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker);
+    const fut = (N.future || []).filter((f) => !held.length || held.includes(f.ticker)).sort((a, b) => held.indexOf(a.ticker) - held.indexOf(b.ticker));
+    $("#newsFuture").innerHTML = fut.map((f) => `<div class="futrow"><h3>${esc(f.ticker)}${f.name ? ` <span class="muted small">${esc(f.name)}</span>` : ""}</h3>${f.view ? `<p class="small fview">${esc(f.view)}</p>` : ""}<ul class="newslist">${(f.items || []).map(newsLi).join("") || empty}</ul></div>`).join("")
+      || "<p class='muted small'>보유 종목 관련 기사가 아직 없습니다.</p>";
+    const Y = N.youtube || {};
+    $("#newsYt").innerHTML = (Y.points?.length ? `<ul class="ytpts">${Y.points.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "")
+      + (Y.keywords?.length ? `<p class="small">${Y.keywords.map((k) => `<span class="tag">${esc(k)}</span>`).join(" ")}</p>` : "")
+      + (Y.videos?.length ? `<details class="opt"><summary>오늘 올라온 영상 ${Y.videos.length}개</summary><ul class="newslist">${Y.videos.map((v) => `<li><a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer">${esc(v.title)}</a><div class="nmeta">${esc(v.channel || "")}${v.time ? " · " + ago(v.time) : ""}</div></li>`).join("")}</ul></details>` : "<p class='muted small'>오늘 올라온 영상이 아직 없습니다.</p>");
+    $("#newsNote").textContent = `${N.updated ? new Date(N.updated).toLocaleString() + " 수집" : ""}${rg === "weekly" && sec.updated ? ` · 주간 목록 ${new Date(sec.updated).toLocaleString()}` : ""} · 한 시간마다 자동으로 모으고 무료 AI로 한글 번역·요약합니다${N.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 링크는 원래 기사로 새 창에서 열립니다.`;
+  }
+
   // ------------------------------------------------------------ 비중안 비교
   async function runAlloc() {
     const st = $("#allocStatus"), btn = $("#btnAlloc");
@@ -1205,7 +1428,7 @@
       const base = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw }));
       if (!base.some((h) => h.ticker === "QQQ")) { const q = S.prices.QQQ; base.push({ ticker: "QQQ", shares: 0, price0: q.close[q.close.length - 1], ccy: "USD", valueKrw: 1 }); }
       const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
-      const model = Model.buildModel({ holdings: base, series, fxOf, settings: m, events: S.state.events, startDate: today(), goalDate: g.date });
+      const model = Model.buildModel({ holdings: base, series, fxOf, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goalDate: g.date });
       const V0 = base.reduce((s2, h) => s2 + (h.ticker === "QQQ" && h.shares === 0 ? 0 : h.valueKrw), 0);
       const w0 = base.map((h) => (h.ticker === "QQQ" && h.shares === 0 ? 0 : h.valueKrw / V0)), qi = base.findIndex((h) => h.ticker === "QQQ");
       const risky = base.map((h, i) => (model.factors[i].cash || i === qi ? 0 : w0[i])), top = risky.indexOf(Math.max(...risky));
@@ -1378,6 +1601,7 @@
     $$(".tab").forEach((t) => t.classList.toggle("on", t.id === "tab-" + name));
     if (name === "dash") renderDash();
     if (name === "analysis") renderAnalysis();
+    if (name === "insight") renderInsight();
     try { localStorage.setItem("tab", name); } catch (e) { /* 무시 */ }
   }
   function segClick(id, cb) { $(id).addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; $$(id + " button").forEach((x) => x.classList.toggle("on", x === b)); cb(); }); }
@@ -1403,11 +1627,14 @@
     $("#eventTable").addEventListener("input", onEventEdit);
     $("#evTiles").addEventListener("click", (e) => { const t = e.target.closest("[data-evt]"); if (!t) return; const ev = S.state.events[+t.dataset.evt]; ev.on = !ev.on; save(); renderEvents(); if (curAna() === "events") runForecast(); });
     segClick("#evView", renderEvChart);
+    segClick("#newsRange", renderInsight);
+    segClick("#xfNav", () => { renderEvTiles(); renderXf(); });
     $("#fcStocksCard").addEventListener("toggle", (e) => { if (e.target.open) renderFcStocks(); });
     $("#eventTable").addEventListener("change", onEventEdit);
     $("#eventTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d && armed(d)) { S.state.events.splice(+d.dataset.del, 1); save(); renderEvents(); } });
     $("#btnAddEvent").onclick = () => {
-      S.state.events.push({ id: "e" + Date.now(), on: true, date: Model.addMonths(today(), 1), target: S.state.holdings[0]?.ticker || "ALL", kind: "기타", repeat: "none", prob: 100, mean: 0, sd: 5, vol_mult: 1, vol_days: 0, note: "" });
+      const c = curCat() === "all" ? "corp" : curCat(), fk = CAT_FACTOR[c];
+      S.state.events.push({ id: "e" + Date.now(), on: true, cat: c, factor: fk || "none", date: Model.addMonths(today(), 1), target: fk ? "ALL" : S.state.holdings[0]?.ticker || "ALL", kind: "기타", repeat: "none", prob: 100, mean: 0, sd: fk === "rate" ? 20 : 5, vol_mult: 1, vol_days: 0, note: "" });
       save(); renderEvents();
     };
     $("#scenario").onchange = (e) => { S.state.model.scenario = e.target.value; save(); runForecast(); };

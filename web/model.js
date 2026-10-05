@@ -151,6 +151,20 @@
     return (k + Math.log(s.ema50 / s.ema200) / (75 / TD)) / 2; // EMA50 과 EMA200 의 무게중심 차이 약 75거래일
   }
 
+  // 사건 반복: 한 번, 매달, 6주(FOMC 근사), 분기, 반년, 매년
+  const PER_YEAR = { monthly: 12, "6w": 365.25 / 42, quarterly: 4, semi: 2, yearly: 1 };
+  function occurrences(e, startDate, goalDate) {
+    const out = [];
+    for (let k = 0; k < 600; k++) {
+      const d = e.repeat === "6w" ? iso(new Date(parseDate(e.date).getTime() + 42 * k * 86400e3))
+        : addMonths(e.date, k * ({ monthly: 1, quarterly: 3, semi: 6, yearly: 12 }[e.repeat] || 0));
+      if (d > goalDate) break;
+      if (d > startDate) out.push(d);
+      if (!PER_YEAR[e.repeat]) break;
+    }
+    return out;
+  }
+
   // ------------------------------------------------------------ 전망 모형 입력 만들기
   // holdings: [{ticker, shares, price0, ccy, valueKrw}], series: {sym: {dates, adj}}, fxSym(ccy)
   function buildModel(opt) {
@@ -253,33 +267,46 @@
     if (monthIdx[monthIdx.length - 1] !== days.length) { monthIdx.push(days.length); monthDates.push(days[days.length - 1]); }
     // monthIdx 는 경로 배열 기준 (0 = 시작, i+1 = days[i] 장마감)
 
-    // 사건 펼치기 (분기 반복 포함) → 거래일 번호
+    // 사건 펼치기 (반복 포함) → 거래일 번호
+    // 외부 요인 사건(e.factor)은 요인 충격을 종목별 민감도(opt.betas[요인][종목])만큼 나눠 준다.
+    // 시장(mkt)·유가·금·원자재는 % 변화, 금리(rate)는 bp 변화가 단위다
     const dayOf = (s) => { let lo = 0, hi = days.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (days[mid] < s) lo = mid + 1; else hi = mid; } return lo; };
     const keyIdx = new Map(factors.map((f, i) => [f.key, i]));
     const fxIdx = (ccy) => keyIdx.get(fxOf(ccy));
+    const betas = opt.betas || {};
     const sched = [], eventList = [];
     for (const e of events || []) {
       if (!e.on || !e.date) continue;
-      let targets;
-      if (e.target === "ALL") targets = factors.map((f, i) => (f.kind === "asset" && !f.cash ? i : -1)).filter((i) => i >= 0);
-      else if (e.target === "FX") targets = [fxIdx("USD")].filter((i) => i !== undefined);
-      else targets = [keyIdx.get(e.target)].filter((i) => i !== undefined && factors[i].kind === "asset");
+      let targets, scales;
+      if (e.factor && e.factor !== "none") {
+        const bt = betas[e.factor] || {};
+        targets = []; scales = [];
+        factors.forEach((f, i) => { const b = bt[f.key]; if (f.kind === "asset" && !f.cash && b != null && Math.abs(b) > 1e-6) { targets.push(i); scales.push(b); } });
+      } else {
+        if (e.target === "ALL") targets = factors.map((f, i) => (f.kind === "asset" && !f.cash ? i : -1)).filter((i) => i >= 0);
+        else if (e.target === "FX") targets = [fxIdx("USD")].filter((i) => i !== undefined);
+        else targets = [keyIdx.get(e.target)].filter((i) => i !== undefined && factors[i].kind === "asset");
+        scales = targets.map(() => 1);
+      }
       if (!targets.length) continue;
-      const sd = Math.max(0, Number(e.sd) || 0) / 100, mn = (Number(e.mean) || 0) / 100;
-      const ev = { prob: Math.min(1, Math.max(0, (Number.isFinite(Number(e.prob)) && e.prob !== "" ? Number(e.prob) : 100) / 100)), jm: Math.log(Math.max(0.01, 1 + mn)) - 0.5 * sd * sd,
-        js: sd, vm: Math.max(0.1, Number(e.vol_mult) || 1), vd: Math.max(0, Math.round(Number(e.vol_days) || 0)), targets, src: e };
-      for (let k = 0, d = e.date; d <= goalDate && k < 400; k++, d = addMonths(e.date, 3 * k)) {
-        if (d <= startDate) { if (e.repeat !== "quarterly") break; continue; }
+      const lin = e.factor === "rate";
+      const sd = Math.max(0, Number(e.sd) || 0) / (lin ? 1 : 100), mn = (Number(e.mean) || 0) / (lin ? 1 : 100);
+      const ev = { prob: Math.min(1, Math.max(0, (Number.isFinite(Number(e.prob)) && e.prob !== "" ? Number(e.prob) : 100) / 100)),
+        jm: lin ? mn : Math.log(Math.max(0.01, 1 + mn)) - 0.5 * sd * sd, js: sd,
+        vm: Math.max(0.1, Number(e.vol_mult) || 1), vd: Math.max(0, Math.round(Number(e.vol_days) || 0)), targets, scales, cat: e.cat || "corp", src: e };
+      for (const d of occurrences(e, startDate, goalDate)) {
         const di = dayOf(d); if (di >= days.length) break;
         sched.push({ day: di, ev }); eventList.push({ date: days[di], event: e });
-        if (e.repeat !== "quarterly") break;
       }
-      // 반복 실적 사건은 과거 변동성에 이미 들어 있으므로 평소 변동성에서 그만큼 뺀다
-      if (m.earnings_adjust && e.repeat === "quarterly") for (const t of targets) {
-        factors[t].evVar = (factors[t].evVar || 0) + 4 * ev.prob * sd * sd;
-      }
+      // 반복 사건은 과거 변동성에 이미 들어 있으므로 평소 변동성에서 그만큼 뺀다 (요인 묶음별로 기록)
+      const fr = PER_YEAR[e.repeat] || 0;
+      if (m.earnings_adjust && fr) targets.forEach((t, k) => {
+        const f = factors[t], v = fr * ev.prob * (scales[k] * sd) ** 2;
+        f.evVarCat = f.evVarCat || {}; f.evVarCat[ev.cat] = (f.evVarCat[ev.cat] || 0) + v;
+      });
     }
     for (const f of factors) {
+      f.evVar = Object.values(f.evVarCat || {}).reduce((s, x) => s + x, 0);
       f.volDiff = f.evVar ? Math.sqrt(Math.max(f.vol ** 2 - f.evVar, 0.5 * f.vol ** 2)) : f.vol;
     }
     // 추종 시나리오: 스무딩(3년 직선) 또는 추세(칼만·EMA)의 연 성장률을 그대로 이어 간다.
@@ -308,7 +335,13 @@
     const nu = Math.max(3, Number(dof) || 5), tAdj = Math.sqrt((nu - 2) / nu);
     const rng = makeRng(seed);
     // 사건을 빼고 계산할 때는 실적 몫을 뺀 변동성 대신 과거 변동성 그대로 (실적 위험이 사라진 것처럼 보이지 않게)
-    const sig = factors.map((f) => (withEvents ? f.volDiff : f.vol) / Math.sqrt(TD));
+    // opt.cats (Set) 를 주면 그 요인 묶음의 사건만 넣는다 (요인별 영향 비교용)
+    const cats = opt.cats || null, use = (ev) => !cats || cats.has(ev.cat);
+    const sig = factors.map((f) => {
+      if (!withEvents) return f.vol / Math.sqrt(TD);
+      const ded = Object.entries(f.evVarCat || {}).reduce((s, [c, v]) => s + (!cats || cats.has(c) ? v : 0), 0);
+      return (ded ? Math.sqrt(Math.max(f.vol ** 2 - ded, 0.5 * f.vol ** 2)) : f.vol) / Math.sqrt(TD);
+    });
     const muD = factors.map((f) => Math.log(1 + f.mu[scenario]) / TD);
     const fxCol = holdings.map((h) => factors.findIndex((f) => f.kind === "fx" && f.key === opt.fxOf(h.ccy)));
     const v0 = holdings.map((h) => h.valueKrw), V0 = v0.reduce((s, x) => s + x, 0);
@@ -341,10 +374,12 @@
         if (withEvents) {
           const evs = byDay.get(d);
           if (evs) for (const ev of evs) {
-            if (rng.next() >= ev.prob) continue;
-            const j = ev.jm + ev.js * rng.normal(); // 대상이 여럿이면 같은 충격
-            for (const t of ev.targets) {
-              lr[t] += j;
+            const u = rng.next(), zz = rng.normal(); // 걸러 낸 사건도 난수는 똑같이 써서 비교가 공정하게
+            if (!use(ev) || u >= ev.prob) continue;
+            const j = ev.jm + ev.js * zz; // 대상이 여럿이면 같은 충격 (요인 사건은 민감도만큼)
+            for (let k = 0; k < ev.targets.length; k++) {
+              const t = ev.targets[k];
+              lr[t] += j * ev.scales[k];
               if (ev.vd > 0) { boostUntil[t] = d + ev.vd; boostMult[t] = ev.vm; }
             }
           }
@@ -424,5 +459,5 @@
     };
   }
 
-  window.Model = { TD, indicators, buildModel, simulate, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  window.Model = { TD, occurrences, PER_YEAR, indicators, buildModel, simulate, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();

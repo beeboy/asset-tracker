@@ -22,7 +22,8 @@
   function lineChart(host, opt) {
     host.innerHTML = "";
     const W = Math.max(220, host.clientWidth || 600), H = opt.height || 280;
-    const m = { l: W < 480 ? 54 : 64, r: W < 480 ? 26 : 20, t: 12, b: 28 };
+    // 좁은 화면(휴대폰 세로)은 y축 글자를 그래프 안쪽 왼쪽에 얹어 좌우 여백을 문단 여백에 맞춘다
+    const narrow = W < 480, m = { l: narrow ? 1 : 64, r: narrow ? 2 : 20, t: narrow ? 14 : 12, b: 28 };
     const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: "chart" }, host);
     const xs = [], ys = [];
     const collect = (x, y) => { for (let i = 0; i < y.length; i++) if (y[i] != null && isFinite(y[i])) { xs.push(toT(x[i])); ys.push(y[i]); } };
@@ -47,7 +48,8 @@
       if (v <= 0 && log) return;
       const yy = Y(v); if (yy < m.t - 1 || yy > H - m.b + 1) return;
       el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: "grid" }, g);
-      el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end" }, g).textContent = yfmt(v);
+      if (narrow) el("text", { x: m.l + 2, y: yy - 3, "text-anchor": "start", class: "inlab" }, g).textContent = yfmt(v);
+      else el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end" }, g).textContent = yfmt(v);
     });
     const spanDays = (x1 - x0) / 86400e3, xt = [];
     const d = new Date(x0); d.setUTCDate(1);
@@ -56,7 +58,8 @@
     else { for (let t = x0; t <= x1; t += Math.max(1, Math.round(spanDays / 6)) * 86400e3) xt.push(t); }
     xt.forEach((t) => {
       const dd = new Date(t), lab = stepM >= 12 ? `${dd.getUTCFullYear()}` : stepM ? `${String(dd.getUTCFullYear()).slice(2)}.${dd.getUTCMonth() + 1}` : `${dd.getUTCMonth() + 1}/${dd.getUTCDate()}`;
-      el("text", { x: X(t), y: H - 8, "text-anchor": "middle" }, g).textContent = lab;
+      const xx = X(t), edge = narrow && xx < 14 ? "start" : narrow && xx > W - 14 ? "end" : "middle";
+      el("text", { x: xx, y: H - 8, "text-anchor": edge }, g).textContent = lab;
     });
 
     // 밴드
@@ -90,6 +93,9 @@
       el("path", { d: `M${xx - 5},${H - m.b} L${xx + 5},${H - m.b} L${xx},${H - m.b - 8}Z`, fill: mk.color || "var(--warn)" }, svg)
         .appendChild(el("title")).textContent = mk.label;
     });
+
+    // 안쪽 y축 글자는 선 위에 보이도록 맨 위로
+    if (narrow) { const top = el("g", { class: "axis" }, svg); g.querySelectorAll("text.inlab").forEach((t) => top.appendChild(t)); }
 
     // 마우스 위치 값 보기
     const tip = document.createElement("div"); tip.className = "tip"; host.appendChild(tip);

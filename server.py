@@ -9,7 +9,8 @@
   1) web/ 폴더의 화면(HTML/JS)을 내 PC 안에서만 보여 준다 (127.0.0.1, 외부 접속 불가).
   2) 브라우저가 직접 부를 수 없는 Yahoo Finance 시세를 대신 받아 data/prices/ 에 저장한다.
   3) 화면에서 입력한 종목·목표·사건 목록을 data/state.json 에 저장한다.
-계산(칼만 필터, 몬테카를로 전망)은 모두 브라우저에서 한다. 인공지능 호출은 전혀 없다.
+  4) 인사이트 화면의 뉴스를 한 시간마다 모은다 (news.py, 번역·요약은 data/config.json 의 AI 중계).
+계산(칼만 필터, 몬테카를로 전망)은 모두 브라우저에서 한다.
 """
 from __future__ import annotations
 
@@ -40,6 +41,9 @@ BACKUP = DATA / "backup"
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/"
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "application/json"}
 FX_SYMBOLS = {"USD": "KRW=X"}  # 통화 -> 원화 환율 심볼
+# 외부 요인 분석용 대리 지표: 시장(S&P500), 미국 10년 금리, WTI 유가, 금, 원자재 지수
+FACTOR_SYMBOLS = ["SPY", "^TNX", "CL=F", "GC=F", "DBC"]
+NEWS_LOCK = threading.Lock()
 LOCK = threading.Lock()
 
 
@@ -212,6 +216,29 @@ def all_data() -> dict:
             "config": read_json(STATE_DEFAULT.parent / "config.json", {}), "server_time": datetime.now().isoformat(timespec="seconds")}
 
 
+def news_targets() -> tuple[list[str], dict]:
+    """미래 가치 뉴스를 모을 종목: 내 PC 판은 보유 종목, 웹(Actions)은 tickers.json"""
+    st = read_json(STATE, None)
+    tks = [h["ticker"] for h in (st or {}).get("holdings", []) if float(h.get("shares") or 0) > 0] if st else []
+    if not tks:
+        tks = read_json(TICKERS, {}).get("tickers", [])
+    names = {t: (read_json(price_file(t), {}) or {}).get("name") or "" for t in tks}
+    return tks, names
+
+
+def news_job():
+    if not NEWS_LOCK.acquire(blocking=False):
+        return
+    try:
+        import news  # noqa: PLC0415 - 같은 폴더의 news.py
+        tks, names = news_targets()
+        news.collect_news(DATA, read_json(DATA / "config.json", {}).get("ai"), tks, names)
+    except Exception as e:  # noqa: BLE001
+        print("뉴스 수집 실패:", e)
+    finally:
+        NEWS_LOCK.release()
+
+
 def save_state(state: dict):
     if STATE.exists():  # 하루 한 번 백업 (최근 30개 유지)
         BACKUP.mkdir(parents=True, exist_ok=True)
@@ -251,6 +278,15 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/data"):
             with LOCK:
                 return self.send_json(all_data())
+        if self.path.startswith("/api/news"):
+            news = read_json(DATA / "news.json", {})
+            try:
+                age = time.time() - datetime.fromisoformat(news["updated"]).timestamp()
+            except (KeyError, ValueError):
+                age = 1e9
+            if age > 3600:  # 한 시간이 지났으면 뒤에서 새로 모은다 (화면은 지금 있는 것부터)
+                threading.Thread(target=news_job, daemon=True).start()
+            return self.send_json(news)
         return super().do_GET()
 
     def do_POST(self):
@@ -290,8 +326,11 @@ def main():
     ap.add_argument("--collect", action="store_true", help="수집만 하고 끝냄 (data/tickers.json)")
     ap.add_argument("--add", default="", help="--collect 와 함께: tickers.json 에 더할 티커 (쉼표 구분)")
     ap.add_argument("--quotes-only", action="store_true")
+    ap.add_argument("--news", action="store_true", help="뉴스·유튜브만 모아 data/news.json 저장 (GitHub Actions 용)")
     a = ap.parse_args()
     PRICES.mkdir(parents=True, exist_ok=True)
+    if a.news:
+        return news_job()
     if a.collect:
         return cli_collect(a.add, a.quotes_only)
     srv = None
@@ -329,8 +368,9 @@ def cli_collect(add: str, quotes_only: bool):
         fx = FX_SYMBOLS.get(ccy) or (None if ccy == "KRW" else f"{ccy}KRW=X")
         if fx and fx not in syms:
             syms.append(fx)
-    if "KRW=X" not in syms:
-        syms.append("KRW=X")
+    for s in ["KRW=X", *FACTOR_SYMBOLS]:
+        if s not in syms:
+            syms.append(s)
     r = collect(syms, float(cfg.get("history_years", 3)), quotes_only)
     bad = 0
     for line in r["log"]:

@@ -11,7 +11,7 @@
   "last": 234.2218,
   "last_time": 1790985598,
   "last_session": "post",
-  "fetched": 1791161351
+  "fetched": 1791171141
  },
  "SGOV": {
   "symbol": "SGOV",
@@ -25,7 +25,7 @@
   "last": 100.45,
   "last_time": 1790985594,
   "last_session": "post",
-  "fetched": 1791161351
+  "fetched": 1791171142
  },
  "SPCX": {
   "symbol": "SPCX",
@@ -39,7 +39,7 @@
   "last": 159.12,
   "last_time": 1790985599,
   "last_session": "post",
-  "fetched": 1791161351
+  "fetched": 1791171141
  },
  "TSLA": {
   "symbol": "TSLA",
@@ -53,21 +53,21 @@
   "last": 371.4476,
   "last_time": 1790985599,
   "last_session": "post",
-  "fetched": 1791161350
+  "fetched": 1791171140
  },
  "KRW=X": {
   "symbol": "KRW=X",
   "currency": "KRW",
   "name": "USD/KRW",
-  "regular": 1343.71,
-  "regular_time": 1791161346,
+  "regular": 1343.09,
+  "regular_time": 1791171135,
   "prev_close": 1342.51,
   "pre": null,
   "post": null,
-  "last": 1343.71,
-  "last_time": 1791161346,
+  "last": 1343.09,
+  "last_time": 1791171135,
   "last_session": "regular",
-  "fetched": 1791161352
+  "fetched": 1791171143
  },
  "QQQ": {
   "symbol": "QQQ",
@@ -81,7 +81,7 @@
   "last": 749.56,
   "last_time": 1790985599,
   "last_session": "post",
-  "fetched": 1791161352
+  "fetched": 1791171142
  },
  "SPY": {
   "symbol": "SPY",
@@ -95,7 +95,7 @@
   "last": 769.86,
   "last_time": 1790985594,
   "last_session": "post",
-  "fetched": 1791161352
+  "fetched": 1791171143
  },
  "004540.KS": {
   "symbol": "004540.KS",
@@ -109,6 +109,62 @@
   "last": 1240.0,
   "last_time": 1790922600,
   "last_session": "post",
-  "fetched": 1791161352
+  "fetched": 1791171143
+ },
+ "^TNX": {
+  "symbol": "^TNX",
+  "currency": "USD",
+  "name": "CBOE Interest Rate 10 Year T Note",
+  "regular": 5.277,
+  "regular_time": 1790967595,
+  "prev_close": 5.237,
+  "pre": null,
+  "post": null,
+  "last": 5.277,
+  "last_time": 1790967540,
+  "last_session": "regular",
+  "fetched": 1791171144
+ },
+ "CL=F": {
+  "symbol": "CL=F",
+  "currency": "USD",
+  "name": "Crude Oil Nov 26",
+  "regular": 90.02,
+  "regular_time": 1791170542,
+  "prev_close": 91.11,
+  "pre": null,
+  "post": null,
+  "last": 90.02,
+  "last_time": 1791170542,
+  "last_session": "regular",
+  "fetched": 1791171144
+ },
+ "GC=F": {
+  "symbol": "GC=F",
+  "currency": "USD",
+  "name": "Gold Dec 26",
+  "regular": 4168.7,
+  "regular_time": 1791170543,
+  "prev_close": 4162.3,
+  "pre": null,
+  "post": null,
+  "last": 4168.7002,
+  "last_time": 1791170543,
+  "last_session": "regular",
+  "fetched": 1791171145
+ },
+ "DBC": {
+  "symbol": "DBC",
+  "currency": "USD",
+  "name": "Invesco DB Commodity Index Tracking Fund",
+  "regular": 32.54,
+  "regular_time": 1790971200,
+  "prev_close": 32.75,
+  "pre": null,
+  "post": 32.9525,
+  "last": 32.9525,
+  "last_time": 1790977374,
+  "last_session": "post",
+  "fetched": 1791171145
  }
 }

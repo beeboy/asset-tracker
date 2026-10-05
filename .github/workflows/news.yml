@@ -1,0 +1,31 @@
+name: news
+# 인사이트 화면용 뉴스·유튜브를 한 시간마다 모아 AI 중계로 한글 번역·요약하고 data/news.json 에 커밋한다.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: news
+  cancel-in-progress: false
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 뉴스 수집
+        run: python server.py --news
+      - name: 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/news.json data/news_pool.json
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "뉴스 수집 $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && exit 0; sleep 5; done
+          exit 1

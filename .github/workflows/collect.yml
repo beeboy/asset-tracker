@@ -35,4 +35,5 @@ jobs:
           git add data/
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
           git commit -m "시세 수집 $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && exit 0; sleep 5; done
+          exit 1
