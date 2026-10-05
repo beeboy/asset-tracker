@@ -1407,8 +1407,9 @@
   }
   const ago = (t) => { const m = (Date.now() - Date.parse(t)) / 60000; if (!isFinite(m)) return ""; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
   // 상자 하나: 위에 출처(증권사·종목)와 시각, 제목(원문 링크), 요약
-  const newsBox = (it, tag, sub, cat, id, read) => `<div class="nitem${read ? " read" : ""}"><div class="ntop"><span class="tk">${esc(tag || it.source || "")}</span>${it.time ? `<span class="kd">${ago(it.time)}</span>` : ""}</div>
-    ${cat ? `<span class="ncat">${esc(cat)}</span>` : ""}<a class="nt" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer"${id ? ` data-nid="${esc(id)}"` : ""}>${esc(it.title || it.orig)}</a>${it.summary ? `<p class="nsum small">${esc(it.summary)}</p>` : ""}${sub ? `<div class="nmeta">${esc(sub)}</div>` : ""}</div>`;
+  // 위: 종목(왼쪽)·분류(오른쪽) / 제목·요약 / 아래: 출처 · 시각
+  const newsBox = (it, tag, sub, cat, id, read) => `<div class="nitem${read ? " read" : ""}"><div class="ntop"><span class="tk">${esc(tag || it.source || "")}</span>${cat ? `<span class="ncat">${esc(cat)}</span>` : ""}</div>
+    <a class="nt" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer"${id ? ` data-nid="${esc(id)}"` : ""}>${esc(it.title || it.orig)}</a>${it.summary ? `<p class="nsum small">${esc(it.summary)}</p>` : ""}${sub || it.time ? `<div class="nmeta">${[esc(sub || ""), it.time ? ago(it.time) : ""].filter(Boolean).join(" · ")}</div>` : ""}</div>`;
   // 미래 가치 인사이트: news.json 의 insight.items(보유 종목·관련 업계 기사, 4개 분류)에서 4개를 보여 준다.
   // 페이지를 새로 열거나(리로드) "더 보기"를 누르면, 아직 안 보여 준 기사(보유 종목 먼저, 관련 업계 다음)를 위에 놓고
   // 읽은 기사 → 오래전에 불러온 기사 순으로 뺀다. 새 기사가 없으면 그대로 두고 아래에 안내를 띄운다.

@@ -164,11 +164,11 @@ svg.chart .axis text.inlab { paint-order: stroke; stroke: var(--card); stroke-wi
 .nbox { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 8px; }
 .nitem { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); min-width: 0; }
 .nitem a.nt { color: var(--fg); text-decoration: none; font-weight: 600; line-height: 1.4; } .nitem a.nt:hover { color: var(--accent); text-decoration: underline; }
-.nitem .ntop { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
-.nitem .tk { font-weight: 700; font-size: 13px; }
+.nitem .ntop { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.nitem .tk { font-weight: 700; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nitem .kd { font-size: 11.5px; padding: 0 7px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); white-space: nowrap; }
 .nitem .nsum { margin: 0; color: var(--fg); }
-.nitem .ncat { align-self: flex-start; font-size: 11px; padding: 0 7px; border-radius: 999px; color: var(--accent); border: 1px solid var(--accent); }
+.nitem .ncat { flex: none; font-size: 11px; white-space: nowrap; padding: 0 7px; border-radius: 999px; color: var(--accent); border: 1px solid var(--accent); }
 .nitem.read a.nt { color: var(--muted); font-weight: 500; }
 .nmsg { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--card); border: 1px dashed var(--line); }
 .nitem.empty { color: var(--muted); font-size: 12.5px; }
