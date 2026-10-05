@@ -1,100 +1,100 @@
 {
- "updated": "2026-10-05T03:38:36+00:00",
+ "updated": "2026-10-05T03:40:35+00:00",
  "realtime": {
-  "key": "fb40d75d86c04a85",
-  "updated": "2026-10-05T03:38:38+00:00",
+  "key": "09078a1f5bfeaa5c",
+  "updated": "2026-10-05T03:40:37+00:00",
   "media": [
    {
-    "title": "고용 지표 둔화 속 연준 의사록 대기하며 미 증시 선물 상승",
+    "title": "고용 지표 둔화 속 연준 의사록 대기하며 증시 선물 상승",
     "orig": "Dow, S&P 500, Nasdaq Futures Rise After Soft Jobs Report As Markets Await Fed Minutes: IBRX, SMCI, VST, SOFI Stocks In Focus",
-    "summary": "고용 부진으로 금리 인상 우려가 완화된 가운데 뉴욕증시 선물은 상승세를 보였다.",
+    "summary": "부진한 고용 지표로 금리 인상 우려가 완화된 가운데 다우와 S&P500, 나스닥 선물 모두 상승세를 보이고 있습니다.",
     "broker": "",
     "source": "Stocktwits",
     "link": "https://news.google.com/rss/articles/CBMilAJBVV95cUxPRzVlR1JMN3VsbVl5aTR1NWFnYXZBX2V2OXF0N3ZleC1YOW1paTRnX1R5dnpDa0ZCdU5hazRNMUVFSjVsTzIxTWlCSWgzUmJnRnB4azB3X284SGx0V1hKMXhFbkRubFcyVTZCTkx5UFM1V1BBZEw5bFZSSHZNT05qb2M1ejVreEFMNTVLWEMwNFZnT3VDeTZoQkRGdDEyUW1lcWhXZExQX3RwdUZOSklZWWxBVGxTQ1g2UFpUR2dVd3F4cGszQ2xOaDVBbV8yalRyYm1kazdUQ3pmNVZfUUhwZFk2d2xMNmZQZU9FbmtzWmQtWlVDOVBKTzlyYmhSVWdERWN3MTJITm8xcjBlSGtoeXV2d1o?oc=5",
     "time": "2026-10-05T03:17:00+00:00"
    },
    {
-    "title": "미 국채 금리 상승과 연준 의사록 주시 속 증시 보합세",
-    "orig": "Stock futures are flat as investors grapple with higher yields, await Fed minutes: Live updates",
-    "summary": "국채 금리 급등과 고용 지표 발표 이후 투자자들이 방향성을 살피며 혼조세를 보였다.",
+    "title": "치솟는 에너지 가격에 압박받는 미국 유권자들",
+    "orig": "How Gas, Diesel and Electricity Prices Are Squeezing American Voters",
+    "summary": "가솔린, 디젤, 전기요금 상승이 미국 유권자들의 가계 경제를 압박하고 있습니다.",
     "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/04/stock-market-today-live-updates.html",
-    "time": "2026-10-05T02:33:38+00:00"
+    "source": "WSJ",
+    "link": "https://news.google.com/rss/articles/CBMiggFBVV95cUxOMDRKQzE0bVl6TFI1UlgzX1ZlUzk3ekpodXNIUWZHTHcwNk00SkxMdjQ2N0FIUzFkSHg3VTcyV1dlV1A0NjhhNVN3amp2UVlJT1lZYnZ5bWo0eHg2V1pmb3hFVXM2Z1hxTHFZR3VDUmktMTFGV0ZnczlJbllZWGlTWm5B?oc=5",
+    "time": "2026-10-05T03:20:21+00:00"
    },
    {
-    "title": "중동 긴장 속 오펙플러스(OPEC+) 원유 생산량 유지 결정",
+    "title": "중동 긴장 속 원유 생산량 동결한 OPEC과 동맹국들",
     "orig": "OPEC, Allies Hold Oil Output Steady Amid Middle East Tensions",
-    "summary": "지정학적 긴장감이 이어지는 가운데 주요 산유국들은 원유 생산량을 동결했다.",
+    "summary": "OPEC과 주요 동맹국들이 중동 지역 긴장이 고조되는 가운데 원유 생산량을 유지하기로 했습니다.",
     "broker": "",
     "source": "WSJ",
     "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxOYmFlX3pxTllubHhKWkgycEVOdlZ3c2F3TzA5OUU4RmFmWmQ2dWlaY3B1TlFfek85dHhZakt3aFJHZjlEUEJ2Zk9MVldfeTdUVkxoUzN1MU9wUWlUdGhFd3M4T3dNamMxbGprT1A3R3g4UGI0Q2RyU3hrczI0WExYWlpNa3N4RjlNRzFGN0U5d1NPN3p4VlN2R2MzRkc4WXlyV3Z4Z21ZZHVtY3FzYmc?oc=5",
     "time": "2026-10-05T03:00:21+00:00"
    },
    {
-    "title": "SK하이닉스 주주들, 가치 희석 우려로 솔리다임 나스닥 상장 저지 움직임",
+    "title": "SK하이닉스 주주들, 가치 희석 우려에 솔리다임 나스닥 상장 저지 움직임",
     "orig": "SK hynix shareholders move to block Solidigm Nasdaq listing over dilution fears",
-    "summary": "지분 가치 희석을 우려한 SK하이닉스 주주들이 자회사 솔리다임의 나스닥 상장을 막기 위해 반대하고 나섰다.",
+    "summary": "일부 주주들이 지분 가치 희석을 우려하며 자회사 솔리다임의 나스닥 상장 반대에 나섰습니다.",
     "broker": "",
     "source": "Korea JoongAng Daily",
     "link": "https://news.google.com/rss/articles/CBMizAFBVV95cUxPT2dNRGRQVE1NUGtRZkNWMktQTjVaWmNDY2hxMEZfeWNISzh0T09lRTNmeFNvU3NCRHdHbWlKQndhRnNVcmdodDMxNWVlWnd5NU9zbG9LUG44aEJBWU4wdDA5bkxNYWRUS3RRdXl5Z2Jjem1LbFRpcVRaV2dlNFViUlJiVUFoZS0yeml3bE5hWklkdUlfd3ZGSUk1eEhQZ2Y2MWdKTHZUZHhzMmVXVzlwaXhfcTZzaldKVGVBb2MxVUsxTkFSZUlNMFdwR0w?oc=5",
     "time": "2026-10-05T02:54:10+00:00"
    },
    {
-    "title": "트럼프, 한국에 알래스카 LNG 사업 참여 압박",
-    "orig": "Trump tells South Korea to sign on to Alaska LNG deal or 'I'll just charge them more'",
-    "summary": "도널드 트럼프 전 대통령이 한국을 향해 알래스카 액화천연가스(LNG) 투자 프로젝트에 참여할 것을 거듭 압박했다.",
+    "title": "치솟는 국채 금리, '재앙' 수준은 아니지만 부채 우려 키워",
+    "orig": "Surging Treasury yields don’t signal a U.S. 'fiscal apocalypse' — yet",
+    "summary": "미 국채 금리가 5%를 웃돌면서 차입 비용 증가로 인한 부채 악순환 우려가 커지고 있습니다.",
     "broker": "",
     "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/05/trump-alaska-lng-south-korea-pay.html",
-    "time": "2026-10-05T00:47:47+00:00"
+    "link": "https://www.cnbc.com/2026/10/05/treasury-yields-fiscal-concerns-not-crisis-yet.html",
+    "time": "2026-10-05T02:24:07+00:00"
    }
   ],
   "broker": [
    {
-    "title": "보잉 분석가, 연말 내 MAX 10 인증 전망하며 36% 상승 여력 제시",
+    "title": "보잉, 연내 MAX 10 인증 전망에 36% 상승 여력",
     "orig": "BA Stock Ticks Higher Overnight: Analyst Sees MAX 10 Certification By Year-End, 36% Upside",
-    "summary": "분석가는 보잉이 연내에 주요 기종 인증을 받을 것으로 보며 주가 상승 여력이 크다고 평가했다.",
+    "summary": "애널리스트는 보잉이 올해 안에 MAX 10 기종 인증을 받을 것으로 보며 주가가 36% 오를 여력이 있다고 평가했습니다.",
     "broker": "",
     "source": "TradingView",
     "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxQQXZ6RlFCdlE2OG1sX3lndGV2NEYzU0VXdFgyYW15aGktN3R3VmZneWJNaTlRLTJFWHJkd0Qwc2tJNG1WUml1THY5Ui13WUxiTDh0X3gxaGZIanZHYzN0c1BxQ1FkeTN4NlJrVzAxcUdEV2pSVTZ3eDY5a1A3OVBFd0lBc2w3NGl3eDBHc1hVSnFXZ0NSUkJyTkI5M3M1UHotekREaEt2MjBaenJSYm9hamZkWndzdHkzNl9yMzNqbUMtSDFiUEpzelp2LVRXQVhpS0gwSXdlNXJPRDk0N3dhdm5R?oc=5",
     "time": "2026-10-05T03:10:00+00:00"
    },
    {
-    "title": "존스랑라살(JLL) 투자의견 하향, 주가 상승 여력 제한적",
-    "orig": "Upside Is Limited For Shareholders Of Jones Lang LaSalle (Downgrade) (NYSE:JLL)",
-    "summary": "분석가는 존스랑라살의 주가 상승 여력이 제한적이라며 투자의견을 하향 조정했다.",
-    "broker": "",
-    "source": "Seeking Alpha",
-    "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPYW9ac3E0SEhKRzZhbi1PaWllS0pMR1V5cS1UNHhJWW9sanpJVFFNdjF3R185WjlGbWRSU3pzZktINk8wUUJKb0ZJb2xfNmJsWHh1em5jMnFWMGV0VFhLQjJLRzFKVGRuRExkOGNGVWZQSWI3a1F5SDNtaFk0UHhYYWo1aUVteTNkanI5WndJa2VwZWNjZDZIZUtOakNvWjAwUVpNVGwwLUM0Z3dtdzNR?oc=5",
-    "time": "2026-10-05T02:58:27+00:00"
-   },
-   {
-    "title": "아르구스, UFP 테크놀로지스 목표가 상향 속 저평가 분석",
-    "orig": "Is UFP Technologies (UFPT) Undervalued After Argus Lifted Its Price Target?",
-    "summary": "아르구스가 목표주가를 올린 가운데 해당 기업이 저평가 상태라는 분석이 나왔다.",
-    "broker": "",
-    "source": "Simply Wall Street",
-    "link": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxPZVBaVGt5UmJNTkgzTnV2WnB1dHlnRzRxZVM3YkhxdzY5YThlYzdHVkpOWU5fOWpVNDBmMUEzaE4ydVdmWk1wMloxU1ZBaHlScjZjcERNQS1Udm1teHlwSVBXS185WkEtZWlXdmZLbl9QUHhNNnBnbEFXdzdIdF9na2lhWVBMN25ZemFkMjd4dnhSWVE4VFVnZ0o0VS1ZZTJvUlpwVGpweVJRUEFjRkw2LXhpTzB5MXItU2xTLUdYSGxqdWFMbDFvRlNja0s1Y0ZVcGfSAdcBQVVfeXFMTW5reXhkZ092YWdQa1N0QkRvcEdRRUZMbWFWYXV0RVhyZVRHMFQtbTJ1ZVRyZmhmMHRNdmpuQmUzOFRySDMzQ3ZPdEVzMnhLdmZmQUxEYV9ZZFRKN0NEeFJFaUdBYUNJZ1h1Y3hScm94YWFEOTNPN0IxazlHaXl2dFlXU2dhbXpUYzRqSVZOWnBrQ2NXZWJtdEJBVEpuMXF1b0p0V1hjNmxMXzNDdGZWWFdvTWJHN1NoWmdZV3ExRE9zQmdnRVJSc3ZqSmRKSDIxc0VJbjcycTA?oc=5",
-    "time": "2026-10-05T02:34:56+00:00"
-   },
-   {
-    "title": "소파이(SoFi) 주가 40% 하락했으나, 분석가는 대출 플랫폼 사업 성장성에 주목",
+    "title": "주가 40% 하락한 소파이, 대출 플랫폼 사업서 매력적 성장 기회",
     "orig": "SOFI Stock Is Down More Than 40% In 2026, But This Analyst Sees Attractive Growth Opportunity In Loan Platform Business",
-    "summary": "올해 주가가 크게 조정을 받았지만, 대출 플랫폼 부문의 매력적인 성장 기회는 유효하다는 분석이다.",
+    "summary": "올해 주가가 크게 하락했음에도 한 애널리스트는 대출 플랫폼 사업을 중심으로 매력적인 성장 기회가 있다고 분석했습니다.",
     "broker": "",
     "source": "TradingView",
     "link": "https://news.google.com/rss/articles/CBMiigJBVV95cUxNd3dmV0k0MGgtVzFIZlhFdEtXS0U1NHFHTlViUUZCd192dmQ3VDhfS0tqX0JIempMYUctS2xGbDdFRl9wRDdNVXpOejExRjBaeWVUT1FYRkRBTVFFOXdROG1ES2hPQS05empkNFVVM19kVU01ZVNORm1PWVZpSzNEQUQyeFRKUXBsMlNMYTFKaXlJaVA3YWdhN09Wcmk0eE5KelhrbDdGd2pTcTRGQURxbXlUVTZCVUtoRnBKS2oyRDJfLUdGLVR1TVBvaU1qWGY3WFMxamRzUnRWRHNFV2h1b1E2ekphN1RnYUlKZ0lSbTcycTRZaFZmUHUzbGppcXhISVI0NFNsMUo1Zw?oc=5",
     "time": "2026-10-05T01:09:00+00:00"
    },
    {
-    "title": "퍼스트 인더스트리얼 레이트 트러스트, 아르구스 하향 조정 속 저평가 평가",
-    "orig": "First Industrial Realty Trust (FR) Could Be 18% Undervalued On Argus Downgrade",
-    "summary": "아르구스의 투자의견 하향 조정에도 불구하고 펀더멘털 대비 주가가 저평가되어 있다는 분석이 제기됐다.",
+    "title": "아거스의 목표가 상향 속 UFP 테크놀로지 저평가 분석",
+    "orig": "Is UFP Technologies (UFPT) Undervalued After Argus Lifted Its Price Target?",
+    "summary": "아거스가 목표가를 상향 조정한 가운데 UFP 테크놀로지가 저평가되어 있는지에 대한 분석이 나왔습니다.",
     "broker": "",
     "source": "Simply Wall Street",
-    "link": "https://news.google.com/rss/articles/CBMi5AFBVV95cUxNaDh2QlJDY3ZsV3A4Z1ZjUV9maDJDWTY3VVhjNW53eDhrTmQ2ZzZrNmw5cFZmaGNtb0hKOWRKVGFtank1R2RRSVNMUVplM01STlk1OXdNQmxXZE02RXFOeGVOSlNFLVZWTDg5QVdWUGxwYnpiemx2VHQ0SFI2bEtMdGdMOHFNYW5MbG96NVdUbXV2ek1ya29GdGwxWUhYbkpHSGNuSkNWb1dkX1Z5Q3FZVXZBUXZwR3Nsai1nMllfWk5BVl84S0dWVTBUMFRJS0cxc29zS2Rrd2FrUjl3VjdBWjZnZFfSAeQBQVVfeXFMTWg4dkJSQ2N2bFdwOGdWY1FfZmgyQ1k2N1VYYzVud3g4a05kNmc2azZsOXBWZmhjbW9ISjlkSlRhbWp5NUdkUUlTTFFaZTNNUk5ZNTl3TUJsV2RNNkVxTnhlTkpTRS1WVkw4OUFXVlBscGJ6YnpsdlR0NEhSNmxLTHRnTDhxTWFuTGxvejVXVG11dnpNcmtvRnRsMVlIWG5KR0hjbkpDVm9XZF9WeUNxWVV2QVF2cEdzbGotZzJZX1pOQVZfOEtHVlUwVDBUSUtHMXNvc0tka3dha1I5d1Y3QVo2Z2RX?oc=5",
-    "time": "2026-10-04T22:29:37+00:00"
+    "link": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxNbmt5eGRnT3ZhZ1BrU3RCRG9wR1FFRkxtYVZhdXRFWHJlVEcwVC1tMnVlVHJmaGYwdE12am5CZTM4VHJIMzNDdk90RXMyeEt2ZmZBTERhX1lkVEo3Q0R4UkVpR0FhQ0lnWHVjeFJyb3hhYUQ5M083QjFrOUdpeXZ0WVdTZ2FtelRjNGpJVk5acGtDY1dlYm10QkFUSm4xcXVvSnRXWGM2bExfM0N0ZlZYV29NYkc3U2haZ1lXcTFET3NCZ2dFUlJzdmpKZEpIMjFzRUluNzJxMNIB1wFBVV95cUxNbmt5eGRnT3ZhZ1BrU3RCRG9wR1FFRkxtYVZhdXRFWHJlVEcwVC1tMnVlVHJmaGYwdE12am5CZTM4VHJIMzNDdk90RXMyeEt2ZmZBTERhX1lkVEo3Q0R4UkVpR0FhQ0lnWHVjeFJyb3hhYUQ5M083QjFrOUdpeXZ0WVdTZ2FtelRjNGpJVk5acGtDY1dlYm10QkFUSm4xcXVvSnRXWGM2bExfM0N0ZlZYV29NYkc3U2haZ1lXcTFET3NCZ2dFUlJzdmpKZEpIMjFzRUluNzJxMA?oc=5",
+    "time": "2026-10-05T02:34:56+00:00"
+   },
+   {
+    "title": "호실적과 가이던스 상향 후 예티 홀딩스 향한 투자자 반응",
+    "orig": "How Investors Are Reacting To YETI Holdings (YETI) Upgrade After Strong August Revenue And Guidance Hike",
+    "summary": "예티 홀딩스가 호실적과 가이던스 상향을 발표한 이후 투자자들의 반응이 주목받고 있습니다.",
+    "broker": "",
+    "source": "Yahoo Finance Singapore",
+    "link": "https://news.google.com/rss/articles/CBMijwFBVV95cUxNcEJJeDRuUW9Va21vNWhrcWJZRGFXTVdWZVFUSkc2ajhwZGVwMElWVWdxelBHSXpEMXRYNjV0cU95QTEyVmk5VmVVcFMtNjl6c2VxWUJIdlVKdEowcG9vMGdyMU9SOTFOQV93TWs3b29UbXVJaUhRS3JxMkV6TWdwTnBUeDBqb0tYVGtQWW1oRQ?oc=5",
+    "time": "2026-10-04T23:08:42+00:00"
+   },
+   {
+    "title": "존스랑라살 주주 상승 여력 제한적이라며 투자의견 하향",
+    "orig": "Upside Is Limited For Shareholders Of Jones Lang LaSalle (Downgrade) (NYSE:JLL)",
+    "summary": "부동산 서비스 업체 존스랑라살에 대해 주주들의 추가 상승 여력이 제한적이라는 진단과 함께 투자의견이 하향 조정됐습니다.",
+    "broker": "",
+    "source": "Seeking Alpha",
+    "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPYW9ac3E0SEhKRzZhbi1PaWllS0pMR1V5cS1UNHhJWW9sanpJVFFNdjF3R185WjlGbWRSU3pzZktINk8wUUJKb0ZJb2xfNmJsWHh1em5jMnFWMGV0VFhLQjJLRzFKVGRuRExkOGNGVWZQSWI3a1F5SDNtaFk0UHhYYWo1aUVteTNkanI5WndJa2VwZWNjZDZIZUtOakNvWjAwUVpNVGwwLUM0Z3dtdzNR?oc=5",
+    "time": "2026-10-05T02:58:27+00:00"
    }
   ]
  },
