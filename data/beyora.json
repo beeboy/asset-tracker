@@ -1,4 +1,59 @@
 {
- "cats": [],
- "posts": []
+ "cats": [
+  {
+   "id": "cmuurrpla",
+   "name": "테스트"
+  },
+  {
+   "id": "cmuurrwzn",
+   "name": "테스트2"
+  }
+ ],
+ "posts": [
+  {
+   "id": "pmuurcvx5",
+   "title": "Beyora",
+   "body": "한글 이름: 비요라\n브랜드 의미: Beyond + Aura\n한글 슬로건: 현재를 넘어, 미래의 자산을 설계하세요.\n영문 슬로건: See Beyond. Build Your Wealth.",
+   "cat": "now",
+   "created": "2026-10-05T04:36:56.345Z",
+   "updated": "2026-10-05T04:36:56.345Z",
+   "views": 0
+  },
+  {
+   "id": "pmuurg7za",
+   "title": "미래",
+   "body": "나의 미래\nhttp://localhost:8765/",
+   "cat": "future",
+   "created": "2026-10-05T04:39:31.942Z",
+   "updated": "2026-10-05T04:39:31.942Z",
+   "views": 1
+  },
+  {
+   "id": "pmuurgkdx",
+   "title": "이미지 링크",
+   "body": "https://naverpa-phinf.pstatic.net/MjAyNjA3MjJfMjk5/MDAxNzg0Njg3NjE4NDMy.ogbznTUCT7BpIO2bWvhVC4E81eG0bWoCgBBpGbNbmO4g.kYpDzb27iH8abAhGzp9FydNyrFWtAWG9V1cBWJJzLEkg.JPEG/photo-upload-12748600868047797386.jpg",
+   "cat": "past",
+   "created": "2026-10-05T04:39:48.021Z",
+   "updated": "2026-10-05T04:39:48.021Z",
+   "views": 2
+  },
+  {
+   "id": "pmuurs8jw",
+   "title": "글 1",
+   "body": "내용 1",
+   "cat": "cmuurrwzn",
+   "created": "2026-10-05T04:48:52.556Z",
+   "updated": "2026-10-05T04:48:52.556Z",
+   "views": 2
+  },
+  {
+   "id": "pmuusav9l",
+   "title": "테스트 2",
+   "body": "[광고 gif](https://adcr.shopping.naver.com/adclk.nhn?x=NmEfugI7626SPuJgcJE5Cv%2F%2F%2Fw%3D%3Dsmd8zBqMJQLjellaiFGSaxelHjPrOWjZx0d%2BfAbCirfJS0MlE9Zhp0ZdexlLGrR6%2FG7G5RJJUxF5j92Eo1iXTsoZdhCE9OcMVyJIwnPrYIuQPXyyAxZQ0KaTt6FIElEnhIiHZIqIwJwQI%2B8g0iXNQuDWMPZqQykTUPilpS2xJ4QNb8UalxhYh5b9KDXVXtRcO%2BjcLnwXCQ7nTb60SAi6M7237QPQFYVSb6r2Y5A381cSMHnypgMYOj%2BppYy8krfLQlSa6ZoX%2F4DOrnkM8TJEQtf7NRxJhj7peoLXgd3%2FDPC2xU8d4%2FpHvpCuOuxexBGFRAx%2F38dxOqy28M6R9QvWv4d8slPePz4T7GzrSXlzgK0Bled8TXz94JBHuQOfovd7HQ9hpuaFoDVgUq7i9ZRonUFAzGY7zWZNGiC7k0Xfpes36Kon2o2Wt8ZrTkejkOEDVullI6INQLOcGOhnk6dEIaR2k1xYWwexyzyQ%2FMzuGzudkMsbddn%2BsbxxR8mhlIpzvqjMVjhxRFL8gj1J6mRPSiA%3D%3D)",
+   "cat": "future",
+   "created": "2026-10-05T05:03:21.801Z",
+   "updated": "2026-10-05T05:04:23.278Z",
+   "views": 1
+  }
+ ]
 }
