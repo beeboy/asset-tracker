@@ -1,10 +1,11 @@
 {
- "updated": "2026-10-05T03:32:25+00:00",
+ "updated": "2026-10-05T09:38:22+00:00",
  "prices": {
   "CL=F": "CL_F.json",
   "DBC": "DBC.json",
   "GC=F": "GC_F.json",
   "KRW=X": "KRW_X.json",
+  "MANA": "MANA.json",
   "NVDA": "NVDA.json",
   "QQQ": "QQQ.json",
   "SGOV": "SGOV.json",
