@@ -549,22 +549,7 @@
     fcPending[scen] = then ? [then] : [];
     setTimeout(() => { try { if (!forecastFor(scen)) fcCache[scen] = { err: "평가액이 있는 종목이 없습니다." }; } catch (e) { fcCache[scen] = { err: e.message }; } const cbs = fcPending[scen]; delete fcPending[scen]; cbs.forEach((f) => f()); }, 30);
   }
-  // 평가액 추이 기간 버튼: 과거 시세는 3년치만 둔다. 목표 기간(N년)이 3년보다 짧으면 N년 버튼을 넣고 "과거N년+미래",
-  // 길면 과거는 3년, 미래 버튼은 "과거3년+미래N년"
-  const goalYrs = () => Math.max(0.5, Math.round(yearsBetween(today(), S.state.goal.date) * 2) / 2);
-  const goalSpan = () => Math.min(3, goalYrs());
-  function renderHistRange() {
-    const N = goalSpan(), NY = goalYrs(), host = $("#histRange"), cur = host.querySelector(".on")?.dataset.r || "252";
-    const list = [[22, "1개월"], [66, "3개월"], [130, "6개월"], [252, "1년"], [780, "3년"]];
-    const nd = Math.round(N * 260);
-    if (!list.some(([d]) => Math.abs(d - nd) < 20)) list.push([nd, N + "년"]);
-    list.sort((a, b) => a[0] - b[0]);
-    const ids = [...list.map(([d]) => String(d)), "future"], sel = ids.includes(cur) ? cur : String(nd);
-    const html = list.map(([d, l]) => `<button data-r="${d}"${String(d) === sel ? ' class="on"' : ""}>${l}</button>`).join("") + `<button data-r="future"${sel === "future" ? ' class="on"' : ""}>과거${N}년+미래${NY > 3 ? NY + "년" : ""}</button>`;
-    if (host.innerHTML !== html) host.innerHTML = html;
-  }
   function renderDash() {
-    renderHistRange();
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date);
     $("#dashEmpty").style.display = total > 0 ? "none" : "block";
     const need = g.amount - total, req = yrs > 0 && total > 0 ? (g.amount / total) ** (1 / yrs) - 1 : null;
@@ -584,7 +569,7 @@
     const rsel = $("#histRange .on")?.dataset.r || "252", step = $("#histStep .on")?.dataset.s || "d", mode = $("#histMode .on")?.dataset.m || "total";
     const inUsd = $("#histCcy .on")?.dataset.c === "usd", basis = $("#histBasis .on")?.dataset.b || "model";
     const fxNowUsd = fxNow("USD") || 1, conv = (v, i) => (v == null ? null : inUsd ? v / H.usdK[i] : v), money = inUsd ? usd : krwAxis;
-    const future = rsel === "future", n = future ? Math.round(goalSpan() * 260) : +rsel;
+    const future = rsel === "future", n = future ? 780 : +rsel; // 미래: 과거 3년 + 목표일까지
     const k0 = Math.max(0, H.dates.length - 1 - n);
     // 간격: 주·월은 그 기간의 마지막 거래일 값
     let ix = []; for (let i = k0; i < H.dates.length; i++) ix.push(i);
