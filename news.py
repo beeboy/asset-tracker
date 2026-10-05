@@ -91,10 +91,15 @@ def _rel_time(t: str, now: datetime) -> str:
 
 def yt_page(cid: str, name: str) -> list[dict]:
     """채널 RSS 가 막히면 채널의 동영상 화면에서 제목·시각을 읽는다"""
-    raw = fetch(f"https://www.youtube.com/channel/{cid}/videos?hl=ko")
+    LAST_ERR["msg"] = ""
+    raw = fetch(f"https://www.youtube.com/channel/{cid}/videos?hl=ko&gl=KR")
     if not raw:
         return []
     h, now, out, seen = raw.decode("utf-8", "replace"), datetime.now(timezone.utc), [], set()
+    LAST_ERR["msg"] = f"화면 {len(h)}자, " + ",".join(k for k in ("videoRenderer", "lockupViewModel", "richItemRenderer", "consent", "publishedTimeText") if k in h)
+    i = h.find('"lockupMetadataViewModel"')
+    if i > 0:
+        LAST_ERR["msg"] += " | " + re.sub(r"\s+", " ", h[i:i + 700])
     pats = [r'"videoRenderer":\{"videoId":"([\w-]{11})".*?"title":\{"runs":\[\{"text":"(.*?)"\}\].*?"publishedTimeText":\{"simpleText":"(.*?)"\}',
             r'"contentId":"([\w-]{11})".{0,3000}?"lockupMetadataViewModel":\{"title":\{"content":"(.*?)"\}.{0,3000}?"content":"([^"]{0,30}(?:전|ago))"']
     for pat in pats:
@@ -389,7 +394,7 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
         how = "RSS"
         if not got:
             got, how = yt_page(c, name), "화면"
-        log(f"유튜브 {name}: {len(got)}개 ({how}{'' if got else ', ' + LAST_ERR['msg']})")
+        log(f"유튜브 {name}: {len(got)}개 ({how}{'' if got else ', ' + LAST_ERR['msg'][:900]})")
         vids += got
     today = now.astimezone(KST).date().isoformat()
     vt = [v for v in vids if v["time"] and datetime.fromisoformat(v["time"]).astimezone(KST).date().isoformat() == today]
