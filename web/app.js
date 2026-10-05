@@ -1432,11 +1432,19 @@
         if (j && Array.isArray(j.news)) return j.news.filter((x) => x.title && x.link).map((x) => ({ title: x.title, link: x.link, source: x.publisher || "", time: new Date((x.providerPublishTime || 0) * 1000).toISOString() }));
       } catch (e) { /* 다음 중계 */ }
     }
-    return [];
+    return null; // 모든 중계가 실패
   }
   async function insFetchMissing(tks) {
     const x = insExtra(), cands = [];
-    for (const t of tks) for (const a of (await yahooNews(t)).filter((a) => Date.now() - Date.parse(a.time) < 7 * 864e5)) cands.push({ t, a });
+    const st = {}; // 종목별 결과: fail(중계 연결 실패) / none(최근 기사 없음)
+    for (const t of tks) {
+      const news = await yahooNews(t);
+      if (!news) { st[t] = "fail"; continue; }
+      const age = (a) => Date.now() - Date.parse(a.time);
+      let got = news.filter((a) => age(a) < 7 * 864e5); if (!got.length) got = news.filter((a) => age(a) < 30 * 864e5); // 기사가 적은 종목은 한 달까지
+      if (!got.length) st[t] = "none";
+      for (const a of got) cands.push({ t, a });
+    }
     let picked = null;
     if (cands.length && S.config?.ai) {
       const prompt = "아래는 보유 종목의 최근 기사 후보다. 1~3년 뒤 기업 가치 판단에 도움이 되는 기사만 골라 4개 분류 중 하나로 나눠라. 단기 주가 등락·광고성 기사는 빼라. 최대 20개.\n"
@@ -1454,7 +1462,7 @@
     // AI 가 고른 기사 (분류가 이상하면 성장·혁신으로). 하나도 못 고르면 원문 제목 그대로 보여 준다
     let got = (picked || []).filter((p) => cands[+p.i]).map((p) => mk(cands[+p.i], INS_CAT[p.cat] ? p.cat : "growth", p.ko, p.sum));
     for (const t of tks) if (!got.some((g) => g.ticker === t)) got = got.concat(cands.filter((c) => c.t === t).slice(0, 6).map((c) => mk(c, "growth")));
-    for (const t of tks) x[t] = { at: Date.now(), ai: !!picked?.length, fail: !cands.some((c) => c.t === t), items: got.filter((g) => g.ticker === t) };
+    for (const t of tks) x[t] = { at: Date.now(), ai: !!picked?.length, fail: st[t] === "fail", none: st[t] === "none", items: got.filter((g) => g.ticker === t) };
     try { localStorage.setItem(INS_X, JSON.stringify(x)); } catch (e) { /* 무시 */ }
   }
   // mode: "refresh"(리로드·더 보기: 새 기사를 위에, 읽은 것·오래된 것을 뺀다) / "fill"(빈자리만 채운다)
@@ -1491,7 +1499,7 @@
     const srv = (N?.insight?.items || []).filter((x) => tks.includes(x.ticker)), X = insExtra();
     const missing = tks.filter((t) => !srv.some((x) => x.ticker === t && x.scope === "held"));
     const items = [...srv, ...missing.flatMap((t) => X[t]?.items || [])];
-    const stale = missing.filter((t) => !X[t] || Date.now() - X[t].at > (X[t].fail ? (more && !after ? 0 : 5 / 60) : X[t].ai ? 3 : 0.5) * 3600e3);
+    const stale = missing.filter((t) => !X[t] || Date.now() - X[t].at > (X[t].fail ? (more && !after ? 0 : 5 / 60) : X[t].none ? 6 : X[t].ai ? 3 : 0.5) * 3600e3);
     if (stale.length && !insBusy) { insBusy = true; insFetchMissing(stale).finally(() => { insBusy = false; if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(true, true); }); } // 끝나면 새 종목 기사를 위에
     const fill = insRefresh(items, tks, more || !insFresh ? "refresh" : "fill");
     if (more || !insFresh) { insFresh = true; insMsg = fill || insBusy ? "" : `새로운 인사이트 뉴스가 없습니다. ${auto}. 잠시 뒤 다시 확인해 주세요.`; }
@@ -1499,8 +1507,9 @@
     const cur = o.cur.map((id) => byId.get(id)).filter(Boolean);
     $("#newsFuture").innerHTML = cur.map((x) => newsBox(x, x.scope === "held" ? x.ticker : `${x.ticker} 관련 업계${ind[x.ticker] ? " · " + ind[x.ticker] : ""}`, x.source, INS_CAT[x.cat], x.id, !!o.read[x.id])).join("")
       || none(insBusy ? "기사를 모으는 중입니다…" : tks.length ? "보유 종목 관련 기사가 아직 없습니다." : "보유 종목을 입력하면 관련 기사를 보여 줍니다.");
-    const failed = missing.filter((t) => X[t]?.fail);
-    const busy = insBusy ? `${missing.join(", ")} 기사를 모으는 중입니다…` : failed.length ? `${failed.join(", ")} 기사를 받지 못했습니다(기사 중계 연결 실패). 잠시 뒤 더 보기를 눌러 주세요.` : "";
+    const failed = missing.filter((t) => X[t]?.fail), nonew = missing.filter((t) => X[t]?.none);
+    const busy = insBusy ? `${missing.join(", ")} 기사를 모으는 중입니다…` : [failed.length ? `${failed.join(", ")} 기사를 받지 못했습니다(기사 중계 연결 실패). 잠시 뒤 더 보기를 눌러 주세요.` : "",
+      nonew.length ? `${nonew.join(", ")}: 최근 한 달 사이 관련 기사가 없습니다.` : ""].filter(Boolean).join(" ");
     $("#newsMsg").textContent = busy || insMsg; $("#newsMsg").style.display = busy || insMsg ? "" : "none";
     const fu = N?.future_meta?.updated || N?.updated;
     $("#newsNote").textContent = `${fu ? new Date(fu).toLocaleString() + " 수집" : ""} · ${auto}${N?.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열리고, 읽은 기사는 다음에 새 기사로 바뀝니다.`;
