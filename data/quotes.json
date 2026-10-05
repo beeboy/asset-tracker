@@ -97,20 +97,6 @@
   "last_session": "post",
   "fetched": 1791171143
  },
- "004540.KS": {
-  "symbol": "004540.KS",
-  "currency": "KRW",
-  "name": "KleanNara Co., Ltd.",
-  "regular": 1240.0,
-  "regular_time": 1790922630,
-  "prev_close": 1244.0,
-  "pre": null,
-  "post": 1240.0,
-  "last": 1240.0,
-  "last_time": 1790922600,
-  "last_session": "post",
-  "fetched": 1791171143
- },
  "^TNX": {
   "symbol": "^TNX",
   "currency": "USD",

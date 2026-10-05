@@ -156,6 +156,11 @@
     // 외부 요인 기본 사건을 한 번 넣는다 (이미 지운 사건은 다시 넣지 않도록 버전으로 표시)
     if ((st.ext_ver || 0) < 1) { const have = new Set(st.events.map((e) => e.id)); EXT_EVENTS.forEach((e) => { if (!have.has(e.id)) st.events.push({ on: true, ...e }); }); st.ext_ver = 1; }
     st.events.forEach((e) => { if (!e.cat) e.cat = catOfKind(e.kind || ""); });
+    if ((st.purge_ver || 0) < 1) {
+      st.holdings = st.holdings.filter((h) => !PURGED.has(String(h.ticker || "").toUpperCase()));
+      st.events = st.events.filter((e) => !PURGED.has(String(e.target || "").toUpperCase()));
+      st.purge_ver = 1; S.purged = true;
+    }
     st.model = Object.assign({}, DEFAULT_MODEL, st.model || {});
     st.ui = Object.assign({ auto_refresh_min: 0, manual_price: false }, st.ui || {});
     return st;
@@ -310,6 +315,7 @@
   const ghLink = (txt) => (GH ? ` <a href="${GH.actions}" target="_blank" rel="noopener">${txt}</a>` : "");
   // 토큰 없이 브라우저에서 Yahoo 시세를 받는다: 개발자가 정한 중계 주소(data/config.json) → 공개 CORS 중계 순서로 시도
   const EXTRA_KEY = "asset-tracker-extra";
+  const PURGED = new Set(["004540.KS"]); // 앱에서 뺀 종목: 예전에 저장된 입력값·시세에서도 지운다
   const proxies = () => [...(S.config?.proxy ? [S.config.proxy] : []), "https://corsproxy.io/?url=", "https://api.allorigins.win/raw?url=", "https://api.codetabs.com/v1/proxy?quest="];
   async function yahoo(sym, params) {
     const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym) + "?" + new URLSearchParams(params);
@@ -348,6 +354,7 @@
   function saveExtra(x) { try { localStorage.setItem(EXTRA_KEY, JSON.stringify(x)); } catch (e) { /* 용량 초과 등은 무시 */ } }
   function mergeExtra() {
     const x = loadExtra();
+    if ([...PURGED].some((k) => x.prices[k] || x.quotes[k])) { PURGED.forEach((k) => { delete x.prices[k]; delete x.quotes[k]; }); saveExtra(x); }
     for (const [k, p] of Object.entries(x.prices)) { const cur = S.prices[k]; if (!cur || (p.dates.at(-1) || "") > (cur.dates.at(-1) || "")) S.prices[k] = p; }
     for (const [k, q] of Object.entries(x.quotes)) { if (!S.quotes[k] || (q.last_time || 0) > (S.quotes[k].last_time || 0)) S.quotes[k] = q; }
   }
@@ -699,7 +706,7 @@
     const list = Model.occurrences(e, y, S.state.goal.date);
     return { next: list[0] || null, n: list.length };
   }
-  const curCat = () => $("#xfNav .on")?.dataset.c || "all";
+  const curCat = () => $("#xfNav .on")?.dataset.c || "corp";
   function renderEvTiles() {
     const cat = curCat();
     const items = S.state.events.map((e, i) => ({ e, i, ...nextOcc(e) })).filter(({ e }) => cat === "all" || e.cat === cat).sort((a, b) => ((a.next || "9") < (b.next || "9") ? -1 : 1));
@@ -886,7 +893,7 @@
     const views = [["port", "포트폴리오"], ...tks.map(({ t }) => [t, t])];
     let cur = $("#evView .on")?.dataset.v; if (!views.some(([v]) => v === cur)) cur = "port";
     $("#evView").innerHTML = views.map(([v, n]) => `<button data-v="${esc(v)}" class="${v === cur ? "on" : ""}">${esc(n)}</button>`).join("");
-    if (!hasEv) { host.innerHTML = "<p class='muted'>켜진 사건이 없습니다. 위 타일을 눌러 켜 주세요.</p>"; $("#evNote").textContent = ""; return; }
+    if (!hasEv) { host.innerHTML = "<p class='muted'>켜진 사건이 없습니다. 아래 타일을 눌러 켜 주세요.</p>"; $("#evNote").textContent = ""; return; }
     const g = S.state.goal;
     if (cur === "port") {
       Charts.lineChart(host, { x: fx, height: 300, yfmt: krwAxis,
@@ -1383,7 +1390,7 @@
 
 
   // ------------------------------------------------------------ 인사이트 (뉴스)
-  // data/news.json: GitHub Actions(웹) 또는 내 PC 서버가 한 시간마다 RSS·Yahoo 뉴스·유튜브 RSS 를 모아 AI 중계로 한글 번역·요약해 둔 파일
+  // data/news.json: GitHub Actions(웹) 또는 내 PC 서버가 한 시간마다 RSS·Yahoo 뉴스를 모아 AI 중계로 한글 번역·요약해 둔 파일
   let NEWS = null, newsAt = 0;
   async function loadNews(force) {
     if (!force && NEWS && Date.now() - newsAt < 10 * 60000) return NEWS;
@@ -1394,28 +1401,121 @@
     return NEWS;
   }
   const ago = (t) => { const m = (Date.now() - Date.parse(t)) / 60000; if (!isFinite(m)) return ""; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
-  const newsLi = (it) => `<li><a href="${esc(it.link)}" target="_blank" rel="noopener noreferrer">${esc(it.title || it.orig)}</a>
-    <div class="nmeta">${esc(it.broker ? it.broker + " · " : "")}${esc(it.source || "")}${it.time ? " · " + ago(it.time) : ""}</div>${it.summary ? `<div class="nsum">${esc(it.summary)}</div>` : ""}</li>`;
+  // 상자 하나: 위에 출처(증권사·종목)와 시각, 제목(원문 링크), 요약
+  const newsBox = (it, tag, sub) => `<div class="nitem"><div class="ntop"><span class="tk">${esc(tag || it.source || "")}</span>${it.time ? `<span class="kd">${ago(it.time)}</span>` : ""}</div>
+    <a class="nt" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer">${esc(it.title || it.orig)}</a>${it.summary ? `<p class="nsum small">${esc(it.summary)}</p>` : ""}${sub ? `<div class="nmeta">${esc(sub)}</div>` : ""}</div>`;
+  const BIG_BROKER = /Goldman|Morgan Stanley|JP ?Morgan|J\.P\. Morgan|Bank of America|BofA|Citi|Wells Fargo|UBS|Barclays|Deutsche|골드만|모건스탠리|모건 스탠리|JP모건|제이피모건|뱅크오브아메리카|뱅크 오브 아메리카|씨티|웰스파고|바클레이즈|도이치/i;
   async function renderInsight() {
+    renderBeyora();
     const N = await loadNews();
+    const none = (t) => `<div class="nitem empty">${t}</div>`;
     if (!N) {
-      const msg = "<li class='muted'>아직 모은 뉴스가 없습니다. 한 시간마다 자동으로 모읍니다.</li>";
-      $("#newsMedia").innerHTML = $("#newsBroker").innerHTML = msg; $("#newsFuture").innerHTML = $("#newsYt").innerHTML = ""; $("#newsNote").textContent = ""; return;
+      $("#newsMedia").innerHTML = $("#newsBroker").innerHTML = none("아직 모은 뉴스가 없습니다. 한 시간마다 자동으로 모읍니다.");
+      $("#newsFuture").innerHTML = ""; $("#newsNote").textContent = ""; return;
     }
     const rg = $("#newsRange .on")?.dataset.r || "realtime", sec = N[rg] || {};
-    const empty = "<li class='muted'>해당 기사가 없습니다.</li>";
-    $("#newsMedia").innerHTML = (sec.media || []).slice(0, 5).map(newsLi).join("") || empty;
-    $("#newsBroker").innerHTML = (sec.broker || []).slice(0, 5).map(newsLi).join("") || empty;
-    // 미래 가치: 내 보유 종목 순서대로 (수집 목록에 없는 종목은 다음 수집 때부터)
+    const empty = none("해당 기사가 없습니다.");
+    $("#newsMedia").innerHTML = (sec.media || []).slice(0, 3).map((it) => newsBox(it)).join("") || empty;
+    // 증권사: 대형 증권사·투자은행 기사를 먼저
+    const big = (it) => BIG_BROKER.test(`${it.broker || ""} ${it.title || ""} ${it.orig || ""}`);
+    const bk = [...(sec.broker || [])].sort((a, b) => big(b) - big(a));
+    $("#newsBroker").innerHTML = bk.slice(0, 3).map((it) => newsBox(it, it.broker || it.source, it.broker ? it.source : "")).join("") || empty;
+    // 미래 가치: 내 보유 종목을 돌아가며 최대 3개
     const held = S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker);
-    const fut = (N.future || []).filter((f) => !held.length || held.includes(f.ticker)).sort((a, b) => held.indexOf(a.ticker) - held.indexOf(b.ticker));
-    $("#newsFuture").innerHTML = fut.map((f) => `<div class="futrow"><h3>${esc(f.ticker)}${f.name ? ` <span class="muted small">${esc(f.name)}</span>` : ""}</h3>${f.view ? `<p class="small fview">${esc(f.view)}</p>` : ""}<ul class="newslist">${(f.items || []).map(newsLi).join("") || empty}</ul></div>`).join("")
-      || "<p class='muted small'>보유 종목 관련 기사가 아직 없습니다.</p>";
-    const Y = N.youtube || {};
-    $("#newsYt").innerHTML = (Y.points?.length ? `<ul class="ytpts">${Y.points.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "")
-      + (Y.keywords?.length ? `<p class="small">${Y.keywords.map((k) => `<span class="tag">${esc(k)}</span>`).join(" ")}</p>` : "")
-      + (Y.videos?.length ? `<details class="opt"><summary>오늘 올라온 영상 ${Y.videos.length}개</summary><ul class="newslist">${Y.videos.map((v) => `<li><a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer">${esc(v.title)}</a><div class="nmeta">${esc(v.channel || "")}${v.time ? " · " + ago(v.time) : ""}</div></li>`).join("")}</ul></details>` : "<p class='muted small'>오늘 올라온 영상이 아직 없습니다.</p>");
-    $("#newsNote").textContent = `${N.updated ? new Date(N.updated).toLocaleString() + " 수집" : ""}${rg === "weekly" && sec.updated ? ` · 주간 목록 ${new Date(sec.updated).toLocaleString()}` : ""} · 한 시간마다 자동으로 모으고 무료 AI로 한글 번역·요약합니다${N.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 링크는 원래 기사로 새 창에서 열립니다.`;
+    const fut = (N.future || []).filter((f) => !PURGED.has(f.ticker) && (!held.length || held.includes(f.ticker))).sort((a, b) => held.indexOf(a.ticker) - held.indexOf(b.ticker));
+    const lists = fut.map((f) => (f.items || []).map((it) => ({ it, f }))), pick = [];
+    for (let k = 0; pick.length < 3 && lists.some((l) => l[k]); k++) for (const l of lists) if (l[k] && pick.length < 3) pick.push(l[k]);
+    $("#newsFuture").innerHTML = pick.map(({ it, f }) => newsBox(it, f.ticker, [it.source, f.view].filter(Boolean).join(" · "))).join("") || none("보유 종목 관련 기사가 아직 없습니다.");
+    $("#newsNote").textContent = `${N.updated ? new Date(N.updated).toLocaleString() + " 수집" : ""}${rg === "weekly" && sec.updated ? ` · 주간 목록 ${new Date(sec.updated).toLocaleString()}` : ""} · 한 시간마다 자동으로 모으고 무료 AI로 한글 번역·요약합니다${N.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열립니다.`;
+  }
+
+  // ------------------------------------------------------------ 미래 설계 Beyora (블로그, 이 브라우저에만 저장)
+  const BV_KEY = "beyora-blog";
+  const BV_BASE = [["past", "과거"], ["now", "현재"], ["future", "미래"]];
+  let BV = null;
+  const bv = () => { if (!BV) { try { BV = JSON.parse(localStorage.getItem(BV_KEY) || "null"); } catch (e) { BV = null; } if (!BV || !Array.isArray(BV.posts)) BV = { cats: [], posts: [] }; BV.cats = BV.cats || []; } return BV; };
+  function bvSave() { try { localStorage.setItem(BV_KEY, JSON.stringify(bv())); } catch (e) { toast("저장하지 못했습니다: " + e.message); } }
+  const bvS = { cat: "all", view: "list", id: null };
+  const bvCats = () => [...BV_BASE, ...bv().cats.map((c) => [c.id, c.name])];
+  const bvCatName = (k) => bvCats().find(([c]) => c === k)?.[1] || "분류 없음";
+  const bvList = () => bv().posts.filter((p) => bvS.cat === "all" || p.cat === bvS.cat).sort((a, b) => (a.created < b.created ? 1 : -1)); // 최신 글 먼저
+  const bvTime = (t) => (t ? new Date(t).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
+  const bvExcerpt = (t) => String(t || "").replace(/[#>*`_|-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  function renderBeyora() {
+    const host = $("#bvBody"); if (!host) return;
+    $("#bvNew").style.display = bvS.view === "list" ? "" : "none";
+    if (bvS.view === "edit") {
+      const p = bvS.id ? bv().posts.find((x) => x.id === bvS.id) : null;
+      const cur = p?.cat || (bvS.cat !== "all" ? bvS.cat : "future");
+      host.innerHTML = `<div class="bvedit">
+        <select id="bvCat">${bvCats().map(([k, n]) => `<option value="${esc(k)}" ${k === cur ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
+        <input id="bvTitle" class="t" placeholder="제목" value="${esc(p?.title || "")}">
+        <textarea id="bvText" placeholder="내용을 적어 주세요. 빈 줄로 문단을 나누고, # 소제목, - 목록, **굵게** 를 쓸 수 있습니다.">${esc(p?.body || "")}</textarea>
+        <div class="row"><button class="primary" data-bv="save">${p ? "수정 저장" : "글 올리기"}</button><button data-bv="cancel">취소</button></div></div>`;
+      $("#bvTitle").focus(); return;
+    }
+    if (bvS.view === "post") {
+      const p = bv().posts.find((x) => x.id === bvS.id);
+      if (p) {
+        const list = bvList(), i = list.findIndex((x) => x.id === p.id), prev = i >= 0 ? list[i + 1] : null, next = i > 0 ? list[i - 1] : null;
+        const nav = (q, cls, lab) => `<button class="${cls}" data-bvgo="${q ? esc(q.id) : ""}" ${q ? "" : "disabled"}><span>${lab}</span><b>${q ? esc(q.title || "(제목 없음)") : "없음"}</b></button>`;
+        host.innerHTML = `<div class="bvart">
+          <div class="row between wrap"><button class="sm" data-bv="list">← 목록</button><div class="row"><button class="sm" data-bv="edit">수정</button><button class="sm danger" data-bv="del">삭제</button></div></div>
+          <div style="margin-top:12px"><span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span></div>
+          <h1>${esc(p.title || "(제목 없음)")}</h1>
+          <div class="body md">${md2html(p.body || "")}</div>
+          <div class="bvmeta"><span>작성 ${bvTime(p.created)}${p.updated && p.updated !== p.created ? ` · 수정 ${bvTime(p.updated)}` : ""}</span><span>조회수 ${nf(p.views || 0)}</span></div>
+          <div class="bvnav">${nav(prev, "pv", "← 이전 글")}${nav(next, "nx", "다음 글 →")}</div></div>`;
+        return;
+      }
+      bvS.view = "list";
+    }
+    const list = bvList(), custom = bv().cats.find((c) => c.id === bvS.cat);
+    host.innerHTML = `<div class="row seg wrap bvcats">${[["all", "전체"], ...bvCats()].map(([k, n]) => `<button data-bvcat="${esc(k)}" class="${k === bvS.cat ? "on" : ""}">${esc(n)}</button>`).join("")}<button class="add" data-bv="addcat">+ 카테고리</button></div>`
+      + (custom ? `<p class="small" style="margin:0 0 8px"><button class="sm danger" data-bv="delcat">'${esc(custom.name)}' 카테고리 지우기</button> <span class="muted">글은 지워지지 않고 '전체'에 남습니다.</span></p>` : "")
+      + (list.length ? `<div class="bvlist">${list.map((p) => `<button type="button" class="bvpost" data-bvgo="${esc(p.id)}">
+          <span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span><span class="ttl">${esc(p.title || "(제목 없음)")}</span>
+          <span class="ex">${esc(bvExcerpt(p.body))}</span><span class="ft">${bvTime(p.created)} · 조회 ${nf(p.views || 0)}</span></button>`).join("")}</div>`
+        : `<p class="muted small">아직 글이 없습니다. '글쓰기'로 지난 투자를 돌아보고(과거), 지금의 생각을 적고(현재), 앞으로의 계획을 세워(미래) 보세요. 글은 이 브라우저에만 저장되고, 설정의 '입력값 내보내기'에 함께 담깁니다.</p>`);
+  }
+  function bvOpen(id) {
+    const p = bv().posts.find((x) => x.id === id); if (!p) return;
+    p.views = (p.views || 0) + 1; bvSave();
+    bvS.view = "post"; bvS.id = id; renderBeyora();
+    $("#beyora").scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  function onBeyora(e) {
+    const go = e.target.closest("[data-bvgo]"); if (go) { if (go.dataset.bvgo) bvOpen(go.dataset.bvgo); return; }
+    const c = e.target.closest("[data-bvcat]"); if (c) { bvS.cat = c.dataset.bvcat; renderBeyora(); return; }
+    const b = e.target.closest("[data-bv]"); if (!b) return;
+    const a = b.dataset.bv, D = bv();
+    if (a === "list") { bvS.view = "list"; renderBeyora(); }
+    else if (a === "edit") { bvS.view = "edit"; renderBeyora(); }
+    else if (a === "cancel") { bvS.view = bvS.id ? "post" : "list"; renderBeyora(); }
+    else if (a === "del") { if (!armed(b)) return; D.posts = D.posts.filter((x) => x.id !== bvS.id); bvSave(); bvS.view = "list"; bvS.id = null; renderBeyora(); toast("글을 지웠습니다"); }
+    else if (a === "save") {
+      const title = $("#bvTitle").value.trim(), body = $("#bvText").value.replace(/\s+$/, ""), cat = $("#bvCat").value, now = new Date().toISOString();
+      if (!title && !body.trim()) { toast("제목이나 내용을 적어 주세요"); return; }
+      let p = bvS.id && D.posts.find((x) => x.id === bvS.id);
+      if (p) Object.assign(p, { title, body, cat, updated: now });
+      else { p = { id: "p" + Date.now().toString(36), title, body, cat, created: now, updated: now, views: 0 }; D.posts.push(p); }
+      bvSave(); bvS.view = "post"; bvS.id = p.id; renderBeyora();
+    } else if (a === "addcat") {
+      const name = (prompt("새 카테고리 이름") || "").trim(); if (!name) return;
+      const have = bvCats().find(([, n]) => n === name);
+      if (have) bvS.cat = have[0]; else { const id = "c" + Date.now().toString(36); D.cats.push({ id, name }); bvS.cat = id; bvSave(); }
+      renderBeyora();
+    } else if (a === "delcat") {
+      if (!armed(b)) return; D.cats = D.cats.filter((x) => x.id !== bvS.cat); bvS.cat = "all"; bvSave(); renderBeyora();
+    }
+  }
+  // 내보내기 파일에 담긴 글을 합친다 (같은 글은 더 최근에 고친 쪽)
+  function bvMerge(x) {
+    if (!x || !Array.isArray(x.posts)) return;
+    const D = bv();
+    (x.cats || []).forEach((c) => { if (c && c.id && !D.cats.some((y) => y.id === c.id)) D.cats.push(c); });
+    x.posts.forEach((p) => { if (!p || !p.id) return; const i = D.posts.findIndex((y) => y.id === p.id); if (i < 0) D.posts.push(p); else if ((p.updated || "") > (D.posts[i].updated || "")) D.posts[i] = p; });
+    bvSave();
   }
 
   // ------------------------------------------------------------ 비중안 비교
@@ -1628,6 +1728,8 @@
     $("#evTiles").addEventListener("click", (e) => { const t = e.target.closest("[data-evt]"); if (!t) return; const ev = S.state.events[+t.dataset.evt]; ev.on = !ev.on; save(); renderEvents(); if (curAna() === "events") runForecast(); });
     segClick("#evView", renderEvChart);
     segClick("#newsRange", renderInsight);
+    $("#beyora").addEventListener("click", onBeyora);
+    $("#bvNew").onclick = () => { bvS.view = "edit"; bvS.id = null; renderBeyora(); };
     segClick("#xfNav", () => { renderEvTiles(); renderXf(); });
     $("#fcStocksCard").addEventListener("toggle", (e) => { if (e.target.open) renderFcStocks(); });
     $("#eventTable").addEventListener("change", onEventEdit);
@@ -1650,12 +1752,12 @@
     $("#optManual").onchange = (e) => { S.state.ui.manual_price = e.target.checked; save(); renderAll(); };
     $("#btnExport").onclick = () => {
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([JSON.stringify(S.state, null, 1)], { type: "application/json" }));
+      a.href = URL.createObjectURL(new Blob([JSON.stringify({ ...S.state, beyora: bv() }, null, 1)], { type: "application/json" }));
       a.download = `자산입력-${today()}.json`; a.click();
     };
     $("#fileImport").onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
-      try { S.state = normalize(JSON.parse(await f.text())); save(); renderAll(); toast("불러왔습니다"); } catch (err) { alert("파일을 읽지 못했습니다: " + err.message); }
+      try { const j = JSON.parse(await f.text()); bvMerge(j.beyora); delete j.beyora; S.state = normalize(j); save(); renderAll(); toast("불러왔습니다"); } catch (err) { alert("파일을 읽지 못했습니다: " + err.message); }
     };
     let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const t = $("#tabs .on").dataset.tab; if (t === "dash") renderDash(); if (t === "analysis") { if (curAna() === "strategy") renderStockPrices(); if (curAna() === "alloc") renderAllocChart(); if (curAna() === "trend") renderTrend(); else if (curAna() === "fx" && !lastForecast) renderFx(); else if (lastForecast) renderForecast(); } }, 200); });
   }
@@ -1663,6 +1765,7 @@
   async function init() {
     try { await reload(); }
     catch (e) { document.body.innerHTML = `<div class="card" style="margin:40px auto;max-width:640px"><h2>데이터를 불러오지 못했습니다</h2><p>내 PC에서 쓸 때는 <b>실행 파일</b>(Windows: <code>실행-Windows.bat</code>, Mac: <code>실행-Mac.command</code>)로 열어야 합니다. 웹 버전은 GitHub Actions의 첫 수집이 끝난 뒤 열립니다.</p><p class="muted small">${esc(e.message)}</p></div>`; return; }
+    if (S.purged) save(false);
     bind(); renderAll();
     setAuto(S.state.ui.auto_refresh_min || 0);
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; const a = localStorage.getItem("ana"); if (a && $(`#anaNav button[data-a="${a}"]`)) $$("#anaNav button").forEach((b) => b.classList.toggle("on", b.dataset.a === a)); } catch (e) { /* 무시 */ }

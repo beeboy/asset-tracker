@@ -1,8 +1,8 @@
-"""인사이트 화면용 뉴스·유튜브 수집 (파이썬 표준 라이브러리만).
+"""인사이트 화면용 뉴스 수집 (파이썬 표준 라이브러리만).
 
   python server.py --news     # data/news.json 을 만든다 (GitHub Actions 가 한 시간마다 실행)
 
-키가 필요 없는 공개 RSS(미국 언론, Google 뉴스 검색), Yahoo Finance 뉴스 검색, 유튜브 채널 RSS 를 모으고
+키가 필요 없는 공개 RSS(미국 언론, Google 뉴스 검색), Yahoo Finance 뉴스 검색을 모으고
 data/config.json 의 "ai" 중계(Cloudflare Worker → Gemini 무료 등급)로 한글 번역·요약한다.
 AI 가 안 되면 원문 제목을 그대로 둔다. 요청 수를 아끼려고 후보가 같으면 지난 번역을 다시 쓴다.
 """
@@ -35,6 +35,8 @@ MEDIA_Q = '"stock market" OR "Wall Street" OR "Federal Reserve" OR Nasdaq OR "S&
 BROKERS = ["Goldman Sachs", "Morgan Stanley", "JPMorgan", "Bank of America", "Citi", "Wells Fargo", "UBS", "Barclays",
            "Wedbush", "Jefferies", "Deutsche Bank", "Bernstein", "Evercore", "Piper Sandler"]
 BROKER_Q = '"price target" OR upgrade OR downgrade OR "analyst" OR strategist'
+# 대형 증권사·투자은행: 이들의 기사를 먼저 고른다
+BIG_RE = re.compile(r"Goldman|Morgan Stanley|JPMorgan|JP Morgan|J\.P\. Morgan|Bank of America|BofA|Citi(group)?\b|Wells Fargo|UBS|Barclays|Deutsche Bank", re.I)
 BROKER_RE = re.compile("|".join([re.escape(b) for b in BROKERS] + [r"price target", r"upgrad", r"downgrad", r"analyst", r"strategist", r"overweight", r"outperform"]), re.I)
 MEDIA_FEEDS = [
     ("CNBC", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
@@ -44,21 +46,6 @@ MEDIA_FEEDS = [
     ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
     ("New York Times", "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"),
     (None, gnews(MEDIA_Q, "1d")),
-]
-# 국내 주식 유튜브 채널 (핸들로 채널 ID 를 찾고, 못 찾으면 적어 둔 ID 사용). 실패한 채널은 건너뛴다
-YT_CHANNELS = [
-    ("삼프로TV", "@3protv", "UChlv4GSd7OQl3js-jkLOnFA"),
-    ("슈카월드", "@syukaworld", "UCsJ6RuBiTVWRX156FVbeaGg"),
-    ("김작가 TV", "@kimjakgatv", ""),
-    ("한국경제TV", "@wowtv", ""),
-    ("소수몽키", "@sosumonkey", ""),
-    ("815머니톡", "@815moneytalk", ""),
-    ("박곰희TV", "@gomhee", ""),
-    ("SBS Biz", "@SBSBiz", ""),
-    ("매일경제TV", "@mktv", ""),
-    ("이데일리TV", "@edailytv", ""),
-    ("머니인사이드", "@moneyinside", ""),
-    ("월급쟁이부자들TV", "@wolbu", ""),
 ]
 # 미래 가치 뉴스를 모으지 않을 종목 (지수·현금성·요인 대리 지표)
 SKIP = {"QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"}
@@ -77,78 +64,6 @@ def fetch(url: str, timeout: int = 20, headers: dict | None = None) -> bytes | N
             LAST_ERR["msg"] = str(e)[:80]
             time.sleep(1.5 * (k + 1))
     return None
-
-
-def _rel_time(t: str, now: datetime) -> str:
-    """유튜브 화면의 '3시간 전', '3 hours ago' → 시각"""
-    m = re.search(r"(\d+)\s*(초|분|시간|일|주|개월|년|second|minute|hour|day|week|month|year)", t or "")
-    if not m:
-        return ""
-    sec = {"초": 1, "second": 1, "분": 60, "minute": 60, "시간": 3600, "hour": 3600, "일": 86400, "day": 86400, "주": 604800, "week": 604800,
-           "개월": 2592000, "month": 2592000, "년": 31536000, "year": 31536000}[m.group(2)]
-    return (now - timedelta(seconds=int(m.group(1)) * sec)).isoformat(timespec="seconds")
-
-
-def yt_page(cid: str, name: str) -> list[dict]:
-    """채널 RSS 가 막히면 채널의 동영상 화면에서 제목·시각을 읽는다"""
-    LAST_ERR["msg"] = ""
-    raw = fetch(f"https://www.youtube.com/channel/{cid}/videos?hl=ko&gl=KR", headers={"Accept-Language": "ko-KR,ko;q=0.9", "Cookie": "PREF=hl=ko&gl=KR"})
-    if not raw:
-        return []
-    h, now, out, seen = raw.decode("utf-8", "replace"), datetime.now(timezone.utc), [], set()
-    m = re.search(r"ytInitialData\s*=\s*(\{.*?\});\s*</script>", h, re.S)
-    if not m:
-        LAST_ERR["msg"] = f"화면 {len(h)}자, ytInitialData 없음"
-        return []
-    try:
-        root = json.loads(m.group(1))
-    except json.JSONDecodeError as e:
-        LAST_ERR["msg"] = f"ytInitialData 읽기 실패 {e}"
-        return []
-
-    def texts(o):  # 아래쪽 모든 글자
-        if isinstance(o, dict):
-            for k, v in o.items():
-                if k in ("content", "simpleText", "text") and isinstance(v, str):
-                    yield v
-                else:
-                    yield from texts(v)
-        elif isinstance(o, list):
-            for v in o:
-                yield from texts(v)
-
-    def walk(o):
-        if isinstance(o, dict):
-            if "videoRenderer" in o and isinstance(o["videoRenderer"], dict):
-                v = o["videoRenderer"]
-                yield v.get("videoId"), "".join(r.get("text", "") for r in (v.get("title") or {}).get("runs", [])), (v.get("publishedTimeText") or {}).get("simpleText", "")
-            elif "lockupViewModel" in o and isinstance(o["lockupViewModel"], dict):
-                v = o["lockupViewModel"]
-                md = ((v.get("metadata") or {}).get("lockupMetadataViewModel") or {})
-                when = next((t for t in texts(v) if re.search(r"\d+\s*(초|분|시간|일|주|개월|년)\s*전|\d+\s*(second|minute|hour|day|week|month|year)s?\s+ago", t)), "")
-                if not when and not LAST_ERR.get("dump"):
-                    LAST_ERR["dump"] = " / ".join(list(texts(v))[:25])[:600]
-                yield v.get("contentId"), (md.get("title") or {}).get("content", ""), when
-            else:
-                for x in o.values():
-                    yield from walk(x)
-        elif isinstance(o, list):
-            for x in o:
-                yield from walk(x)
-
-    for vid, title, when in walk(root):
-        if not vid or not title or vid in seen or len(vid) != 11:
-            continue
-        seen.add(vid)
-        out.append({"title": _clean(title), "link": f"https://www.youtube.com/watch?v={vid}", "time": _rel_time(when, now), "source": name, "desc": ""})
-        if len(out) >= 15:
-            break
-    if not out:
-        LAST_ERR["msg"] = f"화면 {len(h)}자, 영상 항목 없음"
-    elif not any(x["time"] for x in out):
-        print("유튜브 시각 없음 예:", LAST_ERR.get("dump", ""))
-    return out
-    return out
 
 
 def _t(e) -> str:
@@ -297,27 +212,29 @@ def _age_h(iso: str | None) -> float:
 
 
 def pick_news(ai: str | None, media: list[dict], broker: list[dict], scope: str, prev: dict, errs: list) -> dict:
-    key = _hash([x["title"] for x in media], [x["title"] for x in broker])
+    broker = sorted(broker, key=lambda x: not BIG_RE.search(x["title"] + " " + x.get("desc", "")))  # 대형사 기사 먼저
+    key = _hash("n3", [x["title"] for x in media], [x["title"] for x in broker])
     if prev.get("key") == key and prev.get("media"):
         return prev
     res = {"key": key, "updated": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     if ai and (media or broker):
         when = "최근 24시간" if scope == "realtime" else "지난 한 주"
         prompt = (f"{when} 미국 경제·증시 뉴스 후보다.\n"
-                  f"[미국 언론] 목록에서 투자자에게 가장 중요한 기사 5개, [증권사] 목록에서 증권사·투자은행의 의견·전망·목표가 기사 5개를 골라라. 같은 사건은 하나만.\n"
+                  f"[미국 언론] 목록에서 투자자에게 가장 중요한 기사 3개, [증권사] 목록에서 증권사·투자은행의 의견·전망·목표가 기사 3개를 골라라. "
+                  f"증권사 기사는 대형 증권사·투자은행(골드만삭스, 모건스탠리, JP모건, 뱅크오브아메리카, 씨티, 웰스파고, UBS, 바클레이즈, 도이치뱅크)의 기사를 우선한다. 같은 사건은 하나만.\n"
                   '출력 형식: {"media":[{"i":번호,"ko":"한국어 제목","sum":"핵심 한 문장"}],"broker":[{"i":번호,"ko":"한국어 제목","sum":"핵심 한 문장","broker":"증권사 이름(한국어)"}]} 중요도 순.\n\n'
                   "[미국 언론]\n" + "\n".join(_line(i, x) for i, x in enumerate(media)) +
                   "\n\n[증권사]\n" + "\n".join(_line(i, x) for i, x in enumerate(broker)))
         try:
             j = ask_ai(ai, prompt)
-            res["media"], res["broker"] = _pick(media, j.get("media"), 5), _pick(broker, j.get("broker"), 5)
+            res["media"], res["broker"] = _pick(media, j.get("media"), 3), _pick(broker, j.get("broker"), 3)
             if res["media"] or res["broker"]:
                 return res
         except Exception as e:  # noqa: BLE001
             errs.append(f"{scope}: {e}")
         if prev.get("media") and _age_h(prev.get("updated")) < 6:  # 번역이 잠깐 안 되면 직전 번역을 유지
             return prev
-    res["media"], res["broker"], res["key"] = _plain(media, 5), _plain(broker, 5), ""
+    res["media"], res["broker"], res["key"] = _plain(media, 3), _plain(broker, 3), ""
     return res
 
 
@@ -330,7 +247,7 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
             return json.loads(p.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError):
             return d
-    old, pool = rd(out_p, {}), rd(pool_p, {"items": [], "yt": {}})
+    old, pool = rd(out_p, {}), rd(pool_p, {"items": []})
     now = datetime.now(timezone.utc)
     errs: list[str] = []
     out = {"updated": now.isoformat(timespec="seconds")}
@@ -360,7 +277,7 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
 
     # 2) 주간: 6시간마다 다시 고른다
     wk = old.get("weekly") or {}
-    if _age_h(wk.get("updated")) >= 6 or not wk.get("media") or wk.get("v") != 2:
+    if _age_h(wk.get("updated")) >= 6 or not wk.get("media") or wk.get("v") != 3:
         def spread(xs, n):
             return xs if len(xs) <= n else [xs[int(i * len(xs) / n)] for i in range(n)]
         lim7 = (now - timedelta(days=7)).isoformat()
@@ -370,7 +287,7 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
         wbg = [x for x in recent(parse_feed(fetch(gnews(BROKER_Q, "7d"))), 7 * 24) if BROKER_RE.search(x["title"])]
         wb = dedupe(wbg[:20] + spread(pb, 20), 32, per_source=5)
         wk = pick_news(ai, wm, wb, "weekly", {}, errs)
-        wk["v"] = 2
+        wk["v"] = 3
     out["weekly"] = wk
 
     # 3) 미래 가치: 종목별 장기 전망 기사 (3시간마다)
@@ -409,52 +326,6 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
         out["future"], out["future_meta"] = fut, {"updated": now.isoformat(timespec="seconds")}
     else:
         out["future"], out["future_meta"] = old.get("future") or [], old.get("future_meta") or {}
-
-    # 4) 국내 주식 유튜브: 오늘(한국 시각) 올라온 영상 제목 → 주제 요약
-    ytc = pool.setdefault("yt", {})
-    vids = []
-    for name, handle, cid in YT_CHANNELS:
-        c = ytc.get(handle) or cid
-        if not c and _age_h(ytc.get("_fail_" + handle)) >= 24:
-            m = re.search(rb"feeds/videos\.xml\?channel_id=(UC[\w-]{22})", fetch(f"https://www.youtube.com/{handle}") or b"")
-            if m:
-                c = ytc[handle] = m.group(1).decode()
-            else:
-                ytc["_fail_" + handle] = now.isoformat(timespec="seconds")
-        if not c:
-            continue
-        got = parse_feed(fetch(f"https://www.youtube.com/feeds/videos.xml?channel_id={c}"), name)
-        how = "RSS"
-        if not got:
-            got, how = yt_page(c, name), "화면"
-        log(f"유튜브 {name}: {len(got)}개 ({how}{'' if got else ', ' + LAST_ERR['msg'][:200]})")
-        vids += got
-    today = now.astimezone(KST).date().isoformat()
-    vt = [v for v in vids if v["time"] and datetime.fromisoformat(v["time"]).astimezone(KST).date().isoformat() == today]
-    if len(vt) < 5:
-        vt = recent(vids, 24)
-    vt = sorted(vt, key=lambda v: v["time"], reverse=True)[:60]
-    log(f"유튜브: 채널 영상 {len(vids)}개, 오늘 {len(vt)}개")
-    yo = old.get("youtube") or {}
-    yk = _hash(sorted(v["link"] for v in vt))
-    yt = {"date": today, "key": yk, "videos": [{"title": v["title"], "channel": v["source"], "link": v["link"], "time": v["time"]} for v in vt],
-          "points": [], "keywords": []}
-    if yo.get("key") == yk and yo.get("points"):
-        yt["points"], yt["keywords"] = yo["points"], yo.get("keywords", [])
-    elif ai and vt and (yo.get("date") != today or _age_h(yo.get("ai_at")) >= 1):
-        prompt = ("오늘 한국 주식 유튜브 채널에 올라온 영상 제목들이다. 제목만 근거로 오늘 많이 다룬 주제와 시장 분위기를 3~5개 문장으로 요약하고, 자주 나온 종목·테마를 키워드로 뽑아라. 제목에 없는 내용은 지어내지 마라.\n"
-                  '출력 형식: {"points":["요약 문장"],"keywords":["키워드"]}\n\n' + "\n".join(f"[{v['source']}] {v['title']}" for v in vt))
-        try:
-            j = ask_ai(ai, prompt)
-            yt["points"] = [str(x) for x in (j.get("points") or [])][:5]
-            yt["keywords"] = [str(x) for x in (j.get("keywords") or [])][:10]
-            yt["ai_at"] = now.isoformat(timespec="seconds")
-        except Exception as e:  # noqa: BLE001
-            errs.append(f"youtube: {e}")
-            yt["key"] = ""
-    elif yo.get("date") == today:
-        yt["points"], yt["keywords"], yt["ai_at"], yt["key"] = yo.get("points", []), yo.get("keywords", []), yo.get("ai_at"), yo.get("key", "")
-    out["youtube"] = yt
 
     out["ai"] = "ok" if not errs else "; ".join(errs)[:300]
     if not ai:

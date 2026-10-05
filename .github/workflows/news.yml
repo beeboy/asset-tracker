@@ -1,5 +1,5 @@
 name: news
-# 인사이트 화면용 뉴스·유튜브를 한 시간마다 모아 AI 중계로 한글 번역·요약하고 data/news.json 에 커밋한다.
+# 인사이트 화면용 뉴스를 한 시간마다 모아 AI 중계로 한글 번역·요약하고 data/news.json 에 커밋한다.
 on:
   schedule:
     - cron: "7 * * * *"

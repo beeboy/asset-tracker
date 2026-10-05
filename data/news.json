@@ -281,77 +281,10 @@
      "time": "2026-10-04T21:35:00+00:00"
     }
    ]
-  },
-  {
-   "ticker": "004540.KS",
-   "name": "KleanNara Co., Ltd.",
-   "view": "",
-   "items": []
   }
  ],
  "future_meta": {
   "updated": "2026-10-05T03:35:28+00:00"
- },
- "youtube": {
-  "date": "2026-10-05",
-  "key": "054e7d4383ab19d5",
-  "videos": [
-   {
-    "title": "삼성전자 HBM4에서 급성장하는 진짜 이유 / 2028년 5배 폭증? MLCC 최대 수혜는 삼성전기 | 권영화 교수",
-    "channel": "815머니톡",
-    "link": "https://www.youtube.com/watch?v=ZhAQxqNweDg",
-    "time": "2026-10-05T03:00:59+00:00"
-   },
-   {
-    "title": "북한군은 왜 계속 MDL을 넘었나…DMZ 지뢰 ‘고의 매설’ 가능성은? | 조한범 통일연구원 석좌연구위원 [신과 대화]",
-    "channel": "삼프로TV",
-    "link": "https://www.youtube.com/watch?v=Hf_9Zaq6zHA",
-    "time": "2026-10-05T02:44:40+00:00"
-   },
-   {
-    "title": "美 고용 쇼크, 경기침체 신호인가? / 미국채금리 5% 돌파… 10월 증시 또 충격 받을까? ㅣ이주연 대표",
-    "channel": "815머니톡",
-    "link": "https://www.youtube.com/watch?v=he3PiHPwG1A",
-    "time": "2026-10-05T00:44:59+00:00"
-   },
-   {
-    "title": "5% 고금리 뚫고 올라갈 하반기 주가 방어 전략은?ㅣ장우진 금시공 대표, 박명석 큐레이터 [주말인터뷰]",
-    "channel": "삼프로TV",
-    "link": "https://www.youtube.com/watch?v=0ag6lKsq57w",
-    "time": "2026-10-04T23:44:40+00:00"
-   },
-   {
-    "title": "[#찐시황] 금리 5%에도 AI는 안 죽는다… AI發 MLCC·기판 ‘초대형 공급 부족’ 시작? / 10월 주도주는 ‘여기’ | 미래에셋자산운용 최창규 이사",
-    "channel": "815머니톡",
-    "link": "https://www.youtube.com/watch?v=HXrsRH9EY3A",
-    "time": "2026-10-04T11:44:59+00:00"
-   },
-   {
-    "title": "AI데이터센터 전력난이 돈을 만든다… 신재생에너지 내년 실적 폭발 / 가장 먼저 움직일 주식은 ‘여기’ ㅣ유진투자증권 한병화 이사",
-    "channel": "815머니톡",
-    "link": "https://www.youtube.com/watch?v=dONn3eEEvuE",
-    "time": "2026-10-04T08:44:59+00:00"
-   },
-   {
-    "title": "[한국어] 뉴욕증권거래소에서 만난 켄 피셔! 투자 거장이 내년 상반기까지 증시를 낙관하는 이유 [Global Money Talk]",
-    "channel": "삼프로TV",
-    "link": "https://www.youtube.com/watch?v=mbd_XtJTs3k",
-    "time": "2026-10-04T06:44:40+00:00"
-   }
-  ],
-  "points": [
-   "고금리 환경과 지정학적 리스크 속에서도 인공지능(AI)과 반도체 산업의 향방에 투자자들의 관심이 집중되었습니다.",
-   "특히 삼성전자와 SK하이닉스를 중심으로 HBM 및 후공정 테스트, 소부장 기업들의 수혜 여부가 주요 화두로 다뤄졌습니다.",
-   "미국의 금리 정책과 글로벌 자산 시장의 변화, 주요 빅테크 기업들의 AI 전략 점검이 시장의 주요 관심사였습니다."
-  ],
-  "keywords": [
-   "삼성전자",
-   "SK하이닉스",
-   "HBM",
-   "AI",
-   "고금리"
-  ],
-  "ai_at": "2026-10-05T03:42:36+00:00"
  },
  "ai": "ok"
 }

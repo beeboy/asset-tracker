@@ -326,7 +326,7 @@ def main():
     ap.add_argument("--collect", action="store_true", help="수집만 하고 끝냄 (data/tickers.json)")
     ap.add_argument("--add", default="", help="--collect 와 함께: tickers.json 에 더할 티커 (쉼표 구분)")
     ap.add_argument("--quotes-only", action="store_true")
-    ap.add_argument("--news", action="store_true", help="뉴스·유튜브만 모아 data/news.json 저장 (GitHub Actions 용)")
+    ap.add_argument("--news", action="store_true", help="뉴스만 모아 data/news.json 저장 (GitHub Actions 용)")
     a = ap.parse_args()
     PRICES.mkdir(parents=True, exist_ok=True)
     if a.news:
