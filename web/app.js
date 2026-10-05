@@ -1419,7 +1419,7 @@
   const insLoad = () => { try { const o = JSON.parse(localStorage.getItem(INS_KEY) || "{}"); return { cur: o.cur || [], shown: o.shown || {}, read: o.read || {} }; } catch (e) { return { cur: [], shown: {}, read: {} }; } };
   const insSave = (o) => { try { localStorage.setItem(INS_KEY, JSON.stringify(o)); } catch (e) { /* 무시 */ } };
   // 서버(매시간 수집)에 아직 없는 보유 종목은 이 브라우저가 직접 Yahoo 기사를 받아 AI 중계로 분류·번역한다 (3시간 보관)
-  const INS_X = "naeilo-insight-extra", INS_SKIP = new Set(["QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"]);
+  const INS_X = "naeilo-insight-extra2", INS_SKIP = new Set(["QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"]);
   let insBusy = false;
   const insExtra = () => { try { return JSON.parse(localStorage.getItem(INS_X) || "{}"); } catch (e) { return {}; } };
   async function yahooNews(t) {
@@ -1446,13 +1446,15 @@
       try {
         const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: "너는 미국 증시 뉴스를 한국 개인 투자자에게 전하는 편집자다. 반드시 JSON 하나만 출력한다.", prompt }) });
         const m = ((await r.json().catch(() => ({}))).text || "").replace(/```(?:json)?/g, "").match(/\{[\s\S]*\}/);
-        picked = m ? JSON.parse(m[0]).items || [] : null;
+        const j = m ? JSON.parse(m[0]) : null; picked = Array.isArray(j?.items) ? j.items : Array.isArray(j) ? j : null;
       } catch (e) { picked = null; }
     }
     const key = (s) => s.toLowerCase().replace(/[^a-z0-9가-힣]/g, "").slice(0, 60);
     const mk = ({ t, a }, cat, ko, sum) => ({ id: key(a.title), ticker: t, scope: "held", cat, title: ko || a.title, orig: a.title, summary: sum || "", source: a.source, link: a.link, time: a.time });
-    const got = picked ? picked.filter((p) => cands[+p.i] && INS_CAT[p.cat]).map((p) => mk(cands[+p.i], p.cat, p.ko, p.sum)) : cands.slice(0, 20).map((c) => mk(c, "growth"));
-    for (const t of tks) x[t] = { at: Date.now(), ai: !!picked, fail: !cands.some((c) => c.t === t), items: got.filter((g) => g.ticker === t) };
+    // AI 가 고른 기사 (분류가 이상하면 성장·혁신으로). 하나도 못 고르면 원문 제목 그대로 보여 준다
+    let got = (picked || []).filter((p) => cands[+p.i]).map((p) => mk(cands[+p.i], INS_CAT[p.cat] ? p.cat : "growth", p.ko, p.sum));
+    for (const t of tks) if (!got.some((g) => g.ticker === t)) got = got.concat(cands.filter((c) => c.t === t).slice(0, 6).map((c) => mk(c, "growth")));
+    for (const t of tks) x[t] = { at: Date.now(), ai: !!picked?.length, fail: !cands.some((c) => c.t === t), items: got.filter((g) => g.ticker === t) };
     try { localStorage.setItem(INS_X, JSON.stringify(x)); } catch (e) { /* 무시 */ }
   }
   // mode: "refresh"(리로드·더 보기: 새 기사를 위에, 읽은 것·오래된 것을 뺀다) / "fill"(빈자리만 채운다)
