@@ -454,7 +454,17 @@
       stocks: holdings.map((hd, a) => {
         const b = bandsOf(stock[a]);
         let up = 0; for (let p = 0; p < nPaths; p++) if (stock[a][(M - 1) * nPaths + p] > hd.price0) up++;
-        return { ticker: hd.ticker, bands: b, p_up: up / nPaths, valBands: bandsOf(valK[a]), valBandsUsd: bandsOf(perUsd(valK[a])) };
+        // 연도별 (그 시점) 현재가 이상·2배 이상 확률
+        const byYear = [];
+        for (let y = 1; ; y++) {
+          const target = addMonths(model.startDate, 12 * y), md = model.monthDates;
+          let k = 0; while (k + 1 < M && md[k + 1] <= target) k++;
+          let u = 0, x2 = 0;
+          for (let p = 0; p < nPaths; p++) { const v = stock[a][k * nPaths + p]; if (v > hd.price0) u++; if (v >= 2 * hd.price0) x2++; }
+          byYear.push({ year: y, k, p_up: u / nPaths, p_x2: x2 / nPaths });
+          if (k >= M - 1) break;
+        }
+        return { ticker: hd.ticker, bands: b, p_up: up / nPaths, byYear, valBands: bandsOf(valK[a]), valBandsUsd: bandsOf(perUsd(valK[a])) };
       }),
     };
   }

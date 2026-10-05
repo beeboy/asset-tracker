@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="naeilo">
 <link rel="manifest" href="manifest.json">
 <title>naeilo</title>
-<link rel="stylesheet" href="style.css?v=20261005s">
+<link rel="stylesheet" href="style.css?v=20261005t">
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
 <body>
@@ -173,16 +173,16 @@
     <div class="ana" id="ana-forecast" style="display:none">
       <div class="kpis" id="fcKpis"></div>
       <div class="card">
-        <div class="row between wrap"><h2 style="margin:0">원화 평가액 전망 (환율·외부 요인 포함)</h2><div class="row seg wrap" id="fcView"><button data-v="none">미반영</button><button data-v="all" class="on">전체 요인</button><button data-v="macro">거시</button><button data-v="corp">기업</button><button data-v="flow">수급</button></div></div>
+        <div class="row between wrap"><h2 style="margin:0" id="fcTitle">원화 평가액 전망 (환율·외부 요인 포함)</h2><div class="row seg wrap" id="fcView"><button data-v="none">미반영</button><button data-v="all" class="on">전체 요인</button><button data-v="macro">거시</button><button data-v="corp">기업</button><button data-v="flow">수급</button></div></div>
+        <div class="row seg wrap" id="fcTk" style="margin-top:8px"></div>
         <div id="fcChart" class="chartbox" style="margin-top:8px"></div>
         <p class="small" id="fcViewNote"></p>
-        <p class="muted small">진한 띠 25~75%, 옅은 띠 5~95%, 실선은 중앙값. 회색 점선은 외부 요인 미반영 중앙값, 주황 점선은 목표 금액과 목표를 정확히 맞추는 복리 경로. 아래 삼각형은 선택한 요인의 사건 날짜. 위 버튼으로 외부 요인을 빼거나 거시·기업·수급만 넣어 볼 수 있습니다.</p>
+        <p class="muted small">진한 띠 25~75%, 옅은 띠 5~95%, 실선은 중앙값. 회색 점선은 외부 요인 미반영 중앙값, 주황 점선은 목표 금액과 목표를 정확히 맞추는 복리 경로(전체일 때). 아래 삼각형은 선택한 요인의 사건 날짜. 오른쪽 위 버튼으로 외부 요인을 빼거나 거시·기업·수급만 넣어 보고, 아래 줄에서 전체 포트폴리오나 종목(현지 통화 가격, 로그 눈금)을 고릅니다. 아래 두 상자도 같이 바뀝니다.</p>
       </div>
       <div class="grid2">
-        <div class="card"><h2>목표 도달 확률 (연도별 누적)</h2><div id="fcYears"></div></div>
-        <div class="card"><h2>외부 요인 반영 효과</h2><div id="fcEvents"></div></div>
+        <div class="card"><h2 id="fcYearsTitle">목표 도달 확률 (연도별 누적)</h2><div id="fcYears"></div></div>
+        <div class="card"><h2 id="fcEvTitle">외부 요인 반영 효과</h2><div id="fcEvents"></div></div>
       </div>
-      <details class="card" id="fcStocksCard"><summary><b>종목별 가격 전망 (현지 통화)</b> <span class="muted small" id="fcStocksSum"></span></summary><div id="fcStocks" class="smallmult" style="margin-top:8px"></div></details>
       <details class="card"><summary><b>모형에 쓴 값</b></summary>
         <div class="tablewrap"><table id="fcParams" class="grid"></table></div>
         <p class="muted small">기대수익률은 과거 평균을 사전값(시세 수집 아래 설정 → 모형 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다. 스무딩·추세 추종 시나리오는 3년 스무딩 또는 칼만·EMA 추세의 성장률이 중앙값이 되도록 하고(연 -60%~+230% 범위로 제한), 이력이 1년 미만이면 기준 시나리오와 섞습니다.</p>
@@ -259,8 +259,8 @@
 </main>
 <footer class="muted small" id="footer"></footer>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261005s"></script>
-<script src="model.js?v=20261005s"></script>
-<script src="app.js?v=20261005s"></script>
+<script src="charts.js?v=20261005t"></script>
+<script src="model.js?v=20261005t"></script>
+<script src="app.js?v=20261005t"></script>
 </body>
 </html>
