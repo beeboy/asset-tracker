@@ -1417,27 +1417,63 @@
   let insFresh = false, insMsg = "";
   const insLoad = () => { try { const o = JSON.parse(localStorage.getItem(INS_KEY) || "{}"); return { cur: o.cur || [], shown: o.shown || {}, read: o.read || {} }; } catch (e) { return { cur: [], shown: {}, read: {} }; } };
   const insSave = (o) => { try { localStorage.setItem(INS_KEY, JSON.stringify(o)); } catch (e) { /* 무시 */ } };
-  function insRefresh(items, held) {
+  // 서버(매시간 수집)에 아직 없는 보유 종목은 이 브라우저가 직접 Yahoo 기사를 받아 AI 중계로 분류·번역한다 (3시간 보관)
+  const INS_X = "naeilo-insight-extra", INS_SKIP = new Set(["QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"]);
+  let insBusy = false;
+  const insExtra = () => { try { return JSON.parse(localStorage.getItem(INS_X) || "{}"); } catch (e) { return {}; } };
+  async function yahooNews(t) {
+    const url = "https://query1.finance.yahoo.com/v1/finance/search?" + new URLSearchParams({ q: t, newsCount: 12, quotesCount: 0 });
+    for (const p of proxies()) {
+      try {
+        const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 15000);
+        const r = await fetch(p + encodeURIComponent(url), { signal: ctl.signal, cache: "no-store" }); clearTimeout(tm);
+        const j = await r.json().catch(() => null);
+        if (j && Array.isArray(j.news)) return j.news.filter((x) => x.title && x.link).map((x) => ({ title: x.title, link: x.link, source: x.publisher || "", time: new Date((x.providerPublishTime || 0) * 1000).toISOString() }));
+      } catch (e) { /* 다음 중계 */ }
+    }
+    return [];
+  }
+  async function insFetchMissing(tks) {
+    const x = insExtra(), cands = [];
+    for (const t of tks) for (const a of (await yahooNews(t)).filter((a) => Date.now() - Date.parse(a.time) < 7 * 864e5)) cands.push({ t, a });
+    let picked = null;
+    if (cands.length && S.config?.ai) {
+      const prompt = "아래는 보유 종목의 최근 기사 후보다. 1~3년 뒤 기업 가치 판단에 도움이 되는 기사만 골라 4개 분류 중 하나로 나눠라. 단기 주가 등락·광고성 기사는 빼라. 최대 20개.\n"
+        + "- growth: 성장 동력 및 기술 혁신\n- market: 시장 및 산업 트렌드\n- fund: 펀더멘탈 및 리스크 관리\n- esg: 무형 자산 및 지속 가능성\n"
+        + '출력 형식: {"items":[{"i":번호,"cat":"growth|market|fund|esg","ko":"한국어 제목","sum":"핵심 요약 한 문장"}]} JSON만.\n'
+        + cands.map(({ t, a }, i) => `${i}. [${t}] [${a.source}] ${a.title}`).join("\n");
+      try {
+        const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: "너는 미국 증시 뉴스를 한국 개인 투자자에게 전하는 편집자다. 반드시 JSON 하나만 출력한다.", prompt }) });
+        const m = ((await r.json().catch(() => ({}))).text || "").replace(/```(?:json)?/g, "").match(/\{[\s\S]*\}/);
+        picked = m ? JSON.parse(m[0]).items || [] : null;
+      } catch (e) { picked = null; }
+    }
+    const key = (s) => s.toLowerCase().replace(/[^a-z0-9가-힣]/g, "").slice(0, 60);
+    const mk = ({ t, a }, cat, ko, sum) => ({ id: key(a.title), ticker: t, scope: "held", cat, title: ko || a.title, orig: a.title, summary: sum || "", source: a.source, link: a.link, time: a.time });
+    const got = picked ? picked.filter((p) => cands[+p.i] && INS_CAT[p.cat]).map((p) => mk(cands[+p.i], p.cat, p.ko, p.sum)) : cands.slice(0, 20).map((c) => mk(c, "growth"));
+    for (const t of tks) x[t] = { at: Date.now(), ai: !!picked, items: got.filter((g) => g.ticker === t) };
+    try { localStorage.setItem(INS_X, JSON.stringify(x)); } catch (e) { /* 무시 */ }
+  }
+  // mode: "refresh"(리로드·더 보기: 새 기사를 위에, 읽은 것·오래된 것을 뺀다) / "fill"(빈자리만 채운다)
+  function insRefresh(items, held, mode) {
     const o = insLoad(), now = Date.now(), lim = now - 30 * 864e5;
     for (const m of [o.shown, o.read]) for (const k in m) if (m[k] < lim) delete m[k];
     const byId = new Map(items.map((x) => [x.id, x]));
-    o.cur = o.cur.filter((id) => byId.has(id));
-    // 새 후보: 아직 보여 준 적 없는 기사. 보유 종목 → 관련 업계, 그 안에서는 분류를 돌아가며 최신순
-    const pri = (x) => (x.scope === "held" ? 0 : 1);
-    const fresh = items.filter((x) => !o.shown[x.id] && !o.read[x.id] && (!held.length || held.includes(x.ticker)))
-      .sort((a, b) => pri(a) - pri(b) || held.indexOf(a.ticker) - held.indexOf(b.ticker) || (b.time || "").localeCompare(a.time || ""));
-    const rr = (lists) => { const o = []; for (let k = 0; lists.some((l) => l[k]); k++) for (const l of lists) if (l[k]) o.push(l[k]); return o; };
-    const pick = [];
+    o.cur = o.cur.filter((id) => byId.has(id)); // 지운 종목의 기사는 바로 뺀다 (items 는 이미 보유 종목만)
+    // 새 후보: 아직 보여 준 적 없는 기사. 보유 종목 → 관련 업계
+    const fresh = items.filter((x) => !o.shown[x.id] && !o.read[x.id] && !o.cur.includes(x.id)).sort((a, b) => held.indexOf(a.ticker) - held.indexOf(b.ticker) || (b.time || "").localeCompare(a.time || ""));
+    const rr = (lists) => { const r = []; for (let k = 0; lists.some((l) => l[k]); k++) for (const l of lists) if (l[k]) r.push(l[k]); return r; };
+    const pick = [], room = mode === "refresh" ? INS_N : INS_N - o.cur.length;
     for (const sc of ["held", "industry"]) { // 종목을 돌아가며, 한 종목 안에서는 분류를 돌아가며
       const tks = [...new Set(fresh.filter((x) => x.scope === sc).map((x) => x.ticker))];
-      for (const x of rr(tks.map((t) => rr(Object.keys(INS_CAT).map((c) => fresh.filter((y) => y.scope === sc && y.ticker === t && y.cat === c)))))) if (pick.length < INS_N) pick.push(x);
+      for (const x of rr(tks.map((t) => rr(Object.keys(INS_CAT).map((c) => fresh.filter((y) => y.scope === sc && y.ticker === t && y.cat === c)))))) if (pick.length < room) pick.push(x);
     }
     if (!pick.length) { insSave(o); return false; }
-    // 남길 기존 기사: 안 읽은 것 먼저, 그 안에서는 최근에 불러온 것 먼저
-    const keep = o.cur.filter((id) => !pick.some((x) => x.id === id))
-      .sort((a, b) => !!o.read[a] - !!o.read[b] || (o.shown[b] || 0) - (o.shown[a] || 0)).slice(0, Math.max(0, INS_N - pick.length));
     pick.forEach((x, i) => (o.shown[x.id] = now - i)); // 위에 놓을 순서대로
-    o.cur = [...pick.map((x) => x.id), ...keep];
+    if (mode === "refresh") { // 남길 기존 기사: 안 읽은 것 먼저, 그 안에서는 최근에 불러온 것 먼저
+      const keep = o.cur.sort((a, b) => !!o.read[a] - !!o.read[b] || (o.shown[b] || 0) - (o.shown[a] || 0)).slice(0, Math.max(0, INS_N - pick.length));
+      o.cur = [...pick.map((x) => x.id), ...keep];
+    } else o.cur = [...o.cur, ...pick.map((x) => x.id)];
     insSave(o);
     return true;
   }
@@ -1446,17 +1482,24 @@
     const N = await loadNews(!!more);
     const none = (t) => `<div class="nitem empty">${t}</div>`;
     const auto = "한 시간마다 자동으로 모으고 무료 AI로 한글 번역·요약합니다";
-    if (!N) { $("#newsFuture").innerHTML = none(`아직 모은 기사가 없습니다. ${auto}.`); $("#newsNote").textContent = ""; return; }
     const held = S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker).filter((t) => !PURGED.has(t));
-    const items = (N.insight?.items || []).filter((x) => !PURGED.has(x.ticker));
-    if (more || !insFresh) { insFresh = true; insMsg = insRefresh(items, held) ? "" : `새로운 인사이트 뉴스가 없습니다. ${auto}. 잠시 뒤 다시 확인해 주세요.`; }
-    const o = insLoad(), byId = new Map(items.map((x) => [x.id, x])), ind = N.insight?.industry || {};
+    const tks = held.filter((t) => !INS_SKIP.has(t.toUpperCase()) && !t.includes("="));
+    // 서버 기사 + 이 브라우저가 받은 기사. 지금 보유한 종목 것만 쓴다
+    const srv = (N?.insight?.items || []).filter((x) => tks.includes(x.ticker)), X = insExtra();
+    const missing = tks.filter((t) => !srv.some((x) => x.ticker === t && x.scope === "held"));
+    const items = [...srv, ...missing.flatMap((t) => X[t]?.items || [])];
+    const stale = missing.filter((t) => !X[t] || Date.now() - X[t].at > (X[t].ai ? 3 : 0.5) * 3600e3);
+    if (stale.length && !insBusy) { insBusy = true; insFetchMissing(stale).finally(() => { insBusy = false; if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(true); }); } // 끝나면 새 종목 기사를 위에
+    const fill = insRefresh(items, tks, more || !insFresh ? "refresh" : "fill");
+    if (more || !insFresh) { insFresh = true; insMsg = fill || insBusy ? "" : `새로운 인사이트 뉴스가 없습니다. ${auto}. 잠시 뒤 다시 확인해 주세요.`; }
+    const o = insLoad(), byId = new Map(items.map((x) => [x.id, x])), ind = N?.insight?.industry || {};
     const cur = o.cur.map((id) => byId.get(id)).filter(Boolean);
     $("#newsFuture").innerHTML = cur.map((x) => newsBox(x, x.scope === "held" ? x.ticker : `${x.ticker} 관련 업계${ind[x.ticker] ? " · " + ind[x.ticker] : ""}`, x.source, INS_CAT[x.cat], x.id, !!o.read[x.id])).join("")
-      || none("보유 종목 관련 기사가 아직 없습니다.");
-    const fu = N.future_meta?.updated || N.updated;
-    $("#newsMsg").textContent = insMsg; $("#newsMsg").style.display = insMsg ? "" : "none";
-    $("#newsNote").textContent = `${fu ? new Date(fu).toLocaleString() + " 수집" : ""} · ${auto}${N.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열리고, 읽은 기사는 다음에 새 기사로 바뀝니다.`;
+      || none(insBusy ? `${missing.join(", ")} 기사를 모으는 중입니다…` : tks.length ? "보유 종목 관련 기사가 아직 없습니다." : "보유 종목을 입력하면 관련 기사를 보여 줍니다.");
+    const busy = insBusy && cur.length ? `${missing.join(", ")} 기사를 모으는 중입니다…` : "";
+    $("#newsMsg").textContent = busy || insMsg; $("#newsMsg").style.display = busy || insMsg ? "" : "none";
+    const fu = N?.future_meta?.updated || N?.updated;
+    $("#newsNote").textContent = `${fu ? new Date(fu).toLocaleString() + " 수집" : ""} · ${auto}${N?.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열리고, 읽은 기사는 다음에 새 기사로 바뀝니다.`;
   }
 
   // ------------------------------------------------------------ 미래 설계 Beyora (블로그)

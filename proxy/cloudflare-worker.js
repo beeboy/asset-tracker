@@ -7,7 +7,7 @@
 // 3) 조회수 (/views): Beyora 글 조회수를 모든 사람 것으로 합친다. Workers KV 무료 등급(하루 쓰기 1,000번)으로 충분.
 //       Storage & Databases → KV → Create (이름 아무거나) → 이 Worker 의 Settings → Bindings → Add → KV namespace,
 //       Variable name 을 VIEWS 로 정하고 방금 만든 KV 를 고른 뒤 Deploy. data/config.json 의 "views" 에 "https://<이름>.workers.dev/views".
-const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/v8\/finance\/chart\//;
+const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
 export default {

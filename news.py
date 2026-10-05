@@ -260,7 +260,7 @@ INDUSTRY = {"TSLA": ("전기차·자율주행·로봇", '"electric vehicle" OR E
             "AMD": ("반도체·AI 인프라", 'semiconductor OR "AI chip" OR GPU OR "data center"'),
             "AVGO": ("반도체·네트워크", 'semiconductor OR "AI chip" OR networking OR "custom silicon"'),
             "TSM": ("반도체 파운드리", 'semiconductor OR foundry OR "chip manufacturing"')}
-INS_KEEP_D, INS_MAX = 14, 240
+INS_KEEP_D, INS_MAX = 7, 200
 
 
 def _nm(t: str, names: dict) -> str:
@@ -269,7 +269,7 @@ def _nm(t: str, names: dict) -> str:
 
 def collect_insight(ai: str | None, tks: list[str], names: dict, prev: dict, pool: dict, now: datetime, errs: list, log=print) -> dict:
     """보유 종목(held)·관련 업계(industry) 기사 후보를 모아, 처음 보는 기사만 AI 에 보내 분류·번역한다.
-    고른 기사는 14일 동안 쌓아 두고(최대 240건), 브라우저가 리로드·더 보기 때 아직 안 본 기사로 갈아 끼운다."""
+    고른 기사는 7일 동안 쌓아 두고(최대 200건), 브라우저가 리로드·더 보기 때 아직 안 본 기사로 갈아 끼운다."""
     items = [x for x in prev.get("items") or [] if (x.get("time") or "") >= (now - timedelta(days=INS_KEEP_D)).isoformat()
              and not (ai and x.get("plain"))]  # AI 가 되면 번역 안 된 임시 기사는 다시 고른다
     have = {x["id"] for x in items}
@@ -280,10 +280,10 @@ def collect_insight(ai: str | None, tks: list[str], names: dict, prev: dict, poo
         got = yahoo_news(t, 12)
         for c, q in CAT_Q.items():
             got += parse_feed(fetch(gnews(f'"{nm}" ({q})', "7d")))[:8]
-        held = dedupe(recent(got, 10 * 24), 24)
+        held = dedupe(recent(got, 7 * 24), 24)
         ind_lbl, ind_q = INDUSTRY.get(t.upper(), (f"{nm} 업계", f'"{nm}" (industry OR sector OR competitors OR rivals)'))
         ind = parse_feed(fetch(gnews(f"({ind_q}) (outlook OR future OR growth OR trend OR forecast)", "7d")))[:20]
-        ind = [x for x in dedupe(recent(ind, 10 * 24), 16) if _key(x["title"]) not in {_key(y["title"]) for y in held}]
+        ind = [x for x in dedupe(recent(ind, 7 * 24), 16) if _key(x["title"]) not in {_key(y["title"]) for y in held}]
         log(f"미래 가치 {t}: 보유 {len(held)}건, 업계 {len(ind)}건")
         cands += [(t, "held", x) for x in held] + [(t, "industry", x) for x in ind]
     fresh, ks = [], set()
