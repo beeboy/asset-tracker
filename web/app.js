@@ -1435,6 +1435,26 @@
     return D;
   }
   let BVR = null, bvLoading = null, bvBusy = false;
+  // 모두의 조회수: data/config.json 의 views 중계(Cloudflare KV)가 있으면 거기서 센다. 안 되면 이 브라우저 몫만 더한다
+  let BVW = null;
+  async function bvViewsLoad() {
+    const url = S.config?.views, ids = bv().posts.map((p) => p.id); if (!url || !ids.length) return;
+    try {
+      const got = {};
+      for (let i = 0; i < ids.length; i += 50) {
+        const r = await fetch(url + "?ids=" + encodeURIComponent(ids.slice(i, i + 50).join(",")), { cache: "no-store" }), j = await r.json();
+        if (!r.ok || !j.views) return; Object.assign(got, j.views);
+      }
+      BVW = { ...(BVW || {}), ...got }; renderBeyora();
+    } catch (e) { /* 중계가 없으면 이 브라우저 조회수로 */ }
+  }
+  function bvHit(id) {
+    const local = () => { const pv = lsGet(BV_VIEWS, {}); pv[id] = (pv[id] || 0) + 1; lsSet(BV_VIEWS, pv); renderBeyora(); };
+    if (!S.config?.views) return local();
+    fetch(S.config.views, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((j) => { if (!(j.n > 0)) throw 0; BVW = { ...(BVW || {}), [id]: j.n }; renderBeyora(); }).catch(local);
+  }
   const bvLocal = () => bvNorm(lsGet(BV_KEY, null));
   const bvRemoteOk = () => MODE === "local" || !!(GH && ghToken()); // 저장소(또는 내 PC 파일)에 쓸 수 있나
   const bvCanWrite = () => bvRemoteOk() || (MODE === "static" && !GH); // GitHub Pages 가 아닌 곳에서는 예전처럼 이 브라우저에 쓴다
@@ -1442,7 +1462,7 @@
   function bv() {
     const D = bvMergeInto(bvNorm(null), BVR), pv = lsGet(BV_VIEWS, {}), loc = new Set(bvLocal().posts.map((p) => p.id));
     bvMergeInto(D, bvLocal());
-    D.posts.forEach((p) => { p.views = (p.views || 0) + (pv[p.id] || 0); p._local = loc.has(p.id); });
+    D.posts.forEach((p) => { p.views = (p.views || 0) + (BVW?.[p.id] || 0) + (pv[p.id] || 0); p._local = loc.has(p.id); });
     return D;
   }
   const bvS = { cat: "all", view: "list", id: null, sort: lsGet(BV_SORT, "new"), msg: "" };
@@ -1492,7 +1512,7 @@
   function bvLoad(force) {
     if (bvLoading && !force) return bvLoading;
     bvLoading = bvFetch(false).then(({ data }) => { BVR = bvNorm(data); }).catch((e) => { bvS.msg = "글을 불러오지 못했습니다: " + e.message; })
-      .then(() => { renderBeyora(); const L = bvLocal(); if (bvRemoteOk() && (L.posts.length || L.cats.length)) bvSync(); });
+      .then(() => { renderBeyora(); bvViewsLoad(); const L = bvLocal(); if (bvRemoteOk() && (L.posts.length || L.cats.length)) bvSync(); });
     return bvLoading;
   }
   // 이 브라우저에 쌓인 글·카테고리·조회수를 저장소에 올린다 (op: 지울 글 del, 지울 카테고리 delcat)
@@ -1561,7 +1581,9 @@
   }
   function bvOpen(id) {
     if (!bv().posts.some((x) => x.id === id)) return;
-    const pv = lsGet(BV_VIEWS, {}); pv[id] = (pv[id] || 0) + 1; lsSet(BV_VIEWS, pv);
+    // 같은 사람이 한 번 열어 둔 동안 여러 번 봐도 한 번만 센다
+    let seen = []; try { seen = JSON.parse(sessionStorage.getItem("beyora-seen") || "[]"); } catch (e) { /* 무시 */ }
+    if (!seen.includes(id)) { try { sessionStorage.setItem("beyora-seen", JSON.stringify([...seen, id])); } catch (e) { /* 무시 */ } bvHit(id); }
     bvS.view = "post"; bvS.id = id; bvS.msg = ""; renderBeyora();
     $("#beyora").scrollIntoView({ block: "start", behavior: "smooth" });
   }

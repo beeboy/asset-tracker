@@ -4,6 +4,9 @@
 // 배포: Cloudflare 대시보드 → Workers → Create → 이 코드 붙여넣기 → Deploy
 //       Settings → Variables → Secret 에 GEMINI_KEY (https://aistudio.google.com/apikey 에서 무료 발급)
 //       data/config.json 의 "proxy" 에 "https://<이름>.workers.dev/?url=", "ai" 에 "https://<이름>.workers.dev/ai" 를 넣고 커밋.
+// 3) 조회수 (/views): Beyora 글 조회수를 모든 사람 것으로 합친다. Workers KV 무료 등급(하루 쓰기 1,000번)으로 충분.
+//       Storage & Databases → KV → Create (이름 아무거나) → 이 Worker 의 Settings → Bindings → Add → KV namespace,
+//       Variable name 을 VIEWS 로 정하고 방금 만든 KV 를 고른 뒤 Deploy. data/config.json 의 "views" 에 "https://<이름>.workers.dev/views".
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/v8\/finance\/chart\//;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -12,8 +15,26 @@ export default {
     const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const u = new URL(req.url);
+    const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
+    if (u.pathname === "/views") {
+      // GET /views?ids=a,b → { views: { a: 3, b: 0 } },  POST /views {"id":"a"} → 한 번 더하고 { id, n }
+      if (!env.VIEWS) return out({ error: "중계에 VIEWS KV 연결이 없습니다 (Settings → Bindings)" }, 400);
+      const okId = (id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(id);
+      if (req.method === "GET") {
+        const ids = [...new Set((u.searchParams.get("ids") || "").split(","))].filter(okId).slice(0, 100);
+        const vals = await Promise.all(ids.map((id) => env.VIEWS.get("v:" + id)));
+        return out({ views: Object.fromEntries(ids.map((id, i) => [id, Number(vals[i]) || 0])) });
+      }
+      if (req.method === "POST") {
+        const { id } = await req.json().catch(() => ({}));
+        if (!okId(id)) return out({ error: "글 id 가 맞지 않습니다" }, 400);
+        const n = (Number(await env.VIEWS.get("v:" + id)) || 0) + 1;
+        await env.VIEWS.put("v:" + id, String(n));
+        return out({ id, n });
+      }
+      return out({ error: "GET 또는 POST" }, 400);
+    }
     if (u.pathname === "/ai") {
-      const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
       if (!env.GEMINI_KEY) return out({ error: "중계에 GEMINI_KEY 비밀값이 없습니다 (Settings → Variables and Secrets)" }, 400);
       // 브라우저로 /ai?test=1 을 열면 Gemini 연결을 바로 점검한다
       const test = req.method === "GET" && u.searchParams.has("test");
