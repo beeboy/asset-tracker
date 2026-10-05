@@ -53,8 +53,11 @@
     });
     const spanDays = (x1 - x0) / 86400e3, xt = [];
     const d = new Date(x0); d.setUTCDate(1);
-    const stepM = spanDays > 1500 ? 12 : spanDays > 700 ? 6 : spanDays > 300 ? 3 : spanDays > 90 ? 1 : 0;
-    if (stepM) { d.setUTCMonth(Math.ceil(d.getUTCMonth() / stepM) * stepM); for (; d.getTime() <= x1; d.setUTCMonth(d.getUTCMonth() + stepM)) if (d.getTime() >= x0) xt.push(d.getTime()); }
+    // 긴 기간(목표 10년 등)은 글자가 겹치지 않게 몇 년 간격으로
+    const yStep = Math.max(1, Math.ceil(spanDays / 365.25 / Math.max(3, Math.floor((W - m.l - m.r) / 42))));
+    const stepM = spanDays > 1500 ? 12 * yStep : spanDays > 700 ? 6 : spanDays > 300 ? 3 : spanDays > 90 ? 1 : 0;
+    if (stepM >= 12) { d.setUTCMonth(0); d.setUTCFullYear(Math.ceil(d.getUTCFullYear() / yStep) * yStep); for (; d.getTime() <= x1; d.setUTCFullYear(d.getUTCFullYear() + yStep)) if (d.getTime() >= x0) xt.push(d.getTime()); }
+    else if (stepM) { d.setUTCMonth(Math.ceil(d.getUTCMonth() / stepM) * stepM); for (; d.getTime() <= x1; d.setUTCMonth(d.getUTCMonth() + stepM)) if (d.getTime() >= x0) xt.push(d.getTime()); }
     else { for (let t = x0; t <= x1; t += Math.max(1, Math.round(spanDays / 6)) * 86400e3) xt.push(t); }
     xt.forEach((t) => {
       const dd = new Date(t), lab = stepM >= 12 ? `${dd.getUTCFullYear()}` : stepM ? `${String(dd.getUTCFullYear()).slice(2)}.${dd.getUTCMonth() + 1}` : `${dd.getUTCMonth() + 1}/${dd.getUTCDate()}`;

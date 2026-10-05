@@ -407,7 +407,7 @@
     const syms = symbolsToCollect(list);
     logLine(`${quotesOnly ? "현재가" : "일봉+현재가"} 수집 시작: ${syms.join(", ")}`);
     try {
-      const r = await api("/api/collect", { symbols: syms, years: Math.max(3, Number(S.state.model.history_years) || 3), quotes_only: quotesOnly });
+      const r = await api("/api/collect", { symbols: syms, years: Math.max(10, Number(S.state.model.history_years) || 3), quotes_only: quotesOnly });
       r.log.forEach((l) => logLine(l.msg, l.ok));
       await reload();
       // 처음 추가한 종목의 통화가 원화가 아니면 그 환율도 받는다
@@ -549,26 +549,40 @@
     fcPending[scen] = then ? [then] : [];
     setTimeout(() => { try { if (!forecastFor(scen)) fcCache[scen] = { err: "평가액이 있는 종목이 없습니다." }; } catch (e) { fcCache[scen] = { err: e.message }; } const cbs = fcPending[scen]; delete fcPending[scen]; cbs.forEach((f) => f()); }, 30);
   }
+  // 평가액 추이 기간 버튼: 목표 기간(N년)이 3년이 아니면 그 기간 버튼을 순서에 맞춰 넣고, 미래 버튼은 "과거N년+미래"
+  const goalSpan = () => Math.max(0.5, Math.round(yearsBetween(today(), S.state.goal.date) * 2) / 2);
+  function renderHistRange() {
+    const N = goalSpan(), host = $("#histRange"), cur = host.querySelector(".on")?.dataset.r || "252";
+    const list = [[22, "1개월"], [66, "3개월"], [130, "6개월"], [252, "1년"], [780, "3년"]];
+    const nd = Math.round(N * 260);
+    if (!list.some(([d]) => Math.abs(d - nd) < 20)) list.push([nd, N + "년"]);
+    list.sort((a, b) => a[0] - b[0]);
+    const ids = [...list.map(([d]) => String(d)), "future"], sel = ids.includes(cur) ? cur : String(nd);
+    const html = list.map(([d, l]) => `<button data-r="${d}"${String(d) === sel ? ' class="on"' : ""}>${l}</button>`).join("") + `<button data-r="future"${sel === "future" ? ' class="on"' : ""}>과거${N}년+미래</button>`;
+    if (host.innerHTML !== html) host.innerHTML = html;
+  }
   function renderDash() {
+    renderHistRange();
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date);
     $("#dashEmpty").style.display = total > 0 ? "none" : "block";
     const need = g.amount - total, req = yrs > 0 && total > 0 ? (g.amount / total) ** (1 / yrs) - 1 : null;
     const H = history();
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
-    const pastCagr = H.index.length > 30 ? H.index[H.index.length - 1] ** (252 / (H.index.length - 1)) - 1 : null;
+    const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
+    const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
     $("#goalKpis").innerHTML = [
       ["현재 평가액", krw(total) + "원", nf(total) + "원"],
       ["목표 대비", pct(total / g.amount), `<div class="bar"><i style="width:${Math.min(100, (total / g.amount) * 100)}%"></i></div>`],
       ["남은 금액", krw(Math.max(0, need)) + "원", `목표 ${krw(g.amount)}원`],
       ["남은 기간", yrs > 0 ? yrs.toFixed(1) + "년" : "지남", g.date],
       ["필요 연평균 수익률", req != null ? pct(req) : "-", "적립 없이 지금 자산만으로"],
-      ["과거 연평균 (원화)", pct(pastCagr), `${H.dates[0] || "-"} 이후, 편입 효과 제외`],
+      ["과거 연평균 (원화)", pct(pastCagr), `${H.dates[jc] || "-"} 이후, 편입 효과 제외`],
     ].map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
     const rsel = $("#histRange .on")?.dataset.r || "252", step = $("#histStep .on")?.dataset.s || "d", mode = $("#histMode .on")?.dataset.m || "total";
     const inUsd = $("#histCcy .on")?.dataset.c === "usd", basis = $("#histBasis .on")?.dataset.b || "model";
     const fxNowUsd = fxNow("USD") || 1, conv = (v, i) => (v == null ? null : inUsd ? v / H.usdK[i] : v), money = inUsd ? usd : krwAxis;
-    const future = rsel === "future", n = future ? 780 : +rsel;
+    const future = rsel === "future", n = future ? Math.round(goalSpan() * 260) : +rsel;
     const k0 = Math.max(0, H.dates.length - 1 - n);
     // 간격: 주·월은 그 기간의 마지막 거래일 값
     let ix = []; for (let i = k0; i < H.dates.length; i++) ix.push(i);
@@ -621,7 +635,7 @@
         const pf = pastFit(H, basis);
         opt.series.push({ name: basis === "trend" ? "칼만 추세 (과거)" : "스무딩 (과거)", y: ix.map((i) => conv(pf[i], i)), color: "var(--c7)", width: 1.4, dash: "4 3" });
       }
-      const md = []; for (let k = 0; k <= 36 && Model.addMonths(today(), k) <= g.date; k++) md.push(Model.addMonths(today(), k));
+      const md = []; for (let k = 0; k <= 1200 && Model.addMonths(today(), k) <= g.date; k++) md.push(Model.addMonths(today(), k));
       if (md[md.length - 1] !== g.date) md.push(g.date);
       if (V0 > 0 && mode !== "each") opt.series.push({ name: "필요 경로", x: [last, ...md], y: [conv(H.total[H.total.length - 1], H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
     } else {
@@ -1533,11 +1547,12 @@
   const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "null") ?? d; } catch (e) { return d; } };
   const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast("브라우저 저장 실패: " + e.message); } };
   const bvNorm = (x) => ({ cats: Array.isArray(x?.cats) ? x.cats.filter((c) => c && c.id) : [], posts: Array.isArray(x?.posts) ? x.posts.filter((p) => p && p.id) : [] });
-  // 같은 글은 더 최근에 고친 쪽
+  // 같은 글은 더 최근에 고친 쪽 (고정·해제도 고친 것으로 본다: pinAt)
+  const bvStamp = (p) => ((p.pinAt || "") > (p.updated || "") ? p.pinAt : p.updated || "");
   function bvMergeInto(D, x) {
     x = bvNorm(x);
     x.cats.forEach((c) => { if (!D.cats.some((y) => y.id === c.id)) D.cats.push({ ...c }); });
-    x.posts.forEach((p) => { const i = D.posts.findIndex((y) => y.id === p.id); if (i < 0) D.posts.push({ ...p }); else if ((p.updated || "") > (D.posts[i].updated || "")) D.posts[i] = { ...p, views: Math.max(p.views || 0, D.posts[i].views || 0) }; });
+    x.posts.forEach((p) => { const i = D.posts.findIndex((y) => y.id === p.id); if (i < 0) D.posts.push({ ...p }); else if (bvStamp(p) > bvStamp(D.posts[i])) D.posts[i] = { ...p, views: Math.max(p.views || 0, D.posts[i].views || 0) }; });
     return D;
   }
   let BVR = null, bvLoading = null, bvBusy = false;
@@ -1574,8 +1589,9 @@
   const bvS = { cat: "all", view: "list", id: null, sort: lsGet(BV_SORT, "new"), msg: "" };
   const bvCats = () => [...BV_BASE, ...bv().cats.map((c) => [c.id, c.name])];
   const bvCatName = (k) => bvCats().find(([c]) => c === k)?.[1] || "분류 없음";
-  const bvSorted = (D) => D.posts.filter((p) => bvS.cat === "all" || p.cat === bvS.cat)
-    .sort((a, b) => (bvS.sort === "views" ? (b.views || 0) - (a.views || 0) : 0) || (a.created < b.created ? 1 : a.created > b.created ? -1 : 0));
+  // 고정한 글은 맨 앞 (나중에 고정한 글이 위), 나머지는 고른 순서. 이전·다음 글은 고정과 상관없는 순서로
+  const bvSorted = (D, pinFirst = true) => D.posts.filter((p) => bvS.cat === "all" || p.cat === bvS.cat)
+    .sort((a, b) => (pinFirst ? (b.pinned || "").localeCompare(a.pinned || "") : 0) || (bvS.sort === "views" ? (b.views || 0) - (a.views || 0) : 0) || (a.created < b.created ? 1 : a.created > b.created ? -1 : 0));
   const bvTime = (t) => (t ? new Date(t).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
   const BV_IMG = /\.(jpe?g|png|gif|webp|avif|svg|bmp)(\?\S*)?$/i;
   const bvHost = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } };
@@ -1631,7 +1647,7 @@
         D.posts.forEach((p) => { if (pv[p.id]) p.views = (p.views || 0) + pv[p.id]; delete p._local; });
         if (op.del) D.posts = D.posts.filter((p) => p.id !== op.del);
         if (op.delcat) D.cats = D.cats.filter((c) => c.id !== op.delcat);
-        const what = op.del ? "글 삭제" : op.delcat ? "카테고리 삭제" : op.title ? `글 저장: ${op.title}` : "글 저장";
+        const what = op.msg || (op.del ? "글 삭제" : op.delcat ? "카테고리 삭제" : op.title ? `글 저장: ${op.title}` : "글 저장");
         try { await bvPut(D, sha, "naeilo " + what); }
         catch (e) { if ((e.status === 409 || e.status === 422) && n < 2) continue; throw e; }
         BVR = D; lsSet(BV_KEY, null); lsSet(BV_VIEWS, null);
@@ -1660,11 +1676,11 @@
     if (bvS.view === "post") {
       const p = D.posts.find((x) => x.id === bvS.id);
       if (p) {
-        const list = bvSorted(D), i = list.findIndex((x) => x.id === p.id), prev = i >= 0 ? list[i + 1] : null, next = i > 0 ? list[i - 1] : null;
+        const list = bvSorted(D, false), i = list.findIndex((x) => x.id === p.id), prev = i >= 0 ? list[i + 1] : null, next = i > 0 ? list[i - 1] : null;
         const nav = (q, cls, lab) => `<button class="${cls}" data-bvgo="${q ? esc(q.id) : ""}" ${q ? "" : "disabled"}><span>${lab}</span><b>${q ? esc(q.title || "(제목 없음)") : "없음"}</b></button>`;
         host.innerHTML = `<div class="bvart">
-          <div class="row between wrap"><button class="sm" data-bv="list">← 목록</button>${can ? '<div class="row"><button class="sm" data-bv="edit">수정</button><button class="sm danger" data-bv="del">삭제</button></div>' : ""}</div>
-          <div style="margin-top:12px"><span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span>${p._local ? ' <span class="bvcat">이 브라우저에만</span>' : ""}</div>
+          <div class="row between wrap"><button class="sm" data-bv="list">← 목록</button>${can ? `<div class="row"><button class="sm" data-bv="pin">${p.pinned ? "고정 해제" : "📌 고정"}</button><button class="sm" data-bv="edit">수정</button><button class="sm danger" data-bv="del">삭제</button></div>` : ""}</div>
+          <div style="margin-top:12px">${p.pinned ? '<span class="bvpin">📌 고정</span> ' : ""}<span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span>${p._local ? ' <span class="bvcat">이 브라우저에만</span>' : ""}</div>
           <h1>${esc(p.title || "(제목 없음)")}</h1>
           <div class="body md">${bvHtml(p.body)}</div>
           <div class="bvmeta"><span>작성 ${bvTime(p.created)}${p.updated && p.updated !== p.created ? ` · 수정 ${bvTime(p.updated)}` : ""}</span><span>조회수 ${nf(p.views || 0)}</span></div>
@@ -1679,8 +1695,8 @@
     host.innerHTML = `<div class="row seg wrap bvcats">${[["all", "전체"], ...bvCats()].map(([k, n]) => `<button data-bvcat="${esc(k)}" class="${k === bvS.cat ? "on" : ""}">${esc(n)} <span class="n">${cnt(k)}</span></button>`).join("")}${can ? '<button class="add" data-bv="addcat">+ 카테고리</button>' : ""}</div>`
       + `<div class="row between wrap bvbar"><span class="muted small">${list.length}개의 글</span><div class="row seg" id="bvSort"><button data-bvsort="new" class="${bvS.sort === "new" ? "on" : ""}">최신순</button><button data-bvsort="views" class="${bvS.sort === "views" ? "on" : ""}">조회순</button></div></div>`
       + (custom && can ? `<p class="small" style="margin:0 0 8px"><button class="sm danger" data-bv="delcat">'${esc(custom.name)}' 카테고리 지우기</button> <span class="muted">글은 지워지지 않고 '전체'에 남습니다.</span></p>` : "")
-      + (list.length ? `<div class="bvlist">${list.map((p) => { const th = bvThumb(p.body); return `<button type="button" class="bvpost${th ? " hasimg" : ""}" data-bvgo="${esc(p.id)}">
-          ${th ? `<img class="th" src="${esc(th)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span><span class="ttl">${esc(p.title || "(제목 없음)")}</span>
+      + (list.length ? `<div class="bvlist">${list.map((p) => { const th = bvThumb(p.body); return `<button type="button" class="bvpost${th ? " hasimg" : ""}${p.pinned ? " pinned" : ""}" data-bvgo="${esc(p.id)}">
+          ${th ? `<img class="th" src="${esc(th)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="bvtags">${p.pinned ? '<span class="bvpin">📌 고정</span>' : ""}<span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span></span><span class="ttl">${esc(p.title || "(제목 없음)")}</span>
           <span class="ex">${esc(bvExcerpt(p.body))}</span><span class="ft">${bvTime(p.created)} · 조회 ${nf(p.views || 0)}${p._local ? " · 이 브라우저에만" : ""}</span></button>`; }).join("")}</div>`
         : `<p class="muted small">${BVR || !GH ? "아직 글이 없습니다." : "글을 불러오는 중…"}${can && (BVR || !GH) ? " '글쓰기'로 지난 투자를 돌아보고(과거), 지금의 생각을 적고(현재), 앞으로의 계획을 세워(미래) 보세요." : ""}</p>`)
       + (localN && !bvRemoteOk() && GH ? `<p class="muted small">이 브라우저에만 있는 글 ${localN}개는 설정 > 개발자용에 GitHub 토큰을 넣으면 저장소로 올라갑니다.</p>` : "") + stat;
@@ -1708,6 +1724,14 @@
     const a = b.dataset.bv;
     if (a === "list") { bvS.view = "list"; renderBeyora(); }
     else if (a === "edit") { bvS.view = "edit"; renderBeyora(); }
+    else if (a === "pin") { // 고정·해제는 글쓴이(토큰 있는 브라우저)만. 수정 날짜는 그대로 두고 pinAt 으로 최신을 가린다
+      const old = bv().posts.find((x) => x.id === bvS.id); if (!old) return;
+      const now = new Date().toISOString(), p = { ...old, pinned: old.pinned ? "" : now, pinAt: now };
+      p.views = (BVR?.posts.find((x) => x.id === p.id)?.views) || 0; delete p._local;
+      bvLocalEdit((L) => { L.posts = L.posts.filter((x) => x.id !== p.id); L.posts.push(p); });
+      renderBeyora(); toast(p.pinned ? "글을 목록 맨 위에 고정했습니다" : "고정을 풀었습니다");
+      bvSync({ msg: (p.pinned ? "글 고정: " : "글 고정 해제: ") + (p.title || "") });
+    }
     else if (a === "cancel") { bvS.view = bvS.id ? "post" : "list"; renderBeyora(); }
     else if (a === "img") { const u = bvAskUrl("이미지 주소 (https://...jpg, png 등)"); if (u) bvInsert(`\n![](${u})\n`); }
     else if (a === "link") { const u = bvAskUrl("링크 주소 (https://...)"); if (u) { const t = (prompt("버튼에 보일 글자 (비우면 사이트 이름)") || "").trim().replace(/[[\]]/g, ""); bvInsert(`[${t || bvHost(u)}](${u})`); } }
@@ -1742,7 +1766,7 @@
   function bvMerge(x) {
     if (!x || !Array.isArray(x.posts)) return;
     const have = bv(), y = bvNorm(x);
-    y.posts = y.posts.filter((p) => { const h = have.posts.find((q) => q.id === p.id); return !h || (p.updated || "") > (h.updated || ""); });
+    y.posts = y.posts.filter((p) => { const h = have.posts.find((q) => q.id === p.id); return !h || bvStamp(p) > bvStamp(h); });
     y.cats = y.cats.filter((c) => !have.cats.some((q) => q.id === c.id));
     y.posts.forEach((p) => { delete p._local; p.views = BVR?.posts.find((q) => q.id === p.id)?.views || 0; });
     if (!y.posts.length && !y.cats.length) return;
