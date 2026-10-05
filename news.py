@@ -96,25 +96,54 @@ def yt_page(cid: str, name: str) -> list[dict]:
     if not raw:
         return []
     h, now, out, seen = raw.decode("utf-8", "replace"), datetime.now(timezone.utc), [], set()
-    LAST_ERR["msg"] = f"화면 {len(h)}자, " + ",".join(k for k in ("videoRenderer", "lockupViewModel", "richItemRenderer", "consent", "publishedTimeText") if k in h)
-    i = h.find('"lockupMetadataViewModel"')
-    if i > 0:
-        LAST_ERR["msg"] += " | " + re.sub(r"\s+", " ", h[i:i + 700])
-    pats = [r'"videoRenderer":\{"videoId":"([\w-]{11})".*?"title":\{"runs":\[\{"text":"(.*?)"\}\].*?"publishedTimeText":\{"simpleText":"(.*?)"\}',
-            r'"contentId":"([\w-]{11})".{0,3000}?"lockupMetadataViewModel":\{"title":\{"content":"(.*?)"\}.{0,3000}?"content":"([^"]{0,30}(?:전|ago))"']
-    for pat in pats:
-        for m in re.finditer(pat, h, re.S):
-            vid = m.group(1)
-            if vid in seen:
-                continue
-            seen.add(vid)
-            try:
-                title = json.loads('"' + m.group(2) + '"')
-            except json.JSONDecodeError:
-                title = m.group(2)
-            out.append({"title": _clean(title), "link": f"https://www.youtube.com/watch?v={vid}", "time": _rel_time(m.group(3), now), "source": name, "desc": ""})
-            if len(out) >= 15:
-                return out
+    m = re.search(r"ytInitialData\s*=\s*(\{.*?\});\s*</script>", h, re.S)
+    if not m:
+        LAST_ERR["msg"] = f"화면 {len(h)}자, ytInitialData 없음"
+        return []
+    try:
+        root = json.loads(m.group(1))
+    except json.JSONDecodeError as e:
+        LAST_ERR["msg"] = f"ytInitialData 읽기 실패 {e}"
+        return []
+
+    def texts(o):  # 아래쪽 모든 글자
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in ("content", "simpleText", "text") and isinstance(v, str):
+                    yield v
+                else:
+                    yield from texts(v)
+        elif isinstance(o, list):
+            for v in o:
+                yield from texts(v)
+
+    def walk(o):
+        if isinstance(o, dict):
+            if "videoRenderer" in o and isinstance(o["videoRenderer"], dict):
+                v = o["videoRenderer"]
+                yield v.get("videoId"), "".join(r.get("text", "") for r in (v.get("title") or {}).get("runs", [])), (v.get("publishedTimeText") or {}).get("simpleText", "")
+            elif "lockupViewModel" in o and isinstance(o["lockupViewModel"], dict):
+                v = o["lockupViewModel"]
+                md = ((v.get("metadata") or {}).get("lockupMetadataViewModel") or {})
+                when = next((t for t in texts(md.get("metadata")) if re.search(r"전$|ago$", t)), "")
+                yield v.get("contentId"), (md.get("title") or {}).get("content", ""), when
+            else:
+                for x in o.values():
+                    yield from walk(x)
+        elif isinstance(o, list):
+            for x in o:
+                yield from walk(x)
+
+    for vid, title, when in walk(root):
+        if not vid or not title or vid in seen or len(vid) != 11:
+            continue
+        seen.add(vid)
+        out.append({"title": _clean(title), "link": f"https://www.youtube.com/watch?v={vid}", "time": _rel_time(when, now), "source": name, "desc": ""})
+        if len(out) >= 15:
+            break
+    if not out:
+        LAST_ERR["msg"] = f"화면 {len(h)}자, 영상 항목 없음"
+    return out
     return out
 
 
@@ -394,7 +423,7 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
         how = "RSS"
         if not got:
             got, how = yt_page(c, name), "화면"
-        log(f"유튜브 {name}: {len(got)}개 ({how}{'' if got else ', ' + LAST_ERR['msg'][:900]})")
+        log(f"유튜브 {name}: {len(got)}개 ({how}{'' if got else ', ' + LAST_ERR['msg'][:200]})")
         vids += got
     today = now.astimezone(KST).date().isoformat()
     vt = [v for v in vids if v["time"] and datetime.fromisoformat(v["time"]).astimezone(KST).date().isoformat() == today]
