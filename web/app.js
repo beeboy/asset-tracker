@@ -202,10 +202,8 @@
   function renderHeader() {
     const { total } = valuation(), g = S.state.goal, fx = fxNow("USD");
     const prog = g.amount ? total / g.amount : 0;
-    const latest = Object.values(S.quotes).reduce((m, q) => Math.max(m, q.fetched || 0), 0);
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span>평가액 <b>${krw(total)}원</b></span><span>목표 대비 <b>${pct(prog)}</b></span>${my ? `<span>내 수익률 <b class="${cls(my.r)}">${spct(my.r)}</b></span>` : ""}
-      <span class="muted">최근 수집 ${latest ? new Date(latest * 1000).toLocaleString() : "-"}</span>`;
+    $("#headKpi").innerHTML = `<span>평가액 <b>${krw(total)}원</b></span><span>목표 대비 <b>${pct(prog)}</b></span>${my ? `<span>내 수익률 <b class="${cls(my.r)}">${spct(my.r)}</b></span>` : ""}`;
   }
 
   // ------------------------------------------------------------ 시세·종목
