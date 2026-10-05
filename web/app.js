@@ -23,9 +23,11 @@
     ["earnings_adjust", "반복 사건만큼 평소 변동성 줄이기", "분기 반복 사건(실적)의 분산을 평소 변동성에서 빼 이중 계산 방지", "bool"],
   ];
   const KINDS = ["실적", "규제", "보호예수 해제", "소송", "신제품·행사", "리콜", "지수 편입·제외", "차량 인도량", "FOMC 금리 결정", "물가(CPI) 발표", "고용 지표", "금리 급등",
-    "OPEC+ 회의", "유가 급등", "금값 급등", "원자재 급등", "선거", "관세·정책", "전쟁·지정학", "기타"];
+    "OPEC+ 회의", "유가 급등", "금값 급등", "원자재 급등", "선거", "관세·정책", "전쟁·지정학", "환율 급변", "한국은행 금리 결정", "물가 급등", "공급망 차질", "수출 규제·제재",
+    "옵션 만기·리밸런싱", "외국인·기관 매매", "기타"];
   // 외부 요인 묶음. 요인 사건(factor)은 요인 충격 × 종목별 민감도만큼 움직인다
-  const CATS = [["corp", "기업 실적·공시"], ["rate", "금리·거시경제"], ["tsla", "테슬라 인도량"], ["product", "신제품·리콜"], ["oil", "유가"], ["gold", "금값"], ["cmdty", "원자재"], ["politics", "정치·선거"], ["war", "전쟁·지정학"]];
+  const CATS = [["corp", "기업 실적·공시"], ["tsla", "주요 제품 KPI"], ["product", "신제품·리콜"], ["rate", "금리·통화정책"], ["fx", "환율"], ["infl", "인플레이션"], ["oil", "유가"], ["gold", "금값"],
+    ["cmdty", "원자재"], ["supply", "공급망"], ["politics", "정치·선거"], ["war", "전쟁·지정학"], ["trade", "무역·제재"], ["flow", "수급"]];
   const catName = (c) => (CATS.find(([k]) => k === c) || [, c])[1];
   const FACTORS = {
     mkt: { sym: "SPY", name: "미국 시장 (S&P500, SPY)", unit: "%", shock: -5, shockTxt: "S&P500 -5%" },
@@ -35,14 +37,21 @@
     cmdty: { sym: "DBC", name: "원자재 지수 (DBC)", unit: "%", shock: 10, shockTxt: "원자재 +10%" },
   };
   const FACTOR_SYMS = Object.values(FACTORS).map((f) => f.sym);
-  const CAT_FACTOR = { rate: "rate", oil: "oil", gold: "gold", cmdty: "cmdty", politics: "mkt", war: "mkt" };
-  const catOfKind = (k) => (/신제품|리콜/.test(k) ? "product" : /인도량/.test(k) ? "tsla" : /FOMC|CPI|고용|금리/.test(k) ? "rate" : /OPEC|유가/.test(k) ? "oil" : /금값/.test(k) ? "gold" : /원자재/.test(k) ? "cmdty" : /선거|관세/.test(k) ? "politics" : /전쟁/.test(k) ? "war" : "corp");
+  const CAT_FACTOR = { rate: "rate", infl: "rate", oil: "oil", gold: "gold", cmdty: "cmdty", politics: "mkt", war: "mkt", trade: "mkt", flow: "mkt" };
+  // 환율 묶음은 요인 민감도 대신 원/달러(KRW=X)에 직접 반영한다 (사건 대상 FX)
+  const FX_F = { sym: "KRW=X", name: "원/달러 환율", unit: "%", shock: 5, shockTxt: "원/달러 +5%" };
+  const KIND_CAT = [[/신제품|리콜/, "product"], [/인도량|KPI/, "tsla"], [/환율|한국은행/, "fx"], [/CPI|물가|인플레/, "infl"], [/FOMC|고용|금리/, "rate"], [/OPEC|유가/, "oil"], [/금값/, "gold"], [/원자재/, "cmdty"],
+    [/공급망/, "supply"], [/관세|수출|제재/, "trade"], [/선거/, "politics"], [/전쟁/, "war"], [/만기|리밸런싱|매매|수급|지수 편입/, "flow"]];
+  const catOfKind = (k) => (KIND_CAT.find(([re]) => re.test(k)) || [, "corp"])[1];
   // 기본 외부 요인 사건 (날짜·크기는 추정. 시장 요인은 S&P500 기준 %, 금리는 bp)
   const EXT_EVENTS = [
     { id: "x_fomc", cat: "rate", factor: "mkt", target: "ALL", kind: "FOMC 금리 결정", date: "2026-10-28", repeat: "6w", prob: 100, mean: 0, sd: 1.0, vol_mult: 1, vol_days: 0, note: "6주마다 (날짜 근사). 발표일 S&P500 ±1.0% 가정" },
-    { id: "x_cpi", cat: "rate", factor: "mkt", target: "ALL", kind: "물가(CPI) 발표", date: "2026-10-14", repeat: "monthly", prob: 100, mean: 0, sd: 0.8, vol_mult: 1, vol_days: 0, note: "매달 중순 (날짜 근사). S&P500 ±0.8%" },
+    { id: "x_cpi", cat: "infl", factor: "mkt", target: "ALL", kind: "물가(CPI) 발표", date: "2026-10-14", repeat: "monthly", prob: 100, mean: 0, sd: 0.8, vol_mult: 1, vol_days: 0, note: "매달 중순 (날짜 근사). S&P500 ±0.8%" },
     { id: "x_jobs", cat: "rate", factor: "mkt", target: "ALL", kind: "고용 지표", date: "2026-11-06", repeat: "monthly", prob: 100, mean: 0, sd: 0.6, vol_mult: 1, vol_days: 0, note: "매달 첫 금요일 무렵. S&P500 ±0.6%" },
     { id: "x_rate", cat: "rate", factor: "rate", target: "ALL", kind: "금리 급등", date: "2027-03-15", repeat: "yearly", prob: 20, mean: 40, sd: 20, vol_mult: 1.2, vol_days: 20, note: "해마다 20% 확률로 10년 금리 +0.4%p (bp 단위)" },
+    { id: "x_bok", cat: "fx", target: "FX", kind: "한국은행 금리 결정", date: "2026-10-22", repeat: "6w", prob: 100, mean: 0, sd: 0.4, vol_mult: 1, vol_days: 0, note: "해마다 8번 (날짜 근사). 원/달러 ±0.4%" },
+    { id: "x_fx", cat: "fx", target: "FX", kind: "환율 급변", date: "2027-01-15", repeat: "yearly", prob: 25, mean: 0, sd: 5, vol_mult: 1.3, vol_days: 20, note: "해마다 25% 확률로 원/달러 ±5% (원화 약세면 해외 주식 평가액 증가)" },
+    { id: "x_infl", cat: "infl", factor: "rate", target: "ALL", kind: "물가 급등", date: "2027-06-10", repeat: "yearly", prob: 15, mean: 30, sd: 15, vol_mult: 1.2, vol_days: 20, note: "해마다 15% 확률로 물가 재상승 → 10년 금리 +0.3%p (bp 단위)" },
     { id: "x_dlv", cat: "tsla", target: "TSLA", kind: "차량 인도량", date: "2027-01-04", repeat: "quarterly", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "분기 첫 달 2일 무렵 발표 (날짜 추정)" },
     { id: "x_gtc", cat: "product", target: "NVDA", kind: "신제품·행사", date: "2027-03-16", repeat: "yearly", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "GTC 신제품 발표 (날짜 추정)" },
     { id: "x_tprod", cat: "product", target: "TSLA", kind: "신제품·행사", date: "2027-06-15", repeat: "yearly", prob: 60, mean: 0, sd: 6, vol_mult: 1, vol_days: 0, note: "로보택시·옵티머스 등 공개 행사 (가정)" },
@@ -52,18 +61,26 @@
     { id: "x_oil", cat: "oil", factor: "oil", target: "ALL", kind: "유가 급등", date: "2027-05-17", repeat: "yearly", prob: 15, mean: 25, sd: 12, vol_mult: 1.2, vol_days: 20, note: "해마다 15% 확률로 유가 +25% (중동·감산)" },
     { id: "x_gold", cat: "gold", factor: "gold", target: "ALL", kind: "금값 급등", date: "2027-08-16", repeat: "yearly", prob: 20, mean: 10, sd: 6, vol_mult: 1, vol_days: 0, note: "해마다 20% 확률로 금값 +10% (안전자산 쏠림)" },
     { id: "x_cmdty", cat: "cmdty", factor: "cmdty", target: "ALL", kind: "원자재 급등", date: "2027-07-15", repeat: "yearly", prob: 15, mean: 12, sd: 8, vol_mult: 1, vol_days: 0, note: "해마다 15% 확률로 원자재 +12% (공급망)" },
+    { id: "x_chip", cat: "supply", target: "NVDA", kind: "공급망 차질", date: "2027-05-10", repeat: "yearly", prob: 15, mean: -4, sd: 4, vol_mult: 1.2, vol_days: 15, note: "해마다 15% 확률로 TSMC·HBM 공급 차질 (가정)" },
+    { id: "x_parts", cat: "supply", target: "TSLA", kind: "공급망 차질", date: "2027-08-10", repeat: "yearly", prob: 15, mean: -3, sd: 4, vol_mult: 1, vol_days: 0, note: "해마다 15% 확률로 배터리·부품 공급 차질 (가정)" },
     { id: "x_mid", cat: "politics", factor: "mkt", target: "ALL", kind: "선거", date: "2026-11-04", repeat: "none", prob: 100, mean: 0, sd: 1.5, vol_mult: 1.2, vol_days: 15, note: "미국 중간선거 결과 (11/3 투표)" },
     { id: "x_pres", cat: "politics", factor: "mkt", target: "ALL", kind: "선거", date: "2028-11-08", repeat: "none", prob: 100, mean: 0, sd: 2, vol_mult: 1.3, vol_days: 20, note: "미국 대통령 선거 결과 (11/7 투표)" },
-    { id: "x_tariff", cat: "politics", factor: "mkt", target: "ALL", kind: "관세·정책", date: "2027-04-05", repeat: "yearly", prob: 20, mean: -3, sd: 3, vol_mult: 1.4, vol_days: 20, note: "해마다 20% 확률로 관세·규제 충격 S&P500 -3%" },
+    { id: "x_tariff", cat: "trade", factor: "mkt", target: "ALL", kind: "관세·정책", date: "2027-04-05", repeat: "yearly", prob: 20, mean: -3, sd: 3, vol_mult: 1.4, vol_days: 20, note: "해마다 20% 확률로 관세·규제 충격 S&P500 -3%" },
     { id: "x_war", cat: "war", factor: "mkt", target: "ALL", kind: "전쟁·지정학", date: "2027-09-15", repeat: "yearly", prob: 10, mean: -5, sd: 4, vol_mult: 1.6, vol_days: 30, note: "해마다 10% 확률로 전쟁·분쟁 충격 S&P500 -5% (날짜는 임의)" },
+    { id: "x_export", cat: "trade", target: "NVDA", kind: "수출 규제·제재", date: "2027-04-20", repeat: "yearly", prob: 25, mean: -5, sd: 4, vol_mult: 1.3, vol_days: 20, note: "해마다 25% 확률로 대중국 반도체 수출 규제 (H20 사례)" },
+    { id: "x_witch", cat: "flow", factor: "mkt", target: "ALL", kind: "옵션 만기·리밸런싱", date: "2026-12-18", repeat: "quarterly", prob: 100, mean: 0, sd: 0.5, vol_mult: 1, vol_days: 0, note: "분기 셋째 금요일 (쿼드러플 위칭·지수 리밸런싱). S&P500 ±0.5%" },
+    { id: "x_spidx", cat: "flow", target: "SPCX", kind: "지수 편입·제외", date: "2026-12-21", repeat: "none", prob: 30, mean: 4, sd: 4, vol_mult: 1, vol_days: 0, note: "S&P500·나스닥100 편입 기대 매수 (가정)" },
   ];
+  const EXT_V2 = new Set(["x_bok", "x_fx", "x_infl", "x_chip", "x_parts", "x_export", "x_witch", "x_spidx"]); // ext_ver 2에서 추가된 기본 사건
   const REPEATS = [["none", "한 번"], ["monthly", "매달"], ["6w", "6주"], ["quarterly", "분기"], ["semi", "반년"], ["yearly", "매년"]];
   const repName = (r) => (REPEATS.find(([k]) => k === r) || [, "한 번"])[1];
   // 과거 반응을 볼 날짜 (공개 기록 기준, 미국 장 마감 기준으로 반영된 날)
   const REF_DAYS = {
     rate: ["2023-11-01", "2023-12-13", "2024-01-31", "2024-03-20", "2024-05-01", "2024-06-12", "2024-07-31", "2024-09-18", "2024-11-07", "2024-12-18", "2025-01-29", "2025-03-19", "2025-05-07", "2025-06-18", "2025-07-30", "2025-09-17", "2025-10-29", "2025-12-10", "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17", "2026-07-29", "2026-09-16"].map((d) => [d, "FOMC 결정"]),
     product: [["2023-11-30", "테슬라 사이버트럭 첫 인도 행사"], ["2023-12-13", "테슬라 오토파일럿 200만 대 리콜"], ["2024-03-19", "엔비디아 GTC 2024 (블랙웰) 다음 날"], ["2024-10-11", "테슬라 로보택시 공개 다음 날"], ["2025-03-18", "엔비디아 GTC 2025 기조연설"]],
-    politics: [["2024-11-06", "미국 대선 결과"], ["2025-04-03", "상호관세 발표 다음 날"], ["2025-04-04", "관세 충격 이틀째"], ["2025-04-09", "관세 90일 유예"]],
+    infl: [["2023-11-14", "CPI 둔화"], ["2024-02-13", "CPI 예상 상회"], ["2024-04-10", "CPI 예상 상회"], ["2024-05-15", "CPI 둔화"], ["2024-07-11", "CPI 둔화"], ["2025-02-12", "CPI 예상 상회"]],
+    politics: [["2024-11-06", "미국 대선 결과"]],
+    trade: [["2025-04-03", "상호관세 발표 다음 날"], ["2025-04-04", "관세 충격 이틀째"], ["2025-04-09", "관세 90일 유예"], ["2025-04-16", "엔비디아 H20 수출 규제 공시"], ["2025-05-12", "미·중 관세 인하 합의"]],
     war: [["2023-10-09", "하마스 이스라엘 공격 뒤 첫 거래일"], ["2024-04-15", "이란의 이스라엘 공격 뒤 첫 거래일"], ["2024-10-01", "이란 미사일 공격"], ["2025-06-13", "이스라엘의 이란 공습"], ["2025-06-23", "미국의 이란 핵시설 공습 뒤 첫 거래일"]],
   };
   const SESS = { pre: "프리", regular: "정규", post: "애프터", close: "종가", manual: "수동" };
@@ -156,7 +173,13 @@
     st.goal = Object.assign({ amount: 1e9, date: Model.addMonths(today(), 36), start_date: today(), monthly_contribution: 0 }, st.goal || {});
     st.events = st.events || [];
     // 외부 요인 기본 사건을 한 번 넣는다 (이미 지운 사건은 다시 넣지 않도록 버전으로 표시)
-    if ((st.ext_ver || 0) < 1) { const have = new Set(st.events.map((e) => e.id)); EXT_EVENTS.forEach((e) => { if (!have.has(e.id)) st.events.push({ on: true, ...e }); }); st.ext_ver = 1; }
+    const xv = st.ext_ver || 0;
+    if (xv < 2) {
+      const have = new Set(st.events.map((e) => e.id));
+      EXT_EVENTS.forEach((e) => { if (!have.has(e.id) && (xv < 1 || EXT_V2.has(e.id))) st.events.push({ on: true, ...e }); });
+      st.events.forEach((e) => { if (e.id === "x_cpi" && e.cat === "rate") e.cat = "infl"; if (e.cat === "politics" && /관세/.test(e.kind || "")) e.cat = "trade"; }); // 14개 묶음으로 옮김
+      st.ext_ver = 2;
+    }
     st.events.forEach((e) => { if (!e.cat) e.cat = catOfKind(e.kind || ""); });
     if ((st.purge_ver || 0) < 1) {
       st.holdings = st.holdings.filter((h) => !PURGED.has(String(h.ticker || "").toUpperCase()));
@@ -786,6 +809,14 @@
       for (let y = +p.dates[0].slice(0, 4); y <= +today().slice(0, 4); y++) for (const mo of ["01", "04", "07", "10"]) { const d = `${y}-${mo}-02`; if (d > p.dates[0] && d <= today()) out.push([d, `${String(mo === "01" ? y - 1 : y).slice(2)}년 ${mo === "01" ? 4 : +mo / 3 | 0}Q 인도량`]); }
       return out;
     }
+    if (cat === "flow") { // 분기 셋째 금요일 (3·6·9·12월 옵션 만기, 지수 리밸런싱)
+      const out = [], p = S.prices.SPY; if (!p) return out;
+      for (let y = +p.dates[0].slice(0, 4); y <= +today().slice(0, 4); y++) for (const mo of [3, 6, 9, 12]) {
+        const d1 = new Date(Date.UTC(y, mo - 1, 1)), d = new Date(Date.UTC(y, mo - 1, 1 + ((5 - d1.getUTCDay() + 7) % 7) + 14)).toISOString().slice(0, 10);
+        if (d > p.dates[0] && d <= today()) out.push([d, "쿼드러플 위칭"]);
+      }
+      return out;
+    }
     return REF_DAYS[cat] || [];
   }
   function renderXf() {
@@ -794,8 +825,21 @@
     host.style.display = "block";
     const { rows, total } = valuation(), held = rows.filter((r) => r.valueKrw > 0), H = [];
     H.push(`<h2>${esc(catName(cat))} 분석</h2>`);
-    const fk = CAT_FACTOR[cat], F = FACTORS[fk];
-    if (F) {
+    const fk = cat === "fx" ? "fx" : CAT_FACTOR[cat], F = fk === "fx" ? FX_F : FACTORS[fk];
+    if (fk === "fx") {
+      const p = S.prices[F.sym];
+      if (!p) H.push(`<p class="muted small">원/달러 환율 시세가 아직 없습니다. 다음 자동 수집 뒤에 나옵니다.</p>`);
+      else {
+        const last = p.close.at(-1), at = (k) => p.close[Math.max(0, p.close.length - 1 - k)], ch = (k) => spct(last / at(k) - 1);
+        H.push(`<p class="small"><b>${esc(F.name)}</b> ${nf(last, 1)}원 · 1개월 ${ch(21)} · 3개월 ${ch(63)} · 1년 ${ch(252)} <span class="muted">(${p.dates.at(-1)})</span></p><div id="xfChart" class="chartbox"></div>`);
+        let port = 0;
+        const tr = held.map((r) => { const e2 = r.ccy === "KRW" ? 0 : F.shock / 100; port += r.w * e2;
+          return `<tr><td class="l">${esc(r.h.ticker)}</td><td>${esc(r.ccy)}</td><td>${pct(r.w, 0)}</td><td class="${cls(e2)}">${spct(e2)}</td></tr>`; }).join("");
+        H.push(`<div class="tablewrap"><table class="grid"><tr><th class="l">종목</th><th>통화</th><th>비중</th><th>${esc(F.shockTxt)}일 때 (원화 평가액)</th></tr>${tr}
+          <tr><td class="l"><b>내 포트폴리오</b></td><td></td><td></td><td class="${cls(port)}"><b>${spct(port)}</b> (${krw(total * port)}원)</td></tr></table></div>
+          <p class="muted small">해외 주식은 주가가 그대로여도 원/달러가 오르면 원화 평가액이 같은 비율로 오릅니다. 전망은 환율을 별도 요인으로 시뮬레이션하고, 여기 사건은 그 위에 더해지는 급변입니다.</p>`);
+      }
+    } else if (F) {
       const p = S.prices[F.sym];
       if (!p) H.push(`<p class="muted small">${esc(F.name)} 시세가 아직 없습니다. 다음 자동 수집 뒤에 나옵니다.</p>`);
       else {
@@ -825,7 +869,8 @@
           <p class="muted small">${rr.length}번 중 최근 ${Math.min(12, rr.length)}번. 평소보다 크게 움직였다면 그만큼 전망에 사건으로 넣을 이유가 있습니다. 날짜는 공개 기록 기준이며 장 마감 뒤 발표는 다음 거래일에 반영됩니다.</p>`);
       }
     }
-    if (H.length === 1) H.push(`<p class="muted small">이 묶음은 종목별 사건(실적·보호예수·규제 등)으로 반영합니다. 과거 실적 발표일 자료가 없어 반응 분석은 생략합니다.</p>`);
+    if (H.length === 1) H.push(cat === "corp" ? `<p class="muted small">이 묶음은 종목별 사건(실적·보호예수·규제 등)으로 반영합니다. 과거 실적 발표일 자료가 없어 반응 분석은 생략합니다.</p>`
+      : `<p class="muted small">이 묶음은 대표 지표가 없어 종목별 사건으로 반영합니다.</p>`);
     host.innerHTML = H.join("");
     if (F && S.prices[F.sym] && $("#xfChart")) {
       const p = S.prices[F.sym], k = Math.max(0, p.dates.length - 756);
@@ -1988,7 +2033,7 @@
     $("#eventTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d && armed(d)) { S.state.events.splice(+d.dataset.del, 1); save(); renderEvents(); } });
     $("#btnAddEvent").onclick = () => {
       const c = curCat() === "all" ? "corp" : curCat(), fk = CAT_FACTOR[c];
-      S.state.events.push({ id: "e" + Date.now(), on: true, cat: c, factor: fk || "none", date: Model.addMonths(today(), 1), target: fk ? "ALL" : S.state.holdings[0]?.ticker || "ALL", kind: "기타", repeat: "none", prob: 100, mean: 0, sd: fk === "rate" ? 20 : 5, vol_mult: 1, vol_days: 0, note: "" });
+      S.state.events.push({ id: "e" + Date.now(), on: true, cat: c, factor: fk || "none", date: Model.addMonths(today(), 1), target: c === "fx" ? "FX" : fk ? "ALL" : S.state.holdings[0]?.ticker || "ALL", kind: "기타", repeat: "none", prob: 100, mean: 0, sd: fk === "rate" ? 20 : 5, vol_mult: 1, vol_days: 0, note: "" });
       save(); renderEvents();
     };
     $("#scenario").onchange = (e) => { S.state.model.scenario = e.target.value; save(); runForecast(); };
