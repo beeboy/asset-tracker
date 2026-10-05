@@ -74,7 +74,9 @@
   const LS_KEY = "asset-tracker-state";
   const GH = (() => {
     const m = location.hostname.match(/^([^.]+)\.github\.io$/), repo = location.pathname.split("/").filter(Boolean)[0];
-    return m && repo ? { owner: m[1], repo, actions: `https://github.com/${m[1]}/${repo}/actions/workflows/collect.yml` } : null;
+    // 내 도메인(naeilo.com 등)으로 열면 주소에 저장소 이름이 없으므로 이 앱의 저장소를 쓴다
+    const [owner, name] = m && repo ? [m[1], repo] : /^(localhost|127\.|\[::1\]|$)/.test(location.hostname) ? [] : ["beeboy", "asset-tracker"];
+    return owner ? { owner, repo: name, actions: `https://github.com/${owner}/${name}/actions/workflows/collect.yml` } : null;
   })();
   let saveTimer = null, autoTimer = null, lastForecast = null, fcDirty = true, lastAlloc = null, allocDirty = true;
   let fcCache = {}; // 시나리오별 전망 (대시보드 미래 표시·AI 용). 입력이나 시세가 바뀌면 비운다
@@ -254,7 +256,7 @@
     const { total } = valuation(), g = S.state.goal, fx = fxNow("USD");
     const prog = g.amount ? total / g.amount : 0;
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span>평가액 <b>${krw(total)}원</b></span><span>목표 대비 <b>${pct(prog)}</b></span>${my ? `<span>내 수익률 <b class="${cls(my.r)}">${spct(my.r)}</b></span>` : ""}`;
+    $("#headKpi").innerHTML = `<span>평가액 <b>${krw(total)}원</b></span><span>목표 대비 <b>${pct(prog)}</b></span>${my ? `<span>수익률 <b class="${cls(my.r)}">${spct(my.r)}</b></span>` : ""}`;
   }
 
   // ------------------------------------------------------------ 시세·종목
