@@ -11,7 +11,7 @@
   "last": 234.2218,
   "last_time": 1790985598,
   "last_session": "post",
-  "fetched": 1791097516
+  "fetched": 1791161351
  },
  "SGOV": {
   "symbol": "SGOV",
@@ -25,7 +25,7 @@
   "last": 100.45,
   "last_time": 1790985594,
   "last_session": "post",
-  "fetched": 1791097516
+  "fetched": 1791161351
  },
  "SPCX": {
   "symbol": "SPCX",
@@ -39,7 +39,7 @@
   "last": 159.12,
   "last_time": 1790985599,
   "last_session": "post",
-  "fetched": 1791097516
+  "fetched": 1791161351
  },
  "TSLA": {
   "symbol": "TSLA",
@@ -53,21 +53,21 @@
   "last": 371.4476,
   "last_time": 1790985599,
   "last_session": "post",
-  "fetched": 1791097516
+  "fetched": 1791161350
  },
  "KRW=X": {
   "symbol": "KRW=X",
   "currency": "KRW",
   "name": "USD/KRW",
-  "regular": 1342.51,
-  "regular_time": 1790975891,
-  "prev_close": 1359.84,
+  "regular": 1343.71,
+  "regular_time": 1791161346,
+  "prev_close": 1342.51,
   "pre": null,
   "post": null,
-  "last": 1342.51,
-  "last_time": 1790975880,
+  "last": 1343.71,
+  "last_time": 1791161346,
   "last_session": "regular",
-  "fetched": 1791097517
+  "fetched": 1791161352
  },
  "QQQ": {
   "symbol": "QQQ",
@@ -81,7 +81,7 @@
   "last": 749.56,
   "last_time": 1790985599,
   "last_session": "post",
-  "fetched": 1791097516
+  "fetched": 1791161352
  },
  "SPY": {
   "symbol": "SPY",
@@ -95,7 +95,7 @@
   "last": 769.86,
   "last_time": 1790985594,
   "last_session": "post",
-  "fetched": 1791097516
+  "fetched": 1791161352
  },
  "004540.KS": {
   "symbol": "004540.KS",
@@ -109,6 +109,6 @@
   "last": 1240.0,
   "last_time": 1790922600,
   "last_session": "post",
-  "fetched": 1791097516
+  "fetched": 1791161352
  }
 }
