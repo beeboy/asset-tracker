@@ -68,10 +68,10 @@ SKIP = {"QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"
 LAST_ERR = {"msg": ""}
 
 
-def fetch(url: str, timeout: int = 20) -> bytes | None:
+def fetch(url: str, timeout: int = 20, headers: dict | None = None) -> bytes | None:
     for k in range(2):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={**UA, **(headers or {})}), timeout=timeout) as r:
                 return r.read()
         except Exception as e:  # noqa: BLE001 - 출처 하나가 안 돼도 계속
             LAST_ERR["msg"] = str(e)[:80]
@@ -92,7 +92,7 @@ def _rel_time(t: str, now: datetime) -> str:
 def yt_page(cid: str, name: str) -> list[dict]:
     """채널 RSS 가 막히면 채널의 동영상 화면에서 제목·시각을 읽는다"""
     LAST_ERR["msg"] = ""
-    raw = fetch(f"https://www.youtube.com/channel/{cid}/videos?hl=ko&gl=KR")
+    raw = fetch(f"https://www.youtube.com/channel/{cid}/videos?hl=ko&gl=KR", headers={"Accept-Language": "ko-KR,ko;q=0.9", "Cookie": "PREF=hl=ko&gl=KR"})
     if not raw:
         return []
     h, now, out, seen = raw.decode("utf-8", "replace"), datetime.now(timezone.utc), [], set()
@@ -125,7 +125,9 @@ def yt_page(cid: str, name: str) -> list[dict]:
             elif "lockupViewModel" in o and isinstance(o["lockupViewModel"], dict):
                 v = o["lockupViewModel"]
                 md = ((v.get("metadata") or {}).get("lockupMetadataViewModel") or {})
-                when = next((t for t in texts(md.get("metadata")) if re.search(r"전$|ago$", t)), "")
+                when = next((t for t in texts(v) if re.search(r"\d+\s*(초|분|시간|일|주|개월|년)\s*전|\d+\s*(second|minute|hour|day|week|month|year)s?\s+ago", t)), "")
+                if not when and not LAST_ERR.get("dump"):
+                    LAST_ERR["dump"] = " / ".join(list(texts(v))[:25])[:600]
                 yield v.get("contentId"), (md.get("title") or {}).get("content", ""), when
             else:
                 for x in o.values():
@@ -143,6 +145,8 @@ def yt_page(cid: str, name: str) -> list[dict]:
             break
     if not out:
         LAST_ERR["msg"] = f"화면 {len(h)}자, 영상 항목 없음"
+    elif not any(x["time"] for x in out):
+        print("유튜브 시각 없음 예:", LAST_ERR.get("dump", ""))
     return out
     return out
 
