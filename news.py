@@ -238,6 +238,116 @@ def pick_news(ai: str | None, media: list[dict], broker: list[dict], scope: str,
     return res
 
 
+# ---------------------------------------------------------------- 미래 가치 인사이트
+# 분류: 성장 동력·기술 혁신 / 시장·산업 트렌드 / 펀더멘탈·리스크 / 무형 자산·ESG
+CATS = {"growth": "성장 동력 및 기술 혁신 (신기술, 신제품, 신사업, R&D, AI, 특허 출원 등 미래 성장 엔진)",
+        "market": "시장 및 산업 트렌드 (산업 수요, 시장 점유율, 경쟁 구도, 공급망, 업계 전반의 흐름)",
+        "fund": "펀더멘탈 및 리스크 관리 (실적·매출·이익률 전망, 재무 건전성, 밸류에이션, 규제·소송·리스크)",
+        "esg": "무형 자산 및 지속 가능성 (ESG, 지배구조, 경영진, 브랜드, 인재, 특허·지식재산, 친환경)"}
+CAT_Q = {"growth": "innovation OR technology OR launch OR \"new product\" OR AI OR breakthrough",
+         "market": "industry OR \"market share\" OR demand OR competition OR trend",
+         "fund": "earnings OR revenue OR margin OR guidance OR valuation OR risk OR regulation",
+         "esg": "ESG OR sustainability OR governance OR CEO OR brand OR patent OR emissions"}
+# 보유 종목의 관련 업계 (모르는 종목은 회사 이름으로 업계 기사를 찾는다)
+INDUSTRY = {"TSLA": ("전기차·자율주행·로봇", '"electric vehicle" OR EV OR "autonomous driving" OR robotaxi OR "humanoid robot" OR "battery"'),
+            "NVDA": ("반도체·AI 인프라", 'semiconductor OR "AI chip" OR GPU OR "data center" OR "AI infrastructure"'),
+            "SPCX": ("우주·위성 통신", '"space industry" OR "satellite internet" OR "rocket launch" OR "space economy" OR Starlink'),
+            "AAPL": ("스마트폰·소비자 기기", 'smartphone OR "consumer electronics" OR wearables'),
+            "MSFT": ("클라우드·소프트웨어", '"cloud computing" OR "enterprise software" OR "generative AI"'),
+            "GOOGL": ("검색·클라우드·AI", '"online advertising" OR "cloud computing" OR "generative AI"'),
+            "AMZN": ("이커머스·클라우드", 'e-commerce OR "cloud computing" OR logistics'),
+            "META": ("소셜미디어·AI", '"social media" OR "digital advertising" OR "generative AI" OR "AR glasses"'),
+            "AMD": ("반도체·AI 인프라", 'semiconductor OR "AI chip" OR GPU OR "data center"'),
+            "AVGO": ("반도체·네트워크", 'semiconductor OR "AI chip" OR networking OR "custom silicon"'),
+            "TSM": ("반도체 파운드리", 'semiconductor OR foundry OR "chip manufacturing"')}
+INS_KEEP_D, INS_MAX = 14, 240
+
+
+def _nm(t: str, names: dict) -> str:
+    return re.sub(r",?\s*(Inc\.?|Corp\.?|Corporation|Co\.,? Ltd\.?|Ltd\.?|Holdings?)$", "", names.get(t) or t).strip()
+
+
+def collect_insight(ai: str | None, tks: list[str], names: dict, prev: dict, pool: dict, now: datetime, errs: list, log=print) -> dict:
+    """보유 종목(held)·관련 업계(industry) 기사 후보를 모아, 처음 보는 기사만 AI 에 보내 분류·번역한다.
+    고른 기사는 14일 동안 쌓아 두고(최대 240건), 브라우저가 리로드·더 보기 때 아직 안 본 기사로 갈아 끼운다."""
+    items = [x for x in prev.get("items") or [] if (x.get("time") or "") >= (now - timedelta(days=INS_KEEP_D)).isoformat()
+             and not (ai and x.get("plain"))]  # AI 가 되면 번역 안 된 임시 기사는 다시 고른다
+    have = {x["id"] for x in items}
+    seen = {k: v for k, v in (pool.get("ins_seen") or {}).items() if v >= (now - timedelta(days=INS_KEEP_D)).isoformat()}
+    cands = []  # (ticker, scope, 기사)
+    for t in tks:
+        nm = _nm(t, names)
+        got = yahoo_news(t, 12)
+        for c, q in CAT_Q.items():
+            got += parse_feed(fetch(gnews(f'"{nm}" ({q})', "7d")))[:8]
+        held = dedupe(recent(got, 10 * 24), 24)
+        ind_lbl, ind_q = INDUSTRY.get(t.upper(), (f"{nm} 업계", f'"{nm}" (industry OR sector OR competitors OR rivals)'))
+        ind = parse_feed(fetch(gnews(f"({ind_q}) (outlook OR future OR growth OR trend OR forecast)", "7d")))[:20]
+        ind = [x for x in dedupe(recent(ind, 10 * 24), 16) if _key(x["title"]) not in {_key(y["title"]) for y in held}]
+        log(f"미래 가치 {t}: 보유 {len(held)}건, 업계 {len(ind)}건")
+        cands += [(t, "held", x) for x in held] + [(t, "industry", x) for x in ind]
+    fresh, ks = [], set()
+    for t, sc, x in cands:
+        k = _key(x["title"])
+        if k and k not in have and k not in seen and k not in ks:
+            ks.add(k)
+            fresh.append((t, sc, x))
+    fresh = sorted(fresh, key=lambda c: c[2]["time"] or "", reverse=True)
+    fresh = [c for c in fresh if c[1] == "held"][:45] + [c for c in fresh if c[1] == "industry"][:25]
+    res = {"updated": prev.get("updated") or now.isoformat(timespec="seconds"), "v": 1,
+           "industry": {t: INDUSTRY.get(t.upper(), (f"{_nm(t, names)} 업계",))[0] for t in tks}}
+    if fresh and ai:
+        fresh = sorted(fresh, key=lambda c: (c[1] != "held", tks.index(c[0])))
+        lines, cur, size = [], None, 0
+        for i, (t, sc, x) in enumerate(fresh):
+            g = f"[{t} {'보유 종목' if sc == 'held' else '관련 업계: ' + res['industry'][t]}]"
+            ln = f"{i}. [{x['source']}] {x['title']}" + (f" — {x['desc'][:80]}" if x.get("desc") else "")
+            if size + len(ln) + len(g) > 9000:  # 중계 한도(약 11,800자) 안으로. 남은 후보는 다음 시간에
+                break
+            if g != cur:
+                lines.append("\n" + g)
+                cur = g
+            lines.append(ln)
+            size += len(ln) + 1
+        prompt = ("아래는 보유 종목과 그 관련 업계의 최근 기사 후보다. 1~3년 뒤 기업 가치 판단에 도움이 되는 기사만 골라 다음 4개 분류 중 하나로 나눠라. "
+                  "단기 주가 등락·광고성·무관한 기사는 빼라. 같은 사건은 하나만. 좋은 기사면 여러 개 골라도 되지만 최대 25개, 보유 종목 기사를 우선한다.\n"
+                  + "\n".join(f"- {k}: {v}" for k, v in CATS.items()) +
+                  '\n출력 형식: {"items":[{"i":번호,"cat":"growth|market|fund|esg","ko":"한국어 제목","sum":"핵심 요약 한 문장"}]}\n' + "\n".join(lines))
+        try:
+            j = ask_ai(ai, prompt)
+            n0 = len(items)
+            for s in j.get("items") or []:
+                try:
+                    i = int(s.get("i"))
+                except (TypeError, ValueError, AttributeError):
+                    continue
+                if not 0 <= i < len(fresh) or s.get("cat") not in CATS:
+                    continue
+                t, sc, x = fresh[i]
+                k = _key(x["title"])
+                if k in have:
+                    continue
+                have.add(k)
+                items.append({"id": k, "ticker": t, "scope": sc, "cat": s["cat"], "title": (s.get("ko") or x["title"]).strip(), "orig": x["title"],
+                              "summary": (s.get("sum") or "").strip(), "source": x["source"], "link": x["link"], "time": x["time"],
+                              "added": now.isoformat(timespec="seconds")})
+            fresh = fresh[:sum(1 for ln in lines if ln[:1].isdigit())]
+            for t, sc, x in fresh:  # 물어본 기사는 고르지 않았어도 다시 묻지 않는다
+                seen[_key(x["title"])] = now.isoformat(timespec="seconds")
+            res["updated"] = now.isoformat(timespec="seconds")
+            log(f"미래 가치 새 기사 {len(items) - n0}건 (후보 {len(fresh)}건)")
+        except Exception as e:  # noqa: BLE001
+            errs.append(f"insight: {e}")
+    if fresh and not items:  # AI 가 없거나 실패하고 보여 줄 기사도 없으면 원문 그대로 (분류는 기사 묶음으로 짐작)
+        for t, sc, x in fresh[:40]:
+            items.append({"id": _key(x["title"]), "plain": 1, "ticker": t, "scope": sc, "cat": "market" if sc == "industry" else "growth", "title": x["title"],
+                          "orig": x["title"], "summary": "", "source": x["source"], "link": x["link"], "time": x["time"], "added": now.isoformat(timespec="seconds")})
+        res["updated"] = now.isoformat(timespec="seconds")
+    pool["ins_seen"] = seen
+    res["items"] = sorted(items, key=lambda x: x.get("time") or "", reverse=True)[:INS_MAX]
+    return res
+
+
 # ---------------------------------------------------------------- 수집 본체
 def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, log=print) -> dict:
     out_p, pool_p = data / "news.json", data / "news_pool.json"
@@ -290,42 +400,11 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
         wk["v"] = 3
     out["weekly"] = wk
 
-    # 3) 미래 가치: 종목별 장기 전망 기사 (3시간마다)
-    fut_old = {f["ticker"]: f for f in old.get("future") or []}
+    # 3) 미래 가치 인사이트: 보유 종목·관련 업계 기사를 4개 분류로 모아 쌓아 둔다 (매시간, 새 후보만 AI 에 보냄)
     tks = [t for t in tickers if t.upper() not in SKIP and "=" not in t]
-    if _age_h((old.get("future_meta") or {}).get("updated")) >= 3 or set(tks) - set(fut_old):
-        cands = {}
-        for t in tks:
-            nm = re.sub(r",?\s*(Inc\.?|Corp\.?|Corporation|Co\.,? Ltd\.?|Ltd\.?|Holdings?)$", "", names.get(t) or t).strip()
-            q = f'"{nm}" (outlook OR forecast OR "price target" OR "long-term" OR analyst OR growth)'
-            xs = dedupe(recent(yahoo_news(t, 10) + parse_feed(fetch(gnews(q, "7d")))[:12], 10 * 24), 10)
-            cands[t] = xs
-            log(f"미래 가치 {t}: {len(xs)}건")
-        flat, lines = [], []
-        for t, xs in cands.items():
-            lines.append(f"\n[{t} {names.get(t) or ''}]")
-            for x in xs:
-                lines.append(_line(len(flat), x))
-                flat.append(x)
-        fut = None
-        if ai and flat:
-            prompt = ("아래는 종목별 최근 기사 후보다. 종목마다 장기(1~3년) 기업 가치 판단에 도움이 되는 기사(실적 전망, 신사업, 경쟁, 규제, 증권사 목표가 등)를 최대 3개 골라 "
-                      "한국어 제목과 핵심 요약 한두 문장을 쓰고, 기사들에서 읽히는 미래 가치 요지를 한 문장으로 써라. 단기 주가 등락만 다룬 기사는 빼라.\n"
-                      '출력 형식: {"종목":{"view":"한 문장 요지","items":[{"i":번호,"ko":"한국어 제목","sum":"요약"}]}}\n' + "\n".join(lines))
-            try:
-                j = ask_ai(ai, prompt)
-                fut = []
-                for t in cands:
-                    v = j.get(t) or {}
-                    fut.append({"ticker": t, "name": names.get(t) or "", "view": (v.get("view") or "").strip(), "items": _pick(flat, v.get("items"), 3)})
-            except Exception as e:  # noqa: BLE001
-                errs.append(f"future: {e}")
-        if fut is None:
-            fut = [fut_old[t] if t in fut_old and _age_h((old.get("future_meta") or {}).get("updated")) < 12
-                   else {"ticker": t, "name": names.get(t) or "", "view": "", "items": _plain(cands[t], 3)} for t in cands]
-        out["future"], out["future_meta"] = fut, {"updated": now.isoformat(timespec="seconds")}
-    else:
-        out["future"], out["future_meta"] = old.get("future") or [], old.get("future_meta") or {}
+    ins = collect_insight(ai, tks, names, old.get("insight") or {}, pool, now, errs, log)
+    out["insight"] = ins
+    out["future_meta"] = {"updated": ins.get("updated") or now.isoformat(timespec="seconds")}
 
     out["ai"] = "ok" if not errs else "; ".join(errs)[:300]
     if not ai:

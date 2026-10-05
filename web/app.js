@@ -1407,21 +1407,56 @@
   }
   const ago = (t) => { const m = (Date.now() - Date.parse(t)) / 60000; if (!isFinite(m)) return ""; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
   // 상자 하나: 위에 출처(증권사·종목)와 시각, 제목(원문 링크), 요약
-  const newsBox = (it, tag, sub) => `<div class="nitem"><div class="ntop"><span class="tk">${esc(tag || it.source || "")}</span>${it.time ? `<span class="kd">${ago(it.time)}</span>` : ""}</div>
-    <a class="nt" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer">${esc(it.title || it.orig)}</a>${it.summary ? `<p class="nsum small">${esc(it.summary)}</p>` : ""}${sub ? `<div class="nmeta">${esc(sub)}</div>` : ""}</div>`;
-  async function renderInsight() {
+  const newsBox = (it, tag, sub, cat, id, read) => `<div class="nitem${read ? " read" : ""}"><div class="ntop"><span class="tk">${esc(tag || it.source || "")}</span>${it.time ? `<span class="kd">${ago(it.time)}</span>` : ""}</div>
+    ${cat ? `<span class="ncat">${esc(cat)}</span>` : ""}<a class="nt" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer"${id ? ` data-nid="${esc(id)}"` : ""}>${esc(it.title || it.orig)}</a>${it.summary ? `<p class="nsum small">${esc(it.summary)}</p>` : ""}${sub ? `<div class="nmeta">${esc(sub)}</div>` : ""}</div>`;
+  // 미래 가치 인사이트: news.json 의 insight.items(보유 종목·관련 업계 기사, 4개 분류)에서 4개를 보여 준다.
+  // 페이지를 새로 열거나(리로드) "더 보기"를 누르면, 아직 안 보여 준 기사(보유 종목 먼저, 관련 업계 다음)를 위에 놓고
+  // 읽은 기사 → 오래전에 불러온 기사 순으로 뺀다. 새 기사가 없으면 그대로 두고 아래에 안내를 띄운다.
+  const INS_KEY = "naeilo-insight", INS_N = 4;
+  const INS_CAT = { growth: "성장·혁신", market: "시장·산업", fund: "펀더멘탈·리스크", esg: "ESG·무형자산" };
+  let insFresh = false, insMsg = "";
+  const insLoad = () => { try { const o = JSON.parse(localStorage.getItem(INS_KEY) || "{}"); return { cur: o.cur || [], shown: o.shown || {}, read: o.read || {} }; } catch (e) { return { cur: [], shown: {}, read: {} }; } };
+  const insSave = (o) => { try { localStorage.setItem(INS_KEY, JSON.stringify(o)); } catch (e) { /* 무시 */ } };
+  function insRefresh(items, held) {
+    const o = insLoad(), now = Date.now(), lim = now - 30 * 864e5;
+    for (const m of [o.shown, o.read]) for (const k in m) if (m[k] < lim) delete m[k];
+    const byId = new Map(items.map((x) => [x.id, x]));
+    o.cur = o.cur.filter((id) => byId.has(id));
+    // 새 후보: 아직 보여 준 적 없는 기사. 보유 종목 → 관련 업계, 그 안에서는 분류를 돌아가며 최신순
+    const pri = (x) => (x.scope === "held" ? 0 : 1);
+    const fresh = items.filter((x) => !o.shown[x.id] && !o.read[x.id] && (!held.length || held.includes(x.ticker)))
+      .sort((a, b) => pri(a) - pri(b) || held.indexOf(a.ticker) - held.indexOf(b.ticker) || (b.time || "").localeCompare(a.time || ""));
+    const rr = (lists) => { const o = []; for (let k = 0; lists.some((l) => l[k]); k++) for (const l of lists) if (l[k]) o.push(l[k]); return o; };
+    const pick = [];
+    for (const sc of ["held", "industry"]) { // 종목을 돌아가며, 한 종목 안에서는 분류를 돌아가며
+      const tks = [...new Set(fresh.filter((x) => x.scope === sc).map((x) => x.ticker))];
+      for (const x of rr(tks.map((t) => rr(Object.keys(INS_CAT).map((c) => fresh.filter((y) => y.scope === sc && y.ticker === t && y.cat === c)))))) if (pick.length < INS_N) pick.push(x);
+    }
+    if (!pick.length) { insSave(o); return false; }
+    // 남길 기존 기사: 안 읽은 것 먼저, 그 안에서는 최근에 불러온 것 먼저
+    const keep = o.cur.filter((id) => !pick.some((x) => x.id === id))
+      .sort((a, b) => !!o.read[a] - !!o.read[b] || (o.shown[b] || 0) - (o.shown[a] || 0)).slice(0, Math.max(0, INS_N - pick.length));
+    pick.forEach((x, i) => (o.shown[x.id] = now - i)); // 위에 놓을 순서대로
+    o.cur = [...pick.map((x) => x.id), ...keep];
+    insSave(o);
+    return true;
+  }
+  async function renderInsight(more) {
     renderBeyora(); bvLoad();
-    const N = await loadNews();
+    const N = await loadNews(!!more);
     const none = (t) => `<div class="nitem empty">${t}</div>`;
-    if (!N) { $("#newsFuture").innerHTML = none("아직 모은 기사가 없습니다. 한 시간마다 자동으로 모읍니다."); $("#newsNote").textContent = ""; return; }
-    // 미래 가치: 내 보유 종목을 돌아가며 최대 4개
-    const held = S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker);
-    const fut = (N.future || []).filter((f) => !PURGED.has(f.ticker) && (!held.length || held.includes(f.ticker))).sort((a, b) => held.indexOf(a.ticker) - held.indexOf(b.ticker));
-    const lists = fut.map((f) => (f.items || []).map((it) => ({ it, f }))), pick = [];
-    for (let k = 0; pick.length < 4 && lists.some((l) => l[k]); k++) for (const l of lists) if (l[k] && pick.length < 4) pick.push(l[k]);
-    $("#newsFuture").innerHTML = pick.map(({ it, f }) => newsBox(it, f.ticker, [it.source, f.view].filter(Boolean).join(" · "))).join("") || none("보유 종목 관련 기사가 아직 없습니다.");
+    const auto = "한 시간마다 자동으로 모으고 무료 AI로 한글 번역·요약합니다";
+    if (!N) { $("#newsFuture").innerHTML = none(`아직 모은 기사가 없습니다. ${auto}.`); $("#newsNote").textContent = ""; return; }
+    const held = S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker).filter((t) => !PURGED.has(t));
+    const items = (N.insight?.items || []).filter((x) => !PURGED.has(x.ticker));
+    if (more || !insFresh) { insFresh = true; insMsg = insRefresh(items, held) ? "" : `새로운 인사이트 뉴스가 없습니다. ${auto}. 잠시 뒤 다시 확인해 주세요.`; }
+    const o = insLoad(), byId = new Map(items.map((x) => [x.id, x])), ind = N.insight?.industry || {};
+    const cur = o.cur.map((id) => byId.get(id)).filter(Boolean);
+    $("#newsFuture").innerHTML = cur.map((x) => newsBox(x, x.scope === "held" ? x.ticker : `${x.ticker} 관련 업계${ind[x.ticker] ? " · " + ind[x.ticker] : ""}`, x.source, INS_CAT[x.cat], x.id, !!o.read[x.id])).join("")
+      || none("보유 종목 관련 기사가 아직 없습니다.");
     const fu = N.future_meta?.updated || N.updated;
-    $("#newsNote").textContent = `${fu ? new Date(fu).toLocaleString() + " 수집" : ""} · 자동으로 모으고 무료 AI로 한글 번역·요약합니다${N.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열립니다.`;
+    $("#newsMsg").textContent = insMsg; $("#newsMsg").style.display = insMsg ? "" : "none";
+    $("#newsNote").textContent = `${fu ? new Date(fu).toLocaleString() + " 수집" : ""} · ${auto}${N.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열리고, 읽은 기사는 다음에 새 기사로 바뀝니다.`;
   }
 
   // ------------------------------------------------------------ 미래 설계 Beyora (블로그)
@@ -1851,6 +1886,11 @@
     $("#addAvg").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     $("#addShares").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     ["#goalAmount", "#goalDate", "#startDate", "#goalYears", "#monthly"].forEach((s) => { $(s).addEventListener("change", onGoalEdit); });
+    $("#newsMore").addEventListener("click", () => renderInsight(true));
+    $("#newsFuture").addEventListener("click", (e) => { // 제목을 누르면 읽은 기사로 표시
+      const a = e.target.closest("a[data-nid]"); if (!a) return;
+      const o = insLoad(); o.read[a.dataset.nid] = Date.now(); insSave(o); a.closest(".nitem")?.classList.add("read");
+    });
     segClick("#histRange", renderDash); segClick("#histStep", renderDash); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { const f = $("#histRange button[data-r=future]"); if (!f.classList.contains("on")) f.click(); else renderDash(); });
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#trendRange", renderTrend); segClick("#fxRange", renderFx);
     $("#trendTicker").onchange = renderTrend;
