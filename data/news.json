@@ -1,154 +1,201 @@
 {
- "updated": "2026-10-05T03:35:28+00:00",
+ "updated": "2026-10-05T03:38:36+00:00",
  "realtime": {
-  "key": "b07cb5af17c0506f",
-  "updated": "2026-10-05T03:35:30+00:00",
+  "key": "fb40d75d86c04a85",
+  "updated": "2026-10-05T03:38:38+00:00",
   "media": [
    {
-    "title": "고용 부진에 금리 인상 우려 완화… 월가 증시 상승",
-    "orig": "📈 Wall Street rallies as soft jobs data cools Fed hike fears",
-    "summary": "예상을 밑돈 고용 지표로 연준의 추가 금리 인상 우려가 옅어지며 뉴욕증시가 랠리를 펼쳤습니다.",
+    "title": "고용 지표 둔화 속 연준 의사록 대기하며 미 증시 선물 상승",
+    "orig": "Dow, S&P 500, Nasdaq Futures Rise After Soft Jobs Report As Markets Await Fed Minutes: IBRX, SMCI, VST, SOFI Stocks In Focus",
+    "summary": "고용 부진으로 금리 인상 우려가 완화된 가운데 뉴욕증시 선물은 상승세를 보였다.",
     "broker": "",
-    "source": "Moomoo",
-    "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxNdUxka3EwZVl3dnFaNHhrYXBOTk01QkJKWjNCNU1OeGZBZ3c2aWl4cmw1WEo4OGlNMFNOVGFtSllOMWtycVhMc0pRQjJIdU9xdVdLVHBiZ3JGc2lYbTVzOFUwb1g2bnMweTEyRU5QOXZlaWdkMFpaa19EMEZjOHB6VjV6RENoQ3c4VlRDRWVXQkJ0c1dnVEc5TTZnOVA0MXBXOTVha2lKS01Qdw?oc=5",
-    "time": "2026-10-05T01:01:02+00:00"
+    "source": "Stocktwits",
+    "link": "https://news.google.com/rss/articles/CBMilAJBVV95cUxPRzVlR1JMN3VsbVl5aTR1NWFnYXZBX2V2OXF0N3ZleC1YOW1paTRnX1R5dnpDa0ZCdU5hazRNMUVFSjVsTzIxTWlCSWgzUmJnRnB4azB3X284SGx0V1hKMXhFbkRubFcyVTZCTkx5UFM1V1BBZEw5bFZSSHZNT05qb2M1ejVreEFMNTVLWEMwNFZnT3VDeTZoQkRGdDEyUW1lcWhXZExQX3RwdUZOSklZWWxBVGxTQ1g2UFpUR2dVd3F4cGszQ2xOaDVBbV8yalRyYm1kazdUQ3pmNVZfUUhwZFk2d2xMNmZQZU9FbmtzWmQtWlVDOVBKTzlyYmhSVWdERWN3MTJITm8xcjBlSGtoeXV2d1o?oc=5",
+    "time": "2026-10-05T03:17:00+00:00"
    },
    {
-    "title": "국채 금리 상승 속 연준 의사록 대기하며 증시 선물 보합세",
+    "title": "미 국채 금리 상승과 연준 의사록 주시 속 증시 보합세",
     "orig": "Stock futures are flat as investors grapple with higher yields, await Fed minutes: Live updates",
-    "summary": "투자자들이 치솟는 국채 금리와 연방공개시장위원회(FOMC) 의사록 공개를 주시하며 지수 선물이 보합세를 보이고 있습니다.",
+    "summary": "국채 금리 급등과 고용 지표 발표 이후 투자자들이 방향성을 살피며 혼조세를 보였다.",
     "broker": "",
     "source": "CNBC",
     "link": "https://www.cnbc.com/2026/10/04/stock-market-today-live-updates.html",
     "time": "2026-10-05T02:33:38+00:00"
    },
    {
-    "title": "5% 넘는 미 국채 금리, '재정 파극' 신호는 아직 아니야",
-    "orig": "Surging Treasury yields don’t signal a U.S. 'fiscal apocalypse' — yet",
-    "summary": "미국 국채 금리 상승이 차입 비용 부담을 키우고 있지만 당장 재정 위기로 이어질 수준은 아니라는 분석입니다.",
+    "title": "중동 긴장 속 오펙플러스(OPEC+) 원유 생산량 유지 결정",
+    "orig": "OPEC, Allies Hold Oil Output Steady Amid Middle East Tensions",
+    "summary": "지정학적 긴장감이 이어지는 가운데 주요 산유국들은 원유 생산량을 동결했다.",
     "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/05/treasury-yields-fiscal-concerns-not-crisis-yet.html",
-    "time": "2026-10-05T02:24:07+00:00"
+    "source": "WSJ",
+    "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxOYmFlX3pxTllubHhKWkgycEVOdlZ3c2F3TzA5OUU4RmFmWmQ2dWlaY3B1TlFfek85dHhZakt3aFJHZjlEUEJ2Zk9MVldfeTdUVkxoUzN1MU9wUWlUdGhFd3M4T3dNamMxbGprT1A3R3g4UGI0Q2RyU3hrczI0WExYWlpNa3N4RjlNRzFGN0U5d1NPN3p4VlN2R2MzRkc4WXlyV3Z4Z21ZZHVtY3FzYmc?oc=5",
+    "time": "2026-10-05T03:00:21+00:00"
    },
    {
-    "title": "SK하이닉스 주주들, 솔리디엠 나스닥 상장 반대 움직임",
+    "title": "SK하이닉스 주주들, 가치 희석 우려로 솔리다임 나스닥 상장 저지 움직임",
     "orig": "SK hynix shareholders move to block Solidigm Nasdaq listing over dilution fears",
-    "summary": "가치 희석 우려로 SK하이닉스 주주들이 자회사 솔리디엠의 나스닥 상장에 반대하고 나섰습니다.",
+    "summary": "지분 가치 희석을 우려한 SK하이닉스 주주들이 자회사 솔리다임의 나스닥 상장을 막기 위해 반대하고 나섰다.",
     "broker": "",
     "source": "Korea JoongAng Daily",
     "link": "https://news.google.com/rss/articles/CBMizAFBVV95cUxPT2dNRGRQVE1NUGtRZkNWMktQTjVaWmNDY2hxMEZfeWNISzh0T09lRTNmeFNvU3NCRHdHbWlKQndhRnNVcmdodDMxNWVlWnd5NU9zbG9LUG44aEJBWU4wdDA5bkxNYWRUS3RRdXl5Z2Jjem1LbFRpcVRaV2dlNFViUlJiVUFoZS0yeml3bE5hWklkdUlfd3ZGSUk1eEhQZ2Y2MWdKTHZUZHhzMmVXVzlwaXhfcTZzaldKVGVBb2MxVUsxTkFSZUlNMFdwR0w?oc=5",
     "time": "2026-10-05T02:54:10+00:00"
    },
    {
-    "title": "트럼프, 한국에 알래스카 LNG 투자 압박 수위 높여",
+    "title": "트럼프, 한국에 알래스카 LNG 사업 참여 압박",
     "orig": "Trump tells South Korea to sign on to Alaska LNG deal or 'I'll just charge them more'",
-    "summary": "도널드 트럼프 전 대통령이 한국을 향해 알래스카 LNG 프로젝트 참여를 압박하며 비용 부담 가능성을 경고했습니다.",
+    "summary": "도널드 트럼프 전 대통령이 한국을 향해 알래스카 액화천연가스(LNG) 투자 프로젝트에 참여할 것을 거듭 압박했다.",
     "broker": "",
     "source": "CNBC",
     "link": "https://www.cnbc.com/2026/10/05/trump-alaska-lng-south-korea-pay.html",
     "time": "2026-10-05T00:47:47+00:00"
    }
   ],
-  "broker": []
+  "broker": [
+   {
+    "title": "보잉 분석가, 연말 내 MAX 10 인증 전망하며 36% 상승 여력 제시",
+    "orig": "BA Stock Ticks Higher Overnight: Analyst Sees MAX 10 Certification By Year-End, 36% Upside",
+    "summary": "분석가는 보잉이 연내에 주요 기종 인증을 받을 것으로 보며 주가 상승 여력이 크다고 평가했다.",
+    "broker": "",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxQQXZ6RlFCdlE2OG1sX3lndGV2NEYzU0VXdFgyYW15aGktN3R3VmZneWJNaTlRLTJFWHJkd0Qwc2tJNG1WUml1THY5Ui13WUxiTDh0X3gxaGZIanZHYzN0c1BxQ1FkeTN4NlJrVzAxcUdEV2pSVTZ3eDY5a1A3OVBFd0lBc2w3NGl3eDBHc1hVSnFXZ0NSUkJyTkI5M3M1UHotekREaEt2MjBaenJSYm9hamZkWndzdHkzNl9yMzNqbUMtSDFiUEpzelp2LVRXQVhpS0gwSXdlNXJPRDk0N3dhdm5R?oc=5",
+    "time": "2026-10-05T03:10:00+00:00"
+   },
+   {
+    "title": "존스랑라살(JLL) 투자의견 하향, 주가 상승 여력 제한적",
+    "orig": "Upside Is Limited For Shareholders Of Jones Lang LaSalle (Downgrade) (NYSE:JLL)",
+    "summary": "분석가는 존스랑라살의 주가 상승 여력이 제한적이라며 투자의견을 하향 조정했다.",
+    "broker": "",
+    "source": "Seeking Alpha",
+    "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPYW9ac3E0SEhKRzZhbi1PaWllS0pMR1V5cS1UNHhJWW9sanpJVFFNdjF3R185WjlGbWRSU3pzZktINk8wUUJKb0ZJb2xfNmJsWHh1em5jMnFWMGV0VFhLQjJLRzFKVGRuRExkOGNGVWZQSWI3a1F5SDNtaFk0UHhYYWo1aUVteTNkanI5WndJa2VwZWNjZDZIZUtOakNvWjAwUVpNVGwwLUM0Z3dtdzNR?oc=5",
+    "time": "2026-10-05T02:58:27+00:00"
+   },
+   {
+    "title": "아르구스, UFP 테크놀로지스 목표가 상향 속 저평가 분석",
+    "orig": "Is UFP Technologies (UFPT) Undervalued After Argus Lifted Its Price Target?",
+    "summary": "아르구스가 목표주가를 올린 가운데 해당 기업이 저평가 상태라는 분석이 나왔다.",
+    "broker": "",
+    "source": "Simply Wall Street",
+    "link": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxPZVBaVGt5UmJNTkgzTnV2WnB1dHlnRzRxZVM3YkhxdzY5YThlYzdHVkpOWU5fOWpVNDBmMUEzaE4ydVdmWk1wMloxU1ZBaHlScjZjcERNQS1Udm1teHlwSVBXS185WkEtZWlXdmZLbl9QUHhNNnBnbEFXdzdIdF9na2lhWVBMN25ZemFkMjd4dnhSWVE4VFVnZ0o0VS1ZZTJvUlpwVGpweVJRUEFjRkw2LXhpTzB5MXItU2xTLUdYSGxqdWFMbDFvRlNja0s1Y0ZVcGfSAdcBQVVfeXFMTW5reXhkZ092YWdQa1N0QkRvcEdRRUZMbWFWYXV0RVhyZVRHMFQtbTJ1ZVRyZmhmMHRNdmpuQmUzOFRySDMzQ3ZPdEVzMnhLdmZmQUxEYV9ZZFRKN0NEeFJFaUdBYUNJZ1h1Y3hScm94YWFEOTNPN0IxazlHaXl2dFlXU2dhbXpUYzRqSVZOWnBrQ2NXZWJtdEJBVEpuMXF1b0p0V1hjNmxMXzNDdGZWWFdvTWJHN1NoWmdZV3ExRE9zQmdnRVJSc3ZqSmRKSDIxc0VJbjcycTA?oc=5",
+    "time": "2026-10-05T02:34:56+00:00"
+   },
+   {
+    "title": "소파이(SoFi) 주가 40% 하락했으나, 분석가는 대출 플랫폼 사업 성장성에 주목",
+    "orig": "SOFI Stock Is Down More Than 40% In 2026, But This Analyst Sees Attractive Growth Opportunity In Loan Platform Business",
+    "summary": "올해 주가가 크게 조정을 받았지만, 대출 플랫폼 부문의 매력적인 성장 기회는 유효하다는 분석이다.",
+    "broker": "",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMiigJBVV95cUxNd3dmV0k0MGgtVzFIZlhFdEtXS0U1NHFHTlViUUZCd192dmQ3VDhfS0tqX0JIempMYUctS2xGbDdFRl9wRDdNVXpOejExRjBaeWVUT1FYRkRBTVFFOXdROG1ES2hPQS05empkNFVVM19kVU01ZVNORm1PWVZpSzNEQUQyeFRKUXBsMlNMYTFKaXlJaVA3YWdhN09Wcmk0eE5KelhrbDdGd2pTcTRGQURxbXlUVTZCVUtoRnBKS2oyRDJfLUdGLVR1TVBvaU1qWGY3WFMxamRzUnRWRHNFV2h1b1E2ekphN1RnYUlKZ0lSbTcycTRZaFZmUHUzbGppcXhISVI0NFNsMUo1Zw?oc=5",
+    "time": "2026-10-05T01:09:00+00:00"
+   },
+   {
+    "title": "퍼스트 인더스트리얼 레이트 트러스트, 아르구스 하향 조정 속 저평가 평가",
+    "orig": "First Industrial Realty Trust (FR) Could Be 18% Undervalued On Argus Downgrade",
+    "summary": "아르구스의 투자의견 하향 조정에도 불구하고 펀더멘털 대비 주가가 저평가되어 있다는 분석이 제기됐다.",
+    "broker": "",
+    "source": "Simply Wall Street",
+    "link": "https://news.google.com/rss/articles/CBMi5AFBVV95cUxNaDh2QlJDY3ZsV3A4Z1ZjUV9maDJDWTY3VVhjNW53eDhrTmQ2ZzZrNmw5cFZmaGNtb0hKOWRKVGFtank1R2RRSVNMUVplM01STlk1OXdNQmxXZE02RXFOeGVOSlNFLVZWTDg5QVdWUGxwYnpiemx2VHQ0SFI2bEtMdGdMOHFNYW5MbG96NVdUbXV2ek1ya29GdGwxWUhYbkpHSGNuSkNWb1dkX1Z5Q3FZVXZBUXZwR3Nsai1nMllfWk5BVl84S0dWVTBUMFRJS0cxc29zS2Rrd2FrUjl3VjdBWjZnZFfSAeQBQVVfeXFMTWg4dkJSQ2N2bFdwOGdWY1FfZmgyQ1k2N1VYYzVud3g4a05kNmc2azZsOXBWZmhjbW9ISjlkSlRhbWp5NUdkUUlTTFFaZTNNUk5ZNTl3TUJsV2RNNkVxTnhlTkpTRS1WVkw4OUFXVlBscGJ6YnpsdlR0NEhSNmxLTHRnTDhxTWFuTGxvejVXVG11dnpNcmtvRnRsMVlIWG5KR0hjbkpDVm9XZF9WeUNxWVV2QVF2cEdzbGotZzJZX1pOQVZfOEtHVlUwVDBUSUtHMXNvc0tka3dha1I5d1Y3QVo2Z2RX?oc=5",
+    "time": "2026-10-04T22:29:37+00:00"
+   }
+  ]
  },
  "weekly": {
-  "key": "54441fd094d02508",
-  "updated": "2026-10-05T03:35:43+00:00",
+  "key": "7cdab0d06d1a0ce2",
+  "updated": "2026-10-05T03:38:46+00:00",
   "media": [
    {
-    "title": "기술주 중심 증시, 4분기 불안한 출발",
-    "orig": "A Tech-Fueled Stock Market Powers Through, but Limps Into the Fourth Quarter",
-    "summary": "견조한 흐름을 이어온 기술주 중심의 증시가 4분기를 맞아 다소 흔들리는 모습을 보이고 있다.",
+    "title": "미국 9월 고용 증가폭 2만 9,000명 그쳐",
+    "orig": "U.S. economy adds just 29,000 jobs in September",
+    "summary": "부진한 고용 지표로 연준의 추가 금리 인상 우려가 완화됐다.",
+    "broker": "",
+    "source": "CNN",
+    "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNc3NMRlVaSzVMLW1wSkw2aWExWUZHY2F2aXE2aUliYVBYdmxGbG8zWnhOdzh4Y1RsZVk3NXdfa0FZWUs1NW1DMlVUeUhxRU4xUHZCM2FwWDlpRmhmTEE0Zjk0Vzg1N3lQUFFxWEJJX3BkWkFvTkN4OHVzZ09MNlhtdlljZjJhR2t5S0ZaY1FXNkF5TEN2ODE5TTY5ekYzemJnSUlFb0NFc0ZOeE1WekJTVHNDcUs3QQ?oc=5",
+    "time": "2026-10-02T22:27:01+00:00"
+   },
+   {
+    "title": "고용 둔화 속 나스닥 증시 상승 주도",
+    "orig": "Nasdaq Leads Stocks Higher as Hiring Softens",
+    "summary": "고용 시장 둔화에 따른 금리 우려 완화로 나스닥을 비롯한 주식시장이 상승했다.",
     "broker": "",
     "source": "WSJ",
-    "link": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxPc1JDbTJOSTJNWnhqQ2tkWE83TVpKNnZwUW4yVXVXV3NjRzE1WUZOVG1hZWJCR1lEWEU3UE1laFhldFlvbTFTa1Z2THJNMUQwbElyX2hZUTNrMW91dzNjMndRRWNlMGxKVDBpdG01WUdQUEdQWW0ydTNzc09WTHBhX0JMaGxrcE9QeDYyYXRla2ptcnFCUlZFZ1pvUHR3RW94aVFhWHJsbENhWnU5WmNDREVzY0pxZVkxYnJR?oc=5",
-    "time": "2026-09-30T21:37:00+00:00"
+    "link": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQNllYU095N0ttVXFUeGVSNEdFYkhPV0xzZURveERVUk11alFtdWQ4SUdodzhhaTRITHRxV1ZNekdCMS1xZnlPd3JJUFI5Q3JlVWJYQzZZVUppVW5kSUtSTVNyNEZhZ0hlQzNpck9Yb2NIZFJoZktFa0swXzVhd0VMQi10QXA0WEpZZXdJREpLbDhObVlMOEE?oc=5",
+    "time": "2026-10-03T18:27:08+00:00"
    },
    {
-    "title": "물가 완화 확인 속 S&P 하락·나스닥 상승",
-    "orig": "S&P 500 dips, Nasdaq higher after data shows moderate inflation rise",
-    "summary": "완만한 물가 상승세 지표가 발표된 후 S&P 500은 소폭 하락하고 나스닥은 상승 마감했다.",
+    "title": "AI 관련주로 편중된 증시 랠리 경고",
+    "orig": "AI Is Squeezing Out the Rest of the Stock Market",
+    "summary": "AI 열풍이 주식시장 나머지 부문은 소외시키고 있다는 지적이다.",
     "broker": "",
-    "source": "Reuters",
-    "link": "https://news.google.com/rss/articles/CBMipwFBVV95cUxOdXFFNHNQQUxXRkRPN3ZndG5TZS1PSGpvaFZPMG8zRU1oNFdrOUFZQnNsT183YWZ2R3NoNGNUX1NVdmtZNmxaYVc2X2c0Vm5tNWZjbEo1ZkYzNzVqeW1BS0VTaWZYc1hKRlRaRGxrQlk1aGlpQTROOV9mSDZldFlkejFZVGxKYmZzQ3czLUFPUDRBVmNJNWpuMnBPdE00QUlncU9EU2lXZw?oc=5",
-    "time": "2026-09-30T23:40:02+00:00"
+    "source": "WSJ",
+    "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPRnpIZVhVTnV4Ung1cnczNTlVREtiRGFaUEpzUUw3cGg2T2Vaa1I3MHNJTi1kR0tjaGpVQ2dVamtab25vN3dtSWZmYnpTS242TjQwbHJiM1lmSmMxRER2ZXpBbkw1Njg1YnYzeGs3RDNnWUk3OTJ3bjhSNjhzeG9SUTE0c2kycTl4V0lSVGNQblc1NDllVmpUWDNPSQ?oc=5",
+    "time": "2026-10-02T23:00:25+00:00"
    },
    {
-    "title": "고용 둔화에 금리 인상 우려 완화, 증시 상승 마감",
-    "orig": "Equities close higher as softer jobs data quiets rate-hike expectations",
-    "summary": "예상보다 부진한 고용 지표로 연준의 추가 금리 인상 우려가 누그러지며 증시가 상승세로 장을 마쳤다.",
+    "title": "국채 금리 주시하며 혼조세 보이는 증시",
+    "orig": "Stock futures are flat as investors grapple with higher yields, await Fed minutes: Live updates",
+    "summary": "투자자들이 치솟는 국채 금리와 연방공개시장위원회 의사록을 주시하고 있다.",
     "broker": "",
-    "source": "Reuters",
-    "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPeTVxVTNLX2pUZEc1U0xtNWdyYWRjY0NjSVcweXJNYk9PTDVKVnJaTzFNTUdnNW5LVEFxaHlELU9fVW9neE93Q0VDanlUbkJPcUhMaXNmNUJQX3pXd0JvcU1VSHh5Z1NEZnQzWGFsclpXZ08zRTVmY2ZaV1J4a2JBU3lPTEVNTUNBSVdVcWRydUlJOEY5ZU13NERhMFE3YUstSzB2RE5JV1gtZw?oc=5",
-    "time": "2026-10-02T22:44:50+00:00"
+    "source": "CNBC",
+    "link": "https://www.cnbc.com/2026/10/04/stock-market-today-live-updates.html",
+    "time": "2026-10-05T02:33:38+00:00"
    },
    {
-    "title": "미 2분기 GDP 성장률 2.2%로 상향 조정",
-    "orig": "US economy grew a solid 2.2% in the second quarter, government says, upgrading previous estimate",
-    "summary": "정부 발표에 따르면 미국의 2분기 경제성장률이 이전 잠정치보다 상향된 탄탄한 2.2%를 기록했다.",
+    "title": "트럼프, 한국에 알래스카 LNG 투자 압박",
+    "orig": "Trump tells South Korea to sign on to Alaska LNG deal or 'I'll just charge them more'",
+    "summary": "트럼프가 한국을 향해 알래스카 LNG 프로젝트 참여를 강하게 압박했다.",
     "broker": "",
-    "source": "AP News",
-    "link": "https://news.google.com/rss/articles/CBMingFBVV95cUxOWXpwNmNIQjBnejM4WUNtaUpjWGdoQ09YZFFtckxWVTI2VVdval9lWDgzRUpfYk9wY3N4anZiRExiRkhESFZvay1TeTlzRE5zU1B4SkotQW9yanJGTFlxbFJDYWpLcW1waWdkendzMFZKM1l2dmZNT1paVVVMbkFORF9NcHFudjN5T0V0X01oLUtPdUdxWHU0NjZqZVNYQQ?oc=5",
-    "time": "2026-09-30T19:50:00+00:00"
-   },
-   {
-    "title": "모더나, 나스닥 100 지수에 편입",
-    "orig": "Moderna to replace Warner Bros Discovery on Nasdaq 100",
-    "summary": "워너 브라더스 디스커버리를 대신해 모더나가 새롭게 나스닥 100 지수 라인업에 합류한다.",
-    "broker": "",
-    "source": "Reuters",
-    "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxObWJkOERiekY5c3NCNmJRSVhkaDhaT1g0eU1CbFJuS0JwUWxFTHdyNEZiQmlHVnJnWC13Tm0zbnJKNUd4MnkwQVZsVk1naDVmeDBoM2wxT3RvaG9SU2VQdDdYNFhFa1VzVDltYUhmYnJsRXNLT2J2eDFFVFlRS2xMb2JQbHFJZGFpX1hWSFF1LUhkVnVDWlU5Ri1qSm5YQkpFdGhsdXNiZVJfSnlfWE9reTRLSVZSLTFDSlJSSjdJRFhDeXdiMWc?oc=5",
-    "time": "2026-10-02T00:15:44+00:00"
+    "source": "CNBC",
+    "link": "https://www.cnbc.com/2026/10/05/trump-alaska-lng-south-korea-pay.html",
+    "time": "2026-10-05T00:47:47+00:00"
    }
   ],
   "broker": [
    {
-    "title": "제프리스, 탑픽 은행주로 JP모건 선정",
-    "orig": "JPMorgan or Bank of America: Jefferies Names the Top Banking Stock to Buy for 2026",
-    "summary": "제프리스가 2026년 매수할 최고의 은행주로 JP모건을 꼽았다.",
-    "broker": "제프리스",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxQeFdRSGFndUo3TVMybWdXSjRvV0M1MDZfV3N5ZlNZTmwtZ25SV3N3UmJRX0pfTktrOTBnQThTYk1tcW44bEZsY05nLXhzSHBWZTl2YzJFZ3lZcWFPN0NYME9NM3liYVhsSnV2cFkyUVd0TVA3VjhnazJoUWN2WmhkcXhxZEUyeVVUc3EyaGhkV2h5Q1JJNGd3ZlFCcndoaU9LMElfdQ?oc=5",
-    "time": "2026-03-31T07:00:00+00:00"
+    "title": "에어비앤비, AI 붐의 수혜주로 평가",
+    "orig": "Airbnb Stock Rises After Analyst Calls It an AI Boom Winner",
+    "summary": "배런스는 에어비앤비를 AI 붐의 수혜주로 지목하며 주가가 상승했다고 전했다.",
+    "broker": "배런스",
+    "source": "barrons.com",
+    "link": "https://news.google.com/rss/articles/CBMickFVX3lxTE16TUtHdjdFbjRJd3U3WjBIVHczeThqemFPNkVXTlRTelBiQmJEQ1JIMG53cWFGQkprazhDcVBlSlo0QjFwWXdjRE1YWnN1MjE0bEFMOUU2SGFOMlF3dmhJcXhRQkQyMHJ5NlFWMXFVNWJXdw?oc=5",
+    "time": "2026-10-02T18:45:00+00:00"
    },
    {
-    "title": "짐 크레이머 \"JP모건 등 주요 은행주 여전히 저렴해\"",
-    "orig": "Jim Cramer Says Banks Like JPMorgan (JPM) “Are Still Inexpensive”",
-    "summary": "유명 투자자 짐 크레이머가 JP모건 같은 대형 은행들의 주가가 여전히 매력적인 밸류에이션을 유지하고 있다고 평가했다.",
-    "broker": "CNBC",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxNM2pmVEFXZXdhaUhiOUlFdmVnRVVRT2dfalNydTA2Z3hFY0JZUHphdDctNkpUQUxsSGNnQ3pJMkxRaVNNNmtIOVh2RnVQbzZhaXRTdXBZT0N5dm03aFlibWJCRGlPMHBiWVBXR003dzRqb3U0aXJzdk80VG0wQ0tYdlpqR3c4ZU05OXQ0bzl2a2gxWDlLdHAwQzAtbw?oc=5",
-    "time": "2026-06-21T07:00:00+00:00"
+    "title": "퍼스트 인더스트리얼 리얼티 트러스트, 아구스 하향 조정",
+    "orig": "First Industrial Realty Trust (FR) Could Be 18% Undervalued On Argus Downgrade",
+    "summary": "아구스는 퍼스트 인더스트리얼 리얼티 트러스트가 18% 저평가 상태일 수 있다고 평가했다.",
+    "broker": "아구스",
+    "source": "Simply Wall Street",
+    "link": "https://news.google.com/rss/articles/CBMi5AFBVV95cUxNaDh2QlJDY3ZsV3A4Z1ZjUV9maDJDWTY3VVhjNW53eDhrTmQ2ZzZrNmw5cFZmaGNtb0hKOWRKVGFtank1R2RRSVNMUVplM01STlk1OXdNQmxXZE02RXFOeGVOSlNFLVZWTDg5QVdWUGxwYnpiemx2VHQ0SFI2bEtMdGdMOHFNYW5MbG96NVdUbXV2ek1ya29GdGwxWUhYbkpHSGNuSkNWb1dkX1Z5Q3FZVXZBUXZwR3Nsai1nMllfWk5BVl84S0dWVTBUMFRJS0cxc29zS2Rrd2FrUjl3VjdBWjZnZFfSAeQBQVVfeXFMTWg4dkJSQ2N2bFdwOGdWY1FfZmgyQ1k2N1VYYzVud3g4a05kNmc2azZsOXBWZmhjbW9ISjlkSlRhbWp5NUdkUUlTTFFaZTNNUk5ZNTl3TUJsV2RNNkVxTnhlTkpTRS1WVkw4OUFXVlBscGJ6YnpsdlR0NEhSNmxLTHRnTDhxTWFuTGxvejVXVG11dnpNcmtvRnRsMVlIWG5KR0hjbkpDVm9XZF9WeUNxWVV2QVF2cEdzbGotZzJZX1pOQVZfOEtHVlUwVDBUSUtHMXNvc0tka3dha1I5d1Y3QVo2Z2RX?oc=5",
+    "time": "2026-10-04T22:29:37+00:00"
    },
    {
-    "title": "JP모건 2분기 트레이딩 매출 35% 급증",
-    "orig": "JPMorgan's Q2 Trading Revenues Surge 35%: Can the Momentum Continue?",
-    "summary": "JP모건의 2분기 트레이딩 부문 매출이 크게 급증한 가운데, 이러한 모멘텀이 이어질지 주목된다.",
+    "title": "네비우스 그룹, AI 성장성 전망 엇갈려",
+    "orig": "Nebius Group (NBIS) Stock Fair Value Falls As Analyst Views Split On AI Growth",
+    "summary": "야후 파이낸스는 네비우스 그룹에 대한 애널리스트들의 AI 성장 전망이 엇갈리며 적정 가치가 하락했다고 전했다.",
     "broker": "야후 파이낸스",
     "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMiogFBVV95cUxNeVZKb19lQjZRRGZlYWJQazRtMkM2Zkc0eWhReHpySlhZM2lvbHcwS1gxQ2tKdk5jWXZZQXJyWVM0MVRhQXA4NXBBTGNkNDhDWnZvak0teHVxZG5VaXJDaTh5RW1WMnd1QW41QXJZTERLZ04xSWpaYTAwZ2QtRndLY2NUNFo4ME9CU0N1RXBhanNTVm9tbGl4RTZUM0ZGc3NId3c?oc=5",
-    "time": "2026-08-21T07:00:00+00:00"
+    "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNQmYyX3lmdEQtYkFLVW92VG02cGsyeWtxVnp5aVJrNFFpWTBmdmt4MVJScmF6QlJmdHJmWTdzMVhzQlJ5YnNUZ0xYQXYtUjlsUmFFYWw1bm43MFBWQnZmZklVVEhCMVZHaFo2Y3d0ZFlKMmFCX1NIMTBZby03cnVvWW5xb1VPLXNLcGE5RW91R29QQk5tUHBTOA?oc=5",
+    "time": "2026-10-02T22:05:03+00:00"
    },
    {
-    "title": "JP모건 대 웰스파고, 상승 여력 더 큰 주는?",
-    "orig": "JPMorgan vs. Wells Fargo: Which Bank Stock Has More Upside Potential?",
-    "summary": "두 주요 대형 은행의 투자 매력도를 비교하며 향후 상승 여력이 더 높은 종목을 분석했다.",
+    "title": "테칸 그룹, 목표가 상향으로 적정 가치 소폭 상승",
+    "orig": "Tecan Group Stock Sees Modest Fair Value Lift After Analyst Target Increases",
+    "summary": "야후 파이낸스는 테칸 그룹이 애널리스트의 목표가 상향으로 적정 가치에 소폭 상승세를 보였다고 전했다.",
     "broker": "야후 파이낸스",
     "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxQWkpYeUdQSk1aYWl3MWt0cUU0VnNkeHlaTmZ0Y1NYcDBXbFphT0U5QXFVX0FtRXN5OGI3V0tHNTBYd3puMWtXZlFvbzNTOEdOMWdJNmlTeGxJSmppeFZpQUJHZU4xNC1uQzBxRGVtZFN5M0gwUHBoS0NkQktnbEk2ZFdWcmV0NmN2QzRFbk5YSzZMV29wV3g4Uw?oc=5",
-    "time": "2026-09-16T07:00:00+00:00"
+    "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxNZkhFQWxob2phWUl4dUJLRFppVHp5SWtzenpzeTJXY0RUMk05MzhxWUxCWFRvcUZwQmZKSWJJTEthY1pXeVJ4ZEZqb2dTWWlxN0ZaNVBJVGRxWlF0dUNiM2NlZFg1aVQyQUt6NDQ2ZVo0aVd6cGpXZVJNYnBjbWNpcUwxZWpPSFI0Z1pUcV9XdExHZHhxU0tFelB3?oc=5",
+    "time": "2026-10-03T17:10:13+00:00"
    },
    {
-    "title": "UBS 대 캐나다임페리얼상업은행(CM), 더 나은 가치주는?",
-    "orig": "UBS vs. CM: Which Stock Is the Better Value Option?",
-    "summary": "두 금융사의 밸류에이션을 비교해 더 유리한 가치주 옵션을 제시했다.",
+    "title": "암닐 파마슈티컬스, 신제품 기대감에 목표가 상향",
+    "orig": "Amneal Pharmaceuticals (AMRX) Stock Gets Fair Value Bump After Analyst Backing For New Launches",
+    "summary": "야후 파이낸스는 암닐 파마슈티컬스가 신제품 출시 기대 속 애널리스트 지지를 받으며 적정 가치가 상향 조정됐다고 전했다.",
     "broker": "야후 파이낸스",
     "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxPdWtuQ2EwLTJ1SEpLcDhMWGx4WTNrcnpON1Y3aU5VcmVteXl3cHlhTy1vU3NhUTVKb2kwbWVINXJDV2dmQ1JDSktNX1ZvOXo0YTVkOXpOdW5ucXZkQWp0b2tlMlB2WFNISlZOYkJTVm5qdDE5MEFIVEEyd0lKVEdrMmRpS2tNbFVMNWVpZDhhV0s?oc=5",
-    "time": "2026-08-20T07:00:00+00:00"
+    "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQaHBIOXRQZkJaS0E2Y3J6TGZUUm5vTS1aSFBwdHV0eXJEaGNLMWstZnRmYmRRdUFUODVZLWxra1FJaDlieWRmTEN3UHRzVC1DQlZDRE5YcFZILU41RUVRaktKRzM1T3RGQ2pkeGJkSlI5amtEYTJEaU1URlBReUM2QlA4STl0Ukd6V2FQQ050N1FWekdsTHlCck5LUVRISDNLUUZueXR3?oc=5",
+    "time": "2026-10-03T07:11:18+00:00"
    }
-  ]
+  ],
+  "v": 2
  },
  "future": [
   {
@@ -250,7 +297,8 @@
   "key": "1376774b81b43f6e",
   "videos": [],
   "points": [],
-  "keywords": []
+  "keywords": [],
+  "ai_at": null
  },
  "ai": "ok"
 }
