@@ -9,15 +9,5 @@
    "name": "테스트2"
   }
  ],
- "posts": [
-  {
-   "id": "pmuurs8jw",
-   "title": "글 1",
-   "body": "내용 1",
-   "cat": "cmuurrwzn",
-   "created": "2026-10-05T04:48:52.556Z",
-   "updated": "2026-10-05T04:48:52.556Z",
-   "views": 2
-  }
- ]
+ "posts": []
 }
