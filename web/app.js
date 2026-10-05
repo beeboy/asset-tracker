@@ -1833,6 +1833,7 @@
 
   function bind() {
     $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
+    $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     $("#btnCollect").onclick = () => collect(false);
     $("#btnQuotes").onclick = () => collect(true);
     $("#autoRefresh").value = String(S.state.ui.auto_refresh_min || 0);
