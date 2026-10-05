@@ -22,7 +22,7 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 -apple
 header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: var(--topbar); z-index: 5; flex-wrap: wrap; }
 .brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; width: 100%; }
 .logo { font-weight: 800; font-size: 19px; letter-spacing: .3px; color: var(--accent); }
-.slogan { font-size: 11.5px; color: var(--muted); letter-spacing: .2px; text-align: right; white-space: nowrap; }
+.slogan { font-size: 12px; color: var(--muted); letter-spacing: .4px; text-align: center; margin: 0; padding: 4px 10px max(16px, env(safe-area-inset-bottom)); }
 .headkpi { flex-basis: 100%; }
 .headkpi { flex: 1; display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; }
 .headkpi b { font-size: 15px; }
@@ -99,7 +99,7 @@ footer { text-align: center; padding: 10px; }
 .log a{color:var(--accent)} .help a{color:var(--accent)}
 @media (max-width: 700px) {
   header { position: static; gap: 6px 12px; padding: 8px 12px; }
-  .logo { font-size: 17px; } .slogan { font-size: 10.5px; }
+  .logo { font-size: 17px; }
   .headkpi { gap: 4px 12px; font-size: 12px; } .headkpi b { font-size: 13px; } .headkpi .muted { display: none; }
   .headact { display: none; }
   main { padding: 10px 8px 30px; } .card { padding: 12px; }

@@ -1526,7 +1526,7 @@
         if (op.del) D.posts = D.posts.filter((p) => p.id !== op.del);
         if (op.delcat) D.cats = D.cats.filter((c) => c.id !== op.delcat);
         const what = op.del ? "글 삭제" : op.delcat ? "카테고리 삭제" : op.title ? `글 저장: ${op.title}` : "글 저장";
-        try { await bvPut(D, sha, "BEEBOY " + what); }
+        try { await bvPut(D, sha, "naeilo " + what); }
         catch (e) { if ((e.status === 409 || e.status === 422) && n < 2) continue; throw e; }
         BVR = D; lsSet(BV_KEY, null); lsSet(BV_VIEWS, null);
         bvS.msg = (MODE === "local" ? "저장됨 " : "저장소에 저장됨 ") + new Date().toLocaleTimeString() + (MODE === "local" ? "" : " · 다른 사람 화면에는 1~2분 뒤 보입니다");
