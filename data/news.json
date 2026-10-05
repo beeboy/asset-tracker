@@ -1,290 +1,325 @@
 {
- "updated": "2026-10-05T03:44:27+00:00",
+ "updated": "2026-10-05T09:02:08+00:00",
  "realtime": {
-  "key": "f36dc2adb55de105",
-  "updated": "2026-10-05T03:44:29+00:00",
+  "key": "57ce5820706f5afa",
+  "updated": "2026-10-05T09:02:10+00:00",
   "media": [
    {
-    "title": "국채 금리 상승과 연준 회의 앞두고 증시 선물 보합세",
-    "orig": "Stock futures are flat as investors grapple with higher yields, await Fed minutes: Live updates",
-    "summary": "투자자들이 국채 금리 상승세를 주시하며 연방준비제도 의사록 공개를 대기하고 있다.",
+    "title": "미국 국채금리 부담과 연준 의사록 대기에 지수 선물 하락",
+    "orig": "Stock futures fall as investors grapple with higher yields, await Fed minutes: Live updates",
+    "summary": "투자자들이 치솟은 국채금리와 향후 공개될 연준 회의록을 주시하면서 미국 증시 선물이 약세를 보였습니다.",
     "broker": "",
     "source": "CNBC",
     "link": "https://www.cnbc.com/2026/10/04/stock-market-today-live-updates.html",
-    "time": "2026-10-05T02:33:38+00:00"
+    "time": "2026-10-05T08:59:51+00:00"
    },
    {
-    "title": "예상 밑돈 인플레이션에 금값 상승",
-    "orig": "Gold Rises as Softer-Than-Expected Inflation Data Tempers Rate-Hike Bets",
-    "summary": "미국 개인소비지출 지표가 예상보다 낮게 나오면서 연준의 금리 인상 우려가 완화됐다.",
-    "broker": "",
-    "source": "WSJ",
-    "link": "https://www.wsj.com/finance/commodities-futures/gold-rises-as-softer-than-expected-inflation-data-tempers-rate-hike-bets-adcd6783?mod=rss_markets_main",
-    "time": "2026-10-05T01:51:00+00:00"
-   },
-   {
-    "title": "중동 긴장 속 OPEC 등 산유국 연합 산유량 동결",
-    "orig": "OPEC, Allies Hold Oil Output Steady Amid Middle East Tensions",
-    "summary": "중동 지역 긴장이 고조된 가운데 주요 산유국들이 기존 산유량을 유지하기로 했다.",
-    "broker": "",
-    "source": "WSJ",
-    "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxOYmFlX3pxTllubHhKWkgycEVOdlZ3c2F3TzA5OUU4RmFmWmQ2dWlaY3B1TlFfek85dHhZakt3aFJHZjlEUEJ2Zk9MVldfeTdUVkxoUzN1MU9wUWlUdGhFd3M4T3dNamMxbGprT1A3R3g4UGI0Q2RyU3hrczI0WExYWlpNa3N4RjlNRzFGN0U5d1NPN3p4VlN2R2MzRkc4WXlyV3Z4Z21ZZHVtY3FzYmc?oc=5",
-    "time": "2026-10-05T03:00:21+00:00"
-   },
-   {
-    "title": "SK하이닉스 주주들, 가치 희석 우려에 솔리다임 나스닥 상장 저지 움직임",
-    "orig": "SK hynix shareholders move to block Solidigm Nasdaq listing over dilution fears",
-    "summary": "지분 가치 희석을 우려한 SK하이닉스 주주들이 자회사 솔리다임의 나스닥 상장을 막기 위해 행동에 나섰다.",
-    "broker": "",
-    "source": "Korea JoongAng Daily",
-    "link": "https://news.google.com/rss/articles/CBMizAFBVV95cUxPT2dNRGRQVE1NUGtRZkNWMktQTjVaWmNDY2hxMEZfeWNISzh0T09lRTNmeFNvU3NCRHdHbWlKQndhRnNVcmdodDMxNWVlWnd5NU9zbG9LUG44aEJBWU4wdDA5bkxNYWRUS3RRdXl5Z2Jjem1LbFRpcVRaV2dlNFViUlJiVUFoZS0yeml3bE5hWklkdUlfd3ZGSUk1eEhQZ2Y2MWdKTHZUZHhzMmVXVzlwaXhfcTZzaldKVGVBb2MxVUsxTkFSZUlNMFdwR0w?oc=5",
-    "time": "2026-10-05T02:54:10+00:00"
-   },
-   {
-    "title": "트럼프, 한국에 알래스카 LNG 사업 동참 압박",
-    "orig": "Trump tells South Korea to sign on to Alaska LNG deal or 'I'll just charge them more'",
-    "summary": "도널드 트럼프 미국 대통령이 한국을 향해 알래스카 액화천연가스 투자 프로젝트에 참여하지 않으면 추가 비용을 부과하겠다고 경고했다.",
+    "title": "연준 금리 인상 베팅 완화에 미 국채금리 소폭 하락",
+    "orig": "Treasury yields inch lower as investors pare back Fed rate hike bets",
+    "summary": "지난주 급등세를 겪었던 미국 국채금리가 연준의 긴축 우려가 다소 줄어들며 소폭 반락했습니다.",
     "broker": "",
     "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/05/trump-alaska-lng-south-korea-pay.html",
-    "time": "2026-10-05T00:47:47+00:00"
+    "link": "https://www.cnbc.com/2026/10/05/treasury-yields-bonds-fed-rates.html",
+    "time": "2026-10-05T08:00:01+00:00"
+   },
+   {
+    "title": "사노피·리제네론, 최대 80억 달러 규모 파트너십 확대",
+    "orig": "Sanofi, Regeneron to Expand Alliance in Up to $8 Billion Deal",
+    "summary": "사노피와 리제네론이 최대 80억 달러 규모로 기존 협업 관계를 확대하기로 합의했습니다.",
+    "broker": "",
+    "source": "WSJ",
+    "link": "https://news.google.com/rss/articles/CBMisgFBVV95cUxPWFVaMm5tWThfZnpHalpVYzY5NlNCeWZiWGM0NkROQlNMNnBIVEpxNENEZDZDQ3lxRGtNbkZoNHUyT0tReGJzNDBqYUF4TlZHSkhteUlHU2dkRWtobnRSOGNEb2d2RHIyX2NBaVZZc3NCOWpKQ2tpM2Y1UkxWYUtRZW9wclNzTGJBTVo2b0NsT19UUzZ3bmpxVEFRVGhOVEgyUUp2bHd3R1ZQVXZucENvUTdB?oc=5",
+    "time": "2026-10-05T08:00:14+00:00"
    }
   ],
   "broker": [
    {
-    "title": "보잉, 연내 MAX 10 인증 전망에 36% 상승 여력",
-    "orig": "BA Stock Ticks Higher Overnight: Analyst Sees MAX 10 Certification By Year-End, 36% Upside",
-    "summary": "애널리스트는 보잉이 연내에 MAX 10 인증을 받을 것으로 보며 주가가 36% 오를 여력이 있다고 평가했다.",
-    "broker": "트레이딩뷰",
-    "source": "TradingView",
-    "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxQQXZ6RlFCdlE2OG1sX3lndGV2NEYzU0VXdFgyYW15aGktN3R3VmZneWJNaTlRLTJFWHJkd0Qwc2tJNG1WUml1THY5Ui13WUxiTDh0X3gxaGZIanZHYzN0c1BxQ1FkeTN4NlJrVzAxcUdEV2pSVTZ3eDY5a1A3OVBFd0lBc2w3NGl3eDBHc1hVSnFXZ0NSUkJyTkI5M3M1UHotekREaEt2MjBaenJSYm9hamZkWndzdHkzNl9yMzNqbUMtSDFiUEpzelp2LVRXQVhpS0gwSXdlNXJPRDk0N3dhdm5R?oc=5",
-    "time": "2026-10-05T03:10:00+00:00"
+    "title": "JP모건, 바자지 파이낸스 목표주가 상향",
+    "orig": "Bajaj Finance share price target raised by JPMorgan after Q2 update; Stock turns positive YTD - CNBC TV18",
+    "summary": "JP모건이 2분기 실적 업데이트 이후 바자지 파이낸스의 목표주가를 상향 조정했습니다.",
+    "broker": "JP모건",
+    "source": "LinkedIn",
+    "link": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxPckcxMnY1UUY4RFVQTHpidkNVR091WmF4ZnVvSkRNNlBKX21WUkV4VnVFWG10YjdfdXdoUU5nSTRyajkwR3U3YnB6U2dpVHRsRjRKSlpMM2tidTRYU1Z1bzJvLXVBVVVWenZaWm1HbExxT1FQT3pKM1RTV3lOLUFFdktKLW1NWTJkS0lvdVlBZVBYTmpvWFplOG9NMExhRWN6dXd5ZDhvVE1Cb3NlamFZOHQtc0ZXMExX?oc=5",
+    "time": "2026-10-05T07:11:41+00:00"
    },
    {
-    "title": "존스랑라살, 추가 상승 여력 제한적이라며 하향 조정",
-    "orig": "Upside Is Limited For Shareholders Of Jones Lang LaSalle (Downgrade) (NYSE:JLL)",
-    "summary": "한 투자 전문 매체는 존스랑라살의 주가 상승 여력이 제한적이라며 투자의견을 하향 조정했다.",
-    "broker": "시킹알파",
-    "source": "Seeking Alpha",
-    "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPYW9ac3E0SEhKRzZhbi1PaWllS0pMR1V5cS1UNHhJWW9sanpJVFFNdjF3R185WjlGbWRSU3pzZktINk8wUUJKb0ZJb2xfNmJsWHh1em5jMnFWMGV0VFhLQjJLRzFKVGRuRExkOGNGVWZQSWI3a1F5SDNtaFk0UHhYYWo1aUVteTNkanI5WndJa2VwZWNjZDZIZUtOakNvWjAwUVpNVGwwLUM0Z3dtdzNR?oc=5",
-    "time": "2026-10-05T02:58:27+00:00"
+    "title": "UBS, 한델스반켄 목표가 140크로나로 상향…투자의견 '매도' 유지",
+    "orig": "UBS raises price target for Handelsbanken to 140 kronor (135), reiterates sell",
+    "summary": "UBS가 스웨덴 한델스반켄의 목표주가를 140크로나로 높이면서도 매도 의견을 유지했습니다.",
+    "broker": "UBS",
+    "source": "marketscreener.com",
+    "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxNU094MWt0NWgwNEVKRzdOTlV0UHlBNW1qYXdQOHlPYTI0SElpMnNzUlJzWXphT3VfeFlQT1hXT3VJT0U5c3Bhd3BoNlQ2OHRsNnhuNTBlclFXa1N5cnFJNUVfX25FVm5Na0o3YzMzNnlaTmdnLU44NVVOdW1aenFhTTBxU3gzM2hpRWJMOUdPbFlHanNZbldibDkxUEtoYUtYT0RMTEg3WW1rS2lnU1FYb3BvcHlFMjhUZzBTdG9FU0h3ZEVlWVhJ?oc=5",
+    "time": "2026-10-05T08:11:30+00:00"
    },
    {
-    "title": "스페이스X 지주회사 기대감에 관련주 급등, '이례적 저평가' 분석",
-    "orig": "SPCX Stock Climbs Overnight: Musk Teases SpaceXSI After Trump’s SI Push — Analyst Calls Shares ‘Unusually Cheap’",
-    "summary": "일론 머스크의 언급과 트럼프의 정책 기대감 속에서 관련 종목이 급등하며 저평가 상태라는 분석이 나왔다.",
-    "broker": "트레이딩뷰",
-    "source": "TradingView",
-    "link": "https://news.google.com/rss/articles/CBMi_AFBVV95cUxQX0RicDRScEtkenh6ZUlGd3BPTGJmazQ2UHI3bldnRm1aN092QWtGQVBEZUVFaXd3NUFoQ2p0QkJSME1lWVktb3RULWNJSDlMNHhHcF9peVpwMVRfSnRQV3p0N0JKQ0NnZjV2bDRDTHNENF9FN0dNOGdqaTdkMy0xSTFyb3dWc0VGYU9NbGpxSGdjbjVldWJkaTN0UGdQY2dxQTJTRVp5ZTRXM2Y4ZkMtNkwxZmtmNmxCV3RJaEY3YktqRC1ZN0VMOEJZZC03OXA0MGRqVmZEd0NWNGJ4bHR2aWpXTGVOZFJpMEtZVmM4cU1hSzBwS0lxZGRSR0k?oc=5",
-    "time": "2026-10-05T01:25:00+00:00"
-   },
-   {
-    "title": "소파이 테크놀로지스, 주가 40% 하락했으나 대출 플랫폼 성장성에 주목",
-    "orig": "SOFI Stock Is Down More Than 40% In 2026, But This Analyst Sees Attractive Growth Opportunity In Loan Platform Business",
-    "summary": "올해 주가가 40% 이상 하락했음에도 불구하고 대출 플랫폼 사업에서 매력적인 성장 기회가 있다는 분석이다.",
-    "broker": "트레이딩뷰",
-    "source": "TradingView",
-    "link": "https://news.google.com/rss/articles/CBMiigJBVV95cUxNd3dmV0k0MGgtVzFIZlhFdEtXS0U1NHFHTlViUUZCd192dmQ3VDhfS0tqX0JIempMYUctS2xGbDdFRl9wRDdNVXpOejExRjBaeWVUT1FYRkRBTVFFOXdROG1ES2hPQS05empkNFVVM19kVU01ZVNORm1PWVZpSzNEQUQyeFRKUXBsMlNMYTFKaXlJaVA3YWdhN09Wcmk0eE5KelhrbDdGd2pTcTRGQURxbXlUVTZCVUtoRnBKS2oyRDJfLUdGLVR1TVBvaU1qWGY3WFMxamRzUnRWRHNFV2h1b1E2ekphN1RnYUlKZ0lSbTcycTRZaFZmUHUzbGppcXhISVI0NFNsMUo1Zw?oc=5",
-    "time": "2026-10-05T01:09:00+00:00"
-   },
-   {
-    "title": "아르구스, UFP 테크놀로지스 목표주가 상향",
-    "orig": "Is UFP Technologies (UFPT) Undervalued After Argus Lifted Its Price Target?",
-    "summary": "아르구스가 UFP 테크놀로지스의 목표주가를 올린 가운데 현재 주가가 저평가 상태인지 주목받고 있다.",
-    "broker": "심플리 월스트리트",
-    "source": "Simply Wall Street",
-    "link": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxNbmt5eGRnT3ZhZ1BrU3RCRG9wR1FFRkxtYVZhdXRFWHJlVEcwVC1tMnVlVHJmaGYwdE12am5CZTM4VHJIMzNDdk90RXMyeEt2ZmZBTERhX1lkVEo3Q0R4UkVpR0FhQ0lnWHVjeFJyb3hhYUQ5M083QjFrOUdpeXZ0WVdTZ2FtelRjNGpJVk5acGtDY1dlYm10QkFUSm4xcXVvSnRXWGM2bExfM0N0ZlZYV29NYkc3U2haZ1lXcTFET3NCZ2dFUlJzdmpKZEpIMjFzRUluNzJxMNIB1wFBVV95cUxNbmt5eGRnT3ZhZ1BrU3RCRG9wR1FFRkxtYVZhdXRFWHJlVEcwVC1tMnVlVHJmaGYwdE12am5CZTM4VHJIMzNDdk90RXMyeEt2ZmZBTERhX1lkVEo3Q0R4UkVpR0FhQ0lnWHVjeFJyb3hhYUQ5M083QjFrOUdpeXZ0WVdTZ2FtelRjNGpJVk5acGtDY1dlYm10QkFUSm4xcXVvSnRXWGM2bExfM0N0ZlZYV29NYkc3U2haZ1lXcTFET3NCZ2dFUlJzdmpKZEpIMjFzRUluNzJxMA?oc=5",
-    "time": "2026-10-05T02:34:56+00:00"
+    "title": "UBS, 노바 뱅크 목표가 115크로나로 하향…'매수' 유지",
+    "orig": "UBS cuts price target for Noba Bank to SEK 115 (117), reiterates buy",
+    "summary": "UBS가 노바 뱅크의 목표주가를 기존 117크로나에서 115크로나로 소폭 하향하고 매수 의견을 유지했습니다.",
+    "broker": "UBS",
+    "source": "marketscreener.com",
+    "link": "https://news.google.com/rss/articles/CBMiugFBVV95cUxNaHVmbDBQVl9ENjloVGFoanpaX1RncjA3UVZyY0w3NlpSRERjY0VMTFNUdXZHNFZway14dmZfOTRydjVVTHNrVk1JTmlXYjlYSDJFNVdEMTlfSUcweUVFbXRJMXkyblZGUDFjYnd1NXViQ1RYd0NqRzB2cWlMYlZ2cGdYU1dfVm80YTJPVGhYM19xNTk3d2VuYkJvdU0zOUNNQ3Z3NmJPWEhpZnBYblBVdXdZUVp2MmhBOFE?oc=5",
+    "time": "2026-10-05T08:12:22+00:00"
    }
   ]
  },
  "weekly": {
-  "key": "7cdab0d06d1a0ce2",
-  "updated": "2026-10-05T03:38:46+00:00",
+  "key": "c136be9f738492eb",
+  "updated": "2026-10-05T09:02:14+00:00",
   "media": [
    {
-    "title": "미국 9월 고용 증가폭 2만 9,000명 그쳐",
-    "orig": "U.S. economy adds just 29,000 jobs in September",
-    "summary": "부진한 고용 지표로 연준의 추가 금리 인상 우려가 완화됐다.",
-    "broker": "",
-    "source": "CNN",
-    "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNc3NMRlVaSzVMLW1wSkw2aWExWUZHY2F2aXE2aUliYVBYdmxGbG8zWnhOdzh4Y1RsZVk3NXdfa0FZWUs1NW1DMlVUeUhxRU4xUHZCM2FwWDlpRmhmTEE0Zjk0Vzg1N3lQUFFxWEJJX3BkWkFvTkN4OHVzZ09MNlhtdlljZjJhR2t5S0ZaY1FXNkF5TEN2ODE5TTY5ekYzemJnSUlFb0NFc0ZOeE1WekJTVHNDcUs3QQ?oc=5",
-    "time": "2026-10-02T22:27:01+00:00"
-   },
-   {
-    "title": "고용 둔화 속 나스닥 증시 상승 주도",
+    "title": "고용 둔화에 나스닥 상승 주도",
     "orig": "Nasdaq Leads Stocks Higher as Hiring Softens",
-    "summary": "고용 시장 둔화에 따른 금리 우려 완화로 나스닥을 비롯한 주식시장이 상승했다.",
+    "summary": "미국 고용 지표가 둔화되면서 금리 인상 우려가 완화되고 증시가 상승 마감했다.",
     "broker": "",
     "source": "WSJ",
     "link": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQNllYU095N0ttVXFUeGVSNEdFYkhPV0xzZURveERVUk11alFtdWQ4SUdodzhhaTRITHRxV1ZNekdCMS1xZnlPd3JJUFI5Q3JlVWJYQzZZVUppVW5kSUtSTVNyNEZhZ0hlQzNpck9Yb2NIZFJoZktFa0swXzVhd0VMQi10QXA0WEpZZXdJREpLbDhObVlMOEE?oc=5",
     "time": "2026-10-03T18:27:08+00:00"
    },
    {
-    "title": "AI 관련주로 편중된 증시 랠리 경고",
+    "title": "AI 랠리가 가르는 주식시장",
     "orig": "AI Is Squeezing Out the Rest of the Stock Market",
-    "summary": "AI 열풍이 주식시장 나머지 부문은 소외시키고 있다는 지적이다.",
+    "summary": "인공지능(AI) 관련주로 자금이 집중되면서 여타 종목들이 소외되는 현상이 나타나고 있다.",
     "broker": "",
     "source": "WSJ",
     "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPRnpIZVhVTnV4Ung1cnczNTlVREtiRGFaUEpzUUw3cGg2T2Vaa1I3MHNJTi1kR0tjaGpVQ2dVamtab25vN3dtSWZmYnpTS242TjQwbHJiM1lmSmMxRER2ZXpBbkw1Njg1YnYzeGs3RDNnWUk3OTJ3bjhSNjhzeG9SUTE0c2kycTl4V0lSVGNQblc1NDllVmpUWDNPSQ?oc=5",
-    "time": "2026-10-02T23:00:25+00:00"
+    "time": "2026-10-02T23:00:00+00:00"
    },
    {
-    "title": "국채 금리 주시하며 혼조세 보이는 증시",
-    "orig": "Stock futures are flat as investors grapple with higher yields, await Fed minutes: Live updates",
-    "summary": "투자자들이 치솟는 국채 금리와 연방공개시장위원회 의사록을 주시하고 있다.",
+    "title": "유로화, 정치 불안에 17개월 내 최저치",
+    "orig": "Euro hits 17-month low as political uncertainty in Spain and France rattles markets",
+    "summary": "스페인과 프랑스의 정치적·재정적 불확실성이 커지며 유로화 가치가 급락했다.",
     "broker": "",
     "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/04/stock-market-today-live-updates.html",
-    "time": "2026-10-05T02:33:38+00:00"
-   },
-   {
-    "title": "트럼프, 한국에 알래스카 LNG 투자 압박",
-    "orig": "Trump tells South Korea to sign on to Alaska LNG deal or 'I'll just charge them more'",
-    "summary": "트럼프가 한국을 향해 알래스카 LNG 프로젝트 참여를 강하게 압박했다.",
-    "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/05/trump-alaska-lng-south-korea-pay.html",
-    "time": "2026-10-05T00:47:47+00:00"
+    "link": "https://www.cnbc.com/2026/10/05/euro-dollar-spain-france-risk.html",
+    "time": "2026-10-05T08:04:35+00:00"
    }
   ],
   "broker": [
    {
-    "title": "에어비앤비, AI 붐의 수혜주로 평가",
+    "title": "에어비앤비, AI 붐 수혜주로 꼽히며 상승",
     "orig": "Airbnb Stock Rises After Analyst Calls It an AI Boom Winner",
-    "summary": "배런스는 에어비앤비를 AI 붐의 수혜주로 지목하며 주가가 상승했다고 전했다.",
-    "broker": "배런스",
+    "summary": "배런스의 분석가들이 에어비앤비를 AI 붐의 승자로 지목하며 목표가를 상향했다.",
+    "broker": "",
     "source": "barrons.com",
     "link": "https://news.google.com/rss/articles/CBMickFVX3lxTE16TUtHdjdFbjRJd3U3WjBIVHczeThqemFPNkVXTlRTelBiQmJEQ1JIMG53cWFGQkprazhDcVBlSlo0QjFwWXdjRE1YWnN1MjE0bEFMOUU2SGFOMlF3dmhJcXhRQkQyMHJ5NlFWMXFVNWJXdw?oc=5",
     "time": "2026-10-02T18:45:00+00:00"
    },
    {
-    "title": "퍼스트 인더스트리얼 리얼티 트러스트, 아구스 하향 조정",
+    "title": "퍼스트 인더스트리얼 레이트러스트, 아구스 하향 조정으로 저평가 분석",
     "orig": "First Industrial Realty Trust (FR) Could Be 18% Undervalued On Argus Downgrade",
-    "summary": "아구스는 퍼스트 인더스트리얼 리얼티 트러스트가 18% 저평가 상태일 수 있다고 평가했다.",
-    "broker": "아구스",
+    "summary": "아구스가 투자의견을 하향 조정한 가운데 펀더멘털 대비 저평가 가능성이 제기됐다.",
+    "broker": "",
     "source": "Simply Wall Street",
     "link": "https://news.google.com/rss/articles/CBMi5AFBVV95cUxNaDh2QlJDY3ZsV3A4Z1ZjUV9maDJDWTY3VVhjNW53eDhrTmQ2ZzZrNmw5cFZmaGNtb0hKOWRKVGFtank1R2RRSVNMUVplM01STlk1OXdNQmxXZE02RXFOeGVOSlNFLVZWTDg5QVdWUGxwYnpiemx2VHQ0SFI2bEtMdGdMOHFNYW5MbG96NVdUbXV2ek1ya29GdGwxWUhYbkpHSGNuSkNWb1dkX1Z5Q3FZVXZBUXZwR3Nsai1nMllfWk5BVl84S0dWVTBUMFRJS0cxc29zS2Rrd2FrUjl3VjdBWjZnZFfSAeQBQVVfeXFMTWg4dkJSQ2N2bFdwOGdWY1FfZmgyQ1k2N1VYYzVud3g4a05kNmc2azZsOXBWZmhjbW9ISjlkSlRhbWp5NUdkUUlTTFFaZTNNUk5ZNTl3TUJsV2RNNkVxTnhlTkpTRS1WVkw4OUFXVlBscGJ6YnpsdlR0NEhSNmxLTHRnTDhxTWFuTGxvejVXVG11dnpNcmtvRnRsMVlIWG5KR0hjbkpDVm9XZF9WeUNxWVV2QVF2cEdzbGotZzJZX1pOQVZfOEtHVlUwVDBUSUtHMXNvc0tka3dha1I5d1Y3QVo2Z2RX?oc=5",
     "time": "2026-10-04T22:29:37+00:00"
    },
    {
-    "title": "네비우스 그룹, AI 성장성 전망 엇갈려",
-    "orig": "Nebius Group (NBIS) Stock Fair Value Falls As Analyst Views Split On AI Growth",
-    "summary": "야후 파이낸스는 네비우스 그룹에 대한 애널리스트들의 AI 성장 전망이 엇갈리며 적정 가치가 하락했다고 전했다.",
-    "broker": "야후 파이낸스",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNQmYyX3lmdEQtYkFLVW92VG02cGsyeWtxVnp5aVJrNFFpWTBmdmt4MVJScmF6QlJmdHJmWTdzMVhzQlJ5YnNUZ0xYQXYtUjlsUmFFYWw1bm43MFBWQnZmZklVVEhCMVZHaFo2Y3d0ZFlKMmFCX1NIMTBZby03cnVvWW5xb1VPLXNLcGE5RW91R29QQk5tUHBTOA?oc=5",
-    "time": "2026-10-02T22:05:03+00:00"
-   },
-   {
-    "title": "테칸 그룹, 목표가 상향으로 적정 가치 소폭 상승",
-    "orig": "Tecan Group Stock Sees Modest Fair Value Lift After Analyst Target Increases",
-    "summary": "야후 파이낸스는 테칸 그룹이 애널리스트의 목표가 상향으로 적정 가치에 소폭 상승세를 보였다고 전했다.",
-    "broker": "야후 파이낸스",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxNZkhFQWxob2phWUl4dUJLRFppVHp5SWtzenpzeTJXY0RUMk05MzhxWUxCWFRvcUZwQmZKSWJJTEthY1pXeVJ4ZEZqb2dTWWlxN0ZaNVBJVGRxWlF0dUNiM2NlZFg1aVQyQUt6NDQ2ZVo0aVd6cGpXZVJNYnBjbWNpcUwxZWpPSFI0Z1pUcV9XdExHZHhxU0tFelB3?oc=5",
-    "time": "2026-10-03T17:10:13+00:00"
-   },
-   {
-    "title": "암닐 파마슈티컬스, 신제품 기대감에 목표가 상향",
-    "orig": "Amneal Pharmaceuticals (AMRX) Stock Gets Fair Value Bump After Analyst Backing For New Launches",
-    "summary": "야후 파이낸스는 암닐 파마슈티컬스가 신제품 출시 기대 속 애널리스트 지지를 받으며 적정 가치가 상향 조정됐다고 전했다.",
-    "broker": "야후 파이낸스",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQaHBIOXRQZkJaS0E2Y3J6TGZUUm5vTS1aSFBwdHV0eXJEaGNLMWstZnRmYmRRdUFUODVZLWxra1FJaDlieWRmTEN3UHRzVC1DQlZDRE5YcFZILU41RUVRaktKRzM1T3RGQ2pkeGJkSlI5amtEYTJEaU1URlBReUM2QlA4STl0Ukd6V2FQQ050N1FWekdsTHlCck5LUVRISDNLUUZueXR3?oc=5",
-    "time": "2026-10-03T07:11:18+00:00"
+    "title": "존스랑라살 주주 상승 여력 제한적",
+    "orig": "Upside Is Limited For Shareholders Of Jones Lang LaSalle (Downgrade) (NYSE:JLL)",
+    "summary": "시킹알파가 존스랑라살에 대해 추가 상승 여력이 제한적이라며 투자의견을 낮췄다.",
+    "broker": "",
+    "source": "Seeking Alpha",
+    "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPYW9ac3E0SEhKRzZhbi1PaWllS0pMR1V5cS1UNHhJWW9sanpJVFFNdjF3R185WjlGbWRSU3pzZktINk8wUUJKb0ZJb2xfNmJsWHh1em5jMnFWMGV0VFhLQjJLRzFKVGRuRExkOGNGVWZQSWI3a1F5SDNtaFk0UHhYYWo1aUVteTNkanI5WndJa2VwZWNjZDZIZUtOakNvWjAwUVpNVGwwLUM0Z3dtdzNR?oc=5",
+    "time": "2026-10-05T02:58:27+00:00"
    }
   ],
-  "v": 2
+  "v": 3
  },
- "future": [
-  {
-   "ticker": "TSLA",
-   "name": "Tesla, Inc.",
-   "view": "로보택시와 휴머노이드 등 AI 기반 신사업이 장기 성장의 핵심 동력이나, 자율주행 기술 경쟁 심화는 부담입니다.",
-   "items": [
-    {
-     "title": "댄 아이브스: 2027년은 로보택시와 옵티머스와 함께 테슬라의 황금기가 될 것",
-     "orig": "Dan Ives Explains Why 2027 Could Be Tesla's Golden Year with Robotaxis and Optimus",
-     "summary": "웨드부시 애널리스트 댄 아이브스는 로보택시와 휴머노이드 로봇이 2027년 테슬라의 폭발적 성장을 이끌 것으로 전망했습니다.",
-     "broker": "",
-     "source": "BeInCrypto",
-     "link": "https://finance.yahoo.com/markets/stocks/articles/dan-ives-explains-why-2027-005343769.html",
-     "time": "2026-10-05T00:53:43+00:00"
-    },
-    {
-     "title": "테슬라, 2023년 이후 첫 연간 인도량 증가세 기록 중. 매수 타이밍일까?",
-     "orig": "Tesla Is on Pace for Its First Annual Delivery Increase Since 2023. Is the Stock a Buy?",
-     "summary": "테슬라가 판매량 회복세를 보이며 중장기 성장 기반을 다지고 있습니다.",
-     "broker": "",
-     "source": "Motley Fool",
-     "link": "https://finance.yahoo.com/markets/stocks/articles/tesla-pace-first-annual-delivery-003402095.html",
-     "time": "2026-10-05T00:34:02+00:00"
-    },
-    {
-     "title": "개리 블랙: 테슬라가 인도량은 웃돌았지만 자율주행에서는 웨이모에 뒤처지고 있다",
-     "orig": "Gary Black Flags Waymo Is Leaving TSLA Behind On Autonomy Even As Tesla Beats Delivery Estimates In Q3",
-     "summary": "실적 반등에도 불구하고 자율주행 분야에서 경쟁사 대비 기술 우위 입증이 과제로 지적되었습니다.",
-     "broker": "",
-     "source": "Stocktwits",
-     "link": "https://finance.yahoo.com/markets/stocks/articles/gary-black-flags-waymo-leaving-105245308.html",
-     "time": "2026-10-04T10:52:45+00:00"
-    }
-   ]
+ "insight": {
+  "updated": "2026-10-05T09:02:08+00:00",
+  "v": 1,
+  "industry": {
+   "TSLA": "전기차·자율주행·로봇",
+   "NVDA": "반도체·AI 인프라",
+   "SPCX": "우주·위성 통신"
   },
-  {
-   "ticker": "NVDA",
-   "name": "NVIDIA Corporation",
-   "view": "차세대 반도체 수요와 AI 인프라 확장에 힘입어 장기 성장 가시성이 높습니다.",
-   "items": [
-    {
-     "title": "향후 10년 동안 들고 가야 할 슈퍼 반도체 주식 2선",
-     "orig": "2 Super Semiconductor Stocks to Buy and Hold Through the Next Decade",
-     "summary": "장기적인 AI 인프라 투자 수혜로 엔비디아를 비롯한 핵심 반도체주의 지속 성장이 기대됩니다.",
-     "broker": "",
-     "source": "Motley Fool",
-     "link": "https://finance.yahoo.com/technology/articles/2-super-semiconductor-stocks-buy-032000015.html",
-     "time": "2026-10-05T03:20:00+00:00"
-    }
-   ]
-  },
-  {
-   "ticker": "SPCX",
-   "name": "Space Exploration Technologies Corp.",
-   "view": "스타링크와 우주 인프라 사업의 확장성이 부각되며 단순 로켓 제조사를 넘어선 가치가 주목받고 있습니다.",
-   "items": [
-    {
-     "title": "짐 크레이머가 말하는 스페이스X의 스타링크와 AI 기회",
-     "orig": "What Jim Cramer Says About Space Exploration Technologies’ (SPCX) Starlink and AI Opportunity",
-     "summary": "스타링크를 중심으로 한 우주 인터넷과 AI 연계 사업이 새로운 성장 동력으로 평가받고 있습니다.",
-     "broker": "",
-     "source": "Insider Monkey",
-     "link": "https://finance.yahoo.com/technology/ai/articles/jim-cramer-says-space-exploration-220205490.html",
-     "time": "2026-10-04T22:02:05+00:00"
-    },
-    {
-     "title": "스페이스X vs 로켓랩: 어떤 주식을 사야 할까?",
-     "orig": "SpaceX (SPCX) vs Rocket Lab (RKLB): Which is a Better Stock to Buy?",
-     "summary": "우주 산업 성장 속에서 스페이스X의 압도적 시장 지위와 투자 매력이 비교되었습니다.",
-     "broker": "",
-     "source": "Insider Monkey",
-     "link": "https://finance.yahoo.com/markets/stocks/articles/spacex-spcx-vs-rocket-lab-220052462.html",
-     "time": "2026-10-04T22:00:52+00:00"
-    },
-    {
-     "title": "제임스 알투처: 사람들은 스페이스X를 로켓 회사로만 보지만, 진짜 가치는 따로 있다",
-     "orig": "James Altucher: Everyone Thinks SpaceX Is a Rocket Company. He Says a Single Filing Just Revealed What It Really Is.",
-     "summary": "단순 발사체를 넘어 우주 기반 통신 및 플랫폼 기업으로서의 잠재력이 강조되었습니다.",
-     "broker": "",
-     "source": "GlobeNewswire",
-     "link": "https://finance.yahoo.com/technology/ai/articles/james-altucher-everyone-thinks-spacex-213500563.html",
-     "time": "2026-10-04T21:35:00+00:00"
-    }
-   ]
-  }
- ],
+  "items": [
+   {
+    "id": "spacexplanstorenameaiunittospacexsimusksays",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "growth",
+    "title": "스페이스X, AI 부서명을 'SpaceXSI'로 변경 계획",
+    "orig": "SpaceX Plans to Rename AI Unit to SpaceXSI, Musk Says",
+    "summary": "일론 머스크가 스페이스X 내 AI 유닛의 명칭 변경을 추진한다.",
+    "source": "MT Newswires",
+    "link": "https://finance.yahoo.com/technology/ai/articles/spacex-plans-rename-ai-unit-075449510.html",
+    "time": "2026-10-05T07:54:49+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "nvidiapartnerhonhaibeatssalesestimatesduetoaifrenzy",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "market",
+    "title": "폭스콘, AI 열풍 힘입어 매출 호조 기록",
+    "orig": "Nvidia Partner Hon Hai Beats Sales Estimates Due to AI Frenzy",
+    "summary": "엔비디아의 파트너사인 폭스콘이 AI 수요 증가에 힘입어 시장 예상을 웃도는 실적을 거뒀다.",
+    "source": "Bloomberg",
+    "link": "https://finance.yahoo.com/technology/ai/articles/nvidia-partner-hon-hai-beats-074315755.html",
+    "time": "2026-10-05T07:43:15+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "goldmanseesusdatacentergrowthintactdespiteopposition",
+    "ticker": "NVDA",
+    "scope": "industry",
+    "cat": "market",
+    "title": "골드만삭스 \"반대 의견에도 미국 데이터센터 성장세 지속\"",
+    "orig": "Goldman sees US data center growth intact despite opposition",
+    "summary": "일각의 우려에도 불구하고 AI 인프라 확장에 따른 데이터센터 성장은 꺾이지 않을 것이라는 전망이다.",
+    "source": "Reuters",
+    "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxNT2ZTZDMzaGJJT2o2dGpLNE4xbzZXOFRJdzVVVm9OanBHT2tJdUhfOU1FWGdoNl9RRUpXa1pOWFo4QWJFbThDclBKTmlHVHFaQ3FFbUtHUW15bnNrRC1LTHNzcEE0djhsQmpkNUhjOENzWVdhLTZ0S3l5cUxoUHNlWHZJZlZXaEdsSmJxaEgwRFJjQ2tiRjkybE1IdFNnQzhHb09qR0ZnSFg?oc=5",
+    "time": "2026-10-05T07:23:46+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "nvidiasvaluationsshowairallyisntabubbledbssays",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "DBS \"엔비디아 밸류에이션, AI 랠리는 거품 아냐\"",
+    "orig": "Nvidia’s Valuations Show AI Rally Isn’t a Bubble, DBS Says",
+    "summary": "현재 엔비디아의 가치 평가는 AI 열풍이 버블이 아님을 증명하고 있다는 분석이다.",
+    "source": "Bloomberg",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/nvidia-valuations-show-ai-rally-070429645.html",
+    "time": "2026-10-05T07:04:29+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "teslastockrisesovernightaftermusksayssomethingmaycomeoftsmct",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "테슬라, TSMC와 테라팩스 협력 가능성 시사",
+    "orig": "Tesla Stock Rises Overnight After Musk Says ‘Something May Come Of’ TSMC Talks On Terafab",
+    "summary": "일론 머스크가 TSMC와의 테라팩스 협력 가능성을 언급하며 기대감을 높였다.",
+    "source": "Stocktwits",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/tesla-stock-rises-overnight-musk-035535379.html",
+    "time": "2026-10-05T03:55:35+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "danivesexplainswhy2027couldbeteslasgoldenyearwithrobotaxisan",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "댄 아이브스 \"2027년은 테슬라의 황금기 될 것\"",
+    "orig": "Dan Ives Explains Why 2027 Could Be Tesla's Golden Year with Robotaxis and Optimus",
+    "summary": "로보택시와 옵티머스를 앞세워 2027년 테슬라가 큰 폭의 성장을 이룰 것이라는 전망이다.",
+    "source": "BeInCrypto",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/dan-ives-explains-why-2027-005343769.html",
+    "time": "2026-10-05T00:53:43+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "elonmusksspacexstockjumpsafterfirstpublicearningsbeatonaiand",
+    "ticker": "SPCX",
+    "scope": "industry",
+    "cat": "growth",
+    "title": "스페이스X, AI 및 스타링크 성장에 힘입어 호실적 기록",
+    "orig": "Elon Musk's SpaceX Stock Jumps After First Public Earnings Beat on AI and Starlink Growth",
+    "summary": "AI와 스타링크 사업의 고성장을 바탕으로 견조한 실적을 달성했다.",
+    "source": "tradingkey.com",
+    "link": "https://news.google.com/rss/articles/CBMiygFBVV95cUxQbFRjWFpkNkpBaVVPUl96a0h5V015ZXlSTWdBaElxT2JEUTEzVVNQbkNiaGFDVjdGU0Q5MVBFS3RXamlrckpyaEdQcS1XcXpVMHQ0cTRoMUdkOG9iVVpaZkppYTQ4dlV3UzktMXZkT2FmdEdVc3kzdWlBQUFJVUFqX1F5V0d5QkpXdzhqTFBwVktGcXUtWHhlbG1mdFBoT1NCX21Qd2x2NzJiN1dhUlc3V0FQUm1SbG1wX0dWSW04S3NZeHk0UTJIeFRB?oc=5",
+    "time": "2026-10-04T16:41:15+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "spacexsstarlinksurpasses12mcustomersacross160countriesasgrow",
+    "ticker": "SPCX",
+    "scope": "industry",
+    "cat": "growth",
+    "title": "스타링크, 전 세계 160개국 가입자 1,200만 명 돌파",
+    "orig": "SpaceX’s Starlink Surpasses 12M Customers Across 160 Countries As Growth Accelerates",
+    "summary": "스타링크의 글로벌 가입자가 가파른 증가세를 보이며 1,200만 명을 넘어섰다.",
+    "source": "Stocktwits",
+    "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNWkNfOWxWN01scGJPQ0l5UG5QNEJzLW9IVzB4RDNjYWpEamRhZHpQeFRIX0ZYcUFjaWhEdUYyQWJfMW1iUnJONDlsbEZBcExEWklsZG1uOUpXSmc4cmVkeUQwa3A5VDZhbXc3Z3JMUDRaQ1FOWnpZSjd1WmY1aW5hWHZQWUtkWFZ5U2ZFY0dhdG5mckNjY1J6aWZZcmdzSGdZanRUckZ5SWIzQTczMjd6OE5tWktSSWNyLWt0a3pR?oc=5",
+    "time": "2026-10-04T01:38:23+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "teslapatentteaseselectricfancarthatsucksitselftotheroadatany",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "테슬라, 차체 흡착하는 '전기 팬 자동차' 특허 출원",
+    "orig": "Tesla Patent Teases 'Electric Fan Car' That Sucks Itself To The Road At Any Speed",
+    "summary": "어떤 속도에서도 차체를 도로에 밀착시키는 혁신적인 팬 형태의 특허가 공개됐다.",
+    "source": "SlashGear",
+    "link": "https://news.google.com/rss/articles/CBMickFVX3lxTE1nanhLNVNyNXg2OGdaOGEzb0JpY1RZZHA0UnNNQ1JUTVZsNzMxZi1mWXJINE5lbGlzQkR1dzF1ZG5iR2hWemxISmdtYmRINEUwZnJ3ZkYwTW5ocFYtcG90eFdnNm9PUmxXUmJ6LTVGRV9Vdw?oc=5",
+    "time": "2026-10-03T20:45:00+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "lgtosupplyteslawithus43billionofbatteries",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "테슬라, LG에너지솔루션과 43억 달러 규모 배터리 공급 계약",
+    "orig": "LG to Supply Tesla With US$4.3 Billion of Batteries",
+    "summary": "테슬라가 미국 내 배터리 수급을 위해 LG로부터 대규모 물량을 공급받는다.",
+    "source": "EnergyNow.com",
+    "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxOV1BjNER0TEE5c2kzcGZHUXc5VzNYaVNMX1hmVTJScGdHWnN3Z0p5a3QxckhjVkJLQWZSXzZQc2UyYlZ2dnFLX2tsSE5jTlp0NkhuR0pzYlRjcmhVTjVKdTJvNlNjNHp0OEVheHBidUhBaDlWb2VHd0I5VmcyZmxMaFV5cFR1U0gy?oc=5",
+    "time": "2026-10-03T15:27:44+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "newteslapatentreimaginesyourcarsroofasasmartairconditioner",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "테슬라, 차량 지붕을 스마트 에어컨으로 활용하는 특허 공개",
+    "orig": "New Tesla Patent Reimagines Your Car's Roof As A Smart Air Conditioner",
+    "summary": "차량 루프를 냉방 시스템으로 재해석한 신기술 특허가 등록됐다.",
+    "source": "bgr.com",
+    "link": "https://news.google.com/rss/articles/CBMidEFVX3lxTFBPVjZQRlJPWURRY29XbE1oTzdhVlg0Z3B3bnBiQmRLdkhvNHRad281cXNkb2lYdHNzbWYyaS1OTk84TzhHZDYzeTJ3VDN0M09VOWtfMlMzUTJ5ek9sZXp5NTlaTGRMRVNyTjhDRmRyQ2FuUVFw?oc=5",
+    "time": "2026-10-03T10:47:00+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "spaceexplorationtechnologiesspcxralliesasfaareviewrevivesthe",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "fund",
+    "title": "스페이스X, FAA 검토 이후 밸류에이션 논재 재점화",
+    "orig": "Space Exploration Technologies (SPCX) Rallies As FAA Review Revives The Question Of Whether It Is Fully Valued",
+    "summary": "연방항공청(FAA) 검토와 함께 기업 가치 적정성에 대한 시장의 관심이 커지고 있다.",
+    "source": "Simply Wall Street",
+    "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxQSmo4YS04NVl2SGZDN0ZsQ2dlb2lQRHBKVVpxalJ5ZVdTcWVfZkxJLUlOcDBMZmF5WUMzb3JSOHZ6bEQ1dERHLVN2QWtTdDhrdTZJdmFhR2d2Nkk0UVlRX09TMU5sTUgwVW5ueHQ2YUQza2M5cUFibEphTFBHS2R5Y0Z6VVhGSEJYUF9Hb1Qwemo5dk5RSW0wZFpITGdHSnhjTjNpclJNM1h1TzZlamxYVTVDZWNWdVlvWFFCd1hVQ1F5aVRPVUlrOVF5dERZdGdoWmtTUnpFVk51ZndFRGcyZnBB0gHnAUFVX3lxTE5LRmVNQ3JUcmU1SjVaZWFuMjhkU2tHTExvWEphRnBjUVZwNk5Xc21JdTNvSE82ZzNXTnB5cTlWa1NyaEdKenFlcG91TTRSSjVBamlmdXFvaUFVeWI5Q3NBTU5xWUQ4LUpOYUNNajBGUDB5bXNMdmNKcTV6NXVBbDlFbVd5NzJyREx6Tlo1T1RSSmxlaEhrWm02czVIRFJvLVFkeEwtbU4xWmRrdFdxeDRrMzUtRVFnT3R2TFh3dVdoRGdKXzZtUnVrX0xIM3E1OS01Nk0xUkx3MGFqN211OERLbnJuWXEtUQ?oc=5",
+    "time": "2026-10-03T08:54:16+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "teslaslatestpatentcouldmeanthesecondgenerationroadsterwillha",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "차세대 로드스터, 1,500파운드 이상의 다운포스 적용 가능성",
+    "orig": "Tesla's Latest Patent Could Mean the Second-Generation Roadster Will Have Over 1,500 Pounds of Downforce, Which It Definitely Needs If It Truly Gets SpaceX Rocket Thrusters",
+    "summary": "스페이스X 로켓 스러스터를 탑재할 차세대 로드스터의 강력한 공기역학 성능 특허가 나왔다.",
+    "source": "Autonocion.com",
+    "link": "https://news.google.com/rss/articles/CBMigAFBVV95cUxPNXR6SVBCSWtXSkM0aWFfZzkxcXBGckRHUWhON1IzNEVkdlJmbmd6TXdoRkNBLWJXbWJrc0YwekxWLTYyMHJ0ZkZudTFWV3dfSklzRktVTlNjMjZreWZtQmFKSDRDcjByQUhwcmpDR2VFNWJWbWctSmVCcE1YUFhFbA?oc=5",
+    "time": "2026-10-02T22:30:08+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   },
+   {
+    "id": "musksspacexcouldtargetairlinesmaritimebeforetakingonbigwirel",
+    "ticker": "SPCX",
+    "scope": "industry",
+    "cat": "market",
+    "title": "스페이스X, 항공 및 해상 시장으로 위성 통신 확장 타진",
+    "orig": "Musk's SpaceX Could Target Airlines, Maritime Before Taking On Big Wireless Firms",
+    "summary": "기존 통신 시장을 넘어 항공 및 해운 분야로 서비스 타깃을 넓히고 있다.",
+    "source": "Investor's Business Daily",
+    "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxNUFRlYnJ5Nk5mYWdRSUVBc2ljekFUazdFcmFsaDdYaElyakxGQ19TSDVJNE5nY0xCc0JyQmFZSXVCRnZfZzFMc3ZHWWRBZTlWQUtQelZDa1M3X3FoVnBzNERlZjlMT09JRXVLZlFWRFZ0d3BaMnYyYm9uYTMyLTJ3aTNUWmVuZEVXckFydDUxWXMteld5bmpiZno0T1g3bjJkdnJUbk5ibmFtX1lDRWc?oc=5",
+    "time": "2026-10-02T15:20:00+00:00",
+    "added": "2026-10-05T09:02:08+00:00"
+   }
+  ]
+ },
  "future_meta": {
-  "updated": "2026-10-05T03:35:28+00:00"
+  "updated": "2026-10-05T09:02:08+00:00"
  },
  "ai": "ok"
 }
