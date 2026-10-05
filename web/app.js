@@ -276,10 +276,12 @@
   const ghToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } };
   async function ghApi(path, opt = {}) {
     if (!GH) throw new Error("저장소 주소를 알 수 없습니다. 페이지를 새로 고침해 주세요");
+    // 브라우저는 머리글에 한글·줄바꿈 같은 글자가 섞이면 요청을 보내지 않고 TypeError 를 낸다
+    if (/[^\x21-\x7e]/.test(ghToken())) throw new Error("저장된 토큰에 다른 글자가 섞여 있습니다. 설정 > 개발자용에서 토큰을 다시 붙여넣어 주세요");
     const r = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/${path}`, {
       ...opt, cache: "no-store",
       headers: { Accept: opt.raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", Authorization: "Bearer " + ghToken(), "X-GitHub-Api-Version": "2022-11-28", ...(opt.body ? { "Content-Type": "application/json" } : {}) },
-    });
+    }).catch((e) => { throw new Error("GitHub에 연결하지 못했습니다 (" + (e.message || e) + "). 인터넷 연결을 확인하고 다시 시도해 주세요"); });
     if (!r.ok) {
       const msg = r.status === 401 ? "토큰이 맞지 않습니다" : r.status === 403 || r.status === 404 ? `토큰 권한 부족 (${opt.need || "Actions"} 읽기·쓰기 필요)` : "GitHub 오류 " + r.status;
       throw Object.assign(new Error(msg), { status: r.status });
@@ -1781,7 +1783,8 @@
       <li>Permissions → Repository permissions → <b>Actions: Read and write</b>, <b>Contents: Read and write</b> (Beyora 글을 저장소에 저장).</li>
       <li>Generate token → 복사해서 위 칸에 붙여넣고 저장.</li></ol></details>`;
     $("#ghSave").onclick = async () => {
-      const v = $("#ghToken").value.trim(); if (!v) return toast("토큰을 붙여넣어 주세요");
+      const v = $("#ghToken").value.replace(/\s+/g, ""); if (!v) return toast("토큰을 붙여넣어 주세요");
+      if (!/^[A-Za-z0-9_]{20,}$/.test(v)) return toast("토큰 형식이 아닙니다. github_pat_ 로 시작하는 값만 그대로 붙여넣어 주세요");
       try { localStorage.setItem(TOKEN_KEY, v); } catch (e) { return toast("브라우저 저장 실패"); }
       try { await ghApi("actions/workflows/collect.yml"); toast("GitHub 연결됨"); renderGh(); bvLoad(true); const miss = missingTickers(); if (miss.length) { showTab("quotes"); ghCollect(miss); } }
       catch (e) { toast("연결 실패: " + e.message); renderGh(); }
