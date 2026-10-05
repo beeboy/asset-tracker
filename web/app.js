@@ -1407,9 +1407,9 @@
   }
   const ago = (t) => { const m = (Date.now() - Date.parse(t)) / 60000; if (!isFinite(m)) return ""; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
   // 상자 하나: 위에 출처(증권사·종목)와 시각, 제목(원문 링크), 요약
-  // 위: 종목과 바로 옆 분류 / 제목·요약 / 아래: 출처 · 시각
-  const newsBox = (it, tag, sub, cat, id, read) => `<div class="nitem${read ? " read" : ""}"><div class="ntop"><span class="tk">${esc(tag || it.source || "")}</span>${cat ? `<span class="ncat">${esc(cat)}</span>` : ""}</div>
-    <a class="nt" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer"${id ? ` data-nid="${esc(id)}"` : ""}>${esc(it.title || it.orig)}</a>${it.summary ? `<p class="nsum small">${esc(it.summary)}</p>` : ""}${sub || it.time ? `<div class="nmeta">${[esc(sub || ""), it.time ? ago(it.time) : ""].filter(Boolean).join(" · ")}</div>` : ""}</div>`;
+  // 위: 종목 / 제목·요약 / 아래: 출처 · 시각 (왼쪽), 분류 (오른쪽)
+  const newsBox = (it, tag, sub, cat, id, read) => `<div class="nitem${read ? " read" : ""}"><div class="ntop"><span class="tk">${esc(tag || it.source || "")}</span></div>
+    <a class="nt" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer"${id ? ` data-nid="${esc(id)}"` : ""}>${esc(it.title || it.orig)}</a>${it.summary ? `<p class="nsum small">${esc(it.summary)}</p>` : ""}<div class="nfoot"><span class="nmeta">${[esc(sub || ""), it.time ? ago(it.time) : ""].filter(Boolean).join(" · ")}</span>${cat ? `<span class="ncat">${esc(cat)}</span>` : ""}</div></div>`;
   // 미래 가치 인사이트: news.json 의 insight.items(보유 종목·관련 업계 기사, 4개 분류)에서 4개를 보여 준다.
   // 페이지를 새로 열거나(리로드) "더 보기"를 누르면, 아직 안 보여 준 기사(보유 종목 먼저, 관련 업계 다음)를 위에 놓고
   // 읽은 기사 → 오래전에 불러온 기사 순으로 뺀다. 새 기사가 없으면 그대로 두고 아래에 안내를 띄운다.
@@ -1438,7 +1438,9 @@
     const x = insExtra(), cands = [];
     const st = {}; // 종목별 결과: fail(중계 연결 실패) / none(최근 기사 없음)
     for (const t of tks) {
-      const news = await yahooNews(t);
+      let news = await yahooNews(t);
+      const nm = (S.prices[t]?.name || "").replace(/,?\s*(Inc\.?|Corp\.?|Corporation|Ltd\.?|plc|Holdings?)$/i, "").trim();
+      if (news && !news.length && nm && nm.toUpperCase() !== t.toUpperCase()) news = await yahooNews(nm); // 티커로 안 나오면 회사 이름으로
       if (!news) { st[t] = "fail"; continue; }
       const age = (a) => Date.now() - Date.parse(a.time);
       let got = news.filter((a) => age(a) < 7 * 864e5); if (!got.length) got = news.filter((a) => age(a) < 30 * 864e5); // 기사가 적은 종목은 한 달까지
@@ -1465,7 +1467,8 @@
     for (const t of tks) x[t] = { at: Date.now(), ai: !!picked?.length, fail: st[t] === "fail", none: st[t] === "none", items: got.filter((g) => g.ticker === t) };
     try { localStorage.setItem(INS_X, JSON.stringify(x)); } catch (e) { /* 무시 */ }
   }
-  // mode: "refresh"(리로드·더 보기: 새 기사를 위에, 읽은 것·오래된 것을 뺀다) / "fill"(빈자리만 채운다)
+  // mode: "refresh"(리로드: 새 기사를 위에, 읽은 것·오래된 것을 빼고 4개) / "more"(더 보기: 아래에 4개 더)
+  //       "top"(새 종목 기사를 받은 직후: 위에 놓고 개수 유지) / "fill"(빈자리만 채운다)
   function insRefresh(items, held, mode) {
     const o = insLoad(), now = Date.now(), lim = now - 30 * 864e5;
     for (const m of [o.shown, o.read]) for (const k in m) if (m[k] < lim) delete m[k];
@@ -1474,15 +1477,16 @@
     // 새 후보: 아직 보여 준 적 없는 기사. 보유 종목 → 관련 업계
     const fresh = items.filter((x) => !o.shown[x.id] && !o.read[x.id] && !o.cur.includes(x.id)).sort((a, b) => held.indexOf(a.ticker) - held.indexOf(b.ticker) || (b.time || "").localeCompare(a.time || ""));
     const rr = (lists) => { const r = []; for (let k = 0; lists.some((l) => l[k]); k++) for (const l of lists) if (l[k]) r.push(l[k]); return r; };
-    const pick = [], room = mode === "refresh" ? INS_N : INS_N - o.cur.length;
+    const pick = [], room = mode === "fill" ? INS_N - o.cur.length : INS_N;
     for (const sc of ["held", "industry"]) { // 종목을 돌아가며, 한 종목 안에서는 분류를 돌아가며
       const tks = [...new Set(fresh.filter((x) => x.scope === sc).map((x) => x.ticker))];
       for (const x of rr(tks.map((t) => rr(Object.keys(INS_CAT).map((c) => fresh.filter((y) => y.scope === sc && y.ticker === t && y.cat === c)))))) if (pick.length < room) pick.push(x);
     }
     if (!pick.length) { insSave(o); return false; }
     pick.forEach((x, i) => (o.shown[x.id] = now - i)); // 위에 놓을 순서대로
-    if (mode === "refresh") { // 남길 기존 기사: 안 읽은 것 먼저, 그 안에서는 최근에 불러온 것 먼저
-      const keep = o.cur.sort((a, b) => !!o.read[a] - !!o.read[b] || (o.shown[b] || 0) - (o.shown[a] || 0)).slice(0, Math.max(0, INS_N - pick.length));
+    if (mode === "refresh" || mode === "top") { // 남길 기존 기사: 안 읽은 것 먼저, 그 안에서는 최근에 불러온 것 먼저
+      const n = mode === "top" ? Math.max(INS_N, o.cur.length) : INS_N;
+      const keep = (mode === "top" ? o.cur : o.cur.sort((a, b) => !!o.read[a] - !!o.read[b] || (o.shown[b] || 0) - (o.shown[a] || 0))).slice(0, Math.max(0, n - pick.length));
       o.cur = [...pick.map((x) => x.id), ...keep];
     } else o.cur = [...o.cur, ...pick.map((x) => x.id)];
     insSave(o);
@@ -1501,8 +1505,8 @@
     const items = [...srv, ...missing.flatMap((t) => X[t]?.items || [])];
     const stale = missing.filter((t) => !X[t] || Date.now() - X[t].at > (X[t].fail ? (more && !after ? 0 : 5 / 60) : X[t].none ? 6 : X[t].ai ? 3 : 0.5) * 3600e3);
     if (stale.length && !insBusy) { insBusy = true; insFetchMissing(stale).finally(() => { insBusy = false; if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(true, true); }); } // 끝나면 새 종목 기사를 위에
-    const fill = insRefresh(items, tks, more || !insFresh ? "refresh" : "fill");
-    if (more || !insFresh) { insFresh = true; insMsg = fill || insBusy ? "" : `새로운 인사이트 뉴스가 없습니다. ${auto}. 잠시 뒤 다시 확인해 주세요.`; }
+    const fill = insRefresh(items, tks, after ? "top" : more ? "more" : !insFresh ? "refresh" : "fill");
+    if (more || !insFresh) { insFresh = true; insMsg = fill || insBusy ? "" : `${more ? "더 불러올" : "새로운"} 인사이트 뉴스가 없습니다. ${auto}. 잠시 뒤 다시 확인해 주세요.`; }
     const o = insLoad(), byId = new Map(items.map((x) => [x.id, x])), ind = N?.insight?.industry || {};
     const cur = o.cur.map((id) => byId.get(id)).filter(Boolean);
     $("#newsFuture").innerHTML = cur.map((x) => newsBox(x, x.scope === "held" ? x.ticker : `${x.ticker} 관련 업계${ind[x.ticker] ? " · " + ind[x.ticker] : ""}`, x.source, INS_CAT[x.cat], x.id, !!o.read[x.id])).join("")
