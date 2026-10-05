@@ -34,7 +34,8 @@ def gnews(q: str, when: str) -> str:
 MEDIA_Q = '"stock market" OR "Wall Street" OR "Federal Reserve" OR Nasdaq OR "S&P 500" OR economy'
 BROKERS = ["Goldman Sachs", "Morgan Stanley", "JPMorgan", "Bank of America", "Citi", "Wells Fargo", "UBS", "Barclays",
            "Wedbush", "Jefferies", "Deutsche Bank", "Bernstein", "Evercore", "Piper Sandler"]
-BROKER_Q = "(" + " OR ".join(f'"{b}"' for b in BROKERS) + ') (analyst OR "price target" OR upgrade OR downgrade OR strategist OR outlook OR forecast)'
+BROKER_Q = '"price target" OR upgrade OR downgrade OR "analyst" OR strategist'
+BROKER_RE = re.compile("|".join([re.escape(b) for b in BROKERS] + [r"price target", r"upgrad", r"downgrad", r"analyst", r"strategist", r"overweight", r"outperform"]), re.I)
 MEDIA_FEEDS = [
     ("CNBC", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
     ("CNBC", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258"),
@@ -64,14 +65,52 @@ SKIP = {"QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"
 
 
 # ---------------------------------------------------------------- 받기·읽기
+LAST_ERR = {"msg": ""}
+
+
 def fetch(url: str, timeout: int = 20) -> bytes | None:
     for k in range(2):
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
                 return r.read()
-        except Exception:  # noqa: BLE001 - 출처 하나가 안 돼도 계속
+        except Exception as e:  # noqa: BLE001 - 출처 하나가 안 돼도 계속
+            LAST_ERR["msg"] = str(e)[:80]
             time.sleep(1.5 * (k + 1))
     return None
+
+
+def _rel_time(t: str, now: datetime) -> str:
+    """유튜브 화면의 '3시간 전', '3 hours ago' → 시각"""
+    m = re.search(r"(\d+)\s*(초|분|시간|일|주|개월|년|second|minute|hour|day|week|month|year)", t or "")
+    if not m:
+        return ""
+    sec = {"초": 1, "second": 1, "분": 60, "minute": 60, "시간": 3600, "hour": 3600, "일": 86400, "day": 86400, "주": 604800, "week": 604800,
+           "개월": 2592000, "month": 2592000, "년": 31536000, "year": 31536000}[m.group(2)]
+    return (now - timedelta(seconds=int(m.group(1)) * sec)).isoformat(timespec="seconds")
+
+
+def yt_page(cid: str, name: str) -> list[dict]:
+    """채널 RSS 가 막히면 채널의 동영상 화면에서 제목·시각을 읽는다"""
+    raw = fetch(f"https://www.youtube.com/channel/{cid}/videos?hl=ko")
+    if not raw:
+        return []
+    h, now, out, seen = raw.decode("utf-8", "replace"), datetime.now(timezone.utc), [], set()
+    pats = [r'"videoRenderer":\{"videoId":"([\w-]{11})".*?"title":\{"runs":\[\{"text":"(.*?)"\}\].*?"publishedTimeText":\{"simpleText":"(.*?)"\}',
+            r'"contentId":"([\w-]{11})".{0,3000}?"lockupMetadataViewModel":\{"title":\{"content":"(.*?)"\}.{0,3000}?"content":"([^"]{0,30}(?:전|ago))"']
+    for pat in pats:
+        for m in re.finditer(pat, h, re.S):
+            vid = m.group(1)
+            if vid in seen:
+                continue
+            seen.add(vid)
+            try:
+                title = json.loads('"' + m.group(2) + '"')
+            except json.JSONDecodeError:
+                title = m.group(2)
+            out.append({"title": _clean(title), "link": f"https://www.youtube.com/watch?v={vid}", "time": _rel_time(m.group(3), now), "source": name, "desc": ""})
+            if len(out) >= 15:
+                return out
+    return out
 
 
 def _t(e) -> str:
@@ -157,7 +196,7 @@ def recent(items: list[dict], hours: float) -> list[dict]:
 
 
 # ---------------------------------------------------------------- AI 중계
-SYS = "너는 미국 증시 뉴스를 한국 개인 투자자에게 전하는 편집자다. 반드시 JSON 하나만 출력한다(설명·코드 블록 없이). 한국어는 짧고 자연스럽게, 회사·기관 이름은 한국에서 흔히 쓰는 표기로."
+SYS = "너는 미국 증시 뉴스를 한국 개인 투자자에게 전하는 편집자다. 반드시 JSON 하나만 출력한다(설명·코드 블록 없이). 한국어는 짧고 자연스럽게, 회사·기관 이름은 한국에서 흔히 쓰는 표기로. 원문에 없는 직함·사실은 덧붙이지 않는다."
 
 
 def ask_ai(url: str, prompt: str) -> dict:
@@ -265,7 +304,10 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
         log(f"뉴스 {src or 'Google'}: {len(got)}건")
         media_all += got
     media = dedupe(recent(media_all, 24), 32, per_source=7)
-    broker = dedupe(recent(parse_feed(fetch(gnews(BROKER_Q, "1d"))), 30), 26, per_source=4)
+    bk = parse_feed(fetch(gnews(BROKER_Q, "2d"))) + yahoo_news("analyst price target", 15) + yahoo_news("upgrade downgrade stock", 15)
+    bk += [x for x in media_all if BROKER_RE.search(x["title"])]
+    broker = dedupe(recent([x for x in bk if BROKER_RE.search(x["title"] + " " + x.get("desc", ""))], 36), 26, per_source=6)
+    media = [x for x in media if x not in broker]
     log(f"실시간 후보: 언론 {len(media)}, 증권사 {len(broker)}")
     out["realtime"] = pick_news(ai, media, broker, "realtime", old.get("realtime") or {}, errs)
 
@@ -280,15 +322,17 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
 
     # 2) 주간: 6시간마다 다시 고른다
     wk = old.get("weekly") or {}
-    if _age_h(wk.get("updated")) >= 6 or not wk.get("media"):
+    if _age_h(wk.get("updated")) >= 6 or not wk.get("media") or wk.get("v") != 2:
         def spread(xs, n):
             return xs if len(xs) <= n else [xs[int(i * len(xs) / n)] for i in range(n)]
         lim7 = (now - timedelta(days=7)).isoformat()
         pm = [x for x in pool["items"] if x["kind"] == "media" and (x.get("time") or "") >= lim7]
         pb = [x for x in pool["items"] if x["kind"] == "broker" and (x.get("time") or "") >= lim7]
-        wm = dedupe(parse_feed(fetch(gnews(MEDIA_Q, "7d")))[:20] + spread(pm, 24), 38, per_source=6)
-        wb = dedupe(parse_feed(fetch(gnews(BROKER_Q, "7d")))[:20] + spread(pb, 20), 32, per_source=5)
+        wm = dedupe(recent(parse_feed(fetch(gnews(MEDIA_Q, "7d"))), 7 * 24)[:20] + spread(pm, 24), 38, per_source=6)
+        wbg = [x for x in recent(parse_feed(fetch(gnews(BROKER_Q, "7d"))), 7 * 24) if BROKER_RE.search(x["title"])]
+        wb = dedupe(wbg[:20] + spread(pb, 20), 32, per_source=5)
         wk = pick_news(ai, wm, wb, "weekly", {}, errs)
+        wk["v"] = 2
     out["weekly"] = wk
 
     # 3) 미래 가치: 종목별 장기 전망 기사 (3시간마다)
@@ -299,7 +343,7 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
         for t in tks:
             nm = re.sub(r",?\s*(Inc\.?|Corp\.?|Corporation|Co\.,? Ltd\.?|Ltd\.?|Holdings?)$", "", names.get(t) or t).strip()
             q = f'"{nm}" (outlook OR forecast OR "price target" OR "long-term" OR analyst OR growth)'
-            xs = dedupe(yahoo_news(t, 10) + parse_feed(fetch(gnews(q, "7d")))[:12], 10)
+            xs = dedupe(recent(yahoo_news(t, 10) + parse_feed(fetch(gnews(q, "7d")))[:12], 10 * 24), 10)
             cands[t] = xs
             log(f"미래 가치 {t}: {len(xs)}건")
         flat, lines = [], []
@@ -342,6 +386,10 @@ def collect_news(data: Path, ai: str | None, tickers: list[str], names: dict, lo
         if not c:
             continue
         got = parse_feed(fetch(f"https://www.youtube.com/feeds/videos.xml?channel_id={c}"), name)
+        how = "RSS"
+        if not got:
+            got, how = yt_page(c, name), "화면"
+        log(f"유튜브 {name}: {len(got)}개 ({how}{'' if got else ', ' + LAST_ERR['msg']})")
         vids += got
     today = now.astimezone(KST).date().isoformat()
     vt = [v for v in vids if v["time"] and datetime.fromisoformat(v["time"]).astimezone(KST).date().isoformat() == today]
