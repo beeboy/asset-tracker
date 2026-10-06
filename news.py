@@ -360,7 +360,7 @@ def digest_insight(ai: str | None, tks: list[str], items: list[dict], prev: dict
         its = sorted([x for x in items if x["ticker"] == t], key=lambda x: (x["scope"] != "held", -(datetime.fromisoformat(x["time"]).timestamp() if x.get("time") else 0)))[:12]
         if not its:
             continue
-        h = _hash([x["id"] for x in its])
+        h = _hash("r1", [x["id"] for x in its])  # r1: 위험 문장 추가 → 한 번 모두 다시 요약
         d = prev.get(t) or {}
         if d.get("hash") == h and d.get("sum"):
             out[t] = {**d, "seen": iso}
@@ -372,7 +372,7 @@ def digest_insight(ai: str | None, tks: list[str], items: list[dict], prev: dict
             lines.append(f"\n[{t}]")
             lines += [f"- ({'보유' if x['scope'] == 'held' else '업계'}·{x['cat']}) {x['title']}" + (f" — {x['summary']}" if x.get("summary") else "") for x in its]
         prompt = ("아래는 종목별로 모은 최근 기사(보유 종목 기사와 관련 업계 기사)다. 종목마다 1~3년 뒤 기업 가치에 주는 의미를 중심으로 "
-                  "기사들을 하나로 종합해 한국어 2~3문장으로 써라. 문장마다 줄 바꿈(\\n)하고, 핵심 숫자·키워드는 **굵게** 표시하라. 기사에 없는 사실은 쓰지 말고 투자 권유는 하지 마라.\n"
+                  "기사들을 하나로 종합해 한국어 2~3문장으로 쓰고, 마지막에 그 종목의 위험 요인을 '위험: '으로 시작하는 한 문장으로 꼭 덧붙여라(기사에 위험 언급이 없으면 비중·변동성·경쟁 같은 일반 위험을 짧게). 문장마다 줄 바꿈(\\n)하고, 핵심 숫자·키워드는 **굵게** 표시하라. 기사에 없는 사실은 쓰지 말고 투자 권유는 하지 마라.\n"
                   '출력 형식: {"d":{"티커":"종합"}}\n' + "\n".join(lines))
         try:
             j = ask_ai(ai, prompt).get("d") or {}

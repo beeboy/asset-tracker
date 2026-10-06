@@ -320,11 +320,15 @@
       const conv = (g) => (g == null ? f.mu.base : w * (Math.exp(Math.max(-0.9, Math.min(1.2, g)) + 0.5 * f.volDiff ** 2) - 1) + (1 - w) * f.mu.base);
       f.mu.smooth = conv(f.gSmooth); f.mu.trend = conv(f.gTrend);
     }
+    // 내 관점: 현재 정세(기준)와 과거 추세(스무딩) 사이. 추세 신뢰 trust% 만큼 로그 공간에서 섞는다
+    for (const f of factors) f.mu.blend = blendMu(f.mu.base, f.mu.smooth ?? f.mu.base, (Number(m.trust ?? 50)) / 100);
     const byDay = new Map();
     for (const s of sched) { if (!byDay.has(s.day)) byDay.set(s.day, []); byDay.get(s.day).push(s.ev); }
 
     return { factors, L, corr: C, corrShrink: lam, days, monthIdx, monthDates, byDay, eventList, startDate, goalDate };
   }
+
+  function blendMu(b, s, a) { return Math.exp((1 - a) * Math.log(1 + b) + a * Math.log(1 + s)) - 1; }
 
   // ------------------------------------------------------------ 몬테카를로
   // 일별 다변량 t 충격 + 사건 점프. 반환: 월별 원화 평가액 백분위, 목표 확률 등
@@ -352,6 +356,8 @@
     const stock = holdings.map(() => new Float64Array(M * nPaths));
     const valK = holdings.map(() => new Float64Array(M * nPaths)), fxLv = new Float64Array(M * nPaths);
     const usd0 = Number(opt.usdKrw0) || 1, usdCol = factors.findIndex((f) => f.kind === "fx" && f.key === "KRW=X");
+    const keep = !rebalance; // 재조정이 없으면 경로를 남겨 두고, 기대수익·적립·매도만 바꾼 결과를 다시 시뮬레이션 없이 계산한다 (reweight)
+    const cg = keep ? holdings.map(() => new Float32Array(M * nPaths)) : null;
     const firstHit = new Int32Array(nPaths).fill(-1), mddArr = new Float64Array(nPaths), touched = new Uint8Array(nPaths);
     const z = new Float64Array(F), x = new Float64Array(F), lg = new Float64Array(F), lr = new Float64Array(F);
     const boostUntil = new Int32Array(F), boostMult = new Float64Array(F);
@@ -401,6 +407,7 @@
         if (k > 0) {
           port[k * nPaths + p] = V; fxLv[k * nPaths + p] = usdCol >= 0 ? usd0 * Math.exp(lg[usdCol]) : usd0;
           for (let a = 0; a < A; a++) { stock[a][k * nPaths + p] = holdings[a].price0 * Math.exp(lg[a]); valK[a][k * nPaths + p] = h[a]; }
+          if (keep) for (let a = 0; a < A; a++) cg[a][k * nPaths + p] = lg[a] + (fxCol[a] >= 0 ? lg[fxCol[a]] : 0);
         }
       }
       mddArr[p] = mdd;
@@ -443,8 +450,9 @@
       if (lim >= D) break;
     }
     const mdds = Array.from(mddArr).sort((a, b) => a - b);
+    const raw = keep ? { A, M, P: nPaths, cg, stock, fxLv, v0, muD: muD.slice(0, A), monthIdx: Array.from(monthIdx), price0: holdings.map((x) => x.price0), tickers: holdings.map((x) => x.ticker), cash: factors.slice(0, A).map((f) => !!f.cash), goal, monthly, startDate: model.startDate, monthDates: model.monthDates } : null;
     return {
-      V0, invested, monthsContrib: nMonthsContrib, bands, bandsUsd,
+      raw, V0, invested, monthsContrib: nMonthsContrib, bands, bandsUsd,
       p_goal: term.filter((v) => v >= goal).length / nPaths,
       p_touch: touched.reduce((s, x) => s + x, 0) / nPaths,
       p_loss: term.filter((v) => v < invested).length / nPaths,
@@ -469,5 +477,72 @@
     };
   }
 
-  window.Model = { TD, occurrences, PER_YEAR, indicators, buildModel, simulate, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  // ------------------------------------------------------------ 다시 무게 주기 (재시뮬레이션 없이)
+  // 같은 충격 경로에 기대수익(드리프트)·월 적립·매도만 바꿔 다시 계산. 재조정 없음 가정에서 정확하다 (월말 값 기준).
+  // o.mu: 종목별 연 기대수익 배열, o.monthly, o.goal, o.move: { from, to (-1 이면 원화 현금 연 3.5%), frac }, o.lossRef: 손실 기준 금액
+  function reweight(sim, o = {}) {
+    const X = sim && sim.raw; if (!X) return null;
+    const { A, M, P, cg, stock, fxLv, muD, monthIdx, price0 } = X;
+    const monthly = o.monthly ?? X.monthly, goal = o.goal ?? X.goal;
+    const dd = muD.map((d, a) => (o.mu && o.mu[a] != null ? Math.log(1 + o.mu[a]) / TD - d : 0));
+    const v = Array.from(X.v0); let cash0 = 0;
+    if (o.move && o.move.frac > 0 && v[o.move.from] > 0) { const amt = v[o.move.from] * Math.min(1, o.move.frac); v[o.move.from] -= amt; if (o.move.to >= 0) v[o.move.to] += amt; else cash0 = amt; }
+    const V0 = v.reduce((s, x) => s + x, 0) + cash0, wN = v.map((x) => x / V0), wC = cash0 / V0, rc = Math.log(1.035) / TD;
+    const port = new Float64Array(M * P), valK = Array.from({ length: A }, () => new Float64Array(M * P));
+    const firstHitK = new Int32Array(P).fill(-1), mddArr = new Float64Array(P), noC = new Float64Array(P), ann = new Float64Array(P);
+    const accU = new Float64Array(A), U = new Float64Array(A);
+    for (let p = 0; p < P; p++) {
+      accU.fill(0); let accC = 0, peak = V0, mdd = 0;
+      for (let k = 0; k < M; k++) {
+        const t = monthIdx[k], contrib = k > 0 && k < M - 1;
+        let V = 0, nc = 0, an = 0;
+        for (let a = 0; a < A; a++) {
+          U[a] = Math.exp((k ? cg[a][k * P + p] : 0) + dd[a] * t);
+          if (contrib) accU[a] += wN[a] / U[a];
+          const val = U[a] * (v[a] + monthly * accU[a]); valK[a][k * P + p] = val; V += val; nc += U[a] * v[a]; an += U[a] * accU[a];
+        }
+        if (cash0 > 0 || wC > 0) { const Uc = Math.exp(rc * t); if (contrib) accC += wC / Uc; V += Uc * (cash0 + monthly * accC); nc += Uc * cash0; an += Uc * accC; }
+        port[k * P + p] = V;
+        if (V > peak) peak = V; else mdd = Math.min(mdd, V / peak - 1);
+        if (V >= goal && firstHitK[p] < 0 && k > 0) firstHitK[p] = k;
+        if (k === M - 1) { noC[p] = nc; ann[p] = an; }
+      }
+      mddArr[p] = mdd;
+    }
+    const qs = [0.05, 0.25, 0.5, 0.75, 0.95], names = ["p5", "p25", "p50", "p75", "p95"], tmp = new Float64Array(P);
+    const bandsOf = (arr, f) => {
+      const out = Object.fromEntries(names.map((n) => [n, []]));
+      for (let k = 0; k < M; k++) { for (let p = 0; p < P; p++) tmp[p] = f ? f(arr[k * P + p], k * P + p) : arr[k * P + p]; tmp.sort(); qs.forEach((q, i) => out[names[i]].push(quantileSorted(tmp, q))); }
+      return out;
+    };
+    const term = Float64Array.from(port.subarray((M - 1) * P)).sort();
+    const invested = V0 + monthly * Math.max(0, M - 2), lossRef = (o.lossRef ?? V0) + monthly * Math.max(0, M - 2);
+    let req50 = null;
+    const ok = (c) => { let n = 0; for (let p = 0; p < P; p++) if (noC[p] + c * ann[p] >= goal) n++; return n / P >= 0.5; };
+    if (ok(0)) req50 = 0; else { let lo = 0, hi = 1e9; for (let i = 0; i < 50; i++) { const c = (lo + hi) / 2; if (ok(c)) hi = c; else lo = c; } req50 = hi; }
+    const md = X.monthDates, byYear = [];
+    for (let y = 1; ; y++) {
+      const target = addMonths(X.startDate, 12 * y); let k = 0; while (k + 1 < M && md[k + 1] <= target) k++;
+      let n = 0; for (let p = 0; p < P; p++) if (firstHitK[p] >= 0 && firstHitK[p] <= k) n++;
+      byYear.push({ year: y, date: md[k], p: n / P, k }); if (k >= M - 1) break;
+    }
+    const cnt = (f) => { let n = 0; for (let i = 0; i < P; i++) if (f(term[i])) n++; return n / P; };
+    const mdds = Float64Array.from(mddArr).sort();
+    return {
+      V0, invested, lossRef, term, bands: bandsOf(port), bandsUsd: bandsOf(port, (x, i) => x / fxLv[i]),
+      p_goal: cnt((x) => x >= goal), p_touch: Array.from(firstHitK).filter((k) => k >= 0).length / P,
+      p_loss: cnt((x) => x < lossRef), p_below_now: cnt((x) => x < V0),
+      terminal: { p5: quantileSorted(term, 0.05), p25: quantileSorted(term, 0.25), p50: quantileSorted(term, 0.5), p75: quantileSorted(term, 0.75), p95: quantileSorted(term, 0.95), mean: mean(term) },
+      mdd_median: quantileSorted(mdds, 0.5), mdd_p10: quantileSorted(mdds, 0.1), req50, byYear, monthly,
+      stocks: price0.map((p0, a) => {
+        const sh = (k) => Math.exp(dd[a] * monthIdx[k]);
+        const b = bandsOf(stock[a], (x, i) => x * sh(Math.floor(i / P)));
+        let up = 0; const kT = (M - 1) * P; for (let p = 0; p < P; p++) if (stock[a][kT + p] * sh(M - 1) > p0) up++;
+        const by = byYear.map((y) => { let u = 0, x2 = 0; for (let p = 0; p < P; p++) { const s = stock[a][y.k * P + p] * sh(y.k); if (s > p0) u++; if (s >= 2 * p0) x2++; } return { year: y.year, k: y.k, p_up: u / P, p_x2: x2 / P }; });
+        return { ticker: X.tickers[a], bands: b, p_up: up / P, byYear: by, valBands: bandsOf(valK[a]), valBandsUsd: bandsOf(valK[a], (x, i) => x / fxLv[i]) };
+      }),
+    };
+  }
+
+  window.Model = { TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();
