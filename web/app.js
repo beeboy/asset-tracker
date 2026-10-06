@@ -295,7 +295,7 @@
     const { total } = valuation(), g = S.state.goal, fx = fxNow("USD");
     const prog = g.amount ? total / g.amount : 0;
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span>자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span><span class="hsep">|</span><span>목표 <b>${pct(prog)}</b></span>`;
+    $("#headKpi").innerHTML = `<span>자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span>`;
   }
 
   // ------------------------------------------------------------ 시세·종목
@@ -499,6 +499,13 @@
     save(f !== "note"); renderHeader();
     if (e.type === "change") renderQuotes();
   }
+  // 새 종목: 그 종목 분기 실적 사건을 함께 넣는다 (날짜는 1·4·7·10월 하순으로 추정). 지수·현금성 ETF 는 제외
+  function addEarnEvent(t) {
+    if (INS_SKIP.has(t) || t.includes("=") || S.state.events.some((e) => e.target === t && /실적/.test(e.kind))) return;
+    const d = new Date(today()); let y = d.getFullYear(), m = [0, 3, 6, 9].find((k) => k > d.getMonth() || (k === d.getMonth() && d.getDate() < 25));
+    if (m == null) { m = 0; y++; }
+    S.state.events.push({ id: "auto_" + t, on: true, date: `${y}-${String(m + 1).padStart(2, "0")}-25`, target: t, kind: "실적", cat: "corp", repeat: "quarterly", prob: 100, mean: 0, sd: 8, vol_mult: 1, vol_days: 0, note: "분기 실적 (날짜 추정)" });
+  }
   async function addHolding() {
     const t = $("#addTicker").value.trim().toUpperCase(), sh = parseDec($("#addShares").value), avg = parseDec($("#addAvg").value);
     if (!t) return toast("티커를 넣어 주세요");
@@ -510,7 +517,7 @@
       if (avg > 0) ex.avg_cost = Number(ex.avg_cost) > 0 && old > 0 ? (Number(ex.avg_cost) * old + avg * sh) / (old + sh) : avg;
       ex.shares = old + sh; toast(`${t} 수량을 더했습니다`);
     }
-    else S.state.holdings.push({ ticker: t, shares: sh, price: null, avg_cost: avg || null, note: "" });
+    else { S.state.holdings.push({ ticker: t, shares: sh, price: null, avg_cost: avg || null, note: "" }); addEarnEvent(t); }
     $("#addTicker").value = $("#addShares").value = $("#addAvg").value = "";
     save(); renderAll();
     if (!S.prices[t]) {
@@ -755,9 +762,18 @@
     return { next: list[0] || null, n: list.length };
   }
   const curSub = () => XSUBS.find((x) => x.k === $("#xfNav .on")?.dataset.c) || XSUBS.find((x) => x.k === "earn");
+  // 보유 종목이 없으면 외부 요인 화면은 비운다. 종목 대상 사건은 지금 보유한 종목 것만 보여 준다
+  const heldTks = () => S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker);
+  const evShown = (e) => !e.target || e.target === "ALL" || e.target === "FX" || (e.factor && e.factor !== "none") || heldTks().includes(e.target);
+  function evEmpty() {
+    const none = !heldTks().length, host = $("#ana-events");
+    [...host.children].forEach((c) => (c.style.display = c.id === "evNone" ? (none ? "" : "none") : none ? "none" : c.id === "xfAnalysis" ? c.style.display : ""));
+    return none;
+  }
   function renderEvTiles() {
+    if (evEmpty()) return;
     const sub = curSub(), multi = sub.cats.length > 1;
-    const all = S.state.events.map((e, i) => ({ e, i, ...nextOcc(e) })).filter(({ e }) => sub.cats.includes(e.cat)).sort((a, b) => ((a.next || "9") < (b.next || "9") ? -1 : 1));
+    const all = S.state.events.map((e, i) => ({ e, i, ...nextOcc(e) })).filter(({ e }) => sub.cats.includes(e.cat) && evShown(e)).sort((a, b) => ((a.next || "9") < (b.next || "9") ? -1 : 1));
     const first = all.find((x) => x.e.on && x.next);
     const tile = ({ e, i, next, n }) => {
       const earn = /실적/.test(e.kind), q = earn && next ? quarterOf(next) : null;
@@ -843,7 +859,7 @@
     return REF_DAYS[cat] || [];
   }
   function renderXf() {
-    const sub = curSub(), host = $("#xfAnalysis"); if (!host) return;
+    const sub = curSub(), host = $("#xfAnalysis"); if (!host || !heldTks().length) return;
     host.style.display = "block";
     const seen = new Set(), charts = [];
     host.innerHTML = `<h2>${esc(sub.g.n)} · ${esc(sub.n)} 분석</h2>` + sub.cats.map((c, j) => xfSection(c, seen, j, charts, sub.cats.length > 1)).join("");
@@ -1425,7 +1441,7 @@
       } else {
         if (!lastForecast) return ""; const { b, withEv: R, noEv, hasEv } = lastForecast, md = b.model, V0 = R.V0;
         if (kind === "events") {
-          const on = S.state.events.filter((e) => e.on), byCat = {};
+          const on = S.state.events.filter((e) => e.on && evShown(e)), byCat = {};
           on.forEach((e) => (byCat[e.cat] = (byCat[e.cat] || 0) + 1));
           L.push("### 켜진 외부 요인", ...Object.entries(byCat).map(([c, n]) => `- ${catName(c)} ${n}건`));
           if (hasEv) L.push("### 효과", `- 목표 확률 ${pct(noEv.p_goal, 0)} → ${B(pct(R.p_goal, 0))}, 하위 5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원`);
@@ -1459,7 +1475,7 @@
   async function aiAuto(kind, force, viaPuter) {
     const box = $("#aiOut-" + kind); if (!box) return;
     const off = S.state.ui.ai_auto === false;
-    $$(".aicard, #aiAutoCard").forEach((c) => (c.style.display = off ? "none" : "block"));
+    $$(".aicard, #aiAutoCard").forEach((c) => (c.style.display = off || (c.closest("#ana-events") && !heldTks().length) ? "none" : "block"));
     if (off || aiBusy[kind]) return;
     const q = aiPromptFor(kind);
     if (!q) { box.innerHTML = "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>"; return; }
