@@ -48,7 +48,7 @@ button:disabled { opacity: .5; cursor: wait; }
 input, select { font: inherit; padding: 5px 7px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
 input[type=checkbox] { width: auto; }
 label { display: inline-flex; align-items: center; gap: 6px; }
-.seg button { padding: 4px 9px; font-size: 0.7059rem; } .seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.seg button { padding: 4px 9px; font-size: 0.7059rem; white-space: nowrap; flex: none; } .seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 .log { height: 130px; overflow-y: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: 0.7059rem/1.5 ui-monospace, Consolas, monospace; margin-top: 8px; }
 .log .err { color: var(--bad); } .log .t { color: var(--muted); }
 .tablewrap { overflow-x: auto; }
@@ -166,8 +166,10 @@ details.card.opt { padding: 10px 16px; }
 .futrow { border-top: 1px solid var(--line); padding-top: 4px; } .futrow:first-child { border-top: 0; }
 .fview { margin: 0 0 6px; } .ytpts { margin: 4px 0 8px 18px; padding: 0; } .ytpts li { margin: 3px 0; }
 #xfNav { margin-bottom: 4px; }
-.xfboxes { display: grid; grid-template-columns: 1fr; gap: 6px; }
-.xfbox { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; display: flex; align-items: center; gap: 10px; }
+/* 거시·기업·수급: 한 줄, 박스 폭은 안의 버튼에 맞추고 남는 폭은 나눠 가짐. 좁으면 다음 줄로 */
+.xfboxes { display: flex; flex-wrap: wrap; gap: 6px; }
+.xfbox { flex: 1 1 auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; display: flex; align-items: center; gap: 8px; }
+.xfbox .seg button { white-space: nowrap; }
 .xfbox .xfh { font-weight: 600; font-size: 0.7647rem; flex: none; min-width: 2.6em; }
 .xfbox .seg { gap: 4px; }
 .evcat { grid-column: 1 / -1; font-weight: 600; font-size: 0.7647rem; margin-top: 6px; } .evcat:first-child { margin-top: 0; }
@@ -234,3 +236,34 @@ a.bvlink::after { content: "↗"; font-size: 0.6471rem; } a.bvlink:hover { backg
 .bvcm button.link { background: none; border: 0; padding: 0 2px; color: var(--muted); font-size: 0.6471rem; cursor: pointer; }
 .bvcmform { margin-top: 8px; display: grid; gap: 6px; } .bvcmform textarea { width: 100%; box-sizing: border-box; min-height: 56px; resize: vertical; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
 .bvcmform .row { gap: 6px; } .bvcmform input { flex: 1; min-width: 0; }
+
+/* 계산 옵션: 시나리오 박스 5개 (누르면 아래 공통 설정으로 다시 계산) */
+#fcOpt > summary { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scenbox { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(104px, 100%), 1fr)); gap: 6px; margin-top: 8px; }
+.scenbox button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 7px 10px; border-radius: 9px; }
+.scenbox button b { font-size: 0.7647rem; } .scenbox button span { font-size: 0.6471rem; color: var(--muted); }
+.scenbox button.on { border-color: var(--accent); background: var(--accent); color: #fff; } .scenbox button.on span { color: #fff; opacity: .85; }
+/* 가로폭: 표는 두 줄로 쌓고 좁은 화면에서 여백을 줄인다 */
+table.grid td.wrapc { white-space: normal; min-width: 6.5em; }
+table.grid td.tkc .tlogo { margin-right: 5px; }
+.seg { flex-wrap: wrap; }
+.tlogo { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; overflow: hidden; background: var(--line); color: var(--muted); font-size: 0.6176rem; font-weight: 700; vertical-align: middle; }
+.tlogo::before { content: attr(data-c); }
+.tlogo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; }
+button.danger.x { padding: 2px 7px; }
+@media (max-width: 700px) {
+  table.grid th, table.grid td { padding: 4px 4px; }
+  table.grid { font-size: 0.7059rem; }
+  table.grid td.wrapc { min-width: 5.5em; }
+  table.grid input { width: 6em; padding: 3px 4px; } table.grid input[data-f="shares"] { width: 2.8em; } table.grid input[data-f="avg_cost"], table.grid input[data-f="price"] { width: 3.8em; }
+  button.danger.x { padding: 1px 5px; }
+}
+/* 미래 가치 인사이트: 종목당 상자 하나 */
+.ibox .ntop .tk { font-size: 0.8235rem; }
+.ibox .nago { margin-left: auto; flex: none; }
+.ibox .nsum { font-size: 0.7647rem; line-height: 1.5; }
+.ibox .pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.ibox .pills .ncat { margin-left: 0; }
+.nsrc summary { cursor: pointer; font-size: 0.7059rem; color: var(--muted); }
+.nsrc ul { margin: 6px 0 0; padding-left: 16px; font-size: 0.7353rem; } .nsrc li { margin: 0 0 6px; line-height: 1.4; }
+.nsrc a { color: var(--fg); text-decoration: none; } .nsrc a:hover { color: var(--accent); text-decoration: underline; } .nsrc a.read { color: var(--muted); }
