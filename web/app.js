@@ -1450,8 +1450,7 @@
   // 기본은 계산값으로 만든 규칙 기반 해설. 'Puter 무료 AI로 분석'을 누를 때만 Puter 에 묻는다
   function showRule(box, kind, why) {
     const r = ruleText(kind);
-    loadPuter().catch(() => {}); // 버튼을 누르면 바로 로그인 창이 뜨도록 미리 불러 둔다
-    box.innerHTML = (r ? md2html(r) : "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>") + `<p class="muted small">${why ? `Puter 연결 실패 (${esc(why)}). ` : ""}<button class="sm" data-puter="${kind}">Puter 무료 AI로 분석</button></p>`;
+    box.innerHTML = (r ? md2html(r) : "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>") ;
   }
   async function aiAuto(kind, force, viaPuter) {
     const box = $("#aiOut-" + kind); if (!box) return;
@@ -1465,7 +1464,6 @@
     const sig = hashStr("v6|" + kind + JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd]), S.state.model.scenario, today()]));
     const again = `<button class="sm" data-puter="${kind}">Puter 무료 AI로 분석</button>`;
     if (!viaPuter) {
-      if (!force && c && c.text && (c.key === key || (c.sig === sig && Date.now() - c.at < 6 * 3600e3))) { box.innerHTML = md2html(cleanAi(c.text)) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석 · Puter ${again}</p>`; return; }
       showRule(box, kind); return;
     }
     aiBusy[kind] = true; box.innerHTML = "<p class='muted'>Puter로 분석하는 중입니다… (보통 10~30초)</p>";

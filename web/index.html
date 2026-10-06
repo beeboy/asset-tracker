@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="naeilo">
 <link rel="manifest" href="manifest.json">
 <title>naeilo</title>
-<link rel="stylesheet" href="style.css?v=20261006d">
+<link rel="stylesheet" href="style.css?v=20261006e">
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
 <body>
@@ -108,7 +108,7 @@
       <div id="histChart" class="chartbox"></div>
       <p class="muted small" id="histNote"></p>
     </div>
-    <div class="card aicard"><div class="row between wrap"><h2>분석: 과거 3년 + 미래</h2><button data-aire="dash" class="sm">다시 분석</button></div><div id="aiOut-dash" class="aiout small"></div></div>
+    <div class="card aicard"><div class="row between wrap"><h2>분석: 과거 3년 + 미래</h2></div><div id="aiOut-dash" class="aiout small"></div></div>
     <div class="card">
       <h2>기간 수익률 (원화, 편입 효과 제외)</h2>
       <div class="tablewrap"><table id="periodTable" class="grid"></table></div>
@@ -148,7 +148,7 @@
       <div class="card"><h2>포트폴리오 진단</h2><div id="stratSummary"></div></div>
       <div id="stratCards" class="stratgrid"></div>
       <div class="card" id="aiAutoCard">
-        <div class="row between wrap"><h2>자동 전략 분석</h2><button data-aire="strategy" class="sm">다시 분석</button></div>
+        <div class="row between wrap"><h2>자동 전략 분석</h2></div>
         <div id="aiOut-strategy" class="aiout small"></div>
       </div>
     </div>
@@ -167,7 +167,7 @@
         <div class="tablewrap"><table id="sigTable" class="grid"></table></div>
         <p class="muted small">칼만 = 잡음을 거른 추세. z = 연 기울기 ÷ 표준편차. 판정은 가격&gt;EMA200, EMA50&gt;EMA200, z&gt;1 중 맞는 개수.</p>
       </div>
-      <div class="card aicard"><div class="row between wrap"><h2>추세 해설</h2><button data-aire="trend" class="sm">다시 분석</button></div><div id="aiOut-trend" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>추세 해설</h2></div><div id="aiOut-trend" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-forecast" style="display:none">
@@ -186,7 +186,7 @@
         <div class="tablewrap"><table id="fcParams" class="grid"></table></div>
         <p class="muted small">기대수익률은 과거 평균을 사전값(설정 → 모형 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다. 스무딩·추세 추종 시나리오는 3년 스무딩 또는 칼만·EMA 추세의 성장률이 중앙값이 되도록 하고(연 -60%~+230% 범위로 제한), 이력이 1년 미만이면 기준 시나리오와 섞습니다.</p>
       </details>
-      <div class="card aicard"><div class="row between wrap"><h2>전망 해설</h2><button data-aire="forecast" class="sm">다시 분석</button></div><div id="aiOut-forecast" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>전망 해설</h2></div><div id="aiOut-forecast" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-events" style="display:none">
@@ -212,7 +212,7 @@
         <div class="tablewrap"><table id="eventTable" class="grid"></table></div>
       </details>
       <details class="card" id="schedCard"><summary><b>펼친 일정 (목표일까지)</b> <span class="muted small" id="schedSum"></span></summary><div id="eventSchedule" class="small" style="margin-top:8px"></div></details>
-      <div class="card aicard"><div class="row between wrap"><h2>외부 요인 점검</h2><button data-aire="events" class="sm">다시 분석</button></div><div id="aiOut-events" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>외부 요인 점검</h2></div><div id="aiOut-events" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-fx" style="display:none">
@@ -223,7 +223,7 @@
         <p class="muted small">검은 선 실제 환율, 굵은 파란 선 칼만 추세, 점선 EMA50·EMA200. 오른쪽 띠는 목표일까지 범위(진한 띠 25~75%, 옅은 띠 5~95%). 환율이 오르면(원화 약세) 원화 평가액 상승.</p>
       </div>
       <div class="card"><h2>환율이 바뀌면 내 평가액은</h2><div class="tablewrap"><table id="fxSens" class="grid"></table></div><p class="muted small">주가는 그대로, 환율만 바뀐다고 본 값.</p></div>
-      <div class="card aicard"><div class="row between wrap"><h2>환율 해설</h2><button data-aire="fx" class="sm">다시 분석</button></div><div id="aiOut-fx" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>환율 해설</h2></div><div id="aiOut-fx" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-alloc" style="display:none">
@@ -237,7 +237,7 @@
         <div id="allocStatus" class="muted small"></div>
         <div class="tablewrap"><table id="allocTable" class="grid"></table></div>
       </div>
-      <div class="card aicard"><div class="row between wrap"><h2>비중안 해설</h2><button data-aire="alloc" class="sm">다시 분석</button></div><div id="aiOut-alloc" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>비중안 해설</h2></div><div id="aiOut-alloc" class="aiout small"></div></div>
     </div>
   </section>
 
@@ -257,8 +257,8 @@
 
 </main>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261006d"></script>
-<script src="model.js?v=20261006d"></script>
-<script src="app.js?v=20261006d"></script>
+<script src="charts.js?v=20261006e"></script>
+<script src="model.js?v=20261006e"></script>
+<script src="app.js?v=20261006e"></script>
 </body>
 </html>
