@@ -206,7 +206,7 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
       if (MODE === "static") {
-        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 시세 수집 아래 설정의 내보내기/불러오기"; }
+        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 아래 내보내기/불러오기"; }
         catch (e) { $("#footer").textContent = "브라우저 저장 실패: " + e.message; }
         return;
       }
@@ -347,7 +347,7 @@
         return true;
       }
       logLine("수집이 오래 걸립니다. 잠시 뒤 '최신 데이터 불러오기'를 눌러 주세요." + ghLink("진행 상황 보기"), false, true);
-    } catch (e) { logLine("GitHub 수집 실행 실패: " + esc(e.message) + ". 시세 수집 아래 설정의 GitHub 연결을 확인하세요.", false, true); }
+    } catch (e) { logLine("GitHub 수집 실행 실패: " + esc(e.message) + ". 설정의 GitHub 연결을 확인하세요.", false, true); }
     finally { ghBusy = false; btns.forEach((b) => b && (b.disabled = false)); }
     return false;
   }
@@ -455,6 +455,8 @@
     clearInterval(autoTimer); autoTimer = null;
     if (min > 0) autoTimer = setInterval(() => collect(true), Math.max(min, MODE === "static" ? 5 : 1) * 60000);
   }
+  // 시세 수집이 끝나면 보유 종목 표를 접는다 (종목 추가 줄은 그대로 보임). 수량이 하나도 없으면 펼쳐 둔다
+  function foldHold() { const d = $("#holdDet"); if (d) d.open = !S.state.holdings.some((h) => Number(h.shares) > 0); }
   function renderQuotes() {
     const { rows, total } = valuation();
     const fx = fxNow("USD"), fq = S.quotes["KRW=X"];
@@ -596,8 +598,8 @@
       ["목표 대비", pct(total / g.amount), `<div class="bar"><i style="width:${Math.min(100, (total / g.amount) * 100)}%"></i></div>`],
       ["남은 금액", krw(Math.max(0, need)) + "원", `목표 ${krw(g.amount)}원`],
       ["남은 기간", yrs > 0 ? yrs.toFixed(1) + "년" : "지남", g.date],
-      ["필요 연평균 수익률", req != null ? pct(req) : "-", "적립 없이 지금 자산만으로"],
-      ["과거 연평균 (원화)", pct(pastCagr), `${H.dates[jc] || "-"} 이후, 편입 효과 제외`],
+      ["필요 연평균 수익률", req != null ? pct(req) : "-", "지금 자산만으로"],
+      ["과거 연평균 (원화)", pct(pastCagr), `${H.dates[jc] || "-"} 이후`],
     ].map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
     const rsel = $("#histRange .on")?.dataset.r || "252", step = $("#histStep .on")?.dataset.s || "d", mode = $("#histMode .on")?.dataset.m || "total";
@@ -647,10 +649,10 @@
           tick.forEach((t) => { const b2 = vb(t); if (!b2) return; const hi = lo.map((v, k) => v + b2.p50[k]); opt.bands.push({ x: fd, lo, hi, color: col(t), opacity: 0.28 }); lo = hi; });
           opt.series.push({ name: "종목 중앙값 합", x: fd, y: lo, color: "var(--fg)", width: 1, dash: "3 3" });
         }
-        notes.push(`오른쪽은 <b>${BASIS[basis]}</b>${basis === "model" ? ` (${scenName(scen)} 시나리오)` : " 전망"}입니다. 환율·외부 요인을 넣은 ${nf(S.state.model.n_paths)}경로 몬테카를로이며 ${mode === "total" ? "진한 띠 25~75%, 옅은 띠 5~95%, 점선은 중앙값입니다." : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%입니다." : "쌓은 띠는 종목별 중앙값입니다(합계 중앙값과 조금 다를 수 있음)."}`);
-        if (basis === "trend") notes.push("추세 반영: 종목마다 칼만 기울기와 EMA50·EMA200 기울기의 평균 성장률이 목표일까지 이어진다고 봅니다.");
-        if (basis === "smooth") notes.push("스무딩: 종목마다 과거 3년 로그가격에 맞춘 추세선의 성장률이 이어진다고 봅니다.");
-        if (Number(g.monthly_contribution) > 0) notes.push(`월 적립 ${krw(Number(g.monthly_contribution))}원 포함.`);
+        notes.push(basis === "trend" ? "<b>추세 반영 (칼만·EMA) 전망</b>: 칼만 기울기와 EMA50·EMA200 기울기의 평균 성장률 지속 가정"
+          : basis === "smooth" ? "<b>스무딩 (3년)</b>: 과거 3년 로그가격에 맞춘 추세선의 성장률 지속 가정"
+          : "<b>모형 전망</b>: " + (mode === "total" ? "환율·외부 요인 반영, 진한 띠 25~75%, 옅은 띠 5~95%, 점선 중앙값" : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%" : "쌓은 띠는 종목별 중앙값(합계 중앙값과 조금 다를 수 있음)"));
+        if (Number(g.monthly_contribution) > 0) notes.push(`· 월 적립 ${krw(Number(g.monthly_contribution))}원 포함`);
       } else if (total > 0) notes.push("전망을 계산하는 중입니다…");
       if (mode === "total" && basis !== "model") {
         const pf = pastFit(H, basis);
@@ -661,9 +663,8 @@
       if (V0 > 0 && mode !== "each") opt.series.push({ name: "필요 경로", x: [last, ...md], y: [conv(H.total[H.total.length - 1], H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
-      notes.push("현재 보유 수량을 과거에 그대로 적용한 값입니다(매매 이력 미반영). 늦게 상장한 종목은 상장일부터 합계에 들어갑니다.");
+      notes.push("현재 보유 수량을 과거에 적용(매매 이력 미반영), " + (inUsd ? "그날 환율로 달러 환산." : "그날 환율로 원화 환산."));
     }
-    notes.push(inUsd ? "달러 환산은 그날 원/달러 환율, 미래는 환율 전망 경로를 씁니다." : "원화 환산은 그날 환율을 씁니다.");
     $("#histNote").innerHTML = notes.join(" ");
     Charts.lineChart($("#histChart"), opt);
 
@@ -1056,7 +1057,7 @@
       $("#fcEvents").innerHTML = !hasEv ? `<p class="muted">켜진 사건이 없습니다. '외부 요인'에서 켜 주세요.</p>`
         : evTable([["목표 달성 확률", pct(noEv.p_goal, 0), pct(Rc.p_goal, 0)], ["목표일 중앙값", krw(noEv.terminal.p50), krw(Rc.terminal.p50)], ["하위 5%", krw(noEv.terminal.p5), krw(Rc.terminal.p5)],
           ["상위 5%", krw(noEv.terminal.p95), krw(Rc.terminal.p95)], ["원금 손실 확률", pct(noEv.p_loss, 0), pct(Rc.p_loss, 0)]],
-          `같은 난수로 사건만 빼고 다시 계산한 비교입니다(미반영 쪽은 실적 변동을 평소 변동성에 그대로 둠). 반영 사건 ${md.eventList.filter(inC).length}건 (반복 포함).`);
+          `사건만 빼고 다시 계산한 비교(미반영 쪽은 실적 변동=평소 변동성). 반영 사건 ${md.eventList.filter(inC).length}건 (반복 포함).`);
     } else {
       const i = b.holdings.findIndex((h) => h.ticker === tk), h = b.holdings[i], s1 = R.stocks[i], s0 = noEv.stocks[i], sc = Rc.stocks[i], c = C[i % C.length];
       $("#fcTitle").textContent = `${tk} 가격 전망 (${h.ccy}, 외부 요인 포함)`;
@@ -1078,12 +1079,12 @@
         (hasEv && v !== "none" ? ` <span class="muted">(미반영 중앙값 ${f2(s0.bands.p50[T])} · 오를 확률 ${pct(s0.p_up, 0)}${v === "all" ? "" : `, 반영 사건 ${evs.length}건`})</span>` : "");
       $("#fcYearsTitle").textContent = `${tk} 연도별 확률 (${vName})`;
       $("#fcYears").innerHTML = (s1.byYear || []).map((y) => `<div class="probbar"><span>${y.year}년 뒤 (${fx[y.k]}) 현재가 이상</span><div class="b"><i style="width:${y.p_up * 100}%"></i></div><span>${pct(y.p_up, 0)}</span></div>`).join("") +
-        `<p class="muted small">그 시점 가격이 오늘(${f2(h.price0)} ${h.ccy})보다 높을 확률입니다. 2배 이상: ${(s1.byYear || []).map((y) => `${y.year}년 ${pct(y.p_x2, 0)}`).join(" · ")}. 포트폴리오 목표 확률은 '전체'에서 봅니다.</p>`;
+        `<p class="muted small">그 시점 가격이 오늘(${f2(h.price0)} ${h.ccy})보다 높을 확률. 2배 이상: ${(s1.byYear || []).map((y) => `${y.year}년 ${pct(y.p_x2, 0)}`).join(" · ")}. 포트폴리오 목표 확률은 '전체'에서 봄.</p>`;
       $("#fcEvTitle").textContent = `외부 요인 반영 효과 (${tk})`;
       $("#fcEvents").innerHTML = !hasEv ? `<p class="muted">켜진 사건이 없습니다. '외부 요인'에서 켜 주세요.</p>`
         : evTable([["목표일 중앙값", f2(s0.bands.p50[T]), f2(sc.bands.p50[T])], ["6개월 뒤 중앙값", f2(s0.bands.p50[T6]), f2(sc.bands.p50[T6])],
           ["하위 5%", f2(s0.bands.p5[T]), f2(sc.bands.p5[T])], ["상위 5%", f2(s0.bands.p95[T]), f2(sc.bands.p95[T])], ["오를 확률", pct(s0.p_up, 0), pct(sc.p_up, 0)]],
-          `${esc(tk)} 가격(${h.ccy}) 기준, 같은 난수로 사건만 빼고 다시 계산한 비교입니다. 이 종목에 걸린 사건(시장·요인 사건 포함) ${md.eventList.filter((e) => inC(e) && onTk(e)).length}건.`);
+          `종목 가격(${h.ccy}) 기준, 사건만 빼고 다시 계산한 비교. 이 종목에 걸린 사건(시장·요인 사건 포함) ${md.eventList.filter((e) => inC(e) && onTk(e)).length}건.`);
     }
   }
   function renderForecast() {
@@ -1094,19 +1095,19 @@
     // 직접 입력한 현재가 때문에 오늘 평가액이 시세 기준과 크게 다르면 알린다 (차트가 오늘에서 꺾이는 원인)
     const manual = b.holdings.filter((h) => { const src = S.state.holdings.find((x) => x.ticker === h.ticker); const mk = src && curPrice({ ...src, price: null }).v; return src && Number(src.price) > 0 && mk && Math.abs(h.price0 / mk - 1) > 0.05; });
     const Hh = history(), lastHist = Hh.total[Hh.total.length - 1];
-    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 시세 수집에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
+    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 설정에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
     $("#fcWarn").style.display = $("#fcWarn").innerHTML ? "block" : "none";
     $("#fcStatus").textContent = `${lastForecast.at.toLocaleString()} 계산 · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초` + (fcDirty ? " · 입력이 바뀌었습니다. 다시 계산하세요." : "");
     const contrib = Number(g.monthly_contribution) || 0;
     $("#fcKpis").innerHTML = [
-      ["목표 달성 확률", pct(R.p_goal, 0), `목표일 ${g.date}에 ${krw(g.amount)}원 이상`],
-      ["중간에 한 번이라도 도달", pct(R.p_touch, 0), "목표일 전 어느 시점이든"],
+      ["목표 달성 확률", pct(R.p_goal, 0), `목표일에 ${krw(g.amount)}원 이상`],
+      ["한 번이라도 도달", pct(R.p_touch, 0), "목표일 전 어느 시점이든"],
       ["목표일 중앙값", krw(R.terminal.p50) + "원", `평균 ${krw(R.terminal.mean)}원`],
       ["나쁜 경우 (하위 5%)", krw(R.terminal.p5) + "원", `하위 25% ${krw(R.terminal.p25)}원`],
       ["좋은 경우 (상위 5%)", krw(R.terminal.p95) + "원", `상위 25% ${krw(R.terminal.p75)}원`],
       ["원금 손실 확률", pct(R.p_loss, 0), contrib ? `투입 ${krw(R.invested)}원 대비` : "현재 평가액 대비"],
       ["최대 낙폭 (중앙값)", pct(R.mdd_median, 0), `나쁜 10%: ${pct(R.mdd_p10, 0)}`],
-      ["확률 50%에 필요한 월 적립", R.req50 == null ? "-" : R.req50 === 0 ? "0원" : krw(R.req50) + "원", R.req50 == null ? "재조정 끄면 계산" : "같은 비중으로 매월 매수 가정"],
+      ["확률 50% 위한 월 적립", R.req50 == null ? "-" : R.req50 === 0 ? "0원" : krw(R.req50) + "원", R.req50 == null ? "재조정 끄면 계산" : "같은 비중 매월 매수 가정"],
     ].map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
     drawFcChart();
@@ -1266,7 +1267,7 @@
     }
     return "";
   }
-  // 페이지 안 자동 분석: 키 없이 쓰는 공개 AI 엔드포인트 (Pollinations, OpenAI 호환). 같은 질문의 답은 저장해 재사용
+  // Puter 답 저장소
   const AI_KEY = "asset-tracker-ai";
   // 마크다운 → HTML (AI 답과 규칙 기반 의견에 공통). 소제목, 굵게·기울임·코드·링크, 중첩 목록, 표, 인용, 구분선, 코드 블록
   // AI 답 정리: JSON 으로 온 답, <think> 블록, 답 전체를 감싼 ```markdown 코드 블록, 무료 서비스가 덧붙인 광고 문구
@@ -1415,19 +1416,18 @@
     } catch (e) { return ""; }
     return L.join("\n");
   }
-  // 무료 AI 순서: 개발자 중계(config.json "ai", 키는 중계에만) → Puter (한 번 로그인하면 자동) → Pollinations. 모두 안 되면 규칙 기반 해설
+  // Puter (버튼을 누를 때만, 첫 사용 때 무료 계정 확인 창)
   let puterP = null;
   function loadPuter() { return (puterP ||= new Promise((res, rej) => { if (window.puter) return res(window.puter); const sc = document.createElement("script"); sc.src = "https://js.puter.com/v2/"; sc.onload = () => res(window.puter); sc.onerror = () => { puterP = null; rej(new Error("Puter를 불러오지 못함")); }; document.head.appendChild(sc); })); }
   const puterText = (r) => (typeof r === "string" ? r : r?.message?.content?.[0]?.text ?? r?.message?.content ?? r?.text ?? String(r ?? ""));
   async function askPuter(sys, q) { const P = await loadPuter(); return puterText(await P.ai.chat([{ role: "system", content: sys }, { role: "user", content: q }])); }
-  const puterReady = () => { try { return !!window.puter?.auth?.isSignedIn?.(); } catch (e) { return false; } };
-  const aiBusy = {}, aiFail = {};
-  let aiQueue = Promise.resolve(); // 공개 엔드포인트는 동시 요청을 막을 수 있어 한 번에 하나씩
+  const aiBusy = {};
   const AI_SYS = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 아주 간결하게 답한다. 요청 항목마다 ### 소제목 하나와 한 줄짜리 글머리표 2~3개만 쓰고, 전체 15줄을 넘기지 않는다. 서론·반복·일반론은 빼고 핵심 숫자는 **굵게**. 표, 코드 블록(```), HTML 태그, 수식(LaTeX, $ 기호)은 쓰지 않고 일반 마크다운 글로만 쓴다(좁은 휴대폰 화면). 마지막 줄은 '투자 권유 아님.'";
-  function showFallback(box, kind, why) {
+  // 기본은 계산값으로 만든 규칙 기반 해설. 'Puter 무료 AI로 분석'을 누를 때만 Puter 에 묻는다
+  function showRule(box, kind, why) {
     const r = ruleText(kind);
     loadPuter().catch(() => {}); // 버튼을 누르면 바로 로그인 창이 뜨도록 미리 불러 둔다
-    box.innerHTML = (r ? md2html(r) : "") + `<p class="muted small">무료 AI에 연결하지 못해 계산값으로 만든 해설을 보여 줍니다 (${esc(why)}). <button class="sm" data-puter="${kind}">Puter 무료 AI로 분석</button></p>`;
+    box.innerHTML = (r ? md2html(r) : "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>") + `<p class="muted small">${why ? `Puter 연결 실패 (${esc(why)}). ` : ""}계산값으로 만든 해설. <button class="sm" data-puter="${kind}">Puter 무료 AI로 분석</button></p>`;
   }
   async function aiAuto(kind, force, viaPuter) {
     const box = $("#aiOut-" + kind); if (!box) return;
@@ -1436,42 +1436,23 @@
     if (off || aiBusy[kind]) return;
     const q = aiPromptFor(kind);
     if (!q) { box.innerHTML = "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>"; return; }
-    const key = hashStr("v5|" + q), cache = aiCache(), c = cache[kind];
-    // 시세가 조금 바뀌어 질문 숫자가 달라져도, 입력(종목·수량·목표·사건·시나리오)이 같고 6시간 안이면 저장된 답을 그대로 쓴다 (빠르고 요청 수 절약)
-    const sig = hashStr("v5|" + kind + JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd]), S.state.model.scenario, today()]));
-    if (!force && aiFail[kind] && aiFail[kind].key === key && Date.now() - aiFail[kind].at < 600000) { showFallback(box, kind, aiFail[kind].why); return; } // 방금 실패한 같은 질문은 자동으로 다시 묻지 않음
-    if (!force && c && c.text && (c.key === key || (c.sig === sig && Date.now() - c.at < 6 * 3600e3))) { box.innerHTML = md2html(cleanAi(c.text)) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석${c.src ? " · " + esc(c.src) : ""}</p>`; return; }
-    aiBusy[kind] = true; box.innerHTML = "<p class='muted'>AI가 분석하는 중입니다… (보통 10~30초)</p>";
-    const sys = AI_SYS;
-    const timed = (pr) => { let tm; return Promise.race([pr, new Promise((_, rej) => { tm = setTimeout(() => rej(new Error("시간 초과")), 90000); })]).finally(() => clearTimeout(tm)); };
-    const run = async () => {
-      const tries = [];
-      // 로그인 창은 버튼을 누를 때만 (Puter 는 첫 사용 때 무료 계정 확인 창을 띄움)
-      if (viaPuter) tries.push(["Puter", () => askPuter(sys, q)]);
-      if (S.config?.ai) tries.push(["AI 중계", async () => {
-        for (let k = 0; ; k++) { // 붐빔(429·503)이면 잠깐 쉬고 한 번 더
-          const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: sys, prompt: q }) }); const j = await r.json().catch(() => ({}));
-          if (r.ok && j.text) return j.text;
-          if (k < 1 && (r.status === 429 || r.status >= 500)) { await new Promise((ok) => setTimeout(ok, 3000)); continue; }
-          throw new Error("응답 " + r.status + (j.error ? ": " + j.error : ""));
-        } }]);
-      if (!viaPuter && puterReady()) tries.push(["Puter", () => askPuter(sys, q)]);
-      if (!S.config?.ai) tries.push(["Pollinations", async () => { const r = await fetch("https://text.pollinations.ai/openai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: sys }, { role: "user", content: q }], private: true, max_tokens: 1200 }) });
-          if (!r.ok) throw new Error("응답 " + r.status); const j = await r.json(); return j.choices?.[0]?.message?.content || ""; }]);
-      let text = "", err = null, src = "";
-      for (const [nm, t] of tries) {
-        try { text = cleanAi(await timed(t())); if (text) { src = nm; break; } }
-        catch (e) { err = new Error(`${nm} ${e?.message || e}`); }
-      }
-      return { text, err, src };
-    };
-    const job = viaPuter ? run() : aiQueue.then(run); if (!viaPuter) aiQueue = job.catch(() => {});
-    const { text, err, src } = await job;
+    const key = hashStr("v6|" + q), cache = aiCache(), c = cache[kind];
+    // Puter 답은 입력(종목·수량·목표·사건·시나리오)이 같고 6시간 안이면 다시 보여 준다
+    const sig = hashStr("v6|" + kind + JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd]), S.state.model.scenario, today()]));
+    const again = `<button class="sm" data-puter="${kind}">Puter 무료 AI로 분석</button>`;
+    if (!viaPuter) {
+      if (!force && c && c.text && (c.key === key || (c.sig === sig && Date.now() - c.at < 6 * 3600e3))) { box.innerHTML = md2html(cleanAi(c.text)) + `<p class="muted small">${new Date(c.at).toLocaleString()} 분석 · Puter ${again}</p>`; return; }
+      showRule(box, kind); return;
+    }
+    aiBusy[kind] = true; box.innerHTML = "<p class='muted'>Puter로 분석하는 중입니다… (보통 10~30초)</p>";
+    let text = "", why = "";
+    try { let tm; text = cleanAi(await Promise.race([askPuter(AI_SYS, q), new Promise((_, rej) => { tm = setTimeout(() => rej(new Error("시간 초과")), 90000); })]).finally(() => clearTimeout(tm))); }
+    catch (e) { why = e?.message || String(e); }
     aiBusy[kind] = false;
-    if (!text) { const why = err?.message || "빈 응답"; aiFail[kind] = { key, at: Date.now(), why }; showFallback(box, kind, why); return; }
-    const cc = aiCache(); cc[kind] = { key, sig, text, at: Date.now(), src };
+    if (!text) { showRule(box, kind, why || "빈 응답"); return; }
+    const cc = aiCache(); cc[kind] = { key, sig, text, at: Date.now(), src: "Puter" };
     try { localStorage.setItem(AI_KEY, JSON.stringify(cc)); } catch (e) { /* 무시 */ }
-    box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석 · ${esc(src)}</p>`;
+    box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석 · Puter ${again}</p>`;
   }
   // 지금 보고 있는 분석 화면의 AI 분석을 채운다
   function aiRefresh() { if ($("#tabs .on")?.dataset.tab === "analysis") aiAuto(curAna(), false); }
@@ -1585,7 +1566,7 @@
     renderBeyora(); bvLoad();
     const N = await loadNews(!!more);
     const none = (t) => `<div class="nitem empty">${t}</div>`;
-    const auto = "한 시간마다 자동으로 모으고 무료 AI로 한글 번역·요약합니다";
+    const auto = "한 시간마다 자동 갱신";
     const held = S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker).filter((t) => !PURGED.has(t));
     const tks = held.filter((t) => !INS_SKIP.has(t.toUpperCase()) && !t.includes("="));
     // 서버 기사 + 이 브라우저가 받은 기사. 지금 보유한 종목 것만 쓴다
@@ -1605,7 +1586,7 @@
       nonew.length ? `${nonew.join(", ")}: 최근 한 달 사이 관련 기사가 없습니다.` : ""].filter(Boolean).join(" ");
     $("#newsMsg").textContent = busy || insMsg; $("#newsMsg").style.display = busy || insMsg ? "" : "none";
     const fu = N?.future_meta?.updated || N?.updated;
-    $("#newsNote").textContent = `${fu ? new Date(fu).toLocaleString() + " 수집" : ""} · ${auto}${N?.ai && N.ai !== "ok" ? ` (이번 번역 실패: ${N.ai})` : ""}. 제목을 누르면 원래 기사가 새 창에서 열리고, 읽은 기사는 다음에 새 기사로 바뀝니다.`;
+    $("#newsNote").textContent = `${fu ? new Date(fu).toLocaleString() + " 수집 · " : ""}한 시간마다 자동 갱신.`;
   }
 
   // ------------------------------------------------------------ 미래 설계 Beyora (블로그)
@@ -1626,14 +1607,15 @@
   }
   let BVR = null, bvLoading = null, bvBusy = false;
   // 모두의 조회수: data/config.json 의 views 중계(Cloudflare KV)가 있으면 거기서 센다. 안 되면 이 브라우저 몫만 더한다
-  let BVW = null;
+  let BVW = null, BVL = {}, BVC = {};
+  const bvApi = () => (S.config?.views ? S.config.views.replace(/\/views\/?$/, "") : "");
   async function bvViewsLoad() {
     const url = S.config?.views, ids = bv().posts.map((p) => p.id); if (!url || !ids.length) return;
     try {
       const got = {};
       for (let i = 0; i < ids.length; i += 50) {
         const r = await fetch(url + "?ids=" + encodeURIComponent(ids.slice(i, i + 50).join(",")), { cache: "no-store" }), j = await r.json();
-        if (!r.ok || !j.views) return; Object.assign(got, j.views);
+        if (!r.ok || !j.views) return; Object.assign(got, j.views); Object.assign(BVL, j.likes || {}); Object.assign(BVC, j.comments || {});
       }
       BVW = { ...(BVW || {}), ...got }; renderBeyora();
     } catch (e) { /* 중계가 없으면 이 브라우저 조회수로 */ }
@@ -1661,7 +1643,38 @@
   // 고정한 글은 맨 앞 (나중에 고정한 글이 위), 나머지는 고른 순서. 이전·다음 글은 고정과 상관없는 순서로
   const bvSorted = (D, pinFirst = true) => D.posts.filter((p) => bvS.cat === "all" || p.cat === bvS.cat)
     .sort((a, b) => (pinFirst ? (b.pinned || "").localeCompare(a.pinned || "") : 0) || (bvS.sort === "views" ? (b.views || 0) - (a.views || 0) : 0) || (a.created < b.created ? 1 : a.created > b.created ? -1 : 0));
-  const bvTime = (t) => (t ? new Date(t).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
+  const bvTime = (t) => { if (!t) return ""; const d = new Date(t), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+  // 공감 (이 브라우저에서 누른 글은 다시 누르면 취소)
+  const BV_LIKED = "beyora-liked";
+  function bvLike(id) {
+    if (!bvApi()) return;
+    const liked = lsGet(BV_LIKED, []), on = !liked.includes(id);
+    lsSet(BV_LIKED, on ? [...liked, id] : liked.filter((x) => x !== id)); BVL[id] = Math.max(0, (BVL[id] || 0) + (on ? 1 : -1)); renderBeyora();
+    fetch(bvApi() + "/like", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, d: on ? 1 : -1 }) })
+      .then((r) => (r.ok ? r.json() : Promise.reject())).then((j) => { BVL[id] = j.n; renderBeyora(); })
+      .catch(() => { lsSet(BV_LIKED, liked); BVL[id] = Math.max(0, (BVL[id] || 0) + (on ? -1 : 1)); renderBeyora(); toast("공감을 저장하지 못했습니다"); });
+  }
+  // 댓글: 익명, 비밀번호로 지움. 개발자(GitHub 토큰)는 비밀번호 없이 지움
+  const bvCm = { id: null, list: null, err: "", busy: false };
+  async function bvCmLoad(id) {
+    if (!bvApi()) return;
+    bvCm.id = id; bvCm.list = null; bvCm.err = "";
+    try { const r = await fetch(bvApi() + "/comments?id=" + encodeURIComponent(id), { cache: "no-store" }), j = await r.json(); if (!r.ok || !j.comments) throw 0; if (bvCm.id === id) { bvCm.list = j.comments; BVC[id] = j.comments.length; } }
+    catch (e) { if (bvCm.id === id) bvCm.err = "댓글을 불러오지 못했습니다."; }
+    if (bvS.view === "post" && bvS.id === id) renderBeyora();
+  }
+  async function bvCmPost(id, fd) {
+    const r = await fetch(bvApi() + fd.path, { method: "POST", headers: { "Content-Type": "application/json", ...(fd.tok ? { Authorization: "Bearer " + fd.tok } : {}) }, body: JSON.stringify({ id, ...fd.body }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "응답 " + r.status); return j;
+  }
+  function bvCmHtml(id) {
+    if (!bvApi()) return "";
+    const L = bvCm.id === id ? bvCm.list : null, dev = !!ghToken() && (!!GH || MODE === "local");
+    const items = L ? L.map((c) => `<div class="bvcm"><div class="row between"><span class="muted small">익명 · ${bvTime(c.at)}</span><button class="sm link" data-bvcmdel="${esc(c.cid)}">삭제</button></div><div class="t">${esc(c.text)}</div></div>`).join("") : "";
+    return `<div class="bvcms"><h3>댓글${L && L.length ? ` ${L.length}` : ""}</h3>${bvCm.err ? `<p class="muted small">${esc(bvCm.err)}</p>` : !L ? '<p class="muted small">불러오는 중…</p>' : items}
+      <div class="bvcmform"><textarea id="bvCmText" maxlength="1000" placeholder="익명으로 댓글 남기기"></textarea>
+      <div class="row"><input id="bvCmPw" type="password" placeholder="비밀번호 (삭제용)" autocomplete="new-password" maxlength="64"><button class="primary sm" data-bv="cmadd"${bvCm.busy ? " disabled" : ""}>등록</button></div></div>${dev ? '<p class="muted small">개발자: 비밀번호 없이 삭제 가능</p>' : ""}</div>`;
+  }
   const BV_IMG = /\.(jpe?g|png|gif|webp|avif|svg|bmp)(\?\S*)?$/i;
   const bvHost = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } };
   const bvThumb = (t) => { const m = String(t || "").match(/!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)|^\s*(https?:\/\/\S+\.(?:jpe?g|png|gif|webp|avif|svg|bmp)(?:\?\S*)?)\s*$/im); return m ? m[1] || m[2] : ""; };
@@ -1730,6 +1743,7 @@
   function renderBeyora() {
     const host = $("#bvBody"); if (!host) return;
     const D = bv(), can = bvCanWrite(), stat = bvS.msg ? `<p class="muted small bvstat">${esc(bvS.msg)}</p>` : "";
+    const keep = [$("#bvCmText")?.value || "", $("#bvCmPw")?.value || ""]; // 다시 그려도 쓰던 댓글은 남긴다
     $("#bvNew").style.display = bvS.view === "list" && can ? "" : "none";
     if (bvS.view === "edit" && can) {
       const p = bvS.id ? D.posts.find((x) => x.id === bvS.id) : null;
@@ -1752,8 +1766,10 @@
           <div style="margin-top:12px">${p.pinned ? '<span class="bvpin">📌 고정</span> ' : ""}<span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span>${p._local ? ' <span class="bvcat">이 브라우저에만</span>' : ""}</div>
           <h1>${esc(p.title || "(제목 없음)")}</h1>
           <div class="body md">${bvHtml(p.body)}</div>
-          <div class="bvmeta"><span>작성 ${bvTime(p.created)}${p.updated && p.updated !== p.created ? ` · 수정 ${bvTime(p.updated)}` : ""}</span><span>조회수 ${nf(p.views || 0)}</span></div>
+          <div class="bvmeta"><span>작성 ${bvTime(p.created)}${p.updated && p.updated !== p.created ? ` · 수정 ${bvTime(p.updated)}` : ""}</span><span class="row">조회수 ${nf(p.views || 0)}${BVC[p.id] ? ` · 댓글 ${nf(BVC[p.id])}` : ""}${bvApi() ? `<button class="sm bvlike${lsGet(BV_LIKED, []).includes(p.id) ? " on" : ""}" data-bv="like">♥ 공감 ${nf(BVL[p.id] || 0)}</button>` : ""}</span></div>
+          ${bvCmHtml(p.id)}
           <div class="bvnav">${nav(bvS.sort === "new" ? prev : next, "pv", bvS.sort === "new" ? "← 이전 글" : "← 앞 글")}${nav(bvS.sort === "new" ? next : prev, "nx", bvS.sort === "new" ? "다음 글 →" : "뒤 글 →")}</div></div>` + stat;
+        if ($("#bvCmText")) { $("#bvCmText").value = keep[0]; $("#bvCmPw").value = keep[1]; }
         return;
       }
       bvS.view = "list";
@@ -1766,7 +1782,7 @@
       + (custom && can ? `<p class="small" style="margin:0 0 8px"><button class="sm danger" data-bv="delcat">'${esc(custom.name)}' 카테고리 지우기</button> <span class="muted">글은 지워지지 않고 '전체'에 남습니다.</span></p>` : "")
       + (list.length ? `<div class="bvlist">${list.map((p) => { const th = bvThumb(p.body); return `<button type="button" class="bvpost${th ? " hasimg" : ""}${p.pinned ? " pinned" : ""}" data-bvgo="${esc(p.id)}">
           ${th ? `<img class="th" src="${esc(th)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="bvtags">${p.pinned ? '<span class="bvpin">📌 고정</span>' : ""}<span class="bvcat ${esc(p.cat)}">${esc(bvCatName(p.cat))}</span></span><span class="ttl">${esc(p.title || "(제목 없음)")}</span>
-          <span class="ex">${esc(bvExcerpt(p.body))}</span><span class="ft">${bvTime(p.created)} · 조회 ${nf(p.views || 0)}${p._local ? " · 이 브라우저에만" : ""}</span></button>`; }).join("")}</div>`
+          <span class="ex">${esc(bvExcerpt(p.body))}</span><span class="ft">${bvTime(p.created)} · 조회 ${nf(p.views || 0)}${BVC[p.id] ? ` · 댓글 ${nf(BVC[p.id])}` : ""}${BVL[p.id] ? ` · 공감 ${nf(BVL[p.id])}` : ""}${p._local ? " · 이 브라우저에만" : ""}</span></button>`; }).join("")}</div>`
         : `<p class="muted small">${BVR || !GH ? "아직 글이 없습니다." : "글을 불러오는 중…"}${can && (BVR || !GH) ? " '글쓰기'로 지난 투자를 돌아보고(과거), 지금의 생각을 적고(현재), 앞으로의 계획을 세워(미래) 보세요." : ""}</p>`)
       + (localN && !bvRemoteOk() && GH ? `<p class="muted small">이 브라우저에만 있는 글 ${localN}개는 설정 > 개발자용에 GitHub 토큰을 넣으면 저장소로 올라갑니다.</p>` : "") + stat;
   }
@@ -1775,7 +1791,7 @@
     // 같은 사람이 한 번 열어 둔 동안 여러 번 봐도 한 번만 센다
     let seen = []; try { seen = JSON.parse(sessionStorage.getItem("beyora-seen") || "[]"); } catch (e) { /* 무시 */ }
     if (!seen.includes(id)) { try { sessionStorage.setItem("beyora-seen", JSON.stringify([...seen, id])); } catch (e) { /* 무시 */ } bvHit(id); }
-    bvS.view = "post"; bvS.id = id; bvS.msg = ""; renderBeyora();
+    bvS.view = "post"; bvS.id = id; bvS.msg = ""; bvCm.id = null; renderBeyora(); bvCmLoad(id);
     $("#beyora").scrollIntoView({ block: "start", behavior: "smooth" });
   }
   // 이 브라우저의 글 묶음을 고친다 (저장소에 올리기 전 임시 보관)
@@ -1789,9 +1805,12 @@
     const go = e.target.closest("[data-bvgo]"); if (go) { if (go.dataset.bvgo) bvOpen(go.dataset.bvgo); return; }
     const c = e.target.closest("[data-bvcat]"); if (c) { bvS.cat = c.dataset.bvcat; renderBeyora(); return; }
     const so = e.target.closest("[data-bvsort]"); if (so) { bvS.sort = so.dataset.bvsort; lsSet(BV_SORT, bvS.sort); renderBeyora(); return; }
+    const cd = e.target.closest("[data-bvcmdel]"); if (cd) { bvCmDel(bvS.id, cd.dataset.bvcmdel); return; }
     const b = e.target.closest("[data-bv]"); if (!b) return;
     const a = b.dataset.bv;
     if (a === "list") { bvS.view = "list"; renderBeyora(); }
+    else if (a === "like") bvLike(bvS.id);
+    else if (a === "cmadd") bvCmAdd(bvS.id);
     else if (a === "edit") { bvS.view = "edit"; renderBeyora(); }
     else if (a === "pin") { // 고정·해제는 글쓴이(토큰 있는 브라우저)만. 수정 날짜는 그대로 두고 pinAt 으로 최신을 가린다
       const old = bv().posts.find((x) => x.id === bvS.id); if (!old) return;
@@ -1830,6 +1849,26 @@
       bvLocalEdit((L) => { L.cats = L.cats.filter((x) => x.id !== id); }); bvS.cat = "all"; renderBeyora(); bvSync({ delcat: id });
     }
   }
+  async function bvCmAdd(id) {
+    const text = $("#bvCmText").value.trim(), pw = $("#bvCmPw").value;
+    if (!text) return toast("댓글을 적어 주세요");
+    if (pw.length < 4) return toast("비밀번호를 4자 이상 넣어 주세요");
+    bvCm.busy = true; renderBeyora();
+    try { const j = await bvCmPost(id, { path: "/comments", body: { text, pw } }); if (bvCm.id === id && bvCm.list) bvCm.list.push(j.comment); BVC[id] = (BVC[id] || 0) + 1; toast("댓글을 남겼습니다"); if ($("#bvCmText")) { $("#bvCmText").value = ""; $("#bvCmPw").value = ""; } }
+    catch (e) { toast("댓글 저장 실패: " + e.message); }
+    bvCm.busy = false; renderBeyora();
+  }
+  async function bvCmDel(id, cid) {
+    const tok = GH || MODE === "local" ? ghToken() : "";
+    // 개발자 토큰이 있으면 비밀번호 없이
+    let pw = "";
+    if (!tok) { pw = prompt("댓글 비밀번호") || ""; if (!pw) return; }
+    else if (!confirm("이 댓글을 지울까요?")) return;
+    try { await bvCmPost(id, { path: "/comments/del", body: { cid, ...(pw ? { pw } : {}) }, tok }); }
+    catch (e) { toast("삭제 실패: " + e.message); return; }
+    if (bvCm.id === id && bvCm.list) bvCm.list = bvCm.list.filter((c) => c.cid !== cid); BVC[id] = Math.max(0, (BVC[id] || 1) - 1);
+    toast("댓글을 지웠습니다"); renderBeyora();
+  }
   const bvExport = () => { const D = bv(); D.posts.forEach((p) => delete p._local); return D; };
   // 내보내기 파일에 담긴 글을 합친다 (같은 글은 더 최근에 고친 쪽)
   function bvMerge(x) {
@@ -1845,7 +1884,7 @@
   // ------------------------------------------------------------ 비중안 비교
   async function runAlloc() {
     const st = $("#allocStatus"), btn = $("#btnAlloc");
-    if (!S.prices.QQQ) { st.textContent = "QQQ 시세가 없어 비교할 수 없습니다. 시세 수집에서 QQQ를 수집 목록에 넣어 주세요."; return; }
+    if (!S.prices.QQQ) { st.textContent = "QQQ 시세가 없어 비교할 수 없습니다. 설정에서 QQQ를 수집 목록에 넣어 주세요."; return; }
     btn.disabled = true; st.textContent = "계산 중... (안 5개)"; await new Promise((r) => setTimeout(r, 30));
     try {
       const g = S.state.goal, m = S.state.model, { rows } = valuation();
@@ -2034,8 +2073,8 @@
   function bind() {
     $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
     $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
-    $("#btnCollect").onclick = () => collect(false);
-    $("#btnQuotes").onclick = () => collect(true);
+    $("#btnCollect").onclick = () => collect(false).finally(foldHold);
+    $("#btnQuotes").onclick = () => collect(true).finally(foldHold);
     $("#autoRefresh").value = String(S.state.ui.auto_refresh_min || 0);
     $("#autoRefresh").onchange = (e) => { S.state.ui.auto_refresh_min = +e.target.value; setAuto(+e.target.value); save(false); };
     $("#holdTable").addEventListener("input", onHoldEdit);
@@ -2100,16 +2139,16 @@
     try { await reload(); }
     catch (e) { document.body.innerHTML = `<div class="card" style="margin:40px auto;max-width:640px"><h2>데이터를 불러오지 못했습니다</h2><p>내 PC에서 쓸 때는 <b>실행 파일</b>(Windows: <code>실행-Windows.bat</code>, Mac: <code>실행-Mac.command</code>)로 열어야 합니다. 웹 버전은 GitHub Actions의 첫 수집이 끝난 뒤 열립니다.</p><p class="muted small">${esc(e.message)}</p></div>`; return; }
     if (S.purged) save(false);
-    bind(); renderAll();
+    bind(); renderAll(); foldHold();
     setAuto(S.state.ui.auto_refresh_min || 0);
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; const a = localStorage.getItem("ana"); if (a && $(`#anaNav button[data-a="${a}"]`)) $$("#anaNav button").forEach((b) => b.classList.toggle("on", b.dataset.a === a)); } catch (e) { /* 무시 */ }
     showTab(tab);
     if (MODE === "static") {
       $("#btnQuotes").style.display = "none";
-      $("#modeNote").innerHTML = `시세는 평일 30분마다 자동으로 모이고, '시세 수집'을 누르면 지금 시세를 바로 받습니다. 입력한 종목·수량·매수 단가는 <b>이 브라우저에만</b> 저장됩니다.`;
+      $("#modeNote").innerHTML = `시세는 평일 30분마다 자동 수집, '시세 수집'을 누르면 바로 받음. 입력값은 <b>이 브라우저에만</b> 저장.`;
       $("#modeNote").style.display = "block";
       logLine(`웹 데이터 수집 시각: ${S.dataUpdated ? new Date(S.dataUpdated).toLocaleString() : "-"}`);
-      if (S.firstVisit) logLine("처음 여셨습니다. 보유 종목의 수량(과 매수 단가)을 넣어 주세요. 저장해 둔 파일이 있으면 아래 설정의 '입력값 불러오기'를 쓰면 됩니다.", false);
+      if (S.firstVisit) logLine("처음 여셨습니다. 보유 종목의 수량을 넣어 주세요. 저장해 둔 파일이 있으면 아래 '입력값 불러오기'.", false);
       const miss = missingTickers();
       if (miss.length) {
         if (GH && ghToken()) ghCollect(miss);

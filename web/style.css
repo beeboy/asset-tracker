@@ -25,7 +25,7 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 0.8235rem/1.5 -
 header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: var(--topbar); z-index: 5; flex-wrap: wrap; }
 .brand { flex: none; } header .logo { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .logo { font-weight: 800; font-size: 1.1176rem; letter-spacing: .3px; color: var(--accent); }
-.slogan { font-size: 0.7059rem; color: var(--muted); letter-spacing: .4px; text-align: center; margin: 0; padding: 4px 10px max(16px, env(safe-area-inset-bottom)); }
+.slogan { font-size: 0.7059rem; color: var(--muted); letter-spacing: .4px; text-align: center; margin: 0; padding: 0 10px max(10px, env(safe-area-inset-bottom)); }
 .headkpi { flex: 1; display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.7647rem; }
 .headkpi b { font-size: 0.8824rem; }
 nav { display: flex; gap: 2px; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -57,7 +57,8 @@ table.grid th, table.grid td { padding: 5px 7px; border-bottom: 1px solid var(--
 table.grid th { color: var(--muted); font-weight: 600; font-size: 0.7059rem; }
 table.grid td.l, table.grid th.l { text-align: left; }
 table.grid input { width: 7.5em; text-align: right; padding: 3px 5px; }
-table.grid input[data-f="shares"], table.grid input[data-f="avg_cost"], table.grid input[data-f="price"] { width: 5.6em; }
+table.grid input[data-f="shares"] { width: 3.8em; }
+table.grid input[data-f="avg_cost"], table.grid input[data-f="price"] { width: 5.6em; }
 table.grid input.wide { width: 14em; text-align: left; }
 table.grid input.date { width: 9.5em; }
 table.grid select { padding: 3px 4px; }
@@ -66,6 +67,7 @@ table.grid select { padding: 3px 4px; }
 .addrow { margin-top: 10px; flex-wrap: nowrap; gap: 6px; }
 .addrow #addTicker { flex: 1 1 8em; min-width: 0; }
 .addrow input.num { flex: 0 0 5.6em; width: 5.6em; min-width: 0; text-align: right; }
+.addrow #addShares { flex-basis: 3.8em; width: 3.8em; }
 .addrow button { flex: 0 0 auto; }
 button.sm { padding: 4px 9px; font-size: 0.7353rem; }
 .sechead { margin: 22px 2px 8px; font-size: 0.8235rem; color: var(--muted); }
@@ -93,7 +95,10 @@ svg.chart .muted { fill: var(--muted); }
 .formgrid label { justify-content: space-between; } .formgrid input { width: 7em; text-align: right; }
 .formgrid .desc { display: block; font-size: 0.6471rem; color: var(--muted); }
 .filebtn { border: 1px solid var(--line); border-radius: 7px; padding: 6px 12px; cursor: pointer; } .filebtn input { display: none; }
-footer { text-align: center; padding: 10px; }
+footer { text-align: center; padding: 6px 10px 0; }
+.holddet > summary { list-style: none; cursor: pointer; gap: 8px; } .holddet > summary::-webkit-details-marker { display: none; }
+.holddet > summary h2 { margin: 0; } .holddet > summary h2::before { content: "▸ "; color: var(--muted); font-size: .8em; } .holddet[open] > summary h2::before { content: "▾ "; }
+.holddet[open] > summary { margin-bottom: 8px; }
 .probbar { display: flex; align-items: center; gap: 8px; margin: 4px 0; } .probbar .b { flex: 1; height: 14px; background: var(--bg); border-radius: 4px; overflow: hidden; } .probbar .b i { display: block; height: 100%; background: var(--accent); }
 .probbar span:first-child { width: 9em; font-size: 0.7059rem; } .probbar span:last-child { width: 3.5em; text-align: right; font-weight: 600; }
 .toast { position: fixed; right: 16px; bottom: 16px; background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 0.7647rem; opacity: 0; transition: opacity .3s; z-index: 10; }
@@ -161,9 +166,9 @@ details.card.opt { padding: 10px 16px; }
 .futrow { border-top: 1px solid var(--line); padding-top: 4px; } .futrow:first-child { border-top: 0; }
 .fview { margin: 0 0 6px; } .ytpts { margin: 4px 0 8px 18px; padding: 0; } .ytpts li { margin: 3px 0; }
 #xfNav { margin-bottom: 4px; }
-.xfboxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 8px; }
-.xfbox { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
-.xfbox .xfh { font-weight: 600; font-size: 0.7647rem; margin-bottom: 6px; } .xfbox .xfh .muted { font-weight: 400; font-size: 0.6471rem; }
+.xfboxes { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.xfbox { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; display: flex; align-items: center; gap: 10px; }
+.xfbox .xfh { font-weight: 600; font-size: 0.7647rem; flex: none; min-width: 2.6em; }
 .xfbox .seg { gap: 4px; }
 .evcat { grid-column: 1 / -1; font-weight: 600; font-size: 0.7647rem; margin-top: 6px; } .evcat:first-child { margin-top: 0; }
 tr.subrow td { font-size: 0.7059rem; } tr.subrow td.l { padding-left: 14px; color: var(--muted); }
@@ -222,3 +227,10 @@ a.bvlink::after { content: "↗"; font-size: 0.6471rem; } a.bvlink:hover { backg
 .bvedit input, .bvedit select, .bvedit textarea { width: 100%; font: inherit; }
 .bvedit input.t { font-size: 0.9412rem; font-weight: 600; }
 .bvedit textarea { min-height: 260px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); line-height: 1.6; resize: vertical; }
+.bvmeta .row { gap: 6px; align-items: center; }
+.bvlike { padding: 2px 9px; border-radius: 999px; font-size: 0.7059rem; } .bvlike.on { color: #e0245e; border-color: #e0245e; }
+.bvcms { margin-top: 12px; } .bvcms h3 { font-size: 0.8235rem; margin: 0 0 6px; }
+.bvcm { border-top: 1px solid var(--line); padding: 6px 0; } .bvcm .t { white-space: pre-wrap; word-break: break-word; font-size: 0.7647rem; }
+.bvcm button.link { background: none; border: 0; padding: 0 2px; color: var(--muted); font-size: 0.6471rem; cursor: pointer; }
+.bvcmform { margin-top: 8px; display: grid; gap: 6px; } .bvcmform textarea { width: 100%; box-sizing: border-box; min-height: 56px; resize: vertical; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.bvcmform .row { gap: 6px; } .bvcmform input { flex: 1; min-width: 0; }

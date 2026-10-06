@@ -10,13 +10,13 @@
 - 주소: `https://<GitHub 아이디>.github.io/asset-tracker/`
 - 시세는 GitHub Actions(`.github/workflows/collect.yml`)가 평일 30분마다 Yahoo Finance 에서 받아 `data/` 에 커밋합니다.
 - 사용자가 넣는 것은 **종목·수량·매수 단가(선택)** 뿐이고, 나머지는 기본값으로 자동 계산합니다. 세부 선택은 각 화면의 *옵션*에 접혀 있습니다.
-- 입력값은 브라우저(localStorage)에만 저장되고 저장소에는 올라가지 않습니다. 다른 기기로 옮길 때는 시세 수집 아래 설정의 *내보내기 → 불러오기*.
+- 입력값은 브라우저(localStorage)에만 저장되고 저장소에는 올라가지 않습니다. 다른 기기로 옮길 때는 설정 탭의 *내보내기 → 불러오기*.
 - 새 종목은 추가하는 순간 브라우저가 공개 CORS 중계를 거쳐 Yahoo 시세를 바로 받습니다(토큰 불필요). 안정적으로 쓰려면 개발자가 `proxy/cloudflare-worker.js` 를 배포하고 `data/config.json` 의 `proxy` 에 주소를 넣으세요.
 - 화면: 자산 추이(첫 화면) 분석·전략(종목별 전략, 칼만·EMA 추세, 3년 전망, 외부 요인, 환율, 비중안 비교, 화면마다 무료 AI 자동 분석) 인사이트(미래 가치 인사이트 4개, 미래 설계 naeilo 글: 저장소 data/beyora.json 에 저장, 개발자 토큰으로 쓰고 누구나 읽기, 이미지·링크 주소 지원, 최신순·조회순 정렬) 시세 수집(아래에 설정).
 - 인사이트 뉴스는 `.github/workflows/news.yml` 이 한 시간마다 `python server.py --news`(news.py)로 공개 RSS·Yahoo 뉴스를 모아 AI 중계로 한글 번역·요약해 `data/news.json` 에 커밋합니다(키 불필요).
 - 외부 요인 분석용 대리 지표(SPY, ^TNX, CL=F, GC=F, DBC)도 시세 수집 때 함께 받습니다.
 - AI 분석 순서: 개발자 중계(`data/config.json` 의 `ai`, `proxy/cloudflare-worker.js` 의 `/ai` 가 Gemini 무료 등급 키 `GEMINI_KEY` 로 답함) → Puter(사용자가 'Puter 무료 AI로 분석'을 한 번 눌러 무료 계정을 확인하면 이후 자동) → Pollinations. 모두 안 되면 같은 계산값으로 만든 규칙 기반 해설을 보여 줍니다.
-- 개발자용: 시세 수집 아래 설정의 *개발자용 GitHub 연결*에 토큰(Fine-grained, 이 저장소만, Actions: Read and write)을 넣으면 '시세 수집'이 Actions 수집을 직접 실행합니다.
+- 개발자용: 설정 탭의 *개발자용 GitHub 연결*에 토큰(Fine-grained, 이 저장소만, Actions: Read and write)을 넣으면 '시세 수집'이 Actions 수집을 직접 실행합니다.
 
 처음 한 번 설정:
 1. Settings → Pages → Source: **Deploy from a branch**, Branch: `main` / `(root)` → Save

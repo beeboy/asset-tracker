@@ -7,23 +7,78 @@
 // 3) 조회수 (/views): Beyora 글 조회수를 모든 사람 것으로 합친다. Workers KV 무료 등급(하루 쓰기 1,000번)으로 충분.
 //       Storage & Databases → KV → Create (이름 아무거나) → 이 Worker 의 Settings → Bindings → Add → KV namespace,
 //       Variable name 을 VIEWS 로 정하고 방금 만든 KV 를 고른 뒤 Deploy. data/config.json 의 "views" 에 "https://<이름>.workers.dev/views".
+// 4) 댓글 (/comments)·공감 (/like): 같은 VIEWS KV 를 쓴다. 익명 댓글은 비밀번호(해시만 저장)로 지우고,
+//       개발자는 저장소에 쓰기 권한이 있는 GitHub 토큰(앱의 설정 > 개발자용)으로 비밀번호 없이 지운다.
+//       선택: 변수 REPO (기본 beeboy/asset-tracker), 비밀값 SALT (비밀번호 해시용), ADMIN_KEY (토큰 대신 쓸 관리자 키).
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
 export default {
   async fetch(req, env) {
-    const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
+    const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization" };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const u = new URL(req.url);
     const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
+    const okId = (id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(id);
+    const noKv = () => out({ error: "중계에 VIEWS KV 연결이 없습니다 (Settings → Bindings)" }, 400);
+    if (u.pathname === "/like") {
+      // POST /like {"id":"a","d":1|-1} → 공감 수 { id, n }
+      if (!env.VIEWS) return noKv();
+      if (req.method !== "POST") return out({ error: "POST 만 받습니다" }, 400);
+      const { id, d } = await req.json().catch(() => ({}));
+      if (!okId(id)) return out({ error: "글 id 가 맞지 않습니다" }, 400);
+      const n = Math.max(0, (Number(await env.VIEWS.get("l:" + id)) || 0) + (d === -1 ? -1 : 1));
+      await env.VIEWS.put("l:" + id, String(n));
+      return out({ id, n });
+    }
+    if (u.pathname === "/comments" || u.pathname === "/comments/del") {
+      // GET /comments?id=a → { comments: [{ cid, at, text }] }
+      // POST /comments {"id","text","pw"} → { comment },  POST /comments/del {"id","cid","pw"} (또는 Authorization: Bearer <GitHub 토큰>) → { ok }
+      if (!env.VIEWS) return noKv();
+      const load = async (id) => { try { return JSON.parse((await env.VIEWS.get("c:" + id)) || "[]"); } catch (e) { return []; } };
+      const hash = async (cid, pw) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.SALT || "naeilo"}|${cid}|${pw}`)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+      const pub = (c) => ({ cid: c.cid, at: c.at, text: c.text });
+      if (req.method === "GET") {
+        const id = u.searchParams.get("id");
+        if (!okId(id)) return out({ error: "글 id 가 맞지 않습니다" }, 400);
+        return out({ comments: (await load(id)).map(pub) });
+      }
+      if (req.method !== "POST") return out({ error: "GET 또는 POST" }, 400);
+      const b = await req.json().catch(() => ({}));
+      if (!okId(b.id)) return out({ error: "글 id 가 맞지 않습니다" }, 400);
+      const list = await load(b.id);
+      if (u.pathname === "/comments") {
+        const text = String(b.text || "").trim(), pw = String(b.pw || "");
+        if (!text || text.length > 1000) return out({ error: "댓글은 1~1,000자" }, 400);
+        if (pw.length < 4 || pw.length > 64) return out({ error: "비밀번호는 4자 이상" }, 400);
+        if (list.length >= 500) return out({ error: "댓글이 너무 많습니다" }, 400);
+        const cid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const c = { cid, at: new Date().toISOString(), text, h: await hash(cid, pw) };
+        list.push(c); await env.VIEWS.put("c:" + b.id, JSON.stringify(list));
+        return out({ comment: pub(c) });
+      }
+      const i = list.findIndex((c) => c.cid === b.cid);
+      if (i < 0) return out({ error: "댓글이 없습니다" }, 404);
+      let ok = !!b.pw && (await hash(b.cid, String(b.pw))) === list[i].h;
+      const tok = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+      if (!ok && tok && env.ADMIN_KEY && tok === env.ADMIN_KEY) ok = true;
+      if (!ok && tok) { // 개발자: 저장소에 쓰기 권한이 있는 GitHub 토큰이면 비밀번호 없이
+        const r = await fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}`, { headers: { Authorization: "Bearer " + tok, "User-Agent": "naeilo-worker", Accept: "application/vnd.github+json" } });
+        const j = await r.json().catch(() => ({}));
+        ok = r.ok && !!(j.permissions?.push || j.permissions?.admin);
+      }
+      if (!ok) return out({ error: "비밀번호가 맞지 않습니다" }, 403);
+      list.splice(i, 1); await env.VIEWS.put("c:" + b.id, JSON.stringify(list));
+      return out({ ok: true });
+    }
     if (u.pathname === "/views") {
-      // GET /views?ids=a,b → { views: { a: 3, b: 0 } },  POST /views {"id":"a"} → 한 번 더하고 { id, n }
-      if (!env.VIEWS) return out({ error: "중계에 VIEWS KV 연결이 없습니다 (Settings → Bindings)" }, 400);
-      const okId = (id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(id);
+      // GET /views?ids=a,b → { views: { a: 3 }, likes: { a: 1 }, comments: { a: 2 } },  POST /views {"id":"a"} → 한 번 더하고 { id, n }
+      if (!env.VIEWS) return noKv();
       if (req.method === "GET") {
         const ids = [...new Set((u.searchParams.get("ids") || "").split(","))].filter(okId).slice(0, 100);
-        const vals = await Promise.all(ids.map((id) => env.VIEWS.get("v:" + id)));
-        return out({ views: Object.fromEntries(ids.map((id, i) => [id, Number(vals[i]) || 0])) });
+        const [vals, lk, cm] = await Promise.all(["v:", "l:", "c:"].map((p) => Promise.all(ids.map((id) => env.VIEWS.get(p + id)))));
+        const cnt = (x) => { try { return JSON.parse(x || "[]").length; } catch (e) { return 0; } };
+        return out({ views: Object.fromEntries(ids.map((id, i) => [id, Number(vals[i]) || 0])), likes: Object.fromEntries(ids.map((id, i) => [id, Number(lk[i]) || 0])), comments: Object.fromEntries(ids.map((id, i) => [id, cnt(cm[i])])) });
       }
       if (req.method === "POST") {
         const { id } = await req.json().catch(() => ({}));

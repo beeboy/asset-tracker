@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="naeilo">
 <link rel="manifest" href="manifest.json">
 <title>naeilo</title>
-<link rel="stylesheet" href="style.css?v=20261005u">
+<link rel="stylesheet" href="style.css?v=20261006a">
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
 <body>
@@ -24,23 +24,20 @@
   <button data-tab="dash" class="on">자산 추이</button>
   <button data-tab="analysis">분석·전략</button>
   <button data-tab="insight">인사이트</button>
-  <button data-tab="quotes">시세 수집</button>
+  <button data-tab="quotes">설정</button>
 </nav>
 <main>
   <section id="tab-quotes" class="tab">
     <div class="card">
-      <div class="row between">
-        <h2>보유 종목</h2>
-        <div class="muted small" id="fxLine"></div>
-      </div>
-      <div class="tablewrap"><table id="holdTable" class="grid"></table></div>
+      <details id="holdDet" class="holddet" open><summary class="row between"><h2>보유 종목</h2><div class="muted small" id="fxLine"></div></summary>
+      <div class="tablewrap"><table id="holdTable" class="grid"></table></div></details>
       <div class="row addrow">
         <input id="addTicker" placeholder="종목 (AAPL, 005930.KS)" autocapitalize="characters" autocomplete="off">
         <input id="addShares" class="num" type="text" inputmode="decimal" placeholder="수량">
         <input id="addAvg" class="num" type="text" inputmode="decimal" placeholder="매수 단가">
         <button id="btnAdd" class="primary sm">종목 추가</button>
       </div>
-      <p class="muted small">입력은 <b>종목·수량·매수 단가</b>뿐입니다. 시세·환율·평가액·전망은 자동입니다. 매수 단가는 선택이며 넣으면 손익이 나옵니다(현지 통화 기준). 한국 주식은 <code>005930.KS</code>, 코스닥은 <code>.KQ</code>를 붙입니다.</p>
+      <p class="muted small">입력은 <b>종목·수량·매수 단가</b>(선택, 넣으면 손익 표시). 한국 주식은 <code>005930.KS</code>, 코스닥은 <code>.KQ</code>.</p>
     </div>
     <div class="card">
       <div class="row between">
@@ -60,12 +57,12 @@
     </div>
     <h2 class="sechead">설정</h2>
     <details class="card opt"><summary>입력값 저장·불러오기 (백업, 다른 기기로 옮기기)</summary>
-      <p class="small">웹 버전에서는 입력값이 이 브라우저에만 저장됩니다. 다른 기기로 옮기거나 백업하려면 내보내기 해 두세요. 내 PC 실행 판은 프로그램 폴더의 <code>data/</code>에 저장됩니다.</p>
+      <p class="small">입력값은 이 브라우저에만 저장. 다른 기기로 옮기거나 백업하려면 내보내기.</p>
       <div class="row"><button id="btnExport">입력값 내보내기 (JSON)</button><label class="filebtn">입력값 불러오기<input id="fileImport" type="file" accept=".json"></label></div>
     </details>
     <details class="card opt"><summary>표시 옵션</summary>
-      <p class="small"><label><input type="checkbox" id="optAi"> AI 자동 분석 사용 (분석·전략의 각 화면을 열 때 무료 AI에 자동으로 질문)</label></p>
-      <p class="small"><label><input type="checkbox" id="optManual"> 보유 종목 표에 "현재가 직접 입력" 칸 보이기 (시세가 없는 시간대에 현재가를 손으로 넣을 때)</label></p>
+      <p class="small"><label><input type="checkbox" id="optAi"> 화면별 해설 보이기</label></p>
+      <p class="small"><label><input type="checkbox" id="optManual"> 보유 종목 표에 "현재가 직접 입력" 칸 보이기</label></p>
     </details>
     <details class="card opt"><summary>모형 설정 (옵션, 기본값 그대로 써도 됨)</summary>
       <div class="formgrid" id="modelForm" style="margin-top:10px"></div>
@@ -74,12 +71,13 @@
     <details class="card opt" id="devCard"><summary>개발자용: GitHub 연결</summary>
       <div id="ghBox" style="margin-top:8px"></div>
     </details>
+    <footer class="muted small" id="footer"></footer>
   </section>
 
 
   <!-- 자산 추이 -->
   <section id="tab-dash" class="tab on">
-    <div class="card" id="dashEmpty" style="display:none"><b>보유 수량을 넣어 주세요.</b> <span class="small">시세 수집 화면에서 종목별 수량(과 매수 단가)만 넣으면 나머지는 자동으로 계산됩니다.</span> <button class="primary" onclick="document.querySelector('#tabs button[data-tab=quotes]').click()">수량 입력하러 가기</button></div>
+    <div class="card" id="dashEmpty" style="display:none"><b>보유 수량을 넣어 주세요.</b> <span class="small">설정에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" onclick="document.querySelector('#tabs button[data-tab=quotes]').click()">수량 입력하러 가기</button></div>
     <div class="kpis" id="goalKpis"></div>
     <details class="card opt" id="goalOpt"><summary>목표 수정 (옵션)</summary>
       <div class="row wrap goalrow">
@@ -110,7 +108,7 @@
       <div id="histChart" class="chartbox"></div>
       <p class="muted small" id="histNote"></p>
     </div>
-    <div class="card aicard"><div class="row between wrap"><h2>AI 분석: 과거 3년 + 미래</h2><button data-aire="dash" class="sm">다시 분석</button></div><div id="aiOut-dash" class="aiout small"></div></div>
+    <div class="card aicard"><div class="row between wrap"><h2>분석: 과거 3년 + 미래</h2><button data-aire="dash" class="sm">다시 분석</button></div><div id="aiOut-dash" class="aiout small"></div></div>
     <div class="card">
       <h2>기간 수익률 (원화, 편입 효과 제외)</h2>
       <div class="tablewrap"><table id="periodTable" class="grid"></table></div>
@@ -147,10 +145,10 @@
       <div class="card"><h2>포트폴리오 진단</h2><div id="stratSummary"></div></div>
       <div id="stratCards" class="stratgrid"></div>
       <div class="card" id="aiAutoCard">
-        <div class="row between wrap"><h2>AI 자동 전략 분석</h2><button data-aire="strategy" class="sm">다시 분석</button></div>
+        <div class="row between wrap"><h2>자동 전략 분석</h2><button data-aire="strategy" class="sm">다시 분석</button></div>
         <div id="aiOut-strategy" class="aiout small"></div>
       </div>
-      <p class="muted small">추세 판정, 비중, 변동성, 전망 확률, 다가오는 사건을 규칙으로 조합한 자동 의견입니다. 확률 모형의 결과이며 투자 권유가 아닙니다.</p>
+      <p class="muted small">추세·비중·변동성·전망 확률·다가오는 사건으로 만든 규칙 기반 의견. 투자 권유 아님.</p>
     </div>
 
     <div class="ana" id="ana-trend" style="display:none">
@@ -165,9 +163,9 @@
       <div class="card">
         <h2>종목별 현재 상태</h2>
         <div class="tablewrap"><table id="sigTable" class="grid"></table></div>
-        <p class="muted small">칼만 필터: 로그가격을 "수준 + 기울기" 상태로 보고 잡음을 걸러 추세를 추정합니다(잡음 분산은 최대우도 격자 탐색). 기울기 z = 연 기울기 ÷ 추정 표준편차. 추세 판정은 가격&gt;EMA200, EMA50&gt;EMA200, z&gt;1 중 몇 개가 맞는지로 정합니다.</p>
+        <p class="muted small">로그가격을 "수준 + 기울기" 상태로 보고 잡음을 걸러 추세 추정(잡음 분산은 최대우도 격자 탐색). 기울기 z = 연 기울기 ÷ 추정 표준편차. 추세 판정은 가격&gt;EMA200, EMA50&gt;EMA200, z&gt;1 중 몇 개가 맞는지로 정함.</p>
       </div>
-      <div class="card aicard"><div class="row between wrap"><h2>AI 추세 해설</h2><button data-aire="trend" class="sm">다시 분석</button></div><div id="aiOut-trend" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>추세 해설</h2><button data-aire="trend" class="sm">다시 분석</button></div><div id="aiOut-trend" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-forecast" style="display:none">
@@ -177,7 +175,6 @@
         <div class="row seg wrap" id="fcTk" style="margin-top:8px"></div>
         <div id="fcChart" class="chartbox" style="margin-top:8px"></div>
         <p class="small" id="fcViewNote"></p>
-        <p class="muted small">진한 띠 25~75%, 옅은 띠 5~95%, 실선은 중앙값. 회색 점선은 외부 요인 미반영 중앙값, 주황 점선은 목표 금액과 목표를 정확히 맞추는 복리 경로(전체일 때). 아래 삼각형은 선택한 요인의 사건 날짜. 오른쪽 위 버튼으로 외부 요인을 빼거나 거시·기업·수급만 넣어 보고, 아래 줄에서 전체 포트폴리오나 종목(현지 통화 가격, 로그 눈금)을 고릅니다. 아래 두 상자도 같이 바뀝니다.</p>
       </div>
       <div class="grid2">
         <div class="card"><h2 id="fcYearsTitle">목표 도달 확률 (연도별 누적)</h2><div id="fcYears"></div></div>
@@ -185,20 +182,20 @@
       </div>
       <details class="card"><summary><b>모형에 쓴 값</b></summary>
         <div class="tablewrap"><table id="fcParams" class="grid"></table></div>
-        <p class="muted small">기대수익률은 과거 평균을 사전값(시세 수집 아래 설정 → 모형 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다. 스무딩·추세 추종 시나리오는 3년 스무딩 또는 칼만·EMA 추세의 성장률이 중앙값이 되도록 하고(연 -60%~+230% 범위로 제한), 이력이 1년 미만이면 기준 시나리오와 섞습니다.</p>
+        <p class="muted small">기대수익률은 과거 평균을 사전값(설정 → 모형 설정) 쪽으로 수축한 값입니다. 이력이 짧을수록 사전값 비중이 커집니다. 충격은 다변량 t 분포(두꺼운 꼬리)로 만들고 환율도 함께 움직입니다. 스무딩·추세 추종 시나리오는 3년 스무딩 또는 칼만·EMA 추세의 성장률이 중앙값이 되도록 하고(연 -60%~+230% 범위로 제한), 이력이 1년 미만이면 기준 시나리오와 섞습니다.</p>
       </details>
-      <div class="card aicard"><div class="row between wrap"><h2>AI 전망 해설</h2><button data-aire="forecast" class="sm">다시 분석</button></div><div id="aiOut-forecast" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>전망 해설</h2><button data-aire="forecast" class="sm">다시 분석</button></div><div id="aiOut-forecast" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-events" style="display:none">
       <div class="card">
         <div class="xfboxes" id="xfNav">
-          <div class="xfbox"><div class="xfh">📊 거시 <span class="muted">Macro</span></div><div class="row seg wrap"><button data-c="fin">금융·통화</button><button data-c="comm">원자재</button><button data-c="geo">정치·지정학</button></div></div>
-          <div class="xfbox"><div class="xfh">🏢 기업 <span class="muted">Company</span></div><div class="row seg wrap"><button data-c="earn" class="on">실적·공시</button><button data-c="product">신제품·리콜</button><button data-c="kpi">주요 KPI</button></div></div>
-          <div class="xfbox"><div class="xfh">💰 수급 <span class="muted">Flow</span></div><div class="row seg wrap"><button data-c="inst">기관·외국인 매매 동향</button></div></div>
+          <div class="xfbox"><div class="xfh">거시</div><div class="row seg wrap"><button data-c="fin">금융·통화</button><button data-c="comm">원자재</button><button data-c="geo">정치·지정학</button></div></div>
+          <div class="xfbox"><div class="xfh">기업</div><div class="row seg wrap"><button data-c="earn" class="on">실적·공시</button><button data-c="product">신제품·리콜</button><button data-c="kpi">주요 KPI</button></div></div>
+          <div class="xfbox"><div class="xfh">수급</div><div class="row seg wrap"><button data-c="inst">기관·외국인 매매 동향</button></div></div>
         </div>
         <div id="evTiles" class="evtiles"></div>
-        <p class="muted small">날짜·크기는 추정치입니다. 타일을 누르면 그 사건을 전망에 넣거나 뺍니다. 금리·유가·금·원자재·정치·전쟁 같은 요인은 요인의 움직임에 종목별 민감도를 곱해 반영합니다.</p>
+        <p class="muted small">날짜·크기는 추정. 타일을 누르면 전망에 넣거나 뺌. 금리·유가·금·원자재·정치·전쟁 같은 요인은 움직임에 종목별 민감도를 곱해 반영.</p>
       </div>
       <div class="card" id="xfAnalysis" style="display:none"></div>
       <div class="card">
@@ -207,13 +204,13 @@
       </div>
       <details class="card" id="evCard"><summary><b>사건 직접 편집</b> <span class="muted small">(옵션)</span></summary>
         <div class="row between" style="margin-top:8px">
-          <span class="muted small">사건 날짜에 대상 가격이 확률만큼 한 번 점프합니다. 분기는 목표일까지 3개월마다 반복. 날짜는 추정치입니다.</span>
+          <span class="muted small">사건 날짜에 대상 가격이 확률만큼 한 번 점프. 분기는 목표일까지 3개월마다 반복.</span>
           <button id="btnAddEvent" class="primary sm">사건 추가</button>
         </div>
         <div class="tablewrap"><table id="eventTable" class="grid"></table></div>
       </details>
       <details class="card" id="schedCard"><summary><b>펼친 일정 (목표일까지)</b> <span class="muted small" id="schedSum"></span></summary><div id="eventSchedule" class="small" style="margin-top:8px"></div></details>
-      <div class="card aicard"><div class="row between wrap"><h2>AI 외부 요인 점검</h2><button data-aire="events" class="sm">다시 분석</button></div><div id="aiOut-events" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>외부 요인 점검</h2><button data-aire="events" class="sm">다시 분석</button></div><div id="aiOut-events" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-fx" style="display:none">
@@ -221,10 +218,10 @@
       <div class="card">
         <div class="row between wrap"><h2>원/달러 환율 (과거 + 전망)</h2><div class="row seg" id="fxRange"><button data-r="252">1년</button><button data-r="780" class="on">3년</button></div></div>
         <div id="fxChart" class="chartbox"></div>
-        <p class="muted small">검은 선은 실제 환율, 굵은 파란 선은 칼만 필터 추세, 점선은 EMA50·EMA200입니다. 오늘 오른쪽 띠는 모형 설정의 환율 기대 변화와 과거 변동성으로 그린 목표일까지의 범위(진한 띠 25~75%, 옅은 띠 5~95%)입니다. 환율이 오르면(원화 약세) 달러 자산의 원화 평가액이 오릅니다.</p>
+        <p class="muted small">검은 선 실제 환율, 굵은 파란 선 칼만 추세, 점선 EMA50·EMA200. 오른쪽 띠는 목표일까지 범위(진한 띠 25~75%, 옅은 띠 5~95%). 환율이 오르면(원화 약세) 원화 평가액 상승.</p>
       </div>
-      <div class="card"><h2>환율이 바뀌면 내 평가액은</h2><div class="tablewrap"><table id="fxSens" class="grid"></table></div><p class="muted small">주가는 그대로 두고 환율만 바뀐다고 본 값입니다.</p></div>
-      <div class="card aicard"><div class="row between wrap"><h2>AI 환율 해설</h2><button data-aire="fx" class="sm">다시 분석</button></div><div id="aiOut-fx" class="aiout small"></div></div>
+      <div class="card"><h2>환율이 바뀌면 내 평가액은</h2><div class="tablewrap"><table id="fxSens" class="grid"></table></div><p class="muted small">주가는 그대로, 환율만 바뀐다고 본 값.</p></div>
+      <div class="card aicard"><div class="row between wrap"><h2>환율 해설</h2><button data-aire="fx" class="sm">다시 분석</button></div><div id="aiOut-fx" class="aiout small"></div></div>
     </div>
 
     <div class="ana" id="ana-alloc" style="display:none">
@@ -234,11 +231,11 @@
       </div>
       <div class="card">
         <div class="row between wrap"><h2>비중 조정안 비교</h2><button id="btnAlloc" class="sm">다시 계산</button></div>
-        <p class="muted small">같은 난수로 여러 비중안을 시뮬레이션해 목표 확률과 위험을 비교합니다. 차액은 나스닥100 지수(QQQ)로 옮긴다고 가정하고, 조정안은 연 1회 목표 비중으로 재조정합니다.</p>
+        <p class="muted small">같은 난수로 비중안별 목표 확률·위험 비교. 차액은 QQQ로 옮기고, 조정안은 연 1회 재조정 가정.</p>
         <div id="allocStatus" class="muted small"></div>
         <div class="tablewrap"><table id="allocTable" class="grid"></table></div>
       </div>
-      <div class="card aicard"><div class="row between wrap"><h2>AI 비중안 해설</h2><button data-aire="alloc" class="sm">다시 분석</button></div><div id="aiOut-alloc" class="aiout small"></div></div>
+      <div class="card aicard"><div class="row between wrap"><h2>비중안 해설</h2><button data-aire="alloc" class="sm">다시 분석</button></div><div id="aiOut-alloc" class="aiout small"></div></div>
     </div>
   </section>
 
@@ -257,10 +254,9 @@
   </section>
 
 </main>
-<footer class="muted small" id="footer"></footer>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261005u"></script>
-<script src="model.js?v=20261005u"></script>
-<script src="app.js?v=20261005u"></script>
+<script src="charts.js?v=20261006a"></script>
+<script src="model.js?v=20261006a"></script>
+<script src="app.js?v=20261006a"></script>
 </body>
 </html>
