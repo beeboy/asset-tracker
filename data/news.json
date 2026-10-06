@@ -1,64 +1,64 @@
 {
- "updated": "2026-10-06T15:51:57+00:00",
+ "updated": "2026-10-06T20:55:17+00:00",
  "realtime": {
-  "key": "eafd10c75414e251",
-  "updated": "2026-10-06T15:52:04+00:00",
+  "key": "c94ae6e9bad9ee2a",
+  "updated": "2026-10-06T20:55:24+00:00",
   "media": [
    {
-    "title": "S&P 500, 기술주 랠리에 사상 최고치 경신",
-    "orig": "S&P 500 Hits New Record High",
-    "summary": "미국 증시에서 기술주가 상승세를 이끌며 S&P 500 지수가 사상 최고치를 다시 썼습니다.",
+    "title": "AI 모멘텀 강화 속 S&P500 사상 최고가 경신",
+    "orig": "U.S. Stocks Rise as AI Momentum Builds",
+    "summary": "인공지능 투자 열기가 다시 살아나며 뉴욕증시 S&P500 지수가 사상 최고치를 기록했다.",
     "broker": "",
     "source": "WSJ",
-    "link": "https://www.wsj.com/finance/stocks/u-s-stock-futures-nudge-higher-as-oil-falls-below-100-0c7a5b1a?mod=rss_markets_main",
-    "time": "2026-10-06T14:40:00+00:00"
+    "link": "https://www.wsj.com/finance/stocks/u-s-stocks-rise-as-ai-momentum-builds-6f054e9f?mod=rss_markets_main",
+    "time": "2026-10-06T20:41:00+00:00"
    },
    {
-    "title": "트럼프 관세에도 미국 무역적자 17개월 만에 최대",
-    "orig": "U.S. Trade Deficit Hits 17-Month High Despite Trump’s Tariffs",
-    "summary": "최근 몇 달간 수입이 급증하면서 미국의 무역수지 적자가 17개월 만에 최고 수준으로 확대됐습니다.",
+    "title": "구글, AI 전력난 대응 위해 원자력 발전 신규 투자",
+    "orig": "Google makes a fresh bet on nuclear power as the AI energy crunch intensifies",
+    "summary": "급증하는 AI 전력 수요를 충족하기 위해 구글이 원자력 발전 계약을 체결하며 관련주가 급등했다.",
     "broker": "",
-    "source": "New York Times",
-    "link": "https://www.nytimes.com/2026/10/06/business/economy/us-trade-deficit.html",
-    "time": "2026-10-06T15:01:36+00:00"
+    "source": "MarketWatch",
+    "link": "https://www.marketwatch.com/story/google-makes-a-fresh-bet-on-nuclear-power-as-the-ai-energy-crunch-intensifies-a757c296?mod=mw_rss_topstories",
+    "time": "2026-10-06T20:24:00+00:00"
    },
    {
-    "title": "구글, 콘스텔레이션과 원전 전력 계약 체결",
-    "orig": "Google squeezes more power from existing nuclear plants in Constellation deal. These stocks benefit",
-    "summary": "구글이 원전 운영사 콘스텔레이션과의 전력 계약을 통해 원전 가동률을 끌어올리며 관련 전력주들이 수혜를 입고 있습니다.",
+    "title": "마벨 테크놀로지, 호실적과 다각화된 사업으로 월가 호평",
+    "orig": "Marvell just impressed Wall Street with ‘good numbers plus a better story’",
+    "summary": "마벨이 탄탄한 재무 전망과 다양한 고객 기반을 증명하며 월스트리트의 주목을 받았다.",
     "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/06/google-constellation-energy-ceg-nuclear-power-data-center.html",
-    "time": "2026-10-06T15:37:29+00:00"
+    "source": "MarketWatch",
+    "link": "https://www.marketwatch.com/story/marvell-just-impressed-wall-street-with-good-numbers-plus-a-better-story-57fbbf23?mod=mw_rss_topstories",
+    "time": "2026-10-06T20:21:00+00:00"
    }
   ],
   "broker": [
    {
-    "title": "웰스파고, 메타 목표가 1000달러로 상향…\"AI 에이전트 뮤즈 수혜\"",
-    "orig": "Muse has been a boon for Meta. It can soar much higher, Wells Fargo says",
-    "summary": "웰스파고는 AI 에이전트 '뮤즈'의 성과를 긍정적으로 평가하며 메타 목표주가를 1,000달러로 올려 잡았습니다.",
-    "broker": "웰스파고",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/06/viral-ai-agent-muse-boon-for-meta-stock-soar-higher-wells-fargo.html",
-    "time": "2026-10-06T15:31:05+00:00"
-   },
-   {
-    "title": "씨티, 메타 뮤즈 효과로 AMD 목표주가 상향",
-    "orig": "Citi raises AMD price target — and it's because of Meta Muse",
-    "summary": "씨티는 메타의 AI 에이전트 확산에 따른 수요 증가를 이유로 AMD 목표주가를 상향 조정했습니다.",
+    "title": "씨티, AMD 2026년 목표주가 재설정",
+    "orig": "Citi Resets AMD Stock Price Target For 2026",
+    "summary": "씨티가 AMD의 향후 주가 전망과 목표가를 새로 제시했다.",
     "broker": "씨티",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxQdEtaa0hjZ3lmTVJmcEJQdjBycTY5b3BPRWlGY0hQeDdPYkVLN3hTOFMxTElpMTd6S05pekdOVTlPWmxjMjlQTzBPejZiejY1QjA0SzlNekVreUNwZEhGeEpZVkxGRjh4OXVSYmlZOGVaUjd2dUljVXVmUTZ2eEdsLXE1SHJSclRfUEtPNHNlLVo5VDRJeUh3RkFhMXAyel94UW5zV2N6aEQ?oc=5",
-    "time": "2026-10-06T15:20:26+00:00"
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQejZtbjFYQTJCYTMxVUZ5RWRzdWVTMDRINWloYjlZZE9wVHpfTTZsbVFOX0h2QlB1ZjBYTW9EUUdzRlZjSGNQdDI1WjZiODFDOEY4OUtkMWRSNWhZQXJVZVBXdzhNWmFCd3ZWUmdSNWt4YktYTDFFaTYtaXV0dFRPMmhWM0JqVXNNUHp3RmZ3ZHlIYWVTSWhFaGY5czhCMVc2cmlBNTNR?oc=5",
+    "time": "2026-10-06T20:16:13+00:00"
    },
    {
-    "title": "웰스파고, 제철소 우려에도 클리블랜드 클리프스 투자의견 상향",
-    "orig": "Cleveland-Cliffs Stock Gets Wells Fargo Upgrade Despite Steel Mill Fears",
-    "summary": "웰스파고가 제철소 가동 우려 속에서도 철강업체 클리블랜드 클리프스에 대한 투자의견을 상향했습니다.",
-    "broker": "웰스파고",
-    "source": "Barron's",
-    "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxNa0d1aC04bm40VXJsTjNuc2ZlMUZJN3lPTWtmRGw2TUEzMldvX1FWc1J4aVZPdEZqejlHQWlMSXRyMUV4dUtLajl0Y1NlWVQzbERNbl9KV2U4djJFbFI2OE1wbXkyX24tRGZsNF9Ya2kzUEk3UG05WGg0MTdKcFk3cmUzUUstaWM3VDJHc2VFTDlqVE11?oc=5",
-    "time": "2026-10-06T15:05:00+00:00"
+    "title": "JP모건, 애즈베리 오토모티브 그룹 목표주가 하향",
+    "orig": "Asbury Automotive Group (NYSE:ABG) Stock Price Target Lowered at JPMorgan Chase & Co.",
+    "summary": "JP모건체이스가 애즈베리 오토모티브의 목표주가를 낮춰 잡았다.",
+    "broker": "JP모건",
+    "source": "MarketBeat",
+    "link": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxNejZVdHo1WVhheHlWeWNPUlJKVlpod2ZQVXdISExRaV81V0JFdHdIaTZiT2RfQTdqWXU4LTZwcDQ1cTBzRF9Hd3ZyRFowY3lJbl9uQUlPVDRRU0w0VkhFT2JKRFQ5emhDWllJWmljQ1E0bmRGTV9XeDRKYVU4NG8xZEFhZjJ6eDVibmZ5Rml6eEdzalhveWxtZm40RXhSZzU1WFhyOXN3dU56MFdadll3SjluRFY3Sl9IemdSVVdBVnlnUF91SkVRVG1vNGNkVUFPTVNvMmJ4TkxaUQ?oc=5",
+    "time": "2026-10-06T19:42:37+00:00"
+   },
+   {
+    "title": "골드만삭스 \"사모신용 우려에도 대체투자 수요 여전\"",
+    "orig": "Private credit woes aren’t dampening demand for alternatives, says Goldman Sachs Asset Management",
+    "summary": "골드만삭스 자산운용은 일부 우려에도 불구하고 대체투자 및 사모신용에 대한 투자자들의 수요가 견고하다고 밝혔다.",
+    "broker": "골드만삭스",
+    "source": "CNBC",
+    "link": "https://www.cnbc.com/2026/10/06/private-credit-woes-not-curbing-demand-for-alternatives-goldman-says.html",
+    "time": "2026-10-06T19:00:35+00:00"
    }
   ]
  },
@@ -126,7 +126,7 @@
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-06T15:51:57+00:00",
+  "updated": "2026-10-06T20:55:17+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -138,6 +138,123 @@
    "GLD": "SPDR Gold Shares 업계"
   },
   "items": [
+   {
+    "id": "morganstanleyreinstatesthisaichipmakerasitstoppickinsemicond",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "모건스탠리, 엔비디아를 반도체 최선호주로 재선정",
+    "orig": "Morgan Stanley reinstates this AI chipmaker as its top pick in semiconductors",
+    "summary": "모건스탠리가 AI 칩 수요를 근거로 엔비디아를 다시 반도체 업종 톱픽으로 꼽았다.",
+    "source": "Investing.com",
+    "link": "https://finance.yahoo.com/technology/ai/articles/morgan-stanley-reinstates-ai-chipmaker-202517793.html",
+    "time": "2026-10-06T20:25:17+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "elonmuskisrenamingspacexsaiarmforthethirdtimeshareholderssho",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "esg",
+    "title": "일론 머스크, 스페이스X AI 부문 명칭 세 번째 변경",
+    "orig": "Elon Musk Is Renaming SpaceX’s AI Arm for the Third Time. Shareholders Should Ask Why",
+    "summary": "일론 머스크가 스페이스X의 AI 조직 명칭을 연이어 바꾸며 주주들의 의문을 사고 있다.",
+    "source": "24/7 Wall St.",
+    "link": "https://finance.yahoo.com/technology/ai/articles/elon-musk-renaming-spacex-ai-200028720.html",
+    "time": "2026-10-06T20:00:28+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "teslabringscybercabtoeuropeforfirsttime",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "테슬라, 유럽에서 사이버캡 최초 공개",
+    "orig": "Tesla Brings Cybercab to Europe for First Time",
+    "summary": "테슬라가 유럽 시장에 자율주행 택시인 사이버캡을 처음 선보였다.",
+    "source": "GuruFocus.com",
+    "link": "https://finance.yahoo.com/technology/articles/tesla-brings-cybercab-europe-first-195407889.html",
+    "time": "2026-10-06T19:54:07+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "scottgallowayapplewinsbyshowinguplateinaianditsnewhomehubist",
+    "ticker": "AAPL",
+    "scope": "held",
+    "cat": "growth",
+    "title": "애플의 AI 진출 전략과 홈 허브 테스트",
+    "orig": "Scott Galloway: “Apple Wins by Showing Up Late” in AI, and Its New Home Hub Is the Test",
+    "summary": "애플이 AI 시장에 뒤늦게 진입해 자사 기기와 홈 허브를 통해 경쟁력을 입증하려 한다.",
+    "source": "TIKR",
+    "link": "https://finance.yahoo.com/technology/ai/articles/scott-galloway-apple-wins-showing-184416497.html",
+    "time": "2026-10-06T18:44:16+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "spacexstockrisesagaingoldmansachshikespricetargetonaisurge",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "growth",
+    "title": "골드만삭스, AI 수요 힘입어 스페이스X 목표가 상향",
+    "orig": "SpaceX Stock Rises Again. Goldman Sachs Hikes Price Target on AI Surge",
+    "summary": "AI 부문의 고성장을 반영해 골드만삭스가 스페이스X의 목표 주가를 높였다.",
+    "source": "GuruFocus.com",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/spacex-stock-rises-again-goldman-182636389.html",
+    "time": "2026-10-06T18:26:36+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "flexibledisplaymarketto2035foldablesmartphonedemanddrivesgro",
+    "ticker": "AAPL",
+    "scope": "industry",
+    "cat": "market",
+    "title": "폴더블폰 수요로 성장하는 플렉서블 디스플레이 시장",
+    "orig": "Flexible Display Market To 2035: Foldable Smartphone Demand Drives Growth - News and Statistics",
+    "summary": "접는 스마트폰 수요 확대가 플렉서블 디스플레이 시장의 장기 성장을 이끌고 있다.",
+    "source": "IndexBox",
+    "link": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxNSVVkNzkwdmtoOHRtY0U0ZUhSc1FWTWliMF9iOUdlUTZKUzZaN3NPX3p2ekFLb1pEMVByXzZqa3BWbU5jYmx1aWhMY0c2LVB6SnB6dkJHT0dhU014Q2RCUk1ZbHNZenRVM1VjMnRaX09zYTFSZEpVR1hVVGNZZ05pTWtWejJYMHozVGQxRVEwY1NYNjlzWkFaNTM5eDd2UG5rZkRSVmFHdjFqY2thSnVEVUo4X2REWExJeGw5cXpXRVhnWFFEU3NkSlB0T0ZLZi03cGc?oc=5",
+    "time": "2026-10-06T18:06:04+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "applesmarketvaluegrewfrom350billionto475trillionduringtimcoo",
+    "ticker": "AAPL",
+    "scope": "held",
+    "cat": "esg",
+    "title": "팀 쿡 15년과 애플의 차세대 리더십",
+    "orig": "Apple's Market Value Grew From $350 Billion to $4.75 Trillion During Tim Cook's 15 Years as CEO. Here's What That Growth Curve Means for Betting on Apple's Next Chapter Under John Ternus.",
+    "summary": "팀 쿡 CEO 재임 기간의 폭발적 성장에 이어 존 터너스 체제에서의 미래 성장 전략이 주목받고 있다.",
+    "source": "Motley Fool",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/apples-market-value-grew-350-171200527.html",
+    "time": "2026-10-06T17:12:00+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "spacexstarshipreachesorbitwhatitmeansforstarlinkandai",
+    "ticker": "SPCX",
+    "scope": "industry",
+    "cat": "growth",
+    "title": "스페이스X 스타십 궤도 진입, 스타링크와 AI의 미래",
+    "orig": "SpaceX starship reaches orbit: what it means for Starlink and AI",
+    "summary": "스타십의 궤도 비행 성공이 스타링크 서비스와 AI 사업 확장에 미치는 영향이 주목된다.",
+    "source": "www.equiti.com",
+    "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQV1BxV2cxY2JrQTZoM2M2WktEdHlBS1hYb2RWS2FZNUhiemtxUnBDa1BrY1ZoM2xhLVRuWVpyczJTZFIyMzdTWkxkN1oxcVNUWXNVOC1CaWhkanlwaEdZdjAzNDJaN3R4RUNtU3lnM3Fmc3lmeS0yakw1UGVGZzdaeVl3YS1PaTVRY25VMjJuZVI1Rm8?oc=5",
+    "time": "2026-10-06T17:05:32+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "nvidiaunveilssecurityplatformtostopaiagentsfromgoingrogue",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "엔비디아, AI 에이전트 보안 플랫폼 공개",
+    "orig": "Nvidia unveils security platform to stop AI agents from going rogue",
+    "summary": "엔비디아가 AI 에이전트의 오작동과 위협을 방지하는 새로운 보안 플랫폼을 발표했다.",
+    "source": "AP News",
+    "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxNLUs1WDRHbkRJcDEzM0tsZ1BWNlZzS2pMVm94RkllS3hiR0Q2UUlPTnc0SVZUcGRCMUVoNDhvTjVKdkhuajJ3RXR2WnJRS2xoRTFwNUREV09yc0dFMjc2YVpCY0RTMW1JbXdDOGpXY283UFVBcG1YRlh6UzBaS0lPOEYwck9UanNBM1dDdXRvVjhQNWtNR1NJWENoemNqNmtHMi1zZWt5UFZwdw?oc=5",
+    "time": "2026-10-06T15:58:53+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
    {
     "id": "marvellstocksurgesaftercompanyraises2028revenueoutlookto20bi",
     "ticker": "NVDA",
@@ -165,6 +282,19 @@
     "added": "2026-10-06T15:51:57+00:00"
    },
    {
+    "id": "candominionenergyleveragedatacenterdemandforlongtermgrowth",
+    "ticker": "NVDA",
+    "scope": "industry",
+    "cat": "market",
+    "title": "도미니언 에너지, 데이터센터 전력 수요로 장기 성장 추진",
+    "orig": "Can Dominion Energy Leverage Data-Center Demand for Long-Term Growth?",
+    "summary": "급증하는 AI 데이터센터 전력 수요가 전력사들의 장기 성장 동력으로 부각되고 있다.",
+    "source": "Yahoo Finance",
+    "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNMVJ6Wml3bHZCQzJubzZEcEVEdUJSV2RpLURYMmtNbmtUTHEzQlpaRkN1VnhCQ0doVmdfN180dGVPNjBSVHA0eE5faGlNVHZ1RXZKWWE5S3F2RTQ2cmk1R0Vxby1YazFQWE1SU3BwRHZNV1E3dmpSTUh6bTluZ3BROWRWYkFnUE5PbTlzM1NYWEh6Q0lnUjBRZw?oc=5",
+    "time": "2026-10-06T14:23:00+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
     "id": "teslavswaymoafaceoffbetweenthetworobotaxigiants",
     "ticker": "TSLA",
     "scope": "held",
@@ -176,6 +306,19 @@
     "link": "https://finance.yahoo.com/technology/articles/tesla-vs-waymo-face-off-141900186.html",
     "time": "2026-10-06T14:19:00+00:00",
     "added": "2026-10-06T15:51:57+00:00"
+   },
+   {
+    "id": "teslamarginrealismmeetsmergerspeculationnasdaqtsla",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "테슬라 마진 현실화와 합병설 점검",
+    "orig": "Tesla: Margin Realism Meets Merger Speculation (NASDAQ:TSLA)",
+    "summary": "테슬라의 수익성 전망과 관련된 합병 루머 및 펀더멘털을 분석했다.",
+    "source": "Seeking Alpha",
+    "link": "https://news.google.com/rss/articles/CBMijwFBVV95cUxObXU3dEgzTVA2dWpiajJhVHJHLXhvVnR0dUhiMHU1VWJZeXJFTTVYS1F6V2FuTUZ0YThhOEhkVC1SeU5BWGFjaDRnZnhwNG5VczdQeHF0VU9YeXhFRjlYU1Q0d2pTTlk1V08wc1B1cmhLWkVMYUZMRjNCTEUtOVJqUVBSNkxzcjdIRVNTeWNoTQ?oc=5",
+    "time": "2026-10-06T14:12:43+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
    },
    {
     "id": "marvellraises2028revenueforecastonstrongaidatacenterdemand",
@@ -384,6 +527,32 @@
     "link": "https://finance.yahoo.com/markets/stocks/article/tsmc-stock-hits-all-time-high-after-elon-musk-confirms-early-terafab-talks-162904771.html",
     "time": "2026-10-05T19:54:19+00:00",
     "added": "2026-10-06T01:43:53+00:00"
+   },
+   {
+    "id": "nvidias20billiongroqdealhitwithvaluationchallenge1",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "엔비디아의 그록 인수 밸류에이션 논란",
+    "orig": "Nvidia’s $20 Billion Groq Deal Hit With Valuation Challenge (1)",
+    "summary": "엔비디아의 대규모 인수 건을 두고 가치 산정에 대한 우려가 제기됐다.",
+    "source": "Bloomberg Law News",
+    "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxPRFk4d1ZmOThiNnJoQXRIdUVKQTFjWXhmNk8tb1pya1BpaTZ1VmxnOUluSnMwdzVYMW9nNHFBZlJjbGpyeWVXY0FZbGdWRDRZWW9yYmkzajNsT3V1dGJIZ2hFck5yVDJYUk00RU5yWFl3ZFpGcGtqNkxnTjNDQnBsc2xPY2tFYTFWd0dkRDVtUVVYU1ZpSmtIaw?oc=5",
+    "time": "2026-10-05T16:20:00+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "lithiumionbatterymaterialmarketforecastto2035lfpchemistrydem",
+    "ticker": "TSLA",
+    "scope": "industry",
+    "cat": "market",
+    "title": "리튬이온 배터리 소재 및 LFP 수요 전망",
+    "orig": "Lithium Ion Battery Material Market Forecast to 2035: LFP Chemistry Demand to Accelerate on Grid Storage Boom",
+    "summary": "전력망 에너지저장장치(ESS) 붐에 힘입어 LFP 등 배터리 소재 시장이 급성장할 전망이다.",
+    "source": "IndexBox",
+    "link": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxNdm10ZWxHdzIzVWtnTWYyYkJJdlJrOVctejVaYXY4WWtLUjZPc3Nselc1aDllaWVwbnJ1bHBvNHpObFN1S085Y3dFelNqbkVfZjdpY2FVaEdjZi1tMURIVWdpMU1nenNzWVlNNWl2b2doMjlfTHYwWmdpNkl0Zm9oQ05xWWp5SHFxZFl6NF9Ea2J5ZDg3NTJDLUJuY3J6dDhwVTJZOXpZQVlZbXdOaVMtTmR4TmY4V1Y1LVNMVERaS0hRS1VSZ09SeGhPYnlReDJxZFhiUQ?oc=5",
+    "time": "2026-10-05T15:56:04+00:00",
+    "added": "2026-10-06T20:55:17+00:00"
    },
    {
     "id": "gascarsfallbelow50ofglobalnewcarsalesforthefirsttime",
@@ -934,33 +1103,33 @@
   ],
   "digest": {
    "TSLA": {
-    "sum": "테슬라는 **로보택시**와 **FSD**, **옵티머스** 등 자율주행 및 AI 사업이 향후 기업 가치를 이끌 핵심 동력으로 평가받고 있습니다. TSMC와의 협력 기대감과 함께 **2027년 황금기** 진입 전망이 나오며 장기 성장성에 대한 기대가 이어지고 있습니다.\n위험: 전기차 업황 둔화 및 치열한 자율주행 경쟁에 따른 실적 변동성.",
-    "hash": "df7d1a903b577934",
-    "updated": "2026-10-06T15:51:57+00:00",
-    "seen": "2026-10-06T15:51:57+00:00"
+    "sum": "테슬라는 자율주행과 로보택시, **FSD**를 중심으로 장기적인 기업 가치를 높여가고 있으며, **TSMC**와의 협력 기대감도 커지고 있습니다.\n단기적인 실적 변동성보다는 로봇과 AI 사업의 성공 여부가 향후 주가의 핵심 동력이 될 것입니다.\n위험: 치열한 자율주행 경쟁과 수익성 개선 지연에 따른 밸류에이션 부담이 존재합니다.",
+    "hash": "a350be062ee2a292",
+    "updated": "2026-10-06T20:55:17+00:00",
+    "seen": "2026-10-06T20:55:17+00:00"
    },
    "NVDA": {
-    "sum": "폭발적인 **AI 데이터센터 수요**와 고대역폭 메모리(**HBM**) 시장의 고성장에 힘입어 중장기 실적 전망이 더욱 밝아지고 있습니다. 주요 파트너사들의 호실적은 **AI 랠리**가 일시적 거품이 아님을 증명하며 2030년까지의 지속적인 성장 기대를 뒷받침합니다.\n위험: 심화되는 시장 경쟁과 매출채권 관련 리스크.",
-    "hash": "f5bd7183de882de0",
-    "updated": "2026-10-06T15:51:57+00:00",
-    "seen": "2026-10-06T15:51:57+00:00"
+    "sum": "폭발적인 인공지능 인프라 수요에 힘입어 **엔비디아**의 핵심 협력사들이 호실적을 기록하며 중장기 성장성이 재확인되고 있습니다.\n**2030년**을 향한 뚜렷한 AI 칩 수요는 회사의 탄탄한 기업 가치를 지지하는 핵심 기반입니다.\n위험: 높은 시장 기대치에 못 미치는 실적이나 AI 랠리 둔화 시 주가 변동성이 커질 수 있습니다.",
+    "hash": "0aa61debb8526132",
+    "updated": "2026-10-06T20:55:17+00:00",
+    "seen": "2026-10-06T20:55:17+00:00"
    },
    "SPCX": {
-    "sum": "**스타링크**의 글로벌 가입자가 **1,200만 명**을 돌파하며 핵심 캐시카우로 자리 잡았고 항공·해운 시장으로 영역을 확장하고 있습니다. 거듭된 로켓 발사 성공과 **스타십** 개발 진척은 우주 통신 및 탐사 시장에서의 독보적 지배력을 강화하고 있습니다.\n위험: 대규모 자본 지출과 규제 당국의 승인 지연 가능성.",
-    "hash": "d5b9dbd11533ab30",
-    "updated": "2026-10-06T15:51:57+00:00",
-    "seen": "2026-10-06T15:51:57+00:00"
+    "sum": "**스타십** 시험비행 성공과 **스타링크** 가입자의 가파른 증가세는 스페이스X의 우주 통신 및 AI 사업 확장을 이끌고 있습니다.\n우주 산업 내 독보적인 지배력을 바탕으로 장기적인 기업 가치 우상이 기대됩니다.\n위험: 대규모 자본 지출과 규제 기관의 검토 일정에 따른 사업 지연 가능성이 있습니다.",
+    "hash": "ecab2d53bbdf929c",
+    "updated": "2026-10-06T20:55:17+00:00",
+    "seen": "2026-10-06T20:55:17+00:00"
    },
    "AAPL": {
-    "sum": "앱스토어 성장세 회복과 **아이폰**의 탄탄한 수요가 실적을 뒷받침하는 가운데, 신임 CEO 체제와 **온디바이스 AI** 및 프라이버시 통제 강화를 통해 미래 경쟁력을 다지고 있습니다. 중국 시장에서 판매 1위를 탈환하며 글로벌 하드웨어 시장에서의 입지도 재확인했습니다.\n위험: AI 서비스 확산에 따른 보안 규제 강화와 스마트폰 시장 경쟁 심화.",
-    "hash": "f570162530543065",
-    "updated": "2026-10-06T15:51:57+00:00",
-    "seen": "2026-10-06T15:51:57+00:00"
+    "sum": "애플은 탄탄한 아이폰 수요와 앱스토어 성장을 바탕으로 실적 회복세를 보이고 있으며, 신임 CEO 체제 아래 온디바이스 **AI** 전략을 구체화하고 있습니다.\n강화된 보안과 프라이버시를 바탕으로 한 AI 서비스는 향후 장기 성장의 중요한 축이 될 것입니다.\n위험: 빅테크 간 AI 경쟁 심화와 엄격한 프라이버시 규제로 인한 수익화 지연 우려가 있습니다.",
+    "hash": "86fac5b7fb5c9aef",
+    "updated": "2026-10-06T20:55:17+00:00",
+    "seen": "2026-10-06T20:55:17+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-06T15:51:57+00:00"
+  "updated": "2026-10-06T20:55:17+00:00"
  },
  "ai": "ok"
 }
