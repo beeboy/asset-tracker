@@ -108,7 +108,7 @@ footer { text-align: center; padding: 6px 10px 0; }
 @media (max-width: 700px) {
   header { position: static; gap: 6px 12px; padding: 8px 12px; }
   .logo { font-size: 1rem; }
-  .headkpi { gap: 2px 9px; font-size: 0.7059rem; } .headkpi span { white-space: nowrap; } .headkpi b { font-size: 0.7647rem; } .headkpi .muted { display: none; } header, .headkpi { align-items: baseline; } .headkpi .hpill { top: -3px; }
+  .headkpi { gap: 2px 9px; font-size: 0.7059rem; } .headkpi span { white-space: nowrap; } .headkpi b { font-size: 0.7647rem; } .headkpi .muted { display: none; } header, .headkpi { align-items: baseline; } .headkpi .hpill { top: -2px; }
   .headact { display: none; }
   main { padding: 10px 8px 30px; } .card { padding: 12px; }
   .kpis { gap: 6px; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); } .kpi { padding: 7px 8px; }
