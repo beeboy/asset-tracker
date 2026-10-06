@@ -272,3 +272,4 @@ button.danger.x { padding: 2px 7px; }
 @media (max-width: 700px) {
   .xfbox { padding: 5px 6px; gap: 9px; } .xfbox .xfh { min-width: 0; } .xfbox .seg { gap: 3px; } .xfbox .seg button { padding: 3px 6px; }
 }
+@media (min-width: 701px) { #fcKpis { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); } } /* 데스크톱 전체 폭이면 8개 한 줄, 좁으면 아래 줄로 */
