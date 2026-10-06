@@ -997,6 +997,24 @@
   const SCEN_LAB = { base: "기준 (과거+사전값 절충)", conservative: "보수 (위험 프리미엄 없음)", history: "과거 반복 (지난 수익률 그대로)", smooth: "스무딩 추종 (3년 추세선)", trend: "추세 추종 (칼만·EMA)" };
   const SCEN_SHORT = { base: "기준", conservative: "보수", history: "과거 반복", smooth: "스무딩 추종", trend: "추세 추종" };
   function dtStr(t) { const d = new Date(t), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${z(d.getHours())}:${z(d.getMinutes())}`; }
+  // 전망 결과를 이 브라우저에 저장해 두고 리로드 때 다시 쓴다. 종목 구성이 바뀌었을 때만 새로 계산
+  const FC_KEY = "naeilo-forecast";
+  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model]));
+  function fcStore() {
+    const L = lastForecast; if (!L) return;
+    try { localStorage.setItem(FC_KEY, JSON.stringify({ sig: fcSig(), tks: L.b.holdings.map((h) => h.ticker).join(), scen: L.scen, at: L.at.getTime(), ms: L.ms, hasEv: L.hasEv, withEv: L.withEv, noEv: L.hasEv ? L.noEv : null })); }
+    catch (e) { try { localStorage.removeItem(FC_KEY); } catch (e2) { /* 무시 */ } }
+  }
+  function fcRestore() {
+    try {
+      const c = JSON.parse(localStorage.getItem(FC_KEY) || "null"); if (!c || !c.withEv) return false;
+      const b = buildModelNow(); if (!b || b.holdings.map((h) => h.ticker).join() !== c.tks) return false;
+      const common = simCommon(b, c.scen);
+      lastForecast = { b, withEv: c.withEv, noEv: c.noEv || c.withEv, hasEv: c.hasEv, common, grp: {}, scen: c.scen, at: new Date(c.at), ms: c.ms };
+      fcDirty = c.sig !== fcSig() || c.scen !== S.state.model.scenario; fcCache[c.scen] = { R: c.withEv, model: b.model };
+      return true;
+    } catch (e) { return false; }
+  }
   async function runForecast() {
     const st = $("#fcStatus"), btns = $$("#scenBox button");
     btns.forEach((x) => (x.disabled = true)); st.textContent = `${SCEN_SHORT[S.state.model.scenario] || ""} 시나리오, 계산 중...`;
@@ -1010,6 +1028,7 @@
       const noEv = hasEv ? Model.simulate(b.model, { ...common, withEvents: false }) : withEv;
       lastForecast = { b, withEv, noEv, hasEv, common, grp: {}, scen: m.scenario, at: new Date(), ms: performance.now() - t0 };
       fcDirty = false; fcCache[m.scenario] = { R: withEv, model: b.model };
+      fcStore();
       renderForecast();
       if ($("#tabs .on").dataset.tab === "dash") renderDash();
     } catch (e) { st.textContent = "오류: " + e.message; console.error(e); }
@@ -2041,7 +2060,7 @@
     if (a === "trend") { renderTrend(); aiRefresh(); }
     if (a === "events") renderSchedule();
     if (a === "fx") renderFx();
-    if (a === "strategy" || a === "forecast" || a === "events" || a === "fx") { if (!lastForecast || fcDirty) runForecast(); else renderForecast(); }
+    if (a === "strategy" || a === "forecast" || a === "events" || a === "fx") { if (!lastForecast && !fcRestore()) runForecast(); else renderForecast(); } // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
     if (a === "alloc") { if (!lastAlloc || allocDirty) runAlloc(); else { renderAllocChart(); aiRefresh(); } }
     try { localStorage.setItem("ana", a); } catch (e) { /* 무시 */ }
   }

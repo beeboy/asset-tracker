@@ -270,5 +270,6 @@ button.danger.x { padding: 2px 7px; }
 .nsrc a { color: var(--fg); text-decoration: none; } .nsrc a:hover { color: var(--accent); text-decoration: underline; } .nsrc a.read { color: var(--muted); }
 .ibox .ipx { color: var(--fg); font-size: 0.7647rem; white-space: nowrap; } .ibox .ipx .up { color: #e5383b; } .ibox .ipx .dn { color: #2f6fed; }
 @media (max-width: 700px) {
-  .xfbox { padding: 5px 6px; gap: 4px; } .xfbox .xfh { min-width: 0; } .xfbox .seg { gap: 3px; } .xfbox .seg button { padding: 3px 6px; }
+  .xfbox { padding: 5px 6px; gap: 9px; } .xfbox .xfh { min-width: 0; } .xfbox .seg { gap: 3px; } .xfbox .seg button { padding: 3px 6px; }
 }
+@media (min-width: 701px) { #fcKpis { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); } #fcKpis .kpi .v { font-size: clamp(0.8824rem, 1.6vw, 1.1rem); } }
