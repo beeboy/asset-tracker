@@ -1,10 +1,24 @@
 {
-  "name": "naeilo",
-  "description": "내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 인사이트를 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.",
-  "short_name": "naeilo",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "theme_color": "#ffffff",
-  "background_color": "#f6f7f9"
+ "name": "naeilo",
+ "description": "내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 인사이트를 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.",
+ "short_name": "naeilo",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "theme_color": "#2f6fed",
+ "background_color": "#f6f7f9",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any maskable"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any maskable"
+  }
+ ]
 }

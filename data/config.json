@@ -2,5 +2,6 @@
  "proxy": "https://asset-ai.drinker.workers.dev/?url=",
  "ai": "https://asset-ai.drinker.workers.dev/ai",
  "views": "https://asset-ai.drinker.workers.dev/views",
- "_설명": "개발자용. proxy: 브라우저가 Yahoo 시세를 받을 때 먼저 쓸 중계 주소 (예: https://<이름>.workers.dev/?url= ). ai: 페이지 AI 분석용 중계 주소 (예: https://<이름>.workers.dev/ai , 키는 중계 비밀값 GEMINI_KEY). 비우면 공개 서비스를 씁니다. views: Beyora 글 조회수를 모든 사람 것으로 합치는 중계 주소 (중계에 KV 를 VIEWS 로 연결). 안 되면 각 브라우저 조회수로 돌아갑니다. proxy/cloudflare-worker.js 참고."
+ "_설명": "개발자용. proxy: 브라우저가 Yahoo 시세를 받을 때 먼저 쓸 중계 주소 (예: https://<이름>.workers.dev/?url= ). ai: 페이지 AI 분석용 중계 주소 (예: https://<이름>.workers.dev/ai , 키는 중계 비밀값 GEMINI_KEY). 비우면 공개 서비스를 씁니다. views: Beyora 글 조회수를 모든 사람 것으로 합치는 중계 주소 (중계에 KV 를 VIEWS 로 연결). 안 되면 각 브라우저 조회수로 돌아갑니다. proxy/cloudflare-worker.js 참고. push: 알림(웹 푸시) 중계 주소 (중계에 VIEWS KV + Cron Trigger).",
+ "push": "https://asset-ai.drinker.workers.dev"
 }

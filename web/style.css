@@ -294,3 +294,5 @@ button.danger.x { padding: 2px 7px; }
 .wi { display: grid; gap: 10px; margin-top: 8px; } .wi label { display: block; font-size: 0.7647rem; }
 .sens { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
 .nsum .nrisk { color: var(--muted); }
+.qr { display: flex; justify-content: center; } .qr img, .qr canvas { background: #fff; padding: 8px; border-radius: 8px; }
+.prog { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; } @media (max-width: 700px) { .prog { grid-template-columns: repeat(2, 1fr); } }

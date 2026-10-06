@@ -10,6 +10,10 @@
 // 4) 댓글 (/comments)·공감 (/like): 같은 VIEWS KV 를 쓴다. 익명 댓글은 비밀번호(해시만 저장)로 지우고,
 //       개발자는 저장소에 쓰기 권한이 있는 GitHub 토큰(앱의 설정 > 개발자용)으로 비밀번호 없이 지운다.
 //       선택: 변수 REPO (기본 beeboy/asset-tracker), 비밀값 SALT (비밀번호 해시용), ADMIN_KEY (토큰 대신 쓸 관리자 키).
+// 5) 알림 (/push/*): 웹 푸시. 같은 VIEWS KV 를 쓰고, VAPID 키는 처음 부를 때 중계가 스스로 만들어 KV 에 둔다 (비밀값 설정 없음).
+//       Settings → Triggers → Cron Triggers 에 "*/30 13-22 * * 1-5" (미국 장중, UTC) 를 넣으면 30분마다 검사해 보낸다.
+//       data/config.json 의 "push" 에 "https://<이름>.workers.dev" 를 넣고 커밋. 아이폰은 홈 화면에 추가한 앱에서만 받는다.
+//       보내는 알림: 내 종목 가중 하루 변동 -5% 이하(하루 한 번), 켜 둔 실적 일정 하루 전. 저장값은 종목 비중·일정뿐 (수량·금액 없음).
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -21,6 +25,26 @@ export default {
     const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
     const okId = (id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(id);
     const noKv = () => out({ error: "중계에 VIEWS KV 연결이 없습니다 (Settings → Bindings)" }, 400);
+    if (u.pathname.startsWith("/push/")) {
+      if (!env.VIEWS) return noKv();
+      const id = async (ep) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ep)))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
+      if (u.pathname === "/push/key") return out({ key: (await vapid(env)).pub });
+      if (u.pathname === "/push/latest") { const ep = u.searchParams.get("e") || ""; const m = await env.VIEWS.get("pm:" + (await id(ep))); return out(m ? JSON.parse(m) : { title: "naeilo", body: "새 알림이 있습니다." }); }
+      if (req.method !== "POST") return out({ error: "POST 만 받습니다" }, 400);
+      const b = await req.json().catch(() => ({}));
+      const ep = b.sub?.endpoint || b.endpoint || "";
+      if (!/^https:\/\//.test(ep) || ep.length > 1000) return out({ error: "구독 정보가 맞지 않습니다" }, 400);
+      const k = "p:" + (await id(ep));
+      if (u.pathname === "/push/unsub") { await env.VIEWS.delete(k); return out({ ok: true }); }
+      if (u.pathname === "/push/sub") {
+        const w = {}; for (const [t, v] of Object.entries(b.w || {}).slice(0, 40)) if (/^[A-Z0-9.^=_-]{1,12}$/i.test(t) && v > 0 && v <= 1) w[t] = +v;
+        const ev = (b.ev || []).slice(0, 60).filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.d)).map((e) => ({ d: e.d, t: String(e.t || "").slice(0, 12), k: String(e.k || "").slice(0, 30) }));
+        await env.VIEWS.put(k, JSON.stringify({ sub: b.sub, w, ev, drop: Math.min(20, Math.max(2, Number(b.drop) || 5)), at: new Date().toISOString() }));
+        return out({ ok: true });
+      }
+      if (u.pathname === "/push/test") { const r = await sendPush(env, b.sub || { endpoint: ep }, k.slice(2), { title: "naeilo 알림 시험", body: "알림이 잘 옵니다." }); return out({ ok: r.ok, status: r.status }); }
+      return out({ error: "모르는 주소" }, 404);
+    }
     if (u.pathname === "/like") {
       // POST /like {"id":"a","d":1|-1} → 공감 수 { id, n }
       if (!env.VIEWS) return noKv();
@@ -118,4 +142,51 @@ export default {
     const r = await fetch(target, { headers: { "User-Agent": "Mozilla/5.0" }, cf: { cacheTtl: 60 } });
     return new Response(r.body, { status: r.status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "max-age=60" } });
   },
+  // 30분마다 (Cron Trigger): 구독마다 하루 변동·실적 하루 전 검사
+  async scheduled(event, env, ctx) {
+    if (!env.VIEWS) return;
+    const q = await fetch(env.SITE_QUOTES || "https://naeilo.com/data/quotes.json", { cf: { cacheTtl: 60 } }).then((r) => r.json()).catch(() => null);
+    const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10), tmr = new Date(kst.getTime() + 86400e3).toISOString().slice(0, 10);
+    let cursor;
+    do {
+      const page = await env.VIEWS.list({ prefix: "p:", cursor }); cursor = page.list_complete ? null : page.cursor;
+      for (const key of page.keys) {
+        const rec = JSON.parse((await env.VIEWS.get(key.name)) || "null"); if (!rec || !rec.sub) continue;
+        const sid = key.name.slice(2), msgs = [];
+        if (q) {
+          let ch = 0, ws = 0;
+          for (const [t, w] of Object.entries(rec.w || {})) { const x = q[t]; const px = x && (x.regular ?? x.last); if (px && x.prev_close) { ch += w * (px / x.prev_close - 1); ws += w; } }
+          if (ws > 0.5 && ch <= -(rec.drop || 5) / 100 && rec.dropSent !== today) { msgs.push({ title: "naeilo · 큰 하락", body: `내 종목이 오늘 ${(ch * 100).toFixed(1)}% 움직였습니다. 전망과 비중을 확인해 보세요.`, tag: "drop" }); rec.dropSent = today; }
+        }
+        const soon = (rec.ev || []).filter((e) => e.d === tmr && !(rec.evSent || []).includes(e.d + e.t + e.k));
+        if (soon.length) { msgs.push({ title: "naeilo · 내일 일정", body: soon.map((e) => `${e.t} ${e.k}`).join(", ") + " (날짜는 추정일 수 있음)", tag: "ev" }); rec.evSent = [...(rec.evSent || []).slice(-40), ...soon.map((e) => e.d + e.t + e.k)]; }
+        for (const m of msgs) {
+          const r = await sendPush(env, rec.sub, sid, m);
+          if (r.status === 404 || r.status === 410) { await env.VIEWS.delete(key.name); break; } // 구독이 사라짐
+        }
+        if (msgs.length) await env.VIEWS.put(key.name, JSON.stringify(rec));
+      }
+    } while (cursor);
+  },
 };
+
+// ------------------------------------------------------------ 웹 푸시 (내용 없는 푸시 + 문구는 /push/latest 에서)
+const b64u = (u8) => btoa(String.fromCharCode(...new Uint8Array(u8))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+async function vapid(env) {
+  let v = JSON.parse((await env.VIEWS.get("vapid")) || "null");
+  if (!v) {
+    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    v = { jwk: await crypto.subtle.exportKey("jwk", kp.privateKey), pub: b64u(await crypto.subtle.exportKey("raw", kp.publicKey)) };
+    await env.VIEWS.put("vapid", JSON.stringify(v));
+  }
+  return v;
+}
+async function sendPush(env, sub, sid, msg) {
+  const v = await vapid(env), ep = new URL(sub.endpoint);
+  await env.VIEWS.put("pm:" + sid, JSON.stringify(msg), { expirationTtl: 86400 * 3 });
+  const enc = (o) => b64u(new TextEncoder().encode(JSON.stringify(o)));
+  const head = enc({ typ: "JWT", alg: "ES256" }), body = enc({ aud: ep.origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: env.VAPID_SUB || "mailto:admin@naeilo.com" });
+  const key = await crypto.subtle.importKey("jwk", v.jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(head + "." + body));
+  return fetch(sub.endpoint, { method: "POST", headers: { TTL: "43200", Urgency: "normal", "Content-Length": "0", Authorization: `vapid t=${head}.${body}.${b64u(sig)}, k=${v.pub}` } });
+}

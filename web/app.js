@@ -210,7 +210,20 @@
     st.ui = Object.assign({ auto_refresh_min: 0, manual_price: false }, st.ui || {});
     return st;
   }
+  // 수량이 바뀐 날만 기록해 둔다 (목표 진행을 그때 수량으로 계산하려고). 같은 날 여러 번 바꾸면 마지막 것만
+  function recordLot() {
+    const st = S.state; if (st.sample) return;
+    const h = {}; st.holdings.forEach((x) => { if (Number(x.shares) > 0) h[x.ticker] = Number(x.shares); });
+    st.lots = st.lots || [];
+    const last = st.lots[st.lots.length - 1];
+    if (last && JSON.stringify(last.h) === JSON.stringify(h)) return;
+    const d = today();
+    if (!last) { st.lots.push({ d: st.goal.start_date && st.goal.start_date < d ? st.goal.start_date : d, h }); return; }
+    if (last.d === d) last.h = h; else st.lots.push({ d, h });
+    if (st.lots.length > 400) st.lots.splice(0, st.lots.length - 400);
+  }
   function save(dirtyForecast = true) {
+    recordLot();
     if (dirtyForecast) markDirty();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
@@ -614,6 +627,43 @@
     fcPending[scen] = then ? [then] : [];
     setTimeout(() => { try { if (!forecastFor(scen)) fcCache[scen] = { err: "평가액이 있는 종목이 없습니다." }; } catch (e) { fcCache[scen] = { err: e.message }; } const cbs = fcPending[scen]; delete fcPending[scen]; cbs.forEach((f) => f()); }, 30);
   }
+  // 목표 진행: 목표 시작일부터 실제(그때 수량) 평가액과 필요 경로 비교
+  function actualSeries(H) {
+    const lots = S.state.lots || []; if (!lots.length) return null;
+    const curSh = {}; S.state.holdings.forEach((x) => (curSh[x.ticker] = Number(x.shares) || 0));
+    let li = -1;
+    return H.dates.map((d, i) => {
+      while (li + 1 < lots.length && lots[li + 1].d <= d) li++;
+      if (li < 0) return null;
+      const h = lots[li].h; let t = 0;
+      for (const k of Object.keys(H.each)) { const v = H.each[k][i]; if (v == null || !curSh[k]) continue; t += (v * (h[k] || 0)) / curSh[k]; }
+      return t;
+    });
+  }
+  function renderProgress(H, total) {
+    const card = $("#progCard"), g = S.state.goal;
+    if (!(total > 0) || S.state.sample || !H.dates.length) { card.style.display = "none"; return; }
+    const A = actualSeries(H) || H.total, start = g.start_date || today();
+    let i0 = H.dates.findIndex((d) => d >= start); if (i0 < 0) i0 = H.dates.length - 1;
+    const k = H.dates.length - 1, V0 = A[i0] || H.total[i0], now = total;
+    const span = yearsBetween(start, g.date), el = Math.max(0, yearsBetween(start, today()));
+    const need = V0 > 0 && span > 0 ? V0 * (g.amount / V0) ** (el / span) : null, gap = need ? now / need - 1 : null;
+    const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
+    card.style.display = "block";
+    $("#progSub").textContent = `목표 시작 ${start}`;
+    $("#prog").innerHTML = [
+      ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
+      ["필요 경로 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? `오늘 필요 ${krw(need)}원` : ""],
+      ["지난주", spct(back(5)), "실제 수량 기준"],
+      ["지난달", spct(back(21)), "실제 수량 기준"],
+    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "필요 경로 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
+    const xs = H.dates.slice(i0), ys = A.slice(i0);
+    if (xs.length >= 3) {
+      $("#progChart").style.display = "block";
+      Charts.lineChart($("#progChart"), { x: xs, height: 150, yfmt: krwAxis, series: [{ name: "실제", y: ys, color: "var(--c1)", width: 2 }, { name: "필요 경로", y: xs.map((d) => V0 * (g.amount / V0) ** (Math.max(0, yearsBetween(start, d)) / span)), color: "var(--accent2)", dash: "5 4", width: 1.3 }] });
+    } else $("#progChart").style.display = "none";
+    $("#progNote").textContent = "수량이 바뀐 날을 기록해 두고, 그 전 날짜는 그때 수량으로 계산합니다. 시작일은 목표 수정에서 목표를 다시 정하면 바뀝니다.";
+  }
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date);
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
@@ -624,6 +674,7 @@
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
     const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
+    renderProgress(H, total);
     $("#goalKpis").innerHTML = [
       ["현재 평가액", krw(total) + "원", `${nf(total)}원 · <a href="#" data-go="quotes">수량 수정</a>`],
       ["목표 대비", pct(total / g.amount), `<div class="bar"><i style="width:${Math.min(100, (total / g.amount) * 100)}%"></i></div>`],
@@ -886,7 +937,7 @@
       const sh = fk === "mkt" ? -10 : fk === "rate" ? 50 : 10, txt = fk === "mkt" ? "미국 증시 -10%" : fk === "rate" ? "10년 금리 +0.5%p" : fk === "oil" ? "유가 +10%" : "금값 +10%";
       let r = 0, ok = false;
       hs.forEach((x) => { const b = B[fk] && B[fk][x.h.ticker]; if (b == null) return; ok = true; r += x.w * (Math.exp(b * (fk === "rate" ? sh : Math.log(1 + sh / 100))) - 1); });
-      if (ok) out.push([txt, r]);
+      if (ok) out.push([txt, Math.abs(r) < 0.0005 ? 0 : r]);
     }
     const usdW = hs.filter((x) => x.ccy === "USD").reduce((a, x) => a + x.w, 0);
     if (usdW > 0) out.push(["원화 10% 강세", -0.1 * usdW]);
@@ -1170,6 +1221,12 @@
       applyView(true);
       lastForecast.ms = performance.now() - t0;
       fcDirty = false; fcCache = {}; fcCache[m.scenario] = { R: lastForecast.withEv, model: b.model };
+      // 목표 확률이 지난번보다 5%p 넘게 바뀌면 알려 준다 (같은 관점일 때)
+      try {
+        const prev = JSON.parse(localStorage.getItem("naeilo-pgoal") || "null"), now = { p: lastForecast.withEv.p_goal, k: String(viewKey()), d: today() };
+        if (prev && prev.k === now.k && prev.d !== now.d && Math.abs(now.p - prev.p) >= 0.05) toast(`목표 확률이 ${prev.d} ${pct(prev.p, 0)}에서 ${pct(now.p, 0)}로 바뀌었습니다`);
+        if (!prev || prev.d !== now.d || prev.k !== now.k) localStorage.setItem("naeilo-pgoal", JSON.stringify(now));
+      } catch (e) { /* 무시 */ }
       fcStore();
       renderForecast();
       if ($("#tabs .on").dataset.tab === "dash") renderDash();
@@ -2114,6 +2171,53 @@
       hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }] });
   }
 
+  // ------------------------------------------------------------ 배당·세금
+  // 수정종가/종가 비율이 바뀌는 날 = 배당락. 금액 = 전날 종가 × (1 - 전날 비율/당일 비율)
+  function dividends(t) {
+    const p = S.prices[t]; if (!p || !p.adj) return [];
+    const out = [];
+    for (let i = 1; i < p.dates.length; i++) {
+      const r0 = p.adj[i - 1] / p.close[i - 1], r1 = p.adj[i] / p.close[i];
+      if (r0 > 0 && r1 > 0 && r0 / r1 < 0.9995) out.push({ d: p.dates[i], amt: p.close[i - 1] * (1 - r0 / r1) });
+    }
+    return out;
+  }
+  const WHT = 0.15, CGT = 0.22, CGT_DED = 2500000;
+  function renderCash() {
+    const { rows, total } = valuation(), hs = rows.filter((r) => r.valueKrw > 0);
+    if (!hs.length) { $("#divKpis").innerHTML = ""; $("#taxBox").innerHTML = "<p class='muted'>보유 수량을 넣으면 계산합니다.</p>"; return; }
+    const yAgo = Model.addMonths(today(), -12), months = []; for (let k = 1; k <= 12; k++) months.push(Model.addMonths(today(), k).slice(0, 7));
+    const byM = Object.fromEntries(months.map((m) => [m, 0])), per = [];
+    hs.forEach((r) => {
+      const ds = dividends(r.h.ticker).filter((x) => x.d > yAgo), tax = r.ccy === "USD" ? WHT : r.ccy === "KRW" ? 0.154 : WHT;
+      let y = 0; ds.forEach((x) => { const m = Model.addMonths(x.d, 12).slice(0, 7), v = x.amt * r.sh * (r.fx || 1) * (1 - tax); if (m in byM) byM[m] += v; y += v; });
+      if (ds.length) per.push({ t: r.h.ticker, n: ds.length, y, yld: (ds.reduce((a, x) => a + x.amt, 0)) / r.p.v });
+    });
+    const yr = per.reduce((a, x) => a + x.y, 0);
+    $("#divKpis").innerHTML = [["연 예상 (세후)", krw(yr) + "원", `평가액의 ${pct(yr / total, 2)}`], ["월 평균", krw(yr / 12) + "원", "세후"], ["지급 종목", `${per.length}개`, per.map((x) => x.t).join(", ") || "-"]]
+      .map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("");
+    if (yr > 0) { $("#divChart").style.display = "block"; Charts.lineChart($("#divChart"), { x: months.map((m) => m + "-15"), height: 170, yfmt: krwAxis, legend: false, series: [{ name: "월별", y: months.map((m) => byM[m]), color: "var(--c3)", width: 2 }] }); }
+    else $("#divChart").style.display = "none";
+    $("#divTable").innerHTML = per.length ? `<tr><th class="l">종목</th><th>지난 12개월<br>지급 횟수</th><th>배당률</th><th>연 예상 (세후)</th></tr>` + per.map((x) => `<tr><td class="l">${esc(x.t)}</td><td>${x.n}회</td><td>${pct(x.yld, 2)}</td><td>${krw(x.y)}원</td></tr>`).join("") : "<tr><td class='muted'>지난 12개월 배당·이자를 준 종목이 없습니다.</td></tr>";
+    // 양도세
+    const wa = hs.filter((r) => r.avg && r.ccy !== "KRW");
+    if (!wa.length) { $("#taxBox").innerHTML = `<p>매수 단가를 넣으면 세금을 계산합니다. <a href="#" data-go="quotes">매수 단가 넣기</a></p>`; return; }
+    const gains = wa.map((r) => ({ t: r.h.ticker, g: (r.p.v - r.avg) * r.sh * r.fx, gps: (r.p.v - r.avg) * r.fx, sh: r.sh, w: r.w }));
+    const sum = gains.reduce((a, x) => a + x.g, 0), taxAll = Math.max(0, sum - CGT_DED) * CGT;
+    const best = gains.filter((x) => x.gps > 0).sort((a, b) => b.g - a.g)[0];
+    const L = [`<table class="grid"><tr><th class="l">종목</th><th>평가 이익 (원)</th><th>주당 이익</th></tr>${gains.map((x) => `<tr><td class="l">${esc(x.t)}</td><td class="${cls(x.g)}">${krw(x.g)}</td><td>${krw(x.gps)}</td></tr>`).join("")}</table>`];
+    L.push(`<p>지금 모두 판다면 세금 약 <b>${krw(taxAll)}원</b> (이익 합계 ${krw(sum)}원).</p>`);
+    if (best) L.push(`<p>올해 세금 없이 실현할 수 있는 이익 250만원 = <b>${esc(best.t)} 약 ${nf(Math.floor(CGT_DED / best.gps))}주</b>. 해마다 이만큼씩 나눠 팔면 공제를 매년 씁니다.</p>`);
+    // 집중 종목을 45%로 줄이는 매도를 1~3년에 나눌 때
+    const top = gains.filter((x) => x.gps > 0 && x.w > 0.45).sort((a, b) => b.w - a.w)[0];
+    if (top) {
+      const sell = Math.ceil(((top.w - 0.45) * total) / (wa.find((r) => r.h.ticker === top.t).p.v * wa.find((r) => r.h.ticker === top.t).fx));
+      const tx = (n) => { let t2 = 0; for (let y = 0; y < n; y++) t2 += Math.max(0, (sell / n) * top.gps - CGT_DED) * CGT; return t2; };
+      L.push(`<h3 style="margin:10px 0 4px">${esc(top.t)} 비중 45%로 줄이기 (약 ${nf(sell)}주)</h3><table class="grid"><tr><th class="l">나눠 파는 기간</th><th>세금 합계</th><th>아끼는 금액</th></tr>${[1, 2, 3].map((n) => `<tr><td class="l">${n}년 (해마다 ${nf(Math.ceil(sell / n))}주)</td><td>${krw(tx(n))}원</td><td>${n > 1 ? krw(tx(1) - tx(n)) + "원" : "-"}</td></tr>`).join("")}</table>`);
+    }
+    $("#taxBox").innerHTML = L.join("");
+  }
+
   // ------------------------------------------------------------ 환율 (원/달러)
   function fxInfo() {
     const p = S.prices["KRW=X"]; if (!p || p.close.length < 30) return null;
@@ -2215,6 +2319,7 @@
     if (a === "strategy") renderStockPrices();
     if (a === "events") { renderSchedule(); renderSens(); }
     if (a === "fx") renderFx();
+    if (a === "cash") renderCash();
     if (a === "strategy" || a === "forecast" || a === "events" || a === "fx") { if (!lastForecast && !fcRestore()) runForecast(); else renderForecast(); } // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
     if (a === "alloc") { if ((!lastAlloc || allocDirty) && !allocRestore()) runAlloc(); else { renderAllocTable(); renderAllocChart(); aiRefresh(); } }
     try { localStorage.setItem("ana", a); } catch (e) { /* 무시 */ }
@@ -2292,6 +2397,15 @@
       a.href = URL.createObjectURL(new Blob([JSON.stringify({ ...S.state, beyora: bvExport() }, null, 1)], { type: "application/json" }));
       a.download = `자산입력-${today()}.json`; a.click();
     };
+    $("#btnXfer").onclick = xferShow;
+    $("#btnShare").onclick = () => { const b = $("#shareBox"); b.style.display = b.style.display === "none" ? "block" : "none"; if (b.style.display === "block") drawShare(); };
+    $("#shareHide").onchange = drawShare;
+    $("#shareSave").onclick = async () => { const a = document.createElement("a"); a.href = URL.createObjectURL(await shareBlob()); a.download = `naeilo-${today()}.png`; a.click(); };
+    $("#shareSend").onclick = async () => { const f = new File([await shareBlob()], `naeilo-${today()}.png`, { type: "image/png" }); if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: "naeilo" }); } catch (e) { /* 취소 */ } } else $("#shareSave").click(); };
+    $("#btnPush").onclick = pushToggle;
+    $("#btnPushTest").onclick = async () => { const sub = await pushSub(); if (sub) fetch(pushBase() + "/push/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON() }) }).then(() => toast("시험 알림을 보냈습니다")); };
+    $("#xferCopy").onclick = async () => { try { await navigator.clipboard.writeText($("#xferLink").value); toast("복사했습니다"); } catch (e) { $("#xferLink").select(); } };
+    $("#xferShare").onclick = async () => { if (navigator.share) { try { await navigator.share({ title: "naeilo 입력값", url: $("#xferLink").value }); } catch (e) { /* 취소 */ } } else { $("#xferCopy").click(); } };
     $("#fileImport").onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
       try { const j = JSON.parse(await f.text()); bvMerge(j.beyora); delete j.beyora; S.state = normalize(j); save(); renderAll(); toast("불러왔습니다"); } catch (err) { alert("파일을 읽지 못했습니다: " + err.message); }
@@ -2299,14 +2413,134 @@
     let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const t = $("#tabs .on").dataset.tab; if (t === "dash") renderDash(); if (t === "analysis") { if (curAna() === "strategy") renderStockPrices(); if (curAna() === "alloc") renderAllocChart(); if (curAna() === "fx" && !lastForecast) renderFx(); else if (lastForecast) renderForecast(); } }, 200); });
   }
 
+  // ------------------------------------------------------------ 다른 기기로 옮기기 (링크·QR, 서버 저장 없음)
+  const b64u = (u8) => btoa(String.fromCharCode(...u8)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const unb64u = (s2) => Uint8Array.from(atob(s2.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  async function zip(u8, how) {
+    if (typeof CompressionStream === "undefined") return null;
+    const st = new Blob([u8]).stream().pipeThrough(how === "d" ? new DecompressionStream("deflate-raw") : new CompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(st).arrayBuffer());
+  }
+  async function xferEncode() {
+    const st = S.state, j = { v: 1, h: st.holdings.filter((h) => !h.sample && Number(h.shares) > 0).map((h) => [h.ticker, Number(h.shares), Number(h.avg_cost) || 0]), g: [st.goal.amount, st.goal.date, st.goal.start_date, Number(st.goal.monthly_contribution) || 0], m: [st.model.scenario, st.model.trust] };
+    const raw = new TextEncoder().encode(JSON.stringify(j)), z = await zip(raw);
+    return z ? "z" + b64u(z) : "j" + b64u(raw);
+  }
+  async function xferDecode(code) {
+    const u8 = unb64u(code.slice(1)), raw = code[0] === "z" ? await zip(u8, "d") : u8;
+    return JSON.parse(new TextDecoder().decode(raw));
+  }
+  async function xferShow() {
+    const box = $("#xferBox"); box.style.display = "block";
+    const url = location.origin + location.pathname + "#d=" + (await xferEncode());
+    $("#xferLink").value = url;
+    const draw = () => { $("#xferQr").innerHTML = ""; try { new window.QRCode($("#xferQr"), { text: url, width: 200, height: 200, correctLevel: window.QRCode.CorrectLevel.L }); } catch (e) { $("#xferQr").textContent = "QR을 만들지 못했습니다. 링크를 복사해 보내 주세요."; } };
+    if (window.QRCode) draw();
+    else { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"; sc.onload = draw; sc.onerror = () => ($("#xferQr").textContent = "QR 도구를 불러오지 못했습니다. 링크를 복사해 보내 주세요."); document.head.appendChild(sc); }
+  }
+  async function xferCheck() {
+    const m = location.hash.match(/^#d=([A-Za-z0-9_-]+)/); if (!m) return;
+    let j; try { j = await xferDecode(m[1]); } catch (e) { toast("옮기기 링크를 읽지 못했습니다"); return; }
+    showTab("dash"); const box = $("#xferIn"); box.style.display = "block";
+    box.innerHTML = `<b>다른 기기에서 보낸 입력값</b> <span class="small">종목 ${j.h.length}개 (${j.h.map((x) => esc(x[0])).join(", ")}), 목표 ${krw(j.g[0])}원. 지금 이 기기의 입력값을 바꿀까요?</span> <button class="primary" id="xferYes">불러오기</button> <button id="xferNo">무시</button>`;
+    const done = () => { box.style.display = "none"; window.history.replaceState(null, "", location.pathname + location.search); };
+    $("#xferNo").onclick = done;
+    $("#xferYes").onclick = () => {
+      const st = S.state; endSample(false);
+      st.holdings = j.h.map(([t, sh, avg]) => ({ ticker: t, shares: sh, price: null, avg_cost: avg || null, note: "" }));
+      j.h.forEach(([t]) => addEarnEvent(t));
+      st.goal = { ...st.goal, amount: j.g[0], date: j.g[1], start_date: j.g[2] || st.goal.start_date, monthly_contribution: j.g[3] || 0 };
+      if (j.m) { st.model.scenario = j.m[0] || st.model.scenario; st.model.trust = j.m[1] ?? st.model.trust; }
+      save(); renderAll(); done(); toast("불러왔습니다");
+      const miss = missingTickers(); if (miss.length && MODE === "static") browserCollect(miss);
+    };
+  }
+
+  // ------------------------------------------------------------ 알림 (웹 푸시)
+  const pushBase = () => (S.config && S.config.push ? String(S.config.push).replace(/\/$/, "") : "");
+  const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  function pushPayload(sub) {
+    const { rows } = valuation(), w = {}; rows.forEach((r) => { if (r.w > 0) w[r.h.ticker] = +r.w.toFixed(4); });
+    const held = new Set(Object.keys(w)), until = Model.addMonths(today(), 3), ev = [];
+    S.state.events.filter((e) => e.on && held.has(e.target) && /실적|인도량|보호예수/.test(e.kind || "")).forEach((e) => Model.occurrences(e, today(), until).forEach((d) => ev.push({ d, t: e.target, k: e.kind })));
+    return { sub, w, ev: ev.slice(0, 60) };
+  }
+  async function pushSub() { const reg = await navigator.serviceWorker?.getRegistration(); return reg ? reg.pushManager.getSubscription() : null; }
+  async function pushRender() {
+    const btn = $("#btnPush"), note = $("#pushNote"); if (!btn) return;
+    if (!pushBase()) { btn.disabled = true; note.textContent = "알림 서버가 아직 준비되지 않았습니다 (개발자 설정)."; return; }
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) { btn.disabled = true; note.textContent = isIOS() && !standalone() ? "아이폰은 공유 → 홈 화면에 추가한 앱에서 켤 수 있습니다." : "이 브라우저는 알림을 지원하지 않습니다."; return; }
+    const sub = await pushSub().catch(() => null);
+    btn.disabled = false; btn.textContent = sub ? "알림 끄기" : "알림 켜기"; $("#btnPushTest").style.display = sub ? "" : "none";
+    note.textContent = sub ? "켜져 있습니다." : Notification.permission === "denied" ? "브라우저에서 이 사이트 알림이 막혀 있습니다." : "";
+  }
+  async function pushToggle() {
+    const base = pushBase(), note = $("#pushNote");
+    try {
+      let sub = await pushSub();
+      if (sub) { await fetch(base + "/push/unsub", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {}); await sub.unsubscribe(); toast("알림을 껐습니다"); return pushRender(); }
+      if ((await Notification.requestPermission()) !== "granted") { note.textContent = "알림 권한이 필요합니다."; return; }
+      const reg = await navigator.serviceWorker.register("sw.js"); await navigator.serviceWorker.ready;
+      const { key } = await (await fetch(base + "/push/key")).json();
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: unb64u(key) });
+      const r = await fetch(base + "/push/sub", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pushPayload(sub.toJSON())) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+      try { localStorage.setItem("naeilo-push-sig", fcSig()); } catch (e) { /* 무시 */ }
+      toast("알림을 켰습니다");
+    } catch (e) { note.textContent = "알림을 켜지 못했습니다: " + e.message; }
+    pushRender();
+  }
+  // 종목·일정이 바뀌면 서버의 비중·일정도 새로 (켜 둔 경우만)
+  async function pushSync() {
+    if (!pushBase()) return; let sig = ""; try { sig = localStorage.getItem("naeilo-push-sig") || ""; } catch (e) { /* 무시 */ }
+    if (sig === fcSig()) return;
+    const sub = await pushSub().catch(() => null); if (!sub) return;
+    fetch(pushBase() + "/push/sub", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pushPayload(sub.toJSON())) }).then((r) => { if (r.ok) try { localStorage.setItem("naeilo-push-sig", fcSig()); } catch (e) { /* 무시 */ } }).catch(() => {});
+  }
+
+  // ------------------------------------------------------------ 공유 이미지 (금액 숨김 기본)
+  function drawShare() {
+    const cv = $("#shareCv"), x = cv.getContext("2d"), W = 1080, hide = $("#shareHide").checked;
+    const { total } = valuation(), g = S.state.goal, H = history(), k = H.dates.length - 1, my = myReturn();
+    const ret = (n) => { if (k < n && k >= n * 0.97) n = k; return k - n >= 0 && H.index[k - n] ? H.index[k] / H.index[k - n] - 1 : null; };
+    const F = "-apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", up = "#e5383b", dn = "#2f6fed", fg = "#1d2330", mu = "#6b7385";
+    const col = (v) => (v == null ? mu : v >= 0 ? up : dn), sp = (v) => (v == null ? "-" : spct(v));
+    x.fillStyle = "#f6f7f9"; x.fillRect(0, 0, W, W);
+    x.fillStyle = "#fff"; x.beginPath(); x.roundRect(60, 60, W - 120, W - 120, 36); x.fill();
+    x.fillStyle = "#2f6fed"; x.font = `800 54px ${F}`; x.fillText("naeilo", 110, 160);
+    x.fillStyle = mu; x.font = `400 32px ${F}`; x.textAlign = "right"; x.fillText(today(), W - 110, 158); x.textAlign = "left";
+    const prog = g.amount ? total / g.amount : 0;
+    x.fillStyle = mu; x.font = `500 36px ${F}`; x.fillText(hide ? "목표까지" : `목표 ${krw(g.amount)}원까지`, 110, 270);
+    x.fillStyle = fg; x.font = `800 132px ${F}`; x.fillText(pct(prog, 1), 104, 400);
+    x.fillStyle = "#e3e6ec"; x.beginPath(); x.roundRect(110, 440, W - 220, 26, 13); x.fill();
+    x.fillStyle = "#2f6fed"; x.beginPath(); x.roundRect(110, 440, Math.max(26, (W - 220) * Math.min(1, prog)), 26, 13); x.fill();
+    const cells = [["지난주", ret(5)], ["지난 1년", ret(252)], [my ? "내 수익률" : "3년", my ? my.r : ret(756)]];
+    cells.forEach(([a, v], i) => { const cx = 110 + i * 300; x.fillStyle = mu; x.font = `500 32px ${F}`; x.fillText(a, cx, 540); x.fillStyle = col(v); x.font = `700 56px ${F}`; x.fillText(sp(v), cx, 610); });
+    const pg = lastForecast && lastForecast.withEv ? lastForecast.withEv.p_goal : null;
+    x.fillStyle = mu; x.font = `500 32px ${F}`; x.fillText(pg != null ? `목표일 ${g.date} · 달성 확률 ${pct(pg, 0)}` : `목표일 ${g.date}`, 110, 680);
+    // 지난 1년 흐름 (축 없음)
+    const ys = H.total.slice(Math.max(0, k - 252)).filter((v) => v > 0);
+    if (ys.length > 2) {
+      const lo = Math.min(...ys), hi = Math.max(...ys), X0 = 110, Y0 = 720, CW = W - 220, CH = 190;
+      x.strokeStyle = "#2f6fed"; x.lineWidth = 5; x.lineJoin = "round"; x.beginPath();
+      ys.forEach((v, i) => { const px = X0 + (i / (ys.length - 1)) * CW, py = Y0 + CH - ((v - lo) / (hi - lo || 1)) * CH; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+      if (!hide) { x.fillStyle = mu; x.font = `400 28px ${F}`; x.textAlign = "right"; x.fillText(`자산 ${krw(total)}원`, W - 110, Y0 - 8); x.textAlign = "left"; }
+    }
+    x.fillStyle = mu; x.font = `400 28px ${F}`; x.textAlign = "center"; x.fillText("See Tomorrow, Today. · naeilo.com", W / 2, W - 95); x.textAlign = "left";
+  }
+  const shareBlob = () => new Promise((r) => $("#shareCv").toBlob(r, "image/png"));
+
   async function init() {
     try { await reload(); }
     catch (e) { document.body.innerHTML = `<div class="card" style="margin:40px auto;max-width:640px"><h2>데이터를 불러오지 못했습니다</h2><p>내 PC에서 쓸 때는 <b>실행 파일</b>(Windows: <code>실행-Windows.bat</code>, Mac: <code>실행-Mac.command</code>)로 열어야 합니다. 웹 버전은 GitHub Actions의 첫 수집이 끝난 뒤 열립니다.</p><p class="muted small">${esc(e.message)}</p></div>`; return; }
-    if (S.purged) save(false);
+    if (S.purged || (!S.state.sample && !(S.state.lots || []).length && S.state.holdings.some((h) => Number(h.shares) > 0))) save(false); // 진행 기록 첫 줄
     bind(); renderAll(); foldHold();
     setAuto(S.state.ui.auto_refresh_min || 0);
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; const a = localStorage.getItem("ana"); if (a && $(`#anaNav button[data-a="${a}"]`)) $$("#anaNav button").forEach((b) => b.classList.toggle("on", b.dataset.a === a)); } catch (e) { /* 무시 */ }
     showTab(tab);
+    xferCheck();
+    if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(() => { pushRender(); pushSync(); }).catch(() => {});
+    else pushRender();
     if (MODE === "static") {
       $("#btnQuotes").style.display = "none";
       $("#modeNote").innerHTML = `시세는 평일 30분마다 자동 수집, '시세 수집'을 누르면 바로 받음. 입력값은 <b>이 브라우저에만</b> 저장.`;
