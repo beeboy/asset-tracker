@@ -108,7 +108,7 @@ footer { text-align: center; padding: 6px 10px 0; }
 @media (max-width: 700px) {
   header { position: static; gap: 6px 12px; padding: 8px 12px; }
   .logo { font-size: 1rem; }
-  .headkpi { gap: 2px 9px; font-size: 0.7059rem; } .headkpi span { white-space: nowrap; } .headkpi b { font-size: 0.7647rem; } .headkpi .muted { display: none; }
+  .headkpi { gap: 2px 9px; font-size: 0.7059rem; } .headkpi span { white-space: nowrap; } .headkpi b { font-size: 0.7647rem; } .headkpi .muted { display: none; } .headkpi .hpill { top: 1px; }
   .headact { display: none; }
   main { padding: 10px 8px 30px; } .card { padding: 12px; }
   .kpis { gap: 6px; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); } .kpi { padding: 7px 8px; }
@@ -297,7 +297,7 @@ button.danger.x { padding: 2px 7px; }
 .qr { display: flex; justify-content: center; } .qr img, .qr canvas { background: #fff; padding: 8px; border-radius: 8px; }
 .prog { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; } @media (max-width: 700px) { .prog { grid-template-columns: repeat(2, 1fr); } }
 /* 머리글 목표 진행: 알약 막대 안에 % (오른쪽 정렬) */
-.hpill { position: relative; display: inline-flex; align-items: center; justify-content: flex-end; width: 56px; height: 15px; border-radius: 8px; background: var(--line); overflow: hidden; padding: 0 5px; }
+.hpill { position: relative; top: 3px; display: inline-flex; align-items: center; justify-content: flex-end; width: 56px; height: 15px; border-radius: 8px; background: var(--line); overflow: hidden; padding: 0 5px; }
 .hpill i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); opacity: .85; border-radius: 8px; }
 .hpill b { position: relative; font-size: 0.56rem !important; line-height: 1; font-weight: 700; color: var(--fg); }
 /* 비중 조정안 요약 박스 */
