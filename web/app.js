@@ -197,6 +197,11 @@
       st.events = st.events.filter((e) => !PURGED.has(String(e.target || "").toUpperCase()));
       st.purge_ver = 1; S.purged = true;
     }
+    if ((st.purge_ver || 0) < 2) { // 처음 받은 샘플 종목(수량 0)은 지운다
+      const SAMPLE = new Set(["TSLA", "NVDA", "SPCX", "SGOV"]);
+      st.holdings = st.holdings.filter((h) => !(SAMPLE.has(String(h.ticker || "").toUpperCase()) && !(Number(h.shares) > 0)));
+      st.purge_ver = 2;
+    }
     st.model = Object.assign({}, DEFAULT_MODEL, st.model || {});
     st.ui = Object.assign({ auto_refresh_min: 0, manual_price: false }, st.ui || {});
     return st;
@@ -651,9 +656,9 @@
           tick.forEach((t) => { const b2 = vb(t); if (!b2) return; const hi = lo.map((v, k) => v + b2.p50[k]); opt.bands.push({ x: fd, lo, hi, color: col(t), opacity: 0.28 }); lo = hi; });
           opt.series.push({ name: "종목 중앙값 합", x: fd, y: lo, color: "var(--fg)", width: 1, dash: "3 3" });
         }
-        notes.push(basis === "trend" ? "<b>추세 반영 (칼만·EMA) 전망</b>: 칼만 기울기와 EMA50·EMA200 기울기의 평균 성장률 지속 가정"
-          : basis === "smooth" ? "<b>스무딩 (3년)</b>: 과거 3년 로그가격에 맞춘 추세선의 성장률 지속 가정"
-          : "<b>모형 전망</b>: " + (mode === "total" ? "환율·외부 요인 반영, 진한 띠 25~75%, 옅은 띠 5~95%, 점선 중앙값" : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%" : "쌓은 띠는 종목별 중앙값(합계 중앙값과 조금 다를 수 있음)"));
+        notes.push(basis === "trend" ? "<b>추세 반영</b>: 칼만·EMA 기울기 성장률 지속"
+          : basis === "smooth" ? "<b>스무딩</b>: 3년 추세선 성장률 지속"
+          : "<b>모형 전망</b>: " + (mode === "total" ? "진한 띠 25~75%, 옅은 띠 5~95%" : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%" : "쌓은 띠 = 종목별 중앙값"));
         if (Number(g.monthly_contribution) > 0) notes.push(`· 월 적립 ${krw(Number(g.monthly_contribution))}원 포함`);
       } else if (total > 0) notes.push("전망을 계산하는 중입니다…");
       if (mode === "total" && basis !== "model") {
@@ -665,7 +670,7 @@
       if (V0 > 0 && mode !== "each") opt.series.push({ name: "필요 경로", x: [last, ...md], y: [conv(H.total[H.total.length - 1], H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
-      notes.push("현재 보유 수량을 과거에 적용(매매 이력 미반영), " + (inUsd ? "그날 환율로 달러 환산." : "그날 환율로 원화 환산."));
+      notes.push("현재 수량을 과거에 적용" + (inUsd ? ", 달러 환산." : "."));
     }
     $("#histNote").innerHTML = notes.join(" ");
     Charts.lineChart($("#histChart"), opt);
@@ -969,7 +974,7 @@
         const earn = xs.filter((x) => /실적/.test(x.event.kind)), e0 = earn[0]?.event;
         const sub = earn.length && earn.length === xs.length ? `분기 실적 ${earn.length}회${e0 ? ` · 회당 ±${e0.sd}%` : ""}` : `${xs.length}건`;
         return `<div class="schedrow"><div class="schedhead"><b>${esc(t)}</b> <span class="muted">${sub}</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`;
-      }).join("") + `<p class="muted small">회색 칩은 분기 실적(발표 예상 월, 직전 분기 실적), 주황 칩은 한 번 있는 사건입니다. 테두리가 진한 칩이 가장 가까운 사건입니다. 칩을 길게 누르거나 마우스를 올리면 확률·영향이 나옵니다. NVDA처럼 회계연도가 다른 회사는 회사 발표 분기 이름과 다를 수 있습니다.</p>`;
+      }).join("") + `<p class="muted small">회색 = 분기 실적, 주황 = 한 번 있는 사건, 진한 테두리 = 가장 가까운 사건.</p>`;
     } catch (e) { $("#eventSchedule").textContent = e.message; }
   }
   function onEventEdit(e) {
@@ -1124,24 +1129,23 @@
     $("#fcStatus").title = `${SCEN_LAB[lastForecast.scen] || ""} · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초`;
     const contrib = Number(g.monthly_contribution) || 0;
     $("#fcKpis").innerHTML = [
-      ["목표 달성 확률", pct(R.p_goal, 0), `목표일에 ${krw(g.amount)}원 이상`],
-      ["한 번이라도 도달", pct(R.p_touch, 0), "목표일 전 어느 시점이든"],
+      ["목표 달성 확률", pct(R.p_goal, 0), `목표일 ${krw(g.amount)}원 이상`],
+      ["한 번이라도 도달", pct(R.p_touch, 0), "목표일 전 언제나"],
       ["목표일 중앙값", krw(R.terminal.p50) + "원", `평균 ${krw(R.terminal.mean)}원`],
       ["나쁜 경우 (하위 5%)", krw(R.terminal.p5) + "원", `하위 25% ${krw(R.terminal.p25)}원`],
       ["좋은 경우 (상위 5%)", krw(R.terminal.p95) + "원", `상위 25% ${krw(R.terminal.p75)}원`],
       ["원금 손실 확률", pct(R.p_loss, 0), contrib ? `투입 ${krw(R.invested)}원 대비` : "현재 평가액 대비"],
       ["최대 낙폭 (중앙값)", pct(R.mdd_median, 0), `나쁜 10%: ${pct(R.mdd_p10, 0)}`],
-      ["확률 50% 위한 월 적립", R.req50 == null ? "-" : R.req50 === 0 ? "0원" : krw(R.req50) + "원", R.req50 == null ? "재조정 끄면 계산" : "같은 비중 매월 매수 가정"],
+      ["확률 50% 위한 월 적립", R.req50 == null ? "-" : R.req50 === 0 ? "0원" : krw(R.req50) + "원", R.req50 == null ? "재조정 끄면 계산" : "매월 정액 매수 가정"],
     ].map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
     drawFcChart();
     // 모형 값
     const scen = m.scenario;
-    $("#fcParams").innerHTML = `<tr><th class="l">요인</th><th>비중</th><th>표본 (일)</th><th>과거 변동성</th><th>모형 변동성</th><th>요인 제외 평소 변동성</th><th>과거 평균 (연)</th><th>3년 스무딩 (연)</th><th>칼만·EMA 추세 (연)</th><th>사전값 비중</th><th>적용 기대수익 (${scenName(scen)})</th></tr>` +
+    $("#fcParams").innerHTML = `<tr><th class="l">종목</th><th>비중</th><th>변동성</th><th>과거 평균 (연)</th><th>적용 기대수익</th></tr>` +
       md.factors.map((f, i) => `<tr><td class="l">${f.kind === "fx" ? "환율 " + f.key : esc(f.key)}${f.cash ? ' <span class="tag">현금성</span>' : ""}</td>
-        <td>${f.kind === "asset" ? pct(b.holdings[i].valueKrw / R.V0) : "-"}</td><td>${f.n}</td><td>${pct(f.volRaw)}</td><td>${pct(f.vol)}</td><td>${pct(f.volDiff)}</td>
-        <td>${pct(f.muHist)}</td><td>${f.gSmooth == null ? "-" : spct(Math.exp(f.gSmooth) - 1)}</td><td>${f.gTrend == null ? "-" : spct(Math.exp(f.gTrend) - 1)}</td><td>${f.shrink == null ? "-" : pct(1 - f.shrink, 0)}</td><td><b>${pct(f.mu[scen])}</b></td></tr>`).join("") +
-      `<tr><td class="l muted" colspan="11">상관행렬 ${md.corrShrink > 0 ? `(양의 정부호 보정 ${pct(md.corrShrink, 0)})` : ""}: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
+        <td>${f.kind === "asset" ? pct(b.holdings[i].valueKrw / R.V0, 0) : "-"}</td><td>${pct(f.vol, 0)}</td><td>${pct(f.muHist, 0)}</td><td><b>${pct(f.mu[scen], 0)}</b></td></tr>`).join("") +
+      `<tr><td class="l muted wrapc" colspan="5">상관: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
     renderStrategy();
     if (curAna() === "fx") renderFx();
     if (curAna() === "events") runXfEffect();
@@ -2086,6 +2090,7 @@
     $("#btnAdd").onclick = addHolding;
     $("#addAvg").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     $("#addShares").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
+    $("#goalQuick").addEventListener("click", (e) => { const b = e.target.closest("button[data-set]"); if (!b) return; const el = $("#" + b.dataset.set); el.value = b.dataset.v; el.dispatchEvent(new Event("change")); });
     ["#goalAmount", "#goalDate", "#startDate", "#goalYears", "#monthly"].forEach((s) => { $(s).addEventListener("change", onGoalEdit); });
     $("#newsFuture").addEventListener("click", (e) => { // 제목을 누르면 읽은 기사로 표시
       const a = e.target.closest("a[data-nid]"); if (!a) return;
