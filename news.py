@@ -345,7 +345,48 @@ def collect_insight(ai: str | None, tks: list[str], names: dict, prev: dict, poo
         res["updated"] = now.isoformat(timespec="seconds")
     pool["ins_seen"] = seen
     res["items"] = sorted(items, key=lambda x: x.get("time") or "", reverse=True)[:INS_MAX]
+    res["digest"] = digest_insight(ai, tks, res["items"], prev.get("digest") or {}, now, errs, log)
     return res
+
+
+def digest_insight(ai: str | None, tks: list[str], items: list[dict], prev: dict, now: datetime, errs: list, log=print) -> dict:
+    """종목마다 모은 기사(보유·관련 업계)를 AI 로 2~3문장 종합한다. 기사 묶음이 바뀐 종목만 다시 묻는다(한 번에).
+    보유 목록(tickers.json)에서 빠진 종목의 종합은 바로 지우지 않고 마지막으로 쓴 뒤 7일 보관한다."""
+    iso = now.isoformat(timespec="seconds")
+    keep = (now - timedelta(days=INS_KEEP_D)).isoformat()
+    out = {t: d for t, d in prev.items() if t not in tks and (d.get("seen") or "") >= keep}
+    todo = {}
+    for t in tks:
+        its = sorted([x for x in items if x["ticker"] == t], key=lambda x: (x["scope"] != "held", -(datetime.fromisoformat(x["time"]).timestamp() if x.get("time") else 0)))[:12]
+        if not its:
+            continue
+        h = _hash([x["id"] for x in its])
+        d = prev.get(t) or {}
+        if d.get("hash") == h and d.get("sum"):
+            out[t] = {**d, "seen": iso}
+        else:
+            todo[t] = (h, its)
+    if todo and ai:
+        lines = []
+        for t, (h, its) in todo.items():
+            lines.append(f"\n[{t}]")
+            lines += [f"- ({'보유' if x['scope'] == 'held' else '업계'}·{x['cat']}) {x['title']}" + (f" — {x['summary']}" if x.get("summary") else "") for x in its]
+        prompt = ("아래는 종목별로 모은 최근 기사(보유 종목 기사와 관련 업계 기사)다. 종목마다 1~3년 뒤 기업 가치에 주는 의미를 중심으로 "
+                  "기사들을 하나로 종합해 한국어 2~3문장으로 써라. 기사에 없는 사실은 쓰지 말고 투자 권유는 하지 마라.\n"
+                  '출력 형식: {"d":{"티커":"종합"}}\n' + "\n".join(lines))
+        try:
+            j = ask_ai(ai, prompt).get("d") or {}
+            for t, (h, its) in todo.items():
+                sm = (j.get(t) or "").strip() if isinstance(j.get(t), str) else ""
+                if sm:
+                    out[t] = {"sum": sm, "hash": h, "updated": iso, "seen": iso}
+            log(f"미래 가치 종합 {sum(1 for t in todo if t in out)}/{len(todo)}종목")
+        except Exception as e:  # noqa: BLE001
+            errs.append(f"digest: {e}")
+    for t in todo:  # AI 가 안 되면 지난 종합을 그대로 두고(화면은 기사 요약으로 대신) 다음 시간에 다시 묻는다
+        if t not in out and (prev.get(t) or {}).get("sum"):
+            out[t] = {**prev[t], "seen": iso}
+    return out
 
 
 # ---------------------------------------------------------------- 수집 본체
