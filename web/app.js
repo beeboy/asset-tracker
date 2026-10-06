@@ -2216,9 +2216,10 @@
 
   function renderAllocChart() {
     if (!lastAlloc) return;
-    const q = $("#allocQ .on")?.dataset.q || "p50", g = S.state.goal;
+    const q = $("#allocQ .on")?.dataset.q || "p50", g = S.state.goal, pick = S.state.alloc_pick || "mid";
+    // 고른 안은 굵게, 현재 유지는 기준선, 나머지는 흐리게
     Charts.lineChart($("#allocChart"), { x: lastAlloc.fd, height: 300, yfmt: krwAxis,
-      series: lastAlloc.out.map((o, j) => ({ name: o.name, y: o.R.bands[q], color: C[j % C.length], width: j === 0 ? 2.4 : 1.8, dash: j === 0 ? "" : j % 2 ? "6 3" : "" })),
+      series: lastAlloc.out.map((o, j) => ({ name: o.name, y: o.R.bands[q], color: C[j % C.length], width: o.k === pick ? 3.2 : j === 0 ? 2 : 1.4, dash: o.k === pick || j === 0 ? "" : "5 3", opacity: o.k === pick || j === 0 ? 1 : 0.3 })),
       hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }] });
   }
 
@@ -2244,10 +2245,23 @@
   function renderTrades() {
     const L = S.state.lots || [], tr = trades();
     $("#tradeSum").textContent = tr.length ? `· ${tr.length}건` : L.length ? `· ${L[0].d} 시작` : "";
-    const start = L[0] ? `<tr><td class="l">${L[0].d}</td><td class="l" colspan="4">시작 보유: ${Object.entries(L[0].h).map(([t, q]) => `${esc(t)} ${nf(q)}`).join(", ")}</td></tr>` : "";
-    $("#tradeTable").innerHTML = `<tr><th class="l">날짜</th><th class="l">종목</th><th>수량</th><th>가격<br><span class="muted">금액</span></th><th>실현 손익</th></tr>` + start +
+    const start = L[0] ? `<tr><td class="l">${L[0].d}</td><td class="l" colspan="5">시작 보유: ${Object.entries(L[0].h).map(([t, q]) => `${esc(t)} ${nf(q)}`).join(", ")}</td></tr>` : "";
+    $("#tradeTable").innerHTML = `<tr><th class="l">날짜</th><th class="l">종목</th><th>수량</th><th>가격<br><span class="muted">금액</span></th><th>실현 손익</th><th></th></tr>` + start +
       tr.slice().reverse().map((x) => `<tr><td class="l"><input type="date" data-lot="${x.i}" value="${x.d}" style="width:9.5em"></td><td class="l">${esc(x.t)}</td><td class="${cls(x.q)}">${x.q > 0 ? "+" : ""}${nf(x.q)}</td>
-        <td>${x.px ? nf(x.px, 2) : "-"}<br><span class="muted">${x.krw ? krw(x.krw) + "원" : ""}</span></td><td>${x.real != null ? `<span class="${cls(x.real)}">${krw(x.real)}원</span>` : x.q < 0 ? '<span class="muted small">매수 단가 필요</span>' : ""}</td></tr>`).join("");
+        <td>${x.px ? nf(x.px, 2) : "-"}<br><span class="muted">${x.krw ? krw(x.krw) + "원" : ""}</span></td><td>${x.real != null ? `<span class="${cls(x.real)}">${krw(x.real)}원</span>` : x.q < 0 ? '<span class="muted small">매수 단가 필요</span>' : ""}</td><td><button class="danger x" data-dl="${x.i}" data-dt="${esc(x.t)}" title="이 기록 지우기">✕</button></td></tr>`).join("") +
+      (L.length > 1 ? `<tr><td colspan="6" class="l"><button class="sm" id="tradeClear">기록 모두 지우기</button> <span class="muted small">지금 수량을 시작으로 다시 기록합니다.</span></td></tr>` : "");
+  }
+  // 기록 하나 지우기: 잘못 넣은 수량으로 보고, 그 이전 기록들도 바뀐 뒤 수량으로 맞춘다
+  function delTrade(i, t) {
+    const L = S.state.lots; if (!L[i] || !confirm(`${L[i].d} ${t} 기록을 지울까요?`)) return;
+    const v = L[i].h[t], a = L[i - 1].h[t];
+    for (let j = i - 1; j >= 0 && L[j].h[t] === a; j--) { if (v) L[j].h[t] = v; else delete L[j].h[t]; }
+    for (let j = L.length - 1; j > 0; j--) if (JSON.stringify(L[j].h) === JSON.stringify(L[j - 1].h)) L.splice(j, 1);
+    save(false); renderTrades(); if ($("#tabs .on").dataset.tab === "dash") renderDash();
+  }
+  function clearTrades() {
+    if (!confirm("거래 기록을 모두 지울까요? 목표 진행 그래프도 지금 수량 기준으로 다시 그립니다.")) return;
+    S.state.lots = []; save(false); renderTrades(); if ($("#tabs .on").dataset.tab === "dash") renderDash();
   }
   function onTradeDate(e) {
     const i = +e.target.dataset.lot, L = S.state.lots, d = e.target.value; if (!L[i] || !d) return;
@@ -2476,7 +2490,7 @@
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
     segClick("#anaNav", renderAnalysis);
     $("#btnAlloc").onclick = () => { allocDirty = true; runAlloc(); };
-    $("#allocBoxes").addEventListener("click", (e) => { const b = e.target.closest("[data-ak]"); if (!b) return; S.state.alloc_pick = b.dataset.ak; save(false); renderAllocTable(); });
+    $("#allocBoxes").addEventListener("click", (e) => { const b = e.target.closest("[data-ak]"); if (!b) return; S.state.alloc_pick = b.dataset.ak; save(false); renderAllocTable(); renderAllocChart(); });
     $("#allocMix").addEventListener("change", (e) => { const k = e.target.dataset.mix; if (!k) return; S.state.alloc_mix = { ...(S.state.alloc_mix || {}), [k]: e.target.value.trim() || ALLOC_DEF[k].mix }; save(false); allocDirty = true; runAlloc(); });
     $("#eventTable").addEventListener("input", onEventEdit);
     $("#evTiles").addEventListener("click", (e) => { const t = e.target.closest("[data-evt]"); if (!t) return; const ev = S.state.events[+t.dataset.evt]; ev.on = !ev.on; save(); renderEvents(); if (curAna() === "events") runForecast(); });
@@ -2517,6 +2531,7 @@
       a.download = `자산입력-${today()}.json`; a.click(); markBackup();
     };
     $("#tradeTable").addEventListener("change", (e) => { if (e.target.dataset.lot) onTradeDate(e); });
+    $("#tradeTable").addEventListener("click", (e) => { const b = e.target.closest("[data-dl]"); if (b) delTrade(+b.dataset.dl, b.dataset.dt); else if (e.target.id === "tradeClear") clearTrades(); });
     $("#btnXfer").onclick = xferShow;
     $("#btnShare").onclick = () => { const b = $("#shareBox"); b.style.display = b.style.display === "none" ? "block" : "none"; if (b.style.display === "block") drawShare(); };
     $("#shareHide").onchange = drawShare;

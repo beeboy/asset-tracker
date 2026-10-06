@@ -92,7 +92,7 @@
         if (s.y[i] == null || !isFinite(s.y[i])) { pen = false; continue; }
         dstr += `${pen ? "L" : "M"}${X(toT(x[i])).toFixed(1)},${Y(s.y[i]).toFixed(1)}`; pen = true;
       }
-      el("path", { d: dstr, fill: "none", stroke: s.color, "stroke-width": s.width || 1.6, "stroke-dasharray": s.dash || "", "stroke-linejoin": "round" }, svg);
+      el("path", { d: dstr, fill: "none", stroke: s.color, "stroke-width": s.width || 1.6, "stroke-dasharray": s.dash || "", "stroke-opacity": s.opacity ?? 1, "stroke-linejoin": "round" }, svg);
     });
     (opt.markers || []).forEach((mk) => {
       const xx = X(toT(mk.x)); if (xx < m.l || xx > W - m.r) return;
