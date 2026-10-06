@@ -295,7 +295,7 @@
     const { total } = valuation(), g = S.state.goal, fx = fxNow("USD");
     const prog = g.amount ? total / g.amount : 0;
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span>자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span>`;
+    $("#headKpi").innerHTML = `<span>자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span><span class="hsep">|</span><span><b>${pct(prog)}</b></span>`;
   }
 
   // ------------------------------------------------------------ 시세·종목
