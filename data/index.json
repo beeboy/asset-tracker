@@ -1,15 +1,17 @@
 {
- "updated": "2026-10-06T09:34:56+00:00",
+ "updated": "2026-10-06T14:47:55+00:00",
  "prices": {
   "AAPL": "AAPL.json",
   "CL=F": "CL_F.json",
   "DBC": "DBC.json",
   "GC=F": "GC_F.json",
+  "GLD": "GLD.json",
   "KRW=X": "KRW_X.json",
   "MANA": "MANA.json",
   "NVDA": "NVDA.json",
   "QQQ": "QQQ.json",
   "SGOV": "SGOV.json",
+  "SMH": "SMH.json",
   "SPCX": "SPCX.json",
   "SPY": "SPY.json",
   "TSLA": "TSLA.json",
