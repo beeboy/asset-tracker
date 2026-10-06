@@ -71,7 +71,7 @@ table.grid select { padding: 3px 4px; }
 .addrow button { flex: 0 0 auto; }
 button.sm { padding: 4px 9px; font-size: 0.7353rem; }
 .sechead { margin: 22px 2px 8px; font-size: 0.8235rem; color: var(--muted); }
-.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 .kpi { min-width: 0; }
 .kpi .k { font-size: 0.7059rem; color: var(--muted); } .kpi .v { font-size: 1.1765rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; } .kpi .s { font-size: 0.7059rem; color: var(--muted); overflow-wrap: anywhere; }
@@ -240,6 +240,7 @@ a.bvlink::after { content: "↗"; font-size: 0.6471rem; } a.bvlink:hover { backg
 /* 계산 옵션: 시나리오 박스 5개 (누르면 아래 공통 설정으로 다시 계산) */
 #fcOpt > summary { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .scenbox { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(104px, 100%), 1fr)); gap: 6px; margin-top: 8px; }
+@media (min-width: 701px) { .scenbox { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .scenbox button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 7px 10px; border-radius: 9px; }
 .scenbox button b { font-size: 0.7647rem; } .scenbox button span { font-size: 0.6471rem; color: var(--muted); }
 .scenbox button.on { border-color: var(--accent); background: var(--accent); color: #fff; } .scenbox button.on span { color: #fff; opacity: .85; }
@@ -267,3 +268,7 @@ button.danger.x { padding: 2px 7px; }
 .nsrc summary { cursor: pointer; font-size: 0.7059rem; color: var(--muted); }
 .nsrc ul { margin: 6px 0 0; padding-left: 16px; font-size: 0.7353rem; } .nsrc li { margin: 0 0 6px; line-height: 1.4; }
 .nsrc a { color: var(--fg); text-decoration: none; } .nsrc a:hover { color: var(--accent); text-decoration: underline; } .nsrc a.read { color: var(--muted); }
+.ibox .ipx { color: var(--fg); font-size: 0.7647rem; white-space: nowrap; } .ibox .ipx .up { color: #e5383b; } .ibox .ipx .dn { color: #2f6fed; }
+@media (max-width: 700px) {
+  .xfbox { padding: 5px 6px; gap: 4px; } .xfbox .xfh { min-width: 0; } .xfbox .seg { gap: 3px; } .xfbox .seg button { padding: 3px 6px; }
+}

@@ -108,7 +108,7 @@
   let saveTimer = null, autoTimer = null, lastForecast = null, fcDirty = true, lastAlloc = null, allocDirty = true;
   let fcCache = {}; // 시나리오별 전망 (대시보드 미래 표시·AI 용). 입력이나 시세가 바뀌면 비운다
   const markDirty = () => { fcDirty = allocDirty = true; fcCache = {}; };
-  const SCEN = { base: "기준", conservative: "보수", history: "과거 반복", smooth: "과거 스무딩 추종", trend: "추세 (칼만·EMA) 추종" };
+  const SCEN = { base: "기준", conservative: "보수", history: "과거 반복", smooth: "스무딩 추종", trend: "추세 추종" };
   const scenName = (k) => SCEN[k] || k;
 
   // ------------------------------------------------------------ 형식
@@ -467,7 +467,7 @@
     const fx = fxNow("USD"), fq = S.quotes["KRW=X"];
     $("#fxLine").textContent = `원/달러 ${nf(fx, 2)}${fq?.last_time ? " (" + dtStr(fq.last_time * 1000) + ")" : ""}`;
     const adv = !!S.state.ui.manual_price, hasPl = rows.some((r) => r.pl != null); // 매수 단가가 하나도 없으면 손익 칸은 숨김
-    const head = `<tr><th></th><th class="l">종목</th><th>수량</th><th>매수 단가</th><th>현재가<br><span class="muted">평가액</span></th>${adv ? "<th>현재가 직접 입력</th>" : ""}<th>비중<br><span class="muted">전일</span></th>${hasPl ? "<th>손익</th>" : ""}</tr>`;
+    const head = `<tr><th class="l">종목</th><th>수량</th><th>매수 단가</th><th>현재가<br><span class="muted">평가액</span></th>${adv ? "<th>현재가 직접 입력</th>" : ""}<th>비중<br><span class="muted">전일</span></th>${hasPl ? "<th>손익</th>" : ""}<th></th></tr>`;
     const body = rows.map((r, i) => {
       const mk = r.p.src === "manual" ? curPrice({ ...r.h, price: null }).v : null;
       const gap = mk ? r.p.v / mk - 1 : 0;
@@ -475,16 +475,15 @@
       const p = r.p, tag = p.src && p.src !== "regular" ? `<span class="tag ${p.src === "manual" ? "manual" : ""}">${SESS[p.src] || p.src}</span>` : "";
       const pl = r.pl != null ? `<span class="${cls(r.pl)}" title="${nf(r.pl, 0)} ${r.ccy}">${spct(r.plPct, 0)}</span><br><span class="muted small">${krw(r.pl * (r.fx || 1))}</span>` : `<span class="muted">-</span>`;
       return `<tr data-i="${i}">
-        <td><button class="danger x" data-del="${i}" title="이 종목 삭제">✕</button></td>
         <td class="l tkc">${logo(r.h.ticker, r.name)}<b>${esc(r.h.ticker)}</b></td>
         <td><input data-f="shares" type="text" inputmode="decimal" placeholder="수량" value="${r.h.shares ? r.h.shares : ""}"></td>
         <td><input data-f="avg_cost" type="text" inputmode="decimal" placeholder="선택" value="${r.h.avg_cost ?? ""}"></td>
         <td>${p.v != null ? nf(p.v, 2) + " <span class='muted small'>" + r.ccy + "</span>" : "-"}${tag}<br><b>${krw(r.valueKrw)}</b></td>
         ${adv ? `<td><input data-f="price" type="text" inputmode="decimal" placeholder="자동" value="${r.h.price ?? ""}">${warn}</td>` : ""}
-        <td>${pct(r.w, 0)}<br><span class="${cls(r.dayChg)}">${spct(r.dayChg, 1)}</span></td>${hasPl ? `<td>${pl}</td>` : ""}</tr>`;
+        <td>${pct(r.w, 0)}<br><span class="${cls(r.dayChg)}">${spct(r.dayChg, 1)}</span></td>${hasPl ? `<td>${pl}</td>` : ""}<td><button class="danger x" data-del="${i}" title="이 종목 삭제">✕</button></td></tr>`;
     }).join("");
     const plTot = rows.filter((r) => r.pl != null).reduce((s, r) => s + r.pl * (r.fx || 1), 0);
-    const foot = `<tr><td></td><td class="l"><b>합계</b></td><td></td><td></td><td><b>${krw(total)}</b></td>${adv ? "<td></td>" : ""}<td>100%</td>${hasPl ? `<td><span class="${cls(plTot)}">${krw(plTot)}</span></td>` : ""}</tr>`;
+    const foot = `<tr><td class="l"><b>합계</b></td><td></td><td></td><td><b>${krw(total)}</b></td>${adv ? "<td></td>" : ""}<td>100%</td>${hasPl ? `<td><span class="${cls(plTot)}">${krw(plTot)}</span></td>` : ""}<td></td></tr>`;
     $("#holdTable").innerHTML = head + body + foot;
   }
   function onHoldEdit(e) {
@@ -995,8 +994,8 @@
     const model = Model.buildModel({ holdings, series, fxOf, settings: S.state.model, events: S.state.events, betas: factorBetas().beta, startDate: start, goalDate: g.date });
     return { holdings, model };
   }
-  const SCEN_LAB = { base: "기준 (과거+사전값 절충)", conservative: "보수 (위험 프리미엄 없음)", history: "과거 반복 (지난 수익률 그대로)", smooth: "과거 스무딩 추종 (3년 추세선)", trend: "추세 추종 (칼만·EMA)" };
-  const SCEN_SHORT = { base: "기준", conservative: "보수", history: "과거 반복", smooth: "과거 스무딩 추종", trend: "추세 추종" };
+  const SCEN_LAB = { base: "기준 (과거+사전값 절충)", conservative: "보수 (위험 프리미엄 없음)", history: "과거 반복 (지난 수익률 그대로)", smooth: "스무딩 추종 (3년 추세선)", trend: "추세 추종 (칼만·EMA)" };
+  const SCEN_SHORT = { base: "기준", conservative: "보수", history: "과거 반복", smooth: "스무딩 추종", trend: "추세 추종" };
   function dtStr(t) { const d = new Date(t), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${z(d.getHours())}:${z(d.getMinutes())}`; }
   async function runForecast() {
     const st = $("#fcStatus"), btns = $$("#scenBox button");
@@ -1534,7 +1533,16 @@
     try { localStorage.setItem(INS_X, JSON.stringify(x)); } catch (e) { /* 무시 */ }
   }
   // 서버 종합이 없을 때(브라우저가 직접 받은 종목 등): 기사 요약을 최신순으로 이어 붙인다
-  const insRule = (its) => { const xs = its.filter((x) => x.scope === "held").concat(its.filter((x) => x.scope !== "held")); const sm = xs.map((x) => x.summary).filter(Boolean); return (sm.length ? sm : xs.map((x) => x.title)).slice(0, 3).join(" "); };
+  const insRule = (its) => { const xs = its.filter((x) => x.scope === "held").concat(its.filter((x) => x.scope !== "held")); const sm = xs.map((x) => x.summary).filter(Boolean); return (sm.length ? sm : xs.map((x) => x.title)).slice(0, 3).join("\n"); };
+  // 종합 글: 문장마다 줄 바꿈, **굵게** 표시. 서버 종합에 굵은 표시가 없으면 숫자(금액·%)를 굵게
+  const insFmt = (t) => {
+    let h = esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    if (!/<b>/.test(h)) h = h.replace(/([$₩]?[+-]?\d[\d,.]*\s?(?:%p?|억|조|만|달러|원|배|대|명)?)/g, (m) => (/\d{2,}|%|\$|억|조|달러/.test(m) ? `<b>${m}</b>` : m));
+    return h.split(/\n+|(?<=[.!?다])\s+(?=\S)/).map((x) => x.trim()).filter(Boolean).join("<br>");
+  };
+  const insPx = (t) => { const r = valuation().rows.find((x) => x.h.ticker === t); if (!r || r.p.v == null) return "";
+    const sym = r.ccy === "USD" ? "$" : r.ccy === "KRW" ? "₩" : "", c = r.dayChg;
+    return `<span class="ipx">${sym}${nf(r.p.v, r.ccy === "KRW" ? 0 : 2)}${c != null ? ` <span class="${c > 0 ? "up" : c < 0 ? "dn" : ""}">${spct(c, 1)}</span>` : ""}</span>`; };
   function insBox(t, its, dig, msg) {
     const o = insLoad(), name = S.prices[t]?.name || S.quotes[t]?.name || "";
     its = [...its].sort((a, b) => (a.scope !== "held") - (b.scope !== "held") || (b.time || "").localeCompare(a.time || ""));
@@ -1543,8 +1551,8 @@
     const text = dig?.sum || insRule(its);
     const pills = Object.keys(INS_CAT).filter((c) => cnt[c]).map((c) => `<span class="ncat">${INS_CAT[c]} ${cnt[c]}</span>`).join("");
     const src = its.map((x) => `<li><a class="${o.read[x.id] ? "read" : ""}" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer" data-nid="${esc(x.id)}">${esc(x.title || x.orig)}</a> <span class="nmeta">${x.scope === "held" ? "" : "업계 · "}${esc(x.source || "")}${x.time ? " · " + ago(x.time) : ""}</span></li>`).join("");
-    return `<div class="nitem ibox"><div class="ntop">${logo(t, name)}<span class="tk" title="${esc(name)}">${esc(t)}</span><span class="nmeta nago">${at && its.length ? ago(at) : ""}</span></div>
-      ${its.length ? `<p class="nsum">${esc(text)}</p><div class="pills">${pills}</div><details class="nsrc"><summary>출처 ${its.length}건</summary><ul>${src}</ul></details>` : `<p class="nsum muted">${esc(msg)}</p>`}</div>`;
+    return `<div class="nitem ibox"><div class="ntop">${logo(t, name)}<span class="tk" title="${esc(name)}">${esc(t)}</span>${insPx(t)}<span class="nmeta nago">${at && its.length ? ago(at) : ""}</span></div>
+      ${its.length ? `<p class="nsum">${insFmt(text)}</p><div class="pills">${pills}</div><details class="nsrc"><summary>출처 ${its.length}건</summary><ul>${src}</ul></details>` : `<p class="nsum muted">${esc(msg)}</p>`}</div>`;
   }
   async function renderInsight(force) {
     renderBeyora(); bvLoad();
@@ -2066,7 +2074,7 @@
       const a = e.target.closest("a[data-nid]"); if (!a) return;
       const o = insLoad(); o.read[a.dataset.nid] = Date.now(); insSave(o); a.classList.add("read");
     });
-    segClick("#histRange", renderDash); segClick("#histStep", renderDash); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { const f = $("#histRange button[data-r=future]"); if (!f.classList.contains("on")) f.click(); else renderDash(); });
+    segClick("#histRange", renderDash); segClick("#histStep", renderDash); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", renderDash); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#trendRange", renderTrend); segClick("#fxRange", renderFx);
     $("#trendTicker").onchange = renderTrend;
     segClick("#anaNav", renderAnalysis);
