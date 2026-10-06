@@ -300,3 +300,11 @@ button.danger.x { padding: 2px 7px; }
 .hpill { position: relative; display: inline-flex; align-items: center; justify-content: flex-end; width: 92px; height: 20px; border-radius: 10px; background: var(--line); overflow: hidden; padding: 0 8px; }
 .hpill i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); opacity: .85; border-radius: 10px; }
 .hpill b { position: relative; font-size: 0.6471rem !important; font-weight: 700; color: var(--fg); }
+/* 비중 조정안 요약 박스 */
+.allocboxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin: 10px 0 6px; }
+.abox { display: block; text-align: left; border: 1px solid var(--line); border-top: 3px solid var(--ac); border-radius: 9px; padding: 9px 11px; background: var(--card); color: var(--fg); }
+.abox.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; border-top-color: var(--ac); }
+.abox .lh { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.abox .lv { font-size: 1.0588rem; font-weight: 700; margin-top: 3px; } .abox .lv small { font-size: 0.7059rem; font-weight: 400; color: var(--muted); }
+.abox p { margin: 2px 0 0; font-size: 0.7059rem; }
+@media (max-width: 700px) { .allocboxes { grid-template-columns: repeat(2, 1fr); } }

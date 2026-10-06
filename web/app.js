@@ -513,6 +513,7 @@
     const plTot = rows.filter((r) => r.pl != null).reduce((s, r) => s + r.pl * (r.fx || 1), 0);
     const foot = `<tr><td class="l"><b>합계</b></td><td></td><td></td><td><b>${krw(total)}</b></td>${adv ? "<td></td>" : ""}<td>100%</td>${hasPl ? `<td><span class="${cls(plTot)}">${krw(plTot)}</span></td>` : ""}<td></td></tr>`;
     $("#holdTable").innerHTML = head + body + foot;
+    renderTrades();
   }
   function onHoldEdit(e) {
     const tr = e.target.closest("tr[data-i]"); if (!tr) return;
@@ -660,7 +661,7 @@
     const xs = H.dates.slice(i0), ys = A.slice(i0);
     if (xs.length >= 3) {
       $("#progChart").style.display = "block";
-      Charts.lineChart($("#progChart"), { x: xs, height: 150, yfmt: krwAxis, series: [{ name: "실제", y: ys, color: "var(--c1)", width: 2 }, { name: "필요 경로", y: xs.map((d) => V0 * (g.amount / V0) ** (Math.max(0, yearsBetween(start, d)) / span)), color: "var(--accent2)", dash: "5 4", width: 1.3 }] });
+      Charts.lineChart($("#progChart"), { x: xs, height: 150, yfmt: krwAxis, series: [{ name: "실제", y: ys, color: "var(--c1)", width: 2 }, { name: "필요 경로", y: xs.map((d) => V0 * (g.amount / V0) ** (Math.max(0, yearsBetween(start, d)) / span)), color: "var(--accent2)", dash: "5 4", width: 1.3 }], markers: [...new Set(trades().map((t) => t.d))].filter((d) => d >= start).map((d) => ({ x: d, label: `${d} ${trades().filter((t) => t.d === d).map((t) => `${t.t} ${t.q > 0 ? "+" : ""}${t.q}`).join(", ")}` })) });
     } else $("#progChart").style.display = "none";
   }
   function renderDash() {
@@ -673,7 +674,7 @@
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
     const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
-    renderProgress(H, total);
+    renderProgress(H, total); renderBackupNag();
     $("#goalKpis").innerHTML = [
       ["현재 평가액", krw(total) + "원", `${nf(total)}원 · <a href="#" data-go="quotes">수량 수정</a>`],
       ["목표 대비", pct(total / g.amount), `<div class="bar"><i style="width:${Math.min(100, (total / g.amount) * 100)}%"></i></div>`],
@@ -1383,6 +1384,9 @@
     if (risky[top] > 0.45) tips.push(`**집중도**: ${b.holdings[top].ticker} 한 종목이 **${pct(w[top], 0)}**입니다. 하위 5% 결과가 ${krw(R.terminal.p5)}원까지 내려갑니다. '비중 조정'에서 줄였을 때를 확인해 보세요.`);
     if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장에서 살 여력과 심리적 완충을 위해 3~5%를 권합니다.`);
     tips.push(`**낙폭**: 최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}. 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
+    const rg = rebalanceGap();
+    if (rg && rg.gaps.length && yearsBetween(rg.tg.at, today()) < 0.5) tips.push(`**비중 조정 진행 중**: '${rg.tg.name}' (${rg.tg.at}에 목표로 정함). 남은 차이 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")}.`);
+    else if (rg) tips.push(rg.gaps.length ? `**리밸런싱 신호**: 목표로 정한 '${rg.tg.name}' 비중에서 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")} 벗어났습니다. '비중 조정'에서 실행 계획을 보세요.` : `**리밸런싱**: 목표로 정한 '${rg.tg.name}' 비중 안에 있습니다 (±5%p).`);
     if (common.length) tips.push(`**공통 일정** (모든 종목): ${common.slice(0, 4).map((c) => `${c.k} ${c.d.join(", ")}`).join(" · ")}`);
     $("#stratSummary").innerHTML = `<div class="md small">${md2html(tips.map((t) => "- " + t).join("\n"))}</div>`;
 
@@ -2116,50 +2120,98 @@
   }
 
   // ------------------------------------------------------------ 비중안 비교
+  // 비중 조정안: 집중 종목을 cap 까지 줄이고 차액을 mix 로 (공격·안정·보수). mix 는 설정에서 바꿀 수 있다
+  const ALLOC_DEF = { agg: { n: "공격적", cap: 0.45, mix: "SMH 50, QQQ 50", d: "성장 업종으로 옮겨 확률 유지" }, mid: { n: "안정적", cap: 0.35, mix: "QQQ 50, SPY 50", d: "지수로 나쁜 경우 개선" }, con: { n: "보수적", cap: 0.25, mix: "SPY 50, SGOV 30, GLD 20", d: "현금·금으로 하락 방어" } };
+  const ALLOC_SUB = { GLD: "GC=F", SMH: "QQQ" }; // 시세가 아직 없을 때 대신 쓸 종목
+  const allocMix = (k) => String((S.state.alloc_mix || {})[k] || ALLOC_DEF[k].mix).split(",").map((x) => x.trim().split(/\s+/)).filter((x) => x[0]).map(([t, w]) => [t.toUpperCase(), Number(w) || 1]);
   async function runAlloc() {
     const st = $("#allocStatus"), btn = $("#btnAlloc");
-    if (!S.prices.QQQ) { st.textContent = "QQQ 시세가 없어 비교할 수 없습니다. 설정에서 QQQ를 수집 목록에 넣어 주세요."; return; }
+    const want = [...new Set(Object.keys(ALLOC_DEF).flatMap((k) => allocMix(k).map((x) => x[0])))];
+    const miss = want.filter((t) => !S.prices[t]);
+    if (miss.length && MODE === "static" && !runAlloc.tried) { runAlloc.tried = true; st.textContent = `${miss.join(", ")} 시세를 받는 중...`; try { await browserCollect(miss); } catch (e) { /* 대체 종목으로 */ } }
     const prog = (k, n) => { st.innerHTML = `계산 중... (${k}/${n}) <span class="bar" style="display:inline-block;width:120px;vertical-align:middle"><i style="width:${(k / n) * 100}%"></i></span>`; };
-    btn.disabled = true; prog(0, 5); await new Promise((r) => setTimeout(r, 30));
+    btn.disabled = true; prog(0, 4); await new Promise((r) => setTimeout(r, 30));
     try {
-      const g = S.state.goal, m = S.state.model, { rows } = valuation();
+      const g = S.state.goal, m = S.state.model, { rows } = valuation(), subs = [];
+      const res = (t) => (S.prices[t] ? t : ALLOC_SUB[t] && S.prices[ALLOC_SUB[t]] ? (subs.push(`${t}→${ALLOC_SUB[t]}`), ALLOC_SUB[t]) : null);
       const base = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw }));
-      if (!base.some((h) => h.ticker === "QQQ")) { const q = S.prices.QQQ; base.push({ ticker: "QQQ", shares: 0, price0: q.close[q.close.length - 1], ccy: "USD", valueKrw: 1 }); }
+      const V0 = base.reduce((a, h) => a + h.valueKrw, 0);
+      const mixes = {}; for (const k of Object.keys(ALLOC_DEF)) mixes[k] = allocMix(k).map(([t, w]) => [res(t), w]).filter((x) => x[0]);
+      for (const t of new Set(Object.values(mixes).flat().map((x) => x[0]))) if (!base.some((h) => h.ticker === t)) { const q = S.prices[t]; base.push({ ticker: t, shares: 0, price0: q.close[q.close.length - 1], ccy: ccyOf(t), valueKrw: 1, extra: true }); }
       const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
       const model = Model.buildModel({ holdings: base, series, fxOf, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goalDate: g.date });
-      const V0 = base.reduce((s2, h) => s2 + (h.ticker === "QQQ" && h.shares === 0 ? 0 : h.valueKrw), 0);
-      const w0 = base.map((h) => (h.ticker === "QQQ" && h.shares === 0 ? 0 : h.valueKrw / V0)), qi = base.findIndex((h) => h.ticker === "QQQ");
-      const risky = base.map((h, i) => (model.factors[i].cash || i === qi ? 0 : w0[i])), top = risky.indexOf(Math.max(...risky));
-      const capTop = (cap) => { const w = [...w0]; const cut = Math.max(0, w[top] - cap); w[top] -= cut; w[qi] += cut; return w; };
-      const plans = [["A 현재 유지", w0, false], ["E 현재 비중 연 1회 재조정", w0, true]];
-      if (w0[top] > 0.45) plans.push([`B ${base[top].ticker} 45%로 (차액 QQQ)`, capTop(0.45), true]);
-      if (w0[top] > 0.35) plans.push([`C ${base[top].ticker} 35%로 (차액 QQQ)`, capTop(0.35), true]);
-      plans.push(["D 지수 중심 (QQQ 60%)", w0.map((x, i) => (i === qi ? 0.6 + 0.4 * x : 0.4 * x)), true]);
+      const w0 = base.map((h) => (h.extra ? 0 : h.valueKrw / V0));
+      const risky = base.map((h, i) => (model.factors[i].cash || h.extra ? 0 : w0[i])), top = risky.indexOf(Math.max(...risky));
+      const plans = [{ k: "keep", name: "현재 유지", w: w0, rb: false }];
+      for (const [k, D] of Object.entries(ALLOC_DEF)) {
+        const w = [...w0], cut = w0[top] > D.cap ? w0[top] - D.cap : w0[top] * { agg: 0.1, mid: 0.25, con: 0.4 }[k], tot = mixes[k].reduce((a, x) => a + x[1], 0);
+        w[top] -= cut; mixes[k].forEach(([t, x]) => { w[base.findIndex((h) => h.ticker === t)] += (cut * x) / tot; });
+        plans.push({ k, name: `${D.n} (${base[top].ticker} ${pct(w[top], 0)})`, w, rb: true, cut });
+      }
       const out = [];
-      for (const [name, w, rb] of plans) {
-        const hs = base.map((h, i) => ({ ...h, valueKrw: V0 * w[i] }));
-        const R = Model.simulate(model, { holdings: hs, scenario: m.scenario, nPaths: 1500, seed: Number(m.seed) || 1, goal: g.amount, monthly: Number(g.monthly_contribution) || 0, rebalance: rb, withEvents: true, dof: m.t_dof, fxOf });
-        out.push({ name, w, R });
+      for (const pl of plans) {
+        const hs = base.map((h, i) => ({ ...h, valueKrw: V0 * pl.w[i] }));
+        const R = Model.simulate(model, { holdings: hs, scenario: m.scenario, nPaths: 1500, seed: Number(m.seed) || 1, goal: g.amount, monthly: Number(g.monthly_contribution) || 0, rebalance: pl.rb, withEvents: true, dof: m.t_dof, fxOf });
+        out.push({ ...pl, R: { p_goal: R.p_goal, p_loss: R.p_loss, mdd_median: R.mdd_median, terminal: R.terminal, bands: R.bands } });
         prog(out.length, plans.length); await new Promise((r) => setTimeout(r, 10));
       }
-      lastAlloc = { base, out: out.map((o) => ({ name: o.name, w: o.w, R: { p_goal: o.R.p_goal, p_loss: o.R.p_loss, mdd_median: o.R.mdd_median, terminal: o.R.terminal, bands: o.R.bands } })), fd: model.monthDates, at: Date.now() }; allocDirty = false;
-      try { localStorage.setItem(AL_KEY, JSON.stringify({ sig: fcSig(), ...lastAlloc })); } catch (e) { /* 무시 */ }
-      renderAllocTable();
-      renderAllocChart();
+      lastAlloc = { base: base.map((h) => ({ ticker: h.ticker, price0: h.price0, ccy: h.ccy, shares: h.shares })), V0, top, out, subs, fd: model.monthDates, at: Date.now() }; allocDirty = false;
+      try { localStorage.setItem(AL_KEY, JSON.stringify({ sig: fcSig() + "|" + JSON.stringify(S.state.alloc_mix || {}), ...lastAlloc })); } catch (e) { /* 무시 */ }
+      renderAllocTable(); renderAllocChart();
       if (curAna() === "alloc") aiRefresh();
     } catch (e) { st.textContent = "오류: " + e.message; console.error(e); }
     btn.disabled = false;
   }
-  // 비중 조정 결과는 이 브라우저에 저장해 두고, 입력(종목·수량·목표·사건·모형)이 같으면 다시 쓴다
-  const AL_KEY = "naeilo-alloc";
+  const AL_KEY = "naeilo-alloc2";
   function allocRestore() {
-    try { const c = JSON.parse(localStorage.getItem(AL_KEY) || "null"); if (!c || c.sig !== fcSig()) return false; lastAlloc = c; allocDirty = false; return true; } catch (e) { return false; }
+    try { const c = JSON.parse(localStorage.getItem(AL_KEY) || "null"); if (!c || c.sig !== fcSig() + "|" + JSON.stringify(S.state.alloc_mix || {})) return false; lastAlloc = c; allocDirty = false; return true; } catch (e) { return false; }
   }
+  // 요약 박스 4개 (누르면 실행 계획) + 차액 종목 옵션
   function renderAllocTable() {
-    const { base, out } = lastAlloc;
-      $("#allocTable").innerHTML = `<tr><th class="l">안 · 비중</th><th>목표<br>확률</th><th>중앙값<br><span class="muted">하위 5%</span></th><th>지금보다<br>낮을 확률<br><span class="muted">낙폭 중앙값</span></th></tr>` + out.map((o) => `<tr><td class="l wrapc"><b>${esc(o.name)}</b><br><span class="small muted">${base.map((h, i) => (o.w[i] > 0.004 ? `${esc(h.ticker)} ${pct(o.w[i], 0)}` : "")).filter(Boolean).join(" · ")}</span></td>
-        <td><b>${pct(o.R.p_goal, 0)}</b></td><td>${krw(o.R.terminal.p50)}<br><span class="muted">${krw(o.R.terminal.p5)}</span></td><td>${pct(o.R.p_loss, 0)}<br><span class="muted">${pct(o.R.mdd_median, 0)}</span></td></tr>`).join("");
-    $("#allocStatus").textContent = `${dtStr(lastAlloc.at || Date.now())} 계산 · 안별 1,500경로, 같은 난수, 사건 포함`;
+    const { base, out } = lastAlloc, pick = S.state.alloc_pick || "mid", tgt = S.state.alloc_target;
+    $("#allocBoxes").innerHTML = out.map((o, j) => `<button type="button" class="abox ${o.k === pick ? "on" : ""}" data-ak="${o.k}" style="--ac:${C[j % C.length]}">
+      <div class="lh"><b>${esc(o.k === "keep" ? "현재 유지" : ALLOC_DEF[o.k].n)}</b>${tgt && tgt.k === o.k ? '<span class="tag">목표</span>' : ""}</div>
+      <div class="lv">${pct(o.R.p_goal, 0)} <small>목표 확률</small></div>
+      <p>중앙값 ${krw(o.R.terminal.p50)} · 나쁜 5% ${krw(o.R.terminal.p5)}</p><p>최대 낙폭 ${pct(o.R.mdd_median, 0)} · 낮을 확률 ${pct(o.R.p_loss, 0)}</p>
+      <p class="muted">${base.map((h, i) => (o.w[i] > 0.004 ? `${esc(h.ticker)} ${pct(o.w[i], 0)}` : "")).filter(Boolean).join(" · ")}</p></button>`).join("");
+    $("#allocStatus").textContent = `${dtStr(lastAlloc.at || Date.now())} 계산 · 안별 1,500경로` + (lastAlloc.subs && lastAlloc.subs.length ? ` · 시세가 없어 대신 씀: ${[...new Set(lastAlloc.subs)].join(", ")}` : "");
+    $("#allocMix").innerHTML = Object.entries(ALLOC_DEF).map(([k, D]) => `<label><span class="row between"><span>${D.n} · ${esc(D.d)}</span><span class="muted small">기본 ${esc(D.mix)}</span></span><input type="text" data-mix="${k}" value="${esc((S.state.alloc_mix || {})[k] || D.mix)}" style="width:100%"></label>`).join("") + `<p class="muted small">"종목 비중, 종목 비중" 형식. 바꾸면 다시 계산합니다.</p>`;
+    renderAllocPlan();
+  }
+  // 고른 비중 조정안의 실행 계획: 6개월 분할 + 세금(연도 나누기) + 목표로 정하면 리밸런싱 신호
+  function renderAllocPlan() {
+    const card = $("#allocPlanCard"); if (!lastAlloc) return;
+    const { base, out, top, V0 } = lastAlloc, k = S.state.alloc_pick || "mid", o = out.find((x) => x.k === k);
+    if (!o || k === "keep") { card.style.display = "none"; return; }
+    card.style.display = "block";
+    $("#allocPlanTitle").textContent = `실행 계획 · ${ALLOC_DEF[k].n}`;
+    const fx = (h) => fxNow(h.ccy) || 1, w0 = out[0].w, L = [];
+    const sells = [], buys = [];
+    base.forEach((h, i) => { const dv = (o.w[i] - w0[i]) * V0, sh = dv / (h.price0 * fx(h)); if (Math.abs(sh) < 0.5) return; (dv < 0 ? sells : buys).push({ t: h.ticker, sh: Math.abs(sh), v: Math.abs(dv) }); });
+    L.push(`<p><b>6개월 분할</b>: 매월 ${sells.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh / 6))}주 매도`).join(", ")} → ${buys.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh / 6))}주 (${krw(x.v / 6)}원)`).join(", ")} 매수.</p>`);
+    const th = S.state.holdings.find((h) => h.ticker === base[top].ticker), avg = Number(th?.avg_cost) || 0, s0 = sells.find((x) => x.t === base[top].ticker);
+    if (s0 && avg) {
+      const gps = (base[top].price0 - avg) * fx(base[top]), used = Math.max(0, realizedYear(new Date().getFullYear()));
+      const tax = (n, first) => Math.max(0, n * gps - Math.max(0, CGT_DED - first)) * CGT;
+      const one = tax(s0.sh, used), two = tax(s0.sh / 2, used) + tax(s0.sh / 2, 0);
+      L.push(`<p><b>세금</b>: 올해 안에 모두 팔면 약 ${krw(one)}원, 올해와 내년에 반씩 나누면 약 ${krw(two)}원${one - two > 0 ? ` (<b>${krw(one - two)}원 절약</b>)` : ""}.${used ? ` 올해 이미 실현한 이익 ${krw(used)}원 반영.` : ""}</p>`);
+    } else if (s0) L.push(`<p class="muted small">매수 단가를 넣으면 연도별 세금을 계산합니다.</p>`);
+    const tgt = S.state.alloc_target;
+    L.push(`<div class="row wrap"><button class="primary sm" id="allocSetTgt">${tgt && tgt.k === k ? "목표로 정해 둠 (해제)" : "이 비중 조정안을 목표로 정하기"}</button><span class="muted small">목표로 정하면 비중이 5%p 넘게 벗어날 때 종목 전략에서 알려 줍니다.</span></div>`);
+    $("#allocPlan").innerHTML = L.join("");
+    $("#allocSetTgt").onclick = () => {
+      if (tgt && tgt.k === k) delete S.state.alloc_target;
+      else S.state.alloc_target = { k, name: ALLOC_DEF[k].n, at: today(), w: Object.fromEntries(base.map((h, i) => [h.ticker, +o.w[i].toFixed(4)]).filter((x) => x[1] > 0.004)) };
+      save(false); renderAllocTable();
+    };
+  }
+  // 리밸런싱 신호: 목표 비중과 지금 비중 차이
+  function rebalanceGap() {
+    const tg = S.state.alloc_target; if (!tg) return null;
+    const { rows } = valuation(), now = {}; rows.forEach((r) => { if (r.w > 0) now[r.h.ticker] = r.w; });
+    const all = new Set([...Object.keys(tg.w), ...Object.keys(now)]);
+    const gaps = [...all].map((t) => [t, (now[t] || 0) - (tg.w[t] || 0)]).filter((x) => Math.abs(x[1]) > 0.05).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+    return { tg, gaps };
   }
 
   function renderAllocChart() {
@@ -2168,6 +2220,51 @@
     Charts.lineChart($("#allocChart"), { x: lastAlloc.fd, height: 300, yfmt: krwAxis,
       series: lastAlloc.out.map((o, j) => ({ name: o.name, y: o.R.bands[q], color: C[j % C.length], width: j === 0 ? 2.4 : 1.8, dash: j === 0 ? "" : j % 2 ? "6 3" : "" })),
       hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }] });
+  }
+
+  // ------------------------------------------------------------ 거래 기록 (수량 기록 lots 의 차이)
+  function priceOn(t, d) {
+    const p = S.prices[t]; if (!p) return null;
+    let lo = 0, hi = p.dates.length - 1, k = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (p.dates[m] <= d) { k = m; lo = m + 1; } else hi = m - 1; }
+    return k >= 0 ? p.close[k] : p.close[0];
+  }
+  function trades() {
+    const L = S.state.lots || [], out = [];
+    for (let i = 1; i < L.length; i++) {
+      const a = L[i - 1].h, b = L[i].h;
+      for (const t of new Set([...Object.keys(a), ...Object.keys(b)])) {
+        const q = (b[t] || 0) - (a[t] || 0); if (!q) continue;
+        const px = priceOn(t, L[i].d), fx = fxNow(ccyOf(t)) || 1, avg = Number(S.state.holdings.find((h) => h.ticker === t)?.avg_cost) || null;
+        out.push({ i, d: L[i].d, t, q, px, krw: px ? Math.abs(q) * px * fx : null, real: q < 0 && avg && px ? (px - avg) * -q * fx : null });
+      }
+    }
+    return out;
+  }
+  function realizedYear(y) { return trades().filter((x) => x.real != null && x.d.startsWith(String(y))).reduce((a, x) => a + x.real, 0); }
+  function renderTrades() {
+    const L = S.state.lots || [], tr = trades();
+    $("#tradeSum").textContent = tr.length ? `· ${tr.length}건` : L.length ? `· ${L[0].d} 시작` : "";
+    const start = L[0] ? `<tr><td class="l">${L[0].d}</td><td class="l" colspan="4">시작 보유: ${Object.entries(L[0].h).map(([t, q]) => `${esc(t)} ${nf(q)}`).join(", ")}</td></tr>` : "";
+    $("#tradeTable").innerHTML = `<tr><th class="l">날짜</th><th class="l">종목</th><th>수량</th><th>가격<br><span class="muted">금액</span></th><th>실현 손익</th></tr>` + start +
+      tr.slice().reverse().map((x) => `<tr><td class="l"><input type="date" data-lot="${x.i}" value="${x.d}" style="width:9.5em"></td><td class="l">${esc(x.t)}</td><td class="${cls(x.q)}">${x.q > 0 ? "+" : ""}${nf(x.q)}</td>
+        <td>${x.px ? nf(x.px, 2) : "-"}<br><span class="muted">${x.krw ? krw(x.krw) + "원" : ""}</span></td><td>${x.real != null ? `<span class="${cls(x.real)}">${krw(x.real)}원</span>` : x.q < 0 ? '<span class="muted small">매수 단가 필요</span>' : ""}</td></tr>`).join("");
+  }
+  function onTradeDate(e) {
+    const i = +e.target.dataset.lot, L = S.state.lots, d = e.target.value; if (!L[i] || !d) return;
+    const lo = L[i - 1]?.d || "0000", hi = L[i + 1]?.d || "9999";
+    if (d <= lo || d >= hi) { toast(`${lo} 과 ${hi} 사이 날짜만 됩니다`); e.target.value = L[i].d; return; }
+    L[i].d = d; save(false); renderTrades(); if ($("#tabs .on").dataset.tab === "dash") renderDash();
+  }
+  // 백업 알림: 입력값이 이 브라우저에만 있으므로, 바뀐 뒤 14일 넘게 백업하지 않았으면 대시보드에 알린다
+  function markBackup() { S.state.ui.last_backup = today(); save(false); renderBackupNag(); }
+  function renderBackupNag() {
+    const box = $("#backupNag"), ui = S.state.ui, L = S.state.lots || [];
+    const lastChange = L.length ? L[L.length - 1].d : null, last = ui.last_backup || null;
+    const due = !S.state.sample && lastChange && (!last || last < lastChange) && yearsBetween(last || L[0].d, today()) * 365 >= 14 && !(ui.backup_snooze && ui.backup_snooze > today());
+    box.style.display = due ? "block" : "none"; if (!due) return;
+    box.innerHTML = `<b>입력값을 백업해 두세요.</b> <span class="small">종목·거래 기록은 이 브라우저에만 저장됩니다${last ? ` (마지막 백업 ${last})` : " (아직 백업 없음)"}. 브라우저 기록을 지우면 사라집니다.</span> <button class="primary sm" id="bkNow">지금 백업</button> <button class="sm" id="bkLater">7일 뒤에</button>`;
+    $("#bkNow").onclick = () => $("#btnExport").click();
+    $("#bkLater").onclick = () => { ui.backup_snooze = new Date(Date.now() + 7 * 86400e3).toISOString().slice(0, 10); save(false); renderBackupNag(); };
   }
 
   // ------------------------------------------------------------ 배당·세금
@@ -2182,40 +2279,61 @@
     return out;
   }
   const WHT = 0.15, CGT = 0.22, CGT_DED = 2500000;
+  function divGrowth(t, ds) {
+    // 지난 12개월 합 대비 24~36개월 전 12개월 합으로 연 증가율 (0~15%로 제한)
+    const a = Model.addMonths(today(), -12), b = Model.addMonths(today(), -24), c = Model.addMonths(today(), -36);
+    const y1 = ds.filter((x) => x.d > a).reduce((s2, x) => s2 + x.amt, 0), y3 = ds.filter((x) => x.d > c && x.d <= b).reduce((s2, x) => s2 + x.amt, 0);
+    return y1 > 0 && y3 > 0 ? Math.max(0, Math.min(0.15, Math.sqrt(y1 / y3) - 1)) : 0;
+  }
   function renderCash() {
     const { rows, total } = valuation(), hs = rows.filter((r) => r.valueKrw > 0);
-    if (!hs.length) { $("#divKpis").innerHTML = ""; $("#taxBox").innerHTML = "<p class='muted'>보유 수량을 넣으면 계산합니다.</p>"; return; }
-    const yAgo = Model.addMonths(today(), -12), months = []; for (let k = 1; k <= 12; k++) months.push(Model.addMonths(today(), k).slice(0, 7));
+    if (!hs.length) { $("#divKpis").innerHTML = ""; $("#taxBox").innerHTML = "<p class='muted'>보유 수량을 넣으면 계산합니다.</p>"; $("#taxGoal").innerHTML = ""; $("#taxYears").innerHTML = ""; return; }
+    const span = +($("#divSpan .on")?.dataset.y || 3), yAgo = Model.addMonths(today(), -12), months = []; for (let k = 1; k <= 36; k++) months.push(Model.addMonths(today(), k).slice(0, 7));
     const byM = Object.fromEntries(months.map((m) => [m, 0])), per = [];
     hs.forEach((r) => {
-      const ds = dividends(r.h.ticker).filter((x) => x.d > yAgo), tax = r.ccy === "USD" ? WHT : r.ccy === "KRW" ? 0.154 : WHT;
-      let y = 0; ds.forEach((x) => { const m = Model.addMonths(x.d, 12).slice(0, 7), v = x.amt * r.sh * (r.fx || 1) * (1 - tax); if (m in byM) byM[m] += v; y += v; });
-      if (ds.length) per.push({ t: r.h.ticker, n: ds.length, y, yld: (ds.reduce((a, x) => a + x.amt, 0)) / r.p.v });
+      const all = dividends(r.h.ticker), ds = all.filter((x) => x.d > yAgo), tax = r.ccy === "KRW" ? 0.154 : WHT, gr = divGrowth(r.h.ticker, all);
+      let y1 = 0, y3 = 0;
+      ds.forEach((x) => { for (let n = 1; n <= 3; n++) { const m = Model.addMonths(x.d, 12 * n).slice(0, 7), v = x.amt * r.sh * (r.fx || 1) * (1 - tax) * (1 + gr) ** (n - 1); if (m in byM) { byM[m] += v; y3 += v; if (n === 1) y1 += v; } } });
+      if (ds.length) per.push({ t: r.h.ticker, n: ds.length, y1, y3, gr, yld: ds.reduce((a, x) => a + x.amt, 0) / r.p.v });
     });
-    const yr = per.reduce((a, x) => a + x.y, 0);
-    $("#divKpis").innerHTML = [["연 예상 (세후)", krw(yr) + "원", `평가액의 ${pct(yr / total, 2)}`], ["월 평균", krw(yr / 12) + "원", "세후"], ["지급 종목", `${per.length}개`, per.map((x) => x.t).join(", ") || "-"]]
+    const Y1 = per.reduce((a, x) => a + x.y1, 0), Y3 = per.reduce((a, x) => a + x.y3, 0), shown = months.slice(0, span * 12);
+    $("#divTitle").textContent = `앞으로 ${span}년 예상 배당·이자 (세후, 원화)`;
+    $("#divKpis").innerHTML = [["1년 예상 (세후)", krw(Y1) + "원", `평가액의 ${pct(Y1 / total, 2)}`], ["3년 합계 (세후)", krw(Y3) + "원", "증가율 반영"], ["월 평균 (1년)", krw(Y1 / 12) + "원", per.map((x) => x.t).join(", ") || "지급 종목 없음"]]
       .map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("");
-    if (yr > 0) { $("#divChart").style.display = "block"; Charts.lineChart($("#divChart"), { x: months.map((m) => m + "-15"), height: 170, yfmt: krwAxis, legend: false, series: [{ name: "월별", y: months.map((m) => byM[m]), color: "var(--c3)", width: 2 }] }); }
+    if (Y1 > 0) { $("#divChart").style.display = "block"; Charts.lineChart($("#divChart"), { x: shown.map((m) => m + "-15"), height: 170, yfmt: krwAxis, legend: false, series: [{ name: "월별", y: shown.map((m) => byM[m]), color: "var(--c3)", width: 2 }] }); }
     else $("#divChart").style.display = "none";
-    $("#divTable").innerHTML = per.length ? `<tr><th class="l">종목</th><th>지난 12개월<br>지급 횟수</th><th>배당률</th><th>연 예상 (세후)</th></tr>` + per.map((x) => `<tr><td class="l">${esc(x.t)}</td><td>${x.n}회</td><td>${pct(x.yld, 2)}</td><td>${krw(x.y)}원</td></tr>`).join("") : "<tr><td class='muted'>지난 12개월 배당·이자를 준 종목이 없습니다.</td></tr>";
+    $("#divTable").innerHTML = per.length ? `<tr><th class="l">종목</th><th>지급<br><span class="muted">지난 12개월</span></th><th>배당률<br><span class="muted">연 증가율</span></th><th>1년 (세후)<br><span class="muted">3년 합계</span></th></tr>` + per.map((x) => `<tr><td class="l">${esc(x.t)}</td><td>${x.n}회</td><td>${pct(x.yld, 2)}<br><span class="muted">${pct(x.gr, 0)}</span></td><td>${krw(x.y1)}원<br><span class="muted">${krw(x.y3)}원</span></td></tr>`).join("") : "<tr><td class='muted'>지난 12개월 배당·이자를 준 종목이 없습니다.</td></tr>";
     // 양도세
+    const g = S.state.goal, cb = costBasis(), yNow = new Date().getFullYear(), used = Math.max(0, realizedYear(yNow));
+    // 목표일에 모두 현금화하면: 전망 경로별 세금을 빼고 다시 센 세후 목표 확률
+    const R = lastForecast && lastForecast.withEv;
+    if (R && R.term && R.term.length) {
+      const basis = (cb ?? R.V0) + (R.monthly || 0) * Math.max(0, (R.bands.p50.length || 2) - 2), ok = [], taxes = [];
+      for (const v of R.term) { const t = Math.max(0, v - basis - CGT_DED) * CGT; taxes.push(t); ok.push(v - t >= g.amount); }
+      const pAfter = ok.filter(Boolean).length / ok.length, tMed = Math.max(0, R.terminal.p50 - basis - CGT_DED) * CGT;
+      $("#taxGoal").innerHTML = `<div class="kpis">${[["세후 목표 달성 확률", pct(pAfter, 0), `세전 ${pct(R.p_goal, 0)} · 목표일에 모두 판다면`], ["현금화 세금 (중앙값)", krw(tMed) + "원", `중앙값 ${krw(R.terminal.p50)}원 → 세후 ${krw(R.terminal.p50 - tMed)}원`], ["세금 낸 뒤 10억이 되려면", krw(g.amount + Math.max(0, g.amount - basis - CGT_DED) * CGT / (1 - CGT)) + "원", "세전으로 필요한 금액 (근사)"]].map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("")}</div><p class="muted small">${cb ? "매수 원금" : "매수 단가가 없어 오늘 평가액"} ${krw(cb ?? R.V0)}원을 원금으로 봄. 내 관점 전망 기준.</p>`;
+    } else $("#taxGoal").innerHTML = `<p class="muted small">3년 전망을 한 번 계산하면(분석·전략 › 3년 전망) 세후 목표 달성 확률이 나옵니다.</p>`;
     const wa = hs.filter((r) => r.avg && r.ccy !== "KRW");
-    if (!wa.length) { $("#taxBox").innerHTML = `<p>매수 단가를 넣으면 세금을 계산합니다. <a href="#" data-go="quotes">매수 단가 넣기</a></p>`; return; }
-    const gains = wa.map((r) => ({ t: r.h.ticker, g: (r.p.v - r.avg) * r.sh * r.fx, gps: (r.p.v - r.avg) * r.fx, sh: r.sh, w: r.w }));
+    if (!wa.length) { $("#taxBox").innerHTML = `<p>매수 단가를 넣으면 종목별 세금을 계산합니다. <a href="#" data-go="quotes">매수 단가 넣기</a></p>`; $("#taxYears").innerHTML = ""; return; }
+    const gains = wa.map((r) => ({ t: r.h.ticker, g: (r.p.v - r.avg) * r.sh * r.fx, gps: (r.p.v - r.avg) * r.fx, sh: r.sh, w: r.w, px: r.p.v * r.fx }));
     const sum = gains.reduce((a, x) => a + x.g, 0), taxAll = Math.max(0, sum - CGT_DED) * CGT;
     const best = gains.filter((x) => x.gps > 0).sort((a, b) => b.g - a.g)[0];
     const L = [`<table class="grid"><tr><th class="l">종목</th><th>평가 이익 (원)</th><th>주당 이익</th></tr>${gains.map((x) => `<tr><td class="l">${esc(x.t)}</td><td class="${cls(x.g)}">${krw(x.g)}</td><td>${krw(x.gps)}</td></tr>`).join("")}</table>`];
-    L.push(`<p>지금 모두 판다면 세금 약 <b>${krw(taxAll)}원</b> (이익 합계 ${krw(sum)}원).</p>`);
-    if (best) L.push(`<p>올해 세금 없이 실현할 수 있는 이익 250만원 = <b>${esc(best.t)} 약 ${nf(Math.floor(CGT_DED / best.gps))}주</b>. 해마다 이만큼씩 나눠 팔면 공제를 매년 씁니다.</p>`);
-    // 집중 종목을 45%로 줄이는 매도를 1~3년에 나눌 때
-    const top = gains.filter((x) => x.gps > 0 && x.w > 0.45).sort((a, b) => b.w - a.w)[0];
-    if (top) {
-      const sell = Math.ceil(((top.w - 0.45) * total) / (wa.find((r) => r.h.ticker === top.t).p.v * wa.find((r) => r.h.ticker === top.t).fx));
-      const tx = (n) => { let t2 = 0; for (let y = 0; y < n; y++) t2 += Math.max(0, (sell / n) * top.gps - CGT_DED) * CGT; return t2; };
-      L.push(`<h3 style="margin:10px 0 4px">${esc(top.t)} 비중 45%로 줄이기 (약 ${nf(sell)}주)</h3><table class="grid"><tr><th class="l">나눠 파는 기간</th><th>세금 합계</th><th>아끼는 금액</th></tr>${[1, 2, 3].map((n) => `<tr><td class="l">${n}년 (해마다 ${nf(Math.ceil(sell / n))}주)</td><td>${krw(tx(n))}원</td><td>${n > 1 ? krw(tx(1) - tx(n)) + "원" : "-"}</td></tr>`).join("")}</table>`);
-    }
+    L.push(`<p>지금 모두 판다면 세금 약 <b>${krw(taxAll)}원</b> (이익 합계 ${krw(sum)}원).${used ? ` 올해 이미 실현한 이익 ${krw(used)}원.` : ""}</p>`);
     $("#taxBox").innerHTML = L.join("");
+    // 연도별: 해마다 공제 250만원. 계획 매도 = 목표로 정한 비중 조정안(없으면 집중 종목 45%로)을 처음 두 해에 나눠
+    const top = gains.filter((x) => x.gps > 0).sort((a, b) => b.w - a.w)[0];
+    const tg = S.state.alloc_target, tw = tg && top ? tg.w[top.t] ?? null : null;
+    const sellAll = top ? Math.max(0, Math.ceil((((top.w - (tw != null ? tw : Math.min(top.w, 0.45))) * total) / top.px))) : 0;
+    const yEnd = +g.date.slice(0, 4), years = []; for (let y = yNow; y <= Math.max(yNow, yEnd); y++) years.push(y);
+    const nSplit = Math.min(2, years.length);
+    $("#taxYears").innerHTML = `<tr><th class="l">연도</th><th>남은 공제</th><th>세금 없이<br>팔 수 있는 수량</th><th>계획 매도</th><th>예상 세금</th></tr>` + years.map((y, k) => {
+      const left = Math.max(0, CGT_DED - (y === yNow ? used : 0)), free = best && best.gps > 0 ? Math.floor(left / best.gps) : 0;
+      const sell = top && k < nSplit ? Math.round(sellAll / nSplit) : 0, tax = sell ? Math.max(0, sell * top.gps - left) * CGT : 0;
+      return `<tr><td class="l">${y}${y === yNow ? " (올해)" : ""}</td><td>${krw(left)}원</td><td>${best ? `${esc(best.t)} ${nf(free)}주` : "-"}</td><td>${sell ? `${esc(top.t)} ${nf(sell)}주` : "-"}</td><td>${sell ? krw(tax) + "원" : "-"}</td></tr>`;
+    }).join("") + `<tr><td class="l muted wrapc" colspan="5">계획 매도: ${tg ? `목표로 정한 '${esc(tg.name)}' 비중 조정안` : "집중 종목을 45%로 줄이는 경우"}을 처음 ${nSplit}년에 나눔. 한 해에 모두 팔면 세금 약 ${top && sellAll ? krw(Math.max(0, sellAll * top.gps - Math.max(0, CGT_DED - used)) * CGT) + "원" : "-"}.</td></tr>`;
   }
+
 
   // ------------------------------------------------------------ 환율 (원/달러)
   function fxInfo() {
@@ -2355,9 +2473,11 @@
       const o = insLoad(); o.read[a.dataset.nid] = Date.now(); insSave(o); a.classList.add("read");
     });
     segClick("#histRange", renderDash); segClick("#histStep", renderDash); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", renderDash); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
-    segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx);
+    segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
     segClick("#anaNav", renderAnalysis);
-    $("#btnAlloc").onclick = runAlloc;
+    $("#btnAlloc").onclick = () => { allocDirty = true; runAlloc(); };
+    $("#allocBoxes").addEventListener("click", (e) => { const b = e.target.closest("[data-ak]"); if (!b) return; S.state.alloc_pick = b.dataset.ak; save(false); renderAllocTable(); });
+    $("#allocMix").addEventListener("change", (e) => { const k = e.target.dataset.mix; if (!k) return; S.state.alloc_mix = { ...(S.state.alloc_mix || {}), [k]: e.target.value.trim() || ALLOC_DEF[k].mix }; save(false); allocDirty = true; runAlloc(); });
     $("#eventTable").addEventListener("input", onEventEdit);
     $("#evTiles").addEventListener("click", (e) => { const t = e.target.closest("[data-evt]"); if (!t) return; const ev = S.state.events[+t.dataset.evt]; ev.on = !ev.on; save(); renderEvents(); if (curAna() === "events") runForecast(); });
     segClick("#fcView", drawFcChart);
@@ -2394,8 +2514,9 @@
     $("#btnExport").onclick = () => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([JSON.stringify({ ...S.state, beyora: bvExport() }, null, 1)], { type: "application/json" }));
-      a.download = `자산입력-${today()}.json`; a.click();
+      a.download = `자산입력-${today()}.json`; a.click(); markBackup();
     };
+    $("#tradeTable").addEventListener("change", (e) => { if (e.target.dataset.lot) onTradeDate(e); });
     $("#btnXfer").onclick = xferShow;
     $("#btnShare").onclick = () => { const b = $("#shareBox"); b.style.display = b.style.display === "none" ? "block" : "none"; if (b.style.display === "block") drawShare(); };
     $("#shareHide").onchange = drawShare;
@@ -2421,7 +2542,7 @@
     return new Uint8Array(await new Response(st).arrayBuffer());
   }
   async function xferEncode() {
-    const st = S.state, j = { v: 1, h: st.holdings.filter((h) => !h.sample && Number(h.shares) > 0).map((h) => [h.ticker, Number(h.shares), Number(h.avg_cost) || 0]), g: [st.goal.amount, st.goal.date, st.goal.start_date, Number(st.goal.monthly_contribution) || 0], m: [st.model.scenario, st.model.trust] };
+    const st = S.state, j = { v: 1, h: st.holdings.filter((h) => !h.sample && Number(h.shares) > 0).map((h) => [h.ticker, Number(h.shares), Number(h.avg_cost) || 0]), g: [st.goal.amount, st.goal.date, st.goal.start_date, Number(st.goal.monthly_contribution) || 0], m: [st.model.scenario, st.model.trust], l: (st.lots || []).slice(-30).map((x) => [x.d, Object.entries(x.h)]) };
     const raw = new TextEncoder().encode(JSON.stringify(j)), z = await zip(raw);
     return z ? "z" + b64u(z) : "j" + b64u(raw);
   }
@@ -2432,7 +2553,7 @@
   async function xferShow() {
     const box = $("#xferBox"); box.style.display = "block";
     const url = location.origin + location.pathname + "#d=" + (await xferEncode());
-    $("#xferLink").value = url;
+    $("#xferLink").value = url; markBackup();
     const draw = () => { $("#xferQr").innerHTML = ""; try { new window.QRCode($("#xferQr"), { text: url, width: 200, height: 200, correctLevel: window.QRCode.CorrectLevel.L }); } catch (e) { $("#xferQr").textContent = "QR을 만들지 못했습니다. 링크를 복사해 보내 주세요."; } };
     if (window.QRCode) draw();
     else { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"; sc.onload = draw; sc.onerror = () => ($("#xferQr").textContent = "QR 도구를 불러오지 못했습니다. 링크를 복사해 보내 주세요."); document.head.appendChild(sc); }
@@ -2449,6 +2570,7 @@
       st.holdings = j.h.map(([t, sh, avg]) => ({ ticker: t, shares: sh, price: null, avg_cost: avg || null, note: "" }));
       j.h.forEach(([t]) => addEarnEvent(t));
       st.goal = { ...st.goal, amount: j.g[0], date: j.g[1], start_date: j.g[2] || st.goal.start_date, monthly_contribution: j.g[3] || 0 };
+      if (j.l) st.lots = j.l.map(([d, h]) => ({ d, h: Object.fromEntries(h) }));
       if (j.m) { st.model.scenario = j.m[0] || st.model.scenario; st.model.trust = j.m[1] ?? st.model.trust; }
       save(); renderAll(); done(); toast("불러왔습니다");
       const miss = missingTickers(); if (miss.length && MODE === "static") browserCollect(miss);
