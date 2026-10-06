@@ -312,7 +312,7 @@
     const { total } = valuation(), g = S.state.goal, fx = fxNow("USD");
     const prog = g.amount ? total / g.amount : 0;
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span>자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span><span class="hsep">|</span><span class="hprog" title="목표 ${krw(g.amount)} 대비"><b>${pct(prog)}</b><i class="hbar"><i style="width:${Math.max(0, Math.min(100, prog * 100)).toFixed(1)}%"></i></i></span>`;
+    $("#headKpi").innerHTML = `<span>자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span><span class="hpill" title="목표 ${krw(g.amount)} 대비"><i style="width:${Math.max(0, Math.min(100, prog * 100)).toFixed(1)}%"></i><b>${pct(prog)}</b></span>`;
   }
 
   // ------------------------------------------------------------ 시세·종목
@@ -650,7 +650,7 @@
     const need = V0 > 0 && span > 0 ? V0 * (g.amount / V0) ** (el / span) : null, gap = need ? now / need - 1 : null;
     const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
     card.style.display = "block";
-    $("#progSub").textContent = `목표 시작 ${start}`;
+    $("#progSub").textContent = `${start} 시작 · 수량 바뀐 날은 그때 수량으로`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
       ["필요 경로 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? `오늘 필요 ${krw(need)}원` : ""],
@@ -662,7 +662,6 @@
       $("#progChart").style.display = "block";
       Charts.lineChart($("#progChart"), { x: xs, height: 150, yfmt: krwAxis, series: [{ name: "실제", y: ys, color: "var(--c1)", width: 2 }, { name: "필요 경로", y: xs.map((d) => V0 * (g.amount / V0) ** (Math.max(0, yearsBetween(start, d)) / span)), color: "var(--accent2)", dash: "5 4", width: 1.3 }] });
     } else $("#progChart").style.display = "none";
-    $("#progNote").textContent = "수량이 바뀐 날을 기록해 두고, 그 전 날짜는 그때 수량으로 계산합니다. 시작일은 목표 수정에서 목표를 다시 정하면 바뀝니다.";
   }
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date);
@@ -776,7 +775,7 @@
       const ch = ys.length > 1 ? ys[ys.length - 1] / ys[0] - 1 : null, box = document.createElement("div");
       box.innerHTML = `<h3>${esc(h.ticker)} <span class="muted small">${nf(ys[ys.length - 1], 2)} ${ccyOf(h.ticker)} · 기간 <span class="${cls(ch)}">${spct(ch)}</span></span></h3><div class="chartbox"></div>`;
       host.appendChild(box);
-      Charts.lineChart(box.querySelector(".chartbox"), { x: xs, height: 170, legend: false, yfmt: priceAxis([ys]), series: [{ name: h.ticker, y: ys, color: C[j % C.length], width: 1.6 }] });
+      Charts.lineChart(box.querySelector(".chartbox"), { x: xs, height: 170, legend: false, axisOut: true, yfmt: priceAxis([ys]), series: [{ name: h.ticker, y: ys, color: C[j % C.length], width: 1.6 }] });
     });
   }
   function onGoalEdit(e) {

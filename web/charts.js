@@ -44,11 +44,14 @@
     // 축
     const g = el("g", { class: "axis" }, svg);
     const yt = log ? niceTicks(Math.exp(y0), Math.exp(y1), 5) : niceTicks(y0, y1, 5);
+    // axisOut: 좁은 화면에서도 y축 글자를 그래프 밖 왼쪽에 둔다 (선이 글자를 덮지 않게). 글자 폭만큼만 여백
+    const out = narrow && opt.axisOut;
+    if (out) { const lw = Math.max(...yt.map((v) => String(yfmt(v)).length)) * 7.6 + 10; m.l = lw; }
     yt.forEach((v) => {
       if (v <= 0 && log) return;
       const yy = Y(v); if (yy < m.t - 1 || yy > H - m.b + 1) return;
       el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: "grid" }, g);
-      if (narrow) el("text", { x: m.l + 2, y: yy - 3, "text-anchor": "start", class: "inlab" }, g).textContent = yfmt(v);
+      if (narrow && !out) el("text", { x: m.l + 2, y: yy - 3, "text-anchor": "start", class: "inlab" }, g).textContent = yfmt(v);
       else el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end" }, g).textContent = yfmt(v);
     });
     const spanDays = (x1 - x0) / 86400e3, xt = [];

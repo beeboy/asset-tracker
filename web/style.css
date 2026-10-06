@@ -296,3 +296,7 @@ button.danger.x { padding: 2px 7px; }
 .nsum .nrisk { color: var(--muted); }
 .qr { display: flex; justify-content: center; } .qr img, .qr canvas { background: #fff; padding: 8px; border-radius: 8px; }
 .prog { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; } @media (max-width: 700px) { .prog { grid-template-columns: repeat(2, 1fr); } }
+/* 머리글 목표 진행: 알약 막대 안에 % (오른쪽 정렬) */
+.hpill { position: relative; display: inline-flex; align-items: center; justify-content: flex-end; width: 92px; height: 20px; border-radius: 10px; background: var(--line); overflow: hidden; padding: 0 8px; }
+.hpill i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); opacity: .85; border-radius: 10px; }
+.hpill b { position: relative; font-size: 0.6471rem !important; font-weight: 700; color: var(--fg); }
