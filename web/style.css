@@ -30,6 +30,8 @@ header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; back
 .headkpi b { font-size: 0.8824rem; }
 nav { display: flex; gap: 2px; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--line); overflow-x: auto; }
 nav button { border: 0; background: none; color: var(--muted); padding: 10px 12px; border-bottom: 2px solid transparent; border-radius: 0; white-space: nowrap; }
+nav .navlink { margin-left: auto; align-self: center; color: var(--muted); text-decoration: none; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 0.7059rem; white-space: nowrap; }
+nav .navlink:hover { color: var(--accent); border-color: var(--accent); }
 nav button.on { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
 main { max-width: 1280px; margin: 0 auto; padding: 14px 16px 40px; }
 .tab { display: none; } .tab.on { display: block; }
