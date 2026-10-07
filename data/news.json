@@ -1,64 +1,64 @@
 {
- "updated": "2026-10-07T21:13:45+00:00",
+ "updated": "2026-10-07T23:34:37+00:00",
  "realtime": {
-  "key": "a3c9c6696fd9fabf",
-  "updated": "2026-10-07T21:13:53+00:00",
+  "key": "8bccdd24be5b968a",
+  "updated": "2026-10-07T23:34:44+00:00",
   "media": [
    {
-    "title": "미 국채 금리 급등에 미 증시 하락",
-    "orig": "U.S. Stocks Fall as Treasury Yields Test Multidecade Highs",
-    "summary": "미 국채 금리가 수십 년 만에 최고 수준을 기록하면서 모기지 금리와 기업 신용 비용에 대한 우려로 미 증시가 하락 마감했습니다.",
+    "title": "미 국채금리 상승에 뉴욕증시 일제히 하락 마감",
+    "orig": "Wall Street ends lower, off record highs, as Treasury yields climb",
+    "summary": "미국 국채금리가 급등하면서 사상 최고치 행진을 이어가던 뉴욕증시 주요 지수가 일제히 하락 마감했습니다.",
     "broker": "",
-    "source": "WSJ",
-    "link": "https://www.wsj.com/finance/investing/u-s-stocks-fall-as-treasury-yields-test-multidecade-highs-107d696f?mod=rss_markets_main",
-    "time": "2026-10-07T20:53:00+00:00"
+    "source": "Reuters",
+    "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxOYlBxMHUzb2ZDaHpMY3JBZUl2Rk9XSE94bjQ2aFVndHhYeU4zS1Rwb2I1SlFJWjVpaE9sS0V4c2ZiQ2JsMzd0R0lydzlFejhJVkNYbU5ZTGVjeW9tWUJtTmUzX2VwY0N1SnpLVmdvQWRvM20xS25hRmhXRDdHVUppRk9hS2JhVExxdVUtX0hfQlNqWnd0OUhHWEpaa2w1Z3hXNVRkaw?oc=5",
+    "time": "2026-10-07T21:38:52+00:00"
    },
    {
-    "title": "아폴로 등, 스페이스X의 400억 달러 엔비디아 GPU 구매 자금 조달 협상",
-    "orig": "Apollo, banks in talks to finance SpaceX's $40 billion Nvidia GPU purchase",
-    "summary": "스페이스X가 AI 연산 능력 확장을 위해 아폴로 등 금융권과 대규모 엔비디아 GPU 구매 자금 조달을 논의 중입니다.",
+    "title": "연준 의사록 \"일부 위원들, 시장 스트레스 대비 필요성 언급\"",
+    "orig": "Fed minutes show some officials want to prepare for market stress",
+    "summary": "공개된 연준 회의록에서 일부 당국자들은 잠재적인 금융시장 충격과 변동성에 선제적으로 대비해야 한다고 강조했습니다.",
     "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/07/spacex-nvidia-chips-apollo-financing.html",
-    "time": "2026-10-07T21:08:32+00:00"
+    "source": "Reuters",
+    "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQOWFKZEFfR182VlUzeWdFaHJOYlVxQ3FxYVVnS3Z4VXdnUlRZaGtIZkxocjFlejVyY2lKbHA5UEw0bUFUbEhRaExnTUMzZWlPWmFMQkdlVU94ejB3bjBGdGFfYXlwX0c5M3RMRDJ2NGNmU0pNSWo5X200MTZGdzJuREtOekJpRGEtZHV1ODZUTEZ5empUOFU2ajFxdF9TaDNQMndvTnFn?oc=5",
+    "time": "2026-10-07T21:34:27+00:00"
    },
    {
-    "title": "마이크로소프트, 엔비디아 AI 칩 탑재 '서피스 노트북 울트라' 출시",
-    "orig": "Microsoft to sell $2,599 Surface Laptop Ultra containing Nvidia AI chip",
-    "summary": "마이크로소프트가 엔비디아의 최신 AI 칩을 장착한 고성능 노트북을 선보이며 자체 PC 사업에 대한 의지를 이어갔습니다.",
+    "title": "AI 쏠림 심화…기술주와 비인기 종목 간 증시 격차 확대",
+    "orig": "The stock market gap between AI and everything else is growing",
+    "summary": "인공지능 관련 종목에만 투자금이 집중되면서 나머지 증시 섹터와의 수익률 격차가 갈수록 벌어지고 있습니다.",
     "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/07/microsoft-starts-taking-preorders-for-2599-surface-laptop-ultra.html",
-    "time": "2026-10-07T20:26:13+00:00"
+    "source": "Marketplace.org",
+    "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxOZlo2QnJobkpnNkowejZOV3V0VnNEZFhQcWw5WUVzaDJNbGp2aEVmbENKQ3JZMFlFYjJGMXBYR3poM3Zzei1vVzRhNDR4cWFjcTJyNzktUFZXc2dSa1VzZ2NpMmdXNFVFcmdxWXZnc1I0eHREVDdiWUJHdzZUSUt0cmZ5c0J0dTRPUWhXZGlVdDdRZm1SYmZvVzlVaw?oc=5",
+    "time": "2026-10-07T23:01:25+00:00"
    }
   ],
   "broker": [
    {
-    "title": "도이치뱅크, 3분기 S&P 500 기업 이익 성장세 사상 최고치 유지 전망",
-    "orig": "Deutsche Bank sees S&P 500 earnings growth holding at record in Q3",
-    "summary": "도이치뱅크는 이번 3분기에도 S&P 500 기업들의 이익 성장세가 최고 수준을 유지할 것으로 내다봤습니다.",
-    "broker": "",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxPRFpWSHgxYmFpLXlDY1Y0Z1JHdWpaSEQwTFlEZXRGQXN5eFdNSm9VNDBwc3hENy1NYmtxSG1aczBMZlp2X0pnN3BuUEllTEFRVGRvQXRVTEtjdlcxWVhrRGlSWExQV3c5OU11OFJhWkNFbkRZMExDbWdnVlhGcXFOVWlEdTlpQXZ6Q3phNW9uWGFwcTQ?oc=5",
-    "time": "2026-10-07T18:29:00+00:00"
+    "title": "UBS, 젠텍스 목표주가 24달러로 하향",
+    "orig": "UBS Group Cuts Gentex (NASDAQ:GNTX) Price Target to $24.00",
+    "summary": "UBS가 자동차 부품업체 젠텍스의 목표주가를 기존보다 낮은 24달러로 하향 조정했습니다.",
+    "broker": "UBS",
+    "source": "MarketBeat",
+    "link": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQOFlvV1VoeVVQS0xHNFhabEFmZFVqZC01MmE1UVRwMFZwbmdjTHIzdmlQM2RDZDFSM2dhQkQ5NDZiZnM1NHdpYXRpWGxkZFEzN1FlUEo2N2lydHVHS09QN2g3YnZTTTZPOG9sX1dXSE9MV3c5aXJRWlhFNmZpVndFNTRPZ1J1amlGV0tFOXAzUk95dFdPSmVhVnBnS01YVU5zNDZkdkRUWUdNWVV4QXdxS3B6djI3OGs?oc=5",
+    "time": "2026-10-07T21:48:03+00:00"
    },
    {
-    "title": "씨티, AMD 목표주가 상향…주가 상승 모멘텀 지속",
-    "orig": "Citi’s Price Target Boost Lifts AMD Shares. The Momentum Isn’t Stopping Anytime Soon for AMD Stock.",
-    "summary": "씨티가 AMD의 목표주가를 올려잡으며 최근의 가파른 주가 상승세가 당분간 이어질 것으로 전망했습니다.",
-    "broker": "",
-    "source": "Barchart.com",
-    "link": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxPRmc3Mk9ISXo0QzlCRkVaUDQ2d3dpMThKakl2QjFDOEJkc0tHcmkwQ2NzNUl5c1J3bDZMc2U0R1RyUDZsbUFsNGZMUUt1eVZBT3VycW14WGw0Y2NFa0JranhEMFByLW1qUF9BRWIwcDFwbTZYcF85Um1keDFTUDhKLW5vOWtrakhvZFdhTDVoVURMTHZnOXkwREFjbHVKUFZURWFNQTdkZGxmR3Y4NkdTWm03RFhVbklkYm9sNnE3bHQyRjBGeXJraWdzV3NMbDdrRDJiUEdn?oc=5",
-    "time": "2026-10-07T17:59:05+00:00"
+    "title": "RBC, 바닥재 수요 부진 우려로 모호크 인더스트리스 투자의견 하향",
+    "orig": "Mohawk Industries (MHK) Faces An RBC Downgrade, Is The Stock Still Cheap?",
+    "summary": "RBC는 업황 둔화와 수요 부진을 이유로 건자재 제조업체 모호크 인더스트리스의 투자 의견을 하향 조정했습니다.",
+    "broker": "RBC캐피털",
+    "source": "Simply Wall Street",
+    "link": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxOWDVOdm44cVE1X2hPR2Z0clFwLWpWb21YczJVUmN4NTdKODFMaUdmRmdnWm4zbUZwWDQ2Q01pRXBBalNib2lEOXVDeExON1RKMlczTUJlaTVyTEp5QUdiMDFVZ1p2OWtaejRtSE9RYjlhLXgwakRzYmFfa2lxWkdwMmlsNk5iU25tMm96alMyVXk1a2pOX1FqRmdmbmFsa1oxRDhoTUxYYnhoQWpYNlpGYl9tM1BSR3hiNTJ5ZE1wX1piMkV6ZWE1ZW1wOTRwOWxJVUI1ZDdVT29LMFNaQXpz0gHfAUFVX3lxTE5YNU52bjhxUTVfaE9HZnRyUXAtalZvbVhzMlVSY3g1N0o4MUxpR2ZGZ2dabjNtRnBYNDZDTWlFcEFqU2JvaUQ5dUN4TE43VEoyVzNNQmVpNXJMSnlBR2IwMVVnWnY5a1p6NG1IT1FiOWEteDBqRHNiYV9raXFaR3AyaWw2TmJTbm0yb3pqUzJVeTVrak5fUWpGZ2ZuYWxrWjFEOGhNTFhieGhBalg2WkZiX20zUFJHeGI1MnlkTXBfWmIyRXplYTVlbXA5NHA5bElVQjVkN1VPb0swU1pBenM?oc=5",
+    "time": "2026-10-07T21:45:09+00:00"
    },
    {
-    "title": "에버코어, 넷앱(NTAP) 투자의견 상향 속 사상 최고가 경신",
-    "orig": "NTAP Stock Hits Fresh Record High After Evercore Upgrade: New Products Aren’t Needed For ‘Upside’, Says Analyst",
-    "summary": "에버코어의 투자의견 상향 조정 힘입어 넷앱 주가가 신고가를 기록했습니다.",
-    "broker": "",
-    "source": "Stocktwits",
-    "link": "https://news.google.com/rss/articles/CBMivAFBVV95cUxQMVdpOEk1cVh5bGpVRHNVTHNacXZtNTVIb0pncWxkX1VoQ3doNDVaVVhqZ19Dd042a2puLUlCM0NURkdVenZpSnJ2Ry1Ka213dEpubE9VU1N0UDJHWFF4ZldITnB1SU04Ykd2M1BuaHdjald1YTNCX01sTUhRS0I4LWtoaWQyMXY5RFRXbDE0eVdzR0JRaXpVYi1MYVZMM1N2REllUkxweVBJcmhMWEVlQjZaZzlrR0FZNEY3ZQ?oc=5",
-    "time": "2026-10-07T17:43:28+00:00"
+    "title": "텍스트론 12개월 목표주가 100.64달러로 하향…상승 여력은 33%",
+    "orig": "Textron Inc. Stock 12‑Month Price Target Cut to $100.64, Implies 33% Upside",
+    "summary": "항공우주·방산 기업 텍스트론의 평균 목표주가가 100.64달러로 하향됐으나 여전히 33%의 상승 여력이 제시됐습니다.",
+    "broker": "월가 컨센서스",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMizgFBVV95cUxQWWdzLUVrQmtCUVBZaHRPMnBvRG1qZmRic0w4bS14bTFmcVp2WEo4NF9Ub0thdnhVYmY0b1k1cDByWl9sWk5xZldtQVBhM2c4Mk1QcWNtVzhMelliYXd6TmZ0SXI2VmxVSF9VZHJmVDFxQWR1NFhacTZEV3FtNF9LeU85TE4tWGN5ZVlZeWt5UWFTNjdqOFkyLTB0MVlITU9uM2FzRFN4Tmdab3pEUDAzUTJaRkRrVHc5a2U5eUxZNXZBeXg1WEFITHlRUHdCZw?oc=5",
+    "time": "2026-10-07T22:20:12+00:00"
    }
   ]
  },
@@ -126,7 +126,7 @@
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-07T21:13:45+00:00",
+  "updated": "2026-10-07T23:34:37+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -138,6 +138,71 @@
    "GLD": "SPDR Gold Shares 업계"
   },
   "items": [
+   {
+    "id": "candelldellturnitsnewaidataplatformintoadurablecompetitivead",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "델, 새로운 AI 데이터 플랫폼으로 경쟁 우위 확보할까",
+    "orig": "Can Dell (DELL) Turn Its New AI Data Platform Into a Durable Competitive Advantage?",
+    "summary": "델의 신규 AI 데이터 플랫폼이 지속 가능한 경쟁력이 될 수 있을지 분석했습니다.",
+    "source": "Simply Wall St.",
+    "link": "https://finance.yahoo.com/technology/ai/articles/dell-dell-turn-ai-data-231936828.html",
+    "time": "2026-10-07T23:19:36+00:00",
+    "added": "2026-10-07T23:34:37+00:00"
+   },
+   {
+    "id": "spacexspcxdeepenslaunchandmobileambitionsbutwhatreallyanchor",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "스페이스X, 발사 및 모바일 확장 속 장기 경쟁력의 원천은",
+    "orig": "SpaceX (SPCX) Deepens Launch And Mobile Ambitions But What Really Anchors Its Long‑Term Edge?",
+    "summary": "스페이스X의 위성 발사와 모바일 사업 확장의 장기적 성장 동력을 진단했습니다.",
+    "source": "Simply Wall St.",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/spacex-spcx-deepens-launch-mobile-221556273.html",
+    "time": "2026-10-07T22:15:56+00:00",
+    "added": "2026-10-07T23:34:37+00:00"
+   },
+   {
+    "id": "spacexagreatcompanypricedforafutureithasntbuiltyetnasdaqspcx",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "fund",
+    "title": "스페이스X, 아직 실현되지 않은 미래가 반영된 주가",
+    "orig": "SpaceX: A Great Company Priced For A Future It Hasn't Built Yet (NASDAQ:SPCX)",
+    "summary": "스페이스X의 현재 기업 가치와 향후 성장 기대감 간의 괴리를 분석했습니다.",
+    "source": "Seeking Alpha",
+    "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxQMDQ3VkRULWhrRkRkdnItY2lGaV9JQnd5WDdFWXR0Zm5PNm9udzhfSkdfazlYZVBLWTZCWXg5U3JfWERfYlRlcWdPRTNsVEx3UFoyYkFFNjRlbVZrX3lodXhyb0FfSjlOdFNpUVBzQzNVSG05UGFKMjh2UFN0VTN3ckg1dmpHWDBFRUJIalBKeGl3VjhmVWdQbzdaRUc2RHowQUNIYw?oc=5",
+    "time": "2026-10-07T22:11:50+00:00",
+    "added": "2026-10-07T23:34:37+00:00"
+   },
+   {
+    "id": "broadcomoracleandspacexpursueblockbusterdebtdealsamidaibuild",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "fund",
+    "title": "브로드컴·오라클·스페이스X, AI 인프라 구축 위해 대규모 채권 발행 추진",
+    "orig": "Broadcom, Oracle, and SpaceX pursue blockbuster debt deals amid AI buildout - WSJ",
+    "summary": "AI 인프라 확장을 위한 자금 조달 목적으로 대규모 부채 조달에 나섰습니다.",
+    "source": "Investing.com",
+    "link": "https://finance.yahoo.com/technology/ai/articles/broadcom-oracle-spacex-pursue-blockbuster-215828392.html",
+    "time": "2026-10-07T21:58:28+00:00",
+    "added": "2026-10-07T23:34:37+00:00"
+   },
+   {
+    "id": "batterythermalplatesmarketforecastto2035demandacceleratesone",
+    "ticker": "TSLA",
+    "scope": "industry",
+    "cat": "market",
+    "title": "배터리 방열판 시장, 2035년까지 급성장 전망",
+    "orig": "Battery Thermal Plates Market Forecast to 2035: Demand Accelerates on EV Fast-Charging and Grid Storage Safety",
+    "summary": "전기차 급속 충전과 에너지저장장치 안전성 수요로 배터리 방열판 시장이 커지고 있습니다.",
+    "source": "IndexBox",
+    "link": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxOZWxobDBsVmtidzhYVHJPNUdNN0oxUnlJNWY1MVpyRjFjbUVpX0NRN0UtZlZZMFVHN0RDVHdPZlc1c0NiYmZHeUhBdUNxdWN0MmtiT2lQSEJWcUNTVk5OVVhjbDlhakRoY2V1NmR0cWFSM0xpMTBOMWN4bmtrVEJiY1Y5SzVhS0daM2VZdXltZjdlNl9IZkNnc0x5TnpDR0dfVUI4aFM3cS0taUlBdHJmcnpGaWFEZXFPU3VTZFJBUVNqWlZaZHpwMG5FcXFvWDRIcFNyc1Z3?oc=5",
+    "time": "2026-10-07T21:36:04+00:00",
+    "added": "2026-10-07T23:34:37+00:00"
+   },
    {
     "id": "nvidiaearnedabouttwiceasmuchasapplelastquarteritsstockiswort",
     "ticker": "NVDA",
@@ -1244,6 +1309,19 @@
     "added": "2026-10-07T16:44:45+00:00"
    },
    {
+    "id": "usdatacentertrackerpowerfacilitiesgrowth2026",
+    "ticker": "NVDA",
+    "scope": "industry",
+    "cat": "market",
+    "title": "미국 데이터센터 전력 및 시설 성장 전망",
+    "orig": "U.S. Data Center Tracker: Power, Facilities & Growth (2026)",
+    "summary": "데이터센터 인프라 확장에 따른 전력 수요와 시설 증가 추세가 주목받고 있다.",
+    "source": "ElectricChoice.com",
+    "link": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE9acDEzM3A0SWNlUWl6NjN3UXUyZkxpRE9hZ3BtNVJkMUZ2M2dyVWkyQ0RESC1OLWZHY2oxYzlXMW1vSHdXUjNHWjZIMmNLRjhtU2d4dk53?oc=5",
+    "time": "2026-10-06T03:44:26+00:00",
+    "added": "2026-10-07T23:34:37+00:00"
+   },
+   {
     "id": "spacexboostedrevenuebutisntprofitablefirsteverearningsreport",
     "ticker": "SPCX",
     "scope": "held",
@@ -2003,42 +2081,42 @@
     "sum": "테슬라는 **자율주행(FSD)** 규제 완화와 **사이버캡·세미** 상용화 확대로 중장기 성장 동력을 확보하고 있습니다.\n대형 은행들은 2027년 목표주가를 재설정하며 **45%의 높은 EPS 성장률**과 밸류에이션 간의 균형을 주목하고 있습니다.\n위험: **완전자율주행(FSD) 승인 지연** 및 고밸류에이션에 따른 주가 변동성에 유의해야 합니다.",
     "hash": "6bfd3dd21a8a238c",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-07T21:13:45+00:00"
+    "seen": "2026-10-07T23:34:37+00:00"
    },
    "AAPL": {
     "sum": "애플은 AI가 탑재된 **시리 개편**과 아이폰의 견조한 수요를 바탕으로 서비스 및 하드웨어 성장을 이어가고 있습니다.\nLG전자와의 협력을 통한 **스마트홈 기기 시장 진출**은 향후 모바일 생태계 확장의 발판이 될 것입니다.\n위험: **특허 침해 소송 배상금** 및 스마트홈 시장에서의 치열한 경쟁이 위험 요인입니다.",
     "hash": "b1181aec29f5ae5f",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-07T21:13:45+00:00"
+    "seen": "2026-10-07T23:34:37+00:00"
    },
    "SMH": {
     "sum": "반도체 업종은 **실물 자산 수요 증가**와 공급 제약 속에서 AI 인프라 확충의 직접적인 수혜를 받고 있습니다.\n향후 1~3년 동안 첨단 반도체 수요가 견조하게 유지되며 관련 생태계 전반의 성장이 기대됩니다.\n위험: **원자재 공급 제약**과 전방 산업의 수요 변동성이 주요 위험 요인입니다.",
     "hash": "7bca54342efc363a",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-07T21:13:45+00:00"
+    "seen": "2026-10-07T23:34:37+00:00"
    },
    "GLD": {
     "sum": "금은 글로벌 부채 증가와 지속되는 인플레이션 속에서 **안전자산 및 헤지 수단**으로서 구조적 강세장이 전망됩니다.\n보험 성격의 프리미엄이 반영되며 중장기적으로 포트폴리오 다변화 자산으로서의 가치가 유지되고 있습니다.\n위험: **현재 반영된 높은 프리미엄**으로 인해 단기 가격 조정 가능성이 존재합니다.",
     "hash": "ab2917555c02ab03",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-07T21:13:45+00:00"
+    "seen": "2026-10-07T23:34:37+00:00"
    },
    "NVDA": {
-    "sum": "엔비디아는 **애플의 두 배 이익**을 기록하는 압도적 실적과 **마이크로소프트·스페이스X** 등의 대규모 AI 칩 수요에 힘입어 **2030년까지** 장기 성장 잠재력을 높이고 있습니다.\n마이크로소프트와의 신형 AI 노트북 협력과 마이크론과의 동반 실적 호조는 향후 AI 인프라 시장에서 독보적인 기업 가치를 지지합니다.\n위험: 고성장 기대감에 따른 밸류에이션 부담과 빅테크 수요 변동성이 주요 위험 요인입니다.",
-    "hash": "887c6fe5f1fe9eb3",
-    "updated": "2026-10-07T21:13:45+00:00",
-    "seen": "2026-10-07T21:13:45+00:00"
+    "sum": "**엔비디아**는 **마이크로소프트**와의 협력을 통한 신제품 출시와 **스페이스X**의 **400억 달러** 규모 칩 구매 등 강력한 AI 인프라 수요에 힘입어 **2030년**까지 지속적인 성장 잠재력을 보이고 있습니다.\n압도적인 이익 창출력에도 불구하고 경쟁사의 추격과 높은 밸류에이션 부담이 향후 주가 변동성을 키울 수 있는 **위험** 요소입니다.",
+    "hash": "5ce8a092fb2ddba5",
+    "updated": "2026-10-07T23:34:37+00:00",
+    "seen": "2026-10-07T23:34:37+00:00"
    },
    "SPCX": {
-    "sum": "스페이스X는 **400억 달러** 규모의 대규모 부채 조달을 통해 **엔비디아의 AI 칩**을 확보하고 인프라를 확장하며 새로운 AI 연산 사업 진출 가능성을 열어가고 있습니다.\n스타십 14차 비행 성공과 스타링크 규제 승인, 연료 공급을 위한 파이프라인 추진 등은 **2030년까지** 이어질 장기적 기업 가치 성장을 뒷받침합니다.\n위험: 대규모 자금 조달에 따른 재무 부담과 경쟁 업계의 반발 및 규제 변화가 위험 요인입니다.",
-    "hash": "656ca972f3972268",
-    "updated": "2026-10-07T21:13:45+00:00",
-    "seen": "2026-10-07T21:13:45+00:00"
+    "sum": "**스페이스X**는 **400억 달러** 규모의 자금 조달을 통한 **엔비디아** AI 칩 확보와 AI 연산 사업 진출 가능성으로 **2030년**까지 장기적인 기업 가치 상승 기대를 받고 있습니다.\n대규모 부채 조달과 인프라 투중에 따른 재무 부담 및 규제 환경 변화가 주가에 미칠 영향이 주요 **위험** 요인입니다.",
+    "hash": "113e26b3a94cf637",
+    "updated": "2026-10-07T23:34:37+00:00",
+    "seen": "2026-10-07T23:34:37+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-07T21:13:45+00:00"
+  "updated": "2026-10-07T23:34:37+00:00"
  },
  "ai": "ok"
 }
