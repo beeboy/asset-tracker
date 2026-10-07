@@ -393,7 +393,7 @@
     const { total } = valuation(), g = S.state.goal, fx = fxNow("USD");
     const prog = g.amount ? total / g.amount : 0;
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span class="hasset" data-go="quotes" role="button" title="수량 수정">자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span><span class="hpill" id="hpill" role="button" title="목표 ${krw(g.amount)} 대비 · 누르면 시세 수집"><i style="width:${Math.max(0, Math.min(100, prog * 100)).toFixed(1)}%"></i><b>${pct(prog)}</b></span>`;
+    $("#headKpi").innerHTML = `<span class="hasset" id="hasset" role="button" title="누르면 금액 ${hideAmt() ? "보이기" : "감추기"}">자산 <b>${hideAmt() ? "•••" : krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span><span class="hpill" id="hpill" role="button" title="목표 ${krw(g.amount)} 대비 · 누르면 시세 수집"><i style="width:${Math.max(0, Math.min(100, prog * 100)).toFixed(1)}%"></i><b>${pct(prog)}</b></span>`;
   }
 
   // ------------------------------------------------------------ 시세·종목
@@ -697,6 +697,8 @@
   }
   // 대시보드 미래 그래프용 전망을 저장해 두고, 입력·시세·날짜가 그대로면 리로드해도 다시 계산하지 않는다
   const FCD_KEY = "naeilo-fcdash";
+  // 머리글 '자산'을 누르면 금액 감추기 (이 브라우저에만 기억)
+  const HIDE_KEY = "naeilo-hide", hideAmt = () => { try { return localStorage.getItem(HIDE_KEY) === "1"; } catch (e) { return false; } };
   const fcdSig = () => fcSig() + "|" + today() + "|" + Object.keys(S.prices).sort().map((t) => t + (S.prices[t].dates || []).slice(-1)[0]).join();
   function fcDashLoad(scen) {
     try {
@@ -778,7 +780,7 @@
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
     renderProgress(H, total); renderBackupNag();
     $("#goalKpis").innerHTML = [
-      ["현재 평가액", krw(total) + "원", marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
+      ["현재 평가액", `<a href="#" class="plain" data-go="quotes" data-add="1" title="종목 추가">${krw(total)}원</a>`, marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(total / g.amount), `<div class="bar"><i style="width:${Math.min(100, (total / g.amount) * 100)}%"></i></div>`],
       ["남은 금액", krw(Math.max(0, need)) + "원", `목표 ${krw(g.amount)}원`],
       ["남은 기간", yrs > 0 ? yrs.toFixed(1) + "년" : "지남", g.date],
@@ -2617,9 +2619,10 @@
 
   function bind() {
     $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
-    document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "quotes" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); } });
+    document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "quotes" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); if (g.dataset.add) setTimeout(() => $("#addTicker")?.focus({ preventScroll: true }), 300); } });
     $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     $("#btnCollect").onclick = () => collect(false).finally(foldHold);
+    $("#headKpi").addEventListener("click", (e) => { if (e.target.closest("#hasset")) { try { localStorage.setItem(HIDE_KEY, hideAmt() ? "" : "1"); } catch (e2) { /* 무시 */ } renderHeader(); } });
     $("#headKpi").addEventListener("click", (e) => { // 머리글 알약 = 시세 수집
       const p = e.target.closest("#hpill"); if (!p || p.classList.contains("busy")) return;
       p.classList.add("busy"); toast("시세를 받는 중…");

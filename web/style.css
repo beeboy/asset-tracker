@@ -318,3 +318,4 @@ button.danger.x { padding: 2px 7px; }
 
 /* 라벨과 버튼 묶음이 함께 줄바꿈 */
 .row.nowrap { flex-wrap: nowrap; }
+a.plain { color: inherit; text-decoration: none; }
