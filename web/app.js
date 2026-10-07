@@ -1973,7 +1973,7 @@
     }).join("") || `<div class="nitem empty">보유 종목을 입력하면 종목마다 인사이트 상자가 생깁니다.</div>`;
     $("#newsMsg").style.display = "none";
     const fu = N?.future_meta?.updated || N?.updated;
-    $("#newsNote").textContent = `${fu ? dtStr(fu) + " 수집 · " : ""}약 한 시간마다 서버가 모으고, 이 화면은 열어 둔 동안 10분마다 새로 받습니다. 기사 옆 시간은 기사가 나온 시각.`;
+    $("#newsNote").textContent = fu ? dtStr(fu) + " 수집" : "";
   }
 
   // ------------------------------------------------------------ 미래 설계 Beyora (블로그)
