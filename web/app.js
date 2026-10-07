@@ -733,7 +733,7 @@
     const need = V0 > 0 && span > 0 ? V0 * (g.amount / V0) ** (el / span) : null, gap = need ? now / need - 1 : null;
     const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
     card.style.display = "block";
-    $("#progSub").textContent = `${start} 시작 · 수량 바뀐 날은 그때 수량으로`;
+    $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
       ["필요 경로 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? (Math.abs(now - need) < need * 0.0005 ? "목표 경로와 같음" : `경로보다 ${krw(Math.abs(now - need))}원 ${now >= need ? "많음" : "적음"}`) : ""],
