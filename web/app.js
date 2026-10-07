@@ -856,7 +856,6 @@
 
     const periods = [["1일", 1], ["1주", 5], ["1개월", 21], ["3개월", 63], ["6개월", 126], ["1년", 252], ["3년", 756]];
     $("#periodTable").innerHTML = `<tr>${periods.map((p) => `<th>${p[0]}</th>`).join("")}</tr><tr>${periods.map((p) => { const v = ret(p[1]); return `<td class="${cls(v)}">${spct(v)}</td>`; }).join("")}</tr>`;
-    aiDash();
   }
   // 대시보드 AI: 세 가지 미래 기준을 모두 계산해 둔 뒤 묻는다
   let aiDashBusy = false;
@@ -1851,7 +1850,7 @@
     box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석 · Puter ${again}</p>`;
   }
   // 지금 보고 있는 분석 화면의 AI 분석을 채운다
-  function aiRefresh() { if ($("#tabs .on")?.dataset.tab === "analysis") aiAuto(curAna(), false); }
+  function aiRefresh() { return; if ($("#tabs .on")?.dataset.tab === "analysis") aiAuto(curAna(), false); }
 
 
   // ------------------------------------------------------------ 인사이트 (뉴스)
@@ -2677,8 +2676,6 @@
     $("#rebalance").onchange = (e) => { S.state.model.rebalance_yearly = e.target.checked; save(); optDirty(); };
     $("#modelForm").addEventListener("change", onModelEdit);
     $("#btnResetModel").onclick = (e) => { if (armed(e.target)) { S.state.model = { ...DEFAULT_MODEL }; save(); renderSettings(); } };
-    $("#optAi").checked = S.state.ui.ai_auto !== false;
-    $("#optAi").onchange = (e) => { S.state.ui.ai_auto = e.target.checked; save(false); };
     ["#tab-analysis", "#tab-dash"].forEach((t) => $(t).addEventListener("click", (e) => { const b2 = e.target.closest("[data-aire]"); if (b2) aiAuto(b2.dataset.aire, true); const b3 = e.target.closest("[data-puter]"); if (b3) aiAuto(b3.dataset.puter, true, true); }));
     $("#optManual").checked = !!S.state.ui.manual_price;
     $("#optManual").onchange = (e) => { S.state.ui.manual_price = e.target.checked; save(); renderAll(); };
