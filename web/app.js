@@ -2911,7 +2911,7 @@
   // 월 보기: 실제 기록이 있는 지난 달(최대 2년 전 1월부터)은 월말 실제와, 그 달 직전 월말에서 다시 계산한 패턴 예측(사후 계산)을 비교.
   // 이번 달부터 2년 뒤 12월까지는 가예측
   function hitMonthCols(H, M, cash) {
-    const A = actualRec(), cur = today().slice(0, 7), y = +cur.slice(0, 4), cols = [], ml = (d) => `${String(d.slice(2, 4))}.${+d.slice(5, 7)}`;
+    const A = actualRec(), cur = today().slice(0, 7), y = +cur.slice(0, 4), cols = [], ml = (d) => `${+d.slice(5, 7)}월`;
     if (A) {
       const lastIn = (m) => { let v = null, d = null; A.d.forEach((x, i) => { if (x.slice(0, 7) === m) { v = A.v[i]; d = x; } }); return v != null ? { v, d } : null; };
       for (let m = `${y - 2}-01`; m < cur; m = Model.addMonths(m + "-01", 1).slice(0, 7)) {
@@ -2955,7 +2955,7 @@
     let bin = S.state.goal.amount / 100; const maxRows = mode === "m" ? 24 : 14; while ((Math.max(...vals) - Math.min(...vals)) / bin > maxRows) bin *= 2;
     const b = (v) => Math.floor(v / bin), lo = b(Math.min(...vals)), hi = b(Math.max(...vals));
     const nowI = Math.max(0, list.findIndex((r) => !r.done));
-    let h = `<table class="hit"><tr><th></th>${list.map((r, i) => `<th class="${i === nowI ? "now" : r.tent ? "tent" : ""}" title="${r.tent ? "가예측" : r.d0 ? r.d0 + " 기준" : r.f}${r.by ? " · " + esc(r.by) : ""}">${r.lab}</th>`).join("")}</tr>`;
+    let h = `<table class="hit"><tr><th></th>${list.map((r, i) => `<th class="${i === nowI ? "now" : r.tent ? "tent" : ""}" title="${r.tent ? "가예측" : r.d0 ? r.d0 + " 기준" : r.f}${r.by ? " · " + esc(r.by) : ""}">${mode === "m" && (i === 0 || i === nowI || r.f.slice(5, 7) === "01") ? r.f.slice(0, 4) + "년<br>" : ""}${r.lab}</th>`).join("")}</tr>`;
     for (let k = hi; k >= lo; k--) {
       h += `<tr><th>${krw(k * bin)}</th>` + list.map((r) => {
         const has = r.p50 != null, inR = has && k >= b(r.lo) && k <= b(r.hi), pb = has ? b(r.p50) : null, ab = r.act != null ? b(r.act) : null;
