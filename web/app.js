@@ -880,7 +880,7 @@
     }
     $("#histNote").innerHTML = notes.join(" ");
     Charts.lineChart($("#histChart"), opt);
-    predRecord(H, M, total); renderHit(H, M); renderDia(H, total, cash); renderAct();
+    weekRecord(H, M, cash); renderHit(H); renderDia(H, total, cash); renderAct();
 
     const periods = [["1일", 1], ["1주", 5], ["1개월", 21], ["3개월", 63], ["6개월", 126], ["1년", 252], ["3년", 756]];
     $("#periodTable").innerHTML = `<tr>${periods.map((p) => `<th>${p[0]}</th>`).join("")}</tr><tr>${periods.map((p) => { const v = ret(p[1]); return `<td class="${cls(v)}">${spct(v)}</td>`; }).join("")}</tr>`;
@@ -2850,26 +2850,71 @@
     return { md, cum };
   }
   // 칸 크기: 목표의 1/30 (엑셀처럼 1억에 3칸)
-  const hitBin = () => S.state.goal.amount / 30;
-  function hitRows(M, H) {
-    const rows = M ? M.folds.map((x, j) => ({ m: x.m, d1: x.d1, act: x.v1, pattern: x.v1 * Math.exp(M.pc[j] - x.act), trend: x.v1 * Math.exp(M.tc[j] - x.act) })) : [];
-    const at = (d) => { let i = H.dates.length - 1; while (i > 0 && H.dates[i] > d) i--; return i; };
-    const live = (S.state.preds || []).filter((r) => r.d1 <= H.dates[H.dates.length - 1]).map((r) => {
-      const act = r.base * (H.index[at(r.d1)] / H.index[at(r.d0)]);
-      return { m: r.d1.slice(0, 7), d1: r.d1, act, model: r.model != null ? r.base * (1 + r.model) : null, live: { pattern: r.base * (1 + r.pattern), trend: r.trend != null ? r.base * (1 + r.trend) : null } };
-    });
-    return { rows, live };
-  }
-  // 이번 달 예측을 한 번 저장해 둔다 (한 달 뒤 실제와 비교). 내 관점(몬테카를로) 전망은 이렇게 쌓아야 채점된다
-  function predRecord(H, M, hold) {
-    if (S.state.sample || !(hold > 0) || !M) return;
-    const ym = today().slice(0, 7), P = (S.state.preds ||= []);
-    if (P.some((r) => r.d0.slice(0, 7) === ym)) return;
-    const F = fcReady(S.state.model.scenario), B = F && !F.err && F.R?.bands; if (!B) return;
-    const d1 = Model.addMonths(today(), 1), pf = patFuture(M, d1), tf = patFuture(M, d1, M.t);
-    P.push({ d0: H.dates[H.dates.length - 1], d1, base: Math.round(hold), model: B.p50[1] / B.p50[0] - 1, pattern: Math.exp(pf.cum[pf.cum.length - 1]) - 1, trend: Math.exp(tf.cum[tf.cum.length - 1]) - 1 });
-    if (P.length > 36) P.splice(0, P.length - 36);
+  const hitBin = () => S.state.goal.amount / 30; // 패턴·추세만 비교용 (기본 미래 고르기)
+  // ------------------------------------------------------------ 주간 적중 기록판 (엑셀 X/O 격자처럼 미리 적고 나중에 체크)
+  // 그 주에 처음 열 때, 지금 보는 미래 기준으로 '이번 주 금요일 마감 값'과 범위(25~75%)를 저장한다. 저장한 예측은 바꾸지 않는다.
+  // 금요일 마감 뒤: 범위 안이면 적중(날짜), 벗어나면 예측 칸 X·실제 칸 O. 실제는 예측한 날 수량 기준(그 주 매매 영향 제외) + 그때 현금
+  const weekFri = () => { // 이번 주 금요일 (토·일이면 다음 주 금요일)
+    const t = new Date(today() + "T00:00:00Z"), w = t.getUTCDay();
+    t.setUTCDate(t.getUTCDate() + (w === 6 ? 6 : w === 0 ? 5 : 5 - w)); return t.toISOString().slice(0, 10);
+  };
+  const closedIdx = (H) => { let i = H.dates.length - 1; if (i >= 0 && Date.now() < Date.parse(H.dates[i] + "T21:00:00Z")) i--; return i; };
+  const idxAtOrBefore = (H, d) => { let i = H.dates.length - 1; while (i > 0 && H.dates[i] > d) i--; return i; };
+  function weekRecord(H, M, cash) {
+    if (S.state.sample || !H.dates.length) return;
+    const W = (S.state.weekly ||= []), f = weekFri(); if (W.some((r) => r.f === f)) return;
+    const o = closedIdx(H); if (o < 0) return;
+    const base = H.total[o], n = weekdays(H.dates[o], f).length; if (!(base > 0) || !n) return;
+    const basis = $("#histBasis .on")?.dataset.b || "model";
+    let mu = null, sd = null, name = BASIS[basis] || "패턴";
+    if (basis === "pattern" && M) { mu = patPred(patFeat(M.P, o, weekdays(H.dates[o], f)), M.p); sd = M.sd * Math.sqrt(n / 21); name = "패턴"; }
+    else {
+      const scen = basisScen(basis), F = fcReady(scen), B = F && !F.err && F.R?.bands;
+      if (!B) { if (!F) forecastLater(scen, () => { if ($("#tabs .on")?.dataset.tab === "dash") renderDash(); }); return; }
+      mu = Math.log(B.p50[1] / B.p50[0]) * (n / 21); sd = ((Math.log(B.p75[1]) - Math.log(B.p25[1])) / 1.349) * Math.sqrt(n / 21);
+    }
+    const v = (z) => Math.round(base * Math.exp(mu + z * sd) + cash);
+    W.push({ f, d0: H.dates[o], i0: H.index[o], base: Math.round(base), cash: Math.round(cash), p50: v(0), lo: v(-0.674), hi: v(0.674), by: name });
+    if (W.length > 104) W.splice(0, W.length - 104);
     save(false);
+  }
+  function weekRows(H) {
+    const o = closedIdx(H), last = o >= 0 ? H.dates[o] : "";
+    return (S.state.weekly || []).map((r) => {
+      const i0 = H.dates.indexOf(r.d0), base = i0 >= 0 ? H.index[i0] : r.i0, done = last >= r.f;
+      const j = done ? idxAtOrBefore(H, r.f) : H.dates.length - 1, act = j >= 0 && base ? Math.round(r.base * (H.index[j] / base) + r.cash) : null;
+      return { ...r, act, done, hit: act != null && act >= r.lo && act <= r.hi };
+    });
+  }
+  function renderHit(H) {
+    const card = $("#hitCard"), rows = weekRows(H);
+    if (S.state.sample || !rows.length) { card.style.display = "none"; return; }
+    card.style.display = "";
+    const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8)}`, gap = (r) => `${spct(r.act / r.p50 - 1)}, ${r.act >= r.p50 ? "+" : "-"}${krw(Math.abs(r.act - r.p50))}`;
+    const cur = rows.find((r) => !r.done), done = rows.filter((r) => r.done), lastDone = done[done.length - 1];
+    const sum = [];
+    if (cur) sum.push(`<b>이번 주 (${md(cur.f)} 마감) 예측</b> ${krw(cur.p50)} (${krw(cur.lo)}~${krw(cur.hi)}, ${esc(cur.by)}) · 지금 ${cur.act != null ? `${krw(cur.act)}, 예측보다 <b class="${cls(cur.act - cur.p50)}">${gap(cur)}</b>` : "-"}`);
+    if (lastDone) sum.push(`<b>${md(lastDone.f)} 마감</b> 예측 ${krw(lastDone.p50)} → 실제 ${krw(lastDone.act)} · ${lastDone.hit ? "<b class=\"good\">적중</b>" : "빗나감"} (<span class="${cls(lastDone.act - lastDone.p50)}">${gap(lastDone)}</span>)`);
+    if (done.length) sum.push(`지금까지 적중 <b>${done.filter((r) => r.hit).length}/${done.length}</b> · 평균 차이 ${pct(done.reduce((a, r) => a + Math.abs(r.act / r.p50 - 1), 0) / done.length)}`);
+    else sum.push(`<span class="muted">이번 주 금요일 마감 뒤 첫 체크가 생깁니다.</span>`);
+    $("#hitSum").innerHTML = sum.join("<br>");
+    const list = rows.slice(-12), vals = list.flatMap((r) => [r.lo, r.hi, r.act].filter((v) => v != null));
+    let bin = S.state.goal.amount / 100; while ((Math.max(...vals) - Math.min(...vals)) / bin > 14) bin *= 2;
+    const b = (v) => Math.floor(v / bin), lo = b(Math.min(...vals)), hi = b(Math.max(...vals));
+    let h = `<table class="hit"><tr><th></th>${list.map((r) => `<th title="${r.d0} 기준 · ${esc(r.by)}">${md(r.f)}</th>`).join("")}</tr>`;
+    for (let k = hi; k >= lo; k--) {
+      h += `<tr><th>${krw(k * bin)}</th>` + list.map((r) => {
+        const inR = k >= b(r.lo) && k <= b(r.hi), pb = b(r.p50), ab = r.act != null ? b(r.act) : null, tip = `예측 ${krw(r.p50)} (${krw(r.lo)}~${krw(r.hi)})${r.act != null ? ` · ${r.done ? "실제" : "지금"} ${krw(r.act)}` : ""}`;
+        const c = inR ? " rng" : "";
+        if (!r.done) return pb === k ? `<td class="pend${c}" title="${tip}">?</td>` : `<td class="${c.trim()}"></td>`;
+        if (r.hit && ab === k) return `<td class="ok${c}" title="${tip}">${md(r.f)}</td>`;
+        if (!r.hit && pb === k) return `<td class="x${c}" title="${tip}">X</td>`;
+        if (!r.hit && ab === k) return `<td class="o${c}" title="${tip}">O</td>`;
+        return `<td class="${c.trim()}"></td>`;
+      }).join("") + "</tr>";
+    }
+    $("#hitGrid").innerHTML = h + "</table>";
+    $("#hitNote").innerHTML = `한 칸 = ${krw(bin)}원. 옅은 칸은 예측 범위(25~75%). 범위 안이면 적중(날짜), 벗어나면 예측 X·실제 O. 예측은 그 주에 처음 열 때 그때 보던 미래 기준으로 저장하고 바꾸지 않습니다. 실제는 예측한 날 수량 기준.`;
   }
   function patScores(M) { // 다시 맞춰 본 12달: 칸 적중 수와 평균 오차 (패턴 sp, 추세만 st)
     const bin = hitBin(), sc = (pr) => ({ hit: M.folds.filter((x, j) => Math.floor((x.v1 * Math.exp(pr[j] - x.act)) / bin) === Math.floor(x.v1 / bin)).length,
@@ -2877,36 +2922,6 @@
     M.sp = sc(M.pc); M.st = sc(M.tc); return M;
   }
   const patWins = (M) => { if (!M) return false; patScores(M); return M.sp.hit >= M.st.hit && M.sp.mae < M.st.mae; };
-  function renderHit(H, M) {
-    const card = $("#hitCard"), { rows, live } = hitRows(M, H);
-    if (S.state.sample || (!rows.length && !live.length)) { card.style.display = "none"; return; }
-    card.style.display = "";
-    const sel = $("#hitSel .on")?.dataset.h || "pattern", bin = hitBin(), b = (v) => Math.floor(v / bin);
-    const list = sel === "model" ? live.filter((r) => r.model != null) : [...rows.map((r) => ({ ...r, p: r[sel] })), ...live.filter((r) => r.live[sel] != null).map((r) => ({ ...r, p: r.live[sel], rec: true }))].sort((x, y) => (x.d1 < y.d1 ? -1 : 1));
-    if (sel === "model") list.forEach((r) => (r.p = r.model));
-    const score = (L) => ({ hit: L.filter((r) => b(r.p) === b(r.act)).length, n: L.length, mae: L.length ? L.reduce((a, r) => a + Math.abs(r.p / r.act - 1), 0) / L.length : null });
-    const sc = score(list);
-    if (M) patScores(M);
-    const name = { pattern: "패턴", trend: "추세만", model: "내 관점" }[sel];
-    $("#hitSum").innerHTML = list.length ? `<b>${name}</b> 적중 <b>${sc.hit}/${sc.n}</b> · 평균 오차 ${pct(sc.mae)}` + (M && sel !== "model" ? ` <span class="muted">(${sel === "pattern" ? `추세만 ${M.st.hit}/${rows.length} · ${pct(M.st.mae)}` : `패턴 ${M.sp.hit}/${rows.length} · ${pct(M.sp.mae)}`})</span>` : "")
-      + (M && sel !== "model" ? (patWins(M) ? " · <b class=\"up\">패턴이 앞서 평가액 추이 기본 미래로 씁니다</b>" : " · 패턴이 추세만보다 낫지 않아 기본 미래는 그대로") : "")
-      : `<span class="muted">${sel === "model" ? "내 관점 전망은 매달 한 번 저장해 한 달 뒤 채점합니다. 첫 채점은 다음 달." : "아직 채점할 달이 없습니다."}</span>`;
-    if (!list.length) { $("#hitGrid").innerHTML = ""; $("#hitNote").textContent = ""; return; }
-    const vals = list.flatMap((r) => [r.p, r.act]), lo = b(Math.min(...vals)), hi = b(Math.max(...vals));
-    let h = `<table class="hit"><tr><th></th>${list.map((r) => `<th title="${r.d1}${r.rec ? " · 저장한 예측" : " · 다시 맞춰 본 값"}">${r.m.slice(2).replace("-", ".")}${r.rec ? "*" : ""}</th>`).join("")}</tr>`;
-    for (let k = hi; k >= lo; k--) {
-      h += `<tr><th>${krw(k * bin)}</th>` + list.map((r) => {
-        const pb = b(r.p), ab = b(r.act);
-        if (pb === ab && ab === k) return `<td class="ok" title="예측 ${krw(r.p)} · 실제 ${krw(r.act)}">${r.d1.slice(5).replace("-", "/")}</td>`;
-        if (pb === k) return `<td class="x" title="예측 ${krw(r.p)}">X</td>`;
-        if (ab === k) return `<td class="o" title="실제 ${krw(r.act)}">O</td>`;
-        return "<td></td>";
-      }).join("") + "</tr>";
-    }
-    $("#hitGrid").innerHTML = h + "</table>";
-    $("#hitNote").innerHTML = `한 칸 = ${krw(bin)}원 (목표의 1/30). 지금 수량을 과거에 적용한 평가액 기준. 별표(*) 없는 달은 그달을 빼고 맞춘 모형으로 다시 예측해 본 값입니다.`
-      + (M ? ` 패턴 가중: 작년 ${M.p.a1} · 재작년 ${M.p.a2}, 추세는 지난 1년 속도 ${Math.round(M.p.keep * 100)}% + 연 10% ${Math.round((1 - M.p.keep) * 100)}%.` : "");
-  }
   // 엑셀 '대쉬보드' 지표: 연초에 세운 예측(고정) 대비 오늘 다시 맞춘 예측(변동)의 연말 값 차이
   function patYearGap(M, hold) {
     const H = M.P.H, k = H.dates.length - 1, end = today().slice(0, 4) + "-12-31", s = H.dates.findIndex((d) => d >= today().slice(0, 4) + "-01-01");
@@ -3016,7 +3031,7 @@
       const o = insLoad(); o.read[a.dataset.nid] = Date.now(); insSave(o); a.classList.add("read");
     });
     segClick("#histRange", renderDash); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
-    segClick("#actView", renderAct); segClick("#hitSel", renderDash); segClick("#diaMode", renderDash);
+    segClick("#actView", renderAct); segClick("#diaMode", renderDash);
     $("#premBox").addEventListener("change", onPrem); $("#premBox").addEventListener("click", onPrem);
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
     segClick("#anaNav", renderAnalysis);
