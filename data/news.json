@@ -1,132 +1,132 @@
 {
- "updated": "2026-10-07T00:36:46+00:00",
+ "updated": "2026-10-07T06:48:08+00:00",
  "realtime": {
-  "key": "69d32e0bd9665c01",
-  "updated": "2026-10-07T00:36:52+00:00",
+  "key": "abafb2d6464a155e",
+  "updated": "2026-10-07T06:48:14+00:00",
   "media": [
    {
-    "title": "기술주 랠리에 힘입어 S&P500과 나스닥 사상 최고가 기록",
-    "orig": "U.S. stock futures steady after tech rally lifts S&P 500, Nasdaq to records",
-    "summary": "기술주 강세와 국채금리 하락으로 뉴욕증시 주요 지수가 사상 최고치를 경신했다.",
+    "title": "AI 랠리에 힘입어 미국 증시 사상 최고치 경신",
+    "orig": "US stock market hits all-time high as investors bet big on AI | Financial Markets News",
+    "summary": "인공지능 분야에 대한 대규모 투자 기대감이 이어지면서 뉴욕 증시가 사상 최고치를 기록했습니다.",
     "broker": "",
-    "source": "Investing.com",
-    "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxPQm5JR1Q5NDRrNTM3MEc0VlpHYUhGUlBpdTNKcFRwNWllc0ZFdFIxeVhnclEtZmRDNE9TTTFhM0o0YjBRRURBS0pKU3VvRU1wOTJTZDBHMHU3RVZVWm5IZ0I0bUtWcmVIUGhqWUFnSzlFWVVYMjRBbkg0UDZBS1dCX3htamJoellzYWJ1ZHcwaDRVeE1wbFJmem9Gb0VXZEhrVm5hNFBWUUNqRUNKZ09ydkxkZ0FYeFItTF9jRUl4VExkQTlTRlpR?oc=5",
-    "time": "2026-10-07T00:16:42+00:00"
+    "source": "Al Jazeera",
+    "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxPWGVpQWRLR19SM1hhdGdPN2RwTXl0LWhrVU5TRUpvc0ltbEhjazZObHpMRGx0NVBydTZldHlTYTNCV0RKUUY2R1YwUEFqWXdTNkxtS0FJbUkwLXh4NGRpeUhmZlNNVU52TzM0OW1vUFRpZUJmLVFCSU1ySlpLVHBPWGRyT2FLWENwNXg5cEN2c2JRVFJRMDF3akJuUVVENHpHczhzX3B0dm8?oc=5",
+    "time": "2026-10-07T03:27:38+00:00"
    },
    {
-    "title": "마이클 버리, 증시 폭락 1단계 진입 경고",
-    "orig": "Michael Burry warns the stock market is in the first stage of a crash — with just 6 to 9 months to go until Stage 2",
-    "summary": "유명 투자자 마이클 버리가 현재 증시가 폭락의 초기 단계에 있으며 6~9개월 뒤 다음 단계로 진입할 것이라고 경고했다.",
+    "title": "빅테크의 견조한 AI 지출, 미국 증시 실적 호조 견인 전망",
+    "orig": "Robust AI spending sets investors up for another bumper US earnings season",
+    "summary": "주요 빅테크 기업들의 강력한 AI 인프라 투자가 이번 분기에도 미국 기업들의 실적 호조를 이끌 것이란 분석이 나왔습니다.",
     "broker": "",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMingFBVV95cUxNeFljVEJxbzRPNEJyUGhwRm9wdUE0ZmlYbGVnaUlrSXEwNktCOWdkMEVVV29pV1duZ3BERFU1OHVGNjJRRUtFelRfWFd1dEVfOThrNWhoWGc5Yk10RW81aGZrNE5DQTdFekZpM2lfemNneHVETFNnVlktUkxwZWY2OG1iVlJrUTNHRWppb1dWZU8xeWZ5ajRTZmFmVG14Zw?oc=5",
-    "time": "2026-10-06T23:30:00+00:00"
+    "source": "Financial Times",
+    "link": "https://news.google.com/rss/articles/CBMihAFBVV95cUxOZk1oQnFmYjdtRWFEeFNTZlEtZU9IVGV1Y24wcGJVa2pJY2JURGJORXpGTHRnUVRucUxRYmpMNndGaEdLaU9PZDIybFpXeXlVUURrSUttWG5WUmZzUjZJSk5EYlRDYzF6c3hvMXI4d2ExT3ItVjFMVEdveGpwUkF0dVBHdXI?oc=5",
+    "time": "2026-10-07T04:00:22+00:00"
    },
    {
-    "title": "중동 긴장 고조 속 국제유가 상승",
-    "orig": "Oil Rises Amid Ongoing Mideast Tensions",
-    "summary": "중동 지역의 지정학적 리스크가 원유 공급 차질 우려를 키우며 유가를 끌어올렸다.",
+    "title": "후티 반군의 사우디 공격 우려에 국제유가 상승",
+    "orig": "Oil rises as concerns over Houthi attacks on Saudi Arabia eclipse supply recovery",
+    "summary": "예멘 후티 반군의 사우디아라비아 공격 가능성과 호르무즈 해협 긴장이 고조되며 유가가 상승세를 보였습니다.",
     "broker": "",
-    "source": "WSJ",
-    "link": "https://www.wsj.com/finance/commodities-futures/oil-rises-amid-ongoing-mideast-tensions-2c446a1e?mod=rss_markets_main",
-    "time": "2026-10-07T00:27:00+00:00"
+    "source": "CNBC",
+    "link": "https://www.cnbc.com/2026/10/07/oil-prices-today-brent-wti-hormuz.html",
+    "time": "2026-10-07T05:29:30+00:00"
    }
   ],
   "broker": [
    {
-    "title": "제프리스, 폭풍 비용 우려로 하와이언 일렉트릭 목표주가 하향",
-    "orig": "Jefferies cuts Hawaiian Electric stock price target on storm costs",
-    "summary": "제프리스가 폭풍 관련 비용 발생을 이유로 하와이언 일렉트릭의 목표주가를 낮춰 잡았다.",
-    "broker": "제프리스",
-    "source": "Investing.com",
-    "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxPU1VnN0FXd3JlYktuMVZiY1V4RkxJdWpSUnBDbXNEcDNmdVdjeHVLQkRLMW9xZ05wSVppYnVDNUhQRkJqUjBYeGNDVE9ocWpKSzVHZkd4RlhQZVpDbkVDUXd2M3NsRjVseWJ2T0hhYkdleVdtQ3RMaDY2YndJdEdFNWNuV045VG4tT3RWcGxSVDV1YUZURHlPWHp4UzRYZ0VlQXNsTGRTQ1YwaHpOTjFyV2xYZDBhaWZpbzZyamJMOUpqM2Fn?oc=5",
-    "time": "2026-10-06T21:01:22+00:00"
+    "title": "도이치뱅크, 펜 엔터테인먼트 투자의견 상향",
+    "orig": "Is PENN Entertainment (PENN) Undervalued Following Deutsche Bank's Upgrade And NFL Partnership?",
+    "summary": "도이치뱅크는 NFL과의 파트너십 체결 등을 긍정적으로 평가하며 펜 엔터테인먼트에 대한 투자의견을 상향했습니다.",
+    "broker": "도이치뱅크",
+    "source": "Simply Wall Street",
+    "link": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxNdC1BWEdCZlplSFVCSzNpc19aN3B5bHB4eHBkM2hmUGZaUXBsZWNzRGNGdmtPSi1ORDNDT3V6S3o3ZzlqOFFuTGtwbFprNWpKSGZDMEREdWk5aXRSUGcxTFhGOFNLb3VOMUhLTExXMEUzWDB4RUZSLVZkN19IdVBYV1JmcW5qWXNIY1puclpKYm9fOFpWSk80cUtOOGh4eF9iT3ctQVR5ekVvMi1FZm9Wek1QOXhKUGN4N0dGSk5WalE2VlBQbjNpbUFWaXZRaXd0eW1GV1J6ZXNvVWc2WUhj0gHkAUFVX3lxTE9PSC1IX2h6cTQ4UWVzTWxNeFpmamxtd3JrYjEtVzJrNE81NWZUYUIyQ3NUTnViWkpMRS1SYmthY3hQRkYtOGVPWGpCbDRUdVZoM2JmS3lpdUt2Z3dyTUZwQUJmRnAySGlienRLdnFZLXNLSG13UUpmSFlPa0lvanFXZk02U2liV0UzSUJMZFg2RGxBaXZGQzBXRzNpY2d6Vkl0aHhNU01WaGJpUDMySlpNTXQ1dzU5SXY1dW9NNWttWU9rRG5kSHpyTWE3cmtyRjluWWo2alA1RDRXdjJWRUxqTldoOA?oc=5",
+    "time": "2026-10-07T05:03:42+00:00"
    },
    {
-    "title": "스톤엑스, 마이크로스트래티지 목표주가 435달러 제시",
-    "orig": "StoneX’s Mark Palmer: $435 MSTR Price Target Explained – DAT Consolidation Outlook",
-    "summary": "스톤엑스의 애널리스트가 마이크로스트래티지의 목표주가를 435달러로 설정하고 관련 전망을 분석했다.",
-    "broker": "스톤엑스",
-    "source": "Bitcoin Magazine",
-    "link": "https://news.google.com/rss/articles/CBMisgFBVV95cUxNYTFWN2prUXh1Vk9xNWlpVVVoNkpIMy1KNjBaa0hoSUxXazFseWVRMWotaTJ4UjZvcmJndWxiVm1kdlp2ZF84Qm0ya2EwdWNvNHpVb09VXzd4LTRvaGhmN1lyeVVuYV9OZEZGNUtnTEJORlY2Yk5lNXZWQTRIc1Qzenk2ZldmdEJuSUZ6SFBvSVNPLXlHVVZNNEZ3RXhBaVRLOU1rcl9YcFdZUURGSEgzRUNB?oc=5",
-    "time": "2026-10-06T21:18:22+00:00"
+    "title": "마진 압박으로 3분기 기업 실적 부담 가중",
+    "orig": "Margin pressures raise the stakes on Q3 earnings: Strategist",
+    "summary": "기업들의 마진 압박이 지속되면서 이번 3분기 어닝 시즌의 실적 눈높이와 변동성이 더욱 커졌다고 분석했습니다.",
+    "broker": "CNBC",
+    "source": "CNBC",
+    "link": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQcHVLN0hOLUpNOWNJM1haWW5xZF85YnJLSGNKTVFjdjhJT0dTUVRpQ1ZNV1BJQ3pBWUtfLUExd1RCSGI2OFF5czZ5dUpIS29wamhHQUxoQWJPTVIwamJPcFU4U1J1WkhyUTFZVTQ5SWd4WFIwSFQwRTA4ejJXeXJUYjlUMG01bFJ0ZzE0UVJDcFRhMThaS3dUeXRsRlpVaWhWYVUzVVBrRm9LdFo3OUFQeVhFTklyb2c?oc=5",
+    "time": "2026-10-07T05:36:45+00:00"
    },
    {
-    "title": "코르테바, 애널리스트 투자의견 상향에 12% 급등",
-    "orig": "Stock Market Today, Oct. 6: Corteva Rallies 12% on Analyst Upgrade Following Spin Off",
-    "summary": "분할 이후 애널리스트의 긍정적인 평가와 투자의견 상향 조정에 힘입어 코르테바 주가가 크게 올랐다.",
+    "title": "S&P 500 최고치 경신 속 증시 랠리 확산 여부엔 전망 엇갈려",
+    "orig": "S&P 500 Breaks Records But Analysts Split on Whether Rally Can Broaden",
+    "summary": "S&P 500 지수가 최고가를 경신했으나 빅테크 중심의 상승세가 다른 업종으로 확산될 수 있을지에 대해서는 분석가들의 의견이 엇갈리고 있습니다.",
     "broker": "야후 파이낸스",
     "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNYlVyemdkM05fZElWb2hXZjRxVjVlbk9RUEExMXhrTERYSlJxN3dzdktZSWdxTnp1VDlSdHBncHBydGc1c0xtUEdScDBhdkVBckFOSG5QSFp2U3B4SlZzRkE5aXZLeXFEMVJVUENsVUdXNi1NUmNnaEhXaXJKREwxRHp5bXM5eTRkRnJYUndzMmp4Unc?oc=5",
-    "time": "2026-10-06T21:32:57+00:00"
+    "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxNX0pmYlJHV0VJem4zUnF4bV91VkxjeVlQOEItUVVKVC00YnZhcm1FUEc4dGdmMklhX0xKOGh0NTVsa0NhZFhDV1A5cVN0TlpCRUY3cHIxN0s0Sm5hRHNURE5zNkNxamlyQTdORVlGNmhqUmMzN3N5WW5QSmtEbGJGZEZuUnUwYng2YmlWdDVjajRqd05zNFAxNDRB?oc=5",
+    "time": "2026-10-07T02:32:00+00:00"
    }
   ]
  },
  "weekly": {
-  "key": "f89cd1f2e3f78508",
-  "updated": "2026-10-07T00:37:30+00:00",
+  "key": "8ee4581e2d7b5078",
+  "updated": "2026-10-07T06:48:25+00:00",
   "media": [
    {
-    "title": "S&P500·나스닥, 실적 기대감에 사상 최고가 경신",
+    "title": "S&P500·나스닥, 실적 기대감 속 사상 최고가 마감",
     "orig": "S&P 500, Nasdaq reach record closing highs as focus pivots to earnings",
-    "summary": "기업들의 실적 발표를 앞두고 기술주 중심의 매수세가 유입되며 주요 지수가 최고가를 기록했다.",
+    "summary": "기업 실적 발표를 앞두고 대형 기술주 중심의 매수세가 유입되며 주요 지수가 사상 최고치를 경신했다.",
     "broker": "",
-    "source": "Reuters",
-    "link": "https://news.google.com/rss/articles/CBMihwFBVV95cUxPZ0p5VWxQQ0ZmUUI0Vk5wRUVjTUJhZjZGUlZjU2tWU1AtOEdqYjZ0OFRtRXNrUVdrTFlNZjVWdzluRjUyaWhHTlYxMG5Yc21pMHFubTdiX1RIRTRUSnB4UTZPckRMZTlzTHBEbkZKU1ROMTZpWE9lMXhPQkhyQmhBV3JNdkFrQVk?oc=5",
-    "time": "2026-10-06T23:41:37+00:00"
+    "source": "Virginia Business",
+    "link": "https://news.google.com/rss/articles/CBMifEFVX3lxTE9NVjd6dkJwSl9wRGR3ZmFnNXBiREZDSktyM1VJZGw1T28zRFNiU1NnOXF5UFAzQkJHb2VEWXFCVHFJSHB5aTlmcjg1bDNBLWo1YUllSEVKdGo1RXNZVzRvZzU0VkRveXlFWkhva05ySnVvN0tic3dSTFlHTTk?oc=5",
+    "time": "2026-10-06T21:41:36+00:00"
    },
    {
-    "title": "엔비디아 시총 6조 달러 임박 속 뉴욕증시 랠리",
-    "orig": "S&P 500 closes at record high as Nvidia nears $6 trillion milestone",
-    "summary": "AI 반도체 열풍에 힘입어 엔비디아의 시가총액이 사상 최고 수준에 근접하며 지수를 끌어올렸다.",
+    "title": "AI 투자 열풍에 힘입어 미 증시 사상 최고가 기록",
+    "orig": "US stock market hits all-time high as investors bet big on AI | Financial Markets News",
+    "summary": "인공지능(AI) 관련주에 대한 기대감이 확산되면서 뉴욕증시가 또다시 최고가 기록을 갈아치웠다.",
     "broker": "",
-    "source": "NBC News",
-    "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxOc3hzcS00a3M2eTZZRUtOU0tMU2ZpNFN1ejYzRkt6X3NSVC1UN3I5RkJmRkduOFN0Uno3cXZjTEJITG1GeVB2eDMwMTYxMUV3Q0k2NlZlVE9ON3gyQTM2aHNqUDJPRFRnMkp2NmZiRVZlYnVxQV9yOGhIQVZYNjVVTHR4NA?oc=5",
-    "time": "2026-10-06T20:11:33+00:00"
+    "source": "Al Jazeera",
+    "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxPWGVpQWRLR19SM1hhdGdPN2RwTXl0LWhrVU5TRUpvc0ltbEhjazZObHpMRGx0NVBydTZldHlTYTNCV0RKUUY2R1YwUEFqWXdTNkxtS0FJbUkwLXh4NGRpeUhmZlNNVU52TzM0OW1vUFRpZUJmLVFCSU1ySlpLVHBPWGRyT2FLWENwNXg5cEN2c2JRVFJRMDF3akJuUVVENHpHczhzX3B0dm8?oc=5",
+    "time": "2026-10-07T03:27:38+00:00"
    },
    {
-    "title": "고용 지표 둔화에 연준 금리 인상 우려 완화",
-    "orig": "📈 Wall Street rallies as soft jobs data cools Fed hike fears",
-    "summary": "부진한 고용 지표 발표로 미 국채 금리가 하락하며 연방준비제도의 금리 인상 공포가 진정되었다.",
+    "title": "미국 무역 적자, 1년 만에 최대 폭으로 확대",
+    "orig": "U.S. Trade Deficit Widens to Largest Level in More Than a Year",
+    "summary": "수입 증가 등의 영향으로 미국의 무역 적자 규모가 1년여 만에 가장 큰 폭으로 불어났다.",
     "broker": "",
-    "source": "Moomoo",
-    "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxNdUxka3EwZVl3dnFaNHhrYXBOTk01QkJKWjNCNU1OeGZBZ3c2aWl4cmw1WEo4OGlNMFNOVGFtSllOMWtycVhMc0pRQjJIdU9xdVdLVHBiZ3JGc2lYbTVzOFUwb1g2bnMweTEyRU5QOXZlaWdkMFpaa19EMEZjOHB6VjV6RENoQ3c4VlRDRWVXQkJ0c1dnVEc5TTZnOVA0MXBXOTVha2lKS01Qdw?oc=5",
-    "time": "2026-10-05T01:01:02+00:00"
+    "source": "WSJ",
+    "link": "https://news.google.com/rss/articles/CBMipwFBVV95cUxNNEUtLUY2c0Y5WlRnaG5xYTk3T0pXQU9SWVo3OGdEWnBKOFJSSWlORGxreEZoTTJnc0R2TWUtN3BWM3hzVTluQW9VaURTUGp6cTFjNHd1MU5PVXNLOW5xQkJNMkZHSXhEN01Ud1k0UWZfNmRub1hFWlp6bGl0b0VCa080d1VwdHRHeGY5aENEZ1QxVXlmQll0emRIZGQ5Y1dXVWlJYklhUQ?oc=5",
+    "time": "2026-10-06T14:48:00+00:00"
    }
   ],
   "broker": [
    {
-    "title": "바클레이즈, 메타 목표주가 1,000달러로 상향",
+    "title": "메타 목표주가 1,000달러로 상향… 거대한 AI 성과 기대",
     "orig": "Meta Stock: Analyst Lifts Price Target to $1,000, Sees Massive AI Payoff",
-    "summary": "AI 투자에 따른 막대한 수익 창출이 기대된다며 메타의 목표주가를 대폭 올렸다.",
+    "summary": "AI 투자에 따른 본격적인 수익 창출이 기대된다며 목표주가를 대폭 올렸다.",
     "broker": "바클레이즈",
     "source": "Barron's",
     "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTE9vUmJuLWFOWHQ5bjhjUXBscFdsUGwxZjZ5X29fM2lReEtMYXBxT3ZjbXhRSzBLWS0zUF9LVlhhQ2pScnd5eVFJVE5wSVNLcWMzem1Dd081OUd4TmFqT0R0QmttMGRXWXA3N1pObA?oc=5",
     "time": "2026-10-06T15:39:00+00:00"
    },
    {
-    "title": "BNP파리바, AMD 목표주가 60% 상향",
-    "orig": "BNP Paribas Just Hiked AMD’s Price Target 60% to $960",
-    "summary": "AMD의 성장 잠재력을 높게 평가하며 목표주가를 960달러로 대폭 끌어올렸다.",
-    "broker": "BNP파리바",
-    "source": "24/7 Wall St.",
-    "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxQcUhBTzFwNk1mOWQ2eF9rZDRLNU1aR094VWU0Rm55YTg2ZmotcDdSZVYzOEI0VDlSdzBUd0lKQ1NPUmpoMkJoTUxMdExFUzlOSzhrQW9YQlo1bERfUWhIWVY2UXdOZzRkMU5oTDFDTF9IVC1ILUZMNHJhTnZTTTMxV01BR0E0blQwa0lUM0xZenNyTTFXbUNKYWx3?oc=5",
-    "time": "2026-10-06T15:31:00+00:00"
+    "title": "SB1 마켓, 판독스 목표주가 190크로나로 하향 조정",
+    "orig": "SB1 Markets lowers price target for Pandox to SEK 190 (215), reiterates buy",
+    "summary": "실적 전망을 반영해 목표주가는 낮췄지만 매수 의견은 유지했다.",
+    "broker": "SB1 마켓",
+    "source": "marketscreener.com",
+    "link": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxQMUlibHhSU1R5WWVRRzJxbnJGY1ozRm5nLV9EeF9lTFh4LVlGWmFCV0ZJdXVUOXBXMlM2bVdqenNpMnhrSHMtVXJNbDVMaTM5TjZUVm9Ka0NrZDBGUW5RTzBjemk1NlViZ3BhRFNBSGIwbmdwa3R5RmxpM2p6Z1ZYU091dlhNWmlWcW0zQmVOZTY3SC1IenhHRTVkeUFkaHdwLVh3SmZqVk81RFhNUk9jenVTc082RVlMQXplMFV5c2w2S3c?oc=5",
+    "time": "2026-10-05T08:37:30+00:00"
    },
    {
-    "title": "웰스파고, 맥도날드 가맹점 우려로 목표주가 내려",
-    "orig": "Wells Fargo cuts McDonald’s stock price target on franchisee deal concerns",
-    "summary": "가맹점 관련 리스크를 반영해 맥도날드에 대한 투자 의견과 목표주가를 하향 조정했다.",
-    "broker": "웰스파고",
-    "source": "Investing.com UK",
-    "link": "https://news.google.com/rss/articles/CBMizwFBVV95cUxQSkVFSkIzVUN0dmZlcTRmUG5tMWp6VjduSnpDOTlWbmQ3d2lNSUMxSmMxb2g3MFpMVTVBWVdpMGY0N0ZLaUhMTWZ5RkFvY2tpQkdxU21mVERlOUJ1ZkRXZHdyaEZOR3dPWVVCbXNqbl8yNmc1UG41SDB0al9oSXY0bzZMZGNMTHdxZTdRLWp0OW1JYjNKUmkxTjJlTG1vc2lWNUk3d0NJLTVGNTlaWUJFWVhSSlhEbkFXTWlLYXR2dVFybjBGcHJ2bzZwNEVYV0E?oc=5",
-    "time": "2026-10-05T10:34:00+00:00"
+    "title": "RBC, 펩시코 3분기 부진 전망하며 목표주가 내려",
+    "orig": "PEP Q3 Preview: RBC Sees 'Soft' September Quarter, Cuts Price Target To $150",
+    "summary": "9월 분기 실적이 다소 부진할 것으로 예상되며 목표주가를 하향 조정했다.",
+    "broker": "RBC",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMizAFBVV95cUxOUU5WZHp2VElDLTlxU2RQMjVUbUE4ZEFRZkxPRHZvTUtzS2xBTlJhNjd5bDdyN0YycmZZeEpDYzJVSDZ2ZjB3cFg0TnVUeEVFV1RDbEZjNGthaW1DLTlndGZmc2Jsa3JueGtrTDB6OEEwSXlmUVBBSmhRX25DUThhQWRkUUdMSzVyOUdyM3hYLWo2VVhiWE5HNEtYSW50cUhJa3pVOThNcFBVX3pjTUFPVF9NZ3N2T3h0ZDI2LS1FVTlWMi1WaGhGNjJ4eXI?oc=5",
+    "time": "2026-10-06T14:56:58+00:00"
    }
   ],
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-07T00:36:46+00:00",
+  "updated": "2026-10-07T06:48:08+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -138,6 +138,84 @@
    "GLD": "SPDR Gold Shares 업계"
   },
   "items": [
+   {
+    "id": "teslaisbrowbeatingtheeutoapproveitsfullselfdrivingtechthepre",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "테슬라, EU에 완전자율주행 승인 압박... 성과 가시화",
+    "orig": "Tesla is browbeating the EU to approve its ‘Full Self-Driving’ tech. The pressure is working.",
+    "summary": "테슬라가 유럽연합(EU)에 완전자율주행(FSD) 기술 승인을 지속적으로 압박하며 성과를 거두고 있다.",
+    "source": "Reuters",
+    "link": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxOdjBuOTVpakJxeU9NUm55Z2xWcU42ellEeUI4XzhuaGdNWWViVkFqSGJwVGg5Y3NPNmFlTFVBdVBiWGh3TmdCbjF1UnhGM00tQXFPSS1lOHB2YVk1d3ZGbnEwMkRuWGJFREdOcmFaZ3VOYm4tTHkydlZEOEJrTGNqVDZHSk5IZFkxSGFHREhFcm9ZamZNU2YxbmRfVVpmYUJwYm5Wc2Zhdm9yUnlZYW1UM2xjcXVtWGNsQlZsTjh2eXBjQWRaSm9OQg?oc=5",
+    "time": "2026-10-07T06:11:15+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
+    "id": "teslabullgaryblackwarnsinvestorsaboutconfusinggreatcompanywi",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "테슬라 밸류에이션 논란... 훌륭한 기업과 주가는 별개",
+    "orig": "Tesla Bull Gary Black Warns Investors About Confusing 'Great Company' With a Great Stock: ‘Valuation Matters’ Even With 45% EPS Growth",
+    "summary": "일부 전문가들이 45%의 높은 EPS 성장률에도 불구하고 여전히 밸류에이션이 중요하다고 경고했다.",
+    "source": "Benzinga",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/tesla-bull-gary-black-warns-040544727.html",
+    "time": "2026-10-07T04:05:44+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
+    "id": "willspacexs40bnvidiabethelporhurtthestockaftera16run",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "스페이스X의 대규모 엔비디아 칩 투자, 주가에 미칠 영향은?",
+    "orig": "Will SpaceX's $40B Nvidia Bet Help or Hurt the Stock After a 16% Run?",
+    "summary": "스페이스X의 400억 달러 규모 엔비디아 칩 투자 계획이 향후 주가에 긍정적 혹은 부정적 영향을 미칠지 관심이 모이고 있다.",
+    "source": "BeInCrypto",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/spacexs-40b-nvidia-bet-help-031930122.html",
+    "time": "2026-10-07T03:19:30+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
+    "id": "spacexspcxcompletedstarshipflight14tolowearthorbit",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "growth",
+    "title": "스페이스X, 저궤도 향한 스타십 14차 비행 성공",
+    "orig": "SpaceX (SPCX) Completed Starship Flight 14 To Low Earth Orbit",
+    "summary": "스페이스X가 저궤도를 향한 스타십 14차 비행 테스트를 성공적으로 완료했다.",
+    "source": "Simply Wall St.",
+    "link": "https://finance.yahoo.com/technology/ai/articles/spacex-spcx-completed-starship-flight-021125632.html",
+    "time": "2026-10-07T02:11:25+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
+    "id": "appleovertakessamsungtoleadeuropeancarriersmartphonesalesinq",
+    "ticker": "AAPL",
+    "scope": "industry",
+    "cat": "market",
+    "title": "애플, 유럽 스마트폰 시장서 삼성 제치고 2분기 점유율 1위",
+    "orig": "Apple overtakes Samsung to lead European carrier smartphone sales in Q2, per report",
+    "summary": "애플이 유럽 통신사 스마트폰 판매량에서 삼성전자를 제치고 2분기 선두를 차지했다.",
+    "source": "9to5Mac",
+    "link": "https://news.google.com/rss/articles/CBMitAFBVV95cUxOY2NRSnkwNW5nekhSZW9SNFZ5VkRHbGxoeVJkVHlfRi0xOTlLcmNmSWhLdzJOc3pleDZtTDNDZTJaTU00ekFTbW1BMmduSVVVaWFkcXhfTjB2TTdlaEdWemttWmhyQ1hIVFAzcTBYWTlDemNqdDl0QmVJUUg5WWEwTGstRVczUEVncXJTc3B5X0IxRUJ6OHpFWTUybnZiZUxzVVpIUHhrb0IwN3ZUUjNNMFAxaU0?oc=5",
+    "time": "2026-10-07T02:00:00+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
+    "id": "spacexstockdropsafterhoursaselonmuskledcompanyseeks40billion",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "스페이스X, 엔비디아 칩 구매 위해 400억 달러 조달 추진 속 시간외 주가 하락",
+    "orig": "SpaceX Stock Drops After Hours as Elon Musk-led Company Seeks $40 Billion to Buy Nvidia Chips",
+    "summary": "스페이스X가 엔비디아 칩 구매 자금 조달에 나선 가운데 시간외 거래에서 주가가 하락했다.",
+    "source": "Benzinga",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/spacex-stock-drops-hours-elon-014929822.html",
+    "time": "2026-10-07T01:49:22+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
    {
     "id": "globaldatacentercoolingmarketanalysisandforecast20262036aian",
     "ticker": "NVDA",
@@ -204,6 +282,32 @@
     "added": "2026-10-07T00:36:46+00:00"
    },
    {
+    "id": "appleisreportedlypartneringwithlgtolaunchasmartlockthermosta",
+    "ticker": "AAPL",
+    "scope": "held",
+    "cat": "growth",
+    "title": "애플, LG와 손잡고 스마트 락·온도조절기·도어벨 출시 전망",
+    "orig": "Apple is reportedly partnering with LG to launch a smart lock, thermostat, and doorbell",
+    "summary": "애플이 LG와의 파트너십을 통해 스마트 홈 기기 시장에 진출할 것으로 알려졌다.",
+    "source": "TechCrunch",
+    "link": "https://news.google.com/rss/articles/CBMivAFBVV95cUxOU01CdGRxQUF3Zl9Ua25vWG12cmhLWWpCVFVVb1EwejFJbHVUaHhwUS1vWXE1M0g2VEVSMG9QWE9TSXREbWtvODZ2WDNDcS1jYk1nVWJqc1dsazBzNDRsSGxwM1hiQWFxNDRXREtCN0l6T1E2dVBoU0JfZUFoRWdQMEJySFVEN25QRk5rajE4X0FlcklWeHllYWxKNVJsNkFTZFlVRE9SYVEzSnlOZnpUNERPb1ZqZWxjLXpWSQ?oc=5",
+    "time": "2026-10-06T22:53:09+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
+    "id": "spacexlookstoraise40bntobuynvidiachipsinfinancingledbyapollo",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "아폴로 주도 하에 스페이스X, 엔비디아 칩 구매용 400억 달러 자금 조달 추진",
+    "orig": "SpaceX looks to raise $40bn to buy Nvidia chips in financing led by Apollo",
+    "summary": "스페이스X가 아폴로의 주도로 엔비디아 칩 구매를 위한 400억 달러 규모의 자금 조달을 추진하고 있다.",
+    "source": "Financial Times",
+    "link": "https://news.google.com/rss/articles/CBMihAFBVV95cUxQdThuRWl1b3NtaUE5aFhSeXVUY0xfYjhBZXJJaG1VWWR0QXBSQ2txLTBrbTlKNm9KQmtqcG95Y3BLNlRQZF96a004TS1xaGlyQUVUaEdqNXZOTzZwdC1IU001ZmM5a191dGNRYjNCWXkwcEk0cjVhams2WUc5aGMxek13b1U?oc=5",
+    "time": "2026-10-06T22:28:55+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
     "id": "applessmarthomepushincludesdoorbelllockthermostatcodeveloped",
     "ticker": "AAPL",
     "scope": "held",
@@ -215,6 +319,19 @@
     "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxQTlpOVHp0YnNWVDViYXdaSjRlYy1QS2hrMjZINnZwYUQ3NWcxTmdYLTlsZjhmcFhNZzlTZjVCeXI0NTlZNm1JVnE1bW5TeHZxNVhiQmxxcVlrQjNVVmJMVXpvYUM3UDRKSXZ2R3dsX1NWRVdaRExHQTVjWU9zZmNrcGF3WXEwdUZUWGVoR19tQi1yN0V0ZzkwR1RsQy1rZkdRdEdDNUM5dzZTeWRDM2tWZU9XZW5scE5SNkVKZDBSYzZDQ19iellZ?oc=5",
     "time": "2026-10-06T21:07:43+00:00",
     "added": "2026-10-07T00:36:46+00:00"
+   },
+   {
+    "id": "appletolaunchdoorbelllockthermostatdevelopedwithlg",
+    "ticker": "AAPL",
+    "scope": "held",
+    "cat": "growth",
+    "title": "애플, LG와 공동 개발한 스마트 도어벨·잠금장치·온도조절기 출시 예정",
+    "orig": "Apple to Launch Doorbell, Lock, Thermostat Developed With LG",
+    "summary": "애플이 LG와 협력해 개발한 스마트 홈 제품군을 선보일 계획이다.",
+    "source": "Bloomberg.com",
+    "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxQTlpOVHp0YnNWVDViYXdaSjRlYy1QS2hrMjZINnZwYUQ3NWcxTmdYLTlsZjhmcFhNZzlTZjVCeXI0NTlZNm1JVnE1bW5TeHZxNVhiQmxxcVlrQjNVVmJMVXpvYUM3UDRKSXZ2R3dsX1NWRVdaRExHQTVjWU9zZmNrcGF3WXEwdUZUWGVoR19tQi1yN0V0ZzkwR1RsQy1rZkdRdEdDNUM5dzZTeWRDM2tWZU9XZW5scE5SNkVKZDBSYzZDQ19iellZ?oc=5",
+    "time": "2026-10-06T21:07:43+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
    },
    {
     "id": "morganstanleyreinstatesthisaichipmakerasitstoppickinsemicond",
@@ -542,6 +659,19 @@
     "added": "2026-10-06T08:53:16+00:00"
    },
    {
+    "id": "spacexboostedrevenuebutisntprofitablefirsteverearningsreport",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "fund",
+    "title": "스페이스X, 첫 실적 보고서서 매출 증대 확인됐으나 적자 지속",
+    "orig": "SpaceX boosted revenue but isn't profitable, first-ever earnings report shows",
+    "summary": "스페이스X가 사상 첫 실적 보고서를 통해 매출은 늘었으나 아직 흑자 전환은 이루지 못했다고 밝혔다.",
+    "source": "ABC News - Breaking News, Latest News and Videos",
+    "link": "https://news.google.com/rss/articles/CBMinwFBVV95cUxNMGl3bVhNVVpvSnhTTzFheWFsSkJqWkJsVEgtMUlBZjBJWkk2X19OS2JEY0tKdDFfMjRpUS14cDhCTG5nQVlIc09UMXlneXNka2tKcGUxbmxBdU90b3Nsc2ZmdExmbjN1aTFnYkVDMy1lOTFmWk9iQ1VnaGZCYXp0ajNPX0FjWGhoWkhhVmNGcTY0NmtUXzZEVzVyTkQ3UzjSAaQBQVVfeXFMTUI4dXF2UzNpRThfT00wMW04Vm5IZFlLeUlMdlU2WUtnWWllSG5neTM3SnhTRVFLSGttOW9pQ1NmSm1VRVpXNzlFLW5XSE9ySEl3alBUZGxQTzNPUldHY0hNczJ4Z2JfbnAwVV9EdzVnYlNBLVhQNHU3ako2WmowWTZDUUQ4VFM4OUh3V2lqdlRUcHRlX0h5bThPUGhzdlA5d0NGMmY?oc=5",
+    "time": "2026-10-06T01:28:23+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
     "id": "morganstanleydoublesdownonspacexstockverdictforinvestors",
     "ticker": "SPCX",
     "scope": "held",
@@ -683,6 +813,19 @@
     "link": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxNdm10ZWxHdzIzVWtnTWYyYkJJdlJrOVctejVaYXY4WWtLUjZPc3Nselc1aDllaWVwbnJ1bHBvNHpObFN1S085Y3dFelNqbkVfZjdpY2FVaEdjZi1tMURIVWdpMU1nenNzWVlNNWl2b2doMjlfTHYwWmdpNkl0Zm9oQ05xWWp5SHFxZFl6NF9Ea2J5ZDg3NTJDLUJuY3J6dDhwVTJZOXpZQVlZbXdOaVMtTmR4TmY4V1Y1LVNMVERaS0hRS1VSZ09SeGhPYnlReDJxZFhiUQ?oc=5",
     "time": "2026-10-05T15:56:04+00:00",
     "added": "2026-10-06T20:55:17+00:00"
+   },
+   {
+    "id": "nvidias20billiongroqdealfaceslawsuitallegingstartupsstockhol",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "엔비디아의 그록 인수 관련, 주주 이익 침해 소송 제기",
+    "orig": "Nvidia's $20 billion Groq deal faces lawsuit alleging startup's stockholders were shortchanged",
+    "summary": "엔비디아의 200억 달러 규모 그록 인수 건이 스타트업 주주들의 이익을 침해했다는 소송에 직면했다.",
+    "source": "CNBC",
+    "link": "https://news.google.com/rss/articles/CBMifkFVX3lxTE1tMlZTSmhldFlfaWNYeXdVNENBYW55RVFSajRaa2toaHpkY19JaUZUZlJoQ0lnV0pPUHk3bzZuc0Z6RndFMXFuM0tVZW1PUC1qX0ZYODl2TE9PRUh4UWJTTHphSXJtU0Vnb0lxbF85OExwUTJPT0FIUC0yMEtNZ9IBgwFBVV95cUxQdnh1NFI4VDQ4ZnIzZXhETC1ZTklPWmJaZHR6eEVPalhwM05YeTdLQVdMcnFIRUZmbXpYT01QcGhsSmtaeGFJelZRdDJORDFyQkY2dGlEbXpwLVBfbzdDZDRxd1BOZURBQkdwUVcwNVM3ZWVyQW04ZG1aTUFUaUNMeXdyWQ?oc=5",
+    "time": "2026-10-05T15:46:49+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
    },
    {
     "id": "gascarsfallbelow50ofglobalnewcarsalesforthefirsttime",
@@ -945,6 +1088,19 @@
     "added": "2026-10-06T01:43:53+00:00"
    },
    {
+    "id": "teslashiddenboostoverhalfabillioninrevenuecamefrommuskspriva",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "테슬라의 숨겨진 수익원... 머스크 개인 제국에서 수억 달러 유입",
+    "orig": "Tesla's Hidden Boost: Over Half A Billion In Revenue Came From Musk's Private Empire",
+    "summary": "일론 머스크의 개인 사업체들로부터 테슬라로 5억 달러 이상의 매출이 유입된 것으로 나타났다.",
+    "source": "Stocktwits",
+    "link": "https://news.google.com/rss/articles/CBMisAFBVV95cUxQdGpld3RpS2JRNTNqMlpQb1VTUWRQOHV2X1JrWUhKOEJQcU9sdlFHYVZWNXZybURhaUZiQWtZeC0yVWlzTEdZTFgzZ2UtOTM1SFZqSldrNG5hckpyYldVVll2M3ZYbS1xVmNhbGVQdHJibUppX3podk5Yc25EdFJ5LV9FOElydkJZbWlFMm9qOTRZS2M0cmx4eWF1NXA5cmRGRFBObkdKRFJBWUo2cjVGTQ?oc=5",
+    "time": "2026-10-04T02:12:31+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
     "id": "spacexsstarlinksurpasses12mcustomersacross160countriesasgrow",
     "ticker": "SPCX",
     "scope": "industry",
@@ -1192,6 +1348,19 @@
     "added": "2026-10-05T11:22:56+00:00"
    },
    {
+    "id": "goldasahedgenavigatingglobaldebtpersistentinflation",
+    "ticker": "GLD",
+    "scope": "held",
+    "cat": "market",
+    "title": "글로벌 부채와 인플레이션 속 헤지 수단으로 부각되는 금",
+    "orig": "Gold as a Hedge: Navigating Global Debt & Persistent Inflation",
+    "summary": "글로벌 부채 증가와 지속되는 인플레이션 환경에서 금이 인플레이션 헤지 수단으로 주목받고 있다.",
+    "source": "ETF Database",
+    "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxQRkloNHBBUW5RTWo1N0xFQXZaSFY1NWJ2YWhPeXJFdnZkaU9xWmo4WVQ5aWF1bVg1a1VzR2ZXVnNWdnJxcFhWZjZYVXNYYlctVm1GUGMzQzFBMk41S3lrVllTX0dwWnBCNlo4YXBVdHgwSzJzclZpa2J0Ql92U1k5NmJSRGVzOVhuYlRwbFQyZlRSb2JzLVZWTTNXMG04ZkhvWUtj?oc=5",
+    "time": "2026-10-01T20:49:10+00:00",
+    "added": "2026-10-07T06:48:08+00:00"
+   },
+   {
     "id": "huaweiseesmoresmartphonepricehikesduetomemorycrunch",
     "ticker": "AAPL",
     "scope": "industry",
@@ -1259,33 +1428,39 @@
   ],
   "digest": {
    "TSLA": {
-    "sum": "테슬라는 자율주행과 로보택시, **FSD**를 중심으로 장기적인 기업 가치를 높여가고 있으며, **TSMC**와의 협력 기대감도 커지고 있습니다.\n단기적인 실적 변동성보다는 로봇과 AI 사업의 성공 여부가 향후 주가의 핵심 동력이 될 것입니다.\n위험: 치열한 자율주행 경쟁과 수익성 개선 지연에 따른 밸류에이션 부담이 존재합니다.",
-    "hash": "a350be062ee2a292",
-    "updated": "2026-10-06T20:55:17+00:00",
-    "seen": "2026-10-07T00:36:46+00:00"
-   },
-   "SPCX": {
-    "sum": "**스타십** 시험비행 성공과 **스타링크** 가입자의 가파른 증가세는 스페이스X의 우주 통신 및 AI 사업 확장을 이끌고 있습니다.\n우주 산업 내 독보적인 지배력을 바탕으로 장기적인 기업 가치 우상이 기대됩니다.\n위험: 대규모 자본 지출과 규제 기관의 검토 일정에 따른 사업 지연 가능성이 있습니다.",
-    "hash": "ecab2d53bbdf929c",
-    "updated": "2026-10-06T20:55:17+00:00",
-    "seen": "2026-10-07T00:36:46+00:00"
+    "sum": "테슬라는 **로보택시**와 **FSD** 및 로봇 사업을 중심으로 장기적 기업 가치를 키워가고 있으며, 초기 AI 칩 투자와 EU 승인 추진이 성과를 내고 있습니다.\n위험: 높은 밸류에이션 부담과 수익성 둔화 우려가 존재합니다.",
+    "hash": "9d848a2d2849d160",
+    "updated": "2026-10-07T06:48:08+00:00",
+    "seen": "2026-10-07T06:48:08+00:00"
    },
    "NVDA": {
-    "sum": "**인공지능(AI) 인프라 수요**가 폭증하면서 모건스탠리가 엔비디아를 **반도체 최선호주**로 재선정했습니다.\n주요 협력사인 **폭스콘 실적 호조**와 **스페이스X의 대규모 자금 조달** 등 탄탄한 전방 수요가 향후 1~3년 뒤 **현금 창출력**과 매출 성장을 뒷받침할 전망입니다.\n위험: **그록 인수 밸류에이션 논란**과 같은 대형 인수합병에 따른 가치 산정 부담이 존재합니다.",
-    "hash": "72f8f4a4a498052c",
-    "updated": "2026-10-07T00:36:46+00:00",
-    "seen": "2026-10-07T00:36:46+00:00"
+    "sum": "엔비디아는 폭발적인 **AI 인프라 수요**와 **HBM 시장**의 고성장에 힘입어 탄탄한 잉여현금흐름과 최고가 경신을 이어가고 있습니다.\n위험: 대형 고객사의 대규모 자금 조달과 공급망 변동성에 따른 주가 변동성 위험이 있습니다.",
+    "hash": "c04443cb0a615c34",
+    "updated": "2026-10-07T06:48:08+00:00",
+    "seen": "2026-10-07T06:48:08+00:00"
+   },
+   "SPCX": {
+    "sum": "스페이스X는 **스타십 14차 비행 성공**과 연이은 로켓 발사 성공을 바탕으로 우주 산업과 AI 사업 확장을 가속화하고 있습니다.\n위험: 사상 첫 실적 보고서에서 확인된 지속적인 적자와 규제 검토 리스크가 있습니다.",
+    "hash": "89df08500b3b2638",
+    "updated": "2026-10-07T06:48:08+00:00",
+    "seen": "2026-10-07T06:48:08+00:00"
    },
    "AAPL": {
-    "sum": "**아이폰의 견조한 수요**와 **중국 시장에서의 두 자릿수 매출 성장**이 애플의 실적 회복을 이끌고 있습니다.\nLG전자와의 협력을 통한 **스마트홈 기기 진출**과 **폴더블 아이폰** 출시는 향후 몇 년간 새로운 성장 동력이 될 것입니다.\n위험: 신임 CEO 체제 속에서 **사용자 프라이버시 보호 강화** 요구 등 AI 경쟁력을 둘러싼 규제 장벽이 부담입니다.",
-    "hash": "a97fb5946ce1caae",
-    "updated": "2026-10-07T00:36:46+00:00",
-    "seen": "2026-10-07T00:36:46+00:00"
+    "sum": "애플은 **LG전자와의 스마트홈 기기 파트너십**과 **폴더블 아이폰** 출시를 통해 새로운 중장기 성장 동력을 확보하고 있습니다.\n위험: CEO 교체에 따른 리더십 변화와 AI 수익화 과정의 프라이버시 규제 장벽이 있습니다.",
+    "hash": "e2c7f8e417263f63",
+    "updated": "2026-10-07T06:48:08+00:00",
+    "seen": "2026-10-07T06:48:08+00:00"
+   },
+   "GLD": {
+    "sum": "글로벌 부채 증가와 인플레이션 환경 속에서 **금**은 자산 포트폴리오를 보호하는 핵심 헤지 수단으로서의 매력을 유지하고 있습니다.\n위험: 금리 변동과 안전자산 선호 심리 변화에 따른 가격 변동성 위험이 있습니다.",
+    "hash": "dceffcd8790b2407",
+    "updated": "2026-10-07T06:48:08+00:00",
+    "seen": "2026-10-07T06:48:08+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-07T00:36:46+00:00"
+  "updated": "2026-10-07T06:48:08+00:00"
  },
  "ai": "ok"
 }
