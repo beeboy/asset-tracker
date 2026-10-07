@@ -782,7 +782,7 @@
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
     const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
-    renderProgress(H, total, cash); renderBackupNag(); actualAuto(tot);
+    renderProgress(H, total, cash); renderBackupNag(); actualAuto(H, cash);
     $("#goalKpis").innerHTML = [
       ["현재 평가액", `<a href="#" class="plain" data-go="quotes" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(tot / g.amount), `<div class="bar"><i style="width:${Math.min(100, (tot / g.amount) * 100)}%"></i></div>`],
@@ -876,7 +876,7 @@
       A.d.forEach((d, i) => { if (fxAt.has(d)) lastFx = fxAt.get(d); if (d < x[0] || (step === "m" && i < A.d.length - 1 && A.d[i + 1].slice(0, 7) === d.slice(0, 7))) return; ax.push(d); ay.push(inUsd ? A.v[i] / lastFx : A.v[i]); });
       if (ax.length) opt.series.push({ name: "실제 기록", x: ax, y: ay, color: "var(--c3)", width: 1.6 });
       opt.markers = (S.state.memos || []).filter((m) => m.d >= x[0]).map((m) => ({ x: m.d, label: `${m.d} ${m.t}` }));
-      if (ax.length) notes.push("· 초록 선은 실제 기록 (그때 수량·현금).");
+      if (ax.length) notes.push("· 초록 선은 실제 기록 (그때 수량·현금. 엑셀 값은 그날 밤 12시, 자동 기록은 장 마감 기준).");
     }
     $("#histNote").innerHTML = notes.join(" ");
     Charts.lineChart($("#histChart"), opt);
@@ -2631,11 +2631,13 @@
     if (i > 0 && a.d[i - 1] === d) { if (a.v[i - 1] === v) return false; a.v[i - 1] = v; } else { a.d.splice(i, 0, d); a.v.splice(i, 0, v); }
     return true;
   }
-  function actualAuto(tot) {
-    if (!premium() || !S.state.actual || S.state.sample || !(tot > 0)) return;
-    const d = today(), w = new Date(d + "T00:00:00Z").getUTCDay(); if (w === 0 || w === 6) return;
-    const fresh = S.state.holdings.every((h) => { const l = lastOf(h.ticker); return !l || yearsBetween(l.d, d) * 365 <= 5; });
-    if (fresh && actualPut(d, Math.round(tot))) save(false);
+  // 자동 기록은 미국 장 마감 값(그날 종가 × 그날 환율 + 현금)으로, 마감이 끝난 거래일만 남긴다.
+  // 앱을 연 시각에 따라 값이 들쭉날쭉하지 않게. 이미 있는 날(엑셀에서 가져온 밤 12시 값 등)은 덮어쓰지 않는다
+  function actualAuto(H, cash) {
+    if (!premium() || !S.state.actual || S.state.sample || !H.dates.length) return;
+    let i = H.dates.length - 1; if (Date.now() < Date.parse(H.dates[i] + "T21:00:00Z")) i--; // 아직 장중이면 전 거래일
+    const d = H.dates[i], v = H.total[i] + cash; if (!d || !(v > 0) || S.state.actual.d.includes(d)) return;
+    if (actualPut(d, Math.round(v))) save(false);
   }
   let xlsxP = null;
   const loadXlsx = () => (xlsxP ||= new Promise((res, rej) => {
@@ -2711,7 +2713,7 @@
     $("#premBox").innerHTML = `<p class="small muted" style="margin:0 0 8px">지금은 개발자 기기에서만 보입니다. 기본 기능과 차이가 정리되면 모두에게 열 예정입니다.</p>
       <h3 style="margin:0 0 4px">현금</h3><div class="row wrap"><label class="small">원화 <input class="num" id="cashKrw" inputmode="decimal" value="${c.krw ? nf(c.krw) : ""}" placeholder="0" style="width:9em"></label><label class="small">달러 <input class="num" id="cashUsd" inputmode="decimal" value="${c.usd ? nf(c.usd, 2) : ""}" placeholder="0" style="width:7em"></label></div>
       <p class="small muted" style="margin:4px 0 12px">총자산·목표 대비·전망에 더합니다 (전망에서는 그대로 있다고 봄).</p>
-      <h3 style="margin:0 0 4px">실제 기록</h3><p class="small" style="margin:0 0 6px">${n ? `${n}일 기록 (${a.d[0]} ~ ${a.d[n - 1]})${(S.state.memos || []).length ? ` · 메모 ${S.state.memos.length}개` : ""} · 평일마다 오늘 총액을 자동으로 더합니다` : "아직 없음. 엑셀(날짜·금액)을 가져오거나 오늘부터 기록을 시작하세요."}</p>
+      <h3 style="margin:0 0 4px">실제 기록</h3><p class="small" style="margin:0 0 6px">${n ? `${n}일 기록 (${a.d[0]} ~ ${a.d[n - 1]})${(S.state.memos || []).length ? ` · 메모 ${S.state.memos.length}개` : ""} · 장이 끝난 날마다 마감 값(종가 × 그날 환율 + 현금)을 자동으로 더합니다. 가져온 날짜는 덮어쓰지 않습니다` : "아직 없음. 엑셀(날짜·금액)을 가져오거나 오늘부터 기록을 시작하세요."}</p>
       <div class="row wrap"><label class="filebtn">엑셀·CSV 가져오기<input id="actFile" type="file" accept=".xlsx,.xls,.csv"></label>${n ? `<button class="sm" id="actClear">기록 지우기</button>` : `<button class="sm" id="actStart">오늘부터 기록</button>`}</div>${u}`;
   }
   function onPrem(e) {
