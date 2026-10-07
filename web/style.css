@@ -315,3 +315,6 @@ button.danger.x { padding: 2px 7px; }
 @media (min-width: 701px) { .headkpi { align-items: center; } .headkpi .hpill { top: 3px; } }
 /* 엣지·크롬·사파리는 글꼴 줄 높이가 달라 2px 더 위로 */
 @media (min-width: 701px) { html.edg .headkpi .hpill, html.chr .headkpi .hpill, html.saf .headkpi .hpill { top: 1px; } }
+
+/* 라벨과 버튼 묶음이 함께 줄바꿈 */
+.row.nowrap { flex-wrap: nowrap; }
