@@ -1323,6 +1323,17 @@
     return L.grp[v];
   }
   // 그래프 + 아래 두 상자(연도별 확률, 외부 요인 반영 효과)를 고른 대상(전체·종목)과 요인 버튼에 맞춰 그린다
+  // 원화 평가액 전망 그래프는 과거 3년 + 오늘부터 3년 뒤까지만 (목표일이 더 멀어도)
+  function clip3y(opt, fx, start) {
+    const lim = Model.addMonths(start, 36), cut = fx.filter((d) => d <= lim).length;
+    if (cut >= fx.length) return opt;
+    const sl = (a) => a.slice(0, cut);
+    opt.x = sl(fx);
+    opt.bands.forEach((b) => { if (!b.x) { b.lo = sl(b.lo); b.hi = sl(b.hi); } });
+    opt.series.forEach((s2) => { if (!s2.x) s2.y = sl(s2.y); });
+    opt.markers = (opt.markers || []).filter((m2) => m2.x <= lim);
+    return opt;
+  }
   function drawFcChart() {
     if (!lastForecast) return;
     const { b, hasEv } = lastForecast, g = S.state.goal, md = b.model, fx = md.monthDates, D = fcDisp();
@@ -1339,13 +1350,13 @@
     const vName = FCV[v].replace(" 반영", "");
     if (tk === "port") {
       $("#fcTitle").textContent = "원화 평가액 전망 (환율·외부 요인 포함)";
-      const H = history(), k0 = Math.max(0, H.dates.length - 253), V0 = R.V0, yrs = yearsBetween(md.startDate, g.date);
+      const H = history(), k0 = Math.max(0, H.dates.length - 781), V0 = R.V0, yrs = yearsBetween(md.startDate, g.date);
       const reqPath = fx.map((d) => V0 * (g.amount / V0) ** (yearsBetween(md.startDate, d) / yrs));
       const evs = v === "none" ? [] : md.eventList.filter(inV);
       // 전체 보기: 내 관점 띠 + 두 렌즈의 중앙값 + 외부 요인 없을 때의 5~95% 선(충격이 넓힌 폭)
       const lensLines = v === "all" ? [...(D.base ? [{ name: "현재 정세", y: D.base.bands.p50, color: "var(--c3)", width: 1.3 }] : []), ...(D.smooth ? [{ name: "과거 추세", y: D.smooth.bands.p50, color: "var(--c4)", width: 1.3 }] : []),
         ...(hasEv && noEv ? [{ name: "충격 없을 때 5~95%", y: noEv.bands.p5, color: "var(--warn)", width: 1, dash: "2 3" }, { y: noEv.bands.p95, color: "var(--warn)", width: 1, dash: "2 3" }] : [])] : [];
-      Charts.lineChart($("#fcChart"), {
+      Charts.lineChart($("#fcChart"), clip3y({
         x: fx, height: 340, yfmt: krwAxis,
         bands: [{ lo: R.bands.p5, hi: R.bands.p95, color: "var(--band)", opacity: 0.13, name: "5~95%" }, { lo: R.bands.p25, hi: R.bands.p75, color: "var(--band)", opacity: 0.25, name: "25~75%" }],
         series: [{ name: "과거", x: [...H.dates.slice(k0), md.startDate], y: [...H.total.slice(k0), V0], color: "var(--fg)", width: 1.4 },
@@ -1356,7 +1367,7 @@
         hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) : [],
-      });
+      }, fx, md.startDate));
       $("#fcViewNote").innerHTML = !hasEv ? `<span class="muted">켜진 외부 요인이 없어 미반영 전망과 같습니다. '외부 요인'에서 켜 주세요.</span>`
         : `<b>${FCV[v]}</b>: 목표 달성 확률 <b>${pct(R.p_goal, 0)}</b>, 목표일 중앙값 <b>${krw(R.terminal.p50)}원</b>, 나쁜 경우 5% ${krw(R.terminal.p5)}원` +
           (v === "none" ? "" : ` <span class="muted">(미반영 ${pct(noEv.p_goal, 0)} · ${krw(noEv.terminal.p50)}원${v === "all" ? "" : `, 반영 사건 ${evs.length}건`})</span>`);
@@ -1370,10 +1381,10 @@
     } else {
       const i = b.holdings.findIndex((h) => h.ticker === tk), h = b.holdings[i], s1 = R.stocks[i], s0 = noEv.stocks[i], sc = Rc.stocks[i], c = C[i % C.length];
       $("#fcTitle").textContent = `${tk} 가격 전망 (${h.ccy}, 외부 요인 포함)`;
-      const p = S.prices[tk], kk = p ? Math.max(0, p.dates.length - 253) : 0;
+      const p = S.prices[tk], kk = p ? Math.max(0, p.dates.length - 781) : 0;
       const onTk = (e) => e.event.target === tk || e.event.target === "ALL";
       const evs = v === "none" ? [] : md.eventList.filter((e) => inV(e) && onTk(e));
-      Charts.lineChart($("#fcChart"), {
+      Charts.lineChart($("#fcChart"), clip3y({
         x: fx, height: 340, log: true, yfmt: priceAxis([s1.bands.p5, s1.bands.p95]),
         bands: [{ lo: s1.bands.p5, hi: s1.bands.p95, color: c, opacity: 0.13, name: "5~95%" }, { lo: s1.bands.p25, hi: s1.bands.p75, color: c, opacity: 0.25, name: "25~75%" }],
         series: [...(p ? [{ name: "과거", x: [...p.dates.slice(kk), md.startDate], y: [...p.close.slice(kk), h.price0], color: "var(--fg)", width: 1.4 }] : []),
@@ -1382,7 +1393,7 @@
         hlines: [{ y: h.price0, label: "현재 " + nf(h.price0, 2) }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.kind}` })) : [],
-      });
+      }, fx, md.startDate));
       const T = s1.bands.p50.length - 1, f2 = (x) => nf(x, 2), T6 = Math.min(T, 6);
       $("#fcViewNote").innerHTML = `<b>${esc(tk)} · ${FCV[v]}</b>: 현재 ${f2(h.price0)} ${h.ccy}, 목표일 중앙값 <b>${f2(s1.bands.p50[T])}</b>, 나쁜 경우 5% ${f2(s1.bands.p5[T])}, 좋은 경우 95% ${f2(s1.bands.p95[T])}, 오를 확률 <b>${pct(s1.p_up, 0)}</b>` +
         (hasEv && v !== "none" ? ` <span class="muted">(미반영 중앙값 ${f2(s0.bands.p50[T])} · 오를 확률 ${pct(s0.p_up, 0)}${v === "all" ? "" : `, 반영 사건 ${evs.length}건`})</span>` : "");
