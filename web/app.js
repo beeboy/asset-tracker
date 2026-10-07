@@ -693,7 +693,27 @@
       if (lastForecast.scen === scen) return { R: lastForecast.withEv, model: lastForecast.b.model };
       const lr = lastForecast.lens && lastForecast.lens[scen]; if (lr) return { R: lr, model: lastForecast.b.model };
     }
-    return fcCache[scen] || null;
+    return fcCache[scen] || fcDashLoad(scen);
+  }
+  // 대시보드 미래 그래프용 전망을 저장해 두고, 입력·시세·날짜가 그대로면 리로드해도 다시 계산하지 않는다
+  const FCD_KEY = "naeilo-fcdash";
+  const fcdSig = () => fcSig() + "|" + today() + "|" + Object.keys(S.prices).sort().map((t) => t + (S.prices[t].dates || []).slice(-1)[0]).join();
+  function fcDashLoad(scen) {
+    try {
+      const c = JSON.parse(localStorage.getItem(FCD_KEY) || "null"), e = c && c.sig === fcdSig() && c.r[scen];
+      if (!e) return null;
+      return (fcCache[scen] = { R: e.R, model: { monthDates: e.md } });
+    } catch (err) { return null; }
+  }
+  function fcDashSave(scen) {
+    const F = fcCache[scen]; if (!F || !F.R || F.err) return;
+    const strip = (k, v) => (k === "raw" || k === "term" ? undefined : v);
+    try {
+      const sig = fcdSig(); let c = JSON.parse(localStorage.getItem(FCD_KEY) || "null");
+      if (!c || c.sig !== sig) c = { sig, r: {} };
+      c.r[scen] = { R: F.R, md: F.model.monthDates };
+      localStorage.setItem(FCD_KEY, JSON.stringify(c, strip));
+    } catch (err) { try { localStorage.removeItem(FCD_KEY); } catch (e2) { /* 무시 */ } }
   }
   function forecastFor(scen) {
     const r = fcReady(scen); if (r) return r;
@@ -708,7 +728,7 @@
   function forecastLater(scen, then) {
     if (fcPending[scen]) { if (then) fcPending[scen].push(then); return; }
     fcPending[scen] = then ? [then] : [];
-    setTimeout(() => { try { if (!forecastFor(scen)) fcCache[scen] = { err: "평가액이 있는 종목이 없습니다." }; } catch (e) { fcCache[scen] = { err: e.message }; } const cbs = fcPending[scen]; delete fcPending[scen]; cbs.forEach((f) => f()); }, 30);
+    setTimeout(() => { try { if (!forecastFor(scen)) fcCache[scen] = { err: "평가액이 있는 종목이 없습니다." }; else fcDashSave(scen); } catch (e) { fcCache[scen] = { err: e.message }; } const cbs = fcPending[scen]; delete fcPending[scen]; cbs.forEach((f) => f()); }, 30);
   }
   // 목표 진행: 목표 시작일부터 실제(그때 수량) 평가액과 필요 경로 비교
   function actualSeries(H) {
