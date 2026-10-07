@@ -14,6 +14,9 @@
 //       Settings → Triggers → Cron Triggers 에 "*/30 13-22 * * 1-5" (미국 장중, UTC) 를 넣으면 30분마다 검사해 보낸다.
 //       data/config.json 의 "push" 에 "https://<이름>.workers.dev" 를 넣고 커밋. 아이폰은 홈 화면에 추가한 앱에서만 받는다.
 //       보내는 알림: 내 종목 가중 하루 변동 -5% 이하(하루 한 번), 켜 둔 실적 일정 하루 전. 저장값은 종목 비중·일정뿐 (수량·금액 없음).
+// 6) 기기 동기화 (/sync): 개발자 기기끼리만. 저장소 쓰기 권한이 있는 GitHub 토큰으로 확인하고, 같은 VIEWS KV 에 GitHub 계정별로 입력값을 둔다.
+//       일반 사용자(토큰 없음)는 쓰지 않는다.
+// 7) 매매기준율 (/mar): 서울외국환중개 고시 미국 달러 매매기준율. 저장소 수집(data/mar.json)이 못 받았을 때 화면이 부른다.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -44,6 +47,22 @@ export default {
       }
       if (u.pathname === "/push/test") { const r = await sendPush(env, b.sub || { endpoint: ep }, k.slice(2), { title: "naeilo 알림 시험", body: "알림이 잘 옵니다." }); return out({ ok: r.ok, status: r.status }); }
       return out({ error: "모르는 주소" }, 404);
+    }
+    if (u.pathname === "/mar") return out((await mar()) || { error: "매매기준율을 받지 못했습니다" }, 200);
+    if (u.pathname === "/sync") {
+      // GET /sync → { state, at },  POST /sync {"state","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
+      if (!env.VIEWS) return noKv();
+      const who = await ghWho(env, (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim());
+      if (!who) return out({ error: "저장소 쓰기 권한이 있는 GitHub 토큰이 아닙니다" }, 403);
+      const key = "s:" + who, cur = JSON.parse((await env.VIEWS.get(key)) || "null");
+      if (req.method === "GET") return out(cur || {});
+      if (req.method !== "POST") return out({ error: "GET 또는 POST" }, 400);
+      const b = await req.json().catch(() => ({}));
+      const at = Number(b.at) || Date.now(), body = JSON.stringify({ state: b.state, at });
+      if (!b.state || typeof b.state !== "object" || body.length > 400000) return out({ error: "입력값이 없거나 너무 큽니다" }, 400);
+      if (cur && cur.at > at) return out({ stale: true, at: cur.at });
+      await env.VIEWS.put(key, body);
+      return out({ ok: true, at });
     }
     if (u.pathname === "/like") {
       // POST /like {"id":"a","d":1|-1} → 공감 수 { id, n }
@@ -86,11 +105,7 @@ export default {
       let ok = !!b.pw && (await hash(b.cid, String(b.pw))) === list[i].h;
       const tok = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
       if (!ok && tok && env.ADMIN_KEY && tok === env.ADMIN_KEY) ok = true;
-      if (!ok && tok) { // 개발자: 저장소에 쓰기 권한이 있는 GitHub 토큰이면 비밀번호 없이
-        const r = await fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}`, { headers: { Authorization: "Bearer " + tok, "User-Agent": "naeilo-worker", Accept: "application/vnd.github+json" } });
-        const j = await r.json().catch(() => ({}));
-        ok = r.ok && !!(j.permissions?.push || j.permissions?.admin);
-      }
+      if (!ok && tok) ok = !!(await ghWho(env, tok)); // 개발자: 저장소에 쓰기 권한이 있는 GitHub 토큰이면 비밀번호 없이
       if (!ok) return out({ error: "비밀번호가 맞지 않습니다" }, 403);
       list.splice(i, 1); await env.VIEWS.put("c:" + b.id, JSON.stringify(list));
       return out({ ok: true });
@@ -169,6 +184,32 @@ export default {
     } while (cursor);
   },
 };
+
+// ------------------------------------------------------------ GitHub 토큰 확인: 저장소 쓰기 권한이 있으면 계정 이름 (10분 기억)
+async function ghWho(env, tok) {
+  if (!tok || tok.length > 300) return null;
+  const ck = new Request("https://gh-who.cache/" + [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tok)))].map((b) => b.toString(16).padStart(2, "0")).join(""));
+  const hit = await caches.default.match(ck); if (hit) return (await hit.text()) || null;
+  const h = { Authorization: "Bearer " + tok, "User-Agent": "naeilo-worker", Accept: "application/vnd.github+json" };
+  const [r, me] = await Promise.all([fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}`, { headers: h }), fetch("https://api.github.com/user", { headers: h })]);
+  const j = await r.json().catch(() => ({})), m = await me.json().catch(() => ({}));
+  const who = r.ok && (j.permissions?.push || j.permissions?.admin) ? m.login || "dev" : "";
+  await caches.default.put(ck, new Response(who, { headers: { "Cache-Control": "max-age=600" } }));
+  return who || null;
+}
+
+// ------------------------------------------------------------ 매매기준율 (서울외국환중개, 1시간 캐시)
+async function mar() {
+  const kst = new Date(Date.now() + 9 * 3600e3), end = kst.toISOString().slice(0, 10), st = new Date(kst.getTime() - 10 * 86400e3).toISOString().slice(0, 10);
+  const r = await fetch(`http://www.smbs.biz/ExRate/StdExRate_xml.jsp?arr_value=USD_${st}_${end}`, { headers: { "User-Agent": "Mozilla/5.0", Referer: "http://www.smbs.biz/ExRate/StdExRate.jsp" }, cf: { cacheTtl: 3600, cacheEverything: true } }).catch(() => null);
+  const t = r && r.ok ? await r.text() : "";
+  const sets = [...t.matchAll(/label=['"]([^'"]+)['"][^>]*?value=['"]([\d,.]+)['"]/g)];
+  if (!sets.length) return null;
+  const [, lab, val] = sets[sets.length - 1], n = lab.match(/\d+/g) || [], rate = Number(val.replace(/,/g, ""));
+  if (!(rate > 500 && rate < 5000)) return null;
+  const date = n.length >= 3 ? `${+n[0] < 100 ? 2000 + +n[0] : n[0]}-${n[1].padStart(2, "0")}-${n[2].padStart(2, "0")}` : end;
+  return { USD: { rate, date, src: "서울외국환중개" } };
+}
 
 // ------------------------------------------------------------ 웹 푸시 (내용 없는 푸시 + 문구는 /push/latest 에서)
 const b64u = (u8) => btoa(String.fromCharCode(...new Uint8Array(u8))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

@@ -37,6 +37,8 @@ STATE = DATA / "state.json"
 STATE_DEFAULT = DATA / "state.default.json"
 TICKERS = DATA / "tickers.json"
 QUOTES = DATA / "quotes.json"
+MAR = DATA / "mar.json"  # 매매기준율 (서울외국환중개 시장평균환율)
+SMBS = "http://www.smbs.biz/ExRate/"
 BACKUP = DATA / "backup"
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/"
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "application/json"}
@@ -172,6 +174,52 @@ def get_quote(sym: str) -> dict:
     return out
 
 
+# ---------------------------------------------------------------- 매매기준율
+def fetch_mar() -> dict | None:
+    """서울외국환중개가 고시하는 미국 달러 매매기준율(MAR). 못 받으면 None (화면은 기존 환율로 대체)."""
+    import re
+    end = date.today()
+    tries = [
+        SMBS + f"StdExRate_xml.jsp?arr_value=USD_{(end - timedelta(days=10)).isoformat()}_{end.isoformat()}",
+        SMBS + "StdExRate.jsp",
+    ]
+    for url in tries:
+        try:
+            req = urllib.request.Request(url, headers={**UA, "Accept": "*/*", "Referer": SMBS + "StdExRate.jsp"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                raw = r.read()
+            txt = raw.decode("euc-kr", "ignore") if b"euc-kr" in raw[:400].lower() else raw.decode("utf-8", "ignore")
+            if "xml" in url:
+                sets = re.findall(r"label=['\"]([^'\"]+)['\"][^>]*?value=['\"]([\d,.]+)['\"]", txt)
+                if sets:
+                    lab, val = sets[-1]
+                    m = re.findall(r"\d+", lab)
+                    d = end.isoformat()
+                    if len(m) >= 3:
+                        y = int(m[0]) + (2000 if int(m[0]) < 100 else 0)
+                        d = f"{y:04d}-{int(m[1]):02d}-{int(m[2]):02d}"
+                    rate = float(val.replace(",", ""))
+                    if 500 < rate < 5000:
+                        return {"USD": {"rate": rate, "date": d, "src": "서울외국환중개", "fetched": int(time.time())}}
+            else:
+                m = re.search(r"USD.{0,400}?(\d,\d{3}\.\d{1,2})", txt, re.S)
+                if m:
+                    rate = float(m.group(1).replace(",", ""))
+                    if 500 < rate < 5000:
+                        return {"USD": {"rate": rate, "date": end.isoformat(), "src": "서울외국환중개", "fetched": int(time.time())}}
+        except Exception:  # noqa: BLE001 - 다음 방법 시도
+            continue
+    return None
+
+
+def update_mar(log: list | None = None):
+    m = fetch_mar()
+    if m:
+        write_json(MAR, m)
+    if log is not None:
+        log.append({"ok": bool(m), "msg": f"매매기준율: {m['USD']['rate']}원 ({m['USD']['date']})" if m else "매매기준율: 받지 못함 (기존 환율로 대체)"})
+
+
 def collect(symbols: list[str], years: float, quotes_only: bool) -> dict:
     log, quotes = [], read_json(QUOTES, {})
     t0 = time.time()
@@ -191,6 +239,8 @@ def collect(symbols: list[str], years: float, quotes_only: bool) -> dict:
         except Exception as e:  # noqa: BLE001 - 종목 하나 실패해도 나머지는 계속
             log.append({"ok": False, "msg": f"{sym}: {e}"})
     write_json(QUOTES, quotes)
+    if any(s.strip().upper() == "KRW=X" for s in symbols):
+        update_mar(log)
     write_index()
     log.append({"ok": True, "msg": f"완료 ({time.time() - t0:.1f}초)"})
     return {"log": log}
@@ -212,7 +262,7 @@ def all_data() -> dict:
         d = read_json(f, None)
         if d:
             prices[d["symbol"]] = d
-    return {"state": read_json(STATE, None) or read_json(STATE_DEFAULT, {}), "prices": prices, "quotes": read_json(QUOTES, {}),
+    return {"state": read_json(STATE, None) or read_json(STATE_DEFAULT, {}), "prices": prices, "quotes": read_json(QUOTES, {}), "mar": read_json(MAR, {}),
             "config": read_json(STATE_DEFAULT.parent / "config.json", {}), "server_time": datetime.now().isoformat(timespec="seconds")}
 
 

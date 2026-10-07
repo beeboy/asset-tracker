@@ -308,3 +308,4 @@ button.danger.x { padding: 2px 7px; }
 .abox .lv { font-size: 1.0588rem; font-weight: 700; margin-top: 3px; } .abox .lv small { font-size: 0.7059rem; font-weight: 400; color: var(--muted); }
 .abox p { margin: 2px 0 0; font-size: 0.7059rem; }
 @media (max-width: 700px) { .allocboxes { grid-template-columns: repeat(2, 1fr); } }
+.headkpi .hasset, .hpill { cursor: pointer; } .hpill.busy i { animation: hpulse 1s ease-in-out infinite; } @keyframes hpulse { 50% { opacity: .35; } }

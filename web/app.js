@@ -155,7 +155,7 @@
     if (MODE === "local") {
       try {
         const d = await api("/api/data");
-        S.prices = d.prices || {}; S.quotes = d.quotes || {};
+        S.prices = d.prices || {}; S.quotes = d.quotes || {}; S.mar = d.mar || {};
         if (!S.state) S.state = normalize(d.state || {});
         S.config = d.config || {};
         return;
@@ -169,6 +169,7 @@
     S.prices = prices; S.quotes = await get("quotes.json").catch(() => ({})); S.dataUpdated = idx.updated;
     S.tickerCfg = await get("tickers.json").catch(() => ({ tickers: [] }));
     S.config = await get("config.json").catch(() => ({}));
+    S.mar = await get("mar.json").catch(() => ({}));
     mergeExtra();
     if (!S.state) {
       let st = null;
@@ -228,6 +229,7 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
       if (MODE === "static") {
+        syncMark();
         try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 아래 내보내기/불러오기"; }
         catch (e) { $("#footer").textContent = "브라우저 저장 실패: " + e.message; }
         return;
@@ -235,6 +237,42 @@
       try { await api("/api/state", S.state); $("#footer").textContent = "저장됨 " + new Date().toLocaleTimeString(); }
       catch (e) { $("#footer").textContent = "저장 실패: " + e.message + " (프로그램 창이 켜져 있는지 확인)"; }
     }, 400);
+  }
+
+  // ------------------------------------------------------------ 개발자 기기 자동 동기화
+  // GitHub 토큰(저장소 쓰기 권한)이 있는 기기끼리만 중계 KV 에 입력값을 두고 맞춘다. 일반 사용자는 해당 없음.
+  // 나중에 고친 쪽이 이긴다 (ui.sync_at). 화면 설정(ui)은 기기마다 따로.
+  let syncLast = null, syncTimer = null;
+  const syncUrl = () => (MODE === "static" && GH && ghToken() && S.config?.push ? S.config.push.replace(/\/$/, "") + "/sync" : null);
+  const syncSig = () => hashStr(JSON.stringify({ ...S.state, ui: null }));
+  const syncCall = async (opt = {}) => { const r = await fetch(syncUrl(), { ...opt, headers: { "Content-Type": "application/json", Authorization: "Bearer " + ghToken() } }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "중계 " + r.status); return j; };
+  function syncMark() {
+    if (!syncUrl() || syncLast == null) return;
+    const sig = syncSig(); if (sig === syncLast) return;
+    syncLast = sig; S.state.ui.sync_at = Date.now();
+    clearTimeout(syncTimer); syncTimer = setTimeout(syncPush, 4000);
+  }
+  async function syncPush() {
+    if (!syncUrl()) return;
+    try { const st = { ...S.state }; delete st.ui; const j = await syncCall({ method: "POST", body: JSON.stringify({ state: st, at: S.state.ui.sync_at || Date.now() }) }); S.sync = { ok: true, at: Date.now() }; if (j.stale) syncPull(); }
+    catch (e) { S.sync = { ok: false, err: e.message }; }
+    if ($("#tabs .on")?.dataset.tab === "quotes") renderGh();
+  }
+  async function syncPull() {
+    if (!syncUrl()) return;
+    if (syncLast == null) syncLast = syncSig();
+    try {
+      const j = await syncCall(), mine = Number(S.state.ui.sync_at) || 0;
+      if (j.state && j.at > mine && hashStr(JSON.stringify({ ...normalize(j.state), ui: null })) !== syncLast) {
+        // 이 기기에서 처음 켤 때만 묻는다 (이 기기 값이 더 맞을 수 있으니)
+        if (!mine && !confirm(`다른 기기 입력값(${new Date(j.at).toLocaleString()})으로 이 기기를 맞출까요?\n취소하면 이 기기 값을 다른 기기로 보냅니다.`)) { S.state.ui.sync_at = Date.now(); save(false); return syncPush(); }
+        const ui = S.state.ui; S.state = normalize(j.state); S.state.ui = { ...ui, sync_at: j.at }; syncLast = syncSig();
+        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); } catch (e) { /* 무시 */ }
+        markDirty(); renderAll(); foldHold(); toast("다른 기기 입력값으로 맞췄습니다");
+      } else if (!j.state || j.at < mine) { if (!mine) S.state.ui.sync_at = Date.now(); await syncPush(); }
+      S.sync = { ok: true, at: Date.now() };
+    } catch (e) { S.sync = { ok: false, err: e.message }; }
+    if ($("#tabs .on")?.dataset.tab === "quotes") renderGh();
   }
 
   // ------------------------------------------------------------ 평가
@@ -246,6 +284,13 @@
     const q = S.quotes[s]; if (q && q.last) return q.last;
     const l = lastOf(s); return l ? l.v : null;
   }
+  // 매매기준율(서울외국환중개 시장평균환율). 5일 넘게 묵었거나 없으면 null → 기존 환율로 대체
+  const marUsd = () => { const m = S.mar?.USD; return m && m.rate > 0 && m.date && yearsBetween(m.date, today()) * 365 <= 5 ? m : null; };
+  const fxBase = (ccy) => (ccy === "USD" && marUsd() ? marUsd().rate : fxNow(ccy));
+  async function marFetch() { // 저장소 값이 없거나 묵었으면 중계에서 한 번 더
+    const base = S.config?.push; if (marUsd() || !base) return;
+    try { const r = await fetch(base.replace(/\/$/, "") + "/mar"); const j = await r.json(); if (j?.USD?.rate > 0) { S.mar = j; renderAll(); } } catch (e) { /* 기존 환율 유지 */ }
+  }
   function curPrice(h) {
     if (S.state?.ui?.manual_price && h.price != null && h.price !== "" && Number(h.price) > 0) return { v: Number(h.price), src: "manual" };
     const q = S.quotes[h.ticker], l = lastOf(h.ticker);
@@ -256,7 +301,7 @@
   }
   function valuation() {
     const rows = S.state.holdings.map((h) => {
-      const ccy = ccyOf(h.ticker), p = curPrice(h), fx = fxNow(ccy), sh = Number(h.shares) || 0;
+      const ccy = ccyOf(h.ticker), p = curPrice(h), fx = fxBase(ccy), sh = Number(h.shares) || 0;
       const valueLocal = p.v != null ? sh * p.v : null, valueKrw = valueLocal != null && fx ? valueLocal * fx : null;
       const avg = Number(h.avg_cost) > 0 ? Number(h.avg_cost) : null;
       const q = S.quotes[h.ticker], prev = q?.prev_close || null;
@@ -312,7 +357,7 @@
     const { total } = valuation(), g = S.state.goal, fx = fxNow("USD");
     const prog = g.amount ? total / g.amount : 0;
     const my = myReturn();
-    $("#headKpi").innerHTML = `<span>자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span><span class="hpill" title="목표 ${krw(g.amount)} 대비"><i style="width:${Math.max(0, Math.min(100, prog * 100)).toFixed(1)}%"></i><b>${pct(prog)}</b></span>`;
+    $("#headKpi").innerHTML = `<span class="hasset" data-go="quotes" role="button" title="수량 수정">자산 <b>${krw(total)}</b>${my ? ` <b class="${cls(my.r)}">${spct(my.r)}</b>` : ""}</span><span class="hpill" id="hpill" role="button" title="목표 ${krw(g.amount)} 대비 · 누르면 시세 수집"><i style="width:${Math.max(0, Math.min(100, prog * 100)).toFixed(1)}%"></i><b>${pct(prog)}</b></span>`;
   }
 
   // ------------------------------------------------------------ 시세·종목
@@ -363,6 +408,7 @@
         await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await ghApi("contents/data/prices/" + encodeURIComponent(f) + "?ref=main", { raw: true }); } catch (e) { /* 무시 */ } }));
         S.prices = prices; S.quotes = await ghApi("contents/data/quotes.json?ref=main", { raw: true }); S.dataUpdated = idx.updated;
         S.tickerCfg = await ghApi("contents/data/tickers.json?ref=main", { raw: true });
+        S.mar = await ghApi("contents/data/mar.json?ref=main", { raw: true }).catch(() => S.mar);
         markDirty(); renderAll();
         const still = add.filter((t) => !S.prices[t]);
         logLine(`수집 완료 (${new Date(idx.updated).toLocaleString()}).` + (still.length ? ` 시세를 찾지 못한 종목: ${still.join(", ")} (티커 확인)` : ""), !still.length);
@@ -654,7 +700,7 @@
     $("#progSub").textContent = `${start} 시작 · 수량 바뀐 날은 그때 수량으로`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
-      ["필요 경로 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? `오늘 필요 ${krw(need)}원` : ""],
+      ["필요 경로 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? (Math.abs(now - need) < need * 0.0005 ? "목표 경로와 같음" : `경로보다 ${krw(Math.abs(now - need))}원 ${now >= need ? "많음" : "적음"}`) : ""],
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
     ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "필요 경로 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
@@ -676,7 +722,7 @@
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
     renderProgress(H, total); renderBackupNag();
     $("#goalKpis").innerHTML = [
-      ["현재 평가액", krw(total) + "원", `${nf(total)}원 · <a href="#" data-go="quotes">수량 수정</a>`],
+      ["현재 평가액", krw(total) + "원", marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원 (${marUsd().date.slice(5)})` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(total / g.amount), `<div class="bar"><i style="width:${Math.min(100, (total / g.amount) * 100)}%"></i></div>`],
       ["남은 금액", krw(Math.max(0, need)) + "원", `목표 ${krw(g.amount)}원`],
       ["남은 기간", yrs > 0 ? yrs.toFixed(1) + "년" : "지남", g.date],
@@ -2370,6 +2416,7 @@
     const effect1y = sg.ret_1y != null ? usdW * sg.ret_1y : null;
     $("#fxKpis").innerHTML = [
       ["현재 원/달러", nf(now, 1), `칼만 추세 ${nf(sg.kalman_level, 1)} (${spct(sg.dev_from_kalman)})`],
+      ["매매기준율", marUsd() ? nf(marUsd().rate, 2) : "-", marUsd() ? `${marUsd().date} · 서울외국환중개 · 평가액에 적용` : "받지 못함 · 평가액은 현재 환율"],
       ["1개월 · 3개월", `<span class="${cls(sg.ret_1m)}">${spct(sg.ret_1m)}</span>`, `3개월 <span class="${cls(sg.ret_3m)}">${spct(sg.ret_3m)}</span>`],
       ["1년 변화", `<span class="${cls(sg.ret_1y)}">${spct(sg.ret_1y)}</span>`, `1년 범위 ${nf(F.lo1, 0)}~${nf(F.hi1, 0)}`],
       ["추세", sg.trend.replace(" (추세 판단 대상 아님)", ""), `기울기 연 ${spct(sg.slope_ann, 1)} · 오르면 원화 약세`],
@@ -2404,6 +2451,7 @@
     if (MODE !== "static") { $("#devCard").style.display = "none"; return; }
     const has = !!ghToken();
     box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). 인사이트의 Beyora 글도 이 토큰으로 저장소(data/beyora.json)에 저장되고, 토큰이 없는 사람은 읽기만 합니다. ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
+      ${has ? `<p class="small">기기 자동 동기화: ${!S.config?.push ? "중계 주소 없음" : !S.sync ? "확인 중…" : S.sync.ok ? `<b class="good">켜짐</b> · 이 토큰을 넣은 기기끼리 보유 수량·목표를 자동으로 맞춤 (마지막 ${new Date(S.sync.at).toLocaleTimeString()})` : `꺼짐 (${esc(S.sync.err)}) · 중계를 다시 배포해야 할 수 있음`}</p>` : ""}
       <div class="row wrap"><input id="ghToken" type="password" size="40" placeholder="${has ? "새 토큰으로 바꾸려면 붙여넣기" : "GitHub 토큰 붙여넣기 (github_pat_...)"}">
       <button id="ghSave" class="primary">저장</button>${has ? '<button id="ghTest">연결 확인</button><button id="ghDel" class="danger">연결 해제</button>' : ""}</div>
       <details class="small" ${has ? "" : "open"}><summary>토큰 만드는 법 (1분)</summary><ol>
@@ -2415,7 +2463,7 @@
       const v = $("#ghToken").value.replace(/\s+/g, ""); if (!v) return toast("토큰을 붙여넣어 주세요");
       if (!/^[A-Za-z0-9_]{20,}$/.test(v)) return toast("토큰 형식이 아닙니다. github_pat_ 로 시작하는 값만 그대로 붙여넣어 주세요");
       try { localStorage.setItem(TOKEN_KEY, v); } catch (e) { return toast("브라우저 저장 실패"); }
-      try { await ghApi("actions/workflows/collect.yml"); toast("GitHub 연결됨"); renderGh(); bvLoad(true); const miss = missingTickers(); if (miss.length) { showTab("quotes"); ghCollect(miss); } }
+      try { await ghApi("actions/workflows/collect.yml"); toast("GitHub 연결됨"); renderGh(); bvLoad(true); syncPull(); const miss = missingTickers(); if (miss.length) { showTab("quotes"); ghCollect(miss); } }
       catch (e) { toast("연결 실패: " + e.message); renderGh(); }
     };
     if (has) {
@@ -2471,6 +2519,11 @@
     document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "quotes" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); } });
     $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     $("#btnCollect").onclick = () => collect(false).finally(foldHold);
+    $("#headKpi").addEventListener("click", (e) => { // 머리글 알약 = 시세 수집
+      const p = e.target.closest("#hpill"); if (!p || p.classList.contains("busy")) return;
+      p.classList.add("busy"); toast("시세를 받는 중…");
+      collect(false).then(() => toast("시세 수집 끝")).catch(() => toast("시세 수집 실패")).finally(() => { foldHold(); $("#hpill")?.classList.remove("busy"); });
+    });
     $("#btnQuotes").onclick = () => collect(true).finally(foldHold);
     $("#autoRefresh").value = String(S.state.ui.auto_refresh_min || 0);
     $("#autoRefresh").onchange = (e) => { S.state.ui.auto_refresh_min = +e.target.value; setAuto(+e.target.value); save(false); };
@@ -2654,13 +2707,25 @@
     cells.forEach(([a, v], i) => { const cx = 110 + i * 300; x.fillStyle = mu; x.font = `500 32px ${F}`; x.fillText(a, cx, 540); x.fillStyle = col(v); x.font = `700 56px ${F}`; x.fillText(sp(v), cx, 610); });
     const pg = lastForecast && lastForecast.withEv ? lastForecast.withEv.p_goal : null;
     x.fillStyle = mu; x.font = `500 32px ${F}`; x.fillText(pg != null ? `목표일 ${g.date} · 달성 확률 ${pct(pg, 0)}` : `목표일 ${g.date}`, 110, 680);
-    // 지난 1년 흐름 (축 없음)
-    const ys = H.total.slice(Math.max(0, k - 252)).filter((v) => v > 0);
-    if (ys.length > 2) {
-      const lo = Math.min(...ys), hi = Math.max(...ys), X0 = 110, Y0 = 720, CW = W - 220, CH = 190;
-      x.strokeStyle = "#2f6fed"; x.lineWidth = 5; x.lineJoin = "round"; x.beginPath();
-      ys.forEach((v, i) => { const px = X0 + (i / (ys.length - 1)) * CW, py = Y0 + CH - ((v - lo) / (hi - lo || 1)) * CH; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
-      if (!hide) { x.fillStyle = mu; x.font = `400 28px ${F}`; x.textAlign = "right"; x.fillText(`자산 ${krw(total)}원`, W - 110, Y0 - 8); x.textAlign = "left"; }
+    // 과거 3년 + 미래(목표일까지) 단순 그래프: 실선 = 지난 3년, 점선·띠 = 전망 중앙값·25~75%, 가로 점선 = 목표
+    const k0 = Math.max(0, k - 756), px0 = H.dates.slice(k0), py0 = H.total.slice(k0);
+    const scS = basisScen($("#histBasis .on")?.dataset.b || "model"), Fc = total > 0 ? fcReady(scS) : null, R = Fc && !Fc.err ? Fc.R : null;
+    if (!Fc && total > 0) forecastLater(scS, () => { if ($("#shareBox").style.display !== "none") drawShare(); });
+    const fd = R ? Fc.model.monthDates : [], B = R ? R.bands : null;
+    if (px0.length > 2) {
+      const X0 = 110, Y0 = 730, CW = W - 220, CH = 180, t0 = Date.parse(px0[0]), t1 = Date.parse(fd.length ? fd[fd.length - 1] : g.date > today() ? g.date : today());
+      const vals = [...py0, g.amount, ...(B ? [...B.p25, ...B.p75] : [])].filter((v) => v > 0), lo = Math.min(...vals) * 0.95, hi = Math.max(...vals) * 1.02;
+      const X = (d) => X0 + ((Date.parse(d) - t0) / (t1 - t0 || 1)) * CW, Y = (v) => Y0 + CH - ((v - lo) / (hi - lo || 1)) * CH;
+      const path = (xs, ys) => { x.beginPath(); xs.forEach((d, i) => (i ? x.lineTo(X(d), Y(ys[i])) : x.moveTo(X(d), Y(ys[i])))); };
+      if (B) { x.fillStyle = "rgba(47,111,237,.13)"; x.beginPath(); fd.forEach((d, i) => (i ? x.lineTo(X(d), Y(B.p75[i])) : x.moveTo(X(d), Y(B.p75[i])))); for (let i = fd.length - 1; i >= 0; i--) x.lineTo(X(fd[i]), Y(B.p25[i])); x.fill(); }
+      x.lineWidth = 3; x.strokeStyle = "#aab2c0"; x.setLineDash([10, 8]); x.beginPath(); x.moveTo(X0, Y(g.amount)); x.lineTo(X0 + CW, Y(g.amount)); x.stroke();
+      if (B) { x.strokeStyle = "#2f6fed"; x.lineWidth = 4; x.setLineDash([4, 8]); path(fd, B.p50); x.stroke(); }
+      x.setLineDash([]); x.strokeStyle = "#2f6fed"; x.lineWidth = 5; x.lineJoin = "round"; path(px0, py0); x.stroke();
+      const tx = X(px0[px0.length - 1]), ty = Y(py0[py0.length - 1]);
+      x.fillStyle = "#2f6fed"; x.beginPath(); x.arc(tx, ty, 11, 0, 7); x.fill();
+      x.font = `700 30px ${F}`; x.textAlign = tx > X0 + CW * 0.7 ? "right" : "left"; x.fillText(`오늘 ${pct(prog, 1)}`, tx + (x.textAlign === "right" ? -18 : 18), ty - 18);
+      x.fillStyle = mu; x.font = `500 26px ${F}`; x.textAlign = "right"; x.fillText(hide ? "목표 100%" : `목표 ${krw(g.amount)}원`, X0 + CW, Y(g.amount) - 12);
+      x.font = `400 24px ${F}`; x.textAlign = "left"; x.fillText("3년 전", X0, Y0 + CH + 34); x.textAlign = "right"; x.fillText(B ? `${String(fd[fd.length - 1]).slice(0, 7)} 전망` : "오늘", X0 + CW, Y0 + CH + 34); x.textAlign = "left";
     }
     x.fillStyle = mu; x.font = `400 28px ${F}`; x.textAlign = "center"; x.fillText("See Tomorrow, Today. · naeilo.com", W / 2, W - 95); x.textAlign = "left";
   }
@@ -2670,7 +2735,8 @@
     try { await reload(); }
     catch (e) { document.body.innerHTML = `<div class="card" style="margin:40px auto;max-width:640px"><h2>데이터를 불러오지 못했습니다</h2><p>내 PC에서 쓸 때는 <b>실행 파일</b>(Windows: <code>실행-Windows.bat</code>, Mac: <code>실행-Mac.command</code>)로 열어야 합니다. 웹 버전은 GitHub Actions의 첫 수집이 끝난 뒤 열립니다.</p><p class="muted small">${esc(e.message)}</p></div>`; return; }
     if (S.purged || (!S.state.sample && !(S.state.lots || []).length && S.state.holdings.some((h) => Number(h.shares) > 0))) save(false); // 진행 기록 첫 줄
-    bind(); renderAll(); foldHold();
+    bind(); renderAll(); foldHold(); marFetch(); syncPull();
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncPull(); });
     setAuto(S.state.ui.auto_refresh_min || 0);
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; const a = localStorage.getItem("ana"); if (a && $(`#anaNav button[data-a="${a}"]`)) $$("#anaNav button").forEach((b) => b.classList.toggle("on", b.dataset.a === a)); } catch (e) { /* 무시 */ }
     showTab(tab);
