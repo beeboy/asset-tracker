@@ -285,7 +285,7 @@ button.danger.x { padding: 2px 7px; }
   #anaNav::-webkit-scrollbar { display: none; }
 }
 /* 세 개의 렌즈 */
-.lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin: 10px 0; }
+.lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 8px; margin: 10px 0; }
 .lens { border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; border-top: 3px solid var(--lc, var(--line)); }
 .lens.l-base { --lc: var(--c3); } .lens.l-smooth { --lc: var(--c4); } .lens.l-shock { --lc: var(--warn); }
 .lens .lh { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; flex-wrap: wrap; }

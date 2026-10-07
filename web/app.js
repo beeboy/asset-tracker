@@ -1296,7 +1296,7 @@
       <div class="lv">${R ? pct(R.p_goal, 0) : "-"} <small>목표 확률</small></div><p>목표일 중앙값 ${R ? krw(R.terminal.p50) + "원" : "-"}</p><p>${sub}</p></div>`;
     const No = D.No, R = D.R;
     const shock = `<div class="lens l-shock"><div class="lh"><b>충격 반영</b><span class="small muted">외부 요인 ${nf(n)}건</span></div>` + (L.hasEv && No
-      ? `<div class="lv">${krw(No.terminal.p5)} → ${krw(R.terminal.p5)} <small>나쁜 경우 5%</small></div><p>좋은 경우 5% ${krw(No.terminal.p95)} → ${krw(R.terminal.p95)} · 목표 확률 ${pct(No.p_goal, 0)} → ${pct(R.p_goal, 0)}</p><p>중앙값 ${krw(No.terminal.p50)} → ${krw(R.terminal.p50)}</p>`
+      ? `<div class="lv">${pct(R.p_goal, 0)} <small>목표 확률</small></div><p>목표일 중앙값 ${krw(R.terminal.p50)}원</p><p>외부 요인이 없으면 ${pct(No.p_goal, 0)} · ${krw(No.terminal.p50)}원</p>`
       : `<p>켜진 외부 요인 없음.</p>`) + "</div>";
     $("#lenses").innerHTML = lens("base", "현재 정세", `과거 수익률을 장기 평균(연 ${m.prior_mu}%) 쪽으로`, portMu("base"), D.base) + lens("smooth", "과거 추세", "지난 3년 성장 속도가 이어지면", portMu("smooth"), D.smooth) + shock;
     const on = m.scenario === "blend";
