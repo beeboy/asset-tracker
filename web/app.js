@@ -1758,10 +1758,10 @@
         const V0 = A[i0] || H.total[i0], span = yearsBetween(st, g.date), el = Math.max(0, yearsBetween(st, today()));
         const need = V0 > 0 && span > 0 ? V0 * (g.amount / V0) ** (el / span) : null;
         L.push("### 목표 진행", `- 목표 ${krw(g.amount)}원의 ${B(pct(total / g.amount, 0))}, 남은 ${yrs.toFixed(1)}년에 필요한 연수익률 ${B(pct(req))}`);
-        if (V0 > 0 && el > 0.01) {
+        if (V0 > 0 && g.start_date) {
           const tp = el / span, wp = V0 < g.amount ? Math.log(total / V0) / Math.log(g.amount / V0) : 1;
-          L.push(`- ${st} 시작 ${krw(V0)}원 → 지금 ${spct(total / V0 - 1, 0)}, 기간은 ${pct(tp, 0)} 지났고 갈 길(복리 기준)은 ${pct(Math.max(0, wp), 0)} 왔습니다`);
-          if (need) L.push(`- 필요 경로보다 ${B(krw(Math.abs(total - need)) + "원 " + (total >= need ? "앞섬" : "뒤처짐"))} (${spct(total / need - 1)})`);
+          L.push(`- ${st} 시작 ${krw(V0)}원 → 지금 ${spct(total / V0 - 1)}, 기간은 ${pct(tp, 1)} 지났고 갈 길(복리 기준)은 ${pct(wp, 1)} 왔습니다`);
+          if (need) L.push(Math.abs(total - need) < need * 0.0005 ? "- 필요 경로와 거의 같습니다" : `- 필요 경로보다 ${B(krw(Math.abs(total - need)) + "원 " + (total >= need ? "앞섬" : "뒤처짐"))} (${spct(total / need - 1)})`);
         }
         L.push(`- ${cagr != null && cagr >= req ? `지난 3년 속도(연 ${pct(cagr, 0)})면 목표에 닿습니다.` : `지난 3년 속도(연 ${pct(cagr, 0)})보다 빨라야 목표에 닿습니다.`}` + (Number(g.monthly_contribution) > 0 ? ` 월 적립 ${krw(Number(g.monthly_contribution))}원 포함 전망.` : ""));
         const hs = rows.filter((r) => r.valueKrw > 0).sort((a, b2) => b2.w - a.w), j1 = Math.max(0, k - 252);
