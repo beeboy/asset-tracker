@@ -11,7 +11,7 @@
   "last": 239.24,
   "last_time": 1791316800,
   "last_session": "regular",
-  "fetched": 1791349011
+  "fetched": 1791352286
  },
  "SGOV": {
   "symbol": "SGOV",
@@ -25,7 +25,7 @@
   "last": 100.46,
   "last_time": 1791316825,
   "last_session": "regular",
-  "fetched": 1791349012
+  "fetched": 1791352287
  },
  "SPCX": {
   "symbol": "SPCX",
@@ -39,7 +39,7 @@
   "last": 171.92,
   "last_time": 1791316800,
   "last_session": "regular",
-  "fetched": 1791349012
+  "fetched": 1791352287
  },
  "TSLA": {
   "symbol": "TSLA",
@@ -53,21 +53,21 @@
   "last": 380.68,
   "last_time": 1791316801,
   "last_session": "regular",
-  "fetched": 1791349011
+  "fetched": 1791352286
  },
  "KRW=X": {
   "symbol": "KRW=X",
   "currency": "KRW",
   "name": "USD/KRW",
   "regular": 1338.28,
-  "regular_time": 1791349012,
+  "regular_time": 1791352288,
   "prev_close": 1336.89,
   "pre": null,
   "post": null,
   "last": 1338.28,
-  "last_time": 1791349012,
+  "last_time": 1791352288,
   "last_session": "regular",
-  "fetched": 1791349015
+  "fetched": 1791352290
  },
  "QQQ": {
   "symbol": "QQQ",
@@ -81,7 +81,7 @@
   "last": 759.66,
   "last_time": 1791316800,
   "last_session": "regular",
-  "fetched": 1791349012
+  "fetched": 1791352287
  },
  "SPY": {
   "symbol": "SPY",
@@ -95,7 +95,7 @@
   "last": 779.09,
   "last_time": 1791316800,
   "last_session": "regular",
-  "fetched": 1791349013
+  "fetched": 1791352288
  },
  "^TNX": {
   "symbol": "^TNX",
@@ -107,37 +107,37 @@
   "pre": null,
   "post": null,
   "last": 5.269,
-  "last_time": 1791313140,
+  "last_time": 1791313194,
   "last_session": "regular",
-  "fetched": 1791349015
+  "fetched": 1791352290
  },
  "CL=F": {
   "symbol": "CL=F",
   "currency": "USD",
   "name": "Crude Oil Nov 26",
-  "regular": 90.19,
-  "regular_time": 1791348404,
+  "regular": 90.15,
+  "regular_time": 1791351656,
   "prev_close": 89.44,
   "pre": null,
   "post": null,
-  "last": 90.19,
-  "last_time": 1791348404,
+  "last": 90.15,
+  "last_time": 1791351656,
   "last_session": "regular",
-  "fetched": 1791349016
+  "fetched": 1791352290
  },
  "GC=F": {
   "symbol": "GC=F",
   "currency": "USD",
   "name": "Gold Dec 26",
-  "regular": 4164.8,
-  "regular_time": 1791348406,
+  "regular": 4162.9,
+  "regular_time": 1791351688,
   "prev_close": 4187.1,
   "pre": null,
   "post": null,
-  "last": 4164.7998,
-  "last_time": 1791348406,
+  "last": 4162.8999,
+  "last_time": 1791351688,
   "last_session": "regular",
-  "fetched": 1791349016
+  "fetched": 1791352290
  },
  "DBC": {
   "symbol": "DBC",
@@ -151,7 +151,7 @@
   "last": 32.69,
   "last_time": 1791316800,
   "last_session": "regular",
-  "fetched": 1791349016
+  "fetched": 1791352291
  },
  "MANA": {
   "symbol": "MANA",
@@ -165,7 +165,7 @@
   "last": 1.07,
   "last_time": 1791316800,
   "last_session": "regular",
-  "fetched": 1791349013
+  "fetched": 1791352288
  },
  "AAPL": {
   "symbol": "AAPL",
@@ -179,7 +179,7 @@
   "last": 333.63,
   "last_time": 1791316801,
   "last_session": "regular",
-  "fetched": 1791349014
+  "fetched": 1791352288
  },
  "SMH": {
   "symbol": "SMH",
@@ -193,7 +193,7 @@
   "last": 632.5,
   "last_time": 1791316800,
   "last_session": "regular",
-  "fetched": 1791349014
+  "fetched": 1791352289
  },
  "GLD": {
   "symbol": "GLD",
@@ -207,6 +207,6 @@
   "last": 382.27,
   "last_time": 1791316800,
   "last_session": "regular",
-  "fetched": 1791349015
+  "fetched": 1791352289
  }
 }
