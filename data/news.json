@@ -1,64 +1,64 @@
 {
- "updated": "2026-10-07T07:09:23+00:00",
+ "updated": "2026-10-07T10:42:16+00:00",
  "realtime": {
-  "key": "17c7315b933ad049",
-  "updated": "2026-10-07T07:09:31+00:00",
+  "key": "bd3f8a0b9789ad79",
+  "updated": "2026-10-07T10:42:23+00:00",
   "media": [
    {
-    "title": "S&P 500·나스닥 사상 최고치 경신 후 선물 보합…연준 의사록 대기",
-    "orig": "U.S. stock futures steady after S&P 500, Nasdaq hit records; Fed minutes awaited",
-    "summary": "미국 증시가 인공지능 기대감에 힘입어 사상 최고치를 기록한 가운데 투자자들은 연준의 의사록 발표를 기다리고 있습니다.",
+    "title": "국채 금리 상승과 반도체주 약세에 나스닥 선물 하락… 연준 의사록 대기",
+    "orig": "Nasdaq Futures Slip as Rising Bond Yields Weigh on Chip Stocks, FOMC Minutes on Tap",
+    "summary": "국채 금리 상승과 유가 강세 속에서 연준의 금리 결정 배경이 담길 의사록 공개를 앞두고 증시 선물이 하락세를 보였다.",
     "broker": "",
-    "source": "Investing.com",
-    "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxPQm5JR1Q5NDRrNTM3MEc0VlpHYUhGUlBpdTNKcFRwNWllc0ZFdFIxeVhnclEtZmRDNE9TTTFhM0o0YjBRRURBS0pKU3VvRU1wOTJTZDBHMHU3RVZVWm5IZ0I0bUtWcmVIUGhqWUFnSzlFWVVYMjRBbkg0UDZBS1dCX3htamJoellzYWJ1ZHcwaDRVeE1wbFJmem9Gb0VXZEhrVm5hNFBWUUNqRUNKZ09ydkxkZ0FYeFItTF9jRUl4VExkQTlTRlpR?oc=5",
-    "time": "2026-10-07T06:51:57+00:00"
+    "source": "Barchart.com",
+    "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxQYVR1SWJIc3F3a3hBaDV0UTVyLXBjandmNkpBTzh1ODNxSkhVMGctdm05MnZoR242QjlkQ2w1akZVY1l5UEhJWkI1aHd1OEJQVkEzOVZpNGpFX0hVMU51Ml9GVDBCbVRwaWZRNHk5Vmh2QmZZUjYwRnB5Uzl2M2NFcFNCZGFnYU01MEx4TmRhSlhuS3lSVjhIUTFqLXVSVWFfZXFfX0pZcFpQV24xd0ZkT0QzYVNVWFh1SFFydm1US1BrM0sy?oc=5",
+    "time": "2026-10-07T10:35:22+00:00"
    },
    {
-    "title": "견고한 AI 지출, 미국 증시의 호실적 기대감 견인",
-    "orig": "Robust AI spending sets investors up for another bumper US earnings season",
-    "summary": "빅테크의 견조한 인공지능 인프라 투자가 다가오는 미국 기업들의 실적 시즌에 대한 기대를 높이고 있습니다.",
+    "title": "S&P500과 나스닥 최고가 경신… 그러나 랠리의 폭은 좁아져",
+    "orig": "S&P 500, Nasdaq hit records — but 'the breadth of the rally has narrowed': Chart of the Day",
+    "summary": "뉴욕증시 주요 지수가 사상 최고치를 경신했으나, 상승세를 주도하는 종목이 좁혀지고 있다는 분석이 나왔다.",
     "broker": "",
-    "source": "Financial Times",
-    "link": "https://news.google.com/rss/articles/CBMihAFBVV95cUxOZk1oQnFmYjdtRWFEeFNTZlEtZU9IVGV1Y24wcGJVa2pJY2JURGJORXpGTHRnUVRucUxRYmpMNndGaEdLaU9PZDIybFpXeXlVUURrSUttWG5WUmZzUjZJSk5EYlRDYzF6c3hvMXI4d2ExT3ItVjFMVEdveGpwUkF0dVBHdXI?oc=5",
-    "time": "2026-10-07T04:00:47+00:00"
+    "source": "Yahoo Finance",
+    "link": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxPVEp4d2xwaDVOY2E0UmQ3WGxzdV9aRnJwV3JEUWczMUNRU3VORE1taVNseWwybUNwejFRb2trT3BVVV9ialFBdkpwZFdjOG0ySGIwblE4QlJISEVnRlZLSEk0Q1I2MkxBcHZuMHVvNzlIZGF3SE5qU1BGOVVvRHFSM0U2amhXUTJOTmFXcnQ2bVMycmg4dm5Tak5zbzR5LTdKVlZlRGlZT19FLVJqM1hzWlUxYVliLWRrd3NuVXprZk1xd2hkYko4OWxnUVpkejZ3SHM4Unc3ZUdhUQ?oc=5",
+    "time": "2026-10-07T10:00:00+00:00"
    },
    {
-    "title": "후티 반군 공격 우려에 국제유가 상승",
-    "orig": "Oil rises as concerns over Houthi attacks on Saudi Arabia eclipse supply recovery",
-    "summary": "사우디아라비아에 대한 후티 반군의 공격 우려와 호르무즈 해협의 긴장이 고조되며 유가가 상승세를 보였습니다.",
+    "title": "일론 머스크와 인텔 CEO, 테라팹 프로젝트 참여 재확인에 주가 상승",
+    "orig": "Elon Musk and Intel CEO shore up chipmaker’s role in Terafab project — and here’s what the news is doing to the stock.",
+    "summary": "테라팹 반도체 공장 프로젝트에 인텔의 참여가 지속될 것이라는 소식에 주가가 힘을 받았다.",
     "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/07/oil-prices-today-brent-wti-hormuz.html",
-    "time": "2026-10-07T05:29:30+00:00"
+    "source": "MarketWatch",
+    "link": "https://www.marketwatch.com/story/elon-musk-and-intel-ceo-shore-up-chipmakers-role-in-terafab-project-and-heres-what-the-news-is-doing-to-the-stock-315d0974?mod=mw_rss_topstories",
+    "time": "2026-10-07T10:24:00+00:00"
    }
   ],
   "broker": [
    {
-    "title": "도이치뱅크, 펜 엔터테인먼트 투자의견 상향",
-    "orig": "Is PENN Entertainment (PENN) Undervalued Following Deutsche Bank's Upgrade And NFL Partnership?",
-    "summary": "도이치뱅크는 NFL과의 파트너십 등을 이유로 펜 엔터테인먼트의 투자의견을 상향 조정했습니다.",
-    "broker": "도이치뱅크",
-    "source": "Simply Wall Street",
-    "link": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxNdC1BWEdCZlplSFVCSzNpc19aN3B5bHB4eHBkM2hmUGZaUXBsZWNzRGNGdmtPSi1ORDNDT3V6S3o3ZzlqOFFuTGtwbFprNWpKSGZDMEREdWk5aXRSUGcxTFhGOFNLb3VOMUhLTExXMEUzWDB4RUZSLVZkN19IdVBYV1JmcW5qWXNIY1puclpKYm9fOFpWSk80cUtOOGh4eF9iT3ctQVR5ekVvMi1FZm9Wek1QOXhKUGN4N0dGSk5WalE2VlBQbjNpbUFWaXZRaXd0eW1GV1J6ZXNvVWc2WUhj0gHkAUFVX3lxTE9PSC1IX2h6cTQ4UWVzTWxNeFpmamxtd3JrYjEtVzJrNE81NWZUYUIyQ3NUTnViWkpMRS1SYmthY3hQRkYtOGVPWGpCbDRUdVZoM2JmS3lpdUt2Z3dyTUZwQUJmRnAySGlienRLdnFZLXNLSG13UUpmSFlPa0lvanFXZk02U2liV0UzSUJMZFg2RGxBaXZGQzBXRzNpY2d6Vkl0aHhNU01WaGJpUDMySlpNTXQ1dzU5SXY1dW9NNWttWU9rRG5kSHpyTWE3cmtyRjluWWo2alA1RDRXdjJWRUxqTldoOA?oc=5",
-    "time": "2026-10-07T05:03:42+00:00"
+    "title": "웰스파고, 3분기 숙박 일수 전망 반영해 에어비앤비 목표가 185달러로 하향",
+    "orig": "Wells Fargo lowers Airbnb stock price target to $185 on 3Q nights",
+    "summary": "웰스파고가 3분기 실적 우려를 반영해 에어비앤비의 목표주가를 내려 잡았다.",
+    "broker": "웰스파고",
+    "source": "Investing.com",
+    "link": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxOYVk4WlViSVlKUFA3U3FZZVc1a19iR3k1MWpHbXpiNXZwa1Q5UHBtTy01UW1fWE56YThIaXhhOGlyWHZCcUJRUlZxM3BfdG9VcFlTOFUwQktKSG53ZTdZYU5XTV9rRWFRVU1KS0dSdmdnbWZHbTY0UmVPM2VSNUxldHhma2pQNG9JbUZLOUlrRnBXTl9TeHVpdEhSS0VtU0hWV0NFanc0S1JMck1YWXp2UEJ4U05qMW5ZbU9CM0UtWW1QZw?oc=5",
+    "time": "2026-10-07T09:46:27+00:00"
    },
    {
-    "title": "S&P 500 신고가 행진 속 랠리 확산 여부에 애널리스트 견해 엇갈려",
-    "orig": "S&P 500 Breaks Records But Analysts Split on Whether Rally Can Broaden",
-    "summary": "증시 랠리가 소수 대형주를 넘어 시장 전반으로 확산될 수 있을지에 대해 월가 분석가들의 전망이 갈리고 있습니다.",
-    "broker": "야후 파이낸스",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxNX0pmYlJHV0VJem4zUnF4bV91VkxjeVlQOEItUVVKVC00YnZhcm1FUEc4dGdmMklhX0xKOGh0NTVsa0NhZFhDV1A5cVN0TlpCRUY3cHIxN0s0Sm5hRHNURE5zNkNxamlyQTdORVlGNmhqUmMzN3N5WW5QSmtEbGJGZEZuUnUwYng2YmlWdDVjajRqd05zNFAxNDRB?oc=5",
-    "time": "2026-10-07T02:32:00+00:00"
+    "title": "바클레이즈, 거래량 증가세 반영해 코인베이스 목표가 상향",
+    "orig": "Barclays raises Coinbase stock price target on trading volume uptick",
+    "summary": "바클레이즈가 최근 거래량 회복세를 근거로 코인베이스의 목표주가를 상향 조정했다.",
+    "broker": "바클레이즈",
+    "source": "Investing.com",
+    "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxOTXlhMFFoNXpIbnh5TDNQb19URDRiTDRhZTRPUkF3Z1UtOWxkMnA5VTVJNFVjel94YTNTSjZsTWphVUhhYVVDWGdZY05WMm4xeWd5RjhOOWlhV3p3UDFQTnp4WnlUYjc0YnNSS29NUmtJZUtBTG5zTmlralpaMm1CUmhUM1FzLWZpRjhzc2NwSWNnaVN2cV9WY0wwNkFORm5QazY4NXlqSEFqWGZSMmlKUHpSMzVwWWR1RkpIRFZZSW9aWXVyX0Zr?oc=5",
+    "time": "2026-10-07T09:39:18+00:00"
    },
    {
-    "title": "마진 압박으로 3분기 기업 실적의 중요성 확대",
-    "orig": "Margin pressures raise the stakes on Q3 earnings: Strategist",
-    "summary": "비용 상승에 따른 마진 압박으로 인해 3분기 실적 발표 결과가 향후 증시 방향성을 가를 핵심 변수로 떠올랐습니다.",
-    "broker": "CNBC",
-    "source": "CNBC",
-    "link": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQcHVLN0hOLUpNOWNJM1haWW5xZF85YnJLSGNKTVFjdjhJT0dTUVRpQ1ZNV1BJQ3pBWUtfLUExd1RCSGI2OFF5czZ5dUpIS29wamhHQUxoQWJPTVIwamJPcFU4U1J1WkhyUTFZVTQ5SWd4WFIwSFQwRTA4ejJXeXJUYjlUMG01bFJ0ZzE0UVJDcFRhMThaS3dUeXRsRlpVaWhWYVUzVVBrRm9LdFo3OUFQeVhFTklyb2c?oc=5",
-    "time": "2026-10-07T05:36:45+00:00"
+    "title": "UBS, 금융비용 증가에 유니레버 목표가 인하",
+    "orig": "UBS cuts Unilever price target as higher finance costs trim earnings view",
+    "summary": "UBS가 금융 비용 증가로 인한 실적 전망치 하향을 이유로 유니레버의 목표주가를 낮췄다.",
+    "broker": "UBS",
+    "source": "Yahoo Finance UK",
+    "link": "https://news.google.com/rss/articles/CBMihgFBVV95cUxOUnlVcEUycVRqbHBGZko0N2t0M1IyZE55TTBuc0RhYXdJcmF5Rk01NFk1amFiY3hTWTBjN29NNDdld2MwQXhsSFUyM2xDMVd3QlF2SXRyUHRWWWJVSzNRNGl3ZTVGUWpYN2Jna3o3UVpyMC11UGsxLTJEeEhld3JfQjJOX0RvQQ?oc=5",
+    "time": "2026-10-07T09:45:00+00:00"
    }
   ]
  },
@@ -1411,19 +1411,6 @@
     "link": "https://news.google.com/rss/articles/CBMitwFBVV95cUxPbkJoOVB4X0VsUm5vX0tmQWh4QVVwaDJaamlOQi1BMlI2TzRGd3ZSa000Tm5QbDZDeDZtY0lCaUhMaHltY0pmNk1IQ2tUVmxqRTh1dEpYWGk4d0dDM1M3d1NMSnlxQXB1SE1iWTdNcVRnSmRLaGRMbmN4bEVMeHZubFdpY0NqeDJjdGthSVQtSHM0TzQ3Sl9hUHR5cFYxcHFKdVNZMWRIMUlNVE5odXoxXzZ0V0cwNE0?oc=5",
     "time": "2026-09-30T12:08:22+00:00",
     "added": "2026-10-05T11:22:56+00:00"
-   },
-   {
-    "id": "appleleadschinasmartphonesalesafterlaunchofiphone18procanitl",
-    "ticker": "AAPL",
-    "scope": "industry",
-    "cat": "market",
-    "title": "아이폰 18 프로 출시 힘입어 애플 중국 스마트폰 판매량 선두 탈환",
-    "orig": "Apple leads China smartphone sales after launch of iPhone 18 Pro. Can it last?",
-    "summary": "애플이 신제품 출시를 발판 삼아 중국 스마트폰 시장에서 다시 판매 1위를 기록했다.",
-    "source": "South China Morning Post",
-    "link": "https://news.google.com/rss/articles/CBMiygFBVV95cUxNLTA2QWFzaWpyZmtFMjN3cjVlZWFseUMtTnk0dmpRdnZXTnJDcXlOeGhwVXY1U2xCeExlSVg0bU5KU2hGSXpPT1JFY09OeHBfZkc1c1ExWHB4Y3o1ZTNvYzNSOUVjZGI5TUNFeTMyTEE4OUtRaWpIako1NlZGcVN3ZGlDS25tX1RBTU0xbmVkdTZ1bGJVS2JZMnlKX0ctRGw0cWlMbFczMjNhcGMzZWk3WEsyWVZaTXpPZ21kT2FIajUxNEJ4QmgtS0VR0gHKAUFVX3lxTE9pWjAzOGY3dXhKcFpaS1A0M2VVV1VaaDAwUWdKU244d3pWeVVjNVhKTUdZWDdER1ZGQncwNERCMUExWGRUYUlhcHZ5S0ZOcTNDRWVjNHZWYXZEZ3ZPeG5oUWN0Y1FtcjN3QWtJTmpCODVQaUpjeXNNeXdxb0dxeXpDMlp4VmJPSTZhOVRyNjhlUVQ4cVNrV3NRcU52UXpJZnBlb3FWLWlDeTBmY294eEVOTUMyU0gzcUxDWHNZMlFSTGM0SkVBT0F5eWc?oc=5",
-    "time": "2026-09-30T08:45:05+00:00",
-    "added": "2026-10-06T01:43:53+00:00"
    }
   ],
   "digest": {
@@ -1431,31 +1418,31 @@
     "sum": "테슬라는 **로보택시**와 **FSD** 및 로봇 사업을 중심으로 장기적 기업 가치를 키워가고 있으며, 초기 AI 칩 투자와 EU 승인 추진이 성과를 내고 있습니다.\n위험: 높은 밸류에이션 부담과 수익성 둔화 우려가 존재합니다.",
     "hash": "9d848a2d2849d160",
     "updated": "2026-10-07T06:48:08+00:00",
-    "seen": "2026-10-07T07:09:23+00:00"
+    "seen": "2026-10-07T10:42:16+00:00"
    },
    "NVDA": {
     "sum": "엔비디아는 폭발적인 **AI 인프라 수요**와 **HBM 시장**의 고성장에 힘입어 탄탄한 잉여현금흐름과 최고가 경신을 이어가고 있습니다.\n위험: 대형 고객사의 대규모 자금 조달과 공급망 변동성에 따른 주가 변동성 위험이 있습니다.",
     "hash": "c04443cb0a615c34",
     "updated": "2026-10-07T06:48:08+00:00",
-    "seen": "2026-10-07T07:09:23+00:00"
+    "seen": "2026-10-07T10:42:16+00:00"
    },
    "SPCX": {
     "sum": "스페이스X는 **스타십 14차 비행 성공**과 연이은 로켓 발사 성공을 바탕으로 우주 산업과 AI 사업 확장을 가속화하고 있습니다.\n위험: 사상 첫 실적 보고서에서 확인된 지속적인 적자와 규제 검토 리스크가 있습니다.",
     "hash": "89df08500b3b2638",
     "updated": "2026-10-07T06:48:08+00:00",
-    "seen": "2026-10-07T07:09:23+00:00"
+    "seen": "2026-10-07T10:42:16+00:00"
    },
    "AAPL": {
     "sum": "애플은 **LG전자와의 스마트홈 기기 파트너십**과 **폴더블 아이폰** 출시를 통해 새로운 중장기 성장 동력을 확보하고 있습니다.\n위험: CEO 교체에 따른 리더십 변화와 AI 수익화 과정의 프라이버시 규제 장벽이 있습니다.",
     "hash": "e2c7f8e417263f63",
     "updated": "2026-10-07T06:48:08+00:00",
-    "seen": "2026-10-07T07:09:23+00:00"
+    "seen": "2026-10-07T10:42:16+00:00"
    },
    "GLD": {
     "sum": "글로벌 부채 증가와 인플레이션 환경 속에서 **금**은 자산 포트폴리오를 보호하는 핵심 헤지 수단으로서의 매력을 유지하고 있습니다.\n위험: 금리 변동과 안전자산 선호 심리 변화에 따른 가격 변동성 위험이 있습니다.",
     "hash": "dceffcd8790b2407",
     "updated": "2026-10-07T06:48:08+00:00",
-    "seen": "2026-10-07T07:09:23+00:00"
+    "seen": "2026-10-07T10:42:16+00:00"
    }
   }
  },
