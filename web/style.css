@@ -17,7 +17,7 @@
 @media all and (display-mode: standalone) { :root { --topbar: max(12px, calc(env(safe-area-inset-top) + 6px)); } }
 html.standalone { --topbar: max(12px, calc(env(safe-area-inset-top) + 6px)); }
 /* 글자 크기: rem 기준(1rem = 17px). 아이폰은 설정 > 손쉬운 사용·디스플레이의 텍스트 크기(Dynamic Type)를 따르고, PC 는 브라우저 글꼴 크기를 따른다 */
-html { font-size: 106.25%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { scrollbar-gutter: stable; font-size: 106.25%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @supports (font: -apple-system-body) { html { font: -apple-system-body; } }
 body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: var(--topbar); background: var(--card); z-index: 20; pointer-events: none; }
 body { padding-top: var(--topbar); }
@@ -80,7 +80,7 @@ button.sm { padding: 4px 9px; font-size: 0.7353rem; }
 .kpi .k { font-size: 0.7059rem; color: var(--muted); } .kpi .v { font-size: 1.1765rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; } .kpi .s { font-size: 0.7059rem; color: var(--muted); overflow-wrap: anywhere; }
 .bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-top: 6px; } .bar i { display: block; height: 100%; background: var(--accent); }
 .chartbox { position: relative; width: 100%; }
-svg.chart { display: block; }
+svg.chart { display: block; max-width: 100%; height: auto; }
 svg.chart .axis text { fill: var(--muted); font-size: 11px; }
 svg.chart .grid { stroke: var(--line); }
 svg.chart .cross, svg.chart .vline { stroke: var(--muted); stroke-dasharray: 2 3; }
@@ -303,7 +303,7 @@ button.danger.x { padding: 2px 7px; }
 .hpill i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); opacity: .85; border-radius: 8px; }
 .hpill b { position: relative; font-size: 0.56rem !important; line-height: 1; font-weight: 700; color: var(--fg); }
 /* 비중 조정안 요약 박스 */
-.allocboxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin: 10px 0 6px; }
+.allocboxes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 6px; } /* 4칸 고정: 스크롤바가 생겨 폭이 줄어도 한 칸이 밑으로 내려가지 않게 */
 .abox { display: block; text-align: left; border: 1px solid var(--line); border-top: 3px solid var(--ac); border-radius: 9px; padding: 9px 11px; background: var(--card); color: var(--fg); }
 .abox.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; border-top-color: var(--ac); }
 .abox .lh { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }

@@ -19,9 +19,15 @@
 
   // opt: {x: [날짜], series: [{name, y, color, width, dash, x?}], bands: [{lo, hi, color, opacity, x?}],
   //       hlines: [{y, label, color}], vlines: [{x, label}], yfmt, height, log, markers: [{x, label, color}]}
+  // 상자 폭이 바뀌면(브라우저 확대·축소, 창 크기, 숨었다 보임) 같은 옵션으로 다시 그린다
+  const ro = window.ResizeObserver ? new ResizeObserver((es) => es.forEach((e) => {
+    const h = e.target, w = h.clientWidth; if (!h._opt || !w || Math.abs(w - h._w) <= 2) return;
+    lineChart(h, h._opt);
+  })) : null;
   function lineChart(host, opt) {
     host.innerHTML = "";
     const W = Math.max(220, host.clientWidth || 600), H = opt.height || 280;
+    host._opt = opt; host._w = host.clientWidth; if (ro && !host._ro) { host._ro = true; ro.observe(host); }
     // 좁은 화면(휴대폰 세로)은 y축 글자를 그래프 안쪽 왼쪽에 얹어 좌우 여백을 문단 여백에 맞춘다
     const narrow = W < 480, m = { l: narrow ? 1 : 64, r: narrow ? 2 : 20, t: narrow ? 14 : 12, b: 28 };
     const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: "chart" }, host);
