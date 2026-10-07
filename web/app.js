@@ -1973,7 +1973,7 @@
     }).join("") || `<div class="nitem empty">보유 종목을 입력하면 종목마다 인사이트 상자가 생깁니다.</div>`;
     $("#newsMsg").style.display = "none";
     const fu = N?.future_meta?.updated || N?.updated;
-    $("#newsNote").textContent = `${fu ? dtStr(fu) + " 수집 · " : ""}한 시간마다 자동 갱신.`;
+    $("#newsNote").textContent = `${fu ? dtStr(fu) + " 수집 · " : ""}약 한 시간마다 서버가 모으고, 이 화면은 열어 둔 동안 10분마다 새로 받습니다. 기사 옆 시간은 기사가 나온 시각.`;
   }
 
   // ------------------------------------------------------------ 미래 설계 Beyora (블로그)
@@ -2847,7 +2847,8 @@
     if (S.purged || (!S.state.sample && !(S.state.lots || []).length && S.state.holdings.some((h) => Number(h.shares) > 0))) save(false); // 진행 기록 첫 줄
     try { const bs = localStorage.getItem("naeilo-basis"); if (bs && $(`#histBasis button[data-b="${bs}"]`)) $$("#histBasis button").forEach((b) => b.classList.toggle("on", b.dataset.b === bs)); } catch (e) { /* 무시 */ } // 평가액 추이 미래 기준은 리로드해도 유지
     bind(); renderAll(); foldHold(); marFetch(); syncPull(); renderEsync();
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncPull(); });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { syncPull(); if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(); } });
+    setInterval(() => { if (document.visibilityState === "visible" && $("#tabs .on")?.dataset.tab === "insight") renderInsight(); }, 10 * 60000); // 인사이트를 열어 두면 10분마다 새 뉴스 확인
     setAuto(S.state.ui.auto_refresh_min || 0);
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; const a = localStorage.getItem("ana"); if (a && $(`#anaNav button[data-a="${a}"]`)) $$("#anaNav button").forEach((b) => b.classList.toggle("on", b.dataset.a === a)); } catch (e) { /* 무시 */ }
     showTab(tab);
