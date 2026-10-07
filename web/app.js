@@ -2625,7 +2625,10 @@
     $("#btnShare").onclick = () => { const b = $("#shareBox"); b.style.display = b.style.display === "none" ? "block" : "none"; if (b.style.display === "block") drawShare(); };
     $("#shareHide").onchange = drawShare;
     $("#shareSave").onclick = async () => { const a = document.createElement("a"); a.href = URL.createObjectURL(await shareBlob()); a.download = `naeilo-${today()}.png`; a.click(); };
-    $("#shareSend").onclick = async () => { const f = new File([await shareBlob()], `naeilo-${today()}.png`, { type: "image/png" }); if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: "naeilo" }); } catch (e) { /* 취소 */ } } else $("#shareSave").click(); };
+    $("#shareSend").onclick = async () => { // 파일만 보낸다 (제목·글을 함께 넣으면 카카오톡·메시지 등은 글만 받고 이미지를 버림)
+      const f = shareFile || new File([await shareBlob()], `naeilo-${today()}.png`, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f] }); } catch (e) { if (e.name !== "AbortError") $("#shareSave").click(); } } else $("#shareSave").click();
+    };
     $("#btnPush").onclick = pushToggle;
     $("#btnPushTest").onclick = async () => { const sub = await pushSub(); if (sub) fetch(pushBase() + "/push/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON() }) }).then(() => toast("시험 알림을 보냈습니다")); };
     $("#xferCopy").onclick = async () => { try { await navigator.clipboard.writeText($("#xferLink").value); toast("복사했습니다"); } catch (e) { $("#xferLink").select(); } };
@@ -2764,7 +2767,10 @@
       x.font = `400 24px ${F}`; x.textAlign = "left"; x.fillText("3년 전", X0, Y0 + CH + 34); x.textAlign = "right"; x.fillText(B ? `${String(fd[fd.length - 1]).slice(0, 7)} 전망` : "오늘", X0 + CW, Y0 + CH + 34); x.textAlign = "left";
     }
     x.fillStyle = mu; x.font = `400 28px ${F}`; x.textAlign = "center"; x.fillText("See Tomorrow, Today. · naeilo.com", W / 2, W - 95); x.textAlign = "left";
+    shareFile = null; cv.toBlob((b) => { if (b) shareFile = new File([b], `naeilo-${today()}.png`, { type: "image/png" }); }, "image/png");
   }
+  // 공유할 파일은 그린 직후 미리 만들어 둔다: 버튼을 누른 뒤 기다리면 iOS 가 사용자 동작을 잃어 앱으로 파일이 안 넘어간다
+  let shareFile = null;
   const shareBlob = () => new Promise((r) => $("#shareCv").toBlob(r, "image/png"));
 
   async function init() {
