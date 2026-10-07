@@ -321,3 +321,13 @@ button.danger.x { padding: 2px 7px; }
 a.plain { color: inherit; text-decoration: none; }
 /* 화면별 해설: 기본으로 접힘, 제목을 누르면 펼침 */
 .aidet > summary { cursor: pointer; list-style: revert; } .aidet > summary h2 { display: inline; margin: 0; } .aidet[open] > summary { margin-bottom: 6px; }
+/* 적중 기록판 (엑셀 X/O 격자) */
+table.hit { border-collapse: collapse; font-size: 0.6471rem; }
+table.hit th, table.hit td { border: 1px solid var(--line); padding: 2px 4px; min-width: 34px; height: 20px; text-align: center; white-space: nowrap; }
+table.hit tr > th:first-child { text-align: right; color: var(--muted); font-weight: 400; position: sticky; left: 0; background: var(--card); }
+table.hit td.ok { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good); font-weight: 700; }
+table.hit td.x { color: var(--bad); font-weight: 700; } table.hit td.o { color: var(--accent); font-weight: 700; }
+/* 다이어그램 */
+.diabox { margin-top: 8px; } .diabox svg.dia { width: 100%; max-width: 520px; display: block; margin: 0 auto; }
+.dialab { font-size: 15px; fill: var(--muted); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 3px 0 6px; vertical-align: -1px; }

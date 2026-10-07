@@ -31,7 +31,7 @@
 <meta name="twitter:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 인사이트를 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/web/","description":"내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 인사이트를 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
-<link rel="stylesheet" href="style.css?v=20261008a">
+<link rel="stylesheet" href="style.css?v=20261008b">
 <script>(function(u,c){if(/Edg\//.test(u))c.add("edg");else if(/Chrome\//.test(u)&&!/OPR\//.test(u))c.add("chr");else if(/Safari\//.test(u)&&!/Chrome|Chromium|CriOS|FxiOS|Android/.test(u))c.add("saf");})(navigator.userAgent,document.documentElement.classList);</script>
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
@@ -82,6 +82,9 @@
       <p class="small muted">수량을 바꾼 날 자동 기록. 가격은 그날 종가.</p>
       <div class="tablewrap"><table id="tradeTable" class="grid"></table></div>
     </details>
+    <details class="card opt" id="premCard" style="display:none"><summary>선택 기능 (미리보기) · 현금·실제 기록</summary>
+      <div id="premBox" style="margin-top:8px"></div>
+    </details>
     <details class="card opt"><summary>입력값 저장·불러오기 (백업, 다른 기기로 옮기기)</summary>
       <p class="small">입력값은 이 브라우저에만 저장됩니다.</p>
       <div class="row wrap"><button id="btnXfer" class="primary">다른 기기로 옮기기 (QR·링크)</button><button id="btnExport">입력값 내보내기 (JSON)</button><label class="filebtn">입력값 불러오기<input id="fileImport" type="file" accept=".json"></label></div>
@@ -126,7 +129,7 @@
     </details>
     <div class="card">
       <div class="row between wrap">
-        <div class="row wrap"><h2 style="margin:0">평가액 추이</h2><div class="row seg" id="histBasis"><button data-b="model" class="on">내 관점</button><button data-b="base">현재 정세</button><button data-b="smooth">과거 추세</button></div></div>
+        <div class="row wrap"><h2 style="margin:0">평가액 추이</h2><div class="row seg" id="histBasis"><button data-b="model" class="on">내 관점</button><button data-b="base">현재 정세</button><button data-b="smooth">과거 추세</button><button data-b="pattern" id="basisPat">패턴</button></div></div>
         <div class="row wrap">
           <div class="row seg wrap" id="histRange"><button data-r="5">1주</button><button data-r="22">1달</button><button data-r="66">3달</button><button data-r="252">1년</button><button data-r="780">3년</button><button data-r="future" class="on">미래</button></div>
         </div>
@@ -139,6 +142,22 @@
       </details>
       <div id="histChart" class="chartbox"></div>
       <p class="muted small" id="histNote"></p>
+    </div>
+    <div class="card" id="actCard" style="display:none">
+      <div class="row between wrap"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">실제 기록</h2><span class="muted small">선택 기능 · 미리보기</span></div><div class="row seg" id="actView"><button data-v="year" class="on">연도 겹쳐 보기</button><button data-v="all">전체</button></div></div>
+      <div id="actChart" class="chartbox" style="margin-top:8px"></div>
+      <div class="tablewrap"><table id="actYears" class="grid"></table></div>
+    </div>
+    <div class="card" id="hitCard" style="display:none">
+      <div class="row between wrap"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">적중 기록판</h2><span class="muted small">한 달 뒤 예측 · 맞으면 날짜, 빗나가면 예측 X·실제 O</span></div><div class="row seg" id="hitSel"><button data-h="pattern" class="on">패턴</button><button data-h="trend">추세만</button><button data-h="model">내 관점</button></div></div>
+      <p class="small" id="hitSum" style="margin:8px 0"></p>
+      <div class="tablewrap"><div id="hitGrid" class="hitgrid"></div></div>
+      <p class="muted small" id="hitNote"></p>
+    </div>
+    <div class="card" id="diaCard" style="display:none">
+      <div class="row between wrap"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">다이어그램</h2><span class="muted small" id="diaSub"></span></div><div class="row seg" id="diaMode"><button data-d="spiral" class="on">나선</button><button data-d="rows">줄</button><button data-d="stock">종목별</button></div></div>
+      <div id="diaBox" class="diabox"></div>
+      <p class="small" id="diaNote" style="margin:6px 0 0"></p>
     </div>
     <div class="card">
       <h2>기간 수익률 (원화, 편입 효과 제외)</h2>
@@ -295,8 +314,8 @@
 
 </main>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261008a"></script>
-<script src="model.js?v=20261008a"></script>
-<script src="app.js?v=20261008a"></script>
+<script src="charts.js?v=20261008b"></script>
+<script src="model.js?v=20261008b"></script>
+<script src="app.js?v=20261008b"></script>
 </body>
 </html>

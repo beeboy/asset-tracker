@@ -18,7 +18,7 @@
   }
 
   // opt: {x: [날짜], series: [{name, y, color, width, dash, x?}], bands: [{lo, hi, color, opacity, x?}],
-  //       hlines: [{y, label, color}], vlines: [{x, label}], yfmt, height, log, markers: [{x, label, color}]}
+  //       hlines: [{y, label, color}], vlines: [{x, label}], yfmt, height, log, markers: [{x, label, color}], xlab(Date), tipx(day)}
   // 상자 폭이 바뀌면(브라우저 확대·축소, 창 크기, 숨었다 보임) 같은 옵션으로 다시 그린다
   const ro = window.ResizeObserver ? new ResizeObserver((es) => es.forEach((e) => {
     const h = e.target, w = h.clientWidth; if (!h._opt || !w || Math.abs(w - h._w) <= 2) return;
@@ -71,7 +71,7 @@
     else if (stepM) { d.setUTCMonth(Math.ceil(d.getUTCMonth() / stepM) * stepM); for (; d.getTime() <= x1; d.setUTCMonth(d.getUTCMonth() + stepM)) if (d.getTime() >= x0) xt.push(d.getTime()); }
     else { for (let t = x0; t <= x1; t += Math.max(1, Math.round(spanDays / 6)) * 86400e3) xt.push(t); }
     xt.forEach((t) => {
-      const dd = new Date(t), lab = stepM >= 12 ? `${dd.getUTCFullYear()}` : stepM ? `${String(dd.getUTCFullYear()).slice(2)}.${dd.getUTCMonth() + 1}` : `${dd.getUTCMonth() + 1}/${dd.getUTCDate()}`;
+      const dd = new Date(t), lab = opt.xlab ? opt.xlab(dd) : stepM >= 12 ? `${dd.getUTCFullYear()}` : stepM ? `${String(dd.getUTCFullYear()).slice(2)}.${dd.getUTCMonth() + 1}` : `${dd.getUTCMonth() + 1}/${dd.getUTCDate()}`;
       const xx = X(t), edge = narrow && xx < 14 ? "start" : narrow && xx > W - 14 ? "end" : "middle";
       el("text", { x: xx, y: H - 8, "text-anchor": edge }, g).textContent = lab;
     });
@@ -123,7 +123,7 @@
       while (lo < hi) { const mid = (lo + hi) >> 1; if (allT[mid] < t) lo = mid + 1; else hi = mid; }
       if (lo > 0 && Math.abs(allT[lo - 1] - t) < Math.abs(allT[lo] - t)) lo--;
       const day = allX[lo]; if (!day) return;
-      const rows = [`<b>${day}</b>`];
+      const rows = [`<b>${opt.tipx ? opt.tipx(day) : day}</b>`];
       const pick = (x, y) => { const i = x.indexOf(day); return i >= 0 ? y[i] : null; };
       (opt.series || []).forEach((s) => { const v = pick(s.x || opt.x, s.y); if (v != null && s.name) rows.push(`<span style="color:${s.color}">●</span> ${s.name}: ${yfmt(v)}`); });
       (opt.bands || []).forEach((b) => { if (!b.name) return; const lo2 = pick(b.x || opt.x, b.lo), hi2 = pick(b.x || opt.x, b.hi); if (lo2 != null) rows.push(`${b.name}: ${yfmt(lo2)} ~ ${yfmt(hi2)}`); });
