@@ -242,10 +242,30 @@
   // ------------------------------------------------------------ 개발자 기기 자동 동기화
   // GitHub 토큰(저장소 쓰기 권한)이 있는 기기끼리만 중계 KV 에 입력값을 두고 맞춘다. 일반 사용자는 해당 없음.
   // 나중에 고친 쪽이 이긴다 (ui.sync_at). 화면 설정(ui)은 기기마다 따로.
+  // 일반 사용자: 동기화 비밀번호로 기기 안에서 암호화(AES-GCM)한 값만 중계에 둔다. 중계는 내용을 읽을 수 없다.
   let syncLast = null, syncTimer = null;
-  const syncUrl = () => (MODE === "static" && GH && ghToken() && S.config?.push ? S.config.push.replace(/\/$/, "") + "/sync" : null);
+  const ES_KEY = "naeilo-esync";
+  const esGet = () => { try { return JSON.parse(localStorage.getItem(ES_KEY) || "null"); } catch (e) { return null; } };
+  const relay = () => (S.config?.push ? S.config.push.replace(/\/$/, "") : null);
+  const syncDev = () => !!(MODE === "static" && GH && ghToken());
+  const syncUrl = () => (MODE !== "static" || !relay() ? null : syncDev() ? relay() + "/sync" : esGet() ? relay() + "/esync?id=" + esGet().id : null);
   const syncSig = () => hashStr(JSON.stringify({ ...S.state, ui: null }));
-  const syncCall = async (opt = {}) => { const r = await fetch(syncUrl(), { ...opt, headers: { "Content-Type": "application/json", Authorization: "Bearer " + ghToken() } }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "중계 " + r.status); return j; };
+  const b64 = (u8) => btoa(String.fromCharCode(...new Uint8Array(u8))), unb64 = (t) => Uint8Array.from(atob(t), (c) => c.charCodeAt(0));
+  async function esDerive(pw) { // 비밀번호 → 저장 위치(id) + 암호 키. 비밀번호 자체는 어디에도 저장하지 않는다
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw.normalize("NFC")), "PBKDF2", false, ["deriveBits"]);
+    const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", salt: new TextEncoder().encode("naeilo-sync-v1"), iterations: 300000, hash: "SHA-256" }, base, 512));
+    const id = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bits.slice(0, 32)))].slice(0, 20).map((b) => b.toString(16).padStart(2, "0")).join("");
+    return { id, k: b64(bits.slice(32)) };
+  }
+  const esKey = () => crypto.subtle.importKey("raw", unb64(esGet().k), "AES-GCM", false, ["encrypt", "decrypt"]);
+  async function syncCall(opt = {}) {
+    let body = opt.body;
+    if (!syncDev() && body) { const o = JSON.parse(body), iv = crypto.getRandomValues(new Uint8Array(12)); const c = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await esKey(), new TextEncoder().encode(JSON.stringify(o.state))); body = JSON.stringify({ c: b64(iv) + "." + b64(c), at: o.at }); }
+    const r = await fetch(syncUrl(), { ...opt, body, headers: { "Content-Type": "application/json", ...(syncDev() ? { Authorization: "Bearer " + ghToken() } : {}) } });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "중계 " + r.status);
+    if (!syncDev() && j.c) { const [iv, c] = j.c.split("."); try { j.state = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(iv) }, await esKey(), unb64(c)))); } catch (e) { throw new Error("풀 수 없음 (비밀번호 확인)"); } }
+    return j;
+  }
   function syncMark() {
     if (!syncUrl() || syncLast == null) return;
     const sig = syncSig(); if (sig === syncLast) return;
@@ -256,7 +276,7 @@
     if (!syncUrl()) return;
     try { const st = { ...S.state }; delete st.ui; const j = await syncCall({ method: "POST", body: JSON.stringify({ state: st, at: S.state.ui.sync_at || Date.now() }) }); S.sync = { ok: true, at: Date.now() }; if (j.stale) syncPull(); }
     catch (e) { S.sync = { ok: false, err: e.message }; }
-    if ($("#tabs .on")?.dataset.tab === "quotes") renderGh();
+    if ($("#tabs .on")?.dataset.tab === "quotes") { renderGh(); renderEsync(); }
   }
   async function syncPull() {
     if (!syncUrl()) return;
@@ -272,7 +292,23 @@
       } else if (!j.state || j.at < mine) { if (!mine) S.state.ui.sync_at = Date.now(); await syncPush(); }
       S.sync = { ok: true, at: Date.now() };
     } catch (e) { S.sync = { ok: false, err: e.message }; }
-    if ($("#tabs .on")?.dataset.tab === "quotes") renderGh();
+    if ($("#tabs .on")?.dataset.tab === "quotes") { renderGh(); renderEsync(); }
+  }
+  function renderEsync() {
+    const box = $("#esyncBox"); if (!box) return;
+    if (MODE !== "static" || !relay()) { box.style.display = "none"; return; }
+    if (syncDev()) { box.innerHTML = `<p class="small"><b>기기 자동 동기화</b>: 개발자 GitHub 연결로 동기화 중.</p>`; return; }
+    const on = !!esGet();
+    box.innerHTML = `<p class="small"><b>기기 자동 동기화</b> ${on ? (S.sync?.ok ? `<b class="good">켜짐</b> · 마지막 ${new Date(S.sync.at).toLocaleTimeString()}` : S.sync ? `<span class="dn">오류: ${esc(S.sync.err)}</span>` : "켜짐") : ""}<br>
+      ${on ? "같은 비밀번호를 넣은 기기끼리 입력값이 자동으로 맞춰집니다." : "쓰는 기기마다 같은 동기화 비밀번호를 넣으면 입력값이 자동으로 맞춰집니다. 이 기기에서 암호화한 값만 서버에 두어 서버는 보유 내역을 볼 수 없고, 비밀번호를 잊으면 복구할 수 없습니다."}</p>
+      <div class="row wrap">${on ? `<button id="esOff" class="danger sm">이 기기 동기화 끄기</button>` : `<input id="esPw" type="password" size="22" placeholder="동기화 비밀번호 (10자 이상)" autocomplete="new-password"><button id="esOn" class="primary sm">켜기</button>`}</div>`;
+    if (on) $("#esOff").onclick = () => { try { localStorage.removeItem(ES_KEY); } catch (e) { /* 무시 */ } S.sync = null; S.state.ui.sync_at = 0; save(false); renderEsync(); toast("이 기기 동기화를 껐습니다"); };
+    else $("#esOn").onclick = async () => {
+      const pw = $("#esPw").value; if (pw.length < 10) return toast("비밀번호는 10자 이상 (남이 짐작하기 어렵게)");
+      $("#esOn").disabled = true; $("#esOn").textContent = "준비 중…";
+      try { localStorage.setItem(ES_KEY, JSON.stringify(await esDerive(pw))); } catch (e) { toast("이 브라우저에서 쓸 수 없습니다"); return renderEsync(); }
+      S.state.ui.sync_at = 0; syncLast = null; await syncPull(); renderEsync();
+    };
   }
 
   // ------------------------------------------------------------ 평가
@@ -2735,7 +2771,7 @@
     try { await reload(); }
     catch (e) { document.body.innerHTML = `<div class="card" style="margin:40px auto;max-width:640px"><h2>데이터를 불러오지 못했습니다</h2><p>내 PC에서 쓸 때는 <b>실행 파일</b>(Windows: <code>실행-Windows.bat</code>, Mac: <code>실행-Mac.command</code>)로 열어야 합니다. 웹 버전은 GitHub Actions의 첫 수집이 끝난 뒤 열립니다.</p><p class="muted small">${esc(e.message)}</p></div>`; return; }
     if (S.purged || (!S.state.sample && !(S.state.lots || []).length && S.state.holdings.some((h) => Number(h.shares) > 0))) save(false); // 진행 기록 첫 줄
-    bind(); renderAll(); foldHold(); marFetch(); syncPull();
+    bind(); renderAll(); foldHold(); marFetch(); syncPull(); renderEsync();
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncPull(); });
     setAuto(S.state.ui.auto_refresh_min || 0);
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; const a = localStorage.getItem("ana"); if (a && $(`#anaNav button[data-a="${a}"]`)) $$("#anaNav button").forEach((b) => b.classList.toggle("on", b.dataset.a === a)); } catch (e) { /* 무시 */ }

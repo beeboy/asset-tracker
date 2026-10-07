@@ -15,7 +15,7 @@
 //       data/config.json 의 "push" 에 "https://<이름>.workers.dev" 를 넣고 커밋. 아이폰은 홈 화면에 추가한 앱에서만 받는다.
 //       보내는 알림: 내 종목 가중 하루 변동 -5% 이하(하루 한 번), 켜 둔 실적 일정 하루 전. 저장값은 종목 비중·일정뿐 (수량·금액 없음).
 // 6) 기기 동기화 (/sync): 개발자 기기끼리만. 저장소 쓰기 권한이 있는 GitHub 토큰으로 확인하고, 같은 VIEWS KV 에 GitHub 계정별로 입력값을 둔다.
-//       일반 사용자(토큰 없음)는 쓰지 않는다.
+//       일반 사용자는 /esync: 동기화 비밀번호로 브라우저에서 암호화한 값(c)만 받는다. 중계는 내용을 읽을 수 없다 (KV 키 e:<id>, id 도 비밀번호에서 만든 해시).
 // 7) 매매기준율 (/mar): 서울외국환중개 고시 미국 달러 매매기준율. 저장소 수집(data/mar.json)이 못 받았을 때 화면이 부른다.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
@@ -62,6 +62,21 @@ export default {
       if (!b.state || typeof b.state !== "object" || body.length > 400000) return out({ error: "입력값이 없거나 너무 큽니다" }, 400);
       if (cur && cur.at > at) return out({ stale: true, at: cur.at });
       await env.VIEWS.put(key, body);
+      return out({ ok: true, at });
+    }
+    if (u.pathname === "/esync") {
+      // GET /esync?id= → { c, at },  POST /esync?id= {"c","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
+      if (!env.VIEWS) return noKv();
+      const id = u.searchParams.get("id") || "";
+      if (!/^[0-9a-f]{40}$/.test(id)) return out({ error: "동기화 id 가 맞지 않습니다" }, 400);
+      const cur = JSON.parse((await env.VIEWS.get("e:" + id)) || "null");
+      if (req.method === "GET") return out(cur || {});
+      if (req.method !== "POST") return out({ error: "GET 또는 POST" }, 400);
+      const b = await req.json().catch(() => ({}));
+      const at = Number(b.at) || Date.now();
+      if (typeof b.c !== "string" || !/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/.test(b.c) || b.c.length > 500000) return out({ error: "암호문이 맞지 않습니다" }, 400);
+      if (cur && cur.at > at) return out({ stale: true, at: cur.at });
+      await env.VIEWS.put("e:" + id, JSON.stringify({ c: b.c, at }), { expirationTtl: 86400 * 400 }); // 400일 안 쓰면 지움
       return out({ ok: true, at });
     }
     if (u.pathname === "/like") {
