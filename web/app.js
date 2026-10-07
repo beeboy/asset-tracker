@@ -324,8 +324,8 @@
   const marUsd = () => { const m = S.mar?.USD; return m && m.rate > 0 && m.date && yearsBetween(m.date, today()) * 365 <= 5 ? m : null; };
   const fxBase = (ccy) => (ccy === "USD" && marUsd() ? marUsd().rate : fxNow(ccy));
   async function marFetch() { // 저장소 값이 없거나 묵었으면 중계에서 한 번 더
-    const base = S.config?.push; if (marUsd() || !base) return;
-    try { const r = await fetch(base.replace(/\/$/, "") + "/mar"); const j = await r.json(); if (j?.USD?.rate > 0) { S.mar = j; renderAll(); } } catch (e) { /* 기존 환율 유지 */ }
+    const base = S.config?.push; if ((marUsd() && marUsd().date >= today()) || !base) return; // 오늘 고시가 아직 저장소에 없으면 중계에서 한 번 더
+    try { const r = await fetch(base.replace(/\/$/, "") + "/mar"); const j = await r.json(); if (j?.USD?.rate > 0 && (!S.mar?.USD?.date || j.USD.date > S.mar.USD.date)) { S.mar = j; renderAll(); } } catch (e) { /* 기존 환율 유지 */ }
   }
   function curPrice(h) {
     if (S.state?.ui?.manual_price && h.price != null && h.price !== "" && Number(h.price) > 0) return { v: Number(h.price), src: "manual" };
