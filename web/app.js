@@ -2632,12 +2632,28 @@
     return true;
   }
   // 자동 기록은 미국 장 마감 값(그날 종가 × 그날 환율 + 현금)으로, 마감이 끝난 거래일만 남긴다.
-  // 앱을 연 시각에 따라 값이 들쭉날쭉하지 않게. 이미 있는 날(엑셀에서 가져온 밤 12시 값 등)은 덮어쓰지 않는다
+  // 앱을 열지 않은 날은 다음에 열 때 마지막 기록 이후 거래일을 한꺼번에 채운다 (수량은 바뀐 날 기록, 현금은 지금 값).
+  // 이미 있는 날(엑셀에서 가져온 밤 12시 값 등)은 덮어쓰지 않는다
   function actualAuto(H, cash) {
     if (!premium() || !S.state.actual || S.state.sample || !H.dates.length) return;
     let i = H.dates.length - 1; if (Date.now() < Date.parse(H.dates[i] + "T21:00:00Z")) i--; // 아직 장중이면 전 거래일
-    const d = H.dates[i], v = H.total[i] + cash; if (!d || !(v > 0) || S.state.actual.d.includes(d)) return;
-    if (actualPut(d, Math.round(v))) save(false);
+    if (i < 0) return;
+    const a = S.state.actual, last = a.d[a.d.length - 1], A = actualSeries(H) || H.total, have = new Set(a.d);
+    let j = last ? H.dates.findIndex((d) => d > last) : i; if (j < 0) return;
+    let n = 0;
+    for (; j <= i; j++) {
+      const d = H.dates[j], v = (A[j] ?? H.total[j]) + cash;
+      if (!have.has(d) && v > 0 && actualPut(d, Math.round(v))) n++;
+    }
+    if (n) save(false);
+  }
+  function exportActualCsv() {
+    const a = S.state.actual; if (!a || !a.d.length) return;
+    const memo = {}; (S.state.memos || []).forEach((m) => (memo[m.d] = memo[m.d] ? memo[m.d] + " / " + m.t : m.t));
+    const q = (t) => `"${String(t).replace(/"/g, '""')}"`;
+    const csv = "\ufeff날짜,총자산(원),메모\n" + a.d.map((d, i) => `${d},${a.v[i]},${memo[d] ? q(memo[d]) : ""}`).join("\n") + "\n";
+    const u = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })), el = document.createElement("a");
+    el.href = u; el.download = `naeilo-actual-${today()}.csv`; document.body.appendChild(el); el.click(); setTimeout(() => { el.remove(); URL.revokeObjectURL(u); }, 1000);
   }
   let xlsxP = null;
   const loadXlsx = () => (xlsxP ||= new Promise((res, rej) => {
@@ -2713,8 +2729,8 @@
     $("#premBox").innerHTML = `<p class="small muted" style="margin:0 0 8px">지금은 개발자 기기에서만 보입니다. 기본 기능과 차이가 정리되면 모두에게 열 예정입니다.</p>
       <h3 style="margin:0 0 4px">현금</h3><div class="row wrap"><label class="small">원화 <input class="num" id="cashKrw" inputmode="decimal" value="${c.krw ? nf(c.krw) : ""}" placeholder="0" style="width:9em"></label><label class="small">달러 <input class="num" id="cashUsd" inputmode="decimal" value="${c.usd ? nf(c.usd, 2) : ""}" placeholder="0" style="width:7em"></label></div>
       <p class="small muted" style="margin:4px 0 12px">총자산·목표 대비·전망에 더합니다 (전망에서는 그대로 있다고 봄).</p>
-      <h3 style="margin:0 0 4px">실제 기록</h3><p class="small" style="margin:0 0 6px">${n ? `${n}일 기록 (${a.d[0]} ~ ${a.d[n - 1]})${(S.state.memos || []).length ? ` · 메모 ${S.state.memos.length}개` : ""} · 장이 끝난 날마다 마감 값(종가 × 그날 환율 + 현금)을 자동으로 더합니다. 가져온 날짜는 덮어쓰지 않습니다` : "아직 없음. 엑셀(날짜·금액)을 가져오거나 오늘부터 기록을 시작하세요."}</p>
-      <div class="row wrap"><label class="filebtn">엑셀·CSV 가져오기<input id="actFile" type="file" accept=".xlsx,.xls,.csv"></label>${n ? `<button class="sm" id="actClear">기록 지우기</button>` : `<button class="sm" id="actStart">오늘부터 기록</button>`}</div>${u}`;
+      <h3 style="margin:0 0 4px">실제 기록</h3><p class="small" style="margin:0 0 6px">${n ? `${n}일 기록 (${a.d[0]} ~ ${a.d[n - 1]})${(S.state.memos || []).length ? ` · 메모 ${S.state.memos.length}개` : ""} · 장이 끝난 날마다 마감 값(종가 × 그날 환율 + 현금)을 자동으로 더합니다. 며칠 안 열어도 다음에 열 때 빈 거래일을 채웁니다(현금은 지금 값). 가져온 날짜는 덮어쓰지 않습니다` : "아직 없음. 엑셀(날짜·금액)을 가져오거나 오늘부터 기록을 시작하세요."}</p>
+      <div class="row wrap"><label class="filebtn">엑셀·CSV 가져오기<input id="actFile" type="file" accept=".xlsx,.xls,.csv"></label>${n ? `<button class="sm" id="actCsv">CSV 내보내기</button><button class="sm" id="actClear">기록 지우기</button>` : `<button class="sm" id="actStart">오늘부터 기록</button>`}</div>${u}`;
   }
   function onPrem(e) {
     const t = e.target;
@@ -2735,6 +2751,7 @@
       toast(`실제 기록 ${actPend.pts.length}일을 합쳤습니다`); actPend = null; save(false); renderPrem(); renderAll();
     }
     if (t.id === "actCancel") { actPend = null; renderPrem(); }
+    if (t.id === "actCsv") exportActualCsv();
     if (t.id === "actStart") { S.state.actual = { d: [], v: [] }; save(false); renderAll(); renderPrem(); }
     if (t.id === "actClear" && armed(t)) { delete S.state.actual; delete S.state.memos; save(false); renderPrem(); renderAll(); }
   }
