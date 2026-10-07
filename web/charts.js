@@ -46,7 +46,9 @@
     const yt = log ? niceTicks(Math.exp(y0), Math.exp(y1), 5) : niceTicks(y0, y1, 5);
     // axisOut: 좁은 화면에서도 y축 글자를 그래프 밖 왼쪽에 둔다 (선이 글자를 덮지 않게). 글자 폭만큼만 여백
     const out = narrow && opt.axisOut;
-    if (out) { const lw = Math.max(...yt.map((v) => String(yfmt(v)).length)) * 7.6 + 10; m.l = lw; }
+    // 한글(억·만)은 글자 폭이 넓어 따로 센다. 넓은 화면도 글자가 길면 여백을 넓혀 선이 글자를 덮지 않게
+    const lw = Math.max(...yt.map((v) => [...String(yfmt(v))].reduce((a, c) => a + (/[\u3131-\uD79D]/.test(c) ? 12 : 7.6), 0))) + 10;
+    if (out) m.l = lw; else if (!narrow) m.l = Math.max(m.l, lw);
     yt.forEach((v) => {
       if (v <= 0 && log) return;
       const yy = Y(v); if (yy < m.t - 1 || yy > H - m.b + 1) return;

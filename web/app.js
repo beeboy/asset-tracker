@@ -766,12 +766,12 @@
       ["과거 연평균 (원화)", pct(pastCagr), `${H.dates[jc] || "-"} 이후`],
     ].map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
-    const rsel = $("#histRange .on")?.dataset.r || "252", step = $("#histStep .on")?.dataset.s || "d", mode = $("#histMode .on")?.dataset.m || "total";
+    const rsel = $("#histRange .on")?.dataset.r || "252", step = rsel === "future" || +rsel >= 252 ? "m" : "d", mode = $("#histMode .on")?.dataset.m || "total";
     const inUsd = $("#histCcy .on")?.dataset.c === "usd", basis = $("#histBasis .on")?.dataset.b || "model";
     const fxNowUsd = fxNow("USD") || 1, conv = (v, i) => (v == null ? null : inUsd ? v / H.usdK[i] : v), money = inUsd ? usd : krwAxis;
     const future = rsel === "future", n = future ? 780 : +rsel; // 미래: 과거 3년 + 목표일까지
     const k0 = Math.max(0, H.dates.length - 1 - n);
-    // 간격: 주·월은 그 기간의 마지막 거래일 값
+    // 간격: 1년 이상은 월간(그 달의 마지막 거래일 값), 3달 이하는 일간
     let ix = []; for (let i = k0; i < H.dates.length; i++) ix.push(i);
     if (step !== "d") {
       const key = (d) => { if (step === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
@@ -786,7 +786,7 @@
       tick.forEach((t) => { const hi = ix.map((i, k) => lo[k] + (conv(H.each[t][i], i) || 0)); bands.push({ lo, hi, color: col(t), opacity: 0.55, name: t }); lo = hi; });
       series = [{ y: lo, color: "var(--fg)", width: 1 }];
     }
-    const opt = { x, series, bands, yfmt: money, height: 320, hlines: [], vlines: [], ymin: mode === "total" ? undefined : 0 };
+    const opt = { x, series, bands, yfmt: money, height: 320, axisOut: true, hlines: [], vlines: [], ymin: mode === "total" ? undefined : 0 };
     const goalV = inUsd ? g.amount / fxNowUsd : g.amount, goalLab = inUsd ? `목표 ${usd(goalV)} (지금 환율)` : "목표 " + krw(g.amount);
     const maxV = Math.max(...ix.map((i) => conv(H.total[i], i)));
     const notes = [];
@@ -2463,8 +2463,8 @@
       ["원화 10% 강세면", `<span class="dn">${krw(-total * usdW * 0.1)}원</span>`, "주가 변동 없이 환율만"],
     ].map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("");
     const n = +($("#fxRange .on")?.dataset.r || 780), ind = F.ind, k0 = Math.max(0, ind.dates.length - n), x = ind.dates.slice(k0);
-    const md = []; for (let k = 1; Model.addMonths(today(), k) <= F.goalDate; k++) md.push(Model.addMonths(today(), k));
-    if (md[md.length - 1] !== F.goalDate) md.push(F.goalDate);
+    // 기간 버튼은 과거 구간만 정하고, 전망은 늘 오늘부터 3년
+    const md = []; for (let k = 1; k <= 36; k++) md.push(Model.addMonths(today(), k));
     const fd = [today(), ...md], ft = fd.map((d) => yearsBetween(today(), d)), band = (k) => ft.map((t) => at(t, k));
     Charts.lineChart($("#fxChart"), { x, height: 300, yfmt: (v) => nf(v, 0),
       bands: [{ x: fd, lo: band("p5"), hi: band("p95"), color: "var(--band)", opacity: 0.13, name: "전망 5~95%" }, { x: fd, lo: band("p25"), hi: band("p75"), color: "var(--band)", opacity: 0.25, name: "25~75%" }],
@@ -2575,7 +2575,7 @@
       const a = e.target.closest("a[data-nid]"); if (!a) return;
       const o = insLoad(); o.read[a.dataset.nid] = Date.now(); insSave(o); a.classList.add("read");
     });
-    segClick("#histRange", renderDash); segClick("#histStep", renderDash); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", renderDash); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
+    segClick("#histRange", renderDash); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", renderDash); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
     segClick("#anaNav", renderAnalysis);
     $("#btnAlloc").onclick = () => { allocDirty = true; runAlloc(); };

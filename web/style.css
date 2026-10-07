@@ -313,5 +313,5 @@ button.danger.x { padding: 2px 7px; }
 .headkpi .hasset, .hpill { cursor: pointer; } .hpill.busy i { animation: hpulse 1s ease-in-out infinite; } @keyframes hpulse { 50% { opacity: .35; } }
 /* 데스크탑 알약: 줄 위가 아니라 글자 가운데 기준으로 맞춰 브라우저(엣지·크롬·사파리)·글꼴이 달라도 같은 높이 */
 @media (min-width: 701px) { .headkpi { align-items: center; } .headkpi .hpill { top: 3px; } }
-/* 엣지·사파리는 글꼴 줄 높이가 달라 2px 더 위로 */
-@media (min-width: 701px) { html.edg .headkpi .hpill, html.saf .headkpi .hpill { top: 1px; } }
+/* 엣지·크롬·사파리는 글꼴 줄 높이가 달라 2px 더 위로 */
+@media (min-width: 701px) { html.edg .headkpi .hpill, html.chr .headkpi .hpill, html.saf .headkpi .hpill { top: 1px; } }
