@@ -298,46 +298,61 @@ def collect_insight(ai: str | None, tks: list[str], names: dict, prev: dict, poo
            "industry": {t: INDUSTRY.get(t.upper(), (f"{_nm(t, names)} 업계",))[0] for t in tks}}
     if fresh and ai:
         fresh = sorted(fresh, key=lambda c: (c[1] != "held", tks.index(c[0])))
-        lines, cur, size = [], None, 0
+        # 한 번에 많이 보내면 중계(Gemini)가 150초 안에 답하지 못해 통째로 실패하므로, 작은 묶음으로 나눠 묻는다.
+        # 실패한 묶음의 기사는 '본 것'으로 치지 않아 다음 수집 때 다시 묻는다.
+        batches, cur_b, size = [], [], 0
         for i, (t, sc, x) in enumerate(fresh):
-            g = f"[{t} {'보유 종목' if sc == 'held' else '관련 업계: ' + res['industry'][t]}]"
-            ln = f"{i}. [{x['source']}] {x['title']}" + (f" — {x['desc'][:80]}" if x.get("desc") else "")
-            if size + len(ln) + len(g) > 9000:  # 중계 한도(약 11,800자) 안으로. 남은 후보는 다음 시간에
+            ln = f"[{x['source']}] {x['title']}" + (f" — {x['desc'][:80]}" if x.get("desc") else "")
+            if cur_b and size + len(ln) > 3500:
+                batches.append(cur_b)
+                cur_b, size = [], 0
+            cur_b.append((i, ln))
+            size += len(ln) + 40
+        if cur_b:
+            batches.append(cur_b)
+        n0, asked, t0 = len(items), [], time.time()
+        for bt in batches[:4]:
+            if time.time() - t0 > 360:  # 남은 묶음은 다음 수집 때
                 break
-            if g != cur:
-                lines.append("\n" + g)
-                cur = g
-            lines.append(ln)
-            size += len(ln) + 1
-        prompt = ("아래는 보유 종목과 그 관련 업계의 최근 기사 후보다. 1~3년 뒤 기업 가치 판단에 도움이 되는 기사만 골라 다음 4개 분류 중 하나로 나눠라. "
-                  "단기 주가 등락·광고성·무관한 기사는 빼라. 같은 사건은 하나만. 좋은 기사면 여러 개 골라도 되지만 최대 25개, 보유 종목 기사를 우선한다.\n"
-                  + "\n".join(f"- {k}: {v}" for k, v in CATS.items()) +
-                  '\n출력 형식: {"items":[{"i":번호,"cat":"growth|market|fund|esg","ko":"한국어 제목","sum":"핵심 요약 한 문장"}]}\n' + "\n".join(lines))
-        try:
-            j = ask_ai(ai, prompt)
-            n0 = len(items)
-            for s in j.get("items") or []:
+            lines, cur = [], None
+            for j, (i, ln) in enumerate(bt):
+                t, sc, x = fresh[i]
+                g = f"[{t} {'보유 종목' if sc == 'held' else '관련 업계: ' + res['industry'][t]}]"
+                if g != cur:
+                    lines.append("\n" + g)
+                    cur = g
+                lines.append(f"{j}. {ln}")
+            prompt = ("아래는 보유 종목과 그 관련 업계의 최근 기사 후보다. 1~3년 뒤 기업 가치 판단에 도움이 되는 기사만 골라 다음 4개 분류 중 하나로 나눠라. "
+                      "단기 주가 등락·광고성·무관한 기사는 빼라. 같은 사건은 하나만. 좋은 기사면 여러 개 골라도 되지만 최대 12개, 보유 종목 기사를 우선한다.\n"
+                      + "\n".join(f"- {k}: {v}" for k, v in CATS.items()) +
+                      '\n출력 형식: {"items":[{"i":번호,"cat":"growth|market|fund|esg","ko":"한국어 제목","sum":"핵심 요약 한 문장"}]}\n' + "\n".join(lines))
+            try:
+                j = ask_ai(ai, prompt)
+            except Exception as e:  # noqa: BLE001
+                errs.append(f"insight: {e}")
+                continue
+            for s2 in j.get("items") or []:
                 try:
-                    i = int(s.get("i"))
+                    k2 = int(s2.get("i"))
                 except (TypeError, ValueError, AttributeError):
                     continue
-                if not 0 <= i < len(fresh) or s.get("cat") not in CATS:
+                if not 0 <= k2 < len(bt) or s2.get("cat") not in CATS:
                     continue
-                t, sc, x = fresh[i]
+                t, sc, x = fresh[bt[k2][0]]
                 k = _key(x["title"])
                 if k in have:
                     continue
                 have.add(k)
-                items.append({"id": k, "ticker": t, "scope": sc, "cat": s["cat"], "title": (s.get("ko") or x["title"]).strip(), "orig": x["title"],
-                              "summary": (s.get("sum") or "").strip(), "source": x["source"], "link": x["link"], "time": x["time"],
+                items.append({"id": k, "ticker": t, "scope": sc, "cat": s2["cat"], "title": (s2.get("ko") or x["title"]).strip(), "orig": x["title"],
+                              "summary": (s2.get("sum") or "").strip(), "source": x["source"], "link": x["link"], "time": x["time"],
                               "added": now.isoformat(timespec="seconds")})
-            fresh = fresh[:sum(1 for ln in lines if ln[:1].isdigit())]
-            for t, sc, x in fresh:  # 물어본 기사는 고르지 않았어도 다시 묻지 않는다
-                seen[_key(x["title"])] = now.isoformat(timespec="seconds")
+            asked += [fresh[i] for i, _ in bt]
+        for t, sc, x in asked:  # 물어본 기사는 고르지 않았어도 다시 묻지 않는다
+            seen[_key(x["title"])] = now.isoformat(timespec="seconds")
+        if asked:
             res["updated"] = now.isoformat(timespec="seconds")
-            log(f"미래 가치 새 기사 {len(items) - n0}건 (후보 {len(fresh)}건)")
-        except Exception as e:  # noqa: BLE001
-            errs.append(f"insight: {e}")
+        fresh = [c for c in fresh if c not in asked]
+        log(f"미래 가치 새 기사 {len(items) - n0}건 (물어본 후보 {len(asked)}건, 묶음 {len(batches)}개)")
     if fresh and not items:  # AI 가 없거나 실패하고 보여 줄 기사도 없으면 원문 그대로 (분류는 기사 묶음으로 짐작)
         for t, sc, x in fresh[:40]:
             items.append({"id": _key(x["title"]), "plain": 1, "ticker": t, "scope": sc, "cat": "market" if sc == "industry" else "growth", "title": x["title"],
