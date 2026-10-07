@@ -2876,8 +2876,15 @@
   const hitVals = (base, cash, mu, sd) => { const v = (z) => Math.round(base * Math.exp(mu + z * sd) + cash); return { p50: v(0), lo: v(-0.674), hi: v(0.674) }; };
   function weekRecord(H, M, cash) {
     if (S.state.sample || !H.dates.length) return;
-    const W = (S.state.weekly ||= []), f = weekFri(); if (W.some((r) => r.f === f)) return;
-    const o = closedIdx(H); if (o < 0) return;
+    const W = (S.state.weekly ||= []), f = weekFri(), o = closedIdx(H);
+    // 아직 마감 전인 주: 수량·현금이 바뀌면 예측 % 는 그대로 두고 지금 수량·현금 기준으로 금액을 다시 맞춘다 (마감한 주는 그대로)
+    const open = W.find((r) => o < 0 || r.f > H.dates[o]), i0 = open ? H.dates.indexOf(open.d0) : -1, nb = i0 >= 0 ? H.total[i0] : 0;
+    if (open && nb > 0 && open.base > 0 && (Math.abs(nb / open.base - 1) > 1e-4 || Math.abs(cash - open.cash) >= 1)) {
+      const k = nb / open.base, sc = (v) => Math.round((v - open.cash) * k + cash);
+      Object.assign(open, { p50: sc(open.p50), lo: sc(open.lo), hi: sc(open.hi), base: Math.round(nb), i0: H.index[i0], cash: Math.round(cash) });
+      save(false);
+    }
+    if (W.some((r) => r.f === f) || o < 0) return;
     const base = H.total[o], n = weekdays(H.dates[o], f).length; if (!(base > 0) || !n) return;
     const pa = hitPath(H, M, o); if (!pa) return;
     const { mu, sd } = pa.at(f);
@@ -2973,7 +2980,7 @@
     const wrap = $("#hitGrid").parentElement, th = $("#hitGrid th.now");
     if (wrap && th) wrap.scrollLeft = Math.max(0, th.offsetLeft - wrap.clientWidth / 2 + th.offsetWidth / 2);
     $("#hitNote").innerHTML = `한 칸 = ${krw(bin)}원. 옅은 칸은 예측 범위(25~75%). 범위 안이면 적중(날짜), 벗어나면 예측 X·실제 O. 점선 칸은 가예측: 지금 값에서 그린 미래이고, `
-      + (mode === "w" ? "그 주에 처음 열 때 그때 보던 미래 기준으로 잠겨 바뀌지 않습니다. 실제는 예측한 날 수량 기준."
+      + (mode === "w" ? "그 주에 처음 열 때 그때 보던 미래 기준으로 잠깁니다(예측 %는 고정). 마감 전에 수량·현금을 바꾸면 그 주 금액은 새 수량·현금 기준으로 다시 맞춰지고, 마감한 주는 그대로입니다."
         : "매일 다시 그려집니다. 흐린 칸은 실제 기록 월말 값과, 그 전 달 말에서 다시 계산한 패턴 예측(사후 계산, 미리 적은 게 아님).");
   }
   function patScores(M) { // 다시 맞춰 본 12달: 칸 적중 수와 평균 오차 (패턴 sp, 추세만 st)
