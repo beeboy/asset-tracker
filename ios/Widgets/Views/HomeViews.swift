@@ -16,10 +16,9 @@ struct AssetSmallView: View {
     var body: some View {
         let t = Tint(mode: mode), hide = Store.isHidden(kind)
         VStack(alignment: .leading, spacing: 3) {
-            Label2(text: "총자산")
             Money { h in Big(text: h ? hiddenAmount : Fmt.eok(s.total)) }
             Text("\(Fmt.arrow(s.dayChg)) \(Fmt.pct(s.dayChg))" + (hide ? "" : " · \(Fmt.man(s.dayAmt))")).font(.system(size: 12, weight: .bold)).foregroundStyle(t.chg(s.dayChg)).lineLimit(1)
-            DotSpark(values: Array(s.spark.suffix(10)), color: Palette.ink.opacity(0.9), tint: t, labels: !hide).widgetAccentable()
+            DotSpark(values: Array(s.spark.suffix(10)), color: Palette.ink.opacity(0.9), tint: t, labels: !hide).widgetAccentable().padding(.top, 6)
             Foot(text: "10일 · \(shortTime(s.updated))")
         }
         .foregroundStyle(Palette.ink)
