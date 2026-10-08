@@ -59,11 +59,7 @@ struct BlockSmallView: View {
         let d = s.cells - s.cellsPrev
         let side = cell * 10 + gap * 9, floorTop = CGFloat(10 - block) * (cell + gap)
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                Label2(text: "지금 채우는 블록")
-                Spacer(minLength: 0)
-                Text("\(block)/10").font(.system(size: 11, weight: .bold)).opacity(0.6)
-            }
+            Label2(text: "\(block)번째 블록 채우는 중")
             HStack(spacing: 0) {
                 Grid(horizontalSpacing: gap, verticalSpacing: gap) {
                     ForEach(0..<10, id: \.self) { r in
