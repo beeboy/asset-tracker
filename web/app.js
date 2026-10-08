@@ -752,7 +752,7 @@
     let i0 = H.dates.findIndex((d) => d >= start); if (i0 < 0) i0 = H.dates.length - 1;
     const V0 = A[i0] || H.total[i0] + cash, span = yearsBetween(start, g.date);
     if (!(V0 > 0) || !(span > 0)) return { A, start, i0, V0, at: () => null };
-    return { A, start, i0, V0, at: (d) => (d < start ? null : V0 * (g.amount / V0) ** (Math.max(0, yearsBetween(start, d)) / span)) };
+    return { A, start, i0, V0, at: (d) => V0 * (g.amount / V0) ** (yearsBetween(start, d) / span) }; // 시작일 전은 같은 속도로 거꾸로 늘인 길
   }
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
@@ -773,24 +773,27 @@
     const rsel = $("#progRange .on")?.dataset.r || "5", n = +rsel, unit = n >= 780 ? "m" : n >= 252 ? "w" : "d";
     const key = (d) => { if (unit === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
     let pts = [];
-    for (let i = Math.max(i0, k - n); i <= k; i++) { const nd = P.at(H.dates[i]), v = A[i] ?? (H.total[i] + cash); if (nd != null && v != null) pts.push([H.dates[i], v - nd]); }
+    for (let i = Math.max(0, k - n); i <= k; i++) { const nd = P.at(H.dates[i]), v = A[i] ?? (H.total[i] + cash); if (nd != null && v != null) pts.push([H.dates[i], v - nd]); }
     if (need && td > H.dates[k]) pts.push([td, now - need]);
     if (unit !== "d") pts = pts.filter((p, j) => j === pts.length - 1 || key(p[0]) !== key(pts[j + 1][0]));
     const lab = { 5: "1주", 22: "1달", 66: "3달", 252: "1년", 780: "3년" }[rsel] || "";
     const sg = (v) => `${v >= 0 ? "+" : "−"}${krw(Math.abs(v))}원`;
     if (pts.length) {
       const first = pts[0][1], last = pts[pts.length - 1][1], diff = last - first;
-      $("#progTrend").innerHTML = k - n < i0 || pts.length < 2 ? `목표 시작(${start}) 뒤 경로 대비 <b class="${cls(last)}">${sg(last)}</b>` : `${lab} 전보다 <b class="${cls(diff)}">${sg(diff)}</b> <span class="muted">(${sg(first)} → ${sg(last)})</span>`;
+      $("#progTrend").innerHTML = pts.length < 2 ? `경로 대비 <b class="${cls(last)}">${sg(last)}</b>` : `${lab} 전보다 <b class="${cls(diff)}">${sg(diff)}</b> <span class="muted">(${sg(first)} → ${sg(last)})</span>`;
       $("#progChart").style.display = "block";
-      const tr = trades();
+      // 수량 바뀐 날을 그 날짜가 든 막대(1년은 그 주, 3년은 그 달)에 모은다
+      const tr = trades(), evAt = {};
+      [...new Set(tr.map((t) => t.d))].forEach((d) => {
+        const j = pts.findIndex((p) => (unit === "d" ? p[0] >= d : key(p[0]) >= key(d))); if (j < 0 || (j === 0 && d < pts[0][0] && (unit === "d" || key(d) !== key(pts[0][0])))) return;
+        (evAt[j] ||= []).push(`${d} ${tr.filter((t) => t.d === d).map((t) => `${t.t} ${t.q > 0 ? "+" : ""}${t.q}`).join(", ")}`);
+      });
       Charts.barChart($("#progChart"), { x: pts.map((p) => p[0]), y: pts.map((p) => p[1]), height: 170, yfmt: krwAxis, live: td,
         xlab: (d) => (d === td ? "오늘" : unit === "m" ? `${d.slice(2, 4)}.${+d.slice(5, 7)}` : `${+d.slice(5, 7)}/${+d.slice(8)}`),
         tipx: (d) => (d === td ? `${d} (오늘 실시간)` : unit === "m" ? `${d.slice(0, 7)} 말` : unit === "w" ? `${d} 주 마지막` : d),
-        tipy: (i) => `필요 경로보다 ${sg(pts[i][1])}`,
+        tipy: (i) => `필요 경로보다 ${sg(pts[i][1])}` + (evAt[i] ? `<br>▲ ${evAt[i].map(esc).join("<br>▲ ")}` : "") + (pts[i][0] < start ? `<br><span class="muted">목표 시작 전 (거꾸로 늘인 경로)</span>` : ""),
         labelLast: (pts[pts.length - 1][0] === td ? "오늘 " : "") + sg(last),
-        dots: [...new Set(tr.map((t) => t.d))].filter((d) => d >= start).map((d) => {
-          const j = pts.findIndex((p) => p[0] >= d || (unit !== "d" && key(p[0]) === key(d))); return j < 0 ? null : { x: pts[j][0], label: `${d} ${tr.filter((t) => t.d === d).map((t) => `${t.t} ${t.q > 0 ? "+" : ""}${t.q}`).join(", ")}` };
-        }).filter(Boolean) });
+        dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
   }
   function renderDash() {
@@ -904,7 +907,7 @@
       const P = mode !== "each" && tot > 0 && !S.state.sample ? goalPath(H, cash) : null;
       if (P) {
         const py = ix.map((i, k) => { const v = P.at(x[k]); return v == null ? null : i < 0 ? lconv(v) : conv(v, i); });
-        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그때 수량 기준).`); }
+        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
       }
     }
     const A = actualRec();
