@@ -72,3 +72,26 @@ struct ReloadButton: View { // ↻ 다시 받기
 }
 
 func shortTime(_ d: Date?) -> String { Fmt.time(d) }
+
+// MARK: 금액 숨기기
+private struct KindKey: EnvironmentKey { static let defaultValue = "" }
+extension EnvironmentValues {
+    /// 이 화면을 그리는 위젯 종류 (금액 숨기기를 위젯마다 따로 할 때 쓴다)
+    var widgetKind: String { get { self[KindKey.self] } set { self[KindKey.self] = newValue } }
+}
+
+/// 숨긴 금액 자리
+let hiddenAmount = "••••"
+
+/// 큰 금액: 누르면 숨기고 한 번 더 누르면 보인다
+struct Money<L: View>: View {
+    @Environment(\.widgetKind) private var kind
+    @ViewBuilder let label: (Bool) -> L
+    var body: some View {
+        Button(intent: ToggleAmountIntent(kind: kind)) { label(Store.isHidden(kind)) }.buttonStyle(.plain)
+    }
+}
+
+extension View {
+    func kind(_ k: String) -> some View { environment(\.widgetKind, k) }
+}

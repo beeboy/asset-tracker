@@ -12,7 +12,7 @@ struct WSummary: Codable {
         var pg: Double
         var t: Term?
     }
-    struct Hit: Codable { var f: String; var h: Int }
+    struct Hit: Codable { var f: String; var h: Int; var r: Int? } // r = 1 사후 계산
     struct Week: Codable { var f: String; var p50: Double; var lo: Double; var hi: Double; var base: Double; var cash: Double; var t0: Double; var tent: Bool? }
     struct Event: Codable { var d: String; var t: String; var k: String }
 

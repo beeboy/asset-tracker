@@ -176,7 +176,25 @@
       if (n) { const { mu, sd } = hitAt(F, f), b = H.total[o], v = (z) => Math.round(b * Math.exp(mu + z * sd) + cash);
         cur = { f, d0: H.dates[o], base: Math.round(b), cash: Math.round(cash), p50: v(0), lo: v(-0.674), hi: v(0.674), act: Math.round(H.total[H.total.length - 1] + cash), done: false, tent: true }; }
     }
-    return { done: rows.filter((r) => r.done).slice(-13), cur };
+    // 주간 예측을 적기 전의 지난 주는 사후 계산으로 채운다 (직전 금요일 종가에서 최근 60일 흐름으로 예측했다면). 위젯에서 옅게 표시
+    const done = rows.filter((r) => r.done), first = rows.length ? rows.reduce((a, r) => (r.f < a ? r.f : a), rows[0].f) : null;
+    return { done: retroWeeks(H, cash, o, first).concat(done).slice(-13), cur };
+  }
+  function retroWeeks(H, cash, o, before) {
+    const fr = [], out = [];
+    for (let i = 0; i <= o; i++) if (new Date(H.dates[i] + "T00:00:00Z").getUTCDay() === 5) fr.push(i);
+    for (let j = 1; j < fr.length; j++) {
+      const ia = fr[j - 1], ib = fr[j], f = H.dates[ib];
+      if (before && f >= before) break;
+      if (ia < 60) continue;
+      let s = 0, s2 = 0, n = 0;
+      for (let i = ia - 59; i <= ia; i++) { const a = H.total[i - 1], b = H.total[i]; if (!(a > 0 && b > 0)) continue; const x = Math.log(b / a); s += x; s2 += x * x; n++; }
+      if (n < 20) continue;
+      const m = s / n, sd = Math.sqrt(Math.max(0, (s2 - n * m * m) / (n - 1))), k = ib - ia, base = H.total[ia];
+      const v = (z) => base * Math.exp(m * k + z * sd * Math.sqrt(k)) + cash, act = H.total[ib] + cash;
+      out.push({ f, hit: act >= v(-0.674) && act <= v(0.674), retro: true });
+    }
+    return out;
   }
 
   // 위젯 요약. pre: 사이트가 이미 계산해 둔 전망 { R, md } (있으면 다시 계산하지 않음)
@@ -199,7 +217,7 @@
         t: F.R.terminal && { p5: r6(F.R.terminal.p5 + cash), p50: r6(F.R.terminal.p50 + cash), p95: r6(F.R.terminal.p95 + cash) } };
     }
     const W = weeks(C, H, F, cash, now);
-    out.hits = W.done.map((r) => ({ f: r.f, h: r.hit ? 1 : 0 }));
+    out.hits = W.done.map((r) => (r.retro ? { f: r.f, h: r.hit ? 1 : 0, r: 1 } : { f: r.f, h: r.hit ? 1 : 0 }));
     if (W.cur) { const c = W.cur; out.week = { f: c.f, p50: c.p50, lo: c.lo, hi: c.hi, base: c.base, cash: c.cash, t0: Math.round(H.total[Math.max(0, H.dates.indexOf(c.d0))] || c.base), tent: !!c.tent }; }
     out.prev = Math.round((k > 0 ? H.total[k - 1] : H.total[k]) + cash); // 다이어그램 '어제보다' 기준
     const evs = [];

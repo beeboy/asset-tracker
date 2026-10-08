@@ -52,6 +52,28 @@ enum Store {
         set { defaults.set(newValue, forKey: "summarySource") }
     }
 
+    /// 금액 숨기기. 기본은 한 번 누르면 모든 위젯이 같이 (hideEach = false), 설정에서 위젯마다 따로로 바꿀 수 있다
+    static var hideEach: Bool {
+        get { defaults.bool(forKey: "hideEach") }
+        set { defaults.set(newValue, forKey: "hideEach") }
+    }
+    static var hideAll: Bool {
+        get { defaults.bool(forKey: "hideAll") }
+        set { defaults.set(newValue, forKey: "hideAll") }
+    }
+    static var hiddenKinds: [String] {
+        get { defaults.stringArray(forKey: "hiddenKinds") ?? [] }
+        set { defaults.set(newValue, forKey: "hiddenKinds") }
+    }
+    static func isHidden(_ kind: String) -> Bool { hideEach ? hiddenKinds.contains(kind) : hideAll }
+    static func toggleHidden(_ kind: String) {
+        if hideEach {
+            var k = hiddenKinds
+            if let i = k.firstIndex(of: kind) { k.remove(at: i) } else { k.append(kind) }
+            hiddenKinds = k
+        } else { hideAll.toggle() }
+    }
+
     static func wipe() {
         try? FileManager.default.removeItem(at: dir)
         for k in ["lastCheck", "summarySource", "etags"] { defaults.removeObject(forKey: k) }

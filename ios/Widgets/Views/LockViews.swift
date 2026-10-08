@@ -5,10 +5,11 @@ import SwiftUI
 
 struct LockAssetView: View { // 1 자산 추이
     let s: Snapshot
+    @Environment(\.widgetKind) var kind
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("총자산 · 목표 \(Int((s.progress * 100).rounded()))%").font(.system(size: 11, weight: .bold)).opacity(0.75)
-            Text(Fmt.eok(s.total)).font(.system(size: 20, weight: .heavy, design: .rounded)).minimumScaleFactor(0.7)
+            Text(Store.isHidden(kind) ? hiddenAmount : Fmt.eok(s.total)).font(.system(size: 20, weight: .heavy, design: .rounded)).minimumScaleFactor(0.7)
             HStack(spacing: 6) {
                 Text("\(Fmt.arrow(s.dayChg))\(Fmt.pct(s.dayChg))").font(.system(size: 12, weight: .bold))
                 Spark(values: Array(s.spark.suffix(21)), color: Color.primary, width: 1.6).frame(width: 60, height: 14)
@@ -33,11 +34,12 @@ struct LockGoalView: View { // 2 목표
 
 struct LockFutureView: View { // 3 미래: 3년 뒤 막대 하나
     let s: Snapshot
+    @Environment(\.widgetKind) var kind
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("3년 뒤 · 목표 확률 \(s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-")").font(.system(size: 11, weight: .bold)).opacity(0.75)
             if let f = s.fan, let k = f.p50.indices.last {
-                (Text(Fmt.eok(f.p50[k])).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text("  \(Fmt.eok(f.p25[k]))~\(Fmt.eok(f.p75[k]))").font(.system(size: 10, weight: .semibold)))
+                (Text(Store.isHidden(kind) ? hiddenAmount : Fmt.eok(f.p50[k])).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text(Store.isHidden(kind) ? "" : "  \(Fmt.eok(f.p25[k]))~\(Fmt.eok(f.p75[k]))").font(.system(size: 10, weight: .semibold)))
                     .lineLimit(1).minimumScaleFactor(0.7)
                 GeometryReader { g in
                     let lo = log(max(1, min(f.p5[k], s.goal) * 0.8)), hi = log(max(f.p95[k], s.goal) * 1.1), w = g.size.width
@@ -59,11 +61,12 @@ struct LockFutureView: View { // 3 미래: 3년 뒤 막대 하나
 
 struct LockTargetView: View { // 4 적중 과녁
     let s: Snapshot
+    @Environment(\.widgetKind) var kind
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("이번 주 과녁 · 적중 \(s.hits.filter { $0 }.count)/\(s.hits.count)").font(.system(size: 11, weight: .bold)).opacity(0.75)
+            Text("이번 주 과녁 · \(s.hitText)").font(.system(size: 11, weight: .bold)).opacity(0.75)
             if let w = s.week {
-                (Text(Fmt.eok(w.act)).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text("  예측 \(Fmt.eok(w.p50))").font(.system(size: 11, weight: .semibold))).lineLimit(1)
+                (Text(Store.isHidden(kind) ? hiddenAmount : Fmt.eok(w.act)).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text(Store.isHidden(kind) ? "" : "  예측 \(Fmt.eok(w.p50))").font(.system(size: 11, weight: .semibold))).lineLimit(1)
                 GeometryReader { g in
                     let x = g.size.width * CGFloat(min(1, max(0, (w.act - w.lo) / max(1, w.hi - w.lo))))
                     ZStack(alignment: .leading) {
