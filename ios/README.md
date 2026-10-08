@@ -24,7 +24,18 @@
 3. 아이폰을 연결하고 실행(▶). 처음이면 아이폰 *설정 → 개인정보 보호 및 보안 → 개발자 모드* 를 켭니다.
 4. 앱에서 동기화 비밀번호를 넣고, 홈 화면을 길게 눌러 **+ → naeilo** 에서 위젯을 고릅니다.
 
-TestFlight: Xcode *Product → Archive → Distribute App → TestFlight* (빌드는 90일마다 다시 올림).
+## TestFlight 로 설치
+
+유료 Apple Developer Program(연 $99) 계정이 있어야 합니다. 무료 개인 팀으로는 올릴 수 없습니다.
+
+1. [App Store Connect](https://appstoreconnect.apple.com) → 앱 → **+ 새로운 앱**: 플랫폼 iOS, 번들 ID `com.naeilo.widget`, 이름은 겹치지 않게(예: "naeilo 위젯"), SKU 아무 글자.
+   - 번들 ID가 목록에 없으면 Xcode 에서 Team 을 고르고 한 번 실행(▶)하면 자동으로 등록됩니다.
+2. `xcodegen` 후 Xcode 에서 실행 대상을 **Any iOS Device (arm64)** 로 바꾸고 *Product → Archive*.
+3. Organizer 창에서 **Distribute App → TestFlight & App Store → Distribute**. 빌드 번호는 Xcode 가 자동으로 올립니다.
+4. 몇 분~수십 분 뒤 App Store Connect → TestFlight 탭에 빌드가 뜨면 **내부 테스트** 그룹을 만들고 자기 Apple ID 를 넣습니다.
+5. 아이폰에 TestFlight 앱을 깔고, 메일로 온 초대에서 설치합니다.
+
+수출 규정 질문은 `ITSAppUsesNonExemptEncryption = NO` 로 건너뛰고, 개인정보 매니페스트(`PrivacyInfo.xcprivacy`)는 앱·위젯에 들어 있습니다. TestFlight 빌드는 90일 뒤 만료되니 그 전에 다시 올립니다.
 
 ## 사이트·중계 쪽
 

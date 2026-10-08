@@ -35,6 +35,8 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true
+        # TestFlight 업로드 때 수출 규정(암호화) 질문을 건너뛴다: 표준 HTTPS·키체인만 씀
+        ITSAppUsesNonExemptEncryption: false
         UIBackgroundModes: [fetch, processing]
         CFBundleURLTypes:
           - CFBundleURLName: com.naeilo.widget
