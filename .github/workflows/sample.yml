@@ -1,9 +1,9 @@
 name: sample
-# 샘플(TSLA 1,000주) 계산값을 하루 한 번(한국 시간 9시) 미리 만들어 data/sample_calc.json 에 저장한다.
+# 샘플(TSLA 1,000주) 계산값을 하루 한 번(한국 시간 9시 장 시작 뒤) 미리 만들어 data/sample_calc.json 에 저장한다.
 # 첫 방문 화면은 이 값을 그대로 띄우고 다시 계산하지 않는다 (다음 날 9시까지 같은 값).
 on:
   schedule:
-    - cron: "0 0 * * *"   # UTC 0시 = 한국 9시
+    - cron: "10 0 * * *"  # UTC 0시 10분 = 한국 9시 10분 (국내 장 시작 뒤)
   workflow_dispatch:
 permissions:
   contents: write
