@@ -19,6 +19,44 @@ struct Spark: View {
     }
 }
 
+/// 최근 며칠: 속 빈 동그라미 점을 잇는 선, 최고점(위에 숫자)·최저점(아래에 숫자) 색 표시 (자산 추이 작은 위젯)
+struct DotSpark: View {
+    let values: [Double]
+    var color: Color
+    var tint: Tint
+    var labels = true
+    var dot: CGFloat = 3.2
+    var body: some View {
+        GeometryReader { g in
+            let v = values, lo = v.min() ?? 0, hi = v.max() ?? 1, rg = max(hi - lo, 1)
+            let iHi = v.firstIndex(of: hi) ?? 0, iLo = v.lastIndex(of: lo) ?? 0
+            let padX = dot + 1, padY: CGFloat = labels ? 9 : dot + 1 // 숫자는 칸 밖으로 조금 나가도 된다 (잘리지 않음)
+            let w = g.size.width - padX * 2, h = g.size.height - padY * 2
+            let pts = v.enumerated().map { i, x in CGPoint(x: padX + w * CGFloat(i) / CGFloat(max(1, v.count - 1)), y: padY + h * (1 - CGFloat((x - lo) / rg))) }
+            // 선은 동그라미 테두리에서 끊어 점 속이 비어 보이게 (배경색과 상관없이)
+            Path { p in
+                for i in pts.indices.dropLast() {
+                    let a = pts[i], b = pts[i + 1], dx = b.x - a.x, dy = b.y - a.y, len = max(sqrt(dx * dx + dy * dy), 0.001)
+                    let cut = min(dot, len / 2), ux = dx / len * cut, uy = dy / len * cut
+                    p.move(to: .init(x: a.x + ux, y: a.y + uy)); p.addLine(to: .init(x: b.x - ux, y: b.y - uy))
+                }
+            }
+            .stroke(color, style: StrokeStyle(lineWidth: 1.8, lineCap: .butt))
+            ForEach(pts.indices, id: \.self) { i in
+                let c = v.count > 1 && hi > lo ? (i == iHi ? tint.c(Palette.up) : i == iLo ? tint.c(Palette.dn) : color) : color
+                Circle().stroke(c, lineWidth: 1.8).frame(width: dot * 2, height: dot * 2).position(pts[i])
+            }
+            if labels, v.count > 1, hi > lo {
+                let fx = { (x: CGFloat) in min(max(x, 14), g.size.width - 14) }
+                Text(String(format: "%.2f", hi / 1e8)).font(.system(size: 9, weight: .bold)).foregroundStyle(tint.c(Palette.up))
+                    .fixedSize().position(x: fx(pts[iHi].x), y: pts[iHi].y - 9)
+                Text(String(format: "%.2f", lo / 1e8)).font(.system(size: 9, weight: .bold)).foregroundStyle(tint.c(Palette.dn))
+                    .fixedSize().position(x: fx(pts[iLo].x), y: pts[iLo].y + 9)
+            }
+        }
+    }
+}
+
 /// 부채꼴 전망: 지난 값(흰 선) → 오늘 → 전망 띠(5~95%, 25~75%) + 중앙선 + 목표선
 struct FanChart: View {
     let hist: [Double]
