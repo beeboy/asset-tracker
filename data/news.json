@@ -1,64 +1,64 @@
 {
- "updated": "2026-10-07T23:34:37+00:00",
+ "updated": "2026-10-08T00:44:50+00:00",
  "realtime": {
-  "key": "8bccdd24be5b968a",
-  "updated": "2026-10-07T23:34:44+00:00",
+  "key": "c043f40807506caf",
+  "updated": "2026-10-08T00:44:58+00:00",
   "media": [
    {
-    "title": "미 국채금리 상승에 뉴욕증시 일제히 하락 마감",
+    "title": "미 국채 금리 급등에 뉴욕증시 하락 마감",
     "orig": "Wall Street ends lower, off record highs, as Treasury yields climb",
-    "summary": "미국 국채금리가 급등하면서 사상 최고치 행진을 이어가던 뉴욕증시 주요 지수가 일제히 하락 마감했습니다.",
+    "summary": "미국 국채 금리가 오름세를 보이면서 뉴욕증시 3대 지수가 사상 최고치 경신을 멈추고 일제히 하락 마감했습니다.",
     "broker": "",
     "source": "Reuters",
     "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxOYlBxMHUzb2ZDaHpMY3JBZUl2Rk9XSE94bjQ2aFVndHhYeU4zS1Rwb2I1SlFJWjVpaE9sS0V4c2ZiQ2JsMzd0R0lydzlFejhJVkNYbU5ZTGVjeW9tWUJtTmUzX2VwY0N1SnpLVmdvQWRvM20xS25hRmhXRDdHVUppRk9hS2JhVExxdVUtX0hfQlNqWnd0OUhHWEpaa2w1Z3hXNVRkaw?oc=5",
-    "time": "2026-10-07T21:38:52+00:00"
+    "time": "2026-10-07T23:14:17+00:00"
    },
    {
-    "title": "연준 의사록 \"일부 위원들, 시장 스트레스 대비 필요성 언급\"",
-    "orig": "Fed minutes show some officials want to prepare for market stress",
-    "summary": "공개된 연준 회의록에서 일부 당국자들은 잠재적인 금융시장 충격과 변동성에 선제적으로 대비해야 한다고 강조했습니다.",
+    "title": "중동 긴장 고조에 유가 상승…공급 차질 우려 확산",
+    "orig": "Oil Rises Amid Rising Mideast Tensions",
+    "summary": "중동 지역의 지정학적 불안이 다시 커지면서 원유 공급 차질에 대한 우려로 국제 유가가 상승세를 나타냈습니다.",
     "broker": "",
-    "source": "Reuters",
-    "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxQOWFKZEFfR182VlUzeWdFaHJOYlVxQ3FxYVVnS3Z4VXdnUlRZaGtIZkxocjFlejVyY2lKbHA5UEw0bUFUbEhRaExnTUMzZWlPWmFMQkdlVU94ejB3bjBGdGFfYXlwX0c5M3RMRDJ2NGNmU0pNSWo5X200MTZGdzJuREtOekJpRGEtZHV1ODZUTEZ5empUOFU2ajFxdF9TaDNQMndvTnFn?oc=5",
-    "time": "2026-10-07T21:34:27+00:00"
+    "source": "WSJ",
+    "link": "https://www.wsj.com/finance/commodities-futures/oil-rises-amid-rising-mideast-tensions-3cd98941?mod=rss_markets_main",
+    "time": "2026-10-08T00:36:00+00:00"
    },
    {
-    "title": "AI 쏠림 심화…기술주와 비인기 종목 간 증시 격차 확대",
-    "orig": "The stock market gap between AI and everything else is growing",
-    "summary": "인공지능 관련 종목에만 투자금이 집중되면서 나머지 증시 섹터와의 수익률 격차가 갈수록 벌어지고 있습니다.",
+    "title": "트럼프 행정부, 웰스파고 상대 인종 기반 대출 혐의 조사 착수",
+    "orig": "Trump Administration Investigates Wells Fargo for Race-Based Lending",
+    "summary": "미국 연방 주택 당국이 웰스파고의 흑인 주택 소유 지원 프로그램을 역차별로 보고 조사에 착수했습니다.",
     "broker": "",
-    "source": "Marketplace.org",
-    "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxOZlo2QnJobkpnNkowejZOV3V0VnNEZFhQcWw5WUVzaDJNbGp2aEVmbENKQ3JZMFlFYjJGMXBYR3poM3Zzei1vVzRhNDR4cWFjcTJyNzktUFZXc2dSa1VzZ2NpMmdXNFVFcmdxWXZnc1I0eHREVDdiWUJHdzZUSUt0cmZ5c0J0dTRPUWhXZGlVdDdRZm1SYmZvVzlVaw?oc=5",
-    "time": "2026-10-07T23:01:25+00:00"
+    "source": "New York Times",
+    "link": "https://www.nytimes.com/2026/10/07/business/trump-hud-wells-fargo.html",
+    "time": "2026-10-07T22:10:46+00:00"
    }
   ],
   "broker": [
    {
-    "title": "UBS, 젠텍스 목표주가 24달러로 하향",
-    "orig": "UBS Group Cuts Gentex (NASDAQ:GNTX) Price Target to $24.00",
-    "summary": "UBS가 자동차 부품업체 젠텍스의 목표주가를 기존보다 낮은 24달러로 하향 조정했습니다.",
-    "broker": "UBS",
-    "source": "MarketBeat",
-    "link": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQOFlvV1VoeVVQS0xHNFhabEFmZFVqZC01MmE1UVRwMFZwbmdjTHIzdmlQM2RDZDFSM2dhQkQ5NDZiZnM1NHdpYXRpWGxkZFEzN1FlUEo2N2lydHVHS09QN2g3YnZTTTZPOG9sX1dXSE9MV3c5aXJRWlhFNmZpVndFNTRPZ1J1amlGV0tFOXAzUk95dFdPSmVhVnBnS01YVU5zNDZkdkRUWUdNWVV4QXdxS3B6djI3OGs?oc=5",
-    "time": "2026-10-07T21:48:03+00:00"
+    "title": "골드만삭스, 스페이스X 목표가 상향 분석 보고서 발표",
+    "orig": "When I saw Goldman's price target on SpaceX I said, there's some rigor to this analysis: Jim Cramer",
+    "summary": "골드만삭스가 스페이스X에 대해 엄밀한 분석을 바탕으로 한 긍정적인 목표주가를 제시해 시장의 주목을 받았습니다.",
+    "broker": "골드만삭스",
+    "source": "CNBC",
+    "link": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxQWHcxblFISHRVTlItTDVqdmFxUEV1dmwyTlROV1duQTJ6amVfdmZNc3FwS3pFR3IxczRibGpCS09WWFRPZHlhZHFXMnJQdlZJMHM5ZTR4SmNyemY1NERIZzZ6dXh5ZjlUZFdDZHYzVzdqMktWUjNIaEYzc3lCQjNwMGdxdkM5TUZ3YWNBaEwwRWJJX05VaFhTV2RnS1IxamJobzlHXzI5VkZFVzE5NFlodU92NENUdS1xNGF6ZzdHN3ZoOXNFTE95RlRvbW9Ebm45ZTM5Qg?oc=5",
+    "time": "2026-10-07T23:57:45+00:00"
    },
    {
-    "title": "RBC, 바닥재 수요 부진 우려로 모호크 인더스트리스 투자의견 하향",
-    "orig": "Mohawk Industries (MHK) Faces An RBC Downgrade, Is The Stock Still Cheap?",
-    "summary": "RBC는 업황 둔화와 수요 부진을 이유로 건자재 제조업체 모호크 인더스트리스의 투자 의견을 하향 조정했습니다.",
-    "broker": "RBC캐피털",
-    "source": "Simply Wall Street",
-    "link": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxOWDVOdm44cVE1X2hPR2Z0clFwLWpWb21YczJVUmN4NTdKODFMaUdmRmdnWm4zbUZwWDQ2Q01pRXBBalNib2lEOXVDeExON1RKMlczTUJlaTVyTEp5QUdiMDFVZ1p2OWtaejRtSE9RYjlhLXgwakRzYmFfa2lxWkdwMmlsNk5iU25tMm96alMyVXk1a2pOX1FqRmdmbmFsa1oxRDhoTUxYYnhoQWpYNlpGYl9tM1BSR3hiNTJ5ZE1wX1piMkV6ZWE1ZW1wOTRwOWxJVUI1ZDdVT29LMFNaQXpz0gHfAUFVX3lxTE5YNU52bjhxUTVfaE9HZnRyUXAtalZvbVhzMlVSY3g1N0o4MUxpR2ZGZ2dabjNtRnBYNDZDTWlFcEFqU2JvaUQ5dUN4TE43VEoyVzNNQmVpNXJMSnlBR2IwMVVnWnY5a1p6NG1IT1FiOWEteDBqRHNiYV9raXFaR3AyaWw2TmJTbm0yb3pqUzJVeTVrak5fUWpGZ2ZuYWxrWjFEOGhNTFhieGhBalg2WkZiX20zUFJHeGI1MnlkTXBfWmIyRXplYTVlbXA5NHA5bElVQjVkN1VPb0swU1pBenM?oc=5",
-    "time": "2026-10-07T21:45:09+00:00"
-   },
-   {
-    "title": "텍스트론 12개월 목표주가 100.64달러로 하향…상승 여력은 33%",
+    "title": "텍스트론 12개월 목표주가 100.64달러로 하향 조정",
     "orig": "Textron Inc. Stock 12‑Month Price Target Cut to $100.64, Implies 33% Upside",
-    "summary": "항공우주·방산 기업 텍스트론의 평균 목표주가가 100.64달러로 하향됐으나 여전히 33%의 상승 여력이 제시됐습니다.",
-    "broker": "월가 컨센서스",
+    "summary": "월가 애널리스트 컨센서스가 텍스트론의 12개월 목표가를 100.64달러로 낮췄으나 현 주가 대비 33%의 상승 여력을 전망했습니다.",
+    "broker": "트레이딩뷰 종합",
     "source": "TradingView",
     "link": "https://news.google.com/rss/articles/CBMizgFBVV95cUxQWWdzLUVrQmtCUVBZaHRPMnBvRG1qZmRic0w4bS14bTFmcVp2WEo4NF9Ub0thdnhVYmY0b1k1cDByWl9sWk5xZldtQVBhM2c4Mk1QcWNtVzhMelliYXd6TmZ0SXI2VmxVSF9VZHJmVDFxQWR1NFhacTZEV3FtNF9LeU85TE4tWGN5ZVlZeWt5UWFTNjdqOFkyLTB0MVlITU9uM2FzRFN4Tmdab3pEUDAzUTJaRkRrVHc5a2U5eUxZNXZBeXg1WEFITHlRUHdCZw?oc=5",
     "time": "2026-10-07T22:20:12+00:00"
+   },
+   {
+    "title": "레이도스 홀딩스 목표주가 153.27달러로 하향",
+    "orig": "Leidos Holdings, Inc. Stock 12‑Month Price Target Cut to $153.27, Implies 31% Upside",
+    "summary": "방산 IT 기업 레이도스 홀딩스의 12개월 목표가가 153.27달러로 하향 조정되었으며 약 31%의 상승 잠재력이 제시되었습니다.",
+    "broker": "트레이딩뷰 종합",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMi2AFBVV95cUxPVGpaQl9xSkF1S2RQWnpISUZNRV9zTEl0Vm5MdUZYLUt5eFkyUndFU0tFNHhVaVMtRFVGMHA2Q0RrdVNPcm1NZ0IwNEZNbmxIcjBHVTJvVnc4ZFY5TFpJZUlzMmZRZkpHSWs0U0lTS1JIVWs3NWp3S1ZCSWYyRFh3ZDhzUkhqZ25QWE5hUUxRdzJ3VUNORHk2Uk9BMmZJS3FqU0pCdUpQb01OOGlLVXFMb1pHUFJGa3oyYjYybVBNbWMtYWx2R2c0d28wbFF5THloQkpkeGFwTHM?oc=5",
+    "time": "2026-10-07T22:20:10+00:00"
    }
   ]
  },
@@ -126,7 +126,7 @@
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-07T23:34:37+00:00",
+  "updated": "2026-10-08T00:44:50+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -139,6 +139,45 @@
   },
   "items": [
    {
+    "id": "bezossaysblueoriginlikelytopursueipoincomingyears",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "growth",
+    "title": "블루오리진, 향후 몇 년 내 IPO 추진 가능성 시사",
+    "orig": "Bezos says Blue Origin likely to pursue IPO in coming years",
+    "summary": "제프 베이조스가 우주 탐사 기업 블루오리진의 향후 상장 가능성을 언급했다.",
+    "source": "Reuters",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/bezos-says-blue-origin-likely-002530197.html",
+    "time": "2026-10-08T00:28:19+00:00",
+    "added": "2026-10-08T00:44:50+00:00"
+   },
+   {
+    "id": "jensenhuangsaidnvidianowhasalotgreatervisibilityintodemandle",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "엔비디아 젠슨 황, 수요 가시성 확보로 최초 1년 선행 전망 밝혀",
+    "orig": "Jensen Huang Said Nvidia Now Has \"a Lot Greater Visibility\" Into Demand, Letting It Forecast a Full Year Ahead for the First Time Ever. Does That Confidence Justify Nvidia's Premium Valuation?",
+    "summary": "개선된 수요 예측력과 자신감이 엔비디아의 높은 밸류에이션을 뒷받침하는지 주목된다.",
+    "source": "Motley Fool",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/jensen-huang-said-nvidia-now-002000270.html",
+    "time": "2026-10-08T00:20:00+00:00",
+    "added": "2026-10-08T00:44:50+00:00"
+   },
+   {
+    "id": "broadcomoracleandspacextapprivatecreditforaihardwarereport",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "브로드컴·오라클·스페이스X, AI 하드웨어 위해 사모 대출 조달",
+    "orig": "Broadcom, Oracle And SpaceX Tap Private Credit For AI Hardware: Report",
+    "summary": "주 주요 기술 기업들과 스페이스X가 AI 인프라 확장을 위해 민간 신용 시장에서 자금을 조달하고 있다.",
+    "source": "Stocktwits",
+    "link": "https://finance.yahoo.com/technology/ai/articles/broadcom-oracle-spacex-tap-private-233758270.html",
+    "time": "2026-10-07T23:37:58+00:00",
+    "added": "2026-10-08T00:44:50+00:00"
+   },
+   {
     "id": "candelldellturnitsnewaidataplatformintoadurablecompetitivead",
     "ticker": "NVDA",
     "scope": "held",
@@ -150,6 +189,19 @@
     "link": "https://finance.yahoo.com/technology/ai/articles/dell-dell-turn-ai-data-231936828.html",
     "time": "2026-10-07T23:19:36+00:00",
     "added": "2026-10-07T23:34:37+00:00"
+   },
+   {
+    "id": "goldmansachsrevampsspacexstockestimatesbeforecrucialearnings",
+    "ticker": "SPCX",
+    "scope": "industry",
+    "cat": "fund",
+    "title": "골드만삭스, 주요 실적 발표 앞두고 스페이스X 추정치 재산정",
+    "orig": "Goldman Sachs revamps SpaceX stock estimates before crucial earnings test",
+    "summary": "실적 발표를 앞두고 골드만삭스가 스페이스X에 대한 기업 가치 및 실적 전망을 새롭게 조정했다.",
+    "source": "TheStreet",
+    "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPbVl3ekp5NmpxZTE2dUdwNF94Zm1RT3owNFVSVi1YQnI4OF9wdFhjXzdxcl9YckRDb1VKYTc0dEktMTlxWm1aNWY2MHNYTlcwUUdJMEYzcXo5S2FvWFVWckpnYTVTNU1ETTl4U1hwVXlhaksyTHp2ejM3RnhuMUdfRm9ZYmtad3p2M2QzRV9sekQ3c2JSOFZyMjFLUQ?oc=5",
+    "time": "2026-10-07T23:03:00+00:00",
+    "added": "2026-10-08T00:44:50+00:00"
    },
    {
     "id": "spacexspcxdeepenslaunchandmobileambitionsbutwhatreallyanchor",
@@ -2081,42 +2133,42 @@
     "sum": "테슬라는 **자율주행(FSD)** 규제 완화와 **사이버캡·세미** 상용화 확대로 중장기 성장 동력을 확보하고 있습니다.\n대형 은행들은 2027년 목표주가를 재설정하며 **45%의 높은 EPS 성장률**과 밸류에이션 간의 균형을 주목하고 있습니다.\n위험: **완전자율주행(FSD) 승인 지연** 및 고밸류에이션에 따른 주가 변동성에 유의해야 합니다.",
     "hash": "6bfd3dd21a8a238c",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-07T23:34:37+00:00"
+    "seen": "2026-10-08T00:44:50+00:00"
    },
    "AAPL": {
     "sum": "애플은 AI가 탑재된 **시리 개편**과 아이폰의 견조한 수요를 바탕으로 서비스 및 하드웨어 성장을 이어가고 있습니다.\nLG전자와의 협력을 통한 **스마트홈 기기 시장 진출**은 향후 모바일 생태계 확장의 발판이 될 것입니다.\n위험: **특허 침해 소송 배상금** 및 스마트홈 시장에서의 치열한 경쟁이 위험 요인입니다.",
     "hash": "b1181aec29f5ae5f",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-07T23:34:37+00:00"
+    "seen": "2026-10-08T00:44:50+00:00"
    },
    "SMH": {
     "sum": "반도체 업종은 **실물 자산 수요 증가**와 공급 제약 속에서 AI 인프라 확충의 직접적인 수혜를 받고 있습니다.\n향후 1~3년 동안 첨단 반도체 수요가 견조하게 유지되며 관련 생태계 전반의 성장이 기대됩니다.\n위험: **원자재 공급 제약**과 전방 산업의 수요 변동성이 주요 위험 요인입니다.",
     "hash": "7bca54342efc363a",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-07T23:34:37+00:00"
+    "seen": "2026-10-08T00:44:50+00:00"
    },
    "GLD": {
     "sum": "금은 글로벌 부채 증가와 지속되는 인플레이션 속에서 **안전자산 및 헤지 수단**으로서 구조적 강세장이 전망됩니다.\n보험 성격의 프리미엄이 반영되며 중장기적으로 포트폴리오 다변화 자산으로서의 가치가 유지되고 있습니다.\n위험: **현재 반영된 높은 프리미엄**으로 인해 단기 가격 조정 가능성이 존재합니다.",
     "hash": "ab2917555c02ab03",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-07T23:34:37+00:00"
+    "seen": "2026-10-08T00:44:50+00:00"
    },
    "NVDA": {
-    "sum": "**엔비디아**는 **마이크로소프트**와의 협력을 통한 신제품 출시와 **스페이스X**의 **400억 달러** 규모 칩 구매 등 강력한 AI 인프라 수요에 힘입어 **2030년**까지 지속적인 성장 잠재력을 보이고 있습니다.\n압도적인 이익 창출력에도 불구하고 경쟁사의 추격과 높은 밸류에이션 부담이 향후 주가 변동성을 키울 수 있는 **위험** 요소입니다.",
-    "hash": "5ce8a092fb2ddba5",
-    "updated": "2026-10-07T23:34:37+00:00",
-    "seen": "2026-10-07T23:34:37+00:00"
+    "sum": "**엔비디아**는 개선된 수요 예측력과 **1년 선행 전망**을 통해 높은 밸류에이션을 뒷받침하며 **애플의 두 배**에 달하는 이익을 기록 중입니다.\n또한 마이크로소프트와 **스페이스X** 등의 대규모 **AI 칩 구매 및 인프라 확장**이 향후 수년간 장기 성장을 견인할 것으로 기대됩니다.\n위험: **AI 전방 수요** 둔화나 빅테크의 설비 투자 축소 시 실적과 주가가 큰 **변동성**에 노출될 수 있습니다.",
+    "hash": "9fb44bbc40d2a77a",
+    "updated": "2026-10-08T00:44:50+00:00",
+    "seen": "2026-10-08T00:44:50+00:00"
    },
    "SPCX": {
-    "sum": "**스페이스X**는 **400억 달러** 규모의 자금 조달을 통한 **엔비디아** AI 칩 확보와 AI 연산 사업 진출 가능성으로 **2030년**까지 장기적인 기업 가치 상승 기대를 받고 있습니다.\n대규모 부채 조달과 인프라 투중에 따른 재무 부담 및 규제 환경 변화가 주가에 미칠 영향이 주요 **위험** 요인입니다.",
-    "hash": "113e26b3a94cf637",
-    "updated": "2026-10-07T23:34:37+00:00",
-    "seen": "2026-10-07T23:34:37+00:00"
+    "sum": "**스페이스X**는 **400억 달러** 규모의 자금 조달을 통해 **엔비디아 AI 칩**을 대거 확보하고 AI 연산 사업으로 영역을 넓히며 장기 가치를 키워가고 있습니다.\n스타십 연료 수요 급증에 대응한 인프라 확충과 스타링크의 규제 승인은 향후 **2030년**까지의 지속 가능한 성장 동력이 될 것입니다.\n위험: 대규모 부채 조달에 따른 **재무 부담**과 우주항공·AI 인프라 투자 성과가 지연될 경우 주가에 부담이 될 수 있습니다.",
+    "hash": "66d97f4e1e83b35d",
+    "updated": "2026-10-08T00:44:50+00:00",
+    "seen": "2026-10-08T00:44:50+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-07T23:34:37+00:00"
+  "updated": "2026-10-08T00:44:50+00:00"
  },
  "ai": "ok"
 }
