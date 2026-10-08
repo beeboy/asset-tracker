@@ -1,15 +1,35 @@
 :root {
   --bg: #f6f7f9; --card: #ffffff; --fg: #1d2330; --muted: #6b7385; --line: #e3e6ec;
-  --accent: #2f6fed; --accent2: #d9480f; --good: #1f9d55; --bad: #d63939; --warn: #e8a317; --up: #e5383b; --dn: #2f6fed;
+  --accent: #2f6fed; --accent2: #d9480f; --good: #1f9d55; --bad: #d63939; --warn: #e8a317; --up: #e5383b; --dn: #2f6fed; --goal: #8e44ad;
   --band: #2f6fed; --c1: #2f6fed; --c2: #d9480f; --c3: #1f9d55; --c4: #8e44ad; --c5: #e8a317; --c6: #16a2b8; --c7: #6b7385;
+  color-scheme: light;
+}
+/* 다크: 설정에서 고른 값(data-mode)이 먼저, 고르지 않았으면(자동) 브라우저 설정을 따른다 */
+:root[data-mode="dark"] {
+  --bg: #12151b; --card: #1b1f27; --fg: #e6e9ef; --muted: #98a1b3; --line: #2c323d;
+  --accent: #6c9cff; --accent2: #ff8a50; --good: #4cc38a; --bad: #ff6b6b; --warn: #f2c14e; --up: #ff6b6b; --dn: #6c9cff; --goal: #c08cf0;
+  --band: #6c9cff; --c1: #6c9cff; --c2: #ff8a50; --c3: #4cc38a; --c4: #c08cf0; --c5: #f2c14e; --c6: #4fd1e0; --c7: #98a1b3;
+  color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-mode]) {
     --bg: #12151b; --card: #1b1f27; --fg: #e6e9ef; --muted: #98a1b3; --line: #2c323d;
-    --accent: #6c9cff; --accent2: #ff8a50; --good: #4cc38a; --bad: #ff6b6b; --warn: #f2c14e; --up: #ff6b6b; --dn: #6c9cff;
+    --accent: #6c9cff; --accent2: #ff8a50; --good: #4cc38a; --bad: #ff6b6b; --warn: #f2c14e; --up: #ff6b6b; --dn: #6c9cff; --goal: #c08cf0;
     --band: #6c9cff; --c1: #6c9cff; --c2: #ff8a50; --c3: #4cc38a; --c4: #c08cf0; --c5: #f2c14e; --c6: #4fd1e0; --c7: #98a1b3;
+    color-scheme: dark;
   }
 }
+/* 색 조합 (설정 > 화면). 기본 외에 고르면 바탕·강조색을 바꾼다. 상승 빨강·하락 파랑은 그대로 */
+:root[data-pal="ocean"] { --bg: #f1f6f8; --line: #dbe6ea; --accent: #0e7490; --band: #0e7490; --c1: #0e7490; --accent2: #e76f51; --c2: #e76f51; --goal: #7c3aed; }
+:root[data-mode="dark"][data-pal="ocean"] { --bg: #0b1519; --card: #12212a; --line: #22353f; --accent: #38bdf8; --band: #38bdf8; --c1: #38bdf8; --accent2: #fb923c; --c2: #fb923c; --goal: #c4b5fd; }
+:root[data-pal="forest"] { --bg: #f3f6f1; --line: #dde5d8; --accent: #2f855a; --band: #2f855a; --c1: #2f855a; --c3: #b7791f; --accent2: #c05621; --c2: #c05621; --goal: #6b46c1; }
+:root[data-mode="dark"][data-pal="forest"] { --bg: #0f1510; --card: #172019; --line: #263328; --accent: #68d391; --band: #68d391; --c1: #68d391; --c3: #f6c453; --accent2: #f6ad55; --c2: #f6ad55; --goal: #b794f4; }
+:root[data-pal="sunset"] { --bg: #fbf6f2; --card: #fffdfb; --line: #eee2d8; --accent: #c2410c; --band: #c2410c; --c1: #c2410c; --accent2: #0f766e; --c2: #0f766e; --goal: #7c3aed; }
+:root[data-mode="dark"][data-pal="sunset"] { --bg: #18120f; --card: #221a16; --line: #3a2c25; --accent: #fb923c; --band: #fb923c; --c1: #fb923c; --accent2: #2dd4bf; --c2: #2dd4bf; --goal: #c4b5fd; }
+:root[data-pal="mono"] { --bg: #f5f5f5; --line: #e2e2e2; --accent: #374151; --band: #6b7280; --c1: #111827; --accent2: #b45309; --c2: #b45309; --goal: #6d28d9; }
+:root[data-mode="dark"][data-pal="mono"] { --bg: #0f0f10; --card: #1a1a1c; --line: #2e2e31; --accent: #d1d5db; --band: #9ca3af; --c1: #f3f4f6; --accent2: #fbbf24; --c2: #fbbf24; --goal: #c4b5fd; }
+:root[data-pal="paper"] { --bg: #f6f1e7; --card: #fffcf5; --fg: #2b2620; --muted: #7a6f60; --line: #e7dccb; --accent: #9a3412; --band: #9a3412; --c1: #9a3412; --accent2: #1d4ed8; --c2: #1d4ed8; --goal: #7e22ce; }
+:root[data-mode="dark"][data-pal="paper"] { --bg: #1a1714; --card: #24201b; --fg: #ede6da; --muted: #a89f90; --line: #3a332a; --accent: #f59e0b; --band: #f59e0b; --c1: #f59e0b; --accent2: #60a5fa; --c2: #60a5fa; --goal: #d8b4fe; }
 * { box-sizing: border-box; }
 /* iOS 27 상단 강제 블러 회피: 맨 위에 헤더 색의 고정 바. 블러가 바 아래로 1~2pt 번져서 안전 영역보다 2px 더 내린다 */
 :root { --topbar: max(8px, calc(env(safe-area-inset-top) + 2px)); }
@@ -339,3 +359,9 @@ table.hit td.retro { opacity: .5; } table.hit th.now { color: var(--accent); }
 .card.folded > :not(:first-child) { display: none !important; }
 .card.folded .seg { display: none; }
 .foldbtn { padding: 2px 8px; line-height: 1.2; transition: transform .15s; } .card.folded .foldbtn { transform: rotate(-90deg); }
+
+/* 설정 > 화면: 다크 모드·색 조합 */
+.palrow { display: flex; flex-wrap: wrap; gap: 8px; }
+.palbtn { display: flex; align-items: center; gap: 6px; padding: 5px 10px; }
+.palbtn.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.palbtn i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line); }

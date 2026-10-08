@@ -86,13 +86,13 @@
     });
     (opt.hlines || []).forEach((h) => {
       const yy = Y(h.y); if (yy < m.t || yy > H - m.b) return;
-      el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: h.color || "var(--accent2)", "stroke-dasharray": "5 4", "stroke-width": 1.2 }, svg);
-      if (h.label) el("text", { x: W - m.r - 4, y: yy - 4, "text-anchor": "end", class: "hlabel", fill: h.color || "var(--accent2)" }, svg).textContent = h.label;
+      el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: h.color || "var(--goal)", "stroke-dasharray": "5 4", "stroke-width": 1.2 }, svg);
+      if (h.label) el("text", { x: W - m.r - 4, y: yy - 4, "text-anchor": "end", class: "hlabel", fill: h.color || "var(--goal)" }, svg).textContent = h.label;
     });
     (opt.vlines || []).forEach((v) => {
       const xx = X(toT(v.x)); if (xx < m.l || xx > W - m.r) return;
       el("line", { x1: xx, x2: xx, y1: m.t, y2: H - m.b, class: "vline" }, svg);
-      if (v.label) el("text", { x: xx + 4, y: m.t + 10, class: "hlabel" }, svg).textContent = v.label;
+      if (v.label) { const L = xx > W - m.r - 36; el("text", { x: L ? xx - 4 : xx + 4, y: m.t + 10, "text-anchor": L ? "end" : "start", class: "hlabel" }, svg).textContent = v.label; }
     });
     // 선
     (opt.series || []).forEach((s) => {

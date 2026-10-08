@@ -815,7 +815,7 @@
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date), cash = cashKrw(), tot = total + cash;
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
-    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면입니다 (TSLA 1,000주).</b> <span class="small">${S.sampleCalc ? `전망·비중 조정안은 ${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}월 ${+S.sampleCalc.slice(8)}일`} 아침 9시 기준입니다 (하루 한 번 갱신). ` : ""}내 종목과 수량을 넣으면 샘플은 사라지고 지금 값으로 새로 계산합니다.</span> <button class="primary" data-go="quotes">내 수량 넣기</button>`
+    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면 (TSLA 1,000주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="quotes">내 수량 넣기</button>`
       : `<b>보유 수량을 넣어 주세요.</b> <span class="small">설정에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="quotes">수량 입력하러 가기</button>`;
     const need = g.amount - tot, req = yrs > 0 && tot > 0 ? (g.amount / tot) ** (1 / yrs) - 1 : null;
     const H = history(), M = patModel(H);
@@ -914,12 +914,7 @@
       }
       const md = []; for (let k = 0; k <= 1200 && Model.addMonths(today(), k) <= g.date; k++) md.push(Model.addMonths(today(), k));
       if (md[md.length - 1] !== g.date) md.push(g.date);
-      // 필요 경로: 목표 진행과 같은 길(목표 시작일부터, 그 전은 거꾸로 늘인 길)을 과거 3년부터 목표일까지 한 줄로
-      const GP = V0 > 0 && mode !== "each" ? goalPath(H, cash) : null;
-      if (GP && GP.V0 > 0) {
-        const fx2 = md.filter((d) => d > last);
-        opt.series.push({ name: "필요 경로", x: [...x, ...fx2], y: [...ix.map((i, k) => conv(GP.at(x[k]), i)), ...fx2.map((d) => GP.at(d) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
-      } else if (V0 > 0 && mode !== "each") opt.series.push({ name: "필요 경로", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
+      if (V0 > 0 && mode !== "each") opt.series.push({ name: "필요 경로", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
       notes.push("현재 수량을 과거에 적용" + (inUsd ? ", 달러 환산." : "."));
@@ -1508,7 +1503,7 @@
         series: [...(p ? [{ name: "과거", x: [...p.dates.slice(kk), md.startDate], y: [...p.close.slice(kk), h.price0], color: "var(--fg)", width: 1.4 }] : []),
           { name: lab, y: s1.bands.p50, color: c, width: 2.2 },
           ...(hasEv && v !== "none" ? [{ name: "미반영 중앙값", y: s0.bands.p50, color: "var(--muted)", width: 1.2, dash: "2 3" }] : [])],
-        hlines: [{ y: h.price0, label: "현재 " + nf(h.price0, 2) }],
+        hlines: [{ y: h.price0, label: "현재 " + nf(h.price0, 2), color: "var(--muted)" }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.kind}` })) : [],
       }, fx, md.startDate));
@@ -2849,9 +2844,10 @@
         const ix = ad.map((d, i) => [d, i]).filter(([d]) => d.startsWith(Y) && d.slice(5) !== "02-29");
         return { name: Y + "년", x: ix.map(([d]) => "2001" + d.slice(4)), y: ix.map(([, i]) => av[i]), color: j === years.length - 1 ? "var(--c1)" : C[(years.length - 1 - j) % C.length], width: j === years.length - 1 ? 2.2 : 1.3, lastDot: lv && td.startsWith(Y) ? "2001" + td.slice(4) : null };
       });
-      Charts.lineChart($("#actChart"), { series, yfmt: krwAxis, height: 260, axisOut: true, xlab: (dd) => `${dd.getUTCMonth() + 1}월`, tipx: (d) => d.slice(5).replace("-", "/") });
+      if (!lv && td.startsWith(years[years.length - 1])) series.push({ x: ["2001" + td.slice(4)], y: [a.v[a.v.length - 1]], color: "transparent" }); // 오늘 세로선이 보이게 가로축을 오늘까지
+      Charts.lineChart($("#actChart"), { series, yfmt: krwAxis, height: 260, axisOut: true, vlines: [{ x: "2001" + td.slice(4), label: "오늘" }], xlab: (dd) => `${dd.getUTCMonth() + 1}월`, tipx: (d) => d.slice(5).replace("-", "/") });
     } else {
-      Charts.lineChart($("#actChart"), { x: ad, series: [{ name: "실제 기록", y: av, color: "var(--c1)", width: 1.8, lastDot: lv ? td : null }], yfmt: krwAxis, tipx: (d) => (lv && d === td ? `${d} (오늘 실시간)` : d), height: 260, axisOut: true,
+      Charts.lineChart($("#actChart"), { x: ad, series: [{ name: "실제 기록", y: av, color: "var(--c1)", width: 1.8, lastDot: lv ? td : null }, ...(lv ? [] : [{ x: [td], y: [a.v[a.v.length - 1]], color: "transparent" }])], yfmt: krwAxis, tipx: (d) => (lv && d === td ? `${d} (오늘 실시간)` : d), vlines: [{ x: td, label: "오늘" }], height: 260, axisOut: true,
         hlines: [{ y: S.state.goal.amount, label: "목표" }], hlinesInRange: false, markers: (S.state.memos || []).map((m) => ({ x: m.d, label: `${m.d} ${m.t}` })) });
     }
     const rows = years.map((Y) => {
@@ -3033,12 +3029,12 @@
       if (cur) sum.push(`<b>이번 주 (${hmd(cur.f)} 마감) 예측</b> ${krw(cur.p50)} (${krw(cur.lo)}~${krw(cur.hi)}, ${esc(cur.by)}) · 지금 ${cur.act != null ? `${krw(cur.act)}, 예측보다 <b class="${cls(cur.act - cur.p50)}">${gap(cur)}</b>` : "-"}`);
       if (lastDone) sum.push(`<b>${hmd(lastDone.f)} 마감</b> 예측 ${krw(lastDone.p50)} → 실제 ${krw(lastDone.act)} · ${lastDone.hit ? "<b class=\"good\">적중</b>" : "빗나감"} (<span class="${cls(lastDone.act - lastDone.p50)}">${gap(lastDone)}</span>)`);
       if (done.length) sum.push(`지금까지 적중 <b>${done.filter((r) => r.hit).length}/${done.length}</b> · 평균 차이 ${pct(done.reduce((a, r) => a + Math.abs(r.act / r.p50 - 1), 0) / done.length)}`);
-      else sum.push(`<span class="muted">이번 주 금요일 마감 뒤 첫 체크가 생깁니다.</span>`);
+      else sum.push(`<span class="muted">첫 체크는 이번 주 금요일 마감 뒤.</span>`);
     } else {
       const ye = list.find((r) => r.tent && r.f.endsWith("-12-31")), last = list[list.length - 1], rd = list.filter((r) => r.retro && r.p50);
       if (ye) sum.push(`<b>올해 말 예상</b> ${krw(ye.p50)} (${krw(ye.lo)}~${krw(ye.hi)}, ${esc(ye.by)})`);
       if (last && last.tent && last !== ye) sum.push(`<b>${last.f.slice(0, 4)}년 말 예상</b> ${krw(last.p50)} (${krw(last.lo)}~${krw(last.hi)})`);
-      if (rd.length) sum.push(`지난 ${rd.length}달 사후 계산 적중 <b>${rd.filter((r) => r.hit).length}/${rd.length}</b> <span class="muted">(미리 적은 예측이 아니라 참고용)</span>`);
+      if (rd.length) sum.push(`지난 ${rd.length}달 사후 계산 적중 <b>${rd.filter((r) => r.hit).length}/${rd.length}</b>`);
     }
     $("#hitSum").innerHTML = sum.join("<br>");
     if (!list.length) { $("#hitGrid").innerHTML = ""; $("#hitNote").textContent = "전망을 계산하는 중입니다…"; return; }
@@ -3063,9 +3059,8 @@
     $("#hitGrid").innerHTML = h + "</table>";
     const wrap = $("#hitGrid").parentElement, th = $("#hitGrid th.now");
     if (wrap && th) wrap.scrollLeft = Math.max(0, th.offsetLeft - wrap.clientWidth / 2 + th.offsetWidth / 2);
-    $("#hitNote").innerHTML = `한 칸 = ${krw(bin)}원. 옅은 칸은 예측 범위(25~75%). 범위 안이면 적중(날짜), 벗어나면 예측 X·실제 O. 점선 칸은 가예측: 지금 값에서 그린 미래이고, `
-      + (mode === "w" ? "그 주에 처음 열 때 그때 보던 미래 기준으로 잠깁니다(예측 %는 고정). 마감 전에 수량·현금을 바꾸면 그 주 금액은 새 수량·현금 기준으로 다시 맞춰지고, 마감한 주는 그대로입니다."
-        : "매일 다시 그려집니다. 흐린 칸은 실제 기록 월말 값과, 그 전 달 말에서 다시 계산한 패턴 예측(사후 계산, 미리 적은 게 아님).");
+    $("#hitNote").innerHTML = `한 칸 ${krw(bin)}원 · 옅은 칸 = 예측 범위(25~75%) · 날짜 = 적중, X·O = 빗나간 예측·실제 · `
+      + (mode === "w" ? "점선 칸은 가예측(그 주에 처음 열 때 잠김, 마감 전 수량·현금 변경은 반영)" : "점선 칸은 가예측, 흐린 칸은 사후 계산(참고용)");
   }
   function patScores(M) { // 다시 맞춰 본 12달: 칸 적중 수와 평균 오차 (패턴 sp, 추세만 st)
     const bin = hitBin(), sc = (pr) => ({ hit: M.folds.filter((x, j) => Math.floor((x.v1 * Math.exp(pr[j] - x.act)) / bin) === Math.floor(x.v1 / bin)).length,
@@ -3391,6 +3386,7 @@
     catch (e) { document.body.innerHTML = `<div class="card" style="margin:40px auto;max-width:640px"><h2>데이터를 불러오지 못했습니다</h2><p>내 PC에서 쓸 때는 <b>실행 파일</b>(Windows: <code>실행-Windows.bat</code>, Mac: <code>실행-Mac.command</code>)로 열어야 합니다. 웹 버전은 GitHub Actions의 첫 수집이 끝난 뒤 열립니다.</p><p class="muted small">${esc(e.message)}</p></div>`; return; }
     if (S.purged || (!S.state.sample && !(S.state.lots || []).length && S.state.holdings.some((h) => Number(h.shares) > 0))) save(false); // 진행 기록 첫 줄
     try { const bs = localStorage.getItem("naeilo-basis"); if (bs && $(`#histBasis button[data-b="${bs}"]`)) $$("#histBasis button").forEach((b) => b.classList.toggle("on", b.dataset.b === bs)); } catch (e) { /* 무시 */ } // 평가액 추이 미래 기준은 리로드해도 유지
+    if (window.themeUI) themeUI($("#themeBox"));
     bind(); renderAll(); foldHold(); marFetch(); syncPull(); renderEsync(); allocWarm(2500);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { syncPull(); if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(); } });
     setInterval(() => { if (document.visibilityState === "visible" && $("#tabs .on")?.dataset.tab === "insight") renderInsight(); }, 10 * 60000); // 인사이트를 열어 두면 10분마다 새 뉴스 확인
