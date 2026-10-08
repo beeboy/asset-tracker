@@ -565,6 +565,7 @@
   function endSample(keep) {
     if (!S.state.sample) return;
     if (!keep) S.state.holdings = S.state.holdings.filter((h) => !h.sample);
+    if (!S.state.holdings.some((h) => h.sample)) delete S.state.weekly; // 샘플 종목이 없어지면 샘플 수량으로 적은 주간 예측도 지운다 (수량만 고친 경우는 남겨 다시 맞춘다)
     S.state.holdings.forEach((h) => delete h.sample); delete S.state.sample;
   }
   // 종목 로고: 티커로 받는 무료 로고 이미지 → 다른 곳 → 실패하면 첫 글자
@@ -756,7 +757,7 @@
   }
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
-    if (!(total > 0) || S.state.sample || !H.dates.length) { card.style.display = "none"; return; }
+    if (!(total > 0) || !H.dates.length) { card.style.display = "none"; return; } // 샘플(TSLA 1,000주)에도 보여 준다
     const P = goalPath(H, cash), { A, start, i0, V0 } = P;
     const k = H.dates.length - 1, now = total + cash, td = today();
     const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
@@ -820,20 +821,20 @@
       ["과거 연평균 (원화)", pct(pastCagr), `${H.dates[jc] || "-"} 이후`],
     ].map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
-    const rsel = $("#histRange .on")?.dataset.r || "252", step = rsel === "future" || +rsel >= 252 ? "m" : "d", mode = $("#histMode .on")?.dataset.m || "total";
+    const rsel = $("#histRange .on")?.dataset.r || "252", step = rsel === "future" || +rsel >= 780 ? "m" : +rsel >= 252 ? "w" : "d", mode = $("#histMode .on")?.dataset.m || "total";
     const inUsd = $("#histCcy .on")?.dataset.c === "usd", basis = $("#histBasis .on")?.dataset.b || "model";
     const fxNowUsd = fxNow("USD") || 1, conv = (v, i) => (v == null ? null : inUsd ? v / H.usdK[i] : v), money = inUsd ? usd : krwAxis;
     const future = rsel === "future", n = future ? 780 : +rsel; // 미래: 과거 3년 + 목표일까지
     const k0 = Math.max(0, H.dates.length - 1 - n);
-    // 간격: 1년 이상은 월간(그 달의 마지막 거래일 값), 3달 이하는 일간
+    // 간격: 3년·미래는 월간(그 달의 마지막 거래일 값), 1년은 주간(그 주 마지막 거래일), 3달 이하는 일간
+    const key = (d) => { if (step === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
     let ix = []; for (let i = k0; i < H.dates.length; i++) ix.push(i);
     if (step !== "d") {
-      const key = (d) => { if (step === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
       ix = ix.filter((i, j) => j === ix.length - 1 || key(H.dates[i]) !== key(H.dates[ix[j + 1]]));
     }
     // 과거 보기 끝에 오늘 실시간 값(현재 평가액)을 한 점 더 붙인다. 아직 마감 전이라 속이 빈 점으로 (i = -1)
     const td = today(), live = !future && tot > 0 && H.dates.length && td > H.dates[H.dates.length - 1];
-    if (live) { if (step === "m" && ix.length && H.dates[ix[ix.length - 1]].slice(0, 7) === td.slice(0, 7)) ix.pop(); ix.push(-1); }
+    if (live) { if (step !== "d" && ix.length && key(H.dates[ix[ix.length - 1]]) === key(td)) ix.pop(); ix.push(-1); }
     const liveEach = {}; if (live) valuation().rows.forEach((r) => (liveEach[r.h.ticker] = (liveEach[r.h.ticker] || 0) + (r.valueKrw || 0)));
     const lconv = (v) => (v == null ? null : inUsd ? v / fxNowUsd : v);
     const tv = (i) => (i < 0 ? lconv(tot) : conv(H.total[i] + cash, i)), ev = (t, i) => (i < 0 ? lconv(liveEach[t] ?? null) : conv(H.each[t][i], i));
@@ -904,7 +905,7 @@
       notes.push("현재 수량을 과거에 적용" + (inUsd ? ", 달러 환산." : "."));
       if (live) notes.push("· 맨 끝 빈 점은 오늘 실시간 값 (장 마감 전).");
       // 필요 경로: 목표 진행과 같은 길 (목표 시작일부터). 시작일 전은 그리지 않는다
-      const P = mode !== "each" && tot > 0 && !S.state.sample ? goalPath(H, cash) : null;
+      const P = mode !== "each" && tot > 0 ? goalPath(H, cash) : null;
       if (P) {
         const py = ix.map((i, k) => { const v = P.at(x[k]); return v == null ? null : i < 0 ? lconv(v) : conv(v, i); });
         if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
@@ -914,9 +915,9 @@
     if (A && mode === "total" && x.length) { // 선택 기능: 실제 기록을 겹쳐 그린다 (그날 환율로 달러 환산)
       const fxAt = new Map(H.dates.map((d, i) => [d, H.usdK[i]])); let lastFx = H.usdK[0];
       const ax = [], ay = [];
-      A.d.forEach((d, i) => { if (fxAt.has(d)) lastFx = fxAt.get(d); if (d < x[0] || (step === "m" && i < A.d.length - 1 && A.d[i + 1].slice(0, 7) === d.slice(0, 7))) return; ax.push(d); ay.push(inUsd ? A.v[i] / lastFx : A.v[i]); });
+      A.d.forEach((d, i) => { if (fxAt.has(d)) lastFx = fxAt.get(d); if (d < x[0] || (step !== "d" && i < A.d.length - 1 && key(A.d[i + 1]) === key(d))) return; ax.push(d); ay.push(inUsd ? A.v[i] / lastFx : A.v[i]); });
       const aLive = ax.length && tot > 0 && td > A.d[A.d.length - 1]; // 오늘은 아직 기록 전이라 실시간 값을 이어 붙인다 (저장은 장 마감 뒤 자동 기록이)
-      if (aLive) { if (step === "m" && ax[ax.length - 1].slice(0, 7) === td.slice(0, 7)) { ax.pop(); ay.pop(); } ax.push(td); ay.push(lconv(tot)); }
+      if (aLive) { if (step !== "d" && key(ax[ax.length - 1]) === key(td)) { ax.pop(); ay.pop(); } ax.push(td); ay.push(lconv(tot)); }
       if (ax.length) opt.series.push({ name: "실제 기록", x: ax, y: ay, color: "var(--c3)", width: 1.6, lastDot: aLive ? td : null });
       opt.markers = (S.state.memos || []).filter((m) => m.d >= x[0]).map((m) => ({ x: m.d, label: `${m.d} ${m.t}` }));
       if (ax.length) notes.push("· 초록 선은 실제 기록 (그때 수량·현금. 엑셀 값은 그날 밤 12시, 자동 기록은 장 마감 기준).");
@@ -2659,9 +2660,8 @@
 
   // ------------------------------------------------------------ 공통
   // ------------------------------------------------------------ 엑셀 대시보드에서 온 기능
-  // 선택 기능(현금·실제 기록)은 먼저 개발자 기기(내 PC 실행 또는 GitHub 토큰이 있는 기기)에서만 켠다.
-  // 기본 기능과 무엇이 다른지 정리되면 일반 사용자에게 연다 (무료/프리미엄).
-  const premium = () => MODE === "local" || syncDev();
+  // 선택 기능(현금·실제 기록). 개발·시험 중에는 개발자용·사용자용을 나누지 않고 모두에게 켠다 (나중에 나눌 때 여기 한 곳만)
+  const premium = () => true;
   function cashKrw() {
     const c = S.state.cash; if (!premium() || !c) return 0;
     return (Number(c.krw) || 0) + (Number(c.usd) || 0) * (fxBase("USD") || 0);
@@ -2921,7 +2921,7 @@
   }
   const hitVals = (base, cash, mu, sd) => { const v = (z) => Math.round(base * Math.exp(mu + z * sd) + cash); return { p50: v(0), lo: v(-0.674), hi: v(0.674) }; };
   function weekRecord(H, M, cash) {
-    if (S.state.sample || !H.dates.length) return;
+    if (!H.dates.length) return; // 샘플 동안 적은 예측은 샘플을 지울 때 같이 지운다 (endSample)
     const W = (S.state.weekly ||= []), f = weekFri(), o = closedIdx(H);
     // 아직 마감 전인 주: 수량·현금이 바뀌면 예측 % 는 그대로 두고 지금 수량·현금 기준으로 금액을 다시 맞춘다 (마감한 주는 그대로)
     const open = W.find((r) => o < 0 || r.f > H.dates[o]), i0 = open ? H.dates.indexOf(open.d0) : -1, nb = i0 >= 0 ? H.total[i0] : 0;
@@ -2984,7 +2984,7 @@
   const hmd = (d) => `${+d.slice(5, 7)}/${+d.slice(8)}`;
   function renderHit(H, M, cash) {
     const card = $("#hitCard"), rows = weekRows(H);
-    if (S.state.sample || !rows.length) { card.style.display = "none"; return; }
+    if (!rows.length) { card.style.display = "none"; return; }
     card.style.display = "";
     const mode = $("#hitMode .on")?.dataset.m || "w";
     const gap = (r) => `${spct(r.act / r.p50 - 1)}, ${r.act >= r.p50 ? "+" : "-"}${krw(Math.abs(r.act - r.p50))}`;
@@ -3058,8 +3058,7 @@
   }
   function renderDia(H, hold, cash) {
     const card = $("#diaCard"), g = S.state.goal, tot = hold + cash;
-    if (!(tot > 0) || S.state.sample) { card.style.display = "none"; return; }
-    card.style.display = "";
+    card.style.display = ""; // 보유 종목을 다 지워도 빈 칸으로 남긴다
     const mode = $("#diaMode .on")?.dataset.d || "spiral", N = 1000, unit = g.amount / N;
     const k = H.total.length - 1, prevTot = k > 0 ? H.total[k - 1] + cash : tot;
     const f = Math.min(N, Math.floor(tot / unit)), fp = Math.min(N, Math.floor(prevTot / unit));
@@ -3142,6 +3141,14 @@
     $("#newsFuture").addEventListener("click", (e) => { // 제목을 누르면 읽은 기사로 표시
       const a = e.target.closest("a[data-nid]"); if (!a) return;
       const o = insLoad(); o.read[a.dataset.nid] = Date.now(); insSave(o); a.classList.add("read");
+    });
+    // 접는 카드 (적중 기록판·다이어그램). 기본은 펼침, 접은 것만 이 기기에 기억
+    const foldKey = "naeilo-fold", foldGet = () => { try { return JSON.parse(localStorage.getItem(foldKey) || "[]"); } catch (e) { return []; } };
+    foldGet().forEach((id) => $("#" + id)?.classList.add("folded"));
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-fold]"); if (!b) return; const card = b.closest(".card"); if (!card?.id) return;
+      const on = card.classList.toggle("folded"); b.title = on ? "펼치기" : "접기";
+      try { const ids = new Set(foldGet()); on ? ids.add(card.id) : ids.delete(card.id); localStorage.setItem(foldKey, JSON.stringify([...ids])); } catch (e2) { /* 무시 */ }
     });
     segClick("#histRange", renderDash); segClick("#progRange", () => { const H = history(); renderProgress(H, valuation().total, cashKrw()); }); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
     segClick("#actView", renderAct); segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);

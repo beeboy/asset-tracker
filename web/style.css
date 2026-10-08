@@ -334,3 +334,8 @@ table.hit td.retro { opacity: .5; } table.hit th.now { color: var(--accent); }
 .diabox { margin-top: 8px; } .diabox svg.dia { width: 100%; max-width: 520px; display: block; margin: 0 auto; }
 .dialab { font-size: 15px; fill: var(--muted); }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 3px 0 6px; vertical-align: -1px; }
+
+/* 접는 카드: 머리(첫 줄)만 남긴다 */
+.card.folded > :not(:first-child) { display: none !important; }
+.card.folded .seg { display: none; }
+.foldbtn { padding: 2px 8px; line-height: 1.2; transition: transform .15s; } .card.folded .foldbtn { transform: rotate(-90deg); }
