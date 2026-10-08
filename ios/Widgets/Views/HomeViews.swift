@@ -56,7 +56,7 @@ struct BlockSmallView: View {
         let inBlock = s.cells % 100, block = s.cells / 100 + 1, prevIn = s.cellsPrev / 100 == s.cells / 100 ? s.cellsPrev % 100 : (s.cellsPrev > s.cells ? 100 : 0)
         let d = s.cells - s.cellsPrev
         VStack(alignment: .leading, spacing: 6) {
-            Label2(text: "지금 채우는 \(Fmt.eok(s.goal / 10, 0)) 블록")
+            Label2(text: "지금 채우는 블록")
             HStack(alignment: .center, spacing: 10) {
                 Grid(horizontalSpacing: 1.6, verticalSpacing: 1.6) {
                     ForEach(0..<10, id: \.self) { r in

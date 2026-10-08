@@ -71,3 +71,5 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.widget.widgets
+        # 위젯 버튼(↻, 금액 숨기기) 동작은 위젯에만 둔다. 앱에도 있으면 iOS 가 앱 쪽에서 돌려 위젯에 반영이 안 될 수 있다
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_EXT"
