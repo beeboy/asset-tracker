@@ -11,7 +11,8 @@ struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> Entry { Entry(date: Date(), snap: .sample) }
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
-        completion(Entry(date: Date(), snap: context.isPreview ? .sample : Engine.snapshot()))
+        // 위젯 추가 화면 미리보기도 내 데이터로 (연결 전이면 Engine 이 예시 값을 준다)
+        completion(Entry(date: Date(), snap: Engine.snapshot()))
     }
 
     /// 바뀐 것만 받고(304면 몇백 바이트) 지금 값으로 다시 그린다. 무거운 전망 계산은 앱이 한다
