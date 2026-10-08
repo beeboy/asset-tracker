@@ -77,7 +77,7 @@ enum Calculator {
 enum Scripts {
     struct Pair { var model: String; var core: String }
     static func load() async throws -> Pair {
-        func one(_ name: String) async -> String {
+        @Sendable func one(_ name: String) async -> String {
             let key = "js-" + name
             _ = try? await Net.get(Config.site.appendingPathComponent("web/" + name), key: key)
             if let d = Store.readData(key), let s = String(data: d, encoding: .utf8), s.contains("window.") { return s }
