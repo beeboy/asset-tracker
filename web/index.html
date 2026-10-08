@@ -31,7 +31,7 @@
 <meta name="twitter:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 인사이트를 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/web/","description":"내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 인사이트를 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
-<link rel="stylesheet" href="style.css?v=20261008j">
+<link rel="stylesheet" href="style.css?v=20261008k">
 <script>(function(u,c){if(/Edg\//.test(u))c.add("edg");else if(/Chrome\//.test(u)&&!/OPR\//.test(u))c.add("chr");else if(/Safari\//.test(u)&&!/Chrome|Chromium|CriOS|FxiOS|Android/.test(u))c.add("saf");})(navigator.userAgent,document.documentElement.classList);</script>
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
@@ -118,7 +118,7 @@
     <div class="kpis" id="goalKpis"></div>
     <div class="card" id="progCard" style="display:none"><div class="row between wrap"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">목표 진행</h2><span class="muted small" id="progSub"></span></div><button class="sm" id="btnShare">공유 이미지</button></div>
       <div id="shareBox" style="display:none;margin-top:10px"><canvas id="shareCv" width="1080" height="1080" style="width:100%;max-width:360px;display:block;margin:0 auto;border:1px solid var(--line);border-radius:10px"></canvas>
-        <div class="row wrap" style="justify-content:center;margin-top:8px"><label class="small"><input type="checkbox" id="shareHide" checked> 금액 숨기기</label><button id="shareSave" class="primary sm">이미지 저장</button><button id="shareSend" class="sm">공유</button></div></div><div class="prog" id="prog"></div><div class="row between wrap" style="gap:4px 8px"><span class="small" id="progTrend"></span><div class="row seg wrap" id="progRange"><button data-r="5" class="on">1주</button><button data-r="22">1달</button><button data-r="66">3달</button><button data-r="252">1년</button><button data-r="780">3년</button></div></div><div id="progChart" class="chartbox"></div><p class="small muted" style="margin:2px 0 0">막대는 그날 실제 평가액(그때 수량)이 필요 경로보다 많으면 위(빨강), 적으면 아래(파랑). 점선 막대는 오늘 실시간, 노란 점은 수량 바뀐 날.</p></div>
+        <div class="row wrap" style="justify-content:center;margin-top:8px"><label class="small"><input type="checkbox" id="shareHide" checked> 금액 숨기기</label><button id="shareSave" class="primary sm">이미지 저장</button><button id="shareSend" class="sm">공유</button></div></div><div class="prog" id="prog"></div><div class="row between wrap" style="gap:4px 8px"><span class="small" id="progTrend"></span><div class="row seg wrap" id="progRange"><button data-r="5" class="on">1주</button><button data-r="22">1달</button><button data-r="66">3달</button><button data-r="252">1년</button><button data-r="780">3년</button></div></div><div id="progChart" class="chartbox"></div></div>
     <details class="card opt" id="goalOpt"><summary>목표 수정 (옵션)</summary>
       <div class="goalgrid" id="goalQuick">
         <span class="gl">목표 금액</span><div class="row wrap"><div class="row seg"><button data-set="goalAmount" data-v="100000000">1억</button><button data-set="goalAmount" data-v="300000000">3억</button><button data-set="goalAmount" data-v="500000000">5억</button><button data-set="goalAmount" data-v="1000000000">10억</button></div><label><input id="goalAmount" type="text" inputmode="numeric" size="13"> 원</label><span class="muted small" id="goalAmountKr"></span></div>
@@ -314,8 +314,8 @@
 
 </main>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261008j"></script>
-<script src="model.js?v=20261008j"></script>
-<script src="app.js?v=20261008j"></script>
+<script src="charts.js?v=20261008k"></script>
+<script src="model.js?v=20261008k"></script>
+<script src="app.js?v=20261008k"></script>
 </body>
 </html>

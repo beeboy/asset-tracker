@@ -9,6 +9,7 @@
     return e;
   };
   const toT = (s) => Date.parse(s + "T00:00:00Z");
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
   function niceTicks(lo, hi, n) {
     const span = hi - lo || Math.abs(hi) || 1, step0 = span / n, mag = 10 ** Math.floor(Math.log10(step0));
@@ -131,6 +132,8 @@
       const pick = (x, y) => { const i = x.indexOf(day); return i >= 0 ? y[i] : null; };
       (opt.series || []).forEach((s) => { const v = pick(s.x || opt.x, s.y); if (v != null && s.name) rows.push(`<span style="color:${s.color}">●</span> ${s.name}: ${yfmt(v)}`); });
       (opt.bands || []).forEach((b) => { if (!b.name) return; const lo2 = pick(b.x || opt.x, b.lo), hi2 = pick(b.x || opt.x, b.hi); if (lo2 != null) rows.push(`${b.name}: ${yfmt(lo2)} ~ ${yfmt(hi2)}`); });
+      const prev = lo > 0 ? allX[lo - 1] : ""; // 휴일에 적은 메모는 다음 거래일 칸에서 보인다
+      (opt.markers || []).filter((mk) => mk.x <= day && mk.x > prev).forEach((mk) => rows.push(`<span style="color:${mk.color || "var(--warn)"}">▲</span> ${esc(mk.label)}`));
       tip.innerHTML = rows.join("<br>");
       const xx = X(toT(day));
       cross.setAttribute("x1", xx); cross.setAttribute("x2", xx); cross.setAttribute("visibility", "visible");
@@ -173,6 +176,7 @@
       el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end" }, g).textContent = yfmt(v);
     });
     el("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: "var(--muted)", "stroke-width": 1 }, svg);
+    if (opt.vline) { const i = x.findIndex((d) => d >= opt.vline.x); if (i > 0) { const xx = m.l + slot * i; el("line", { x1: xx, x2: xx, y1: m.t - 6, y2: H - m.b, class: "vline" }, svg); if (opt.vline.label) { const L = xx > (W - m.r) * 0.7; el("text", { x: L ? xx - 4 : xx + 4, y: m.t + 12, "text-anchor": L ? "end" : "start", class: "hlabel" }, svg).textContent = opt.vline.label; } } }
     // 아래 날짜 글자: 겹치지 않게 몇 칸 걸러서, 마지막 칸은 항상
     const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - m.l - m.r) / 44))));
     x.forEach((d, i) => {
@@ -185,9 +189,9 @@
         fill: v >= 0 ? opt.pos || "var(--up)" : opt.neg || "var(--dn)", "fill-opacity": live ? 0.45 : 0.85,
         stroke: live ? (v >= 0 ? opt.pos || "var(--up)" : opt.neg || "var(--dn)") : "none", "stroke-dasharray": live ? "3 2" : "" }, svg);
     });
-    if (opt.labelLast) {
-      const i = n - 1, v = y[i], yy = Y(v) + (v >= 0 ? -5 : 13);
-      el("text", { x: Math.min(X(i), W - m.r - 2), y: yy, "text-anchor": narrow || X(i) > W - 60 ? "end" : "middle", class: "hlabel", fill: v >= 0 ? opt.pos || "var(--up)" : opt.neg || "var(--dn)" }, svg).textContent = opt.labelLast;
+    if (opt.labelLast) { // 오른쪽 위 구석에 (작은 막대 위에 얹으면 막대와 겹친다)
+      const v = y[n - 1];
+      el("text", { x: W - m.r - 2, y: 11, "text-anchor": "end", class: "hlabel", fill: v >= 0 ? opt.pos || "var(--up)" : opt.neg || "var(--dn)" }, svg).textContent = opt.labelLast;
     }
     (opt.dots || []).forEach((dt) => {
       const i = x.indexOf(dt.x); if (i < 0) return;
