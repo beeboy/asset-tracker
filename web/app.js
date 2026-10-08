@@ -815,7 +815,7 @@
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date), cash = cashKrw(), tot = total + cash;
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
-    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면입니다 (TSLA 1,000주).</b> <span class="small">${S.sampleCalc ? `전망·비중 조정안은 ${S.sampleCalc} 기준으로 미리 계산한 값입니다. ` : ""}내 종목과 수량을 넣으면 샘플은 사라지고 지금 값으로 새로 계산합니다.</span> <button class="primary" data-go="quotes">내 수량 넣기</button>`
+    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면입니다 (TSLA 1,000주).</b> <span class="small">${S.sampleCalc ? `전망·비중 조정안은 ${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}월 ${+S.sampleCalc.slice(8)}일`} 아침 9시 기준입니다 (하루 한 번 갱신). ` : ""}내 종목과 수량을 넣으면 샘플은 사라지고 지금 값으로 새로 계산합니다.</span> <button class="primary" data-go="quotes">내 수량 넣기</button>`
       : `<b>보유 수량을 넣어 주세요.</b> <span class="small">설정에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="quotes">수량 입력하러 가기</button>`;
     const need = g.amount - tot, req = yrs > 0 && tot > 0 ? (g.amount / tot) ** (1 / yrs) - 1 : null;
     const H = history(), M = patModel(H);
