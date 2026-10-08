@@ -63,11 +63,13 @@ struct Foot: View { // 아래 줄: 갱신 시각 + 다시 받기 버튼
 
 struct ReloadButton: View { // ↻ 다시 받기
     var body: some View {
-        Button(intent: ReloadIntent()) {
-            Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .bold))
-                .frame(width: 22, height: 22).background(Circle().fill(Palette.ink.opacity(0.14)))
-        }
-        .buttonStyle(.plain)
+        let icon = Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .bold))
+            .frame(width: 22, height: 22).background(Circle().fill(Palette.ink.opacity(0.14)))
+        #if WIDGET_EXT
+        Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain)
+        #else
+        icon // 앱의 미리보기에서는 그림만 (버튼 동작은 위젯에만 둔다)
+        #endif
     }
 }
 
@@ -88,7 +90,11 @@ struct Money<L: View>: View {
     @Environment(\.widgetKind) private var kind
     @ViewBuilder let label: (Bool) -> L
     var body: some View {
+        #if WIDGET_EXT
         Button(intent: ToggleAmountIntent(kind: kind)) { label(Store.isHidden(kind)) }.buttonStyle(.plain)
+        #else
+        label(Store.isHidden(kind))
+        #endif
     }
 }
 
