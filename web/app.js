@@ -107,7 +107,7 @@
   })();
   let saveTimer = null, autoTimer = null, lastForecast = null, fcDirty = true, lastAlloc = null, allocDirty = true;
   let fcCache = {}; // 시나리오별 전망 (대시보드 미래 표시·AI 용). 입력이나 시세가 바뀌면 비운다
-  const markDirty = () => { fcDirty = allocDirty = true; fcCache = {}; };
+  const markDirty = () => { fcDirty = allocDirty = true; fcCache = {}; allocWarm(); };
   const SCEN = { blend: "내 관점", base: "기준", conservative: "보수", history: "과거 반복", smooth: "스무딩 추종", trend: "추세 추종" };
   const scenName = (k) => SCEN[k] || k;
 
@@ -179,6 +179,21 @@
       // 첫 방문: 빈 화면 대신 TSLA 1,000주 샘플. 내 종목을 처음 넣거나 고치면 샘플은 사라진다
       if (S.firstVisit && !S.state.holdings.length) { S.state.holdings = [{ ticker: "TSLA", shares: 1000, price: null, avg_cost: null, note: "", sample: true }]; S.state.sample = true; }
     }
+    if (S.state.sample) await sampleSeed();
+  }
+  // 샘플(TSLA 1,000주)은 누구에게나 같은 값이라, 정해 둔 날짜에 미리 계산한 결과(data/sample_calc.json)를 저장 칸에 넣어 두고
+  // 그대로 쓴다 (전망·미래 그래프·비중 조정안을 다시 계산하지 않음). 내 종목을 넣으면 지금 값으로 새로 계산한다.
+  // 새로 만들 때: node tools/sample_snapshot.mjs (주소에 ?fresh 를 붙이면 미리 계산한 값을 쓰지 않는다)
+  async function sampleSeed() {
+    if (/[?&]fresh\b/.test(location.search)) return;
+    try {
+      const r = await fetch((MODE === "static" ? "../data/" : "/data/") + "sample_calc.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return;
+      const c = await r.json(); S.sampleCalc = c.date;
+      const put = (k, v) => v && localStorage.setItem(k, JSON.stringify(v));
+      put(FC_KEY, c.forecast && { ...c.forecast, sig: fcSig() });
+      put(FCD_KEY, c.fcdash && { ...c.fcdash, sig: fcdSig() });
+      put(AL_KEY, c.alloc && { ...c.alloc, sig: fcSig() + "|" + JSON.stringify(S.state.alloc_mix || {}) });
+    } catch (e) { /* 없으면 평소처럼 계산 */ }
   }
   function normalize(st) {
     st.holdings = st.holdings || [];
@@ -800,7 +815,7 @@
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date), cash = cashKrw(), tot = total + cash;
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
-    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면입니다 (TSLA 1,000주).</b> <span class="small">내 종목과 수량을 넣으면 샘플은 사라집니다.</span> <button class="primary" data-go="quotes">내 수량 넣기</button>`
+    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면입니다 (TSLA 1,000주).</b> <span class="small">${S.sampleCalc ? `전망·비중 조정안은 ${S.sampleCalc} 기준으로 미리 계산한 값입니다. ` : ""}내 종목과 수량을 넣으면 샘플은 사라지고 지금 값으로 새로 계산합니다.</span> <button class="primary" data-go="quotes">내 수량 넣기</button>`
       : `<b>보유 수량을 넣어 주세요.</b> <span class="small">설정에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="quotes">수량 입력하러 가기</button>`;
     const need = g.amount - tot, req = yrs > 0 && tot > 0 ? (g.amount / tot) ** (1 / yrs) - 1 : null;
     const H = history(), M = patModel(H);
@@ -899,7 +914,12 @@
       }
       const md = []; for (let k = 0; k <= 1200 && Model.addMonths(today(), k) <= g.date; k++) md.push(Model.addMonths(today(), k));
       if (md[md.length - 1] !== g.date) md.push(g.date);
-      if (V0 > 0 && mode !== "each") opt.series.push({ name: "필요 경로", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
+      // 필요 경로: 목표 진행과 같은 길(목표 시작일부터, 그 전은 거꾸로 늘인 길)을 과거 3년부터 목표일까지 한 줄로
+      const GP = V0 > 0 && mode !== "each" ? goalPath(H, cash) : null;
+      if (GP && GP.V0 > 0) {
+        const fx2 = md.filter((d) => d > last);
+        opt.series.push({ name: "필요 경로", x: [...x, ...fx2], y: [...ix.map((i, k) => conv(GP.at(x[k]), i)), ...fx2.map((d) => GP.at(d) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
+      } else if (V0 > 0 && mode !== "each") opt.series.push({ name: "필요 경로", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
       notes.push("현재 수량을 과거에 적용" + (inUsd ? ", 달러 환산." : "."));
@@ -2344,7 +2364,36 @@
   const ALLOC_DEF = { agg: { n: "공격적", cap: 0.45, mix: "SMH 50, QQQ 50", d: "성장 업종으로 옮겨 확률 유지" }, mid: { n: "안정적", cap: 0.35, mix: "QQQ 50, SPY 50", d: "지수로 나쁜 경우 개선" }, con: { n: "보수적", cap: 0.25, mix: "SPY 50, SGOV 30, GLD 20", d: "현금·금으로 하락 방어" } };
   const ALLOC_SUB = { GLD: "GC=F", SMH: "QQQ" }; // 시세가 아직 없을 때 대신 쓸 종목
   const allocMix = (k) => String((S.state.alloc_mix || {})[k] || ALLOC_DEF[k].mix).split(",").map((x) => x.trim().split(/\s+/)).filter((x) => x[0]).map(([t, w]) => [t.toUpperCase(), Number(w) || 1]);
-  async function runAlloc() {
+  // 비중 조정안은 탭을 열기 전에 뒤에서 미리 계산해 둔다: 처음 접속(샘플 포함)과 보유 종목·시나리오·데이터가 바뀔 때.
+  // 같은 입력이면 저장해 둔 결과(allocRestore)를 쓰고 다시 계산하지 않는다
+  var allocTimer = null, allocRun = null; // var: markDirty 가 먼저 불려도 되게
+  function allocWarm(delay = 1500) {
+    clearTimeout(allocTimer);
+    allocTimer = setTimeout(() => {
+      if (allocRun || !S.state || !(valuation().total > 0)) return;
+      if (lastAlloc && !allocDirty) return;
+      if (allocRestore()) { if (curAna() === "alloc") { renderAllocTable(); renderAllocChart(); } return; }
+      const go = () => runAlloc();
+      if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 }); else go();
+    }, delay);
+  }
+  function runAlloc() { // 이미 계산 중이면 그 계산을 같이 기다린다 (두 번 돌리지 않게)
+    return (allocRun ||= runAllocNow().finally(() => { allocRun = null; }));
+  }
+  // 계산은 worker 에서 (화면이 멈추지 않게). worker 를 못 쓰는 환경이면 같은 코드를 화면에서 돌린다
+  let allocWk = null, allocSeq = 0;
+  function allocCompute(inp, prog) {
+    if (!allocWk && allocWk !== false) { try { allocWk = new Worker("alloc-worker.js?v=" + (document.querySelector('script[src^="model.js"]')?.src.split("?v=")[1] || "")); } catch (e) { allocWk = false; } }
+    if (!allocWk) return new Promise((res, rej) => setTimeout(() => { try { res(Model.allocPlans(inp, prog)); } catch (e) { rej(e); } }, 30));
+    const id = ++allocSeq;
+    return new Promise((res, rej) => {
+      const on = (e) => { const d = e.data; if (d.id !== id) return; if (d.prog) return prog(...d.prog); allocWk.removeEventListener("message", on); allocWk.removeEventListener("error", bad); d.err ? rej(new Error(d.err)) : res(d.done); };
+      const bad = (e) => { allocWk.removeEventListener("message", on); allocWk.removeEventListener("error", bad); allocWk.terminate(); allocWk = false; e.preventDefault?.(); try { res(Model.allocPlans(inp, prog)); } catch (e2) { rej(e2); } };
+      allocWk.addEventListener("message", on); allocWk.addEventListener("error", bad);
+      allocWk.postMessage({ id, inp });
+    });
+  }
+  async function runAllocNow() {
     const st = $("#allocStatus"), btn = $("#btnAlloc");
     const want = [...new Set(Object.keys(ALLOC_DEF).flatMap((k) => allocMix(k).map((x) => x[0])))];
     const miss = want.filter((t) => !S.prices[t]);
@@ -2359,22 +2408,11 @@
       const mixes = {}; for (const k of Object.keys(ALLOC_DEF)) mixes[k] = allocMix(k).map(([t, w]) => [res(t), w]).filter((x) => x[0]);
       for (const t of new Set(Object.values(mixes).flat().map((x) => x[0]))) if (!base.some((h) => h.ticker === t)) { const q = S.prices[t]; base.push({ ticker: t, shares: 0, price0: q.close[q.close.length - 1], ccy: ccyOf(t), valueKrw: 1, extra: true }); }
       const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
-      const model = Model.buildModel({ holdings: base, series, fxOf, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goalDate: g.date });
-      const w0 = base.map((h) => (h.extra ? 0 : h.valueKrw / V0));
-      const risky = base.map((h, i) => (model.factors[i].cash || h.extra ? 0 : w0[i])), top = risky.indexOf(Math.max(...risky));
-      const plans = [{ k: "keep", name: "현재 유지", w: w0, rb: false }];
-      for (const [k, D] of Object.entries(ALLOC_DEF)) {
-        const w = [...w0], cut = w0[top] > D.cap ? w0[top] - D.cap : w0[top] * { agg: 0.1, mid: 0.25, con: 0.4 }[k], tot = mixes[k].reduce((a, x) => a + x[1], 0);
-        w[top] -= cut; mixes[k].forEach(([t, x]) => { w[base.findIndex((h) => h.ticker === t)] += (cut * x) / tot; });
-        plans.push({ k, name: `${D.n} (${base[top].ticker} ${pct(w[top], 0)})`, w, rb: true, cut });
-      }
-      const out = [];
-      for (const pl of plans) {
-        const hs = base.map((h, i) => ({ ...h, valueKrw: V0 * pl.w[i] }));
-        const R = Model.simulate(model, { holdings: hs, scenario: m.scenario, nPaths: 1500, seed: Number(m.seed) || 1, goal: g.amount, monthly: Number(g.monthly_contribution) || 0, rebalance: pl.rb, withEvents: true, dof: m.t_dof, fxOf });
-        out.push({ ...pl, R: { p_goal: R.p_goal, p_loss: R.p_loss, mdd_median: R.mdd_median, terminal: R.terminal, bands: R.bands } });
-        prog(out.length, plans.length); await new Promise((r) => setTimeout(r, 10));
-      }
+      const defs = {}; for (const [k, D] of Object.entries(ALLOC_DEF)) defs[k] = { cap: D.cap, cutSmall: { agg: 0.1, mid: 0.25, con: 0.4 }[k] };
+      const inp = { base, series, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goal: g, mixes, defs };
+      const r = await allocCompute(inp, prog), top = r.top;
+      const out = r.out.map((o) => ({ ...o, name: o.k === "keep" ? "현재 유지" : `${ALLOC_DEF[o.k].n} (${base[top].ticker} ${pct(o.w[top], 0)})` }));
+      const model = { monthDates: r.fd };
       lastAlloc = { base: base.map((h) => ({ ticker: h.ticker, price0: h.price0, ccy: h.ccy, shares: h.shares })), V0, top, out, subs, fd: model.monthDates, at: Date.now() }; allocDirty = false;
       try { localStorage.setItem(AL_KEY, JSON.stringify({ sig: fcSig() + "|" + JSON.stringify(S.state.alloc_mix || {}), ...lastAlloc })); } catch (e) { /* 무시 */ }
       renderAllocTable(); renderAllocChart();
@@ -3353,7 +3391,7 @@
     catch (e) { document.body.innerHTML = `<div class="card" style="margin:40px auto;max-width:640px"><h2>데이터를 불러오지 못했습니다</h2><p>내 PC에서 쓸 때는 <b>실행 파일</b>(Windows: <code>실행-Windows.bat</code>, Mac: <code>실행-Mac.command</code>)로 열어야 합니다. 웹 버전은 GitHub Actions의 첫 수집이 끝난 뒤 열립니다.</p><p class="muted small">${esc(e.message)}</p></div>`; return; }
     if (S.purged || (!S.state.sample && !(S.state.lots || []).length && S.state.holdings.some((h) => Number(h.shares) > 0))) save(false); // 진행 기록 첫 줄
     try { const bs = localStorage.getItem("naeilo-basis"); if (bs && $(`#histBasis button[data-b="${bs}"]`)) $$("#histBasis button").forEach((b) => b.classList.toggle("on", b.dataset.b === bs)); } catch (e) { /* 무시 */ } // 평가액 추이 미래 기준은 리로드해도 유지
-    bind(); renderAll(); foldHold(); marFetch(); syncPull(); renderEsync();
+    bind(); renderAll(); foldHold(); marFetch(); syncPull(); renderEsync(); allocWarm(2500);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { syncPull(); if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(); } });
     setInterval(() => { if (document.visibilityState === "visible" && $("#tabs .on")?.dataset.tab === "insight") renderInsight(); }, 10 * 60000); // 인사이트를 열어 두면 10분마다 새 뉴스 확인
     setAuto(S.state.ui.auto_refresh_min || 0);
