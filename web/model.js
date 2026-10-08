@@ -544,5 +544,30 @@
     };
   }
 
-  window.Model = { TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  // 비중 조정안 계산 (화면 스레드와 계산 전용 worker 가 같은 코드를 쓴다)
+  // inp: {base, series, settings, events, betas, startDate, goal, mixes, defs: {k: {cap, cutSmall}}}, onProg(k, n)
+  function allocPlans(inp, onProg) {
+    const fxOf = (ccy) => (!ccy || ccy === "KRW" ? null : ccy === "USD" ? "KRW=X" : ccy + "KRW=X");
+    const { base, settings: m, goal: g, mixes, defs } = inp;
+    const V0 = base.reduce((a, h) => a + (h.extra ? 0 : h.valueKrw), 0);
+    const model = buildModel({ holdings: base, series: inp.series, fxOf, settings: m, events: inp.events, betas: inp.betas, startDate: inp.startDate, goalDate: g.date });
+    const w0 = base.map((h) => (h.extra ? 0 : h.valueKrw / V0));
+    const risky = base.map((h, i) => (model.factors[i].cash || h.extra ? 0 : w0[i])), top = risky.indexOf(Math.max(...risky));
+    const plans = [{ k: "keep", w: w0, rb: false }];
+    for (const [k, D] of Object.entries(defs)) {
+      const w = [...w0], cut = w0[top] > D.cap ? w0[top] - D.cap : w0[top] * D.cutSmall, tot = mixes[k].reduce((a, x) => a + x[1], 0);
+      w[top] -= cut; mixes[k].forEach(([t, x]) => { w[base.findIndex((h) => h.ticker === t)] += (cut * x) / tot; });
+      plans.push({ k, w, rb: true, cut });
+    }
+    const out = [];
+    for (const pl of plans) {
+      const hs = base.map((h, i) => ({ ...h, valueKrw: V0 * pl.w[i] }));
+      const R = simulate(model, { holdings: hs, scenario: m.scenario, nPaths: 1500, seed: Number(m.seed) || 1, goal: g.amount, monthly: Number(g.monthly_contribution) || 0, rebalance: pl.rb, withEvents: true, dof: m.t_dof, fxOf });
+      out.push({ ...pl, R: { p_goal: R.p_goal, p_loss: R.p_loss, mdd_median: R.mdd_median, terminal: R.terminal, bands: R.bands } });
+      if (onProg) onProg(out.length, plans.length);
+    }
+    return { V0, top, out, fd: model.monthDates };
+  }
+
+  window.Model = { allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();

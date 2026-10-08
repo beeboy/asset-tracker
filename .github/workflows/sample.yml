@@ -1,0 +1,39 @@
+name: sample
+# 샘플(TSLA 1,000주) 계산값을 하루 한 번(한국 시간 9시) 미리 만들어 data/sample_calc.json 에 저장한다.
+# 첫 방문 화면은 이 값을 그대로 띄우고 다시 계산하지 않는다 (다음 날 9시까지 같은 값).
+on:
+  schedule:
+    - cron: "0 0 * * *"   # UTC 0시 = 한국 9시
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sample
+  cancel-in-progress: false
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 브라우저 준비
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: 샘플 계산
+        run: |
+          python3 -m http.server 8123 >/dev/null 2>&1 &
+          sleep 2
+          BASE=http://localhost:8123 node tools/sample_snapshot.mjs
+      - name: 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/sample_calc.json
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "샘플 계산 $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && exit 0; sleep 5; done
+          exit 1
