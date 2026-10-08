@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 안내 탭: 이 앱이 무엇을 하는지 짧게, 시작 방법, 맨 끝에 naeilo.com
+/// 소개 탭: 이 앱이 무엇을 하는지 짧게, 시작 방법, 맨 끝에 naeilo.com
 struct GuideView: View {
     @EnvironmentObject var m: AppModel
     @Binding var tab: AppTab

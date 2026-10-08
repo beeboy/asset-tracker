@@ -9,7 +9,7 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $tab) {
             NavigationStack { GuideView(tab: $tab).navigationTitle("naeilo 위젯") }
-                .tabItem { Label("안내", systemImage: "info.circle") }.tag(AppTab.guide)
+                .tabItem { Label("소개", systemImage: "info.circle") }.tag(AppTab.guide)
             NavigationStack { WidgetsView().navigationTitle("위젯 11개") }
                 .tabItem { Label("위젯", systemImage: "square.grid.2x2") }.tag(AppTab.widgets)
             NavigationStack {
@@ -18,7 +18,7 @@ struct ContentView: View {
             }
             .tabItem { Label("설정", systemImage: "gearshape") }.tag(AppTab.settings)
         }
-        // 위젯을 누르면 안내 탭으로
+        // 위젯을 누르면 소개 탭으로
         .onOpenURL { _ in tab = .guide }
     }
 }
