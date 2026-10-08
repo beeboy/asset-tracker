@@ -20,3 +20,16 @@ func withTimeout<T: Sendable>(_ sec: Double, _ op: @escaping @Sendable () async 
         return r
     }
 }
+
+/// 큰 금액을 누르면 숨기기·다시 보이기 (기본은 모든 위젯이 같이)
+struct ToggleAmountIntent: AppIntent {
+    static var title: LocalizedStringResource = "금액 숨기기"
+    @Parameter(title: "위젯") var kind: String
+    init() {}
+    init(kind: String) { self.kind = kind }
+    func perform() async throws -> some IntentResult {
+        Store.toggleHidden(kind)
+        WidgetCenter.shared.reloadAllTimelines()
+        return .result()
+    }
+}

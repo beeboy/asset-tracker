@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 enum AppTab: Hashable { case guide, widgets, settings }
 
@@ -60,6 +61,8 @@ struct SignInView: View {
 struct HomeView: View {
     @EnvironmentObject var m: AppModel
     @State private var interval = Store.intervalMin
+    @State private var hideEach = Store.hideEach
+    @State private var hideAll = Store.hideAll
 
     var body: some View {
         let s = m.snap
@@ -86,6 +89,19 @@ struct HomeView: View {
             } header: { Text("갱신") } footer: {
                 Text("장중(한국 시간 평일 오후 5시~다음 날 오전 9시)에는 고른 주기로, 그 밖에는 3시간마다 확인합니다. 실제 시각은 iOS 가 조금 늦출 수 있습니다. 위젯의 ↻ 를 누르면 바로 확인합니다.")
             }
+            Section {
+                Picker("누르면", selection: $hideEach) {
+                    Text("모든 위젯 함께").tag(false)
+                    Text("위젯마다 따로").tag(true)
+                }
+                .onChange(of: hideEach) { _, v in Store.hideEach = v; WidgetCenter.shared.reloadAllTimelines() }
+                if !hideEach {
+                    Toggle("지금 금액 숨김", isOn: $hideAll)
+                        .onChange(of: hideAll) { _, v in Store.hideAll = v; WidgetCenter.shared.reloadAllTimelines() }
+                }
+            } header: { Text("금액 숨기기") } footer: {
+                Text("위젯의 큰 금액을 누르면 숨기고, 한 번 더 누르면 다시 보입니다. 등락 %·목표 %는 그대로 보입니다.")
+            }
             if let msg = m.message { Section { Text(msg).foregroundStyle(.secondary) } }
             Section {
                 LabeledContent("로그인", value: m.login?.label ?? "-")
@@ -95,5 +111,6 @@ struct HomeView: View {
             }
         }
         .refreshable { await m.sync(compute: true) }
+        .onAppear { hideAll = Store.hideAll }
     }
 }
