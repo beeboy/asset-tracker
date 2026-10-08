@@ -1,61 +1,61 @@
 {
- "updated": "2026-10-08T00:44:50+00:00",
+ "updated": "2026-10-08T01:50:04+00:00",
  "realtime": {
-  "key": "c043f40807506caf",
-  "updated": "2026-10-08T00:44:58+00:00",
+  "key": "e53d1b10f2c70728",
+  "updated": "2026-10-08T01:50:11+00:00",
   "media": [
    {
-    "title": "미 국채 금리 급등에 뉴욕증시 하락 마감",
+    "title": "미 국채 금리 상승에 뉴욕증시 하락 마감",
     "orig": "Wall Street ends lower, off record highs, as Treasury yields climb",
-    "summary": "미국 국채 금리가 오름세를 보이면서 뉴욕증시 3대 지수가 사상 최고치 경신을 멈추고 일제히 하락 마감했습니다.",
+    "summary": "치솟는 국채 금리의 압박 속에서 S&P500 등 주요 지수가 사상 최고치에서 밀려났다.",
     "broker": "",
     "source": "Reuters",
     "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxOYlBxMHUzb2ZDaHpMY3JBZUl2Rk9XSE94bjQ2aFVndHhYeU4zS1Rwb2I1SlFJWjVpaE9sS0V4c2ZiQ2JsMzd0R0lydzlFejhJVkNYbU5ZTGVjeW9tWUJtTmUzX2VwY0N1SnpLVmdvQWRvM20xS25hRmhXRDdHVUppRk9hS2JhVExxdVUtX0hfQlNqWnd0OUhHWEpaa2w1Z3hXNVRkaw?oc=5",
     "time": "2026-10-07T23:14:17+00:00"
    },
    {
-    "title": "중동 긴장 고조에 유가 상승…공급 차질 우려 확산",
-    "orig": "Oil Rises Amid Rising Mideast Tensions",
-    "summary": "중동 지역의 지정학적 불안이 다시 커지면서 원유 공급 차질에 대한 우려로 국제 유가가 상승세를 나타냈습니다.",
+    "title": "중동 긴장 고조에 따른 공급 우려로 유가 상승",
+    "orig": "Oil gains as Middle East hostilities stoke supply worries",
+    "summary": "중동 지역의 지정학적 긴장과 군사적 충돌 우려로 국제유가가 상승세를 탔다.",
     "broker": "",
-    "source": "WSJ",
-    "link": "https://www.wsj.com/finance/commodities-futures/oil-rises-amid-rising-mideast-tensions-3cd98941?mod=rss_markets_main",
-    "time": "2026-10-08T00:36:00+00:00"
+    "source": "CNBC",
+    "link": "https://www.cnbc.com/2026/10/08/oil-prices-today-brent-wti-hormuz.html",
+    "time": "2026-10-08T01:46:56+00:00"
    },
    {
-    "title": "트럼프 행정부, 웰스파고 상대 인종 기반 대출 혐의 조사 착수",
-    "orig": "Trump Administration Investigates Wells Fargo for Race-Based Lending",
-    "summary": "미국 연방 주택 당국이 웰스파고의 흑인 주택 소유 지원 프로그램을 역차별로 보고 조사에 착수했습니다.",
+    "title": "연은 관료들 \"데이터센터 붐으로 물가 압력 가중\"",
+    "orig": "Data center boom is pushing prices higher, according to Fed officials",
+    "summary": "급증하는 데이터센터 수요가 전반적인 물가 상승을 부추기고 있다는 연방준비제도 관계자의 진단이 나왔다.",
     "broker": "",
-    "source": "New York Times",
-    "link": "https://www.nytimes.com/2026/10/07/business/trump-hud-wells-fargo.html",
-    "time": "2026-10-07T22:10:46+00:00"
+    "source": "The Washington Post",
+    "link": "https://news.google.com/rss/articles/CBMisAFBVV95cUxOY1FrWkF5TURpdC1qQ3NITm9zVDhQVXJaaXM5aVVYZ0doMEhWaTNid1Q3b1Bfdzg5c01lVGVSOVhjZHhBQTZEUlhHR3diMG96NnBZR25RQWp5U1JuWGJYOHNIT0FJNEd6TVlubGNwQzRGRXA0bUZsTno3YjFmUVpJNVl0NFozV1F4T0Z2QUhkRVdNQW8xR1Nab1NIRWl0VlZaMVRic0F3ak50TzlYSW8wRA?oc=5",
+    "time": "2026-10-08T01:34:13+00:00"
    }
   ],
   "broker": [
    {
-    "title": "골드만삭스, 스페이스X 목표가 상향 분석 보고서 발표",
+    "title": "골드만삭스의 스페이스X 목표가 분석에 쏠리는 시장 눈길",
     "orig": "When I saw Goldman's price target on SpaceX I said, there's some rigor to this analysis: Jim Cramer",
-    "summary": "골드만삭스가 스페이스X에 대해 엄밀한 분석을 바탕으로 한 긍정적인 목표주가를 제시해 시장의 주목을 받았습니다.",
+    "summary": "골드만삭스가 제시한 스페이스X 목표주가에 철저한 분석과 타당성이 담겼다는 평가가 제기됐다.",
     "broker": "골드만삭스",
     "source": "CNBC",
     "link": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxQWHcxblFISHRVTlItTDVqdmFxUEV1dmwyTlROV1duQTJ6amVfdmZNc3FwS3pFR3IxczRibGpCS09WWFRPZHlhZHFXMnJQdlZJMHM5ZTR4SmNyemY1NERIZzZ6dXh5ZjlUZFdDZHYzVzdqMktWUjNIaEYzc3lCQjNwMGdxdkM5TUZ3YWNBaEwwRWJJX05VaFhTV2RnS1IxamJobzlHXzI5VkZFVzE5NFlodU92NENUdS1xNGF6ZzdHN3ZoOXNFTE95RlRvbW9Ebm45ZTM5Qg?oc=5",
     "time": "2026-10-07T23:57:45+00:00"
    },
    {
-    "title": "텍스트론 12개월 목표주가 100.64달러로 하향 조정",
+    "title": "텍스트론 12개월 목표주가 100.64달러로 하향",
     "orig": "Textron Inc. Stock 12‑Month Price Target Cut to $100.64, Implies 33% Upside",
-    "summary": "월가 애널리스트 컨센서스가 텍스트론의 12개월 목표가를 100.64달러로 낮췄으나 현 주가 대비 33%의 상승 여력을 전망했습니다.",
-    "broker": "트레이딩뷰 종합",
+    "summary": "텍스트론의 향후 12개월 목표주가가 조정되었으나 여전히 상승 여력이 남아있는 것으로 분석됐다.",
+    "broker": "트레이딩뷰",
     "source": "TradingView",
     "link": "https://news.google.com/rss/articles/CBMizgFBVV95cUxQWWdzLUVrQmtCUVBZaHRPMnBvRG1qZmRic0w4bS14bTFmcVp2WEo4NF9Ub0thdnhVYmY0b1k1cDByWl9sWk5xZldtQVBhM2c4Mk1QcWNtVzhMelliYXd6TmZ0SXI2VmxVSF9VZHJmVDFxQWR1NFhacTZEV3FtNF9LeU85TE4tWGN5ZVlZeWt5UWFTNjdqOFkyLTB0MVlITU9uM2FzRFN4Tmdab3pEUDAzUTJaRkRrVHc5a2U5eUxZNXZBeXg1WEFITHlRUHdCZw?oc=5",
     "time": "2026-10-07T22:20:12+00:00"
    },
    {
-    "title": "레이도스 홀딩스 목표주가 153.27달러로 하향",
+    "title": "레이도스 홀딩스 12개월 목표주가 153.27달러로 하향",
     "orig": "Leidos Holdings, Inc. Stock 12‑Month Price Target Cut to $153.27, Implies 31% Upside",
-    "summary": "방산 IT 기업 레이도스 홀딩스의 12개월 목표가가 153.27달러로 하향 조정되었으며 약 31%의 상승 잠재력이 제시되었습니다.",
-    "broker": "트레이딩뷰 종합",
+    "summary": "레이도스 홀딩스의 12개월 목표주가가 낮아졌으나 추가 상승 가능성은 유지됐다.",
+    "broker": "트레이딩뷰",
     "source": "TradingView",
     "link": "https://news.google.com/rss/articles/CBMi2AFBVV95cUxPVGpaQl9xSkF1S2RQWnpISUZNRV9zTEl0Vm5MdUZYLUt5eFkyUndFU0tFNHhVaVMtRFVGMHA2Q0RrdVNPcm1NZ0IwNEZNbmxIcjBHVTJvVnc4ZFY5TFpJZUlzMmZRZkpHSWs0U0lTS1JIVWs3NWp3S1ZCSWYyRFh3ZDhzUkhqZ25QWE5hUUxRdzJ3VUNORHk2Uk9BMmZJS3FqU0pCdUpQb01OOGlLVXFMb1pHUFJGa3oyYjYybVBNbWMtYWx2R2c0d28wbFF5THloQkpkeGFwTHM?oc=5",
     "time": "2026-10-07T22:20:10+00:00"
@@ -126,7 +126,7 @@
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-08T00:44:50+00:00",
+  "updated": "2026-10-08T01:50:04+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -436,6 +436,19 @@
     "link": "https://finance.yahoo.com/energy/articles/tesla-semi-lands-50-truck-180515657.html",
     "time": "2026-10-07T18:05:15+00:00",
     "added": "2026-10-07T20:42:40+00:00"
+   },
+   {
+    "id": "nokiasceoissuesbullishverdictonaiinfrastructuregrowthasnokst",
+    "ticker": "NVDA",
+    "scope": "industry",
+    "cat": "growth",
+    "title": "노키아 CEO, AI 인프라 성장세에 긍정적 전망 제시",
+    "orig": "Nokia’s CEO Issues Bullish Verdict on AI Infrastructure Growth as NOK Stock Doubles",
+    "summary": "노키아 최고경영자가 AI 인프라 확대에 따른 지속적인 시장 성장을 확신하며 주목받고 있습니다.",
+    "source": "Barchart.com",
+    "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxPZHRCbzZGZ3lldWRjdXdPNUw1b0h5TE10NEdFWE9UVURDQUxjWXBQZkZWbVhxUmdremcyYzVMdGJfaC1xSDB0MnRoSGxaZ0U2UHRpempwcEJJTUtJT1dmamVwVm9MSTY2SGREcjlRMWRpYmxjRTFES3FobkhPbmtkbWo3R0ZJTVZDV1pvVnpleW9CMlNhNDJnUWkwR2Y5QVh2SnVFbVFFblJGbXVXNi1QWTRzUFZSaERPTjlVNFpGdkRYZzFn?oc=5",
+    "time": "2026-10-07T17:44:39+00:00",
+    "added": "2026-10-08T01:50:04+00:00"
    },
    {
     "id": "applestocksriseas400targetrepricessiriai",
@@ -2133,42 +2146,42 @@
     "sum": "테슬라는 **자율주행(FSD)** 규제 완화와 **사이버캡·세미** 상용화 확대로 중장기 성장 동력을 확보하고 있습니다.\n대형 은행들은 2027년 목표주가를 재설정하며 **45%의 높은 EPS 성장률**과 밸류에이션 간의 균형을 주목하고 있습니다.\n위험: **완전자율주행(FSD) 승인 지연** 및 고밸류에이션에 따른 주가 변동성에 유의해야 합니다.",
     "hash": "6bfd3dd21a8a238c",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-08T00:44:50+00:00"
-   },
-   "AAPL": {
-    "sum": "애플은 AI가 탑재된 **시리 개편**과 아이폰의 견조한 수요를 바탕으로 서비스 및 하드웨어 성장을 이어가고 있습니다.\nLG전자와의 협력을 통한 **스마트홈 기기 시장 진출**은 향후 모바일 생태계 확장의 발판이 될 것입니다.\n위험: **특허 침해 소송 배상금** 및 스마트홈 시장에서의 치열한 경쟁이 위험 요인입니다.",
-    "hash": "b1181aec29f5ae5f",
-    "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-08T00:44:50+00:00"
-   },
-   "SMH": {
-    "sum": "반도체 업종은 **실물 자산 수요 증가**와 공급 제약 속에서 AI 인프라 확충의 직접적인 수혜를 받고 있습니다.\n향후 1~3년 동안 첨단 반도체 수요가 견조하게 유지되며 관련 생태계 전반의 성장이 기대됩니다.\n위험: **원자재 공급 제약**과 전방 산업의 수요 변동성이 주요 위험 요인입니다.",
-    "hash": "7bca54342efc363a",
-    "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-08T00:44:50+00:00"
-   },
-   "GLD": {
-    "sum": "금은 글로벌 부채 증가와 지속되는 인플레이션 속에서 **안전자산 및 헤지 수단**으로서 구조적 강세장이 전망됩니다.\n보험 성격의 프리미엄이 반영되며 중장기적으로 포트폴리오 다변화 자산으로서의 가치가 유지되고 있습니다.\n위험: **현재 반영된 높은 프리미엄**으로 인해 단기 가격 조정 가능성이 존재합니다.",
-    "hash": "ab2917555c02ab03",
-    "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-08T00:44:50+00:00"
+    "seen": "2026-10-08T01:50:04+00:00"
    },
    "NVDA": {
     "sum": "**엔비디아**는 개선된 수요 예측력과 **1년 선행 전망**을 통해 높은 밸류에이션을 뒷받침하며 **애플의 두 배**에 달하는 이익을 기록 중입니다.\n또한 마이크로소프트와 **스페이스X** 등의 대규모 **AI 칩 구매 및 인프라 확장**이 향후 수년간 장기 성장을 견인할 것으로 기대됩니다.\n위험: **AI 전방 수요** 둔화나 빅테크의 설비 투자 축소 시 실적과 주가가 큰 **변동성**에 노출될 수 있습니다.",
     "hash": "9fb44bbc40d2a77a",
     "updated": "2026-10-08T00:44:50+00:00",
-    "seen": "2026-10-08T00:44:50+00:00"
+    "seen": "2026-10-08T01:50:04+00:00"
    },
    "SPCX": {
     "sum": "**스페이스X**는 **400억 달러** 규모의 자금 조달을 통해 **엔비디아 AI 칩**을 대거 확보하고 AI 연산 사업으로 영역을 넓히며 장기 가치를 키워가고 있습니다.\n스타십 연료 수요 급증에 대응한 인프라 확충과 스타링크의 규제 승인은 향후 **2030년**까지의 지속 가능한 성장 동력이 될 것입니다.\n위험: 대규모 부채 조달에 따른 **재무 부담**과 우주항공·AI 인프라 투자 성과가 지연될 경우 주가에 부담이 될 수 있습니다.",
     "hash": "66d97f4e1e83b35d",
     "updated": "2026-10-08T00:44:50+00:00",
-    "seen": "2026-10-08T00:44:50+00:00"
+    "seen": "2026-10-08T01:50:04+00:00"
+   },
+   "AAPL": {
+    "sum": "애플은 AI가 탑재된 **시리 개편**과 아이폰의 견조한 수요를 바탕으로 서비스 및 하드웨어 성장을 이어가고 있습니다.\nLG전자와의 협력을 통한 **스마트홈 기기 시장 진출**은 향후 모바일 생태계 확장의 발판이 될 것입니다.\n위험: **특허 침해 소송 배상금** 및 스마트홈 시장에서의 치열한 경쟁이 위험 요인입니다.",
+    "hash": "b1181aec29f5ae5f",
+    "updated": "2026-10-07T20:42:40+00:00",
+    "seen": "2026-10-08T01:50:04+00:00"
+   },
+   "SMH": {
+    "sum": "반도체 업종은 **실물 자산 수요 증가**와 공급 제약 속에서 AI 인프라 확충의 직접적인 수혜를 받고 있습니다.\n향후 1~3년 동안 첨단 반도체 수요가 견조하게 유지되며 관련 생태계 전반의 성장이 기대됩니다.\n위험: **원자재 공급 제약**과 전방 산업의 수요 변동성이 주요 위험 요인입니다.",
+    "hash": "7bca54342efc363a",
+    "updated": "2026-10-07T20:42:40+00:00",
+    "seen": "2026-10-08T01:50:04+00:00"
+   },
+   "GLD": {
+    "sum": "금은 글로벌 부채 증가와 지속되는 인플레이션 속에서 **안전자산 및 헤지 수단**으로서 구조적 강세장이 전망됩니다.\n보험 성격의 프리미엄이 반영되며 중장기적으로 포트폴리오 다변화 자산으로서의 가치가 유지되고 있습니다.\n위험: **현재 반영된 높은 프리미엄**으로 인해 단기 가격 조정 가능성이 존재합니다.",
+    "hash": "ab2917555c02ab03",
+    "updated": "2026-10-07T20:42:40+00:00",
+    "seen": "2026-10-08T01:50:04+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-08T00:44:50+00:00"
+  "updated": "2026-10-08T01:50:04+00:00"
  },
  "ai": "ok"
 }
