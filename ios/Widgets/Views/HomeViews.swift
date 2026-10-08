@@ -19,8 +19,8 @@ struct AssetSmallView: View {
             Label2(text: "총자산")
             Money { h in Big(text: h ? hiddenAmount : Fmt.eok(s.total)) }
             Text("\(Fmt.arrow(s.dayChg)) \(Fmt.pct(s.dayChg))" + (hide ? "" : " · \(Fmt.man(s.dayAmt))")).font(.system(size: 12, weight: .bold)).foregroundStyle(t.chg(s.dayChg)).lineLimit(1)
-            Spark(values: s.spark, color: t.c(Palette.acc)).widgetAccentable().padding(.vertical, 4)
-            Foot(text: "3달 · \(shortTime(s.updated))")
+            DotSpark(values: Array(s.spark.suffix(10)), color: Palette.ink.opacity(0.9), tint: t, labels: !hide).widgetAccentable()
+            Foot(text: "10일 · \(shortTime(s.updated))")
         }
         .foregroundStyle(Palette.ink)
     }
