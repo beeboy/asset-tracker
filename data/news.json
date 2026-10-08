@@ -1,64 +1,64 @@
 {
- "updated": "2026-10-08T05:56:09+00:00",
+ "updated": "2026-10-08T08:50:22+00:00",
  "realtime": {
-  "key": "c2aad5f849843250",
-  "updated": "2026-10-08T05:56:16+00:00",
+  "key": "46d24e2dba856434",
+  "updated": "2026-10-08T08:50:29+00:00",
   "media": [
    {
-    "title": "TSMC, 9월 매출 사상 최대…AI 칩 수요 강세 지속",
-    "orig": "TSMC September sales hit another record as AI boom rolls on",
-    "summary": "TSMC가 강력한 인공지능(AI) 칩 수요에 힘입어 9월 역대 최대 매출 기록을 경신했습니다.",
+    "title": "연준 월러 이사 \"추가 금리 인상 필요하나 속도 조절 유연성 있어\"",
+    "orig": "Fed's Waller: More hikes needed, but there is 'flexibility' about the pace",
+    "summary": "크리스토퍼 월러 연준 이사는 인플레이션을 잡기 위해 추가 금리 인상이 필요하지만 인상 속도에는 유연성이 있다고 밝혔습니다.",
+    "broker": "",
+    "source": "Reuters",
+    "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxNVlJjTS1oeE1aRmVEcC05dTZkd25ONVRidzJkTlozaEE3Q0tvQ2hPd0dYemMxNWUzTUZORnFfb0FWZUdDOVp3QUVwelQ5cjJzcV9oMl9mZmpCTnJOaGh6XzZXLXlxOWJBUVhTX05oOVhwS2hhZG1WbmppWlRRRGNDOGZneGNneTRiLXBhVHd1Z3FGc1JaZC14Qm14SVRlYi1Cd3MxSjVR?oc=5",
+    "time": "2026-10-08T08:33:48+00:00"
+   },
+   {
+    "title": "미국 및 유로존 국채 금리 급등세 지속",
+    "orig": "U.S. Treasury Yields, Eurozone Bond Yields Rise Relentlessly",
+    "summary": "미국 국채 수익률이 수십 년 만의 최고치 부근까지 치솟으며 유로존 국채 금리와 함께 동반 상승세를 이어갔습니다.",
+    "broker": "",
+    "source": "WSJ",
+    "link": "https://www.wsj.com/finance/investing/u-s-treasury-yields-eurozone-bond-yields-rise-relentlessly-b7d3ba07?mod=rss_markets_main",
+    "time": "2026-10-08T08:42:00+00:00"
+   },
+   {
+    "title": "TSMC, AI 반도체 수요 힘입어 9월 매출 급증",
+    "orig": "TSMC’s September sales surge year-over-year as AI drives chip demand",
+    "summary": "TSMC가 인공지능(AI) 칩 수요 호조에 힘입어 9월 순매출이 전년 동기 대비 큰 폭으로 증가했다고 발표했습니다.",
     "broker": "",
     "source": "CNBC",
     "link": "https://www.cnbc.com/2026/10/08/tsmc-september-sales-hit-another-record-as-ai-boom-rolls-on.html",
-    "time": "2026-10-08T05:45:21+00:00"
-   },
-   {
-    "title": "중동 확전 우려에 국제유가 상승…공급 차질 불안 고조",
-    "orig": "Oil gains as Middle East hostilities, potential escalation stoke supply worries",
-    "summary": "미국의 군사 작전 가능성 등 중동 지역 긴장 고조로 원유 공급 차질 우려가 커지며 유가가 올랐습니다.",
-    "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/08/oil-prices-today-brent-wti-hormuz.html",
-    "time": "2026-10-08T04:07:51+00:00"
-   },
-   {
-    "title": "미 증시 선물, S&P 500 최고치 기록 후 보합세",
-    "orig": "Stock futures are little changed after S&P 500 retreats from record: Live updates",
-    "summary": "국채 금리 상승에도 견조한 흐름을 이어가던 뉴욕 증시가 사상 최고치 도달 후 관망세를 보이고 있습니다.",
-    "broker": "",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/07/stock-market-today-live-updates-.html",
-    "time": "2026-10-08T04:06:52+00:00"
+    "time": "2026-10-08T06:50:42+00:00"
    }
   ],
   "broker": [
    {
-    "title": "골드만삭스의 스페이스X 목표가 상향은 합리적 평가",
-    "orig": "Jim Cramer Says Goldman's SpaceX Price Target Hike Proves It Wasn't Guesswork",
-    "summary": "골드만삭스의 스페이스X 목표주가 상향은 단순한 추측이 아닌 명확한 근거에 기반한 판단이라는 평가가 나왔습니다.",
-    "broker": "골드만삭스",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMinAFBVV95cUxNWXpCM2VfcUtvR0FhcVhiOTEwOGprTFY0NlFUZ3dYOHFsTl9oU2NsLTNnQXlQQWhuNEFsemxLUk1IN3BjY1FxSEU3c0pTWFg5eGs5Ym9ZZHBJRmNvNmotbUIybFc3cTh0T3MtMi1wQlgteXdXY28xME1IUnktbnN6c2djb2lhSk1DTE1fUDZxZlE3OWtoQlZ3d2sySXE?oc=5",
-    "time": "2026-10-08T01:52:00+00:00"
+    "title": "번스타인, 콘티넨탈 목표주가 상향…\"밸류에이션 매력 부각\"",
+    "orig": "Bernstein raises Continental stock price target on valuation gap",
+    "summary": "번스타인이 콘티넨탈의 밸류에이션 격차 확대를 근거로 목표주가를 상향 조정했습니다.",
+    "broker": "번스타인",
+    "source": "Investing.com",
+    "link": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxOcXM1RjRVVkxlRHFUdDY0REhDVnBLZzJxR1g2WGFObWJabzhJRnlJeG9BRDdyb2RSR1B5V013cWwwdndZYmQ1V0NIOVd3bEdXNm9rMGFXMTJHc2w4WTdHUHhOalhOSy14dG56Y3Jnd3BDRkxaMFJsaGZ1UGstaVNlS2U5Vk9SSEx0bE11ZkllWlJNcnRXNzdPN1dXTVNlblZtNWVnRXNxcGFBVExfWFR2YzBCdzh3dE9RNDkteU1JZVdRQQ?oc=5",
+    "time": "2026-10-08T08:22:53+00:00"
    },
    {
-    "title": "바클레이즈, 자기관리 지출 증가로 수혜 볼 소비재 종목 주목",
-    "orig": "Barclays sees big haircare gains for this consumer stock as shoppers prioritize self-care",
-    "summary": "바클레이즈는 소비자들이 자기관리 제품 지출을 늘리고 있어 급성장하는 헤어케어 사업부가 재평가받을 수 있다고 분석했습니다.",
-    "broker": "바클레이즈",
-    "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/08/barclays-haircare-gains-self-care-consumers.html",
-    "time": "2026-10-08T05:00:01+00:00"
+    "title": "전략가 경고 \"AI 버블 2년 내 꺼지며 시장 폭락 촉발할 수도\"",
+    "orig": "AI bubble could burst within two years, triggering severe market crash, strategist warns",
+    "summary": "시장 전략가가 인공지능(AI) 열풍에 따른 거품이 2년 안에 꺼지면서 심각한 증시 폭락을 일으킬 수 있다고 경고했습니다.",
+    "broker": "트레이딩뷰",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxORmdseVFHRkZURWhSR1VUU1VGa0RsSjJ6Tnd4U21leU1YR21FQ1B1WHVkSHZTa0Q4bFJDSGpSWkV4WVJpLVhUNl9QZmRjbWJhc19Xdkx5ckJXMWQxSkZsQUplc0F3MFFaQXphQ09tdDR4UDdCdWtwWFR0UHZTVTJTc3c4UzZUYTgtM3dtSFAwLXVoOFNNS0xTYTVET0Q2RmZKOV9LSWN0WlZHakpjb2ZONVlrT2M4T1dBa1A3dENJLVFVZHliTE1wRHpOMHJBS0g4cjAtSjA3NlhXalVMaTNjSlpzcw?oc=5",
+    "time": "2026-10-08T07:30:32+00:00"
    },
    {
-    "title": "로빈후드 주가 3주 연속 하락세 속 사모펀드서 기회 분석",
-    "orig": "HOOD Stock On Track To Post Third Week Of Declines: This Analyst Sees ‘Opportunity’ In Private Funds",
-    "summary": "로빈후드 주가가 약세를 보이는 가운데 애널리스트는 사모펀드 시장 진출에서 새로운 성장 기회를 찾을 수 있다고 평가했습니다.",
-    "broker": "월가 분석가",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPWUlKdzB2U2xpa3lIUm0yWXk1YVRXTjdVOTFyM3lBN1AzVUt4QWpOTUZfUTVYWnRObGh1dlpGYy1fQ05BcVV1dUthSldqMXMxUTFGa2swNWs5VWNGdjNfc1ZGcndjN0REM0k0Y0JCR2w1S1ZTTFRDVV8wQmR2UHJfUXRRalVVTTJubGRVTUVPWVVKS0NBU3VJ?oc=5",
-    "time": "2026-10-08T01:20:00+00:00"
+    "title": "어플라이드 디지털, 목표주가 63.79달러로 하향에도 168% 상승 여력 제시",
+    "orig": "Applied Digital Corporation Stock 12‑Month Price Target Cut to $63.79, Implies 168% Upside",
+    "summary": "어플라이드 디지털의 12개월 목표주가가 63.79달러로 낮아졌으나 여전히 168% 수준의 높은 상승 여력이 유지되었습니다.",
+    "broker": "트레이딩뷰",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxQNlRHalNVVVV0YXNnWlFEZmRDMHNVT0pReTdOSFU2N01HV3hRSkduNWYtTWs5WkpwY0tWNnBQRlpIT2VYN1JwTWJPUFhUT3hNWlMxRWtqYi1tejU2TldHV0F0ci1LeS1BY0tJZld4TWNfUk1wTGhSM2h5QWNUd1FWamZsc2d1N2dxcHBvZzZ3RWdVdkN6SGYzZVhRRzlzTVpuRENCOFNOM1VSYjR3Y1RGbi1wVU1HVGRVSHZIZWY4VDQzenh4NWxhb1ZJRFBIc0FJNWw3cG9malJkSjN2dXJ1UnlZZw?oc=5",
+    "time": "2026-10-08T07:20:06+00:00"
    }
   ]
  },
@@ -126,7 +126,7 @@
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-08T05:56:09+00:00",
+  "updated": "2026-10-08T08:50:22+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -138,6 +138,71 @@
    "GLD": "SPDR Gold Shares 업계"
   },
   "items": [
+   {
+    "id": "nousresearch90mraisenvidiasdualbetrevealsthecomputelandlords",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "엔비디아, 노우스 리서치 9천만 달러 투자로 연산 임대 전략 확대",
+    "orig": "Nous Research $90M Raise: NVIDIA’s Dual Bet Reveals the Compute Landlord Strategy",
+    "summary": "엔비디아가 AI 연구 스타트업 노우스 리서치에 투자하며 AI 연산 인프라 생태계 확장에 나섰습니다.",
+    "source": "Forkast News",
+    "link": "https://finance.yahoo.com/technology/ai/articles/nous-research-90m-raise-nvidia-084121035.html",
+    "time": "2026-10-08T08:41:21+00:00",
+    "added": "2026-10-08T08:50:22+00:00"
+   },
+   {
+    "id": "norwayelectricvehiclemarketsizeandforecast20262030q22026data",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "market",
+    "title": "노르웨이 전기차 시장, 2030년까지 연평균 13.8% 성장 전망",
+    "orig": "Norway Electric Vehicle Market Size and Forecast 2026-2030 - Q2 2026 Databook | 13.8% CAGR to Lift Market to US$190.9 Million by 2030, Led by Affordable EVs and Fleet Charging",
+    "summary": "노르웨이 전기차 시장이 저가형 전기차와 상용 충전 인프라 보급에 힘입어 2030년까지 꾸준한 성장세를 이어갈 것으로 전망됩니다.",
+    "source": "GlobeNewswire",
+    "link": "https://finance.yahoo.com/energy/articles/norway-electric-vehicle-market-size-080300769.html",
+    "time": "2026-10-08T08:03:00+00:00",
+    "added": "2026-10-08T08:50:22+00:00"
+   },
+   {
+    "id": "oraclecourtsapolloandgoldmanforaichipfinancingasdebttops169b",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "market",
+    "title": "오라클, 부채 1690억 달러 속 AI 칩 자금 조달 추진",
+    "orig": "Oracle Courts Apollo and Goldman for AI Chip Financing as Debt Tops $169 Billion",
+    "summary": "오라클이 막대한 부채 속에서도 AI 칩 구매 자금을 마련하기 위해 아폴로 및 골드만삭스와 협력을 모색하고 있어 반도체 수요가 재확인됩니다.",
+    "source": "TIKR",
+    "link": "https://finance.yahoo.com/technology/ai/articles/oracle-courts-apollo-goldman-ai-072925320.html",
+    "time": "2026-10-08T07:29:25+00:00",
+    "added": "2026-10-08T08:50:22+00:00"
+   },
+   {
+    "id": "tsmcq3salesbeatestimatesonsurgingaichipdemand",
+    "ticker": "AAPL",
+    "scope": "held",
+    "cat": "fund",
+    "title": "TSMC, AI 칩 수요 급증으로 3분기 매출 예상치 상회",
+    "orig": "TSMC Q3 sales beat estimates on surging AI chip demand",
+    "summary": "TSMC가 견조한 글로벌 AI 칩 수요에 힘입어 시장 예상치를 웃도는 3분기 실적을 기록했습니다.",
+    "source": "Investing.com",
+    "link": "https://finance.yahoo.com/technology/ai/articles/tsmc-q3-sales-beat-estimates-062509678.html",
+    "time": "2026-10-08T06:25:09+00:00",
+    "added": "2026-10-08T08:50:22+00:00"
+   },
+   {
+    "id": "indiarejectselonmusksclaimofdiscriminationoverstarlinklaunch",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "fund",
+    "title": "인도 정부, 스타링크 서비스 승인 관련 머스크의 차별 주장 반박",
+    "orig": "India rejects Elon Musk’s claim of discrimination over Starlink launch",
+    "summary": "인도 정부가 스타링크 위성 인터넷 승인 과정에서 차별이 있었다는 일론 머스크의 주장을 일축하며 규제 갈등을 이어갔습니다.",
+    "source": "TechCrunch",
+    "link": "https://finance.yahoo.com/technology/articles/india-rejects-elon-musk-claim-061411264.html",
+    "time": "2026-10-08T06:14:11+00:00",
+    "added": "2026-10-08T08:50:22+00:00"
+   },
    {
     "id": "spcxstockeyes2weekwinningstreakfccweighsnewspectrumforspacex",
     "ticker": "SPCX",
@@ -501,6 +566,19 @@
     "link": "https://finance.yahoo.com/markets/stocks/articles/rocket-lab-rklb-gets-fresh-181544762.html",
     "time": "2026-10-07T18:15:44+00:00",
     "added": "2026-10-07T20:42:40+00:00"
+   },
+   {
+    "id": "skhynixnasdaqgsskhyisakeymemorypartnerforaichipgrowth",
+    "ticker": "NVDA",
+    "scope": "industry",
+    "cat": "market",
+    "title": "SK하이닉스, AI 칩 성장의 핵심 메모리 파트너로 부각",
+    "orig": "SK Hynix (NasdaqGS:SKHY) Is A Key Memory Partner For AI Chip Growth",
+    "summary": "AI 칩 수요 급증 속에서 SK하이닉스가 핵심 메모리 공급사로 입지를 강화하고 있다.",
+    "source": "Yahoo Finance",
+    "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxNMlRSNnF1VC1zOEM4aWo5VGtFaWZucllwdUduVlBKdUhhb2RvemY1SXBEUUg3eDBuVzhEVzRDNkY3YnJ2aTNzM1ZxY3F2dk9HLVZIT2ZCd2xFQWdqZmgtNWEyRXRhYUYxbTNEQ2paa1M1R0g3dUNzMmZqNUl5NG52azlaeWN5V3JQcTVQYVJscTVnQWJf?oc=5",
+    "time": "2026-10-07T18:15:21+00:00",
+    "added": "2026-10-08T08:50:22+00:00"
    },
    {
     "id": "waymoborrows5billiontofuelitsglobalrobotaxiexpansion",
@@ -1829,6 +1907,19 @@
     "added": "2026-10-05T09:02:08+00:00"
    },
    {
+    "id": "satelliteconnectedflightsswissbringsstarlinkinternettoitsair",
+    "ticker": "SPCX",
+    "scope": "industry",
+    "cat": "growth",
+    "title": "스위스항공, 스타링크 위성 인터넷 도입",
+    "orig": "Satellite-Connected Flights: SWISS Brings Starlink Internet to Its Aircraft",
+    "summary": "항공기 내 위성 인터넷 서비스 도입이 확대되면서 우주·위성 통신 시장의 상용화가 진전되고 있다.",
+    "source": "Trend Hunter",
+    "link": "https://news.google.com/rss/articles/CBMibkFVX3lxTE8wU2kyQ2NkeVVOaW42WlVCZ0dzUGtoaGJUMENRVlZhVzhBTkdYREd5ZjNxOXVydkg1NTE2MWVYQUlfV09KQ2pxVXI3MjRnNjRsVmJxWU51NHBteVItaDhORk8xTHBoQTNEV05Qak1n?oc=5",
+    "time": "2026-10-05T07:00:00+00:00",
+    "added": "2026-10-08T08:50:22+00:00"
+   },
+   {
     "id": "teslastockrisesovernightaftermusksayssomethingmaycomeoftsmct",
     "ticker": "TSLA",
     "scope": "held",
@@ -2246,46 +2337,46 @@
    }
   ],
   "digest": {
-   "TSLA": {
-    "sum": "테슬라는 **자율주행(FSD)** 규제 완화와 **사이버캡·세미** 상용화 확대로 중장기 성장 동력을 확보하고 있습니다.\n대형 은행들은 2027년 목표주가를 재설정하며 **45%의 높은 EPS 성장률**과 밸류에이션 간의 균형을 주목하고 있습니다.\n위험: **완전자율주행(FSD) 승인 지연** 및 고밸류에이션에 따른 주가 변동성에 유의해야 합니다.",
-    "hash": "6bfd3dd21a8a238c",
-    "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-08T05:56:09+00:00"
-   },
-   "AAPL": {
-    "sum": "애플은 AI가 탑재된 **시리 개편**과 아이폰의 견조한 수요를 바탕으로 서비스 및 하드웨어 성장을 이어가고 있습니다.\nLG전자와의 협력을 통한 **스마트홈 기기 시장 진출**은 향후 모바일 생태계 확장의 발판이 될 것입니다.\n위험: **특허 침해 소송 배상금** 및 스마트홈 시장에서의 치열한 경쟁이 위험 요인입니다.",
-    "hash": "b1181aec29f5ae5f",
-    "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-08T05:56:09+00:00"
-   },
    "SMH": {
     "sum": "반도체 업종은 **실물 자산 수요 증가**와 공급 제약 속에서 AI 인프라 확충의 직접적인 수혜를 받고 있습니다.\n향후 1~3년 동안 첨단 반도체 수요가 견조하게 유지되며 관련 생태계 전반의 성장이 기대됩니다.\n위험: **원자재 공급 제약**과 전방 산업의 수요 변동성이 주요 위험 요인입니다.",
     "hash": "7bca54342efc363a",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-08T05:56:09+00:00"
+    "seen": "2026-10-08T08:50:22+00:00"
    },
    "GLD": {
     "sum": "금은 글로벌 부채 증가와 지속되는 인플레이션 속에서 **안전자산 및 헤지 수단**으로서 구조적 강세장이 전망됩니다.\n보험 성격의 프리미엄이 반영되며 중장기적으로 포트폴리오 다변화 자산으로서의 가치가 유지되고 있습니다.\n위험: **현재 반영된 높은 프리미엄**으로 인해 단기 가격 조정 가능성이 존재합니다.",
     "hash": "ab2917555c02ab03",
     "updated": "2026-10-07T20:42:40+00:00",
-    "seen": "2026-10-08T05:56:09+00:00"
+    "seen": "2026-10-08T08:50:22+00:00"
+   },
+   "TSLA": {
+    "sum": "유럽 내 **완전자율주행(FSD)** 승인 추진과 세미 트럭 수주 등 본업의 가시적 성과가 이어지고 있습니다.\n자체 AI 반도체 생산을 위한 **테라팹** 구축 추진은 향후 1~3년 뒤 로보택시와 자율주행 생태계의 핵심 원가 경쟁력이 될 전망입니다.\n위험: **웨이모** 등 경쟁사의 빠른 로보택시 확장과 높은 밸류에이션 부담, 그리고 각국의 자율주행 규제 지연이 성장의 발목을 잡을 수 있습니다.",
+    "hash": "bb1d5a2691abd160",
+    "updated": "2026-10-08T08:50:22+00:00",
+    "seen": "2026-10-08T08:50:22+00:00"
    },
    "NVDA": {
-    "sum": "스페이스X를 비롯한 주요 빅테크의 공격적인 AI 인프라 투자와 마이크로소프트의 신제품 채택에 힘입어 **엔비디아**는 탄탄한 수요 가시성을 확보하고 있습니다.\n강력한 실적과 온디바이스 AI 시장 확대는 **2030년**까지 장기적인 기업 가치를 높이는 핵심 동력으로 작용할 전망입니다.\n위험: 빅테크 간 경쟁 심화 및 높은 밸류에이션에 따른 주가 변동성에 유의해야 합니다.",
-    "hash": "81c276a0fd5fb07f",
-    "updated": "2026-10-08T05:56:09+00:00",
-    "seen": "2026-10-08T05:56:09+00:00"
+    "sum": "오라클과 스페이스X 등 빅테크 기업들이 대규모 자금을 조달해 칩 구매에 나서면서 전례 없는 AI 반도체 수요가 이어지고 있습니다.\n자체적인 AI 연산 임대 생태계 확장과 강력한 **수요 가시성** 확보는 향후 수년간 실적 우위를 지탱할 핵심 동력입니다.\n위험: 고객사들의 막대한 부채 조달 기반 투자 지속성에 대한 의문과 함께 **AMD** 등 경쟁사들의 추격이 잠재적 위협 요인입니다.",
+    "hash": "f28f4d17ed898151",
+    "updated": "2026-10-08T08:50:22+00:00",
+    "seen": "2026-10-08T08:50:22+00:00"
    },
    "SPCX": {
-    "sum": "스타링크의 성장성과 AI 연산 사업 진출 가능성이 부각되면서 **스페이스X**의 장기적인 기업 가치 재평가가 이어지고 있습니다.\n**400억 달러**에 달하는 대규모 자금 조달은 AI 인프라 확장을 가속화하며 미래 성장 동력을 강화할 것입니다.\n위험: 공격적인 차입 경영에 따른 재무 건전성 부담과 규제 변화 가능성이 존재합니다.",
-    "hash": "61961061467b3397",
-    "updated": "2026-10-08T05:56:09+00:00",
-    "seen": "2026-10-08T05:56:09+00:00"
+    "sum": "**스타링크**의 글로벌 확장과 함께 우주 인프라를 활용한 신규 **AI 연산 사업** 진출 가능성이 중장기 기업 가치를 끌어올리고 있습니다.\n향후 1~3년 동안 본격화될 AI 인프라 확충은 단순 우주 발사업체를 넘어선 차세대 플랫폼으로의 도약을 이끌 전망입니다.\n위험: **400억 달러** 규모의 대규모 부채 조달에 따른 재무 건전성 논란과 인도 등 해외 규제 갈등, **블루오리진**과의 경쟁 심화가 부담 요인입니다.",
+    "hash": "6261892399aa30cd",
+    "updated": "2026-10-08T08:50:22+00:00",
+    "seen": "2026-10-08T08:50:22+00:00"
+   },
+   "AAPL": {
+    "sum": "LG전자와의 협업을 통한 **스마트홈** 기기 출시와 개편된 **시리 AI** 도입은 기기 생태계 확장의 새로운 축이 될 전망입니다.\n2030년까지 급성장할 모바일 컴퓨팅 시장에서 AI 홈 허브와 독자적 하드웨어 결합이 중장기 서비스 및 기기 매출을 견인할 수 있습니다.\n위험: 뒤늦은 AI 시장 진입에 따른 기술 경쟁력 입증 부담과 **마시모** 특허 침해 배상금 지급 등 지속적인 법적 리스크가 존재합니다.",
+    "hash": "bd63f6ed2b133b8a",
+    "updated": "2026-10-08T08:50:22+00:00",
+    "seen": "2026-10-08T08:50:22+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-08T05:56:09+00:00"
+  "updated": "2026-10-08T08:50:22+00:00"
  },
  "ai": "ok"
 }
