@@ -178,7 +178,7 @@ def get_quote(sym: str) -> dict:
 def fetch_mar() -> dict | None:
     """서울외국환중개가 고시하는 미국 달러 매매기준율(MAR). 못 받으면 None (화면은 기존 환율로 대체)."""
     import re
-    end = date.today()
+    end = datetime.now(timezone(timedelta(hours=9))).date()  # 한국 날짜 (GitHub 러너는 UTC라 아침 9시 전엔 어제가 됨)
     tries = [
         SMBS + f"StdExRate_xml.jsp?arr_value=USD_{(end - timedelta(days=10)).isoformat()}_{end.isoformat()}",
         SMBS + "StdExRate.jsp",

@@ -324,8 +324,8 @@
   const marUsd = () => { const m = S.mar?.USD; return m && m.rate > 0 && m.date && yearsBetween(m.date, today()) * 365 <= 5 ? m : null; };
   const fxBase = (ccy) => (ccy === "USD" && marUsd() ? marUsd().rate : fxNow(ccy));
   async function marFetch() { // 저장소 값이 없거나 묵었으면 중계에서 한 번 더
-    const base = S.config?.push; if (marUsd() || !base) return;
-    try { const r = await fetch(base.replace(/\/$/, "") + "/mar"); const j = await r.json(); if (j?.USD?.rate > 0) { S.mar = j; renderAll(); } } catch (e) { /* 기존 환율 유지 */ }
+    const base = S.config?.push; if ((marUsd() && marUsd().date >= today()) || !base) return; // 오늘 고시가 아직 저장소에 없으면 중계에서 한 번 더
+    try { const r = await fetch(base.replace(/\/$/, "") + "/mar"); const j = await r.json(); if (j?.USD?.rate > 0 && (!S.mar?.USD?.date || j.USD.date > S.mar.USD.date)) { S.mar = j; renderAll(); } } catch (e) { /* 기존 환율 유지 */ }
   }
   function curPrice(h) {
     if (S.state?.ui?.manual_price && h.price != null && h.price !== "" && Number(h.price) > 0) return { v: Number(h.price), src: "manual" };
@@ -745,14 +745,21 @@
       return t;
     });
   }
+  // 목표 경로: 목표 시작일의 실제(그때 수량) 평가액에서 목표일 목표액까지 같은 속도로 불어나는 길
+  function goalPath(H, cash = 0) {
+    const g = S.state.goal; if (!H.dates.length) return null;
+    const A = (actualSeries(H) || H.total).map((v) => (v == null ? v : v + cash)), start = g.start_date || today();
+    let i0 = H.dates.findIndex((d) => d >= start); if (i0 < 0) i0 = H.dates.length - 1;
+    const V0 = A[i0] || H.total[i0] + cash, span = yearsBetween(start, g.date);
+    if (!(V0 > 0) || !(span > 0)) return { A, start, i0, V0, at: () => null };
+    return { A, start, i0, V0, at: (d) => (d < start ? null : V0 * (g.amount / V0) ** (Math.max(0, yearsBetween(start, d)) / span)) };
+  }
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
     if (!(total > 0) || S.state.sample || !H.dates.length) { card.style.display = "none"; return; }
-    const A = (actualSeries(H) || H.total).map((v) => (v == null ? v : v + cash)), start = g.start_date || today();
-    let i0 = H.dates.findIndex((d) => d >= start); if (i0 < 0) i0 = H.dates.length - 1;
-    const k = H.dates.length - 1, V0 = A[i0] || H.total[i0] + cash, now = total + cash;
-    const span = yearsBetween(start, g.date), el = Math.max(0, yearsBetween(start, today()));
-    const need = V0 > 0 && span > 0 ? V0 * (g.amount / V0) ** (el / span) : null, gap = need ? now / need - 1 : null;
+    const P = goalPath(H, cash), { A, start, i0, V0 } = P;
+    const k = H.dates.length - 1, now = total + cash, td = today();
+    const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
     const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
     card.style.display = "block";
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
@@ -762,11 +769,29 @@
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
     ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "필요 경로 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
-    const xs = H.dates.slice(i0), ys = A.slice(i0);
-    if (xs.length >= 3) {
+    // 경로 대비 +/− 막대: 날짜별 (실제 − 필요 경로). 1년은 주, 3년은 달 단위로 묶고(그 주·달 마지막 값), 끝에 오늘 실시간 막대
+    const rsel = $("#progRange .on")?.dataset.r || "5", n = +rsel, unit = n >= 780 ? "m" : n >= 252 ? "w" : "d";
+    const key = (d) => { if (unit === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
+    let pts = [];
+    for (let i = Math.max(i0, k - n); i <= k; i++) { const nd = P.at(H.dates[i]), v = A[i] ?? (H.total[i] + cash); if (nd != null && v != null) pts.push([H.dates[i], v - nd]); }
+    if (need && td > H.dates[k]) pts.push([td, now - need]);
+    if (unit !== "d") pts = pts.filter((p, j) => j === pts.length - 1 || key(p[0]) !== key(pts[j + 1][0]));
+    const lab = { 5: "1주", 22: "1달", 66: "3달", 252: "1년", 780: "3년" }[rsel] || "";
+    const sg = (v) => `${v >= 0 ? "+" : "−"}${krw(Math.abs(v))}원`;
+    if (pts.length) {
+      const first = pts[0][1], last = pts[pts.length - 1][1], diff = last - first;
+      $("#progTrend").innerHTML = k - n < i0 || pts.length < 2 ? `목표 시작(${start}) 뒤 경로 대비 <b class="${cls(last)}">${sg(last)}</b>` : `${lab} 전보다 <b class="${cls(diff)}">${sg(diff)}</b> <span class="muted">(${sg(first)} → ${sg(last)})</span>`;
       $("#progChart").style.display = "block";
-      Charts.lineChart($("#progChart"), { x: xs, height: 150, yfmt: krwAxis, series: [{ name: "실제", y: ys, color: "var(--c1)", width: 2 }, { name: "필요 경로", y: xs.map((d) => V0 * (g.amount / V0) ** (Math.max(0, yearsBetween(start, d)) / span)), color: "var(--accent2)", dash: "5 4", width: 1.3 }], markers: [...new Set(trades().map((t) => t.d))].filter((d) => d >= start).map((d) => ({ x: d, label: `${d} ${trades().filter((t) => t.d === d).map((t) => `${t.t} ${t.q > 0 ? "+" : ""}${t.q}`).join(", ")}` })) });
-    } else $("#progChart").style.display = "none";
+      const tr = trades();
+      Charts.barChart($("#progChart"), { x: pts.map((p) => p[0]), y: pts.map((p) => p[1]), height: 170, yfmt: krwAxis, live: td,
+        xlab: (d) => (d === td ? "오늘" : unit === "m" ? `${d.slice(2, 4)}.${+d.slice(5, 7)}` : `${+d.slice(5, 7)}/${+d.slice(8)}`),
+        tipx: (d) => (d === td ? `${d} (오늘 실시간)` : unit === "m" ? `${d.slice(0, 7)} 말` : unit === "w" ? `${d} 주 마지막` : d),
+        tipy: (i) => `필요 경로보다 ${sg(pts[i][1])}`,
+        labelLast: (pts[pts.length - 1][0] === td ? "오늘 " : "") + sg(last),
+        dots: [...new Set(tr.map((t) => t.d))].filter((d) => d >= start).map((d) => {
+          const j = pts.findIndex((p) => p[0] >= d || (unit !== "d" && key(p[0]) === key(d))); return j < 0 ? null : { x: pts[j][0], label: `${d} ${tr.filter((t) => t.d === d).map((t) => `${t.t} ${t.q > 0 ? "+" : ""}${t.q}`).join(", ")}` };
+        }).filter(Boolean) });
+    } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
   }
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date), cash = cashKrw(), tot = total + cash;
@@ -803,18 +828,24 @@
       const key = (d) => { if (step === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
       ix = ix.filter((i, j) => j === ix.length - 1 || key(H.dates[i]) !== key(H.dates[ix[j + 1]]));
     }
-    const x = ix.map((i) => H.dates[i]), tick = Object.keys(H.each), col = (t) => C[tick.indexOf(t) % C.length];
+    // 과거 보기 끝에 오늘 실시간 값(현재 평가액)을 한 점 더 붙인다. 아직 마감 전이라 속이 빈 점으로 (i = -1)
+    const td = today(), live = !future && tot > 0 && H.dates.length && td > H.dates[H.dates.length - 1];
+    if (live) { if (step === "m" && ix.length && H.dates[ix[ix.length - 1]].slice(0, 7) === td.slice(0, 7)) ix.pop(); ix.push(-1); }
+    const liveEach = {}; if (live) valuation().rows.forEach((r) => (liveEach[r.h.ticker] = (liveEach[r.h.ticker] || 0) + (r.valueKrw || 0)));
+    const lconv = (v) => (v == null ? null : inUsd ? v / fxNowUsd : v);
+    const tv = (i) => (i < 0 ? lconv(tot) : conv(H.total[i] + cash, i)), ev = (t, i) => (i < 0 ? lconv(liveEach[t] ?? null) : conv(H.each[t][i], i));
+    const x = ix.map((i) => (i < 0 ? td : H.dates[i])), tick = Object.keys(H.each), col = (t) => C[tick.indexOf(t) % C.length];
     let series = [], bands = [];
-    if (mode === "total") series = [{ name: cash ? "합계 (현금 포함)" : "합계", y: ix.map((i) => conv(H.total[i] + cash, i)), color: "var(--c1)", width: 2 }];
-    else if (mode === "each") series = tick.map((t) => ({ name: t, y: ix.map((i) => conv(H.each[t][i], i)), color: col(t) }));
+    if (mode === "total") series = [{ name: cash ? "합계 (현금 포함)" : "합계", y: ix.map(tv), color: "var(--c1)", width: 2, lastDot: live ? td : null }];
+    else if (mode === "each") series = tick.map((t) => ({ name: t, y: ix.map((i) => ev(t, i)), color: col(t), lastDot: live ? td : null }));
     else { // 누적: 종목 값을 쌓아 올린 띠
       let lo = ix.map(() => 0);
-      tick.forEach((t) => { const hi = ix.map((i, k) => lo[k] + (conv(H.each[t][i], i) || 0)); bands.push({ lo, hi, color: col(t), opacity: 0.55, name: t }); lo = hi; });
+      tick.forEach((t) => { const hi = ix.map((i, k) => lo[k] + (ev(t, i) || 0)); bands.push({ lo, hi, color: col(t), opacity: 0.55, name: t }); lo = hi; });
       series = [{ y: lo, color: "var(--fg)", width: 1 }];
     }
-    const opt = { x, series, bands, yfmt: money, height: 320, axisOut: true, hlines: [], vlines: [], ymin: mode === "total" ? undefined : 0 };
+    const opt = { x, series, bands, yfmt: money, height: 320, axisOut: true, hlines: [], vlines: [], ymin: mode === "total" ? undefined : 0, tipx: (d) => (live && d === td ? `${d} (오늘 실시간)` : d) };
     const goalV = inUsd ? g.amount / fxNowUsd : g.amount, goalLab = inUsd ? `목표 ${usd(goalV)} (지금 환율)` : "목표 " + krw(g.amount);
-    const maxV = Math.max(...ix.map((i) => conv(H.total[i] + cash, i)));
+    const maxV = Math.max(...ix.map(tv));
     const notes = [];
     if (future) {
       const V0 = tot, last = x[x.length - 1] || today(), cashU = inUsd ? cash / fxNowUsd : cash, addC = (a) => (cashU ? a.map((v) => (v == null ? v : v + cashU)) : a);
@@ -868,13 +899,22 @@
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
       notes.push("현재 수량을 과거에 적용" + (inUsd ? ", 달러 환산." : "."));
+      if (live) notes.push("· 맨 끝 빈 점은 오늘 실시간 값 (장 마감 전).");
+      // 필요 경로: 목표 진행과 같은 길 (목표 시작일부터). 시작일 전은 그리지 않는다
+      const P = mode !== "each" && tot > 0 && !S.state.sample ? goalPath(H, cash) : null;
+      if (P) {
+        const py = ix.map((i, k) => { const v = P.at(x[k]); return v == null ? null : i < 0 ? lconv(v) : conv(v, i); });
+        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그때 수량 기준).`); }
+      }
     }
     const A = actualRec();
     if (A && mode === "total" && x.length) { // 선택 기능: 실제 기록을 겹쳐 그린다 (그날 환율로 달러 환산)
       const fxAt = new Map(H.dates.map((d, i) => [d, H.usdK[i]])); let lastFx = H.usdK[0];
       const ax = [], ay = [];
       A.d.forEach((d, i) => { if (fxAt.has(d)) lastFx = fxAt.get(d); if (d < x[0] || (step === "m" && i < A.d.length - 1 && A.d[i + 1].slice(0, 7) === d.slice(0, 7))) return; ax.push(d); ay.push(inUsd ? A.v[i] / lastFx : A.v[i]); });
-      if (ax.length) opt.series.push({ name: "실제 기록", x: ax, y: ay, color: "var(--c3)", width: 1.6 });
+      const aLive = ax.length && tot > 0 && td > A.d[A.d.length - 1]; // 오늘은 아직 기록 전이라 실시간 값을 이어 붙인다 (저장은 장 마감 뒤 자동 기록이)
+      if (aLive) { if (step === "m" && ax[ax.length - 1].slice(0, 7) === td.slice(0, 7)) { ax.pop(); ay.pop(); } ax.push(td); ay.push(lconv(tot)); }
+      if (ax.length) opt.series.push({ name: "실제 기록", x: ax, y: ay, color: "var(--c3)", width: 1.6, lastDot: aLive ? td : null });
       opt.markers = (S.state.memos || []).filter((m) => m.d >= x[0]).map((m) => ({ x: m.d, label: `${m.d} ${m.t}` }));
       if (ax.length) notes.push("· 초록 선은 실제 기록 (그때 수량·현금. 엑셀 값은 그날 밤 12시, 자동 기록은 장 마감 기준).");
     }
@@ -2760,14 +2800,17 @@
     const card = $("#actCard"), a = actualRec();
     card.style.display = a ? "" : "none"; if (!a) return;
     const view = $("#actView .on")?.dataset.v || "year", years = [...new Set(a.d.map((d) => d.slice(0, 4)))].sort();
+    // 오늘은 아직 기록 전이면 실시간 값(현재 평가액)을 빈 점으로 이어 그린다. 저장은 장 마감 뒤 자동 기록이 한다
+    const td = today(), nowV = S.state.sample ? 0 : valuation().total + cashKrw(), lv = nowV > 0 && td > a.d[a.d.length - 1];
+    const ad = lv ? [...a.d, td] : a.d, av = lv ? [...a.v, nowV] : a.v;
     if (view === "year") {
       const series = years.map((Y, j) => {
-        const ix = a.d.map((d, i) => [d, i]).filter(([d]) => d.startsWith(Y) && d.slice(5) !== "02-29");
-        return { name: Y + "년", x: ix.map(([d]) => "2001" + d.slice(4)), y: ix.map(([, i]) => a.v[i]), color: j === years.length - 1 ? "var(--c1)" : C[(years.length - 1 - j) % C.length], width: j === years.length - 1 ? 2.2 : 1.3 };
+        const ix = ad.map((d, i) => [d, i]).filter(([d]) => d.startsWith(Y) && d.slice(5) !== "02-29");
+        return { name: Y + "년", x: ix.map(([d]) => "2001" + d.slice(4)), y: ix.map(([, i]) => av[i]), color: j === years.length - 1 ? "var(--c1)" : C[(years.length - 1 - j) % C.length], width: j === years.length - 1 ? 2.2 : 1.3, lastDot: lv && td.startsWith(Y) ? "2001" + td.slice(4) : null };
       });
       Charts.lineChart($("#actChart"), { series, yfmt: krwAxis, height: 260, axisOut: true, xlab: (dd) => `${dd.getUTCMonth() + 1}월`, tipx: (d) => d.slice(5).replace("-", "/") });
     } else {
-      Charts.lineChart($("#actChart"), { x: a.d, series: [{ name: "실제 기록", y: a.v, color: "var(--c1)", width: 1.8 }], yfmt: krwAxis, height: 260, axisOut: true,
+      Charts.lineChart($("#actChart"), { x: ad, series: [{ name: "실제 기록", y: av, color: "var(--c1)", width: 1.8, lastDot: lv ? td : null }], yfmt: krwAxis, tipx: (d) => (lv && d === td ? `${d} (오늘 실시간)` : d), height: 260, axisOut: true,
         hlines: [{ y: S.state.goal.amount, label: "목표" }], hlinesInRange: false, markers: (S.state.memos || []).map((m) => ({ x: m.d, label: `${m.d} ${m.t}` })) });
     }
     const rows = years.map((Y) => {
@@ -3097,7 +3140,7 @@
       const a = e.target.closest("a[data-nid]"); if (!a) return;
       const o = insLoad(); o.read[a.dataset.nid] = Date.now(); insSave(o); a.classList.add("read");
     });
-    segClick("#histRange", renderDash); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
+    segClick("#histRange", renderDash); segClick("#progRange", () => { const H = history(); renderProgress(H, valuation().total, cashKrw()); }); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
     segClick("#actView", renderAct); segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
     $("#premBox").addEventListener("change", onPrem); $("#premBox").addEventListener("click", onPrem);
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);

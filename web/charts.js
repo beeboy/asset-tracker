@@ -22,7 +22,7 @@
   // 상자 폭이 바뀌면(브라우저 확대·축소, 창 크기, 숨었다 보임) 같은 옵션으로 다시 그린다
   const ro = window.ResizeObserver ? new ResizeObserver((es) => es.forEach((e) => {
     const h = e.target, w = h.clientWidth; if (!h._opt || !w || Math.abs(w - h._w) <= 2) return;
-    lineChart(h, h._opt);
+    (h._bar ? barChart : lineChart)(h, h._opt);
   })) : null;
   function lineChart(host, opt) {
     host.innerHTML = "";
@@ -101,6 +101,10 @@
         dstr += `${pen ? "L" : "M"}${X(toT(x[i])).toFixed(1)},${Y(s.y[i]).toFixed(1)}`; pen = true;
       }
       el("path", { d: dstr, fill: "none", stroke: s.color, "stroke-width": s.width || 1.6, "stroke-dasharray": s.dash || "", "stroke-opacity": s.opacity ?? 1, "stroke-linejoin": "round" }, svg);
+      if (s.lastDot) { // 마지막 점을 속이 빈 동그라미로 (오늘 실시간 값처럼 아직 확정 안 된 값)
+        let i = s.y.length - 1; while (i >= 0 && (s.y[i] == null || !isFinite(s.y[i]))) i--;
+        if (i >= 0 && x[i] === s.lastDot) el("circle", { cx: X(toT(x[i])), cy: Y(s.y[i]), r: 3.6, fill: "var(--card)", stroke: s.color, "stroke-width": 1.8 }, svg);
+      }
     });
     (opt.markers || []).forEach((mk) => {
       const xx = X(toT(mk.x)); if (xx < m.l || xx > W - m.r) return;
@@ -144,5 +148,60 @@
     }
   }
 
-  window.Charts = { lineChart };
+  // 0을 가운데 두는 +/− 막대. 날짜는 같은 간격으로 놓는다 (주말·휴일 빈칸 없이)
+  // opt: {x: [날짜], y: [값], yfmt, height, xlab(day), tipx(day), labelLast, dots: [{x, label}], pos, neg}
+  function barChart(host, opt) {
+    host.innerHTML = "";
+    const W = Math.max(220, host.clientWidth || 600), H = opt.height || 180;
+    host._opt = opt; host._w = host.clientWidth; host._bar = true;
+    if (ro && !host._ro) { host._ro = true; ro.observe(host); }
+    const x = opt.x, y = opt.y, n = x.length, yfmt = opt.yfmt || ((v) => v.toLocaleString());
+    const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: "chart" }, host);
+    if (!n) { el("text", { x: 10, y: 20, class: "muted" }, svg).textContent = "표시할 데이터가 없습니다"; return; }
+    const narrow = W < 480, m = { l: 0, r: narrow ? 2 : 12, t: 18, b: 30 };
+    let lo = Math.min(0, ...y), hi = Math.max(0, ...y); if (lo === hi) { hi = 1; lo = -1; }
+    const pad = (hi - lo) * 0.12; hi += pad; lo -= pad;
+    const yt = niceTicks(lo, hi, 4);
+    const lw = Math.max(...yt.map((v) => [...String(yfmt(v))].reduce((a, c) => a + (/[\u3131-\uD79D]/.test(c) ? 12 : 7.6), 0))) + 10;
+    m.l = lw;
+    const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b);
+    const slot = (W - m.l - m.r) / n, bw = Math.max(2, Math.min(slot * 0.72, 46)), X = (i) => m.l + slot * (i + 0.5);
+    const g = el("g", { class: "axis" }, svg);
+    yt.forEach((v) => {
+      const yy = Y(v); if (yy < m.t - 1 || yy > H - m.b + 1) return;
+      el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: "grid" }, g);
+      el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end" }, g).textContent = yfmt(v);
+    });
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: "var(--muted)", "stroke-width": 1 }, svg);
+    // 아래 날짜 글자: 겹치지 않게 몇 칸 걸러서, 마지막 칸은 항상
+    const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - m.l - m.r) / 44))));
+    x.forEach((d, i) => {
+      if ((n - 1 - i) % every) return;
+      el("text", { x: X(i), y: H - 10, "text-anchor": narrow && i === n - 1 ? "end" : "middle" }, g).textContent = opt.xlab ? opt.xlab(d) : d.slice(5).replace("-", "/");
+    });
+    const bars = y.map((v, i) => {
+      const y0 = Y(0), y1 = Y(v), live = opt.live && x[i] === opt.live;
+      return el("rect", { x: X(i) - bw / 2, y: Math.min(y0, y1), width: bw, height: Math.max(1, Math.abs(y1 - y0)), rx: Math.min(3, bw / 4),
+        fill: v >= 0 ? opt.pos || "var(--up)" : opt.neg || "var(--dn)", "fill-opacity": live ? 0.45 : 0.85,
+        stroke: live ? (v >= 0 ? opt.pos || "var(--up)" : opt.neg || "var(--dn)") : "none", "stroke-dasharray": live ? "3 2" : "" }, svg);
+    });
+    if (opt.labelLast) {
+      const i = n - 1, v = y[i], yy = Y(v) + (v >= 0 ? -5 : 13);
+      el("text", { x: Math.min(X(i), W - m.r - 2), y: yy, "text-anchor": narrow || X(i) > W - 60 ? "end" : "middle", class: "hlabel", fill: v >= 0 ? opt.pos || "var(--up)" : opt.neg || "var(--dn)" }, svg).textContent = opt.labelLast;
+    }
+    (opt.dots || []).forEach((dt) => {
+      const i = x.indexOf(dt.x); if (i < 0) return;
+      el("circle", { cx: X(i), cy: H - m.b + 5, r: 3, fill: "var(--warn)" }, svg).appendChild(el("title")).textContent = dt.label;
+    });
+    const tip = document.createElement("div"); tip.className = "tip"; host.appendChild(tip);
+    svg.addEventListener("mousemove", (ev) => {
+      const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(n - 1, Math.floor((ev.clientX - r.left - m.l) / slot)));
+      bars.forEach((b, j) => b.setAttribute("opacity", j === i ? 1 : 0.6));
+      tip.innerHTML = `<b>${opt.tipx ? opt.tipx(x[i]) : x[i]}</b><br>${opt.tipy ? opt.tipy(i) : yfmt(y[i])}`;
+      tip.style.display = "block"; tip.style.left = Math.max(4, Math.min(X(i) + 12, W - tip.offsetWidth - 4)) + "px"; tip.style.top = "8px";
+    });
+    svg.addEventListener("mouseleave", () => { tip.style.display = "none"; bars.forEach((b) => b.setAttribute("opacity", 1)); });
+  }
+
+  window.Charts = { lineChart, barChart };
 })();
