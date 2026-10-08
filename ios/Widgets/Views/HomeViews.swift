@@ -48,37 +48,61 @@ struct FutureSmallView: View {
 }
 
 // MARK: 5-B 지금 채우는 블록 (작은, 한 블록 = 목표의 1/10)
+// 오른쪽 10층 탑이 목표 전체, 왼쪽 격자는 지금 채우는 층을 확대한 100칸
 struct BlockSmallView: View {
     let s: Snapshot
     @Environment(\.widgetRenderingMode) var mode
+    private let cell: CGFloat = 7, gap: CGFloat = 1.6, link: CGFloat = 12, towerW: CGFloat = 16
     var body: some View {
         let t = Tint(mode: mode)
-        let inBlock = s.cells % 100, block = s.cells / 100 + 1, prevIn = s.cellsPrev / 100 == s.cells / 100 ? s.cellsPrev % 100 : (s.cellsPrev > s.cells ? 100 : 0)
+        let inBlock = s.cells % 100, block = min(s.cells / 100 + 1, 10), prevIn = s.cellsPrev / 100 == s.cells / 100 ? s.cellsPrev % 100 : (s.cellsPrev > s.cells ? 100 : 0)
         let d = s.cells - s.cellsPrev
+        let side = cell * 10 + gap * 9, floorTop = CGFloat(10 - block) * (cell + gap)
         VStack(alignment: .leading, spacing: 6) {
-            Label2(text: "지금 채우는 블록")
-            HStack(alignment: .center, spacing: 10) {
-                Grid(horizontalSpacing: 1.6, verticalSpacing: 1.6) {
+            HStack(spacing: 4) {
+                Label2(text: "지금 채우는 블록")
+                Spacer(minLength: 0)
+                Text("\(block)/10").font(.system(size: 11, weight: .bold)).opacity(0.6)
+            }
+            HStack(spacing: 0) {
+                Grid(horizontalSpacing: gap, verticalSpacing: gap) {
                     ForEach(0..<10, id: \.self) { r in
                         GridRow {
                             ForEach(0..<10, id: \.self) { c in
                                 let i = r * 10 + c
                                 RoundedRectangle(cornerRadius: 1.5)
                                     .fill(i < inBlock ? t.c(Palette.goal) : (i < prevIn ? t.c(Palette.dn, 0.6) : Palette.ink.opacity(0.14)))
-                                    .frame(width: 7, height: 7)
+                                    .frame(width: cell, height: cell)
                             }
                         }
                     }
                 }
                 .widgetAccentable()
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(alignment: .firstTextBaseline, spacing: 1) { Mid(text: "\(inBlock)"); Text("/100").font(.system(size: 11)).opacity(0.6) }
-                    Text("\(block)번째 블록").font(.system(size: 11)).opacity(0.6)
-                    HStack(spacing: 2) { ForEach(0..<10, id: \.self) { i in RoundedRectangle(cornerRadius: 1).fill(i < block - 1 ? t.c(Palette.goal) : Palette.ink.opacity(i == block - 1 ? 0.6 : 0.15)).frame(width: 4, height: 12) } }
+                // 격자가 탑의 어느 층인지 잇는 띠
+                Path { p in
+                    p.move(to: .init(x: 0, y: 0)); p.addLine(to: .init(x: link, y: floorTop))
+                    p.addLine(to: .init(x: link, y: floorTop + cell)); p.addLine(to: .init(x: 0, y: side)); p.closeSubpath()
                 }
+                .fill(t.c(Palette.goal, 0.15)).frame(width: link, height: side)
+                VStack(spacing: gap) {
+                    ForEach(0..<10, id: \.self) { k in
+                        let n = 10 - k // 위가 10층, 아래가 1층
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 1.5).fill(Palette.ink.opacity(0.14))
+                            if n < block { RoundedRectangle(cornerRadius: 1.5).fill(t.c(Palette.goal)) }
+                            if n == block {
+                                RoundedRectangle(cornerRadius: 1.5).fill(t.c(Palette.goal)).frame(width: towerW * CGFloat(inBlock) / 100)
+                                RoundedRectangle(cornerRadius: 1.5).stroke(t.c(Palette.goal), lineWidth: 1)
+                            }
+                        }
+                        .frame(width: towerW, height: cell)
+                    }
+                }
+                .widgetAccentable()
             }
-            HStack {
-                Text("어제보다 \(d >= 0 ? "+" : "")\(d)칸").font(.system(size: 12, weight: .bold)).foregroundStyle(d == 0 ? Palette.ink : t.chg(Double(d)))
+            HStack(alignment: .center, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 1) { Mid(text: "\(inBlock)"); Text("/100").font(.system(size: 11)).opacity(0.6) }
+                Text("어제 \(d >= 0 ? "+" : "")\(d)").font(.system(size: 11, weight: .bold)).foregroundStyle(d == 0 ? Palette.ink : t.chg(Double(d))).lineLimit(1)
                 Spacer(minLength: 0)
                 ReloadButton()
             }
