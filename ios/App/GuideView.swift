@@ -9,7 +9,7 @@ struct GuideView: View {
         let s = m.login == nil ? Snapshot.sample : m.snap
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("naeilo.com 에 입력한 내 자산·목표 데이터를 받아 홈 화면과 잠금 화면 위젯으로 보여줍니다.")
+                Text("naeilo.com 의 내 자산을 위젯으로.")
                     .font(.title3.weight(.semibold))
 
                 HStack(spacing: 12) {
@@ -19,16 +19,15 @@ struct GuideView: View {
                 .frame(maxWidth: .infinity)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Point(icon: "lock.shield", text: "사이트의 동기화 비밀번호로 내 입력값을 받아옵니다. 비밀번호는 저장하지 않습니다.")
-                    Point(icon: "arrow.triangle.2.circlepath", text: "장중에는 30분마다 바뀐 것만 받아 위젯을 갱신합니다. 위젯의 ↻ 로 바로 확인할 수 있습니다.")
-                    Point(icon: "chart.line.uptrend.xyaxis", text: "미래 전망과 목표 확률은 사이트와 같은 계산식으로 구합니다.")
+                    Point(icon: "lock.shield", text: "서버는 내용을 모릅니다. 암호화된 채로 오가고, 이 아이폰에서만 풀립니다.")
+                    Point(icon: "arrow.triangle.2.circlepath", text: "바뀐 것만 조금씩 받아 30분마다 갱신합니다.")
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("시작하기").font(.headline)
-                    Step(n: 1, text: m.login == nil ? "연결 탭에서 동기화 비밀번호를 넣습니다" : "로그인 완료") { tab = .settings }
-                    Step(n: 2, text: "위젯 탭에서 마음에 드는 위젯을 고릅니다") { tab = .widgets }
-                    Step(n: 3, text: "홈 화면을 길게 눌러 + → naeilo 에서 추가합니다", action: nil)
+                    Step(n: 1, text: step1) { tab = .settings }
+                    Step(n: 2, text: "위젯 탭에서 고르기") { tab = .widgets }
+                    Step(n: 3, text: "홈 화면을 길게 눌러 + → naeilo", action: nil)
                 }
 
                 Divider()
@@ -45,6 +44,16 @@ struct GuideView: View {
                 .padding(.bottom, 12)
             }
             .padding(20)
+        }
+    }
+}
+
+extension GuideView {
+    private var step1: String {
+        switch m.login {
+        case .none: return "연결 탭에 사이트와 같은 동기화 비밀번호 넣기"
+        case .password: return "연결됨 · 이 아이폰에서만 풀어 봅니다"
+        case .github: return "연결됨 (GitHub)"
         }
     }
 }
