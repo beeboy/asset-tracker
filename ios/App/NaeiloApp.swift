@@ -49,6 +49,13 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// 비밀번호 없이 예시 값으로 둘러보기
+    func startDemo() {
+        Store.wipe(); Credentials.save(.demo); login = .demo; message = nil
+        snap = Engine.snapshot()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     func signOut() {
         Credentials.clear(); Store.wipe(); login = nil; snap = Engine.snapshot()
         WidgetCenter.shared.reloadAllTimelines()
@@ -56,7 +63,7 @@ final class AppModel: ObservableObject {
 
     /// 받기 → (필요하면) 계산 → 위젯 다시 그리기
     func sync(compute: Bool, force: Bool = false) async {
-        guard login != nil, !busy else { return }
+        guard login != nil, login != .demo, !busy else { return }
         busy = true; defer { busy = false }
         do {
             _ = try await Refresher.refresh()
@@ -100,6 +107,7 @@ enum Background {
 
     private static func handle(_ task: BGTask, compute: Bool) {
         schedule()
+        if Credentials.load() == .demo { task.setTaskCompleted(success: true); return }
         let work = Task {
             do {
                 _ = try await Refresher.refresh()

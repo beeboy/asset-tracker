@@ -53,6 +53,14 @@ struct SignInView: View {
                      ? "사이트 설정의 GitHub 연결에 쓰는 토큰입니다. 이 아이폰 안(키체인)에만 저장됩니다."
                      : "사이트 설정 → 기기 자동 동기화에 넣은 비밀번호와 같은 것을 넣으세요. 비밀번호는 저장하지 않고, 풀 때 쓰는 키만 이 아이폰 안(키체인)에 둡니다.")
             }
+            Section {
+                Button { m.startDemo() } label: {
+                    HStack { Text("비밀번호 없이 체험하기").fontWeight(.semibold); Spacer(); Image(systemName: "chevron.right").font(.caption.weight(.bold)) }
+                }
+                .disabled(m.busy)
+            } footer: {
+                Text("naeilo.com 계정이 없어도 예시 자산으로 앱과 위젯을 모두 써 볼 수 있습니다. 실제 데이터는 받지 않습니다.")
+            }
             if let msg = m.message { Section { Text(msg).foregroundStyle(.secondary) } }
         }
     }
@@ -65,14 +73,18 @@ struct HomeView: View {
 
     var body: some View {
         let s = m.snap
+        let demo = m.login == .demo
         Form {
+            if demo {
+                Section { Text("체험 모드 · 예시 값입니다").font(.subheadline.weight(.bold)).foregroundStyle(.orange) }
+            }
             Section("지금") {
                 LabeledContent("총자산", value: Fmt.eok(s.total))
                 LabeledContent("오늘", value: "\(Fmt.arrow(s.dayChg)) \(Fmt.pct(s.dayChg)) · \(Fmt.man(s.dayAmt))")
                 LabeledContent("목표 진행", value: String(format: "%.1f%% · D-%@", s.progress * 100, Fmt.comma(s.dday)))
                 if let p = s.pGoal { LabeledContent("목표 확률", value: "\(Int((p * 100).rounded()))%") }
             }
-            Section {
+            if !demo { Section {
                 LabeledContent("마지막 확인", value: Fmt.time(s.updated))
                 LabeledContent("전망 기준", value: (s.fcAsOf ?? "-") + (s.source == "site" ? " · 사이트 계산" : s.source == "app" ? " · 앱 계산" : ""))
                 Picker("장중 갱신 주기", selection: $interval) {
@@ -87,7 +99,7 @@ struct HomeView: View {
                 .disabled(m.busy)
             } header: { Text("갱신") } footer: {
                 Text("장중(한국 시간 평일 오후 5시~다음 날 오전 9시)에는 고른 주기로, 그 밖에는 3시간마다 확인합니다. 실제 시각은 iOS 가 조금 늦출 수 있습니다. 위젯의 ↻ 를 누르면 바로 확인합니다.")
-            }
+            } }
             Section {
                 Picker("누르면", selection: $hideEach) {
                     Text("모든 위젯 함께").tag(false)
@@ -100,7 +112,12 @@ struct HomeView: View {
             if let msg = m.message { Section { Text(msg).foregroundStyle(.secondary) } }
             Section {
                 LabeledContent("로그인", value: m.login?.label ?? "-")
-                Button("로그아웃 (이 아이폰의 값 지우기)", role: .destructive) { m.signOut() }
+                if demo {
+                    Button("비밀번호로 연결하기") { m.signOut() }
+                    Button("체험 끝내기", role: .destructive) { m.signOut() }
+                } else {
+                    Button("로그아웃 (이 아이폰의 값 지우기)", role: .destructive) { m.signOut() }
+                }
             } footer: {
                 Text("홈 화면을 길게 눌러 + 를 누르고 naeilo 를 찾으면 위젯을 고를 수 있습니다.")
             }

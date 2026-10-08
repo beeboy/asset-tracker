@@ -32,7 +32,7 @@ enum Refresher {
         var out = RefreshResult()
         async let feed = Net.get(Config.data.appendingPathComponent("widget.json"), key: "feed.json")
         if try await feed != nil { out.feedChanged = true }
-        if let login = Credentials.load() {
+        if let login = Credentials.load(), login != .demo {
             let r = try await pullState(login)
             out.stateChanged = r.0; out.summaryFromSite = r.1
         }
@@ -44,6 +44,8 @@ enum Refresher {
     static func pullState(_ login: Login) async throws -> (Bool, Bool) {
         let raw: Data?
         switch login {
+        case .demo:
+            return (false, false)
         case .password(let id, _):
             raw = try await Net.get(URL(string: "esync?id=\(id)", relativeTo: Config.relay)!, key: "sync.json")
         case .github(let token):
@@ -60,7 +62,7 @@ enum Refresher {
             do { plain = try Credentials.decrypt(c, key: key) } catch { throw SyncError.wrongPassword }
             guard let s = try JSONSerialization.jsonObject(with: plain) as? [String: Any] else { throw SyncError.badCipher }
             state = s
-        case .github:
+        case .github, .demo:
             guard let s = j["state"] as? [String: Any] else { throw SyncError.noData }
             state = s
         }

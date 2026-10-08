@@ -61,8 +61,16 @@ struct Foot: View { // 아래 줄: 갱신 시각 + 다시 받기 버튼
     }
 }
 
-struct ReloadButton: View { // ↻ 다시 받기
+struct ReloadButton: View { // ↻ 다시 받기 (예시 값이면 앞에 '예시' 배지)
+    @Environment(\.isSample) private var isSample
     var body: some View {
+        HStack(spacing: 4) {
+            if isSample { SampleBadge() }
+            button
+        }
+    }
+
+    @ViewBuilder private var button: some View {
         let icon = Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .bold))
             .frame(width: 22, height: 22).background(Circle().fill(Palette.ink.opacity(0.14)))
         #if WIDGET_EXT
@@ -73,6 +81,13 @@ struct ReloadButton: View { // ↻ 다시 받기
     }
 }
 
+struct SampleBadge: View { // 체험 모드·연결 전: 실제 값이 아님을 표시
+    var body: some View {
+        Text("예시").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
+            .padding(.horizontal, 6).frame(height: 16).background(Capsule().fill(Color.orange))
+    }
+}
+
 func shortTime(_ d: Date?) -> String { Fmt.time(d) }
 
 // MARK: 금액 숨기기
@@ -80,7 +95,10 @@ private struct KindKey: EnvironmentKey { static let defaultValue = "" }
 extension EnvironmentValues {
     /// 이 화면을 그리는 위젯 종류 (금액 숨기기를 위젯마다 따로 할 때 쓴다)
     var widgetKind: String { get { self[KindKey.self] } set { self[KindKey.self] = newValue } }
+    /// 예시 값으로 그리는 중 (체험 모드이거나 아직 연결 전)
+    var isSample: Bool { get { self[SampleKey.self] } set { self[SampleKey.self] = newValue } }
 }
+private struct SampleKey: EnvironmentKey { static let defaultValue = false }
 
 /// 숨긴 금액 자리
 let hiddenAmount = "••••"
