@@ -80,10 +80,10 @@ enum Background {
     static let computeId = "com.naeilo.widget.compute"
 
     static func register() {
-        BGTaskScheduler.shared.register(forTaskIdentifier: refreshId, using: nil) { task in
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshId, using: nil) { task in
             handle(task, compute: false)
         }
-        BGTaskScheduler.shared.register(forTaskIdentifier: computeId, using: nil) { task in
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: computeId, using: nil) { task in
             handle(task, compute: true)
         }
     }
