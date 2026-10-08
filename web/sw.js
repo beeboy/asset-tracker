@@ -1,7 +1,7 @@
 // naeilo 서비스 워커: 오프라인에서도 마지막으로 본 화면·데이터를 연다 (네트워크 우선, 실패하면 저장본)
 // 푸시 알림: 내용 없는 푸시를 받으면 알림 서버(워커)에서 문구를 받아 보여 준다
 const CACHE = "naeilo-v1";
-const SHELL = ["./", "./index.html", "./style.css", "./app.js", "./model.js", "./charts.js", "./manifest.json", "./icon-192.png"];
+const SHELL = ["./", "./index.html", "./style.css", "./app.js", "./model.js", "./widget-core.js", "./charts.js", "./manifest.json", "./icon-192.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", (e) => {
