@@ -5,7 +5,7 @@ import SwiftUI
 enum Catalog {
     static let asset = ("내 자산 추이", "총자산·오늘 등락·3달 흐름")
     static let future = ("미래 평가액", "3년 뒤 예상과 목표 확률")
-    static let block = ("지금 채우는 1억 블록", "목표 1000칸 중 지금 채우는 100칸")
+    static let block = ("지금 채우는 블록", "목표를 1000칸으로 나눠 지금 채우는 100칸")
     static let pace = ("목표 페이스", "필요한 경로보다 앞섰는지")
     static let target = ("이번 주 과녁", "금요일 마감 예측 범위와 지금 위치")
     static let moves = ("오늘의 움직임", "종목별 오늘 등락과 다음 이벤트")

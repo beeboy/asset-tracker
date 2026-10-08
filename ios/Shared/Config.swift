@@ -6,7 +6,7 @@ enum Config {
     static let data = URL(string: "https://naeilo.com/data/")!
     static let relay = URL(string: "https://asset-ai.drinker.workers.dev/")!
     /// 사이트가 계산 요약 형식을 바꾸면 web/widget-core.js 의 VERSION 과 같이 올린다
-    static let summaryVersion = 1
+    static let summaryVersion = 2
     /// 전망 계산에 쓰는 요인 종목 (web/widget-core.js FACTORS 와 같음) + 환율
     static let extraSymbols = ["KRW=X", "SPY", "^TNX", "CL=F", "GC=F", "DBC"]
 }

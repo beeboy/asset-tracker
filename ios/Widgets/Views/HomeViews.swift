@@ -47,7 +47,7 @@ struct FutureSmallView: View {
     }
 }
 
-// MARK: 5-B 지금 채우는 1억 블록 (작은)
+// MARK: 5-B 지금 채우는 블록 (작은, 한 블록 = 목표의 1/10)
 struct BlockSmallView: View {
     let s: Snapshot
     @Environment(\.widgetRenderingMode) var mode

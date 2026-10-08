@@ -3,7 +3,7 @@
 // 같은 파일·같은 시드로 계산하므로 두 쪽 숫자가 같다. app.js 의 평가·이력·전망 계산을 그대로 옮겼다 (바꿀 때 둘 다 고칠 것).
 (function () {
   "use strict";
-  const VERSION = 1; // 요약 형식·계산 방식이 바뀌면 올린다. 앱은 버전이 다르면 사이트 요약 대신 직접 계산한다
+  const VERSION = 2; // 요약 형식·계산 방식이 바뀌면 올린다. 앱은 버전이 다르면 사이트 요약 대신 직접 계산한다
   const FACTORS = { mkt: "SPY", rate: "^TNX", oil: "CL=F", gold: "GC=F", cmdty: "DBC" };
   const DEFAULT_MODEL = {
     scenario: "blend", trust: 50, n_paths: 3000, seed: 20261004, history_years: 3, prior_mu: 10, prior_tau: 15, conservative_mu: 4,
