@@ -37,8 +37,10 @@ struct FutureSmallView: View {
                 Spacer(minLength: 2)
                 VStack(alignment: .trailing, spacing: 1) { Label2(text: "목표"); Mid(text: s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-").foregroundStyle(t.c(Palette.goal)).widgetAccentable() }
             }
-            if let f = s.fan { FanChart(hist: Array(s.spark.suffix(63)), fan: f, goal: s.goal, log: true, tint: t, labels: false).padding(.top, 4) }
-            else { Spacer(); Text("앱을 열면 계산합니다").font(.caption2).foregroundStyle(Color.white.opacity(0.6)); Spacer() }
+            if let f = s.fan {
+                FanChart(hist: Array(s.spark.suffix(63)), fan: f, goal: s.goal, log: true, tint: t, labels: false).padding(.top, 4)
+                    .overlay(alignment: .bottomLeading) { ReloadButton() }
+            } else { Spacer(); Text("앱을 열면 계산합니다").font(.caption2).foregroundStyle(Color.white.opacity(0.6)); Spacer(); ReloadButton() }
         }
         .foregroundStyle(.white)
     }
@@ -74,7 +76,11 @@ struct BlockSmallView: View {
                     HStack(spacing: 2) { ForEach(0..<10, id: \.self) { i in RoundedRectangle(cornerRadius: 1).fill(i < block - 1 ? t.c(Palette.goal) : Color.white.opacity(i == block - 1 ? 0.6 : 0.15)).frame(width: 4, height: 12) } }
                 }
             }
-            Text("어제보다 \(d >= 0 ? "+" : "")\(d)칸").font(.system(size: 12, weight: .bold)).foregroundStyle(d == 0 ? .white : t.chg(Double(d)))
+            HStack {
+                Text("어제보다 \(d >= 0 ? "+" : "")\(d)칸").font(.system(size: 12, weight: .bold)).foregroundStyle(d == 0 ? .white : t.chg(Double(d)))
+                Spacer(minLength: 0)
+                ReloadButton()
+            }
         }
         .foregroundStyle(.white)
     }
@@ -99,6 +105,7 @@ struct PaceMediumView: View {
                 VStack(alignment: .trailing, spacing: 1) { Mid(text: String(format: "%.1f%%", s.progress * 100)); Text("D-\(Fmt.comma(s.dday))").font(.system(size: 12)).opacity(0.6) }
             }
             PaceChart(s: s, tint: t).padding(.top, 4)
+                .overlay(alignment: .bottomTrailing) { ReloadButton() }
         }
         .foregroundStyle(.white)
     }
@@ -123,7 +130,7 @@ struct PaceChart: View {
                 Circle().fill(.white).frame(width: 12, height: 12).overlay(Circle().stroke(tint.c(Palette.goal), lineWidth: 3)).position(x: X(fNow), y: Y(s.total))
                 Text("지금 \(Fmt.eok(s.total))").font(.system(size: 11, weight: .bold)).position(x: X(fNow) + 42, y: Y(s.total) - 13)
                 Text("시작").font(.system(size: 9.5)).opacity(0.5).position(x: 12, y: h + 8)
-                Text("목표일").font(.system(size: 9.5)).opacity(0.5).position(x: w - 16, y: h + 8)
+                Text("목표일").font(.system(size: 9.5)).opacity(0.5).position(x: w - 16, y: h - 20)
             }
         }
     }
@@ -155,7 +162,7 @@ struct TargetMediumView: View {
                         Circle().fill(h ? t.c(Palette.good) : .clear).overlay(Circle().stroke(Color.white.opacity(0.55), lineWidth: h ? 0 : 1.5)).frame(width: 10, height: 10)
                     }
                     Spacer(minLength: 0)
-                    Button(intent: ReloadIntent()) { Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .bold)).frame(width: 22, height: 22).background(Circle().fill(Color.white.opacity(0.14))) }.buttonStyle(.plain)
+                    ReloadButton()
                 }
             } else {
                 Label2(text: "이번 주 과녁")
@@ -193,7 +200,7 @@ struct MovesMediumView: View {
             HStack {
                 if let e = s.events.first { Text("다음: ").font(.system(size: 11)) + Text("\(e.t) \(e.k)").font(.system(size: 11, weight: .bold)) + Text(" D-\(e.dday) (\(Day.md(e.d)))").font(.system(size: 11)) }
                 Spacer(minLength: 0)
-                Button(intent: ReloadIntent()) { Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .bold)).frame(width: 22, height: 22).background(Circle().fill(Color.white.opacity(0.14))) }.buttonStyle(.plain)
+                ReloadButton()
             }
             .opacity(0.85)
         }

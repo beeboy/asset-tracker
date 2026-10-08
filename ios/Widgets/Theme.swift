@@ -33,12 +33,18 @@ struct Foot: View { // 아래 줄: 갱신 시각 + 다시 받기 버튼
         HStack(spacing: 4) {
             Text(text).font(.system(size: 11, weight: .medium)).foregroundStyle(Color.white.opacity(0.55)).lineLimit(1)
             Spacer(minLength: 0)
-            Button(intent: ReloadIntent()) {
-                Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .bold))
-                    .frame(width: 22, height: 22).background(Circle().fill(Color.white.opacity(0.14)))
-            }
-            .buttonStyle(.plain)
+            ReloadButton()
         }
+    }
+}
+
+struct ReloadButton: View { // ↻ 다시 받기
+    var body: some View {
+        Button(intent: ReloadIntent()) {
+            Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .bold))
+                .frame(width: 22, height: 22).background(Circle().fill(Color.white.opacity(0.14)))
+        }
+        .buttonStyle(.plain)
     }
 }
 
