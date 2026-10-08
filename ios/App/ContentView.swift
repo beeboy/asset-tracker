@@ -62,7 +62,6 @@ struct HomeView: View {
     @EnvironmentObject var m: AppModel
     @State private var interval = Store.intervalMin
     @State private var hideEach = Store.hideEach
-    @State private var hideAll = Store.hideAll
 
     var body: some View {
         let s = m.snap
@@ -95,12 +94,8 @@ struct HomeView: View {
                     Text("위젯마다 따로").tag(true)
                 }
                 .onChange(of: hideEach) { _, v in Store.hideEach = v; WidgetCenter.shared.reloadAllTimelines() }
-                if !hideEach {
-                    Toggle("지금 금액 숨김", isOn: $hideAll)
-                        .onChange(of: hideAll) { _, v in Store.hideAll = v; WidgetCenter.shared.reloadAllTimelines() }
-                }
             } header: { Text("금액 숨기기") } footer: {
-                Text("위젯의 큰 금액을 누르면 숨기고, 한 번 더 누르면 다시 보입니다. 등락 %·목표 %는 그대로 보입니다.")
+                Text("위젯의 큰 금액을 누르면 숨기고, 한 번 더 누르면 다시 보입니다. '모든 위젯 함께'는 어느 위젯을 눌러도 모든 위젯이 같이, '위젯마다 따로'는 누른 위젯만 바뀝니다. 등락 %·목표 %는 그대로 보입니다.")
             }
             if let msg = m.message { Section { Text(msg).foregroundStyle(.secondary) } }
             Section {
@@ -111,6 +106,5 @@ struct HomeView: View {
             }
         }
         .refreshable { await m.sync(compute: true) }
-        .onAppear { hideAll = Store.hideAll }
     }
 }
