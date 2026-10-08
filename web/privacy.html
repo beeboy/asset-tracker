@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1f27" media="(prefers-color-scheme: dark)">
+<title>naeilo 개인정보 처리방침</title>
+<meta name="description" content="naeilo 웹과 아이폰 위젯 앱의 개인정보 처리방침.">
+<link rel="canonical" href="https://naeilo.com/web/privacy.html">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="theme.js?v=20261008s"></script>
+<link rel="stylesheet" href="style.css?v=20261008s">
+<style>
+  .guide { max-width: 760px; }
+  .guide h2 { font-size: 1rem; margin: 0 0 8px; }
+  .guide p, .guide li { line-height: 1.65; }
+  .guide ul { padding-left: 20px; margin: 6px 0; }
+  .guide li { margin: 3px 0; }
+  .backlink { color: var(--accent); text-decoration: none; font-size: 0.7647rem; margin-left: auto; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><a href="./" style="text-decoration:none"><span class="logo">naeilo</span></a></div>
+  <a class="backlink" href="./">← 앱으로</a>
+</header>
+<main class="guide">
+
+  <div class="card">
+    <h2>개인정보 처리방침</h2>
+    <p>naeilo 웹(naeilo.com)과 아이폰 앱 'naeilo 위젯'(이하 naeilo)에 적용됩니다. 시행일: 2026년 10월 8일.</p>
+    <ul>
+      <li>naeilo 는 <b>회원 가입이 없고</b>, 이름·이메일·전화번호·위치·연락처·광고 식별자를 모으지 않습니다.</li>
+      <li>광고, 분석 도구, 추적을 쓰지 않습니다.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>기기에 저장되는 것</h2>
+    <ul>
+      <li>웹: 보유 종목·수량·매수 단가·목표 같은 입력값은 이 브라우저(localStorage)에만 저장됩니다.</li>
+      <li>아이폰 앱: 동기화 비밀번호는 저장하지 않습니다. 비밀번호에서 만든 저장 위치와 암호 키만 아이폰 키체인에 두고, 위젯에 보여 줄 요약 값은 앱 안에만 둡니다. 로그아웃하면 모두 지워집니다.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>기기 동기화 (선택)</h2>
+    <ul>
+      <li>'기기 자동 동기화'를 켜면 입력값을 동기화 비밀번호로 <b>기기 안에서 암호화(AES-GCM)</b>한 뒤 중계 서버(Cloudflare)에 둡니다. 중계 서버는 내용을 읽을 수 없고, 비밀번호를 모르면 누구도 풀 수 없습니다.</li>
+      <li>동기화를 끄거나 같은 비밀번호로 빈 값을 덮어쓰면 더 이상 쓰이지 않습니다. 삭제를 원하면 아래 문의로 알려 주세요.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>외부로 나가는 요청</h2>
+    <ul>
+      <li>시세·환율·뉴스는 naeilo.com 과 중계 서버에서 받습니다. 이때 보유 내역은 보내지 않습니다(새 종목 시세를 받을 때는 종목 코드만 씁니다).</li>
+      <li>웹의 'AI 분석'을 누르면 화면의 계산 결과(보유 금액 포함 가능)가 무료 AI 서비스로 전달됩니다. 누르지 않으면 보내지 않습니다.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>문의</h2>
+    <p>개인정보 관련 문의나 삭제 요청은 TestFlight·App Store 의 피드백 또는 naeilo.com 을 통해 보내 주세요. 이 방침이 바뀌면 이 페이지에 시행일과 함께 알립니다.</p>
+  </div>
+
+</main>
+</body>
+</html>
