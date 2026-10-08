@@ -73,12 +73,16 @@ struct BlockSmallView: View {
                     }
                 }
                 .widgetAccentable()
-                // 격자가 탑의 어느 층인지 잇는 띠
-                Path { p in
-                    p.move(to: .init(x: 0, y: 0)); p.addLine(to: .init(x: link, y: floorTop))
-                    p.addLine(to: .init(x: link, y: floorTop + cell)); p.addLine(to: .init(x: 0, y: side)); p.closeSubpath()
+                // 격자와 오른쪽 끝 탑 사이를 채우는 띠: 격자 전체 → 탑의 지금 층
+                GeometryReader { g in
+                    let w = g.size.width, m: CGFloat = 2
+                    Path { p in
+                        p.move(to: .init(x: m, y: 0)); p.addLine(to: .init(x: w - m, y: floorTop))
+                        p.addLine(to: .init(x: w - m, y: floorTop + cell)); p.addLine(to: .init(x: m, y: side)); p.closeSubpath()
+                    }
+                    .fill(t.c(Palette.goal, 0.18))
                 }
-                .fill(t.c(Palette.goal, 0.15)).frame(width: link, height: side)
+                .frame(minWidth: link, maxWidth: .infinity).frame(height: side)
                 VStack(spacing: gap) {
                     ForEach(0..<10, id: \.self) { k in
                         let n = 10 - k // 위가 10층, 아래가 1층
@@ -95,7 +99,7 @@ struct BlockSmallView: View {
                 }
                 .widgetAccentable()
             }
-            HStack(alignment: .center, spacing: 4) {
+            HStack(alignment: .center, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 1) { Mid(text: "\(inBlock)"); Text("/100").font(.system(size: 11)).opacity(0.6) }
                 Text("어제 \(d >= 0 ? "+" : "")\(d)").font(.system(size: 11, weight: .bold)).foregroundStyle(d == 0 ? Palette.ink : t.chg(Double(d))).lineLimit(1)
                 Spacer(minLength: 0)
