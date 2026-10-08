@@ -28,6 +28,8 @@ jobs:
         env:
           ADD: ${{ github.event.inputs.add_tickers }}
         run: python server.py --collect --add "$ADD"
+      - name: 아이폰 위젯용 작은 시세 파일
+        run: python tools/widget_feed.py
       # news.yml 의 한 시간 예약은 GitHub 가 몇 시간씩 미루므로, 시세 수집 때 뉴스가 50분 넘게 묵었으면 같이 모은다
       - name: 뉴스 수집 (50분 넘게 지났을 때만)
         continue-on-error: true

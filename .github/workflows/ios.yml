@@ -1,0 +1,24 @@
+name: ios
+# 아이폰 위젯 앱이 컴파일되는지 확인한다 (서명 없이 시뮬레이터용). 실제 설치는 맥의 Xcode 에서
+on:
+  push:
+    paths: ["ios/**", "web/model.js", "web/widget-core.js", ".github/workflows/ios.yml"]
+  pull_request:
+    paths: ["ios/**", "web/model.js", "web/widget-core.js", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: XcodeGen
+        run: brew install xcodegen && cd ios && xcodegen
+      - name: 빌드 (시뮬레이터)
+        run: |
+          set -o pipefail
+          xcodebuild -version
+          cd ios && xcodebuild -project Naeilo.xcodeproj -target Naeilo -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|warning: .*(deprecated|never)|BUILD (SUCCEEDED|FAILED)|\*\* " | head -80

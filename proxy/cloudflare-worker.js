@@ -22,12 +22,18 @@ const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
 export default {
   async fetch(req, env) {
-    const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization" };
+    const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization, If-None-Match", "Access-Control-Expose-Headers": "ETag" };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const u = new URL(req.url);
     const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
     const okId = (id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(id);
     const noKv = () => out({ error: "중계에 VIEWS KV 연결이 없습니다 (Settings → Bindings)" }, 400);
+    // 동기화 GET: 내용이 그대로면 304 (아이폰 위젯이 30분마다 묻는다. ETag = 저장된 값의 해시)
+    const cached = async (raw) => {
+      const tag = '"' + [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw || "{}")))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("") + '"';
+      if ((req.headers.get("If-None-Match") || "").split(/,\s*/).includes(tag)) return new Response(null, { status: 304, headers: { ...cors, ETag: tag } });
+      return new Response(raw || "{}", { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", ETag: tag, "Cache-Control": "no-cache" } });
+    };
     if (u.pathname.startsWith("/push/")) {
       if (!env.VIEWS) return noKv();
       const id = async (ep) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ep)))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -54,8 +60,8 @@ export default {
       if (!env.VIEWS) return noKv();
       const who = await ghWho(env, (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim());
       if (!who) return out({ error: "저장소 쓰기 권한이 있는 GitHub 토큰이 아닙니다" }, 403);
-      const key = "s:" + who, cur = JSON.parse((await env.VIEWS.get(key)) || "null");
-      if (req.method === "GET") return out(cur || {});
+      const key = "s:" + who, raw = await env.VIEWS.get(key), cur = JSON.parse(raw || "null");
+      if (req.method === "GET") return cached(raw);
       if (req.method !== "POST") return out({ error: "GET 또는 POST" }, 400);
       const b = await req.json().catch(() => ({}));
       const at = Number(b.at) || Date.now(), body = JSON.stringify({ state: b.state, at });
@@ -69,8 +75,8 @@ export default {
       if (!env.VIEWS) return noKv();
       const id = u.searchParams.get("id") || "";
       if (!/^[0-9a-f]{40}$/.test(id)) return out({ error: "동기화 id 가 맞지 않습니다" }, 400);
-      const cur = JSON.parse((await env.VIEWS.get("e:" + id)) || "null");
-      if (req.method === "GET") return out(cur || {});
+      const raw = await env.VIEWS.get("e:" + id), cur = JSON.parse(raw || "null");
+      if (req.method === "GET") return cached(raw);
       if (req.method !== "POST") return out({ error: "GET 또는 POST" }, 400);
       const b = await req.json().catch(() => ({}));
       const at = Number(b.at) || Date.now();

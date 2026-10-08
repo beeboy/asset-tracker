@@ -279,6 +279,7 @@
     const r = await fetch(syncUrl(), { ...opt, body, headers: { "Content-Type": "application/json", ...(syncDev() ? { Authorization: "Bearer " + ghToken() } : {}) } });
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "중계 " + r.status);
     if (!syncDev() && j.c) { const [iv, c] = j.c.split("."); try { j.state = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(iv) }, await esKey(), unb64(c)))); } catch (e) { throw new Error("풀 수 없음 (비밀번호 확인)"); } }
+    if (j.state && j.state._w) delete j.state._w; // 아이폰 위젯용 요약은 입력값이 아니다
     return j;
   }
   function syncMark() {
@@ -289,10 +290,23 @@
   }
   async function syncPush() {
     if (!syncUrl()) return;
-    try { const st = { ...S.state }; delete st.ui; const j = await syncCall({ method: "POST", body: JSON.stringify({ state: st, at: S.state.ui.sync_at || Date.now() }) }); S.sync = { ok: true, at: Date.now() }; if (j.stale) syncPull(); }
+    try {
+      const st = { ...S.state }; delete st.ui; const w = widgetSummary(); if (w) st._w = w;
+      const j = await syncCall({ method: "POST", body: JSON.stringify({ state: st, at: S.state.ui.sync_at || Date.now() }) }); S.sync = { ok: true, at: Date.now() };
+      if (w && !j.stale) wSent = widgetKey(); if (j.stale) syncPull();
+    }
     catch (e) { S.sync = { ok: false, err: e.message }; }
     if ($("#tabs .on")?.dataset.tab === "quotes") { renderGh(); renderEsync(); }
   }
+  // 아이폰 위젯: 계산해 둔 '내 관점' 전망이 있으면 위젯용 요약(widget-core.js)을 입력값과 같이 올린다. 앱은 이 요약과 자기 계산 중 최신 것을 쓴다
+  let wSent = null;
+  const widgetKey = () => fcSig() + "|" + today() + "|" + Object.keys(S.prices).sort().map((t) => (S.prices[t].dates || []).slice(-1)[0]).join();
+  function widgetSummary() {
+    if (!window.WidgetCore || S.state.sample) return null;
+    const F = fcReady(S.state.model.scenario); if (!F || F.err || !F.R || !F.model?.monthDates) return null; // 전망이 없으면 앱이 직접 계산
+    try { return WidgetCore.summary(S, { R: F.R, md: F.model.monthDates }); } catch (e) { return null; }
+  }
+  function widgetMaybePush() { if (syncUrl() && syncLast != null && wSent !== widgetKey() && widgetSummary()) { clearTimeout(syncTimer); syncTimer = setTimeout(syncPush, 4000); } }
   async function syncPull() {
     if (!syncUrl()) return;
     if (syncLast == null) syncLast = syncSig();
@@ -746,7 +760,7 @@
   function forecastLater(scen, then) {
     if (fcPending[scen]) { if (then) fcPending[scen].push(then); return; }
     fcPending[scen] = then ? [then] : [];
-    setTimeout(() => { try { if (!forecastFor(scen)) fcCache[scen] = { err: "평가액이 있는 종목이 없습니다." }; else fcDashSave(scen); } catch (e) { fcCache[scen] = { err: e.message }; } const cbs = fcPending[scen]; delete fcPending[scen]; cbs.forEach((f) => f()); }, 30);
+    setTimeout(() => { try { if (!forecastFor(scen)) fcCache[scen] = { err: "평가액이 있는 종목이 없습니다." }; else { fcDashSave(scen); if (scen === S.state.model.scenario) widgetMaybePush(); } } catch (e) { fcCache[scen] = { err: e.message }; } const cbs = fcPending[scen]; delete fcPending[scen]; cbs.forEach((f) => f()); }, 30);
   }
   // 목표 진행: 목표 시작일부터 실제(그때 수량) 평가액과 필요 경로 비교
   function actualSeries(H) {
