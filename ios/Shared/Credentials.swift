@@ -9,9 +9,11 @@ import CommonCrypto
 enum Login: Codable, Equatable {
     case password(id: String, key: Data)
     case github(token: String)
+    case demo // 체험 모드: 받지도 풀지도 않고 예시 값만 보여 준다
 
     var label: String {
         switch self {
+        case .demo: return "체험 모드"
         case .password: return "동기화 비밀번호"
         case .github: return "GitHub 토큰 (개발자)"
         }

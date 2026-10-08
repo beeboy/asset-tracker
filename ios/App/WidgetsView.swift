@@ -26,9 +26,10 @@ struct WidgetsView: View {
                 Row(info: Catalog.lFuture) { WidgetPreview(family: .rect) { LockFutureView(s: s) } }
                 Row(info: Catalog.lTarget) { WidgetPreview(family: .rect) { LockTargetView(s: s) } }
             } header: { Text("잠금 화면") } footer: {
-                Text("홈 화면이나 잠금 화면을 길게 눌러 + (잠금 화면은 사용자화 → 위젯) → naeilo 에서 추가합니다." + (m.login == nil ? " 로그인 전에는 예시 값으로 보입니다." : ""))
+                Text("홈 화면이나 잠금 화면을 길게 눌러 + (잠금 화면은 사용자화 → 위젯) → naeilo 에서 추가합니다." + (s.placeholder ? " 연결 전이나 체험 중에는 예시 값으로 보입니다." : ""))
             }
         }
+        .environment(\.isSample, s.placeholder)
     }
 }
 

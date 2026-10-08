@@ -45,6 +45,7 @@ struct GuideView: View {
             }
             .padding(20)
         }
+        .environment(\.isSample, s.placeholder)
     }
 }
 
@@ -54,6 +55,7 @@ extension GuideView {
         case .none: return "연결 탭에 사이트와 같은 동기화 비밀번호 넣기"
         case .password: return "연결됨 · 이 아이폰에서만 풀어 봅니다"
         case .github: return "연결됨 (GitHub)"
+        case .demo: return "체험 중 · 연결 탭에서 비밀번호로 연결"
         }
     }
 }
