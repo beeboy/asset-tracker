@@ -15,6 +15,6 @@ enum Catalog {
     static let lFuture = ("3년 뒤", "3년 뒤 예상 범위")
     static let lTarget = ("이번 주 과녁", "금요일 마감 예측과 지금")
 
-    /// 위젯을 누르면 앱의 '소개' 탭으로
+    /// 위젯을 누르면 앱의 첫 탭(naeilo)으로
     static let openURL = URL(string: "naeilo://guide")!
 }

@@ -26,7 +26,7 @@ struct GuideView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("시작하기").font(.headline)
-                    Step(n: 1, text: m.login == nil ? "설정 탭에서 동기화 비밀번호를 넣습니다" : "로그인 완료") { tab = .settings }
+                    Step(n: 1, text: m.login == nil ? "연결 탭에서 동기화 비밀번호를 넣습니다" : "로그인 완료") { tab = .settings }
                     Step(n: 2, text: "위젯 탭에서 마음에 드는 위젯을 고릅니다") { tab = .widgets }
                     Step(n: 3, text: "홈 화면을 길게 눌러 + → naeilo 에서 추가합니다", action: nil)
                 }

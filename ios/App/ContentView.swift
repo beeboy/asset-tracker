@@ -9,16 +9,16 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $tab) {
             NavigationStack { GuideView(tab: $tab).navigationTitle("naeilo 위젯") }
-                .tabItem { Label("소개", systemImage: "info.circle") }.tag(AppTab.guide)
+                .tabItem { Label("naeilo", systemImage: "chart.line.uptrend.xyaxis") }.tag(AppTab.guide)
             NavigationStack { WidgetsView().navigationTitle("위젯 11개") }
                 .tabItem { Label("위젯", systemImage: "square.grid.2x2") }.tag(AppTab.widgets)
             NavigationStack {
                 Group { if m.login == nil { SignInView() } else { HomeView() } }
-                    .navigationTitle("설정")
+                    .navigationTitle("연결")
             }
-            .tabItem { Label("설정", systemImage: "gearshape") }.tag(AppTab.settings)
+            .tabItem { Label("연결", systemImage: "link") }.tag(AppTab.settings)
         }
-        // 위젯을 누르면 소개 탭으로
+        // 위젯을 누르면 첫 탭(naeilo)으로
         .onOpenURL { _ in tab = .guide }
     }
 }
