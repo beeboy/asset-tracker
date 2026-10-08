@@ -793,7 +793,6 @@
         tipx: (d) => (d === td ? `${d} (오늘 실시간)` : unit === "m" ? `${d.slice(0, 7)} 말` : unit === "w" ? `${d} 주 마지막` : d),
         tipy: (i) => `필요 경로보다 ${sg(pts[i][1])}` + (evAt[i] ? `<br>▲ ${evAt[i].map(esc).join("<br>▲ ")}` : "") + (pts[i][0] < start ? `<br><span class="muted">목표 시작 전 (거꾸로 늘인 경로)</span>` : ""),
         labelLast: (pts[pts.length - 1][0] === td ? "오늘 " : "") + sg(last),
-        vline: start > pts[0][0] && start <= pts[pts.length - 1][0] ? { x: start, label: "목표 시작" } : null,
         dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
   }
@@ -908,7 +907,7 @@
       const P = mode !== "each" && tot > 0 && !S.state.sample ? goalPath(H, cash) : null;
       if (P) {
         const py = ix.map((i, k) => { const v = P.at(x[k]); return v == null ? null : i < 0 ? lconv(v) : conv(v, i); });
-        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); if (P.start > x[0] && P.start <= x[x.length - 1]) opt.vlines.push({ x: P.start, label: "목표 시작" }); }
+        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
       }
     }
     const A = actualRec();
