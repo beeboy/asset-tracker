@@ -56,13 +56,13 @@ struct FanChart: View {
                 Text(labels ? "목표 \(Fmt.eok(goal, 0))" : Fmt.eok(goal, 0)).font(.system(size: 10, weight: .bold)).foregroundStyle(tint.c(Palette.goal))
                     .position(x: w - 24, y: y(goal) - 7)
                 Path { p in for k in 0..<m { let pt = CGPoint(x: xf(k), y: y(fan.p50[k])); k == 0 ? p.move(to: pt) : p.addLine(to: pt) } }
-                    .stroke(Color.white.opacity(0.95), lineWidth: 1.8)
+                    .stroke(Palette.ink.opacity(0.95), lineWidth: 1.8)
                 Path { p in for i in 0..<n { let pt = CGPoint(x: xh(i), y: y(hist[i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } }
-                    .stroke(.white, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
-                Path { p in p.move(to: CGPoint(x: xh(n - 1), y: 0)); p.addLine(to: CGPoint(x: xh(n - 1), y: h)) }.stroke(Color.white.opacity(0.35), lineWidth: 1)
+                    .stroke(Palette.ink, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
+                Path { p in p.move(to: CGPoint(x: xh(n - 1), y: 0)); p.addLine(to: CGPoint(x: xh(n - 1), y: h)) }.stroke(Palette.ink.opacity(0.35), lineWidth: 1)
                 if labels {
-                    Text("오늘").font(.system(size: 9.5)).foregroundStyle(Color.white.opacity(0.6)).position(x: xh(n - 1), y: h + 8)
-                    Text(fan.md.last.map { yymm($0) } ?? "").font(.system(size: 9.5)).foregroundStyle(Color.white.opacity(0.6)).position(x: w - 14, y: h + 8)
+                    Text("오늘").font(.system(size: 9.5)).foregroundStyle(Palette.ink.opacity(0.6)).position(x: xh(n - 1), y: h + 8)
+                    Text(fan.md.last.map { yymm($0) } ?? "").font(.system(size: 9.5)).foregroundStyle(Palette.ink.opacity(0.6)).position(x: w - 14, y: h + 8)
                 }
             }
         }
@@ -77,7 +77,7 @@ struct Ring: View {
     var line: CGFloat = 11
     var body: some View {
         ZStack {
-            Circle().stroke(Color.white.opacity(0.14), lineWidth: line)
+            Circle().stroke(Palette.ink.opacity(0.14), lineWidth: line)
             Circle().trim(from: 0, to: min(1, max(0, progress))).stroke(color, style: StrokeStyle(lineWidth: line, lineCap: .round)).rotationEffect(.degrees(-90))
         }
     }
@@ -93,10 +93,10 @@ struct RangeBar: View {
             let pad = (hi - lo) * 0.35, a = lo - pad, b = hi + pad, w = g.size.width
             let x: (Double) -> CGFloat = { w * CGFloat((min(max($0, a), b) - a) / (b - a)) }
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.white.opacity(0.12)).frame(height: height)
+                Capsule().fill(Palette.ink.opacity(0.12)).frame(height: height)
                 Capsule().fill(tint.c(Palette.good, 0.55)).frame(width: x(hi) - x(lo), height: height).offset(x: x(lo))
-                Rectangle().fill(.white).frame(width: 2, height: height + 8).offset(x: x(mid) - 1)
-                Image(systemName: "arrowtriangle.down.fill").font(.system(size: 13)).foregroundStyle(.white)
+                Rectangle().fill(Palette.ink).frame(width: 2, height: height + 8).offset(x: x(mid) - 1)
+                Image(systemName: "arrowtriangle.down.fill").font(.system(size: 13)).foregroundStyle(Palette.ink)
                     .offset(x: x(now) - 6.5, y: -height - 2)
             }
             .frame(height: g.size.height)

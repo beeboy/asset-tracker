@@ -1,15 +1,25 @@
 import SwiftUI
 
+enum AppTab: Hashable { case guide, widgets, settings }
+
 struct ContentView: View {
     @EnvironmentObject var m: AppModel
+    @State private var tab: AppTab = .guide
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if m.login == nil { SignInView() } else { HomeView() }
+        TabView(selection: $tab) {
+            NavigationStack { GuideView(tab: $tab).navigationTitle("naeilo 위젯") }
+                .tabItem { Label("naeilo", systemImage: "chart.line.uptrend.xyaxis") }.tag(AppTab.guide)
+            NavigationStack { WidgetsView().navigationTitle("위젯 11개") }
+                .tabItem { Label("위젯", systemImage: "square.grid.2x2") }.tag(AppTab.widgets)
+            NavigationStack {
+                Group { if m.login == nil { SignInView() } else { HomeView() } }
+                    .navigationTitle("연결")
             }
-            .navigationTitle("naeilo 위젯")
+            .tabItem { Label("연결", systemImage: "link") }.tag(AppTab.settings)
         }
+        // 위젯을 누르면 첫 탭(naeilo)으로
+        .onOpenURL { _ in tab = .guide }
     }
 }
 

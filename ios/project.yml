@@ -19,6 +19,8 @@ targets:
     sources:
       - App
       - Shared
+      # 위젯 화면은 앱의 '위젯' 탭 미리보기에도 쓴다
+      - Widgets/Views
       # 사이트와 같은 계산 파일을 앱에 넣는다 (앱은 사이트에서 더 새 파일을 받으면 그것을 쓴다)
       - path: ../web/model.js
         buildPhase: resources
@@ -31,6 +33,9 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [fetch, processing]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.naeilo.widget
+            CFBundleURLSchemes: [naeilo]
         BGTaskSchedulerPermittedIdentifiers: [com.naeilo.widget.refresh, com.naeilo.widget.compute]
     entitlements:
       path: App/App.entitlements
