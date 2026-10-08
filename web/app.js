@@ -908,7 +908,7 @@
       const P = mode !== "each" && tot > 0 && !S.state.sample ? goalPath(H, cash) : null;
       if (P) {
         const py = ix.map((i, k) => { const v = P.at(x[k]); return v == null ? null : i < 0 ? lconv(v) : conv(v, i); });
-        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
+        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); if (P.start > x[0] && P.start <= x[x.length - 1]) opt.vlines.push({ x: P.start, label: "목표 시작" }); }
       }
     }
     const A = actualRec();
