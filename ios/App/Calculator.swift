@@ -1,5 +1,7 @@
 import Foundation
 import JavaScriptCore
+import WebKit
+import UIKit
 
 /// 2차: 사이트와 같은 계산 파일(model.js + widget-core.js)을 아이폰에서 직접 돌려 위젯 요약을 만든다.
 /// 가격 이력은 처음 한 번만 받고, 이후엔 data/widget.json 의 최근 10거래일로 이어 붙인다 (PriceCache)
@@ -47,17 +49,25 @@ enum Calculator {
         let inputJSON = String(data: try JSONSerialization.data(withJSONObject: input), encoding: .utf8)!
         let pricesJSON = "{" + prices.map { "\(jsonString($0.key)):\(String(data: $0.value, encoding: .utf8) ?? "null")" }.joined(separator: ",") + "}"
 
-        let out: String = try await withCheckedThrowingContinuation { cont in
-            DispatchQueue.global(qos: .utility).async {
-                let ctx = JSContext()!
-                var err: String?
-                ctx.exceptionHandler = { _, e in err = e?.toString() }
-                ctx.evaluateScript("var window = this; var console = { log: function(){}, error: function(){} };")
-                ctx.evaluateScript(scripts.model)
-                ctx.evaluateScript(scripts.core)
-                ctx.evaluateScript("var S = \(inputJSON); S.prices = \(pricesJSON);")
-                let r = ctx.evaluateScript("JSON.stringify(WidgetCore.summary(S))")?.toString()
-                if let err { cont.resume(throwing: CalcError.js(err)) } else { cont.resume(returning: r ?? "null") }
+        let setup = "var S = \(inputJSON); S.prices = \(pricesJSON);"
+        // 앱이 앞에 떠 있으면 웹 엔진(WKWebView)으로: JIT 가 켜져 JSContext 보다 몇 배 빠르다. 백그라운드에서는 JSContext
+        let out: String
+        if await MainActor.run(body: { UIApplication.shared.applicationState == .active }),
+           let r = try? await WebJS.run(scripts.model + "\n;" + scripts.core + "\n;" + setup + "\nreturn JSON.stringify(WidgetCore.summary(S));") {
+            out = r
+        } else {
+            out = try await withCheckedThrowingContinuation { cont in
+                DispatchQueue.global(qos: .utility).async {
+                    let ctx = JSContext()!
+                    var err: String?
+                    ctx.exceptionHandler = { _, e in err = e?.toString() }
+                    ctx.evaluateScript("var window = this; var console = { log: function(){}, error: function(){} };")
+                    ctx.evaluateScript(scripts.model)
+                    ctx.evaluateScript(scripts.core)
+                    ctx.evaluateScript(setup)
+                    let r = ctx.evaluateScript("JSON.stringify(WidgetCore.summary(S))")?.toString()
+                    if let err { cont.resume(throwing: CalcError.js(err)) } else { cont.resume(returning: r ?? "null") }
+                }
             }
         }
         guard let d = out.data(using: .utf8), let sum = try? JSONDecoder().decode(WSummary.self, from: d) else { throw CalcError.js("요약을 만들지 못했습니다") }
@@ -70,6 +80,17 @@ enum Calculator {
 
     private static func jsonString(_ s: String) -> String {
         String(data: try! JSONSerialization.data(withJSONObject: [s]), encoding: .utf8)!.dropFirst().dropLast().description
+    }
+}
+
+/// 화면에 띄우지 않는 웹 엔진에서 스크립트를 돌린다 (사이트와 같은 엔진, JIT 사용)
+@MainActor
+enum WebJS {
+    static func run(_ body: String) async throws -> String {
+        let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+        let r = try await web.callAsyncJavaScript(body, arguments: [:], in: nil, contentWorld: .defaultClient)
+        guard let s = r as? String else { throw Calculator.CalcError.js("웹 계산 결과 없음") }
+        return s
     }
 }
 
