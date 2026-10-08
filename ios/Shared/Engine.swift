@@ -19,13 +19,21 @@ struct Snapshot {
     var pGoal: Double?
     var term: (p5: Double, p50: Double, p95: Double)?
     var fcAsOf: String?
-    var hits: [Bool]
+    struct Hit { var hit: Bool; var retro: Bool }
+    var hits: [Hit]              // 지난 주 적중 (retro = 예측을 적기 전이라 사후 계산)
     var week: Week?
     var moves: [Move]
     var events: [Ev]
     var updated: Date?
     var source: String?
     var placeholder = false
+
+    /// "적중 1/1" (실제 예측만). 실제 예측이 아직 없으면 "사후 7/12"
+    var hitText: String {
+        let real = hits.filter { !$0.retro }
+        if real.isEmpty, !hits.isEmpty { return "사후 \(hits.filter { $0.hit }.count)/\(hits.count)" }
+        return "적중 \(real.filter { $0.hit }.count)/\(real.count)"
+    }
 
     var dayChg: Double { prevTotal > 0 ? total / prevTotal - 1 : 0 }
     var dayAmt: Double { total - prevTotal }
@@ -117,7 +125,7 @@ enum Engine {
         return Snapshot(total: total, prevTotal: prevTotal, goal: goal, goalDate: goalDate, dday: Day.dday(goalDate),
                         v0: s?.goal.v0, start: live?.goalStart ?? s?.goal.start, spark: spark, fan: fan, pGoal: s?.fc?.pg,
                         term: termOf(t),
-                        fcAsOf: s?.asof, hits: (s?.hits ?? []).map { $0.h == 1 }, week: week, moves: moves, events: Array(evs),
+                        fcAsOf: s?.asof, hits: (s?.hits ?? []).map { Snapshot.Hit(hit: $0.h == 1, retro: $0.r == 1) }, week: week, moves: moves, events: Array(evs),
                         updated: Store.lastCheck, source: Store.summarySource)
     }
 }
@@ -136,7 +144,7 @@ extension Snapshot {
         let sp = { (z: Double) in md.indices.map { p50[$0] * exp(z * 0.45 * sqrt(Double($0) / 12)) } }
         return Snapshot(total: 5.27e8, prevTotal: 5.32e8, goal: 1e9, goalDate: Day.str(md.last!), dday: 1092, v0: 5.30e8, start: Day.today,
                         spark: spark, fan: .init(md: md, p5: sp(-1.645), p25: sp(-0.674), p50: p50, p75: sp(0.674), p95: sp(1.645)),
-                        pGoal: 0.38, term: (1.7e8, 7.7e8, 2.2e9), fcAsOf: Day.today, hits: [true, false, true, true, false, true, true, true],
+                        pGoal: 0.38, term: (1.7e8, 7.7e8, 2.2e9), fcAsOf: Day.today, hits: [true, false, true, true, false, true, true, true].enumerated().map { Hit(hit: $1, retro: $0 < 6) },
                         week: .init(f: Day.today, p50: 5.17e8, lo: 4.96e8, hi: 5.39e8, act: 5.27e8, dday: 1),
                         moves: [.init(t: "TSLA", pct: -0.007, krw: 3.48e8, w: 0.66), .init(t: "NVDA", pct: -0.006, krw: 0.95e8, w: 0.18),
                                 .init(t: "SPCX", pct: -0.02, krw: 0.71e8, w: 0.14), .init(t: "SGOV", pct: 0, krw: 0.12e8, w: 0.02)],

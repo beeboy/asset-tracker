@@ -61,7 +61,7 @@ struct LockTargetView: View { // 4 적중 과녁
     let s: Snapshot
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("이번 주 과녁 · 적중 \(s.hits.filter { $0 }.count)/\(s.hits.count)").font(.system(size: 11, weight: .bold)).opacity(0.75)
+            Text("이번 주 과녁 · \(s.hitText)").font(.system(size: 11, weight: .bold)).opacity(0.75)
             if let w = s.week {
                 (Text(Fmt.eok(w.act)).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text("  예측 \(Fmt.eok(w.p50))").font(.system(size: 11, weight: .semibold))).lineLimit(1)
                 GeometryReader { g in

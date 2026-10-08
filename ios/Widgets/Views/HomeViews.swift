@@ -157,9 +157,9 @@ struct TargetMediumView: View {
                 RangeBar(lo: w.lo, hi: w.hi, mid: w.p50, now: w.act, tint: t).frame(height: 26).padding(.top, 10).widgetAccentable()
                 HStack { Text(Fmt.eok(w.lo)); Spacer(); Text(Fmt.eok(w.hi)) }.font(.system(size: 11)).opacity(0.6)
                 HStack(spacing: 4) {
-                    Text("적중 \(s.hits.filter { $0 }.count)/\(s.hits.count)").font(.system(size: 11)).opacity(0.6)
+                    Text(s.hitText).font(.system(size: 11)).opacity(0.6)
                     ForEach(Array(s.hits.suffix(8).enumerated()), id: \.offset) { _, h in
-                        Circle().fill(h ? t.c(Palette.good) : .clear).overlay(Circle().stroke(Palette.ink.opacity(0.55), lineWidth: h ? 0 : 1.5)).frame(width: 10, height: 10)
+                        Circle().fill(h.hit ? t.c(Palette.good, h.retro ? 0.4 : 1) : .clear).overlay(Circle().stroke(Palette.ink.opacity(h.retro ? 0.3 : 0.55), lineWidth: h.hit ? 0 : 1.5)).frame(width: 10, height: 10)
                     }
                     Spacer(minLength: 0)
                     ReloadButton()
