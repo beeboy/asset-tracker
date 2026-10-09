@@ -165,7 +165,10 @@
     const base = "../data/", bust = "?t=" + Date.now();
     const get = async (f) => { const r = await fetch(base + f + bust, { cache: "no-store" }); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); };
     const idx = await get("index.json"), prices = {};
-    await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await get("prices/" + encodeURIComponent(f)); } catch (e) { /* 없는 파일 무시 */ } }));
+    // 시세 파일은 수집 시각(index.json 의 updated)이 같으면 브라우저 캐시를 그대로 쓴다. 새로 수집되면 주소가 바뀌어 새로 받는다
+    const ver = "?v=" + encodeURIComponent(idx.updated || bust.slice(3));
+    const getPx = async (f) => { const r = await fetch(base + "prices/" + encodeURIComponent(f) + ver); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); };
+    await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await getPx(f); } catch (e) { /* 없는 파일 무시 */ } }));
     S.prices = prices; S.quotes = await get("quotes.json").catch(() => ({})); S.dataUpdated = idx.updated;
     S.tickerCfg = await get("tickers.json").catch(() => ({ tickers: [] }));
     S.config = await get("config.json").catch(() => ({}));
@@ -1618,12 +1621,12 @@
     const tips = [];
     tips.push(`**목표 확률 ${pct(R.p_goal, 0)}** (${scenName(S.state.model.scenario)} 시나리오). 필요한 연수익률 **${pct(req)}**, 전망 중앙값의 연수익률 **${pct(medC)}**.`);
     if (R.p_goal < 0.5 && R.req50 != null) tips.push(`**적립**: 지금 비중 그대로 확률 50%를 맞추려면 매월 약 **${krw(R.req50)}원**을 더 넣어야 합니다 (월 적립은 자산 추이의 목표 수정에서 입력).`);
-    if (risky[top] > 0.45) tips.push(`**집중도**: ${b.holdings[top].ticker} 한 종목이 **${pct(w[top], 0)}**입니다. 하위 5% 결과가 ${krw(R.terminal.p5)}원까지 내려갑니다. '비중 조정'에서 줄였을 때를 확인해 보세요.`);
-    if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장에서 살 여력과 심리적 완충을 위해 3~5%를 권합니다.`);
+    if (risky[top] > 0.45) tips.push(`**집중도**: ${b.holdings[top].ticker} 한 종목이 **${pct(w[top], 0)}**입니다. 하위 5% 결과가 ${krw(R.terminal.p5)}원까지 내려갑니다. '비중 조정'에서 비중을 바꿨을 때의 계산을 볼 수 있습니다.`);
+    if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장 대비 여유분으로 흔히 3~5%를 기준으로 삼습니다.`);
     tips.push(`**낙폭**: 최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}. 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
     const rg = rebalanceGap();
     if (rg && rg.gaps.length && yearsBetween(rg.tg.at, today()) < 0.5) tips.push(`**비중 조정 진행 중**: '${rg.tg.name}' (${rg.tg.at}에 목표로 정함). 남은 차이 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")}.`);
-    else if (rg) tips.push(rg.gaps.length ? `**리밸런싱 신호**: 목표로 정한 '${rg.tg.name}' 비중에서 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")} 벗어났습니다. '비중 조정'에서 실행 계획을 보세요.` : `**리밸런싱**: 목표로 정한 '${rg.tg.name}' 비중 안에 있습니다 (±5%p).`);
+    else if (rg) tips.push(rg.gaps.length ? `**리밸런싱 신호**: 목표로 정한 '${rg.tg.name}' 비중에서 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")} 벗어났습니다. '비중 조정'에서 수량 계산을 볼 수 있습니다.` : `**리밸런싱**: 목표로 정한 '${rg.tg.name}' 비중 안에 있습니다 (±5%p).`);
     if (common.length) tips.push(`**공통 일정** (모든 종목): ${common.slice(0, 4).map((c) => `${c.k} ${c.d.join(", ")}`).join(" · ")}`);
     $("#stratSummary").innerHTML = `<div class="md small">${md2html(tips.map((t) => "- " + t).join("\n"))}</div>`;
 
@@ -1632,16 +1635,16 @@
       const f = md.factors[i], p = S.prices[h.ticker], ind = p ? Model.indicators(p.dates, p.adj) : null, sg = ind?.sig, st = R.stocks[i];
       const ev = soon(h.ticker), lock = ev.find((e) => /보호예수/.test(e.event.kind));
       let act, klass, why = [];
-      if (f.cash) { act = "유지 (현금 완충)"; klass = "cash"; why.push(`**성격**: 비중 ${pct(w[i], 1)}, 연 ${pct(f.mu.base)} 수준의 단기 국채형`); }
-      else if (f.n < 252) { act = "보유, 추가 매수 보류"; klass = "wait"; why.push(`**이력**: 상장 후 ${f.n}거래일로 짧아 변동성(${pct(f.vol, 0)}) 추정이 불확실`); if (lock) why.push(`**${lock.event.kind}**: ${lock.date} 예정. 물량 출회로 단기 하락 가능, 이후 재판단`); }
+      if (f.cash) { act = "현금성 (완충)"; klass = "cash"; why.push(`**성격**: 비중 ${pct(w[i], 1)}, 연 ${pct(f.mu.base)} 수준의 단기 국채형`); }
+      else if (f.n < 252) { act = "이력 짧음 · 추정 불확실"; klass = "wait"; why.push(`**이력**: 상장 후 ${f.n}거래일로 짧아 변동성(${pct(f.vol, 0)}) 추정이 불확실`); if (lock) why.push(`**${lock.event.kind}**: ${lock.date} 예정. 과거에는 물량 출회로 단기 하락이 잦았음`); }
       else if (w[i] > 0.45) {
         const tgt = 0.45, sell = Math.ceil(((w[i] - tgt) * total) / (h.valueKrw / h.shares));
-        act = `비중 축소 검토 (→ ${pct(tgt, 0)})`; klass = "trim";
-        why.push(`**비중**: ${pct(w[i], 0)}로 한 종목 집중. 약 **${nf(sell)}주**를 6개월에 나눠 지수(QQQ 등)로 옮기면 ${pct(tgt, 0)}`);
-        why.push("**세금**: 양도세가 있으면 연도를 나눠 매도 (해외주식 연 250만원 공제)");
-      } else if (sg && sg.trend === "하락 추세") { act = "추가 매수 보류, 관찰"; klass = "wait"; }
-      else if (sg && /상승/.test(sg.trend) && w[i] > 0.25) { act = "보유 (25~30% 넘지 않게)"; klass = "hold"; }
-      else { act = "보유"; klass = "hold"; }
+        act = `한 종목 집중 (비중 ${pct(w[i], 0)})`; klass = "trim";
+        why.push(`**비중**: ${pct(w[i], 0)}로 한 종목 집중. 비중이 ${pct(tgt, 0)}가 되는 수량 차이는 약 **${nf(sell)}주** (계산값)`);
+        why.push("**세금**: 해외주식 양도차익은 연 250만원까지 공제 (연도별 계산은 '배당·세금')");
+      } else if (sg && sg.trend === "하락 추세") { act = "하락 추세"; klass = "wait"; }
+      else if (sg && /상승/.test(sg.trend) && w[i] > 0.25) { act = `상승 추세 · 비중 ${pct(w[i], 0)}`; klass = "hold"; }
+      else { act = sg ? sg.trend : "신호 없음"; klass = "hold"; }
       if (sg && !f.cash) why.push(`**상태**: 고점 대비 ${pct(sg.drawdown, 0)}` + (sg.ema200 ? `, 200일선 ${sg.close >= sg.ema200 ? "위" : "아래"} (${spct(sg.close / sg.ema200 - 1, 0)})` : ", 200일선 판단 보류 (이력 짧음)") + `, 비중 ${pct(w[i], 0)}${risky[i] > 0.45 ? " (집중)" : ""}`);
       if (!f.cash) why.push(`**전망**: 목표일 가격 중앙값 ${nf(st.bands.p50[st.bands.p50.length - 1], 2)} ${h.ccy} (현재 ${nf(h.price0, 2)}), 오를 확률 **${pct(st.p_up, 0)}**, 적용 기대수익 연 ${pct(f.mu[S.state.model.scenario])}`);
       ev.filter((e) => e !== lock).slice(0, 2).forEach((e) => why.push(`**${e.event.kind}**: ${e.date} (±${e.event.sd}%)`));
@@ -2468,11 +2471,11 @@
     const { base, out, top, V0 } = lastAlloc, k = S.state.alloc_pick || "mid", o = out.find((x) => x.k === k);
     if (!o || k === "keep") { card.style.display = "none"; return; }
     card.style.display = "block";
-    $("#allocPlanTitle").textContent = `실행 계획 · ${ALLOC_DEF[k].n}`;
+    $("#allocPlanTitle").textContent = `수량·세금 계산 · ${ALLOC_DEF[k].n}`;
     const fx = (h) => fxNow(h.ccy) || 1, w0 = out[0].w, L = [];
     const sells = [], buys = [];
     base.forEach((h, i) => { const dv = (o.w[i] - w0[i]) * V0, sh = dv / (h.price0 * fx(h)); if (Math.abs(sh) < 0.5) return; (dv < 0 ? sells : buys).push({ t: h.ticker, sh: Math.abs(sh), v: Math.abs(dv) }); });
-    L.push(`<p><b>6개월 분할</b>: 매월 ${sells.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh / 6))}주 매도`).join(", ")} → ${buys.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh / 6))}주 (${krw(x.v / 6)}원)`).join(", ")} 매수.</p>`);
+    L.push(`<p><b>수량 차이</b> (지금 → 이 안): ${[...sells.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh))}주 적음`), ...buys.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh))}주 (${krw(x.v)}원) 많음`)].join(", ")}. 6개월로 나누면 한 달에 그 1/6입니다. 매매 권유가 아닌 계산값입니다.</p>`);
     const th = S.state.holdings.find((h) => h.ticker === base[top].ticker), avg = Number(th?.avg_cost) || 0, s0 = sells.find((x) => x.t === base[top].ticker);
     if (s0 && avg) {
       const gps = (base[top].price0 - avg) * fx(base[top]), used = Math.max(0, realizedYear(new Date().getFullYear()));

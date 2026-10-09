@@ -175,7 +175,16 @@ export default {
     }
     const target = u.searchParams.get("url") || "";
     if (!ALLOW.test(target)) return new Response("not allowed", { status: 400, headers: cors });
-    const r = await fetch(target, { headers: { "User-Agent": "Mozilla/5.0" }, cf: { cacheTtl: 60 } });
+    // Yahoo 가 429(요청 과다)·5xx 를 주거나 연결이 끊기면 잠깐 쉬고 다른 서버(query1 ↔ query2)로 한 번 더
+    const get = (url) => fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cf: { cacheTtl: 60 } }).catch(() => null);
+    const bad = (x) => !x || x.status === 429 || x.status >= 500;
+    let r = await get(target);
+    if (bad(r)) {
+      await new Promise((ok) => setTimeout(ok, 700));
+      const r2 = await get(target.replace(/^https:\/\/query([12])/, (m, n) => "https://query" + (n === "1" ? "2" : "1")));
+      if (r2 && (!bad(r2) || !r)) r = r2;
+    }
+    if (!r) return out({ error: "Yahoo 에 연결하지 못했습니다" }, 502);
     return new Response(r.body, { status: r.status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "max-age=60" } });
   },
   // 30분마다 (Cron Trigger): 구독마다 하루 변동·실적 하루 전 검사
