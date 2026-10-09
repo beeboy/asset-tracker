@@ -70,7 +70,7 @@ arch = []
 try:
     st, html = get(BASE + "New_Home_Page/dataarchived.html")
     hrefs = re.findall(r'href="([^"]+)"', html.decode("latin-1"), re.I)
-    arch = sorted({h for h in hrefs if re.search(r"(^|/)pedata\d*\.xlsx?$", h, re.I)})
+    arch = sorted({h for h in hrefs if re.search(r"(^|/)pedata\d*\.xlsx?$", h, re.I)} | {BASE + "pc/archives/pedata25.xls", BASE + "pc/datasets/pedata.xls"})
     report["archive_page"] = {"status": st, "us_pe_files": arch,
                               "other_pe_like": sorted({h for h in hrefs if re.search(r"/pe[a-z]*\d*\.xls", h, re.I)} - set(arch))[:40]}
 except Exception as e:
@@ -91,13 +91,13 @@ for h in arch:
             body = [r for r in rows[hi + 1:] if r and str(r[0]).strip()]
             def col(name):
                 return next((j for j, c in enumerate(hdr) if re.search(name, c, re.I)), None)
-            cur, trl, fwd, gro = col(r"^current pe"), col(r"trailing pe"), col(r"forward pe"), col(r"growth")
+            cur, trl, fwd, gro = col(r"aggregate.*(only money|trailing net)"), col(r"aggregate.*net income \(all|aggregate market cap/ aggregate net"), col(r"forward pe"), col(r"growth")
             vals = {}
             for r in body:
                 if re.search(KEYS, str(r[0]).strip(), re.I):
                     f = lambda j: (round(float(r[j]), 2) if j is not None and str(r[j]).replace('.', '', 1).replace('-', '', 1).isdigit() else (str(r[j])[:8] if j is not None else None))
                     vals[str(r[0]).strip()[:14]] = [f(cur), f(trl), f(fwd), f(gro)]
-            lines.append({"file": h, "n": len(body), "header": hdr, "cur/trail/fwd/growth": vals})
+            lines.append({"file": h, "n": len(body), "header": hdr, "aggPos/aggAll/fwd/growth": vals})
             break
     except Exception as e:
         lines.append({"file": h, "error": repr(e)})
