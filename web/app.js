@@ -299,7 +299,7 @@
       if (w && !j.stale) wSent = widgetKey(); if (j.stale) syncPull();
     }
     catch (e) { S.sync = { ok: false, err: e.message }; }
-    if ($("#tabs .on")?.dataset.tab === "quotes") { renderGh(); renderEsync(); }
+    if (onTab("settings")) { renderGh(); renderEsync(); }
   }
   // 아이폰 위젯: 계산해 둔 '내 관점' 전망이 있으면 위젯용 요약(widget-core.js)을 입력값과 같이 올린다. 앱은 이 요약과 자기 계산 중 최신 것을 쓴다
   let wSent = null;
@@ -324,7 +324,7 @@
       } else if (!j.state || j.at < mine) { if (!mine) S.state.ui.sync_at = Date.now(); await syncPush(); }
       S.sync = { ok: true, at: Date.now() };
     } catch (e) { S.sync = { ok: false, err: e.message }; }
-    if ($("#tabs .on")?.dataset.tab === "quotes") { renderGh(); renderEsync(); }
+    if (onTab("settings")) { renderGh(); renderEsync(); }
   }
   function renderEsync() {
     const box = $("#esyncBox"); if (!box) return;
@@ -671,7 +671,7 @@
     save(); renderAll();
     if (!S.prices[t]) {
       if (MODE === "static") {
-        showTab("quotes");
+        showTab("stocks");
         if (GH && ghToken()) await ghCollect([t]);
         else await browserCollect([t]);
       }
@@ -840,8 +840,8 @@
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date), cash = cashKrw(), tot = total + cash;
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
-    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면 (TSLA 1,000주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="quotes">내 수량 넣기</button>`
-      : `<b>보유 수량을 넣어 주세요.</b> <span class="small">설정에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="quotes">수량 입력하러 가기</button>`;
+    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면 (TSLA 1,000주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="stocks">내 수량 넣기</button>`
+      : `<b>보유 수량을 넣어 주세요.</b> <span class="small">종목 탭에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="stocks">수량 입력하러 가기</button>`;
     const need = g.amount - tot, req = yrs > 0 && tot > 0 ? (g.amount / tot) ** (1 / yrs) - 1 : null;
     const H = history(), M = patModel(H);
     // 미래 기준을 직접 고른 적이 없고, 지난 12달 채점에서 패턴이 추세만보다 나으면 패턴을 기본으로
@@ -853,7 +853,7 @@
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
     renderProgress(H, total, cash); renderBackupNag(); actualAuto(H, cash);
     $("#goalKpis").innerHTML = [
-      ["현재 평가액", `<a href="#" class="plain" data-go="quotes" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
+      ["현재 평가액", `<a href="#" class="plain" data-go="stocks" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(tot / g.amount), `<div class="bar"><i style="width:${Math.min(100, (tot / g.amount) * 100)}%"></i></div>`],
       ["남은 금액", krw(Math.max(0, need)) + "원", `목표 ${krw(g.amount)}원`],
       ["남은 기간", yrs > 0 ? yrs.toFixed(1) + "년" : "지남", g.date],
@@ -989,7 +989,7 @@
     const next = () => { const k = need.shift(); if (!k) { aiDashBusy = false; aiAuto("dash", false); return; } forecastLater(k, next); };
     next();
   }
-  // 분석·전략 맨 위: 종목별 가격 (현지 통화)
+  // 종목 탭 종목 진단: 종목별 가격 (현지 통화)
   function renderStockPrices() {
     const H = history(), n = +($("#stockRange .on")?.dataset.r || 252), from = H.dates[Math.max(0, H.dates.length - 1 - n)];
     const host = $("#dashStocks"); host.innerHTML = "";
@@ -1562,7 +1562,7 @@
     // 직접 입력한 현재가 때문에 오늘 평가액이 시세 기준과 크게 다르면 알린다 (차트가 오늘에서 꺾이는 원인)
     const manual = b.holdings.filter((h) => { const src = S.state.holdings.find((x) => x.ticker === h.ticker); const mk = src && curPrice({ ...src, price: null }).v; return src && Number(src.price) > 0 && mk && Math.abs(h.price0 / mk - 1) > 0.05; });
     const Hh = history(), lastHist = Hh.total[Hh.total.length - 1];
-    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 설정에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
+    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 종목 탭에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
     $("#fcWarn").style.display = $("#fcWarn").innerHTML ? "block" : "none";
     $("#fcStatus").textContent = `${SCEN_SHORT[lastForecast.scen] || ""} 시나리오, ${dtStr(lastForecast.at)}` + (fcDirty ? " · 입력이 바뀜, 시나리오를 눌러 다시 계산" : "");
     $("#fcStatus").title = `${SCEN_LAB[lastForecast.scen] || ""} · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초`;
@@ -1574,8 +1574,7 @@
         <td>${f.kind === "asset" ? pct(b.holdings[i].valueKrw / R.V0, 0) : "-"}</td><td>${pct(f.vol, 0)}</td><td>${pct(f.mu.base, 0)}<br><span class="muted">${pct(f.mu.smooth ?? f.mu.base, 0)}</span></td><td><b>${pct(f.mu[scen], 0)}</b></td></tr>`).join("") +
       `<tr><td class="l muted wrapc" colspan="5">상관: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
     renderStrategy();
-    if (curAna() === "fx") renderFx();
-    if (curAna() === "events") runXfEffect();
+    if (onTab("forecast")) { renderFx(); runXfEffect(); }
     aiRefresh();
   }
 
@@ -1620,7 +1619,7 @@
     const common = []; md.eventList.filter((e) => e.event.target === "ALL" && near(e)).forEach((e) => { const c = common.find((x) => x.k === e.event.kind); if (c) { if (c.d.length < 3) c.d.push(e.date.slice(5)); } else common.push({ k: e.event.kind, d: [e.date.slice(5)] }); });
     const tips = [];
     tips.push(`**목표 확률 ${pct(R.p_goal, 0)}** (${scenName(S.state.model.scenario)} 시나리오). 필요한 연수익률 **${pct(req)}**, 전망 중앙값의 연수익률 **${pct(medC)}**.`);
-    if (R.p_goal < 0.5 && R.req50 != null) tips.push(`**적립**: 지금 비중 그대로 확률 50%를 맞추려면 매월 약 **${krw(R.req50)}원**을 더 넣어야 합니다 (월 적립은 자산 추이의 목표 수정에서 입력).`);
+    if (R.p_goal < 0.5 && R.req50 != null) tips.push(`**적립**: 지금 비중 그대로 확률 50%를 맞추려면 매월 약 **${krw(R.req50)}원**을 더 넣어야 합니다 (월 적립은 내 길의 목표 수정에서 입력).`);
     if (risky[top] > 0.45) tips.push(`**집중도**: ${b.holdings[top].ticker} 한 종목이 **${pct(w[top], 0)}**입니다. 하위 5% 결과가 ${krw(R.terminal.p5)}원까지 내려갑니다. '비중 조정'에서 비중을 바꿨을 때의 계산을 볼 수 있습니다.`);
     if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장 대비 여유분으로 흔히 3~5%를 기준으로 삼습니다.`);
     tips.push(`**낙폭**: 최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}. 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
@@ -1971,7 +1970,7 @@
     box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석 · Puter ${again}</p>`;
   }
   // 지금 보고 있는 분석 화면의 AI 분석을 채운다
-  function aiRefresh() { return; if ($("#tabs .on")?.dataset.tab === "analysis") aiAuto(curAna(), false); }
+  function aiRefresh() { /* 자동 AI 분석은 꺼 둠 (버튼으로만) */ }
 
 
   // ------------------------------------------------------------ 인사이트 (뉴스)
@@ -2401,7 +2400,7 @@
     allocTimer = setTimeout(() => {
       if (allocRun || !S.state || !(valuation().total > 0)) return;
       if (lastAlloc && !allocDirty) return;
-      if (allocRestore()) { if (curAna() === "alloc") { renderAllocTable(); renderAllocChart(); } return; }
+      if (allocRestore()) { if (onTab("stocks")) { renderAllocTable(); renderAllocChart(); } return; }
       const go = () => runAlloc();
       if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 }); else go();
     }, delay);
@@ -2445,7 +2444,7 @@
       lastAlloc = { base: base.map((h) => ({ ticker: h.ticker, price0: h.price0, ccy: h.ccy, shares: h.shares })), V0, top, out, subs, fd: model.monthDates, at: Date.now() }; allocDirty = false;
       try { localStorage.setItem(AL_KEY, JSON.stringify({ sig: fcSig() + "|" + JSON.stringify(S.state.alloc_mix || {}), ...lastAlloc })); } catch (e) { /* 무시 */ }
       renderAllocTable(); renderAllocChart();
-      if (curAna() === "alloc") aiRefresh();
+      if (onTab("stocks")) aiRefresh();
     } catch (e) { st.textContent = "오류: " + e.message; console.error(e); }
     btn.disabled = false;
   }
@@ -2615,7 +2614,7 @@
       $("#taxGoal").innerHTML = `<div class="kpis">${[["세후 목표 달성 확률", pct(pAfter, 0), `세전 ${pct(R.p_goal, 0)} · 목표일에 모두 판다면`], ["현금화 세금 (중앙값)", krw(tMed) + "원", `중앙값 ${krw(R.terminal.p50)}원 → 세후 ${krw(R.terminal.p50 - tMed)}원`], [`세후 ${krw(g.amount)}이 되려면`, krw(g.amount + Math.max(0, g.amount - basis - CGT_DED) * CGT / (1 - CGT)) + "원", "세전으로 필요한 금액 (근사)"]].map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("")}</div><p class="muted small">원금 ${krw(cb ?? R.V0)}원${cb ? "" : "(오늘 평가액)"} 기준.</p>`;
     } else $("#taxGoal").innerHTML = `<p class="muted small">3년 전망을 계산하면 세후 확률이 나옵니다.</p>`;
     const wa = hs.filter((r) => r.avg && r.ccy !== "KRW");
-    if (!wa.length) { $("#taxBox").innerHTML = `<p>매수 단가를 넣으면 종목별 세금을 계산합니다. <a href="#" data-go="quotes">매수 단가 넣기</a></p>`; $("#taxYears").innerHTML = ""; return; }
+    if (!wa.length) { $("#taxBox").innerHTML = `<p>매수 단가를 넣으면 종목별 세금을 계산합니다. <a href="#" data-go="stocks">매수 단가 넣기</a></p>`; $("#taxYears").innerHTML = ""; return; }
     const gains = wa.map((r) => ({ t: r.h.ticker, g: (r.p.v - r.avg) * r.sh * r.fx, gps: (r.p.v - r.avg) * r.fx, sh: r.sh, w: r.w, px: r.p.v * r.fx }));
     const sum = gains.reduce((a, x) => a + x.g, 0), taxAll = Math.max(0, sum - CGT_DED) * CGT;
     const best = gains.filter((x) => x.gps > 0).sort((a, b) => b.g - a.g)[0];
@@ -2704,7 +2703,7 @@
       const v = $("#ghToken").value.replace(/\s+/g, ""); if (!v) return toast("토큰을 붙여넣어 주세요");
       if (!/^[A-Za-z0-9_]{20,}$/.test(v)) return toast("토큰 형식이 아닙니다. github_pat_ 로 시작하는 값만 그대로 붙여넣어 주세요");
       try { localStorage.setItem(TOKEN_KEY, v); } catch (e) { return toast("브라우저 저장 실패"); }
-      try { await ghApi("actions/workflows/collect.yml"); toast("GitHub 연결됨"); renderGh(); bvLoad(true); syncPull(); const miss = missingTickers(); if (miss.length) { showTab("quotes"); ghCollect(miss); } }
+      try { await ghApi("actions/workflows/collect.yml"); toast("GitHub 연결됨"); renderGh(); bvLoad(true); syncPull(); const miss = missingTickers(); if (miss.length) { showTab("stocks"); ghCollect(miss); } }
       catch (e) { toast("연결 실패: " + e.message); renderGh(); }
     };
     if (has) {
@@ -3156,28 +3155,30 @@
   }
   function renderAll() {
     renderHeader(); renderQuotes(); renderGoalInputs(); renderEvents(); renderSettings(); renderPrem();
-    const tab = $("#tabs .on").dataset.tab;
-    if (tab === "dash") renderDash();
-    if (tab === "analysis") renderAnalysis();
+    if (onTab("dash")) renderDash();
+    if (onTab("forecast")) renderForecastTab();
+    if (onTab("stocks")) renderStocksTab();
   }
-  const curAna = () => $("#anaNav .on")?.dataset.a || "forecast";
-  function renderAnalysis() {
-    const a = curAna();
-    $$(".ana").forEach((el) => (el.style.display = el.id === "ana-" + a ? "block" : "none"));
-    if (a === "strategy") renderStockPrices();
-    if (a === "events") { renderSchedule(); renderSens(); }
-    if (a === "fx") renderFx();
-    if (a === "cash") renderCash();
-    if (a === "strategy" || a === "forecast" || a === "events" || a === "fx") { if (!lastForecast && !fcRestore()) runForecast(); else renderForecast(); } // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
-    if (a === "alloc") { if ((!lastAlloc || allocDirty) && !allocRestore()) runAlloc(); else { renderAllocTable(); renderAllocChart(); aiRefresh(); } }
-    try { localStorage.setItem("ana", a); } catch (e) { /* 무시 */ }
+  const onTab = (t) => $("#tabs .on")?.dataset.tab === t;
+  // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
+  const ensureForecast = () => { if (!lastForecast && !fcRestore()) runForecast(); else renderForecast(); };
+  // 전망 탭: 3년 전망 · 외부 요인 · 환율 영향을 한 화면에
+  function renderForecastTab() { renderSchedule(); renderSens(); renderFx(); ensureForecast(); }
+  // 종목 탭: 보유 종목 · 종목 진단 · 비중 조정 · 배당·세금을 한 화면에
+  function renderStocksTab() {
+    renderStockPrices(); renderCash(); ensureForecast();
+    if ((!lastAlloc || allocDirty) && !allocRestore()) runAlloc(); else { renderAllocTable(); renderAllocChart(); }
   }
+  // 예전 탭 이름(분석·전략의 하위 탭, 시세 수집)으로 저장된 값을 새 탭으로
+  const TAB_OLD = { analysis: "forecast", quotes: "stocks" }, ANA_TAB = { strategy: "stocks", alloc: "stocks", cash: "stocks" };
   function showTab(name) {
+    if (TAB_OLD[name]) name = TAB_OLD[name];
     if (!$(`#tabs button[data-tab="${name}"]`)) name = "dash";
     $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
     $$(".tab").forEach((t) => t.classList.toggle("on", t.id === "tab-" + name));
     if (name === "dash") renderDash();
-    if (name === "analysis") renderAnalysis();
+    if (name === "forecast") renderForecastTab();
+    if (name === "stocks") renderStocksTab();
     if (name === "insight") renderInsight();
     try { localStorage.setItem("tab", name); } catch (e) { /* 무시 */ }
   }
@@ -3185,7 +3186,7 @@
 
   function bind() {
     $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
-    document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "quotes" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); if (g.dataset.add) setTimeout(() => $("#addTicker")?.focus({ preventScroll: true }), 300); } });
+    document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "stocks" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); if (g.dataset.add) setTimeout(() => $("#addTicker")?.focus({ preventScroll: true }), 300); } });
     $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     $("#btnCollect").onclick = () => collect(false).finally(foldHold);
     $("#headKpi").addEventListener("click", (e) => { if (e.target.closest("#hasset")) { try { localStorage.setItem(HIDE_KEY, hideAmt() ? "" : "1"); } catch (e2) { /* 무시 */ } renderHeader(); } });
@@ -3221,12 +3222,12 @@
     segClick("#actView", renderAct); segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
     $("#premBox").addEventListener("change", onPrem); $("#premBox").addEventListener("click", onPrem);
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
-    segClick("#anaNav", renderAnalysis);
+    document.addEventListener("click", (e) => { const b = e.target.closest("[data-jump]"); if (b) $("#" + b.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
     $("#btnAlloc").onclick = () => { allocDirty = true; runAlloc(); };
     $("#allocBoxes").addEventListener("click", (e) => { const b = e.target.closest("[data-ak]"); if (!b) return; S.state.alloc_pick = b.dataset.ak; save(false); renderAllocTable(); renderAllocChart(); });
     $("#allocMix").addEventListener("change", (e) => { const k = e.target.dataset.mix; if (!k) return; S.state.alloc_mix = { ...(S.state.alloc_mix || {}), [k]: e.target.value.trim() || ALLOC_DEF[k].mix }; save(false); allocDirty = true; runAlloc(); });
     $("#eventTable").addEventListener("input", onEventEdit);
-    $("#evTiles").addEventListener("click", (e) => { const t = e.target.closest("[data-evt]"); if (!t) return; const ev = S.state.events[+t.dataset.evt]; ev.on = !ev.on; save(); renderEvents(); if (curAna() === "events") runForecast(); });
+    $("#evTiles").addEventListener("click", (e) => { const t = e.target.closest("[data-evt]"); if (!t) return; const ev = S.state.events[+t.dataset.evt]; ev.on = !ev.on; save(); renderEvents(); if (onTab("forecast")) runForecast(); });
     segClick("#fcView", drawFcChart);
     $("#beyora").addEventListener("click", onBeyora);
     $("#beyora").addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.classList.add("broken"); }, true); // 열리지 않는 이미지 주소는 숨긴다
@@ -3253,7 +3254,7 @@
     $("#rebalance").onchange = (e) => { S.state.model.rebalance_yearly = e.target.checked; save(); optDirty(); };
     $("#modelForm").addEventListener("change", onModelEdit);
     $("#btnResetModel").onclick = (e) => { if (armed(e.target)) { S.state.model = { ...DEFAULT_MODEL }; save(); renderSettings(); } };
-    ["#tab-analysis", "#tab-dash"].forEach((t) => $(t).addEventListener("click", (e) => { const b2 = e.target.closest("[data-aire]"); if (b2) aiAuto(b2.dataset.aire, true); const b3 = e.target.closest("[data-puter]"); if (b3) aiAuto(b3.dataset.puter, true, true); }));
+    ["#tab-forecast", "#tab-stocks", "#tab-dash"].forEach((t) => $(t).addEventListener("click", (e) => { const b2 = e.target.closest("[data-aire]"); if (b2) aiAuto(b2.dataset.aire, true); const b3 = e.target.closest("[data-puter]"); if (b3) aiAuto(b3.dataset.puter, true, true); }));
     $("#optManual").checked = !!S.state.ui.manual_price;
     $("#optManual").onchange = (e) => { S.state.ui.manual_price = e.target.checked; save(); renderAll(); };
     $("#btnExport").onclick = () => {
@@ -3279,7 +3280,7 @@
       const f = e.target.files[0]; if (!f) return;
       try { const j = JSON.parse(await f.text()); bvMerge(j.beyora); delete j.beyora; S.state = normalize(j); save(); renderAll(); toast("불러왔습니다"); } catch (err) { alert("파일을 읽지 못했습니다: " + err.message); }
     };
-    let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const t = $("#tabs .on").dataset.tab; if (t === "dash") renderDash(); if (t === "analysis") { if (curAna() === "strategy") renderStockPrices(); if (curAna() === "alloc") renderAllocChart(); if (curAna() === "fx" && !lastForecast) renderFx(); else if (lastForecast) renderForecast(); } }, 200); });
+    let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const t = $("#tabs .on").dataset.tab; if (t === "dash") renderDash(); if (t === "stocks") { renderStockPrices(); renderAllocChart(); if (lastForecast) renderForecast(); } if (t === "forecast") { if (lastForecast) renderForecast(); else renderFx(); } }, 200); });
   }
 
   // ------------------------------------------------------------ 다른 기기로 옮기기 (링크·QR, 서버 저장 없음)
@@ -3426,7 +3427,7 @@
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { syncPull(); if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(); } });
     setInterval(() => { if (document.visibilityState === "visible" && $("#tabs .on")?.dataset.tab === "insight") renderInsight(); }, 10 * 60000); // 인사이트를 열어 두면 10분마다 새 뉴스 확인
     setAuto(S.state.ui.auto_refresh_min || 0);
-    let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; const a = localStorage.getItem("ana"); if (a && $(`#anaNav button[data-a="${a}"]`)) $$("#anaNav button").forEach((b) => b.classList.toggle("on", b.dataset.a === a)); } catch (e) { /* 무시 */ }
+    let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; if (tab === "analysis") tab = ANA_TAB[localStorage.getItem("ana")] || "forecast"; } catch (e) { /* 무시 */ }
     showTab(tab);
     xferCheck();
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(() => { pushRender(); pushSync(); }).catch(() => {});
