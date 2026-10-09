@@ -800,7 +800,7 @@
       ["지난달", spct(back(21)), "실제 수량 기준"],
     ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "필요 경로 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
     // 경로 대비 +/− 막대: 날짜별 (실제 − 필요 경로). 1년은 주, 3년은 달 단위로 묶고(그 주·달 마지막 값), 끝에 오늘 실시간 막대
-    const rsel = $("#progRange .on")?.dataset.r || "5", n = +rsel, unit = n >= 780 ? "m" : n >= 252 ? "w" : "d";
+    const rsel = $("#progRange .on")?.dataset.r || "66", n = +rsel, unit = n >= 780 ? "m" : n >= 252 ? "w" : "d";
     const key = (d) => { if (unit === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
     let pts = [];
     for (let i = Math.max(0, k - n); i <= k; i++) { const nd = P.at(H.dates[i]), v = A[i] ?? (H.total[i] + cash); if (nd != null && v != null) pts.push([H.dates[i], v - nd]); }
