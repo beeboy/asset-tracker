@@ -114,17 +114,26 @@ for u in [BASE + "pc/archives/pedata25.xlsx", BASE + "pc/archives/pedata2025.xls
 report["alt_names_2025"] = alt
 wb = {}
 try:
-    cdx = "https://web.archive.org/cdx/search/cdx?url=pages.stern.nyu.edu/~adamodar/pc/datasets/pedata.xls&from=2025&to=2026&output=json&filter=statuscode:200&collapse=digest"
-    st, data = get(cdx, timeout=60)
-    snaps = json.loads(data)[1:]
-    wb["snapshots"] = [r[1] for r in snaps]
+    snaps = []
+    for stamp in ["20250201", "20250415", "20250701", "20251001", "20251215"]:
+        for attempt in range(3):
+            try:
+                st, data = get("https://archive.org/wayback/available?url=pages.stern.nyu.edu/~adamodar/pc/datasets/pedata.xls&timestamp=" + stamp, timeout=60)
+                c = json.loads(data).get("archived_snapshots", {}).get("closest") or {}
+                wb["ask " + stamp] = [c.get("timestamp"), c.get("status")]
+                if c.get("timestamp"):
+                    snaps.append([None, c["timestamp"]])
+                break
+            except Exception as e:
+                wb["ask " + stamp] = repr(e)
+    snaps = [r for i, r in enumerate(snaps) if r[1] not in [x[1] for x in snaps[:i]]]
     for r in snaps:
         ts = r[1]
         if not ts.startswith("2025"):
             continue
         u = f"https://web.archive.org/web/{ts}id_/https://pages.stern.nyu.edu/~adamodar/pc/datasets/pedata.xls"
         try:
-            st, xd = get(u, timeout=60)
+            st, xd = get(u, timeout=90)
             sheets = read_sheet(xd)
             for sname, rows in sheets.items():
                 hi = next((i for i, rr in enumerate(rows) if rr and str(rr[0]).strip().lower().startswith("industry")), None)
