@@ -33,7 +33,7 @@ def table(data):
         if hi is None:
             continue
         hdr = [str(c).strip() for c in rows[hi]]
-        pe = next((j for j, c in enumerate(hdr) if re.search(r"only money", c, re.I)), None)
+        pe = next((j for j, c in enumerate(hdr) if re.search(r"only money|money.?making|aggregate.*trailing net", c, re.I)), None)
         gr = next((j for j, c in enumerate(hdr) if re.search(r"growth", c, re.I)), None)
         nf = next((j for j, c in enumerate(hdr) if re.search(r"number of firms", c, re.I)), None)
         print("  hdr pe:", hdr[pe] if pe is not None else None, "| growth:", hdr[gr] if gr is not None else None)
@@ -76,8 +76,12 @@ for k, c in cur.items():
     avg = statistics.mean(past)
     ratio = c["pe"] / avg
     g = c["g"] if c["g"] is not None else 0
-    if ratio >= 1.15 and g >= 0.10:
+    if k.startswith("totalmarket"):
+        b = "시장 전체"
+    elif ratio >= 1.15 and g >= 0.10 and c["pe"] / (g * 100) <= 2.5:
         b = "성장 지속"
+    elif ratio >= 1.15:
+        b = "과열"
     elif ratio <= 0.90 and g >= 0.05:
         b = "저평가 회복"
     elif 0.85 < ratio < 1.15 and 0.03 <= g < 0.15:
@@ -88,7 +92,7 @@ for k, c in cur.items():
 
 json.dump(res, open(os.path.join(OUT, "classified.json"), "w"), ensure_ascii=False, indent=1)
 print("=== CLASSIFIED ===")
-for b in ["성장 지속", "저평가 회복", "버팀목", "해당 없음", "자료 부족"]:
+for b in ["성장 지속", "저평가 회복", "버팀목", "과열", "해당 없음", "시장 전체", "자료 부족"]:
     grp = sorted([r for r in res if r["bucket"] == b], key=lambda r: -(r.get("ratio") or 0))
     print(f"## {b} ({len(grp)})")
     for r in grp:
