@@ -84,7 +84,7 @@ for k, c in cur.items():
         b = "과열"  # 이익 성장에 비해 너무 비싸짐 (PER / 성장률 > 2.5)
     elif ratio <= 0.90 and g >= 0.05:
         b = "저평가 회복"
-    elif 0.85 < ratio < 1.15 and 0.03 <= g < 0.15:
+    elif 0.85 < ratio < 1.15 and g >= 0.03:
         b = "버팀목"
     else:
         b = "해당 없음"
