@@ -64,49 +64,73 @@ for fn in ["pedata.xls", "pedata.xlsx"]:
     except Exception as e:
         report["current_" + fn] = {"url": url, "error": repr(e)}
 
-# 2) 다모다란 과거 파일 보관 페이지
-arch_links = []
-for page in ["New_Home_Page/dataarchived.html", "New_Home_Page/datacurrent.html"]:
-    url = BASE + page
-    try:
-        st, html = get(url)
-        hrefs = re.findall(r'href="([^"]+)"', html.decode("latin-1"))
-        pe = [h for h in hrefs if re.search(r"pe(data)?\d*\.xls", h, re.I) or re.search(r"/pe[^/]*\.xls", h, re.I)]
-        report["page_" + page] = {"status": st, "n_links": len(hrefs), "pe_links": pe[:80],
-                                  "archive_dirs": sorted({h.rsplit("/", 1)[0] for h in hrefs if h.lower().endswith((".xls", ".xlsx"))})[:30]}
-        if "archived" in page:
-            arch_links = pe
-    except Exception as e:
-        report["page_" + page] = {"url": url, "error": repr(e)}
-
-# 3) 과거 파일 몇 개 실제로 열어 보기 (최근, 중간, 가장 오래된)
-def absurl(h):
-    if h.startswith("http"):
-        return h
-    return urllib.parse.urljoin(BASE + "New_Home_Page/dataarchived.html", h)
-
+# 2) 다모다란 과거 파일 보관 페이지: 미국 업종 PER(pedataYY.xls)만
 import urllib.parse
-tries = arch_links[:3] + arch_links[len(arch_links) // 2:len(arch_links) // 2 + 1] + arch_links[-2:]
-for h in dict.fromkeys(tries):
-    url = absurl(h)
+arch = []
+try:
+    st, html = get(BASE + "New_Home_Page/dataarchived.html")
+    hrefs = re.findall(r'href="([^"]+)"', html.decode("latin-1"), re.I)
+    arch = sorted({h for h in hrefs if re.search(r"(^|/)pedata\d*\.xlsx?$", h, re.I)})
+    report["archive_page"] = {"status": st, "us_pe_files": arch,
+                              "other_pe_like": sorted({h for h in hrefs if re.search(r"/pe[a-z]*\d*\.xls", h, re.I)} - set(arch))[:40]}
+except Exception as e:
+    report["archive_page"] = {"error": repr(e)}
+
+KEYS = r"^(semiconductor|software \(system|drugs? \(pharm|food processing|utility \(general\)|total market)$"
+lines = []
+for h in arch:
+    url = urllib.parse.urljoin(BASE + "New_Home_Page/dataarchived.html", h)
     try:
         st, data = get(url)
-        report["archive " + h] = {"url": url, "status": st, **summarize(h, data)}
+        sheets = read_sheet(data)
+        for sname, rows in sheets.items():
+            hi = next((i for i, r in enumerate(rows) if r and str(r[0]).strip().lower().startswith("industry")), None)
+            if hi is None:
+                continue
+            hdr = [str(c).strip() for c in rows[hi]]
+            body = [r for r in rows[hi + 1:] if r and str(r[0]).strip()]
+            def col(name):
+                return next((j for j, c in enumerate(hdr) if re.search(name, c, re.I)), None)
+            cur, trl, fwd, gro = col(r"^current pe"), col(r"trailing pe"), col(r"forward pe"), col(r"growth")
+            vals = {}
+            for r in body:
+                if re.search(KEYS, str(r[0]).strip(), re.I):
+                    f = lambda j: (round(float(r[j]), 2) if j is not None and str(r[j]).replace('.', '', 1).replace('-', '', 1).isdigit() else (str(r[j])[:8] if j is not None else None))
+                    vals[str(r[0]).strip()[:14]] = [f(cur), f(trl), f(fwd), f(gro)]
+            lines.append({"file": h, "n": len(body), "header": hdr, "cur/trail/fwd/growth": vals})
+            break
     except Exception as e:
-        report["archive " + h] = {"url": url, "error": repr(e)}
+        lines.append({"file": h, "error": repr(e)})
+report["archive_files"] = lines
 
-# 4) Yahoo 업종 ETF PER (현재값만)
-etfs = ["XLK", "SMH", "XLV", "XLP", "XLU", "XLF", "XLE", "IJR"]
-for host in ["query1", "query2"]:
-    url = f"https://{host}.finance.yahoo.com/v7/finance/quote?symbols=" + ",".join(etfs)
+# 3) Yahoo 업종 ETF PER (쿠키·crumb 방식)
+etfs = ["XLK", "SMH", "XLV", "XLP", "XLU", "IJR"]
+try:
+    import http.cookiejar
+    cj = http.cookiejar.CookieJar()
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+    op.addheaders = list(UA.items())
     try:
-        st, data = get(url)
-        res = json.loads(data).get("quoteResponse", {}).get("result", [])
-        report["yahoo_" + host] = {"status": st, "pe": {q["symbol"]: [q.get("trailingPE"), q.get("forwardPE")] for q in res}}
-        break
-    except Exception as e:
-        report["yahoo_" + host] = {"url": url, "error": repr(e)}
+        op.open("https://fc.yahoo.com", timeout=20)
+    except Exception:
+        pass
+    crumb = op.open("https://query2.finance.yahoo.com/v1/test/getcrumb", timeout=20).read().decode()
+    pe = {}
+    for t in etfs:
+        u = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{t}?modules=summaryDetail,defaultKeyStatistics&crumb={urllib.parse.quote(crumb)}"
+        d = json.loads(op.open(u, timeout=20).read())["quoteSummary"]["result"][0]
+        sd = d.get("summaryDetail", {})
+        pe[t] = {"trailingPE": (sd.get("trailingPE") or {}).get("raw"), "forwardPE": (sd.get("forwardPE") or {}).get("raw")}
+    report["yahoo"] = pe
+except Exception as e:
+    report["yahoo"] = {"error": repr(e)}
 
-js = json.dumps(report, ensure_ascii=False, indent=1, default=str)
+js = json.dumps(report, ensure_ascii=False, default=str)
 open(os.path.join(OUT, "report.json"), "w").write(js)
-print(js)
+print("=== REPORT ===")
+for k, v in report.items():
+    if k == "archive_files":
+        for x in v:
+            print("ARCH", json.dumps(x, ensure_ascii=False, default=str))
+    else:
+        print(k, json.dumps(v, ensure_ascii=False, default=str)[:2500])
