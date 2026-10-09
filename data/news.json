@@ -1,132 +1,132 @@
 {
- "updated": "2026-10-09T02:02:19+00:00",
+ "updated": "2026-10-09T03:20:03+00:00",
  "realtime": {
-  "key": "715257cdbde41d44",
-  "updated": "2026-10-09T02:02:32+00:00",
+  "key": "aa41ddb5f362158f",
+  "updated": "2026-10-09T03:20:10+00:00",
   "media": [
    {
-    "title": "오픈AI 매출 실망감에 나스닥 1% 이상 하락",
+    "title": "오픈AI 실적 우려 속 나스닥 하락 후 미 증시 선물 보합세",
     "orig": "Stock futures are little changed after OpenAI's revenue report prompts tech sector turmoil: Live updates",
-    "summary": "오픈아이의 매출 보고서가 기술주 섹터의 혼란을 불러오면서 나스닥 지수가 8중순 이후 최대 낙폭을 기록했습니다.",
+    "summary": "오픈AI의 매출 보고서가 기술주 전반에 충격을 주며 나스닥이 큰 폭으로 하락한 후 선물지수는 보합세를 보이고 있습니다.",
     "broker": "",
     "source": "CNBC",
     "link": "https://www.cnbc.com/2026/10/08/stock-market-today-live-updates.html",
-    "time": "2026-10-09T01:41:21+00:00"
+    "time": "2026-10-09T02:49:38+00:00"
    },
    {
-    "title": "스페이스X 스타링크 모바일 진출에 AT&T·버라이즌 주가 압박",
+    "title": "스페이스X의 스타링크 모바일 진출 소식에 AT&T·버라이즌 주가 압박",
     "orig": "SpaceX’s Starlink Mobile plans are pressuring AT&T and Verizon shares",
-    "summary": "스페이스X가 주파수 포트폴리오를 인수한 가운데, 모바일 사업 확장이 통신주 주가에 하방 압력을 가하고 있습니다.",
+    "summary": "스페이스X가 주파수 포트폴리오 인수를 추진하면서 이동통신사들의 주가에 하방 압력을 가하고 있습니다.",
     "broker": "",
     "source": "MarketWatch",
     "link": "https://www.marketwatch.com/story/spacexs-starlink-mobile-plans-are-pressuring-at-t-and-verizon-shares-7cb56764?mod=mw_rss_topstories",
     "time": "2026-10-09T00:52:00+00:00"
    },
    {
-    "title": "유가 하락세에도 단기 고유가 국면 지속 전망",
-    "orig": "Oil Edges Lower; Prices Likely to Remain High in Short Term",
-    "summary": "아시아 거래에서 유가가 소폭 하락했으나 전반적인 고유가 흐름은 이어지고 있습니다.",
+    "title": "나스닥 CEO \"토큰화로 수십억 달러 규모의 잠긴 자본 풀릴 것\"",
+    "orig": "Tokenization could unleash tens of billions of dollars in trapped capital, Nasdaq CEO says",
+    "summary": "나스닥 최고경영자가 자산 토큰화가 막대한 규모의 유동성을 시장에 공급할 수 있다고 밝혔습니다.",
     "broker": "",
-    "source": "WSJ",
-    "link": "https://www.wsj.com/finance/commodities-futures/oil-edges-lower-prices-likely-to-remain-high-in-short-term-c7024a73?mod=rss_markets_main",
-    "time": "2026-10-09T01:53:00+00:00"
+    "source": "CNBC",
+    "link": "https://www.cnbc.com/2026/10/09/nasdaq-ceo-tokenization-could-unleash-billions-in-trapped-capital-.html",
+    "time": "2026-10-08T23:57:23+00:00"
    }
   ],
   "broker": [
    {
-    "title": "발레로 에너지 12개월 목표주가 398달러로 상향",
-    "orig": "Valero Energy Corporation Stock 12‑Month Price Target Raised to $398, Implies 6% Downside",
-    "summary": "발레로 에너지의 목표주가가 상향 조정되었으나 현재 주가 대비 소폭의 하락 여력이 존재합니다.",
-    "broker": "",
-    "source": "TradingView",
-    "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxORWI1cmVQVk9KQV9rOXFaWjVZQ2VELURYeEpSZGptaFhob2NmbkgyeDd6Qm9saWZYYmg3Z29FZ2c2T2VoaGVhenk4b1pzX1B3UU5IUjhJVVhRSG42TTBCbmMydXBzOHNRaElfcTg1blF4UjhHeURLNDRQbERKSnRtcmV4UHlkREdQb0lzSUM5bHZnZU9VdU1ETTdyVnFlNXVGbXplbFoteTB5M1Z5OHRBOVZSYS1qUWpOU1p6cVRGV3dfcXQtYmpjY0Nnek5reER1WE9CdUpXcExvNW52aUJUU1Vn?oc=5",
-    "time": "2026-10-08T22:20:11+00:00"
+    "title": "골드만삭스, 펩시코 목표주가 하향 조정했으나 장기 성장성 주목",
+    "orig": "PEP Stock Looks To Snap 6-Week Losing Streak: Goldman Sachs Trims Price Target But Sees ‘Decade Of Growth’ For PepsiCo",
+    "summary": "골드만삭스가 펩시코의 목표주가를 낮추면서도 향후 10년간의 성장 여력은 여전히 긍정적으로 평가했습니다.",
+    "broker": "골드만삭스",
+    "source": "Stocktwits",
+    "link": "https://news.google.com/rss/articles/CBMijAJBVV95cUxQWTFRaGRMZkVaLUlFRjNEeTV0eXFZVWdSOVZwUjJSVHhzVHRWZ1AxTDFmQk1fNTVCUTVwSWpiRWZOOXp6azNDWG5iWV9SMTNwZS1MQUg3LWQ3b3NCdldic2lKWXJGLVVMd05GMkkxT1VFSGNFX01kQ2c3eUgyaVNmU0ZRc0h0X2hMNGFLb3RQblV0R0dCVTlsa203QmJIcXVqY1l4Q05ybXQzaFRvaHNaY1Naa093SWxaOFJGUi1JbWNoZ3lvMmdpWmF2ZXBSVFo3MFBaSFVucWNjZmNObTNwU2dkbEtwVGtEaDl6djBzLUFvX3RoS3JqUEZKVnQ1czFpQnpIZmVNOXVVbklm?oc=5",
+    "time": "2026-10-09T02:02:00+00:00"
    },
    {
-    "title": "유니버설 디스플레이 목표주가 112달러로 하향",
-    "orig": "Universal Display Corporation Stock 12‑Month Price Target Cut to $112, Implies 45% Upside",
-    "summary": "유니버설 디스플레이의 12개월 목표주가가 하향 조정되었습니다.",
-    "broker": "",
-    "source": "TradingView",
-    "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxORXd1TWNJek5jdUllLVJ1cWZkTk9oYmNsZXRGWVRFTzFSZkVzUlZsYTRxbHZRb3VQVnRjMnlTNXJqVnpTVGpsemtLMzlVcEI2VHo1RXhDWkluNHhBSFY4bHVjTDMwem12Nm4ydjVjM2RWZElkYVZSaDV2enJaNk9mWmF0VTl6cE1rS2VjVUltRnQ0UUNybkNjZWNwRUMwQzZUdThoYWNmSXBOWkJ4b3JQTFVrNlFfN1BXallpSmdGTkUyNGQxR2RIU1ZPNnlrSXVwMzVjRHFibU01VnBSd1BJaklB?oc=5",
-    "time": "2026-10-08T22:20:08+00:00"
+    "title": "오펜하이머, 월페이 시너지 잠재력 반영해 글로벌 페이먼츠 상향 조정",
+    "orig": "The Bull Case For Global Payments (GPN) Could Change Following Oppenheimer’s Upgrade On Worldpay Synergies Potential",
+    "summary": "오펜하이머가 합병 시너지 효과를 근거로 글로벌 페이먼츠에 대한 투자 의견을 상향 조정했습니다.",
+    "broker": "오펜하이머",
+    "source": "Yahoo Finance",
+    "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxQblVlV09EWGo3RXRobHh1dS1iSnhzdnJ3V1dJY0FPSDMtX3YtTnhEemJRQ0pPS3lBYWluZktteFZFZGZYR1RyWHRUZTBZNlE0Q0xsWEowT3E0RXA1a2ZBVjlzT25pUGpGZ2o3d1ZmSmt5ZjFOVHM0cUhkVFQzeG80dXJTQ05OcTk2NW9WalJ6VHlLaGF3M25PbmlR?oc=5",
+    "time": "2026-10-09T02:09:00+00:00"
    },
    {
-    "title": "선런 12개월 목표주가 15.4달러로 하향",
-    "orig": "Sunrun Inc. Stock 12‑Month Price Target Cut to $15.4, Implies 102% Upside",
-    "summary": "태양광 업체 선런의 목표주가가 대폭 낮아졌습니다.",
-    "broker": "",
-    "source": "TradingView",
-    "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxPOVB3dnloYmx6cWZXTmVIY0ZvbFI0RE0wZXRfcVc4Mk1oMFFJZGhsVDlPWm85aEhQUURqRXdIREFOR09iVnpSYjdhWGlSTmZKNzBsYWtkcUE3NGp0WnJMaWdrMlB2UU5EeXFJekN2VUg4V3N3cnh1T2ZPVnZPSW5YSG9ScmNIQnVBUFNSZ2JfRXYwR2ZoektoNjBCTnFuU2Y3bGJ5M3FUS1Bpcy01Y2dXVjRmNGs4YVBSbEpkcXhPOG43TWpxRkZXMzVGSQ?oc=5",
-    "time": "2026-10-08T22:20:08+00:00"
+    "title": "스타벅스-치폴레 인수설에 대한 월가 분석 엇갈려",
+    "orig": "SBUX-CMG Takeover Rumors: One Analyst Firm Sees Real-Estate Fit, Others See Distraction",
+    "summary": "일부 분석가는 부동산 측면의 시너지를 보는 반면, 다른 쪽에서는 기업 경영의 분산 요인이 될 것이라며 엇갈린 전망을 내놓았습니다.",
+    "broker": "월가 애널리스트",
+    "source": "Stocktwits",
+    "link": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxNOGJQMGVVLUljdW01V1FZcFRmVWpNNUhlWnBpMkg2OFR4QUdEMzNUUHhEWGhjMUo1VDRJNlFSWnMyZ0x3VnA4dlJWUWRBXzVzM0N4eDZaNF9pdkZHSlpGUnkzVWd0NUFwbTJEZ1d1Y0tNUHc2LWZ6R2tzODdvS2VZS01FWFgyVV9DcDZ1a051Zng0RWNlOUw4RG8zWmJFTTQ1cHpfaEwwcjg1eFJwR0duUVBmQ0dMMEViZU94YlVPWVMwZDlxVFpGempjXzd1VTBPakNwblJVNWNKQW9YQkdLVjlnbw?oc=5",
+    "time": "2026-10-09T00:04:37+00:00"
    }
   ]
  },
  "weekly": {
-  "key": "ab457e51982af364",
-  "updated": "2026-10-08T20:46:06+00:00",
+  "key": "e22c05f625ce3e00",
+  "updated": "2026-10-09T03:20:17+00:00",
   "media": [
    {
-    "title": "미 국채 금리 급등 속 뉴욕증시 하락",
-    "orig": "U.S. Stocks Fall as Treasury Yields Test Multidecade Highs",
-    "summary": "국채 금리가 수십 년 내 최고 수준을 테스트하면서 미국 증시가 하락세를 보였다.",
+    "title": "국채 금리 급등과 유가 상승에 뉴욕증시 하락 마감",
+    "orig": "Wall Street ends lower, off record highs, as Treasury yields climb",
+    "summary": "국채 금리와 원유 가격이 치솟으면서 투자 심리가 위축되어 증시가 하락했다.",
     "broker": "",
-    "source": "WSJ",
-    "link": "https://news.google.com/rss/articles/CBMipwFBVV95cUxPc0kta0ZSTzVRZ0RIME01UkItZW9vRl82MmdGM19yUHlhbklXRmlHaU5lZjRVSW5mYmZTOTVKYWhJSEpMRm5qT2I1eGxVTkJQQXM3N004ZjRxS19fTVZyYm16QTBxUTJlTnRXX1JRaDlRcUtUNmJzeEx5RkpVazRnOEtXdWZPTXpISTZCeWhPUG5LLVhOUzY4a2lMN3NCR1Frd2lGSVZrcw?oc=5",
-    "time": "2026-10-07T21:49:18+00:00"
+    "source": "Reuters",
+    "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxOYlBxMHUzb2ZDaHpMY3JBZUl2Rk9XSE94bjQ2aFVndHhYeU4zS1Rwb2I1SlFJWjVpaE9sS0V4c2ZiQ2JsMzd0R0lydzlFejhJVkNYbU5ZTGVjeW9tWUJtTmUzX2VwY0N1SnpLVmdvQWRvM20xS25hRmhXRDdHVUppRk9hS2JhVExxdVUtX0hfQlNqWnd0OUhHWEpaa2w1Z3hXNVRkaw?oc=5",
+    "time": "2026-10-07T23:14:17+00:00"
    },
    {
-    "title": "오라클·브로드컴 등 대규모 부채 조달 추진",
+    "title": "오라클·브로드컴·스페이스X, AI 칩 구매 위해 대규모 채권 발행 추진",
     "orig": "Exclusive | Oracle, Broadcom and SpaceX Seek Blockbuster Debt Deals to Pay for AI Chips",
-    "summary": "주요 빅테크와 기업들이 AI 칩 구매를 위해 대규모 자금 조달에 나섰다.",
+    "summary": "빅테크와 관련 기업들이 AI 인프라 확장을 위해 막대한 자금 조달에 나서고 있다.",
     "broker": "",
     "source": "WSJ",
     "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxOQlQwOUh0Wlhtb1B1T1YxN1ItVmh1ck5xeE5Xa0FWR2ZRcjlDdGZSM1hUVTltMHp1aHhVM1FCYUZKNnIweDhKWjlxUGpGeVlJTFFlNElVQnBkT2VMaERTRTBCVXFTbk1BRFRPRVpRWVA2blBxbnMwR3Q4VUZVQU9iVEFyRExCVW5aSjl3bXFOYlZERUxTY0l4QjA1RS1BVjRQS1lCOW5kSWtqY0t3?oc=5",
     "time": "2026-10-07T21:01:00+00:00"
    },
    {
-    "title": "유가 상승과 AI 조정으로 글로벌 증시 동반 하락",
-    "orig": "Global Stocks Fall on Higher Oil Prices, AI Pullback",
-    "summary": "국제유가 상승과 인공지능(AI) 관련주 조정이 겹치면서 글로벌 증시가 약세를 보였다.",
+    "title": "국채 금리 다년간 최고치 경신에 미 증시 하락",
+    "orig": "U.S. Stocks Fall as Treasury Yields Test Multidecade Highs",
+    "summary": "국채 금리 급등으로 모기지 금리와 기업 자금 조달 비용 우려가 커지며 주가가 하락했다.",
     "broker": "",
     "source": "WSJ",
-    "link": "https://www.wsj.com/finance/commodities-futures/global-stocks-fall-on-higher-oil-prices-ai-pullback-05f7b87e?mod=rss_markets_main",
-    "time": "2026-10-08T08:31:00+00:00"
+    "link": "https://www.wsj.com/finance/investing/u-s-stocks-fall-as-treasury-yields-test-multidecade-highs-107d696f?mod=rss_markets_main",
+    "time": "2026-10-07T20:20:00+00:00"
    }
   ],
   "broker": [
    {
-    "title": "골드만삭스, 팔란티어 투자의견 상향",
+    "title": "골드만삭스 상향 조정에 팔란티어 주가 사상 최고가 근접",
     "orig": "Palantir stock nears all-time high after Goldman Sachs upgrade highlights next phase of growth",
-    "summary": "골드만삭스가 팔란티어의 다음 성장 단계를 조명하며 투자의견을 상향 조정했다.",
+    "summary": "골드만삭스의 긍정적인 성장 전망 보고서에 힘입어 팔란티어 주가가 강세를 보였다.",
     "broker": "",
     "source": "Yahoo Finance",
     "link": "https://news.google.com/rss/articles/CBMi6gFBVV95cUxQQ20zSEtvRGhmZ1dHUUtoZC03RXFTcFlCWnBnUUJYV0NuOG9OWkNLSlgyM05ITHVrYXlRejJaSnAtMmNLOVNOQkF3Um1sbTZCaExJOEFyUHdDcWt2OERQMjNZaUY2cWNLMWdvanlxUEpTT2owZ0FOV1VacnZmZGxfU010OWdlNlNseGVnc1RtYmtpdUJYeVZVaDdwcm9CQ0V0SWJ1aERBaEhSa09IZmxLSE43MGNjZXVFYjF5YzZEOHVVX255TFd1SUdaUzdCeWwzS2I3WUFTY1puYW03QW1yY0RoQlNHSEZBQ1E?oc=5",
-    "time": "2026-10-08T14:52:44+00:00"
+    "time": "2026-10-08T20:46:07+00:00"
    },
    {
-    "title": "도이치뱅크, 펜 엔터테인먼트 등급 상향",
-    "orig": "PENN Entertainment (PENN) Gets A Fresh Look After Deutsche Bank Upgrade And NFL Deal",
-    "summary": "도이치뱅크가 NFL 파트너십을 맺은 펜 엔터테인먼트에 대해 새롭게 긍정적인 평가를 내렸다.",
+    "title": "도이치뱅크 \"3분기 S&P 500 기업 이익 성장세 사상 최고치 유지\"",
+    "orig": "Deutsche Bank sees S&P 500 earnings growth holding at record in Q3",
+    "summary": "도이치뱅크는 3분기 미국 기업들의 이익 증가세가 견조하게 이어질 것으로 전망했다.",
     "broker": "",
     "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMioAFBVV95cUxQT2ViZEljQzJELU9ZVExuZ3poYXk4ZU1iNUY0RldnZjBMaDBHUkdJeUZ1TUhlTy1MaDBSc0VJbkZWT2lCSW9KVTg4Rkl6NWpXVVYwUElPbTJvWHVQYmlnZ2UxY0ZzTWN3djkxRk4wWlBhdUFZd2ZCdkk4ZUVweTgtZlBRanI0dFRVWVlaSU9NVG0tSm1qeWRoYnFNY0V6WEls?oc=5",
-    "time": "2026-10-08T14:11:32+00:00"
+    "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxPRFpWSHgxYmFpLXlDY1Y0Z1JHdWpaSEQwTFlEZXRGQXN5eFdNSm9VNDBwc3hENy1NYmtxSG1aczBMZlp2X0pnN3BuUEllTEFRVGRvQXRVTEtjdlcxWVhrRGlSWExQV3c5OU11OFJhWkNFbkRZMExDbWdnVlhGcXFOVWlEdTlpQXZ6Q3phNW9uWGFwcTQ?oc=5",
+    "time": "2026-10-07T18:29:00+00:00"
    },
    {
-    "title": "뱅크오브아메리카, STZ 목표가 하향",
-    "orig": "STZ Stock Sees Price Target Cut After Q2 Earnings: BofA Sees No Sustainable Beer Turnaround",
-    "summary": "뱅크오브아메리카는 실적 발표 이후 맥주 부문의 지속 가능한 반등이 어렵다며 목표주가를 낮췄다.",
-    "broker": "뱅크오브아메리카",
-    "source": "Stocktwits",
-    "link": "https://news.google.com/rss/articles/CBMi8AFBVV95cUxQU2Z5eXZyM0QzRmg1YmFVVm95MUNlb3pxNTlXdWxfRFNpQ2E1OFhaMEtmOVlhenVGRWlROVVPRFZiS2c2cG1aT2NCTUE0TFlwUEhDV3BEVmZlaUxwZUhCUkNCVVExbjlXZ2loTDhMY0taNzBsWUxLSlFVSnM5bWk0d09lOG1QQlI5TUloQ3hqRnY3VlRFMmtpYzJNMm1wV2xRQVNYR0lnNnRyd3l0eTVkTGx0WUw3blludUctRk1PbEN3YTBUN3VJMEdBMWkzSlhEbXlwM252VFpRQ3lLSU5TUUpHMTc5QnEzOVE3VXZ5dTU?oc=5",
-    "time": "2026-10-07T16:34:00+00:00"
+    "title": "웰스파고, 실적 발표 후 APLD 목표주가 상향",
+    "orig": "APLD Stock Gets Target Hike From Wells Fargo Post Earnings - Analyst Sees Debt Raises For Meta Leases, 250 MWs Expansion As Catalysts Ahead",
+    "summary": "웰스파고는 메타 리스 계약 등 향후 성장 동력을 근거로 APLD의 목표주가를 올려 잡았다.",
+    "broker": "",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMiowJBVV95cUxOT1pPY3F5TXVBcGkxU2ZuODZLWnVYX0tZRkFNVUVST1Z1UDlaMlNlRGJoWUlxSGNmWXUyQVJnTmhDdUZDMGZ4aVpMc0duTEVsZUxvR2JTV3dWVTdqR3Z4RV8wTndNaWxrNVNSci1INUFVTmNwU2FZeG1ubWpvU1RlNFZZRzNaVkFsR09pdVhublZEelZTTlREa0VaS0xxaGhWV2EybmpzS3g5STBLZmRYNzdGbWdLMFRiOWg5Q25XOWViMGRWckhkakVxZVhFalprek9RYm9uYTF0N2YxWVVoak9ScHlXMzBkbHo5djZRZ3F5VlpkdDFJaG5IZ1Q4S21VQ2MxV1hmMTJiRHFKakJqeHMyM2NzV2xmZGM4VTlhWWgwYzg?oc=5",
+    "time": "2026-10-08T12:13:39+00:00"
    }
   ],
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-09T02:02:19+00:00",
+  "updated": "2026-10-09T03:20:03+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -138,6 +138,32 @@
    "GLD": "SPDR Gold Shares 업계"
   },
   "items": [
+   {
+    "id": "verizonattandtmobileslide6asspacexchallengesusmobilecarriers",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "market",
+    "title": "스페이스X의 통신 시장 진출에 버라이즌·AT&T·T모바일 주가 하락",
+    "orig": "Verizon, AT&T and T-Mobile Slide 6% as SpaceX Challenges US Mobile Carriers",
+    "summary": "스페이스X의 위성 통신 도전이 기존 미국 이동통신사들의 시장 지위에 위협이 되고 있습니다.",
+    "source": "BeInCrypto",
+    "link": "https://finance.yahoo.com/technology/articles/verizon-t-t-mobile-slide-024037616.html",
+    "time": "2026-10-09T02:40:37+00:00",
+    "added": "2026-10-09T03:20:03+00:00"
+   },
+   {
+    "id": "elonmuskwilleventuallymakeaphonesaysgenemunsterstarlinkdevic",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "growth",
+    "title": "일론 머스크의 스마트폰 출시 가능성과 애플·삼성에 대한 위협",
+    "orig": "Elon Musk Will ‘Eventually’ Make a Phone, Says Gene Munster: Starlink Device Will Be a ‘Bigger Problem’ for Apple, Samsung",
+    "summary": "스타링크 기능을 탑재한 미래의 모바일 기기가 기존 스마트폰 시장의 강력한 경쟁자가 될 수 있습니다.",
+    "source": "Benzinga",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/elon-musk-eventually-phone-says-015133463.html",
+    "time": "2026-10-09T01:51:33+00:00",
+    "added": "2026-10-09T03:20:03+00:00"
+   },
    {
     "id": "amdceodeliversstarkwarningonchipmarketsfuture",
     "ticker": "NVDA",
@@ -2297,6 +2323,19 @@
     "added": "2026-10-06T15:51:57+00:00"
    },
    {
+    "id": "argonnehostsinauguralsummittochartthefutureofsodiumionbatter",
+    "ticker": "TSLA",
+    "scope": "industry",
+    "cat": "growth",
+    "title": "나트륨 이온 배터리 미래를 위한 아르곤 국립연구소 서밋 개최",
+    "orig": "Argonne Hosts Inaugural Summit to Chart the Future of Sodium-Ion Batteries",
+    "summary": "리튬을 대체할 나트륨 이온 배터리 기술 개발이 차세대 에너지 및 전기차 시장의 성장을 이끌 전망입니다.",
+    "source": "Argonne National Laboratory (.gov)",
+    "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxPQ0lOTUZyOXh5NWczaFRjSmhvYllXRjNLQVBEUDJSTkRZNEJ4TzlZd3hkVHBCWDhIdnVTLVd3SjBGdE51Mjd4SEJhLTNjb3VWelVYNi03ZENVRGxfb0R3VXpIMVN4REc0ZVY3QUJDR2VPbGI3UTYxVkxmZ2RHbXNqSExhRXE4aUZwZWVDU2NrTWUtSDlGcEJZdG5TdDJMaFplZm14OS1HR1FOT01B?oc=5",
+    "time": "2026-10-06T12:00:00+00:00",
+    "added": "2026-10-09T03:20:03+00:00"
+   },
+   {
     "id": "nvidiastockgetsjawdroppingpricetargethikeonboomingaidemand",
     "ticker": "NVDA",
     "scope": "held",
@@ -2698,45 +2737,6 @@
     "link": "https://news.google.com/rss/articles/CBMigAFBVV95cUxOZ2JWNUhNcmRiRHFxQzdEUWlMVDI1d3VvYzFRTnFqT0V3RTdiRVhWUzU5NzhjNFhQdGVZYUdwSkhkWlpuT2RyLVhsYlljekxPeW0ycndId1Q0SThPWlpSMV9VNnV5QUstWkNDR1J4SF9Hc2Y5Rlh5eE93WnNoVk4xLQ?oc=5",
     "time": "2026-10-05T08:50:00+00:00",
     "added": "2026-10-05T11:22:56+00:00"
-   },
-   {
-    "id": "spacexplanstorenameaiunittospacexsimusksays",
-    "ticker": "SPCX",
-    "scope": "held",
-    "cat": "growth",
-    "title": "스페이스X, AI 부서명을 'SpaceXSI'로 변경 계획",
-    "orig": "SpaceX Plans to Rename AI Unit to SpaceXSI, Musk Says",
-    "summary": "일론 머스크가 스페이스X 내 AI 유닛의 명칭 변경을 추진한다.",
-    "source": "MT Newswires",
-    "link": "https://finance.yahoo.com/technology/ai/articles/spacex-plans-rename-ai-unit-075449510.html",
-    "time": "2026-10-05T07:54:49+00:00",
-    "added": "2026-10-05T09:02:08+00:00"
-   },
-   {
-    "id": "nvidiapartnerhonhaibeatssalesestimatesduetoaifrenzy",
-    "ticker": "NVDA",
-    "scope": "held",
-    "cat": "market",
-    "title": "폭스콘, AI 열풍 힘입어 매출 호조 기록",
-    "orig": "Nvidia Partner Hon Hai Beats Sales Estimates Due to AI Frenzy",
-    "summary": "엔비디아의 파트너사인 폭스콘이 AI 수요 증가에 힘입어 시장 예상을 웃도는 실적을 거뒀다.",
-    "source": "Bloomberg",
-    "link": "https://finance.yahoo.com/technology/ai/articles/nvidia-partner-hon-hai-beats-074315755.html",
-    "time": "2026-10-05T07:43:15+00:00",
-    "added": "2026-10-05T09:02:08+00:00"
-   },
-   {
-    "id": "goldmanseesusdatacentergrowthintactdespiteopposition",
-    "ticker": "NVDA",
-    "scope": "industry",
-    "cat": "market",
-    "title": "골드만삭스 \"반대 의견에도 미국 데이터센터 성장세 지속\"",
-    "orig": "Goldman sees US data center growth intact despite opposition",
-    "summary": "일각의 우려에도 불구하고 AI 인프라 확장에 따른 데이터센터 성장은 꺾이지 않을 것이라는 전망이다.",
-    "source": "Reuters",
-    "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxNT2ZTZDMzaGJJT2o2dGpLNE4xbzZXOFRJdzVVVm9OanBHT2tJdUhfOU1FWGdoNl9RRUpXa1pOWFo4QWJFbThDclBKTmlHVHFaQ3FFbUtHUW15bnNrRC1LTHNzcEE0djhsQmpkNUhjOENzWVdhLTZ0S3l5cUxoUHNlWHZJZlZXaEdsSmJxaEgwRFJjQ2tiRjkybE1IdFNnQzhHb09qR0ZnSFg?oc=5",
-    "time": "2026-10-05T07:23:46+00:00",
-    "added": "2026-10-05T09:02:08+00:00"
    }
   ],
   "digest": {
@@ -2744,42 +2744,42 @@
     "sum": "테슬라는 **인텔**과의 첨단 제조 협력과 **유럽 FSD** 추진, 그리고 **옵티머스** 로봇 및 메가차저 인프라 확장을 통해 로보틱스와 상용차 시장에서 장기 성장을 도모하고 있습니다.\n하지만 **높은 선행 PER**과 막대한 AI 투자 지출 대비 **로봇 사업**의 가시적 성과 증명이 요구되는 점이 부담입니다.\n위험: 높은 **밸류에이션**과 AI 투자 대비 실적 가시화 지연에 따른 주가 변동성 위험이 있습니다.",
     "hash": "16cf38766ad10db4",
     "updated": "2026-10-09T01:01:10+00:00",
-    "seen": "2026-10-09T02:02:19+00:00"
-   },
-   "AAPL": {
-    "sum": "애플은 전 세계 **25억 대의 기기**를 기반으로 한 **시리 AI 개편**과 스마트홈 시장 재도전을 통해 새로운 슈퍼사이클을 준비하고 있습니다.\n신형 아이패드 미니 및 터치스크린 맥북 출시 등 하드웨어 라인업 확장과 AI 서비스가 장기적인 매출 성장 동력이 될 것입니다.\n위험: 현재 현금 흐름 대비 적정 가치를 상회하는 밸류에이션 부담과 특허 관련 법적 배상 리스크가 존재합니다.",
-    "hash": "4910cff65a05a69f",
-    "updated": "2026-10-08T22:00:14+00:00",
-    "seen": "2026-10-09T02:02:19+00:00"
-   },
-   "SMH": {
-    "sum": "스페이스X의 대규모 AI 투자와 엔비디아 칩 구매 확대는 반도체 섹터 전반의 강력한 실수요를 재확인시켜 줍니다.\n데이터센터와 AI 인프라 확충에 따른 반도체 칩 및 관련 장비의 수요는 향후 수년간 업종 성장을 지탱할 것입니다.\n위험: 반도체 공급망 제약과 전방 산업의 투자 축소 가능성이 주요 위험입니다.",
-    "hash": "7f7a797599fb2894",
-    "updated": "2026-10-08T15:16:43+00:00",
-    "seen": "2026-10-09T02:02:19+00:00"
-   },
-   "GLD": {
-    "sum": "금 ETF는 미국 국가 부채 증가에 따른 우려 고조 속에서 장기적인 인플레이션 헤지 수단으로서의 매력이 부각되고 있습니다.\n단기적인 가격 조정과 하락세에도 불구하고 견조한 펀더멘탈 요인들이 장기 강세 전망을 지지하고 있습니다.\n위험: 거시경제 지표 변화와 금리 인하 경로 불확실성에 따른 단기 가격 변동성이 확대될 수 있습니다.",
-    "hash": "d973872c82d29dca",
-    "updated": "2026-10-08T22:00:14+00:00",
-    "seen": "2026-10-09T02:02:19+00:00"
+    "seen": "2026-10-09T03:20:03+00:00"
    },
    "NVDA": {
     "sum": "엔비디아는 **10억 달러** 규모의 과학 및 양자 컴퓨팅 투자와 데이터센터 인프라 확장을 통해 **AI 생태계 주도권**을 강화하고 있습니다.\n안전 플랫폼과 책임 있는 기술 발전 비전은 장기적인 성장 신뢰성을 높이지만, 법적 리스크와 밸류에이션 부담이 존재합니다.\n위험: AI 버블 우려와 경쟁 심화에 따른 변동성에 유의해야 합니다.",
     "hash": "3ca83640727e501a",
     "updated": "2026-10-09T02:02:19+00:00",
-    "seen": "2026-10-09T02:02:19+00:00"
+    "seen": "2026-10-09T03:20:03+00:00"
+   },
+   "AAPL": {
+    "sum": "애플은 전 세계 **25억 대의 기기**를 기반으로 한 **시리 AI 개편**과 스마트홈 시장 재도전을 통해 새로운 슈퍼사이클을 준비하고 있습니다.\n신형 아이패드 미니 및 터치스크린 맥북 출시 등 하드웨어 라인업 확장과 AI 서비스가 장기적인 매출 성장 동력이 될 것입니다.\n위험: 현재 현금 흐름 대비 적정 가치를 상회하는 밸류에이션 부담과 특허 관련 법적 배상 리스크가 존재합니다.",
+    "hash": "4910cff65a05a69f",
+    "updated": "2026-10-08T22:00:14+00:00",
+    "seen": "2026-10-09T03:20:03+00:00"
+   },
+   "SMH": {
+    "sum": "스페이스X의 대규모 AI 투자와 엔비디아 칩 구매 확대는 반도체 섹터 전반의 강력한 실수요를 재확인시켜 줍니다.\n데이터센터와 AI 인프라 확충에 따른 반도체 칩 및 관련 장비의 수요는 향후 수년간 업종 성장을 지탱할 것입니다.\n위험: 반도체 공급망 제약과 전방 산업의 투자 축소 가능성이 주요 위험입니다.",
+    "hash": "7f7a797599fb2894",
+    "updated": "2026-10-08T15:16:43+00:00",
+    "seen": "2026-10-09T03:20:03+00:00"
+   },
+   "GLD": {
+    "sum": "금 ETF는 미국 국가 부채 증가에 따른 우려 고조 속에서 장기적인 인플레이션 헤지 수단으로서의 매력이 부각되고 있습니다.\n단기적인 가격 조정과 하락세에도 불구하고 견조한 펀더멘탈 요인들이 장기 강세 전망을 지지하고 있습니다.\n위험: 거시경제 지표 변화와 금리 인하 경로 불확실성에 따른 단기 가격 변동성이 확대될 수 있습니다.",
+    "hash": "d973872c82d29dca",
+    "updated": "2026-10-08T22:00:14+00:00",
+    "seen": "2026-10-09T03:20:03+00:00"
    },
    "SPCX": {
-    "sum": "스페이스X는 **800MHz 주파수** 확보와 **5,000억 달러** 규모의 AI 데이터센터 구상, 그리고 구글과의 대규모 AI 계약을 통해 신사업 확장을 추진하고 있습니다.\n아메리칸항공의 스타링크 도입 확대와 D2C 위성 통신 시장 선두 유지는 향후 몇 년간 탄탄한 성장 동력이 될 것입니다.\n위험: 인도 시장 진출 지연 및 규제 관련 불확실성이 존재합니다.",
-    "hash": "33a7273ca17cd900",
-    "updated": "2026-10-09T02:02:19+00:00",
-    "seen": "2026-10-09T02:02:19+00:00"
+    "sum": "스페이스X는 **800MHz 주파수 확보**와 **스타링크 모바일 제휴**를 통해 전통 이동통신 시장으로 영토를 확장하며 새로운 성장 동력을 마련하고 있습니다.\n또한 구글과의 **최대 290억 달러** 규모 AI 계약 및 대규모 AI 데이터센터 구상으로 인프라와 AI 영역에서 실질적인 매출 기반을 다지고 있습니다.\n위험: 주파수 인수 및 통신·AI 인프라 구축 과정에서 막대한 자본적 지출이 수반되며 기존 대형 통신사들과의 경쟁이 심화될 수 있습니다.",
+    "hash": "5878cf93b145946d",
+    "updated": "2026-10-09T03:20:03+00:00",
+    "seen": "2026-10-09T03:20:03+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-09T02:02:19+00:00"
+  "updated": "2026-10-09T03:20:03+00:00"
  },
  "ai": "ok"
 }
