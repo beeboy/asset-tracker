@@ -3,7 +3,7 @@ name: probe-sector-pe
 on:
   push:
     branches: [claude/project-thread-b03yh7]
-    paths: [tools/probe_sector_pe.py, .github/workflows/probe-sector-pe.yml]
+    paths: [tools/probe_sector_pe.py, tools/classify_sector_pe.py, .github/workflows/probe-sector-pe.yml]
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install xlrd openpyxl
-      - run: python tools/probe_sector_pe.py
+      - run: python tools/classify_sector_pe.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
