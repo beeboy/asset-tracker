@@ -36,6 +36,7 @@ def table(data):
         pe = next((j for j, c in enumerate(hdr) if re.search(r"only money", c, re.I)), None)
         gr = next((j for j, c in enumerate(hdr) if re.search(r"growth", c, re.I)), None)
         nf = next((j for j, c in enumerate(hdr) if re.search(r"number of firms", c, re.I)), None)
+        print("  hdr pe:", hdr[pe] if pe is not None else None, "| growth:", hdr[gr] if gr is not None else None)
         out = {}
         for r in rows[hi + 1:]:
             if not r or not str(r[0]).strip():
@@ -60,7 +61,7 @@ for y in years:
     u = hrefs.get(y, BASE + f"pc/archives/pedata{y}.xls")
     try:
         hist[y] = table(get(u))
-        print("got", y, len(hist[y]))
+        print("got", y, len(hist[y]), "pe ok", sum(1 for v in hist[y].values() if v["pe"]), "semi", hist[y].get("semiconductor"))
     except Exception as e:
         print("fail", y, u, repr(e))
 cur = table(get(BASE + "pc/datasets/pedata.xls"))
