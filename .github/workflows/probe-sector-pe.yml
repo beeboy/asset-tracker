@@ -1,0 +1,25 @@
+name: probe-sector-pe
+# 업종 PER 데이터 출처 확인용 일회성 작업. 이 브랜치에 푸시할 때만 돌고, 저장소에 아무것도 커밋하지 않는다.
+on:
+  push:
+    branches: [claude/project-thread-b03yh7]
+    paths: [tools/probe_sector_pe.py, .github/workflows/probe-sector-pe.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install xlrd openpyxl
+      - run: python tools/probe_sector_pe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-sector-pe
+          path: probe_out/
