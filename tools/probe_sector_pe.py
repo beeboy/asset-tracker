@@ -103,6 +103,47 @@ for h in arch:
         lines.append({"file": h, "error": repr(e)})
 report["archive_files"] = lines
 
+# 2-1) 2025년 파일 찾기: 다른 이름, 그리고 웹 보관소(Wayback Machine) 사본
+alt = {}
+for u in [BASE + "pc/archives/pedata25.xlsx", BASE + "pc/archives/pedata2025.xls", BASE + "pc/archives/pedataJan25.xls"]:
+    try:
+        st, _ = get(u)
+        alt[u] = st
+    except Exception as e:
+        alt[u] = repr(e)
+report["alt_names_2025"] = alt
+wb = {}
+try:
+    cdx = "https://web.archive.org/cdx/search/cdx?url=pages.stern.nyu.edu/~adamodar/pc/datasets/pedata.xls&from=2025&to=2026&output=json&filter=statuscode:200&collapse=digest"
+    st, data = get(cdx, timeout=60)
+    snaps = json.loads(data)[1:]
+    wb["snapshots"] = [r[1] for r in snaps]
+    for r in snaps:
+        ts = r[1]
+        if not ts.startswith("2025"):
+            continue
+        u = f"https://web.archive.org/web/{ts}id_/https://pages.stern.nyu.edu/~adamodar/pc/datasets/pedata.xls"
+        try:
+            st, xd = get(u, timeout=60)
+            sheets = read_sheet(xd)
+            for sname, rows in sheets.items():
+                hi = next((i for i, rr in enumerate(rows) if rr and str(rr[0]).strip().lower().startswith("industry")), None)
+                if hi is None:
+                    continue
+                hdr = [str(c).strip() for c in rows[hi]]
+                date = [str(c) for rr in rows[:hi] for c in rr if str(c).strip()][:3]
+                j = next((k for k, c in enumerate(hdr) if re.search(r"only money", c, re.I)), None)
+                g = next((k for k, c in enumerate(hdr) if re.search(r"growth", c, re.I)), None)
+                vals = {str(rr[0]).strip()[:14]: [rr[j] if j is not None else None, rr[g] if g is not None else None]
+                        for rr in rows[hi + 1:] if rr and re.search(KEYS, str(rr[0]).strip(), re.I)}
+                wb[ts] = {"date": date, "n": len([rr for rr in rows[hi + 1:] if rr and str(rr[0]).strip()]), "vals": vals}
+                break
+        except Exception as e:
+            wb[ts] = repr(e)
+except Exception as e:
+    wb["error"] = repr(e)
+report["wayback_2025"] = wb
+
 # 3) Yahoo 업종 ETF PER (쿠키·crumb 방식)
 etfs = ["XLK", "SMH", "XLV", "XLP", "XLU", "IJR"]
 try:
