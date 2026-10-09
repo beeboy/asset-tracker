@@ -489,17 +489,21 @@
   const EXTRA_KEY = "asset-tracker-extra";
   const PURGED = new Set(["004540.KS"]); // 앱에서 뺀 종목: 예전에 저장된 입력값·시세에서도 지운다
   const proxies = () => [...(S.config?.proxy ? [S.config.proxy] : []), "https://corsproxy.io/?url=", "https://api.allorigins.win/raw?url=", "https://api.codetabs.com/v1/proxy?quest="];
+  // 마지막으로 성공한 중계를 기억해 다음 종목은 그곳부터 시도한다 (실패한 중계를 종목마다 다시 기다리지 않게)
+  let goodProxy = null;
   async function yahoo(sym, params) {
     const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym) + "?" + new URLSearchParams(params);
     let last = null;
-    for (const p of proxies()) {
+    const list = proxies(), order = goodProxy && list.includes(goodProxy) ? [goodProxy, ...list.filter((p) => p !== goodProxy)] : list;
+    for (const p of order) {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
       try {
-        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
-        const r = await fetch(p + encodeURIComponent(url), { signal: ctl.signal, cache: "no-store" }); clearTimeout(t);
-        const j = await r.json().catch(() => null);
-        if (j && j.chart) { if (!j.chart.result) throw Object.assign(new Error("티커를 찾지 못함"), { notFound: true }); return j.chart.result[0]; }
+        const r = await fetch(p + encodeURIComponent(url), { signal: ctl.signal, cache: "no-store" });
+        const j = await r.json().catch(() => null); // 본문을 다 받을 때까지 시간 제한을 유지한다
+        if (j && j.chart) { goodProxy = p; if (!j.chart.result) throw Object.assign(new Error("티커를 찾지 못함"), { notFound: true }); return j.chart.result[0]; }
         last = new Error("중계 응답 " + r.status);
       } catch (e) { if (e.notFound) throw e; last = e; }
+      finally { clearTimeout(t); }
     }
     throw new Error("시세 서버에 연결하지 못함 (" + (last?.message || "") + ")");
   }
@@ -538,14 +542,16 @@
     const need = [...new Set([...newSyms, ...held.filter((t) => !S.prices[t])])];
     let ok = 0, bad = [];
     logLine(`시세 받는 중: ${esc([...new Set([...need, ...held])].join(", "))}`, true, true);
-    for (const t of need) {
+    // 종목마다 기다리지 않고 한꺼번에 요청한다
+    await Promise.all(need.map(async (t) => {
       try { const h = await browserHistory(t); if (!h.dates.length) throw new Error("일봉 없음"); x.prices[t] = h; S.prices[t] = h; ok++; }
       catch (e) { bad.push(`${t} (${e.message})`); }
-    }
+    }));
     // 새 통화의 환율
-    for (const t of held) { const f = fxOf(ccyOf(t)); if (f && !S.prices[f]) { try { const h = await browserHistory(f); x.prices[f] = h; S.prices[f] = h; } catch (e) { bad.push(`${f} (${e.message})`); } } }
+    const fxNeed = [...new Set(held.map((t) => fxOf(ccyOf(t))).filter((f) => f && !S.prices[f]))];
+    await Promise.all(fxNeed.map(async (f) => { try { const h = await browserHistory(f); x.prices[f] = h; S.prices[f] = h; } catch (e) { bad.push(`${f} (${e.message})`); } }));
     // 현재가 (보유 종목 + 환율)
-    for (const t of symbolsToCollect(held)) { try { const q = await browserQuote(t); x.quotes[t] = q; S.quotes[t] = q; ok++; } catch (e) { if (need.includes(t)) continue; } }
+    await Promise.all(symbolsToCollect(held).map(async (t) => { try { const q = await browserQuote(t); x.quotes[t] = q; S.quotes[t] = q; ok++; } catch (e) { /* 지난 종가로 계속 보인다 */ } }));
     saveExtra(x);
     markDirty(); renderAll();
     logLine(bad.length ? `받지 못한 항목: ${esc(bad.join(", "))}. 티커를 확인하거나 잠시 뒤 다시 '시세 수집'을 눌러 주세요.` : "시세를 받았습니다.", !bad.length, true);
@@ -557,7 +563,9 @@
     return S.state.holdings.map((h) => h.ticker).filter((t) => !have.has(t) && !S.prices[t]);
   }
   async function collectStatic(manual) {
-    if (GH && ghToken()) { if (manual) await ghCollect(missingTickers()); return; } // 개발자용
+    // 개발자용 토큰이 있어도 내 보유 종목 시세는 브라우저에서 바로 받는다.
+    // 저장소에 없는 새 종목이 있을 때만 GitHub 수집(전체 종목·뉴스까지 도는 작업)을 뒤에서 실행한다
+    if (GH && ghToken()) { if (manual) { const miss = missingTickers(); await browserCollect(miss); if (miss.length) ghCollect(miss); } return; }
     if (manual) { try { await reload(); } catch (e) { /* 무시 */ } return browserCollect([]); }
     const btns = [$("#btnCollect")]; btns.forEach((b) => b && (b.disabled = true));
     try {
@@ -795,10 +803,10 @@
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
-      ["필요 경로 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? (Math.abs(now - need) < need * 0.0005 ? "목표 경로와 같음" : `경로보다 ${krw(Math.abs(now - need))}원 ${now >= need ? "많음" : "적음"}`) : ""],
+      ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? (Math.abs(now - need) < need * 0.0005 ? "내 길과 같음" : `경로보다 ${krw(Math.abs(now - need))}원 ${now >= need ? "많음" : "적음"}`) : ""],
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
-    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "필요 경로 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
+    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "내 길 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
     // 경로 대비 +/− 막대: 날짜별 (실제 − 필요 경로). 1년은 주, 3년은 달 단위로 묶고(그 주·달 마지막 값), 끝에 오늘 실시간 막대
     const rsel = $("#progRange .on")?.dataset.r || "66", n = +rsel, unit = n >= 780 ? "m" : n >= 252 ? "w" : "d";
     const key = (d) => { if (unit === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
@@ -821,7 +829,7 @@
       Charts.barChart($("#progChart"), { x: pts.map((p) => p[0]), y: pts.map((p) => p[1]), height: 170, yfmt: krwAxis, live: td,
         xlab: (d) => (d === td ? "오늘" : unit === "m" ? `${d.slice(2, 4)}.${+d.slice(5, 7)}` : `${+d.slice(5, 7)}/${+d.slice(8)}`),
         tipx: (d) => (d === td ? `${d} (오늘 실시간)` : unit === "m" ? `${d.slice(0, 7)} 말` : unit === "w" ? `${d} 주 마지막` : d),
-        tipy: (i) => `필요 경로보다 ${sg(pts[i][1])}` + (evAt[i] ? `<br>▲ ${evAt[i].map(esc).join("<br>▲ ")}` : "") + (pts[i][0] < start ? `<br><span class="muted">목표 시작 전 (거꾸로 늘인 경로)</span>` : ""),
+        tipy: (i) => `내 길보다 ${sg(pts[i][1])}` + (evAt[i] ? `<br>▲ ${evAt[i].map(esc).join("<br>▲ ")}` : "") + (pts[i][0] < start ? `<br><span class="muted">목표 시작 전 (거꾸로 늘인 경로)</span>` : ""),
         labelLast: (pts[pts.length - 1][0] === td ? "오늘 " : "") + sg(last),
         dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
@@ -854,6 +862,8 @@
     const inUsd = $("#histCcy .on")?.dataset.c === "usd", basis = $("#histBasis .on")?.dataset.b || "model";
     const fxNowUsd = fxNow("USD") || 1, conv = (v, i) => (v == null ? null : inUsd ? v / H.usdK[i] : v), money = inUsd ? usd : krwAxis;
     const future = rsel === "future", n = future ? 780 : +rsel; // 미래: 과거 3년 + 목표일까지
+    const fcOn = $("#histFc .on")?.dataset.f === "on"; // 미래 보기에서 3년 전망 띠를 겹칠지 (기본: 내 길만)
+    $("#histFc").style.display = future ? "" : "none"; $("#histBasis").style.display = future && !fcOn ? "none" : "";
     const k0 = Math.max(0, H.dates.length - 1 - n);
     // 간격: 3년·미래는 월간(그 달의 마지막 거래일 값), 1년은 주간(그 주 마지막 거래일), 3달 이하는 일간
     const key = (d) => { if (step === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
@@ -884,8 +894,8 @@
       const V0 = tot, last = x[x.length - 1] || today(), cashU = inUsd ? cash / fxNowUsd : cash, addC = (a) => (cashU ? a.map((v) => (v == null ? v : v + cashU)) : a);
       opt.vlines.push({ x: today(), label: "오늘" });
       if (mode !== "each") opt.hlines.push({ y: goalV, label: goalLab });
-      const scen = basisScen(basis), F = total > 0 && basis !== "pattern" ? fcReady(scen) : null;
-      if (basis === "pattern") {
+      const scen = basisScen(basis), F = fcOn && total > 0 && basis !== "pattern" ? fcReady(scen) : null;
+      if (fcOn && basis === "pattern") {
         if (M && total > 0) {
           const pf = patFuture(M, g.date), u = inUsd ? fxNowUsd : 1, at = (k, z) => (total * Math.exp(pf.cum[k] + z * M.sd * Math.sqrt(k)) + cash) / u;
           if (mode === "total") {
@@ -899,7 +909,7 @@
             + (yg ? ` · 연초 예측 대비 연말 예상 <b class="${cls(yg.gap)}">${spct(yg.gap)}</b>` : "") + ". 띠는 지난 12달 오차 크기.");
         } else notes.push("패턴 예측에는 1년 반 넘는 시세 이력이 필요합니다.");
       }
-      if (!F && total > 0 && basis !== "pattern") forecastLater(scen, () => { if ($("#tabs .on")?.dataset.tab === "dash") renderDash(); });
+      if (fcOn && !F && total > 0 && basis !== "pattern") forecastLater(scen, () => { if ($("#tabs .on")?.dataset.tab === "dash") renderDash(); });
       if (F && F.err) notes.push("전망 계산 실패: " + esc(F.err));
       else if (F) {
         const R = F.R, fd = F.model.monthDates, B = inUsd ? R.bandsUsd : R.bands;
@@ -921,14 +931,20 @@
           : basis === "smooth" ? "<b>과거 추세</b>: 지난 3년 성장 속도가 이어지면"
           : `<b>내 관점</b> (추세 신뢰 ${S.state.model.scenario === "blend" ? S.state.model.trust + "%" : scenName(S.state.model.scenario)}): ` + (mode === "total" ? "진한 띠 25~75%, 옅은 띠 5~95%" : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%" : "쌓은 띠 = 종목별 중앙값"));
         if (Number(g.monthly_contribution) > 0) notes.push(`· 월 적립 ${krw(Number(g.monthly_contribution))}원 포함`);
-      } else if (total > 0 && basis !== "pattern") notes.push("전망을 계산하는 중입니다…");
-      if (mode === "total" && basis === "smooth") {
+      } else if (fcOn && total > 0 && basis !== "pattern") notes.push("전망을 계산하는 중입니다…");
+      if (!fcOn) notes.push("보라 점선은 <b>내 길</b>: 목표 시작일의 평가액에서 목표일 목표액까지 정한 대로 가는 길. 시장이 줄 수 있는 범위는 '예보 겹치기'를 누르면 3년 전망 띠로 겹쳐 봅니다.");
+      if (fcOn && mode === "total" && basis === "smooth") {
         const pf = pastFit(H, basis);
         opt.series.push({ name: "3년 추세선 (과거)", y: ix.map((i) => conv(pf[i], i)), color: "var(--c7)", width: 1.4, dash: "4 3" });
       }
       const md = []; for (let k = 0; k <= 1200 && Model.addMonths(today(), k) <= g.date; k++) md.push(Model.addMonths(today(), k));
       if (md[md.length - 1] !== g.date) md.push(g.date);
-      if (V0 > 0 && mode !== "each") opt.series.push({ name: "필요 경로", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--accent2)", dash: "5 4", width: 1.3 });
+      // 내 길: 목표 진행·3년 전망과 같은 길 (목표 시작일부터 목표일까지). 시작일 전은 그리지 않는다
+      const GP = V0 > 0 && mode !== "each" ? goalPath(H, cash) : null;
+      if (GP && GP.at(today()) != null) {
+        const px = [...x.filter((d) => d >= GP.start), ...md.filter((d) => d > last)], u = inUsd ? fxNowUsd : 1;
+        opt.series.push({ name: "내 길", x: px, y: px.map((d) => GP.at(d) / u), color: "var(--goal)", dash: "5 4", width: 1.8 });
+      } else if (V0 > 0 && mode !== "each") opt.series.push({ name: "내 길", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--goal)", dash: "5 4", width: 1.8 });
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
       notes.push("현재 수량을 과거에 적용" + (inUsd ? ", 달러 환산." : "."));
@@ -937,7 +953,7 @@
       const P = mode !== "each" && tot > 0 ? goalPath(H, cash) : null;
       if (P) {
         const py = ix.map((i, k) => { const v = P.at(x[k]); return v == null ? null : i < 0 ? lconv(v) : conv(v, i); });
-        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "필요 경로", y: py, color: "var(--accent2)", dash: "5 4", width: 1.3 }); notes.push(`· 점선은 필요 경로 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
+        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "내 길", y: py, color: "var(--goal)", dash: "5 4", width: 1.8 }); notes.push(`· 보라 점선은 내 길 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
       }
     }
     const A = actualRec();
@@ -1478,7 +1494,8 @@
     if (tk === "port") {
       $("#fcTitle").textContent = "원화 평가액 전망 (환율·외부 요인 포함)";
       const H = history(), k0 = Math.max(0, H.dates.length - 781), V0 = R.V0, yrs = yearsBetween(md.startDate, g.date);
-      const reqPath = fx.map((d) => V0 * (g.amount / V0) ** (yearsBetween(md.startDate, d) / yrs));
+      const GP = goalPath(H, cashKrw()), gpOk = GP && GP.at(md.startDate) != null; // 내 길: 자산 추이·목표 진행과 같은 길 (목표 시작일부터). 전망 값에는 현금이 빠져 있어 현금만큼 뺀다
+      const reqPath = fx.map((d) => gpOk ? GP.at(d) - cashKrw() : V0 * (g.amount / V0) ** (yearsBetween(md.startDate, d) / yrs));
       const evs = v === "none" ? [] : md.eventList.filter(inV);
       // 전체 보기: 내 관점 띠 + 두 렌즈의 중앙값 + 외부 요인 없을 때의 5~95% 선(충격이 넓힌 폭)
       const lensLines = v === "all" ? [...(D.base ? [{ name: "현재 정세", y: D.base.bands.p50, color: "var(--c3)", width: 1.3 }] : []), ...(D.smooth ? [{ name: "과거 추세", y: D.smooth.bands.p50, color: "var(--c4)", width: 1.3 }] : []),
@@ -1490,7 +1507,7 @@
           ...lensLines,
           { name: lab, y: R.bands.p50, color: "var(--c1)", width: 2.4 },
           ...(hasEv && v !== "none" && v !== "all" ? [{ name: "미반영 중앙값", y: noEv.bands.p50, color: "var(--muted)", width: 1.2, dash: "2 3" }] : []),
-          { name: "필요 경로", y: reqPath, color: "var(--accent2)", dash: "5 4", width: 1.3 }],
+          { name: "내 길", y: reqPath, color: "var(--goal)", dash: "5 4", width: 1.8 }],
         hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) : [],
@@ -1861,7 +1878,7 @@
         if (V0 > 0 && g.start_date) {
           const tp = el / span, wp = V0 < g.amount ? Math.log(total / V0) / Math.log(g.amount / V0) : 1;
           L.push(`- ${st} 시작 ${krw(V0)}원 → 지금 ${spct(total / V0 - 1)}, 기간은 ${pct(tp, 1)} 지났고 갈 길(복리 기준)은 ${pct(wp, 1)} 왔습니다`);
-          if (need) L.push(Math.abs(total - need) < need * 0.0005 ? "- 필요 경로와 거의 같습니다" : `- 필요 경로보다 ${B(krw(Math.abs(total - need)) + "원 " + (total >= need ? "앞섬" : "뒤처짐"))} (${spct(total / need - 1)})`);
+          if (need) L.push(Math.abs(total - need) < need * 0.0005 ? "- 내 길과 거의 같습니다" : `- 내 길보다 ${B(krw(Math.abs(total - need)) + "원 " + (total >= need ? "앞섬" : "뒤처짐"))} (${spct(total / need - 1)})`);
         }
         L.push(`- ${cagr != null && cagr >= req ? `지난 3년 속도(연 ${pct(cagr, 0)})면 목표에 닿습니다.` : `지난 3년 속도(연 ${pct(cagr, 0)})보다 빨라야 목표에 닿습니다.`}` + (Number(g.monthly_contribution) > 0 ? ` 월 적립 ${krw(Number(g.monthly_contribution))}원 포함 전망.` : ""));
         const hs = rows.filter((r) => r.valueKrw > 0).sort((a, b2) => b2.w - a.w), j1 = Math.max(0, k - 252);
@@ -1873,11 +1890,11 @@
         if (usdW > 0) X.push(`- 달러 자산 ${pct(usdW, 0)}` + (fs && fs.ret_1y != null ? `, 지난 1년 환율 효과 약 ${spct(usdW * fs.ret_1y, 1)}` : ""));
         const bs = $("#histBasis .on")?.dataset.b || "model", F = fcReady(basisScen(bs));
         if (F && F.R) { // 미래: 그래프에서 보는 기준(기본 내 관점)의 평가액 추이
-          const R = F.R, fd = F.model.monthDates, i1 = Math.min(fd.length - 1, 12), need1 = total * (g.amount / total) ** (Math.min(1, yrs) / Math.max(0.01, yrs));
+          const R = F.R, fd = F.model.monthDates, i1 = Math.min(fd.length - 1, 12), GP1 = goalPath(history(), 0), d1 = Model.addMonths(today(), 12), need1 = GP1 && GP1.at(d1) != null ? GP1.at(d1) : total * (g.amount / total) ** (Math.min(1, yrs) / Math.max(0.01, yrs));
           const by = (R.byYear || []).map((y) => `${y.year}년 ${pct(y.p, 0)}`).join(" · ");
           L.push(`### 미래 (${BASIS[bs]})`, `- 목표일에 목표 이상일 확률 ${B(pct(R.p_goal, 0))}`, ...(by ? [`- 중간에 한 번이라도 목표에 닿을 확률: ${by}`] : []),
             `- 목표일(${g.date}) 중앙값 ${B(krw(R.terminal.p50) + "원")}, 흔한 범위 ${krw(R.terminal.p25)}~${krw(R.terminal.p75)}원, 나쁜 경우 5% ${krw(R.terminal.p5)}원`,
-            `- 1년 뒤 중앙값 ${krw(R.bands.p50[i1])}원, 필요 경로 ${krw(need1)}원보다 ${R.bands.p50[i1] >= need1 ? "앞섭니다" : "뒤처집니다"}`,
+            `- 1년 뒤 중앙값 ${krw(R.bands.p50[i1])}원, 내 길 ${krw(need1)}원보다 ${R.bands.p50[i1] >= need1 ? "앞섭니다" : "뒤처집니다"}`,
             `- 목표일에 지금보다 낮을 확률 ${pct(R.p_loss, 0)}` + (R.req50 ? `, 확률 50%에 필요한 월 적립 약 ${krw(R.req50)}원` : ""));
         }
         L.push(...X);
@@ -3197,7 +3214,7 @@
       const on = card.classList.toggle("folded"); b.title = on ? "펼치기" : "접기";
       try { const ids = new Set(foldGet()); on ? ids.add(card.id) : ids.delete(card.id); localStorage.setItem(foldKey, JSON.stringify([...ids])); } catch (e2) { /* 무시 */ }
     });
-    segClick("#histRange", renderDash); segClick("#progRange", () => { const H = history(); renderProgress(H, valuation().total, cashKrw()); }); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
+    segClick("#histRange", renderDash); segClick("#histFc", () => { try { localStorage.setItem("naeilo-histfc", $("#histFc .on").dataset.f); } catch (e) { /* 무시 */ } renderDash(); }); segClick("#progRange", () => { const H = history(); renderProgress(H, valuation().total, cashKrw()); }); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
     segClick("#actView", renderAct); segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
     $("#premBox").addEventListener("change", onPrem); $("#premBox").addEventListener("click", onPrem);
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
@@ -3400,6 +3417,7 @@
     catch (e) { document.body.innerHTML = `<div class="card" style="margin:40px auto;max-width:640px"><h2>데이터를 불러오지 못했습니다</h2><p>내 PC에서 쓸 때는 <b>실행 파일</b>(Windows: <code>실행-Windows.bat</code>, Mac: <code>실행-Mac.command</code>)로 열어야 합니다. 웹 버전은 GitHub Actions의 첫 수집이 끝난 뒤 열립니다.</p><p class="muted small">${esc(e.message)}</p></div>`; return; }
     if (S.purged || (!S.state.sample && !(S.state.lots || []).length && S.state.holdings.some((h) => Number(h.shares) > 0))) save(false); // 진행 기록 첫 줄
     try { const bs = localStorage.getItem("naeilo-basis"); if (bs && $(`#histBasis button[data-b="${bs}"]`)) $$("#histBasis button").forEach((b) => b.classList.toggle("on", b.dataset.b === bs)); } catch (e) { /* 무시 */ } // 평가액 추이 미래 기준은 리로드해도 유지
+    try { const hf = localStorage.getItem("naeilo-histfc"); if (hf) $$("#histFc button").forEach((b) => b.classList.toggle("on", b.dataset.f === hf)); } catch (e) { /* 무시 */ } // 예보 겹치기도 유지
     if (window.themeUI) themeUI($("#themeBox"));
     bind(); renderAll(); foldHold(); marFetch(); syncPull(); renderEsync(); allocWarm(2500);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { syncPull(); if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(); } });
