@@ -1,64 +1,64 @@
 {
- "updated": "2026-10-09T14:10:27+00:00",
+ "updated": "2026-10-09T15:01:31+00:00",
  "realtime": {
-  "key": "abc1833c2e6ea3e0",
-  "updated": "2026-10-09T14:10:34+00:00",
+  "key": "85ed2f1c4c749f18",
+  "updated": "2026-10-09T15:01:38+00:00",
   "media": [
    {
-    "title": "스페이스X의 주파수 인수 소식에 AT&T·버라이즌·T모바일 급락",
-    "orig": "SpaceX deal to acquire spectrum license hammers shares of AT&T, Verizon and T-Mobile",
-    "summary": "스페이스X가 스타링크 서비스를 미국 통신 시장으로 확장하기 위해 전국 단위 주파수를 인수하자 주요 통신사 주가가 일제히 하락했습니다.",
+    "title": "기술주 반등 속 뉴욕증시 상승 마감",
+    "orig": "Stocks rise as tech shares rebound following sell-off: Live updates",
+    "summary": "전날 매도세를 딛고 나스닥을 비롯한 주요 기술주가 반등하며 증시가 상승 마감했습니다.",
     "broker": "",
     "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/08/spacex-spectrum-license-att-verizon-tmobile.html",
-    "time": "2026-10-09T13:52:27+00:00"
+    "link": "https://www.cnbc.com/2026/10/08/stock-market-today-live-updates.html",
+    "time": "2026-10-09T14:39:37+00:00"
    },
    {
-    "title": "오픈AI 재정 우려 완화에 엔비디아·마이크론 반등",
-    "orig": "Nvidia and Micron shares bounce as investors get clarity on a key OpenAI matter",
-    "summary": "오픈AI의 재정 상태가 예상보다 양호하다는 보고서가 나오며 우려가 해소되자 엔비디아와 마이크론 등 주요 AI 반도체 종목들이 반등했습니다.",
+    "title": "트럼프, 연준 이사 리사 쿡 조사 위원회 구성 발표",
+    "orig": "Trump Announces White House Inquiry Into Fed Governor Lisa Cook",
+    "summary": "트럼프 대통령이 모기지 사기 의혹을 이유로 리사 쿡 연방준비제도 이사를 조사하는 백악관 위원회를 설치했습니다.",
     "broker": "",
-    "source": "MarketWatch",
-    "link": "https://www.marketwatch.com/story/nvidia-and-micron-shares-bounce-as-investors-get-clarity-on-a-key-openai-matter-ba76ed20?mod=mw_rss_topstories",
-    "time": "2026-10-09T13:21:00+00:00"
+    "source": "New York Times",
+    "link": "https://www.nytimes.com/2026/10/09/business/trump-lisa-cook-fed.html",
+    "time": "2026-10-09T14:56:54+00:00"
    },
    {
-    "title": "미국 가계 부채 상환 압박, 금융위기 이후 최고 수준 경고",
+    "title": "미국 가계 부채 상환 능력, 금융위기 이후 최악의 경고 신호",
     "orig": "Americans' debt problems are flashing a warning not seen since the Great Recession",
-    "summary": "연준 연구에 따르면 가계 자산 격차는 일부 줄었으나 채무 상환 능력이 크게 악화되며 대침체 이후 가장 심각한 경고 신호가 켜졌습니다.",
+    "summary": "자산 격차는 줄었으나 가계의 부채 상환 능력이 급격히 악화되며 금융위기 이후 가장 강력한 경고등이 켜졌습니다.",
     "broker": "",
     "source": "CNBC",
     "link": "https://www.cnbc.com/2026/10/09/american-debt-delinquency.html",
-    "time": "2026-10-09T14:03:24+00:00"
+    "time": "2026-10-09T14:30:06+00:00"
    }
   ],
   "broker": [
    {
-    "title": "골드만삭스, 셔윈-윌리엄스 목표주가 하향 조정",
-    "orig": "Goldman Sachs lowers Sherwin-Williams stock price target on valuation",
-    "summary": "골드만삭스는 동종 업계의 밸류에이션 배수 하락을 반영해 페인트 제조업체 셔윈-윌리엄스의 목표주가를 낮췄습니다.",
-    "broker": "골드만삭스",
-    "source": "Investing.com",
-    "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxQOXJ0Tmo0aG9MeGljcmNNN0pIODk1NHJzOG1Va1U1c0JOYlJWMjV0QUtMb0FJQXNqNGtVRzFhbWlYQURGZGtMbGc0WVRqcTkzVlVPUXRfNmtDMjVsci1zNDY3WUxhYm5sSG40X05od0E2VEJFTU55Z0UtellaWTNOdVdtYXBXZnIzcFU5TDE4bEF4Y0ZWZk9DUnVGMDgxRUl0QVlQOFNLUDIxWG40dTJDX3FJdzJhX2RiZHhlU3FKYTBRZVFjdExB?oc=5",
-    "time": "2026-10-09T13:48:17+00:00"
+    "title": "BofA, AI 에이전트 붐 수혜주로 펭귄 솔루션스 지목",
+    "orig": "This AI infrastructure stock will rise on agentic AI boom, Bank of America says",
+    "summary": "뱅크오브아메리카는 펭귄 솔루션스가 에이전틱 AI 성장의 핵심 수혜자가 될 것으로 전망했습니다.",
+    "broker": "뱅크오브아메리카",
+    "source": "CNBC",
+    "link": "https://www.cnbc.com/2026/10/09/penguin-solutions-will-rise-due-to-agentic-ai-bank-of-america-says.html",
+    "time": "2026-10-09T14:07:18+00:00"
    },
    {
-    "title": "RBC, 아메리칸 익스프레스 목표주가 400달러로 하향",
-    "orig": "Royal Bank Of Canada Cuts American Express (NYSE:AXP) Price Target to $400.00",
-    "summary": "캐나다왕립은행(RBC)이 신용카드 및 결제 서비스 업체인 아메리칸 익스프레스의 목표주가를 400달러로 하향 조정했습니다.",
-    "broker": "캐나다왕립은행",
-    "source": "MarketBeat",
-    "link": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxQNXhuSzlkaEtGZmhhLUxUeUVsWWc5YmhkNDMtYk04d1ViUTh4SlVyZUFLQzcxZkl0YXdBM1hpQm0yS2JrOUZPbXhSb2JUVF84TDFtOUFHVkJteDg1WWJmYjBaOWMzQjVaOXUxeGRDbHV5NllDMFZvSWdiZnpVZDBZY0JvUzlOTGl4REZoNTBfNi1WdVpWUVRkbUhyeFhjWVp3MnF2TE45a2FZMUE4WVpvdHMxTS1IRUtqY05xQlZSNWRmai1oanVXUjZiRC1iVmFM?oc=5",
-    "time": "2026-10-09T13:56:44+00:00"
+    "title": "바클레이즈, 마이크로스트래티지 목표주가 상향",
+    "orig": "Strategy in focus as Barclays lifts price target on sector strength (MSTR:NASDAQ)",
+    "summary": "바클레이즈는 관련 섹터 강세를 반영해 마이크로스트래티지의 목표주가를 높였습니다.",
+    "broker": "바클레이즈",
+    "source": "Seeking Alpha",
+    "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxPYTNxSEVMc2UxSzdLZ3lXOFBQZDdHNWRRbXBZSXFtZHNTb1k1cHdvSGFvWno1NnFFajAzcUxBQngtT1RQV0M5SXA0VlN4eW9pcFZaZ3hqUzZmY0pla0tCV0pLWEVHOUh1OVdEU3d3UzRXTUFfS1RrRE9ERW5DeFA0UDdSSG9BMndvc2lvQVJuX2t6RXktV2VEek9IRnRwdUVUVE5UUjdtd1I?oc=5",
+    "time": "2026-10-09T14:01:24+00:00"
    },
    {
-    "title": "오펜하이머, 휴매나 목표주가 475달러로 상향",
-    "orig": "Oppenheimer raises Humana price target to $475 on strong Medicare Advantage ratings.",
-    "summary": "오펜하이머는 메디케어 어드밴티지 평가 등급 호조를 근거로 대형 건강보험사 휴매나의 목표주가를 475달러로 올렸습니다.",
-    "broker": "오펜하이머",
-    "source": "Pluang",
-    "link": "https://news.google.com/rss/articles/CBMigAFBVV95cUxOUXNKaDgzSTJnOW84a01hNVljdnZNR3hONm1fYmdZa2dMaU9nUzBjaWdxVl90MjlBcllDTFhSTFNGQWFfNFpLQlY4V0cyREpwSGFfcXk5LTA5dExPU3E4aEF6cHhLbm1WdVMyU3gwS2Q0aG1KSTU5ZWFrOGNiNWwyVQ?oc=5",
-    "time": "2026-10-09T13:45:16+00:00"
+    "title": "RBC 캐피털, 코스트코 투자의견 '섹터 비중' 유지 및 목표가 1000달러 제시",
+    "orig": "RBC Capital reiterates Sector Perform rating on Costco Wholesale, $1000 price target",
+    "summary": "RBC 캐피털은 코스트코의 투자의견을 기존대로 유지하고 목표주가 1000달러를 제시했습니다.",
+    "broker": "RBC 캐피털",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMi3AFBVV95cUxORWV4dEIzM3p0bDlkQzBBZmJ1MHlCZmw3OUF5My1xRnFKNHJwTzlORlJzM2RacjVtUjNuSXN5VG5Mc1hRalEzTVVoQ0FpZkZKTFpVSTBsN1pacm1PR1QyVk9oQ3RrX1lhRndzQ3V6N2M5OHZkUUxEWk1SbG9qZkRZZ3RwVkVMVzB1aEdlZjRWTlFJMTd2a0lmRngxRnZsWHozMWUxR25kRGdoZzdHM05GN2lWbmt4MDluS2g2U0F2YlZiZmJqOGJsN1VjWi1NeWptLXlEczQwQWwyb2tG?oc=5",
+    "time": "2026-10-09T14:38:03+00:00"
    }
   ]
  },
@@ -126,7 +126,7 @@
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-09T14:10:27+00:00",
+  "updated": "2026-10-09T15:01:31+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -138,6 +138,71 @@
    "GLD": "SPDR Gold Shares 업계"
   },
   "items": [
+   {
+    "id": "applereportedlycutsiphone18proordersby15priceproblemortiming",
+    "ticker": "AAPL",
+    "scope": "held",
+    "cat": "fund",
+    "title": "애플, 아이폰 18 프로 부품 주문 15% 감축설 제기",
+    "orig": "Apple Reportedly Cuts iPhone 18 Pro Orders by 15%: Price Problem or Timing Problem?",
+    "summary": "차세대 아이폰 프로 라인업의 부품 주문 감축 보도가 나오며 수요 둔화와 제품 출시 일정 조율에 대한 우려가 커지고 있습니다.",
+    "source": "TIKR",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/apple-reportedly-cuts-iphone-18-144936539.html",
+    "time": "2026-10-09T14:49:36+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
+   },
+   {
+    "id": "whatspacexsspectrumbuysaysaboutastarlinkmobilenetwork",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "growth",
+    "title": "스페이스X의 주파수 확보와 모바일망 구축",
+    "orig": "What SpaceX’s Spectrum Buy Says About a Starlink Mobile Network",
+    "summary": "스페이스X가 위성 주파수 대역을 사들이며 지상 기지국 없이 스마트폰과 직접 연결되는 스타링크 모바일 통신 서비스 준비를 가속하고 있습니다.",
+    "source": "Barrons.com",
+    "link": "https://finance.yahoo.com/m/62d46fc3-b9ce-3edf-bb82-d8b271ebba7a/what-spacex%E2%80%99s-spectrum-buy.html",
+    "time": "2026-10-09T14:37:00+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
+   },
+   {
+    "id": "teslastockrisesaselonmuskassertscontroloverterafabchipprojec",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "머스크의 테라팹 칩 프로젝트 주도",
+    "orig": "Tesla Stock Rises as Elon Musk Asserts Control Over Terafab Chip Project",
+    "summary": "일론 머스크가 AI 및 반도체 내재화를 이끌 테라팹 칩 프로젝트를 직접 지휘하며 자체 컴퓨팅 역량 강화에 나섰습니다.",
+    "source": "Barrons.com",
+    "link": "https://finance.yahoo.com/m/0822671a-1ab6-3bea-8a1c-548177dd1193/tesla-stock-rises-as-elon.html",
+    "time": "2026-10-09T14:23:00+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
+   },
+   {
+    "id": "nvidiastockrecoversbutipofearsfeedaiconcerns",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "엔비디아 반등 속 AI 생태계 불확실성 지속",
+    "orig": "Nvidia Stock Recovers but IPO Fears Feed AI Concerns",
+    "summary": "주가는 회복세를 보였으나 AI 스타트업들의 수익성과 인프라 투자 지속 가능성에 대한 시장의 경계감이 상존하고 있습니다.",
+    "source": "Barrons.com",
+    "link": "https://finance.yahoo.com/m/b0eb9f42-a09b-369a-8ae3-0627df01150c/nvidia-stock-recovers-but-ipo.html",
+    "time": "2026-10-09T14:14:00+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
+   },
+   {
+    "id": "thestocksrisingandfallingonspacexswirelessplay",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "market",
+    "title": "스페이스X 무선 통신 진출에 따른 업계 재편",
+    "orig": "The Stocks Rising and Falling on SpaceX’s Wireless Play",
+    "summary": "스페이스X의 우주 기반 통신망 확대가 기존 이동통신사와 위성 생태계 종목들의 경쟁 구도와 밸류에이션에 큰 영향을 미치고 있습니다.",
+    "source": "The Wall Street Journal",
+    "link": "https://finance.yahoo.com/m/fe145016-90fb-3f55-bf84-f399d1de2b77/the-stocks-rising-and-falling.html",
+    "time": "2026-10-09T13:54:38+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
+   },
    {
     "id": "applereportedlycutsiphone18procomponentorders15asaimemorycru",
     "ticker": "AAPL",
@@ -176,6 +241,19 @@
     "link": "https://finance.yahoo.com/markets/stocks/articles/nvidia-nvda-more-doubled-revenue-132539113.html",
     "time": "2026-10-09T13:25:39+00:00",
     "added": "2026-10-09T14:10:27+00:00"
+   },
+   {
+    "id": "teslarebrandsfullselfdrivingasteslaassisteddrivingineurope",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "테슬라, 유럽서 FSD 명칭 변경",
+    "orig": "Tesla rebrands Full Self-Driving as Tesla Assisted Driving in Europe",
+    "summary": "유럽 규제 당국의 기준에 대응해 FSD 브랜드를 '테슬라 어시스티드 드라이빙'으로 수정하며 규제 리스크 완화에 나섰습니다.",
+    "source": "Quartz",
+    "link": "https://finance.yahoo.com/technology/articles/tesla-rebrands-full-self-driving-131204913.html",
+    "time": "2026-10-09T13:12:04+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
    },
    {
     "id": "annvidiadirectorsold947millionofstocklastquartermorethananyo",
@@ -217,6 +295,32 @@
     "added": "2026-10-09T14:10:27+00:00"
    },
    {
+    "id": "isslovakiasfsdnodthenextstepinteslaseuropeanexpansion",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "growth",
+    "title": "슬로바키아 FSD 승인과 유럽 확장 가속",
+    "orig": "Is Slovakia's FSD Nod the Next Step in Tesla's European Expansion?",
+    "summary": "유럽 일부 국가의 테스트 승인을 발판 삼아 테슬라의 FSD 소프트웨어 유럽 출시 가능성이 점차 높아지고 있습니다.",
+    "source": "Zacks",
+    "link": "https://finance.yahoo.com/technology/ai/articles/slovakias-fsd-nod-next-step-112700984.html",
+    "time": "2026-10-09T11:27:00+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
+   },
+   {
+    "id": "marketchatterteslachinamadeevsalesrise5inseptember",
+    "ticker": "TSLA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "테슬라, 9월 중국 판매량 5% 증가",
+    "orig": "Market Chatter: Tesla China-Made EV Sales Rise 5% in September",
+    "summary": "상하이 공장 출하량이 전년 대비 5% 증가하며 올해 최고치를 기록해 중국 시장 내 분기 실적 우려를 덜었습니다.",
+    "source": "MT Newswires",
+    "link": "https://finance.yahoo.com/markets/stocks/articles/market-chatter-tesla-china-made-112614196.html",
+    "time": "2026-10-09T11:26:14+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
+   },
+   {
     "id": "teslaschinamadeevsalesrise5inseptemberaseuropeandemandrecove",
     "ticker": "TSLA",
     "scope": "held",
@@ -241,6 +345,19 @@
     "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxOY1FGakJidUVMc05yZjRTdFRTWThKd29jNTNTX250dTJOTm1fU2k5cHhEZVZybGdrRDR6RjdDX3RLekpsSG00eVBzaVZMQmNmc21HSHNEV01FVXlTWlVtMW1WR0JiUG5UYklsYmVIa2pmc2I5NjVtWUNJeTNzM2Z0dUJBZEw2c3VKY2owbXJLZG90dTVVM3dnTlZNZGl4OV9sVnY5bHVXYm01U3NDUlZVaTdrMWVLQQ?oc=5",
     "time": "2026-10-09T09:52:14+00:00",
     "added": "2026-10-09T14:10:27+00:00"
+   },
+   {
+    "id": "goldmarketcommentarygowiththeflow",
+    "ticker": "GLD",
+    "scope": "held",
+    "cat": "market",
+    "title": "금 시장 흐름 분석 및 향후 방향성 점검",
+    "orig": "Gold Market Commentary: Go With The Flow",
+    "summary": "지정학적 리스크와 글로벌 통화 환경 변화 속에서 금 시장의 중장기 상승 추세와 자금 흐름을 분석했습니다.",
+    "source": "Seeking Alpha",
+    "link": "https://news.google.com/rss/articles/CBMiggFBVV95cUxNNlVOS2JWczFQbzVHd1NfZDZOWTBnWHhMUkNsSFB6NVE2bExhU3FpcWtvV3c3Yy16LWNILUtXbVlDRjlLRVBIc01sVlZGOWx3QUpteXIwRnl5VEdVMUJ1TmVIN1pkaFg4bEpRaG5nQ1FnbThDclhfZG9kNS1YX1JmTFhR?oc=5",
+    "time": "2026-10-09T09:40:00+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
    },
    {
     "id": "eutelecomstocksfallafterspacexsmovetobecomeawirelesscarrier",
@@ -579,6 +696,19 @@
     "link": "https://finance.yahoo.com/markets/stocks/article/elon-musks-spacex-just-made-a-huge-play-to-challenge-the-phone-industry-and-stocks-like-att-t-mobile-and-verizon-are-getting-crushed-230647771.html",
     "time": "2026-10-08T23:06:47+00:00",
     "added": "2026-10-09T01:01:10+00:00"
+   },
+   {
+    "id": "applesoctober13launchwhatscoming",
+    "ticker": "AAPL",
+    "scope": "held",
+    "cat": "growth",
+    "title": "애플, 10월 13일 신제품 공개 행사 준비",
+    "orig": "Apple's October 13 Launch: What's Coming",
+    "summary": "애플이 차세대 하드웨어 라인업을 공개할 예정인 신제품 발표 행사에서 선보일 주요 제품과 기술에 관심이 쏠리고 있습니다.",
+    "source": "MacRumors",
+    "link": "https://news.google.com/rss/articles/CBMibkFVX3lxTE1fRUJyZ0NsNFhsOHN5Z2J5YkZoVUVIU1hQY0RFZFFzTHY1eWxNVFFhY0NjeExuYzVKQ1oybHVEX0hzS2FiTVlKb3NFeDIxcmJySjNEWU1OUjNXTno3VXRXSTZodHV0dm5jUERDTUJB?oc=5",
+    "time": "2026-10-08T22:59:21+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
    },
    {
     "id": "bitdeeraiexpandssoutheastasiafootprintwitha901anew67mwaidata",
@@ -1255,6 +1385,19 @@
     "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPMnFQcnh5VkdwZGxxWUhnalJkR01FcXRKeVRzUnk0V2d1LVpGSVo3R3JjV3d1SDU2TDlJeUtZVkF6WjFPYlh2ampUYl9oSFlCNE1XQkhSY2NBMkpmNjk1Um5PUDVPTmEteW1LQTg0S0VzMHB3N0hkVXllY19TQ1Z0VDJhV2hrd01mekdEbHlERU9WVTVwMjB1NS1FbGZjUnprbXlrclptcGxHUQ?oc=5",
     "time": "2026-10-08T10:44:15+00:00",
     "added": "2026-10-08T13:00:31+00:00"
+   },
+   {
+    "id": "aircraftbatterymarketforecastto2035fleetreplacementandelectr",
+    "ticker": "TSLA",
+    "scope": "industry",
+    "cat": "market",
+    "title": "항공기 배터리 시장, 2035년까지 친환경 전기 항공 수요 힘입어 성장 전망",
+    "orig": "Aircraft Battery Market Forecast to 2035: Fleet Replacement and Electric Aviation Demand to Drive Growth",
+    "summary": "노후 기단 교체와 전기 항공기 수요 확대로 2035년까지 글로벌 항공용 배터리 시장의 구조적 성장이 예상됩니다.",
+    "source": "IndexBox",
+    "link": "https://news.google.com/rss/articles/CBMizgFBVV95cUxOdUl4Qi1kZ3JKOGwxSExoa1gyQ2J1REdoWWFCbURCUlJvSDEzV21JNHR2Rm55TUkzQjdUb3Y4TlpiRWM0d04ta0x1dTF3S3VJc3Y1bzg3cHY4WUNnNTVWaWZYb2ZWRTVLdGFpT2dXell6QnNhOWlkT0kyODl2ZDQ0aTlKYzFsN2JPem45VVhmeW1TQmwyYXh4MEs4MnFfNlFZcENBME1HdFFsRk1LamVsdG02RXF4UUk4ZklJVmZkN2dkb1E3aElKeFI1SHQyQQ?oc=5",
+    "time": "2026-10-08T10:21:04+00:00",
+    "added": "2026-10-09T15:01:31+00:00"
    },
    {
     "id": "nvidiabackediposcrateringdemandsendswarningonaifunding",
@@ -2594,149 +2737,6 @@
     "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxQcDJISmlqQ09tSDQ4NnNJNElrbWtnQlpVZGlrd3NCQjlvVktSMm00UE1JZDBHZGFqOUVUWjUxbU1KcTM4NXBCMDdGSUY4UW9kd202NzFXT0NBTzdFQU5xbmdqMWFYelRYVmNRTnhDNmlpdlJRODVCMHVpZ21XWnRldHVDd3p6RjJlQjRTMWZiMnE3LTVJM1FMZW1yaktxNHNDQnBTc2ZnZ3JZYjVsZnhj?oc=5",
     "time": "2026-10-06T14:12:09+00:00",
     "added": "2026-10-06T15:51:57+00:00"
-   },
-   {
-    "id": "teslasrobotaxisfsdandoptimusoutlookmattermorethanq3earningss",
-    "ticker": "TSLA",
-    "scope": "held",
-    "cat": "growth",
-    "title": "골드만삭스: 단기 실적보다 로보택시·FSD·옵티머스가 더 중요",
-    "orig": "Tesla’s Robotaxis, FSD And Optimus Outlook Matter More Than Q3 Earnings, Says Goldman Sachs",
-    "summary": "테슬라의 장기적 기업 가치는 단기 실적보다 자율주행과 로봇 사업에 달려있다는 분석입니다.",
-    "source": "Stocktwits",
-    "link": "https://finance.yahoo.com/markets/stocks/articles/tesla-robotaxis-fsd-optimus-outlook-135634668.html",
-    "time": "2026-10-06T13:56:34+00:00",
-    "added": "2026-10-06T15:51:57+00:00"
-   },
-   {
-    "id": "teslaprovestheevwinterisoverherestheconservativecasefor32ups",
-    "ticker": "TSLA",
-    "scope": "held",
-    "cat": "fund",
-    "title": "'전기차 겨울'은 끝났다: 테슬라 상승 여력 분석",
-    "orig": "Tesla Proves the “EV Winter” is Over: Here’s the Conservative Case for 32% Upside",
-    "summary": "전기차 업황 개선 기대감 속 테슬라의 펀더멘털과 밸류에이션 상승 여력을 진단합니다.",
-    "source": "TIKR",
-    "link": "https://finance.yahoo.com/markets/stocks/articles/tesla-proves-ev-winter-over-135026813.html",
-    "time": "2026-10-06T13:50:26+00:00",
-    "added": "2026-10-06T15:51:57+00:00"
-   },
-   {
-    "id": "applewilllaunch7newproductsinoctoberhereswhatscoming",
-    "ticker": "AAPL",
-    "scope": "held",
-    "cat": "growth",
-    "title": "애플, 10월 이후 신제품 7개 이상 출시 예정",
-    "orig": "Apple will launch 7+ new products in October, here’s what’s coming",
-    "summary": "애플이 향후 출시할 신제품 라인업을 통해 새로운 성장 동력을 확보하고 있습니다.",
-    "source": "9to5Mac",
-    "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxQRjdLeWRoN2RzaTRZVUJWQmxwNFdOMmx3aDZNWTVqc3cwZjVtWm1XLW9mY08xcHNNU2NHaUxoMWFYcFJRd253U2NiNEZSUlI2NGZjUjBUUnRLQ3JrQlo0QXJRR1JqOFA3NUZod3hXX05FRURBbXZNbUo5ZFYtTUFaSnR5b3ZmaGN0bEprWk1xQ2ZDYXFTZE1KUldn?oc=5",
-    "time": "2026-10-06T13:32:00+00:00",
-    "added": "2026-10-07T16:44:45+00:00"
-   },
-   {
-    "id": "whyisgoldatusd4175andwhatnextforspdrgldnysearcagld",
-    "ticker": "GLD",
-    "scope": "held",
-    "cat": "fund",
-    "title": "금값 고공행진 배경과 SPDR GLD 전망",
-    "orig": "Why Is Gold at USD 4,175, and What Next for SPDR GLD (NYSEARCA:GLD)?",
-    "summary": "최근 금 가격 급등의 원인과 금 현물 ETF의 향후 전망을 분석했습니다.",
-    "source": "kalkine.ca",
-    "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxNb040XzcyQ3A5bUxjN1RkUldZQ1NTb1pHY1hoeENxNk9SOXdzNTIxbU5kM0NTUmxJZVpIZkxfa3VnV3ZLZWFkMG5UUHJWcm1ILXZscGRhUjh5TFB5bVlHS1F2Q2pRYWxvbWFBZkRNLTRuWkR0M3VsR3NpdXFzYlo4dUxrczFvSmdZTzdKeDhBVXFHYi1idTRwSks4QUtBeXZyYnNFOTE5MDNhLU10?oc=5",
-    "time": "2026-10-06T13:21:00+00:00",
-    "added": "2026-10-07T20:42:40+00:00"
-   },
-   {
-    "id": "appleaapltradingaboveanalysttargetsasmemorycostscrimpmargino",
-    "ticker": "AAPL",
-    "scope": "held",
-    "cat": "fund",
-    "title": "메모리 비용 상승으로 애플의 마진 전망 압박",
-    "orig": "Apple (AAPL) Trading Above Analyst Targets as Memory Costs Crimp Margin Outlook",
-    "summary": "부품 원가 상승이 애플의 향후 수익성에 부담으로 작용하고 있다.",
-    "source": "24/7 Wall St.",
-    "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNQWtqU1hpX1lvQUlRTGdLWDJhMXJfOTFYdUNJQ2VucWFSbm5RYTRxNWZ4LTJ5S0VjN3hua25IXzJ1VFZIWnk1OTBrXzBpWWhiM0xCSGVTT09va1hBa1FkQWJWdEoyS2xOTTVuazdKTHJTZXlENGYySFo1Y2RSUVRkcVNTVjJJMTJLeHdMRU1lTTNqeFV2Mm9wd3JOczZvTEY5VjhKNklQcnp0a3JiVXZCMXcwZm92NFMzdjBMZG5R?oc=5",
-    "time": "2026-10-06T12:35:00+00:00",
-    "added": "2026-10-07T15:29:58+00:00"
-   },
-   {
-    "id": "spacexjustreachedorbitwithstarshiphereswhata1000investmentco",
-    "ticker": "SPCX",
-    "scope": "industry",
-    "cat": "growth",
-    "title": "스타십 궤도 비행 성공한 스페이스X, 2030년 가치 전망",
-    "orig": "SpaceX Just Reached Orbit With Starship. Here's What a $1,000 Investment Could Be Worth by 2030",
-    "summary": "스페이스X의 스타십이 궤도 비행에 성공하며 장기적인 기업 가치 상승 기대를 높이고 있다.",
-    "source": "The Motley Fool",
-    "link": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxNMFA0bUJFVmVsTjFlcURWYldBY0hNUEZla1REZ3lDZm1TTTV5LXgwZTVta3g1VG5KSEdqT0h4aTJFNFBOQ3JHT0ZYS0QxTFF4cVYyM1EzLWpHb0x2aEFhVVlvazBiRDBmZ3otZEt6ODdDc3VpSTNZX0lPamh2dzBhT19GemlOeDM5UE5Xemx2UGgzV3pnNXpEQmJBM0g5dGNycTJXYjkzblY2eThuVHFrNFptXzNNWHNzRktVMnpzalRScnJUNjYyMU85NVVSOTYzdFNiSEln?oc=5",
-    "time": "2026-10-06T12:31:00+00:00",
-    "added": "2026-10-07T13:03:59+00:00"
-   },
-   {
-    "id": "nvidiastockhitsrecordhighafterfoxconnq32026revenuesurge",
-    "ticker": "NVDA",
-    "scope": "held",
-    "cat": "growth",
-    "title": "폭스콘 3분기 실적 호조 속 엔비디아 주가 사상 최고가 경신",
-    "orig": "Nvidia stock hits record high after Foxconn Q3 2026 revenue surge",
-    "summary": "주요 협력사인 폭스콘의 매출 급증에 힘입어 엔비디아가 최고가를 기록함.",
-    "source": "Quartz",
-    "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTFBsWHNQWGdlTElNSUowYmlDcGZ0OEd0bV9kT0RuTXNfTENVc093RGE1bG5IUUN0Ym1UMGxjRm9WMXZ2XzNQUjFCbTVkaVhwX0FJd0ZEcWQtUEZaNC1VSERjTGZrcTRCdWZjWERXQQ?oc=5",
-    "time": "2026-10-06T12:27:11+00:00",
-    "added": "2026-10-07T00:36:46+00:00"
-   },
-   {
-    "id": "morganstanleytdcowenbackspacexasstarlinkpasses12millionsubsc",
-    "ticker": "SPCX",
-    "scope": "industry",
-    "cat": "market",
-    "title": "스타링크 가입자 1200만 명 돌파와 우주항공 투자",
-    "orig": "Morgan Stanley, TD Cowen Back SpaceX as Starlink Passes 12 Million Subscribers",
-    "summary": "스타링크의 가입자 급증이 스페이스X의 위성 통신 시장 지배력과 성장성을 증명하고 있습니다.",
-    "source": "Benzinga",
-    "link": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxORDA4dDlEdnY3cDVzRFZNWkZGOUR2aGtkeFZOaF80UmRpQi1qLVRrMVg5QXR0MVVRcFF0aGVBYkVJbUdSTVBYMXliRGNjLVZEQ0pDYmJ6SjYxZDZCTGtxT21RbEpVaEZwRlVQR0s4cXExS3pRZG5nZ05kM2ZQSFkzWm9CczhoaHZzRkI2MW9RWlYtS0NzMG1wWlRDcUNGVHRmLS1GTmQ1Qmo3d0o4WU9EMnpIMTgtYVpHSmNQTjg2ZFVlcDVTa1NadGJlSlJMWk9ka04ySg?oc=5",
-    "time": "2026-10-06T12:18:02+00:00",
-    "added": "2026-10-06T15:51:57+00:00"
-   },
-   {
-    "id": "argonnehostsinauguralsummittochartthefutureofsodiumionbatter",
-    "ticker": "TSLA",
-    "scope": "industry",
-    "cat": "growth",
-    "title": "나트륨 이온 배터리 미래를 위한 아르곤 국립연구소 서밋 개최",
-    "orig": "Argonne Hosts Inaugural Summit to Chart the Future of Sodium-Ion Batteries",
-    "summary": "리튬을 대체할 나트륨 이온 배터리 기술 개발이 차세대 에너지 및 전기차 시장의 성장을 이끌 전망입니다.",
-    "source": "Argonne National Laboratory (.gov)",
-    "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxPQ0lOTUZyOXh5NWczaFRjSmhvYllXRjNLQVBEUDJSTkRZNEJ4TzlZd3hkVHBCWDhIdnVTLVd3SjBGdE51Mjd4SEJhLTNjb3VWelVYNi03ZENVRGxfb0R3VXpIMVN4REc0ZVY3QUJDR2VPbGI3UTYxVkxmZ2RHbXNqSExhRXE4aUZwZWVDU2NrTWUtSDlGcEJZdG5TdDJMaFplZm14OS1HR1FOT01B?oc=5",
-    "time": "2026-10-06T12:00:00+00:00",
-    "added": "2026-10-09T03:20:03+00:00"
-   },
-   {
-    "id": "nvidiastockgetsjawdroppingpricetargethikeonboomingaidemand",
-    "ticker": "NVDA",
-    "scope": "held",
-    "cat": "market",
-    "title": "폭발적인 AI 수요에 엔비디아 목표주가 상향",
-    "orig": "Nvidia Stock Gets Jaw-Dropping Price Target Hike on Booming AI Demand",
-    "summary": "인공지능 인프라 수요가 지속되며 엔비디아의 중장기 성장성이 재확인되었습니다.",
-    "source": "Yahoo Finance",
-    "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxOTnNyRWNtcWpNSXI5X0hTcWxxamNpcVRfZVZFM0FnakJuUDl0YlZqTERhNXBLWmM4OW4yaHhSQmVJNHJqYjBCcWNtQzZublJIcDhEQVk1Z3ZhU0VXTEZCNHlJZkVtYVpfSzBpZy1CMWtTX09QTFRZQXdUUVQ4aXpKQlU4S2xlNko2NW44OG9QTDJtdjgtOE9MWnZ3?oc=5",
-    "time": "2026-10-06T11:50:32+00:00",
-    "added": "2026-10-06T15:51:57+00:00"
-   },
-   {
-    "id": "applesyearhingesonthefoldableiphoneduo",
-    "ticker": "AAPL",
-    "scope": "held",
-    "cat": "growth",
-    "title": "폴더블 아이폰 듀오에 달린 애플의 향후 성장 동력",
-    "orig": "Apple’s Year Hinges on the Foldable iPhone Duo",
-    "summary": "새롭게 출시될 폴더블 아이폰 시리즈가 애플의 중장기 실적 성패를 가를 핵심 제품으로 꼽힘.",
-    "source": "Bloomberg.com",
-    "link": "https://news.google.com/rss/articles/CBMisAFBVV95cUxPY3BSY0lYU09vZ1laZXZIRldLWV80RzV3a2R6WXhrOGtPSGpiSU5TZFFQcGtFa1ZTM2RlVFlfWVBnU1BqdmtSelFRSlFRM1lRMWtsY2kySmdVeXBraWFnRVRVXzBXeGNxbGlDWXNJdUszQ0JXWkg1MlY4SFlIRE8tYnItblpOR2k5R2JnM0x6WFFpVUxNRGZYazFEcnlzVzBsT20zT3NGUHVFdUNKUUJvZA?oc=5",
-    "time": "2026-10-06T11:30:24+00:00",
-    "added": "2026-10-07T00:36:46+00:00"
    }
   ],
   "digest": {
@@ -2744,42 +2744,42 @@
     "sum": "스페이스X의 **400억 달러 AI 투자** 등 우주·빅테크 진영의 막대한 인프라 지출이 향후 1~3년 반도체 공급망 전반의 중기 수요를 견인할 핵심 동력입니다.\n주요 팹과 부품 수요가 맞물려 반도체 생태계 전반의 외형 성장을 이끌 것으로 기대됩니다.\n위험: **AI 투자 대비 수익성 회의론**과 **국채 금리 상승**으로 인한 반도체 종목 전반의 밸류에이션 압박 및 높은 변동성이 위험 요인입니다.",
     "hash": "b2faf30dd9615d6f",
     "updated": "2026-10-09T07:10:19+00:00",
-    "seen": "2026-10-09T14:10:27+00:00"
+    "seen": "2026-10-09T15:01:31+00:00"
    },
    "TSLA": {
-    "sum": "테슬라는 유럽 수요 회복에 힘입어 **9월 중국산 전기차 판매가 5% 증가**했으며, **사이버캡**과 메가차저 네트워크 확장을 통해 상용 인프라 생태계를 넓히고 있습니다.\n또한 촉각 센서 특허를 필두로 한 **옵티머스** 로봇과 완전자율주행(**FSD**) 기술 고도화로 단순 제조사를 넘어선 '슈퍼 인텔리전스' 기업 전환을 가속하고 있습니다.\n위험: 높은 선행 **PER**에 따른 밸류에이션 부담과 함께 막대한 **AI** 설비투자 대비 가시적인 로봇 사업 성과 증명 및 연산 자원 부족이 부담 요인입니다.",
-    "hash": "152e492043e1edf4",
-    "updated": "2026-10-09T14:10:27+00:00",
-    "seen": "2026-10-09T14:10:27+00:00"
+    "sum": "테슬라는 **자율주행 FSD**의 유럽 승인과 **사이버캡** 등 AI 기반 서비스 확장을 통해 단순 전기차 제조사를 넘어선 **슈퍼 인텔리전스** 기업으로 전환을 추진하고 있습니다.\n중국 시장의 판매량 반등과 상용차 충전 인프라 확대 역시 장기 성장에 긍정적입니다.\n위험: 높은 **선행 PER**과 대규모 AI 투자 대비 로봇 사업의 가시적 성과 증명 부담이 변동성을 키울 수 있습니다.",
+    "hash": "81c6562051392584",
+    "updated": "2026-10-09T15:01:31+00:00",
+    "seen": "2026-10-09T15:01:31+00:00"
    },
    "NVDA": {
-    "sum": "엔비디아는 오픈AI의 **2026년 매출 700억 달러** 전망과 글로벌 빅테크의 지속적인 설비투자에 힘입어 **AI 가속기** 생태계의 중추적 역할을 유지하고 있습니다.\n반면 파트너사의 **50억 달러** 규모 IPO 철회와 거시경제적 AI 버블 경고 등 단기 과열에 대한 시장의 경계 심리도 동시에 커지고 있습니다.\n위험: 구글의 **독자 AI 칩** 출시에 따른 경쟁 심화와 내부자의 **9억 4,700만 달러** 대규모 주식 매도, 전반적인 AI 투자 속도 조절 가능성이 주요 위험 요인입니다.",
-    "hash": "4b5f3ca8806f49d1",
-    "updated": "2026-10-09T14:10:27+00:00",
-    "seen": "2026-10-09T14:10:27+00:00"
+    "sum": "엔비디아는 빅테크들의 지속적인 **AI 인프라 투자**와 광학 부품 등 공급망 호조에 힘입어 **AI 생태계**의 중심 자리를 지키고 있습니다.\n오픈에이아이나 비트디어 같은 파트너들의 성장은 중장기 **칩 수요**의 든든한 기반이 됩니다.\n위험: 일부 대형주의 **내부자 매도**와 구글 등 경쟁사의 독자 칩 등장에 따른 **경쟁 심화**가 리스크입니다.",
+    "hash": "cb133188c4073352",
+    "updated": "2026-10-09T15:01:31+00:00",
+    "seen": "2026-10-09T15:01:31+00:00"
    },
    "SPCX": {
-    "sum": "스페이스X는 전국망 **800MHz 대역 주파수**를 인수하며 위성과 지상을 아우르는 신규 무선 통신 사업 진출의 발판을 마련했습니다.\n이를 통해 **스타링크**를 단순 인터넷망에서 모바일 통신 서비스로 확장해 기존 통신 업계의 판도를 흔들 강력한 성장 동력을 확보하고 있습니다.\n위험: 기존 대형 통신사들과의 치열한 시장 점유율 경쟁과 대규모 무선 통신망 구축 및 상용화 과정에서의 실행 불확실성이 위험 요인입니다.",
-    "hash": "086fde529e137c02",
-    "updated": "2026-10-09T14:10:27+00:00",
-    "seen": "2026-10-09T14:10:27+00:00"
+    "sum": "스페이스X는 위성 주파수 확보를 통해 지상 기지국이 필요 없는 **스타링크 모바일** 통신 서비스를 본격화하며 기존 이동통신 시장을 강하게 압박하고 있습니다.\n이러한 우주 기반 무선 통신망 확장은 향후 새로운 **모바일 기기** 생태계로 사업 영역을 넓히는 핵심 동력이 됩니다.\n위험: 통신 규제 리스크와 기존 거대 통신사들과의 **치열한 경쟁**이 부담이 될 수 있습니다.",
+    "hash": "45a84ed4f5a113d1",
+    "updated": "2026-10-09T15:01:31+00:00",
+    "seen": "2026-10-09T15:01:31+00:00"
    },
    "AAPL": {
-    "sum": "애플은 전 세계 **25억 대**에 달하는 활성 기기를 기반으로 잠재력 높은 **AI 서비스** 생태계 확장을 추진하고 있습니다.\n동시에 새로운 M&A 책임자를 선임하고 터치스크린 맥북 등 신규 하드웨어 라인업을 준비하며 차세대 업그레이드 주기를 모색하고 있습니다.\n위험: 수요 부진과 부품 수급 불안으로 차세대 **아이폰 프로 부품 주문이 15% 감축**되었다는 관측과 현금흐름 대비 고평가 논란이 단기 실적의 위험 요인입니다.",
-    "hash": "06138ceafcaaa143",
-    "updated": "2026-10-09T14:10:27+00:00",
-    "seen": "2026-10-09T14:10:27+00:00"
+    "sum": "애플은 전 세계에 깔린 **25억 대의 기기**를 바탕으로 향후 거대한 **AI 서비스** 기회를 열어갈 잠재력을 지니고 있습니다.\n새로운 M&A 책임자 선임과 터치스크린 맥북 등 **신제품 하드웨어** 라인업 확장은 장기적인 자본 배치와 교체 수요를 자극할 것입니다.\n위험: 차세대 아이폰 프로 부품 주문 감축설에서 보듯 단기적인 **수요 둔화**와 공급망 비용 부담이 존재합니다.",
+    "hash": "c4a5f624e41e79be",
+    "updated": "2026-10-09T15:01:31+00:00",
+    "seen": "2026-10-09T15:01:31+00:00"
    },
    "GLD": {
-    "sum": "미국 **국가 부채** 급증 우려와 장기 펀더멘탈 요인들이 맞물리며 대표 안전자산인 금 현물 ETF에 대한 중장기 가치 방어 매력이 부각되고 있습니다.\nESG 기준을 반영한 채굴 ETP 부각 등 규제 환경 변화 속에서도 대체 투자 수단으로서의 장기 강세 전망이 유지되고 있습니다.\n위험: 거시경제 환경 변화에 따른 금 가격의 단기 변동성과 높은 운용 비용 부담이 주요 위험 요인입니다.",
-    "hash": "20fdcfc783d6fab2",
-    "updated": "2026-10-09T14:10:27+00:00",
-    "seen": "2026-10-09T14:10:27+00:00"
+    "sum": "금은 국가 부채 증가와 지정학적 리스크가 고조되는 환경 속에서 안전자산으로서의 **장기 강세** 전망이 유지되고 있습니다.\n책임 있는 금 채굴을 강조하는 ESG ETP 상품들은 규제 변화 속에서 대안적 투자처로 부각되고 있습니다.\n위험: 단기적인 가격 조정과 금리 환경 변화에 따른 **변동성**에 주의해야 합니다.",
+    "hash": "a26b658a2de9ebe9",
+    "updated": "2026-10-09T15:01:31+00:00",
+    "seen": "2026-10-09T15:01:31+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-09T14:10:27+00:00"
+  "updated": "2026-10-09T15:01:31+00:00"
  },
  "ai": "ok"
 }
