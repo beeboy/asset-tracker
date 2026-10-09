@@ -1,64 +1,64 @@
 {
- "updated": "2026-10-09T01:01:10+00:00",
+ "updated": "2026-10-09T02:02:19+00:00",
  "realtime": {
-  "key": "0e3ed64cac852cc1",
-  "updated": "2026-10-09T01:01:17+00:00",
+  "key": "715257cdbde41d44",
+  "updated": "2026-10-09T02:02:32+00:00",
   "media": [
    {
-    "title": "오픈AI 매출 우려에 엔비디아·마이크론 등 AI 반도체주 하락",
-    "orig": "Micron, Nvidia and AI chip stocks fall as report on OpenAI’s revenue causes ‘undue concern’",
-    "summary": "오픈AI의 연환산 매출이 예상치를 밑돌았다는 보도가 전해지며 엔비디아와 마이크론 등 주요 반도체 종목이 약세를 보였습니다.",
-    "broker": "",
-    "source": "MarketWatch",
-    "link": "https://www.marketwatch.com/story/micron-nvidia-and-ai-chip-stocks-fall-as-report-on-openais-revenue-causes-undue-concern-2a2bcf53?mod=mw_rss_topstories",
-    "time": "2026-10-08T22:08:00+00:00"
-   },
-   {
-    "title": "스페이스X의 주파수 인수 합의, AT&T·버라이즌 주가 강타",
-    "orig": "SpaceX deal to acquire spectrum license hammers shares of AT&T, Verizon and T-Mobile",
-    "summary": "스페이스X가 스타링크 모바일 사업 확장을 위해 주파수 포트폴리오를 매입하기로 합의하면서 미국 통신사 주가가 급락했습니다.",
+    "title": "오픈AI 매출 실망감에 나스닥 1% 이상 하락",
+    "orig": "Stock futures are little changed after OpenAI's revenue report prompts tech sector turmoil: Live updates",
+    "summary": "오픈아이의 매출 보고서가 기술주 섹터의 혼란을 불러오면서 나스닥 지수가 8중순 이후 최대 낙폭을 기록했습니다.",
     "broker": "",
     "source": "CNBC",
-    "link": "https://www.cnbc.com/2026/10/08/spacex-spectrum-license-att-verizon-tmobile.html",
-    "time": "2026-10-08T22:55:46+00:00"
+    "link": "https://www.cnbc.com/2026/10/08/stock-market-today-live-updates.html",
+    "time": "2026-10-09T01:41:21+00:00"
    },
    {
-    "title": "미국 증시, 유가 급등과 반도체주 약세에 S&P 500·나스닥 하락 마감",
-    "orig": "S&P 500, Nasdaq end lower as crude prices jump, chip stocks weigh",
-    "summary": "국제유가 급등과 AI 반도체 종목 중심의 매도세가 겹치며 S&P 500과 나스닥 지수가 동반 하락했습니다.",
+    "title": "스페이스X 스타링크 모바일 진출에 AT&T·버라이즌 주가 압박",
+    "orig": "SpaceX’s Starlink Mobile plans are pressuring AT&T and Verizon shares",
+    "summary": "스페이스X가 주파수 포트폴리오를 인수한 가운데, 모바일 사업 확장이 통신주 주가에 하방 압력을 가하고 있습니다.",
     "broker": "",
-    "source": "Reuters",
-    "link": "https://news.google.com/rss/articles/CBMinAFBVV95cUxPLTluWFV5cWFfM2xBV243NUduZW80Q3dmYnFLa1Y4Nmhha2RNNHVGTS1sM2NYZ0ZCeWJlazZpSndKOWM0OVUxTmx2M3luSDdpbVgzNnYtanQtb2VkWV9tU2NQaU03ejAxZy1NU1JhWkMwLXRNbmJUY2pWaTBrVE9XbGRXa2VFekh1LTVZbVNGUVRKTVhIU0NnSUZqdXI?oc=5",
-    "time": "2026-10-08T23:09:38+00:00"
+    "source": "MarketWatch",
+    "link": "https://www.marketwatch.com/story/spacexs-starlink-mobile-plans-are-pressuring-at-t-and-verizon-shares-7cb56764?mod=mw_rss_topstories",
+    "time": "2026-10-09T00:52:00+00:00"
+   },
+   {
+    "title": "유가 하락세에도 단기 고유가 국면 지속 전망",
+    "orig": "Oil Edges Lower; Prices Likely to Remain High in Short Term",
+    "summary": "아시아 거래에서 유가가 소폭 하락했으나 전반적인 고유가 흐름은 이어지고 있습니다.",
+    "broker": "",
+    "source": "WSJ",
+    "link": "https://www.wsj.com/finance/commodities-futures/oil-edges-lower-prices-likely-to-remain-high-in-short-term-c7024a73?mod=rss_markets_main",
+    "time": "2026-10-09T01:53:00+00:00"
    }
   ],
   "broker": [
    {
-    "title": "NXP 세미컨덕터, 목표주가 308달러로 하향 조정",
-    "orig": "NXP Semiconductors N.V. Stock 12‑Month Price Target Cut to $308, Implies 31% Upside",
-    "summary": "NXP 세미컨덕터의 12개월 목표주가가 308달러로 낮아졌으나 현재가 대비 약 31%의 상승 여력이 남아있습니다.",
-    "broker": "트레이딩뷰",
+    "title": "발레로 에너지 12개월 목표주가 398달러로 상향",
+    "orig": "Valero Energy Corporation Stock 12‑Month Price Target Raised to $398, Implies 6% Downside",
+    "summary": "발레로 에너지의 목표주가가 상향 조정되었으나 현재 주가 대비 소폭의 하락 여력이 존재합니다.",
+    "broker": "",
     "source": "TradingView",
-    "link": "https://news.google.com/rss/articles/CBMi2AFBVV95cUxON2gtVEZWSzV1TlFqc21HSE9ySDBuX1VVS1lqeHJiMlhKUHNoSWdxWkQ1UzJyd0VTQk95T1kwTTJBZDRpZWpFTTd1bXBEREZ0REhDNUdGcTl3QmxROXhneGlOU0hyZnBnc1paVWhfUVltT3VrUzQ3RWF6aEE2Qkc4WnByN0sxVDh1TDVfY0VKVjIxZ0VwV0lzWVZNRGhNRXIxRlEyZDZfUjVWYXNiVFlEZ1Z3Nll5UWFrcWEtdVVRLUgwMmRaTVVvRllSM1lldktWa3lpQTZCY0c?oc=5",
-    "time": "2026-10-08T22:20:06+00:00"
+    "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxORWI1cmVQVk9KQV9rOXFaWjVZQ2VELURYeEpSZGptaFhob2NmbkgyeDd6Qm9saWZYYmg3Z29FZ2c2T2VoaGVhenk4b1pzX1B3UU5IUjhJVVhRSG42TTBCbmMydXBzOHNRaElfcTg1blF4UjhHeURLNDRQbERKSnRtcmV4UHlkREdQb0lzSUM5bHZnZU9VdU1ETTdyVnFlNXVGbXplbFoteTB5M1Z5OHRBOVZSYS1qUWpOU1p6cVRGV3dfcXQtYmpjY0Nnek5reER1WE9CdUpXcExvNW52aUJUU1Vn?oc=5",
+    "time": "2026-10-08T22:20:11+00:00"
    },
    {
-    "title": "슈퍼마이크로컴퓨터, 목표주가 42.27달러로 상향… 6% 하락 여력",
-    "orig": "Super Micro Computer, Inc. Stock 12‑Month Price Target Raised to $42.27, Implies 6% Downside",
-    "summary": "슈퍼마이크로컴퓨터의 목표주가가 42.27달러로 소폭 상향 조정되었으나 현재 주가 기준 6%의 하락 가능성이 제시되었습니다.",
-    "broker": "트레이딩뷰",
+    "title": "유니버설 디스플레이 목표주가 112달러로 하향",
+    "orig": "Universal Display Corporation Stock 12‑Month Price Target Cut to $112, Implies 45% Upside",
+    "summary": "유니버설 디스플레이의 12개월 목표주가가 하향 조정되었습니다.",
+    "broker": "",
     "source": "TradingView",
-    "link": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxPblhrVXR6bDBuR2NISjlDTlNyZWN3ZnB4aEdGR2JJNHIzczFGcWdiTGgtMWZ1M3R3Tktnd3VXeWgxNExRZGlTMjlXbWhoQ2owaWhaekp2NjdRdl82b05tOGU4T0xpUGVIeXRBVUlOdGlSU3JVQlNtZVc4T2l1VzNQM1BxRlp2aXc1Z29NYXNUZU9xQVlBVHFPU2dWM2RiZzRZWDd0bkFRaFVTZEY3R09ENjc1WlZoWmkxNXY4VzE3cmlwVUVFaXJleVoxVEJxTW14RXcxWTV0bGxKRUJWakl2VDA5VQ?oc=5",
+    "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxORXd1TWNJek5jdUllLVJ1cWZkTk9oYmNsZXRGWVRFTzFSZkVzUlZsYTRxbHZRb3VQVnRjMnlTNXJqVnpTVGpsemtLMzlVcEI2VHo1RXhDWkluNHhBSFY4bHVjTDMwem12Nm4ydjVjM2RWZElkYVZSaDV2enJaNk9mWmF0VTl6cE1rS2VjVUltRnQ0UUNybkNjZWNwRUMwQzZUdThoYWNmSXBOWkJ4b3JQTFVrNlFfN1BXallpSmdGTkUyNGQxR2RIU1ZPNnlrSXVwMzVjRHFibU01VnBSd1BJaklB?oc=5",
     "time": "2026-10-08T22:20:08+00:00"
    },
    {
-    "title": "로우스, 업황 악화 우려 완화에 '매수'로 투자의견 상향",
-    "orig": "Lowe's: Patience Can Be Rewarded With Environment Unlikely To Worsen (Upgrade) (NYSE:LOW)",
-    "summary": "추가적인 거시경제 악화 가능성이 낮아지며 실적 회복 기대감 속에 로우스의 투자의견이 매수로 상향되었습니다.",
-    "broker": "시킹알파",
-    "source": "Seeking Alpha",
-    "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxQNmZBSVJkYm1fbV9QQnNtNzNLVlhoR2hhLWktdUhhZ2gyQUdSZFp2ZExYWkNmVGZrdHAySFFmakw5bWQ1eGhTZmpTMWdHdTlRV21hZE05MHZuU2E3SjZ5RTFNLTU5UHJyVjQ0TzlUWC1tTGpPZHQ2TGJxZVc2YWZoaWdKTVI4M0NsV1ZaU21xcTg0RlVkUmloNk1fMU9Sb2pnVm1zVHNXcGUtSGtnVUhpYTdwck5vZw?oc=5",
-    "time": "2026-10-08T22:23:39+00:00"
+    "title": "선런 12개월 목표주가 15.4달러로 하향",
+    "orig": "Sunrun Inc. Stock 12‑Month Price Target Cut to $15.4, Implies 102% Upside",
+    "summary": "태양광 업체 선런의 목표주가가 대폭 낮아졌습니다.",
+    "broker": "",
+    "source": "TradingView",
+    "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxPOVB3dnloYmx6cWZXTmVIY0ZvbFI0RE0wZXRfcVc4Mk1oMFFJZGhsVDlPWm85aEhQUURqRXdIREFOR09iVnpSYjdhWGlSTmZKNzBsYWtkcUE3NGp0WnJMaWdrMlB2UU5EeXFJekN2VUg4V3N3cnh1T2ZPVnZPSW5YSG9ScmNIQnVBUFNSZ2JfRXYwR2ZoektoNjBCTnFuU2Y3bGJ5M3FUS1Bpcy01Y2dXVjRmNGs4YVBSbEpkcXhPOG43TWpxRkZXMzVGSQ?oc=5",
+    "time": "2026-10-08T22:20:08+00:00"
    }
   ]
  },
@@ -126,7 +126,7 @@
   "v": 3
  },
  "insight": {
-  "updated": "2026-10-09T01:01:10+00:00",
+  "updated": "2026-10-09T02:02:19+00:00",
   "v": 1,
   "industry": {
    "TSLA": "전기차·자율주행·로봇",
@@ -139,6 +139,58 @@
   },
   "items": [
    {
+    "id": "amdceodeliversstarkwarningonchipmarketsfuture",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "market",
+    "title": "AMD CEO, 칩 시장 미래에 대한 경고 메시지 전달",
+    "orig": "AMD CEO delivers stark warning on chip market’s future",
+    "summary": "향후 반도체 시장의 수요와 경쟁 구도 변화를 시사하는 경고입니다.",
+    "source": "TheStreet",
+    "link": "https://finance.yahoo.com/technology/articles/amd-ceo-delivers-stark-warning-010300304.html",
+    "time": "2026-10-09T01:03:00+00:00",
+    "added": "2026-10-09T02:02:19+00:00"
+   },
+   {
+    "id": "spacextakesaimatuswirelesscarrierswithspectrumacquisition",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "growth",
+    "title": "SpaceX takes aim at US wireless carriers with spectrum acquisition",
+    "orig": "SpaceX takes aim at US wireless carriers with spectrum acquisition",
+    "summary": "스페이스X가 신규 통신 사업 진출을 본격화하며 미래 성장 동력을 확보하고 있습니다.",
+    "source": "Reuters",
+    "link": "https://finance.yahoo.com/news/spacex-takes-aim-us-wireless-005655492.html",
+    "time": "2026-10-09T00:56:55+00:00",
+    "added": "2026-10-09T02:02:19+00:00"
+   },
+   {
+    "id": "spacexmakesbigplaytobecomeawirelesscarrier",
+    "ticker": "SPCX",
+    "scope": "held",
+    "cat": "growth",
+    "title": "스페이스X, 무선 통신 사업자 도약 위한 대규모 행보",
+    "orig": "SpaceX Makes Big Play to Become a Wireless Carrier",
+    "summary": "위성 통신과 무선 통신을 결합한 새로운 사업 영역 확장을 추진 중입니다.",
+    "source": "The Wall Street Journal",
+    "link": "https://finance.yahoo.com/m/4bf5d4bd-8b40-3886-afb2-c217bc9f50dc/spacex-makes-big-play-to.html",
+    "time": "2026-10-09T00:45:00+00:00",
+    "added": "2026-10-09T02:02:19+00:00"
+   },
+   {
+    "id": "raydaliosaysaibubbleisclosetoburstingasdebtandrisingratesrai",
+    "ticker": "NVDA",
+    "scope": "held",
+    "cat": "fund",
+    "title": "레이 달리오, 부채와 금리 상승 속 AI 버블 '붕괴 임박' 경고",
+    "orig": "Ray Dalio Says AI Bubble Is ‘Close’ to Bursting as Debt and Rising Rates Raise Red Flags",
+    "summary": "거시경제 리스크와 밸류에이션 부담이 AI 관련 자산에 미칠 잠재적 위험을 지적했습니다.",
+    "source": "Benzinga",
+    "link": "https://finance.yahoo.com/technology/ai/articles/ray-dalio-says-ai-bubble-003016920.html",
+    "time": "2026-10-09T00:30:16+00:00",
+    "added": "2026-10-09T02:02:19+00:00"
+   },
+   {
     "id": "spacexshybridstarlinkmobilespectrumdealmightchangethecasefor",
     "ticker": "SPCX",
     "scope": "held",
@@ -150,6 +202,19 @@
     "link": "https://finance.yahoo.com/markets/stocks/articles/spacex-hybrid-starlink-mobile-spectrum-002158185.html",
     "time": "2026-10-09T00:21:58+00:00",
     "added": "2026-10-09T01:01:10+00:00"
+   },
+   {
+    "id": "solventsforbatteryelectrolytemarkettoaccelerateonevgigafacto",
+    "ticker": "TSLA",
+    "scope": "industry",
+    "cat": "market",
+    "title": "배터리 전해액용 용매 시장, 2035년까지 전기차 수요로 급성장 전망",
+    "orig": "Solvents for Battery Electrolyte Market to Accelerate on EV Gigafactory Demand, Forecast Points Higher Toward 2035",
+    "summary": "전기차 기가팩토리 수요 증가에 힘입어 관련 배터리 공급망 시장이 확대될 것입니다.",
+    "source": "IndexBox",
+    "link": "https://news.google.com/rss/articles/CBMi2wFBVV95cUxQQVAyS0xrNjRnN3VtUjhwcG5QRWgtSmJOcnBfeWtraXNTZW11ZVRhTE9ZOUJ2RzM4NmxycW40ZElTQVRiVzR1bWp1RVZuVXFFcDctVDhzZTVOZTJLQVJvaDZZVkxnWkE3MEt4ZFNZTXQ5RFNlYjBOclNqeHprSUlQNnlPZmtWNk1yOE5XaV9TWTVKN3Q5SUZBUjlCUlB1aDBIdklscTB5ZUtQWUpLUlZXMjN1MDBCZHFabnZFaGRQaUMxMzZkdnpvZzF4X05LQzF0RmhWT3VySTJKSXc?oc=5",
+    "time": "2026-10-08T23:51:05+00:00",
+    "added": "2026-10-09T02:02:19+00:00"
    },
    {
     "id": "intelceolipbutansayscompanywillkeepworkingonterafabelonmuskc",
@@ -2672,114 +2737,49 @@
     "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxNT2ZTZDMzaGJJT2o2dGpLNE4xbzZXOFRJdzVVVm9OanBHT2tJdUhfOU1FWGdoNl9RRUpXa1pOWFo4QWJFbThDclBKTmlHVHFaQ3FFbUtHUW15bnNrRC1LTHNzcEE0djhsQmpkNUhjOENzWVdhLTZ0S3l5cUxoUHNlWHZJZlZXaEdsSmJxaEgwRFJjQ2tiRjkybE1IdFNnQzhHb09qR0ZnSFg?oc=5",
     "time": "2026-10-05T07:23:46+00:00",
     "added": "2026-10-05T09:02:08+00:00"
-   },
-   {
-    "id": "nvidiasvaluationsshowairallyisntabubbledbssays",
-    "ticker": "NVDA",
-    "scope": "held",
-    "cat": "fund",
-    "title": "DBS \"엔비디아 밸류에이션, AI 랠리는 거품 아냐\"",
-    "orig": "Nvidia’s Valuations Show AI Rally Isn’t a Bubble, DBS Says",
-    "summary": "현재 엔비디아의 가치 평가는 AI 열풍이 버블이 아님을 증명하고 있다는 분석이다.",
-    "source": "Bloomberg",
-    "link": "https://finance.yahoo.com/markets/stocks/articles/nvidia-valuations-show-ai-rally-070429645.html",
-    "time": "2026-10-05T07:04:29+00:00",
-    "added": "2026-10-05T09:02:08+00:00"
-   },
-   {
-    "id": "satelliteconnectedflightsswissbringsstarlinkinternettoitsair",
-    "ticker": "SPCX",
-    "scope": "industry",
-    "cat": "growth",
-    "title": "스위스항공, 스타링크 위성 인터넷 도입",
-    "orig": "Satellite-Connected Flights: SWISS Brings Starlink Internet to Its Aircraft",
-    "summary": "항공기 내 위성 인터넷 서비스 도입이 확대되면서 우주·위성 통신 시장의 상용화가 진전되고 있다.",
-    "source": "Trend Hunter",
-    "link": "https://news.google.com/rss/articles/CBMibkFVX3lxTE8wU2kyQ2NkeVVOaW42WlVCZ0dzUGtoaGJUMENRVlZhVzhBTkdYREd5ZjNxOXVydkg1NTE2MWVYQUlfV09KQ2pxVXI3MjRnNjRsVmJxWU51NHBteVItaDhORk8xTHBoQTNEV05Qak1n?oc=5",
-    "time": "2026-10-05T07:00:00+00:00",
-    "added": "2026-10-08T08:50:22+00:00"
-   },
-   {
-    "id": "budgetportablesatellitedishesspacexdropsthestarlinkminidishp",
-    "ticker": "SPCX",
-    "scope": "industry",
-    "cat": "market",
-    "title": "스페이스X, 스타링크 미니 안테나 가격 인하로 보급 확대",
-    "orig": "Budget Portable Satellite Dishes: SpaceX Drops the Starlink Mini Dish Price to $149",
-    "summary": "스페이스X가 휴대용 위성 안테나 가격을 낮추며 시장 점유율 확대에 나섰습니다.",
-    "source": "Trend Hunter",
-    "link": "https://news.google.com/rss/articles/CBMidkFVX3lxTE5SaHVRdExldWRaY0gwUnRPNWtERHphNTVMbDhkRElPWGJZcnRHdC1rS3JlME5vQnJQNjNXcTZJZ0xiUkk2bHZWNGJrblYxNkVIN0lNWEMyeGdrekNGdS0wS3JFUGpJXzZIUDlySUpBNUVjQWtQVFE?oc=5",
-    "time": "2026-10-05T07:00:00+00:00",
-    "added": "2026-10-08T13:00:31+00:00"
-   },
-   {
-    "id": "teslastockrisesovernightaftermusksayssomethingmaycomeoftsmct",
-    "ticker": "TSLA",
-    "scope": "held",
-    "cat": "growth",
-    "title": "테슬라, TSMC와 테라팩스 협력 가능성 시사",
-    "orig": "Tesla Stock Rises Overnight After Musk Says ‘Something May Come Of’ TSMC Talks On Terafab",
-    "summary": "일론 머스크가 TSMC와의 테라팩스 협력 가능성을 언급하며 기대감을 높였다.",
-    "source": "Stocktwits",
-    "link": "https://finance.yahoo.com/markets/stocks/articles/tesla-stock-rises-overnight-musk-035535379.html",
-    "time": "2026-10-05T03:55:35+00:00",
-    "added": "2026-10-05T09:02:08+00:00"
-   },
-   {
-    "id": "applesnewceojohnternusismakingproductdesignamajorpriority",
-    "ticker": "AAPL",
-    "scope": "held",
-    "cat": "esg",
-    "title": "애플 신임 CEO 존 터누스, 제품 디자인 최우선 과제로 삼아",
-    "orig": "Apple's New CEO John Ternus is Making Product Design a 'Major Priority'",
-    "summary": "새로운 수장을 맞이한 애플이 핵심 역량인 제품 디자인 혁신에 다시 고을 죄고 있습니다.",
-    "source": "MacRumors",
-    "link": "https://news.google.com/rss/articles/CBMihwFBVV95cUxNR21vQ00yUTRSLUVYc0JZSmY3YjJ4UURvV0kzeGxrdHNWT1FUS1RIUFlYMUdQQUJqWE15d1AwUmVVajdKeUQxcG53WVoxWTRRcmdQSzRPNDJtcDlIM2dhV2VzZzdfcHNsWVpGMmQyalNERFRVM25ycWJ0cURDSEZ2Z2hyVEljbjg?oc=5",
-    "time": "2026-10-05T02:35:00+00:00",
-    "added": "2026-10-06T08:53:16+00:00"
    }
   ],
   "digest": {
+   "TSLA": {
+    "sum": "테슬라는 **인텔**과의 첨단 제조 협력과 **유럽 FSD** 추진, 그리고 **옵티머스** 로봇 및 메가차저 인프라 확장을 통해 로보틱스와 상용차 시장에서 장기 성장을 도모하고 있습니다.\n하지만 **높은 선행 PER**과 막대한 AI 투자 지출 대비 **로봇 사업**의 가시적 성과 증명이 요구되는 점이 부담입니다.\n위험: 높은 **밸류에이션**과 AI 투자 대비 실적 가시화 지연에 따른 주가 변동성 위험이 있습니다.",
+    "hash": "16cf38766ad10db4",
+    "updated": "2026-10-09T01:01:10+00:00",
+    "seen": "2026-10-09T02:02:19+00:00"
+   },
    "AAPL": {
     "sum": "애플은 전 세계 **25억 대의 기기**를 기반으로 한 **시리 AI 개편**과 스마트홈 시장 재도전을 통해 새로운 슈퍼사이클을 준비하고 있습니다.\n신형 아이패드 미니 및 터치스크린 맥북 출시 등 하드웨어 라인업 확장과 AI 서비스가 장기적인 매출 성장 동력이 될 것입니다.\n위험: 현재 현금 흐름 대비 적정 가치를 상회하는 밸류에이션 부담과 특허 관련 법적 배상 리스크가 존재합니다.",
     "hash": "4910cff65a05a69f",
     "updated": "2026-10-08T22:00:14+00:00",
-    "seen": "2026-10-09T01:01:10+00:00"
+    "seen": "2026-10-09T02:02:19+00:00"
    },
    "SMH": {
     "sum": "스페이스X의 대규모 AI 투자와 엔비디아 칩 구매 확대는 반도체 섹터 전반의 강력한 실수요를 재확인시켜 줍니다.\n데이터센터와 AI 인프라 확충에 따른 반도체 칩 및 관련 장비의 수요는 향후 수년간 업종 성장을 지탱할 것입니다.\n위험: 반도체 공급망 제약과 전방 산업의 투자 축소 가능성이 주요 위험입니다.",
     "hash": "7f7a797599fb2894",
     "updated": "2026-10-08T15:16:43+00:00",
-    "seen": "2026-10-09T01:01:10+00:00"
+    "seen": "2026-10-09T02:02:19+00:00"
    },
    "GLD": {
     "sum": "금 ETF는 미국 국가 부채 증가에 따른 우려 고조 속에서 장기적인 인플레이션 헤지 수단으로서의 매력이 부각되고 있습니다.\n단기적인 가격 조정과 하락세에도 불구하고 견조한 펀더멘탈 요인들이 장기 강세 전망을 지지하고 있습니다.\n위험: 거시경제 지표 변화와 금리 인하 경로 불확실성에 따른 단기 가격 변동성이 확대될 수 있습니다.",
     "hash": "d973872c82d29dca",
     "updated": "2026-10-08T22:00:14+00:00",
-    "seen": "2026-10-09T01:01:10+00:00"
-   },
-   "TSLA": {
-    "sum": "테슬라는 **인텔**과의 첨단 제조 협력과 **유럽 FSD** 추진, 그리고 **옵티머스** 로봇 및 메가차저 인프라 확장을 통해 로보틱스와 상용차 시장에서 장기 성장을 도모하고 있습니다.\n하지만 **높은 선행 PER**과 막대한 AI 투자 지출 대비 **로봇 사업**의 가시적 성과 증명이 요구되는 점이 부담입니다.\n위험: 높은 **밸류에이션**과 AI 투자 대비 실적 가시화 지연에 따른 주가 변동성 위험이 있습니다.",
-    "hash": "16cf38766ad10db4",
-    "updated": "2026-10-09T01:01:10+00:00",
-    "seen": "2026-10-09T01:01:10+00:00"
+    "seen": "2026-10-09T02:02:19+00:00"
    },
    "NVDA": {
-    "sum": "엔비디아는 **미국 과학 및 양자 컴퓨팅 연구에 10억 달러**를 투자하고 **삼성전자**의 차세대 **HBM4E** 메모리 칩 품질 테스트 통과를 통해 AI 생태계 주도권을 강화하고 있습니다.\n안전 플랫폼을 통한 리스크 완화와 젠슨 황 CEO의 책임 있는 기술 발전 강조가 장기적인 성장 신뢰성을 높이고 있습니다.\n위험: **그록** 관련 거래의 법적 시험대 통과 여부 및 AI 투자 열기 둔화에 따른 **밸류에이션** 조정 위험이 있습니다.",
-    "hash": "98ab36bbb8955eee",
-    "updated": "2026-10-09T01:01:10+00:00",
-    "seen": "2026-10-09T01:01:10+00:00"
+    "sum": "엔비디아는 **10억 달러** 규모의 과학 및 양자 컴퓨팅 투자와 데이터센터 인프라 확장을 통해 **AI 생태계 주도권**을 강화하고 있습니다.\n안전 플랫폼과 책임 있는 기술 발전 비전은 장기적인 성장 신뢰성을 높이지만, 법적 리스크와 밸류에이션 부담이 존재합니다.\n위험: AI 버블 우려와 경쟁 심화에 따른 변동성에 유의해야 합니다.",
+    "hash": "3ca83640727e501a",
+    "updated": "2026-10-09T02:02:19+00:00",
+    "seen": "2026-10-09T02:02:19+00:00"
    },
    "SPCX": {
-    "sum": "스페이스X는 구글 AI와의 **290억 달러** 규모 계약 및 **5,000억 달러** 규모 AI 데이터센터 구상을 통해 새로운 성장 동력을 확보하고 있습니다.\n또한 전국망 **800MHz 주파수** 인수와 **아메리칸항공** 등 스타링크 와이파이 도입 확대로 통신 시장 영향력을 넓히고 있습니다.\n위험: 인도 등 해외 시장 진출 지연 및 규제 리스크에 따른 **신사업 확장** 제동 위험이 있습니다.",
-    "hash": "713ec00100a63930",
-    "updated": "2026-10-09T01:01:10+00:00",
-    "seen": "2026-10-09T01:01:10+00:00"
+    "sum": "스페이스X는 **800MHz 주파수** 확보와 **5,000억 달러** 규모의 AI 데이터센터 구상, 그리고 구글과의 대규모 AI 계약을 통해 신사업 확장을 추진하고 있습니다.\n아메리칸항공의 스타링크 도입 확대와 D2C 위성 통신 시장 선두 유지는 향후 몇 년간 탄탄한 성장 동력이 될 것입니다.\n위험: 인도 시장 진출 지연 및 규제 관련 불확실성이 존재합니다.",
+    "hash": "33a7273ca17cd900",
+    "updated": "2026-10-09T02:02:19+00:00",
+    "seen": "2026-10-09T02:02:19+00:00"
    }
   }
  },
  "future_meta": {
-  "updated": "2026-10-09T01:01:10+00:00"
+  "updated": "2026-10-09T02:02:19+00:00"
  },
  "ai": "ok"
 }
