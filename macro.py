@@ -168,7 +168,10 @@ def meals(series: list, dr_now: float | None) -> dict:
         fc = {"dr_now": dr_now, "g_now": round(g_now, 1), "g_now_month": series[last][0],
               "total": [band([m[k][0] + m[k][1] * dr_now + m[k][2] * g_now for m in out]) for k in range(len(HORIZONS))],
               "rate_part": [band([m[k][1] * dr_now for m in out]) for k in range(len(HORIZONS))]}
-    return {"horizons": list(HORIZONS), "b": [[m[k][1] for k in range(len(HORIZONS))] for m in out], "forecast": fc}
+    return {"horizons": list(HORIZONS), "g_now": round(g_now, 2), "g_now_month": series[last][0],
+            "b": [[m[k][1] for k in range(len(HORIZONS))] for m in out],
+            "coef": [[[round(v, 3) for v in m[k]] for k in range(len(HORIZONS))] for m in out],  # [a, b, c] (금리 시나리오 화면용)
+            "forecast": fc}
 
 
 def tnx_now() -> dict | None:
