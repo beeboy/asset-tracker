@@ -110,9 +110,9 @@ enum Notifier {
         }
         // 비중 이탈: 계획 비중에서 기준 넘게 벗어나면 (하루 한 번)
         if m.alerts["drift"] == true, !m.isGoal {
-            let gap = abs(m.drnkWeight - m.planWeight)
+            let gap = abs(m.focusWeight - m.planWeight)
             if gap * 100 > Double(m.alertTh) {
-                lines.append(("비중 이탈", "DRNK 비중이 \(AppModel.pct(m.drnkWeight))예요. 계획(\(AppModel.pct(m.planWeight)))보다 \(Int((gap * 100).rounded()))%p 벗어났어요."))
+                lines.append(("비중 이탈", "\(m.focusName) 비중이 \(AppModel.pct(m.focusWeight))예요. 계획(\(AppModel.pct(m.planWeight)))보다 \(Int((gap * 100).rounded()))%p 벗어났어요."))
             }
         }
         guard !lines.isEmpty else { return }

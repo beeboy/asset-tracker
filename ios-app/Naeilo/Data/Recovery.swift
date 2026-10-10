@@ -35,12 +35,13 @@ struct Plan: Identifiable {
     let id: String
     let name: String
     let tag: String
-    let wt: Double          // 계획 DRNK 비중
+    let wt: Double          // 계획에서 몰린 종목(비중 1위) 비중
     let sigma: Double
     let g: Double           // 보통의 연 성장 (로그)
     let mix: [Basket: Double]
     let mixText: String
     let V: Double
+    var focus = "몰린 종목"     // 몰린 종목 이름 (설명용)
 
     /// T년 뒤 K 이상일 확률
     func prob(_ K: Double, _ T: Double) -> Double {
@@ -52,23 +53,43 @@ struct Plan: Identifiable {
         V * exp(g * T + k * 1.645 * sigma * sqrt(T)) / C - 1
     }
     var desc: String {
-        id == "keep" ? "지금 비중 그대로 (DRNK \(AppModel.pct(wt)))" : "DRNK \(AppModel.pct(wt))로 줄이고, 줄인 돈은 \(mixText)"
+        id == "keep" ? "지금 비중 그대로 (\(focus) \(AppModel.pct(wt)))" : "\(focus) \(AppModel.pct(wt))로 줄이고, 줄인 돈은 \(mixText)"
     }
 }
 
 extension AppModel {
-    var drnkRow: Row? { rows.first { $0.id == "DRNK" } }
-    var qqqRow: Row? { rows.first { $0.id == "QQQ" } }
+    /// 회복 루트는 '한 종목에 몰린 비중'을 다룬다: 몰린 종목 = 내 평가액이 가장 큰 종목, 나머지는 한 묶음
+    /// (시안은 DRNK·QQQ 두 종목이었고, 내 종목이 그 둘이면 결과는 시안과 같다)
+    var focusRow: Row? { rows.max { $0.value < $1.value } }
+    var restRows: [Row] { rows.filter { $0.id != focusRow?.id } }
+    var focusName: String { focusRow?.sym.short ?? "몰린 종목" }
+    /// 나머지 이름: 하나면 그 종목, 여럿이면 "나머지 n종목"
+    var restName: String {
+        let r = restRows
+        return r.count == 1 ? r[0].sym.short : r.isEmpty ? "나머지" : "나머지 \(r.count)종목"
+    }
+    /// 나머지 묶음 수익률 (들어간 돈 대비)
+    var restRet: Double {
+        let c = restRows.reduce(0) { $0 + $1.cost }
+        return c > 0 ? restRows.reduce(0) { $0 + $1.value } / c - 1 : 0
+    }
+    /// 몰린 종목의 업종 자료 (업종 이름이 다모다란 업종과 같을 때만)
+    var focusIndustry: (key: String, ko: String, pe: Double, pe10: Double, growth: Double, count: Int)? {
+        guard let s = focusRow?.sym, !s.sector.isEmpty else { return nil }
+        return Industries.all.first { $0.ko == s.sector }
+    }
     var halfway: Double { total < cost ? total + (cost - total) / 2 : cost }
 
     var plans: [Plan] {
-        let w = drnkWeight, V = total, ST = 0.58, MU = 0.09
+        // 몰린 종목의 흔들림·기대 수익: 시안 DRNK 값(0.58, 9%)을 기본으로, 예시 표에 있는 종목은 그 값
+        let w = focusWeight, V = total, fp = focusRow.flatMap { Sample.lensParams[$0.id] }
+        let ST = focusRow?.id == "DRNK" ? 0.58 : fp?.2 ?? 0.58, MU = fp?.0 ?? 0.09, fn = focusName
         func mk(_ id: String, _ name: String, _ tag: String, _ cap: Double, _ s2: Double, _ r: Double, _ mu2: Double,
                 _ mix: [Basket: Double], _ mixText: String) -> Plan {
             let wt = min(w, cap)
             let sg = sqrt(wt * wt * ST * ST + (1 - wt) * (1 - wt) * s2 * s2 + 2 * wt * (1 - wt) * r * ST * s2)
             let mu = wt * MU + (1 - wt) * mu2
-            return Plan(id: id, name: name, tag: tag, wt: wt, sigma: sg, g: mu - sg * sg / 2, mix: mix, mixText: mixText, V: V)
+            return Plan(id: id, name: name, tag: tag, wt: wt, sigma: sg, g: mu - sg * sg / 2, mix: mix, mixText: mixText, V: V, focus: fn)
         }
         return [
             mk("keep", "유지", "지금 그대로", 1, 0.22, 0.6, 0.09, [.C: 1], ""),
@@ -82,20 +103,20 @@ extension AppModel {
     var horizonLabel: String { horizon == 12 ? "1년" : "\(horizon)개월" }
 
     // 미션 2: 손실이 어디서 왔나
-    var lossShareDRNK: Double {
-        let lt = (drnkRow.map { $0.value - $0.cost } ?? 0), lq = (qqqRow.map { $0.value - $0.cost } ?? 0)
+    var lossShareFocus: Double {
+        let lt = (focusRow.map { $0.value - $0.cost } ?? 0), lq = restRows.reduce(0) { $0 + $1.value - $1.cost }
         let tot = lt + lq
         return tot < 0 ? max(0, min(1, lt / tot)) : 0
     }
-    var quizRight: String { drnkWeight > 0.5 && lossShareDRNK > 0.6 ? "conc" : "mkt" }
+    var quizRight: String { focusWeight > 0.5 && lossShareFocus > 0.6 ? "conc" : "mkt" }
 
-    // 미션 3 결과: 옮길 금액 (QQQ 는 그대로, 줄인 DRNK 금액을 묶음에 나눔)
-    var freedAmount: Double { max(0, (drnkRow?.value ?? 0) - selectedPlan.wt * total) }
+    // 미션 3 결과: 옮길 금액 (나머지는 그대로, 줄인 몰린 종목 금액을 묶음에 나눔)
+    var freedAmount: Double { max(0, (focusRow?.value ?? 0) - selectedPlan.wt * total) }
 
     // 절세 (대한민국 거주자: 해외주식 이익-손실 합계에서 250만원 공제 뒤 22%)
     var taxLossMan: Double {
-        guard let d = drnkRow else { return 0 }
-        return taxSellQty * (d.sym.last - d.h.avg) * Market.shared.fx.last / 1e4
+        guard let d = focusRow else { return 0 }
+        return krw(d.sym, taxSellQty * (d.sym.last - d.h.avg)) / 1e4
     }
     var taxBefore: Double { max(0, taxGain - 250) * 0.22 }
     var taxAfter: Double { max(0, taxGain + taxLossMan - 250) * 0.22 }

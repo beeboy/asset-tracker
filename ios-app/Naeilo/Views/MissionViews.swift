@@ -218,13 +218,15 @@ struct Mission2View: View {
                 }.buttonStyle(.plain)
             }
             if ans != nil {
-                let qRet = m.qqqRow.map { $0.value / $0.cost - 1 } ?? 0
+                let qRet = m.restRet
                 Card {
                     Text(ans == right ? "맞아요." : "내 숫자로 보면 조금 달라요.").appFont(17, .bold)
-                    Text("손실 \(AppModel.man(m.cost - m.total)) 중 \(AppModel.pct(m.lossShareDRNK))가 DRNK 한 종목에서 나왔어요. 같은 기간 QQQ는 \(AppModel.sgn(qRet))였어요.")
+                    Text((m.cost > m.total ? "손실 \(AppModel.man(m.cost - m.total)) 중 \(AppModel.pct(m.lossShareFocus))가 비중 1위 \(m.focusName) 한 종목에서 나왔어요."
+                          : "지금은 들어간 돈보다 \(AppModel.sgn(m.ret)) 위예요.")
+                         + (m.restRows.isEmpty ? "" : " 같은 기간 \(m.restName)는 \(AppModel.sgn(qRet))였어요."))
                         .appFont(15).lineSpacing(3)
-                    HStack { Text("DRNK 비중"); Spacer(); Text(AppModel.pct(m.drnkWeight)).fontWeight(.bold) }.appFont(14)
-                    ProgressBar(value: m.drnkWeight, height: 10, fill: Theme.purple, track: Theme.track)
+                    HStack { Text("\(m.focusName) 비중"); Spacer(); Text(AppModel.pct(m.focusWeight)).fontWeight(.bold) }.appFont(14)
+                    ProgressBar(value: m.focusWeight, height: 10, fill: Theme.purple, track: Theme.track)
                     PrimaryButton(title: "한 가지 더 보기") { m.done.insert(2); m.boardPath.append(.m2r) }
                 }
             }
@@ -312,31 +314,36 @@ struct Mission3View: View {
     }
 
     private var holdingsCard: some View {
-        let d = Industries.all.first { $0.key == "AutoAero" }!
-        let b = Basket.of(pe: d.pe, pe10: d.pe10, growth: d.growth)
-        let ratio = String(format: "%.1f", d.pe / d.pe10)
+        // 비중 1위 종목의 업종 (업종 자료가 없는 종목은 이름만)
+        let d = m.focusIndustry, sector = m.focusRow?.sym.sector ?? ""
+        let b = d.map { Basket.of(pe: $0.pe, pe10: $0.pe10, growth: $0.growth) } ?? "?"
+        let ratio = d.map { String(format: "%.1f", $0.pe / $0.pe10) } ?? ""
+        let restSub = m.restRows.allSatisfy { $0.sym.sector == "지수" } ? "지수 · 여러 업종에 분산" : m.restRows.map(\.sym.short).joined(separator: " · ")
         return Card {
             Text("내 종목 업종").appFont(15, .bold)
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("DRNK \(AppModel.pct(m.drnkWeight))").appFont(15, .bold)
-                    Text("우주항공·궤도 통신 · PER 평균의 \(ratio)배 · 성장 \(Int(d.growth.rounded()))%").appFont(13).foregroundStyle(Theme.sub)
+                    Text("\(m.focusName) \(AppModel.pct(m.focusWeight))").appFont(15, .bold)
+                    Text(d.map { "\($0.ko) · PER 평균의 \(ratio)배 · 성장 \(Int($0.growth.rounded()))%" } ?? (sector.isEmpty || sector == "지수" ? "업종 자료 없음" : sector))
+                        .appFont(13).foregroundStyle(Theme.sub)
                 }
                 Spacer()
-                tag(b == "H" ? "과열" : Basket(rawValue: b)?.name ?? "세 묶음 밖", hot: b == "H")
+                tag(b == "H" ? "과열" : b == "?" ? (sector == "지수" ? "지수" : "업종 모름") : Basket(rawValue: b)?.name ?? "세 묶음 밖", hot: b == "H", neutral: b == "?")
             }
-            if b == "H" {
+            if let d, b == "H" {
                 Text("업종 PER이 10년 평균의 \(ratio)배인데 이익 성장은 \(Int(d.growth.rounded()))%예요. 가격이 이익보다 훨씬 빨리 올라서 세 묶음 어디에도 넣지 않아요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
             }
-            Divider().overlay(Theme.line)
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("QQQ \(AppModel.pct(1 - m.drnkWeight))").appFont(15, .bold)
-                    Text("나스닥100 · 여러 업종에 분산").appFont(13).foregroundStyle(Theme.sub)
+            if !m.restRows.isEmpty {
+                Divider().overlay(Theme.line)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(m.restName) \(AppModel.pct(1 - m.focusWeight))").appFont(15, .bold)
+                        Text(restSub).appFont(13).foregroundStyle(Theme.sub)
+                    }
+                    Spacer()
+                    tag("\(m.restRows.count)종목", hot: false, neutral: true)
                 }
-                Spacer()
-                tag("지수", hot: false, neutral: true)
             }
         }
     }
@@ -394,7 +401,7 @@ struct BasketList: View {
     }
 }
 
-// 계획 비중 막대: DRNK + 묶음
+// 계획 비중 막대: 몰린 종목 + 묶음
 private func mixBar(_ p: Plan) -> some View {
     let rest = 1 - p.wt
     let segs: [(Color, Double)] = [(Theme.purple, p.wt)] + Basket.allCases.map { ($0.color, rest * (p.mix[$0] ?? 0)) }
@@ -409,12 +416,12 @@ private func mixBar(_ p: Plan) -> some View {
         }
         .frame(height: 10).clipShape(Capsule()).background(Theme.track, in: Capsule())
         FlowRow(spacing: 8) {
-            legend(Theme.purple, "DRNK")
+            legend(Theme.purple, p.focus)
             ForEach(Basket.allCases, id: \.self) { legend($0.color, $0.name) }
         }
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("DRNK \(AppModel.pct(p.wt))" + Basket.allCases.compactMap { b in p.mix[b].map { ", \(b.name) \(AppModel.pct(rest * $0))" } }.joined())
+    .accessibilityLabel("\(p.focus) \(AppModel.pct(p.wt))" + Basket.allCases.compactMap { b in p.mix[b].map { ", \(b.name) \(AppModel.pct(rest * $0))" } }.joined())
 }
 
 // MARK: 미션 3 결과 — 옮길 금액
@@ -432,14 +439,14 @@ struct Mission3ResultView: View {
             }
             Card {
                 Text("옮길 금액").appFont(15, .bold)
-                moveRow("DRNK", freed > 0 ? "\(Int((m.drnkWeight * 100).rounded()))→\(AppModel.pct(sel.wt))" : AppModel.pct(m.drnkWeight),
+                moveRow(m.focusName, freed > 0 ? "\(Int((m.focusWeight * 100).rounded()))→\(AppModel.pct(sel.wt))" : AppModel.pct(m.focusWeight),
                         freed > 0 ? "-" + AppModel.man(freed) : "그대로", up: false)
-                moveRow("QQQ", AppModel.pct(1 - m.drnkWeight), "그대로", up: true)
+                if !m.restRows.isEmpty { moveRow(m.restName, AppModel.pct(1 - m.focusWeight), "그대로", up: true) }
                 ForEach(Basket.allCases.filter { (sel.mix[$0] ?? 0) > 0 && sel.id != "keep" }, id: \.self) { b in
                     let a = freed * (sel.mix[b] ?? 0)
                     moveRow(b.name, "0→\(AppModel.pct(a / max(1, m.total)))", "+" + AppModel.man(a), up: true)
                 }
-                Text(sel.id == "keep" ? "지금 구성 그대로 두는 계획이에요." : "DRNK 매도 손실은 같은 해 해외주식 이익과 상계돼요 (절세 화면).")
+                Text(sel.id == "keep" ? "지금 구성 그대로 두는 계획이에요." : "\(m.focusName) 매도 손실은 같은 해 \(m.focusRow?.sym.currency == .krw ? "국내 주식은 세금 계산이 달라요" : "해외주식 이익과 상계돼요") (절세 화면).")
                     .appFont(12).foregroundStyle(Theme.muted)
             }
             if !baskets.isEmpty && sel.id != "keep" { BasketList(baskets: baskets, open: $open, title: "담을 업종 · 눌러서 펼치기") }
@@ -494,8 +501,8 @@ struct TaxResultView: View {
     var body: some View {
         @Bindable var m = m
         let won0 = { (x: Double) in Int(x.rounded()).formatted() + "만원" }
-        let maxQ = m.drnkRow?.h.qty ?? 0
-        let wAfter = m.drnkRow.map { max(0, $0.value - m.taxSellQty * $0.sym.last * Market.shared.fx.last) / m.total } ?? 0
+        let maxQ = m.focusRow?.h.qty ?? 0
+        let wAfter = m.focusRow.map { max(0, $0.value - m.krw($0.sym, m.taxSellQty * $0.sym.last)) / m.total } ?? 0
         let over = m.taxSellQty > 0 && m.taxBefore > 0 && m.taxGain + m.taxLossMan < 249
         MissionPage(kicker: "새로 열림: 절세 화면", title: "올해 해외주식 세금") {
             GuideBubble(pose: .point, text: "아래 슬라이더를 움직이면 위 숫자가 바로 바뀌어요. 계산 예시이고, 세무 상담은 아니에요.")
@@ -506,13 +513,13 @@ struct TaxResultView: View {
                     Text(won0(m.taxAfter)).appFont(30, .bold)
                     Text("\(won0(max(0, m.taxBefore - m.taxAfter))) 줄어요").appFont(14, .bold).foregroundStyle(Theme.mint)
                 }
-                Text("\(Int(m.taxSellQty))주 팔면 확정 손실 \(m.taxLossMan < 0 ? "-" + won0(-m.taxLossMan) : won0(m.taxLossMan)) · DRNK 비중 \(AppModel.pct(wAfter)) (계획 \(AppModel.pct(m.planWeight)))")
+                Text("\(Int(m.taxSellQty))주 팔면 확정 손실 \(m.taxLossMan < 0 ? "-" + won0(-m.taxLossMan) : won0(m.taxLossMan)) · \(m.focusName) 비중 \(AppModel.pct(wAfter)) (계획 \(AppModel.pct(m.planWeight)))")
                     .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             Card {
-                Text("손실 난 DRNK 일부를 올해 안에 판다면?").appFont(15, .bold)
+                Text("\(m.focusName) 일부를 올해 안에 판다면?").appFont(15, .bold)
                 Text("팔 수량 (보유 \(Int(maxQ))주) · \(Int(m.taxSellQty))주").appFont(13).foregroundStyle(Theme.sub)
                 Slider(value: $m.taxSellQty, in: 0...max(1, maxQ), step: 1).tint(Theme.teal)
                     .accessibilityLabel("팔 수량")
@@ -541,6 +548,12 @@ struct AppStartView: View {
         ("앱 알림 하나 켜기", "본전 도달, 비중 이탈 중 하나", "본전 진행 위젯"),
         ("기기 자동 동기화 켜기", "폰에서 넣어도 PC naeilo.com에 같은 숫자", "블록 위젯"),
     ]
+    /// 내 종목 전체 평가액 3개월 흐름 (원화)
+    private var totalSeries: [Double] {
+        let s = m.rows.map { r in m.prices.series(r.sym, period: .m3).map { m.krw(r.sym, $0 * r.h.qty) } }
+        let n = s.map(\.count).min() ?? 0
+        return (0..<n).map { i in s.reduce(0) { $0 + $1[i] } }
+    }
     var body: some View {
         let n = m.nxStep
         MissionPage(kicker: "미션 4 / 4", title: "앱에서 세 가지만 하면 위젯을 하나씩 드려요") {
@@ -548,7 +561,7 @@ struct AppStartView: View {
             HStack(spacing: 8) {
                 tile(1, n) {
                     Text("자산 추이").appFont(11, .bold)
-                    Sparkline(points: m.prices.series(Sample.symbol("DRNK")!, period: .m3)).frame(height: 34)
+                    Sparkline(points: totalSeries).frame(height: 34)
                     Text(AppModel.man(m.total)).appFont(12, .bold)
                 }
                 tile(2, n) {
