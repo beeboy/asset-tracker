@@ -18,7 +18,6 @@ enum Lens: String, CaseIterable, Codable { case base, mine, smooth
 @Observable
 final class AppModel {
     let prices: PriceProvider = StubPriceProvider()
-    let stories: StoryProvider = StubStoryProvider()
 
     init() {
         // 저장된 진행을 먼저 불러오고, 캡처용 실행 인자가 있으면 그 위에 시연 상태를 덮는다 (그때는 저장하지 않는다)

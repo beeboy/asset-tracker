@@ -88,16 +88,3 @@ struct StubPriceProvider: PriceProvider {
         }
     }
 }
-
-// 외전 원고는 앱에 넣지 않고 naeilo 서버에서 받는다. 지금은 문단 길이만 주는 스텁 (본문 자리는 회색 줄).
-struct StoryParagraph { let lines: Int; let lastWidth: Double }
-
-protocol StoryProvider {
-    func chapter(_ index: Int) async -> [StoryParagraph]
-}
-
-struct StubStoryProvider: StoryProvider {
-    func chapter(_ index: Int) async -> [StoryParagraph] {
-        (0..<6).map { p in StoryParagraph(lines: 3 + (index + p) % 3, lastWidth: 0.4 + Double((p * 17 + index * 7) % 40) / 100) }
-    }
-}

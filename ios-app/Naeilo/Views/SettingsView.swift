@@ -53,7 +53,7 @@ struct SettingsView: View {
                     demoButton("모든 화면 열기") { m.resetDemo(.all) }
                 }
                 Text("시세: \(Market.shared.source)").appFont(12).foregroundStyle(Theme.muted)
-                Text("시세는 스텁(시안과 같은 예시 값)이고, 외전 원고도 서버 대신 스텁이에요. 버전 0.1").appFont(12).foregroundStyle(Theme.muted)
+                Text("시세는 스텁(시안과 같은 예시 값)이에요. 서재에는 외전 프롤로그~5장 원고(한글·영문)가 들어 있어요. 버전 0.1").appFont(12).foregroundStyle(Theme.muted)
             }
             .screen()
         }
