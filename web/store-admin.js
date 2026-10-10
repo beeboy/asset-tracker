@@ -8,6 +8,13 @@ export const SOURCES = {
   vol1: { ko: "원고/vol1_v8.1.md" },
 };
 export const SIDE_FREE = 6; // 프롤로그~5장은 앱·사이트에 공개. 6장부터만 올린다
+// 장별 도트 그림 (MyVault, 640×400 = 128×80 을 5배로 키운 것). 장 순서대로. 128×80 으로 줄여 장마다 cover 로 붙인다
+const VOL1_ART = ["00-prologue", ...[6, 5, 10].flatMap((n, p) => Array.from({ length: n }, (_, i) => `${p + 1}-${i + 1}`)), "99-epilogue"];
+export const ART = {
+  side: ["ch6", "ch7", "ch8", "epilogue", "coda"].map((n) => `원고/chapter-art/side-story/${n}.png`),
+  vol1: VOL1_ART.map((n) => `원고/chapter-art/vol1/${n}.png`),
+};
+export const ART_SIZE = [128, 80];
 
 /** 마크다운 원고 → [{title, name, blocks}]. vol1 은 '## N부.' 아래 '## 제N장 — 이름' 으로 장이 나뉜다 */
 export function parseBook(md, kind) {
@@ -68,6 +75,20 @@ export function alignSide(ko, en) {
   });
 }
 
+/** 그림(data URL) 목록을 장에 붙인다. 개수가 다르면 붙이지 않고 알린다 */
+export function attachCovers(list, covers) {
+  const warn = [];
+  for (const book of Object.keys(covers || {})) {
+    const art = covers[book];
+    for (const x of list.filter((x) => x.book === book)) {
+      const ch = x.data.chapters;
+      if (art.length !== ch.length) { warn.push(`${book} 그림 ${art.length}장 / 장 ${ch.length}개라 그림을 빼고 올립니다`); break; }
+      ch.forEach((c, i) => { if (art[i]) c.cover = art[i]; });
+    }
+  }
+  return [...new Set(warn)];
+}
+
 /** 세 원고 → 올릴 책들 [{book, lang, data}] */
 export function buildBooks(texts) {
   const side = { ko: parseBook(texts.side.ko, "side"), en: parseBook(texts.side.en, "side") };
@@ -109,6 +130,26 @@ if (typeof document !== "undefined") {
     if (!r.ok) throw new Error(`MyVault 에서 ${path} 를 읽지 못했습니다 (${r.status}). 아래에서 파일을 직접 골라 주세요`);
     return r.text();
   }
+  /** MyVault 그림 → 128×80 PNG data URL (도트가 번지지 않게 가장 가까운 점으로 줄인다) */
+  async function readArt(path) {
+    const r = await fetch("https://api.github.com/repos/beeboy/MyVault/contents/" + path.split("/").map(encodeURIComponent).join("/"), { headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer " + token() } });
+    if (!r.ok) throw new Error(`${path} (${r.status})`);
+    const img = await createImageBitmap(await r.blob());
+    const c = document.createElement("canvas");
+    [c.width, c.height] = ART_SIZE;
+    const g = c.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/png");
+  }
+  async function covers(msg) {
+    const out = {}, miss = [];
+    for (const b of Object.keys(ART)) {
+      say(msg, `${b} 그림 읽는 중…`);
+      out[b] = await Promise.all(ART[b].map((p) => readArt(p).catch((e) => { miss.push(e.message); return null; })));
+    }
+    return { out, miss };
+  }
   async function upload(fromFiles) {
     const msg = $("#upmsg");
     try {
@@ -123,11 +164,15 @@ if (typeof document !== "undefined") {
         for (const b of Object.keys(SOURCES)) for (const l of Object.keys(SOURCES[b])) texts[b][l] = await readVault(SOURCES[b][l]);
       }
       const list = buildBooks(texts);
+      const art = await covers(msg);
+      const warn = attachCovers(list, art.out);
+      if (art.miss.length) warn.push(`그림 ${art.miss.length}장을 못 읽어 그 장은 그림 없이 올립니다: ${art.miss.slice(0, 3).join(", ")}${art.miss.length > 3 ? " …" : ""}`);
       for (const x of list) {
         say(msg, `${x.book} ${x.lang} 올리는 중…`);
         await api("admin/book", x);
       }
-      say(msg, "올렸습니다: " + list.map((x) => `${x.book} ${x.lang} ${x.data.chapters.length}장`).join(", "));
+      const n = (x) => x.data.chapters.filter((c) => c.cover).length;
+      say(msg, "올렸습니다: " + list.map((x) => `${x.book} ${x.lang} ${x.data.chapters.length}장(그림 ${n(x)})`).join(", ") + (warn.length ? " · " + warn.join(" · ") : ""), warn.length > 0);
       books();
     } catch (e) { say(msg, e.message, true); }
   }
