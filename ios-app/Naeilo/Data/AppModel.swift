@@ -269,7 +269,7 @@ final class AppModel {
     /// 돌아온 물건: 연속 7일을 채울 때마다 하나씩 늘고, 연속이 끊겨도 줄지 않는다
     var itemsBack = 0
     var itemsBackDay: Int? = nil   // 마지막으로 물건이 돌아온 날 (같은 날 답을 바꿔도 두 번 세지 않게)
-    var itemsOn: Int { playOn ? min(10, itemsBack) : 0 }
+    var itemsOn: Int { devAll ? 10 : playOn ? min(10, itemsBack) : 0 }   // 개발자 권한은 물건 모두
     /// 다음 물건까지 남은 날
     var itemDaysLeft: Int { 7 - streak % 7 }
 
