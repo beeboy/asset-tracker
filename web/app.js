@@ -3061,7 +3061,7 @@
       const m = buildModelNow();
       if (m) m.model.eventList.filter((x) => x.date >= td && x.date <= lim).forEach((x) => {
         const e = x.event, earn = /실적/.test(e.kind);
-        rows.push({ d: x.date, who: tgtLab(e), what: earn ? `${quarterOf(x.date).label} 실적 발표` : e.kind, note: `평소 움직임 ±${e.sd}${e.factor === "rate" ? "bp" : "%"}${earn ? " (날짜는 추정일 수 있음)" : ""}` });
+        rows.push({ d: x.date, who: tgtLab(e), what: earn ? quarterOf(x.date).label + " 실적" : e.kind, note: `±${e.sd}${e.factor === "rate" ? "bp" : "%"}`, cls: e.repeat && e.repeat !== "none" ? "earn" : "once" });
       });
     } catch (e) { /* 목표일 없음 등: 일정만 건너뜀 */ }
     const yAgo = Model.addMonths(td, -12);
@@ -3069,12 +3069,17 @@
       dividends(r.h.ticker).filter((x) => x.d > yAgo).forEach((x) => {
         const d = Model.addMonths(x.d, 12); if (d < td || d > lim) return;
         const v = x.amt * r.sh * (r.fx || 1) * (1 - (r.ccy === "KRW" ? 0.154 : WHT));
-        rows.push({ d, who: r.h.ticker, what: "배당 기준일 (지난해 기준 추정)", note: `세후 약 ${krw(v)}원` });
+        rows.push({ d, who: r.h.ticker, what: "배당", note: `세후 약 ${krw(v)}원`, cls: "div" });
       });
     });
     rows.sort((a, b) => a.d.localeCompare(b.d));
     $("#upSum").textContent = rows.length ? `· 앞으로 45일 ${rows.length}건` : "";
-    box.innerHTML = rows.length ? `<table class="grid uptable"><tr><th class="l">날짜</th><th class="l">대상</th><th class="l">일정</th></tr>` + rows.map((x) => `<tr><td class="l">${x.d.slice(5).replace("-", "/")} <span class="muted">${"일월화수목금토"[new Date(x.d + "T00:00:00").getDay()]}</span></td><td class="l">${esc(x.who)}</td><td class="l wrapc">${esc(x.what)}<br><span class="muted small">${esc(x.note)}</span></td></tr>`).join("") + "</table>"
+    // 펼친 일정(외부 요인)과 같은 모양: 대상별 한 줄, 날짜순 작은 칩. 가장 가까운 일정은 진한 테두리
+    const groups = new Map(); rows.forEach((x) => { if (!groups.has(x.who)) groups.set(x.who, []); groups.get(x.who).push(x); });
+    const dow = (d) => "일월화수목금토"[new Date(d + "T00:00:00").getDay()];
+    const chip = (x) => `<span class="chip ${x.cls} ${x === rows[0] ? "next" : ""}" title="${esc(`${x.d} ${x.what} · ${x.note}`)}"><b>${esc(x.what)}</b><span>${x.d.slice(5).replace("-", ".")} ${dow(x.d)} · ${esc(x.note)}</span></span>`;
+    box.innerHTML = rows.length ? [...groups].map(([t, xs]) => `<div class="schedrow"><div class="schedhead"><b>${esc(t)}</b> <span class="muted">${xs.length}건</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`).join("")
+      + `<p class="muted small">회색 = 분기 실적, 주황 = 한 번 있는 사건, 초록 = 배당, 진한 테두리 = 가장 가까운 일정. ±는 그날 평소 움직임. 실적 날짜는 회사 발표 전까지 추정, 배당은 지난해 같은 때를 기준으로 짐작한 값.</p>`
       : `<p class="muted small">앞으로 45일 안에 켜 둔 일정이 없습니다. 일정은 '전망 → 외부 요인'에서 켜고 끕니다.</p>`;
   }
   // 예전 탭 이름(분석·전략의 하위 탭, 시세 수집)으로 저장된 값을 새 탭으로

@@ -169,6 +169,7 @@ details.card.opt { padding: 10px 16px; }
 .chip b { font-size: 0.6765rem; } .chip span { color: var(--muted); font-size: 0.5882rem; }
 .chip.once { border-color: var(--accent2); background: color-mix(in srgb, var(--accent2) 10%, var(--card)); }
 .chip.next { border: 2px solid var(--accent); }
+.chip.div { border-color: var(--good); background: color-mix(in srgb, var(--good) 10%, var(--card)); }
 /* 기업 사건 타일 */
 .evtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); gap: 8px; margin-top: 8px; }
 .evtile { text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; cursor: pointer; }
