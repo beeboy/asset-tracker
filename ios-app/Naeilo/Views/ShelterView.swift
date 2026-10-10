@@ -142,18 +142,18 @@ struct ShelterView: View {
             if Support.shared.has(.mix) && story.count(.side) > 6 {
                 ForEach(6..<story.count(.side), id: \.self) { i in
                     if i > 6 { Divider().overlay(Theme.line) }
-                    NavigationLink(value: "read:\(i)") { paidRow(i == 6 ? "art_ch6" : nil, story.chapter(i)?.title ?? "", story.chapter(i)?.name ?? "", (story.pos[i] ?? 0) > 0 ? "이어 읽기" : "읽기") }
+                    NavigationLink(value: "read:\(i)") { paidRow(story.cover(i) ?? (i == 6 ? Image("art_ch6") : nil), story.chapter(i)?.title ?? "", story.chapter(i)?.name ?? "", (story.pos[i] ?? 0) > 0 ? "이어 읽기" : "읽기") }
                         .buttonStyle(.plain)
                 }
             } else if Support.shared.has(.mix) {
                 Button { Task { await story.fetch(.side, force: true) } } label: {
-                    paidRow("art_ch6", "6장", Shelter.chapter6Name, story.isLoading(.side) ? "받는 중…" : story.failText(.side) == nil ? "받기" : "다시 받기",
+                    paidRow(Image("art_ch6"), "6장", Shelter.chapter6Name, story.isLoading(.side) ? "받는 중…" : story.failText(.side) == nil ? "받기" : "다시 받기",
                             note: story.failText(.side))
                 }
                 .buttonStyle(.plain).disabled(story.isLoading(.side))
             } else {
                 Button { support = true } label: {
-                    paidRow("art_ch6", "6장", Shelter.chapter6Name, "☕︎ ›", note: "커피 한 잔으로 이어 읽기", locked: true)
+                    paidRow(Image("art_ch6"), "6장", Shelter.chapter6Name, "☕︎ ›", note: "커피 한 잔으로 이어 읽기", locked: true)
                 }
                 .buttonStyle(.plain)
             }
@@ -165,11 +165,11 @@ struct ShelterView: View {
     }
 
     /// 서버에서 받는 장 한 줄 (6장부터, 본편 1권)
-    private func paidRow(_ art: String?, _ title: String, _ name: String, _ right: String, note: String? = nil, locked: Bool = false) -> some View {
+    private func paidRow(_ art: Image?, _ title: String, _ name: String, _ right: String, note: String? = nil, locked: Bool = false) -> some View {
         HStack(spacing: 10) {
             Group {
                 if let art {
-                    Image(art).interpolation(.none).resizable()
+                    art.interpolation(.none).resizable()
                         .grayscale(locked ? 1 : 0).brightness(locked ? -0.3 : 0).opacity(locked ? 0.6 : 1)
                 } else { Theme.shelter }
             }
@@ -197,7 +197,7 @@ struct ShelterView: View {
                     ForEach(0..<story.count(.vol1), id: \.self) { i in
                         if i > 0 { Divider().overlay(Theme.line) }
                         NavigationLink(value: "vol1:\(i)") {
-                            paidRow(nil, story.chapter(i, .vol1)?.title ?? "", story.chapter(i, .vol1)?.name ?? "",
+                            paidRow(story.cover(i, .vol1), story.chapter(i, .vol1)?.title ?? "", story.chapter(i, .vol1)?.name ?? "",
                                     (story.pos[Story.key(.vol1, i)] ?? 0) > 0 ? "이어 읽기" : "읽기")
                         }
                         .buttonStyle(.plain)
@@ -287,6 +287,20 @@ struct ShelterView: View {
 }
 
 // 장면 도트 표지. 5장은 4프레임 애니메이션 (움직임 줄이기 설정이면 첫 프레임만).
+/// 서버에서 받은 장의 도트 그림 (data URL → Image). 한 번 푼 그림은 기억해 둔다
+@MainActor private var coverCache: [String: Image] = [:]
+extension Story {
+    func cover(_ i: Int, _ b: StoryBook = .side) -> Image? {
+        guard let url = chapter(i, b)?.cover else { return nil }
+        if let img = coverCache[url] { return img }
+        guard let comma = url.firstIndex(of: ","), let d = Data(base64Encoded: String(url[url.index(after: comma)...])),
+              let ui = UIImage(data: d) else { return nil }
+        let img = Image(uiImage: ui)
+        coverCache[url] = img
+        return img
+    }
+}
+
 struct ChapterCover: View {
     let index: Int
     var on = true
@@ -390,6 +404,9 @@ struct ReaderView: View {
     @ViewBuilder private var cover: some View {
         if inApp {
             ChapterCover(index: index).aspectRatio(1.6, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
+        } else if let art = story.cover(index, book) {
+            art.interpolation(.none).resizable().aspectRatio(1.6, contentMode: .fit)
+                .background(Theme.shelter).clipShape(RoundedRectangle(cornerRadius: 12))
         } else if book == .side {
             Image("art_ch6").interpolation(.none).resizable().aspectRatio(1.6, contentMode: .fit)
                 .background(Theme.shelter).clipShape(RoundedRectangle(cornerRadius: 12))
