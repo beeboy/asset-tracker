@@ -52,6 +52,7 @@
 		B03B5B5D984EEBEAD25CCB87 /* Reward.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B116C077153565363572A59 /* Reward.swift */; };
 		B7ED02B4B8B6B9B709FFDE12 /* Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46A231D948B3B35A9ACF5E /* Sync.swift */; };
 		B8B7ADD67557E414A6BE0B76 /* SettingsDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = A122F1E67A8269B4AF802387 /* SettingsDetail.swift */; };
+		BA2E9CDCDF9F7655E0E98F6A /* Guide.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */; };
 		C1ACA8A4BE1F8612E44ECAFB /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113FC119D1DE4AE5F19B494E /* Engine.swift */; };
 		CB09D15A0B85AA1E4B93E903 /* AnalysisDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C4668A7B9FECB1D2C27F7F /* AnalysisDetail.swift */; };
 		CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */ = {isa = PBXBuildFile; fileRef = CA972EE98F92EF464180B15F /* quotes.json */; };
@@ -149,6 +150,7 @@
 		F2A824AF1DB8AF8410F855C8 /* Catalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Catalog.swift; sourceTree = "<group>"; };
 		F34CF3A1B831F99BE76F325E /* NaeiloApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NaeiloApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F4C4668A7B9FECB1D2C27F7F /* AnalysisDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisDetail.swift; sourceTree = "<group>"; };
+		FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Guide.swift; sourceTree = "<group>"; };
 		FFF12A424D20E007AF664931 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -228,6 +230,7 @@
 				7C59880D308D978CDFD58A8E /* Charts.swift */,
 				5959124CCDCF5A8C65B8FCFE /* CharWidgetPreview.swift */,
 				68521199848D8FCA256D8B7B /* GoalViews.swift */,
+				FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */,
 				C1B93F44AA00A552A3868A92 /* HoldingsView.swift */,
 				19A659ACA7844B039CC6E3E3 /* HomeView.swift */,
 				8B0231D9975040C795003779 /* MissionViews.swift */,
@@ -442,6 +445,7 @@
 				7BFA97494E7A4282BEC00138 /* Format.swift in Sources */,
 				531CD3A158BBA2E981252BBE /* GoalRoute.swift in Sources */,
 				7F4FF7AD5F5051BB7F274A1A /* GoalViews.swift in Sources */,
+				BA2E9CDCDF9F7655E0E98F6A /* Guide.swift in Sources */,
 				CD0713B84C32526597218283 /* HoldingsView.swift in Sources */,
 				0AB939B5C4907CBD8CD2BCE5 /* HomeView.swift in Sources */,
 				CDC9A9B0B5F97C64D91F58A7 /* Industries.swift in Sources */,

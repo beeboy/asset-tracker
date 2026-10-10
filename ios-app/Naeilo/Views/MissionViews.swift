@@ -84,8 +84,7 @@ struct Mission1View: View {
     var body: some View {
         let ok = ids.contains { num(q[$0]) > 0 && num(p[$0]) > 0 }
         MissionPage(kicker: "미션 1 / 4", title: "가진 종목과 산 가격을 알려주세요") {
-            Text("매수 단가가 있어야 \"본전\"을 계산할 수 있어요. " + (m.syncOn ? "기기 동기화가 켜져 있어서, 이 폰에서 암호화한 값만 같은 비밀번호의 기기로 가요." : "기기 밖으로 나가지 않아요."))
-                .appFont(15).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            GuideBubble(pose: .point, text: "매수 단가가 있어야 \"본전\"을 계산할 수 있어요. " + (m.syncOn ? "동기화가 켜져 있어서, 이 폰에서 암호화한 값만 같은 비밀번호의 기기로 가요." : "넣은 숫자는 기기 밖으로 나가지 않아요."))
             ForEach(ids, id: \.self) { id in
                 if let s = Sample.symbol(id) { entry(s) }
             }
@@ -159,6 +158,7 @@ struct Mission1ResultView: View {
                     Text("회복보다 목표 금액을 정하는 쪽이 맞아요. 목표 루트는 다음 빌드에서 옮겨요.").appFont(14).foregroundStyle(Theme.sub)
                 }
             } else {
+                GuideBubble(pose: .spread, text: "…… 여기가 지금 위치예요. 본전까지는 \(AppModel.sgn(m.cost / max(1, m.total) - 1))가 필요해요. 기간을 바꾸면 확률이 다시 계산돼요.")
                 VStack(alignment: .leading, spacing: 8) {
                     HStack { Text("지금 평가액"); Spacer(); Text("들어간 돈 \(AppModel.man(m.cost))") }
                         .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
@@ -205,7 +205,8 @@ struct Mission2View: View {
         let opts = [("conc", "한 종목에 너무 많이 몰려 있어서"), ("mkt", "시장 전체가 떨어져서"), ("fx", "환율 때문에")]
         let right = m.quizRight, ans = m.quizAnswer
         MissionPage(kicker: "미션 2 / 4", title: "내 손실, 가장 큰 원인은 뭘까요?") {
-            Text("감으로 하나 골라 보세요. 정답은 내 숫자로 확인해요.").appFont(15).foregroundStyle(Theme.sub)
+            GuideBubble(pose: ans == nil ? .think : ans == right ? .cheer : .point,
+                        text: ans == nil ? "감으로 하나 골라 보세요. 정답은 숫자로 확인해요." : ans == right ? "맞아요. 아래 숫자로 확인해 봐요." : "숫자로 보면 조금 달라요. 아래를 같이 봐요.")
             ForEach(opts, id: \.0) { k, label in
                 let isRight = k == right, picked = ans == k
                 Button { withAnimation { m.quizAnswer = k } } label: {
@@ -237,11 +238,11 @@ struct Mission2ResultView: View {
     var body: some View {
         let keep = m.keepPlan
         MissionPage(kicker: "미션 2 완료 · 새로 열림: 회복 경로", title: "많이 흔들리면, 보통의 결과가 깎여요") {
+            GuideBubble(pose: .back, text: "같이 봐요. 한 종목에 몰려 흔들림이 크면, 평균이 같아도 보통의 경우는 낮아져요. -50% 뒤에는 +100%가 있어야 본전이에요.", note: "그래프 쪽을 돌아봄")
             Card {
                 HStack { Text("한 해 흔들림 폭"); Spacer(); Text("±\(AppModel.pct(keep.sigma))").fontWeight(.bold) }.appFont(15)
                 HStack { Text("보통의 연 성장"); Spacer(); Text(AppModel.sgn(keep.g)).fontWeight(.bold) }.appFont(15)
-                Text("평균은 연 9% 오른다고 봐도, 한 종목에 몰려 흔들림이 크면 \"보통의 경우\"는 \(AppModel.sgn(keep.g))에 그쳐요. -50% 뒤에는 +100%가 있어야 본전이기 때문이에요.")
-                    .appFont(14).foregroundStyle(Theme.sub).lineSpacing(3)
+                Text("평균은 연 9% 오른다고 봐도 \"보통의 경우\"는 \(AppModel.sgn(keep.g))에 그쳐요.").appFont(13).foregroundStyle(Theme.sub)
             }
             Card {
                 Text("앞으로 1년, 내 평가액이 지날 길").appFont(15, .bold)
@@ -292,10 +293,10 @@ struct Mission3View: View {
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
                 VStack(alignment: .leading, spacing: 14) {
+                    GuideBubble(pose: .side, text: "갈 길을 하나 골라 보세요. 칩을 누르면 위 그래프가 바로 바뀌어요. 흔들림을 줄이면 빠른 본전 확률도, 더 잃을 확률도 함께 줄어요.")
                     Text(sel.desc).appFont(15).lineSpacing(3)
                     holdingsCard
                     basketsCard(Basket.allCases.filter { $0 != .C })
-                    Text("흔들림을 줄이면 빠른 본전 확률도, 더 잃을 확률도 함께 줄어요.").appFont(14).foregroundStyle(Theme.sub)
                     PrimaryButton(title: "\"\(sel.name)\"으로 정하기") { m.done.insert(3); m.boardPath.append(.m3r) }
                 }
                 .padding(16)
@@ -424,7 +425,7 @@ struct Mission3ResultView: View {
         let sel = m.selectedPlan, T = Double(m.horizon) / 12, freed = m.freedAmount
         let baskets = Basket.allCases.filter { $0 != .C && (sel.mix[$0] ?? 0) > 0 }
         MissionPage(kicker: "미션 3 완료 · 새로 열림: 비중 비교", title: "내 계획: \(sel.name)") {
-            Text(sel.tag).appFont(15).foregroundStyle(Theme.sub)
+            GuideBubble(pose: .cheer, text: "정했어요. 이 계획은 기록만 해요. 실제 매매는 증권사 앱에서 직접 하셔야 해요.")
             Card {
                 Text("\(m.horizonLabel) 뒤 절반 회복 \(AppModel.pct(sel.prob(m.halfway, T))) · 본전 \(AppModel.pct(sel.prob(m.cost, T))) · 나쁜 경우 \(AppModel.sgn0(sel.outcome(m.cost, T, -1)))")
                     .appFont(15, .semibold).lineSpacing(3)
@@ -470,9 +471,8 @@ struct TaxInputView: View {
     @State private var gain = ""
     var body: some View {
         MissionPage(kicker: "자세히 · 절세 (대한민국 거주자)", title: "올해 이미 판 해외주식, 이익이 얼마였나요?") {
+            GuideBubble(pose: .stand, text: "한국에서는 해외주식 한 해 이익과 손실을 합쳐 250만 원을 넘는 부분에만 22%가 붙어요. 올해 판 게 없으면 0을 넣으세요.")
             Text("세금 규칙: 대한민국 거주자 (나라별로 바뀜)").appFont(13, .semibold).foregroundStyle(Theme.teal)
-            Text("한국에서는 해외주식 한 해 이익과 손실을 합쳐 250만 원을 넘는 부분에만 22% 세금이 붙어요. 올해 판 것이 없으면 0을 넣으세요.")
-                .appFont(15).foregroundStyle(Theme.sub).lineSpacing(3)
             VStack(alignment: .leading, spacing: 4) {
                 Text("올해 실현 이익 (만원)").appFont(13, .semibold).foregroundStyle(Theme.sub)
                 TextField("", text: $gain).keyboardType(.numberPad).appFont(18, .semibold)
@@ -498,6 +498,7 @@ struct TaxResultView: View {
         let wAfter = m.drnkRow.map { max(0, $0.value - m.taxSellQty * $0.sym.last * Market.shared.fx.last) / m.total } ?? 0
         let over = m.taxSellQty > 0 && m.taxBefore > 0 && m.taxGain + m.taxLossMan < 249
         MissionPage(kicker: "새로 열림: 절세 화면", title: "올해 해외주식 세금") {
+            GuideBubble(pose: .point, text: "아래 슬라이더를 움직이면 위 숫자가 바로 바뀌어요. 계산 예시이고, 세무 상담은 아니에요.")
             VStack(alignment: .leading, spacing: 8) {
                 Text("내년 5월에 낼 세금").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -543,8 +544,7 @@ struct AppStartView: View {
     var body: some View {
         let n = m.nxStep
         MissionPage(kicker: "미션 4 / 4", title: "앱에서 세 가지만 하면 위젯을 하나씩 드려요") {
-            Text("위젯은 미리 주지 않아요. 한 단계 끝낼 때마다 하나씩, 세 단계를 다 하면 특별 선물로 나머지 위젯도 모두 열려요.")
-                .appFont(15).foregroundStyle(Theme.sub).lineSpacing(3)
+            GuideBubble(pose: .wave, text: "마지막이에요. 위젯은 미리 드리지 않아요. 한 단계마다 하나씩, 세 단계를 다 하면 나머지 위젯도 모두 열려요.")
             HStack(spacing: 8) {
                 tile(1, n) {
                     Text("자산 추이").appFont(11, .bold)
@@ -608,6 +608,11 @@ struct AppStartView: View {
                 .foregroundStyle(done || cur ? Theme.ink : Theme.muted)
                 .background(done ? Theme.tealBg : cur ? Theme.card : Color(hex: 0xF4F6F8, dark: 0x1D252E), in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(done ? Color(hex: 0xB9DCD7, dark: 0x2E5A55) : cur ? Theme.teal : Theme.track, lineWidth: cur ? 2 : 1))
+                // 끝낸 단계엔 만세, 지금 단계엔 옆으로 걸어오는 인물 (카드 오른쪽 위에 올라선다)
+                .overlay(alignment: .topTrailing) {
+                    if done || cur { MotionSprite(friend: m.guideFriend, pose: done ? .cheer : .side, height: 44).offset(x: -14, y: -38) }
+                }
+                .padding(.top, done || cur ? 24 : 0)
             }
             if n >= 3 {
                 VStack(alignment: .leading, spacing: 8) {

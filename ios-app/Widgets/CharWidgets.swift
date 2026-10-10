@@ -165,7 +165,11 @@ struct RecoverCharView: View {
             let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
             ZStack(alignment: .bottomTrailing) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(r.keyName)까지").font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                    HStack(spacing: 4) {
+                        Text("\(r.keyName)까지").font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                        Spacer(minLength: 0)
+                        if !e.locked { CharReload() }      // ↻ 앱이 써 둔 최신 값으로 다시 그리기
+                    }
                     if e.locked {
                         Image(systemName: "lock.fill").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.7)).padding(.vertical, 4)
                         Text("인터미션\n\(e.c.week)주차에 만나요").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
@@ -208,8 +212,12 @@ struct BlockCharView: View {
             let block = min(10, r.cells / 100 + 1), fill = r.cells >= 1000 ? 100 : r.cells % 100
             let cell: CGFloat = 7, gap: CGFloat = 1.6, grid = cell * 10 + gap * 9
             VStack(alignment: .leading, spacing: 6) {
-                Text(e.locked ? lockLine(e.c) : "\(block)번째 블록 채우는 중").font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(s.heading).lineLimit(1).minimumScaleFactor(0.8)
+                HStack(spacing: 4) {
+                    Text(e.locked ? lockLine(e.c) : "\(block)번째 블록 채우는 중").font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(s.heading).lineLimit(1).minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    if !e.locked { CharReload() }
+                }
                 ZStack(alignment: .bottomLeading) {
                     HStack(alignment: .bottom, spacing: 0) {
                         // 10×10: 위에서부터 왼→오로 채운다
@@ -269,7 +277,10 @@ struct MovesCharView: View {
             let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("오늘의 움직임").font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                    HStack(spacing: 6) {
+                        Text("오늘의 움직임").font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                        if !e.locked { CharReload() }
+                    }
                     HStack(alignment: .top, spacing: 4) {
                         CharSprite(name: "w_\(e.c.id)", locked: e.locked, height: 92).frame(width: 66)
                         Text(e.locked ? "인터미션 \(e.c.week)주차에\n만나요" : e.c.line(r))
@@ -340,5 +351,19 @@ extension EnvironmentValues {
     var charDark: Bool {
         get { self[CharDarkKey.self] }
         set { self[CharDarkKey.self] = newValue }
+    }
+}
+
+/// ↻ 다시 받기: 앱이 써 둔 최신 값으로 위젯을 다시 그린다 (기본 위젯의 버튼과 같은 동작)
+struct CharReload: View {
+    var body: some View {
+        let icon = Image(systemName: "arrow.clockwise").font(.system(size: 10, weight: .bold))
+            .frame(width: 20, height: 20).background(Circle().fill(Color.white.opacity(0.18)))
+            .accessibilityLabel("다시 받기")
+        #if WIDGET_EXT
+        Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain)
+        #else
+        icon
+        #endif
     }
 }

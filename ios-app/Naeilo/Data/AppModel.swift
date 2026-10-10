@@ -82,6 +82,7 @@ final class AppModel {
 
     // 쉼터
     var homeFriend = "seri"
+    var guideTick = 0          // 미션 안내 인물을 바꾸면 다시 그리게
     /// 홈·위젯에 실제로 보이는 인물: 아직 안 열린 인물이면 세리 (개발자 연결을 끊었을 때 등)
     var homeFriendShown: String {
         let i = Shelter.friends.firstIndex { $0.id == homeFriend } ?? 0

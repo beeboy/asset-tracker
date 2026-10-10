@@ -255,6 +255,7 @@ struct GoalHoldResultView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
         Page(kicker: "미션 1 완료 · 새로 열림: 평가액·수익률", title: "지금 내 평가액") {
+            if m.ret >= 0 { GuideBubble(pose: .spread, text: "지금 평가액이에요. 들어간 돈보다 \(AppModel.sgn(m.ret)) 위에 있어요. 여기서 출발해 목표 금액까지 가는 길을 그려요.") }
             VStack(alignment: .leading, spacing: 8) {
                 HStack { Text("지금 평가액"); Spacer(); Text("들어간 돈 \(AppModel.man(m.cost))") }.appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -266,7 +267,6 @@ struct GoalHoldResultView: View {
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             if m.ret >= 0 {
-                Text("이 평가액에서 출발해 목표 금액까지 가는 길을 그려요.").appFont(15).foregroundStyle(Theme.sub)
                 BoardLinks(next: "다음 미션: 목표 정하기", to: .g1)
             } else {
                 Text("숫자로 보면 지금은 마이너스예요. 본전까지 가는 길부터 보는 회복 루트가 더 맞아요. 넣은 종목은 그대로 가져가요.")
@@ -316,8 +316,13 @@ struct GoalSetView: View {
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
-                Text("고르는 기준: 몇 배로 키울지, 적립 없이 가려면 한 해 몇 %가 필요한지, 매달 얼마를 넣어야 하는지. 모두 지금 \(AppModel.wonK(start))에서 출발한 계산이에요.")
-                    .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
+                if fromSettings || m.gDone.contains("goal") {
+                    GuideBubble(pose: .point, text: "카드를 누르거나 숫자를 고치면 위 그래프와 확률이 바로 바뀌어요. 저장하면 미션 진행은 그대로 두고 목표만 바꿔요.")
+                } else if m.route == .novice {
+                    GuideBubble(pose: .wave, text: "처음 시작하시는군요. …… 첫 목표부터 정해요. 지금 모아 둔 투자금이 없으면 0을 넣으세요.")
+                } else {
+                    GuideBubble(pose: .think, text: "언제까지, 얼마를 모으고 싶나요? …… 카드를 누르면 위 그래프와 확률이 바로 바뀌어요. 모두 지금 \(AppModel.wonK(start))에서 출발한 계산이에요.")
+                }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                     ForEach(m.goalPresets) { p in
                         let on = m.gK == p.k && m.gY == p.y
@@ -372,8 +377,9 @@ struct GoalSetResultView: View {
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
-            Text("목표를 정하면 월 적립액도 정해져요. 지금 \(AppModel.wonK(m.goalStart))이 보통의 경우처럼 자란다고 보고, 모자란 만큼을 매달로 나눈 금액이에요. 구성은 미션 \(m.goalNo("mix"))에서 비교해요.")
-                .appFont(14).foregroundStyle(Theme.sub).lineSpacing(3)
+            GuideBubble(pose: .back, text: m.route == .novice
+                        ? "같이 봐요. 매달 \(AppModel.wonK(need))씩 넣으면 지날 길이에요. 점선은 내가 넣은 원금이에요."
+                        : "같이 봐요. 지금 금액이 보통의 경우처럼 자란다고 보고, 모자란 만큼을 매달로 나눈 금액이에요.", note: "그래프 쪽을 돌아봄")
             Card {
                 (Text("매달 \(AppModel.wonK(need))씩 넣으면 지날 길 ") + Text("(\(base.name) 기준)").foregroundColor(Theme.sub)).appFont(15, .bold)
                 GoalPathChart(sims: [(path, Theme.teal, true)], goal: m.gK).frame(height: 150)
@@ -441,6 +447,11 @@ struct GoalMixView: View {
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
+                if m.route == .novice {
+                    GuideBubble(pose: .think, text: "어떤 구성이 덜 흔들리는지 보세요. …… 처음이라면 단순한 구성부터 비교해 봐도 돼요.")
+                } else {
+                    GuideBubble(pose: .side, text: "구성을 하나씩 눌러 지금 내 구성과 비교해 보세요. 빨리 가는 구성일수록 더 흔들려요. 나쁜 해 한 번의 크기도 같이 보세요.")
+                }
                 if !sh.line.isEmpty { Text(sh.line).appFont(13).foregroundStyle(Theme.sub) }
                 Text(sel.mix.desc).appFont(15).lineSpacing(3)
                 BasketList(baskets: [.G, .B], open: $open, title: "구성에 쓰는 업종 묶음 · 눌러서 펼치기")
@@ -468,6 +479,7 @@ struct GoalMixResultView: View {
         let sel = m.simulate(m.selectedMix), sh = m.shift(m.selectedMix)
         let next = m.goalSteps.first { !m.gDone.contains($0.id) && m.goalAvailable($0) }
         Page(kicker: "미션 \(m.goalNo("mix")) 완료 · 새로 열림: 구성 비교", title: "내 계획: \(sel.mix.name)") {
+            GuideBubble(pose: .cheer, text: m.route == .novice ? "정했어요. 매달 나눠 넣을 금액이에요. 실제 매매는 증권사 앱에서 직접 하셔야 해요." : "정했어요. 계획만 기록해요. 실제 매매는 증권사 앱에서 직접 하셔야 해요.")
             Text(sel.mix.desc).appFont(15).foregroundStyle(Theme.sub)
             Card {
                 (Text("\(m.gY)년 안 도달 ") + Text(AppModel.pct(sel.prob)).bold() + Text(" · 보통 ") + Text(AppModel.eta(sel.etaMonths)).bold()).appFont(15)
@@ -513,6 +525,7 @@ struct GoalTaxView: View {
         ]
         let pick = rows.first { $0.0 == m.goalTaxPick } ?? rows[1]
         Page(kicker: "미션 \(m.goalNo("tax")) / \(m.goalTotal)", title: "비중을 맞추려 팔면 세금이 얼마나 나올까요?") {
+            GuideBubble(pose: .point, text: "비중을 맞추려고 팔면 이익에 세금이 붙어요. 한 해에 몰아 팔지 않고 나눠 팔면 덜 내요. 계산 예시예요.")
             Text("세금 규칙: 대한민국 거주자").appFont(13, .semibold).foregroundStyle(Theme.teal)
             inputField("올해 이미 판 이익 (만원)", $gain).onChange(of: gain) { _, v in m.taxGain = max(0, Double(v) ?? 0) }
             if sh.sell > 0 && gainSale > 0 {
@@ -583,6 +596,8 @@ struct GoalIntermissionView: View {
                 }
                 .foregroundStyle(.white).padding(16)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+
+                GuideBubble(pose: .stand, text: "3개월 동안 매달 1분이면 돼요. 이번 달 할 일을 하고 나서 표시해 주세요. 체크인할 때마다 캐릭터 위젯이 하나씩 열려요.")
 
                 if fixed.count < 3 {
                     Card {
