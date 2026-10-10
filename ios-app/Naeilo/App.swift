@@ -20,6 +20,7 @@ enum Tab: Hashable { case home, hold, analysis, board, settings }
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var phase
     var body: some View {
         @Bindable var model = model
         let showStart = !model.onboarded
@@ -42,6 +43,10 @@ struct RootView: View {
         .onChange(of: model.holdings) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.route) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.nxStep) { _, _ in WidgetBridge.write(model) }
+        // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로
+        .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay() } }
+        // 미션 진행: 바뀔 때마다 저장
+        .onChange(of: model.progress) { _, _ in model.saveProgress() }
         // 알림: 설정이 바뀌면 다시 예약
         .onChange(of: model.alerts) { _, _ in Task { await Notifier.reschedule(model) } }
         .onChange(of: model.alertHr) { _, _ in Task { await Notifier.reschedule(model) } }

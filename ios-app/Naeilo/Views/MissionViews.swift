@@ -83,8 +83,8 @@ struct Mission1View: View {
         let ok = [tq, tp].allSatisfy { (Double($0) ?? 0) > 0 } || [qq, qp].allSatisfy { (Double($0) ?? 0) > 0 }
         MissionPage(kicker: "미션 1 / 4", title: "가진 종목과 산 가격을 알려주세요") {
             Text("매수 단가가 있어야 \"본전\"을 계산할 수 있어요. 기기 밖으로 나가지 않아요.").appFont(15).foregroundStyle(Theme.sub)
-            entry("DRNK", "현재 $250 (예시)", $tq, $tp)
-            entry("QQQ", "현재 $480 (예시)", $qq, $qp)
+            entry("DRNK", now("DRNK"), $tq, $tp)
+            entry("QQQ", now("QQQ"), $qq, $qp)
             Text("+ 종목 추가 (종목 탭에서 더 넣을 수 있어요)").appFont(14).foregroundStyle(Theme.muted)
             PrimaryButton(title: ok ? "회복 확률 보기" : "수량과 단가를 넣어 주세요", color: ok ? Theme.teal : Theme.muted) {
                 guard ok else { return }
@@ -105,6 +105,12 @@ struct Mission1View: View {
         if let qn = Double(q), qn > 0, let pn = Double(p), pn > 0 {
             m.holdings.insert(Holding(symbol: k, qty: qn, avg: pn), at: k == "DRNK" ? 0 : min(1, m.holdings.count))
         }
+    }
+
+    /// 지금 가격 (시세 기준과 같음). DRNK 는 가상 종목이라 예시 값
+    private func now(_ id: String) -> String {
+        guard let s = Sample.symbol(id) else { return "" }
+        return (s.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(s, s.last) + (id == "DRNK" ? " (가상 종목)" : "")
     }
 
     private func entry(_ k: String, _ now: String, _ q: Binding<String>, _ p: Binding<String>) -> some View {

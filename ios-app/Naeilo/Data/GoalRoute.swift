@@ -3,9 +3,9 @@ import SwiftUI
 // 목표 달성 루트 (시안 목표·플러스): 목표 정하기 → 구성 고르기 → (플러스) 비중 조정 세금 → 앱 시작 3단계 → 3개월 인터미션.
 // 금액 단위는 만원. 확률은 시안과 같은 씨앗(12345)의 500경로 몬테카를로라 숫자가 시안과 같다.
 
-enum Route: String { case recover, plus, novice }
+enum Route: String, Codable { case recover, plus, novice }
 
-enum GoalWeek: String, CaseIterable { case inPlan, less, more
+enum GoalWeek: String, CaseIterable, Codable { case inPlan, less, more
     var label: String { switch self { case .inPlan: "계획대로"; case .less: "덜 넣음"; case .more: "더 넣음" } }
     var factor: Double { switch self { case .inPlan: 1; case .less: 0.5; case .more: 1.5 } }
     var color: Color { switch self { case .inPlan: Theme.green; case .less: Theme.orange; case .more: Theme.blue } }

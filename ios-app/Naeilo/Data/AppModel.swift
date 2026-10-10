@@ -3,15 +3,15 @@ import Observation
 
 // 앱 상태 + 계산. 설명 문구는 모두 계산값으로 만든다 (종목 추천 문구 없음).
 
-enum WeekPick: String, CaseIterable { case kept, changed, raised
+enum WeekPick: String, CaseIterable, Codable { case kept, changed, raised
     var label: String { switch self { case .kept: "지킴"; case .changed: "바꿈"; case .raised: "높임" } }
     var sub: String { switch self { case .kept: "계획한 비중 그대로"; case .changed: "계획 자체를 바꿈"; case .raised: "DRNK를 다시 늘림" } }
     var color: Color { switch self { case .kept: Theme.green; case .changed: Theme.orange; case .raised: Color(hex: 0xC8352E) } }
 }
 
-struct DayLog { var seen = false; var answer: Int? = nil }
+struct DayLog: Codable, Equatable { var seen = false; var answer: Int? = nil }
 
-enum Lens: String, CaseIterable { case base, mine, smooth
+enum Lens: String, CaseIterable, Codable { case base, mine, smooth
     var label: String { switch self { case .base: "현재 정세"; case .mine: "내 관점"; case .smooth: "과거 추세" } }
 }
 
@@ -21,6 +21,8 @@ final class AppModel {
     let stories: StoryProvider = StubStoryProvider()
 
     init() {
+        // 저장된 진행을 먼저 불러오고, 캡처용 실행 인자가 있으면 그 위에 시연 상태를 덮는다 (그때는 저장하지 않는다)
+        if persists, let p = Progress.load() { apply(p) }
         // 캡처용: -demo fresh 로 미션 1부터 시작
         if UserDefaults.standard.string(forKey: "demo") == "fresh" { resetDemo(.fresh) }
         if UserDefaults.standard.string(forKey: "demo") == "all" { resetDemo(.all) }
@@ -348,6 +350,7 @@ final class AppModel {
         resetDemo(.fresh)
         if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 60, avg: 180), Holding(symbol: "QQQ", qty: 10, avg: 400)]; taxGain = 0 }
         if r != .recover { switchRoute(r); gDone = [] }
+        day = 0                  // 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
         onboarded = true; UserDefaults.standard.set(true, forKey: "onboarded")
         tab = .board
     }
