@@ -87,7 +87,6 @@ struct ForecastView: View {
             pinned(f)
         } content: {
                 VStack(alignment: .leading, spacing: 12) {
-                    ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: $m.lens)
                     Toggle(isOn: $m.shock) { Text("외부 요인 넣기").appFont(14, .bold) }.tint(Theme.orange)
                     Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(3)
                     if m.lens == .mine {
@@ -112,13 +111,13 @@ struct ForecastView: View {
                             }
                         }
                     }
-                    Text("로그정규 모형으로 계산한 범위예요. 시나리오 6개, 경로 수, 재조정 같은 계산 옵션과 모형 값 표는 PC naeilo.com에 있어요. 종목 추천이 아니에요.")
+                    Text("로그정규 모형으로 계산한 범위예요. 종목 추천이 아니에요.")
                         .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 }
                 .padding(16)
         }
         .background(Theme.bg)
-        .navigationTitle("3년 전망").navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func lensNote(_ f: AppModel.Forecast) -> String {
@@ -133,6 +132,7 @@ struct ForecastView: View {
 
     private func pinned(_ f: AppModel.Forecast) -> some View {
         VStack(alignment: .leading, spacing: 10) {
+            DetailHead(title: "3년 전망", sub: "시장이 줄 수 있는 미래의 범위")
             HStack(spacing: 8) {
                 kpi("\(m.keyName) 확률 (3년)", AppModel.pct(f.prob(3)), Theme.teal, 20)
                 kpi("3년 뒤 중앙값", AppModel.man(f.q50[36]), Theme.ink, 17)
@@ -141,7 +141,9 @@ struct ForecastView: View {
             FanChart(f: f, goal: m.keyValue).frame(height: 150)
             Text("초록 띠: 50%·90% 범위 · 주황 점선: \(m.keyName) \(AppModel.man(m.keyValue)) · 렌즈: \(m.lens.label)" + (m.shock ? " + 외부 요인" : ""))
                 .appFont(12).foregroundStyle(Theme.sub)
+            ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: Binding(get: { m.lens }, set: { m.lens = $0 }), fill: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(Theme.card)
         .overlay(alignment: .bottom) { Divider() }
