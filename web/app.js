@@ -1150,8 +1150,63 @@
     const sub = curSub(), host = $("#xfAnalysis"); if (!host || !heldTks().length) return;
     host.style.display = "block";
     const seen = new Set(), charts = [];
-    host.innerHTML = `<h2>${esc(sub.g.n)} · ${esc(sub.n)} 분석</h2>` + sub.cats.map((c, j) => xfSection(c, seen, j, charts, sub.cats.length > 1)).join("");
+    host.innerHTML = `<h2>${esc(sub.g.n)} · ${esc(sub.n)} 분석</h2>` + sub.cats.map((c, j) => xfSection(c, seen, j, charts, sub.cats.length > 1)).join("") +
+      (sub.k === "fin" ? `<div id="rsBox" style="margin-top:16px"></div>` : "");
     charts.forEach((f) => f());
+    if (sub.k === "fin") renderRateScen();
+  }
+  // ------------------------------------------------------------ 금리 시나리오: 금리→이익 관계식 식단 1000벌 (data/macro, 실러 데이터)
+  // 식단 j, y년째 S&P 실질 EPS 변화(로그 %) = a + b·Δ금리 + c·지금 EPS 증가율. 무작위 경로 없이 식단마다 답 하나
+  const RS = { dr: null, m: 0 };
+  async function renderRateScen() {
+    const box = $("#rsBox"); if (!box) return;
+    let d; try { d = await loadMacro(); } catch (e) { box.innerHTML = `<p class="muted small">금리 시나리오 자료를 불러오지 못했습니다 (${esc(e.message)}).</p>`; return; }
+    const M = d.meals; if (!M || !M.coef || !$("#rsBox")) return;
+    const now = rateChange1y(d); if (RS.dr === null) RS.dr = Number.isFinite(now) ? Math.round(now * 10) / 10 : 0;
+    box.innerHTML = `<h3>금리 시나리오 · 앞으로의 시장 이익</h3>
+      <div class="wi">
+        <label><span class="row between"><span>앞으로 1년 10년물 금리 변화</span><b id="rsDrV"></b></span><input type="range" id="rsDr" min="-2" max="3" step="0.1" value="${RS.dr}"></label>
+        <label><span class="row between"><span>시장 공통 기대수익 (금리 외 요인, 연)</span><b id="rsMV"></b></span><input type="range" id="rsM" min="-10" max="10" step="1" value="${RS.m}"></label>
+      </div>
+      <div class="row wrap" style="gap:6px;margin:6px 0"><button type="button" class="sm" id="rsReset">지금 값으로</button></div>
+      <div id="rsChart" class="chartbox"></div><div id="rsOut"></div>
+      <p class="muted small">"만약 금리가 이렇게 움직인다면"을 보는 시나리오 도구이며 예측이나 투자 권유가 아닙니다. 미 10년물 금리와 S&amp;P500 실질 EPS의 1960년 이후 관계를 시작 연도·표본을 바꿔 1000가지 관계식(식단)으로 맞추고, 식단마다 답 하나를 계산해 띠(하위 10%~상위 10%)로 보여 줍니다. 시장 수익은 PER 이 그대로라고 보고 이익 변화 + 배당 약 1.5% + 시장 공통 기대수익으로 계산합니다. 내 목표 확률은 3년 전망 결과를 금리 몫과 시장 공통 기대수익만큼 β 배 옮긴 근사치입니다. 이익 자료 ${esc(d.eps_last || "")}까지 (지금 EPS 증가율 ${nf(M.g_now, 1)}%), 출처 Robert J. Shiller, 매달 갱신.</p>`;
+    const draw = () => rateScenDraw(d, now);
+    $("#rsDr").oninput = (e) => { RS.dr = +e.target.value; draw(); };
+    $("#rsM").oninput = (e) => { RS.m = +e.target.value; draw(); };
+    $("#rsReset").onclick = () => { RS.dr = Number.isFinite(now) ? Math.round(now * 10) / 10 : 0; RS.m = 0; $("#rsDr").value = RS.dr; $("#rsM").value = 0; draw(); };
+    draw();
+  }
+  function rateScenDraw(d, now) {
+    const M = d.meals, H = M.coef[0].length, dr = RS.dr, m = RS.m / 100, g0 = M.g_now, q = (a, p) => Model.quantileSorted(Float64Array.from(a).sort(), p);
+    $("#rsDrV").textContent = `${dr >= 0 ? "+" : ""}${dr.toFixed(1)}%p` + (Number.isFinite(now) ? ` (지난 1년 ${now >= 0 ? "+" : ""}${now.toFixed(2)}%p)` : "");
+    $("#rsMV").textContent = `${RS.m >= 0 ? "+" : ""}${RS.m}%`;
+    const tot = M.coef.map((c) => c.map(([a, b, cc]) => a + b * dr + cc * g0)), cum = tot.map((t) => t.reduce((x, y, i) => (x.push((x[i - 1] || 0) + y), x), []));
+    const band = (arr) => [0.1, 0.5, 0.9].map((p) => q(arr, p));
+    const yr = Array.from({ length: H }, (_, y) => band(tot.map((t) => t[y]))), cb = Array.from({ length: H }, (_, y) => band(cum.map((t) => t[y])));
+    const t0 = today(), xs = [t0, ...Array.from({ length: H }, (_, y) => String(Number(t0.slice(0, 4)) + y + 1) + t0.slice(4))];
+    const lvl = (k) => [100, ...cb.map((b) => 100 * Math.exp(b[k] / 100))];
+    Charts.lineChart($("#rsChart"), { x: xs, height: 190, yfmt: (v) => nf(v, 0), bands: [{ lo: lvl(0), hi: lvl(2), color: "var(--c2)", opacity: 0.12 }], series: [
+      { name: "상위 10%", y: lvl(2), color: "var(--c2)", width: 1, dash: "4 3" }, { name: "중앙", y: lvl(1), color: "var(--c1)", width: 2 }, { name: "하위 10%", y: lvl(0), color: "var(--c2)", width: 1, dash: "4 3" }] });
+    const sg = (v) => `${v >= 0 ? "+" : ""}${nf(v, 1)}%`;
+    // 시장 연 수익 ≈ 3년 누적 이익 변화/3 + 배당 1.5% + 금리 외 공통 기대수익
+    const mkt = band(cum.map((t) => Math.exp(t[H - 1] / 100 / H) - 1 + 0.015 + m));
+    let html = `<div class="tablewrap"><table class="grid"><tr><th class="l">S&amp;P 실질 이익</th><th>하위 10%</th><th>중앙</th><th>상위 10%</th><th>감소 비율</th></tr>` +
+      yr.map((b, y) => `<tr><td class="l">${y + 1}년째 변화</td><td>${sg(b[0])}</td><td><b>${sg(b[1])}</b></td><td>${sg(b[2])}</td><td>${pct(tot.filter((t) => t[y] < 0).length / tot.length, 0)}</td></tr>`).join("") +
+      `<tr><td class="l">${H}년 누적</td><td>${sg(cb[H - 1][0])}</td><td><b>${sg(cb[H - 1][1])}</b></td><td>${sg(cb[H - 1][2])}</td><td>${pct(cum.filter((t) => t[H - 1] < 0).length / cum.length, 0)}</td></tr>` +
+      `<tr><td class="l">시장 연 기대수익</td><td>${spct(mkt[0], 1)}</td><td><b>${spct(mkt[1], 1)}</b></td><td>${spct(mkt[2], 1)}</td><td></td></tr></table></div>`;
+    // 내 목표 확률 근사: 3년 전망 만기 분포(로그정규 근사)를 시장 조정분 × β 만큼 옮긴다
+    const R = lastForecast && lastForecast.withEv, g = S.state.goal;
+    if (R && R.terminal && R.terminal.p50 > 0 && R.terminal.p5 > 0 && g && g.date > t0) {
+      const T = (Date.parse(g.date) - Date.parse(t0)) / (365.25 * 86400e3), { rows } = valuation(), bm = factorBetas().beta.mkt || {};
+      const kb = rows.filter((r) => r.valueKrw > 0).reduce((s2, r) => s2 + r.w * (Number.isFinite(bm[r.h.ticker]) ? bm[r.h.ticker] : 1), 0);
+      const sig = Math.max(0.05, (Math.log(R.terminal.p50) - Math.log(R.terminal.p5)) / 1.645), lnG = Math.log(Math.max(1, g.amount - cashKrw()));
+      const P = (shift) => { const z = (Math.log(R.terminal.p50) + kb * shift * T - lnG) / sig; return 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z * z * z))); };
+      const shifts = M.coef.map((c) => { let s2 = 0; for (let y = 0; y < c.length; y++) s2 += c[y][1] * dr * Math.max(0, Math.min(1, T - y)); return s2 / 100 / Math.max(T, 0.25) + m; });
+      const base = P(0), pb = band(shifts.map((x) => R.p_goal + P(x) - base));
+      html += `<p class="small">내 목표 확률 (3년 전망 ${pct(R.p_goal, 0)} 기준, 포트폴리오 시장 민감도 β ${kb.toFixed(2)}): <b>${pct(Math.max(0, Math.min(1, pb[1])), 0)}</b> <span class="muted">(식단 하위10~상위10 ${pct(Math.max(0, Math.min(1, pb[0])), 0)} ~ ${pct(Math.max(0, Math.min(1, pb[2])), 0)})</span></p>`;
+    } else html += `<p class="muted small">3년 전망을 한 번 계산하면 내 목표 확률 변화도 함께 나옵니다.</p>`;
+    $("#rsOut").innerHTML = html;
   }
   // 묶음 하나의 분석: 대리 지표 시세·민감도(같은 지표는 소분류 안에서 한 번만), 과거 반응일
   function xfSection(cat, seen, j, charts, multi) {
@@ -2060,13 +2115,19 @@
   const stabRateOn = () => $("#stabRate")?.checked !== false;
   const stabSig = () => fcSig() + "|" + hashStr(JSON.stringify(S.state.holdings.map((h) => [h.ticker, h.avg_cost]))) + (stabRateOn() ? "|r" : "");
   // 금리→이익 관계식 식단 (data/macro/rates_earnings.json, 매달 갱신) + 오늘 기준 1년 10년물 금리 변화
+  let macroP = null;
+  const loadMacro = () => (macroP ||= fetch((MODE === "static" ? "../data/macro/rates_earnings.json" : "/api/macro") + "?t=" + Date.now(), { cache: "no-store" })
+    .then((r) => { if (!r.ok) throw new Error("금리 자료(macro) " + r.status); return r.json(); }).catch((e) => { macroP = null; throw e; }));
+  // 오늘 기준 1년 10년물 금리 변화 (%p). 시세가 없으면 macro 파일에 적힌 값
+  function rateChange1y(d) {
+    let dr = d && d.now && d.now.change_1y; const t = S.prices["^TNX"];
+    if (t && t.close && t.close.length) { const i = t.close.length - 1, y0 = String(Number(t.dates[i].slice(0, 4)) - 1) + t.dates[i].slice(4); let j = i; while (j > 0 && t.dates[j] > y0) j--; if (t.close[i] && t.close[j]) dr = t.close[i] - t.close[j]; }
+    return dr;
+  }
   async function stabRate() {
     if (!stabRateOn()) return null;
-    const r = await fetch((MODE === "static" ? "../data/macro/rates_earnings.json" : "/api/macro") + "?t=" + Date.now(), { cache: "no-store" });
-    if (!r.ok) throw new Error("금리 자료(macro) " + r.status);
-    const d = await r.json(), b = d.meals && d.meals.b; if (!b || !b.length) throw new Error("금리 자료에 식단이 없습니다.");
-    let dr = d.now && d.now.change_1y; const t = S.prices["^TNX"];
-    if (t && t.close && t.close.length) { const i = t.close.length - 1, y0 = String(Number(t.dates[i].slice(0, 4)) - 1) + t.dates[i].slice(4); let j = i; while (j > 0 && t.dates[j] > y0) j--; if (t.close[i] && t.close[j]) dr = t.close[i] - t.close[j]; }
+    const d = await loadMacro(), b = d.meals && d.meals.b; if (!b || !b.length) throw new Error("금리 자료에 식단이 없습니다.");
+    const dr = rateChange1y(d);
     if (!Number.isFinite(dr)) throw new Error("10년물 금리 시세가 없습니다.");
     return { b, dr, epsLast: d.eps_last, src: d.source };
   }
