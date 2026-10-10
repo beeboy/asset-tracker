@@ -25,6 +25,10 @@ FALLBACK_XLS = "https://img1.wsimg.com/blobby/go/e5e77e0b-59d1-44d9-ab25-4763ac9
 UA = {"User-Agent": "Mozilla/5.0 (naeilo macro collector)"}
 START = 1960          # 통계 계산 시작 연도
 LAGS = list(range(0, 37, 3))
+MEALS = 1000          # 금리→이익 관계식 앙상블 ("식단") 개수
+MEAL_STARTS = (1960, 1970, 1980, 1990, 2000)
+MEAL_BLOCK = 24       # 재표본 묶음 (개월)
+HORIZONS = (12, 24, 36)
 BAND = 0.5            # 금리 1년 변화 구간 경계 (%p)
 
 
@@ -125,6 +129,48 @@ def stats(rows: list[dict]) -> dict:
                        for i, x in enumerate(rows) if i in keep_set]}
 
 
+def ols(X: list[list[float]], y: list[float]) -> list[float]:
+    k = len(X[0])
+    A = [[sum(x[i] * x[j] for x in X) for j in range(k)] for i in range(k)]
+    b = [sum(x[i] * v for x, v in zip(X, y)) for i in range(k)]
+    for i in range(k):
+        for j in range(i + 1, k):
+            f = A[j][i] / A[i][i]; A[j] = [a - f * c for a, c in zip(A[j], A[i])]; b[j] -= f * b[i]
+    w = [0.0] * k
+    for i in reversed(range(k)):
+        w[i] = (b[i] - sum(A[i][j] * w[j] for j in range(i + 1, k))) / A[i][i]
+    return w
+
+
+def meals(series: list, dr_now: float | None) -> dict:
+    """식단 앙상블: 관계식 EPS성장(t+h) = a + b·Δ금리(t) + c·EPS성장(t) 을 시작 연도·24개월 묶음 재표본을 바꿔 1000벌 맞춘다.
+    식단마다 확정적인 답 하나 (무작위 경로 없음). b 는 화면이 오늘 금리 변화를 곱해 금리 몫을 다시 계산하도록 남긴다."""
+    import random
+    n = len(series); r = [x[1] for x in series]; e = [x[2] for x in series]
+    dr = [r[i] - r[i - 12] if i >= 12 and r[i] and r[i - 12] else None for i in range(n)]
+    g = [100 * math.log(e[i] / e[i - 12]) if i >= 12 and e[i] and e[i - 12] else None for i in range(n)]
+    last = max(i for i in range(n) if g[i] is not None); g_now = g[last]
+    rnd = random.Random(20261010); out = []
+    for _ in range(MEALS):
+        y0 = rnd.choice(MEAL_STARTS); lo = next(i for i in range(n) if int(series[i][0][:4]) >= y0); idx = []
+        while len(idx) < n - lo:
+            s0 = rnd.randrange(lo, n - MEAL_BLOCK); idx += range(s0, s0 + MEAL_BLOCK)
+        m = []
+        for h in HORIZONS:
+            rows = [(dr[i], g[i], g[i + h]) for i in idx if i + h < n and None not in (dr[i], g[i], g[i + h])]
+            m.append([round(v, 4) for v in ols([[1, x[0], x[1]] for x in rows], [x[2] for x in rows])])
+        out.append(m)
+    def band(vals):
+        v = sorted(vals); return {"p10": round(v[len(v) // 10], 1), "p50": round(v[len(v) // 2], 1), "p90": round(v[9 * len(v) // 10], 1),
+                                  "p_neg": round(100 * sum(x < 0 for x in v) / len(v))}
+    fc = None
+    if dr_now is not None:
+        fc = {"dr_now": dr_now, "g_now": round(g_now, 1), "g_now_month": series[last][0],
+              "total": [band([m[k][0] + m[k][1] * dr_now + m[k][2] * g_now for m in out]) for k in range(len(HORIZONS))],
+              "rate_part": [band([m[k][1] * dr_now for m in out]) for k in range(len(HORIZONS))]}
+    return {"horizons": list(HORIZONS), "b": [[m[k][1] for k in range(len(HORIZONS))] for m in out], "forecast": fc}
+
+
 def tnx_now() -> dict | None:
     """저장소의 ^TNX 일별 시세로 지금 1년 금리 변화를 구한다 (화면이 매일 다시 계산해도 된다)."""
     try:
@@ -157,6 +203,7 @@ def main(argv: list[str]) -> int:
            "updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "note": "미 10년물 금리(GS10)와 S&P500 실질 EPS(12개월). 1년 변화끼리의 상관, k개월 뒤 이익 반응.",
            "now": tnx_now(), **st}
+    out["meals"] = meals(st["series"], (out["now"] or {}).get("change_1y"))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print("저장:", OUT, "이익 마지막 달", st["eps_last"], "시차상관", st["lag_corr"], st["bands"])
