@@ -23,10 +23,16 @@ final class AppModel {
     init() {
         // 캡처용: -demo fresh 로 미션 1부터 시작
         if UserDefaults.standard.string(forKey: "demo") == "fresh" { resetDemo(.fresh) }
+        if UserDefaults.standard.string(forKey: "demo") == "all" { resetDemo(.all) }
+        // 캡처용: -home shelter 또는 -home char:ir
+        if let h = UserDefaults.standard.string(forKey: "home") { homePath = h == "shelter" ? ["shelter"] : ["shelter", h] }
+        if let f = UserDefaults.standard.string(forKey: "friend") { shelterSel = f }
+        let st: [String: SettingsRoute] = ["alerts": .alerts, "sync": .sync, "widgets": .widgets, "tax": .tax, "price": .price, "howto": .howto, "route": .route]
+        if let r = UserDefaults.standard.string(forKey: "set").flatMap({ st[$0] }) { settingsPath = [r] }
         // 캡처용: -route m3 처럼 미션 화면을 바로 연다
         let routes: [String: MissionRoute] = ["m1": .m1, "m1r": .m1r, "m2": .m2, "m2r": .m2r, "m3": .m3, "m3r": .m3r, "m4": .m4, "m4r": .m4r, "nx": .nx]
         if let r = UserDefaults.standard.string(forKey: "route").flatMap({ routes[$0] }) { boardPath = [r] }
-        let an: [String: AnalysisRoute] = ["forecast": .forecast, "myPath": .myPath, "external": .external, "dividend": .dividend, "fx": .fx, "glance": .glance, "insight": .insight]
+        let an: [String: AnalysisRoute] = ["forecast": .forecast, "myPath": .myPath, "external": .external, "dividend": .dividend, "fx": .fx, "glance": .glance]
         if let r = UserDefaults.standard.string(forKey: "an").flatMap({ an[$0] }) { analysisPath = [r] }
     }
 
@@ -45,6 +51,7 @@ final class AppModel {
 
     // 쉼터
     var homeFriend = "seri"
+    var shelterSel: String? = nil
     var readPos: Set<Int> = []
     var readLast: Int? = nil
 
@@ -104,6 +111,16 @@ final class AppModel {
     var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
     var boardPath: [MissionRoute] = []
     var analysisPath: [AnalysisRoute] = []
+    var homePath: [String] = []
+
+    // 설정
+    var alerts: [String: Bool] = ["be": true, "drift": false, "dep": false, "morn": false]
+    var alertLast: String? = nil
+    var alertTh = 5
+    var alertHr = 8
+    var syncOn = true
+    var widgetSel: [String]? = nil
+    var settingsPath: [SettingsRoute] = []
 
     var planWeight: Double { selectedPlan.wt }
     func planBreakEven(years T: Double) -> Double { selectedPlan.prob(cost, T) }

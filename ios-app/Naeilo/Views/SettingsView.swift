@@ -1,19 +1,20 @@
 import SwiftUI
 
-enum SettingsRoute: Hashable { case price, soon(String, String) }
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
 
     var body: some View {
+        let onN = m.alerts.values.filter { $0 }.count
         let rows: [(String, String, SettingsRoute)] = [
-            ("알림", "모두 꺼짐", .soon("알림", "본전 도달, 비중 이탈(3·5·10%p), 연말 절세 확인, 아침 한 줄. 겹치는 날은 하루 한 번으로 묶어요. 알림 설정은 기기마다 따로예요.")),
-            ("기기 동기화", "연결 안 됨", .soon("기기 동기화", "PC naeilo.com의 6자리 코드로 연결해요. 종목·미션·목표는 함께, 알림 설정은 기기마다 따로예요.")),
-            ("위젯", "받은 위젯 3개", .soon("위젯", "홈 화면 미리보기, 받은 위젯 추가/빼기, 못 받은 위젯은 받는 방법을 보여요. 위젯은 기존 ios/ 위젯 앱과 합칠 예정이에요.")),
-            ("세금 규칙", "대한민국 거주자", .soon("세금 규칙", "대한민국 거주자만 고를 수 있어요(다른 나라는 준비 중). 올해 실현 이익을 넣으면 내년 5월 예상 세금을 계산해요.")),
+            ("알림", onN > 0 ? "\(onN)개 켜짐" : "모두 꺼짐", .alerts),
+            ("기기 동기화", m.syncOn ? "PC naeilo.com과 연결됨" : "연결 안 됨", .sync),
+            ("위젯", "받은 위젯 \(m.widgets.filter(\.ok).count)개 · 홈 화면 \(m.widgetSelected.count)개", .widgets),
+            ("세금 규칙", "대한민국 거주자", .tax),
             ("시세 기준", "어제 종가 · 매일 아침 7시 갱신", .price),
-            ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .soon("사용 방법", "위젯에서 오늘 숫자 보기, 앱에서 오늘의 1분, 비중이 계획에서 벗어난 날만 알림.")),
-            ("루트", "회복 · 마이너스", .soon("루트", "회복 · 목표 · 플러스 세 루트 중에서 바꿀 수 있어요. 미션·위젯·캐릭터는 유지돼요.")),
+            ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
+            ("루트", "회복 · 마이너스", .route),
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -52,8 +53,13 @@ struct SettingsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: SettingsRoute.self) { r in
             switch r {
+            case .alerts: AlertsView()
+            case .sync: SyncView()
+            case .widgets: WidgetPickView()
+            case .tax: TaxRulesView()
             case .price: PriceBasisView()
-            case .soon(let t, let d): SoonView(title: t, detail: d)
+            case .howto: HowToView()
+            case .route: RouteView()
             }
         }
     }

@@ -21,6 +21,7 @@ struct HomeView: View {
         .navigationDestination(for: String.self) { route in
             if route == "shelter" { ShelterView() }
             else if route.hasPrefix("read:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i) }
+            else if route.hasPrefix("char:"), let f = Shelter.friends.first(where: { $0.id == route.dropFirst(5) }) { CharacterDetailView(friend: f) }
         }
     }
 

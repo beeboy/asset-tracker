@@ -37,7 +37,7 @@ struct ShelterView: View {
         }
         .background(Theme.bg)
         .navigationTitle("").navigationBarTitleDisplayMode(.inline)
-        .onAppear { sel = m.homeFriend }
+        .onAppear { sel = m.shelterSel ?? m.homeFriend }
     }
 
     private func header(_ t: String, _ r: String) -> some View {
@@ -49,29 +49,42 @@ struct ShelterView: View {
 
     private var hero: some View {
         let i = Shelter.friends.firstIndex { $0.id == sel } ?? 0, f = Shelter.friends[i], on = m.friendOn(i)
-        return HStack(spacing: 14) {
-            Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 84, height: 119)
-                .padding(.horizontal, 10).padding(.vertical, 8)
-                .background(Color(hex: 0x232B42), in: RoundedRectangle(cornerRadius: 12))
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                // 검은 후드(이르)·흑발(수아)도 잘 보이게 밝은 받침 위에 둔다
+                Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 84, height: 119)
+                    .padding(.horizontal, 10).padding(.vertical, 8)
+                    .background(Color(hex: 0xE4E9F3), in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 6) {
                     Text(on ? f.name : "???").appFont(20, .bold)
-                    Text(m.friendWhen(i)).appFont(12).foregroundStyle(Color(hex: 0x8FD0FF))
+                    Text(on ? f.appearsText : "인터미션 \(i)주차에 만나요").appFont(12).foregroundStyle(Color(hex: 0x8FD0FF))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(on ? f.bio : "아직 만나지 않았어요. 인터미션 \(i)주차 체크인: \(Shelter.weekSteps[max(0, i - 1)].task).")
+                        .appFont(13).lineSpacing(3).foregroundStyle(Color(hex: 0xD5D9E6))
+                        .fixedSize(horizontal: false, vertical: true)
+                    if on { Text(f.line).appFont(13, .bold).foregroundStyle(Theme.gold) }
                 }
-                Text(on ? f.bio : "아직 만나지 않았어요. 인터미션 \(i)주차 체크인: \(Shelter.weekSteps[max(0, i - 1)].task).")
-                    .appFont(13).lineSpacing(3).foregroundStyle(Color(hex: 0xD5D9E6))
-                    .fixedSize(horizontal: false, vertical: true)
-                if on { Text(f.line).appFont(13, .bold).foregroundStyle(Theme.gold) }
-                if on && m.homeFriend != f.id {
-                    Button("홈에 두기") { m.homeFriend = f.id }
-                        .appFont(13, .bold).foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 14).frame(minHeight: 36).background(Theme.mint, in: Capsule())
-                } else if m.homeFriend == f.id {
-                    Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 10).padding(.vertical, 3).background(Theme.gold, in: Capsule())
+                Spacer(minLength: 0)
+            }
+            if on {
+                HStack(spacing: 8) {
+                    NavigationLink(value: "char:" + f.id) {
+                        Text("자세히 보기 ›").appFont(13, .bold).foregroundStyle(Color(hex: 0xEEF0F7))
+                            .padding(.horizontal, 14).frame(minHeight: 40)
+                            .overlay(Capsule().stroke(Color(hex: 0x8FD0FF), lineWidth: 1.5))
+                    }
+                    .buttonStyle(.plain)
+                    if m.homeFriend != f.id {
+                        Button("홈에 두기") { m.homeFriend = f.id }
+                            .appFont(13, .bold).foregroundStyle(Theme.ink)
+                            .padding(.horizontal, 14).frame(minHeight: 40).background(Theme.mint, in: Capsule())
+                    } else {
+                        Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.ink)
+                            .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.gold, in: Capsule())
+                    }
+                    Spacer(minLength: 0)
                 }
             }
-            Spacer(minLength: 0)
         }
         .foregroundStyle(Color(hex: 0xEEF0F7))
         .padding(16)
@@ -105,7 +118,7 @@ struct ShelterView: View {
                     Text(ch.title).appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(on ? "외전 \(ch.title)" : "???").appFont(14, .bold)
-                        Text(on ? (i < 2 ? "앱 시작 3단계에서 열림" : "\(Shelter.friends[fi].name)와 같이 열림")
+                        Text(on ? (i < 2 ? "앱 시작 3단계에서 열림" : "인터미션 \(fi)주차에 열림")
                              : (i < 2 ? "앱 시작 3단계를 마치면 열려요" : "인터미션 \(fi)주차가 되면 열려요"))
                             .appFont(12).foregroundStyle(Theme.sub)
                     }
@@ -241,8 +254,8 @@ struct ReaderView: View {
                     }
                     .padding(.bottom, size * 0.75)
                     .accessibilityHidden(true)
-                    if p == 1 {
-                        Button { } label: {
+                    if p == 1 && Shelter.friends[fi].inSideStory {
+                        NavigationLink(value: "char:" + ch.friend) {
                             HStack(spacing: 10) {
                                 Pixel(name: "spr_" + ch.friend, width: 24, height: 34)
                                 VStack(alignment: .leading) {
@@ -281,4 +294,66 @@ struct ReaderView: View {
     }
 
     private func load() { Task { paras = await m.stories.chapter(index) } }
+}
+
+// 인물 자세히 보기: 『중첩된 현실』 등장 시점, 특징, 배경, 대표 장면 (캐릭터 설정 스레드 요약 기준)
+struct CharacterDetailView: View {
+    let friend: Friend
+
+    var body: some View {
+        let f = friend
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .bottom, spacing: 14) {
+                    Pixel(name: "spr_" + f.id, width: 84, height: 119)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(Color(hex: 0xE4E9F3), in: RoundedRectangle(cornerRadius: 12))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(f.name).appFont(24, .bold)
+                        Text(f.line).appFont(14, .bold).foregroundStyle(Color(hex: 0x8A6400))
+                    }
+                }
+                Card {
+                    Text("소설에 나오는 곳").appFont(15, .bold)
+                    appear("본편", f.main)
+                    appear("외전 『이종 공명』", f.side)
+                    appear("프리퀄", f.prequel)
+                    if f.side == nil {
+                        Text("앱 서재의 외전에는 나오지 않아요. 쉼터에는 인터미션 체크인으로 찾아와요.").appFont(12).foregroundStyle(Theme.muted)
+                    }
+                }
+                section("특징", f.traits)
+                section("배경", f.background)
+                Card {
+                    Text("대표 장면").appFont(15, .bold)
+                    ForEach(f.scenes, id: \.1) { k, v in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(k).appFont(12, .bold).foregroundStyle(Theme.teal)
+                            Text(v).appFont(14).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                Text("본편 9·10권의 결말과 일부 인물 이야기는 넣지 않았어요.").appFont(12).foregroundStyle(Theme.muted)
+            }
+            .screen().padding(.top, 8)
+        }
+        .background(Theme.bg)
+        .navigationTitle(f.name).navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func appear(_ k: String, _ v: String?) -> some View {
+        HStack(alignment: .top) {
+            Text(k).appFont(14).foregroundStyle(Theme.sub).frame(minWidth: 110, alignment: .leading)
+            Text(v ?? "나오지 않음").appFont(14, v == nil ? .regular : .semibold).foregroundStyle(v == nil ? Theme.muted : Theme.ink)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func section(_ t: String, _ body: String) -> some View {
+        Card {
+            Text(t).appFont(15, .bold)
+            Text(body).appFont(14).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+        }
+    }
 }

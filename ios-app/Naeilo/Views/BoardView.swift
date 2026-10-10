@@ -30,8 +30,6 @@ struct BoardView: View {
                         .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
                     }.buttonStyle(.plain)
                 }
-                // 이번 주 예보는 매주 할 일이라 미션 블록보다 위에 둔다
-                if m.playOn { weekForecast }
                 let shown = m.blocks.filter { openDone || !m.done.contains($0.id) }
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                     ForEach(shown.filter { !$0.inter }) { b in tappable(b) }
@@ -39,7 +37,8 @@ struct BoardView: View {
                 ForEach(shown.filter { $0.inter }) { b in tappable(b) }
                 if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter { nextCard(next) }
                 if !m.interDone && m.playOn { checkIn }
-                if m.playOn { cells } else { lockedPlay }
+                // 이번 주 예보는 인터미션 체크인 다음, 1000칸 위
+                if m.playOn { weekForecast; cells } else { lockedPlay }
             }
             .screen()
         }
@@ -233,7 +232,7 @@ struct BoardView: View {
         let inside = r.actual >= r.lo && r.actual <= r.hi
         let pos = r.actual < r.lo ? "lo" : r.actual > r.hi ? "hi" : "in"
         let stamps = m.weekFriday ? Array(m.pastWeeks.dropFirst()) + [inside ? 1 : 0] : m.pastWeeks
-        // 매주 할 일이라 1000칸보다 위에, 파란 테두리와 큰 범위 숫자로 눈에 띄게 둔다
+        // 파란 테두리와 큰 범위 숫자로 눈에 띄게 둔다
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 8) {
                 Label("이번 주 예보", systemImage: "scope").appFont(14, .bold).foregroundStyle(.white)

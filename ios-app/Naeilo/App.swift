@@ -22,7 +22,7 @@ struct RootView: View {
     var body: some View {
         @Bindable var model = model
         TabView(selection: $tab) {
-            NavigationStack { HomeView() }
+            NavigationStack(path: $model.homePath) { HomeView() }
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
             NavigationStack { HoldingsView() }
                 .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
@@ -30,7 +30,7 @@ struct RootView: View {
                 .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
             NavigationStack(path: $model.boardPath) { BoardView() }
                 .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)
-            NavigationStack { SettingsView() }
+            NavigationStack(path: $model.settingsPath) { SettingsView() }
                 .tabItem { Label("설정", systemImage: "gearshape") }.tag(Tab.settings)
         }
         .tint(Theme.teal)

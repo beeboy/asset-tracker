@@ -1,7 +1,7 @@
 import SwiftUI
 
-// 분석 탭 상세 화면 (시안 31~35판): 내 길 · 외부 요인 · 배당·세금 · 환율 영향 · 종목 한눈에 · 인사이트.
-// 숫자는 모두 계산값이고 사거나 팔라는 문구는 넣지 않는다. 반응 크기·배당·소식은 시안용 예시 값.
+// 분석 탭 상세 화면 (시안 31~35판): 내 길 · 외부 요인 · 배당·세금 · 환율 영향 · 종목 한눈에. (인사이트는 앱에서 뺐다)
+// 숫자는 모두 계산값이고 사거나 팔라는 문구는 넣지 않는다. 반응 크기·배당은 시안용 예시 값.
 
 // MARK: 공통
 
@@ -567,73 +567,5 @@ struct GlanceView: View {
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: .y1) }
-    }
-}
-
-// MARK: 인사이트 — 소식 요약 + 내 비중으로 계산한 크기
-
-struct InsightView: View {
-    @Environment(AppModel.self) private var m
-    @State private var filter = "all"
-
-    // (날짜, 제목, 요약) 시안 예시 소식. 실제 앱은 소식 요약 서버에서 받는다.
-    static let news: [String: [(String, String, String)]] = [
-        "DRNK": [("10월 8일", "궤도 정거장 3분기 운영 지표 발표", "회사가 3분기 연결 계정 수와 정거장 가동률을 발표했어요. 지난 분기보다 늘었고, 시장이 예상한 숫자와 비슷했다는 보도가 많았어요."),
-                 ("10월 6일", "3분기 실적 발표일 공지", "10월 22일 장 마감 뒤 실적을 발표한다고 알렸어요. 실적 발표 다음 날은 평소보다 크게 움직인 적이 많아요.")],
-        "QQQ": [("10월 7일", "상위 10개 종목 비중이 절반을 넘어", "나스닥100 지수에서 큰 10개 종목의 비중 합이 50%를 넘었다는 운용사 자료가 나왔어요. 몇 종목의 움직임에 지수가 더 크게 흔들릴 수 있다는 뜻이에요.")],
-        "AAPL": [("10월 7일", "새 기기 판매 초기 집계", "출시 첫 2주 판매량 집계가 나왔어요. 지역별로 엇갈렸다는 보도가 있었어요.")],
-        "NVDA": [("10월 8일", "데이터센터 고객사 투자 계획 발표", "큰 고객사들이 내년 데이터센터 투자 계획을 늘려 잡았다는 발표가 이어졌어요.")],
-        "MSFT": [("10월 6일", "클라우드 가격 정책 변경", "일부 클라우드 상품 가격을 바꾼다고 발표했어요.")],
-        "SPY": [("10월 8일", "S&P500 3분기 실적 시즌 시작", "이번 주부터 큰 은행들을 시작으로 3분기 실적 발표가 이어져요.")],
-        "005930": [("10월 8일", "3분기 잠정 실적 발표", "잠정 매출과 영업이익을 발표했어요. 반도체 부문이 지난 분기보다 나아졌다는 설명이 붙었어요.")],
-        "000660": [("10월 7일", "고대역폭 메모리 공급 계약 보도", "해외 고객사와 내년 공급 계약을 맺었다는 보도가 나왔어요.")],
-        "035720": [("10월 6일", "서비스 개편 발표", "주요 서비스 화면 개편 계획을 발표했어요.")],
-        "069500": [("10월 8일", "코스피200 정기 변경 예고", "12월 정기 변경에서 들어오고 나갈 종목 후보가 보도됐어요.")],
-        "360750": [("10월 8일", "분배금 지급", "이달 분배금을 지급했어요. 금액은 지난달과 비슷했어요.")],
-    ]
-
-    private var allNews: [(k: String, d: String, t: String, s: String, w: Double, val: Double)] {
-        var all: [(k: String, d: String, t: String, s: String, w: Double, val: Double)] = []
-        for r in m.rows { for n in Self.news[r.id] ?? [] { all.append((r.id, n.0, n.1, n.2, r.value / max(1, m.total), r.value)) } }
-        all.append(("시장", "10월 8일", "미국 금리 결정 앞두고 채권 금리 보합", "10월 28일 금리 결정을 앞두고 미국 10년 금리가 큰 변화 없이 움직였어요.", 1, m.total))
-        return all
-    }
-
-    var body: some View {
-        let all = allNews
-        let day = { (d: String) in Int(d.components(separatedBy: CharacterSet.decimalDigits.inverted).filter { !$0.isEmpty }.last ?? "0") ?? 0 }
-        let items = all.filter { filter == "all" || $0.k == filter }.sorted { day($0.d) > day($1.d) }
-
-        PinnedLayout {
-            pinnedBox {
-                DetailHead(title: "인사이트", sub: "내 종목 소식을 짧게 줄였어요 (시안 예시 소식)")
-                ChipRow(items: [("all", "전체")] + m.rows.map { ($0.id, $0.id) }, selection: $filter)
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(items.indices, id: \.self) { i in
-                    let n = items[i]
-                    Card(padding: 14) {
-                        HStack {
-                            Text(n.k).appFont(12, .bold).foregroundStyle(.white).padding(.horizontal, 8).padding(.vertical, 2)
-                                .background(n.k == "시장" ? Theme.slate : Theme.teal, in: Capsule())
-                            Spacer()
-                            Text(n.d).appFont(12).foregroundStyle(Theme.muted)
-                        }
-                        Text(n.t).appFont(16, .bold)
-                        Text(n.s).appFont(14).foregroundStyle(Theme.sub).lineSpacing(3)
-                        Text(n.k == "시장" ? "외부 요인 화면에서 금리를 0.5%p 바꾸면 내 평가액이 얼마나 바뀌는지 볼 수 있어요."
-                             : "\(n.k) 비중 \(AppModel.pct(n.w))라서, 이 종목이 5% 움직이면 내 평가액은 약 \(AppModel.man(n.val * 0.05)) (\(String(format: "%.1f", n.w * 5))%) 움직여요.")
-                            .appFont(13, .semibold).foregroundStyle(Color(hex: 0x0B5E40))
-                            .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(hex: 0xE3F4EC), in: RoundedRectangle(cornerRadius: 10))
-                    }
-                }
-                footnote("소식은 기사 내용을 줄인 것이고, 판단이나 추천은 넣지 않아요. 초록 줄은 내 비중으로 계산한 크기예요. 긴 요약과 \"미래 설계\" 글쓰기는 PC naeilo.com에서 할 수 있어요.")
-            }
-            .padding(16)
-        }
-        .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
