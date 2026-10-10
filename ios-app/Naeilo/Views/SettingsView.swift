@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route, goal, charPreview }
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route, goal, charPreview, support }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
@@ -14,6 +14,7 @@ struct SettingsView: View {
             ("세금 규칙", "대한민국 거주자", .tax),
             ("시세 기준", "미국 종목·환율 지금 가격 · 한국 종목 전일 종가", .price),
             ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
+            ("개발자 후원", Support.shared.tier == .free ? "커피 한 잔 · 구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
             ("루트", m.route == .recover ? "회복 · 마이너스" : m.route == .plus ? "목표 · 플러스" : "목표 · 시작 전", .route),
         ] + (m.isGoal ? [("목표", "\(m.gY)년 뒤 \(AppModel.wonK(m.gK)) · 고치기", SettingsRoute.goal)] : [])
         ScrollView {
@@ -69,6 +70,7 @@ struct SettingsView: View {
             case .howto: HowToView()
             case .route: RouteView()
             case .goal: GoalSetView(fromSettings: true)
+            case .support: SupportView()
             case .charPreview: WidgetPickView()     // 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
             }
         }

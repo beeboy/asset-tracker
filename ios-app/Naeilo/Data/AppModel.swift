@@ -228,13 +228,16 @@ final class AppModel {
 
     // MARK: 친구·장
     // 세리 외에 열린 친구 수. 목표 루트는 미션 없이 첫 달 1~4주차에 같은 순서로 열림 (시안 39판)
-    /// 개발자 계정(개발자 동기화로 연결한 기기)은 모든 보상이 열린다. 미션 진행 자체는 그대로 둔다
+    /// 개발자 계정(개발자 동기화로 연결한 기기)은 모든 보상이 열린다. 미션 진행 자체는 그대로 둔다.
+    /// Xcode·TestFlight 빌드에서만: App Store 빌드에서 자체 방식으로 여는 건 지침 3.1.1 위반이라 끈다 (후원은 인앱 구매로)
     var devAll: Bool {
         #if DEBUG
         if UserDefaults.standard.bool(forKey: "devAllTest") { return true }   // 확인용: -devAllTest YES
         #endif
-        return Sync.shared.isDev
+        return Support.shared.testBuild && Sync.shared.isDev
     }
+    /// 다방커피 이상: 못 만난 친구·안 돌아온 물건을 미리 보기만 (여는 건 여전히 미션으로)
+    var peek: Bool { Support.shared.tier >= .dabang }
     /// 앱 시작 3단계 보상(오늘의 1분·1000칸·주간 예보)이 열렸는지
     var playUnlocked: Bool { playOn || devAll }
     var friendsOpen: Int {

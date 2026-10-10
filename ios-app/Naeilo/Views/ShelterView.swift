@@ -5,6 +5,7 @@ struct ShelterView: View {
     @Environment(AppModel.self) private var m
     @State private var sel = "seri"
     @State private var item: String? = nil
+    @State private var support = false
 
     var body: some View {
         ScrollView {
@@ -30,7 +31,7 @@ struct ShelterView: View {
                     ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in itemTile(i, it) }
                 }
                 itemNote
-                Text("앱에서는 외전 프롤로그부터 5장까지만 읽을 수 있어요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아와요.")
+                Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아와요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
             .screen().padding(.top, 8)
@@ -38,6 +39,7 @@ struct ShelterView: View {
         .background(Theme.bg)
         .navigationTitle("").navigationBarTitleDisplayMode(.inline)
         .onAppear { sel = m.shelterSel ?? m.homeFriend }
+        .sheet(isPresented: $support) { NavigationStack { SupportView() } }
     }
 
     private func header(_ t: String, _ r: String) -> some View {
@@ -48,15 +50,16 @@ struct ShelterView: View {
     }
 
     private var hero: some View {
-        let i = Shelter.friends.firstIndex { $0.id == sel } ?? 0, f = Shelter.friends[i], on = m.friendOn(i)
+        let i = Shelter.friends.firstIndex { $0.id == sel } ?? 0, f = Shelter.friends[i], real = m.friendOn(i)
+        let on = real || m.peek     // 다방커피 이상은 못 만난 친구도 미리 보기 (홈에 두기는 만나야)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
-                Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 84, height: 119)
+                Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 84, height: 119).opacity(real ? 1 : on ? 0.75 : 1)
                     .padding(.horizontal, 10).padding(.vertical, 8)
                     .background(Shelter.spriteBacking(f.id), in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 6) {
                     Text(on ? f.name : "???").appFont(20, .bold)
-                    Text(on ? f.appearsText : "인터미션 \(i)주차에 만나요").appFont(12).foregroundStyle(Color(hex: 0x8FD0FF))
+                    Text(real ? f.appearsText : on ? "미리 보기 · 인터미션 \(i)주차에 만나요" : "인터미션 \(i)주차에 만나요").appFont(12).foregroundStyle(Color(hex: 0x8FD0FF))
                         .fixedSize(horizontal: false, vertical: true)
                     Text(on ? f.bio : "아직 만나지 않았어요. 인터미션 \(i)주차 체크인: \(Shelter.weekSteps[max(0, i - 1)].task).")
                         .appFont(13).lineSpacing(3).foregroundStyle(Color(hex: 0xD5D9E6))
@@ -73,11 +76,11 @@ struct ShelterView: View {
                             .overlay(Capsule().stroke(Color(hex: 0x8FD0FF), lineWidth: 1.5))
                     }
                     .buttonStyle(.plain)
-                    if m.homeFriend != f.id {
+                    if real && m.homeFriend != f.id {
                         Button("홈에 두기") { m.homeFriend = f.id }
                             .appFont(13, .bold).foregroundStyle(Theme.inkFixed)
                             .padding(.horizontal, 14).frame(minHeight: 40).background(Theme.mint, in: Capsule())
-                    } else {
+                    } else if real {
                         Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
                             .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.gold, in: Capsule())
                     }
@@ -94,8 +97,8 @@ struct ShelterView: View {
         let on = m.friendOn(i), cur = sel == f.id
         return Button { sel = f.id } label: {
             VStack(spacing: 2) {
-                Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 34, height: 48)
-                Text(on ? f.name : "???").appFont(12, .bold)
+                Pixel(name: (on || m.peek ? "spr_" : "sil_") + f.id, width: 34, height: 48).opacity(on ? 1 : m.peek ? 0.6 : 1)
+                Text(on || m.peek ? f.name : "???").appFont(12, .bold)
                 Text(on && m.homeFriend == f.id ? "홈에 있음" : i == 0 ? "처음부터" : "\(i)주차")
                     .appFont(10).foregroundStyle(Theme.sub)
             }
@@ -132,19 +135,26 @@ struct ShelterView: View {
                 else { Button { sel = ch.friend } label: { row }.buttonStyle(.plain) }
             }
             Divider().overlay(Theme.line)
-            HStack(spacing: 10) {
-                Image("art_ch6").interpolation(.none).resizable().frame(width: 64, height: 40)
-                    .grayscale(1).brightness(-0.3).opacity(0.6).clipShape(RoundedRectangle(cornerRadius: 6))
-                Text("6장").appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("중첩된 현실 외전에서 이어져요").appFont(14, .bold)
-                    Text("앱에서는 5장까지만 열려요").appFont(12)
+            // 6장: 누르면 개발자 후원(커피). 믹스커피 이상이면 6장부터 이어진다 (원고는 준비되면 서버에서)
+            Button { support = true } label: {
+                HStack(spacing: 10) {
+                    Image("art_ch6").interpolation(.none).resizable().frame(width: 64, height: 40)
+                        .grayscale(Support.shared.tier >= .mix ? 0 : 1).brightness(Support.shared.tier >= .mix ? 0 : -0.3)
+                        .opacity(Support.shared.tier >= .mix ? 1 : 0.6).clipShape(RoundedRectangle(cornerRadius: 6))
+                    Text("6장").appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(Shelter.chapter6Name).appFont(14, .bold)
+                        Text(Support.shared.tier >= .mix ? "후원 고마워요 · 6장 원고는 준비 중이에요" : "커피 한 잔으로 이어 읽기").appFont(12)
+                    }
+                    Spacer(minLength: 0)
+                    Text("☕︎ ›").appFont(13).foregroundStyle(Theme.muted)
                 }
-                Spacer(minLength: 0)
+                .foregroundStyle(Theme.sub)
+                .padding(.horizontal, 14).frame(minHeight: 56)
+                .background(Color(hex: 0xF7F8FA, dark: 0x202933))
+                .contentShape(Rectangle())
             }
-            .foregroundStyle(Theme.sub)
-            .padding(.horizontal, 14).frame(minHeight: 56)
-            .background(Color(hex: 0xF7F8FA, dark: 0x202933))
+            .buttonStyle(.plain)
         }
         .background(Theme.card)
         .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -155,7 +165,7 @@ struct ShelterView: View {
         let on = i < m.itemsOn
         return Button { if on { item = it.id } } label: {
             VStack(spacing: 2) {
-                Pixel(name: "art_" + it.id + (on ? "" : "_l"), width: 32, height: 32)
+                Pixel(name: "art_" + it.id + (on || m.peek ? "" : "_l"), width: 32, height: 32).opacity(on ? 1 : m.peek ? 0.6 : 1)
                 Text(on ? it.name : "???").appFont(11, .bold).lineLimit(2).multilineTextAlignment(.center)
                 Text("연속 \((i + 1) * 7)일").appFont(10).foregroundStyle(Theme.sub)
             }

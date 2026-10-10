@@ -66,3 +66,13 @@ open NaeiloApp.xcodeproj   # 시뮬레이터 고르고 ▶
 - 읽던 자리: 장마다 화면 맨 위 블록 번호를 이 기기에만 저장한다.
 - 서재 위젯(`Widgets/StoryWidget.swift`, 작은·중간): 마지막으로 연 장의 읽던 자리 한 문단과 진행 막대. 누르면 `naeilo://read/<장>` 으로 그 장이 열린다. 서재가 아직 안 열렸으면 앱 시작 3단계로.
 - 6장부터는 앱에 넣지 않는다. 나중에 인앱 구매(커피 후원)를 확인한 뒤 서버에서 받는다.
+
+## 개발자 후원 (18차)
+
+- 커피 4등급(믹스·다방·프랜차이즈·고급 스페셜티)은 비소모성 인앱 구매, '한 잔 더'는 소모성 팁(`Naeilo/Data/Support.swift`, 화면 `Views/SupportView.swift`). 서재의 6장을 누르거나 설정 > 개발자 후원에서 연다. 구매 복원 버튼이 늘 있다.
+- 상품 ID: `com.naeilo.widget.support.mix|dabang|franchise|specialty|tip`. App Store Connect 에 같은 ID 로 만들고, 등급 4개는 가족 공유를 켠다(한 번 켜면 끌 수 없음). 윗등급은 정가.
+- 앱은 가진 비소모성 중 가장 높은 등급만 본다(`Transaction.currentEntitlements`, 환불된 것 제외, 가족 공유 포함). 구매 상태는 기기 동기화로 넘기지 않는다.
+- 다방커피 이상: 못 만난 친구·안 돌아온 물건 미리 보기(`AppModel.peek`). 홈에 두기·열기는 여전히 미션으로.
+- 아직 없는 것: 6장 이후 원고와 본편 1권(구매를 서버가 확인하고 내려줌), 후원자 이름 올리기. 이것들이 준비되기 전에는 상품을 판매로 올리지 않는다.
+- 개발자 전체 해제(`devAll`)는 Xcode·TestFlight 빌드에서만 동작한다(`Support.testBuild`, AppTransaction 환경). App Store 빌드에서는 꺼진다.
+- 로컬 테스트: `ios-app/Support.storekit` 을 Xcode 의 Scheme > Edit Scheme > Run > Options > StoreKit Configuration 에 고르면 App Store Connect 없이 구매·복원·환불을 시험할 수 있다.

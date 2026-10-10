@@ -4,7 +4,10 @@ import UserNotifications
 @main
 struct NaeiloApp: App {
     @State private var model = AppModel()
-    init() { UNUserNotificationCenter.current().delegate = NotificationDelegate.shared }
+    init() {
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        Task { @MainActor in Support.shared.start() }   // 커피 후원: 가진 등급 확인, 거래 듣기
+    }
     var body: some Scene {
         WindowGroup {
             RootView()
