@@ -13,12 +13,15 @@
 		1DFBD64F26F68ABE1A9B5193 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0020D03B6A8743286E629278 /* AnalysisView.swift */; };
 		2984BA32200FEDDF49E697E0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96EDF9F440F10C712447019C /* Theme.swift */; };
 		46907135EEBF113492A0AD2A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1662FF1073C45ECA5F6AFB3 /* SettingsView.swift */; };
+		58928B75C405DBA0E4F75380 /* Recovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C006A8DED4674A51D6CDF7 /* Recovery.swift */; };
 		5CB59D91AF71FB20220B5C04 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A149C71953E24CEC80C3679 /* App.swift */; };
 		694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */ = {isa = PBXBuildFile; fileRef = E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */; };
 		9F562AC90F235FFD94E5BF80 /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4439B2462725991C102336E8 /* Services.swift */; };
 		CD0713B84C32526597218283 /* HoldingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B93F44AA00A552A3868A92 /* HoldingsView.swift */; };
+		CDC9A9B0B5F97C64D91F58A7 /* Industries.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D0C4109B5070AD88349788 /* Industries.swift */; };
 		DC15E84938D3B3EDB0FB4481 /* ShelterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9051E09656ED51EFBF91911 /* ShelterView.swift */; };
 		E1B1111A3CFA95DFAE235456 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AF1B4BB6CF97D8922C1704B6 /* Assets.xcassets */; };
+		E7DC3B4A6644BA706DB3609C /* MissionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B0231D9975040C795003779 /* MissionViews.swift */; };
 		EB12D002A2D45EFB5B3CB73D /* Charts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C59880D308D978CDFD58A8E /* Charts.swift */; };
 		FFBF09FFE7A73E919A8C69C3 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF12A424D20E007AF664931 /* BoardView.swift */; };
 /* End PBXBuildFile section */
@@ -28,9 +31,11 @@
 		0A149C71953E24CEC80C3679 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		19A659ACA7844B039CC6E3E3 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		4439B2462725991C102336E8 /* Services.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services.swift; sourceTree = "<group>"; };
+		73C006A8DED4674A51D6CDF7 /* Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recovery.swift; sourceTree = "<group>"; };
 		752819BFD13B67854C54F1A0 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		7C59880D308D978CDFD58A8E /* Charts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Charts.swift; sourceTree = "<group>"; };
 		8380C2A50584D047AFCD6E3D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8B0231D9975040C795003779 /* MissionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionViews.swift; sourceTree = "<group>"; };
 		96EDF9F440F10C712447019C /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		AF1B4BB6CF97D8922C1704B6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B9051E09656ED51EFBF91911 /* ShelterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelterView.swift; sourceTree = "<group>"; };
@@ -38,6 +43,7 @@
 		CCACC287684D148B6C75C94F /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		D1662FF1073C45ECA5F6AFB3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = drnk_ratio.json; sourceTree = "<group>"; };
+		F1D0C4109B5070AD88349788 /* Industries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Industries.swift; sourceTree = "<group>"; };
 		F34CF3A1B831F99BE76F325E /* NaeiloApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NaeiloApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FFF12A424D20E007AF664931 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -47,6 +53,8 @@
 			isa = PBXGroup;
 			children = (
 				752819BFD13B67854C54F1A0 /* AppModel.swift */,
+				F1D0C4109B5070AD88349788 /* Industries.swift */,
+				73C006A8DED4674A51D6CDF7 /* Recovery.swift */,
 				CCACC287684D148B6C75C94F /* SampleData.swift */,
 				4439B2462725991C102336E8 /* Services.swift */,
 			);
@@ -69,6 +77,7 @@
 				7C59880D308D978CDFD58A8E /* Charts.swift */,
 				C1B93F44AA00A552A3868A92 /* HoldingsView.swift */,
 				19A659ACA7844B039CC6E3E3 /* HomeView.swift */,
+				8B0231D9975040C795003779 /* MissionViews.swift */,
 				D1662FF1073C45ECA5F6AFB3 /* SettingsView.swift */,
 				B9051E09656ED51EFBF91911 /* ShelterView.swift */,
 			);
@@ -136,6 +145,7 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					4CD994AFCA420BCE79EF6287 = {
+						DevelopmentTeam = 252W43H2KE;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -183,6 +193,9 @@
 				EB12D002A2D45EFB5B3CB73D /* Charts.swift in Sources */,
 				CD0713B84C32526597218283 /* HoldingsView.swift in Sources */,
 				0AB939B5C4907CBD8CD2BCE5 /* HomeView.swift in Sources */,
+				CDC9A9B0B5F97C64D91F58A7 /* Industries.swift in Sources */,
+				E7DC3B4A6644BA706DB3609C /* MissionViews.swift in Sources */,
+				58928B75C405DBA0E4F75380 /* Recovery.swift in Sources */,
 				02D7A588AC677280C686D8DD /* SampleData.swift in Sources */,
 				9F562AC90F235FFD94E5BF80 /* Services.swift in Sources */,
 				46907135EEBF113492A0AD2A /* SettingsView.swift in Sources */,
@@ -263,6 +276,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 252W43H2KE;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -323,6 +337,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 252W43H2KE;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

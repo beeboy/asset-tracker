@@ -21,17 +21,17 @@ struct AnalysisView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 AppHeader().padding(.horizontal, -16)
-                Text("분석").font(.system(size: 22, weight: .bold))
-                Text("계산 옵션과 표는 PC naeilo.com에서 크게 봐요.").font(.system(size: 13)).foregroundStyle(Theme.sub)
+                Text("분석").appFont(22, .bold)
+                Text("계산 옵션과 표는 PC naeilo.com에서 크게 봐요.").appFont(13).foregroundStyle(Theme.sub)
                 ForEach(cards, id: \.0) { t, sub, tag, color, route in
                     NavigationLink(value: route) {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(t).font(.system(size: 16, weight: .bold))
-                                Text(sub).font(.system(size: 13)).foregroundStyle(Theme.sub)
+                                Text(t).appFont(16, .bold)
+                                Text(sub).appFont(13).foregroundStyle(Theme.sub)
                             }
                             Spacer()
-                            Text(tag).font(.system(size: 15, weight: .bold)).foregroundStyle(color)
+                            Text(tag).appFont(15, .bold).foregroundStyle(color)
                         }
                         .padding(.horizontal, 16).frame(minHeight: 68)
                         .background(.white, in: RoundedRectangle(cornerRadius: 16))
@@ -60,40 +60,39 @@ struct ForecastView: View {
     var body: some View {
         @Bindable var m = m
         let f = m.forecast
-        VStack(spacing: 0) {
+        PinnedLayout {
             pinned(f)
-            ScrollView {
+        } content: {
                 VStack(alignment: .leading, spacing: 12) {
                     ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: $m.lens)
-                    Toggle(isOn: $m.shock) { Text("외부 요인 넣기").font(.system(size: 14, weight: .bold)) }.tint(Theme.orange)
-                    Text(lensNote(f)).font(.system(size: 13)).foregroundStyle(Theme.sub).lineSpacing(3)
+                    Toggle(isOn: $m.shock) { Text("외부 요인 넣기").appFont(14, .bold) }.tint(Theme.orange)
+                    Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(3)
                     if m.lens == .mine {
                         Card {
-                            Text("추세를 얼마나 믿나요 · \(Int(m.trust))%").font(.system(size: 14, weight: .bold))
+                            Text("추세를 얼마나 믿나요 · \(Int(m.trust))%").appFont(14, .bold)
                             Slider(value: $m.trust, in: 0...100, step: 5).tint(Theme.teal)
-                            Text("0%면 현재 정세, 100%면 과거 추세예요.").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                            Text("0%면 현재 정세, 100%면 과거 추세예요.").appFont(12).foregroundStyle(Theme.muted)
                         }
                     }
                     Card {
-                        Text("만약에 매달 더 넣는다면 · \(m.monthly > 0 ? AppModel.man(m.monthly * 1e4) : "없음")").font(.system(size: 14, weight: .bold))
+                        Text("만약에 매달 더 넣는다면 · \(m.monthly > 0 ? AppModel.man(m.monthly * 1e4) : "없음")").appFont(14, .bold)
                         Slider(value: $m.monthly, in: 0...300, step: 10).tint(Theme.teal)
                     }
                     Card {
-                        Text("그해 말에 본전을 넘을 확률").font(.system(size: 14, weight: .bold))
+                        Text("그해 말에 본전을 넘을 확률").appFont(14, .bold)
                         ForEach(1...3, id: \.self) { y in
                             let p = f.prob(Double(y))
                             HStack(spacing: 10) {
-                                Text("\(y)년").font(.system(size: 13)).frame(width: 32, alignment: .leading)
+                                Text("\(y)년").appFont(13).frame(width: 32, alignment: .leading)
                                 ProgressBar(value: p, height: 10, fill: Theme.teal, track: Theme.track)
-                                Text(AppModel.pct(p)).font(.system(size: 13, weight: .bold)).frame(width: 40, alignment: .trailing)
+                                Text(AppModel.pct(p)).appFont(13, .bold).frame(width: 40, alignment: .trailing)
                             }
                         }
                     }
                     Text("로그정규 모형으로 계산한 범위예요. 시나리오 6개, 경로 수, 재조정 같은 계산 옵션과 모형 값 표는 PC naeilo.com에 있어요. 종목 추천이 아니에요.")
-                        .font(.system(size: 12)).foregroundStyle(Theme.muted).lineSpacing(3)
+                        .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 }
                 .padding(16)
-            }
         }
         .background(Theme.bg)
         .navigationTitle("3년 전망").navigationBarTitleDisplayMode(.inline)
@@ -118,7 +117,7 @@ struct ForecastView: View {
             }
             FanChart(f: f, goal: m.cost).frame(height: 150)
             Text("초록 띠: 50%·90% 범위 · 주황 점선: 본전 \(AppModel.man(m.cost)) · 렌즈: \(m.lens.label)" + (m.shock ? " + 외부 요인" : ""))
-                .font(.system(size: 12)).foregroundStyle(Theme.sub)
+                .appFont(12).foregroundStyle(Theme.sub)
         }
         .padding(16)
         .background(.white)
@@ -127,7 +126,7 @@ struct ForecastView: View {
 
     private func kpi(_ k: String, _ v: String, _ c: Color, _ size: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(k).font(.system(size: 11)).foregroundStyle(Theme.sub)
+            Text(k).appFont(11).foregroundStyle(Theme.sub)
             Text(v).font(.system(size: size, weight: .bold)).foregroundStyle(c).lineLimit(1).minimumScaleFactor(0.7)
         }
         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
@@ -170,10 +169,10 @@ struct SoonView: View {
     let detail: String
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title).font(.system(size: 22, weight: .bold))
-            Text(detail).font(.system(size: 15)).lineSpacing(3)
+            Text(title).appFont(22, .bold)
+            Text(detail).appFont(15).lineSpacing(3)
             DashedCard {
-                Text("이 화면은 시안에는 있고, 네이티브 앱에는 다음 빌드에서 옮겨요.").font(.system(size: 14))
+                Text("이 화면은 시안에는 있고, 네이티브 앱에는 다음 빌드에서 옮겨요.").appFont(14)
             }
             Spacer()
         }

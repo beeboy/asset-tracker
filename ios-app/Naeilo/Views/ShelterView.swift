@@ -9,7 +9,7 @@ struct ShelterView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("쉼터").font(.system(size: 22, weight: .bold))
+                Text("쉼터").appFont(22, .bold)
                 hero
                 header("친구", "\((0..<5).filter { m.friendOn($0) }.count)/5")
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
@@ -19,7 +19,7 @@ struct ShelterView: View {
                 if let last = m.readLast, m.chapterOn(last) {
                     NavigationLink(value: "read:\(last)") {
                         HStack { Text("이어 읽기 · \(Shelter.chapters[last].title)"); Spacer(); Text("›") }
-                            .font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+                            .appFont(15, .bold).foregroundStyle(.white)
                             .padding(.horizontal, 14).frame(minHeight: 48)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
                     }.buttonStyle(.plain)
@@ -31,7 +31,7 @@ struct ShelterView: View {
                 }
                 itemNote
                 Text("앱에서는 외전 프롤로그부터 5장까지만 읽을 수 있어요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아와요.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.muted).lineSpacing(3)
+                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
             .screen().padding(.top, 8)
         }
@@ -42,8 +42,8 @@ struct ShelterView: View {
 
     private func header(_ t: String, _ r: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(t).font(.system(size: 15, weight: .bold)); Spacer()
-            Text(r).font(.system(size: 13)).foregroundStyle(Theme.sub)
+            Text(t).appFont(15, .bold); Spacer()
+            Text(r).appFont(13).foregroundStyle(Theme.sub)
         }
     }
 
@@ -55,19 +55,19 @@ struct ShelterView: View {
                 .background(Color(hex: 0x232B42), in: RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(on ? f.name : "???").font(.system(size: 20, weight: .bold))
-                    Text(m.friendWhen(i)).font(.system(size: 12)).foregroundStyle(Color(hex: 0x8FD0FF))
+                    Text(on ? f.name : "???").appFont(20, .bold)
+                    Text(m.friendWhen(i)).appFont(12).foregroundStyle(Color(hex: 0x8FD0FF))
                 }
                 Text(on ? f.bio : "아직 만나지 않았어요. 인터미션 \(i)주차 체크인: \(Shelter.weekSteps[max(0, i - 1)].task).")
-                    .font(.system(size: 13)).lineSpacing(3).foregroundStyle(Color(hex: 0xD5D9E6))
+                    .appFont(13).lineSpacing(3).foregroundStyle(Color(hex: 0xD5D9E6))
                     .fixedSize(horizontal: false, vertical: true)
-                if on { Text(f.line).font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.gold) }
+                if on { Text(f.line).appFont(13, .bold).foregroundStyle(Theme.gold) }
                 if on && m.homeFriend != f.id {
                     Button("홈에 두기") { m.homeFriend = f.id }
-                        .font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.ink)
+                        .appFont(13, .bold).foregroundStyle(Theme.ink)
                         .padding(.horizontal, 14).frame(minHeight: 36).background(Theme.mint, in: Capsule())
                 } else if m.homeFriend == f.id {
-                    Text("홈에 있어요").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.ink)
+                    Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.ink)
                         .padding(.horizontal, 10).padding(.vertical, 3).background(Theme.gold, in: Capsule())
                 }
             }
@@ -83,9 +83,9 @@ struct ShelterView: View {
         return Button { sel = f.id } label: {
             VStack(spacing: 2) {
                 Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 34, height: 48)
-                Text(on ? f.name : "???").font(.system(size: 12, weight: .bold))
+                Text(on ? f.name : "???").appFont(12, .bold)
                 Text(on && m.homeFriend == f.id ? "홈에 있음" : i == 0 ? "처음부터" : "\(i)주차")
-                    .font(.system(size: 10)).foregroundStyle(Theme.sub)
+                    .appFont(10).foregroundStyle(Theme.sub)
             }
             .frame(maxWidth: .infinity, minHeight: 96)
             .background(cur ? Theme.mintBg : on ? .white : Color(hex: 0xF6F7F8), in: RoundedRectangle(cornerRadius: 12))
@@ -102,15 +102,15 @@ struct ShelterView: View {
                 let fi = Shelter.friends.firstIndex { $0.id == ch.friend } ?? 0
                 let row = HStack(spacing: 10) {
                     ChapterCover(index: i, on: on).frame(width: 64, height: 40)
-                    Text(ch.title).font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
+                    Text(ch.title).appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(on ? "외전 \(ch.title)" : "???").font(.system(size: 14, weight: .bold))
+                        Text(on ? "외전 \(ch.title)" : "???").appFont(14, .bold)
                         Text(on ? (i < 2 ? "앱 시작 3단계에서 열림" : "\(Shelter.friends[fi].name)와 같이 열림")
                              : (i < 2 ? "앱 시작 3단계를 마치면 열려요" : "인터미션 \(fi)주차가 되면 열려요"))
-                            .font(.system(size: 12)).foregroundStyle(Theme.sub)
+                            .appFont(12).foregroundStyle(Theme.sub)
                     }
                     Spacer(minLength: 0)
-                    Text(on ? (m.readPos.contains(i) ? "이어 읽기" : "읽기") : "잠김").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                    Text(on ? (m.readPos.contains(i) ? "이어 읽기" : "읽기") : "잠김").appFont(12).foregroundStyle(Theme.muted)
                 }
                 .padding(.horizontal, 14).frame(minHeight: 64)
                 .foregroundStyle(on ? Theme.ink : Theme.muted)
@@ -123,10 +123,10 @@ struct ShelterView: View {
             HStack(spacing: 10) {
                 Image("art_ch6").interpolation(.none).resizable().frame(width: 64, height: 40)
                     .grayscale(1).brightness(-0.3).opacity(0.6).clipShape(RoundedRectangle(cornerRadius: 6))
-                Text("6장").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
+                Text("6장").appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("중첩된 현실 외전에서 이어져요").font(.system(size: 14, weight: .bold))
-                    Text("앱에서는 5장까지만 열려요").font(.system(size: 12))
+                    Text("중첩된 현실 외전에서 이어져요").appFont(14, .bold)
+                    Text("앱에서는 5장까지만 열려요").appFont(12)
                 }
                 Spacer(minLength: 0)
             }
@@ -144,8 +144,8 @@ struct ShelterView: View {
         return Button { if on { item = it.id } } label: {
             VStack(spacing: 2) {
                 Pixel(name: "art_" + it.id + (on ? "" : "_l"), width: 32, height: 32)
-                Text(on ? it.name : "???").font(.system(size: 11, weight: .bold)).lineLimit(2).multilineTextAlignment(.center)
-                Text("연속 \((i + 1) * 7)일").font(.system(size: 10)).foregroundStyle(Theme.sub)
+                Text(on ? it.name : "???").appFont(11, .bold).lineLimit(2).multilineTextAlignment(.center)
+                Text("연속 \((i + 1) * 7)일").appFont(10).foregroundStyle(Theme.sub)
             }
             .foregroundStyle(on ? Theme.ink : Theme.muted)
             .frame(maxWidth: .infinity, minHeight: 84)
@@ -161,8 +161,8 @@ struct ShelterView: View {
         return HStack(spacing: 10) {
             Pixel(name: "art_" + (cur?.id ?? "barley_tea") + (cur == nil ? "_l" : ""), width: 32, height: 32)
             VStack(alignment: .leading, spacing: 2) {
-                Text(cur?.name ?? "아직 돌아오지 않았어요").font(.system(size: 14, weight: .bold))
-                Text(cur?.line ?? "오늘의 1분을 7일 연속 하면 첫 물건이 돌아와요.").font(.system(size: 13)).foregroundStyle(Theme.sub)
+                Text(cur?.name ?? "아직 돌아오지 않았어요").appFont(14, .bold)
+                Text(cur?.line ?? "오늘의 1분을 7일 연속 하면 첫 물건이 돌아와요.").appFont(13).foregroundStyle(Theme.sub)
             }
             Spacer(minLength: 0)
         }
@@ -221,14 +221,14 @@ struct ReaderView: View {
                             .accessibilityLabel(label)
                     }
                     Button(dark ? "밝게" : "어둡게") { dark.toggle() }
-                        .font(.system(size: 13, weight: .bold)).padding(.horizontal, 12).frame(minHeight: 36)
+                        .appFont(13, .bold).padding(.horizontal, 12).frame(minHeight: 36)
                         .foregroundStyle(dark ? Color(hex: 0xEEF0F7) : Theme.ink)
                         .background(dark ? Color(hex: 0x262E45) : .white, in: Capsule())
                         .overlay(Capsule().stroke(dark ? Color(hex: 0x4A5578) : Theme.border, lineWidth: 2))
                 }
                 ChapterCover(index: index).aspectRatio(1.6, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
-                Text("외전 『이종 공명』 · \(ch.title)").font(.system(size: 20, weight: .bold))
-                Text(m.readPos.contains(index) ? "읽던 곳에서 이어 읽는 중" : "처음부터").font(.system(size: 13)).foregroundStyle(dark ? Color(hex: 0xA6ADC6) : Theme.sub2)
+                Text("외전 『이종 공명』 · \(ch.title)").appFont(20, .bold)
+                Text(m.readPos.contains(index) ? "읽던 곳에서 이어 읽는 중" : "처음부터").appFont(13).foregroundStyle(dark ? Color(hex: 0xA6ADC6) : Theme.sub2)
                 ForEach(paras.indices, id: \.self) { p in
                     VStack(alignment: .leading, spacing: size * 0.55) {
                         ForEach(0..<paras[p].lines, id: \.self) { l in
@@ -246,8 +246,8 @@ struct ReaderView: View {
                             HStack(spacing: 10) {
                                 Pixel(name: "spr_" + ch.friend, width: 24, height: 34)
                                 VStack(alignment: .leading) {
-                                    Text("\(Shelter.friends[fi].name) 처음 나오는 장면").font(.system(size: 13, weight: .bold))
-                                    Text("쉼터에서 만날 수 있어요 ›").font(.system(size: 12))
+                                    Text("\(Shelter.friends[fi].name) 처음 나오는 장면").appFont(13, .bold)
+                                    Text("쉼터에서 만날 수 있어요 ›").appFont(12)
                                 }
                                 Spacer()
                             }
@@ -260,12 +260,12 @@ struct ReaderView: View {
                 }
                 if index < 5 && m.chapterOn(index + 1) {
                     Button { m.readPos.insert(index); index += 1; m.readLast = index; load() } label: {
-                        Text("다음: \(Shelter.chapters[index + 1].title) ›").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+                        Text("다음: \(Shelter.chapters[index + 1].title) ›").appFont(15, .bold).foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 48).background(accent, in: RoundedRectangle(cornerRadius: 12))
                     }.buttonStyle(.plain)
                 } else {
                     Text(index == 5 ? "중첩된 현실 외전에서 이어져요" : "다음 장은 " + (index >= 1 ? m.friendWhen(fi + 1) + "에" : "앱 시작 3단계를 마치면") + " 열려요.")
-                        .font(.system(size: 14, weight: .bold)).multilineTextAlignment(.center)
+                        .appFont(14, .bold).multilineTextAlignment(.center)
                         .foregroundStyle(dark ? Theme.gold : Theme.sub)
                         .frame(maxWidth: .infinity).padding(12)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(dark ? Color(hex: 0x4A5578) : Theme.dash, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))

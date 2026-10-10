@@ -4,15 +4,16 @@ import SwiftUI
 struct HoldingsView: View {
     @Environment(AppModel.self) private var m
     @State private var period: Period = .y1
+    @Environment(\.dynamicTypeSize) private var dts
 
     var body: some View {
         let rows = m.rows
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader().padding(.horizontal, -16)
-                Text("내 종목").font(.system(size: 22, weight: .bold))
+                Text("내 종목").appFont(22, .bold)
                 Text("\(rows.count)종목 · 평가액 \(AppModel.man(m.total)) · \(AppModel.sgn(m.ret))")
-                    .font(.system(size: 14)).foregroundStyle(Theme.sub)
+                    .appFont(14).foregroundStyle(Theme.sub)
                 totalChart(rows)
                 ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true)
                 VStack(spacing: 0) {
@@ -24,13 +25,13 @@ struct HoldingsView: View {
                 .background(.white, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
                 NavigationLink(value: "add") {
-                    Label("종목 추가", systemImage: "plus").font(.system(size: 15, weight: .bold))
+                    Label("종목 추가", systemImage: "plus").appFont(15, .bold)
                         .frame(maxWidth: .infinity, minHeight: 48)
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
                 Text("작은 그래프는 \(period == .d1 ? "그저께와 어제 종가" : period == .w1 ? "최근 6개 종가" : period.label + " 가격 흐름")이고, 회색 점선은 내 평균 단가예요(그 기간 가격 범위 안에 있을 때만). 오르면 빨강, 내리면 파랑이에요. 시세는 어제 종가 기준이에요. 여러 종목 한 번에 넣기와 증권사 파일은 PC naeilo.com에서 해요.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.muted).lineSpacing(3)
+                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
             .screen()
         }
@@ -47,32 +48,46 @@ struct HoldingsView: View {
         let chg = (tot.last ?? 0) / max(1, tot.first ?? 1) - 1
         return Card {
             HStack(alignment: .firstTextBaseline) {
-                Text("전체 평가액 · \(period == .d1 ? "그저께→어제" : period.label)").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.sub)
+                Text("전체 평가액 · \(period == .d1 ? "그저께→어제" : period.label)").appFont(13, .semibold).foregroundStyle(Theme.sub)
                 Spacer()
-                Text(AppModel.sgn(chg)).font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.change(chg))
+                Text(AppModel.sgn(chg)).appFont(15, .bold).foregroundStyle(Theme.change(chg))
             }
             Sparkline(points: tot, avg: m.cost, lineWidth: 2.2, showEndDot: true).frame(height: 120)
-            Text("점선은 들어간 돈 \(AppModel.man(m.cost)) (그래프 범위 안일 때만)").font(.system(size: 12)).foregroundStyle(Theme.muted)
+            Text("점선은 들어간 돈 \(AppModel.man(m.cost)) (그래프 범위 안일 때만)").appFont(12).foregroundStyle(Theme.muted)
         }
     }
 
     private func row(_ r: AppModel.Row) -> some View {
         let pts = m.prices.series(r.sym, period: period)
         let chg = (pts.last ?? 1) / (pts.first ?? 1) - 1
-        return HStack(spacing: 10) {
+        let name = HStack(spacing: 10) {
             LogoTile(symbol: r.id, size: 36)
             VStack(alignment: .leading, spacing: 2) {
-                Text(r.sym.name).font(.system(size: 15, weight: .bold))
+                Text(r.sym.name).appFont(15, .bold)
                 Text("\(r.id) · \(AppModel.price(r.sym, r.sym.close)) · \(AppModel.pct(r.value / max(1, m.total)))")
-                    .font(.system(size: 12)).foregroundStyle(Theme.sub)
+                    .appFont(12).foregroundStyle(Theme.sub)
             }
-            Spacer(minLength: 4)
-            Sparkline(points: pts, avg: r.h.avg).frame(width: 64, height: 30)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(AppModel.man(r.value)).font(.system(size: 15, weight: .bold)).monospacedDigit()
-                Text(AppModel.sgn(chg)).font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.change(chg))
+        }
+        let amount = VStack(alignment: .trailing, spacing: 2) {
+            Text(AppModel.man(r.value)).appFont(15, .bold).monospacedDigit().lineLimit(1)
+            Text(AppModel.sgn(chg)).appFont(13, .bold).foregroundStyle(Theme.change(chg))
+        }
+        return Group {
+            if dts.isAccessibilitySize {
+                // 아주 큰 글자: 이름 줄 아래에 그래프와 금액
+                VStack(alignment: .leading, spacing: 8) {
+                    name
+                    HStack { Sparkline(points: pts, avg: r.h.avg).frame(height: 36); amount }
+                }
+                .padding(.vertical, 10)
+            } else {
+                HStack(spacing: 10) {
+                    name
+                    Spacer(minLength: 4)
+                    Sparkline(points: pts, avg: r.h.avg).frame(width: 64, height: 30)
+                    amount.frame(minWidth: 72, alignment: .trailing)
+                }
             }
-            .frame(minWidth: 72, alignment: .trailing)
         }
         .padding(.horizontal, 14).frame(minHeight: 64)
         .contentShape(Rectangle())
@@ -96,21 +111,21 @@ struct HoldingDetailView: View {
                 HStack(spacing: 12) {
                     LogoTile(symbol: sym.id, size: 44)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(sym.name).font(.system(size: 22, weight: .bold))
-                        Text("\(sym.id) · \(sym.market) · \(sym.sector)").font(.system(size: 13)).foregroundStyle(Theme.sub)
+                        Text(sym.name).appFont(22, .bold)
+                        Text("\(sym.id) · \(sym.market) · \(sym.sector)").appFont(13).foregroundStyle(Theme.sub)
                     }
                 }
                 Card {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(AppModel.man(val)).font(.system(size: 26, weight: .bold))
-                        Text(AppModel.sgn(r)).font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.change(r))
+                        Text(AppModel.man(val)).appFont(26, .bold)
+                        Text(AppModel.sgn(r)).appFont(15, .bold).foregroundStyle(Theme.change(r))
                         Spacer()
                         Text("\(period == .d1 ? "그저께→어제 종가" : period.label) \(AppModel.sgn(chg))")
-                            .font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.change(chg))
+                            .appFont(13, .bold).foregroundStyle(Theme.change(chg))
                     }
                     Sparkline(points: pts, avg: avgIn ? h.avg : nil, lineWidth: 2.2, showEndDot: true).frame(height: 116)
                     Text(avgIn ? "점선은 평균 단가 \(AppModel.price(sym, h.avg))" : "평균 단가 \(AppModel.price(sym, h.avg))는 이 범위 밖")
-                        .font(.system(size: 12)).foregroundStyle(Theme.muted)
+                        .appFont(12).foregroundStyle(Theme.muted)
                 }
                 ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true)
                 Card(padding: 0) {
@@ -135,7 +150,7 @@ struct HoldingDetailView: View {
     private func kv(_ k: String, _ v: String, last: Bool = false) -> some View {
         VStack(spacing: 0) {
             HStack { Text(k).foregroundStyle(Theme.sub); Spacer(); Text(v).fontWeight(.semibold) }
-                .font(.system(size: 14)).padding(.horizontal, 16).frame(minHeight: 44)
+                .appFont(14).padding(.horizontal, 16).frame(minHeight: 44)
             if !last { Divider().overlay(Theme.line).padding(.horizontal, 16) }
         }
     }
@@ -143,28 +158,28 @@ struct HoldingDetailView: View {
     private func profile(_ p: Profile) -> some View {
         Card {
             HStack {
-                Text(p.etf ? "이 ETF는" : "이 회사는").font(.system(size: 15, weight: .bold))
+                Text(p.etf ? "이 ETF는" : "이 회사는").appFont(15, .bold)
                 Spacer()
                 if p.virtual {
-                    Text("가상 종목").font(.system(size: 11, weight: .bold)).foregroundStyle(Color(hex: 0x5A3E00))
+                    Text("가상 종목").appFont(11, .bold).foregroundStyle(Color(hex: 0x5A3E00))
                         .padding(.horizontal, 8).padding(.vertical, 2).background(Color(hex: 0xFFF1C9), in: Capsule())
                 }
             }
-            Text(p.what).font(.system(size: 14)).lineSpacing(3)
+            Text(p.what).appFont(14).lineSpacing(3)
             VStack(alignment: .leading, spacing: 2) {
-                Text(p.etf ? "따라가는 지수" : "비전").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.teal)
-                Text(p.vision).font(.system(size: 14, weight: .semibold))
+                Text(p.etf ? "따라가는 지수" : "비전").appFont(12, .bold).foregroundStyle(Theme.teal)
+                Text(p.vision).appFont(14, .semibold)
             }
             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
             let rows: [(String, String)] = [p.ceo, (p.hqKey ?? (p.etf ? "시장" : "본사"), p.hq), (p.etf ? "상장" : "설립", p.since)] + (p.extra.map { [$0] } ?? [])
             ForEach(rows, id: \.0) { k, v in
                 HStack(alignment: .top) { Text(k).foregroundStyle(Theme.sub).frame(width: 72, alignment: .leading); Text(v) }
-                    .font(.system(size: 13))
+                    .appFont(13)
             }
             Text(p.virtual ? "드링커는 『중첩된 현실』 속 회사를 바탕으로 한 가상 종목이에요. 가격 흐름은 내 지난 자산 기록을 비율로 바꾼 값이고, 투자 권유가 아니에요."
                  : "소개는 공개 정보 기준(2026년 10월 확인)이에요. 실제 앱은 공시와 데이터 제공처 값을 받아 와요. 종목 추천이 아니에요.")
-                .font(.system(size: 12)).foregroundStyle(Theme.muted).lineSpacing(2)
+                .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
         }
     }
 }
@@ -183,15 +198,15 @@ struct AddHoldingView: View {
         let found = Sample.symbols.filter { q.isEmpty || "\($0.id)\($0.name)\($0.search)".lowercased().replacingOccurrences(of: " ", with: "").contains(q) }
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("종목 추가").font(.system(size: 22, weight: .bold))
+                Text("종목 추가").appFont(22, .bold)
                 TextField("한글·영문 이름, 티커, 종목 코드", text: $query)
                     .padding(.horizontal, 14).frame(minHeight: 48)
                     .background(.white, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
                 if let p = picked {
                     Card {
-                        Text("\(p.name) (\(p.id))").font(.system(size: 16, weight: .bold))
-                        Text("어제 종가 \(AppModel.price(p, p.close))").font(.system(size: 13)).foregroundStyle(Theme.sub)
+                        Text("\(p.name) (\(p.id))").appFont(16, .bold)
+                        Text("어제 종가 \(AppModel.price(p, p.close))").appFont(13).foregroundStyle(Theme.sub)
                         field("수량 (주)", $qty)
                         field("평균 단가 (\(p.currency == .usd ? "달러" : "원"))", $avg)
                         PrimaryButton(title: "추가하기") {
@@ -202,7 +217,7 @@ struct AddHoldingView: View {
                         }
                     }
                 } else if found.isEmpty {
-                    Text("찾는 종목이 없어요. 한글 이름, 영문 이름, 티커, 종목 코드로 찾을 수 있어요.").font(.system(size: 14)).foregroundStyle(Theme.sub)
+                    Text("찾는 종목이 없어요. 한글 이름, 영문 이름, 티커, 종목 코드로 찾을 수 있어요.").appFont(14).foregroundStyle(Theme.sub)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(found) { s in
@@ -211,11 +226,11 @@ struct AddHoldingView: View {
                                 HStack(spacing: 10) {
                                     LogoTile(symbol: s.id, size: 32)
                                     VStack(alignment: .leading) {
-                                        Text(s.name).font(.system(size: 15, weight: .bold))
-                                        Text("\(s.id) · \(s.market)").font(.system(size: 12)).foregroundStyle(Theme.sub)
+                                        Text(s.name).appFont(15, .bold)
+                                        Text("\(s.id) · \(s.market)").appFont(12).foregroundStyle(Theme.sub)
                                     }
                                     Spacer()
-                                    Text(held ? "보유 중" : AppModel.price(s, s.close)).font(.system(size: 13, weight: .semibold))
+                                    Text(held ? "보유 중" : AppModel.price(s, s.close)).appFont(13, .semibold)
                                         .foregroundStyle(held ? Theme.muted : Theme.ink)
                                 }
                                 .padding(.horizontal, 14).frame(minHeight: 56).contentShape(Rectangle())
@@ -234,7 +249,7 @@ struct AddHoldingView: View {
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.sub)
+            Text(label).appFont(13, .semibold).foregroundStyle(Theme.sub)
             TextField("", text: b).keyboardType(.decimalPad)
                 .padding(.horizontal, 12).frame(minHeight: 44)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))

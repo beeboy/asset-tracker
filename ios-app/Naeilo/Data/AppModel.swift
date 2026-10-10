@@ -20,6 +20,14 @@ final class AppModel {
     let prices: PriceProvider = StubPriceProvider()
     let stories: StoryProvider = StubStoryProvider()
 
+    init() {
+        // 캡처용: -demo fresh 로 미션 1부터 시작
+        if UserDefaults.standard.string(forKey: "demo") == "fresh" { resetDemo(.fresh) }
+        // 캡처용: -route m3 처럼 미션 화면을 바로 연다
+        let routes: [String: MissionRoute] = ["m1": .m1, "m1r": .m1r, "m2": .m2, "m2r": .m2r, "m3": .m3, "m3r": .m3r, "m4": .m4, "m4r": .m4r, "nx": .nx]
+        if let r = UserDefaults.standard.string(forKey: "route").flatMap({ routes[$0] }) { boardPath = [r] }
+    }
+
     // 보유
     var holdings: [Holding] = Sample.startHoldings
 
@@ -80,20 +88,22 @@ final class AppModel {
         rows.reduce(0) { $0 + (Sample.dayMove[$1.id] ?? 0) * $1.value } / max(1, total)
     }
 
-    // MARK: 회복 계획 '균형' (시안 mk 와 같은 식)
+    // MARK: 회복 계획 (계산은 Recovery.swift)
     static func normCDF(_ x: Double) -> Double {
         let t = 1 / (1 + 0.2316419 * abs(x)), d = 0.3989423 * exp(-x * x / 2)
         let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
         return x > 0 ? 1 - p : p
     }
-    var planWeight: Double { min(drnkWeight, 0.35) }
-    func planBreakEven(years T: Double) -> Double {
-        let wt = planWeight, ST = 0.58, s2 = 0.19, r = 0.45
-        let sg = sqrt(wt * wt * ST * ST + (1 - wt) * (1 - wt) * s2 * s2 + 2 * wt * (1 - wt) * r * ST * s2)
-        let g = wt * 0.09 + (1 - wt) * 0.09 - sg * sg / 2
-        guard total > 0, cost > 0 else { return 0 }
-        return Self.normCDF((log(total / cost) + g * T) / (sg * sqrt(T)))
-    }
+    var planKey = "balance"      // 미션 3에서 고른 계획
+    var horizon = 6              // 미션 1·3의 기간 칩 (3·6·12개월)
+    var quizAnswer: String? = nil
+    var taxGain = 600.0          // 올해 실현 이익 (만원)
+    var taxSellQty = 0.0
+    var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
+    var boardPath: [MissionRoute] = []
+
+    var planWeight: Double { selectedPlan.wt }
+    func planBreakEven(years T: Double) -> Double { selectedPlan.prob(cost, T) }
 
     // MARK: 미션 판
     struct Block: Identifiable { let id: Int; let num: String; let title: String; let reward: String; let inter: Bool }
@@ -162,7 +172,7 @@ final class AppModel {
         let s2 = { (x: Double) in (x >= 0 ? "+" : "") + String(format: "%.1f%%", x) }
         let w = Self.pct(drnkWeight), pw = Self.pct(planWeight)
         let qs: [Question] = [
-            .init(tag: "확률 퀴즈", q: "지금 계획(균형)으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?", opts: opts.map { "약 \($0)%" }, right: nearR,
+            .init(tag: "확률 퀴즈", q: "지금 계획(\(selectedPlan.name))으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?", opts: opts.map { "약 \($0)%" }, right: nearR,
                   fb: { _ in "모형 계산으로 약 \(p12)%예요. 6개월 안이면 \(p6)%. 기간이 길수록 높아져요." }),
             .init(tag: "어제 움직임", q: "어제 더 많이 움직인 종목은?", opts: ["DRNK", "QQQ"], right: abs(a) >= abs(b) ? 0 : 1,
                   fb: { _ in "DRNK \(s2(a)), QQQ \(s2(b)). DRNK 비중이 \(w)라 전체도 DRNK를 많이 따라가요." }),
@@ -233,11 +243,16 @@ final class AppModel {
     let pastWeeks = [1, 0, 1, 1, 0, 1, 0, 1]
 
     // MARK: 시안 조작
-    func resetDemo(all: Bool) {
+    enum Demo { case fresh, week1, all }
+    func resetDemo(_ d: Demo) {
         holdings = Sample.startHoldings
-        done = all ? [1, 2, 3, 5, 6] : [1, 2, 3, 5]
-        weeks = all ? [.kept, .kept, .changed, .kept] : [.kept]
+        switch d {
+        case .fresh: done = []; weeks = []; nxStep = 0
+        case .week1: done = [1, 2, 3, 5]; weeks = [.kept]; nxStep = 3
+        case .all: done = [1, 2, 3, 5, 6]; weeks = [.kept, .kept, .changed, .kept]; nxStep = 3
+        }
         weekCur = nil; day = 5; dayLog = [:]; homeFriend = "seri"; readPos = []; readLast = nil
-        weekGuess = nil; weekFriday = false
+        weekGuess = nil; weekFriday = false; planKey = "balance"; horizon = 6; quizAnswer = nil
+        taxGain = 600; taxSellQty = 0; boardPath = []
     }
 }

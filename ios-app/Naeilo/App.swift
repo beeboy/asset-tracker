@@ -8,6 +8,8 @@ struct NaeiloApp: App {
             RootView()
                 .environment(model)
                 .preferredColorScheme(.light)
+                // 아주 큰 손쉬운 사용 크기에서도 화면이 무너지지 않게 상한을 둔다
+                .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         }
     }
 }
@@ -15,8 +17,10 @@ struct NaeiloApp: App {
 enum Tab: Hashable { case home, hold, analysis, board, settings }
 
 struct RootView: View {
+    @Environment(AppModel.self) private var model
     @State private var tab: Tab = Self.launchTab
     var body: some View {
+        @Bindable var model = model
         TabView(selection: $tab) {
             NavigationStack { HomeView() }
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
@@ -24,7 +28,7 @@ struct RootView: View {
                 .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
             NavigationStack { AnalysisView() }
                 .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
-            NavigationStack { BoardView() }
+            NavigationStack(path: $model.boardPath) { BoardView() }
                 .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)
             NavigationStack { SettingsView() }
                 .tabItem { Label("설정", systemImage: "gearshape") }.tag(Tab.settings)
@@ -48,7 +52,7 @@ struct RootView: View {
 struct AppHeader: View {
     var body: some View {
         HStack {
-            Text("naeilo").font(.system(size: 20, weight: .bold)).tracking(-0.3)
+            Text("naeilo").appFont(20, .bold).tracking(-0.3)
             Spacer()
         }
         .padding(.horizontal, 20).padding(.top, 6).padding(.bottom, 4)

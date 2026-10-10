@@ -83,9 +83,9 @@ struct ChipRow<T: Hashable>: View {
                 let on = item.0 == selection
                 Button { selection = item.0 } label: {
                     Text(item.1)
-                        .font(.system(size: 13, weight: .bold))
+                        .appFont(13, .bold)
                         .lineLimit(1)
-                        .padding(.horizontal, fill ? 2 : 14)
+                        .padding(.horizontal, fill ? 8 : 14)
                         .frame(maxWidth: fill ? .infinity : nil, minHeight: 40)
                         .foregroundStyle(on ? .white : Theme.ink)
                         .background(on ? accent : .white, in: Capsule())
@@ -95,7 +95,9 @@ struct ChipRow<T: Hashable>: View {
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
-        if fill { row } else { ScrollView(.horizontal, showsIndicators: false) { row.padding(.vertical, 1) } }
+        // 칸에 다 들어가면 같은 폭으로 채우고, 큰 글자라 넘치면 가로로 밀어 보게 한다
+        let scroll = ScrollView(.horizontal, showsIndicators: false) { row.padding(.vertical, 1) }
+        if fill { ViewThatFits(in: .horizontal) { row; scroll } } else { scroll }
     }
 }
 
@@ -106,7 +108,7 @@ struct PrimaryButton: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            Text(title).font(.system(size: 16, weight: .bold))
+            Text(title).appFont(16, .bold)
                 .frame(maxWidth: .infinity, minHeight: 50)
                 .foregroundStyle(fg)
                 .background(color, in: RoundedRectangle(cornerRadius: 12))
@@ -146,8 +148,8 @@ struct ScreenTitle: View {
     let title: String
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let kicker { Text(kicker).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.teal) }
-            Text(title).font(.system(size: 24, weight: .bold)).tracking(-0.4)
+            if let kicker { Text(kicker).appFont(14, .semibold).foregroundStyle(Theme.teal) }
+            Text(title).appFont(24, .bold).tracking(-0.4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -159,5 +161,39 @@ extension View {
         self.padding(.horizontal, 16).padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .leading)
             .foregroundStyle(Theme.ink)
+    }
+}
+
+// 아이폰 설정 > 디스플레이 및 밝기 > 텍스트 크기(손쉬운 사용의 더 큰 텍스트 포함)를 따른다.
+// 시안의 px 크기를 '기본 크기(큰)' 기준으로 두고, 설정에 맞춰 본문 글자와 같은 비율로 키운다.
+struct AppFont: ViewModifier {
+    let size: CGFloat
+    let weight: Font.Weight
+    @Environment(\.dynamicTypeSize) private var dts
+
+    func body(content: Content) -> some View {
+        let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(dts))
+        let scaled = UIFontMetrics(forTextStyle: .body).scaledValue(for: size, compatibleWith: traits)
+        content.font(.system(size: scaled, weight: weight))
+    }
+}
+
+extension View {
+    func appFont(_ size: CGFloat, _ weight: Font.Weight = .regular) -> some View {
+        modifier(AppFont(size: size, weight: weight))
+    }
+}
+
+// 위 그래프를 고정하고 아래만 스크롤. 손쉬운 사용의 아주 큰 글자에서는 고정 영역이 화면을 다 차지하므로 함께 스크롤한다.
+struct PinnedLayout<Header: View, Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var dts
+    @ViewBuilder var header: Header
+    @ViewBuilder var content: Content
+    var body: some View {
+        if dts.isAccessibilitySize {
+            ScrollView { VStack(spacing: 0) { header; content } }
+        } else {
+            VStack(spacing: 0) { header; ScrollView { content } }
+        }
     }
 }

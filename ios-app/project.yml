@@ -13,6 +13,8 @@ settings:
     MARKETING_VERSION: "0.1"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
+    # Xcode 에서 고른 서명 팀 (xcodegen 을 다시 돌려도 유지)
+    DEVELOPMENT_TEAM: 252W43H2KE
     TARGETED_DEVICE_FAMILY: "1"
 targets:
   NaeiloApp:
