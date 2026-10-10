@@ -559,7 +559,7 @@
   }
   async function collectStatic(manual) {
     // 개발자용 토큰이 있어도 내 보유 종목 시세는 브라우저에서 바로 받는다.
-    // 저장소에 없는 새 종목이 있을 때만 GitHub 수집(전체 종목·뉴스까지 도는 작업)을 뒤에서 실행한다
+    // 저장소에 없는 새 종목이 있을 때만 GitHub 수집(전체 종목을 도는 작업)을 뒤에서 실행한다
     if (GH && ghToken()) { if (manual) { const miss = missingTickers(); await browserCollect(miss); if (miss.length) ghCollect(miss); } return; }
     if (manual) { try { await reload(); } catch (e) { /* 무시 */ } return browserCollect([]); }
     const btns = [$("#btnCollect")]; btns.forEach((b) => b && (b.disabled = true));
@@ -967,18 +967,6 @@
 
     const periods = [["1일", 1], ["1주", 5], ["1개월", 21], ["3개월", 63], ["6개월", 126], ["1년", 252], ["3년", 756]];
     $("#periodTable").innerHTML = `<tr>${periods.map((p) => `<th>${p[0]}</th>`).join("")}</tr><tr>${periods.map((p) => { const v = ret(p[1]); return `<td class="${cls(v)}">${spct(v)}</td>`; }).join("")}</tr>`;
-  }
-  // 대시보드 AI: 세 가지 미래 기준을 모두 계산해 둔 뒤 묻는다
-  let aiDashBusy = false;
-  function aiDash() {
-    if (aiDashBusy) return;
-    if (S.state.ui.ai_auto === false || valuation().total <= 0) { aiAuto("dash", false); return; }
-    const need = [basisScen($("#histBasis .on")?.dataset.b || "model")].filter((k) => !fcReady(k)); // 해설은 지금 보는 미래 기준만 쓴다
-    if (!need.length) { aiAuto("dash", false); return; }
-    aiDashBusy = true;
-    $("#aiOut-dash").innerHTML = "<p class='muted'>전망을 계산하는 중입니다…</p>";
-    const next = () => { const k = need.shift(); if (!k) { aiDashBusy = false; aiAuto("dash", false); return; } forecastLater(k, next); };
-    next();
   }
   // 종목 탭 종목 진단: 종목별 가격 (현지 통화)
   function renderStockPrices() {
@@ -1566,7 +1554,6 @@
       `<tr><td class="l muted wrapc" colspan="5">상관: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
     renderStrategy();
     if (onTab("forecast")) { renderFx(); runXfEffect(); }
-    aiRefresh();
   }
 
   // 내 관점 숫자·렌즈·그래프 (슬라이더를 움직일 때는 이것만 다시 그린다)
@@ -1642,130 +1629,6 @@
     }).join("");
   }
 
-  // ------------------------------------------------------------ AI 의견 (무료 AI 사이트로 질문 보내기)
-  function aiPrompt() {
-    if (!lastForecast) return "";
-    const { b, withEv: R } = lastForecast, g = S.state.goal, md = b.model, V0 = R.V0, yrs = yearsBetween(md.startDate, g.date);
-    const lines = [];
-    lines.push(`내 미국·한국 주식 포트폴리오의 종목별 투자 전략을 조언해 줘. 아래는 내 도구가 계산한 값이야 (${md.startDate} 기준, 원화).`);
-    lines.push(`목표: ${krw(g.amount)}원, 목표일 ${g.date} (${yrs.toFixed(1)}년). 현재 평가액 ${krw(V0)}원, 필요한 연수익률 ${pct((g.amount / V0) ** (1 / yrs) - 1)}.`);
-    lines.push(`몬테카를로 전망(환율·외부 요인 포함): 목표 달성 확률 ${pct(R.p_goal, 0)}, 목표일 중앙값 ${krw(R.terminal.p50)}원, 하위5% ${krw(R.terminal.p5)}원, 상위5% ${krw(R.terminal.p95)}원, 최대낙폭 중앙값 ${pct(R.mdd_median, 0)}.`);
-    lines.push("종목 (비중 / 추세 / 칼만 기울기 연율 / 변동성 / 고점 대비 / 1년 수익률 / 목표일까지 오를 확률):");
-    b.holdings.forEach((h, i) => {
-      const p = S.prices[h.ticker], sg = p ? Model.indicators(p.dates, p.adj)?.sig : null, f = md.factors[i];
-      lines.push(`- ${h.ticker}: ${pct(h.valueKrw / V0, 0)} / ${sg ? sg.trend : "-"} / ${sg ? spct(sg.slope_ann, 0) : "-"} / ${pct(f.vol, 0)} / ${sg ? pct(sg.drawdown, 0) : "-"} / ${sg && sg.ret_1y != null ? spct(sg.ret_1y, 0) : "-"} / ${pct(R.stocks[i].p_up, 0)}${f.n < 252 ? ` (상장 ${f.n}거래일)` : ""}`);
-    });
-    const ev = md.eventList.filter((e) => yearsBetween(md.startDate, e.date) <= 0.5).slice(0, 8);
-    if (ev.length) lines.push("6개월 내 사건: " + ev.map((e) => `${e.date} ${e.event.target} ${e.event.kind}`).join(", "));
-    lines.push("요청: 1) 종목별로 보유·비중 축소·추가 매수 중 무엇이 맞는지 이유와 함께, 2) 목표 확률을 높이면서 위험을 줄이는 비중 조정안, 3) 앞으로 3개월 동안 할 일 3가지. 한국 거주자 세금(해외주식 양도세 250만원 공제)도 고려해서 한국어 마크다운으로 아주 짧게 답해 줘.");
-    return lines.join("\n");
-  }
-  // 페이지별 질문: 수량은 넣지 않고 비중(%)과 지표만
-  function sigOf(t) { const p = S.prices[t]; return p ? Model.indicators(p.dates, p.adj)?.sig : null; }
-  function aiPromptFor(kind) {
-    if (kind === "strategy") return aiPrompt();
-    const g = S.state.goal, L = [], tail = "한국어 마크다운으로 아주 짧게 답해 줘.";
-    if (kind === "trend") {
-      const keys = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]);
-      if (!keys.length) return "";
-      const { rows } = valuation();
-      L.push(`내 보유 종목의 추세 지표야 (${today()} 기준). 칼만 필터(로그가격 수준+기울기)와 EMA로 계산했어.`);
-      L.push("종목 (비중 / 추세 판정 / 현재가 / 칼만 수준 대비 / 칼만 기울기 연율 / 기울기 z / EMA50 / EMA200 / EWMA 변동성 / 고점 대비 / 1개월 / 3개월 / 1년):");
-      keys.forEach((t) => { const s2 = sigOf(t), r = rows.find((x) => x.h.ticker === t); if (!s2) return;
-        L.push(`- ${t}: ${pct(r?.w, 0)} / ${s2.trend} / ${nf(s2.close, 2)} / ${spct(s2.dev_from_kalman)} / ${spct(s2.slope_ann, 0)} / ${s2.slope_z.toFixed(2)} / ${nf(s2.ema50, 2)} / ${s2.ema200 ? nf(s2.ema200, 2) : "-"} / ${pct(s2.vol_ewma, 0)} / ${pct(s2.drawdown, 0)} / ${spct(s2.ret_1m)} / ${spct(s2.ret_3m)} / ${spct(s2.ret_1y)}`); });
-      L.push("요청: 1) 종목별 추세가 지금 어떤 국면인지(상승 지속, 조정, 반등, 하락)와 근거, 2) 칼만 수준·EMA 기준으로 매수·축소를 고려할 가격대나 신호, 3) 추세 지표의 한계와 주의점. " + tail);
-      return L.join("\n");
-    }
-    if (kind === "dash") {
-      const { rows, total } = valuation(); if (!(total > 0)) return "";
-      const H = history(), k = H.dates.length - 1, j3 = Math.max(0, k - 756);
-      const Fs = [["내 관점 (" + scenName(S.state.model.scenario) + ")", fcReady(S.state.model.scenario)], ["현재 정세", fcReady("base")], ["과거 추세 (3년 추세선)", fcReady("smooth")]].filter(([, f]) => f && f.R);
-      if (!Fs.length) return "";
-      const cagr = H.index.length > 30 ? H.index[k] ** (252 / k) - 1 : null;
-      L.push(`내 포트폴리오의 과거 3년과 미래(목표일 ${g.date}까지) 원화 평가액 흐름이야 (${today()} 기준, 현재 수량을 과거에 그대로 적용). 목표 ${krw(g.amount)}원.`);
-      L.push(`합계: 현재 ${krw(total)}원, ${H.dates[j3]} ${krw(H.total[j3])}원, 1년 전 ${krw(H.total[Math.max(0, k - 252)])}원, 과거 연평균(신규 편입 효과 제외) ${pct(cagr)}.`);
-      L.push("종목 (비중 / 과거 3년 연평균 가격 수익률 / 1년 / 고점 대비 / 칼만·EMA 추세 성장률 연 / 3년 스무딩 성장률 연):");
-      rows.filter((r) => r.valueKrw > 0).forEach((r) => {
-        const p = S.prices[r.h.ticker]; if (!p) return;
-        const n = p.adj.length, i0 = Math.max(0, n - 757), c3 = n > 30 ? (p.adj[n - 1] / p.adj[i0]) ** (252 / (n - 1 - i0)) - 1 : null;
-        const ind = Model.indicators(p.dates, p.adj), sf = Model.smoothFit(p.dates, p.adj, 3), sg = ind?.sig;
-        L.push(`- ${r.h.ticker}: ${pct(r.w, 0)} / ${pct(c3)}${n < 252 ? ` (상장 ${n}거래일)` : ""} / ${sg?.ret_1y != null ? spct(sg.ret_1y, 0) : "-"} / ${sg ? pct(sg.drawdown, 0) : "-"} / ${ind ? spct(Math.exp(Model.trendGrowth(ind)) - 1, 0) : "-"} / ${sf ? spct(Math.exp(sf.slope) - 1, 0) : "-"}`);
-      });
-      L.push("미래 전망 (몬테카를로, 환율·외부 요인 포함) 기준별: 목표 달성 확률 / 목표일 중앙값 / 하위5% / 상위5%:");
-      Fs.forEach(([nm, f]) => L.push(`- ${nm}: ${pct(f.R.p_goal, 0)} / ${krw(f.R.terminal.p50)}원 / ${krw(f.R.terminal.p5)}원 / ${krw(f.R.terminal.p95)}원`));
-      L.push(`종목별 목표일 원화 평가액 중앙값 (${Fs.map(([nm]) => nm.split(" ")[0]).join(" / ")}):`);
-      Fs[0][1].R.stocks.forEach((s2, i) => L.push(`- ${s2.ticker}: ${Fs.map(([, f]) => krw(f.R.stocks[i]?.valBands.p50.at(-1)) + "원").join(" / ")}`));
-      L.push("요청: 1) 과거 3년 합계와 종목별 흐름 요약, 2) 세 가지 미래 전망이 왜 다른지와 어느 쪽이 더 현실적인지, 3) 종목별 시사점(목표 확률을 높이거나 위험을 줄이는 방향). " + tail);
-      return L.join("\n");
-    }
-    if (kind === "fx") {
-      const F = fxInfo(); if (!F) return "";
-      const sg = F.sg;
-      L.push(`원/달러 환율과 내 포트폴리오의 환율 노출이야 (${today()} 기준). 나는 한국 거주자이고 목표는 원화 ${krw(g.amount)}원, 목표일 ${g.date}.`);
-      L.push(`현재 ${nf(F.now, 1)}원, 칼만 추세 수준 ${nf(sg.kalman_level, 1)} (괴리 ${spct(sg.dev_from_kalman)}), 칼만 기울기 연 ${spct(sg.slope_ann, 1)} (z ${sg.slope_z.toFixed(2)}), EMA50 ${nf(sg.ema50, 1)}, EMA200 ${sg.ema200 ? nf(sg.ema200, 1) : "-"}, 추세 판정 ${sg.trend}.`);
-      L.push(`변화: 1개월 ${spct(sg.ret_1m)}, 3개월 ${spct(sg.ret_3m)}, 1년 ${spct(sg.ret_1y)}. 1년 범위 ${nf(F.lo1, 0)}~${nf(F.hi1, 0)}. EWMA 변동성 연 ${pct(sg.vol_ewma, 1)}.`);
-      L.push(`달러 자산 비중 ${pct(F.usdW, 0)}. 원화가 10% 강세가 되면 원화 평가액이 약 ${pct(F.usdW * 0.1, 1)} 줄어. 모형의 목표일 환율 중앙값 ${nf(F.at(F.T, "p50"), 0)} (5~95% ${nf(F.at(F.T, "p5"), 0)}~${nf(F.at(F.T, "p95"), 0)}).`);
-      L.push("요청: 1) 지금 환율 수준과 추세 해석, 2) 앞으로 1년 환율에 영향을 줄 요인(금리차, 경상수지, 위험 선호 등), 3) 달러 자산 비중이 이 정도일 때 환헤지·원화 자산 분산·달러 매도 시점 등 대응 방법. " + tail);
-      return L.join("\n");
-    }
-    if (!lastForecast) return "";
-    const { b, withEv: R, noEv, hasEv } = lastForecast, md = b.model, V0 = R.V0, yrs = yearsBetween(md.startDate, g.date), scen = S.state.model.scenario;
-    const head = `목표 ${krw(g.amount)}원, 목표일 ${g.date} (${yrs.toFixed(1)}년), 현재 평가액 ${krw(V0)}원, 필요한 연수익률 ${pct((g.amount / V0) ** (1 / yrs) - 1)}, 월 적립 ${krw(Number(g.monthly_contribution) || 0)}원.`;
-    if (kind === "forecast") {
-      L.push(`내 포트폴리오의 3년 몬테카를로 전망 결과야 (다변량 t 분포, 환율·외부 요인 포함, ${nf(S.state.model.n_paths)}경로, ${scenName(scen)} 시나리오). ${head}`);
-      L.push(`목표 달성 확률 ${pct(R.p_goal, 0)}, 중간에 한 번이라도 도달 ${pct(R.p_touch, 0)}, 목표일 중앙값 ${krw(R.terminal.p50)}원, 하위5% ${krw(R.terminal.p5)}원, 상위5% ${krw(R.terminal.p95)}원, 목표일에 기준(지금 또는 매수가)보다 낮을 확률 ${pct(R.p_loss, 0)}, 최대낙폭 중앙값 ${pct(R.mdd_median, 0)}.`);
-      L.push("연도별 누적 도달 확률: " + R.byYear.map((y) => `${y.year}년 내 ${pct(y.p, 0)}`).join(", "));
-      L.push("종목 (비중 / 적용 기대수익 연 / 모형 변동성 / 오를 확률):");
-      b.holdings.forEach((h, i) => { const f = md.factors[i]; L.push(`- ${h.ticker}: ${pct(h.valueKrw / V0, 0)} / ${pct(f.mu[scen])} / ${pct(f.vol, 0)} / ${pct(R.stocks[i].p_up, 0)}${f.n < 252 ? ` (상장 ${f.n}거래일)` : ""}`); });
-      L.push("요청: 1) 이 결과를 쉽게 해석, 2) 가정(기대수익·변동성)이 낙관적이거나 비관적인 부분, 3) 목표 확률을 높일 현실적인 방법 3가지. " + tail);
-      return L.join("\n");
-    }
-    if (kind === "events") {
-      // 화면의 타일·표와 같은 값만 보낸다 (펼친 반복 일정 대신 사건 단위로, 꺼진 사건도 표시)
-      L.push(`내 포트폴리오 전망 모형에 넣은 외부 요인 가정과 그 효과야. 요인은 3개 박스로 나눴어: 거시(금융·통화: 금리·통화정책/환율/인플레이션, 원자재: 유가/금값/기타 금속·곡물, 정치·지정학: 선거·정책/전쟁·분쟁/무역·제재), 기업(실적·공시, 신제품·리콜, 주요 KPI), 수급(기관·외국인 매매 동향). ${head}`);
-      L.push("보유 비중: " + b.holdings.map((h) => `${h.ticker} ${pct(h.valueKrw / V0, 0)}`).join(", "));
-      const B = factorBetas();
-      L.push("종목별 민감도 (최근 3년 일별, 시장 외 요인은 시장 움직임 제외): " + b.holdings.map((h) => `${h.ticker} 시장베타 ${(B.stat.mkt[h.ticker]?.beta ?? NaN).toFixed(2)}, 금리+10bp ${spct((B.stat.rate[h.ticker]?.beta ?? NaN) * 10, 2)}, 유가+10% ${spct((B.stat.oil[h.ticker]?.beta ?? NaN) * 0.0953, 2)}, 금+10% ${spct((B.stat.gold[h.ticker]?.beta ?? NaN) * 0.0953, 2)}, 원자재+10% ${spct((B.stat.cmdty[h.ticker]?.beta ?? NaN) * 0.0953, 2)}`).join("; "));
-      L.push("사건 (묶음 / 대상 / 종류 / 다음 날짜(추정) / 반복 / 발생 확률 / 평균 영향 / 불확실성 ± / 변동성 확대 / 상태). 요인 사건의 영향은 요인 단위(시장=S&P500 %, 금리=bp, 유가·금·원자재=%)이고 종목별 민감도만큼 반영:");
-      S.state.events.forEach((e) => { const o = nextOcc(e), u = e.factor === "rate" ? "bp" : "%";
-        L.push(`- ${catName(e.cat)} / ${tgtLab(e)} / ${e.kind} / ${o.next || "지남"} / ${e.repeat && e.repeat !== "none" ? `${repName(e.repeat)}, 목표일까지 ${o.n}회` : "한 번"} / ${e.prob}% / ${e.mean > 0 ? "+" : ""}${e.mean}${u} / ±${e.sd}${u} / ${e.vol_mult && e.vol_mult !== 1 && e.vol_days ? `${e.vol_mult}배 ${e.vol_days}거래일` : "없음"} / ${e.on ? "켜짐" : "꺼짐(모형 제외)"}`); });
-      if (!S.state.events.length) L.push("- (사건 없음)");
-      L.push("참고: 평균 영향 0인 사건은 방향 없이 변동만 키운다는 뜻이고, 반복 사건의 변동은 과거 변동성에 이미 들어 있어 그만큼 평소 변동성에서 뺐다.");
-      if (hasEv) L.push(`몬테카를로 결과 (요인 제외 → 반영): 목표 확률 ${pct(noEv.p_goal, 0)} → ${pct(R.p_goal, 0)}, 목표일 중앙값 ${krw(noEv.terminal.p50)} → ${krw(R.terminal.p50)}원, 하위5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원.`);
-      if (xfEff && xfEff.fc === lastForecast) L.push("요인별 영향 (그 박스·버튼만 켰을 때 목표 확률 변화): " + [...Object.entries(xfEff.grp), ...Object.entries(xfEff.by).filter(([, X]) => !Object.values(xfEff.grp).includes(X))].map(([c, X]) => `${xfName(c)} ${spct(X.p_goal - xfEff.none.p_goal, 0)}p`).join(", "));
-      L.push("요청: 위 목록과 숫자만 근거로 1) 요인 묶음별로 가정한 확률·영향 크기가 과거 사례에 비춰 적절한지(사건 이름과 숫자를 그대로 인용), 2) 내 포트폴리오가 가장 민감한 외부 요인과 그 이유, 3) 목록에 없지만 넣을 만한 요인(있다면 '추가 고려'로 구분, 날짜는 확인 필요 표시), 4) 요인별 대응. 목록에 없는 사건을 이미 있는 것처럼 말하지 마. " + tail);
-      return L.join("\n");
-    }
-    if (kind === "alloc") {
-      if (!lastAlloc) return "";
-      L.push(`내 포트폴리오의 비중 조정안을 같은 난수로 시뮬레이션한 비교야 (안별 1,500경로, 사건 포함, 차액은 QQQ로 이동, 조정안은 연 1회 재조정). ${head}`);
-      L.push("안 (비중 / 목표 확률 / 목표일 중앙값 / 하위5% / 원금 손실 확률 / 최대낙폭 중앙값):");
-      lastAlloc.out.forEach((o) => L.push(`- ${o.name}: ${lastAlloc.base.map((h, i) => (o.w[i] > 0.004 ? `${h.ticker} ${pct(o.w[i], 0)}` : "")).filter(Boolean).join(", ")} / ${pct(o.R.p_goal, 0)} / ${krw(o.R.terminal.p50)} / ${krw(o.R.terminal.p5)} / ${pct(o.R.p_loss, 0)} / ${pct(o.R.mdd_median, 0)}`));
-      L.push("요청: 1) 안별 장단점(목표 확률 대 위험), 2) 어떤 안을 추천하는지와 이유, 3) 실행 방법(나눠 매도·매수, 한국 거주자 해외주식 양도세 연 250만원 공제 고려). " + tail);
-      return L.join("\n");
-    }
-    return "";
-  }
-  // Puter 답 저장소
-  const AI_KEY = "asset-tracker-ai";
-  // 마크다운 → HTML (AI 답과 규칙 기반 의견에 공통). 소제목, 굵게·기울임·코드·링크, 중첩 목록, 표, 인용, 구분선, 코드 블록
-  // AI 답 정리: JSON 으로 온 답, <think> 블록, 답 전체를 감싼 ```markdown 코드 블록, 무료 서비스가 덧붙인 광고 문구
-  function cleanAi(t) {
-    t = String(t ?? "").replace(/\r/g, "").trim();
-    // 따옴표로 감싼 JSON 문자열, JSON 객체, 줄바꿈이 \n 글자로 온 답
-    if (/^"[\s\S]*"$/.test(t)) { try { const j = JSON.parse(t); if (typeof j === "string") t = j.trim(); } catch (e) { /* 그대로 */ } }
-    if (/^\{[\s\S]*\}$/.test(t)) {
-      try { const j = JSON.parse(t); t = String(j.choices?.[0]?.message?.content ?? j.message?.content ?? j.content ?? j.response ?? j.text ?? t); } catch (e) { /* 그대로 */ }
-    }
-    if (!t.includes("\n") && /\\n/.test(t)) t = t.replace(/\\n/g, "\n").replace(/\\t/g, "  ").replace(/\\"/g, '"');
-    t = t.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/^[\s\S]*?<\/think>/i, "").trim();
-    // 답 전체를 감싼 코드 블록 (닫는 ``` 가 잘려 없어도)
-    const fence = t.match(/^```[ \t]*(markdown|md|text|html)?[ \t]*\n([\s\S]*?)\n?(```\s*)?$/i);
-    if (fence && (t.match(/```/g) || []).length <= 2) t = fence[2];
-    const ad = t.search(/\n[^\n]*(Support Pollinations|Powered by Pollinations|🌸\s*\**\s*Ad\b)/i);
-    if (ad >= 0) t = t.slice(0, ad).replace(/\n\s*(-{3,}|\*{3,})\s*$/, "");
-    return tex2txt(html2md(t)).trim();
-  }
   // HTML 로 온 답은 마크다운으로 바꿔 같은 방식으로 그린다 (태그가 글자로 보이지 않게)
   function html2md(t) {
     if (!/<\/?(h[1-6]|p|ul|ol|li|br|div|table|tr|td|th|strong|em|b|i|hr|blockquote|span|section|article)\b[^>]*>/i.test(t)) return t;
@@ -1780,17 +1643,7 @@
       .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_, k) => ent[k])
       .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   }
-  // LaTeX 수식 (\( \), \[ \], $…$) 을 읽을 수 있는 글자로
-  function tex2txt(t) {
-    if (!/\\\(|\\\[|\$[^$\n]+\$|\\(frac|text|times|approx|cdot|left|right)/.test(t)) return t;
-    const conv = (x) => { let y = x, prev;
-      do { prev = y; y = y.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)").replace(/\\(text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, "$2"); } while (y !== prev);
-      return y.replace(/\\left|\\right/g, "").replace(/\\times/g, "×").replace(/\\cdot/g, "·").replace(/\\approx/g, "≈").replace(/\\(le|leq)\b/g, "≤").replace(/\\(ge|geq)\b/g, "≥")
-        .replace(/\\%/g, "%").replace(/\\sigma/g, "σ").replace(/\\mu/g, "μ").replace(/\\Delta/g, "Δ").replace(/\\to\b|\\rightarrow/g, "→").replace(/\\,|\;|\\!/g, " ")
-        .replace(/\^\{([^{}]*)\}/g, "^$1").replace(/_\{([^{}]*)\}/g, "_$1").replace(/[{}]/g, "").replace(/\\([a-zA-Z]+)/g, "$1").trim(); };
-    return t.replace(/\$\$([\s\S]+?)\$\$/g, (_, x) => conv(x)).replace(/\\\[([\s\S]+?)\\\]/g, (_, x) => conv(x)).replace(/\\\(([\s\S]+?)\\\)/g, (_, x) => conv(x))
-      .replace(/\$([^$\n]*\\[a-zA-Z][^$\n]*)\$/g, (_, x) => conv(x)).replace(/\\(frac|text)\s*\{[^\n]*/g, (x) => conv(x));
-  }
+  // 마크다운 → HTML (전략 요약과 블로그 글에 공통). 소제목, 굵게·기울임·코드·링크, 중첩 목록, 표
   function md2html(t) {
     const inline = (x) => esc(x)
       .replace(/&lt;br\s*\/?&gt;/gi, "<br>")
@@ -1845,124 +1698,6 @@
     return out.join("");
   }
   function hashStr(s2) { let h = 0; for (let i = 0; i < s2.length; i++) h = (Math.imul(31, h) + s2.charCodeAt(i)) | 0; return String(h >>> 0); }
-  function aiCache() { let c = {}; try { c = JSON.parse(localStorage.getItem(AI_KEY) || "{}"); } catch (e) { /* 무시 */ } if (c.key) c = { strategy: c }; return c; }
-  // AI 를 쓸 수 없을 때 보여 줄 규칙 기반 해설 (같은 숫자로 만든 짧은 요약)
-  function ruleText(kind) {
-    const g = S.state.goal, L = [], B = (x) => `**${x}**`;
-    try {
-      if (kind === "trend") {
-        const { rows } = valuation();
-        S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]).forEach((t) => { const s2 = sigOf(t), r = rows.find((x) => x.h.ticker === t); if (!s2) return;
-          const sig = s2.vol_hist < 0.03 ? "현금성이라 추세 신호를 보지 않습니다." : s2.close < s2.ema200 && (s2.slope_z < 0 || s2.ema50 < s2.ema200) ? "가격이 EMA200 아래이고 추세도 약해 추가 매수는 반등 확인 뒤가 안전합니다."
-            : s2.close > s2.ema200 && s2.slope_z > 1 ? "EMA200 위에서 기울기도 뚜렷해 보유 유지 쪽입니다." : s2.dev_from_kalman > 0.1 ? "칼만 추세보다 10% 넘게 높아 단기 과열 구간입니다."
-            : s2.dev_from_kalman < -0.1 ? "칼만 추세보다 10% 넘게 낮아 눌림 구간입니다." : "뚜렷한 신호 없이 추세선 근처입니다.";
-          L.push(`### ${t} · ${s2.trend}`, `- 비중 ${pct(r?.w, 0)}, 칼만 추세 대비 ${B(spct(s2.dev_from_kalman))}, 기울기 연 ${spct(s2.slope_ann, 0)} (z ${s2.slope_z.toFixed(1)}), 고점 대비 ${pct(s2.drawdown, 0)}`, `- ${sig}`); });
-        L.push("- 추세 지표는 뒤늦게 반응하고 횡보장에서 신호가 자주 바뀝니다.");
-      } else if (kind === "dash") {
-        const { rows, total } = valuation(), H = history(), k = H.dates.length - 1, yrs = yearsBetween(today(), g.date), at = (n) => H.total[Math.max(0, k - n)];
-        const ch = (n) => spct(total / at(n) - 1, 0), j3 = Math.max(0, k - 756), past3 = H.total.slice(j3), peak = Math.max(...past3);
-        const cagr = k > 30 ? (total / H.total[j3]) ** (252 / (k - j3)) - 1 : null, req = (g.amount / total) ** (1 / Math.max(0.01, yrs)) - 1;
-        const X = []; X.push("### 흐름", `- 현재 ${B(krw(total) + "원")} · 1달 ${ch(21)} · 1년 ${ch(252)} · 3년 ${ch(756)}`, `- 3년 고점 ${krw(peak)}원 대비 ${spct(total / peak - 1, 0)}, 3년 연평균 ${pct(cagr)}`);
-        // 목표 진행: 목표 시작일부터 실제(그때 수량) 평가액과 필요 경로 비교
-        const A = actualSeries(H) || H.total, st = g.start_date || today(); let i0 = H.dates.findIndex((d) => d >= st); if (i0 < 0) i0 = k;
-        const V0 = A[i0] || H.total[i0], span = yearsBetween(st, g.date), el = Math.max(0, yearsBetween(st, today()));
-        const need = V0 > 0 && span > 0 ? V0 * (g.amount / V0) ** (el / span) : null;
-        L.push("### 목표 진행", `- 목표 ${krw(g.amount)}원의 ${B(pct(total / g.amount, 0))}, 남은 ${yrs.toFixed(1)}년에 필요한 연수익률 ${B(pct(req))}`);
-        if (V0 > 0 && g.start_date) {
-          const tp = el / span, wp = V0 < g.amount ? Math.log(total / V0) / Math.log(g.amount / V0) : 1;
-          L.push(`- ${st} 시작 ${krw(V0)}원 → 지금 ${spct(total / V0 - 1)}, 기간은 ${pct(tp, 1)} 지났고 갈 길(복리 기준)은 ${pct(wp, 1)} 왔습니다`);
-          if (need) L.push(Math.abs(total - need) < need * 0.0005 ? "- 내 길과 거의 같습니다" : `- 내 길보다 ${B(krw(Math.abs(total - need)) + "원 " + (total >= need ? "앞섬" : "뒤처짐"))} (${spct(total / need - 1)})`);
-        }
-        L.push(`- ${cagr != null && cagr >= req ? `지난 3년 속도(연 ${pct(cagr, 0)})면 목표에 닿습니다.` : `지난 3년 속도(연 ${pct(cagr, 0)})보다 빨라야 목표에 닿습니다.`}` + (Number(g.monthly_contribution) > 0 ? ` 월 적립 ${krw(Number(g.monthly_contribution))}원 포함 전망.` : ""));
-        const hs = rows.filter((r) => r.valueKrw > 0).sort((a, b2) => b2.w - a.w), j1 = Math.max(0, k - 252);
-        const contrib = hs.map((r) => { const e = H.each[r.h.ticker]; return [r.h.ticker, e && e[j1] != null ? e[k] - e[j1] : null]; }).filter((x) => x[1] != null).sort((a, b2) => b2[1] - a[1]);
-        X.push("### 구성", `- ${hs.slice(0, 4).map((r) => `${r.h.ticker} ${pct(r.w, 0)}`).join(" · ")}`);
-        if (contrib.length) X.push(`- 지난 1년 가장 많이 번 종목 ${B(contrib[0][0])} (${krw(contrib[0][1])}원)` + (contrib.length > 1 && contrib.at(-1)[1] < 0 ? `, 가장 깎아 먹은 종목 ${contrib.at(-1)[0]} (${krw(contrib.at(-1)[1])}원)` : ""));
-        if (hs[0] && hs[0].w > 0.4) X.push(`- ${hs[0].h.ticker} 비중이 ${pct(hs[0].w, 0)}라 결과가 이 종목에 크게 좌우됩니다.`);
-        const usdW = hs.filter((r) => r.ccy === "USD").reduce((a, r) => a + r.w, 0), fs = sigOf("KRW=X");
-        if (usdW > 0) X.push(`- 달러 자산 ${pct(usdW, 0)}` + (fs && fs.ret_1y != null ? `, 지난 1년 환율 효과 약 ${spct(usdW * fs.ret_1y, 1)}` : ""));
-        const bs = $("#histBasis .on")?.dataset.b || "model", F = fcReady(basisScen(bs));
-        if (F && F.R) { // 미래: 그래프에서 보는 기준(기본 내 관점)의 평가액 추이
-          const R = F.R, fd = F.model.monthDates, i1 = Math.min(fd.length - 1, 12), GP1 = goalPath(history(), 0), d1 = Model.addMonths(today(), 12), need1 = GP1 && GP1.at(d1) != null ? GP1.at(d1) : total * (g.amount / total) ** (Math.min(1, yrs) / Math.max(0.01, yrs));
-          const by = (R.byYear || []).map((y) => `${y.year}년 ${pct(y.p, 0)}`).join(" · ");
-          L.push(`### 미래 (${BASIS[bs]})`, `- 목표일에 목표 이상일 확률 ${B(pct(R.p_goal, 0))}`, ...(by ? [`- 중간에 한 번이라도 목표에 닿을 확률: ${by}`] : []),
-            `- 목표일(${g.date}) 중앙값 ${B(krw(R.terminal.p50) + "원")}, 흔한 범위 ${krw(R.terminal.p25)}~${krw(R.terminal.p75)}원, 나쁜 경우 5% ${krw(R.terminal.p5)}원`,
-            `- 1년 뒤 중앙값 ${krw(R.bands.p50[i1])}원, 내 길 ${krw(need1)}원보다 ${R.bands.p50[i1] >= need1 ? "앞섭니다" : "뒤처집니다"}`,
-            `- 목표일에 지금보다 낮을 확률 ${pct(R.p_loss, 0)}` + (R.req50 ? `, 확률 50%에 필요한 월 적립 약 ${krw(R.req50)}원` : ""));
-        }
-        L.push(...X);
-      } else if (kind === "fx") {
-        const F = fxInfo(); if (!F) return ""; const sg = F.sg;
-        L.push("### 환율", `- 현재 ${B(nf(F.now, 1) + "원")}, 칼만 추세 대비 ${spct(sg.dev_from_kalman)}, 판정 ${sg.trend}`, `- 1년 범위 ${nf(F.lo1, 0)}~${nf(F.hi1, 0)}원, 1년 변화 ${spct(sg.ret_1y)}`,
-          "### 내 노출", `- 달러 자산 ${B(pct(F.usdW, 0))}: 원화가 10% 강해지면 평가액 약 ${pct(F.usdW * 0.1, 1)} 감소`, `- ${F.usdW > 0.8 ? "달러 비중이 높아 원화 자산이나 환헤지 상품으로 일부 나누는 것을 검토할 만합니다." : "달러 비중이 과하지 않습니다."}`);
-      } else if (kind === "alloc") {
-        if (!lastAlloc) return ""; const o = lastAlloc.out, bp = o.reduce((a, b2) => (b2.R.p_goal > a.R.p_goal ? b2 : a)), bs = o.reduce((a, b2) => (b2.R.terminal.p5 > a.R.terminal.p5 ? b2 : a));
-        L.push("### 비교", `- 목표 확률이 가장 높은 안: ${B(bp.name)} (${pct(bp.R.p_goal, 0)})`, `- 나쁜 경우(하위 5%)가 가장 나은 안: ${B(bs.name)} (${krw(bs.R.terminal.p5)}원)`,
-          `- ${bp === bs ? "두 기준 모두 같은 안이 앞섭니다." : "확률과 안전성이 다른 안을 가리키니 감당할 낙폭을 먼저 정하세요."}`, "- 옮길 때는 여러 번 나눠 팔고, 해외주식 양도차익 연 250만원 공제를 해마다 쓰세요.");
-      } else {
-        if (!lastForecast) return ""; const { b, withEv: R, noEv, hasEv } = lastForecast, md = b.model, V0 = R.V0;
-        if (kind === "events") {
-          const on = S.state.events.filter((e) => e.on && evShown(e)), byCat = {};
-          on.forEach((e) => (byCat[e.cat] = (byCat[e.cat] || 0) + 1));
-          L.push("### 켜진 외부 요인", ...Object.entries(byCat).map(([c, n]) => `- ${catName(c)} ${n}건`));
-          if (hasEv) L.push("### 효과", `- 목표 확률 ${pct(noEv.p_goal, 0)} → ${B(pct(R.p_goal, 0))}, 하위 5% ${krw(noEv.terminal.p5)} → ${krw(R.terminal.p5)}원`);
-          if (xfEff && xfEff.fc === lastForecast) { const w = Object.entries(xfEff.by).sort((a, b2) => a[1].terminal.p5 - b2[1].terminal.p5)[0]; if (w) L.push(`- 나쁜 경우를 가장 크게 끌어내리는 요인: ${B(xfName(w[0]))}`); }
-          const Bt = factorBetas(), hi = b.holdings.map((h) => [h.ticker, Bt.stat.mkt[h.ticker]?.beta]).filter((x) => x[1] != null).sort((a, b2) => b2[1] - a[1])[0];
-          if (hi) L.push(`- 시장 충격(정치·전쟁·거시)에 가장 민감한 종목: ${B(hi[0])} (베타 ${hi[1].toFixed(2)})`);
-          L.push("- 날짜는 추정이니 실적·인도량·FOMC·선거 날짜는 공시와 일정표로 확인하세요.");
-        } else if (kind === "forecast") {
-          const Fs = [["현재 정세", fcReady("base")], ["과거 추세", fcReady("smooth")], [`내 관점 (${S.state.model.scenario === "blend" ? "추세 신뢰 " + S.state.model.trust + "%" : scenName(S.state.model.scenario)})`, fcReady(S.state.model.scenario)]].filter(([, f]) => f && f.R);
-          if (Fs.length) { L.push("### 세 렌즈"); Fs.forEach(([n, f]) => L.push(`- ${n}: 목표 확률 ${B(pct(f.R.p_goal, 0))}, 목표일 중앙값 ${krw(f.R.terminal.p50)}원`));
-            L.push("- 현재 정세는 과거 수익률을 장기 평균 쪽으로 당긴 값, 과거 추세는 지난 3년 성장 속도가 이어진다는 가정입니다. 어느 쪽을 믿을지는 위 슬라이더로 고릅니다."); }
-          L.push("### 결과", `- 목표 확률 ${B(pct(R.p_goal, 0))}, 목표일 중앙값 ${krw(R.terminal.p50)}원 (목표의 ${pct(R.terminal.p50 / g.amount, 0)})`, `- 나쁜 경우 5% ${krw(R.terminal.p5)}원, 목표일에 더 낮을 확률 ${pct(R.p_loss, 0)}`);
-          const hv = b.holdings.map((h, i) => ({ t: h.ticker, v: md.factors[i].vol, w: h.valueKrw / V0 })).sort((a, b2) => b2.v * b2.w - a.v * a.w)[0];
-          L.push("### 시사점", `- 위험의 대부분은 ${hv.t} (비중 ${pct(hv.w, 0)}, 변동성 ${pct(hv.v, 0)})에서 나옵니다.`, R.req50 ? `- 확률 50%에 필요한 월 적립은 약 ${krw(R.req50)}원입니다.` : "- 월 적립을 늘리거나 목표일을 늦추면 확률이 오릅니다.");
-        } else if (kind === "strategy") {
-          L.push("- 위 '포트폴리오 진단'과 종目별 카드가 같은 계산값으로 만든 규칙 기반 의견입니다.".replace("目", "목"), `- 목표 확률 ${B(pct(R.p_goal, 0))}, 목표일 중앙값 ${krw(R.terminal.p50)}원`);
-        } else return "";
-      }
-    } catch (e) { return ""; }
-    return L.join("\n");
-  }
-  // Puter (버튼을 누를 때만, 첫 사용 때 무료 계정 확인 창)
-  let puterP = null;
-  function loadPuter() { return (puterP ||= new Promise((res, rej) => { if (window.puter) return res(window.puter); const sc = document.createElement("script"); sc.src = "https://js.puter.com/v2/"; sc.onload = () => res(window.puter); sc.onerror = () => { puterP = null; rej(new Error("Puter를 불러오지 못함")); }; document.head.appendChild(sc); })); }
-  const puterText = (r) => (typeof r === "string" ? r : r?.message?.content?.[0]?.text ?? r?.message?.content ?? r?.text ?? String(r ?? ""));
-  async function askPuter(sys, q) { const P = await loadPuter(); return puterText(await P.ai.chat([{ role: "system", content: sys }, { role: "user", content: q }])); }
-  const aiBusy = {};
-  const AI_SYS = "너는 신중한 한국어 투자 조언가다. 주어진 숫자만 근거로 아주 간결하게 답한다. 요청 항목마다 ### 소제목 하나와 한 줄짜리 글머리표 2~3개만 쓰고, 전체 15줄을 넘기지 않는다. 서론·반복·일반론은 빼고 핵심 숫자는 **굵게**. 표, 코드 블록(```), HTML 태그, 수식(LaTeX, $ 기호)은 쓰지 않고 일반 마크다운 글로만 쓴다(좁은 휴대폰 화면). 마지막 줄은 '투자 권유 아님.'";
-  // 기본은 계산값으로 만든 규칙 기반 해설. 'Puter 무료 AI로 분석'을 누를 때만 Puter 에 묻는다
-  function showRule(box, kind, why) {
-    const r = ruleText(kind);
-    box.innerHTML = (r ? md2html(r) : "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>") ;
-  }
-  async function aiAuto(kind, force, viaPuter) {
-    const box = $("#aiOut-" + kind); if (!box) return;
-    const off = S.state.ui.ai_auto === false;
-    $$(".aicard, #aiAutoCard").forEach((c) => (c.style.display = off || (c.closest("#ana-events") && !heldTks().length) ? "none" : "block"));
-    if (off || aiBusy[kind]) return;
-    const q = aiPromptFor(kind);
-    if (!q) { box.innerHTML = "<p class='muted'>분석할 계산 결과가 아직 없습니다.</p>"; return; }
-    const key = hashStr("v6|" + q), cache = aiCache(), c = cache[kind];
-    // Puter 답은 입력(종목·수량·목표·사건·시나리오)이 같고 6시간 안이면 다시 보여 준다
-    const sig = hashStr("v6|" + kind + JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd]), S.state.model.scenario, today()]));
-    const again = `<button class="sm" data-puter="${kind}">Puter 무료 AI로 분석</button>`;
-    if (!viaPuter) {
-      showRule(box, kind); return;
-    }
-    aiBusy[kind] = true; box.innerHTML = "<p class='muted'>Puter로 분석하는 중입니다… (보통 10~30초)</p>";
-    let text = "", why = "";
-    try { let tm; text = cleanAi(await Promise.race([askPuter(AI_SYS, q), new Promise((_, rej) => { tm = setTimeout(() => rej(new Error("시간 초과")), 90000); })]).finally(() => clearTimeout(tm))); }
-    catch (e) { why = e?.message || String(e); }
-    aiBusy[kind] = false;
-    if (!text) { showRule(box, kind, why || "빈 응답"); return; }
-    const cc = aiCache(); cc[kind] = { key, sig, text, at: Date.now(), src: "Puter" };
-    try { localStorage.setItem(AI_KEY, JSON.stringify(cc)); } catch (e) { /* 무시 */ }
-    box.innerHTML = md2html(text) + `<p class="muted small">${new Date().toLocaleString()} 분석 · Puter ${again}</p>`;
-  }
-  // 지금 보고 있는 분석 화면의 AI 분석을 채운다
-  function aiRefresh() { /* 자동 AI 분석은 꺼 둠 (버튼으로만) */ }
-
 
   // 지수·현금성 ETF·요인 대리 지표 (실적 사건을 자동으로 넣지 않는 종목)
   const INS_SKIP = new Set(["QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"]);
@@ -2316,7 +2051,6 @@
       lastAlloc = { base: base.map((h) => ({ ticker: h.ticker, price0: h.price0, ccy: h.ccy, shares: h.shares })), V0, top, out, subs, fd: model.monthDates, at: Date.now() }; allocDirty = false;
       try { localStorage.setItem(AL_KEY, JSON.stringify({ sig: fcSig() + "|" + JSON.stringify(S.state.alloc_mix || {}), ...lastAlloc })); } catch (e) { /* 무시 */ }
       renderAllocTable(); renderAllocChart();
-      if (onTab("stocks")) aiRefresh();
     } catch (e) { st.textContent = "오류: " + e.message; console.error(e); }
     btn.disabled = false;
   }
@@ -3155,7 +2889,6 @@
     $("#rebalance").onchange = (e) => { S.state.model.rebalance_yearly = e.target.checked; save(); optDirty(); };
     $("#modelForm").addEventListener("change", onModelEdit);
     $("#btnResetModel").onclick = (e) => { if (armed(e.target)) { S.state.model = { ...DEFAULT_MODEL }; save(); renderSettings(); } };
-    ["#tab-forecast", "#tab-stocks", "#tab-dash"].forEach((t) => $(t).addEventListener("click", (e) => { const b2 = e.target.closest("[data-aire]"); if (b2) aiAuto(b2.dataset.aire, true); const b3 = e.target.closest("[data-puter]"); if (b3) aiAuto(b3.dataset.puter, true, true); }));
     $("#optManual").checked = !!S.state.ui.manual_price;
     $("#optManual").onchange = (e) => { S.state.ui.manual_price = e.target.checked; save(); renderAll(); };
     $("#btnExport").onclick = () => {
