@@ -124,39 +124,50 @@ struct PriceBasisView: View {
 }
 
 // 앱 아이콘 바꾸기: 기본 A · 내일의 별 + 인물 5. 각각 다크·틴트 모양이 따로 있어 홈 화면 모드를 따라간다
+// 인물 아이콘은 그 인물을 만나야 열린다 (세리는 처음부터, 나머지는 인터미션 1~4주차. 쉼터와 같은 단계)
 struct AppIconPicker: View {
-    static let icons: [(id: String?, name: String, prev: String)] = [
-        (nil, "내일의 별", "iconprev_star"), ("AppIcon-seri", "세리", "iconprev_seri"), ("AppIcon-sio", "시오", "iconprev_sio"),
-        ("AppIcon-seonbae", "선배", "iconprev_seonbae"), ("AppIcon-ir", "이르", "iconprev_ir"), ("AppIcon-sua", "수아", "iconprev_sua"),
+    @Environment(AppModel.self) private var m
+    static let icons: [(id: String?, name: String, prev: String, friend: Int?)] = [
+        (nil, "내일의 별", "iconprev_star", nil), ("AppIcon-seri", "세리", "iconprev_seri", 0), ("AppIcon-sio", "시오", "iconprev_sio", 1),
+        ("AppIcon-seonbae", "선배", "iconprev_seonbae", 2), ("AppIcon-ir", "이르", "iconprev_ir", 3), ("AppIcon-sua", "수아", "iconprev_sua", 4),
     ]
     @State private var current: String? = UIApplication.shared.alternateIconName
+
+    private func open(_ f: Int?) -> Bool { f.map { m.friendOn($0) } ?? true }
+    private func set(_ id: String?) {
+        guard UIApplication.shared.supportsAlternateIcons, current != id else { return }
+        UIApplication.shared.setAlternateIconName(id) { err in if err == nil { current = id } }
+    }
 
     var body: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 12) {
             ForEach(Self.icons, id: \.name) { ic in
-                let on = current == ic.id
-                Button {
-                    guard UIApplication.shared.supportsAlternateIcons, !on else { return }
-                    UIApplication.shared.setAlternateIconName(ic.id) { err in
-                        if err == nil { current = ic.id }
-                    }
-                } label: {
+                let on = current == ic.id, ok = open(ic.friend)
+                Button { if ok { set(ic.id) } } label: {
                     VStack(spacing: 6) {
                         Image(ic.prev).resizable().interpolation(.high).scaledToFit()
                             .frame(width: 64, height: 64)
+                            .saturation(ok ? 1 : 0).brightness(ok ? 0 : -0.35)
+                            .overlay { if !ok { Image(systemName: "lock.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(.white) } }
                             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                             .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 3 : 1))
-                        Text(ic.name).appFont(13, on ? .bold : .regular).foregroundStyle(on ? Theme.ink : Theme.sub)
+                        Text(ok ? ic.name : "인터미션 \(ic.friend ?? 0)주차").appFont(ok ? 13 : 11, on ? .bold : .regular)
+                            .foregroundStyle(on ? Theme.ink : ok ? Theme.sub : Theme.muted).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 8).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(ic.name) 아이콘")
+                .disabled(!ok)
+                .accessibilityLabel(ok ? "\(ic.name) 아이콘" : "\(ic.name) 아이콘, 인터미션 \(ic.friend ?? 0)주차에 열려요")
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
         .padding(8)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+        // 시안 조작으로 단계를 되돌려 지금 아이콘이 다시 잠기면 기본 아이콘으로 돌린다
+        .onAppear {
+            if let c = current, let ic = Self.icons.first(where: { $0.id == c }), !open(ic.friend) { set(nil) }
+        }
     }
 }
