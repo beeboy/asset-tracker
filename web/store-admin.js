@@ -126,13 +126,13 @@ if (typeof document !== "undefined") {
     } catch (e) { $("#books").innerHTML = `<li>${esc(e.message)}</li>`; }
   }
   async function readVault(path) {
-    const r = await fetch("https://api.github.com/repos/beeboy/MyVault/contents/" + path.split("/").map(encodeURIComponent).join("/"), { headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer " + token() } });
-    if (!r.ok) throw new Error(`MyVault 에서 ${path} 를 읽지 못했습니다 (${r.status}). 아래에서 파일을 직접 골라 주세요`);
+    const r = await fetch("https://api.github.com/repos/beeboy/MyVault/contents/" + path.split("/").map(encodeURIComponent).join("/"), { headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer " + tok() } });
+    if (!r.ok) throw new Error(`MyVault 에서 ${path} 를 읽지 못했습니다 (${r.status}). ${r.status === 404 || r.status === 401 ? (tok() ? "이 토큰에 MyVault 읽기(Contents: Read) 권한을 넣어 주세요" : "위 칸에 GitHub 토큰을 붙여 넣어 주세요 (이 사이트 주소에는 저장된 토큰이 없어요)") : "아래에서 파일을 직접 골라 주세요"}`);
     return r.text();
   }
   /** MyVault 그림 → 128×80 PNG data URL (도트가 번지지 않게 가장 가까운 점으로 줄인다) */
   async function readArt(path) {
-    const r = await fetch("https://api.github.com/repos/beeboy/MyVault/contents/" + path.split("/").map(encodeURIComponent).join("/"), { headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer " + token() } });
+    const r = await fetch("https://api.github.com/repos/beeboy/MyVault/contents/" + path.split("/").map(encodeURIComponent).join("/"), { headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer " + tok() } });
     if (!r.ok) throw new Error(`${path} (${r.status})`);
     const img = await createImageBitmap(await r.blob());
     const c = document.createElement("canvas");
