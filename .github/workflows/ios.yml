@@ -1,5 +1,6 @@
 name: ios
 # 아이폰 앱(ios-app/, 위젯 확장 포함)이 컴파일되는지 확인한다 (서명 없이 시뮬레이터용). 실제 설치는 맥의 Xcode 에서
+# 맥에서 쓰는 Xcode 26 과 맞춘다 (Xcode 16 은 일부 긴 식의 타입 추론이 시간 초과로 실패)
 on:
   push:
     paths: ["ios-app/**", "data/prices/**", ".github/workflows/ios.yml"]
@@ -11,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
