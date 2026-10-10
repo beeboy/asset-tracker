@@ -346,26 +346,28 @@ struct HowToView: View {
 
 struct RouteView: View {
     @Environment(AppModel.self) private var m
-    @State private var pick = "minus"
+    @State private var pick = ""
 
     var body: some View {
         let cards = [("minus", "회복 루트", "마이너스예요", "본전까지 가는 길. 원인 진단, 계획 4안, 절세, 4주 인터미션."),
                      ("plus", "목표 루트 · 플러스", "플러스예요", "지금 평가액에서 목표 금액까지. 구성 비교, 비중 조정 세금, 3개월 인터미션."),
                      ("none", "목표 루트 · 시작 전", "아직 시작 전이에요", "매달 넣는 돈으로 첫 목표까지. 구성 고르기, 3개월 인터미션.")]
+        let cur = m.route == .recover ? "minus" : m.route == .plus ? "plus" : "none"
+        let sel = pick.isEmpty ? cur : pick
         SettingsPage(title: "루트 바꾸기") {
-            if m.total >= m.cost {
+            if m.route == .recover && m.total >= m.cost {
                 Text("본전을 넘었어요. 이제 목표 루트 · 플러스로 바꿀 수 있어요.").appFont(14, .semibold).foregroundStyle(Color(hex: 0x0B5E40))
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(hex: 0xE3F4EC), in: RoundedRectangle(cornerRadius: 12))
             }
             ForEach(cards, id: \.0) { k, name, tag, sub in
-                let on = pick == k
+                let on = sel == k
                 Button { pick = k } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text(name).appFont(17, .bold)
                             Spacer()
-                            Text(k == "minus" ? "지금 루트" : tag).appFont(12, .bold).foregroundStyle(k == "minus" ? Theme.teal : Theme.sub)
+                            Text(k == cur ? "지금 루트" : tag).appFont(12, .bold).foregroundStyle(k == cur ? Theme.teal : Theme.sub)
                         }
                         Text(sub).appFont(14).foregroundStyle(Theme.sub).multilineTextAlignment(.leading)
                     }
@@ -375,8 +377,11 @@ struct RouteView: View {
                 }
                 .buttonStyle(.plain)
             }
-            PrimaryButton(title: pick == "minus" ? "지금 루트예요" : "목표 루트는 다음 빌드에서 열려요", color: Theme.muted) { }
-                .disabled(true)
+            PrimaryButton(title: sel == cur ? "지금 루트예요" : "이 루트로 바꾸기", color: sel == cur ? Theme.muted : Theme.teal) {
+                guard sel != cur else { return }
+                m.switchRoute(sel == "minus" ? .recover : sel == "plus" ? .plus : .novice)
+                pick = ""; m.settingsPath = []
+            }
             note("루트를 바꿔도 지금까지 한 미션, 받은 위젯과 캐릭터는 그대로 남아요. 언제든 다시 돌아올 수 있어요.")
         }
     }

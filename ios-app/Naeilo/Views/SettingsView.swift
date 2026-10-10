@@ -14,7 +14,7 @@ struct SettingsView: View {
             ("세금 규칙", "대한민국 거주자", .tax),
             ("시세 기준", "어제 종가 · 매일 아침 7시 갱신", .price),
             ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
-            ("루트", "회복 · 마이너스", .route),
+            ("루트", m.route == .recover ? "회복 · 마이너스" : m.route == .plus ? "목표 · 플러스" : "목표 · 시작 전", .route),
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {

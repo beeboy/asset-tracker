@@ -24,13 +24,17 @@ final class AppModel {
         // 캡처용: -demo fresh 로 미션 1부터 시작
         if UserDefaults.standard.string(forKey: "demo") == "fresh" { resetDemo(.fresh) }
         if UserDefaults.standard.string(forKey: "demo") == "all" { resetDemo(.all) }
+        // 캡처용: -goal novice|plus (목표 루트, 미션은 모두 끝낸 상태로)
+        if let g = UserDefaults.standard.string(forKey: "goal"), let r = Route(rawValue: g) {
+            switchRoute(r); gDone = Set(goalSteps.filter { !$0.inter }.map(\.id)); nxStep = 3
+        }
         // 캡처용: -home shelter 또는 -home char:ir
         if let h = UserDefaults.standard.string(forKey: "home") { homePath = h == "shelter" ? ["shelter"] : ["shelter", h] }
         if let f = UserDefaults.standard.string(forKey: "friend") { shelterSel = f }
         let st: [String: SettingsRoute] = ["alerts": .alerts, "sync": .sync, "widgets": .widgets, "tax": .tax, "price": .price, "howto": .howto, "route": .route]
         if let r = UserDefaults.standard.string(forKey: "set").flatMap({ st[$0] }) { settingsPath = [r] }
         // 캡처용: -route m3 처럼 미션 화면을 바로 연다
-        let routes: [String: MissionRoute] = ["m1": .m1, "m1r": .m1r, "m2": .m2, "m2r": .m2r, "m3": .m3, "m3r": .m3r, "m4": .m4, "m4r": .m4r, "nx": .nx]
+        let routes: [String: MissionRoute] = ["m1": .m1, "m1r": .m1r, "m2": .m2, "m2r": .m2r, "m3": .m3, "m3r": .m3r, "m4": .m4, "m4r": .m4r, "nx": .nx, "g1": .g1, "g1r": .g1r, "g3": .g3, "g3r": .g3r, "gt": .gt, "gi": .gi, "gp1r": .gp1r]
         if let r = UserDefaults.standard.string(forKey: "route").flatMap({ routes[$0] }) { boardPath = [r] }
         let an: [String: AnalysisRoute] = ["forecast": .forecast, "myPath": .myPath, "external": .external, "dividend": .dividend, "fx": .fx, "glance": .glance]
         if let r = UserDefaults.standard.string(forKey: "an").flatMap({ an[$0] }) { analysisPath = [r] }
@@ -104,6 +108,17 @@ final class AppModel {
         return x > 0 ? 1 - p : p
     }
     var planKey = "balance"      // 미션 3에서 고른 계획
+    // 목표 루트 (만원)
+    var route: Route = .recover
+    var gK = 10000.0
+    var gY = 5
+    var gA = 2000.0
+    var gM = 100.0
+    var gMix = "index"
+    var gDone: Set<String> = []
+    var gWeeks: [GoalWeek] = []
+    var gWeekCur: GoalWeek? = nil
+    var goalTaxPick = "split"
     var horizon = 6              // 미션 1·3의 기간 칩 (3·6·12개월)
     var quizAnswer: String? = nil
     var taxGain = 600.0          // 올해 실현 이익 (만원)
@@ -138,8 +153,12 @@ final class AppModel {
         guard let i = blocks.firstIndex(where: { $0.id == b.id }) else { return false }
         return i == 0 || done.contains(blocks[i - 1].id)
     }
-    var playOn: Bool { done.contains(5) }
-    var interDone: Bool { done.contains(6) }
+    var playOn: Bool { route == .recover ? done.contains(5) : gDone.contains("link") }
+    var interDone: Bool { route == .recover ? done.contains(6) : gDone.contains("inter") }
+    func finishAppStart() {
+        if route == .recover { done.insert(5) } else { gDone.insert("link") }
+        boardPath = []
+    }
 
     func confirmWeek() {
         guard let c = weekCur, weeks.count < 4 else { return }
@@ -148,7 +167,12 @@ final class AppModel {
     }
 
     // MARK: 친구·장
-    var friendsOpen: Int { interDone ? 4 : weeks.count }   // 세리 외에 열린 친구 수
+    // 세리 외에 열린 친구 수. 목표 루트는 미션 없이 첫 달 1~4주차에 같은 순서로 열림 (시안 39판)
+    var friendsOpen: Int {
+        if interDone { return 4 }
+        if route == .recover { return weeks.count }
+        return !gWeeks.isEmpty ? 4 : playOn ? min(4, day / 7) : 0
+    }
     func friendOn(_ i: Int) -> Bool { i == 0 || i <= friendsOpen }
     func chapterOn(_ i: Int) -> Bool {
         if i < 2 { return playOn }
@@ -179,6 +203,13 @@ final class AppModel {
         let tot = (w * a + (1 - w) * b) / 100
         let vY = total / (1 + tot), distNow = cost / total - 1, distY = cost / vY - 1
         let s2 = { (x: Double) in (x >= 0 ? "+" : "") + String(format: "%.1f%%", x) }
+        if route == .novice {
+            return "어제 \(s2(tot * 100)). 모은 돈은 목표의 \(AppModel.pct(gA / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
+        }
+        if route == .plus {
+            let k = gK * 1e4
+            return "어제 \(s2(tot * 100)) (DRNK \(s2(a)) · QQQ \(s2(b))). 목표까지 \(String(format: "%.1f", vY / k * 100))% → \(String(format: "%.1f", total / k * 100))%."
+        }
         return "어제 \(s2(tot * 100)) (DRNK \(s2(a)) · QQQ \(s2(b))). 본전까지 \(String(format: "%.1f", distY * 100))% → \(String(format: "%.1f", distNow * 100))%" + (distNow < distY ? ", 가까워졌어요." : ", 조금 멀어졌어요.")
     }
 
@@ -191,6 +222,18 @@ final class AppModel {
         let (a, b) = dayMoves
         let s2 = { (x: Double) in (x >= 0 ? "+" : "") + String(format: "%.1f%%", x) }
         let w = Self.pct(drnkWeight), pw = Self.pct(planWeight)
+        if route != .recover {
+            let principal = gM * 12 * Double(gY)
+            let goalQs: [Question] = [
+                .init(tag: "계산 퀴즈", q: "매달 \(Self.wonK(gM))씩 \(gY)년 넣으면 넣은 원금만 얼마일까요?", opts: [Self.wonK(principal * 0.5), Self.wonK(principal), Self.wonK(principal * 1.5)], right: 1,
+                      fb: { _ in "\(Self.wonK(self.gM)) × 12달 × \(self.gY)년 = \(Self.wonK(principal)). 그 위에 수익이 더해져 목표로 가요." }),
+                .init(tag: "이번 달 적립", q: "이번 달 \(Self.wonK(gM)), 넣었나요?", opts: ["넣었어요", "아직이요"], right: -1,
+                      fb: { $0 == 0 ? "좋아요. 3개월 블록에 반영해 둘게요." : "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요." }),
+                .init(tag: "오늘 마음", q: "오늘 목표까지의 길, 어떻게 느껴져요?", opts: ["멀어요", "보통이에요", "가까워요"], right: -1,
+                      fb: { $0 == 0 ? "먼 길은 매달 넣는 돈이 끌고 가요. 1년 뒤 그래프를 한 번 보세요." : "그 느낌 그대로 가요. 내일도 1분이면 돼요." }),
+            ]
+            return goalQs[day % goalQs.count]
+        }
         let qs: [Question] = [
             .init(tag: "확률 퀴즈", q: "지금 계획(\(selectedPlan.name))으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?", opts: opts.map { "약 \($0)%" }, right: nearR,
                   fb: { _ in "모형 계산으로 약 \(p12)%예요. 6개월 안이면 \(p6)%. 기간이 길수록 높아져요." }),
@@ -256,8 +299,9 @@ final class AppModel {
 
     // MARK: 주간 예보 (월요일에 적은 금요일 평가액 50% 범위)
     var weekRange: (lo: Double, hi: Double, actual: Double) {
-        let wSg = forecast.sigma / sqrt(52), base = total / 1.004
-        let actual = weekFriday ? total * (1 - 0.006) : total
+        let now = trackValue
+        let wSg = forecast.sigma / sqrt(52), base = now / 1.004
+        let actual = weekFriday ? now * (1 - 0.006) : now
         return (base * exp(-0.674 * wSg), base * exp(0.674 * wSg), actual)
     }
     let pastWeeks = [1, 0, 1, 1, 0, 1, 0, 1]
@@ -271,6 +315,7 @@ final class AppModel {
         case .week1: done = [1, 2, 3, 5]; weeks = [.kept]; nxStep = 3
         case .all: done = [1, 2, 3, 5, 6]; weeks = [.kept, .kept, .changed, .kept]; nxStep = 3
         }
+        route = .recover; gDone = []; gWeeks = []; gWeekCur = nil
         weekCur = nil; day = 5; dayLog = [:]; homeFriend = "seri"; readPos = []; readLast = nil
         weekGuess = nil; weekFriday = false; planKey = "balance"; horizon = 6; quizAnswer = nil
         taxGain = 600; taxSellQty = 0; boardPath = []

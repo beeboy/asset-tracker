@@ -51,10 +51,9 @@ struct ShelterView: View {
         let i = Shelter.friends.firstIndex { $0.id == sel } ?? 0, f = Shelter.friends[i], on = m.friendOn(i)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
-                // 검은 후드(이르)·흑발(수아)도 잘 보이게 밝은 받침 위에 둔다
                 Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 84, height: 119)
                     .padding(.horizontal, 10).padding(.vertical, 8)
-                    .background(Color(hex: 0xE4E9F3), in: RoundedRectangle(cornerRadius: 12))
+                    .background(Shelter.spriteBacking(f.id), in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 6) {
                     Text(on ? f.name : "???").appFont(20, .bold)
                     Text(on ? f.appearsText : "인터미션 \(i)주차에 만나요").appFont(12).foregroundStyle(Color(hex: 0x8FD0FF))
@@ -307,7 +306,7 @@ struct CharacterDetailView: View {
                 HStack(alignment: .bottom, spacing: 14) {
                     Pixel(name: "spr_" + f.id, width: 84, height: 119)
                         .padding(.horizontal, 10).padding(.vertical, 8)
-                        .background(Color(hex: 0xE4E9F3), in: RoundedRectangle(cornerRadius: 12))
+                        .background(Shelter.spriteBacking(f.id), in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 6) {
                         Text(f.name).appFont(24, .bold)
                         Text(f.line).appFont(14, .bold).foregroundStyle(Color(hex: 0x8A6400))
@@ -355,5 +354,12 @@ struct CharacterDetailView: View {
             Text(t).appFont(15, .bold)
             Text(body).appFont(14).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+extension Shelter {
+    // 캐릭터 받침: 원래 남색. 검은 후드(이르)·흑발(수아)만 조금 밝게 해서 머리가 보이게 한다
+    static func spriteBacking(_ id: String) -> Color {
+        id == "ir" || id == "sua" ? Color(hex: 0x3A4566) : Color(hex: 0x232B42)
     }
 }

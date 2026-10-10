@@ -15,6 +15,13 @@ struct MissionScreen: View {
         case .m4: TaxInputView()
         case .m4r: TaxResultView()
         case .nx: AppStartView()
+        case .gp1r: GoalHoldResultView()
+        case .g1: GoalSetView()
+        case .g1r: GoalSetResultView()
+        case .g3: GoalMixView()
+        case .g3r: GoalMixResultView()
+        case .gt: GoalTaxView()
+        case .gi: GoalIntermissionView()
         }
     }
 }
@@ -82,8 +89,8 @@ struct Mission1View: View {
             PrimaryButton(title: ok ? "회복 확률 보기" : "수량과 단가를 넣어 주세요", color: ok ? Theme.teal : Theme.muted) {
                 guard ok else { return }
                 set("DRNK", tq, tp); set("QQQ", qq, qp)
-                m.done.insert(1)
-                m.boardPath.append(.m1r)
+                if m.route == .recover { m.done.insert(1); m.boardPath.append(.m1r) }
+                else { m.gDone.insert("hold"); m.boardPath.append(.gp1r) }
             }
         }
         .onAppear {
@@ -575,7 +582,7 @@ struct AppStartView: View {
                 }
                 .foregroundStyle(.white).padding(16).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.ink, in: RoundedRectangle(cornerRadius: 18))
-                PrimaryButton(title: m.done.contains(5) ? "미션 판으로" : "인터미션 시작") { m.done.insert(5); m.boardPath = [] }
+                PrimaryButton(title: m.playOn ? "미션 판으로" : "인터미션 시작") { m.finishAppStart() }
             } else {
                 BoardButtons(next: nil, to: nil)
             }

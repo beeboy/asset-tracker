@@ -26,7 +26,37 @@ struct HomeView: View {
     }
 
     // 어제 종가 기준 평가액 + 본전 진행 막대
-    private var summary: some View {
+    @ViewBuilder private var summary: some View {
+        if m.isGoal { goalSummary } else { recoverSummary }
+    }
+
+    // 목표 루트: 지금 평가액(플러스) 또는 모은 돈(시작 전)과 목표 진행
+    private var goalSummary: some View {
+        let now = m.route == .novice ? m.gA : m.total / 1e4, prog = min(1, now / max(1, m.gK))
+        return VStack(alignment: .leading, spacing: 10) {
+            Text((m.route == .novice ? "지금 모은 돈" : "지금 평가액") + " · 목표 \(AppModel.wonK(m.gK))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(AppModel.wonK(now)).appFont(32, .bold).tracking(-0.5)
+                if m.route == .plus {
+                    Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
+                }
+            }
+            HStack {
+                Text("\(m.gY)년 목표까지"); Spacer()
+                Text(AppModel.pct(prog)).fontWeight(.bold).foregroundStyle(Theme.yellow)
+            }
+            .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+            ProgressBar(value: prog)
+            Text("어제 \(AppModel.sgn(m.route == .novice ? 0.006 : m.yesterdayMove)) 움직여 목표까지 \(AppModel.pct(prog))에 왔어요. 적립은 다음 달에 \(AppModel.wonK(m.gM)) 예정이에요.")
+                .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(.white)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var recoverSummary: some View {
         let need = m.cost / max(1, m.total) - 1
         let needY = m.cost / (m.total / (1 + m.yesterdayMove)) - 1
         return VStack(alignment: .leading, spacing: 10) {
@@ -92,11 +122,13 @@ struct HomeView: View {
     }
 
     private var reminder: some View {
-        let step = Shelter.weekSteps[min(m.weeks.count, 3)]
+        let text = m.isGoal
+            ? "인터미션 \(m.gWeeks.count)/3달 · 이번 달: \(AppModel.goalMonthSteps[min(m.gWeeks.count, 2)].task)"
+            : "인터미션 \(m.weeks.count)/4주 · 이번 주: \(Shelter.weekSteps[min(m.weeks.count, 3)].task)"
         return HStack(spacing: 8) {
             Text("리마인드").appFont(11, .bold).padding(.horizontal, 8).padding(.vertical, 2)
                 .background(Theme.yellow, in: Capsule())
-            Text("인터미션 \(m.weeks.count)/4주 · 이번 주: \(step.task)").appFont(13).lineLimit(2)
+            Text(text).appFont(13).lineLimit(2)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 12).frame(minHeight: 44)

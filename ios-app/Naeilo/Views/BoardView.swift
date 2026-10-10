@@ -37,8 +37,8 @@ struct BoardView: View {
                 ForEach(shown.filter { $0.inter }) { b in tappable(b) }
                 if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter { nextCard(next) }
                 if !m.interDone && m.playOn { checkIn }
-                // 이번 주 예보는 인터미션 체크인 다음, 1000칸 위
-                if m.playOn { weekForecast; cells } else { lockedPlay }
+                // 1000칸 다음에 이번 주 예보
+                if m.playOn { cells; WeekForecastCard() } else { lockedPlay }
             }
             .screen()
         }
@@ -171,7 +171,7 @@ struct BoardView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(n.formatted())칸").appFont(26, .bold)
                 Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
-                Text(chg == 0 ? "어제와 같음" : "어제보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(Theme.change(Double(chg)))
+                Text(chg == 0 ? "어제와 같음" : "어제보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
             }
             ChipRow(items: [("mine", "바닥 / 회복"), ("stock", "종목별"), ("chg", "어제 바뀐 칸")], selection: $cellMode, accent: Theme.ink)
             CellGrid(filled: n, floor: nFloor, yesterday: nY, mode: cellMode, parts: stockParts)
@@ -223,8 +223,13 @@ struct BoardView: View {
             .appFont(12).foregroundStyle(Theme.sub)
     }
 
+}
+
+struct WeekForecastCard: View {
+    @Environment(AppModel.self) private var m
+
     // 이번 주 예보: 월요일에 금요일 평가액 50% 범위를 적어 두고, 금요일 종가로 도장
-    private var weekForecast: some View {
+    var body: some View {
         @Bindable var m = m
         let r = m.weekRange
         let span = r.hi - r.lo, x0 = r.lo - span * 0.6, x1 = r.hi + span * 0.6

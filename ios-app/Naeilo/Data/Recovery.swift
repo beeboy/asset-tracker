@@ -2,7 +2,7 @@ import SwiftUI
 
 // 회복 루트 계산 (시안 mk·chart 와 같은 식). 모든 설명은 이 계산값으로 만든다.
 
-enum MissionRoute: Hashable { case m1, m1r, m2, m2r, m3, m3r, m4, m4r, nx }
+enum MissionRoute: Hashable { case m1, m1r, m2, m2r, m3, m3r, m4, m4r, nx, gp1r, g1, g1r, g3, g3r, gt, gi }
 
 enum Basket: String, CaseIterable {
     case G, V, B, C

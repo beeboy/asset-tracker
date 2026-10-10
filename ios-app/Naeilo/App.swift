@@ -28,7 +28,9 @@ struct RootView: View {
                 .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
             NavigationStack(path: $model.analysisPath) { AnalysisView() }
                 .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
-            NavigationStack(path: $model.boardPath) { BoardView() }
+            NavigationStack(path: $model.boardPath) {
+                if model.isGoal { GoalBoardView() } else { BoardView() }
+            }
                 .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)
             NavigationStack(path: $model.settingsPath) { SettingsView() }
                 .tabItem { Label("설정", systemImage: "gearshape") }.tag(Tab.settings)
