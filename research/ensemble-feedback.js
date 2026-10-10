@@ -37,7 +37,8 @@ const idioVar = holdings.map((_, a) => Math.max(postVar[a] - beta[a] ** 2 * TAU_
 function drawTrue(rng) {
   const m = drawMeal(rng), mk = TAU_M * rng.normal();
   const mu = holdings.map((_, a) => (cash[a] ? model.factors[a].mu[scen] : Math.max(-0.6, model.factors[a].mu[scen] + beta[a] * mk + Math.sqrt(idioVar[a]) * rng.normal())));
-  return krwParams(m.fs, m.C, mu);
+  m.fs.forEach((f, a) => { if (a < A) for (const k of Object.keys(f.mu)) f.mu[k] = mu[a]; });
+  return { ...krwParams(m.fs, m.C, mu), model: m.model };
 }
 
 // ---------------------------------------------------------------- 선형대수 도구
@@ -69,6 +70,8 @@ const FLOOR = Math.log(V0 * (Number(process.env.FLOOR) || 0.6)), LAMBDA = Number
 const predBelow = (w, lnV, tau, m, O) => { const g = w.reduce((s, x, i) => s + x * m[i], 0) - 0.5 * quad(w, Sbar), v = quad(w, Sbar) * tau + tau * tau * quad(w, O); return v > 1e-14 ? Phi((FLOOR - lnV - g * tau) / Math.sqrt(v)) : (lnV + g * tau < FLOOR ? 1 : 0); };
 const choose = (lnV, tau, m, O, lam = 0) => { let b = null, bp = -Infinity; for (const w of cands) { const p = predP(w, lnV, tau, m, O) - (lam ? lam * predBelow(w, lnV, tau, m, O) : 0); if (p > bp + 1e-12) { bp = p; b = w; } } return b; };
 
+module.exports = { E, beta, drawTrue, choose, predP, m0, O0, Sbar, u, cands, T, A, mul, matInv };
+if (require.main === module) {
 // ---------------------------------------------------------------- 정책
 const w0 = holdings.map((h) => h.valueKrw / V0), wStatic = choose(Math.log(V0), T, m0, O0);
 const YEARS = Math.ceil(T - 1e-9), MON = Math.round(T * 12);
@@ -126,3 +129,4 @@ for (const [k, r] of Object.entries(res)) {
 const avgW = (y, fb) => { const xs = fb.filter((x) => x.year === y); return xs.length ? holdings.map((_, i) => xs.reduce((s, x) => s + x.w[i], 0) / xs.length) : null; };
 for (const k of ["피드백(매년 갱신)", "피드백+하방 보호"]) for (const y of [0, 1, 2]) { const w = y ? avgW(y, res[k].wy) : choose(Math.log(V0), T, m0, O0, policies[k].lam); out.policies[k]["w" + y] = w; console.log(`${k} ${y}년 뒤 평균 비중 ${w.map(pct).join("/")}`); }
 if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify(out));
+}
