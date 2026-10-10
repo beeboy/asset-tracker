@@ -26,7 +26,7 @@ struct RootView: View {
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
             NavigationStack { HoldingsView() }
                 .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
-            NavigationStack { AnalysisView() }
+            NavigationStack(path: $model.analysisPath) { AnalysisView() }
                 .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
             NavigationStack(path: $model.boardPath) { BoardView() }
                 .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)

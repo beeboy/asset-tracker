@@ -30,6 +30,8 @@ struct BoardView: View {
                         .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
                     }.buttonStyle(.plain)
                 }
+                // 이번 주 예보는 매주 할 일이라 미션 블록보다 위에 둔다
+                if m.playOn { weekForecast }
                 let shown = m.blocks.filter { openDone || !m.done.contains($0.id) }
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                     ForEach(shown.filter { !$0.inter }) { b in tappable(b) }
@@ -37,7 +39,7 @@ struct BoardView: View {
                 ForEach(shown.filter { $0.inter }) { b in tappable(b) }
                 if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter { nextCard(next) }
                 if !m.interDone && m.playOn { checkIn }
-                if m.playOn { cells; weekForecast } else { lockedPlay }
+                if m.playOn { cells } else { lockedPlay }
             }
             .screen()
         }
@@ -231,14 +233,17 @@ struct BoardView: View {
         let inside = r.actual >= r.lo && r.actual <= r.hi
         let pos = r.actual < r.lo ? "lo" : r.actual > r.hi ? "hi" : "in"
         let stamps = m.weekFriday ? Array(m.pastWeeks.dropFirst()) + [inside ? 1 : 0] : m.pastWeeks
-        return Card {
-            HStack(alignment: .firstTextBaseline) {
-                Text("이번 주 예보").appFont(15, .bold)
+        // 매주 할 일이라 1000칸보다 위에, 파란 테두리와 큰 범위 숫자로 눈에 띄게 둔다
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 8) {
+                Label("이번 주 예보", systemImage: "scope").appFont(14, .bold).foregroundStyle(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.blue, in: Capsule())
                 Spacer()
-                Text(m.weekFriday ? "10월 10일 금요일 마감" : "10월 6일 월요일에 적음 · 금요일 마감").appFont(12).foregroundStyle(Theme.sub)
+                Text(m.weekFriday ? "10월 10일 금요일 마감" : "월요일에 적음 · 금요일 마감").appFont(12).foregroundStyle(Theme.sub)
             }
-            Text("금요일 종가 평가액은 절반의 경우 \(AppModel.man(r.lo))~\(AppModel.man(r.hi)) 사이예요. 앱이 월요일에 적어 둔 예보예요.")
-                .appFont(14).lineSpacing(3)
+            Text("금요일 종가 평가액, 절반의 경우 이 안").appFont(13).foregroundStyle(Theme.sub)
+            Text("\(AppModel.man(r.lo)) ~ \(AppModel.man(r.hi))").appFont(24, .bold).foregroundStyle(Color(hex: 0x1B5E96))
+                .lineLimit(1).minimumScaleFactor(0.7)
             GeometryReader { g in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.line).frame(height: 14)
@@ -257,7 +262,7 @@ struct BoardView: View {
             }
             .appFont(12).foregroundStyle(Theme.sub)
             if !m.weekFriday {
-                Text("금요일엔 어디쯤일까요? (맞혀도 같은 도장이에요)").appFont(13, .semibold)
+                Text("금요일엔 어디쯤일까요? (맞혀도 같은 도장이에요)").appFont(15, .bold)
                 ChipRow(items: [("lo", "범위 아래"), ("in", "범위 안"), ("hi", "범위 위")],
                         selection: Binding(get: { m.weekGuess ?? "" }, set: { m.weekGuess = $0 }), accent: Theme.blue, fill: true)
                 Button("금요일로 넘기기 (시안)") { withAnimation { m.weekFriday = true } }
@@ -286,6 +291,10 @@ struct BoardView: View {
             Text("50% 범위라서 예보가 정직하면 절반쯤 들어와요. 너무 자주 들어오면 범위가 넓은 거고, 너무 드물면 좁은 거예요. 점수가 아니라 예보를 믿어도 되는지 보는 기록이에요.")
                 .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(hex: 0xF3F8FD), in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.blue, lineWidth: 2))
     }
 }
 

@@ -7,6 +7,8 @@ protocol PriceProvider {
     func close(_ symbol: Symbol) -> Double
     /// 기간 종가 흐름 (마지막 값 = 어제 종가)
     func series(_ symbol: Symbol, period: Period) -> [Double]
+    /// x = 0 (3년 전) … 1 (어제) 시점의 종가
+    func price(_ symbol: Symbol, at x: Double) -> Double
 }
 
 enum Period: String, CaseIterable, Hashable {
@@ -30,6 +32,7 @@ struct StubPriceProvider: PriceProvider {
     }()
 
     func close(_ symbol: Symbol) -> Double { symbol.close }
+    func price(_ s: Symbol, at x: Double) -> Double { s.close * exp(logPrice(s, x) - logPrice(s, 1)) }
 
     private func seed(_ s: Symbol) -> Double { Double(s.id.unicodeScalars.reduce(0) { $0 + Int($1.value) }) }
 

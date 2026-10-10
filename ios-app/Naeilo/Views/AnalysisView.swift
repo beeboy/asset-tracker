@@ -1,22 +1,31 @@
 import SwiftUI
 
-enum AnalysisRoute: Hashable { case forecast, soon(String, String) }
+enum AnalysisRoute: Hashable { case forecast, myPath, external, dividend, fx, glance, insight }
 
-// 분석 탭: naeilo.com 분석·전략을 폰에 맞게. 이번 빌드는 3년 전망까지, 나머지는 자리만.
+// 분석 탭: naeilo.com 분석·전략을 폰에 맞게. 카드 머리 숫자는 각 화면 첫 숫자와 같은 계산.
 struct AnalysisView: View {
     @Environment(AppModel.self) private var m
 
     var body: some View {
         let p3 = m.forecast.prob(3)
         let usd = m.rows.filter { $0.sym.currency == .usd || $0.id == "360750" }.reduce(0) { $0 + $1.value } / max(1, m.total)
+        // 내 길: 시작(3개월 전)부터 본전까지 1년에 걸친 선과 오늘 비교
+        let vS = m.totalAt(1 - 0.25 / 3), need = vS * pow(m.cost / max(1, vS), 0.25)
+        let gap = need > 0 ? m.total / need - 1 : 0
+        let mkt10 = m.rows.reduce(0) { $0 + $1.value * (ExternalView.beta[$1.id]?.0 ?? 1) * -0.1 } / max(1, m.total)
+        let div = m.rows.reduce(0) { a, r in
+            a + m.krw(r.sym, r.h.qty * (DividendView.divs[r.id]?.0 ?? 0)) * (1 - (r.sym.currency == .usd ? 0.15 : 0.154))
+        }
+        let news = m.rows.reduce(1) { $0 + (InsightView.news[$1.id]?.count ?? 0) }
         let cards: [(String, String, String, Color, AnalysisRoute)] = [
             ("3년 전망", "시장이 줄 수 있는 미래의 범위", AppModel.pct(p3), Theme.teal, .forecast),
-            ("내 길", "정한 목표대로 가고 있나 (자산 추이)", "›", Theme.teal, .soon("내 길", "내가 정한 목표 금액·목표일·적립금으로 만든 하나의 선(보라 점선)과 지금을 비교해요.")),
-            ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "›", Theme.down, .soon("외부 요인", "미국 시장 · 미국 금리 · 원/달러 칩과 크기 슬라이더로 평가액 변화를 계산해요.")),
-            ("배당·세금", "앞으로 12개월 배당, 팔 때 세금", "›", Theme.teal, .soon("배당·세금", "앞으로 12개월 세후 배당과 팔 때 세금(대한민국 거주자 규칙)을 계산해요.")),
-            ("환율 영향", "환율이 바뀌면 내 평가액은", "달러 " + AppModel.pct(usd), Theme.blue, .soon("환율 영향", "원/달러 지난 흐름과 앞으로 1년 50%·90% 범위, 내 손익의 주가 몫과 환율 몫을 나눠 보여요.")),
-            ("종목 한눈에", "고점 대비, 비중, 흔들림을 숫자로", "\(m.rows.count)종목", Theme.teal, .soon("종목 한눈에", "고점 대비 · 1년 · 내 단가 대비 · 비중 · 흔들림을 숫자로만 보여요. 추천 문구는 없어요.")),
-            ("인사이트", "보유 종목 소식 요약", "›", Theme.teal, .soon("인사이트", "보유 종목 소식을 요약하고, 내 비중으로 계산한 크기를 함께 보여요.")),
+            ("내 길", "정한 목표대로 가고 있나 (자산 추이)", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + "\(Int((abs(gap) * 100).rounded()))%",
+             gap >= 0 ? Theme.teal : Color(hex: 0xB5651D), .myPath),
+            ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "시장 −10%: " + AppModel.sgn(mkt10), Theme.down, .external),
+            ("배당·세금", "앞으로 12개월 배당, 팔 때 세금", "연 " + AppModel.won1(div), Theme.teal, .dividend),
+            ("환율 영향", "환율이 바뀌면 내 평가액은", "달러 " + AppModel.pct(usd), Theme.blue, .fx),
+            ("종목 한눈에", "고점 대비, 비중, 흔들림을 숫자로", "\(m.rows.count)종목", Theme.teal, .glance),
+            ("인사이트", "보유 종목 소식 요약", "새 소식 \(news)", Theme.teal, .insight),
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
@@ -47,7 +56,12 @@ struct AnalysisView: View {
         .navigationDestination(for: AnalysisRoute.self) { r in
             switch r {
             case .forecast: ForecastView()
-            case .soon(let t, let d): SoonView(title: t, detail: d)
+            case .myPath: MyPathView()
+            case .external: ExternalView()
+            case .dividend: DividendView()
+            case .fx: FxImpactView()
+            case .glance: GlanceView()
+            case .insight: InsightView()
             }
         }
     }

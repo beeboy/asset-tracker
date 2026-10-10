@@ -26,6 +26,8 @@ final class AppModel {
         // 캡처용: -route m3 처럼 미션 화면을 바로 연다
         let routes: [String: MissionRoute] = ["m1": .m1, "m1r": .m1r, "m2": .m2, "m2r": .m2r, "m3": .m3, "m3r": .m3r, "m4": .m4, "m4r": .m4r, "nx": .nx]
         if let r = UserDefaults.standard.string(forKey: "route").flatMap({ routes[$0] }) { boardPath = [r] }
+        let an: [String: AnalysisRoute] = ["forecast": .forecast, "myPath": .myPath, "external": .external, "dividend": .dividend, "fx": .fx, "glance": .glance, "insight": .insight]
+        if let r = UserDefaults.standard.string(forKey: "an").flatMap({ an[$0] }) { analysisPath = [r] }
     }
 
     // 보유
@@ -101,6 +103,7 @@ final class AppModel {
     var taxSellQty = 0.0
     var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
     var boardPath: [MissionRoute] = []
+    var analysisPath: [AnalysisRoute] = []
 
     var planWeight: Double { selectedPlan.wt }
     func planBreakEven(years T: Double) -> Double { selectedPlan.prob(cost, T) }
