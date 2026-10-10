@@ -53,18 +53,21 @@ final class Story {
     static func key(_ b: StoryBook, _ i: Int) -> Int { b == .side ? i : 1000 + i }
     /// 끝까지 읽은 장 (서재 묶음이 저절로 접히고 펼쳐지는 데 쓴다). 키는 pos 와 같다
     private(set) var done: Set<Int> = Set(UserDefaults.standard.array(forKey: "storyDone") as? [Int] ?? [])
-    /// 가장 최근에 연 장 (키는 pos 와 같다). 서재는 이 장이 든 묶음만 펼친다
-    private(set) var last: Int? = UserDefaults.standard.object(forKey: "storyLast") as? Int
-    func setLast(_ b: StoryBook, _ chapter: Int) {
-        last = Self.key(b, chapter)
-        UserDefaults.standard.set(last, forKey: "storyLast")
-    }
     func isDone(_ b: StoryBook, _ chapter: Int) -> Bool { done.contains(Self.key(b, chapter)) }
     func markDone(_ b: StoryBook, _ chapter: Int) {
         guard done.insert(Self.key(b, chapter)).inserted else { return }
         UserDefaults.standard.set(Array(done), forKey: "storyDone")
     }
+    /// 가장 최근에 읽은 장 (외전·본편 1권 통틀어 하나). 서재는 이 장이 든 묶음만 펼친다. 키는 pos 와 같다
+    private(set) var last: Int? = UserDefaults.standard.object(forKey: "storyLast") as? Int
+    func touch(_ b: StoryBook, _ chapter: Int) {
+        let k = Self.key(b, chapter)
+        guard last != k else { return }
+        last = k
+        UserDefaults.standard.set(k, forKey: "storyLast")
+    }
     func setPos(_ b: StoryBook, _ chapter: Int, _ block: Int) {
+        touch(b, chapter)
         let k = Self.key(b, chapter)
         guard pos[k] != block else { return }
         pos[k] = block

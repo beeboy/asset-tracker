@@ -119,7 +119,7 @@ struct ShelterView: View {
 
     private var library: some View {
         let paid = story.count(.side) > 6 ? Array(6..<story.count(.side)) : []
-        let cur = openGroup
+        let cur = current
         return VStack(spacing: 0) {
             foldRow("side0", "프롤로그 ~ 5장", "\((0..<6).filter { story.isDone(.side, $0) }.count)/6 읽음", cur)
             if isOpen("side0", cur) { ForEach(0..<6, id: \.self) { i in
@@ -175,15 +175,23 @@ struct ShelterView: View {
         .task(id: story.lang) { await story.fetch(.side) }   // 믹스커피 이상이면 6장부터 받아 둔다
     }
 
-    // 서재 묶음 접기: 외전 프롤로그~5장 · 6장~코다 · 본편 1권 1부 · 2부 · 3부 가운데 가장 최근에 읽은 묶음 하나만 펼친다.
-    // 그 묶음의 마지막 장까지 다 읽었으면 다음 묶음을, 아직 아무것도 안 읽었으면 프롤로그~5장을 펼친다. 손으로 펴고 접은 건 그대로 둔다
-    private var openGroup: String? {
+    // 서재 묶음 접기: 외전 프롤로그~5장 · 6장~코다 · 본편 1권 1부 · 2부 · 3부 … 중에 가장 최근에 읽고 있는 묶음 하나만 펼치고 나머지는 접는다.
+    // 최근에 읽은 장을 끝까지 읽었으면 그다음 장이 든 묶음을 펼친다 (한 묶음을 다 읽으면 다음 묶음이 저절로 펼쳐진다).
+    // 읽은 기록이 없으면 다 읽지 않은 첫 묶음. 손으로 펼치고 접은 것(fold)이 이보다 먼저다
+    private var groups: [(id: String, book: StoryBook, idx: [Int])] {
         let paid = story.count(.side) > 6 ? Array(6..<story.count(.side)) : []
-        var groups: [(id: String, keys: [Int])] = [("side0", Array(0..<6)), ("side1", paid)]
-        if Support.shared.has(.franchise) { groups += vol1Parts.map { p in (id: p.id, keys: p.idx.map { i in Story.key(.vol1, i) }) } }
-        guard let last = story.last, let g = groups.firstIndex(where: { $0.keys.contains(last) }) else { return "side0" }
-        if last == groups[g].keys.last, story.done.contains(last), g + 1 < groups.count { return groups[g + 1].id }
-        return groups[g].id
+        var g: [(id: String, book: StoryBook, idx: [Int])] = [("side0", .side, Array(0..<6)), ("side1", .side, paid)]
+        if Support.shared.has(.franchise) { g += vol1Parts.map { ($0.id, .vol1, $0.idx) } }
+        return g
+    }
+    private var current: String? {
+        let gs = groups
+        if let k = story.last ?? m.readLast {   // 예전 기록은 외전 이어 읽기 장
+            let b: StoryBook = k >= 1000 ? .vol1 : .side, i = k >= 1000 ? k - 1000 : k
+            let n = story.isDone(b, i) && i + 1 < story.count(b) ? i + 1 : i
+            if let g = gs.first(where: { $0.book == b && $0.idx.contains(n) }) ?? gs.first(where: { $0.book == b && $0.idx.contains(i) }) { return g.id }
+        }
+        return gs.first { g in g.idx.isEmpty || !g.idx.allSatisfy { story.isDone(g.book, $0) } }?.id
     }
     private func isOpen(_ id: String, _ cur: String?) -> Bool { fold[id] ?? (id == cur) }
     private func foldRow(_ id: String, _ title: String, _ right: String, _ cur: String?) -> some View {
@@ -248,7 +256,7 @@ struct ShelterView: View {
             header("본편 『중첩된 현실』 1권", story.count(.vol1) > 0 ? "\(story.count(.vol1))장" : "")
             VStack(spacing: 0) {
                 if story.count(.vol1) > 0 {
-                    let parts = vol1Parts, cur = openGroup
+                    let parts = vol1Parts, cur = current
                     ForEach(Array(parts.enumerated()), id: \.element.id) { n, part in
                         if n > 0 { Divider().overlay(Theme.line) }
                         foldRow(part.id, part.name, "\(part.idx.filter { story.isDone(.vol1, $0) }.count)/\(part.idx.count) 읽음", cur)
@@ -442,8 +450,8 @@ struct ReaderView: View {
                 if inApp && t > 0 && !m.readPos.contains(index) { m.readPos.insert(index) }
             }
             .onAppear {
+                story.touch(book, index)
                 if inApp { m.readLast = index }
-                story.setLast(book, index)
                 if scheme == .dark { dark = true }
                 if let p = story.pos[Story.key(book, index)], p > 0 { DispatchQueue.main.async { proxy.scrollTo(p, anchor: .top) } }
             }
@@ -583,8 +591,8 @@ struct ReaderView: View {
             Button {
                 if inApp { m.readPos.insert(index); story.pushWidget(m) }
                 index += 1; top = nil
+                story.touch(book, index)
                 if inApp { m.readLast = index }
-                story.setLast(book, index)
                 proxy.scrollTo("top", anchor: .top)
             } label: {
                 Text("다음: \(n?.title ?? "") · \(n?.name ?? "") ›").appFont(15, .bold).foregroundStyle(.white)
