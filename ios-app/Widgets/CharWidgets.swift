@@ -136,7 +136,7 @@ struct CharSprite: View {
             else if mode == .accented, #available(iOS 18, *) {
                 // 투명·틴트 홈 화면: 그대로 두면 시스템이 그림 전체를 한 색(흰색)으로 칠해 흰 덩어리가 된다.
                 // 캐릭터 설정 스레드가 만든 회색 단계 그림(_tint)을 쓰고, 밝기만 살려 틴트 색으로 칠하게 한다
-                Image(name + "_tint").interpolation(.none).resizable().widgetAccentedRenderingMode(.desaturated)
+                Image(name).interpolation(.none).resizable().widgetAccentedRenderingMode(.fullColor)
             } else { Image(name).interpolation(.none).resizable() }
         }
         .aspectRatio(contentMode: .fit)

@@ -370,8 +370,12 @@ final class AppModel {
     enum Demo { case fresh, week1, all }
     /// 첫 질문 답: 마이너스 = 회복 루트 미션 1부터, 플러스 = 목표 루트(샘플은 이익 난 단가), 시작 전 = 목표 루트 적립
     func startRoute(_ r: Route) {
+        // 사용자가 넣은 종목이 있으면 루트를 다시 골라도 그대로 불러온다 (예시 종목은 처음일 때만)
+        let mine: [Holding]? = holdings.isEmpty || holdings == Sample.startHoldings ? nil : holdings
         resetDemo(.fresh)
-        if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 60, avg: 180), Holding(symbol: "QQQ", qty: 10, avg: 400)]; taxGain = 0 }
+        if let mine { holdings = mine }
+        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 60, avg: 180), Holding(symbol: "QQQ", qty: 10, avg: 400)] }
+        if r == .plus { taxGain = 0 }
         if r != .recover { switchRoute(r); gDone = [] }
         day = 0                  // 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
         onboarded = true; UserDefaults.standard.set(true, forKey: "onboarded")
