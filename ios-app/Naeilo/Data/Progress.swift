@@ -27,6 +27,8 @@ struct Progress: Codable, Equatable {
     var dayLog: [Int: DayLog]
     var lastOpen: String          // 마지막으로 연 날 (yyyy-MM-dd). 다음에 열 때 지난 날수만큼 day 를 넘긴다
     var weekGuess: String?
+    var itemsBack: Int?           // 돌아온 물건 수 (없으면 예전 저장: 연속 일수로 채운다)
+    var itemsBackDay: Int?
     // 쉼터
     var homeFriend: String
     var readPos: Set<Int>
@@ -59,7 +61,7 @@ extension AppModel {
         Progress(done: done, weeks: weeks, weekCur: weekCur, planKey: planKey, horizon: horizon, quizAnswer: quizAnswer,
                  taxGain: taxGain, taxSellQty: taxSellQty, nxStep: nxStep,
                  route: route, gK: gK, gY: gY, gA: gA, gM: gM, gMix: gMix, gDone: gDone, gWeeks: gWeeks, gWeekCur: gWeekCur, goalTaxPick: goalTaxPick,
-                 day: day, dayLog: dayLog, lastOpen: Day.today, weekGuess: weekGuess,
+                 day: day, dayLog: dayLog, lastOpen: Day.today, weekGuess: weekGuess, itemsBack: itemsBack, itemsBackDay: itemsBackDay,
                  homeFriend: homeFriend, readPos: readPos, readLast: readLast,
                  lens: lens, trust: trust, shock: shock, monthly: monthly, syncOn: syncOn, widgetSel: widgetSel)
     }
@@ -73,6 +75,7 @@ extension AppModel {
         homeFriend = p.homeFriend; readPos = p.readPos; readLast = p.readLast
         lens = p.lens; trust = p.trust; shock = p.shock; monthly = p.monthly; widgetSel = p.widgetSel
         day = p.day
+        itemsBack = p.itemsBack ?? min(10, streak / 7); itemsBackDay = p.itemsBackDay
         catchUpDay(from: p.lastOpen)
     }
 

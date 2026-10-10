@@ -266,7 +266,12 @@ final class AppModel {
         }
         return k
     }
-    var itemsOn: Int { playOn ? min(10, streak / 7) : 0 }
+    /// 돌아온 물건: 연속 7일을 채울 때마다 하나씩 늘고, 연속이 끊겨도 줄지 않는다
+    var itemsBack = 0
+    var itemsBackDay: Int? = nil   // 마지막으로 물건이 돌아온 날 (같은 날 답을 바꿔도 두 번 세지 않게)
+    var itemsOn: Int { playOn ? min(10, itemsBack) : 0 }
+    /// 다음 물건까지 남은 날
+    var itemDaysLeft: Int { 7 - streak % 7 }
 
     var dayMoves: (Double, Double) {
         let mv: [(Double, Double)] = [(1.9, 0.4), (-1.2, -0.5), (0.6, 0.2), (-2.8, -1.1), (1.1, 0.8), (-2.2, 0.4), (-0.7, 0.1)]
@@ -321,18 +326,22 @@ final class AppModel {
         return qs[day % qs.count]
     }
     func markSeen() { var t = today; t.seen = true; dayLog[day] = t }
-    func answer(_ i: Int) { var t = today; t.seen = true; t.answer = i; dayLog[day] = t }
-    var routineDoneText: String {
+    func answer(_ i: Int) {
+        var t = today; t.seen = true; t.answer = i; dayLog[day] = t
         let s = streak
-        if s > 0 && s % 7 == 0 && s / 7 <= 10 { return "오늘 루틴 끝! \(s)일 연속이라 쉼터에 물건(\(Shelter.items[s / 7 - 1].name))이 돌아왔어요." }
-        if s / 7 < 10 { return "오늘 루틴 끝! \(7 - s % 7)일 더 하면 쉼터에 물건(\(Shelter.items[s / 7].name))이 돌아와요." }
+        if playOn && s > 0 && s % 7 == 0 && itemsBackDay != day && itemsBack < 10 { itemsBack += 1; itemsBackDay = day }
+    }
+    var routineDoneText: String {
+        let n = itemsOn
+        if itemsBackDay == day && n > 0 { return "오늘 루틴 끝! 7일 연속이라 쉼터에 물건(\(Shelter.items[n - 1].name))이 돌아왔어요." }
+        if n < 10 { return "오늘 루틴 끝! \(itemDaysLeft)일 더 하면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." }
         return "오늘 루틴 끝! 물건이 모두 돌아왔어요."
     }
     var homeSay: String {
         if !playUnlocked { return "앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (homeFriend == "seri" ? " 거기까지만요." : "") }
         if today.answer != nil {
-            let s = streak
-            return "오늘은 여기까지예요. " + (s / 7 < 10 ? "\(7 - s % 7)일 더 오면 쉼터에 물건(\(Shelter.items[s / 7].name))이 돌아와요." : "내일 또 숫자 하나 가져올게요.")
+            let n = itemsOn
+            return "오늘은 여기까지예요. " + (n < 10 ? "\(itemDaysLeft)일 더 오면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." : "내일 또 숫자 하나 가져올게요.")
         }
         return "오늘 숫자 가져왔어요. 한 번만 보고 가요."
     }
@@ -404,7 +413,7 @@ final class AppModel {
         case .all: done = [1, 2, 3, 5, 6]; weeks = [.kept, .kept, .changed, .kept]; nxStep = 3
         }
         route = .recover; gDone = []; gWeeks = []; gWeekCur = nil
-        weekCur = nil; day = 5; dayLog = [:]; homeFriend = "seri"; readPos = []; readLast = nil
+        weekCur = nil; day = 5; dayLog = [:]; itemsBack = 0; itemsBackDay = nil; homeFriend = "seri"; readPos = []; readLast = nil
         weekGuess = nil; weekFriday = false; planKey = "balance"; horizon = 6; quizAnswer = nil
         taxGain = 600; taxSellQty = 0; boardPath = []
     }

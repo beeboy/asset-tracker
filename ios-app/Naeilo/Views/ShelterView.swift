@@ -29,11 +29,12 @@ struct ShelterView: View {
                 library
                 if Support.shared.has(.franchise) { vol1 }
                 header("쉼터에 돌아온 물건", "\(m.itemsOn)/10")
+                room
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
                     ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in itemTile(i, it) }
                 }
                 itemNote
-                Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아와요.")
+                Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아오고, 연속이 끊겨도 돌아온 물건은 그대로 있어요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
             .screen().padding(.top, 8)
@@ -221,7 +222,7 @@ struct ShelterView: View {
             VStack(spacing: 2) {
                 Pixel(name: "art_" + it.id + (on || m.peek ? "" : "_l"), width: 32, height: 32).opacity(on ? 1 : m.peek ? 0.6 : 1)
                 Text(on ? it.name : "???").appFont(11, .bold).lineLimit(2).multilineTextAlignment(.center)
-                Text("연속 \((i + 1) * 7)일").appFont(10).foregroundStyle(Theme.sub)
+                Text(i == m.itemsOn ? "\(m.itemDaysLeft)일 남음" : "\(i + 1)번째").appFont(10).foregroundStyle(i == m.itemsOn ? Theme.teal : Theme.sub)
             }
             .foregroundStyle(on ? Theme.ink : Theme.muted)
             .frame(maxWidth: .infinity, minHeight: 84)
@@ -229,7 +230,40 @@ struct ShelterView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? (item == it.id ? Theme.teal : Theme.border) : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: on ? [] : [4, 3])))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(on ? it.name : "오늘의 1분 \((i + 1) * 7)일 연속에 돌아오는 물건")
+        .accessibilityLabel(on ? it.name : i == m.itemsOn ? "다음에 돌아오는 물건, \(m.itemDaysLeft)일 남음" : "\(i + 1)번째로 돌아오는 물건")
+    }
+
+    /// 쉼터 방: 돌아온 물건이 제자리에 놓이고, 홈에 둔 친구가 고른 물건(없으면 마지막에 돌아온 물건) 옆에 선다.
+    /// 다방커피 이상은 아직 안 돌아온 물건이 흐리게 보인다
+    private var room: some View {
+        let focus = item.flatMap { id in Shelter.items.first { $0.id == id } } ?? (m.itemsOn > 0 ? Shelter.items[m.itemsOn - 1] : nil)
+        let fx: CGFloat = focus.flatMap { Shelter.slots[$0.id] }.map { $0.x <= 86 ? $0.x + 18 : $0.x - 26 } ?? 60
+        return GeometryReader { g in
+            let u = g.size.width / 128
+            ZStack(alignment: .topLeading) {
+                Image("art_room").interpolation(.none).resizable().frame(width: g.size.width, height: g.size.height)
+                ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in
+                    if let p = Shelter.slots[it.id], i < m.itemsOn || m.peek {
+                        let on = i < m.itemsOn
+                        Button { if on { item = it.id } } label: {
+                            Image("art_" + it.id).interpolation(.none).resizable().frame(width: 16 * u, height: 16 * u)
+                                .opacity(on ? 1 : 0.35)
+                        }
+                        .buttonStyle(.plain).disabled(!on)
+                        .offset(x: p.x * u, y: p.y * u)
+                        .accessibilityLabel(on ? it.name : "아직 안 돌아온 물건 미리 보기")
+                    }
+                }
+                Pixel(name: "spr_" + m.homeFriendShown, width: 24 * u, height: 34 * u)
+                    .offset(x: max(4, min(100, fx)) * u, y: 42 * u)
+                    .animation(.easeOut(duration: 0.3), value: fx)
+                    .allowsHitTesting(false).accessibilityHidden(true)
+            }
+        }
+        .aspectRatio(1.6, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("쉼터 방, 돌아온 물건 \(m.itemsOn)개")
     }
 
     private var itemNote: some View {
