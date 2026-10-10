@@ -42,7 +42,8 @@ targets:
           - CFBundleURLName: com.naeilo.widget
             CFBundleURLSchemes: [naeilo]
         UILaunchScreen: {}
-        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # 가로 화면도 지원 (아이폰은 거꾸로 세로 제외). 가로에서는 내용 폭을 720pt 로 묶고 고정 머리 없이 한 번에 스크롤
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
         # 개발용 Tiingo 토큰 (계약 전이라 비워 둠). 출시 때는 naeilo 중계 서버를 거친다

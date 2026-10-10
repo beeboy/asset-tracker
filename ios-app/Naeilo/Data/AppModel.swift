@@ -301,7 +301,7 @@ final class AppModel {
     var routineFact: String {
         let tot = todayMove
         let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
-        let head = rows.isEmpty ? "" : "오늘 \(Self.sgn(tot))" + (mv.isEmpty ? "" : " (\(mv))") + ". "
+        let head = rows.isEmpty ? "" : "**오늘 \(Self.sgn(tot))**" + (mv.isEmpty ? "" : " (\(mv))") + ". "     // 오늘 움직임은 진하게 (마크다운)
         if route == .novice {
             return head + "모은 돈은 목표의 \(AppModel.pct(gA / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
         }
@@ -451,12 +451,16 @@ final class AppModel {
         return "오늘 루틴 끝! 물건이 모두 돌아왔어요."
     }
     var homeSay: String {
-        if !playUnlocked { return "앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (homeFriend == "seri" ? " 거기까지만요." : "") }
+        let who = homeFriendShown
+        if !playUnlocked {
+            return Lines.pick("home.locked.\(who)") ?? ("앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (who == "seri" ? " 거기까지만요." : ""))
+        }
         if today.answer != nil {
             let n = itemsOn
-            return "오늘은 여기까지예요. " + (n < 10 ? "\(itemDaysLeft)일 더 오면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." : "내일 또 숫자 하나 가져올게요.")
+            let info = n < 10 ? "\(itemDaysLeft)일 더 오면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." : ""
+            return [Lines.pick("home.done.\(who)") ?? "오늘은 여기까지예요.", info].filter { !$0.isEmpty }.joined(separator: " ")
         }
-        return "오늘 숫자 가져왔어요. 한 번만 보고 가요."
+        return Lines.pick("home.fresh.\(who)", ["move": Self.sgn(todayMove)]) ?? "오늘 숫자 가져왔어요. 한 번만 보고 가요."
     }
 
     // MARK: 3년 전망 (로그정규 근사, 50%·90% 범위)

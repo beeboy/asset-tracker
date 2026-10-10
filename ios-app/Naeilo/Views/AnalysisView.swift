@@ -38,7 +38,6 @@ struct AnalysisView: View {
             VStack(alignment: .leading, spacing: 10) {
                 AppHeader().padding(.horizontal, -16)
                 CalmCard()
-                Text("계산 옵션과 표는 PC naeilo.com에서 크게 봐요.").appFont(13).foregroundStyle(Theme.sub)
                 ForEach(cards, id: \.0) { t, sub, tag, color, route in
                     NavigationLink(value: route) {
                         HStack {
@@ -55,6 +54,7 @@ struct AnalysisView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                Text("계산 옵션과 상세 표는 PC naeilo.com에서 크게 봐요.").appFont(13).foregroundStyle(Theme.sub).padding(.top, 4)
             }
             .screen()
         }
@@ -76,7 +76,7 @@ struct AnalysisView: View {
     }
 }
 
-// 3년 전망: 위에 확률·중앙값·나쁜 5%와 범위 그래프 고정, 아래 렌즈 칩
+// 3년 전망: 위에 확률·중앙값·나쁜 5%와 범위 그래프·렌즈 설명·렌즈 칩 고정, 아래 추세 믿음·외부 요인·적립
 struct ForecastView: View {
     @Environment(AppModel.self) private var m
 
@@ -87,14 +87,21 @@ struct ForecastView: View {
             pinned(f)
         } content: {
                 VStack(alignment: .leading, spacing: 12) {
-                    Toggle(isOn: $m.shock) { Text("외부 요인 넣기").appFont(14, .bold) }.tint(Theme.orange)
-                    Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(3)
                     if m.lens == .mine {
                         Card {
-                            Text("추세를 얼마나 믿나요 · \(Int(m.trust))%").appFont(14, .bold)
-                            Slider(value: $m.trust, in: 0...100, step: 5).tint(Theme.teal)
-                            Text("0%면 현재 정세, 100%면 과거 추세예요.").appFont(12).foregroundStyle(Theme.muted)
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("추세를 얼마나 믿나요 · \(Int(m.trust))%").appFont(14, .bold)
+                                Spacer()
+                                Text("연 기대 \(AppModel.sgn0(f.mu + (m.shock ? 0.02 : 0)))").appFont(14, .bold).foregroundStyle(Theme.teal)
+                            }
+                            Slider(value: $m.trust, in: 0...100, step: 5).tint(Theme.teal).accessibilityLabel("추세를 얼마나 믿나요")
+                            HStack { Text("현재 정세"); Spacer(); Text("반반"); Spacer(); Text("과거 추세") }
+                                .appFont(12).foregroundStyle(Theme.muted)
                         }
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: $m.shock) { Text("외부 요인 넣기").appFont(14, .bold) }.tint(Theme.orange)
+                        Text("금리 결정, 실적 발표 등 반영 · 기대 −2% · 흔들림 +10%").appFont(12).foregroundStyle(Theme.muted)
                     }
                     Card {
                         Text("만약에 매달 더 넣는다면 · \(m.monthly > 0 ? AppModel.man(m.monthly * 1e4) : "없음")").appFont(14, .bold)
@@ -111,8 +118,6 @@ struct ForecastView: View {
                             }
                         }
                     }
-                    Text("로그정규 모형으로 계산한 범위예요. 종목 추천이 아니에요.")
-                        .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 }
                 .padding(16)
         }
@@ -120,27 +125,25 @@ struct ForecastView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// 그래프 바로 밑 렌즈 설명 (렌즈마다 연 기대)
     private func lensNote(_ f: AppModel.Forecast) -> String {
-        let base: String
         switch m.lens {
-        case .base: base = "과거 수익률을 장기 평균 쪽으로 당긴 값이에요. 연 기대 \(AppModel.sgn0(f.muBase))."
-        case .mine: base = "현재 정세와 과거 추세 사이에서 직접 고른 값이에요. 연 기대 \(AppModel.sgn0(f.mu + (m.shock ? 0.02 : 0)))."
-        case .smooth: base = "지난 3년 성장 속도가 이어진다고 본 값이에요. 연 기대 \(AppModel.sgn0(f.muTrend))."
+        case .base: return "현재 정세: 과거 수익률을 장기 평균 쪽으로 당긴 값. 연 기대 \(AppModel.sgn0(f.muBase))."
+        case .mine: return "내 관점: 현재 정세와 과거 추세에서 고른 값. 연 기대 \(AppModel.sgn0(f.mu + (m.shock ? 0.02 : 0)))."
+        case .smooth: return "과거 추세: 지난 3년 성장 속도가 이어진 값. 연 기대 \(AppModel.sgn0(f.muTrend))."
         }
-        return base + (m.shock ? " 외부 요인(금리 결정, 실적 발표 등 예정된 사건)을 넣어 기대를 2%p 낮추고 흔들림을 10% 넓혔어요." : "")
     }
 
     private func pinned(_ f: AppModel.Forecast) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            DetailHead(title: "3년 전망", sub: "시장이 줄 수 있는 미래의 범위")
+            DetailHead(title: "3년 전망", sub: "시장이 줄 수 있는 미래의 범위 (*종목 추천 아님)")
             HStack(spacing: 8) {
                 kpi("\(m.keyName) 확률 (3년)", AppModel.pct(f.prob(3)), Theme.teal, 20)
                 kpi("3년 뒤 중앙값", AppModel.man(f.q50[36]), Theme.ink, 17)
                 kpi("나쁜 5%", AppModel.man(f.q5[36]), Theme.down, 17)
             }
-            FanChart(f: f, goal: m.keyValue).frame(height: 150)
-            Text("초록 띠: 50%·90% 범위 · 주황 점선: \(m.keyName) \(AppModel.man(m.keyValue)) · 렌즈: \(m.lens.label)" + (m.shock ? " + 외부 요인" : ""))
-                .appFont(12).foregroundStyle(Theme.sub)
+            FanChart(f: f, goal: m.keyValue, goalLabel: "\(m.keyName) \(AppModel.man(m.keyValue))").frame(height: 150)
+            Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: Binding(get: { m.lens }, set: { m.lens = $0 }), fill: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -163,6 +166,7 @@ struct ForecastView: View {
 struct FanChart: View {
     let f: AppModel.Forecast
     let goal: Double
+    var goalLabel: String? = nil
     var body: some View {
         Canvas { ctx, size in
             let hi = log(max(goal, f.q95.max() ?? 1) * 1.02), lo = log(max(1, min(goal, f.q5.min() ?? 1) * 0.98))
@@ -183,6 +187,14 @@ struct FanChart: View {
                        with: .color(Theme.orange), style: StrokeStyle(lineWidth: 1.6, dash: [5, 4]))
             for (i, t) in [(12, "1년"), (24, "2년"), (36, "3년")] {
                 ctx.draw(Text(t).font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: x(i) - 12, y: size.height - 6))
+            }
+            // 그래프 안 설명: 왼쪽 위 범위, 목표 점선 위 금액
+            if let goalLabel {
+                let gy = y(goal)
+                ctx.draw(Text(goalLabel).font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.orange),
+                         at: CGPoint(x: size.width - 2, y: gy < 14 ? gy + 8 : gy - 8), anchor: .trailing)
+                ctx.draw(Text("50%·90% 범위").font(.system(size: 10)).foregroundStyle(Theme.green),
+                         at: CGPoint(x: 2, y: 8), anchor: .leading)
             }
         }
         .accessibilityLabel("3년 범위 그래프")

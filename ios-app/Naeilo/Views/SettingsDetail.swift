@@ -20,6 +20,27 @@ private struct SettingsPage<Content: View>: View {
     }
 }
 
+/// 홈 인물 + 말풍선 (루트 바꾸기·개발자 후원 위). 대사는 Lines 의 "<key>.<인물>", 시세가 갱신될 때마다 바뀐다
+struct FriendSay: View {
+    @Environment(AppModel.self) private var m
+    let key: String
+    let fallback: String
+    var body: some View {
+        let who = m.homeFriendShown, name = Shelter.friends.first { $0.id == who }?.name ?? "세리"
+        HStack(alignment: .bottom, spacing: 10) {
+            Pixel(name: "spr_" + who, width: 42, height: 60).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).appFont(12, .semibold).foregroundStyle(Theme.blue)
+                Text(Lines.pick("\(key).\(who)") ?? fallback).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.mintBg, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14))
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private func note(_ t: String) -> some View {
     Text(t).appFont(12).foregroundStyle(Theme.muted).lineSpacing(2).frame(maxWidth: .infinity, alignment: .leading)
 }
@@ -494,7 +515,7 @@ struct HowToView: View {
             ForEach([("위젯", "위젯", "아침에 위젯 속 친구가 알려 주는 본전까지 남은 % 보기"),
                      ("앱", "오늘의 1분", "오늘 숫자 하나와 질문 하나. 7일 연속마다 쉼터에 물건이 돌아와요."),
                      ("알림", "알림", "비중이 계획에서 5%p 넘게 벗어난 날만 울려요."),
-                     ("미션", "1000칸", "본전을 1000칸으로 나눠 채워요. 100칸마다 선물이 있어요."),
+                     ("미션", "1000칸", "본전을 1000칸으로 나눠 채워요."),
                      ("미션", "주간 예보", "월요일에 앱이 금요일 평가액 범위를 적어 두고, 금요일 종가로 범위 안인지 도장을 찍어요."),
                      ("PC", "naeilo.com", "여러 종목 한 번에 넣기, 증권사 파일, 긴 표와 근거는 PC에서 봐요.")], id: \.1) { w, t, v in
                 HStack(alignment: .top, spacing: 10) {
@@ -528,6 +549,7 @@ struct RouteView: View {
         let cur = m.route == .recover ? "minus" : m.route == .plus ? "plus" : "none"
         let sel = pick.isEmpty ? cur : pick
         SettingsPage(title: "루트 바꾸기") {
+            FriendSay(key: "route", fallback: "길을 고르면 아래 그래프가 바뀌어요.")
             if m.route == .recover && m.total >= m.cost {
                 Text("본전을 넘었어요. 이제 목표 루트 · 플러스로 바꿀 수 있어요.").appFont(14, .semibold).foregroundStyle(Color(hex: 0x0B5E40, dark: 0x7FD8B0))
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -556,6 +578,8 @@ struct RouteView: View {
                 pick = ""; m.settingsPath = []
             }
             note("루트를 바꿔도 지금까지 한 미션, 받은 위젯과 캐릭터는 그대로 남아요. 언제든 다시 돌아올 수 있어요.")
+            // 첫 질문 화면처럼: 고른 루트에 따라 바뀌는 예시 3년 그래프
+            StartForecastCard(route: sel == "minus" ? Route.recover : sel == "plus" ? Route.plus : Route.novice)
         }
     }
 }

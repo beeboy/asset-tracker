@@ -135,7 +135,7 @@ struct GoalBoardView: View {
                 }
                 if m.playUnlocked { GoalCellsCard(); WeekForecastCard() } else {
                     DashedCard {
-                        Label("1000칸 · 100칸 선물 · 이번 주 예보", systemImage: "lock").appFont(15, .bold)
+                        Label("1000칸 · 이번 주 예보", systemImage: "lock").appFont(15, .bold)
                         Text("앱 시작 3단계를 마치면 열려요. 인터미션 동안에도 칸을 채우고 매주 예보를 맞혀 볼 수 있어요.").appFont(13)
                     }
                 }
@@ -192,7 +192,7 @@ struct GoalCellsCard: View {
         let tkV = m.trackValue
         let tkP = m.route == .novice ? tkV / 1.02 : tkV * max(0.8, min(1.25, m.cost / max(1, m.total)))
         let nV = cl(tkV), nP = cl(tkP), nMine = min(nV, nP), nMkt = max(0, nV - nP), nLost = max(0, nP - nV)
-        let nY = cl(tkV / (1 + m.todayMove)), chg = nV - nY, passed = nV / 100
+        let nY = cl(tkV / (1 + m.todayMove)), chg = nV - nY
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text("목표까지 1000칸").appFont(13, .bold).foregroundStyle(Theme.sub)
@@ -213,12 +213,6 @@ struct GoalCellsCard: View {
                 legend(Color(hex: 0x7FD3C9, dark: 0x3C8F86), "시장이 준 칸 \(nMkt)칸")
                 if nLost > 0 { legend(Color(hex: 0xFBE3CF, dark: 0x4A3020), "시장이 잠시 가져간 칸 \(nLost)칸") }
                 legend(Theme.yellow, "마지막 칸 = 목표")
-            }
-            Text("진한 칸은 내가 넣은 돈이라 시장이 내려도 사라지지 않아요. 연한 칸은 시장이 준 몫이라 오르내림에 따라 늘었다 줄었다 해요. 이번 달 \(AppModel.wonK(m.gM))을 넣으면 진한 칸이 \(Int(m.gM * 1e4 / unit))칸 늘어요.")
-                .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
-            HStack {
-                Text("100칸 선물").appFont(13, .bold); Spacer()
-                Text(passed >= 10 ? "1000칸 완성!" : "\((passed + 1) * 100)칸까지 \((passed + 1) * 100 - nV)칸").appFont(13).foregroundStyle(Theme.sub)
             }
             ShareCardButton(filled: nV, mine: nMine, market: nMkt, kicker: "목표까지 가는 중",
                             amountLine: "목표 \(AppModel.wonK(m.gK)) 중 \(AppModel.man(tkV)) 모았어요.")

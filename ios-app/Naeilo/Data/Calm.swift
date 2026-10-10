@@ -174,8 +174,12 @@ struct Calm: Codable, Equatable {
     static func kind(_ id: String?) -> Kind? { kinds.first { $0.id == id } }
 
     /// 홈 카드 한 줄: 인물 말투가 애착 단계를 따라 바뀐다 (세리는 기계 문장 → 합쇼체 → 해요체)
-    func say(_ s: CalmStats) -> String {
+    func say(_ s: CalmStats, who: String = "seri") -> String {
         let n = s.index, d = together.count
+        // 대사 데이터(Lines)에서 시세가 갱신될 때마다 다른 줄. 없으면 아래 원래 문장
+        let vars = ["n": "\(n)", "d": "\(d)", "k": "\(s.n)", "min": "\(Self.minEvents)"]
+        if let t = type, let l = Lines.pick("calm.\(min(3, max(1, stage))).\(t)", vars) { return l }
+        if type == nil, let l = Lines.pick("calm.none.\(who)", vars) { return l }
         switch (type ?? "", stage) {
         case ("", _): return "아직 모르겠습니다. 기록 \(s.n)/\(Self.minEvents)."
         case ("seri", 1): return "관찰 중. 평정 지수 \(n)."
@@ -198,6 +202,7 @@ struct Calm: Codable, Equatable {
 
     /// 매매 직후 한 줄 피드백 (말하는 사람 = 매칭된 인물, 없으면 홈 친구)
     static func feedback(_ who: String, _ a: CalmEvent.Act) -> String {
+        if let l = Lines.pick("fb.\(a.rawValue).\(who)") { return l }
         let lines: [String: [CalmEvent.Act: String]] = [
             "seri": [.rule: "계획 쪽으로 옮겼어요. 기록했어요.", .chase: "오른 종목을 더 샀어요. 계획 신호는 없었어요.",
                      .switchOut: "내린 종목을 팔았어요. 계획 신호는 없었어요.", .avgDown: "내린 종목을 더 샀어요. 점수는 그대로예요.",

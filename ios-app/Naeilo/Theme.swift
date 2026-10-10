@@ -51,6 +51,8 @@ enum Theme {
                                       Color(hex: 0xE8862A), Color(hex: 0xC2477A), Color(hex: 0x5B6670)]
 
     static func change(_ r: Double) -> Color { r >= 0 ? up : down }
+    /// 가로 화면에서 내용 폭 상한
+    static let maxWidth: CGFloat = 720
 }
 
 // 흰 카드 (시안의 border 1px · radius 18)
@@ -169,7 +171,8 @@ extension View {
     // 탭 화면 공통 바탕
     func screen() -> some View {
         self.padding(.horizontal, 16).padding(.bottom, 24)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: Theme.maxWidth, alignment: .leading)
+            .frame(maxWidth: .infinity)          // 가로 화면: 가운데 한 줄로
             .foregroundStyle(Theme.ink)
     }
 }
@@ -197,11 +200,13 @@ extension View {
 // 위 그래프를 고정하고 아래만 스크롤. 손쉬운 사용의 아주 큰 글자에서는 고정 영역이 화면을 다 차지하므로 함께 스크롤한다.
 struct PinnedLayout<Header: View, Content: View>: View {
     @Environment(\.dynamicTypeSize) private var dts
+    @Environment(\.verticalSizeClass) private var vsc
     @ViewBuilder var header: Header
     @ViewBuilder var content: Content
     var body: some View {
-        if dts.isAccessibilitySize {
-            ScrollView { VStack(spacing: 0) { header; content } }
+        // 아주 큰 글자나 가로 화면(세로 공간이 좁음)에서는 머리를 고정하지 않고 같이 스크롤
+        if dts.isAccessibilitySize || vsc == .compact {
+            ScrollView { VStack(spacing: 0) { header; content }.frame(maxWidth: Theme.maxWidth).frame(maxWidth: .infinity) }
         } else {
             VStack(spacing: 0) { header; ScrollView { content } }
         }

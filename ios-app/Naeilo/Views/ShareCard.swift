@@ -107,6 +107,7 @@ struct ShareCardSheet: View {
     /// 인물별 한마디 (미션 안내 말투와 같은 결)
     static func say(_ f: String, _ n: Int) -> String {
         let left = 100 - n % 100           // 다음 100칸까지
+        if let l = Lines.pick(n >= 1000 ? "share.full.\(f)" : "share.\(f)", ["n": n.formatted(), "left": "\(left)"]) { return l }
         if n >= 1000 {
             switch f {
             case "sio": return "1,000칸. 다 셌어."
