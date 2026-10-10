@@ -138,10 +138,19 @@ private func termOf(_ t: WSummary.Term?) -> (p5: Double, p50: Double, p95: Doubl
 extension Snapshot {
     /// 로그인 전·위젯 갤러리 미리보기용
     static var sample: Snapshot {
-        let spark = (0..<63).map { i in 5.3e8 + sin(Double(i) / 6) * 1.5e7 - Double(i) * 1e5 }
-        let md = (0...36).compactMap { Calendar.current.date(byAdding: .month, value: $0, to: Date()) }
-        let p50 = md.indices.map { 5.27e8 * pow(1.12, Double($0) / 12) }
-        let sp = { (z: Double) in md.indices.map { p50[$0] * exp(z * 0.45 * sqrt(Double($0) / 12)) } }
+        let spark: [Double] = (0..<63).map { i -> Double in
+            let x = Double(i)
+            let wave: Double = sin(x / 6) * 1.5e7
+            return 5.3e8 + wave - x * 1e5
+        }
+        let md: [Date] = (0...36).compactMap { Calendar.current.date(byAdding: .month, value: $0, to: Date()) }
+        let p50: [Double] = md.indices.map { i -> Double in 5.27e8 * pow(1.12, Double(i) / 12) }
+        let sp = { (z: Double) -> [Double] in
+            md.indices.map { i -> Double in
+                let spread: Double = z * 0.45 * sqrt(Double(i) / 12)
+                return p50[i] * exp(spread)
+            }
+        }
         return Snapshot(total: 5.27e8, prevTotal: 5.32e8, goal: 1e9, goalDate: Day.str(md.last!), dday: 1092, v0: 5.30e8, start: Day.today,
                         spark: spark, fan: .init(md: md, p5: sp(-1.645), p25: sp(-0.674), p50: p50, p75: sp(0.674), p95: sp(1.645)),
                         pGoal: 0.38, term: (1.7e8, 7.7e8, 2.2e9), fcAsOf: Day.today, hits: [true, false, true, true, false, true, true, true].enumerated().map { Hit(hit: $1, retro: $0 < 6) },

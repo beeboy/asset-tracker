@@ -475,12 +475,17 @@ final class AppModel {
         if shock { mu -= 0.02; sg *= 1.1 }
         let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = monthly * 1e4
         let qAt = { (T: Double, z: Double) -> Double in
-            V0 * exp(g * T + z * sg * sqrt(T)) + M * 12 * T * exp(g * T / 2 + z * sg * sqrt(T) / 2)
+            let shockT: Double = z * sg * sqrt(T)
+            let lump: Double = V0 * exp(g * T + shockT)
+            let flow: Double = M * 12 * T * exp(g * T / 2 + shockT / 2)
+            return lump + flow
         }
         let pAt = { (T: Double) -> Double in
             if T <= 0 { return V0 >= K ? 1 : 0 }
-            let eff = V0 + M * 12 * T * exp(-g * T / 2)
-            return eff <= 0 ? 0 : Self.normCDF((log(eff / K) + g * T) / (sg * sqrt(T)))
+            let eff: Double = V0 + M * 12 * T * exp(-g * T / 2)
+            if eff <= 0 { return 0 }
+            let num: Double = log(eff / K) + g * T
+            return Self.normCDF(num / (sg * sqrt(T)))
         }
         let q = { (z: Double) in (0...36).map { i in i == 0 ? V0 : qAt(Double(i) / 12, z) } }
         return Forecast(q5: q(-1.645), q25: q(-0.674), q50: q(0), q75: q(0.674), q95: q(1.645), prob: pAt, mu: mu, sigma: sg, muBase: muB, muTrend: muS)

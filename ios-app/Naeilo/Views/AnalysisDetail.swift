@@ -445,7 +445,8 @@ struct FxImpactView: View {
         let usdV = usd.reduce(0) { $0 + $1.value }, usdW = usdV / max(1, m.total)
         let usdCost = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.cost }
         let fxEff = usdCost * (FX / FXB - 1), stkEff = (m.total - m.cost) - fxEff
-        let T: Double = ["1m": 1.0 / 12, "3m": 0.25, "1y": 1, "3y": 3][period] ?? 1
+        let periods: [String: Double] = ["1m": 1.0 / 12, "3m": 0.25, "1y": 1, "3y": 3]
+        let T: Double = periods[period] ?? 1
         let label = ["1m": "1개월", "3m": "3개월", "1y": "1년", "3y": "3년"][period] ?? "1년"
         // 지난 환율 흐름 (시안 예시, t: 년, 음수 = 과거)
         let fxAt = { (t: Double) -> Double in
