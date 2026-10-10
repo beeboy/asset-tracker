@@ -1973,127 +1973,8 @@
   function aiRefresh() { /* 자동 AI 분석은 꺼 둠 (버튼으로만) */ }
 
 
-  // ------------------------------------------------------------ 인사이트 (뉴스)
-  // data/news.json: GitHub Actions(웹) 또는 내 PC 서버가 한 시간마다 RSS·Yahoo 뉴스를 모아 AI 중계로 한글 번역·요약해 둔 파일
-  let NEWS = null, newsAt = 0;
-  async function loadNews(force) {
-    if (!force && NEWS && Date.now() - newsAt < 10 * 60000) return NEWS;
-    try {
-      const r = await fetch(MODE === "local" ? "/api/news" : "../data/news.json?t=" + Date.now(), { cache: "no-store" });
-      if (r.ok) { NEWS = await r.json(); newsAt = Date.now(); }
-    } catch (e) { /* 없으면 아래에서 안내 */ }
-    return NEWS;
-  }
-  const ago = (t) => { const m = (Date.now() - Date.parse(t)) / 60000; if (!isFinite(m)) return ""; return m < 60 ? `${Math.max(1, Math.round(m))}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
-  // 미래 가치 인사이트: 보유 종목마다 상자 하나. news.json 의 insight.items(보유 종목·관련 업계 기사, 4개 분류)를
-  // 종목별로 모으고, 서버가 만든 종합(insight.digest)을 위에, 분류 알약을 아래에, 출처 기사는 접어 둔다.
-  // 보유 종목에서 빼면 상자도 바로 빠진다(서버 기사·종합은 7일 보관 뒤 지움).
-  const INS_KEY = "naeilo-insight";
-  const INS_CAT = { growth: "성장·혁신", market: "시장·산업", fund: "펀더멘탈·리스크", esg: "ESG·무형자산" };
-  const insLoad = () => { try { const o = JSON.parse(localStorage.getItem(INS_KEY) || "{}"); return { read: o.read || {} }; } catch (e) { return { read: {} }; } };
-  const insSave = (o) => { try { const lim = Date.now() - 30 * 864e5; for (const k in o.read) if (o.read[k] < lim) delete o.read[k]; localStorage.setItem(INS_KEY, JSON.stringify(o)); } catch (e) { /* 무시 */ } };
-  // 서버(매시간 수집)에 아직 없는 보유 종목은 이 브라우저가 직접 Yahoo 기사를 받아 AI 중계로 분류·번역한다 (3시간 보관)
-  const INS_X = "naeilo-insight-extra2", INS_SKIP = new Set(["QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"]);
-  let insBusy = false;
-  const insExtra = () => { try { return JSON.parse(localStorage.getItem(INS_X) || "{}"); } catch (e) { return {}; } };
-  async function yahooNews(t) {
-    const url = "https://query1.finance.yahoo.com/v1/finance/search?" + new URLSearchParams({ q: t, newsCount: 12, quotesCount: 0 });
-    for (const p of proxies()) {
-      try {
-        const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 15000);
-        const r = await fetch(p + encodeURIComponent(url), { signal: ctl.signal, cache: "no-store" }); clearTimeout(tm);
-        const j = await r.json().catch(() => null);
-        if (j && Array.isArray(j.news)) return j.news.filter((x) => x.title && x.link).map((x) => ({ title: x.title, link: x.link, source: x.publisher || "", time: new Date((x.providerPublishTime || 0) * 1000).toISOString() }));
-      } catch (e) { /* 다음 중계 */ }
-    }
-    return null; // 모든 중계가 실패
-  }
-  async function insFetchMissing(tks) {
-    const x = insExtra(), cands = [];
-    const st = {}; // 종목별 결과: fail(중계 연결 실패) / none(최근 기사 없음)
-    for (const t of tks) {
-      let news = await yahooNews(t);
-      const nm = (S.prices[t]?.name || "").replace(/,?\s*(Inc\.?|Corp\.?|Corporation|Ltd\.?|plc|Holdings?)$/i, "").trim();
-      if (news && !news.length && nm && nm.toUpperCase() !== t.toUpperCase()) news = await yahooNews(nm); // 티커로 안 나오면 회사 이름으로
-      if (!news) { st[t] = "fail"; continue; }
-      const age = (a) => Date.now() - Date.parse(a.time);
-      let got = news.filter((a) => age(a) < 7 * 864e5); if (!got.length) got = news.filter((a) => age(a) < 30 * 864e5); // 기사가 적은 종목은 한 달까지
-      if (!got.length) st[t] = "none";
-      for (const a of got) cands.push({ t, a });
-    }
-    let picked = null;
-    if (cands.length && S.config?.ai) {
-      const prompt = "아래는 보유 종목의 최근 기사 후보다. 1~3년 뒤 기업 가치 판단에 도움이 되는 기사만 골라 4개 분류 중 하나로 나눠라. 단기 주가 등락·광고성 기사는 빼라. 최대 20개.\n"
-        + "- growth: 성장 동력 및 기술 혁신\n- market: 시장 및 산업 트렌드\n- fund: 펀더멘탈 및 리스크 관리\n- esg: 무형 자산 및 지속 가능성\n"
-        + '출력 형식: {"items":[{"i":번호,"cat":"growth|market|fund|esg","ko":"한국어 제목","sum":"핵심 요약 한 문장"}]} JSON만.\n'
-        + cands.map(({ t, a }, i) => `${i}. [${t}] [${a.source}] ${a.title}`).join("\n");
-      try {
-        const r = await fetch(S.config.ai, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ system: "너는 미국 증시 뉴스를 한국 개인 투자자에게 전하는 편집자다. 반드시 JSON 하나만 출력한다.", prompt }) });
-        const m = ((await r.json().catch(() => ({}))).text || "").replace(/```(?:json)?/g, "").match(/\{[\s\S]*\}/);
-        const j = m ? JSON.parse(m[0]) : null; picked = Array.isArray(j?.items) ? j.items : Array.isArray(j) ? j : null;
-      } catch (e) { picked = null; }
-    }
-    const key = (s) => s.toLowerCase().replace(/[^a-z0-9가-힣]/g, "").slice(0, 60);
-    const mk = ({ t, a }, cat, ko, sum) => ({ id: key(a.title), ticker: t, scope: "held", cat, title: ko || a.title, orig: a.title, summary: sum || "", source: a.source, link: a.link, time: a.time });
-    // AI 가 고른 기사 (분류가 이상하면 성장·혁신으로). 하나도 못 고르면 원문 제목 그대로 보여 준다
-    let got = (picked || []).filter((p) => cands[+p.i]).map((p) => mk(cands[+p.i], INS_CAT[p.cat] ? p.cat : "growth", p.ko, p.sum));
-    for (const t of tks) if (!got.some((g) => g.ticker === t)) got = got.concat(cands.filter((c) => c.t === t).slice(0, 6).map((c) => mk(c, "growth")));
-    for (const k in x) if (Date.now() - (x[k].at || 0) > 7 * 864e5) delete x[k]; // 보유에서 뺀 종목 기사는 7일 뒤 지움
-    for (const t of tks) x[t] = { at: Date.now(), ai: !!picked?.length, fail: st[t] === "fail", none: st[t] === "none", items: got.filter((g) => g.ticker === t) };
-    try { localStorage.setItem(INS_X, JSON.stringify(x)); } catch (e) { /* 무시 */ }
-  }
-  // 서버 종합이 없을 때(브라우저가 직접 받은 종목 등): 기사 요약을 최신순으로 이어 붙인다
-  const insRule = (its) => { const xs = its.filter((x) => x.scope === "held").concat(its.filter((x) => x.scope !== "held")); const sm = xs.map((x) => x.summary).filter(Boolean); return (sm.length ? sm : xs.map((x) => x.title)).slice(0, 3).join("\n"); };
-  // 종합 글: 문장마다 줄 바꿈, **굵게** 표시. 서버 종합에 굵은 표시가 없으면 숫자(금액·%)를 굵게
-  const insFmt = (t) => {
-    let h = esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-    if (!/<b>/.test(h)) h = h.replace(/([$₩]?[+-]?\d[\d,.]*\s?(?:%p?|억|조|만|달러|원|배|대|명)?)/g, (m) => (/\d{2,}|%|\$|억|조|달러/.test(m) ? `<b>${m}</b>` : m));
-    return h.split(/\n+|(?<=[.!?다])\s+(?=\S)/).map((x) => x.trim()).filter(Boolean).map((x) => (/^위험\s*[:：]/.test(x) ? `<span class="nrisk">${x}</span>` : x)).join("<br>");
-  };
-  // 서버 요약에 위험 문장이 없을 때(예전 요약·규칙 요약) 숫자로 만든 위험 한 줄
-  const insRisk = (t) => {
-    const r = valuation().rows.find((x) => x.h.ticker === t), p = S.prices[t], ind = p ? Model.indicators(p.dates, p.adj) : null, sg = ind?.sig;
-    const parts = [];
-    if (r && r.w > 0.4) parts.push(`비중 ${pct(r.w, 0)}로 이 종목 결과에 자산이 크게 좌우됩니다`);
-    if (sg && sg.vol_ewma) parts.push(`변동성 연 ${pct(sg.vol_ewma, 0)}`);
-    if (sg && sg.drawdown < -0.15) parts.push(`고점 대비 ${pct(sg.drawdown, 0)}`);
-    if (p && p.dates.length < 252) parts.push("상장 1년 미만이라 가격 이력이 짧습니다");
-    return parts.length ? parts.join(", ") + "." : "기사에 드러나지 않은 실적·경쟁 위험도 함께 보세요.";
-  };
-  const insPx = (t) => { const r = valuation().rows.find((x) => x.h.ticker === t); if (!r || r.p.v == null) return "";
-    const sym = r.ccy === "USD" ? "$" : r.ccy === "KRW" ? "₩" : "", c = r.dayChg;
-    return `<span class="ipx">${sym}${nf(r.p.v, r.ccy === "KRW" ? 0 : 2)}${c != null ? ` <span class="${c > 0 ? "up" : c < 0 ? "dn" : ""}">${spct(c, 1)}</span>` : ""}</span>`; };
-  function insBox(t, its, dig, msg) {
-    const o = insLoad(), name = S.prices[t]?.name || S.quotes[t]?.name || "";
-    its = [...its].sort((a, b) => (a.scope !== "held") - (b.scope !== "held") || (b.time || "").localeCompare(a.time || ""));
-    const at = dig?.updated || its[0]?.time, cnt = {};
-    its.forEach((x) => (cnt[x.cat] = (cnt[x.cat] || 0) + 1));
-    let text = dig?.sum || insRule(its);
-    if (!/위험\s*[:：]/.test(text)) text += "\n위험: " + insRisk(t);
-    const pills = Object.keys(INS_CAT).filter((c) => cnt[c]).map((c) => `<span class="ncat">${INS_CAT[c]} ${cnt[c]}</span>`).join("");
-    const src = its.map((x) => `<li><a class="${o.read[x.id] ? "read" : ""}" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer" data-nid="${esc(x.id)}">${esc(x.title || x.orig)}</a> <span class="nmeta">${x.scope === "held" ? "" : "업계 · "}${esc(x.source || "")}${x.time ? " · " + ago(x.time) : ""}</span></li>`).join("");
-    return `<div class="nitem ibox"><div class="ntop">${logo(t, name)}<span class="tk" title="${esc(name)}">${esc(t)}</span>${insPx(t)}<span class="nmeta nago">${at && its.length ? ago(at) : ""}</span></div>
-      ${its.length ? `<p class="nsum">${insFmt(text)}</p><div class="pills">${pills}</div><details class="nsrc"><summary>출처 ${its.length}건</summary><ul>${src}</ul></details>` : `<p class="nsum muted">${esc(msg)}</p>`}</div>`;
-  }
-  async function renderInsight(force) {
-    renderBeyora(); bvLoad();
-    const N = await loadNews(!!force);
-    const held = S.state.holdings.filter((h) => Number(h.shares) > 0).map((h) => h.ticker).filter((t) => !PURGED.has(t));
-    const tks = held.filter((t) => !INS_SKIP.has(t.toUpperCase()) && !t.includes("="));
-    // 서버 기사 + 이 브라우저가 받은 기사. 지금 보유한 종목 것만 쓴다
-    const srv = (N?.insight?.items || []).filter((x) => tks.includes(x.ticker)), X = insExtra(), dig = N?.insight?.digest || {};
-    const missing = tks.filter((t) => !srv.some((x) => x.ticker === t && x.scope === "held"));
-    const stale = missing.filter((t) => !X[t] || Date.now() - X[t].at > (X[t].fail ? 5 / 60 : X[t].none ? 6 : X[t].ai ? 3 : 0.5) * 3600e3);
-    if (stale.length && !insBusy) { insBusy = true; insFetchMissing(stale).finally(() => { insBusy = false; if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(); }); }
-    $("#newsFuture").innerHTML = tks.map((t) => {
-      const its = missing.includes(t) ? X[t]?.items || [] : srv.filter((x) => x.ticker === t);
-      const msg = insBusy && stale.includes(t) ? "기사를 모으는 중입니다…" : X[t]?.fail ? "기사를 받지 못했습니다(기사 중계 연결 실패). 잠시 뒤 다시 열어 주세요." : "최근 한 달 사이 관련 기사가 없습니다.";
-      return insBox(t, its, missing.includes(t) ? null : dig[t], msg);
-    }).join("") || `<div class="nitem empty">보유 종목을 입력하면 종목마다 인사이트 상자가 생깁니다.</div>`;
-    $("#newsMsg").style.display = "none";
-    const fu = N?.future_meta?.updated || N?.updated;
-    $("#newsNote").textContent = fu ? dtStr(fu) + " 수집" : "";
-  }
+  // 지수·현금성 ETF·요인 대리 지표 (실적 사건을 자동으로 넣지 않는 종목)
+  const INS_SKIP = new Set(["QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"]);
 
   // ------------------------------------------------------------ 미래 설계 Beyora (블로그)
   // 글은 저장소의 data/beyora.json 에 둔다. 누구나 읽고, 개발자 토큰이 있는 브라우저(또는 내 PC 프로그램)만 쓴다.
@@ -2690,7 +2571,7 @@
     const box = $("#ghBox"); if (!box) return;
     if (MODE !== "static") { $("#devCard").style.display = "none"; return; }
     const has = !!ghToken();
-    box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). 인사이트의 Beyora 글도 이 토큰으로 저장소(data/beyora.json)에 저장되고, 토큰이 없는 사람은 읽기만 합니다. ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
+    box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). 기록 탭의 미래 설계 글도 이 토큰으로 저장소(data/beyora.json)에 저장되고, 토큰이 없는 사람은 읽기만 합니다. ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
       ${has ? `<p class="small">기기 자동 동기화: ${!S.config?.push ? "중계 주소 없음" : !S.sync ? "확인 중…" : S.sync.ok ? `<b class="good">켜짐</b> · 이 토큰을 넣은 기기끼리 보유 수량·목표를 자동으로 맞춤 (마지막 ${new Date(S.sync.at).toLocaleTimeString()})` : `꺼짐 (${esc(S.sync.err)}) · 중계를 다시 배포해야 할 수 있음`}</p>` : ""}
       <div class="row wrap"><input id="ghToken" type="password" size="40" placeholder="${has ? "새 토큰으로 바꾸려면 붙여넣기" : "GitHub 토큰 붙여넣기 (github_pat_...)"}">
       <button id="ghSave" class="primary">저장</button>${has ? '<button id="ghTest">연결 확인</button><button id="ghDel" class="danger">연결 해제</button>' : ""}</div>
@@ -3158,6 +3039,7 @@
     if (onTab("dash")) renderDash();
     if (onTab("forecast")) renderForecastTab();
     if (onTab("stocks")) renderStocksTab();
+    if (onTab("record")) renderRecord();
   }
   const onTab = (t) => $("#tabs .on")?.dataset.tab === t;
   // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
@@ -3169,8 +3051,34 @@
     renderStockPrices(); renderCash(); ensureForecast();
     if ((!lastAlloc || allocDirty) && !allocRestore()) runAlloc(); else { renderAllocTable(); renderAllocChart(); }
   }
+  // 기록 탭: 다가오는 일정 + 적중 기록판·다이어그램·실제 기록(계산은 renderDash 가 함께 한다) + 미래 설계 글
+  function renderRecord() { renderUpcoming(); renderDash(); renderBeyora(); bvLoad(); }
+  // 앞으로 45일 동안의 내 종목·시장 일정 (켜 둔 사건 + 지난해 배당일로 짐작한 배당). 숫자와 날짜만, 매매 권유 없음
+  function renderUpcoming() {
+    const box = $("#upList"), lim = new Date(Date.now() + 45 * 864e5).toISOString().slice(0, 10), td = today();
+    const rows = [];
+    try {
+      const m = buildModelNow();
+      if (m) m.model.eventList.filter((x) => x.date >= td && x.date <= lim).forEach((x) => {
+        const e = x.event, earn = /실적/.test(e.kind);
+        rows.push({ d: x.date, who: tgtLab(e), what: earn ? `${quarterOf(x.date).label} 실적 발표` : e.kind, note: `평소 움직임 ±${e.sd}${e.factor === "rate" ? "bp" : "%"}${earn ? " (날짜는 추정일 수 있음)" : ""}` });
+      });
+    } catch (e) { /* 목표일 없음 등: 일정만 건너뜀 */ }
+    const yAgo = Model.addMonths(td, -12);
+    valuation().rows.filter((r) => r.valueKrw > 0).forEach((r) => {
+      dividends(r.h.ticker).filter((x) => x.d > yAgo).forEach((x) => {
+        const d = Model.addMonths(x.d, 12); if (d < td || d > lim) return;
+        const v = x.amt * r.sh * (r.fx || 1) * (1 - (r.ccy === "KRW" ? 0.154 : WHT));
+        rows.push({ d, who: r.h.ticker, what: "배당 기준일 (지난해 기준 추정)", note: `세후 약 ${krw(v)}원` });
+      });
+    });
+    rows.sort((a, b) => a.d.localeCompare(b.d));
+    $("#upSum").textContent = rows.length ? `· 앞으로 45일 ${rows.length}건` : "";
+    box.innerHTML = rows.length ? `<table class="grid uptable"><tr><th class="l">날짜</th><th class="l">대상</th><th class="l">일정</th></tr>` + rows.map((x) => `<tr><td class="l">${x.d.slice(5).replace("-", "/")} <span class="muted">${"일월화수목금토"[new Date(x.d + "T00:00:00").getDay()]}</span></td><td class="l">${esc(x.who)}</td><td class="l wrapc">${esc(x.what)}<br><span class="muted small">${esc(x.note)}</span></td></tr>`).join("") + "</table>"
+      : `<p class="muted small">앞으로 45일 안에 켜 둔 일정이 없습니다. 일정은 '전망 → 외부 요인'에서 켜고 끕니다.</p>`;
+  }
   // 예전 탭 이름(분석·전략의 하위 탭, 시세 수집)으로 저장된 값을 새 탭으로
-  const TAB_OLD = { analysis: "forecast", quotes: "stocks" }, ANA_TAB = { strategy: "stocks", alloc: "stocks", cash: "stocks" };
+  const TAB_OLD = { analysis: "forecast", quotes: "stocks", insight: "record" }, ANA_TAB = { strategy: "stocks", alloc: "stocks", cash: "stocks" };
   function showTab(name) {
     if (TAB_OLD[name]) name = TAB_OLD[name];
     if (!$(`#tabs button[data-tab="${name}"]`)) name = "dash";
@@ -3179,7 +3087,7 @@
     if (name === "dash") renderDash();
     if (name === "forecast") renderForecastTab();
     if (name === "stocks") renderStocksTab();
-    if (name === "insight") renderInsight();
+    if (name === "record") renderRecord();
     try { localStorage.setItem("tab", name); } catch (e) { /* 무시 */ }
   }
   function segClick(id, cb) { $(id).addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; $$(id + " button").forEach((x) => x.classList.toggle("on", x === b)); cb(); }); }
@@ -3206,10 +3114,6 @@
     $("#addShares").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     $("#goalQuick").addEventListener("click", (e) => { const b = e.target.closest("button[data-set]"); if (!b) return; const el = $("#" + b.dataset.set); el.value = b.dataset.v; el.dispatchEvent(new Event("change")); });
     ["#goalAmount", "#goalDate", "#startDate", "#goalYears", "#monthly"].forEach((s) => { $(s).addEventListener("change", onGoalEdit); });
-    $("#newsFuture").addEventListener("click", (e) => { // 제목을 누르면 읽은 기사로 표시
-      const a = e.target.closest("a[data-nid]"); if (!a) return;
-      const o = insLoad(); o.read[a.dataset.nid] = Date.now(); insSave(o); a.classList.add("read");
-    });
     // 접는 카드 (적중 기록판·다이어그램). 기본은 펼침, 접은 것만 이 기기에 기억
     const foldKey = "naeilo-fold", foldGet = () => { try { return JSON.parse(localStorage.getItem(foldKey) || "[]"); } catch (e) { return []; } };
     foldGet().forEach((id) => $("#" + id)?.classList.add("folded"));
@@ -3424,8 +3328,7 @@
     try { const hf = localStorage.getItem("naeilo-histfc"); if (hf) $$("#histFc button").forEach((b) => b.classList.toggle("on", b.dataset.f === hf)); } catch (e) { /* 무시 */ } // 예보 겹치기도 유지
     if (window.themeUI) themeUI($("#themeBox"));
     bind(); renderAll(); foldHold(); marFetch(); syncPull(); renderEsync(); allocWarm(2500);
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { syncPull(); if ($("#tabs .on")?.dataset.tab === "insight") renderInsight(); } });
-    setInterval(() => { if (document.visibilityState === "visible" && $("#tabs .on")?.dataset.tab === "insight") renderInsight(); }, 10 * 60000); // 인사이트를 열어 두면 10분마다 새 뉴스 확인
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncPull(); });
     setAuto(S.state.ui.auto_refresh_min || 0);
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; if (tab === "analysis") tab = ANA_TAB[localStorage.getItem("ana")] || "forecast"; } catch (e) { /* 무시 */ }
     showTab(tab);
