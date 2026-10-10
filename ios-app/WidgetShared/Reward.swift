@@ -16,11 +16,13 @@ struct WReward: Codable {
     var friendsOn: [String]      // 만난 인물 (세리는 처음부터)
     var homeFriend: String? = nil // 앱 홈에 둔 인물 (위젯 '홈 인물 따라가기'가 쓴다)
     var spark: [Double]? = nil    // 최근 10일 평가액 (만원). 인물 · 자산 추이
+    var items: [String]? = nil    // 쉼터에 돌아온 물건 (돌아온 순서). 오늘의 움직임 위젯이 쓴다
 
     static let sample = WReward(keyName: "본전", pct: 0.87, pctYesterday: 0.862, remain: 1.52e7, cells: 264, cellsYesterday: 261,
                                 total: 1.234e8, dayChg: 0.008, tiles: [.init(t: "DRNK", w: 0.62, c: 0.019), .init(t: "QQQ", w: 0.38, c: -0.004)],
                                 next: "DRNK 실적 D-12 (10/22)", friendsOn: WChar.all.map(\.id),
-                                spark: [11980, 12050, 12010, 12120, 12200, 12150, 12260, 12310, 12240, 12340])
+                                spark: [11980, 12050, 12010, 12120, 12200, 12150, 12260, 12310, 12240, 12340],
+                                items: ["barley_tea", "porch_light"])
 }
 
 /// 인물 위젯의 인물: 색은 캐릭터 설정 스레드 시안 (reward-widgets)
@@ -36,8 +38,10 @@ struct WChar: Identifiable {
     ]
     static func of(_ id: String) -> WChar { all.first { $0.id == id } ?? all[0] }
 
-    /// 말풍선 (인물 말투). 세리·시오·선배는 오늘 가장 크게 움직인 종목을 넣는다
+    /// 말풍선 (인물 말투). 세리·시오·선배는 오늘 가장 크게 움직인 종목을 넣는다.
+    /// 사흘에 한 번은 쉼터에 돌아온 물건 얘기를 한다
     func line(_ r: WReward) -> String {
+        if let it = WItem.today(r), let say = WItem.say[it] { return say }
         let top = r.tiles.max { abs($0.c) < abs($1.c) }
         let t = top?.t ?? "오늘", c = top?.c ?? 0
         switch id {
@@ -54,4 +58,22 @@ struct WChar: Identifiable {
         if (0xAC00...0xD7A3).contains(ch.value) { return (ch.value - 0xAC00) % 28 == 0 ? "가" : "이" }
         return "LMNR".unicodeScalars.contains(ch) ? "이" : "가"
     }
+}
+
+/// 쉼터에 돌아온 물건: 위젯 그림 이름은 w_item_<id> (앱 쪽 art_<id> 와 같은 도트)
+enum WItem {
+    static let say: [String: String] = [
+        "barley_tea": "보리차, 식기 전에요.", "porch_light": "현관 등은 켜 뒀어요.", "wall_clock": "시계는 안 맞춰도 돼요.",
+        "hair_tie": "머리끈은 식탁 위에 있어요.", "table_chair": "식탁에 종이 한 장 있어요.", "asym_bowl": "기운 그릇, 그대로 둬요.",
+        "unfired_bowl": "그릇은 아직 안 구웠어요.", "jujube_seed": "대추씨는 아직 기다리는 중이에요.", "elder_bead": "구슬은 하나뿐이에요.",
+        "rice_seeds": "볍씨 주머니, 챙겨 뒀어요.",
+    ]
+    /// 오늘 말풍선에 나오는 물건: 사흘에 한 번, 돌아온 물건을 차례로. 나머지 날은 nil
+    static func today(_ r: WReward, _ date: Date = Date()) -> String? {
+        guard let ids = r.items, !ids.isEmpty else { return nil }
+        let n = Calendar.current.ordinality(of: .day, in: .era, for: date) ?? 0
+        return n % 3 == 0 ? ids[(n / 3) % ids.count] : nil
+    }
+    /// 인물 발치에 둘 물건: 말풍선에 나온 물건, 아니면 마지막에 돌아온 물건
+    static func shown(_ r: WReward) -> String? { today(r) ?? r.items?.last }
 }

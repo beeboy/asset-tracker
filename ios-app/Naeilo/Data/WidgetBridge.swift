@@ -56,7 +56,8 @@ enum WidgetBridge {
                              cells: Int(frac(track) * 1000), cellsYesterday: Int(frac(yTrack) * 1000),
                              total: m.total, dayChg: m.todayMove, tiles: Array(tiles), next: nextEvent(rows.map(\.id), now),
                              friendsOn: Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id),
-                             homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0 })
+                             homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0 },
+                             items: Shelter.items.prefix(m.itemsOn).map(\.id))
         Store.write(reward, "reward.json")
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")

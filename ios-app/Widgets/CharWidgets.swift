@@ -165,6 +165,17 @@ struct CharSprite: View {
     }
 }
 
+/// 쉼터에 돌아온 물건 하나 (인물 발치). 투명·틴트 홈 화면에서는 한 색 덩어리가 되니 그리지 않는다
+struct CharItem: View {
+    let id: String
+    @Environment(\.widgetRenderingMode) private var mode
+    var body: some View {
+        if mode != .accented {
+            Image("w_item_" + id).interpolation(.none).resizable().frame(width: 20, height: 20).accessibilityHidden(true)
+        }
+    }
+}
+
 private func lockLine(_ c: WChar) -> String { "인터미션 \(c.week)주차에 만나요" }
 
 /// 1억 2,340만
@@ -365,6 +376,7 @@ struct MovesCharView: View {
                     }
                     HStack(alignment: .top, spacing: 4) {
                         CharSprite(name: "w_\(e.c.id)", locked: e.locked, height: 92).frame(width: 66)
+                            .overlay(alignment: .bottomTrailing) { if !e.locked, let it = WItem.shown(r) { CharItem(id: it).offset(x: 6) } }
                         Text(e.locked ? "인터미션 \(e.c.week)주차에\n만나요" : e.c.line(r))
                             .font(.system(size: 11, weight: .medium)).lineLimit(3).fixedSize(horizontal: false, vertical: true)
                             .padding(.horizontal, 8).padding(.vertical, 6)

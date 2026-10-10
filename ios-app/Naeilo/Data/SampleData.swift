@@ -226,6 +226,12 @@ enum Shelter {
         .init(id: "elder_bead", name: "원로의 구슬", line: "먼 곳에 하나뿐인 구슬."),
         .init(id: "rice_seeds", name: "볍씨", line: "누군가 싸 준 작은 주머니."),
     ]
+    /// 쉼터 방(art_room, 128×80)에서 물건이 놓이는 자리: 16×16 도트의 왼쪽 위. 그림은 designs/naeilo-characters/room.py
+    static let slots: [String: CGPoint] = [
+        "barley_tea": .init(x: 52, y: 29), "porch_light": .init(x: 27, y: 10), "wall_clock": .init(x: 56, y: 4), "hair_tie": .init(x: 68, y: 29),
+        "table_chair": .init(x: 30, y: 40), "asym_bowl": .init(x: 88, y: 31), "unfired_bowl": .init(x: 104, y: 31), "jujube_seed": .init(x: 88, y: 17),
+        "elder_bead": .init(x: 104, y: 17), "rice_seeds": .init(x: 100, y: 58),
+    ]
 
     // 서재 장: (이름, 같이 열리는 친구)
     // 장 제목은 캐릭터 설정 스레드(chapter-titles.md) 기준. 6장은 표지만 있고 앱에서 열리지 않는다.
