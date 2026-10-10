@@ -28,8 +28,6 @@ jobs:
         env:
           ADD: ${{ github.event.inputs.add_tickers }}
         run: python server.py --collect --add "$ADD"
-      - name: 아이폰 위젯용 작은 시세 파일
-        run: python tools/widget_feed.py
       - name: 커밋
         run: |
           git config user.name "github-actions[bot]"

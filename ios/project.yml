@@ -26,8 +26,6 @@ targets:
       # 사이트와 같은 계산 파일을 앱에 넣는다 (앱은 사이트에서 더 새 파일을 받으면 그것을 쓴다)
       - path: ../web/model.js
         buildPhase: resources
-      - path: ../web/widget-core.js
-        buildPhase: resources
     info:
       path: App/Info.plist
       properties:
