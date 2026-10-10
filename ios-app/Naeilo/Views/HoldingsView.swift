@@ -375,6 +375,7 @@ struct HoldingEditView: View {
     @State private var mode = "fix"
     @State private var q = ""
     @State private var p = ""
+    @State private var said: String? = nil     // 매매를 저장한 뒤 인물의 한 줄 (평정 지수)
 
     var body: some View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
@@ -417,9 +418,9 @@ struct HoldingEditView: View {
                 PrimaryButton(title: "저장", color: bad ? Theme.muted : Theme.teal) {
                     guard !bad else { return }
                     if mode == "sell" && sym.currency == .usd { m.taxGain += (m.krw(sym, qi * (pi - p0)) / 1e4).rounded() }
-                    save(q1, p1)
+                    save(q1, p1, trade: mode == "fix" ? nil : mode == "buy")
                 }
-                Button("이 종목 지우기") { save(0, p0) }
+                Button("이 종목 지우기") { save(0, p0, trade: false) }
                     .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
                 Text("거래를 하나씩 기록하거나 증권사 파일로 맞추는 건 PC naeilo.com에서 할 수 있어요. 앱에서는 수량과 평균 단가만 바꿔요.")
@@ -435,6 +436,9 @@ struct HoldingEditView: View {
             if let md = UserDefaults.standard.string(forKey: "editMode") { mode = md; DispatchQueue.main.async { q = UserDefaults.standard.string(forKey: "editQ") ?? q } }
         }
         .onChange(of: mode) { _, _ in reset(h) }
+        .alert("평정 지수", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil; dismiss() } })) {
+            Button("확인") {}
+        } message: { Text(said ?? "") }
     }
 
 
@@ -462,9 +466,18 @@ struct HoldingEditView: View {
         if mode == "fix" { q = h.qty.formatted(.number.grouping(.never)); p = h.avg.formatted(.number.grouping(.never)) } else { q = ""; p = sym.close.formatted(.number.grouping(.never)) }
     }
 
-    private func save(_ qty: Double, _ avg: Double) {
+    /// trade: 산 것(true)·판 것(false)이면 평정 지수에 기록하고 인물의 한 줄을 보여 준 뒤 닫는다. 직접 고치기(nil)는 기록하지 않는다
+    private func save(_ qty: Double, _ avg: Double, trade buy: Bool? = nil) {
+        let before = m.holdings.first(where: { $0.symbol == sym.id && $0.qty > 0 }), drift0 = m.calmDrift()
         if let i = m.holdings.firstIndex(where: { $0.symbol == sym.id }) {
             if qty > 0 { m.holdings[i] = Holding(symbol: sym.id, qty: qty, avg: (avg * 100).rounded() / 100) } else { m.holdings.remove(at: i) }
+        }
+        if let buy, let before {
+            let act = m.calmTrade(sym, buy: buy, avgBefore: before.avg, driftBefore: drift0)
+            let pts = m.calm.events.last?.pts ?? 0, who = m.calmSpeaker
+            let name = Shelter.friends.first { $0.id == who }?.name ?? ""
+            said = "\(name): \(Calm.feedback(who, act))" + (pts != 0 ? " (\(pts > 0 ? "+" : "")\(pts)점)" : "")
+            return
         }
         dismiss()
     }
