@@ -1,11 +1,12 @@
 import SwiftUI
 
-// 쉼터: 친구, 서재(외전 프롤로그~5장), 돌아온 물건. 시장 숫자와는 상관없고 내 행동으로만 열린다.
+// 쉼터: 친구, 서재(외전 프롤로그~5장, 후원하면 6장~코다와 본편 1권), 돌아온 물건. 시장 숫자와는 상관없고 내 행동으로만 열린다.
 struct ShelterView: View {
     @Environment(AppModel.self) private var m
     @State private var sel = "seri"
     @State private var item: String? = nil
     @State private var support = false
+    @State private var story = Story.shared
 
     var body: some View {
         ScrollView {
@@ -26,6 +27,7 @@ struct ShelterView: View {
                     }.buttonStyle(.plain)
                 }
                 library
+                if Support.shared.has(.franchise) { vol1 }
                 header("쉼터에 돌아온 물건", "\(m.itemsOn)/10")
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
                     ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in itemTile(i, it) }
@@ -135,30 +137,82 @@ struct ShelterView: View {
                 else { Button { sel = ch.friend } label: { row }.buttonStyle(.plain) }
             }
             Divider().overlay(Theme.line)
-            // 6장: 누르면 개발자 후원(커피). 믹스커피 이상이면 6장부터 이어진다 (원고는 준비되면 서버에서)
-            Button { support = true } label: {
-                HStack(spacing: 10) {
-                    Image("art_ch6").interpolation(.none).resizable().frame(width: 64, height: 40)
-                        .grayscale(Support.shared.tier >= .mix ? 0 : 1).brightness(Support.shared.tier >= .mix ? 0 : -0.3)
-                        .opacity(Support.shared.tier >= .mix ? 1 : 0.6).clipShape(RoundedRectangle(cornerRadius: 6))
-                    Text("6장").appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(Shelter.chapter6Name).appFont(14, .bold)
-                        Text(Support.shared.tier >= .mix ? "후원 고마워요 · 6장 원고는 준비 중이에요" : "커피 한 잔으로 이어 읽기").appFont(12)
-                    }
-                    Spacer(minLength: 0)
-                    Text("☕︎ ›").appFont(13).foregroundStyle(Theme.muted)
+            // 6장부터: 믹스커피 이상이면 후원 서버에서 받은 장, 아니면 누르면 개발자 후원(커피)
+            if Support.shared.has(.mix) && story.count(.side) > 6 {
+                ForEach(6..<story.count(.side), id: \.self) { i in
+                    if i > 6 { Divider().overlay(Theme.line) }
+                    NavigationLink(value: "read:\(i)") { paidRow(i == 6 ? "art_ch6" : nil, story.chapter(i)?.title ?? "", story.chapter(i)?.name ?? "", (story.pos[i] ?? 0) > 0 ? "이어 읽기" : "읽기") }
+                        .buttonStyle(.plain)
                 }
-                .foregroundStyle(Theme.sub)
-                .padding(.horizontal, 14).frame(minHeight: 56)
-                .background(Color(hex: 0xF7F8FA, dark: 0x202933))
-                .contentShape(Rectangle())
+            } else if Support.shared.has(.mix) {
+                Button { Task { await story.fetch(.side, force: true) } } label: {
+                    paidRow("art_ch6", "6장", Shelter.chapter6Name, story.isLoading(.side) ? "받는 중…" : story.failText(.side) == nil ? "받기" : "다시 받기",
+                            note: story.failText(.side))
+                }
+                .buttonStyle(.plain).disabled(story.isLoading(.side))
+            } else {
+                Button { support = true } label: {
+                    paidRow("art_ch6", "6장", Shelter.chapter6Name, "☕︎ ›", note: "커피 한 잔으로 이어 읽기", locked: true)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .background(Theme.card)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+        .task(id: story.lang) { await story.fetch(.side) }   // 믹스커피 이상이면 6장부터 받아 둔다
+    }
+
+    /// 서버에서 받는 장 한 줄 (6장부터, 본편 1권)
+    private func paidRow(_ art: String?, _ title: String, _ name: String, _ right: String, note: String? = nil, locked: Bool = false) -> some View {
+        HStack(spacing: 10) {
+            Group {
+                if let art {
+                    Image(art).interpolation(.none).resizable()
+                        .grayscale(locked ? 1 : 0).brightness(locked ? -0.3 : 0).opacity(locked ? 0.6 : 1)
+                } else { Theme.shelter }
+            }
+            .frame(width: 64, height: 40).clipShape(RoundedRectangle(cornerRadius: 6))
+            Text(title).appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading).lineLimit(1).minimumScaleFactor(0.7)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).appFont(14, .bold)
+                if let note { Text(note).appFont(12).foregroundStyle(Theme.sub).lineLimit(2) }
+            }
+            Spacer(minLength: 0)
+            Text(right).appFont(12).foregroundStyle(Theme.muted)
+        }
+        .foregroundStyle(locked ? Theme.sub : Theme.ink)
+        .padding(.horizontal, 14).frame(minHeight: 56)
+        .background(locked ? Color(hex: 0xF7F8FA, dark: 0x202933) : .clear)
+        .contentShape(Rectangle())
+    }
+
+    // 본편 『중첩된 현실』 1권: 프랜차이즈 커피 이상. 후원 서버에서 받고, 한국어만
+    private var vol1: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            header("본편 『중첩된 현실』 1권", story.count(.vol1) > 0 ? "\(story.count(.vol1))장" : "")
+            VStack(spacing: 0) {
+                if story.count(.vol1) > 0 {
+                    ForEach(0..<story.count(.vol1), id: \.self) { i in
+                        if i > 0 { Divider().overlay(Theme.line) }
+                        NavigationLink(value: "vol1:\(i)") {
+                            paidRow(nil, story.chapter(i, .vol1)?.title ?? "", story.chapter(i, .vol1)?.name ?? "",
+                                    (story.pos[Story.key(.vol1, i)] ?? 0) > 0 ? "이어 읽기" : "읽기")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    Button { Task { await story.fetch(.vol1, force: true) } } label: {
+                        paidRow(nil, "1권", "중첩된 현실", story.isLoading(.vol1) ? "받는 중…" : story.failText(.vol1) == nil ? "받기" : "다시 받기", note: story.failText(.vol1))
+                    }
+                    .buttonStyle(.plain).disabled(story.isLoading(.vol1))
+                }
+            }
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+        }
+        .task { await story.fetch(.vol1) }
     }
 
     private func itemTile(_ i: Int, _ it: ShelterItem) -> some View {
@@ -221,28 +275,38 @@ struct ChapterCover: View {
 struct ReaderView: View {
     @Environment(AppModel.self) private var m
     @State var index: Int
+    var book: StoryBook = .side
     @State private var size = 17.0
     @State private var dark = false
     @State private var top: Int? = nil
     @State private var story = Story.shared
+    @State private var support = false
     @Environment(\.colorScheme) private var scheme
+
+    /// 앱에 든 외전 장(프롤로그~5장): 쉼터 친구·표지·미션 열림과 이어진다. 6장부터와 본편 1권은 후원 서버에서 받은 장
+    private var inApp: Bool { book == .side && index < 6 }
 
     var body: some View {
         let accent = dark ? Theme.mint : Theme.teal
-        let ch = Shelter.chapters[index]
-        let fi = Shelter.friends.firstIndex { $0.id == ch.friend } ?? 0
-        let text = story.chapter(index)
+        let ch = inApp ? Shelter.chapters[index] : nil
+        let fi = ch.map { c in Shelter.friends.firstIndex { $0.id == c.friend } ?? 0 }
+        let text = story.chapter(index, book)
+        let started = inApp ? m.readPos.contains(index) : (story.pos[Story.key(book, index)] ?? 0) > 0
         ScrollViewReader { proxy in
             ScrollView {
               VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 12) {
                     controls(accent)
-                    ChapterCover(index: index).aspectRatio(1.6, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
+                    cover
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(story.heading(index)).appFont(13, .semibold).foregroundStyle(accent)
-                        Text(text?.name ?? ch.name).appFont(22, .bold)
+                        Text(story.heading(index, book)).appFont(13, .semibold).foregroundStyle(accent)
+                        Text(text?.name ?? ch?.name ?? "").appFont(22, .bold)
                     }
-                    Text(m.readPos.contains(index) ? "읽던 곳에서 이어 읽는 중" : "처음부터").appFont(13).foregroundStyle(dark ? Color(hex: 0xA6ADC6) : Theme.sub2)
+                    if text == nil {
+                        fetchNote(accent)
+                    } else {
+                        Text(started ? "읽던 곳에서 이어 읽는 중" : "처음부터").appFont(13).foregroundStyle(dark ? Color(hex: 0xA6ADC6) : Theme.sub2)
+                    }
                 }
                 .padding([.horizontal, .top], 16)
                 .id("top")
@@ -250,40 +314,75 @@ struct ReaderView: View {
                     ForEach(Array((text?.blocks ?? []).enumerated()), id: \.offset) { p, b in
                         VStack(alignment: .leading, spacing: 0) {
                             block(b, accent)
-                            if p == 1 && Shelter.friends[fi].inSideStory { firstAppear(ch.friend, fi).padding(.top, size * 0.8) }
+                            if p == 1, let ch, let fi, Shelter.friends[fi].inSideStory { firstAppear(ch.friend, fi).padding(.top, size * 0.8) }
                         }
                         .id(p)
                     }
                 }
                 .scrollTargetLayout()
                 .padding(.horizontal, 16).padding(.top, 8)
-                next(fi, accent, proxy).padding(16)
+                next(fi ?? 0, accent, proxy).padding(16)
               }
             }
             .scrollPosition(id: $top, anchor: .top)
             .onChange(of: top) { _, t in
                 guard let t else { return }
-                story.setPos(index, t)
-                if t > 0 && !m.readPos.contains(index) { m.readPos.insert(index) }
+                story.setPos(book, index, t)
+                if inApp && t > 0 && !m.readPos.contains(index) { m.readPos.insert(index) }
             }
             .onAppear {
-                m.readLast = index
+                if inApp { m.readLast = index }
                 if scheme == .dark { dark = true }
-                if let p = story.pos[index], p > 0 { DispatchQueue.main.async { proxy.scrollTo(p, anchor: .top) } }
+                if let p = story.pos[Story.key(book, index)], p > 0 { DispatchQueue.main.async { proxy.scrollTo(p, anchor: .top) } }
             }
         }
         .foregroundStyle(dark ? Color(hex: 0xEEF0F7) : Theme.ink)
         .background(dark ? Color(hex: 0x141824) : Color(hex: 0xFBFAF7))
         .toolbarBackground(dark ? Color(hex: 0x141824) : Color(hex: 0xFBFAF7), for: .navigationBar)
-        .navigationTitle("서재").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(book == .side ? "서재" : "본편 1권").navigationBarTitleDisplayMode(.inline)
+        // 받은 장이 없으면(처음이거나 다른 언어) 받는다. 5장 끝에서는 6장을 미리 받아 둔다
+        .task(id: "\(index)-\(story.lang(book).rawValue)") {
+            if story.chapter(index, book) == nil || (book == .side && index == 5) { await story.fetch(book) }
+        }
         .onChange(of: story.lang) { _, _ in story.pushWidget(m) }
         .onDisappear { story.pushWidget(m) }
+        .sheet(isPresented: $support) { NavigationStack { SupportView() } }
+    }
+
+    @ViewBuilder private var cover: some View {
+        if inApp {
+            ChapterCover(index: index).aspectRatio(1.6, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
+        } else if book == .side {
+            Image("art_ch6").interpolation(.none).resizable().aspectRatio(1.6, contentMode: .fit)
+                .background(Theme.shelter).clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    /// 받는 중 · 오류 · 다시 받기
+    @ViewBuilder private func fetchNote(_ accent: Color) -> some View {
+        if story.isLoading(book) {
+            HStack(spacing: 8) { ProgressView(); Text("원고를 받는 중이에요").appFont(14) }
+        } else if !Support.shared.has(book.need) {
+            Button { support = true } label: {
+                Text("\(book.need.name) 이상 후원하면 읽을 수 있어요 ›").appFont(14, .bold).foregroundStyle(accent)
+            }.buttonStyle(.plain)
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(story.failText(book) ?? "원고를 아직 받지 못했어요.").appFont(14).foregroundStyle(dark ? Color(hex: 0xA6ADC6) : Theme.sub2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("다시 받기") { Task { await story.fetch(book, force: true) } }
+                    .appFont(14, .bold).foregroundStyle(accent)
+            }
+        }
     }
 
     // 한/EN · 글자 크기 3단계 · 어둡게
     private func controls(_ accent: Color) -> some View {
         let ink = dark ? Color(hex: 0xEEF0F7) : Theme.ink, edge = dark ? Color(hex: 0x4A5578) : Theme.border
         return HStack(spacing: 6) {
+            if book.langs.count == 1 {
+                Text("한국어만 있어요").appFont(12).foregroundStyle(dark ? Color(hex: 0xA6ADC6) : Theme.sub2)
+            } else {
             HStack(spacing: 0) {
                 ForEach(StoryLang.allCases, id: \.self) { l in
                     Button(l.label) { story.pick(l) }
@@ -295,6 +394,7 @@ struct ReaderView: View {
                 }
             }
             .padding(2).overlay(Capsule().stroke(edge, lineWidth: 2))
+            }
             Spacer(minLength: 4)
             ForEach([(15.0, 12.0, "작은 글자"), (17.0, 15.0, "보통 글자"), (20.0, 18.0, "큰 글자")], id: \.0) { s, f, label in
                 Button("가") { size = s }
@@ -362,18 +462,29 @@ struct ReaderView: View {
     }
 
     @ViewBuilder private func next(_ fi: Int, _ accent: Color, _ proxy: ScrollViewProxy) -> some View {
-        if index < 5 && m.chapterOn(index + 1) {
-            let n = story.chapter(index + 1)
+        let last = inApp && index < 5 ? !m.chapterOn(index + 1) : index + 1 >= story.count(book)
+        if !last {
+            let n = story.chapter(index + 1, book)
             Button {
-                m.readPos.insert(index); story.pushWidget(m)
-                index += 1; m.readLast = index; top = nil
+                if inApp { m.readPos.insert(index); story.pushWidget(m) }
+                index += 1; top = nil
+                if inApp { m.readLast = index }
                 proxy.scrollTo("top", anchor: .top)
             } label: {
-                Text("다음: \(n?.title ?? Shelter.chapters[index + 1].title) · \(n?.name ?? Shelter.chapters[index + 1].name) ›").appFont(15, .bold).foregroundStyle(.white)
+                Text("다음: \(n?.title ?? "") · \(n?.name ?? "") ›").appFont(15, .bold).foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 48).background(accent, in: RoundedRectangle(cornerRadius: 12))
             }.buttonStyle(.plain)
+        } else if book == .side && index == 5 && !Support.shared.has(.mix) {
+            // 5장 끝: 6장부터는 커피 후원으로
+            Button { support = true } label: {
+                Text("6장 · \(Shelter.chapter6Name)는 커피 한 잔으로 이어 읽어요 ☕︎ ›").appFont(14, .bold).foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, minHeight: 48).padding(.horizontal, 8).background(accent, in: RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain)
         } else {
-            Text(index == 5 ? "중첩된 현실 외전에서 이어져요" : "다음 장은 " + (index >= 1 ? m.friendWhen(fi + 1) + "에" : "앱 시작 3단계를 마치면") + " 열려요.")
+            Text(inApp && index < 5 ? "다음 장은 " + (index >= 1 ? m.friendWhen(fi + 1) + "에" : "앱 시작 3단계를 마치면") + " 열려요."
+                 : book == .side && index == 5 ? (story.isLoading(.side) ? "6장을 받는 중이에요" : story.failText(.side) ?? "6장은 곧 이어져요")
+                 : "끝까지 읽었어요")
                 .appFont(14, .bold).multilineTextAlignment(.center)
                 .foregroundStyle(dark ? Theme.gold : Theme.sub)
                 .frame(maxWidth: .infinity).padding(12)

@@ -73,6 +73,13 @@ open NaeiloApp.xcodeproj   # 시뮬레이터 고르고 ▶
 - 상품 ID: `com.naeilo.widget.support.mix|dabang|franchise|specialty|tip`. App Store Connect 에 같은 ID 로 만들고, 등급 4개는 가족 공유를 켠다(한 번 켜면 끌 수 없음). 윗등급은 정가.
 - 앱은 가진 비소모성 중 가장 높은 등급만 본다(`Transaction.currentEntitlements`, 환불된 것 제외, 가족 공유 포함). 구매 상태는 기기 동기화로 넘기지 않는다.
 - 다방커피 이상: 못 만난 친구·안 돌아온 물건 미리 보기(`AppModel.peek`). 홈에 두기·열기는 여전히 미션으로.
-- 아직 없는 것: 6장 이후 원고와 본편 1권(구매를 서버가 확인하고 내려줌), 후원자 이름 올리기. 이것들이 준비되기 전에는 상품을 판매로 올리지 않는다.
 - 개발자 전체 해제(`devAll`)는 Xcode·TestFlight 빌드에서만 동작한다(`Support.testBuild`, AppTransaction 환경). App Store 빌드에서는 꺼진다.
 - 로컬 테스트: `ios-app/Support.storekit` 을 Xcode 의 Scheme > Edit Scheme > Run > Options > StoreKit Configuration 에 고르면 App Store Connect 없이 구매·복원·환불을 시험할 수 있다.
+
+## 후원 원고·후원자 이름 (19차)
+
+- `Naeilo/Data/StoreAPI.swift`: 중계 워커의 `/store/*` (PR #38). 가진 구매의 JWS(`Support.jws`, 가족 공유 포함)를 보내면 서버가 등급을 확인한다. 개발자 빌드에서 개발자 동기화 토큰이 있으면 `Authorization: Bearer` 로 구매 없이 받는다.
+- 외전 6장~코다(믹스커피 이상, 한글·영문)와 본편 1권(프랜차이즈 이상, 한국어만)은 서재에서 처음 열 때 받아 `Application Support/story/side_ko.json` 처럼 저장하고, 다음부터는 바로 연다. 블록 형식은 story_*.json 과 같고 외전은 한·영 블록이 맞아서 언어를 바꿔도 자리가 같다. 읽던 자리 키는 외전 장 번호, 본편 1권은 1000 + 장 번호.
+- 서재: 5장 다음에 받은 장이 이어지고(아직이면 '받기'), 본편 1권은 서재 아래 따로. 후원 등급이 모자라면 6장 줄·5장 끝에서 후원 화면이 열린다.
+- 후원자 이름: 고급 스페셜티 커피 이상은 후원 화면에서 이름(40자)과 로고(긴 변 256px, 200KB 이하로 줄임)를 보낸다. 개발자가 store-admin 에서 승인하면 도움말(사용 방법)과 후원 화면의 '후원해 주신 분들'에 보인다.
+- 워커 다시 배포와 원고 올리기(naeilo.com/web/store-admin.html)를 해야 실제로 받아진다. 그 전에는 '원고가 아직 올라오지 않았어요'.
