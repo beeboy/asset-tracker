@@ -12,7 +12,10 @@ struct StoryBlock: Codable {
     let t: String
     var rows: [[String]]? = nil
 }
-struct StoryChapter: Codable { let title: String; let name: String; let blocks: [StoryBlock] }
+struct StoryChapter: Codable {
+    let title: String; let name: String; let blocks: [StoryBlock]
+    var cover: String? = nil  // 서버에서 받은 장의 도트 그림 (128×80 PNG data URL). 앱에 든 장은 Assets 의 그림을 쓴다
+}
 private struct StoryFile: Codable { var lang: String; var from: Int?; let chapters: [StoryChapter] }
 
 enum StoryLang: String, CaseIterable { case ko, en
@@ -48,6 +51,13 @@ final class Story {
     private(set) var pos: [Int: Int] = (UserDefaults.standard.dictionary(forKey: "storyPos") as? [String: Int] ?? [:])
         .reduce(into: [:]) { d, kv in if let i = Int(kv.key) { d[i] = kv.value } }
     static func key(_ b: StoryBook, _ i: Int) -> Int { b == .side ? i : 1000 + i }
+    /// 끝까지 읽은 장 (서재 묶음이 저절로 접히고 펼쳐지는 데 쓴다). 키는 pos 와 같다
+    private(set) var done: Set<Int> = Set(UserDefaults.standard.array(forKey: "storyDone") as? [Int] ?? [])
+    func isDone(_ b: StoryBook, _ chapter: Int) -> Bool { done.contains(Self.key(b, chapter)) }
+    func markDone(_ b: StoryBook, _ chapter: Int) {
+        guard done.insert(Self.key(b, chapter)).inserted else { return }
+        UserDefaults.standard.set(Array(done), forKey: "storyDone")
+    }
     func setPos(_ b: StoryBook, _ chapter: Int, _ block: Int) {
         let k = Self.key(b, chapter)
         guard pos[k] != block else { return }
@@ -61,6 +71,7 @@ final class Story {
     /// 받는 중인 책 ("side_ko"), 받다가 난 오류
     private(set) var loading: Set<String> = []
     private(set) var failure: [String: String] = [:]
+    @ObservationIgnored private var recheck: Set<String> = []
 
     nonisolated private static func id(_ b: StoryBook, _ l: StoryLang) -> String { "\(b.rawValue)_\(l.rawValue)" }
 
@@ -90,7 +101,10 @@ final class Story {
     /// 서버에서 받기 (등급이 되면). 받은 것은 이 기기에 저장해서 다음부터는 바로 연다
     func fetch(_ b: StoryBook, force: Bool = false) async {
         let l = lang(b), k = Self.id(b, l)
-        guard Support.shared.has(b.need), !loading.contains(k), force || remote[k] == nil else { return }
+        // 그림(cover)이 없던 예전 캐시는 앱을 켤 때마다 한 번 다시 받아 본다
+        let stale = remote[k].map { $0.chapters.allSatisfy { $0.cover == nil } } == true && !recheck.contains(k)
+        guard Support.shared.has(b.need), !loading.contains(k), force || remote[k] == nil || stale else { return }
+        recheck.insert(k)
         loading.insert(k); failure[k] = nil
         defer { loading.remove(k) }
         do {
@@ -99,7 +113,7 @@ final class Story {
             remote[Self.id(b, got)] = (r.from, r.chapters)
             Self.saveCache(Self.id(b, got), StoryFile(lang: r.lang, from: r.from, chapters: r.chapters))
         } catch {
-            failure[k] = error.localizedDescription
+            if remote[k] == nil || force { failure[k] = error.localizedDescription }  // 받아 둔 원고가 있으면 다시 받기 실패는 조용히
         }
     }
 
