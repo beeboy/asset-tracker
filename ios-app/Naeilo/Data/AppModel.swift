@@ -5,7 +5,7 @@ import Observation
 
 enum WeekPick: String, CaseIterable, Codable { case kept, changed, raised
     var label: String { switch self { case .kept: "지킴"; case .changed: "바꿈"; case .raised: "높임" } }
-    var sub: String { switch self { case .kept: "계획한 비중 그대로"; case .changed: "계획 자체를 바꿈"; case .raised: "DRNK를 다시 늘림" } }
+    var sub: String { switch self { case .kept: "계획한 비중 그대로"; case .changed: "계획 자체를 바꿈"; case .raised: "몰린 종목을 다시 늘림" } }
     var color: Color { switch self { case .kept: Theme.green; case .changed: Theme.orange; case .raised: Color(hex: 0xC8352E) } }
 }
 
@@ -160,7 +160,8 @@ final class AppModel {
     var total: Double { rows.reduce(0) { $0 + $1.value } }
     var cost: Double { rows.reduce(0) { $0 + $1.cost } }
     var ret: Double { cost > 0 ? total / cost - 1 : 0 }
-    var drnkWeight: Double { total > 0 ? (rows.first { $0.id == "DRNK" }?.value ?? 0) / total : 0 }
+    /// 회복 루트의 '몰린 종목' 비중 (내 평가액이 가장 큰 종목, Recovery.swift focusRow)
+    var focusWeight: Double { total > 0 ? (focusRow?.value ?? 0) / total : 0 }
     /// 오늘의 움직임: 원화 평가액 기준 (전일 종가·전일 환율 → 지금)
     var todayMove: Double {
         let fx = Market.shared.fx
@@ -384,10 +385,10 @@ final class AppModel {
                                 opts: ["안이에요", "밖이에요"], right: v >= wr.lo && v <= wr.hi ? 0 : 1,
                                 fb: { _ in "지금 \(Self.won(v)). 예보 범위는 절반쯤 맞도록 잡은 폭이라, 밖으로 나가는 날도 자주 있어요." }))
             }
-            // 계획 비중 확인은 계획이 DRNK 비중으로 짜여 있어서, DRNK를 가진 경우에만
-            if drnkWeight > 0 {
-                let w = Self.pct(drnkWeight), pw = Self.pct(planWeight)
-                qs.append(.init(id: "plan", tag: "비중 확인", q: "DRNK 비중 \(w), 계획은 \(pw)예요. 이번 주에 맞춰 볼까요?", opts: ["이번 주에 할게요", "아직이요"], right: -1,
+            // 계획 비중 확인: 비중 1위 종목 기준 (종목이 둘 이상일 때)
+            if rs.count >= 2 {
+                let w = Self.pct(focusWeight), pw = Self.pct(planWeight), fn = focusName
+                qs.append(.init(id: "plan", tag: "비중 확인", q: "\(fn) 비중 \(w), 계획은 \(pw)예요. 이번 주에 맞춰 볼까요?", opts: ["이번 주에 할게요", "아직이요"], right: -1,
                                 fb: { $0 == 0 ? "미션 판의 내 계획 화면에서 옮길 금액을 볼 수 있어요." : "괜찮아요. 비중 이탈 알림이 대신 지켜볼게요." }))
             }
             qs.append(.init(id: "mind", tag: "오늘 마음", q: "오늘 내 투자, 어떻게 느껴져요?", opts: ["불안해요", "괜찮아요", "기대돼요"], right: -1,

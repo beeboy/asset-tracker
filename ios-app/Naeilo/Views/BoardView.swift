@@ -115,7 +115,7 @@ struct BoardView: View {
                     .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.mint, in: Capsule())
                 Text(step.task).appFont(14, .semibold)
             }
-            Text("이번 주 DRNK 비중은 어땠나요?").appFont(14)
+            Text("이번 주 \(m.focusName) 비중은 어땠나요?").appFont(14)
             HStack(spacing: 6) {
                 ForEach(WeekPick.allCases, id: \.self) { p in
                     let on = m.weekCur == p

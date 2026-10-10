@@ -4,7 +4,7 @@ import SwiftUI
 
 private let mixColor: [String: Color] = ["mine": Theme.purple, "index": Color(hex: 0x1F3A7A, dark: 0x7F9BE0), "grow": Theme.green, "steady": Theme.blue]
 private let compColor: [String: Color] = ["T": Theme.purple, "I": Color(hex: 0x1F3A7A, dark: 0x7F9BE0), "G": Theme.green, "B": Theme.blue, "C": Color(hex: 0xBFC6CD, dark: 0x56616C)]
-private let compName: [String: String] = ["T": "DRNK", "I": "지수", "G": "성장 지속", "B": "버팀목", "C": "현금"]
+private let compName: [String: String] = ["T": "비중 1위 종목", "I": "지수", "G": "성장 지속", "B": "버팀목", "C": "현금"]
 
 // 목표까지 길: 띠 = 100번 중 90번, 선 = 보통의 경우, 회색 점선 = 넣은 원금, 빨간 점선 = 목표
 struct GoalPathChart: View {
@@ -262,7 +262,7 @@ struct GoalHoldResultView: View {
                     Text(AppModel.man(m.total)).appFont(30, .bold)
                     Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 }
-                Text("DRNK 비중 \(AppModel.pct(m.drnkWeight))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                Text("\(m.focusName) 비중 \(AppModel.pct(m.focusWeight))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
@@ -514,7 +514,7 @@ struct GoalTaxView: View {
     var body: some View {
         @Bindable var m = m
         let sh = m.shift(m.selectedMix), sale = sh.sell * m.goalStart
-        let drnk = m.drnkRow, gainRate = drnk.map { 1 - $0.h.avg / $0.sym.last } ?? 0
+        let drnk = m.focusRow, gainRate = drnk.map { 1 - $0.h.avg / $0.sym.last } ?? 0
         let gainSale = sale * gainRate, G0 = m.taxGain
         let tx = { (x: Double) in max(0, x - 250) * 0.22 }
         let tOne = tx(G0 + gainSale), tSplit = tx(G0 + gainSale / 2) + tx(gainSale / 2), tNo = tx(G0)
@@ -541,10 +541,10 @@ struct GoalTaxView: View {
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 ChipRow(items: [("one", "한 번에"), ("split", "나눠 팔기"), ("none", "적립만")], selection: $m.goalTaxPick, fill: true)
-                Text("\"\(m.selectedMix.name)\"으로 맞추면 DRNK \(AppModel.wonK(sale))를 팔고, 그중 이익이 \(AppModel.wonK(gainSale))예요. 나눠 팔면 \(AppModel.wonK(max(0, tOne - tSplit))) 덜 내요.")
+                Text("\"\(m.selectedMix.name)\"으로 맞추면 \(m.focusName) \(AppModel.wonK(sale))를 팔고, 그중 이익이 \(AppModel.wonK(gainSale))예요. 나눠 팔면 \(AppModel.wonK(max(0, tOne - tSplit))) 덜 내요.")
                     .appFont(14).foregroundStyle(Theme.sub).lineSpacing(2)
             } else {
-                Text(sh.sell > 0 ? "파는 부분이 손실이라 낼 세금이 없어요. 올해 판 다른 이익과 상계돼요. (DRNK 평균 단가가 지금 가가보다 높아요)"
+                Text(sh.sell > 0 ? "파는 부분이 손실이라 낼 세금이 없어요. 올해 판 다른 이익과 상계돼요. (\(m.focusName) 평균 단가가 지금 가격보다 높아요)"
                      : "지금 고른 구성(\"\(m.selectedMix.name)\")은 팔 게 없어요. 미션 \(m.goalNo("mix"))에서 다른 구성을 고르면 세금을 비교할 수 있어요.")
                     .appFont(15).padding(14).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))

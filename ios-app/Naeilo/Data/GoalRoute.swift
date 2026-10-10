@@ -58,7 +58,7 @@ extension AppModel {
         .init(id: "steady", name: "버팀목 더하기", tag: "덜 흔들림", desc: "지수 50% · 버팀목 업종 30% · 채권·현금 20%", mu: 0.06, sigma: 0.10, comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
     ]
     var mineMix: GoalMix {
-        .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "DRNK \(AppModel.pct(drnkWeight)) · QQQ \(AppModel.pct(1 - drnkWeight)) 그대로",
+        .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(AppModel.pct(focusWeight))" + (restRows.isEmpty ? "" : " · \(restName) \(AppModel.pct(1 - focusWeight))") + " 그대로",
               mu: 0.09, sigma: keepPlan.sigma, comp: [:], basket: nil, own: true)
     }
     var goalMixes: [GoalMix] { route == .novice ? Self.mixes : [mineMix] + Self.mixes }
@@ -145,14 +145,21 @@ extension AppModel {
         return i == 0 || gDone.contains(goalSteps[i - 1].id)
     }
 
-    // 고른 구성으로 바꿀 비중과 금액 (플러스: 지금 DRNK·QQQ 에서 출발, 시작 전: 매달 나눠 넣기)
+    // 고른 구성으로 바꿀 비중과 금액 (플러스: 지금 비중 1위 종목·나머지에서 출발, 시작 전: 매달 나눠 넣기)
+    // 나머지 종목은 '지수' 칸으로 옮겨 가는 것으로 본다 (시안의 QQQ 자리)
     struct Shift { var rows: [(String, String, String, Bool)] = []; var line = ""; var note = ""; var weights: [String: Double] = [:]; var sell = 0.0 }
     func shift(_ mx: GoalMix) -> Shift {
-        let w = drnkWeight, label = ["T": "DRNK", "I": "지수", "G": "성장 지속", "B": "버팀목", "C": mx.id == "steady" ? "채권·현금" : "현금"]
+        let w = focusWeight, fn = focusName, rn = restName
+        let restIndex = restRows.allSatisfy { $0.sym.sector == "지수" }
+        let label = ["T": fn, "I": restIndex || w >= 1 ? "지수" : "\(rn)→지수", "G": "성장 지속", "B": "버팀목", "C": mx.id == "steady" ? "채권·현금" : "현금"]
+        let ind = focusIndustry, hot = ind.map { Basket.of(pe: $0.pe, pe10: $0.pe10, growth: $0.growth) == "H" } ?? false
         if mx.own {
-            return Shift(rows: [("DRNK", AppModel.pct(w), "그대로", true), ("QQQ", AppModel.pct(1 - w), "그대로", true)],
-                         line: "DRNK 우주항공·궤도 통신·과열 \(AppModel.pct(w)) · QQQ 지수 \(AppModel.pct(1 - w))",
-                         note: "DRNK 업종(우주항공·궤도 통신)은 지금 과열이에요. 다른 구성 카드에서 바꿀 비중을 볼 수 있어요.", weights: ["T": w, "I": 1 - w])
+            let sec = ind.map { $0.ko + (hot ? "·과열" : "") } ?? ""
+            var rs: [(String, String, String, Bool)] = [(fn, AppModel.pct(w), "그대로", true)]
+            if !restRows.isEmpty { rs.append((rn, AppModel.pct(1 - w), "그대로", true)) }
+            return Shift(rows: rs,
+                         line: "\(fn) \(sec.isEmpty ? "" : sec + " ")\(AppModel.pct(w))" + (restRows.isEmpty ? "" : " · \(rn) \(AppModel.pct(1 - w))"),
+                         note: (hot ? "\(fn) 업종(\(ind?.ko ?? ""))은 지금 과열이에요. " : "") + "다른 구성 카드에서 바꿀 비중을 볼 수 있어요.", weights: ["T": w, "I": 1 - w])
         }
         let keys = ["T", "I", "G", "B", "C"]
         if route == .novice {
@@ -160,7 +167,7 @@ extension AppModel {
                          line: mx.basket.map { b in "\(b.name): " + b.industries.prefix(3).map(\.ko).joined(separator: " · ") + " 외 \(b.industries.count - 3)개" } ?? "",
                          weights: mx.comp)
         }
-        // DRNK 업종은 과열이라 세 묶음에 들지 않아 10%까지만 둔다 (시안 T_CAP)
+        // 한 종목은 세 묶음에 들지 않아 10%까지만 둔다 (시안 T_CAP)
         let tT = min(w, 0.10)
         var tgt = mx.comp.mapValues { $0 * (1 - tT) }; tgt["T"] = tT
         let now = ["T": w, "I": 1 - w], tot = goalStart
@@ -169,9 +176,9 @@ extension AppModel {
             let a = tgt[k] ?? 0, b = now[k] ?? 0, d = (a - b) * tot
             return (label[k]!, "\(Int((b * 100).rounded()))→\(AppModel.pct(a))", abs(d) < 0.5 ? "그대로" : (d > 0 ? "+" : "-") + Self.wonK(abs(d)), d >= 0)
         }
-        let short = ["T": "DRNK", "I": "지수", "G": "성장", "B": "버팀목", "C": "현금"]
+        let short = ["T": fn, "I": label["I"]!, "G": "성장", "B": "버팀목", "C": "현금"]
         let line = used.map { k in short[k]! + " " + ((now[k] ?? 0) > 0 ? "\(Int(((now[k] ?? 0) * 100).rounded()))→\(AppModel.pct(tgt[k] ?? 0))" : "+" + AppModel.pct(tgt[k] ?? 0)) }.joined(separator: " · ")
-        var note = "DRNK는 과열 업종이라 10%까지만 둬요."
+        var note = hot ? "\(fn)는 과열 업종이라 10%까지만 둬요." : "\(fn) 한 종목은 10%까지만 둬요."
         if tT < w && gM > 0 && tot > 0 {
             let mo = ceil((w * tot / tT - tot) / gM)
             note += " 팔지 않고 적립만으로 맞추면 약 \(Self.eta(mo).replacingOccurrences(of: " 뒤", with: "")), 팔면 250만원 넘는 이익에 22% 세금."
