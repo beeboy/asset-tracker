@@ -31,8 +31,8 @@
 <meta name="twitter:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/web/","description":"내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
-<script src="theme.js?v=20261010f"></script>
-<link rel="stylesheet" href="style.css?v=20261010f">
+<script src="theme.js?v=20261010g"></script>
+<link rel="stylesheet" href="style.css?v=20261010g">
 <script>(function(u,c){if(/Edg\//.test(u))c.add("edg");else if(/Chrome\//.test(u)&&!/OPR\//.test(u))c.add("chr");else if(/Safari\//.test(u)&&!/Chrome|Chromium|CriOS|FxiOS|Android/.test(u))c.add("saf");})(navigator.userAgent,document.documentElement.classList);</script>
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
@@ -247,6 +247,19 @@
         <div class="tablewrap"><table id="fcParams" class="grid"></table></div>
         <p class="muted small">현재 정세는 과거 평균을 장기 평균 쪽으로 당긴 값, 과거 추세는 3년 추세선 성장률.</p>
       </details>
+      <details class="card" id="stabDet"><summary><b>연구용 비교 · 세금 고려 + 하방 보호</b> <span class="muted small">(옵션)</span></summary>
+        <p class="small">위 3년 전망은 변동성·상관·기대수익(이하 "식단")을 한 벌로 고정하고 경로만 여러 번 돌립니다. 여기서는 식단 자체도 여러 벌 뽑고, 그 위에서 해마다 비중을 다시 고르는 제어기를 "지금 그대로 보유"와 비교합니다. 위 전망 숫자는 바뀌지 않습니다.</p>
+        <ol class="small stabalg">
+          <li><b>식단 뽑기</b>: 지난 3년 일별 수익률을 21일 묶음으로 다시 뽑아 변동성·상관을 새로 재고, 기대수익은 μ̂ + β·m + 고유 오차로 뽑습니다. m 은 "시장 전체가 생각보다 좋거나 나쁜" 공통 오차(연 표준편차 6%), β 는 종목의 시장 민감도입니다.</li>
+          <li><b>제어기의 믿음</b>: 제어기는 진짜 식단을 모르고 식단 분포(평균 m, 공분산 Ω)만 압니다. 목표 확률은 기대수익의 불확실성까지 적분한 닫힌식으로 계산하며, 분산에 τ²·wᵀΩw 항이 붙어 외란(시장 공통 오차) 방향의 노출을 줄이게 됩니다.</li>
+          <li><b>해마다 갱신</b>: 1년 실현 수익으로 m, Ω 를 칼만 갱신합니다.</li>
+          <li><b>비중 고르기</b>: 10% 간격 비중 후보마다 옮길 때 낼 양도세(연 250만 원 공제 후 22%)를 먼저 빼고, 점수 = 목표 확률 − (만기 평가액이 지금의 60% 아래일 확률) 이 가장 큰 비중으로 옮깁니다.</li>
+          <li><b>비교</b>: 기존 엔진(실적·보호예수 사건, 두꺼운 꼬리 충격, 환율)이 만든 경로 위에서 두 정책을 똑같이 돌리고, 모두 팔고 세금을 낸 뒤 평가액으로 비교합니다.</li>
+        </ol>
+        <div class="row between wrap"><span class="muted small" id="stabStatus">계산 전 (몇 초 걸립니다)</span><button type="button" class="sm" id="btnStab">계산하기</button></div>
+        <div id="stabOut"></div>
+        <p class="muted small">연구용 비교이며 투자 권유가 아닙니다. 평균 단가를 넣지 않은 종목은 지금 가격에 샀다고 보고, 취득 때 환율은 지금 환율로 가정합니다. 월 적립·배당·수수료는 넣지 않았습니다.</p>
+      </details>
     </div>
 
     <h2 class="sechead" id="sec-ev">외부 요인</h2>
@@ -323,8 +336,9 @@
 
 </main>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261010f"></script>
-<script src="model.js?v=20261010f"></script>
-<script src="app.js?v=20261010f"></script>
+<script src="charts.js?v=20261010g"></script>
+<script src="model.js?v=20261010g"></script>
+<script src="research.js?v=20261010g"></script>
+<script src="app.js?v=20261010g"></script>
 </body>
 </html>

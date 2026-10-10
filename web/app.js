@@ -2017,15 +2017,16 @@
   }
   // 계산은 worker 에서 (화면이 멈추지 않게). worker 를 못 쓰는 환경이면 같은 코드를 화면에서 돌린다
   let allocWk = null, allocSeq = 0;
-  function allocCompute(inp, prog) {
+  function allocCompute(inp, prog, kind = "alloc") {
+    const local = () => (kind === "stab" ? Research.stabilizer(inp, prog) : Model.allocPlans(inp, prog));
     if (!allocWk && allocWk !== false) { try { allocWk = new Worker("alloc-worker.js?v=" + (document.querySelector('script[src^="model.js"]')?.src.split("?v=")[1] || "")); } catch (e) { allocWk = false; } }
-    if (!allocWk) return new Promise((res, rej) => setTimeout(() => { try { res(Model.allocPlans(inp, prog)); } catch (e) { rej(e); } }, 30));
+    if (!allocWk) return new Promise((res, rej) => setTimeout(() => { try { res(local()); } catch (e) { rej(e); } }, 30));
     const id = ++allocSeq;
     return new Promise((res, rej) => {
       const on = (e) => { const d = e.data; if (d.id !== id) return; if (d.prog) return prog(...d.prog); allocWk.removeEventListener("message", on); allocWk.removeEventListener("error", bad); d.err ? rej(new Error(d.err)) : res(d.done); };
-      const bad = (e) => { allocWk.removeEventListener("message", on); allocWk.removeEventListener("error", bad); allocWk.terminate(); allocWk = false; e.preventDefault?.(); try { res(Model.allocPlans(inp, prog)); } catch (e2) { rej(e2); } };
+      const bad = (e) => { allocWk.removeEventListener("message", on); allocWk.removeEventListener("error", bad); allocWk.terminate(); allocWk = false; e.preventDefault?.(); try { res(local()); } catch (e2) { rej(e2); } };
       allocWk.addEventListener("message", on); allocWk.addEventListener("error", bad);
-      allocWk.postMessage({ id, inp });
+      allocWk.postMessage({ id, inp, kind });
     });
   }
   async function runAllocNow() {
@@ -2053,6 +2054,42 @@
       renderAllocTable(); renderAllocChart();
     } catch (e) { st.textContent = "오류: " + e.message; console.error(e); }
     btn.disabled = false;
+  }
+  // ------------------------------------------------------------ 연구용 비교: 세금 고려 + 하방 보호 (research.js)
+  const ST_KEY = "naeilo-stab1";
+  const stabSig = () => fcSig() + "|" + hashStr(JSON.stringify(S.state.holdings.map((h) => [h.ticker, h.avg_cost])));
+  async function runStab() {
+    const st = $("#stabStatus"), btn = $("#btnStab");
+    const prog = (k, n) => { st.innerHTML = `계산 중... <span class="bar" style="display:inline-block;width:120px;vertical-align:middle"><i style="width:${(k / n) * 100}%"></i></span>`; };
+    btn.disabled = true; prog(0, 1); await new Promise((r) => setTimeout(r, 30));
+    try {
+      const g = S.state.goal, { rows } = valuation();
+      const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw, avgCost: Number(r.h.avg_cost) > 0 ? Number(r.h.avg_cost) : null }));
+      if (holdings.length < 2) throw new Error("종목이 2개 이상 있어야 비교할 수 있습니다.");
+      if (g.date <= today()) throw new Error("목표일이 오늘 이후여야 합니다.");
+      const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
+      const fb = factorBetas().beta;
+      const inp = { holdings, series, settings: S.state.model, events: S.state.events, betas: fb, mktBeta: fb.mkt || {}, startDate: today(), goal: { amount: Math.max(1, g.amount - cashKrw()), date: g.date }, usdKrw0: fxNow("USD") };
+      const r = await allocCompute(inp, prog, "stab");
+      lastStab = { ...r, at: Date.now() };
+      try { localStorage.setItem(ST_KEY, JSON.stringify({ sig: stabSig(), ...lastStab })); } catch (e) { /* 무시 */ }
+      renderStab();
+    } catch (e) { st.textContent = "오류: " + e.message; console.error(e); }
+    btn.disabled = false;
+  }
+  let lastStab = null;
+  function stabRestore() { try { const c = JSON.parse(localStorage.getItem(ST_KEY) || "null"); if (c && c.sig === stabSig()) { lastStab = c; renderStab(); } } catch (e) { /* 무시 */ } }
+  function renderStab() {
+    const r = lastStab; if (!r) return;
+    $("#stabStatus").textContent = `${dtStr(r.at)} 계산 · 식단 ${r.setup.trueMeals}개 × 경로 ${r.setup.paths}개`;
+    const row = (name, x, tax) => `<tr><td class="l">${name}</td><td>${pct(x.p10, 0)} / <b>${pct(x.p50, 0)}</b> / ${pct(x.p90, 0)}</td><td>${krw(x.a5)}</td><td>${krw(x.a50)}</td><td>${tax == null ? "-" : krw(tax)}</td></tr>`;
+    const wStr = (w) => w.map((x, i) => `${esc(r.tickers[i])} ${pct(x, 0)}`).join(" · ");
+    const steps = [["지금", r.w0], ["처음 옮길 비중", r.first], ...r.ctrl.wy.map((w, i) => [`${i + 1}년 뒤 (평균)`, w])];
+    $("#stabOut").innerHTML = `<div class="tablewrap"><table class="grid"><tr><th class="l">정책</th><th>목표 확률<br><span class="muted">식단별 하위10 / 중앙 / 상위10</span></th><th>청산 후<br>하위 5%</th><th>청산 후<br>중앙값</th><th>낸 세금<br>(평균)</th></tr>` +
+      row("지금 그대로 보유", r.hold, null) + row("세금 고려 + 하방 보호", r.ctrl, r.ctrl.tax) + `</table></div>` +
+      `<p class="small"><b>제어기가 고른 비중</b></p><ul class="small stabw">${steps.map(([l, w]) => `<li><span class="muted">${l}</span> ${wStr(w)}</li>`).join("")}</ul>` +
+      `<p class="small">처음 옮길 때 예상 양도세 ${krw(r.firstTax)}. 외란 방향(시장 공통 오차에 가장 크게 흔들리는 조합): ${r.disturbance.map((x, i) => `${esc(r.tickers[i])} ${x.toFixed(2)}`).join(" · ")}.` +
+      (r.hasAvg ? "" : ` <span class="bad">평균 단가가 없어 세금을 0에 가깝게 계산했습니다. 설정의 보유 종목에서 평균 단가를 넣으면 더 정확해집니다.</span>`) + `</p>`;
   }
   const AL_KEY = "naeilo-alloc2";
   function allocRestore() {
@@ -2859,6 +2896,7 @@
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
     document.addEventListener("click", (e) => { const b = e.target.closest("[data-jump]"); if (b) $("#" + b.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
     $("#btnAlloc").onclick = () => { allocDirty = true; runAlloc(); };
+    $("#btnStab").onclick = runStab; stabRestore();
     $("#allocBoxes").addEventListener("click", (e) => { const b = e.target.closest("[data-ak]"); if (!b) return; S.state.alloc_pick = b.dataset.ak; save(false); renderAllocTable(); renderAllocChart(); });
     $("#allocMix").addEventListener("change", (e) => { const k = e.target.dataset.mix; if (!k) return; S.state.alloc_mix = { ...(S.state.alloc_mix || {}), [k]: e.target.value.trim() || ALLOC_DEF[k].mix }; save(false); allocDirty = true; runAlloc(); });
     $("#eventTable").addEventListener("input", onEventEdit);
