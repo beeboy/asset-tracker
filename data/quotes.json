@@ -11,7 +11,7 @@
   "last": 229.33,
   "last_time": 1791590386,
   "last_session": "post",
-  "fetched": 1791591171
+  "fetched": 1791611107
  },
  "SGOV": {
   "symbol": "SGOV",
@@ -25,7 +25,7 @@
   "last": 100.51,
   "last_time": 1791590387,
   "last_session": "post",
-  "fetched": 1791591172
+  "fetched": 1791611108
  },
  "SPCX": {
   "symbol": "SPCX",
@@ -39,7 +39,7 @@
   "last": 162.76,
   "last_time": 1791590398,
   "last_session": "post",
-  "fetched": 1791591171
+  "fetched": 1791611108
  },
  "TSLA": {
   "symbol": "TSLA",
@@ -53,21 +53,21 @@
   "last": 382.718,
   "last_time": 1791590388,
   "last_session": "post",
-  "fetched": 1791591171
+  "fetched": 1791611107
  },
  "KRW=X": {
   "symbol": "KRW=X",
   "currency": "KRW",
   "name": "USD/KRW",
-  "regular": 1340.02,
-  "regular_time": 1791579599,
+  "regular": 1340.9,
+  "regular_time": 1791603056,
   "prev_close": 1342.56,
   "pre": null,
   "post": null,
   "last": 1340.02,
   "last_time": 1791579540,
   "last_session": "regular",
-  "fetched": 1791591174
+  "fetched": 1791611110
  },
  "QQQ": {
   "symbol": "QQQ",
@@ -81,7 +81,7 @@
   "last": 751.38,
   "last_time": 1791590374,
   "last_session": "post",
-  "fetched": 1791591172
+  "fetched": 1791611108
  },
  "SPY": {
   "symbol": "SPY",
@@ -95,7 +95,7 @@
   "last": 778.57,
   "last_time": 1791590398,
   "last_session": "post",
-  "fetched": 1791591172
+  "fetched": 1791611109
  },
  "^TNX": {
   "symbol": "^TNX",
@@ -109,35 +109,35 @@
   "last": 5.244,
   "last_time": 1791572340,
   "last_session": "regular",
-  "fetched": 1791591174
+  "fetched": 1791611110
  },
  "CL=F": {
   "symbol": "CL=F",
   "currency": "USD",
   "name": "Crude Oil Nov 26",
-  "regular": 91.66,
+  "regular": 91.85,
   "regular_time": 1791579598,
   "prev_close": 91.49,
   "pre": null,
   "post": null,
-  "last": 91.66,
-  "last_time": 1791579598,
+  "last": 91.85,
+  "last_time": 1791579540,
   "last_session": "regular",
-  "fetched": 1791591174
+  "fetched": 1791611111
  },
  "GC=F": {
   "symbol": "GC=F",
   "currency": "USD",
   "name": "Gold Dec 26",
-  "regular": 4220.3,
+  "regular": 4216.3,
   "regular_time": 1791579599,
   "prev_close": 4157.0,
   "pre": null,
   "post": null,
-  "last": 4220.2998,
-  "last_time": 1791579599,
+  "last": 4216.2998,
+  "last_time": 1791579540,
   "last_session": "regular",
-  "fetched": 1791591174
+  "fetched": 1791611111
  },
  "DBC": {
   "symbol": "DBC",
@@ -151,21 +151,21 @@
   "last": 32.96,
   "last_time": 1791576000,
   "last_session": "post",
-  "fetched": 1791591175
+  "fetched": 1791611111
  },
  "MANA": {
   "symbol": "MANA",
   "currency": "USD",
   "name": "Grayscale Decentraland Trust",
-  "regular": 0.83,
-  "regular_time": 1791575343,
-  "prev_close": 0.7511,
+  "regular": 0.805,
+  "regular_time": 1791576000,
+  "prev_close": 0.757,
   "pre": null,
-  "post": null,
-  "last": 0.83,
-  "last_time": 1791575340,
-  "last_session": "regular",
-  "fetched": 1791591173
+  "post": 0.805,
+  "last": 0.805,
+  "last_time": 1791576000,
+  "last_session": "post",
+  "fetched": 1791611109
  },
  "AAPL": {
   "symbol": "AAPL",
@@ -179,7 +179,7 @@
   "last": 336.08,
   "last_time": 1791590371,
   "last_session": "post",
-  "fetched": 1791591173
+  "fetched": 1791611109
  },
  "SMH": {
   "symbol": "SMH",
@@ -193,7 +193,7 @@
   "last": 603.5,
   "last_time": 1791590272,
   "last_session": "post",
-  "fetched": 1791591173
+  "fetched": 1791611109
  },
  "GLD": {
   "symbol": "GLD",
@@ -207,6 +207,6 @@
   "last": 384.4999,
   "last_time": 1791590349,
   "last_session": "post",
-  "fetched": 1791591173
+  "fetched": 1791611110
  }
 }
