@@ -104,11 +104,11 @@ struct CalmView: View {
                                     .foregroundStyle(e.pts > 0 ? Theme.teal : e.pts < 0 ? Theme.up : Theme.muted)
                             }
                         }
-                        Text("사건별 표와 추이 그래프는 PC naeilo.com에서 볼 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+                        Text("사건별 표와 추이는 PC naeilo.com에서 봐요.").appFont(12).foregroundStyle(Theme.muted)
                     }
                 }
 
-                Text("점수는 직전 결과와 상관없이 정해 둔 규칙(비중 이탈 되돌리기, 그달 첫 적립)대로 했을 때 올라요. 손실 뒤 추가 매수(물타기)에는 점수를 주지 않아요. 유형은 기록이 \(Calm.minEvents)건 쌓이면 정해지고, 그 뒤로는 한 달에 한 번만 바뀌어요. 투자 권고가 아니에요.")
+                Text("정해 둔 규칙대로 하면 점수가 올라요. 물타기는 점수가 없어요. 유형은 기록 \(Calm.minEvents)건부터, 한 달에 한 번 바뀌어요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
             }
             .padding(16)

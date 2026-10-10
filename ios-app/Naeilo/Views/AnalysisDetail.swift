@@ -29,7 +29,7 @@ extension AppModel {
     func weight(_ id: String) -> Double { rows.first { $0.id == id }.map { $0.value / max(1, total) } ?? 0 }
 }
 
-private struct DetailHead: View {
+struct DetailHead: View {
     let title: String
     let sub: String
     var body: some View {
@@ -173,8 +173,8 @@ struct MyPathView: View {
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 Text(view == "band"
-                     ? "보라 점선(내 길)이 초록 띠 안쪽에 있으면 시장이 줄 수 있는 범위 안의 길이에요. 띠 위로 벗어날수록 어려운 길이고, 그 길을 넘을 확률은 3년 전망에서 \(AppModel.pct(pPlan))예요."
-                     : "보라 점선은 내가 정한 길이에요. 날씨 예보 같은 3년 전망과 달리, 지금 내가 약속한 경로보다 앞서는지 뒤처지는지만 봐요. \"예보 겹치기\"를 누르면 두 그래프를 한 번에 볼 수 있어요.")
+                     ? "보라 점선이 초록 띠 안에 있으면 시장 범위 안의 길이에요. 넘을 확률 \(AppModel.pct(pPlan))."
+                     : "보라 점선은 내가 정한 길이에요. 그보다 앞서는지 뒤처지는지 봐요.")
                     .appFont(14).foregroundStyle(Theme.sub).lineSpacing(3)
                 Card {
                     Text("달마다 내 길보다 앞섰나").appFont(15, .bold)
@@ -190,7 +190,7 @@ struct MyPathView: View {
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
                     Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "3년 전망 (\(m.lens.label))"),
                 ])
-                footnote("내 길은 정한 목표 금액, 목표일, 매달 넣는 돈으로 그린 하나의 선이에요. 3년 전망은 시장이 줄 수 있는 여러 미래의 범위예요. 과거 3년 기간 수익률과 겹쳐 보기는 PC에서 볼 수 있어요.")
+                footnote("내 길은 목표 금액·목표일·매달 넣는 돈으로 그린 선이에요.")
             }
             .padding(16)
         }
@@ -280,9 +280,10 @@ struct ExternalView: View {
             pinnedBox {
                 DetailHead(title: "외부 요인", sub: "시장·금리·환율이 움직이면 내 평가액은 얼마나 바뀌나")
                 Text(ask + "?").appFont(13).foregroundStyle(Theme.sub)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("평가액 " + AppModel.manS(tot)).appFont(22, .bold).foregroundStyle(Theme.change(tot))
-                    Text("\(AppModel.sgn(tot / max(1, m.total))) · \(AppModel.man(m.total)) → \(AppModel.man(after))").appFont(12).foregroundStyle(Theme.sub)
+                    Text(AppModel.sgn(tot / max(1, m.total))).appFont(14, .semibold).foregroundStyle(Theme.change(tot))
+                    Text("\(AppModel.man(m.total)) → \(AppModel.man(after))").appFont(12).foregroundStyle(Theme.sub)
                 }
                 ForEach(list, id: \.id) { x in SignedBar(label: x.label, value: AppModel.manS(x.dv), g: x.dv, scale: maxAbs) }
                 Text("\(m.keyName)까지 남은 금액 \(AppModel.man(max(0, m.keyValue - m.total))) → \(AppModel.man(max(0, m.keyValue - after)))").appFont(13, .semibold)
@@ -310,9 +311,9 @@ struct ExternalView: View {
                             }
                         }
                     }
-                    Text("3년 전망의 \"외부 요인\"을 켜면 이런 사건을 넣어 범위를 넓혀 계산해요.").appFont(12).foregroundStyle(Theme.muted)
+                    Text("3년 전망에서 \"외부 요인\"을 켜면 반영돼요.").appFont(12).foregroundStyle(Theme.muted)
                 }
-                footnote("반응 크기는 지난 3년 일별 움직임으로 계산한 평균이에요(시안용 가정값). 직접 추가한 종목의 시장 반응은 지난 3년 종가로 S&P500과 비교해 계산했고, 금리 반응은 평균값 -3%로 두었어요. 유가·금·원자재와 사건별 효과 표는 PC naeilo.com에서 볼 수 있어요.")
+                footnote("반응 크기는 지난 3년 일별 움직임 평균이에요(시안용 가정값).")
             }
             .padding(16)
         }
@@ -461,9 +462,9 @@ struct RateScenarioView: View {
         PinnedLayout {
             pinnedBox {
                 DetailHead(title: "금리 시나리오", sub: "금리가 이렇게 움직이면 시장 이익과 내 목표는")
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("\(m.keyName) 확률 (3년) " + AppModel.pct(pb[1])).appFont(22, .bold).foregroundStyle(Theme.teal)
-                    Text("3년 전망 \(AppModel.pct(base)) · 식단 범위 \(AppModel.pct(pb[0]))~\(AppModel.pct(pb[2]))").appFont(12).foregroundStyle(Theme.sub)
+                    Text("식단 범위 \(AppModel.pct(pb[0]))~\(AppModel.pct(pb[2])) · 슬라이드 전 3년 전망 \(AppModel.pct(base))").appFont(12).foregroundStyle(Theme.sub)
                 }
                 RateBandChart(cum: r.cum).frame(height: 130)
                 Text("S&P500 실질 이익 (오늘 = 100) · 진한 선: 중앙 · 띠: 하위 10%~상위 10%").appFont(12).foregroundStyle(Theme.sub)
@@ -493,7 +494,7 @@ struct RateScenarioView: View {
                     tableRow("시장 연 기대수익", AppModel.sgn(r.mkt[0]), AppModel.sgn(r.mkt[1]), AppModel.sgn(r.mkt[2]), "")
                     Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · 3년 전망 \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
                 }
-                footnote("\"만약 금리가 이렇게 움직인다면\"을 보는 시나리오 도구이며 예측이나 투자 권유가 아니에요. 미 10년물 금리와 S&P500 실질 EPS의 1960년 이후 관계를 시작 연도·표본을 바꿔 1000가지 관계식(식단)으로 맞추고, 식단마다 답 하나를 계산해 띠(하위 10%~상위 10%)로 보여 줘요. 시장 수익은 PER이 그대로라고 보고 이익 변화 + 배당 약 1.5% + 시장 공통 기대수익으로 계산해요. \(m.keyName) 확률은 3년 전망을 금리 몫과 시장 공통 기대수익만큼 β배 옮긴 근사치예요. 이익 자료 \(file.eps_last ?? "")까지 (지금 EPS 증가율 \(String(format: "%.1f", M.g_now))%), 출처 Robert J. Shiller, 매달 갱신.")
+                footnote("예측이 아닌 \"만약\" 도구예요. 1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산했어요. 이익 자료 \(file.eps_last ?? "")까지, 출처 Robert J. Shiller.")
             }
             .padding(16)
         }
@@ -639,7 +640,7 @@ struct DividendView: View {
                          : "이익 250만원까지는 세금이 없고, 넘는 부분에 22%(지방세 포함)를 내요. 국내 상장주식은 대주주가 아니면 팔 때 양도세가 없어요(거래세만).")
                         .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
-                footnote("배당은 지난 12개월 지급액이 그대로 이어진다고 본 시안용 값이에요. 3년 배당 표와 연도별 매도 계획은 PC naeilo.com에서 볼 수 있어요. 세무 상담이 아니에요.")
+                footnote("지난 12개월 배당이 이어진다고 본 값이에요. 세무 상담이 아니에요.")
             }
             .padding(16)
         }
@@ -752,7 +753,7 @@ struct FxImpactView: View {
                         }
                     }
                 }
-                footnote("샀을 때 평균 환율은 시안용 가정값(1,320원)이에요. 환율 범위는 지난 3년 흔들림으로 계산했고, 방향을 맞히려는 예측이 아니에요. 기간별 표와 환헤지 비교는 PC naeilo.com에서 볼 수 있어요.")
+                footnote("평균 매수 환율 1,320원은 가정값이에요. 범위는 지난 3년 흔들림 기준이에요.")
             }
             .padding(16)
         }
@@ -838,7 +839,7 @@ struct GlanceView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                footnote("상태를 숫자로만 보여 줘요. 사거나 팔라는 뜻이 아니에요. 업종 비교와 가격 그래프 겹쳐 보기는 PC naeilo.com에서 볼 수 있어요.")
+                footnote("상태를 숫자로만 보여 줘요. 사거나 팔라는 뜻이 아니에요.")
             }
             .padding(16)
         }
