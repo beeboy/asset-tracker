@@ -82,6 +82,11 @@ final class AppModel {
 
     // 쉼터
     var homeFriend = "seri"
+    /// 홈·위젯에 실제로 보이는 인물: 아직 안 열린 인물이면 세리 (개발자 연결을 끊었을 때 등)
+    var homeFriendShown: String {
+        let i = Shelter.friends.firstIndex { $0.id == homeFriend } ?? 0
+        return friendOn(i) ? homeFriend : "seri"
+    }
     var shelterSel: String? = nil
     var readPos: Set<Int> = []
     var readLast: Int? = nil

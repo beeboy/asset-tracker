@@ -14,6 +14,7 @@ struct WReward: Codable {
     var tiles: [Tile]
     var next: String?            // "DRNK 실적 D-12 (10/22)"
     var friendsOn: [String]      // 만난 인물 (세리는 처음부터)
+    var homeFriend: String? = nil // 앱 홈에 둔 인물 (위젯 '홈 인물 따라가기'가 쓴다)
 
     static let sample = WReward(keyName: "본전", pct: 0.87, pctYesterday: 0.862, remain: 1.52e7, cells: 264, cellsYesterday: 261,
                                 total: 1.234e8, dayChg: 0.008, tiles: [.init(t: "DRNK", w: 0.62, c: 0.019), .init(t: "QQQ", w: 0.38, c: -0.004)],

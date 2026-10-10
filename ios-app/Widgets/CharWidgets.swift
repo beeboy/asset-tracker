@@ -8,17 +8,17 @@ import AppIntents
 // 기본은 인물 색 그라데이션 바탕, 다크 모드는 #1c1c1f 바탕에 인물 색은 빛·제목·막대·블록·말풍선 테두리에만.
 
 enum WhoEnum: String, AppEnum {
-    case seri, sio, seonbae, ir, sua
+    case home, seri, sio, seonbae, ir, sua
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "인물"
     static var caseDisplayRepresentations: [WhoEnum: DisplayRepresentation] = [
-        .seri: "세리", .sio: "시오", .seonbae: "선배", .ir: "이르", .sua: "수아",
+        .home: "앱 홈의 인물 따라가기", .seri: "세리", .sio: "시오", .seonbae: "선배", .ir: "이르", .sua: "수아",
     ]
 }
 
 struct WhoIntent: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "인물 고르기"
     static var description = IntentDescription("위젯에 나올 인물을 골라요. 아직 못 만난 인물은 실루엣으로 보여요.")
-    @Parameter(title: "인물", default: .seri) var who: WhoEnum
+    @Parameter(title: "인물", default: .home) var who: WhoEnum
     init() {}
     init(_ w: WhoEnum) { who = w }
 }
@@ -37,11 +37,12 @@ struct CharProvider: AppIntentTimelineProvider {
         Timeline(entries: [entry(cfg, preview: false)], policy: .after(MarketHours.nextRefresh()))
     }
     func recommendations() -> [AppIntentRecommendation<WhoIntent>] {
-        WhoEnum.allCases.map { AppIntentRecommendation(intent: WhoIntent($0), description: WChar.of($0.rawValue).name) }
+        WhoEnum.allCases.map { AppIntentRecommendation(intent: WhoIntent($0), description: $0 == .home ? "앱 홈의 인물" : WChar.of($0.rawValue).name) }
     }
     private func entry(_ cfg: WhoIntent, preview: Bool) -> CharEntry {
         let r = Store.read(WReward.self, "reward.json") ?? .sample
-        let c = WChar.of(cfg.who.rawValue)
+        // '홈 인물 따라가기'면 앱 홈에 둔 인물 (앱에서 홈 인물을 바꾸면 위젯도 바뀐다)
+        let c = WChar.of(cfg.who == .home ? (r.homeFriend ?? "seri") : cfg.who.rawValue)
         // 갤러리 미리보기는 실제 모습, 홈 화면에서는 만난 인물만
         return CharEntry(date: Date(), r: r, c: c, locked: !preview && !(c.id == "seri" || r.friendsOn.contains(c.id)))
     }

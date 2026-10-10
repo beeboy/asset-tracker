@@ -98,13 +98,13 @@ struct HomeView: View {
 
     // 쉼터 박스: 홈에 둔 친구 + 말풍선 + 다른 친구 칸
     private var shelterBox: some View {
-        let homeI = Shelter.friends.firstIndex { $0.id == m.homeFriend } ?? 0
+        let homeI = Shelter.friends.firstIndex { $0.id == m.homeFriendShown } ?? 0
         let on = (0..<5).filter { m.friendOn($0) }.count
         let next = (0..<5).first { !m.friendOn($0) }
         return NavigationLink(value: "shelter") {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .bottom, spacing: 10) {
-                    Pixel(name: "spr_" + m.homeFriend, width: 56, height: 80)
+                    Pixel(name: "spr_" + m.homeFriendShown, width: 56, height: 80)
                         .accessibilityLabel(Shelter.friends[homeI].name)
                     Text(m.homeSay)
                         .appFont(14).lineSpacing(3)
@@ -116,7 +116,7 @@ struct HomeView: View {
                 }
                 Divider().overlay(Theme.line)
                 HStack(alignment: .bottom, spacing: 8) {
-                    ForEach(Array(Shelter.friends.enumerated()).filter { $0.element.id != m.homeFriend }, id: \.element.id) { i, f in
+                    ForEach(Array(Shelter.friends.enumerated()).filter { $0.element.id != m.homeFriendShown }, id: \.element.id) { i, f in
                         Pixel(name: (m.friendOn(i) ? "spr_" : "sil_") + f.id, width: 20, height: 28).opacity(m.friendOn(i) ? 1 : 0.5)
                     }
                     Spacer()
