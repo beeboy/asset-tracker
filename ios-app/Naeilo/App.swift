@@ -42,6 +42,7 @@ struct RootView: View {
         .onChange(of: model.nxStep) { _, _ in WidgetBridge.write(model) }
         // 잠긴 위젯을 누르면 앱 시작 3단계로
         .onOpenURL { url in
+            if url.host == "shelter" { model.tab = .home; model.homePath = ["shelter"]; return }   // 인물 위젯 (못 만난 인물)
             guard url.host == "unlock" else { return }
             model.tab = .board
             model.boardPath = model.playOn ? [] : [.nx]

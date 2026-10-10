@@ -24,6 +24,9 @@ targets:
       - Naeilo
       # 위젯과 같이 쓰는 파일 (App Group 저장소, 위젯이 읽는 요약 형식)
       - WidgetShared
+      # 인물 위젯: 앱의 미리보기 화면에서도 같은 그림을 쓴다
+      - Widgets/CharWidgets.swift
+      - Widgets/Assets.xcassets
       # 테스트 시세: 사이트가 모으는 Yahoo 중계 자료 (3년 종가 + 현재가). 빌드할 때마다 저장소의 최신 파일이 들어간다
       - path: ../data/quotes.json
         buildPhase: resources
@@ -52,6 +55,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.widget
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # 설정의 앱 아이콘 바꾸기: 기본 내일의 별 + 인물 5
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-seri AppIcon-sio AppIcon-seonbae AppIcon-ir AppIcon-sua"
     dependencies:
       - target: NaeiloWidgets
   NaeiloWidgets:

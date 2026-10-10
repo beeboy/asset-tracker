@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route }
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route, charPreview }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
@@ -42,6 +42,8 @@ struct SettingsView: View {
                 Text("화면 모드").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
                 ChipRow(items: [("system", "아이폰 설정 따라가기"), ("light", "밝게"), ("dark", "어둡게")],
                         selection: Binding(get: { m.appearance }, set: { m.appearance = $0; UserDefaults.standard.set($0, forKey: "appearance") }), fill: true)
+                Text("앱 아이콘").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
+                AppIconPicker()
                 Text("시안 조작").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
                 HStack(spacing: 8) {
                     demoButton("첫 질문부터") { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
@@ -49,6 +51,12 @@ struct SettingsView: View {
                     demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
                     demoButton("모든 화면 열기") { m.resetDemo(.all) }
                 }
+                NavigationLink(value: SettingsRoute.charPreview) {
+                    Text("인물 위젯 미리보기 ›").appFont(14, .semibold).frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(Theme.ink)
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
+                }.buttonStyle(.plain)
                 Text("시세: \(Market.shared.source)").appFont(12).foregroundStyle(Theme.muted)
                 Text("시세는 스텁(시안과 같은 예시 값)이고, 외전 원고도 서버 대신 스텁이에요. 버전 0.1").appFont(12).foregroundStyle(Theme.muted)
             }
@@ -65,6 +73,7 @@ struct SettingsView: View {
             case .price: PriceBasisView()
             case .howto: HowToView()
             case .route: RouteView()
+            case .charPreview: CharWidgetPreview()
             }
         }
     }
@@ -111,5 +120,43 @@ struct PriceBasisView: View {
     private func row(_ k: String, _ v: String) -> some View {
         HStack(alignment: .top) { Text(k).fontWeight(.semibold).frame(width: 80, alignment: .leading); Text(v).foregroundStyle(Theme.sub) }
             .appFont(14)
+    }
+}
+
+// 앱 아이콘 바꾸기: 기본 A · 내일의 별 + 인물 5. 각각 다크·틴트 모양이 따로 있어 홈 화면 모드를 따라간다
+struct AppIconPicker: View {
+    static let icons: [(id: String?, name: String, prev: String)] = [
+        (nil, "내일의 별", "iconprev_star"), ("AppIcon-seri", "세리", "iconprev_seri"), ("AppIcon-sio", "시오", "iconprev_sio"),
+        ("AppIcon-seonbae", "선배", "iconprev_seonbae"), ("AppIcon-ir", "이르", "iconprev_ir"), ("AppIcon-sua", "수아", "iconprev_sua"),
+    ]
+    @State private var current: String? = UIApplication.shared.alternateIconName
+
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 12) {
+            ForEach(Self.icons, id: \.name) { ic in
+                let on = current == ic.id
+                Button {
+                    guard UIApplication.shared.supportsAlternateIcons, !on else { return }
+                    UIApplication.shared.setAlternateIconName(ic.id) { err in
+                        if err == nil { current = ic.id }
+                    }
+                } label: {
+                    VStack(spacing: 6) {
+                        Image(ic.prev).resizable().interpolation(.high).scaledToFit()
+                            .frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 3 : 1))
+                        Text(ic.name).appFont(13, on ? .bold : .regular).foregroundStyle(on ? Theme.ink : Theme.sub)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 8).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(ic.name) 아이콘")
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(8)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 }
