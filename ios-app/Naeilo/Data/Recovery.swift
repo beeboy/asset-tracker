@@ -95,7 +95,7 @@ extension AppModel {
     // 절세 (대한민국 거주자: 해외주식 이익-손실 합계에서 250만원 공제 뒤 22%)
     var taxLossMan: Double {
         guard let d = drnkRow else { return 0 }
-        return taxSellQty * (d.sym.close - d.h.avg) * Sample.fx / 1e4
+        return taxSellQty * (d.sym.last - d.h.avg) * Market.shared.fx.last / 1e4
     }
     var taxBefore: Double { max(0, taxGain - 250) * 0.22 }
     var taxAfter: Double { max(0, taxGain + taxLossMan - 250) * 0.22 }

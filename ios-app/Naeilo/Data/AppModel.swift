@@ -83,14 +83,16 @@ final class AppModel {
     }
 
     // MARK: 보유 계산 (원화)
-    func krw(_ s: Symbol, _ x: Double) -> Double { s.currency == .usd ? x * Sample.fx : x }
+    func krw(_ s: Symbol, _ x: Double) -> Double { s.currency == .usd ? x * Market.shared.fx.last : x }
+    /// 들어간 돈은 환율이 움직여도 바뀌지 않게 고정 환율로 (실제 앱은 산 날 환율)
+    func costKrw(_ s: Symbol, _ x: Double) -> Double { s.currency == .usd ? x * Sample.fx : x }
     struct Row: Identifiable { let id: String; let sym: Symbol; let h: Holding; let value: Double; let cost: Double; let color: Color }
     var rows: [Row] {
         holdings.compactMap { h -> (Symbol, Holding)? in
             guard h.qty > 0, let s = Sample.symbol(h.symbol) else { return nil }
             return (s, h)
         }.enumerated().map { i, p in
-            Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * prices.close(p.0)), cost: krw(p.0, p.1.qty * p.1.avg),
+            Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: costKrw(p.0, p.1.qty * p.1.avg),
                 color: Theme.holdColors[i % Theme.holdColors.count])
         }
     }
@@ -98,8 +100,11 @@ final class AppModel {
     var cost: Double { rows.reduce(0) { $0 + $1.cost } }
     var ret: Double { cost > 0 ? total / cost - 1 : 0 }
     var drnkWeight: Double { total > 0 ? (rows.first { $0.id == "DRNK" }?.value ?? 0) / total : 0 }
-    var yesterdayMove: Double {
-        rows.reduce(0) { $0 + (Sample.dayMove[$1.id] ?? 0) * $1.value } / max(1, total)
+    /// 오늘의 움직임: 원화 평가액 기준 (전일 종가·전일 환율 → 지금)
+    var todayMove: Double {
+        let fx = Market.shared.fx
+        let prev = rows.reduce(0) { a, r in a + r.h.qty * r.sym.quote.prevClose * (r.sym.currency == .usd ? fx.prevClose : 1) }
+        return prev > 0 ? total / prev - 1 : 0
     }
 
     // MARK: 회복 계획 (계산은 Recovery.swift)
@@ -211,13 +216,13 @@ final class AppModel {
         let vY = total / (1 + tot), distNow = cost / total - 1, distY = cost / vY - 1
         let s2 = { (x: Double) in (x >= 0 ? "+" : "") + String(format: "%.1f%%", x) }
         if route == .novice {
-            return "어제 \(s2(tot * 100)). 모은 돈은 목표의 \(AppModel.pct(gA / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
+            return "오늘 \(s2(tot * 100)). 모은 돈은 목표의 \(AppModel.pct(gA / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
         }
         if route == .plus {
             let k = gK * 1e4
-            return "어제 \(s2(tot * 100)) (DRNK \(s2(a)) · QQQ \(s2(b))). 목표까지 \(String(format: "%.1f", vY / k * 100))% → \(String(format: "%.1f", total / k * 100))%."
+            return "오늘 \(s2(tot * 100)) (DRNK \(s2(a)) · QQQ \(s2(b))). 목표까지 \(String(format: "%.1f", vY / k * 100))% → \(String(format: "%.1f", total / k * 100))%."
         }
-        return "어제 \(s2(tot * 100)) (DRNK \(s2(a)) · QQQ \(s2(b))). 본전까지 \(String(format: "%.1f", distY * 100))% → \(String(format: "%.1f", distNow * 100))%" + (distNow < distY ? ", 가까워졌어요." : ", 조금 멀어졌어요.")
+        return "오늘 \(s2(tot * 100)) (DRNK \(s2(a)) · QQQ \(s2(b))). 본전까지 \(String(format: "%.1f", distY * 100))% → \(String(format: "%.1f", distNow * 100))%" + (distNow < distY ? ", 가까워졌어요." : ", 조금 멀어졌어요.")
     }
 
     struct Question { let tag: String; let q: String; let opts: [String]; let right: Int; let fb: (Int) -> String }
@@ -244,7 +249,7 @@ final class AppModel {
         let qs: [Question] = [
             .init(tag: "확률 퀴즈", q: "지금 계획(\(selectedPlan.name))으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?", opts: opts.map { "약 \($0)%" }, right: nearR,
                   fb: { _ in "모형 계산으로 약 \(p12)%예요. 6개월 안이면 \(p6)%. 기간이 길수록 높아져요." }),
-            .init(tag: "어제 움직임", q: "어제 더 많이 움직인 종목은?", opts: ["DRNK", "QQQ"], right: abs(a) >= abs(b) ? 0 : 1,
+            .init(tag: "오늘 움직임", q: "오늘 더 많이 움직인 종목은?", opts: ["DRNK", "QQQ"], right: abs(a) >= abs(b) ? 0 : 1,
                   fb: { _ in "DRNK \(s2(a)), QQQ \(s2(b)). DRNK 비중이 \(w)라 전체도 DRNK를 많이 따라가요." }),
             .init(tag: "비중 확인", q: "DRNK 비중 \(w), 계획은 \(pw)예요. 이번 주에 맞춰 볼까요?", opts: ["이번 주에 할게요", "아직이요"], right: -1,
                   fb: { $0 == 0 ? "미션 판의 내 계획 화면에서 옮길 금액을 볼 수 있어요." : "괜찮아요. 비중 이탈 알림이 대신 지켜볼게요." }),
@@ -262,12 +267,12 @@ final class AppModel {
         return "오늘 루틴 끝! 물건이 모두 돌아왔어요."
     }
     var homeSay: String {
-        if !playOn { return "앱 시작 3단계를 마치면 매일 어제 숫자를 하나 가져올게요." + (homeFriend == "seri" ? " 거기까지만요." : "") }
+        if !playOn { return "앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (homeFriend == "seri" ? " 거기까지만요." : "") }
         if today.answer != nil {
             let s = streak
             return "오늘은 여기까지예요. " + (s / 7 < 10 ? "\(7 - s % 7)일 더 오면 쉼터에 물건(\(Shelter.items[s / 7].name))이 돌아와요." : "내일 또 숫자 하나 가져올게요.")
         }
-        return "어제 숫자 가져왔어요. 한 번만 보고 가요."
+        return "오늘 숫자 가져왔어요. 한 번만 보고 가요."
     }
 
     // MARK: 3년 전망 (로그정규 근사, 50%·90% 범위)
@@ -302,7 +307,7 @@ final class AppModel {
     func cells(_ v: Double) -> Int { max(0, min(1000, Int(floor(v / max(1, cellUnit))))) }
     var cellsNow: Int { cells(total) }
     var cellsFloor: Int { cells(total / 1.064) }      // 시작 뒤 가장 낮았던 날 (시안 가정: 지금보다 6% 낮음)
-    var cellsYesterday: Int { cells(total / (1 + yesterdayMove)) }
+    var cellsYesterday: Int { cells(total / (1 + todayMove)) }
 
     // MARK: 주간 예보 (월요일에 적은 금요일 평가액 50% 범위)
     var weekRange: (lo: Double, hi: Double, actual: Double) {

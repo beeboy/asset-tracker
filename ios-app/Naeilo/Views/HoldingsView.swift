@@ -30,7 +30,7 @@ struct HoldingsView: View {
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
-                Text("작은 그래프는 \(period == .d1 ? "그저께와 어제 종가" : period == .w1 ? "최근 6개 종가" : period.label + " 가격 흐름")이고, 회색 점선은 내 평균 단가예요(그 기간 가격 범위 안에 있을 때만). 오르면 빨강, 내리면 파랑이에요. 시세는 어제 종가 기준이에요. 여러 종목 한 번에 넣기와 증권사 파일은 PC naeilo.com에서 해요.")
+                Text("작은 그래프는 \(period == .d1 ? "전일 종가와 지금 가격" : period == .w1 ? "최근 5개 종가와 지금" : period.label + " 가격 흐름")이고, 회색 점선은 내 평균 단가예요(그 기간 가격 범위 안에 있을 때만). 오르면 빨강, 내리면 파랑이에요. 미국 종목은 실시간, 한국 종목은 전일 종가예요. 여러 종목 한 번에 넣기와 증권사 파일은 PC naeilo.com에서 해요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
             .screen()
@@ -48,7 +48,7 @@ struct HoldingsView: View {
         let chg = (tot.last ?? 0) / max(1, tot.first ?? 1) - 1
         return Card {
             HStack(alignment: .firstTextBaseline) {
-                Text("전체 평가액 · \(period == .d1 ? "그저께→어제" : period.label)").appFont(13, .semibold).foregroundStyle(Theme.sub)
+                Text("전체 평가액 · \(period == .d1 ? "전일 종가→지금" : period.label)").appFont(13, .semibold).foregroundStyle(Theme.sub)
                 Spacer()
                 Text(AppModel.sgn(chg)).appFont(15, .bold).foregroundStyle(Theme.change(chg))
             }
@@ -64,7 +64,7 @@ struct HoldingsView: View {
             LogoTile(symbol: r.id, size: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.sym.name).appFont(15, .bold)
-                Text("\(r.id) · \(AppModel.price(r.sym, r.sym.close)) · \(AppModel.pct(r.value / max(1, m.total)))")
+                Text("\(r.id) · \(AppModel.price(r.sym, r.sym.last)) · \(AppModel.pct(r.value / max(1, m.total)))")
                     .appFont(12).foregroundStyle(Theme.sub)
             }
         }
@@ -105,8 +105,8 @@ struct HoldingDetailView: View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
         let pts = m.prices.series(sym, period: period)
         let chg = (pts.last ?? 1) / (pts.first ?? 1) - 1
-        let val = m.krw(sym, h.qty * sym.close), cost = m.krw(sym, h.qty * h.avg)
-        let r = cost > 0 ? val / cost - 1 : 0, need = h.avg / sym.close - 1
+        let val = m.krw(sym, h.qty * sym.last), cost = m.costKrw(sym, h.qty * h.avg)
+        let r = cost > 0 ? val / cost - 1 : 0, need = h.avg / sym.last - 1
         let avgIn = period == .y1 || period == .y3 || (h.avg >= (pts.min() ?? 0) && h.avg <= (pts.max() ?? 0))
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -122,7 +122,7 @@ struct HoldingDetailView: View {
                         Text(AppModel.man(val)).appFont(26, .bold)
                         Text(AppModel.sgn(r)).appFont(15, .bold).foregroundStyle(Theme.change(r))
                         Spacer()
-                        Text("\(period == .d1 ? "그저께→어제 종가" : period.label) \(AppModel.sgn(chg))")
+                        Text("\(period == .d1 ? "오늘" : period.label) \(AppModel.sgn(chg))")
                             .appFont(13, .bold).foregroundStyle(Theme.change(chg))
                     }
                     Sparkline(points: pts, avg: avgIn ? h.avg : nil, lineWidth: 2.2, showEndDot: true).frame(height: 116)
@@ -134,7 +134,7 @@ struct HoldingDetailView: View {
                     VStack(spacing: 0) {
                         kv("보유 수량", h.qty.formatted() + "주")
                         kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv("어제 종가", AppModel.price(sym, sym.close))
+                        kv(sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
                         kv(need > 0 ? "본전까지" : "본전 대비", need > 0.0005 ? "+" + String(format: "%.1f", need * 100) + "% 올라야 해요"
                            : need > -0.0005 ? "본전과 같아요" : "본전보다 " + String(format: "%.1f", -need * 100) + "% 위")
                         kv("비중", m.total > 0 ? AppModel.pct(val / m.total) : "-")
@@ -217,7 +217,7 @@ struct AddHoldingView: View {
                 if let p = picked {
                     Card {
                         Text("\(p.name) (\(p.id))").appFont(16, .bold)
-                        Text("어제 종가 \(AppModel.price(p, p.close))").appFont(13).foregroundStyle(Theme.sub)
+                        Text((p.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
                         field("수량 (주)", $qty)
                         field("평균 단가 (\(p.currency == .usd ? "달러" : "원"))", $avg)
                         PrimaryButton(title: "추가하기") {
@@ -233,7 +233,7 @@ struct AddHoldingView: View {
                     VStack(spacing: 0) {
                         ForEach(found) { s in
                             let held = m.holdings.contains { $0.symbol == s.id }
-                            Button { picked = s; qty = ""; avg = String(Int(s.close)) } label: {
+                            Button { picked = s; qty = ""; avg = String(Int(s.last.rounded())) } label: {
                                 HStack(spacing: 10) {
                                     LogoTile(symbol: s.id, size: 32)
                                     VStack(alignment: .leading) {
@@ -241,7 +241,7 @@ struct AddHoldingView: View {
                                         Text("\(s.id) · \(s.market)").appFont(12).foregroundStyle(Theme.sub)
                                     }
                                     Spacer()
-                                    Text(held ? "보유 중" : AppModel.price(s, s.close)).appFont(13, .semibold)
+                                    Text(held ? "보유 중" : AppModel.price(s, s.last)).appFont(13, .semibold)
                                         .foregroundStyle(held ? Theme.muted : Theme.ink)
                                 }
                                 .padding(.horizontal, 14).frame(minHeight: 56).contentShape(Rectangle())
@@ -279,7 +279,7 @@ struct HoldingEditView: View {
 
     var body: some View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
-        let q0 = h.qty, p0 = h.avg, px = sym.close
+        let q0 = h.qty, p0 = h.avg, px = sym.last
         let (qi, pi, q1, p1, bad, note) = compute(q0, p0)
         let v0 = m.krw(sym, q0 * px), v1 = m.krw(sym, (bad ? q0 : q1) * px)
         let need = { (avg: Double) in avg / px - 1 > 0.0005 ? "+" + String(format: "%.1f", (avg / px - 1) * 100) + "% 남음" : "본전 넘음" }
@@ -294,7 +294,7 @@ struct HoldingEditView: View {
                 HStack {
                     Text("저장하면 이렇게 바뀌어요").appFont(14, .bold)
                     Spacer()
-                    Text("\(sym.id) · 어제 종가 \(AppModel.price(sym, px))").appFont(12).foregroundStyle(Theme.sub)
+                    Text("\(sym.id) · 지금 \(AppModel.price(sym, px))").appFont(12).foregroundStyle(Theme.sub)
                 }
                 ForEach(rows, id: \.0) { k, a, b in
                     HStack {

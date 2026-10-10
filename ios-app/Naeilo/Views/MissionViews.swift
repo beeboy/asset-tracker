@@ -477,7 +477,7 @@ struct TaxResultView: View {
         @Bindable var m = m
         let won0 = { (x: Double) in Int(x.rounded()).formatted() + "만원" }
         let maxQ = m.drnkRow?.h.qty ?? 0
-        let wAfter = m.drnkRow.map { max(0, $0.value - m.taxSellQty * $0.sym.close * Sample.fx) / m.total } ?? 0
+        let wAfter = m.drnkRow.map { max(0, $0.value - m.taxSellQty * $0.sym.last * Market.shared.fx.last) / m.total } ?? 0
         let over = m.taxSellQty > 0 && m.taxBefore > 0 && m.taxGain + m.taxLossMan < 249
         MissionPage(kicker: "새로 열림: 절세 화면", title: "올해 해외주식 세금") {
             VStack(alignment: .leading, spacing: 8) {
@@ -574,7 +574,7 @@ struct AppStartView: View {
                     Text("특별 선물").appFont(13, .bold).foregroundStyle(Theme.yellow)
                     Text("나머지 위젯도 모두 열렸어요").appFont(17, .bold)
                     FlowRow(spacing: 6) {
-                        ForEach(["어제의 움직임 (중간)", "비중", "배당 달력", "환율", "본전 진행 (큰)"], id: \.self) {
+                        ForEach(["오늘의 움직임 (중간)", "비중", "배당 달력", "환율", "본전 진행 (큰)"], id: \.self) {
                             Text($0).appFont(12, .semibold).padding(.horizontal, 10).padding(.vertical, 4)
                                 .background(Theme.slate, in: Capsule())
                         }

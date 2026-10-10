@@ -3,9 +3,9 @@ import Foundation
 // 시세 제공. 계약(데이터 형식)은 다른 스레드에서 정하는 중이라, 지금은 시안과 같은 값을 만드는 스텁만 있다.
 // 실제 연결은 이 프로토콜을 구현해 AppModel.prices 에 넣으면 된다.
 protocol PriceProvider {
-    /// 어제 종가
+    /// 전일 종가
     func close(_ symbol: Symbol) -> Double
-    /// 기간 종가 흐름 (마지막 값 = 어제 종가)
+    /// 기간 가격 흐름 (마지막 값 = 지금 가격, 1일 = 전일 종가 → 지금)
     func series(_ symbol: Symbol, period: Period) -> [Double]
     /// x = 0 (3년 전) … 1 (어제) 시점의 종가
     func price(_ symbol: Symbol, at x: Double) -> Double
@@ -64,12 +64,13 @@ struct StubPriceProvider: PriceProvider {
     }
 
     func series(_ s: Symbol, period: Period) -> [Double] {
+        let q = Market.shared.quote(s)
         switch period {
-        case .d1: return dayCloses(s, 1)
-        case .w1: return dayCloses(s, 5)
+        case .d1: return [q.prevClose, q.last]
+        case .w1: return Array(dayCloses(s, 5).dropFirst()) + [q.last]
         default:
-            let sp = period.span
-            return (0...60).map { i in s.close * exp(logPrice(s, 1 - sp + sp * Double(i) / 60) - logPrice(s, 1)) }
+            let sp = period.span, k = q.last / max(1e-9, s.close)
+            return (0...60).map { i in s.close * exp(logPrice(s, 1 - sp + sp * Double(i) / 60) - logPrice(s, 1)) * (i == 60 ? k : 1) }
         }
     }
 }

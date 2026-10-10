@@ -184,7 +184,7 @@ struct GoalCellsCard: View {
         let tkV = m.trackValue
         let tkP = m.route == .novice ? tkV / 1.02 : tkV * max(0.8, min(1.25, m.cost / max(1, m.total)))
         let nV = cl(tkV), nP = cl(tkP), nMine = min(nV, nP), nMkt = max(0, nV - nP), nLost = max(0, nP - nV)
-        let nY = cl(tkV / (1 + m.yesterdayMove)), chg = nV - nY, passed = nV / 100
+        let nY = cl(tkV / (1 + m.todayMove)), chg = nV - nY, passed = nV / 100
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text("목표까지 1000칸").appFont(13, .bold).foregroundStyle(Theme.sub)
@@ -194,9 +194,9 @@ struct GoalCellsCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(nV.formatted())칸").appFont(26, .bold)
                 Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
-                Text(chg == 0 ? "어제와 같음" : "어제보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
+                Text(chg == 0 ? "어제와 같음" : "어제 종가보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
             }
-            ChipRow(items: [("mine", "내 칸 / 시장 칸"), ("chg", "어제 바뀐 칸")], selection: $mode)
+            ChipRow(items: [("mine", "내 칸 / 시장 칸"), ("chg", "오늘 바뀐 칸")], selection: $mode)
             GoalCellGrid(mine: nMine, market: nMkt, lost: nLost, yesterday: nY, showChange: true)
                 .aspectRatio(320.0 / 200.0, contentMode: .fit)
                 .accessibilityLabel("1000칸 중 \(nV)칸")
@@ -485,7 +485,7 @@ struct GoalTaxView: View {
     var body: some View {
         @Bindable var m = m
         let sh = m.shift(m.selectedMix), sale = sh.sell * m.goalStart
-        let drnk = m.drnkRow, gainRate = drnk.map { 1 - $0.h.avg / $0.sym.close } ?? 0
+        let drnk = m.drnkRow, gainRate = drnk.map { 1 - $0.h.avg / $0.sym.last } ?? 0
         let gainSale = sale * gainRate, G0 = m.taxGain
         let tx = { (x: Double) in max(0, x - 250) * 0.22 }
         let tOne = tx(G0 + gainSale), tSplit = tx(G0 + gainSale / 2) + tx(gainSale / 2), tNo = tx(G0)
@@ -514,7 +514,7 @@ struct GoalTaxView: View {
                 Text("\"\(m.selectedMix.name)\"으로 맞추면 DRNK \(AppModel.wonK(sale))를 팔고, 그중 이익이 \(AppModel.wonK(gainSale))예요. 나눠 팔면 \(AppModel.wonK(max(0, tOne - tSplit))) 덜 내요.")
                     .appFont(14).foregroundStyle(Theme.sub).lineSpacing(2)
             } else {
-                Text(sh.sell > 0 ? "파는 부분이 손실이라 낼 세금이 없어요. 올해 판 다른 이익과 상계돼요. (DRNK 평균 단가가 어제 종가보다 높아요)"
+                Text(sh.sell > 0 ? "파는 부분이 손실이라 낼 세금이 없어요. 올해 판 다른 이익과 상계돼요. (DRNK 평균 단가가 지금 가가보다 높아요)"
                      : "지금 고른 구성(\"\(m.selectedMix.name)\")은 팔 게 없어요. 미션 \(m.goalNo("mix"))에서 다른 구성을 고르면 세금을 비교할 수 있어요.")
                     .appFont(15).padding(14).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
@@ -600,7 +600,7 @@ struct GoalIntermissionView: View {
                 }
                 Card {
                     Text("체크인하면 받는 캐릭터 위젯").appFont(15, .bold)
-                    Text("중간 크기 어제의 움직임 위젯에 1달째 세리, 2달째 시오가 들어오고, 3달째에는 모두 열려요.").appFont(13).foregroundStyle(Theme.sub)
+                    Text("중간 크기 오늘의 움직임 위젯에 1달째 세리, 2달째 시오가 들어오고, 3달째에는 모두 열려요.").appFont(13).foregroundStyle(Theme.sub)
                     ForEach(0..<3, id: \.self) { j in
                         let on = j < fixed.count
                         HStack(spacing: 12) {
@@ -610,8 +610,8 @@ struct GoalIntermissionView: View {
                                 HStack(spacing: 0) { ForEach(Shelter.friends) { f in Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 18, height: 26) } }
                             }
                             VStack(alignment: .leading, spacing: 2) {
-                                HStack { Text("어제의 움직임").appFont(11, .bold); Spacer(); Text(on ? "받음" : j == fixed.count ? "이번 달" : "\(j + 1)달 뒤").appFont(11).foregroundStyle(Theme.sub) }
-                                Text(AppModel.sgn(m.yesterdayMove)).appFont(16, .bold)
+                                HStack { Text("오늘의 움직임").appFont(11, .bold); Spacer(); Text(on ? "받음" : j == fixed.count ? "이번 달" : "\(j + 1)달 뒤").appFont(11).foregroundStyle(Theme.sub) }
+                                Text(AppModel.sgn(m.todayMove)).appFont(16, .bold)
                                 Text(AppModel.goalMonthSteps[j].reward).appFont(12).foregroundStyle(Theme.sub)
                             }
                         }

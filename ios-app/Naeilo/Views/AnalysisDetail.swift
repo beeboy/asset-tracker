@@ -222,12 +222,12 @@ struct ExternalView: View {
         let v = factor == "mkt" ? mkt : factor == "rate" ? rate : fx
         let eff = { (id: String) -> Double in
             let b = Self.beta[id] ?? (1, -3, 0)
-            return factor == "mkt" ? b.0 * v / 100 : factor == "rate" ? b.1 * v / 100 : b.2 * v / Sample.fx
+            return factor == "mkt" ? b.0 * v / 100 : factor == "rate" ? b.1 * v / 100 : b.2 * v / Market.shared.fx.last
         }
         let list = m.rows.map { (id: $0.id, dv: $0.value * eff($0.id)) }
         let tot = list.reduce(0) { $0 + $1.dv }, maxAbs = max(1, list.map { abs($0.dv) }.max() ?? 1)
         let after = m.total + tot
-        let ask = factor == "mkt" ? "S&P500이 얼마나 움직이면" : factor == "rate" ? "미국 10년 금리가 얼마나 바뀌면" : "환율이 \(Int(Sample.fx).formatted())원에서 얼마나 바뀌면"
+        let ask = factor == "mkt" ? "S&P500이 얼마나 움직이면" : factor == "rate" ? "미국 10년 금리가 얼마나 바뀌면" : "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
         let vText = factor == "mkt" ? (v > 0 ? "+" : "") + "\(Int(v))%" : factor == "rate" ? (v > 0 ? "+" : "") + String(format: "%g", v) + "%p" : (v > 0 ? "+" : "") + "\(Int(v))원"
         let coef = m.rows.map { r -> String in
             let b = Self.beta[r.id] ?? (1, -3, 0)
@@ -235,7 +235,7 @@ struct ExternalView: View {
         }.joined(separator: ", ")
         let note = factor == "mkt" ? "S&P500이 1% 움직일 때 평균 반응: \(coef). 시장보다 크게 움직이는 종목이 많을수록 같은 하락에도 평가액이 더 줄어요."
             : factor == "rate" ? "미국 10년 금리가 1%p 오를 때 평균 반응: \(coef). 성장주일수록 금리에 더 민감했어요."
-            : "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Sample.fx * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
+            : "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Market.shared.fx.last * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
         let events: [(String, String, String)] = [("10월 15일", "미국 소비자물가 발표", ""), ("10월 22일", "드링커 3분기 실적 발표", "DRNK"), ("10월 28일", "미국 금리 결정", ""),
                                                    ("10월 29일", "삼성전자 3분기 실적 발표", "005930"), ("10월 30일", "애플 실적 발표", "AAPL"), ("11월 19일", "엔비디아 실적 발표", "NVDA")]
             .filter { e in e.2.isEmpty || m.rows.contains { r in r.id == e.2 } }
@@ -399,12 +399,12 @@ struct DividendView: View {
 struct FxImpactView: View {
     @Environment(AppModel.self) private var m
     @State private var period = "1y"
-    @State private var what = Sample.fx
+    @State private var what = Market.shared.fx.last.rounded()
 
     static let boughtAt = 1320.0     // 샀을 때 평균 환율 (시안 가정)
 
     var body: some View {
-        let FX = Sample.fx, FXB = Self.boughtAt, sigma = 0.075
+        let FX = Market.shared.fx.last, FXB = Self.boughtAt, sigma = 0.075
         let usd = m.rows.filter { $0.sym.currency == .usd || $0.id == "360750" }
         let usdV = usd.reduce(0) { $0 + $1.value }, usdW = usdV / max(1, m.total)
         let usdCost = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.cost }
@@ -432,7 +432,7 @@ struct FxImpactView: View {
             pinnedBox {
                 DetailHead(title: "환율 영향", sub: "달러 자산 비중 \(AppModel.pct(usdW)) · 환율 1%면 평가액 \(AppModel.man(usdV * 0.01))")
                 HStack(alignment: .firstTextBaseline) {
-                    Text("원/달러 (어제 종가)").appFont(13).foregroundStyle(Theme.sub)
+                    Text("원/달러 (지금 · 오늘 \(AppModel.sgn(Market.shared.fx.change)))").appFont(13).foregroundStyle(Theme.sub)
                     Spacer()
                     Text("\(Int(FX).formatted())원").appFont(22, .bold)
                 }
@@ -548,7 +548,7 @@ struct GlanceView: View {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(d.row.sym.name) \(d.row.id)").appFont(15, .bold)
-                                    Text("어제 종가 \(AppModel.price(d.row.sym, d.yr.last ?? 0)) · 1년 \(AppModel.price(d.row.sym, d.lo))~\(AppModel.price(d.row.sym, d.hi))")
+                                    Text("지금 \(AppModel.price(d.row.sym, d.row.sym.last)) · 1년 \(AppModel.price(d.row.sym, d.lo))~\(AppModel.price(d.row.sym, d.hi))")
                                         .appFont(12).foregroundStyle(Theme.sub)
                                 }
                                 Spacer(minLength: 6)

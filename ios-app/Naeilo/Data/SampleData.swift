@@ -1,6 +1,6 @@
 import Foundation
 
-// 시안 샘플 데이터. 시세는 어제 종가 기준 예시 값이고, 실제 앱은 PriceProvider 가 채운다.
+// 시안 샘플 데이터. 전일 종가는 예시 값이고, 지금 가격은 Market(Tiingo 또는 예시 값)이 채운다.
 // DRNK(드링커)는 『중첩된 현실』 속 회사를 바탕으로 한 가상 종목이다.
 
 enum Currency { case usd, krw }
@@ -9,7 +9,7 @@ struct Symbol: Identifiable, Hashable {
     let id: String          // 티커 또는 종목 코드
     let name: String
     let market: String
-    let close: Double       // 어제 종가 (시안 값)
+    let close: Double       // 전일 종가 (시안 값). 지금 가격은 Market.quote
     let currency: Currency
     let sector: String
     let search: String      // 영문 검색어
@@ -40,7 +40,6 @@ struct Holding: Identifiable, Hashable {
 
 enum Sample {
     static let fx = 1380.0            // 원/달러 (시안 가정)
-    static let asOfText = "어제 종가 기준 (10월 8일)"
 
     static let symbols: [Symbol] = [
         .init(id: "DRNK", name: "드링커", market: "미국 주식", close: 250, currency: .usd, sector: "우주항공·궤도 통신", search: "drinker"),

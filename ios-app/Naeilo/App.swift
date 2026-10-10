@@ -36,6 +36,13 @@ struct RootView: View {
                 .tabItem { Label("설정", systemImage: "gearshape") }.tag(Tab.settings)
         }
         .tint(Theme.teal)
+        // 지금 시세: 화면이 켜져 있는 동안 1분마다 갱신
+        .task {
+            while !Task.isCancelled {
+                await Market.shared.refresh()
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
         // 처음 실행이면 첫 질문을 탭 화면 위에 덮는다
         .overlay { if showStart { StartView().transition(.opacity) } }
         .animation(.default, value: showStart)

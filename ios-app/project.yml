@@ -30,6 +30,8 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
+        # 개발용 Tiingo 토큰 (비워 두면 예시 값). 출시 때는 naeilo 중계 서버를 거친다
+        TIINGO_TOKEN: ""
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.app

@@ -7,7 +7,7 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 AppHeader().padding(.horizontal, -16)
-                Text(Sample.asOfText).appFont(13).foregroundStyle(Theme.sub2)
+                Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                 summary
                 shelterBox
                 if m.playOn && !m.interDone { reminder }
@@ -17,6 +17,7 @@ struct HomeView: View {
             .screen()
         }
         .background(Theme.bg)
+        .refreshable { await Market.shared.refresh() }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { route in
             if route == "shelter" { ShelterView() }
@@ -47,7 +48,7 @@ struct HomeView: View {
             }
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: prog)
-            Text("어제 \(AppModel.sgn(m.route == .novice ? 0.006 : m.yesterdayMove)) 움직여 목표까지 \(AppModel.pct(prog))에 왔어요. 적립은 다음 달에 \(AppModel.wonK(m.gM)) 예정이에요.")
+            Text("오늘 \(AppModel.sgn(m.route == .novice ? 0.006 : m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog))에 왔어요. 적립은 다음 달에 \(AppModel.wonK(m.gM)) 예정이에요.")
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(.white)
@@ -58,7 +59,7 @@ struct HomeView: View {
 
     private var recoverSummary: some View {
         let need = m.cost / max(1, m.total) - 1
-        let needY = m.cost / (m.total / (1 + m.yesterdayMove)) - 1
+        let needY = m.cost / (m.total / (1 + m.todayMove)) - 1
         return VStack(alignment: .leading, spacing: 10) {
             Text("지금 평가액 · 들어간 돈 \(AppModel.man(m.cost))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -138,18 +139,18 @@ struct HomeView: View {
     private var lockedRoutine: some View {
         DashedCard {
             Label("오늘의 1분", systemImage: "lock").appFont(15, .bold)
-            Text("앱 시작 3단계를 마치면 바로 열려요. 매일 1분, 어제 숫자 하나와 질문 하나예요.").appFont(13)
+            Text("앱 시작 3단계를 마치면 바로 열려요. 매일 1분, 오늘 숫자 하나와 질문 하나예요.").appFont(13)
         }
     }
 
     private var yesterdayCard: some View {
         Card {
             HStack(alignment: .firstTextBaseline) {
-                Text("어제의 움직임").appFont(15, .bold)
+                Text("오늘의 움직임").appFont(15, .bold)
                 Spacer()
-                Text(AppModel.sgn(m.yesterdayMove)).appFont(20, .bold).foregroundStyle(Theme.teal)
+                Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal)
             }
-            Text("DRNK \(AppModel.sgn(-0.0221)) · QQQ \(AppModel.sgn(0.004))").appFont(13).foregroundStyle(Theme.sub)
+            Text(m.rows.map { "\($0.id) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + " · 원/달러 \(AppModel.sgn(Market.shared.fx.change))").appFont(13).foregroundStyle(Theme.sub)
         }
     }
 }
@@ -178,7 +179,7 @@ struct RoutineCard: View {
                         .overlay { if d == m.day && !ok { RoundedRectangle(cornerRadius: 8).stroke(Theme.yellow, lineWidth: 2) } }
                 }
             }
-            step(tag: "1 · 어제 숫자") {
+            step(tag: "1 · 오늘 숫자") {
                 Text(m.routineFact).appFont(15).lineSpacing(3)
                 if !t.seen {
                     Button("봤어요") { withAnimation { m.markSeen() } }

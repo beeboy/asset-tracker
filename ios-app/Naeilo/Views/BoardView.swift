@@ -171,9 +171,9 @@ struct BoardView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(n.formatted())칸").appFont(26, .bold)
                 Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
-                Text(chg == 0 ? "어제와 같음" : "어제보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
+                Text(chg == 0 ? "어제와 같음" : "어제 종가보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
             }
-            ChipRow(items: [("mine", "바닥 / 회복"), ("stock", "종목별"), ("chg", "어제 바뀐 칸")], selection: $cellMode)
+            ChipRow(items: [("mine", "바닥 / 회복"), ("stock", "종목별"), ("chg", "오늘 바뀐 칸")], selection: $cellMode)
             CellGrid(filled: n, floor: nFloor, yesterday: nY, mode: cellMode, parts: stockParts)
                 .aspectRatio(320.0 / 200.0, contentMode: .fit)
                 .accessibilityLabel("1000칸 중 \(n)칸")

@@ -44,11 +44,11 @@ struct AlertsView: View {
     var body: some View {
         let need = m.cost / max(1, m.total) - 1
         let list: [(k: String, t: String, sub: String, prev: String)] = [
-            ("be", "본전 도달", "어제 종가 기준 평가액이 들어간 돈을 넘으면 한 번", "본전에 도착했어요! 평가액이 들어간 돈 \(AppModel.man(m.cost))을 넘었어요."),
+            ("be", "본전 도달", "평가액이 들어간 돈을 넘으면 한 번 (미국 종목은 실시간)", "본전에 도착했어요! 평가액이 들어간 돈 \(AppModel.man(m.cost))을 넘었어요."),
             ("drift", "비중 이탈", "DRNK 비중이 계획에서 \(m.alertTh)%p 넘게 벗어나면",
              "DRNK 비중이 \(AppModel.pct(m.drnkWeight))예요. 계획(\(AppModel.pct(m.planWeight)))보다 \(Int((abs(m.drnkWeight - m.planWeight) * 100).rounded()))%p 벗어났어요."),
             ("dep", "연말 절세 확인", "12월 1일, 올해 손실을 확정할지 볼 때", "올해가 한 달 남았어요. 손실 난 종목 일부를 팔면 내년 세금이 줄 수 있어요."),
-            ("morn", "아침 한 줄", "평일 \(m.alertHr)시, 어제의 움직임 한 줄", "어제 \(AppModel.sgn(m.yesterdayMove)). 본전까지 \(String(format: "%.1f", need * 100))% 남았어요."),
+            ("morn", "아침 한 줄", "평일 \(m.alertHr)시, 오늘의 움직임 한 줄", "오늘 \(AppModel.sgn(m.todayMove)). 본전까지 \(String(format: "%.1f", need * 100))% 남았어요."),
         ]
         let on = list.filter { m.alerts[$0.k] == true }
         let prev = on.first { $0.k == m.alertLast } ?? on.first
@@ -172,10 +172,10 @@ extension AppModel {
             .init(id: "trend", name: "자산 추이", size: 1, val: AppModel.man(total), ok: n >= 1, how: "앱 시작 1단계", friend: false),
             .init(id: "prog", name: "본전 진행", size: 1, val: "+" + String(format: "%.1f", need * 100) + "% 남음", ok: n >= 2, how: "앱 시작 2단계", friend: false),
             .init(id: "block", name: "블록", size: 1, val: "\(done.filter { [1, 2, 3, 5].contains($0) }.count)/4", ok: n >= 3, how: "앱 시작 3단계", friend: false),
-            .init(id: "yest", name: "어제의 움직임", size: 2, val: AppModel.sgn(yesterdayMove) + " · DRNK -2.2% · QQQ +0.4%", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
+            .init(id: "yest", name: "오늘의 움직임", size: 2, val: AppModel.sgn(todayMove) + " · " + rows.map { "\($0.id) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · "), ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
             .init(id: "mix", name: "비중", size: 1, val: "DRNK " + AppModel.pct(drnkWeight), ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
             .init(id: "div", name: "배당 달력", size: 2, val: "다음 배당 QQQ 12월", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
-            .init(id: "fx", name: "환율", size: 1, val: "\(Int(Sample.fx).formatted())원", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
+            .init(id: "fx", name: "환율", size: 1, val: "\(Int(Market.shared.fx.last.rounded()).formatted())원", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
             .init(id: "big", name: "본전 진행 (큰)", size: 3, val: AppModel.man(total) + " · +" + String(format: "%.1f", need * 100) + "% 남음", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
         ]
         let fr = Shelter.friends.dropFirst().enumerated().map { i, f in
@@ -320,7 +320,7 @@ struct HowToView: View {
     var body: some View {
         SettingsPage(title: "사용 방법") {
             ForEach([("위젯", "위젯", "아침에 위젯 속 친구가 알려 주는 본전까지 남은 % 보기"),
-                     ("앱", "오늘의 1분", "어제 숫자 하나와 질문 하나. 7일 연속마다 쉼터에 물건이 돌아와요."),
+                     ("앱", "오늘의 1분", "오늘 숫자 하나와 질문 하나. 7일 연속마다 쉼터에 물건이 돌아와요."),
                      ("알림", "알림", "비중이 계획에서 5%p 넘게 벗어난 날만 울려요."),
                      ("미션", "1000칸", "본전을 1000칸으로 나눠 채워요. 100칸마다 선물이 있어요."),
                      ("미션", "주간 예보", "월요일에 앱이 금요일 평가액 범위를 적어 두고, 금요일 종가로 범위 안인지 도장을 찍어요."),

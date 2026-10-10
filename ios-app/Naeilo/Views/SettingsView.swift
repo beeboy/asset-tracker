@@ -12,7 +12,7 @@ struct SettingsView: View {
             ("기기 동기화", m.syncOn ? "PC naeilo.com과 연결됨" : "연결 안 됨", .sync),
             ("위젯", "받은 위젯 \(m.widgets.filter(\.ok).count)개 · 홈 화면 \(m.widgetSelected.count)개", .widgets),
             ("세금 규칙", "대한민국 거주자", .tax),
-            ("시세 기준", "어제 종가 · 매일 아침 7시 갱신", .price),
+            ("시세 기준", "미국 종목·환율 실시간 · 한국 종목 전일 종가", .price),
             ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
             ("루트", m.route == .recover ? "회복 · 마이너스" : m.route == .plus ? "목표 · 플러스" : "목표 · 시작 전", .route),
         ]
@@ -49,6 +49,9 @@ struct SettingsView: View {
                     demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
                     demoButton("모든 화면 열기") { m.resetDemo(.all) }
                 }
+                Link(destination: URL(string: "https://www.tiingo.com")!) {
+                    Text("Data powered by Tiingo.com").appFont(12, .semibold).foregroundStyle(Theme.teal)
+                }
                 Text("시세는 스텁(시안과 같은 예시 값)이고, 외전 원고도 서버 대신 스텁이에요. 버전 0.1").appFont(12).foregroundStyle(Theme.muted)
             }
             .screen()
@@ -79,28 +82,35 @@ struct SettingsView: View {
 
 struct PriceBasisView: View {
     var body: some View {
+        let mk = Market.shared, fx = mk.fx
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text("시세 기준").appFont(22, .bold)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("지금 보는 숫자").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                    Text("10월 8일 종가").appFont(28, .bold)
-                    Text("매일 오전 7시에 갱신해요").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                    Text("실시간 참고 시세").appFont(28, .bold)
+                    Text(mk.asOfText).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 }
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 Card {
-                    row("미국 종목", "한국 시간 아침에 전날 종가 반영")
-                    row("한국 종목", "장 마감 뒤 그날 종가 반영")
-                    row("환율", "원/달러 \(Int(Sample.fx).formatted())원 (시안 가정)")
-                    row("시세 제공", "견적 비교 중 (지금은 스텁)")
+                    row("미국 종목", "실시간 참고 시세 (장중·시간외 포함), 1분마다 갱신")
+                    row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change)) (실시간)")
+                    row("한국 종목", "전일 종가 (한국 시세 제공처를 정하면 바뀌어요)")
+                    row("오늘의 움직임", "전일 종가·전일 환율 대비 지금 평가액")
+                    row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : "예시 값 (개발용 토큰을 넣으면 실제 값)")
                 }
-                Text("하루 안의 움직임은 보여 주지 않아요. 어제 종가 하나로 계산해서 숫자가 하루 동안 같아요.").appFont(13).foregroundStyle(Theme.sub)
+                Text("숫자가 하루 동안 움직이지만, naeilo는 사고파는 앱이 아니라 본전과 목표까지의 길을 보는 앱이에요. 그래서 그래프와 미션은 종가로 계산해요.")
+                    .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
+                Link(destination: URL(string: "https://www.tiingo.com")!) {
+                    Text("Data powered by Tiingo.com").appFont(13, .semibold).foregroundStyle(Theme.teal)
+                }
             }
             .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable { await Market.shared.refresh() }
     }
     private func row(_ k: String, _ v: String) -> some View {
         HStack(alignment: .top) { Text(k).fontWeight(.semibold).frame(width: 80, alignment: .leading); Text(v).foregroundStyle(Theme.sub) }
