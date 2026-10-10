@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>naeilo 후원 관리</title>
+<script src="theme.js?v=20261008s"></script>
+<link rel="stylesheet" href="style.css?v=20261008s">
+<style>
+  .guide { max-width: 760px; }
+  .guide h2 { font-size: 1rem; margin: 0 0 8px; }
+  .guide p, .guide li { line-height: 1.6; }
+  .guide ul { padding-left: 20px; margin: 6px 0; }
+  .guide input[type=password] { width: 100%; }
+  .guide button { margin-top: 6px; }
+  .backlink { color: var(--accent); text-decoration: none; font-size: 0.7647rem; margin-left: auto; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><a href="./" style="text-decoration:none"><span class="logo">naeilo</span></a></div>
+  <a class="backlink" href="./">← 앱으로</a>
+</header>
+<main class="guide">
+  <div class="card">
+    <h2>후원 관리 (개발자용)</h2>
+    <p class="small muted">중계: <span id="base">…</span></p>
+    <p class="small">앱 설정 &gt; 개발자용에 저장한 GitHub 토큰을 그대로 씁니다. 다른 토큰이나 중계 ADMIN_KEY 를 쓰려면 여기에 붙여 넣으세요 (저장하지 않음).</p>
+    <input id="tok" type="password" autocomplete="off" placeholder="GitHub 토큰 또는 ADMIN_KEY">
+    <button id="reload">새로 고침</button>
+  </div>
+
+  <div class="card">
+    <h2>유료 원고 올리기</h2>
+    <p class="small">외전 6장부터(한글·영문)와 본편 1권을 중계에만 올립니다. 저장소와 사이트에는 남지 않습니다. 원고를 고친 뒤 다시 누르면 덮어씁니다. 장별 도트 그림(MyVault 원고/chapter-art)도 128×80 으로 줄여 같이 올립니다.</p>
+    <button id="up-vault">MyVault 에서 읽어 올리기</button>
+    <details style="margin-top:8px"><summary class="small">토큰이 MyVault 를 못 읽으면: 파일 직접 고르기</summary>
+      <p class="small">외전 한글 (side_story_v2.1.md) <input id="f-side-ko" type="file" accept=".md,text/markdown,text/plain"></p>
+      <p class="small">외전 영문 (Side Story - Resonance Across Kinds.md) <input id="f-side-en" type="file" accept=".md,text/markdown,text/plain"></p>
+      <p class="small">본편 1권 (vol1_v8.1.md) <input id="f-vol1" type="file" accept=".md,text/markdown,text/plain"></p>
+      <button id="up-files">고른 파일로 올리기</button>
+    </details>
+    <p id="upmsg" class="small"></p>
+    <ul id="books" class="small"></ul>
+  </div>
+
+  <div class="card">
+    <h2>후원자 이름·로고 승인</h2>
+    <p class="small">고급 스페셜티 커피 후원자가 보낸 이름과 로고입니다. 승인한 것만 앱 도움말·정보 화면에 보입니다.</p>
+    <div id="sponsors"></div>
+  </div>
+</main>
+<script type="module" src="store-admin.js?v=20261010c"></script>
+</body>
+</html>
