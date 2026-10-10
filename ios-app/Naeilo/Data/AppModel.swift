@@ -211,13 +211,24 @@ final class AppModel {
 
     // MARK: 친구·장
     // 세리 외에 열린 친구 수. 목표 루트는 미션 없이 첫 달 1~4주차에 같은 순서로 열림 (시안 39판)
+    /// 개발자 계정(개발자 동기화로 연결한 기기)은 모든 보상이 열린다. 미션 진행 자체는 그대로 둔다
+    var devAll: Bool {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "devAllTest") { return true }   // 확인용: -devAllTest YES
+        #endif
+        return Sync.shared.isDev
+    }
+    /// 앱 시작 3단계 보상(오늘의 1분·1000칸·주간 예보)이 열렸는지
+    var playUnlocked: Bool { playOn || devAll }
     var friendsOpen: Int {
+        if devAll { return 4 }
         if interDone { return 4 }
         if route == .recover { return weeks.count }
         return !gWeeks.isEmpty ? 4 : playOn ? min(4, day / 7) : 0
     }
     func friendOn(_ i: Int) -> Bool { i == 0 || i <= friendsOpen }
     func chapterOn(_ i: Int) -> Bool {
+        if devAll { return true }
         if i < 2 { return playOn }
         let fid = Shelter.chapters[i].friend
         return friendOn(Shelter.friends.firstIndex { $0.id == fid } ?? 0)
@@ -298,7 +309,7 @@ final class AppModel {
         return "오늘 루틴 끝! 물건이 모두 돌아왔어요."
     }
     var homeSay: String {
-        if !playOn { return "앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (homeFriend == "seri" ? " 거기까지만요." : "") }
+        if !playUnlocked { return "앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (homeFriend == "seri" ? " 거기까지만요." : "") }
         if today.answer != nil {
             let s = streak
             return "오늘은 여기까지예요. " + (s / 7 < 10 ? "\(7 - s % 7)일 더 오면 쉼터에 물건(\(Shelter.items[s / 7].name))이 돌아와요." : "내일 또 숫자 하나 가져올게요.")

@@ -60,7 +60,7 @@ enum WidgetBridge {
         Store.write(feed, "feed.json")
         Store.write(live, "live.json")
         Store.lastCheck = now
-        Store.unlockedKinds = WidgetUnlock.kinds(doneSteps: m.nxStep)   // 앱 시작 단계로 받은 위젯
+        Store.unlockedKinds = WidgetUnlock.kinds(doneSteps: m.devAll ? 3 : m.nxStep)   // 앱 시작 단계로 받은 위젯
         Store.summarySource = "app"
         WidgetCenter.shared.reloadAllTimelines()
     }

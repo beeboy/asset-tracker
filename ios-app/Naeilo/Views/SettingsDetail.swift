@@ -249,7 +249,7 @@ struct SyncView: View {
 extension AppModel {
     struct WidgetItem: Identifiable { let id, name: String; let size: Int; let val: String; let ok: Bool; let how: String; let friend: Bool }
     var widgets: [WidgetItem] {
-        let n = nxStep, gift = nxStep >= 3, need = cost / max(1, total) - 1
+        let n = devAll ? 3 : nxStep, gift = n >= 3, need = cost / max(1, total) - 1
         let base: [WidgetItem] = [
             .init(id: "trend", name: "자산 추이", size: 1, val: AppModel.man(total), ok: n >= 1, how: "앱 시작 1단계", friend: false),
             .init(id: "prog", name: "본전 진행", size: 1, val: "+" + String(format: "%.1f", need * 100) + "% 남음", ok: n >= 2, how: "앱 시작 2단계", friend: false),

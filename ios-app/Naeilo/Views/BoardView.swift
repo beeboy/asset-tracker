@@ -38,7 +38,7 @@ struct BoardView: View {
                 if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter { nextCard(next) }
                 if !m.interDone && m.playOn { checkIn }
                 // 1000칸 다음에 이번 주 예보
-                if m.playOn { cells; WeekForecastCard() } else { lockedPlay }
+                if m.playUnlocked { cells; WeekForecastCard() } else { lockedPlay }
             }
             .screen()
         }

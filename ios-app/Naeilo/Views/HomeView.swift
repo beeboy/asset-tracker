@@ -11,8 +11,8 @@ struct HomeView: View {
                 summary
                 shelterBox
                 if m.playOn && !m.interDone { reminder }
-                if m.playOn { RoutineCard() } else { lockedRoutine }
-                if !m.playOn { yesterdayCard }
+                if m.playUnlocked { RoutineCard() } else { lockedRoutine }
+                if !m.playUnlocked { yesterdayCard }
             }
             .screen()
         }

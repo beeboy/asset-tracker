@@ -133,7 +133,7 @@ struct GoalBoardView: View {
                         PrimaryButton(title: "시작하기") { m.boardPath.append(next.to) }
                     }
                 }
-                if m.playOn { GoalCellsCard(); WeekForecastCard() } else {
+                if m.playUnlocked { GoalCellsCard(); WeekForecastCard() } else {
                     DashedCard {
                         Label("1000칸 · 100칸 선물 · 이번 주 예보", systemImage: "lock").appFont(15, .bold)
                         Text("앱 시작 3단계를 마치면 열려요. 인터미션 동안에도 칸을 채우고 매주 예보를 맞혀 볼 수 있어요.").appFont(13)

@@ -44,7 +44,8 @@ struct RootView: View {
         .onChange(of: model.route) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.nxStep) { _, _ in WidgetBridge.write(model) }
         // 앱 시작 3단계: 동기화를 켜면 끝난다 (이미 켜져 있으면 3단계에 오는 순간)
-        .onChange(of: Sync.shared.isOn, initial: true) { _, on in if on && model.nxStep == 2 { model.nxStep = 3 } }
+        .onChange(of: Sync.shared.isOn, initial: true) { _, on in if on && model.nxStep == 2 { model.nxStep = 3 }; WidgetBridge.write(model) }
+        .onChange(of: Sync.shared.isDev) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.nxStep) { _, n in if n == 2 && Sync.shared.isOn { model.nxStep = 3 } }
         // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로
         .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay() } }
