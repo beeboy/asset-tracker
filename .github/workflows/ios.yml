@@ -1,24 +1,25 @@
 name: ios
-# 아이폰 위젯 앱이 컴파일되는지 확인한다 (서명 없이 시뮬레이터용). 실제 설치는 맥의 Xcode 에서
+# 아이폰 앱(ios-app/, 위젯 확장 포함)이 컴파일되는지 확인한다 (서명 없이 시뮬레이터용). 실제 설치는 맥의 Xcode 에서
+# 맥에서 쓰는 Xcode 26 과 맞춘다 (Xcode 16 은 일부 긴 식의 타입 추론이 시간 초과로 실패)
 on:
   push:
-    paths: ["ios/**", "web/model.js", "web/widget-core.js", ".github/workflows/ios.yml"]
+    paths: ["ios-app/**", "data/prices/**", ".github/workflows/ios.yml"]
   pull_request:
-    paths: ["ios/**", "web/model.js", "web/widget-core.js", ".github/workflows/ios.yml"]
+    paths: ["ios-app/**", "data/prices/**", ".github/workflows/ios.yml"]
   workflow_dispatch:
 concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: XcodeGen
-        run: brew install xcodegen && cd ios && xcodegen
+        run: brew install xcodegen && cd ios-app && xcodegen
       - name: 빌드 (시뮬레이터)
         run: |
           set -o pipefail
           xcodebuild -version
-          cd ios && xcodebuild -project Naeilo.xcodeproj -target Naeilo -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|warning: .*(deprecated|never)|BUILD (SUCCEEDED|FAILED)|\*\* " | head -80
+          cd ios-app && xcodebuild -project NaeiloApp.xcodeproj -target NaeiloApp -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|warning: .*(deprecated|never)|BUILD (SUCCEEDED|FAILED)|\*\* " | head -80

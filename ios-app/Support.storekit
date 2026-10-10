@@ -1,0 +1,94 @@
+{
+  "identifier": "43E89E9E-2049-5C4B-B511-CF650F4CEA29",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "1100",
+      "familyShareable": true,
+      "internalID": "07D1F970-0A54-5D99-9EFD-8EC5067D8EFD",
+      "localizations": [
+        {
+          "description": "외전 6장부터 끝까지",
+          "displayName": "믹스커피",
+          "locale": "ko"
+        }
+      ],
+      "productID": "com.naeilo.widget.support.mix",
+      "referenceName": "Support Mix",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "3300",
+      "familyShareable": true,
+      "internalID": "689F4A16-D27D-5AB6-9AB4-B3E1A93B7940",
+      "localizations": [
+        {
+          "description": "믹스커피 + 모든 보상 미리 보기, 광고 없음",
+          "displayName": "다방커피",
+          "locale": "ko"
+        }
+      ],
+      "productID": "com.naeilo.widget.support.dabang",
+      "referenceName": "Support Dabang",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "6600",
+      "familyShareable": true,
+      "internalID": "664DD981-1145-59C7-8EE6-325D75B53AA1",
+      "localizations": [
+        {
+          "description": "다방커피 + 본편 1권",
+          "displayName": "프랜차이즈 커피",
+          "locale": "ko"
+        }
+      ],
+      "productID": "com.naeilo.widget.support.franchise",
+      "referenceName": "Support Franchise",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "15000",
+      "familyShareable": true,
+      "internalID": "68D55AEF-182F-5CA2-BE51-439F4492E5C7",
+      "localizations": [
+        {
+          "description": "프랜차이즈 + 정보 화면에 후원자 이름",
+          "displayName": "고급 스페셜티 커피",
+          "locale": "ko"
+        }
+      ],
+      "productID": "com.naeilo.widget.support.specialty",
+      "referenceName": "Support Specialty",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "1100",
+      "familyShareable": false,
+      "internalID": "84D01B9D-5CBF-5D12-92AD-D6603FBAF54E",
+      "localizations": [
+        {
+          "description": "아무것도 열지 않는 후원",
+          "displayName": "한 잔 더",
+          "locale": "ko"
+        }
+      ],
+      "productID": "com.naeilo.widget.support.tip",
+      "referenceName": "Support Tip",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_applicationInternalID": "",
+    "_developerTeamID": "252W43H2KE",
+    "_failTransactionsEnabled": false,
+    "_locale": "ko",
+    "_storefront": "KOR",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}
