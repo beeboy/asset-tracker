@@ -273,6 +273,10 @@ struct ShelterView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(cur?.name ?? "아직 돌아오지 않았어요").appFont(14, .bold)
                 Text(cur?.line ?? "오늘의 1분을 7일 연속 하면 첫 물건이 돌아와요.").appFont(13).foregroundStyle(Theme.sub)
+                if let c = cur, let say = WItem.say(c.id, m.homeFriendShown) {
+                    let who = Shelter.friends.first { $0.id == m.homeFriendShown }?.name ?? "세리"
+                    Text("\(who) “\(say)”").appFont(13, .bold).foregroundStyle(Theme.teal)
+                }
             }
             Spacer(minLength: 0)
         }

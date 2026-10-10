@@ -1,1 +1,1 @@
-{"images":[{"idiom":"universal","filename":"art_room.png"}],"info":{"author":"xcode","version":1}}
+{"images":[{"idiom":"universal","filename":"art_room.png"},{"idiom":"universal","filename":"art_room_dark.png","appearances":[{"appearance":"luminosity","value":"dark"}]}],"info":{"author":"xcode","version":1}}
