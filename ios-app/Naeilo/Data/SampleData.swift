@@ -96,6 +96,22 @@ enum Sample {
                           what: "코스피 대형주 200개를 담는 ETF예요.", vision: "코스피 200 지수", extra: ("담은 종목", "약 200개")),
         "360750": Profile(mono: "T", color: 0xE8862A, etf: true, ceo: ("운용사", "미래에셋자산운용"), hq: "한국", since: "2020년 상장",
                           what: "미국 S&P 500 종목을 원화로 사는 국내 상장 ETF예요.", vision: "S&P 500 지수", extra: ("담은 종목", "약 500개")),
+        // 사이트에서 동기화로 들어오는 보유 종목 (data/tickers.json)
+        "TSLA": Profile(mono: "T", color: 0xCC0000, ceo: ("대표", "일론 머스크"), hq: "미국 오스틴", since: "2003년",
+                        what: "전기차와 가정·전력망용 배터리, 자율주행 소프트웨어를 만들어요.", vision: "지속 가능한 에너지로 넘어가는 속도를 앞당긴다."),
+        "SPCX": Profile(mono: "X", color: 0x1B1F2A, ceo: ("대표", "일론 머스크"), hq: "미국 텍사스 스타베이스", since: "2002년",
+                        what: "다시 쓰는 로켓(팰컨 9·스타십)으로 위성과 사람을 우주로 보내고, 스타링크 위성 인터넷을 팔아요.",
+                        vision: "사람이 여러 행성에서 살 수 있게 한다."),
+        "SGOV": Profile(mono: "S", color: 0x1A1A1A, etf: true, ceo: ("운용사", "BlackRock (iShares)"), hq: "미국", since: "2020년 상장",
+                        what: "만기 3개월 이하 미국 국채만 담는 ETF예요. 가격은 거의 그대로이고 이자 성격의 분배금을 매달 줘요.",
+                        vision: "ICE 0-3개월 미국 국채 지수", extra: ("담은 것", "미국 단기 국채")),
+        "SMH": Profile(mono: "S", color: 0x1F5AA6, etf: true, ceo: ("운용사", "VanEck"), hq: "미국", since: "2011년 상장",
+                       what: "미국에 상장된 큰 반도체 회사 25개 안팎을 담는 ETF예요.", vision: "MVIS 미국 상장 반도체 25 지수", extra: ("담은 종목", "약 25개")),
+        "GLD": Profile(mono: "G", color: 0xC9A227, fg: 0x3A2A00, etf: true, ceo: ("운용사", "World Gold Trust Services"), hq: "미국", since: "2004년 상장",
+                       what: "금고에 보관한 실물 금을 담고 금값을 따라가는 상품이에요.", vision: "LBMA 금 가격", extra: ("담은 것", "실물 금")),
+        "MANA": Profile(mono: "M", color: 0xFF2D55, etf: true, ceo: ("운용사", "Grayscale"), hq: "미국 장외(OTC)", since: "2021년 설정",
+                        what: "가상 세계 디센트럴랜드의 코인 MANA를 담는 신탁이에요. 장외에서 거래돼서 코인 값과 차이가 날 수 있어요.",
+                        vision: "MANA 코인 가격", extra: ("담은 것", "MANA 코인")),
     ]
 
     // 시작 보유 (회복 루트 시안): DRNK 60주 $400, QQQ 10주 $500

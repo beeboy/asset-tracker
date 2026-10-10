@@ -148,7 +148,7 @@ struct HoldingDetailView: View {
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                     }.buttonStyle(.plain)
                 }
-                if let p = Sample.profiles[sym.id] { profile(p) }
+                if let p = Sample.profiles[sym.id] { profile(p) } else { noProfile }
             }
             .screen().padding(.top, 8)
         }
@@ -163,6 +163,17 @@ struct HoldingDetailView: View {
             HStack { Text(k).foregroundStyle(Theme.sub); Spacer(); Text(v).fontWeight(.semibold) }
                 .appFont(14).padding(.horizontal, 16).frame(minHeight: 44)
             if !last { Divider().overlay(Theme.line).padding(.horizontal, 16) }
+        }
+    }
+
+    /// 소개를 아직 안 쓴 종목: 아는 것만 (이름·시장·업종) 보여 주고 비었다고 말한다
+    private var noProfile: some View {
+        Card {
+            Text("이 종목은").appFont(15, .bold)
+            ForEach([("이름", sym.name), ("시장", sym.market)] + (sym.sector.isEmpty ? [] : [("업종", sym.sector)]), id: \.0) { k, v in
+                HStack(alignment: .top) { Text(k).foregroundStyle(Theme.sub).frame(width: 72, alignment: .leading); Text(v) }.appFont(13)
+            }
+            Text("대표·하는 일·비전 소개는 아직 준비하지 않은 종목이에요.").appFont(12).foregroundStyle(Theme.muted)
         }
     }
 

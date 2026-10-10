@@ -7,9 +7,8 @@ struct ShareCardButton: View {
     let amountLine: String
     @State private var show = false
     var body: some View {
-        let passed = filled / 100
         Button { show = true } label: {
-            Label(passed > 0 ? "\(passed * 100)칸 공유 카드 만들기" : "공유 카드 만들기", systemImage: "square.and.arrow.up")
+            Label("1000칸 공유 카드 만들기", systemImage: "square.and.arrow.up")
                 .appFont(14, .bold).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(Theme.teal)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
@@ -25,6 +24,7 @@ struct ShareCardSheet: View {
     let amountLine: String
     @State private var showAmount = "hide"
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var m
 
     var body: some View {
         NavigationStack {
@@ -58,7 +58,7 @@ struct ShareCardSheet: View {
     // 공유 이미지는 화면 모드와 상관없이 같은 어두운 카드
     private var card: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack { Text("naeilo").font(.system(size: 16, weight: .bold)); Spacer(); Text("10월 9일").font(.system(size: 12)).foregroundStyle(Color(hex: 0xC9D0D6)) }
+            HStack { Text("naeilo").font(.system(size: 16, weight: .bold)); Spacer(); Text(today).font(.system(size: 12)).foregroundStyle(Color(hex: 0xC9D0D6)) }
             Text(kicker).font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.mint)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(filled.formatted()).font(.system(size: 36, weight: .bold))
@@ -76,6 +76,20 @@ struct ShareCardSheet: View {
             }
             .aspectRatio(320.0 / 200.0, contentMode: .fit)
             Text(line).font(.system(size: 15, weight: .semibold))
+            // 홈에 둔 인물이 한마디 (금액·종목 이름은 넣지 않는다)
+            let f = m.homeFriendShown, name = Shelter.friends.first { $0.id == f }?.name ?? "세리"
+            HStack(alignment: .bottom, spacing: 8) {
+                MotionSprite(friend: f, pose: .cheer, height: 84).frame(width: 72)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(name).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.mint)
+                    Text(Self.say(f, filled)).font(.system(size: 14, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 9)
+                .background(Color.white.opacity(0.08), in: BubbleShape())
+                .overlay(BubbleShape().stroke(Color.white.opacity(0.25), lineWidth: 1))
+                .padding(.bottom, 18)
+                Spacer(minLength: 0)
+            }
             Text("매일 1분, naeilo로").font(.system(size: 12)).foregroundStyle(Color(hex: 0xC9D0D6))
         }
         .foregroundStyle(.white)
@@ -85,9 +99,47 @@ struct ShareCardSheet: View {
         .environment(\.colorScheme, .dark)
     }
 
+    private var today: String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"
+        return f.string(from: Date())
+    }
+
+    /// 인물별 한마디 (미션 안내 말투와 같은 결)
+    static func say(_ f: String, _ n: Int) -> String {
+        let left = 100 - n % 100           // 다음 100칸까지
+        if n >= 1000 {
+            switch f {
+            case "sio": return "1,000칸. 다 셌어."
+            case "seonbae": return "다 채웠네. 여기까지 온 이유, 기억나?"
+            case "ir": return "다 채웠어. 서두르지 않았잖아."
+            case "sua": return "제때 다 채웠어요. 1,000칸이에요."
+            default: return "…… 1,000칸, 다 채웠어요."
+            }
+        }
+        switch f {
+        case "sio": return "\(n.formatted())칸. 다음 100칸까지 \(left)칸. 셌어."
+        case "seonbae": return "\(n.formatted())칸까지 왔네. 남은 \(left)칸은 언제쯤 채울 것 같아?"
+        case "ir": return "다음 100칸까지 \(left)칸. 서두르지 않아도 채워져."
+        case "sua": return "오늘도 제때 왔어요. 다음 100칸까지 \(left)칸이에요."
+        default: return "…… 한 칸씩 왔어요. 다음 100칸까지 \(left)칸이에요."
+        }
+    }
+
     @MainActor private var rendered: Image? {
-        let r = ImageRenderer(content: card)
+        let r = ImageRenderer(content: card.environment(m))
         r.scale = 3
         return r.uiImage.map { Image(uiImage: $0) }
+    }
+}
+
+/// 말풍선: 왼쪽 아래 꼬리가 인물 쪽을 가리킨다
+struct BubbleShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path(roundedRect: r, cornerRadius: 12)
+        p.move(to: CGPoint(x: r.minX + 6, y: r.maxY - 14))
+        p.addLine(to: CGPoint(x: r.minX - 7, y: r.maxY - 4))
+        p.addLine(to: CGPoint(x: r.minX + 12, y: r.maxY - 6))
+        p.closeSubpath()
+        return p
     }
 }
