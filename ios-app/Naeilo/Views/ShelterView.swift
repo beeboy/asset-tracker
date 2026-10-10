@@ -180,7 +180,7 @@ struct ShelterView: View {
     private var openGroup: String? {
         let paid = story.count(.side) > 6 ? Array(6..<story.count(.side)) : []
         var groups: [(id: String, keys: [Int])] = [("side0", Array(0..<6)), ("side1", paid)]
-        if Support.shared.has(.franchise) { groups += vol1Parts.map { ($0.id, $0.idx.map { Story.key(.vol1, $0) }) } }
+        if Support.shared.has(.franchise) { groups += vol1Parts.map { p in (id: p.id, keys: p.idx.map { i in Story.key(.vol1, i) }) } }
         guard let last = story.last, let g = groups.firstIndex(where: { $0.keys.contains(last) }) else { return "side0" }
         if last == groups[g].keys.last, story.done.contains(last), g + 1 < groups.count { return groups[g + 1].id }
         return groups[g].id
