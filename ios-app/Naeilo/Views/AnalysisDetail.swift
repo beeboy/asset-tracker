@@ -231,9 +231,11 @@ struct ExternalView: View {
         // 한국 장은 미국 장보다 먼저 끝나서, 한국 종목은 그 전날 밤 미국 장 움직임과 짝을 짓는다
         let kr = Sample.symbol(id)?.currency == .krw
         let usDays = spy.dates
-        let spRet: [String: Double] = Dictionary(uniqueKeysWithValues: (1..<spy.closes.count).compactMap { i in
-            spy.closes[i - 1] > 0 ? (usDays[i], log(spy.closes[i] / spy.closes[i - 1])) : nil
-        })
+        var spRet: [String: Double] = [:]
+        for i in 1..<max(1, spy.closes.count) where spy.closes[i - 1] > 0 {
+            let r: Double = log(spy.closes[i] / spy.closes[i - 1])
+            spRet[usDays[i]] = r
+        }
         func prevUS(_ d: String) -> String? {
             var lo = 0, hi = usDays.count - 1, ans: String? = nil
             while lo <= hi { let mid = (lo + hi) / 2; if usDays[mid] < d { ans = usDays[mid]; lo = mid + 1 } else { hi = mid - 1 } }
