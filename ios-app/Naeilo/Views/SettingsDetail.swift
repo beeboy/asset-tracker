@@ -253,7 +253,7 @@ struct WidgetPickView: View {
                 }
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
-                note("실제 아이폰에서는 홈 화면을 길게 눌러 위젯을 놓아요. 여기서 고른 순서대로 추천해 드려요. 위젯 자체는 기존 위젯 앱(ios/)과 합칠 예정이에요.")
+                note("홈 화면을 길게 눌러 + → naeilo 에서 위젯을 놓아요. 위젯은 이 앱이 계산한 숫자를 1분마다 받아 그려요. 여기서 고른 순서대로 추천해 드려요.")
             }
             .padding(16)
         }

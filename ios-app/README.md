@@ -1,6 +1,6 @@
-# naeilo 네이티브 앱 (첫 빌드)
+# naeilo 아이폰 앱
 
-시안(목업 49판)을 SwiftUI 로 옮긴 아이폰 앱입니다. 위젯 앱(`ios/`)과는 별개 프로젝트입니다.
+시안(목업 49판)을 SwiftUI 로 옮긴 아이폰 앱입니다. 기존 위젯 앱(`ios/`)의 위젯 11개를 이 앱으로 합쳤습니다(번들 ID `com.naeilo.widget`, App Group `group.com.naeilo.widget`). 위젯은 로그인 없이, 앱이 App Group 폴더에 써 둔 숫자(summary·feed·live.json)를 읽어 그립니다(`Naeilo/Data/WidgetBridge.swift`).
 
 ## 실행
 
@@ -32,3 +32,8 @@ open NaeiloApp.xcodeproj   # 시뮬레이터 고르고 ▶
 아이폰 설정 > 디스플레이 및 밝기 > 텍스트 크기(손쉬운 사용의 더 큰 텍스트 포함)를 따릅니다. 시안의 글자 크기를 기본 크기 기준으로 두고 같은 비율로 키웁니다(`Theme.swift` 의 `appFont`). 손쉬운 사용 3단계까지 반영하고, 아주 큰 글자에서는 위에 고정된 그래프도 함께 스크롤됩니다.
 
 캡처용 실행 인자: `-demo fresh`(미션 1부터), `-route m1|m1r|m2|m2r|m3|m3r|m4|m4r|nx`(미션 화면 바로 열기).
+
+## 빌드 메모
+
+- 저장소가 iCloud Drive(문서 폴더) 안에 있으면, 명령줄에서 `-derivedDataPath` 를 저장소 안에 두었을 때 위젯 확장 서명이 "resource fork … not allowed" 로 실패합니다. Xcode 기본 위치(~/Library/Developer/Xcode/DerivedData)로 빌드하면 괜찮습니다.
+- 테스트 시세는 저장소의 `data/prices`·`data/quotes.json`(Yahoo 중계)을 그대로 넣습니다.

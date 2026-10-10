@@ -1,5 +1,5 @@
 # naeilo 네이티브 앱 (XcodeGen). 맥에서:  brew install xcodegen && cd ios-app && xcodegen  → NaeiloApp.xcodeproj
-# 위젯 앱(ios/)과는 별개 프로젝트. 시안(목업 49판)을 SwiftUI 로 옮긴 첫 빌드.
+# 위젯 앱(ios/)의 위젯을 합쳤다. 앱 + 위젯 확장 두 타깃.
 name: NaeiloApp
 options:
   bundleIdPrefix: com.naeilo
@@ -22,6 +22,8 @@ targets:
     platform: iOS
     sources:
       - Naeilo
+      # 위젯과 같이 쓰는 파일 (App Group 저장소, 위젯이 읽는 요약 형식)
+      - WidgetShared
       # 테스트 시세: 사이트가 모으는 Yahoo 중계 자료 (3년 종가 + 현재가). 빌드할 때마다 저장소의 최신 파일이 들어간다
       - path: ../data/quotes.json
         buildPhase: resources
@@ -32,13 +34,43 @@ targets:
       path: Naeilo/Info.plist
       properties:
         CFBundleDisplayName: naeilo
+        CFBundleURLTypes:
+          - CFBundleURLName: com.naeilo.widget
+            CFBundleURLSchemes: [naeilo]
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
         # 개발용 Tiingo 토큰 (계약 전이라 비워 둠). 출시 때는 naeilo 중계 서버를 거친다
         TIINGO_TOKEN: ""
+    # 위젯 앱(ios/)과 합친 앱: App Store Connect 의 기존 앱 기록·TestFlight 를 이어 쓰려고 번들 ID 를 그대로 쓴다
+    entitlements:
+      path: Naeilo/App.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.naeilo.widget]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.widget
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - target: NaeiloWidgets
+  NaeiloWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widgets
+      - WidgetShared
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: naeilo
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/Widgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.naeilo.widget]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.widget.widgets
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_EXT"

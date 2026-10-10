@@ -36,10 +36,14 @@ struct RootView: View {
                 .tabItem { Label("설정", systemImage: "gearshape") }.tag(Tab.settings)
         }
         .tint(Theme.teal)
+        // 보유·루트가 바뀌면 위젯도 바로
+        .onChange(of: model.holdings) { _, _ in WidgetBridge.write(model) }
+        .onChange(of: model.route) { _, _ in WidgetBridge.write(model) }
         // 지금 시세: 화면이 켜져 있는 동안 1분마다 갱신
         .task {
             while !Task.isCancelled {
                 await Market.shared.refresh()
+                WidgetBridge.write(model)        // 위젯에 지금 숫자를 넘긴다
                 try? await Task.sleep(for: .seconds(60))
             }
         }
