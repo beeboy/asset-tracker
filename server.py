@@ -328,6 +328,8 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/data"):
             with LOCK:
                 return self.send_json(all_data())
+        if self.path.startswith("/api/macro"):  # 금리→이익 관계 (macro.py 가 매달 만든다)
+            return self.send_json(read_json(DATA / "macro" / "rates_earnings.json", {}))
         if self.path.startswith("/api/beyora"):
             return self.send_json(read_json(DATA / "beyora.json", {"cats": [], "posts": []}))
         if self.path.startswith("/api/news"):

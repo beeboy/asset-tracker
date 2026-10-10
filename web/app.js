@@ -2057,7 +2057,19 @@
   }
   // ------------------------------------------------------------ 연구용 비교: 세금 고려 + 하방 보호 (research.js)
   const ST_KEY = "naeilo-stab1";
-  const stabSig = () => fcSig() + "|" + hashStr(JSON.stringify(S.state.holdings.map((h) => [h.ticker, h.avg_cost])));
+  const stabRateOn = () => $("#stabRate")?.checked !== false;
+  const stabSig = () => fcSig() + "|" + hashStr(JSON.stringify(S.state.holdings.map((h) => [h.ticker, h.avg_cost]))) + (stabRateOn() ? "|r" : "");
+  // 금리→이익 관계식 식단 (data/macro/rates_earnings.json, 매달 갱신) + 오늘 기준 1년 10년물 금리 변화
+  async function stabRate() {
+    if (!stabRateOn()) return null;
+    const r = await fetch((MODE === "static" ? "../data/macro/rates_earnings.json" : "/api/macro") + "?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error("금리 자료(macro) " + r.status);
+    const d = await r.json(), b = d.meals && d.meals.b; if (!b || !b.length) throw new Error("금리 자료에 식단이 없습니다.");
+    let dr = d.now && d.now.change_1y; const t = S.prices["^TNX"];
+    if (t && t.close && t.close.length) { const i = t.close.length - 1, y0 = String(Number(t.dates[i].slice(0, 4)) - 1) + t.dates[i].slice(4); let j = i; while (j > 0 && t.dates[j] > y0) j--; if (t.close[i] && t.close[j]) dr = t.close[i] - t.close[j]; }
+    if (!Number.isFinite(dr)) throw new Error("10년물 금리 시세가 없습니다.");
+    return { b, dr, epsLast: d.eps_last, src: d.source };
+  }
   async function runStab() {
     const st = $("#stabStatus"), btn = $("#btnStab");
     const prog = (k, n) => { st.innerHTML = `계산 중... <span class="bar" style="display:inline-block;width:120px;vertical-align:middle"><i style="width:${(k / n) * 100}%"></i></span>`; };
@@ -2069,9 +2081,10 @@
       if (g.date <= today()) throw new Error("목표일이 오늘 이후여야 합니다.");
       const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
       const fb = factorBetas().beta;
-      const inp = { holdings, series, settings: S.state.model, events: S.state.events, betas: fb, mktBeta: fb.mkt || {}, startDate: today(), goal: { amount: Math.max(1, g.amount - cashKrw()), date: g.date }, usdKrw0: fxNow("USD") };
+      const rate = await stabRate();
+      const inp = { holdings, series, settings: S.state.model, events: S.state.events, betas: fb, mktBeta: fb.mkt || {}, startDate: today(), goal: { amount: Math.max(1, g.amount - cashKrw()), date: g.date }, usdKrw0: fxNow("USD"), rate: rate && { b: rate.b, dr: rate.dr } };
       const r = await allocCompute(inp, prog, "stab");
-      lastStab = { ...r, at: Date.now() };
+      lastStab = { ...r, at: Date.now(), epsLast: rate && rate.epsLast };
       try { localStorage.setItem(ST_KEY, JSON.stringify({ sig: stabSig(), ...lastStab })); } catch (e) { /* 무시 */ }
       renderStab();
     } catch (e) { st.textContent = "오류: " + e.message; console.error(e); }
@@ -2086,7 +2099,9 @@
     const wStr = (w) => w.map((x, i) => `${esc(r.tickers[i])} ${pct(x, 0)}`).join(" · ");
     const steps = [["지금", r.w0], ["처음 옮길 비중", r.first], ...r.ctrl.wy.map((w, i) => [`${i + 1}년 뒤 (평균)`, w])];
     $("#stabOut").innerHTML = `<div class="tablewrap"><table class="grid"><tr><th class="l">정책</th><th>목표 확률<br><span class="muted">식단별 하위10 / 중앙 / 상위10</span></th><th>청산 후<br>하위 5%</th><th>청산 후<br>중앙값</th><th>낸 세금<br>(평균)</th></tr>` +
-      row("지금 그대로 보유", r.hold, null) + row("세금 고려 + 하방 보호", r.ctrl, r.ctrl.tax) + `</table></div>` +
+      (r.hold0 ? row("지금 그대로 보유 · 금리 미반영", r.hold0, null) + row("지금 그대로 보유 · 금리 반영", r.hold, null) + row("세금 고려 + 하방 보호 · 금리 반영", r.ctrl, r.ctrl.tax)
+        : row("지금 그대로 보유", r.hold, null) + row("세금 고려 + 하방 보호", r.ctrl, r.ctrl.tax)) + `</table></div>` +
+      (r.rate ? `<p class="small">금리 반영: 10년물 금리 1년 변화 ${r.rate.dr >= 0 ? "+" : ""}${r.rate.dr.toFixed(2)}%p → 시장 기대수익 연 ${pct(r.rate.p50, 1)} 조정 (식단 하위10~상위10 ${pct(r.rate.p10, 1)} ~ ${pct(r.rate.p90, 1)}, 종목은 시장 민감도 β 배). 이익 자료 ${esc(r.epsLast || "")}까지, 출처 Robert J. Shiller.</p>` : "") +
       `<p class="small"><b>제어기가 고른 비중</b></p><ul class="small stabw">${steps.map(([l, w]) => `<li><span class="muted">${l}</span> ${wStr(w)}</li>`).join("")}</ul>` +
       `<p class="small">처음 옮길 때 예상 양도세 ${krw(r.firstTax)}. 외란 방향(시장 공통 오차에 가장 크게 흔들리는 조합): ${r.disturbance.map((x, i) => `${esc(r.tickers[i])} ${x.toFixed(2)}`).join(" · ")}.` +
       (r.hasAvg ? "" : ` <span class="bad">평균 단가가 없어 세금을 0에 가깝게 계산했습니다. 설정의 보유 종목에서 평균 단가를 넣으면 더 정확해집니다.</span>`) + `</p>`;
@@ -2896,7 +2911,7 @@
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
     document.addEventListener("click", (e) => { const b = e.target.closest("[data-jump]"); if (b) $("#" + b.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
     $("#btnAlloc").onclick = () => { allocDirty = true; runAlloc(); };
-    $("#btnStab").onclick = runStab; stabRestore();
+    $("#btnStab").onclick = runStab; $("#stabRate").onchange = () => { lastStab = null; $("#stabOut").innerHTML = ""; $("#stabStatus").textContent = "계산 전 (몇 초 걸립니다)"; stabRestore(); }; stabRestore();
     $("#allocBoxes").addEventListener("click", (e) => { const b = e.target.closest("[data-ak]"); if (!b) return; S.state.alloc_pick = b.dataset.ak; save(false); renderAllocTable(); renderAllocChart(); });
     $("#allocMix").addEventListener("change", (e) => { const k = e.target.dataset.mix; if (!k) return; S.state.alloc_mix = { ...(S.state.alloc_mix || {}), [k]: e.target.value.trim() || ALLOC_DEF[k].mix }; save(false); allocDirty = true; runAlloc(); });
     $("#eventTable").addEventListener("input", onEventEdit);

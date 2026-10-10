@@ -5,6 +5,9 @@
 //    (분산에 τ²·wᵀΩw 가 붙어 외란 방향 노출을 직접 줄인다)
 // 3) 해마다: 실현 수익으로 m, Ω 를 칼만 갱신 → 비중 후보마다 옮길 때 낼 양도세를 빼고
 //    점수 = 목표 확률 − λ·(만기 평가액이 지금의 60% 아래일 확률) 이 가장 큰 비중으로 옮긴다
+// 4) (선택) 금리 반영: data/macro 의 금리→이익 관계식 식단(실러 데이터, 1000벌) 중 하나를 식단마다 뽑아
+//    "1년 금리 변화 × 기울기" 로 나온 앞으로 1~3년 S&P 이익 변화를 목표 기간 연평균으로 바꿔 시장 공통 오차에 더한다 (β 배).
+//    같은 식단에서 금리 몫만 뺀 쌍둥이로 "금리 미반영 보유" 도 같이 돌려 비교한다
 (function () {
   "use strict";
   const M = window.Model, TD = M.TD;
@@ -33,7 +36,8 @@
     return a.map((r) => r.slice(n)); };
   const mul = (X, Y) => X.map((r) => Y[0].map((_, j) => r.reduce((s, x, k) => s + x * Y[k][j], 0)));
 
-  // inp: {holdings: [{ticker, ccy, price0, valueKrw, avgCost}], series, settings, events, betas, mktBeta: {ticker: β}, startDate, goal: {amount, date}, opt}
+  // inp: {holdings: [{ticker, ccy, price0, valueKrw, avgCost}], series, settings, events, betas, mktBeta: {ticker: β}, startDate, goal: {amount, date}, opt,
+  //       rate?: {b: [[b12, b24, b36], ...] (%/%p), dr: 지금 1년 금리 변화 %p}}
   function stabilizer(inp, onProg) {
     const o = { meals: 300, trueMeals: 60, paths: 25, step: 10, lambda: 1, floor: 0.6, tauM: 0.06, ...(inp.opt || {}) };
     const set = inp.settings, scen = set.scenario, holdings = inp.holdings, A = holdings.length, goal = inp.goal;
@@ -47,6 +51,9 @@
     const ciIdx = cash.indexOf(true);
     const rng = rngOf((Number(set.seed) || 1) ^ 0x5eed);
     const prog = (k, n) => onProg && onProg(k, n);
+    // 금리 몫: 식단 j 의 앞으로 y년째 이익 변화(로그 %) = b[j][y]·dr. 목표 기간 T 에 걸친 합을 연평균으로
+    const rate = inp.rate && inp.rate.b && inp.rate.b.length && Number.isFinite(inp.rate.dr) ? inp.rate : null;
+    const rateShift = (j) => { const b = rate.b[j]; let s = 0; for (let y = 0; y < b.length; y++) s += b[y] * rate.dr * Math.max(0, Math.min(1, T - y)); return s / 100 / Math.max(T, 0.25); };
 
     // ---- 식단 한 벌: Σ 는 블록 재표본, μ 는 μ̂ + β·m + 고유 오차
     const Tn = model.factors[0].ret.length;
@@ -55,12 +62,15 @@
     function drawMeal() {
       const idx = []; while (idx.length < Tn) { const s = Math.floor(rng.next() * Math.max(1, Tn - BLOCK)); for (let k = 0; k < BLOCK && idx.length < Tn; k++) idx.push(s + k); }
       const rets = model.factors.map((f) => idx.map((t) => f.ret[t]));
-      const mk = o.tauM * rng.normal();
-      const fs = model.factors.map((f, i) => {
-        const g = { ...f, mu: { ...f.mu } }, r = rets[i].filter((x) => x !== null);
-        if (f.volRaw && r.length > 20 && !f.cash) g.vol = f.vol * (M.std(r) * Math.sqrt(TD)) / f.volRaw;
-        if (i < A && !cash[i] && f.n >= 5) { const mu = Math.max(-0.6, f.mu[scen] + beta[i] * mk + Math.sqrt(idioVar[i]) * rng.normal()); for (const k of Object.keys(g.mu)) g.mu[k] = mu; }
-        return g;
+      const mk = o.tauM * rng.normal(), rs = rate ? rateShift(Math.floor(rng.next() * rate.b.length)) : 0;
+      const fs0 = [], fs = model.factors.map((f, i) => {
+        const g = { ...f, mu: { ...f.mu } }, g0 = { ...f, mu: { ...f.mu } }, r = rets[i].filter((x) => x !== null);
+        if (f.volRaw && r.length > 20 && !f.cash) g.vol = g0.vol = f.vol * (M.std(r) * Math.sqrt(TD)) / f.volRaw;
+        if (i < A && !cash[i] && f.n >= 5) {
+          const mu0 = f.mu[scen] + beta[i] * mk + Math.sqrt(idioVar[i]) * rng.normal(), mu = Math.max(-0.6, mu0 + beta[i] * rs);
+          for (const k of Object.keys(g.mu)) { g.mu[k] = mu; g0.mu[k] = Math.max(-0.6, mu0); }
+        }
+        fs0.push(g0); return g;
       });
       const C = fs.map(() => new Array(F).fill(0));
       for (let i = 0; i < F; i++) { C[i][i] = 1; for (let j = 0; j < i; j++) {
@@ -76,7 +86,7 @@
       const alFx = fxi >= 0 ? Math.log(1 + fs[fxi].mu.base) : 0;
       const alpha = holdings.map((_, a) => Math.log(1 + fs[a].mu[scen]) + (inK(a) ? alFx + cov(a, fxi) : 0));
       const S = holdings.map((_, i) => holdings.map((_, j) => cov(i, j) + (inK(i) ? cov(fxi, j) : 0) + (inK(j) ? cov(i, fxi) : 0) + (inK(i) && inK(j) ? cov(fxi, fxi) : 0)));
-      return { model: { ...model, factors: fs, L, corr: C, corrShrink: lam }, alpha, S };
+      return { model: { ...model, factors: fs, L, corr: C, corrShrink: lam }, model0: rate ? { ...model, factors: fs0, L, corr: C, corrShrink: lam } : null, alpha, S, rs };
     }
 
     // ---- 제어기의 믿음 = 식단 분포
@@ -112,10 +122,18 @@
     // ---- 진짜 식단 위에서 비교 (경로는 기존 엔진: 사건·t 충격·환율 포함)
     const common = { holdings, scenario: scen, goal: goal.amount, monthly: 0, rebalance: false, withEvents: true, dof: set.t_dof, fxOf, usdKrw0: inp.usdKrw0 };
     const cost0 = holdings.map((h, a) => (h.avgCost > 0 ? h.valueKrw * h.avgCost / h.price0 : h.valueKrw));
-    const res = { hold: { pm: [], after: [], term: [] }, ctrl: { pm: [], after: [], term: [], tax: [], wy: [] } };
+    const res = { hold0: { pm: [], after: [], term: [] }, hold: { pm: [], after: [], term: [] }, ctrl: { pm: [], after: [], term: [], tax: [], wy: [] } };
     const first = choose(holdings.map((h) => h.valueKrw), cost0, T, m0, O0);
     for (let t = 0; t < o.trueMeals; t++) {
       const tr = drawMeal(), R = M.simulate(tr.model, { ...common, nPaths: o.paths, seed: 5000 + t });
+      if (tr.model0) { // 금리 미반영 쌍둥이: 같은 식단·같은 난수, 금리 몫만 뺀다. 그대로 보유만
+        const X0 = M.simulate(tr.model0, { ...common, nPaths: o.paths, seed: 5000 + t }).raw, k = X0.M - 1; let hit = 0;
+        for (let p = 0; p < X0.P; p++) {
+          let V = 0, gain = 0; holdings.forEach((h, a) => { const v = h.valueKrw * Math.exp(X0.cg[a][k * X0.P + p]); V += v; gain += v - cost0[a]; });
+          if (V >= goal.amount) hit++; res.hold0.term.push(V); res.hold0.after.push(V - Math.max(0, gain - DED) * TAX);
+        }
+        res.hold0.pm.push(hit / X0.P);
+      }
       const X = R.raw, Mn = X.M, P = X.P, yearK = []; for (let k = 12; k + 6 < Mn - 1; k += 12) yearK.push(k);
       const cg = (a, k, p) => (k ? X.cg[a][k * P + p] : 0);
       for (const pol of ["hold", "ctrl"]) {
@@ -151,7 +169,9 @@
     return {
       tickers: holdings.map((h) => h.ticker), V0, T, w0, first, disturbance: u, beta, cashIdx: ciIdx, hasAvg: holdings.some((h) => h.avgCost > 0),
       firstTax: settle(holdings.map((h) => h.valueKrw), first.map((x) => x * V0), cost0).tax,
-      hold: sum(res.hold), ctrl: { ...sum(res.ctrl), tax: M.mean(res.ctrl.tax), wy: res.ctrl.wy.map(avgW) },
+      hold: sum(res.hold), hold0: rate ? sum(res.hold0) : null,
+      rate: rate ? (() => { const v = prior.map((P) => P.rs); return { dr: rate.dr, p10: q(v, 0.1), p50: q(v, 0.5), p90: q(v, 0.9) }; })() : null,
+      ctrl: { ...sum(res.ctrl), tax: M.mean(res.ctrl.tax), wy: res.ctrl.wy.map(avgW) },
       setup: { meals: o.meals, trueMeals: o.trueMeals, paths: o.paths, lambda: o.lambda, floor: o.floor, tauM: o.tauM, step: o.step },
     };
   }
