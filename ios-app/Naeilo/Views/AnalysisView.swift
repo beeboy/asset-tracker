@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum AnalysisRoute: Hashable { case forecast, myPath, external, dividend, fx, glance }
+enum AnalysisRoute: Hashable { case forecast, myPath, external, dividend, fx, glance, calm }
 
 // 분석 탭: naeilo.com 분석·전략을 폰에 맞게. 카드 머리 숫자는 각 화면 첫 숫자와 같은 계산.
 struct AnalysisView: View {
@@ -16,9 +16,9 @@ struct AnalysisView: View {
             a + m.krw(r.sym, r.h.qty * (DividendView.divs[r.id]?.0 ?? 0)) * (1 - (r.sym.currency == .usd ? 0.15 : 0.154))
         }
         let cards: [(String, String, String, Color, AnalysisRoute)] = [
-            ("3년 전망", "시장이 줄 수 있는 미래의 범위", AppModel.pct(p3), Theme.teal, .forecast),
             ("내 길", "정한 목표대로 가고 있나 (자산 추이)", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + "\(Int((abs(gap) * 100).rounded()))%",
              gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060), .myPath),
+            ("3년 전망", "시장이 줄 수 있는 미래의 범위", AppModel.pct(p3), Theme.teal, .forecast),
             ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "시장 −10%: " + AppModel.sgn(mkt10), Theme.down, .external),
             ("배당·세금", "앞으로 12개월 배당, 팔 때 세금", "연 " + AppModel.won1(div), Theme.teal, .dividend),
             ("환율 영향", "환율이 바뀌면 내 평가액은", "달러 " + AppModel.pct(usd), Theme.blue, .fx),
@@ -27,7 +27,7 @@ struct AnalysisView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 AppHeader().padding(.horizontal, -16)
-                Text("분석").appFont(22, .bold)
+                CalmCard()
                 Text("계산 옵션과 표는 PC naeilo.com에서 크게 봐요.").appFont(13).foregroundStyle(Theme.sub)
                 ForEach(cards, id: \.0) { t, sub, tag, color, route in
                     NavigationLink(value: route) {
@@ -58,6 +58,7 @@ struct AnalysisView: View {
             case .dividend: DividendView()
             case .fx: FxImpactView()
             case .glance: GlanceView()
+            case .calm: CalmView()
             }
         }
     }

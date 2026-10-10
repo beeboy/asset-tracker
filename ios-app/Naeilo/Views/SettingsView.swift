@@ -20,7 +20,6 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader().padding(.horizontal, -16)
-                Text("설정").appFont(22, .bold)
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.offset) { i, r in
                         if i > 0 { Divider().overlay(Theme.line) }

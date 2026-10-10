@@ -11,7 +11,6 @@ struct HoldingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader().padding(.horizontal, -16)
-                Text("내 종목").appFont(22, .bold)
                 Text("\(rows.count)종목 · 평가액 \(AppModel.man(m.total)) · \(AppModel.sgn(m.ret))")
                     .appFont(14).foregroundStyle(Theme.sub)
                 totalChart(rows)

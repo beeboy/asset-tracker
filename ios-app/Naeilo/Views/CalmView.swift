@@ -1,6 +1,6 @@
 import SwiftUI
 
-// 평정 지수 (가위바위보 지수): 홈 카드 + 상세. 계산은 Data/Calm.swift
+// 평정 지수 (가위바위보 지수): 분석 탭 맨 위 카드 + 상세. 계산은 Data/Calm.swift
 // 앱은 지수·내 인물·최근 기록만 짧게, 사건별 표와 추이 그래프는 PC naeilo.com 몫.
 
 struct CalmCard: View {
@@ -8,7 +8,7 @@ struct CalmCard: View {
 
     var body: some View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
-        NavigationLink(value: "calm") {
+        NavigationLink(value: AnalysisRoute.calm) {
             HStack(alignment: .center, spacing: 12) {
                 Pixel(name: "spr_" + who, width: 42, height: 60)
                 VStack(alignment: .leading, spacing: 4) {

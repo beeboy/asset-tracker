@@ -10,7 +10,6 @@ struct HomeView: View {
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                 summary
                 shelterBox
-                CalmCard()
                 if m.playOn && !m.interDone { reminder }
                 if m.playUnlocked { RoutineCard() } else { lockedRoutine }
                 if !m.playUnlocked { yesterdayCard }
@@ -24,7 +23,6 @@ struct HomeView: View {
         .navigationDestination(for: String.self) { route in
             if route == "shelter" { ShelterView() }
             else if route == "goal" { GoalSetView(fromSettings: true) }
-            else if route == "calm" { CalmView() }
             else if route.hasPrefix("read:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i) }
             else if route.hasPrefix("vol1:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i, book: .vol1) }
             else if route.hasPrefix("char:"), let f = Shelter.friends.first(where: { $0.id == route.dropFirst(5) }) { CharacterDetailView(friend: f) }
