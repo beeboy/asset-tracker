@@ -1,6 +1,6 @@
 import SwiftUI
 
-// 분석 탭 상세 화면 (시안 31~35판): 내 길 · 외부 요인 · 배당·세금 · 환율 영향 · 종목 한눈에. (인사이트는 앱에서 뺐다)
+// 분석 탭 상세 화면 (시안 31~35판): 내 길 · 금리 시나리오 · 외부 요인 · 배당·세금 · 환율 영향 · 종목 한눈에. (인사이트는 앱에서 뺐다)
 // 숫자는 모두 계산값이고 사거나 팔라는 문구는 넣지 않는다. 반응 크기·배당은 시안용 예시 값.
 
 // MARK: 공통
@@ -318,6 +318,233 @@ struct ExternalView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: 금리 시나리오 — 금리→이익 관계식 식단 1000벌 (naeilo.com 외부 요인 › 금융·통화와 같은 계산)
+
+/// data/macro/rates_earnings.json (매달 5일 갱신, 출처 Robert J. Shiller). 받은 파일은 저장해 두고 다음에 먼저 쓴다
+@MainActor @Observable
+final class MacroData {
+    static let shared = MacroData()
+    struct File: Decodable {
+        struct Now: Decodable { let date: String?; let rate: Double?; let change_1y: Double? }
+        struct Meals: Decodable { let g_now: Double; let coef: [[[Double]]] }
+        let now: Now?
+        let eps_last: String?
+        let meals: Meals?
+    }
+    var file: File?
+    var failed = false
+    private var loading = false
+    private static let name = "macro.json"
+
+    init() {
+        if let d = Store.readData(Self.name) { file = try? JSONDecoder().decode(File.self, from: d) }
+    }
+    func load() async {
+        guard !loading else { return }
+        loading = true; defer { loading = false }
+        var req = URLRequest(url: Config.data.appendingPathComponent("macro/rates_earnings.json"))
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        do {
+            let (d, r) = try await URLSession.shared.data(for: req)
+            guard (r as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+            let f = try JSONDecoder().decode(File.self, from: d)
+            guard f.meals?.coef.isEmpty == false else { throw URLError(.cannotParseResponse) }
+            file = f; failed = false
+            Store.writeData(d, Self.name)
+        } catch {
+            if file == nil { failed = true }
+        }
+    }
+    /// 지난 1년 10년물 금리 변화 (%p)
+    var change1y: Double? { file?.now?.change_1y }
+    /// 슬라이드 처음 값: 지난 1년 실제 변화 (0.1 단위)
+    var defaultDr: Double { ((change1y ?? 0) * 10).rounded() / 10 }
+}
+
+/// 식단 j, y년째 S&P 실질 EPS 변화(로그 %) = a + b·Δ금리 + c·지금 EPS 증가율. 무작위 경로 없이 식단마다 답 하나
+struct RateScen {
+    let years: Int
+    let yr: [[Double]]          // y년째 변화 [하위10, 중앙, 상위10] (%)
+    let cum: [[Double]]         // y년까지 누적
+    let dropYr: [Double]        // y년째 감소 비율
+    let dropCum: Double         // 끝 해 누적 감소 비율
+    let mkt: [Double]           // 시장 연 기대수익 [하위10, 중앙, 상위10]
+    let slope: [Double]         // 식단마다 3년 동안의 b 합 (금리 1%p 당 이익 변화 %)
+
+    static func q(_ sorted: [Double], _ p: Double) -> Double {
+        guard !sorted.isEmpty else { return 0 }
+        let x = p * Double(sorted.count - 1), i = Int(x.rounded(.down)), j = min(sorted.count - 1, i + 1)
+        let w = x - Double(i)
+        return sorted[i] * (1 - w) + sorted[j] * w
+    }
+    static func band(_ a: [Double]) -> [Double] {
+        let s = a.sorted()
+        return [q(s, 0.1), q(s, 0.5), q(s, 0.9)]
+    }
+
+    init(coef: [[[Double]]], g0: Double, dr: Double, m: Double) {
+        let H = coef.first?.count ?? 0
+        var tot: [[Double]] = [], acc: [[Double]] = [], sl: [Double] = []
+        for c in coef {
+            var t: [Double] = [], s: [Double] = [], run = 0.0, b = 0.0
+            for abc in c where abc.count >= 3 {
+                let v: Double = abc[0] + abc[1] * dr + abc[2] * g0
+                run += v; t.append(v); s.append(run); b += abc[1]
+            }
+            if t.count == H { tot.append(t); acc.append(s); sl.append(b) }
+        }
+        let n = Double(max(1, tot.count))
+        years = H
+        yr = (0..<H).map { y in Self.band(tot.map { $0[y] }) }
+        cum = (0..<H).map { y in Self.band(acc.map { $0[y] }) }
+        dropYr = (0..<H).map { y in Double(tot.filter { $0[y] < 0 }.count) / n }
+        dropCum = H > 0 ? Double(acc.filter { $0[H - 1] < 0 }.count) / n : 0
+        // 시장 연 수익 ≈ 3년 누적 이익 변화(연) + 배당 1.5% + 금리 외 공통 기대수익 (PER 그대로)
+        let Hd = Double(max(1, H))
+        mkt = Self.band(acc.map { a in exp((a.last ?? 0) / 100 / Hd) - 1 + 0.015 + m })
+        slope = sl
+    }
+}
+
+struct RateScenarioView: View {
+    @Environment(AppModel.self) private var m
+    @State private var dr: Double? = nil
+    @State private var mk = 0.0
+    private var macro: MacroData { MacroData.shared }
+
+    var body: some View {
+        Group {
+            if let f = macro.file, let M = f.meals {
+                main(f, M)
+            } else {
+                VStack(spacing: 12) {
+                    if macro.failed { Text("금리 자료를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.").appFont(14).foregroundStyle(Theme.sub) }
+                    else { ProgressView(); Text("금리 자료를 불러오는 중이에요.").appFont(13).foregroundStyle(Theme.sub) }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .background(Theme.bg)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await macro.load() }
+    }
+
+    /// 포트폴리오 시장 민감도 β (외부 요인 화면과 같은 값)
+    private var beta: Double {
+        let tot = max(1, m.total)
+        return m.rows.reduce(0) { $0 + $1.value / tot * ExternalView.coef($1.sym).0 }
+    }
+
+    /// 3년 전망(로그정규 근사)의 연 기대를 shift 만큼 옮겼을 때 3년 안에 목표를 넘을 확률
+    private func prob(_ f: AppModel.Forecast, _ shift: Double) -> Double {
+        let T = 3.0, sg = max(0.01, f.sigma), g: Double = f.mu - sg * sg / 2 + shift
+        let V0 = m.trackValue, K = m.keyValue, M = m.monthly * 1e4
+        let eff: Double = V0 + M * 12 * T * exp(-g * T / 2)
+        guard eff > 0, K > 0 else { return 0 }
+        let num: Double = log(eff / K) + g * T
+        return AppModel.normCDF(num / (sg * sqrt(T)))
+    }
+
+    @ViewBuilder private func main(_ file: MacroData.File, _ M: MacroData.File.Meals) -> some View {
+        let d = dr ?? macro.defaultDr, mm = mk / 100
+        let r = RateScen(coef: M.coef, g0: M.g_now, dr: d, m: mm)
+        let f = m.forecast, kb = beta
+        let base = prob(f, 0)
+        let shifts: [Double] = r.slope.map { b in kb * (b * d / 3 / 100 + mm) }
+        let pb = RateScen.band(shifts.map { prob(f, $0) })
+        let drBinding = Binding<Double>(get: { dr ?? macro.defaultDr }, set: { dr = $0 })
+        let H = r.years
+
+        PinnedLayout {
+            pinnedBox {
+                DetailHead(title: "금리 시나리오", sub: "금리가 이렇게 움직이면 시장 이익과 내 목표는")
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(m.keyName) 확률 (3년) " + AppModel.pct(pb[1])).appFont(22, .bold).foregroundStyle(Theme.teal)
+                    Text("3년 전망 \(AppModel.pct(base)) · 식단 범위 \(AppModel.pct(pb[0]))~\(AppModel.pct(pb[2]))").appFont(12).foregroundStyle(Theme.sub)
+                }
+                RateBandChart(cum: r.cum).frame(height: 130)
+                Text("S&P500 실질 이익 (오늘 = 100) · 진한 선: 중앙 · 띠: 하위 10%~상위 10%").appFont(12).foregroundStyle(Theme.sub)
+            }
+        } content: {
+            VStack(alignment: .leading, spacing: 14) {
+                Card {
+                    HStack { Text("앞으로 1년 10년물 금리 변화").appFont(14); Spacer(); Text(signed(d, "%p", 1)).appFont(15, .bold) }
+                    Slider(value: drBinding, in: -2...3, step: 0.1).tint(Theme.orange).accessibilityLabel("앞으로 1년 10년물 금리 변화")
+                    if let c = macro.change1y {
+                        Text("지난 1년 실제 변화 \(signed(c, "%p", 2))" + (file.now?.rate.map { String(format: " · 지금 %.2f%%", $0) } ?? "")).appFont(12).foregroundStyle(Theme.muted)
+                    }
+                    HStack { Text("시장 공통 기대수익 (금리 외 요인, 연)").appFont(14); Spacer(); Text(signed(mk, "%", 0)).appFont(15, .bold) }
+                    Slider(value: $mk, in: -10...10, step: 1).tint(Theme.orange).accessibilityLabel("시장 공통 기대수익")
+                    Button("지금 값으로") { dr = nil; mk = 0 }.appFont(13, .bold).foregroundStyle(Theme.teal)
+                }
+                Card {
+                    Text("S&P 실질 이익").appFont(15, .bold)
+                    tableRow("", "하위 10%", "중앙", "상위 10%", "감소", head: true)
+                    ForEach(0..<H, id: \.self) { y in
+                        tableRow("\(y + 1)년째 변화", signed(r.yr[y][0], "%", 1), signed(r.yr[y][1], "%", 1), signed(r.yr[y][2], "%", 1), AppModel.pct(r.dropYr[y]))
+                    }
+                    if H > 0 {
+                        tableRow("\(H)년 누적", signed(r.cum[H - 1][0], "%", 1), signed(r.cum[H - 1][1], "%", 1), signed(r.cum[H - 1][2], "%", 1), AppModel.pct(r.dropCum))
+                    }
+                    Divider()
+                    tableRow("시장 연 기대수익", AppModel.sgn(r.mkt[0]), AppModel.sgn(r.mkt[1]), AppModel.sgn(r.mkt[2]), "")
+                    Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · 3년 전망 \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
+                }
+                footnote("\"만약 금리가 이렇게 움직인다면\"을 보는 시나리오 도구이며 예측이나 투자 권유가 아니에요. 미 10년물 금리와 S&P500 실질 EPS의 1960년 이후 관계를 시작 연도·표본을 바꿔 1000가지 관계식(식단)으로 맞추고, 식단마다 답 하나를 계산해 띠(하위 10%~상위 10%)로 보여 줘요. 시장 수익은 PER이 그대로라고 보고 이익 변화 + 배당 약 1.5% + 시장 공통 기대수익으로 계산해요. \(m.keyName) 확률은 3년 전망을 금리 몫과 시장 공통 기대수익만큼 β배 옮긴 근사치예요. 이익 자료 \(file.eps_last ?? "")까지 (지금 EPS 증가율 \(String(format: "%.1f", M.g_now))%), 출처 Robert J. Shiller, 매달 갱신.")
+            }
+            .padding(16)
+        }
+    }
+
+    private func signed(_ v: Double, _ unit: String, _ digits: Int) -> String {
+        (v >= 0 ? "+" : "−") + String(format: "%.\(digits)f", abs(v)) + unit
+    }
+
+    private func tableRow(_ k: String, _ a: String, _ b: String, _ c: String, _ e: String, head: Bool = false) -> some View {
+        HStack(spacing: 4) {
+            Text(k).frame(maxWidth: .infinity, alignment: .leading)
+            Text(a).frame(width: 58, alignment: .trailing)
+            Text(b).fontWeight(head ? .regular : .bold).frame(width: 58, alignment: .trailing)
+            Text(c).frame(width: 58, alignment: .trailing)
+            Text(e).frame(width: 40, alignment: .trailing)
+        }
+        .appFont(12, head ? .regular : .semibold).foregroundStyle(head ? Theme.sub : Theme.ink).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+    }
+}
+
+/// 누적 이익 띠 (오늘 = 100, 0~H년)
+private struct RateBandChart: View {
+    let cum: [[Double]]
+    var body: some View {
+        Canvas { ctx, size in
+            let lv: [[Double]] = (0..<3).map { k in [100.0] + cum.map { 100 * exp($0[k] / 100) } }
+            let n = lv[1].count
+            let all = lv.flatMap { $0 }
+            let hi = (all.max() ?? 110) * 1.03, lo = (all.min() ?? 90) * 0.97
+            let x = { (i: Int) -> CGFloat in CGFloat(i) / CGFloat(max(1, n - 1)) * (size.width - 8) + 4 }
+            let y = { (v: Double) -> CGFloat in CGFloat((hi - v) / max(1e-9, hi - lo)) * (size.height - 14) }
+            let area = Path { p in
+                for i in 0..<n { let pt = CGPoint(x: x(i), y: y(lv[2][i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) }
+                for i in stride(from: n - 1, through: 0, by: -1) { p.addLine(to: CGPoint(x: x(i), y: y(lv[0][i]))) }
+                p.closeSubpath()
+            }
+            ctx.fill(area, with: .color(Theme.teal.opacity(0.16)))
+            ctx.stroke(Path { p in p.move(to: CGPoint(x: 0, y: y(100))); p.addLine(to: CGPoint(x: size.width, y: y(100))) },
+                       with: .color(Theme.muted), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            for k in [0, 2] {
+                ctx.stroke(Path { p in for i in 0..<n { let pt = CGPoint(x: x(i), y: y(lv[k][i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } },
+                           with: .color(Theme.teal.opacity(0.6)), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            }
+            ctx.stroke(Path { p in for i in 0..<n { let pt = CGPoint(x: x(i), y: y(lv[1][i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } },
+                       with: .color(Theme.teal), lineWidth: 2)
+            for i in 1..<max(2, n) where i < n {
+                ctx.draw(Text("\(i)년").font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: x(i) - 12, y: size.height - 6))
+            }
+        }
+        .accessibilityLabel("S&P500 이익 띠 그래프")
     }
 }
 
