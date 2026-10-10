@@ -36,7 +36,7 @@ struct Progress: Codable, Equatable {
     var trust: Double
     var shock: Bool
     var monthly: Double
-    var syncOn: Bool
+    var syncOn: Bool               // 기록용 (실제 상태는 이 기기 키체인)
     var widgetSel: [String]?
 
     private static let key = "progress.v1"
@@ -71,7 +71,7 @@ extension AppModel {
         goalTaxPick = p.goalTaxPick
         dayLog = p.dayLog; weekGuess = p.weekGuess
         homeFriend = p.homeFriend; readPos = p.readPos; readLast = p.readLast
-        lens = p.lens; trust = p.trust; shock = p.shock; monthly = p.monthly; syncOn = p.syncOn; widgetSel = p.widgetSel
+        lens = p.lens; trust = p.trust; shock = p.shock; monthly = p.monthly; widgetSel = p.widgetSel
         day = p.day
         catchUpDay(from: p.lastOpen)
     }

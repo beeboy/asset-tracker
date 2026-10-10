@@ -9,7 +9,7 @@ struct SettingsView: View {
         let onN = m.alerts.values.filter { $0 }.count
         let rows: [(String, String, SettingsRoute)] = [
             ("알림", onN > 0 ? "\(onN)개 켜짐" : "모두 꺼짐", .alerts),
-            ("기기 동기화", m.syncOn ? "PC naeilo.com과 연결됨" : "연결 안 됨", .sync),
+            ("기기 동기화", m.syncOn ? "자동 동기화 켜짐 · naeilo.com과 같은 값" : "꺼짐", .sync),
             ("위젯", "받은 위젯 \(m.widgets.filter(\.ok).count)개 · 홈 화면 \(m.widgetSelected.count)개", .widgets),
             ("세금 규칙", "대한민국 거주자", .tax),
             ("시세 기준", "미국 종목·환율 지금 가격 · 한국 종목 전일 종가", .price),

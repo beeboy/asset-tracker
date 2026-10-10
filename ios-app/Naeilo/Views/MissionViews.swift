@@ -72,53 +72,65 @@ private func statBox(_ k: String, _ v: String, _ c: Color = Theme.teal) -> some 
 }
 
 // MARK: 미션 1 — 종목·단가 넣기
+// 내 종목에 있는 종목을 그대로 보여 주고 수량·평균 단가를 고친다. 내 종목이 비어 있으면 시안처럼 DRNK·QQQ 칸을 준다
 struct Mission1View: View {
     @Environment(AppModel.self) private var m
-    @State private var tq = ""
-    @State private var tp = ""
-    @State private var qq = ""
-    @State private var qp = ""
+    @State private var ids: [String] = []
+    @State private var q: [String: String] = [:]
+    @State private var p: [String: String] = [:]
+
+    private func num(_ t: String?) -> Double { Double((t ?? "").replacingOccurrences(of: ",", with: "")) ?? 0 }
 
     var body: some View {
-        let ok = [tq, tp].allSatisfy { (Double($0) ?? 0) > 0 } || [qq, qp].allSatisfy { (Double($0) ?? 0) > 0 }
+        let ok = ids.contains { num(q[$0]) > 0 && num(p[$0]) > 0 }
         MissionPage(kicker: "미션 1 / 4", title: "가진 종목과 산 가격을 알려주세요") {
-            Text("매수 단가가 있어야 \"본전\"을 계산할 수 있어요. 기기 밖으로 나가지 않아요.").appFont(15).foregroundStyle(Theme.sub)
-            entry("DRNK", now("DRNK"), $tq, $tp)
-            entry("QQQ", now("QQQ"), $qq, $qp)
-            Text("+ 종목 추가 (종목 탭에서 더 넣을 수 있어요)").appFont(14).foregroundStyle(Theme.muted)
-            PrimaryButton(title: ok ? "회복 확률 보기" : "수량과 단가를 넣어 주세요", color: ok ? Theme.teal : Theme.muted) {
+            Text("매수 단가가 있어야 \"본전\"을 계산할 수 있어요. " + (m.syncOn ? "기기 동기화가 켜져 있어서, 이 폰에서 암호화한 값만 같은 비밀번호의 기기로 가요." : "기기 밖으로 나가지 않아요."))
+                .appFont(15).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            ForEach(ids, id: \.self) { id in
+                if let s = Sample.symbol(id) { entry(s) }
+            }
+            NavigationLink { AddHoldingView() } label: {
+                Label("종목 추가", systemImage: "plus").appFont(14, .semibold).foregroundStyle(Theme.teal)
+            }
+            PrimaryButton(title: ok ? (m.route == .recover ? "회복 확률 보기" : "평가액 보기") : "수량과 단가를 넣어 주세요", color: ok ? Theme.teal : Theme.muted) {
                 guard ok else { return }
-                set("DRNK", tq, tp); set("QQQ", qq, qp)
+                for id in ids {
+                    let qn = num(q[id]), pn = num(p[id])
+                    if let i = m.holdings.firstIndex(where: { $0.symbol == id }) {
+                        if qn > 0 && pn > 0 { m.holdings[i] = Holding(symbol: id, qty: qn, avg: pn) } else { m.holdings.remove(at: i) }
+                    } else if qn > 0 && pn > 0 { m.holdings.append(Holding(symbol: id, qty: qn, avg: pn)) }
+                }
                 if m.route == .recover { m.done.insert(1); m.boardPath.append(.m1r) }
                 else { m.gDone.insert("hold"); m.boardPath.append(.gp1r) }
             }
         }
-        .onAppear {
-            let d = m.holdings.first { $0.symbol == "DRNK" }, q = m.holdings.first { $0.symbol == "QQQ" }
-            tq = d.map { $0.qty.formatted() } ?? ""; tp = d.map { $0.avg.formatted() } ?? ""
-            qq = q.map { $0.qty.formatted() } ?? ""; qp = q.map { $0.avg.formatted() } ?? ""
+        // 종목 추가에서 돌아오면 새 종목도 칸에 넣는다
+        .onAppear { load() }
+        .onChange(of: m.holdings) { _, _ in load() }
+    }
+
+    private func load() {
+        let held = m.holdings.map(\.symbol)
+        let want = held.isEmpty ? ["DRNK", "QQQ"] : held
+        for id in want where !ids.contains(id) {
+            ids.append(id)
+            if let h = m.holdings.first(where: { $0.symbol == id }) { q[id] = h.qty.formatted(.number.grouping(.never)); p[id] = h.avg.formatted(.number.grouping(.never)) }
         }
     }
 
-    private func set(_ k: String, _ q: String, _ p: String) {
-        m.holdings.removeAll { $0.symbol == k }
-        if let qn = Double(q), qn > 0, let pn = Double(p), pn > 0 {
-            m.holdings.insert(Holding(symbol: k, qty: qn, avg: pn), at: k == "DRNK" ? 0 : min(1, m.holdings.count))
-        }
+    /// 지금 가격 (시세 기준과 같음). DRNK 는 가상 종목
+    private func now(_ s: Symbol) -> String {
+        (s.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(s, s.last) + (s.id == "DRNK" ? " (가상 종목)" : "")
     }
 
-    /// 지금 가격 (시세 기준과 같음). DRNK 는 가상 종목이라 예시 값
-    private func now(_ id: String) -> String {
-        guard let s = Sample.symbol(id) else { return "" }
-        return (s.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(s, s.last) + (id == "DRNK" ? " (가상 종목)" : "")
-    }
-
-    private func entry(_ k: String, _ now: String, _ q: Binding<String>, _ p: Binding<String>) -> some View {
-        Card {
-            HStack { LogoTile(symbol: k, size: 28); Text(k).appFont(17, .bold); Spacer(); Text(now).appFont(13).foregroundStyle(Theme.sub) }
+    private func entry(_ s: Symbol) -> some View {
+        let unit = s.currency == .usd ? "$" : "원"
+        let qb = Binding(get: { q[s.id] ?? "" }, set: { q[s.id] = $0 }), pb = Binding(get: { p[s.id] ?? "" }, set: { p[s.id] = $0 })
+        return Card {
+            HStack { LogoTile(symbol: s.id, size: 28); Text(s.short).appFont(17, .bold); Spacer(); Text(now(s)).appFont(13).foregroundStyle(Theme.sub) }
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) { field("수량(주)", q); field("평균 단가($)", p) }
-                VStack(spacing: 10) { field("수량(주)", q); field("평균 단가($)", p) }
+                HStack(spacing: 10) { field("수량(주)", qb); field("평균 단가(\(unit))", pb) }
+                VStack(spacing: 10) { field("수량(주)", qb); field("평균 단가(\(unit))", pb) }
             }
         }
     }
@@ -577,6 +589,13 @@ struct AppStartView: View {
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                         if denied { Text("알림이 꺼져 있어요. 아이폰 설정 > 알림 > naeilo에서 허용한 뒤 다시 눌러 주세요.").appFont(12).foregroundStyle(Theme.sub) }
+                    } else if cur && i == 2 {
+                        // 3단계는 실제로: 동기화 화면에서 켜면 끝난다
+                        NavigationLink { SyncView() } label: {
+                            Text("동기화 켜러 가기").appFont(14, .bold).foregroundStyle(.white)
+                                .padding(.horizontal, 14).frame(minHeight: 44).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        if !m.syncOn { Text("PC가 없으면 이 폰에서만 켜 두어도 돼요. 폰을 바꿀 때 같은 비밀번호로 되찾을 수 있어요.").appFont(12).foregroundStyle(Theme.sub) }
                     } else if cur {
                         Button("앱에서 했어요 (시안)") { withAnimation { m.nxStep += 1 } }
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)

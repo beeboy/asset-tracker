@@ -43,10 +43,16 @@ struct RootView: View {
         .onChange(of: model.holdings) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.route) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.nxStep) { _, _ in WidgetBridge.write(model) }
+        // 앱 시작 3단계: 동기화를 켜면 끝난다 (이미 켜져 있으면 3단계에 오는 순간)
+        .onChange(of: Sync.shared.isOn, initial: true) { _, on in if on && model.nxStep == 2 { model.nxStep = 3 } }
+        .onChange(of: model.nxStep) { _, n in if n == 2 && Sync.shared.isOn { model.nxStep = 3 } }
         // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로
         .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay() } }
-        // 미션 진행: 바뀔 때마다 저장
-        .onChange(of: model.progress) { _, _ in model.saveProgress() }
+        // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
+        .onChange(of: model.progress) { _, _ in model.saveProgress(); if model.persists { Sync.shared.changed(model) } }
+        .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }
+        // 앱을 열거나 앞으로 올 때 다른 기기 값 받기
+        .onChange(of: phase, initial: true) { _, p in if p == .active && model.persists { Task { await Sync.shared.pull(model) } } }
         // 알림: 설정이 바뀌면 다시 예약
         .onChange(of: model.alerts) { _, _ in Task { await Notifier.reschedule(model) } }
         .onChange(of: model.alertHr) { _, _ in Task { await Notifier.reschedule(model) } }

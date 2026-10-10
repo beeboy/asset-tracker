@@ -4,6 +4,7 @@ import SwiftUI
 struct StartView: View {
     @Environment(AppModel.self) private var m
     @State private var pick: Route? = nil     // 고른 길: 아래 예보 카드 숫자가 그 길의 숫자로 바뀐다
+    @State private var restore = false        // 다른 기기 값 불러오기 (기기 동기화)
 
     var body: some View {
         ScrollView {
@@ -28,6 +29,11 @@ struct StartView: View {
                     PrimaryButton(title: "이 길로 시작하기") { m.startRoute(pick) }
                 }
                 Text("잘 모르겠다면 \"마이너스\"로 시작하세요. 매수 단가를 넣으면 자동으로 알려드려요.").appFont(13).foregroundStyle(Theme.muted)
+                Button { restore = true } label: {
+                    Label("PC나 다른 폰에서 쓰던 값 불러오기", systemImage: "arrow.triangle.2.circlepath").appFont(14, .semibold)
+                        .foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
                 StartForecastCard(route: pick).padding(.top, 8)
                 Text("See Tomorrow, Today.").appFont(12).kerning(0.4).foregroundStyle(Theme.muted)
                     .frame(maxWidth: .infinity).padding(.top, 12)
@@ -36,6 +42,9 @@ struct StartView: View {
             .foregroundStyle(Theme.ink)
         }
         .background(Theme.bg)
+        .sheet(isPresented: $restore) { NavigationStack { SyncView() } }
+        // 불러오기가 끝나면 첫 질문은 닫힌다
+        .onChange(of: m.onboarded) { _, v in if v { restore = false } }
     }
 
     private func option(_ t: String, _ sub: String, _ r: Route) -> some View {

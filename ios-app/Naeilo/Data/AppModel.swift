@@ -34,6 +34,10 @@ final class AppModel {
         if let t = UserDefaults.standard.string(forKey: "addTest")?.split(separator: ","), t.count == 3 { addHolding(String(t[0]), String(t[1]), String(t[2])) }
         // 확인용: -searchTest tesla → 종목 추가 화면을 그 검색어로 연다
         if UserDefaults.standard.string(forKey: "searchTest") != nil { holdPath = NavigationPath(["add"]) }
+        // 확인용: -syncTest <비밀번호> → 그 비밀번호로 동기화를 켠다 (사이트와 주고받기 확인)
+        #if DEBUG
+        if let pw = UserDefaults.standard.string(forKey: "syncTest"), !Sync.shared.isOn { Task { @MainActor in await Sync.shared.turnOn(password: pw, model: self) } }
+        #endif
         // 캡처용: -home shelter 또는 -home char:ir
         if let h = UserDefaults.standard.string(forKey: "home") { homePath = h == "shelter" ? ["shelter"] : ["shelter", h] }
         if let f = UserDefaults.standard.string(forKey: "friend") { shelterSel = f }
@@ -170,7 +174,8 @@ final class AppModel {
     var alertLast: String? = nil
     var alertTh = UserDefaults.standard.object(forKey: "alertTh") as? Int ?? 5 { didSet { UserDefaults.standard.set(alertTh, forKey: "alertTh") } }
     var alertHr = UserDefaults.standard.object(forKey: "alertHr") as? Int ?? 8 { didSet { UserDefaults.standard.set(alertHr, forKey: "alertHr") } }
-    var syncOn = true
+    /// 기기 자동 동기화 (Sync). 시안 때의 가짜 연결 대신 실제 상태
+    var syncOn: Bool { Sync.shared.isOn }
     var widgetSel: [String]? = nil
     var settingsPath: [SettingsRoute] = []
 

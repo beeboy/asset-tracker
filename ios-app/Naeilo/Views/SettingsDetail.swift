@@ -137,58 +137,91 @@ struct AlertsView: View {
 
 struct SyncView: View {
     @Environment(AppModel.self) private var m
-    @State private var code = ""
+    @State private var pw = ""
+    @State private var pw2 = ""
+    @State private var askOff = false
+    private var sync: Sync { .shared }
 
     var body: some View {
+        let on = sync.isOn
         SettingsPage(title: "기기 동기화") {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
                     Image(systemName: "iphone").font(.system(size: 26))
-                    Rectangle().fill(m.syncOn ? Theme.yellow : Theme.muted).frame(width: 60, height: 3)
-                        .mask { if m.syncOn { Rectangle() } else { HStack(spacing: 4) { ForEach(0..<8, id: \.self) { _ in Rectangle() } } } }
+                    Rectangle().fill(on ? Theme.yellow : Theme.muted).frame(width: 60, height: 3)
+                        .mask { if on { Rectangle() } else { HStack(spacing: 4) { ForEach(0..<8, id: \.self) { _ in Rectangle() } } } }
                     Image(systemName: "desktopcomputer").font(.system(size: 26))
                 }
-                Text(m.syncOn ? "연결됨" : "아직 연결 안 됨").appFont(20, .bold)
-                Text(m.syncOn ? "마지막 동기화: 방금" : "폰과 PC가 같은 숫자를 보려면 연결해요").appFont(13)
+                Text(on ? "자동 동기화 켜짐" : "아직 켜지 않음").appFont(20, .bold)
+                Text(statusText).appFont(13).fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(m.syncOn ? .white : Theme.ink)
+            .foregroundStyle(on ? .white : Theme.ink)
             .padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(m.syncOn ? Theme.teal : Theme.track, in: RoundedRectangle(cornerRadius: 20))
+            .background(on ? Theme.teal : Theme.track, in: RoundedRectangle(cornerRadius: 20))
 
-            if m.syncOn {
-                Card {
-                    Text("연결된 기기").appFont(15, .bold)
-                    row("이 iPhone", "지금 사용 중")
-                    row("PC · naeilo.com", "오늘 09:12")
-                }
+            if let c = sync.conflict { conflictCard(c) }
+
+            if on {
                 Card {
                     Text("함께 맞춰지는 것").appFont(15, .bold)
-                    ForEach([("종목·수량·평균 단가", true), ("미션 진행과 위젯", true), ("목표와 계획", true), ("알림 설정", false)], id: \.0) { k, y in
+                    ForEach([("종목·수량·평균 단가", true), ("미션 진행·오늘의 1분·쉼터", true), ("목표·사건·모형 설정 (사이트)", true), ("알림·화면 모드", false)], id: \.0) { k, y in
                         HStack { Text(k).appFont(14); Spacer(); Text(y ? "함께" : "기기마다 따로").appFont(13, .semibold).foregroundStyle(y ? Theme.teal : Theme.muted) }
                     }
                 }
-                Button("연결 끊기") { withAnimation { m.syncOn = false } }
+                PrimaryButton(title: sync.state == .working ? "맞추는 중…" : "지금 맞추기") { Task { await sync.pull(m) } }
+                Button("이 기기 동기화 끄기") { askOff = true }
                     .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                    .confirmationDialog("이 기기 동기화를 끌까요?", isPresented: $askOff, titleVisibility: .visible) {
+                        Button("끄기", role: .destructive) { sync.turnOff() }
+                    } message: { Text("이 폰에 있는 값은 그대로 남고, 다른 기기와 더 맞추지 않아요. 다시 켜려면 같은 비밀번호가 필요해요.") }
             } else {
-                let ok = code.count == 6 && code.allSatisfy(\.isNumber)
+                let ok = pw.count >= 10 && pw == pw2
                 Card {
-                    Text("PC와 연결하기").appFont(15, .bold)
-                    Text("1. PC 브라우저에서 naeilo.com에 들어가요.\n2. 오른쪽 위 \"폰 연결\"을 누르면 6자리 코드가 나와요.\n3. 그 코드를 아래에 넣어요.").appFont(14).lineSpacing(4)
-                    TextField("000000", text: $code).keyboardType(.numberPad).appFont(24, .bold).multilineTextAlignment(.center)
-                        .frame(minHeight: 56).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
-                        .accessibilityLabel("연결 코드 6자리")
-                        .onChange(of: code) { _, v in code = String(v.filter(\.isNumber).prefix(6)) }
-                    PrimaryButton(title: "연결하기", color: ok ? Theme.teal : Theme.muted) { if ok { withAnimation { m.syncOn = true; code = "" } } }
-                    Text("코드는 5분 동안만 쓸 수 있어요. 시안에서는 아무 숫자 6자리나 넣으면 돼요.").appFont(12).foregroundStyle(Theme.muted)
+                    Text("동기화 켜기").appFont(15, .bold)
+                    Text("쓰는 기기마다 같은 동기화 비밀번호를 넣으면 종목과 진행이 자동으로 맞춰져요. PC에서는 naeilo.com 설정 > 기기 자동 동기화에 같은 비밀번호를 넣어요.")
+                        .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                    SecureField("동기화 비밀번호 (10자 이상)", text: $pw).textContentType(.newPassword)
+                        .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                    SecureField("한 번 더", text: $pw2).textContentType(.newPassword)
+                        .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                    if !pw.isEmpty && pw.count < 10 { Text("10자 이상으로 남이 짐작하기 어렵게 정해 주세요.").appFont(12).foregroundStyle(Theme.up) }
+                    else if !pw2.isEmpty && pw != pw2 { Text("두 번 넣은 비밀번호가 달라요.").appFont(12).foregroundStyle(Theme.up) }
+                    PrimaryButton(title: sync.state == .working ? "준비 중…" : "켜기", color: ok ? Theme.teal : Theme.muted) {
+                        guard ok, sync.state != .working else { return }
+                        let p = pw; pw = ""; pw2 = ""
+                        Task { await sync.turnOn(password: p, model: m) }
+                    }
                 }
             }
-            note("같은 계정이면 폰에서 넣은 종목과 미션 진행이 PC naeilo.com에도 바로 보여요. 계산 근거와 큰 그래프는 PC에서 보면 편해요.")
+            note("이 폰에서 암호화한 값만 서버에 두어서, 서버는 보유 내역을 볼 수 없어요. 비밀번호는 어디에도 저장하지 않아서 잊으면 되찾을 수 없어요. 그때는 새 비밀번호로 다시 켜면 돼요. 두 기기에서 같이 고치면 나중에 고친 쪽이 남아요.")
         }
     }
 
-    private func row(_ k: String, _ v: String) -> some View {
-        HStack { Text(k).appFont(14, .bold); Spacer(); Text(v).appFont(13).foregroundStyle(Theme.sub) }
+    private var statusText: String {
+        switch sync.state {
+        case .off: return "폰과 PC가 같은 숫자를 보려면 켜요"
+        case .idle: return "같은 비밀번호를 넣은 기기끼리 맞춰져요"
+        case .working: return "맞추는 중…"
+        case .ok(let d):
+            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "a h:mm"
+            return "마지막으로 맞춘 때: \(f.string(from: d))"
+        case .failed(let e): return "맞추지 못했어요: \(e)"
+        }
+    }
+
+    private func conflictCard(_ c: Sync.Remote) -> some View {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일 a h:mm"
+        let n = (c.state["holdings"]?.value as? [[String: Any]])?.count ?? 0
+        return Card {
+            Text("다른 기기에 저장된 값이 있어요").appFont(15, .bold)
+            Text("\(f.string(from: Date(timeIntervalSince1970: c.at / 1000)))에 저장된 값 (종목 \(n)개)이 있어요. 어느 쪽에 맞출까요?")
+                .appFont(14).fixedSize(horizontal: false, vertical: true)
+            PrimaryButton(title: "다른 기기 값으로 이 폰을 맞추기") { Task { await sync.resolve(useRemote: true, m) } }
+            Button("이 폰 값을 다른 기기로 보내기") { Task { await sync.resolve(useRemote: false, m) } }
+                .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 48)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
+        }
     }
 }
 
