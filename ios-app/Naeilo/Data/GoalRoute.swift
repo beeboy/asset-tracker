@@ -190,7 +190,7 @@ extension AppModel {
     var goalSaved: Double { gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
 
     func switchRoute(_ r: Route) {
-        route = r; boardPath = []; analysisPath = []
+        route = r; boardPath = []; analysisPath = NavigationPath()
         switch r {
         case .recover: break
         case .plus: gMix = "mine"; gK = (goalStart * 2 / 1000).rounded() * 1000; gY = 1

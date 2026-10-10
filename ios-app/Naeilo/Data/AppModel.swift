@@ -28,21 +28,38 @@ final class AppModel {
         if let g = UserDefaults.standard.string(forKey: "goal"), let r = Route(rawValue: g) {
             switchRoute(r); gDone = Set(goalSteps.filter { !$0.inter }.map(\.id)); nxStep = 3
         }
+        // 확인용: -addTest 005930,10,84000 → 종목 추가와 같은 경로로 넣는다
+        if let t = UserDefaults.standard.string(forKey: "addTest")?.split(separator: ","), t.count == 3 { addHolding(String(t[0]), String(t[1]), String(t[2])) }
         // 캡처용: -home shelter 또는 -home char:ir
         if let h = UserDefaults.standard.string(forKey: "home") { homePath = h == "shelter" ? ["shelter"] : ["shelter", h] }
         if let f = UserDefaults.standard.string(forKey: "friend") { shelterSel = f }
-        if let k = UserDefaults.standard.string(forKey: "hold"), let sy = Sample.symbol(k) { holdPath = [sy] }
+        if let k = UserDefaults.standard.string(forKey: "hold"), let sy = Sample.symbol(k) { holdPath = NavigationPath([sy]) }
         let st: [String: SettingsRoute] = ["alerts": .alerts, "sync": .sync, "widgets": .widgets, "tax": .tax, "price": .price, "howto": .howto, "route": .route, "charPreview": .charPreview]
         if let r = UserDefaults.standard.string(forKey: "set").flatMap({ st[$0] }) { settingsPath = [r] }
         // 캡처용: -route m3 처럼 미션 화면을 바로 연다
         let routes: [String: MissionRoute] = ["m1": .m1, "m1r": .m1r, "m2": .m2, "m2r": .m2r, "m3": .m3, "m3r": .m3r, "m4": .m4, "m4r": .m4r, "nx": .nx, "g1": .g1, "g1r": .g1r, "g3": .g3, "g3r": .g3r, "gt": .gt, "gi": .gi, "gp1r": .gp1r]
         if let r = UserDefaults.standard.string(forKey: "route").flatMap({ routes[$0] }) { boardPath = [r] }
         let an: [String: AnalysisRoute] = ["forecast": .forecast, "myPath": .myPath, "external": .external, "dividend": .dividend, "fx": .fx, "glance": .glance]
-        if let r = UserDefaults.standard.string(forKey: "an").flatMap({ an[$0] }) { analysisPath = [r] }
+        if let r = UserDefaults.standard.string(forKey: "an").flatMap({ an[$0] }) { analysisPath = NavigationPath([r]) }
     }
 
     // 보유
-    var holdings: [Holding] = Sample.startHoldings
+    // 내 종목은 앱을 다시 켜도 남는다 (다른 시안 상태는 켤 때마다 시연 상태로 시작)
+    var holdings: [Holding] = AppModel.savedHoldings ?? Sample.startHoldings {
+        didSet { if let d = try? JSONEncoder().encode(holdings) { UserDefaults.standard.set(d, forKey: "holdings") } }
+    }
+    /// 종목 추가: 수량·평균 단가가 0보다 큰 숫자여야 한다 (쉼표·공백 허용). 같은 종목은 새 값으로 바꾼다
+    @discardableResult
+    func addHolding(_ id: String, _ qty: String, _ avg: String) -> Bool {
+        let num = { (t: String) in Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)) }
+        guard Sample.symbol(id) != nil, let q = num(qty), q > 0, let a = num(avg), a > 0 else { return false }
+        holdings.removeAll { $0.symbol == id }
+        holdings.append(Holding(symbol: id, qty: q, avg: a))
+        return true
+    }
+    static var savedHoldings: [Holding]? {
+        UserDefaults.standard.data(forKey: "holdings").flatMap { try? JSONDecoder().decode([Holding].self, from: $0) }
+    }
 
     // 미션 (회복 루트): 1 종목·단가, 2 원인 진단, 3 내 계획, 5 앱 시작 3단계, 6 인터미션
     // 시안 시연용 시작 상태: 미션 1~3과 앱 시작 3단계를 마치고 인터미션 1주차를 고른 뒤
@@ -131,14 +148,15 @@ final class AppModel {
     var taxSellQty = 0.0
     var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
     var boardPath: [MissionRoute] = []
-    var analysisPath: [AnalysisRoute] = []
+    var analysisPath = NavigationPath()
     var homePath: [String] = []
     var tab: Tab = RootView.launchTab
     // 처음 실행이면 첫 질문(플러스·마이너스·시작 전)부터. 캡처·시연용 실행 인자가 있으면 건너뛴다
     var onboarded = UserDefaults.standard.bool(forKey: "onboarded") || UserDefaults.standard.string(forKey: "tab") != nil
         || UserDefaults.standard.string(forKey: "goal") != nil || UserDefaults.standard.string(forKey: "demo") != nil
     var appearance = UserDefaults.standard.string(forKey: "appearance") ?? "system"   // system · light · dark
-    var holdPath: [Symbol] = []
+    // 종목 탭은 종목(Symbol)과 '종목 추가'(String)를, 분석 탭은 분석 화면과 종목을 같이 쌓으므로 NavigationPath
+    var holdPath = NavigationPath()
 
     // 설정
     var alerts: [String: Bool] = ["be": true, "drift": false, "dep": false, "morn": false]

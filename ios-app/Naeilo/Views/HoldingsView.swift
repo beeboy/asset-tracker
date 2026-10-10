@@ -203,6 +203,8 @@ struct AddHoldingView: View {
     @State private var picked: Symbol? = nil
     @State private var qty = ""
     @State private var avg = ""
+    @State private var warn = false
+    @FocusState private var focus: Int?
 
     var body: some View {
         let q = query.lowercased().replacingOccurrences(of: " ", with: "")
@@ -218,13 +220,12 @@ struct AddHoldingView: View {
                     Card {
                         Text("\(p.name) (\(p.id))").appFont(16, .bold)
                         Text((p.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
-                        field("수량 (주)", $qty)
-                        field("평균 단가 (\(p.currency == .usd ? "달러" : "원"))", $avg)
+                        field("수량 (주)", $qty).focused($focus, equals: 1)
+                        field("평균 단가 (\(p.currency == .usd ? "달러" : "원"))", $avg).focused($focus, equals: 2)
+                        if warn { Text("수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
                         PrimaryButton(title: "추가하기") {
-                            guard let qn = Double(qty), qn > 0, let an = Double(avg), an > 0 else { return }
-                            m.holdings.removeAll { $0.symbol == p.id }
-                            m.holdings.append(Holding(symbol: p.id, qty: qn, avg: an))
-                            dismiss()
+                            focus = nil
+                            if m.addHolding(p.id, qty, avg) { dismiss() } else { warn = true }
                         }
                     }
                 } else if found.isEmpty {
@@ -256,6 +257,9 @@ struct AddHoldingView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .scrollDismissesKeyboard(.interactively)
+        // 숫자 자판에는 닫기 키가 없어서 자판 위에 '완료'를 둔다
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = nil } } }
     }
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {

@@ -31,7 +31,7 @@ struct Profile {
     var extra: (String, String)? = nil
 }
 
-struct Holding: Identifiable, Hashable {
+struct Holding: Identifiable, Hashable, Codable {
     var id: String { symbol }
     var symbol: String
     var qty: Double
