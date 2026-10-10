@@ -286,6 +286,13 @@ final class Sync {
             let cost = hs.reduce(0.0) { a, h in a + (Sample.symbol(h.symbol).map { m.krw($0, h.qty * h.avg) } ?? 0) }
             let val = hs.reduce(0.0) { a, h in a + (Sample.symbol(h.symbol).map { m.krw($0, h.qty * $0.last) } ?? 0) }
             m.startRoute(cost > 0 && val >= cost ? .plus : .recover)
+            // 사이트에 정한 목표가 있으면 목표 루트의 목표 금액·기간으로
+            if m.isGoal, let g = st["goal"] as? [String: Any], let amt = g["amount"] as? Double, amt > 0 {
+                m.gK = (amt / 1e4).rounded()
+                if let ds = g["date"] as? String, let dd = Day.date(ds) {
+                    m.gY = max(1, Int((dd.timeIntervalSinceNow / (365.25 * 86400)).rounded()))
+                }
+            }
         }
         if let app {
             for v in (app["virtual"] as? [[String: Any]]) ?? [] {

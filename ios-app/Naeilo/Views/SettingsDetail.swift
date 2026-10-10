@@ -235,7 +235,7 @@ extension AppModel {
             .init(id: "trend", name: "자산 추이", size: 1, val: AppModel.man(total), ok: n >= 1, how: "앱 시작 1단계", friend: false),
             .init(id: "prog", name: "본전 진행", size: 1, val: "+" + String(format: "%.1f", need * 100) + "% 남음", ok: n >= 2, how: "앱 시작 2단계", friend: false),
             .init(id: "block", name: "블록", size: 1, val: "\(done.filter { [1, 2, 3, 5].contains($0) }.count)/4", ok: n >= 3, how: "앱 시작 3단계", friend: false),
-            .init(id: "yest", name: "오늘의 움직임", size: 2, val: AppModel.sgn(todayMove) + " · " + rows.map { "\($0.id) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · "), ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
+            .init(id: "yest", name: "오늘의 움직임", size: 2, val: AppModel.sgn(todayMove) + " · " + rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · "), ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
             .init(id: "mix", name: "비중", size: 1, val: "DRNK " + AppModel.pct(drnkWeight), ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
             .init(id: "div", name: "배당 달력", size: 2, val: "다음 배당 QQQ 12월", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
             .init(id: "fx", name: "환율", size: 1, val: "\(Int(Market.shared.fx.last.rounded()).formatted())원", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),

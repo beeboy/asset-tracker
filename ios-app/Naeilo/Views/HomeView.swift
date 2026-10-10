@@ -150,7 +150,7 @@ struct HomeView: View {
                 Spacer()
                 Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal)
             }
-            Text(m.rows.map { "\($0.id) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + " · 원/달러 \(AppModel.sgn(Market.shared.fx.change))").appFont(13).foregroundStyle(Theme.sub)
+            Text(m.rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + " · 원/달러 \(AppModel.sgn(Market.shared.fx.change))").appFont(13).foregroundStyle(Theme.sub)
         }
     }
 }
