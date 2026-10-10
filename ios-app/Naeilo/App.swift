@@ -7,7 +7,7 @@ struct NaeiloApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(model.appearance == "light" ? .light : model.appearance == "dark" ? .dark : nil)
                 // 아주 큰 손쉬운 사용 크기에서도 화면이 무너지지 않게 상한을 둔다
                 .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         }
@@ -18,10 +18,10 @@ enum Tab: Hashable { case home, hold, analysis, board, settings }
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
-    @State private var tab: Tab = Self.launchTab
     var body: some View {
         @Bindable var model = model
-        TabView(selection: $tab) {
+        let showStart = !model.onboarded
+        TabView(selection: $model.tab) {
             NavigationStack(path: $model.homePath) { HomeView() }
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
             NavigationStack(path: $model.holdPath) { HoldingsView() }
@@ -36,6 +36,9 @@ struct RootView: View {
                 .tabItem { Label("설정", systemImage: "gearshape") }.tag(Tab.settings)
         }
         .tint(Theme.teal)
+        // 처음 실행이면 첫 질문을 탭 화면 위에 덮는다
+        .overlay { if showStart { StartView().transition(.opacity) } }
+        .animation(.default, value: showStart)
     }
 
     // 시뮬레이터 캡처용: -tab hold 처럼 시작 탭을 고를 수 있다

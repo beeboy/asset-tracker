@@ -67,7 +67,7 @@ private func statBox(_ k: String, _ v: String, _ c: Color = Theme.teal) -> some 
         Text(v).appFont(26, .bold).foregroundStyle(c)
     }
     .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-    .background(.white, in: RoundedRectangle(cornerRadius: 16))
+    .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
 }
 
@@ -153,7 +153,7 @@ struct Mission1ResultView: View {
                         .appFont(14).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
                 }
                 .foregroundStyle(.white).padding(18)
-                .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+                .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 horizonChips($m.horizon)
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) { probBoxes(keep, T) }
@@ -194,7 +194,7 @@ struct Mission2View: View {
                     Text(label).appFont(16, .semibold).multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading).padding(.horizontal, 16)
                         .foregroundStyle(ans == nil ? Theme.ink : isRight ? Theme.tealDark : picked ? Theme.sub : Theme.sub2)
-                        .background(ans != nil && isRight ? Theme.tealBg : .white, in: RoundedRectangle(cornerRadius: 14))
+                        .background(ans != nil && isRight ? Theme.tealBg : Theme.card, in: RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(ans == nil ? Theme.dash : isRight ? Theme.teal : picked ? Theme.muted : Theme.track, lineWidth: 2))
                 }.buttonStyle(.plain)
             }
@@ -227,10 +227,10 @@ struct Mission2ResultView: View {
             }
             Card {
                 Text("앞으로 1년, 내 평가액이 지날 길").appFont(15, .bold)
-                PathChart(plans: [(keep, Color(hex: 0x2450C8), false)], V: m.total, C: m.cost, half: m.halfway).frame(height: 150)
+                PathChart(plans: [(keep, Color(hex: 0x2450C8, dark: 0x7FA2F0), false)], V: m.total, C: m.cost, half: m.halfway).frame(height: 150)
                 HStack { Text("지금"); Spacer(); Text("3개월"); Spacer(); Text("6개월"); Spacer(); Spacer(); Text("1년") }.appFont(11).foregroundStyle(Theme.muted)
                 FlowRow(spacing: 10) {
-                    legend(Color(hex: 0x2450C8), "보통의 경우"); legend(Color(hex: 0x2450C8).opacity(0.2), "100번 중 90번이 이 안")
+                    legend(Color(hex: 0x2450C8, dark: 0x7FA2F0), "보통의 경우"); legend(Color(hex: 0x2450C8, dark: 0x7FA2F0).opacity(0.2), "100번 중 90번이 이 안")
                     legend(Color(hex: 0xC8352E), "본전"); legend(Theme.muted, "손실 절반")
                 }
             }
@@ -271,7 +271,7 @@ struct Mission3View: View {
                 ChipRow(items: m.plans.map { ($0.id, $0.name) }, selection: $m.planKey, fill: true)
                 horizonChips($m.horizon)
             }
-            .padding(16).background(.white).overlay(alignment: .bottom) { Divider() }
+            .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(sel.desc).appFont(15).lineSpacing(3)
@@ -324,8 +324,8 @@ struct Mission3View: View {
 
     private func tag(_ t: String, hot: Bool, neutral: Bool = false) -> some View {
         Text(t).appFont(12, .bold).padding(.horizontal, 8).padding(.vertical, 3)
-            .foregroundStyle(neutral ? Theme.slate : hot ? Color(hex: 0xA3291F) : Theme.tealDark)
-            .background(neutral ? Theme.track : hot ? Color(hex: 0xFBE9E7) : Theme.tealBg, in: Capsule())
+            .foregroundStyle(neutral ? Theme.sub : hot ? Color(hex: 0xA3291F, dark: 0xF08A80) : Theme.tealDark)
+            .background(neutral ? Theme.track : hot ? Color(hex: 0xFBE9E7, dark: 0x3D1E1B) : Theme.tealBg, in: Capsule())
     }
 
     func basketsCard(_ list: [Basket]) -> some View {
@@ -384,7 +384,7 @@ private func mixBar(_ p: Plan) -> some View {
             HStack(spacing: 0) {
                 ForEach(segs.indices, id: \.self) { i in
                     Rectangle().fill(segs[i].0).frame(width: g.size.width * segs[i].1)
-                        .overlay(alignment: .trailing) { Rectangle().fill(.white).frame(width: segs[i].1 > 0 ? 2 : 0) }
+                        .overlay(alignment: .trailing) { Rectangle().fill(Theme.card).frame(width: segs[i].1 > 0 ? 2 : 0) }
                 }
             }
         }
@@ -440,7 +440,7 @@ struct Mission3ResultView: View {
             Text(label).appFont(15, .semibold)
             Text(sub).appFont(13).foregroundStyle(Theme.sub)
             Spacer()
-            Text(amt).appFont(15, .bold).foregroundStyle(up ? Theme.teal : Color(hex: 0x2450C8)).monospacedDigit()
+            Text(amt).appFont(15, .bold).foregroundStyle(up ? Theme.teal : Color(hex: 0x2450C8, dark: 0x7FA2F0)).monospacedDigit()
         }
         .frame(minHeight: 36)
     }
@@ -459,7 +459,7 @@ struct TaxInputView: View {
                 Text("올해 실현 이익 (만원)").appFont(13, .semibold).foregroundStyle(Theme.sub)
                 TextField("", text: $gain).keyboardType(.numberPad).appFont(18, .semibold)
                     .padding(.horizontal, 12).frame(minHeight: 48)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 10))
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
                     .accessibilityLabel("올해 실현 이익 (만원)")
             }
@@ -491,7 +491,7 @@ struct TaxResultView: View {
                     .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+            .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             Card {
                 Text("손실 난 DRNK 일부를 올해 안에 판다면?").appFont(15, .bold)
                 Text("팔 수량 (보유 \(Int(maxQ))주) · \(Int(m.taxSellQty))주").appFont(13).foregroundStyle(Theme.sub)
@@ -501,9 +501,9 @@ struct TaxResultView: View {
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 if over {
                     Text("이미 세금이 0원이 되는 수량이에요. 이보다 더 팔아도 올해 세금은 더 줄지 않아요.")
-                        .appFont(13, .semibold).foregroundStyle(Color(hex: 0x8A4B00))
+                        .appFont(13, .semibold).foregroundStyle(Color(hex: 0x8A4B00, dark: 0xF0B070))
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(hex: 0xFDF0E1), in: RoundedRectangle(cornerRadius: 10))
+                        .background(Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 10))
                 }
             }
             Text("계산 예시이며 세무 상담이 아닙니다. 매도 결제일이 올해 안이어야 올해 손익에 들어가요. 사고파는 판단은 직접 하세요.")
@@ -566,8 +566,8 @@ struct AppStartView: View {
                 .padding(.horizontal, 14).padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .foregroundStyle(done || cur ? Theme.ink : Theme.muted)
-                .background(done ? Theme.tealBg : cur ? .white : Color(hex: 0xF4F6F8), in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(done ? Color(hex: 0xB9DCD7) : cur ? Theme.teal : Theme.track, lineWidth: cur ? 2 : 1))
+                .background(done ? Theme.tealBg : cur ? Theme.card : Color(hex: 0xF4F6F8, dark: 0x1D252E), in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(done ? Color(hex: 0xB9DCD7, dark: 0x2E5A55) : cur ? Theme.teal : Theme.track, lineWidth: cur ? 2 : 1))
             }
             if n >= 3 {
                 VStack(alignment: .leading, spacing: 8) {
@@ -581,7 +581,7 @@ struct AppStartView: View {
                     }
                 }
                 .foregroundStyle(.white).padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.ink, in: RoundedRectangle(cornerRadius: 18))
+                .background(Theme.night, in: RoundedRectangle(cornerRadius: 18))
                 PrimaryButton(title: m.playOn ? "미션 판으로" : "인터미션 시작") { m.finishAppStart() }
             } else {
                 BoardButtons(next: nil, to: nil)
@@ -594,7 +594,7 @@ struct AppStartView: View {
             if n >= i {
                 VStack(alignment: .leading, spacing: 4) { c() }
                     .padding(10).frame(maxWidth: .infinity, minHeight: 108, alignment: .topLeading)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 18))
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
             } else {
                 Text("\(i)단계 하면 열림").appFont(12).multilineTextAlignment(.center).foregroundStyle(Theme.sub2)

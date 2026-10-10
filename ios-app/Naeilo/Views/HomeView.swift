@@ -53,7 +53,7 @@ struct HomeView: View {
         .foregroundStyle(.white)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
     }
 
     private var recoverSummary: some View {
@@ -82,7 +82,7 @@ struct HomeView: View {
         .foregroundStyle(.white)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
     }
 
     // 쉼터 박스: 홈에 둔 친구 + 말풍선 + 다른 친구 칸
@@ -114,7 +114,7 @@ struct HomeView: View {
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(.white, in: RoundedRectangle(cornerRadius: 18))
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
         }
         .buttonStyle(.plain)
@@ -173,7 +173,7 @@ struct RoutineCard: View {
                     let ok = m.dayLog[d].map { $0.answer != nil } ?? (d < 5 && d < m.day)
                     Text(days[i]).appFont(12, .bold)
                         .frame(maxWidth: .infinity, minHeight: 28)
-                        .foregroundStyle(ok ? Theme.ink : d == m.day ? Theme.yellow : Theme.muted)
+                        .foregroundStyle(ok ? Theme.inkFixed : d == m.day ? Theme.yellow : Theme.muted)
                         .background(ok ? Theme.mint : d == m.day ? .clear : Theme.slate, in: RoundedRectangle(cornerRadius: 8))
                         .overlay { if d == m.day && !ok { RoundedRectangle(cornerRadius: 8).stroke(Theme.yellow, lineWidth: 2) } }
                 }
@@ -199,7 +199,7 @@ struct RoutineCard: View {
                                 .appFont(14, .bold)
                                 .padding(.horizontal, 14).frame(minHeight: 40)
                                 .foregroundStyle(ans == nil ? Theme.ink : right ? Theme.tealDark : i == ans ? .white : Theme.muted)
-                                .background(ans == nil ? .white : right ? Theme.tealBg : i == ans ? Theme.ink : .white, in: RoundedRectangle(cornerRadius: 10))
+                                .background(ans == nil ? Theme.card : right ? Theme.tealBg : i == ans ? Theme.night : Theme.card, in: RoundedRectangle(cornerRadius: 10))
                                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(ans == nil ? Theme.dash : right ? Theme.teal : i == ans ? Theme.ink : Theme.track, lineWidth: 2))
                         }
                     }
@@ -220,7 +220,7 @@ struct RoutineCard: View {
         }
         .foregroundStyle(.white)
         .padding(16)
-        .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
     }
 
     private func step<C: View>(tag: String, @ViewBuilder _ c: () -> C) -> some View {
@@ -231,7 +231,7 @@ struct RoutineCard: View {
         .foregroundStyle(Theme.ink)
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 14))
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 

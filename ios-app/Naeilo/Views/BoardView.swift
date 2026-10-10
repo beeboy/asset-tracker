@@ -96,7 +96,7 @@ struct BoardView: View {
         .padding(b.inter ? 12 : 10)
         .frame(maxWidth: .infinity, minHeight: b.inter ? 72 : 88, alignment: .topLeading)
         .foregroundStyle(b.inter ? (done ? Theme.yellow : avail ? .white : Theme.sub2) : (done ? .white : avail ? Theme.ink : Theme.sub2))
-        .background(b.inter ? (done || avail ? Theme.ink : Theme.track) : (done ? Theme.teal : avail ? .white : Theme.track), in: RoundedRectangle(cornerRadius: 14))
+        .background(b.inter ? (done || avail ? Theme.night : Theme.track) : (done ? Theme.teal : avail ? Theme.card : Theme.track), in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(b.inter ? (done ? Theme.ink : avail ? Theme.yellow : Theme.dash) : (done || avail ? Theme.teal : Theme.track),
                                                            style: StrokeStyle(lineWidth: 2, dash: b.inter && !done ? [6, 4] : [])))
         .accessibilityElement(children: .combine)
@@ -111,7 +111,7 @@ struct BoardView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("인터미션 \(i + 1)주차 · 매주 1분").appFont(13, .bold).foregroundStyle(Theme.mint)
             HStack(spacing: 8) {
-                Text(step.whereText).appFont(11, .bold).foregroundStyle(Theme.ink)
+                Text(step.whereText).appFont(11, .bold).foregroundStyle(Theme.inkFixed)
                     .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.mint, in: Capsule())
                 Text(step.task).appFont(14, .semibold)
             }
@@ -127,8 +127,8 @@ struct BoardView: View {
                         .foregroundStyle(Theme.ink)
                         .padding(.vertical, 8)
                         .frame(maxWidth: .infinity, minHeight: 64)
-                        .background(on ? p.color.opacity(0.15) : .white, in: RoundedRectangle(cornerRadius: 12))
-                        .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                        .background(on ? p.color.opacity(0.15) : Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(p.color, lineWidth: on ? 3 : 2))
                     }.buttonStyle(.plain)
                 }
@@ -141,13 +141,13 @@ struct BoardView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .foregroundStyle(Theme.ink)
-                    .background(Color(hex: 0xF7F8FA), in: RoundedRectangle(cornerRadius: 10))
+                    .background(Color(hex: 0xF7F8FA, dark: 0x202933), in: RoundedRectangle(cornerRadius: 10))
                 }.buttonStyle(.plain)
             }
         }
         .foregroundStyle(.white)
         .padding(16)
-        .background(Theme.ink, in: RoundedRectangle(cornerRadius: 18))
+        .background(Theme.night, in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var lockedPlay: some View {
@@ -173,7 +173,7 @@ struct BoardView: View {
                 Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
                 Text(chg == 0 ? "어제와 같음" : "어제보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
             }
-            ChipRow(items: [("mine", "바닥 / 회복"), ("stock", "종목별"), ("chg", "어제 바뀐 칸")], selection: $cellMode, accent: Theme.ink)
+            ChipRow(items: [("mine", "바닥 / 회복"), ("stock", "종목별"), ("chg", "어제 바뀐 칸")], selection: $cellMode)
             CellGrid(filled: n, floor: nFloor, yesterday: nY, mode: cellMode, parts: stockParts)
                 .aspectRatio(320.0 / 200.0, contentMode: .fit)
                 .accessibilityLabel("1000칸 중 \(n)칸")
@@ -182,7 +182,7 @@ struct BoardView: View {
                     ForEach(stockParts, id: \.0) { k, c, cnt in legend(c, "\(k) \(cnt)칸") }
                 } else {
                     legend(Theme.teal, "바닥에도 있던 칸 \(nFloor)칸")
-                    legend(Color(hex: 0x7FD3C9), "바닥 뒤 회복한 칸 \(n - nFloor)칸")
+                    legend(Color(hex: 0x7FD3C9, dark: 0x3C8F86), "바닥 뒤 회복한 칸 \(n - nFloor)칸")
                     legend(Theme.yellow, "마지막 칸 = 본전")
                 }
             }
@@ -199,14 +199,16 @@ struct BoardView: View {
                     let on = n >= i * 100
                     Text("\(i * 100)").appFont(10, .bold)
                         .frame(maxWidth: .infinity, minHeight: 30)
-                        .foregroundStyle(on ? Theme.ink : i - 1 == passed ? Theme.sub : Theme.muted)
+                        .foregroundStyle(on ? Theme.inkFixed : i - 1 == passed ? Theme.sub : Theme.muted)
                         .background(on ? Theme.yellow : i - 1 == passed ? .clear : Theme.line, in: RoundedRectangle(cornerRadius: 8))
                         .overlay { if !on && i - 1 == passed { RoundedRectangle(cornerRadius: 8).stroke(Theme.yellow, style: StrokeStyle(lineWidth: 2, dash: [4, 3])) } }
                 }
             }
+            ShareCardButton(filled: n, mine: nFloor, market: n - nFloor, kicker: "본전까지 가는 중",
+                            amountLine: "본전 \(AppModel.man(m.cost)) 중 \(AppModel.man(m.total))까지 왔어요.")
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(.white, in: RoundedRectangle(cornerRadius: 18))
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.ink, lineWidth: 2))
     }
 
@@ -252,7 +254,7 @@ struct WeekForecastCard: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.line).frame(height: 14)
                     Capsule().fill(Theme.blue.opacity(0.33)).frame(width: (px(r.hi) - px(r.lo)) * g.size.width, height: 14).offset(x: px(r.lo) * g.size.width)
-                    Circle().fill(m.weekFriday ? (inside ? Theme.green : Theme.orange) : Theme.ink)
+                    Circle().fill(m.weekFriday ? (inside ? Theme.green : Theme.orange) : Theme.night)
                         .overlay(Circle().stroke(.white, lineWidth: 3))
                         .frame(width: 20, height: 20).offset(x: px(r.actual) * g.size.width - 10)
                 }
@@ -277,7 +279,7 @@ struct WeekForecastCard: View {
                      + (m.weekGuess.map { $0 == pos ? " 맞혔어요." : " 고른 답은 \"\(names[$0] ?? "")\"였어요." } ?? ""))
                     .appFont(14, .semibold)
                     .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(inside ? Color(hex: 0xE3F4EC) : Color(hex: 0xFDF0E1), in: RoundedRectangle(cornerRadius: 12))
+                    .background(inside ? Color(hex: 0xE3F4EC, dark: 0x163226) : Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
             }
             HStack {
                 Text("지난 8주").appFont(13, .bold)
@@ -288,8 +290,8 @@ struct WeekForecastCard: View {
                 ForEach(stamps.indices, id: \.self) { i in
                     Text(stamps[i] == 1 ? "안" : "밖").appFont(11, .bold)
                         .frame(maxWidth: .infinity, minHeight: 30)
-                        .foregroundStyle(stamps[i] == 1 ? .white : Color(hex: 0x8A4B12))
-                        .background(stamps[i] == 1 ? Theme.green : Color(hex: 0xFBE3CF), in: RoundedRectangle(cornerRadius: 8))
+                        .foregroundStyle(stamps[i] == 1 ? .white : Color(hex: 0x8A4B12, dark: 0xF0B888))
+                        .background(stamps[i] == 1 ? Theme.green : Color(hex: 0xFBE3CF, dark: 0x4A3020), in: RoundedRectangle(cornerRadius: 8))
                 }
             }
             Text("50% 범위라서 예보가 정직하면 절반쯤 들어와요. 너무 자주 들어오면 범위가 넓은 거고, 너무 드물면 좁은 거예요. 점수가 아니라 예보를 믿어도 되는지 보는 기록이에요.")
@@ -297,7 +299,7 @@ struct WeekForecastCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(hex: 0xF3F8FD), in: RoundedRectangle(cornerRadius: 18))
+        .background(Color(hex: 0xF3F8FD, dark: 0x142230), in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.blue, lineWidth: 2))
     }
 }
@@ -322,8 +324,8 @@ struct CellGrid: View {
                 let c: Color
                 if i >= filled { c = Theme.track }
                 else if mode == "stock" { c = i < stockColor.count ? stockColor[i] : Theme.muted }
-                else if i < floor { c = mode == "mkt" ? Color(hex: 0xB9C2CA) : Theme.teal }
-                else { c = mode == "mine" ? Color(hex: 0x7FD3C9) : Theme.green }
+                else if i < floor { c = mode == "mkt" ? Color(hex: 0xB9C2CA, dark: 0x4A5560) : Theme.teal }
+                else { c = mode == "mine" ? Color(hex: 0x7FD3C9, dark: 0x3C8F86) : Theme.green }
                 ctx.fill(Path(rect(i)), with: .color(c))
             }
             if mode == "chg" || mode == "mine" {

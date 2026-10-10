@@ -18,7 +18,7 @@ struct ShelterView: View {
                 header("서재 · 외전 『이종 공명』", "\((0..<6).filter { m.chapterOn($0) }.count)/6장 열림")
                 if let last = m.readLast, m.chapterOn(last) {
                     NavigationLink(value: "read:\(last)") {
-                        HStack { Text("이어 읽기 · \(Shelter.chapters[last].title)"); Spacer(); Text("›") }
+                        HStack { Text("이어 읽기 · \(Shelter.chapters[last].title) \(Shelter.chapters[last].name)"); Spacer(); Text("›") }
                             .appFont(15, .bold).foregroundStyle(.white)
                             .padding(.horizontal, 14).frame(minHeight: 48)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
@@ -75,10 +75,10 @@ struct ShelterView: View {
                     .buttonStyle(.plain)
                     if m.homeFriend != f.id {
                         Button("홈에 두기") { m.homeFriend = f.id }
-                            .appFont(13, .bold).foregroundStyle(Theme.ink)
+                            .appFont(13, .bold).foregroundStyle(Theme.inkFixed)
                             .padding(.horizontal, 14).frame(minHeight: 40).background(Theme.mint, in: Capsule())
                     } else {
-                        Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.ink)
+                        Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
                             .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.gold, in: Capsule())
                     }
                     Spacer(minLength: 0)
@@ -100,7 +100,7 @@ struct ShelterView: View {
                     .appFont(10).foregroundStyle(Theme.sub)
             }
             .frame(maxWidth: .infinity, minHeight: 96)
-            .background(cur ? Theme.mintBg : on ? .white : Color(hex: 0xF6F7F8), in: RoundedRectangle(cornerRadius: 12))
+            .background(cur ? Theme.mintBg : on ? (f.id == "ir" || f.id == "sua" ? Color(hex: 0xFFFFFF, dark: 0x2C3846) : Theme.card) : Color(hex: 0xF6F7F8, dark: 0x1D252E), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(cur ? Theme.teal : on ? Theme.border : Theme.track, lineWidth: 2))
         }
         .buttonStyle(.plain)
@@ -116,7 +116,7 @@ struct ShelterView: View {
                     ChapterCover(index: i, on: on).frame(width: 64, height: 40)
                     Text(ch.title).appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(on ? "외전 \(ch.title)" : "???").appFont(14, .bold)
+                        Text(on ? ch.name : "???").appFont(14, .bold)
                         Text(on ? (i < 2 ? "앱 시작 3단계에서 열림" : "인터미션 \(fi)주차에 열림")
                              : (i < 2 ? "앱 시작 3단계를 마치면 열려요" : "인터미션 \(fi)주차가 되면 열려요"))
                             .appFont(12).foregroundStyle(Theme.sub)
@@ -144,9 +144,9 @@ struct ShelterView: View {
             }
             .foregroundStyle(Theme.sub)
             .padding(.horizontal, 14).frame(minHeight: 56)
-            .background(Color(hex: 0xF7F8FA))
+            .background(Color(hex: 0xF7F8FA, dark: 0x202933))
         }
-        .background(.white)
+        .background(Theme.card)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
@@ -161,7 +161,7 @@ struct ShelterView: View {
             }
             .foregroundStyle(on ? Theme.ink : Theme.muted)
             .frame(maxWidth: .infinity, minHeight: 84)
-            .background(on ? (item == it.id ? Theme.mintBg : .white) : Color(hex: 0xF6F7F8), in: RoundedRectangle(cornerRadius: 12))
+            .background(on ? (item == it.id ? Theme.mintBg : Theme.card) : Color(hex: 0xF6F7F8, dark: 0x1D252E), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? (item == it.id ? Theme.teal : Theme.border) : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: on ? [] : [4, 3])))
         }
         .buttonStyle(.plain)
@@ -179,7 +179,7 @@ struct ShelterView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(.white, in: RoundedRectangle(cornerRadius: 12))
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
     }
 }
@@ -213,6 +213,7 @@ struct ReaderView: View {
     @State private var size = 17.0
     @State private var dark = false
     @State private var paras: [StoryParagraph] = []
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let accent = dark ? Theme.mint : Theme.teal
@@ -235,11 +236,14 @@ struct ReaderView: View {
                     Button(dark ? "밝게" : "어둡게") { dark.toggle() }
                         .appFont(13, .bold).padding(.horizontal, 12).frame(minHeight: 36)
                         .foregroundStyle(dark ? Color(hex: 0xEEF0F7) : Theme.ink)
-                        .background(dark ? Color(hex: 0x262E45) : .white, in: Capsule())
+                        .background(dark ? Color(hex: 0x262E45) : Theme.card, in: Capsule())
                         .overlay(Capsule().stroke(dark ? Color(hex: 0x4A5578) : Theme.border, lineWidth: 2))
                 }
                 ChapterCover(index: index).aspectRatio(1.6, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 12))
-                Text("외전 『이종 공명』 · \(ch.title)").appFont(20, .bold)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("외전 『이종 공명』 · \(ch.title)").appFont(13, .semibold).foregroundStyle(accent)
+                    Text(ch.name).appFont(22, .bold)
+                }
                 Text(m.readPos.contains(index) ? "읽던 곳에서 이어 읽는 중" : "처음부터").appFont(13).foregroundStyle(dark ? Color(hex: 0xA6ADC6) : Theme.sub2)
                 ForEach(paras.indices, id: \.self) { p in
                     VStack(alignment: .leading, spacing: size * 0.55) {
@@ -272,7 +276,7 @@ struct ReaderView: View {
                 }
                 if index < 5 && m.chapterOn(index + 1) {
                     Button { m.readPos.insert(index); index += 1; m.readLast = index; load() } label: {
-                        Text("다음: \(Shelter.chapters[index + 1].title) ›").appFont(15, .bold).foregroundStyle(.white)
+                        Text("다음: \(Shelter.chapters[index + 1].title) · \(Shelter.chapters[index + 1].name) ›").appFont(15, .bold).foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 48).background(accent, in: RoundedRectangle(cornerRadius: 12))
                     }.buttonStyle(.plain)
                 } else {
@@ -289,7 +293,7 @@ struct ReaderView: View {
         .background(dark ? Color(hex: 0x141824) : Color(hex: 0xFBFAF7))
         .toolbarBackground(dark ? Color(hex: 0x141824) : Color(hex: 0xFBFAF7), for: .navigationBar)
         .navigationTitle("서재").navigationBarTitleDisplayMode(.inline)
-        .onAppear { m.readLast = index; load() }
+        .onAppear { m.readLast = index; if scheme == .dark { dark = true }; load() }
     }
 
     private func load() { Task { paras = await m.stories.chapter(index) } }
@@ -309,7 +313,7 @@ struct CharacterDetailView: View {
                         .background(Shelter.spriteBacking(f.id), in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 6) {
                         Text(f.name).appFont(24, .bold)
-                        Text(f.line).appFont(14, .bold).foregroundStyle(Color(hex: 0x8A6400))
+                        Text(f.line).appFont(14, .bold).foregroundStyle(Color(hex: 0x8A6400, dark: 0xE8C060))
                     }
                 }
                 Card {

@@ -128,6 +128,11 @@ final class AppModel {
     var boardPath: [MissionRoute] = []
     var analysisPath: [AnalysisRoute] = []
     var homePath: [String] = []
+    var tab: Tab = RootView.launchTab
+    // 처음 실행이면 첫 질문(플러스·마이너스·시작 전)부터. 캡처·시연용 실행 인자가 있으면 건너뛴다
+    var onboarded = UserDefaults.standard.bool(forKey: "onboarded") || UserDefaults.standard.string(forKey: "tab") != nil
+        || UserDefaults.standard.string(forKey: "goal") != nil || UserDefaults.standard.string(forKey: "demo") != nil
+    var appearance = UserDefaults.standard.string(forKey: "appearance") ?? "system"   // system · light · dark
     var holdPath: [Symbol] = []
 
     // 설정
@@ -310,6 +315,15 @@ final class AppModel {
 
     // MARK: 시안 조작
     enum Demo { case fresh, week1, all }
+    /// 첫 질문 답: 마이너스 = 회복 루트 미션 1부터, 플러스 = 목표 루트(샘플은 이익 난 단가), 시작 전 = 목표 루트 적립
+    func startRoute(_ r: Route) {
+        resetDemo(.fresh)
+        if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 60, avg: 180), Holding(symbol: "QQQ", qty: 10, avg: 400)]; taxGain = 0 }
+        if r != .recover { switchRoute(r); gDone = [] }
+        onboarded = true; UserDefaults.standard.set(true, forKey: "onboarded")
+        tab = .board
+    }
+
     func resetDemo(_ d: Demo) {
         holdings = Sample.startHoldings
         switch d {

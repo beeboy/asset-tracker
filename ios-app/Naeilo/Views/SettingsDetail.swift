@@ -30,7 +30,7 @@ private func optionChips(_ label: String, _ opts: [Int], _ unit: String, _ sel: 
             Button("\(n)\(unit)") { pick(n) }
                 .appFont(14, .bold).padding(.horizontal, 12).frame(minHeight: 40)
                 .foregroundStyle(sel == n ? .white : Theme.ink)
-                .background(sel == n ? Theme.teal : .white, in: RoundedRectangle(cornerRadius: 10))
+                .background(sel == n ? Theme.teal : Theme.card, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(sel == n ? Theme.teal : Theme.border, lineWidth: 2))
         }
     }
@@ -75,9 +75,9 @@ struct AlertsView: View {
                     }
                 }
                 .padding(12)
-                .background(Color(hex: 0xEEF1F5), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(hex: 0xEEF1F5, dark: 0x222C36), in: RoundedRectangle(cornerRadius: 16))
             }
-            .padding(16).background(.white).overlay(alignment: .bottom) { Divider() }
+            .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(list, id: \.k) { a in
@@ -213,9 +213,9 @@ struct WidgetPickView: View {
                                 Spacer(minLength: 0)
                                 Text(w.val).appFont(w.size == 3 ? 18 : 13, .bold).lineLimit(2).minimumScaleFactor(0.8)
                             }
-                            .foregroundStyle(w.friend ? Color(hex: 0x5A3E00) : Theme.ink)
+                            .foregroundStyle(w.friend ? Color(hex: 0x5A3E00, dark: 0xF0D28A) : Theme.ink)
                             .padding(10).frame(maxWidth: .infinity, minHeight: w.size == 3 ? 110 : 64, alignment: .topLeading)
-                            .background(w.friend ? Color(hex: 0xFFF6DE) : .white, in: RoundedRectangle(cornerRadius: 16))
+                            .background(w.friend ? Color(hex: 0xFFF6DE, dark: 0x3A321C) : Theme.card, in: RoundedRectangle(cornerRadius: 16))
                             .gridCellColumns(w.size >= 2 ? 2 : 1)
                         }
                     }
@@ -251,7 +251,7 @@ struct WidgetPickView: View {
                         .buttonStyle(.plain).disabled(!w.ok)
                     }
                 }
-                .background(.white, in: RoundedRectangle(cornerRadius: 18))
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
                 note("실제 아이폰에서는 홈 화면을 길게 눌러 위젯을 놓아요. 여기서 고른 순서대로 추천해 드려요. 위젯 자체는 기존 위젯 앱(ios/)과 합칠 예정이에요.")
             }
@@ -286,12 +286,12 @@ struct TaxRulesView: View {
                 Text(G > 250 ? "(\(won0(G)) − 기본공제 250만원) × 22%" : "이익이 250만원 이하라 낼 세금이 없어요").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+            .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             VStack(alignment: .leading, spacing: 4) {
                 Text("올해 해외주식 실현 이익 (만원)").appFont(13, .semibold).foregroundStyle(Theme.sub)
                 TextField("", text: $gain).keyboardType(.numberPad).appFont(18, .semibold)
                     .padding(.horizontal, 12).frame(minHeight: 48)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 10))
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
                     .onChange(of: gain) { _, v in m.taxGain = max(0, Double(v) ?? 0) }
                     .accessibilityLabel("올해 해외주식 실현 이익 (만원)")
@@ -326,7 +326,7 @@ struct HowToView: View {
                      ("미션", "주간 예보", "월요일에 앱이 금요일 평가액 범위를 적어 두고, 금요일 종가로 범위 안인지 도장을 찍어요."),
                      ("PC", "naeilo.com", "여러 종목 한 번에 넣기, 증권사 파일, 긴 표와 근거는 PC에서 봐요.")], id: \.1) { w, t, v in
                 HStack(alignment: .top, spacing: 10) {
-                    Text(w).appFont(11, .bold).foregroundStyle(Theme.ink).padding(.horizontal, 8).padding(.vertical, 3)
+                    Text(w).appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 3)
                         .background(Theme.mint, in: Capsule())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(t).appFont(15, .bold)
@@ -335,7 +335,7 @@ struct HowToView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(14)
-                .background(.white, in: RoundedRectangle(cornerRadius: 14))
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
             }
         }
@@ -356,9 +356,9 @@ struct RouteView: View {
         let sel = pick.isEmpty ? cur : pick
         SettingsPage(title: "루트 바꾸기") {
             if m.route == .recover && m.total >= m.cost {
-                Text("본전을 넘었어요. 이제 목표 루트 · 플러스로 바꿀 수 있어요.").appFont(14, .semibold).foregroundStyle(Color(hex: 0x0B5E40))
+                Text("본전을 넘었어요. 이제 목표 루트 · 플러스로 바꿀 수 있어요.").appFont(14, .semibold).foregroundStyle(Color(hex: 0x0B5E40, dark: 0x7FD8B0))
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(hex: 0xE3F4EC), in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color(hex: 0xE3F4EC, dark: 0x163226), in: RoundedRectangle(cornerRadius: 12))
             }
             ForEach(cards, id: \.0) { k, name, tag, sub in
                 let on = sel == k
@@ -372,7 +372,7 @@ struct RouteView: View {
                         Text(sub).appFont(14).foregroundStyle(Theme.sub).multilineTextAlignment(.leading)
                     }
                     .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(on ? Theme.mintBg : .white, in: RoundedRectangle(cornerRadius: 16))
+                    .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 16))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(on ? Theme.teal : Theme.border, lineWidth: 2))
                 }
                 .buttonStyle(.plain)

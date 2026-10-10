@@ -18,7 +18,7 @@ struct AnalysisView: View {
         let cards: [(String, String, String, Color, AnalysisRoute)] = [
             ("3년 전망", "시장이 줄 수 있는 미래의 범위", AppModel.pct(p3), Theme.teal, .forecast),
             ("내 길", "정한 목표대로 가고 있나 (자산 추이)", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + "\(Int((abs(gap) * 100).rounded()))%",
-             gap >= 0 ? Theme.teal : Color(hex: 0xB5651D), .myPath),
+             gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060), .myPath),
             ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "시장 −10%: " + AppModel.sgn(mkt10), Theme.down, .external),
             ("배당·세금", "앞으로 12개월 배당, 팔 때 세금", "연 " + AppModel.won1(div), Theme.teal, .dividend),
             ("환율 영향", "환율이 바뀌면 내 평가액은", "달러 " + AppModel.pct(usd), Theme.blue, .fx),
@@ -40,7 +40,7 @@ struct AnalysisView: View {
                             Text(tag).appFont(15, .bold).foregroundStyle(color)
                         }
                         .padding(.horizontal, 16).frame(minHeight: 68)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
                         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
                     }
                     .buttonStyle(.plain)
@@ -130,7 +130,7 @@ struct ForecastView: View {
                 .appFont(12).foregroundStyle(Theme.sub)
         }
         .padding(16)
-        .background(.white)
+        .background(Theme.card)
         .overlay(alignment: .bottom) { Divider() }
     }
 

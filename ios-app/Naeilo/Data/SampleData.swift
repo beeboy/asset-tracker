@@ -199,9 +199,12 @@ enum Shelter {
     ]
 
     // 서재 장: (이름, 같이 열리는 친구)
-    static let chapters: [(title: String, friend: String)] = [
-        ("프롤로그", "seri"), ("1장", "seri"), ("2장", "sio"), ("3장", "seonbae"), ("4장", "ir"), ("5장", "sua"),
+    // 장 제목은 캐릭터 설정 스레드(chapter-titles.md) 기준. 6장은 표지만 있고 앱에서 열리지 않는다.
+    static let chapters: [(title: String, name: String, friend: String)] = [
+        ("프롤로그", "핵심 코어", "seri"), ("1장", "무명의 인터페이스", "seri"), ("2장", "이름을 허락하는 사람", "sio"),
+        ("3장", "경계의 언어", "seonbae"), ("4장", "거울 속의 타인", "ir"), ("5장", "제3의 존재", "sua"),
     ]
+    static let chapter6Name = "스스로 답하는 존재"
     static func cover(_ i: Int) -> String {
         switch i { case 0: "art_prologue"; case 1...4: "art_ch\(i)"; default: "art_ch5_0" }
     }

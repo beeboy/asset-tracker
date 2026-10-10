@@ -15,7 +15,7 @@ enum Basket: String, CaseIterable {
         case .C: ""
         }
     }
-    var color: Color { switch self { case .G: Theme.green; case .V: Theme.orange; case .B: Theme.blue; case .C: Color(hex: 0xBFC6CD) } }
+    var color: Color { switch self { case .G: Theme.green; case .V: Theme.orange; case .B: Theme.blue; case .C: Color(hex: 0xBFC6CD, dark: 0x56616C) } }
 
     // 분류 규칙 (tools/classify_sector_pe.py 와 같음). H = 과열, X = 세 묶음 밖
     static func of(pe: Double, pe10: Double, growth: Double) -> String {

@@ -1,6 +1,7 @@
 import SwiftUI
 
 // 시안(목업 49판)의 색. 오르면 빨강, 내리면 파랑 (국내 관례).
+// 다크 모드: 같은 이름의 색을 어두운 화면용 값으로 바꿔 쓴다 (아이폰 설정 또는 앱 설정의 화면 모드).
 extension Color {
     init(hex: UInt32, opacity: Double = 1) {
         self.init(.sRGB,
@@ -9,32 +10,41 @@ extension Color {
                   blue: Double(hex & 0xFF) / 255,
                   opacity: opacity)
     }
+    init(hex: UInt32, dark: UInt32) {
+        func ui(_ h: UInt32) -> UIColor {
+            UIColor(red: CGFloat((h >> 16) & 0xFF) / 255, green: CGFloat((h >> 8) & 0xFF) / 255, blue: CGFloat(h & 0xFF) / 255, alpha: 1)
+        }
+        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? ui(dark) : ui(hex) })
+    }
 }
 
 enum Theme {
-    static let bg = Color(hex: 0xF2F4F6)
-    static let ink = Color(hex: 0x15202B)
-    static let teal = Color(hex: 0x0B6B66)
-    static let tealDark = Color(hex: 0x0B4F4B)
+    static let bg = Color(hex: 0xF2F4F6, dark: 0x0E1318)
+    static let card = Color(hex: 0xFFFFFF, dark: 0x1A222B)          // 흰 카드
+    static let ink = Color(hex: 0x15202B, dark: 0xE8EDF2)           // 본문 글자
+    static let inkFixed = Color(hex: 0x15202B)                       // 밝은 칩(민트·노랑) 위 글자
+    static let night = Color(hex: 0x15202B, dark: 0x1E2A36)         // 어두운 요약 카드 바탕
+    static let teal = Color(hex: 0x0B6B66, dark: 0x2A9D93)
+    static let tealDark = Color(hex: 0x0B4F4B, dark: 0x8FD8CE)
     static let mint = Color(hex: 0x5FD0C4)
-    static let mintBg = Color(hex: 0xF3FAF9)
-    static let tealBg = Color(hex: 0xE3F1EF)
-    static let sub = Color(hex: 0x4A5560)
-    static let sub2 = Color(hex: 0x5B6670)
-    static let muted = Color(hex: 0x8A949E)
-    static let border = Color(hex: 0xDCE1E6)
-    static let line = Color(hex: 0xEEF1F3)
-    static let track = Color(hex: 0xE6EAEE)
-    static let dash = Color(hex: 0xC9D0D6)
+    static let mintBg = Color(hex: 0xF3FAF9, dark: 0x16302D)
+    static let tealBg = Color(hex: 0xE3F1EF, dark: 0x173531)
+    static let sub = Color(hex: 0x4A5560, dark: 0xAEB8C2)
+    static let sub2 = Color(hex: 0x5B6670, dark: 0x9AA5AF)
+    static let muted = Color(hex: 0x8A949E, dark: 0x7F8A95)
+    static let border = Color(hex: 0xDCE1E6, dark: 0x2E3945)
+    static let line = Color(hex: 0xEEF1F3, dark: 0x26303A)
+    static let track = Color(hex: 0xE6EAEE, dark: 0x2C3742)
+    static let dash = Color(hex: 0xC9D0D6, dark: 0x3E4A56)
     static let yellow = Color(hex: 0xF2C14E)
     static let gold = Color(hex: 0xF3CF6A)
-    static let cream = Color(hex: 0xFFF7E0)
+    static let cream = Color(hex: 0xFFF7E0, dark: 0x3A321C)
     static let slate = Color(hex: 0x3A4651)
-    static let shelter = Color(hex: 0x1E2436)
-    static let up = Color(hex: 0xC0392B)
-    static let down = Color(hex: 0x1B5E96)
+    static let shelter = Color(hex: 0x1E2436, dark: 0x1A2032)
+    static let up = Color(hex: 0xC0392B, dark: 0xF07468)
+    static let down = Color(hex: 0x1B5E96, dark: 0x6FB0EA)
     static let orange = Color(hex: 0xE8862A)
-    static let purple = Color(hex: 0x7A4FC8)
+    static let purple = Color(hex: 0x7A4FC8, dark: 0x9B78E0)
     static let blue = Color(hex: 0x2F8FD8)
     static let green = Color(hex: 0x12A06E)
     static let holdColors: [Color] = [Color(hex: 0x7A4FC8), Color(hex: 0x2F8FD8), Color(hex: 0x12A06E),
@@ -46,7 +56,7 @@ enum Theme {
 // 흰 카드 (시안의 border 1px · radius 18)
 struct Card<Content: View>: View {
     var padding: CGFloat = 16
-    var bg: Color = .white
+    var bg: Color = Theme.card
     var stroke: Color? = Theme.border
     @ViewBuilder var content: Content
     var body: some View {
@@ -88,7 +98,7 @@ struct ChipRow<T: Hashable>: View {
                         .padding(.horizontal, fill ? 8 : 14)
                         .frame(maxWidth: fill ? .infinity : nil, minHeight: 40)
                         .foregroundStyle(on ? .white : Theme.ink)
-                        .background(on ? accent : .white, in: Capsule())
+                        .background(on ? accent : Theme.card, in: Capsule())
                         .overlay(Capsule().stroke(on ? accent : Theme.border, lineWidth: 2))
                 }
                 .buttonStyle(.plain)

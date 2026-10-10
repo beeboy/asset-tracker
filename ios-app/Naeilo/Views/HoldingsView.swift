@@ -22,7 +22,7 @@ struct HoldingsView: View {
                         NavigationLink(value: r.sym) { row(r) }.buttonStyle(.plain)
                     }
                 }
-                .background(.white, in: RoundedRectangle(cornerRadius: 18))
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
                 NavigationLink(value: "add") {
                     Label("종목 추가", systemImage: "plus").appFont(15, .bold)
@@ -172,8 +172,8 @@ struct HoldingDetailView: View {
                 Text(p.etf ? "이 ETF는" : "이 회사는").appFont(15, .bold)
                 Spacer()
                 if p.virtual {
-                    Text("가상 종목").appFont(11, .bold).foregroundStyle(Color(hex: 0x5A3E00))
-                        .padding(.horizontal, 8).padding(.vertical, 2).background(Color(hex: 0xFFF1C9), in: Capsule())
+                    Text("가상 종목").appFont(11, .bold).foregroundStyle(Color(hex: 0x5A3E00, dark: 0xF0D28A))
+                        .padding(.horizontal, 8).padding(.vertical, 2).background(Color(hex: 0xFFF1C9, dark: 0x4A3D16), in: Capsule())
                 }
             }
             Text(p.what).appFont(14).lineSpacing(3)
@@ -212,7 +212,7 @@ struct AddHoldingView: View {
                 Text("종목 추가").appFont(22, .bold)
                 TextField("한글·영문 이름, 티커, 종목 코드", text: $query)
                     .padding(.horizontal, 14).frame(minHeight: 48)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
                 if let p = picked {
                     Card {
@@ -249,7 +249,7 @@ struct AddHoldingView: View {
                             Divider().overlay(Theme.line)
                         }
                     }
-                    .background(.white, in: RoundedRectangle(cornerRadius: 18))
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 }
             }
             .screen().padding(.top, 8)
@@ -306,7 +306,7 @@ struct HoldingEditView: View {
                 }
                 ChipRow(items: [("fix", "직접 고치기"), ("buy", "더 샀어요"), ("sell", "팔았어요")], selection: $mode, fill: true)
             }
-            .padding(16).background(.white).overlay(alignment: .bottom) { Divider() }
+            .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 field(mode == "fix" ? "수량 (주)" : mode == "buy" ? "더 산 수량 (주)" : "판 수량 (주)", $q)
@@ -375,7 +375,7 @@ struct HoldingEditView: View {
             Text(label + (label.contains("주") ? "" : sym.currency == .usd ? " (달러)" : " (원)")).appFont(13, .semibold).foregroundStyle(Theme.sub)
             TextField("", text: b).keyboardType(.decimalPad).appFont(18, .semibold)
                 .padding(.horizontal, 12).frame(minHeight: 48)
-                .background(.white, in: RoundedRectangle(cornerRadius: 10))
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
                 .accessibilityLabel(label)
         }

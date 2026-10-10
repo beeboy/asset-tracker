@@ -11,7 +11,6 @@
 		0AB939B5C4907CBD8CD2BCE5 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A659ACA7844B039CC6E3E3 /* HomeView.swift */; };
 		10C6615D5203C5E06D9C2CF9 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752819BFD13B67854C54F1A0 /* AppModel.swift */; };
 		1DFBD64F26F68ABE1A9B5193 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0020D03B6A8743286E629278 /* AnalysisView.swift */; };
-		27B98CF0F3A9E3308C683492 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012F5C5676B198E5CF433509 /* StartView.swift */; };
 		2984BA32200FEDDF49E697E0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96EDF9F440F10C712447019C /* Theme.swift */; };
 		46907135EEBF113492A0AD2A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1662FF1073C45ECA5F6AFB3 /* SettingsView.swift */; };
 		531CD3A158BBA2E981252BBE /* GoalRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2903D2EDFECF97B14BC39A9B /* GoalRoute.swift */; };
@@ -34,7 +33,6 @@
 
 /* Begin PBXFileReference section */
 		0020D03B6A8743286E629278 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
-		012F5C5676B198E5CF433509 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		0A149C71953E24CEC80C3679 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		19A659ACA7844B039CC6E3E3 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		2903D2EDFECF97B14BC39A9B /* GoalRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalRoute.swift; sourceTree = "<group>"; };
@@ -97,7 +95,6 @@
 				D1662FF1073C45ECA5F6AFB3 /* SettingsView.swift */,
 				9D1A8DE32227186611CAE0D0 /* ShareCard.swift */,
 				B9051E09656ED51EFBF91911 /* ShelterView.swift */,
-				012F5C5676B198E5CF433509 /* StartView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -223,7 +220,6 @@
 				46907135EEBF113492A0AD2A /* SettingsView.swift in Sources */,
 				A2B3098A96833AB4427043CB /* ShareCard.swift in Sources */,
 				DC15E84938D3B3EDB0FB4481 /* ShelterView.swift in Sources */,
-				27B98CF0F3A9E3308C683492 /* StartView.swift in Sources */,
 				2984BA32200FEDDF49E697E0 /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

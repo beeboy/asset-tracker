@@ -36,11 +36,15 @@ struct SettingsView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                .background(.white, in: RoundedRectangle(cornerRadius: 18))
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
 
+                Text("화면 모드").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
+                ChipRow(items: [("system", "아이폰 설정 따라가기"), ("light", "밝게"), ("dark", "어둡게")],
+                        selection: Binding(get: { m.appearance }, set: { m.appearance = $0; UserDefaults.standard.set($0, forKey: "appearance") }), fill: true)
                 Text("시안 조작").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
                 HStack(spacing: 8) {
+                    demoButton("첫 질문부터") { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
                     demoButton("미션 1부터") { m.resetDemo(.fresh) }
                     demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
                     demoButton("모든 화면 열기") { m.resetDemo(.all) }
@@ -84,7 +88,7 @@ struct PriceBasisView: View {
                     Text("매일 오전 7시에 갱신해요").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 }
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+                .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 Card {
                     row("미국 종목", "한국 시간 아침에 전날 종가 반영")
                     row("한국 종목", "장 마감 뒤 그날 종가 반영")

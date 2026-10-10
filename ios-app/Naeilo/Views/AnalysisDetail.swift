@@ -81,7 +81,7 @@ private struct Kpi: View {
             Text(sub).appFont(11).foregroundStyle(Theme.muted)
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 14))
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
     }
 }
@@ -100,7 +100,7 @@ private func pinnedBox<C: View>(@ViewBuilder _ c: () -> C) -> some View {
     VStack(alignment: .leading, spacing: 10) { c() }
         .fixedSize(horizontal: false, vertical: true)
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white).overlay(alignment: .bottom) { Divider() }
+        .background(Theme.card).overlay(alignment: .bottom) { Divider() }
 }
 
 // 0~1 정규 좌표 선 그리기
@@ -135,7 +135,7 @@ struct MyPathView: View {
         let now = m.trackValue, mM = p.monthly
         let needCagr = now > 0 && yrsLeft > 0 ? pow(max(1, K - mM * 12 * yrsLeft) / now, 1 / yrsLeft) - 1 : 0
         let pPlan = f.prob(min(3, yrsLeft))
-        let lead = gap >= 0 ? Theme.teal : Color(hex: 0xB5651D)
+        let lead = gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060)
 
         PinnedLayout {
             pinnedBox {
@@ -180,7 +180,7 @@ struct MyPathView: View {
                     ForEach(1...3, id: \.self) { k in
                         let t = Double(k) / 12, g = need(t) > 0 ? act(t) / need(t) - 1 : 0
                         SignedBar(label: k == 3 ? "오늘" : "\(k)달째", value: AppModel.sgn(g), g: g, scale: 0.2, pos: Theme.green, neg: Theme.orange,
-                                  valueColor: g >= 0 ? Theme.teal : Color(hex: 0xB5651D))
+                                  valueColor: g >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
                     }
                 }
                 kpiGrid([
@@ -538,7 +538,7 @@ struct GlanceView: View {
                     }
                 }
                 Text(info.2).appFont(12).foregroundStyle(Theme.sub)
-                ChipRow(items: names.map { ($0.0, $0.1) }, selection: $metric, accent: Theme.ink)
+                ChipRow(items: names.map { ($0.0, $0.1) }, selection: $metric)
             }
         } content: {
             VStack(alignment: .leading, spacing: 10) {
@@ -565,7 +565,7 @@ struct GlanceView: View {
                             }
                         }
                         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
                         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
                         .contentShape(Rectangle())
                     }

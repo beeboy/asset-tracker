@@ -2,8 +2,8 @@ import SwiftUI
 
 // 목표 달성 루트 화면 (시안 g1·g1r·g3·g3r·gt·gi·gp1r, 목표 미션 판). 설명은 계산값, 종목 추천 문구 없음.
 
-private let mixColor: [String: Color] = ["mine": Theme.purple, "index": Color(hex: 0x1F3A7A), "grow": Theme.green, "steady": Theme.blue]
-private let compColor: [String: Color] = ["T": Theme.purple, "I": Color(hex: 0x1F3A7A), "G": Theme.green, "B": Theme.blue, "C": Color(hex: 0xBFC6CD)]
+private let mixColor: [String: Color] = ["mine": Theme.purple, "index": Color(hex: 0x1F3A7A, dark: 0x7F9BE0), "grow": Theme.green, "steady": Theme.blue]
+private let compColor: [String: Color] = ["T": Theme.purple, "I": Color(hex: 0x1F3A7A, dark: 0x7F9BE0), "G": Theme.green, "B": Theme.blue, "C": Color(hex: 0xBFC6CD, dark: 0x56616C)]
 private let compName: [String: String] = ["T": "DRNK", "I": "지수", "G": "성장 지속", "B": "버팀목", "C": "현금"]
 
 // 목표까지 길: 띠 = 100번 중 90번, 선 = 보통의 경우, 회색 점선 = 넣은 원금, 빨간 점선 = 목표
@@ -74,7 +74,7 @@ private func inputField(_ label: String, _ text: Binding<String>) -> some View {
         Text(label).appFont(13, .semibold).foregroundStyle(Theme.sub)
         TextField("", text: text).keyboardType(.numberPad).appFont(18, .semibold)
             .padding(.horizontal, 12).frame(minHeight: 48)
-            .background(.white, in: RoundedRectangle(cornerRadius: 10))
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
             .accessibilityLabel(label)
     }
@@ -165,7 +165,7 @@ struct GoalBoardView: View {
             .padding(b.inter ? 12 : 10)
             .frame(maxWidth: .infinity, minHeight: b.inter ? 72 : 88, alignment: .topLeading)
             .foregroundStyle(b.inter ? (done ? Theme.yellow : avail ? .white : Theme.sub2) : (done ? .white : avail ? Theme.ink : Theme.sub2))
-            .background(b.inter ? (done || avail ? Theme.ink : Theme.track) : (done ? Theme.teal : avail ? .white : Theme.track), in: RoundedRectangle(cornerRadius: 14))
+            .background(b.inter ? (done || avail ? Theme.night : Theme.track) : (done ? Theme.teal : avail ? Theme.card : Theme.track), in: RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(b.inter ? (done ? Theme.ink : avail ? Theme.yellow : Theme.dash) : (done || avail ? Theme.teal : Theme.track),
                                                                style: StrokeStyle(lineWidth: 2, dash: b.inter && !done ? [6, 4] : [])))
         }
@@ -196,14 +196,14 @@ struct GoalCellsCard: View {
                 Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
                 Text(chg == 0 ? "어제와 같음" : "어제보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
             }
-            ChipRow(items: [("mine", "내 칸 / 시장 칸"), ("chg", "어제 바뀐 칸")], selection: $mode, accent: Theme.ink)
+            ChipRow(items: [("mine", "내 칸 / 시장 칸"), ("chg", "어제 바뀐 칸")], selection: $mode)
             GoalCellGrid(mine: nMine, market: nMkt, lost: nLost, yesterday: nY, showChange: true)
                 .aspectRatio(320.0 / 200.0, contentMode: .fit)
                 .accessibilityLabel("1000칸 중 \(nV)칸")
             FlowRow(spacing: 10) {
                 legend(Theme.teal, "내가 넣은 돈 \(nMine)칸")
-                legend(Color(hex: 0x7FD3C9), "시장이 준 칸 \(nMkt)칸")
-                if nLost > 0 { legend(Color(hex: 0xFBE3CF), "시장이 잠시 가져간 칸 \(nLost)칸") }
+                legend(Color(hex: 0x7FD3C9, dark: 0x3C8F86), "시장이 준 칸 \(nMkt)칸")
+                if nLost > 0 { legend(Color(hex: 0xFBE3CF, dark: 0x4A3020), "시장이 잠시 가져간 칸 \(nLost)칸") }
                 legend(Theme.yellow, "마지막 칸 = 목표")
             }
             Text("진한 칸은 내가 넣은 돈이라 시장이 내려도 사라지지 않아요. 연한 칸은 시장이 준 몫이라 오르내림에 따라 늘었다 줄었다 해요. 이번 달 \(AppModel.wonK(m.gM))을 넣으면 진한 칸이 \(Int(m.gM * 1e4 / unit))칸 늘어요.")
@@ -212,9 +212,11 @@ struct GoalCellsCard: View {
                 Text("100칸 선물").appFont(13, .bold); Spacer()
                 Text(passed >= 10 ? "1000칸 완성!" : "\((passed + 1) * 100)칸까지 \((passed + 1) * 100 - nV)칸").appFont(13).foregroundStyle(Theme.sub)
             }
+            ShareCardButton(filled: nV, mine: nMine, market: nMkt, kicker: "목표까지 가는 중",
+                            amountLine: "목표 \(AppModel.wonK(m.gK)) 중 \(AppModel.man(tkV)) 모았어요.")
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(.white, in: RoundedRectangle(cornerRadius: 18))
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.ink, lineWidth: 2))
     }
 }
@@ -228,7 +230,7 @@ struct GoalCellGrid: View {
             func rect(_ i: Int) -> CGRect { CGRect(x: CGFloat(i % 40) * s + 0.5, y: CGFloat(24 - i / 40) * s + 0.5, width: s - 1, height: s - 1) }
             let now = mine + market
             for i in 0..<1000 {
-                let c: Color = i < mine ? Theme.teal : i < now ? Color(hex: 0x7FD3C9) : i < now + lost ? Color(hex: 0xFBE3CF) : Theme.track
+                let c: Color = i < mine ? Theme.teal : i < now ? Color(hex: 0x7FD3C9, dark: 0x3C8F86) : i < now + lost ? Color(hex: 0xFBE3CF, dark: 0x4A3020) : Theme.track
                 ctx.fill(Path(rect(i)), with: .color(c))
             }
             if showChange {
@@ -254,14 +256,14 @@ struct GoalHoldResultView: View {
                 Text("DRNK 비중 \(AppModel.pct(m.drnkWeight))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+            .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             if m.ret >= 0 {
                 Text("이 평가액에서 출발해 목표 금액까지 가는 길을 그려요.").appFont(15).foregroundStyle(Theme.sub)
                 BoardLinks(next: "다음 미션: 목표 정하기", to: .g1)
             } else {
                 Text("숫자로 보면 지금은 마이너스예요. 본전까지 가는 길부터 보는 회복 루트가 더 맞아요. 넣은 종목은 그대로 가져가요.")
                     .appFont(15).padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(hex: 0xFDF0E1), in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
                 PrimaryButton(title: "회복 루트로 옮기기") { m.switchRoute(.recover) }
                 BoardLinks(next: nil, to: nil)
                 Button("그래도 목표 루트로 계속") { m.boardPath.append(.g1) }
@@ -299,7 +301,7 @@ struct GoalSetView: View {
                 GoalPathChart(sims: [(path, Theme.teal, true)], goal: m.gK).frame(height: 80)
                 HStack { Text("지금"); Spacer(); Text("빨간 선 = 목표 · 점선 = 넣은 원금"); Spacer(); Text("\(m.gY)년") }.appFont(11).foregroundStyle(Theme.muted)
             }
-            .padding(16).background(.white).overlay(alignment: .bottom) { Divider() }
+            .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 Text("고르는 기준: 몇 배로 키울지, 적립 없이 가려면 한 해 몇 %가 필요한지, 매달 얼마를 넣어야 하는지. 모두 지금 \(AppModel.wonK(start))에서 출발한 계산이에요.")
@@ -314,7 +316,7 @@ struct GoalSetView: View {
                                 Text(p.need).appFont(13, .bold).foregroundStyle(Theme.teal)
                             }
                             .padding(12).frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
-                            .background(on ? Theme.mintBg : .white, in: RoundedRectangle(cornerRadius: 14))
+                            .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 14))
                             .overlay(RoundedRectangle(cornerRadius: 14).stroke(on ? Theme.teal : Theme.border, lineWidth: 2))
                         }.buttonStyle(.plain)
                     }
@@ -352,7 +354,7 @@ struct GoalSetResultView: View {
                 Text(need > 0 ? AppModel.wonK(need) : "0원 (이미 충분해요)").appFont(30, .bold)
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+            .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             Text("목표를 정하면 월 적립액도 정해져요. 지금 \(AppModel.wonK(m.goalStart))이 보통의 경우처럼 자란다고 보고, 모자란 만큼을 매달로 나눈 금액이에요. 구성은 미션 \(m.goalNo("mix"))에서 비교해요.")
                 .appFont(14).foregroundStyle(Theme.sub).lineSpacing(3)
             Card {
@@ -378,7 +380,7 @@ private func compositionBar(_ weights: [String: Double]) -> some View {
         HStack(spacing: 0) {
             ForEach(keys, id: \.self) { k in
                 Rectangle().fill(compColor[k]!).frame(width: g.size.width * (weights[k] ?? 0))
-                    .overlay(alignment: .trailing) { Rectangle().fill(.white).frame(width: 2) }
+                    .overlay(alignment: .trailing) { Rectangle().fill(Theme.card).frame(width: 2) }
             }
         }
     }
@@ -419,7 +421,7 @@ struct GoalMixView: View {
                 }
                 ChipRow(items: m.goalMixes.map { ($0.id, $0.name) }, selection: $m.gMix, fill: true)
             }
-            .padding(16).background(.white).overlay(alignment: .bottom) { Divider() }
+            .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
                 if !sh.line.isEmpty { Text(sh.line).appFont(13).foregroundStyle(Theme.sub) }
@@ -461,7 +463,7 @@ struct GoalMixResultView: View {
                             Text(label).appFont(15, .semibold)
                             Text(sub).appFont(13).foregroundStyle(Theme.sub)
                             Spacer()
-                            Text(amt).appFont(15, .bold).foregroundStyle(up ? Theme.teal : Color(hex: 0x2450C8))
+                            Text(amt).appFont(15, .bold).foregroundStyle(up ? Theme.teal : Color(hex: 0x2450C8, dark: 0x7FA2F0))
                         }
                         .frame(minHeight: 34)
                     }
@@ -507,7 +509,7 @@ struct GoalTaxView: View {
                     Text(pick.2).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 }
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+                .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 ChipRow(items: [("one", "한 번에"), ("split", "나눠 팔기"), ("none", "적립만")], selection: $m.goalTaxPick, fill: true)
                 Text("\"\(m.selectedMix.name)\"으로 맞추면 DRNK \(AppModel.wonK(sale))를 팔고, 그중 이익이 \(AppModel.wonK(gainSale))예요. 나눠 팔면 \(AppModel.wonK(max(0, tOne - tSplit))) 덜 내요.")
                     .appFont(14).foregroundStyle(Theme.sub).lineSpacing(2)
@@ -515,7 +517,7 @@ struct GoalTaxView: View {
                 Text(sh.sell > 0 ? "파는 부분이 손실이라 낼 세금이 없어요. 올해 판 다른 이익과 상계돼요. (DRNK 평균 단가가 어제 종가보다 높아요)"
                      : "지금 고른 구성(\"\(m.selectedMix.name)\")은 팔 게 없어요. 미션 \(m.goalNo("mix"))에서 다른 구성을 고르면 세금을 비교할 수 있어요.")
                     .appFont(15).padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 14))
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
             }
             Text("결제일 기준으로 그해 손익에 들어가요. 계산 예시이며 세무 상담이 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
@@ -559,11 +561,11 @@ struct GoalIntermissionView: View {
                              + (eta.isFinite ? "이 속도면 \(AppModel.eta(eta)) 도착 (" + (eta < plan ? "\(Int(plan - eta))개월 빠름" : eta > plan ? "\(Int(eta - plan))개월 늦음" : "목표 시점") + ")" : ""))
                             .appFont(14, .semibold).foregroundStyle(Theme.ink)
                             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(last == .less ? Color(hex: 0xFDF0E1) : last == .more ? Color(hex: 0xE4F0FB) : Color(hex: 0xE3F4EC), in: RoundedRectangle(cornerRadius: 12))
+                            .background(last == .less ? Color(hex: 0xFDF0E1, dark: 0x3A2A17) : last == .more ? Color(hex: 0xE4F0FB, dark: 0x16283A) : Color(hex: 0xE3F4EC, dark: 0x163226), in: RoundedRectangle(cornerRadius: 12))
                     }
                 }
                 .foregroundStyle(.white).padding(16)
-                .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20))
+                .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
 
                 if fixed.count < 3 {
                     Card {
@@ -583,7 +585,7 @@ struct GoalIntermissionView: View {
                                     }
                                     .foregroundStyle(Theme.ink).padding(.vertical, 8)
                                     .frame(maxWidth: .infinity, minHeight: 64)
-                                    .background(on ? p.color.opacity(0.15) : .white, in: RoundedRectangle(cornerRadius: 12))
+                                    .background(on ? p.color.opacity(0.15) : Theme.card, in: RoundedRectangle(cornerRadius: 12))
                                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(p.color, lineWidth: on ? 3 : 2))
                                 }.buttonStyle(.plain)
                             }
@@ -614,7 +616,7 @@ struct GoalIntermissionView: View {
                             }
                         }
                         .padding(12)
-                        .background(on ? .white : Color(hex: 0xF0F2F4), in: RoundedRectangle(cornerRadius: 16))
+                        .background(on ? Theme.card : Color(hex: 0xF0F2F4, dark: 0x1D252E), in: RoundedRectangle(cornerRadius: 16))
                         .overlay(RoundedRectangle(cornerRadius: 16).stroke(on ? Theme.border : Theme.dash, style: StrokeStyle(lineWidth: 1, dash: on ? [] : [4, 3])))
                         .opacity(on ? 1 : 0.8)
                     }
