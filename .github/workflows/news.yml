@@ -1,8 +1,7 @@
 name: news
-# 인사이트 화면용 뉴스를 한 시간마다 모아 AI 중계로 한글 번역·요약하고 data/news.json 에 커밋한다.
+# 뉴스를 모아 AI 중계로 한글 번역·요약하고 data/news.json 에 커밋한다.
+# 인사이트 화면을 기록 탭으로 바꾸면서(2026-10-10) 매시간 예약은 껐다. 필요하면 Actions 에서 손으로 돌린다.
 on:
-  schedule:
-    - cron: "7 * * * *"
   workflow_dispatch:
 permissions:
   contents: write

@@ -30,13 +30,6 @@ jobs:
         run: python server.py --collect --add "$ADD"
       - name: 아이폰 위젯용 작은 시세 파일
         run: python tools/widget_feed.py
-      # news.yml 의 한 시간 예약은 GitHub 가 몇 시간씩 미루므로, 시세 수집 때 뉴스가 50분 넘게 묵었으면 같이 모은다
-      - name: 뉴스 수집 (50분 넘게 지났을 때만)
-        continue-on-error: true
-        run: |
-          if python -c "import json,sys,datetime as d; u=json.load(open('data/news.json')).get('updated'); a=(d.datetime.now(d.timezone.utc)-d.datetime.fromisoformat(u)).total_seconds(); sys.exit(0 if a>3000 else 1)"; then
-            timeout 600 python server.py --news
-          else echo "뉴스는 최근 것"; fi
       - name: 커밋
         run: |
           git config user.name "github-actions[bot]"
