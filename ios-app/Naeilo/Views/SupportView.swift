@@ -63,7 +63,7 @@ struct SupportView: View {
                 if t.pending { Text("읽기·이름 올리기는 준비 중이에요. 준비되면 산 분께 바로 열려요.").appFont(12).foregroundStyle(Theme.muted) }
             }
             Button { if let p { Task { await s.buy(p) } } } label: {
-                Text(owned ? "가지고 있어요" : s.busy == p?.id ? "결제하는 중…" : "후원하기")
+                Text(owned ? "가지고 있어요" : p == nil ? "지금은 살 수 없어요" : s.busy == p?.id ? "결제하는 중…" : "후원하기")
                     .appFont(15, .bold).foregroundStyle(owned ? Theme.teal : .white)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(owned ? Theme.mintBg : Theme.teal, in: RoundedRectangle(cornerRadius: 12))
@@ -83,7 +83,7 @@ struct SupportView: View {
             Text(s.tips > 0 ? "지금까지 \(s.tips)잔 고마워요. 몇 번이든 보낼 수 있어요." : "아무것도 열리지 않는 순수 후원이에요. 몇 번이든 보낼 수 있어요.")
                 .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             Button { if let p { Task { await s.buy(p) } } } label: {
-                Text(s.busy == p?.id ? "결제하는 중…" : "한 잔 보내기").appFont(15, .bold).foregroundStyle(Theme.teal)
+                Text(p == nil ? "지금은 살 수 없어요" : s.busy == p?.id ? "결제하는 중…" : "한 잔 보내기").appFont(15, .bold).foregroundStyle(Theme.teal)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
             }
