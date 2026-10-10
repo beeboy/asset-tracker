@@ -74,8 +74,34 @@ enum Store {
         } else { hideAll.toggle() }
     }
 
+    /// 받은 위젯 (앱이 앱 시작 단계에 맞춰 쓴다). 한 번도 안 썼으면 nil = 모두 열림
+    static var unlockedKinds: [String]? {
+        get { defaults.stringArray(forKey: "unlockedKinds") }
+        set { defaults.set(newValue, forKey: "unlockedKinds") }
+    }
+    static func isUnlocked(_ kind: String) -> Bool { unlockedKinds.map { $0.contains(kind) } ?? true }
+
     static func wipe() {
         try? FileManager.default.removeItem(at: dir)
         for k in ["lastCheck", "summarySource", "etags"] { defaults.removeObject(forKey: k) }
+    }
+}
+
+/// 위젯 받는 조건: 앱 시작 1·2·3단계, 3단계를 마치면 특별 선물로 나머지 전부
+enum WidgetUnlock {
+    static let step: [String: Int] = [
+        "asset.small": 1, "lock.asset": 1,
+        "pace.medium": 2, "lock.goal": 2,
+        "block.small": 3,
+        "future.small": 4, "target.medium": 4, "moves.medium": 4, "future.large": 4, "lock.future": 4, "lock.target": 4,
+    ]
+    static func kinds(doneSteps n: Int) -> [String] { step.filter { $0.value <= (n >= 3 ? 4 : n) }.map(\.key).sorted() }
+    static func how(_ kind: String) -> String {
+        switch step[kind] ?? 4 {
+        case 1: "앱 시작 1단계(종목 추가)를 하면 열려요"
+        case 2: "앱 시작 2단계(알림 켜기)를 하면 열려요"
+        case 3: "앱 시작 3단계(기기 동기화)를 하면 열려요"
+        default: "앱 시작 3단계를 마치면 특별 선물로 열려요"
+        }
     }
 }

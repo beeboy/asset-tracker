@@ -5,6 +5,7 @@ import SwiftUI
 struct Entry: TimelineEntry {
     let date: Date
     let snap: Snapshot
+    var preview = false     // 위젯 갤러리 미리보기면 잠그지 않고 실제 모습을 보여 준다
 }
 
 struct Provider: TimelineProvider {
@@ -12,7 +13,7 @@ struct Provider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
         // 위젯 추가 화면 미리보기도 내 데이터로 (연결 전이면 Engine 이 예시 값을 준다)
-        completion(Entry(date: Date(), snap: Engine.snapshot()))
+        completion(Entry(date: Date(), snap: Engine.snapshot(), preview: context.isPreview))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {

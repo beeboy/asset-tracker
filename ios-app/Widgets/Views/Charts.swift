@@ -48,9 +48,9 @@ struct DotSpark: View {
             }
             if labels, v.count > 1, hi > lo {
                 let fx = { (x: CGFloat) in min(max(x, 14), g.size.width - 14) }
-                Text(String(format: "%.2f", hi / 1e8)).font(.system(size: 9, weight: .bold)).foregroundStyle(tint.c(Palette.up))
+                Text(hi < 1e8 ? Fmt.man(hi) : String(format: "%.2f", hi / 1e8)).font(.system(size: 9, weight: .bold)).foregroundStyle(tint.c(Palette.up))
                     .fixedSize().position(x: fx(pts[iHi].x), y: pts[iHi].y - 9)
-                Text(String(format: "%.2f", lo / 1e8)).font(.system(size: 9, weight: .bold)).foregroundStyle(tint.c(Palette.dn))
+                Text(lo < 1e8 ? Fmt.man(lo) : String(format: "%.2f", lo / 1e8)).font(.system(size: 9, weight: .bold)).foregroundStyle(tint.c(Palette.dn))
                     .fixedSize().position(x: fx(pts[iLo].x), y: pts[iLo].y + 9)
             }
         }

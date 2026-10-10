@@ -39,6 +39,13 @@ struct RootView: View {
         // 보유·루트가 바뀌면 위젯도 바로
         .onChange(of: model.holdings) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.route) { _, _ in WidgetBridge.write(model) }
+        .onChange(of: model.nxStep) { _, _ in WidgetBridge.write(model) }
+        // 잠긴 위젯을 누르면 앱 시작 3단계로
+        .onOpenURL { url in
+            guard url.host == "unlock" else { return }
+            model.tab = .board
+            model.boardPath = model.playOn ? [] : [.nx]
+        }
         // 지금 시세: 화면이 켜져 있는 동안 1분마다 갱신
         .task {
             while !Task.isCancelled {
