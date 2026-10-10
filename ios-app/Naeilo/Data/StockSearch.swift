@@ -105,6 +105,12 @@ final class CustomSymbols {
             items = disk.items; hist = disk.hist
         }
     }
+    /// 내 폰에 저장한 파일에서 불러오기: 같은 종목은 파일 값으로
+    func restore(_ new: [Saved], _ h: [String: Hist]) {
+        items = items.filter { s in !new.contains { $0.id == s.id } } + new
+        hist.merge(h) { _, b in b }
+        save()
+    }
     private func save() {
         if let d = try? JSONEncoder().encode(Disk(items: items, hist: hist)) { try? d.write(to: Self.file, options: .atomic) }
     }

@@ -13,6 +13,7 @@
 		0F08E98EA133D8801A74DC46 /* Charts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE0AEDA95E5BB4C866CC85F /* Charts.swift */; };
 		1047A45879C934FAE916723D /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7EC19C2231330D33458026 /* Format.swift */; };
 		10C6615D5203C5E06D9C2CF9 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752819BFD13B67854C54F1A0 /* AppModel.swift */; };
+		144B366D5A4CB36879DFA9FE /* Backup.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED40AA1E9B7F52CE298F2BCA /* Backup.swift */; };
 		16A6361DBEF072CA2C4F43A9 /* HomeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53C7420B8EFE5B35837C5B5B /* HomeViews.swift */; };
 		17F4BF227BB8ABA88817F833 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 518AC9E18D610E449420A0E3 /* PrivacyInfo.xcprivacy */; };
 		1A944CD8310789082F51DDA9 /* StockSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E2F947F1E8A2B5EF85B381 /* StockSearch.swift */; };
@@ -44,6 +45,7 @@
 		8C43044F5F47ED770ECE4F6A /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CB3081436E1A6F74D763B5 /* Config.swift */; };
 		8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */ = {isa = PBXBuildFile; fileRef = BE16646A583833EE1115FA08 /* prices */; };
 		98F299D8C7B3CBBC431D31ED /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6F03765313B364DF7C9F94 /* Models.swift */; };
+		9AAFE0E39C67C3A8F01170F4 /* Catalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A824AF1DB8AF8410F855C8 /* Catalog.swift */; };
 		9F562AC90F235FFD94E5BF80 /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4439B2462725991C102336E8 /* Services.swift */; };
 		9F9ED7709E516D30CFB4424C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0331F7703E5FBD6276E1B388 /* Theme.swift */; };
 		A2B3098A96833AB4427043CB /* ShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1A8DE32227186611CAE0D0 /* ShareCard.swift */; };
@@ -65,7 +67,6 @@
 		E762D90DE2DA8A154155FBCF /* LockViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 206E3A0628D8CDDCFF0E3827 /* LockViews.swift */; };
 		E7DC3B4A6644BA706DB3609C /* MissionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B0231D9975040C795003779 /* MissionViews.swift */; };
 		EB12D002A2D45EFB5B3CB73D /* Charts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C59880D308D978CDFD58A8E /* Charts.swift */; };
-		F1EE1F8DF3D5F1F3AD8432C8 /* CharWidgetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5959124CCDCF5A8C65B8FCFE /* CharWidgetPreview.swift */; };
 		FFBF09FFE7A73E919A8C69C3 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF12A424D20E007AF664931 /* BoardView.swift */; };
 /* End PBXBuildFile section */
 
@@ -115,7 +116,6 @@
 		4D46A231D948B3B35A9ACF5E /* Sync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sync.swift; sourceTree = "<group>"; };
 		518AC9E18D610E449420A0E3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		53C7420B8EFE5B35837C5B5B /* HomeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViews.swift; sourceTree = "<group>"; };
-		5959124CCDCF5A8C65B8FCFE /* CharWidgetPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharWidgetPreview.swift; sourceTree = "<group>"; };
 		68521199848D8FCA256D8B7B /* GoalViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalViews.swift; sourceTree = "<group>"; };
 		6B116C077153565363572A59 /* Reward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reward.swift; sourceTree = "<group>"; };
 		73C006A8DED4674A51D6CDF7 /* Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recovery.swift; sourceTree = "<group>"; };
@@ -146,6 +146,7 @@
 		D8E2F947F1E8A2B5EF85B381 /* StockSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockSearch.swift; sourceTree = "<group>"; };
 		D9CB3081436E1A6F74D763B5 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = drnk_ratio.json; sourceTree = "<group>"; };
+		ED40AA1E9B7F52CE298F2BCA /* Backup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backup.swift; sourceTree = "<group>"; };
 		F1D0C4109B5070AD88349788 /* Industries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Industries.swift; sourceTree = "<group>"; };
 		F2A824AF1DB8AF8410F855C8 /* Catalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Catalog.swift; sourceTree = "<group>"; };
 		F34CF3A1B831F99BE76F325E /* NaeiloApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NaeiloApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -185,6 +186,7 @@
 			isa = PBXGroup;
 			children = (
 				752819BFD13B67854C54F1A0 /* AppModel.swift */,
+				ED40AA1E9B7F52CE298F2BCA /* Backup.swift */,
 				2903D2EDFECF97B14BC39A9B /* GoalRoute.swift */,
 				F1D0C4109B5070AD88349788 /* Industries.swift */,
 				79304168EC56C026CAC9C361 /* Market.swift */,
@@ -228,7 +230,6 @@
 				0020D03B6A8743286E629278 /* AnalysisView.swift */,
 				FFF12A424D20E007AF664931 /* BoardView.swift */,
 				7C59880D308D978CDFD58A8E /* Charts.swift */,
-				5959124CCDCF5A8C65B8FCFE /* CharWidgetPreview.swift */,
 				68521199848D8FCA256D8B7B /* GoalViews.swift */,
 				FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */,
 				C1B93F44AA00A552A3868A92 /* HoldingsView.swift */,
@@ -436,8 +437,9 @@
 				1DFBD64F26F68ABE1A9B5193 /* AnalysisView.swift in Sources */,
 				5CB59D91AF71FB20220B5C04 /* App.swift in Sources */,
 				10C6615D5203C5E06D9C2CF9 /* AppModel.swift in Sources */,
+				144B366D5A4CB36879DFA9FE /* Backup.swift in Sources */,
 				FFBF09FFE7A73E919A8C69C3 /* BoardView.swift in Sources */,
-				F1EE1F8DF3D5F1F3AD8432C8 /* CharWidgetPreview.swift in Sources */,
+				9AAFE0E39C67C3A8F01170F4 /* Catalog.swift in Sources */,
 				7AE72E73708FC421D35A432B /* CharWidgets.swift in Sources */,
 				EB12D002A2D45EFB5B3CB73D /* Charts.swift in Sources */,
 				8C43044F5F47ED770ECE4F6A /* Config.swift in Sources */,

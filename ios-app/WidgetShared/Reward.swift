@@ -15,10 +15,12 @@ struct WReward: Codable {
     var next: String?            // "DRNK 실적 D-12 (10/22)"
     var friendsOn: [String]      // 만난 인물 (세리는 처음부터)
     var homeFriend: String? = nil // 앱 홈에 둔 인물 (위젯 '홈 인물 따라가기'가 쓴다)
+    var spark: [Double]? = nil    // 최근 10일 평가액 (만원). 인물 · 자산 추이
 
     static let sample = WReward(keyName: "본전", pct: 0.87, pctYesterday: 0.862, remain: 1.52e7, cells: 264, cellsYesterday: 261,
                                 total: 1.234e8, dayChg: 0.008, tiles: [.init(t: "DRNK", w: 0.62, c: 0.019), .init(t: "QQQ", w: 0.38, c: -0.004)],
-                                next: "DRNK 실적 D-12 (10/22)", friendsOn: WChar.all.map(\.id))
+                                next: "DRNK 실적 D-12 (10/22)", friendsOn: WChar.all.map(\.id),
+                                spark: [11980, 12050, 12010, 12120, 12200, 12150, 12260, 12310, 12240, 12340])
 }
 
 /// 인물 위젯의 인물: 색은 캐릭터 설정 스레드 시안 (reward-widgets)

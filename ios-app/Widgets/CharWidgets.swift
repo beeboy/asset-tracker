@@ -59,6 +59,15 @@ struct CharProvider: AppIntentTimelineProvider {
     }
 }
 
+struct CharTrend: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: "char.trend", intent: WhoIntent.self, provider: CharProvider()) { e in
+            CharFrame(e: e) { TrendCharView(e: e) }
+        }
+        .configurationDisplayName("인물 · 자산 추이").description("총자산·오늘 등락·최근 10일 흐름, 인물이 옆에서 봐요")
+        .supportedFamilies([.systemSmall])
+    }
+}
 struct CharRecover: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.recover", intent: WhoIntent.self, provider: CharProvider()) { e in
@@ -166,6 +175,68 @@ private func eokMan(_ v: Double) -> String {
 }
 private let upC = Color(red: 1, green: 0.42, blue: 0.42)
 private let dnC = Color(red: 0.42, green: 0.61, blue: 1)
+
+// MARK: 자산 추이 (작은): 총자산 · 오늘 등락 · 최근 10일 점선, 인물은 오른쪽 아래
+
+struct TrendCharView: View {
+    let e: CharEntry
+    var body: some View {
+        StyleReader { dark in
+            let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
+            let sp = r.spark ?? []
+            ZStack(alignment: .bottomTrailing) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text("자산 추이").font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                        Spacer(minLength: 0)
+                        if !e.locked { CharReload() }
+                    }
+                    if e.locked {
+                        Image(systemName: "lock.fill").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.7)).padding(.vertical, 4)
+                        Text("인터미션\n\(e.c.week)주차에 만나요").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(eokMan(r.total)).font(.system(size: 24, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1)
+                        Text(Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100) + " 오늘")
+                            .font(.system(size: 11, weight: .semibold)).foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable()
+                    }
+                    Spacer(minLength: 0)
+                    if !e.locked && sp.count >= 2 {
+                        CharSpark(values: sp, color: s.accent).frame(height: 30).padding(.trailing, 50).widgetAccentable()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                CharSprite(name: "w_\(e.c.id)", locked: e.locked, height: 70)
+                    .offset(x: 8, y: 6)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "\(e.c.name), 자산 \(eokMan(e.r.total)), 오늘 \(e.r.dayChg >= 0 ? "올라" : "내려") \(String(format: "%.1f%%", abs(e.r.dayChg) * 100))")
+    }
+}
+
+/// 최근 며칠: 선 + 속 빈 점, 마지막 점만 채움
+struct CharSpark: View {
+    let values: [Double]
+    let color: Color
+    var body: some View {
+        GeometryReader { g in
+            let lo = values.min() ?? 0, hi = values.max() ?? 1, span = max(hi - lo, 1e-9)
+            let pts = values.enumerated().map { i, v in
+                CGPoint(x: g.size.width * CGFloat(i) / CGFloat(max(1, values.count - 1)),
+                        y: 3 + (g.size.height - 6) * CGFloat(1 - (v - lo) / span))
+            }
+            ZStack {
+                Path { p in p.addLines(pts) }.stroke(color.opacity(0.9), lineWidth: 1.5)
+                ForEach(Array(pts.enumerated()), id: \.offset) { i, pt in
+                    Circle().fill(i == pts.count - 1 ? color : Color.black.opacity(0.001))
+                        .overlay(Circle().stroke(color, lineWidth: 1.2))
+                        .frame(width: 5, height: 5).position(pt)
+                }
+            }
+        }
+    }
+}
 
 // MARK: 본전 진행 (작은)
 

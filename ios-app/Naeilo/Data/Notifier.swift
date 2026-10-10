@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import UIKit
 
 // 실제 알림 (기기 안에서 예약하는 로컬 알림. 서버 없음)
 // - 본전 도달 · 비중 이탈: 앱이 시세를 갱신할 때(앱이 켜져 있을 때 1분마다) 조건을 보고 바로 보낸다.
@@ -26,6 +27,21 @@ enum Notifier {
         return (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
+    /// 설정에서 고른 앱 아이콘을 알림 오른쪽 그림으로 붙인다.
+    /// 알림 왼쪽 아이콘은 아이폰이 정하는데, 다른 아이콘을 골라도 기본 아이콘으로 나오는 경우가 있어서 그림을 같이 보낸다
+    @MainActor
+    static func withIcon(_ c: UNMutableNotificationContent) -> UNMutableNotificationContent {
+        guard let alt = UIApplication.shared.alternateIconName,
+              let prev = AppIconPicker.icons.first(where: { $0.id == alt })?.prev,
+              let png = UIImage(named: prev)?.pngData() else { return c }
+        // 붙인 파일은 아이폰이 가져가므로 알림마다 새로 쓴다
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("icon-\(UUID().uuidString).png")
+        guard (try? png.write(to: url)) != nil,
+              let a = try? UNNotificationAttachment(identifier: "icon", url: url, options: nil) else { return c }
+        c.attachments = [a]
+        return c
+    }
+
     // MARK: 예약 (설정이 바뀌거나 앱을 열 때)
     @MainActor
     static func reschedule(_ m: AppModel) async {
@@ -39,7 +55,7 @@ enum Notifier {
             c.sound = .default
             c.userInfo = ["open": "tax"]
             let t = UNCalendarNotificationTrigger(dateMatching: DateComponents(month: 12, day: 1, hour: 9), repeats: true)
-            try? await center.add(UNNotificationRequest(identifier: "dep", content: c, trigger: t))
+            try? await center.add(UNNotificationRequest(identifier: "dep", content: withIcon(c), trigger: t))
         }
 
         if m.alerts["morn"] == true {
@@ -59,7 +75,7 @@ enum Notifier {
                     c.sound = .default
                     c.userInfo = ["open": "home"]
                     let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
-                    try? await center.add(UNNotificationRequest(identifier: "morn.\(n)", content: c,
+                    try? await center.add(UNNotificationRequest(identifier: "morn.\(n)", content: withIcon(c),
                                                                 trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
                     n += 1
                 }
@@ -109,7 +125,7 @@ enum Notifier {
         c.body = lines.map(\.1).joined(separator: "\n")
         c.sound = .default
         c.userInfo = ["open": "board"]
-        try? await center.add(UNNotificationRequest(identifier: "cond.\(today)", content: c, trigger: nil))
+        try? await center.add(UNNotificationRequest(identifier: "cond.\(today)", content: withIcon(c), trigger: nil))
     }
 
     /// 시안 확인용: 켠 알림을 5초 뒤에 지금 숫자로 한 번 보내 본다
@@ -120,7 +136,7 @@ enum Notifier {
         c.title = "naeilo 알림 시험"
         c.body = m.alerts["morn"] == true ? morningLine(m) : "알림이 이렇게 와요. 켠 알림은 조건이 되면 이 모양으로 와요."
         c.sound = .default
-        try? await center.add(UNNotificationRequest(identifier: "test", content: c,
+        try? await center.add(UNNotificationRequest(identifier: "test", content: withIcon(c),
                                                     trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)))
     }
 }

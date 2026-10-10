@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // 설정 상세 (시안 26·27판): 알림 · 기기 동기화 · 위젯 · 세금 규칙 · 사용 방법 · 루트.
 // 실제 알림 예약·동기화 서버 연결은 아직 없고, 화면과 상태만 있다.
@@ -66,8 +67,10 @@ struct AlertsView: View {
                     Text("켠 알림 \(on.count)개" + (perMonth > 0 ? " · 한 달 약 \(perMonth)번" : "")).appFont(12).foregroundStyle(Theme.sub)
                 }
                 HStack(alignment: .top, spacing: 10) {
-                    Text("n").appFont(18, .heavy).foregroundStyle(.white).frame(width: 36, height: 36)
-                        .background(Theme.teal, in: RoundedRectangle(cornerRadius: 9))
+                    // 설정에서 고른 앱 아이콘 (알림에도 같은 그림이 붙는다)
+                    Image(AppIconPicker.icons.first { $0.id == UIApplication.shared.alternateIconName }?.prev ?? "iconprev_star")
+                        .resizable().scaledToFit().frame(width: 36, height: 36)
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
                             Text(prev?.t ?? "알림 꺼짐").appFont(14, .bold)
@@ -142,6 +145,11 @@ struct SyncView: View {
     @State private var askOff = false
     @State private var devOpen = false
     @State private var token = ""
+    @State private var exporting = false
+    @State private var importing = false
+    @State private var exportDoc: BackupFile? = nil
+    @State private var pending: Backup? = nil
+    @State private var fileMsg: String? = nil
     private var sync: Sync { .shared }
 
     var body: some View {
@@ -213,7 +221,49 @@ struct SyncView: View {
                 } label: { Text("개발자용").appFont(14, .semibold).foregroundStyle(Theme.sub) }
                 .tint(Theme.sub)
             }
+            fileCard
             note("이 폰에서 암호화한 값만 서버에 두어서, 서버는 보유 내역을 볼 수 없어요. 비밀번호는 어디에도 저장하지 않아서 잊으면 되찾을 수 없어요. 그때는 새 비밀번호로 다시 켜면 돼요. 두 기기에서 같이 고치면 나중에 고친 쪽이 남아요.")
+        }
+    }
+
+    /// 내 폰에 저장하기·불러오기 (동기화 없이 파일 하나로)
+    private var fileCard: some View {
+        Card {
+            Text("내 폰에 저장하기 · 불러오기").appFont(15, .bold)
+            Text("종목·수량·평균 단가와 미션 진행을 파일 하나로 저장해요. 파일 앱의 '나의 iPhone'이나 iCloud Drive에 두었다가, 새 폰이나 앱을 다시 깐 뒤 불러오면 그대로 이어져요.")
+                .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            PrimaryButton(title: "내 폰에 저장하기") { exportDoc = BackupFile(Backup(m)); exporting = true }
+            Button("저장한 파일 불러오기") { importing = true }
+                .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 48)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
+            if let fileMsg { Text(fileMsg).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
+            Text("파일은 암호화하지 않아요. 보유 내역이 그대로 들어 있으니 다른 사람에게 보내지 마세요.")
+                .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+        }
+        .fileExporter(isPresented: $exporting, document: exportDoc, contentType: .json, defaultFilename: Backup.fileName()) { r in
+            switch r {
+            case .success: fileMsg = "저장했어요. 종목 \(m.holdings.count)개와 미션 진행이 들어 있어요."
+            case .failure(let e): fileMsg = "저장하지 못했어요: \(e.localizedDescription)"
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { r in
+            switch r {
+            case .success(let url):
+                do { pending = try BackupFile.read(url) } catch { fileMsg = "naeilo에서 저장한 파일이 아니에요." }
+            case .failure(let e): fileMsg = "열지 못했어요: \(e.localizedDescription)"
+            }
+        }
+        .confirmationDialog("이 파일로 이 폰을 맞출까요?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
+            Button("불러오기") {
+                guard let b = pending else { return }
+                b.restore(to: m)
+                fileMsg = "불러왔어요. 종목 \(b.holdings.count)개와 미션 진행을 이 폰에 넣었어요."
+                pending = nil
+            }
+        } message: {
+            let f = DateFormatter(), b = pending
+            let _ = { f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일 a h:mm" }()
+            Text("\(b.map { f.string(from: $0.at) } ?? "")에 저장한 파일 (종목 \(b?.holdings.count ?? 0)개). 지금 이 폰의 종목과 미션 진행은 이 파일 값으로 바뀌어요." + (sync.isOn ? " 동기화가 켜져 있어서 다른 기기에도 보내져요." : ""))
         }
     }
 
@@ -244,103 +294,143 @@ struct SyncView: View {
     }
 }
 
-// MARK: 위젯 고르기 — 홈 화면 미리보기 + 받은 것 추가/빼기
+// MARK: 위젯 — 받은 위젯과 인물 위젯 미리보기 (미션 진행대로 열림)
+// 홈 화면에 놓는 일은 아이폰이 하므로 여기서는 넣고 빼지 않는다. 무엇이 열렸는지, 어떻게 보이는지, 언제 열리는지만 보여 준다.
 
 extension AppModel {
-    struct WidgetItem: Identifiable { let id, name: String; let size: Int; let val: String; let ok: Bool; let how: String; let friend: Bool }
-    var widgets: [WidgetItem] {
-        let n = devAll ? 3 : nxStep, gift = n >= 3, need = cost / max(1, total) - 1
-        let base: [WidgetItem] = [
-            .init(id: "trend", name: "자산 추이", size: 1, val: AppModel.man(total), ok: n >= 1, how: "앱 시작 1단계", friend: false),
-            .init(id: "prog", name: "본전 진행", size: 1, val: "+" + String(format: "%.1f", need * 100) + "% 남음", ok: n >= 2, how: "앱 시작 2단계", friend: false),
-            .init(id: "block", name: "블록", size: 1, val: "\(done.filter { [1, 2, 3, 5].contains($0) }.count)/4", ok: n >= 3, how: "앱 시작 3단계", friend: false),
-            .init(id: "yest", name: "오늘의 움직임", size: 2, val: AppModel.sgn(todayMove) + " · " + rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · "), ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
-            .init(id: "mix", name: "비중", size: 1, val: "DRNK " + AppModel.pct(drnkWeight), ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
-            .init(id: "div", name: "배당 달력", size: 2, val: "다음 배당 QQQ 12월", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
-            .init(id: "fx", name: "환율", size: 1, val: "\(Int(Market.shared.fx.last.rounded()).formatted())원", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
-            .init(id: "big", name: "본전 진행 (큰)", size: 3, val: AppModel.man(total) + " · +" + String(format: "%.1f", need * 100) + "% 남음", ok: gift, how: "앱 시작 3단계 특별 선물", friend: false),
+    struct WidgetInfo: Identifiable { let id: String; let name: String; let desc: String; let size: String; let ok: Bool; let how: String }
+    /// 기본 위젯 (위젯 추가 화면과 같은 이름·순서). 열림은 앱 시작 단계로 (WidgetUnlock)
+    var baseWidgets: [WidgetInfo] {
+        let open = Set(WidgetUnlock.kinds(doneSteps: devAll ? 3 : nxStep))
+        let list: [(String, (String, String), String)] = [
+            ("asset.small", Catalog.asset, "작은"), ("future.small", Catalog.future, "작은"), ("block.small", Catalog.block, "작은"),
+            ("pace.medium", Catalog.pace, "중간"), ("target.medium", Catalog.target, "중간"), ("moves.medium", Catalog.moves, "중간"),
+            ("future.large", Catalog.futureL, "큰"),
+            ("lock.asset", Catalog.lAsset, "잠금 화면"), ("lock.goal", Catalog.lGoal, "잠금 화면"),
+            ("lock.future", Catalog.lFuture, "잠금 화면"), ("lock.target", Catalog.lTarget, "잠금 화면"),
         ]
-        let fr = Shelter.friends.dropFirst().enumerated().map { i, f in
-            WidgetItem(id: "ch\(i)", name: "\(f.name) 자산 추이", size: 1, val: f.kind, ok: i < friendsOpen, how: "\(i + 1)주차 인터미션", friend: true)
-        }
-        return base + fr
-    }
-    var widgetSelected: [String] {
-        (widgetSel ?? widgets.filter(\.ok).prefix(3).map(\.id)).filter { id in widgets.contains { $0.id == id && $0.ok } }
+        return list.map { k, c, sz in WidgetInfo(id: k, name: c.0, desc: c.1, size: sz, ok: open.contains(k), how: WidgetUnlock.how(k)) }
     }
 }
 
 struct WidgetPickView: View {
     @Environment(AppModel.self) private var m
+    @State private var dark = UserDefaults.standard.bool(forKey: "cpDark")
+    @State private var who: String? = UserDefaults.standard.string(forKey: "cpWho")
+
+    private var reward: WReward { Store.read(WReward.self, "reward.json") ?? .sample }
 
     var body: some View {
-        let all = m.widgets, sel = m.widgetSelected
-        let shown = sel.compactMap { id in all.first { $0.id == id } }
-        PinnedLayout {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("위젯 고르기").appFont(22, .bold).foregroundStyle(.white)
-                HStack {
-                    Text("홈 화면 미리보기").appFont(13, .bold).foregroundStyle(Color(hex: 0xC9D0D6))
-                    Spacer()
-                    Text("\(shown.count)개").appFont(12).foregroundStyle(Color(hex: 0xC9D0D6))
+        let base = m.baseWidgets, friendsOn = Shelter.friends.indices.filter { m.friendOn($0) }.count
+        let sel = who ?? m.homeFriendShown
+        let fi = Shelter.friends.firstIndex { $0.id == sel } ?? 0, on = m.friendOn(fi)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("위젯").appFont(22, .bold)
+                Text("미션을 하나씩 마치면 위젯과 인물이 열려요. 홈 화면을 길게 누르고 + → naeilo 에서 놓아요.")
+                    .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    stat("기본 위젯", "\(base.filter(\.ok).count)/\(base.count)")
+                    stat("인물", "\(friendsOn)/\(Shelter.friends.count)")
                 }
-                if shown.isEmpty {
-                    Text(all.contains(where: \.ok) ? "아래에서 위젯을 추가해 보세요." : "아직 받은 위젯이 없어요. 앱 시작 3단계에서 하나씩 받아요.")
-                        .appFont(13).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 80)
-                } else {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                        ForEach(shown) { w in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(w.name).appFont(11, .bold)
-                                Spacer(minLength: 0)
-                                Text(w.val).appFont(w.size == 3 ? 18 : 13, .bold).lineLimit(2).minimumScaleFactor(0.8)
+
+                // 인물 위젯: 인물을 고르면 네 가지 모양을 바로 본다. 못 만난 인물은 홈 화면에서처럼 실루엣
+                Text("인물 위젯").appFont(17, .bold).padding(.top, 6)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(Shelter.friends.enumerated()), id: \.element.id) { i, f in
+                            let ok = m.friendOn(i), cur = f.id == sel
+                            Button { who = f.id } label: {
+                                VStack(spacing: 2) {
+                                    Pixel(name: (ok ? "spr_" : "sil_") + f.id, width: 30, height: 42)
+                                    Text(ok ? f.name : "???").appFont(12, .bold)
+                                    Text(ok ? (f.id == m.homeFriendShown ? "홈에 있음" : "만남") : "인터미션 \(i)주차").appFont(10).foregroundStyle(Theme.sub)
+                                }
+                                .frame(width: 72, height: 86)
+                                .background(cur ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(cur ? Theme.teal : Theme.border, lineWidth: 2))
                             }
-                            .foregroundStyle(w.friend ? Color(hex: 0x5A3E00, dark: 0xF0D28A) : Theme.ink)
-                            .padding(10).frame(maxWidth: .infinity, minHeight: w.size == 3 ? 110 : 64, alignment: .topLeading)
-                            .background(w.friend ? Color(hex: 0xFFF6DE, dark: 0x3A321C) : Theme.card, in: RoundedRectangle(cornerRadius: 16))
-                            .gridCellColumns(w.size >= 2 ? 2 : 1)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(ok ? f.name : "잠긴 인물, 인터미션 \(i)주차")
                         }
                     }
                 }
-            }
-            .padding(16)
-            .background(LinearGradient(colors: [Color(hex: 0x2C4A6B), Color(hex: 0x15202B)], startPoint: .top, endPoint: .bottom))
-        } content: {
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(spacing: 0) {
-                    ForEach(Array(all.enumerated()), id: \.element.id) { i, w in
-                        if i > 0 { Divider().overlay(Theme.line) }
-                        let on = sel.contains(w.id)
-                        Button {
-                            guard w.ok else { return }
-                            m.widgetSel = on ? sel.filter { $0 != w.id } : sel + [w.id]
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(w.name).appFont(16, .semibold).foregroundStyle(w.ok ? Theme.ink : Theme.muted)
-                                    Text(["", "작은", "중간", "큰"][w.size] + " 위젯 · " + (w.ok ? (on ? "홈 화면에 있음" : "받음") : w.how + "에서 받아요"))
-                                        .appFont(12).foregroundStyle(Theme.sub)
-                                }
-                                Spacer()
-                                Text(w.ok ? (on ? "빼기" : "추가") : "잠김").appFont(13, .bold)
-                                    .padding(.horizontal, 12).padding(.vertical, 6)
-                                    .foregroundStyle(!w.ok ? Theme.muted : on ? Theme.sub : .white)
-                                    .background(!w.ok ? Theme.line : on ? .clear : Theme.teal, in: Capsule())
-                                    .overlay { if w.ok && on { Capsule().stroke(Theme.dash) } }
-                            }
-                            .padding(.horizontal, 14).frame(minHeight: 60).contentShape(Rectangle())
+                Picker("", selection: $dark) { Text("기본").tag(false); Text("다크").tag(true) }.pickerStyle(.segmented)
+                let c = WChar.of(sel), e = CharEntry(date: Date(), r: reward, c: c, locked: !on)
+                if !on {
+                    Label("아직 못 만난 인물이에요. 인터미션 \(fi)주차에 만나요. 그 전에는 홈 화면에서도 이렇게 실루엣으로 보여요.", systemImage: "lock.fill")
+                        .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                }
+                GeometryReader { g in
+                    let w = (g.size.width - 12) / 2
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            caption("자산 추이") { tile(e, w: w, h: w) { TrendCharView(e: e) } }
+                            caption("본전 진행") { tile(e, w: w, h: w) { RecoverCharView(e: e) } }
                         }
-                        .buttonStyle(.plain).disabled(!w.ok)
+                        HStack(spacing: 12) {
+                            caption("블록") { tile(e, w: w, h: w) { BlockCharView(e: e) } }
+                            Spacer(minLength: 0)
+                        }
+                        caption("오늘의 움직임") { tile(e, w: g.size.width, h: w) { MovesCharView(e: e) } }
+                    }
+                }
+                .aspectRatio(1 / 1.62, contentMode: .fit)
+                note("인물 위젯은 위젯을 놓은 뒤 길게 눌러 '위젯 편집'에서 인물을 골라요. 기본값 '앱 홈의 인물 따라가기'는 쉼터에서 홈에 둔 인물을 따라가요.")
+
+                // 기본 위젯: 앱 시작 단계로 열림
+                Text("기본 위젯").appFont(17, .bold).padding(.top, 6)
+                VStack(spacing: 0) {
+                    ForEach(Array(base.enumerated()), id: \.element.id) { i, w in
+                        if i > 0 { Divider().overlay(Theme.line) }
+                        HStack(alignment: .center, spacing: 12) {
+                            Image(systemName: w.ok ? "checkmark.circle.fill" : "lock.fill")
+                                .font(.system(size: 18)).foregroundStyle(w.ok ? Theme.teal : Theme.muted).frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(w.name).appFont(16, .semibold).foregroundStyle(w.ok ? Theme.ink : Theme.muted)
+                                Text(w.size + " · " + (w.ok ? w.desc : w.how)).appFont(12).foregroundStyle(Theme.sub)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 10).frame(minHeight: 56)
+                        .accessibilityElement(children: .combine)
                     }
                 }
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
-                note("홈 화면을 길게 눌러 + → naeilo 에서 위젯을 놓아요. 위젯은 이 앱이 계산한 숫자를 1분마다 받아 그려요. 여기서 고른 순서대로 추천해 드려요.")
+                note("못 받은 위젯도 홈 화면에 놓을 수는 있지만, 열리기 전에는 잠긴 모습으로 보이고 누르면 앱 시작 단계로 와요. 위젯은 이 앱이 계산한 숫자를 받아 그려요.")
             }
-            .padding(16)
+            .screen()
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func stat(_ k: String, _ v: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(k).appFont(12).foregroundStyle(Theme.sub)
+            Text(v + " 열림").appFont(17, .bold)
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+    }
+
+    private func caption<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View {
+        VStack(alignment: .leading, spacing: 4) { v(); Text(t).appFont(12).foregroundStyle(Theme.sub) }
+    }
+
+    /// 위젯 크기 그대로 (바탕 + 위젯 안쪽 여백)
+    private func tile<V: View>(_ e: CharEntry, w: CGFloat, h: CGFloat, @ViewBuilder _ v: () -> V) -> some View {
+        let k = min(1, h / 158)
+        return ZStack {
+            CharBG(c: e.c, locked: e.locked, dark: dark)
+            v().padding(16).foregroundStyle(.white).environment(\.colorScheme, .dark).environment(\.charDark, dark)
+                .frame(width: w / k, height: 158).scaleEffect(k)
+        }
+        .frame(width: w, height: h)
+        .clipShape(RoundedRectangle(cornerRadius: 22 * k, style: .continuous))
     }
 }
 

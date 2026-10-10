@@ -10,7 +10,7 @@ struct SettingsView: View {
         let rows: [(String, String, SettingsRoute)] = [
             ("알림", onN > 0 ? "\(onN)개 켜짐" : "모두 꺼짐", .alerts),
             ("기기 동기화", m.syncOn ? "자동 동기화 켜짐 · naeilo.com과 같은 값" : "꺼짐", .sync),
-            ("위젯", "받은 위젯 \(m.widgets.filter(\.ok).count)개 · 홈 화면 \(m.widgetSelected.count)개", .widgets),
+            ("위젯", "받은 위젯 \(m.baseWidgets.filter(\.ok).count)/\(m.baseWidgets.count) · 인물 \(Shelter.friends.indices.filter { m.friendOn($0) }.count)/\(Shelter.friends.count) · 미리보기", .widgets),
             ("세금 규칙", "대한민국 거주자", .tax),
             ("시세 기준", "미국 종목·환율 지금 가격 · 한국 종목 전일 종가", .price),
             ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
@@ -52,12 +52,6 @@ struct SettingsView: View {
                     demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
                     demoButton("모든 화면 열기") { m.resetDemo(.all) }
                 }
-                NavigationLink(value: SettingsRoute.charPreview) {
-                    Text("인물 위젯 미리보기 ›").appFont(14, .semibold).frame(maxWidth: .infinity, minHeight: 44)
-                        .foregroundStyle(Theme.ink)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
-                }.buttonStyle(.plain)
                 Text("시세: \(Market.shared.source)").appFont(12).foregroundStyle(Theme.muted)
                 Text("시세는 스텁(시안과 같은 예시 값)이고, 외전 원고도 서버 대신 스텁이에요. 버전 0.1").appFont(12).foregroundStyle(Theme.muted)
             }
@@ -75,7 +69,7 @@ struct SettingsView: View {
             case .howto: HowToView()
             case .route: RouteView()
             case .goal: GoalSetView(fromSettings: true)
-            case .charPreview: CharWidgetPreview()
+            case .charPreview: WidgetPickView()     // 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
             }
         }
     }

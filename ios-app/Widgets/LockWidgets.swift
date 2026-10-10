@@ -36,6 +36,7 @@ struct NaeiloWidgets: WidgetBundle {
         TargetMedium()
         MovesMedium()
         FutureLarge()
+        CharTrend()
         CharRecover()
         CharBlock()
         CharMoves()

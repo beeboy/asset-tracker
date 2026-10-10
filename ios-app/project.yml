@@ -26,6 +26,7 @@ targets:
       - WidgetShared
       # 인물 위젯: 앱의 미리보기 화면에서도 같은 그림을 쓴다
       - Widgets/CharWidgets.swift
+      - Widgets/Views/Catalog.swift
       - Widgets/Assets.xcassets
       # 테스트 시세: 사이트가 모으는 Yahoo 중계 자료 (3년 종가 + 현재가). 빌드할 때마다 저장소의 최신 파일이 들어간다
       - path: ../data/quotes.json
