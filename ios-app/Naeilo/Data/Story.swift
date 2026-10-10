@@ -58,7 +58,16 @@ final class Story {
         guard done.insert(Self.key(b, chapter)).inserted else { return }
         UserDefaults.standard.set(Array(done), forKey: "storyDone")
     }
+    /// 가장 최근에 읽은 장 (외전·본편 1권 통틀어 하나). 서재는 이 장이 든 묶음만 펼친다. 키는 pos 와 같다
+    private(set) var last: Int? = UserDefaults.standard.object(forKey: "storyLast") as? Int
+    func touch(_ b: StoryBook, _ chapter: Int) {
+        let k = Self.key(b, chapter)
+        guard last != k else { return }
+        last = k
+        UserDefaults.standard.set(k, forKey: "storyLast")
+    }
     func setPos(_ b: StoryBook, _ chapter: Int, _ block: Int) {
+        touch(b, chapter)
         let k = Self.key(b, chapter)
         guard pos[k] != block else { return }
         pos[k] = block
