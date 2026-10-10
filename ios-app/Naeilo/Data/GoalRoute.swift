@@ -47,6 +47,9 @@ extension AppModel {
     /// 출발 금액 (만원): 플러스는 지금 평가액, 시작 전은 모아 둔 투자금
     var goalStart: Double { route == .plus ? total / 1e4 : gA }
     /// 1000칸·주간 예보에서 쓰는 지금 금액 (원)
+    /// 분석 화면의 기준선 (원): 회복 = 들어간 돈(본전), 목표 = 목표 금액
+    var keyValue: Double { isGoal ? gK * 1e4 : cost }
+    var keyName: String { isGoal ? "목표" : "본전" }
     var trackValue: Double { route == .novice ? goalSaved * 1e4 : total }   // 시작 전: 모아 둔 돈 + 인터미션에 넣은 돈
 
     static let mixes: [GoalMix] = [
@@ -187,11 +190,13 @@ extension AppModel {
     var goalSaved: Double { gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
 
     func switchRoute(_ r: Route) {
-        route = r; boardPath = []
+        route = r; boardPath = []; analysisPath = []
         switch r {
         case .recover: break
         case .plus: gMix = "mine"; gK = (goalStart * 2 / 1000).rounded() * 1000; gY = 1
         case .novice: gA = 0; gK = 1000; gY = 3; gM = 30; gMix = "index"
         }
+        monthly = r == .recover ? 0 : gM     // 3년 전망의 '만약에 매달' 기본값 = 적립액
+
     }
 }

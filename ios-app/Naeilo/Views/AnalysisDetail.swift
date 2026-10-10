@@ -6,6 +6,20 @@ import SwiftUI
 // MARK: 공통
 
 extension AppModel {
+    // 내 길: 회복 = 본전을 1년 안에(적립 없음), 목표 = 목표 금액·목표일·매달 적립. 시작은 3개월 전(시안 가정)
+    struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let act: (Double) -> Double; let need: (Double) -> Double }
+    var myPath: MyPath {
+        let mS = 0.25, mEnd = isGoal ? Double(gY) : 1, mM = isGoal ? gM * 1e4 : 0, K = keyValue
+        let now = trackValue
+        let act: (Double) -> Double = route == .novice
+            ? { t in max(0, now - mM * 12 * max(0, mS - t)) }
+            : { t in self.totalAt(1 - (mS - t) / 3) }
+        let vS = act(0), kAdj = K - mM * 12 * mEnd
+        let need: (Double) -> Double = { t in mM * 12 * t + (kAdj > 0 && vS > 0 ? vS * pow(kAdj / vS, t / mEnd) : vS + (K - vS) * t / mEnd) }
+        return MyPath(start: mS, end: mEnd, key: K, monthly: mM, act: act, need: need)
+    }
+    var myPathGapToday: Double { let p = myPath; let n = p.need(p.start); return n > 0 ? p.act(p.start) / n - 1 : 0 }
+
     static func manS(_ krw: Double) -> String { (krw >= 0 ? "+" : "−") + man(abs(krw)) }
     static func won1(_ krw: Double) -> String { krw > 0 && krw < 1e4 ? Int(krw.rounded()).formatted() + "원" : man(krw) }
     /// x 시점(0 = 3년 전, 1 = 어제)의 전체 평가액 (원화)
@@ -106,12 +120,8 @@ struct MyPathView: View {
     @State private var view = "all"
 
     var body: some View {
-        // 회복 루트: 본전을 1년 안에, 시작은 3개월 전(시안 가정)
-        let mS = 0.25, mEnd = 1.0, K = m.cost
-        let act = { (t: Double) in m.totalAt(1 - (mS - t) / 3) }
-        let vS = act(0)
-        let need = { (t: Double) in vS > 0 && K > 0 ? vS * pow(K / vS, t / mEnd) : vS + (K - vS) * t / mEnd }
-        let gap = need(mS) > 0 ? act(mS) / need(mS) - 1 : 0
+        let p = m.myPath, mS = p.start, mEnd = p.end, K = p.key, act = p.act, need = p.need
+        let gap = m.myPathGapToday
         let f = m.forecast
         let x1 = view == "past" ? mS + 1.0 / 12 : mEnd
         let actPts = (0...30).map { i -> (Double, Double) in let t = mS * Double(i) / 30; return (t, act(t)) }
@@ -122,13 +132,14 @@ struct MyPathView: View {
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
         let yrsLeft = mEnd - mS
-        let needCagr = m.total > 0 ? pow(max(1, K) / m.total, 1 / yrsLeft) - 1 : 0
+        let now = m.trackValue, mM = p.monthly
+        let needCagr = now > 0 && yrsLeft > 0 ? pow(max(1, K - mM * 12 * yrsLeft) / now, 1 / yrsLeft) - 1 : 0
         let pPlan = f.prob(min(3, yrsLeft))
         let lead = gap >= 0 ? Theme.teal : Color(hex: 0xB5651D)
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "내 길", sub: "본전 \(AppModel.man(K)) · 1년 안에 (7월 9일 시작)")
+                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.gY)년 · 매달 \(AppModel.wonK(m.gM)) (7월 9일 시작)" : "본전 \(AppModel.man(K)) · 1년 안에 (7월 9일 시작)")
                 HStack(alignment: .firstTextBaseline) {
                     Text("내 길보다 \(String(format: "%.1f", abs(gap) * 100))% \(gap >= 0 ? "앞섬" : "뒤처짐")").appFont(22, .bold).foregroundStyle(lead)
                     Spacer()
@@ -151,7 +162,7 @@ struct MyPathView: View {
                 }
                 .frame(height: 140)
                 .accessibilityLabel("내 길과 실제 평가액 그래프")
-                HStack { Text("시작 7월"); Spacer(); Text(view == "past" ? "다음 달" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
+                HStack { Text("시작 7월"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "\(m.gY)년 뒤 목표일" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
                 FlowRow(spacing: 10) {
                     legend(Theme.teal, "실제"); legend(Theme.purple, "내 길 (정한 목표대로)")
                     if view == "band" { legend(Theme.teal.opacity(0.3), "3년 전망 (절반의 경우)") }
@@ -173,9 +184,9 @@ struct MyPathView: View {
                     }
                 }
                 kpiGrid([
-                    Kpi(k: "목표일까지", v: "\(Int((yrsLeft * 12).rounded()))개월", sub: "1년 목표"),
-                    Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: "본전까지 남은 기간"),
-                    Kpi(k: "이번 달 넣을 돈", v: "없음", sub: "회복은 적립 없이"),
+                    Kpi(k: "목표일까지", v: (yrsLeft >= 1 ? "\(Int(yrsLeft))년 " : "") + "\(Int((yrsLeft.truncatingRemainder(dividingBy: 1) * 12).rounded()))개월", sub: m.isGoal ? "\(m.gY)년 목표" : "1년 목표"),
+                    Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? "적립 포함, 남은 기간" : "본전까지 남은 기간"),
+                    Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
                     Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "3년 전망 (\(m.lens.label))"),
                 ])
                 footnote("내 길은 정한 목표 금액, 목표일, 매달 넣는 돈으로 그린 하나의 선이에요. 3년 전망은 시장이 줄 수 있는 여러 미래의 범위예요. 과거 3년 기간 수익률과 겹쳐 보기는 PC에서 볼 수 있어요.")
@@ -238,7 +249,7 @@ struct ExternalView: View {
                     Text("\(AppModel.sgn(tot / max(1, m.total))) · \(AppModel.man(m.total)) → \(AppModel.man(after))").appFont(12).foregroundStyle(Theme.sub)
                 }
                 ForEach(list, id: \.id) { x in SignedBar(label: x.id, value: AppModel.manS(x.dv), g: x.dv, scale: maxAbs) }
-                Text("본전까지 남은 금액 \(AppModel.man(max(0, m.cost - m.total))) → \(AppModel.man(max(0, m.cost - after)))").appFont(13, .semibold)
+                Text("\(m.keyName)까지 남은 금액 \(AppModel.man(max(0, m.keyValue - m.total))) → \(AppModel.man(max(0, m.keyValue - after)))").appFont(13, .semibold)
                 ChipRow(items: [("mkt", "미국 시장"), ("rate", "미국 금리"), ("fx", "원/달러")], selection: $factor, accent: Theme.orange, fill: true)
             }
         } content: {
@@ -461,7 +472,7 @@ struct FxImpactView: View {
                 Card {
                     HStack { Text("환율이 이렇게 되면").appFont(14); Spacer(); Text("\(Int(what).formatted())원").appFont(15, .bold) }
                     Slider(value: $what, in: 1200...1600, step: 10).tint(Theme.blue).accessibilityLabel("환율")
-                    Text("내 평가액 \(AppModel.man(valAt(what))) (\(AppModel.manS(valAt(what) - m.total))) · 본전까지 \(AppModel.man(max(0, m.cost - valAt(what))))")
+                    Text("내 평가액 \(AppModel.man(valAt(what))) (\(AppModel.manS(valAt(what) - m.total))) · \(m.keyName)까지 \(AppModel.man(max(0, m.keyValue - valAt(what))))")
                         .appFont(13, .semibold)
                 }
                 Card {
@@ -471,7 +482,7 @@ struct FxImpactView: View {
                             Text("\(Int(r).formatted())원" + (r == FX ? " (지금)" : "")).appFont(13, r == FX ? .bold : .regular)
                             Spacer()
                             Text(AppModel.man(valAt(r))).appFont(14, .bold)
-                            Text("본전까지 \(AppModel.man(max(0, m.cost - valAt(r))))").appFont(12).foregroundStyle(Theme.sub).frame(minWidth: 110, alignment: .trailing)
+                            Text("\(m.keyName)까지 \(AppModel.man(max(0, m.keyValue - valAt(r))))").appFont(12).foregroundStyle(Theme.sub).frame(minWidth: 110, alignment: .trailing)
                         }
                     }
                 }

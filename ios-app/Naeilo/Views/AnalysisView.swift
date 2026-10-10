@@ -10,8 +10,7 @@ struct AnalysisView: View {
         let p3 = m.forecast.prob(3)
         let usd = m.rows.filter { $0.sym.currency == .usd || $0.id == "360750" }.reduce(0) { $0 + $1.value } / max(1, m.total)
         // 내 길: 시작(3개월 전)부터 본전까지 1년에 걸친 선과 오늘 비교
-        let vS = m.totalAt(1 - 0.25 / 3), need = vS * pow(m.cost / max(1, vS), 0.25)
-        let gap = need > 0 ? m.total / need - 1 : 0
+        let gap = m.myPathGapToday
         let mkt10 = m.rows.reduce(0) { $0 + $1.value * (ExternalView.beta[$1.id]?.0 ?? 1) * -0.1 } / max(1, m.total)
         let div = m.rows.reduce(0) { a, r in
             a + m.krw(r.sym, r.h.qty * (DividendView.divs[r.id]?.0 ?? 0)) * (1 - (r.sym.currency == .usd ? 0.15 : 0.154))
@@ -90,7 +89,7 @@ struct ForecastView: View {
                         Slider(value: $m.monthly, in: 0...300, step: 10).tint(Theme.teal)
                     }
                     Card {
-                        Text("그해 말에 본전을 넘을 확률").appFont(14, .bold)
+                        Text("그해 말에 \(m.keyName)을 넘을 확률").appFont(14, .bold)
                         ForEach(1...3, id: \.self) { y in
                             let p = f.prob(Double(y))
                             HStack(spacing: 10) {
@@ -122,12 +121,12 @@ struct ForecastView: View {
     private func pinned(_ f: AppModel.Forecast) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                kpi("본전 확률 (3년)", AppModel.pct(f.prob(3)), Theme.teal, 20)
+                kpi("\(m.keyName) 확률 (3년)", AppModel.pct(f.prob(3)), Theme.teal, 20)
                 kpi("3년 뒤 중앙값", AppModel.man(f.q50[36]), Theme.ink, 17)
                 kpi("나쁜 5%", AppModel.man(f.q5[36]), Theme.down, 17)
             }
-            FanChart(f: f, goal: m.cost).frame(height: 150)
-            Text("초록 띠: 50%·90% 범위 · 주황 점선: 본전 \(AppModel.man(m.cost)) · 렌즈: \(m.lens.label)" + (m.shock ? " + 외부 요인" : ""))
+            FanChart(f: f, goal: m.keyValue).frame(height: 150)
+            Text("초록 띠: 50%·90% 범위 · 주황 점선: \(m.keyName) \(AppModel.man(m.keyValue)) · 렌즈: \(m.lens.label)" + (m.shock ? " + 외부 요인" : ""))
                 .appFont(12).foregroundStyle(Theme.sub)
         }
         .padding(16)

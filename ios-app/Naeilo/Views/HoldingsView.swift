@@ -98,6 +98,8 @@ struct HoldingDetailView: View {
     @Environment(AppModel.self) private var m
     let sym: Symbol
     @State var period: Period
+    @State private var editing = false
+    @State private var opened = false
 
     var body: some View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
@@ -139,12 +141,21 @@ struct HoldingDetailView: View {
                         kv("업종", sym.sector, last: true)
                     }
                 }
+                if h.qty > 0 {
+                    NavigationLink { HoldingEditView(sym: sym) } label: {
+                        Label("수량·단가 고치기", systemImage: "pencil").appFont(15, .bold)
+                            .frame(maxWidth: .infinity, minHeight: 48).foregroundStyle(Theme.teal)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
+                    }.buttonStyle(.plain)
+                }
                 if let p = Sample.profiles[sym.id] { profile(p) }
             }
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
         .navigationTitle(sym.id).navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $editing) { HoldingEditView(sym: sym) }
+        .onAppear { if UserDefaults.standard.string(forKey: "editMode") != nil && !opened { opened = true; editing = true } }
     }
 
     private func kv(_ k: String, _ v: String, last: Bool = false) -> some View {
@@ -253,6 +264,120 @@ struct AddHoldingView: View {
             TextField("", text: b).keyboardType(.decimalPad)
                 .padding(.horizontal, 12).frame(minHeight: 44)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
+        }
+    }
+}
+
+// 수량·단가 고치기 (시안 29판): 위에 '저장하면 이렇게 바뀌어요' 전후 카드 고정, 직접 고치기 · 더 샀어요 · 팔았어요
+struct HoldingEditView: View {
+    @Environment(AppModel.self) private var m
+    @Environment(\.dismiss) private var dismiss
+    let sym: Symbol
+    @State private var mode = "fix"
+    @State private var q = ""
+    @State private var p = ""
+
+    var body: some View {
+        let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
+        let q0 = h.qty, p0 = h.avg, px = sym.close
+        let (qi, pi, q1, p1, bad, note) = compute(q0, p0)
+        let v0 = m.krw(sym, q0 * px), v1 = m.krw(sym, (bad ? q0 : q1) * px)
+        let need = { (avg: Double) in avg / px - 1 > 0.0005 ? "+" + String(format: "%.1f", (avg / px - 1) * 100) + "% 남음" : "본전 넘음" }
+        let rows: [(String, String, String)] = [
+            ("수량", "\(q0.formatted())주", "\((bad ? q0 : q1).formatted())주"),
+            ("평균 단가", AppModel.price(sym, p0), AppModel.price(sym, bad ? p0 : p1)),
+            ("평가액", AppModel.man(v0), AppModel.man(v1)),
+            ("본전까지", need(p0), need(bad ? p0 : p1)),
+        ]
+        PinnedLayout {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("저장하면 이렇게 바뀌어요").appFont(14, .bold)
+                    Spacer()
+                    Text("\(sym.id) · 어제 종가 \(AppModel.price(sym, px))").appFont(12).foregroundStyle(Theme.sub)
+                }
+                ForEach(rows, id: \.0) { k, a, b in
+                    HStack {
+                        Text(k).appFont(14).foregroundStyle(Theme.sub)
+                        Spacer()
+                        if a != b { Text(a).appFont(13).strikethrough().foregroundStyle(Theme.muted) }
+                        Text(b).appFont(16, .bold).foregroundStyle(a == b ? Theme.ink : Theme.teal)
+                    }
+                }
+                ChipRow(items: [("fix", "직접 고치기"), ("buy", "더 샀어요"), ("sell", "팔았어요")], selection: $mode, fill: true)
+            }
+            .padding(16).background(.white).overlay(alignment: .bottom) { Divider() }
+        } content: {
+            VStack(alignment: .leading, spacing: 12) {
+                field(mode == "fix" ? "수량 (주)" : mode == "buy" ? "더 산 수량 (주)" : "판 수량 (주)", $q)
+                field(mode == "fix" ? "평균 단가" : mode == "buy" ? "산 가격" : "판 가격", $p)
+                if !note.isEmpty {
+                    Text(note).appFont(13).padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
+                }
+                PrimaryButton(title: "저장", color: bad ? Theme.muted : Theme.teal) {
+                    guard !bad else { return }
+                    if mode == "sell" && sym.currency == .usd { m.taxGain += (m.krw(sym, qi * (pi - p0)) / 1e4).rounded() }
+                    save(q1, p1)
+                }
+                Button("이 종목 지우기") { save(0, p0) }
+                    .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                Text("거래를 하나씩 기록하거나 증권사 파일로 맞추는 건 PC naeilo.com에서 할 수 있어요. 앱에서는 수량과 평균 단가만 바꿔요.")
+                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
+            }
+            .padding(16)
+        }
+        .background(Theme.bg)
+        .navigationTitle(sym.name).navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            reset(h)
+            // 캡처용: -editMode buy -editQ 5 처럼 입력을 채워 둔다
+            if let md = UserDefaults.standard.string(forKey: "editMode") { mode = md; DispatchQueue.main.async { q = UserDefaults.standard.string(forKey: "editQ") ?? q } }
+        }
+        .onChange(of: mode) { _, _ in reset(h) }
+    }
+
+
+    private func compute(_ q0: Double, _ p0: Double) -> (Double, Double, Double, Double, Bool, String) {
+        let qi = Double(q) ?? -1, pi = Double(p) ?? -1
+        var q1 = q0, p1 = p0, bad = false, note = ""
+        switch mode {
+        case "fix":
+            bad = !(qi >= 0 && pi > 0); if !bad { q1 = qi; p1 = pi }
+        case "buy":
+            bad = !(qi > 0 && pi > 0)
+            if !bad { q1 = q0 + qi; p1 = (q0 * p0 + qi * pi) / q1; note = "\(AppModel.price(sym, pi))에 \(qi.formatted())주 더 사서 평균 단가가 \(AppModel.price(sym, p1))가 돼요." }
+        default:
+            bad = !(qi > 0 && qi <= q0 && pi > 0)
+            if !bad {
+                q1 = q0 - qi
+                let g = m.krw(sym, qi * (pi - p0))
+                note = "판 부분의 \(g >= 0 ? "이익" : "손실")은 \(AppModel.man(abs(g)))이에요." + (sym.currency == .usd ? " 저장하면 올해 해외주식 실현 이익에 더해져 세금 계산에 반영돼요." : " 국내 상장주식은 대주주가 아니면 양도세가 없어요.")
+            } else if qi > q0 { note = "가진 수량(\(q0.formatted())주)보다 많이 팔 수는 없어요." }
+        }
+        return (qi, pi, q1, p1, bad, note)
+    }
+
+    private func reset(_ h: Holding) {
+        if mode == "fix" { q = h.qty.formatted(.number.grouping(.never)); p = h.avg.formatted(.number.grouping(.never)) } else { q = ""; p = sym.close.formatted(.number.grouping(.never)) }
+    }
+
+    private func save(_ qty: Double, _ avg: Double) {
+        if let i = m.holdings.firstIndex(where: { $0.symbol == sym.id }) {
+            if qty > 0 { m.holdings[i] = Holding(symbol: sym.id, qty: qty, avg: (avg * 100).rounded() / 100) } else { m.holdings.remove(at: i) }
+        }
+        dismiss()
+    }
+
+    private func field(_ label: String, _ b: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label + (label.contains("주") ? "" : sym.currency == .usd ? " (달러)" : " (원)")).appFont(13, .semibold).foregroundStyle(Theme.sub)
+            TextField("", text: b).keyboardType(.decimalPad).appFont(18, .semibold)
+                .padding(.horizontal, 12).frame(minHeight: 48)
+                .background(.white, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
+                .accessibilityLabel(label)
         }
     }
 }

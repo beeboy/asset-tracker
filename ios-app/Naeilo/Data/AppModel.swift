@@ -31,6 +31,7 @@ final class AppModel {
         // 캡처용: -home shelter 또는 -home char:ir
         if let h = UserDefaults.standard.string(forKey: "home") { homePath = h == "shelter" ? ["shelter"] : ["shelter", h] }
         if let f = UserDefaults.standard.string(forKey: "friend") { shelterSel = f }
+        if let k = UserDefaults.standard.string(forKey: "hold"), let sy = Sample.symbol(k) { holdPath = [sy] }
         let st: [String: SettingsRoute] = ["alerts": .alerts, "sync": .sync, "widgets": .widgets, "tax": .tax, "price": .price, "howto": .howto, "route": .route]
         if let r = UserDefaults.standard.string(forKey: "set").flatMap({ st[$0] }) { settingsPath = [r] }
         // 캡처용: -route m3 처럼 미션 화면을 바로 연다
@@ -127,6 +128,7 @@ final class AppModel {
     var boardPath: [MissionRoute] = []
     var analysisPath: [AnalysisRoute] = []
     var homePath: [String] = []
+    var holdPath: [Symbol] = []
 
     // 설정
     var alerts: [String: Bool] = ["be": true, "drift": false, "dep": false, "morn": false]
@@ -267,7 +269,7 @@ final class AppModel {
     struct Forecast { let q5, q25, q50, q75, q95: [Double]; let prob: (Double) -> Double; let mu, sigma, muBase, muTrend: Double }
     var forecast: Forecast {
         let rs = rows, tot = max(1, total)
-        let parts: [(Double, (Double, Double, Double))] = rs.isEmpty ? [(1, (0.07, 0.11, 0.16))]
+        let parts: [(Double, (Double, Double, Double))] = rs.isEmpty || route == .novice ? [(1, (0.07, 0.11, 0.16))]
             : rs.map { ($0.value / tot, Sample.lensParams[$0.id] ?? (0.07, 0.08, 0.25)) }
         let muB = parts.reduce(0) { $0 + $1.0 * $1.1.0 }, muS = parts.reduce(0) { $0 + $1.0 * $1.1.1 }
         var v = 0.0
@@ -277,7 +279,7 @@ final class AppModel {
         var sg = sqrt(v); let t = trust / 100
         var mu = lens == .base ? muB : lens == .smooth ? muS : muB * (1 - t) + muS * t
         if shock { mu -= 0.02; sg *= 1.1 }
-        let g = mu - sg * sg / 2, V0 = total, K = cost, M = monthly * 1e4
+        let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = monthly * 1e4
         let qAt = { (T: Double, z: Double) -> Double in
             V0 * exp(g * T + z * sg * sqrt(T)) + M * 12 * T * exp(g * T / 2 + z * sg * sqrt(T) / 2)
         }
