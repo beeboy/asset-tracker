@@ -140,6 +140,8 @@ struct SyncView: View {
     @State private var pw = ""
     @State private var pw2 = ""
     @State private var askOff = false
+    @State private var devOpen = false
+    @State private var token = ""
     private var sync: Sync { .shared }
 
     var body: some View {
@@ -152,7 +154,7 @@ struct SyncView: View {
                         .mask { if on { Rectangle() } else { HStack(spacing: 4) { ForEach(0..<8, id: \.self) { _ in Rectangle() } } } }
                     Image(systemName: "desktopcomputer").font(.system(size: 26))
                 }
-                Text(on ? "자동 동기화 켜짐" : "아직 켜지 않음").appFont(20, .bold)
+                Text(on ? (sync.isDev ? "개발자 동기화 켜짐" : "자동 동기화 켜짐") : "아직 켜지 않음").appFont(20, .bold)
                 Text(statusText).appFont(13).fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(on ? .white : Theme.ink)
@@ -174,7 +176,7 @@ struct SyncView: View {
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
                     .confirmationDialog("이 기기 동기화를 끌까요?", isPresented: $askOff, titleVisibility: .visible) {
                         Button("끄기", role: .destructive) { sync.turnOff() }
-                    } message: { Text("이 폰에 있는 값은 그대로 남고, 다른 기기와 더 맞추지 않아요. 다시 켜려면 같은 비밀번호가 필요해요.") }
+                    } message: { Text(sync.isDev ? "이 폰에 있는 값은 그대로 남고, 토큰은 이 폰에서 지워요." : "이 폰에 있는 값은 그대로 남고, 다른 기기와 더 맞추지 않아요. 다시 켜려면 같은 비밀번호가 필요해요.") }
             } else {
                 let ok = pw.count >= 10 && pw == pw2
                 Card {
@@ -193,6 +195,23 @@ struct SyncView: View {
                         Task { await sync.turnOn(password: p, model: m) }
                     }
                 }
+                DisclosureGroup(isExpanded: $devOpen) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("사이트 설정 > 개발자용에 GitHub 토큰을 넣어 둔 기기는 비밀번호 대신 그 토큰으로 맞춰요. 같은 토큰(저장소 쓰기 권한)을 넣으면 그 기기들과 같은 칸을 써요.")
+                            .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                        SecureField("GitHub 토큰", text: $token).textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
+                            .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                        PrimaryButton(title: sync.state == .working ? "확인 중…" : "토큰으로 연결", color: token.isEmpty ? Theme.muted : Theme.teal) {
+                            guard !token.isEmpty, sync.state != .working else { return }
+                            let t = token; token = ""
+                            Task { await sync.turnOnDev(token: t, model: m) }
+                        }
+                        Text("토큰은 이 폰의 키체인에만 두고, 중계는 저장소 쓰기 권한만 확인해요. 개발자 칸은 암호화하지 않아요.")
+                            .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.top, 8)
+                } label: { Text("개발자용").appFont(14, .semibold).foregroundStyle(Theme.sub) }
+                .tint(Theme.sub)
             }
             note("이 폰에서 암호화한 값만 서버에 두어서, 서버는 보유 내역을 볼 수 없어요. 비밀번호는 어디에도 저장하지 않아서 잊으면 되찾을 수 없어요. 그때는 새 비밀번호로 다시 켜면 돼요. 두 기기에서 같이 고치면 나중에 고친 쪽이 남아요.")
         }
@@ -201,7 +220,7 @@ struct SyncView: View {
     private var statusText: String {
         switch sync.state {
         case .off: return "폰과 PC가 같은 숫자를 보려면 켜요"
-        case .idle: return "같은 비밀번호를 넣은 기기끼리 맞춰져요"
+        case .idle: return sync.isDev ? "같은 GitHub 계정의 개발자 기기끼리 맞춰져요" : "같은 비밀번호를 넣은 기기끼리 맞춰져요"
         case .working: return "맞추는 중…"
         case .ok(let d):
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "a h:mm"

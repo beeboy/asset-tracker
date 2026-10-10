@@ -37,6 +37,7 @@ final class AppModel {
         // 확인용: -syncTest <비밀번호> → 그 비밀번호로 동기화를 켠다 (사이트와 주고받기 확인)
         #if DEBUG
         if let pw = UserDefaults.standard.string(forKey: "syncTest"), !Sync.shared.isOn { Task { @MainActor in await Sync.shared.turnOn(password: pw, model: self) } }
+        if let t = UserDefaults.standard.string(forKey: "syncDevTest"), !Sync.shared.isOn { Task { @MainActor in await Sync.shared.turnOnDev(token: t, model: self) } }
         #endif
         // 캡처용: -home shelter 또는 -home char:ir
         if let h = UserDefaults.standard.string(forKey: "home") { homePath = h == "shelter" ? ["shelter"] : ["shelter", h] }

@@ -15,8 +15,12 @@ import Security
 final class Sync {
     static let shared = Sync()
     static let relay = "https://asset-ai.drinker.workers.dev/esync?id="
+    /// 개발자 동기화: 저장소 쓰기 권한이 있는 GitHub 토큰으로 계정별 칸 (사이트에 토큰이 있으면 사이트도 이 칸을 쓴다)
+    static let devRelay = "https://asset-ai.drinker.workers.dev/sync"
 
-    struct Creds: Codable { let id: String; let k: String }
+    /// 일반: id + k (비밀번호로 만든 칸과 키). 개발자: token (암호화 없음, 중계가 토큰으로 계정을 확인)
+    struct Creds: Codable { var id: String = ""; var k: String = ""; var token: String? = nil }
+    var isDev: Bool { creds?.token != nil }
     enum State: Equatable { case off, idle, working, ok(Date), failed(String) }
 
     private(set) var creds: Creds? = Keychain.load()
@@ -38,6 +42,22 @@ final class Sync {
         get { (d.data(forKey: "sync.site")).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:] }
         set { d.set(try? JSONSerialization.data(withJSONObject: newValue), forKey: "sync.site") }
     }
+    /// 받을 때 들여오지 않은 사이트 줄 (보낼 때 그대로 돌려보낸다)
+    private var keepTickers: Set<String> {
+        get { Set(d.stringArray(forKey: "sync.keep") ?? []) }
+        set { d.set(Array(newValue), forKey: "sync.keep") }
+    }
+    /// 사이트에 단가가 없어서 지금 가격으로 채운 종목 (그대로면 사이트에는 비워 둔 채로 보낸다)
+    private var subAvg: [String: Double] {
+        get { (d.dictionary(forKey: "sync.subAvg") as? [String: Double]) ?? [:] }
+        set { d.set(newValue, forKey: "sync.subAvg") }
+    }
+    static func num(_ v: Any?) -> Double {
+        if let x = v as? Double { return x }
+        if let x = v as? Int { return Double(x) }
+        if let x = v as? String { return Double(x.replacingOccurrences(of: ",", with: "")) ?? 0 }
+        return 0
+    }
     private var lastSig: String? {
         get { d.string(forKey: "sync.sig") }
         set { d.set(newValue, forKey: "sync.sig") }
@@ -54,6 +74,26 @@ final class Sync {
         let c = await Task.detached { Self.derive(password) }.value
         Keychain.save(c)
         creds = c
+        localAt = 0
+        lastSig = nil
+        await pull(model)
+    }
+
+    /// 개발자 토큰으로 켠다. 중계가 저장소 쓰기 권한을 확인하고, 아니면 켜지지 않는다
+    @MainActor
+    func turnOnDev(token: String, model: AppModel) async {
+        let t = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, t.unicodeScalars.allSatisfy({ $0.value > 0x20 && $0.value < 0x7f }) else {
+            state = .failed("토큰에 다른 글자가 섞여 있어요. 다시 붙여넣어 주세요"); return
+        }
+        state = .working
+        creds = Creds(token: t)
+        do { _ = try await call() } catch {
+            creds = nil
+            state = .failed(error.localizedDescription)
+            return
+        }
+        Keychain.save(creds!)
         localAt = 0
         lastSig = nil
         await pull(model)
@@ -86,7 +126,7 @@ final class Sync {
     }
 
     private func key() throws -> SymmetricKey {
-        guard let c = creds, let k = Data(base64Encoded: c.k) else { throw SyncError.off }
+        guard let c = creds, c.token == nil, let k = Data(base64Encoded: c.k) else { throw SyncError.off }
         return SymmetricKey(data: k)
     }
 
@@ -104,10 +144,18 @@ final class Sync {
     // MARK: 중계와 주고받기 (사이트 syncCall 과 같음)
 
     private func call(post: [String: Any]? = nil) async throws -> (state: [String: Any]?, at: Double, stale: Bool) {
-        guard let c = creds, let url = URL(string: Self.relay + c.id) else { throw SyncError.off }
+        guard let c = creds, let url = URL(string: c.token != nil ? Self.devRelay : Self.relay + c.id) else { throw SyncError.off }
         var req = URLRequest(url: url, timeoutInterval: 20)
         req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
-        if let post, let st = post["state"] {
+        if let t = c.token {
+            // 개발자 칸: 암호화 없이 {state, at} (사이트 개발자 동기화와 같음)
+            req.setValue("Bearer " + t, forHTTPHeaderField: "Authorization")
+            if let post, let st = post["state"] {
+                req.httpMethod = "POST"
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                req.httpBody = try JSONSerialization.data(withJSONObject: ["state": st, "at": post["at"] ?? Date().timeIntervalSince1970 * 1000])
+            }
+        } else if let post, let st = post["state"] {
             let plain = try JSONSerialization.data(withJSONObject: st)
             let box = try AES.GCM.seal(plain, using: try key(), nonce: AES.GCM.Nonce())
             let iv = Data(box.nonce), ct = box.ciphertext + box.tag
@@ -120,6 +168,10 @@ final class Sync {
         let j = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw SyncError.server((j["error"] as? String) ?? "중계 응답 \((resp as? HTTPURLResponse)?.statusCode ?? 0)") }
         let at = (j["at"] as? Double) ?? 0
+        if c.token != nil, var st = j["state"] as? [String: Any] {
+            st.removeValue(forKey: "_w")
+            return (st, at, false)
+        }
         if let cs = j["c"] as? String {
             let parts = cs.split(separator: ".").map(String.init)
             guard parts.count == 2, let iv = Data(base64Encoded: parts[0]), let all = Data(base64Encoded: parts[1]), all.count > 16 else { throw SyncError.wrongPassword }
@@ -233,13 +285,26 @@ final class Sync {
         var st = siteState
         if st["version"] == nil { st["version"] = 1 }
         let old = (st["holdings"] as? [[String: Any]]) ?? []
-        // 앱이 못 다루는 사이트 종목은 그대로 두고, 나머지는 앱 값으로
-        var hs = old.filter { h in (h["ticker"] as? String).flatMap(Self.appId) == nil }
-        for h in m.holdings where h.symbol != "DRNK" {
-            let t = Self.siteTicker(h.symbol)
-            var row = old.first { ($0["ticker"] as? String)?.uppercased() == t.uppercased() } ?? ["note": "", "price": NSNull()]
-            row["ticker"] = t; row["shares"] = h.qty; row["avg_cost"] = h.avg
-            hs.append(row)
+        let held = Set(m.holdings.map(\.symbol)), keep = keepTickers, sub = subAvg
+        // 사이트 줄 순서를 지킨다: 그대로 두는 줄(앱이 못 다루는 종목, 받을 때 들여오지 않은 줄)은 그대로,
+        // 앱에 있는 종목은 바뀐 칸만 고치고, 앱에서 지운 종목은 뺀다. 앱에서 새로 넣은 종목은 끝에 붙인다
+        func updated(_ h: Holding, _ base: [String: Any]?) -> [String: Any] {
+            var row = base ?? ["note": "", "price": NSNull()]
+            if Self.num(row["shares"]) != h.qty { row["shares"] = h.qty }
+            let oldAvg = Self.num(row["avg_cost"])
+            if oldAvg == 0, let s = sub[h.symbol], abs(s - h.avg) < 1e-9 { /* 사이트에 단가가 없던 줄: 비워 둔 그대로 */ }
+            else if oldAvg != h.avg { row["avg_cost"] = h.avg }
+            row["ticker"] = (row["ticker"] as? String) ?? Self.siteTicker(h.symbol)
+            return row
+        }
+        var hs: [[String: Any]] = [], used = Set<String>()
+        for row in old {
+            guard let t = row["ticker"] as? String, let id = Self.appId(t) else { hs.append(row); continue }
+            if let h = m.holdings.first(where: { $0.symbol == id }), !used.contains(id) { hs.append(updated(h, row)); used.insert(id) }
+            else if keep.contains(t.uppercased()) && !held.contains(id) { hs.append(row) }
+        }
+        for h in m.holdings where h.symbol != "DRNK" && !used.contains(h.symbol) {
+            var row = updated(h, nil); row["ticker"] = Self.siteTicker(h.symbol); hs.append(row)
         }
         st["holdings"] = hs
         // 앱만 쓰는 칸: 미션 진행과 가상 종목(DRNK). 사이트는 이 칸을 읽지 않고 그대로 둔다
@@ -256,11 +321,11 @@ final class Sync {
     private func apply(_ st: [String: Any], at: Double, to m: AppModel) async throws {
         var hs: [Holding] = []
         var unknown: [StockHit] = []
+        var keep = Set<String>(), sub: [String: Double] = [:]
         for h in (st["holdings"] as? [[String: Any]]) ?? [] {
             guard let t = h["ticker"] as? String, let id = Self.appId(t) else { continue }
-            let q = (h["shares"] as? Double) ?? Double(h["shares"] as? String ?? "") ?? 0
-            let a = (h["avg_cost"] as? Double) ?? Double(h["avg_cost"] as? String ?? "") ?? 0
-            guard q > 0 else { continue }
+            let q = Self.num(h["shares"]), a = Self.num(h["avg_cost"])
+            guard q > 0 else { keep.insert(t.uppercased()); continue }
             let kr = t.uppercased().hasSuffix(".KS") || t.uppercased().hasSuffix(".KQ")
             if CustomSymbols.shared.symbol(id) == nil && YahooSample.quotes[id] == nil {
                 let ko = StockCatalog.all.first { $0.id == id }
@@ -274,12 +339,17 @@ final class Sync {
         // 처음 보는 종목은 시세·3년 종가를 받는다 (못 받으면 그 종목은 빼고 알린다)
         var skipped: [String] = []
         for u in unknown {
-            do { try await CustomSymbols.shared.fetch(u) } catch { skipped.append(u.id); hs.removeAll { $0.symbol == u.id } }
+            do { try await CustomSymbols.shared.fetch(u) } catch {
+                skipped.append(u.id); hs.removeAll { $0.symbol == u.id }
+                keep.insert(Self.siteTicker(u.id).uppercased()); keep.insert(u.yahoo.uppercased())
+            }
         }
         hs = hs.map { h in
             guard h.avg <= 0, let s = Sample.symbol(h.symbol) else { return h }
+            sub[h.symbol] = s.last
             return Holding(symbol: h.symbol, qty: h.qty, avg: s.last)
         }
+        keepTickers = keep; subAvg = sub
         let app = st["app"] as? [String: Any]
         if !m.onboarded && app?["progress"] == nil {
             // 사이트에서만 쓰던 값: 미션은 처음부터. 이익이면 목표 루트, 손실이면 회복 루트
