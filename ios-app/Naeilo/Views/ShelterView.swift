@@ -7,6 +7,7 @@ struct ShelterView: View {
     @State private var item: String? = nil
     @State private var support = false
     @State private var story = Story.shared
+    @State private var fold: [String: Bool] = [:]   // 손으로 펼치고 접은 묶음 (없으면 읽는 묶음만 펼침)
 
     var body: some View {
         ScrollView {
@@ -41,7 +42,10 @@ struct ShelterView: View {
         }
         .background(Theme.bg)
         .navigationTitle("").navigationBarTitleDisplayMode(.inline)
-        .onAppear { sel = m.shelterSel ?? m.homeFriend }
+        .onAppear {
+            sel = m.shelterSel ?? m.homeFriend
+            for i in 0..<5 where m.readPos.contains(i + 1) { story.markDone(.side, i) }   // 다음 장을 연 장은 다 읽은 것으로 (예전 기록)
+        }
         .sheet(isPresented: $support) { NavigationStack { SupportView() } }
     }
 
@@ -114,8 +118,11 @@ struct ShelterView: View {
     }
 
     private var library: some View {
-        VStack(spacing: 0) {
-            ForEach(0..<6, id: \.self) { i in
+        let paid = story.count(.side) > 6 ? Array(6..<story.count(.side)) : []
+        let cur = current([("side0", Array(0..<6)), ("side1", paid)], .side)
+        return VStack(spacing: 0) {
+            foldRow("side0", "프롤로그 ~ 5장", "\((0..<6).filter { story.isDone(.side, $0) }.count)/6 읽음", cur)
+            if isOpen("side0", cur) { ForEach(0..<6, id: \.self) { i in
                 let on = m.chapterOn(i), ch = Shelter.chapters[i]
                 let fi = Shelter.friends.firstIndex { $0.id == ch.friend } ?? 0
                 let row = HStack(spacing: 10) {
@@ -133,25 +140,29 @@ struct ShelterView: View {
                 .padding(.horizontal, 14).frame(minHeight: 64)
                 .foregroundStyle(on ? Theme.ink : Theme.muted)
                 .contentShape(Rectangle())
-                if i > 0 { Divider().overlay(Theme.line) }
+                Divider().overlay(Theme.line)
                 if on { NavigationLink(value: "read:\(i)") { row }.buttonStyle(.plain) }
                 else { Button { sel = ch.friend } label: { row }.buttonStyle(.plain) }
-            }
+            } }
             Divider().overlay(Theme.line)
+            foldRow("side1", "6장 ~ 코다", paid.isEmpty ? "☕︎ 후원" : "\(paid.filter { story.isDone(.side, $0) }.count)/\(paid.count) 읽음", cur)
             // 6장부터: 믹스커피 이상이면 후원 서버에서 받은 장, 아니면 누르면 개발자 후원(커피)
-            if Support.shared.has(.mix) && story.count(.side) > 6 {
+            if !isOpen("side1", cur) {
+            } else if Support.shared.has(.mix) && story.count(.side) > 6 {
                 ForEach(6..<story.count(.side), id: \.self) { i in
-                    if i > 6 { Divider().overlay(Theme.line) }
+                    Divider().overlay(Theme.line)
                     NavigationLink(value: "read:\(i)") { paidRow(story.cover(i) ?? (i == 6 ? Image("art_ch6") : nil), story.chapter(i)?.title ?? "", story.chapter(i)?.name ?? "", (story.pos[i] ?? 0) > 0 ? "이어 읽기" : "읽기") }
                         .buttonStyle(.plain)
                 }
             } else if Support.shared.has(.mix) {
+                Divider().overlay(Theme.line)
                 Button { Task { await story.fetch(.side, force: true) } } label: {
                     paidRow(Image("art_ch6"), "6장", Shelter.chapter6Name, story.isLoading(.side) ? "받는 중…" : story.failText(.side) == nil ? "받기" : "다시 받기",
                             note: story.failText(.side))
                 }
                 .buttonStyle(.plain).disabled(story.isLoading(.side))
             } else {
+                Divider().overlay(Theme.line)
                 Button { support = true } label: {
                     paidRow(Image("art_ch6"), "6장", Shelter.chapter6Name, "☕︎ ›", note: "커피 한 잔으로 이어 읽기", locked: true)
                 }
@@ -162,6 +173,43 @@ struct ShelterView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
         .task(id: story.lang) { await story.fetch(.side) }   // 믹스커피 이상이면 6장부터 받아 둔다
+    }
+
+    // 서재 묶음 접기: 손으로 정한 게 없으면 다 읽지 않은 첫 묶음만 펼친다 (한 묶음을 다 읽으면 다음 묶음이 저절로 펼쳐진다)
+    private func current(_ groups: [(String, [Int])], _ b: StoryBook) -> String? {
+        groups.first { g in g.1.isEmpty || !g.1.allSatisfy { story.isDone(b, $0) } }?.0
+    }
+    private func isOpen(_ id: String, _ cur: String?) -> Bool { fold[id] ?? (id == cur) }
+    private func foldRow(_ id: String, _ title: String, _ right: String, _ cur: String?) -> some View {
+        let open = isOpen(id, cur)
+        return Button { withAnimation(.easeOut(duration: 0.2)) { fold[id] = !open } } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.teal)
+                    .rotationEffect(.degrees(open ? 90 : 0))
+                Text(title).appFont(14, .bold)
+                Spacer(minLength: 0)
+                Text(right).appFont(12).foregroundStyle(Theme.muted)
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 14).frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(right), \(open ? "펼침" : "접힘")")
+    }
+    /// 본편 1권의 부: 장 제목 앞의 'N부' 로 묶고, 이름은 그 부 첫 장의 '1부. 거부할 권리' 같은 절 제목
+    private var vol1Parts: [(id: String, name: String, idx: [Int])] {
+        var out: [(id: String, name: String, idx: [Int])] = []
+        for i in 0..<story.count(.vol1) {
+            let ch = story.chapter(i, .vol1)
+            let p = ch?.title.split(separator: " ").first.map(String.init) ?? ""
+            if out.last?.id != "vol1-" + p {
+                let h = ch?.blocks.first { $0.k == "h" && $0.t.hasPrefix(p) }?.t
+                out.append((id: "vol1-" + p, name: h.map { $0.replacingOccurrences(of: ". ", with: " · ") } ?? p, idx: []))
+            }
+            out[out.count - 1].idx.append(i)
+        }
+        return out
     }
 
     /// 서버에서 받는 장 한 줄 (6장부터, 본편 1권)
@@ -194,13 +242,20 @@ struct ShelterView: View {
             header("본편 『중첩된 현실』 1권", story.count(.vol1) > 0 ? "\(story.count(.vol1))장" : "")
             VStack(spacing: 0) {
                 if story.count(.vol1) > 0 {
-                    ForEach(0..<story.count(.vol1), id: \.self) { i in
-                        if i > 0 { Divider().overlay(Theme.line) }
-                        NavigationLink(value: "vol1:\(i)") {
-                            paidRow(story.cover(i, .vol1), story.chapter(i, .vol1)?.title ?? "", story.chapter(i, .vol1)?.name ?? "",
-                                    (story.pos[Story.key(.vol1, i)] ?? 0) > 0 ? "이어 읽기" : "읽기")
+                    let parts = vol1Parts, cur = current(parts.map { ($0.id, $0.idx) }, .vol1)
+                    ForEach(Array(parts.enumerated()), id: \.element.id) { n, part in
+                        if n > 0 { Divider().overlay(Theme.line) }
+                        foldRow(part.id, part.name, "\(part.idx.filter { story.isDone(.vol1, $0) }.count)/\(part.idx.count) 읽음", cur)
+                        if isOpen(part.id, cur) {
+                            ForEach(part.idx, id: \.self) { i in
+                                Divider().overlay(Theme.line)
+                                NavigationLink(value: "vol1:\(i)") {
+                                    paidRow(story.cover(i, .vol1), story.chapter(i, .vol1)?.title ?? "", story.chapter(i, .vol1)?.name ?? "",
+                                            story.isDone(.vol1, i) ? "다 읽음" : (story.pos[Story.key(.vol1, i)] ?? 0) > 0 ? "이어 읽기" : "읽기")
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 } else {
                     Button { Task { await story.fetch(.vol1, force: true) } } label: {
@@ -374,6 +429,7 @@ struct ReaderView: View {
                 .scrollTargetLayout()
                 .padding(.horizontal, 16).padding(.top, 8)
                 next(fi ?? 0, accent, proxy).padding(16)
+                    .onAppear { if text != nil { story.markDone(book, index) } }   // 끝까지 내려오면 다 읽은 장
               }
             }
             .scrollPosition(id: $top, anchor: .top)

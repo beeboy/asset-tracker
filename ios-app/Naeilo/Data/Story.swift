@@ -51,6 +51,13 @@ final class Story {
     private(set) var pos: [Int: Int] = (UserDefaults.standard.dictionary(forKey: "storyPos") as? [String: Int] ?? [:])
         .reduce(into: [:]) { d, kv in if let i = Int(kv.key) { d[i] = kv.value } }
     static func key(_ b: StoryBook, _ i: Int) -> Int { b == .side ? i : 1000 + i }
+    /// 끝까지 읽은 장 (서재 묶음이 저절로 접히고 펼쳐지는 데 쓴다). 키는 pos 와 같다
+    private(set) var done: Set<Int> = Set(UserDefaults.standard.array(forKey: "storyDone") as? [Int] ?? [])
+    func isDone(_ b: StoryBook, _ chapter: Int) -> Bool { done.contains(Self.key(b, chapter)) }
+    func markDone(_ b: StoryBook, _ chapter: Int) {
+        guard done.insert(Self.key(b, chapter)).inserted else { return }
+        UserDefaults.standard.set(Array(done), forKey: "storyDone")
+    }
     func setPos(_ b: StoryBook, _ chapter: Int, _ block: Int) {
         let k = Self.key(b, chapter)
         guard pos[k] != block else { return }
