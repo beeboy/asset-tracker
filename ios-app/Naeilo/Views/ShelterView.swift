@@ -233,12 +233,10 @@ struct ShelterView: View {
         .accessibilityLabel(on ? it.name : i == m.itemsOn ? "다음에 돌아오는 물건, \(m.itemDaysLeft)일 남음" : "\(i + 1)번째로 돌아오는 물건")
     }
 
-    /// 쉼터 방: 돌아온 물건이 제자리에 놓이고, 홈에 둔 친구가 고른 물건(없으면 마지막에 돌아온 물건) 옆에 선다.
+    /// 쉼터 방: 돌아온 물건이 제자리에 놓이고, 홈에 둔 친구는 물건과 겹치지 않게 문 앞에 선다.
     /// 다방커피 이상은 아직 안 돌아온 물건이 흐리게 보인다
     private var room: some View {
-        let focus = item.flatMap { id in Shelter.items.first { $0.id == id } } ?? (m.itemsOn > 0 ? Shelter.items[m.itemsOn - 1] : nil)
-        let fx: CGFloat = focus.flatMap { Shelter.slots[$0.id] }.map { $0.x <= 86 ? $0.x + 18 : $0.x - 26 } ?? 60
-        return GeometryReader { g in
+        GeometryReader { g in
             let u = g.size.width / 128
             ZStack(alignment: .topLeading) {
                 Image("art_room").interpolation(.none).resizable().frame(width: g.size.width, height: g.size.height)
@@ -255,8 +253,7 @@ struct ShelterView: View {
                     }
                 }
                 Pixel(name: "spr_" + m.homeFriendShown, width: 24 * u, height: 34 * u)
-                    .offset(x: max(4, min(100, fx)) * u, y: 42 * u)
-                    .animation(.easeOut(duration: 0.3), value: fx)
+                    .offset(x: 4 * u, y: 42 * u)     // 문(6~26) 앞. 의자는 30부터라 겹치지 않는다
                     .allowsHitTesting(false).accessibilityHidden(true)
             }
         }
