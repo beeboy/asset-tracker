@@ -32,6 +32,14 @@ final class AppModel {
         }
         // 확인용: -addTest 005930,10,84000 → 종목 추가와 같은 경로로 넣는다
         if let t = UserDefaults.standard.string(forKey: "addTest")?.split(separator: ","), t.count == 3 { addHolding(String(t[0]), String(t[1]), String(t[2])) }
+        // 확인용: -holdN 10 → 예시 종목 앞에서부터 n개를 보유로 (위젯에 종목이 많을 때 모습)
+        #if DEBUG
+        if let n = Int(UserDefaults.standard.string(forKey: "holdN") ?? "") {
+            holdings = Sample.baseSymbols.prefix(n).enumerated().map { i, s in
+                Holding(symbol: s.id, qty: (3e7 / Double(i + 1) / (s.close * (s.currency == .usd ? Sample.fx : 1))).rounded(.up), avg: s.close)
+            }
+        }
+        #endif
         // 확인용: -searchTest tesla → 종목 추가 화면을 그 검색어로 연다
         if UserDefaults.standard.string(forKey: "searchTest") != nil { holdPath = NavigationPath(["add"]) }
         // 확인용: -syncTest <비밀번호> → 그 비밀번호로 동기화를 켠다 (사이트와 주고받기 확인)

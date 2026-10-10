@@ -8,17 +8,28 @@ import AppIntents
 // 기본은 인물 색 그라데이션 바탕, 다크 모드는 #1c1c1f 바탕에 인물 색은 빛·제목·막대·블록·말풍선 테두리에만.
 
 enum WhoEnum: String, AppEnum {
-    case home, seri, sio, seonbae, ir, sua
+    // 'seri' 는 '홈 인물 따라가기'가 생기기 전 위젯의 기본값이었다. 그때 둔 위젯은 그 값이 그대로 저장돼 있어
+    // 앱에서 홈 인물을 바꿔도 세리로 남았다. 그래서 예전 값 'seri' 는 홈 인물 따라가기로 읽고,
+    // 세리를 고정하고 싶을 때는 새 값 'seri.pin' 을 쓴다 (고르는 목록에는 legacy 가 안 보인다)
+    case home, legacy = "seri", seri = "seri.pin", sio, seonbae, ir, sua
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "인물"
     static var caseDisplayRepresentations: [WhoEnum: DisplayRepresentation] = [
-        .home: "앱 홈의 인물 따라가기", .seri: "세리", .sio: "시오", .seonbae: "선배", .ir: "이르", .sua: "수아",
+        .home: "앱 홈의 인물 따라가기", .legacy: "앱 홈의 인물 따라가기",
+        .seri: "세리", .sio: "시오", .seonbae: "선배", .ir: "이르", .sua: "수아",
     ]
+    static let choices: [WhoEnum] = [.home, .seri, .sio, .seonbae, .ir, .sua]
+    var follows: Bool { self == .home || self == .legacy }
+    var charId: String { self == .seri ? "seri" : rawValue }
+}
+
+struct WhoOptions: DynamicOptionsProvider {
+    func results() async throws -> [WhoEnum] { WhoEnum.choices }
 }
 
 struct WhoIntent: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "인물 고르기"
     static var description = IntentDescription("위젯에 나올 인물을 골라요. 아직 못 만난 인물은 실루엣으로 보여요.")
-    @Parameter(title: "인물", default: .home) var who: WhoEnum
+    @Parameter(title: "인물", default: .home, optionsProvider: WhoOptions()) var who: WhoEnum
     init() {}
     init(_ w: WhoEnum) { who = w }
 }
@@ -37,12 +48,12 @@ struct CharProvider: AppIntentTimelineProvider {
         Timeline(entries: [entry(cfg, preview: false)], policy: .after(MarketHours.nextRefresh()))
     }
     func recommendations() -> [AppIntentRecommendation<WhoIntent>] {
-        WhoEnum.allCases.map { AppIntentRecommendation(intent: WhoIntent($0), description: $0 == .home ? "앱 홈의 인물" : WChar.of($0.rawValue).name) }
+        WhoEnum.choices.map { AppIntentRecommendation(intent: WhoIntent($0), description: $0 == .home ? "앱 홈의 인물" : WChar.of($0.charId).name) }
     }
     private func entry(_ cfg: WhoIntent, preview: Bool) -> CharEntry {
         let r = Store.read(WReward.self, "reward.json") ?? .sample
         // '홈 인물 따라가기'면 앱 홈에 둔 인물 (앱에서 홈 인물을 바꾸면 위젯도 바뀐다)
-        let c = WChar.of(cfg.who == .home ? (r.homeFriend ?? "seri") : cfg.who.rawValue)
+        let c = WChar.of(cfg.who.follows ? (r.homeFriend ?? "seri") : cfg.who.charId)
         // 갤러리 미리보기는 실제 모습, 홈 화면에서는 만난 인물만
         return CharEntry(date: Date(), r: r, c: c, locked: !preview && !(c.id == "seri" || r.friendsOn.contains(c.id)))
     }
@@ -309,25 +320,41 @@ struct MovesCharView: View {
         .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "오늘의 움직임, \(e.c.name): \(e.c.line(e.r))")
     }
 
-    /// 종목 칸: 넓이는 비중, 오르면 빨강, 내리면 파랑
+    /// 종목 칸: 비중이 큰 3개까지 칸으로 (넓이는 비중, 오르면 빨강, 내리면 파랑).
+    /// 4개 이상이면 나머지는 아래 한 줄에 '외 n개' + 종목마다 점 하나(오름 ●, 내림 ○) + 합친 등락
     private func tiles(_ r: WReward, dark: Bool) -> some View {
+        let all = r.tiles.isEmpty ? [WReward.Tile(t: "-", w: 1, c: 0)] : r.tiles.sorted { $0.w > $1.w }
+        let top = Array(all.prefix(3)), rest = Array(all.dropFirst(3))
+        return VStack(spacing: 5) {
+            tileRow(top, dark: dark)
+            if !rest.isEmpty && !e.locked { restStrip(rest, dark: dark).frame(height: 22) }
+        }
+    }
+
+    @Environment(\.widgetRenderingMode) private var mode
+    /// 투명·틴트 홈 화면: 시스템이 색을 지우고 한 색으로 칠하므로, 불투명한 칸은 흰 덩어리가 된다.
+    /// 그때는 칸을 옅게 두고 등락 글자만 틴트 색(강조)으로, 오름·내림은 ▲▼와 점 모양으로 가른다
+    private var tinted: Bool { mode == .accented }
+
+    private func tileRow(_ ts: [WReward.Tile], dark: Bool) -> some View {
         GeometryReader { g in
-            let ts = r.tiles.isEmpty ? [WReward.Tile(t: "-", w: 1, c: 0)] : r.tiles
             let sumW = ts.reduce(0) { $0 + max(0.2, $1.w) }, gap: CGFloat = 5
             let avail = g.size.width - gap * CGFloat(ts.count - 1)
             HStack(spacing: gap) {
                 ForEach(Array(ts.enumerated()), id: \.offset) { _, t in
                     let up = t.c >= 0
                     let fillC: Color = e.locked ? .white.opacity(0.1)
+                        : tinted ? .white.opacity(up ? 0.16 : 0.08)
                         : dark ? (up ? Color(red: 0.49, green: 0.21, blue: 0.21) : Color(red: 0.2, green: 0.26, blue: 0.36))
                         : (up ? Color(red: 0.95, green: 0.35, blue: 0.38).opacity(0.55) : Color(red: 0.42, green: 0.58, blue: 0.95).opacity(0.45))
                     VStack(alignment: .leading) {
-                        Text(e.locked ? "" : t.t).font(.system(size: 11, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(e.locked ? "" : t.t).font(.system(size: 11, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
                         Spacer(minLength: 0)
                         if !e.locked {
                             Text(Fmt.arrow(t.c) + String(format: "%.1f%%", abs(t.c) * 100))
-                                .font(.system(size: max(10, min(20, 26 * max(0.2, t.w) / sumW * 1.6)), weight: .regular))
+                                .font(.system(size: max(10, min(20, 26 * max(0.2, t.w) / sumW * 1.6)), weight: tinted ? .semibold : .regular))
                                 .lineLimit(1).minimumScaleFactor(0.6)
+                                .widgetAccentable()
                         }
                     }
                     .padding(6)
@@ -336,6 +363,33 @@ struct MovesCharView: View {
                 }
             }
         }
+    }
+
+    private func restStrip(_ rest: [WReward.Tile], dark: Bool) -> some View {
+        let w = rest.reduce(0) { $0 + $1.w }
+        let c = w > 0 ? rest.reduce(0) { $0 + $1.w * $1.c } / w : 0      // 비중으로 합친 등락
+        let dots = Array(rest.prefix(8))
+        return HStack(spacing: 4) {
+            Text("외 \(rest.count)개").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.85)).fixedSize()
+            HStack(spacing: 2.5) {
+                ForEach(Array(dots.enumerated()), id: \.offset) { _, t in
+                    let up = t.c >= 0
+                    Circle().fill(tinted ? (up ? Color.white : .clear) : (up ? upC : dnC))
+                        .overlay(Circle().stroke(Color.white.opacity(tinted ? 0.9 : 0), lineWidth: 1))
+                        .frame(width: 5, height: 5)
+                }
+                if rest.count > dots.count { Text("…").font(.system(size: 8)).foregroundStyle(.white.opacity(0.6)) }
+            }
+            .widgetAccentable()
+            Spacer(minLength: 2)
+            Text(Fmt.arrow(c) + String(format: "%.1f%%", abs(c) * 100)).font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(tinted ? Color.white : c >= 0 ? upC : dnC).lineLimit(1).fixedSize()
+                .widgetAccentable()
+        }
+        .padding(.horizontal, 6)
+        .frame(maxHeight: .infinity)
+        .background(Color.white.opacity(tinted ? 0.08 : dark ? 0.07 : 0.12), in: RoundedRectangle(cornerRadius: 7))
+        .accessibilityLabel("그 외 \(rest.count)개 종목, 합쳐서 \(c >= 0 ? "올라" : "내려") \(String(format: "%.1f%%", abs(c) * 100))")
     }
 }
 

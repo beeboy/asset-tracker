@@ -48,7 +48,8 @@ enum WidgetBridge {
         // 인물 보상 위젯: 본전(목표)까지, 1000칸, 오늘의 움직임
         let key = max(1, goal), track = m.trackValue, yTrack = track / (1 + m.todayMove)
         let frac = { (v: Double) in max(0, min(1, v / key)) }
-        let tiles = rows.sorted { $0.value > $1.value }.prefix(3).map { r in
+        // 위젯은 큰 3개를 칸으로, 나머지는 '외 n개' 줄로
+        let tiles = rows.sorted { $0.value > $1.value }.prefix(30).map { r in
             WReward.Tile(t: r.sym.currency == .usd ? r.id : r.sym.name, w: m.total > 0 ? r.value / m.total : 0, c: r.sym.quote.change)
         }
         let reward = WReward(keyName: m.keyName, pct: frac(track), pctYesterday: frac(yTrack), remain: max(0, key - track),
