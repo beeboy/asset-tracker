@@ -13,17 +13,20 @@ struct CalmCard: View {
                 Pixel(name: "spr_" + who, width: 42, height: 60)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text("평정 지수").appFont(13, .bold).foregroundStyle(Theme.teal)
-                        if let k { Text("· \(k.title)").appFont(13).foregroundStyle(Theme.sub) }
+                        Text("평정 지수").appFont(13, .bold).foregroundStyle(Theme.mint)
+                        if let k { Text("· \(k.title)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
                         Spacer()
-                        Text(s.n < Calm.minEvents ? "–" : "\(s.index)").appFont(22, .bold)
+                        Text(s.n < Calm.minEvents ? "–" : "\(s.index)").appFont(28, .bold).tracking(-0.5)
                     }
-                    Text(m.calm.say(s)).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                    Text(m.calm.say(s, who: who)).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(Color(hex: 0xEEF0F3))
                 }
             }
-            .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+            // 홈의 지금 평가액 카드처럼 진한 바탕
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14).padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("평정 지수 보기")
@@ -50,7 +53,7 @@ struct CalmView: View {
                             }
                         }
                     }
-                    Text(m.calm.say(s)).appFont(15).lineSpacing(3)
+                    Text(m.calm.say(s, who: who)).appFont(15).lineSpacing(3)
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 12))
                     if let k { Text("다음 걸음: " + k.next).appFont(13, .semibold).foregroundStyle(Theme.teal) }

@@ -12,7 +12,7 @@ struct StartView: View {
                 Text("naeilo").appFont(20, .bold).padding(.top, 24)
                 HStack(alignment: .bottom, spacing: 12) {
                     Pixel(name: "spr_seri", width: 56, height: 80).accessibilityLabel("세리")
-                    Text("처음 오셨군요. …… 하나만 물어볼게요.").appFont(15)
+                    Text(Lines.pick("start.seri") ?? "처음 오셨군요. …… 하나만 물어볼게요.").appFont(15)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 14).padding(.vertical, 10)
                         .background(Theme.card, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14))

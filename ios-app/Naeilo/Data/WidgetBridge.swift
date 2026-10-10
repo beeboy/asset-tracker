@@ -52,12 +52,13 @@ enum WidgetBridge {
         let tiles = rows.sorted { $0.value > $1.value }.prefix(30).map { r in
             WReward.Tile(t: r.sym.currency == .usd ? r.id : r.sym.name, w: m.total > 0 ? r.value / m.total : 0, c: r.sym.quote.change)
         }
-        let reward = WReward(keyName: m.keyName, pct: frac(track), pctYesterday: frac(yTrack), remain: max(0, key - track),
+        var reward = WReward(keyName: m.keyName, pct: frac(track), pctYesterday: frac(yTrack), remain: max(0, key - track),
                              cells: Int(frac(track) * 1000), cellsYesterday: Int(frac(yTrack) * 1000),
                              total: m.total, dayChg: m.todayMove, tiles: Array(tiles), next: nextEvent(rows.map(\.id), now),
                              friendsOn: Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id),
                              homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0 },
                              items: Shelter.items.prefix(m.itemsOn).map(\.id))
+        reward.says = says(reward)
         Store.write(reward, "reward.json")
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")
@@ -67,6 +68,21 @@ enum WidgetBridge {
         Store.unlockedKinds = WidgetUnlock.kinds(doneSteps: m.devAll ? 3 : m.nxStep)   // 앱 시작 단계로 받은 위젯
         Store.summarySource = "app"
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// 인물별 위젯 말풍선: 사흘에 한 번은 돌아온 물건 얘기, 나머지 날은 오늘 가장 크게 움직인 종목 (대사 데이터에서)
+    static func says(_ r: WReward) -> [String: String] {
+        let top = r.tiles.max { abs($0.c) < abs($1.c) }
+        let t = top?.t ?? "오늘", c = top?.c ?? r.dayChg
+        var out: [String: String] = [:]
+        for w in WChar.all {
+            if let it = WItem.today(r) {
+                out[w.id] = Lines.pick("item.\(it).\(w.id)") ?? WItem.say(it, w.id)
+            } else {
+                out[w.id] = Lines.pick("widget.\(c >= 0 ? "up" : "down").\(w.id)", ["t": t, "c": String(format: "%.1f", abs(c) * 100)])
+            }
+        }
+        return out
     }
 
     /// 다음 일정: 보유 종목의 실적 발표 (분석 탭 일정과 같은 값)

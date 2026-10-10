@@ -9,6 +9,7 @@ struct SupportView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                FriendSay(key: "sponsor", fallback: "커피 한 잔이면 충분해요.")
                 VStack(alignment: .leading, spacing: 6) {
                     Text("개발자에게 커피 한 잔").appFont(22, .bold)
                     Text("naeilo는 구독이나 유료 판매 없이 커피 후원으로 만들어요. 후원하면 외전 뒷이야기와 보상 미리 보기가 열려요.")

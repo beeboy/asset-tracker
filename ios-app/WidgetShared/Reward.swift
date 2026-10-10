@@ -17,6 +17,7 @@ struct WReward: Codable {
     var homeFriend: String? = nil // 앱 홈에 둔 인물 (위젯 '홈 인물 따라가기'가 쓴다)
     var spark: [Double]? = nil    // 최근 10일 평가액 (만원). 인물 · 자산 추이
     var items: [String]? = nil    // 쉼터에 돌아온 물건 (돌아온 순서). 오늘의 움직임 위젯이 쓴다
+    var says: [String: String]? = nil  // 인물별 오늘 말풍선 (앱이 대사 데이터에서 골라 넘긴다, 시세 갱신마다 바뀜)
 
     static let sample = WReward(keyName: "본전", pct: 0.87, pctYesterday: 0.862, remain: 1.52e7, cells: 264, cellsYesterday: 261,
                                 total: 1.234e8, dayChg: 0.008, tiles: [.init(t: "DRNK", w: 0.62, c: 0.019), .init(t: "QQQ", w: 0.38, c: -0.004)],
@@ -41,6 +42,7 @@ struct WChar: Identifiable {
     /// 말풍선 (인물 말투). 세리·시오·선배는 오늘 가장 크게 움직인 종목을 넣는다.
     /// 사흘에 한 번은 쉼터에 돌아온 물건 얘기를 인물 말투로 한다
     func line(_ r: WReward) -> String {
+        if let s = r.says?[id], !s.isEmpty { return s }
         if let it = WItem.today(r), let say = WItem.say(it, id) { return say }
         let top = r.tiles.max { abs($0.c) < abs($1.c) }
         let t = top?.t ?? "오늘", c = top?.c ?? 0

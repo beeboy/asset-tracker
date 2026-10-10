@@ -7,12 +7,12 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 AppHeader().padding(.horizontal, -16)
-                Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                 summary
                 shelterBox
                 if m.playOn && !m.interDone { reminder }
                 if m.playUnlocked { RoutineCard() } else { lockedRoutine }
                 if !m.playUnlocked { yesterdayCard }
+                Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
             .screen()
         }
@@ -40,9 +40,9 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 10) {
             // 목표 금액을 누르면 고친다
             HStack(spacing: 4) {
-                Text(m.route == .novice ? "지금 모은 돈 ·" : "지금 평가액 ·").foregroundStyle(Color(hex: 0xC9D0D6))
+                Text(m.route == .novice ? "지금 모은 돈" : "지금 평가액").foregroundStyle(Color(hex: 0xC9D0D6))
                 NavigationLink(value: "goal") {
-                    (Text("목표 \(AppModel.wonK(m.gK)) ") + Text(Image(systemName: "pencil"))).foregroundStyle(.white).underline()
+                    Image(systemName: "pencil").foregroundStyle(.white).frame(minWidth: 28, minHeight: 28)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("목표 \(AppModel.wonK(m.gK)), 눌러서 고치기")
@@ -60,7 +60,7 @@ struct HomeView: View {
             }
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: prog)
-            Text("오늘 \(AppModel.sgn(m.route == .novice ? 0.006 : m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog))에 왔어요. 적립은 다음 달에 \(AppModel.wonK(m.gM)) 예정이에요.")
+            Text("오늘 \(AppModel.sgn(m.route == .novice ? 0.006 : m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog)) 도달. 다음달 \(AppModel.wonK(m.gM)) 적립 예정.")
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(.white)
@@ -192,7 +192,7 @@ struct RoutineCard: View {
                 }
             }
             step(tag: "1 · 오늘 숫자") {
-                Text(m.routineFact).appFont(15).lineSpacing(3)
+                Text((try? AttributedString(markdown: m.routineFact)) ?? AttributedString(m.routineFact)).appFont(15).lineSpacing(3)
                 if !t.seen {
                     Button("봤어요") { withAnimation { m.markSeen() } }
                         .appFont(14, .bold).foregroundStyle(.white)

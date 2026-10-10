@@ -152,7 +152,7 @@ struct BoardView: View {
 
     private var lockedPlay: some View {
         DashedCard {
-            Label("1000칸 · 100칸 선물 · 이번 주 예보", systemImage: "lock").appFont(15, .bold)
+            Label("1000칸 · 이번 주 예보", systemImage: "lock").appFont(15, .bold)
             Text("앱 시작 3단계를 마치면 열려요. 인터미션 동안에도 칸을 채우고 매주 예보를 맞혀 볼 수 있어요.").appFont(13)
         }
     }
@@ -160,7 +160,6 @@ struct BoardView: View {
     // 1000칸: 본전 = 1000칸. 진한 칸 = 시작 뒤 바닥에도 있던 칸, 연한 칸 = 바닥 뒤 회복한 칸
     private var cells: some View {
         let n = m.cellsNow, nFloor = min(n, m.cellsFloor), nY = m.cellsYesterday, chg = n - nY
-        let passed = n / 100
         let unit = AppModel.man(m.cellUnit).replacingOccurrences(of: "만원", with: "")
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
@@ -184,24 +183,6 @@ struct BoardView: View {
                     legend(Theme.teal, "바닥에도 있던 칸 \(nFloor)칸")
                     legend(Color(hex: 0x7FD3C9, dark: 0x3C8F86), "바닥 뒤 회복한 칸 \(n - nFloor)칸")
                     legend(Theme.yellow, "마지막 칸 = 본전")
-                }
-            }
-            Text(cellMode == "stock" ? "큰 종목부터 차례로 칸을 차지해요. 칸 수는 비중과 같아요."
-                 : "진한 칸은 회복 루트를 시작한 뒤 가장 낮았던 날에도 있던 칸이에요. 연한 칸은 그 뒤 회복한 칸이에요. 빨간 테두리는 어제 바뀐 칸이에요.")
-                .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
-            HStack {
-                Text("100칸 선물").appFont(13, .bold)
-                Spacer()
-                Text(passed >= 10 ? "1000칸 완성!" : "\((passed + 1) * 100)칸까지 \((passed + 1) * 100 - n)칸").appFont(13).foregroundStyle(Theme.sub)
-            }
-            HStack(spacing: 4) {
-                ForEach(1...10, id: \.self) { i in
-                    let on = n >= i * 100
-                    Text("\(i * 100)").appFont(10, .bold)
-                        .frame(maxWidth: .infinity, minHeight: 30)
-                        .foregroundStyle(on ? Theme.inkFixed : i - 1 == passed ? Theme.sub : Theme.muted)
-                        .background(on ? Theme.yellow : i - 1 == passed ? .clear : Theme.line, in: RoundedRectangle(cornerRadius: 8))
-                        .overlay { if !on && i - 1 == passed { RoundedRectangle(cornerRadius: 8).stroke(Theme.yellow, style: StrokeStyle(lineWidth: 2, dash: [4, 3])) } }
                 }
             }
             ShareCardButton(filled: n, mine: nFloor, market: n - nFloor, kicker: "본전까지 가는 중",
@@ -268,7 +249,7 @@ struct WeekForecastCard: View {
             }
             .appFont(12).foregroundStyle(Theme.sub)
             if !m.weekFriday {
-                Text("금요일엔 어디쯤일까요? (맞혀도 같은 도장이에요)").appFont(15, .bold)
+                Text("금요일엔 어디쯤일까요?").appFont(15, .bold)
                 ChipRow(items: [("lo", "범위 아래"), ("in", "범위 안"), ("hi", "범위 위")],
                         selection: Binding(get: { m.weekGuess ?? "" }, set: { m.weekGuess = $0 }), accent: Theme.blue, fill: true)
                 Button("금요일로 넘기기 (시안)") { withAnimation { m.weekFriday = true } }
@@ -294,7 +275,7 @@ struct WeekForecastCard: View {
                         .background(stamps[i] == 1 ? Theme.green : Color(hex: 0xFBE3CF, dark: 0x4A3020), in: RoundedRectangle(cornerRadius: 8))
                 }
             }
-            Text("50% 범위라서 예보가 정직하면 절반쯤 들어와요. 너무 자주 들어오면 범위가 넓은 거고, 너무 드물면 좁은 거예요. 점수가 아니라 예보를 믿어도 되는지 보는 기록이에요.")
+            Text("절반쯤 \"안\"이면 믿을 만한 예보예요.")
                 .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
         }
         .padding(16)

@@ -29,15 +29,16 @@ extension AppModel {
     func weight(_ id: String) -> Double { rows.first { $0.id == id }.map { $0.value / max(1, total) } ?? 0 }
 }
 
+/// 상세 화면 머리: 제목은 위 막대 가운데(뒤로 가기 옆)에 두고, 여기에는 한 줄 설명만
 struct DetailHead: View {
     let title: String
     let sub: String
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).appFont(22, .bold)
-            Text(sub).appFont(14).foregroundStyle(Theme.sub)
+        Group {
+            if !sub.isEmpty { Text(sub).appFont(14).foregroundStyle(Theme.sub) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .navigationTitle(title)
     }
 }
 
@@ -162,20 +163,27 @@ struct MyPathView: View {
                     ctx.fill(Path(ellipseIn: CGRect(x: tx - 4, y: ty - 4, width: 8, height: 8)), with: .color(Theme.teal))
                 }
                 .frame(height: 140)
+                // 범례와 예보 겹치기 확률은 그래프 안에 작게
+                .overlay(alignment: .topLeading) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        legend(Theme.teal, "실제"); legend(Theme.purple, "내 길")
+                        if view == "band" { legend(Theme.teal.opacity(0.3), "3년 전망 절반" + (mEnd - mS > 3.05 ? " (3년까지)" : "")) }
+                    }
+                    .padding(6).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if view == "band" {
+                        Text("넘을 확률 \(AppModel.pct(pPlan))").appFont(12, .bold).foregroundStyle(Theme.purple)
+                            .padding(.horizontal, 8).padding(.vertical, 4).background(Theme.card.opacity(0.85), in: Capsule())
+                            .padding(.bottom, 4)
+                    }
+                }
                 .accessibilityLabel("내 길과 실제 평가액 그래프")
                 HStack { Text("시작 7월"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "\(m.gY)년 뒤 목표일" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
-                FlowRow(spacing: 10) {
-                    legend(Theme.teal, "실제"); legend(Theme.purple, "내 길 (정한 목표대로)")
-                    if view == "band" { legend(Theme.teal.opacity(0.3), "3년 전망 (절반의 경우)" + (mEnd - mS > 3.05 ? ", 3년까지" : "")) }
-                }
                 ChipRow(items: [("past", "시작부터"), ("all", "목표일까지"), ("band", "예보 겹치기")], selection: $view, fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
-                Text(view == "band"
-                     ? "보라 점선이 초록 띠 안에 있으면 시장 범위 안의 길이에요. 넘을 확률 \(AppModel.pct(pPlan))."
-                     : "보라 점선은 내가 정한 길이에요. 그보다 앞서는지 뒤처지는지 봐요.")
-                    .appFont(14).foregroundStyle(Theme.sub).lineSpacing(3)
                 Card {
                     Text("달마다 내 길보다 앞섰나").appFont(15, .bold)
                     ForEach(1...3, id: \.self) { k in
@@ -190,7 +198,6 @@ struct MyPathView: View {
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
                     Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "3년 전망 (\(m.lens.label))"),
                 ])
-                footnote("내 길은 목표 금액·목표일·매달 넣는 돈으로 그린 선이에요.")
             }
             .padding(16)
         }
@@ -269,7 +276,7 @@ struct ExternalView: View {
             let b = Self.coef(r.sym)
             return r.sym.short + (factor == "mkt" ? " \(String(format: "%g", b.0))배" : factor == "rate" ? " \(String(format: "%g", b.1))%" : (b.2 > 0 ? " 환율만큼" : " 영향 없음"))
         }.joined(separator: ", ")
-        let note = factor == "mkt" ? "S&P500이 1% 움직일 때 평균 반응: \(coef). 시장보다 크게 움직이는 종목이 많을수록 같은 하락에도 평가액이 더 줄어요."
+        let note = factor == "mkt" ? "1% 움직일 때 평균 반응: \(coef). 시장보다 등락이 큰 종목이 많을수록 하락 시 손실이 증폭돼요."
             : factor == "rate" ? "미국 10년 금리가 1%p 오를 때 평균 반응: \(coef). 성장주일수록 금리에 더 민감했어요."
             : "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Market.shared.fx.last * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
         let events: [(String, String, String)] = [("10월 15일", "미국 소비자물가 발표", ""), ("10월 22일", "드링커 3분기 실적 발표", "DRNK"), ("10월 28일", "미국 금리 결정", ""),
@@ -278,15 +285,13 @@ struct ExternalView: View {
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "외부 요인", sub: "시장·금리·환율이 움직이면 내 평가액은 얼마나 바뀌나")
-                Text(ask + "?").appFont(13).foregroundStyle(Theme.sub)
+                DetailHead(title: "외부 요인", sub: "")
                 VStack(alignment: .leading, spacing: 2) {
                     Text("평가액 " + AppModel.manS(tot)).appFont(22, .bold).foregroundStyle(Theme.change(tot))
                     Text(AppModel.sgn(tot / max(1, m.total))).appFont(14, .semibold).foregroundStyle(Theme.change(tot))
                     Text("\(AppModel.man(m.total)) → \(AppModel.man(after))").appFont(12).foregroundStyle(Theme.sub)
                 }
                 ForEach(list, id: \.id) { x in SignedBar(label: x.label, value: AppModel.manS(x.dv), g: x.dv, scale: maxAbs) }
-                Text("\(m.keyName)까지 남은 금액 \(AppModel.man(max(0, m.keyValue - m.total))) → \(AppModel.man(max(0, m.keyValue - after)))").appFont(13, .semibold)
                 ChipRow(items: [("mkt", "미국 시장"), ("rate", "미국 금리"), ("fx", "원/달러")], selection: $factor, accent: Theme.orange, fill: true)
             }
         } content: {
@@ -313,7 +318,6 @@ struct ExternalView: View {
                     }
                     Text("3년 전망에서 \"외부 요인\"을 켜면 반영돼요.").appFont(12).foregroundStyle(Theme.muted)
                 }
-                footnote("반응 크기는 지난 3년 일별 움직임 평균이에요(시안용 가정값).")
             }
             .padding(16)
         }
@@ -461,13 +465,13 @@ struct RateScenarioView: View {
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "금리 시나리오", sub: "금리가 이렇게 움직이면 시장 이익과 내 목표는")
+                DetailHead(title: "금리 시나리오", sub: "")
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(m.keyName) 확률 (3년) " + AppModel.pct(pb[1])).appFont(22, .bold).foregroundStyle(Theme.teal)
-                    Text("식단 범위 \(AppModel.pct(pb[0]))~\(AppModel.pct(pb[2])) · 슬라이드 전 3년 전망 \(AppModel.pct(base))").appFont(12).foregroundStyle(Theme.sub)
+                    Text("\(m.keyName) 확률 " + AppModel.pct(pb[1])).appFont(22, .bold).foregroundStyle(Theme.teal)
+                    Text("모형 범위 \(AppModel.pct(pb[0]))~\(AppModel.pct(pb[2])) · 금리 영향 빼면 \(AppModel.pct(base))").appFont(12).foregroundStyle(Theme.sub)
                 }
                 RateBandChart(cum: r.cum).frame(height: 130)
-                Text("S&P500 실질 이익 (오늘 = 100) · 진한 선: 중앙 · 띠: 하위 10%~상위 10%").appFont(12).foregroundStyle(Theme.sub)
+                Text("S&P500 실질 이익 (오늘 = 100) · 진한 선: 중앙 · 띠: 모형 80%가 드는 범위").appFont(12).foregroundStyle(Theme.sub)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
@@ -494,7 +498,7 @@ struct RateScenarioView: View {
                     tableRow("시장 연 기대수익", AppModel.sgn(r.mkt[0]), AppModel.sgn(r.mkt[1]), AppModel.sgn(r.mkt[2]), "")
                     Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · 3년 전망 \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
                 }
-                footnote("예측이 아닌 \"만약\" 도구예요. 1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산했어요. 이익 자료 \(file.eps_last ?? "")까지, 출처 Robert J. Shiller.")
+                footnote("예측이 아닌 \"만약\" 도구. 1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산. 이익 자료 \(file.eps_last ?? "")까지. 출처 Robert J. Shiller.")
             }
             .padding(16)
         }
@@ -581,7 +585,7 @@ struct DividendView: View {
             pinnedBox {
                 DetailHead(title: "배당·세금", sub: "앞으로 12개월 받을 배당과, 팔 때 낼 세금")
                 HStack(alignment: .firstTextBaseline) {
-                    Text("앞으로 12개월 배당 (세후, 원화)").appFont(13).foregroundStyle(Theme.sub)
+                    Text("세후(원화)").appFont(13).foregroundStyle(Theme.sub)
                     Spacer()
                     Text(AppModel.won1(net)).appFont(22, .bold).foregroundStyle(Theme.teal)
                 }
@@ -753,7 +757,7 @@ struct FxImpactView: View {
                         }
                     }
                 }
-                footnote("평균 매수 환율 1,320원은 가정값이에요. 범위는 지난 3년 흔들림 기준이에요.")
+                footnote("평균 매수 환율 1,320원은 가정값. 범위 지난 3년 흔들림 기준.")
             }
             .padding(16)
         }
