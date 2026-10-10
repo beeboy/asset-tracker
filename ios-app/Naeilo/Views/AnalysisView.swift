@@ -1,10 +1,19 @@
 import SwiftUI
 
-enum AnalysisRoute: Hashable { case forecast, myPath, external, dividend, fx, glance, calm }
+enum AnalysisRoute: Hashable { case forecast, myPath, rateScen, external, dividend, fx, glance, calm }
 
 // 분석 탭: naeilo.com 분석·전략을 폰에 맞게. 카드 머리 숫자는 각 화면 첫 숫자와 같은 계산.
 struct AnalysisView: View {
     @Environment(AppModel.self) private var m
+
+    /// 금리 시나리오 카드 머리: 지난 1년 금리 변화가 이어질 때 S&P 실질 이익 3년 누적 중앙값
+    private var rateTag: String {
+        let md = MacroData.shared
+        guard let M = md.file?.meals else { return md.failed ? "자료 없음" : "…" }
+        let r = RateScen(coef: M.coef, g0: M.g_now, dr: md.defaultDr, m: 0)
+        guard let c = r.cum.last else { return "…" }
+        return "이익 \(r.years)년 " + AppModel.sgn0(exp(c[1] / 100) - 1)
+    }
 
     var body: some View {
         let p3 = m.forecast.prob(3)
@@ -19,6 +28,7 @@ struct AnalysisView: View {
             ("내 길", "정한 목표대로 가고 있나 (자산 추이)", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + "\(Int((abs(gap) * 100).rounded()))%",
              gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060), .myPath),
             ("3년 전망", "시장이 줄 수 있는 미래의 범위", AppModel.pct(p3), Theme.teal, .forecast),
+            ("금리 시나리오", "금리가 움직이면 시장 이익과 내 목표는", rateTag, Theme.purple, .rateScen),
             ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "시장 −10%: " + AppModel.sgn(mkt10), Theme.down, .external),
             ("배당·세금", "앞으로 12개월 배당, 팔 때 세금", "연 " + AppModel.won1(div), Theme.teal, .dividend),
             ("환율 영향", "환율이 바뀌면 내 평가액은", "달러 " + AppModel.pct(usd), Theme.blue, .fx),
@@ -50,10 +60,12 @@ struct AnalysisView: View {
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
+        .task { await MacroData.shared.load() }
         .navigationDestination(for: AnalysisRoute.self) { r in
             switch r {
             case .forecast: ForecastView()
             case .myPath: MyPathView()
+            case .rateScen: RateScenarioView()
             case .external: ExternalView()
             case .dividend: DividendView()
             case .fx: FxImpactView()
