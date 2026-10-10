@@ -9,7 +9,11 @@ enum WeekPick: String, CaseIterable, Codable { case kept, changed, raised
     var color: Color { switch self { case .kept: Theme.green; case .changed: Theme.orange; case .raised: Color(hex: 0xC8352E) } }
 }
 
-struct DayLog: Codable, Equatable { var seen = false; var answer: Int? = nil }
+struct DayLog: Codable, Equatable { var seen = false; var answer: Int? = nil; var q: String? = nil; var ok: Bool? = nil }   // q = 그날 낸 질문, ok = 퀴즈를 맞혔는지
+
+enum HoldSort: String, CaseIterable { case added, value, name, ret, today
+    var label: String { switch self { case .added: "넣은 순"; case .value: "금액 순"; case .name: "이름 순"; case .ret: "수익률 순"; case .today: "오늘 등락 순" } }
+}
 
 enum Lens: String, CaseIterable, Codable { case base, mine, smooth
     var label: String { switch self { case .base: "현재 정세"; case .mine: "내 관점"; case .smooth: "과거 추세" } }
@@ -137,6 +141,20 @@ final class AppModel {
         }.enumerated().map { i, p in
             Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: costKrw(p.0, p.1.qty * p.1.avg),
                 color: Theme.holdColors[i % Theme.holdColors.count])
+        }
+    }
+    /// 내 종목 정렬 (종목 탭 목록·종목 한눈에 카드가 같이 따른다). 색은 넣은 순서 그대로
+    var holdSort = HoldSort(rawValue: UserDefaults.standard.string(forKey: "holdSort") ?? "") ?? .added {
+        didSet { UserDefaults.standard.set(holdSort.rawValue, forKey: "holdSort") }
+    }
+    var sortedRows: [Row] {
+        let rs = rows
+        switch holdSort {
+        case .added: return rs
+        case .value: return rs.sorted { $0.value > $1.value }
+        case .name: return rs.sorted { $0.sym.name.localizedStandardCompare($1.sym.name) == .orderedAscending }
+        case .ret: return rs.sorted { ($0.cost > 0 ? $0.value / $0.cost : 1) > ($1.cost > 0 ? $1.value / $1.cost : 1) }
+        case .today: return rs.sorted { $0.sym.quote.change > $1.sym.quote.change }
         }
     }
     var total: Double { rows.reduce(0) { $0 + $1.value } }
@@ -273,61 +291,153 @@ final class AppModel {
     /// 다음 물건까지 남은 날
     var itemDaysLeft: Int { 7 - streak % 7 }
 
-    var dayMoves: (Double, Double) {
-        let mv: [(Double, Double)] = [(1.9, 0.4), (-1.2, -0.5), (0.6, 0.2), (-2.8, -1.1), (1.1, 0.8), (-2.2, 0.4), (-0.7, 0.1)]
-        return mv[day % 7]
-    }
+    // 오늘 숫자와 질문은 내 종목의 실제 시세로 만든다 (Market: 전일 종가 → 지금, 종목 통화 기준)
+    static func won(_ krw: Double) -> String { abs(krw) < 1e4 ? Int(abs(krw).rounded()).formatted() + "원" : wonK(abs(krw) / 1e4) }
+    /// 오늘 많이 움직인 순서
+    var movers: [Row] { rows.sorted { abs($0.sym.quote.change) > abs($1.sym.quote.change) } }
     var routineFact: String {
-        let (a, b) = dayMoves, w = drnkWeight
-        let tot = (w * a + (1 - w) * b) / 100
-        let vY = total / (1 + tot), distNow = cost / total - 1, distY = cost / vY - 1
-        let s2 = { (x: Double) in (x >= 0 ? "+" : "") + String(format: "%.1f%%", x) }
+        let tot = todayMove
+        let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
+        let head = rows.isEmpty ? "" : "오늘 \(Self.sgn(tot))" + (mv.isEmpty ? "" : " (\(mv))") + ". "
         if route == .novice {
-            return "오늘 \(s2(tot * 100)). 모은 돈은 목표의 \(AppModel.pct(gA / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
+            return head + "모은 돈은 목표의 \(AppModel.pct(gA / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
         }
+        guard total > 0 else { return "아직 넣은 종목이 없어요. 종목 탭에서 수량을 넣으면 내일부터 내 숫자를 가져올게요." }
+        let vY = total / (1 + tot)
         if route == .plus {
             let k = gK * 1e4
-            return "오늘 \(s2(tot * 100)) (DRNK \(s2(a)) · QQQ \(s2(b))). 목표까지 \(String(format: "%.1f", vY / k * 100))% → \(String(format: "%.1f", total / k * 100))%."
+            return head + "목표까지 \(String(format: "%.1f", vY / k * 100))% → \(String(format: "%.1f", total / k * 100))%."
         }
-        return "오늘 \(s2(tot * 100)) (DRNK \(s2(a)) · QQQ \(s2(b))). 본전까지 \(String(format: "%.1f", distY * 100))% → \(String(format: "%.1f", distNow * 100))%" + (distNow < distY ? ", 가까워졌어요." : ", 조금 멀어졌어요.")
+        let distNow = cost / total - 1, distY = cost / vY - 1
+        if distNow <= 0 { return head + "본전보다 \(Self.sgn(ret)) 위에 있어요." }
+        return head + "본전까지 \(String(format: "%.1f", distY * 100))% → \(String(format: "%.1f", distNow * 100))%" + (distNow < distY ? ", 가까워졌어요." : ", 조금 멀어졌어요.")
     }
 
-    struct Question { let tag: String; let q: String; let opts: [String]; let right: Int; let fb: (Int) -> String }
-    var question: Question {
-        let p12 = Int((planBreakEven(years: 1) * 100).rounded()), p6 = Int((planBreakEven(years: 0.5) * 100).rounded())
-        let near = max(30, min(70, Int((Double(p12) / 10).rounded()) * 10))
-        let opts = [near - 20, near, near + 20]
-        let nearR = opts.indices.min { abs(opts[$0] - p12) < abs(opts[$1] - p12) } ?? 1
-        let (a, b) = dayMoves
-        let s2 = { (x: Double) in (x >= 0 ? "+" : "") + String(format: "%.1f%%", x) }
-        let w = Self.pct(drnkWeight), pw = Self.pct(planWeight)
-        if route != .recover {
-            let principal = gM * 12 * Double(gY)
-            let goalQs: [Question] = [
-                .init(tag: "계산 퀴즈", q: "매달 \(Self.wonK(gM))씩 \(gY)년 넣으면 넣은 원금만 얼마일까요?", opts: [Self.wonK(principal * 0.5), Self.wonK(principal), Self.wonK(principal * 1.5)], right: 1,
-                      fb: { _ in "\(Self.wonK(self.gM)) × 12달 × \(self.gY)년 = \(Self.wonK(principal)). 그 위에 수익이 더해져 목표로 가요." }),
-                .init(tag: "이번 달 적립", q: "이번 달 \(Self.wonK(gM)), 넣었나요?", opts: ["넣었어요", "아직이요"], right: -1,
-                      fb: { $0 == 0 ? "좋아요. 3개월 블록에 반영해 둘게요." : "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요." }),
-                .init(tag: "오늘 마음", q: "오늘 목표까지의 길, 어떻게 느껴져요?", opts: ["멀어요", "보통이에요", "가까워요"], right: -1,
-                      fb: { $0 == 0 ? "먼 길은 매달 넣는 돈이 끌고 가요. 1년 뒤 그래프를 한 번 보세요." : "그 느낌 그대로 가요. 내일도 1분이면 돼요." }),
-            ]
-            return goalQs[day % goalQs.count]
-        }
-        let qs: [Question] = [
-            .init(tag: "확률 퀴즈", q: "지금 계획(\(selectedPlan.name))으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?", opts: opts.map { "약 \($0)%" }, right: nearR,
-                  fb: { _ in "모형 계산으로 약 \(p12)%예요. 6개월 안이면 \(p6)%. 기간이 길수록 높아져요." }),
-            .init(tag: "오늘 움직임", q: "오늘 더 많이 움직인 종목은?", opts: ["DRNK", "QQQ"], right: abs(a) >= abs(b) ? 0 : 1,
-                  fb: { _ in "DRNK \(s2(a)), QQQ \(s2(b)). DRNK 비중이 \(w)라 전체도 DRNK를 많이 따라가요." }),
-            .init(tag: "비중 확인", q: "DRNK 비중 \(w), 계획은 \(pw)예요. 이번 주에 맞춰 볼까요?", opts: ["이번 주에 할게요", "아직이요"], right: -1,
-                  fb: { $0 == 0 ? "미션 판의 내 계획 화면에서 옮길 금액을 볼 수 있어요." : "괜찮아요. 비중 이탈 알림이 대신 지켜볼게요." }),
-            .init(tag: "오늘 마음", q: "오늘 내 투자, 어떻게 느껴져요?", opts: ["불안해요", "괜찮아요", "기대돼요"], right: -1,
-                  fb: { $0 == 0 ? "불안한 날엔 하루 숫자 말고 종목 상세의 1년 칩을 보세요. 길이 더 잘 보여요." : "좋아요. 내일도 1분이면 돼요." }),
-        ]
-        return qs[day % qs.count]
+    struct Question { let id: String; let tag: String; let q: String; let opts: [String]; let right: Int; let fb: (Int) -> String }
+    /// 세 칸 보기: 실제 값에 가장 가까운 칸이 정답 (step 간격, lo~hi 안)
+    private static func near3(_ x: Double, step: Double, lo: Double, hi: Double) -> (opts: [Double], right: Int) {
+        let c = min(hi - step, max(lo + step, (x / step).rounded() * step))
+        let o = [c - step, c, c + step]
+        return (o, o.indices.min { abs(o[$0] - x) < abs(o[$1] - x) } ?? 1)
     }
-    func markSeen() { var t = today; t.seen = true; dayLog[day] = t }
+
+    /// 오늘 낼 수 있는 질문 전부. 내 종목·계산값으로 만들고, 조건이 안 맞는 질문은 빠진다
+    var questionPool: [Question] {
+        var qs: [Question] = []
+        let rs = rows, tot = max(1, total), mv = todayMove
+        if !rs.isEmpty {
+            let diff = total - total / (1 + mv)
+            qs.append(.init(id: "updown", tag: "오늘 움직임", q: "어제 종가와 비교해, 오늘 내 평가액은?", opts: ["올랐어요", "내렸어요"], right: mv >= 0 ? 0 : 1,
+                            fb: { _ in "오늘 \(Self.sgn(mv)), 원화로 \(Self.won(diff)) \(diff >= 0 ? "늘었어요" : "줄었어요")." }))
+        }
+        // 종목이 둘 이상: 많이 움직인 종목·비중 1위 (보기는 이름순이라 순서로 답이 새지 않게)
+        let byW = rs.sorted { $0.value > $1.value }
+        if byW.count >= 2 {
+            let c = byW.prefix(3).sorted { $0.sym.short < $1.sym.short }
+            let chg = c.map { abs($0.sym.quote.change) }, wt = c.map { $0.value / tot }
+            let mvList = c.map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
+            let wtList = c.map { "\($0.sym.short) \(Self.pct($0.value / tot))" }.joined(separator: " · ")
+            qs.append(.init(id: "mover", tag: "오늘 움직임", q: "오늘 가장 크게 움직인 종목은?", opts: c.map(\.sym.short),
+                            right: chg.indices.max { chg[$0] < chg[$1] } ?? 0,
+                            fb: { _ in "\(mvList). 크게 움직인 종목일수록 내 평가액도 많이 흔들어요." }))
+            qs.append(.init(id: "weight", tag: "비중 퀴즈", q: "내 종목 중 평가액이 가장 큰 건?", opts: c.map(\.sym.short),
+                            right: wt.indices.max { wt[$0] < wt[$1] } ?? 0,
+                            fb: { _ in "\(wtList). 비중이 큰 종목이 내 하루를 가장 많이 정해요." }))
+            let top = byW[0], w = top.value / tot, n = Self.near3(w, step: 0.2, lo: 0, hi: 1)
+            qs.append(.init(id: "topshare", tag: "비중 퀴즈", q: "\(top.sym.short)는 내 평가액의 몇 %쯤일까요?", opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
+                            fb: { _ in "\(top.sym.short) \(Self.won(top.value)) ÷ 전체 \(Self.won(tot)) = \(Self.pct(w))." }))
+        }
+        // 환율: 달러 종목이 있을 때
+        let usd = rs.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / tot, fxc = Market.shared.fx.change
+        if usd > 0 {
+            let eff = usd * fxc
+            qs.append(.init(id: "fx", tag: "환율 퀴즈", q: "오늘 원/달러가 \(Self.sgn(fxc)) 움직였어요. 달러 종목이 \(Self.pct(usd))인 내 평가액에는?",
+                            opts: ["올려 줬어요", "내렸어요", "거의 그대로예요"], right: abs(eff) < 0.0005 ? 2 : eff > 0 ? 0 : 1,
+                            fb: { _ in "달러 비중 × 환율 변화 ≈ \(Self.sgn(eff)). 환율이 오르면 달러 종목의 원화 값도 같이 올라요." }))
+        }
+        if cost > 0 && !rs.isEmpty {
+            let r = ret, n = Self.near3(r, step: 0.1, lo: -1, hi: 10)
+            let c = cost, t = total
+            qs.append(.init(id: "ret", tag: "수익률 퀴즈", q: "산 값과 비교한 지금 내 수익률은 어느 쪽에 가까울까요?", opts: n.opts.map { "약 " + Self.sgn0($0) }, right: n.right,
+                            fb: { _ in "지금 \(Self.sgn(r)). 들어간 돈 \(Self.won(c)), 지금 \(Self.won(t))." }))
+        }
+        if route == .recover {
+            if cost > 0 && !rs.isEmpty {
+                let p12 = planBreakEven(years: 1), p6 = planBreakEven(years: 0.5), n = Self.near3(p12, step: 0.2, lo: 0.1, hi: 0.9)
+                qs.append(.init(id: "be1y", tag: "확률 퀴즈", q: "지금 계획(\(selectedPlan.name))으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?",
+                                opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
+                                fb: { _ in "모형 계산으로 약 \(Self.pct(p12))예요. 6개월 안이면 \(Self.pct(p6)). 기간이 길수록 높아져요." }))
+            }
+            if total > 0 && cost > total {
+                let d = cost / total - 1, loss = 1 - total / cost, n = Self.near3(d, step: 0.1, lo: 0, hi: 10)
+                qs.append(.init(id: "dist", tag: "본전 퀴즈", q: "들어간 돈보다 \(Self.pct(loss)) 내려 있어요. 본전까지는 몇 % 올라야 할까요?",
+                                opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
+                                fb: { _ in "\(String(format: "%.1f", d * 100))% 올라야 해요. 내린 만큼보다 더 올라야 하는 건, 줄어든 돈에서 다시 오르기 때문이에요." }))
+            }
+            if !rs.isEmpty {
+                let y = cellsYesterday, now = cellsNow, unit = cellUnit
+                qs.append(.init(id: "cells", tag: "1000칸", q: "어제 \(y)칸이었어요. 오늘 1000칸은?", opts: ["늘었어요", "그대로예요", "줄었어요"],
+                                right: now > y ? 0 : now == y ? 1 : 2,
+                                fb: { _ in "어제 \(y)칸 → 오늘 \(now)칸. 1칸은 \(Self.won(unit))이에요." }))
+                let wr = weekRange, v = trackValue
+                qs.append(.init(id: "week", tag: "주간 예보", q: "이번 주 예보 범위는 \(Self.won(wr.lo))~\(Self.won(wr.hi))예요. 지금 평가액은 그 안일까요?",
+                                opts: ["안이에요", "밖이에요"], right: v >= wr.lo && v <= wr.hi ? 0 : 1,
+                                fb: { _ in "지금 \(Self.won(v)). 예보 범위는 절반쯤 맞도록 잡은 폭이라, 밖으로 나가는 날도 자주 있어요." }))
+            }
+            // 계획 비중 확인은 계획이 DRNK 비중으로 짜여 있어서, DRNK를 가진 경우에만
+            if drnkWeight > 0 {
+                let w = Self.pct(drnkWeight), pw = Self.pct(planWeight)
+                qs.append(.init(id: "plan", tag: "비중 확인", q: "DRNK 비중 \(w), 계획은 \(pw)예요. 이번 주에 맞춰 볼까요?", opts: ["이번 주에 할게요", "아직이요"], right: -1,
+                                fb: { $0 == 0 ? "미션 판의 내 계획 화면에서 옮길 금액을 볼 수 있어요." : "괜찮아요. 비중 이탈 알림이 대신 지켜볼게요." }))
+            }
+            qs.append(.init(id: "mind", tag: "오늘 마음", q: "오늘 내 투자, 어떻게 느껴져요?", opts: ["불안해요", "괜찮아요", "기대돼요"], right: -1,
+                            fb: { $0 == 0 ? "불안한 날엔 하루 숫자 말고 종목 상세의 1년 칩을 보세요. 길이 더 잘 보여요." : "좋아요. 내일도 1분이면 돼요." }))
+            return qs
+        }
+        // 목표 루트
+        let principal = gM * 12 * Double(gY), m = gM, y = gY
+        qs.append(.init(id: "principal", tag: "계산 퀴즈", q: "매달 \(Self.wonK(m))씩 \(y)년 넣으면 넣은 원금만 얼마일까요?",
+                        opts: [Self.wonK(principal * 0.5), Self.wonK(principal), Self.wonK(principal * 1.5)], right: 1,
+                        fb: { _ in "\(Self.wonK(m)) × 12달 × \(y)년 = \(Self.wonK(principal)). 그 위에 수익이 더해져 목표로 가요." }))
+        qs.append(.init(id: "deposit", tag: "이번 달 적립", q: "이번 달 \(Self.wonK(m)), 넣었나요?", opts: ["넣었어요", "아직이요"], right: -1,
+                        fb: { $0 == 0 ? "좋아요. 3개월 블록에 반영해 둘게요." : "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요." }))
+        if keyValue > 0 {
+            let p = trackValue / keyValue, n = Self.near3(p, step: 0.1, lo: 0, hi: 1.5), v = trackValue, k = keyValue
+            qs.append(.init(id: "progress", tag: "목표 퀴즈", q: "지금 모은 돈은 목표의 몇 %쯤일까요?", opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
+                            fb: { _ in "\(Self.won(v)) ÷ 목표 \(Self.won(k)) = \(Self.pct(p))." }))
+            let pg = forecast.prob(Double(y)), g = Self.near3(pg, step: 0.2, lo: 0, hi: 1)
+            qs.append(.init(id: "goalprob", tag: "확률 퀴즈", q: "지금 그대로 \(y)년 가면 목표에 닿을 확률은 어느 쪽에 가까울까요?", opts: g.opts.map { "약 \(Self.pct($0))" }, right: g.right,
+                            fb: { _ in "모형 계산으로 약 \(Self.pct(pg))예요. 매달 넣는 돈을 늘리면 이 숫자가 올라가요." }))
+        }
+        qs.append(.init(id: "mind", tag: "오늘 마음", q: "오늘 목표까지의 길, 어떻게 느껴져요?", opts: ["멀어요", "보통이에요", "가까워요"], right: -1,
+                        fb: { $0 == 0 ? "먼 길은 매달 넣는 돈이 끌고 가요. 1년 뒤 그래프를 한 번 보세요." : "그 느낌 그대로 가요. 내일도 1분이면 돼요." }))
+        return qs
+    }
+
+    /// 오늘 질문: 이미 본 날은 그 질문 그대로. 아니면 지난 7일에 안 나온 것 중 날짜로 정한 무작위 (하루 동안은 같은 질문)
+    var question: Question {
+        let pool = questionPool
+        if let id = dayLog[day]?.q, let q = pool.first(where: { $0.id == id }) { return q }
+        let recent = Set((max(0, day - 7)..<max(0, day)).compactMap { dayLog[$0]?.q })
+        let fresh = pool.filter { !recent.contains($0.id) }
+        let c = fresh.isEmpty ? pool : fresh
+        var x = UInt64(truncatingIfNeeded: day) &+ 0x9E3779B97F4A7C15
+        x = (x ^ (x >> 30)) &* 0xBF58476D1CE4E5B9
+        x = (x ^ (x >> 27)) &* 0x94D049BB133111EB
+        x ^= x >> 31
+        return c[Int(x % UInt64(c.count))]
+    }
+    /// 퀴즈 정답 기록 (맞힌 수, 푼 수)
+    var quizScore: (right: Int, all: Int) {
+        let r = dayLog.values.compactMap(\.ok)
+        return (r.filter { $0 }.count, r.count)
+    }
+    func markSeen() { var t = today; t.seen = true; t.q = t.q ?? question.id; dayLog[day] = t }
     func answer(_ i: Int) {
-        var t = today; t.seen = true; t.answer = i; dayLog[day] = t
+        let q = question
+        var t = today; t.seen = true; t.answer = i; t.q = q.id
+        if q.right >= 0 { t.ok = i == q.right }
+        dayLog[day] = t
         let s = streak
         if playOn && s > 0 && s % 7 == 0 && itemsBackDay != day && itemsBack < 10 { itemsBack += 1; itemsBackDay = day }
     }
