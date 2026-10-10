@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-// 지금 시세. Tiingo 회신(10월 10일): 월 $250 요금제로 미국 종목 실시간 참고 시세와 원/달러를 앱·위젯에 보여 줄 수 있다.
+// 지금 시세. 계약 전이라 테스트는 Yahoo 중계 자료(아래 YahooSample). Tiingo 회신(10월 10일): 월 $250 요금제로 미국 종목 실시간 참고 시세와 원/달러를 앱·위젯에 보여 줄 수 있다.
 // 한국 종목은 Tiingo에 없어서 한국 시세 제공처(EODHD 또는 코스콤)가 정해질 때까지 전일 종가를 쓴다.
 // 출처 표기 "Data powered by Tiingo.com"은 설정 화면에만 두면 된다.
 
@@ -20,7 +20,7 @@ final class Market {
     /// Tiingo 에서 받은 값 (티커 → 지금 가격, 전일 종가). 비어 있으면 예시 값
     var live: [String: (Double, Double)] = [:]
     var liveFx: (Double, Double)? = nil
-    var source: String { live.isEmpty ? "예시 값" : "Tiingo" }
+    var source: String { !live.isEmpty ? "Tiingo" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
 
     // 예시 값: 오늘 하루 움직임 (DRNK·QQQ 는 시안의 하루 움직임) + 분 단위로 조금씩 흔들림
     static let todayMove: [String: Double] = ["DRNK": -0.0221, "QQQ": 0.004]
@@ -33,6 +33,7 @@ final class Market {
 
     func quote(_ s: Symbol) -> Quote {
         if let q = live[s.id] { return Quote(last: q.0, prevClose: q.1, live: true) }
+        if let q = YahooSample.quotes[s.id] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
         guard s.currency == .usd else { return Quote(last: s.close, prevClose: s.close, live: false) }
         let m = (Self.todayMove[s.id] ?? 0.012 * sin(seed(s))) + wobble(seed(s))
         return Quote(last: s.close * (1 + m), prevClose: s.close, live: true)
@@ -41,11 +42,17 @@ final class Market {
     /// 원/달러 (지금, 전일)
     var fx: Quote {
         if let f = liveFx { return Quote(last: f.0, prevClose: f.1, live: true) }
+        if let q = YahooSample.quotes["FX"] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
         return Quote(last: Sample.fx * (1 + 0.0021 + wobble(7)), prevClose: Sample.fx, live: true)
     }
 
     var asOfText: String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "a h:mm"
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+        if live.isEmpty, let t = YahooSample.asOf {
+            f.dateFormat = "M월 d일 a h:mm"
+            return "\(f.string(from: t)) 시세 (테스트 자료) · 한국 종목은 전일 종가"
+        }
+        f.dateFormat = "a h:mm"
         return "지금 시세 · \(f.string(from: updatedAt)) 갱신 · 한국 종목은 전일 종가"
     }
 
@@ -104,4 +111,45 @@ struct TiingoProvider {
         let prev = hist.dropLast().last?["close"] as? Double ?? mid
         return (mid, prev)
     }
+}
+
+// 테스트 시세: 사이트가 모으는 Yahoo 중계 자료 (data/prices/*.json 3년 종가, data/quotes.json 전일 종가·현재가).
+// DRNK 는 가상 종목이라 시안 값, 한국 종목과 MSFT 는 자료가 없어 시안 값을 쓴다.
+enum YahooSample {
+    struct Hist { let dates: [String]; let closes: [Double] }
+    struct Q { let prevClose: Double; let last: Double; let time: Date }
+
+    static let keyFor: [String: String] = ["QQQ": "QQQ", "AAPL": "AAPL", "NVDA": "NVDA", "SPY": "SPY", "FX": "KRW=X"]
+    private static func file(_ k: String) -> String { k.replacingOccurrences(of: "=", with: "_").replacingOccurrences(of: "^", with: "_") }
+
+    static let quotes: [String: Q] = {
+        guard let url = Bundle.main.url(forResource: "quotes", withExtension: "json"),
+              let d = try? Data(contentsOf: url),
+              let o = try? JSONSerialization.jsonObject(with: d) as? [String: [String: Any]] else { return [:] }
+        var out: [String: Q] = [:]
+        for (id, k) in keyFor {
+            guard let v = o[k], let prev = v["prev_close"] as? Double, let last = (v["last"] ?? v["regular"]) as? Double else { continue }
+            out[id] = Q(prevClose: prev, last: last, time: Date(timeIntervalSince1970: (v["last_time"] as? Double) ?? 0))
+        }
+        return out
+    }()
+
+    static let history: [String: Hist] = {
+        var out: [String: Hist] = [:]
+        for (id, k) in keyFor {
+            guard let url = Bundle.main.url(forResource: file(k), withExtension: "json", subdirectory: "prices"),
+                  let d = try? Data(contentsOf: url),
+                  let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+                  let dates = o["dates"] as? [String], let c = o["close"] as? [Any] else { continue }
+            let closes = c.map { ($0 as? Double) ?? .nan }
+            // 빈 값은 앞 값으로 메운다
+            var filled: [Double] = []; var prev = closes.first { !$0.isNaN } ?? 1
+            for v in closes { if !v.isNaN { prev = v }; filled.append(prev) }
+            out[id] = Hist(dates: dates, closes: filled)
+        }
+        return out
+    }()
+
+    /// 자료가 언제 값인지 (현재가 시각)
+    static var asOf: Date? { quotes.values.map(\.time).max() }
 }

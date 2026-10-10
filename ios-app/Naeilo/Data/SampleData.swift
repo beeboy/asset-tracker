@@ -39,9 +39,14 @@ struct Holding: Identifiable, Hashable {
 }
 
 enum Sample {
-    static let fx = 1380.0            // 원/달러 (시안 가정)
+    static let fx = 1380.0            // 원/달러 시안 가정 (들어간 돈 환산용 고정 환율)
 
-    static let symbols: [Symbol] = [
+    // 전일 종가: 테스트 자료(Yahoo 중계)가 있는 종목은 그 값, 없으면 시안 값. DRNK 는 가상 종목이라 시안 값
+    static let symbols: [Symbol] = baseSymbols.map { s in
+        guard let q = YahooSample.quotes[s.id] else { return s }
+        return Symbol(id: s.id, name: s.name, market: s.market, close: q.prevClose, currency: s.currency, sector: s.sector, search: s.search)
+    }
+    static let baseSymbols: [Symbol] = [
         .init(id: "DRNK", name: "드링커", market: "미국 주식", close: 250, currency: .usd, sector: "우주항공·궤도 통신", search: "drinker"),
         .init(id: "QQQ", name: "나스닥100 ETF", market: "미국 ETF", close: 480, currency: .usd, sector: "지수", search: "invesco nasdaq"),
         .init(id: "AAPL", name: "애플", market: "미국 주식", close: 229, currency: .usd, sector: "컴퓨터·주변기기", search: "apple"),

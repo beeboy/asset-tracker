@@ -22,6 +22,12 @@ targets:
     platform: iOS
     sources:
       - Naeilo
+      # 테스트 시세: 사이트가 모으는 Yahoo 중계 자료 (3년 종가 + 현재가). 빌드할 때마다 저장소의 최신 파일이 들어간다
+      - path: ../data/quotes.json
+        buildPhase: resources
+      - path: ../data/prices
+        type: folder
+        buildPhase: resources
     info:
       path: Naeilo/Info.plist
       properties:
@@ -30,7 +36,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
-        # 개발용 Tiingo 토큰 (비워 두면 예시 값). 출시 때는 naeilo 중계 서버를 거친다
+        # 개발용 Tiingo 토큰 (계약 전이라 비워 둠). 출시 때는 naeilo 중계 서버를 거친다
         TIINGO_TOKEN: ""
     settings:
       base:

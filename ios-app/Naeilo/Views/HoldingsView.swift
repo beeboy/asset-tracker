@@ -30,7 +30,7 @@ struct HoldingsView: View {
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
-                Text("작은 그래프는 \(period == .d1 ? "전일 종가와 지금 가격" : period == .w1 ? "최근 5개 종가와 지금" : period.label + " 가격 흐름")이고, 회색 점선은 내 평균 단가예요(그 기간 가격 범위 안에 있을 때만). 오르면 빨강, 내리면 파랑이에요. 미국 종목은 실시간, 한국 종목은 전일 종가예요. 여러 종목 한 번에 넣기와 증권사 파일은 PC naeilo.com에서 해요.")
+                Text("작은 그래프는 \(period == .d1 ? "전일 종가와 지금 가격" : period == .w1 ? "최근 5개 종가와 지금" : period.label + " 가격 흐름")이고, 회색 점선은 내 평균 단가예요(그 기간 가격 범위 안에 있을 때만). 오르면 빨강, 내리면 파랑이에요. 미국 종목은 지금 가격, 한국 종목은 전일 종가예요. 여러 종목 한 번에 넣기와 증권사 파일은 PC naeilo.com에서 해요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
             .screen()

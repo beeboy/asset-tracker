@@ -24,7 +24,6 @@ struct StartView: View {
                     option("아직 시작 전이에요", "한 달에 얼마씩이면 언제 얼마가 되는지 봐요", .novice)
                 }
                 Text("잘 모르겠다면 \"마이너스\"로 시작하세요. 매수 단가를 넣으면 자동으로 알려드려요.").appFont(13).foregroundStyle(Theme.muted)
-                teaser
             }
             .padding(.horizontal, 20).padding(.bottom, 24)
             .foregroundStyle(Theme.ink)

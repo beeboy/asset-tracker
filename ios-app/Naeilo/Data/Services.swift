@@ -32,12 +32,20 @@ struct StubPriceProvider: PriceProvider {
     }()
 
     func close(_ symbol: Symbol) -> Double { symbol.close }
-    func price(_ s: Symbol, at x: Double) -> Double { s.close * exp(logPrice(s, x) - logPrice(s, 1)) }
+    func price(_ s: Symbol, at x: Double) -> Double {
+        if YahooSample.history[s.id] != nil { return exp(logPrice(s, x)) }   // 실제 종가 그대로
+        return s.close * exp(logPrice(s, x) - logPrice(s, 1))
+    }
 
     private func seed(_ s: Symbol) -> Double { Double(s.id.unicodeScalars.reduce(0) { $0 + Int($1.value) }) }
 
     /// 로그 가격. x = 0 (3년 전) … 1 (어제). 시안의 lfA 와 같은 식.
     func logPrice(_ s: Symbol, _ x: Double) -> Double {
+        if let h = YahooSample.history[s.id], h.closes.count > 1 {
+            // 3년치 거래일을 0…1 로 펴서 사이를 잇는다
+            let L = Double(h.closes.count - 1), t = max(0, min(L, x * L)), i = Int(t), f = t - Double(i)
+            return log(h.closes[i] * (1 - f) + h.closes[min(Int(L), i + 1)] * f)
+        }
         if s.id == "DRNK" {
             let L = Double(drnkRatio.count - 1)
             let t = max(0, min(L, L - (1 - x) * 1095)), i = Int(t), f = t - Double(i)
@@ -51,6 +59,7 @@ struct StubPriceProvider: PriceProvider {
     }
 
     private func dayCloses(_ s: Symbol, _ n: Int) -> [Double] {
+        if let h = YahooSample.history[s.id] { return Array(h.closes.suffix(n + 1)) }
         if s.id == "DRNK" { return drnkRatio.suffix(n + 1).map { s.close * $0 } }
         let p0 = s.close
         let m1 = Sample.dayMove[s.id] ?? 0.012 * sin(seed(s))
@@ -69,6 +78,11 @@ struct StubPriceProvider: PriceProvider {
         case .d1: return [q.prevClose, q.last]
         case .w1: return Array(dayCloses(s, 5).dropFirst()) + [q.last]
         default:
+            if YahooSample.history[s.id] != nil {
+                // 테스트 자료: 마지막 날이 이미 오늘 값이라 그대로 쓰고 끝만 지금 가격으로 맞춘다
+                let sp = period.span
+                return (0...60).map { i in i == 60 ? q.last : exp(logPrice(s, 1 - sp + sp * Double(i) / 60)) }
+            }
             let sp = period.span, k = q.last / max(1e-9, s.close)
             return (0...60).map { i in s.close * exp(logPrice(s, 1 - sp + sp * Double(i) / 60) - logPrice(s, 1)) * (i == 60 ? k : 1) }
         }

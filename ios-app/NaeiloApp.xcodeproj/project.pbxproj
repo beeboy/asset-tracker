@@ -20,10 +20,12 @@
 		5CB59D91AF71FB20220B5C04 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A149C71953E24CEC80C3679 /* App.swift */; };
 		694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */ = {isa = PBXBuildFile; fileRef = E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */; };
 		7F4FF7AD5F5051BB7F274A1A /* GoalViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68521199848D8FCA256D8B7B /* GoalViews.swift */; };
+		8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */ = {isa = PBXBuildFile; fileRef = BE16646A583833EE1115FA08 /* prices */; };
 		9F562AC90F235FFD94E5BF80 /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4439B2462725991C102336E8 /* Services.swift */; };
 		A2B3098A96833AB4427043CB /* ShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1A8DE32227186611CAE0D0 /* ShareCard.swift */; };
 		B8B7ADD67557E414A6BE0B76 /* SettingsDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = A122F1E67A8269B4AF802387 /* SettingsDetail.swift */; };
 		CB09D15A0B85AA1E4B93E903 /* AnalysisDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C4668A7B9FECB1D2C27F7F /* AnalysisDetail.swift */; };
+		CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */ = {isa = PBXBuildFile; fileRef = CA972EE98F92EF464180B15F /* quotes.json */; };
 		CD0713B84C32526597218283 /* HoldingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B93F44AA00A552A3868A92 /* HoldingsView.swift */; };
 		CDC9A9B0B5F97C64D91F58A7 /* Industries.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D0C4109B5070AD88349788 /* Industries.swift */; };
 		DC15E84938D3B3EDB0FB4481 /* ShelterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9051E09656ED51EFBF91911 /* ShelterView.swift */; };
@@ -52,7 +54,9 @@
 		A122F1E67A8269B4AF802387 /* SettingsDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDetail.swift; sourceTree = "<group>"; };
 		AF1B4BB6CF97D8922C1704B6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B9051E09656ED51EFBF91911 /* ShelterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelterView.swift; sourceTree = "<group>"; };
+		BE16646A583833EE1115FA08 /* prices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = prices; path = ../data/prices; sourceTree = SOURCE_ROOT; };
 		C1B93F44AA00A552A3868A92 /* HoldingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldingsView.swift; sourceTree = "<group>"; };
+		CA972EE98F92EF464180B15F /* quotes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = quotes.json; sourceTree = "<group>"; };
 		CCACC287684D148B6C75C94F /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		D1662FF1073C45ECA5F6AFB3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = drnk_ratio.json; sourceTree = "<group>"; };
@@ -63,6 +67,15 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		68AB7102CDD531AC207B814A /* data */ = {
+			isa = PBXGroup;
+			children = (
+				BE16646A583833EE1115FA08 /* prices */,
+				CA972EE98F92EF464180B15F /* quotes.json */,
+			);
+			path = data;
+			sourceTree = "<group>";
+		};
 		75F568A375635F9FEAD2A9A2 /* Data */ = {
 			isa = PBXGroup;
 			children = (
@@ -127,9 +140,19 @@
 			path = Naeilo;
 			sourceTree = "<group>";
 		};
+		D4A12891F01A99A88C4D87CD /* asset-tracker */ = {
+			isa = PBXGroup;
+			children = (
+				68AB7102CDD531AC207B814A /* data */,
+			);
+			name = "asset-tracker";
+			path = ..;
+			sourceTree = "<group>";
+		};
 		EB02D6C12BCD6A12E1702B9D = {
 			isa = PBXGroup;
 			children = (
+				D4A12891F01A99A88C4D87CD /* asset-tracker */,
 				B2799FA28A6FE68EF88E385F /* Naeilo */,
 				966FF51AA3B80E1032443E76 /* Products */,
 			);
@@ -197,6 +220,8 @@
 			files = (
 				E1B1111A3CFA95DFAE235456 /* Assets.xcassets in Resources */,
 				694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */,
+				8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */,
+				CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

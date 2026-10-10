@@ -44,7 +44,7 @@ struct AlertsView: View {
     var body: some View {
         let need = m.cost / max(1, m.total) - 1
         let list: [(k: String, t: String, sub: String, prev: String)] = [
-            ("be", "본전 도달", "평가액이 들어간 돈을 넘으면 한 번 (미국 종목은 실시간)", "본전에 도착했어요! 평가액이 들어간 돈 \(AppModel.man(m.cost))을 넘었어요."),
+            ("be", "본전 도달", "평가액이 들어간 돈을 넘으면 한 번", "본전에 도착했어요! 평가액이 들어간 돈 \(AppModel.man(m.cost))을 넘었어요."),
             ("drift", "비중 이탈", "DRNK 비중이 계획에서 \(m.alertTh)%p 넘게 벗어나면",
              "DRNK 비중이 \(AppModel.pct(m.drnkWeight))예요. 계획(\(AppModel.pct(m.planWeight)))보다 \(Int((abs(m.drnkWeight - m.planWeight) * 100).rounded()))%p 벗어났어요."),
             ("dep", "연말 절세 확인", "12월 1일, 올해 손실을 확정할지 볼 때", "올해가 한 달 남았어요. 손실 난 종목 일부를 팔면 내년 세금이 줄 수 있어요."),
