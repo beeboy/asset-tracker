@@ -8,7 +8,7 @@ global.window = {};
 require(path.join(__dirname, "../web/model.js"));
 const M = window.Model, TD = M.TD;
 
-const [inPath, outPath] = process.argv.slice(2);
+const inPath = process.env.INPUT || process.argv[2], outPath = process.argv[3];
 const inp = JSON.parse(fs.readFileSync(inPath, "utf8"));
 const DEF = { scenario: "blend", trust: 50, n_paths: 3000, seed: 20261004, history_years: 3, prior_mu: 10, prior_tau: 15, conservative_mu: 4,
   new_listing_vol: 60, default_vol: 40, default_corr: 0.3, t_dof: 5, fx_drift: 0, fx_vol_mult: 1, rebalance_yearly: false, earnings_adjust: true };
@@ -116,6 +116,8 @@ function drawMeal(rng) {
   return { model: { ...model, factors: fs, L, corr: C, corrShrink: lam }, C, fs };
 }
 
+module.exports = { M, TD, set, goal, start, holdings, V0, usd, model, common, fxOf, rngOf, q, eigSym, drawMeal, portPaths };
+if (require.main === module) {
 // ---------------------------------------------------------------- 실행
 const t0 = Date.now();
 const NP = Number(process.env.PATHS) || 3000, MEALS = Number(process.env.MEALS) || 1000, PER = Math.max(1, Math.round(NP / MEALS));
@@ -175,3 +177,4 @@ console.log("식단별 P(목표) p5/p50/p95: " + [out.p_goal_by_meal.p5, out.p_g
 console.log("λ1 몫 기준 " + out.eig.base.lam1.toFixed(2) + " 앙상블 " + out.eig.lam1.map((x) => x.toFixed(2)).join("/") + ", 실질 베팅 수 기준 " + out.eig.base.eff.toFixed(2) + " 앙상블 " + out.eig.eff.map((x) => x.toFixed(2)).join("/"));
 for (const p of out.params) console.log(`${p.ticker}: vol ${(p.vol0 * 100).toFixed(0)}% → ${p.vol.map((x) => (x * 100).toFixed(0)).join("/")}  mu ${(p.mu0 * 100).toFixed(1)}% → ${p.mu.map((x) => (x * 100).toFixed(1)).join("/")}`);
 if (outPath) fs.writeFileSync(outPath, JSON.stringify(out));
+}
