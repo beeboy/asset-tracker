@@ -95,14 +95,16 @@ struct GoalBoardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ScreenTitle(kicker: "목표 달성 루트" + (m.route == .plus ? " · 플러스" : " · 시작 전"),
                                 title: m.gDone.contains("goal") ? "\(m.gY)년 뒤 \(AppModel.wonK(m.gK))까지" : "목표까지 가는 길")
+                        // 목표를 정한 뒤에는 제목(목표 금액)을 누르면 고친다
+                        .overlay(alignment: .bottomTrailing) {
+                            if m.gDone.contains("goal") { Image(systemName: "pencil").appFont(16, .semibold).foregroundStyle(Theme.teal).padding(.bottom, 6) }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { if m.gDone.contains("goal") { m.boardPath.append(.g1) } }
+                        .accessibilityAddTraits(m.gDone.contains("goal") ? .isButton : [])
+                        .accessibilityHint(m.gDone.contains("goal") ? "눌러서 목표 고치기" : "")
                     if m.gDone.contains("goal") {
                         Text("지금 \(AppModel.wonK(start)) · 목표까지 \(AppModel.wonK(max(0, m.gK - start))) 남았어요").appFont(15).foregroundStyle(Theme.sub)
-                        // 목표는 미션을 지난 뒤에도 언제든 고칠 수 있다
-                        Button { m.boardPath.append(.g1) } label: {
-                            Label("목표 고치기", systemImage: "pencil").appFont(14, .semibold).foregroundStyle(Theme.teal)
-                                .padding(.horizontal, 12).frame(minHeight: 36)
-                                .overlay(Capsule().stroke(Theme.teal, lineWidth: 1.5))
-                        }.buttonStyle(.plain).padding(.top, 4)
                     }
                 }
                 if !done.isEmpty {
@@ -297,7 +299,7 @@ struct GoalSetView: View {
         let ok = m.gK > 0 && m.gY >= 1
         PinnedLayout {
             VStack(alignment: .leading, spacing: 8) {
-                Text("미션 \(m.goalNo("goal")) / \(m.goalTotal)").appFont(14, .semibold).foregroundStyle(Theme.teal)
+                Text(fromSettings || m.gDone.contains("goal") ? "목표 고치기" : "미션 \(m.goalNo("goal")) / \(m.goalTotal)").appFont(14, .semibold).foregroundStyle(Theme.teal)
                 Text("언제까지, 얼마를 모으고 싶나요?").appFont(22, .bold)
                 HStack(alignment: .firstTextBaseline) {
                     Text("\(m.gY)년 뒤 \(AppModel.wonK(m.gK))").appFont(17, .bold)

@@ -21,6 +21,7 @@ struct HomeView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { route in
             if route == "shelter" { ShelterView() }
+            else if route == "goal" { GoalSetView(fromSettings: true) }
             else if route.hasPrefix("read:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i) }
             else if route.hasPrefix("char:"), let f = Shelter.friends.first(where: { $0.id == route.dropFirst(5) }) { CharacterDetailView(friend: f) }
         }
@@ -35,7 +36,16 @@ struct HomeView: View {
     private var goalSummary: some View {
         let now = m.route == .novice ? m.gA : m.total / 1e4, prog = min(1, now / max(1, m.gK))
         return VStack(alignment: .leading, spacing: 10) {
-            Text((m.route == .novice ? "지금 모은 돈" : "지금 평가액") + " · 목표 \(AppModel.wonK(m.gK))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+            // 목표 금액을 누르면 고친다
+            HStack(spacing: 4) {
+                Text(m.route == .novice ? "지금 모은 돈 ·" : "지금 평가액 ·").foregroundStyle(Color(hex: 0xC9D0D6))
+                NavigationLink(value: "goal") {
+                    (Text("목표 \(AppModel.wonK(m.gK)) ") + Text(Image(systemName: "pencil"))).foregroundStyle(.white).underline()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("목표 \(AppModel.wonK(m.gK)), 눌러서 고치기")
+            }
+            .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(AppModel.wonK(now)).appFont(32, .bold).tracking(-0.5)
                 if m.route == .plus {
