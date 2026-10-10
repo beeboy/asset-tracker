@@ -81,6 +81,8 @@ final class AppModel {
         holdings.append(Holding(symbol: id, qty: q, avg: a))
         return true
     }
+    /// 평정 지수 기록 (Calm.swift). 내 종목처럼 앱을 다시 켜도 남는다
+    var calm = Calm.load() { didSet { calm.save() } }
     static var savedHoldings: [Holding]? {
         UserDefaults.standard.data(forKey: "holdings").flatMap { try? JSONDecoder().decode([Holding].self, from: $0) }
     }
