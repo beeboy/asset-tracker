@@ -70,7 +70,7 @@ const FLOOR = Math.log(V0 * (Number(process.env.FLOOR) || 0.6)), LAMBDA = Number
 const predBelow = (w, lnV, tau, m, O) => { const g = w.reduce((s, x, i) => s + x * m[i], 0) - 0.5 * quad(w, Sbar), v = quad(w, Sbar) * tau + tau * tau * quad(w, O); return v > 1e-14 ? Phi((FLOOR - lnV - g * tau) / Math.sqrt(v)) : (lnV + g * tau < FLOOR ? 1 : 0); };
 const choose = (lnV, tau, m, O, lam = 0) => { let b = null, bp = -Infinity; for (const w of cands) { const p = predP(w, lnV, tau, m, O) - (lam ? lam * predBelow(w, lnV, tau, m, O) : 0); if (p > bp + 1e-12) { bp = p; b = w; } } return b; };
 
-module.exports = { E, beta, drawTrue, choose, predP, m0, O0, Sbar, u, cands, T, A, mul, matInv };
+module.exports = { E, beta, drawTrue, choose, predP, predBelow, m0, O0, Sbar, u, cands, T, A, mul, matInv };
 if (require.main === module) {
 // ---------------------------------------------------------------- 정책
 const w0 = holdings.map((h) => h.valueKrw / V0), wStatic = choose(Math.log(V0), T, m0, O0);

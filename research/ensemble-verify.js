@@ -6,9 +6,12 @@
 "use strict";
 const fs = require("fs");
 const F = require("./ensemble-feedback.js");
-const { E, drawTrue, choose, m0, O0, Sbar, T, A, mul, matInv } = F;
+const { E, drawTrue, choose, predP, predBelow, m0, O0, Sbar, T, A, mul, matInv, cands } = F;
 const { M, set, goal, holdings, V0, common, rngOf, q } = E;
-const BASIS = Number(process.env.BASIS ?? 1), TAX = 0.22, DED = 2.5e6;
+const TAX = 0.22, DED = 2.5e6;
+// 취득가: AVG="236.25,47.44,..." (종목 순서대로 평균 단가, 환율은 지금 값으로 가정) 또는 BASIS=비율
+const AVG = process.env.AVG ? process.env.AVG.split(",").map(Number) : null;
+const basisOf = (a) => (AVG ? AVG[a] / holdings[a].price0 : Number(process.env.BASIS ?? 1)), BASIS = AVG ? "평균단가" : Number(process.env.BASIS ?? 1);
 const LAMBDA = Number(process.env.LAMBDA) || 1;
 
 const w0 = holdings.map((h) => h.valueKrw / V0);
@@ -16,9 +19,20 @@ const policies = {
   "지금 비중 그대로": { hold: true },
   "피드백": { feedback: true, lam: 0 },
   "피드백+하방 보호": { feedback: true, lam: LAMBDA },
+  "세금 고려+하방 보호": { feedback: true, lam: LAMBDA, taxAware: true },
 };
+// 세금 고려 선택: 후보마다 옮길 때 낼 세금을 먼저 빼고, 남은 평가액으로 목표 확률·하방 확률을 본다
+function chooseTax(h, cost, tau, m, O, lam) {
+  const V = h.reduce((s, x) => s + x, 0); let b = null, bs = -Infinity;
+  for (const w of cands) {
+    const tax = settle(h, w.map((x) => x * V), cost).tax, lnV = Math.log(V - tax);
+    const sc = predP(w, lnV, tau, m, O) - lam * predBelow(w, lnV, tau, m, O);
+    if (sc > bs + 1e-12) { bs = sc; b = w; }
+  }
+  return b;
+}
 const NT = Number(process.env.TRUE_MEALS) || 300, NP = Number(process.env.PATHS_PER) || 100, rng = rngOf(31337);
-const res = Object.fromEntries(Object.keys(policies).map((k) => [k, { pm: [], term: [], tax: [], wy: [[], [], [], []] }]));
+const res = Object.fromEntries(Object.keys(policies).map((k) => [k, { pm: [], term: [], after: [], tax: [], wy: [[], [], [], []] }]));
 const t0 = Date.now();
 for (let t = 0; t < NT; t++) {
   const tr = drawTrue(rng);
@@ -30,7 +44,9 @@ for (let t = 0; t < NT; t++) {
     let hit = 0;
     for (let p = 0; p < P; p++) {
       let m = m0.slice(), O = O0.map((r) => r.slice()), w = pol.hold ? w0 : choose(Math.log(V0), T, m, O, pol.lam);
-      let h = w.map((x) => x * V0), cost = holdings.map((_, a) => w0[a] * V0 * BASIS); // 취득원가 (금액)
+      const cost0 = holdings.map((_, a) => w0[a] * V0 * basisOf(a)); // 취득원가 (금액)
+      if (pol.taxAware) w = chooseTax(holdings.map((_, a) => w0[a] * V0), cost0, T, m, O, pol.lam);
+      let h = w.map((x) => x * V0), cost = cost0;
       if (!pol.hold) { const s = settle(holdings.map((_, a) => w0[a] * V0), h, cost); cost = s.cost; h = h.map((x, a) => x - s.tax * w[a]); res[name].tax.push(s.tax); }
       if (t < 50 && p < 5 && !pol.hold) res[name].wy[0].push(w);
       let kPrev = 0;
@@ -45,7 +61,7 @@ for (let t = 0; t < NT; t++) {
           const yy = y.map((x, i) => x + 0.5 * Sbar[i][i]), Rm = Sbar.map((r, i) => r.map((x, j) => x + O[i][j] + (i === j ? 1e-10 : 0)));
           const K = mul(O, matInv(Rm)); m = m.map((x, i) => x + K[i].reduce((s, kk, j) => s + kk * (yy[j] - m[j]), 0));
           const KO = mul(K, O); O = O.map((r, i) => r.map((x, j) => x - KO[i][j]));
-          w = choose(Math.log(V), Math.max(0.05, T - (yi + 1)), m, O, pol.lam);
+          w = pol.taxAware ? chooseTax(h, cost, Math.max(0.05, T - (yi + 1)), m, O, pol.lam) : choose(Math.log(V), Math.max(0.05, T - (yi + 1)), m, O, pol.lam);
           const tgt = w.map((x) => x * V), s = settle(h, tgt, cost);
           cost = s.cost; h = tgt.map((x, a) => x - s.tax * w[a]); res[name].tax.push(s.tax);
           if (t < 50 && p < 5) res[name].wy[yi + 1].push(w);
@@ -54,7 +70,7 @@ for (let t = 0; t < NT; t++) {
       }
       const V = h.reduce((s, x) => s + x, 0);
       if (V >= goal.amount) hit++;
-      res[name].term.push(V);
+      res[name].term.push(V); res[name].after.push(V - settle(h, h.map(() => 0), cost).tax);
     }
     res[name].pm.push(hit / P);
   }
@@ -72,12 +88,12 @@ function settle(h, tgt, cost) {
 const pct = (x) => (x * 100).toFixed(0) + "%", eok = (x) => (x / 1e8).toFixed(2) + "억";
 const avg = (ws) => (ws.length ? holdings.map((_, i) => ws.reduce((s, w) => s + w[i], 0) / ws.length) : null);
 const out = { basis: BASIS, lambda: LAMBDA, setup: { trueMeals: NT, pathsPer: NP }, tickers: holdings.map((h) => h.ticker), policies: {}, seconds: 0 };
-console.log(`취득가 = 현재가 × ${BASIS}, 진짜 식단 ${NT} × 경로 ${NP} (사건·t분포·환율 포함)`);
+console.log(`취득가 ${AVG ? AVG.join('/') : '= 현재가 × ' + BASIS}, 진짜 식단 ${NT} × 경로 ${NP} (사건·t분포·환율 포함)`);
 for (const [k, r] of Object.entries(res)) {
   const s = { p10: q(r.pm, 0.1), p50: q(r.pm, 0.5), p90: q(r.pm, 0.9), mean: r.pm.reduce((a, x) => a + x, 0) / r.pm.length, t5: q(r.term, 0.05), t50: q(r.term, 0.5), loss: r.term.filter((x) => x < V0).length / r.term.length,
-    taxPerPath: r.tax.reduce((a, x) => a + x, 0) / r.term.length, w: r.wy.map(avg) };
+    taxPerPath: r.tax.reduce((a, x) => a + x, 0) / r.term.length, a5: q(r.after, 0.05), a50: q(r.after, 0.5), w: r.wy.map(avg) };
   out.policies[k] = s;
-  console.log(`${k.padEnd(10)} P(목표) 하위10/중앙/상위10 ${pct(s.p10)}/${pct(s.p50)}/${pct(s.p90)} 평균 ${pct(s.mean)} | 하위5 ${eok(s.t5)} 중앙 ${eok(s.t50)} 손실 ${pct(s.loss)} | 세금 평균 ${eok(s.taxPerPath)}` + (s.w[0] ? ` | 비중 ${s.w.map((w) => w ? w.map(pct).join("/") : "-").join(" → ")}` : ""));
+  console.log(`${k.padEnd(10)} P(목표) 하위10/중앙/상위10 ${pct(s.p10)}/${pct(s.p50)}/${pct(s.p90)} 평균 ${pct(s.mean)} | 하위5 ${eok(s.t5)} 중앙 ${eok(s.t50)} 손실 ${pct(s.loss)} | 세금 평균 ${eok(s.taxPerPath)} | 청산 후 하위5 ${eok(s.a5)} 중앙 ${eok(s.a50)}` + (s.w[0] ? ` | 비중 ${s.w.map((w) => w ? w.map(pct).join("/") : "-").join(" → ")}` : ""));
 }
 out.seconds = (Date.now() - t0) / 1000;
 if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify(out));
