@@ -34,6 +34,7 @@ final class Market {
     func quote(_ s: Symbol) -> Quote {
         if let q = live[s.id] { return Quote(last: q.0, prevClose: q.1, live: true) }
         if let q = YahooSample.quotes[s.id] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
+        if s.id != "DRNK", let q = CustomSymbols.shared.quote(s.id) { return q }     // 추가한 종목 (Yahoo 중계)
         guard s.currency == .usd else { return Quote(last: s.close, prevClose: s.close, live: false) }
         let m = (Self.todayMove[s.id] ?? 0.012 * sin(seed(s))) + wobble(seed(s))
         return Quote(last: s.close * (1 + m), prevClose: s.close, live: true)
@@ -56,12 +57,14 @@ final class Market {
         return "지금 시세 · \(f.string(from: updatedAt)) 갱신 · 한국 종목은 전일 종가"
     }
 
-    func refresh() async {
+    func refresh(held: Set<String> = []) async {
         if let p = TiingoProvider.fromConfig() {
             let tickers = Sample.symbols.filter { $0.currency == .usd && $0.id != "DRNK" }.map(\.id)
             if let q = try? await p.quotes(tickers) { live = q }
             if let f = try? await p.usdkrw() { liveFx = f }
         }
+        // 추가한 종목: 내 종목에 있는 것만 5분에 한 번
+        await CustomSymbols.shared.refresh(held: held)
         updatedAt = Date()
     }
 }

@@ -30,6 +30,8 @@ final class AppModel {
         }
         // 확인용: -addTest 005930,10,84000 → 종목 추가와 같은 경로로 넣는다
         if let t = UserDefaults.standard.string(forKey: "addTest")?.split(separator: ","), t.count == 3 { addHolding(String(t[0]), String(t[1]), String(t[2])) }
+        // 확인용: -searchTest tesla → 종목 추가 화면을 그 검색어로 연다
+        if UserDefaults.standard.string(forKey: "searchTest") != nil { holdPath = NavigationPath(["add"]) }
         // 캡처용: -home shelter 또는 -home char:ir
         if let h = UserDefaults.standard.string(forKey: "home") { homePath = h == "shelter" ? ["shelter"] : ["shelter", h] }
         if let f = UserDefaults.standard.string(forKey: "friend") { shelterSel = f }
@@ -159,10 +161,13 @@ final class AppModel {
     var holdPath = NavigationPath()
 
     // 설정
-    var alerts: [String: Bool] = ["be": true, "drift": false, "dep": false, "morn": false]
+    // 알림 설정은 기기에 남는다 (실제 예약은 Notifier)
+    var alerts: [String: Bool] = (UserDefaults.standard.dictionary(forKey: "alerts") as? [String: Bool]) ?? ["be": true, "drift": false, "dep": false, "morn": false] {
+        didSet { UserDefaults.standard.set(alerts, forKey: "alerts") }
+    }
     var alertLast: String? = nil
-    var alertTh = 5
-    var alertHr = 8
+    var alertTh = UserDefaults.standard.object(forKey: "alertTh") as? Int ?? 5 { didSet { UserDefaults.standard.set(alertTh, forKey: "alertTh") } }
+    var alertHr = UserDefaults.standard.object(forKey: "alertHr") as? Int ?? 8 { didSet { UserDefaults.standard.set(alertHr, forKey: "alertHr") } }
     var syncOn = true
     var widgetSel: [String]? = nil
     var settingsPath: [SettingsRoute] = []

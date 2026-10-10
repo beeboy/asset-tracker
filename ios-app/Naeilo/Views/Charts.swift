@@ -48,7 +48,8 @@ struct LogoTile: View {
             if let img = p?.logoImage {
                 Image(img).interpolation(.none).resizable().frame(width: size * 0.86, height: size * 0.86)
             } else {
-                let mono = p?.mono ?? String(symbol.prefix(1))
+                // 추가한 종목은 이름 첫 글자
+                let mono = p?.mono ?? String((Sample.symbol(symbol)?.name ?? StockCatalog.all.first { $0.id == symbol }?.name ?? symbol).prefix(1)).uppercased()
                 Text(mono).font(.system(size: size * (mono.count > 1 ? 0.36 : 0.46), weight: .heavy))
                     .foregroundStyle(Color(hex: p?.fg ?? 0xFFFFFF))
             }

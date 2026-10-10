@@ -15,6 +15,11 @@ struct Symbol: Identifiable, Hashable {
     let search: String      // 영문 검색어
 }
 
+extension Symbol {
+    /// 짧은 이름: 미국 종목은 티커, 한국 종목은 이름
+    var short: String { currency == .usd ? id : name }
+}
+
 struct Profile {
     var mono: String
     var color: UInt32
@@ -59,7 +64,11 @@ enum Sample {
         .init(id: "069500", name: "KODEX 200", market: "코스피 ETF", close: 45000, currency: .krw, sector: "지수", search: "kodex"),
         .init(id: "360750", name: "TIGER 미국S&P500", market: "코스피 ETF", close: 23000, currency: .krw, sector: "지수", search: "tiger s&p"),
     ]
-    static func symbol(_ id: String) -> Symbol? { symbols.first { $0.id == id } }
+    /// 앱에 시세 자료가 없는 예시 종목(한국 종목·MSFT)은 추가할 때 받은 Yahoo 중계 값이 있으면 그것을 쓴다
+    static func symbol(_ id: String) -> Symbol? {
+        if id != "DRNK", YahooSample.quotes[id] == nil, let c = CustomSymbols.shared.symbol(id) { return c }
+        return symbols.first { $0.id == id }
+    }
 
     // 종목 소개 (시안 예시. 실제 앱은 공시와 데이터 제공처 값으로 바꾼다). 로고는 상표 대신 글자 마크.
     static let profiles: [String: Profile] = [

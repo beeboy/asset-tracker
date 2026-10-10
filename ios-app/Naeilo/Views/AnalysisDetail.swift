@@ -218,20 +218,53 @@ struct ExternalView: View {
         "005930": (0.6, -2, 0), "000660": (0.9, -3, 0), "035720": (0.7, -3, 0), "069500": (0.6, -2, 0), "360750": (1, -3, 1),
     ]
 
+    /// 표에 없는 종목(직접 추가한 종목): 시장 반응은 지난 3년 일별 종가로 S&P500(SPY)에 대해 계산하고,
+    /// 금리 반응은 평균값 -3%로 두고, 환율은 미국 종목이면 그대로 받는다
+    static func coef(_ s: Symbol) -> (Double, Double, Double) {
+        if let b = beta[s.id] { return b }
+        return (estBeta(s.id) ?? 1, -3, s.currency == .usd ? 1 : 0)
+    }
+    static func estBeta(_ id: String) -> Double? {
+        guard let h = PriceHistory.of(id), let spy = PriceHistory.of("SPY") else { return nil }
+        let sp = Dictionary(zip(spy.dates, spy.closes), uniquingKeysWith: { a, _ in a })
+        // 한국 장은 미국 장보다 먼저 끝나서, 한국 종목은 그 전날 밤 미국 장 움직임과 짝을 짓는다
+        let kr = Sample.symbol(id)?.currency == .krw
+        let usDays = spy.dates
+        let spRet: [String: Double] = Dictionary(uniqueKeysWithValues: (1..<spy.closes.count).compactMap { i in
+            spy.closes[i - 1] > 0 ? (usDays[i], log(spy.closes[i] / spy.closes[i - 1])) : nil
+        })
+        func prevUS(_ d: String) -> String? {
+            var lo = 0, hi = usDays.count - 1, ans: String? = nil
+            while lo <= hi { let mid = (lo + hi) / 2; if usDays[mid] < d { ans = usDays[mid]; lo = mid + 1 } else { hi = mid - 1 } }
+            return ans
+        }
+        var xs: [Double] = [], ys: [Double] = []
+        for i in 1..<h.closes.count {
+            guard h.closes[i - 1] > 0, let key = kr ? prevUS(h.dates[i]) : h.dates[i], let x = spRet[key] else { continue }
+            if kr, let pk = prevUS(h.dates[i - 1]), pk == key { continue }     // 미국 장이 쉰 날은 건너뛴다
+            xs.append(x); ys.append(log(h.closes[i] / h.closes[i - 1]))
+        }
+        _ = sp
+        guard xs.count > 120 else { return nil }
+        let mx = xs.reduce(0, +) / Double(xs.count), my = ys.reduce(0, +) / Double(ys.count)
+        let cov = zip(xs, ys).reduce(0) { $0 + ($1.0 - mx) * ($1.1 - my) }, vx = xs.reduce(0) { $0 + ($1 - mx) * ($1 - mx) }
+        return vx > 0 ? (cov / vx * 20).rounded() / 20 : nil       // 0.05 단위
+    }
+
     var body: some View {
         let v = factor == "mkt" ? mkt : factor == "rate" ? rate : fx
         let eff = { (id: String) -> Double in
-            let b = Self.beta[id] ?? (1, -3, 0)
+            let b = Sample.symbol(id).map(Self.coef) ?? (1, -3, 0)
             return factor == "mkt" ? b.0 * v / 100 : factor == "rate" ? b.1 * v / 100 : b.2 * v / Market.shared.fx.last
         }
-        let list = m.rows.map { (id: $0.id, dv: $0.value * eff($0.id)) }
+        let list = m.rows.map { (id: $0.id, label: $0.sym.short, dv: $0.value * eff($0.id)) }
         let tot = list.reduce(0) { $0 + $1.dv }, maxAbs = max(1, list.map { abs($0.dv) }.max() ?? 1)
         let after = m.total + tot
         let ask = factor == "mkt" ? "S&P500이 얼마나 움직이면" : factor == "rate" ? "미국 10년 금리가 얼마나 바뀌면" : "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
         let vText = factor == "mkt" ? (v > 0 ? "+" : "") + "\(Int(v))%" : factor == "rate" ? (v > 0 ? "+" : "") + String(format: "%g", v) + "%p" : (v > 0 ? "+" : "") + "\(Int(v))원"
         let coef = m.rows.map { r -> String in
-            let b = Self.beta[r.id] ?? (1, -3, 0)
-            return r.id + (factor == "mkt" ? " \(String(format: "%g", b.0))배" : factor == "rate" ? " \(String(format: "%g", b.1))%" : (b.2 > 0 ? " 환율만큼" : " 영향 없음"))
+            let b = Self.coef(r.sym)
+            return r.sym.short + (factor == "mkt" ? " \(String(format: "%g", b.0))배" : factor == "rate" ? " \(String(format: "%g", b.1))%" : (b.2 > 0 ? " 환율만큼" : " 영향 없음"))
         }.joined(separator: ", ")
         let note = factor == "mkt" ? "S&P500이 1% 움직일 때 평균 반응: \(coef). 시장보다 크게 움직이는 종목이 많을수록 같은 하락에도 평가액이 더 줄어요."
             : factor == "rate" ? "미국 10년 금리가 1%p 오를 때 평균 반응: \(coef). 성장주일수록 금리에 더 민감했어요."
@@ -248,7 +281,7 @@ struct ExternalView: View {
                     Text("평가액 " + AppModel.manS(tot)).appFont(22, .bold).foregroundStyle(Theme.change(tot))
                     Text("\(AppModel.sgn(tot / max(1, m.total))) · \(AppModel.man(m.total)) → \(AppModel.man(after))").appFont(12).foregroundStyle(Theme.sub)
                 }
-                ForEach(list, id: \.id) { x in SignedBar(label: x.id, value: AppModel.manS(x.dv), g: x.dv, scale: maxAbs) }
+                ForEach(list, id: \.id) { x in SignedBar(label: x.label, value: AppModel.manS(x.dv), g: x.dv, scale: maxAbs) }
                 Text("\(m.keyName)까지 남은 금액 \(AppModel.man(max(0, m.keyValue - m.total))) → \(AppModel.man(max(0, m.keyValue - after)))").appFont(13, .semibold)
                 ChipRow(items: [("mkt", "미국 시장"), ("rate", "미국 금리"), ("fx", "원/달러")], selection: $factor, accent: Theme.orange, fill: true)
             }
@@ -276,7 +309,7 @@ struct ExternalView: View {
                     }
                     Text("3년 전망의 \"외부 요인\"을 켜면 이런 사건을 넣어 범위를 넓혀 계산해요.").appFont(12).foregroundStyle(Theme.muted)
                 }
-                footnote("반응 크기는 지난 3년 일별 움직임으로 계산한 평균이에요(시안용 가정값). 유가·금·원자재와 사건별 효과 표는 PC naeilo.com에서 볼 수 있어요.")
+                footnote("반응 크기는 지난 3년 일별 움직임으로 계산한 평균이에요(시안용 가정값). 직접 추가한 종목의 시장 반응은 지난 3년 종가로 S&P500과 비교해 계산했고, 금리 반응은 평균값 -3%로 두었어요. 유가·금·원자재와 사건별 효과 표는 PC naeilo.com에서 볼 수 있어요.")
             }
             .padding(16)
         }
@@ -307,7 +340,9 @@ struct DividendView: View {
         let months = (0..<12).map { (10 + $0) % 12 + 1 }     // 11월부터
         let byMonth = months.map { mo in per.reduce(0) { $0 + ($1.months.contains(mo) ? $1.net / Double($1.months.count) : 0) } }
         let mMax = max(1, byMonth.max() ?? 1), sMax = max(1, per.map(\.net).max() ?? 1)
-        let zero = per.filter { $0.gross == 0 }.map(\.id)
+        // DRNK 는 배당이 없는 종목, 예시 표에 없는 종목(직접 추가한 종목)은 배당 자료가 없어 0으로 계산
+        let zero = per.filter { $0.gross == 0 && Self.divs[$0.id] == nil && $0.id == "DRNK" }.map(\.id)
+        let unknown = m.rows.filter { Self.divs[$0.id] == nil && $0.id != "DRNK" }.map(\.sym.short)
         let us = m.rows.filter { $0.sym.currency == .usd }, usU = us.reduce(0) { $0 + $1.value - $1.cost }
         let G = m.taxGain * 1e4, cgt = { (g: Double) in max(0, g - 250e4) * 0.22 }
 
@@ -352,7 +387,7 @@ struct DividendView: View {
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 if net < 10e4 {
-                    Text("지금 구성은 배당이 적어요." + (zero.isEmpty ? "" : " \(zero.joined(separator: ", "))는 배당을 주지 않아요.") + " 이 구성에서는 배당보다 가격 움직임이 평가액을 더 크게 바꿔요.")
+                    Text("지금 구성은 배당이 적어요." + (zero.isEmpty ? "" : " \(zero.joined(separator: ", "))는 배당을 주지 않아요.") + (unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 배당 자료가 아직 없어서 0으로 계산했어요.") + " 이 구성에서는 배당보다 가격 움직임이 평가액을 더 크게 바꿔요.")
                         .appFont(13).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
                 }
@@ -526,10 +561,10 @@ struct GlanceView: View {
                 ForEach(data.sorted { ($0.m[metric] ?? 0) > ($1.m[metric] ?? 0) }, id: \.row.id) { d in
                     let v = d.m[metric] ?? 0
                     if signed {
-                        SignedBar(label: d.row.id, value: fmt(metric, v), g: v, scale: maxAbs)
+                        SignedBar(label: d.row.sym.short, value: fmt(metric, v), g: v, scale: maxAbs)
                     } else {
                         HStack(spacing: 8) {
-                            Text(d.row.id).appFont(13, .semibold).frame(minWidth: 52, alignment: .leading)
+                            Text(d.row.sym.short).appFont(13, .semibold).frame(minWidth: 52, alignment: .leading)
                             GeometryReader { g in
                                 RoundedRectangle(cornerRadius: 3).fill(Theme.sub2).frame(width: g.size.width * v / maxAbs, height: 12).frame(maxHeight: .infinity)
                             }.frame(height: 16)

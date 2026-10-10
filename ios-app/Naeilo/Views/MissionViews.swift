@@ -516,6 +516,7 @@ struct TaxResultView: View {
 // MARK: 앱 시작 3단계 — 한 단계마다 위젯 하나
 struct AppStartView: View {
     @Environment(AppModel.self) private var m
+    @State private var denied = false
     private let steps = [
         ("앱에서 종목 하나 이상 추가", "이미 넣은 종목이 있으면 확인만", "자산 추이 위젯"),
         ("앱 알림 하나 켜기", "본전 도달, 비중 이탈 중 하나", "본전 진행 위젯"),
@@ -556,7 +557,21 @@ struct AppStartView: View {
                         Text(steps[i].0).appFont(15, .bold)
                     }
                     (Text("\(steps[i].1) · 받는 것: ") + Text(steps[i].2).bold()).appFont(13).foregroundStyle(Theme.sub)
-                    if cur {
+                    if cur && i == 1 {
+                        // 2단계는 실제로: 아이폰 알림 허용을 받고 본전 도달 알림을 켠다
+                        Button(denied ? "아이폰 설정에서 알림 허용하기" : "알림 켜기") {
+                            Task {
+                                if denied, let u = URL(string: UIApplication.openNotificationSettingsURLString) { await UIApplication.shared.open(u); return }
+                                if await Notifier.request() {
+                                    m.alerts[m.isGoal ? "morn" : "be"] = true
+                                    withAnimation { m.nxStep += 1 }
+                                } else { denied = true }
+                            }
+                        }
+                            .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
+                            .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                        if denied { Text("알림이 꺼져 있어요. 아이폰 설정 > 알림 > naeilo에서 허용한 뒤 다시 눌러 주세요.").appFont(12).foregroundStyle(Theme.sub) }
+                    } else if cur {
                         Button("앱에서 했어요 (시안)") { withAnimation { m.nxStep += 1 } }
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))

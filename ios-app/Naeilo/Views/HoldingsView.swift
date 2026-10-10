@@ -114,7 +114,7 @@ struct HoldingDetailView: View {
                     LogoTile(symbol: sym.id, size: 44)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(sym.name).appFont(22, .bold)
-                        Text("\(sym.id) · \(sym.market) · \(sym.sector)").appFont(13).foregroundStyle(Theme.sub)
+                        Text(([sym.id, sym.market] + (sym.sector.isEmpty ? [] : [sym.sector])).joined(separator: " · ")).appFont(13).foregroundStyle(Theme.sub)
                     }
                 }
                 Card {
@@ -137,8 +137,8 @@ struct HoldingDetailView: View {
                         kv(sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
                         kv(need > 0 ? "본전까지" : "본전 대비", need > 0.0005 ? "+" + String(format: "%.1f", need * 100) + "% 올라야 해요"
                            : need > -0.0005 ? "본전과 같아요" : "본전보다 " + String(format: "%.1f", -need * 100) + "% 위")
-                        kv("비중", m.total > 0 ? AppModel.pct(val / m.total) : "-")
-                        kv("업종", sym.sector, last: true)
+                        kv("비중", m.total > 0 ? AppModel.pct(val / m.total) : "-", last: sym.sector.isEmpty)
+                        if !sym.sector.isEmpty { kv("업종", sym.sector, last: true) }
                     }
                 }
                 if h.qty > 0 {
@@ -196,61 +196,52 @@ struct HoldingDetailView: View {
 }
 
 // 종목 추가: 한글·영문·티커·종목 코드 검색 → 수량·평균 단가
+// 앱 안 목록(예시 종목 + 한글 이름 목록)은 바로, Yahoo 검색은 입력을 멈추면 아래에 더 붙는다 (StockSearch)
 struct AddHoldingView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.dismiss) private var dismiss
-    @State private var query = ""
+    @State private var query = UserDefaults.standard.string(forKey: "searchTest") ?? ""
+    @State private var remote: [StockHit] = []
+    @State private var searching = false
     @State private var picked: Symbol? = nil
+    @State private var loading: String? = nil        // 시세 받는 중인 종목
+    @State private var failed: String? = nil
     @State private var qty = ""
     @State private var avg = ""
     @State private var warn = false
     @FocusState private var focus: Int?
 
     var body: some View {
-        let q = query.lowercased().replacingOccurrences(of: " ", with: "")
-        let found = Sample.symbols.filter { q.isEmpty || "\($0.id)\($0.name)\($0.search)".lowercased().replacingOccurrences(of: " ", with: "").contains(q) }
+        let local = StockSearch.local(query)
+        let more = remote.filter { r in !local.contains { $0.id == r.id } }
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text("종목 추가").appFont(22, .bold)
                 TextField("한글·영문 이름, 티커, 종목 코드", text: $query)
+                    .autocorrectionDisabled().textInputAutocapitalization(.never)
+                    .focused($focus, equals: 0)
                     .padding(.horizontal, 14).frame(minHeight: 48)
                     .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
                 if let p = picked {
-                    Card {
-                        Text("\(p.name) (\(p.id))").appFont(16, .bold)
-                        Text((p.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
-                        field("수량 (주)", $qty).focused($focus, equals: 1)
-                        field("평균 단가 (\(p.currency == .usd ? "달러" : "원"))", $avg).focused($focus, equals: 2)
-                        if warn { Text("수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
-                        PrimaryButton(title: "추가하기") {
-                            focus = nil
-                            if m.addHolding(p.id, qty, avg) { dismiss() } else { warn = true }
-                        }
-                    }
-                } else if found.isEmpty {
-                    Text("찾는 종목이 없어요. 한글 이름, 영문 이름, 티커, 종목 코드로 찾을 수 있어요.").appFont(14).foregroundStyle(Theme.sub)
+                    form(p)
                 } else {
-                    VStack(spacing: 0) {
-                        ForEach(found) { s in
-                            let held = m.holdings.contains { $0.symbol == s.id }
-                            Button { picked = s; qty = ""; avg = String(Int(s.last.rounded())) } label: {
-                                HStack(spacing: 10) {
-                                    LogoTile(symbol: s.id, size: 32)
-                                    VStack(alignment: .leading) {
-                                        Text(s.name).appFont(15, .bold)
-                                        Text("\(s.id) · \(s.market)").appFont(12).foregroundStyle(Theme.sub)
-                                    }
-                                    Spacer()
-                                    Text(held ? "보유 중" : AppModel.price(s, s.last)).appFont(13, .semibold)
-                                        .foregroundStyle(held ? Theme.muted : Theme.ink)
-                                }
-                                .padding(.horizontal, 14).frame(minHeight: 56).contentShape(Rectangle())
-                            }.buttonStyle(.plain)
-                            Divider().overlay(Theme.line)
-                        }
+                    if let f = failed {
+                        Text(f).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true)
                     }
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+                    if !local.isEmpty { list(local) }
+                    if !more.isEmpty {
+                        Text("Yahoo에서 더 찾은 종목").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 4)
+                        list(more)
+                    }
+                    if searching {
+                        HStack(spacing: 8) { ProgressView(); Text("Yahoo에서 찾는 중").appFont(13).foregroundStyle(Theme.sub) }
+                    } else if local.isEmpty && more.isEmpty {
+                        Text("찾는 종목이 없어요. 미국 주식·ETF와 코스피·코스닥 종목을 한글 이름, 영문 이름, 티커, 종목 코드로 찾을 수 있어요. 한글 이름은 자주 찾는 종목만 알아요.")
+                            .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text("시세는 테스트용 Yahoo 중계 자료예요. 미국 종목은 지금 가격, 한국 종목은 전일 종가예요.")
+                        .appFont(12).foregroundStyle(Theme.muted)
                 }
             }
             .screen().padding(.top, 8)
@@ -260,6 +251,85 @@ struct AddHoldingView: View {
         .scrollDismissesKeyboard(.interactively)
         // 숫자 자판에는 닫기 키가 없어서 자판 위에 '완료'를 둔다
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = nil } } }
+        // 입력을 0.4초 멈추면 Yahoo 검색
+        .task(id: query) {
+            remote = []; failed = nil
+            let q = query.trimmingCharacters(in: .whitespaces)
+            guard !q.isEmpty, q.unicodeScalars.allSatisfy({ $0.isASCII }) else { searching = false; return }
+            searching = true
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            let r = await StockSearch.remote(q)
+            guard !Task.isCancelled else { return }
+            remote = r; searching = false
+        }
+    }
+
+    private func list(_ hits: [StockHit]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(hits) { h in
+                let held = m.holdings.contains { $0.symbol == h.id }
+                Button { Task { await pick(h) } } label: {
+                    HStack(spacing: 10) {
+                        LogoTile(symbol: h.id, size: 32)
+                        VStack(alignment: .leading) {
+                            Text(h.name).appFont(15, .bold).lineLimit(1)
+                            Text("\(h.id) · \(h.market)").appFont(12).foregroundStyle(Theme.sub)
+                        }
+                        Spacer()
+                        if loading == h.id { ProgressView() }
+                        else if held { Text("보유 중").appFont(13, .semibold).foregroundStyle(Theme.muted) }
+                        else if let s = known(h) { Text(AppModel.price(s, s.last)).appFont(13, .semibold) }
+                    }
+                    .padding(.horizontal, 14).frame(minHeight: 56).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(loading != nil)
+                Divider().overlay(Theme.line)
+            }
+        }
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    /// 이미 시세를 아는 종목 (예시 종목 중 앱에 자료가 있는 것, 전에 추가한 것)
+    private func known(_ h: StockHit) -> Symbol? {
+        if h.id == "DRNK" || YahooSample.quotes[h.id] != nil || CustomSymbols.shared.symbol(h.id) != nil { return Sample.symbol(h.id) }
+        return nil
+    }
+
+    private func pick(_ h: StockHit) async {
+        failed = nil; focus = nil
+        if let s = known(h) { open(s); return }
+        loading = h.id
+        defer { loading = nil }
+        do { open(try await CustomSymbols.shared.fetch(h)) }
+        catch {
+            // 예시 종목은 시세를 못 받아도 예시 값으로 넣을 수 있다
+            if let s = Sample.symbols.first(where: { $0.id == h.id }) { open(s); failed = nil }
+            else { failed = "\(h.name) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요." }
+        }
+    }
+    private func open(_ s: Symbol) {
+        picked = s; qty = ""; warn = false
+        avg = s.currency == .usd ? String(format: "%.2f", s.last) : String(Int(s.last.rounded()))
+    }
+
+    private func form(_ p: Symbol) -> some View {
+        Card {
+            HStack {
+                Text("\(p.name) (\(p.id))").appFont(16, .bold)
+                Spacer()
+                Button("다른 종목") { picked = nil }.appFont(13, .semibold).foregroundStyle(Theme.teal)
+            }
+            Text((p.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
+            field("수량 (주)", $qty).focused($focus, equals: 1)
+            field("평균 단가 (\(p.currency == .usd ? "달러" : "원"))", $avg).focused($focus, equals: 2)
+            if warn { Text("수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
+            PrimaryButton(title: "추가하기") {
+                focus = nil
+                if m.addHolding(p.id, qty, avg) { dismiss() } else { warn = true }
+            }
+        }
     }
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {

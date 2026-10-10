@@ -1,8 +1,10 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct NaeiloApp: App {
     @State private var model = AppModel()
+    init() { UNUserNotificationCenter.current().delegate = NotificationDelegate.shared }
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -40,6 +42,18 @@ struct RootView: View {
         .onChange(of: model.holdings) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.route) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.nxStep) { _, _ in WidgetBridge.write(model) }
+        // 알림: 설정이 바뀌면 다시 예약
+        .onChange(of: model.alerts) { _, _ in Task { await Notifier.reschedule(model) } }
+        .onChange(of: model.alertHr) { _, _ in Task { await Notifier.reschedule(model) } }
+        .onAppear {
+            NotificationDelegate.shared.open = { o in
+                switch o {
+                case "home": model.tab = .home
+                case "tax": model.tab = .settings; model.settingsPath = [.tax]
+                default: model.tab = .board
+                }
+            }
+        }
         // 잠긴 위젯을 누르면 앱 시작 3단계로
         .onOpenURL { url in
             if url.host == "shelter" { model.tab = .home; model.homePath = ["shelter"]; return }   // 인물 위젯 (못 만난 인물)
@@ -50,8 +64,10 @@ struct RootView: View {
         // 지금 시세: 화면이 켜져 있는 동안 1분마다 갱신
         .task {
             while !Task.isCancelled {
-                await Market.shared.refresh()
+                await Market.shared.refresh(held: Set(model.holdings.map(\.symbol)))
                 WidgetBridge.write(model)        // 위젯에 지금 숫자를 넘긴다
+                await Notifier.check(model)       // 본전 도달 · 비중 이탈
+                await Notifier.reschedule(model)  // 아침 한 줄을 지금 숫자로
                 try? await Task.sleep(for: .seconds(60))
             }
         }

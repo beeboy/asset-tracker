@@ -40,15 +40,18 @@ private func optionChips(_ label: String, _ opts: [Int], _ unit: String, _ sel: 
 
 struct AlertsView: View {
     @Environment(AppModel.self) private var m
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var phase
+    @State private var perm: Notifier.Status = .allowed
+    @State private var sent = false
 
     var body: some View {
-        let need = m.cost / max(1, m.total) - 1
         let list: [(k: String, t: String, sub: String, prev: String)] = [
             ("be", "본전 도달", "평가액이 들어간 돈을 넘으면 한 번", "본전에 도착했어요! 평가액이 들어간 돈 \(AppModel.man(m.cost))을 넘었어요."),
             ("drift", "비중 이탈", "DRNK 비중이 계획에서 \(m.alertTh)%p 넘게 벗어나면",
              "DRNK 비중이 \(AppModel.pct(m.drnkWeight))예요. 계획(\(AppModel.pct(m.planWeight)))보다 \(Int((abs(m.drnkWeight - m.planWeight) * 100).rounded()))%p 벗어났어요."),
             ("dep", "연말 절세 확인", "12월 1일, 올해 손실을 확정할지 볼 때", "올해가 한 달 남았어요. 손실 난 종목 일부를 팔면 내년 세금이 줄 수 있어요."),
-            ("morn", "아침 한 줄", "평일 \(m.alertHr)시, 오늘의 움직임 한 줄", "오늘 \(AppModel.sgn(m.todayMove)). 본전까지 \(String(format: "%.1f", need * 100))% 남았어요."),
+            ("morn", "아침 한 줄", "평일 \(m.alertHr)시, 어제의 움직임 한 줄", Notifier.morningLine(m)),
         ]
         let on = list.filter { m.alerts[$0.k] == true }
         let prev = on.first { $0.k == m.alertLast } ?? on.first
@@ -80,6 +83,7 @@ struct AlertsView: View {
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
+                if perm != .allowed { permCard }
                 ForEach(list, id: \.k) { a in
                     let isOn = m.alerts[a.k] == true
                     Card(padding: 14) {
@@ -94,12 +98,38 @@ struct AlertsView: View {
                         if isOn && a.k == "morn" { optionChips("시간", [7, 8, 9], "시", m.alertHr) { m.alertHr = $0 } }
                     }
                 }
-                note("여러 알림이 겹치는 날은 하나로 묶어 하루 한 번만 보내요. 알림 설정은 기기마다 따로예요. 실제 알림 예약은 다음 빌드에서 연결해요.")
+                if perm == .allowed && !on.isEmpty {
+                    Button { Task { await Notifier.test(m); sent = true } } label: {
+                        Text(sent ? "5초 뒤에 시험 알림이 와요" : "시험 알림 받아 보기").appFont(14, .semibold)
+                            .frame(maxWidth: .infinity, minHeight: 44).foregroundStyle(Theme.teal)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
+                    }.buttonStyle(.plain)
+                }
+                note("본전 도달과 비중 이탈은 앱이 시세를 받을 때 확인해서 보내요. 같은 날 겹치면 하나로 묶어 하루 한 번만 보내요. 아침 한 줄은 앱을 마지막으로 연 때의 숫자로 다음 평일 아침에 오고, 앱을 한동안 안 열면 숫자 없이 와요. 알림 설정은 기기마다 따로예요.")
             }
             .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: phase) { perm = await Notifier.status() }
+        // 알림을 켜는 순간 아이폰 허용을 묻는다
+        .onChange(of: m.alerts) { _, v in
+            if v.values.contains(true) && perm == .unknown { Task { await Notifier.request(); perm = await Notifier.status(); await Notifier.reschedule(m) } }
+        }
+    }
+
+    private var permCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(perm == .denied ? "아이폰 알림이 꺼져 있어요" : "아이폰 알림 허용이 필요해요").appFont(15, .bold)
+            Text(perm == .denied ? "아래 알림을 켜도 오지 않아요. 아이폰 설정 > 알림 > naeilo에서 허용해 주세요." : "허용해야 아래 켠 알림이 실제로 와요.")
+                .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            PrimaryButton(title: perm == .denied ? "아이폰 설정 열기" : "알림 허용하기") {
+                if perm == .denied { if let u = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(u) } }
+                else { Task { await Notifier.request(); perm = await Notifier.status(); await Notifier.reschedule(m) } }
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.cream, in: RoundedRectangle(cornerRadius: 16))
     }
 }
 

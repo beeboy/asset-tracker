@@ -39,3 +39,8 @@ open NaeiloApp.xcodeproj   # 시뮬레이터 고르고 ▶
 
 - 저장소가 iCloud Drive(문서 폴더) 안에 있으면, 명령줄에서 `-derivedDataPath` 를 저장소 안에 두었을 때 위젯 확장 서명이 "resource fork … not allowed" 로 실패합니다. Xcode 기본 위치(~/Library/Developer/Xcode/DerivedData)로 빌드하면 괜찮습니다.
 - 테스트 시세는 저장소의 `data/prices`·`data/quotes.json`(Yahoo 중계)을 그대로 넣습니다.
+
+## 알림과 종목 찾기 (14차)
+
+- 알림(`Naeilo/Data/Notifier.swift`): 기기 안에서 예약하는 로컬 알림. 본전 도달·비중 이탈은 앱이 시세를 받을 때 확인해 하루 한 번까지, 아침 한 줄은 평일 정한 시각, 연말 절세 확인은 12월 1일. 앱 시작 3단계의 2단계(알림 켜기)는 실제 아이폰 알림 허용을 받는다. 앱이 꺼져 있을 때 시세를 보고 보내는 알림은 서버 푸시가 필요해 아직 없다.
+- 종목 찾기(`Naeilo/Data/StockSearch.swift`, `StockCatalog.swift`): 사이트가 쓰는 Yahoo 중계로 미국 주식·ETF와 코스피·코스닥을 찾는다. Yahoo 가 한글 이름을 못 찾아서 자주 찾는 118종목의 한글 이름을 앱에 넣었다(코드는 2026-10-10 중계로 하나씩 확인). 추가한 종목은 3년 일별 종가를 기기에 저장하고 5분마다 갱신한다.
