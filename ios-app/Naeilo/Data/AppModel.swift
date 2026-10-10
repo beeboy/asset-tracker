@@ -30,6 +30,10 @@ final class AppModel {
         if let g = UserDefaults.standard.string(forKey: "goal"), let r = Route(rawValue: g) {
             switchRoute(r); gDone = Set(goalSteps.filter { !$0.inter }.map(\.id)); nxStep = 3
         }
+        // 확인용: -gY 3 → 목표 기간 (년)
+        #if DEBUG
+        if let y = Int(UserDefaults.standard.string(forKey: "gY") ?? "") { gY = y }
+        #endif
         // 확인용: -addTest 005930,10,84000 → 종목 추가와 같은 경로로 넣는다
         if let t = UserDefaults.standard.string(forKey: "addTest")?.split(separator: ","), t.count == 3 { addHolding(String(t[0]), String(t[1]), String(t[2])) }
         // 확인용: -holdN 10 → 예시 종목 앞에서부터 n개를 보유로 (위젯에 종목이 많을 때 모습)

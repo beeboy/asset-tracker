@@ -127,7 +127,8 @@ struct MyPathView: View {
         let actPts = (0...30).map { i -> (Double, Double) in let t = mS * Double(i) / 30; return (t, act(t)) }
         let needPts = (0...60).map { i -> (Double, Double) in let t = x1 * Double(i) / 60; return (t, need(t)) }
         let bandPts: [(Double, Double, Double)] = view == "band"
-            ? (0...9).map { i in let t = mS + Double(i) / 12; return (t, f.q75[i], f.q25[i]) } : []
+            // 3년 전망(달마다 36칸)을 목표일까지 겹친다. 목표일이 3년보다 멀면 전망이 있는 3년까지만
+            ? (0...min(f.q75.count - 1, max(1, Int(((x1 - mS) * 12).rounded())))).map { i in let t = mS + Double(i) / 12; return (t, f.q75[i], f.q25[i]) } : []
         let vals = actPts.map(\.1) + needPts.map(\.1) + bandPts.flatMap { [$0.1, $0.2] }
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
@@ -165,7 +166,7 @@ struct MyPathView: View {
                 HStack { Text("시작 7월"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "\(m.gY)년 뒤 목표일" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
                 FlowRow(spacing: 10) {
                     legend(Theme.teal, "실제"); legend(Theme.purple, "내 길 (정한 목표대로)")
-                    if view == "band" { legend(Theme.teal.opacity(0.3), "3년 전망 (절반의 경우)") }
+                    if view == "band" { legend(Theme.teal.opacity(0.3), "3년 전망 (절반의 경우)" + (mEnd - mS > 3.05 ? ", 3년까지" : "")) }
                 }
                 ChipRow(items: [("past", "시작부터"), ("all", "목표일까지"), ("band", "예보 겹치기")], selection: $view, fill: true)
             }
