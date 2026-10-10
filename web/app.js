@@ -3078,7 +3078,8 @@
     const groups = new Map(); rows.forEach((x) => { if (!groups.has(x.who)) groups.set(x.who, []); groups.get(x.who).push(x); });
     const dow = (d) => "일월화수목금토"[new Date(d + "T00:00:00").getDay()];
     const chip = (x) => `<span class="chip ${x.cls} ${x === rows[0] ? "next" : ""}" title="${esc(`${x.d} ${x.what} · ${x.note}`)}"><b>${esc(x.what)}</b><span>${x.d.slice(5).replace("-", ".")} ${dow(x.d)} · ${esc(x.note)}</span></span>`;
-    box.innerHTML = rows.length ? [...groups].map(([t, xs]) => `<div class="schedrow"><div class="schedhead"><b>${esc(t)}</b> <span class="muted">${xs.length}건</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`).join("")
+    // 대상 묶음은 줄을 따로 쓰지 않고 옆으로 이어 붙인다 (빈 오른쪽을 다음 묶음이 채움)
+    box.innerHTML = rows.length ? `<div class="upflow">${[...groups].map(([t, xs]) => `<div class="upgrp"><div class="schedhead"><b>${esc(t)}</b> <span class="muted">${xs.length}건</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`).join("")}</div>`
       + `<p class="muted small">회색 = 분기 실적, 주황 = 한 번 있는 사건, 초록 = 배당, 진한 테두리 = 가장 가까운 일정. ±는 그날 평소 움직임. 실적 날짜는 회사 발표 전까지 추정, 배당은 지난해 같은 때를 기준으로 짐작한 값.</p>`
       : `<p class="muted small">앞으로 45일 안에 켜 둔 일정이 없습니다. 일정은 '전망 → 외부 요인'에서 켜고 끕니다.</p>`;
   }
