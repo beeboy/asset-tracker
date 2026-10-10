@@ -33,7 +33,8 @@ enum SupportTier: Int, Comparable, CaseIterable {
     var pending: Bool { self == .mix || self == .franchise || self == .specialty }
 }
 
-@MainActor @Observable
+// 등급·테스트 빌드 값은 어디서든 읽을 수 있게 클래스는 메인 액터에 묶지 않고 (AppModel.devAll 이 읽는다), 바꾸는 함수만 메인 액터에서
+@Observable
 final class Support {
     static let shared = Support()
     static let tipID = SupportTier.idPrefix + "tip"
@@ -60,7 +61,7 @@ final class Support {
     @ObservationIgnored private var updates: Task<Void, Never>? = nil
 
     /// 앱을 열 때 한 번: 상품 목록, 가진 등급, 다른 기기·가족 공유·환불로 바뀐 거래 듣기
-    func start() {
+    @MainActor func start() {
         guard updates == nil else { return }
         updates = Task { [weak self] in
             for await r in Transaction.updates { await self?.handle(r) }
@@ -74,7 +75,7 @@ final class Support {
         }
     }
 
-    func loadProducts() async {
+    @MainActor func loadProducts() async {
         let ids = SupportTier.allCases.filter { $0 != .free }.map(\.productID) + [Self.tipID]
         if let p = try? await Product.products(for: ids) { products = p.sorted { $0.price < $1.price } }
     }
@@ -82,7 +83,7 @@ final class Support {
     var tipProduct: Product? { products.first { $0.id == Self.tipID } }
 
     /// 가진 비소모성 상품 중 가장 높은 등급 (환불·취소된 것은 뺀다. 가족 공유로 받은 것도 포함)
-    func refresh() async {
+    @MainActor func refresh() async {
         var best = SupportTier.free
         for await r in Transaction.currentEntitlements {
             guard case .verified(let t) = r, t.revocationDate == nil, let tier = SupportTier(productID: t.productID) else { continue }
@@ -91,7 +92,7 @@ final class Support {
         tier = best
     }
 
-    func buy(_ p: Product) async {
+    @MainActor func buy(_ p: Product) async {
         busy = p.id; defer { busy = nil }
         do {
             switch try await p.purchase() {
@@ -108,14 +109,14 @@ final class Support {
     }
 
     /// 구매 복원 (지침 3.1.1): App Store 와 맞춘 뒤 다시 확인
-    func restore() async {
+    @MainActor func restore() async {
         busy = "restore"; defer { busy = nil }
         try? await AppStore.sync()
         await refresh()
         message = tier == .free ? "복원할 구매가 없어요." : "\(tier.name)까지 복원했어요."
     }
 
-    private func handle(_ r: VerificationResult<Transaction>) async {
+    @MainActor private func handle(_ r: VerificationResult<Transaction>) async {
         guard case .verified(let t) = r else { return }
         if t.productID == Self.tipID, t.revocationDate == nil { tips += 1 }
         await t.finish()
