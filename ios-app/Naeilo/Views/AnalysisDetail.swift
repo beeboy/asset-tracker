@@ -543,7 +543,8 @@ struct GlanceView: View {
     ]
 
     var body: some View {
-        let data = m.rows.map { r -> (row: AppModel.Row, yr: [Double], hi: Double, lo: Double, m: [String: Double]) in
+        // 카드 순서는 내 종목 탭에서 고른 정렬을 따른다
+        let data = m.sortedRows.map { r -> (row: AppModel.Row, yr: [Double], hi: Double, lo: Double, m: [String: Double]) in
             let yr = (0...52).map { m.prices.price(r.sym, at: 2.0 / 3 + Double($0) / 156) }
             let hi = yr.max() ?? 1, lo = yr.min() ?? 1, p1 = yr.last ?? 1
             return (r, yr, hi, lo, ["dd": p1 / hi - 1, "r1": p1 / yr[0] - 1, "vc": r.cost > 0 ? r.value / r.cost - 1 : 0,

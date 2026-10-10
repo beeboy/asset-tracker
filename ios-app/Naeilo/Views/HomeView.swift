@@ -166,7 +166,7 @@ struct HomeView: View {
     }
 }
 
-// 오늘의 1분: 어제 숫자 확인 + 날마다 바뀌는 질문 하나. 설명은 계산값으로.
+// 오늘의 1분: 내 종목 오늘 숫자 확인 + 날마다 바뀌는 질문 하나 (지난 7일과 안 겹치게). 설명은 계산값으로.
 struct RoutineCard: View {
     @Environment(AppModel.self) private var m
     private let days = ["월", "화", "수", "목", "금", "토", "일"]
@@ -216,7 +216,7 @@ struct RoutineCard: View {
                         }
                     }
                     if let a = t.answer {
-                        Text((q.right >= 0 ? (a == q.right ? "맞아요! " : "아쉬워요. ") : "") + q.fb(a))
+                        Text((t.ok.map { $0 ? "맞아요! " : "아쉬워요. " } ?? "") + q.fb(a))
                             .appFont(13).lineSpacing(3)
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -226,9 +226,14 @@ struct RoutineCard: View {
             }
             if t.answer != nil {
                 Text(m.routineDoneText).appFont(14, .semibold).foregroundStyle(Theme.yellow)
+                let sc = m.quizScore
+                if sc.all > 0 { Text("지금까지 퀴즈 \(sc.all)개 중 \(sc.right)개 맞혔어요.").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
             }
-            Button("다음 날로 넘기기 (시안)") { withAnimation { m.day += 1 } }
-                .appFont(13).underline().foregroundStyle(Theme.muted).frame(minHeight: 40)
+            // 날짜 넘기기는 개발자 확인용 (일반 사용자 화면에는 안 보인다)
+            if m.devAll {
+                Button("다음 날로 넘기기 (개발자)") { withAnimation { m.day += 1 } }
+                    .appFont(13).underline().foregroundStyle(Theme.muted).frame(minHeight: 40)
+            }
         }
         .foregroundStyle(.white)
         .padding(16)

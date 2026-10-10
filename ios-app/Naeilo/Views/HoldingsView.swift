@@ -16,8 +16,22 @@ struct HoldingsView: View {
                     .appFont(14).foregroundStyle(Theme.sub)
                 totalChart(rows)
                 ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true)
+                HStack {
+                    Spacer()
+                    Menu {
+                        ForEach(HoldSort.allCases, id: \.self) { c in
+                            Button { m.holdSort = c } label: {
+                                if c == m.holdSort { Label(c.label, systemImage: "checkmark") } else { Text(c.label) }
+                            }
+                        }
+                    } label: {
+                        Label(m.holdSort.label, systemImage: "arrow.up.arrow.down").appFont(13, .bold)
+                            .foregroundStyle(Theme.teal).frame(minHeight: 32)
+                    }
+                    .accessibilityLabel("정렬: \(m.holdSort.label)")
+                }
                 VStack(spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { i, r in
+                    ForEach(Array(m.sortedRows.enumerated()), id: \.element.id) { i, r in
                         if i > 0 { Divider().overlay(Theme.line) }
                         NavigationLink(value: r.sym) { row(r) }.buttonStyle(.plain)
                     }
