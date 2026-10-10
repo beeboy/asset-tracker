@@ -320,7 +320,7 @@
         if (!mine && !confirm(`다른 기기 입력값(${new Date(j.at).toLocaleString()})으로 이 기기를 맞출까요?\n취소하면 이 기기 값을 다른 기기로 보냅니다.`)) { S.state.ui.sync_at = Date.now(); save(false); return syncPush(); }
         const ui = S.state.ui; S.state = normalize(j.state); S.state.ui = { ...ui, sync_at: j.at }; syncLast = syncSig();
         try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); } catch (e) { /* 무시 */ }
-        markDirty(); renderAll(); foldHold(); toast("다른 기기 입력값으로 맞췄습니다");
+        markDirty(); renderAll(); toast("다른 기기 입력값으로 맞췄습니다");
       } else if (!j.state || j.at < mine) { if (!mine) S.state.ui.sync_at = Date.now(); await syncPush(); }
       S.sync = { ok: true, at: Date.now() };
     } catch (e) { S.sync = { ok: false, err: e.message }; }
@@ -434,6 +434,7 @@
     div.innerHTML = `<span class="t">${new Date().toLocaleTimeString()}</span> ${html ? msg : esc(msg)}`;
     if (!ok) div.className = "err";
     box.appendChild(div); box.scrollTop = box.scrollHeight;
+    const last = $("#logLast"); if (last) last.textContent = "· " + div.textContent.trim(); // 접힌 채로도 마지막 줄은 보이게
   }
   function symbolsToCollect(list) {
     const ts = list || S.state.holdings.map((h) => h.ticker);
@@ -600,7 +601,6 @@
     if (min > 0) autoTimer = setInterval(() => collect(true), Math.max(min, MODE === "static" ? 5 : 1) * 60000);
   }
   // 시세 수집이 끝나면 보유 종목 표를 접는다 (종목 추가 줄은 그대로 보임). 수량이 하나도 없으면 펼쳐 둔다
-  function foldHold() { const d = $("#holdDet"); if (d) d.open = !!S.state.sample || !S.state.holdings.some((h) => Number(h.shares) > 0); }
   // 샘플 끝내기: keep=true 면 샘플 종목을 남기고(사용자가 그 수량을 고친 경우) 표시만 지운다
   function endSample(keep) {
     if (!S.state.sample) return;
@@ -3102,14 +3102,14 @@
     $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
     document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "stocks" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); if (g.dataset.add) setTimeout(() => $("#addTicker")?.focus({ preventScroll: true }), 300); } });
     $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
-    $("#btnCollect").onclick = () => collect(false).finally(foldHold);
+    $("#btnCollect").onclick = () => collect(false);
     $("#headKpi").addEventListener("click", (e) => { if (e.target.closest("#hasset")) { try { localStorage.setItem(HIDE_KEY, hideAmt() ? "" : "1"); } catch (e2) { /* 무시 */ } renderHeader(); } });
     $("#headKpi").addEventListener("click", (e) => { // 머리글 알약 = 시세 수집
       const p = e.target.closest("#hpill"); if (!p || p.classList.contains("busy")) return;
       p.classList.add("busy"); toast("시세를 받는 중…");
-      collect(false).then(() => toast("시세 수집 끝")).catch(() => toast("시세 수집 실패")).finally(() => { foldHold(); $("#hpill")?.classList.remove("busy"); });
+      collect(false).then(() => toast("시세 수집 끝")).catch(() => toast("시세 수집 실패")).finally(() => { $("#hpill")?.classList.remove("busy"); });
     });
-    $("#btnQuotes").onclick = () => collect(true).finally(foldHold);
+    $("#btnQuotes").onclick = () => collect(true);
     $("#autoRefresh").value = String(S.state.ui.auto_refresh_min || 0);
     $("#autoRefresh").onchange = (e) => { S.state.ui.auto_refresh_min = +e.target.value; setAuto(+e.target.value); save(false); };
     $("#holdTable").addEventListener("input", onHoldEdit);
@@ -3333,7 +3333,7 @@
     try { const bs = localStorage.getItem("naeilo-basis"); if (bs && $(`#histBasis button[data-b="${bs}"]`)) $$("#histBasis button").forEach((b) => b.classList.toggle("on", b.dataset.b === bs)); } catch (e) { /* 무시 */ } // 평가액 추이 미래 기준은 리로드해도 유지
     try { const hf = localStorage.getItem("naeilo-histfc"); if (hf) $$("#histFc button").forEach((b) => b.classList.toggle("on", b.dataset.f === hf)); } catch (e) { /* 무시 */ } // 예보 겹치기도 유지
     if (window.themeUI) themeUI($("#themeBox"));
-    bind(); renderAll(); foldHold(); marFetch(); syncPull(); renderEsync(); allocWarm(2500);
+    bind(); renderAll(); marFetch(); syncPull(); renderEsync(); allocWarm(2500);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncPull(); });
     setAuto(S.state.ui.auto_refresh_min || 0);
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; if (tab === "analysis") tab = ANA_TAB[localStorage.getItem("ana")] || "forecast"; } catch (e) { /* 무시 */ }
