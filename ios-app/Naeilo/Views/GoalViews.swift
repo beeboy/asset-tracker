@@ -97,6 +97,12 @@ struct GoalBoardView: View {
                                 title: m.gDone.contains("goal") ? "\(m.gY)년 뒤 \(AppModel.wonK(m.gK))까지" : "목표까지 가는 길")
                     if m.gDone.contains("goal") {
                         Text("지금 \(AppModel.wonK(start)) · 목표까지 \(AppModel.wonK(max(0, m.gK - start))) 남았어요").appFont(15).foregroundStyle(Theme.sub)
+                        // 목표는 미션을 지난 뒤에도 언제든 고칠 수 있다
+                        Button { m.boardPath.append(.g1) } label: {
+                            Label("목표 고치기", systemImage: "pencil").appFont(14, .semibold).foregroundStyle(Theme.teal)
+                                .padding(.horizontal, 12).frame(minHeight: 36)
+                                .overlay(Capsule().stroke(Theme.teal, lineWidth: 1.5))
+                        }.buttonStyle(.plain).padding(.top, 4)
                     }
                 }
                 if !done.isEmpty {
@@ -277,6 +283,10 @@ struct GoalHoldResultView: View {
 
 struct GoalSetView: View {
     @Environment(AppModel.self) private var m
+    @Environment(\.dismiss) private var dismiss
+    /// 설정에서 열었을 때: 저장하면 돌아가고, 미션 진행은 건드리지 않는다
+    var fromSettings = false
+    @FocusState private var focus: Bool
     @State private var k = ""
     @State private var y = ""
     @State private var a = ""
@@ -321,16 +331,19 @@ struct GoalSetView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                inputField("목표 금액 (만원)", $k).onChange(of: k) { _, v in if let d = Double(v), d > 0 { m.gK = d } }
-                inputField("몇 년 뒤", $y).onChange(of: y) { _, v in if let d = Int(v) { m.gY = min(30, max(1, d)) } }
+                inputField("목표 금액 (만원)", $k).focused($focus).onChange(of: k) { _, v in if let d = Double(v.replacingOccurrences(of: ",", with: "")), d > 0 { m.gK = d } }
+                inputField("몇 년 뒤", $y).focused($focus).onChange(of: y) { _, v in if let d = Int(v.replacingOccurrences(of: ",", with: "")) { m.gY = min(30, max(1, d)) } }
                 if m.route == .novice {
-                    inputField("지금 모아 둔 투자금 (만원, 없으면 0)", $a).onChange(of: a) { _, v in m.gA = max(0, Double(v) ?? 0) }
+                    inputField("지금 모아 둔 투자금 (만원, 없으면 0)", $a).focused($focus).onChange(of: a) { _, v in m.gA = max(0, Double(v) ?? 0) }
                 } else {
                     Text("출발점: 지금 평가액 \(AppModel.wonK(start)) (미션 1에서 넣은 종목 기준)").appFont(13).foregroundStyle(Theme.sub)
                 }
-                PrimaryButton(title: "목표까지 가는 길 보기", color: ok ? Theme.teal : Theme.muted) {
+                PrimaryButton(title: fromSettings || m.gDone.contains("goal") ? "이 목표로 저장" : "목표까지 가는 길 보기", color: ok ? Theme.teal : Theme.muted) {
                     guard ok else { return }
+                    focus = false
                     if m.gM <= 0 || m.route == .novice { m.gM = max(5, (need / 5).rounded() * 5) }
+                    if fromSettings { dismiss(); return }
+                    if m.gDone.contains("goal") { m.boardPath.removeLast(); return }   // 고치기: 미션 판으로 돌아간다
                     m.gDone.insert("goal"); m.boardPath.append(.g1r)
                 }
             }
@@ -339,6 +352,8 @@ struct GoalSetView: View {
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { k = String(Int(m.gK)); y = String(m.gY); a = String(Int(m.gA)) }
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = false } } }
     }
 }
 

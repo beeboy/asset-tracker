@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route, charPreview }
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route, goal, charPreview }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
@@ -15,7 +15,7 @@ struct SettingsView: View {
             ("시세 기준", "미국 종목·환율 지금 가격 · 한국 종목 전일 종가", .price),
             ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
             ("루트", m.route == .recover ? "회복 · 마이너스" : m.route == .plus ? "목표 · 플러스" : "목표 · 시작 전", .route),
-        ]
+        ] + (m.isGoal ? [("목표", "\(m.gY)년 뒤 \(AppModel.wonK(m.gK)) · 고치기", SettingsRoute.goal)] : [])
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader().padding(.horizontal, -16)
@@ -73,6 +73,7 @@ struct SettingsView: View {
             case .price: PriceBasisView()
             case .howto: HowToView()
             case .route: RouteView()
+            case .goal: GoalSetView(fromSettings: true)
             case .charPreview: CharWidgetPreview()
             }
         }
