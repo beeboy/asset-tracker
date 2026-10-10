@@ -510,6 +510,7 @@ struct HowToView: View {
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
             }
+            SponsorList()   // 고급 스페셜티 커피 후원자 (개발자가 확인한 이름·로고)
         }
     }
 }

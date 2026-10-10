@@ -20,6 +20,7 @@ struct SupportView: View {
                 }
                 ForEach(SupportTier.allCases.filter { $0 != .free }, id: \.self) { tierCard($0) }
                 tipCard
+                if s.has(.specialty) { SponsorForm() }
                 if s.products.isEmpty {
                     Text("상품을 불러오지 못했어요. App Store 연결을 확인하거나 잠시 뒤 다시 열어 주세요.")
                         .appFont(12).foregroundStyle(Theme.muted)
@@ -33,6 +34,7 @@ struct SupportView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
                 }
                 .buttonStyle(.plain).disabled(s.busy != nil)
+                SponsorList()
                 Text("Apple ID로 결제하는 인앱 구매예요. 한 번 사면 계속 열리고, 다른 기기와 가족 공유 가족도 같이 열려요. 윗등급은 아래 등급을 모두 포함하고 정가예요. '한 잔 더'는 아무것도 열지 않는 후원이에요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
             }
@@ -60,7 +62,6 @@ struct SupportView: View {
                         Text(a).appFont(14).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                if t.pending { Text("읽기·이름 올리기는 준비 중이에요. 준비되면 산 분께 바로 열려요.").appFont(12).foregroundStyle(Theme.muted) }
             }
             Button { if let p { Task { await s.buy(p) } } } label: {
                 Text(owned ? "가지고 있어요" : p == nil ? "지금은 살 수 없어요" : s.busy == p?.id ? "결제하는 중…" : "후원하기")

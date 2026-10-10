@@ -23,14 +23,12 @@ enum SupportTier: Int, Comparable, CaseIterable {
     var adds: [String] {
         switch self {
         case .free: []
-        case .mix: ["외전 6장부터 끝까지 읽기"]
+        case .mix: ["외전 6장부터 코다까지 읽기 (한글·영문)"]
         case .dabang: ["모든 보상 미리 보기 (못 만난 친구·아직 안 돌아온 물건)", "나중에 광고가 생겨도 광고 없음"]
-        case .franchise: ["본편 1권 읽기"]
+        case .franchise: ["본편 『중첩된 현실』 1권 읽기 (한국어)"]
         case .specialty: ["도움말·정보 화면에 후원자 이름(또는 로고)"]
         }
     }
-    /// 아직 서버 쪽이 없어서 앱에서 바로 열리지 않는 것 (구매 화면에 '준비 중'으로)
-    var pending: Bool { self == .mix || self == .franchise || self == .specialty }
 }
 
 // 등급·테스트 빌드 값은 어디서든 읽을 수 있게 클래스는 메인 액터에 묶지 않고 (AppModel.devAll 이 읽는다), 바꾸는 함수만 메인 액터에서
@@ -44,6 +42,8 @@ final class Support {
         didSet { UserDefaults.standard.set(tier.rawValue, forKey: "supportTier") }
     }
     private(set) var products: [Product] = []
+    /// 가진 구매의 서명된 거래 (후원 서버가 등급을 확인한다). 가족 공유로 받은 것도 포함
+    private(set) var jws: [String] = []
     private(set) var busy: String? = nil       // 구매 중인 상품
     var message: String? = nil                 // 구매 결과 한 줄
     private(set) var tips = UserDefaults.standard.integer(forKey: "supportTips") {
@@ -79,17 +79,20 @@ final class Support {
         let ids = SupportTier.allCases.filter { $0 != .free }.map(\.productID) + [Self.tipID]
         if let p = try? await Product.products(for: ids) { products = p.sorted { $0.price < $1.price } }
     }
+    /// 이 등급 이상인지. 개발자 빌드(TestFlight·Xcode)에서 개발자 동기화로 연결한 기기도 (서버가 토큰으로 확인)
+    func has(_ t: SupportTier) -> Bool { tier >= t || (testBuild && Sync.shared.isDev) }
     func product(_ t: SupportTier) -> Product? { products.first { $0.id == t.productID } }
     var tipProduct: Product? { products.first { $0.id == Self.tipID } }
 
     /// 가진 비소모성 상품 중 가장 높은 등급 (환불·취소된 것은 뺀다. 가족 공유로 받은 것도 포함)
     @MainActor func refresh() async {
-        var best = SupportTier.free
+        var best = SupportTier.free, signed: [String] = []
         for await r in Transaction.currentEntitlements {
             guard case .verified(let t) = r, t.revocationDate == nil, let tier = SupportTier(productID: t.productID) else { continue }
             best = max(best, tier)
+            signed.append(r.jwsRepresentation)
         }
-        tier = best
+        tier = best; jws = signed
     }
 
     @MainActor func buy(_ p: Product) async {
