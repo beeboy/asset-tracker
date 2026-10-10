@@ -40,6 +40,7 @@ struct NaeiloWidgets: WidgetBundle {
         CharRecover()
         CharBlock()
         CharMoves()
+        StoryWidget()
         LockWidgets().body
     }
 }
