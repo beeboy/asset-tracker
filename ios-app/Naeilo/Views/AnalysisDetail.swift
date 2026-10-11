@@ -17,18 +17,61 @@ extension AppModel {
     }
     var pathStartText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"; return f.string(from: pathStartDate) }
     var pathStartMonth: String { "\(Calendar.current.component(.month, from: pathStartDate))월" }
-    struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let act: (Double) -> Double; let need: (Double) -> Double }
+    /// pts = 실제 평가액 (시작부터 년, 원). 거래일마다 하나, 끝은 오늘 지금 평가액
+    struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let pts: [(Double, Double)]; let act: (Double) -> Double; let need: (Double) -> Double }
+    /// 두 날짜("yyyy-MM-dd") 사이 년 (웹 yearsBetween 과 같은 식)
+    static func yrs(_ a: String, _ b: String) -> Double {
+        guard let x = Day.date(a), let y = Day.date(b) else { return 0 }
+        return y.timeIntervalSince(x) / (365.25 * 86400)
+    }
+    /// 내 길 실제 평가액 (웹 목표 진행 actualSeries 와 같은 식): 시작일 무렵부터 거래일마다
+    /// 그날 수량(수량 기록, 없으면 지금 수량) × 그날 종가 × 그날 원/달러 종가. 과거 시세가 없는 종목은 지금 평가액 그대로
+    func pathSeries(from start: String) -> [(d: String, v: Double)] {
+        let rs = rows, today = Day.today, fxH = PriceHistory.of("FX")
+        let from = Day.str(Calendar.current.date(byAdding: .day, value: -10, to: Day.date(start) ?? Date()) ?? Date())
+        var ds = Set<String>()
+        for r in rs { if let h = PriceHistory.of(r.id) { for d in h.dates.reversed() { if d < from { break }; if d < today { ds.insert(d) } } } }
+        return ds.sorted().map { d in
+            let q = Lots.on(lots, d)
+            let v = rs.reduce(0.0) { a, r in
+                guard let h = PriceHistory.of(r.id), let px = h.on(d) else { return a + (PriceHistory.of(r.id) == nil ? r.value : 0) }
+                let n = q.map { $0[Sync.siteTicker(r.id)] ?? 0 } ?? r.h.qty
+                return a + px * n * (r.sym.currency == .usd ? (fxH?.on(d) ?? Market.shared.valFx) : 1)
+            }
+            return (d: d, v: v)
+        }
+    }
     var myPath: MyPath {
         let mEnd = isGoal ? goalSpan : 1     // 목표: 시작일부터 목표일까지 (사이트와 같은 날짜)
-        // 시작한 날부터 지금까지 (년). 오늘 시작이면 하루로 둔다
-        let mS = min(mEnd * 0.95, max(1.0 / 365, Date().timeIntervalSince(pathStartDate) / (365.25 * 86400))), mM = isGoal ? gM * 1e4 : 0, K = keyValue
+        let sD = Day.str(pathStartDate), today = Day.today
+        // 시작한 날부터 오늘까지 (년). 오늘 시작이면 하루로 둔다
+        let mS = min(mEnd * 0.95, max(1.0 / 365.25, Self.yrs(sD, today))), mM = isGoal ? gM * 1e4 : 0, K = keyValue
         let now = trackValue
-        let act: (Double) -> Double = route == .novice
-            ? { t in max(0, now - mM * 12 * max(0, mS - t)) }
-            : { t in self.totalAt(1 - (mS - t) / 3) }
-        let vS = act(0), kAdj = K - mM * 12 * mEnd
+        var pts: [(Double, Double)]
+        if route == .novice {
+            pts = (0...30).map { i in let t = mS * Double(i) / 30; return (t, max(0, now - mM * 12 * (mS - t))) }
+        } else if isSample {
+            // 샘플(가상 종목 DRNK)은 날짜별 시세가 없어 지난 3년 흐름에서 어림한다
+            pts = (0...30).map { i in let t = mS * Double(i) / 30; return (t, i == 30 ? now : self.totalAt(1 - (mS - t) / 3)) }
+        } else {
+            // 웹처럼 시작일 또는 그 뒤 첫 거래일 값에서 출발 (시작일 뒤 거래일이 아직 없으면 그 전 마지막 거래일)
+            let S = pathSeries(from: sD)
+            let i0 = S.firstIndex { $0.d >= sD } ?? max(0, S.count - 1)
+            pts = []
+            if !S.isEmpty {
+                pts.append((0.0, S[i0].v))
+                for x in S[(i0 + 1)...] { pts.append((Self.yrs(sD, x.d), x.v)) }
+            }
+            pts.append((mS, now))
+        }
+        let P = pts
+        let act: (Double) -> Double = { t in
+            if t >= mS { return now }
+            return (P.last { $0.0 <= t } ?? P.first)?.1 ?? now
+        }
+        let vS = P.first?.1 ?? now, kAdj = K - mM * 12 * mEnd
         let need: (Double) -> Double = { t in mM * 12 * t + (kAdj > 0 && vS > 0 ? vS * pow(kAdj / vS, t / mEnd) : vS + (K - vS) * t / mEnd) }
-        return MyPath(start: mS, end: mEnd, key: K, monthly: mM, act: act, need: need)
+        return MyPath(start: mS, end: mEnd, key: K, monthly: mM, pts: P, act: act, need: need)
     }
     var myPathGapToday: Double { let p = myPath; let n = p.need(p.start); return n > 0 ? p.act(p.start) / n - 1 : 0 }
 
@@ -136,14 +179,16 @@ private func linePath(_ pts: [(Double, Double)], in size: CGSize) -> Path {
 
 struct MyPathView: View {
     @Environment(AppModel.self) private var m
-    @State private var view = "all"
+    // 고르기 전에는 시작한 지 석 달이 안 됐으면 '시작부터' (목표일까지 보면 실제 선이 점처럼 짧다)
+    @State private var picked: String? = nil
 
     var body: some View {
         let p = m.myPath, mS = p.start, mEnd = p.end, K = p.key, act = p.act, need = p.need
-        let gap = m.myPathGapToday
+        let view = picked ?? (mS < 0.25 ? "past" : "all")
+        let gap = p.need(mS) > 0 ? p.act(mS) / p.need(mS) - 1 : 0
         let f = m.forecast
         let x1 = view == "past" ? mS + 1.0 / 12 : mEnd
-        let actPts = (0...30).map { i -> (Double, Double) in let t = mS * Double(i) / 30; return (t, act(t)) }
+        let actPts = p.pts
         let needPts = (0...60).map { i -> (Double, Double) in let t = x1 * Double(i) / 60; return (t, need(t)) }
         let bandPts: [(Double, Double, Double)] = view == "band"
             // 전망(오늘부터 목표일까지 월 경계마다)을 그래프 끝까지 겹친다
@@ -152,6 +197,18 @@ struct MyPathView: View {
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
         let yrsLeft = mEnd - mS
+        // 남은 기간: 달력으로 센다 (2년 12개월 대신 3년, 2년 11개월)
+        let endDate = m.isGoal ? m.goalToDate : (Calendar.current.date(byAdding: .year, value: 1, to: m.pathStartDate) ?? Date())
+        let left = Calendar.current.dateComponents([.year, .month, .day], from: Calendar.current.startOfDay(for: Date()), to: endDate)
+        let leftText = (left.year ?? 0) > 0 || (left.month ?? 0) > 0
+            ? ((left.year ?? 0) > 0 ? "\(left.year!)년" : "") + ((left.month ?? 0) > 0 ? ((left.year ?? 0) > 0 ? " " : "") + "\(left.month!)개월" : "")
+            : "\(max(0, left.day ?? 0))일"
+        // 지난 달마다: 시작한 날부터 꽉 채운 달만 (최근 6달), 끝은 오늘
+        let months = Calendar.current.dateComponents([.month], from: m.pathStartDate, to: Date()).month ?? 0
+        let monthRows: [(String, Double)] = (max(1, months - 5)...max(1, months)).compactMap { k -> (String, Double)? in
+            guard k <= months, let d = Calendar.current.date(byAdding: .month, value: k, to: m.pathStartDate) else { return nil }
+            return ("\(k)달째", d.timeIntervalSince(m.pathStartDate) / (365.25 * 86400))
+        } + [("오늘", mS)]
         let now = m.trackValue, mM = p.monthly
         let needCagr = now > 0 && yrsLeft > 0 ? pow(max(1, K - mM * 12 * yrsLeft) / now, 1 / yrsLeft) - 1 : 0
         let pPlan = m.isGoal ? f.pGoal : f.prob(min(3, yrsLeft))   // 목표 루트: 목표일에 목표 이상일 확률 (웹 목표 확률)
@@ -177,7 +234,13 @@ struct MyPathView: View {
                                with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
                     ctx.stroke(linePath(needPts.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.purple), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
                     ctx.stroke(linePath(actPts.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.teal), style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
-                    let ty = Y(actPts.last!.1) * size.height
+                    // 거래일이 적을 때는 날마다 작은 점도 찍는다
+                    if actPts.count <= 40 {
+                        for q in actPts.dropLast() {
+                            ctx.fill(Path(ellipseIn: CGRect(x: X(q.0) * size.width - 2, y: Y(q.1) * size.height - 2, width: 4, height: 4)), with: .color(Theme.teal))
+                        }
+                    }
+                    let ty = Y(actPts.last?.1 ?? 0) * size.height
                     ctx.fill(Path(ellipseIn: CGRect(x: tx - 4, y: ty - 4, width: 8, height: 8)), with: .color(Theme.teal))
                 }
                 .frame(height: 140)
@@ -198,25 +261,27 @@ struct MyPathView: View {
                 }
                 .accessibilityLabel("내 길과 실제 평가액 그래프")
                 HStack { Text("시작 \(m.pathStartMonth)"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "목표일 \(m.goalToText)" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
-                ChipRow(items: [("past", "시작부터"), ("all", "목표일까지"), ("band", "예보 겹치기")], selection: $view, fill: true)
+                ChipRow(items: [("past", "시작부터"), ("all", "목표일까지"), ("band", "예보 겹치기")], selection: Binding(get: { view }, set: { picked = $0 }), fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 Card {
                     Text("달마다 내 길보다 앞섰나").appFont(15, .bold)
-                    ForEach(1...3, id: \.self) { k in
-                        let t = Double(k) / 12, g = need(t) > 0 ? act(t) / need(t) - 1 : 0
-                        SignedBar(label: k == 3 ? "오늘" : "\(k)달째", value: AppModel.sgn(g), g: g, scale: 0.2, pos: Theme.green, neg: Theme.orange,
+                    ForEach(monthRows.indices, id: \.self) { i in
+                        let t = monthRows[i].1, g = need(t) > 0 ? act(t) / need(t) - 1 : 0
+                        SignedBar(label: monthRows[i].0, value: AppModel.sgn(g), g: g, scale: 0.2, pos: Theme.green, neg: Theme.orange,
                                   valueColor: g >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
                     }
+                    if months < 1 { Text("시작한 지 한 달이 지나면 달마다 쌓여요.").appFont(12).foregroundStyle(Theme.muted) }
                 }
                 kpiGrid([
-                    Kpi(k: "목표일까지", v: (yrsLeft >= 1 ? "\(Int(yrsLeft))년 " : "") + "\(Int((yrsLeft.truncatingRemainder(dividingBy: 1) * 12).rounded()))개월", sub: m.isGoal ? "\(m.goalToText)까지" : "1년 목표"),
+                    Kpi(k: "목표일까지", v: leftText, sub: m.isGoal ? "\(m.goalToText)까지" : "1년 목표"),
                     Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? "적립 포함, 남은 기간" : "본전까지 남은 기간"),
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
                     Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "\(m.forecastTitle) (\(m.lens.label))"),
                 ], dark: true)
                 footnote("예측이 아닌 기준선. 목표와 적립으로 그은 길보다 실제가 앞섰는지 봐요. 종목 추천이 아닙니다.")
+                footnote("실제는 날마다 그날 수량 × 그날 종가·환율, 오늘은 매매기준율로 센 평가액이에요 (naeilo.com 목표 진행과 같은 계산).")
                 footnote(m.isGoal ? "목표 금액·목표일·시작일·매달 넣는 돈은 naeilo.com과 같은 값이에요 (기기 동기화를 켰을 때)."
                          : "회복 루트는 본전 기준이에요. naeilo.com의 내 길은 목표 기준이라 다르게 보여요.")
             }

@@ -22,7 +22,7 @@ enum WidgetBridge {
             ccy[r.id] = r.sym.currency == .usd ? "USD" : "KRW"
         }
         q["KRW=X"] = [fx.last, fx.prevClose, now.timeIntervalSince1970]
-        let feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: nil)
+        let feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Market.shared.mar.map { WFeed.Mar(rate: $0.rate, date: $0.date) })   // 위젯 평가액도 앱·웹처럼 매매기준율
 
         let live = WLive(hold: rows.map { .init(t: $0.id, sh: $0.h.qty, price: $0.sym.last) },
                          cashKrw: 0, cashUsd: 0, goalAmount: goal, goalDate: Day.str(end), goalStart: Day.str(start),
