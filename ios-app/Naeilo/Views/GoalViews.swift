@@ -126,6 +126,13 @@ struct GoalBoardView: View {
                     ForEach(shown.filter { !$0.inter }) { block($0) }
                 }
                 ForEach(shown.filter(\.inter)) { block($0) }
+                if m.goalReached {
+                    Card(padding: 18) {
+                        GuideBubble(pose: .cheer, text: "목표 \(AppModel.wonK(m.gK))에 닿았어요! 여기까지 온 길, 축하해요.")
+                        Text("지금 \(AppModel.wonK(m.trackValue / 1e4))에서 다음 목표를 정해요. 3년 안에 닿을 확률 50% 근처로 골라 둘게요.").appFont(14).foregroundStyle(Theme.sub)
+                        PrimaryButton(title: "다음 목표 정하기") { m.suggestNextGoal(); m.boardPath.append(.g1) }
+                    }
+                }
                 if let next = steps.first(where: { !m.gDone.contains($0.id) && m.goalAvailable($0) }), !next.inter {
                     Card(padding: 18) {
                         Text("다음 미션 \(next.num)").appFont(13, .semibold).foregroundStyle(Theme.teal)
@@ -291,9 +298,12 @@ struct GoalSetView: View {
     @State private var k = ""
     @State private var y = ""
     @State private var a = ""
+    @State private var mo = ""
 
     var body: some View {
-        let need = m.neededMonthly(), path = m.simulate(m.route == .novice ? AppModel.mixes[0] : m.mineMix, monthly: need)
+        // 플러스: 내가 매달 넣을 돈(gM)으로 닿을 확률. 시작 전: 보통의 경우로 맞춘 월 적립으로
+        let plus = m.route != .novice
+        let need = m.neededMonthly(), path = m.simulate(plus ? m.mineMix : AppModel.mixes[0], monthly: plus ? m.gM : need)
         let start = m.goalStart, cagr = start > 0 ? pow(m.gK / start, 1 / Double(m.gY)) - 1 : 0
         let ok = m.gK > 0 && m.gY >= 1
         PinnedLayout {
@@ -305,7 +315,11 @@ struct GoalSetView: View {
                     Spacer()
                     (Text("닿을 확률 ") + Text(AppModel.pct(path.prob)).bold().foregroundColor(Theme.teal)).appFont(14)
                 }
-                Text((need > 0 ? "월 " + AppModel.wonK(need) : "이미 충분") + " (1년 \(AppModel.wonK(need * 12)))").appFont(14, .semibold)
+                if plus {
+                    Text("월 \(AppModel.wonK(m.gM))씩 넣을 때 · " + (need > 0 ? "보통의 경우로 맞추려면 월 \(AppModel.wonK(need))" : "보통의 경우면 이미 충분")).appFont(14, .semibold)
+                } else {
+                    Text((need > 0 ? "월 " + AppModel.wonK(need) : "이미 충분") + " (1년 \(AppModel.wonK(need * 12)))").appFont(14, .semibold)
+                }
                 Text(m.route == .novice ? (m.gK <= 1000 ? "첫 목표 · 적립 습관 만들기" : "연 7%면 한 해 \(AppModel.wonK(m.gK * 0.07))씩 불어나는 크기")
                      : "지금 \(AppModel.wonK(start))의 \(String(format: "%.1f", m.gK / max(1, start)))배 · 적립 없이 가려면 한 해 +\(Int((cagr * 100).rounded()))%씩")
                     .appFont(13).foregroundStyle(Theme.sub)
@@ -320,7 +334,7 @@ struct GoalSetView: View {
                 } else if m.route == .novice {
                     GuideBubble(pose: .wave, text: "처음 시작하시는군요. …… 첫 목표부터 정해요. 지금 모아 둔 투자금이 없으면 0을 넣으세요.")
                 } else {
-                    GuideBubble(pose: .think, text: "언제까지, 얼마를 모으고 싶나요? …… 카드를 누르면 위 그래프와 확률이 바로 바뀌어요. 모두 지금 \(AppModel.wonK(start))에서 출발한 계산이에요.")
+                    GuideBubble(pose: .think, text: "언제까지, 얼마를 모으고 싶나요? …… 카드는 매달 넣는 돈으로 닿을 확률이 반반쯤인 금액이에요. 모두 지금 \(AppModel.wonK(start))에서 출발한 계산이에요.")
                 }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                     ForEach(m.goalPresets) { p in
@@ -342,12 +356,15 @@ struct GoalSetView: View {
                 if m.route == .novice {
                     inputField("지금 모아 둔 투자금 (만원, 없으면 0)", $a).focused($focus).onChange(of: a) { _, v in m.gA = max(0, Double(v) ?? 0) }
                 } else {
+                    inputField("매달 넣을 돈 (만원, 없으면 0)", $mo).focused($focus).onChange(of: mo) { _, v in m.gM = max(0, Double(v.replacingOccurrences(of: ",", with: "")) ?? 0) }
+                    Button("확률 50% 근처로 맞추기") { focus = false; m.gK = m.autoGoal(years: m.gY); k = String(Int(m.gK)) }
+                        .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 44)
                     Text("출발점: 지금 평가액 \(AppModel.wonK(start)) (미션 1에서 넣은 종목 기준)").appFont(13).foregroundStyle(Theme.sub)
                 }
                 PrimaryButton(title: fromSettings || m.gDone.contains("goal") ? "이 목표로 저장" : "목표까지 가는 길 보기", color: ok ? Theme.teal : Theme.muted) {
                     guard ok else { return }
                     focus = false
-                    if m.gM <= 0 || m.route == .novice { m.gM = max(5, (need / 5).rounded() * 5) }
+                    if m.route == .novice { m.gM = max(5, (need / 5).rounded() * 5) }
                     if fromSettings { dismiss(); return }
                     if m.gDone.contains("goal") { m.boardPath.removeLast(); return }   // 고치기: 미션 판으로 돌아간다
                     m.gDone.insert("goal"); m.boardPath.append(.g1r)
@@ -357,7 +374,7 @@ struct GoalSetView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { k = String(Int(m.gK)); y = String(m.gY); a = String(Int(m.gA)) }
+        .onAppear { k = String(Int(m.gK)); y = String(m.gY); a = String(Int(m.gA)); mo = String(Int(m.gM)) }
         .scrollDismissesKeyboard(.interactively)
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = false } } }
     }
@@ -622,7 +639,11 @@ struct GoalIntermissionView: View {
                             }
                         }
                         Text("이번 달이 끝나기 전까지는 다시 고를 수 있어요. 지난 달은 바꿀 수 없어요.").appFont(12).foregroundStyle(Theme.muted)
-                        if m.gWeekCur != nil {
+                        // 달은 시작한 날부터 30일마다 열린다 (서버 시각). 열리기 전에는 남은 날을 보여 준다
+                        if let wait = m.monthGateText {
+                            Label(wait, systemImage: "clock").appFont(13).foregroundStyle(Theme.sub)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else if m.gWeekCur != nil {
                             Button(fixed.count == 2 ? "3달째 마치기" : "이번 달 마치기") { withAnimation { m.confirmGoalMonth() } }
                                 .appFont(14, .semibold).foregroundStyle(Theme.ink).frame(maxWidth: .infinity, minHeight: 44)
                                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))

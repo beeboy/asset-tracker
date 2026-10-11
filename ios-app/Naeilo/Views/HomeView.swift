@@ -66,8 +66,10 @@ struct HomeView: View {
             }
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: prog)
-            Text("오늘 \(AppModel.sgn(m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog)) 도달. 다음달 \(AppModel.wonK(m.gM)) 적립 예정.")
+            Text(m.goalReached ? "목표 \(AppModel.wonK(m.gK))에 닿았어요! 축하해요. 지금 금액에서 다음 목표를 정해 볼까요?"
+                 : "오늘 \(AppModel.sgn(m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog)) 도달. 다음달 \(AppModel.wonK(m.gM)) 적립 예정.")
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
+            if m.goalReached { darkButton("다음 목표 정하기") { m.suggestNextGoal(); m.homePath.append("goal") } }
         }
         .foregroundStyle(.white)
         .padding(18)
@@ -97,13 +99,23 @@ struct HomeView: View {
             ProgressBar(value: m.total / max(1, m.cost))
             Text(need > 0
                  ? "본전까지 남은 오름폭이 \(String(format: "%.1f", needY * 100))%에서 \(String(format: "%.1f", need * 100))%로 " + (need <= needY ? "줄었어요." : "늘었어요. 하루 숫자는 흔들려요.")
-                 : "본전을 넘었어요. 이제 목표 루트로 갈 수 있어요.")
+                 : "본전을 넘었어요. 이제 목표 루트로 갈 수 있어요. 종목·위젯·만난 친구는 그대로예요.")
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
+            if need <= 0 { darkButton("목표 루트로") { m.graduateToGoal(); m.tab = .board } }
         }
         .foregroundStyle(.white)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    // 어두운 요약 카드 안의 노란 버튼 (목표 루트로 · 다음 목표)
+    private func darkButton(_ t: String, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Text(t + " ›").appFont(15, .bold).foregroundStyle(Theme.inkFixed)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(Theme.yellow, in: RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
     }
 
     // 쉼터 박스: 홈에 둔 친구 + 말풍선 (리마인드 소식이 있으면 그 소식) + 새 소식 + 다른 친구 칸

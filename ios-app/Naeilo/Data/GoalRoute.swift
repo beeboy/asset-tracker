@@ -64,10 +64,11 @@ extension AppModel {
     var goalMixes: [GoalMix] { route == .novice ? Self.mixes : [mineMix] + Self.mixes }
     var selectedMix: GoalMix { goalMixes.first { $0.id == gMix } ?? goalMixes[0] }
 
-    func simulate(_ mx: GoalMix, monthly: Double? = nil) -> GoalSim {
-        let mo = monthly ?? gM, gY = self.gY, K = gK, A = goalStart
+    /// k·years·start 를 주면 지금 목표 대신 그 값으로 (목표 자동 고르기에서 씀, cache: false 면 캐시에 넣지 않는다)
+    func simulate(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true) -> GoalSim {
+        let mo = monthly ?? gM, gY = years ?? self.gY, K = k ?? gK, A = start ?? goalStart
         let ck = "\(mx.mu)|\(mx.sigma)|\(mo)|\(gY)|\(K)|\(A)"
-        if let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal) }
+        if cache, let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal) }
         var seed = 12345
         func rnd() -> Double { seed = (seed &* 1103515245 &+ 12345) % 2147483648; return (Double(seed) + 0.5) / 2147483648 }
         let NP = 500, H = min(40, gY * 2 + 5) * 12
@@ -91,8 +92,10 @@ extension AppModel {
         let r = GoalSim(mix: mx, prob: prob, etaMonths: q(hits, 0.5),
                         med: byYear.map { q($0, 0.5) }, lo: byYear.map { q($0, 0.05) }, hi: byYear.map { q($0, 0.95) },
                         principal: (0...gY).map { A + mo * 12 * Double($0) })
-        if simCache.count > 64 { simCache.removeAll() }
-        simCache[ck] = r
+        if cache {
+            if simCache.count > 64 { simCache.removeAll() }
+            simCache[ck] = r
+        }
         return r
     }
 
@@ -110,18 +113,49 @@ extension AppModel {
         return .infinity
     }
 
+    /// 보기 좋은 금액 (만원): 앞 두 자리만 남긴다 (5억 4천 → 5.4억, 3,460만 → 3,500만)
+    static func round2(_ x: Double) -> Double {
+        guard x >= 100 else { return 100 }
+        let u = pow(10, floor(log10(x)) - 1)
+        return (x / u).rounded() * u
+    }
+    /// 목표 금액 자동 고르기: 지금 금액에서 매달 monthly(만원)씩 넣을 때 years 안에 닿을 확률이 50% 근처인 금액 (만원).
+    /// 확률은 목표 화면과 같은 계산(simulate)이라 고른 뒤 화면에 보이는 확률도 50% 근처다
+    func autoGoal(years: Int, monthly: Double? = nil, from start: Double? = nil) -> Double {
+        let A = start ?? goalStart, mo = max(0, monthly ?? gM), mx = route == .novice ? Self.mixes[0] : mineMix
+        guard A + mo > 0 else { return 1000 }
+        let ck = "\(mx.mu)|\(mx.sigma)|\(mo)|\(years)|\(A)"
+        if let c = autoCache[ck] { return c }
+        func p(_ K: Double) -> Double { simulate(mx, monthly: mo, k: K, years: years, start: A, cache: false).prob }
+        var lo = max(1, A), hi = max(lo * 2, A + mo * 12 * Double(years) * 2)
+        var n = 0
+        while p(hi) > 0.5 && n < 20 { lo = hi; hi *= 2; n += 1 }
+        for _ in 0..<14 {
+            let mid = (lo + hi) / 2
+            if p(mid) > 0.5 { lo = mid } else { hi = mid }
+        }
+        let r = max(Self.round2(A + 1), Self.round2((lo + hi) / 2))
+        if autoCache.count > 64 { autoCache.removeAll() }
+        autoCache[ck] = r
+        return r
+    }
+
     struct GoalPreset: Identifiable { var id: String { name }; let k: Double; let y: Int; let name: String; let mean: String; let need: String }
     var goalPresets: [GoalPreset] {
         let A = goalStart
-        func nice(_ x: Double) -> Double {
-            x < 10000 ? max(1000, (x / 1000).rounded() * 1000) : x < 50000 ? (x / 5000).rounded() * 5000 : (x / 10000).rounded() * 10000
-        }
         func meaning(_ k: Double) -> String {
             k <= 1000 ? "첫 목표 · 적립 습관 만들기" : k <= 10000 ? "연 7%면 한 해 \(Self.wonK(k * 0.07))씩 불어나는 크기" : "연 4%씩 꺼내 쓰면 월 \(Self.wonK(k * 0.04 / 12))"
         }
-        let raw: [(Double, Int, String, Int?)] = route == .novice
-            ? [(1000, 3, "첫 1,000만원", nil), (10000, 5, "1억", nil), (30000, 10, "3억", nil), (100000, 20, "10억", nil)]
-            : [(2, 1), (3, 2), (4, 3), (5, 4)].map { x, y in let k = nice(A * Double(x)); return (k, y, Self.wonK(k).replacingOccurrences(of: "원", with: ""), x) }
+        // 플러스: 기간마다 '매달 넣는 돈으로 닿을 확률 50% 근처' 금액 (배수 프리셋 대신, 2026-10-11 결정)
+        if route != .novice {
+            return [1, 3, 5, 10].map { y in
+                let k = autoGoal(years: y)
+                return GoalPreset(k: k, y: y, name: Self.wonK(k).replacingOccurrences(of: "원", with: ""),
+                                  mean: (gM > 0 ? "월 \(Self.wonK(gM))씩 넣으면" : "적립 없이") + " 닿을 확률 50% 근처",
+                                  need: A > 0 ? "지금의 \(String(format: "%.1f", k / A))배" : "")
+            }
+        }
+        let raw: [(Double, Int, String, Int?)] = [(1000, 3, "첫 1,000만원", nil), (10000, 5, "1억", nil), (30000, 10, "3억", nil), (100000, 20, "10억", nil)]
         return raw.map { k, y, name, x in
             let nm = neededMonthly(k: k, years: y), cagr = A > 0 ? pow(k / A, 1 / Double(y)) - 1 : 0
             return GoalPreset(k: k, y: y, name: x.map { "\(name) (\($0)배)" } ?? name,
@@ -147,6 +181,8 @@ extension AppModel {
     func goalNo(_ id: String) -> String { goalSteps.first { $0.id == id }?.num ?? "" }
     func goalAvailable(_ s: GoalStep) -> Bool {
         guard let i = goalSteps.firstIndex(where: { $0.id == s.id }) else { return false }
+        // 인터미션은 앞 미션을 모두 끝낸 뒤 (회복 루트에서 넘어와 '앱 시작 3단계'가 이미 끝난 경우에도)
+        if s.inter { return goalSteps.filter { !$0.inter }.allSatisfy { gDone.contains($0.id) } }
         return i == 0 || gDone.contains(goalSteps[i - 1].id)
     }
 
@@ -195,21 +231,40 @@ extension AppModel {
     static let goalMonthSteps: [(task: String, whereText: String, reward: String)] = [
         ("앱에서 이번 달 적립 기록하기", "앱", "세리"), ("PC에서 증권사 거래내역 파일 올리기", "PC 웹", "시오"), ("앱에서 배당·세금 요약 보기", "앱", "모두"),
     ]
+    /// 체크인: 시작한 날부터 30일마다 한 달씩 (서버 시각, Me.swift monthGate). 회복 루트 주차와 같은 방식
     func confirmGoalMonth() {
-        guard let c = gWeekCur, gWeeks.count < 3 else { return }
+        guard let c = gWeekCur, gWeeks.count < 3, monthGate == .open else { return }
         gWeeks.append(c); gWeekCur = nil
     }
     var goalSaved: Double { gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
 
     func switchRoute(_ r: Route) {
         route = r; boardPath = []; analysisPath = NavigationPath()
-        goalStartAt = nil; fixStarts()     // 목표 루트 4주는 루트를 고른 날부터 (내 캐릭터 1차 조건)
+        goalStartAt = nil; gInterStartAt = nil; fixStarts()     // 목표 루트 4주는 루트를 고른 날부터 (내 캐릭터 1차 조건)
         switch r {
         case .recover: break
-        case .plus: gMix = "mine"; gK = (goalStart * 2 / 1000).rounded() * 1000; gY = 1
+        case .plus:
+            // 기본 목표: 3년 안에 닿을 확률 50% 근처 (매달 넣는 돈은 회복 루트에서 고른 값, 없으면 30만원)
+            gMix = "mine"; gM = recM > 0 ? Double(recM) : 30; gY = 3; gK = autoGoal(years: 3)
         case .novice: gA = 0; gK = 1000; gY = 3; gM = 30; gMix = "index"
         }
         monthly = r == .recover ? 0 : gM     // 3년 전망의 '만약에 매달' 기본값 = 적립액
 
+    }
+
+    /// 본전을 넘은 회복 루트 → 목표 루트(플러스). 종목·위젯·만난 친구는 그대로 두고, 이미 한 미션(종목 넣기·앱 시작 3단계)은 끝낸 것으로
+    func graduateToGoal() {
+        let appDone = done.contains(5)
+        switchRoute(.plus)
+        gDone = ["hold"]
+        if appDone { gDone.insert("link"); fixStarts() }
+        boardPath = [.g1]
+    }
+
+    /// 목표에 닿았는지 (목표를 정한 뒤)
+    var goalReached: Bool { isGoal && gDone.contains("goal") && gK > 0 && trackValue / 1e4 >= gK }
+    /// 다음 목표 제안: 지금 금액에서 3년, 확률 50% 근처. 미션 진행은 그대로 둔다
+    func suggestNextGoal() {
+        gY = 3; gK = autoGoal(years: 3, from: trackValue / 1e4)
     }
 }

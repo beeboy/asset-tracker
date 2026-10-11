@@ -155,7 +155,8 @@ struct Mission1ResultView: View {
             if m.ret >= 0 {
                 Card {
                     Text("이미 본전 위에 있어요 (\(AppModel.sgn(m.ret)))").appFont(17, .bold)
-                    Text("회복보다 목표 금액을 정하는 쪽이 맞아요. 설정 > 루트에서 목표 루트로 옮길 수 있어요.").appFont(14).foregroundStyle(Theme.sub)
+                    Text("회복보다 목표 금액을 정하는 쪽이 맞아요. 넣은 종목·위젯·만난 친구는 그대로 가져가요.").appFont(14).foregroundStyle(Theme.sub)
+                    PrimaryButton(title: "목표 루트로") { m.graduateToGoal() }
                 }
             } else {
                 GuideBubble(pose: .spread, text: "…… 여기가 지금 위치예요. 본전까지는 \(AppModel.sgn(m.cost / max(1, m.total) - 1))가 필요해요. 기간을 바꾸면 확률이 다시 계산돼요.")
@@ -184,6 +185,7 @@ struct Mission1ResultView: View {
                     outcomeRow("좋은 경우", keep.outcome(m.cost, T, 1))
                     Text("100번 중 90번이 나쁜 경우와 좋은 경우 사이에 들어와요. 지금은 \(AppModel.sgn(m.ret)).").appFont(12).foregroundStyle(Theme.muted)
                 }
+                DepositLeverCard(plan: keep)
             }
             BoardButtons(next: "다음 미션: 원인 진단", to: .m2)
         }
@@ -195,6 +197,33 @@ struct Mission1ResultView: View {
     private func outcomeRow(_ k: String, _ v: Double) -> some View {
         HStack { Text(k).foregroundStyle(Theme.sub); Spacer(); Text(AppModel.sgn0(v)).fontWeight(.bold).foregroundStyle(Theme.change(v)) }
             .appFont(15)
+    }
+}
+
+// 회복 루트 적립 지렛대 (계획 4안과 별개): 매달 더 넣으면 본전이 언제. 비율·확률로만 보인다
+struct DepositLeverCard: View {
+    @Environment(AppModel.self) private var m
+    let plan: Plan
+    var body: some View {
+        @Bindable var m = m
+        let T = m.horizon, base = m.deposit(plan, monthly: 0, months: T), with = m.deposit(plan, monthly: m.recM, months: T)
+        Card {
+            Text("매달 더 넣으면 본전은 언제?").appFont(14, .bold)
+            Text("지금 구성에 매달 같은 돈을 더 넣는다고 보고 계산해요. 본전도 넣은 돈만큼 같이 올라가요.").appFont(12).foregroundStyle(Theme.sub)
+                .fixedSize(horizontal: false, vertical: true)
+            ChipRow(items: [(0, "안 넣음"), (10, "월 10만"), (30, "30만"), (50, "50만"), (100, "100만")], selection: $m.recM, fill: true)
+            HStack { Text("\(m.horizonLabel) 뒤 본전 이상").foregroundStyle(Theme.sub); Spacer()
+                Text(m.recM == 0 ? AppModel.pct(base.prob) : "\(AppModel.pct(base.prob)) → \(AppModel.pct(with.prob))").fontWeight(.bold) }
+                .appFont(15)
+            HStack { Text("보통의 경우 본전까지").foregroundStyle(Theme.sub); Spacer()
+                Text(m.recM == 0 ? eta(base) : "\(eta(base)) → \(eta(with))").fontWeight(.bold) }
+                .appFont(15)
+            Text("1,000번 그려 본 가능성의 범위예요. 넣는 돈은 비중을 바꾸지 않고 지금 구성 그대로 나눠 넣는다고 봐요.").appFont(12).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    private func eta(_ d: AppModel.Deposit) -> String {
+        d.eta == 0 ? "지금" : d.eta.isFinite ? AppModel.eta(d.eta).replacingOccurrences(of: " 뒤", with: "") : "10년 넘게"
     }
 }
 

@@ -24,6 +24,8 @@ final class AppModel {
     let prices: PriceProvider = StubPriceProvider()
     /// 목표 몬테카를로 결과 기억 (같은 입력이면 화면을 다시 그릴 때 또 돌리지 않는다. 난수 씨앗이 고정이라 결과가 같다)
     @ObservationIgnored var simCache: [String: GoalSim] = [:]
+    @ObservationIgnored var autoCache: [String: Double] = [:]
+    @ObservationIgnored var depCache: [String: AppModel.Deposit] = [:]
 
     init() {
         // 저장된 진행을 먼저 불러오고, 캡처용 실행 인자가 있으면 그 위에 시연 상태를 덮는다 (그때는 저장하지 않는다)
@@ -123,6 +125,7 @@ final class AppModel {
     var meBg: String? = nil
     var interStartAt: Double? = nil    // 회복 루트 인터미션을 시작한 때
     var goalStartAt: Double? = nil     // 목표 루트를 시작한 때
+    var gInterStartAt: Double? = nil   // 목표 루트 인터미션(3개월)을 시작한 때
     var meGate1At: Double? = nil       // 내 캐릭터 1차 조건을 채운 때 (한 번 채우면 루트를 바꿔도 남는다)
 
     // 주간 예보
@@ -213,6 +216,7 @@ final class AppModel {
         return x > 0 ? 1 - p : p
     }
     var planKey = "balance"      // 미션 3에서 고른 계획
+    var recM = 0                 // 회복 루트 적립 지렛대: 매달 더 넣을 돈 (만원, 계획 4안과 별개)
     // 목표 루트 (만원)
     var route: Route = .recover
     var gK = 10000.0
@@ -298,9 +302,10 @@ final class AppModel {
     var playUnlocked: Bool { playOn || devAll }
     var friendsOpen: Int {
         if devAll { return 4 }
-        if interDone { return 4 }
+        // 루트를 바꿔도 이미 만난 친구는 그대로 (회복 → 목표로 넘어간 뒤에도)
+        if done.contains(6) || gDone.contains("inter") { return 4 }
         if route == .recover { return weeks.count }
-        return !gWeeks.isEmpty ? 4 : playOn ? min(4, day / 7) : 0
+        return max(weeks.count, !gWeeks.isEmpty ? 4 : playOn ? min(4, day / 7) : 0)
     }
     func friendOn(_ i: Int) -> Bool { i == 0 || i <= friendsOpen }
     func chapterOn(_ i: Int) -> Bool {
@@ -576,7 +581,7 @@ final class AppModel {
         }
         route = .recover; gDone = []; gWeeks = []; gWeekCur = nil
         weekCur = nil; day = 5; dayLog = [:]; itemsBack = 0; itemsBackDay = nil; itemsOff = []; homeFriend = "seri"; readPos = []; readLast = nil
-        interStartAt = nil; goalStartAt = nil
+        interStartAt = nil; goalStartAt = nil; gInterStartAt = nil; recM = 0
         weekGuess = nil; weekFridaySkip = false; planKey = "balance"; horizon = 6; quizAnswer = nil
         taxGain = 0; taxSellQty = 0; boardPath = []
     }
