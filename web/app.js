@@ -1175,7 +1175,7 @@
       </div>
       <div class="row wrap" style="gap:6px;margin:6px 0"><button type="button" class="sm" id="rsReset">지금 값으로</button></div>
       <div id="rsChart" class="chartbox"></div><p class="muted small" style="margin:2px 0 8px">S&amp;P500 실질 이익 (오늘 = 100) · 진한 선 중앙, 띠는 관계식 80%가 드는 범위</p><div id="rsOut"></div>
-      <p class="muted small">"만약 금리가 이렇게 움직인다면"을 보는 시나리오 도구이며 예측이나 투자 권유가 아닙니다. 미 10년물 금리와 S&amp;P500 실질 EPS의 1960년 이후 관계를 시작 연도·표본을 바꿔 1000가지 관계식(식단)으로 맞추고, 식단마다 답 하나를 계산해 띠(하위 10%~상위 10%)로 보여 줍니다. 시장 수익은 PER 이 그대로라고 보고 이익 변화 + 배당 약 1.5% + 시장 공통 기대수익으로 계산합니다. 내 목표 확률은 3년 전망 결과를 금리 몫과 시장 공통 기대수익만큼 β 배 옮긴 근사치입니다. 이익 자료 ${esc(d.eps_last || "")}까지 (지금 EPS 증가율 ${nf(M.g_now, 1)}%), 출처 Robert J. Shiller, 매달 갱신.</p>`;
+      <p class="muted small">예측이 아닌 "만약" 도구. 1960년 이후 금리와 S&amp;P500 이익의 관계식 1000개로 계산. 이익 자료 ${esc(d.eps_last || "")}까지, 출처 Robert J. Shiller. 투자 권유가 아닙니다.</p>`;
     const draw = RS.draw = () => rateScenDraw(d, now);
     $("#rsDr").oninput = (e) => { RS.dr = +e.target.value; draw(); };
     $("#rsM").oninput = (e) => { RS.m = +e.target.value; draw(); };
