@@ -6,7 +6,7 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                AppHeader().padding(.horizontal, -16)
+                AppHeader(tab: "홈").padding(.horizontal, -16)
                 summary
                 shelterBox
                 if m.playOn && !m.interDone { reminder }

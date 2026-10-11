@@ -108,13 +108,16 @@ struct RootView: View {
     }
 }
 
-// 탭 화면 머리글 (시안의 'naeilo' 줄)
+// 탭 화면 머리글: 'naeilo' 로고 뒤에 탭 이름 ("naeilo 홈")
 struct AppHeader: View {
+    var tab: String = ""
     var body: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text("naeilo").appFont(20, .bold).tracking(-0.3)
+            if !tab.isEmpty { Text(tab).appFont(20, .regular).foregroundStyle(Theme.sub) }
             Spacer()
         }
+        .accessibilityElement(children: .combine)
         .padding(.horizontal, 20).padding(.top, 6).padding(.bottom, 4)
     }
 }

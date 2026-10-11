@@ -11,7 +11,7 @@ struct BoardView: View {
         let doneBlocks = m.blocks.filter { m.done.contains($0.id) }
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AppHeader().padding(.horizontal, -16)
+                AppHeader(tab: "미션").padding(.horizontal, -16)
                 VStack(alignment: .leading, spacing: 4) {
                     ScreenTitle(kicker: "회복 루트", title: "본전까지 가는 길")
                     (Text("지금 \(AppModel.sgn(m.ret)) · 본전까지 ") + Text("+" + String(format: "%.1f", need * 100) + "%").bold().foregroundColor(Theme.ink) + Text(" 올라야 해요"))

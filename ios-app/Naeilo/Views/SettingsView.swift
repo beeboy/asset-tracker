@@ -19,7 +19,7 @@ struct SettingsView: View {
         ] + (m.isGoal ? [("목표", "\(m.gY)년 뒤 \(AppModel.wonK(m.gK)) · 고치기", SettingsRoute.goal)] : [])
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                AppHeader().padding(.horizontal, -16)
+                AppHeader(tab: "설정").padding(.horizontal, -16)
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.offset) { i, r in
                         if i > 0 { Divider().overlay(Theme.line) }

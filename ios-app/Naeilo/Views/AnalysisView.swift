@@ -36,7 +36,7 @@ struct AnalysisView: View {
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                AppHeader().padding(.horizontal, -16)
+                AppHeader(tab: "분석").padding(.horizontal, -16)
                 CalmCard()
                 ForEach(cards, id: \.0) { t, sub, tag, color, route in
                     NavigationLink(value: route) {
