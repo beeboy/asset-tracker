@@ -26,6 +26,7 @@ struct BrickGameHub: View {
     @State private var rec = GameRecord.load()
     @State private var game: BrickGame?
     @State private var board: GameStage?
+    @State private var allStages = false
 
     private var players: [String] {
         Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id) + (m.meUnlocked ? ["me"] : [])
@@ -36,14 +37,10 @@ struct BrickGameHub: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("내 1000칸으로 하는 벽돌깨기").appFont(22, .bold)
-                        Text("채운 칸이 벽돌이에요. 판은 위, 공은 아래로. 실제 칸은 그대로예요.").appFont(14).foregroundStyle(Theme.sub)
-                    }
+                    Text("내 1000칸으로 하는 벽돌깨기").appFont(22, .bold)
                     section("난이도") {
                         ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true)
-                        Text("하수는 판이 길고 한 번에 많이 깨져요. 기준 칸의 \(Int(rec.level.clear * 100))%를 깨면 다음 단계가 열려요.")
-                            .appFont(12).foregroundStyle(Theme.sub)
+                        Text(rec.level.note).appFont(12).foregroundStyle(Theme.sub)
                     }
                     section("조작") {
                         ChipRow(items: [(true, "폰 기울이기"), (false, "손가락으로 끌기")], selection: $rec.tilt, fill: true)
@@ -54,6 +51,19 @@ struct BrickGameHub: View {
                         }
                         Text(GamePlayer.skill(skillOf(rec.player))).appFont(13, .semibold).foregroundStyle(Theme.tealDark)
                     }
+                    HStack {
+                        Text("단계 · 『중첩된 현실』 쉼터").appFont(13, .bold).foregroundStyle(Theme.sub)
+                        Spacer()
+                        Text("\(rec.level.title) 기록 합계 \(rec.total(rec.level).formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub)
+                    }
+                    // 처음엔 세 단계만, 나머지는 접어 둔다
+                    ForEach(GameStage.all.prefix(allStages ? GameStage.all.count : 3)) { stageRow($0) }
+                    Button { withAnimation { allStages.toggle() } } label: {
+                        Text(allStages ? "접기 ▴" : "나머지 \(GameStage.all.count - 3)단계 펼치기 ▾")
+                            .appFont(14, .semibold).foregroundStyle(Theme.tealDark).frame(maxWidth: .infinity, minHeight: 44)
+                            .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
                     section("물건 아이템") {
                         if items.isEmpty {
                             Text("쉼터에 물건이 돌아오면 벽돌에서 아이템으로 떨어져요.").appFont(13).foregroundStyle(Theme.sub)
@@ -81,17 +91,9 @@ struct BrickGameHub: View {
                                     .appFont(14, .bold).textFieldStyle(.roundedBorder).frame(width: 90)
                             }
                         }
-                        Text("점수·별명·고른 인물만 보내요. 계정이나 기기 정보는 보내지 않고, 단계마다 이번 주 상위 20개만 남아요.")
+                        Text("최고 기록은 이 폰에 남아요. 켜면 점수·별명·인물만 올라가고, 계정·기기 정보는 보내지 않아요.")
                             .appFont(12).foregroundStyle(Theme.sub)
                     }
-                    HStack {
-                        Text("단계 · 『중첩된 현실』 쉼터").appFont(13, .bold).foregroundStyle(Theme.sub)
-                        Spacer()
-                        Text("\(rec.level.title) 기록 합계 \(rec.total(rec.level).formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub)
-                    }
-                    ForEach(GameStage.all) { stageRow($0) }
-                    Text(rec.share == true ? "최고 기록은 이 폰에 남고, 순위판에는 점수만 올라가요." : "기록은 이 폰 안에만 남아요. 이름이나 기기 정보는 어디에도 보내지 않아요.")
-                        .appFont(12).foregroundStyle(Theme.sub)
                 }
                 .screen()
             }
@@ -270,7 +272,7 @@ struct BrickPlayView: View {
                 Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 1) {
                     Text("\(g.score.formatted())점").appFont(18, .bold).monospacedDigit()
-                    Text(String(repeating: "♥", count: max(0, g.lives))).appFont(12, .bold).foregroundStyle(Theme.up)
+                    Text("남은 공 \(max(0, g.lives))").appFont(12, .bold).foregroundStyle(Theme.up)
                 }
             }
             HStack(spacing: 8) {
@@ -284,7 +286,26 @@ struct BrickPlayView: View {
                 Spacer(minLength: 0)
             }
             .frame(height: 20)
+            pickedRow(g)
         }
+    }
+
+    /// 이번 판에 먹은 물건
+    @ViewBuilder private func pickedRow(_ g: BrickGame) -> some View {
+        let got = g.items.filter { (g.picked[$0] ?? 0) > 0 }
+        HStack(spacing: 6) {
+            Text("먹은 물건").appFont(11, .bold).foregroundStyle(Theme.sub)
+            if got.isEmpty { Text("아직 없음").appFont(11).foregroundStyle(Theme.sub) }
+            ForEach(got, id: \.self) { id in
+                HStack(spacing: 2) {
+                    Pixel(name: "art_" + id, width: 18, height: 18)
+                    Text("×\(g.picked[id] ?? 0)").appFont(11, .bold).monospacedDigit()
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: 20)
+        .opacity(g.items.isEmpty ? 0 : 1)
     }
 
     private func tag(_ s: String) -> some View {
@@ -312,7 +333,8 @@ struct BrickPlayView: View {
             _ = now
             func r(_ x: Double, _ y: Double, _ w: Double, _ h: Double) -> CGRect { CGRect(x: x * s, y: y * s, width: w * s, height: h * s) }
             // 벽돌
-            ctx.opacity = g.dark ? 0.08 : 1
+            if g.dark { ctx.fill(Path(CGRect(x: 0, y: 0, width: BrickGame.W * s, height: BrickGame.H * s)), with: .color(.black.opacity(0.25))) }
+            ctx.opacity = g.dark ? 0.4 : 1
             for i in 0..<1000 where g.hp[i] != 0 {
                 let b = g.rect(i)
                 let rc = r(b.minX + 0.05, b.minY + 0.05, 0.9, 0.9)
@@ -326,6 +348,12 @@ struct BrickPlayView: View {
             if g.exitCell >= 0, g.hp[g.exitCell] > 0 {
                 let b = g.rect(g.exitCell)
                 ctx.fill(Path(r(b.minX, b.minY, 1, 1)), with: .color(Theme.yellow))
+            }
+            // 남은 공 (판 왼쪽 아래)
+            let lives = max(0, g.lives)
+            for k in 0..<lives {
+                let e = r(0.8 + Double(k) * 1.4, BrickGame.H - 1.4, 0.9, 0.9)
+                ctx.fill(Path(ellipseIn: e), with: .color(.white)); ctx.stroke(Path(ellipseIn: e), with: .color(Theme.ink), lineWidth: 1)
             }
             // 보호막
             if g.shield { ctx.fill(Path(r(0, 0.1, BrickGame.W, 0.3)), with: .color(Theme.yellow.opacity(0.8))) }
@@ -396,7 +424,7 @@ struct BrickPlayView: View {
             let lose = record.lossCount(g.stage.n, g.level)
             dim {
                 bubble(g, won ? lines.1 : lines.2,
-                       sub: "\(won ? "깼어요" : "끝났어요") · \(g.score.formatted())점\(g.newBest ? " · 새 최고 기록" : "")\(rank.map { " · 이번 주 \($0)위" } ?? "")") {
+                       sub: "\(won ? "깼어요" : "끝났어요") · \(g.score.formatted())점\(g.newBest ? " · 새 최고 기록" : "")\(rank.map { " · 이번 주 \($0)위" } ?? "")\(g.picked.isEmpty ? "" : " · 먹은 물건 \(g.picked.values.reduce(0, +))개")") {
                     if won, let next { button("다음 단계 · \(next.bg.volume)", primary: true) { onClose((next, g.level)) } }
                     button("다시 하기", primary: !won) { onClose((g.stage, g.level)) }
                     if !won, lose >= 3, let easy = g.level.easier {
