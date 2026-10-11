@@ -133,11 +133,15 @@ struct BoardView: View {
                     }.buttonStyle(.plain)
                 }
             }
-            if m.weekCur != nil {
+            // 주차는 시작한 날부터 7일마다 열린다 (서버 시각). 열리기 전에는 남은 날을 보여 준다
+            if let wait = m.weekGateText {
+                Label(wait, systemImage: "clock").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if m.weekCur != nil {
                 Button { withAnimation { m.confirmWeek() } } label: {
                     HStack(spacing: 8) {
                         Pixel(name: "spr_" + f.id, width: 20, height: 28)
-                        Text("체크인하고 \(f.name) 만나기 (시안: 다음 주로)").appFont(14, .semibold)
+                        Text("체크인하고 \(f.name) 만나기").appFont(14, .semibold)
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .foregroundStyle(Theme.ink)

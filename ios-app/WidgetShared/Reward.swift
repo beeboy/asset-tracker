@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// 인물 보상 위젯이 읽는 숫자 (앱이 reward.json 으로 쓴다). 모두 앱의 계산값이고, 위젯은 그리기만 한다
 struct WReward: Codable {
@@ -31,6 +32,7 @@ struct WReward: Codable {
 struct WChar: Identifiable {
     let id: String, name: String, week: Int
     let accent: UInt32, g0: UInt32, g1: UInt32
+    var voice: String? = nil     // 말투 인물 (내 캐릭터는 투자 유형 인물)
     static let all: [WChar] = [
         .init(id: "seri", name: "세리", week: 0, accent: 0x5ab8ff, g0: 0x16203f, g1: 0x2c3e8a),
         .init(id: "sio", name: "시오", week: 1, accent: 0x7fd6ff, g0: 0x122838, g1: 0x265c76),
@@ -38,17 +40,21 @@ struct WChar: Identifiable {
         .init(id: "ir", name: "이르", week: 3, accent: 0xffd36b, g0: 0x1a1830, g1: 0x4a3f72),
         .init(id: "sua", name: "수아", week: 4, accent: 0xf2a070, g0: 0x3a2228, g1: 0xb06448),
     ]
-    static func of(_ id: String) -> WChar { all.first { $0.id == id } ?? all[0] }
+    static func of(_ id: String) -> WChar {
+        if id == "me", let m = WMe.saved { return .init(id: "me", name: m.name, week: 0, accent: m.accent, g0: m.g0, g1: m.g1, voice: m.voice) }
+        return all.first { $0.id == id } ?? all[0]
+    }
 
     /// 말풍선 (인물 말투). 세리·시오·선배는 오늘 가장 크게 움직인 종목을 넣는다.
     /// 사흘에 한 번은 쉼터에 돌아온 물건 얘기를 인물 말투로 한다
     func line(_ r: WReward) -> String {
         if let l = r.saysNext?[id], !l.isEmpty { return l[WidgetLine.index() % l.count] }
         if let s = r.says?[id], !s.isEmpty { return s }
-        if let it = WItem.today(r), let say = WItem.say(it, id) { return say }
+        let v = voice ?? id
+        if let it = WItem.today(r), let say = WItem.say(it, v) { return say }
         let top = r.tiles.max { abs($0.c) < abs($1.c) }
         let t = top?.t ?? "오늘", c = top?.c ?? 0
-        switch id {
+        switch v {
         case "seri": return "……\(t)\(Self.josa(t)) 먼저 움직였어요."
         case "sio": return "\(t) \(String(format: "%.1f", abs(c) * 100)). 셌어."
         case "seonbae": return r.dayChg >= 0 ? "올랐네. 왜 올랐다고 생각해?" : "내렸네. 왜 내렸다고 생각해?"
@@ -62,6 +68,15 @@ struct WChar: Identifiable {
         if (0xAC00...0xD7A3).contains(ch.value) { return (ch.value - 0xAC00) % 28 == 0 ? "가" : "이" }
         return "LMNR".unicodeScalars.contains(ch) ? "이" : "가"
     }
+}
+
+/// 내 캐릭터 (앱이 열림 조건을 채웠을 때만 me.json · me.png 로 쓴다, MeViews.swift MeArt.push)
+struct WMe: Codable {
+    var name: String
+    var voice: String
+    var accent: UInt32, g0: UInt32, g1: UInt32
+    static var saved: WMe? { Store.read(WMe.self, "me.json") }
+    static var image: UIImage? { Store.readData("me.png").flatMap { UIImage(data: $0) } }
 }
 
 /// 쉼터에 돌아온 물건: 위젯 그림 이름은 w_item_<id> (앱 쪽 art_<id> 와 같은 도트)

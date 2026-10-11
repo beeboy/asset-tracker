@@ -11,13 +11,13 @@ enum WhoEnum: String, AppEnum {
     // 'seri' 는 '홈 인물 따라가기'가 생기기 전 위젯의 기본값이었다. 그때 둔 위젯은 그 값이 그대로 저장돼 있어
     // 앱에서 홈 인물을 바꿔도 세리로 남았다. 그래서 예전 값 'seri' 는 홈 인물 따라가기로 읽고,
     // 세리를 고정하고 싶을 때는 새 값 'seri.pin' 을 쓴다 (고르는 목록에는 legacy 가 안 보인다)
-    case home, legacy = "seri", seri = "seri.pin", sio, seonbae, ir, sua
+    case home, legacy = "seri", seri = "seri.pin", sio, seonbae, ir, sua, me
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "인물"
     static var caseDisplayRepresentations: [WhoEnum: DisplayRepresentation] = [
         .home: "앱 홈의 인물 따라가기", .legacy: "앱 홈의 인물 따라가기",
-        .seri: "세리", .sio: "시오", .seonbae: "선배", .ir: "이르", .sua: "수아",
+        .seri: "세리", .sio: "시오", .seonbae: "선배", .ir: "이르", .sua: "수아", .me: "내 캐릭터",
     ]
-    static let choices: [WhoEnum] = [.home, .seri, .sio, .seonbae, .ir, .sua]
+    static let choices: [WhoEnum] = [.home, .seri, .sio, .seonbae, .ir, .sua, .me]
     var follows: Bool { self == .home || self == .legacy }
     var charId: String { self == .seri ? "seri" : rawValue }
 }
@@ -153,7 +153,12 @@ struct CharSprite: View {
     @Environment(\.widgetRenderingMode) private var mode
     var body: some View {
         Group {
-            if locked { Image(name).interpolation(.none).resizable().renderingMode(.template).foregroundStyle(Color.white.opacity(0.22)) }
+            // 내 캐릭터: 앱이 겹쳐 그린 그림 하나 (동작별 그림 없음)
+            if name.hasPrefix("w_me"), let img = WMe.image {
+                if locked { Image(uiImage: img).interpolation(.none).resizable().renderingMode(.template).foregroundStyle(Color.white.opacity(0.22)) }
+                else { Image(uiImage: img).interpolation(.none).resizable() }
+            }
+            else if locked { Image(name).interpolation(.none).resizable().renderingMode(.template).foregroundStyle(Color.white.opacity(0.22)) }
             else if mode == .accented, #available(iOS 18, *) {
                 // 투명·틴트 홈 화면: 그대로 두면 시스템이 그림 전체를 한 색(흰색)으로 칠해 흰 덩어리가 된다.
                 // 캐릭터 설정 스레드가 만든 회색 단계 그림(_tint)을 쓰고, 밝기만 살려 틴트 색으로 칠하게 한다

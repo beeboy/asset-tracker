@@ -479,8 +479,8 @@ struct HoldingEditView: View {
         if let buy, let before {
             let act = m.calmTrade(sym, buy: buy, avgBefore: before.avg, driftBefore: drift0)
             let pts = m.calm.events.last?.pts ?? 0, who = m.calmSpeaker
-            let name = Shelter.friends.first { $0.id == who }?.name ?? ""
-            said = "\(name): \(Calm.feedback(who, act))" + (pts != 0 ? " (\(pts > 0 ? "+" : "")\(pts)점)" : "")
+            let name = m.friendName(who)
+            said = "\(name): \(Calm.feedback(m.voice(who), act))" + (pts != 0 ? " (\(pts > 0 ? "+" : "")\(pts)점)" : "")
             return
         }
         dismiss()

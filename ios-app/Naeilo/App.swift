@@ -60,7 +60,12 @@ struct RootView: View {
         .onChange(of: model.progress) { _, _ in model.saveProgress(); if model.persists { Sync.shared.changed(model) } }
         .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }
         // 앱을 열거나 앞으로 올 때 다른 기기 값 받기
-        .onChange(of: phase, initial: true) { _, p in if p == .active && model.persists { Task { await Sync.shared.pull(model) } } }
+        // 서버 시각도 같이 받는다 (인터미션 날짜·내 캐릭터 조건, Me.swift)
+        .onChange(of: phase, initial: true) { _, p in
+            guard p == .active else { return }
+            Task { await TrustedClock.shared.sync(); model.fixStarts() }
+            if model.persists { Task { await Sync.shared.pull(model) } }
+        }
         // 알림: 설정이 바뀌면 다시 예약
         .onChange(of: model.alerts) { _, _ in Task { await Notifier.reschedule(model) } }
         .onChange(of: model.alertHr) { _, _ in Task { await Notifier.reschedule(model) } }

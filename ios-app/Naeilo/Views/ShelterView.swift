@@ -15,8 +15,10 @@ struct ShelterView: View {
                 Text("쉼터").appFont(22, .bold)
                 hero
                 header("친구", "\((0..<5).filter { m.friendOn($0) }.count)/5")
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
+                // 친구 다섯 + 본인(내 캐릭터) 한 줄
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 6), spacing: 6) {
                     ForEach(Array(Shelter.friends.enumerated()), id: \.element.id) { i, f in friendTile(i, f) }
+                    meTile
                 }
                 header("서재 · 외전 『이종 공명』", "\((0..<6).filter { m.chapterOn($0) }.count)/6장 열림")
                 if let last = m.readLast, m.chapterOn(last) {
@@ -35,6 +37,7 @@ struct ShelterView: View {
                     ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in itemTile(i, it) }
                 }
                 itemNote
+                ShelterBGBox(support: $support)
                 Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아오고, 연속이 끊겨도 돌아온 물건은 그대로 있어요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
@@ -56,9 +59,13 @@ struct ShelterView: View {
         }
     }
 
-    private var hero: some View {
+    @ViewBuilder private var hero: some View {
+        if sel == "me" && m.me != nil { meHero } else { friendHero }
+    }
+
+    private var friendHero: some View {
         let i = Shelter.friends.firstIndex { $0.id == sel } ?? 0, f = Shelter.friends[i], real = m.friendOn(i)
-        let on = real || m.peek     // 다방커피 이상은 못 만난 친구도 미리 보기 (홈에 두기는 만나야)
+        let on = real || m.peekFriends     // 믹스커피 이상은 못 만난 친구도 미리 보기 (홈에 두기는 만나야)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
                 Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 84, height: 119).opacity(real ? 1 : on ? 0.75 : 1)
@@ -104,8 +111,8 @@ struct ShelterView: View {
         let on = m.friendOn(i), cur = sel == f.id
         return Button { sel = f.id } label: {
             VStack(spacing: 2) {
-                Pixel(name: (on || m.peek ? "spr_" : "sil_") + f.id, width: 34, height: 48).opacity(on ? 1 : m.peek ? 0.6 : 1)
-                Text(on || m.peek ? f.name : "???").appFont(12, .bold)
+                Pixel(name: (on || m.peekFriends ? "spr_" : "sil_") + f.id, width: 34, height: 48).opacity(on ? 1 : m.peekFriends ? 0.6 : 1)
+                Text(on || m.peekFriends ? f.name : "???").appFont(12, .bold).lineLimit(1).minimumScaleFactor(0.8)
                 Text(on && m.homeFriend == f.id ? "홈에 있음" : i == 0 ? "처음부터" : "\(i)주차")
                     .appFont(10).foregroundStyle(Theme.sub)
             }
@@ -115,6 +122,89 @@ struct ShelterView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(on ? f.name : "잠긴 친구")
+    }
+
+    // 본인 칸: 비어 있으면 누르는 즉시 만들기 화면으로
+    @ViewBuilder private var meTile: some View {
+        if m.me == nil {
+            NavigationLink(value: "me") { meTileLabel }.buttonStyle(.plain)
+        } else {
+            Button { sel = "me" } label: { meTileLabel }.buttonStyle(.plain)
+        }
+    }
+    private var meTileLabel: some View {
+        let cur = sel == "me", made = m.me != nil
+        return VStack(spacing: 2) {
+            CharPixel(id: "me", width: 34, height: 48)
+            Text(m.me?.shownName ?? "본인").appFont(12, .bold).lineLimit(1).minimumScaleFactor(0.8)
+            Text(!made ? "만들기" : m.homeFriendShown == "me" ? "홈에 있음" : m.meUnlocked ? "열림" : "잠김")
+                .appFont(10).foregroundStyle(made ? Theme.sub : Theme.teal)
+        }
+        .frame(maxWidth: .infinity, minHeight: 96)
+        .background(cur ? Theme.mintBg : made ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(cur ? Theme.teal : made ? Theme.border : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: made ? [] : [4, 3])))
+        .accessibilityLabel(made ? "본인, \(m.me?.shownName ?? "")" : "본인, 내 캐릭터 만들기")
+    }
+
+    /// 내 캐릭터 소개: 투자 유형, 열림 조건 세 가지, 고치기·홈에 두기
+    private var meHero: some View {
+        let open = m.meUnlocked, k = Calm.kind(m.meVoice)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                CharPixel(id: "me", width: 84, height: 119)
+                    .padding(.horizontal, 10).padding(.vertical, 8)
+                    .background(Color(hex: 0x232B42), in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(m.friendName("me")).appFont(20, .bold)
+                    Text("내 캐릭터 · \(k?.title ?? "") (\(m.friendName(m.meVoice)) 말투)" + (m.calm.type != nil ? " · 평정 지수 매칭" : ""))
+                        .appFont(12).foregroundStyle(Color(hex: 0x8FD0FF)).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? "홈과 위젯에서 기본 인물 대신 둘 수 있어요." : "세 가지를 채우면 홈과 위젯에 나와요. 그 전에는 쉼터에서만 보여요.")
+                        .appFont(13).lineSpacing(3).foregroundStyle(Color(hex: 0xD5D9E6)).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            if !open {
+                VStack(alignment: .leading, spacing: 6) {
+                    gate(m.meGate1, "1", m.meGate1Text)
+                    gate(m.meGate2, "2", m.meGate2 ? "평정 지수 성향 매칭" : "평정 지수 성향 매칭 (기록 \(m.calm.stats().n)/\(Calm.minEvents))")
+                    gate(m.meGate3, "☕︎", "다방커피 이상 후원")
+                }
+            }
+            HStack(spacing: 8) {
+                NavigationLink(value: "me") {
+                    Text("고치기 ›").appFont(13, .bold).foregroundStyle(Color(hex: 0xEEF0F7))
+                        .padding(.horizontal, 14).frame(minHeight: 40)
+                        .overlay(Capsule().stroke(Color(hex: 0x8FD0FF), lineWidth: 1.5))
+                }
+                .buttonStyle(.plain)
+                if open && m.homeFriend != "me" {
+                    Button("홈에 두기") { m.homeFriend = "me" }
+                        .appFont(13, .bold).foregroundStyle(Theme.inkFixed)
+                        .padding(.horizontal, 14).frame(minHeight: 40).background(Theme.mint, in: Capsule())
+                } else if open {
+                    Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
+                        .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.gold, in: Capsule())
+                } else if !m.meGate3 {
+                    Button("☕︎ 후원 보기") { support = true }
+                        .appFont(13, .bold).foregroundStyle(Theme.inkFixed)
+                        .padding(.horizontal, 14).frame(minHeight: 40).background(Theme.gold, in: Capsule())
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .foregroundStyle(Color(hex: 0xEEF0F7))
+        .padding(16)
+        .background(Theme.shelter, in: RoundedRectangle(cornerRadius: 20))
+    }
+    private func gate(_ ok: Bool, _ n: String, _ t: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: ok ? "checkmark.circle.fill" : "circle").font(.system(size: 13, weight: .bold))
+                .foregroundStyle(ok ? Theme.mint : Color(hex: 0x8A93AD))
+            Text(t).appFont(13, ok ? .regular : .semibold).foregroundStyle(ok ? Color(hex: 0xA6ADC6) : Color(hex: 0xEEF0F7))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(t), \(ok ? "채움" : "아직")")
     }
 
     private var library: some View {
@@ -289,7 +379,7 @@ struct ShelterView: View {
         let on = i < m.itemsOn
         return Button { if on { item = it.id } } label: {
             VStack(spacing: 2) {
-                Pixel(name: "art_" + it.id + (on || m.peek ? "" : "_l"), width: 32, height: 32).opacity(on ? 1 : m.peek ? 0.6 : 1)
+                Pixel(name: "art_" + it.id + (on || m.peekItems ? "" : "_l"), width: 32, height: 32).opacity(on ? 1 : m.peekItems ? 0.6 : 1)
                 Text(on ? it.name : "???").appFont(11, .bold).lineLimit(2).multilineTextAlignment(.center)
                 Text(i == m.itemsOn ? "\(m.itemDaysLeft)일 남음" : "\(i + 1)번째").appFont(10).foregroundStyle(i == m.itemsOn ? Theme.teal : Theme.sub)
             }
@@ -308,9 +398,9 @@ struct ShelterView: View {
         GeometryReader { g in
             let u = g.size.width / 128
             ZStack(alignment: .topLeading) {
-                Image("art_room").interpolation(.none).resizable().frame(width: g.size.width, height: g.size.height)
+                RoomImage(bg: m.roomBG).frame(width: g.size.width, height: g.size.height)
                 ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in
-                    if let p = Shelter.slots[it.id], i < m.itemsOn || m.peek {
+                    if let p = Shelter.slots[it.id], i < m.itemsOn || m.peekItems {
                         let on = i < m.itemsOn
                         Button { if on { item = it.id } } label: {
                             Image("art_" + it.id).interpolation(.none).resizable().frame(width: 16 * u, height: 16 * u)
@@ -321,7 +411,7 @@ struct ShelterView: View {
                         .accessibilityLabel(on ? it.name : "아직 안 돌아온 물건 미리 보기")
                     }
                 }
-                Pixel(name: "spr_" + m.homeFriendShown, width: 24 * u, height: 34 * u)
+                CharPixel(id: m.homeFriendShown, width: 24 * u, height: 34 * u)
                     .offset(x: 4 * u, y: 42 * u)     // 문(6~26) 앞. 의자는 30부터라 겹치지 않는다
                     .allowsHitTesting(false).accessibilityHidden(true)
             }
@@ -339,8 +429,8 @@ struct ShelterView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(cur?.name ?? "아직 돌아오지 않았어요").appFont(14, .bold)
                 Text(cur?.line ?? "오늘의 1분을 7일 연속 하면 첫 물건이 돌아와요.").appFont(13).foregroundStyle(Theme.sub)
-                if let c = cur, let say = Lines.pick("item.\(c.id).\(m.homeFriendShown)") ?? WItem.say(c.id, m.homeFriendShown) {
-                    let who = Shelter.friends.first { $0.id == m.homeFriendShown }?.name ?? "세리"
+                if let c = cur, let say = Lines.pick("item.\(c.id).\(m.voice(m.homeFriendShown))") ?? WItem.say(c.id, m.voice(m.homeFriendShown)) {
+                    let who = m.friendName(m.homeFriendShown)
                     Text("\(who) “\(say)”").appFont(13, .bold).foregroundStyle(Theme.teal)
                 }
             }

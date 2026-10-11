@@ -23,9 +23,9 @@ enum SupportTier: Int, Comparable, CaseIterable {
     var adds: [String] {
         switch self {
         case .free: []
-        case .mix: ["외전 6장부터 코다까지 읽기 (한글·영문)"]
-        case .dabang: ["모든 보상 미리 보기 (못 만난 친구·아직 안 돌아온 물건)", "나중에 광고가 생겨도 광고 없음"]
-        case .franchise: ["본편 『중첩된 현실』 1권 읽기 (한국어)"]
+        case .mix: ["못 만난 친구 미리 보기", "외전 6장부터 코다까지 읽기 (한글·영문)"]
+        case .dabang: ["내 캐릭터 쓰기 (홈·위젯)", "아직 안 돌아온 물건 미리 보기", "나중에 광고가 생겨도 광고 없음"]
+        case .franchise: ["쉼터 배경 변경", "본편 『중첩된 현실』 1권 읽기 (한국어)"]
         case .specialty: ["도움말·정보 화면에 후원자 이름(또는 로고)"]
         }
     }

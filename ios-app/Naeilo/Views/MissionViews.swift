@@ -627,6 +627,24 @@ struct AppStartView: View {
                 }
                 .padding(.top, done || cur ? 24 : 0)
             }
+            // 내 캐릭터는 여기서부터 만들어 보고 저장할 수 있다 (홈·위젯에는 조건을 채운 뒤에 나온다)
+            NavigationLink { MeEditView() } label: {
+                HStack(spacing: 12) {
+                    CharPixel(id: "me", width: 30, height: 42)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(m.me == nil ? "내 캐릭터 만들어 보기 (선택)" : "내 캐릭터 고치기 (선택)").appFont(15, .bold)
+                        Text("쉼터 '본인' 칸에 저장돼요. 홈과 위젯에는 조건을 채운 뒤에 나와요.").appFont(12).foregroundStyle(Theme.sub)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Text("›").appFont(17, .bold).foregroundStyle(Theme.muted)
+                }
+                .foregroundStyle(Theme.ink)
+                .padding(.horizontal, 14).padding(.vertical, 12)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+            }
+            .buttonStyle(.plain)
             if n >= 3 {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("특별 선물").appFont(13, .bold).foregroundStyle(Theme.yellow)

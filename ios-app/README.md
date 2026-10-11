@@ -72,7 +72,9 @@ open NaeiloApp.xcodeproj   # 시뮬레이터 고르고 ▶
 - 커피 4등급(믹스·다방·프랜차이즈·고급 스페셜티)은 비소모성 인앱 구매, '한 잔 더'는 소모성 팁(`Naeilo/Data/Support.swift`, 화면 `Views/SupportView.swift`). 서재의 6장을 누르거나 설정 > 개발자 후원에서 연다. 구매 복원 버튼이 늘 있다.
 - 상품 ID: `com.naeilo.widget.support.mix|dabang|franchise|specialty|tip`. App Store Connect 에 같은 ID 로 만들고, 등급 4개는 가족 공유를 켠다(한 번 켜면 끌 수 없음). 윗등급은 정가.
 - 앱은 가진 비소모성 중 가장 높은 등급만 본다(`Transaction.currentEntitlements`, 환불된 것 제외, 가족 공유 포함). 구매 상태는 기기 동기화로 넘기지 않는다.
-- 다방커피 이상: 못 만난 친구·안 돌아온 물건 미리 보기(`AppModel.peek`). 홈에 두기·열기는 여전히 미션으로.
+- 믹스커피 이상: 못 만난 친구 미리 보기(`AppModel.peekFriends`). 다방커피 이상: 안 돌아온 물건 미리 보기(`peekItems`)와 내 캐릭터 쓰기. 프랜차이즈 이상: 쉼터 배경 변경. 홈에 두기·열기는 여전히 미션으로.
+- 내 캐릭터(쉼터 '본인' 칸, `Data/Me.swift`·`Views/MeViews.swift`): 헤어스타일·색깔·얼굴형·눈·입·윗옷·아래옷·안경·마스크·소품을 골라 만들고(저장 칸 1개, 이름 5자), 미션 진행에 같이 저장돼 내 폰 저장·불러오기와 동기화로 옮겨진다. 앱 시작 3단계부터 만들 수 있고, ① 회복 루트 인터미션 4주 모두(또는 목표 루트 4주) ② 평정 지수 매칭 ③ 다방커피 이상을 채우면 홈·위젯(인물 위젯 '내 캐릭터', 홈 인물 따라가기)에 기본 인물 대신 나온다. 말투는 투자 유형 인물(매칭 전에는 고른 유형). 부품 그림은 `me_<layer>_<NN>`(24×34) 에셋, 없으면 자리표시 도트. 위젯에는 앱이 겹쳐 그린 me.png 를 넘긴다.
+- 인터미션 날짜: 회복 루트 주차 체크인은 시작한 날부터 7일마다 열리고, 날짜는 naeilo.com 응답 시각(`TrustedClock`)에 기기가 켜진 뒤 흐른 시간을 더해 센다. 폰 시간을 바꾸면(5분 넘게 다르면) 체크인이 막힌다.
 - 개발자 전체 해제(`devAll`)는 Xcode·TestFlight 빌드에서만 동작한다(`Support.testBuild`, AppTransaction 환경). App Store 빌드에서는 꺼진다.
 - 로컬 테스트: `ios-app/Support.storekit` 을 Xcode 의 Scheme > Edit Scheme > Run > Options > StoreKit Configuration 에 고르면 App Store Connect 없이 구매·복원·환불을 시험할 수 있다.
 

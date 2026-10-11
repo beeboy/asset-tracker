@@ -55,11 +55,14 @@ enum WidgetBridge {
         var reward = WReward(keyName: m.keyName, pct: frac(track), pctYesterday: frac(yTrack), remain: max(0, key - track),
                              cells: Int(frac(track) * 1000), cellsYesterday: Int(frac(yTrack) * 1000),
                              total: m.total, dayChg: m.todayMove, tiles: Array(tiles), next: nextEvent(rows.map(\.id), now),
-                             friendsOn: Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id),
+                             friendsOn: Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id) + (m.meUnlocked ? ["me"] : []),
                              homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0 },
                              items: Shelter.items.prefix(m.itemsOn).map(\.id))
-        let sy = says(reward)
+        var sy = says(reward)
+        // 내 캐릭터는 투자 유형 인물의 대사를 같이 쓴다
+        if m.meUnlocked { sy.now["me"] = sy.now[m.meVoice]; sy.next["me"] = sy.next[m.meVoice] }
         reward.says = sy.now; reward.saysNext = sy.next
+        MeArt.push(m)
         Store.write(reward, "reward.json")
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")

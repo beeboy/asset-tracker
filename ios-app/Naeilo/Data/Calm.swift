@@ -250,6 +250,6 @@ extension AppModel {
         calm.touch(today)
     }
 
-    /// 말하는 인물: 매칭된 인물, 없으면 홈 친구
-    var calmSpeaker: String { calm.type ?? homeFriendShown }
+    /// 말하는 인물: 매칭된 인물, 없으면 홈 친구. 홈에 내 캐릭터를 두면 내 캐릭터가 (말투는 유형 인물)
+    var calmSpeaker: String { homeFriendShown == "me" ? "me" : calm.type ?? homeFriendShown }
 }
