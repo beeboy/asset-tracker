@@ -46,6 +46,7 @@
 		C727C88DCAEDE095515D279B /* ForecastEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4F2FD4AB2264F597B6817D /* ForecastEngine.swift */; };
 		BF68BCC5144E0E7462B09B86 /* MonteCarlo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DD14CB2396A6A77E94DBE3 /* MonteCarlo.swift */; };
 		E3FB07F4BE646998B06B8FE1 /* MyRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 119A53A8985910EE71D6B0B9 /* MyRecord.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* Lots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* Lots.swift */; };
 		5CB59D91AF71FB20220B5C04 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A149C71953E24CEC80C3679 /* App.swift */; };
 		5DF46E2B4E8263C2CDE8D7DF /* Reward.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B116C077153565363572A59 /* Reward.swift */; };
 		694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */ = {isa = PBXBuildFile; fileRef = E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */; };
@@ -156,6 +157,7 @@
 		EB4F2FD4AB2264F597B6817D /* ForecastEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastEngine.swift; sourceTree = "<group>"; };
 		89DD14CB2396A6A77E94DBE3 /* MonteCarlo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonteCarlo.swift; sourceTree = "<group>"; };
 		119A53A8985910EE71D6B0B9 /* MyRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyRecord.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5D /* Lots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lots.swift; sourceTree = "<group>"; };
 		752819BFD13B67854C54F1A0 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		7582FC7C75EA724D55C6EBB8 /* LockWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockWidgets.swift; sourceTree = "<group>"; };
 		79304168EC56C026CAC9C361 /* Market.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Market.swift; sourceTree = "<group>"; };
@@ -255,6 +257,7 @@
 				21CDDCD32803F96181A52ECD /* SiteCalc.swift */,
 				EB4F2FD4AB2264F597B6817D /* ForecastEngine.swift */,
 				89DD14CB2396A6A77E94DBE3 /* MonteCarlo.swift */,
+				A1B2C3D4E5F60718293A4B5D /* Lots.swift */,
 				119A53A8985910EE71D6B0B9 /* MyRecord.swift */,
 				CCACC287684D148B6C75C94F /* SampleData.swift */,
 				4439B2462725991C102336E8 /* Services.swift */,
@@ -551,6 +554,7 @@
 				C727C88DCAEDE095515D279B /* ForecastEngine.swift in Sources */,
 				BF68BCC5144E0E7462B09B86 /* MonteCarlo.swift in Sources */,
 				E3FB07F4BE646998B06B8FE1 /* MyRecord.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* Lots.swift in Sources */,
 				5DF46E2B4E8263C2CDE8D7DF /* Reward.swift in Sources */,
 				02D7A588AC677280C686D8DD /* SampleData.swift in Sources */,
 				9F562AC90F235FFD94E5BF80 /* Services.swift in Sources */,
