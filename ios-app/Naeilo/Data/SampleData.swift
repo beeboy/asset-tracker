@@ -114,9 +114,9 @@ enum Sample {
                         vision: "MANA 코인 가격", extra: ("담은 것", "MANA 코인")),
     ]
 
-    // 시작 보유 (둘러보기용 샘플, 세 루트 같음): DRNK 2주 $400, QQQ 1주 $500. 내 것처럼 보이지 않게 소액으로 (2026-10-11 결정)
+    // 시작 보유 (둘러보기용 샘플, 세 루트 같음): DRNK 4주 $400, QQQ 1주 $500. 내 것처럼 보이지 않게 소액으로 (2026-10-11 결정)
     static let startHoldings: [Holding] = [
-        .init(symbol: "DRNK", qty: 2, avg: 400),
+        .init(symbol: "DRNK", qty: 4, avg: 400),
         .init(symbol: "QQQ", qty: 1, avg: 500),
     ]
 

@@ -96,8 +96,8 @@ final class AppModel {
         let ids = Set(holdings.map(\.symbol))
         return ids.contains("DRNK") && ids.isSubset(of: ["DRNK", "QQQ"])
     }
-    /// 둘러보기 샘플 수량: DRNK 2주, QQQ 1주
-    static func sampleQty(_ id: String) -> Double { id == "DRNK" ? 2 : 1 }
+    /// 둘러보기 샘플 수량: DRNK 4주 (가장 큰 종목이 DRNK가 되게), QQQ 1주
+    static func sampleQty(_ id: String) -> Double { id == "DRNK" ? 4 : 1 }
     static var savedHoldings: [Holding]? {
         UserDefaults.standard.data(forKey: "holdings").flatMap { try? JSONDecoder().decode([Holding].self, from: $0) }
     }
@@ -580,7 +580,7 @@ final class AppModel {
         let mine: [Holding]? = holdings.isEmpty || isSample ? nil : holdings
         resetDemo(.fresh)
         if let mine { holdings = mine }
-        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 2, avg: 180), Holding(symbol: "QQQ", qty: 1, avg: 400)] }
+        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 4, avg: 180), Holding(symbol: "QQQ", qty: 1, avg: 400)] }
         if r == .plus { taxGain = 0 }
         if r != .recover { switchRoute(r); gDone = [] }
         day = 0                  // 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
