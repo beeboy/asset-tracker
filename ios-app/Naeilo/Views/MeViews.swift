@@ -250,6 +250,8 @@ struct MeEditView: View {
     @State private var loaded = false
     @State private var note: String? = nil
     @State private var askDelete = false
+    @State private var samples = false           // 샘플(소설 속 인물) 목록을 보는 중
+    @State private var sample: MeSample? = nil   // 마지막으로 고른 샘플 (소개 한 줄)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -279,9 +281,19 @@ struct MeEditView: View {
     private var groups: some View {
         ScrollView {
             VStack(spacing: 4) {
+                Button { samples = true } label: {
+                    Text("샘플").appFont(13, samples ? .bold : .regular)
+                        .foregroundStyle(samples ? .white : Theme.ink)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(samples ? Theme.teal : Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(samples ? Theme.teal : Theme.border))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("샘플, 소설 속 인물 조합")
+                .accessibilityAddTraits(samples ? .isSelected : [])
                 ForEach(MeGroup.allCases) { g in
-                    let on = g == group
-                    Button { group = g } label: {
+                    let on = !samples && g == group
+                    Button { group = g; samples = false } label: {
                         Text(g.label).appFont(13, on ? .bold : .regular).lineLimit(1).minimumScaleFactor(0.8)
                             .foregroundStyle(on ? .white : Theme.ink)
                             .frame(maxWidth: .infinity, minHeight: 40)
@@ -295,7 +307,35 @@ struct MeEditView: View {
         }
     }
 
-    private var options: some View {
+    /// 샘플: 소설 속 인물 조합을 통째로 입혀 본다 (이름·투자 유형은 그대로)
+    private var sampleList: some View {
+        ScrollView {
+            VStack(spacing: 6) {
+                ForEach(MeSample.all) { x in
+                    let on = sample?.id == x.id && draft.parts == x.parts
+                    Button { draft.parts = x.parts; sample = x } label: {
+                        VStack(spacing: 2) {
+                            MeAvatar(me: MeChar(parts: x.parts), width: 34, height: 48)
+                            Text(x.name).appFont(10).lineLimit(2).multilineTextAlignment(.center).minimumScaleFactor(0.7)
+                        }
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity, minHeight: 80).padding(.horizontal, 2)
+                        .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(x.name)
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var options: some View {
+        if samples { sampleList } else { partList }
+    }
+
+    private var partList: some View {
         ScrollView {
             VStack(spacing: 6) {
                 ForEach(group.options, id: \.self) { o in
@@ -305,26 +345,27 @@ struct MeEditView: View {
                             if group == .color && o > 100 {
                                 Circle().fill(Color(hex: MeColor.skin[o - 101])).frame(width: 34, height: 34)
                                     .overlay(Circle().stroke(Theme.border))
-                                Text(MeColor.skinNames[o - 101]).appFont(11).lineLimit(1).minimumScaleFactor(0.7)
+                                Text(group.name(o)).appFont(11).lineLimit(1).minimumScaleFactor(0.7)
                             } else if group == .color {
                                 Circle().fill(Color(hex: MeColor.hair[o - 1])).frame(width: 34, height: 34)
                                     .overlay(Circle().stroke(Theme.border))
-                                Text(MeColor.names[o - 1]).appFont(11)
+                                Text(group.name(o)).appFont(11).lineLimit(1).minimumScaleFactor(0.7)
                             } else if o == 0 {
                                 Image(systemName: "nosign").font(.system(size: 22)).foregroundStyle(Theme.muted).frame(height: 48)
                                 Text("없음").appFont(11)
                             } else {
                                 MeAvatar(me: draft.with(group, o), width: 34, height: 48)
-                                Text("\(o)").appFont(11).foregroundStyle(Theme.sub)
+                                Text(group.name(o)).appFont(10).foregroundStyle(Theme.sub)
+                                    .lineLimit(2).multilineTextAlignment(.center).minimumScaleFactor(0.7)
                             }
                         }
                         .foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity, minHeight: 72)
+                        .frame(maxWidth: .infinity, minHeight: 72).padding(.horizontal, 2)
                         .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
                         .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(group == .color ? (o > 100 ? MeColor.skinNames[o - 101] : MeColor.names[o - 1]) : o == 0 ? "없음" : "\(group.label) \(o)")
+                    .accessibilityLabel(group == .color || o == 0 ? group.name(o) : "\(group.label) \(group.name(o))")
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
@@ -337,6 +378,9 @@ struct MeEditView: View {
                 .padding(.horizontal, 14).padding(.vertical, 12)
                 .background(Theme.shelter, in: RoundedRectangle(cornerRadius: 14))
             Text(draft.shownName).appFont(17, .bold)
+            if let x = sample, draft.parts == x.parts {
+                Text("\(x.name) · \(x.about)").appFont(11).foregroundStyle(Theme.sub).multilineTextAlignment(.center)
+            }
             Text(m.meUnlocked ? "홈과 위젯에 둘 수 있어요" : "조건을 채우면 홈과 위젯에 나와요")
                 .appFont(11).foregroundStyle(Theme.sub).multilineTextAlignment(.center)
             Spacer(minLength: 0)
@@ -442,7 +486,7 @@ struct ShelterBGBox: View {
                 row(nil, "기본 쉼터", "돌아온 물건이 놓이는 처음 방")
                 ForEach(Shelter.backgrounds) { b in
                     Divider().overlay(Theme.line)
-                    row(b.id, b.name, b.intro)
+                    row(b.id, b.name, b.intro, b.volume)
                 }
             }
         }
@@ -451,14 +495,17 @@ struct ShelterBGBox: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
-    private func row(_ id: String?, _ name: String, _ intro: String) -> some View {
+    private func row(_ id: String?, _ name: String, _ intro: String, _ volume: String? = nil) -> some View {
         let locked = !m.bgUnlocked, on = !locked && m.meBg == id
         return Button { if locked { support = true } else { m.meBg = id } } label: {
             HStack(spacing: 10) {
                 RoomImage(bg: id).frame(width: 64, height: 40).clipShape(RoundedRectangle(cornerRadius: 6))
                     .grayscale(locked && id != nil ? 1 : 0).opacity(locked && id != nil ? 0.6 : 1)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(name).appFont(14, .bold)
+                    HStack(spacing: 6) {
+                        Text(name).appFont(14, .bold)
+                        if let volume { Text(volume).appFont(11).foregroundStyle(Theme.muted) }
+                    }
                     Text(intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
                 }
                 Spacer(minLength: 0)
@@ -470,6 +517,6 @@ struct ShelterBGBox: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(name + (on ? ", 지금 배경" : locked ? ", 잠김" : ""))
+        .accessibilityLabel((volume.map { $0 + " " } ?? "") + name + (on ? ", 지금 배경" : locked ? ", 잠김" : ""))
     }
 }
