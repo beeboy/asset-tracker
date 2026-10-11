@@ -20,6 +20,8 @@ struct CalmCard: View {
                     }
                     Text(m.calm.say(s, who: m.voice(who))).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(Color(hex: 0xEEF0F3))
+                    Text(Calm.meaning(s)).appFont(12).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(Color(hex: 0xC9D0D6))
                     if let l = m.calm.ladder, let p = m.calm.progress() {
                         Text("걸음 \(l.step)/3 · \(p.text)").appFont(12).foregroundStyle(Theme.mint)
                     }
@@ -52,13 +54,17 @@ struct CalmView: View {
                             Text(k.map { "\(name) · \($0.title)" } ?? "아직 매칭 전").appFont(17, .bold)
                             if let k { Text(k.like).appFont(13).foregroundStyle(Theme.sub) }
                             if m.calm.type != nil {
-                                Text("함께한 날 \(m.calm.together.count)일 · 단계 \(m.calm.stage)/3").appFont(12).foregroundStyle(Theme.muted)
+                                Text(m.calm.stageLine).appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
                     Text(m.calm.say(s, who: m.voice(who))).appFont(15).lineSpacing(3)
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 12))
+                    if let w = Calm.why(m.calm.type, s) {
+                        Text("왜 이 유형인가요").appFont(13, .bold)
+                        Text(w).appFont(13).lineSpacing(2).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    }
                     if let p = m.calm.prevType, let pk = Calm.kind(p), let pn = Shelter.friends.first(where: { $0.id == p })?.name {
                         Text("지난달 \(pn)(\(pk.title))에서 옮겨 왔어요.").appFont(12).foregroundStyle(Theme.muted)
                     }
@@ -75,6 +81,7 @@ struct CalmView: View {
                         Text(s.n < Calm.minEvents ? "기록 \(s.n)/\(Calm.minEvents)" : "\(s.index) / 100").appFont(20, .bold).foregroundStyle(Theme.teal)
                     }
                     ProgressBar(value: Double(s.index) / 100, fill: Theme.teal, track: Theme.track)
+                    Text(Calm.meaning(s)).appFont(13).lineSpacing(2).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     row("수익 뒤 추가 매수", AppModel.pct(s.chase))
                     row("손실 뒤 매도", AppModel.pct(s.switchR))
                     row("큰 변동일에 기다림", AppModel.pct(s.waitR))
