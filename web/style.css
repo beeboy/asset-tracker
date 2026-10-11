@@ -334,7 +334,7 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 /* 첫 화면 세리 (웹은 한 명만) */
 .seri { display: flex; gap: 12px; align-items: flex-start; }
 .seri img { image-rendering: pixelated; flex: none; }
-.seri-say { background: var(--bg); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; }
+.seri-say { background: var(--bg); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; width: fit-content; max-width: 100%; } /* 대사 길이만큼만 */
 .seri-say b { color: var(--accent); margin-right: 4px; }
 .seri-body { line-height: 1.6; }
 .seri-app { margin-top: 6px; }
