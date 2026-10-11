@@ -77,3 +77,36 @@ func num(_ v: Any?) -> Double? {
     if let n = v as? NSNumber { return n.doubleValue }
     return nil
 }
+
+// 사이트 시세 (naeilo.com/data/quotes.json). 사이트가 평일 30분마다 모으는 Yahoo 중계 값을 앱과 위젯이 직접 받는다.
+// 계약 뒤에는 중계 서버 쪽 출처만 바꾸면 앱·위젯은 그대로 쓴다.
+enum QuoteFeed {
+    struct Q: Codable { var last: Double; var prev: Double; var at: Double }   // 지금 가격, 전일 종가, 가격 시각(초)
+    struct File: Codable { var got: Double; var q: [String: Q] }               // got = 받은 시각(초)
+
+    static let name = "site_quotes.json"
+    static func cached() -> File? { Store.read(File.self, name) }
+
+    /// 받은 지 minAge 초가 안 됐으면 저장해 둔 값을 그대로 쓴다. 실패하면 저장해 둔 값
+    @discardableResult
+    static func fetch(minAge: TimeInterval = 0) async -> File? {
+        let old = cached()
+        if let o = old, Date().timeIntervalSince1970 - o.got < minAge { return o }
+        var c = URLComponents(url: Config.data.appendingPathComponent("quotes.json"), resolvingAgainstBaseURL: false)!
+        c.queryItems = [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970 / 60)))]   // 사이트 캐시를 피한다 (1분 단위)
+        var req = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] else { return old }
+        var q: [String: Q] = [:]
+        for (k, v) in o {
+            guard let prev = num(v["prev_close"]), let last = num(v["last"]) ?? num(v["regular"]) else { continue }
+            q[k] = Q(last: last, prev: prev, at: num(v["last_time"]) ?? num(v["regular_time"]) ?? 0)
+        }
+        guard !q.isEmpty else { return old }
+        let f = File(got: Date().timeIntervalSince1970, q: q)
+        Store.write(f, name)
+        return f
+    }
+}

@@ -20,7 +20,9 @@ final class Market {
     /// Tiingo 에서 받은 값 (티커 → 지금 가격, 전일 종가). 비어 있으면 예시 값
     var live: [String: (Double, Double)] = [:]
     var liveFx: (Double, Double)? = nil
-    var source: String { !live.isEmpty ? "Tiingo" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
+    /// 사이트가 30분마다 모으는 시세 (앱·위젯이 같이 받는다). 없으면 빌드 때 넣은 테스트 자료
+    var site: QuoteFeed.File? = QuoteFeed.cached()
+    var source: String { !live.isEmpty ? "Tiingo" : site != nil ? "naeilo 사이트" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
 
     // 예시 값: 오늘 하루 움직임 (DRNK·QQQ 는 시안의 하루 움직임) + 분 단위로 조금씩 흔들림
     static let todayMove: [String: Double] = ["DRNK": -0.0221, "QQQ": 0.004]
@@ -33,8 +35,16 @@ final class Market {
 
     func quote(_ s: Symbol) -> Quote {
         if let q = live[s.id] { return Quote(last: q.0, prevClose: q.1, live: true) }
+        if s.id != "DRNK" {
+            // 사이트 시세와 추가한 종목(5분마다 Yahoo 중계) 중 나중에 받은 값
+            let c = CustomSymbols.shared.items.first { $0.id == s.id }
+            if let f = site, let q = f.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)],
+               c == nil || c!.at.timeIntervalSince1970 < f.got {
+                return Quote(last: q.last, prevClose: q.prev, live: s.currency == .usd)
+            }
+            if let c { return Quote(last: c.last, prevClose: c.prev, live: c.usd) }
+        }
         if let q = YahooSample.quotes[s.id] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
-        if s.id != "DRNK", let q = CustomSymbols.shared.quote(s.id) { return q }     // 추가한 종목 (Yahoo 중계)
         guard s.currency == .usd else { return Quote(last: s.close, prevClose: s.close, live: false) }
         let m = (Self.todayMove[s.id] ?? 0.012 * sin(seed(s))) + wobble(seed(s))
         return Quote(last: s.close * (1 + m), prevClose: s.close, live: true)
@@ -43,12 +53,19 @@ final class Market {
     /// 원/달러 (지금, 전일)
     var fx: Quote {
         if let f = liveFx { return Quote(last: f.0, prevClose: f.1, live: true) }
+        if let q = site?.q["KRW=X"] { return Quote(last: q.last, prevClose: q.prev, live: true) }
         if let q = YahooSample.quotes["FX"] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
         return Quote(last: Sample.fx * (1 + 0.0021 + wobble(7)), prevClose: Sample.fx, live: true)
     }
 
     var asOfText: String {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+        if live.isEmpty, let s = site, let t = s.q.values.map(\.at).max(), t > 0 {
+            let d = Date(timeIntervalSince1970: t)
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm" : "M월 d일 a h:mm"
+            let ago = Int(Date().timeIntervalSince1970 - s.got) / 60
+            return "\(f.string(from: d)) 시세 · \(ago < 1 ? "방금" : "\(ago)분 전") 받음 · 한국 종목은 전일 종가"
+        }
         if live.isEmpty, let t = YahooSample.asOf {
             f.dateFormat = "M월 d일 a h:mm"
             return "\(f.string(from: t)) 시세 (테스트 자료) · 한국 종목은 전일 종가"
@@ -57,15 +74,25 @@ final class Market {
         return "지금 시세 · \(f.string(from: updatedAt)) 갱신 · 한국 종목은 전일 종가"
     }
 
-    func refresh(held: Set<String> = []) async {
+    /// force: 아래로 당겨 갱신할 때. 받은 지 얼마 안 됐어도 다시 받는다
+    func refresh(held: Set<String> = [], force: Bool = false) async {
         if let p = TiingoProvider.fromConfig() {
             let tickers = Sample.symbols.filter { $0.currency == .usd && $0.id != "DRNK" }.map(\.id)
             if let q = try? await p.quotes(tickers) { live = q }
             if let f = try? await p.usdkrw() { liveFx = f }
         }
-        // 추가한 종목: 내 종목에 있는 것만 5분에 한 번
-        await CustomSymbols.shared.refresh(held: held)
+        // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
+        if let f = await QuoteFeed.fetch(minAge: force ? 0 : 240) { site = f }
+        // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
+        await CustomSymbols.shared.refresh(held: held, force: force)
         updatedAt = Date()
+    }
+
+    /// 아래로 당겨 갱신: 내 종목을 바로 받고 위젯에도 넘긴다
+    @MainActor
+    func pullRefresh(_ m: AppModel) async {
+        await refresh(held: Set(m.holdings.map(\.symbol)), force: true)
+        WidgetBridge.write(m)
     }
 }
 

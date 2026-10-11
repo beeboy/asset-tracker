@@ -17,7 +17,7 @@ struct HomeView: View {
             .screen()
         }
         .background(Theme.bg)
-        .refreshable { await Market.shared.refresh() }
+        .refreshable { await Market.shared.pullRefresh(m) }
         .onAppear { m.calmOpen() }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { route in
