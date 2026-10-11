@@ -130,9 +130,13 @@ final class AppModel {
     var monthly = 0.0
 
     // MARK: 형식
+    /// 1억 이상은 "5억 2,528만원"처럼 억과 만을 나눠 쓴다 (만 단위에 다섯 자리 숫자는 읽기 어렵다)
     static func man(_ krw: Double) -> String {
         let n = Int((krw / 1e4).rounded())
-        return n.formatted(.number.grouping(.automatic)) + "만원"
+        let a = abs(n), sign = n < 0 ? "-" : ""
+        guard a >= 10_000 else { return n.formatted(.number.grouping(.automatic)) + "만원" }
+        let eok = a / 10_000, rest = a % 10_000
+        return sign + "\(eok.formatted())억" + (rest > 0 ? " \(rest.formatted())만원" : "원")
     }
     static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
     static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "") + String(format: "%.1f%%", p * 100) }
