@@ -65,6 +65,7 @@ extension AppModel {
     /// 가격을 아직 못 받은 종목은 매수 단가로 어림하고, 종목 정보도 없으면 그 종목만 뺀다 (한 종목 때문에 하루가 통째로 빠지지 않게)
     func recordDay(trade: (String, Double, Double)? = nil) {
         guard !isSample, persists else { return }   // 시안 확인용 실행에서는 남기지 않는다
+        recordLot()     // 수량 기록 (바뀐 날만)
         var q: [String: [Double]] = [:]
         for h in holdings where h.qty > 0 {
             guard let s = Sample.symbol(h.symbol) else { continue }

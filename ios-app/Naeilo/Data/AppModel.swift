@@ -82,6 +82,8 @@ final class AppModel {
     }
     /// naeilo를 쓴 날부터의 내 기록 (MyRecord.swift). 수량을 처음 넣은 날부터 하루 한 줄
     var myRecord: [DayRec] = MyRecord.load() { didSet { MyRecord.save(myRecord) } }
+    /// 수량이 바뀐 날만 남기는 기록 (Lots.swift, 사이트 lots 칸과 같은 모양). 내 길 실제 평가액을 그날 수량으로 계산한다
+    var lots: [Lot] = Lots.load() { didSet { Lots.save(lots) } }
     /// 종목 추가: 수량·평균 단가가 0보다 큰 숫자여야 한다 (쉼표·공백 허용). 같은 종목은 새 값으로 바꾼다
     @discardableResult
     func addHolding(_ id: String, _ qty: String, _ avg: String) -> Bool {
@@ -178,7 +180,8 @@ final class AppModel {
     }
 
     // MARK: 보유 계산 (원화)
-    func krw(_ s: Symbol, _ x: Double) -> Double { s.currency == .usd ? x * Market.shared.fx.last : x }
+    /// 원화 평가: 웹 평가액처럼 매매기준율 (없거나 5일 넘게 묵었으면 지금 환율)
+    func krw(_ s: Symbol, _ x: Double) -> Double { s.currency == .usd ? x * Market.shared.valFx : x }
     /// 들어간 돈(원금) = 매수 단가 × 수량 × 지금 환율 (웹 본전 카드와 같다. 매수 때 환율은 모른다)
     func costKrw(_ s: Symbol, _ x: Double) -> Double { krw(s, x) }
     struct Row: Identifiable { let id: String; let sym: Symbol; let h: Holding; let value: Double; let cost: Double; let color: Color }
@@ -213,8 +216,10 @@ final class AppModel {
     /// 오늘의 움직임: 원화 평가액 기준 (전일 종가·전일 환율 → 지금)
     var todayMove: Double {
         let fx = Market.shared.fx
-        let prev = rows.reduce(0) { a, r in a + r.h.qty * r.sym.quote.prevClose * (r.sym.currency == .usd ? fx.prevClose : 1) }
-        return prev > 0 ? total / prev - 1 : 0
+        let usd = { (r: Row) in r.sym.currency == .usd }
+        let prev = rows.reduce(0) { a, r in a + r.h.qty * r.sym.quote.prevClose * (usd(r) ? fx.prevClose : 1) }
+        let now = rows.reduce(0) { a, r in a + r.h.qty * r.sym.last * (usd(r) ? fx.last : 1) }   // 같은 환율 계열끼리 (평가액은 매매기준율)
+        return prev > 0 ? now / prev - 1 : 0
     }
 
     // MARK: 회복 계획 (계산은 Recovery.swift)

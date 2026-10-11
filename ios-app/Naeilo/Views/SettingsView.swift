@@ -104,6 +104,7 @@ struct PriceBasisView: View {
                 Card {
                     row("미국 종목", "지금 가격과 전일 종가")
                     row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change))")
+                    row("평가 환율", mk.marRate != nil ? "매매기준율 \(String(format: "%.2f", mk.valFx))원 · 웹 평가액과 같아요" : "매매기준율을 아직 못 받아 지금 환율")
                     row("한국 종목", "전일 종가")
                     row("오늘의 움직임", "전일 대비 지금 평가액")
                     row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : mk.site != nil ? "사이트가 평일 30분마다 모으는 테스트 자료. 당기면 바로 받아요" : "앱에 넣어 둔 테스트 자료")

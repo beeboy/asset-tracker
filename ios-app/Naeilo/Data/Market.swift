@@ -22,6 +22,11 @@ final class Market {
     var liveFx: (Double, Double)? = nil
     /// 사이트가 30분마다 모으는 시세 (앱·위젯이 같이 받는다). 없으면 빌드 때 넣은 테스트 자료
     var site: QuoteFeed.File? = QuoteFeed.cached()
+    /// 매매기준율 (사이트 data/mar.json, 서울외국환중개). 웹 평가액과 같은 환율
+    var mar: MarFeed.File? = MarFeed.cached()
+    /// 원화 평가에 쓰는 원/달러: 웹 fxBase 와 같게 매매기준율, 없거나 5일 넘게 묵었으면 지금 환율
+    var valFx: Double { marRate ?? fx.last }
+    var marRate: Double? { mar.flatMap { $0.rate > 0 && Day.dday($0.date) >= -5 ? $0.rate : nil } }
     /// 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일
     var stats: SiteStats.File? = SiteStats.load()
     var source: String { !live.isEmpty ? "Tiingo" : site != nil ? "naeilo 사이트" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
@@ -78,6 +83,7 @@ final class Market {
         }
         // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
         if let f = await QuoteFeed.fetch(minAge: force ? 0 : 240) { site = f }
+        if let r = await MarFeed.fetch(minAge: force ? 0 : 3600) { mar = r }
         // 전망 입력값: 하루 한 번 바뀌므로 6시간에 한 번 (당겨 갱신하면 바로)
         if let s = await SiteStats.fetch(minAge: force ? 0 : 6 * 3600) { stats = s }
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
@@ -181,4 +187,27 @@ enum YahooSample {
 
     /// 자료가 언제 값인지 (현재가 시각)
     static var asOf: Date? { quotes.values.map(\.time).max() }
+}
+
+/// 매매기준율: 사이트가 하루 한 번 저장하는 data/mar.json ({"USD": {"rate", "date"}}). 웹 평가액과 같은 값
+enum MarFeed {
+    struct File: Codable { var rate: Double; var date: String; var got: Double }
+    static let name = "site_mar.json"
+    static func cached() -> File? { Store.read(File.self, name) }
+
+    /// 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 실패하면 저장해 둔 값
+    static func fetch(minAge: TimeInterval = 0) async -> File? {
+        let old = cached()
+        if let o = old, Date().timeIntervalSince1970 - o.got < minAge { return o }
+        var c = URLComponents(url: Config.data.appendingPathComponent("mar.json"), resolvingAgainstBaseURL: false)!
+        c.queryItems = [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970 / 600)))]
+        let req = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let u = o["USD"] as? [String: Any], let rate = num(u["rate"]), rate > 0, let date = u["date"] as? String else { return old }
+        let f = File(rate: rate, date: date, got: Date().timeIntervalSince1970)
+        Store.write(f, name)
+        return f
+    }
 }
