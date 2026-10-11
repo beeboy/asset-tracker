@@ -13,6 +13,7 @@ struct HoldingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "종목").padding(.horizontal, -16)
+                SampleNote()
                 Text("\(rows.count)종목 · 평가액 \(AppModel.man(m.total)) · \(AppModel.sgn(m.ret))")
                     .appFont(14).foregroundStyle(Theme.sub)
                 totalChart(rows)
@@ -98,6 +99,11 @@ struct HoldingsView: View {
             // 점선(들어간 돈) 금액은 점선 바로 밑에 적는다
             Sparkline(points: tot, avg: m.cost, lineWidth: 2.2, showEndDot: true,
                       avgLabel: AppModel.man(m.cost)).frame(height: 120)
+            let noHist = rows.filter { !m.prices.hasHistory($0.sym) }.map(\.sym.name)
+            if period != .d1 && !noHist.isEmpty {
+                Text("과거 시세 없음: \(noHist.joined(separator: ", ")) (지금 가격으로 평평하게 그렸어요)")
+                    .appFont(12).foregroundStyle(Theme.muted)
+            }
         }
     }
 
@@ -240,7 +246,12 @@ struct HoldingDetailView: View {
                         Text("\(period == .d1 ? "오늘" : period.label) \(AppModel.sgn(chg))")
                             .appFont(13, .bold).foregroundStyle(Theme.change(chg))
                     }
-                    Sparkline(points: pts, avg: avgIn ? h.avg : nil, lineWidth: 2.2, showEndDot: true).frame(height: 116)
+                    if period != .d1 && !m.prices.hasHistory(sym) {
+                        Text("과거 시세 없음").appFont(15, .bold).foregroundStyle(Theme.sub)
+                            .frame(maxWidth: .infinity, minHeight: 116)
+                    } else {
+                        Sparkline(points: pts, avg: avgIn ? h.avg : nil, lineWidth: 2.2, showEndDot: true).frame(height: 116)
+                    }
                     Text(avgIn ? "점선은 평균 단가 \(AppModel.price(sym, h.avg))" : "평균 단가 \(AppModel.price(sym, h.avg))는 이 범위 밖")
                         .appFont(12).foregroundStyle(Theme.muted)
                 }

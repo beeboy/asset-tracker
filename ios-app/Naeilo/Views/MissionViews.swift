@@ -72,7 +72,7 @@ private func statBox(_ k: String, _ v: String, _ c: Color = Theme.teal) -> some 
 }
 
 // MARK: 미션 1 — 종목·단가 넣기
-// 내 종목에 있는 종목을 그대로 보여 주고 수량·평균 단가를 고친다. 내 종목이 비어 있으면 시안처럼 DRNK·QQQ 칸을 준다
+// 내 종목에 있는 종목을 그대로 보여 주고 수량·평균 단가를 고친다. 샘플 종목이면 빈칸으로 시작
 struct Mission1View: View {
     @Environment(AppModel.self) private var m
     @State private var ids: [String] = []
@@ -109,8 +109,8 @@ struct Mission1View: View {
     }
 
     private func load() {
-        let held = m.holdings.map(\.symbol)
-        let want = held.isEmpty ? ["DRNK", "QQQ"] : held
+        // 샘플(가상 DRNK·QQQ)이면 빈칸으로 시작한다: 종목 추가로 내 종목을 넣는다
+        let want = m.isSample ? [] : m.holdings.map(\.symbol)
         for id in want where !ids.contains(id) {
             ids.append(id)
             if let h = m.holdings.first(where: { $0.symbol == id }) { q[id] = h.qty.formatted(.number.grouping(.never)); p[id] = h.avg.formatted(.number.grouping(.never)) }
@@ -155,7 +155,7 @@ struct Mission1ResultView: View {
             if m.ret >= 0 {
                 Card {
                     Text("이미 본전 위에 있어요 (\(AppModel.sgn(m.ret)))").appFont(17, .bold)
-                    Text("회복보다 목표 금액을 정하는 쪽이 맞아요. 목표 루트는 다음 빌드에서 옮겨요.").appFont(14).foregroundStyle(Theme.sub)
+                    Text("회복보다 목표 금액을 정하는 쪽이 맞아요. 설정 > 루트에서 목표 루트로 옮길 수 있어요.").appFont(14).foregroundStyle(Theme.sub)
                 }
             } else {
                 GuideBubble(pose: .spread, text: "…… 여기가 지금 위치예요. 본전까지는 \(AppModel.sgn(m.cost / max(1, m.total) - 1))가 필요해요. 기간을 바꾸면 확률이 다시 계산돼요.")
@@ -619,7 +619,7 @@ struct AppStartView: View {
                         }
                         if !m.syncOn { Text("PC가 없으면 이 폰에서만 켜 두어도 돼요. 폰을 바꿀 때 같은 비밀번호로 되찾을 수 있어요.").appFont(12).foregroundStyle(Theme.sub) }
                     } else if cur {
-                        Button("앱에서 했어요 (시안)") { withAnimation { m.nxStep += 1 } }
+                        Button("앱에서 했어요") { withAnimation { m.nxStep += 1 } }
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                     }

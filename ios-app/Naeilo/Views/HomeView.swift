@@ -8,6 +8,7 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 AppHeader(tab: "홈").padding(.horizontal, -16)
+                SampleNote()
                 summary
                 shelterBox
                 reminder
@@ -65,7 +66,7 @@ struct HomeView: View {
             }
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: prog)
-            Text("오늘 \(AppModel.sgn(m.route == .novice ? 0.006 : m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog)) 도달. 다음달 \(AppModel.wonK(m.gM)) 적립 예정.")
+            Text("오늘 \(AppModel.sgn(m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog)) 도달. 다음달 \(AppModel.wonK(m.gM)) 적립 예정.")
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(.white)
@@ -358,6 +359,24 @@ struct FlowRow: Layout {
             if x > b.minX && x + sz.width > b.maxX { x = b.minX; y += rowH + spacing; rowH = 0 }
             s.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
             x += sz.width + spacing; rowH = max(rowH, sz.height)
+        }
+    }
+}
+
+/// 샘플 종목 안내: 새 사용자는 가상 종목 DRNK·QQQ 샘플로 시작한다. 내 종목을 넣기 전까지 탭마다 보인다
+struct SampleNote: View {
+    @Environment(AppModel.self) private var m
+    var body: some View {
+        if m.isSample {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("샘플").appFont(12, .bold).foregroundStyle(.white)
+                    .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.orange, in: Capsule())
+                Text("지금 숫자는 샘플(가상 종목 DRNK·QQQ)이에요. 종목 탭에서 내 종목을 넣으면 바뀌어요.")
+                    .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.orange.opacity(0.6)))
         }
     }
 }

@@ -79,12 +79,18 @@ final class AppModel {
     func addHolding(_ id: String, _ qty: String, _ avg: String) -> Bool {
         let num = { (t: String) in Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)) }
         guard Sample.symbol(id) != nil, let q = num(qty), q > 0, let a = num(avg), a > 0 else { return false }
+        if isSample { holdings = [] }       // 처음 넣는 내 종목이면 샘플(DRNK·QQQ)은 치운다
         holdings.removeAll { $0.symbol == id }
         holdings.append(Holding(symbol: id, qty: q, avg: a))
         return true
     }
     /// 평정 지수 기록 (Calm.swift). 내 종목처럼 앱을 다시 켜도 남는다
     var calm = Calm.load() { didSet { calm.save() } }
+    /// 지금 종목이 샘플(가상 종목 DRNK + QQQ)인지. 새 사용자는 샘플로 시작하고, 화면마다 샘플이라고 알린다
+    var isSample: Bool {
+        let ids = Set(holdings.map(\.symbol))
+        return ids.contains("DRNK") && ids.isSubset(of: ["DRNK", "QQQ"])
+    }
     static var savedHoldings: [Holding]? {
         UserDefaults.standard.data(forKey: "holdings").flatMap { try? JSONDecoder().decode([Holding].self, from: $0) }
     }
@@ -121,7 +127,22 @@ final class AppModel {
 
     // 주간 예보
     var weekGuess: String? = nil
-    var weekFriday = false
+    var weekFridaySkip = false   // 개발자 확인용: 금요일 마감으로 미리 넘기기
+    /// 이번 주 예보가 마감됐는지: 미국 금요일 종가가 나온 뒤(한국 시각 토·일요일)
+    var weekFriday: Bool {
+        if weekFridaySkip { return true }
+        var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+        let wd = c.component(.weekday, from: Date())
+        return wd == 7 || wd == 1
+    }
+    /// 이번 주 금요일 (마감일 표시)
+    var weekFridayText: String {
+        var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+        let now = Date(), wd = c.component(.weekday, from: now)
+        let fri = c.date(byAdding: .day, value: wd == 1 ? -2 : 6 - wd, to: now) ?? now
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.timeZone = c.timeZone; f.dateFormat = "M월 d일"
+        return f.string(from: fri)
+    }
 
     // 3년 전망
     var lens: Lens = .mine
@@ -205,7 +226,7 @@ final class AppModel {
     var goalTaxPick = "split"
     var horizon = 6              // 미션 1·3의 기간 칩 (3·6·12개월)
     var quizAnswer: String? = nil
-    var taxGain = 600.0          // 올해 실현 이익 (만원)
+    var taxGain = 0.0            // 올해 실현 이익 (만원). 사용자가 넣는다
     var taxSellQty = 0.0
     var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
     var boardPath: [MissionRoute] = []
@@ -516,24 +537,26 @@ final class AppModel {
     var cellUnit: Double { cost / 1000 }
     func cells(_ v: Double) -> Int { max(0, min(1000, Int(floor(v / max(1, cellUnit))))) }
     var cellsNow: Int { cells(total) }
-    var cellsFloor: Int { cells(total / 1.064) }      // 시작 뒤 가장 낮았던 날 (시안 가정: 지금보다 6% 낮음)
+    /// 시작(3개월 전) 뒤 가장 낮았던 날: 지금 수량에 지난 3개월 종가를 대입해 찾는다 (과거 시세가 없으면 지금 가격)
+    var cellsFloor: Int { cells(min(total, (0...30).map { totalAt(1 - Double($0) / 360) }.min() ?? total)) }
     var cellsYesterday: Int { cells(total / (1 + todayMove)) }
 
     // MARK: 주간 예보 (월요일에 적은 금요일 평가액 50% 범위)
     var weekRange: (lo: Double, hi: Double, actual: Double) {
         let now = trackValue
         let wSg = forecast.sigma / sqrt(52), base = now / 1.004
-        let actual = weekFriday ? now * (1 - 0.006) : now
+        let actual = now
         return (base * exp(-0.674 * wSg), base * exp(0.674 * wSg), actual)
     }
-    let pastWeeks = [1, 0, 1, 1, 0, 1, 0, 1]
+    /// 지난 주간 예보 도장 (1 = 범위 안). 아직 주간 기록을 남기지 않아 비어 있다. 개발자 기기에서는 시연 값
+    var pastWeeks: [Int] { devAll ? [1, 0, 1, 1, 0, 1, 0, 1] : [] }
 
     // MARK: 시안 조작
     enum Demo { case fresh, week1, all }
     /// 첫 질문 답: 마이너스 = 회복 루트 미션 1부터, 플러스 = 목표 루트(샘플은 이익 난 단가), 시작 전 = 목표 루트 적립
     func startRoute(_ r: Route) {
         // 사용자가 넣은 종목이 있으면 루트를 다시 골라도 그대로 불러온다 (예시 종목은 처음일 때만)
-        let mine: [Holding]? = holdings.isEmpty || holdings == Sample.startHoldings ? nil : holdings
+        let mine: [Holding]? = holdings.isEmpty || isSample ? nil : holdings
         resetDemo(.fresh)
         if let mine { holdings = mine }
         else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 60, avg: 180), Holding(symbol: "QQQ", qty: 10, avg: 400)] }
@@ -554,7 +577,7 @@ final class AppModel {
         route = .recover; gDone = []; gWeeks = []; gWeekCur = nil
         weekCur = nil; day = 5; dayLog = [:]; itemsBack = 0; itemsBackDay = nil; itemsOff = []; homeFriend = "seri"; readPos = []; readLast = nil
         interStartAt = nil; goalStartAt = nil
-        weekGuess = nil; weekFriday = false; planKey = "balance"; horizon = 6; quizAnswer = nil
-        taxGain = 600; taxSellQty = 0; boardPath = []
+        weekGuess = nil; weekFridaySkip = false; planKey = "balance"; horizon = 6; quizAnswer = nil
+        taxGain = 0; taxSellQty = 0; boardPath = []
     }
 }
