@@ -38,7 +38,7 @@ struct ShelterView: View {
                 }
                 itemNote
                 ShelterBGBox(support: $support)
-                Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아오고, 연속이 끊겨도 돌아온 물건은 그대로 있어요.")
+                Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아오고, 연속이 끊겨도 돌아온 물건은 그대로 있어요. 방에 놓인 물건을 누르면 배치에서 빠지고, 아래 칸에서 다시 놓을 수 있어요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
             .screen().padding(.top, 8)
@@ -377,11 +377,12 @@ struct ShelterView: View {
 
     private func itemTile(_ i: Int, _ it: ShelterItem) -> some View {
         let on = i < m.itemsOn
-        return Button { if on { item = it.id } } label: {
+        let off = on && m.itemsOff.contains(it.id)
+        return Button { if on { if item == it.id { togglePlace(it.id) } else { item = it.id } } } label: {
             VStack(spacing: 2) {
-                Pixel(name: "art_" + it.id + (on || m.peekItems ? "" : "_l"), width: 32, height: 32).opacity(on ? 1 : m.peekItems ? 0.6 : 1)
+                Pixel(name: "art_" + it.id + (on || m.peekItems ? "" : "_l"), width: 32, height: 32).opacity(off ? 0.4 : on ? 1 : m.peekItems ? 0.6 : 1)
                 Text(on ? it.name : "???").appFont(11, .bold).lineLimit(2).multilineTextAlignment(.center)
-                Text(i == m.itemsOn ? "\(m.itemDaysLeft)일 남음" : "\(i + 1)번째").appFont(10).foregroundStyle(i == m.itemsOn ? Theme.teal : Theme.sub)
+                Text(off ? "빼 둠" : i == m.itemsOn ? "\(m.itemDaysLeft)일 남음" : "\(i + 1)번째").appFont(10).foregroundStyle(i == m.itemsOn ? Theme.teal : Theme.sub)
             }
             .foregroundStyle(on ? Theme.ink : Theme.muted)
             .frame(maxWidth: .infinity, minHeight: 84)
@@ -389,7 +390,7 @@ struct ShelterView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? (item == it.id ? Theme.teal : Theme.border) : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: on ? [] : [4, 3])))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(on ? it.name : i == m.itemsOn ? "다음에 돌아오는 물건, \(m.itemDaysLeft)일 남음" : "\(i + 1)번째로 돌아오는 물건")
+        .accessibilityLabel(on ? it.name + (off ? ", 방에서 빼 둠" : "") : i == m.itemsOn ? "다음에 돌아오는 물건, \(m.itemDaysLeft)일 남음" : "\(i + 1)번째로 돌아오는 물건")
     }
 
     /// 쉼터 방: 돌아온 물건이 제자리에 놓이고, 홈에 둔 친구는 물건과 겹치지 않게 문 앞에 선다.
@@ -400,15 +401,16 @@ struct ShelterView: View {
             ZStack(alignment: .topLeading) {
                 RoomImage(bg: m.roomBG).frame(width: g.size.width, height: g.size.height)
                 ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in
-                    if let p = Shelter.slots[it.id], i < m.itemsOn || m.peekItems {
+                    if let p = Shelter.slots[it.id], i < m.itemsOn || m.peekItems, !m.itemsOff.contains(it.id) {
                         let on = i < m.itemsOn
-                        Button { if on { item = it.id } } label: {
+                        Button { if on { item = it.id; m.itemsOff.insert(it.id) } } label: {
                             Image("art_" + it.id).interpolation(.none).resizable().frame(width: 16 * u, height: 16 * u)
                                 .opacity(on ? 1 : 0.35)
                         }
                         .buttonStyle(.plain).disabled(!on)
                         .offset(x: p.x * u, y: p.y * u)
                         .accessibilityLabel(on ? it.name : "아직 안 돌아온 물건 미리 보기")
+                        .accessibilityHint(on ? "누르면 방에서 빼요" : "")
                     }
                 }
                 CharPixel(id: m.homeFriendShown, width: 24 * u, height: 34 * u)
@@ -435,10 +437,25 @@ struct ShelterView: View {
                 }
             }
             Spacer(minLength: 0)
+            if let c = cur {
+                let off = m.itemsOff.contains(c.id)
+                Button { item = c.id; togglePlace(c.id) } label: {
+                    Text(off ? "다시 놓기" : "빼기").appFont(13, .bold).foregroundStyle(off ? .white : Theme.teal)
+                        .padding(.horizontal, 12).frame(minHeight: 36)
+                        .background(off ? Theme.teal : Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(off ? "\(c.name) 방에 다시 놓기" : "\(c.name) 방에서 빼기")
+            }
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
+    }
+
+    /// 방 배치에서 빼거나 다시 놓는다. 모은 물건은 그대로 남는다
+    private func togglePlace(_ id: String) {
+        if m.itemsOff.contains(id) { m.itemsOff.remove(id) } else { m.itemsOff.insert(id) }
     }
 }
 
