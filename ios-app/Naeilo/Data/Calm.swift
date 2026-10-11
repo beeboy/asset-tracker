@@ -392,7 +392,7 @@ extension Calm {
     /// 걸음 완료 한 줄 (인물 말투, 대사 데이터 ladder.<유형>.<걸음> 이 있으면 그것)
     static func stepLine(_ type: String, _ step: Int, who: String) -> String {
         if let l = Lines.pick("ladder.\(type).\(step).\(who)") ?? Lines.pick("ladder.\(type).\(step)") { return l }
-        return "걸음 \(step) '\(steps[type]?[step - 1].name ?? "")'을 마쳤어요."
+        return "걸음 \(step)/3 ‘\(steps[type]?[step - 1].name ?? "")’ 완료!"
     }
 }
 

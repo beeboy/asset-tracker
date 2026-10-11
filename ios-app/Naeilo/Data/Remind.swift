@@ -225,7 +225,20 @@ final class Remind {
         if let ch = calmChange(c) {
             a.append(.init(id: "calm.chg.\(ch.month)", cat: .done, text: "평정 지수가 지난달 \(ch.a)점에서 \(ch.b)점으로 \(ch.b > ch.a ? "올랐어요" : "내렸어요").", go: .calm))
         }
-        // 다음 걸음: 습관 사다리(별도 설계)가 채울 자리
+        // 다음 걸음: 습관 사다리에서 마친 걸음 (최근 3개), 세리가 지킨 반년
+        if let l = c.ladder {
+            let who = m.voice(m.calmSpeaker)
+            for d in l.done.suffix(3) {
+                var text = Calm.stepLine(d.type, d.step, who: who)
+                if d == l.done.last, d.type == l.type, (1...3).contains(l.step), let nx = Calm.steps[l.type]?[l.step - 1] {
+                    text += " 다음 걸음은 ‘\(nx.name)’."
+                }
+                a.append(.init(id: "calm.step.\(d.type).\(d.step).\(d.day)", cat: .done, text: text, go: .calm))
+            }
+            if l.keeps > 0 {
+                a.append(.init(id: "calm.keep.\(l.keeps)", cat: .done, text: "평정 지수 80 이상을 \(6 * (l.keeps + 1))달 지켰어요.", go: .calm))
+            }
+        }
         // 내 캐릭터 조건
         let g = [m.meGate1, m.meGate2, m.meGate3].filter { $0 }.count
         if g == 3 {
@@ -300,6 +313,9 @@ final class Remind {
         let n = m.calm.events.count
         if (1..<Calm.minEvents).contains(n) {
             a.append(.init(id: "do.calm", cat: .doing, text: "평정 지수까지 기록 \(Calm.minEvents - n)건 남았어요.", go: .calm, once: false))
+        }
+        if let l = m.calm.ladder, (1...3).contains(l.step), let st = Calm.steps[l.type]?[l.step - 1], let p = m.calm.progress() {
+            a.append(.init(id: "do.ladder", cat: .doing, text: "다음 걸음 \(l.step)/3 ‘\(st.name)’ · \(p.text)", go: .calm, once: false))
         }
         let left = [(m.meGate1, m.meGate1Text), (m.meGate2, "평정 지수 유형 매칭"), (m.meGate3, "다방커피 후원")].filter { !$0.0 }.map { $0.1 }
         if (1...2).contains(left.count) {
