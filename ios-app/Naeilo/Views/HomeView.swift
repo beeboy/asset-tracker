@@ -10,8 +10,8 @@ struct HomeView: View {
                 AppHeader(tab: "홈").padding(.horizontal, -16)
                 SampleNote()
                 summary
-                // 회복 루트: 매달 더 넣으면 본전이 언제인지 (미션 1을 지난 뒤에도 다시 볼 수 있게)
-                if !m.isGoal, m.done.contains(1), m.cost > m.total, !m.rows.isEmpty { DepositLeverCard(plan: m.keepPlan) }
+                // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
+                if !m.isGoal, m.done.contains(3), m.cost > m.total, !m.rows.isEmpty { DepositLeverCard(plan: m.keepPlan) }
                 shelterBox
                 reminder
                 if m.playUnlocked { RoutineCard() } else { lockedRoutine }
