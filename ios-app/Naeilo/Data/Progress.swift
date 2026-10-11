@@ -46,6 +46,7 @@ struct Progress: Codable, Equatable {
     var interStartAt: Double? = nil
     var goalStartAt: Double? = nil
     var meGate1At: Double? = nil
+    var itemsOff: Set<String>? = nil   // 쉼터 방에서 뺀 물건 (모은 건 그대로, 다시 놓을 수 있다)
 
     private static let key = "progress.v1"
     static func load() -> Progress? {
@@ -70,7 +71,7 @@ extension AppModel {
                  day: day, dayLog: dayLog, lastOpen: Day.today, weekGuess: weekGuess, itemsBack: itemsBack, itemsBackDay: itemsBackDay,
                  homeFriend: homeFriend, readPos: readPos, readLast: readLast,
                  lens: lens, trust: trust, shock: shock, monthly: monthly, syncOn: syncOn, widgetSel: widgetSel,
-                 me: me, meBg: meBg, interStartAt: interStartAt, goalStartAt: goalStartAt, meGate1At: meGate1At)
+                 me: me, meBg: meBg, interStartAt: interStartAt, goalStartAt: goalStartAt, meGate1At: meGate1At, itemsOff: itemsOff.isEmpty ? nil : itemsOff)
     }
 
     func apply(_ p: Progress) {
@@ -85,6 +86,7 @@ extension AppModel {
         meBg = p.meBg; interStartAt = p.interStartAt; goalStartAt = p.goalStartAt; meGate1At = meGate1At ?? p.meGate1At
         day = p.day
         itemsBack = p.itemsBack ?? min(10, streak / 7); itemsBackDay = p.itemsBackDay
+        itemsOff = p.itemsOff ?? []
         catchUpDay(from: p.lastOpen)
     }
 
