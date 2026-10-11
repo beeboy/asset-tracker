@@ -610,32 +610,111 @@
   const LOGO_SRC = (t) => [...(LOGO_DOMAIN[t] ? [`https://www.google.com/s2/favicons?domain=${LOGO_DOMAIN[t]}&sz=64`] : []), `https://financialmodelingprep.com/image-stock/${encodeURIComponent(t)}.png`, `https://assets.parqet.com/logos/symbol/${encodeURIComponent(t)}?format=png`];
   window.logoErr = (img) => { const n = LOGO_SRC(img.dataset.t)[+img.dataset.k + 1]; if (n) { img.dataset.k = +img.dataset.k + 1; img.src = n; } else img.remove(); };
   const logo = (t, name) => `<span class="tlogo" data-c="${esc(t.replace(/[^A-Z0-9]/gi, "").slice(0, 1))}" title="${esc(name || t)}"><img src="${LOGO_SRC(t)[0]}" data-t="${esc(t)}" data-k="0" alt="" loading="lazy" onerror="logoErr(this)"></span>`;
+  // 정렬: 표에서 보이는 순서만 바꾼다 (data-i 는 원래 순서 번호, 그래프 색은 넣은 순 그대로)
+  const HOLD_SORT = {
+    value: (a, b) => (b.valueKrw || 0) - (a.valueKrw || 0),
+    name: (a, b) => a.h.ticker.localeCompare(b.h.ticker),
+    ret: (a, b) => (b.plPct ?? -Infinity) - (a.plPct ?? -Infinity),
+    today: (a, b) => (b.dayChg ?? -Infinity) - (a.dayChg ?? -Infinity),
+  };
   function renderQuotes() {
     const { rows, total } = valuation();
     const fx = fxNow("USD"), fq = S.quotes["KRW=X"];
     $("#fxLine").textContent = `원/달러 ${nf(fx, 2)}${fq?.last_time ? " (" + dtStr(fq.last_time * 1000) + ")" : ""}`;
     const adv = !!S.state.ui.manual_price, hasPl = rows.some((r) => r.pl != null); // 매수 단가가 하나도 없으면 손익 칸은 숨김
+    const sortBy = S.state.ui.hold_sort || "added"; $("#holdSort").value = sortBy;
+    const order = rows.map((r, i) => ({ ...r, i }));
+    if (HOLD_SORT[sortBy]) order.sort(HOLD_SORT[sortBy]);
+    const cols = 6 + (adv ? 1 : 0) + (hasPl ? 1 : 0);
     const head = `<tr><th class="l">종목</th><th>수량</th><th>매수 단가</th><th>현재가<br><span class="muted">평가액</span></th>${adv ? "<th>현재가 직접 입력</th>" : ""}<th>비중<br><span class="muted">전일</span></th>${hasPl ? "<th>손익</th>" : ""}<th></th></tr>`;
-    const body = rows.map((r, i) => {
+    const body = order.map((r) => {
+      const i = r.i, open = S.holdEdit?.i === i;
       const mk = r.p.src === "manual" ? curPrice({ ...r.h, price: null }).v : null;
       const gap = mk ? r.p.v / mk - 1 : 0;
       const warn = Math.abs(gap) > 0.05 ? `<br><span class="bad small">시세 ${nf(mk, 2)}와 ${spct(gap, 0)} 차이</span>` : "";
       const p = r.p, tag = p.src && p.src !== "regular" ? `<span class="tag ${p.src === "manual" ? "manual" : ""}">${SESS[p.src] || p.src}</span>` : "";
       const pl = r.pl != null ? `<span class="${cls(r.pl)}" title="${nf(r.pl, 0)} ${r.ccy}">${spct(r.plPct, 0)}</span><br><span class="muted small">${krw(r.pl * (r.fx || 1))}</span>` : `<span class="muted">-</span>`;
-      return `<tr data-i="${i}">
+      // 수량·단가는 글자로만 보인다. 누르면 ✎ 와 같이 그 줄 아래에 고치기 칸이 펼쳐진다 (산 것·판 것을 구분해 남기려고)
+      return `<tr data-i="${i}"${open ? ' class="hon"' : ""}>
         <td class="l tkc">${logo(r.h.ticker, r.name)}<b>${esc(r.h.ticker)}</b></td>
-        <td><input data-f="shares" type="text" inputmode="decimal" placeholder="수량" value="${r.h.shares ? r.h.shares : ""}"></td>
-        <td><input data-f="avg_cost" type="text" inputmode="decimal" placeholder="선택" value="${r.h.avg_cost ?? ""}"></td>
+        <td class="hnum" data-pen="${i}">${r.sh ? r.sh.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) : '<span class="muted">수량 없음</span>'}</td>
+        <td class="hnum" data-pen="${i}">${r.avg ? nf(r.avg, 2) : '<span class="muted">-</span>'}</td>
         <td>${p.v != null ? nf(p.v, 2) + " <span class='muted small'>" + r.ccy + "</span>" : "-"}${tag}<br><b>${krw(r.valueKrw)}</b></td>
         ${adv ? `<td><input data-f="price" type="text" inputmode="decimal" placeholder="자동" value="${r.h.price ?? ""}">${warn}</td>` : ""}
-        <td>${pct(r.w, 0)}<br><span class="${cls(r.dayChg)}">${spct(r.dayChg, 1)}</span></td>${hasPl ? `<td>${pl}</td>` : ""}<td><button class="danger x" data-del="${i}" title="이 종목 삭제">✕</button></td></tr>`;
+        <td>${pct(r.w, 0)}<br><span class="${cls(r.dayChg)}">${spct(r.dayChg, 1)}</span></td>${hasPl ? `<td>${pl}</td>` : ""}<td class="hbtn"><button class="x pen${open ? " on" : ""}" data-pen="${i}" title="수량·단가 고치기">✎</button><button class="danger x" data-del="${i}" title="이 종목 삭제">✕</button></td></tr>` +
+        (open ? holdEditRow(r, cols) : "");
     }).join("");
     const plTot = rows.filter((r) => r.pl != null).reduce((s, r) => s + r.pl * (r.fx || 1), 0);
     const foot = `<tr><td class="l"><b>합계</b></td><td></td><td></td><td><b>${krw(total)}</b></td>${adv ? "<td></td>" : ""}<td>100%</td>${hasPl ? `<td><span class="${cls(plTot)}">${krw(plTot)}</span></td>` : ""}<td></td></tr>`;
     $("#holdTable").innerHTML = head + body + foot;
     renderTrades();
   }
+  // ✎ 고치기: 직접 고치기(오타·처음 입력, 매매로 세지 않음) / 더 샀어요 / 팔았어요 (iOS HoldingEdit 와 같은 계산)
+  const HOLD_MODES = { fix: "직접 고치기", buy: "더 샀어요", sell: "팔았어요" };
+  const numStr = (v) => (v == null || !isFinite(v) ? "" : String(Math.round(v * 1e4) / 1e4));
+  function holdEditStart(i, mode) {
+    const h = S.state.holdings[i]; if (!h) return;
+    const px = curPrice(h).v;
+    S.holdEdit = mode === "fix" ? { i, mode, q: numStr(Number(h.shares) || 0), p: h.avg_cost ? numStr(Number(h.avg_cost)) : "" } : { i, mode, q: "", p: numStr(px) };
+  }
+  function holdEditCalc() {
+    const E = S.holdEdit, h = S.state.holdings[E.i], ccy = ccyOf(h.ticker);
+    const q0 = Number(h.shares) || 0, p0 = Number(h.avg_cost) > 0 ? Number(h.avg_cost) : null;
+    const qi = parseDec(E.q), pi = parseDec(E.p), money = (v) => `${nf(v, 2)} ${ccy}`;
+    let q1 = q0, p1 = p0, bad = false, note = "";
+    if (E.mode === "fix") {
+      bad = !(qi >= 0) || (E.p !== "" && !(pi > 0));
+      if (!bad) { q1 = qi; p1 = E.p === "" ? null : pi; note = `수량 ${nf(q0)} → ${nf(q1)}주${p1 !== p0 ? `, 매수 단가 ${p0 ? money(p0) : "없음"} → ${p1 ? money(p1) : "없음"}` : ""}. 매매로 세지 않아요.`; }
+    } else if (E.mode === "buy") {
+      bad = !(qi > 0 && pi > 0);
+      if (!bad) {
+        q1 = q0 + qi; p1 = p0 ? (q0 * p0 + qi * pi) / q1 : q0 ? null : pi;
+        note = `수량 ${nf(q0)} → ${nf(q1)}주, ${p1 ? `평균 단가 ${p0 ? money(p0) : "없음"} → ${money(p1)}` : "평균 단가는 이전 단가가 없어 비워 둬요"}.`;
+      }
+    } else {
+      bad = !(qi > 0 && qi <= q0 && pi > 0);
+      if (!bad) {
+        q1 = q0 - qi;
+        const g = p0 ? qi * (pi - p0) * (fxNow(ccy) || 1) : null;
+        note = `수량 ${nf(q0)} → ${nf(q1)}주${q1 ? "" : " (종목이 목록에서 빠져요)"}. ` + (g == null ? "매수 단가가 없어 판 부분 손익은 계산하지 않아요." : `판 부분의 ${g >= 0 ? "이익" : "손실"}은 ${krw(Math.abs(g))}원이에요.` + (ccy === "KRW" ? " 국내 상장주식은 대주주가 아니면 양도세가 없어요." : " 올해 해외주식 실현 이익에 더해 세금 계산에 반영돼요."));
+      } else if (qi > q0) note = `가진 수량(${nf(q0)}주)보다 많이 팔 수는 없어요.`;
+    }
+    return { qi, pi, q1, p1, bad, note, ccy };
+  }
+  function holdEditRow(r, cols) {
+    const E = S.holdEdit, c = holdEditCalc(), trade = E.mode !== "fix";
+    return `<tr class="hedit"><td colspan="${cols}" class="l">
+      <div class="row hedbox"><div class="seg">${Object.entries(HOLD_MODES).map(([k, v]) => `<button data-hmode="${k}" class="${E.mode === k ? "on" : ""}">${v}</button>`).join("")}</div>
+      <label>${trade ? (E.mode === "buy" ? "산 수량" : "판 수량") : "수량"} <input data-e="q" type="text" inputmode="decimal" value="${esc(E.q)}" placeholder="${trade ? "몇 주" : "수량"}" size="6"></label>
+      <label>${trade ? "가격" : "매수 단가"} <input data-e="p" type="text" inputmode="decimal" value="${esc(E.p)}" placeholder="${trade ? "주당" : "선택"}" size="7"> <span class="muted small">${c.ccy}</span></label>
+      <button class="primary" data-esave ${c.bad ? "disabled" : ""}>저장</button><button data-eclose>닫기</button></div>
+      <div class="hpv muted small">${esc(c.note)}</div></td></tr>`;
+  }
+  function holdEditSave() {
+    const E = S.holdEdit, c = holdEditCalc(); if (c.bad) return;
+    const h = S.state.holdings[E.i];
+    if (S.state.sample) endSample(true);
+    if (E.mode !== "fix") {
+      // 산 것·판 것만 따로 남긴다 (나중에 평정 지수가 이것만 센다. 직접 고치기는 남기지 않음)
+      const log = (S.state.trade_log = S.state.trade_log || []);
+      log.push({ d: today(), t: h.ticker, q: E.mode === "buy" ? c.qi : -c.qi, px: c.pi });
+      if (log.length > 1000) log.splice(0, log.length - 1000);
+    }
+    h.shares = c.q1;
+    if (c.p1 > 0) h.avg_cost = Math.round(c.p1 * 1e4) / 1e4; else delete h.avg_cost;
+    const msg = E.mode === "fix" ? `${h.ticker} 고침` : `${h.ticker} ${c.qi}주 ${E.mode === "buy" ? "산" : "판"} 것 기록함`;
+    if (!(c.q1 > 0) && E.mode === "sell") S.state.holdings.splice(E.i, 1);
+    S.holdEdit = null; toast(msg);
+    save(); renderAll();
+  }
   function onHoldEdit(e) {
+    const ed = e.target.dataset.e;
+    if (ed && S.holdEdit) { // 고치기 칸: 전체를 다시 그리지 않고 미리 보기·저장 버튼만 바꾼다
+      S.holdEdit[ed] = e.target.value;
+      const c = holdEditCalc(), box = e.target.closest("tr.hedit");
+      box.querySelector(".hpv").textContent = c.note; box.querySelector("[data-esave]").disabled = c.bad;
+      return;
+    }
     const tr = e.target.closest("tr[data-i]"); if (!tr) return;
     const h = S.state.holdings[+tr.dataset.i], f = e.target.dataset.f; if (!f) return;
     if (S.state.sample && f !== "note") endSample(true);
@@ -643,6 +722,14 @@
     else { const v = parseDec(e.target.value); if (v === undefined) return; h[f] = v; }
     save(f !== "note"); renderHeader();
     if (e.type === "change") renderQuotes();
+  }
+  function onHoldClick(e) {
+    const d = e.target.closest("[data-del]"); if (d) { if (S.holdEdit?.i === +d.dataset.del) S.holdEdit = null; return delHolding(+d.dataset.del, d); }
+    const pen = e.target.closest("[data-pen]");
+    if (pen) { const i = +pen.dataset.pen; if (S.holdEdit?.i === i && pen.tagName === "BUTTON") S.holdEdit = null; else if (S.holdEdit?.i !== i) holdEditStart(i, "fix"); renderQuotes(); const inp = $("#holdTable [data-e='q']"); if (inp) inp.focus(); return; }
+    const m = e.target.closest("[data-hmode]"); if (m && S.holdEdit) { holdEditStart(S.holdEdit.i, m.dataset.hmode); renderQuotes(); $("#holdTable [data-e='q']")?.focus(); return; }
+    if (e.target.closest("[data-esave]")) return holdEditSave();
+    if (e.target.closest("[data-eclose]")) { S.holdEdit = null; renderQuotes(); }
   }
   // 새 종목: 그 종목 분기 실적 사건을 함께 넣는다 (날짜는 1·4·7·10월 하순으로 추정). 지수·현금성 ETF 는 제외
   function addEarnEvent(t) {
@@ -2253,7 +2340,8 @@
       const a = L[i - 1].h, b = L[i].h;
       for (const t of new Set([...Object.keys(a), ...Object.keys(b)])) {
         const q = (b[t] || 0) - (a[t] || 0); if (!q) continue;
-        const px = priceOn(t, L[i].d), fx = fxNow(ccyOf(t)) || 1, avg = Number(S.state.holdings.find((h) => h.ticker === t)?.avg_cost) || null;
+        const lg = (S.state.trade_log || []).find((x) => x.d === L[i].d && x.t === t); // ✎ 로 넣은 매매는 그 가격, 아니면 그날 종가
+        const px = lg?.px || priceOn(t, L[i].d), fx = fxNow(ccyOf(t)) || 1, avg = Number(S.state.holdings.find((h) => h.ticker === t)?.avg_cost) || null;
         out.push({ i, d: L[i].d, t, q, px, krw: px ? Math.abs(q) * px * fx : null, real: q < 0 && avg && px ? (px - avg) * -q * fx : null });
       }
     }
@@ -2965,7 +3053,9 @@
     $("#autoRefresh").onchange = (e) => { S.state.ui.auto_refresh_min = +e.target.value; setAuto(+e.target.value); save(false); };
     $("#holdTable").addEventListener("input", onHoldEdit);
     $("#holdTable").addEventListener("change", onHoldEdit);
-    $("#holdTable").addEventListener("click", (e) => { const d = e.target.closest("[data-del]"); if (d) delHolding(+d.dataset.del, d); });
+    $("#holdTable").addEventListener("click", onHoldClick);
+    $("#holdTable").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset.e) holdEditSave(); else if (e.key === "Escape" && S.holdEdit) { S.holdEdit = null; renderQuotes(); } });
+    $("#holdSort").onchange = (e) => { S.state.ui.hold_sort = e.target.value; save(false); renderQuotes(); };
     $("#btnAdd").onclick = addHolding;
     $("#addAvg").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     $("#addShares").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());

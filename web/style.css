@@ -320,3 +320,13 @@ table.hit td.retro { opacity: .5; } table.hit th.now { color: var(--accent); }
 .stabalg li { margin-bottom: 4px; line-height: 1.55; }
 .stabw { margin: 2px 0 8px; padding-left: 18px; }
 .stabw li { margin-bottom: 2px; }
+/* 보유 종목: 정렬·✎ 고치기 */
+.holdsort { justify-content: flex-end; margin: 4px 0; }
+table.grid td.hnum { cursor: pointer; } table.grid td.hnum:hover { color: var(--accent); text-decoration: underline dotted; }
+table.grid td.hbtn button + button { margin-left: 4px; }
+table.grid button.pen.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+table.grid tr.hon td { background: var(--bg); }
+table.grid tr.hedit td { background: var(--bg); white-space: normal; }
+.hedbox { gap: 8px; flex-wrap: wrap; align-items: center; } .hedbox label { white-space: nowrap; }
+.hpv { margin-top: 6px; }
+.hedbox, .hpv { position: sticky; left: 0; max-width: calc(100vw - 64px); }
