@@ -32,7 +32,7 @@ struct MyRecordCard: View {
                      : "연 날마다 남긴 실제 값이에요. 넣은 돈은 '더 샀어요·팔았어요' 금액으로 바뀌어요. 위 그래프는 지금 수량을 지난 가격에 대입한 값이라 달라요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
-        } else if m.route != .novice {
+        } else {
             // 아직 한 줄도 없을 때도 카드 자리는 보인다 (어디에 쌓이는지 알 수 있게)
             Card {
                 Text("naeilo를 쓴 날부터의 내 기록").appFont(15, .bold)

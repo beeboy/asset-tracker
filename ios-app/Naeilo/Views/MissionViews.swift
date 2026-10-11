@@ -185,7 +185,6 @@ struct Mission1ResultView: View {
                     outcomeRow("좋은 경우", keep.outcome(m.cost, T, 1))
                     Text("100번 중 90번이 나쁜 경우와 좋은 경우 사이에 들어와요. 지금은 \(AppModel.sgn(m.ret)).").appFont(12).foregroundStyle(Theme.muted)
                 }
-                DepositLeverCard(plan: keep)
             }
             // 본전 위면 원인 진단은 건너뛴다 (목표 루트로만)
             BoardButtons(next: m.ret >= 0 ? nil : "다음 미션: 원인 진단", to: m.ret >= 0 ? nil : .m2)
@@ -212,16 +211,34 @@ struct DepositLeverCard: View {
             Text("매달 더 넣으면 본전은 언제?").appFont(14, .bold)
             Text("지금 구성에 매달 같은 돈을 더 넣는다고 보고 계산해요. 본전도 넣은 돈만큼 같이 올라가요.").appFont(12).foregroundStyle(Theme.sub)
                 .fixedSize(horizontal: false, vertical: true)
-            ChipRow(items: [(0, "안 넣음"), (10, "월 10만"), (30, "30만"), (50, "50만"), (100, "100만")], selection: $m.recM, fill: true)
+            ChipRow(items: chips, selection: $m.recM, fill: true)
+            if m.recM > 0 {
+                Text("월 \(AppModel.wonK(Double(m.recM))) · 지금 평가액의 \(AppModel.pct(Double(m.recM) * 1e4 / max(1, m.total)))").appFont(13, .semibold).foregroundStyle(Theme.sub)
+            }
             HStack { Text("\(m.horizonLabel) 뒤 본전 이상").foregroundStyle(Theme.sub); Spacer()
                 Text(m.recM == 0 ? AppModel.pct(base.prob) : "\(AppModel.pct(base.prob)) → \(AppModel.pct(with.prob))").fontWeight(.bold) }
                 .appFont(15)
             HStack { Text("보통의 경우 본전까지").foregroundStyle(Theme.sub); Spacer()
                 Text(m.recM == 0 ? eta(base) : "\(eta(base)) → \(eta(with))").fontWeight(.bold) }
                 .appFont(15)
+            if m.recM > 0 {
+                // 넣는 돈이 평가액보다 크면 손실 금액은 그대로인데 비율만 작아져 본전이 빨라 보인다 (회복이 아니라 묽어짐)
+                let loss = m.cost - m.total, add = Double(m.recM) * 1e4 * Double(T)
+                Text("손실 \(AppModel.man(loss))은 넣는 돈으로 줄지 않아요. \(m.horizonLabel) 동안 \(AppModel.man(add))을 더 넣으면 손실 비율이 \(AppModel.sgn(-loss / max(1, m.cost)))에서 \(AppModel.sgn(-loss / max(1, m.cost + add)))로 작아질 뿐이라, 본전이 빨라 보이는 거예요.")
+                    .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            }
             Text("1,000번 그려 본 가능성의 범위예요. 넣는 돈은 비중을 바꾸지 않고 지금 구성 그대로 나눠 넣는다고 봐요.").appFont(12).foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+    /// 칩: 지금 평가액의 5·10·20·50% (만원 단위로 반올림, 최소 1만원). 작은 계좌에서도 말이 되는 크기
+    private var chips: [(Int, String)] {
+        var out: [(Int, String)] = [(0, "안 넣음")]
+        for r in [5, 10, 20, 50] {
+            let v = max(1, Int((m.total * Double(r) / 100 / 1e4).rounded()))
+            if !out.contains(where: { $0.0 == v }) { out.append((v, "\(r)%")) }
+        }
+        return out
     }
     private func eta(_ d: AppModel.Deposit) -> String {
         d.eta == 0 ? "지금" : d.eta.isFinite ? AppModel.eta(d.eta).replacingOccurrences(of: " 뒤", with: "") : "10년 넘게"
@@ -484,6 +501,8 @@ struct Mission3ResultView: View {
                     .appFont(12).foregroundStyle(Theme.muted)
             }
             if !baskets.isEmpty && sel.id != "keep" { BasketList(baskets: baskets, open: $open, title: "담을 업종 · 눌러서 펼치기") }
+            // 원인 진단·계획을 마친 뒤에 '매달 더 넣으면?' (2026-10-11 결정: 미션 3 뒤)
+            if m.cost > m.total { DepositLeverCard(plan: keep) }
             Text("계산 예시예요. 특정 종목을 사고팔라는 안내가 아니에요.").appFont(14).foregroundStyle(Theme.sub)
             PrimaryButton(title: "다음 미션: 앱 시작 3단계") { m.boardPath.append(.nx) }
             Button { m.boardPath.append(.m4) } label: {

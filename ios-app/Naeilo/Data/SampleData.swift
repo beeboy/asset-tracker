@@ -114,10 +114,10 @@ enum Sample {
                         vision: "MANA 코인 가격", extra: ("담은 것", "MANA 코인")),
     ]
 
-    // 시작 보유 (회복 루트 시안): DRNK 60주 $400, QQQ 10주 $500
+    // 시작 보유 (둘러보기용 샘플, 세 루트 같음): DRNK 1주 $400, QQQ 1주 $500. 내 것처럼 보이지 않게 소액으로 (2026-10-11 결정)
     static let startHoldings: [Holding] = [
-        .init(symbol: "DRNK", qty: 60, avg: 400),
-        .init(symbol: "QQQ", qty: 10, avg: 500),
+        .init(symbol: "DRNK", qty: 1, avg: 400),
+        .init(symbol: "QQQ", qty: 1, avg: 500),
     ]
 
     // 3년 전망용 가정값: [현재 정세 연 기대, 과거 추세 연 성장, 연 변동성]. 사이트 stats.json 에 없는 종목(한국 종목 등)에만 쓴다 (SiteStats.params)
