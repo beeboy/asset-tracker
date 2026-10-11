@@ -1,7 +1,8 @@
 import SwiftUI
 
 // 목표 달성 루트 (시안 목표·플러스): 목표 정하기 → 구성 고르기 → (플러스) 비중 조정 세금 → 앱 시작 3단계 → 3개월 인터미션.
-// 금액 단위는 만원. 확률은 시안과 같은 씨앗(12345)의 500경로 몬테카를로라 숫자가 시안과 같다.
+// 금액 단위는 만원. 확률은 전망과 같은 몬테카를로 경로(웹 model.js 와 같은 계산, 사이트 통계·설정·사건)로 센다.
+// 구성 비교의 지수·업종 묶음은 대표 ETF 시세로 (AppModel.proxyKeys). 경로 계산이 끝나기 전에는 닫힌 식 값을 잠깐 보인다
 
 enum Route: String, Codable { case recover, plus, novice }
 
@@ -16,19 +17,19 @@ struct GoalMix: Identifiable, Hashable {
     let name: String
     let tag: String
     let desc: String
-    let mu: Double
-    let sigma: Double
-    let comp: [String: Double]     // I 지수 · G 성장 지속 · B 버팀목 · C 현금
+    let comp: [String: Double]     // I 지수 · G 성장 지속 · B 버팀목 · C 현금 (대표 ETF: AppModel.proxyKeys)
     let basket: Basket?
     var own = false
 }
 
 struct GoalSim {
     let mix: GoalMix
-    let prob: Double
-    let etaMonths: Double          // 보통의 경우 도착 (개월, 무한대 가능)
+    let prob: Double               // 목표일(또는 그 햇수 뒤)에 목표 이상일 확률 (웹 '목표 확률'과 같은 셈)
+    let etaMonths: Double          // 보통의 경우 처음 닿는 때 (개월, 경로 기간 안에 없으면 무한대)
     let med: [Double], lo: [Double], hi: [Double], principal: [Double]   // 해마다 (만원)
-    var badYear: Double { exp(mix.mu - mix.sigma * mix.sigma / 2 - 1.645 * mix.sigma) - 1 }
+    let badYear: Double            // 한 해 손익 하위 5% (적립 없이)
+    let capYears: Int              // 경로 기간 (햇수)
+    var etaText: String { AppModel.eta(etaMonths, cap: capYears) }
 }
 
 extension AppModel {
@@ -37,8 +38,10 @@ extension AppModel {
         if m >= 10000 { return ((m / 1000).rounded() / 10).formatted() + "억원" }
         return Int(m.rounded()).formatted() + "만원"
     }
-    static func eta(_ mo: Double) -> String {
-        guard mo.isFinite else { return "40년 넘게" }
+    /// cap: 경로 기간 (햇수). 그 안에 닿지 않으면 "N년 넘게"
+    static func eta(_ mo: Double, cap: Int = 40) -> String {
+        guard mo.isFinite else { return "\(cap)년 넘게" }
+        if mo <= 0 { return "지금" }
         let m = Int(mo), y = m / 12, r = m % 12
         return (y > 0 ? "\(y)년 " : "") + (r > 0 ? "\(r)개월 뒤" : "뒤")
     }
@@ -82,26 +85,73 @@ extension AppModel {
     }
 
     static let mixes: [GoalMix] = [
-        .init(id: "index", name: "지수 중심", tag: "단순하게", desc: "미국 전체 지수 80% · 현금 20%", mu: 0.075, sigma: 0.15, comp: ["I": 0.8, "C": 0.2], basket: nil),
-        .init(id: "grow", name: "성장 더하기", tag: "더 빨리, 더 흔들림", desc: "지수 60% · 성장 지속 업종 30% · 현금 10%", mu: 0.085, sigma: 0.19, comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
-        .init(id: "steady", name: "버팀목 더하기", tag: "덜 흔들림", desc: "지수 50% · 버팀목 업종 30% · 채권·현금 20%", mu: 0.06, sigma: 0.10, comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
+        .init(id: "index", name: "지수 중심", tag: "단순하게", desc: "미국 전체 지수 80% · 현금 20%", comp: ["I": 0.8, "C": 0.2], basket: nil),
+        .init(id: "grow", name: "성장 더하기", tag: "더 빨리, 더 흔들림", desc: "지수 60% · 성장 지속 업종 30% · 현금 10%", comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
+        .init(id: "steady", name: "버팀목 더하기", tag: "덜 흔들림", desc: "지수 50% · 버팀목 업종 30% · 채권·현금 20%", comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
     ]
     var mineMix: GoalMix {
         .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(AppModel.pct(focusWeight))" + (restRows.isEmpty ? "" : " · \(restName) \(AppModel.pct(1 - focusWeight))") + " 그대로",
-              mu: 0.09, sigma: keepPlan.sigma, comp: [:], basket: nil, own: true)
+              comp: [:], basket: nil, own: true)
     }
     var goalMixes: [GoalMix] { route == .novice ? Self.mixes : [mineMix] + Self.mixes }
     var selectedMix: GoalMix { goalMixes.first { $0.id == gMix } ?? goalMixes[0] }
 
-    /// k·years·start 를 주면 지금 목표 대신 그 값으로 (목표 자동 고르기에서 씀, cache: false 면 캐시에 넣지 않는다)
+    /// 구성의 종목 (사이트 티커·통화·비중). 내 구성 = 지금 종목. 시작 전은 묶음만, 플러스는 비중 1위 종목 10%까지 + 묶음 (shift 와 같은 비중)
+    func mixParts(_ mx: GoalMix) -> [Part] {
+        if mx.own { return mineParts }
+        var out: [Part] = []
+        var rest = 1.0
+        if route != .novice, let f = focusRow {
+            let tT = min(focusWeight, 0.10)
+            out.append((key: SiteStats.key(f.id), ccy: f.sym.currency == .usd ? "USD" : "KRW", w: tT))
+            rest = 1 - tT
+        }
+        for k in ["I", "G", "B", "C"] { if let x = mx.comp[k] { out.append((key: proxy(k), ccy: "USD", w: x * rest)) } }
+        return out
+    }
+    /// 지금 목표의 경로 끝 = 목표일 (전망과 같은 기간이라 내 구성은 전망 경로를 그대로 쓴다)
+    var goalHorizon: String { Day.str(goalToDate) }
+    /// 다른 햇수(목표 고르기 카드·자동 고르기·도착 시점)는 10년(그보다 길면 그 햇수) 경로 하나에서 센다
+    func longHorizon(_ y: Int) -> String { MC.addMonths(Day.today, 12 * max(10, y)) }
+
+    /// k·years·start 를 주면 지금 목표 대신 그 값으로 (목표 자동 고르기에서 씀, cache: false 면 캐시에 넣지 않는다).
+    /// years 를 주면 오늘부터 그 햇수, 안 주면 목표일까지
     func simulate(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true) -> GoalSim {
-        let mo = monthly ?? gM, gY = years ?? self.gY, K = k ?? gK, A = start ?? goalStart
-        let ck = "\(mx.mu)|\(mx.sigma)|\(mo)|\(gY)|\(K)|\(A)"
-        if cache, let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal) }
+        let mo = monthly ?? gM, yrs = years ?? gY, K = k ?? gK, A = start ?? goalStart
+        let parts = mixParts(mx)
+        guard let ps = paths(parts, horizon: years == nil ? goalHorizon : longHorizon(yrs)) else {
+            return closedSim(mx, parts: parts, monthly: mo, k: K, years: yrs, start: A, cache: cache)
+        }
+        let ck = "x|\(ps.key)|\(mo)|\(yrs)|\(K)|\(A)|\(years == nil)"
+        if cache, let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal, badYear: c.badYear, capYears: c.capYears) }
+        let V = A * 1e4, Mo = mo * 1e4, Kw = K * 1e4, M = ps.M
+        let v = ps.values(V, monthly: Mo)
+        // 그 햇수 뒤 칸: 그 달 적립은 빼고 센다 (목표일 당일에는 넣지 않는다, 웹과 같게)
+        let kEnd = years == nil ? M - 1 : ps.k(months: 12 * yrs)
+        let prob = ps.share(v, k: kEnd, minus: kEnd > 0 && kEnd < M - 1 ? Mo : 0, atLeast: Kw)
+        let eta = V >= Kw ? 0 : ps.medianMonths(ps.firstHits(v, upTo: M - 1) { _ in Kw })
+        let ks = (0...yrs).map { y in y == 0 ? 0 : min(kEnd, ps.k(months: 12 * y)) }
+        let q = { (f: Double) in ks.map { k in k == 0 ? A : ps.quantile(v, k: k, f) / 1e4 } }
+        let b = ps.bands(max(V, 1e6)), k12 = ps.k(months: 12)
+        let r = GoalSim(mix: mx, prob: prob, etaMonths: eta, med: q(0.5), lo: q(0.05), hi: q(0.95),
+                        principal: (0...yrs).map { A + mo * 12 * Double($0) }, badYear: b[0][k12] / max(V, 1e6) - 1,
+                        capYears: Int((ps.tM.last ?? 12) / 12 + 0.5))
+        if cache {
+            if simCache.count > 64 { simCache.removeAll() }
+            simCache[ck] = r
+        }
+        return r
+    }
+
+    /// 경로 계산이 끝나기 전 잠깐: 닫힌 식 μ·σ(사이트 통계)로 500번 월 단위
+    private func closedSim(_ mx: GoalMix, parts: [Part], monthly mo: Double, k K: Double, years gY: Int, start A: Double, cache: Bool) -> GoalSim {
+        let c = closedParams(parts)
+        let ck = "c|\(c.mu)|\(c.sigma)|\(mo)|\(gY)|\(K)|\(A)"
+        if cache, let x = simCache[ck] { return GoalSim(mix: mx, prob: x.prob, etaMonths: x.etaMonths, med: x.med, lo: x.lo, hi: x.hi, principal: x.principal, badYear: x.badYear, capYears: x.capYears) }
         var seed = 12345
         func rnd() -> Double { seed = (seed &* 1103515245 &+ 12345) % 2147483648; return (Double(seed) + 0.5) / 2147483648 }
         let NP = 500, H = min(40, gY * 2 + 5) * 12
-        let mm = (mx.mu - mx.sigma * mx.sigma / 2) / 12, ms = mx.sigma / sqrt(12)
+        let mm = (c.mu - c.sigma * c.sigma / 2) / 12, ms = c.sigma / sqrt(12)
         var byYear = Array(repeating: [Double](), count: gY + 1)
         var hits: [Double] = []
         for _ in 0..<NP {
@@ -116,11 +166,11 @@ extension AppModel {
             }
             hits.append(hit)
         }
-        func q(_ a: [Double], _ f: Double) -> Double { let s = a.sorted(); return s[min(s.count - 1, Int(f * Double(s.count)))] }
-        let prob = Double(hits.filter { $0 <= Double(gY * 12) }.count) / Double(NP)
-        let r = GoalSim(mix: mx, prob: prob, etaMonths: q(hits, 0.5),
+        func q(_ a: [Double], _ f: Double) -> Double { let s = a.sorted(); return s.isEmpty ? A : s[min(s.count - 1, Int(f * Double(s.count)))] }
+        let r = GoalSim(mix: mx, prob: Double(byYear[gY].filter { $0 >= K }.count) / Double(max(1, byYear[gY].count)), etaMonths: q(hits, 0.5),
                         med: byYear.map { q($0, 0.5) }, lo: byYear.map { q($0, 0.05) }, hi: byYear.map { q($0, 0.95) },
-                        principal: (0...gY).map { A + mo * 12 * Double($0) })
+                        principal: (0...gY).map { A + mo * 12 * Double($0) },
+                        badYear: exp(c.mu - c.sigma * c.sigma / 2 - 1.645 * c.sigma) - 1, capYears: H / 12)
         if cache {
             if simCache.count > 64 { simCache.removeAll() }
             simCache[ck] = r
@@ -128,15 +178,26 @@ extension AppModel {
         return r
     }
 
-    /// 보통의 경우 기준으로 목표에 맞추려면 매달 넣을 돈 (만원)
+    /// 목표에 맞추려면 매달 넣을 돈 (만원): 목표일(years 를 주면 그 햇수 뒤)에 목표 이상인 경우가 절반이 되는 적립 (웹 req50 과 같은 셈)
     func neededMonthly(k: Double? = nil, years: Int? = nil) -> Double {
-        let ix = route == .novice ? Self.mixes[0] : mineMix
-        let gmm = exp((ix.mu - ix.sigma * ix.sigma / 2) / 12), fv = pow(gmm, Double((years ?? gY) * 12))
-        return max(0, ((k ?? gK) - goalStart * fv) * (gmm - 1) / (fv - 1))
+        let mx = route == .novice ? Self.mixes[0] : mineMix, K = k ?? gK, yrs = years ?? gY
+        let parts = mixParts(mx)
+        if let ps = paths(parts, horizon: years == nil ? goalHorizon : longHorizon(yrs)) {
+            return ps.req50(goalStart * 1e4, goal: K * 1e4, kEnd: years == nil ? ps.M - 1 : ps.k(months: 12 * yrs)) / 1e4
+        }
+        let c = closedParams(parts)
+        let gmm = exp((c.mu - c.sigma * c.sigma / 2) / 12), fv = pow(gmm, Double(yrs * 12))
+        return max(0, (K - goalStart * fv) * (gmm - 1) / (fv - 1))
     }
+    /// 지금 start(만원)에서 매달 monthly(만원)씩 넣을 때 보통의 경우 목표에 처음 닿는 개월
     func monthsTo(from start: Double, monthly: Double) -> Double {
-        let ix = route == .novice ? Self.mixes[0] : mineMix
-        let gmm = exp((ix.mu - ix.sigma * ix.sigma / 2) / 12)
+        if start >= gK { return 0 }
+        let parts = mixParts(route == .novice ? Self.mixes[0] : mineMix)
+        if let ps = paths(parts, horizon: longHorizon(gY)) {
+            let v = ps.values(start * 1e4, monthly: monthly * 1e4), K = gK * 1e4
+            return ps.medianMonths(ps.firstHits(v, upTo: ps.M - 1) { _ in K })
+        }
+        let c = closedParams(parts), gmm = exp((c.mu - c.sigma * c.sigma / 2) / 12)
         var v = start
         for k in 1...480 { v = v * gmm + monthly; if v >= gK { return Double(k) } }
         return .infinity
@@ -148,13 +209,25 @@ extension AppModel {
         let u = pow(10, floor(log10(x)) - 1)
         return (x / u).rounded() * u
     }
-    /// 목표 금액 자동 고르기: 지금 금액에서 매달 monthly(만원)씩 넣을 때 years 안에 닿을 확률이 50% 근처인 금액 (만원).
-    /// 확률은 목표 화면과 같은 계산(simulate)이라 고른 뒤 화면에 보이는 확률도 50% 근처다
-    func autoGoal(years: Int, monthly: Double? = nil, from start: Double? = nil) -> Double {
+    /// 목표 금액 자동 고르기: 지금 금액에서 매달 monthly(만원)씩 넣을 때 years 뒤에 목표 이상일 확률이 50% 근처인 금액 (만원)
+    /// = 그 햇수 뒤 평가액의 가운데 값 (전망과 같은 경로). 경로 계산 전에는 닫힌 식으로 확률 50% 를 찾는다
+    func autoGoal(years: Int, monthly: Double? = nil, from start: Double? = nil) -> Double { autoGoalX(years: years, monthly: monthly, from: start).0 }
+    func autoGoalX(years: Int, monthly: Double? = nil, from start: Double? = nil) -> (Double, Bool) {
         let A = start ?? goalStart, mo = max(0, monthly ?? gM), mx = route == .novice ? Self.mixes[0] : mineMix
-        guard A + mo > 0 else { return 1000 }
-        let ck = "\(mx.mu)|\(mx.sigma)|\(mo)|\(years)|\(A)"
-        if let c = autoCache[ck] { return c }
+        guard A + mo > 0 else { return (1000, true) }
+        let parts = mixParts(mx)
+        if let ps = paths(parts, horizon: longHorizon(years)) {
+            let ck = "x|\(ps.key)|\(mo)|\(years)|\(A)"
+            if let c = autoCache[ck] { return (c, true) }
+            let v = ps.values(A * 1e4, monthly: mo * 1e4), kEnd = ps.k(months: 12 * years)
+            let K = ps.quantile(v, k: kEnd, 0.5, minus: kEnd > 0 && kEnd < ps.M - 1 ? mo * 1e4 : 0) / 1e4
+            let r = max(Self.round2(A + 1), Self.round2(K))
+            if autoCache.count > 64 { autoCache.removeAll() }
+            autoCache[ck] = r
+            return (r, true)
+        }
+        let c = closedParams(parts), ck = "c|\(c.mu)|\(c.sigma)|\(mo)|\(years)|\(A)"
+        if let x = autoCache[ck] { return (x, false) }
         func p(_ K: Double) -> Double { simulate(mx, monthly: mo, k: K, years: years, start: A, cache: false).prob }
         var lo = max(1, A), hi = max(lo * 2, A + mo * 12 * Double(years) * 2)
         var n = 0
@@ -166,7 +239,20 @@ extension AppModel {
         let r = max(Self.round2(A + 1), Self.round2((lo + hi) / 2))
         if autoCache.count > 64 { autoCache.removeAll() }
         autoCache[ck] = r
-        return r
+        return (r, false)
+    }
+    /// 목표를 자동으로 정한다. 경로가 아직이면 닫힌 식 값으로 두고, 경로가 나오면 (그사이 목표를 고치지 않았으면) 다시 고른다
+    func setAutoGoal(years: Int, monthly: Double? = nil, from start: Double? = nil) {
+        let (v, exact) = autoGoalX(years: years, monthly: monthly, from: start)
+        gK = v
+        autoPending = exact ? nil : (years, monthly, start, v)
+        if !exact { PathRuns.shared.onRun = { [weak self] in self?.refreshAutoGoal() } }
+    }
+    func refreshAutoGoal() {
+        guard let a = autoPending else { return }
+        guard gK == a.value else { autoPending = nil; return }
+        let (v, exact) = autoGoalX(years: a.years, monthly: a.monthly, from: a.from)
+        if exact { gK = v; autoPending = nil }
     }
 
     struct GoalPreset: Identifiable { var id: String { name }; let k: Double; let y: Int; let name: String; let mean: String; let need: String }
@@ -277,7 +363,7 @@ extension AppModel {
             gMix = "mine"
             // 사이트와 동기화 중이고 사이트에 정한 목표가 아직 남아 있으면 그 목표를 그대로 쓴다
             if Sync.shared.isOn, gTo != nil, goalToDate > Date() { break }
-            gM = recM > 0 ? Double(recM) : 30; gY = 3; gK = autoGoal(years: 3); gFrom = Day.today
+            gM = recM > 0 ? Double(recM) : 30; gY = 3; gFrom = Day.today; setAutoGoal(years: 3)
         case .novice: gA = 0; gK = 1000; gY = 3; gM = 30; gMix = "index"; gFrom = Day.today
         }
         monthly = r == .recover ? 0 : gM     // 3년 전망의 '만약에 매달' 기본값 = 적립액
@@ -297,6 +383,6 @@ extension AppModel {
     var goalReached: Bool { isGoal && gDone.contains("goal") && gK > 0 && trackValue / 1e4 >= gK }
     /// 다음 목표 제안: 지금 금액에서 3년, 확률 50% 근처. 미션 진행은 그대로 둔다
     func suggestNextGoal() {
-        gFrom = Day.today; gY = 3; gTo = nil; gK = autoGoal(years: 3, from: trackValue / 1e4)
+        gFrom = Day.today; gY = 3; gTo = nil; setAutoGoal(years: 3, from: trackValue / 1e4)
     }
 }

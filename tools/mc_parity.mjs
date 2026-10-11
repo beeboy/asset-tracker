@@ -44,12 +44,16 @@ if (cmd === "gen") {
     const mu = (key) => model.factors.slice(0, A).map((f) => (typeof key === "number" ? Model.blendMu(f.mu.base, f.mu.smooth ?? f.mu.base, key / 100) : f.mu[key] ?? f.mu.base));
     const views = {};
     for (const [nm, s] of [["ev", sim], ["no", simNo]]) for (const key of ["base", "smooth", settings.trust]) views[nm + ":" + key] = pickR(Model.reweight(s, { mu: mu(key), goal: c.goal, monthly: c.monthly }));
+    // 앱 회복 확률·목표 적립 (웹 본전 카드 breakeven, reweight req50): 전부 묶음 / 첫 종목만
+    const muT = mu(settings.trust), V0 = sim.V0, rw = Model.reweight(sim, { mu: muT, goal: c.goal, monthly: c.monthly });
+    const bep = { all: Model.breakeven(sim, { idx: c.holdings.map((_, i) => i), basis: V0 * 1.15, mu: muT, months: [6, 12, 36] }).map((x) => x.p),
+      first: Model.breakeven(sim, { idx: [0], basis: c.holdings[0].valueKrw * 1.1, mu: muT, months: [6, 12, 36] }).map((x) => x.p), req50: rw.req50 };
     input.cases.push({ name: c.name, holdings: c.holdings.map(({ ticker, ccy, valueKrw, price0 }) => ({ ticker, ccy, valueKrw, price0 })), events: c.events, goal: c.goal, goalDate: c.goalDate, monthly: c.monthly, nPaths: c.nPaths, trust: settings.trust });
     web.cases.push({
       name: c.name, ms,
       model: { days: model.days.length, monthDates: model.monthDates, events: model.eventList.length,
         factors: model.factors.map((f) => ({ key: f.key, vol: f.vol, base: f.mu.base, smooth: f.mu.smooth, blend: f.mu.blend, evVar: f.evVar })) },
-      sim: pickR(sim), simNo: pickR(simNo), views,
+      sim: pickR(sim), simNo: pickR(simNo), views, bep,
     });
     console.log(`웹 ${c.name}: 경로 ${c.nPaths} · ${model.days.length}거래일 · 사건 ${model.eventList.length}회 · ${ms.toFixed(0)}ms · 목표 확률 ${(sim.p_goal * 100).toFixed(1)}%`);
   }
@@ -90,6 +94,10 @@ if (cmd === "gen") {
       for (const k of ["vol", "base", "smooth", "blend", "evVar"]) num(`${w.name}.${f.key}.${k}`, f[k], g[k], { rel: 1e-9 }); });
     res(w.name + ".sim", w.sim, a.sim, P); res(w.name + ".simNo", w.simNo, a.simNo, P);
     for (const k of Object.keys(w.views)) res(`${w.name}.${k}`, w.views[k], a.views[k], P);
+    // 회복 확률 (breakeven) · 월 경계 평가액(앱 PathSet.values = reweight) · 목표 적립(req50)
+    for (const k of ["all", "first"]) w.bep[k].forEach((v, i) => num(`${w.name}.bep.${k}[${i}]`, v, a.bep?.[k]?.[i], { abs: 1.5 / P }));
+    num(`${w.name}.bep.req50`, w.bep.req50, a.bep?.req50, { rel: 1e-6 });
+    res(`${w.name}.paths`, w.views["ev:" + a.trust], a.paths, P);
     console.log(`${w.name}: 웹 ${w.model.days}거래일 ${w.ms.toFixed(0)}ms · 앱 ${a.ms.toFixed(0)}ms · 목표 확률 웹 ${(w.sim.p_goal * 100).toFixed(2)}% 앱 ${(a.sim?.p_goal * 100).toFixed(2)}%`);
   }
   console.log(`비교 ${n}개, 다름 ${bad}개, 금액 최대 상대 오차 ${worst.toExponential(2)}`);

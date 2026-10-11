@@ -405,7 +405,7 @@ struct GoalSetResultView: View {
                     legend(Theme.teal, "보통의 경우"); legend(Theme.teal.opacity(0.2), "100번 중 90번")
                     legend(Theme.muted, "넣은 원금"); legend(Color(hex: 0xC8352E), "목표")
                 }
-                (Text("\(m.gY)년 안에 닿을 확률 ") + Text(AppModel.pct(path.prob)).bold() + Text(" · 보통 \(AppModel.eta(path.etaMonths))")).appFont(14)
+                (Text("목표일에 목표 이상일 확률 ") + Text(AppModel.pct(path.prob)).bold() + Text(" · 보통 \(path.etaText)")).appFont(14)
             }
             BoardLinks(next: "다음 미션: 투자 구성 고르기", to: .g3)
         }
@@ -455,8 +455,8 @@ struct GoalMixView: View {
                 }
                 compositionBar(sh.weights)
                 HStack(spacing: 6) {
-                    pill("기간 안 도달", AppModel.pct(sel.prob))
-                    pill("보통 도착", AppModel.eta(sel.etaMonths))
+                    pill("목표일에 목표 이상", AppModel.pct(sel.prob))
+                    pill("보통 도착", sel.etaText)
                     pill("나쁜 해 한 번", AppModel.sgn0(sel.badYear))
                 }
                 ChipRow(items: m.goalMixes.map { ($0.id, $0.name) }, selection: $m.gMix, fill: true)
@@ -499,7 +499,7 @@ struct GoalMixResultView: View {
             GuideBubble(pose: .cheer, text: m.route == .novice ? "정했어요. 매달 적립을 나누는 비율이에요. 실제 매매 판단은 직접 하셔야 해요." : "정했어요. 계획만 기록해요. 실제 매매 판단은 직접 하셔야 해요.")
             Text(sel.mix.desc).appFont(15).foregroundStyle(Theme.sub)
             Card {
-                (Text("\(m.gY)년 안 도달 ") + Text(AppModel.pct(sel.prob)).bold() + Text(" · 보통 ") + Text(AppModel.eta(sel.etaMonths)).bold()).appFont(15)
+                (Text("목표일에 목표 이상 ") + Text(AppModel.pct(sel.prob)).bold() + Text(" · 보통 ") + Text(sel.etaText).bold()).appFont(15)
             }
             if !sh.rows.isEmpty {
                 Card {

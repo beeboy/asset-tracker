@@ -44,6 +44,8 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "appl
 FX_SYMBOLS = {"USD": "KRW=X"}  # 통화 -> 원화 환율 심볼
 # 외부 요인 분석용 대리 지표: 시장(S&P500), 미국 10년 금리, WTI 유가, 금, 원자재 지수
 FACTOR_SYMBOLS = ["SPY", "^TNX", "CL=F", "GC=F", "DBC"]
+# 앱 계획·구성 비교의 묶음 대표 ETF (성장 지속 = QQQ, 지수 = SPY, 현금 = SGOV 는 이미 받는다): 저평가 회복 = VTV, 버팀목 = USMV
+BASKET_SYMBOLS = ["QQQ", "SGOV", "VTV", "USMV"]
 LOCK = threading.Lock()
 
 
@@ -397,7 +399,7 @@ def cli_collect(add: str, quotes_only: bool):
         fx = FX_SYMBOLS.get(ccy) or (None if ccy == "KRW" else f"{ccy}KRW=X")
         if fx and fx not in syms:
             syms.append(fx)
-    for s in ["KRW=X", *FACTOR_SYMBOLS]:
+    for s in ["KRW=X", *FACTOR_SYMBOLS, *BASKET_SYMBOLS]:
         if s not in syms:
             syms.append(s)
     r = collect(syms, float(cfg.get("history_years", 3)), quotes_only)

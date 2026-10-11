@@ -26,6 +26,9 @@ final class AppModel {
     @ObservationIgnored var simCache: [String: GoalSim] = [:]
     @ObservationIgnored var autoCache: [String: Double] = [:]
     @ObservationIgnored var depCache: [String: AppModel.Deposit] = [:]
+    @ObservationIgnored var pathSetCache: [String: PathSet] = [:]
+    /// 목표 자동 고르기를 경로 계산 전 닫힌 식으로 정했을 때: 경로가 나오면 같은 조건으로 다시 고른다 (그사이 목표를 고치지 않았으면)
+    @ObservationIgnored var autoPending: (years: Int, monthly: Double?, from: Double?, value: Double)? = nil
 
     init() {
         // 저장된 진행을 먼저 불러오고, 캡처용 실행 인자가 있으면 그 위에 시연 상태를 덮는다 (그때는 저장하지 않는다)
@@ -176,8 +179,8 @@ final class AppModel {
 
     // MARK: 보유 계산 (원화)
     func krw(_ s: Symbol, _ x: Double) -> Double { s.currency == .usd ? x * Market.shared.fx.last : x }
-    /// 들어간 돈은 환율이 움직여도 바뀌지 않게 고정 환율로 (실제 앱은 산 날 환율)
-    func costKrw(_ s: Symbol, _ x: Double) -> Double { s.currency == .usd ? x * Sample.fx : x }
+    /// 들어간 돈(원금) = 매수 단가 × 수량 × 지금 환율 (웹 본전 카드와 같다. 매수 때 환율은 모른다)
+    func costKrw(_ s: Symbol, _ x: Double) -> Double { krw(s, x) }
     struct Row: Identifiable { let id: String; let sym: Symbol; let h: Holding; let value: Double; let cost: Double; let color: Color }
     var rows: [Row] {
         holdings.compactMap { h -> (Symbol, Holding)? in
