@@ -24,14 +24,8 @@ final class Market {
     var site: QuoteFeed.File? = QuoteFeed.cached()
     var source: String { !live.isEmpty ? "Tiingo" : site != nil ? "naeilo 사이트" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
 
-    // 예시 값: 오늘 하루 움직임 (DRNK·QQQ 는 시안의 하루 움직임) + 분 단위로 조금씩 흔들림
-    static let todayMove: [String: Double] = ["DRNK": -0.0221, "QQQ": 0.004]
-
-    private func wobble(_ seed: Double) -> Double {
-        let t = updatedAt.timeIntervalSinceReferenceDate / 60
-        return 0.0015 * sin(t / 3 + seed)
-    }
-    private func seed(_ s: Symbol) -> Double { Double(s.id.unicodeScalars.reduce(0) { $0 + Int($1.value) }) }
+    // 샘플 종목 DRNK 의 하루 움직임 (샘플 기록의 마지막 날). 다른 종목은 받은 시세가 없으면 움직임을 만들지 않는다
+    static let todayMove: [String: Double] = ["DRNK": -0.0221]
 
     func quote(_ s: Symbol) -> Quote {
         if let q = live[s.id] { return Quote(last: q.0, prevClose: q.1, live: true) }
@@ -45,9 +39,8 @@ final class Market {
             if let c { return Quote(last: c.last, prevClose: c.prev, live: c.usd) }
         }
         if let q = YahooSample.quotes[s.id] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
-        guard s.currency == .usd else { return Quote(last: s.close, prevClose: s.close, live: false) }
-        let m = (Self.todayMove[s.id] ?? 0.012 * sin(seed(s))) + wobble(seed(s))
-        return Quote(last: s.close * (1 + m), prevClose: s.close, live: true)
+        if let m = Self.todayMove[s.id] { return Quote(last: s.close * (1 + m), prevClose: s.close, live: true) }
+        return Quote(last: s.close, prevClose: s.close, live: false)
     }
 
     /// 원/달러 (지금, 전일)
@@ -55,7 +48,7 @@ final class Market {
         if let f = liveFx { return Quote(last: f.0, prevClose: f.1, live: true) }
         if let q = site?.q["KRW=X"] { return Quote(last: q.last, prevClose: q.prev, live: true) }
         if let q = YahooSample.quotes["FX"] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
-        return Quote(last: Sample.fx * (1 + 0.0021 + wobble(7)), prevClose: Sample.fx, live: true)
+        return Quote(last: Sample.fx, prevClose: Sample.fx, live: false)
     }
 
     var asOfText: String {

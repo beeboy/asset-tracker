@@ -12,6 +12,7 @@ struct BoardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: "미션").padding(.horizontal, -16)
+                SampleNote()
                 VStack(alignment: .leading, spacing: 4) {
                     ScreenTitle(kicker: "회복 루트", title: "본전까지 가는 길")
                     (Text("지금 \(AppModel.sgn(m.ret)) · 본전까지 ") + Text("+" + String(format: "%.1f", need * 100) + "%").bold().foregroundColor(Theme.ink) + Text(" 올라야 해요"))
@@ -234,7 +235,7 @@ struct WeekForecastCard: View {
                 Label("이번 주 예보", systemImage: "scope").appFont(14, .bold).foregroundStyle(.white)
                     .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.blue, in: Capsule())
                 Spacer()
-                Text(m.weekFriday ? "10월 10일 금요일 마감" : "월요일에 적음 · 금요일 마감").appFont(12).foregroundStyle(Theme.sub)
+                Text(m.weekFriday ? "\(m.weekFridayText) 금요일 마감" : "월요일에 적음 · 금요일 마감").appFont(12).foregroundStyle(Theme.sub)
             }
             Text("금요일 종가 평가액, 절반의 경우 이 안").appFont(13).foregroundStyle(Theme.sub)
             Text("\(AppModel.man(r.lo)) ~ \(AppModel.man(r.hi))").appFont(24, .bold).foregroundStyle(Color(hex: 0x1B5E96))
@@ -260,8 +261,10 @@ struct WeekForecastCard: View {
                 Text("금요일엔 어디쯤일까요?").appFont(15, .bold)
                 ChipRow(items: [("lo", "범위 아래"), ("in", "범위 안"), ("hi", "범위 위")],
                         selection: Binding(get: { m.weekGuess ?? "" }, set: { m.weekGuess = $0 }), accent: Theme.blue, fill: true)
-                Button("금요일로 넘기기 (시안)") { withAnimation { m.weekFriday = true } }
-                    .appFont(13).underline().foregroundStyle(Theme.sub).frame(minHeight: 40)
+                if m.devAll {
+                    Button("금요일로 넘기기 (개발자)") { withAnimation { m.weekFridaySkip = true } }
+                        .appFont(13).underline().foregroundStyle(Theme.sub).frame(minHeight: 40)
+                }
             } else {
                 let names = ["lo": "범위 아래", "in": "범위 안", "hi": "범위 위"]
                 Text((inside ? "범위 안에 들어왔어요. 도장 꽝!" : "범위 \(pos == "lo" ? "아래" : "위")로 나갔어요. 이런 주도 절반쯤 있어요.")

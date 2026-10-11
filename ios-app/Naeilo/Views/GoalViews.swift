@@ -92,6 +92,7 @@ struct GoalBoardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: "미션").padding(.horizontal, -16)
+                SampleNote()
                 VStack(alignment: .leading, spacing: 4) {
                     ScreenTitle(kicker: "목표 달성 루트" + (m.route == .plus ? " · 플러스" : " · 시작 전"),
                                 title: m.gDone.contains("goal") ? "\(m.gY)년 뒤 \(AppModel.wonK(m.gK))까지" : "목표까지 가는 길")
@@ -453,7 +454,7 @@ struct GoalMixView: View {
                 if !sh.line.isEmpty { Text(sh.line).appFont(13).foregroundStyle(Theme.sub) }
                 Text(sel.mix.desc).appFont(15).lineSpacing(3)
                 BasketList(baskets: [.G, .B], open: $open, title: "구성에 쓰는 업종 묶음 · 눌러서 펼치기")
-                Text("나쁜 해 한 번: 20년에 한 번쯤 오는 나쁜 해의 1년 변화. 구성별 연 기대수익률과 흔들림은 시안용 가정값이고, 확률 모형의 결과예요. 투자 권유가 아니에요.")
+                Text("나쁜 해 한 번: 20년에 한 번쯤 오는 나쁜 해의 1년 변화. 구성별 연 기대수익률과 흔들림은 가정값이고, 확률 모형의 결과예요. 투자 권유가 아니에요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
                 PrimaryButton(title: "\"\(sel.mix.name)\"으로 정하기") { m.gDone.insert("mix"); m.boardPath.append(.g3r) }
             }
@@ -622,7 +623,7 @@ struct GoalIntermissionView: View {
                         }
                         Text("이번 달이 끝나기 전까지는 다시 고를 수 있어요. 지난 달은 바꿀 수 없어요.").appFont(12).foregroundStyle(Theme.muted)
                         if m.gWeekCur != nil {
-                            Button(fixed.count == 2 ? "3달째 마치기 (시안)" : "다음 달로 넘기기 (시안)") { withAnimation { m.confirmGoalMonth() } }
+                            Button(fixed.count == 2 ? "3달째 마치기" : "이번 달 마치기") { withAnimation { m.confirmGoalMonth() } }
                                 .appFont(14, .semibold).foregroundStyle(Theme.ink).frame(maxWidth: .infinity, minHeight: 44)
                                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                         }

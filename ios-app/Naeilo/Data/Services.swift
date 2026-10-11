@@ -9,6 +9,8 @@ protocol PriceProvider {
     func series(_ symbol: Symbol, period: Period) -> [Double]
     /// x = 0 (3년 전) … 1 (어제) 시점의 종가
     func price(_ symbol: Symbol, at x: Double) -> Double
+    /// 실제 과거 시세가 있는지 (없으면 과거는 평평한 선)
+    func hasHistory(_ symbol: Symbol) -> Bool
 }
 
 enum Period: String, CaseIterable, Hashable {
@@ -37,8 +39,6 @@ struct StubPriceProvider: PriceProvider {
         return s.close * exp(logPrice(s, x) - logPrice(s, 1))
     }
 
-    private func seed(_ s: Symbol) -> Double { Double(s.id.unicodeScalars.reduce(0) { $0 + Int($1.value) }) }
-
     /// 로그 가격. x = 0 (3년 전) … 1 (어제). 시안의 lfA 와 같은 식.
     func logPrice(_ s: Symbol, _ x: Double) -> Double {
         if let h = PriceHistory.of(s.id), h.closes.count > 1 {
@@ -52,24 +52,17 @@ struct StubPriceProvider: PriceProvider {
             let v = drnkRatio[i] * (1 - f) + drnkRatio[min(Int(L), i + 1)] * f
             return log(v)
         }
-        let sd = seed(s), u = 1 - x
-        let amp = s.currency == .krw && s.sector == "반도체" ? 0.45 : 0.25
-        let ph = sd.truncatingRemainder(dividingBy: 7)
-        return amp * (sin(u * 5 + ph) - sin(ph)) * pow(u, 0.4) + 0.05 * sin(x * 60 + sd) * u
+        // 과거 시세가 없으면 만들어 내지 않는다: 전일 종가 그대로 (평평한 선). 화면은 hasHistory 로 "과거 시세 없음"을 알린다
+        return log(max(1e-9, s.close))
     }
+
+    /// 실제 과거 시세(또는 샘플 DRNK 기록)가 있는지
+    func hasHistory(_ s: Symbol) -> Bool { s.id == "DRNK" || PriceHistory.of(s.id) != nil }
 
     private func dayCloses(_ s: Symbol, _ n: Int) -> [Double] {
         if let h = PriceHistory.of(s.id) { return Array(h.closes.suffix(n + 1)) }
         if s.id == "DRNK" { return drnkRatio.suffix(n + 1).map { s.close * $0 } }
-        let p0 = s.close
-        let m1 = Sample.dayMove[s.id] ?? 0.012 * sin(seed(s))
-        var out = [p0, p0 / (1 + m1)]
-        if n >= 2 {
-            for k in 2...n {
-                out.append(s.close * exp(logPrice(s, 1 - Double(k) / 780) - logPrice(s, 1)) * (1 + 0.014 * sin(Double(k) * 2.3 + seed(s))))
-            }
-        }
-        return out.reversed()
+        return Array(repeating: s.close, count: n + 1)
     }
 
     func series(_ s: Symbol, period: Period) -> [Double] {
