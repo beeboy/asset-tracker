@@ -25,8 +25,9 @@ struct MotionSprite: View {
     let friend: String
     let pose: Pose
     var height: CGFloat = 76
+    @Environment(AppModel.self) private var model: AppModel?
     var body: some View {
-        if friend == "me", let me = MeChar.current {
+        if friend == "me", let me = model?.me ?? MeChar.current {
             // 내 캐릭터는 동작 그림이 없어 선 모습 하나 (옆을 보는 동작만 뒤집는다)
             MeAvatar(me: me, width: height * 24 / 35, height: height * 34 / 35)
                 .scaleEffect(x: pose == .sideL ? -1 : 1, y: 1)

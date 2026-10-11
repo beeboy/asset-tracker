@@ -11,7 +11,7 @@ struct MeChar: Codable, Equatable, Hashable {
     var name = ""
     var parts: [String: Int] = [:]
     var type = "seri"          // 매칭 전에 고른 투자 유형 (인물 id). 평정 지수가 매칭되면 그 유형을 따른다
-    static let nameMax = 5     // 이름 글자 수: 위젯·말풍선 이름 자리 (기본 인물 이름이 두 글자)
+    static let nameMax = 6     // 이름 글자 수 (공백 하나 포함): 위젯·말풍선 이름 자리
     /// 지금 저장된 내 캐릭터 (AppModel.me 가 바뀔 때 같이). 환경 없이 그리는 곳(공유 카드 그림 등)에서 쓴다
     static var current: MeChar? = nil
 
@@ -25,7 +25,18 @@ struct MeChar: Codable, Equatable, Hashable {
     /// 고른 상태인지 (색깔 그룹의 피부색 포함)
     func picked(_ g: MeGroup, _ v: Int) -> Bool { g == .color && v > 100 ? (parts["skin"] ?? 1) == v - 100 : part(g) == v }
     var skin: Int { min(max(parts["skin"] ?? 1, 1), MeColor.skin.count) }
-    var shownName: String { name.isEmpty ? "나" : name }
+    var shownName: String { name.isEmpty ? "나" : String(name.prefix(Self.nameMax)) }
+    /// 이름 입력 다듬기: 공백은 하나까지(앞 공백 없음), 공백 포함 6자까지
+    static func clean(_ v: String) -> String {
+        var out = "", space = false
+        for ch in v where out.count < nameMax {
+            if ch.isWhitespace {
+                if space || out.isEmpty { continue }
+                space = true; out.append(" ")
+            } else { out.append(ch) }
+        }
+        return out
+    }
 }
 
 /// 부품 그룹. 그림은 이미지 디자인 스레드가 만드는 me_* (24×34, 판 전체 크기로 겹침, MeArt.asset). 그림이 없는 번호만 자리표시 도트

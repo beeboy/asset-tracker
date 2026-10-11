@@ -8,9 +8,11 @@ struct CharPixel: View {
     var width: CGFloat
     var height: CGFloat
     var sil = false
+    /// 앱 안에서는 모델을 지켜봐야 저장 직후 다시 그린다 (공유 그림처럼 모델이 없는 곳은 MeChar.current)
+    @Environment(AppModel.self) private var model: AppModel?
     var body: some View {
         if id == "me" {
-            if let me = MeChar.current { MeAvatar(me: me, width: width, height: height).opacity(sil ? 0.45 : 1) }
+            if let me = model?.me ?? MeChar.current { MeAvatar(me: me, width: width, height: height).opacity(sil ? 0.45 : 1) }
             else { MeEmpty(width: width, height: height) }
         } else {
             Pixel(name: (sil ? "sil_" : "spr_") + id, width: width, height: height)
@@ -245,13 +247,14 @@ enum MePlaceholder {
 /// 내 캐릭터 만들기: 그룹(세로) · 그룹별 선택지(세로) · 캐릭터. 아래에 이름·투자 유형·저장 (저장 칸 1개)
 struct MeEditView: View {
     @Environment(AppModel.self) private var m
+    @Environment(\.dismiss) private var dismiss
     @State private var draft = MeChar()
     @State private var group: MeGroup = .hair
     @State private var loaded = false
     @State private var note: String? = nil
     @State private var askDelete = false
     @State private var samples = false           // 샘플(소설 속 인물) 목록을 보는 중
-    @State private var sample: MeSample? = MeSample.all.first   // 오른쪽 위에 크게 보이는 샘플
+    @State private var sample: MeSample? = nil   // 오른쪽 위에 크게 보이는 샘플 (처음엔 빈 칸)
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -263,13 +266,18 @@ struct MeEditView: View {
         .background(Theme.bg)
         .navigationTitle("내 캐릭터").navigationBarTitleDisplayMode(.inline)
         .onAppear { if !loaded { draft = m.me ?? MeChar(); loaded = true } }
-        .confirmationDialog("내 캐릭터를 지울까요?", isPresented: $askDelete, titleVisibility: .visible) {
-            Button("지우기", role: .destructive) {
-                m.me = nil; draft = MeChar()
-                if m.homeFriend == "me" { m.homeFriend = "seri" }
-                WidgetBridge.write(m)
-                note = "지웠어요."
+        .confirmationDialog("처음부터 다시 만들까요?", isPresented: $askDelete, titleVisibility: .visible) {
+            Button("리셋", role: .destructive) {
+                // 리셋: 저장한 캐릭터도 지우고 빈 칸으로
+                if m.me != nil {
+                    m.me = nil
+                    if m.homeFriend == "me" { m.homeFriend = "seri" }
+                    WidgetBridge.write(m)
+                }
+                draft = MeChar(); sample = nil; note = nil
             }
+        } message: {
+            Text(m.me != nil ? "저장한 내 캐릭터도 지워져요." : "고른 부품과 이름이 지워져요.")
         }
     }
 
@@ -343,8 +351,8 @@ struct MeEditView: View {
                         }
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, minHeight: 80).padding(.horizontal, 2)
-                        .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1))
+                        .background(on ? Theme.tealBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2.5 : 1))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(x.name)
@@ -384,8 +392,8 @@ struct MeEditView: View {
                         }
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, minHeight: 72).padding(.horizontal, 2)
-                        .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1))
+                        .background(on ? Theme.tealBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2.5 : 1))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(group == .color || o == 0 ? group.name(o) : "\(group.label) \(group.name(o))")
@@ -420,16 +428,29 @@ struct MeEditView: View {
                         .buttonStyle(.plain)
                         .disabled(applied)
                         .padding(.top, 10)
+                    } else {
+                        empty(s).padding(.top, 14)
+                        Text("왼쪽 샘플에 『중첩된 현실』 시리즈의 주요 인물들이 있어요. 골라서 적용해 보세요.")
+                            .appFont(11).foregroundStyle(Theme.sub).multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
                     }
-                    big(draft, s).padding(.top, sample == nil ? 14 : 28)
-                    Text(m.meUnlocked ? "홈과 위젯에 둘 수 있어요" : "조건을 채우면 홈과 위젯에 나와요")
+                    // 처음(저장한 것도, 고른 부품도 없을 때)에는 빈 칸
+                    Group {
+                        if draft.parts.isEmpty && m.me == nil { empty(s) } else { big(draft, s) }
+                    }
+                    .padding(.top, 28)
+                    Text("나만의 캐릭터를 만들어 홈과 위젯에서 함께하세요")
                         .appFont(11).foregroundStyle(Theme.sub).multilineTextAlignment(.center)
-                        .padding(.top, 8)
+                        .fixedSize(horizontal: false, vertical: true).padding(.top, 8)
                     nameRow.padding(.top, 10)
                     if let note { Text(note).appFont(13, .bold).foregroundStyle(Theme.teal).padding(.top, 8) }
-                    if m.me != nil {
-                        Button("지우기") { askDelete = true }.appFont(13).foregroundStyle(Theme.muted).frame(minHeight: 36)
+                    Button { askDelete = true } label: {
+                        Label("리셋", systemImage: "arrow.counterclockwise").appFont(13).foregroundStyle(Theme.muted)
+                            .frame(minHeight: 40).padding(.horizontal, 12)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(m.me == nil && draft == MeChar() && sample == nil)
+                    .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 12)
@@ -445,11 +466,18 @@ struct MeEditView: View {
     }
     private func boxW(_ s: Int) -> CGFloat { CGFloat(MeArt.W * s) + 20 }
 
+    /// 그림 자리 빈 칸 (같은 크기, 점선)
+    private func empty(_ s: Int) -> some View {
+        RoundedRectangle(cornerRadius: 14)
+            .stroke(Theme.dash, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+            .frame(width: boxW(s), height: CGFloat(MeArt.H * s) + 20)
+    }
+
     /// 고른 샘플·내 캐릭터 같은 크기 (24×34 의 s배)
     private func big(_ c: MeChar, _ s: Int) -> some View {
         MeAvatar(me: c, width: CGFloat(MeArt.W * s), height: CGFloat(MeArt.H * s))
         .padding(10)
-        .background(Theme.shelter, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
         .accessibilityLabel(c.shownName)
     }
 
@@ -469,12 +497,17 @@ struct MeEditView: View {
                 .appFont(16).padding(.horizontal, 10).frame(minHeight: 44)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
-                .onChange(of: draft.name) { _, v in if v.count > MeChar.nameMax { draft.name = String(v.prefix(MeChar.nameMax)) } }
+                // 한글은 조합 중에 바로 바꾸면 무시돼서, 한 박자 뒤에 다듬는다 (저장할 때도 한 번 더)
+                .onChange(of: draft.name) { _, v in
+                    let c = MeChar.clean(v)
+                    if c != v { DispatchQueue.main.async { draft.name = MeChar.clean(draft.name) } }
+                }
+                .onSubmit { draft.name = MeChar.clean(draft.name) }
             Button {
-                draft.name = draft.name.trimmingCharacters(in: .whitespaces)
+                draft.name = MeChar.clean(draft.name).trimmingCharacters(in: .whitespaces)
                 m.me = draft
                 WidgetBridge.write(m)
-                note = m.meUnlocked ? "저장했어요." : "저장했어요. 조건을 채우면 홈과 위젯에 나와요."
+                dismiss()   // 저장하면 바로 이전 화면으로
             } label: {
                 Text("저장").appFont(16, .bold).foregroundStyle(.white)
                     .frame(width: 56, height: 44).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
