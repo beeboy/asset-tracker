@@ -741,9 +741,85 @@
     if (m == null) { m = 0; y++; }
     S.state.events.push({ id: "auto_" + t, on: true, date: `${y}-${String(m + 1).padStart(2, "0")}-25`, target: t, kind: "실적", cat: "corp", repeat: "quarterly", prob: 100, mean: 0, sd: 8, vol_mult: 1, vol_days: 0, note: "분기 실적 (날짜 추정)" });
   }
+  // 종목 찾기 (iOS 앱과 같은 방식): 앱의 한글 이름 목록(stocks.js) + Yahoo 검색(영문 이름·티커·종목 코드). 미국 주식·ETF 와 코스피·코스닥만
+  const STOCKS = window.STOCKS || [];
+  const US_EX = new Set(["NMS", "NYQ", "NGM", "NCM", "PCX", "ASE", "BTS", "NAS", "NYS"]);
+  const snorm = (x) => String(x || "").toLowerCase().replace(/\s+/g, "");
+  const codeOf = (sym) => sym.replace(/\.(KS|KQ)$/, "");
+  const koOf = (sym) => STOCKS.find((o) => o.s === sym);
+  // 앱 안 목록에서 찾기: 기호·코드·이름이 똑같으면 먼저, 앞이 같으면 그다음, 들어 있으면 그 뒤
+  function stockLocal(q) {
+    const k = snorm(q); if (!k) return [];
+    const rank = (o) => {
+      const keys = [o.s, codeOf(o.s), o.k, o.a, o.e].map(snorm);
+      return keys.includes(k) ? 0 : keys.some((x) => x.startsWith(k)) ? 1 : keys.some((x) => x.includes(k)) ? 2 : 9;
+    };
+    return STOCKS.map((o) => [rank(o), o]).filter((x) => x[0] < 9).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  }
+  // Yahoo 검색 (한글은 못 찾는다). 중계 순서는 시세와 같다
+  async function stockRemote(q) {
+    const k = q.trim();
+    if (!k || !/^[\x20-\x7e]+$/.test(k)) return [];
+    const url = "https://query1.finance.yahoo.com/v1/finance/search?" + new URLSearchParams({ q: k, quotesCount: 12, newsCount: 0 });
+    const list = proxies(), order = goodProxy && list.includes(goodProxy) ? [goodProxy, ...list.filter((p) => p !== goodProxy)] : list;
+    for (const p of order) {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 6000);
+      try {
+        const j = await (await fetch(p + encodeURIComponent(url), { signal: ctl.signal })).json();
+        if (!j || !Array.isArray(j.quotes)) continue;
+        return j.quotes.map((x) => {
+          const sym = x.symbol, type = x.quoteType, name = x.longname || x.shortname || sym;
+          if (!sym || (type !== "EQUITY" && type !== "ETF")) return null;
+          if (/\.(KS|KQ)$/.test(sym)) { const ko = koOf(sym); return { s: sym, k: ko?.k || name, e: name, m: (sym.endsWith(".KS") ? "코스피" : "코스닥") + (type === "ETF" ? " ETF" : "") }; }
+          if (!US_EX.has(x.exchange) || sym.includes(".")) return null;
+          const ko = koOf(sym); return { s: sym, k: ko?.k || name, e: name, m: type === "ETF" ? "미국 ETF" : "미국 주식" };
+        }).filter(Boolean);
+      } catch (e) { /* 다음 중계 */ } finally { clearTimeout(t); }
+    }
+    return [];
+  }
+  // 입력칸 아래 후보 목록
+  const sug = { list: [], i: -1, seq: 0, timer: 0 };
+  function sugRender() {
+    const box = $("#addSug"); if (!box) return;
+    if (!sug.list.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = sug.list.map((o, i) => {
+      const t = o.s.endsWith(".KS") || o.s.endsWith(".KQ") ? codeOf(o.s) : o.s, sub = o.e && o.e !== o.k ? o.e : "";
+      return `<button type="button" role="option" data-i="${i}" class="${i === sug.i ? "on" : ""}"><b>${esc(o.k)}</b> <span class="muted">${esc(t)} · ${esc(o.m)}</span>${sub ? `<br><span class="muted small">${esc(sub)}</span>` : ""}</button>`;
+    }).join("");
+  }
+  function sugUpdate() {
+    const q = $("#addTicker").value, my = ++sug.seq;
+    sug.list = stockLocal(q).slice(0, 8); sug.i = -1; sugRender();
+    clearTimeout(sug.timer);
+    if (!/^[\x20-\x7e]+$/.test(q.trim())) return;
+    sug.timer = setTimeout(async () => {
+      const r = await stockRemote(q);
+      if (my !== sug.seq) return;
+      const seen = new Set(sug.list.map((o) => codeOf(o.s)));
+      sug.list = [...sug.list, ...r.filter((o) => !seen.has(codeOf(o.s)) && seen.add(codeOf(o.s)))].slice(0, 10); sugRender();
+    }, 300);
+  }
+  function sugPick(o) {
+    $("#addTicker").value = o.s; sug.list = []; sug.seq++; sugRender();
+    $("#addShares").focus();
+  }
+  // 고르지 않고 바로 '종목 추가'를 누른 경우: 이름·종목 코드를 Yahoo 기호로 바꾼다
+  async function resolveTicker(raw) {
+    const q = raw.trim(), up = q.toUpperCase();
+    if (!q) return "";
+    if (STOCKS.some((o) => o.s === up)) return up;
+    const exact = stockLocal(q).find((o) => [o.s, codeOf(o.s), o.k, o.a].map(snorm).includes(snorm(q)));
+    if (exact) return exact.s;
+    if (/^\d{6}$/.test(q)) { const r = await stockRemote(q); return (r.find((o) => codeOf(o.s) === q) || { s: q + ".KS" }).s; }
+    if (!/^[\x20-\x7e]+$/.test(q)) { const l = stockLocal(q); return l.length === 1 ? l[0].s : ""; }
+    return up;
+  }
   async function addHolding() {
-    const t = $("#addTicker").value.trim().toUpperCase(), sh = parseDec($("#addShares").value), avg = parseDec($("#addAvg").value);
-    if (!t) return toast("티커를 넣어 주세요");
+    const raw = $("#addTicker").value; sug.list = []; sug.seq++; sugRender();
+    const t = await resolveTicker(raw), sh = parseDec($("#addShares").value), avg = parseDec($("#addAvg").value);
+    if (!t) return toast(raw.trim() ? "종목을 찾지 못했습니다. 목록에서 골라 주세요" : "종목을 넣어 주세요");
     if (!(sh > 0)) return toast("수량을 넣어 주세요");
     endSample(false);
     const ex = S.state.holdings.find((h) => h.ticker === t);
@@ -3064,6 +3140,16 @@
     $("#holdTable").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset.e) holdEditSave(); else if (e.key === "Escape" && S.holdEdit) { S.holdEdit = null; renderQuotes(); } });
     $("#holdSort").onchange = (e) => { S.state.ui.hold_sort = e.target.value; save(false); renderQuotes(); };
     $("#btnAdd").onclick = addHolding;
+    $("#addTicker").addEventListener("input", sugUpdate);
+    $("#addTicker").addEventListener("keydown", (e) => {
+      if (!sug.list.length) { if (e.key === "Enter") $("#addShares").focus(); return; }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); sug.i = (sug.i + (e.key === "ArrowDown" ? 1 : -1) + sug.list.length) % sug.list.length; sugRender(); }
+      else if (e.key === "Enter") { e.preventDefault(); sugPick(sug.list[Math.max(0, sug.i)]); }
+      else if (e.key === "Escape") { sug.list = []; sug.seq++; sugRender(); }
+    });
+    $("#addSug").addEventListener("mousedown", (e) => e.preventDefault()); // 고르기 전에 입력칸이 포커스를 잃지 않게
+    $("#addSug").addEventListener("click", (e) => { const b = e.target.closest("[data-i]"); if (b) sugPick(sug.list[+b.dataset.i]); });
+    $("#addTicker").addEventListener("blur", () => setTimeout(() => { sug.list = []; sug.seq++; sugRender(); }, 150));
     $("#addAvg").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     $("#addShares").addEventListener("keydown", (e) => e.key === "Enter" && addHolding());
     $("#goalQuick").addEventListener("click", (e) => { const b = e.target.closest("button[data-set]"); if (!b) return; const el = $("#" + b.dataset.set); el.value = b.dataset.v; el.dispatchEvent(new Event("change")); });

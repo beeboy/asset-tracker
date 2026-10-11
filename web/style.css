@@ -88,7 +88,12 @@ table.grid select { padding: 3px 4px; }
 .tag { display: inline-block; font-size: 0.6471rem; padding: 0 5px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); margin-left: 4px; }
 .tag.manual { color: var(--accent2); border-color: var(--accent2); }
 .addrow { margin-top: 10px; flex-wrap: nowrap; gap: 6px; }
-.addrow #addTicker { flex: 1 1 8em; min-width: 0; }
+.addrow .addfind { flex: 1 1 8em; min-width: 0; position: relative; }
+.addrow #addTicker { width: 100%; box-sizing: border-box; }
+.addsug { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; width: max(100%, 18em); max-width: 86vw; max-height: 320px; overflow-y: auto; background: var(--card, #fff); border: 1px solid var(--line, #ddd); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+.addsug button { display: block; width: 100%; text-align: left; padding: 7px 10px; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; font-weight: normal; line-height: 1.35; cursor: pointer; }
+.addsug button + button { border-top: 1px solid var(--line, #eee); }
+.addsug button:hover, .addsug button.on { background: var(--hover, rgba(127,127,127,.12)); }
 .addrow input.num { flex: 0 0 5.6em; width: 5.6em; min-width: 0; text-align: right; }
 .addrow #addShares { flex-basis: 3.8em; width: 3.8em; }
 .addrow button { flex: 0 0 auto; }
