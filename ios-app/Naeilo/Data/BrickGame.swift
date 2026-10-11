@@ -33,6 +33,8 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
         case .easy: return plus + [(1, 1), (1, -1), (-1, 1), (-1, -1), (2, 0), (-2, 0), (0, 2), (0, -2)]
         }
     }
+    /// 특수 블럭 비율 (폭탄·한 줄·공 셋·선물)
+    var special: Double { switch self { case .easy: 0.12; case .normal: 0.09; case .hard: 0.07 } }
     var easier: GameLevel? { switch self { case .easy: nil; case .normal: .easy; case .hard: .normal } }
 }
 
@@ -50,6 +52,8 @@ struct GameStage: Identifiable {
     var dash = false          // 7권: 줄표(—) 벽은 깨지지 않는다
     var hard2 = 0.0           // 10권: 안 구운 그릇 벽돌 (두 번 쳐야 깨짐) 비율
     var id: Int { n }
+    /// 단계가 오를수록 채운 칸 위에 더 쌓는 벽돌 수 (연습판 0, 외전 515)
+    var extra: Int { n == 0 ? 0 : 20 + n * 45 }
     var bg: ShelterBG { Shelter.backgrounds[n] }
 
     static let all: [GameStage] = [
@@ -272,8 +276,11 @@ enum GameBoard {
 @Observable
 final class BrickGame: Identifiable {
     enum Phase { case ready, playing, paused, cleared, over }
-    struct Ball { var x: Double, y: Double, vx: Double, vy: Double; var stuck = true; var off = 0.0; var until = 0.0 }
+    struct Ball { var x: Double, y: Double, vx: Double, vy: Double; var stuck = true; var off = 0.0; var until = 0.0; var spawned = false }
     struct Drop { let id: String; var x: Double, y: Double }
+    /// 고전 벽돌깨기의 특수 블럭: 폭탄(둘레 터짐), 가로·세로 한 줄, 공 셋, 선물(물건 또는 점수)
+    enum Special: CaseIterable { case bomb, row, col, multi, gift }
+    struct Blast { let x: Double, y: Double; let kind: Special; let t0: Double }
 
     static let W = 40.0, H = 46.0, PY = 5.0, PH = 0.8, top = 21.0, r = 0.45
 
@@ -290,7 +297,12 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var tilt: Bool
 
     @ObservationIgnored var hp = [Int8](repeating: 0, count: 1000)     // 0 빈칸, -1 깨지지 않는 벽, 1·2 남은 횟수
-    @ObservationIgnored var kind = [UInt8](repeating: 0, count: 1000)  // 1 바닥에도 있던 칸, 2 회복한 칸, 3 오늘 늘어난 칸, 4 연습 칸
+    @ObservationIgnored var kind = [UInt8](repeating: 0, count: 1000)  // 1 바닥에도 있던 칸, 2 회복한 칸, 3 오늘 늘어난 칸, 4 연습 칸, 5 단계가 더 쌓은 칸
+    @ObservationIgnored var special = [Special?](repeating: nil, count: 1000)
+    @ObservationIgnored var blasts: [Blast] = []          // 터지는 그림 (잠깐)
+    @ObservationIgnored var stacked = 0                   // 이 단계에서 더 쌓은 벽돌
+    @ObservationIgnored var combo = 0                     // 판에 다시 닿기 전까지 깬 벽돌
+    @ObservationIgnored private var comboSaid = 0
     @ObservationIgnored var exitCell = -1
     @ObservationIgnored var balls: [Ball] = []
     @ObservationIgnored var drops: [Drop] = []
@@ -338,6 +350,14 @@ final class BrickGame: Identifiable {
             hp[i] = Double.random(in: 0..<1) < stage.hard2 ? 2 : 1
             kind[i] = i >= f ? 4 : i < floor ? 1 : (yesterday < f && i >= yesterday) ? 3 : 2
         }
+        // 단계가 오를수록 위에 더 쌓는다. 자리가 없으면 그만큼 기존 벽돌을 두 번 쳐야 깨지게
+        let room = min(stage.extra, 1000 - n)
+        for i in n..<(n + room) { hp[i] = 1; kind[i] = 5 }
+        stacked = room
+        for i in (0..<n).shuffled().prefix(stage.extra - room) { hp[i] = 2 }
+        // 특수 블럭을 고루 섞는다 (폭탄이 가장 많다)
+        let pool: [Special] = [.bomb, .bomb, .bomb, .row, .col, .multi, .gift]
+        for i in 0..<1000 where hp[i] > 0 && Double.random(in: 0..<1) < level.special { special[i] = pool.randomElement() }
         if stage.dash { for c in 14...25 { hp[12 * 40 + c] = -1 } }
         if stage.flicker { exitCell = (0..<1000).last { hp[$0] > 0 } ?? -1 }
         total = hp.filter { $0 > 0 }.count
@@ -466,7 +486,9 @@ final class BrickGame: Identifiable {
             for _ in 0..<n { if !move(&b, sdt, sp) { lost = true; break } }
             if !lost { alive.append(b) }
         }
-        balls = alive
+        // 이번 걸음에 특수 블럭이 만든 공 (balls 에 바로 붙은 것)
+        balls = alive + balls.filter { $0.spawned }.map { var b = $0; b.spawned = false; return b }
+        blasts.removeAll { t - $0.t0 > 0.45 }
         moveDrops(dt)
         if broken >= target { win(); return }
         if !halfSaid && broken * 2 >= target { halfSaid = true; talk(.half) }
@@ -545,6 +567,7 @@ final class BrickGame: Identifiable {
 
     private func paddleHit(_ b: inout Ball, _ sp: Double) {
         buzz(); GameSound.shared.play(.paddle)
+        combo = 0; comboSaid = 0
         if skill == "sio" {
             b.stuck = true; b.off = b.x - paddleX; b.until = t + 2
             b.vx = 0; b.vy = 0; return
@@ -567,24 +590,67 @@ final class BrickGame: Identifiable {
         if hp[i] == 2 { hp[i] = 1; GameSound.shared.play(.tough); return }
         GameSound.shared.play(.hit)
         let row = i / 40, col = i % 40
-        var mul = skill == "ir" ? 1.5 : 1.0
-        if on("double") { mul *= 2 }
+        var queue: [Int] = []
         for (dx, dy) in level.burst {
             let c = col + dx, r = row + dy
             guard c >= 0, c < 40, r >= 0, r < 25 else { continue }
-            let j = r * 40 + c
-            guard hp[j] > 0 else { continue }
-            hp[j] -= 1
-            if hp[j] == 0 {
-                broken += 1
-                let p: Double = switch kind[j] { case 2: 2; case 3: 3; default: 1 }
-                score += Int((p * mul).rounded())
-                if j == exitCell { score += 100; say("출구 칸 +100") }
-            }
+            crack(r * 40 + c, &queue)
         }
+        // 특수 블럭은 이어서 터진다 (폭탄이 폭탄을 터뜨리는 연쇄)
+        var k = 0
+        while k < queue.count { let j = queue[k]; trigger(j, &queue); k += 1 }
         if kind[i] == 3 { effects["fast"] = t + 5 }
         if !items.isEmpty, Double.random(in: 0..<1) < 0.14, let it = items.randomElement() {
             drops.append(Drop(id: it, x: Double(col) + 0.5, y: rect(i).midY))
+        }
+        if combo / 15 > comboSaid { comboSaid = combo / 15; say("콤보 \(combo)!") }
+    }
+
+    /// 한 칸 깎기. 깨지면 점수, 특수 블럭이면 터질 차례에 넣는다
+    private func crack(_ j: Int, _ queue: inout [Int], all: Bool = false) {
+        guard hp[j] > 0 else { return }
+        hp[j] = all ? 0 : hp[j] - 1
+        guard hp[j] == 0 else { return }
+        broken += 1; combo += 1
+        var mul = skill == "ir" ? 1.5 : 1.0
+        if on("double") { mul *= 2 }
+        if combo > 10 { mul *= 1.5 }    // 한 번에 많이 깨면 점수가 더
+        let p: Double = switch kind[j] { case 2: 2; case 3: 3; default: 1 }
+        score += Int((p * mul).rounded())
+        if j == exitCell { score += 100; say("출구 칸 +100") }
+        if special[j] != nil { queue.append(j) }
+    }
+
+    private func trigger(_ j: Int, _ queue: inout [Int]) {
+        guard let sp = special[j] else { return }
+        special[j] = nil
+        let row = j / 40, col = j % 40, c = rect(j)
+        blasts.append(Blast(x: c.midX, y: c.midY, kind: sp, t0: t))
+        switch sp {
+        case .bomb:
+            GameSound.shared.play(.boom)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            for dy in -2...2 { for dx in -2...2 where abs(dx) + abs(dy) <= 3 {
+                let cc = col + dx, r = row + dy
+                if cc >= 0, cc < 40, r >= 0, r < 25 { crack(r * 40 + cc, &queue, all: true) }
+            } }
+        case .row:
+            GameSound.shared.play(.line)
+            for cc in 0..<40 { crack(row * 40 + cc, &queue, all: true) }
+        case .col:
+            GameSound.shared.play(.line)
+            for r in 0..<25 { crack(r * 40 + col, &queue, all: true) }
+        case .multi:
+            GameSound.shared.play(.item)
+            let v = speed
+            for a in [-0.6, 0.0, 0.6] where balls.count < 12 {
+                balls.append(Ball(x: c.midX, y: c.minY - Self.r - 0.05, vx: v * sin(a), vy: -v * cos(a), stuck: false, spawned: true))
+            }
+            say("공 셋!")
+        case .gift:
+            GameSound.shared.play(.item)
+            if let it = items.randomElement() { drops.append(Drop(id: it, x: c.midX, y: c.midY)) }
+            else { score += 50; say("선물 +50") }
         }
     }
 
@@ -684,7 +750,7 @@ final class BrickGame: Identifiable {
 
 /// 효과음: 짧은 소리를 코드로 만들어 둔다 (파일 없음). 무음 스위치를 따르고 다른 앱 소리와 섞인다
 final class GameSound {
-    enum Kind: CaseIterable { case hit, tough, paddle, item, lose, clear }
+    enum Kind: CaseIterable { case hit, tough, paddle, item, lose, clear, boom, line }
     static let shared = GameSound()
     private let engine = AVAudioEngine()
     private var players: [AVAudioPlayerNode] = []
@@ -710,6 +776,8 @@ final class GameSound {
             .item: [(660, 0.06), (880, 0.06), (1320, 0.09)],
             .lose: [(440, 0.1), (330, 0.1), (220, 0.18)],
             .clear: [(523, 0.1), (659, 0.1), (784, 0.1), (1047, 0.25)],
+            .boom: [(140, 0.06), (95, 0.08), (70, 0.14)],
+            .line: [(1047, 0.04), (1397, 0.04), (1760, 0.07)],
         ]
         for (k, ns) in notes { buffers[k] = tone(ns, fmt) }
         do { try engine.start(); ready = true } catch { ready = false }

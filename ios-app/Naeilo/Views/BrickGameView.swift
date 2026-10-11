@@ -40,7 +40,7 @@ struct BrickGameHub: View {
                     Text("내 1000칸으로 하는 벽돌깨기").appFont(22, .bold)
                     section("난이도") {
                         ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true)
-                        Text(rec.level.note).appFont(12).foregroundStyle(Theme.sub)
+                        Text(rec.level.note + " " + BrickPlayView.specialNote).appFont(12).foregroundStyle(Theme.sub)
                     }
                     section("조작") {
                         ChipRow(items: [(true, "폰 기울이기"), (false, "손가락으로 끌기")], selection: $rec.tilt, fill: true)
@@ -174,7 +174,7 @@ struct BrickGameHub: View {
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
                         if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).font(.system(size: 13)) }
                     }
-                    Text(open ? s.rule : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? s.rule + (s.extra > 0 ? " 벽돌 \(s.extra)칸을 더 쌓았어요." : "") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
                 }
                 Spacer(minLength: 0)
@@ -201,6 +201,7 @@ struct BrickPlayView: View {
     private let brickDark = Theme.teal
     private let brickLight = Color(hex: 0x7FD3C9, dark: 0x3C8F86)
     private let clay = Color(hex: 0xC9A27E, dark: 0x8A6A4E)
+    private let stackColor = Color(hex: 0xB9C3E6, dark: 0x4E5C8C)   // 단계가 더 쌓은 칸
 
     var body: some View {
         let g = game
@@ -415,10 +416,26 @@ struct BrickPlayView: View {
                 let b = g.rect(i)
                 let rc = r(b.minX + 0.05, b.minY + 0.05, 0.9, 0.9)
                 if g.hp[i] < 0 { ctx.fill(Path(rc), with: .color(Theme.ink)); continue }
-                let c: Color = switch g.kind[i] { case 1: brickDark; case 3: brickLight; case 4: Theme.track; default: brickLight }
+                if let sp = g.special[i] { special(&ctx, sp, rc, now); continue }
+                let c: Color = switch g.kind[i] { case 1: brickDark; case 3: brickLight; case 4: Theme.track; case 5: stackColor; default: brickLight }
                 ctx.fill(Path(rc), with: .color(c))
                 if g.kind[i] == 3 { ctx.stroke(Path(rc.insetBy(dx: 0.6, dy: 0.6)), with: .color(Theme.up), lineWidth: 1.2) }
                 if g.hp[i] == 2 { ctx.fill(Path(roundedRect: rc.insetBy(dx: rc.width * 0.22, dy: rc.height * 0.22), cornerRadius: 1.5), with: .color(clay)) }
+            }
+            // 특수 블럭이 터지는 그림
+            for b in g.blasts {
+                let k = min(1, (g.t - b.t0) / 0.45), a = 1 - k
+                switch b.kind {
+                case .bomb:
+                    let rr = 1 + k * 2.6
+                    ctx.fill(Path(ellipseIn: r(b.x - rr, b.y - rr, rr * 2, rr * 2)), with: .color(Theme.orange.opacity(0.55 * a)))
+                    ctx.stroke(Path(ellipseIn: r(b.x - rr, b.y - rr, rr * 2, rr * 2)), with: .color(Theme.yellow.opacity(a)), lineWidth: 2)
+                case .row: ctx.fill(Path(r(0, b.y - 0.5, BrickGame.W, 1)), with: .color(Theme.yellow.opacity(0.8 * a)))
+                case .col: ctx.fill(Path(r(b.x - 0.5, BrickGame.top, 1, BrickGame.H - BrickGame.top)), with: .color(Theme.yellow.opacity(0.8 * a)))
+                case .multi, .gift:
+                    let rr = 0.6 + k * 1.4
+                    ctx.stroke(Path(ellipseIn: r(b.x - rr, b.y - rr, rr * 2, rr * 2)), with: .color(Theme.blue.opacity(a)), lineWidth: 1.5)
+                }
             }
             ctx.opacity = 1
             if g.exitCell >= 0, g.hp[g.exitCell] > 0 {
@@ -475,10 +492,40 @@ struct BrickPlayView: View {
         }
     }
 
+    /// 특수 블럭 한 칸 (폭탄은 반짝인다)
+    private func special(_ ctx: inout GraphicsContext, _ sp: BrickGame.Special, _ rc: CGRect, _ now: Date) {
+        let w = rc.width, mid = CGPoint(x: rc.midX, y: rc.midY)
+        switch sp {
+        case .bomb:
+            ctx.fill(Path(rc), with: .color(Theme.slate))
+            let pulse = 0.5 + 0.5 * sin(now.timeIntervalSinceReferenceDate * 6)
+            ctx.fill(Path(ellipseIn: rc.insetBy(dx: w * 0.18, dy: w * 0.18)), with: .color(Theme.up.opacity(0.6 + 0.4 * pulse)))
+            ctx.fill(Path(ellipseIn: CGRect(x: rc.maxX - w * 0.35, y: rc.minY + w * 0.05, width: w * 0.25, height: w * 0.25)), with: .color(Theme.yellow))
+        case .row, .col:
+            ctx.fill(Path(rc), with: .color(Theme.orange))
+            var p = Path()
+            if sp == .row { p.move(to: CGPoint(x: rc.minX + w * 0.15, y: mid.y)); p.addLine(to: CGPoint(x: rc.maxX - w * 0.15, y: mid.y)) }
+            else { p.move(to: CGPoint(x: mid.x, y: rc.minY + w * 0.15)); p.addLine(to: CGPoint(x: mid.x, y: rc.maxY - w * 0.15)) }
+            ctx.stroke(p, with: .color(.white), lineWidth: max(1.2, w * 0.18))
+        case .multi:
+            ctx.fill(Path(rc), with: .color(Theme.blue))
+            for (dx, dy) in [(-0.2, 0.15), (0.2, 0.15), (0, -0.18)] {
+                let d = w * 0.22
+                ctx.fill(Path(ellipseIn: CGRect(x: mid.x + dx * w - d / 2, y: mid.y + dy * w - d / 2, width: d, height: d)), with: .color(.white))
+            }
+        case .gift:
+            ctx.fill(Path(rc), with: .color(Theme.yellow))
+            ctx.fill(Path(CGRect(x: mid.x - w * 0.08, y: rc.minY, width: w * 0.16, height: w)), with: .color(Theme.up))
+            ctx.fill(Path(CGRect(x: rc.minX, y: mid.y - w * 0.08, width: w, height: w * 0.16)), with: .color(Theme.up))
+        }
+    }
+
+    static let specialNote = "폭탄은 둘레를, 주황 줄은 한 줄을 통째로 깨요. 파랑은 공 셋, 노랑은 선물."
+
     @ViewBuilder private func overlay(_ g: BrickGame) -> some View {
         switch g.phase {
         case .ready:
-            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule) { EmptyView() }
+            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule + "\n" + Self.specialNote + (g.stacked > 0 ? "\n이번 방은 벽돌 \(g.stacked)칸을 더 쌓았어요." : "")) { EmptyView() }
                 .allowsHitTesting(false)
         case .playing:
             if let t = g.toast {
