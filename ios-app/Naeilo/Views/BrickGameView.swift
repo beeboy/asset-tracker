@@ -27,6 +27,7 @@ struct BrickGameHub: View {
     @State private var game: BrickGame?
     @State private var board: GameStage?
     @State private var allStages = false
+    @State private var showItems = false
 
     private var players: [String] {
         Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id) + (m.meUnlocked ? ["me"] : [])
@@ -37,10 +38,9 @@ struct BrickGameHub: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("내 1000칸으로 하는 벽돌깨기").appFont(22, .bold)
                     section("난이도") {
                         ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true)
-                        Text(rec.level.note + " " + BrickPlayView.specialNote).appFont(12).foregroundStyle(Theme.sub)
+                        Text(rec.level.note).appFont(12).foregroundStyle(Theme.sub)
                     }
                     section("조작") {
                         ChipRow(items: [(true, "폰 기울이기"), (false, "손가락으로 끌기")], selection: $rec.tilt, fill: true)
@@ -64,7 +64,17 @@ struct BrickGameHub: View {
                             .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
-                    section("물건 아이템") {
+                    // 물건 아이템은 접어 둔다
+                    Button { withAnimation { showItems.toggle() } } label: {
+                        HStack {
+                            Text("물건 아이템 \(items.count)개").appFont(13, .bold).foregroundStyle(Theme.sub)
+                            Spacer()
+                            Text(showItems ? "접기 ▴" : "펼치기 ▾").appFont(13, .semibold).foregroundStyle(Theme.tealDark)
+                        }
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if showItems {
                         if items.isEmpty {
                             Text("쉼터에 물건이 돌아오면 벽돌에서 아이템으로 떨어져요.").appFont(13).foregroundStyle(Theme.sub)
                         } else {
@@ -98,7 +108,7 @@ struct BrickGameHub: View {
                 .screen()
             }
             .background(Theme.bg)
-            .navigationTitle("판 깨기")
+            .navigationTitle("내 1000칸으로 하는 벽돌깨기")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
         }
