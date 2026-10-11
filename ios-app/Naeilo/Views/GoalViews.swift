@@ -360,6 +360,7 @@ struct GoalSetView: View {
                     Button("확률 50% 근처로 맞추기") { focus = false; m.gK = m.autoGoal(years: m.gY); k = String(Int(m.gK)) }
                         .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 44)
                     Text("출발점: 지금 평가액 \(AppModel.wonK(start)) (미션 1에서 넣은 종목 기준)").appFont(13).foregroundStyle(Theme.sub)
+                    Text("목표일 \(m.goalToText) · 기기 동기화를 켜면 naeilo.com 목표와 같은 값이에요").appFont(13).foregroundStyle(Theme.sub)
                 }
                 PrimaryButton(title: fromSettings || m.gDone.contains("goal") ? "이 목표로 저장" : "목표까지 가는 길 보기", color: ok ? Theme.teal : Theme.muted) {
                     guard ok else { return }

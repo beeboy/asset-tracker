@@ -225,7 +225,9 @@ final class AppModel {
     // 목표 루트 (만원)
     var route: Route = .recover
     var gK = 10000.0
-    var gY = 5
+    var gY = 5 { didSet { if gY != oldValue { gTo = nil } } }   // 앱에서 기간(년)을 고치면 목표일 = 시작일 + 그 햇수
+    var gTo: String? = nil       // 목표일 (yyyy-MM-dd, 사이트 goal.date). nil = 시작일 + gY년
+    var gFrom: String? = nil     // 목표 시작일 (사이트 goal.start_date). 내 길이 여기서 출발한다
     var gA = 2000.0
     var gM = 100.0
     var gMix = "index"

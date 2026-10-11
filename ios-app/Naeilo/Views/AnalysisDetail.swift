@@ -7,18 +7,19 @@ import SwiftUI
 
 extension AppModel {
     // 내 길: 회복 = 본전을 1년 안에(적립 없음), 목표 = 목표 금액·목표일·매달 적립. 시작은 실제로 길을 시작한 날
-    /// 내 길 시작한 날: 목표 루트는 루트를 고른 날, 회복 루트는 인터미션 시작일과 내 기록 첫날 중 이른 날. 모르면 오늘
+    /// 내 길 시작한 날: 목표 루트는 목표 시작일(사이트와 같은 값), 회복 루트는 인터미션 시작일과 내 기록 첫날 중 이른 날. 모르면 오늘
     var pathStartDate: Date {
         let rec = (isSample ? nil : myRecord.first).flatMap { Day.date($0.d) }
-        let rs = (isGoal ? goalStartAt : interStartAt).map { Date(timeIntervalSince1970: $0) }
-        let d = isGoal ? (rs ?? rec) : [rs, rec].compactMap { $0 }.min()
+        if isGoal { return min(Date(), goalFromDate) }
+        let rs = interStartAt.map { Date(timeIntervalSince1970: $0) }
+        let d = [rs, rec].compactMap { $0 }.min()
         return min(Date(), d ?? Date())
     }
     var pathStartText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"; return f.string(from: pathStartDate) }
     var pathStartMonth: String { "\(Calendar.current.component(.month, from: pathStartDate))월" }
     struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let act: (Double) -> Double; let need: (Double) -> Double }
     var myPath: MyPath {
-        let mEnd = isGoal ? Double(gY) : 1
+        let mEnd = isGoal ? goalSpan : 1     // 목표: 시작일부터 목표일까지 (사이트와 같은 날짜)
         // 시작한 날부터 지금까지 (년). 오늘 시작이면 하루로 둔다
         let mS = min(mEnd * 0.95, max(1.0 / 365, Date().timeIntervalSince(pathStartDate) / (365.25 * 86400))), mM = isGoal ? gM * 1e4 : 0, K = keyValue
         let now = trackValue
@@ -158,7 +159,7 @@ struct MyPathView: View {
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.gY)년 · 매달 \(AppModel.wonK(m.gM)) (\(m.pathStartText) 시작)" : "본전 \(AppModel.man(K)) · 1년 안에 (\(m.pathStartText) 시작)")
+                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.goalToText)까지 · 매달 \(AppModel.wonK(m.gM)) (\(m.pathStartText) 시작)" : "본전 \(AppModel.man(K)) · 1년 안에 (\(m.pathStartText) 시작)")
                 HStack(alignment: .firstTextBaseline) {
                     Text("내 길보다 \(String(format: "%.1f", abs(gap) * 100))% \(gap >= 0 ? "앞섬" : "뒤처짐")").appFont(22, .bold).foregroundStyle(lead)
                     Spacer()
@@ -196,7 +197,7 @@ struct MyPathView: View {
                     }
                 }
                 .accessibilityLabel("내 길과 실제 평가액 그래프")
-                HStack { Text("시작 \(m.pathStartMonth)"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "\(m.gY)년 뒤 목표일" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
+                HStack { Text("시작 \(m.pathStartMonth)"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "목표일 \(m.goalToText)" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
                 ChipRow(items: [("past", "시작부터"), ("all", "목표일까지"), ("band", "예보 겹치기")], selection: $view, fill: true)
             }
         } content: {
@@ -210,12 +211,14 @@ struct MyPathView: View {
                     }
                 }
                 kpiGrid([
-                    Kpi(k: "목표일까지", v: (yrsLeft >= 1 ? "\(Int(yrsLeft))년 " : "") + "\(Int((yrsLeft.truncatingRemainder(dividingBy: 1) * 12).rounded()))개월", sub: m.isGoal ? "\(m.gY)년 목표" : "1년 목표"),
+                    Kpi(k: "목표일까지", v: (yrsLeft >= 1 ? "\(Int(yrsLeft))년 " : "") + "\(Int((yrsLeft.truncatingRemainder(dividingBy: 1) * 12).rounded()))개월", sub: m.isGoal ? "\(m.goalToText)까지" : "1년 목표"),
                     Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? "적립 포함, 남은 기간" : "본전까지 남은 기간"),
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
                     Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "3년 전망 (\(m.lens.label))"),
                 ], dark: true)
                 footnote("예측이 아닌 기준선. 목표와 적립으로 그은 길보다 실제가 앞섰는지 봐요. 종목 추천이 아닙니다.")
+                footnote(m.isGoal ? "목표 금액·목표일·시작일·매달 넣는 돈은 naeilo.com과 같은 값이에요 (기기 동기화를 켰을 때)."
+                         : "회복 루트는 본전 기준이에요. naeilo.com의 내 길은 목표 기준이라 다르게 보여요.")
             }
             .padding(16)
         }

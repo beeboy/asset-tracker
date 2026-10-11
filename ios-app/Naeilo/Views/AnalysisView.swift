@@ -120,6 +120,8 @@ struct ForecastView: View {
                         }
                     }
                     Text("한 숫자 예측이 아닌 가능성의 범위예요. 지난 3년 움직임으로 낸 종목별 기대·흔들림·함께 움직이는 정도(naeilo.com과 같은 값)로 계산했어요. 종목 추천이 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
+                    Text("웹(naeilo.com)은 3,000갈래 시뮬레이션으로 목표일까지 더 정밀하게 계산해요." + (m.isGoal ? "" : " 앱 회복 루트는 본전 기준, 웹은 목표 기준이에요."))
+                        .appFont(12).foregroundStyle(Theme.muted)
                 }
                 .padding(16)
         }
