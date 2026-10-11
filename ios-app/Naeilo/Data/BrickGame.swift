@@ -19,9 +19,9 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
     var clear: Double { switch self { case .easy: 0.6; case .normal: 0.75; case .hard: 0.9 } }
     var note: String {
         switch self {
-        case .easy: "판이 길고 한꺼번에 많이 깨져요. 벽돌 200개부터, 60%를 깨면 다음 단계가 열려요."
-        case .normal: "벽돌 300개부터, 75%를 깨면 다음 단계가 열려요."
-        case .hard: "벽돌 400개부터, 90%를 깨면 다음 단계가 열려요."
+        case .easy: "판이 길고 한꺼번에 많이 깨져요. 벽돌 750개부터, 60%를 깨면 다음 단계가 열려요."
+        case .normal: "벽돌 800개부터, 75%를 깨면 다음 단계가 열려요."
+        case .hard: "벽돌 850개부터, 90%를 깨면 다음 단계가 열려요."
         }
     }
     /// 한 번 맞히면 같이 깨지는 칸 (가운데 기준 (가로, 세로))
@@ -33,8 +33,8 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
         case .easy: return plus + [(1, 1), (1, -1), (-1, 1), (-1, -1), (2, 0), (-2, 0), (0, 2), (0, -2)]
         }
     }
-    /// 연습판 벽돌 수 (단계마다 50개씩 늘어난다)
-    var bricks: Int { switch self { case .easy: 200; case .normal: 300; case .hard: 400 } }
+    /// 연습판 벽돌 수 (단계마다 10개씩 늘어난다)
+    var bricks: Int { switch self { case .easy: 750; case .normal: 800; case .hard: 850 } }
     var easier: GameLevel? { switch self { case .easy: nil; case .normal: .easy; case .hard: .normal } }
 }
 
@@ -52,25 +52,16 @@ struct GameStage: Identifiable {
     var dash = false          // 7권: 줄표(—) 벽은 깨지지 않는다
     var hard2 = 0.0           // 10권: 안 구운 그릇 벽돌 (세 번 쳐야 깨짐) 비율
     var id: Int { n }
-    /// 이 단계의 벽돌 수: 난이도 기본 + 단계마다 50개 (내 채운 칸이 먼저, 모자라면 위에 쌓는다)
-    func bricks(_ lv: GameLevel) -> Int { min(1000, lv.bricks + 50 * n) }
+    /// 이 단계의 벽돌 수: 난이도 기본 + 단계마다 10개 (내 채운 칸이 먼저, 모자라면 위에 쌓는다)
+    func bricks(_ lv: GameLevel) -> Int { min(1000, lv.bricks + 10 * n) }
     static let specials = 10
-    /// 큰 숨은 블럭 모양 (가로, 세로). 하수 6권·중수 5권부터 작게, 단계·난이도가 오를수록 크게
-    func bigShapes(_ lv: GameLevel) -> [(Int, Int)] {
-        let tier: Int = switch lv {
-        case .easy: n >= 6 ? 1 : 0
-        case .normal: n >= 6 ? 2 : n == 5 ? 1 : 0
-        case .hard: n >= 6 ? 3 : n == 5 ? 2 : 0
-        }
-        switch tier {
-        case 1: return [(1, 2), (2, 2)]
-        case 2: return [(1, 2), (2, 2), (2, 3)]
-        case 3: return [(1, 2), (2, 2), (3, 3), (2, 3), (3, 4)]
-        default: return []
-        }
+    /// 두 번 맞아야 깨지는 벽돌 비율 (나머지는 한 번)
+    static let tough = 0.1
+    /// 숨은 테트리스 블럭 수: 하수 3권부터 2개, 2단계마다 1개씩 (중수는 한 단계, 고수는 두 단계 일찍)
+    func tetrisCount(_ lv: GameLevel) -> Int {
+        let start: Int = switch lv { case .easy: 3; case .normal: 2; case .hard: 1 }
+        return n < start ? 0 : 2 + (n - start) / 2
     }
-    /// 큰 숨은 블럭 수 (5권 3개 … 외전 6개)
-    var bigCount: Int { 3 + max(0, n - 5) / 2 }
     var bg: ShelterBG { Shelter.backgrounds[n] }
 
     static let all: [GameStage] = [
@@ -298,8 +289,14 @@ final class BrickGame: Identifiable {
     /// 고전 벽돌깨기의 특수 블럭: 폭탄(둘레 터짐), 가로·세로 한 줄, 공 셋, 선물(물건 또는 점수)
     enum Special: CaseIterable { case bomb, row, col, multi, gift }
     struct Blast { let x: Double, y: Double; let kind: Special; let t0: Double }
-    /// 큰 숨은 블럭: 칸 여러 개가 한 덩어리, 가로×세로 번 맞아야 없어진다
-    struct Big { let cells: [Int]; let w: Int, h: Int; var hp: Int; var revealed = false }
+    /// 숨은 테트리스 블럭: 두 번 맞는 벽돌인 척 숨어 있다가 한 칸이 깨지면 드러나고, 칸 수(4)만큼 더 맞아야 없어진다
+    struct Big { let cells: [Int]; let shape: Int; var hp: Int; var revealed = false }
+    /// 테트리스 일곱 조각 (I O T S Z J L), 칸 (가로, 세로)
+    static let tetrominoes: [[(Int, Int)]] = [
+        [(0, 0), (1, 0), (2, 0), (3, 0)], [(0, 0), (1, 0), (0, 1), (1, 1)], [(0, 0), (1, 0), (2, 0), (1, 1)],
+        [(1, 0), (2, 0), (0, 1), (1, 1)], [(0, 0), (1, 0), (1, 1), (2, 1)], [(0, 0), (0, 1), (1, 1), (2, 1)],
+        [(2, 0), (0, 1), (1, 1), (2, 1)],
+    ]
 
     static let W = 40.0, H = 46.0, PY = 5.0, PH = 0.8, top = 21.0, r = 0.45
 
@@ -370,7 +367,8 @@ final class BrickGame: Identifiable {
         // 벽돌 수는 난이도·단계로 정한다. 내 채운 칸이 먼저 (아래부터), 모자라면 그 위에 더 쌓는다
         let n = stage.bricks(level), f = max(0, min(n, filled))
         for i in 0..<n {
-            hp[i] = Double.random(in: 0..<1) < stage.hard2 ? 3 : 2      // 모든 벽돌은 두 번 맞아야 깨진다
+            let roll = Double.random(in: 0..<1)   // 대부분 한 번, 일부만 두 번 (10권 그릇은 세 번)
+            hp[i] = roll < stage.hard2 ? 3 : roll < stage.hard2 + GameStage.tough ? 2 : 1
             kind[i] = i >= f ? 5 : i < floor ? 1 : (yesterday < f && i >= yesterday) ? 3 : 2
         }
         stacked = n - f
@@ -378,20 +376,22 @@ final class BrickGame: Identifiable {
         // 숨기는 곳: 맨 위 3번째 줄부터 바닥까지
         let topRow = ((0..<1000).last { hp[$0] > 0 } ?? 0) / 40
         let hidden = { (i: Int) in self.hp[i] > 0 && i / 40 <= topRow - 2 && self.group[i] < 0 && self.special[i] == nil }
-        // 큰 숨은 블럭 (안에는 특수 블럭이 없다)
-        let shapes = stage.bigShapes(level)
-        if !shapes.isEmpty {
-            var tries = 0
-            while bigs.count < stage.bigCount && tries < 300 {
-                tries += 1
-                var (w, h) = shapes.randomElement()!
-                if Bool.random() { (w, h) = (h, w) }
-                let c0 = Int.random(in: 0...(40 - w)), r0 = Int.random(in: 0...max(0, topRow - 1 - h))
-                let cells = (0..<h).flatMap { dy in (0..<w).map { dx in (r0 + dy) * 40 + c0 + dx } }
-                guard cells.allSatisfy(hidden) else { continue }
-                for c in cells { group[c] = bigs.count; hp[c] = 2 }
-                bigs.append(Big(cells: cells, w: w, h: h, hp: w * h))
-            }
+        // 숨은 테트리스 블럭 (안에는 특수 블럭이 없다)
+        var tries = 0
+        while bigs.count < stage.tetrisCount(level) && tries < 400 {
+            tries += 1
+            let shape = Int.random(in: 0..<Self.tetrominoes.count)
+            var pts = Self.tetrominoes[shape]
+            for _ in 0..<Int.random(in: 0..<4) { pts = pts.map { ($0.1, -$0.0) } }   // 돌리기
+            let mx = pts.map { $0.0 }.min()!, my = pts.map { $0.1 }.min()!
+            pts = pts.map { ($0.0 - mx, $0.1 - my) }
+            let w = pts.map { $0.0 }.max()! + 1, h = pts.map { $0.1 }.max()! + 1
+            guard topRow - 1 - h >= 0 else { continue }
+            let c0 = Int.random(in: 0...(40 - w)), r0 = Int.random(in: 0...(topRow - 1 - h))
+            let cells = pts.map { (r0 + $0.1) * 40 + c0 + $0.0 }
+            guard cells.allSatisfy(hidden) else { continue }
+            for c in cells { group[c] = bigs.count; hp[c] = 2 }
+            bigs.append(Big(cells: cells, shape: shape, hp: cells.count))
         }
         // 특수 블럭 10개를 숨긴다 (폭탄이 가장 많다)
         let pool: [Special] = [.bomb, .bomb, .bomb, .row, .col, .multi, .gift]
@@ -647,7 +647,7 @@ final class BrickGame: Identifiable {
     /// 한 칸 깎기. 깨지면 점수, 특수 블럭이면 터질 차례에 넣는다
     private func crack(_ j: Int, _ queue: inout [Int], all: Bool = false) {
         guard hp[j] > 0 else { return }
-        if group[j] >= 0 { crackBig(group[j]); return }
+        if group[j] >= 0 { crackBig(group[j], j); return }
         hp[j] = all ? 0 : hp[j] - 1
         revealed[j] = true
         guard hp[j] == 0 else { return }
@@ -661,19 +661,30 @@ final class BrickGame: Identifiable {
         if special[j] != nil { queue.append(j) }
     }
 
-    /// 큰 블럭: 한 번 맞을 때(폭발 한 번도) 1씩 깎이고, 다 깎이면 칸이 한꺼번에 없어진다
-    private func crackBig(_ g: Int) {
-        guard !touched.contains(g), bigs[g].hp > 0 else { return }
+    /// 테트리스 블럭: 숨어 있을 땐 칸마다 보통 두 번 맞는 벽돌과 똑같다. 그중 한 칸이 깨지면 조각 전체가 드러나고,
+    /// 그 뒤로 한 번 맞을 때(폭발 한 번도) 1씩, 칸 수만큼 더 맞으면 한꺼번에 없어진다
+    private func crackBig(_ g: Int, _ j: Int) {
+        guard bigs[g].hp > 0 else { return }
+        if !bigs[g].revealed {
+            revealed[j] = true
+            if hp[j] > 1 { hp[j] -= 1; return }
+            bigs[g].revealed = true
+            for c in bigs[g].cells { hp[c] = 1 }
+            touched.insert(g)
+            say("테트리스 블럭! \(bigs[g].hp)번 더")
+            GameSound.shared.play(.item); return
+        }
+        guard !touched.contains(g) else { return }
         touched.insert(g)
-        bigs[g].hp -= 1; bigs[g].revealed = true
+        bigs[g].hp -= 1
         guard bigs[g].hp == 0 else { GameSound.shared.play(.tough); return }
-        let b = bigs[g]
+        let b = bigs[g], bonus = b.cells.count * 10
         for c in b.cells where hp[c] > 0 { hp[c] = 0; broken += 1; combo += 1; score += 2 }
-        score += b.w * b.h * 5
-        let r0 = rect(b.cells[0]), r1 = rect(b.cells[b.cells.count - 1])
-        blasts.append(Blast(x: (r0.midX + r1.midX) / 2, y: (r0.midY + r1.midY) / 2, kind: .bomb, t0: t))
+        score += bonus
+        let xs = b.cells.map { rect($0).midX }, ys = b.cells.map { rect($0).midY }
+        blasts.append(Blast(x: xs.reduce(0, +) / Double(xs.count), y: ys.reduce(0, +) / Double(ys.count), kind: .bomb, t0: t))
         GameSound.shared.play(.boom)
-        say("큰 블럭 +\(b.w * b.h * 5)")
+        say("테트리스 블럭 +\(bonus)")
     }
 
     private func trigger(_ j: Int, _ queue: inout [Int]) {

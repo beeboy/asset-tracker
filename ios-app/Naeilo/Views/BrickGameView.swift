@@ -174,7 +174,7 @@ struct BrickGameHub: View {
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
                         if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).font(.system(size: 13)) }
                     }
-                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + (s.bigShapes(rec.level).isEmpty ? "." : ", 큰 숨은 블럭 \(s.bigCount)개.") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + (s.tetrisCount(rec.level) == 0 ? "." : ", 숨은 테트리스 블럭 \(s.tetrisCount(rec.level))개.") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
                 }
                 Spacer(minLength: 0)
@@ -202,6 +202,9 @@ struct BrickPlayView: View {
     private let brickLight = Color(hex: 0x7FD3C9, dark: 0x3C8F86)
     private let clay = Color(hex: 0xC9A27E, dark: 0x8A6A4E)
     private let stackColor = Color(hex: 0xB9C3E6, dark: 0x4E5C8C)   // 단계가 더 쌓은 칸
+    /// 테트리스 조각 색 (I O T S Z J L)
+    static let tetrisColors: [Color] = [Color(hex: 0x00C8E8), Color(hex: 0xF2D000), Color(hex: 0xA03CE0),
+                                        Color(hex: 0x2EC84A), Color(hex: 0xE8343C), Color(hex: 0x2F5BE8), Color(hex: 0xF08C1E)]
 
     var body: some View {
         let g = game
@@ -417,14 +420,19 @@ struct BrickPlayView: View {
                 let rc = r(b.minX + 0.05, b.minY + 0.05, 0.9, 0.9)
                 if g.hp[i] < 0 { ctx.fill(Path(rc), with: .color(Theme.ink)); continue }
                 if let sp = g.special[i], g.revealed[i] { special(&ctx, sp, rc, now); continue }
-                if g.group[i] >= 0, g.bigs[g.group[i]].revealed {
-                    ctx.fill(Path(r(b.minX, b.minY, 1, 1)), with: .color(Theme.purple)); continue
+                if g.group[i] >= 0, g.bigs[g.group[i]].revealed {   // 테트리스 색, 위·왼쪽은 밝게
+                    let cell = r(b.minX, b.minY, 1, 1), col = Self.tetrisColors[g.bigs[g.group[i]].shape]
+                    ctx.fill(Path(cell), with: .color(col))
+                    ctx.fill(Path(CGRect(x: cell.minX, y: cell.minY, width: cell.width, height: cell.height * 0.18)), with: .color(.white.opacity(0.45)))
+                    ctx.fill(Path(CGRect(x: cell.minX, y: cell.maxY - cell.height * 0.18, width: cell.width, height: cell.height * 0.18)), with: .color(.black.opacity(0.25)))
+                    continue
                 }
                 let c: Color = switch g.kind[i] { case 1: brickDark; case 3: brickLight; case 4: Theme.track; case 5: stackColor; default: brickLight }
                 ctx.fill(Path(rc), with: .color(c))
                 if g.kind[i] == 3 { ctx.stroke(Path(rc.insetBy(dx: 0.6, dy: 0.6)), with: .color(Theme.up), lineWidth: 1.2) }
-                if g.hp[i] >= 3 { ctx.fill(Path(roundedRect: rc.insetBy(dx: rc.width * 0.22, dy: rc.height * 0.22), cornerRadius: 1.5), with: .color(clay)) }
-                if g.hp[i] == 1 {   // 한 번 맞은 벽돌: 금이 간다
+                if g.hp[i] >= 2 { ctx.fill(Path(roundedRect: rc.insetBy(dx: rc.width * 0.22, dy: rc.height * 0.22), cornerRadius: 1.5), with: .color(clay)) }
+                if g.hp[i] >= 3 { ctx.stroke(Path(rc.insetBy(dx: 0.8, dy: 0.8)), with: .color(clay), lineWidth: 1.2) }
+                if g.hp[i] == 1 && g.revealed[i] {   // 한 번 맞은 벽돌: 금이 간다
                     var p = Path()
                     p.move(to: CGPoint(x: rc.minX + rc.width * 0.2, y: rc.minY + rc.height * 0.15))
                     p.addLine(to: CGPoint(x: rc.midX, y: rc.midY))
@@ -432,12 +440,11 @@ struct BrickPlayView: View {
                     ctx.stroke(p, with: .color(.white.opacity(0.85)), lineWidth: max(1, rc.width * 0.12))
                 }
             }
-            // 드러난 큰 블럭: 테두리와 남은 횟수
+            // 드러난 테트리스 블럭: 남은 횟수
             for big in g.bigs where big.revealed && big.hp > 0 {
-                let a = g.rect(big.cells[0]), z = g.rect(big.cells[big.cells.count - 1])
-                let box = r(min(a.minX, z.minX), min(a.minY, z.minY), abs(z.minX - a.minX) + 1, abs(z.minY - a.minY) + 1)
-                ctx.stroke(Path(roundedRect: box.insetBy(dx: 1, dy: 1), cornerRadius: 2), with: .color(.white), lineWidth: 1.5)
-                ctx.draw(Text("\(big.hp)").font(.system(size: max(9, s * 0.9), weight: .heavy)).foregroundColor(.white), at: CGPoint(x: box.midX, y: box.midY))
+                let rs = big.cells.map { g.rect($0) }
+                let mid = CGPoint(x: rs.map { $0.midX }.reduce(0, +) / Double(rs.count) * s, y: rs.map { $0.midY }.reduce(0, +) / Double(rs.count) * s)
+                ctx.draw(Text("\(big.hp)").font(.system(size: max(9, s * 0.9), weight: .heavy)).foregroundColor(.white), at: mid)
             }
             // 특수 블럭이 터지는 그림
             for b in g.blasts {
@@ -537,12 +544,12 @@ struct BrickPlayView: View {
         }
     }
 
-    static let specialNote = "벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 10개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물. 5·6권부터는 여러 번 맞아야 깨지는 큰 블럭도 숨어 있어요."
+    static let specialNote = "가운데 네모가 있는 벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 10개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물. 단계가 오르면 두 번 맞는 벽돌 밑에 테트리스 블럭이 숨어 있어요."
 
     @ViewBuilder private func overlay(_ g: BrickGame) -> some View {
         switch g.phase {
         case .ready:
-            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule + "\n" + Self.specialNote + "\n벽돌 \(g.total)개" + (g.stacked > 0 ? " (내 칸 위에 \(g.stacked)개를 더 쌓음)" : "") + (g.bigs.isEmpty ? "" : ", 큰 숨은 블럭 \(g.bigs.count)개")) { EmptyView() }
+            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule + "\n" + Self.specialNote + "\n벽돌 \(g.total)개" + (g.stacked > 0 ? " (내 칸 위에 \(g.stacked)개를 더 쌓음)" : "") + (g.bigs.isEmpty ? "" : ", 숨은 테트리스 블럭 \(g.bigs.count)개")) { EmptyView() }
                 .allowsHitTesting(false)
         case .playing:
             if let t = g.toast {
