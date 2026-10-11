@@ -203,6 +203,7 @@ extension AppModel {
 
     func switchRoute(_ r: Route) {
         route = r; boardPath = []; analysisPath = NavigationPath()
+        goalStartAt = nil; fixStarts()     // 목표 루트 4주는 루트를 고른 날부터 (내 캐릭터 1차 조건)
         switch r {
         case .recover: break
         case .plus: gMix = "mine"; gK = (goalStart * 2 / 1000).rounded() * 1000; gY = 1

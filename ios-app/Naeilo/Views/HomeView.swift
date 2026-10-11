@@ -25,6 +25,7 @@ struct HomeView: View {
             else if route == "goal" { GoalSetView(fromSettings: true) }
             else if route.hasPrefix("read:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i) }
             else if route.hasPrefix("vol1:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i, book: .vol1) }
+            else if route == "me" { MeEditView() }
             else if route.hasPrefix("char:"), let f = Shelter.friends.first(where: { $0.id == route.dropFirst(5) }) { CharacterDetailView(friend: f) }
         }
     }
@@ -104,14 +105,13 @@ struct HomeView: View {
 
     // 쉼터 박스: 홈에 둔 친구 + 말풍선 + 다른 친구 칸
     private var shelterBox: some View {
-        let homeI = Shelter.friends.firstIndex { $0.id == m.homeFriendShown } ?? 0
         let on = (0..<5).filter { m.friendOn($0) }.count
         let next = (0..<5).first { !m.friendOn($0) }
         return NavigationLink(value: "shelter") {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .bottom, spacing: 10) {
-                    Pixel(name: "spr_" + m.homeFriendShown, width: 56, height: 80)
-                        .accessibilityLabel(Shelter.friends[homeI].name)
+                    CharPixel(id: m.homeFriendShown, width: 56, height: 80)
+                        .accessibilityLabel(m.friendName(m.homeFriendShown))
                     Text(m.homeSay)
                         .appFont(14).lineSpacing(3)
                         .multilineTextAlignment(.leading)

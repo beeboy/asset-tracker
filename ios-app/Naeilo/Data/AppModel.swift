@@ -102,14 +102,22 @@ final class AppModel {
     // 쉼터
     var homeFriend = "seri"
     var guideTick = 0          // 미션 안내 인물을 바꾸면 다시 그리게
-    /// 홈·위젯에 실제로 보이는 인물: 아직 안 열린 인물이면 세리 (개발자 연결을 끊었을 때 등)
+    /// 홈·위젯에 실제로 보이는 인물: 아직 안 열린 인물이면 세리 (개발자 연결을 끊었을 때 등).
+    /// 내 캐릭터(me)는 열림 조건을 모두 채워야 보인다 (Me.swift)
     var homeFriendShown: String {
+        if homeFriend == "me" { return meUnlocked ? "me" : "seri" }
         let i = Shelter.friends.firstIndex { $0.id == homeFriend } ?? 0
         return friendOn(i) ? homeFriend : "seri"
     }
     var shelterSel: String? = nil
     var readPos: Set<Int> = []
     var readLast: Int? = nil
+    // 내 캐릭터·쉼터 배경 (Me.swift). 날짜는 서버 시각 (1970년부터 초)
+    var me: MeChar? = nil { didSet { MeChar.current = me } }
+    var meBg: String? = nil
+    var interStartAt: Double? = nil    // 회복 루트 인터미션을 시작한 때
+    var goalStartAt: Double? = nil     // 목표 루트를 시작한 때
+    var meGate1At: Double? = nil       // 내 캐릭터 1차 조건을 채운 때 (한 번 채우면 루트를 바꿔도 남는다)
 
     // 주간 예보
     var weekGuess: String? = nil
@@ -241,10 +249,12 @@ final class AppModel {
     func finishAppStart() {
         if route == .recover { done.insert(5) } else { gDone.insert("link") }
         boardPath = []
+        fixStarts()
     }
 
+    /// 체크인: 시작한 날부터 7일마다 한 주씩만 (서버 시각, Me.swift weekGate). 폰 시간을 바꿔 앞당길 수 없다
     func confirmWeek() {
-        guard let c = weekCur, weeks.count < 4 else { return }
+        guard let c = weekCur, weeks.count < 4, weekGate == .open else { return }
         weeks.append(c); weekCur = nil
         if weeks.count == 4 { done.insert(6) }
     }
@@ -259,8 +269,6 @@ final class AppModel {
         #endif
         return Support.shared.testBuild && Sync.shared.isDev
     }
-    /// 다방커피 이상: 못 만난 친구·안 돌아온 물건을 미리 보기만 (여는 건 여전히 미션으로)
-    var peek: Bool { Support.shared.tier >= .dabang }
     /// 앱 시작 3단계 보상(오늘의 1분·1000칸·주간 예보)이 열렸는지
     var playUnlocked: Bool { playOn || devAll }
     var friendsOpen: Int {
@@ -453,7 +461,7 @@ final class AppModel {
         return "오늘 루틴 끝! 물건이 모두 돌아왔어요."
     }
     var homeSay: String {
-        let who = homeFriendShown
+        let who = voice(homeFriendShown)
         if !playUnlocked {
             return Lines.pick("home.locked.\(who)") ?? ("앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (who == "seri" ? " 거기까지만요." : ""))
         }
@@ -538,6 +546,7 @@ final class AppModel {
         }
         route = .recover; gDone = []; gWeeks = []; gWeekCur = nil
         weekCur = nil; day = 5; dayLog = [:]; itemsBack = 0; itemsBackDay = nil; homeFriend = "seri"; readPos = []; readLast = nil
+        interStartAt = nil; goalStartAt = nil
         weekGuess = nil; weekFriday = false; planKey = "balance"; horizon = 6; quizAnswer = nil
         taxGain = 600; taxSellQty = 0; boardPath = []
     }

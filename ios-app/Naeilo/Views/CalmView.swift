@@ -10,7 +10,7 @@ struct CalmCard: View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
         NavigationLink(value: AnalysisRoute.calm) {
             HStack(alignment: .center, spacing: 12) {
-                Pixel(name: "spr_" + who, width: 42, height: 60)
+                CharPixel(id: who, width: 42, height: 60)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline) {
                         Text("평정 지수").appFont(13, .bold).foregroundStyle(Theme.mint)
@@ -18,7 +18,7 @@ struct CalmCard: View {
                         Spacer()
                         Text(s.n < Calm.minEvents ? "–" : "\(s.index)").appFont(28, .bold).tracking(-0.5)
                     }
-                    Text(m.calm.say(s, who: who)).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                    Text(m.calm.say(s, who: m.voice(who))).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(Color(hex: 0xEEF0F3))
                 }
             }
@@ -38,13 +38,13 @@ struct CalmView: View {
 
     var body: some View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
-        let name = Shelter.friends.first { $0.id == who }?.name ?? ""
+        let name = m.friendName(who)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 // 내 인물
                 Card {
                     HStack(alignment: .bottom, spacing: 12) {
-                        Pixel(name: "spr_" + who, width: 56, height: 80)
+                        CharPixel(id: who, width: 56, height: 80)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(k.map { "\(name) · \($0.title)" } ?? "아직 매칭 전").appFont(17, .bold)
                             if let k { Text(k.like).appFont(13).foregroundStyle(Theme.sub) }
@@ -53,7 +53,7 @@ struct CalmView: View {
                             }
                         }
                     }
-                    Text(m.calm.say(s, who: who)).appFont(15).lineSpacing(3)
+                    Text(m.calm.say(s, who: m.voice(who))).appFont(15).lineSpacing(3)
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 12))
                     if let k { Text("다음 걸음: " + k.next).appFont(13, .semibold).foregroundStyle(Theme.teal) }

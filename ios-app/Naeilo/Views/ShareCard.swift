@@ -77,12 +77,12 @@ struct ShareCardSheet: View {
             .aspectRatio(320.0 / 200.0, contentMode: .fit)
             Text(line).font(.system(size: 15, weight: .semibold))
             // 홈에 둔 인물이 한마디 (금액·종목 이름은 넣지 않는다)
-            let f = m.homeFriendShown, name = Shelter.friends.first { $0.id == f }?.name ?? "세리"
+            let f = m.homeFriendShown, name = m.friendName(f)
             HStack(alignment: .bottom, spacing: 8) {
                 MotionSprite(friend: f, pose: .cheer, height: 84).frame(width: 72)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.mint)
-                    Text(Self.say(f, filled)).font(.system(size: 14, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                    Text(Self.say(m.voice(f), filled)).font(.system(size: 14, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 9)
                 .background(Color.white.opacity(0.08), in: BubbleShape())

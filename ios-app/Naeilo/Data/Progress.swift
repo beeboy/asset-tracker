@@ -40,6 +40,12 @@ struct Progress: Codable, Equatable {
     var monthly: Double
     var syncOn: Bool               // 기록용 (실제 상태는 이 기기 키체인)
     var widgetSel: [String]?
+    // 내 캐릭터·쉼터 배경·인터미션 시작 날 (없으면 예전 저장)
+    var me: MeChar? = nil
+    var meBg: String? = nil
+    var interStartAt: Double? = nil
+    var goalStartAt: Double? = nil
+    var meGate1At: Double? = nil
 
     private static let key = "progress.v1"
     static func load() -> Progress? {
@@ -63,7 +69,8 @@ extension AppModel {
                  route: route, gK: gK, gY: gY, gA: gA, gM: gM, gMix: gMix, gDone: gDone, gWeeks: gWeeks, gWeekCur: gWeekCur, goalTaxPick: goalTaxPick,
                  day: day, dayLog: dayLog, lastOpen: Day.today, weekGuess: weekGuess, itemsBack: itemsBack, itemsBackDay: itemsBackDay,
                  homeFriend: homeFriend, readPos: readPos, readLast: readLast,
-                 lens: lens, trust: trust, shock: shock, monthly: monthly, syncOn: syncOn, widgetSel: widgetSel)
+                 lens: lens, trust: trust, shock: shock, monthly: monthly, syncOn: syncOn, widgetSel: widgetSel,
+                 me: me, meBg: meBg, interStartAt: interStartAt, goalStartAt: goalStartAt, meGate1At: meGate1At)
     }
 
     func apply(_ p: Progress) {
@@ -74,6 +81,8 @@ extension AppModel {
         dayLog = p.dayLog; weekGuess = p.weekGuess
         homeFriend = p.homeFriend; readPos = p.readPos; readLast = p.readLast
         lens = p.lens; trust = p.trust; shock = p.shock; monthly = p.monthly; widgetSel = p.widgetSel
+        if p.me != nil { me = p.me }    // 캐릭터가 없는 저장(예전 파일·다른 기기)으로 지우지 않는다
+        meBg = p.meBg; interStartAt = p.interStartAt; goalStartAt = p.goalStartAt; meGate1At = meGate1At ?? p.meGate1At
         day = p.day
         itemsBack = p.itemsBack ?? min(10, streak / 7); itemsBackDay = p.itemsBackDay
         catchUpDay(from: p.lastOpen)

@@ -27,12 +27,12 @@ struct FriendSay: View {
     let key: String
     let fallback: String
     var body: some View {
-        let who = m.homeFriendShown, name = Shelter.friends.first { $0.id == who }?.name ?? "세리"
+        let who = m.homeFriendShown, name = m.friendName(who)
         HStack(alignment: .bottom, spacing: 10) {
-            Pixel(name: "spr_" + who, width: 42, height: 60).accessibilityHidden(true)
+            CharPixel(id: who, width: 42, height: 60).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).appFont(12, .semibold).foregroundStyle(Theme.blue)
-                Text(Lines.pick("\(key).\(who)") ?? fallback).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                Text(Lines.pick("\(key).\(m.voice(who))") ?? fallback).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -371,7 +371,7 @@ struct WidgetPickView: View {
     var body: some View {
         let base = m.baseWidgets, friendsOn = Shelter.friends.indices.filter { m.friendOn($0) }.count
         let sel = who ?? m.homeFriendShown
-        let fi = Shelter.friends.firstIndex { $0.id == sel } ?? 0, on = m.friendOn(fi)
+        let fi = Shelter.friends.firstIndex { $0.id == sel } ?? 0, on = sel == "me" ? m.meUnlocked : m.friendOn(fi)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text("위젯").appFont(22, .bold)
@@ -400,6 +400,20 @@ struct WidgetPickView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(ok ? f.name : "잠긴 인물, 인터미션 \(i)주차")
+                        }
+                        // 내 캐릭터: 열렸을 때만
+                        if m.meUnlocked {
+                            Button { who = "me" } label: {
+                                VStack(spacing: 2) {
+                                    CharPixel(id: "me", width: 30, height: 42)
+                                    Text(m.friendName("me")).appFont(12, .bold).lineLimit(1)
+                                    Text(m.homeFriendShown == "me" ? "홈에 있음" : "내 캐릭터").appFont(10).foregroundStyle(Theme.sub)
+                                }
+                                .frame(width: 72, height: 86)
+                                .background(sel == "me" ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(sel == "me" ? Theme.teal : Theme.border, lineWidth: 2))
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }

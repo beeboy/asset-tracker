@@ -9,6 +9,7 @@ enum Pose: String { case stand, spread, point, wave, think, cheer, side, back, s
 extension AppModel {
     /// 미션 안내 인물: 설정에서 고를 수 있고, 기본(자동)은 처음엔 세리, 그 뒤로는 가장 최근에 만난 인물
     var guideFriend: String {
+        if (guidePick == "me" && meUnlocked) || (guidePick == nil && homeFriendShown == "me") { return "me" }
         if let g = guidePick, let i = Shelter.friends.firstIndex(where: { $0.id == g }), friendOn(i) { return g }
         let open = (0..<Shelter.friends.count).filter { friendOn($0) }
         return Shelter.friends[open.last ?? 0].id
@@ -25,6 +26,16 @@ struct MotionSprite: View {
     let pose: Pose
     var height: CGFloat = 76
     var body: some View {
+        if friend == "me", let me = MeChar.current {
+            // 내 캐릭터는 동작 그림이 없어 선 모습 하나 (옆을 보는 동작만 뒤집는다)
+            MeAvatar(me: me, width: height * 24 / 35, height: height * 34 / 35)
+                .scaleEffect(x: pose == .sideL ? -1 : 1, y: 1)
+                .frame(width: height * 240 / 280, height: height).accessibilityHidden(true)
+        } else {
+            sprite
+        }
+    }
+    private var sprite: some View {
         Image("mo_\(friend)_\(pose.rawValue)").interpolation(.none).resizable().aspectRatio(240.0 / 280.0, contentMode: .fit)
             .frame(height: height).accessibilityHidden(true)
     }
@@ -38,8 +49,8 @@ struct GuideBubble: View {
     var note: String? = nil          // "그래프 쪽을 돌아봄" 처럼 이름 옆 작은 글
     var body: some View {
         let _ = m.guideTick
-        let f = m.guideFriend, name = Shelter.friends.first { $0.id == f }?.name ?? "세리"
-        let text = Voice.say(self.text, f, pose)
+        let f = m.guideFriend, name = m.friendName(f)
+        let text = Voice.say(self.text, m.voice(f), pose)
         HStack(alignment: .center, spacing: 10) {
             MotionSprite(friend: f, pose: pose).frame(width: 66)
             VStack(alignment: .leading, spacing: 4) {
@@ -104,12 +115,13 @@ struct GuidePickRow: View {
     var body: some View {
         let _ = m.guideTick
         let opts: [(String?, String)] = [(nil, "자동")] + Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map { ($0.element.id, $0.element.name) }
+            + (m.meUnlocked ? [("me", m.friendName("me"))] : [])
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 MotionSprite(friend: m.guideFriend, pose: .wave, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("미션 안내 인물").appFont(15, .bold)
-                    Text("자동: 처음엔 세리, 그 뒤로는 가장 최근에 만난 인물").appFont(12).foregroundStyle(Theme.sub)
+                    Text("자동: 처음엔 세리, 그 뒤로는 가장 최근에 만난 인물 (홈에 내 캐릭터를 두면 내 캐릭터)").appFont(12).foregroundStyle(Theme.sub)
                 }
             }
             FlowRow(spacing: 6) {
