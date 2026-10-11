@@ -30,7 +30,7 @@ final class AppModel {
     init() {
         // 저장된 진행을 먼저 불러오고, 캡처용 실행 인자가 있으면 그 위에 시연 상태를 덮는다 (그때는 저장하지 않는다)
         if persists, let p = Progress.load() { apply(p) }
-        if isSample, holdings.contains(where: { $0.qty != 1 }) { holdings = holdings.map { Holding(symbol: $0.symbol, qty: 1, avg: $0.avg) } }   // 예전 샘플(60주·10주)은 1주씩으로
+        if isSample, holdings.contains(where: { $0.qty != Self.sampleQty($0.symbol) }) { holdings = holdings.map { Holding(symbol: $0.symbol, qty: Self.sampleQty($0.symbol), avg: $0.avg) } }   // 예전 샘플(60주·10주)은 소액으로
         // 캡처용: -demo fresh 로 미션 1부터 시작
         if UserDefaults.standard.string(forKey: "demo") == "fresh" { resetDemo(.fresh) }
         if UserDefaults.standard.string(forKey: "demo") == "all" { resetDemo(.all) }
@@ -96,6 +96,8 @@ final class AppModel {
         let ids = Set(holdings.map(\.symbol))
         return ids.contains("DRNK") && ids.isSubset(of: ["DRNK", "QQQ"])
     }
+    /// 둘러보기 샘플 수량: DRNK 2주, QQQ 1주
+    static func sampleQty(_ id: String) -> Double { id == "DRNK" ? 2 : 1 }
     static var savedHoldings: [Holding]? {
         UserDefaults.standard.data(forKey: "holdings").flatMap { try? JSONDecoder().decode([Holding].self, from: $0) }
     }
@@ -578,7 +580,7 @@ final class AppModel {
         let mine: [Holding]? = holdings.isEmpty || isSample ? nil : holdings
         resetDemo(.fresh)
         if let mine { holdings = mine }
-        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 1, avg: 180), Holding(symbol: "QQQ", qty: 1, avg: 400)] }
+        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 2, avg: 180), Holding(symbol: "QQQ", qty: 1, avg: 400)] }
         if r == .plus { taxGain = 0 }
         if r != .recover { switchRoute(r); gDone = [] }
         day = 0                  // 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
