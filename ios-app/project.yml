@@ -34,6 +34,9 @@ targets:
       # 종목별 전망 입력값 (사이트가 매일 만든다). 앱이 아직 받지 못했을 때 쓴다
       - path: ../data/stats.json
         buildPhase: resources
+      # 외부 요인 민감도·배당·환율 자료 (사이트가 매일 웹과 같은 식으로 만든다). 앱이 아직 받지 못했을 때 쓴다
+      - path: ../data/calc.json
+        buildPhase: resources
       - path: ../data/prices
         type: folder
         buildPhase: resources

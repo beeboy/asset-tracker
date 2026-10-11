@@ -1,7 +1,7 @@
 import SwiftUI
 
 // 분석 탭 상세 화면 (시안 31~35판): 내 길 · 금리 시나리오 · 외부 요인 · 배당·세금 · 환율 영향 · 종목 한눈에. (인사이트는 앱에서 뺐다)
-// 숫자는 모두 계산값이고 사거나 팔라는 문구는 넣지 않는다. 반응 크기·배당은 시안용 예시 값.
+// 숫자는 모두 계산값이고 사거나 팔라는 문구는 넣지 않는다. 외부 요인·배당·환율은 웹과 같은 자료(사이트 stats.json·calc.json)와 같은 식.
 
 // MARK: 공통
 
@@ -240,22 +240,18 @@ struct ExternalView: View {
     @State private var mkt = -10.0
     @State private var rate = 0.5
     @State private var fx = -100.0
+    @State private var oil = 10.0
+    @State private var gold = 10.0
 
-    // [S&P500 1% 움직일 때 %, 미국 10년 금리 +1%p 일 때 %, 달러 노출] (시안용 가정값)
-    static let beta: [String: (Double, Double, Double)] = [
-        "DRNK": (2.0, -8, 1), "QQQ": (1.15, -6, 1), "AAPL": (1.2, -4, 1), "NVDA": (1.8, -7, 1), "MSFT": (1.1, -4, 1), "SPY": (1, -3, 1),
-        "005930": (0.6, -2, 0), "000660": (0.9, -3, 0), "035720": (0.7, -3, 0), "069500": (0.6, -2, 0), "360750": (1, -3, 1),
-    ]
-
-    /// 표에 없는 종목(직접 추가한 종목): 시장 반응은 지난 3년 일별 종가로 S&P500(SPY)에 대해 계산하고,
-    /// 금리 반응은 평균값 -3%로 두고, 환율은 미국 종목이면 그대로 받는다
+    /// 시장 민감도(베타): 사이트가 웹과 같은 식(factorBetas)으로 매일 낸 값. 사이트 자료가 없는 종목(직접 추가한 종목)은
+    /// 같은 회귀를 앱이 가진 지난 3년 종가로 한다. 둘 다 없으면 nil
+    static func mktBeta(_ id: String) -> Double? { SiteCalc.shared.beta("mkt", id) ?? estBeta(id) }
+    /// (시장 베타, 미국 10년 금리 +1%p 일 때 %, 달러 노출). 금리 시나리오 화면이 시장 베타를 쓴다 (웹처럼 모르면 1)
     static func coef(_ s: Symbol) -> (Double, Double, Double) {
-        if let b = beta[s.id] { return b }
-        return (estBeta(s.id) ?? 1, -3, s.currency == .usd ? 1 : 0)
+        ((mktBeta(s.id) ?? 1), (SiteCalc.shared.beta("rate", s.id).map { SiteCalc.factorMove("rate", beta: $0, shock: 100) * 100 } ?? 0), s.currency == .usd ? 1 : 0)
     }
     static func estBeta(_ id: String) -> Double? {
         guard let h = PriceHistory.of(id), let spy = PriceHistory.of("SPY") else { return nil }
-        let sp = Dictionary(zip(spy.dates, spy.closes), uniquingKeysWith: { a, _ in a })
         // 한국 장은 미국 장보다 먼저 끝나서, 한국 종목은 그 전날 밤 미국 장 움직임과 짝을 짓는다
         let kr = Sample.symbol(id)?.currency == .krw
         let usDays = spy.dates
@@ -275,31 +271,51 @@ struct ExternalView: View {
             if kr, let pk = prevUS(h.dates[i - 1]), pk == key { continue }     // 미국 장이 쉰 날은 건너뛴다
             xs.append(x); ys.append(log(h.closes[i] / h.closes[i - 1]))
         }
-        _ = sp
-        guard xs.count > 120 else { return nil }
+        guard xs.count >= 30 else { return nil }
         let mx = xs.reduce(0, +) / Double(xs.count), my = ys.reduce(0, +) / Double(ys.count)
         let cov = zip(xs, ys).reduce(0) { $0 + ($1.0 - mx) * ($1.1 - my) }, vx = xs.reduce(0) { $0 + ($1 - mx) * ($1 - mx) }
-        return vx > 0 ? (cov / vx * 20).rounded() / 20 : nil       // 0.05 단위
+        guard vx > 0 else { return nil }
+        let w = Double(xs.count) / Double(xs.count + 60)      // 웹과 같게 이력이 짧으면 1 쪽으로 당긴다
+        return w * cov / vx + (1 - w)
+    }
+
+    /// 웹 renderSens 와 같은 식: 종목 가격 변화 = exp(β × 요인 변화) − 1, 원/달러는 달러 종목에 그대로
+    private func move(_ id: String, _ sym: Symbol, _ v: Double) -> Double? {
+        switch factor {
+        case "fx": return sym.currency == .usd ? v / Market.shared.fx.last : 0
+        case "mkt": return Self.mktBeta(id).map { SiteCalc.factorMove("mkt", beta: $0, shock: v) }
+        case "rate": return SiteCalc.shared.beta("rate", id).map { SiteCalc.factorMove("rate", beta: $0, shock: v * 100) }
+        default: return SiteCalc.shared.beta(factor, id).map { SiteCalc.factorMove(factor, beta: $0, shock: v) }
+        }
     }
 
     var body: some View {
-        let v = factor == "mkt" ? mkt : factor == "rate" ? rate : fx
-        let eff = { (id: String) -> Double in
-            let b = Sample.symbol(id).map(Self.coef) ?? (1, -3, 0)
-            return factor == "mkt" ? b.0 * v / 100 : factor == "rate" ? b.1 * v / 100 : b.2 * v / Market.shared.fx.last
+        let v = ["mkt": mkt, "rate": rate, "fx": fx, "oil": oil, "gold": gold][factor] ?? 0
+        let list = m.rows.map { r -> (id: String, label: String, dv: Double, known: Bool) in
+            let mv = move(r.id, r.sym, v)
+            return (r.id, r.sym.short, r.value * (mv ?? 0), mv != nil)
         }
-        let list = m.rows.map { (id: $0.id, label: $0.sym.short, dv: $0.value * eff($0.id)) }
         let tot = list.reduce(0) { $0 + $1.dv }, maxAbs = max(1, list.map { abs($0.dv) }.max() ?? 1)
         let after = m.total + tot
-        let ask = factor == "mkt" ? "S&P500이 얼마나 움직이면" : factor == "rate" ? "미국 10년 금리가 얼마나 바뀌면" : "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
-        let vText = factor == "mkt" ? (v > 0 ? "+" : "") + "\(Int(v))%" : factor == "rate" ? (v > 0 ? "+" : "") + String(format: "%g", v) + "%p" : (v > 0 ? "+" : "") + "\(Int(v))원"
-        let coef = m.rows.map { r -> String in
-            let b = Self.coef(r.sym)
-            return r.sym.short + (factor == "mkt" ? " \(String(format: "%g", b.0))배" : factor == "rate" ? " \(String(format: "%g", b.1))%" : (b.2 > 0 ? " 환율만큼" : " 영향 없음"))
+        let sg = { (x: Double, d: String) in (x > 0 ? "+" : "") + String(format: d, x) }
+        let ask = ["mkt": "S&P500이 얼마나 움직이면", "rate": "미국 10년 금리가 얼마나 바뀌면", "oil": "유가(WTI)가 얼마나 움직이면", "gold": "금값이 얼마나 움직이면"][factor]
+            ?? "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
+        let vText = factor == "rate" ? sg(v, "%g") + "%p" : factor == "fx" ? sg(v, "%.0f") + "원" : sg(v, "%.0f") + "%"
+        let unknown = list.filter { !$0.known }.map(\.label)
+        let coef = m.rows.filter { factor == "fx" || move($0.id, $0.sym, v) != nil }.map { r -> String in
+            switch factor {
+            case "fx": return r.sym.short + (r.sym.currency == .usd ? " 환율만큼" : " 영향 없음")
+            case "mkt": return r.sym.short + " " + String(format: "%.2f", Self.mktBeta(r.id) ?? 1) + "배"
+            case "rate": return r.sym.short + " " + sg((SiteCalc.shared.beta("rate", r.id) ?? 0) * 10 * 100, "%.2f") + "%"
+            default: return r.sym.short + " " + sg(SiteCalc.factorMove(factor, beta: SiteCalc.shared.beta(factor, r.id) ?? 0, shock: 10) * 100, "%.1f") + "%"
+            }
         }.joined(separator: ", ")
-        let note = factor == "mkt" ? "1% 움직일 때 평균 반응: \(coef). 시장보다 등락이 큰 종목이 많을수록 하락 시 손실이 증폭돼요."
-            : factor == "rate" ? "미국 10년 금리가 1%p 오를 때 평균 반응: \(coef). 성장주일수록 금리에 더 민감했어요."
-            : "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Market.shared.fx.last * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
+        let miss = unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 지난 3년 시세가 부족해 0으로 계산했어요."
+        let note = (factor == "mkt" ? "시장이 1% 움직일 때 평균 반응(베타): \(coef). 시장보다 등락이 큰 종목이 많을수록 하락 때 손실이 커져요."
+            : factor == "rate" ? "10년 금리 +0.1%p 일 때 평균 반응 (시장 움직임을 뺀 값): \(coef)."
+            : factor == "fx" ? "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Market.shared.fx.last * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
+            : "\(factor == "oil" ? "유가" : "금값") +10% 일 때 평균 반응 (시장 움직임을 뺀 값): \(coef).") + miss
+            + (factor == "fx" ? "" : " 지난 3년 일별 변화로 계산 (웹과 같은 값).")
         let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).sorted { $0.day < $1.day }.prefix(8)
 
         PinnedLayout {
@@ -313,7 +329,7 @@ struct ExternalView: View {
                     }
                 }
                 ForEach(list, id: \.id) { x in SignedBar(label: x.label, value: AppModel.manS(x.dv), g: x.dv, scale: maxAbs) }
-                ChipRow(items: [("mkt", "미국 시장"), ("rate", "미국 금리"), ("fx", "원/달러")], selection: $factor, accent: Theme.orange, fill: true)
+                ChipRow(items: [("mkt", "미국 시장"), ("rate", "미국 금리"), ("fx", "원/달러"), ("oil", "유가"), ("gold", "금값")], selection: $factor, accent: Theme.orange, fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
@@ -322,6 +338,8 @@ struct ExternalView: View {
                     switch factor {
                     case "mkt": Slider(value: $mkt, in: -30...30, step: 5).tint(Theme.orange).accessibilityLabel(ask)
                     case "rate": Slider(value: $rate, in: -1.5...1.5, step: 0.25).tint(Theme.orange).accessibilityLabel(ask)
+                    case "oil": Slider(value: $oil, in: -40...40, step: 5).tint(Theme.orange).accessibilityLabel(ask)
+                    case "gold": Slider(value: $gold, in: -30...30, step: 5).tint(Theme.orange).accessibilityLabel(ask)
                     default: Slider(value: $fx, in: -300...300, step: 20).tint(Theme.orange).accessibilityLabel(ask)
                     }
                     Text(note).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
@@ -346,6 +364,7 @@ struct ExternalView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await SiteCalc.shared.refresh() }
     }
 }
 
@@ -582,28 +601,28 @@ private struct RateBandChart: View {
 struct DividendView: View {
     @Environment(AppModel.self) private var m
     @State private var mode = "month"
-
-    // [1년 배당(현지 통화), 지급 월] (시안용 예시. DRNK 는 배당 없음)
-    static let divs: [String: (Double, [Int])] = [
-        "QQQ": (2.9, [3, 6, 9, 12]), "AAPL": (1.04, [2, 5, 8, 11]), "NVDA": (0.04, [3, 6, 9, 12]), "MSFT": (3.32, [3, 6, 9, 12]), "SPY": (7.0, [1, 4, 7, 10]),
-        "005930": (1444, [4, 5, 8, 11]), "000660": (1500, [2, 5, 8, 11]), "035720": (61, [4]), "069500": (800, [1, 4, 7, 10]), "360750": (250, Array(1...12)),
-    ]
+    private var calc: SiteCalc { SiteCalc.shared }
 
     var body: some View {
-        let per = m.rows.map { r -> (id: String, gross: Double, net: Double, months: [Int]) in
-            let d = Self.divs[r.id] ?? (0, [])
-            let gross = m.krw(r.sym, r.h.qty * d.0)
-            return (r.id, gross, gross * (1 - (r.sym.currency == .usd ? 0.15 : 0.154)), d.1)
+        // 웹(종목 › 배당·세금)과 같은 식: 지난 12개월 배당락(사이트 시세에서 뽑은 날짜·금액)이 앞으로 같은 달에 (1+증가율)로 다시 온다고 본 세후 원화
+        let t = SiteCalc.today(), fx = Market.shared.fx.last
+        let per = m.rows.map { r -> (id: String, out: SiteCalc.DivOut?, known: Bool, tax: Double) in
+            let d = calc.div(r.id), krw = r.sym.currency == .krw
+            let o = d.flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fx, krw: krw, price: r.sym.last, today: t) }
+            return (r.id, o, d != nil, krw ? SiteCalc.krDivTax : SiteCalc.wht)
         }
-        let gross = per.reduce(0) { $0 + $1.gross }, net = per.reduce(0) { $0 + $1.net }
-        let months = (0..<12).map { (10 + $0) % 12 + 1 }     // 11월부터
-        let byMonth = months.map { mo in per.reduce(0) { $0 + ($1.months.contains(mo) ? $1.net / Double($1.months.count) : 0) } }
-        let mMax = max(1, byMonth.max() ?? 1), sMax = max(1, per.map(\.net).max() ?? 1)
-        // DRNK 는 배당이 없는 종목, 예시 표에 없는 종목(직접 추가한 종목)은 배당 자료가 없어 0으로 계산
-        let zero = per.filter { $0.gross == 0 && Self.divs[$0.id] == nil && $0.id == "DRNK" }.map(\.id)
-        let unknown = m.rows.filter { Self.divs[$0.id] == nil && $0.id != "DRNK" }.map(\.sym.short)
-        let us = m.rows.filter { $0.sym.currency == .usd }, usU = us.reduce(0) { $0 + $1.value - $1.cost }
-        let G = m.taxGain * 1e4, cgt = { (g: Double) in max(0, g - 250e4) * 0.22 }
+        let paid = per.filter { $0.out != nil }
+        let net = paid.reduce(0.0) { $0 + $1.out!.y1 }, gross = paid.reduce(0.0) { $0 + $1.out!.y1 / (1 - $1.tax) }
+        let net3 = paid.reduce(0.0) { $0 + $1.out!.y3 }
+        let months = (1...12).map { String(SiteCalc.addMonths(t, $0).prefix(7)) }
+        let byMonth = months.map { mo in paid.reduce(0.0) { $0 + ($1.out!.byMonth[mo] ?? 0) } }
+        let mMax = max(1, byMonth.max() ?? 1), sMax = max(1, paid.map { $0.out!.y1 }.max() ?? 1)
+        let zero = per.filter { $0.known && $0.out == nil }.map(\.id)
+        let unknown = per.filter { !$0.known }.map(\.id)
+        // 해외주식 평가 이익: 웹과 같게 (지금 가격 − 매수 단가) × 수량 × 지금 환율. 매수 단가를 넣은 종목만
+        let us = m.rows.filter { $0.sym.currency == .usd && $0.h.avg > 0 }
+        let usU = us.reduce(0.0) { $0 + ($1.sym.last - $1.h.avg) * $1.h.qty * fx }
+        let G = m.taxGain * 1e4
 
         PinnedLayout {
             pinnedBox {
@@ -619,34 +638,38 @@ struct DividendView: View {
                             VStack(spacing: 4) {
                                 RoundedRectangle(cornerRadius: 3).fill(byMonth[i] > 0 ? Theme.teal : Theme.track)
                                     .frame(height: max(2, byMonth[i] / mMax * 80))
-                                Text("\(months[i])").appFont(10).foregroundStyle(Theme.muted)
+                                Text("\(Int(months[i].suffix(2)) ?? 0)").appFont(10).foregroundStyle(Theme.muted)
                             }
                             .frame(maxWidth: .infinity)
                         }
                     }
                     .frame(height: 100, alignment: .bottom)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("달마다 배당: " + months.indices.filter { byMonth[$0] > 0 }.map { "\(months[$0])월 \(AppModel.won1(byMonth[$0]))" }.joined(separator: ", "))
+                    .accessibilityLabel("달마다 배당: " + months.indices.filter { byMonth[$0] > 0 }.map { "\(Int(months[$0].suffix(2)) ?? 0)월 \(AppModel.won1(byMonth[$0]))" }.joined(separator: ", "))
                 } else {
-                    ForEach(per, id: \.id) { x in
+                    ForEach(paid, id: \.id) { x in
                         HStack(spacing: 8) {
-                            Text(x.id).appFont(13, .semibold).frame(minWidth: 52, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(x.id).appFont(13, .semibold)
+                                Text("\(x.out!.n)회 · \(String(format: "%.2f", x.out!.yld * 100))%").appFont(10).foregroundStyle(Theme.muted)
+                            }.frame(minWidth: 64, alignment: .leading)
                             GeometryReader { g in
-                                RoundedRectangle(cornerRadius: 3).fill(Theme.teal).frame(width: g.size.width * x.net / sMax, height: 12)
+                                RoundedRectangle(cornerRadius: 3).fill(Theme.teal).frame(width: g.size.width * x.out!.y1 / sMax, height: 12)
                                     .frame(maxHeight: .infinity)
                             }.frame(height: 16)
-                            Text(AppModel.won1(x.net)).appFont(13, .bold).frame(minWidth: 70, alignment: .trailing)
+                            Text(AppModel.won1(x.out!.y1)).appFont(13, .bold).frame(minWidth: 70, alignment: .trailing)
                         }
                     }
+                    if paid.isEmpty { Text("지난 12개월 배당·이자를 준 종목이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
                 }
-                Text("세전 \(AppModel.won1(gross)) · 월평균 \(AppModel.won1(net / 12)) · 평가액의 \(String(format: "%.2f", net / max(1, m.total) * 100))%")
+                Text("세전 \(AppModel.won1(gross)) · 월평균 \(AppModel.won1(net / 12)) · 평가액의 \(String(format: "%.2f", net / max(1, m.total) * 100))% · 3년 합계 \(AppModel.won1(net3))")
                     .appFont(12).foregroundStyle(Theme.sub)
                 ChipRow(items: [("month", "달마다"), ("stock", "종목별")], selection: $mode, fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 if net < 10e4 {
-                    Text("지금 구성은 배당이 적어요." + (zero.isEmpty ? "" : " \(zero.joined(separator: ", "))는 배당을 주지 않아요.") + (unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 배당 자료가 아직 없어서 0으로 계산했어요.") + " 이 구성에서는 배당보다 가격 움직임이 평가액을 더 크게 바꿔요.")
+                    Text("지금 구성은 배당이 적어요." + (zero.isEmpty ? "" : " \(zero.joined(separator: ", "))는 배당을 주지 않아요.") + (unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 사이트 시세 자료가 없어 배당을 0으로 계산했어요.") + " 이 구성에서는 배당보다 가격 움직임이 평가액을 더 크게 바꿔요.")
                         .appFont(13).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
                 }
@@ -660,20 +683,21 @@ struct DividendView: View {
                 Card(dark: true) {
                     Text("팔 때 세금 (해외주식 양도세, 내년 5월 신고)").appFont(15, .bold)
                     ruleRow("올해 이미 판 이익", "세금 규칙에 넣은 값", AppModel.man(G))
-                    ruleRow("미국 종목 평가 손익", us.isEmpty ? "미국 종목 없음" : us.map(\.id).joined(separator: ", ") + " 지금 다 판다면", AppModel.manS(usU),
+                    ruleRow("미국 종목 평가 이익", us.isEmpty ? "매수 단가를 넣은 미국 종목이 없어요" : us.map(\.id).joined(separator: ", ") + " · 지금 환율 기준", AppModel.manS(usU),
                             color: Theme.change(usU))
-                    ruleRow("내년 5월 낼 세금", "지금 그대로 / 미국 종목 다 판다면", AppModel.man(cgt(G)) + " / " + AppModel.man(cgt(G + usU)))
+                    ruleRow("내년 5월 낼 세금", "지금 그대로 / 미국 종목 다 판다면", AppModel.man(SiteCalc.capGainTax(G)) + " / " + AppModel.man(SiteCalc.capGainTax(G + usU)))
                     Text(usU < 0
                          ? "손실은 확정된 해의 이익과 합쳐 계산돼요. 위 '다 판다면' 줄은 계산 예시이고, 매매 권유가 아니에요."
                          : "이익 250만원까지는 세금이 없고, 넘는 부분에 22%(지방세 포함)를 내요. 국내 상장주식은 대주주가 아니면 팔 때 양도세가 없어요(거래세만).")
                         .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
-                footnote("지난 12개월 배당이 이어진다고 본 값이에요. 세무 상담이 아니에요.")
+                footnote("지난 12개월 배당이 앞으로도 같은 달에, 지난 3년 증가율만큼 늘며 온다고 본 값이에요 (웹과 같은 계산). 세무 상담이 아니에요.")
             }
             .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await calc.refresh() }
     }
 
     private func ruleRow(_ k: String, _ sub: String, _ v: String, color: Color = Theme.ink) -> some View {
@@ -695,36 +719,38 @@ struct FxImpactView: View {
     @State private var period = "1y"
     @State private var what = Market.shared.fx.last.rounded()
 
-    static let boughtAt = Sample.fx  // 샀을 때 평균 환율: 들어간 돈 환산과 같은 값
-
     var body: some View {
-        let FX = Market.shared.fx.last, FXB = Self.boughtAt, sigma = 0.075
-        let usd = m.rows.filter { $0.sym.currency == .usd || $0.id == "360750" }
+        // 웹(전망 › 환율 영향)과 같은 자료·식: 지난 원/달러와 칼만 추세는 사이트 값(calc.json), 앞날 범위는 웹 전망 모형의 환율 μ·σ(stats.json)로
+        // 지금·exp((μ − σ²/2)t + zσ√t)
+        let FX = Market.shared.fx.last, c = SiteCalc.shared.file?.fx, fxp = SiteStats.fx(), mu = fxp.0, vol = fxp.1
+        let usd = m.rows.filter { $0.sym.currency == .usd }
         let usdV = usd.reduce(0) { $0 + $1.value }, usdW = usdV / max(1, m.total)
-        let usdCost = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.cost }
-        let fxEff = usdCost * (FX / FXB - 1), stkEff = (m.total - m.cost) - fxEff
-        let periods: [String: Double] = ["1m": 1.0 / 12, "3m": 0.25, "1y": 1, "3y": 3]
-        let T: Double = periods[period] ?? 1
+        let n = ["1m": 22, "3m": 64, "1y": 253, "3y": 780][period] ?? 253
         let label = ["1m": "1개월", "3m": "3개월", "1y": "1년", "3y": "3년"][period] ?? "1년"
-        // 지난 환율 흐름 (t: 년, 음수 = 과거): 앱에 넣은 3년 원/달러 종가. 자료가 없으면 지금 값 그대로 (만들어 내지 않는다)
-        let fxHist = YahooSample.history["FX"]?.closes ?? []
-        let fxAt = { (t: Double) -> Double in
-            guard fxHist.count > 1, t < 0 else { return FX }
-            let L = Double(fxHist.count - 1), pos = max(0, min(L, L + t * L / 3)), i = Int(pos), f = pos - Double(i)
-            return fxHist[i] * (1 - f) + fxHist[min(Int(L), i + 1)] * f
-        }
-        let past = (0...120).map { i -> (Double, Double) in let t = -T + T * Double(i) / 120; return (t, fxAt(t)) }
-        let trend = past.indices.map { i -> (Double, Double) in
-            let w = past[max(0, i - 12)...i]; return (past[i].0, w.reduce(0) { $0 + $1.1 } / Double(w.count))
-        }
-        let q = { (z: Double) in (0...20).map { i -> (Double, Double) in let t = Double(i) / 20; return (t, FX * exp(z * sigma * sqrt(t))) } }
-        let vals = past.map(\.1) + [FXB], pad = ((vals.max() ?? FX) - (vals.min() ?? FX)) * 0.25 + 5
+        let yh = YahooSample.history["FX"]
+        let closesAll = c?.closes ?? yh?.closes ?? [], levelAll = c?.level ?? []
+        let k0 = max(0, closesAll.count - n), closes = Array(closesAll[k0...]), level = levelAll.count == closesAll.count ? Array(levelAll[k0...]) : []
+        let past = closes.enumerated().map { (i, v) in (closes.count > 1 ? Double(i) / Double(closes.count - 1) - 1 : 0, v) }
+        let trend = level.enumerated().map { (i, v) in (level.count > 1 ? Double(i) / Double(level.count - 1) - 1 : 0, v) }
+        let q = { (z: Double) in (0...20).map { i -> (Double, Double) in let t = Double(i) / 20; return (t, SiteCalc.fxAt(now: FX, t: t, z: z, mu: mu, vol: vol)) } }
+        let vals = past.map(\.1) + [FX, SiteCalc.fxAt(now: FX, t: 1, z: 1.645, mu: mu, vol: vol), SiteCalc.fxAt(now: FX, t: 1, z: -1.645, mu: mu, vol: vol)]
+        let pad = ((vals.max() ?? FX) - (vals.min() ?? FX)) * 0.1 + 5
         let hi = (vals.max() ?? FX) + pad, lo = (vals.min() ?? FX) - pad
-        let X = { (t: Double) in t <= 0 ? (t + T) / T * 0.7 : 0.7 + t * 0.3 }
+        let X = { (t: Double) in t <= 0 ? (t + 1) * 0.7 : 0.7 + t * 0.3 }
         let Y = { (v: Double) in max(0, min(1, (hi - v) / (hi - lo))) }
         let valAt = { (r: Double) in m.total + usdV * (r / FX - 1) }
         let pMin = past.map(\.1).min() ?? FX, pMax = past.map(\.1).max() ?? FX
-        let chg = FX / past[0].1 - 1
+        let chg = FX / (past.first?.1 ?? FX) - 1
+        let T = max(0.01, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400))
+        let goalD = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy년 M월"; return f.string(from: m.goalToDate) }()
+        let at = { (z: Double) in Int(SiteCalc.fxAt(now: FX, t: T, z: z, mu: mu, vol: vol).rounded()).formatted() }
+        let eff1y = c?.ret_1y.map { usdW * $0 }
+        let range1y: String = {
+            guard let l = c?.lo1, let h = c?.hi1 else { return "" }
+            return "1년 범위 \(Int(l.rounded()).formatted())~\(Int(h.rounded()).formatted())"
+        }()
+        let trendSub: String = c.map { "추세 \(Int($0.kalman_level.rounded()).formatted())원 · 기울기 연 \(AppModel.sgn($0.slope_ann ?? 0))" } ?? "사이트 자료를 받으면 나와요"
+        let trendText: String = c?.trend?.replacingOccurrences(of: " (추세 판단 대상 아님)", with: "") ?? "-"
 
         PinnedLayout {
             pinnedBox {
@@ -746,27 +772,27 @@ struct FxImpactView: View {
                     ctx.fill(band(q(0.674), q(-0.674)), with: .color(Theme.blue.opacity(0.24)))
                     let nx = X(0) * size.width
                     ctx.stroke(Path { $0.move(to: CGPoint(x: nx, y: 0)); $0.addLine(to: CGPoint(x: nx, y: size.height)) }, with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    let by = Y(FXB) * size.height
-                    ctx.stroke(Path { $0.move(to: CGPoint(x: 0, y: by)); $0.addLine(to: CGPoint(x: size.width, y: by)) }, with: .color(Theme.orange), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                    ctx.stroke(linePath(trend.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.muted), style: StrokeStyle(lineWidth: 1.6, dash: [4, 3]))
-                    ctx.stroke(linePath(past.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1.6, lineJoin: .round))
-                    ctx.stroke(linePath(q(0).map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.blue), lineWidth: 2)
+                    if trend.count > 1 { ctx.stroke(linePath(trend.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.orange), style: StrokeStyle(lineWidth: 1.8)) }
+                    if past.count > 1 { ctx.stroke(linePath(past.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1.2, lineJoin: .round)) }
+                    ctx.stroke(linePath(q(0).map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.blue), style: StrokeStyle(lineWidth: 1.6, dash: [2, 2]))
                 }
                 .frame(height: 140)
                 .accessibilityLabel("원/달러 지난 흐름과 앞으로 1년 범위")
                 HStack { Text("\(label) 전"); Spacer(); Text("오늘"); Spacer().frame(maxWidth: 60); Text("1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
-                if fxHist.count < 2 { Text("지난 환율 자료가 없어 지금 값으로만 그렸어요").appFont(11).foregroundStyle(Theme.muted) }
-                Text("검은 선: 지난 환율 · 회색 점선: 추세 · 파란 띠: 앞으로 1년 절반(진함)·90%의 경우 · 주황 점선: 샀을 때 평균 \(Int(FXB).formatted())원")
+                if past.count < 2 { Text("지난 환율 자료가 없어 지금 값으로만 그렸어요").appFont(11).foregroundStyle(Theme.muted) }
+                Text("검은 선: 지난 환율 · 주황 선: 추세(칼만) · 파란 띠: 앞으로 1년 25~75%(진함)·5~95%")
                     .appFont(11).foregroundStyle(Theme.sub)
                 ChipRow(items: [("1m", "1개월"), ("3m", "3개월"), ("1y", "1년"), ("3y", "3년")], selection: $period, accent: Theme.blue, fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 kpiGrid([
-                    Kpi(k: "내 손익 중 주가 몫", v: AppModel.manS(stkEff), sub: "현지 통화로 오르내린 만큼", color: Theme.change(stkEff)),
-                    Kpi(k: "내 손익 중 환율 몫", v: AppModel.manS(fxEff), sub: "샀을 때 \(Int(FXB).formatted())원 → 지금 \(Int(FX).formatted())원", color: Theme.change(fxEff)),
-                    Kpi(k: "1년 뒤 환율 (절반의 경우)", v: "\(Int((FX * exp(-0.674 * sigma)).rounded()).formatted())~\(Int((FX * exp(0.674 * sigma)).rounded()).formatted())", sub: "지난 3년 흔들림 기준"),
-                    Kpi(k: "환율 100원 바뀌면", v: AppModel.man(usdV * 100 / FX), sub: "평가액이 이만큼 함께 움직여요"),
+                    Kpi(k: "지난 1년 환율 효과", v: eff1y.map { AppModel.sgn($0) } ?? "-", sub: "원화 평가액에 더해진 몫 (근사)", color: Theme.change(eff1y ?? 0)),
+                    Kpi(k: "추세", v: trendText, sub: trendSub),
+                    Kpi(k: "목표일 환율 중앙값", v: at(0) + "원", sub: "\(goalD) · 5~95% \(at(-1.645))~\(at(1.645))"),
+                    Kpi(k: "원화 10% 강세면", v: AppModel.manS(-usdV * 0.1), sub: "주가 변동 없이 환율만", color: Theme.down),
+                    Kpi(k: "1년 변화", v: c?.ret_1y.map { AppModel.sgn($0) } ?? "-", sub: range1y),
+                    Kpi(k: "변동성 (연)", v: String(format: "%.1f%%", vol * 100), sub: "전망 모형 적용 값"),
                 ])
                 Card {
                     HStack { Text("환율이 이렇게 되면").appFont(14); Spacer(); Text("\(Int(what).formatted())원").appFont(15, .bold) }
@@ -785,12 +811,13 @@ struct FxImpactView: View {
                         }
                     }
                 }
-                footnote("평균 매수 환율 1,320원은 가정값. 범위 지난 3년 흔들림 기준.")
+                footnote("웹과 같은 계산: 추세는 지난 환율의 칼만 추세, 앞날 범위는 3년 전망 모형의 환율 기대·흔들림\(c.map { " (\($0.date) 기준)" } ?? "").")
             }
             .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await SiteCalc.shared.refresh() }
     }
 }
 
