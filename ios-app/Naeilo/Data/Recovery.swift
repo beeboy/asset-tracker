@@ -81,9 +81,9 @@ extension AppModel {
     var halfway: Double { total < cost ? total + (cost - total) / 2 : cost }
 
     var plans: [Plan] {
-        // 몰린 종목의 흔들림·기대 수익: 시안 DRNK 값(0.58, 9%)을 기본으로, 예시 표에 있는 종목은 그 값
-        let w = focusWeight, V = total, fp = focusRow.flatMap { Sample.lensParams[$0.id] }
-        let ST = focusRow?.id == "DRNK" ? 0.58 : fp?.2 ?? 0.58, MU = fp?.0 ?? 0.09, fn = focusName
+        // 몰린 종목의 흔들림·기대 수익: 사이트가 매일 만드는 종목 값 (웹 전망과 같은 값). 몰린 종목이 없으면 0.58, 9%
+        let w = focusWeight, V = total, fp = focusRow.map { SiteStats.params($0.id) }
+        let ST = fp?.2 ?? 0.58, MU = fp?.0 ?? 0.09, fn = focusName
         func mk(_ id: String, _ name: String, _ tag: String, _ cap: Double, _ s2: Double, _ r: Double, _ mu2: Double,
                 _ mix: [Basket: Double], _ mixText: String) -> Plan {
             let wt = min(w, cap)

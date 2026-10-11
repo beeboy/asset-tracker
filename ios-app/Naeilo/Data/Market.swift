@@ -22,6 +22,8 @@ final class Market {
     var liveFx: (Double, Double)? = nil
     /// 사이트가 30분마다 모으는 시세 (앱·위젯이 같이 받는다). 없으면 빌드 때 넣은 테스트 자료
     var site: QuoteFeed.File? = QuoteFeed.cached()
+    /// 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일
+    var stats: SiteStats.File? = SiteStats.load()
     var source: String { !live.isEmpty ? "Tiingo" : site != nil ? "naeilo 사이트" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
 
     // 샘플 종목 DRNK 의 하루 움직임 (샘플 기록의 마지막 날). 다른 종목은 받은 시세가 없으면 움직임을 만들지 않는다
@@ -76,6 +78,8 @@ final class Market {
         }
         // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
         if let f = await QuoteFeed.fetch(minAge: force ? 0 : 240) { site = f }
+        // 전망 입력값: 하루 한 번 바뀌므로 6시간에 한 번 (당겨 갱신하면 바로)
+        if let s = await SiteStats.fetch(minAge: force ? 0 : 6 * 3600) { stats = s }
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
         await CustomSymbols.shared.refresh(held: held, force: force)
         updatedAt = Date()
