@@ -95,11 +95,9 @@ struct HoldingsView: View {
                 Spacer()
                 Text(AppModel.sgn(chg)).appFont(15, .bold).foregroundStyle(Theme.change(chg))
             }
-            Sparkline(points: tot, avg: m.cost, lineWidth: 2.2, showEndDot: true).frame(height: 120)
-            // 점선(들어간 돈)이 그래프 범위 안에 있어 보일 때만 설명
-            if let lo = tot.min(), let hi = tot.max(), m.cost >= lo, m.cost <= hi {
-                Text("점선은 들어간 돈 \(AppModel.man(m.cost))").appFont(12).foregroundStyle(Theme.muted)
-            }
+            // 점선(들어간 돈) 금액은 점선 바로 밑에 적는다
+            Sparkline(points: tot, avg: m.cost, lineWidth: 2.2, showEndDot: true,
+                      avgLabel: AppModel.man(m.cost)).frame(height: 120)
         }
     }
 
