@@ -40,7 +40,7 @@ struct BrickGameHub: View {
                     Text("내 1000칸으로 하는 벽돌깨기").appFont(22, .bold)
                     section("난이도") {
                         ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true)
-                        Text(rec.level.note).appFont(12).foregroundStyle(Theme.sub)
+                        Text(rec.level.note + " " + BrickPlayView.specialNote).appFont(12).foregroundStyle(Theme.sub)
                     }
                     section("조작") {
                         ChipRow(items: [(true, "폰 기울이기"), (false, "손가락으로 끌기")], selection: $rec.tilt, fill: true)
@@ -107,9 +107,12 @@ struct BrickGameHub: View {
         .sheet(item: $board) { BrickBoardSheet(stage: $0, level: rec.level) }
         .fullScreenCover(item: $game) { g in
             BrickPlayView(game: g, record: $rec) { next in
+                g.end()
                 game = nil
-                if let next { DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { start(next.0, next.1) } }
+                // 앞 화면이 다 닫힌 뒤에 새 판을 띄운다 (바로 띄우면 새 판이 멈춘 채로 뜰 수 있다)
+                if let next { DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { start(next.0, next.1) } }
             }
+            .id(g.id)
         }
     }
 
@@ -118,8 +121,10 @@ struct BrickGameHub: View {
 
     private func start(_ s: GameStage, _ lv: GameLevel) {
         rec.level = lv
-        game = BrickGame(stage: s, level: lv, player: rec.player, skill: skillOf(rec.player), items: items, tilt: rec.tilt,
-                         assist: rec.lossCount(s.n, lv) >= 3, filled: filled, floor: min(filled, floor), yesterday: yesterday)
+        let g = BrickGame(stage: s, level: lv, player: rec.player, skill: skillOf(rec.player), items: items, tilt: rec.tilt,
+                          assist: rec.lossCount(s.n, lv) >= 3, filled: filled, floor: min(filled, floor), yesterday: yesterday)
+        g.friends = players
+        game = g
     }
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
@@ -143,7 +148,7 @@ struct BrickGameHub: View {
     }
 
     private func stageRow(_ s: GameStage) -> some View {
-        let open = m.devAll || rec.open(s.n, rec.level)
+        let open = rec.open(s.n, rec.level)
         let done = rec.cleared[rec.level.rawValue, default: []].contains(s.n)
         return HStack(spacing: 8) {
             stageCard(s, open: open, done: done)
@@ -169,7 +174,7 @@ struct BrickGameHub: View {
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
                         if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).font(.system(size: 13)) }
                     }
-                    Text(open ? s.rule : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? s.rule + (s.extra > 0 ? " 벽돌 \(s.extra)칸을 더 쌓았어요." : "") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
                 }
                 Spacer(minLength: 0)
@@ -196,10 +201,11 @@ struct BrickPlayView: View {
     private let brickDark = Theme.teal
     private let brickLight = Color(hex: 0x7FD3C9, dark: 0x3C8F86)
     private let clay = Color(hex: 0xC9A27E, dark: 0x8A6A4E)
+    private let stackColor = Color(hex: 0xB9C3E6, dark: 0x4E5C8C)   // 단계가 더 쌓은 칸
 
     var body: some View {
         let g = game
-        let live = g.phase == .playing || g.phase == .ready
+        let live = g.phase != .paused   // 끝난 뒤에도 인물은 계속 움직인다 (엔진은 멈춤)
         // 매 프레임 엔진을 한 걸음 움직이고 다시 그린다 (멈춤·끝나면 쉼)
         TimelineView(.animation(minimumInterval: nil, paused: !live)) { tl in
             let _ = g.tick(tl.date)
@@ -208,7 +214,6 @@ struct BrickPlayView: View {
         .contentShape(Rectangle())
         .onTapGesture { g.launch() }
         .onAppear { g.begin() }
-        .onDisappear { g.end() }
         .task {
             // 누르지 않아도 3초 뒤에는 공이 나간다
             try? await Task.sleep(for: .seconds(3))
@@ -230,6 +235,7 @@ struct BrickPlayView: View {
     private func screen(_ g: BrickGame, _ now: Date) -> some View {
         VStack(spacing: 8) {
             hud(g)
+            host(g, now)
             GeometryReader { geo in
                 let s = min(geo.size.width / BrickGame.W, geo.size.height / BrickGame.H)
                 let fw = BrickGame.W * s, fh = BrickGame.H * s
@@ -255,6 +261,77 @@ struct BrickPlayView: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(Theme.bg)
         .overlay { overlay(g) }
+    }
+
+    /// 위쪽 인물: 가끔 눈을 깜빡이고, 시작·물건·놓침·끝에 말풍선. 말이 없을 때는 방 설명
+    private func host(_ g: BrickGame, _ now: Date) -> some View {
+        let tt = now.timeIntervalSinceReferenceDate
+        // 3.1초와 4.3초 주기를 섞어 일정하지 않게 깜빡인다
+        let blink = tt.truncatingRemainder(dividingBy: 3.1) < 0.14 || tt.truncatingRemainder(dividingBy: 4.3) < 0.12
+        return HStack(alignment: .center, spacing: 10) {
+            Group {
+                if g.player == "me" { CharPixel(id: "me", width: 34, height: 48) }
+                else if g.speaking { MotionSprite(friend: g.player, pose: pose(g.mood), height: 52) }
+                else { Pixel(name: "spr_\(g.player)" + (blink ? "_blink" : ""), width: 34, height: 48) }
+            }
+            .frame(width: 44, height: 52)
+            .modifier(Alive(t: tt, seed: 0, hop: g.speaking && g.t - g.moodAt < 0.5))
+            if g.speaking && !g.speech.isEmpty {
+                Text(g.speech).appFont(14, .bold).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.ink, lineWidth: 1.5))
+            } else {
+                Text(g.stage.bg.intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            // 오른쪽에 끼어든 인물
+            if g.guestShown {
+                HStack(spacing: 6) {
+                    Text(g.guestLine).appFont(13, .bold).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 10).padding(.vertical, 7)
+                        .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
+                    VStack(spacing: 1) {
+                        guestFigure(g.guest).scaleEffect(x: -1, y: 1)
+                            .modifier(Alive(t: tt, seed: 1.7, hop: g.t - (g.guestUntil - 3.6) < 0.5))
+                        Text(guestName(g.guest)).appFont(9, .bold).foregroundStyle(Theme.sub).lineLimit(1)
+                    }
+                    .frame(width: 44)
+                }
+                .frame(maxWidth: 190)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .frame(minHeight: 52)
+        .animation(.easeOut(duration: 0.15), value: g.speaking)
+        .animation(.easeOut(duration: 0.25), value: g.guestShown)
+    }
+
+    /// 상황 → 동작 그림 (Guide.swift 의 mo_<인물>_<동작>)
+    private func pose(_ e: GameLines.Event) -> Pose {
+        switch e {
+        case .start: .wave
+        case .item: .spread
+        case .lose, .last: .think
+        case .half: .point
+        case .clear: .cheer
+        case .over: .side
+        case .rewind: .back
+        }
+    }
+
+    /// 끼어든 인물 그림: 기본 인물은 도트 그림, 보조 인물은 마네킹 샘플 조합
+    @ViewBuilder private func guestFigure(_ id: String) -> some View {
+        if id.hasPrefix("s:"), let sm = MeSample.all.first(where: { $0.name == String(id.dropFirst(2)) }) {
+            MeAvatar(me: MeChar(name: sm.name, parts: sm.parts), width: 30, height: 42)
+        } else {
+            Pixel(name: "spr_\(id)", width: 30, height: 42)
+        }
+    }
+    private func guestName(_ id: String) -> String {
+        id.hasPrefix("s:") ? String(id.dropFirst(2)) : (Shelter.friends.first { $0.id == id }?.name ?? "")
     }
 
     private func hud(_ g: BrickGame) -> some View {
@@ -339,10 +416,26 @@ struct BrickPlayView: View {
                 let b = g.rect(i)
                 let rc = r(b.minX + 0.05, b.minY + 0.05, 0.9, 0.9)
                 if g.hp[i] < 0 { ctx.fill(Path(rc), with: .color(Theme.ink)); continue }
-                let c: Color = switch g.kind[i] { case 1: brickDark; case 3: brickLight; case 4: Theme.track; default: brickLight }
+                if let sp = g.special[i] { special(&ctx, sp, rc, now); continue }
+                let c: Color = switch g.kind[i] { case 1: brickDark; case 3: brickLight; case 4: Theme.track; case 5: stackColor; default: brickLight }
                 ctx.fill(Path(rc), with: .color(c))
                 if g.kind[i] == 3 { ctx.stroke(Path(rc.insetBy(dx: 0.6, dy: 0.6)), with: .color(Theme.up), lineWidth: 1.2) }
                 if g.hp[i] == 2 { ctx.fill(Path(roundedRect: rc.insetBy(dx: rc.width * 0.22, dy: rc.height * 0.22), cornerRadius: 1.5), with: .color(clay)) }
+            }
+            // 특수 블럭이 터지는 그림
+            for b in g.blasts {
+                let k = min(1, (g.t - b.t0) / 0.45), a = 1 - k
+                switch b.kind {
+                case .bomb:
+                    let rr = 1 + k * 2.6
+                    ctx.fill(Path(ellipseIn: r(b.x - rr, b.y - rr, rr * 2, rr * 2)), with: .color(Theme.orange.opacity(0.55 * a)))
+                    ctx.stroke(Path(ellipseIn: r(b.x - rr, b.y - rr, rr * 2, rr * 2)), with: .color(Theme.yellow.opacity(a)), lineWidth: 2)
+                case .row: ctx.fill(Path(r(0, b.y - 0.5, BrickGame.W, 1)), with: .color(Theme.yellow.opacity(0.8 * a)))
+                case .col: ctx.fill(Path(r(b.x - 0.5, BrickGame.top, 1, BrickGame.H - BrickGame.top)), with: .color(Theme.yellow.opacity(0.8 * a)))
+                case .multi, .gift:
+                    let rr = 0.6 + k * 1.4
+                    ctx.stroke(Path(ellipseIn: r(b.x - rr, b.y - rr, rr * 2, rr * 2)), with: .color(Theme.blue.opacity(a)), lineWidth: 1.5)
+                }
             }
             ctx.opacity = 1
             if g.exitCell >= 0, g.hp[g.exitCell] > 0 {
@@ -361,7 +454,7 @@ struct BrickPlayView: View {
             let pw = g.paddleW
             ctx.fill(Path(roundedRect: r(g.paddleX - pw / 2, BrickGame.PY, pw, BrickGame.PH), cornerRadius: 0.4 * s), with: .color(Theme.ink))
             if let sp = ctx.resolveSymbol(id: "player") {
-                ctx.draw(sp, at: CGPoint(x: g.paddleX * s, y: (BrickGame.PY - 1.8) * s))
+                ctx.draw(sp, at: CGPoint(x: g.paddleX * s, y: (BrickGame.PY - 1.8 + sin(now.timeIntervalSinceReferenceDate * 3) * 0.12) * s))
             }
             // 떨어지는 물건 (위로 올라온다)
             for d in g.drops {
@@ -399,11 +492,40 @@ struct BrickPlayView: View {
         }
     }
 
+    /// 특수 블럭 한 칸 (폭탄은 반짝인다)
+    private func special(_ ctx: inout GraphicsContext, _ sp: BrickGame.Special, _ rc: CGRect, _ now: Date) {
+        let w = rc.width, mid = CGPoint(x: rc.midX, y: rc.midY)
+        switch sp {
+        case .bomb:
+            ctx.fill(Path(rc), with: .color(Theme.slate))
+            let pulse = 0.5 + 0.5 * sin(now.timeIntervalSinceReferenceDate * 6)
+            ctx.fill(Path(ellipseIn: rc.insetBy(dx: w * 0.18, dy: w * 0.18)), with: .color(Theme.up.opacity(0.6 + 0.4 * pulse)))
+            ctx.fill(Path(ellipseIn: CGRect(x: rc.maxX - w * 0.35, y: rc.minY + w * 0.05, width: w * 0.25, height: w * 0.25)), with: .color(Theme.yellow))
+        case .row, .col:
+            ctx.fill(Path(rc), with: .color(Theme.orange))
+            var p = Path()
+            if sp == .row { p.move(to: CGPoint(x: rc.minX + w * 0.15, y: mid.y)); p.addLine(to: CGPoint(x: rc.maxX - w * 0.15, y: mid.y)) }
+            else { p.move(to: CGPoint(x: mid.x, y: rc.minY + w * 0.15)); p.addLine(to: CGPoint(x: mid.x, y: rc.maxY - w * 0.15)) }
+            ctx.stroke(p, with: .color(.white), lineWidth: max(1.2, w * 0.18))
+        case .multi:
+            ctx.fill(Path(rc), with: .color(Theme.blue))
+            for (dx, dy) in [(-0.2, 0.15), (0.2, 0.15), (0, -0.18)] {
+                let d = w * 0.22
+                ctx.fill(Path(ellipseIn: CGRect(x: mid.x + dx * w - d / 2, y: mid.y + dy * w - d / 2, width: d, height: d)), with: .color(.white))
+            }
+        case .gift:
+            ctx.fill(Path(rc), with: .color(Theme.yellow))
+            ctx.fill(Path(CGRect(x: mid.x - w * 0.08, y: rc.minY, width: w * 0.16, height: w)), with: .color(Theme.up))
+            ctx.fill(Path(CGRect(x: rc.minX, y: mid.y - w * 0.08, width: w, height: w * 0.16)), with: .color(Theme.up))
+        }
+    }
+
+    static let specialNote = "폭탄은 둘레를, 주황 줄은 한 줄을 통째로 깨요. 파랑은 공 셋, 노랑은 선물."
+
     @ViewBuilder private func overlay(_ g: BrickGame) -> some View {
-        let lines = GamePlayer.lines(g.player)
         switch g.phase {
         case .ready:
-            bubble(g, lines.0, sub: g.stage.rule) { EmptyView() }
+            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule + "\n" + Self.specialNote + (g.stacked > 0 ? "\n이번 방은 벽돌 \(g.stacked)칸을 더 쌓았어요." : "")) { EmptyView() }
                 .allowsHitTesting(false)
         case .playing:
             if let t = g.toast {
@@ -423,7 +545,7 @@ struct BrickPlayView: View {
             let next = GameStage.all.first { $0.n == g.stage.n + 1 }
             let lose = record.lossCount(g.stage.n, g.level)
             dim {
-                bubble(g, won ? lines.1 : lines.2,
+                bubble(g, g.speech,
                        sub: "\(won ? "깼어요" : "끝났어요") · \(g.score.formatted())점\(g.newBest ? " · 새 최고 기록" : "")\(rank.map { " · 이번 주 \($0)위" } ?? "")\(g.picked.isEmpty ? "" : " · 먹은 물건 \(g.picked.values.reduce(0, +))개")") {
                     if won, let next { button("다음 단계 · \(next.bg.volume)", primary: true) { onClose((next, g.level)) } }
                     button("다시 하기", primary: !won) { onClose((g.stage, g.level)) }
@@ -515,5 +637,19 @@ struct BrickBoardSheet: View {
         .task {
             if let d = await GameBoard.top(stage.n, level) { data = d } else { failed = true }
         }
+    }
+}
+
+/// 정지 그림이 아니게: 숨 쉬듯 위아래로 조금, 아주 살짝 기울고, 말을 시작할 때 한 번 뛴다
+private struct Alive: ViewModifier {
+    let t: Double, seed: Double
+    var hop = false
+    func body(content: Content) -> some View {
+        let bob = sin((t + seed) * 2.4) * 1.2
+        let jump = hop ? -abs(sin((t + seed) * 12)) * 4 : 0
+        content
+            .offset(y: bob + jump)
+            .rotationEffect(.degrees(sin((t + seed) * 1.3) * 1.5), anchor: .bottom)
+            .scaleEffect(x: 1, y: 1 + sin((t + seed) * 2.4 + 1) * 0.012, anchor: .bottom)
     }
 }

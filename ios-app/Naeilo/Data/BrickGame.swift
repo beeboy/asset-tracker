@@ -33,6 +33,8 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
         case .easy: return plus + [(1, 1), (1, -1), (-1, 1), (-1, -1), (2, 0), (-2, 0), (0, 2), (0, -2)]
         }
     }
+    /// 특수 블럭 비율 (폭탄·한 줄·공 셋·선물)
+    var special: Double { switch self { case .easy: 0.12; case .normal: 0.09; case .hard: 0.07 } }
     var easier: GameLevel? { switch self { case .easy: nil; case .normal: .easy; case .hard: .normal } }
 }
 
@@ -50,6 +52,8 @@ struct GameStage: Identifiable {
     var dash = false          // 7권: 줄표(—) 벽은 깨지지 않는다
     var hard2 = 0.0           // 10권: 안 구운 그릇 벽돌 (두 번 쳐야 깨짐) 비율
     var id: Int { n }
+    /// 단계가 오를수록 채운 칸 위에 더 쌓는 벽돌 수 (연습판 0, 외전 515)
+    var extra: Int { n == 0 ? 0 : 20 + n * 45 }
     var bg: ShelterBG { Shelter.backgrounds[n] }
 
     static let all: [GameStage] = [
@@ -79,17 +83,6 @@ enum GamePlayer {
         default: "원칙 · 판이 길고 공 속도가 늘 같아요"
         }
     }
-    /// (시작, 깼을 때, 끝났을 때)
-    static func lines(_ id: String) -> (String, String, String) {
-        switch id {
-        case "sio": ("서두르지 않아도 돼. 잡았다가 보내자.", "기다린 만큼 깼네.", "괜찮아. 한 박자 쉬고 다시.")
-        case "seonbae": ("한 번은 되돌릴 수 있어. 어디로 보낼 건데?", "그게 정말 네 실력이야? 맞네.", "왜 놓쳤는지 알겠어?")
-        case "ir": ("빨리 가자. 점수는 더 줄게.", "벌써 끝! 다음 판!", "너무 빨랐나. 한 번 더!")
-        case "sua": ("깰수록 판이 자라요. 천천히요.", "조금씩 자라서 여기까지 왔어요.", "다음엔 판이 더 일찍 자랄 거예요.")
-        case "me": ("내 판이야. 가 보자.", "해냈다.", "다시 해 보자.")
-        default: ("관찰을 시작합니다. 공은 위에서 아래로.", "기준 칸 수에 닿았어요. 기록했어요.", "여기까지예요. 다시 하면 돼요.")
-        }
-    }
     /// 쉼터 물건이 아이템일 때 하는 일
     static func item(_ id: String) -> String {
         switch id {
@@ -105,6 +98,120 @@ enum GamePlayer {
         case "rice_seeds": "공이 셋으로 갈라져요"
         default: ""
         }
+    }
+}
+
+/// 게임 대사: 상황 × 인물 줄 모음 + 쉼터 물건 대사(lines_ko.json 의 item.<물건>.<인물>)를 섞고,
+/// 앞말·뒷말을 따로 골라 이어 붙여 같은 문장이 자주 반복되지 않게 한다. 한 바퀴 돌기 전에는 같은 줄을 다시 쓰지 않는다
+enum GameLines {
+    enum Event: String { case start, item, lose, clear, over, half, rewind, last }
+
+    private static let pool: [String: [String: [String]]] = [
+        "seri": [
+            "start": ["관찰을 시작합니다.", "{stage}. 기록을 켭니다.", "준비됐어요. 공은 아래로 가요.", "한 박자 두고, 시작해요.", "벽돌 {left}칸. 확인했어요."],
+            "lose": ["공 하나를 놓쳤어요. 남은 공 {n}개.", "기록했어요. 다음 공이 있어요.", "거기까지만요. 다시 받으면 돼요.", "위치가 조금 빨랐어요."],
+            "clear": ["기준 칸에 닿았어요.", "{stage}, 통과로 기록할게요.", "{score}점. 사실 그대로예요.", "다음 방이 열렸어요."],
+            "over": ["여기까지예요. 다시 하면 돼요.", "공이 다 떨어졌어요. 기록은 남았어요.", "오늘은 {broken}칸까지였어요."],
+            "half": ["절반을 넘었어요.", "기준의 반쯤 왔어요."],
+            "rewind": ["한 번은 되돌려요."],
+        ],
+        "sio": [
+            "start": ["서두르지 않아도 돼.", "잡았다가, 원할 때 보내자.", "{stage}이야. 천천히 가 보자.", "기다리는 것도 실력이야.", "준비되면 눌러."],
+            "lose": ["괜찮아. 한 박자 쉬고 다시.", "놓쳐도 돼. 공은 {n}개 더 있어.", "조금 기다렸다 받아 봐.", "급했지? 숨 한 번."],
+            "clear": ["기다린 만큼 깼네.", "{stage}, 지나왔다.", "{score}점. 좋은 기다림이었어.", "다음 방으로 가자."],
+            "over": ["오늘은 여기까지. 내일 또 하자.", "괜찮아, 다시 기다리면 돼.", "{broken}칸이나 깼어."],
+            "half": ["반 왔어. 그대로.", "절반이야. 서두르지 마."],
+            "rewind": ["한 번 더 기다려 줄게."],
+        ],
+        "seonbae": [
+            "start": ["어디로 보낼 건데?", "{stage}. 이 방, 어떻게 깰 생각이야?", "한 번은 되돌릴 수 있어. 알지?", "그게 정말 네 계획이야?", "시작해 봐. 질문은 나중에."],
+            "lose": ["왜 놓쳤는지 알겠어?", "방금 그건 판 탓이야, 네 탓이야?", "남은 공 {n}개. 다음엔 어디서 받을래?", "너무 끝으로 갔지?"],
+            "clear": ["그게 정말 네 실력이야? 맞네.", "{stage} 통과. 다음 질문으로 가자.", "{score}점이면 됐어. 다음은?", "어떻게 깼는지 말할 수 있어?"],
+            "over": ["다시 하면 뭘 바꿀 거야?", "끝났네. 그래서 배운 건?", "{broken}칸. 나쁘지 않은데, 다음은?"],
+            "half": ["반 왔어. 여기서 뭘 바꿀래?", "절반. 계속 이대로?"],
+            "rewind": ["한 번 되돌려 줄게. 이번엔 어디로?"],
+        ],
+        "ir": [
+            "start": ["빨리 가자!", "{stage}! 바로 시작!", "점수는 더 줄게. 달려!", "벽돌 {left}칸, 다 깨 버리자!", "준비됐지? 간다!"],
+            "lose": ["앗, 너무 빨랐나!", "괜찮아, 공 {n}개 남았어!", "다시! 바로 다시!", "아깝다! 한 번 더!"],
+            "clear": ["벌써 끝! 다음 판!", "{stage} 통과! 빠르다!", "{score}점! 더 갈 수 있어!", "다음 방 열렸어, 가자!"],
+            "over": ["너무 달렸나. 한 번 더!", "끝! 근데 다시 하고 싶다!", "{broken}칸! 다음엔 더!"],
+            "half": ["반 왔어! 속도 올려!", "절반! 계속 계속!"],
+            "rewind": ["한 번 더 달려!"],
+        ],
+        "sua": [
+            "start": ["깰수록 판이 자라요. 천천히요.", "{stage}이에요. 같이 가요.", "조금씩 하면 돼요.", "오늘은 어디까지 자랄까요?", "준비되면 눌러 주세요."],
+            "lose": ["괜찮아요. 다시 자라면 돼요.", "공이 {n}개 남았어요.", "조금 아쉬웠어요. 다음엔 더 잘될 거예요.", "천천히, 판을 가운데로요."],
+            "clear": ["조금씩 자라서 여기까지 왔어요.", "{stage}, 지나왔어요.", "{score}점이에요. 많이 컸어요.", "다음 방이 열렸어요."],
+            "over": ["다음엔 판이 더 일찍 자랄 거예요.", "오늘은 {broken}칸 자랐어요.", "쉬었다가 다시 해요."],
+            "half": ["절반 왔어요. 판도 자랐어요.", "반쯤 왔어요. 잘하고 있어요."],
+            "rewind": ["한 번 더 해 봐요."],
+        ],
+        "me": [
+            "start": ["내 판이야. 가 보자.", "{stage}. 시작!", "벽돌 {left}칸, 해 보자.", "준비됐다."],
+            "lose": ["놓쳤다. 공 {n}개 남았어.", "다시 받자.", "아깝다."],
+            "clear": ["해냈다.", "{stage} 통과!", "{score}점!"],
+            "over": ["다시 해 보자.", "{broken}칸까지 왔어."],
+            "half": ["반 왔다."],
+            "rewind": ["한 번 더."],
+        ],
+    ]
+    /// 옆에서 끼어드는 다른 인물의 한마디 (상황별)
+    private static let guest: [String: [String: [String]]] = [
+        "seri": ["last": ["마지막 공이에요. 가운데를 지켜요.", "남은 공 하나. 관찰하고 받아요."], "half": ["절반 지났어요. 기록 중이에요."],
+                 "clear": ["통과 확인했어요.", "저도 봤어요. 깔끔했어요."], "over": ["기록은 남았어요. 다음에 이어 가요."], "item": ["그 물건, 쉼터에서 본 거예요."]],
+        "sio": ["last": ["마지막이야. 서두르지 말고.", "하나 남았어. 기다렸다 받아."], "half": ["반 왔네. 잘하고 있어."],
+                "clear": ["봤어? 기다린 보람 있지.", "멋졌어."], "over": ["괜찮아. 다음엔 내가 옆에 있을게."], "item": ["오, 그거 쓸모 있지."]],
+        "seonbae": ["last": ["마지막 공이야. 어디서 받을 거야?", "하나 남았는데, 계획 있어?"], "half": ["반이야. 이대로 갈 거야?"],
+                    "clear": ["깼네. 다음 방은 쉬울 것 같아?", "나쁘지 않았어."], "over": ["뭘 바꾸면 될지 알겠지?"], "item": ["그거 언제 쓸지 생각했어?"]],
+        "ir": ["last": ["마지막! 할 수 있어!", "하나 남았어, 집중!"], "half": ["반 왔다! 더 빨리!"],
+               "clear": ["와, 빨랐다!", "최고! 다음 판 가자!"], "over": ["한 번 더 하자, 한 번만!"], "item": ["좋은 거 먹었다!"]],
+        "sua": ["last": ["마지막 공이에요. 천천히요.", "하나 남았어요. 응원할게요."], "half": ["절반이에요. 많이 자랐어요."],
+                "clear": ["축하해요!", "같이 와서 좋았어요."], "over": ["쉬었다가 같이 다시 해요."], "item": ["그 물건, 반가워요."]],
+    ]
+    static func guestLine(_ e: Event, _ who: String) -> String? {
+        if who.hasPrefix("s:") { return sampleLines[String(who.dropFirst(2))]?.randomElement() }
+        return guest[who]?[e.rawValue]?.randomElement()
+    }
+
+    /// 마네킹 샘플(『중첩된 현실』 보조 인물)이 그 권의 방에서 끼어든다: 단계 → 인물 이름 (MeSample.all)
+    static let stageSamples: [Int: [String]] = [
+        0: ["미용사"], 1: ["현실의 시오", "1권 선배"], 2: ["니아", "묶은 머리 시오"], 4: ["관리국의 수아"],
+        6: ["온유"], 7: ["활동가"], 8: ["담당관"], 9: ["아내", "루"], 10: ["아내", "루"], 11: ["외전 세리"],
+    ]
+    private static let sampleLines: [String: [String]] = [
+        "미용사": ["선택하지 않은 벽돌은 모두 잘라낼게요.", "가위 소리처럼, 사각. 잠시 멈춤. 사각.", "거울 셋 중 어느 쪽 공이 진짜일까요?"],
+        "현실의 시오": ["복도 끝에 출구가 있어. 노란 줄 하나.", "여기선 오래 버티는 게 이기는 거야.", "맨발로도 걸었어. 공 하나쯤이야."],
+        "1권 선배": ["그 방향, 정말 네가 고른 거야?", "출구는 늘 마지막에 보이지.", "질문 하나. 왜 거기서 받았어?"],
+        "니아": ["지구에 보낼 녹음에 이것도 넣을게요.", "여기선 공도 천천히 떨어져요.", "제2돔에서 응원하고 있어요."],
+        "묶은 머리 시오": ["고무줄 세 번. 다시 묶고 가자.", "0.1초 늦어도 괜찮아."],
+        "관리국의 수아": ["또 올게요. 약속은 아니에요.", "입구는 둘이에요. 공은 어느 쪽으로 나올까요?", "기록해 둘게요. 하급 연구원이라서요."],
+        "온유": ["창문은 손가락 몇 개만큼만요.", "좁아도 바람은 들어와요.", "천천히 해도 돼요. 여긴 그런 곳이에요."],
+        "활동가": ["잘린 문장도 끝내 붙일 수 있어요.", "줄표 하나는 남겨 둬요. 그건 깨지지 않아요.", "멀리서도 보여요. 계속해요."],
+        "담당관": ["솔직히 저도 당혹스럽습니다.", "충전할 곳은 없습니다. 있는 걸로 가시죠.", "보고서에는 잘했다고 쓰겠습니다."],
+        "아내": ["밥 먹고 해요.", "안 구운 그릇은 두 번 만져야 해요.", "묻지 않을게요. 계속해요."],
+        "루": ["꾸러미 배달 왔어요. 이건 응원.", "배송 유닛 XX-2214, 지켜보는 중.", "열여섯 살쯤인데, 저도 해 보고 싶어요."],
+        "외전 세리": ["화면 속에서 보고 있어요.", "프로필 사진처럼, 그대로 있어요.", "거기까지만요. 아니, 조금 더요."],
+    ]
+
+    private static var bag: [String: [Int]] = [:]
+
+    /// who 의 그 상황 대사 한 줄. vars 로 {stage} {n} {score} {broken} {left} 를 채운다
+    static func pick(_ e: Event, _ who: String, item: String? = nil, _ vars: [String: String] = [:]) -> String {
+        if e == .item, let id = item {
+            let name = Shelter.items.first { $0.id == id }?.name ?? id
+            // 쉼터 대사(인물별 100줄)를 쓰고, 없으면 물건 이름과 효과
+            if let l = Lines.pick("item.\(id).\(who == "me" ? "seri" : who)", salt: Int.random(in: 1...9)) { return l }
+            return "\(name)! \(GamePlayer.item(id))."
+        }
+        let ev = e == .last ? "lose" : e.rawValue
+        let list = pool[who]?[ev] ?? pool["seri"]?[ev] ?? [""]
+        let key = "\(who).\(e.rawValue)"
+        if bag[key]?.isEmpty ?? true { bag[key] = Array(list.indices).shuffled() }
+        let i = bag[key]!.removeLast()
+        var line = list[i % list.count]
+        for (k, v) in vars { line = line.replacingOccurrences(of: "{\(k)}", with: v) }
+        return line
     }
 }
 
@@ -169,8 +276,11 @@ enum GameBoard {
 @Observable
 final class BrickGame: Identifiable {
     enum Phase { case ready, playing, paused, cleared, over }
-    struct Ball { var x: Double, y: Double, vx: Double, vy: Double; var stuck = true; var off = 0.0; var until = 0.0 }
+    struct Ball { var x: Double, y: Double, vx: Double, vy: Double; var stuck = true; var off = 0.0; var until = 0.0; var spawned = false }
     struct Drop { let id: String; var x: Double, y: Double }
+    /// 고전 벽돌깨기의 특수 블럭: 폭탄(둘레 터짐), 가로·세로 한 줄, 공 셋, 선물(물건 또는 점수)
+    enum Special: CaseIterable { case bomb, row, col, multi, gift }
+    struct Blast { let x: Double, y: Double; let kind: Special; let t0: Double }
 
     static let W = 40.0, H = 46.0, PY = 5.0, PH = 0.8, top = 21.0, r = 0.45
 
@@ -187,7 +297,12 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var tilt: Bool
 
     @ObservationIgnored var hp = [Int8](repeating: 0, count: 1000)     // 0 빈칸, -1 깨지지 않는 벽, 1·2 남은 횟수
-    @ObservationIgnored var kind = [UInt8](repeating: 0, count: 1000)  // 1 바닥에도 있던 칸, 2 회복한 칸, 3 오늘 늘어난 칸, 4 연습 칸
+    @ObservationIgnored var kind = [UInt8](repeating: 0, count: 1000)  // 1 바닥에도 있던 칸, 2 회복한 칸, 3 오늘 늘어난 칸, 4 연습 칸, 5 단계가 더 쌓은 칸
+    @ObservationIgnored var special = [Special?](repeating: nil, count: 1000)
+    @ObservationIgnored var blasts: [Blast] = []          // 터지는 그림 (잠깐)
+    @ObservationIgnored var stacked = 0                   // 이 단계에서 더 쌓은 벽돌
+    @ObservationIgnored var combo = 0                     // 판에 다시 닿기 전까지 깬 벽돌
+    @ObservationIgnored private var comboSaid = 0
     @ObservationIgnored var exitCell = -1
     @ObservationIgnored var balls: [Ball] = []
     @ObservationIgnored var drops: [Drop] = []
@@ -201,6 +316,15 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var broken = 0
     @ObservationIgnored var total = 0
     @ObservationIgnored var toast: (String, Double)? = nil
+    @ObservationIgnored var speech = ""                  // 위쪽 인물 말풍선
+    @ObservationIgnored var mood: GameLines.Event = .start   // 지금 말하는 상황 (동작 그림을 고른다)
+    @ObservationIgnored var moodAt = 0.0
+    @ObservationIgnored var speechUntil = 0.0
+    @ObservationIgnored private var halfSaid = false
+    @ObservationIgnored var friends: [String] = []       // 끼어들 수 있는 다른 인물 (열린 인물)
+    @ObservationIgnored var guest = ""                   // 오른쪽에 나온 인물
+    @ObservationIgnored var guestLine = ""
+    @ObservationIgnored var guestUntil = 0.0
     @ObservationIgnored var newBest = false
     @ObservationIgnored var picked: [String: Int] = [:]   // 이번 판에 먹은 물건 → 횟수
 
@@ -226,10 +350,19 @@ final class BrickGame: Identifiable {
             hp[i] = Double.random(in: 0..<1) < stage.hard2 ? 2 : 1
             kind[i] = i >= f ? 4 : i < floor ? 1 : (yesterday < f && i >= yesterday) ? 3 : 2
         }
+        // 단계가 오를수록 위에 더 쌓는다. 자리가 없으면 그만큼 기존 벽돌을 두 번 쳐야 깨지게
+        let room = min(stage.extra, 1000 - n)
+        for i in n..<(n + room) { hp[i] = 1; kind[i] = 5 }
+        stacked = room
+        for i in (0..<n).shuffled().prefix(stage.extra - room) { hp[i] = 2 }
+        // 특수 블럭을 고루 섞는다 (폭탄이 가장 많다)
+        let pool: [Special] = [.bomb, .bomb, .bomb, .row, .col, .multi, .gift]
+        for i in 0..<1000 where hp[i] > 0 && Double.random(in: 0..<1) < level.special { special[i] = pool.randomElement() }
         if stage.dash { for c in 14...25 { hp[12 * 40 + c] = -1 } }
         if stage.flicker { exitCell = (0..<1000).last { hp[$0] > 0 } ?? -1 }
         total = hp.filter { $0 > 0 }.count
         balls = [Ball(x: Self.W / 2, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0)]
+        talk(.start)
     }
 
     deinit { motion.stopDeviceMotionUpdates() }
@@ -353,9 +486,12 @@ final class BrickGame: Identifiable {
             for _ in 0..<n { if !move(&b, sdt, sp) { lost = true; break } }
             if !lost { alive.append(b) }
         }
-        balls = alive
+        // 이번 걸음에 특수 블럭이 만든 공 (balls 에 바로 붙은 것)
+        balls = alive + balls.filter { $0.spawned }.map { var b = $0; b.spawned = false; return b }
+        blasts.removeAll { t - $0.t0 > 0.45 }
         moveDrops(dt)
         if broken >= target { win(); return }
+        if !halfSaid && broken * 2 >= target { halfSaid = true; talk(.half) }
         if balls.isEmpty { loseBall() }
     }
 
@@ -431,6 +567,7 @@ final class BrickGame: Identifiable {
 
     private func paddleHit(_ b: inout Ball, _ sp: Double) {
         buzz(); GameSound.shared.play(.paddle)
+        combo = 0; comboSaid = 0
         if skill == "sio" {
             b.stuck = true; b.off = b.x - paddleX; b.until = t + 2
             b.vx = 0; b.vy = 0; return
@@ -453,24 +590,67 @@ final class BrickGame: Identifiable {
         if hp[i] == 2 { hp[i] = 1; GameSound.shared.play(.tough); return }
         GameSound.shared.play(.hit)
         let row = i / 40, col = i % 40
-        var mul = skill == "ir" ? 1.5 : 1.0
-        if on("double") { mul *= 2 }
+        var queue: [Int] = []
         for (dx, dy) in level.burst {
             let c = col + dx, r = row + dy
             guard c >= 0, c < 40, r >= 0, r < 25 else { continue }
-            let j = r * 40 + c
-            guard hp[j] > 0 else { continue }
-            hp[j] -= 1
-            if hp[j] == 0 {
-                broken += 1
-                let p: Double = switch kind[j] { case 2: 2; case 3: 3; default: 1 }
-                score += Int((p * mul).rounded())
-                if j == exitCell { score += 100; say("출구 칸 +100") }
-            }
+            crack(r * 40 + c, &queue)
         }
+        // 특수 블럭은 이어서 터진다 (폭탄이 폭탄을 터뜨리는 연쇄)
+        var k = 0
+        while k < queue.count { let j = queue[k]; trigger(j, &queue); k += 1 }
         if kind[i] == 3 { effects["fast"] = t + 5 }
         if !items.isEmpty, Double.random(in: 0..<1) < 0.14, let it = items.randomElement() {
             drops.append(Drop(id: it, x: Double(col) + 0.5, y: rect(i).midY))
+        }
+        if combo / 15 > comboSaid { comboSaid = combo / 15; say("콤보 \(combo)!") }
+    }
+
+    /// 한 칸 깎기. 깨지면 점수, 특수 블럭이면 터질 차례에 넣는다
+    private func crack(_ j: Int, _ queue: inout [Int], all: Bool = false) {
+        guard hp[j] > 0 else { return }
+        hp[j] = all ? 0 : hp[j] - 1
+        guard hp[j] == 0 else { return }
+        broken += 1; combo += 1
+        var mul = skill == "ir" ? 1.5 : 1.0
+        if on("double") { mul *= 2 }
+        if combo > 10 { mul *= 1.5 }    // 한 번에 많이 깨면 점수가 더
+        let p: Double = switch kind[j] { case 2: 2; case 3: 3; default: 1 }
+        score += Int((p * mul).rounded())
+        if j == exitCell { score += 100; say("출구 칸 +100") }
+        if special[j] != nil { queue.append(j) }
+    }
+
+    private func trigger(_ j: Int, _ queue: inout [Int]) {
+        guard let sp = special[j] else { return }
+        special[j] = nil
+        let row = j / 40, col = j % 40, c = rect(j)
+        blasts.append(Blast(x: c.midX, y: c.midY, kind: sp, t0: t))
+        switch sp {
+        case .bomb:
+            GameSound.shared.play(.boom)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            for dy in -2...2 { for dx in -2...2 where abs(dx) + abs(dy) <= 3 {
+                let cc = col + dx, r = row + dy
+                if cc >= 0, cc < 40, r >= 0, r < 25 { crack(r * 40 + cc, &queue, all: true) }
+            } }
+        case .row:
+            GameSound.shared.play(.line)
+            for cc in 0..<40 { crack(row * 40 + cc, &queue, all: true) }
+        case .col:
+            GameSound.shared.play(.line)
+            for r in 0..<25 { crack(r * 40 + col, &queue, all: true) }
+        case .multi:
+            GameSound.shared.play(.item)
+            let v = speed
+            for a in [-0.6, 0.0, 0.6] where balls.count < 12 {
+                balls.append(Ball(x: c.midX, y: c.minY - Self.r - 0.05, vx: v * sin(a), vy: -v * cos(a), stuck: false, spawned: true))
+            }
+            say("공 셋!")
+        case .gift:
+            GameSound.shared.play(.item)
+            if let it = items.randomElement() { drops.append(Drop(id: it, x: c.midX, y: c.midY)) }
+            else { score += 50; say("선물 +50") }
         }
     }
 
@@ -489,6 +669,8 @@ final class BrickGame: Identifiable {
         say("\(name) · \(GamePlayer.item(id))")
         picked[id, default: 0] += 1
         GameSound.shared.play(.item)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        talk(.item, item: id)
         switch id {
         case "barley_tea": effects["slow"] = t + 10
         case "porch_light": effects["light"] = t + 10
@@ -518,11 +700,13 @@ final class BrickGame: Identifiable {
         if skill == "seonbae" && !rewindUsed {
             rewindUsed = true
             balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 1.5)]
-            say("되감기 · 한 번 돌려받았어요"); return
+            say("되감기 · 한 번 돌려받았어요"); talk(.rewind); return
         }
         lives -= 1
         GameSound.shared.play(.lose)
-        if lives <= 0 { finish(.over); return }
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        if lives <= 0 { talk(.over); finish(.over); return }
+        talk(lives == 1 ? .last : .lose)
         drops = []
         balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 2.5)]
     }
@@ -530,11 +714,33 @@ final class BrickGame: Identifiable {
     private func win() {
         score += lives * 50
         GameSound.shared.play(.clear)
+        talk(.clear)
         finish(.cleared)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func say(_ s: String) { toast = (s, t + 2.2) }
+
+    /// 인물 말풍선 (시작 전에는 계속, 그 밖에는 3초)
+    func talk(_ e: GameLines.Event, item: String? = nil) {
+        let vars = ["stage": stage.bg.volume + " " + stage.bg.name, "n": "\(max(0, lives))", "score": score.formatted(),
+                    "broken": "\(broken)", "left": "\(total)"]
+        speech = GameLines.pick(e, player, item: item, vars)
+        speechUntil = t + 3.2
+        mood = e; moodAt = t
+        // 특정 상황에는 다른 인물이 오른쪽에 나와 한마디 (물건은 가끔)
+        let chance: Double = switch e { case .last, .clear, .over: 1; case .half: 0.7; case .item: 0.3; default: 0 }
+        // 그 권의 보조 인물이 있으면 절반쯤은 그쪽이 나온다
+        let samples = (GameLines.stageSamples[stage.n] ?? []).map { "s:" + $0 }
+        let others = friends.filter { $0 != player && $0 != "me" }
+        let pickFrom = !samples.isEmpty && (others.isEmpty || Bool.random()) ? samples : others
+        if Double.random(in: 0..<1) < chance, let who = pickFrom.randomElement(),
+           let line = GameLines.guestLine(e, who) {
+            guest = who; guestLine = line; guestUntil = t + 3.6
+        }
+    }
+    var guestShown: Bool { !guest.isEmpty && (phase == .cleared || phase == .over || t < guestUntil) }
+    var speaking: Bool { phase == .ready || phase == .cleared || phase == .over || t < speechUntil }
 
     private func buzz() {
         guard t - lastTap > 0.06 else { return }
@@ -544,7 +750,7 @@ final class BrickGame: Identifiable {
 
 /// 효과음: 짧은 소리를 코드로 만들어 둔다 (파일 없음). 무음 스위치를 따르고 다른 앱 소리와 섞인다
 final class GameSound {
-    enum Kind: CaseIterable { case hit, tough, paddle, item, lose, clear }
+    enum Kind: CaseIterable { case hit, tough, paddle, item, lose, clear, boom, line }
     static let shared = GameSound()
     private let engine = AVAudioEngine()
     private var players: [AVAudioPlayerNode] = []
@@ -570,6 +776,8 @@ final class GameSound {
             .item: [(660, 0.06), (880, 0.06), (1320, 0.09)],
             .lose: [(440, 0.1), (330, 0.1), (220, 0.18)],
             .clear: [(523, 0.1), (659, 0.1), (784, 0.1), (1047, 0.25)],
+            .boom: [(140, 0.06), (95, 0.08), (70, 0.14)],
+            .line: [(1047, 0.04), (1397, 0.04), (1760, 0.07)],
         ]
         for (k, ns) in notes { buffers[k] = tone(ns, fmt) }
         do { try engine.start(); ready = true } catch { ready = false }
