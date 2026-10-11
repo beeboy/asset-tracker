@@ -31,8 +31,8 @@
 <meta name="twitter:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/web/","description":"내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 종목별 전략, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰·투자 전략 도구.","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
-<script src="theme.js?v=20261011i"></script>
-<link rel="stylesheet" href="style.css?v=20261011i">
+<script src="theme.js?v=20261011j"></script>
+<link rel="stylesheet" href="style.css?v=20261011j">
 <script>(function(u,c){if(/Edg\//.test(u))c.add("edg");else if(/Chrome\//.test(u)&&!/OPR\//.test(u))c.add("chr");else if(/Safari\//.test(u)&&!/Chrome|Chromium|CriOS|FxiOS|Android/.test(u))c.add("saf");})(navigator.userAgent,document.documentElement.classList);</script>
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
@@ -58,12 +58,12 @@
       <div class="row holdsort"><label class="muted small">정렬 <select id="holdSort"><option value="added">넣은 순</option><option value="value">금액 순</option><option value="name">이름 순</option><option value="ret">수익률 순</option><option value="today">오늘 등락 순</option></select></label></div>
       <div class="tablewrap"><table id="holdTable" class="grid"></table></div></details>
       <div class="row addrow">
-        <input id="addTicker" placeholder="종목 (TSLA, 005930.KS)" autocapitalize="characters" autocomplete="off">
+        <div class="addfind"><input id="addTicker" placeholder="종목 (이름·티커·코드)" autocomplete="off" role="combobox" aria-controls="addSug"><div id="addSug" class="addsug" role="listbox" hidden></div></div>
         <input id="addShares" class="num" type="text" inputmode="decimal" placeholder="수량">
         <input id="addAvg" class="num" type="text" inputmode="decimal" placeholder="매수 단가">
         <button id="btnAdd" class="primary sm">종목 추가</button>
       </div>
-      <p class="muted small">종목과 수량 입력 (선택, 매수 단가 넣으면 손익 표시)</p>
+      <p class="muted small">종목 찾기: 한글·영문 이름, 티커, 종목 코드 (예: 삼성전자, Tesla, NVDA, 005930). 종목과 수량 입력 (선택, 매수 단가 넣으면 손익 표시)</p>
     </div>
     <div class="card">
       <div class="row between">
@@ -344,10 +344,11 @@
 
 </main>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261011i"></script>
-<script src="model.js?v=20261011i"></script>
-<script src="research.js?v=20261011i"></script>
-<script src="sharecard.js?v=20261011i"></script>
-<script src="app.js?v=20261011i"></script>
+<script src="charts.js?v=20261011j"></script>
+<script src="model.js?v=20261011j"></script>
+<script src="research.js?v=20261011j"></script>
+<script src="sharecard.js?v=20261011j"></script>
+<script src="stocks.js?v=20261011j"></script>
+<script src="app.js?v=20261011j"></script>
 </body>
 </html>
