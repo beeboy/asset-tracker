@@ -4,7 +4,11 @@ import SwiftUI
 struct HoldingsView: View {
     @Environment(AppModel.self) private var m
     @State private var period: Period = .y1
+    @State private var editing = false              // 목록에서 바로 고치기 (연필 단추 보이기)
+    @State private var edit: EditTarget? = nil      // 열린 고치기 시트
     @Environment(\.dynamicTypeSize) private var dts
+
+    struct EditTarget: Identifiable { let sym: Symbol; let mode: String; var id: String { sym.id + mode } }
 
     var body: some View {
         let rows = m.rows
@@ -16,6 +20,10 @@ struct HoldingsView: View {
                 totalChart(rows)
                 ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true)
                 HStack {
+                    Button { withAnimation(.snappy) { editing.toggle() } } label: {
+                        Label(editing ? "다 고쳤어요" : "수량·단가 고치기", systemImage: editing ? "checkmark" : "pencil")
+                            .appFont(13, .bold).foregroundStyle(Theme.teal).frame(minHeight: 32)
+                    }
                     Spacer()
                     Menu {
                         ForEach(HoldSort.allCases, id: \.self) { c in
@@ -32,7 +40,21 @@ struct HoldingsView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(m.sortedRows.enumerated()), id: \.element.id) { i, r in
                         if i > 0 { Divider().overlay(Theme.line) }
-                        NavigationLink(value: r.sym) { row(r) }.buttonStyle(.plain)
+                        Group {
+                            if editing {
+                                Button { edit = EditTarget(sym: r.sym, mode: "fix") } label: { row(r) }
+                                    .accessibilityHint("수량과 평균 단가를 고쳐요")
+                            } else {
+                                NavigationLink(value: r.sym) { row(r) }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        // 길게 누르면 바로 고치기 · 더 샀어요 · 팔았어요
+                        .contextMenu {
+                            Button { edit = EditTarget(sym: r.sym, mode: "fix") } label: { Label("수량·단가 고치기", systemImage: "pencil") }
+                            Button { edit = EditTarget(sym: r.sym, mode: "buy") } label: { Label("더 샀어요", systemImage: "plus.circle") }
+                            Button { edit = EditTarget(sym: r.sym, mode: "sell") } label: { Label("팔았어요", systemImage: "minus.circle") }
+                        }
                     }
                 }
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
@@ -43,7 +65,7 @@ struct HoldingsView: View {
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
-                Text("점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가")
+                Text("점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가 · 종목을 길게 누르면 바로 고쳐요")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
@@ -54,6 +76,14 @@ struct HoldingsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
         .navigationDestination(for: String.self) { _ in AddHoldingView() }
+        .sheet(item: $edit) { t in
+            NavigationStack {
+                HoldingEditView(sym: t.sym, mode: t.mode)
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { edit = nil } } }
+            }
+            .environment(m)
+            .presentationDetents([.large])
+        }
     }
 
     private func totalChart(_ rows: [AppModel.Row]) -> some View {
@@ -82,8 +112,13 @@ struct HoldingsView: View {
             LogoTile(symbol: r.id, size: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.sym.name).appFont(15, .bold)
-                Text("\(r.id) · \(AppModel.price(r.sym, r.sym.last)) · \(AppModel.pct(r.value / max(1, m.total)))")
-                    .appFont(12).foregroundStyle(Theme.sub)
+                if editing {
+                    Text("\(r.h.qty.formatted())주 · 평균 \(AppModel.price(r.sym, r.h.avg))")
+                        .appFont(12, .semibold).foregroundStyle(Theme.teal)
+                } else {
+                    Text("\(r.id) · \(AppModel.price(r.sym, r.sym.last)) · \(AppModel.pct(r.value / max(1, m.total)))")
+                        .appFont(12).foregroundStyle(Theme.sub)
+                }
             }
         }
         let amount = VStack(alignment: .trailing, spacing: 2) {
@@ -95,7 +130,10 @@ struct HoldingsView: View {
                 // 아주 큰 글자: 이름 줄 아래에 그래프와 금액
                 VStack(alignment: .leading, spacing: 8) {
                     name
-                    HStack { Sparkline(points: pts, avg: r.h.avg).frame(height: 36); amount }
+                    HStack {
+                        Sparkline(points: pts, avg: r.h.avg).frame(height: 36); amount
+                        if editing { Image(systemName: "pencil.circle.fill").font(.system(size: 28)).foregroundStyle(Theme.teal) }
+                    }
                 }
                 .padding(.vertical, 10)
             } else {
@@ -104,6 +142,10 @@ struct HoldingsView: View {
                     Spacer(minLength: 4)
                     Sparkline(points: pts, avg: r.h.avg).frame(width: 64, height: 30)
                     amount.frame(minWidth: 72, alignment: .trailing)
+                    if editing {
+                        Image(systemName: "pencil.circle.fill").font(.system(size: 24)).foregroundStyle(Theme.teal)
+                            .transition(.scale.combined(with: .opacity))
+                    }
                 }
             }
         }
@@ -376,10 +418,12 @@ struct HoldingEditView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.dismiss) private var dismiss
     let sym: Symbol
-    @State private var mode = "fix"
+    @State private var mode: String
     @State private var q = ""
     @State private var p = ""
     @State private var said: String? = nil     // 매매를 저장한 뒤 인물의 한 줄 (평정 지수)
+
+    init(sym: Symbol, mode: String = "fix") { self.sym = sym; _mode = State(initialValue: mode) }
 
     var body: some View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
