@@ -47,6 +47,8 @@ struct Calm: Codable, Equatable {
     var typeMonth: String? = nil   // 유형을 마지막으로 정한 달 (yyyy-MM). 한 달에 한 번만 바뀐다
     var prevType: String? = nil
     var together: [String] = []    // 지금 인물과 함께한 날 (앱을 연 날)
+    var ladder: Ladder? = nil      // 습관 사다리: 지금 유형의 걸음 (예전 저장값엔 없어서 옵셔널)
+    var notes: [CalmNote]? = nil   // 홈 리마인드가 가져갈 사다리 소식 (takeNotes)
 
     static let weekCap = 5         // 한 주에 쌓을 수 있는 플러스 점수
     static let minEvents = 10      // 이보다 적으면 매칭하지 않는다
@@ -86,11 +88,13 @@ struct Calm: Codable, Equatable {
         events.append(e)
         if events.count > 400 { events.removeFirst(events.count - 400) }
         refreshType()
+        climb()
     }
 
     /// 앱을 연 날: 지금 인물과 함께한 날을 하나 센다
     mutating func touch(_ today: String = Day.today) {
-        refreshType()
+        refreshType(today)
+        climb(today)
         if type != nil, together.last != today { together.append(today) }
     }
 
@@ -101,7 +105,11 @@ struct Calm: Codable, Equatable {
         if type == nil { type = c; typeMonth = month; return }
         guard typeMonth != month else { return }
         typeMonth = month
-        if c != type { prevType = type; type = c; together = [] }
+        if c != type {
+            let up: Bool? = Self.rank(c) == Self.rank(type) ? nil : Self.rank(c) > Self.rank(type)
+            note(CalmNote(kind: "calm.type.changed", type: c, day: today, from: type, up: up))
+            prevType = type; type = c; together = []
+        }
     }
 
     /// 애착 단계: 함께한 날 14일 미만 1, 60일 미만 2, 그 뒤 3
@@ -158,18 +166,18 @@ struct Calm: Codable, Equatable {
 
     // MARK: 인물 문구
 
-    struct Kind { let id: String; let title: String; let when: String; let like: String; let next: String }
+    struct Kind { let id: String; let title: String; let when: String; let like: String }
     static let kinds: [Kind] = [
         .init(id: "ir", title: "앞서 달리는 형", when: "수익 뒤 추가 매수나 손실 뒤 매도가 60% 이상",
-              like: "너무 빨랐던 사람. 연결을 다섯, 스물, 백으로 넓히다 넘쳤다.", next: "넘치기 전에 멈춘 한 번을 모아요."),
+              like: "너무 빨랐던 사람. 연결을 다섯, 스물, 백으로 넓히다 넘쳤다."),
         .init(id: "sua", title: "자라는 형", when: "최근 30일 지수가 그 전보다 10 이상 올랐을 때",
-              like: "침묵을 고르는 법을 배운다. 제때 오는 것을 몸으로 느낀다.", next: "올라온 지수를 지켜요."),
+              like: "침묵을 고르는 법을 배운다. 제때 오는 것을 몸으로 느낀다."),
         .init(id: "seonbae", title: "되묻는 형", when: "수익 뒤 덜어내기·규칙 안의 역방향 매매가 절반 이상, 지수 60 이상",
-              like: "질문으로 말한다. \"그게 정말 네 생각이야.\"", next: "역발상도 규칙으로 남겨요."),
+              like: "질문으로 말한다. \"그게 정말 네 생각이야.\""),
         .init(id: "sio", title: "기다리는 형", when: "한 달 매매 2번 이하, 큰 변동일에 기다린 비율 60% 이상",
-              like: "지연을 센다. 목표 100에 닿자 판다.", next: "기다림 끝에 정한 목표를 지켜요."),
+              like: "지연을 센다. 목표 100에 닿자 판다."),
         .init(id: "seri", title: "원칙형", when: "지수 80 이상, 매매의 절반 이상이 규칙대로",
-              like: "한 박자 두고 관찰과 사실만 말한다.", next: "지금처럼 유지해요."),
+              like: "한 박자 두고 관찰과 사실만 말한다."),
     ]
     static func kind(_ id: String?) -> Kind? { kinds.first { $0.id == id } }
 
@@ -218,6 +226,173 @@ struct Calm: Codable, Equatable {
                     .avgDown: "더 샀네요. 점수는 그대로예요.", .trim: "덜었네요. 점수는 그대로예요.", .wait: "오늘은 침묵을 골랐어요."],
         ]
         return lines[who]?[a] ?? lines["seri"]![a]!
+    }
+}
+
+// MARK: 습관 사다리
+// 유형마다 잴 수 있는 걸음 3개. 걸음은 시작한 날부터 세고, 완료한 걸음은 내려가지 않는다.
+// 매매를 더 해야 오르는 걸음은 두지 않는다 (기다림·규칙 신호·지켜 온 날로 오른다).
+// 순서는 지수 기준일 뿐, 화면에서 인물 순위로 보여 주지 않는다. 근거: notes/평정-습관-사다리-2026-10-11.md
+
+struct Ladder: Codable, Equatable {
+    struct Done: Codable, Equatable { var type: String; var step: Int; var day: String }
+    var type: String
+    var step = 1               // 지금 걸음 (1~3). 4 = 이 유형의 걸음을 다 오름
+    var since: String          // 지금 걸음을 시작한 날
+    var hold: String? = nil    // 지수가 기준 이상으로 처음 올라선 날 (내려가면 비운다)
+    var keeps = 0              // 세리: 여섯 달 걸음 뒤 더 지킨 반년 수
+    var progDay: String? = nil // 진행 소식을 마지막으로 낸 날 (하루 한 번)
+    var progCur = 0
+    var done: [Done] = []      // 유형이 바뀌어도 남는다
+}
+
+/// 홈 리마인드가 받는 사다리 소식. kind: calm.step.done · calm.step.progress · calm.type.changed · calm.top.keep
+struct CalmNote: Codable, Equatable {
+    var kind: String
+    var type: String
+    var day: String
+    var step: Int? = nil
+    var name: String? = nil
+    var cur: Int? = nil
+    var goal: Int? = nil
+    var from: String? = nil
+    var up: Bool? = nil        // 유형이 지수 기준으로 위로 옮겼는지 (같은 칸이면 nil)
+    var months: Int? = nil
+}
+
+struct StepProgress { let cur: Int; let goal: Int; let text: String; var done: Bool { cur >= goal } }
+
+extension Calm {
+    struct Step { let name: String; let what: String }
+    static let steps: [String: [Step]] = [
+        "ir": [.init(name: "넘치기 전 멈춤", what: "큰 변동일(±5%)에 매매 없이 지나간 날 3번"),
+               .init(name: "쫓기 줄이기", what: "수익 뒤 추가 매수·손실 뒤 매도가 매매의 40% 미만, 또는 30일 동안 0번"),
+               .init(name: "지수 +10", what: "최근 30일 지수가 그 전 30일보다 10 이상")],
+        "sua": [.init(name: "오른 지수 지키기", what: "30일 동안 수익 뒤 추가 매수·손실 뒤 매도 0번"),
+                .init(name: "규칙대로 3번", what: "규칙 신호(비중 이탈·그달 첫 적립)에 맞춘 매매 3번"),
+                .init(name: "지수 70 두 달", what: "평정 지수 70 이상을 60일 지키기")],
+        "seonbae": [.init(name: "역발상을 규칙 안에서", what: "덜어내기·물타기 같은 역방향 매매 중 절반 이상을 규칙 신호에 맞추기 (2건 이상)"),
+                    .init(name: "물타기 쉬기", what: "30일 동안 규칙 밖 물타기 0번"),
+                    .init(name: "규칙대로 절반", what: "걸음 시작 뒤 매매 절반 이상이 규칙대로, 지수 80 이상")],
+        "sio": [.init(name: "흔들림 지키기", what: "30일 동안 큰 변동일에 기다린 비율 60% 이상"),
+                .init(name: "기다리다 놓치지 않기", what: "규칙 신호가 왔을 때 규칙대로 1번 실행"),
+                .init(name: "규칙대로 절반", what: "걸음 시작 뒤 매매 절반 이상이 규칙대로, 지수 80 이상")],
+        "seri": [.init(name: "한 달 유지", what: "평정 지수 80 이상을 30일"),
+                 .init(name: "석 달 유지", what: "평정 지수 80 이상을 90일"),
+                 .init(name: "여섯 달 유지", what: "평정 지수 80 이상을 180일")],
+    ]
+
+    /// 지수 기준 칸 (소식의 위·아래 판단용. 화면에 순위로 쓰지 않는다)
+    static func rank(_ id: String?) -> Int { ["ir": 0, "sua": 1, "seonbae": 2, "sio": 2, "seri": 3][id ?? ""] ?? -1 }
+    static func holdLine(_ id: String) -> Int { id == "sua" ? 70 : 80 }
+
+    private static func days(_ from: String, _ to: String) -> Int {
+        guard let a = Day.date(from), let b = Day.date(to) else { return 0 }
+        return max(0, Int((b.timeIntervalSince(a) / 86400).rounded()))
+    }
+    private static func pct(_ x: Double) -> String { "\(Int((x * 100).rounded()))%" }
+
+    /// 지금 걸음의 진행
+    func progress(_ today: String = Day.today) -> StepProgress? {
+        guard let l = ladder, (1...3).contains(l.step) else { return nil }
+        let ev = events.filter { $0.day >= l.since }, t = ev.filter(\.isTrade)
+        let bad = t.filter { $0.act == .chase || $0.act == .switchOut }
+        let s = stats(today), held = l.hold.map { Self.days($0, today) } ?? 0
+        // 마지막으로 어긴 날(없으면 걸음 시작일)부터 지켜 온 날
+        let streak = { (broke: [CalmEvent]) in Self.days(broke.map(\.day).max() ?? l.since, today) }
+        let half = { () -> StepProgress in
+            let r = t.isEmpty ? 0 : Double(t.filter { $0.act == .rule }.count) / Double(t.count)
+            let ok = t.count >= 2 && r >= 0.5 && s.index >= 80
+            return .init(cur: ok ? 1 : 0, goal: 1, text: "규칙대로 \(Self.pct(r)) · 지수 \(s.index)")
+        }
+        switch (l.type, l.step) {
+        case ("ir", 1):
+            let n = ev.filter { $0.act == .wait }.count
+            return .init(cur: n, goal: 3, text: "멈춤 \(min(n, 3))/3")
+        case ("ir", 2):
+            if t.count >= 3 {
+                let r = Double(bad.count) / Double(t.count)
+                return .init(cur: r < 0.4 ? 1 : 0, goal: 1, text: "쫓은 매매 \(Self.pct(r)) (40% 미만이면 완료)")
+            }
+            let d = bad.isEmpty ? Self.days(l.since, today) : 0
+            return .init(cur: d, goal: 30, text: "쫓지 않은 날 \(min(d, 30))/30")
+        case ("ir", 3):
+            let tr = s.trend ?? 0
+            return .init(cur: max(0, tr), goal: 10, text: s.trend == nil ? "30일씩 매매 5건이 모이면 재요" : "지난 30일보다 \(tr >= 0 ? "+" : "")\(tr) (목표 +10)")
+        case ("sua", 1):
+            let d = streak(bad)
+            return .init(cur: d, goal: 30, text: "쫓지 않은 날 \(min(d, 30))/30")
+        case ("sua", 2):
+            let n = t.filter { $0.act == .rule }.count
+            return .init(cur: n, goal: 3, text: "규칙대로 \(min(n, 3))/3")
+        case ("sua", 3):
+            return .init(cur: held, goal: 60, text: "지수 70 이상 \(min(held, 60))/60일")
+        case ("seonbae", 1):
+            let c = t.filter { $0.act == .trim || $0.act == .avgDown || ($0.act == .rule && $0.buy != $0.win) }
+            let r = c.isEmpty ? 0 : Double(c.filter { $0.act == .rule }.count) / Double(c.count)
+            return .init(cur: c.count >= 2 && r >= 0.5 ? 1 : 0, goal: 1, text: "역방향 매매 \(c.count)건 중 규칙대로 \(Self.pct(r))")
+        case ("seonbae", 2):
+            let d = streak(t.filter { $0.act == .avgDown })
+            return .init(cur: d, goal: 30, text: "물타기 없이 \(min(d, 30))/30일")
+        case ("sio", 1):
+            let w = ev.filter { $0.act == .wait }.count, b = t.filter(\.big).count
+            let r = w + b == 0 ? 1 : Double(w) / Double(w + b)
+            let d = r >= 0.6 ? Self.days(l.since, today) : 0
+            return .init(cur: d, goal: 30, text: "기다림 \(Self.pct(r)) · \(min(d, 30))/30일")
+        case ("sio", 2):
+            let n = t.filter { $0.act == .rule }.count
+            return .init(cur: n, goal: 1, text: n > 0 ? "규칙대로 1번 했어요" : "규칙 신호가 오면 그때 한 번")
+        case ("seonbae", 3), ("sio", 3):
+            return half()
+        case ("seri", let k):
+            let g = [30, 90, 180][k - 1]
+            return .init(cur: held, goal: g, text: "지수 80 이상 \(min(held, g))/\(g)일")
+        default: return nil
+        }
+    }
+
+    /// 유형이 정해지면 사다리를 맞추고, 걸음이 끝났으면 다음 걸음으로. 소식은 notes에 쌓는다
+    mutating func climb(_ today: String = Day.today) {
+        guard let t = type, Self.steps[t] != nil else { return }
+        if ladder?.type != t { ladder = Ladder(type: t, since: today, done: ladder?.done ?? []) }
+        let s = stats(today)
+        let h0 = ladder?.hold
+        ladder?.hold = s.n >= Self.minEvents && s.index >= Self.holdLine(t) ? (h0 ?? today) : nil
+        for _ in 0..<3 {
+            guard var l = ladder, (1...3).contains(l.step), let p = progress(today), p.done else { break }
+            let name = Self.steps[t]![l.step - 1].name
+            l.done.append(.init(type: t, step: l.step, day: today))
+            note(CalmNote(kind: "calm.step.done", type: t, day: today, step: l.step, name: name))
+            l.step += 1; l.since = today; l.progCur = 0
+            ladder = l
+        }
+        guard var l = ladder else { return }
+        if t == "seri", l.step > 3, let h = l.hold, Self.days(h, today) >= 180 * (l.keeps + 2) {
+            l.keeps += 1
+            note(CalmNote(kind: "calm.top.keep", type: t, day: today, months: 6 * (l.keeps + 1)))
+        }
+        if let p = progress(today), p.cur > l.progCur, l.progDay != today {
+            l.progCur = p.cur; l.progDay = today
+            note(CalmNote(kind: "calm.step.progress", type: t, day: today, step: l.step, name: Self.steps[t]![l.step - 1].name, cur: min(p.cur, p.goal), goal: p.goal))
+        }
+        ladder = l
+    }
+
+    mutating func note(_ n: CalmNote) {
+        var a = notes ?? []
+        // 같은 걸음의 진행 소식은 마지막 것만
+        if n.kind == "calm.step.progress" { a.removeAll { $0.kind == n.kind && $0.type == n.type && $0.step == n.step } }
+        a.append(n)
+        notes = Array(a.suffix(30))
+    }
+
+    /// 홈 리마인드가 소식을 가져가면 비운다
+    mutating func takeNotes() -> [CalmNote] { defer { notes = nil }; return notes ?? [] }
+
+    /// 걸음 완료 한 줄 (인물 말투, 대사 데이터 ladder.<유형>.<걸음> 이 있으면 그것)
+    static func stepLine(_ type: String, _ step: Int, who: String) -> String {
+        if let l = Lines.pick("ladder.\(type).\(step).\(who)") ?? Lines.pick("ladder.\(type).\(step)") { return l }
+        return "걸음 \(step) '\(steps[type]?[step - 1].name ?? "")'을 마쳤어요."
     }
 }
 
