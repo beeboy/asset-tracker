@@ -16,12 +16,12 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
     var paddle: Double { switch self { case .easy: 9; case .normal: 7; case .hard: 5.5 } }     // 판 길이 (칸)
     var lives: Int { switch self { case .easy: 5; case .normal: 3; case .hard: 2 } }
     /// 단계를 깨는 기준: 깰 수 있는 벽돌 중 이만큼
-    var clear: Double { switch self { case .easy: 0.5; case .normal: 0.65; case .hard: 0.8 } }
+    var clear: Double { switch self { case .easy: 0.6; case .normal: 0.75; case .hard: 0.9 } }
     var note: String {
         switch self {
-        case .easy: "판이 길고 한꺼번에 많이 깨져요. 블럭의 50%를 깨면 다음 단계가 열려요."
-        case .normal: "블럭의 65%를 깨면 다음 단계가 열려요."
-        case .hard: "블럭의 80%를 깨면 다음 단계가 열려요."
+        case .easy: "판이 길고 한꺼번에 많이 깨져요. 블럭의 60%를 깨면 다음 단계가 열려요."
+        case .normal: "블럭의 75%를 깨면 다음 단계가 열려요."
+        case .hard: "블럭의 90%를 깨면 다음 단계가 열려요."
         }
     }
     /// 한 번 맞히면 같이 깨지는 칸 (가운데 기준 (가로, 세로))
@@ -33,8 +33,8 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
         case .easy: return plus + [(1, 1), (1, -1), (-1, 1), (-1, -1), (2, 0), (-2, 0), (0, 2), (0, -2)]
         }
     }
-    /// 특수 블럭 비율 (폭탄·한 줄·공 셋·선물)
-    var special: Double { switch self { case .easy: 0.12; case .normal: 0.09; case .hard: 0.07 } }
+    /// 숨겨 두는 특수 블럭 수 (연습판 기준, 단계마다 5%씩 줄어든다)
+    var special: Int { switch self { case .easy: 20; case .normal: 12; case .hard: 7 } }
     var easier: GameLevel? { switch self { case .easy: nil; case .normal: .easy; case .hard: .normal } }
 }
 
@@ -50,10 +50,12 @@ struct GameStage: Identifiable {
     var portal = false        // 4권: 양쪽 벽이 입구, 반대편으로 나온다
     var sway = false          // 5권: 벽돌 줄이 물결처럼 흔들림
     var dash = false          // 7권: 줄표(—) 벽은 깨지지 않는다
-    var hard2 = 0.0           // 10권: 안 구운 그릇 벽돌 (두 번 쳐야 깨짐) 비율
+    var hard2 = 0.0           // 10권: 안 구운 그릇 벽돌 (세 번 쳐야 깨짐) 비율
     var id: Int { n }
     /// 단계가 오를수록 채운 칸 위에 더 쌓는 벽돌 수 (연습판 0, 외전 515)
     var extra: Int { n == 0 ? 0 : 20 + n * 45 }
+    /// 이 단계의 특수 블럭 수: 난이도가 높을수록, 단계가 오를수록 적다
+    func specials(_ lv: GameLevel) -> Int { max(2, Int((Double(lv.special) * (1 - 0.05 * Double(n))).rounded())) }
     var bg: ShelterBG { Shelter.backgrounds[n] }
 
     static let all: [GameStage] = [
@@ -67,7 +69,7 @@ struct GameStage: Identifiable {
         GameStage(n: 7, rule: "가운데 줄표(—)는 깨지지 않는 벽이에요.", dash: true),
         GameStage(n: 8, rule: "충전할 곳이 없어요. 물건이 떨어지지 않아요.", items: false),
         GameStage(n: 9, rule: "화산 연기가 공을 판 쪽으로 밀어 올려요.", gravity: -6),
-        GameStage(n: 10, rule: "안 구운 그릇 벽돌은 두 번 쳐야 깨져요.", hard2: 0.3),
+        GameStage(n: 10, rule: "안 구운 그릇 벽돌은 세 번 쳐야 깨져요.", hard2: 0.3),
         GameStage(n: 11, rule: "모든 규칙이 조금씩 섞인 자유판.", flicker: true, portal: true, sway: true, hard2: 0.15),
     ]
 }
@@ -299,6 +301,7 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var hp = [Int8](repeating: 0, count: 1000)     // 0 빈칸, -1 깨지지 않는 벽, 1·2 남은 횟수
     @ObservationIgnored var kind = [UInt8](repeating: 0, count: 1000)  // 1 바닥에도 있던 칸, 2 회복한 칸, 3 오늘 늘어난 칸, 4 연습 칸, 5 단계가 더 쌓은 칸
     @ObservationIgnored var special = [Special?](repeating: nil, count: 1000)
+    @ObservationIgnored var revealed = [Bool](repeating: false, count: 1000)   // 특수 블럭은 한 번 맞아야 보인다
     @ObservationIgnored var blasts: [Blast] = []          // 터지는 그림 (잠깐)
     @ObservationIgnored var stacked = 0                   // 이 단계에서 더 쌓은 벽돌
     @ObservationIgnored var combo = 0                     // 판에 다시 닿기 전까지 깬 벽돌
@@ -347,17 +350,20 @@ final class BrickGame: Identifiable {
         // 칸이 적어도 놀 수 있게 120칸까지는 연습 칸으로 채운다
         let f = max(0, min(1000, filled)), n = max(f, 120)
         for i in 0..<n {
-            hp[i] = Double.random(in: 0..<1) < stage.hard2 ? 2 : 1
+            hp[i] = Double.random(in: 0..<1) < stage.hard2 ? 3 : 2      // 모든 벽돌은 두 번 맞아야 깨진다
             kind[i] = i >= f ? 4 : i < floor ? 1 : (yesterday < f && i >= yesterday) ? 3 : 2
         }
-        // 단계가 오를수록 위에 더 쌓는다. 자리가 없으면 그만큼 기존 벽돌을 두 번 쳐야 깨지게
+        // 단계가 오를수록 위에 더 쌓는다. 자리가 없으면 그만큼 기존 벽돌을 한 번 더 쳐야 깨지게
         let room = min(stage.extra, 1000 - n)
-        for i in n..<(n + room) { hp[i] = 1; kind[i] = 5 }
+        for i in n..<(n + room) { hp[i] = 2; kind[i] = 5 }
         stacked = room
-        for i in (0..<n).shuffled().prefix(stage.extra - room) { hp[i] = 2 }
-        // 특수 블럭을 고루 섞는다 (폭탄이 가장 많다)
+        for i in (0..<n).shuffled().prefix(stage.extra - room) { hp[i] = 3 }
+        // 특수 블럭 몇 개를 맨 위 3번째 줄부터 바닥까지 숨긴다 (폭탄이 가장 많다)
+        let topRow = ((0..<1000).last { hp[$0] > 0 } ?? 0) / 40
         let pool: [Special] = [.bomb, .bomb, .bomb, .row, .col, .multi, .gift]
-        for i in 0..<1000 where hp[i] > 0 && Double.random(in: 0..<1) < level.special { special[i] = pool.randomElement() }
+        for i in (0..<1000).filter({ hp[$0] > 0 && $0 / 40 <= topRow - 2 }).shuffled().prefix(stage.specials(level)) {
+            special[i] = pool.randomElement()
+        }
         if stage.dash { for c in 14...25 { hp[12 * 40 + c] = -1 } }
         if stage.flicker { exitCell = (0..<1000).last { hp[$0] > 0 } ?? -1 }
         total = hp.filter { $0 > 0 }.count
@@ -587,20 +593,20 @@ final class BrickGame: Identifiable {
     private func hit(_ i: Int) {
         guard hp[i] > 0 else { return }
         buzz()
-        if hp[i] == 2 { hp[i] = 1; GameSound.shared.play(.tough); return }
-        GameSound.shared.play(.hit)
-        let row = i / 40, col = i % 40
+        let row = i / 40, col = i % 40, before = broken
         var queue: [Int] = []
+        // 맞은 곳 둘레를 한 번씩 깎는다 (두 번째에 깨진다)
         for (dx, dy) in level.burst {
             let c = col + dx, r = row + dy
             guard c >= 0, c < 40, r >= 0, r < 25 else { continue }
             crack(r * 40 + c, &queue)
         }
+        GameSound.shared.play(broken > before ? .hit : .tough)
         // 특수 블럭은 이어서 터진다 (폭탄이 폭탄을 터뜨리는 연쇄)
         var k = 0
         while k < queue.count { let j = queue[k]; trigger(j, &queue); k += 1 }
         if kind[i] == 3 { effects["fast"] = t + 5 }
-        if !items.isEmpty, Double.random(in: 0..<1) < 0.14, let it = items.randomElement() {
+        if broken > before, !items.isEmpty, Double.random(in: 0..<1) < 0.14, let it = items.randomElement() {
             drops.append(Drop(id: it, x: Double(col) + 0.5, y: rect(i).midY))
         }
         if combo / 15 > comboSaid { comboSaid = combo / 15; say("콤보 \(combo)!") }
@@ -610,6 +616,7 @@ final class BrickGame: Identifiable {
     private func crack(_ j: Int, _ queue: inout [Int], all: Bool = false) {
         guard hp[j] > 0 else { return }
         hp[j] = all ? 0 : hp[j] - 1
+        revealed[j] = true
         guard hp[j] == 0 else { return }
         broken += 1; combo += 1
         var mul = skill == "ir" ? 1.5 : 1.0

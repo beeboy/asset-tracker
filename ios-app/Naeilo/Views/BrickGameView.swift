@@ -416,11 +416,18 @@ struct BrickPlayView: View {
                 let b = g.rect(i)
                 let rc = r(b.minX + 0.05, b.minY + 0.05, 0.9, 0.9)
                 if g.hp[i] < 0 { ctx.fill(Path(rc), with: .color(Theme.ink)); continue }
-                if let sp = g.special[i] { special(&ctx, sp, rc, now); continue }
+                if let sp = g.special[i], g.revealed[i] { special(&ctx, sp, rc, now); continue }
                 let c: Color = switch g.kind[i] { case 1: brickDark; case 3: brickLight; case 4: Theme.track; case 5: stackColor; default: brickLight }
                 ctx.fill(Path(rc), with: .color(c))
                 if g.kind[i] == 3 { ctx.stroke(Path(rc.insetBy(dx: 0.6, dy: 0.6)), with: .color(Theme.up), lineWidth: 1.2) }
-                if g.hp[i] == 2 { ctx.fill(Path(roundedRect: rc.insetBy(dx: rc.width * 0.22, dy: rc.height * 0.22), cornerRadius: 1.5), with: .color(clay)) }
+                if g.hp[i] >= 3 { ctx.fill(Path(roundedRect: rc.insetBy(dx: rc.width * 0.22, dy: rc.height * 0.22), cornerRadius: 1.5), with: .color(clay)) }
+                if g.hp[i] == 1 {   // 한 번 맞은 벽돌: 금이 간다
+                    var p = Path()
+                    p.move(to: CGPoint(x: rc.minX + rc.width * 0.2, y: rc.minY + rc.height * 0.15))
+                    p.addLine(to: CGPoint(x: rc.midX, y: rc.midY))
+                    p.addLine(to: CGPoint(x: rc.maxX - rc.width * 0.25, y: rc.maxY - rc.height * 0.1))
+                    ctx.stroke(p, with: .color(.white.opacity(0.85)), lineWidth: max(1, rc.width * 0.12))
+                }
             }
             // 특수 블럭이 터지는 그림
             for b in g.blasts {
@@ -520,7 +527,7 @@ struct BrickPlayView: View {
         }
     }
 
-    static let specialNote = "폭탄은 둘레를, 주황 줄은 한 줄을 통째로 깨요. 파랑은 공 셋, 노랑은 선물."
+    static let specialNote = "벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 몇 개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물."
 
     @ViewBuilder private func overlay(_ g: BrickGame) -> some View {
         switch g.phase {
