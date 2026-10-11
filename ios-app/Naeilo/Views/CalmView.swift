@@ -20,6 +20,9 @@ struct CalmCard: View {
                     }
                     Text(m.calm.say(s, who: m.voice(who))).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(Color(hex: 0xEEF0F3))
+                    if let l = m.calm.ladder, let p = m.calm.progress() {
+                        Text("걸음 \(l.step)/3 · \(p.text)").appFont(12).foregroundStyle(Theme.mint)
+                    }
                 }
             }
             // 홈의 지금 평가액 카드처럼 진한 바탕
@@ -56,11 +59,13 @@ struct CalmView: View {
                     Text(m.calm.say(s, who: m.voice(who))).appFont(15).lineSpacing(3)
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 12))
-                    if let k { Text("다음 걸음: " + k.next).appFont(13, .semibold).foregroundStyle(Theme.teal) }
                     if let p = m.calm.prevType, let pk = Calm.kind(p), let pn = Shelter.friends.first(where: { $0.id == p })?.name {
                         Text("지난달 \(pn)(\(pk.title))에서 옮겨 왔어요.").appFont(12).foregroundStyle(Theme.muted)
                     }
                 }
+
+                // 습관 사다리
+                if let l = m.calm.ladder, let steps = Calm.steps[l.type] { ladder(l, steps) }
 
                 // 숫자
                 Card {
@@ -119,6 +124,42 @@ struct CalmView: View {
         }
         .background(Theme.bg)
         .navigationTitle("평정 지수").navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// 지금 유형의 걸음 3개: 완료한 날, 지금 걸음 진행. 인물 순위는 보여 주지 않는다
+    private func ladder(_ l: Ladder, _ steps: [Calm.Step]) -> some View {
+        let p = m.calm.progress()
+        return Card {
+            HStack(alignment: .firstTextBaseline) {
+                Text("다음 걸음").appFont(15, .bold)
+                Spacer()
+                Text(l.step > 3 ? "다 올랐어요" : "\(l.step)/3").appFont(13, .semibold).foregroundStyle(Theme.teal)
+            }
+            ForEach(Array(steps.enumerated()), id: \.offset) { i, st in
+                let n = i + 1, on = n == l.step, did = n < l.step
+                let day = l.done.last { $0.type == l.type && $0.step == n }?.day
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: did ? "checkmark.circle.fill" : on ? "circle.dotted" : "circle")
+                        .foregroundStyle(did || on ? Theme.teal : Theme.muted)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text(st.name).appFont(14, on ? .bold : .semibold).foregroundStyle(did ? Theme.sub : Theme.ink)
+                            Spacer()
+                            if did, let day { Text(Day.md(day)).appFont(12).foregroundStyle(Theme.muted) }
+                        }
+                        Text(st.what).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                        if on, let p {
+                            ProgressBar(value: min(1, Double(p.cur) / Double(max(1, p.goal))), fill: Theme.teal, track: Theme.track)
+                            Text(p.text).appFont(12, .semibold).foregroundStyle(Theme.teal)
+                        }
+                    }
+                }
+            }
+            if l.step > 3 {
+                Text(l.type == "seri" ? "지금처럼 지켜요. 여섯 달마다 기록해 둘게요." : "유형은 한 달에 한 번 다시 봐요. 그때 새 걸음이 열려요.")
+                    .appFont(12).foregroundStyle(Theme.muted)
+            }
+        }
     }
 
     private func row(_ k: String, _ v: String) -> some View {
