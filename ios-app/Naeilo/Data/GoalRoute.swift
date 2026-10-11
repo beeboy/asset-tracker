@@ -66,6 +66,8 @@ extension AppModel {
 
     func simulate(_ mx: GoalMix, monthly: Double? = nil) -> GoalSim {
         let mo = monthly ?? gM, gY = self.gY, K = gK, A = goalStart
+        let ck = "\(mx.mu)|\(mx.sigma)|\(mo)|\(gY)|\(K)|\(A)"
+        if let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal) }
         var seed = 12345
         func rnd() -> Double { seed = (seed &* 1103515245 &+ 12345) % 2147483648; return (Double(seed) + 0.5) / 2147483648 }
         let NP = 500, H = min(40, gY * 2 + 5) * 12
@@ -86,9 +88,12 @@ extension AppModel {
         }
         func q(_ a: [Double], _ f: Double) -> Double { let s = a.sorted(); return s[min(s.count - 1, Int(f * Double(s.count)))] }
         let prob = Double(hits.filter { $0 <= Double(gY * 12) }.count) / Double(NP)
-        return GoalSim(mix: mx, prob: prob, etaMonths: q(hits, 0.5),
-                       med: byYear.map { q($0, 0.5) }, lo: byYear.map { q($0, 0.05) }, hi: byYear.map { q($0, 0.95) },
-                       principal: (0...gY).map { A + mo * 12 * Double($0) })
+        let r = GoalSim(mix: mx, prob: prob, etaMonths: q(hits, 0.5),
+                        med: byYear.map { q($0, 0.5) }, lo: byYear.map { q($0, 0.05) }, hi: byYear.map { q($0, 0.95) },
+                        principal: (0...gY).map { A + mo * 12 * Double($0) })
+        if simCache.count > 64 { simCache.removeAll() }
+        simCache[ck] = r
+        return r
     }
 
     /// 보통의 경우 기준으로 목표에 맞추려면 매달 넣을 돈 (만원)

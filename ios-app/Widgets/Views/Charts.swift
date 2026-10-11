@@ -105,20 +105,8 @@ struct FanChart: View {
             }
         }
     }
-    private func yymm(_ d: Date) -> String { let f = DateFormatter(); f.dateFormat = "yy.MM"; return f.string(from: d) }
-}
-
-/// 원형 진행 링
-struct Ring: View {
-    let progress: Double
-    var color: Color
-    var line: CGFloat = 11
-    var body: some View {
-        ZStack {
-            Circle().stroke(Palette.ink.opacity(0.14), lineWidth: line)
-            Circle().trim(from: 0, to: min(1, max(0, progress))).stroke(color, style: StrokeStyle(lineWidth: line, lineCap: .round)).rotationEffect(.degrees(-90))
-        }
-    }
+    private static let yymmF: DateFormatter = { let f = DateFormatter(); f.dateFormat = "yy.MM"; return f }()
+    private func yymm(_ d: Date) -> String { Self.yymmF.string(from: d) }
 }
 
 /// 범위 막대: lo~hi 진한 구간, 중앙 눈금, 지금 위치 ▼

@@ -9,7 +9,6 @@
   1) web/ 폴더의 화면(HTML/JS)을 내 PC 안에서만 보여 준다 (127.0.0.1, 외부 접속 불가).
   2) 브라우저가 직접 부를 수 없는 Yahoo Finance 시세를 대신 받아 data/prices/ 에 저장한다.
   3) 화면에서 입력한 종목·목표·사건 목록을 data/state.json 에 저장한다.
-  4) 인사이트 화면의 뉴스를 한 시간마다 모은다 (news.py, 번역·요약은 data/config.json 의 AI 중계).
 계산(칼만 필터, 몬테카를로 전망)은 모두 브라우저에서 한다.
 """
 from __future__ import annotations
@@ -45,7 +44,6 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "appl
 FX_SYMBOLS = {"USD": "KRW=X"}  # 통화 -> 원화 환율 심볼
 # 외부 요인 분석용 대리 지표: 시장(S&P500), 미국 10년 금리, WTI 유가, 금, 원자재 지수
 FACTOR_SYMBOLS = ["SPY", "^TNX", "CL=F", "GC=F", "DBC"]
-NEWS_LOCK = threading.Lock()
 LOCK = threading.Lock()
 
 
@@ -57,10 +55,12 @@ def read_json(p: Path, default):
         return default
 
 
-def write_json(p: Path, obj):
+def write_json(p: Path, obj, compact: bool = False):
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(".tmp")
-    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
+    # 시세 파일은 빈칸 없이 (받는 양이 줄어든다). 사람이 열어 보는 파일은 들여쓰기
+    text = json.dumps(obj, ensure_ascii=False, separators=(",", ":")) if compact else json.dumps(obj, ensure_ascii=False, indent=1)
+    tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, p)
 
 
@@ -88,7 +88,8 @@ def yahoo(sym: str, params: dict) -> dict:
             last = e
         except (urllib.error.URLError, TimeoutError, ValueError) as e:
             last = e
-        time.sleep(1.5 * (attempt + 1))
+        if attempt < 2:  # 마지막 실패 뒤에는 기다리지 않는다
+            time.sleep(1.5 * (attempt + 1))
     raise RuntimeError(f"Yahoo 연결 실패: {last}")
 
 
@@ -144,7 +145,11 @@ def update_history(sym: str, years: float) -> tuple[dict, str]:
            "name": meta.get("longName") or meta.get("shortName") or (cache or {}).get("name") or sym.upper(),
            "updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "dates": dates, "close": [rows[d][0] for d in dates], "adj": [rows[d][1] for d in dates]}
-    write_json(f, out)
+    # 일봉이 그대로면 파일을 다시 쓰지 않는다 (판 번호가 그대로라 브라우저가 다시 받지 않음)
+    if not cache or (cache.get("dates"), cache.get("close"), cache.get("adj")) != (out["dates"], out["close"], out["adj"]) or cache.get("name") != out["name"] or "\n" in f.read_text(encoding="utf-8")[:40]:
+        write_json(f, out, compact=True)
+    else:
+        out["updated"] = cache.get("updated", out["updated"])
     return out, f"{sym}: 일봉 {len(dates)}일 (새 {new}일, {dates[0] if dates else '-'} ~ {dates[-1] if dates else '-'})"
 
 
@@ -248,12 +253,13 @@ def collect(symbols: list[str], years: float, quotes_only: bool) -> dict:
 
 def write_index():
     """정적 사이트(GitHub Pages)가 읽을 시세 파일 목록."""
-    files = {}
+    files, ver = {}, {}
     for f in sorted(PRICES.glob("*.json")):
         d = read_json(f, None)
         if d:
             files[d["symbol"]] = f.name
-    write_json(DATA / "index.json", {"updated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "prices": files})
+            ver[d["symbol"]] = d.get("updated") or ""  # 종목별 판: 그 종목 일봉이 바뀔 때만 바뀐다
+    write_json(DATA / "index.json", {"updated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "prices": files, "v": ver})
 
 
 def all_data() -> dict:
@@ -264,29 +270,6 @@ def all_data() -> dict:
             prices[d["symbol"]] = d
     return {"state": read_json(STATE, None) or read_json(STATE_DEFAULT, {}), "prices": prices, "quotes": read_json(QUOTES, {}), "mar": read_json(MAR, {}),
             "config": read_json(STATE_DEFAULT.parent / "config.json", {}), "server_time": datetime.now().isoformat(timespec="seconds")}
-
-
-def news_targets() -> tuple[list[str], dict]:
-    """미래 가치 뉴스를 모을 종목: 내 PC 판은 보유 종목, 웹(Actions)은 tickers.json"""
-    st = read_json(STATE, None)
-    tks = [h["ticker"] for h in (st or {}).get("holdings", []) if float(h.get("shares") or 0) > 0] if st else []
-    if not tks:
-        tks = read_json(TICKERS, {}).get("tickers", [])
-    names = {t: (read_json(price_file(t), {}) or {}).get("name") or "" for t in tks}
-    return tks, names
-
-
-def news_job():
-    if not NEWS_LOCK.acquire(blocking=False):
-        return
-    try:
-        import news  # noqa: PLC0415 - 같은 폴더의 news.py
-        tks, names = news_targets()
-        news.collect_news(DATA, read_json(DATA / "config.json", {}).get("ai"), tks, names)
-    except Exception as e:  # noqa: BLE001
-        print("뉴스 수집 실패:", e)
-    finally:
-        NEWS_LOCK.release()
 
 
 def save_state(state: dict):
@@ -332,15 +315,6 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(read_json(DATA / "macro" / "rates_earnings.json", {}))
         if self.path.startswith("/api/beyora"):
             return self.send_json(read_json(DATA / "beyora.json", {"cats": [], "posts": []}))
-        if self.path.startswith("/api/news"):
-            news = read_json(DATA / "news.json", {})
-            try:
-                age = time.time() - datetime.fromisoformat(news["updated"]).timestamp()
-            except (KeyError, ValueError):
-                age = 1e9
-            if age > 3600:  # 한 시간이 지났으면 뒤에서 새로 모은다 (화면은 지금 있는 것부터)
-                threading.Thread(target=news_job, daemon=True).start()
-            return self.send_json(news)
         return super().do_GET()
 
     def do_POST(self):
@@ -384,11 +358,8 @@ def main():
     ap.add_argument("--collect", action="store_true", help="수집만 하고 끝냄 (data/tickers.json)")
     ap.add_argument("--add", default="", help="--collect 와 함께: tickers.json 에 더할 티커 (쉼표 구분)")
     ap.add_argument("--quotes-only", action="store_true")
-    ap.add_argument("--news", action="store_true", help="뉴스만 모아 data/news.json 저장 (GitHub Actions 용)")
     a = ap.parse_args()
     PRICES.mkdir(parents=True, exist_ok=True)
-    if a.news:
-        return news_job()
     if a.collect:
         return cli_collect(a.add, a.quotes_only)
     srv = None

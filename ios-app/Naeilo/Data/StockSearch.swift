@@ -159,9 +159,9 @@ final class CustomSymbols {
                     if let ld = recent.dates.last, ld == lastDay, let lv = recent.closes.last { c[c.count - 1] = lv }
                     h = Hist(dates: d, closes: c); hist[s.id] = h
                 }
-                save()
             }
         }
+        await MainActor.run { save() }   // 종목마다 전체를 다시 쓰지 않고 끝에 한 번만 저장
     }
 
     /// Yahoo 일별 차트: (지금 가격·전일 종가, 날짜별 종가)

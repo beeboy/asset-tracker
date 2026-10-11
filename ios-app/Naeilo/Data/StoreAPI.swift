@@ -64,7 +64,7 @@ enum StoreAPI {
     @MainActor static func mine() async throws -> Mine { try await post("sponsor/me", [:]) }
 
     static func sponsors() async -> [Sponsor] {
-        guard let (d, _) = try? await URLSession.shared.data(from: url("sponsors")),
+        guard let (d, _) = try? await URLSession.shared.data(for: URLRequest(url: url("sponsors"), timeoutInterval: 15)),
               let r = try? JSONDecoder().decode(SponsorsReply.self, from: d) else { return [] }
         return r.sponsors
     }

@@ -42,7 +42,7 @@ export default {
     if (u.pathname.startsWith("/push/")) {
       if (!env.VIEWS) return noKv();
       const id = async (ep) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ep)))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
-      if (u.pathname === "/push/key") return out({ key: (await vapid(env)).pub });
+      if (u.pathname === "/push/key") { const r = out({ key: (await vapid(env)).pub }); r.headers.set("Cache-Control", "public, max-age=86400"); return r; }
       if (u.pathname === "/push/latest") { const ep = u.searchParams.get("e") || ""; const m = await env.VIEWS.get("pm:" + (await id(ep))); return out(m ? JSON.parse(m) : { title: "naeilo", body: "새 알림이 있습니다." }); }
       if (req.method !== "POST") return out({ error: "POST 만 받습니다" }, 400);
       const b = await req.json().catch(() => ({}));
@@ -59,7 +59,7 @@ export default {
       if (u.pathname === "/push/test") { const r = await sendPush(env, b.sub || { endpoint: ep }, k.slice(2), { title: "naeilo 알림 시험", body: "알림이 잘 옵니다." }); return out({ ok: r.ok, status: r.status }); }
       return out({ error: "모르는 주소" }, 404);
     }
-    if (u.pathname === "/mar") return out((await mar()) || { error: "매매기준율을 받지 못했습니다" }, 200);
+    if (u.pathname === "/mar") { const m = await mar(), r = out(m || { error: "매매기준율을 받지 못했습니다" }, 200); if (m) r.headers.set("Cache-Control", "public, max-age=600"); return r; } // 받은 값은 브라우저도 10분 기억
     if (u.pathname === "/sync") {
       // GET /sync → { state, at },  POST /sync {"state","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
       if (!env.VIEWS) return noKv();
@@ -164,7 +164,7 @@ export default {
       // 생각(thinking)을 줄여 빠르게: 3세대는 thinkingLevel, 그 전 모델은 thinkingBudget. 거절하면 설정 없이 다시
       const make = (model, think) => JSON.stringify({ ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}), contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: { maxOutputTokens: 4096, temperature: 0.4, ...(think ? { thinkingConfig: /gemini-3/.test(model) ? { thinkingLevel: "low" } : { thinkingBudget: 0 } } : {}) } });
-      const call = (model, think) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_KEY.trim() }, body: make(model, think) });
+      const call = (model, think) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_KEY.trim() }, body: make(model, think), signal: AbortSignal.timeout(60000) }).catch(() => new Response("{}", { status: 504 })); // 응답 없으면 60초 뒤 다음 모델로
       const errs = []; let st = 502;
       for (const model of [...new Set([env.GEMINI_MODEL, ...MODELS].filter(Boolean))]) {
         let r = await call(model, true), j = await r.json().catch(() => ({}));
@@ -181,7 +181,7 @@ export default {
     const target = u.searchParams.get("url") || "";
     if (!ALLOW.test(target)) return new Response("not allowed", { status: 400, headers: cors });
     // Yahoo 가 429(요청 과다)·5xx 를 주거나 연결이 끊기면 잠깐 쉬고 다른 서버(query1 ↔ query2)로 한 번 더
-    const get = (url) => fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cf: { cacheTtl: 60 } }).catch(() => null);
+    const get = (url) => fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cf: { cacheTtl: 60, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null); // 8초 넘게 응답 없으면 다른 서버로
     const bad = (x) => !x || x.status === 429 || x.status >= 500;
     let r = await get(target);
     if (bad(r)) {
@@ -195,7 +195,7 @@ export default {
   // 30분마다 (Cron Trigger): 구독마다 하루 변동·실적 하루 전 검사
   async scheduled(event, env, ctx) {
     if (!env.VIEWS) return;
-    const q = await fetch(env.SITE_QUOTES || "https://naeilo.com/data/quotes.json", { cf: { cacheTtl: 60 } }).then((r) => r.json()).catch(() => null);
+    const q = await fetch(env.SITE_QUOTES || "https://naeilo.com/data/quotes.json", { cf: { cacheTtl: 60, cacheEverything: true }, signal: AbortSignal.timeout(10000) }).then((r) => r.json()).catch(() => null);
     const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10), tmr = new Date(kst.getTime() + 86400e3).toISOString().slice(0, 10);
     let cursor;
     do {
@@ -226,7 +226,8 @@ async function ghWho(env, tok) {
   const ck = new Request("https://gh-who.cache/" + [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tok)))].map((b) => b.toString(16).padStart(2, "0")).join(""));
   const hit = await caches.default.match(ck); if (hit) return (await hit.text()) || null;
   const h = { Authorization: "Bearer " + tok, "User-Agent": "naeilo-worker", Accept: "application/vnd.github+json" };
-  const [r, me] = await Promise.all([fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}`, { headers: h }), fetch("https://api.github.com/user", { headers: h })]);
+  const [r, me] = await Promise.all([fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}`, { headers: h, signal: AbortSignal.timeout(8000) }), fetch("https://api.github.com/user", { headers: h, signal: AbortSignal.timeout(8000) })]).catch(() => [null, null]);
+  if (!r || !me) return null; // GitHub 응답이 없으면 이번엔 거절 (기억하지 않음)
   const j = await r.json().catch(() => ({})), m = await me.json().catch(() => ({}));
   const who = r.ok && (j.permissions?.push || j.permissions?.admin) ? m.login || "dev" : "";
   await caches.default.put(ck, new Response(who, { headers: { "Cache-Control": "max-age=600" } }));
@@ -236,7 +237,7 @@ async function ghWho(env, tok) {
 // ------------------------------------------------------------ 매매기준율 (서울외국환중개, 1시간 캐시)
 async function mar() {
   const kst = new Date(Date.now() + 9 * 3600e3), end = kst.toISOString().slice(0, 10), st = new Date(kst.getTime() - 10 * 86400e3).toISOString().slice(0, 10);
-  const r = await fetch(`http://www.smbs.biz/ExRate/StdExRate_xml.jsp?arr_value=USD_${st}_${end}`, { headers: { "User-Agent": "Mozilla/5.0", Referer: "http://www.smbs.biz/ExRate/StdExRate.jsp" }, cf: { cacheTtl: 3600, cacheEverything: true } }).catch(() => null);
+  const r = await fetch(`http://www.smbs.biz/ExRate/StdExRate_xml.jsp?arr_value=USD_${st}_${end}`, { headers: { "User-Agent": "Mozilla/5.0", Referer: "http://www.smbs.biz/ExRate/StdExRate.jsp" }, cf: { cacheTtl: 3600, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null);
   const t = r && r.ok ? await r.text() : "";
   const sets = [...t.matchAll(/label=['"]([^'"]+)['"][^>]*?value=['"]([\d,.]+)['"]/g)];
   if (!sets.length) return null;
@@ -264,7 +265,7 @@ async function sendPush(env, sub, sid, msg) {
   const head = enc({ typ: "JWT", alg: "ES256" }), body = enc({ aud: ep.origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: env.VAPID_SUB || "mailto:admin@naeilo.com" });
   const key = await crypto.subtle.importKey("jwk", v.jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(head + "." + body));
-  return fetch(sub.endpoint, { method: "POST", headers: { TTL: "43200", Urgency: "normal", "Content-Length": "0", Authorization: `vapid t=${head}.${body}.${b64u(sig)}, k=${v.pub}` } });
+  return fetch(sub.endpoint, { method: "POST", headers: { TTL: "43200", Urgency: "normal", "Content-Length": "0", Authorization: `vapid t=${head}.${body}.${b64u(sig)}, k=${v.pub}` }, signal: AbortSignal.timeout(10000) }).catch(() => ({ ok: false, status: 0 })); // 알림 서버가 멈춰도 다음 구독으로
 }
 
 // ------------------------------------------------------------ 커피 후원 (/store/*)
