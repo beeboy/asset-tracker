@@ -197,7 +197,35 @@ struct BrickPlayView: View {
 
     var body: some View {
         let g = game
-        let _ = g.frame
+        let live = g.phase == .playing || g.phase == .ready
+        // 매 프레임 엔진을 한 걸음 움직이고 다시 그린다 (멈춤·끝나면 쉼)
+        TimelineView(.animation(minimumInterval: nil, paused: !live)) { tl in
+            let _ = g.tick(tl.date)
+            screen(g)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { g.launch() }
+        .onAppear { g.begin() }
+        .onDisappear { g.end() }
+        .task {
+            // 누르지 않아도 3초 뒤에는 공이 나간다
+            try? await Task.sleep(for: .seconds(3))
+            if g.phase == .ready { g.launch() }
+        }
+        .onChange(of: scenePhase) { _, p in if p != .active { g.pause() } }
+        .onChange(of: g.phase) { _, p in
+            guard (p == .cleared || p == .over) && !saved else { return }
+            saved = true
+            g.newBest = record.finish(g.stage.n, g.level, score: g.score, won: p == .cleared)
+            if record.share == true {
+                let n = g.stage.n, lv = g.level, sc = g.score, nick = record.nick ?? "", who = g.player
+                Task { rank = await GameBoard.send(n, lv, score: sc, nick: nick, player: who) }
+            }
+        }
+        .statusBarHidden()
+    }
+
+    private func screen(_ g: BrickGame) -> some View {
         VStack(spacing: 8) {
             hud(g)
             GeometryReader { geo in
@@ -225,19 +253,6 @@ struct BrickPlayView: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(Theme.bg)
         .overlay { overlay(g) }
-        .onAppear { g.begin() }
-        .onDisappear { g.end() }
-        .onChange(of: scenePhase) { _, p in if p != .active { g.pause() } }
-        .onChange(of: g.phase) { _, p in
-            guard (p == .cleared || p == .over) && !saved else { return }
-            saved = true
-            g.newBest = record.finish(g.stage.n, g.level, score: g.score, won: p == .cleared)
-            if record.share == true {
-                let n = g.stage.n, lv = g.level, sc = g.score, nick = record.nick ?? "", who = g.player
-                Task { rank = await GameBoard.send(n, lv, score: sc, nick: nick, player: who) }
-            }
-        }
-        .statusBarHidden()
     }
 
     private func hud(_ g: BrickGame) -> some View {
