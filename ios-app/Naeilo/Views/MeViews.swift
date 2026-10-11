@@ -497,9 +497,14 @@ struct MeEditView: View {
                 .appFont(16).padding(.horizontal, 10).frame(minHeight: 44)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
-                .onChange(of: draft.name) { _, v in let c = MeChar.clean(v); if c != v { draft.name = c } }
+                // 한글은 조합 중에 바로 바꾸면 무시돼서, 한 박자 뒤에 다듬는다 (저장할 때도 한 번 더)
+                .onChange(of: draft.name) { _, v in
+                    let c = MeChar.clean(v)
+                    if c != v { DispatchQueue.main.async { draft.name = MeChar.clean(draft.name) } }
+                }
+                .onSubmit { draft.name = MeChar.clean(draft.name) }
             Button {
-                draft.name = draft.name.trimmingCharacters(in: .whitespaces)
+                draft.name = MeChar.clean(draft.name).trimmingCharacters(in: .whitespaces)
                 m.me = draft
                 WidgetBridge.write(m)
                 dismiss()   // 저장하면 바로 이전 화면으로
