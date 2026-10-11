@@ -356,7 +356,8 @@ extension Calm {
         guard let t = type, Self.steps[t] != nil else { return }
         if ladder?.type != t { ladder = Ladder(type: t, since: today, done: ladder?.done ?? []) }
         let s = stats(today)
-        ladder?.hold = s.n >= Self.minEvents && s.index >= Self.holdLine(t) ? (ladder?.hold ?? today) : nil
+        let h0 = ladder?.hold
+        ladder?.hold = s.n >= Self.minEvents && s.index >= Self.holdLine(t) ? (h0 ?? today) : nil
         for _ in 0..<3 {
             guard var l = ladder, (1...3).contains(l.step), let p = progress(today), p.done else { break }
             let name = Self.steps[t]![l.step - 1].name
