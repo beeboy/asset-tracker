@@ -16,6 +16,10 @@ settings:
     # Xcode 에서 고른 서명 팀 (xcodegen 을 다시 돌려도 유지)
     DEVELOPMENT_TEAM: 252W43H2KE
     TARGETED_DEVICE_FAMILY: "1"
+  configs:
+    # Xcode Run(Debug)에서도 전망 몬테카를로가 1초 안에 끝나게 최적화 (최적화 없으면 50배 느림)
+    Debug:
+      SWIFT_OPTIMIZATION_LEVEL: "-O"
 targets:
   NaeiloApp:
     type: application

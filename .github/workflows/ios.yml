@@ -40,8 +40,3 @@ jobs:
           "$RUNNER_TEMP/mc_parity" "$RUNNER_TEMP/par"
       - name: 비교
         run: node tools/mc_parity.mjs cmp "$RUNNER_TEMP/par"
-      - name: 시간 재기 (Xcode Debug 실행과 같은 최적화 없음)
-        run: |
-          swiftc -Onone ios-app/Naeilo/Data/MonteCarlo.swift ios-app/tools/mc_parity/main.swift -o "$RUNNER_TEMP/mc_parity_dbg"
-          mkdir -p "$RUNNER_TEMP/dbg" && cp "$RUNNER_TEMP/par/input.json" "$RUNNER_TEMP/dbg/"
-          "$RUNNER_TEMP/mc_parity_dbg" "$RUNNER_TEMP/dbg"
