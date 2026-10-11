@@ -8,9 +8,11 @@ struct CharPixel: View {
     var width: CGFloat
     var height: CGFloat
     var sil = false
+    /// 앱 안에서는 모델을 지켜봐야 저장 직후 다시 그린다 (공유 그림처럼 모델이 없는 곳은 MeChar.current)
+    @Environment(AppModel.self) private var model: AppModel?
     var body: some View {
         if id == "me" {
-            if let me = MeChar.current { MeAvatar(me: me, width: width, height: height).opacity(sil ? 0.45 : 1) }
+            if let me = model?.me ?? MeChar.current { MeAvatar(me: me, width: width, height: height).opacity(sil ? 0.45 : 1) }
             else { MeEmpty(width: width, height: height) }
         } else {
             Pixel(name: (sil ? "sil_" : "spr_") + id, width: width, height: height)
