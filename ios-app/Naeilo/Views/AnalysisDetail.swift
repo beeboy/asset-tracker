@@ -290,16 +290,17 @@ struct ExternalView: View {
     }
 
     var body: some View {
-        let v = ["mkt": mkt, "rate": rate, "fx": fx, "oil": oil, "gold": gold][factor] ?? 0
+        let vals: [String: Double] = ["mkt": self.mkt, "rate": self.rate, "fx": self.fx, "oil": self.oil, "gold": self.gold]
+        let v: Double = vals[factor] ?? 0
         let list = m.rows.map { r -> (id: String, label: String, dv: Double, known: Bool) in
             let mv = move(r.id, r.sym, v)
             return (r.id, r.sym.short, r.value * (mv ?? 0), mv != nil)
         }
-        let tot = list.reduce(0) { $0 + $1.dv }, maxAbs = max(1, list.map { abs($0.dv) }.max() ?? 1)
+        let tot = list.reduce(0.0) { $0 + $1.dv }, maxAbs = max(1, list.map { abs($0.dv) }.max() ?? 1)
         let after = m.total + tot
-        let sg = { (x: Double, d: String) in (x > 0 ? "+" : "") + String(format: d, x) }
-        let ask = ["mkt": "S&P500이 얼마나 움직이면", "rate": "미국 10년 금리가 얼마나 바뀌면", "oil": "유가(WTI)가 얼마나 움직이면", "gold": "금값이 얼마나 움직이면"][factor]
-            ?? "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
+        let sg: (Double, String) -> String = { x, d in (x > 0 ? "+" : "") + String(format: d, x) }
+        let asks: [String: String] = ["mkt": "S&P500이 얼마나 움직이면", "rate": "미국 10년 금리가 얼마나 바뀌면", "oil": "유가(WTI)가 얼마나 움직이면", "gold": "금값이 얼마나 움직이면"]
+        let ask: String = asks[factor] ?? "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
         let vText = factor == "rate" ? sg(v, "%g") + "%p" : factor == "fx" ? sg(v, "%.0f") + "원" : sg(v, "%.0f") + "%"
         let unknown = list.filter { !$0.known }.map(\.label)
         let coef = m.rows.filter { factor == "fx" || move($0.id, $0.sym, v) != nil }.map { r -> String in
