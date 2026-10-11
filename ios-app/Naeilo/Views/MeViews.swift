@@ -251,20 +251,15 @@ struct MeEditView: View {
     @State private var note: String? = nil
     @State private var askDelete = false
     @State private var samples = false           // 샘플(소설 속 인물) 목록을 보는 중
-    @State private var sample: MeSample? = nil   // 마지막으로 고른 샘플 (소개 한 줄)
+    @State private var sample: MeSample? = MeSample.all.first   // 오른쪽 위에 크게 보이는 샘플
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 8) {
-                groups.frame(width: 84)
-                options.frame(width: 76)
-                preview.frame(maxWidth: .infinity)
-            }
-            .padding(.horizontal, 12).padding(.top, 8)
-            .frame(maxHeight: .infinity)
-            Divider().overlay(Theme.line)
-            bottom.padding(12)
+        HStack(alignment: .top, spacing: 8) {
+            left.frame(width: 84)
+            options.frame(width: 76)
+            right.frame(maxWidth: .infinity)
         }
+        .padding(.horizontal, 12).padding(.top, 8)
         .background(Theme.bg)
         .navigationTitle("내 캐릭터").navigationBarTitleDisplayMode(.inline)
         .onAppear { if !loaded { draft = m.me ?? MeChar(); loaded = true } }
@@ -278,7 +273,8 @@ struct MeEditView: View {
         }
     }
 
-    private var groups: some View {
+    /// 왼쪽: 샘플 · 부품 그룹, 그 아래 투자 유형 (보라색)
+    private var left: some View {
         ScrollView {
             VStack(spacing: 4) {
                 Button { samples = true } label: {
@@ -303,17 +299,46 @@ struct MeEditView: View {
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
+                types.padding(.top, 14)
             }
+            .padding(.bottom, 12)
         }
     }
 
-    /// 샘플: 소설 속 인물 조합을 통째로 입혀 본다 (이름·투자 유형은 그대로)
+    /// 투자 유형: 평정 지수가 매칭되기 전에는 고르고, 매칭되면 그 유형만 켜진다 (말투도 그 인물)
+    private var types: some View {
+        let matched = m.calm.type
+        let cur = matched ?? draft.type
+        return VStack(alignment: .leading, spacing: 4) {
+            Text("투자 유형").appFont(13, .bold).foregroundStyle(Theme.purple)
+            ForEach(Calm.kinds, id: \.id) { k in
+                let on = cur == k.id
+                Button { draft.type = k.id } label: {
+                    Text(k.title + (on ? " ✓" : "")).appFont(12, on ? .bold : .regular)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .foregroundStyle(on ? .white : Theme.purple)
+                        .frame(maxWidth: .infinity, minHeight: 34).padding(.horizontal, 4)
+                        .background(on ? Theme.purple : Theme.purple.opacity(0.12), in: Capsule())
+                        .overlay(Capsule().stroke(Theme.purple.opacity(on ? 1 : 0.4)))
+                }
+                .buttonStyle(.plain)
+                .disabled(matched != nil)
+                .opacity(matched != nil && !on ? 0.4 : 1)
+                .accessibilityLabel("\(k.title), \(m.friendName(k.id)) 말투")
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+            Text("평정 지수가 매칭되면 그 유형을 따라요").appFont(10).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// 샘플: 소설 속 인물 조합. 누르면 오른쪽 위에 크게 보이고, '적용'을 눌러야 내 캐릭터에 입힌다
     private var sampleList: some View {
         ScrollView {
             VStack(spacing: 6) {
                 ForEach(MeSample.all) { x in
-                    let on = sample?.id == x.id && draft.parts == x.parts
-                    Button { draft.parts = x.parts; sample = x } label: {
+                    let on = sample?.id == x.id
+                    Button { sample = x } label: {
                         VStack(spacing: 2) {
                             MeAvatar(me: MeChar(parts: x.parts), width: 34, height: 48)
                             Text(x.name).appFont(10).lineLimit(2).multilineTextAlignment(.center).minimumScaleFactor(0.7)
@@ -372,74 +397,72 @@ struct MeEditView: View {
         }
     }
 
-    private var preview: some View {
-        VStack(spacing: 10) {
-            MeAvatar(me: draft, width: 96, height: 136)
-                .padding(.horizontal, 14).padding(.vertical, 12)
-                .background(Theme.shelter, in: RoundedRectangle(cornerRadius: 14))
-            Text(draft.shownName).appFont(17, .bold)
-            if let x = sample, draft.parts == x.parts {
-                Text("\(x.name) · \(x.about)").appFont(11).foregroundStyle(Theme.sub).multilineTextAlignment(.center)
-            }
-            Text(m.meUnlocked ? "홈과 위젯에 둘 수 있어요" : "조건을 채우면 홈과 위젯에 나와요")
-                .appFont(11).foregroundStyle(Theme.sub).multilineTextAlignment(.center)
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var bottom: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                TextField("이름 (\(MeChar.nameMax)자까지)", text: $draft.name)
-                    .appFont(15).padding(.horizontal, 12).frame(minHeight: 44)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
-                    .onChange(of: draft.name) { _, v in if v.count > MeChar.nameMax { draft.name = String(v.prefix(MeChar.nameMax)) } }
-                Text("\(draft.name.count)/\(MeChar.nameMax)").appFont(12).foregroundStyle(Theme.muted)
-            }
-            typeRow
-            HStack(spacing: 8) {
-                Button {
-                    draft.name = draft.name.trimmingCharacters(in: .whitespaces)
-                    m.me = draft
-                    WidgetBridge.write(m)
-                    note = m.meUnlocked ? "저장했어요." : "저장했어요. 조건을 채우면 홈과 위젯에 나와요."
-                } label: {
-                    Text(m.me == nil ? "저장하기" : "저장하기 (바꾸기)").appFont(15, .bold).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 46).background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-                if m.me != nil {
-                    Button("지우기") { askDelete = true }.appFont(14).foregroundStyle(Theme.muted).frame(minHeight: 46)
-                }
-            }
-            if let note { Text(note).appFont(13, .bold).foregroundStyle(Theme.teal) }
-        }
-    }
-
-    /// 투자 유형: 평정 지수가 매칭되기 전에는 고르고, 매칭되면 그 유형을 따른다 (말투도 그 인물)
-    @ViewBuilder private var typeRow: some View {
-        if let t = m.calm.type, let k = Calm.kind(t) {
-            Text("투자 유형 · \(k.title) (평정 지수 매칭, \(m.friendName(t)) 말투)").appFont(13).foregroundStyle(Theme.sub)
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("투자 유형 (평정 지수가 매칭되면 그 유형을 따라요)").appFont(12).foregroundStyle(Theme.sub)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(Calm.kinds, id: \.id) { k in
-                            let on = draft.type == k.id
-                            Button { draft.type = k.id } label: {
-                                Text(k.title).appFont(13, on ? .bold : .regular).padding(.horizontal, 12).frame(minHeight: 34)
-                                    .foregroundStyle(on ? .white : Theme.ink)
-                                    .background(on ? Theme.teal : Theme.card, in: Capsule())
-                                    .overlay(Capsule().stroke(on ? Theme.teal : Theme.border))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("\(k.title), \(m.friendName(k.id)) 말투")
-                        }
+    /// 오른쪽: 위는 고른 샘플(소개·적용), 아래는 내 캐릭터(같은 크기)와 이름·저장
+    private var right: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                if let x = sample {
+                    big(MeChar(parts: x.parts))
+                    Text(x.name).appFont(14, .bold)
+                    Text(x.about).appFont(11).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    let applied = draft.parts == x.parts
+                    Button { draft.parts = x.parts } label: {
+                        Text(applied ? "적용했어요" : "적용 ↓").appFont(14, .bold).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .background(applied ? Theme.muted : Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                     }
+                    .buttonStyle(.plain)
+                    .disabled(applied)
+                } else {
+                    Text("샘플을 누르면 여기에 크게 보여요").appFont(11).foregroundStyle(Theme.muted)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.dash, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                }
+                big(draft).padding(.top, 6)
+                    .overlay(alignment: .bottom) {
+                        Text(m.meUnlocked ? "홈과 위젯에 둘 수 있어요" : "조건을 채우면 홈과 위젯에 나와요")
+                            .appFont(10).foregroundStyle(.white.opacity(0.75)).padding(.bottom, 6)
+                    }
+                nameRow
+                if let note { Text(note).appFont(12, .bold).foregroundStyle(Theme.teal) }
+                if m.me != nil {
+                    Button("지우기") { askDelete = true }.appFont(12).foregroundStyle(Theme.muted).frame(minHeight: 32)
                 }
             }
+            .padding(.bottom, 12)
+        }
+    }
+
+    /// 24×34 비율로 오른쪽 폭을 채운 큰 그림 (고른 샘플·내 캐릭터 같은 크기)
+    private func big(_ c: MeChar) -> some View {
+        Group {
+            if let img = MeArt.image(c) { Image(uiImage: img).interpolation(.none).resizable() } else { Color.clear }
+        }
+        .aspectRatio(CGFloat(MeArt.W) / CGFloat(MeArt.H), contentMode: .fit)
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .background(Theme.shelter, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityLabel(c.shownName)
+    }
+
+    private var nameRow: some View {
+        HStack(spacing: 6) {
+            TextField("이름 (\(MeChar.nameMax)자)", text: $draft.name)
+                .appFont(14).padding(.horizontal, 10).frame(minHeight: 44)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
+                .onChange(of: draft.name) { _, v in if v.count > MeChar.nameMax { draft.name = String(v.prefix(MeChar.nameMax)) } }
+            Button {
+                draft.name = draft.name.trimmingCharacters(in: .whitespaces)
+                m.me = draft
+                WidgetBridge.write(m)
+                note = m.meUnlocked ? "저장했어요." : "저장했어요. 조건을 채우면 홈과 위젯에 나와요."
+            } label: {
+                Text("저장").appFont(14, .bold).foregroundStyle(.white)
+                    .frame(width: 56, height: 44).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
         }
     }
 }
