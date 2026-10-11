@@ -35,11 +35,13 @@ struct CalmCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("평정 지수 보기")
+        .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
     }
 }
 
 struct CalmView: View {
     @Environment(AppModel.self) private var m
+    @State private var shown = 10   // 최근 기록을 몇 건까지 펼쳤는지
 
     var body: some View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
@@ -72,6 +74,13 @@ struct CalmView: View {
 
                 // 습관 사다리
                 if let l = m.calm.ladder, let steps = Calm.steps[l.type] { ladder(l, steps) }
+                else {
+                    Card {
+                        Text("다음 걸음").appFont(15, .bold)
+                        Text("기록 \(Calm.minEvents)건이 모여 유형이 정해지면, 그 유형에 맞는 걸음 3개가 여기에 열려요.")
+                            .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
 
                 // 숫자
                 Card {
@@ -109,8 +118,12 @@ struct CalmView: View {
                 // 최근 기록
                 if !m.calm.events.isEmpty {
                     Card {
-                        Text("최근 기록").appFont(15, .bold)
-                        ForEach(Array(m.calm.events.suffix(10).reversed().enumerated()), id: \.offset) { _, e in
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("최근 기록").appFont(15, .bold)
+                            Spacer()
+                            Text("모두 \(m.calm.events.count)건").appFont(12).foregroundStyle(Theme.muted)
+                        }
+                        ForEach(Array(m.calm.events.suffix(shown).reversed().enumerated()), id: \.offset) { _, e in
                             HStack {
                                 Text(Day.md(e.day)).appFont(12).foregroundStyle(Theme.muted).frame(width: 40, alignment: .leading)
                                 Text("\(e.sym) · \(e.label)").appFont(13)
@@ -119,7 +132,12 @@ struct CalmView: View {
                                     .foregroundStyle(e.pts > 0 ? Theme.teal : e.pts < 0 ? Theme.up : Theme.muted)
                             }
                         }
-                        Text("사건별 표와 추이는 PC naeilo.com에서 봐요.").appFont(12).foregroundStyle(Theme.muted)
+                        if m.calm.events.count > shown {
+                            Button("더 보기 (\(m.calm.events.count - shown)건 남음)") { shown += 20 }
+                                .appFont(13, .semibold).foregroundStyle(Theme.teal)
+                        }
+                        Text("기록은 최근 \(Calm.keep)건까지 남아요. 그보다 오래된 것은 지수 계산에서도 빠져요.")
+                            .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -130,6 +148,7 @@ struct CalmView: View {
             .foregroundStyle(Theme.ink)
         }
         .background(Theme.bg)
+        .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
         .navigationTitle("평정 지수").navigationBarTitleDisplayMode(.inline)
     }
 

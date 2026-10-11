@@ -52,6 +52,7 @@ struct Calm: Codable, Equatable {
 
     static let weekCap = 5         // 한 주에 쌓을 수 있는 플러스 점수
     static let minEvents = 10      // 이보다 적으면 매칭하지 않는다
+    static let keep = 400          // 남겨 두는 기록 수 (오래된 것부터 지운다)
 
     private static let key = "calm.v1"
     static func load() -> Calm {
@@ -86,7 +87,7 @@ struct Calm: Codable, Equatable {
         // 같은 날 같은 종목을 기다렸다고 적어 뒀다가 매매했으면 기다림은 지운다
         if e.isTrade { events.removeAll { $0.act == .wait && $0.day == e.day && $0.sym == e.sym } }
         events.append(e)
-        if events.count > 400 { events.removeFirst(events.count - 400) }
+        if events.count > Self.keep { events.removeFirst(events.count - Self.keep) }
         refreshType()
         climb()
     }
