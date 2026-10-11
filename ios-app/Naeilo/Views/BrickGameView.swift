@@ -9,8 +9,8 @@ struct BrickGameButton: View {
     @State private var show = false
     var body: some View {
         Button { show = true } label: {
-            Label("판 깨기 · 내 1000칸으로 벽돌깨기", systemImage: "gamecontroller")
-                .appFont(14, .bold).frame(maxWidth: .infinity, minHeight: 44)
+            Label("벽돌깨기", systemImage: "gamecontroller")
+                .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(.white)
                 .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
         }
@@ -27,6 +27,7 @@ struct BrickGameHub: View {
     @State private var game: BrickGame?
     @State private var board: GameStage?
     @State private var allStages = false
+    @State private var showItems = false
 
     private var players: [String] {
         Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id) + (m.meUnlocked ? ["me"] : [])
@@ -37,14 +38,12 @@ struct BrickGameHub: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("내 1000칸으로 하는 벽돌깨기").appFont(22, .bold)
-                    section("난이도") {
-                        ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true)
-                        Text(rec.level.note + " " + BrickPlayView.specialNote).appFont(12).foregroundStyle(Theme.sub)
+                    // 이름 옆에 버튼을 한 줄로
+                    VStack(alignment: .leading, spacing: 6) {
+                        inline("난이도") { ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true) }
+                        Text(rec.level.note).appFont(12).foregroundStyle(Theme.sub)
                     }
-                    section("조작") {
-                        ChipRow(items: [(true, "폰 기울이기"), (false, "손가락으로 끌기")], selection: $rec.tilt, fill: true)
-                    }
+                    inline("조작") { ChipRow(items: [(true, "기울이기"), (false, "끌기")], selection: $rec.tilt, fill: true) }
                     section("선수") {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) { ForEach(players, id: \.self) { playerCard($0) } }.padding(.vertical, 2)
@@ -64,7 +63,17 @@ struct BrickGameHub: View {
                             .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
-                    section("물건 아이템") {
+                    // 물건 아이템은 접어 둔다
+                    Button { withAnimation { showItems.toggle() } } label: {
+                        HStack {
+                            Text("물건 아이템 \(items.count)개").appFont(13, .bold).foregroundStyle(Theme.sub)
+                            Spacer()
+                            Text(showItems ? "접기 ▴" : "펼치기 ▾").appFont(13, .semibold).foregroundStyle(Theme.tealDark)
+                        }
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if showItems {
                         if items.isEmpty {
                             Text("쉼터에 물건이 돌아오면 벽돌에서 아이템으로 떨어져요.").appFont(13).foregroundStyle(Theme.sub)
                         } else {
@@ -98,7 +107,7 @@ struct BrickGameHub: View {
                 .screen()
             }
             .background(Theme.bg)
-            .navigationTitle("판 깨기")
+            .navigationTitle("내 1000칸으로 하는 벽돌깨기")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
         }
@@ -125,6 +134,10 @@ struct BrickGameHub: View {
                           assist: rec.lossCount(s.n, lv) >= 3, filled: filled, floor: min(filled, floor), yesterday: yesterday)
         g.friends = players
         game = g
+    }
+
+    private func inline<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
+        HStack(spacing: 10) { Text(title).appFont(13, .bold).foregroundStyle(Theme.sub).frame(width: 52, alignment: .leading); c() }
     }
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {

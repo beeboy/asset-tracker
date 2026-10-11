@@ -214,9 +214,12 @@ struct GoalCellsCard: View {
                 if nLost > 0 { legend(Color(hex: 0xFBE3CF, dark: 0x4A3020), "시장이 잠시 가져간 칸 \(nLost)칸") }
                 legend(Theme.yellow, "마지막 칸 = 목표")
             }
-            ShareCardButton(filled: nV, mine: nMine, market: nMkt, kicker: "목표까지 가는 중",
-                            amountLine: "목표 \(AppModel.wonK(m.gK)) 중 \(AppModel.man(tkV)) 모았어요.")
-            BrickGameButton(filled: nV, floor: nMine, yesterday: nY)
+            // 공유 카드와 벽돌깨기를 한 줄에
+            HStack(spacing: 8) {
+                ShareCardButton(filled: nV, mine: nMine, market: nMkt, kicker: "목표까지 가는 중",
+                                amountLine: "목표 \(AppModel.wonK(m.gK)) 중 \(AppModel.man(tkV)) 모았어요.")
+                BrickGameButton(filled: nV, floor: nMine, yesterday: nY)
+            }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))

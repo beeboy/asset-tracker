@@ -19,9 +19,9 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
     var clear: Double { switch self { case .easy: 0.6; case .normal: 0.75; case .hard: 0.9 } }
     var note: String {
         switch self {
-        case .easy: "판이 길고 한꺼번에 많이 깨져요. 벽돌 750개부터, 60%를 깨면 다음 단계가 열려요."
-        case .normal: "벽돌 800개부터, 75%를 깨면 다음 단계가 열려요."
-        case .hard: "벽돌 850개부터, 90%를 깨면 다음 단계가 열려요."
+        case .easy: "벽돌 750개 · 60% 깨면 다음 단계"
+        case .normal: "벽돌 800개 · 75% 깨면 다음 단계"
+        case .hard: "벽돌 850개 · 90% 깨면 다음 단계"
         }
     }
     /// 한 번 맞히면 같이 깨지는 칸 (가운데 기준 (가로, 세로))
