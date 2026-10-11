@@ -154,7 +154,7 @@ struct BrickGameHub: View {
             stageCard(s, open: open, done: done)
             if open {
                 Button { board = s } label: {
-                    Image(systemName: "trophy").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.tealDark)
+                    Image(systemName: "trophy").appFont(16, .bold).foregroundStyle(Theme.tealDark)
                         .frame(width: 44, height: 44).background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain).accessibilityLabel("\(s.bg.volume) 이번 주 순위")
@@ -172,7 +172,7 @@ struct BrickGameHub: View {
                     HStack(spacing: 6) {
                         Text(s.bg.volume).appFont(12, .bold).foregroundStyle(Theme.tealDark)
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
-                        if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).font(.system(size: 13)) }
+                        if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).appFont(13) }
                     }
                     Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + (s.tetrisCount(rec.level) == 0 ? "." : ", 숨은 테트리스 블럭 \(s.tetrisCount(rec.level))개.") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
@@ -341,7 +341,7 @@ struct BrickPlayView: View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
                 Button { g.pause() } label: {
-                    Image(systemName: "pause.fill").font(.system(size: 16, weight: .bold)).frame(width: 40, height: 40)
+                    Image(systemName: "pause.fill").appFont(16, .bold).frame(width: 40, height: 40)
                         .background(Theme.card, in: Circle()).overlay(Circle().stroke(Theme.border, lineWidth: 1.5))
                 }
                 .buttonStyle(.plain).accessibilityLabel("멈춤")
@@ -473,7 +473,13 @@ struct BrickPlayView: View {
                 ctx.fill(Path(ellipseIn: e), with: .color(.white)); ctx.stroke(Path(ellipseIn: e), with: .color(Theme.ink), lineWidth: 1)
             }
             // 보호막
-            if g.shield { ctx.fill(Path(r(0, 0.1, BrickGame.W, 0.3)), with: .color(Theme.yellow.opacity(0.8))) }
+            if g.shield {   // 진하고 두껍게, 살짝 숨 쉬듯
+                let glow = 0.75 + 0.25 * sin(now.timeIntervalSinceReferenceDate * 4)
+                let bar = r(0, 0.15, BrickGame.W, 0.9)
+                ctx.fill(Path(r(0, 0, BrickGame.W, 1.4)), with: .color(Theme.yellow.opacity(0.25 * glow)))
+                ctx.fill(Path(roundedRect: bar, cornerRadius: 0.3 * s), with: .color(Theme.orange.opacity(glow)))
+                ctx.stroke(Path(roundedRect: bar, cornerRadius: 0.3 * s), with: .color(Theme.yellow), lineWidth: 2)
+            }
             // 판과 선수
             let pw = g.paddleW
             ctx.fill(Path(roundedRect: r(g.paddleX - pw / 2, BrickGame.PY, pw, BrickGame.PH), cornerRadius: 0.4 * s), with: .color(Theme.ink))
