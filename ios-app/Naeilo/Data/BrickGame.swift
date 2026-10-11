@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import CoreMotion
+import AVFoundation
 
 // 판 깨기: 1000칸으로 하는 거꾸로 벽돌깨기. 채운 칸이 벽돌이고, 판(패들)은 위에, 공은 아래 벽돌로 떨어진다.
 // 실제 칸은 바뀌지 않는다. 단계 = 『중첩된 현실』 쉼터 12곳(권마다 규칙 하나), 선수 = 기본 인물(+내 캐릭터, 스킬 하나),
@@ -15,7 +16,14 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
     var paddle: Double { switch self { case .easy: 9; case .normal: 7; case .hard: 5.5 } }     // 판 길이 (칸)
     var lives: Int { switch self { case .easy: 5; case .normal: 3; case .hard: 2 } }
     /// 단계를 깨는 기준: 깰 수 있는 벽돌 중 이만큼
-    var clear: Double { switch self { case .easy: 0.6; case .normal: 0.75; case .hard: 0.9 } }
+    var clear: Double { switch self { case .easy: 0.5; case .normal: 0.65; case .hard: 0.8 } }
+    var note: String {
+        switch self {
+        case .easy: "판이 길고 한꺼번에 많이 깨져요. 블럭의 50%를 깨면 다음 단계가 열려요."
+        case .normal: "블럭의 65%를 깨면 다음 단계가 열려요."
+        case .hard: "블럭의 80%를 깨면 다음 단계가 열려요."
+        }
+    }
     /// 한 번 맞히면 같이 깨지는 칸 (가운데 기준 (가로, 세로))
     var burst: [(Int, Int)] {
         let plus = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
@@ -194,6 +202,7 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var total = 0
     @ObservationIgnored var toast: (String, Double)? = nil
     @ObservationIgnored var newBest = false
+    @ObservationIgnored var picked: [String: Int] = [:]   // 이번 판에 먹은 물건 → 횟수
 
     @ObservationIgnored private var lastTick: Date?
     @ObservationIgnored private var stopped = false
@@ -233,6 +242,7 @@ final class BrickGame: Identifiable {
             motion.startDeviceMotionUpdates()
         }
         tap.prepare()
+        GameSound.shared.start()
     }
     func end() { stopped = true; motion.stopDeviceMotionUpdates() }
 
@@ -286,7 +296,8 @@ final class BrickGame: Identifiable {
     }
     func on(_ e: String) -> Bool { (effects[e] ?? 0) > t }
     var activeEffects: [String] { effects.filter { $0.value > t }.map(\.key).sorted() }
-    var dark: Bool { stage.flicker && t.truncatingRemainder(dividingBy: 7) > 5.7 }
+    /// 1권 형광등: 7초마다 1초쯤 어두워진다 (벽돌은 흐리게만, 완전히 사라지지 않음)
+    var dark: Bool { stage.flicker && t.truncatingRemainder(dividingBy: 7) > 6 }
 
     func sway(_ row: Int) -> Double { stage.sway ? sin(t * 1.2 + Double(row) * 0.5) * 0.8 : 0 }
 
@@ -419,7 +430,7 @@ final class BrickGame: Identifiable {
     }
 
     private func paddleHit(_ b: inout Ball, _ sp: Double) {
-        buzz()
+        buzz(); GameSound.shared.play(.paddle)
         if skill == "sio" {
             b.stuck = true; b.off = b.x - paddleX; b.until = t + 2
             b.vx = 0; b.vy = 0; return
@@ -439,7 +450,8 @@ final class BrickGame: Identifiable {
     private func hit(_ i: Int) {
         guard hp[i] > 0 else { return }
         buzz()
-        if hp[i] == 2 { hp[i] = 1; return }
+        if hp[i] == 2 { hp[i] = 1; GameSound.shared.play(.tough); return }
+        GameSound.shared.play(.hit)
         let row = i / 40, col = i % 40
         var mul = skill == "ir" ? 1.5 : 1.0
         if on("double") { mul *= 2 }
@@ -475,6 +487,8 @@ final class BrickGame: Identifiable {
     private func use(_ id: String) {
         let name = Shelter.items.first { $0.id == id }?.name ?? id
         say("\(name) · \(GamePlayer.item(id))")
+        picked[id, default: 0] += 1
+        GameSound.shared.play(.item)
         switch id {
         case "barley_tea": effects["slow"] = t + 10
         case "porch_light": effects["light"] = t + 10
@@ -507,6 +521,7 @@ final class BrickGame: Identifiable {
             say("되감기 · 한 번 돌려받았어요"); return
         }
         lives -= 1
+        GameSound.shared.play(.lose)
         if lives <= 0 { finish(.over); return }
         drops = []
         balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 2.5)]
@@ -514,6 +529,7 @@ final class BrickGame: Identifiable {
 
     private func win() {
         score += lives * 50
+        GameSound.shared.play(.clear)
         finish(.cleared)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
@@ -523,5 +539,69 @@ final class BrickGame: Identifiable {
     private func buzz() {
         guard t - lastTap > 0.06 else { return }
         lastTap = t; tap.impactOccurred(intensity: 0.6)
+    }
+}
+
+/// 효과음: 짧은 소리를 코드로 만들어 둔다 (파일 없음). 무음 스위치를 따르고 다른 앱 소리와 섞인다
+final class GameSound {
+    enum Kind: CaseIterable { case hit, tough, paddle, item, lose, clear }
+    static let shared = GameSound()
+    private let engine = AVAudioEngine()
+    private var players: [AVAudioPlayerNode] = []
+    private var next = 0
+    private var buffers: [Kind: AVAudioPCMBuffer] = [:]
+    private var lastHit = 0.0
+    private var ready = false
+
+    func start() {
+        guard !ready else { if !engine.isRunning { try? engine.start() }; return }
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        guard let fmt = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1) else { return }
+        for _ in 0..<6 {
+            let p = AVAudioPlayerNode()
+            engine.attach(p); engine.connect(p, to: engine.mainMixerNode, format: fmt)
+            players.append(p)
+        }
+        engine.mainMixerNode.outputVolume = 0.5
+        // (주파수, 길이) 음표들
+        let notes: [Kind: [(Double, Double)]] = [
+            .hit: [(880, 0.035)], .tough: [(330, 0.05)], .paddle: [(523, 0.05)],
+            .item: [(660, 0.06), (880, 0.06), (1320, 0.09)],
+            .lose: [(440, 0.1), (330, 0.1), (220, 0.18)],
+            .clear: [(523, 0.1), (659, 0.1), (784, 0.1), (1047, 0.25)],
+        ]
+        for (k, ns) in notes { buffers[k] = tone(ns, fmt) }
+        do { try engine.start(); ready = true } catch { ready = false }
+    }
+
+    func play(_ k: Kind) {
+        guard ready, let b = buffers[k] else { return }
+        if k == .hit {   // 벽돌 소리는 너무 겹치지 않게
+            let now = ProcessInfo.processInfo.systemUptime
+            guard now - lastHit > 0.045 else { return }
+            lastHit = now
+        }
+        if !engine.isRunning { try? engine.start() }
+        let p = players[next]; next = (next + 1) % players.count
+        p.stop(); p.scheduleBuffer(b); p.play()
+    }
+
+    private func tone(_ notes: [(Double, Double)], _ fmt: AVAudioFormat) -> AVAudioPCMBuffer? {
+        let sr = fmt.sampleRate, total = notes.reduce(0) { $0 + $1.1 }
+        guard let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: AVAudioFrameCount(total * sr) + 1), let d = buf.floatChannelData?[0] else { return nil }
+        var i = 0
+        for (f, len) in notes {
+            let n = Int(len * sr)
+            for j in 0..<n {
+                let t = Double(j) / sr, env = min(1, Double(j) / 200) * (1 - Double(j) / Double(n))
+                // 네모파에 가까운 8비트 소리 (홀수 배음 셋)
+                let w = sin(2 * .pi * f * t) + sin(6 * .pi * f * t) / 3 + sin(10 * .pi * f * t) / 5
+                d[i + j] = Float(w * env * 0.35)
+            }
+            i += n
+        }
+        buf.frameLength = AVAudioFrameCount(i)
+        return buf
     }
 }
