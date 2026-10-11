@@ -174,7 +174,7 @@ struct BrickGameHub: View {
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
                         if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).font(.system(size: 13)) }
                     }
-                    Text(open ? s.rule + (s.extra > 0 ? " 벽돌 \(s.extra)칸을 더 쌓았어요." : "") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + (s.bigShapes(rec.level).isEmpty ? "." : ", 큰 숨은 블럭 \(s.bigCount)개.") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
                 }
                 Spacer(minLength: 0)
@@ -417,6 +417,9 @@ struct BrickPlayView: View {
                 let rc = r(b.minX + 0.05, b.minY + 0.05, 0.9, 0.9)
                 if g.hp[i] < 0 { ctx.fill(Path(rc), with: .color(Theme.ink)); continue }
                 if let sp = g.special[i], g.revealed[i] { special(&ctx, sp, rc, now); continue }
+                if g.group[i] >= 0, g.bigs[g.group[i]].revealed {
+                    ctx.fill(Path(r(b.minX, b.minY, 1, 1)), with: .color(Theme.purple)); continue
+                }
                 let c: Color = switch g.kind[i] { case 1: brickDark; case 3: brickLight; case 4: Theme.track; case 5: stackColor; default: brickLight }
                 ctx.fill(Path(rc), with: .color(c))
                 if g.kind[i] == 3 { ctx.stroke(Path(rc.insetBy(dx: 0.6, dy: 0.6)), with: .color(Theme.up), lineWidth: 1.2) }
@@ -428,6 +431,13 @@ struct BrickPlayView: View {
                     p.addLine(to: CGPoint(x: rc.maxX - rc.width * 0.25, y: rc.maxY - rc.height * 0.1))
                     ctx.stroke(p, with: .color(.white.opacity(0.85)), lineWidth: max(1, rc.width * 0.12))
                 }
+            }
+            // 드러난 큰 블럭: 테두리와 남은 횟수
+            for big in g.bigs where big.revealed && big.hp > 0 {
+                let a = g.rect(big.cells[0]), z = g.rect(big.cells[big.cells.count - 1])
+                let box = r(min(a.minX, z.minX), min(a.minY, z.minY), abs(z.minX - a.minX) + 1, abs(z.minY - a.minY) + 1)
+                ctx.stroke(Path(roundedRect: box.insetBy(dx: 1, dy: 1), cornerRadius: 2), with: .color(.white), lineWidth: 1.5)
+                ctx.draw(Text("\(big.hp)").font(.system(size: max(9, s * 0.9), weight: .heavy)).foregroundColor(.white), at: CGPoint(x: box.midX, y: box.midY))
             }
             // 특수 블럭이 터지는 그림
             for b in g.blasts {
@@ -527,12 +537,12 @@ struct BrickPlayView: View {
         }
     }
 
-    static let specialNote = "벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 몇 개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물."
+    static let specialNote = "벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 10개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물. 5·6권부터는 여러 번 맞아야 깨지는 큰 블럭도 숨어 있어요."
 
     @ViewBuilder private func overlay(_ g: BrickGame) -> some View {
         switch g.phase {
         case .ready:
-            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule + "\n" + Self.specialNote + (g.stacked > 0 ? "\n이번 방은 벽돌 \(g.stacked)칸을 더 쌓았어요." : "")) { EmptyView() }
+            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule + "\n" + Self.specialNote + "\n벽돌 \(g.total)개" + (g.stacked > 0 ? " (내 칸 위에 \(g.stacked)개를 더 쌓음)" : "") + (g.bigs.isEmpty ? "" : ", 큰 숨은 블럭 \(g.bigs.count)개")) { EmptyView() }
                 .allowsHitTesting(false)
         case .playing:
             if let t = g.toast {
