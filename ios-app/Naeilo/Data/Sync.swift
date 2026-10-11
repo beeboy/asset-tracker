@@ -41,7 +41,21 @@ final class Sync {
     /// 사이트 쪽 전체 입력값 (앱이 안 쓰는 칸을 지키려고 받은 그대로 둔다)
     private var siteState: [String: Any] {
         get { (d.data(forKey: "sync.site")).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:] }
-        set { d.set(try? JSONSerialization.data(withJSONObject: newValue), forKey: "sync.site") }
+        set { d.set(try? JSONSerialization.data(withJSONObject: newValue), forKey: "sync.site"); siteFc = nil }
+    }
+    /// 사이트 입력값의 사건 목록·전망 설정. 앱 전망(ForecastEngine)이 그 사람의 웹과 같은 사건으로 계산한다. 동기화를 안 켰으면 nil
+    @ObservationIgnored private var siteFc: (events: [MC.Event]?, model: MC.Settings?)? = nil
+    var siteForecast: (events: [MC.Event]?, model: MC.Settings?) {
+        guard isOn else { return (nil, nil) }
+        if let c = siteFc { return c }
+        let st = siteState
+        func dec<T: Decodable>(_ v: Any?, _ t: T.Type) -> T? {
+            guard let v, JSONSerialization.isValidJSONObject(v), let data = try? JSONSerialization.data(withJSONObject: v) else { return nil }
+            return try? JSONDecoder().decode(t, from: data)
+        }
+        let c = (dec(st["events"], [MC.Event].self), dec(st["model"], MC.Settings.self))
+        siteFc = c
+        return c
     }
     /// 받을 때 들여오지 않은 사이트 줄 (보낼 때 그대로 돌려보낸다)
     private var keepTickers: Set<String> {

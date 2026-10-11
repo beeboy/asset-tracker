@@ -1,12 +1,13 @@
 import Foundation
 
 // 종목별 전망 입력값 (naeilo.com/data/stats.json). 사이트가 매일 web/model.js 와 같은 계산(지난 3년 종가, 사전값 수축)으로 만든다.
-// 앱은 이 값으로 닫힌 식 전망을 내서 웹(몬테카를로)과 같은 종목 값을 쓴다. 받은 적이 없으면 빌드 때 넣은 파일
+// 앱 전망은 이 값과 같이 들어 있는 기본 사건·요인 민감도·설정으로 웹과 같은 몬테카를로를 돌린다 (MonteCarlo.swift, ForecastEngine.swift).
+// 닫힌 식(AppModel.forecast)은 계산이 끝나기 전 잠깐 보여 주는 값과 주간 예보 폭에 쓴다. 받은 적이 없으면 빌드 때 넣은 파일
 enum SiteStats {
-    struct T: Codable { var mu: Double?; var trend: Double?; var vol: Double?; var cash: Bool?; var fx: Bool? }
-    struct D: Codable { var mu: Double; var vol: Double; var corr: Double }
-    struct C: Codable { var keys: [String]; var m: [[Double]] }
-    struct File: Codable { var date: String; var defaults: D; var tickers: [String: T]; var corr: C }
+    typealias T = MC.Stats.Ticker
+    typealias D = MC.Stats.Defaults
+    typealias C = MC.Stats.Corr
+    typealias File = MC.Stats
 
     static let name = "site_stats.json"
     private static func decode(_ d: Data?) -> File? { d.flatMap { try? JSONDecoder().decode(File.self, from: $0) } }
@@ -29,7 +30,8 @@ enum SiteStats {
         return f
     }
 
-    private static func key(_ id: String) -> String {
+    /// 앱 종목 이름 → 사이트 티커 (stats.json·사건 대상과 같은 이름)
+    static func key(_ id: String) -> String {
         if let k = YahooSample.keyFor[id] { return k }
         return Sample.symbol(id).map { CustomSymbols.yahoo(for: $0) } ?? id
     }
