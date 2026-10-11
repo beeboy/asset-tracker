@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import WidgetKit
 
 // 설정 상세 (시안 26·27판): 알림 · 기기 동기화 · 위젯 · 세금 규칙 · 사용 방법 · 루트.
 // 실제 알림 예약·동기화 서버 연결은 아직 없고, 화면과 상태만 있다.
@@ -334,6 +335,32 @@ extension AppModel {
     }
 }
 
+/// 설정 > 위젯 > 금액 가리기: 금액을 누르면 모든 위젯 함께 / 누른 위젯만
+struct AmountHideCard: View {
+    @State private var each = Store.hideEach
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("금액을 누르면").appFont(14, .semibold)
+            Picker("금액을 누르면", selection: $each) {
+                Text("모든 위젯 함께").tag(false)
+                Text("누른 위젯만").tag(true)
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(14)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+        .onChange(of: each) { _, v in
+            // 방식을 바꿔도 지금 가려진 상태는 그대로 둔다
+            let kinds = WidgetUnlock.step.keys.sorted()
+            if v { Store.hiddenKinds = Store.hideAll ? kinds : [] } else { Store.hideAll = Set(kinds).isSubset(of: Store.hiddenKinds) }
+            Store.hideEach = v
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
+}
+
 struct WidgetPickView: View {
     @Environment(AppModel.self) private var m
     @State private var dark = UserDefaults.standard.bool(forKey: "cpDark")
@@ -421,6 +448,11 @@ struct WidgetPickView: View {
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
                 note("못 받은 위젯도 홈 화면에 놓을 수는 있지만, 열리기 전에는 잠긴 모습으로 보이고 누르면 앱 시작 단계로 와요. 위젯은 이 앱이 계산한 숫자를 받아 그려요.")
+
+                // 금액 가리기: 위젯에서 금액을 누르면 •••• 로 가려진다. 함께/따로는 Store.hideEach
+                Text("금액 가리기").appFont(17, .bold).padding(.top, 6)
+                AmountHideCard()
+                note("위젯의 금액을 누르면 ••••로 가려지고, 한 번 더 누르면 다시 보여요.")
             }
             .screen()
         }

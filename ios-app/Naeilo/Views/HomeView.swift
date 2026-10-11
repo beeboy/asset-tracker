@@ -288,9 +288,9 @@ struct MiniPath: View {
             .overlay(alignment: .bottom) {
                 Text(String(format: "%.1f%%", abs(gap) * 100) + (gap >= 0 ? " 앞섬" : " 뒤처짐")).appFont(10, .bold)
                     .foregroundStyle(gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
-                    .fixedSize().offset(y: 13)
+                    .fixedSize().offset(y: 16)
             }
-            .padding(.bottom, 12)
+            .padding(.bottom, 15)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

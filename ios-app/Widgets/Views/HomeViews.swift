@@ -153,7 +153,7 @@ struct PaceChart: View {
                 Text("⚑ \(Fmt.eok(s.goal, 0))").font(.system(size: 12, weight: .bold)).position(x: w - 26, y: Y(s.goal) + 12)
                 if let p = s.pace { Text("연 \(String(format: "%.1f", p.req * 100))% 필요 경로").font(.system(size: 10)).opacity(0.6).position(x: X(0.55), y: Y(req(0.55)) + 14) }
                 Circle().fill(Palette.ink).frame(width: 12, height: 12).overlay(Circle().stroke(tint.c(Palette.goal), lineWidth: 3)).position(x: X(fNow), y: Y(s.total))
-                Text("지금 \(Store.isHidden(kind) ? hiddenAmount : Fmt.eok(s.total))").font(.system(size: 11, weight: .bold)).position(x: X(fNow) + 42, y: Y(s.total) - 13)
+                Money { h in Text("지금 \(h ? hiddenAmount : Fmt.eok(s.total))").font(.system(size: 11, weight: .bold)) }.position(x: X(fNow) + 42, y: Y(s.total) - 13)
                 Text("시작").font(.system(size: 9.5)).opacity(0.5).position(x: 12, y: h + 8)
                 Text("목표일").font(.system(size: 9.5)).opacity(0.5).position(x: w - 16, y: h - 20)
             }
@@ -215,7 +215,7 @@ struct MovesMediumView: View {
             HStack {
                 Label2(text: "오늘의 움직임")
                 Spacer()
-                Text("\(Store.isHidden(kind) ? "" : Fmt.eok(s.total) + " ")\(Fmt.arrow(s.dayChg))\(Fmt.pct(s.dayChg))").font(.system(size: 12, weight: .heavy)).foregroundStyle(t.chg(s.dayChg))
+                Money { h in Text("\(h ? hiddenAmount + " " : Fmt.eok(s.total) + " ")\(Fmt.arrow(s.dayChg))\(Fmt.pct(s.dayChg))").font(.system(size: 12, weight: .heavy)).foregroundStyle(t.chg(s.dayChg)) }
             }
             GeometryReader { g in
                 HStack(spacing: 4) {
@@ -279,7 +279,7 @@ struct FutureLargeView: View {
         .foregroundStyle(Palette.ink)
     }
     private func cell(_ a: String, _ v: Double) -> some View {
-        VStack(spacing: 1) { Text(a).font(.system(size: 10.5)).opacity(0.6).lineLimit(1).minimumScaleFactor(0.7); Text(Store.isHidden(kind) ? hiddenAmount : Fmt.eok(v)).font(.system(size: 15, weight: .heavy)) }
+        VStack(spacing: 1) { Text(a).font(.system(size: 10.5)).opacity(0.6).lineLimit(1).minimumScaleFactor(0.7); Money { h in Text(h ? hiddenAmount : Fmt.eok(v)).font(.system(size: 15, weight: .heavy)) } }
             .frame(maxWidth: .infinity).padding(.vertical, 6).background(RoundedRectangle(cornerRadius: 10).fill(Palette.ink.opacity(0.08)))
     }
 }
