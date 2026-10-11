@@ -834,15 +834,11 @@
         dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
   }
-  // 웹 첫 화면에만 세리 한 명 (앱의 인물 다섯 명 중 원칙형). 내 수량을 넣으면 이 카드째 사라진다
-  const SERI_WEB = ["숫자부터 넣어 볼까요. 판단은 그다음이에요.", "수량만 알려 주세요. 나머지는 제가 계산할게요.", "처음 오셨군요. 할 일은 하나예요. 수량 넣기.", "지금 보이는 건 샘플이에요. 내 숫자로 바꿔 보세요.", "어서 오세요. 숫자 하나면 시작돼요.", "추측은 나중에요. 먼저 숫자요.", "보유 수량만요. 그 이상은 묻지 않을게요.", "기록이 있어야 볼 수 있어요. 수량부터요.", "샘플은 샘플일 뿐이에요. 내 것을 넣어 보세요.", "한 줄이면 돼요. 종목과 수량.", "오래 안 걸려요. 수량만 넣으면 끝나요.", "관찰은 숫자에서 시작해요.", "처음이시군요. 수량을 넣으면 오늘 값으로 다시 볼게요.", "판단은 제가 하지 않아요. 숫자를 보여 줄 뿐이에요.", "기준이 있어야 흔들리지 않아요. 먼저 지금을 적어요.", "숫자를 넣으면 목표까지 얼마 남았는지 보여요.", "잠깐요. 수량부터 넣고 이야기해요.", "사실만 볼게요. 내 수량을 알려 주세요.", "한 번 넣어 두면 다음부터는 보기만 하면 돼요.", "어서 오세요. 내일을 보려면 오늘 숫자가 필요해요."];
-  const seriCard = () => `<div class="seri"><img src="seri.png" alt="세리" width="60" height="70"><div><div class="seri-say"><b>세리</b> ${esc(SERI_WEB[(S.seriPick ??= Math.floor(Math.random() * SERI_WEB.length))])}</div><div class="seri-body">`;
-
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date), cash = cashKrw(), tot = total + cash;
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
-    $("#dashEmpty").innerHTML = seriCard() + (S.state.sample ? `<b>샘플 화면 (TSLA 1,000주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="stocks">내 수량 넣기</button>`
-      : `<b>보유 수량을 넣어 주세요.</b> <span class="small">종목 탭에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="stocks">수량 입력하러 가기</button>`) + `<div class="seri-app muted small">naeilo 앱에서는 세리 말고도 네 명이 더 함께해요.</div></div></div></div>`;
+    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면 (TSLA 1,000주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="stocks">내 수량 넣기</button>`
+      : `<b>보유 수량을 넣어 주세요.</b> <span class="small">종목 탭에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="stocks">수량 입력하러 가기</button>`;
     const need = g.amount - tot, req = yrs > 0 && tot > 0 ? (g.amount / tot) ** (1 / yrs) - 1 : null;
     const H = history(), M = patModel(H);
     // 미래 기준을 직접 고른 적이 없고, 지난 12달 채점에서 패턴이 추세만보다 나으면 패턴을 기본으로
