@@ -245,6 +245,7 @@ enum MePlaceholder {
 /// 내 캐릭터 만들기: 그룹(세로) · 그룹별 선택지(세로) · 캐릭터. 아래에 이름·투자 유형·저장 (저장 칸 1개)
 struct MeEditView: View {
     @Environment(AppModel.self) private var m
+    @Environment(\.dismiss) private var dismiss
     @State private var draft = MeChar()
     @State private var group: MeGroup = .hair
     @State private var loaded = false
@@ -490,7 +491,7 @@ struct MeEditView: View {
                 draft.name = draft.name.trimmingCharacters(in: .whitespaces)
                 m.me = draft
                 WidgetBridge.write(m)
-                note = m.meUnlocked ? "저장했어요." : "저장했어요. 조건을 채우면 홈과 위젯에 나와요."
+                dismiss()   // 저장하면 바로 이전 화면으로
             } label: {
                 Text("저장").appFont(16, .bold).foregroundStyle(.white)
                     .frame(width: 56, height: 44).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
