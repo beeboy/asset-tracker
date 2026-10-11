@@ -802,7 +802,7 @@ struct GlanceView: View {
             let yr = (0...52).map { m.prices.price(r.sym, at: 2.0 / 3 + Double($0) / 156) }
             let hi = yr.max() ?? 1, lo = yr.min() ?? 1, p1 = yr.last ?? 1
             return (r, yr, hi, lo, ["dd": p1 / hi - 1, "r1": p1 / yr[0] - 1, "vc": r.cost > 0 ? r.value / r.cost - 1 : 0,
-                                     "w": r.value / max(1, m.total), "vol": (Sample.lensParams[r.id] ?? (0, 0, 0.25)).2])
+                                     "w": r.value / max(1, m.total), "vol": SiteStats.params(r.id).2])
         }
         let signed = metric != "w" && metric != "vol"
         let fmt = { (k: String, v: Double) in k == "w" || k == "vol" ? AppModel.pct(v) : AppModel.sgn(v) }

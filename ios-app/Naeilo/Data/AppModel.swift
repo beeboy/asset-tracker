@@ -510,15 +510,26 @@ final class AppModel {
     struct Forecast { let q5, q25, q50, q75, q95: [Double]; let prob: (Double) -> Double; let mu, sigma, muBase, muTrend: Double }
     var forecast: Forecast {
         let rs = rows, tot = max(1, total)
-        let parts: [(Double, (Double, Double, Double))] = rs.isEmpty || route == .novice ? [(1, (0.07, 0.11, 0.16))]
-            : rs.map { ($0.value / tot, Sample.lensParams[$0.id] ?? (0.07, 0.08, 0.25)) }
-        let muB = parts.reduce(0) { $0 + $1.0 * $1.1.0 }, muS = parts.reduce(0) { $0 + $1.0 * $1.1.1 }
+        // 종목 값은 사이트가 매일 만드는 stats.json (웹 전망과 같은 μ·σ·상관). 달러 종목은 원/달러 흔들림도 더한다
+        let st = Market.shared.stats, t = trust / 100
+        var parts: [(w: Double, id: String, p: (Double, Double, Double))] = rs.isEmpty || route == .novice ? [(1, "", (0.07, 0.11, 0.16))]
+            : rs.map { ($0.value / tot, $0.id, SiteStats.params($0.id, st)) }
+        let usdW = rs.isEmpty || route == .novice ? 0 : rs.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / tot
+        if usdW > 0 { let fx = SiteStats.fx(st); parts.append((usdW, "KRW=X", (fx.0, fx.0, fx.1))) }
+        var muB = 0.0, muS = 0.0, muM = 0.0
+        for x in parts {
+            muB += x.w * x.p.0; muS += x.w * x.p.1
+            // 내 관점: 웹처럼 종목마다 현재 정세와 과거 추세를 로그 공간에서 섞는다
+            let lb: Double = (1 - t) * log(1 + x.p.0) + t * log(1 + max(-0.99, x.p.1))
+            muM += x.w * (exp(lb) - 1)
+        }
         var v = 0.0
         for a in parts.indices { for b in parts.indices {
-            v += parts[a].0 * parts[b].0 * parts[a].1.2 * parts[b].1.2 * (a == b ? 1 : 0.5)
+            let r: Double = a == b ? 1 : parts[a].id.isEmpty ? 0.5 : SiteStats.corr(parts[a].id, parts[b].id, st)
+            v += parts[a].w * parts[b].w * parts[a].p.2 * parts[b].p.2 * r
         } }
-        var sg = sqrt(v); let t = trust / 100
-        var mu = lens == .base ? muB : lens == .smooth ? muS : muB * (1 - t) + muS * t
+        var sg = sqrt(max(0, v))
+        var mu = lens == .base ? muB : lens == .smooth ? muS : muM
         if shock { mu -= 0.02; sg *= 1.1 }
         let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = monthly * 1e4
         let qAt = { (T: Double, z: Double) -> Double in
