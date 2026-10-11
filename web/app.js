@@ -248,8 +248,36 @@
     if (last.d === d) last.h = h; else st.lots.push({ d, h });
     if (st.lots.length > 400) st.lots.splice(0, st.lots.length - 400);
   }
+  // naeilo를 쓴 날부터의 내 기록: 하루 한 줄 {d, v 평가액, c 넣은 돈, q {티커: [수량, 원화 주가]}, f {티커: [산·판 수량, 원화 금액]}}
+  // 넣은 돈 = 전날 넣은 돈 + 그날 '더 샀어요·팔았어요' 금액(그때 가격) + 그 밖에 바뀐 수량(직접 고치기·추가·삭제)×그날 가격. 첫날은 그날 평가액.
+  // 이 브라우저에만 쌓이고 백업 파일·기기 동기화에 같이 들어간다. 앱(iOS)과 같은 모양. 바뀐 게 새 날이면 true (그때만 저장)
+  function recordDay() {
+    const st = S.state, tr = S.pendTrade; S.pendTrade = null;
+    if (st.sample) return false;
+    const q = {};
+    for (const r of valuation().rows) { if (!(r.sh > 0)) continue; if (!(r.valueKrw > 0)) return false; q[r.h.ticker] = [r.sh, Math.round((r.valueKrw / r.sh) * 100) / 100]; }
+    const D = (st.daily = st.daily || []), d = today();
+    if (D.length && D[D.length - 1].d > d) return false; // 기기 시계가 거꾸로 가면 건드리지 않는다
+    const cur = D.length && D[D.length - 1].d === d ? D[D.length - 1] : null, prev = D[D.length - (cur ? 2 : 1)];
+    if (!prev && !Object.keys(q).length) return false;
+    const f = { ...(cur?.f || {}) };
+    if (tr) { const a = f[tr.t] || [0, 0]; f[tr.t] = [a[0] + tr.q, a[1] + tr.k]; }
+    const pq = prev?.q || {};
+    let c = prev ? prev.c : 0, v = 0;
+    for (const t of new Set([...Object.keys(q), ...Object.keys(pq), ...Object.keys(f)])) {
+      const now = q[t]?.[0] || 0, fl = f[t] || [0, 0], px = q[t]?.[1] ?? pq[t]?.[1] ?? (fl[0] ? fl[1] / fl[0] : 0);
+      c += fl[1] + (now - (pq[t]?.[0] || 0) - fl[0]) * px; v += now * (q[t]?.[1] || 0);
+    }
+    const rec = { d, v: Math.round(v), c: Math.round(c), q };
+    if (Object.keys(f).length) rec.f = f;
+    if (cur) D[D.length - 1] = rec; else D.push(rec);
+    if (D.length > 1200) D.splice(0, D.length - 1200);
+    return !cur;
+  }
+  // 동기화로 다른 기기 값을 받을 때: 날짜별로 합친다 (같은 날은 받은 쪽)
+  const mergeDaily = (a, b) => { const m = new Map(); (b || []).forEach((x) => m.set(x.d, x)); (a || []).forEach((x) => m.set(x.d, x)); return [...m.values()].sort((x, y) => (x.d < y.d ? -1 : 1)).slice(-1200); };
   function save(dirtyForecast = true) {
-    recordLot();
+    recordLot(); recordDay();
     if (dirtyForecast) markDirty();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
@@ -316,7 +344,7 @@
       if (j.state && j.at > mine && hashStr(JSON.stringify({ ...normalize(j.state), ui: null })) !== syncLast) {
         // 이 기기에서 처음 켤 때만 묻는다 (이 기기 값이 더 맞을 수 있으니)
         if (!mine && !confirm(`다른 기기 입력값(${new Date(j.at).toLocaleString()})으로 이 기기를 맞출까요?\n취소하면 이 기기 값을 다른 기기로 보냅니다.`)) { S.state.ui.sync_at = Date.now(); save(false); return syncPush(); }
-        const ui = S.state.ui; S.state = normalize(j.state); S.state.ui = { ...ui, sync_at: j.at }; syncLast = syncSig();
+        const ui = S.state.ui, myDaily = S.state.daily; S.state = normalize(j.state); S.state.ui = { ...ui, sync_at: j.at }; if (myDaily?.length) S.state.daily = mergeDaily(S.state.daily, myDaily); syncLast = syncSig();
         try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); } catch (e) { /* 무시 */ }
         markDirty(); renderAll(); toast("다른 기기 입력값으로 맞췄습니다");
       } else if (!j.state || j.at < mine) { if (!mine) S.state.ui.sync_at = Date.now(); await syncPush(); }
@@ -701,6 +729,7 @@
       // 산 것·판 것만 따로 남긴다 (나중에 평정 지수가 이것만 센다. 직접 고치기는 남기지 않음)
       const log = (S.state.trade_log = S.state.trade_log || []);
       log.push({ d: today(), t: h.ticker, q: E.mode === "buy" ? c.qi : -c.qi, px: c.pi });
+      S.pendTrade = { t: h.ticker, q: E.mode === "buy" ? c.qi : -c.qi, k: (E.mode === "buy" ? 1 : -1) * c.qi * c.pi * (fxBase(c.ccy) || 1) }; // 내 기록의 넣은 돈
       if (log.length > 1000) log.splice(0, log.length - 1000);
     }
     h.shares = c.q1;
@@ -1000,6 +1029,26 @@
         dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
   }
+  // naeilo를 쓴 날부터의 내 기록 (지금 구성으로 본 지난 3년과 따로): 그날그날 남긴 평가액과 넣은 돈
+  function renderMyRec() {
+    if (recordDay()) save(false); // 하루 첫 기록만 저장(동기화)한다. 같은 날 시세가 바뀌면 화면 값만 고치고 다음 저장 때 같이 남는다
+    const card = $("#recCard"), D = S.state.sample ? [] : S.state.daily || [];
+    if (!D.length) { card.style.display = "none"; return; }
+    card.style.display = "block";
+    const L = D[D.length - 1], gain = L.c > 0 ? L.v / L.c - 1 : null;
+    $("#recSub").textContent = `${D[0].d}부터 · ${D.length}일 기록`;
+    $("#recKpis").innerHTML = [
+      ["지금 평가액", krw(L.v) + "원", L.d === today() ? "오늘" : L.d],
+      ["넣은 돈", krw(L.c) + "원", "산 것 − 판 것 (첫날은 그날 평가액)"],
+      ["넣은 돈 대비", gain == null ? "-" : spct(gain), `${L.v >= L.c ? "+" : "−"}${krw(Math.abs(L.v - L.c))}원`],
+    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "넣은 돈 대비" ? cls(gain) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
+    if (D.length < 2) { $("#recChart").style.display = "none"; $("#recNote").textContent = "오늘부터 쌓기 시작했어요. 내일 다시 열면 선이 그려져요. 열지 않은 날은 건너뛰고 이어서 그려요."; return; }
+    $("#recChart").style.display = "block";
+    $("#recNote").textContent = "naeilo를 연 날마다 남긴 실제 값이에요. 위 '지금 구성으로 본' 그래프는 지금 수량을 지난 가격에 대입한 값이라 다릅니다. 열지 않은 날은 선으로 잇습니다.";
+    Charts.lineChart($("#recChart"), { x: D.map((x) => x.d), height: 220, yfmt: krwAxis, series: [
+      { name: "평가액", y: D.map((x) => x.v), color: "var(--c1)", width: 2 },
+      { name: "넣은 돈", y: D.map((x) => x.c), color: "var(--fg)", width: 1.2, dash: "4 3" }] });
+  }
   // 웹 첫 화면에만 세리 한 명 (앱의 인물 다섯 명 중 원칙형). 내 수량을 넣으면 이 카드째 사라진다
   const SERI_WEB = ["숫자부터 넣어 볼까요. 판단은 그다음이에요.", "수량만 알려 주세요. 나머지는 제가 계산할게요.", "처음 오셨군요. 할 일은 하나예요. 수량 넣기.", "지금 보이는 건 샘플이에요. 내 숫자로 바꿔 보세요.", "어서 오세요. 숫자 하나면 시작돼요.", "추측은 나중에요. 먼저 숫자요.", "보유 수량만요. 그 이상은 묻지 않을게요.", "기록이 있어야 볼 수 있어요. 수량부터요.", "샘플은 샘플일 뿐이에요. 내 것을 넣어 보세요.", "드링커는 가상 종목이에요. 내 종목으로 바꿔 보세요.", "한 줄이면 돼요. 종목과 수량.", "오래 안 걸려요. 수량만 넣으면 끝나요.", "관찰은 숫자에서 시작해요.", "처음이시군요. 수량을 넣으면 오늘 값으로 다시 볼게요.", "판단은 제가 하지 않아요. 숫자를 보여 줄 뿐이에요.", "기준이 있어야 흔들리지 않아요. 먼저 지금을 적어요.", "숫자를 넣으면 목표까지 얼마 남았는지 보여요.", "잠깐요. 수량부터 넣고 이야기해요.", "사실만 볼게요. 내 수량을 알려 주세요.", "한 번 넣어 두면 다음부터는 보기만 하면 돼요.", "어서 오세요. 내일을 보려면 오늘 숫자가 필요해요."];
   const seriCard = () => `<div class="seri"><img src="seri.png" alt="세리" width="60" height="70"><div><div class="seri-say"><b>세리</b> ${esc(SERI_WEB[(S.seriPick ??= Math.floor(Math.random() * SERI_WEB.length))])}</div><div class="seri-body">`;
@@ -1018,7 +1067,7 @@
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
     const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
-    renderProgress(H, total, cash); renderBackupNag(); renderBep();
+    renderProgress(H, total, cash); renderBackupNag(); renderBep(); renderMyRec();
     $("#goalKpis").innerHTML = [
       ["현재 평가액", `<a href="#" class="plain" data-go="stocks" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(tot / g.amount), `<div class="bar"><i style="width:${Math.min(100, (tot / g.amount) * 100)}%"></i></div>`],

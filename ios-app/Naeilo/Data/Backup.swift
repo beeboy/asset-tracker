@@ -12,11 +12,12 @@ struct Backup: Codable {
     var homeFriend: String?
     var custom: [CustomSymbols.Saved]
     var hist: [String: CustomSymbols.Hist]
+    var daily: [DayRec]? = nil     // 내 기록 (예전 파일에는 없다)
 
     @MainActor
     init(_ m: AppModel) {
         at = Date(); holdings = m.holdings; progress = m.progress; homeFriend = m.homeFriend
-        custom = CustomSymbols.shared.items; hist = CustomSymbols.shared.hist
+        custom = CustomSymbols.shared.items; hist = CustomSymbols.shared.hist; daily = m.myRecord
     }
 
     /// 불러오기: 추가한 종목 시세부터 넣고(종목 이름·가격이 있어야 보유가 보인다) 종목·진행을 덮는다
@@ -25,6 +26,7 @@ struct Backup: Codable {
         CustomSymbols.shared.restore(custom, hist)
         m.apply(progress)
         if let h = homeFriend { m.homeFriend = h }
+        if let daily { m.myRecord = MyRecord.merge(m.myRecord, daily) }
         m.holdings = holdings
         m.saveProgress()
     }

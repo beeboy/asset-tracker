@@ -74,8 +74,10 @@ final class AppModel {
     // 보유
     // 내 종목은 앱을 다시 켜도 남는다 (다른 시안 상태는 켤 때마다 시연 상태로 시작)
     var holdings: [Holding] = AppModel.savedHoldings ?? Sample.startHoldings {
-        didSet { if let d = try? JSONEncoder().encode(holdings) { UserDefaults.standard.set(d, forKey: "holdings") } }
+        didSet { if let d = try? JSONEncoder().encode(holdings) { UserDefaults.standard.set(d, forKey: "holdings") }; recordDay() }
     }
+    /// naeilo를 쓴 날부터의 내 기록 (MyRecord.swift). 수량을 처음 넣은 날부터 하루 한 줄
+    var myRecord: [DayRec] = MyRecord.load() { didSet { MyRecord.save(myRecord) } }
     /// 종목 추가: 수량·평균 단가가 0보다 큰 숫자여야 한다 (쉼표·공백 허용). 같은 종목은 새 값으로 바꾼다
     @discardableResult
     func addHolding(_ id: String, _ qty: String, _ avg: String) -> Bool {

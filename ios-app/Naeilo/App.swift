@@ -55,10 +55,12 @@ struct RootView: View {
         // 인물 대사: 화면을 열거나 앱을 앞으로 가져올 때만 다음 줄로 (1분 자동 갱신으로는 안 바뀐다)
         .modifier(LineTurns(model: model, phase: phase))
         // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로
-        .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay() } }
+        .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay(); model.recordDay() } }
         // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
         .onChange(of: model.progress) { _, _ in model.saveProgress(); if model.persists { Sync.shared.changed(model) } }
         .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }
+        // 내 기록: 새 날 줄이 생기면 다른 기기로도 (같은 날 값 고침은 다음 변경 때 같이)
+        .onChange(of: model.myRecord.count) { _, _ in if model.persists { Sync.shared.changed(model) } }
         // 앱을 열거나 앞으로 올 때 다른 기기 값 받기
         // 서버 시각도 같이 받는다 (인터미션 날짜·내 캐릭터 조건, Me.swift)
         .onChange(of: phase, initial: true) { _, p in

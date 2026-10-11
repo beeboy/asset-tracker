@@ -69,6 +69,7 @@ struct HoldingsView: View {
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
+                MyRecordCard()
                 Text("점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가 · 연필을 누르면 목록에서 바로 고쳐요")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
@@ -92,7 +93,7 @@ struct HoldingsView: View {
         let chg = (tot.last ?? 0) / max(1, tot.first ?? 1) - 1
         return Card {
             HStack(alignment: .firstTextBaseline) {
-                Text("전체 평가액 · \(period == .d1 ? "전일 종가→지금" : period.label)").appFont(13, .semibold).foregroundStyle(Theme.sub)
+                Text("지금 구성으로 본 평가액 · \(period == .d1 ? "전일 종가→지금" : period.label)").appFont(13, .semibold).foregroundStyle(Theme.sub)
                 Spacer()
                 Text(AppModel.sgn(chg)).appFont(15, .bold).foregroundStyle(Theme.change(chg))
             }
@@ -601,7 +602,10 @@ enum HoldingEdit {
     /// 저장 버튼: 판 해외주식은 실현 이익에 더하고 저장. 매매면 인물의 한 줄을 돌려준다
     static func commit(_ m: AppModel, _ sym: Symbol, _ mode: String, _ r: Result, _ p0: Double) -> String? {
         if mode == "sell" && sym.currency == .usd { m.taxGain += (m.krw(sym, r.qi * (r.pi - p0)) / 1e4).rounded() }
-        return save(m, sym, r.q1, r.p1, trade: mode == "fix" ? nil : mode == "buy")
+        let said = save(m, sym, r.q1, r.p1, trade: mode == "fix" ? nil : mode == "buy")
+        // 내 기록의 넣은 돈: 산 것·판 것은 그때 가격으로 (직접 고치기는 그날 가격으로 자동 계산)
+        if mode != "fix" { let dq = mode == "buy" ? r.qi : -r.qi; m.recordDay(trade: (Sync.siteTicker(sym.id), dq, m.krw(sym, dq * r.pi))) }
+        return said
     }
 
     /// trade: 산 것(true)·판 것(false)이면 평정 지수에 기록하고 인물의 한 줄을 돌려준다. 직접 고치기(nil)는 기록하지 않는다
