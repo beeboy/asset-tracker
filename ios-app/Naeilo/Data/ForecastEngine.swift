@@ -108,3 +108,65 @@ extension MC.Sim: Codable {
         try c.encode(v0, forKey: .v0); try c.encode(start, forKey: .start); try c.encode(summary, forKey: .summary)
     }
 }
+
+// 계획 4안·구성 비교·목표 자동 고르기용 경로: 전망과 같은 몬테카를로(같은 사이트 통계·설정·사건, 사건 반영)를
+// 구성마다 한 번씩 화면 밖에서 돌려 둔다. 지금 내 구성은 전망 경로(ForecastEngine)를 그대로 쓰고, 여기서는 그 밖의 구성만.
+// 하루 한 번 (키에 오늘 날짜), 차례로 하나씩 계산한다
+@Observable
+final class PathRuns {
+    static let shared = PathRuns()
+    struct Run: Codable { var key: String; var factors: [MC.Factor]; var sim: MC.Sim }
+
+    private(set) var runs: [String: Run] = [:]
+    /// 경로 하나가 끝날 때마다 (목표 자동 고르기 다시 하기)
+    @ObservationIgnored var onRun: (() -> Void)?
+    @ObservationIgnored private var queue: [ForecastEngine.Job] = []
+    @ObservationIgnored private var busy = false
+    @ObservationIgnored private var failed: Set<String> = []     // 모형을 못 만든 job (다시 줄 세우지 않는다)
+    private static let file = "paths_mc.plist"
+
+    private init() {
+        if let d = Store.readData(Self.file), let r = try? PropertyListDecoder().decode([String: Run].self, from: d) {
+            let today = Day.today
+            runs = r.filter { $0.key.hasPrefix(today) }
+        }
+    }
+
+    /// 계산해 둔 경로. 없으면 줄에 세우고 nil (끝나면 runs 가 바뀌어 화면이 다시 그려진다)
+    func get(_ job: ForecastEngine.Job) -> Run? {
+        if let r = runs[job.key] { return r }
+        if failed.contains(job.key) { return nil }
+        if !queue.contains(where: { $0.key == job.key }) { queue.append(job); next() }
+        return nil
+    }
+
+    static func compute(_ job: ForecastEngine.Job) -> Run? {
+        guard let model = MC.build(holdings: job.holdings, stats: job.stats, settings: job.settings, events: job.events, start: job.start, goal: job.horizon) else { return nil }
+        let s = job.settings
+        let sim = MC.simulate(model, holdings: job.holdings, mu: MC.scenarioMu(model, s.scenario), nPaths: s.nPaths, seed: s.seedU32,
+                              goal: .infinity, monthly: 0, withEvents: true, dof: s.dof)
+        return Run(key: job.key, factors: model.factors, sim: sim)
+    }
+
+    private func next() {
+        guard !busy, !queue.isEmpty else { return }
+        busy = true
+        let job = queue.removeFirst()
+        Task.detached(priority: .utility) {
+            let r = Self.compute(job)
+            await MainActor.run {
+                self.busy = false
+                if let r {
+                    let today = Day.today
+                    var all = self.runs.filter { $0.key.hasPrefix(today) }
+                    while all.count >= 12, let k = all.keys.first { all[k] = nil }   // 하루에 쌓이는 경로는 12개까지
+                    all[r.key] = r
+                    self.runs = all
+                    if let d = try? PropertyListEncoder().encode(all) { DispatchQueue.global(qos: .utility).async { Store.writeData(d, Self.file) } }
+                    self.onRun?()
+                } else { self.failed.insert(job.key) }
+                self.next()
+            }
+        }
+    }
+}

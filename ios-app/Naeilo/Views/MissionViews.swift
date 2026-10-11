@@ -191,8 +191,8 @@ struct Mission1ResultView: View {
         }
     }
     @ViewBuilder private func probBoxes(_ keep: Plan, _ T: Double) -> some View {
-        statBox("\(m.horizonLabel) 뒤 손실 절반 이상 회복", AppModel.pct(keep.prob(m.halfway, T)))
-        statBox("\(m.horizonLabel) 뒤 본전 이상", AppModel.pct(keep.prob(m.cost, T)))
+        statBox("\(m.horizonLabel) 안에 손실 절반 회복", AppModel.pct(keep.prob(m.halfway, T)))
+        statBox("\(m.horizonLabel) 안에 본전 닿기", AppModel.pct(keep.prob(m.cost, T)))
     }
     private func outcomeRow(_ k: String, _ v: Double) -> some View {
         HStack { Text(k).foregroundStyle(Theme.sub); Spacer(); Text(AppModel.sgn0(v)).fontWeight(.bold).foregroundStyle(Theme.change(v)) }
@@ -215,7 +215,7 @@ struct DepositLeverCard: View {
             if m.recM > 0 {
                 Text("월 \(AppModel.wonK(Double(m.recM))) · 지금 평가액의 \(AppModel.pct(Double(m.recM) * 1e4 / max(1, m.total)))").appFont(13, .semibold).foregroundStyle(Theme.sub)
             }
-            HStack { Text("\(m.horizonLabel) 뒤 본전 이상").foregroundStyle(Theme.sub); Spacer()
+            HStack { Text("\(m.horizonLabel) 안에 본전 닿기").foregroundStyle(Theme.sub); Spacer()
                 Text(m.recM == 0 ? AppModel.pct(base.prob) : "\(AppModel.pct(base.prob)) → \(AppModel.pct(with.prob))").fontWeight(.bold) }
                 .appFont(15)
             HStack { Text("보통의 경우 본전까지").foregroundStyle(Theme.sub); Spacer()
@@ -227,7 +227,7 @@ struct DepositLeverCard: View {
                 Text("손실 \(AppModel.man(loss))은 넣는 돈으로 줄지 않아요. \(m.horizonLabel) 동안 \(AppModel.man(add))을 더 넣으면 손실 비율이 \(AppModel.sgn(-loss / max(1, m.cost)))에서 \(AppModel.sgn(-loss / max(1, m.cost + add)))로 작아질 뿐이라, 본전이 빨라 보이는 거예요.")
                     .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
-            Text("1,000번 그려 본 가능성의 범위예요. 넣는 돈은 비중을 바꾸지 않고 지금 구성 그대로 나눠 넣는다고 봐요.").appFont(12).foregroundStyle(Theme.muted)
+            Text("전망과 같은 3,000번의 경로로 센 값이에요 (월말 기준). 넣는 돈은 비중을 바꾸지 않고 지금 구성 그대로 나눠 넣는다고 봐요.").appFont(12).foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -241,7 +241,7 @@ struct DepositLeverCard: View {
         return out
     }
     private func eta(_ d: AppModel.Deposit) -> String {
-        d.eta == 0 ? "지금" : d.eta.isFinite ? AppModel.eta(d.eta).replacingOccurrences(of: " 뒤", with: "") : "10년 넘게"
+        d.eta == 0 ? "지금" : d.eta.isFinite ? AppModel.eta(d.eta).replacingOccurrences(of: " 뒤", with: "") : "3년 넘게"
     }
 }
 
@@ -289,9 +289,10 @@ struct Mission2ResultView: View {
         MissionPage(kicker: "미션 2 완료 · 새로 열림: 회복 경로", title: "많이 흔들리면, 보통의 결과가 깎여요") {
             GuideBubble(pose: .back, text: "같이 봐요. 한 종목에 몰려 흔들림이 크면, 평균이 같아도 보통의 경우는 낮아져요. -50% 뒤에는 +100%가 있어야 본전이에요.", note: "그래프 쪽을 돌아봄")
             Card {
-                HStack { Text("한 해 흔들림 폭"); Spacer(); Text("±\(AppModel.pct(keep.sigma))").fontWeight(.bold) }.appFont(15)
-                HStack { Text("보통의 연 성장"); Spacer(); Text(AppModel.sgn(keep.g)).fontWeight(.bold) }.appFont(15)
-                Text("평균은 연 9% 오른다고 봐도 \"보통의 경우\"는 \(AppModel.sgn(keep.g))에 그쳐요.").appFont(13).foregroundStyle(Theme.sub)
+                let yr = keep.year
+                HStack { Text("한 해 흔들림 폭"); Spacer(); Text("±\(AppModel.pct(yr.sigma))").fontWeight(.bold) }.appFont(15)
+                HStack { Text("보통의 연 성장"); Spacer(); Text(AppModel.sgn(exp(yr.g) - 1)).fontWeight(.bold) }.appFont(15)
+                Text("평균은 연 \(AppModel.sgn(yr.mean))라도 \"보통의 경우\"는 \(AppModel.sgn(exp(yr.g) - 1))에 그쳐요.").appFont(13).foregroundStyle(Theme.sub)
             }
             Card {
                 Text("앞으로 1년, 내 평가액이 지날 길").appFont(15, .bold)
@@ -326,7 +327,7 @@ struct Mission3View: View {
                     Text(sel.name).appFont(17, .bold)
                     Text(sel.tag).appFont(13).foregroundStyle(Theme.sub)
                     Spacer()
-                    Text("\(m.horizonLabel) 뒤").appFont(13).foregroundStyle(Theme.sub)
+                    Text("\(m.horizonLabel) 기준").appFont(13).foregroundStyle(Theme.sub)
                 }
                 mixBar(sel)
                 PathChart(plans: [(m.keepPlan, Theme.muted, true), (sel, Theme.teal, false)], V: m.total, C: m.cost, marker: m.horizon).frame(height: 110)
@@ -481,7 +482,7 @@ struct Mission3ResultView: View {
         MissionPage(kicker: "미션 3 완료 · 새로 열림: 비중 비교", title: "내 계획: \(sel.name)") {
             GuideBubble(pose: .cheer, text: "정했어요. 이 계획은 기록만 해요. 실제 매매 판단은 직접 하셔야 해요.")
             Card {
-                Text("\(m.horizonLabel) 뒤 절반 회복 \(AppModel.pct(sel.prob(m.halfway, T))) · 본전 \(AppModel.pct(sel.prob(m.cost, T))) · 나쁜 경우 \(AppModel.sgn0(sel.outcome(m.cost, T, -1)))")
+                Text("\(m.horizonLabel) 안에 절반 회복 \(AppModel.pct(sel.prob(m.halfway, T))) · 본전 \(AppModel.pct(sel.prob(m.cost, T))) · 나쁜 경우 \(AppModel.sgn0(sel.outcome(m.cost, T, -1)))")
                     .appFont(15, .semibold).lineSpacing(3)
             }
             Card {

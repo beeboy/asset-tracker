@@ -535,6 +535,58 @@ enum MC {
                       mddMedian: quantileSorted(mddArr.sorted(), 0.5), byYear: byYear, cumHit: cum)
     }
 
+    /// 월 경계 번호: 시작일에서 months 개월 뒤 날짜 이하인 마지막 칸 (웹 breakeven·reweight 의 byYear 와 같은 셈)
+    static func monthK(_ X: Sim, months: Int) -> Int {
+        let target = addMonths(X.start, months)
+        var k = 0; while k + 1 < X.M && X.monthDates[k + 1] <= target { k += 1 }
+        return k
+    }
+
+    // MARK: 본전 확률 (웹 breakeven, 재시뮬레이션 없이)
+    /// 같은 경로에서 종목 묶음(idx)만 적립·매매 없이 들고 있을 때, 월말 평가액이 basis 이상이 되는 첫 달이 months 안에 올 확률.
+    /// mu: 종목별 연 기대수익 (reweight 와 같은 드리프트 보정). 경로가 기한까지 없으면 nil
+    static func breakeven(_ X: Sim, idx: [Int], basis: Double, mu: [Double], months: [Int]) -> [Double?] {
+        let M = X.M, P = X.P
+        let dd = idx.map { a in log(1 + mu[a]) / TD - X.muD[a] }
+        var first = [Int](repeating: -1, count: P)
+        for p in 0..<P {
+            for k in 1..<max(1, M) {
+                var V = 0.0
+                for (j, a) in idx.enumerated() { V += X.v0[a] * exp(Double(X.cg[a][k * P + p]) + dd[j] * Double(X.monthIdx[k])) }
+                if V >= basis { first[p] = k; break }
+            }
+        }
+        let last = dayNum(X.monthDates[M - 1])
+        return months.map { m in
+            if dayNum(addMonths(X.start, m)) - last > 15 { return nil }
+            let k = monthK(X, months: m)
+            return Double(first.reduce(0) { $0 + ($1 >= 0 && $1 <= k ? 1 : 0) }) / Double(P)
+        }
+    }
+
+    // MARK: 월 경계마다 평가액 (재조정 없음, 웹 reweight 와 같은 식)
+    /// 처음 금액 start[a], 매달 monthly 를 wC[a] 비율로 나눠 넣는다 (월 경계 1 ~ M-2). 반환 [k*P+p].
+    /// start = v0, wC = v0 비중이면 reweight 의 경로와 같다. 구성 비교·계획처럼 처음 금액이 0 이어도 쓸 수 있다
+    static func values(_ X: Sim, mu: [Double], start: [Double], monthly: Double, wC: [Double]) -> [Double] {
+        let A = X.A, M = X.M, P = X.P, mi = X.monthIdx
+        let dd = (0..<A).map { a in log(1 + mu[a]) / TD - X.muD[a] }
+        var out = [Double](repeating: 0, count: M * P), accU = [Double](repeating: 0, count: A)
+        for p in 0..<P {
+            for a in 0..<A { accU[a] = 0 }
+            for k in 0..<M {
+                let t = Double(mi[k]), contrib = k > 0 && k < M - 1
+                var V = 0.0
+                for a in 0..<A {
+                    let U = exp((k > 0 ? Double(X.cg[a][k * P + p]) : 0) + dd[a] * t)
+                    if contrib { accU[a] += wC[a] / U }
+                    V += U * (start[a] + monthly * accU[a])
+                }
+                out[k * P + p] = V
+            }
+        }
+        return out
+    }
+
     /// 렌즈별 종목 연 기대수익 (웹 viewMu): "base" · "smooth" · 그 밖 = 내 관점 (추세 신뢰 trust%)
     static func viewMu(_ model: Model, A: Int, lens: String, trust: Double) -> [Double] {
         model.factors.prefix(A).map { f in lens == "base" ? f.base : lens == "smooth" ? f.smooth : blendMu(f.base, f.smooth, trust / 100) }
@@ -542,6 +594,93 @@ enum MC {
     /// 시뮬레이션에 쓰는 요인별 기대수익 (웹: 설정 시나리오, 기본 내 관점)
     static func scenarioMu(_ model: Model, _ scenario: String?) -> [Double] {
         model.factors.map { f in scenario == "base" ? f.base : scenario == "smooth" ? f.smooth : f.blend }
+    }
+}
+
+// MARK: 경로 묶음: 전망과 같은 몬테카를로 경로로 계획·구성의 확률을 센다 (웹 breakeven·reweight 와 같은 식)
+/// 경로는 종목별 처음 금액 base 로 계산해 두고, 다른 금액이면 비율로 늘이거나 줄인다 (적립도 같은 비율로)
+final class PathSet {
+    let sim: MC.Sim
+    let mu: [Double]          // 종목별 연 기대수익 (지금 관점)
+    let base: [Double]        // 종목별 처음 금액 (원)
+    let wC: [Double]          // 매달 넣는 돈을 나누는 비율 (구성 비중)
+    let tM: [Double]          // 월 경계마다 오늘부터 개월
+    let key: String
+    private var cache: [String: [Double]] = [:]
+    private var bandCache: [String: [[Double]]] = [:]
+
+    init(sim: MC.Sim, mu: [Double], base: [Double], key: String) {
+        self.sim = sim; self.mu = mu; self.base = base; self.key = key
+        let s = base.reduce(0, +)
+        wC = base.map { s > 0 ? $0 / s : 1 / Double(max(1, base.count)) }
+        let s0 = MC.dayNum(sim.start)
+        tM = sim.monthDates.map { Double(MC.dayNum($0) - s0) / 365.25 * 12 }
+    }
+    var P: Int { sim.P }
+    var M: Int { sim.M }
+
+    /// 지금 금액 V(원)에서, 매달 monthly(원)씩 구성 비중대로 넣을 때 월 경계마다 평가액 [k*P+p]
+    func values(_ V: Double, monthly: Double = 0) -> [Double] {
+        let ck = "\(V)|\(monthly)"
+        if let v = cache[ck] { return v }
+        let S = base.reduce(0, +)
+        let v: [Double]
+        if V > 0 && S > 0 {
+            let f = V / S
+            let raw = MC.values(sim, mu: mu, start: base, monthly: monthly / f, wC: wC)
+            v = f == 1 ? raw : raw.map { $0 * f }
+        } else {
+            v = MC.values(sim, mu: mu, start: base.map { _ in 0 }, monthly: monthly, wC: wC)
+        }
+        if cache.count > 24 { cache = [:] }
+        cache[ck] = v
+        return v
+    }
+    /// 월 경계마다 5·25·50·75·95% (적립 없이)
+    func bands(_ V: Double) -> [[Double]] {
+        let ck = "\(V)"
+        if let b = bandCache[ck] { return b }
+        let b = MC.bandsOf(values(V), M: M, P: P)
+        if bandCache.count > 8 { bandCache = [:] }
+        bandCache[ck] = b
+        return b
+    }
+    func k(months: Int) -> Int { MC.monthK(sim, months: months) }
+    /// 기준선 line(k) 이상이 되는 첫 칸 (1부터, kMax 칸까지 없으면 -1)
+    func firstHits(_ v: [Double], upTo kMax: Int, line: (Int) -> Double) -> [Int] {
+        var out = [Int](repeating: -1, count: P)
+        guard kMax >= 1 else { return out }
+        let lines = (0...kMax).map(line)
+        for p in 0..<P { for k in 1...kMax where v[k * P + p] >= lines[k] { out[p] = k; break } }
+        return out
+    }
+    /// kMax 칸까지 한 번이라도 기준선 이상인 경로 비율
+    func touch(_ v: [Double], upTo kMax: Int, line: (Int) -> Double) -> Double {
+        Double(firstHits(v, upTo: kMax, line: line).filter { $0 >= 0 }.count) / Double(P)
+    }
+    /// k칸 평가액(minus 를 뺀 값)이 K 이상인 경로 비율
+    func share(_ v: [Double], k: Int, minus: Double = 0, atLeast K: Double) -> Double {
+        var n = 0; for p in 0..<P where v[k * P + p] - minus >= K { n += 1 }
+        return Double(n) / Double(P)
+    }
+    func quantile(_ v: [Double], k: Int, _ q: Double, minus: Double = 0) -> Double {
+        MC.quantileSorted((0..<P).map { v[k * P + $0] - minus }.sorted(), q)
+    }
+    /// 첫 도달 칸들의 가운데 (개월, 없으면 무한대)
+    func medianMonths(_ hits: [Int]) -> Double {
+        let ms = hits.map { $0 >= 0 ? (tM[$0]).rounded() : Double.infinity }.sorted()
+        return ms[ms.count / 2]
+    }
+    /// 웹 req50 (reweight 와 같은 50번 이분법): 마지막 칸(kEnd) 평가액이 K 이상인 경로가 절반이 되는 월 적립 (원). 적립은 kEnd 앞 달까지
+    func req50(_ V: Double, goal K: Double, kEnd: Int) -> Double {
+        let v0 = values(V), v1 = values(V, monthly: 1e6), last = kEnd >= M - 1
+        let nc = (0..<P).map { v0[kEnd * P + $0] }
+        let an = (0..<P).map { (v1[kEnd * P + $0] - v0[kEnd * P + $0]) / 1e6 - (last || kEnd == 0 ? 0 : 1) }
+        func ok(_ c: Double) -> Bool { var n = 0; for p in 0..<P where nc[p] + c * an[p] >= K { n += 1 }; return Double(n) / Double(P) >= 0.5 }
+        if ok(0) { return 0 }
+        var lo = 0.0, hi = 1e9
+        for _ in 0..<50 { let c = (lo + hi) / 2; if ok(c) { hi = c } else { lo = c } }
+        return hi
     }
 }
 
