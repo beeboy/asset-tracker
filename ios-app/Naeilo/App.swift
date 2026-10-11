@@ -54,10 +54,12 @@ struct RootView: View {
         .onChange(of: model.nxStep) { _, n in if n == 2 && Sync.shared.isOn { model.nxStep = 3 } }
         // 인물 대사: 화면을 열거나 앱을 앞으로 가져올 때만 다음 줄로 (1분 자동 갱신으로는 안 바뀐다)
         .modifier(LineTurns(model: model, phase: phase))
-        // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로
-        .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay(); model.recordDay() } }
+        // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로.
         // 전망 몬테카를로: 앱이 뒤로 가면 돌던 계산도 멈추고, 다시 앞으로 오면 이어 간다 (뒤에서 폰이 뜨거워지지 않게)
-        .onChange(of: phase, initial: true) { _, p in Compute.setActive(p != .background) }
+        .onChange(of: phase) { _, p in
+            Compute.setActive(p != .background)
+            if p == .active && model.persists { model.catchUpDay(); model.recordDay() }
+        }
         // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
         .onChange(of: model.progress) { _, _ in model.saveProgress(); if model.persists { Sync.shared.changed(model) } }
         .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }
