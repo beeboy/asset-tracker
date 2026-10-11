@@ -118,7 +118,7 @@ struct ForecastView: View {
                             }
                         }
                     }
-                    Text("* 종목 추천 아님").appFont(12).foregroundStyle(Theme.muted)
+                    Text("예측이 아닌 \"만약\" 도구. 촐레스키 분해와 몬테카를로로 계산, 추세선은 칼만 필터 적용. 종목 추천이 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
                 }
                 .padding(16)
         }
