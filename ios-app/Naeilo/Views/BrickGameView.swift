@@ -154,7 +154,7 @@ struct BrickGameHub: View {
             stageCard(s, open: open, done: done)
             if open {
                 Button { board = s } label: {
-                    Image(systemName: "trophy").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.tealDark)
+                    Image(systemName: "trophy").appFont(16, .bold).foregroundStyle(Theme.tealDark)
                         .frame(width: 44, height: 44).background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain).accessibilityLabel("\(s.bg.volume) 이번 주 순위")
@@ -172,9 +172,9 @@ struct BrickGameHub: View {
                     HStack(spacing: 6) {
                         Text(s.bg.volume).appFont(12, .bold).foregroundStyle(Theme.tealDark)
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
-                        if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).font(.system(size: 13)) }
+                        if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).appFont(13) }
                     }
-                    Text(open ? s.rule + (s.extra > 0 ? " 벽돌 \(s.extra)칸을 더 쌓았어요." : "") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + (s.tetrisCount(rec.level) == 0 ? "." : ", 숨은 테트리스 블럭 \(s.tetrisCount(rec.level))개.") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
                 }
                 Spacer(minLength: 0)
@@ -202,6 +202,9 @@ struct BrickPlayView: View {
     private let brickLight = Color(hex: 0x7FD3C9, dark: 0x3C8F86)
     private let clay = Color(hex: 0xC9A27E, dark: 0x8A6A4E)
     private let stackColor = Color(hex: 0xB9C3E6, dark: 0x4E5C8C)   // 단계가 더 쌓은 칸
+    /// 테트리스 조각 색 (I O T S Z J L)
+    static let tetrisColors: [Color] = [Color(hex: 0x00C8E8), Color(hex: 0xF2D000), Color(hex: 0xA03CE0),
+                                        Color(hex: 0x2EC84A), Color(hex: 0xE8343C), Color(hex: 0x2F5BE8), Color(hex: 0xF08C1E)]
 
     var body: some View {
         let g = game
@@ -338,7 +341,7 @@ struct BrickPlayView: View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
                 Button { g.pause() } label: {
-                    Image(systemName: "pause.fill").font(.system(size: 16, weight: .bold)).frame(width: 40, height: 40)
+                    Image(systemName: "pause.fill").appFont(16, .bold).frame(width: 40, height: 40)
                         .background(Theme.card, in: Circle()).overlay(Circle().stroke(Theme.border, lineWidth: 1.5))
                 }
                 .buttonStyle(.plain).accessibilityLabel("멈춤")
@@ -417,17 +420,31 @@ struct BrickPlayView: View {
                 let rc = r(b.minX + 0.05, b.minY + 0.05, 0.9, 0.9)
                 if g.hp[i] < 0 { ctx.fill(Path(rc), with: .color(Theme.ink)); continue }
                 if let sp = g.special[i], g.revealed[i] { special(&ctx, sp, rc, now); continue }
+                if g.group[i] >= 0, g.bigs[g.group[i]].revealed {   // 테트리스 색, 위·왼쪽은 밝게
+                    let cell = r(b.minX, b.minY, 1, 1), col = Self.tetrisColors[g.bigs[g.group[i]].shape]
+                    ctx.fill(Path(cell), with: .color(col))
+                    ctx.fill(Path(CGRect(x: cell.minX, y: cell.minY, width: cell.width, height: cell.height * 0.18)), with: .color(.white.opacity(0.45)))
+                    ctx.fill(Path(CGRect(x: cell.minX, y: cell.maxY - cell.height * 0.18, width: cell.width, height: cell.height * 0.18)), with: .color(.black.opacity(0.25)))
+                    continue
+                }
                 let c: Color = switch g.kind[i] { case 1: brickDark; case 3: brickLight; case 4: Theme.track; case 5: stackColor; default: brickLight }
                 ctx.fill(Path(rc), with: .color(c))
                 if g.kind[i] == 3 { ctx.stroke(Path(rc.insetBy(dx: 0.6, dy: 0.6)), with: .color(Theme.up), lineWidth: 1.2) }
-                if g.hp[i] >= 3 { ctx.fill(Path(roundedRect: rc.insetBy(dx: rc.width * 0.22, dy: rc.height * 0.22), cornerRadius: 1.5), with: .color(clay)) }
-                if g.hp[i] == 1 {   // 한 번 맞은 벽돌: 금이 간다
+                if g.hp[i] >= 2 { ctx.fill(Path(roundedRect: rc.insetBy(dx: rc.width * 0.22, dy: rc.height * 0.22), cornerRadius: 1.5), with: .color(clay)) }
+                if g.hp[i] >= 3 { ctx.stroke(Path(rc.insetBy(dx: 0.8, dy: 0.8)), with: .color(clay), lineWidth: 1.2) }
+                if g.hp[i] == 1 && g.revealed[i] {   // 한 번 맞은 벽돌: 금이 간다
                     var p = Path()
                     p.move(to: CGPoint(x: rc.minX + rc.width * 0.2, y: rc.minY + rc.height * 0.15))
                     p.addLine(to: CGPoint(x: rc.midX, y: rc.midY))
                     p.addLine(to: CGPoint(x: rc.maxX - rc.width * 0.25, y: rc.maxY - rc.height * 0.1))
                     ctx.stroke(p, with: .color(.white.opacity(0.85)), lineWidth: max(1, rc.width * 0.12))
                 }
+            }
+            // 드러난 테트리스 블럭: 남은 횟수
+            for big in g.bigs where big.revealed && big.hp > 0 {
+                let rs = big.cells.map { g.rect($0) }
+                let mid = CGPoint(x: rs.map { $0.midX }.reduce(0, +) / Double(rs.count) * s, y: rs.map { $0.midY }.reduce(0, +) / Double(rs.count) * s)
+                ctx.draw(Text("\(big.hp)").font(.system(size: max(9, s * 0.9), weight: .heavy)).foregroundColor(.white), at: mid)
             }
             // 특수 블럭이 터지는 그림
             for b in g.blasts {
@@ -456,7 +473,13 @@ struct BrickPlayView: View {
                 ctx.fill(Path(ellipseIn: e), with: .color(.white)); ctx.stroke(Path(ellipseIn: e), with: .color(Theme.ink), lineWidth: 1)
             }
             // 보호막
-            if g.shield { ctx.fill(Path(r(0, 0.1, BrickGame.W, 0.3)), with: .color(Theme.yellow.opacity(0.8))) }
+            if g.shield {   // 진하고 두껍게, 살짝 숨 쉬듯
+                let glow = 0.75 + 0.25 * sin(now.timeIntervalSinceReferenceDate * 4)
+                let bar = r(0, 0.15, BrickGame.W, 0.9)
+                ctx.fill(Path(r(0, 0, BrickGame.W, 1.4)), with: .color(Theme.yellow.opacity(0.25 * glow)))
+                ctx.fill(Path(roundedRect: bar, cornerRadius: 0.3 * s), with: .color(Theme.orange.opacity(glow)))
+                ctx.stroke(Path(roundedRect: bar, cornerRadius: 0.3 * s), with: .color(Theme.yellow), lineWidth: 2)
+            }
             // 판과 선수
             let pw = g.paddleW
             ctx.fill(Path(roundedRect: r(g.paddleX - pw / 2, BrickGame.PY, pw, BrickGame.PH), cornerRadius: 0.4 * s), with: .color(Theme.ink))
@@ -527,12 +550,12 @@ struct BrickPlayView: View {
         }
     }
 
-    static let specialNote = "벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 몇 개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물."
+    static let specialNote = "가운데 네모가 있는 벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 10개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물. 두 번 맞는 벽돌 가운데 몇몇은 테트리스 블럭이 숨은 거예요."
 
     @ViewBuilder private func overlay(_ g: BrickGame) -> some View {
         switch g.phase {
         case .ready:
-            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule + "\n" + Self.specialNote + (g.stacked > 0 ? "\n이번 방은 벽돌 \(g.stacked)칸을 더 쌓았어요." : "")) { EmptyView() }
+            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule + "\n" + Self.specialNote + "\n벽돌 \(g.total)개" + (g.stacked > 0 ? " (내 칸 위에 \(g.stacked)개를 더 쌓음)" : "") + (g.bigs.isEmpty ? "" : ", 숨은 테트리스 블럭 \(g.bigs.count)개")) { EmptyView() }
                 .allowsHitTesting(false)
         case .playing:
             if let t = g.toast {
