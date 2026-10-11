@@ -75,21 +75,27 @@ private struct SignedBar: View {
 private struct Kpi: View {
     let k: String, v: String, sub: String
     var color: Color = Theme.ink
+    var dark = false
+    func darkened(_ on: Bool) -> Kpi { var k = self; k.dark = on; return k }
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        let box = VStack(alignment: .leading, spacing: 2) {
             Text(k).appFont(12).foregroundStyle(Theme.sub)
             Text(v).appFont(18, .bold).foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.7)
             Text(sub).appFont(11).foregroundStyle(Theme.muted)
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+        if dark {
+            box.darkBox(14)
+        } else {
+            box.background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+        }
     }
 }
 
-private func kpiGrid(_ items: [Kpi]) -> some View {
+private func kpiGrid(_ items: [Kpi], dark: Bool = false) -> some View {
     LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-        ForEach(items.indices, id: \.self) { items[$0] }
+        ForEach(items.indices, id: \.self) { items[$0].darkened(dark) }
     }
 }
 
@@ -197,8 +203,8 @@ struct MyPathView: View {
                     Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? "적립 포함, 남은 기간" : "본전까지 남은 기간"),
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
                     Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "3년 전망 (\(m.lens.label))"),
-                ])
-                .padding(10).darkBox()
+                ], dark: true)
+                footnote("예측이 아닌 기준선. 목표와 적립으로 그은 길보다 실제가 앞섰는지 봐요. 종목 추천이 아닙니다.")
             }
             .padding(16)
         }
@@ -501,7 +507,7 @@ struct RateScenarioView: View {
                     tableRow("시장 연 기대수익", AppModel.sgn(r.mkt[0]), AppModel.sgn(r.mkt[1]), AppModel.sgn(r.mkt[2]), "")
                     Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · 3년 전망 \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
                 }
-                footnote("예측이 아닌 \"만약\" 도구. 1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산. 이익 자료 \(file.eps_last ?? "")까지. 출처 Robert J. Shiller.")
+                footnote("예측이 아닌 \"만약\" 도구. 1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산. 이익 자료 \(file.eps_last ?? "")까지. 출처 Robert J. Shiller. 종목 추천이 아닙니다.")
             }
             .padding(16)
         }
@@ -815,7 +821,6 @@ struct GlanceView: View {
                 Text(info.2).appFont(12).foregroundStyle(Theme.sub)
                 ChipRow(items: names.map { ($0.0, $0.1) }, selection: $metric)
             }
-            .darkBox(0)
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(data, id: \.row.id) { d in

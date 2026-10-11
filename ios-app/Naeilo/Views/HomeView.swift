@@ -261,7 +261,7 @@ struct RoutineCard: View {
 struct MiniPath: View {
     @Environment(AppModel.self) private var m
     var body: some View {
-        let p = m.myPath, x1 = p.start + 1.0 / 12
+        let p = m.myPath, x1 = p.start + 1.0 / 12, gap = m.myPathGapToday
         let act: [Double] = (0...20).map { i in p.act(p.start * Double(i) / 20) }
         let need: [Double] = (0...20).map { i in p.need(x1 * Double(i) / 20) }
         let vals = act + need
@@ -285,10 +285,16 @@ struct MiniPath: View {
                 ctx.fill(Path(ellipseIn: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)), with: .color(Theme.mint))
             }
             .frame(width: 84, height: 40)
+            .overlay(alignment: .bottom) {
+                Text(String(format: "%.1f%%", abs(gap) * 100) + (gap >= 0 ? " 앞섬" : " 뒤처짐")).appFont(10, .bold)
+                    .foregroundStyle(gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
+                    .fixedSize().offset(y: 13)
+            }
+            .padding(.bottom, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("내 길 그래프, 눌러서 분석의 내 길 보기")
+        .accessibilityLabel("내 길 그래프, 내 길보다 \(String(format: "%.1f%%", abs(gap) * 100)) \(gap >= 0 ? "앞섬" : "뒤처짐"), 눌러서 분석의 내 길 보기")
     }
 }
 
