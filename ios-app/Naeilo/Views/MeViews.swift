@@ -343,8 +343,8 @@ struct MeEditView: View {
                         }
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, minHeight: 80).padding(.horizontal, 2)
-                        .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1))
+                        .background(on ? Theme.tealBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2.5 : 1))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(x.name)
@@ -384,8 +384,8 @@ struct MeEditView: View {
                         }
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, minHeight: 72).padding(.horizontal, 2)
-                        .background(on ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1))
+                        .background(on ? Theme.tealBg : Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2.5 : 1))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(group == .color || o == 0 ? group.name(o) : "\(group.label) \(group.name(o))")
@@ -465,7 +465,7 @@ struct MeEditView: View {
     private func big(_ c: MeChar, _ s: Int) -> some View {
         MeAvatar(me: c, width: CGFloat(MeArt.W * s), height: CGFloat(MeArt.H * s))
         .padding(10)
-        .background(Theme.shelter, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
         .accessibilityLabel(c.shownName)
     }
 
