@@ -655,7 +655,7 @@ struct DividendView: View {
                             color: Theme.change(usU))
                     ruleRow("내년 5월 낼 세금", "지금 그대로 / 미국 종목 다 판다면", AppModel.man(cgt(G)) + " / " + AppModel.man(cgt(G + usU)))
                     Text(usU < 0
-                         ? "평가 손실 \(AppModel.man(-usU))을 올해 팔아 확정하면 이미 판 이익과 합쳐져 세금이 \(AppModel.man(cgt(G) - cgt(G + usU))) 줄어요. 회복 미션의 절세 단계와 같은 계산이에요."
+                         ? "손실은 확정된 해의 이익과 합쳐 계산돼요. 위 '다 판다면' 줄은 계산 예시이고, 매매 권유가 아니에요."
                          : "이익 250만원까지는 세금이 없고, 넘는 부분에 22%(지방세 포함)를 내요. 국내 상장주식은 대주주가 아니면 팔 때 양도세가 없어요(거래세만).")
                         .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
                 }

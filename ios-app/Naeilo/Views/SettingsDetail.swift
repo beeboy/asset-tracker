@@ -73,7 +73,7 @@ struct AlertsView: View {
             ("be", "본전 도달", "평가액이 들어간 돈을 넘으면 한 번", "본전에 도착했어요! 평가액이 들어간 돈 \(AppModel.man(m.cost))을 넘었어요."),
             ("drift", "비중 이탈", "비중 1위 종목 비중이 계획에서 \(m.alertTh)%p 넘게 벗어나면",
              "\(m.focusName) 비중이 \(AppModel.pct(m.focusWeight))예요. 계획(\(AppModel.pct(m.planWeight)))보다 \(Int((abs(m.focusWeight - m.planWeight) * 100).rounded()))%p 벗어났어요."),
-            ("dep", "연말 절세 확인", "12월 1일, 올해 손실을 확정할지 볼 때", "올해가 한 달 남았어요. 손실 난 종목 일부를 팔면 내년 세금이 줄 수 있어요."),
+            ("dep", "연말 세금 정리", "12월 1일, 올해 손익과 세금 예시 보기", "올해가 한 달 남았어요. 올해 해외주식 손익과 내년 5월 세금 예시를 앱에서 확인해 보세요."),
             ("morn", "아침 한 줄", "평일 \(m.alertHr)시, 어제의 움직임 한 줄", Notifier.morningLine(m)),
         ]
         let on = list.filter { m.alerts[$0.k] == true }
@@ -540,7 +540,7 @@ struct TaxRulesView: View {
                 ForEach([("해외주식 양도소득세", "한 해 손익 합계에서 250만원 넘는 부분에 22%. 다음 해 5월 신고."),
                          ("국내 상장주식", "대주주가 아니면 양도세 없음. 증권거래세만."),
                          ("배당", "국내 15.4%, 미국 15% (현지 원천징수)."),
-                         ("손실 상계", "같은 해 손익만 합쳐요. 연말 전 손실 확정으로 줄일 수 있어요.")], id: \.0) { t, v in
+                         ("손실 상계", "같은 해 이익과 손실을 합쳐서 계산해요.")], id: \.0) { t, v in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(t).appFont(14, .bold)
                         Text(v).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
