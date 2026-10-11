@@ -20,6 +20,11 @@ struct WReward: Codable {
     var items: [String]? = nil    // 쉼터에 돌아온 물건 (돌아온 순서). 오늘의 움직임 위젯이 쓴다
     var says: [String: String]? = nil  // 인물별 말풍선 (앱이 대사 데이터에서 골라 넘긴다)
     var saysNext: [String: [String]]? = nil  // 인물별 다음 대사 후보. 위젯이 갱신하거나 ↻를 누를 때마다 다음 줄
+    var news: String? = nil       // 홈 리마인드: 오늘 생긴 큰 달성 (오늘의 움직임 말풍선)
+    var badge: String? = nil      // 홈 리마인드: 오늘 넘은 1000칸 이정표 (블록 위젯 머리)
+    var newsDay: String? = nil    // news·badge 를 쓴 날 (다른 날이면 안 보인다)
+    var newsToday: String? { newsDay == Day.today ? news : nil }
+    var badgeToday: String? { newsDay == Day.today ? badge : nil }
 
     static let sample = WReward(keyName: "본전", pct: 0.87, pctYesterday: 0.862, remain: 1.52e7, cells: 264, cellsYesterday: 261,
                                 total: 1.234e8, dayChg: 0.008, tiles: [.init(t: "DRNK", w: 0.62, c: 0.019), .init(t: "QQQ", w: 0.38, c: -0.004)],

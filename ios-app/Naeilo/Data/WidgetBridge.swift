@@ -54,7 +54,7 @@ enum WidgetBridge {
         }
         var reward = WReward(keyName: m.keyName, pct: frac(track), pctYesterday: frac(yTrack), remain: max(0, key - track),
                              cells: Int(frac(track) * 1000), cellsYesterday: Int(frac(yTrack) * 1000),
-                             total: m.total, dayChg: m.todayMove, tiles: Array(tiles), next: nextEvent(rows.map(\.id), now),
+                             total: m.total, dayChg: m.todayMove, tiles: Array(tiles), next: MarketEvents.widgetNext(held: rows.map(\.id)),
                              friendsOn: Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id) + (m.meUnlocked ? ["me"] : []),
                              homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0 },
                              items: Shelter.items.prefix(m.itemsOn).map(\.id))
@@ -62,6 +62,8 @@ enum WidgetBridge {
         // 내 캐릭터는 투자 유형 인물의 대사를 같이 쓴다
         if m.meUnlocked { sy.now["me"] = sy.now[m.meVoice]; sy.next["me"] = sy.next[m.meVoice] }
         reward.says = sy.now; reward.saysNext = sy.next
+        // 홈 리마인드: 오늘 생긴 큰 달성은 오늘의 움직임 말풍선에, 1000칸 이정표는 블록 위젯 머리에 (그날만)
+        reward.news = Remind.shared.widgetNews; reward.badge = Remind.shared.widgetBadge; reward.newsDay = Day.today
         MeArt.push(m)
         Store.write(reward, "reward.json")
         Store.write(summary, "summary.json")
@@ -93,22 +95,5 @@ enum WidgetBridge {
         }
         WidgetLine.reset()
         return (now, next)
-    }
-
-    /// 다음 일정: 보유 종목의 실적 발표 (분석 탭 일정과 같은 값)
-    static let events: [(day: String, sym: String, what: String)] = [
-        ("2026-10-22", "DRNK", "실적"), ("2026-10-29", "005930", "실적"), ("2026-10-30", "AAPL", "실적"), ("2026-11-19", "NVDA", "실적"),
-    ]
-    static func nextEvent(_ held: [String], _ now: Date) -> String? {
-        let cal = Calendar.current, today = cal.startOfDay(for: now)
-        for e in events where held.contains(e.sym) {
-            guard let d = Day.date(e.day) else { continue }
-            let n = cal.dateComponents([.day], from: today, to: d).day ?? -1
-            guard n >= 0 else { continue }
-            let md = cal.dateComponents([.month, .day], from: d)
-            let name = Sample.symbols.first { $0.id == e.sym }.map { $0.currency == .usd ? $0.id : $0.name } ?? e.sym
-            return "\(name) \(e.what) " + (n == 0 ? "오늘" : "D-\(n)") + " (\(md.month!)/\(md.day!))"
-        }
-        return nil
     }
 }
