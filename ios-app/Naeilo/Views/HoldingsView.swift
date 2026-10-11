@@ -194,7 +194,7 @@ struct HoldingDetailView: View {
     }
 
     private func profile(_ p: Profile) -> some View {
-        Card {
+        Card(dark: true) {
             HStack {
                 Text(p.etf ? "이 ETF는" : "이 회사는").appFont(15, .bold)
                 Spacer()

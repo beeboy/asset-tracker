@@ -60,15 +60,37 @@ struct Card<Content: View>: View {
     var padding: CGFloat = 16
     var bg: Color = Theme.card
     var stroke: Color? = Theme.border
+    /// 요약 박스: 홈의 지금 평가액처럼 진한 바탕 (안의 글자색은 어두운 모드 색을 쓴다)
+    var dark = false
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 10) { content }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(padding)
-            .background(bg, in: RoundedRectangle(cornerRadius: 18))
+            .modifier(DarkScheme(on: dark))
+            .background(dark ? Theme.night : bg, in: RoundedRectangle(cornerRadius: 18))
             .overlay {
-                if let stroke { RoundedRectangle(cornerRadius: 18).stroke(stroke, lineWidth: 1) }
+                if let stroke, !dark { RoundedRectangle(cornerRadius: 18).stroke(stroke, lineWidth: 1) }
             }
+    }
+}
+
+extension View {
+    /// 진한 요약 박스 (Card 가 아닌 묶음에)
+    func darkBox(_ radius: CGFloat = 18) -> some View {
+        modifier(DarkBox(radius: radius))
+    }
+}
+private struct DarkScheme: ViewModifier {
+    let on: Bool
+    @ViewBuilder func body(content: Content) -> some View {
+        if on { content.environment(\.colorScheme, .dark) } else { content }
+    }
+}
+private struct DarkBox: ViewModifier {
+    let radius: CGFloat
+    func body(content: Content) -> some View {
+        content.environment(\.colorScheme, .dark).background(Theme.night, in: RoundedRectangle(cornerRadius: radius))
     }
 }
 

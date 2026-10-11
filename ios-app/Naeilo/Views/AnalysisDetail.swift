@@ -34,11 +34,11 @@ struct DetailHead: View {
     let title: String
     let sub: String
     var body: some View {
-        Group {
-            if !sub.isEmpty { Text(sub).appFont(14).foregroundStyle(Theme.sub) }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .navigationTitle(title)
+        // 설명이 없으면 빈 Group 이라 제목이 막대에 안 붙었다: 높이 0 인 뷰라도 둔다
+        Text(sub).appFont(14).foregroundStyle(Theme.sub)
+            .frame(maxWidth: .infinity, maxHeight: sub.isEmpty ? 0 : nil, alignment: .leading)
+            .opacity(sub.isEmpty ? 0 : 1)
+            .navigationTitle(title)
     }
 }
 
@@ -198,6 +198,7 @@ struct MyPathView: View {
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
                     Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "3년 전망 (\(m.lens.label))"),
                 ])
+                .padding(10).darkBox()
             }
             .padding(16)
         }
@@ -307,7 +308,7 @@ struct ExternalView: View {
                     }
                     Text(note).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
-                Card {
+                Card(dark: true) {
                     Text("다가오는 사건 (시안 예시 일정)").appFont(15, .bold)
                     ForEach(events, id: \.1) { d, t, k in
                         HStack(alignment: .top, spacing: 10) {
@@ -487,7 +488,7 @@ struct RateScenarioView: View {
                     Slider(value: $mk, in: -10...10, step: 1).tint(Theme.orange).accessibilityLabel("시장 공통 기대수익")
                     Button("지금 값으로") { dr = nil; mk = 0 }.appFont(13, .bold).foregroundStyle(Theme.teal)
                 }
-                Card {
+                Card(dark: true) {
                     Text("S&P 실질 이익").appFont(15, .bold)
                     tableRow("", "하위 10%", "중앙", "상위 10%", "감소", head: true)
                     ForEach(0..<H, id: \.self) { y in
@@ -635,7 +636,7 @@ struct DividendView: View {
                     ruleRow("배당·이자 합계 2,000만원까지", "넘으면 다른 소득과 합쳐 계산(금융소득 종합과세). 지금 1년 \(AppModel.won1(gross))",
                             gross >= 2000e4 ? "넘음" : AppModel.man(2000e4 - gross) + " 남음")
                 }
-                Card {
+                Card(dark: true) {
                     Text("팔 때 세금 (해외주식 양도세, 내년 5월 신고)").appFont(15, .bold)
                     ruleRow("올해 이미 판 이익", "세금 규칙에 넣은 값", AppModel.man(G))
                     ruleRow("미국 종목 평가 손익", us.isEmpty ? "미국 종목 없음" : us.map(\.id).joined(separator: ", ") + " 지금 다 판다면", AppModel.manS(usU),
@@ -748,7 +749,7 @@ struct FxImpactView: View {
                     Text("내 평가액 \(AppModel.man(valAt(what))) (\(AppModel.manS(valAt(what) - m.total))) · \(m.keyName)까지 \(AppModel.man(max(0, m.keyValue - valAt(what))))")
                         .appFont(13, .semibold)
                 }
-                Card {
+                Card(dark: true) {
                     Text("환율별 내 평가액 (주가는 그대로)").appFont(15, .bold)
                     ForEach([1250.0, 1300, FX, 1450, 1500], id: \.self) { r in
                         HStack {
@@ -814,6 +815,7 @@ struct GlanceView: View {
                 Text(info.2).appFont(12).foregroundStyle(Theme.sub)
                 ChipRow(items: names.map { ($0.0, $0.1) }, selection: $metric)
             }
+            .darkBox(0)
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(data, id: \.row.id) { d in

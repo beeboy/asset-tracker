@@ -40,7 +40,7 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 10) {
             // 목표 금액을 누르면 고친다
             HStack(spacing: 4) {
-                Text(m.route == .novice ? "지금 모은 돈" : "지금 평가액").foregroundStyle(Color(hex: 0xC9D0D6))
+                Text((m.route == .novice ? "지금 모은 돈" : "지금 평가액") + " · 목표 \(AppModel.wonK(m.gK))").foregroundStyle(Color(hex: 0xC9D0D6))
                 NavigationLink(value: "goal") {
                     Image(systemName: "pencil").foregroundStyle(.white).frame(minWidth: 28, minHeight: 28)
                 }
@@ -53,6 +53,8 @@ struct HomeView: View {
                 if m.route == .plus {
                     Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 }
+                Spacer(minLength: 8)
+                MiniPath()
             }
             HStack {
                 Text("\(m.gY)년 목표까지"); Spacer()
@@ -78,6 +80,8 @@ struct HomeView: View {
                 Text(AppModel.man(m.total)).appFont(32, .bold).tracking(-0.5)
                 Text(AppModel.sgn(m.ret)).appFont(16, .bold)
                     .foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
+                Spacer(minLength: 8)
+                MiniPath()
             }
             HStack {
                 Text("본전까지")
@@ -250,6 +254,41 @@ struct RoutineCard: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+// 지금 평가액 카드 오른쪽 작은 그래프: 내 길 '시작부터' (실제 = 민트 선, 내 길 = 보라 점선). 누르면 분석 > 내 길
+struct MiniPath: View {
+    @Environment(AppModel.self) private var m
+    var body: some View {
+        let p = m.myPath, x1 = p.start + 1.0 / 12
+        let act: [Double] = (0...20).map { i in p.act(p.start * Double(i) / 20) }
+        let need: [Double] = (0...20).map { i in p.need(x1 * Double(i) / 20) }
+        let vals = act + need
+        let hi = (vals.max() ?? 1) * 1.01, lo = (vals.min() ?? 0) * 0.99
+        Button {
+            m.tab = .analysis
+            m.analysisPath = NavigationPath([AnalysisRoute.myPath])
+        } label: {
+            Canvas { ctx, size in
+                let Y = { (v: Double) -> CGFloat in CGFloat((hi - v) / max(1, hi - lo)) * size.height }
+                let xA = { (i: Int) -> CGFloat in CGFloat(p.start / x1 * Double(i) / 20) * size.width }
+                let xN = { (i: Int) -> CGFloat in CGFloat(Double(i) / 20) * size.width }
+                var n = Path(), a = Path()
+                for i in 0...20 {
+                    let pn = CGPoint(x: xN(i), y: Y(need[i])), pa = CGPoint(x: xA(i), y: Y(act[i]))
+                    if i == 0 { n.move(to: pn); a.move(to: pa) } else { n.addLine(to: pn); a.addLine(to: pa) }
+                }
+                ctx.stroke(n, with: .color(Color(hex: 0xB79CF0)), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                ctx.stroke(a, with: .color(Theme.mint), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                let end = CGPoint(x: xA(20), y: Y(act[20]))
+                ctx.fill(Path(ellipseIn: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)), with: .color(Theme.mint))
+            }
+            .frame(width: 84, height: 40)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("내 길 그래프, 눌러서 분석의 내 길 보기")
     }
 }
 
