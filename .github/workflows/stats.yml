@@ -21,7 +21,7 @@ jobs:
           node-version: "22"
       - name: 전망 입력값 계산
         run: node tools/site_stats.mjs
-      - name: 외부 요인 민감도·배당·환율 계산 (앱이 웹과 같은 숫자를 내도록)
+      - name: 배당·환율 계산 (앱이 웹과 같은 숫자를 내도록)
         run: node tools/site_calc.mjs && node tools/check_calc.mjs
       - name: 커밋
         run: |
