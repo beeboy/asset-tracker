@@ -330,3 +330,11 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .hedbox { gap: 8px; flex-wrap: wrap; align-items: center; } .hedbox label { white-space: nowrap; }
 .hpv { margin-top: 6px; }
 .hedbox, .hpv { position: sticky; left: 0; max-width: calc(100vw - 64px); }
+
+/* 첫 화면 세리 (웹은 한 명만) */
+.seri { display: flex; gap: 12px; align-items: flex-start; }
+.seri img { image-rendering: pixelated; flex: none; }
+.seri-say { background: var(--bg); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; }
+.seri-say b { color: var(--accent); margin-right: 4px; }
+.seri-body { line-height: 1.6; }
+.seri-app { margin-top: 6px; }
