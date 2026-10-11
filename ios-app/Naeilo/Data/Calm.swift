@@ -52,6 +52,7 @@ struct Calm: Codable, Equatable {
 
     static let weekCap = 5         // 한 주에 쌓을 수 있는 플러스 점수
     static let minEvents = 10      // 이보다 적으면 매칭하지 않는다
+    static let keep = 400          // 남겨 두는 기록 수 (오래된 것부터 지운다)
 
     private static let key = "calm.v1"
     static func load() -> Calm {
@@ -86,7 +87,7 @@ struct Calm: Codable, Equatable {
         // 같은 날 같은 종목을 기다렸다고 적어 뒀다가 매매했으면 기다림은 지운다
         if e.isTrade { events.removeAll { $0.act == .wait && $0.day == e.day && $0.sym == e.sym } }
         events.append(e)
-        if events.count > 400 { events.removeFirst(events.count - 400) }
+        if events.count > Self.keep { events.removeFirst(events.count - Self.keep) }
         refreshType()
         climb()
     }
@@ -180,6 +181,35 @@ struct Calm: Codable, Equatable {
               like: "한 박자 두고 관찰과 사실만 말한다."),
     ]
     static func kind(_ id: String?) -> Kind? { kinds.first { $0.id == id } }
+
+    /// 지수가 무슨 뜻인지 한 줄 (100 = 직전 수익·손실과 무관하게 매매)
+    static func meaning(_ s: CalmStats) -> String {
+        guard s.n >= minEvents else { return "기록 \(minEvents)건이 모이면 지수가 나와요." }
+        let i = s.index
+        let t = i >= 80 ? "직전 수익·손실에 거의 끌리지 않아요" : i >= 60 ? "직전 결과에 조금 끌려요" : i >= 40 ? "직전 결과에 꽤 끌려요" : "직전 결과에 많이 끌려요"
+        return "\(t). 100이면 결과와 상관없이 매매해요. (매매 \(s.trades)건 기준)"
+    }
+
+    /// 왜 이 유형인지: 매칭에 쓴 숫자를 그대로 보여 준다
+    static func why(_ id: String?, _ s: CalmStats) -> String? {
+        let p = { (x: Double) in "\(Int((x * 100).rounded()))%" }
+        switch id {
+        case "ir": return "수익 뒤 추가 매수 \(p(s.chase)), 손실 뒤 매도 \(p(s.switchR)). 어느 한쪽이 60%를 넘으면 이 유형이에요."
+        case "sua": return "최근 30일 지수가 그 전 30일보다 \(s.trend.map { ($0 >= 0 ? "+" : "") + "\($0)" } ?? "–") 움직였어요. 10 이상 오르면 이 유형이에요."
+        case "seonbae": return "매매의 \(p(s.contra))가 수익 뒤 덜어내기처럼 결과와 반대로 한 매매예요. 절반 이상이고 지수 60 이상이면 이 유형이에요."
+        case "sio": return "한 달 매매 \(String(format: "%.1f", s.perMonth))번, 큰 변동일에 기다린 비율 \(p(s.waitR)). 매매가 적고 잘 기다리면 이 유형이에요."
+        case "seri": return "매매의 \(p(s.ruleR))가 규칙대로예요. 지수가 높고 규칙대로가 많으면 이 유형이에요."
+        default: return nil
+        }
+    }
+
+    /// 함께한 날과 말투 단계 (14일·60일에 말투가 가까워진다)
+    var stageLine: String {
+        let d = together.count
+        return d < 14 ? "함께한 날 \(d)일 · \(14 - d)일 더 함께하면 말투가 가까워져요"
+            : d < 60 ? "함께한 날 \(d)일 · \(60 - d)일 더 함께하면 말투가 한 번 더 가까워져요"
+            : "함께한 날 \(d)일 · 말투가 가장 가까워졌어요"
+    }
 
     /// 홈 카드 한 줄: 인물 말투가 애착 단계를 따라 바뀐다 (세리는 기계 문장 → 합쇼체 → 해요체)
     func say(_ s: CalmStats, who: String = "seri") -> String {

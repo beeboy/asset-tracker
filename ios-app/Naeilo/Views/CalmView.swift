@@ -20,6 +20,8 @@ struct CalmCard: View {
                     }
                     Text(m.calm.say(s, who: m.voice(who))).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(Color(hex: 0xEEF0F3))
+                    Text(Calm.meaning(s)).appFont(12).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(Color(hex: 0xC9D0D6))
                     if let l = m.calm.ladder, let p = m.calm.progress() {
                         Text("걸음 \(l.step)/3 · \(p.text)").appFont(12).foregroundStyle(Theme.mint)
                     }
@@ -33,11 +35,13 @@ struct CalmCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("평정 지수 보기")
+        .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
     }
 }
 
 struct CalmView: View {
     @Environment(AppModel.self) private var m
+    @State private var shown = 10   // 최근 기록을 몇 건까지 펼쳤는지
 
     var body: some View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
@@ -52,13 +56,17 @@ struct CalmView: View {
                             Text(k.map { "\(name) · \($0.title)" } ?? "아직 매칭 전").appFont(17, .bold)
                             if let k { Text(k.like).appFont(13).foregroundStyle(Theme.sub) }
                             if m.calm.type != nil {
-                                Text("함께한 날 \(m.calm.together.count)일 · 단계 \(m.calm.stage)/3").appFont(12).foregroundStyle(Theme.muted)
+                                Text(m.calm.stageLine).appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
                     Text(m.calm.say(s, who: m.voice(who))).appFont(15).lineSpacing(3)
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 12))
+                    if let w = Calm.why(m.calm.type, s) {
+                        Text("왜 이 유형인가요").appFont(13, .bold)
+                        Text(w).appFont(13).lineSpacing(2).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    }
                     if let p = m.calm.prevType, let pk = Calm.kind(p), let pn = Shelter.friends.first(where: { $0.id == p })?.name {
                         Text("지난달 \(pn)(\(pk.title))에서 옮겨 왔어요.").appFont(12).foregroundStyle(Theme.muted)
                     }
@@ -66,6 +74,13 @@ struct CalmView: View {
 
                 // 습관 사다리
                 if let l = m.calm.ladder, let steps = Calm.steps[l.type] { ladder(l, steps) }
+                else {
+                    Card {
+                        Text("다음 걸음").appFont(15, .bold)
+                        Text("기록 \(Calm.minEvents)건이 모여 유형이 정해지면, 그 유형에 맞는 걸음 3개가 여기에 열려요.")
+                            .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
 
                 // 숫자
                 Card {
@@ -75,6 +90,7 @@ struct CalmView: View {
                         Text(s.n < Calm.minEvents ? "기록 \(s.n)/\(Calm.minEvents)" : "\(s.index) / 100").appFont(20, .bold).foregroundStyle(Theme.teal)
                     }
                     ProgressBar(value: Double(s.index) / 100, fill: Theme.teal, track: Theme.track)
+                    Text(Calm.meaning(s)).appFont(13).lineSpacing(2).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     row("수익 뒤 추가 매수", AppModel.pct(s.chase))
                     row("손실 뒤 매도", AppModel.pct(s.switchR))
                     row("큰 변동일에 기다림", AppModel.pct(s.waitR))
@@ -102,8 +118,12 @@ struct CalmView: View {
                 // 최근 기록
                 if !m.calm.events.isEmpty {
                     Card {
-                        Text("최근 기록").appFont(15, .bold)
-                        ForEach(Array(m.calm.events.suffix(10).reversed().enumerated()), id: \.offset) { _, e in
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("최근 기록").appFont(15, .bold)
+                            Spacer()
+                            Text("모두 \(m.calm.events.count)건").appFont(12).foregroundStyle(Theme.muted)
+                        }
+                        ForEach(Array(m.calm.events.suffix(shown).reversed().enumerated()), id: \.offset) { _, e in
                             HStack {
                                 Text(Day.md(e.day)).appFont(12).foregroundStyle(Theme.muted).frame(width: 40, alignment: .leading)
                                 Text("\(e.sym) · \(e.label)").appFont(13)
@@ -112,7 +132,12 @@ struct CalmView: View {
                                     .foregroundStyle(e.pts > 0 ? Theme.teal : e.pts < 0 ? Theme.up : Theme.muted)
                             }
                         }
-                        Text("사건별 표와 추이는 PC naeilo.com에서 봐요.").appFont(12).foregroundStyle(Theme.muted)
+                        if m.calm.events.count > shown {
+                            Button("더 보기 (\(m.calm.events.count - shown)건 남음)") { shown += 20 }
+                                .appFont(13, .semibold).foregroundStyle(Theme.teal)
+                        }
+                        Text("기록은 최근 \(Calm.keep)건까지 남아요. 그보다 오래된 것은 지수 계산에서도 빠져요.")
+                            .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -123,6 +148,7 @@ struct CalmView: View {
             .foregroundStyle(Theme.ink)
         }
         .background(Theme.bg)
+        .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
         .navigationTitle("평정 지수").navigationBarTitleDisplayMode(.inline)
     }
 
