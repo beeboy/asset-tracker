@@ -81,13 +81,17 @@ struct RootView: View {
             model.tab = .board
             model.boardPath = model.playOn ? [] : [.nx]
         }
-        // 지금 시세: 화면이 켜져 있는 동안 1분마다 갱신
-        .task {
+        // 지금 시세: 화면이 켜져 있는 동안만 1분마다 갱신 (뒤로 가면 멈춰 배터리·데이터를 아낀다)
+        .task(id: phase) {
+            guard phase == .active else { return }
+            var lastResched = Date.distantPast
             while !Task.isCancelled {
                 await Market.shared.refresh(held: Set(model.holdings.map(\.symbol)))
                 WidgetBridge.write(model)        // 위젯에 지금 숫자를 넘긴다
                 await Notifier.check(model)       // 본전 도달 · 비중 이탈
-                await Notifier.reschedule(model)  // 아침 한 줄을 지금 숫자로
+                if Date().timeIntervalSince(lastResched) >= 600 {   // 아침 한 줄은 10분마다 지금 숫자로 (매분 지우고 다시 넣지 않게)
+                    lastResched = Date(); await Notifier.reschedule(model)
+                }
                 try? await Task.sleep(for: .seconds(60))
             }
         }

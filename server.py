@@ -57,10 +57,12 @@ def read_json(p: Path, default):
         return default
 
 
-def write_json(p: Path, obj):
+def write_json(p: Path, obj, compact: bool = False):
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(".tmp")
-    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
+    # 시세 파일은 빈칸 없이 (받는 양이 줄어든다). 사람이 열어 보는 파일은 들여쓰기
+    text = json.dumps(obj, ensure_ascii=False, separators=(",", ":")) if compact else json.dumps(obj, ensure_ascii=False, indent=1)
+    tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, p)
 
 
@@ -88,7 +90,8 @@ def yahoo(sym: str, params: dict) -> dict:
             last = e
         except (urllib.error.URLError, TimeoutError, ValueError) as e:
             last = e
-        time.sleep(1.5 * (attempt + 1))
+        if attempt < 2:  # 마지막 실패 뒤에는 기다리지 않는다
+            time.sleep(1.5 * (attempt + 1))
     raise RuntimeError(f"Yahoo 연결 실패: {last}")
 
 
@@ -144,7 +147,11 @@ def update_history(sym: str, years: float) -> tuple[dict, str]:
            "name": meta.get("longName") or meta.get("shortName") or (cache or {}).get("name") or sym.upper(),
            "updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "dates": dates, "close": [rows[d][0] for d in dates], "adj": [rows[d][1] for d in dates]}
-    write_json(f, out)
+    # 일봉이 그대로면 파일을 다시 쓰지 않는다 (판 번호가 그대로라 브라우저가 다시 받지 않음)
+    if not cache or (cache.get("dates"), cache.get("close"), cache.get("adj")) != (out["dates"], out["close"], out["adj"]) or cache.get("name") != out["name"] or "\n" in f.read_text(encoding="utf-8")[:40]:
+        write_json(f, out, compact=True)
+    else:
+        out["updated"] = cache.get("updated", out["updated"])
     return out, f"{sym}: 일봉 {len(dates)}일 (새 {new}일, {dates[0] if dates else '-'} ~ {dates[-1] if dates else '-'})"
 
 
@@ -248,12 +255,13 @@ def collect(symbols: list[str], years: float, quotes_only: bool) -> dict:
 
 def write_index():
     """정적 사이트(GitHub Pages)가 읽을 시세 파일 목록."""
-    files = {}
+    files, ver = {}, {}
     for f in sorted(PRICES.glob("*.json")):
         d = read_json(f, None)
         if d:
             files[d["symbol"]] = f.name
-    write_json(DATA / "index.json", {"updated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "prices": files})
+            ver[d["symbol"]] = d.get("updated") or ""  # 종목별 판: 그 종목 일봉이 바뀔 때만 바뀐다
+    write_json(DATA / "index.json", {"updated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "prices": files, "v": ver})
 
 
 def all_data() -> dict:

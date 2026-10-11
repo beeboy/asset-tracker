@@ -30,6 +30,8 @@ await until(async () => !!(await ls("naeilo-alloc2"))?.out);
 const strip = (o) => { if (!o) return o; const { sig, ...r } = o; return r; };
 const kst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const out = { date: kst, at: new Date().toISOString(), forecast: strip(await ls("naeilo-forecast")), fcdash: strip(await ls("naeilo-fcdash")), alloc: strip(await ls("naeilo-alloc2")) };
-writeFileSync(new URL("../data/sample_calc.json", import.meta.url), JSON.stringify(out));
-console.log("sample_calc.json", kst, Math.round(JSON.stringify(out).length / 1024) + "KB", Object.keys(out.fcdash?.r || {}));
+// 원 단위 큰 수는 정수로, 작은 수(확률 등)는 유효숫자 6자리로 줄여 파일 크기를 절반으로 (화면 표시는 같다)
+const slim = (k, v) => (typeof v === "number" && !Number.isInteger(v) ? (Math.abs(v) >= 1000 ? Math.round(v) : +v.toPrecision(6)) : v);
+writeFileSync(new URL("../data/sample_calc.json", import.meta.url), JSON.stringify(out, slim));
+console.log("sample_calc.json", kst, Math.round(JSON.stringify(out, slim).length / 1024) + "KB", Object.keys(out.fcdash?.r || {}));
 await b.close();

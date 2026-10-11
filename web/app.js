@@ -1,6 +1,12 @@
 // 화면 로직: 입력 편집, 저장, 시세 수집 요청, 화면 그리기.
 (function () {
   "use strict";
+  // 응답 없는 서버를 끝없이 기다리지 않게: 따로 신호를 주지 않은 fetch 는 20초 뒤 끊는다 (본문 받기까지 포함)
+  if (!window.fetch.__to) {
+    const f0 = window.fetch.bind(window);
+    const lim = (ms) => { if (AbortSignal.timeout) return AbortSignal.timeout(ms); const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; };
+    window.fetch = Object.assign((u, o = {}) => f0(u, o.signal ? o : { ...o, signal: lim(20000) }), { __to: true });
+  }
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
   const C = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)"];
@@ -162,17 +168,17 @@
       } catch (e) { if (S.state) throw e; MODE = "static"; }
     }
     // 정적 사이트: ../data/ 의 파일을 읽는다 (GitHub Actions 가 주기적으로 갱신)
-    const base = "../data/", bust = "?t=" + Date.now();
-    const get = async (f) => { const r = await fetch(base + f + bust, { cache: "no-store" }); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); };
-    const idx = await get("index.json"), prices = {};
-    // 시세 파일은 수집 시각(index.json 의 updated)이 같으면 브라우저 캐시를 그대로 쓴다. 새로 수집되면 주소가 바뀌어 새로 받는다
-    const ver = "?v=" + encodeURIComponent(idx.updated || bust.slice(3));
-    const getPx = async (f) => { const r = await fetch(base + "prices/" + encodeURIComponent(f) + ver); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); };
-    await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await getPx(f); } catch (e) { /* 없는 파일 무시 */ } }));
-    S.prices = prices; S.quotes = await get("quotes.json").catch(() => ({})); S.dataUpdated = idx.updated;
-    S.tickerCfg = await get("tickers.json").catch(() => ({ tickers: [] }));
-    S.config = await get("config.json").catch(() => ({}));
-    S.mar = await get("mar.json").catch(() => ({}));
+    // 자주 바뀌는 시세(index·quotes)는 CDN 캐시도 건너뛰고(?t=), 나머지는 no-cache: 서버에 확인만 하고 그대로면(304) 본문을 다시 받지 않는다
+    const base = "../data/", get = async (f, live) => { const r = await fetch(base + f + (live ? "?t=" + Date.now() : ""), { cache: live ? "no-store" : "no-cache" }); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); };
+    // 서로 상관없는 파일은 한꺼번에 받는다 (차례로 기다리지 않게)
+    const side = Promise.all([get("quotes.json", 1).catch(() => ({})), get("tickers.json").catch(() => ({ tickers: [] })), get("config.json").catch(() => ({})), get("mar.json").catch(() => ({}))]);
+    const idx = await get("index.json", 1), prices = {};
+    // 시세 파일은 종목별 판(index.json 의 v, 없으면 수집 시각 updated)이 같으면 브라우저 캐시를 그대로 쓴다. 바뀐 종목만 주소가 바뀌어 새로 받는다
+    const ver = (sym) => "?v=" + encodeURIComponent(idx.v?.[sym] || idx.updated || Date.now());
+    const getPx = async (sym, f) => { const r = await fetch(base + "prices/" + encodeURIComponent(f) + ver(sym)); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); };
+    await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await getPx(sym, f); } catch (e) { /* 없는 파일 무시 */ } }));
+    S.prices = prices; S.dataUpdated = idx.updated;
+    [S.quotes, S.tickerCfg, S.config, S.mar] = await side;
     mergeExtra();
     if (!S.state) {
       let st = null;
@@ -190,7 +196,7 @@
   async function sampleSeed() {
     if (/[?&]fresh\b/.test(location.search)) return;
     try {
-      const r = await fetch((MODE === "static" ? "../data/" : "/data/") + "sample_calc.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return;
+      const r = await fetch((MODE === "static" ? "../data/" : "/data/") + "sample_calc.json", { cache: "no-cache" }); if (!r.ok) return;
       const c = await r.json(); S.sampleCalc = c.date;
       const put = (k, v) => v && localStorage.setItem(k, JSON.stringify(v));
       put(FC_KEY, c.forecast && { ...c.forecast, sig: fcSig() });
@@ -1279,20 +1285,17 @@
     const has = (cats) => b.model.eventList.some((x) => cats.includes(x.event.cat || "corp"));
     host.innerHTML = "<p class='muted small'>요인별 영향을 계산하는 중입니다…</p>";
     const res = { fc: lastForecast, none: null, all: null, grp: {}, by: {} };
-    const run = (cats) => Model.simulate(b.model, { ...common, withEvents: true, cats: cats && new Set(cats) });
-    await new Promise((r) => setTimeout(r, 20));
-    res.none = run([]); res.all = run(null);
+    // 묶음별 계산은 worker 에서 한꺼번에 (화면은 그대로 움직인다). 결과는 목표 확률·분포만
+    const run = (cats) => simAsync(b.model, { ...common, withEvents: true }, cats, true);
+    const jobs = [["none", null, run([])], ["all", null, run(null)]];
     for (const g of XGROUPS) {
       const gc = grpCats(g.k); if (!has(gc)) continue;
-      await new Promise((r) => setTimeout(r, 0)); if (lastForecast !== res.fc) { xfBusy = false; return; }
-      res.grp[g.k] = run(gc);
-      for (const [k, , cats] of g.subs) {
-        if (!has(cats)) continue;
-        if (g.subs.length === 1) { res.by[k] = res.grp[g.k]; continue; }
-        await new Promise((r) => setTimeout(r, 0)); if (lastForecast !== res.fc) { xfBusy = false; return; }
-        res.by[k] = run(cats);
-      }
+      const gp = run(gc); jobs.push(["grp", g.k, gp]);
+      for (const [k, , cats] of g.subs) if (has(cats)) jobs.push(["by", k, g.subs.length === 1 ? gp : run(cats)]);
     }
+    try { for (const [t, k, pr] of jobs) { const R = await pr; if (k == null) res[t] = R; else res[t][k] = R; } }
+    catch (e) { xfBusy = false; host.innerHTML = `<p class='muted small'>계산 오류: ${esc(e.message)}</p>`; return; }
+    if (lastForecast !== res.fc) { xfBusy = false; return; }
     xfEff = res; xfBusy = false; drawXfEffect();
     const slim = (R) => R && { p_goal: R.p_goal, terminal: R.terminal }, om = (o) => Object.fromEntries(Object.entries(o).map(([k, R]) => [k, slim(R)]));
     try { localStorage.setItem(XF_KEY, JSON.stringify({ sig: xfSig(), none: slim(res.none), all: slim(res.all), grp: om(res.grp), by: om(res.by) })); } catch (e) { /* 무시 */ }
@@ -1468,6 +1471,7 @@
     $("#wiNote").textContent = m.rebalance_yearly ? "연 1회 재조정 중엔 꺼집니다." : "저장 안 되는 가정. 세금·수수료 제외.";
     $("#wiSum").textContent = L.disp ? `· 적용 중 (월 ${krw(mv)}원${WI.sell ? `, ${th.ticker} ${WI.sell}% 매도` : ""})` : "";
   }
+  let fcSeq = 0;
   async function runForecast() {
     const st = $("#fcStatus"), btns = $$("#scenBox button");
     btns.forEach((x) => (x.disabled = true)); st.textContent = `${SCEN_SHORT[S.state.model.scenario] || ""} 시나리오, 계산 중...`;
@@ -1475,10 +1479,11 @@
     try {
       const t0 = performance.now(), b = buildModelNow();
       if (!b) { st.textContent = "평가액이 있는 종목이 없습니다."; btns.forEach((x) => (x.disabled = false)); return; }
-      const m = S.state.model, common = simCommon(b, m.scenario);
-      const sim = Model.simulate(b.model, { ...common, withEvents: true });
-      const hasEv = b.model.eventList.length > 0;
-      const simNo = hasEv ? Model.simulate(b.model, { ...common, withEvents: false }) : sim;
+      const m = S.state.model, common = simCommon(b, m.scenario), my = ++fcSeq, sig0 = fcSig();
+      const hasEv = b.model.eventList.length > 0; // 두 번의 시뮬레이션은 worker 에서 (화면이 멈추지 않게)
+      const [sim, simNo] = await Promise.all([simAsync(b.model, { ...common, withEvents: true }), hasEv ? simAsync(b.model, { ...common, withEvents: false }) : null]).then(([a, n]) => [a, n || a]);
+      if (my !== fcSeq) return; // 기다리는 사이 새 계산이 시작됐으면 그쪽 결과를 쓴다
+      if (fcSig() !== sig0) { btns.forEach((x) => (x.disabled = false)); return runForecast(); } // 계산 중 입력이 바뀌었으면 다시
       lastForecast = { b, sim, simNo, hasEv, common, grp: {}, scen: m.scenario, at: new Date(), ms: 0 };
       applyView(true);
       lastForecast.ms = performance.now() - t0;
@@ -2071,19 +2076,26 @@
     return (allocRun ||= runAllocNow().finally(() => { allocRun = null; }));
   }
   // 계산은 worker 에서 (화면이 멈추지 않게). worker 를 못 쓰는 환경이면 같은 코드를 화면에서 돌린다
-  let allocWk = null, allocSeq = 0;
+  // 전망 시뮬레이션(sim)은 비중 조정안과 다른 worker 들(코어 수만큼, 최대 3개)에 나눠 돌려, 긴 비중 계산 뒤에 줄 서지 않고 동시에 끝나게 한다
+  const WK = {}, SIM_N = Math.min(3, Math.max(1, (navigator.hardwareConcurrency || 2) - 1)); let allocSeq = 0, simRr = 0;
   function allocCompute(inp, prog, kind = "alloc") {
-    const local = () => (kind === "stab" ? Research.stabilizer(inp, prog) : Model.allocPlans(inp, prog));
-    if (!allocWk && allocWk !== false) { try { allocWk = new Worker("alloc-worker.js?v=" + (document.querySelector('script[src^="model.js"]')?.src.split("?v=")[1] || "")); } catch (e) { allocWk = false; } }
-    if (!allocWk) return new Promise((res, rej) => setTimeout(() => { try { res(local()); } catch (e) { rej(e); } }, 30));
+    const local = () => (kind === "sim" ? simLocal(inp) : kind === "stab" ? Research.stabilizer(inp, prog) : Model.allocPlans(inp, prog));
+    const slot = kind === "sim" ? "sim" + (simRr++ % SIM_N) : "alloc";
+    if (WK[slot] === undefined) { try { WK[slot] = new Worker("alloc-worker.js?v=" + (document.querySelector('script[src^="model.js"]')?.src.split("?v=")[1] || "")); } catch (e) { WK[slot] = false; } }
+    const wk = WK[slot];
+    if (!wk) return new Promise((res, rej) => setTimeout(() => { try { res(local()); } catch (e) { rej(e); } }, 30));
     const id = ++allocSeq;
     return new Promise((res, rej) => {
-      const on = (e) => { const d = e.data; if (d.id !== id) return; if (d.prog) return prog(...d.prog); allocWk.removeEventListener("message", on); allocWk.removeEventListener("error", bad); d.err ? rej(new Error(d.err)) : res(d.done); };
-      const bad = (e) => { allocWk.removeEventListener("message", on); allocWk.removeEventListener("error", bad); allocWk.terminate(); allocWk = false; e.preventDefault?.(); try { res(local()); } catch (e2) { rej(e2); } };
-      allocWk.addEventListener("message", on); allocWk.addEventListener("error", bad);
-      allocWk.postMessage({ id, inp, kind });
+      const off = () => { wk.removeEventListener("message", on); wk.removeEventListener("error", bad); };
+      const on = (e) => { const d = e.data; if (d.id !== id) return; if (d.prog) return prog && prog(...d.prog); off(); d.err ? rej(new Error(d.err)) : res(d.done); };
+      const bad = (e) => { off(); wk.terminate(); WK[slot] = false; e.preventDefault?.(); try { res(local()); } catch (e2) { rej(e2); } };
+      wk.addEventListener("message", on); wk.addEventListener("error", bad);
+      try { wk.postMessage({ id, inp, kind }); } catch (e) { off(); try { res(local()); } catch (e2) { rej(e2); } } // 넘길 수 없는 값이면 화면에서
     });
   }
+  // 몬테카를로 한 번: worker 에서 (화면이 멈추지 않게). slim 이면 목표 확률·목표일 분포만 돌려받는다
+  const simLocal = ({ model, opt, cats, slim }) => { const R = Model.simulate(model, { ...opt, fxOf, cats: cats && new Set(cats) }); return slim ? { p_goal: R.p_goal, terminal: R.terminal } : R; };
+  const simAsync = (model, opt, cats, slim) => { const { fxOf: _f, cats: _c, ...o } = opt; return allocCompute({ model, opt: o, cats: cats ? [...cats] : null, slim }, null, "sim"); };
   async function runAllocNow() {
     const st = $("#allocStatus"), btn = $("#btnAlloc");
     const want = [...new Set(Object.keys(ALLOC_DEF).flatMap((k) => allocMix(k).map((x) => x[0])))];

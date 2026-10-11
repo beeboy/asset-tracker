@@ -201,22 +201,3 @@ struct FanChart: View {
         .accessibilityLabel("3년 범위 그래프")
     }
 }
-
-struct SoonView: View {
-    let title: String
-    let detail: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title).appFont(22, .bold)
-            Text(detail).appFont(15).lineSpacing(3)
-            DashedCard {
-                Text("이 화면은 시안에는 있고, 네이티브 앱에는 다음 빌드에서 옮겨요.").appFont(14)
-            }
-            Spacer()
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}

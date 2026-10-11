@@ -8,17 +8,19 @@ enum Fmt {
     }
     /// 499만
     static func man(_ v: Double) -> String {
-        let n = NumberFormatter(); n.numberStyle = .decimal
-        return (n.string(from: NSNumber(value: Int((abs(v) / 1e4).rounded()))) ?? "0") + "만"
+        (dec.string(from: NSNumber(value: Int((abs(v) / 1e4).rounded()))) ?? "0") + "만"
     }
+    // 서식기는 만들 때 비싸서 한 번만 만들어 둔다
+    private static let dec: NumberFormatter = { let n = NumberFormatter(); n.numberStyle = .decimal; return n }()
+    private static let hm: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "HH:mm"; return f }()
+    private static let mdhm: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M/d HH:mm"; return f }()
     /// +1.8%
     static func pct(_ x: Double, _ d: Int = 1) -> String { (x > 0 ? "+" : "") + String(format: "%.\(d)f%%", x * 100) }
     static func arrow(_ x: Double) -> String { x >= 0 ? "▲" : "▼" }
-    static func comma(_ v: Int) -> String { let n = NumberFormatter(); n.numberStyle = .decimal; return n.string(from: NSNumber(value: v)) ?? "\(v)" }
+    static func comma(_ v: Int) -> String { dec.string(from: NSNumber(value: v)) ?? "\(v)" }
     static func time(_ d: Date?) -> String {
         guard let d else { return "-" }
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = Calendar.current.isDateInToday(d) ? "HH:mm" : "M/d HH:mm"
-        return f.string(from: d)
+        return (Calendar.current.isDateInToday(d) ? hm : mdhm).string(from: d)
     }
 }
 

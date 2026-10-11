@@ -54,20 +54,6 @@ struct WLive: Codable {
     var goalStart: String?
     var manualPrice: Bool
     var stateAt: Double
-
-    static func from(state: [String: Any], at: Double) -> WLive {
-        let hs = (state["holdings"] as? [[String: Any]] ?? []).compactMap { h -> Hold? in
-            guard let t = h["ticker"] as? String else { return nil }
-            let sh = num(h["shares"]) ?? 0
-            return sh > 0 ? Hold(t: t, sh: sh, price: num(h["price"])) : nil
-        }
-        let cash = state["cash"] as? [String: Any] ?? [:]
-        let goal = state["goal"] as? [String: Any] ?? [:]
-        let ui = state["ui"] as? [String: Any] ?? [:]
-        return WLive(hold: hs, cashKrw: num(cash["krw"]) ?? 0, cashUsd: num(cash["usd"]) ?? 0,
-                     goalAmount: num(goal["amount"]) ?? 1e9, goalDate: goal["date"] as? String ?? "",
-                     goalStart: goal["start_date"] as? String, manualPrice: ui["manual_price"] as? Bool ?? false, stateAt: at)
-    }
 }
 
 func num(_ v: Any?) -> Double? {
@@ -98,10 +84,10 @@ enum QuoteFeed {
         req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200,
-              let o = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] else { return old }
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return old }
         var q: [String: Q] = [:]
-        for (k, v) in o {
-            guard let prev = num(v["prev_close"]), let last = num(v["last"]) ?? num(v["regular"]) else { continue }
+        for (k, any) in o {   // 종목이 아닌 칸(예: 갱신 시각)이 생겨도 나머지는 읽는다
+            guard let v = any as? [String: Any], let prev = num(v["prev_close"]), let last = num(v["last"]) ?? num(v["regular"]) else { continue }
             q[k] = Q(last: last, prev: prev, at: num(v["last_time"]) ?? num(v["regular_time"]) ?? 0)
         }
         guard !q.isEmpty else { return old }

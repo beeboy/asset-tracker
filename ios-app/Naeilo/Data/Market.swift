@@ -115,7 +115,7 @@ struct TiingoProvider {
     private func get(_ path: String) async throws -> Any {
         var c = URLComponents(string: "https://api.tiingo.com" + path)!
         c.queryItems = (c.queryItems ?? []) + [URLQueryItem(name: "token", value: token)]
-        let (data, _) = try await URLSession.shared.data(from: c.url!)
+        let (data, _) = try await URLSession.shared.data(for: URLRequest(url: c.url!, timeoutInterval: 15))   // 응답 없으면 15초 뒤 포기
         return try JSONSerialization.jsonObject(with: data)
     }
 

@@ -361,6 +361,7 @@ final class MacroData {
         loading = true; defer { loading = false }
         var req = URLRequest(url: Config.data.appendingPathComponent("macro/rates_earnings.json"))
         req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.timeoutInterval = 20   // 응답 없으면 20초 뒤 포기 (기본 60초)
         do {
             let (d, r) = try await URLSession.shared.data(for: req)
             guard (r as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }

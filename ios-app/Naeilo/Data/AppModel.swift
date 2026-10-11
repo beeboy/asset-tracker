@@ -22,6 +22,8 @@ enum Lens: String, CaseIterable, Codable { case base, mine, smooth
 @Observable
 final class AppModel {
     let prices: PriceProvider = StubPriceProvider()
+    /// 목표 몬테카를로 결과 기억 (같은 입력이면 화면을 다시 그릴 때 또 돌리지 않는다. 난수 씨앗이 고정이라 결과가 같다)
+    @ObservationIgnored var simCache: [String: GoalSim] = [:]
 
     init() {
         // 저장된 진행을 먼저 불러오고, 캡처용 실행 인자가 있으면 그 위에 시연 상태를 덮는다 (그때는 저장하지 않는다)

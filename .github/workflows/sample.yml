@@ -19,10 +19,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      # 브라우저를 매일 새로 받지 않게 저장해 둔다 (시스템 라이브러리만 설치)
+      - uses: actions/cache@v4
+        id: pw
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-1.56.1-${{ runner.os }}
       - name: 브라우저 준비
         run: |
           npm install --no-save playwright@1.56.1
-          npx playwright install --with-deps chromium
+          if [ "${{ steps.pw.outputs.cache-hit }}" = "true" ]; then npx playwright install-deps chromium; else npx playwright install --with-deps chromium; fi
       - name: 샘플 계산
         run: |
           python3 -m http.server 8123 >/dev/null 2>&1 &

@@ -103,7 +103,6 @@ final class Story {
         guard let r = remote[Self.id(b, l)] else { return b.bundled }
         return max(b.bundled, r.from + r.chapters.count)
     }
-    func hasRemote(_ b: StoryBook, _ l: StoryLang? = nil) -> Bool { remote[Self.id(b, l ?? lang(b))] != nil }
     func isLoading(_ b: StoryBook) -> Bool { loading.contains(Self.id(b, lang(b))) }
     func failText(_ b: StoryBook) -> String? { failure[Self.id(b, lang(b))] }
 

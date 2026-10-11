@@ -5,10 +5,6 @@ enum Config {
     static let site = URL(string: "https://naeilo.com/")!
     static let data = URL(string: "https://naeilo.com/data/")!
     static let relay = URL(string: "https://asset-ai.drinker.workers.dev/")!
-    /// 사이트가 계산 요약 형식을 바꾸면 web/widget-core.js 의 VERSION 과 같이 올린다
-    static let summaryVersion = 2
-    /// 전망 계산에 쓰는 요인 종목 (web/widget-core.js FACTORS 와 같음) + 환율
-    static let extraSymbols = ["KRW=X", "SPY", "^TNX", "CL=F", "GC=F", "DBC"]
 }
 
 /// 앱과 위젯이 같이 쓰는 저장소 (App Group 폴더의 JSON 파일)
@@ -80,11 +76,6 @@ enum Store {
         set { defaults.set(newValue, forKey: "unlockedKinds") }
     }
     static func isUnlocked(_ kind: String) -> Bool { unlockedKinds.map { $0.contains(kind) } ?? true }
-
-    static func wipe() {
-        try? FileManager.default.removeItem(at: dir)
-        for k in ["lastCheck", "summarySource", "etags"] { defaults.removeObject(forKey: k) }
-    }
 }
 
 /// 위젯 받는 조건: 앱 시작 1·2·3단계, 3단계를 마치면 특별 선물로 나머지 전부
