@@ -79,3 +79,25 @@ for c in inp.cases {
     print("앱 \(c.name): 경로 \(c.nPaths) · \(model.days.count)거래일 · 사건 \(model.eventCount)회 · 시뮬레이션 2번 \(Int(ms))ms · 다시 무게 주기 1번 \(Int(rw))ms · 목표 확률 \(String(format: "%.1f", ev.summary.pGoal * 100))%")
 }
 try JSONEncoder().encode(out).write(to: URL(fileURLWithPath: dir + "/app.json"))
+
+// 시간 재기 (폰 발열 점검): 개발자 구성으로 목표일 전망(3년, 사건 반영 + 사건 없이)과 목표 자동 고르기용 10년 경로를
+// 경로 3,000개(사이트 기본)·10,000개로. 폰은 이 맥 러너보다 2~4배 느리다고 보면 된다
+if let c = inp.cases.first(where: { $0.name == "dev" }) {
+    let hs = c.holdings.map { MC.Holding(key: $0.ticker, ccy: $0.ccy, valueKrw: $0.valueKrw, price0: $0.price0) }
+    for (label, goalDate) in [("3년", c.goalDate), ("10년", MC.addMonths(inp.start, 120))] {
+        guard let model = MC.build(holdings: hs, stats: inp.stats, settings: settings, events: c.events, start: inp.start, goal: goalDate) else { continue }
+        let mu = MC.scenarioMu(model, settings.scenario)
+        for P in [3000, 10000] {
+            let t0 = Date()
+            _ = MC.simulate(model, holdings: hs, mu: mu, nPaths: P, seed: settings.seedU32, goal: c.goal, monthly: 0, withEvents: true, dof: settings.dof)
+            let ms = Date().timeIntervalSince(t0) * 1000
+            print("시간 \(label): 경로 \(P) · 사건 \(model.eventCount)회 · 사건 반영 1번 \(Int(ms))ms")
+        }
+        // 멈춤: 바로 멈추라고 하면 경로 하나도 돌지 않고 끝나야 한다
+        let t1 = Date()
+        _ = MC.simulate(model, holdings: hs, mu: mu, nPaths: 10000, seed: settings.seedU32, goal: c.goal, monthly: 0, withEvents: true, dof: settings.dof, stop: { true })
+        let stopMs = Date().timeIntervalSince(t1) * 1000
+        print("멈춤 \(label): \(Int(stopMs))ms")
+        if stopMs > 500 { print("멈춤이 늦음"); exit(1) }
+    }
+}

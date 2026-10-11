@@ -132,14 +132,26 @@ extension AppModel {
         }
         return out
     }
-    /// 전망과 같은 사이트 통계·설정·사건 (forecastJob 과 같은 값)
+    /// 전망과 같은 사이트 통계·설정·사건 (forecastJob 도 이 값). 동기화로 받은 웹 설정의 경로 수가 사이트 기본보다 많으면
+    /// 앱은 사이트 기본(3,000개)까지만 돈다 (폰이 뜨거워지지 않게. 기본 설정이면 웹과 같은 숫자)
     var mcInputs: (st: MC.Stats, settings: MC.Settings, events: [MC.Event], sig: String)? {
         guard let st = Market.shared.stats else { return nil }
         let site = Sync.shared.siteForecast
-        let settings = (st.model ?? MC.Settings()).merged(site.model)
+        var settings = (st.model ?? MC.Settings()).merged(site.model)
+        let cap = mcPathCap(st)
+        if settings.nPaths > cap { settings.n_paths = Double(cap) }
         let events = site.events ?? st.events ?? []
-        let evSig = ForecastEngine.fnv(String(data: (try? JSONEncoder().encode(events)) ?? Data(), encoding: .utf8) ?? "")
+        let enc = JSONEncoder(); enc.outputFormatting = .sortedKeys
+        let evSig = ForecastEngine.fnv(String(data: (try? enc.encode(events)) ?? Data(), encoding: .utf8) ?? "")
         return (st, settings, events, [st.date, evSig, "\(settings.nPaths)|\(settings.seedU32)|\(settings.dof)|\(settings.earnings_adjust ?? true)"].joined(separator: "|"))
+    }
+    /// 앱이 도는 경로 수 상한 = 사이트 기본 설정의 경로 수 (없으면 3,000)
+    func mcPathCap(_ st: MC.Stats?) -> Int { max(500, (st?.model ?? MC.Settings()).nPaths) }
+    /// 웹 설정 경로 수가 앱 상한보다 많아 줄여서 도는 중이면 (웹 설정, 앱) 개수
+    var mcPathCapped: (web: Int, app: Int)? {
+        guard let n = Sync.shared.siteForecast.model?.n_paths, n.isFinite else { return nil }
+        let web = max(1, Int(n)), cap = mcPathCap(Market.shared.stats)
+        return web > cap ? (web, cap) : nil
     }
     /// 종목별 연 기대수익: 전망 화면과 같은 관점(현재 정세·과거 추세·내 관점)
     func lensMu(_ fs: [MC.Factor], _ A: Int) -> [Double] {
@@ -166,9 +178,11 @@ extension AppModel {
         }
         let key = [today, H, inp.sig, parts.map { "\($0.key):\($0.ccy):\(String(format: "%.4f", $0.w))" }.joined(separator: ",")].joined(separator: "|")
         let hs = parts.map { MC.Holding(key: $0.key, ccy: $0.ccy, valueKrw: $0.w * 1e6, price0: 1) }
-        let job = ForecastEngine.Job(key: key, holdings: hs, stats: inp.st, settings: inp.settings, events: inp.events, start: today, horizon: H, goal: .infinity, monthly: 0)
+        let group = [today, H, inp.sig, parts.map { "\($0.key):\($0.ccy)" }.joined(separator: ",")].joined(separator: "|")
+        let job = ForecastEngine.Job(key: key, holdings: hs, stats: inp.st, settings: inp.settings, events: inp.events, start: today, horizon: H,
+                                     goal: .infinity, monthly: 0, group: group, w: parts.map { $0.w })
         guard let run = PathRuns.shared.get(job) else { return nil }
-        let pk = "pr|\(key)|\(lk)"
+        let pk = "pr|\(run.key)|\(lk)"
         if let ps = pathSetCache[pk] { return ps }
         let ps = PathSet(sim: run.sim, mu: lensMu(run.factors, run.sim.A), base: run.sim.v0, key: pk)
         if pathSetCache.count > 24 { pathSetCache = [:] }

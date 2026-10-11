@@ -393,8 +393,9 @@ enum MC {
     }
 
     /// mu: 요인별 연 기대수익 (시나리오), withEvents: 사건 점프를 넣을지
+    /// stop: 앱이 뒤로 가면 true (경로 32개마다 보고 멈춘다. 멈춘 결과는 버린다)
     static func simulate(_ model: Model, holdings: [Holding], mu: [Double], nPaths P: Int, seed: UInt32, goal: Double, monthly: Double,
-                         withEvents: Bool, dof: Double) -> Sim {
+                         withEvents: Bool, dof: Double, stop: (() -> Bool)? = nil) -> Sim {
         let fs = model.factors, F = fs.count, A = holdings.count, D = model.days.count, M = model.monthIdx.count
         let nu = max(3, dof), tAdj = ((nu - 2) / nu).squareRoot()
         var rng = Rng(seed)
@@ -423,6 +424,7 @@ enum MC {
         var h = [Double](repeating: 0, count: A), G = [Double](repeating: 0, count: A)
 
         for p in 0..<P {
+            if let stop, p & 31 == 0, stop() { break }
             for f in 0..<F { lg[f] = 0; boostUntil[f] = -1; boostMult[f] = 1 }
             for a in 0..<A { h[a] = v0[a]; G[a] = 1 }
             var peak = V0, mdd = 0.0, hit = false
