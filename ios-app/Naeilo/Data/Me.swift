@@ -27,7 +27,7 @@ struct MeChar: Codable, Equatable, Hashable {
     var shownName: String { name.isEmpty ? "나" : name }
 }
 
-/// 부품 그룹. 그림은 이미지 디자인 스레드가 만드는 me_<layer>_<NN> (24×34, 판 전체 크기로 겹침). 없으면 자리표시 도트
+/// 부품 그룹. 그림은 이미지 디자인 스레드가 만드는 me_* (24×34, 판 전체 크기로 겹침, MeArt.asset). 없으면 자리표시 도트
 enum MeGroup: String, CaseIterable, Identifiable {
     case hair, color, face, eyes, mouth, top, bottom, glasses, mask, prop
     var id: String { rawValue }
@@ -52,8 +52,8 @@ enum MeGroup: String, CaseIterable, Identifiable {
     var first: Int { optional ? 0 : 1 }
     /// 색깔 그룹은 머리 색(1부터) 뒤에 피부색(101부터)을 같이 고른다 (parts["skin"])
     var options: [Int] { self == .color ? Array(1...count) + (1...MeColor.skin.count).map { 100 + $0 } : Array(first...count) }
-    /// 쌓는 순서 (아래 → 위). hairb 는 뒷머리 (헤어스타일 번호를 같이 쓴다), '색깔'은 그림 없이 머리에 곱하는 색
-    static let layers = ["hairb", "bottom", "top", "face", "eyes", "mouth", "glasses", "mask", "hair", "prop"]
+    /// 쌓는 순서 (아래 → 위, 이미지 디자인 스레드 시안). body 는 손·목·다리 피부 (피부색 번호), '색깔'은 머리색·피부색을 고른다
+    static let layers = ["body", "face", "bottom", "top", "hair", "eyes", "mouth", "mask", "glasses", "prop"]
 }
 
 /// 머리 색 (색깔 그룹) + 위젯 바탕 (인물 색 그라데이션: 강조, 진한 쪽, 밝은 쪽)

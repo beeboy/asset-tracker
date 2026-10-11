@@ -31,54 +31,93 @@ struct MeEmpty: View {
     }
 }
 
-/// 내 캐릭터: 24×34 판에 부품을 아래부터 겹친다 (MeGroup.layers)
+/// 내 캐릭터: 24×34 판에 부품을 아래부터 겹치고 바깥 테두리를 한 줄 두른 그림 (MeArt.image), 최근접 확대
 struct MeAvatar: View {
     let me: MeChar
     var width: CGFloat = 24
     var height: CGFloat = 34
     var body: some View {
-        let color = MeColor.hair[MeColor.idx(me)], skin = MeColor.skin[MeColor.skinIdx(me)]
-        ZStack {
-            ForEach(MeGroup.layers, id: \.self) { layer in
-                let n = MeArt.option(me, layer)
-                if n > 0 { MeLayer(layer: layer, n: n, color: color, skin: skin) }
-            }
+        Group {
+            if let img = MeArt.image(me) { Image(uiImage: img).interpolation(.none).resizable() } else { Color.clear }
         }
         .frame(width: width, height: height)
         .accessibilityLabel(me.shownName)
     }
 }
 
-private struct MeLayer: View {
-    let layer: String
-    let n: Int
-    let color: UInt32
-    let skin: UInt32
-    var body: some View {
-        let name = MeArt.asset(layer, n)
-        if MeArt.has(name) {
-            // 머리는 회색 단계 그림에 머리 색을, 얼굴은 피부색을 곱한다
-            Image(name).interpolation(.none).resizable()
-                .colorMultiply(layer == "hair" || layer == "hairb" ? Color(hex: color) : layer == "face" ? Color(hex: skin) : .white)
-        } else {
-            Canvas { ctx, size in MePlaceholder.draw(layer, n, color, skin, &ctx, size.width / 24) }
+enum MeArt {
+    static let W = 24, H = 34
+    static let outline: UInt32 = 0x2A1E2E      // 기본 스프라이트와 같은 바깥 테두리 색
+
+    /// 부품 그림 이름 (이미지 디자인 스레드와 맞춘 이름). 피부·머리는 색을 미리 칠한 그림
+    /// body: me_body_<피부> · face: me_face_<모양>_<피부> · hair: me_hair_<모양>_<머리색> · 나머지: me_<그룹>_<번호>
+    static func asset(_ layer: String, _ n: Int, _ me: MeChar) -> String {
+        let f = { (x: Int) in String(format: "%02d", x) }
+        switch layer {
+        case "body": return "me_body_" + f(me.skin)
+        case "face": return "me_face_\(f(n))_\(f(me.skin))"
+        case "hair": return "me_hair_\(f(n))_\(f(me.part(.color)))"
+        default: return "me_\(layer)_" + f(n)
         }
     }
-}
-
-enum MeArt {
-    static func asset(_ layer: String, _ n: Int) -> String { "me_\(layer)_" + String(format: "%02d", n) }
-    /// 이 부품의 번호 (뒷머리는 헤어스타일 번호)
+    /// 이 부품의 번호 (몸은 늘 있다)
     static func option(_ me: MeChar, _ layer: String) -> Int {
-        if layer == "hairb" { return me.part(.hair) }
+        if layer == "body" { return 1 }
         return MeGroup(rawValue: layer).map { me.part($0) } ?? 0
     }
+
     private static var known: [String: Bool] = [:]
+    /// 에셋이 있는지 (쉼터 배경 그림 등)
     static func has(_ name: String) -> Bool {
         if let k = known[name] { return k }
         let k = UIImage(named: name) != nil
         known[name] = k
         return k
+    }
+
+    private static var cache: [MeChar: UIImage] = [:]
+    /// 1배로 겹친 뒤 '투명 칸 중 상하좌우에 칠한 칸이 있으면 테두리색' 한 번 (부품에는 테두리가 없다)
+    static func image(_ me: MeChar) -> UIImage? {
+        if let c = cache[me] { return c }
+        let hair = MeColor.hair[MeColor.idx(me)], skin = MeColor.skin[MeColor.skinIdx(me)]
+        let w = W, h = H, line = outline
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        let cg: CGImage? = px.withUnsafeMutableBytes { buf -> CGImage? in
+            guard let ctx = CGContext(data: buf.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            ctx.interpolationQuality = .none
+            for layer in MeGroup.layers {
+                let n = option(me, layer)
+                guard n > 0 else { continue }
+                if let img = UIImage(named: asset(layer, n, me))?.cgImage {
+                    ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+                } else {
+                    // 그림이 오기 전: 자리표시 도트 (위에서부터 센 y 를 CG 좌표로)
+                    MePlaceholder.draw(layer, n, hair, skin) { x, y, pw, ph, c in
+                        ctx.setFillColor(red: CGFloat((c >> 16) & 0xFF) / 255, green: CGFloat((c >> 8) & 0xFF) / 255, blue: CGFloat(c & 0xFF) / 255, alpha: 1)
+                        ctx.fill(CGRect(x: x, y: h - y - ph, width: pw, height: ph))
+                    }
+                }
+            }
+            // 바깥 테두리 (버퍼는 위 줄부터)
+            let p = buf.bindMemory(to: UInt8.self)
+            let alpha: [UInt8] = (0..<(w * h)).map { p[$0 * 4 + 3] }
+            for y in 0..<h {
+                for x in 0..<w where alpha[y * w + x] == 0 {
+                    let left = x > 0 && alpha[y * w + x - 1] > 0, right = x < w - 1 && alpha[y * w + x + 1] > 0
+                    let up = y > 0 && alpha[(y - 1) * w + x] > 0, down = y < h - 1 && alpha[(y + 1) * w + x] > 0
+                    guard left || right || up || down else { continue }
+                    let i = (y * w + x) * 4
+                    p[i] = UInt8((line >> 16) & 0xFF); p[i + 1] = UInt8((line >> 8) & 0xFF); p[i + 2] = UInt8(line & 0xFF); p[i + 3] = 255
+                }
+            }
+            return ctx.makeImage()
+        }
+        guard let cg else { return nil }
+        let img = UIImage(cgImage: cg)
+        if cache.count > 80 { cache.removeAll() }
+        cache[me] = img
+        return img
     }
 
     /// 위젯이 읽는 내 캐릭터 (me.json · me.png). 바뀐 때만 다시 쓴다
@@ -108,19 +147,14 @@ enum MePlaceholder {
     private static let tops: [UInt32] = [0x4C6EF5, 0xE8590C, 0x2F9E44, 0xF1F3F5, 0x343A40, 0xAE3EC9, 0xF59F00, 0x1C3F7A]
     private static let bottoms: [UInt32] = [0x2C3E6B, 0x4D7CC4, 0x2B2B33, 0xB59B6A, 0xC0392B, 0x868E96]
 
-    static func draw(_ layer: String, _ n: Int, _ hair: UInt32, _ skin: UInt32, _ ctx: inout GraphicsContext, _ u: CGFloat) {
-        func p(_ x: Int, _ y: Int, _ w: Int, _ h: Int, _ c: UInt32) {
-            ctx.fill(Path(CGRect(x: CGFloat(x) * u, y: CGFloat(y) * u, width: CGFloat(w) * u, height: CGFloat(h) * u)), with: .color(Color(hex: c)))
-        }
+    static func draw(_ layer: String, _ n: Int, _ hair: UInt32, _ skin: UInt32, _ fill: (Int, Int, Int, Int, UInt32) -> Void) {
+        func p(_ x: Int, _ y: Int, _ w: Int, _ h: Int, _ c: UInt32) { fill(x, y, w, h, c) }
         let dark = shade(hair, 0.72)
         switch layer {
-        case "hairb":
-            switch n {
-            case 3: p(5, 6, 14, 14, dark)
-            case 4: p(5, 5, 14, 10, dark)
-            case 7: p(18, 7, 3, 3, dark); p(19, 10, 3, 10, dark)
-            default: break
-            }
+        case "body":
+            p(10, 16, 4, 1, shade(skin, 0.9))                 // 목
+            p(4, 24, 2, 2, skin); p(18, 24, 2, 2, skin)        // 손
+            p(8, 28, 3, 4, skin); p(13, 28, 3, 4, skin)        // 다리
         case "face":
             let s = skin
             switch n {
@@ -130,7 +164,6 @@ enum MePlaceholder {
             default: p(8, 5, 8, 1, s); p(7, 6, 10, 1, s); p(6, 7, 12, 7, s); p(7, 14, 10, 1, s); p(8, 15, 8, 1, s)
             }
             p(5, 10, 1, 2, s); p(18, 10, 1, 2, s)          // 귀
-            p(10, 16, 4, 1, shade(s, 0.9))                    // 목
         case "eyes":
             switch n {
             case 2: p(8, 10, 2, 2, ink); p(14, 10, 2, 2, ink); p(8, 10, 1, 1, white); p(14, 10, 1, 1, white)
@@ -164,7 +197,6 @@ enum MePlaceholder {
         case "top":
             let c = tops[(n - 1) % tops.count], d = shade(c, 0.78)
             p(6, 17, 12, 9, c); p(4, 17, 2, 7, d); p(18, 17, 2, 7, d)
-            p(4, 24, 2, 2, skin); p(18, 24, 2, 2, skin)        // 손
             switch n {
             case 2: p(7, 16, 10, 2, d)                         // 후드
             case 4: p(11, 18, 2, 6, 0xC92A2A)                  // 넥타이
@@ -175,8 +207,8 @@ enum MePlaceholder {
         case "bottom":
             let c = bottoms[(n - 1) % bottoms.count]
             switch n {
-            case 5: p(6, 26, 12, 4, c); p(8, 30, 3, 2, skin); p(13, 30, 3, 2, skin)          // 치마
-            case 6: p(7, 26, 10, 3, c); p(8, 29, 3, 3, skin); p(13, 29, 3, 3, skin)          // 반바지
+            case 5: p(6, 26, 12, 4, c)          // 치마
+            case 6: p(7, 26, 10, 3, c)          // 반바지
             default: p(7, 26, 10, 2, c); p(7, 28, 4, 4, c); p(13, 28, 4, 4, c)
             }
             p(7, 32, 4, 2, ink); p(13, 32, 4, 2, ink)          // 신발
