@@ -1157,9 +1157,8 @@
     host.style.display = "block";
     const seen = new Set(), charts = [];
     host.innerHTML = `<h2>${esc(sub.g.n)} · ${esc(sub.n)} 분석</h2>` + sub.cats.map((c, j) => xfSection(c, seen, j, charts, sub.cats.length > 1)).join("") +
-      (sub.k === "fin" ? `<div id="rsBox" style="margin-top:16px"></div>` : "");
+      (sub.k === "fin" ? `<p class="small" style="margin-top:12px">금리가 움직이면 시장 이익과 내 목표 확률이 어떻게 바뀌는지는 위 <b>금리 시나리오</b>에서 봅니다. <button type="button" class="sm" data-jump="sec-rs">보러 가기</button></p>` : "");
     charts.forEach((f) => f());
-    if (sub.k === "fin") renderRateScen();
   }
   // ------------------------------------------------------------ 금리 시나리오: 금리→이익 관계식 식단 1000벌 (data/macro, 실러 데이터)
   // 식단 j, y년째 S&P 실질 EPS 변화(로그 %) = a + b·Δ금리 + c·지금 EPS 증가율. 무작위 경로 없이 식단마다 답 하나
@@ -1169,15 +1168,15 @@
     let d; try { d = await loadMacro(); } catch (e) { box.innerHTML = `<p class="muted small">금리 시나리오 자료를 불러오지 못했습니다 (${esc(e.message)}).</p>`; return; }
     const M = d.meals; if (!M || !M.coef || !$("#rsBox")) return;
     const now = rateChange1y(d); if (RS.dr === null) RS.dr = Number.isFinite(now) ? Math.round(now * 10) / 10 : 0;
-    box.innerHTML = `<h3>금리 시나리오 · 앞으로의 시장 이익</h3>
+    box.innerHTML = `<div class="row between wrap"><h2 style="margin:0">금리가 움직이면 시장 이익과 내 목표는</h2><span class="muted small">"만약" 도구</span></div>
       <div class="wi">
         <label><span class="row between"><span>앞으로 1년 10년물 금리 변화</span><b id="rsDrV"></b></span><input type="range" id="rsDr" min="-2" max="3" step="0.1" value="${RS.dr}"></label>
         <label><span class="row between"><span>시장 공통 기대수익 (금리 외 요인, 연)</span><b id="rsMV"></b></span><input type="range" id="rsM" min="-10" max="10" step="1" value="${RS.m}"></label>
       </div>
       <div class="row wrap" style="gap:6px;margin:6px 0"><button type="button" class="sm" id="rsReset">지금 값으로</button></div>
-      <div id="rsChart" class="chartbox"></div><div id="rsOut"></div>
+      <div id="rsChart" class="chartbox"></div><p class="muted small" style="margin:2px 0 8px">S&amp;P500 실질 이익 (오늘 = 100) · 진한 선 중앙, 띠는 관계식 80%가 드는 범위</p><div id="rsOut"></div>
       <p class="muted small">"만약 금리가 이렇게 움직인다면"을 보는 시나리오 도구이며 예측이나 투자 권유가 아닙니다. 미 10년물 금리와 S&amp;P500 실질 EPS의 1960년 이후 관계를 시작 연도·표본을 바꿔 1000가지 관계식(식단)으로 맞추고, 식단마다 답 하나를 계산해 띠(하위 10%~상위 10%)로 보여 줍니다. 시장 수익은 PER 이 그대로라고 보고 이익 변화 + 배당 약 1.5% + 시장 공통 기대수익으로 계산합니다. 내 목표 확률은 3년 전망 결과를 금리 몫과 시장 공통 기대수익만큼 β 배 옮긴 근사치입니다. 이익 자료 ${esc(d.eps_last || "")}까지 (지금 EPS 증가율 ${nf(M.g_now, 1)}%), 출처 Robert J. Shiller, 매달 갱신.</p>`;
-    const draw = () => rateScenDraw(d, now);
+    const draw = RS.draw = () => rateScenDraw(d, now);
     $("#rsDr").oninput = (e) => { RS.dr = +e.target.value; draw(); };
     $("#rsM").oninput = (e) => { RS.m = +e.target.value; draw(); };
     $("#rsReset").onclick = () => { RS.dr = Number.isFinite(now) ? Math.round(now * 10) / 10 : 0; RS.m = 0; $("#rsDr").value = RS.dr; $("#rsM").value = 0; draw(); };
@@ -1197,10 +1196,11 @@
     const sg = (v) => `${v >= 0 ? "+" : ""}${nf(v, 1)}%`;
     // 시장 연 수익 ≈ 3년 누적 이익 변화/3 + 배당 1.5% + 금리 외 공통 기대수익
     const mkt = band(cum.map((t) => Math.exp(t[H - 1] / 100 / H) - 1 + 0.015 + m));
-    let html = `<div class="tablewrap"><table class="grid"><tr><th class="l">S&amp;P 실질 이익</th><th>하위 10%</th><th>중앙</th><th>상위 10%</th><th>감소 비율</th></tr>` +
+    const tbl = `<div class="tablewrap"><table class="grid"><tr><th class="l">S&amp;P 실질 이익</th><th>하위 10%</th><th>중앙</th><th>상위 10%</th><th>감소 비율</th></tr>` +
       yr.map((b, y) => `<tr><td class="l">${y + 1}년째 변화</td><td>${sg(b[0])}</td><td><b>${sg(b[1])}</b></td><td>${sg(b[2])}</td><td>${pct(tot.filter((t) => t[y] < 0).length / tot.length, 0)}</td></tr>`).join("") +
       `<tr><td class="l">${H}년 누적</td><td>${sg(cb[H - 1][0])}</td><td><b>${sg(cb[H - 1][1])}</b></td><td>${sg(cb[H - 1][2])}</td><td>${pct(cum.filter((t) => t[H - 1] < 0).length / cum.length, 0)}</td></tr>` +
       `<tr><td class="l">시장 연 기대수익</td><td>${spct(mkt[0], 1)}</td><td><b>${spct(mkt[1], 1)}</b></td><td>${spct(mkt[2], 1)}</td><td></td></tr></table></div>`;
+    let goal = "";
     // 내 목표 확률 근사: 3년 전망 만기 분포(로그정규 근사)를 시장 조정분 × β 만큼 옮긴다
     const R = lastForecast && lastForecast.withEv, g = S.state.goal;
     if (R && R.terminal && R.terminal.p50 > 0 && R.terminal.p5 > 0 && g && g.date > t0) {
@@ -1210,9 +1210,9 @@
       const P = (shift) => { const z = (Math.log(R.terminal.p50) + kb * shift * T - lnG) / sig; return 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z * z * z))); };
       const shifts = M.coef.map((c) => { let s2 = 0; for (let y = 0; y < c.length; y++) s2 += c[y][1] * dr * Math.max(0, Math.min(1, T - y)); return s2 / 100 / Math.max(T, 0.25) + m; });
       const base = P(0), pb = band(shifts.map((x) => R.p_goal + P(x) - base));
-      html += `<p class="small">내 목표 확률 (3년 전망 ${pct(R.p_goal, 0)} 기준, 포트폴리오 시장 민감도 β ${kb.toFixed(2)}): <b>${pct(Math.max(0, Math.min(1, pb[1])), 0)}</b> <span class="muted">(식단 하위10~상위10 ${pct(Math.max(0, Math.min(1, pb[0])), 0)} ~ ${pct(Math.max(0, Math.min(1, pb[2])), 0)})</span></p>`;
-    } else html += `<p class="muted small">3년 전망을 한 번 계산하면 내 목표 확률 변화도 함께 나옵니다.</p>`;
-    $("#rsOut").innerHTML = html;
+      goal = `<p class="small">내 목표 확률 (3년 전망 ${pct(R.p_goal, 0)} 기준, 포트폴리오 시장 민감도 β ${kb.toFixed(2)}): <b>${pct(Math.max(0, Math.min(1, pb[1])), 0)}</b> <span class="muted">(식단 하위10~상위10 ${pct(Math.max(0, Math.min(1, pb[0])), 0)} ~ ${pct(Math.max(0, Math.min(1, pb[2])), 0)})</span></p>`;
+    } else goal = `<p class="muted small">3년 전망을 한 번 계산하면 내 목표 확률 변화도 함께 나옵니다.</p>`;
+    $("#rsOut").innerHTML = goal + tbl;
   }
   // 묶음 하나의 분석: 대리 지표 시세·민감도(같은 지표는 소분류 안에서 한 번만), 과거 반응일
   function xfSection(cat, seen, j, charts, multi) {
@@ -1433,6 +1433,7 @@
       if (full) { const one = (scen) => (L.scen === scen ? L.sim : Model.simulate(md, { ...L.common, scenario: scen, nPaths: Math.min(L.common.nPaths, 1500), withEvents: true })); L.lens = { base: one("base"), smooth: one("smooth") }; }
     }
     L.scen = S.state.model.scenario;
+    if (RS.draw && $("#rsOut")) RS.draw(); // 금리 시나리오의 내 목표 확률도 새 전망으로
   }
   const fcDisp = () => { const L = lastForecast; return L.disp || { R: L.withEv, No: L.hasEv ? L.noEv : null, base: L.lens && L.lens.base, smooth: L.lens && L.lens.smooth }; };
   // 슬라이더·시나리오·만약에: 경로가 있으면 바로, 없으면 다시 계산
@@ -2895,7 +2896,7 @@
   // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
   const ensureForecast = () => { if (!lastForecast && !fcRestore()) runForecast(); else renderForecast(); };
   // 전망 탭: 3년 전망 · 외부 요인 · 환율 영향을 한 화면에
-  function renderForecastTab() { renderSchedule(); renderSens(); renderFx(); ensureForecast(); }
+  function renderForecastTab() { renderSchedule(); renderSens(); renderFx(); renderRateScen(); ensureForecast(); }
   // 종목 탭: 보유 종목 · 종목 진단 · 비중 조정 · 배당·세금을 한 화면에
   function renderStocksTab() {
     renderStockPrices(); renderCash(); ensureForecast();
