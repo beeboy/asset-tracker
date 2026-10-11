@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /proxy/
+Disallow: /web/store-admin.html
 
 Sitemap: https://naeilo.com/sitemap.xml
