@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppModel.self) private var m
+    @State private var inbox = false
 
     var body: some View {
         ScrollView {
@@ -9,7 +10,7 @@ struct HomeView: View {
                 AppHeader(tab: "홈").padding(.horizontal, -16)
                 summary
                 shelterBox
-                if m.playOn && !m.interDone { reminder }
+                reminder
                 if m.playUnlocked { RoutineCard() } else { lockedRoutine }
                 if !m.playUnlocked { yesterdayCard }
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
@@ -18,7 +19,8 @@ struct HomeView: View {
         }
         .background(Theme.bg)
         .refreshable { await Market.shared.pullRefresh(m) }
-        .onAppear { m.calmOpen() }
+        .onAppear { m.calmOpen(); Remind.shared.refresh(m); Remind.shared.nextBubble() }
+        .sheet(isPresented: $inbox, onDismiss: { Remind.shared.markAllSeen() }) { RemindSheet().environment(m) }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { route in
             if route == "shelter" { ShelterView() }
@@ -103,24 +105,49 @@ struct HomeView: View {
         .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
     }
 
-    // 쉼터 박스: 홈에 둔 친구 + 말풍선 + 다른 친구 칸
+    // 쉼터 박스: 홈에 둔 친구 + 말풍선 (리마인드 소식이 있으면 그 소식) + 새 소식 + 다른 친구 칸
     private var shelterBox: some View {
         let on = (0..<5).filter { m.friendOn($0) }.count
         let next = (0..<5).first { !m.friendOn($0) }
-        return NavigationLink(value: "shelter") {
-            VStack(alignment: .leading, spacing: 10) {
+        let r = Remind.shared, b = r.bubble, n = r.fresh.count
+        let say: String = b.map { $0.text + ($0.go != .nowhere ? " ›" : "") } ?? m.homeSay
+        let tint: Color = b.map { $0.cat.color.opacity(0.14) } ?? Theme.mintBg
+        return VStack(alignment: .leading, spacing: 10) {
+            Button {
+                if let b, b.go != .nowhere { m.go(b.go) } else { m.homePath.append("shelter") }
+            } label: {
                 HStack(alignment: .bottom, spacing: 10) {
                     CharPixel(id: m.homeFriendShown, width: 56, height: 80)
                         .accessibilityLabel(m.friendName(m.homeFriendShown))
-                    Text(m.homeSay)
+                    Text(say)
                         .appFont(14).lineSpacing(3)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 12).padding(.vertical, 10)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.mintBg, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14))
+                        .background(tint, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14))
                 }
-                Divider().overlay(Theme.line)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(b.map { "\($0.cat.label) 소식: \($0.text)" } ?? "쉼터 보기")
+            if !r.items.isEmpty {
+                HStack {
+                    Spacer()
+                    Button { inbox = true } label: {
+                        Text(n > 0 ? "새 소식 \(n) ›" : "소식함 ›").appFont(12, .bold)
+                            .foregroundStyle(n > 0 ? Theme.inkFixed : Theme.sub)
+                            .padding(.horizontal, 10).padding(.vertical, 4)
+                            .background(n > 0 ? Theme.yellow : Theme.line, in: Capsule())
+                            .frame(minHeight: 32)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(n > 0 ? "새 소식 \(n)개 보기" : "소식함 보기")
+                }
+                .padding(.top, -4)
+            }
+            Divider().overlay(Theme.line)
+            NavigationLink(value: "shelter") {
                 HStack(alignment: .bottom, spacing: 8) {
                     ForEach(Array(Shelter.friends.enumerated()).filter { $0.element.id != m.homeFriendShown }, id: \.element.id) { i, f in
                         Pixel(name: (m.friendOn(i) ? "spr_" : "sil_") + f.id, width: 20, height: 28).opacity(m.friendOn(i) ? 1 : 0.5)
@@ -129,27 +156,40 @@ struct HomeView: View {
                     Text("친구 \(on)/5" + (next.map { " · 다음: \(Shelter.friends[$0].name), \(m.friendWhen($0))" } ?? " · 외전 5장까지 열림") + " ›")
                         .appFont(12).foregroundStyle(Theme.sub).lineLimit(2).minimumScaleFactor(0.8).multilineTextAlignment(.trailing)
                 }
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+            .buttonStyle(.plain)
+            .accessibilityLabel("쉼터 보기")
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("쉼터 보기")
+        .padding(.horizontal, 14).padding(.vertical, 12)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
-    private var reminder: some View {
-        let text = m.isGoal
-            ? "인터미션 \(m.gWeeks.count)/3달 · 이번 달: \(AppModel.goalMonthSteps[min(m.gWeeks.count, 2)].task)"
-            : "인터미션 \(m.weeks.count)/4주 · 이번 주: \(Shelter.weekSteps[min(m.weeks.count, 3)].task)"
-        return HStack(spacing: 8) {
-            Text("리마인드").appFont(11, .bold).padding(.horizontal, 8).padding(.vertical, 2)
-                .background(Theme.yellow, in: Capsule())
-            Text(text).appFont(13).lineLimit(2)
-            Spacer(minLength: 0)
+    /// 노란 띠: 3일 안의 일정 (내 종목 먼저). 없으면 인터미션 이번 할 일. 누르면 소식함
+    @ViewBuilder private var reminder: some View {
+        let r = Remind.shared
+        if let e = r.strip {
+            stripRow(tag: "일정", text: "\(MarketEvents.when(e.day ?? "")) \(e.text) · \(e.sub ?? "")")
+        } else if r.isOn(.doing), let d = r.doing.first(where: { $0.id == "do.inter" }) {
+            stripRow(tag: "리마인드", text: d.text)
         }
-        .padding(.horizontal, 12).frame(minHeight: 44)
-        .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
+    }
+    private func stripRow(tag: String, text: String) -> some View {
+        Button { inbox = true } label: {
+            HStack(spacing: 8) {
+                Text(tag).appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(Theme.yellow, in: Capsule())
+                Text(text).appFont(13).lineLimit(2).multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").appFont(11).foregroundStyle(Theme.muted)
+            }
+            .padding(.horizontal, 12).frame(minHeight: 44)
+            .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(tag): \(text). 소식함 열기")
     }
 
     private var lockedRoutine: some View {

@@ -20,6 +20,7 @@
 		4EBB7ECA27ADF8F57B6814B3 /* SponsorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A7566F7A44493F3D6599BE7 /* SponsorViews.swift */; };
 		1A944CD8310789082F51DDA9 /* StockSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E2F947F1E8A2B5EF85B381 /* StockSearch.swift */; };
 		3067211DBEEE37981705C1E7 /* Me.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF24101939FAE2699976EF9A /* Me.swift */; };
+		5A1E0C7D2B9F4E6A8C3D1B01 /* Remind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1E0C7D2B9F4E6A8C3D1B02 /* Remind.swift */; };
 		D2E26393C5FC2C263794331C /* Calm.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C8BDB35CC0EADAEFBC826C /* Calm.swift */; };
 		9D0C8DCF6E59E311B4506B5B /* BrickGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2905AA73F54471654DDD97 /* BrickGame.swift */; };
 		39FFBAF05DA8DDC0379F1167 /* Lines.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50761DC24E0F1E341B2A8C09 /* Lines.swift */; };
@@ -60,6 +61,7 @@
 		9F9ED7709E516D30CFB4424C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0331F7703E5FBD6276E1B388 /* Theme.swift */; };
 		A2B3098A96833AB4427043CB /* ShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1A8DE32227186611CAE0D0 /* ShareCard.swift */; };
 		927EE0531CEA5194096A7E87 /* MeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A582148F29787AC4A7C10DE2 /* MeViews.swift */; };
+		5A1E0C7D2B9F4E6A8C3D1B03 /* RemindViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1E0C7D2B9F4E6A8C3D1B04 /* RemindViews.swift */; };
 		8DAA47AF36B9BDA0EDFF4AF0 /* CalmView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08124010F0FC18140D2673FF /* CalmView.swift */; };
 		FC6AE379FED8F5046A3A423E /* BrickGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E017F73412CCEE93530DD9EE /* BrickGameView.swift */; };
 		A6396DE3BF6732A5DE643156 /* Locked.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3472380FBBE2CD64AFBA542 /* Locked.swift */; };
@@ -152,6 +154,7 @@
 		96EDF9F440F10C712447019C /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		9D1A8DE32227186611CAE0D0 /* ShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCard.swift; sourceTree = "<group>"; };
 		A582148F29787AC4A7C10DE2 /* MeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeViews.swift; sourceTree = "<group>"; };
+		5A1E0C7D2B9F4E6A8C3D1B04 /* RemindViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemindViews.swift; sourceTree = "<group>"; };
 		08124010F0FC18140D2673FF /* CalmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmView.swift; sourceTree = "<group>"; };
 		E017F73412CCEE93530DD9EE /* BrickGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrickGameView.swift; sourceTree = "<group>"; };
 		A01E38615C5B56866E9049C5 /* story_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = story_en.json; sourceTree = "<group>"; };
@@ -173,6 +176,7 @@
 		D3472380FBBE2CD64AFBA542 /* Locked.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Locked.swift; sourceTree = "<group>"; };
 		D8E2F947F1E8A2B5EF85B381 /* StockSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockSearch.swift; sourceTree = "<group>"; };
 		FF24101939FAE2699976EF9A /* Me.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Me.swift; sourceTree = "<group>"; };
+		5A1E0C7D2B9F4E6A8C3D1B02 /* Remind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Remind.swift; sourceTree = "<group>"; };
 		A0C8BDB35CC0EADAEFBC826C /* Calm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Calm.swift; sourceTree = "<group>"; };
 		5F2905AA73F54471654DDD97 /* BrickGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrickGame.swift; sourceTree = "<group>"; };
 		50761DC24E0F1E341B2A8C09 /* Lines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lines.swift; sourceTree = "<group>"; };
@@ -236,6 +240,7 @@
 				A0C8BDB35CC0EADAEFBC826C /* Calm.swift */,
 				5F2905AA73F54471654DDD97 /* BrickGame.swift */,
 				FF24101939FAE2699976EF9A /* Me.swift */,
+				5A1E0C7D2B9F4E6A8C3D1B02 /* Remind.swift */,
 				50761DC24E0F1E341B2A8C09 /* Lines.swift */,
 				E8980507A377896324ED840E /* Story.swift */,
 				043CD3937D8B52409651AF04 /* StoreAPI.swift */,
@@ -288,6 +293,7 @@
 				08124010F0FC18140D2673FF /* CalmView.swift */,
 				E017F73412CCEE93530DD9EE /* BrickGameView.swift */,
 				A582148F29787AC4A7C10DE2 /* MeViews.swift */,
+				5A1E0C7D2B9F4E6A8C3D1B04 /* RemindViews.swift */,
 				B9051E09656ED51EFBF91911 /* ShelterView.swift */,
 				012F5C5676B198E5CF433509 /* StartView.swift */,
 				38754B5097170C13E85C8926 /* SupportView.swift */,
@@ -523,6 +529,7 @@
 				8DAA47AF36B9BDA0EDFF4AF0 /* CalmView.swift in Sources */,
 				FC6AE379FED8F5046A3A423E /* BrickGameView.swift in Sources */,
 				927EE0531CEA5194096A7E87 /* MeViews.swift in Sources */,
+				5A1E0C7D2B9F4E6A8C3D1B03 /* RemindViews.swift in Sources */,
 				DC15E84938D3B3EDB0FB4481 /* ShelterView.swift in Sources */,
 				27B98CF0F3A9E3308C683492 /* StartView.swift in Sources */,
 				7A47E9AE200D65D15BBCA430 /* StockCatalog.swift in Sources */,
@@ -530,6 +537,7 @@
 				D2E26393C5FC2C263794331C /* Calm.swift in Sources */,
 				9D0C8DCF6E59E311B4506B5B /* BrickGame.swift in Sources */,
 				3067211DBEEE37981705C1E7 /* Me.swift in Sources */,
+				5A1E0C7D2B9F4E6A8C3D1B01 /* Remind.swift in Sources */,
 				39FFBAF05DA8DDC0379F1167 /* Lines.swift in Sources */,
 				C02C1513F071353035F6CCC9 /* Story.swift in Sources */,
 				E2A350EDE7A37B5464944041 /* StoreAPI.swift in Sources */,

@@ -286,9 +286,7 @@ struct ExternalView: View {
         let note = factor == "mkt" ? "1% 움직일 때 평균 반응: \(coef). 시장보다 등락이 큰 종목이 많을수록 하락 시 손실이 증폭돼요."
             : factor == "rate" ? "미국 10년 금리가 1%p 오를 때 평균 반응: \(coef). 성장주일수록 금리에 더 민감했어요."
             : "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Market.shared.fx.last * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
-        let events: [(String, String, String)] = [("10월 15일", "미국 소비자물가 발표", ""), ("10월 22일", "드링커 3분기 실적 발표", "DRNK"), ("10월 28일", "미국 금리 결정", ""),
-                                                   ("10월 29일", "삼성전자 3분기 실적 발표", "005930"), ("10월 30일", "애플 실적 발표", "AAPL"), ("11월 19일", "엔비디아 실적 발표", "NVDA")]
-            .filter { e in e.2.isEmpty || m.rows.contains { r in r.id == e.2 } }
+        let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).sorted { $0.day < $1.day }.prefix(8)
 
         PinnedLayout {
             pinnedBox {
@@ -315,16 +313,18 @@ struct ExternalView: View {
                     Text(note).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
                 Card(dark: true) {
-                    Text("다가오는 사건 (시안 예시 일정)").appFont(15, .bold)
-                    ForEach(events, id: \.1) { d, t, k in
+                    Text("다가오는 일정 (45일)").appFont(15, .bold)
+                    ForEach(Array(events.enumerated()), id: \.offset) { _, e in
                         HStack(alignment: .top, spacing: 10) {
-                            Text(d).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
+                            Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(t).appFont(14, .bold)
-                                Text(k.isEmpty ? "모든 종목" : "\(k) 비중 \(AppModel.pct(m.weight(k)))").appFont(12).foregroundStyle(Theme.sub)
+                                Text(e.kind).appFont(14, .bold)
+                                Text(e.held ? "\(e.sub) 비중 \(AppModel.pct(m.weight(e.target)))" : e.sub)
+                                    .appFont(12).foregroundStyle(Theme.sub)
                             }
                         }
                     }
+                    if events.isEmpty { Text("45일 안에 정해진 일정이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
                     Text("3년 전망에서 \"외부 요인\"을 켜면 반영돼요.").appFont(12).foregroundStyle(Theme.muted)
                 }
             }

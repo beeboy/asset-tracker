@@ -319,8 +319,8 @@ struct BlockCharView: View {
             let cell: CGFloat = 7, gap: CGFloat = 1.6, grid = cell * 10 + gap * 9
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 4) {
-                    Text(e.locked ? lockLine(e.c) : "\(block)번째 블록 채우는 중").font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(s.heading).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(e.locked ? lockLine(e.c) : r.badgeToday ?? "\(block)번째 블록 채우는 중").font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(!e.locked && r.badgeToday != nil ? s.accent : s.heading).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
                     if !e.locked { CharReload() }
                 }
@@ -390,7 +390,7 @@ struct MovesCharView: View {
                     HStack(alignment: .top, spacing: 4) {
                         CharSprite(name: "w_\(e.c.id)", locked: e.locked, height: 92).frame(width: 66)
                             .overlay(alignment: .bottomTrailing) { if !e.locked, let it = WItem.shown(r) { CharItem(id: it).offset(x: 6) } }
-                        Text(e.locked ? "인터미션 \(e.c.week)주차에\n만나요" : e.c.line(r))
+                        Text(e.locked ? "인터미션 \(e.c.week)주차에\n만나요" : r.newsToday ?? e.c.line(r))
                             .font(.system(size: 11, weight: .medium)).lineLimit(3).fixedSize(horizontal: false, vertical: true)
                             .padding(.horizontal, 8).padding(.vertical, 6)
                             .background(s.bubbleFill, in: RoundedRectangle(cornerRadius: 8))
@@ -415,7 +415,7 @@ struct MovesCharView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "오늘의 움직임, \(e.c.name): \(e.c.line(e.r))")
+        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "오늘의 움직임, \(e.c.name): \(e.r.newsToday ?? e.c.line(e.r))")
     }
 
     /// 종목 칸: 비중이 큰 3개까지 칸으로 (넓이는 비중, 오르면 빨강, 내리면 파랑).
