@@ -6,6 +6,8 @@ struct HoldingsView: View {
     @State private var period: Period = .y1
     @State private var open: String? = nil          // 목록 안에서 펼친 종목 (수량·단가 고치기)
     @State private var said: String? = nil          // 매매 저장 뒤 인물의 한 줄 (평정 지수)
+    @State private var swiped: String? = nil        // 왼쪽으로 밀어 지우기 버튼이 보이는 종목
+    @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
     @Environment(\.dynamicTypeSize) private var dts
 
     var body: some View {
@@ -48,12 +50,36 @@ struct HoldingsView: View {
                             .buttonStyle(.plain).padding(.trailing, 6)
                             .accessibilityLabel(open == r.id ? "\(r.sym.name) 고치기 닫기" : "\(r.sym.name) 수량·단가 고치기")
                         }
-                        .background(open == r.id ? Theme.mintBg : .clear)
+                        .background(open == r.id ? Theme.mintBg : Theme.card)
+                        .offset(x: swiped == r.id ? -84 : 0)
+                        // 왼쪽으로 밀면 뒤에 숨은 지우기 버튼이 보인다
+                        .background(alignment: .trailing) {
+                            if swiped == r.id {
+                                Button { askDel = r.sym } label: {
+                                    VStack(spacing: 2) {
+                                        Image(systemName: "trash").font(.system(size: 18, weight: .semibold))
+                                        Text("지우기").appFont(12, .bold)
+                                    }
+                                    .foregroundStyle(.white).frame(width: 84).frame(maxHeight: .infinity)
+                                    .background(Theme.up).contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("\(r.sym.name) 지우기")
+                            }
+                        }
+                        .clipped()
+                        .simultaneousGesture(DragGesture(minimumDistance: 24).onEnded { v in
+                            let dx = v.translation.width
+                            guard abs(dx) > abs(v.translation.height) * 1.5 else { return }
+                            withAnimation(.snappy) { swiped = dx < -40 ? r.id : nil }
+                        })
                         .contextMenu {
                             Button { withAnimation(.snappy) { open = r.id } } label: { Label("수량·단가 고치기", systemImage: "pencil") }
+                            Button(role: .destructive) { askDel = r.sym } label: { Label("이 종목 지우기", systemImage: "trash") }
                         }
+                        .accessibilityAction(named: "지우기") { askDel = r.sym }
                         if open == r.id {
-                            HoldingInlineEditor(sym: r.sym) { msg in
+                            HoldingInlineEditor(sym: r.sym, delete: { askDel = r.sym }) { msg in
                                 withAnimation(.snappy) { open = nil }
                                 said = msg
                             }
@@ -62,6 +88,7 @@ struct HoldingsView: View {
                     }
                 }
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
                 NavigationLink(value: "add") {
                     Label("종목 추가", systemImage: "plus").appFont(15, .bold)
@@ -70,7 +97,7 @@ struct HoldingsView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
                 MyRecordCard()
-                Text("점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가 · 연필을 누르면 목록에서 바로 고쳐요")
+                Text("점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가 · 연필을 누르면 목록에서 바로 고쳐요 · 왼쪽으로 밀면 지울 수 있어요")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
@@ -84,6 +111,17 @@ struct HoldingsView: View {
         .alert("평정 지수", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
+        .confirmationDialog("\(askDel?.name ?? "") 종목을 지울까요?", isPresented: Binding(get: { askDel != nil }, set: { if !$0 { askDel = nil } }), titleVisibility: .visible) {
+            Button("지우기", role: .destructive) {
+                guard let sym = askDel else { return }
+                let avg = m.holdings.first { $0.symbol == sym.id }?.avg ?? sym.close
+                withAnimation(.snappy) { open = nil; swiped = nil }
+                // 세부정보의 지우기와 같이: 판 것으로 평정 지수에 남긴다
+                said = HoldingEdit.save(m, sym, 0, avg, trade: false)
+                askDel = nil
+            }
+            Button("취소", role: .cancel) { swiped = nil }
+        } message: { Text("목록과 평가액에서 빠져요. 다시 넣으려면 종목 추가에서 넣으면 돼요.") }
     }
 
     private func totalChart(_ rows: [AppModel.Row]) -> some View {
@@ -154,6 +192,7 @@ struct HoldingsView: View {
 struct HoldingInlineEditor: View {
     @Environment(AppModel.self) private var m
     let sym: Symbol
+    var delete: () -> Void                      // 이 종목 지우기 (목록에서 한 번 묻는다)
     var done: (String?) -> Void                 // 닫기·저장 뒤 호출. 매매면 인물의 한 줄
     @State private var mode = "fix"
     @State private var q = ""
@@ -190,6 +229,11 @@ struct HoldingInlineEditor: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(r.bad ? Theme.muted : Theme.teal, in: RoundedRectangle(cornerRadius: 12))
             }
+            Button { focus = nil; delete() } label: {
+                Label("이 종목 지우기", systemImage: "trash").appFont(14, .semibold)
+                    .foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 40)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
         .background(Theme.mintBg)
@@ -489,6 +533,7 @@ struct HoldingEditView: View {
     @State private var q = ""
     @State private var p = ""
     @State private var said: String? = nil     // 매매를 저장한 뒤 인물의 한 줄 (평정 지수)
+    @State private var askDel = false         // 지우기 전에 한 번 묻는다
 
     var body: some View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
@@ -533,7 +578,7 @@ struct HoldingEditView: View {
                     guard !bad else { return }
                     if let s = HoldingEdit.commit(m, sym, mode, r, p0) { said = s } else { dismiss() }
                 }
-                Button("이 종목 지우기") { if let s = HoldingEdit.save(m, sym, 0, p0, trade: false) { said = s } else { dismiss() } }
+                Button("이 종목 지우기") { askDel = true }
                     .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
                 Text("거래를 하나씩 기록하거나 증권사 파일로 맞추는 건 PC naeilo.com에서 할 수 있어요. 앱에서는 수량과 평균 단가만 바꿔요.")
@@ -549,6 +594,10 @@ struct HoldingEditView: View {
             if let md = UserDefaults.standard.string(forKey: "editMode") { mode = md; DispatchQueue.main.async { q = UserDefaults.standard.string(forKey: "editQ") ?? q } }
         }
         .onChange(of: mode) { _, _ in reset(h) }
+        .confirmationDialog("\(sym.name) 종목을 지울까요?", isPresented: $askDel, titleVisibility: .visible) {
+            Button("지우기", role: .destructive) { if let s = HoldingEdit.save(m, sym, 0, p0, trade: false) { said = s } else { dismiss() } }
+            Button("취소", role: .cancel) {}
+        } message: { Text("목록과 평가액에서 빠져요. 다시 넣으려면 종목 추가에서 넣으면 돼요.") }
         .alert("평정 지수", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil; dismiss() } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
