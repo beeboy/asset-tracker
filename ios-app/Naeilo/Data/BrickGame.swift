@@ -305,6 +305,8 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var total = 0
     @ObservationIgnored var toast: (String, Double)? = nil
     @ObservationIgnored var speech = ""                  // 위쪽 인물 말풍선
+    @ObservationIgnored var mood: GameLines.Event = .start   // 지금 말하는 상황 (동작 그림을 고른다)
+    @ObservationIgnored var moodAt = 0.0
     @ObservationIgnored var speechUntil = 0.0
     @ObservationIgnored private var halfSaid = false
     @ObservationIgnored var friends: [String] = []       // 끼어들 수 있는 다른 인물 (열린 인물)
@@ -659,6 +661,7 @@ final class BrickGame: Identifiable {
                     "broken": "\(broken)", "left": "\(total)"]
         speech = GameLines.pick(e, player, item: item, vars)
         speechUntil = t + 3.2
+        mood = e; moodAt = t
         // 특정 상황에는 다른 인물이 오른쪽에 나와 한마디 (물건은 가끔)
         let chance: Double = switch e { case .last, .clear, .over: 1; case .half: 0.7; case .item: 0.3; default: 0 }
         // 그 권의 보조 인물이 있으면 절반쯤은 그쪽이 나온다

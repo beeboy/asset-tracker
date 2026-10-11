@@ -204,7 +204,7 @@ struct BrickPlayView: View {
 
     var body: some View {
         let g = game
-        let live = g.phase == .playing || g.phase == .ready
+        let live = g.phase != .paused   // 끝난 뒤에도 인물은 계속 움직인다 (엔진은 멈춤)
         // 매 프레임 엔진을 한 걸음 움직이고 다시 그린다 (멈춤·끝나면 쉼)
         TimelineView(.animation(minimumInterval: nil, paused: !live)) { tl in
             let _ = g.tick(tl.date)
@@ -270,9 +270,11 @@ struct BrickPlayView: View {
         return HStack(alignment: .center, spacing: 10) {
             Group {
                 if g.player == "me" { CharPixel(id: "me", width: 34, height: 48) }
+                else if g.speaking { MotionSprite(friend: g.player, pose: pose(g.mood), height: 52) }
                 else { Pixel(name: "spr_\(g.player)" + (blink ? "_blink" : ""), width: 34, height: 48) }
             }
-            .frame(width: 34, height: 48)
+            .frame(width: 44, height: 52)
+            .modifier(Alive(t: tt, seed: 0, hop: g.speaking && g.t - g.moodAt < 0.5))
             if g.speaking && !g.speech.isEmpty {
                 Text(g.speech).appFont(14, .bold).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 12).padding(.vertical, 8)
@@ -292,6 +294,7 @@ struct BrickPlayView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
                     VStack(spacing: 1) {
                         guestFigure(g.guest).scaleEffect(x: -1, y: 1)
+                            .modifier(Alive(t: tt, seed: 1.7, hop: g.t - (g.guestUntil - 3.6) < 0.5))
                         Text(guestName(g.guest)).appFont(9, .bold).foregroundStyle(Theme.sub).lineLimit(1)
                     }
                     .frame(width: 44)
@@ -303,6 +306,19 @@ struct BrickPlayView: View {
         .frame(minHeight: 52)
         .animation(.easeOut(duration: 0.15), value: g.speaking)
         .animation(.easeOut(duration: 0.25), value: g.guestShown)
+    }
+
+    /// 상황 → 동작 그림 (Guide.swift 의 mo_<인물>_<동작>)
+    private func pose(_ e: GameLines.Event) -> Pose {
+        switch e {
+        case .start: .wave
+        case .item: .spread
+        case .lose, .last: .think
+        case .half: .point
+        case .clear: .cheer
+        case .over: .side
+        case .rewind: .back
+        }
     }
 
     /// 끼어든 인물 그림: 기본 인물은 도트 그림, 보조 인물은 마네킹 샘플 조합
@@ -421,7 +437,7 @@ struct BrickPlayView: View {
             let pw = g.paddleW
             ctx.fill(Path(roundedRect: r(g.paddleX - pw / 2, BrickGame.PY, pw, BrickGame.PH), cornerRadius: 0.4 * s), with: .color(Theme.ink))
             if let sp = ctx.resolveSymbol(id: "player") {
-                ctx.draw(sp, at: CGPoint(x: g.paddleX * s, y: (BrickGame.PY - 1.8) * s))
+                ctx.draw(sp, at: CGPoint(x: g.paddleX * s, y: (BrickGame.PY - 1.8 + sin(now.timeIntervalSinceReferenceDate * 3) * 0.12) * s))
             }
             // 떨어지는 물건 (위로 올라온다)
             for d in g.drops {
@@ -574,5 +590,19 @@ struct BrickBoardSheet: View {
         .task {
             if let d = await GameBoard.top(stage.n, level) { data = d } else { failed = true }
         }
+    }
+}
+
+/// 정지 그림이 아니게: 숨 쉬듯 위아래로 조금, 아주 살짝 기울고, 말을 시작할 때 한 번 뛴다
+private struct Alive: ViewModifier {
+    let t: Double, seed: Double
+    var hop = false
+    func body(content: Content) -> some View {
+        let bob = sin((t + seed) * 2.4) * 1.2
+        let jump = hop ? -abs(sin((t + seed) * 12)) * 4 : 0
+        content
+            .offset(y: bob + jump)
+            .rotationEffect(.degrees(sin((t + seed) * 1.3) * 1.5), anchor: .bottom)
+            .scaleEffect(x: 1, y: 1 + sin((t + seed) * 2.4 + 1) * 0.012, anchor: .bottom)
     }
 }
