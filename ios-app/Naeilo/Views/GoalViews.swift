@@ -477,14 +477,14 @@ struct GoalMixResultView: View {
         let sel = m.simulate(m.selectedMix), sh = m.shift(m.selectedMix)
         let next = m.goalSteps.first { !m.gDone.contains($0.id) && m.goalAvailable($0) }
         Page(kicker: "미션 \(m.goalNo("mix")) 완료 · 새로 열림: 구성 비교", title: "내 계획: \(sel.mix.name)") {
-            GuideBubble(pose: .cheer, text: m.route == .novice ? "정했어요. 매달 나눠 넣을 금액이에요. 실제 매매는 증권사 앱에서 직접 하셔야 해요." : "정했어요. 계획만 기록해요. 실제 매매는 증권사 앱에서 직접 하셔야 해요.")
+            GuideBubble(pose: .cheer, text: m.route == .novice ? "정했어요. 매달 적립을 나누는 비율이에요. 실제 매매 판단은 직접 하셔야 해요." : "정했어요. 계획만 기록해요. 실제 매매 판단은 직접 하셔야 해요.")
             Text(sel.mix.desc).appFont(15).foregroundStyle(Theme.sub)
             Card {
                 (Text("\(m.gY)년 안 도달 ") + Text(AppModel.pct(sel.prob)).bold() + Text(" · 보통 ") + Text(AppModel.eta(sel.etaMonths)).bold()).appFont(15)
             }
             if !sh.rows.isEmpty {
                 Card {
-                    Text(m.route == .novice ? "매달 나눠 넣기" : "옮길 금액").appFont(15, .bold)
+                    Text(m.route == .novice ? "매달 적립 나누기" : "비중이 바뀌면").appFont(15, .bold)
                     ForEach(sh.rows, id: \.0) { label, sub, amt, up in
                         HStack {
                             Text(label).appFont(15, .semibold)
@@ -517,13 +517,13 @@ struct GoalTaxView: View {
         let tx = { (x: Double) in max(0, x - 250) * 0.22 }
         let tOne = tx(G0 + gainSale), tSplit = tx(G0 + gainSale / 2) + tx(gainSale / 2), tNo = tx(G0)
         let rows: [(String, String, String, Double)] = [
-            ("one", "올해 한 번에 팔기", "이익 \(AppModel.wonK(max(0, G0 + gainSale))) − 공제 250만원", tOne),
-            ("split", "12월·1월에 반씩 나눠 팔기", "두 해에 공제 250만원씩 두 번", tSplit),
-            ("none", "팔지 않고 적립으로만 맞추기", "대신 오래 걸림", tNo),
+            ("one", "한 해에 모두", "이익 \(AppModel.wonK(max(0, G0 + gainSale))) − 공제 250만원", tOne),
+            ("split", "두 해에 반씩 나누기", "두 해에 공제 250만원씩 두 번", tSplit),
+            ("none", "적립으로만 맞추기", "대신 오래 걸림", tNo),
         ]
         let pick = rows.first { $0.0 == m.goalTaxPick } ?? rows[1]
         Page(kicker: "미션 \(m.goalNo("tax")) / \(m.goalTotal)", title: "비중을 맞추려 팔면 세금이 얼마나 나올까요?") {
-            GuideBubble(pose: .point, text: "비중을 맞추려고 팔면 이익에 세금이 붙어요. 한 해에 몰아 팔지 않고 나눠 팔면 덜 내요. 계산 예시예요.")
+            GuideBubble(pose: .point, text: "비중을 매도로 맞추면 이익에 세금이 붙어요. 공제는 해마다 있어서, 나누는 방식에 따라 세금이 달라져요. 계산 예시예요.")
             Text("세금 규칙: 대한민국 거주자").appFont(13, .semibold).foregroundStyle(Theme.teal)
             inputField("올해 이미 판 이익 (만원)", $gain).onChange(of: gain) { _, v in m.taxGain = max(0, Double(v) ?? 0) }
             if sh.sell > 0 && gainSale > 0 {
@@ -538,17 +538,17 @@ struct GoalTaxView: View {
                 }
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
-                ChipRow(items: [("one", "한 번에"), ("split", "나눠 팔기"), ("none", "적립만")], selection: $m.goalTaxPick, fill: true)
-                Text("\"\(m.selectedMix.name)\"으로 맞추면 \(m.focusName) \(AppModel.wonK(sale))를 팔고, 그중 이익이 \(AppModel.wonK(gainSale))예요. 나눠 팔면 \(AppModel.wonK(max(0, tOne - tSplit))) 덜 내요.")
+                ChipRow(items: [("one", "한 해에"), ("split", "두 해에"), ("none", "적립만")], selection: $m.goalTaxPick, fill: true)
+                Text("\"\(m.selectedMix.name)\"으로 맞추면 가장 큰 종목 비중이 \(AppModel.pct(m.focusWeight))→\(AppModel.pct(m.focusWeight - sh.sell))로 줄어요. 두 해에 나누면 세금이 \(AppModel.wonK(max(0, tOne - tSplit))) 적은 예시예요.")
                     .appFont(14).foregroundStyle(Theme.sub).lineSpacing(2)
             } else {
-                Text(sh.sell > 0 ? "파는 부분이 손실이라 낼 세금이 없어요. 올해 판 다른 이익과 상계돼요. (\(m.focusName) 평균 단가가 지금 가격보다 높아요)"
+                Text(sh.sell > 0 ? "줄이는 부분이 손실이라 낼 세금이 없어요. 같은 해 다른 이익과 합쳐 계산돼요. (가장 큰 종목 평균 단가가 지금 가격보다 높아요)"
                      : "지금 고른 구성(\"\(m.selectedMix.name)\")은 팔 게 없어요. 미션 \(m.goalNo("mix"))에서 다른 구성을 고르면 세금을 비교할 수 있어요.")
                     .appFont(15).padding(14).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
             }
-            Text("결제일 기준으로 그해 손익에 들어가요. 계산 예시이며 세무 상담이 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
+            Text("결제일 기준으로 그해 손익에 들어가요. 계산 예시이며 세무 상담이나 매매 권유가 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
             PrimaryButton(title: "확인했어요") { m.gDone.insert("tax"); m.boardPath = [] }
         }
         .onAppear { gain = String(Int(m.taxGain)) }

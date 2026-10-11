@@ -404,9 +404,11 @@ final class AppModel {
             }
             // 계획 비중 확인: 비중 1위 종목 기준 (종목이 둘 이상일 때)
             if rs.count >= 2 {
-                let w = Self.pct(focusWeight), pw = Self.pct(planWeight), fn = focusName
-                qs.append(.init(id: "plan", tag: "비중 확인", q: "\(fn) 비중 \(w), 계획은 \(pw)예요. 이번 주에 맞춰 볼까요?", opts: ["이번 주에 할게요", "아직이요"], right: -1,
-                                fb: { $0 == 0 ? "미션 판의 내 계획 화면에서 옮길 금액을 볼 수 있어요." : "괜찮아요. 비중 이탈 알림이 대신 지켜볼게요." }))
+                let w = Self.pct(focusWeight), pw = Self.pct(planWeight), T = Double(horizon) / 12
+                let p0 = keepPlan.prob(cost, T), p1 = selectedPlan.prob(cost, T)
+                qs.append(.init(id: "plan", tag: "비중 확인", q: "가장 큰 종목 비중 \(w), 계획은 \(pw)예요. 계획 비중이면 \(horizonLabel) 안 본전 확률은?", opts: ["올라요", "비슷해요", "내려요"],
+                                right: abs(p1 - p0) < 0.02 ? 1 : p1 > p0 ? 0 : 2,
+                                fb: { _ in "지금 비중 \(Self.pct(p0)), 계획 비중 \(Self.pct(p1)). 계산 예시이고, 매매 판단은 직접 하세요." }))
             }
             qs.append(.init(id: "mind", tag: "오늘 마음", q: "오늘 내 투자, 어떻게 느껴져요?", opts: ["불안해요", "괜찮아요", "기대돼요"], right: -1,
                             fb: { $0 == 0 ? "불안한 날엔 하루 숫자 말고 종목 상세의 1년 칩을 보세요. 길이 더 잘 보여요." : "좋아요. 내일도 1분이면 돼요." }))

@@ -7,7 +7,7 @@ import UIKit
 //   둘이 같은 날 겹치면 하나로 묶고, 조건 알림은 하루 한 번까지. 본전 도달은 본전 아래로 내려갔다 다시 넘을 때만 또 보낸다.
 // - 아침 한 줄: 다음 평일 아침 한 번만 지금 숫자로 예약하고, 그 뒤 평일 4번은 숫자 없이 예약한다.
 //   앱을 열 때마다 다시 예약하므로, 앱을 자주 열면 늘 숫자가 들어간 알림이 온다. 숫자가 오래되면 넣지 않는다.
-// - 연말 절세 확인: 매년 12월 1일 오전 9시.
+// - 연말 세금 정리: 매년 12월 1일 오전 9시.
 enum Notifier {
     static let center = UNUserNotificationCenter.current()
     private static let d = UserDefaults.standard
@@ -50,8 +50,8 @@ enum Notifier {
 
         if m.alerts["dep"] == true {
             let c = UNMutableNotificationContent()
-            c.title = "연말 절세 확인"
-            c.body = "올해가 한 달 남았어요. 손실 난 종목 일부를 팔면 내년 세금이 줄 수 있어요. 앱에서 계산을 확인해 보세요."
+            c.title = "연말 세금 정리"
+            c.body = "올해가 한 달 남았어요. 올해 해외주식 손익과 내년 5월 세금 예시를 앱에서 확인해 보세요."
             c.sound = .default
             c.userInfo = ["open": "tax"]
             let t = UNCalendarNotificationTrigger(dateMatching: DateComponents(month: 12, day: 1, hour: 9), repeats: true)

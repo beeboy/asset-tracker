@@ -1636,11 +1636,12 @@
     const { top, cash } = wiTop(), th = L.b.holdings[top], plain = Number(S.state.goal.monthly_contribution) || 0;
     const mv = WI.monthly == null ? plain : WI.monthly;
     $("#wiMonthly").value = String(Math.round(mv / 1e4)); $("#wiMonthlyV").textContent = mv ? krw(mv) + "원" : "0원";
-    $("#wiSellLab").textContent = th ? `${th.ticker} 일부를 ${cash >= 0 ? L.b.holdings[cash].ticker : "현금(연 3.5%)"}로` : "가장 큰 종목 일부 매도";
-    $("#wiSell").value = String(WI.sell); $("#wiSellV").textContent = WI.sell ? `${WI.sell}% (${nf(Math.round((th.shares * WI.sell) / 100))}주)` : "0%";
+    $("#wiSellLab").textContent = `가장 큰 종목 비중 줄이기 (${cash >= 0 ? "현금성 종목" : "현금(연 3.5%)"}으로)`;
+    $("#wiSell").value = String(WI.sell); const tw = th ? th.valueKrw / Math.max(1, L.b.holdings.reduce((a, h) => a + h.valueKrw, 0)) : 0;
+    $("#wiSellV").textContent = WI.sell && th ? `비중 ${pct(tw, 0)}→${pct(tw * (1 - WI.sell / 100), 0)}` : "0%";
     $$("#wiDet input").forEach((x) => (x.disabled = !ok || m.rebalance_yearly));
     $("#wiNote").textContent = m.rebalance_yearly ? "연 1회 재조정 중엔 꺼집니다." : "저장 안 되는 가정. 세금·수수료 제외.";
-    $("#wiSum").textContent = L.disp ? `· 적용 중 (월 ${krw(mv)}원${WI.sell ? `, ${th.ticker} ${WI.sell}% 매도` : ""})` : "";
+    $("#wiSum").textContent = L.disp ? `· 적용 중 (월 ${krw(mv)}원${WI.sell ? `, 가장 큰 종목 비중 ${WI.sell}% 줄임` : ""})` : "";
   }
   let fcSeq = 0;
   async function runForecast() {
@@ -1833,8 +1834,8 @@
     if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장 대비 여유분으로 흔히 3~5%를 기준으로 삼습니다.`);
     tips.push(`**낙폭**: 최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}. 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
     const rg = rebalanceGap();
-    if (rg && rg.gaps.length && yearsBetween(rg.tg.at, today()) < 0.5) tips.push(`**비중 조정 진행 중**: '${rg.tg.name}' (${rg.tg.at}에 목표로 정함). 남은 차이 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")}.`);
-    else if (rg) tips.push(rg.gaps.length ? `**리밸런싱 신호**: 목표로 정한 '${rg.tg.name}' 비중에서 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")} 벗어났습니다. '비중 조정'에서 수량 계산을 볼 수 있습니다.` : `**리밸런싱**: 목표로 정한 '${rg.tg.name}' 비중 안에 있습니다 (±5%p).`);
+    if (rg && rg.gaps.length && yearsBetween(rg.tg.at, today()) < 0.5) tips.push(`**기준 비중과 차이**: '${rg.tg.name}' (${rg.tg.at}에 기준으로 기록). 남은 차이 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")}.`);
+    else if (rg) tips.push(rg.gaps.length ? `**기준 비중과 차이**: 기준으로 기록한 '${rg.tg.name}' 비중에서 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")} 벗어났습니다. '비중 조정'에서 비중별 확률 차이를 볼 수 있습니다.` : `**기준 비중**: 기록한 '${rg.tg.name}' 비중 안에 있습니다 (±5%p).`);
     if (common.length) tips.push(`**공통 일정** (모든 종목): ${common.slice(0, 4).map((c) => `${c.k} ${c.d.join(", ")}`).join(" · ")}`);
     $("#stratSummary").innerHTML = `<div class="md small">${md2html(tips.map((t) => "- " + t).join("\n"))}</div>`;
 
@@ -1846,9 +1847,9 @@
       if (f.cash) { act = "현금성 (완충)"; klass = "cash"; why.push(`**성격**: 비중 ${pct(w[i], 1)}, 연 ${pct(f.mu.base)} 수준의 단기 국채형`); }
       else if (f.n < 252) { act = "이력 짧음 · 추정 불확실"; klass = "wait"; why.push(`**이력**: 상장 후 ${f.n}거래일로 짧아 변동성(${pct(f.vol, 0)}) 추정이 불확실`); if (lock) why.push(`**${lock.event.kind}**: ${lock.date} 예정. 과거에는 물량 출회로 단기 하락이 잦았음`); }
       else if (w[i] > 0.45) {
-        const tgt = 0.45, sell = Math.ceil(((w[i] - tgt) * total) / (h.valueKrw / h.shares));
+        const tgt = 0.45;
         act = `한 종목 집중 (비중 ${pct(w[i], 0)})`; klass = "trim";
-        why.push(`**비중**: ${pct(w[i], 0)}로 한 종목 집중. 비중이 ${pct(tgt, 0)}가 되는 수량 차이는 약 **${nf(sell)}주** (계산값)`);
+        why.push(`**비중**: ${pct(w[i], 0)}로 한 종목 집중. 비중 ${pct(w[i], 0)}→${pct(tgt, 0)}일 때 확률이 어떻게 달라지는지는 '비중 조정'에서 비교 (계산값)`);
         why.push("**세금**: 해외주식 양도차익은 연 250만원까지 공제 (연도별 계산은 '배당·세금')");
       } else if (sg && sg.trend === "하락 추세") { act = "하락 추세"; klass = "wait"; }
       else if (sg && /상승/.test(sg.trend) && w[i] > 0.25) { act = `상승 추세 · 비중 ${pct(w[i], 0)}`; klass = "hold"; }
@@ -2285,7 +2286,7 @@
       const defs = {}; for (const [k, D] of Object.entries(ALLOC_DEF)) defs[k] = { cap: D.cap, cutSmall: { agg: 0.1, mid: 0.25, con: 0.4 }[k] };
       const inp = { base, series, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goal: g, mixes, defs };
       const r = await allocCompute(inp, prog), top = r.top;
-      const out = r.out.map((o) => ({ ...o, name: o.k === "keep" ? "현재 유지" : `${ALLOC_DEF[o.k].n} (${base[top].ticker} ${pct(o.w[top], 0)})` }));
+      const out = r.out.map((o) => ({ ...o, name: o.k === "keep" ? "현재 유지" : `${ALLOC_DEF[o.k].n} (가장 큰 종목 ${pct(o.w[top], 0)})` }));
       const model = { monthDates: r.fd };
       lastAlloc = { base: base.map((h) => ({ ticker: h.ticker, price0: h.price0, ccy: h.ccy, shares: h.shares })), V0, top, out, subs, fd: model.monthDates, at: Date.now() }; allocDirty = false;
       try { localStorage.setItem(AL_KEY, JSON.stringify({ sig: fcSig() + "|" + JSON.stringify(S.state.alloc_mix || {}), ...lastAlloc })); } catch (e) { /* 무시 */ }
@@ -2358,34 +2359,35 @@
   function renderAllocTable() {
     const { base, out } = lastAlloc, pick = S.state.alloc_pick || "mid", tgt = S.state.alloc_target;
     $("#allocBoxes").innerHTML = out.map((o, j) => `<button type="button" class="abox ${o.k === pick ? "on" : ""}" data-ak="${o.k}" style="--ac:${C[j % C.length]}">
-      <div class="lh"><b>${esc(o.k === "keep" ? "현재 유지" : ALLOC_DEF[o.k].n)}</b>${tgt && tgt.k === o.k ? '<span class="tag">목표</span>' : ""}</div>
+      <div class="lh"><b>${esc(o.k === "keep" ? "현재 유지" : ALLOC_DEF[o.k].n)}</b>${tgt && tgt.k === o.k ? '<span class="tag">기준</span>' : ""}</div>
       <div class="lv">${pct(o.R.p_goal, 0)} <small>목표 확률</small></div>
       <p>중앙값 ${krw(o.R.terminal.p50)} · 나쁜 5% ${krw(o.R.terminal.p5)}</p><p>최대 낙폭 ${pct(o.R.mdd_median, 0)} · 낮을 확률 ${pct(o.R.p_loss, 0)}</p>
-      <p class="muted">${base.map((h, i) => (o.w[i] > 0.004 ? `${esc(h.ticker)} ${pct(o.w[i], 0)}` : "")).filter(Boolean).join(" · ")}</p></button>`).join("");
+      <p class="muted">${[...base.map((h, i) => (!h.extra && o.w[i] > 0.004 ? `${esc(h.ticker)} ${pct(o.w[i], 0)}` : "")).filter(Boolean), ...(() => { const x = base.reduce((a, h, i) => a + (h.extra ? o.w[i] : 0), 0); return x > 0.004 ? [`옮긴 몫 ${pct(x, 0)}`] : []; })()].join(" · ")}</p></button>`).join("");
     $("#allocStatus").textContent = `${dtStr(lastAlloc.at || Date.now())} 계산 · 안별 1,500경로` + (lastAlloc.subs && lastAlloc.subs.length ? ` · 시세가 없어 대신 씀: ${[...new Set(lastAlloc.subs)].join(", ")}` : "");
-    $("#allocMix").innerHTML = Object.entries(ALLOC_DEF).map(([k, D]) => `<label><span class="row between"><span>${D.n} · ${esc(D.d)}</span><span class="muted small">기본 ${esc(D.mix)}</span></span><input type="text" data-mix="${k}" value="${esc((S.state.alloc_mix || {})[k] || D.mix)}" style="width:100%"></label>`).join("") + `<p class="muted small">"종목 비중, 종목 비중" 형식.</p>`;
+    $("#allocMix").innerHTML = Object.entries(ALLOC_DEF).map(([k, D]) => `<label><span class="row between"><span>${D.n} · ${esc(D.d)}</span><span class="muted small">기본 ${esc(D.mix)}</span></span><input type="text" data-mix="${k}" value="${esc((S.state.alloc_mix || {})[k] || D.mix)}" style="width:100%"></label>`).join("") + `<p class="muted small">"종목 비중, 종목 비중" 형식. 기본값은 계산에 쓰는 대표 지수 예시이며 추천 종목이 아닙니다.</p>`;
     renderAllocPlan();
   }
-  // 고른 비중 조정안의 실행 계획: 6개월 분할 + 세금(연도 나누기) + 목표로 정하면 리밸런싱 신호
+  // 고른 비중 조정안: 비중·확률 변화 + 세금 예시(연도 나누기) + 기준으로 기록하면 벗어날 때 알림. 종목별 수량·금액은 보이지 않는다
   function renderAllocPlan() {
     const card = $("#allocPlanCard"); if (!lastAlloc) return;
     const { base, out, top, V0 } = lastAlloc, k = S.state.alloc_pick || "mid", o = out.find((x) => x.k === k);
     if (!o || k === "keep") { card.style.display = "none"; return; }
     card.style.display = "block";
-    $("#allocPlanTitle").textContent = `수량·세금 계산 · ${ALLOC_DEF[k].n}`;
+    $("#allocPlanTitle").textContent = `비중·확률 비교 · ${ALLOC_DEF[k].n}`;
     const fx = (h) => fxNow(h.ccy) || 1, w0 = out[0].w, L = [];
     const sells = [], buys = [];
     base.forEach((h, i) => { const dv = (o.w[i] - w0[i]) * V0, sh = dv / (h.price0 * fx(h)); if (Math.abs(sh) < 0.5) return; (dv < 0 ? sells : buys).push({ t: h.ticker, sh: Math.abs(sh), v: Math.abs(dv) }); });
-    L.push(`<p><b>수량 차이</b> (지금 → 이 안): ${[...sells.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh))}주 적음`), ...buys.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh))}주 (${krw(x.v)}원) 많음`)].join(", ")}. 6개월로 나누면 한 달에 그 1/6입니다. 매매 권유가 아닌 계산값입니다.</p>`);
+    const R0 = out[0].R, R1 = o.R;
+    L.push(`<p>가장 큰 종목 비중 <b>${pct(w0[top], 0)}→${pct(o.w[top], 0)}</b>이면 목표 확률 <b>${pct(R0.p_goal, 0)}→${pct(R1.p_goal, 0)}</b>, 나쁜 경우 5% ${krw(R0.terminal.p5)}→${krw(R1.terminal.p5)}, 최대 낙폭 ${pct(R0.mdd_median, 0)}→${pct(R1.mdd_median, 0)}로 달라져요. 매매 권유가 아닌 계산값입니다.</p>`);
     const th = S.state.holdings.find((h) => h.ticker === base[top].ticker), avg = Number(th?.avg_cost) || 0, s0 = sells.find((x) => x.t === base[top].ticker);
     if (s0 && avg) {
       const gps = (base[top].price0 - avg) * fx(base[top]), used = Math.max(0, realizedYear(new Date().getFullYear()));
       const tax = (n, first) => Math.max(0, n * gps - Math.max(0, CGT_DED - first)) * CGT;
       const one = tax(s0.sh, used), two = tax(s0.sh / 2, used) + tax(s0.sh / 2, 0);
-      L.push(`<p><b>세금</b>: 올해 안에 모두 팔면 약 ${krw(one)}원, 올해와 내년에 반씩 나누면 약 ${krw(two)}원${one - two > 0 ? ` (<b>${krw(one - two)}원 절약</b>)` : ""}.${used ? ` 올해 이미 실현한 이익 ${krw(used)}원 반영.` : ""}</p>`);
+      L.push(`<p><b>세금 예시</b>: 이 비중으로 줄이는 부분의 이익을 한 해에 모두 실현하면 약 ${krw(one)}원, 두 해에 나누면 약 ${krw(two)}원 (해마다 공제 250만원).${used ? ` 올해 이미 실현한 이익 ${krw(used)}원 반영.` : ""}</p>`);
     } else if (s0) L.push(`<p class="muted small">매수 단가를 넣으면 연도별 세금을 계산합니다.</p>`);
     const tgt = S.state.alloc_target;
-    L.push(`<div class="row wrap"><button class="primary sm" id="allocSetTgt">${tgt && tgt.k === k ? "목표로 정해 둠 (해제)" : "이 비중 조정안을 목표로 정하기"}</button><span class="muted small">5%p 넘게 벗어나면 알려 줍니다.</span></div>`);
+    L.push(`<div class="row wrap"><button class="primary sm" id="allocSetTgt">${tgt && tgt.k === k ? "기준으로 기록해 둠 (해제)" : "이 비율을 내 기준으로 기록"}</button><span class="muted small">기록한 비율에서 5%p 넘게 벗어나면 알려 줍니다.</span></div>`);
     $("#allocPlan").innerHTML = L.join("");
     $("#allocSetTgt").onclick = () => {
       if (tgt && tgt.k === k) delete S.state.alloc_target;
@@ -2520,21 +2522,20 @@
     if (!wa.length) { $("#taxBox").innerHTML = `<p>매수 단가를 넣으면 종목별 세금을 계산합니다. <a href="#" data-go="stocks">매수 단가 넣기</a></p>`; $("#taxYears").innerHTML = ""; return; }
     const gains = wa.map((r) => ({ t: r.h.ticker, g: (r.p.v - r.avg) * r.sh * r.fx, gps: (r.p.v - r.avg) * r.fx, sh: r.sh, w: r.w, px: r.p.v * r.fx }));
     const sum = gains.reduce((a, x) => a + x.g, 0), taxAll = Math.max(0, sum - CGT_DED) * CGT;
-    const best = gains.filter((x) => x.gps > 0).sort((a, b) => b.g - a.g)[0];
     const L = [`<table class="grid"><tr><th class="l">종목</th><th>평가 이익 (원)</th><th>주당 이익</th></tr>${gains.map((x) => `<tr><td class="l">${esc(x.t)}</td><td class="${cls(x.g)}">${krw(x.g)}</td><td>${krw(x.gps)}</td></tr>`).join("")}</table>`];
     L.push(`<p>지금 모두 판다면 세금 약 <b>${krw(taxAll)}원</b> (이익 합계 ${krw(sum)}원).${used ? ` 올해 이미 실현한 이익 ${krw(used)}원.` : ""}</p>`);
     $("#taxBox").innerHTML = L.join("");
-    // 연도별: 해마다 공제 250만원. 계획 매도 = 목표로 정한 비중 조정안(없으면 집중 종목 45%로)을 처음 두 해에 나눠
+    // 연도별: 해마다 공제 250만원. 비중을 줄이는 경우 = 기준으로 기록한 비중 조정안(없으면 집중 종목 45%로)을 처음 두 해에 나눠. 수량 대신 %p로 보인다
     const top = gains.filter((x) => x.gps > 0).sort((a, b) => b.w - a.w)[0];
     const tg = S.state.alloc_target, tw = tg && top ? tg.w[top.t] ?? null : null;
     const sellAll = top ? Math.max(0, Math.ceil((((top.w - (tw != null ? tw : Math.min(top.w, 0.45))) * total) / top.px))) : 0;
     const yEnd = +g.date.slice(0, 4), years = []; for (let y = yNow; y <= Math.max(yNow, yEnd); y++) years.push(y);
     const nSplit = Math.min(2, years.length);
-    $("#taxYears").innerHTML = `<tr><th class="l">연도</th><th>남은 공제</th><th>세금 없이<br>팔 수 있는 수량</th><th>계획 매도</th><th>예상 세금</th></tr>` + years.map((y, k) => {
-      const left = Math.max(0, CGT_DED - (y === yNow ? used : 0)), free = best && best.gps > 0 ? Math.floor(left / best.gps) : 0;
+    $("#taxYears").innerHTML = `<tr><th class="l">연도</th><th>남은 공제</th><th>비중 줄이는 몫</th><th>예상 세금</th></tr>` + years.map((y, k) => {
+      const left = Math.max(0, CGT_DED - (y === yNow ? used : 0));
       const sell = top && k < nSplit ? Math.round(sellAll / nSplit) : 0, tax = sell ? Math.max(0, sell * top.gps - left) * CGT : 0;
-      return `<tr><td class="l">${y}${y === yNow ? " (올해)" : ""}</td><td>${krw(left)}원</td><td>${best ? `${esc(best.t)} ${nf(free)}주` : "-"}</td><td>${sell ? `${esc(top.t)} ${nf(sell)}주` : "-"}</td><td>${sell ? krw(tax) + "원" : "-"}</td></tr>`;
-    }).join("") + `<tr><td class="l muted wrapc" colspan="5">계획 매도: ${tg ? `목표로 정한 '${esc(tg.name)}' 비중 조정안` : "집중 종목을 45%로 줄이는 경우"}을 처음 ${nSplit}년에 나눔. 한 해에 모두 팔면 세금 약 ${top && sellAll ? krw(Math.max(0, sellAll * top.gps - Math.max(0, CGT_DED - used)) * CGT) + "원" : "-"}.</td></tr>`;
+      return `<tr><td class="l">${y}${y === yNow ? " (올해)" : ""}</td><td>${krw(left)}원</td><td>${sell ? `−${((sell * top.px) / total * 100).toFixed(0)}%p` : "-"}</td><td>${sell ? krw(tax) + "원" : "-"}</td></tr>`;
+    }).join("") + `<tr><td class="l muted wrapc" colspan="4">계산 예시: ${tg ? `기준으로 기록한 '${esc(tg.name)}' 비중` : "가장 큰 종목 비중을 45%로 줄이는 경우"}을 ${nSplit}년에 나눈 세금. 한 해에 모두면 약 ${top && sellAll ? krw(Math.max(0, sellAll * top.gps - Math.max(0, CGT_DED - used)) * CGT) + "원" : "-"}. 매매 권유가 아닙니다.</td></tr>`;
   }
 
 
