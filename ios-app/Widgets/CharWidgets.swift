@@ -63,7 +63,7 @@ struct CharProvider: AppIntentTimelineProvider {
 struct CharTrend: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.trend", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e) { TrendCharView(e: e) }
+            CharFrame(e: e, kind: "char.trend") { TrendCharView(e: e) }
         }
         .configurationDisplayName("인물 · 자산 추이").description("총자산·오늘 등락·최근 10일 흐름, 인물이 옆에서 봐요")
         .supportedFamilies([.systemSmall])
@@ -72,7 +72,7 @@ struct CharTrend: Widget {
 struct CharRecover: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.recover", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e) { RecoverCharView(e: e) }
+            CharFrame(e: e, kind: "char.recover") { RecoverCharView(e: e) }
         }
         .configurationDisplayName("인물 · 본전 진행").description("본전(목표)까지 몇 %인지, 인물이 같이 봐요")
         .supportedFamilies([.systemSmall])
@@ -81,7 +81,7 @@ struct CharRecover: Widget {
 struct CharBlock: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.block", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e) { BlockCharView(e: e) }
+            CharFrame(e: e, kind: "char.block") { BlockCharView(e: e) }
         }
         .configurationDisplayName("인물 · 블록").description("1000칸 중 지금 채우는 100칸과 10층 탑")
         .supportedFamilies([.systemSmall])
@@ -90,7 +90,7 @@ struct CharBlock: Widget {
 struct CharMoves: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.moves", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e) { MovesCharView(e: e) }
+            CharFrame(e: e, kind: "char.moves") { MovesCharView(e: e) }
         }
         .configurationDisplayName("인물 · 오늘의 움직임").description("종목별 오늘 등락과 인물의 한마디")
         .supportedFamilies([.systemMedium])
@@ -117,10 +117,12 @@ struct CharStyle {
 
 struct CharFrame<Content: View>: View {
     let e: CharEntry
+    let kind: String
     @ViewBuilder var content: Content
     @Environment(\.colorScheme) private var scheme
     var body: some View {
         content
+            .environment(\.charKind, kind)
             .foregroundStyle(.white)
             .environment(\.colorScheme, .dark)
             .environment(\.charDark, scheme == .dark)
@@ -156,7 +158,10 @@ struct CharSprite: View {
             // 내 캐릭터: 앱이 겹쳐 그린 그림 하나 (동작별 그림 없음)
             if name.hasPrefix("w_me"), let img = WMe.image {
                 if locked { Image(uiImage: img).interpolation(.none).resizable().renderingMode(.template).foregroundStyle(Color.white.opacity(0.22)) }
-                else { Image(uiImage: img).interpolation(.none).resizable() }
+                else if mode == .accented, #available(iOS 18, *) {
+                    // 투명·틴트: 기본 인물처럼 원래 색 그대로 (안 그러면 시스템이 한 색으로 칠해 흰 덩어리가 된다)
+                    Image(uiImage: img).interpolation(.none).resizable().widgetAccentedRenderingMode(.fullColor)
+                } else { Image(uiImage: img).interpolation(.none).resizable() }
             }
             else if locked { Image(name).interpolation(.none).resizable().renderingMode(.template).foregroundStyle(Color.white.opacity(0.22)) }
             else if mode == .accented, #available(iOS 18, *) {
@@ -213,7 +218,7 @@ struct TrendCharView: View {
                         Text("인터미션\n\(e.c.week)주차에 만나요").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
                             .fixedSize(horizontal: false, vertical: true)
                     } else {
-                        Text(eokMan(r.total)).font(.system(size: 24, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1)
+                        CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1) }
                         Text(Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100) + " 오늘")
                             .font(.system(size: 11, weight: .semibold)).foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable()
                     }
@@ -228,7 +233,7 @@ struct TrendCharView: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "\(e.c.name), 자산 \(eokMan(e.r.total)), 오늘 \(e.r.dayChg >= 0 ? "올라" : "내려") \(String(format: "%.1f%%", abs(e.r.dayChg) * 100))")
+        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "\(e.c.name), 자산 \(Store.isHidden("char.trend") ? "숨김" : eokMan(e.r.total)), 오늘 \(e.r.dayChg >= 0 ? "올라" : "내려") \(String(format: "%.1f%%", abs(e.r.dayChg) * 100))")
     }
 }
 
@@ -286,9 +291,11 @@ struct RecoverCharView: View {
                     Spacer(minLength: 0)
                     if !e.locked {
                         let d = (r.pct - r.pctYesterday) * 100
-                        (Text("남은 \(eokMan(r.remain)) · 어제 ").foregroundStyle(.white.opacity(0.75))
-                         + Text((d >= 0 ? "+" : "") + String(format: "%.1f%%p", d)).foregroundStyle(d >= 0 ? upC : dnC))
-                            .font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                        CharMoney { h in
+                            (Text("남은 \(h ? charHidden : eokMan(r.remain)) · 어제 ").foregroundStyle(.white.opacity(0.75))
+                             + Text((d >= 0 ? "+" : "") + String(format: "%.1f%%p", d)).foregroundStyle(d >= 0 ? upC : dnC))
+                                .font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -396,9 +403,11 @@ struct MovesCharView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 VStack(alignment: .trailing, spacing: 6) {
-                    (Text(e.locked ? "" : eokMan(r.total) + " ").foregroundColor(.white)
-                     + Text(e.locked ? " " : Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100)).foregroundColor(r.dayChg >= 0 ? upC : dnC).bold())
-                        .font(.system(size: 12, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                    CharMoney { h in
+                        (Text(e.locked ? "" : (h ? charHidden : eokMan(r.total)) + " ").foregroundColor(.white)
+                         + Text(e.locked ? " " : Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100)).foregroundColor(r.dayChg >= 0 ? upC : dnC).bold())
+                            .font(.system(size: 12, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                    }
                     tiles(r, dark: dark)
                 }
                 .frame(width: 138)
@@ -490,7 +499,13 @@ struct StyleReader<Content: View>: View {
 }
 
 private struct CharDarkKey: EnvironmentKey { static let defaultValue = false }
+private struct CharKindKey: EnvironmentKey { static let defaultValue = "" }
 extension EnvironmentValues {
+    /// 이 화면을 그리는 인물 위젯 종류 (금액 숨기기를 위젯마다 따로 할 때)
+    var charKind: String {
+        get { self[CharKindKey.self] }
+        set { self[CharKindKey.self] = newValue }
+    }
     var charDark: Bool {
         get { self[CharDarkKey.self] }
         set { self[CharDarkKey.self] = newValue }
@@ -507,6 +522,22 @@ struct CharReload: View {
         Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain)
         #else
         icon
+        #endif
+    }
+}
+
+/// 숨긴 금액 자리 (기본 위젯과 같은 모양)
+private let charHidden = "••••"
+
+/// 금액: 누르면 숨기고 한 번 더 누르면 보인다 (기본 위젯의 Money 와 같은 동작, 앱 미리보기에서는 그리기만)
+struct CharMoney<L: View>: View {
+    @Environment(\.charKind) private var kind
+    @ViewBuilder let label: (Bool) -> L
+    var body: some View {
+        #if WIDGET_EXT
+        Button(intent: ToggleAmountIntent(kind: kind)) { label(Store.isHidden(kind)) }.buttonStyle(.plain)
+        #else
+        label(Store.isHidden(kind))
         #endif
     }
 }
