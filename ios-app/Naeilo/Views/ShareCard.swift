@@ -8,8 +8,8 @@ struct ShareCardButton: View {
     @State private var show = false
     var body: some View {
         Button { show = true } label: {
-            Label("1000칸 공유 카드 만들기", systemImage: "square.and.arrow.up")
-                .appFont(14, .bold).frame(maxWidth: .infinity, minHeight: 44)
+            Label("공유 카드", systemImage: "square.and.arrow.up")
+                .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(Theme.teal)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
         }

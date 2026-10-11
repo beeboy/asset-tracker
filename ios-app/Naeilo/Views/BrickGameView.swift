@@ -9,8 +9,8 @@ struct BrickGameButton: View {
     @State private var show = false
     var body: some View {
         Button { show = true } label: {
-            Label("판 깨기 · 내 1000칸으로 벽돌깨기", systemImage: "gamecontroller")
-                .appFont(14, .bold).frame(maxWidth: .infinity, minHeight: 44)
+            Label("벽돌깨기", systemImage: "gamecontroller")
+                .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(.white)
                 .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
         }
