@@ -6,6 +6,7 @@ struct ReloadIntent: AppIntent {
     static var title: LocalizedStringResource = "다시 받기"
     func perform() async throws -> some IntentResult {
         _ = try? await withTimeout(8) { await QuoteFeed.fetch() }
+        WidgetLine.bump(minGap: 0)   // ↻: 인물 대사도 다음 줄로 (바로 이어지는 다시 그리기는 세지 않는다)
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }

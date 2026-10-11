@@ -58,7 +58,8 @@ enum WidgetBridge {
                              friendsOn: Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id),
                              homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0 },
                              items: Shelter.items.prefix(m.itemsOn).map(\.id))
-        reward.says = says(reward)
+        let sy = says(reward)
+        reward.says = sy.now; reward.saysNext = sy.next
         Store.write(reward, "reward.json")
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")
@@ -71,18 +72,24 @@ enum WidgetBridge {
     }
 
     /// 인물별 위젯 말풍선: 사흘에 한 번은 돌아온 물건 얘기, 나머지 날은 오늘 가장 크게 움직인 종목 (대사 데이터에서)
-    static func says(_ r: WReward) -> [String: String] {
+    /// 위젯은 갱신하거나 ↻를 누를 때마다 다음 줄을 쓴다 (saysNext). 앱이 다시 쓸 때는 위젯에서 본 만큼 넘기고 그 다음부터 준다
+    static func says(_ r: WReward) -> (now: [String: String], next: [String: [String]]) {
         let top = r.tiles.max { abs($0.c) < abs($1.c) }
         let t = top?.t ?? "오늘", c = top?.c ?? r.dayChg
-        var out: [String: String] = [:]
+        let seen = WidgetLine.index()
+        var now: [String: String] = [:], next: [String: [String]] = [:]
         for w in WChar.all {
-            if let it = WItem.today(r) {
-                out[w.id] = Lines.pick("item.\(it).\(w.id)") ?? WItem.say(it, w.id)
-            } else {
-                out[w.id] = Lines.pick("widget.\(c >= 0 ? "up" : "down").\(w.id)", ["t": t, "c": String(format: "%.1f", abs(c) * 100)])
-            }
+            var key = "widget.\(c >= 0 ? "up" : "down").\(w.id)"
+            var vars = ["t": t, "c": String(format: "%.1f", abs(c) * 100)]
+            var fallback: String? = nil
+            if let it = WItem.today(r) { key = "item.\(it).\(w.id)"; vars = [:]; fallback = WItem.say(it, w.id) }
+            Lines.skip(key, seen)
+            let list = Lines.peek(key, vars, 10)
+            next[w.id] = list
+            now[w.id] = list.first ?? fallback
         }
-        return out
+        WidgetLine.reset()
+        return (now, next)
     }
 
     /// 다음 일정: 보유 종목의 실적 발표 (분석 탭 일정과 같은 값)

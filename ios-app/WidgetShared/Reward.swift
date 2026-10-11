@@ -17,7 +17,8 @@ struct WReward: Codable {
     var homeFriend: String? = nil // 앱 홈에 둔 인물 (위젯 '홈 인물 따라가기'가 쓴다)
     var spark: [Double]? = nil    // 최근 10일 평가액 (만원). 인물 · 자산 추이
     var items: [String]? = nil    // 쉼터에 돌아온 물건 (돌아온 순서). 오늘의 움직임 위젯이 쓴다
-    var says: [String: String]? = nil  // 인물별 오늘 말풍선 (앱이 대사 데이터에서 골라 넘긴다, 시세 갱신마다 바뀜)
+    var says: [String: String]? = nil  // 인물별 말풍선 (앱이 대사 데이터에서 골라 넘긴다)
+    var saysNext: [String: [String]]? = nil  // 인물별 다음 대사 후보. 위젯이 갱신하거나 ↻를 누를 때마다 다음 줄
 
     static let sample = WReward(keyName: "본전", pct: 0.87, pctYesterday: 0.862, remain: 1.52e7, cells: 264, cellsYesterday: 261,
                                 total: 1.234e8, dayChg: 0.008, tiles: [.init(t: "DRNK", w: 0.62, c: 0.019), .init(t: "QQQ", w: 0.38, c: -0.004)],
@@ -42,6 +43,7 @@ struct WChar: Identifiable {
     /// 말풍선 (인물 말투). 세리·시오·선배는 오늘 가장 크게 움직인 종목을 넣는다.
     /// 사흘에 한 번은 쉼터에 돌아온 물건 얘기를 인물 말투로 한다
     func line(_ r: WReward) -> String {
+        if let l = r.saysNext?[id], !l.isEmpty { return l[WidgetLine.index() % l.count] }
         if let s = r.says?[id], !s.isEmpty { return s }
         if let it = WItem.today(r), let say = WItem.say(it, id) { return say }
         let top = r.tiles.max { abs($0.c) < abs($1.c) }
@@ -86,4 +88,17 @@ enum WItem {
     }
     /// 인물 발치에 둘 물건: 말풍선에 나온 물건, 아니면 마지막에 돌아온 물건
     static func shown(_ r: WReward) -> String? { today(r) ?? r.items?.last }
+}
+
+/// 위젯 대사 차례: 앱이 마지막으로 쓴 뒤 위젯이 새로 그려진 횟수 (↻ 포함). 앱이 다시 쓰면 0
+enum WidgetLine {
+    static func index() -> Int { Store.defaults.integer(forKey: "lineTaps") }
+    /// 위젯이 새로 그려질 때. 여러 위젯이 한꺼번에 그려져도 한 번만 센다
+    static func bump(minGap: TimeInterval = 300) {
+        let d = Store.defaults, now = Date().timeIntervalSince1970
+        guard now - d.double(forKey: "lineBumpAt") > minGap else { return }
+        d.set(now, forKey: "lineBumpAt")
+        d.set(index() + 1, forKey: "lineTaps")
+    }
+    static func reset() { Store.defaults.set(0, forKey: "lineTaps"); Store.defaults.set(Date().timeIntervalSince1970, forKey: "lineBumpAt") }
 }

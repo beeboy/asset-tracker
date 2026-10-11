@@ -52,6 +52,14 @@ struct RootView: View {
         .onChange(of: Sync.shared.isOn, initial: true) { _, on in if on && model.nxStep == 2 { model.nxStep = 3 }; WidgetBridge.write(model) }
         .onChange(of: Sync.shared.isDev) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.nxStep) { _, n in if n == 2 && Sync.shared.isOn { model.nxStep = 3 } }
+        // 인물 대사: 화면을 열거나 앱을 앞으로 가져올 때만 다음 줄로 (1분 자동 갱신으로는 안 바뀐다)
+        .onChange(of: phase) { _, p in if p == .active { LineClock.shared.next() } }
+        .onChange(of: model.tab) { _, _ in LineClock.shared.next() }
+        .onChange(of: model.homePath) { _, _ in LineClock.shared.next() }
+        .onChange(of: model.boardPath) { _, _ in LineClock.shared.next() }
+        .onChange(of: model.settingsPath) { _, _ in LineClock.shared.next() }
+        .onChange(of: model.analysisPath.count) { _, _ in LineClock.shared.next() }
+        .onChange(of: model.holdPath.count) { _, _ in LineClock.shared.next() }
         // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로
         .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay() } }
         // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
