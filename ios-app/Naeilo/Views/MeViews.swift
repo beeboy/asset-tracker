@@ -327,8 +327,6 @@ struct MeEditView: View {
                 .accessibilityLabel("\(k.title), \(m.friendName(k.id)) 말투")
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
-            Text("평정 지수가 매칭되면 그 유형을 따라요").appFont(10).foregroundStyle(Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -404,7 +402,8 @@ struct MeEditView: View {
                 if let x = sample {
                     big(MeChar(parts: x.parts))
                     Text(x.name).appFont(14, .bold)
-                    Text(x.about).appFont(11).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(x.about).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(parts(x)).appFont(11).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                     let applied = draft.parts == x.parts
                     Button { draft.parts = x.parts } label: {
                         Text(applied ? "적용했어요" : "적용 ↓").appFont(14, .bold).foregroundStyle(.white)
@@ -420,10 +419,8 @@ struct MeEditView: View {
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.dash, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                 }
                 big(draft).padding(.top, 6)
-                    .overlay(alignment: .bottom) {
-                        Text(m.meUnlocked ? "홈과 위젯에 둘 수 있어요" : "조건을 채우면 홈과 위젯에 나와요")
-                            .appFont(10).foregroundStyle(.white.opacity(0.75)).padding(.bottom, 6)
-                    }
+                Text(m.meUnlocked ? "홈과 위젯에 둘 수 있어요" : "조건을 채우면 홈과 위젯에 나와요")
+                    .appFont(10).foregroundStyle(Theme.muted)
                 nameRow
                 if let note { Text(note).appFont(12, .bold).foregroundStyle(Theme.teal) }
                 if m.me != nil {
@@ -434,16 +431,22 @@ struct MeEditView: View {
         }
     }
 
-    /// 24×34 비율로 오른쪽 폭을 채운 큰 그림 (고른 샘플·내 캐릭터 같은 크기)
+    /// 고른 샘플·내 캐릭터 같은 크기 (24×34 의 4배)
     private func big(_ c: MeChar) -> some View {
-        Group {
-            if let img = MeArt.image(c) { Image(uiImage: img).interpolation(.none).resizable() } else { Color.clear }
-        }
-        .aspectRatio(CGFloat(MeArt.W) / CGFloat(MeArt.H), contentMode: .fit)
-        .padding(12)
-        .frame(maxWidth: .infinity)
+        MeAvatar(me: c, width: 96, height: 136)
+        .padding(10)
         .background(Theme.shelter, in: RoundedRectangle(cornerRadius: 14))
         .accessibilityLabel(c.shownName)
+    }
+
+    /// 샘플 구성 한 줄: 머리·색·옷·소품 이름
+    private func parts(_ x: MeSample) -> String {
+        let c = MeChar(parts: x.parts)
+        return MeGroup.allCases.compactMap { g -> String? in
+            let o = g == .color ? c.part(.color) : c.part(g)
+            if g.optional && o == 0 { return nil }
+            return g == .color ? "\(g.name(o)) 머리 · \(MeColor.skinNames[MeColor.skinIdx(c)])" : g.name(o)
+        }.joined(separator: " · ")
     }
 
     private var nameRow: some View {
