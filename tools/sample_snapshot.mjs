@@ -1,4 +1,4 @@
-// 샘플(가상 종목 DRNK 60주·QQQ 10주) 계산값을 미리 만들어 data/sample_calc.json 에 저장한다.
+// 샘플(가상 종목 DRNK 4주·QQQ 1주) 계산값을 미리 만들어 data/sample_calc.json 에 저장한다.
 // 첫 방문 사용자는 이 값을 그대로 보고(다시 계산 안 함), 내 종목을 넣으면 지금 값으로 새로 계산한다.
 // 사용: 저장소 루트를 정적 서버로 띄운 뒤  BASE=http://localhost:8123 node tools/sample_snapshot.mjs
 // (GitHub Actions 의 sample.yml 이 매일 한국 시간 9시에 돌린다)
