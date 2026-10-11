@@ -544,6 +544,27 @@
     };
   }
 
+  // 본전 확률 (재시뮬레이션 없이)
+  // 같은 경로에서 종목 묶음(o.idx)만 적립·매매 없이 들고 있을 때, 월말 평가액이 o.basis 이상이 되는 첫 달이 o.months 안에 올 확률
+  // o.mu: 종목별 연 기대수익 (reweight 와 같은 드리프트 보정). 경로가 기한까지 없으면 p = null
+  function breakeven(sim, o) {
+    const X = sim && sim.raw; if (!X) return null;
+    const { M, P, cg, muD, monthIdx, v0, startDate, monthDates } = X, idx = o.idx;
+    const dd = idx.map((a) => (o.mu && o.mu[a] != null ? Math.log(1 + o.mu[a]) / TD - muD[a] : 0));
+    const first = new Int32Array(P).fill(-1);
+    for (let p = 0; p < P; p++) for (let k = 1; k < M; k++) {
+      let V = 0; for (let j = 0; j < idx.length; j++) { const a = idx[j]; V += v0[a] * Math.exp(cg[a][k * P + p] + dd[j] * monthIdx[k]); }
+      if (V >= o.basis) { first[p] = k; break; }
+    }
+    return o.months.map((m) => {
+      const target = addMonths(startDate, m);
+      if (Date.parse(target) - Date.parse(monthDates[M - 1]) > 15 * 864e5) return { m, p: null };
+      let k = 0; while (k + 1 < M && monthDates[k + 1] <= target) k++;
+      let n = 0; for (let p = 0; p < P; p++) if (first[p] >= 0 && first[p] <= k) n++;
+      return { m, p: n / P };
+    });
+  }
+
   // 비중 조정안 계산 (화면 스레드와 계산 전용 worker 가 같은 코드를 쓴다)
   // inp: {base, series, settings, events, betas, startDate, goal, mixes, defs: {k: {cap, cutSmall}}}, onProg(k, n)
   function allocPlans(inp, onProg) {
@@ -569,5 +590,5 @@
     return { V0, top, out, fd: model.monthDates };
   }
 
-  window.Model = { allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  window.Model = { allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();

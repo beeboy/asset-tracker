@@ -350,3 +350,5 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .newtag { font-size: 11px; color: var(--accent, #e67e22); }
 .sitefoot { margin: 18px 4px 0; line-height: 1.6; text-align: center; }
 .sitefoot a { color: inherit; }
+.bepv { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 8px 0 2px; } .bepv > b { font-size: 1.6rem; }
+.bepp { margin-top: 6px; }

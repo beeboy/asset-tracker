@@ -1018,7 +1018,7 @@
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
     const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
-    renderProgress(H, total, cash); renderBackupNag();
+    renderProgress(H, total, cash); renderBackupNag(); renderBep();
     $("#goalKpis").innerHTML = [
       ["현재 평가액", `<a href="#" class="plain" data-go="stocks" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(tot / g.amount), `<div class="bar"><i style="width:${Math.min(100, (tot / g.amount) * 100)}%"></i></div>`],
@@ -1032,6 +1032,8 @@
     const inUsd = $("#histCcy .on")?.dataset.c === "usd", basis = $("#histBasis .on")?.dataset.b || "model";
     const fxNowUsd = fxNow("USD") || 1, conv = (v, i) => (v == null ? null : inUsd ? v / H.usdK[i] : v), money = inUsd ? usd : krwAxis;
     const future = rsel === "future", n = future ? 780 : +rsel; // 미래: 과거 3년 + 목표일까지
+    // 과거 선은 지금 수량 × 지난 가격이라 "내가 지나온 길"이 아니다. 제목에서 그렇게 읽히게
+    $("#histTitle").textContent = future ? "지금 구성으로 본 지난 3년과 앞으로" : `지금 구성으로 본 지난 ${{ 5: "1주", 22: "1달", 66: "3달", 252: "1년", 780: "3년" }[n] || "기간"}`;
     const fcOn = $("#histFc .on")?.dataset.f === "on"; // 미래 보기에서 3년 전망 띠를 겹칠지 (기본: 내 길만)
     $("#histFc").style.display = future ? "" : "none"; $("#histBasis").style.display = future && !fcOn ? "none" : "";
     const k0 = Math.max(0, H.dates.length - 1 - n);
@@ -1117,7 +1119,7 @@
       } else if (V0 > 0 && mode !== "each") opt.series.push({ name: "내 길", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--goal)", dash: "5 4", width: 1.8 });
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
-      notes.push("현재 수량을 과거에 적용" + (inUsd ? ", 달러 환산." : "."));
+      notes.push("지금 수량을 지난 가격에 대입한 값이에요. 실제로 지나온 기록과는 달라요" + (inUsd ? " (달러 환산)." : "."));
       if (live) notes.push("· 맨 끝 빈 점은 오늘 실시간 값 (장 마감 전).");
       // 필요 경로: 목표 진행과 같은 길 (목표 시작일부터). 시작일 전은 그리지 않는다
       const P = mode !== "each" && tot > 0 ? goalPath(H, cash) : null;
@@ -1534,7 +1536,7 @@
   function fcStore() {
     const L = lastForecast; if (!L) return;
     const strip = (k, v) => (k === "raw" || k === "term" ? undefined : v);
-    try { localStorage.setItem(FC_KEY, JSON.stringify({ sig: fcSig(), tks: L.b.holdings.map((h) => h.ticker).join(), scen: L.scen, at: L.at.getTime(), ms: L.ms, hasEv: L.hasEv, withEv: L.withEv, noEv: L.hasEv ? L.noEv : null, lens: L.lens }, strip)); }
+    try { localStorage.setItem(FC_KEY, JSON.stringify({ sig: fcSig(), tks: L.b.holdings.map((h) => h.ticker).join(), scen: L.scen, at: L.at.getTime(), ms: L.ms, hasEv: L.hasEv, withEv: L.withEv, noEv: L.hasEv ? L.noEv : null, lens: L.lens, bep: L.bep }, strip)); }
     catch (e) { try { localStorage.removeItem(FC_KEY); } catch (e2) { /* 무시 */ } }
   }
   function fcRestore() {
@@ -1542,7 +1544,7 @@
       const c = JSON.parse(localStorage.getItem(FC_KEY) || "null"); if (!c || !c.withEv) return false;
       const b = buildModelNow(); if (!b || b.holdings.map((h) => h.ticker).join() !== c.tks) return false;
       const common = simCommon(b, c.scen);
-      lastForecast = { b, sim: null, simNo: null, withEv: c.withEv, noEv: c.noEv || c.withEv, lens: c.lens || {}, hasEv: c.hasEv, common, grp: {}, scen: c.scen, at: new Date(c.at), ms: c.ms };
+      lastForecast = { b, sim: null, simNo: null, withEv: c.withEv, noEv: c.noEv || c.withEv, lens: c.lens || {}, bep: c.bep || null, hasEv: c.hasEv, common, grp: {}, scen: c.scen, at: new Date(c.at), ms: c.ms };
       fcDirty = c.sig !== fcSig() || c.scen !== S.state.model.scenario; fcCache[c.scen] = { R: c.withEv, model: b.model };
       return true;
     } catch (e) { return false; }
@@ -1563,6 +1565,44 @@
     const rs = valuation().rows.filter((r) => r.valueKrw > 0);
     if (!rs.length || rs.some((r) => !(Number(r.avg) > 0) || !r.fx)) return null;
     return rs.reduce((a, r) => a + r.avg * r.sh * r.fx, 0);
+  }
+  // ------------------------------------------------------------ 본전 카드 (관찰 숫자만: 매수 단가를 넣은 종목의 본전 거리·기한별 본전 확률)
+  // 매수 단가를 넣은 종목만 묶어 원금(단가×수량×지금 환율)과 지금 평가액을 비교한다
+  function bepRows() {
+    const by = {};
+    valuation().rows.forEach((r) => { if (!(r.avg > 0) || !(r.valueKrw > 0) || !r.fx) return; const t = r.h.ticker, o = (by[t] = by[t] || { t, basis: 0, cur: 0 }); o.basis += r.avg * r.sh * r.fx; o.cur += r.valueKrw; });
+    const rows = Object.values(by), basis = rows.reduce((a, x) => a + x.basis, 0), cur = rows.reduce((a, x) => a + x.cur, 0);
+    return rows.length ? { rows, basis, cur, n: rows.length, all: rows.length === valuation().rows.filter((r) => r.valueKrw > 0).length } : null;
+  }
+  const bepSig = () => fcSig() + "|" + hashStr(JSON.stringify(S.state.holdings.map((h) => [h.ticker, h.shares, h.avg_cost])));
+  // 전망 경로(내 관점)에서 그 종목들만 들고 있을 때 월말 평가액이 원금 이상이 되는 첫 달 → 6개월·1년·3년 안 확률
+  function calcBep(L) {
+    const B = bepRows(); if (!B || !L || !L.sim || !L.sim.raw) return null;
+    const idx = B.rows.map((x) => L.b.holdings.findIndex((h) => h.ticker === x.t)); if (idx.some((i) => i < 0)) return null;
+    const pr = Model.breakeven(L.sim, { idx, basis: B.basis * (L.sim.raw.v0 ? idx.reduce((a, i) => a + L.sim.raw.v0[i], 0) / B.cur : 1), mu: viewMu(L.b.model, viewKey()), months: [6, 12, 36] });
+    return pr && { sig: bepSig(), pr, view: viewKey() };
+  }
+  let bepAsked = "";
+  function renderBep() {
+    const card = $("#bepCard"), B = S.state.sample ? null : bepRows();
+    if (!B) { card.style.display = "none"; return; }
+    card.style.display = "block";
+    const gap = B.cur / B.basis - 1, need = B.basis / B.cur - 1, sub = B.all ? "매수 단가를 넣은 모든 종목 기준" : `매수 단가를 넣은 ${B.n}종목 기준 (${B.rows.map((x) => esc(x.t)).join(", ")})`;
+    if (!lastForecast) fcRestore();
+    const L = lastForecast, sig = bepSig();
+    let bp = L && L.bep && L.bep.sig === sig ? L.bep : null;
+    if (!bp && L && L.sim && L.sim.raw) { L.bep = calcBep(L); bp = L.bep; }
+    let probs;
+    if (gap >= 0) probs = `<p class="small" style="margin:6px 0 0">지금 원금보다 <b class="${cls(gap)}">${spct(gap, 1)}</b> 위에 있어요.</p>`;
+    else if (S.state.model.rebalance_yearly) probs = `<p class="muted small">설정의 '연 1회 재조정'을 끄면 본전 확률을 계산해요.</p>`;
+    else if (!bp) {
+      probs = `<p class="muted small">본전 확률 계산 중…</p>`;
+      if (bepAsked !== sig) { bepAsked = sig; fcDirty = true; setTimeout(runForecast, 0); } // 전망 탭을 열지 않아도 한 번 계산 (worker)
+    } else probs = `<div class="bepp">${bp.pr.map((x) => `<div class="probbar"><span>${x.m < 12 ? x.m + "개월" : x.m / 12 + "년"} 안</span><div class="b"><i style="width:${(x.p || 0) * 100}%"></i></div><span>${x.p == null ? "-" : pct(x.p, 0)}</span></div>`).join("")}</div>` +
+        (bp.pr.some((x) => x.p == null) ? `<p class="muted small">목표일이 그보다 가까워 '-'로 둡니다.</p>` : "");
+    card.innerHTML = `<div class="row between wrap"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">본전까지</h2><span class="muted small">${sub}</span></div></div>
+      <div class="bepv"><b class="${cls(gap)}">${spct(gap, 1)}</b>${gap < 0 ? `<span class="small muted">원금 대비 · 본전이 되려면 <b>${spct(need, 1)}</b> 올라야 해요</span>` : ""}</div>` + probs +
+      `<p class="muted small">관찰용 숫자예요. 지금 구성 그대로(적립·매매 없이) 들고 있을 때 월말 평가액이 매수 원금에 닿을 확률로, 전망 탭 내 관점과 같은 계산이에요. 매수 때 환율은 모르니 지금 환율로 원금을 셉니다.</p>`;
   }
   const WI = { monthly: null, sell: 0 }; // 만약에: 저장하지 않는 임시 가정
   function wiTop() {
@@ -1592,6 +1632,7 @@
       if (full) { const one = (scen) => (L.scen === scen ? L.sim : Model.simulate(md, { ...L.common, scenario: scen, nPaths: Math.min(L.common.nPaths, 1500), withEvents: true })); L.lens = { base: one("base"), smooth: one("smooth") }; }
     }
     L.scen = S.state.model.scenario;
+    L.bep = calcBep(L) || L.bep;
     if (RS.draw && $("#rsOut")) RS.draw(); // 금리 시나리오의 내 목표 확률도 새 전망으로
   }
   const fcDisp = () => { const L = lastForecast; return L.disp || { R: L.withEv, No: L.hasEv ? L.noEv : null, base: L.lens && L.lens.base, smooth: L.lens && L.lens.smooth }; };
@@ -1634,7 +1675,7 @@
   }
   let fcSeq = 0;
   async function runForecast() {
-    const st = $("#fcStatus"), btns = $$("#scenBox button");
+    const st = $("#fcStatus"), btns = $$("#fcOpt button[data-s]");
     btns.forEach((x) => (x.disabled = true)); st.textContent = `${SCEN_SHORT[S.state.model.scenario] || ""} 시나리오, 계산 중...`;
     await new Promise((r) => setTimeout(r, 30));
     try {
@@ -1756,7 +1797,7 @@
   }
   function renderForecast() {
     const m = S.state.model;
-    $$("#scenBox button").forEach((x) => x.classList.toggle("on", x.dataset.s === m.scenario)); $("#nPaths").value = String(m.n_paths); $("#rebalance").checked = !!m.rebalance_yearly;
+    $$("#fcOpt button[data-s]").forEach((x) => x.classList.toggle("on", x.dataset.s === m.scenario)); if ($("#scenMore button.on")) $("#scenMore").open = true; $("#nPaths").value = String(m.n_paths); $("#rebalance").checked = !!m.rebalance_yearly;
     if (!lastForecast) { $("#fcStatus").textContent = `${SCEN_SHORT[m.scenario] || ""} 시나리오`; return; }
     const { b, withEv: R, noEv, hasEv } = lastForecast, g = S.state.goal, md = b.model;
     // 직접 입력한 현재가 때문에 오늘 평가액이 시세 기준과 크게 다르면 알린다 (차트가 오늘에서 꺾이는 원인)
@@ -2548,7 +2589,7 @@
     const { sg, now, usdW, total, T, at } = F;
     const effect1y = sg.ret_1y != null ? usdW * sg.ret_1y : null;
     $("#fxKpis").innerHTML = [
-      ["현재 원/달러", nf(now, 1), `칼만 추세 ${nf(sg.kalman_level, 1)} (${spct(sg.dev_from_kalman)})`],
+      ["현재 원/달러", nf(now, 1), `추세 ${nf(sg.kalman_level, 1)} (${spct(sg.dev_from_kalman)})`],
       ["매매기준율", marUsd() ? nf(marUsd().rate, 2) : "-", marUsd() ? `${marUsd().date} · 서울외국환중개 · 평가액에 적용` : "받지 못함 · 평가액은 현재 환율"],
       ["1개월 · 3개월", `<span class="${cls(sg.ret_1m)}">${spct(sg.ret_1m)}</span>`, `3개월 <span class="${cls(sg.ret_3m)}">${spct(sg.ret_3m)}</span>`],
       ["1년 변화", `<span class="${cls(sg.ret_1y)}">${spct(sg.ret_1y)}</span>`, `1년 범위 ${nf(F.lo1, 0)}~${nf(F.hi1, 0)}`],
@@ -2565,7 +2606,7 @@
     const fd = [today(), ...md], ft = fd.map((d) => yearsBetween(today(), d)), band = (k) => ft.map((t) => at(t, k));
     Charts.lineChart($("#fxChart"), { x, height: 300, yfmt: (v) => nf(v, 0),
       bands: [{ x: fd, lo: band("p5"), hi: band("p95"), color: "var(--band)", opacity: 0.13, name: "전망 5~95%" }, { x: fd, lo: band("p25"), hi: band("p75"), color: "var(--band)", opacity: 0.25, name: "25~75%" }],
-      series: [{ name: "칼만 추세", y: ind.level.slice(k0), color: "var(--c1)", width: 3 }, { name: "원/달러", y: ind.close.slice(k0), color: "var(--fg)", width: 1 },
+      series: [{ name: "추세", y: ind.level.slice(k0), color: "var(--c1)", width: 3 }, { name: "원/달러", y: ind.close.slice(k0), color: "var(--fg)", width: 1 },
         { name: "EMA50", y: ind.ema50.slice(k0), color: "var(--c3)", dash: "4 3" }, ...(ind.dates.length >= 200 ? [{ name: "EMA200", y: ind.ema200.slice(k0), color: "var(--c2)", dash: "6 3" }] : []),
         { name: "전망 중앙값", x: fd, y: band("p50"), color: "var(--c1)", width: 1.6, dash: "2 2" }],
       vlines: [{ x: today(), label: "오늘" }] });
@@ -3035,7 +3076,7 @@
       S.state.events.push({ id: "e" + Date.now(), on: true, cat: c, factor: fk || "none", date: Model.addMonths(today(), 1), target: c === "fx" ? "FX" : fk ? "ALL" : S.state.holdings[0]?.ticker || "ALL", kind: "기타", repeat: "none", prob: 100, mean: 0, sd: fk === "rate" ? 20 : 5, vol_mult: 1, vol_days: 0, note: "" });
       save(); renderEvents();
     };
-    $("#scenBox").addEventListener("click", (e) => { const b = e.target.closest("button[data-s]"); if (!b || b.disabled) return; S.state.model.scenario = b.dataset.s; save(false); viewChanged(true); }); // 누르면 아래 공통 설정으로 다시 계산
+    $("#fcOpt").addEventListener("click", (e) => { const b = e.target.closest("button[data-s]"); if (!b || b.disabled) return; S.state.model.scenario = b.dataset.s; save(false); viewChanged(true); }); // 누르면 아래 공통 설정으로 다시 계산
     const optDirty = () => { const st = $("#fcStatus"); if (lastForecast && !/다시 계산/.test(st.textContent)) st.textContent += " · 설정이 바뀜, 시나리오를 눌러 다시 계산"; };
     $("#trust").oninput = (e) => { S.state.model.trust = +e.target.value; S.state.model.scenario = "blend"; $("#trustVal").textContent = e.target.value + "%"; viewChanged(false); };
     $("#trust").onchange = () => { save(false); viewChanged(true); };
