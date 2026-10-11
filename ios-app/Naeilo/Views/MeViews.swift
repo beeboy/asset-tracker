@@ -266,13 +266,18 @@ struct MeEditView: View {
         .background(Theme.bg)
         .navigationTitle("내 캐릭터").navigationBarTitleDisplayMode(.inline)
         .onAppear { if !loaded { draft = m.me ?? MeChar(); loaded = true } }
-        .confirmationDialog("내 캐릭터를 지울까요?", isPresented: $askDelete, titleVisibility: .visible) {
-            Button("지우기", role: .destructive) {
-                m.me = nil; draft = MeChar()
-                if m.homeFriend == "me" { m.homeFriend = "seri" }
-                WidgetBridge.write(m)
-                note = "지웠어요."
+        .confirmationDialog("처음부터 다시 만들까요?", isPresented: $askDelete, titleVisibility: .visible) {
+            Button("리셋", role: .destructive) {
+                // 리셋: 저장한 캐릭터도 지우고 빈 칸으로
+                if m.me != nil {
+                    m.me = nil
+                    if m.homeFriend == "me" { m.homeFriend = "seri" }
+                    WidgetBridge.write(m)
+                }
+                draft = MeChar(); sample = nil; note = nil
             }
+        } message: {
+            Text(m.me != nil ? "저장한 내 캐릭터도 지워져요." : "고른 부품과 이름이 지워져요.")
         }
     }
 
@@ -439,9 +444,13 @@ struct MeEditView: View {
                         .fixedSize(horizontal: false, vertical: true).padding(.top, 8)
                     nameRow.padding(.top, 10)
                     if let note { Text(note).appFont(13, .bold).foregroundStyle(Theme.teal).padding(.top, 8) }
-                    if m.me != nil {
-                        Button("지우기") { askDelete = true }.appFont(13).foregroundStyle(Theme.muted).frame(minHeight: 36)
+                    Button { askDelete = true } label: {
+                        Label("리셋", systemImage: "arrow.counterclockwise").appFont(13).foregroundStyle(Theme.muted)
+                            .frame(minHeight: 40).padding(.horizontal, 12)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(m.me == nil && draft == MeChar() && sample == nil)
+                    .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 12)
@@ -488,7 +497,7 @@ struct MeEditView: View {
                 .appFont(16).padding(.horizontal, 10).frame(minHeight: 44)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
-                .onChange(of: draft.name) { _, v in if v.count > MeChar.nameMax { draft.name = String(v.prefix(MeChar.nameMax)) } }
+                .onChange(of: draft.name) { _, v in let c = MeChar.clean(v); if c != v { draft.name = c } }
             Button {
                 draft.name = draft.name.trimmingCharacters(in: .whitespaces)
                 m.me = draft
