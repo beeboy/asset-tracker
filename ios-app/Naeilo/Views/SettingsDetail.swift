@@ -335,44 +335,26 @@ extension AppModel {
     }
 }
 
-/// 설정 > 위젯 > 금액 가리기: 한 번에 모두 가리기 + 누를 때 함께/따로
+/// 설정 > 위젯 > 금액 가리기: 금액을 누르면 모든 위젯 함께 / 누른 위젯만
 struct AmountHideCard: View {
     @State private var each = Store.hideEach
-    @State private var all = AmountHideCard.allHidden
-
-    private static var kinds: [String] { WidgetUnlock.step.keys.sorted() }
-    private static var allHidden: Bool { Store.hideEach ? Set(kinds).isSubset(of: Store.hiddenKinds) : Store.hideAll }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: $all) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("모든 위젯 금액 가리기").appFont(16, .semibold)
-                    Text("켜면 모든 위젯의 금액이 한 번에 가려져요").appFont(12).foregroundStyle(Theme.sub)
-                }
+        VStack(alignment: .leading, spacing: 6) {
+            Text("금액을 누르면").appFont(14, .semibold)
+            Picker("금액을 누르면", selection: $each) {
+                Text("모든 위젯 함께").tag(false)
+                Text("누른 위젯만").tag(true)
             }
-            .tint(Theme.teal)
-            Divider().overlay(Theme.line)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("금액을 누르면").appFont(14, .semibold)
-                Picker("금액을 누르면", selection: $each) {
-                    Text("모든 위젯 함께").tag(false)
-                    Text("누른 위젯만").tag(true)
-                }
-                .pickerStyle(.segmented)
-            }
+            .pickerStyle(.segmented)
         }
         .padding(14)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
-        .onChange(of: all) { _, on in
-            Store.hideAll = on
-            Store.hiddenKinds = on ? Self.kinds : []
-            WidgetCenter.shared.reloadAllTimelines()
-        }
         .onChange(of: each) { _, v in
-            // 방식을 바꿔도 지금 보이는 상태는 그대로 둔다
-            if v { Store.hiddenKinds = Store.hideAll ? Self.kinds : [] } else { Store.hideAll = all }
+            // 방식을 바꿔도 지금 가려진 상태는 그대로 둔다
+            let kinds = WidgetUnlock.step.keys.sorted()
+            if v { Store.hiddenKinds = Store.hideAll ? kinds : [] } else { Store.hideAll = Set(kinds).isSubset(of: Store.hiddenKinds) }
             Store.hideEach = v
             WidgetCenter.shared.reloadAllTimelines()
         }
