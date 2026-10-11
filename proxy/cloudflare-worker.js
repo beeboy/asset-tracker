@@ -21,6 +21,8 @@
 //       구매 확인은 앱이 보낸 StoreKit 2 서명 거래(JWS)를 Apple 루트 인증서(G3)까지 따라가 직접 검증한다 (Apple API 키 불필요).
 //       유료 원고(외전 6장부터·본편 1권)는 저장소에 두지 않고 KV(st:book:*)에만 둔다. 올리기·후원자 승인은 web/store-admin.html.
 //       선택 변수: BUNDLE_ID (기본 com.naeilo.widget), NO_SANDBOX=1 (TestFlight 샌드박스 구매를 받지 않음).
+// 9) 판 깨기 순위판 (/scores): 아이폰 앱 게임의 익명 주간 순위. 같은 VIEWS KV, 비밀값 없음.
+//       저장값은 점수·별명(선택, 3글자)·선수 인물 id·날짜뿐. 계정·기기 ID·IP 는 받지도 두지도 않는다. 단계·난이도·주마다 상위 20개, 5주 뒤 지워짐.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -135,6 +137,28 @@ export default {
       if (!ok) return out({ error: "비밀번호가 맞지 않습니다" }, 403);
       list.splice(i, 1); await env.VIEWS.put("c:" + b.id, JSON.stringify(list));
       return out({ ok: true });
+    }
+    if (u.pathname === "/scores") {
+      // GET /scores?lv=normal&n=3 → { week, top: [{ nick, p, score }] },  POST /scores {"lv","n","score","nick","p"} → { ok, rank }
+      if (!env.VIEWS) return noKv();
+      const d = new Date(), wd = (d.getUTCDay() + 6) % 7;
+      const week = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - wd)).toISOString().slice(0, 10);
+      const b = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+      const lv = req.method === "POST" ? b.lv : u.searchParams.get("lv"), n = Number(req.method === "POST" ? b.n : u.searchParams.get("n"));
+      if (!["easy", "normal", "hard"].includes(lv) || !Number.isInteger(n) || n < 0 || n > 11) return out({ error: "단계·난이도가 맞지 않습니다" }, 400);
+      const key = `gs:${week}:${lv}:${n}`, top = JSON.parse((await env.VIEWS.get(key)) || "[]");
+      if (req.method === "GET") { const r = out({ week, top }); r.headers.set("Cache-Control", "public, max-age=60"); return r; }
+      if (req.method !== "POST") return out({ error: "GET 또는 POST" }, 400);
+      const score = Number(b.score);
+      // 한 판 최고는 벽돌 1000칸 × 3점 × 1.5 × 2 + 목숨 보너스 정도라 그보다 크면 받지 않는다
+      if (!Number.isInteger(score) || score < 1 || score > 10000) return out({ error: "점수가 맞지 않습니다" }, 400);
+      const nick = /^[가-힣A-Za-z0-9]{1,3}$/.test(b.nick || "") ? b.nick : "";
+      const p = ["seri", "sio", "seonbae", "ir", "sua", "me"].includes(b.p) ? b.p : "seri";
+      if (top.length >= 20 && score <= top[top.length - 1].score) return out({ ok: true, rank: null });
+      top.push({ nick, p, score, at: d.toISOString().slice(0, 10) });
+      top.sort((a, c) => c.score - a.score); top.length = Math.min(top.length, 20);
+      await env.VIEWS.put(key, JSON.stringify(top), { expirationTtl: 35 * 86400 });
+      return out({ ok: true, rank: top.findIndex((e) => e.score === score && e.nick === nick && e.p === p) + 1 });
     }
     if (u.pathname === "/views") {
       // GET /views?ids=a,b → { views: { a: 3 }, likes: { a: 1 }, comments: { a: 2 } },  POST /views {"id":"a"} → 한 번 더하고 { id, n }
