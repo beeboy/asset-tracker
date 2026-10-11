@@ -16,7 +16,7 @@ struct SettingsView: View {
             ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
             ("개발자 후원", Support.shared.tier == .free ? "커피 한 잔 · 구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
             ("루트", m.route == .recover ? "회복 · 마이너스" : m.route == .plus ? "목표 · 플러스" : "목표 · 시작 전", .route),
-        ] + (m.isGoal ? [("목표", "\(m.gY)년 뒤 \(AppModel.wonK(m.gK)) · 고치기", SettingsRoute.goal)] : [])
+        ] + (m.isGoal ? [("목표", "\(m.goalToText)까지 \(AppModel.wonK(m.gK)) · 고치기", SettingsRoute.goal)] : [])
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "설정").padding(.horizontal, -16)

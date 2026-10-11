@@ -52,6 +52,35 @@ extension AppModel {
     var keyName: String { isGoal ? "목표" : "본전" }
     var trackValue: Double { route == .novice ? goalSaved * 1e4 : total }   // 시작 전: 모아 둔 돈 + 인터미션에 넣은 돈
 
+    // 목표 시작일·목표일: 사이트(goal.start_date·goal.date)와 같은 값을 쓴다 (기기 동기화로 양쪽이 맞춘다)
+    var goalFromDate: Date { gFrom.flatMap(Day.date) ?? goalStartAt.map { Date(timeIntervalSince1970: $0) } ?? Date() }
+    var goalToDate: Date { gTo.flatMap(Day.date) ?? Calendar.current.date(byAdding: .year, value: gY, to: goalFromDate)! }
+    /// 목표 시작일부터 목표일까지 (년)
+    var goalSpan: Double { max(1.0 / 12, goalToDate.timeIntervalSince(goalFromDate) / (365.25 * 86400)) }
+    var goalToText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy년 M월 d일"; return f.string(from: goalToDate) }
+
+    /// 사이트 목표(goal)를 그대로 받는다: 금액·목표일·시작일·매달 넣는 돈 (원 → 만원)
+    func takeSiteGoal(_ g: [String: Any]) {
+        let amt = Sync.num(g["amount"])
+        guard amt > 0, let ds = g["date"] as? String, let to = Day.date(ds) else { return }
+        let fs = (g["start_date"] as? String).flatMap { Day.date($0) != nil ? $0 : nil } ?? Day.today
+        let from = Day.date(fs) ?? Date()
+        gK = amt / 1e4
+        gY = max(1, Int((to.timeIntervalSince(from) / (365.25 * 86400)).rounded()))   // 미션 계산용 햇수 (gTo 보다 먼저)
+        gTo = ds; gFrom = fs
+        gM = max(0, Sync.num(g["monthly_contribution"]) / 1e4)
+        if isGoal { monthly = gM }      // 3년 전망의 '만약에 매달'도 같은 적립액으로
+    }
+    /// 사이트로 보낼 목표 (원)
+    func siteGoal(_ base: [String: Any]?) -> [String: Any] {
+        var g = base ?? [:]
+        g["amount"] = (gK * 1e4).rounded()
+        g["date"] = Day.str(goalToDate)
+        g["start_date"] = Day.str(goalFromDate)
+        g["monthly_contribution"] = (gM * 1e4).rounded()
+        return g
+    }
+
     static let mixes: [GoalMix] = [
         .init(id: "index", name: "지수 중심", tag: "단순하게", desc: "미국 전체 지수 80% · 현금 20%", mu: 0.075, sigma: 0.15, comp: ["I": 0.8, "C": 0.2], basket: nil),
         .init(id: "grow", name: "성장 더하기", tag: "더 빨리, 더 흔들림", desc: "지수 60% · 성장 지속 업종 30% · 현금 10%", mu: 0.085, sigma: 0.19, comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
@@ -245,8 +274,11 @@ extension AppModel {
         case .recover: break
         case .plus:
             // 기본 목표: 3년 안에 닿을 확률 50% 근처 (매달 넣는 돈은 회복 루트에서 고른 값, 없으면 30만원)
-            gMix = "mine"; gM = recM > 0 ? Double(recM) : 30; gY = 3; gK = autoGoal(years: 3)
-        case .novice: gA = 0; gK = 1000; gY = 3; gM = 30; gMix = "index"
+            gMix = "mine"
+            // 사이트와 동기화 중이고 사이트에 정한 목표가 아직 남아 있으면 그 목표를 그대로 쓴다
+            if Sync.shared.isOn, gTo != nil, goalToDate > Date() { break }
+            gM = recM > 0 ? Double(recM) : 30; gY = 3; gK = autoGoal(years: 3); gFrom = Day.today
+        case .novice: gA = 0; gK = 1000; gY = 3; gM = 30; gMix = "index"; gFrom = Day.today
         }
         monthly = r == .recover ? 0 : gM     // 3년 전망의 '만약에 매달' 기본값 = 적립액
 
@@ -265,6 +297,6 @@ extension AppModel {
     var goalReached: Bool { isGoal && gDone.contains("goal") && gK > 0 && trackValue / 1e4 >= gK }
     /// 다음 목표 제안: 지금 금액에서 3년, 확률 50% 근처. 미션 진행은 그대로 둔다
     func suggestNextGoal() {
-        gY = 3; gK = autoGoal(years: 3, from: trackValue / 1e4)
+        gFrom = Day.today; gY = 3; gTo = nil; gK = autoGoal(years: 3, from: trackValue / 1e4)
     }
 }

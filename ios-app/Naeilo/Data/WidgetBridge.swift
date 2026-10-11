@@ -12,7 +12,7 @@ enum WidgetBridge {
         let now = Date()
         let goal = m.keyValue
         let start = Calendar.current.date(byAdding: .month, value: -3, to: now)!    // 시작은 3개월 전 (내 길과 같은 가정)
-        let end = m.isGoal ? Calendar.current.date(byAdding: .year, value: m.gY, to: now)! : Calendar.current.date(byAdding: .month, value: 9, to: now)!
+        let end = m.isGoal ? m.goalToDate : Calendar.current.date(byAdding: .month, value: 9, to: now)!
 
         // 지금 시세: [지금 가격, 전일 종가, 시각]
         var q: [String: [Double?]] = [:], ccy: [String: String] = [:]

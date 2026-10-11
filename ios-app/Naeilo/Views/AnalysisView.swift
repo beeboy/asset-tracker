@@ -18,7 +18,7 @@ struct AnalysisView: View {
     var body: some View {
         let p3 = m.forecast.prob(3)
         let usd = m.rows.filter { $0.sym.currency == .usd || $0.id == "360750" }.reduce(0) { $0 + $1.value } / max(1, m.total)
-        // 내 길: 시작(3개월 전)부터 본전까지 1년에 걸친 선과 오늘 비교
+        // 내 길: 실제로 시작한 날부터 본전까지 1년에 걸친 선과 오늘 비교
         let gap = m.myPathGapToday
         let mkt10 = m.rows.reduce(0) { $0 + $1.value * (ExternalView.beta[$1.id]?.0 ?? 1) * -0.1 } / max(1, m.total)
         let div = m.rows.reduce(0) { a, r in
@@ -120,6 +120,7 @@ struct ForecastView: View {
                         }
                     }
                     Text("한 숫자 예측이 아닌 가능성의 범위예요. 지난 3년 움직임으로 낸 종목별 기대·흔들림·함께 움직이는 정도(naeilo.com과 같은 값)로 계산했어요. 종목 추천이 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
+                    if !m.isGoal { Text("회복 루트는 본전 기준이에요. naeilo.com 전망은 목표 기준이에요.").appFont(12).foregroundStyle(Theme.muted) }
                 }
                 .padding(16)
         }

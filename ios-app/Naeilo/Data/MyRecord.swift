@@ -61,13 +61,16 @@ enum MyRecord {
 }
 
 extension AppModel {
-    /// 지금 보유로 오늘 기록을 고친다. 샘플(DRNK·QQQ)이거나 가격을 모르면 남기지 않는다. 앱 시작·앞으로 올 때·홈을 열 때·수량이 바뀔 때
+    /// 지금 보유로 오늘 기록을 고친다. 샘플(DRNK·QQQ)이면 남기지 않는다. 앱 시작·앞으로 올 때·홈을 열 때·시세를 받을 때·수량이 바뀔 때
+    /// 가격을 아직 못 받은 종목은 매수 단가로 어림하고, 종목 정보도 없으면 그 종목만 뺀다 (한 종목 때문에 하루가 통째로 빠지지 않게)
     func recordDay(trade: (String, Double, Double)? = nil) {
         guard !isSample, persists else { return }   // 시안 확인용 실행에서는 남기지 않는다
         var q: [String: [Double]] = [:]
         for h in holdings where h.qty > 0 {
-            guard let s = Sample.symbol(h.symbol), s.last > 0 else { return }
-            q[Sync.siteTicker(h.symbol)] = [h.qty, (krw(s, s.last) * 100).rounded() / 100]
+            guard let s = Sample.symbol(h.symbol) else { continue }
+            let px = s.last > 0 ? s.last : h.avg
+            guard px > 0 else { continue }
+            q[Sync.siteTicker(h.symbol)] = [h.qty, (krw(s, px) * 100).rounded() / 100]
         }
         var d = myRecord
         MyRecord.update(&d, q: q, trade: trade)

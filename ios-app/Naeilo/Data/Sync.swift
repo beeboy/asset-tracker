@@ -10,7 +10,8 @@ import Security
 // - 중계(/esync?id=)에는 기기에서 암호화한 값 {c: "iv.암호문", at}만 둔다. 중계는 내용을 읽을 수 없다.
 // - 나중에 고친 쪽이 이긴다 (at). 처음 켤 때 양쪽 다 값이 있으면 어느 쪽에 맞출지 묻는다.
 // - 맞추는 것: 종목·수량·평균 단가(사이트 holdings 형식), 앱의 미션 진행(app 칸, 사이트는 건드리지 않고 그대로 둔다).
-//   사이트에만 있는 칸(목표·사건·모형 설정)과 앱이 못 다루는 종목(미국·한국 밖)은 받은 그대로 다시 올린다.
+//   목표(금액·목표일·시작일·매달 넣는 돈)는 양쪽이 같은 값을 쓴다 (나중에 고친 쪽이 이긴다. 회복 루트에서는 받기만 한다).
+//   사이트에만 있는 칸(사건·모형 설정)과 앱이 못 다루는 종목(미국·한국 밖)은 받은 그대로 다시 올린다.
 @Observable
 final class Sync {
     static let shared = Sync()
@@ -312,6 +313,8 @@ final class Sync {
         if let p = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(m.progress)) { app["progress"] = p }
         app["virtual"] = m.holdings.filter { $0.symbol == "DRNK" }.map { ["t": $0.symbol, "q": $0.qty, "a": $0.avg] }
         st["app"] = app
+        // 목표는 사이트와 같은 칸(goal)에. 회복 루트(본전 기준)와 사이트 샘플 중에는 사이트 목표를 그대로 둔다
+        if m.isGoal, (st["sample"] as? Bool) != true { st["goal"] = m.siteGoal(st["goal"] as? [String: Any]) }
         // 내 기록은 사이트와 같은 칸(daily)에 날짜별로 합쳐 둔다
         let daily = MyRecord.merge(MyRecord.fromJSON(st["daily"]), m.myRecord)
         if !daily.isEmpty, let j = MyRecord.toJSON(daily) { st["daily"] = j }
@@ -359,13 +362,6 @@ final class Sync {
             let cost = hs.reduce(0.0) { a, h in a + (Sample.symbol(h.symbol).map { m.krw($0, h.qty * h.avg) } ?? 0) }
             let val = hs.reduce(0.0) { a, h in a + (Sample.symbol(h.symbol).map { m.krw($0, h.qty * $0.last) } ?? 0) }
             m.startRoute(cost > 0 && val >= cost ? .plus : .recover)
-            // 사이트에 정한 목표가 있으면 목표 루트의 목표 금액·기간으로
-            if m.isGoal, let g = st["goal"] as? [String: Any], let amt = g["amount"] as? Double, amt > 0 {
-                m.gK = (amt / 1e4).rounded()
-                if let ds = g["date"] as? String, let dd = Day.date(ds) {
-                    m.gY = max(1, Int((dd.timeIntervalSinceNow / (365.25 * 86400)).rounded()))
-                }
-            }
         }
         if let app {
             for v in (app["virtual"] as? [[String: Any]]) ?? [] {
@@ -376,6 +372,9 @@ final class Sync {
                 m.apply(prog)
             }
         }
+        // 목표(금액·목표일·시작일·매달 넣는 돈)는 받을 때마다 사이트 값으로 맞춘다 (진행보다 뒤에: 진행에 든 예전 목표를 덮는다).
+        // 회복 루트는 본전이 기준이라 화면에는 안 쓰지만, 목표 루트로 넘어갈 때 이 목표를 그대로 쓴다. 사이트 샘플 목표는 받지 않는다
+        if (st["sample"] as? Bool) != true, let g = st["goal"] as? [String: Any] { m.takeSiteGoal(g) }
         m.myRecord = MyRecord.merge(m.myRecord, MyRecord.fromJSON(st["daily"]))
         m.holdings = hs
         // 새 폰에서 첫 질문 전에 불러왔으면 첫 질문은 건너뛴다 (진행이 없으면 회복 루트 미션 1부터)

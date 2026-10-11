@@ -30,6 +30,7 @@ final class AppModel {
     init() {
         // 저장된 진행을 먼저 불러오고, 캡처용 실행 인자가 있으면 그 위에 시연 상태를 덮는다 (그때는 저장하지 않는다)
         if persists, let p = Progress.load() { apply(p) }
+        if isSample, holdings.contains(where: { $0.qty != Self.sampleQty($0.symbol) }) { holdings = holdings.map { Holding(symbol: $0.symbol, qty: Self.sampleQty($0.symbol), avg: $0.avg) } }   // 예전 샘플(60주·10주)은 소액으로
         // 캡처용: -demo fresh 로 미션 1부터 시작
         if UserDefaults.standard.string(forKey: "demo") == "fresh" { resetDemo(.fresh) }
         if UserDefaults.standard.string(forKey: "demo") == "all" { resetDemo(.all) }
@@ -95,6 +96,8 @@ final class AppModel {
         let ids = Set(holdings.map(\.symbol))
         return ids.contains("DRNK") && ids.isSubset(of: ["DRNK", "QQQ"])
     }
+    /// 둘러보기 샘플 수량: DRNK 4주 (가장 큰 종목이 DRNK가 되게), QQQ 1주
+    static func sampleQty(_ id: String) -> Double { id == "DRNK" ? 4 : 1 }
     static var savedHoldings: [Holding]? {
         UserDefaults.standard.data(forKey: "holdings").flatMap { try? JSONDecoder().decode([Holding].self, from: $0) }
     }
@@ -222,7 +225,9 @@ final class AppModel {
     // 목표 루트 (만원)
     var route: Route = .recover
     var gK = 10000.0
-    var gY = 5
+    var gY = 5 { didSet { if gY != oldValue { gTo = nil } } }   // 앱에서 기간(년)을 고치면 목표일 = 시작일 + 그 햇수
+    var gTo: String? = nil       // 목표일 (yyyy-MM-dd, 사이트 goal.date). nil = 시작일 + gY년
+    var gFrom: String? = nil     // 목표 시작일 (사이트 goal.start_date). 내 길이 여기서 출발한다
     var gA = 2000.0
     var gM = 100.0
     var gMix = "index"
@@ -577,7 +582,7 @@ final class AppModel {
         let mine: [Holding]? = holdings.isEmpty || isSample ? nil : holdings
         resetDemo(.fresh)
         if let mine { holdings = mine }
-        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 60, avg: 180), Holding(symbol: "QQQ", qty: 10, avg: 400)] }
+        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 4, avg: 180), Holding(symbol: "QQQ", qty: 1, avg: 400)] }
         if r == .plus { taxGain = 0 }
         if r != .recover { switchRoute(r); gDone = [] }
         day = 0                  // 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
