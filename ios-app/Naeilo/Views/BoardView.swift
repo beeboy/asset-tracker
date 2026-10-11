@@ -191,6 +191,7 @@ struct BoardView: View {
             }
             ShareCardButton(filled: n, mine: nFloor, market: n - nFloor, kicker: "본전까지 가는 중",
                             amountLine: "본전 \(AppModel.man(m.cost)) 중 \(AppModel.man(m.total))까지 왔어요.")
+            BrickGameButton()
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
