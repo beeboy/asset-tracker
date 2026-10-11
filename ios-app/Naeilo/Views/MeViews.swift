@@ -251,7 +251,7 @@ struct MeEditView: View {
     @State private var note: String? = nil
     @State private var askDelete = false
     @State private var samples = false           // 샘플(소설 속 인물) 목록을 보는 중
-    @State private var sample: MeSample? = MeSample.all.first   // 오른쪽 위에 크게 보이는 샘플
+    @State private var sample: MeSample? = nil   // 오른쪽 위에 크게 보이는 샘플 (처음엔 빈 칸)
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -420,11 +420,20 @@ struct MeEditView: View {
                         .buttonStyle(.plain)
                         .disabled(applied)
                         .padding(.top, 10)
+                    } else {
+                        empty(s).padding(.top, 14)
+                        Text("왼쪽 샘플에 『중첩된 현실』 시리즈의 주요 인물들이 있어요. 골라서 적용해 보세요.")
+                            .appFont(11).foregroundStyle(Theme.sub).multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
                     }
-                    big(draft, s).padding(.top, sample == nil ? 14 : 28)
-                    Text(m.meUnlocked ? "홈과 위젯에 둘 수 있어요" : "조건을 채우면 홈과 위젯에 나와요")
+                    // 처음(저장한 것도, 고른 부품도 없을 때)에는 빈 칸
+                    Group {
+                        if draft.parts.isEmpty && m.me == nil { empty(s) } else { big(draft, s) }
+                    }
+                    .padding(.top, 28)
+                    Text("나만의 캐릭터를 만들어 홈과 위젯에서 함께하세요")
                         .appFont(11).foregroundStyle(Theme.sub).multilineTextAlignment(.center)
-                        .padding(.top, 8)
+                        .fixedSize(horizontal: false, vertical: true).padding(.top, 8)
                     nameRow.padding(.top, 10)
                     if let note { Text(note).appFont(13, .bold).foregroundStyle(Theme.teal).padding(.top, 8) }
                     if m.me != nil {
@@ -444,6 +453,13 @@ struct MeEditView: View {
         return max(3, min(6, byW, byH))
     }
     private func boxW(_ s: Int) -> CGFloat { CGFloat(MeArt.W * s) + 20 }
+
+    /// 그림 자리 빈 칸 (같은 크기, 점선)
+    private func empty(_ s: Int) -> some View {
+        RoundedRectangle(cornerRadius: 14)
+            .stroke(Theme.dash, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+            .frame(width: boxW(s), height: CGFloat(MeArt.H * s) + 20)
+    }
 
     /// 고른 샘플·내 캐릭터 같은 크기 (24×34 의 s배)
     private func big(_ c: MeChar, _ s: Int) -> some View {
