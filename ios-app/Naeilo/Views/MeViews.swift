@@ -37,11 +37,11 @@ struct MeAvatar: View {
     var width: CGFloat = 24
     var height: CGFloat = 34
     var body: some View {
-        let color = MeColor.hair[MeColor.idx(me)]
+        let color = MeColor.hair[MeColor.idx(me)], skin = MeColor.skin[MeColor.skinIdx(me)]
         ZStack {
             ForEach(MeGroup.layers, id: \.self) { layer in
                 let n = MeArt.option(me, layer)
-                if n > 0 { MeLayer(layer: layer, n: n, color: color) }
+                if n > 0 { MeLayer(layer: layer, n: n, color: color, skin: skin) }
             }
         }
         .frame(width: width, height: height)
@@ -53,14 +53,15 @@ private struct MeLayer: View {
     let layer: String
     let n: Int
     let color: UInt32
+    let skin: UInt32
     var body: some View {
         let name = MeArt.asset(layer, n)
         if MeArt.has(name) {
-            // 머리는 회색 단계 그림에 색깔을 곱한다
+            // 머리는 회색 단계 그림에 머리 색을, 얼굴은 피부색을 곱한다
             Image(name).interpolation(.none).resizable()
-                .colorMultiply(layer == "hair" || layer == "hairb" ? Color(hex: color) : .white)
+                .colorMultiply(layer == "hair" || layer == "hairb" ? Color(hex: color) : layer == "face" ? Color(hex: skin) : .white)
         } else {
-            Canvas { ctx, size in MePlaceholder.draw(layer, n, color, &ctx, size.width / 24) }
+            Canvas { ctx, size in MePlaceholder.draw(layer, n, color, skin, &ctx, size.width / 24) }
         }
     }
 }
@@ -103,11 +104,11 @@ enum MeArt {
 
 /// 그림이 오기 전 자리표시 도트 (24×34 칸, u = 한 칸 크기)
 enum MePlaceholder {
-    private static let skin: UInt32 = 0xF2C9A5, skin2: UInt32 = 0xD9A27A, ink: UInt32 = 0x2A2230, white: UInt32 = 0xF8F9FA
+    private static let ink: UInt32 = 0x2A2230, white: UInt32 = 0xF8F9FA
     private static let tops: [UInt32] = [0x4C6EF5, 0xE8590C, 0x2F9E44, 0xF1F3F5, 0x343A40, 0xAE3EC9, 0xF59F00, 0x1C3F7A]
     private static let bottoms: [UInt32] = [0x2C3E6B, 0x4D7CC4, 0x2B2B33, 0xB59B6A, 0xC0392B, 0x868E96]
 
-    static func draw(_ layer: String, _ n: Int, _ hair: UInt32, _ ctx: inout GraphicsContext, _ u: CGFloat) {
+    static func draw(_ layer: String, _ n: Int, _ hair: UInt32, _ skin: UInt32, _ ctx: inout GraphicsContext, _ u: CGFloat) {
         func p(_ x: Int, _ y: Int, _ w: Int, _ h: Int, _ c: UInt32) {
             ctx.fill(Path(CGRect(x: CGFloat(x) * u, y: CGFloat(y) * u, width: CGFloat(w) * u, height: CGFloat(h) * u)), with: .color(Color(hex: c)))
         }
@@ -121,7 +122,7 @@ enum MePlaceholder {
             default: break
             }
         case "face":
-            let s = n == 4 ? skin2 : skin
+            let s = skin
             switch n {
             case 2: p(6, 5, 12, 11, s)
             case 3: p(8, 4, 8, 1, s); p(7, 5, 10, 11, s); p(8, 16, 8, 1, s)
@@ -266,10 +267,14 @@ struct MeEditView: View {
         ScrollView {
             VStack(spacing: 6) {
                 ForEach(group.options, id: \.self) { o in
-                    let on = draft.part(group) == o
+                    let on = draft.picked(group, o)
                     Button { draft = draft.with(group, o) } label: {
                         VStack(spacing: 2) {
-                            if group == .color {
+                            if group == .color && o > 100 {
+                                Circle().fill(Color(hex: MeColor.skin[o - 101])).frame(width: 34, height: 34)
+                                    .overlay(Circle().stroke(Theme.border))
+                                Text(MeColor.skinNames[o - 101]).appFont(11).lineLimit(1).minimumScaleFactor(0.7)
+                            } else if group == .color {
                                 Circle().fill(Color(hex: MeColor.hair[o - 1])).frame(width: 34, height: 34)
                                     .overlay(Circle().stroke(Theme.border))
                                 Text(MeColor.names[o - 1]).appFont(11)
@@ -287,7 +292,7 @@ struct MeEditView: View {
                         .overlay(RoundedRectangle(cornerRadius: 10).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(group == .color ? MeColor.names[o - 1] : o == 0 ? "없음" : "\(group.label) \(o)")
+                    .accessibilityLabel(group == .color ? (o > 100 ? MeColor.skinNames[o - 101] : MeColor.names[o - 1]) : o == 0 ? "없음" : "\(group.label) \(o)")
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }

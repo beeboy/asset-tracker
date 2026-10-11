@@ -16,7 +16,14 @@ struct MeChar: Codable, Equatable, Hashable {
     static var current: MeChar? = nil
 
     func part(_ g: MeGroup) -> Int { parts[g.rawValue] ?? g.first }
-    func with(_ g: MeGroup, _ v: Int) -> MeChar { var c = self; c.parts[g.rawValue] = v; return c }
+    func with(_ g: MeGroup, _ v: Int) -> MeChar {
+        var c = self
+        if g == .color && v > 100 { c.parts["skin"] = v - 100 } else { c.parts[g.rawValue] = v }
+        return c
+    }
+    /// 고른 상태인지 (색깔 그룹의 피부색 포함)
+    func picked(_ g: MeGroup, _ v: Int) -> Bool { g == .color && v > 100 ? (parts["skin"] ?? 1) == v - 100 : part(g) == v }
+    var skin: Int { parts["skin"] ?? 1 }
     var shownName: String { name.isEmpty ? "나" : name }
 }
 
@@ -33,7 +40,8 @@ enum MeGroup: String, CaseIterable, Identifiable {
     /// 고를 수 있는 수. 안경·마스크·소품은 0 = 없음
     var count: Int {
         switch self {
-        case .hair, .color, .top: 8
+        case .color: MeColor.hair.count
+        case .hair, .top: 8
         case .face: 4
         case .eyes, .mouth, .bottom, .prop: 6
         case .glasses: 4
@@ -42,17 +50,22 @@ enum MeGroup: String, CaseIterable, Identifiable {
     }
     var optional: Bool { self == .glasses || self == .mask || self == .prop }
     var first: Int { optional ? 0 : 1 }
-    var options: [Int] { Array(first...count) }
+    /// 색깔 그룹은 머리 색(1부터) 뒤에 피부색(101부터)을 같이 고른다 (parts["skin"])
+    var options: [Int] { self == .color ? Array(1...count) + (1...MeColor.skin.count).map { 100 + $0 } : Array(first...count) }
     /// 쌓는 순서 (아래 → 위). hairb 는 뒷머리 (헤어스타일 번호를 같이 쓴다), '색깔'은 그림 없이 머리에 곱하는 색
     static let layers = ["hairb", "bottom", "top", "face", "eyes", "mouth", "glasses", "mask", "hair", "prop"]
 }
 
 /// 머리 색 (색깔 그룹) + 위젯 바탕 (인물 색 그라데이션: 강조, 진한 쪽, 밝은 쪽)
 enum MeColor {
-    static let hair: [UInt32] = [0x2B2B33, 0x6B4430, 0xA0623A, 0xE2C36A, 0xC9CED8, 0x4F7BD9, 0xE88AB0, 0x4FBFA5]
-    static let names = ["검정", "갈색", "밤색", "금발", "은색", "파랑", "분홍", "민트"]
-    static let accent: [UInt32] = [0x9AA8D8, 0xD9A27A, 0xE8A070, 0xFFD36B, 0xDDE3F0, 0x7FB2FF, 0xFF9CC4, 0x6FE0C4]
-    static let g1: [UInt32] = [0x3A3F5C, 0x5C3E30, 0x7A4A2E, 0x6A5A2A, 0x4A5068, 0x2C3E8A, 0x7A3A58, 0x1F5C52]
+    // 수는 이미지 디자인 스레드 확정안에 맞춰 바꾼다 (머리 색·피부색 배열 길이가 곧 선택지 수)
+    static let hair: [UInt32] = [0x2B2B33, 0x6B4430, 0xA0623A, 0xE2C36A, 0xC9CED8, 0x4F7BD9, 0xE88AB0, 0x4FBFA5, 0xB03A3A]
+    static let names = ["검정", "갈색", "밤색", "금발", "은색", "파랑", "분홍", "민트", "빨강"]
+    static let accent: [UInt32] = [0x9AA8D8, 0xD9A27A, 0xE8A070, 0xFFD36B, 0xDDE3F0, 0x7FB2FF, 0xFF9CC4, 0x6FE0C4, 0xFF8A80]
+    static let g1: [UInt32] = [0x3A3F5C, 0x5C3E30, 0x7A4A2E, 0x6A5A2A, 0x4A5068, 0x2C3E8A, 0x7A3A58, 0x1F5C52, 0x6A2A2A]
+    static let skin: [UInt32] = [0xF2C9A5, 0xD9A27A, 0x9C6B4A]
+    static let skinNames = ["밝은 피부", "중간 피부", "어두운 피부"]
+    static func skinIdx(_ c: MeChar) -> Int { max(0, min(skin.count - 1, c.skin - 1)) }
     static let g0: UInt32 = 0x161A2C
     static func idx(_ c: MeChar) -> Int { max(0, min(hair.count - 1, c.part(.color) - 1)) }
 }
