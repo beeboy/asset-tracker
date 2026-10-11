@@ -185,12 +185,13 @@
       try { st = JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch (e) { /* 무시 */ }
       S.firstVisit = !st;
       S.state = normalize(st || (await get("state.default.json").catch(() => ({}))));
-      // 첫 방문: 빈 화면 대신 TSLA 1,000주 샘플. 내 종목을 처음 넣거나 고치면 샘플은 사라진다
-      if (S.firstVisit && !S.state.holdings.length) { S.state.holdings = [{ ticker: "TSLA", shares: 1000, price: null, avg_cost: null, note: "", sample: true }]; S.state.sample = true; }
+      // 첫 방문: 빈 화면 대신 앱과 같은 샘플 (가상 종목 DRNK 60주·QQQ 10주). 내 종목을 처음 넣거나 고치면 샘플은 사라진다
+      if (S.firstVisit && !S.state.holdings.length) { S.state.holdings = [{ ticker: "DRNK", shares: 60, price: null, avg_cost: null, note: "가상 종목", sample: true }, { ticker: "QQQ", shares: 10, price: null, avg_cost: null, note: "", sample: true }]; S.state.sample = true;
+        S.state.sample_goal = S.state.goal.amount; S.state.goal.amount = 1e8; } // 샘플 평가액(약 3천만원)에 맞춰 목표도 1억으로. 샘플이 끝나면 원래 목표로
     }
     if (S.state.sample) await sampleSeed();
   }
-  // 샘플(TSLA 1,000주)은 누구에게나 같은 값이라, 정해 둔 날짜에 미리 계산한 결과(data/sample_calc.json)를 저장 칸에 넣어 두고
+  // 샘플(DRNK 60주·QQQ 10주)은 누구에게나 같은 값이라, 정해 둔 날짜에 미리 계산한 결과(data/sample_calc.json)를 저장 칸에 넣어 두고
   // 그대로 쓴다 (전망·미래 그래프·비중 조정안을 다시 계산하지 않음). 내 종목을 넣으면 지금 값으로 새로 계산한다.
   // 새로 만들 때: node tools/sample_snapshot.mjs (주소에 ?fresh 를 붙이면 미리 계산한 값을 쓰지 않는다)
   async function sampleSeed() {
@@ -604,12 +605,14 @@
     if (!keep) S.state.holdings = S.state.holdings.filter((h) => !h.sample);
     if (!S.state.holdings.some((h) => h.sample)) delete S.state.weekly; // 샘플 종목이 없어지면 샘플 수량으로 적은 주간 예측도 지운다 (수량만 고친 경우는 남겨 다시 맞춘다)
     S.state.holdings.forEach((h) => delete h.sample); delete S.state.sample;
+    if (S.state.sample_goal) { if (S.state.goal.amount === 1e8) S.state.goal.amount = S.state.sample_goal; delete S.state.sample_goal; } // 샘플 동안 목표를 고치지 않았으면 원래 목표로
   }
   // 종목 로고: 티커로 받는 무료 로고 이미지 → 다른 곳 → 실패하면 첫 글자
   const LOGO_DOMAIN = { SPCX: "spacex.com" };
-  const LOGO_SRC = (t) => [...(LOGO_DOMAIN[t] ? [`https://www.google.com/s2/favicons?domain=${LOGO_DOMAIN[t]}&sz=64`] : []), `https://financialmodelingprep.com/image-stock/${encodeURIComponent(t)}.png`, `https://assets.parqet.com/logos/symbol/${encodeURIComponent(t)}?format=png`];
+  // 가상 종목 DRNK 는 바깥 로고를 찾지 않는다 (같은 티커의 다른 회사 로고가 나올 수 있어 첫 글자로)
+  const LOGO_SRC = (t) => t === "DRNK" ? [] : [...(LOGO_DOMAIN[t] ? [`https://www.google.com/s2/favicons?domain=${LOGO_DOMAIN[t]}&sz=64`] : []), `https://financialmodelingprep.com/image-stock/${encodeURIComponent(t)}.png`, `https://assets.parqet.com/logos/symbol/${encodeURIComponent(t)}?format=png`];
   window.logoErr = (img) => { const n = LOGO_SRC(img.dataset.t)[+img.dataset.k + 1]; if (n) { img.dataset.k = +img.dataset.k + 1; img.src = n; } else img.remove(); };
-  const logo = (t, name) => `<span class="tlogo" data-c="${esc(t.replace(/[^A-Z0-9]/gi, "").slice(0, 1))}" title="${esc(name || t)}"><img src="${LOGO_SRC(t)[0]}" data-t="${esc(t)}" data-k="0" alt="" loading="lazy" onerror="logoErr(this)"></span>`;
+  const logo = (t, name) => `<span class="tlogo" data-c="${esc(t.replace(/[^A-Z0-9]/gi, "").slice(0, 1))}" title="${esc(name || t)}">${LOGO_SRC(t).length ? `<img src="${LOGO_SRC(t)[0]}" data-t="${esc(t)}" data-k="0" alt="" loading="lazy" onerror="logoErr(this)">` : ""}</span>`;
   // 정렬: 표에서 보이는 순서만 바꾼다 (data-i 는 원래 순서 번호, 그래프 색은 넣은 순 그대로)
   const HOLD_SORT = {
     value: (a, b) => (b.valueKrw || 0) - (a.valueKrw || 0),
@@ -881,7 +884,7 @@
   }
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
-    if (!(total > 0) || !H.dates.length) { card.style.display = "none"; return; } // 샘플(TSLA 1,000주)에도 보여 준다
+    if (!(total > 0) || !H.dates.length) { card.style.display = "none"; return; } // 샘플(DRNK 60주·QQQ 10주)에도 보여 준다
     const P = goalPath(H, cash), { A, start, i0, V0 } = P;
     const k = H.dates.length - 1, now = total + cash, td = today();
     const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
@@ -921,11 +924,15 @@
         dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
   }
+  // 웹 첫 화면에만 세리 한 명 (앱의 인물 다섯 명 중 원칙형). 내 수량을 넣으면 이 카드째 사라진다
+  const SERI_WEB = ["숫자부터 넣어 볼까요. 판단은 그다음이에요.", "수량만 알려 주세요. 나머지는 제가 계산할게요.", "처음 오셨군요. 할 일은 하나예요. 수량 넣기.", "지금 보이는 건 샘플이에요. 내 숫자로 바꿔 보세요.", "어서 오세요. 숫자 하나면 시작돼요.", "추측은 나중에요. 먼저 숫자요.", "보유 수량만요. 그 이상은 묻지 않을게요.", "기록이 있어야 볼 수 있어요. 수량부터요.", "샘플은 샘플일 뿐이에요. 내 것을 넣어 보세요.", "드링커는 가상 종목이에요. 내 종목으로 바꿔 보세요.", "한 줄이면 돼요. 종목과 수량.", "오래 안 걸려요. 수량만 넣으면 끝나요.", "관찰은 숫자에서 시작해요.", "처음이시군요. 수량을 넣으면 오늘 값으로 다시 볼게요.", "판단은 제가 하지 않아요. 숫자를 보여 줄 뿐이에요.", "기준이 있어야 흔들리지 않아요. 먼저 지금을 적어요.", "숫자를 넣으면 목표까지 얼마 남았는지 보여요.", "잠깐요. 수량부터 넣고 이야기해요.", "사실만 볼게요. 내 수량을 알려 주세요.", "한 번 넣어 두면 다음부터는 보기만 하면 돼요.", "어서 오세요. 내일을 보려면 오늘 숫자가 필요해요."];
+  const seriCard = () => `<div class="seri"><img src="seri.png" alt="세리" width="60" height="70"><div><div class="seri-say"><b>세리</b> ${esc(SERI_WEB[(S.seriPick ??= Math.floor(Math.random() * SERI_WEB.length))])}</div><div class="seri-body">`;
+
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date), cash = cashKrw(), tot = total + cash;
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
-    $("#dashEmpty").innerHTML = S.state.sample ? `<b>샘플 화면 (TSLA 1,000주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="stocks">내 수량 넣기</button>`
-      : `<b>보유 수량을 넣어 주세요.</b> <span class="small">종목 탭에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="stocks">수량 입력하러 가기</button>`;
+    $("#dashEmpty").innerHTML = seriCard() + (S.state.sample ? `<b>샘플 화면 (가상 종목 DRNK 60주·QQQ 10주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="stocks">내 수량 넣기</button>`
+      : `<b>보유 수량을 넣어 주세요.</b> <span class="small">종목 탭에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="stocks">수량 입력하러 가기</button>`) + `<div class="seri-app muted small">naeilo 앱에서는 세리 말고도 네 명이 더 함께해요.</div></div></div></div>`;
     const need = g.amount - tot, req = yrs > 0 && tot > 0 ? (g.amount / tot) ** (1 / yrs) - 1 : null;
     const H = history(), M = patModel(H);
     // 미래 기준을 직접 고른 적이 없고, 지난 12달 채점에서 패턴이 추세만보다 나으면 패턴을 기본으로

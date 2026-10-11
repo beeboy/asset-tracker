@@ -15,6 +15,7 @@
   "SPCX": "SPCX.json",
   "SPY": "SPY.json",
   "TSLA": "TSLA.json",
-  "^TNX": "_TNX.json"
+  "^TNX": "_TNX.json",
+  "DRNK": "DRNK.json"
  }
 }
