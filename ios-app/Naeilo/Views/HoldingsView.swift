@@ -10,7 +10,7 @@ struct HoldingsView: View {
         let rows = m.rows
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                AppHeader().padding(.horizontal, -16)
+                AppHeader(tab: "종목").padding(.horizontal, -16)
                 Text("\(rows.count)종목 · 평가액 \(AppModel.man(m.total)) · \(AppModel.sgn(m.ret))")
                     .appFont(14).foregroundStyle(Theme.sub)
                 totalChart(rows)
@@ -194,7 +194,7 @@ struct HoldingDetailView: View {
     }
 
     private func profile(_ p: Profile) -> some View {
-        Card {
+        Card(dark: true) {
             HStack {
                 Text(p.etf ? "이 ETF는" : "이 회사는").appFont(15, .bold)
                 Spacer()

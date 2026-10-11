@@ -91,7 +91,7 @@ struct GoalBoardView: View {
         let start = m.goalStart
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AppHeader().padding(.horizontal, -16)
+                AppHeader(tab: "미션").padding(.horizontal, -16)
                 VStack(alignment: .leading, spacing: 4) {
                     ScreenTitle(kicker: "목표 달성 루트" + (m.route == .plus ? " · 플러스" : " · 시작 전"),
                                 title: m.gDone.contains("goal") ? "\(m.gY)년 뒤 \(AppModel.wonK(m.gK))까지" : "목표까지 가는 길")

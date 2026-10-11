@@ -36,7 +36,7 @@ struct AnalysisView: View {
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                AppHeader().padding(.horizontal, -16)
+                AppHeader(tab: "분석").padding(.horizontal, -16)
                 CalmCard()
                 ForEach(cards, id: \.0) { t, sub, tag, color, route in
                     NavigationLink(value: route) {
@@ -107,7 +107,7 @@ struct ForecastView: View {
                         Text("만약에 매달 더 넣는다면 · \(m.monthly > 0 ? AppModel.man(m.monthly * 1e4) : "없음")").appFont(14, .bold)
                         Slider(value: $m.monthly, in: 0...300, step: 10).tint(Theme.teal)
                     }
-                    Card {
+                    Card(dark: true) {
                         Text("그해 말에 \(m.keyName)을 넘을 확률").appFont(14, .bold)
                         ForEach(1...3, id: \.self) { y in
                             let p = f.prob(Double(y))
@@ -118,6 +118,7 @@ struct ForecastView: View {
                             }
                         }
                     }
+                    Text("* 종목 추천 아님").appFont(12).foregroundStyle(Theme.muted)
                 }
                 .padding(16)
         }
@@ -128,15 +129,15 @@ struct ForecastView: View {
     /// 그래프 바로 밑 렌즈 설명 (렌즈마다 연 기대)
     private func lensNote(_ f: AppModel.Forecast) -> String {
         switch m.lens {
-        case .base: return "현재 정세: 과거 수익률을 장기 평균 쪽으로 당긴 값. 연 기대 \(AppModel.sgn0(f.muBase))."
-        case .mine: return "내 관점: 현재 정세와 과거 추세에서 고른 값. 연 기대 \(AppModel.sgn0(f.mu + (m.shock ? 0.02 : 0)))."
-        case .smooth: return "과거 추세: 지난 3년 성장 속도가 이어진 값. 연 기대 \(AppModel.sgn0(f.muTrend))."
+        case .base: return "과거 수익률을 장기 평균 쪽으로 당긴 값. 연 기대 \(AppModel.sgn0(f.muBase))."
+        case .mine: return "현재 정세와 과거 추세에서 고른 값. 연 기대 \(AppModel.sgn0(f.mu + (m.shock ? 0.02 : 0)))."
+        case .smooth: return "지난 3년 성장 속도가 이어진 값. 연 기대 \(AppModel.sgn0(f.muTrend))."
         }
     }
 
     private func pinned(_ f: AppModel.Forecast) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            DetailHead(title: "3년 전망", sub: "시장이 줄 수 있는 미래의 범위 (*종목 추천 아님)")
+            DetailHead(title: "3년 전망", sub: "시장이 줄 수 있는 미래의 범위")
             HStack(spacing: 8) {
                 kpi("\(m.keyName) 확률 (3년)", AppModel.pct(f.prob(3)), Theme.teal, 20)
                 kpi("3년 뒤 중앙값", AppModel.man(f.q50[36]), Theme.ink, 17)
