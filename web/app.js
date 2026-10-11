@@ -992,7 +992,10 @@
     let i0 = H.dates.findIndex((d) => d >= start); if (i0 < 0) i0 = H.dates.length - 1;
     const V0 = A[i0] || H.total[i0] + cash, span = yearsBetween(start, g.date);
     if (!(V0 > 0) || !(span > 0)) return { A, start, i0, V0, at: () => null };
-    return { A, start, i0, V0, at: (d) => V0 * (g.amount / V0) ** (yearsBetween(start, d) / span) }; // 시작일 전은 같은 속도로 거꾸로 늘인 길
+    // 매달 넣는 돈은 그대로 쌓고, 나머지(목표 − 넣을 돈)를 같은 속도로 불린다 (앱 내 길과 같은 식)
+    const M = (Number(g.monthly_contribution) || 0) * 12, kAdj = g.amount - M * span;
+    const at = (d) => { const t = yearsBetween(start, d); return M * t + (kAdj > 0 ? V0 * (kAdj / V0) ** (t / span) : V0 + (g.amount - V0) * t / span); };
+    return { A, start, i0, V0, at }; // 시작일 전은 같은 속도로 거꾸로 늘인 길
   }
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
