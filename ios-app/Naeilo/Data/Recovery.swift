@@ -113,6 +113,32 @@ extension AppModel {
     // 미션 3 결과: 옮길 금액 (나머지는 그대로, 줄인 몰린 종목 금액을 묶음에 나눔)
     var freedAmount: Double { max(0, (focusRow?.value ?? 0) - selectedPlan.wt * total) }
 
+    // 적립 지렛대: 매달 같은 돈을 지금 구성에 더 넣을 때. 본전 = 들어간 돈 + 그동안 넣은 돈 (넣은 만큼 같이 오른다)
+    struct Deposit { let prob: Double; let eta: Double }   // prob = months 뒤 본전 이상, eta = 보통의 경우 본전에 처음 닿는 개월 (10년 넘으면 무한대)
+    func deposit(_ p: Plan, monthly mo: Int, months T: Int) -> Deposit {
+        let ck = "\(p.id)|\(p.V)|\(p.sigma)|\(cost)|\(mo)|\(T)"
+        if let c = depCache[ck] { return c }
+        var seed = 24680
+        func rnd() -> Double { seed = (seed &* 1103515245 &+ 12345) % 2147483648; return (Double(seed) + 0.5) / 2147483648 }
+        let NP = 1000, H = 120, D = Double(mo) * 1e4, mm = p.g / 12, ms = p.sigma / sqrt(12)
+        var ok = 0, hits: [Double] = []
+        for _ in 0..<NP {
+            var v = p.V, c = cost, hit = Double.infinity
+            if v >= c { hit = 0 }
+            for k in 1...H {
+                let z = sqrt(-2 * log(rnd())) * cos(6.283185307 * rnd())
+                v = v * exp(mm + ms * z) + D; c += D
+                if hit == .infinity && v >= c { hit = Double(k) }
+                if k == T && v >= c { ok += 1 }
+            }
+            hits.append(hit)
+        }
+        let r = Deposit(prob: Double(ok) / Double(NP), eta: hits.sorted()[NP / 2])
+        if depCache.count > 32 { depCache.removeAll() }
+        depCache[ck] = r
+        return r
+    }
+
     // 절세 (대한민국 거주자: 해외주식 이익-손실 합계에서 250만원 공제 뒤 22%)
     var taxLossMan: Double {
         guard let d = focusRow else { return 0 }
