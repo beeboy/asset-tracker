@@ -79,17 +79,6 @@ enum GamePlayer {
         default: "원칙 · 판이 길고 공 속도가 늘 같아요"
         }
     }
-    /// (시작, 깼을 때, 끝났을 때)
-    static func lines(_ id: String) -> (String, String, String) {
-        switch id {
-        case "sio": ("서두르지 않아도 돼. 잡았다가 보내자.", "기다린 만큼 깼네.", "괜찮아. 한 박자 쉬고 다시.")
-        case "seonbae": ("한 번은 되돌릴 수 있어. 어디로 보낼 건데?", "그게 정말 네 실력이야? 맞네.", "왜 놓쳤는지 알겠어?")
-        case "ir": ("빨리 가자. 점수는 더 줄게.", "벌써 끝! 다음 판!", "너무 빨랐나. 한 번 더!")
-        case "sua": ("깰수록 판이 자라요. 천천히요.", "조금씩 자라서 여기까지 왔어요.", "다음엔 판이 더 일찍 자랄 거예요.")
-        case "me": ("내 판이야. 가 보자.", "해냈다.", "다시 해 보자.")
-        default: ("관찰을 시작합니다. 공은 위에서 아래로.", "기준 칸 수에 닿았어요. 기록했어요.", "여기까지예요. 다시 하면 돼요.")
-        }
-    }
     /// 쉼터 물건이 아이템일 때 하는 일
     static func item(_ id: String) -> String {
         switch id {
@@ -105,6 +94,81 @@ enum GamePlayer {
         case "rice_seeds": "공이 셋으로 갈라져요"
         default: ""
         }
+    }
+}
+
+/// 게임 대사: 상황 × 인물 줄 모음 + 쉼터 물건 대사(lines_ko.json 의 item.<물건>.<인물>)를 섞고,
+/// 앞말·뒷말을 따로 골라 이어 붙여 같은 문장이 자주 반복되지 않게 한다. 한 바퀴 돌기 전에는 같은 줄을 다시 쓰지 않는다
+enum GameLines {
+    enum Event: String { case start, item, lose, clear, over, half, rewind }
+
+    private static let pool: [String: [String: [String]]] = [
+        "seri": [
+            "start": ["관찰을 시작합니다.", "{stage}. 기록을 켭니다.", "준비됐어요. 공은 아래로 가요.", "한 박자 두고, 시작해요.", "벽돌 {left}칸. 확인했어요."],
+            "lose": ["공 하나를 놓쳤어요. 남은 공 {n}개.", "기록했어요. 다음 공이 있어요.", "거기까지만요. 다시 받으면 돼요.", "위치가 조금 빨랐어요."],
+            "clear": ["기준 칸에 닿았어요.", "{stage}, 통과로 기록할게요.", "{score}점. 사실 그대로예요.", "다음 방이 열렸어요."],
+            "over": ["여기까지예요. 다시 하면 돼요.", "공이 다 떨어졌어요. 기록은 남았어요.", "오늘은 {broken}칸까지였어요."],
+            "half": ["절반을 넘었어요.", "기준의 반쯤 왔어요."],
+            "rewind": ["한 번은 되돌려요."],
+        ],
+        "sio": [
+            "start": ["서두르지 않아도 돼.", "잡았다가, 원할 때 보내자.", "{stage}이야. 천천히 가 보자.", "기다리는 것도 실력이야.", "준비되면 눌러."],
+            "lose": ["괜찮아. 한 박자 쉬고 다시.", "놓쳐도 돼. 공은 {n}개 더 있어.", "조금 기다렸다 받아 봐.", "급했지? 숨 한 번."],
+            "clear": ["기다린 만큼 깼네.", "{stage}, 지나왔다.", "{score}점. 좋은 기다림이었어.", "다음 방으로 가자."],
+            "over": ["오늘은 여기까지. 내일 또 하자.", "괜찮아, 다시 기다리면 돼.", "{broken}칸이나 깼어."],
+            "half": ["반 왔어. 그대로.", "절반이야. 서두르지 마."],
+            "rewind": ["한 번 더 기다려 줄게."],
+        ],
+        "seonbae": [
+            "start": ["어디로 보낼 건데?", "{stage}. 이 방, 어떻게 깰 생각이야?", "한 번은 되돌릴 수 있어. 알지?", "그게 정말 네 계획이야?", "시작해 봐. 질문은 나중에."],
+            "lose": ["왜 놓쳤는지 알겠어?", "방금 그건 판 탓이야, 네 탓이야?", "남은 공 {n}개. 다음엔 어디서 받을래?", "너무 끝으로 갔지?"],
+            "clear": ["그게 정말 네 실력이야? 맞네.", "{stage} 통과. 다음 질문으로 가자.", "{score}점이면 됐어. 다음은?", "어떻게 깼는지 말할 수 있어?"],
+            "over": ["다시 하면 뭘 바꿀 거야?", "끝났네. 그래서 배운 건?", "{broken}칸. 나쁘지 않은데, 다음은?"],
+            "half": ["반 왔어. 여기서 뭘 바꿀래?", "절반. 계속 이대로?"],
+            "rewind": ["한 번 되돌려 줄게. 이번엔 어디로?"],
+        ],
+        "ir": [
+            "start": ["빨리 가자!", "{stage}! 바로 시작!", "점수는 더 줄게. 달려!", "벽돌 {left}칸, 다 깨 버리자!", "준비됐지? 간다!"],
+            "lose": ["앗, 너무 빨랐나!", "괜찮아, 공 {n}개 남았어!", "다시! 바로 다시!", "아깝다! 한 번 더!"],
+            "clear": ["벌써 끝! 다음 판!", "{stage} 통과! 빠르다!", "{score}점! 더 갈 수 있어!", "다음 방 열렸어, 가자!"],
+            "over": ["너무 달렸나. 한 번 더!", "끝! 근데 다시 하고 싶다!", "{broken}칸! 다음엔 더!"],
+            "half": ["반 왔어! 속도 올려!", "절반! 계속 계속!"],
+            "rewind": ["한 번 더 달려!"],
+        ],
+        "sua": [
+            "start": ["깰수록 판이 자라요. 천천히요.", "{stage}이에요. 같이 가요.", "조금씩 하면 돼요.", "오늘은 어디까지 자랄까요?", "준비되면 눌러 주세요."],
+            "lose": ["괜찮아요. 다시 자라면 돼요.", "공이 {n}개 남았어요.", "조금 아쉬웠어요. 다음엔 더 잘될 거예요.", "천천히, 판을 가운데로요."],
+            "clear": ["조금씩 자라서 여기까지 왔어요.", "{stage}, 지나왔어요.", "{score}점이에요. 많이 컸어요.", "다음 방이 열렸어요."],
+            "over": ["다음엔 판이 더 일찍 자랄 거예요.", "오늘은 {broken}칸 자랐어요.", "쉬었다가 다시 해요."],
+            "half": ["절반 왔어요. 판도 자랐어요.", "반쯤 왔어요. 잘하고 있어요."],
+            "rewind": ["한 번 더 해 봐요."],
+        ],
+        "me": [
+            "start": ["내 판이야. 가 보자.", "{stage}. 시작!", "벽돌 {left}칸, 해 보자.", "준비됐다."],
+            "lose": ["놓쳤다. 공 {n}개 남았어.", "다시 받자.", "아깝다."],
+            "clear": ["해냈다.", "{stage} 통과!", "{score}점!"],
+            "over": ["다시 해 보자.", "{broken}칸까지 왔어."],
+            "half": ["반 왔다."],
+            "rewind": ["한 번 더."],
+        ],
+    ]
+    private static var bag: [String: [Int]] = [:]
+
+    /// who 의 그 상황 대사 한 줄. vars 로 {stage} {n} {score} {broken} {left} 를 채운다
+    static func pick(_ e: Event, _ who: String, item: String? = nil, _ vars: [String: String] = [:]) -> String {
+        if e == .item, let id = item {
+            let name = Shelter.items.first { $0.id == id }?.name ?? id
+            // 쉼터 대사(인물별 100줄)를 쓰고, 없으면 물건 이름과 효과
+            if let l = Lines.pick("item.\(id).\(who == "me" ? "seri" : who)", salt: Int.random(in: 1...9)) { return l }
+            return "\(name)! \(GamePlayer.item(id))."
+        }
+        let list = pool[who]?[e.rawValue] ?? pool["seri"]?[e.rawValue] ?? [""]
+        let key = "\(who).\(e.rawValue)"
+        if bag[key]?.isEmpty ?? true { bag[key] = Array(list.indices).shuffled() }
+        let i = bag[key]!.removeLast()
+        var line = list[i % list.count]
+        for (k, v) in vars { line = line.replacingOccurrences(of: "{\(k)}", with: v) }
+        return line
     }
 }
 
@@ -201,6 +265,9 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var broken = 0
     @ObservationIgnored var total = 0
     @ObservationIgnored var toast: (String, Double)? = nil
+    @ObservationIgnored var speech = ""                  // 위쪽 인물 말풍선
+    @ObservationIgnored var speechUntil = 0.0
+    @ObservationIgnored private var halfSaid = false
     @ObservationIgnored var newBest = false
     @ObservationIgnored var picked: [String: Int] = [:]   // 이번 판에 먹은 물건 → 횟수
 
@@ -230,6 +297,7 @@ final class BrickGame: Identifiable {
         if stage.flicker { exitCell = (0..<1000).last { hp[$0] > 0 } ?? -1 }
         total = hp.filter { $0 > 0 }.count
         balls = [Ball(x: Self.W / 2, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0)]
+        talk(.start)
     }
 
     deinit { motion.stopDeviceMotionUpdates() }
@@ -356,6 +424,7 @@ final class BrickGame: Identifiable {
         balls = alive
         moveDrops(dt)
         if broken >= target { win(); return }
+        if !halfSaid && broken * 2 >= target { halfSaid = true; talk(.half) }
         if balls.isEmpty { loseBall() }
     }
 
@@ -489,6 +558,8 @@ final class BrickGame: Identifiable {
         say("\(name) · \(GamePlayer.item(id))")
         picked[id, default: 0] += 1
         GameSound.shared.play(.item)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        talk(.item, item: id)
         switch id {
         case "barley_tea": effects["slow"] = t + 10
         case "porch_light": effects["light"] = t + 10
@@ -518,11 +589,13 @@ final class BrickGame: Identifiable {
         if skill == "seonbae" && !rewindUsed {
             rewindUsed = true
             balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 1.5)]
-            say("되감기 · 한 번 돌려받았어요"); return
+            say("되감기 · 한 번 돌려받았어요"); talk(.rewind); return
         }
         lives -= 1
         GameSound.shared.play(.lose)
-        if lives <= 0 { finish(.over); return }
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        if lives <= 0 { talk(.over); finish(.over); return }
+        talk(.lose)
         drops = []
         balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 2.5)]
     }
@@ -530,11 +603,21 @@ final class BrickGame: Identifiable {
     private func win() {
         score += lives * 50
         GameSound.shared.play(.clear)
+        talk(.clear)
         finish(.cleared)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func say(_ s: String) { toast = (s, t + 2.2) }
+
+    /// 인물 말풍선 (시작 전에는 계속, 그 밖에는 3초)
+    func talk(_ e: GameLines.Event, item: String? = nil) {
+        let vars = ["stage": stage.bg.volume + " " + stage.bg.name, "n": "\(max(0, lives))", "score": score.formatted(),
+                    "broken": "\(broken)", "left": "\(total)"]
+        speech = GameLines.pick(e, player, item: item, vars)
+        speechUntil = t + 3.2
+    }
+    var speaking: Bool { phase == .ready || phase == .cleared || phase == .over || t < speechUntil }
 
     private func buzz() {
         guard t - lastTap > 0.06 else { return }

@@ -107,9 +107,12 @@ struct BrickGameHub: View {
         .sheet(item: $board) { BrickBoardSheet(stage: $0, level: rec.level) }
         .fullScreenCover(item: $game) { g in
             BrickPlayView(game: g, record: $rec) { next in
+                g.end()
                 game = nil
-                if let next { DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { start(next.0, next.1) } }
+                // 앞 화면이 다 닫힌 뒤에 새 판을 띄운다 (바로 띄우면 새 판이 멈춘 채로 뜰 수 있다)
+                if let next { DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { start(next.0, next.1) } }
             }
+            .id(g.id)
         }
     }
 
@@ -143,7 +146,7 @@ struct BrickGameHub: View {
     }
 
     private func stageRow(_ s: GameStage) -> some View {
-        let open = m.devAll || rec.open(s.n, rec.level)
+        let open = rec.open(s.n, rec.level)
         let done = rec.cleared[rec.level.rawValue, default: []].contains(s.n)
         return HStack(spacing: 8) {
             stageCard(s, open: open, done: done)
@@ -208,7 +211,6 @@ struct BrickPlayView: View {
         .contentShape(Rectangle())
         .onTapGesture { g.launch() }
         .onAppear { g.begin() }
-        .onDisappear { g.end() }
         .task {
             // 누르지 않아도 3초 뒤에는 공이 나간다
             try? await Task.sleep(for: .seconds(3))
@@ -230,6 +232,7 @@ struct BrickPlayView: View {
     private func screen(_ g: BrickGame, _ now: Date) -> some View {
         VStack(spacing: 8) {
             hud(g)
+            host(g, now)
             GeometryReader { geo in
                 let s = min(geo.size.width / BrickGame.W, geo.size.height / BrickGame.H)
                 let fw = BrickGame.W * s, fh = BrickGame.H * s
@@ -255,6 +258,32 @@ struct BrickPlayView: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(Theme.bg)
         .overlay { overlay(g) }
+    }
+
+    /// 위쪽 인물: 가끔 눈을 깜빡이고, 시작·물건·놓침·끝에 말풍선. 말이 없을 때는 방 설명
+    private func host(_ g: BrickGame, _ now: Date) -> some View {
+        let tt = now.timeIntervalSinceReferenceDate
+        // 3.1초와 4.3초 주기를 섞어 일정하지 않게 깜빡인다
+        let blink = tt.truncatingRemainder(dividingBy: 3.1) < 0.14 || tt.truncatingRemainder(dividingBy: 4.3) < 0.12
+        return HStack(alignment: .center, spacing: 10) {
+            Group {
+                if g.player == "me" { CharPixel(id: "me", width: 34, height: 48) }
+                else { Pixel(name: "spr_\(g.player)" + (blink ? "_blink" : ""), width: 34, height: 48) }
+            }
+            .frame(width: 34, height: 48)
+            if g.speaking && !g.speech.isEmpty {
+                Text(g.speech).appFont(14, .bold).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.ink, lineWidth: 1.5))
+            } else {
+                Text(g.stage.bg.intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .frame(minHeight: 52)
+        .animation(.easeOut(duration: 0.15), value: g.speaking)
     }
 
     private func hud(_ g: BrickGame) -> some View {
@@ -400,10 +429,9 @@ struct BrickPlayView: View {
     }
 
     @ViewBuilder private func overlay(_ g: BrickGame) -> some View {
-        let lines = GamePlayer.lines(g.player)
         switch g.phase {
         case .ready:
-            bubble(g, lines.0, sub: g.stage.rule) { EmptyView() }
+            bubble(g, "\(g.stage.bg.volume) \(g.stage.bg.name)", sub: g.stage.bg.intro + "\n" + g.stage.rule) { EmptyView() }
                 .allowsHitTesting(false)
         case .playing:
             if let t = g.toast {
@@ -423,7 +451,7 @@ struct BrickPlayView: View {
             let next = GameStage.all.first { $0.n == g.stage.n + 1 }
             let lose = record.lossCount(g.stage.n, g.level)
             dim {
-                bubble(g, won ? lines.1 : lines.2,
+                bubble(g, g.speech,
                        sub: "\(won ? "깼어요" : "끝났어요") · \(g.score.formatted())점\(g.newBest ? " · 새 최고 기록" : "")\(rank.map { " · 이번 주 \($0)위" } ?? "")\(g.picked.isEmpty ? "" : " · 먹은 물건 \(g.picked.values.reduce(0, +))개")") {
                     if won, let next { button("다음 단계 · \(next.bg.volume)", primary: true) { onClose((next, g.level)) } }
                     button("다시 하기", primary: !won) { onClose((g.stage, g.level)) }
