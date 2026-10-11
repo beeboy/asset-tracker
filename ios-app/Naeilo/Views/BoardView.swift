@@ -274,9 +274,10 @@ struct WeekForecastCard: View {
                     .background(inside ? Color(hex: 0xE3F4EC, dark: 0x163226) : Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
             }
             HStack {
-                Text("지난 8주").appFont(13, .bold)
+                Text(stamps.isEmpty ? "지난 주들" : "지난 \(stamps.count)주").appFont(13, .bold)
                 Spacer()
-                Text("범위 안 \(stamps.reduce(0, +)) / 8주").appFont(13).foregroundStyle(Theme.sub)
+                if stamps.isEmpty { Text("첫 주가 끝나면 도장이 찍혀요").appFont(13).foregroundStyle(Theme.sub) }
+                else { Text("범위 안 \(stamps.reduce(0, +)) / \(stamps.count)주").appFont(13).foregroundStyle(Theme.sub) }
             }
             HStack(spacing: 4) {
                 ForEach(stamps.indices, id: \.self) { i in
