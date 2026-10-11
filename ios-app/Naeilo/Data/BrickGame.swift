@@ -57,8 +57,11 @@ struct GameStage: Identifiable {
     static let specials = 10
     /// 두 번 맞아야 깨지는 벽돌 비율 (나머지는 한 번)
     static let tough = 0.1
-    /// 숨은 테트리스 블럭 수: 연습판부터 4개, 단계마다 2개씩 (외전 26개)
-    func tetrisCount(_ lv: GameLevel) -> Int { 4 + 2 * n }
+    /// 숨은 테트리스 블럭 수: 하수 3권·중수 2권·고수 1권부터 4개, 그 뒤 단계마다 2개씩
+    func tetrisCount(_ lv: GameLevel) -> Int {
+        let start: Int = switch lv { case .easy: 3; case .normal: 2; case .hard: 1 }
+        return n < start ? 0 : 4 + 2 * (n - start)
+    }
     var bg: ShelterBG { Shelter.backgrounds[n] }
 
     static let all: [GameStage] = [

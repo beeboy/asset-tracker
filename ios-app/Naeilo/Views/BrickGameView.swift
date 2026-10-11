@@ -174,7 +174,7 @@ struct BrickGameHub: View {
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
                         if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).appFont(13) }
                     }
-                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + ", 숨은 테트리스 블럭 \(s.tetrisCount(rec.level))개." : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + (s.tetrisCount(rec.level) == 0 ? "." : ", 숨은 테트리스 블럭 \(s.tetrisCount(rec.level))개.") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
                 }
                 Spacer(minLength: 0)
