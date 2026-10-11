@@ -126,6 +126,11 @@ struct MyPathView: View {
     @Environment(AppModel.self) private var m
     @State private var view = "all"
 
+    // 내 길은 3개월 전(myPath.start = 0.25년)에 시작한 것으로 본다
+    private static var startDate: Date { Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date() }
+    static var startText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"; return f.string(from: startDate) }
+    static var startMonth: String { "\(Calendar.current.component(.month, from: startDate))월" }
+
     var body: some View {
         let p = m.myPath, mS = p.start, mEnd = p.end, K = p.key, act = p.act, need = p.need
         let gap = m.myPathGapToday
@@ -147,7 +152,7 @@ struct MyPathView: View {
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.gY)년 · 매달 \(AppModel.wonK(m.gM)) (7월 9일 시작)" : "본전 \(AppModel.man(K)) · 1년 안에 (7월 9일 시작)")
+                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.gY)년 · 매달 \(AppModel.wonK(m.gM)) (\(Self.startText) 시작)" : "본전 \(AppModel.man(K)) · 1년 안에 (\(Self.startText) 시작)")
                 HStack(alignment: .firstTextBaseline) {
                     Text("내 길보다 \(String(format: "%.1f", abs(gap) * 100))% \(gap >= 0 ? "앞섬" : "뒤처짐")").appFont(22, .bold).foregroundStyle(lead)
                     Spacer()
@@ -185,7 +190,7 @@ struct MyPathView: View {
                     }
                 }
                 .accessibilityLabel("내 길과 실제 평가액 그래프")
-                HStack { Text("시작 7월"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "\(m.gY)년 뒤 목표일" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
+                HStack { Text("시작 \(Self.startMonth)"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "\(m.gY)년 뒤 목표일" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
                 ChipRow(items: [("past", "시작부터"), ("all", "목표일까지"), ("band", "예보 겹치기")], selection: $view, fill: true)
             }
         } content: {
@@ -681,7 +686,7 @@ struct FxImpactView: View {
     @State private var period = "1y"
     @State private var what = Market.shared.fx.last.rounded()
 
-    static let boughtAt = 1320.0     // 샀을 때 평균 환율 (시안 가정)
+    static let boughtAt = Sample.fx  // 샀을 때 평균 환율: 들어간 돈 환산과 같은 값
 
     var body: some View {
         let FX = Market.shared.fx.last, FXB = Self.boughtAt, sigma = 0.075
@@ -692,9 +697,12 @@ struct FxImpactView: View {
         let periods: [String: Double] = ["1m": 1.0 / 12, "3m": 0.25, "1y": 1, "3y": 3]
         let T: Double = periods[period] ?? 1
         let label = ["1m": "1개월", "3m": "3개월", "1y": "1년", "3y": "3년"][period] ?? "1년"
-        // 지난 환율 흐름 (시안 예시, t: 년, 음수 = 과거)
+        // 지난 환율 흐름 (t: 년, 음수 = 과거): 앱에 넣은 3년 원/달러 종가. 자료가 없으면 지금 값 그대로 (만들어 내지 않는다)
+        let fxHist = YahooSample.history["FX"]?.closes ?? []
         let fxAt = { (t: Double) -> Double in
-            FX + 70 * (sin(t * 2.1 + 1) - sin(1)) + 25 * sin(t * 9) * min(1, -t) + 9 * sin(t * 70) * min(1, -t * 8) + 4 * sin(t * 260) * min(1, -t * 30)
+            guard fxHist.count > 1, t < 0 else { return FX }
+            let L = Double(fxHist.count - 1), pos = max(0, min(L, L + t * L / 3)), i = Int(pos), f = pos - Double(i)
+            return fxHist[i] * (1 - f) + fxHist[min(Int(L), i + 1)] * f
         }
         let past = (0...120).map { i -> (Double, Double) in let t = -T + T * Double(i) / 120; return (t, fxAt(t)) }
         let trend = past.indices.map { i -> (Double, Double) in
@@ -738,6 +746,7 @@ struct FxImpactView: View {
                 .frame(height: 140)
                 .accessibilityLabel("원/달러 지난 흐름과 앞으로 1년 범위")
                 HStack { Text("\(label) 전"); Spacer(); Text("오늘"); Spacer().frame(maxWidth: 60); Text("1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
+                if fxHist.count < 2 { Text("지난 환율 자료가 없어 지금 값으로만 그렸어요").appFont(11).foregroundStyle(Theme.muted) }
                 Text("검은 선: 지난 환율 · 회색 점선: 추세 · 파란 띠: 앞으로 1년 절반(진함)·90%의 경우 · 주황 점선: 샀을 때 평균 \(Int(FXB).formatted())원")
                     .appFont(11).foregroundStyle(Theme.sub)
                 ChipRow(items: [("1m", "1개월"), ("3m", "3개월"), ("1y", "1년"), ("3y", "3년")], selection: $period, accent: Theme.blue, fill: true)

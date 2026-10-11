@@ -45,12 +45,15 @@ struct SettingsView: View {
                 Text("앱 아이콘").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
                 AppIconPicker()
                 GuidePickRow().padding(.top, 4)
-                Text("시안 조작").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
-                HStack(spacing: 8) {
-                    demoButton("첫 질문부터") { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
-                    demoButton("미션 1부터") { m.resetDemo(.fresh) }
-                    demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
-                    demoButton("모든 화면 열기") { m.resetDemo(.all) }
+                // 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
+                if m.devAll {
+                    Text("시연 상태 (개발자)").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
+                    HStack(spacing: 8) {
+                        demoButton("첫 질문부터") { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
+                        demoButton("미션 1부터") { m.resetDemo(.fresh) }
+                        demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
+                        demoButton("모든 화면 열기") { m.resetDemo(.all) }
+                    }
                 }
                 Text("시세: \(Market.shared.source)").appFont(12).foregroundStyle(Theme.muted)
                 Text("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)").appFont(12).foregroundStyle(Theme.muted)
