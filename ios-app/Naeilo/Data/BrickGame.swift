@@ -100,7 +100,7 @@ enum GamePlayer {
 /// 게임 대사: 상황 × 인물 줄 모음 + 쉼터 물건 대사(lines_ko.json 의 item.<물건>.<인물>)를 섞고,
 /// 앞말·뒷말을 따로 골라 이어 붙여 같은 문장이 자주 반복되지 않게 한다. 한 바퀴 돌기 전에는 같은 줄을 다시 쓰지 않는다
 enum GameLines {
-    enum Event: String { case start, item, lose, clear, over, half, rewind }
+    enum Event: String { case start, item, lose, clear, over, half, rewind, last }
 
     private static let pool: [String: [String: [String]]] = [
         "seri": [
@@ -152,6 +152,44 @@ enum GameLines {
             "rewind": ["한 번 더."],
         ],
     ]
+    /// 옆에서 끼어드는 다른 인물의 한마디 (상황별)
+    private static let guest: [String: [String: [String]]] = [
+        "seri": ["last": ["마지막 공이에요. 가운데를 지켜요.", "남은 공 하나. 관찰하고 받아요."], "half": ["절반 지났어요. 기록 중이에요."],
+                 "clear": ["통과 확인했어요.", "저도 봤어요. 깔끔했어요."], "over": ["기록은 남았어요. 다음에 이어 가요."], "item": ["그 물건, 쉼터에서 본 거예요."]],
+        "sio": ["last": ["마지막이야. 서두르지 말고.", "하나 남았어. 기다렸다 받아."], "half": ["반 왔네. 잘하고 있어."],
+                "clear": ["봤어? 기다린 보람 있지.", "멋졌어."], "over": ["괜찮아. 다음엔 내가 옆에 있을게."], "item": ["오, 그거 쓸모 있지."]],
+        "seonbae": ["last": ["마지막 공이야. 어디서 받을 거야?", "하나 남았는데, 계획 있어?"], "half": ["반이야. 이대로 갈 거야?"],
+                    "clear": ["깼네. 다음 방은 쉬울 것 같아?", "나쁘지 않았어."], "over": ["뭘 바꾸면 될지 알겠지?"], "item": ["그거 언제 쓸지 생각했어?"]],
+        "ir": ["last": ["마지막! 할 수 있어!", "하나 남았어, 집중!"], "half": ["반 왔다! 더 빨리!"],
+               "clear": ["와, 빨랐다!", "최고! 다음 판 가자!"], "over": ["한 번 더 하자, 한 번만!"], "item": ["좋은 거 먹었다!"]],
+        "sua": ["last": ["마지막 공이에요. 천천히요.", "하나 남았어요. 응원할게요."], "half": ["절반이에요. 많이 자랐어요."],
+                "clear": ["축하해요!", "같이 와서 좋았어요."], "over": ["쉬었다가 같이 다시 해요."], "item": ["그 물건, 반가워요."]],
+    ]
+    static func guestLine(_ e: Event, _ who: String) -> String? {
+        if who.hasPrefix("s:") { return sampleLines[String(who.dropFirst(2))]?.randomElement() }
+        return guest[who]?[e.rawValue]?.randomElement()
+    }
+
+    /// 마네킹 샘플(『중첩된 현실』 보조 인물)이 그 권의 방에서 끼어든다: 단계 → 인물 이름 (MeSample.all)
+    static let stageSamples: [Int: [String]] = [
+        0: ["미용사"], 1: ["현실의 시오", "1권 선배"], 2: ["니아", "묶은 머리 시오"], 4: ["관리국의 수아"],
+        6: ["온유"], 7: ["활동가"], 8: ["담당관"], 9: ["아내", "루"], 10: ["아내", "루"], 11: ["외전 세리"],
+    ]
+    private static let sampleLines: [String: [String]] = [
+        "미용사": ["선택하지 않은 벽돌은 모두 잘라낼게요.", "가위 소리처럼, 사각. 잠시 멈춤. 사각.", "거울 셋 중 어느 쪽 공이 진짜일까요?"],
+        "현실의 시오": ["복도 끝에 출구가 있어. 노란 줄 하나.", "여기선 오래 버티는 게 이기는 거야.", "맨발로도 걸었어. 공 하나쯤이야."],
+        "1권 선배": ["그 방향, 정말 네가 고른 거야?", "출구는 늘 마지막에 보이지.", "질문 하나. 왜 거기서 받았어?"],
+        "니아": ["지구에 보낼 녹음에 이것도 넣을게요.", "여기선 공도 천천히 떨어져요.", "제2돔에서 응원하고 있어요."],
+        "묶은 머리 시오": ["고무줄 세 번. 다시 묶고 가자.", "0.1초 늦어도 괜찮아."],
+        "관리국의 수아": ["또 올게요. 약속은 아니에요.", "입구는 둘이에요. 공은 어느 쪽으로 나올까요?", "기록해 둘게요. 하급 연구원이라서요."],
+        "온유": ["창문은 손가락 몇 개만큼만요.", "좁아도 바람은 들어와요.", "천천히 해도 돼요. 여긴 그런 곳이에요."],
+        "활동가": ["잘린 문장도 끝내 붙일 수 있어요.", "줄표 하나는 남겨 둬요. 그건 깨지지 않아요.", "멀리서도 보여요. 계속해요."],
+        "담당관": ["솔직히 저도 당혹스럽습니다.", "충전할 곳은 없습니다. 있는 걸로 가시죠.", "보고서에는 잘했다고 쓰겠습니다."],
+        "아내": ["밥 먹고 해요.", "안 구운 그릇은 두 번 만져야 해요.", "묻지 않을게요. 계속해요."],
+        "루": ["꾸러미 배달 왔어요. 이건 응원.", "배송 유닛 XX-2214, 지켜보는 중.", "열여섯 살쯤인데, 저도 해 보고 싶어요."],
+        "외전 세리": ["화면 속에서 보고 있어요.", "프로필 사진처럼, 그대로 있어요.", "거기까지만요. 아니, 조금 더요."],
+    ]
+
     private static var bag: [String: [Int]] = [:]
 
     /// who 의 그 상황 대사 한 줄. vars 로 {stage} {n} {score} {broken} {left} 를 채운다
@@ -162,7 +200,8 @@ enum GameLines {
             if let l = Lines.pick("item.\(id).\(who == "me" ? "seri" : who)", salt: Int.random(in: 1...9)) { return l }
             return "\(name)! \(GamePlayer.item(id))."
         }
-        let list = pool[who]?[e.rawValue] ?? pool["seri"]?[e.rawValue] ?? [""]
+        let ev = e == .last ? "lose" : e.rawValue
+        let list = pool[who]?[ev] ?? pool["seri"]?[ev] ?? [""]
         let key = "\(who).\(e.rawValue)"
         if bag[key]?.isEmpty ?? true { bag[key] = Array(list.indices).shuffled() }
         let i = bag[key]!.removeLast()
@@ -268,6 +307,10 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var speech = ""                  // 위쪽 인물 말풍선
     @ObservationIgnored var speechUntil = 0.0
     @ObservationIgnored private var halfSaid = false
+    @ObservationIgnored var friends: [String] = []       // 끼어들 수 있는 다른 인물 (열린 인물)
+    @ObservationIgnored var guest = ""                   // 오른쪽에 나온 인물
+    @ObservationIgnored var guestLine = ""
+    @ObservationIgnored var guestUntil = 0.0
     @ObservationIgnored var newBest = false
     @ObservationIgnored var picked: [String: Int] = [:]   // 이번 판에 먹은 물건 → 횟수
 
@@ -595,7 +638,7 @@ final class BrickGame: Identifiable {
         GameSound.shared.play(.lose)
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
         if lives <= 0 { talk(.over); finish(.over); return }
-        talk(.lose)
+        talk(lives == 1 ? .last : .lose)
         drops = []
         balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 2.5)]
     }
@@ -616,7 +659,18 @@ final class BrickGame: Identifiable {
                     "broken": "\(broken)", "left": "\(total)"]
         speech = GameLines.pick(e, player, item: item, vars)
         speechUntil = t + 3.2
+        // 특정 상황에는 다른 인물이 오른쪽에 나와 한마디 (물건은 가끔)
+        let chance: Double = switch e { case .last, .clear, .over: 1; case .half: 0.7; case .item: 0.3; default: 0 }
+        // 그 권의 보조 인물이 있으면 절반쯤은 그쪽이 나온다
+        let samples = (GameLines.stageSamples[stage.n] ?? []).map { "s:" + $0 }
+        let others = friends.filter { $0 != player && $0 != "me" }
+        let pickFrom = !samples.isEmpty && (others.isEmpty || Bool.random()) ? samples : others
+        if Double.random(in: 0..<1) < chance, let who = pickFrom.randomElement(),
+           let line = GameLines.guestLine(e, who) {
+            guest = who; guestLine = line; guestUntil = t + 3.6
+        }
     }
+    var guestShown: Bool { !guest.isEmpty && (phase == .cleared || phase == .over || t < guestUntil) }
     var speaking: Bool { phase == .ready || phase == .cleared || phase == .over || t < speechUntil }
 
     private func buzz() {

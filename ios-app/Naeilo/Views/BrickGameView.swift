@@ -121,8 +121,10 @@ struct BrickGameHub: View {
 
     private func start(_ s: GameStage, _ lv: GameLevel) {
         rec.level = lv
-        game = BrickGame(stage: s, level: lv, player: rec.player, skill: skillOf(rec.player), items: items, tilt: rec.tilt,
-                         assist: rec.lossCount(s.n, lv) >= 3, filled: filled, floor: min(filled, floor), yesterday: yesterday)
+        let g = BrickGame(stage: s, level: lv, player: rec.player, skill: skillOf(rec.player), items: items, tilt: rec.tilt,
+                          assist: rec.lossCount(s.n, lv) >= 3, filled: filled, floor: min(filled, floor), yesterday: yesterday)
+        g.friends = players
+        game = g
     }
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
@@ -281,9 +283,38 @@ struct BrickPlayView: View {
                 Text(g.stage.bg.intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            // 오른쪽에 끼어든 인물
+            if g.guestShown {
+                HStack(spacing: 6) {
+                    Text(g.guestLine).appFont(13, .bold).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 10).padding(.vertical, 7)
+                        .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
+                    VStack(spacing: 1) {
+                        guestFigure(g.guest).scaleEffect(x: -1, y: 1)
+                        Text(guestName(g.guest)).appFont(9, .bold).foregroundStyle(Theme.sub).lineLimit(1)
+                    }
+                    .frame(width: 44)
+                }
+                .frame(maxWidth: 190)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
         .frame(minHeight: 52)
         .animation(.easeOut(duration: 0.15), value: g.speaking)
+        .animation(.easeOut(duration: 0.25), value: g.guestShown)
+    }
+
+    /// 끼어든 인물 그림: 기본 인물은 도트 그림, 보조 인물은 마네킹 샘플 조합
+    @ViewBuilder private func guestFigure(_ id: String) -> some View {
+        if id.hasPrefix("s:"), let sm = MeSample.all.first(where: { $0.name == String(id.dropFirst(2)) }) {
+            MeAvatar(me: MeChar(name: sm.name, parts: sm.parts), width: 30, height: 42)
+        } else {
+            Pixel(name: "spr_\(id)", width: 30, height: 42)
+        }
+    }
+    private func guestName(_ id: String) -> String {
+        id.hasPrefix("s:") ? String(id.dropFirst(2)) : (Shelter.friends.first { $0.id == id }?.name ?? "")
     }
 
     private func hud(_ g: BrickGame) -> some View {
