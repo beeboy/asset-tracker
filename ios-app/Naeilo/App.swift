@@ -56,6 +56,8 @@ struct RootView: View {
         .modifier(LineTurns(model: model, phase: phase))
         // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로
         .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay(); model.recordDay() } }
+        // 전망 몬테카를로: 앱이 뒤로 가면 돌던 계산도 멈추고, 다시 앞으로 오면 이어 간다 (뒤에서 폰이 뜨거워지지 않게)
+        .onChange(of: phase, initial: true) { _, p in Compute.setActive(p != .background) }
         // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
         .onChange(of: model.progress) { _, _ in model.saveProgress(); if model.persists { Sync.shared.changed(model) } }
         .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }

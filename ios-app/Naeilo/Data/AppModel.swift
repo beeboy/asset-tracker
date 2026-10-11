@@ -545,14 +545,10 @@ final class AppModel {
     /// 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 nil (닫힌 식만)
     var forecastJob: ForecastEngine.Job? {
         let rs = rows, today = Day.today, H = forecastHorizon
-        guard route != .novice, !rs.isEmpty, H > today, let st = Market.shared.stats else { return nil }
+        guard route != .novice, !rs.isEmpty, H > today, let inp = mcInputs else { return nil }
         let hs = rs.map { MC.Holding(key: SiteStats.key($0.id), ccy: $0.sym.currency == .usd ? "USD" : "KRW", valueKrw: $0.value, price0: $0.sym.last) }
-        let site = Sync.shared.siteForecast
-        let settings = (st.model ?? MC.Settings()).merged(site.model)
-        let events = site.events ?? st.events ?? []
-        let evSig = ForecastEngine.fnv(String(data: (try? JSONEncoder().encode(events)) ?? Data(), encoding: .utf8) ?? "")
-        let key = [today, H, st.date, rs.map { "\(SiteStats.key($0.id)):\($0.h.qty)" }.joined(separator: ","),
-                   evSig, "\(settings.nPaths)|\(settings.seedU32)|\(settings.dof)|\(settings.earnings_adjust ?? true)"].joined(separator: "|")
+        let st = inp.st, settings = inp.settings, events = inp.events
+        let key = [today, H, rs.map { "\(SiteStats.key($0.id)):\($0.h.qty)" }.joined(separator: ","), inp.sig].joined(separator: "|")
         return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: keyValue, monthly: monthly * 1e4)
     }
 
