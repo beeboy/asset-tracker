@@ -38,13 +38,12 @@ struct BrickGameHub: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    section("난이도") {
-                        ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true)
+                    // 이름 옆에 버튼을 한 줄로
+                    VStack(alignment: .leading, spacing: 6) {
+                        inline("난이도") { ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true) }
                         Text(rec.level.note).appFont(12).foregroundStyle(Theme.sub)
                     }
-                    section("조작") {
-                        ChipRow(items: [(true, "폰 기울이기"), (false, "손가락으로 끌기")], selection: $rec.tilt, fill: true)
-                    }
+                    inline("조작") { ChipRow(items: [(true, "기울이기"), (false, "끌기")], selection: $rec.tilt, fill: true) }
                     section("선수") {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) { ForEach(players, id: \.self) { playerCard($0) } }.padding(.vertical, 2)
@@ -135,6 +134,10 @@ struct BrickGameHub: View {
                           assist: rec.lossCount(s.n, lv) >= 3, filled: filled, floor: min(filled, floor), yesterday: yesterday)
         g.friends = players
         game = g
+    }
+
+    private func inline<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
+        HStack(spacing: 10) { Text(title).appFont(13, .bold).foregroundStyle(Theme.sub).frame(width: 52, alignment: .leading); c() }
     }
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
