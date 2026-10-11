@@ -18,7 +18,8 @@ struct Provider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
         Task {
-            // 숫자는 naeilo 앱이 계산해서 App Group 폴더에 써 둔다. 위젯은 읽어서 그리기만 한다
+            // 숫자는 naeilo 앱이 계산해서 App Group 폴더에 써 둔다. 지금 가격·환율만 위젯이 사이트에서 직접 받는다 (10분 안에 받았으면 그대로)
+            await QuoteFeed.fetch(minAge: 600)
             completion(Timeline(entries: [Entry(date: Date(), snap: Engine.snapshot())], policy: .after(MarketHours.nextRefresh())))
         }
     }

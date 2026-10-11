@@ -130,7 +130,7 @@ struct AlertsView: View {
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
                     }.buttonStyle(.plain)
                 }
-                note("본전 도달과 비중 이탈은 앱이 시세를 받을 때 확인해서 보내요. 같은 날 겹치면 하나로 묶어 하루 한 번만 보내요. 아침 한 줄은 앱을 마지막으로 연 때의 숫자로 다음 평일 아침에 오고, 앱을 한동안 안 열면 숫자 없이 와요. 알림 설정은 기기마다 따로예요.")
+                note("알림은 하루 한 번까지 와요. 아침 한 줄은 앱을 마지막으로 연 때의 숫자예요.")
             }
             .padding(16)
         }
@@ -146,7 +146,7 @@ struct AlertsView: View {
     private var permCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(perm == .denied ? "아이폰 알림이 꺼져 있어요" : "아이폰 알림 허용이 필요해요").appFont(15, .bold)
-            Text(perm == .denied ? "아래 알림을 켜도 오지 않아요. 아이폰 설정 > 알림 > naeilo에서 허용해 주세요." : "허용해야 아래 켠 알림이 실제로 와요.")
+            Text(perm == .denied ? "아이폰 설정 > 알림 > naeilo에서 허용해 주세요." : "허용해야 알림이 와요.")
                 .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             PrimaryButton(title: perm == .denied ? "아이폰 설정 열기" : "알림 허용하기") {
                 if perm == .denied { if let u = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(u) } }
@@ -211,13 +211,13 @@ struct SyncView: View {
                 let ok = pw.count >= 10 && pw == pw2
                 Card {
                     Text("동기화 켜기").appFont(15, .bold)
-                    Text("쓰는 기기마다 같은 동기화 비밀번호를 넣으면 종목과 진행이 자동으로 맞춰져요. PC에서는 naeilo.com 설정 > 기기 자동 동기화에 같은 비밀번호를 넣어요.")
+                    Text("기기마다 같은 비밀번호를 넣으면 자동으로 맞춰져요. PC는 naeilo.com 설정에서 넣어요.")
                         .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     SecureField("동기화 비밀번호 (10자 이상)", text: $pw).textContentType(.newPassword)
                         .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
                     SecureField("한 번 더", text: $pw2).textContentType(.newPassword)
                         .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
-                    if !pw.isEmpty && pw.count < 10 { Text("10자 이상으로 남이 짐작하기 어렵게 정해 주세요.").appFont(12).foregroundStyle(Theme.up) }
+                    if !pw.isEmpty && pw.count < 10 { Text("10자 이상으로 정해 주세요.").appFont(12).foregroundStyle(Theme.up) }
                     else if !pw2.isEmpty && pw != pw2 { Text("두 번 넣은 비밀번호가 달라요.").appFont(12).foregroundStyle(Theme.up) }
                     PrimaryButton(title: sync.state == .working ? "준비 중…" : "켜기", color: ok ? Theme.teal : Theme.muted) {
                         guard ok, sync.state != .working else { return }
@@ -227,7 +227,7 @@ struct SyncView: View {
                 }
                 DisclosureGroup(isExpanded: $devOpen) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("사이트 설정 > 개발자용에 GitHub 토큰을 넣어 둔 기기는 비밀번호 대신 그 토큰으로 맞춰요. 같은 토큰(저장소 쓰기 권한)을 넣으면 그 기기들과 같은 칸을 써요.")
+                        Text("GitHub 토큰을 넣은 기기끼리 비밀번호 대신 토큰으로 맞춰요.")
                             .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                         SecureField("GitHub 토큰", text: $token).textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
                             .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
@@ -236,7 +236,7 @@ struct SyncView: View {
                             let t = token; token = ""
                             Task { await sync.turnOnDev(token: t, model: m) }
                         }
-                        Text("토큰은 이 폰의 키체인에만 두고, 중계는 저장소 쓰기 권한만 확인해요. 개발자 칸은 암호화하지 않아요.")
+                        Text("토큰은 이 폰 키체인에만 둬요. 개발자 칸은 암호화하지 않아요.")
                             .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.top, 8)
@@ -244,7 +244,7 @@ struct SyncView: View {
                 .tint(Theme.sub)
             }
             fileCard
-            note("이 폰에서 암호화한 값만 서버에 두어서, 서버는 보유 내역을 볼 수 없어요. 비밀번호는 어디에도 저장하지 않아서 잊으면 되찾을 수 없어요. 그때는 새 비밀번호로 다시 켜면 돼요. 두 기기에서 같이 고치면 나중에 고친 쪽이 남아요.")
+            note("서버에는 암호화한 값만 둬요. 비밀번호는 저장하지 않아서 잊으면 새로 켜야 해요.")
         }
     }
 
@@ -252,14 +252,14 @@ struct SyncView: View {
     private var fileCard: some View {
         Card {
             Text("내 폰에 저장하기 · 불러오기").appFont(15, .bold)
-            Text("종목·수량·평균 단가와 미션 진행을 파일 하나로 저장해요. 파일 앱의 '나의 iPhone'이나 iCloud Drive에 두었다가, 새 폰이나 앱을 다시 깐 뒤 불러오면 그대로 이어져요.")
+            Text("종목과 미션 진행을 파일 하나로 저장해요. 새 폰에서 불러오면 이어져요.")
                 .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
             PrimaryButton(title: "내 폰에 저장하기") { exportDoc = BackupFile(Backup(m)); exporting = true }
             Button("저장한 파일 불러오기") { importing = true }
                 .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 48)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
             if let fileMsg { Text(fileMsg).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
-            Text("파일은 암호화하지 않아요. 보유 내역이 그대로 들어 있으니 다른 사람에게 보내지 마세요.")
+            Text("암호화하지 않은 파일이라 남에게 보내지 마세요.")
                 .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
         }
         .fileExporter(isPresented: $exporting, document: exportDoc, contentType: .json, defaultFilename: Backup.fileName()) { r in
@@ -375,7 +375,7 @@ struct WidgetPickView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text("위젯").appFont(22, .bold)
-                Text("미션을 하나씩 마치면 위젯과 인물이 열려요. 홈 화면을 길게 누르고 + → naeilo 에서 놓아요.")
+                Text("미션을 마치면 열려요. 홈 화면 길게 누르기 → + → naeilo")
                     .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     stat("기본 위젯", "\(base.filter(\.ok).count)/\(base.count)")
@@ -406,7 +406,7 @@ struct WidgetPickView: View {
                 Picker("", selection: $dark) { Text("기본").tag(false); Text("다크").tag(true) }.pickerStyle(.segmented)
                 let c = WChar.of(sel), e = CharEntry(date: Date(), r: reward, c: c, locked: !on)
                 if !on {
-                    Label("아직 못 만난 인물이에요. 인터미션 \(fi)주차에 만나요. 그 전에는 홈 화면에서도 이렇게 실루엣으로 보여요.", systemImage: "lock.fill")
+                    Label("인터미션 \(fi)주차에 만나요.", systemImage: "lock.fill")
                         .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 }
                 GeometryReader { g in
@@ -424,7 +424,7 @@ struct WidgetPickView: View {
                     }
                 }
                 .aspectRatio(1 / 1.62, contentMode: .fit)
-                note("인물 위젯은 위젯을 놓은 뒤 길게 눌러 '위젯 편집'에서 인물을 골라요. 기본값 '앱 홈의 인물 따라가기'는 쉼터에서 홈에 둔 인물을 따라가요.")
+                note("인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요.")
 
                 // 기본 위젯: 앱 시작 단계로 열림
                 Text("기본 위젯").appFont(17, .bold).padding(.top, 6)
@@ -447,12 +447,12 @@ struct WidgetPickView: View {
                 }
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
-                note("못 받은 위젯도 홈 화면에 놓을 수는 있지만, 열리기 전에는 잠긴 모습으로 보이고 누르면 앱 시작 단계로 와요. 위젯은 이 앱이 계산한 숫자를 받아 그려요.")
+                note("못 받은 위젯은 잠긴 모습으로 보여요.")
 
                 // 금액 가리기: 위젯에서 금액을 누르면 •••• 로 가려진다. 함께/따로는 Store.hideEach
                 Text("금액 가리기").appFont(17, .bold).padding(.top, 6)
                 AmountHideCard()
-                note("위젯의 금액을 누르면 ••••로 가려지고, 한 번 더 누르면 다시 보여요.")
+                note("금액을 누르면 가려지고, 다시 누르면 보여요.")
             }
             .screen()
         }
@@ -522,10 +522,10 @@ struct TaxRulesView: View {
                     .accessibilityLabel("올해 해외주식 실현 이익 (만원)")
             }
             Card {
-                ForEach([("해외주식 양도소득세", "한 해 이익과 손실을 합쳐 250만원을 넘는 부분에 22% (지방세 포함). 다음 해 5월에 직접 신고해요."),
-                         ("국내 상장주식", "대주주가 아니면 팔아서 생긴 이익에 양도세가 없어요. 거래할 때 증권거래세만 붙어요."),
-                         ("배당", "국내 배당은 15.4%, 미국 배당은 현지에서 15%를 떼고 들어와요."),
-                         ("손실 상계", "같은 해 안에서만 해외주식 이익과 손실을 합쳐요. 그래서 연말 전에 손실을 확정하면 세금이 줄 수 있어요.")], id: \.0) { t, v in
+                ForEach([("해외주식 양도소득세", "한 해 손익 합계에서 250만원 넘는 부분에 22%. 다음 해 5월 신고."),
+                         ("국내 상장주식", "대주주가 아니면 양도세 없음. 증권거래세만."),
+                         ("배당", "국내 15.4%, 미국 15% (현지 원천징수)."),
+                         ("손실 상계", "같은 해 손익만 합쳐요. 연말 전 손실 확정으로 줄일 수 있어요.")], id: \.0) { t, v in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(t).appFont(14, .bold)
                         Text(v).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
@@ -533,7 +533,7 @@ struct TaxRulesView: View {
                     .padding(.vertical, 2)
                 }
             }
-            note("이 규칙은 미션의 절세 화면과 배당·세금 화면에 같이 쓰여요. 계산 예시이며 세무 상담이 아닙니다.")
+            note("계산 예시이며 세무 상담이 아닙니다.")
         }
         .onAppear { gain = String(Int(m.taxGain)) }
     }
@@ -548,7 +548,7 @@ struct HowToView: View {
                      ("앱", "오늘의 1분", "오늘 숫자 하나와 질문 하나. 7일 연속마다 쉼터에 물건이 돌아와요."),
                      ("알림", "알림", "비중이 계획에서 5%p 넘게 벗어난 날만 울려요."),
                      ("미션", "1000칸", "본전을 1000칸으로 나눠 채워요."),
-                     ("미션", "주간 예보", "월요일에 앱이 금요일 평가액 범위를 적어 두고, 금요일 종가로 범위 안인지 도장을 찍어요."),
+                     ("미션", "주간 예보", "월요일에 금요일 범위를 적고, 금요일 종가로 도장을 찍어요."),
                      ("PC", "naeilo.com", "여러 종목 한 번에 넣기, 증권사 파일, 긴 표와 근거는 PC에서 봐요.")], id: \.1) { w, t, v in
                 HStack(alignment: .top, spacing: 10) {
                     Text(w).appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 3)
@@ -609,7 +609,7 @@ struct RouteView: View {
                 m.switchRoute(sel == "minus" ? .recover : sel == "plus" ? .plus : .novice)
                 pick = ""; m.settingsPath = []
             }
-            note("루트를 바꿔도 지금까지 한 미션, 받은 위젯과 캐릭터는 그대로 남아요. 언제든 다시 돌아올 수 있어요.")
+            note("바꿔도 지금까지 받은 것은 그대로 남아요.")
             // 첫 질문 화면처럼: 고른 루트에 따라 바뀌는 예시 3년 그래프
             StartForecastCard(route: sel == "minus" ? Route.recover : sel == "plus" ? Route.plus : Route.novice)
         }

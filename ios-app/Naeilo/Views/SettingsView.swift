@@ -53,7 +53,7 @@ struct SettingsView: View {
                     demoButton("모든 화면 열기") { m.resetDemo(.all) }
                 }
                 Text("시세: \(Market.shared.source)").appFont(12).foregroundStyle(Theme.muted)
-                Text("시세는 스텁(시안과 같은 예시 값)이에요. 서재에는 외전 프롤로그~5장 원고(한글·영문)가 들어 있어요. 버전 0.1").appFont(12).foregroundStyle(Theme.muted)
+                Text("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)").appFont(12).foregroundStyle(Theme.muted)
             }
             .screen()
         }
@@ -85,6 +85,7 @@ struct SettingsView: View {
 }
 
 struct PriceBasisView: View {
+    @Environment(AppModel.self) private var m
     var body: some View {
         let mk = Market.shared, fx = mk.fx
         ScrollView {
@@ -98,13 +99,13 @@ struct PriceBasisView: View {
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 Card {
-                    row("미국 종목", "지금 가격과 전일 종가 (계약하면 실시간 참고 시세)")
+                    row("미국 종목", "지금 가격과 전일 종가")
                     row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change))")
-                    row("한국 종목", "전일 종가 (한국 시세 제공처를 정하면 바뀌어요)")
-                    row("오늘의 움직임", "전일 종가·전일 환율 대비 지금 평가액")
-                    row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : "Yahoo 중계 테스트 자료 (QQQ·AAPL·NVDA·SPY·원/달러). DRNK는 가상 종목, 한국 종목은 시안 값")
+                    row("한국 종목", "전일 종가")
+                    row("오늘의 움직임", "전일 대비 지금 평가액")
+                    row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : mk.site != nil ? "사이트가 평일 30분마다 모으는 테스트 자료. 당기면 바로 받아요" : "앱에 넣어 둔 테스트 자료")
                 }
-                Text("숫자가 하루 동안 움직이지만, naeilo는 사고파는 앱이 아니라 본전과 목표까지의 길을 보는 앱이에요. 그래서 그래프와 미션은 종가로 계산해요.")
+                Text("그래프와 미션은 종가로 계산해요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 // 시세 업체와 계약하면 그 업체의 출처 표기를 여기에 넣는다 (Tiingo: "Data powered by Tiingo.com")
             }
@@ -112,7 +113,7 @@ struct PriceBasisView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await Market.shared.refresh() }
+        .refreshable { await Market.shared.pullRefresh(m) }
     }
     private func row(_ k: String, _ v: String) -> some View {
         HStack(alignment: .top) { Text(k).fontWeight(.semibold).frame(width: 80, alignment: .leading); Text(v).foregroundStyle(Theme.sub) }

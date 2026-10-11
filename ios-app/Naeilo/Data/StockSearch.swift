@@ -144,8 +144,8 @@ final class CustomSymbols {
     }
 
     /// 앱이 시세를 갱신할 때 (5분에 한 번까지): 추가한 종목의 지금 가격·전일 종가
-    func refresh(held: Set<String>) async {
-        guard Date().timeIntervalSince(refreshedAt) > 300 else { return }
+    func refresh(held: Set<String>, force: Bool = false) async {
+        guard force || Date().timeIntervalSince(refreshedAt) > 300 else { return }
         refreshedAt = Date()
         for s in items where held.contains(s.id) {
             guard let (q, recent) = try? await Self.chart(s.yahoo, range: "5d") else { continue }

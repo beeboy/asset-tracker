@@ -1,10 +1,11 @@
 import AppIntents
 import WidgetKit
 
-/// 위젯의 ↻ 버튼: 앱이 써 둔 최신 값으로 모든 위젯을 다시 그린다
+/// 위젯의 ↻ 버튼: 사이트 시세를 바로 받고 모든 위젯을 다시 그린다
 struct ReloadIntent: AppIntent {
     static var title: LocalizedStringResource = "다시 받기"
     func perform() async throws -> some IntentResult {
+        _ = try? await withTimeout(8) { await QuoteFeed.fetch() }
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }
