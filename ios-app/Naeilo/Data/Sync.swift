@@ -312,6 +312,9 @@ final class Sync {
         if let p = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(m.progress)) { app["progress"] = p }
         app["virtual"] = m.holdings.filter { $0.symbol == "DRNK" }.map { ["t": $0.symbol, "q": $0.qty, "a": $0.avg] }
         st["app"] = app
+        // 내 기록은 사이트와 같은 칸(daily)에 날짜별로 합쳐 둔다
+        let daily = MyRecord.merge(MyRecord.fromJSON(st["daily"]), m.myRecord)
+        if !daily.isEmpty, let j = MyRecord.toJSON(daily) { st["daily"] = j }
         st.removeValue(forKey: "ui")
         st.removeValue(forKey: "_w")
         return st
@@ -373,6 +376,7 @@ final class Sync {
                 m.apply(prog)
             }
         }
+        m.myRecord = MyRecord.merge(m.myRecord, MyRecord.fromJSON(st["daily"]))
         m.holdings = hs
         // 새 폰에서 첫 질문 전에 불러왔으면 첫 질문은 건너뛴다 (진행이 없으면 회복 루트 미션 1부터)
         if !m.onboarded { m.onboarded = true; UserDefaults.standard.set(true, forKey: "onboarded"); m.tab = .board }
@@ -382,11 +386,12 @@ final class Sync {
         if !skipped.isEmpty { state = .failed("시세를 못 받은 종목 \(skipped.joined(separator: ", "))는 사이트에만 있어요") }
     }
 
-    /// 동기화할 값이 바뀌었는지 (종목 + 진행. 날짜 칸은 빼고)
+    /// 동기화할 값이 바뀌었는지 (종목 + 진행 + 내 기록 날짜 수. 날짜 칸은 빼고)
     func signature(_ m: AppModel) -> String {
         var p = m.progress; p.lastOpen = ""
         let a = (try? JSONEncoder().encode(p)) ?? Data(), b = (try? JSONEncoder().encode(m.holdings)) ?? Data()
-        return SHA256.hash(data: a + b).map { String(format: "%02x", $0) }.joined()
+        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
+        return SHA256.hash(data: a + b + c).map { String(format: "%02x", $0) }.joined()
     }
 }
 
