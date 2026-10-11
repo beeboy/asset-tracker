@@ -165,6 +165,109 @@
     return out;
   }
 
+  // 전망 계산 기본 설정. 저장값은 normModel 로 채운다 (웹 화면과 사이트 통계 stats.json 이 같이 쓴다)
+  const DEFAULT_MODEL = {
+    scenario: "blend", trust: 50, n_paths: 3000, seed: 20261004, history_years: 3, prior_mu: 10, prior_tau: 15, conservative_mu: 4,
+    new_listing_vol: 60, default_vol: 40, default_corr: 0.3, t_dof: 5, fx_drift: 0, fx_vol_mult: 1, rebalance_yearly: false, earnings_adjust: true,
+  };
+  function normModel(m) {
+    // 렌즈 도입 전 저장값: 기본 시나리오(기준)였다면 내 관점(추세 신뢰 50%)으로 옮긴다
+    if (m && m.trust == null) { m.trust = 50; if (!m.scenario || m.scenario === "base") m.scenario = "blend"; }
+    return Object.assign({}, DEFAULT_MODEL, m || {});
+  }
+
+  // ------------------------------------------------------------ 외부 요인: 기본 사건·요인 민감도
+  // 웹 화면(app.js)과 사이트 통계(tools/site_stats.mjs → data/stats.json, 아이폰 앱이 받는다)가 같은 함수를 쓴다
+  const FACTOR_SYM = { mkt: "SPY", rate: "^TNX", oil: "CL=F", gold: "GC=F", cmdty: "DBC" };
+  const KIND_CAT = [[/신제품|리콜/, "product"], [/인도량|KPI/, "tsla"], [/환율|한국은행/, "fx"], [/CPI|물가|인플레/, "infl"], [/FOMC|고용|금리/, "rate"], [/OPEC|유가/, "oil"], [/금값/, "gold"], [/원자재/, "cmdty"],
+    [/공급망/, "corp"], [/관세|수출|제재/, "trade"], [/선거/, "politics"], [/전쟁/, "war"], [/만기|리밸런싱|매매|수급|지수 편입/, "flow"]];
+  const catOfKind = (k) => (KIND_CAT.find(([re]) => re.test(k)) || [, "corp"])[1];
+  // 기본 외부 요인 사건 (날짜·크기는 추정. 시장 요인은 S&P500 기준 %, 금리는 bp)
+  const EXT_EVENTS = [
+    { id: "x_fomc", cat: "rate", factor: "mkt", target: "ALL", kind: "FOMC 금리 결정", date: "2026-10-28", repeat: "6w", prob: 100, mean: 0, sd: 1.0, vol_mult: 1, vol_days: 0, note: "6주마다 (날짜 근사). 발표일 S&P500 ±1.0% 가정" },
+    { id: "x_cpi", cat: "infl", factor: "mkt", target: "ALL", kind: "물가(CPI) 발표", date: "2026-10-14", repeat: "monthly", prob: 100, mean: 0, sd: 0.8, vol_mult: 1, vol_days: 0, note: "매달 중순 (날짜 근사). S&P500 ±0.8%" },
+    { id: "x_jobs", cat: "rate", factor: "mkt", target: "ALL", kind: "고용 지표", date: "2026-11-06", repeat: "monthly", prob: 100, mean: 0, sd: 0.6, vol_mult: 1, vol_days: 0, note: "매달 첫 금요일 무렵. S&P500 ±0.6%" },
+    { id: "x_rate", cat: "rate", factor: "rate", target: "ALL", kind: "금리 급등", date: "2027-03-15", repeat: "yearly", prob: 20, mean: 40, sd: 20, vol_mult: 1.2, vol_days: 20, note: "해마다 20% 확률로 10년 금리 +0.4%p (bp 단위)" },
+    { id: "x_bok", cat: "fx", target: "FX", kind: "한국은행 금리 결정", date: "2026-10-22", repeat: "6w", prob: 100, mean: 0, sd: 0.4, vol_mult: 1, vol_days: 0, note: "해마다 8번 (날짜 근사). 원/달러 ±0.4%" },
+    { id: "x_fx", cat: "fx", target: "FX", kind: "환율 급변", date: "2027-01-15", repeat: "yearly", prob: 25, mean: 0, sd: 5, vol_mult: 1.3, vol_days: 20, note: "해마다 25% 확률로 원/달러 ±5% (원화 약세면 해외 주식 평가액 증가)" },
+    { id: "x_infl", cat: "infl", factor: "rate", target: "ALL", kind: "물가 급등", date: "2027-06-10", repeat: "yearly", prob: 15, mean: 30, sd: 15, vol_mult: 1.2, vol_days: 20, note: "해마다 15% 확률로 물가 재상승 → 10년 금리 +0.3%p (bp 단위)" },
+    { id: "x_dlv", cat: "tsla", target: "TSLA", kind: "차량 인도량", date: "2027-01-04", repeat: "quarterly", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "분기 첫 달 2일 무렵 발표 (날짜 추정)" },
+    { id: "x_gtc", cat: "product", target: "NVDA", kind: "신제품·행사", date: "2027-03-16", repeat: "yearly", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "GTC 신제품 발표 (날짜 추정)" },
+    { id: "x_tprod", cat: "product", target: "TSLA", kind: "신제품·행사", date: "2027-06-15", repeat: "yearly", prob: 60, mean: 0, sd: 6, vol_mult: 1, vol_days: 0, note: "로보택시·옵티머스 등 공개 행사 (가정)" },
+    { id: "x_recall", cat: "product", target: "TSLA", kind: "리콜", date: "2027-02-15", repeat: "yearly", prob: 40, mean: -2, sd: 3, vol_mult: 1, vol_days: 0, note: "대규모 리콜·조사 (가정)" },
+    { id: "x_ship", cat: "product", target: "SPCX", kind: "신제품·행사", date: "2026-12-15", repeat: "quarterly", prob: 70, mean: 0, sd: 5, vol_mult: 1, vol_days: 0, note: "스타십 발사·신규 서비스 (가정)" },
+    { id: "x_opec", cat: "oil", factor: "oil", target: "ALL", kind: "OPEC+ 회의", date: "2026-11-30", repeat: "semi", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "반년마다. 유가 ±4% (날짜 추정)" },
+    { id: "x_oil", cat: "oil", factor: "oil", target: "ALL", kind: "유가 급등", date: "2027-05-17", repeat: "yearly", prob: 15, mean: 25, sd: 12, vol_mult: 1.2, vol_days: 20, note: "해마다 15% 확률로 유가 +25% (중동·감산)" },
+    { id: "x_gold", cat: "gold", factor: "gold", target: "ALL", kind: "금값 급등", date: "2027-08-16", repeat: "yearly", prob: 20, mean: 10, sd: 6, vol_mult: 1, vol_days: 0, note: "해마다 20% 확률로 금값 +10% (안전자산 쏠림)" },
+    { id: "x_cmdty", cat: "cmdty", factor: "cmdty", target: "ALL", kind: "원자재 급등", date: "2027-07-15", repeat: "yearly", prob: 15, mean: 12, sd: 8, vol_mult: 1, vol_days: 0, note: "해마다 15% 확률로 원자재 +12% (공급망)" },
+    { id: "x_chip", cat: "corp", target: "NVDA", kind: "공급망 차질", date: "2027-05-10", repeat: "yearly", prob: 15, mean: -4, sd: 4, vol_mult: 1.2, vol_days: 15, note: "해마다 15% 확률로 TSMC·HBM 공급 차질 (가정)" },
+    { id: "x_parts", cat: "corp", target: "TSLA", kind: "공급망 차질", date: "2027-08-10", repeat: "yearly", prob: 15, mean: -3, sd: 4, vol_mult: 1, vol_days: 0, note: "해마다 15% 확률로 배터리·부품 공급 차질 (가정)" },
+    { id: "x_mid", cat: "politics", factor: "mkt", target: "ALL", kind: "선거", date: "2026-11-04", repeat: "none", prob: 100, mean: 0, sd: 1.5, vol_mult: 1.2, vol_days: 15, note: "미국 중간선거 결과 (11/3 투표)" },
+    { id: "x_pres", cat: "politics", factor: "mkt", target: "ALL", kind: "선거", date: "2028-11-08", repeat: "none", prob: 100, mean: 0, sd: 2, vol_mult: 1.3, vol_days: 20, note: "미국 대통령 선거 결과 (11/7 투표)" },
+    { id: "x_tariff", cat: "trade", factor: "mkt", target: "ALL", kind: "관세·정책", date: "2027-04-05", repeat: "yearly", prob: 20, mean: -3, sd: 3, vol_mult: 1.4, vol_days: 20, note: "해마다 20% 확률로 관세·규제 충격 S&P500 -3%" },
+    { id: "x_war", cat: "war", factor: "mkt", target: "ALL", kind: "전쟁·지정학", date: "2027-09-15", repeat: "yearly", prob: 10, mean: -5, sd: 4, vol_mult: 1.6, vol_days: 30, note: "해마다 10% 확률로 전쟁·분쟁 충격 S&P500 -5% (날짜는 임의)" },
+    { id: "x_export", cat: "trade", target: "NVDA", kind: "수출 규제·제재", date: "2027-04-20", repeat: "yearly", prob: 25, mean: -5, sd: 4, vol_mult: 1.3, vol_days: 20, note: "해마다 25% 확률로 대중국 반도체 수출 규제 (H20 사례)" },
+    { id: "x_witch", cat: "flow", factor: "mkt", target: "ALL", kind: "옵션 만기·리밸런싱", date: "2026-12-18", repeat: "quarterly", prob: 100, mean: 0, sd: 0.5, vol_mult: 1, vol_days: 0, note: "분기 셋째 금요일 (쿼드러플 위칭·지수 리밸런싱). S&P500 ±0.5%" },
+    { id: "x_spidx", cat: "flow", target: "SPCX", kind: "지수 편입·제외", date: "2026-12-21", repeat: "none", prob: 30, mean: 4, sd: 4, vol_mult: 1, vol_days: 0, note: "S&P500·나스닥100 편입 기대 매수 (가정)" },
+  ];
+  const EXT_V2 = new Set(["x_bok", "x_fx", "x_infl", "x_chip", "x_parts", "x_export", "x_witch", "x_spidx"]); // ext_ver 2에서 추가된 기본 사건
+  // 입력값의 사건 목록에 기본 외부 요인 사건을 한 번 넣고 묶음을 정리한다 (이미 지운 사건은 다시 넣지 않도록 버전으로 표시)
+  function normEvents(st) {
+    st.events = st.events || [];
+    const xv = st.ext_ver || 0;
+    if (xv < 2) {
+      const have = new Set(st.events.map((e) => e.id));
+      EXT_EVENTS.forEach((e) => { if (!have.has(e.id) && (xv < 1 || EXT_V2.has(e.id))) st.events.push({ on: true, ...e }); });
+      st.events.forEach((e) => { if (e.id === "x_cpi" && e.cat === "rate") e.cat = "infl"; if (e.cat === "politics" && /관세/.test(e.kind || "")) e.cat = "trade"; }); // 14개 묶음으로 옮김
+      st.ext_ver = 2;
+    }
+    if (st.ext_ver < 3) { st.events.forEach((e) => { if (e.cat === "supply") e.cat = "corp"; }); st.ext_ver = 3; } // 공급망 묶음은 기업 실적·공시로 합침
+    st.events.forEach((e) => { if (!e.cat) e.cat = catOfKind(e.kind || ""); });
+    return st;
+  }
+  // 두 시세의 같은 날 하루 변화 (최근 years 년). rateB 면 B 는 bp 차이
+  function alignedChanges(prices, symA, symB, rateB, todayStr, years = 3) {
+    const A = prices[symA], B = prices[symB]; if (!A || !B) return null;
+    const cut = addMonths(todayStr, -12 * years), mb = new Map(B.dates.map((d, i) => [d, B.adj[i]]));
+    const xs = [], ys = [], ds = []; let pa = null, pb = null;
+    for (let i = 0; i < A.dates.length; i++) {
+      const d = A.dates[i]; if (d < cut || !mb.has(d)) continue;
+      const a = A.adj[i], b = mb.get(d);
+      if (pa != null && a > 0 && pa > 0 && b != null && pb != null && (rateB || (b > 0 && pb > 0))) { ys.push(Math.log(a / pa)); xs.push(rateB ? (b - pb) * 100 : Math.log(b / pb)); ds.push(d); }
+      pa = a; pb = b;
+    }
+    return { x: xs, y: ys, d: ds };
+  }
+  // 종목별 요인 민감도 β (요인 사건을 종목에 나눠 줄 때 쓴다). prices: {sym: {dates, adj}}, tks: 종목 티커
+  function factorBetas(prices, tks, todayStr) {
+    const out = { beta: {}, stat: {} };
+    for (const [fk, sym] of Object.entries(FACTOR_SYM)) {
+      out.beta[fk] = {}; out.stat[fk] = {};
+      if (!prices[sym]) continue;
+      for (const t of tks) {
+        if (t === sym) { out.beta[fk][t] = 1; out.stat[fk][t] = { beta: 1, corr: 1, n: 0 }; continue; }
+        const r = alignedChanges(prices, t, sym, fk === "rate", todayStr); if (!r || r.y.length < 30) continue;
+        const n = r.y.length, mx = mean(r.x), my = mean(r.y);
+        let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++) { sxy += (r.x[i] - mx) * (r.y[i] - my); sxx += (r.x[i] - mx) ** 2; syy += (r.y[i] - my) ** 2; }
+        const corr = sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0;
+        let beta = sxx ? sxy / sxx : 0;
+        // 시장 외 요인은 시장(SPY) 움직임을 뺀 순수 민감도 (두 변수 회귀)
+        if (fk !== "mkt" && prices.SPY && t !== "SPY") {
+          const m2 = alignedChanges(prices, t, "SPY", false, todayStr), mm = new Map(m2 ? m2.d.map((d, i) => [d, m2.x[i]]) : []);
+          const X1 = [], X2 = [], Y = []; r.d.forEach((d, i) => { if (mm.has(d)) { X1.push(r.x[i]); X2.push(mm.get(d)); Y.push(r.y[i]); } });
+          if (Y.length > 30) {
+            const a1 = mean(X1), a2 = mean(X2), ay = mean(Y); let s11 = 0, s22 = 0, s12 = 0, s1y = 0, s2y = 0;
+            for (let i = 0; i < Y.length; i++) { const u = X1[i] - a1, v = X2[i] - a2, w = Y[i] - ay; s11 += u * u; s22 += v * v; s12 += u * v; s1y += u * w; s2y += v * w; }
+            const det = s11 * s22 - s12 * s12; if (det > 0) beta = (s1y * s22 - s2y * s12) / det;
+          }
+        }
+        const w = n / (n + 60), prior = fk === "mkt" ? 1 : 0; // 이력이 짧으면 기본값 쪽으로 당긴다
+        out.beta[fk][t] = w * beta + (1 - w) * prior; out.stat[fk][t] = { beta: out.beta[fk][t], raw: beta, corr, n };
+      }
+    }
+    return out;
+  }
+
   // ------------------------------------------------------------ 전망 모형 입력 만들기
   // holdings: [{ticker, shares, price0, ccy, valueKrw}], series: {sym: {dates, adj}}, fxSym(ccy)
   function buildModel(opt) {
@@ -590,5 +693,5 @@
     return { V0, top, out, fd: model.monthDates };
   }
 
-  window.Model = { allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  window.Model = { DEFAULT_MODEL, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();

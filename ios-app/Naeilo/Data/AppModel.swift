@@ -513,9 +513,74 @@ final class AppModel {
         return Lines.pick("home.fresh.\(who)", ["move": Self.sgn(todayMove)]) ?? "오늘 숫자 가져왔어요. 한 번만 보고 가요."
     }
 
-    // MARK: 3년 전망 (로그정규 근사, 50%·90% 범위)
-    struct Forecast { let q5, q25, q50, q75, q95: [Double]; let prob: (Double) -> Double; let mu, sigma, muBase, muTrend: Double }
+    // MARK: 전망 (웹과 같은 몬테카를로, 목표일까지. 회복 루트는 3년)
+    struct Forecast {
+        /// 월 경계마다 평가액 백분위 (원). 첫 칸 = 오늘
+        let q5, q25, q50, q75, q95: [Double]
+        /// 각 칸의 날짜 (yyyy-MM-dd)와 오늘부터 햇수
+        let dates: [String]
+        let tY: [Double]
+        /// T년 안에 기준선(목표·본전)에 한 번이라도 닿을 확률 (웹 '연도별 도달 확률'과 같은 셈, 월말 기준)
+        let prob: (Double) -> Double
+        /// 마지막 날(목표일) 기준선 이상일 확률 (웹 '목표 확률')
+        let pGoal: Double
+        let byYear: [(year: Int, p: Double)]
+        let mu, sigma, muBase, muTrend: Double
+        /// 몬테카를로 결과면 true. 계산이 끝나기 전 닫힌 식 값이면 false
+        let exact: Bool
+        /// 이 햇수에 가장 가까운 칸 (그래프·3년 값)
+        func idx(years: Double) -> Int {
+            var k = 0
+            while k + 1 < tY.count && tY[k + 1] <= years + 1.0 / 48 { k += 1 }
+            return k
+        }
+    }
+    var forecastTitle: String { isGoal ? "목표일 전망" : "3년 전망" }
+    /// 전망 끝날: 목표 루트는 목표일, 회복 루트는 3년 뒤 (웹: 목표일)
+    var forecastHorizon: String { isGoal ? Day.str(goalToDate) : MC.addMonths(Day.today, 36) }
+
+    /// 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 nil (닫힌 식만)
+    var forecastJob: ForecastEngine.Job? {
+        let rs = rows, today = Day.today, H = forecastHorizon
+        guard route != .novice, !rs.isEmpty, H > today, let st = Market.shared.stats else { return nil }
+        let hs = rs.map { MC.Holding(key: SiteStats.key($0.id), ccy: $0.sym.currency == .usd ? "USD" : "KRW", valueKrw: $0.value, price0: $0.sym.last) }
+        let site = Sync.shared.siteForecast
+        let settings = (st.model ?? MC.Settings()).merged(site.model)
+        let events = site.events ?? st.events ?? []
+        let evSig = ForecastEngine.fnv(String(data: (try? JSONEncoder().encode(events)) ?? Data(), encoding: .utf8) ?? "")
+        let key = [today, H, st.date, rs.map { "\(SiteStats.key($0.id)):\($0.h.qty)" }.joined(separator: ","),
+                   evSig, "\(settings.nPaths)|\(settings.seedU32)|\(settings.dof)|\(settings.earnings_adjust ?? true)"].joined(separator: "|")
+        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: keyValue, monthly: monthly * 1e4)
+    }
+
     var forecast: Forecast {
+        let cf = closedForecast
+        guard let job = forecastJob else { return cf }
+        let eng = ForecastEngine.shared
+        eng.ensure(job)
+        let lensKey = lens == .base ? "base" : lens == .smooth ? "smooth" : "mine"
+        guard let run = eng.run, run.key == job.key,
+              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: keyValue, monthly: monthly * 1e4, withEvents: shock) else { return cf }
+        let sim = run.ev, s0 = MC.dayNum(sim.start)
+        let tY = sim.monthDates.map { Double(MC.dayNum($0) - s0) / 365.25 }
+        let dates = sim.monthDates, cum = r.cumHit, V0 = r.V0, K = keyValue
+        // 연 기대 (웹 portMu): 계산 때 평가액 비중으로 종목 기대수익을 더한다
+        let fs = run.factors.prefix(sim.A), w = sim.v0.map { $0 / max(1, V0) }
+        let wsum = { (f: (MC.Factor) -> Double) in zip(fs, w).reduce(0) { $0 + $1.1 * f($1.0) } }
+        let mB = wsum { $0.base }, mS = wsum { $0.smooth }, mM = wsum { MC.blendMu($0.base, $0.smooth, self.trust / 100) }
+        let prob = { (T: Double) -> Double in
+            if T <= 0 { return V0 >= K ? 1 : 0 }
+            let target = MC.addMonths(sim.start, Int((T * 12).rounded()))
+            var k = 0; while k + 1 < dates.count && dates[k + 1] <= target { k += 1 }
+            return cum[k]
+        }
+        return Forecast(q5: r.bands[0], q25: r.bands[1], q50: r.bands[2], q75: r.bands[3], q95: r.bands[4], dates: dates, tY: tY, prob: prob,
+                        pGoal: r.pGoal, byYear: r.byYear.map { (year: $0.year, p: $0.p) },
+                        mu: lens == .base ? mB : lens == .smooth ? mS : mM, sigma: cf.sigma, muBase: mB, muTrend: mS, exact: true)
+    }
+
+    /// 닫힌 식 (로그정규 근사): 몬테카를로가 끝나기 전 잠깐, 시작 전 루트, 주간 예보 폭(sigma)
+    var closedForecast: Forecast {
         let rs = rows, tot = max(1, total)
         // 종목 값은 사이트가 매일 만드는 stats.json (웹 전망과 같은 μ·σ·상관). 달러 종목은 원/달러 흔들림도 더한다
         let st = Market.shared.stats, t = trust / 100
@@ -535,9 +600,8 @@ final class AppModel {
             let r: Double = a == b ? 1 : parts[a].id.isEmpty ? 0.5 : SiteStats.corr(parts[a].id, parts[b].id, st)
             v += parts[a].w * parts[b].w * parts[a].p.2 * parts[b].p.2 * r
         } }
-        var sg = sqrt(max(0, v))
-        var mu = lens == .base ? muB : lens == .smooth ? muS : muM
-        if shock { mu -= 0.02; sg *= 1.1 }
+        let sg = sqrt(max(0, v))
+        let mu = lens == .base ? muB : lens == .smooth ? muS : muM
         let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = monthly * 1e4
         let qAt = { (T: Double, z: Double) -> Double in
             let shockT: Double = z * sg * sqrt(T)
@@ -552,8 +616,13 @@ final class AppModel {
             let num: Double = log(eff / K) + g * T
             return Self.normCDF(num / (sg * sqrt(T)))
         }
-        let q = { (z: Double) in (0...36).map { i in i == 0 ? V0 : qAt(Double(i) / 12, z) } }
-        return Forecast(q5: q(-1.645), q25: q(-0.674), q50: q(0), q75: q(0.674), q95: q(1.645), prob: pAt, mu: mu, sigma: sg, muBase: muB, muTrend: muS)
+        let today = Day.today, H = max(1.0 / 12, Double(MC.dayNum(forecastHorizon) - MC.dayNum(today)) / 365.25)
+        let n = max(1, Int((H * 12).rounded()))
+        let q = { (z: Double) in (0...n).map { i in i == 0 ? V0 : qAt(Double(i) / 12, z) } }
+        return Forecast(q5: q(-1.645), q25: q(-0.674), q50: q(0), q75: q(0.674), q95: q(1.645),
+                        dates: (0...n).map { MC.addMonths(today, $0) }, tY: (0...n).map { Double($0) / 12 }, prob: pAt,
+                        pGoal: pAt(H), byYear: (1...max(1, Int(H + 1.0 / 48))).map { (year: $0, p: pAt(min(H, Double($0)))) },
+                        mu: mu, sigma: sg, muBase: muB, muTrend: muS, exact: false)
     }
 
     // MARK: 1000칸 (회복: 본전 = 1000칸)

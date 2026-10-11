@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 // 배당·환율 계산 자료 (naeilo.com/data/calc.json). 사이트가 매일 웹과 같은 식으로 만든다 (tools/site_calc.mjs):
-// 요인 민감도 = web/app.js factorBetas(), 배당 = 수정종가/종가 비율이 바뀌는 날(배당락)과 금액, 환율 = web/model.js indicators(원/달러).
-// 앱의 외부 요인, 배당·세금, 환율 영향 화면은 이 값에 웹 식(web/app.js renderCash · fxInfo)을 그대로 써서 웹과 같은 숫자를 낸다
+// 배당 = 수정종가/종가 비율이 바뀌는 날(배당락)과 금액, 환율 = web/model.js indicators(원/달러).
+// 외부 요인 민감도는 stats.json(betas). 앱의 외부 요인, 배당·세금, 환율 영향 화면은 이 값에 웹 식(web/app.js renderCash · fxInfo)을 그대로 써서 웹과 같은 숫자를 낸다
 @Observable
 final class SiteCalc {
     static let shared = SiteCalc()
@@ -16,7 +16,7 @@ final class SiteCalc {
         var vol_ewma: Double?; var vol_hist: Double?; var slope_ann: Double?; var trend: String?; var hi1: Double?; var lo1: Double?
         var dates: [String]; var closes: [Double]; var level: [Double]
     }
-    struct File: Codable { var date: String; var betas: [String: [String: Double]]?; var divs: [String: Div]; var fx: FX? }
+    struct File: Codable { var date: String; var divs: [String: Div]; var fx: FX? }
 
     var file: File? = SiteCalc.load()
 
@@ -45,8 +45,8 @@ final class SiteCalc {
         return Sample.symbol(id).map { CustomSymbols.yahoo(for: $0) } ?? id
     }
     func div(_ id: String) -> Div? { file?.divs[Self.key(id)] }
-    /// 요인 민감도 (웹 factorBetas): mkt = S&P500 로그 변화당, rate = 10년 금리 1bp 당, oil·gold·cmdty = 그 지표 로그 변화당 (시장 움직임 뺀 값)
-    func beta(_ factor: String, _ id: String) -> Double? { file?.betas?[factor]?[Self.key(id)] }
+    /// 요인 민감도 (웹 Model.factorBetas, 사이트 stats.json): mkt = S&P500 로그 변화당, rate = 10년 금리 1bp 당, oil·gold·cmdty = 그 지표 로그 변화당 (시장 움직임 뺀 값)
+    func beta(_ factor: String, _ id: String) -> Double? { Market.shared.stats?.betas?[factor]?[Self.key(id)] }
 
     // MARK: 웹과 같은 식
 

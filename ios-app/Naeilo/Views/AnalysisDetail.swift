@@ -146,15 +146,15 @@ struct MyPathView: View {
         let actPts = (0...30).map { i -> (Double, Double) in let t = mS * Double(i) / 30; return (t, act(t)) }
         let needPts = (0...60).map { i -> (Double, Double) in let t = x1 * Double(i) / 60; return (t, need(t)) }
         let bandPts: [(Double, Double, Double)] = view == "band"
-            // 3년 전망(달마다 36칸)을 목표일까지 겹친다. 목표일이 3년보다 멀면 전망이 있는 3년까지만
-            ? (0...min(f.q75.count - 1, max(1, Int(((x1 - mS) * 12).rounded())))).map { i in let t = mS + Double(i) / 12; return (t, f.q75[i], f.q25[i]) } : []
+            // 전망(오늘부터 목표일까지 월 경계마다)을 그래프 끝까지 겹친다
+            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i], f.q25[i]) } : []
         let vals = actPts.map(\.1) + needPts.map(\.1) + bandPts.flatMap { [$0.1, $0.2] }
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
         let yrsLeft = mEnd - mS
         let now = m.trackValue, mM = p.monthly
         let needCagr = now > 0 && yrsLeft > 0 ? pow(max(1, K - mM * 12 * yrsLeft) / now, 1 / yrsLeft) - 1 : 0
-        let pPlan = f.prob(min(3, yrsLeft))
+        let pPlan = m.isGoal ? f.pGoal : f.prob(min(3, yrsLeft))   // 목표 루트: 목표일에 목표 이상일 확률 (웹 목표 확률)
         let lead = gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060)
 
         PinnedLayout {
@@ -185,7 +185,7 @@ struct MyPathView: View {
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 2) {
                         legend(Theme.teal, "실제"); legend(Theme.purple, "내 길")
-                        if view == "band" { legend(Theme.teal.opacity(0.3), "3년 전망 절반" + (mEnd - mS > 3.05 ? " (3년까지)" : "")) }
+                        if view == "band" { legend(Theme.teal.opacity(0.3), "전망 절반") }
                     }
                     .padding(6).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
                 }
@@ -214,7 +214,7 @@ struct MyPathView: View {
                     Kpi(k: "목표일까지", v: (yrsLeft >= 1 ? "\(Int(yrsLeft))년 " : "") + "\(Int((yrsLeft.truncatingRemainder(dividingBy: 1) * 12).rounded()))개월", sub: m.isGoal ? "\(m.goalToText)까지" : "1년 목표"),
                     Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? "적립 포함, 남은 기간" : "본전까지 남은 기간"),
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
-                    Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "3년 전망 (\(m.lens.label))"),
+                    Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "\(m.forecastTitle) (\(m.lens.label))"),
                 ], dark: true)
                 footnote("예측이 아닌 기준선. 목표와 적립으로 그은 길보다 실제가 앞섰는지 봐요. 종목 추천이 아닙니다.")
                 footnote(m.isGoal ? "목표 금액·목표일·시작일·매달 넣는 돈은 naeilo.com과 같은 값이에요 (기기 동기화를 켰을 때)."
@@ -357,7 +357,7 @@ struct ExternalView: View {
                         }
                     }
                     if events.isEmpty { Text("45일 안에 정해진 일정이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
-                    Text("3년 전망에서 \"외부 요인\"을 켜면 반영돼요.").appFont(12).foregroundStyle(Theme.muted)
+                    Text("\(m.forecastTitle)에서 \"외부 요인\"을 켜면 반영돼요.").appFont(12).foregroundStyle(Theme.muted)
                 }
             }
             .padding(16)
@@ -486,9 +486,12 @@ struct RateScenarioView: View {
         return m.rows.reduce(0) { $0 + $1.value / tot * ExternalView.coef($1.sym).0 }
     }
 
-    /// 3년 전망(로그정규 근사)의 연 기대를 shift 만큼 옮겼을 때 3년 안에 목표를 넘을 확률
+    /// 연 기대를 shift 만큼 옮겼을 때 목표 확률. 웹처럼 전망(몬테카를로) 목표 확률에 닫힌 식의 차이만 더한다
     private func prob(_ f: AppModel.Forecast, _ shift: Double) -> Double {
-        let T = 3.0, sg = max(0.01, f.sigma), g: Double = f.mu - sg * sg / 2 + shift
+        max(0, min(1, f.pGoal + closed(f, shift) - closed(f, 0)))
+    }
+    private func closed(_ f: AppModel.Forecast, _ shift: Double) -> Double {
+        let T = max(1.0 / 12, f.tY.last ?? 3), sg = max(0.01, f.sigma), g: Double = f.mu - sg * sg / 2 + shift
         let V0 = m.trackValue, K = m.keyValue, M = m.monthly * 1e4
         let eff: Double = V0 + M * 12 * T * exp(-g * T / 2)
         guard eff > 0, K > 0 else { return 0 }
@@ -539,7 +542,7 @@ struct RateScenarioView: View {
                     }
                     Divider()
                     tableRow("시장 연 기대수익", AppModel.sgn(r.mkt[0]), AppModel.sgn(r.mkt[1]), AppModel.sgn(r.mkt[2]), "")
-                    Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · 3년 전망 \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
+                    Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · \(m.forecastTitle) \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
                 }
                 footnote("예측이 아닌 \"만약\" 도구. 1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산. 이익 자료 \(file.eps_last ?? "")까지. 출처 Robert J. Shiller. 종목 추천이 아닙니다.")
             }

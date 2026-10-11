@@ -1,4 +1,4 @@
-// data/calc.json 을 만드는 식(tools/site_calc.mjs)이 웹(web/app.js)의 factorBetas · dividends 와 같은 값을 내는지 확인한다.
+// data/calc.json 을 만드는 식(tools/site_calc.mjs)이 웹(web/app.js)의 dividends · Model.indicators 와 같은 값을 내는지 확인한다.
 // web/app.js 에서 그 함수 원문을 그대로 꺼내 같은 시세로 돌려 비교한다. 다르면 실패 (stats.yml 이 calc.json 을 올리기 전에 돌린다)
 // 사용: node tools/check_calc.mjs
 import { readFileSync } from "node:fs";
@@ -14,23 +14,16 @@ function fn(name) {
   for (; k < src.length; k++) { if (src[k] === "{") depth++; else if (src[k] === "}" && --depth === 0) break; }
   return src.slice(i, k + 1);
 }
-const consts = src.match(/const FACTORS = \{[\s\S]*?\n  \};/)[0];
 
 const mctx = { window: {}, console, Math, Date };
 vm.runInNewContext(readFileSync(new URL("web/model.js", root), "utf8"), mctx);
 const index = read("data/index.json").prices, prices = {};
 for (const [k, f] of Object.entries(index)) prices[k] = read("data/prices/" + f);
-const tks = Object.keys(out.betas.mkt).concat(Object.keys(index).filter((k) => !(k in out.betas.mkt) && !/=X$|=F$|\^/.test(k)));
-const ctx = { Model: mctx.window.Model, Math, Object, Map, Number, S: { prices, state: { holdings: tks.map((ticker) => ({ ticker })) } }, betaCache: null, today: () => out.date };
-vm.runInNewContext(`${consts}\n${fn("alignedChanges")}\n${fn("factorBetas")}\n${fn("dividends")}\nthis.factorBetas = factorBetas; this.dividends = dividends;`, ctx);
+const ctx = { Math, S: { prices } };
+vm.runInNewContext(`${fn("dividends")}\nthis.dividends = dividends;`, ctx);
 
 let bad = 0, n = 0;
 const close = (a, b, tol) => a != null && b != null && Math.abs(a - b) <= tol * Math.max(1, Math.abs(a), Math.abs(b));
-const web = ctx.factorBetas().beta;
-for (const fk of Object.keys(web)) for (const t of Object.keys(web[fk])) {
-  n++; const a = web[fk][t], b = out.betas[fk]?.[t];
-  if (!close(a, b, 1e-5)) { bad++; console.log("민감도 다름", fk, t, a, b); }
-}
 for (const [t, d] of Object.entries(out.divs)) {
   const ws = ctx.dividends(t).filter((x) => x.d > mctx.window.Model.addMonths(out.date, -37));
   n++;
