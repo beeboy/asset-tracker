@@ -89,6 +89,7 @@ final class Market {
     @MainActor
     func pullRefresh(_ m: AppModel) async {
         await refresh(held: Set(m.holdings.map(\.symbol)), force: true)
+        if m.persists { m.recordDay() }     // 내 기록: 새로 받은 시세로 오늘 줄
         LineClock.shared.next()     // 당기면 인물 대사도 다음 줄로
         WidgetBridge.write(m)
     }

@@ -187,7 +187,8 @@ struct Mission1ResultView: View {
                 }
                 DepositLeverCard(plan: keep)
             }
-            BoardButtons(next: "다음 미션: 원인 진단", to: .m2)
+            // 본전 위면 원인 진단은 건너뛴다 (목표 루트로만)
+            BoardButtons(next: m.ret >= 0 ? nil : "다음 미션: 원인 진단", to: m.ret >= 0 ? nil : .m2)
         }
     }
     @ViewBuilder private func probBoxes(_ keep: Plan, _ T: Double) -> some View {

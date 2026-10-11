@@ -239,6 +239,9 @@ extension AppModel {
     var goalSaved: Double { gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
 
     func switchRoute(_ r: Route) {
+        // 시작 전은 샘플 보유를 치우고, 다른 길로 돌아가면 빈 보유에 샘플을 다시 둔다 (내 종목은 그대로)
+        if r == .novice, isSample { holdings = [] }
+        else if r != .novice, route == .novice, holdings.isEmpty { holdings = Sample.startHoldings }
         route = r; boardPath = []; analysisPath = NavigationPath()
         goalStartAt = nil; gInterStartAt = nil; fixStarts()     // 목표 루트 4주는 루트를 고른 날부터 (내 캐릭터 1차 조건)
         switch r {

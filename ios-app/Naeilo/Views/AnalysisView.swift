@@ -18,7 +18,7 @@ struct AnalysisView: View {
     var body: some View {
         let p3 = m.forecast.prob(3)
         let usd = m.rows.filter { $0.sym.currency == .usd || $0.id == "360750" }.reduce(0) { $0 + $1.value } / max(1, m.total)
-        // 내 길: 시작(3개월 전)부터 본전까지 1년에 걸친 선과 오늘 비교
+        // 내 길: 실제로 시작한 날부터 본전까지 1년에 걸친 선과 오늘 비교
         let gap = m.myPathGapToday
         let mkt10 = m.rows.reduce(0) { $0 + $1.value * (ExternalView.beta[$1.id]?.0 ?? 1) * -0.1 } / max(1, m.total)
         let div = m.rows.reduce(0) { a, r in

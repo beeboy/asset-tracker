@@ -32,6 +32,14 @@ struct MyRecordCard: View {
                      : "연 날마다 남긴 실제 값이에요. 넣은 돈은 '더 샀어요·팔았어요' 금액으로 바뀌어요. 위 그래프는 지금 수량을 지난 가격에 대입한 값이라 달라요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
+        } else if m.route != .novice {
+            // 아직 한 줄도 없을 때도 카드 자리는 보인다 (어디에 쌓이는지 알 수 있게)
+            Card {
+                Text("naeilo를 쓴 날부터의 내 기록").appFont(15, .bold)
+                Text(m.isSample || m.holdings.isEmpty ? "내 종목을 넣은 날부터 하루 한 줄씩 평가액과 넣은 돈이 쌓여요. 샘플 종목은 남기지 않아요."
+                     : "오늘 시세를 받으면 첫 줄이 남아요. 잠시 뒤 다시 열거나 아래로 당겨 새로 고쳐 보세요.")
+                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

@@ -96,6 +96,7 @@ struct RootView: View {
             var lastResched = Date.distantPast
             while !Task.isCancelled {
                 await Market.shared.refresh(held: Set(model.holdings.map(\.symbol)))
+                if model.persists { model.recordDay() }   // 내 기록: 시세를 받은 뒤 오늘 줄을 지금 값으로
                 Remind.shared.refresh(model)     // 홈 리마인드 (위젯 말풍선·다음 일정도 여기서)
                 WidgetBridge.write(model)        // 위젯에 지금 숫자를 넘긴다
                 await Notifier.check(model)       // 본전 도달 · 비중 이탈

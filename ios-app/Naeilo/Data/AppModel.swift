@@ -30,6 +30,7 @@ final class AppModel {
     init() {
         // 저장된 진행을 먼저 불러오고, 캡처용 실행 인자가 있으면 그 위에 시연 상태를 덮는다 (그때는 저장하지 않는다)
         if persists, let p = Progress.load() { apply(p) }
+        if route == .novice, isSample { holdings = [] }   // 예전 판에서 시작 전 루트에 남은 샘플 보유는 치운다
         // 캡처용: -demo fresh 로 미션 1부터 시작
         if UserDefaults.standard.string(forKey: "demo") == "fresh" { resetDemo(.fresh) }
         if UserDefaults.standard.string(forKey: "demo") == "all" { resetDemo(.all) }
@@ -578,6 +579,7 @@ final class AppModel {
         resetDemo(.fresh)
         if let mine { holdings = mine }
         else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 60, avg: 180), Holding(symbol: "QQQ", qty: 10, avg: 400)] }
+        else if r == .novice { holdings = [] }     // 시작 전: 샘플 보유 없이 목표·적립만 (보유 화면이 내 것처럼 보이지 않게)
         if r == .plus { taxGain = 0 }
         if r != .recover { switchRoute(r); gDone = [] }
         day = 0                  // 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
