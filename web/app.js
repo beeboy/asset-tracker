@@ -595,6 +595,7 @@
     if (!S.state.holdings.some((h) => h.sample)) delete S.state.weekly; // 샘플 종목이 없어지면 샘플 수량으로 적은 주간 예측도 지운다 (수량만 고친 경우는 남겨 다시 맞춘다)
     S.state.holdings.forEach((h) => delete h.sample); delete S.state.sample;
     if (S.state.sample_goal) { if (S.state.goal.amount === SAMPLE_GOAL || S.state.goal.amount === 1e8) S.state.goal.amount = S.state.sample_goal; delete S.state.sample_goal; } // 샘플 동안 목표를 고치지 않았으면 원래 목표로
+    lastForecast = null; fcDirty = true; try { localStorage.removeItem(FC_KEY); } catch (e) { /* 무시 */ } // 샘플로 계산한 전망을 버려 전망 탭을 열면 내 종목으로 다시 계산
   }
   // 종목 로고: 티커로 받는 무료 로고 이미지 → 다른 곳 → 실패하면 첫 글자
   const LOGO_DOMAIN = { SPCX: "spacex.com" };
