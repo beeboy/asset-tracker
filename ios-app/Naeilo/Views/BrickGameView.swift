@@ -201,7 +201,7 @@ struct BrickPlayView: View {
         // 매 프레임 엔진을 한 걸음 움직이고 다시 그린다 (멈춤·끝나면 쉼)
         TimelineView(.animation(minimumInterval: nil, paused: !live)) { tl in
             let _ = g.tick(tl.date)
-            screen(g)
+            screen(g, tl.date)
         }
         .contentShape(Rectangle())
         .onTapGesture { g.launch() }
@@ -225,7 +225,7 @@ struct BrickPlayView: View {
         .statusBarHidden()
     }
 
-    private func screen(_ g: BrickGame) -> some View {
+    private func screen(_ g: BrickGame, _ now: Date) -> some View {
         VStack(spacing: 8) {
             hud(g)
             GeometryReader { geo in
@@ -235,7 +235,7 @@ struct BrickPlayView: View {
                     Theme.card
                     Image(g.stage.bg.id).interpolation(.none).resizable().scaledToFill()
                         .frame(width: fw, height: fh).clipped().opacity(0.3)
-                    field(g, s).frame(width: fw, height: fh)
+                    field(g, s, now).frame(width: fw, height: fh)
                 }
                 .frame(width: fw, height: fh)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -306,8 +306,10 @@ struct BrickPlayView: View {
         }
     }
 
-    private func field(_ g: BrickGame, _ s: Double) -> some View {
+    /// now 를 그림 안에서 읽어야 프레임마다 다시 그린다 (엔진 값은 지켜보지 않으니, 같은 입력이면 Canvas 가 그리기를 건너뛴다)
+    private func field(_ g: BrickGame, _ s: Double, _ now: Date) -> some View {
         Canvas { ctx, _ in
+            _ = now
             func r(_ x: Double, _ y: Double, _ w: Double, _ h: Double) -> CGRect { CGRect(x: x * s, y: y * s, width: w * s, height: h * s) }
             // 벽돌
             ctx.opacity = g.dark ? 0.08 : 1
