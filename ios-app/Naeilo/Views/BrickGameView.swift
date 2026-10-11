@@ -174,7 +174,7 @@ struct BrickGameHub: View {
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
                         if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).appFont(13) }
                     }
-                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + (s.tetrisCount(rec.level) == 0 ? "." : ", 숨은 테트리스 블럭 \(s.tetrisCount(rec.level))개.") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + ", 숨은 테트리스 블럭 \(s.tetrisCount(rec.level))개." : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
                 }
                 Spacer(minLength: 0)
@@ -550,7 +550,7 @@ struct BrickPlayView: View {
         }
     }
 
-    static let specialNote = "가운데 네모가 있는 벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 10개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물. 단계가 오르면 두 번 맞는 벽돌 밑에 테트리스 블럭이 숨어 있어요."
+    static let specialNote = "가운데 네모가 있는 벽돌은 두 번 맞아야 깨져요. 위에서 3번째 줄 아래에 특수 블럭 10개가 숨어 있어요. 폭탄은 둘레를, 주황 줄은 한 줄을 깨요. 파랑은 공 셋, 노랑은 선물. 두 번 맞는 벽돌 가운데 몇몇은 테트리스 블럭이 숨은 거예요."
 
     @ViewBuilder private func overlay(_ g: BrickGame) -> some View {
         switch g.phase {

@@ -57,11 +57,8 @@ struct GameStage: Identifiable {
     static let specials = 10
     /// 두 번 맞아야 깨지는 벽돌 비율 (나머지는 한 번)
     static let tough = 0.1
-    /// 숨은 테트리스 블럭 수: 하수 3권부터 2개, 2단계마다 1개씩 (중수는 한 단계, 고수는 두 단계 일찍)
-    func tetrisCount(_ lv: GameLevel) -> Int {
-        let start: Int = switch lv { case .easy: 3; case .normal: 2; case .hard: 1 }
-        return n < start ? 0 : 2 + (n - start) / 2
-    }
+    /// 숨은 테트리스 블럭 수: 연습판부터 4개, 단계마다 2개씩 (외전 26개)
+    func tetrisCount(_ lv: GameLevel) -> Int { 4 + 2 * n }
     var bg: ShelterBG { Shelter.backgrounds[n] }
 
     static let all: [GameStage] = [
@@ -378,7 +375,7 @@ final class BrickGame: Identifiable {
         let hidden = { (i: Int) in self.hp[i] > 0 && i / 40 <= topRow - 2 && self.group[i] < 0 && self.special[i] == nil }
         // 숨은 테트리스 블럭 (안에는 특수 블럭이 없다)
         var tries = 0
-        while bigs.count < stage.tetrisCount(level) && tries < 400 {
+        while bigs.count < stage.tetrisCount(level) && tries < 3000 {
             tries += 1
             let shape = Int.random(in: 0..<Self.tetrominoes.count)
             var pts = Self.tetrominoes[shape]
