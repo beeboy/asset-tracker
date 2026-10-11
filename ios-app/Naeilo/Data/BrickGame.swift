@@ -1,7 +1,6 @@
 import SwiftUI
 import UIKit
 import CoreMotion
-import QuartzCore
 
 // 판 깨기: 1000칸으로 하는 거꾸로 벽돌깨기. 채운 칸이 벽돌이고, 판(패들)은 위에, 공은 아래 벽돌로 떨어진다.
 // 실제 칸은 바뀌지 않는다. 단계 = 『중첩된 현실』 쉼터 12곳(권마다 규칙 하나), 선수 = 기본 인물(+내 캐릭터, 스킬 하나),
@@ -159,25 +158,6 @@ enum GameBoard {
     }
 }
 
-/// 화면 새로고침마다 한 번 부른다
-final class GameLoop: NSObject {
-    var onStep: ((Double) -> Void)?
-    private var link: CADisplayLink?
-    private var last: CFTimeInterval = 0
-    func start() {
-        guard link == nil else { return }
-        last = 0
-        link = CADisplayLink(target: self, selector: #selector(step(_:)))
-        link?.add(to: .main, forMode: .common)
-    }
-    func stop() { link?.invalidate(); link = nil }
-    @objc private func step(_ l: CADisplayLink) {
-        let dt = last == 0 ? 1.0 / 60 : min(1.0 / 20, l.timestamp - last)
-        last = l.timestamp
-        onStep?(dt)
-    }
-}
-
 @Observable
 final class BrickGame: Identifiable {
     enum Phase { case ready, playing, paused, cleared, over }
@@ -186,8 +166,7 @@ final class BrickGame: Identifiable {
 
     static let W = 40.0, H = 46.0, PY = 5.0, PH = 0.8, top = 21.0, r = 0.45
 
-    // 그리기는 frame 이 바뀔 때마다 다시 한다 (나머지 값은 지켜보지 않는다)
-    var frame = 0
+    // 화면은 TimelineView 가 매 프레임 tick 을 부르며 다시 그린다. 지켜보는 값은 phase 뿐
     var phase: Phase = .ready
 
     let id = UUID()
@@ -216,7 +195,8 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var toast: (String, Double)? = nil
     @ObservationIgnored var newBest = false
 
-    private let loop = GameLoop()
+    @ObservationIgnored private var lastTick: Date?
+    @ObservationIgnored private var stopped = false
     private let motion = CMMotionManager()
     private let tap = UIImpactFeedbackGenerator(style: .light)
     @ObservationIgnored private var lastTap = 0.0
@@ -241,10 +221,9 @@ final class BrickGame: Identifiable {
         if stage.flicker { exitCell = (0..<1000).last { hp[$0] > 0 } ?? -1 }
         total = hp.filter { $0 > 0 }.count
         balls = [Ball(x: Self.W / 2, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0)]
-        loop.onStep = { [weak self] dt in self?.step(dt) }
     }
 
-    deinit { loop.stop(); motion.stopDeviceMotionUpdates() }
+    deinit { motion.stopDeviceMotionUpdates() }
 
     // MARK: 조작
 
@@ -254,9 +233,22 @@ final class BrickGame: Identifiable {
             motion.startDeviceMotionUpdates()
         }
         tap.prepare()
-        loop.start()
     }
-    func end() { loop.stop(); motion.stopDeviceMotionUpdates() }
+    func end() { stopped = true; motion.stopDeviceMotionUpdates() }
+
+    /// 화면이 그릴 때마다 (TimelineView). 여기서는 지켜보는 값(phase)을 바로 바꾸지 않는다
+    func tick(_ now: Date) {
+        defer { lastTick = now }
+        guard let last = lastTick, !stopped else { return }
+        let dt = min(1.0 / 20, max(0, now.timeIntervalSince(last)))
+        if dt > 0 { step(dt) }
+    }
+    /// 판이 끝남: 그리는 중이라 다음 차례에 phase 를 바꾼다
+    private func finish(_ p: Phase) {
+        guard !stopped else { return }
+        end()
+        DispatchQueue.main.async { self.phase = p }
+    }
 
     /// 화면을 누르면: 처음엔 시작, 붙은 공은 보낸다
     func launch() {
@@ -325,7 +317,7 @@ final class BrickGame: Identifiable {
         movePaddle(dt)
         if phase == .ready {
             for i in balls.indices where balls[i].stuck { balls[i].x = paddleX + balls[i].off }
-            frame &+= 1; return
+            return
         }
         if let ts = toast, ts.1 < t { toast = nil }
         let sp = speed, frozen = on("clock")
@@ -352,9 +344,8 @@ final class BrickGame: Identifiable {
         }
         balls = alive
         moveDrops(dt)
-        if broken >= target { win(); frame &+= 1; return }
+        if broken >= target { win(); return }
         if balls.isEmpty { loseBall() }
-        frame &+= 1
     }
 
     private func movePaddle(_ dt: Double) {
@@ -516,15 +507,14 @@ final class BrickGame: Identifiable {
             say("되감기 · 한 번 돌려받았어요"); return
         }
         lives -= 1
-        if lives <= 0 { phase = .over; end(); return }
+        if lives <= 0 { finish(.over); return }
         drops = []
         balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 2.5)]
     }
 
     private func win() {
         score += lives * 50
-        phase = .cleared
-        end()
+        finish(.cleared)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
