@@ -3028,6 +3028,7 @@
     $("#btnXfer").onclick = xferShow;
     $("#btnShare").onclick = () => { const b = $("#shareBox"); b.style.display = b.style.display === "none" ? "block" : "none"; if (b.style.display === "block") drawShare(); };
     $("#shareHide").onchange = drawShare;
+    $$("#shareKind button").forEach((b) => (b.onclick = () => { $$("#shareKind button").forEach((o) => o.classList.toggle("on", o === b)); drawShare(); }));
     $("#shareSave").onclick = async () => { const a = document.createElement("a"); a.href = URL.createObjectURL(await shareBlob()); a.download = `naeilo-${today()}.png`; a.click(); };
     $("#shareSend").onclick = async () => { // 파일만 보낸다 (제목·글을 함께 넣으면 카카오톡·메시지 등은 글만 받고 이미지를 버림)
       const f = shareFile || new File([await shareBlob()], `naeilo-${today()}.png`, { type: "image/png" });
@@ -3132,7 +3133,9 @@
 
   // ------------------------------------------------------------ 공유 이미지 (금액 숨김 기본)
   function drawShare() {
-    const cv = $("#shareCv"), x = cv.getContext("2d"), W = 1080, hide = $("#shareHide").checked;
+    if ($("#shareKind .on")?.dataset.k === "cells" && window.NaeiloShareCard) return drawCellsShare();
+    const cv = $("#shareCv"); if (cv.height !== 1080) { cv.width = 1080; cv.height = 1080; }
+    const x = cv.getContext("2d"), W = 1080, hide = $("#shareHide").checked;
     const { total } = valuation(), g = S.state.goal, H = history(), k = H.dates.length - 1, my = myReturn();
     const ret = (n) => { if (k < n && k >= n * 0.97) n = k; return k - n >= 0 && H.index[k - n] ? H.index[k] / H.index[k - n] - 1 : null; };
     const F = "-apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", up = "#e5383b", dn = "#2f6fed", fg = "#1d2330", mu = "#6b7385";
@@ -3172,6 +3175,14 @@
     }
     x.fillStyle = mu; x.font = `400 28px ${F}`; x.textAlign = "center"; x.fillText("See Tomorrow, Today. · naeilo.com", W / 2, W - 95); x.textAlign = "left";
     shareFile = null; cv.toBlob((b) => { if (b) shareFile = new File([b], `naeilo-${today()}.png`, { type: "image/png" }); }, "image/png");
+  }
+  // 1000칸 공유 카드 (앱과 같은 모양, web/sharecard.js): 1칸 = 목표의 1/1000. 진한 칸 = 내가 넣은 돈(평단 기준), 연한 칸 = 시장이 준 칸
+  function drawCellsShare() {
+    const cv = $("#shareCv"), { total } = valuation(), g = S.state.goal, unit = (g.amount || 0) / 1000, hide = $("#shareHide").checked;
+    const cl = (v) => (unit > 0 ? Math.max(0, Math.min(1000, Math.floor(v / unit))) : 0), n = cl(total), cb = costBasis();
+    const mine = cb != null ? Math.min(n, cl(cb)) : n;
+    NaeiloShareCard.draw(cv, { filled: n, mine, market: n - mine, split: cb != null, hide, kicker: "목표까지 가는 중", amountLine: `목표 ${krw(g.amount)}원 중 ${krw(total)}원 모았어요.`, date: today().slice(5).replace(/^0?(\d+)-0?(\d+)$/, "$1월 $2일") });
+    shareFile = null; cv.toBlob((b) => { if (b) shareFile = new File([b], `naeilo-1000-${today()}.png`, { type: "image/png" }); }, "image/png");
   }
   // 공유할 파일은 그린 직후 미리 만들어 둔다: 버튼을 누른 뒤 기다리면 iOS 가 사용자 동작을 잃어 앱으로 파일이 안 넘어간다
   let shareFile = null;
