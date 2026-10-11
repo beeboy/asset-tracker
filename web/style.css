@@ -320,3 +320,11 @@ table.hit td.retro { opacity: .5; } table.hit th.now { color: var(--accent); }
 .stabalg li { margin-bottom: 4px; line-height: 1.55; }
 .stabw { margin: 2px 0 8px; padding-left: 18px; }
 .stabw li { margin-bottom: 2px; }
+
+/* 첫 화면 세리 (웹은 한 명만) */
+.seri { display: flex; gap: 12px; align-items: flex-start; }
+.seri img { image-rendering: pixelated; flex: none; }
+.seri-say { background: var(--bg); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; position: relative; }
+.seri-say b { color: var(--accent); margin-right: 4px; }
+.seri-body { line-height: 1.6; }
+.seri-app { margin-top: 6px; }
