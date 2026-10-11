@@ -45,7 +45,8 @@ struct CharProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> CharEntry { CharEntry(date: Date(), r: .sample, c: WChar.all[0], locked: false) }
     func snapshot(for cfg: WhoIntent, in context: Context) async -> CharEntry { entry(cfg, preview: context.isPreview) }
     func timeline(for cfg: WhoIntent, in context: Context) async -> Timeline<CharEntry> {
-        Timeline(entries: [entry(cfg, preview: false)], policy: .after(MarketHours.nextRefresh()))
+        WidgetLine.bump()   // 새로 그릴 때마다 다음 대사
+        return Timeline(entries: [entry(cfg, preview: false)], policy: .after(MarketHours.nextRefresh()))
     }
     func recommendations() -> [AppIntentRecommendation<WhoIntent>] {
         WhoEnum.choices.map { AppIntentRecommendation(intent: WhoIntent($0), description: $0 == .home ? "앱 홈의 인물" : WChar.of($0.charId).name) }

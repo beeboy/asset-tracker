@@ -92,6 +92,7 @@ final class Market {
     @MainActor
     func pullRefresh(_ m: AppModel) async {
         await refresh(held: Set(m.holdings.map(\.symbol)), force: true)
+        LineClock.shared.next()     // 당기면 인물 대사도 다음 줄로
         WidgetBridge.write(m)
     }
 }
