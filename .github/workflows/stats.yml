@@ -21,11 +21,13 @@ jobs:
           node-version: "22"
       - name: 전망 입력값 계산
         run: node tools/site_stats.mjs
+      - name: 배당·환율 계산 (앱이 웹과 같은 숫자를 내도록)
+        run: node tools/site_calc.mjs && node tools/check_calc.mjs
       - name: 커밋
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/stats.json
+          git add data/stats.json data/calc.json
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
           git commit -m "전망 입력값 $(date -u +%Y-%m-%dT%H:%MZ)"
           for i in 1 2 3; do git pull --rebase -q origin main && git push && exit 0; sleep 5; done

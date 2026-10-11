@@ -17,12 +17,18 @@ struct AnalysisView: View {
 
     var body: some View {
         let fc = m.forecast
-        let usd = m.rows.filter { $0.sym.currency == .usd || $0.id == "360750" }.reduce(0) { $0 + $1.value } / max(1, m.total)
+        let usd = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / max(1, m.total)
         // 내 길: 실제로 시작한 날부터 본전까지 1년에 걸친 선과 오늘 비교
         let gap = m.myPathGapToday
-        let mkt10 = m.rows.reduce(0) { $0 + $1.value * (ExternalView.beta[$1.id]?.0 ?? 1) * -0.1 } / max(1, m.total)
-        let div = m.rows.reduce(0) { a, r in
-            a + m.krw(r.sym, r.h.qty * (DividendView.divs[r.id]?.0 ?? 0)) * (1 - (r.sym.currency == .usd ? 0.15 : 0.154))
+        // 외부 요인·배당은 상세 화면과 같은 값 (웹과 같은 사이트 자료·식)
+        let mkt10 = m.rows.reduce(0.0) { a, r in
+            a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0)
+        } / max(1, m.total)
+        let fxNow = Market.shared.fx.last, today = SiteCalc.today()
+        let div = m.rows.reduce(0.0) { a, r in
+            let krw = r.sym.currency == .krw
+            let o = SiteCalc.shared.div(r.id).flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fxNow, krw: krw, price: r.sym.last, today: today) }
+            return a + (o?.y1 ?? 0)
         }
         let cards: [(String, String, String, Color, AnalysisRoute)] = [
             ("내 길", "정한 목표대로 가고 있나", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + "\(Int((abs(gap) * 100).rounded()))%",
@@ -62,6 +68,7 @@ struct AnalysisView: View {
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .task { await MacroData.shared.load() }
+        .task { await SiteCalc.shared.refresh() }
         .navigationDestination(for: AnalysisRoute.self) { r in
             switch r {
             case .forecast: ForecastView()
