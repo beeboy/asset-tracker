@@ -8,11 +8,14 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 AppHeader(tab: "홈").padding(.horizontal, -16)
+                SampleNote()
                 summary
+                // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
+                if !m.isGoal, m.done.contains(3), m.cost > m.total, !m.rows.isEmpty { DepositLeverCard(plan: m.keepPlan) }
                 shelterBox
                 reminder
                 if m.playUnlocked { RoutineCard() } else { lockedRoutine }
-                if !m.playUnlocked { yesterdayCard }
+                if !m.playUnlocked, !m.rows.isEmpty { yesterdayCard }
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
             .screen()
@@ -52,7 +55,7 @@ struct HomeView: View {
             }
             .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(AppModel.wonK(now)).appFont(32, .bold).tracking(-0.5)
+                Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5)
                 if m.route == .plus {
                     Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 }
@@ -65,8 +68,11 @@ struct HomeView: View {
             }
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: prog)
-            Text("오늘 \(AppModel.sgn(m.route == .novice ? 0.006 : m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog)) 도달. 다음달 \(AppModel.wonK(m.gM)) 적립 예정.")
+            Text(m.goalReached ? "목표 \(AppModel.wonK(m.gK))에 닿았어요! 축하해요. 지금 금액에서 다음 목표를 정해 볼까요?"
+                 : m.route == .novice ? "매달 \(AppModel.wonK(m.gM))씩 모아 \(m.gY)년 뒤 \(AppModel.wonK(m.gK)). 목표까지 \(AppModel.pct(prog)) 왔어요. 다음 적립일에 \(AppModel.wonK(m.gM))이 더해져요."
+                 : "오늘 \(AppModel.sgn(m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog)) 도달. 다음달 \(AppModel.wonK(m.gM)) 적립 예정.")
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
+            if m.goalReached { darkButton("다음 목표 정하기") { m.suggestNextGoal(); m.homePath.append("goal") } }
         }
         .foregroundStyle(.white)
         .padding(18)
@@ -96,13 +102,23 @@ struct HomeView: View {
             ProgressBar(value: m.total / max(1, m.cost))
             Text(need > 0
                  ? "본전까지 남은 오름폭이 \(String(format: "%.1f", needY * 100))%에서 \(String(format: "%.1f", need * 100))%로 " + (need <= needY ? "줄었어요." : "늘었어요. 하루 숫자는 흔들려요.")
-                 : "본전을 넘었어요. 이제 목표 루트로 갈 수 있어요.")
+                 : "본전을 넘었어요. 이제 목표 루트로 갈 수 있어요. 종목·위젯·만난 친구는 그대로예요.")
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
+            if need <= 0 { darkButton("목표 루트로") { m.graduateToGoal(); m.tab = .board } }
         }
         .foregroundStyle(.white)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    // 어두운 요약 카드 안의 노란 버튼 (목표 루트로 · 다음 목표)
+    private func darkButton(_ t: String, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Text(t + " ›").appFont(15, .bold).foregroundStyle(Theme.inkFixed)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(Theme.yellow, in: RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
     }
 
     // 쉼터 박스: 홈에 둔 친구 + 말풍선 (리마인드 소식이 있으면 그 소식) + 새 소식 + 다른 친구 칸
@@ -358,6 +374,24 @@ struct FlowRow: Layout {
             if x > b.minX && x + sz.width > b.maxX { x = b.minX; y += rowH + spacing; rowH = 0 }
             s.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
             x += sz.width + spacing; rowH = max(rowH, sz.height)
+        }
+    }
+}
+
+/// 샘플 종목 안내: 새 사용자는 가상 종목 DRNK·QQQ 샘플로 시작한다. 내 종목을 넣기 전까지 탭마다 보인다
+struct SampleNote: View {
+    @Environment(AppModel.self) private var m
+    var body: some View {
+        if m.isSample {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("샘플").appFont(12, .bold).foregroundStyle(.white)
+                    .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.orange, in: Capsule())
+                Text("지금 숫자는 샘플(가상 종목 DRNK·QQQ)이에요. 종목 탭에서 내 종목을 넣으면 바뀌어요.")
+                    .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.orange.opacity(0.6)))
         }
     }
 }

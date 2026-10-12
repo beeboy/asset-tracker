@@ -10,7 +10,8 @@ import Security
 // - 중계(/esync?id=)에는 기기에서 암호화한 값 {c: "iv.암호문", at}만 둔다. 중계는 내용을 읽을 수 없다.
 // - 나중에 고친 쪽이 이긴다 (at). 처음 켤 때 양쪽 다 값이 있으면 어느 쪽에 맞출지 묻는다.
 // - 맞추는 것: 종목·수량·평균 단가(사이트 holdings 형식), 앱의 미션 진행(app 칸, 사이트는 건드리지 않고 그대로 둔다).
-//   사이트에만 있는 칸(목표·사건·모형 설정)과 앱이 못 다루는 종목(미국·한국 밖)은 받은 그대로 다시 올린다.
+//   목표(금액·목표일·시작일·매달 넣는 돈)는 양쪽이 같은 값을 쓴다 (나중에 고친 쪽이 이긴다. 회복 루트에서는 받기만 한다).
+//   사이트에만 있는 칸(사건·모형 설정)과 앱이 못 다루는 종목(미국·한국 밖)은 받은 그대로 다시 올린다.
 @Observable
 final class Sync {
     static let shared = Sync()
@@ -40,7 +41,31 @@ final class Sync {
     /// 사이트 쪽 전체 입력값 (앱이 안 쓰는 칸을 지키려고 받은 그대로 둔다)
     private var siteState: [String: Any] {
         get { (d.data(forKey: "sync.site")).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:] }
-        set { d.set(try? JSONSerialization.data(withJSONObject: newValue), forKey: "sync.site") }
+        set { d.set(try? JSONSerialization.data(withJSONObject: newValue), forKey: "sync.site"); siteFc = nil; cashC = nil }
+    }
+    /// 사이트 입력값의 사건 목록·전망 설정. 앱 전망(ForecastEngine)이 그 사람의 웹과 같은 사건으로 계산한다. 동기화를 안 켰으면 nil
+    @ObservationIgnored private var siteFc: (events: [MC.Event]?, model: MC.Settings?)? = nil
+    var siteForecast: (events: [MC.Event]?, model: MC.Settings?) {
+        guard isOn else { return (nil, nil) }
+        if let c = siteFc { return c }
+        let st = siteState
+        func dec<T: Decodable>(_ v: Any?, _ t: T.Type) -> T? {
+            guard let v, JSONSerialization.isValidJSONObject(v), let data = try? JSONSerialization.data(withJSONObject: v) else { return nil }
+            return try? JSONDecoder().decode(t, from: data)
+        }
+        let c = (dec(st["events"], [MC.Event].self), dec(st["model"], MC.Settings.self))
+        siteFc = c
+        return c
+    }
+    /// 사이트 입력값의 현금 (원화, 달러). 앱은 입력 칸 없이 받은 값만 쓴다 (내 길·전망에 웹과 같은 식으로). 동기화를 안 켰으면 0
+    @ObservationIgnored private var cashC: (krw: Double, usd: Double)? = nil
+    var siteCash: (krw: Double, usd: Double) {
+        guard isOn else { return (0, 0) }
+        if let c = cashC { return c }
+        let o = siteState["cash"] as? [String: Any]
+        let c = (krw: Self.num(o?["krw"]), usd: Self.num(o?["usd"]))
+        cashC = c
+        return c
     }
     /// 받을 때 들여오지 않은 사이트 줄 (보낼 때 그대로 돌려보낸다)
     private var keepTickers: Set<String> {
@@ -195,6 +220,11 @@ final class Sync {
         state = .working
         do {
             let r = try await call()
+            // 지난 날 수량 기록은 언제나 사이트 값으로 (이 기기 값이 더 새로워 받지 않을 때도: 앱에만 남은 예전 줄이 내 길 시작값을 웹과 다르게 만든다)
+            if let st = r.state, !(localAt == 0 && hasLocalData(m)) {
+                let L = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)
+                if L != m.lots { m.lots = L }
+            }
             if let st = r.state, r.at > localAt {
                 if localAt == 0 && hasLocalData(m) {
                     // 처음 켤 때 양쪽 다 값이 있으면 묻는다 (사이트와 같은 동작)
@@ -312,6 +342,22 @@ final class Sync {
         if let p = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(m.progress)) { app["progress"] = p }
         app["virtual"] = m.holdings.filter { $0.symbol == "DRNK" }.map { ["t": $0.symbol, "q": $0.qty, "a": $0.avg] }
         st["app"] = app
+        // 목표는 사이트와 같은 칸(goal)에. 회복 루트(본전 기준)와 사이트 샘플 중에는 사이트 목표를 그대로 둔다
+        if m.isGoal, (st["sample"] as? Bool) != true { st["goal"] = m.siteGoal(st["goal"] as? [String: Any]) }
+        // 전망 관점(현재 정세·내 관점·과거 추세)과 추세 신뢰는 웹 전망 설정과 같은 칸(model.scenario·trust)에. 웹이 다른 시나리오(보수 등)면 그대로 둔다
+        var md = st["model"] as? [String: Any] ?? [:]
+        if ["blend", "base", "smooth", nil].contains(md["scenario"] as? String) {
+            md["scenario"] = m.lens == .base ? "base" : m.lens == .smooth ? "smooth" : "blend"
+            md["trust"] = m.trust
+            st["model"] = md
+        }
+        // 내 기록은 사이트와 같은 칸(daily)에 날짜별로 합쳐 둔다
+        let daily = MyRecord.merge(MyRecord.fromJSON(st["daily"]), m.myRecord)
+        if !daily.isEmpty, let j = MyRecord.toJSON(daily) { st["daily"] = j }
+        // 수량 기록은 사이트와 같은 칸(lots)에 날짜별로 합쳐 둔다 (내 길 실제 평가액을 웹과 같은 수량으로)
+        // 지난 날은 사이트 값만 (앱에만 남은 예전 줄이 웹과 다른 시작값을 만들지 않게), 오늘 줄은 이 기기 값
+        let lots = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)
+        if !lots.isEmpty, let j = Lots.toJSON(lots) { st["lots"] = j }
         st.removeValue(forKey: "ui")
         st.removeValue(forKey: "_w")
         return st
@@ -356,13 +402,6 @@ final class Sync {
             let cost = hs.reduce(0.0) { a, h in a + (Sample.symbol(h.symbol).map { m.krw($0, h.qty * h.avg) } ?? 0) }
             let val = hs.reduce(0.0) { a, h in a + (Sample.symbol(h.symbol).map { m.krw($0, h.qty * $0.last) } ?? 0) }
             m.startRoute(cost > 0 && val >= cost ? .plus : .recover)
-            // 사이트에 정한 목표가 있으면 목표 루트의 목표 금액·기간으로
-            if m.isGoal, let g = st["goal"] as? [String: Any], let amt = g["amount"] as? Double, amt > 0 {
-                m.gK = (amt / 1e4).rounded()
-                if let ds = g["date"] as? String, let dd = Day.date(ds) {
-                    m.gY = max(1, Int((dd.timeIntervalSinceNow / (365.25 * 86400)).rounded()))
-                }
-            }
         }
         if let app {
             for v in (app["virtual"] as? [[String: Any]]) ?? [] {
@@ -373,6 +412,16 @@ final class Sync {
                 m.apply(prog)
             }
         }
+        // 목표(금액·목표일·시작일·매달 넣는 돈)는 받을 때마다 사이트 값으로 맞춘다 (진행보다 뒤에: 진행에 든 예전 목표를 덮는다).
+        // 회복 루트는 본전이 기준이라 화면에는 안 쓰지만, 목표 루트로 넘어갈 때 이 목표를 그대로 쓴다. 사이트 샘플 목표는 받지 않는다
+        if (st["sample"] as? Bool) != true, let g = st["goal"] as? [String: Any] { m.takeSiteGoal(g) }
+        // 전망 관점·추세 신뢰도 웹 설정을 그대로 (진행보다 뒤에: 앱에 따로 남은 값이 웹과 다른 연 기대·확률을 만들지 않게)
+        if let md = st["model"] as? [String: Any] {
+            switch md["scenario"] as? String { case "base": m.lens = .base; case "smooth": m.lens = .smooth; case "blend": m.lens = .mine; default: break }
+            if md["trust"] != nil { let t = Self.num(md["trust"]); if t.isFinite { m.trust = min(100, max(0, t)) } }
+        }
+        m.myRecord = MyRecord.merge(m.myRecord, MyRecord.fromJSON(st["daily"]))
+        m.lots = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)    // 종목보다 먼저: 종목을 바꾸면 수량 기록이 오늘 줄을 남긴다
         m.holdings = hs
         // 새 폰에서 첫 질문 전에 불러왔으면 첫 질문은 건너뛴다 (진행이 없으면 회복 루트 미션 1부터)
         if !m.onboarded { m.onboarded = true; UserDefaults.standard.set(true, forKey: "onboarded"); m.tab = .board }
@@ -382,11 +431,12 @@ final class Sync {
         if !skipped.isEmpty { state = .failed("시세를 못 받은 종목 \(skipped.joined(separator: ", "))는 사이트에만 있어요") }
     }
 
-    /// 동기화할 값이 바뀌었는지 (종목 + 진행. 날짜 칸은 빼고)
+    /// 동기화할 값이 바뀌었는지 (종목 + 진행 + 내 기록 날짜 수. 날짜 칸은 빼고)
     func signature(_ m: AppModel) -> String {
         var p = m.progress; p.lastOpen = ""
         let a = (try? JSONEncoder().encode(p)) ?? Data(), b = (try? JSONEncoder().encode(m.holdings)) ?? Data()
-        return SHA256.hash(data: a + b).map { String(format: "%02x", $0) }.joined()
+        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
+        return SHA256.hash(data: a + b + c).map { String(format: "%02x", $0) }.joined()
     }
 }
 

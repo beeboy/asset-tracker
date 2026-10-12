@@ -12,7 +12,7 @@ enum WidgetBridge {
         let now = Date()
         let goal = m.keyValue
         let start = Calendar.current.date(byAdding: .month, value: -3, to: now)!    // 시작은 3개월 전 (내 길과 같은 가정)
-        let end = m.isGoal ? Calendar.current.date(byAdding: .year, value: m.gY, to: now)! : Calendar.current.date(byAdding: .month, value: 9, to: now)!
+        let end = m.isGoal ? m.goalToDate : Calendar.current.date(byAdding: .month, value: 9, to: now)!
 
         // 지금 시세: [지금 가격, 전일 종가, 시각]
         var q: [String: [Double?]] = [:], ccy: [String: String] = [:]
@@ -22,7 +22,7 @@ enum WidgetBridge {
             ccy[r.id] = r.sym.currency == .usd ? "USD" : "KRW"
         }
         q["KRW=X"] = [fx.last, fx.prevClose, now.timeIntervalSince1970]
-        let feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: nil)
+        let feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Market.shared.mar.map { WFeed.Mar(rate: $0.rate, date: $0.date) })   // 위젯 평가액도 앱·웹처럼 매매기준율
 
         let live = WLive(hold: rows.map { .init(t: $0.id, sh: $0.h.qty, price: $0.sym.last) },
                          cashKrw: 0, cashUsd: 0, goalAmount: goal, goalDate: Day.str(end), goalStart: Day.str(start),
@@ -31,10 +31,10 @@ enum WidgetBridge {
         // 요약: 최근 3달 평가액(만원), 3년 전망 부채꼴, 이번 주 예보
         let spark: [Double?] = (0..<63).map { i in m.totalAt(1 - Double(62 - i) / 756) / 1e4 }
         let f = m.forecast
-        let md = (0...36).map { Day.str(Calendar.current.date(byAdding: .month, value: $0, to: now)!) }
         let man = { (a: [Double]) in a.map { Optional($0 / 1e4) } }
-        let fc = WSummary.Forecast(scen: m.lens.label, md: md, p5: man(f.q5), p25: man(f.q25), p50: man(f.q50), p75: man(f.q75), p95: man(f.q95),
-                                   pg: f.prob(3), t: .init(p5: f.q5[36] / 1e4, p50: f.q50[36] / 1e4, p95: f.q95[36] / 1e4))
+        // 앱 전망과 같은 값 (웹과 같은 몬테카를로, 목표일까지 월 경계마다)
+        let fc = WSummary.Forecast(scen: m.lens.label, md: f.dates, p5: man(f.q5), p25: man(f.q25), p50: man(f.q50), p75: man(f.q75), p95: man(f.q95),
+                                   pg: f.pGoal, t: .init(p5: (f.q5.last ?? 0) / 1e4, p50: (f.q50.last ?? 0) / 1e4, p95: (f.q95.last ?? 0) / 1e4))
         let wr = m.weekRange
         let friday = Calendar.current.nextDate(after: now, matching: DateComponents(weekday: 6), matchingPolicy: .nextTime) ?? now
         let week = WSummary.Week(f: Day.str(friday), p50: (wr.lo + wr.hi) / 2, lo: wr.lo, hi: wr.hi, base: m.total, cash: 0, t0: m.total, tent: nil)

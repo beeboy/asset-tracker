@@ -54,11 +54,17 @@ struct RootView: View {
         .onChange(of: model.nxStep) { _, n in if n == 2 && Sync.shared.isOn { model.nxStep = 3 } }
         // 인물 대사: 화면을 열거나 앱을 앞으로 가져올 때만 다음 줄로 (1분 자동 갱신으로는 안 바뀐다)
         .modifier(LineTurns(model: model, phase: phase))
-        // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로
-        .onChange(of: phase) { _, p in if p == .active && model.persists { model.catchUpDay() } }
+        // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로.
+        // 전망 몬테카를로: 앱이 뒤로 가면 돌던 계산도 멈추고, 다시 앞으로 오면 이어 간다 (뒤에서 폰이 뜨거워지지 않게)
+        .onChange(of: phase) { _, p in
+            Compute.setActive(p != .background)
+            if p == .active && model.persists { model.catchUpDay(); model.recordDay() }
+        }
         // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
         .onChange(of: model.progress) { _, _ in model.saveProgress(); if model.persists { Sync.shared.changed(model) } }
         .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }
+        // 내 기록: 새 날 줄이 생기면 다른 기기로도 (같은 날 값 고침은 다음 변경 때 같이)
+        .onChange(of: model.myRecord.count) { _, _ in if model.persists { Sync.shared.changed(model) } }
         // 앱을 열거나 앞으로 올 때 다른 기기 값 받기
         // 서버 시각도 같이 받는다 (인터미션 날짜·내 캐릭터 조건, Me.swift)
         .onChange(of: phase, initial: true) { _, p in
@@ -94,6 +100,7 @@ struct RootView: View {
             var lastResched = Date.distantPast
             while !Task.isCancelled {
                 await Market.shared.refresh(held: Set(model.holdings.map(\.symbol)))
+                if model.persists { model.recordDay() }   // 내 기록: 시세를 받은 뒤 오늘 줄을 지금 값으로
                 Remind.shared.refresh(model)     // 홈 리마인드 (위젯 말풍선·다음 일정도 여기서)
                 WidgetBridge.write(model)        // 위젯에 지금 숫자를 넘긴다
                 await Notifier.check(model)       // 본전 도달 · 비중 이탈

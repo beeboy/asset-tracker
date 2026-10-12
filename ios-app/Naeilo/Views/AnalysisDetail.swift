@@ -1,22 +1,80 @@
 import SwiftUI
 
 // 분석 탭 상세 화면 (시안 31~35판): 내 길 · 금리 시나리오 · 외부 요인 · 배당·세금 · 환율 영향 · 종목 한눈에. (인사이트는 앱에서 뺐다)
-// 숫자는 모두 계산값이고 사거나 팔라는 문구는 넣지 않는다. 반응 크기·배당은 시안용 예시 값.
+// 숫자는 모두 계산값이고 사거나 팔라는 문구는 넣지 않는다. 외부 요인·배당·환율은 웹과 같은 자료(사이트 stats.json·calc.json)와 같은 식.
 
 // MARK: 공통
 
 extension AppModel {
-    // 내 길: 회복 = 본전을 1년 안에(적립 없음), 목표 = 목표 금액·목표일·매달 적립. 시작은 3개월 전(시안 가정)
-    struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let act: (Double) -> Double; let need: (Double) -> Double }
+    // 내 길: 회복 = 본전을 1년 안에(적립 없음), 목표 = 목표 금액·목표일·매달 적립. 시작은 실제로 길을 시작한 날
+    /// 내 길 시작한 날: 목표 루트는 목표 시작일(사이트와 같은 값), 회복 루트는 인터미션 시작일과 내 기록 첫날 중 이른 날. 모르면 오늘
+    var pathStartDate: Date {
+        let rec = (isSample ? nil : myRecord.first).flatMap { Day.date($0.d) }
+        if isGoal { return min(Date(), goalFromDate) }
+        let rs = interStartAt.map { Date(timeIntervalSince1970: $0) }
+        let d = [rs, rec].compactMap { $0 }.min()
+        return min(Date(), d ?? Date())
+    }
+    var pathStartText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"; return f.string(from: pathStartDate) }
+    var pathStartMonth: String { "\(Calendar.current.component(.month, from: pathStartDate))월" }
+    /// pts = 실제 평가액 (시작부터 년, 원). 거래일마다 하나, 끝은 오늘 지금 평가액
+    struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let pts: [(Double, Double)]; let act: (Double) -> Double; let need: (Double) -> Double }
+    /// 두 날짜("yyyy-MM-dd") 사이 년 (웹 yearsBetween 과 같은 식)
+    static func yrs(_ a: String, _ b: String) -> Double {
+        guard let x = Day.date(a), let y = Day.date(b) else { return 0 }
+        return y.timeIntervalSince(x) / (365.25 * 86400)
+    }
+    /// 내 길 실제 평가액 (웹 목표 진행 actualSeries 와 같은 식): 시작일 무렵부터 거래일마다
+    /// 그날 수량(수량 기록, 없으면 지금 수량) × 그날 종가 × 그날 원/달러 종가. 과거 시세가 없는 종목은 지금 평가액 그대로
+    /// 현금은 그대로 있다고 보고 날마다 더한다 (웹 goalPath 와 같다)
+    func pathSeries(from start: String) -> [(d: String, v: Double)] {
+        let rs = rows, today = Day.today, fxH = PriceHistory.of("FX"), cash = cashKrw
+        let hs = rs.map { (r: $0, h: PriceHistory.of($0.id), t: Sync.siteTicker($0.id)) }
+        let from = Day.str(Calendar.current.date(byAdding: .day, value: -10, to: Day.date(start) ?? Date()) ?? Date())
+        var ds = Set<String>()
+        for x in hs { if let h = x.h { for d in h.dates.reversed() { if d < from { break }; if d < today { ds.insert(d) } } } }
+        return ds.sorted().map { d in
+            let q = Lots.on(lots, d)
+            let v = hs.reduce(0.0) { a, x in
+                guard let h = x.h else { return a + x.r.value }
+                guard let px = h.on(d) else { return a }
+                let n = q.map { $0[x.t] ?? 0 } ?? x.r.h.qty
+                return a + px * n * (x.r.sym.currency == .usd ? (fxH?.on(d) ?? Market.shared.valFx) : 1)
+            }
+            return (d: d, v: v + cash)
+        }
+    }
     var myPath: MyPath {
-        let mS = 0.25, mEnd = isGoal ? Double(gY) : 1, mM = isGoal ? gM * 1e4 : 0, K = keyValue
+        let mEnd = isGoal ? goalSpan : 1     // 목표: 시작일부터 목표일까지 (사이트와 같은 날짜)
+        let sD = Day.str(pathStartDate), today = Day.today
+        // 시작한 날부터 오늘까지 (년). 오늘 시작이면 하루로 둔다
+        let mS = min(mEnd * 0.95, max(1.0 / 365.25, Self.yrs(sD, today))), mM = isGoal ? gM * 1e4 : 0, K = keyValue
         let now = trackValue
-        let act: (Double) -> Double = route == .novice
-            ? { t in max(0, now - mM * 12 * max(0, mS - t)) }
-            : { t in self.totalAt(1 - (mS - t) / 3) }
-        let vS = act(0), kAdj = K - mM * 12 * mEnd
+        var pts: [(Double, Double)]
+        if route == .novice {
+            pts = (0...30).map { i in let t = mS * Double(i) / 30; return (t, max(0, now - mM * 12 * (mS - t))) }
+        } else if isSample {
+            // 샘플(가상 종목 DRNK)은 날짜별 시세가 없어 지난 3년 흐름에서 어림한다
+            pts = (0...30).map { i in let t = mS * Double(i) / 30; return (t, i == 30 ? now : self.totalAt(1 - (mS - t) / 3)) }
+        } else {
+            // 웹처럼 시작일 또는 그 뒤 첫 거래일 값에서 출발 (시작일 뒤 거래일이 아직 없으면 그 전 마지막 거래일)
+            let S = pathSeries(from: sD)
+            let i0 = S.firstIndex { $0.d >= sD } ?? max(0, S.count - 1)
+            pts = []
+            if !S.isEmpty {
+                pts.append((0.0, S[i0].v))
+                for x in S[(i0 + 1)...] { pts.append((Self.yrs(sD, x.d), x.v)) }
+            }
+            pts.append((mS, now))
+        }
+        let P = pts
+        let act: (Double) -> Double = { t in
+            if t >= mS { return now }
+            return (P.last { $0.0 <= t } ?? P.first)?.1 ?? now
+        }
+        let vS = P.first?.1 ?? now, kAdj = K - mM * 12 * mEnd
         let need: (Double) -> Double = { t in mM * 12 * t + (kAdj > 0 && vS > 0 ? vS * pow(kAdj / vS, t / mEnd) : vS + (K - vS) * t / mEnd) }
-        return MyPath(start: mS, end: mEnd, key: K, monthly: mM, act: act, need: need)
+        return MyPath(start: mS, end: mEnd, key: K, monthly: mM, pts: P, act: act, need: need)
     }
     var myPathGapToday: Double { let p = myPath; let n = p.need(p.start); return n > 0 ? p.act(p.start) / n - 1 : 0 }
 
@@ -38,7 +96,7 @@ struct DetailHead: View {
         Text(sub).appFont(14).foregroundStyle(Theme.sub)
             .frame(maxWidth: .infinity, maxHeight: sub.isEmpty ? 0 : nil, alignment: .leading)
             .opacity(sub.isEmpty ? 0 : 1)
-            .navigationTitle(title)
+            .modifier(DetailTitle(title: title))
     }
 }
 
@@ -124,35 +182,63 @@ private func linePath(_ pts: [(Double, Double)], in size: CGSize) -> Path {
 
 struct MyPathView: View {
     @Environment(AppModel.self) private var m
-    @State private var view = "all"
+    // 고르기 전에는 시작한 지 석 달이 안 됐으면 '시작부터' (목표일까지 보면 실제 선이 점처럼 짧다)
+    @State private var picked: String? = nil
 
     var body: some View {
         let p = m.myPath, mS = p.start, mEnd = p.end, K = p.key, act = p.act, need = p.need
-        let gap = m.myPathGapToday
+        let view = picked ?? (mS < 0.25 ? "past" : "all")
+        let gap = p.need(mS) > 0 ? p.act(mS) / p.need(mS) - 1 : 0
         let f = m.forecast
         let x1 = view == "past" ? mS + 1.0 / 12 : mEnd
-        let actPts = (0...30).map { i -> (Double, Double) in let t = mS * Double(i) / 30; return (t, act(t)) }
+        let actPts = p.pts
         let needPts = (0...60).map { i -> (Double, Double) in let t = x1 * Double(i) / 60; return (t, need(t)) }
         let bandPts: [(Double, Double, Double)] = view == "band"
-            // 3년 전망(달마다 36칸)을 목표일까지 겹친다. 목표일이 3년보다 멀면 전망이 있는 3년까지만
-            ? (0...min(f.q75.count - 1, max(1, Int(((x1 - mS) * 12).rounded())))).map { i in let t = mS + Double(i) / 12; return (t, f.q75[i], f.q25[i]) } : []
+            // 전망(오늘부터 목표일까지 월 경계마다)을 그래프 끝까지 겹친다
+            // 전망 경로는 종목만이라 현금을 더해 내 길(현금 포함)과 같은 기준으로
+            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i] + m.cashKrw, f.q25[i] + m.cashKrw) } : []
         let vals = actPts.map(\.1) + needPts.map(\.1) + bandPts.flatMap { [$0.1, $0.2] }
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
         let yrsLeft = mEnd - mS
+        // 남은 기간: 웹 목표 진행과 같은 표시 (3.0년, 1년 안 되면 개월)
+        let leftText = AppModel.leftText(m.isGoal ? AppModel.yrs(Day.today, Day.str(m.goalToDate)) : yrsLeft)
+        // 지난 달마다: 시작한 날부터 꽉 채운 달만 (최근 6달), 끝은 오늘
+        let months = Calendar.current.dateComponents([.month], from: m.pathStartDate, to: Date()).month ?? 0
+        let monthRows: [(String, Double)] = (max(1, months - 5)...max(1, months)).compactMap { k -> (String, Double)? in
+            guard k <= months, let d = Calendar.current.date(byAdding: .month, value: k, to: m.pathStartDate) else { return nil }
+            return ("\(k)달째", d.timeIntervalSince(m.pathStartDate) / (365.25 * 86400))
+        } + [("오늘", mS)]
         let now = m.trackValue, mM = p.monthly
         let needCagr = now > 0 && yrsLeft > 0 ? pow(max(1, K - mM * 12 * yrsLeft) / now, 1 / yrsLeft) - 1 : 0
-        let pPlan = f.prob(min(3, yrsLeft))
+        let pPlan = m.isGoal ? f.pGoal : f.prob(min(3, yrsLeft))   // 목표 루트: 목표일에 목표 이상일 확률 (웹 목표 확률)
         let lead = gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060)
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.gY)년 · 매달 \(AppModel.wonK(m.gM)) (7월 9일 시작)" : "본전 \(AppModel.man(K)) · 1년 안에 (7월 9일 시작)")
+                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.goalToText)까지 · 매달 \(AppModel.wonK(m.gM)) (\(m.pathStartText) 시작)" : "본전 \(AppModel.eok(K)) · 1년 안에 (\(m.pathStartText) 시작)")
                 HStack(alignment: .firstTextBaseline) {
-                    Text("내 길보다 \(String(format: "%.1f", abs(gap) * 100))% \(gap >= 0 ? "앞섬" : "뒤처짐")").appFont(22, .bold).foregroundStyle(lead)
+                    Text("\(gap >= 0 ? "앞섬" : "뒤처짐") \(String(format: "%.1f", abs(gap) * 100))%").appFont(22, .bold).foregroundStyle(lead)
                     Spacer()
-                    Text("오늘 내 길 \(AppModel.man(need(mS)))").appFont(12).foregroundStyle(Theme.sub)
+                    // 웹 목표 진행처럼 금액 차이 (금액은 이 요약과 아래 달마다 막대에만)
+                    Text("내 길보다 \(AppModel.eokS(act(mS) - need(mS)))").appFont(13, .semibold).foregroundStyle(lead)
                 }
+                // 웹 목표 진행의 '시작 대비'와 같은 줄: 시작일 평가액 → 지금 평가액 (웹과 숫자를 나란히 맞춰 볼 수 있게)
+                if let v0 = p.pts.first?.1, v0 > 0 {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("시작 대비 \(AppModel.sgn(act(mS) / v0 - 1))").appFont(13).foregroundStyle(Theme.sub)
+                        Spacer()
+                        Text("\(AppModel.eok(v0)) → \(AppModel.eok(act(mS)))").appFont(13).foregroundStyle(Theme.sub)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                // 웹 목표 진행 요약과 같은 목표 달성 확률 (전망 계산이 끝나기 전에는 '계산 중')
+                HStack(alignment: .firstTextBaseline) {
+                    Text(m.isGoal ? "목표 달성 확률" : "\(m.keyName) 확률").appFont(13).foregroundStyle(Theme.sub)
+                    Spacer()
+                    Text(f.exact ? AppModel.pct(pPlan) : "계산 중").appFont(f.exact ? 17 : 13, .bold).foregroundStyle(f.exact ? Theme.teal : Theme.muted)
+                }
+                .accessibilityElement(children: .combine)
                 Canvas { ctx, size in
                     if !bandPts.isEmpty {
                         var band = linePath(bandPts.map { (X($0.0), Y($0.1)) }, in: size)
@@ -165,7 +251,13 @@ struct MyPathView: View {
                                with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
                     ctx.stroke(linePath(needPts.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.purple), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
                     ctx.stroke(linePath(actPts.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.teal), style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
-                    let ty = Y(actPts.last!.1) * size.height
+                    // 거래일이 적을 때는 날마다 작은 점도 찍는다
+                    if actPts.count <= 40 {
+                        for q in actPts.dropLast() {
+                            ctx.fill(Path(ellipseIn: CGRect(x: X(q.0) * size.width - 2, y: Y(q.1) * size.height - 2, width: 4, height: 4)), with: .color(Theme.teal))
+                        }
+                    }
+                    let ty = Y(actPts.last?.1 ?? 0) * size.height
                     ctx.fill(Path(ellipseIn: CGRect(x: tx - 4, y: ty - 4, width: 8, height: 8)), with: .color(Theme.teal))
                 }
                 .frame(height: 140)
@@ -173,38 +265,39 @@ struct MyPathView: View {
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 2) {
                         legend(Theme.teal, "실제"); legend(Theme.purple, "내 길")
-                        if view == "band" { legend(Theme.teal.opacity(0.3), "3년 전망 절반" + (mEnd - mS > 3.05 ? " (3년까지)" : "")) }
+                        if view == "band" { legend(Theme.teal.opacity(0.3), "전망 절반") }
                     }
                     .padding(6).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
                 }
                 .overlay(alignment: .bottomTrailing) {
-                    if view == "band" {
+                    if view == "band" && f.exact {
                         Text("넘을 확률 \(AppModel.pct(pPlan))").appFont(12, .bold).foregroundStyle(Theme.purple)
                             .padding(.horizontal, 8).padding(.vertical, 4).background(Theme.card.opacity(0.85), in: Capsule())
                             .padding(.bottom, 4)
                     }
                 }
                 .accessibilityLabel("내 길과 실제 평가액 그래프")
-                HStack { Text("시작 7월"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "\(m.gY)년 뒤 목표일" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
-                ChipRow(items: [("past", "시작부터"), ("all", "목표일까지"), ("band", "예보 겹치기")], selection: $view, fill: true)
+                HStack { Text("시작 \(m.pathStartMonth)"); Spacer(); Text(view == "past" ? "다음 달" : m.isGoal ? "목표일 \(m.goalToText)" : "1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
+                ChipRow(items: [("past", "시작부터"), ("all", "목표일까지"), ("band", "예보 겹치기")], selection: Binding(get: { view }, set: { picked = $0 }), fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 Card {
-                    Text("달마다 내 길보다 앞섰나").appFont(15, .bold)
-                    ForEach(1...3, id: \.self) { k in
-                        let t = Double(k) / 12, g = need(t) > 0 ? act(t) / need(t) - 1 : 0
-                        SignedBar(label: k == 3 ? "오늘" : "\(k)달째", value: AppModel.sgn(g), g: g, scale: 0.2, pos: Theme.green, neg: Theme.orange,
+                    Text("달마다 내 길과 차이").appFont(15, .bold)
+                    ForEach(monthRows.indices, id: \.self) { i in
+                        let t = monthRows[i].1, g = need(t) > 0 ? act(t) / need(t) - 1 : 0
+                        SignedBar(label: monthRows[i].0, value: AppModel.eokS(act(t) - need(t)), g: g, scale: 0.2, pos: Theme.green, neg: Theme.orange,
                                   valueColor: g >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
                     }
+                    if months < 1 { Text("시작한 지 한 달이 지나면 달마다 쌓여요.").appFont(12).foregroundStyle(Theme.muted) }
                 }
                 kpiGrid([
-                    Kpi(k: "목표일까지", v: (yrsLeft >= 1 ? "\(Int(yrsLeft))년 " : "") + "\(Int((yrsLeft.truncatingRemainder(dividingBy: 1) * 12).rounded()))개월", sub: m.isGoal ? "\(m.gY)년 목표" : "1년 목표"),
-                    Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? "적립 포함, 남은 기간" : "본전까지 남은 기간"),
+                    Kpi(k: "남은 기간", v: leftText, sub: m.isGoal ? m.goalToText : "1년 목표"),
+                    Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? (mM > 0 ? "적립 포함" : "지금 자산만으로") : "본전까지"),
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
-                    Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "3년 전망 (\(m.lens.label))"),
                 ], dark: true)
-                footnote("예측이 아닌 기준선. 목표와 적립으로 그은 길보다 실제가 앞섰는지 봐요. 종목 추천이 아닙니다.")
+                footnote(m.isGoal ? "예측이 아닌 기준선이에요. 실제는 그날 수량·종가·환율(오늘은 매매기준율)로 센 값\(m.cashKrw > 0 ? "에 사이트에 넣은 현금을 더한 값" : "")으로, naeilo.com 목표 진행과 같은 계산이에요. 목표 달성 확률은 \(m.forecastTitle)과 같은 값이에요."
+                         : "예측이 아닌 기준선이에요. 회복 루트는 본전 기준이라 naeilo.com(목표 기준)과 달라요.")
             }
             .padding(16)
         }
@@ -226,22 +319,18 @@ struct ExternalView: View {
     @State private var mkt = -10.0
     @State private var rate = 0.5
     @State private var fx = -100.0
+    @State private var oil = 10.0
+    @State private var gold = 10.0
 
-    // [S&P500 1% 움직일 때 %, 미국 10년 금리 +1%p 일 때 %, 달러 노출] (시안용 가정값)
-    static let beta: [String: (Double, Double, Double)] = [
-        "DRNK": (2.0, -8, 1), "QQQ": (1.15, -6, 1), "AAPL": (1.2, -4, 1), "NVDA": (1.8, -7, 1), "MSFT": (1.1, -4, 1), "SPY": (1, -3, 1),
-        "005930": (0.6, -2, 0), "000660": (0.9, -3, 0), "035720": (0.7, -3, 0), "069500": (0.6, -2, 0), "360750": (1, -3, 1),
-    ]
-
-    /// 표에 없는 종목(직접 추가한 종목): 시장 반응은 지난 3년 일별 종가로 S&P500(SPY)에 대해 계산하고,
-    /// 금리 반응은 평균값 -3%로 두고, 환율은 미국 종목이면 그대로 받는다
+    /// 시장 민감도(베타): 사이트가 웹과 같은 식(factorBetas)으로 매일 낸 값. 사이트 자료가 없는 종목(직접 추가한 종목)은
+    /// 같은 회귀를 앱이 가진 지난 3년 종가로 한다. 둘 다 없으면 nil
+    static func mktBeta(_ id: String) -> Double? { SiteCalc.shared.beta("mkt", id) ?? estBeta(id) }
+    /// (시장 베타, 미국 10년 금리 +1%p 일 때 %, 달러 노출). 금리 시나리오 화면이 시장 베타를 쓴다 (웹처럼 모르면 1)
     static func coef(_ s: Symbol) -> (Double, Double, Double) {
-        if let b = beta[s.id] { return b }
-        return (estBeta(s.id) ?? 1, -3, s.currency == .usd ? 1 : 0)
+        ((mktBeta(s.id) ?? 1), (SiteCalc.shared.beta("rate", s.id).map { SiteCalc.factorMove("rate", beta: $0, shock: 100) * 100 } ?? 0), s.currency == .usd ? 1 : 0)
     }
     static func estBeta(_ id: String) -> Double? {
         guard let h = PriceHistory.of(id), let spy = PriceHistory.of("SPY") else { return nil }
-        let sp = Dictionary(zip(spy.dates, spy.closes), uniquingKeysWith: { a, _ in a })
         // 한국 장은 미국 장보다 먼저 끝나서, 한국 종목은 그 전날 밤 미국 장 움직임과 짝을 짓는다
         let kr = Sample.symbol(id)?.currency == .krw
         let usDays = spy.dates
@@ -261,31 +350,52 @@ struct ExternalView: View {
             if kr, let pk = prevUS(h.dates[i - 1]), pk == key { continue }     // 미국 장이 쉰 날은 건너뛴다
             xs.append(x); ys.append(log(h.closes[i] / h.closes[i - 1]))
         }
-        _ = sp
-        guard xs.count > 120 else { return nil }
+        guard xs.count >= 30 else { return nil }
         let mx = xs.reduce(0, +) / Double(xs.count), my = ys.reduce(0, +) / Double(ys.count)
         let cov = zip(xs, ys).reduce(0) { $0 + ($1.0 - mx) * ($1.1 - my) }, vx = xs.reduce(0) { $0 + ($1 - mx) * ($1 - mx) }
-        return vx > 0 ? (cov / vx * 20).rounded() / 20 : nil       // 0.05 단위
+        guard vx > 0 else { return nil }
+        let w = Double(xs.count) / Double(xs.count + 60)      // 웹과 같게 이력이 짧으면 1 쪽으로 당긴다
+        return w * cov / vx + (1 - w)
+    }
+
+    /// 웹 renderSens 와 같은 식: 종목 가격 변화 = exp(β × 요인 변화) − 1, 원/달러는 달러 종목에 그대로
+    private func move(_ id: String, _ sym: Symbol, _ v: Double) -> Double? {
+        switch factor {
+        case "fx": return sym.currency == .usd ? v / Market.shared.fx.last : 0
+        case "mkt": return Self.mktBeta(id).map { SiteCalc.factorMove("mkt", beta: $0, shock: v) }
+        case "rate": return SiteCalc.shared.beta("rate", id).map { SiteCalc.factorMove("rate", beta: $0, shock: v * 100) }
+        default: return SiteCalc.shared.beta(factor, id).map { SiteCalc.factorMove(factor, beta: $0, shock: v) }
+        }
     }
 
     var body: some View {
-        let v = factor == "mkt" ? mkt : factor == "rate" ? rate : fx
-        let eff = { (id: String) -> Double in
-            let b = Sample.symbol(id).map(Self.coef) ?? (1, -3, 0)
-            return factor == "mkt" ? b.0 * v / 100 : factor == "rate" ? b.1 * v / 100 : b.2 * v / Market.shared.fx.last
+        let vals: [String: Double] = ["mkt": self.mkt, "rate": self.rate, "fx": self.fx, "oil": self.oil, "gold": self.gold]
+        let v: Double = vals[factor] ?? 0
+        let list = m.rows.map { r -> (id: String, label: String, dv: Double, known: Bool) in
+            let mv = move(r.id, r.sym, v)
+            return (r.id, r.sym.short, r.value * (mv ?? 0), mv != nil)
         }
-        let list = m.rows.map { (id: $0.id, label: $0.sym.short, dv: $0.value * eff($0.id)) }
-        let tot = list.reduce(0) { $0 + $1.dv }, maxAbs = max(1, list.map { abs($0.dv) }.max() ?? 1)
+        let tot = list.reduce(0.0) { $0 + $1.dv }, maxAbs = max(1, list.map { abs($0.dv) }.max() ?? 1)
         let after = m.total + tot
-        let ask = factor == "mkt" ? "S&P500이 얼마나 움직이면" : factor == "rate" ? "미국 10년 금리가 얼마나 바뀌면" : "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
-        let vText = factor == "mkt" ? (v > 0 ? "+" : "") + "\(Int(v))%" : factor == "rate" ? (v > 0 ? "+" : "") + String(format: "%g", v) + "%p" : (v > 0 ? "+" : "") + "\(Int(v))원"
-        let coef = m.rows.map { r -> String in
-            let b = Self.coef(r.sym)
-            return r.sym.short + (factor == "mkt" ? " \(String(format: "%g", b.0))배" : factor == "rate" ? " \(String(format: "%g", b.1))%" : (b.2 > 0 ? " 환율만큼" : " 영향 없음"))
+        let sg: (Double, String) -> String = { x, d in (x > 0 ? "+" : "") + String(format: d, x) }
+        let asks: [String: String] = ["mkt": "S&P500이 얼마나 움직이면", "rate": "미국 10년 금리가 얼마나 바뀌면", "oil": "유가(WTI)가 얼마나 움직이면", "gold": "금값이 얼마나 움직이면"]
+        let ask: String = asks[factor] ?? "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
+        let vText = factor == "rate" ? sg(v, "%g") + "%p" : factor == "fx" ? sg(v, "%.0f") + "원" : sg(v, "%.0f") + "%"
+        let unknown = list.filter { !$0.known }.map(\.label)
+        let coef = m.rows.filter { factor == "fx" || move($0.id, $0.sym, v) != nil }.map { r -> String in
+            switch factor {
+            case "fx": return r.sym.short + (r.sym.currency == .usd ? " 환율만큼" : " 영향 없음")
+            case "mkt": return r.sym.short + " " + String(format: "%.2f", Self.mktBeta(r.id) ?? 1) + "배"
+            case "rate": return r.sym.short + " " + sg((SiteCalc.shared.beta("rate", r.id) ?? 0) * 10 * 100, "%.2f") + "%"
+            default: return r.sym.short + " " + sg(SiteCalc.factorMove(factor, beta: SiteCalc.shared.beta(factor, r.id) ?? 0, shock: 10) * 100, "%.1f") + "%"
+            }
         }.joined(separator: ", ")
-        let note = factor == "mkt" ? "1% 움직일 때 평균 반응: \(coef). 시장보다 등락이 큰 종목이 많을수록 하락 시 손실이 증폭돼요."
-            : factor == "rate" ? "미국 10년 금리가 1%p 오를 때 평균 반응: \(coef). 성장주일수록 금리에 더 민감했어요."
-            : "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Market.shared.fx.last * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
+        let miss = unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 지난 3년 시세가 부족해 0으로 계산했어요."
+        let note = (factor == "mkt" ? "시장이 1% 움직일 때 평균 반응(베타): \(coef). 시장보다 등락이 큰 종목이 많을수록 하락 때 손실이 커져요."
+            : factor == "rate" ? "10년 금리 +0.1%p 일 때 평균 반응 (시장 움직임을 뺀 값): \(coef)."
+            : factor == "fx" ? "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Market.shared.fx.last * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
+            : "\(factor == "oil" ? "유가" : "금값") +10% 일 때 평균 반응 (시장 움직임을 뺀 값): \(coef).") + miss
+            + (factor == "fx" ? "" : " 지난 3년 일별 변화로 계산 (웹과 같은 값).")
         let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).sorted { $0.day < $1.day }.prefix(8)
 
         PinnedLayout {
@@ -299,7 +409,7 @@ struct ExternalView: View {
                     }
                 }
                 ForEach(list, id: \.id) { x in SignedBar(label: x.label, value: AppModel.manS(x.dv), g: x.dv, scale: maxAbs) }
-                ChipRow(items: [("mkt", "미국 시장"), ("rate", "미국 금리"), ("fx", "원/달러")], selection: $factor, accent: Theme.orange, fill: true)
+                ChipRow(items: [("mkt", "미국 시장"), ("rate", "미국 금리"), ("fx", "원/달러"), ("oil", "유가"), ("gold", "금값")], selection: $factor, accent: Theme.orange, fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
@@ -308,6 +418,8 @@ struct ExternalView: View {
                     switch factor {
                     case "mkt": Slider(value: $mkt, in: -30...30, step: 5).tint(Theme.orange).accessibilityLabel(ask)
                     case "rate": Slider(value: $rate, in: -1.5...1.5, step: 0.25).tint(Theme.orange).accessibilityLabel(ask)
+                    case "oil": Slider(value: $oil, in: -40...40, step: 5).tint(Theme.orange).accessibilityLabel(ask)
+                    case "gold": Slider(value: $gold, in: -30...30, step: 5).tint(Theme.orange).accessibilityLabel(ask)
                     default: Slider(value: $fx, in: -300...300, step: 20).tint(Theme.orange).accessibilityLabel(ask)
                     }
                     Text(note).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
@@ -325,13 +437,14 @@ struct ExternalView: View {
                         }
                     }
                     if events.isEmpty { Text("45일 안에 정해진 일정이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
-                    Text("3년 전망에서 \"외부 요인\"을 켜면 반영돼요.").appFont(12).foregroundStyle(Theme.muted)
+                    Text("\(m.forecastTitle)에서 \"외부 요인\"을 켜면 반영돼요.").appFont(12).foregroundStyle(Theme.muted)
                 }
             }
             .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await SiteCalc.shared.refresh() }
     }
 }
 
@@ -352,12 +465,19 @@ final class MacroData {
     var failed = false
     private var loading = false
     private static let name = "macro.json"
+    /// 이미 가진 파일 그대로 (같은 파일이 다시 오면 화면을 다시 그리지 않는다)
+    @ObservationIgnored private var raw: Data?
+    /// 마지막으로 받은 날 (파일은 매달 5일에만 바뀌니 하루 한 번만 받는다)
+    @ObservationIgnored private var fetchedDay: String?
+    /// 금리·기대수익 슬라이드 값별 계산 결과 (넘길 때마다 식단 1000벌을 다시 계산하지 않게)
+    @ObservationIgnored private var memo: [String: RateScen] = [:]
 
     init() {
-        if let d = Store.readData(Self.name) { file = try? JSONDecoder().decode(File.self, from: d) }
+        if let d = Store.readData(Self.name) { raw = d; file = try? JSONDecoder().decode(File.self, from: d) }
     }
     func load() async {
-        guard !loading else { return }
+        let day = SiteCalc.today()
+        guard !loading, fetchedDay != day || file == nil else { return }
         loading = true; defer { loading = false }
         var req = URLRequest(url: Config.data.appendingPathComponent("macro/rates_earnings.json"))
         req.cachePolicy = .reloadIgnoringLocalCacheData
@@ -365,13 +485,27 @@ final class MacroData {
         do {
             let (d, r) = try await URLSession.shared.data(for: req)
             guard (r as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
-            let f = try JSONDecoder().decode(File.self, from: d)
+            fetchedDay = day
+            if d == raw, file != nil { failed = false; return }
+            // 110KB JSON 풀기는 화면 밖에서
+            let f = try await Task.detached(priority: .utility) { try JSONDecoder().decode(File.self, from: d) }.value
             guard f.meals?.coef.isEmpty == false else { throw URLError(.cannotParseResponse) }
+            raw = d; memo = [:]
             file = f; failed = false
             Store.writeData(d, Self.name)
         } catch {
             if file == nil { failed = true }
         }
+    }
+    /// 슬라이드 값 (dr %p, m 연) 에서의 계산. 같은 값이면 저장해 둔 결과
+    func scen(dr: Double, m: Double) -> RateScen? {
+        guard let M = file?.meals else { return nil }
+        let k = String(format: "%.2f|%.3f", dr, m)
+        if let r = memo[k] { return r }
+        let r = RateScen(coef: M.coef, g0: M.g_now, dr: dr, m: m)
+        if memo.count > 64 { memo = [:] }
+        memo[k] = r
+        return r
     }
     /// 지난 1년 10년물 금리 변화 (%p)
     var change1y: Double? { file?.now?.change_1y }
@@ -453,23 +587,30 @@ struct RateScenarioView: View {
         return m.rows.reduce(0) { $0 + $1.value / tot * ExternalView.coef($1.sym).0 }
     }
 
-    /// 3년 전망(로그정규 근사)의 연 기대를 shift 만큼 옮겼을 때 3년 안에 목표를 넘을 확률
-    private func prob(_ f: AppModel.Forecast, _ shift: Double) -> Double {
-        let T = 3.0, sg = max(0.01, f.sigma), g: Double = f.mu - sg * sg / 2 + shift
-        let V0 = m.trackValue, K = m.keyValue, M = m.monthly * 1e4
-        let eff: Double = V0 + M * 12 * T * exp(-g * T / 2)
-        guard eff > 0, K > 0 else { return 0 }
-        let num: Double = log(eff / K) + g * T
+    /// 닫힌 식에 드는 값. 평가액·원금은 종목 목록을 매번 다시 만드니 한 번만 읽는다 (식단 1000벌 × 2번 부르면 넘길 때 멈칫)
+    private struct Closed { let T, sg, mu, V0, K, M: Double }
+    private func closedInput(_ f: AppModel.Forecast) -> Closed {
+        Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: m.monthly * 1e4)
+    }
+    /// 연 기대를 shift 만큼 옮겼을 때 목표 확률. 웹처럼 전망(몬테카를로) 목표 확률에 닫힌 식의 차이만 더한다
+    private static func prob(_ f: AppModel.Forecast, _ c: Closed, _ shift: Double) -> Double {
+        max(0, min(1, f.pGoal + closed(c, shift) - closed(c, 0)))
+    }
+    private static func closed(_ c: Closed, _ shift: Double) -> Double {
+        let T = c.T, sg = c.sg, g: Double = c.mu - sg * sg / 2 + shift
+        let eff: Double = c.V0 + c.M * 12 * T * exp(-g * T / 2)
+        guard eff > 0, c.K > 0 else { return 0 }
+        let num: Double = log(eff / c.K) + g * T
         return AppModel.normCDF(num / (sg * sqrt(T)))
     }
 
     @ViewBuilder private func main(_ file: MacroData.File, _ M: MacroData.File.Meals) -> some View {
         let d = dr ?? macro.defaultDr, mm = mk / 100
-        let r = RateScen(coef: M.coef, g0: M.g_now, dr: d, m: mm)
-        let f = m.forecast, kb = beta
-        let base = prob(f, 0)
+        let r = macro.scen(dr: d, m: mm) ?? RateScen(coef: M.coef, g0: M.g_now, dr: d, m: mm)
+        let f = m.forecast, kb = beta, ci = closedInput(f)
+        let base = Self.prob(f, ci, 0)
         let shifts: [Double] = r.slope.map { b in kb * (b * d / 3 / 100 + mm) }
-        let pb = RateScen.band(shifts.map { prob(f, $0) })
+        let pb = RateScen.band(shifts.map { Self.prob(f, ci, $0) })
         let drBinding = Binding<Double>(get: { dr ?? macro.defaultDr }, set: { dr = $0 })
         let H = r.years
 
@@ -506,7 +647,7 @@ struct RateScenarioView: View {
                     }
                     Divider()
                     tableRow("시장 연 기대수익", AppModel.sgn(r.mkt[0]), AppModel.sgn(r.mkt[1]), AppModel.sgn(r.mkt[2]), "")
-                    Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · 3년 전망 \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
+                    Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · \(m.forecastTitle) \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
                 }
                 footnote("예측이 아닌 \"만약\" 도구. 1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산. 이익 자료 \(file.eps_last ?? "")까지. 출처 Robert J. Shiller. 종목 추천이 아닙니다.")
             }
@@ -568,28 +709,28 @@ private struct RateBandChart: View {
 struct DividendView: View {
     @Environment(AppModel.self) private var m
     @State private var mode = "month"
-
-    // [1년 배당(현지 통화), 지급 월] (시안용 예시. DRNK 는 배당 없음)
-    static let divs: [String: (Double, [Int])] = [
-        "QQQ": (2.9, [3, 6, 9, 12]), "AAPL": (1.04, [2, 5, 8, 11]), "NVDA": (0.04, [3, 6, 9, 12]), "MSFT": (3.32, [3, 6, 9, 12]), "SPY": (7.0, [1, 4, 7, 10]),
-        "005930": (1444, [4, 5, 8, 11]), "000660": (1500, [2, 5, 8, 11]), "035720": (61, [4]), "069500": (800, [1, 4, 7, 10]), "360750": (250, Array(1...12)),
-    ]
+    private var calc: SiteCalc { SiteCalc.shared }
 
     var body: some View {
-        let per = m.rows.map { r -> (id: String, gross: Double, net: Double, months: [Int]) in
-            let d = Self.divs[r.id] ?? (0, [])
-            let gross = m.krw(r.sym, r.h.qty * d.0)
-            return (r.id, gross, gross * (1 - (r.sym.currency == .usd ? 0.15 : 0.154)), d.1)
+        // 웹(종목 › 배당·세금)과 같은 식: 지난 12개월 배당락(사이트 시세에서 뽑은 날짜·금액)이 앞으로 같은 달에 (1+증가율)로 다시 온다고 본 세후 원화
+        let t = SiteCalc.today(), fx = Market.shared.fx.last
+        let per = m.rows.map { r -> (id: String, out: SiteCalc.DivOut?, known: Bool, tax: Double) in
+            let d = calc.div(r.id), krw = r.sym.currency == .krw
+            let o = d.flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fx, krw: krw, price: r.sym.last, today: t) }
+            return (r.id, o, d != nil, krw ? SiteCalc.krDivTax : SiteCalc.wht)
         }
-        let gross = per.reduce(0) { $0 + $1.gross }, net = per.reduce(0) { $0 + $1.net }
-        let months = (0..<12).map { (10 + $0) % 12 + 1 }     // 11월부터
-        let byMonth = months.map { mo in per.reduce(0) { $0 + ($1.months.contains(mo) ? $1.net / Double($1.months.count) : 0) } }
-        let mMax = max(1, byMonth.max() ?? 1), sMax = max(1, per.map(\.net).max() ?? 1)
-        // DRNK 는 배당이 없는 종목, 예시 표에 없는 종목(직접 추가한 종목)은 배당 자료가 없어 0으로 계산
-        let zero = per.filter { $0.gross == 0 && Self.divs[$0.id] == nil && $0.id == "DRNK" }.map(\.id)
-        let unknown = m.rows.filter { Self.divs[$0.id] == nil && $0.id != "DRNK" }.map(\.sym.short)
-        let us = m.rows.filter { $0.sym.currency == .usd }, usU = us.reduce(0) { $0 + $1.value - $1.cost }
-        let G = m.taxGain * 1e4, cgt = { (g: Double) in max(0, g - 250e4) * 0.22 }
+        let paid = per.filter { $0.out != nil }
+        let net = paid.reduce(0.0) { $0 + $1.out!.y1 }, gross = paid.reduce(0.0) { $0 + $1.out!.y1 / (1 - $1.tax) }
+        let net3 = paid.reduce(0.0) { $0 + $1.out!.y3 }
+        let months = (1...12).map { String(SiteCalc.addMonths(t, $0).prefix(7)) }
+        let byMonth = months.map { mo in paid.reduce(0.0) { $0 + ($1.out!.byMonth[mo] ?? 0) } }
+        let mMax = max(1, byMonth.max() ?? 1), sMax = max(1, paid.map { $0.out!.y1 }.max() ?? 1)
+        let zero = per.filter { $0.known && $0.out == nil }.map(\.id)
+        let unknown = per.filter { !$0.known }.map(\.id)
+        // 해외주식 평가 이익: 웹과 같게 (지금 가격 − 매수 단가) × 수량 × 지금 환율. 매수 단가를 넣은 종목만
+        let us = m.rows.filter { $0.sym.currency == .usd && $0.h.avg > 0 }
+        let usU = us.reduce(0.0) { $0 + ($1.sym.last - $1.h.avg) * $1.h.qty * fx }
+        let G = m.taxGain * 1e4
 
         PinnedLayout {
             pinnedBox {
@@ -605,34 +746,38 @@ struct DividendView: View {
                             VStack(spacing: 4) {
                                 RoundedRectangle(cornerRadius: 3).fill(byMonth[i] > 0 ? Theme.teal : Theme.track)
                                     .frame(height: max(2, byMonth[i] / mMax * 80))
-                                Text("\(months[i])").appFont(10).foregroundStyle(Theme.muted)
+                                Text("\(Int(months[i].suffix(2)) ?? 0)").appFont(10).foregroundStyle(Theme.muted)
                             }
                             .frame(maxWidth: .infinity)
                         }
                     }
                     .frame(height: 100, alignment: .bottom)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("달마다 배당: " + months.indices.filter { byMonth[$0] > 0 }.map { "\(months[$0])월 \(AppModel.won1(byMonth[$0]))" }.joined(separator: ", "))
+                    .accessibilityLabel("달마다 배당: " + months.indices.filter { byMonth[$0] > 0 }.map { "\(Int(months[$0].suffix(2)) ?? 0)월 \(AppModel.won1(byMonth[$0]))" }.joined(separator: ", "))
                 } else {
-                    ForEach(per, id: \.id) { x in
+                    ForEach(paid, id: \.id) { x in
                         HStack(spacing: 8) {
-                            Text(x.id).appFont(13, .semibold).frame(minWidth: 52, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(x.id).appFont(13, .semibold)
+                                Text("\(x.out!.n)회 · \(String(format: "%.2f", x.out!.yld * 100))%").appFont(10).foregroundStyle(Theme.muted)
+                            }.frame(minWidth: 64, alignment: .leading)
                             GeometryReader { g in
-                                RoundedRectangle(cornerRadius: 3).fill(Theme.teal).frame(width: g.size.width * x.net / sMax, height: 12)
+                                RoundedRectangle(cornerRadius: 3).fill(Theme.teal).frame(width: g.size.width * x.out!.y1 / sMax, height: 12)
                                     .frame(maxHeight: .infinity)
                             }.frame(height: 16)
-                            Text(AppModel.won1(x.net)).appFont(13, .bold).frame(minWidth: 70, alignment: .trailing)
+                            Text(AppModel.won1(x.out!.y1)).appFont(13, .bold).frame(minWidth: 70, alignment: .trailing)
                         }
                     }
+                    if paid.isEmpty { Text("지난 12개월 배당·이자를 준 종목이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
                 }
-                Text("세전 \(AppModel.won1(gross)) · 월평균 \(AppModel.won1(net / 12)) · 평가액의 \(String(format: "%.2f", net / max(1, m.total) * 100))%")
+                Text("세전 \(AppModel.won1(gross)) · 월평균 \(AppModel.won1(net / 12)) · 평가액의 \(String(format: "%.2f", net / max(1, m.total) * 100))% · 3년 합계 \(AppModel.won1(net3))")
                     .appFont(12).foregroundStyle(Theme.sub)
                 ChipRow(items: [("month", "달마다"), ("stock", "종목별")], selection: $mode, fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 if net < 10e4 {
-                    Text("지금 구성은 배당이 적어요." + (zero.isEmpty ? "" : " \(zero.joined(separator: ", "))는 배당을 주지 않아요.") + (unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 배당 자료가 아직 없어서 0으로 계산했어요.") + " 이 구성에서는 배당보다 가격 움직임이 평가액을 더 크게 바꿔요.")
+                    Text("지금 구성은 배당이 적어요." + (zero.isEmpty ? "" : " \(zero.joined(separator: ", "))는 배당을 주지 않아요.") + (unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 사이트 시세 자료가 없어 배당을 0으로 계산했어요.") + " 이 구성에서는 배당보다 가격 움직임이 평가액을 더 크게 바꿔요.")
                         .appFont(13).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
                 }
@@ -646,20 +791,21 @@ struct DividendView: View {
                 Card(dark: true) {
                     Text("팔 때 세금 (해외주식 양도세, 내년 5월 신고)").appFont(15, .bold)
                     ruleRow("올해 이미 판 이익", "세금 규칙에 넣은 값", AppModel.man(G))
-                    ruleRow("미국 종목 평가 손익", us.isEmpty ? "미국 종목 없음" : us.map(\.id).joined(separator: ", ") + " 지금 다 판다면", AppModel.manS(usU),
+                    ruleRow("미국 종목 평가 이익", us.isEmpty ? "매수 단가를 넣은 미국 종목이 없어요" : us.map(\.id).joined(separator: ", ") + " · 지금 환율 기준", AppModel.manS(usU),
                             color: Theme.change(usU))
-                    ruleRow("내년 5월 낼 세금", "지금 그대로 / 미국 종목 다 판다면", AppModel.man(cgt(G)) + " / " + AppModel.man(cgt(G + usU)))
+                    ruleRow("내년 5월 낼 세금", "지금 그대로 / 미국 종목 다 판다면", AppModel.man(SiteCalc.capGainTax(G)) + " / " + AppModel.man(SiteCalc.capGainTax(G + usU)))
                     Text(usU < 0
-                         ? "평가 손실 \(AppModel.man(-usU))을 올해 팔아 확정하면 이미 판 이익과 합쳐져 세금이 \(AppModel.man(cgt(G) - cgt(G + usU))) 줄어요. 회복 미션의 절세 단계와 같은 계산이에요."
+                         ? "손실은 확정된 해의 이익과 합쳐 계산돼요. 위 '다 판다면' 줄은 계산 예시이고, 매매 권유가 아니에요."
                          : "이익 250만원까지는 세금이 없고, 넘는 부분에 22%(지방세 포함)를 내요. 국내 상장주식은 대주주가 아니면 팔 때 양도세가 없어요(거래세만).")
                         .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
-                footnote("지난 12개월 배당이 이어진다고 본 값이에요. 세무 상담이 아니에요.")
+                footnote("지난 12개월 배당이 앞으로도 같은 달에, 지난 3년 증가율만큼 늘며 온다고 본 값이에요 (웹과 같은 계산). 세무 상담이 아니에요.")
             }
             .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await calc.refresh() }
     }
 
     private func ruleRow(_ k: String, _ sub: String, _ v: String, color: Color = Theme.ink) -> some View {
@@ -681,33 +827,38 @@ struct FxImpactView: View {
     @State private var period = "1y"
     @State private var what = Market.shared.fx.last.rounded()
 
-    static let boughtAt = 1320.0     // 샀을 때 평균 환율 (시안 가정)
-
     var body: some View {
-        let FX = Market.shared.fx.last, FXB = Self.boughtAt, sigma = 0.075
-        let usd = m.rows.filter { $0.sym.currency == .usd || $0.id == "360750" }
+        // 웹(전망 › 환율 영향)과 같은 자료·식: 지난 원/달러와 칼만 추세는 사이트 값(calc.json), 앞날 범위는 웹 전망 모형의 환율 μ·σ(stats.json)로
+        // 지금·exp((μ − σ²/2)t + zσ√t)
+        let FX = Market.shared.fx.last, c = SiteCalc.shared.file?.fx, fxp = SiteStats.fx(), mu = fxp.0, vol = fxp.1
+        let usd = m.rows.filter { $0.sym.currency == .usd }
         let usdV = usd.reduce(0) { $0 + $1.value }, usdW = usdV / max(1, m.total)
-        let usdCost = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.cost }
-        let fxEff = usdCost * (FX / FXB - 1), stkEff = (m.total - m.cost) - fxEff
-        let periods: [String: Double] = ["1m": 1.0 / 12, "3m": 0.25, "1y": 1, "3y": 3]
-        let T: Double = periods[period] ?? 1
+        let n = ["1m": 22, "3m": 64, "1y": 253, "3y": 780][period] ?? 253
         let label = ["1m": "1개월", "3m": "3개월", "1y": "1년", "3y": "3년"][period] ?? "1년"
-        // 지난 환율 흐름 (시안 예시, t: 년, 음수 = 과거)
-        let fxAt = { (t: Double) -> Double in
-            FX + 70 * (sin(t * 2.1 + 1) - sin(1)) + 25 * sin(t * 9) * min(1, -t) + 9 * sin(t * 70) * min(1, -t * 8) + 4 * sin(t * 260) * min(1, -t * 30)
-        }
-        let past = (0...120).map { i -> (Double, Double) in let t = -T + T * Double(i) / 120; return (t, fxAt(t)) }
-        let trend = past.indices.map { i -> (Double, Double) in
-            let w = past[max(0, i - 12)...i]; return (past[i].0, w.reduce(0) { $0 + $1.1 } / Double(w.count))
-        }
-        let q = { (z: Double) in (0...20).map { i -> (Double, Double) in let t = Double(i) / 20; return (t, FX * exp(z * sigma * sqrt(t))) } }
-        let vals = past.map(\.1) + [FXB], pad = ((vals.max() ?? FX) - (vals.min() ?? FX)) * 0.25 + 5
+        let yh = YahooSample.history["FX"]
+        let closesAll = c?.closes ?? yh?.closes ?? [], levelAll = c?.level ?? []
+        let k0 = max(0, closesAll.count - n), closes = Array(closesAll[k0...]), level = levelAll.count == closesAll.count ? Array(levelAll[k0...]) : []
+        let past = closes.enumerated().map { (i, v) in (closes.count > 1 ? Double(i) / Double(closes.count - 1) - 1 : 0, v) }
+        let trend = level.enumerated().map { (i, v) in (level.count > 1 ? Double(i) / Double(level.count - 1) - 1 : 0, v) }
+        let q = { (z: Double) in (0...20).map { i -> (Double, Double) in let t = Double(i) / 20; return (t, SiteCalc.fxAt(now: FX, t: t, z: z, mu: mu, vol: vol)) } }
+        let vals = past.map(\.1) + [FX, SiteCalc.fxAt(now: FX, t: 1, z: 1.645, mu: mu, vol: vol), SiteCalc.fxAt(now: FX, t: 1, z: -1.645, mu: mu, vol: vol)]
+        let pad = ((vals.max() ?? FX) - (vals.min() ?? FX)) * 0.1 + 5
         let hi = (vals.max() ?? FX) + pad, lo = (vals.min() ?? FX) - pad
-        let X = { (t: Double) in t <= 0 ? (t + T) / T * 0.7 : 0.7 + t * 0.3 }
+        let X = { (t: Double) in t <= 0 ? (t + 1) * 0.7 : 0.7 + t * 0.3 }
         let Y = { (v: Double) in max(0, min(1, (hi - v) / (hi - lo))) }
         let valAt = { (r: Double) in m.total + usdV * (r / FX - 1) }
         let pMin = past.map(\.1).min() ?? FX, pMax = past.map(\.1).max() ?? FX
-        let chg = FX / past[0].1 - 1
+        let chg = FX / (past.first?.1 ?? FX) - 1
+        let T = max(0.01, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400))
+        let goalD = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy년 M월"; return f.string(from: m.goalToDate) }()
+        let at = { (z: Double) in Int(SiteCalc.fxAt(now: FX, t: T, z: z, mu: mu, vol: vol).rounded()).formatted() }
+        let eff1y = c?.ret_1y.map { usdW * $0 }
+        let range1y: String = {
+            guard let l = c?.lo1, let h = c?.hi1 else { return "" }
+            return "1년 범위 \(Int(l.rounded()).formatted())~\(Int(h.rounded()).formatted())"
+        }()
+        let trendSub: String = c.map { "추세 \(Int($0.kalman_level.rounded()).formatted())원 · 기울기 연 \(AppModel.sgn($0.slope_ann ?? 0))" } ?? "사이트 자료를 받으면 나와요"
+        let trendText: String = c?.trend?.replacingOccurrences(of: " (추세 판단 대상 아님)", with: "") ?? "-"
 
         PinnedLayout {
             pinnedBox {
@@ -729,26 +880,27 @@ struct FxImpactView: View {
                     ctx.fill(band(q(0.674), q(-0.674)), with: .color(Theme.blue.opacity(0.24)))
                     let nx = X(0) * size.width
                     ctx.stroke(Path { $0.move(to: CGPoint(x: nx, y: 0)); $0.addLine(to: CGPoint(x: nx, y: size.height)) }, with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    let by = Y(FXB) * size.height
-                    ctx.stroke(Path { $0.move(to: CGPoint(x: 0, y: by)); $0.addLine(to: CGPoint(x: size.width, y: by)) }, with: .color(Theme.orange), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                    ctx.stroke(linePath(trend.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.muted), style: StrokeStyle(lineWidth: 1.6, dash: [4, 3]))
-                    ctx.stroke(linePath(past.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1.6, lineJoin: .round))
-                    ctx.stroke(linePath(q(0).map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.blue), lineWidth: 2)
+                    if trend.count > 1 { ctx.stroke(linePath(trend.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.orange), style: StrokeStyle(lineWidth: 1.8)) }
+                    if past.count > 1 { ctx.stroke(linePath(past.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1.2, lineJoin: .round)) }
+                    ctx.stroke(linePath(q(0).map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.blue), style: StrokeStyle(lineWidth: 1.6, dash: [2, 2]))
                 }
                 .frame(height: 140)
                 .accessibilityLabel("원/달러 지난 흐름과 앞으로 1년 범위")
                 HStack { Text("\(label) 전"); Spacer(); Text("오늘"); Spacer().frame(maxWidth: 60); Text("1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
-                Text("검은 선: 지난 환율 · 회색 점선: 추세 · 파란 띠: 앞으로 1년 절반(진함)·90%의 경우 · 주황 점선: 샀을 때 평균 \(Int(FXB).formatted())원")
+                if past.count < 2 { Text("지난 환율 자료가 없어 지금 값으로만 그렸어요").appFont(11).foregroundStyle(Theme.muted) }
+                Text("검은 선: 지난 환율 · 주황 선: 추세(칼만) · 파란 띠: 앞으로 1년 25~75%(진함)·5~95%")
                     .appFont(11).foregroundStyle(Theme.sub)
                 ChipRow(items: [("1m", "1개월"), ("3m", "3개월"), ("1y", "1년"), ("3y", "3년")], selection: $period, accent: Theme.blue, fill: true)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 kpiGrid([
-                    Kpi(k: "내 손익 중 주가 몫", v: AppModel.manS(stkEff), sub: "현지 통화로 오르내린 만큼", color: Theme.change(stkEff)),
-                    Kpi(k: "내 손익 중 환율 몫", v: AppModel.manS(fxEff), sub: "샀을 때 \(Int(FXB).formatted())원 → 지금 \(Int(FX).formatted())원", color: Theme.change(fxEff)),
-                    Kpi(k: "1년 뒤 환율 (절반의 경우)", v: "\(Int((FX * exp(-0.674 * sigma)).rounded()).formatted())~\(Int((FX * exp(0.674 * sigma)).rounded()).formatted())", sub: "지난 3년 흔들림 기준"),
-                    Kpi(k: "환율 100원 바뀌면", v: AppModel.man(usdV * 100 / FX), sub: "평가액이 이만큼 함께 움직여요"),
+                    Kpi(k: "지난 1년 환율 효과", v: eff1y.map { AppModel.sgn($0) } ?? "-", sub: "원화 평가액에 더해진 몫 (근사)", color: Theme.change(eff1y ?? 0)),
+                    Kpi(k: "추세", v: trendText, sub: trendSub),
+                    Kpi(k: "목표일 환율 중앙값", v: at(0) + "원", sub: "\(goalD) · 5~95% \(at(-1.645))~\(at(1.645))"),
+                    Kpi(k: "원화 10% 강세면", v: AppModel.manS(-usdV * 0.1), sub: "주가 변동 없이 환율만", color: Theme.down),
+                    Kpi(k: "1년 변화", v: c?.ret_1y.map { AppModel.sgn($0) } ?? "-", sub: range1y),
+                    Kpi(k: "변동성 (연)", v: String(format: "%.1f%%", vol * 100), sub: "전망 모형 적용 값"),
                 ])
                 Card {
                     HStack { Text("환율이 이렇게 되면").appFont(14); Spacer(); Text("\(Int(what).formatted())원").appFont(15, .bold) }
@@ -767,12 +919,13 @@ struct FxImpactView: View {
                         }
                     }
                 }
-                footnote("평균 매수 환율 1,320원은 가정값. 범위 지난 3년 흔들림 기준.")
+                footnote("웹과 같은 계산: 추세는 지난 환율의 칼만 추세, 앞날 범위는 3년 전망 모형의 환율 기대·흔들림\(c.map { " (\($0.date) 기준)" } ?? "").")
             }
             .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await SiteCalc.shared.refresh() }
     }
 }
 
@@ -793,7 +946,7 @@ struct GlanceView: View {
             let yr = (0...52).map { m.prices.price(r.sym, at: 2.0 / 3 + Double($0) / 156) }
             let hi = yr.max() ?? 1, lo = yr.min() ?? 1, p1 = yr.last ?? 1
             return (r, yr, hi, lo, ["dd": p1 / hi - 1, "r1": p1 / yr[0] - 1, "vc": r.cost > 0 ? r.value / r.cost - 1 : 0,
-                                     "w": r.value / max(1, m.total), "vol": (Sample.lensParams[r.id] ?? (0, 0, 0.25)).2])
+                                     "w": r.value / max(1, m.total), "vol": SiteStats.params(r.id).2])
         }
         let signed = metric != "w" && metric != "vol"
         let fmt = { (k: String, v: Double) in k == "w" || k == "vol" ? AppModel.pct(v) : AppModel.sgn(v) }
@@ -859,6 +1012,5 @@ struct GlanceView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: .y1) }
     }
 }

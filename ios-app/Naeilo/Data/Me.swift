@@ -225,6 +225,24 @@ extension AppModel {
         }
     }
 
+    /// 목표 루트 인터미션: 다음 달 체크인이 열렸는지. 시작한 날부터 30일마다 한 달씩 (서버 시각, 회복 루트와 같은 방식)
+    var monthGate: WeekGate {
+        if devAll { return .open }
+        let c = TrustedClock.shared
+        guard let now = c.now?.timeIntervalSince1970, let s = gInterStartAt else { return .offline }
+        if c.skewed { return .skew }
+        let left = s + Double(gWeeks.count) * 30 * Self.dayS - now
+        return left <= 0 ? .open : .wait(Int(ceil(left / Self.dayS)))
+    }
+    var monthGateText: String? {
+        switch monthGate {
+        case .open: return nil
+        case .wait(let d): return "\(gWeeks.count + 1)달째 체크인은 \(d)일 뒤에 열려요."
+        case .offline: return "인터넷에 연결되면 날짜를 확인하고 열려요."
+        case .skew: return "폰 시간이 실제 시간과 달라요. 설정 > 일반 > 날짜 및 시간에서 '자동으로 설정'을 켜 주세요."
+        }
+    }
+
     /// 서버 시각을 받은 뒤: 인터미션·목표 루트 시작 날을 정하고, 내 캐릭터 1차 조건을 확인한다
     func fixStarts() {
         let c = TrustedClock.shared
@@ -232,6 +250,7 @@ extension AppModel {
         // 예전 진행(시작 날 없음)은 이미 지난 주만큼 앞당겨 둔다
         if route == .recover, done.contains(5), interStartAt == nil { interStartAt = now - Double(weeks.count) * 7 * Self.dayS }
         if isGoal, goalStartAt == nil { goalStartAt = now }
+        if isGoal, gDone.contains("link"), gInterStartAt == nil { gInterStartAt = now - Double(gWeeks.count) * 30 * Self.dayS }
         if meGate1At == nil, meGate1Live(now) { meGate1At = now }
     }
     private func meGate1Live(_ now: Double) -> Bool {

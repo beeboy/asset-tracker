@@ -72,7 +72,7 @@ private func statBox(_ k: String, _ v: String, _ c: Color = Theme.teal) -> some 
 }
 
 // MARK: 미션 1 — 종목·단가 넣기
-// 내 종목에 있는 종목을 그대로 보여 주고 수량·평균 단가를 고친다. 내 종목이 비어 있으면 시안처럼 DRNK·QQQ 칸을 준다
+// 내 종목에 있는 종목을 그대로 보여 주고 수량·평균 단가를 고친다. 샘플 종목이면 빈칸으로 시작
 struct Mission1View: View {
     @Environment(AppModel.self) private var m
     @State private var ids: [String] = []
@@ -109,8 +109,8 @@ struct Mission1View: View {
     }
 
     private func load() {
-        let held = m.holdings.map(\.symbol)
-        let want = held.isEmpty ? ["DRNK", "QQQ"] : held
+        // 샘플(가상 DRNK·QQQ)이면 빈칸으로 시작한다: 종목 추가로 내 종목을 넣는다
+        let want = m.isSample ? [] : m.holdings.map(\.symbol)
         for id in want where !ids.contains(id) {
             ids.append(id)
             if let h = m.holdings.first(where: { $0.symbol == id }) { q[id] = h.qty.formatted(.number.grouping(.never)); p[id] = h.avg.formatted(.number.grouping(.never)) }
@@ -155,7 +155,8 @@ struct Mission1ResultView: View {
             if m.ret >= 0 {
                 Card {
                     Text("이미 본전 위에 있어요 (\(AppModel.sgn(m.ret)))").appFont(17, .bold)
-                    Text("회복보다 목표 금액을 정하는 쪽이 맞아요. 목표 루트는 다음 빌드에서 옮겨요.").appFont(14).foregroundStyle(Theme.sub)
+                    Text("회복보다 목표 금액을 정하는 쪽이 맞아요. 넣은 종목·위젯·만난 친구는 그대로 가져가요.").appFont(14).foregroundStyle(Theme.sub)
+                    PrimaryButton(title: "목표 루트로") { m.graduateToGoal() }
                 }
             } else {
                 GuideBubble(pose: .spread, text: "…… 여기가 지금 위치예요. 본전까지는 \(AppModel.sgn(m.cost / max(1, m.total) - 1))가 필요해요. 기간을 바꾸면 확률이 다시 계산돼요.")
@@ -185,16 +186,62 @@ struct Mission1ResultView: View {
                     Text("100번 중 90번이 나쁜 경우와 좋은 경우 사이에 들어와요. 지금은 \(AppModel.sgn(m.ret)).").appFont(12).foregroundStyle(Theme.muted)
                 }
             }
-            BoardButtons(next: "다음 미션: 원인 진단", to: .m2)
+            // 본전 위면 원인 진단은 건너뛴다 (목표 루트로만)
+            BoardButtons(next: m.ret >= 0 ? nil : "다음 미션: 원인 진단", to: m.ret >= 0 ? nil : .m2)
         }
     }
     @ViewBuilder private func probBoxes(_ keep: Plan, _ T: Double) -> some View {
-        statBox("\(m.horizonLabel) 뒤 손실 절반 이상 회복", AppModel.pct(keep.prob(m.halfway, T)))
-        statBox("\(m.horizonLabel) 뒤 본전 이상", AppModel.pct(keep.prob(m.cost, T)))
+        statBox("\(m.horizonLabel) 안에 손실 절반 회복", AppModel.pct(keep.prob(m.halfway, T)))
+        statBox("\(m.horizonLabel) 안에 본전 닿기", AppModel.pct(keep.prob(m.cost, T)))
     }
     private func outcomeRow(_ k: String, _ v: Double) -> some View {
         HStack { Text(k).foregroundStyle(Theme.sub); Spacer(); Text(AppModel.sgn0(v)).fontWeight(.bold).foregroundStyle(Theme.change(v)) }
             .appFont(15)
+    }
+}
+
+// 회복 루트 적립 지렛대 (계획 4안과 별개): 매달 더 넣으면 본전이 언제. 비율·확률로만 보인다
+struct DepositLeverCard: View {
+    @Environment(AppModel.self) private var m
+    let plan: Plan
+    var body: some View {
+        @Bindable var m = m
+        let T = m.horizon, base = m.deposit(plan, monthly: 0, months: T), with = m.deposit(plan, monthly: m.recM, months: T)
+        Card {
+            Text("매달 더 넣으면 본전은 언제?").appFont(14, .bold)
+            Text("지금 구성에 매달 같은 돈을 더 넣는다고 보고 계산해요. 본전도 넣은 돈만큼 같이 올라가요.").appFont(12).foregroundStyle(Theme.sub)
+                .fixedSize(horizontal: false, vertical: true)
+            ChipRow(items: chips, selection: $m.recM, fill: true)
+            if m.recM > 0 {
+                Text("월 \(AppModel.wonK(Double(m.recM))) · 지금 평가액의 \(AppModel.pct(Double(m.recM) * 1e4 / max(1, m.total)))").appFont(13, .semibold).foregroundStyle(Theme.sub)
+            }
+            HStack { Text("\(m.horizonLabel) 안에 본전 닿기").foregroundStyle(Theme.sub); Spacer()
+                Text(m.recM == 0 ? AppModel.pct(base.prob) : "\(AppModel.pct(base.prob)) → \(AppModel.pct(with.prob))").fontWeight(.bold) }
+                .appFont(15)
+            HStack { Text("보통의 경우 본전까지").foregroundStyle(Theme.sub); Spacer()
+                Text(m.recM == 0 ? eta(base) : "\(eta(base)) → \(eta(with))").fontWeight(.bold) }
+                .appFont(15)
+            if m.recM > 0 {
+                // 넣는 돈이 평가액보다 크면 손실 금액은 그대로인데 비율만 작아져 본전이 빨라 보인다 (회복이 아니라 묽어짐)
+                let loss = m.cost - m.total, add = Double(m.recM) * 1e4 * Double(T)
+                Text("손실 \(AppModel.man(loss))은 넣는 돈으로 줄지 않아요. \(m.horizonLabel) 동안 \(AppModel.man(add))을 더 넣으면 손실 비율이 \(AppModel.sgn(-loss / max(1, m.cost)))에서 \(AppModel.sgn(-loss / max(1, m.cost + add)))로 작아질 뿐이라, 본전이 빨라 보이는 거예요.")
+                    .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+            }
+            Text("전망과 같은 3,000번의 경로로 센 값이에요 (월말 기준). 넣는 돈은 비중을 바꾸지 않고 지금 구성 그대로 나눠 넣는다고 봐요.").appFont(12).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    /// 칩: 지금 평가액의 5·10·20·50% (만원 단위로 반올림, 최소 1만원). 작은 계좌에서도 말이 되는 크기
+    private var chips: [(Int, String)] {
+        var out: [(Int, String)] = [(0, "안 넣음")]
+        for r in [5, 10, 20, 50] {
+            let v = max(1, Int((m.total * Double(r) / 100 / 1e4).rounded()))
+            if !out.contains(where: { $0.0 == v }) { out.append((v, "\(r)%")) }
+        }
+        return out
+    }
+    private func eta(_ d: AppModel.Deposit) -> String {
+        d.eta == 0 ? "지금" : d.eta.isFinite ? AppModel.eta(d.eta).replacingOccurrences(of: " 뒤", with: "") : "3년 넘게"
     }
 }
 
@@ -242,9 +289,10 @@ struct Mission2ResultView: View {
         MissionPage(kicker: "미션 2 완료 · 새로 열림: 회복 경로", title: "많이 흔들리면, 보통의 결과가 깎여요") {
             GuideBubble(pose: .back, text: "같이 봐요. 한 종목에 몰려 흔들림이 크면, 평균이 같아도 보통의 경우는 낮아져요. -50% 뒤에는 +100%가 있어야 본전이에요.", note: "그래프 쪽을 돌아봄")
             Card {
-                HStack { Text("한 해 흔들림 폭"); Spacer(); Text("±\(AppModel.pct(keep.sigma))").fontWeight(.bold) }.appFont(15)
-                HStack { Text("보통의 연 성장"); Spacer(); Text(AppModel.sgn(keep.g)).fontWeight(.bold) }.appFont(15)
-                Text("평균은 연 9% 오른다고 봐도 \"보통의 경우\"는 \(AppModel.sgn(keep.g))에 그쳐요.").appFont(13).foregroundStyle(Theme.sub)
+                let yr = keep.year
+                HStack { Text("한 해 흔들림 폭"); Spacer(); Text("±\(AppModel.pct(yr.sigma))").fontWeight(.bold) }.appFont(15)
+                HStack { Text("보통의 연 성장"); Spacer(); Text(AppModel.sgn(exp(yr.g) - 1)).fontWeight(.bold) }.appFont(15)
+                Text("평균은 연 \(AppModel.sgn(yr.mean))라도 \"보통의 경우\"는 \(AppModel.sgn(exp(yr.g) - 1))에 그쳐요.").appFont(13).foregroundStyle(Theme.sub)
             }
             Card {
                 Text("앞으로 1년, 내 평가액이 지날 길").appFont(15, .bold)
@@ -279,7 +327,7 @@ struct Mission3View: View {
                     Text(sel.name).appFont(17, .bold)
                     Text(sel.tag).appFont(13).foregroundStyle(Theme.sub)
                     Spacer()
-                    Text("\(m.horizonLabel) 뒤").appFont(13).foregroundStyle(Theme.sub)
+                    Text("\(m.horizonLabel) 기준").appFont(13).foregroundStyle(Theme.sub)
                 }
                 mixBar(sel)
                 PathChart(plans: [(m.keepPlan, Theme.muted, true), (sel, Theme.teal, false)], V: m.total, C: m.cost, marker: m.horizon).frame(height: 110)
@@ -424,33 +472,39 @@ private func mixBar(_ p: Plan) -> some View {
     .accessibilityLabel("\(p.focus) \(AppModel.pct(p.wt))" + Basket.allCases.compactMap { b in p.mix[b].map { ", \(b.name) \(AppModel.pct(rest * $0))" } }.joined())
 }
 
-// MARK: 미션 3 결과 — 옮길 금액
+// MARK: 미션 3 결과 — 비중과 확률 (금액·종목별 매매 안내 없이 비율로만)
 struct Mission3ResultView: View {
     @Environment(AppModel.self) private var m
     @State private var open: Set<Basket> = []
     var body: some View {
-        let sel = m.selectedPlan, T = Double(m.horizon) / 12, freed = m.freedAmount
+        let sel = m.selectedPlan, keep = m.keepPlan, T = Double(m.horizon) / 12, freed = m.freedAmount
         let baskets = Basket.allCases.filter { $0 != .C && (sel.mix[$0] ?? 0) > 0 }
         MissionPage(kicker: "미션 3 완료 · 새로 열림: 비중 비교", title: "내 계획: \(sel.name)") {
-            GuideBubble(pose: .cheer, text: "정했어요. 이 계획은 기록만 해요. 실제 매매는 증권사 앱에서 직접 하셔야 해요.")
+            GuideBubble(pose: .cheer, text: "정했어요. 이 계획은 기록만 해요. 실제 매매 판단은 직접 하셔야 해요.")
             Card {
-                Text("\(m.horizonLabel) 뒤 절반 회복 \(AppModel.pct(sel.prob(m.halfway, T))) · 본전 \(AppModel.pct(sel.prob(m.cost, T))) · 나쁜 경우 \(AppModel.sgn0(sel.outcome(m.cost, T, -1)))")
+                Text("\(m.horizonLabel) 안에 절반 회복 \(AppModel.pct(sel.prob(m.halfway, T))) · 본전 \(AppModel.pct(sel.prob(m.cost, T))) · 나쁜 경우 \(AppModel.sgn0(sel.outcome(m.cost, T, -1)))")
                     .appFont(15, .semibold).lineSpacing(3)
             }
             Card {
-                Text("옮길 금액").appFont(15, .bold)
-                moveRow(m.focusName, freed > 0 ? "\(Int((m.focusWeight * 100).rounded()))→\(AppModel.pct(sel.wt))" : AppModel.pct(m.focusWeight),
-                        freed > 0 ? "-" + AppModel.man(freed) : "그대로", up: false)
-                if !m.restRows.isEmpty { moveRow(m.restName, AppModel.pct(1 - m.focusWeight), "그대로", up: true) }
+                Text("비중이 바뀌면").appFont(15, .bold)
+                moveRow("가장 큰 종목", freed > 0 ? "\(Int((m.focusWeight * 100).rounded()))→\(AppModel.pct(sel.wt))" : AppModel.pct(m.focusWeight),
+                        freed > 0 ? Self.pp(sel.wt - m.focusWeight) : "그대로", up: false)
+                if !m.restRows.isEmpty { moveRow("나머지", AppModel.pct(1 - m.focusWeight), "그대로", up: true) }
                 ForEach(Basket.allCases.filter { (sel.mix[$0] ?? 0) > 0 && sel.id != "keep" }, id: \.self) { b in
-                    let a = freed * (sel.mix[b] ?? 0)
-                    moveRow(b.name, "0→\(AppModel.pct(a / max(1, m.total)))", "+" + AppModel.man(a), up: true)
+                    let r = freed * (sel.mix[b] ?? 0) / max(1, m.total)
+                    moveRow(b.name, "0→\(AppModel.pct(r))", Self.pp(r), up: true)
                 }
-                Text(sel.id == "keep" ? "지금 구성 그대로 두는 계획이에요." : "\(m.focusName) 매도 손실은 같은 해 \(m.focusRow?.sym.currency == .krw ? "국내 주식은 세금 계산이 달라요" : "해외주식 이익과 상계돼요") (절세 화면).")
+                if sel.id != "keep" {
+                    Text("가장 큰 종목 비중 \(AppModel.pct(m.focusWeight))→\(AppModel.pct(sel.wt))이면 \(m.horizonLabel) 안 본전 확률이 \(AppModel.pct(keep.prob(m.cost, T)))→\(AppModel.pct(sel.prob(m.cost, T))), 나쁜 경우가 \(AppModel.sgn0(keep.outcome(m.cost, T, -1)))→\(AppModel.sgn0(sel.outcome(m.cost, T, -1)))로 달라져요.")
+                        .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
+                }
+                Text(sel.id == "keep" ? "지금 구성 그대로 두는 계획이에요." : "비중을 어떻게 맞추느냐(적립·매도)에 따라 세금이 달라요 (절세 화면).")
                     .appFont(12).foregroundStyle(Theme.muted)
             }
             if !baskets.isEmpty && sel.id != "keep" { BasketList(baskets: baskets, open: $open, title: "담을 업종 · 눌러서 펼치기") }
-            Text("계획만 기록해요. 매매는 증권사 앱에서 직접 하세요.").appFont(14).foregroundStyle(Theme.sub)
+            // 원인 진단·계획을 마친 뒤에 '매달 더 넣으면?' (2026-10-11 결정: 미션 3 뒤)
+            if m.cost > m.total { DepositLeverCard(plan: keep) }
+            Text("계산 예시예요. 특정 종목을 사고팔라는 안내가 아니에요.").appFont(14).foregroundStyle(Theme.sub)
             PrimaryButton(title: "다음 미션: 앱 시작 3단계") { m.boardPath.append(.nx) }
             Button { m.boardPath.append(.m4) } label: {
                 Text("올해 다른 해외주식 이익이 있다면: 손실로 세금 줄이기").appFont(15, .semibold).multilineTextAlignment(.center)
@@ -469,6 +523,11 @@ struct Mission3ResultView: View {
             Text(amt).appFont(15, .bold).foregroundStyle(up ? Theme.teal : Color(hex: 0x2450C8, dark: 0x7FA2F0)).monospacedDigit()
         }
         .frame(minHeight: 36)
+    }
+    /// 비중 차이 %p (+10%p, -21%p)
+    static func pp(_ d: Double) -> String {
+        let v = Int((d * 100).rounded())
+        return v == 0 ? "그대로" : (v > 0 ? "+" : "") + "\(v)%p"
     }
 }
 
@@ -513,26 +572,26 @@ struct TaxResultView: View {
                     Text(won0(m.taxAfter)).appFont(30, .bold)
                     Text("\(won0(max(0, m.taxBefore - m.taxAfter))) 줄어요").appFont(14, .bold).foregroundStyle(Theme.mint)
                 }
-                Text("\(Int(m.taxSellQty))주 팔면 확정 손실 \(m.taxLossMan < 0 ? "-" + won0(-m.taxLossMan) : won0(m.taxLossMan)) · \(m.focusName) 비중 \(AppModel.pct(wAfter)) (계획 \(AppModel.pct(m.planWeight)))")
+                Text("가장 큰 종목 비중 \(AppModel.pct(m.focusWeight))→\(AppModel.pct(wAfter)) (계획 \(AppModel.pct(m.planWeight))) · 확정 손익 \(m.taxLossMan < 0 ? "-" + won0(-m.taxLossMan) : won0(m.taxLossMan))")
                     .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             Card {
-                Text("\(m.focusName) 일부를 올해 안에 판다면?").appFont(15, .bold)
-                Text("팔 수량 (보유 \(Int(maxQ))주) · \(Int(m.taxSellQty))주").appFont(13).foregroundStyle(Theme.sub)
+                Text("가장 큰 종목 비중을 줄이는 경우 (예시)").appFont(15, .bold)
+                Text("줄이는 비율: 보유의 \(AppModel.pct(m.taxSellQty / max(1, maxQ)))").appFont(13).foregroundStyle(Theme.sub)
                 Slider(value: $m.taxSellQty, in: 0...max(1, maxQ), step: 1).tint(Theme.teal)
-                    .accessibilityLabel("팔 수량")
+                    .accessibilityLabel("줄이는 비율")
                 Text("올해 이익 \(won0(m.taxGain)) − 기본공제 250만원 = 과세 \(won0(max(0, m.taxGain - 250))). 슬라이더를 움직이면 위 숫자가 바로 바뀌어요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 if over {
-                    Text("이미 세금이 0원이 되는 수량이에요. 이보다 더 팔아도 올해 세금은 더 줄지 않아요.")
+                    Text("이미 세금이 0원이 되는 비율이에요. 이보다 더 줄여도 세금은 더 줄지 않아요.")
                         .appFont(13, .semibold).foregroundStyle(Color(hex: 0x8A4B00, dark: 0xF0B070))
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 10))
                 }
             }
-            Text("계산 예시이며 세무 상담이 아닙니다. 매도 결제일이 올해 안이어야 올해 손익에 들어가요. 사고파는 판단은 직접 하세요.")
+            Text("계산 예시이며 세무 상담이나 매매 권유가 아닙니다. 손익은 결제일이 속한 해에 들어가요. 사고파는 판단은 직접 하세요.")
                 .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
             BoardButtons(next: "다음 미션: 앱 시작 3단계", to: .nx)
         }
@@ -610,7 +669,7 @@ struct AppStartView: View {
                         }
                         if !m.syncOn { Text("PC가 없으면 이 폰에서만 켜 두어도 돼요. 폰을 바꿀 때 같은 비밀번호로 되찾을 수 있어요.").appFont(12).foregroundStyle(Theme.sub) }
                     } else if cur {
-                        Button("앱에서 했어요 (시안)") { withAnimation { m.nxStep += 1 } }
+                        Button("앱에서 했어요") { withAnimation { m.nxStep += 1 } }
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                     }

@@ -10,10 +10,7 @@
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
   const C = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)"];
-  const DEFAULT_MODEL = {
-    scenario: "blend", trust: 50, n_paths: 3000, seed: 20261004, history_years: 3, prior_mu: 10, prior_tau: 15, conservative_mu: 4,
-    new_listing_vol: 60, default_vol: 40, default_corr: 0.3, t_dof: 5, fx_drift: 0, fx_vol_mult: 1, rebalance_yearly: false, earnings_adjust: true,
-  };
+  const DEFAULT_MODEL = Model.DEFAULT_MODEL; // 전망 계산 기본 설정 (model.js)
   const MODEL_FIELDS = [
     ["history_years", "통계 기간 (년)", "변동성·상관·과거 평균을 이 기간 일봉으로 계산"],
     ["prior_mu", "사전 기대수익률 (연 %)", "개별 주식 장기 기대수익의 기준값. 과거 평균을 이 값 쪽으로 당김"],
@@ -46,48 +43,16 @@
   const xfName = (k) => XGROUPS.find((g) => g.k === k)?.n || XSUBS.find((s) => s.k === k)?.n || k;
   const catName = (c) => (CATS.find(([k]) => k === c) || [, c])[1];
   const FACTORS = {
-    mkt: { sym: "SPY", name: "미국 시장 (S&P500, SPY)", unit: "%", shock: -5, shockTxt: "S&P500 -5%" },
-    rate: { sym: "^TNX", name: "미국 10년 국채 금리", unit: "bp", shock: 25, shockTxt: "10년 금리 +0.25%p" },
-    oil: { sym: "CL=F", name: "WTI 유가", unit: "%", shock: 10, shockTxt: "유가 +10%" },
-    gold: { sym: "GC=F", name: "금 선물", unit: "%", shock: 10, shockTxt: "금값 +10%" },
-    cmdty: { sym: "DBC", name: "원자재 지수 (DBC)", unit: "%", shock: 10, shockTxt: "원자재 +10%" },
+    mkt: { sym: Model.FACTOR_SYM.mkt, name: "미국 시장 (S&P500, SPY)", unit: "%", shock: -5, shockTxt: "S&P500 -5%" },
+    rate: { sym: Model.FACTOR_SYM.rate, name: "미국 10년 국채 금리", unit: "bp", shock: 25, shockTxt: "10년 금리 +0.25%p" },
+    oil: { sym: Model.FACTOR_SYM.oil, name: "WTI 유가", unit: "%", shock: 10, shockTxt: "유가 +10%" },
+    gold: { sym: Model.FACTOR_SYM.gold, name: "금 선물", unit: "%", shock: 10, shockTxt: "금값 +10%" },
+    cmdty: { sym: Model.FACTOR_SYM.cmdty, name: "원자재 지수 (DBC)", unit: "%", shock: 10, shockTxt: "원자재 +10%" },
   };
   const FACTOR_SYMS = Object.values(FACTORS).map((f) => f.sym);
   const CAT_FACTOR = { rate: "rate", infl: "rate", oil: "oil", gold: "gold", cmdty: "cmdty", politics: "mkt", war: "mkt", trade: "mkt", flow: "mkt" };
   // 환율 묶음은 요인 민감도 대신 원/달러(KRW=X)에 직접 반영한다 (사건 대상 FX)
   const FX_F = { sym: "KRW=X", name: "원/달러 환율", unit: "%", shock: 5, shockTxt: "원/달러 +5%" };
-  const KIND_CAT = [[/신제품|리콜/, "product"], [/인도량|KPI/, "tsla"], [/환율|한국은행/, "fx"], [/CPI|물가|인플레/, "infl"], [/FOMC|고용|금리/, "rate"], [/OPEC|유가/, "oil"], [/금값/, "gold"], [/원자재/, "cmdty"],
-    [/공급망/, "corp"], [/관세|수출|제재/, "trade"], [/선거/, "politics"], [/전쟁/, "war"], [/만기|리밸런싱|매매|수급|지수 편입/, "flow"]];
-  const catOfKind = (k) => (KIND_CAT.find(([re]) => re.test(k)) || [, "corp"])[1];
-  // 기본 외부 요인 사건 (날짜·크기는 추정. 시장 요인은 S&P500 기준 %, 금리는 bp)
-  const EXT_EVENTS = [
-    { id: "x_fomc", cat: "rate", factor: "mkt", target: "ALL", kind: "FOMC 금리 결정", date: "2026-10-28", repeat: "6w", prob: 100, mean: 0, sd: 1.0, vol_mult: 1, vol_days: 0, note: "6주마다 (날짜 근사). 발표일 S&P500 ±1.0% 가정" },
-    { id: "x_cpi", cat: "infl", factor: "mkt", target: "ALL", kind: "물가(CPI) 발표", date: "2026-10-14", repeat: "monthly", prob: 100, mean: 0, sd: 0.8, vol_mult: 1, vol_days: 0, note: "매달 중순 (날짜 근사). S&P500 ±0.8%" },
-    { id: "x_jobs", cat: "rate", factor: "mkt", target: "ALL", kind: "고용 지표", date: "2026-11-06", repeat: "monthly", prob: 100, mean: 0, sd: 0.6, vol_mult: 1, vol_days: 0, note: "매달 첫 금요일 무렵. S&P500 ±0.6%" },
-    { id: "x_rate", cat: "rate", factor: "rate", target: "ALL", kind: "금리 급등", date: "2027-03-15", repeat: "yearly", prob: 20, mean: 40, sd: 20, vol_mult: 1.2, vol_days: 20, note: "해마다 20% 확률로 10년 금리 +0.4%p (bp 단위)" },
-    { id: "x_bok", cat: "fx", target: "FX", kind: "한국은행 금리 결정", date: "2026-10-22", repeat: "6w", prob: 100, mean: 0, sd: 0.4, vol_mult: 1, vol_days: 0, note: "해마다 8번 (날짜 근사). 원/달러 ±0.4%" },
-    { id: "x_fx", cat: "fx", target: "FX", kind: "환율 급변", date: "2027-01-15", repeat: "yearly", prob: 25, mean: 0, sd: 5, vol_mult: 1.3, vol_days: 20, note: "해마다 25% 확률로 원/달러 ±5% (원화 약세면 해외 주식 평가액 증가)" },
-    { id: "x_infl", cat: "infl", factor: "rate", target: "ALL", kind: "물가 급등", date: "2027-06-10", repeat: "yearly", prob: 15, mean: 30, sd: 15, vol_mult: 1.2, vol_days: 20, note: "해마다 15% 확률로 물가 재상승 → 10년 금리 +0.3%p (bp 단위)" },
-    { id: "x_dlv", cat: "tsla", target: "TSLA", kind: "차량 인도량", date: "2027-01-04", repeat: "quarterly", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "분기 첫 달 2일 무렵 발표 (날짜 추정)" },
-    { id: "x_gtc", cat: "product", target: "NVDA", kind: "신제품·행사", date: "2027-03-16", repeat: "yearly", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "GTC 신제품 발표 (날짜 추정)" },
-    { id: "x_tprod", cat: "product", target: "TSLA", kind: "신제품·행사", date: "2027-06-15", repeat: "yearly", prob: 60, mean: 0, sd: 6, vol_mult: 1, vol_days: 0, note: "로보택시·옵티머스 등 공개 행사 (가정)" },
-    { id: "x_recall", cat: "product", target: "TSLA", kind: "리콜", date: "2027-02-15", repeat: "yearly", prob: 40, mean: -2, sd: 3, vol_mult: 1, vol_days: 0, note: "대규모 리콜·조사 (가정)" },
-    { id: "x_ship", cat: "product", target: "SPCX", kind: "신제품·행사", date: "2026-12-15", repeat: "quarterly", prob: 70, mean: 0, sd: 5, vol_mult: 1, vol_days: 0, note: "스타십 발사·신규 서비스 (가정)" },
-    { id: "x_opec", cat: "oil", factor: "oil", target: "ALL", kind: "OPEC+ 회의", date: "2026-11-30", repeat: "semi", prob: 100, mean: 0, sd: 4, vol_mult: 1, vol_days: 0, note: "반년마다. 유가 ±4% (날짜 추정)" },
-    { id: "x_oil", cat: "oil", factor: "oil", target: "ALL", kind: "유가 급등", date: "2027-05-17", repeat: "yearly", prob: 15, mean: 25, sd: 12, vol_mult: 1.2, vol_days: 20, note: "해마다 15% 확률로 유가 +25% (중동·감산)" },
-    { id: "x_gold", cat: "gold", factor: "gold", target: "ALL", kind: "금값 급등", date: "2027-08-16", repeat: "yearly", prob: 20, mean: 10, sd: 6, vol_mult: 1, vol_days: 0, note: "해마다 20% 확률로 금값 +10% (안전자산 쏠림)" },
-    { id: "x_cmdty", cat: "cmdty", factor: "cmdty", target: "ALL", kind: "원자재 급등", date: "2027-07-15", repeat: "yearly", prob: 15, mean: 12, sd: 8, vol_mult: 1, vol_days: 0, note: "해마다 15% 확률로 원자재 +12% (공급망)" },
-    { id: "x_chip", cat: "corp", target: "NVDA", kind: "공급망 차질", date: "2027-05-10", repeat: "yearly", prob: 15, mean: -4, sd: 4, vol_mult: 1.2, vol_days: 15, note: "해마다 15% 확률로 TSMC·HBM 공급 차질 (가정)" },
-    { id: "x_parts", cat: "corp", target: "TSLA", kind: "공급망 차질", date: "2027-08-10", repeat: "yearly", prob: 15, mean: -3, sd: 4, vol_mult: 1, vol_days: 0, note: "해마다 15% 확률로 배터리·부품 공급 차질 (가정)" },
-    { id: "x_mid", cat: "politics", factor: "mkt", target: "ALL", kind: "선거", date: "2026-11-04", repeat: "none", prob: 100, mean: 0, sd: 1.5, vol_mult: 1.2, vol_days: 15, note: "미국 중간선거 결과 (11/3 투표)" },
-    { id: "x_pres", cat: "politics", factor: "mkt", target: "ALL", kind: "선거", date: "2028-11-08", repeat: "none", prob: 100, mean: 0, sd: 2, vol_mult: 1.3, vol_days: 20, note: "미국 대통령 선거 결과 (11/7 투표)" },
-    { id: "x_tariff", cat: "trade", factor: "mkt", target: "ALL", kind: "관세·정책", date: "2027-04-05", repeat: "yearly", prob: 20, mean: -3, sd: 3, vol_mult: 1.4, vol_days: 20, note: "해마다 20% 확률로 관세·규제 충격 S&P500 -3%" },
-    { id: "x_war", cat: "war", factor: "mkt", target: "ALL", kind: "전쟁·지정학", date: "2027-09-15", repeat: "yearly", prob: 10, mean: -5, sd: 4, vol_mult: 1.6, vol_days: 30, note: "해마다 10% 확률로 전쟁·분쟁 충격 S&P500 -5% (날짜는 임의)" },
-    { id: "x_export", cat: "trade", target: "NVDA", kind: "수출 규제·제재", date: "2027-04-20", repeat: "yearly", prob: 25, mean: -5, sd: 4, vol_mult: 1.3, vol_days: 20, note: "해마다 25% 확률로 대중국 반도체 수출 규제 (H20 사례)" },
-    { id: "x_witch", cat: "flow", factor: "mkt", target: "ALL", kind: "옵션 만기·리밸런싱", date: "2026-12-18", repeat: "quarterly", prob: 100, mean: 0, sd: 0.5, vol_mult: 1, vol_days: 0, note: "분기 셋째 금요일 (쿼드러플 위칭·지수 리밸런싱). S&P500 ±0.5%" },
-    { id: "x_spidx", cat: "flow", target: "SPCX", kind: "지수 편입·제외", date: "2026-12-21", repeat: "none", prob: 30, mean: 4, sd: 4, vol_mult: 1, vol_days: 0, note: "S&P500·나스닥100 편입 기대 매수 (가정)" },
-  ];
-  const EXT_V2 = new Set(["x_bok", "x_fx", "x_infl", "x_chip", "x_parts", "x_export", "x_witch", "x_spidx"]); // ext_ver 2에서 추가된 기본 사건
   const REPEATS = [["none", "한 번"], ["monthly", "매달"], ["6w", "6주"], ["quarterly", "분기"], ["semi", "반년"], ["yearly", "매년"]];
   const repName = (r) => (REPEATS.find(([k]) => k === r) || [, "한 번"])[1];
   // 과거 반응을 볼 날짜 (공개 기록 기준, 미국 장 마감 기준으로 반영된 날)
@@ -105,6 +70,7 @@
   // 실행 방식: "local" = 내 PC 의 server.py, "static" = GitHub Pages 같은 정적 사이트 (입력은 이 브라우저에 저장)
   let MODE = "local";
   const LS_KEY = "asset-tracker-state";
+  const SAMPLE_QTY = { DRNK: 4, QQQ: 1 }, SAMPLE_GOAL = 5e6; // 첫 방문 샘플 (앱 Sample.startHoldings 와 같은 수량)
   const GH = (() => {
     const m = location.hostname.match(/^([^.]+)\.github\.io$/), repo = location.pathname.split("/").filter(Boolean)[0];
     // 내 도메인(naeilo.com 등)으로 열면 주소에 저장소 이름이 없으므로 이 앱의 저장소를 쓴다
@@ -122,6 +88,8 @@
   const pct = (v, d = 1) => (v == null || !isFinite(v) ? "-" : (v * 100).toFixed(d) + "%");
   const spct = (v, d = 1) => (v == null || !isFinite(v) ? "-" : (v >= 0 ? "+" : "") + (v * 100).toFixed(d) + "%");
   const cls = (v) => (v == null ? "" : v > 0 ? "up" : v < 0 ? "dn" : "");
+  // 남은 기간: 1년 넘으면 소수 한 자리 년, 안 되면 개월·일 (앱 내 길과 같은 표시)
+  const leftStr = (y) => (!(y > 0) ? "지남" : y >= 1 ? y.toFixed(1) + "년" : y * 12 >= 1 ? Math.floor(y * 12) + "개월" : Math.ceil(y * 365.25) + "일");
   function krw(v) {
     if (v == null || !isFinite(v)) return "-";
     const a = Math.abs(v), s = v < 0 ? "-" : "";
@@ -157,11 +125,17 @@
     if (!r.ok) throw new Error(j.error || r.statusText);
     return j;
   }
+  // 종목별 사이트 마지막 종가 (전망 기준값. 앱도 같은 data/prices 파일의 마지막 종가를 쓴다)
+  function lastCloses(P) {
+    const out = {};
+    for (const [k, p] of Object.entries(P || {})) { const c = p.close || []; for (let i = c.length - 1; i >= 0; i--) if (c[i] > 0) { out[k] = c[i]; break; } }
+    return out;
+  }
   async function reload() {
     if (MODE === "local") {
       try {
         const d = await api("/api/data");
-        S.prices = d.prices || {}; S.quotes = d.quotes || {}; S.mar = d.mar || {};
+        S.prices = d.prices || {}; S.quotes = d.quotes || {}; S.mar = d.mar || {}; S.siteClose = lastCloses(S.prices);
         if (!S.state) S.state = normalize(d.state || {});
         S.config = d.config || {};
         return;
@@ -177,7 +151,7 @@
     const ver = (sym) => "?v=" + encodeURIComponent(idx.v?.[sym] || idx.updated || Date.now());
     const getPx = async (sym, f) => { const r = await fetch(base + "prices/" + encodeURIComponent(f) + ver(sym)); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); };
     await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await getPx(sym, f); } catch (e) { /* 없는 파일 무시 */ } }));
-    S.prices = prices; S.dataUpdated = idx.updated;
+    S.prices = prices; S.dataUpdated = idx.updated; S.siteClose = lastCloses(prices); // 전망 기준값: 브라우저가 따로 받은 시세를 섞기 전 사이트 종가
     [S.quotes, S.tickerCfg, S.config, S.mar] = await side;
     mergeExtra();
     if (!S.state) {
@@ -185,13 +159,19 @@
       try { st = JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch (e) { /* 무시 */ }
       S.firstVisit = !st;
       S.state = normalize(st || (await get("state.default.json").catch(() => ({}))));
-      // 첫 방문: 빈 화면 대신 앱과 같은 샘플 (가상 종목 DRNK 60주·QQQ 10주). 내 종목을 처음 넣거나 고치면 샘플은 사라진다
-      if (S.firstVisit && !S.state.holdings.length) { S.state.holdings = [{ ticker: "DRNK", shares: 60, price: null, avg_cost: null, note: "가상 종목", sample: true }, { ticker: "QQQ", shares: 10, price: null, avg_cost: null, note: "", sample: true }]; S.state.sample = true;
-        S.state.sample_goal = S.state.goal.amount; S.state.goal.amount = 1e8; } // 샘플 평가액(약 3천만원)에 맞춰 목표도 1억으로. 샘플이 끝나면 원래 목표로
+      // 첫 방문: 빈 화면 대신 앱과 같은 샘플 (가상 종목 DRNK 4주·QQQ 1주). 내 종목을 처음 넣거나 고치면 샘플은 사라진다
+      if (S.firstVisit && !S.state.holdings.length) { S.state.holdings = [{ ticker: "DRNK", shares: SAMPLE_QTY.DRNK, price: null, avg_cost: null, note: "가상 종목", sample: true }, { ticker: "QQQ", shares: SAMPLE_QTY.QQQ, price: null, avg_cost: null, note: "", sample: true }]; S.state.sample = true;
+        S.state.sample_goal = S.state.goal.amount; S.state.goal.amount = SAMPLE_GOAL; } // 샘플 평가액(약 240만원)에 맞춰 목표도 500만원으로. 샘플이 끝나면 원래 목표로
+    }
+    // 예전 샘플(DRNK 60주·QQQ 10주, 목표 1억)을 저장해 둔 방문자도 앱처럼 소액 샘플로 본다 (불러올 때마다 맞추므로 따로 저장하지 않는다)
+    if (S.state.sample && S.state.holdings.some((h) => h.sample && SAMPLE_QTY[h.ticker] && Number(h.shares) !== SAMPLE_QTY[h.ticker])) {
+      S.state.holdings.forEach((h) => { if (h.sample && SAMPLE_QTY[h.ticker]) h.shares = SAMPLE_QTY[h.ticker]; });
+      if (S.state.goal.amount === 1e8) S.state.goal.amount = SAMPLE_GOAL;
+      delete S.state.weekly;
     }
     if (S.state.sample) await sampleSeed();
   }
-  // 샘플(DRNK 60주·QQQ 10주)은 누구에게나 같은 값이라, 정해 둔 날짜에 미리 계산한 결과(data/sample_calc.json)를 저장 칸에 넣어 두고
+  // 샘플(DRNK 4주·QQQ 1주)은 누구에게나 같은 값이라, 정해 둔 날짜에 미리 계산한 결과(data/sample_calc.json)를 저장 칸에 넣어 두고
   // 그대로 쓴다 (전망·미래 그래프·비중 조정안을 다시 계산하지 않음). 내 종목을 넣으면 지금 값으로 새로 계산한다.
   // 새로 만들 때: node tools/sample_snapshot.mjs (주소에 ?fresh 를 붙이면 미리 계산한 값을 쓰지 않는다)
   async function sampleSeed() {
@@ -209,17 +189,7 @@
     st.holdings = st.holdings || [];
     st.holdings.forEach((h) => { if (h.note === "수량을 입력하세요") h.note = ""; }); // 예전 기본 문구 정리
     st.goal = Object.assign({ amount: 1e9, date: Model.addMonths(today(), 36), start_date: today(), monthly_contribution: 0 }, st.goal || {});
-    st.events = st.events || [];
-    // 외부 요인 기본 사건을 한 번 넣는다 (이미 지운 사건은 다시 넣지 않도록 버전으로 표시)
-    const xv = st.ext_ver || 0;
-    if (xv < 2) {
-      const have = new Set(st.events.map((e) => e.id));
-      EXT_EVENTS.forEach((e) => { if (!have.has(e.id) && (xv < 1 || EXT_V2.has(e.id))) st.events.push({ on: true, ...e }); });
-      st.events.forEach((e) => { if (e.id === "x_cpi" && e.cat === "rate") e.cat = "infl"; if (e.cat === "politics" && /관세/.test(e.kind || "")) e.cat = "trade"; }); // 14개 묶음으로 옮김
-      st.ext_ver = 2;
-    }
-    if (st.ext_ver < 3) { st.events.forEach((e) => { if (e.cat === "supply") e.cat = "corp"; }); st.ext_ver = 3; } // 공급망 묶음은 기업 실적·공시로 합침
-    st.events.forEach((e) => { if (!e.cat) e.cat = catOfKind(e.kind || ""); });
+    Model.normEvents(st); // 외부 요인 기본 사건 넣기·묶음 정리 (model.js, 앱이 받는 stats.json 도 같은 함수)
     if ((st.purge_ver || 0) < 1) {
       st.holdings = st.holdings.filter((h) => !PURGED.has(String(h.ticker || "").toUpperCase()));
       st.events = st.events.filter((e) => !PURGED.has(String(e.target || "").toUpperCase()));
@@ -231,8 +201,7 @@
       st.purge_ver = 2;
     }
     // 렌즈 도입 전 저장값: 기본 시나리오(기준)였다면 내 관점(추세 신뢰 50%)으로 옮긴다
-    if (st.model && st.model.trust == null) { st.model.trust = 50; if (!st.model.scenario || st.model.scenario === "base") st.model.scenario = "blend"; }
-    st.model = Object.assign({}, DEFAULT_MODEL, st.model || {});
+    st.model = Model.normModel(st.model);
     st.ui = Object.assign({ auto_refresh_min: 0, manual_price: false }, st.ui || {});
     return st;
   }
@@ -248,14 +217,42 @@
     if (last.d === d) last.h = h; else st.lots.push({ d, h });
     if (st.lots.length > 400) st.lots.splice(0, st.lots.length - 400);
   }
+  // naeilo를 쓴 날부터의 내 기록: 하루 한 줄 {d, v 평가액, c 넣은 돈, q {티커: [수량, 원화 주가]}, f {티커: [산·판 수량, 원화 금액]}}
+  // 넣은 돈 = 전날 넣은 돈 + 그날 '더 샀어요·팔았어요' 금액(그때 가격) + 그 밖에 바뀐 수량(직접 고치기·추가·삭제)×그날 가격. 첫날은 그날 평가액.
+  // 이 브라우저에만 쌓이고 백업 파일·기기 동기화에 같이 들어간다. 앱(iOS)과 같은 모양. 바뀐 게 새 날이면 true (그때만 저장)
+  function recordDay() {
+    const st = S.state, tr = S.pendTrade; S.pendTrade = null;
+    if (st.sample) return false;
+    const q = {};
+    for (const r of valuation().rows) { if (!(r.sh > 0)) continue; if (!(r.valueKrw > 0)) return false; q[r.h.ticker] = [r.sh, Math.round((r.valueKrw / r.sh) * 100) / 100]; }
+    const D = (st.daily = st.daily || []), d = today();
+    if (D.length && D[D.length - 1].d > d) return false; // 기기 시계가 거꾸로 가면 건드리지 않는다
+    const cur = D.length && D[D.length - 1].d === d ? D[D.length - 1] : null, prev = D[D.length - (cur ? 2 : 1)];
+    if (!prev && !Object.keys(q).length) return false;
+    const f = { ...(cur?.f || {}) };
+    if (tr) { const a = f[tr.t] || [0, 0]; f[tr.t] = [a[0] + tr.q, a[1] + tr.k]; }
+    const pq = prev?.q || {};
+    let c = prev ? prev.c : 0, v = 0;
+    for (const t of new Set([...Object.keys(q), ...Object.keys(pq), ...Object.keys(f)])) {
+      const now = q[t]?.[0] || 0, fl = f[t] || [0, 0], px = q[t]?.[1] ?? pq[t]?.[1] ?? (fl[0] ? fl[1] / fl[0] : 0);
+      c += fl[1] + (now - (pq[t]?.[0] || 0) - fl[0]) * px; v += now * (q[t]?.[1] || 0);
+    }
+    const rec = { d, v: Math.round(v), c: Math.round(c), q };
+    if (Object.keys(f).length) rec.f = f;
+    if (cur) D[D.length - 1] = rec; else D.push(rec);
+    if (D.length > 1200) D.splice(0, D.length - 1200);
+    return !cur;
+  }
+  // 동기화로 다른 기기 값을 받을 때: 날짜별로 합친다 (같은 날은 받은 쪽)
+  const mergeDaily = (a, b) => { const m = new Map(); (b || []).forEach((x) => m.set(x.d, x)); (a || []).forEach((x) => m.set(x.d, x)); return [...m.values()].sort((x, y) => (x.d < y.d ? -1 : 1)).slice(-1200); };
   function save(dirtyForecast = true) {
-    recordLot();
+    recordLot(); recordDay();
     if (dirtyForecast) markDirty();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
       if (MODE === "static") {
         syncMark();
-        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 아래 내보내기/불러오기"; }
+        try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); $("#footer").textContent = "이 브라우저에 저장됨 " + new Date().toLocaleTimeString() + " · 다른 기기에서 쓰려면 위 '입력값 저장·불러오기'"; }
         catch (e) { $("#footer").textContent = "브라우저 저장 실패: " + e.message; }
         return;
       }
@@ -316,7 +313,7 @@
       if (j.state && j.at > mine && hashStr(JSON.stringify({ ...normalize(j.state), ui: null })) !== syncLast) {
         // 이 기기에서 처음 켤 때만 묻는다 (이 기기 값이 더 맞을 수 있으니)
         if (!mine && !confirm(`다른 기기 입력값(${new Date(j.at).toLocaleString()})으로 이 기기를 맞출까요?\n취소하면 이 기기 값을 다른 기기로 보냅니다.`)) { S.state.ui.sync_at = Date.now(); save(false); return syncPush(); }
-        const ui = S.state.ui; S.state = normalize(j.state); S.state.ui = { ...ui, sync_at: j.at }; syncLast = syncSig();
+        const ui = S.state.ui, myDaily = S.state.daily; S.state = normalize(j.state); S.state.ui = { ...ui, sync_at: j.at }; if (myDaily?.length) S.state.daily = mergeDaily(S.state.daily, myDaily); syncLast = syncSig();
         try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); } catch (e) { /* 무시 */ }
         markDirty(); renderAll(); toast("다른 기기 입력값으로 맞췄습니다");
       } else if (!j.state || j.at < mine) { if (!mine) S.state.ui.sync_at = Date.now(); await syncPush(); }
@@ -473,7 +470,7 @@
         // Pages 반영을 기다리지 않고 저장소에서 바로 읽는다
         const prices = {};
         await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await ghApi("contents/data/prices/" + encodeURIComponent(f) + "?ref=main", { raw: true }); } catch (e) { /* 무시 */ } }));
-        S.prices = prices; S.quotes = await ghApi("contents/data/quotes.json?ref=main", { raw: true }); S.dataUpdated = idx.updated;
+        S.prices = prices; S.siteClose = lastCloses(prices); S.quotes = await ghApi("contents/data/quotes.json?ref=main", { raw: true }); S.dataUpdated = idx.updated;
         S.tickerCfg = await ghApi("contents/data/tickers.json?ref=main", { raw: true });
         S.mar = await ghApi("contents/data/mar.json?ref=main", { raw: true }).catch(() => S.mar);
         markDirty(); renderAll();
@@ -605,7 +602,8 @@
     if (!keep) S.state.holdings = S.state.holdings.filter((h) => !h.sample);
     if (!S.state.holdings.some((h) => h.sample)) delete S.state.weekly; // 샘플 종목이 없어지면 샘플 수량으로 적은 주간 예측도 지운다 (수량만 고친 경우는 남겨 다시 맞춘다)
     S.state.holdings.forEach((h) => delete h.sample); delete S.state.sample;
-    if (S.state.sample_goal) { if (S.state.goal.amount === 1e8) S.state.goal.amount = S.state.sample_goal; delete S.state.sample_goal; } // 샘플 동안 목표를 고치지 않았으면 원래 목표로
+    if (S.state.sample_goal) { if (S.state.goal.amount === SAMPLE_GOAL || S.state.goal.amount === 1e8) S.state.goal.amount = S.state.sample_goal; delete S.state.sample_goal; } // 샘플 동안 목표를 고치지 않았으면 원래 목표로
+    lastForecast = null; fcDirty = true; try { localStorage.removeItem(FC_KEY); } catch (e) { /* 무시 */ } // 샘플로 계산한 전망을 버려 전망 탭을 열면 내 종목으로 다시 계산
   }
   // 종목 로고: 티커로 받는 무료 로고 이미지 → 다른 곳 → 실패하면 첫 글자
   const LOGO_DOMAIN = { SPCX: "spacex.com" };
@@ -701,6 +699,7 @@
       // 산 것·판 것만 따로 남긴다 (나중에 평정 지수가 이것만 센다. 직접 고치기는 남기지 않음)
       const log = (S.state.trade_log = S.state.trade_log || []);
       log.push({ d: today(), t: h.ticker, q: E.mode === "buy" ? c.qi : -c.qi, px: c.pi });
+      S.pendTrade = { t: h.ticker, q: E.mode === "buy" ? c.qi : -c.qi, k: (E.mode === "buy" ? 1 : -1) * c.qi * c.pi * (fxBase(c.ccy) || 1) }; // 내 기록의 넣은 돈
       if (log.length > 1000) log.splice(0, log.length - 1000);
     }
     h.shares = c.q1;
@@ -956,20 +955,28 @@
     let i0 = H.dates.findIndex((d) => d >= start); if (i0 < 0) i0 = H.dates.length - 1;
     const V0 = A[i0] || H.total[i0] + cash, span = yearsBetween(start, g.date);
     if (!(V0 > 0) || !(span > 0)) return { A, start, i0, V0, at: () => null };
-    return { A, start, i0, V0, at: (d) => V0 * (g.amount / V0) ** (yearsBetween(start, d) / span) }; // 시작일 전은 같은 속도로 거꾸로 늘인 길
+    // 매달 넣는 돈은 그대로 쌓고, 나머지(목표 − 넣을 돈)를 같은 속도로 불린다 (앱 내 길과 같은 식)
+    const M = (Number(g.monthly_contribution) || 0) * 12, kAdj = g.amount - M * span;
+    const at = (d) => { const t = yearsBetween(start, d); return M * t + (kAdj > 0 ? V0 * (kAdj / V0) ** (t / span) : V0 + (g.amount - V0) * t / span); };
+    return { A, start, i0, V0, at }; // 시작일 전은 같은 속도로 거꾸로 늘인 길
   }
+  let progAsked = "";
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
-    if (!(total > 0) || !H.dates.length) { card.style.display = "none"; return; } // 샘플(DRNK 60주·QQQ 10주)에도 보여 준다
+    if (!(total > 0) || !H.dates.length) { card.style.display = "none"; return; } // 샘플(DRNK 4주·QQQ 1주)에도 보여 준다
     const P = goalPath(H, cash), { A, start, i0, V0 } = P;
     const k = H.dates.length - 1, now = total + cash, td = today();
     const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
     const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
+    if (!lastForecast) fcRestore();
+    const pg = lastForecast && fcDirty ? null : fcReady(S.state.model.scenario)?.R?.p_goal ?? null; // 입력이 바뀐 뒤의 저장값은 쓰지 않는다. // 앱 내 길의 목표 달성 확률과 같은 값. 아직 없으면 '계산 중'으로 두고 한 번 계산
+    if (pg == null && !S.state.model.rebalance_yearly && progAsked !== fcSig()) { progAsked = fcSig(); fcDirty = true; setTimeout(runForecast, 0); }
     card.style.display = "block";
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
-      ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? (Math.abs(now - need) < need * 0.0005 ? "내 길과 같음" : `경로보다 ${krw(Math.abs(now - need))}원 ${now >= need ? "많음" : "적음"}`) : ""],
+      ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `내 길보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
+      ["목표 달성 확률", pg != null ? pct(pg, 0) : "계산 중", "목표일 전망과 같은 값"],
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
     ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "내 길 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
@@ -984,7 +991,8 @@
     const sg = (v) => `${v >= 0 ? "+" : "−"}${krw(Math.abs(v))}원`;
     if (pts.length) {
       const first = pts[0][1], last = pts[pts.length - 1][1], diff = last - first;
-      $("#progTrend").innerHTML = pts.length < 2 ? `경로 대비 <b class="${cls(last)}">${sg(last)}</b>` : `${lab} 전보다 <b class="${cls(diff)}">${sg(diff)}</b> <span class="muted">(${sg(first)} → ${sg(last)})</span>`;
+      // 오늘 차이 금액은 위 요약과 막대 끝 라벨에만 (여기서는 기간 동안 바뀐 만큼만)
+      $("#progTrend").innerHTML = pts.length < 2 ? "" : `${lab} 전보다 <b class="${cls(diff)}">${sg(diff)}</b>`;
       $("#progChart").style.display = "block";
       // 수량 바뀐 날을 그 날짜가 든 막대(1년은 그 주, 3년은 그 달)에 모은다
       const tr = trades(), evAt = {};
@@ -1000,6 +1008,26 @@
         dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
   }
+  // naeilo를 쓴 날부터의 내 기록 (지금 구성으로 본 지난 3년과 따로): 그날그날 남긴 평가액과 넣은 돈
+  function renderMyRec() {
+    if (recordDay()) save(false); // 하루 첫 기록만 저장(동기화)한다. 같은 날 시세가 바뀌면 화면 값만 고치고 다음 저장 때 같이 남는다
+    const card = $("#recCard"), D = S.state.sample ? [] : S.state.daily || [];
+    if (!D.length) { card.style.display = "none"; return; }
+    card.style.display = "block";
+    const L = D[D.length - 1], gain = L.c > 0 ? L.v / L.c - 1 : null;
+    $("#recSub").textContent = `${D[0].d}부터 · ${D.length}일 기록`;
+    $("#recKpis").innerHTML = [
+      ["지금 평가액", krw(L.v) + "원", L.d === today() ? "오늘" : L.d],
+      ["넣은 돈", krw(L.c) + "원", "산 것 − 판 것 (첫날은 그날 평가액)"],
+      ["넣은 돈 대비", gain == null ? "-" : spct(gain), `${L.v >= L.c ? "+" : "−"}${krw(Math.abs(L.v - L.c))}원`],
+    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "넣은 돈 대비" ? cls(gain) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
+    if (D.length < 2) { $("#recChart").style.display = "none"; $("#recNote").textContent = "오늘부터 쌓기 시작했어요. 내일 다시 열면 선이 그려져요. 열지 않은 날은 건너뛰고 이어서 그려요."; return; }
+    $("#recChart").style.display = "block";
+    $("#recNote").textContent = "naeilo를 연 날마다 남긴 실제 값이에요. 위 '지금 구성으로 본' 그래프는 지금 수량을 지난 가격에 대입한 값이라 다릅니다. 열지 않은 날은 선으로 잇습니다.";
+    Charts.lineChart($("#recChart"), { x: D.map((x) => x.d), height: 220, yfmt: krwAxis, series: [
+      { name: "평가액", y: D.map((x) => x.v), color: "var(--c1)", width: 2 },
+      { name: "넣은 돈", y: D.map((x) => x.c), color: "var(--fg)", width: 1.2, dash: "4 3" }] });
+  }
   // 웹 첫 화면에만 세리 한 명 (앱의 인물 다섯 명 중 원칙형). 내 수량을 넣으면 이 카드째 사라진다
   const SERI_WEB = ["숫자부터 넣어 볼까요. 판단은 그다음이에요.", "수량만 알려 주세요. 나머지는 제가 계산할게요.", "처음 오셨군요. 할 일은 하나예요. 수량 넣기.", "지금 보이는 건 샘플이에요. 내 숫자로 바꿔 보세요.", "어서 오세요. 숫자 하나면 시작돼요.", "추측은 나중에요. 먼저 숫자요.", "보유 수량만요. 그 이상은 묻지 않을게요.", "기록이 있어야 볼 수 있어요. 수량부터요.", "샘플은 샘플일 뿐이에요. 내 것을 넣어 보세요.", "드링커는 가상 종목이에요. 내 종목으로 바꿔 보세요.", "한 줄이면 돼요. 종목과 수량.", "오래 안 걸려요. 수량만 넣으면 끝나요.", "관찰은 숫자에서 시작해요.", "처음이시군요. 수량을 넣으면 오늘 값으로 다시 볼게요.", "판단은 제가 하지 않아요. 숫자를 보여 줄 뿐이에요.", "기준이 있어야 흔들리지 않아요. 먼저 지금을 적어요.", "숫자를 넣으면 목표까지 얼마 남았는지 보여요.", "잠깐요. 수량부터 넣고 이야기해요.", "사실만 볼게요. 내 수량을 알려 주세요.", "한 번 넣어 두면 다음부터는 보기만 하면 돼요.", "어서 오세요. 내일을 보려면 오늘 숫자가 필요해요."];
   const seriCard = () => `<div class="seri"><img src="seri.png" alt="세리" width="60" height="70"><div><div class="seri-say"><b>세리</b> ${esc(SERI_WEB[(S.seriPick ??= Math.floor(Math.random() * SERI_WEB.length))])}</div><div class="seri-body">`;
@@ -1007,9 +1035,10 @@
   function renderDash() {
     const g = S.state.goal, { total } = valuation(), yrs = yearsBetween(today(), g.date), cash = cashKrw(), tot = total + cash;
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
-    $("#dashEmpty").innerHTML = seriCard() + (S.state.sample ? `<b>샘플 화면 (가상 종목 DRNK 60주·QQQ 10주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="stocks">내 수량 넣기</button>`
+    $("#dashEmpty").innerHTML = seriCard() + (S.state.sample ? `<b>샘플 화면 (가상 종목 DRNK 4주·QQQ 1주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="stocks">내 수량 넣기</button>`
       : `<b>보유 수량을 넣어 주세요.</b> <span class="small">종목 탭에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="stocks">수량 입력하러 가기</button>`) + `<div class="seri-app muted small">naeilo 앱에서는 세리 말고도 네 명이 더 함께해요.</div></div></div></div>`;
-    const need = g.amount - tot, req = yrs > 0 && tot > 0 ? (g.amount / tot) ** (1 / yrs) - 1 : null;
+    // 필요 연수익률: 남은 기간에 넣을 적립을 뺀 나머지를 지금 자산이 불려야 하는 속도 (앱 내 길과 같은 식)
+    const need = g.amount - tot, kAdj = g.amount - (Number(g.monthly_contribution) || 0) * 12 * Math.max(0, yrs), req = yrs > 0 && tot > 0 ? (Math.max(1, kAdj) / tot) ** (1 / yrs) - 1 : null;
     const H = history(), M = patModel(H);
     // 미래 기준을 직접 고른 적이 없고, 지난 12달 채점에서 패턴이 추세만보다 나으면 패턴을 기본으로
     if (!S.basisAuto) { S.basisAuto = true; let mine = null; try { mine = localStorage.getItem("naeilo-basis"); } catch (e) { /* 무시 */ } if (!mine && patWins(M)) $$("#histBasis button").forEach((b) => b.classList.toggle("on", b.dataset.b === "pattern")); }
@@ -1018,13 +1047,13 @@
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
     const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
-    renderProgress(H, total, cash); renderBackupNag(); actualAuto(H, cash);
+    renderProgress(H, total, cash); renderBackupNag(); renderBep(); renderMyRec();
     $("#goalKpis").innerHTML = [
       ["현재 평가액", `<a href="#" class="plain" data-go="stocks" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(tot / g.amount), `<div class="bar"><i style="width:${Math.min(100, (tot / g.amount) * 100)}%"></i></div>`],
       ["남은 금액", krw(Math.max(0, need)) + "원", `목표 ${krw(g.amount)}원`],
-      ["남은 기간", yrs > 0 ? yrs.toFixed(1) + "년" : "지남", g.date],
-      ["필요 연평균 수익률", req != null ? pct(req) : "-", "지금 자산만으로"],
+      ["남은 기간", leftStr(yrs), g.date],
+      ["필요 연수익률", req != null ? spct(req) : "-", Number(g.monthly_contribution) > 0 ? "적립 포함" : "지금 자산만으로"],
       ["과거 연평균 (원화)", pct(pastCagr), `${H.dates[jc] || "-"} 이후`],
     ].map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
@@ -1032,7 +1061,9 @@
     const inUsd = $("#histCcy .on")?.dataset.c === "usd", basis = $("#histBasis .on")?.dataset.b || "model";
     const fxNowUsd = fxNow("USD") || 1, conv = (v, i) => (v == null ? null : inUsd ? v / H.usdK[i] : v), money = inUsd ? usd : krwAxis;
     const future = rsel === "future", n = future ? 780 : +rsel; // 미래: 과거 3년 + 목표일까지
-    const fcOn = $("#histFc .on")?.dataset.f === "on"; // 미래 보기에서 3년 전망 띠를 겹칠지 (기본: 내 길만)
+    // 과거 선은 지금 수량 × 지난 가격이라 "내가 지나온 길"이 아니다. 제목에서 그렇게 읽히게
+    $("#histTitle").textContent = future ? "지금 구성으로 본 지난 3년과 앞으로" : `지금 구성으로 본 지난 ${{ 5: "1주", 22: "1달", 66: "3달", 252: "1년", 780: "3년" }[n] || "기간"}`;
+    const fcOn = $("#histFc .on")?.dataset.f === "on"; // 미래 보기에서 목표일 전망 띠를 겹칠지 (기본: 내 길만)
     $("#histFc").style.display = future ? "" : "none"; $("#histBasis").style.display = future && !fcOn ? "none" : "";
     const k0 = Math.max(0, H.dates.length - 1 - n);
     // 간격: 3년·미래는 월간(그 달의 마지막 거래일 값), 1년은 주간(그 주 마지막 거래일), 3달 이하는 일간
@@ -1102,14 +1133,14 @@
           : `<b>내 관점</b> (추세 신뢰 ${S.state.model.scenario === "blend" ? S.state.model.trust + "%" : scenName(S.state.model.scenario)}): ` + (mode === "total" ? "진한 띠 25~75%, 옅은 띠 5~95%" : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%" : "쌓은 띠 = 종목별 중앙값"));
         if (Number(g.monthly_contribution) > 0) notes.push(`· 월 적립 ${krw(Number(g.monthly_contribution))}원 포함`);
       } else if (fcOn && total > 0 && basis !== "pattern") notes.push("전망을 계산하는 중입니다…");
-      if (!fcOn) notes.push("보라 점선은 <b>내 길</b>: 목표 시작일의 평가액에서 목표일 목표액까지 정한 대로 가는 길. 시장이 줄 수 있는 범위는 '예보 겹치기'를 누르면 3년 전망 띠로 겹쳐 봅니다.");
+      if (!fcOn) notes.push("보라 점선은 <b>내 길</b>: 목표 시작일의 평가액에서 목표일 목표액까지 정한 대로 가는 길. 시장이 줄 수 있는 범위는 '예보 겹치기'를 누르면 목표일 전망 띠로 겹쳐 봅니다.");
       if (fcOn && mode === "total" && basis === "smooth") {
         const pf = pastFit(H, basis);
         opt.series.push({ name: "3년 추세선 (과거)", y: ix.map((i) => conv(pf[i], i)), color: "var(--c7)", width: 1.4, dash: "4 3" });
       }
       const md = []; for (let k = 0; k <= 1200 && Model.addMonths(today(), k) <= g.date; k++) md.push(Model.addMonths(today(), k));
       if (md[md.length - 1] !== g.date) md.push(g.date);
-      // 내 길: 목표 진행·3년 전망과 같은 길 (목표 시작일부터 목표일까지). 시작일 전은 그리지 않는다
+      // 내 길: 목표 진행·목표일 전망과 같은 길 (목표 시작일부터 목표일까지). 시작일 전은 그리지 않는다
       const GP = V0 > 0 && mode !== "each" ? goalPath(H, cash) : null;
       if (GP && GP.at(today()) != null) {
         const px = [...x.filter((d) => d >= GP.start), ...md.filter((d) => d > last)], u = inUsd ? fxNowUsd : 1;
@@ -1117,7 +1148,7 @@
       } else if (V0 > 0 && mode !== "each") opt.series.push({ name: "내 길", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--goal)", dash: "5 4", width: 1.8 });
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
-      notes.push("현재 수량을 과거에 적용" + (inUsd ? ", 달러 환산." : "."));
+      notes.push("지금 수량을 지난 가격에 대입한 값이에요. 실제로 지나온 기록과는 달라요" + (inUsd ? " (달러 환산)." : "."));
       if (live) notes.push("· 맨 끝 빈 점은 오늘 실시간 값 (장 마감 전).");
       // 필요 경로: 목표 진행과 같은 길 (목표 시작일부터). 시작일 전은 그리지 않는다
       const P = mode !== "each" && tot > 0 ? goalPath(H, cash) : null;
@@ -1126,20 +1157,9 @@
         if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "내 길", y: py, color: "var(--goal)", dash: "5 4", width: 1.8 }); notes.push(`· 보라 점선은 내 길 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
       }
     }
-    const A = actualRec();
-    if (A && mode === "total" && x.length) { // 선택 기능: 실제 기록을 겹쳐 그린다 (그날 환율로 달러 환산)
-      const fxAt = new Map(H.dates.map((d, i) => [d, H.usdK[i]])); let lastFx = H.usdK[0];
-      const ax = [], ay = [];
-      A.d.forEach((d, i) => { if (fxAt.has(d)) lastFx = fxAt.get(d); if (d < x[0] || (step !== "d" && i < A.d.length - 1 && key(A.d[i + 1]) === key(d))) return; ax.push(d); ay.push(inUsd ? A.v[i] / lastFx : A.v[i]); });
-      const aLive = ax.length && tot > 0 && td > A.d[A.d.length - 1]; // 오늘은 아직 기록 전이라 실시간 값을 이어 붙인다 (저장은 장 마감 뒤 자동 기록이)
-      if (aLive) { if (step !== "d" && key(ax[ax.length - 1]) === key(td)) { ax.pop(); ay.pop(); } ax.push(td); ay.push(lconv(tot)); }
-      if (ax.length) opt.series.push({ name: "실제 기록", x: ax, y: ay, color: "var(--c3)", width: 1.6, lastDot: aLive ? td : null });
-      opt.markers = (S.state.memos || []).filter((m) => m.d >= x[0]).map((m) => ({ x: m.d, label: `${m.d} ${m.t}` }));
-      if (ax.length) notes.push("· 초록 선은 실제 기록 (그때 수량·현금. 엑셀 값은 그날 밤 12시, 자동 기록은 장 마감 기준).");
-    }
     $("#histNote").innerHTML = notes.join(" ");
     Charts.lineChart($("#histChart"), opt);
-    weekRecord(H, M, cash); renderHit(H, M, cash); renderDia(H, total, cash); renderAct();
+    weekRecord(H, M, cash); renderHit(H, M, cash); renderDia(H, total, cash);
 
     const periods = [["1일", 1], ["1주", 5], ["1개월", 21], ["3개월", 63], ["6개월", 126], ["1년", 252], ["3년", 756]];
     $("#periodTable").innerHTML = `<tr>${periods.map((p) => `<th>${p[0]}</th>`).join("")}</tr><tr>${periods.map((p) => { const v = ret(p[1]); return `<td class="${cls(v)}">${spct(v)}</td>`; }).join("")}</tr>`;
@@ -1238,47 +1258,12 @@
   // ---- 요인별 분석: 대리 지표(금리·유가·금·원자재·시장)에 대한 종목별 민감도, 과거 반응일
   let betaCache = null;
   // 날짜가 같은 날끼리 맞춘 일별 변화 (가격은 로그수익률, 금리는 bp 변화)
-  function alignedChanges(symA, symB, rateB, years = 3) {
-    const A = S.prices[symA], B = S.prices[symB]; if (!A || !B) return null;
-    const cut = Model.addMonths(today(), -12 * years), mb = new Map(B.dates.map((d, i) => [d, B.adj[i]]));
-    const xs = [], ys = [], ds = []; let pa = null, pb = null;
-    for (let i = 0; i < A.dates.length; i++) {
-      const d = A.dates[i]; if (d < cut || !mb.has(d)) continue;
-      const a = A.adj[i], b = mb.get(d);
-      if (pa != null && a > 0 && pa > 0 && b != null && pb != null && (rateB || (b > 0 && pb > 0))) { ys.push(Math.log(a / pa)); xs.push(rateB ? (b - pb) * 100 : Math.log(b / pb)); ds.push(d); }
-      pa = a; pb = b;
-    }
-    return { x: xs, y: ys, d: ds };
-  }
+  function alignedChanges(symA, symB, rateB, years = 3) { return Model.alignedChanges(S.prices, symA, symB, rateB, today(), years); }
   function factorBetas() {
     const stamp = Object.values(S.prices).map((p) => p.dates.at(-1)).join() + S.state.holdings.map((h) => h.ticker).join();
     if (betaCache && betaCache.stamp === stamp) return betaCache;
-    const out = { stamp, beta: {}, stat: {} }, tks = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]);
-    for (const [fk, F] of Object.entries(FACTORS)) {
-      out.beta[fk] = {}; out.stat[fk] = {};
-      if (!S.prices[F.sym]) continue;
-      for (const t of tks) {
-        if (t === F.sym) { out.beta[fk][t] = 1; out.stat[fk][t] = { beta: 1, corr: 1, n: 0 }; continue; }
-        const r = alignedChanges(t, F.sym, fk === "rate"); if (!r || r.y.length < 30) continue;
-        const n = r.y.length, mx = Model.mean(r.x), my = Model.mean(r.y);
-        let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++) { sxy += (r.x[i] - mx) * (r.y[i] - my); sxx += (r.x[i] - mx) ** 2; syy += (r.y[i] - my) ** 2; }
-        const corr = sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0;
-        let beta = sxx ? sxy / sxx : 0;
-        // 시장 외 요인은 시장(SPY) 움직임을 뺀 순수 민감도 (두 변수 회귀)
-        if (fk !== "mkt" && S.prices.SPY && t !== "SPY") {
-          const m2 = alignedChanges(t, "SPY", false), mm = new Map(m2 ? m2.d.map((d, i) => [d, m2.x[i]]) : []);
-          const X1 = [], X2 = [], Y = []; r.d.forEach((d, i) => { if (mm.has(d)) { X1.push(r.x[i]); X2.push(mm.get(d)); Y.push(r.y[i]); } });
-          if (Y.length > 30) {
-            const a1 = Model.mean(X1), a2 = Model.mean(X2), ay = Model.mean(Y); let s11 = 0, s22 = 0, s12 = 0, s1y = 0, s2y = 0;
-            for (let i = 0; i < Y.length; i++) { const u = X1[i] - a1, v = X2[i] - a2, w = Y[i] - ay; s11 += u * u; s22 += v * v; s12 += u * v; s1y += u * w; s2y += v * w; }
-            const det = s11 * s22 - s12 * s12; if (det > 0) beta = (s1y * s22 - s2y * s12) / det;
-          }
-        }
-        const w = n / (n + 60), prior = fk === "mkt" ? 1 : 0; // 이력이 짧으면 기본값 쪽으로 당긴다
-        out.beta[fk][t] = w * beta + (1 - w) * prior; out.stat[fk][t] = { beta: out.beta[fk][t], raw: beta, corr, n };
-      }
-    }
-    return (betaCache = out);
+    const tks = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]);
+    return (betaCache = { stamp, ...Model.factorBetas(S.prices, tks, today()) }); // 계산은 model.js (사이트 통계 stats.json 도 같은 함수)
   }
   // 하루 수익률 (그날 종가 / 전 거래일 종가). 그날 거래가 없으면 다음 거래일
   function dayRet(sym, d) {
@@ -1371,7 +1356,7 @@
       `<tr><td class="l">${H}년 누적</td><td>${sg(cb[H - 1][0])}</td><td><b>${sg(cb[H - 1][1])}</b></td><td>${sg(cb[H - 1][2])}</td><td>${pct(cum.filter((t) => t[H - 1] < 0).length / cum.length, 0)}</td></tr>` +
       `<tr><td class="l">시장 연 기대수익</td><td>${spct(mkt[0], 1)}</td><td><b>${spct(mkt[1], 1)}</b></td><td>${spct(mkt[2], 1)}</td><td></td></tr></table></div>`;
     let goal = "";
-    // 내 목표 확률 근사: 3년 전망 만기 분포(로그정규 근사)를 시장 조정분 × β 만큼 옮긴다
+    // 내 목표 확률 근사: 목표일 전망 만기 분포(로그정규 근사)를 시장 조정분 × β 만큼 옮긴다
     const R = lastForecast && lastForecast.withEv, g = S.state.goal;
     if (R && R.terminal && R.terminal.p50 > 0 && R.terminal.p5 > 0 && g && g.date > t0) {
       const T = (Date.parse(g.date) - Date.parse(t0)) / (365.25 * 86400e3), { rows } = valuation(), bm = factorBetas().beta.mkt || {};
@@ -1380,8 +1365,8 @@
       const P = (shift) => { const z = (Math.log(R.terminal.p50) + kb * shift * T - lnG) / sig; return 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z * z * z))); };
       const shifts = M.coef.map((c) => { let s2 = 0; for (let y = 0; y < c.length; y++) s2 += c[y][1] * dr * Math.max(0, Math.min(1, T - y)); return s2 / 100 / Math.max(T, 0.25) + m; });
       const base = P(0), pb = band(shifts.map((x) => R.p_goal + P(x) - base));
-      goal = `<p class="small">내 목표 확률 (3년 전망 ${pct(R.p_goal, 0)} 기준, 포트폴리오 시장 민감도 β ${kb.toFixed(2)}): <b>${pct(Math.max(0, Math.min(1, pb[1])), 0)}</b> <span class="muted">(식단 하위10~상위10 ${pct(Math.max(0, Math.min(1, pb[0])), 0)} ~ ${pct(Math.max(0, Math.min(1, pb[2])), 0)})</span></p>`;
-    } else goal = `<p class="muted small">3년 전망을 한 번 계산하면 내 목표 확률 변화도 함께 나옵니다.</p>`;
+      goal = `<p class="small">내 목표 확률 (목표일 전망 ${pct(R.p_goal, 0)} 기준, 포트폴리오 시장 민감도 β ${kb.toFixed(2)}): <b>${pct(Math.max(0, Math.min(1, pb[1])), 0)}</b> <span class="muted">(식단 하위10~상위10 ${pct(Math.max(0, Math.min(1, pb[0])), 0)} ~ ${pct(Math.max(0, Math.min(1, pb[2])), 0)})</span></p>`;
+    } else goal = `<p class="muted small">목표일 전망을 한 번 계산하면 내 목표 확률 변화도 함께 나옵니다.</p>`;
     $("#rsOut").innerHTML = goal + tbl;
   }
   // 묶음 하나의 분석: 대리 지표 시세·민감도(같은 지표는 소분류 안에서 한 번만), 과거 반응일
@@ -1529,7 +1514,8 @@
     const g = S.state.goal, start = today();
     if (g.date <= start) throw new Error("목표일이 오늘 이후여야 합니다.");
     const { rows } = valuation();
-    const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw }));
+    // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (앱과 같은 값. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게)
+    const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => { const p0 = snapPx(r); return { ticker: r.h.ticker, shares: r.sh, price0: p0, ccy: r.ccy, valueKrw: r.sh * p0 * r.fx }; });
     if (!holdings.length) return null;
     const series = {};
     for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
@@ -1541,19 +1527,23 @@
   function dtStr(t) { const d = new Date(t), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${z(d.getHours())}:${z(d.getMinutes())}`; }
   // 전망 결과를 이 브라우저에 저장해 두고 리로드 때 다시 쓴다. 종목 구성이 바뀌었을 때만 새로 계산
   const FC_KEY = "naeilo-forecast";
-  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, cashKrw()]));
+  // 전망 기준 가격: 직접 넣은 현재가 > 사이트 마지막 종가 > 지금 시세
+  const snapPx = (r) => (r.p.src === "manual" || !(S.siteClose?.[r.h.ticker] > 0) ? r.p.v : S.siteClose[r.h.ticker]);
+  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares, S.siteClose?.[h.ticker] ?? null]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, cashKrw(), fxBase("USD")]));
   function fcStore() {
     const L = lastForecast; if (!L) return;
     const strip = (k, v) => (k === "raw" || k === "term" ? undefined : v);
-    try { localStorage.setItem(FC_KEY, JSON.stringify({ sig: fcSig(), tks: L.b.holdings.map((h) => h.ticker).join(), scen: L.scen, at: L.at.getTime(), ms: L.ms, hasEv: L.hasEv, withEv: L.withEv, noEv: L.hasEv ? L.noEv : null, lens: L.lens }, strip)); }
+    try { localStorage.setItem(FC_KEY, JSON.stringify({ sig: fcSig(), tks: L.b.holdings.map((h) => h.ticker).join(), scen: L.scen, at: L.at.getTime(), ms: L.ms, hasEv: L.hasEv, withEv: L.withEv, noEv: L.hasEv ? L.noEv : null, lens: L.lens, bep: L.bep }, strip)); }
     catch (e) { try { localStorage.removeItem(FC_KEY); } catch (e2) { /* 무시 */ } }
   }
   function fcRestore() {
     try {
       const c = JSON.parse(localStorage.getItem(FC_KEY) || "null"); if (!c || !c.withEv) return false;
+      // 다른 날 계산한 전망은 쓰지 않는다 (오늘 평가액·오늘부터의 날짜로 다시. 앱도 하루 한 번 새로 계산)
+      const at = new Date(c.at); if (new Date(at.getTime() - at.getTimezoneOffset() * 60000).toISOString().slice(0, 10) !== today()) return false;
       const b = buildModelNow(); if (!b || b.holdings.map((h) => h.ticker).join() !== c.tks) return false;
       const common = simCommon(b, c.scen);
-      lastForecast = { b, sim: null, simNo: null, withEv: c.withEv, noEv: c.noEv || c.withEv, lens: c.lens || {}, hasEv: c.hasEv, common, grp: {}, scen: c.scen, at: new Date(c.at), ms: c.ms };
+      lastForecast = { b, sim: null, simNo: null, withEv: c.withEv, noEv: c.noEv || c.withEv, lens: c.lens || {}, bep: c.bep || null, hasEv: c.hasEv, common, grp: {}, scen: c.scen, at: new Date(c.at), ms: c.ms };
       fcDirty = c.sig !== fcSig() || c.scen !== S.state.model.scenario; fcCache[c.scen] = { R: c.withEv, model: b.model };
       return true;
     } catch (e) { return false; }
@@ -1575,6 +1565,44 @@
     if (!rs.length || rs.some((r) => !(Number(r.avg) > 0) || !r.fx)) return null;
     return rs.reduce((a, r) => a + r.avg * r.sh * r.fx, 0);
   }
+  // ------------------------------------------------------------ 본전 카드 (관찰 숫자만: 매수 단가를 넣은 종목의 본전 거리·기한별 본전 확률)
+  // 매수 단가를 넣은 종목만 묶어 원금(단가×수량×지금 환율)과 지금 평가액을 비교한다
+  function bepRows() {
+    const by = {};
+    valuation().rows.forEach((r) => { if (!(r.avg > 0) || !(r.valueKrw > 0) || !r.fx) return; const t = r.h.ticker, o = (by[t] = by[t] || { t, basis: 0, cur: 0 }); o.basis += r.avg * r.sh * r.fx; o.cur += r.valueKrw; });
+    const rows = Object.values(by), basis = rows.reduce((a, x) => a + x.basis, 0), cur = rows.reduce((a, x) => a + x.cur, 0);
+    return rows.length ? { rows, basis, cur, n: rows.length, all: rows.length === valuation().rows.filter((r) => r.valueKrw > 0).length } : null;
+  }
+  const bepSig = () => fcSig() + "|" + hashStr(JSON.stringify(S.state.holdings.map((h) => [h.ticker, h.shares, h.avg_cost])));
+  // 전망 경로(내 관점)에서 그 종목들만 들고 있을 때 월말 평가액이 원금 이상이 되는 첫 달 → 6개월·1년·3년 안 확률
+  function calcBep(L) {
+    const B = bepRows(); if (!B || !L || !L.sim || !L.sim.raw) return null;
+    const idx = B.rows.map((x) => L.b.holdings.findIndex((h) => h.ticker === x.t)); if (idx.some((i) => i < 0)) return null;
+    const pr = Model.breakeven(L.sim, { idx, basis: B.basis * (L.sim.raw.v0 ? idx.reduce((a, i) => a + L.sim.raw.v0[i], 0) / B.cur : 1), mu: viewMu(L.b.model, viewKey()), months: [6, 12, 36] });
+    return pr && { sig: bepSig(), pr, view: viewKey() };
+  }
+  let bepAsked = "";
+  function renderBep() {
+    const card = $("#bepCard"), B = S.state.sample ? null : bepRows();
+    if (!B) { card.style.display = "none"; return; }
+    card.style.display = "block";
+    const gap = B.cur / B.basis - 1, need = B.basis / B.cur - 1, sub = B.all ? "매수 단가를 넣은 모든 종목 기준" : `매수 단가를 넣은 ${B.n}종목 기준 (${B.rows.map((x) => esc(x.t)).join(", ")})`;
+    if (!lastForecast) fcRestore();
+    const L = lastForecast, sig = bepSig();
+    let bp = L && L.bep && L.bep.sig === sig ? L.bep : null;
+    if (!bp && L && L.sim && L.sim.raw) { L.bep = calcBep(L); bp = L.bep; }
+    let probs;
+    if (gap >= 0) probs = `<p class="small" style="margin:6px 0 0">지금 원금보다 <b class="${cls(gap)}">${spct(gap, 1)}</b> 위에 있어요.</p>`;
+    else if (S.state.model.rebalance_yearly) probs = `<p class="muted small">설정의 '연 1회 재조정'을 끄면 본전 확률을 계산해요.</p>`;
+    else if (!bp) {
+      probs = `<p class="muted small">본전 확률 계산 중…</p>`;
+      if (bepAsked !== sig) { bepAsked = sig; fcDirty = true; setTimeout(runForecast, 0); } // 전망 탭을 열지 않아도 한 번 계산 (worker)
+    } else probs = `<div class="bepp">${bp.pr.map((x) => `<div class="probbar"><span>${x.m < 12 ? x.m + "개월" : x.m / 12 + "년"} 안</span><div class="b"><i style="width:${(x.p || 0) * 100}%"></i></div><span>${x.p == null ? "-" : pct(x.p, 0)}</span></div>`).join("")}</div>` +
+        (bp.pr.some((x) => x.p == null) ? `<p class="muted small">목표일이 그보다 가까워 '-'로 둡니다.</p>` : "");
+    card.innerHTML = `<div class="row between wrap"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">본전까지</h2><span class="muted small">${sub}</span></div></div>
+      <div class="bepv"><b class="${cls(gap)}">${spct(gap, 1)}</b>${gap < 0 ? `<span class="small muted">원금 대비 · 본전이 되려면 <b>${spct(need, 1)}</b> 올라야 해요</span>` : ""}</div>` + probs +
+      `<p class="muted small">관찰용 숫자예요. 지금 구성 그대로(적립·매매 없이) 들고 있을 때 월말 평가액이 매수 원금에 닿을 확률로, 전망 탭 내 관점과 같은 계산이에요. 매수 때 환율은 모르니 지금 환율로 원금을 셉니다.</p>`;
+  }
   const WI = { monthly: null, sell: 0 }; // 만약에: 저장하지 않는 임시 가정
   function wiTop() {
     const { b } = lastForecast, md = b.model;
@@ -1593,7 +1621,8 @@
     const L = lastForecast; if (!L || !L.sim) return;
     const md = L.b.model, g = S.state.goal, lossRef = costBasis() ?? undefined, plain = Number(g.monthly_contribution) || 0;
     if (L.sim.raw) {
-      const rw = (sim, key, wi) => Model.reweight(sim, { mu: viewMu(md, key), goal: g.amount, monthly: wi ? wi.monthly : plain, move: wi ? wi.move : null, lossRef });
+      const gK = Math.max(1, g.amount - cashKrw()); // 현금은 그대로 있다고 보고 목표에서 뺀다 (simCommon·앱과 같다)
+      const rw = (sim, key, wi) => Model.reweight(sim, { mu: viewMu(md, key), goal: gK, monthly: wi ? wi.monthly : plain, move: wi ? wi.move : null, lossRef });
       const k = viewKey(), wi = wiOpt();
       L.withEv = rw(L.sim, k); L.noEv = L.hasEv ? rw(L.simNo, k) : L.withEv;
       if (full || !L.lens || !L.lens.base) L.lens = { base: rw(L.sim, "base"), smooth: rw(L.sim, "smooth") };
@@ -1603,6 +1632,7 @@
       if (full) { const one = (scen) => (L.scen === scen ? L.sim : Model.simulate(md, { ...L.common, scenario: scen, nPaths: Math.min(L.common.nPaths, 1500), withEvents: true })); L.lens = { base: one("base"), smooth: one("smooth") }; }
     }
     L.scen = S.state.model.scenario;
+    L.bep = calcBep(L) || L.bep;
     if (RS.draw && $("#rsOut")) RS.draw(); // 금리 시나리오의 내 목표 확률도 새 전망으로
   }
   const fcDisp = () => { const L = lastForecast; return L.disp || { R: L.withEv, No: L.hasEv ? L.noEv : null, base: L.lens && L.lens.base, smooth: L.lens && L.lens.smooth }; };
@@ -1628,23 +1658,24 @@
       : `<p>켜진 외부 요인 없음.</p>`) + "</div>";
     $("#lenses").innerHTML = lens("base", "현재 정세", `과거 수익률을 장기 평균(연 ${m.prior_mu}%) 쪽으로`, portMu("base"), D.base) + lens("smooth", "과거 추세", "지난 3년 성장 속도가 이어지면", portMu("smooth"), D.smooth) + shock;
     const on = m.scenario === "blend";
-    $("#trust").value = String(m.trust); $("#trustVal").textContent = on ? m.trust + "%" : "-";
+    $("#trust").value = String(m.trust); $("#trustVal").textContent = on ? `${m.trust}% · 연 기대 ${spct(portMu(viewKey()), 0)}` : "-";
     $(".trust").classList.toggle("off", !on);
-    $("#trustNote").textContent = on ? `연 기대 ${spct(portMu(viewKey()), 0)}` : `'${SCEN_SHORT[m.scenario] || m.scenario}' 시나리오 사용 중. 움직이면 내 관점으로.`;
+    $("#trustNote").textContent = on ? "" : `'${SCEN_SHORT[m.scenario] || m.scenario}' 시나리오 사용 중. 움직이면 내 관점으로.`;
     // 만약에
     const ok = !!(L.sim && L.sim.raw) || !L.sim;
     const { top, cash } = wiTop(), th = L.b.holdings[top], plain = Number(S.state.goal.monthly_contribution) || 0;
     const mv = WI.monthly == null ? plain : WI.monthly;
     $("#wiMonthly").value = String(Math.round(mv / 1e4)); $("#wiMonthlyV").textContent = mv ? krw(mv) + "원" : "0원";
-    $("#wiSellLab").textContent = th ? `${th.ticker} 일부를 ${cash >= 0 ? L.b.holdings[cash].ticker : "현금(연 3.5%)"}로` : "가장 큰 종목 일부 매도";
-    $("#wiSell").value = String(WI.sell); $("#wiSellV").textContent = WI.sell ? `${WI.sell}% (${nf(Math.round((th.shares * WI.sell) / 100))}주)` : "0%";
+    $("#wiSellLab").textContent = `가장 큰 종목 비중 줄이기 (${cash >= 0 ? "현금성 종목" : "현금(연 3.5%)"}으로)`;
+    $("#wiSell").value = String(WI.sell); const tw = th ? th.valueKrw / Math.max(1, L.b.holdings.reduce((a, h) => a + h.valueKrw, 0)) : 0;
+    $("#wiSellV").textContent = WI.sell && th ? `비중 ${pct(tw, 0)}→${pct(tw * (1 - WI.sell / 100), 0)}` : "0%";
     $$("#wiDet input").forEach((x) => (x.disabled = !ok || m.rebalance_yearly));
     $("#wiNote").textContent = m.rebalance_yearly ? "연 1회 재조정 중엔 꺼집니다." : "저장 안 되는 가정. 세금·수수료 제외.";
-    $("#wiSum").textContent = L.disp ? `· 적용 중 (월 ${krw(mv)}원${WI.sell ? `, ${th.ticker} ${WI.sell}% 매도` : ""})` : "";
+    $("#wiSum").textContent = L.disp ? `· 적용 중 (월 ${krw(mv)}원${WI.sell ? `, 가장 큰 종목 비중 ${WI.sell}% 줄임` : ""})` : "";
   }
   let fcSeq = 0;
   async function runForecast() {
-    const st = $("#fcStatus"), btns = $$("#scenBox button");
+    const st = $("#fcStatus"), btns = $$("#fcOpt button[data-s]");
     btns.forEach((x) => (x.disabled = true)); st.textContent = `${SCEN_SHORT[S.state.model.scenario] || ""} 시나리오, 계산 중...`;
     await new Promise((r) => setTimeout(r, 30));
     try {
@@ -1679,17 +1710,7 @@
     return L.grp[v];
   }
   // 그래프 + 아래 두 상자(연도별 확률, 외부 요인 반영 효과)를 고른 대상(전체·종목)과 요인 버튼에 맞춰 그린다
-  // 원화 평가액 전망 그래프는 과거 3년 + 오늘부터 3년 뒤까지만 (목표일이 더 멀어도)
-  function clip3y(opt, fx, start) {
-    const lim = Model.addMonths(start, 36), cut = fx.filter((d) => d <= lim).length;
-    if (cut >= fx.length) return opt;
-    const sl = (a) => a.slice(0, cut);
-    opt.x = sl(fx);
-    opt.bands.forEach((b) => { if (!b.x) { b.lo = sl(b.lo); b.hi = sl(b.hi); } });
-    opt.series.forEach((s2) => { if (!s2.x) s2.y = sl(s2.y); });
-    opt.markers = (opt.markers || []).filter((m2) => m2.x <= lim);
-    return opt;
-  }
+  // 원화 평가액 전망 그래프는 과거 3년 + 오늘부터 목표일까지 (목표일이 3년보다 멀어도 확률과 같은 날짜까지 그린다)
   function drawFcChart() {
     if (!lastForecast) return;
     const { b, hasEv } = lastForecast, g = S.state.goal, md = b.model, fx = md.monthDates, D = fcDisp();
@@ -1713,7 +1734,7 @@
       // 전체 보기: 내 관점 띠 + 두 렌즈의 중앙값 + 외부 요인 없을 때의 5~95% 선(충격이 넓힌 폭)
       const lensLines = v === "all" ? [...(D.base ? [{ name: "현재 정세", y: D.base.bands.p50, color: "var(--c3)", width: 1.3 }] : []), ...(D.smooth ? [{ name: "과거 추세", y: D.smooth.bands.p50, color: "var(--c4)", width: 1.3 }] : []),
         ...(hasEv && noEv ? [{ name: "충격 없을 때 5~95%", y: noEv.bands.p5, color: "var(--warn)", width: 1, dash: "2 3" }, { y: noEv.bands.p95, color: "var(--warn)", width: 1, dash: "2 3" }] : [])] : [];
-      Charts.lineChart($("#fcChart"), clip3y({
+      Charts.lineChart($("#fcChart"), {
         x: fx, height: 340, yfmt: krwAxis,
         bands: [{ lo: R.bands.p5, hi: R.bands.p95, color: "var(--band)", opacity: 0.13, name: "5~95%" }, { lo: R.bands.p25, hi: R.bands.p75, color: "var(--band)", opacity: 0.25, name: "25~75%" }],
         series: [{ name: "과거", x: [...H.dates.slice(k0), md.startDate], y: [...H.total.slice(k0), V0], color: "var(--fg)", width: 1.4 },
@@ -1724,12 +1745,12 @@
         hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) : [],
-      }, fx, md.startDate));
+      });
       $("#fcViewNote").innerHTML = !hasEv ? `<span class="muted">켜진 외부 요인이 없어 미반영 전망과 같습니다. '외부 요인'에서 켜 주세요.</span>`
-        : `<b>${FCV[v]}</b>: 목표 달성 확률 <b>${pct(R.p_goal, 0)}</b>, 목표일 중앙값 <b>${krw(R.terminal.p50)}원</b>, 나쁜 경우 5% ${krw(R.terminal.p5)}원` +
+        : `<b>${FCV[v]}</b>: 목표 달성 확률 <b>${pct(R.p_goal, 0)}</b>, 목표일 중앙값 <b>${krw(R.terminal.p50)}원</b>, 나쁜 5% ${krw(R.terminal.p5)}원` +
           (v === "none" ? "" : ` <span class="muted">(미반영 ${pct(noEv.p_goal, 0)} · ${krw(noEv.terminal.p50)}원${v === "all" ? "" : `, 반영 사건 ${evs.length}건`})</span>`);
-      $("#fcYearsTitle").textContent = `목표 도달 확률 (연도별 누적 · ${vName})`;
-      $("#fcYears").innerHTML = R.byYear.map((y) => `<div class="probbar"><span>${y.year}년 내 (${y.date})</span><div class="b"><i style="width:${y.p * 100}%"></i></div><span>${pct(y.p, 0)}</span></div>`).join("") || "기간이 1년 미만입니다.";
+      $("#fcYearsTitle").textContent = `목표에 한 번이라도 닿을 확률 (${vName})`;
+      $("#fcYears").innerHTML = R.byYear.map((y) => `<div class="probbar" title="${y.date}까지"><span>${y.year}년 안</span><div class="b"><i style="width:${y.p * 100}%"></i></div><span>${pct(y.p, 0)}</span></div>`).join("") || "기간이 1년 미만입니다.";
       $("#fcEvTitle").textContent = "외부 요인 반영 효과 (전체)";
       $("#fcEvents").innerHTML = !hasEv ? `<p class="muted">켜진 사건이 없습니다. '외부 요인'에서 켜 주세요.</p>`
         : evTable([["목표 달성 확률", pct(noEv.p_goal, 0), pct(Rc.p_goal, 0)], ["목표일 중앙값", krw(noEv.terminal.p50), krw(Rc.terminal.p50)], ["하위 5%", krw(noEv.terminal.p5), krw(Rc.terminal.p5)],
@@ -1741,7 +1762,7 @@
       const p = S.prices[tk], kk = p ? Math.max(0, p.dates.length - 781) : 0;
       const onTk = (e) => e.event.target === tk || e.event.target === "ALL";
       const evs = v === "none" ? [] : md.eventList.filter((e) => inV(e) && onTk(e));
-      Charts.lineChart($("#fcChart"), clip3y({
+      Charts.lineChart($("#fcChart"), {
         x: fx, height: 340, log: true, yfmt: priceAxis([s1.bands.p5, s1.bands.p95]),
         bands: [{ lo: s1.bands.p5, hi: s1.bands.p95, color: c, opacity: 0.13, name: "5~95%" }, { lo: s1.bands.p25, hi: s1.bands.p75, color: c, opacity: 0.25, name: "25~75%" }],
         series: [...(p ? [{ name: "과거", x: [...p.dates.slice(kk), md.startDate], y: [...p.close.slice(kk), h.price0], color: "var(--fg)", width: 1.4 }] : []),
@@ -1750,7 +1771,7 @@
         hlines: [{ y: h.price0, label: "현재 " + nf(h.price0, 2), color: "var(--muted)" }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.kind}` })) : [],
-      }, fx, md.startDate));
+      });
       const T = s1.bands.p50.length - 1, f2 = (x) => nf(x, 2), T6 = Math.min(T, 6);
       $("#fcViewNote").innerHTML = `<b>${esc(tk)} · ${FCV[v]}</b>: 현재 ${f2(h.price0)} ${h.ccy}, 목표일 중앙값 <b>${f2(s1.bands.p50[T])}</b>, 나쁜 경우 5% ${f2(s1.bands.p5[T])}, 좋은 경우 95% ${f2(s1.bands.p95[T])}, 오를 확률 <b>${pct(s1.p_up, 0)}</b>` +
         (hasEv && v !== "none" ? ` <span class="muted">(미반영 중앙값 ${f2(s0.bands.p50[T])} · 오를 확률 ${pct(s0.p_up, 0)}${v === "all" ? "" : `, 반영 사건 ${evs.length}건`})</span>` : "");
@@ -1766,13 +1787,13 @@
   }
   function renderForecast() {
     const m = S.state.model;
-    $$("#scenBox button").forEach((x) => x.classList.toggle("on", x.dataset.s === m.scenario)); $("#nPaths").value = String(m.n_paths); $("#rebalance").checked = !!m.rebalance_yearly;
+    $$("#fcOpt button[data-s]").forEach((x) => x.classList.toggle("on", x.dataset.s === m.scenario)); if ($("#scenMore button.on")) $("#scenMore").open = true; $("#nPaths").value = String(m.n_paths); $("#rebalance").checked = !!m.rebalance_yearly;
     if (!lastForecast) { $("#fcStatus").textContent = `${SCEN_SHORT[m.scenario] || ""} 시나리오`; return; }
     const { b, withEv: R, noEv, hasEv } = lastForecast, g = S.state.goal, md = b.model;
     // 직접 입력한 현재가 때문에 오늘 평가액이 시세 기준과 크게 다르면 알린다 (차트가 오늘에서 꺾이는 원인)
     const manual = b.holdings.filter((h) => { const src = S.state.holdings.find((x) => x.ticker === h.ticker); const mk = src && curPrice({ ...src, price: null }).v; return src && Number(src.price) > 0 && mk && Math.abs(h.price0 / mk - 1) > 0.05; });
     const Hh = history(), lastHist = Hh.total[Hh.total.length - 1];
-    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 종목 탭에서 그 값을 지우고 '평균 매수가' 칸으로 옮겨 주세요.` : "";
+    $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 종목 탭에서 그 값을 지우고 '매수 단가' 칸으로 옮겨 주세요.` : "";
     $("#fcWarn").style.display = $("#fcWarn").innerHTML ? "block" : "none";
     $("#fcStatus").textContent = `${SCEN_SHORT[lastForecast.scen] || ""} 시나리오, ${dtStr(lastForecast.at)}` + (fcDirty ? " · 입력이 바뀜, 시나리오를 눌러 다시 계산" : "");
     $("#fcStatus").title = `${SCEN_LAB[lastForecast.scen] || ""} · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초`;
@@ -1798,10 +1819,10 @@
     const lossS = cb ? `매수 원금 ${krw(cb)}원${mv ? " + 적립" : ""} 기준` : mv ? `지금 ${krw(R.V0)}원 + 적립 기준` : `지금 ${krw(R.V0)}원 기준`;
     $("#fcKpis").innerHTML = [
       ["목표 달성 확률", pct(R.p_goal, 0), `목표일 ${krw(g.amount)}원 이상`],
-      ["한 번이라도 도달", pct(R.p_touch, 0), "목표일 전 언제나"],
+      ["한 번이라도 닿을 확률", pct(R.p_touch, 0), "목표일 전 언제나"],
       ["목표일 중앙값", krw(R.terminal.p50) + "원", `평균 <b>${krw(R.terminal.mean)}원</b>`],
-      ["나쁜 경우 (하위 5%)", krw(R.terminal.p5) + "원", `하위 25% ${krw(R.terminal.p25)}원`],
-      ["좋은 경우 (상위 5%)", krw(R.terminal.p95) + "원", `상위 25% ${krw(R.terminal.p75)}원`],
+      ["나쁜 5%", krw(R.terminal.p5) + "원", `하위 25% ${krw(R.terminal.p25)}원`],
+      ["좋은 5%", krw(R.terminal.p95) + "원", `상위 25% ${krw(R.terminal.p75)}원`],
       [lossK, pct(R.p_loss, 0), lossS],
       ["최대 낙폭 (중앙값)", pct(R.mdd_median, 0), `나쁜 10%: ${pct(R.mdd_p10, 0)}`],
       ["확률 50% 위한 월 적립", R.req50 == null ? "-" : R.req50 === 0 ? "0원" : krw(R.req50) + "원", R.req50 == null ? "재조정 끄면 계산" : "매월 정액 매수 가정"],
@@ -1833,8 +1854,8 @@
     if (cashW < 0.03) tips.push(`**현금**: 현금성 자산이 ${pct(cashW, 1)}입니다. 하락장 대비 여유분으로 흔히 3~5%를 기준으로 삼습니다.`);
     tips.push(`**낙폭**: 최대 낙폭 중앙값 ${pct(R.mdd_median, 0)}. 목표일까지 가는 동안 이 정도 하락은 흔하다는 뜻입니다.`);
     const rg = rebalanceGap();
-    if (rg && rg.gaps.length && yearsBetween(rg.tg.at, today()) < 0.5) tips.push(`**비중 조정 진행 중**: '${rg.tg.name}' (${rg.tg.at}에 목표로 정함). 남은 차이 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")}.`);
-    else if (rg) tips.push(rg.gaps.length ? `**리밸런싱 신호**: 목표로 정한 '${rg.tg.name}' 비중에서 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")} 벗어났습니다. '비중 조정'에서 수량 계산을 볼 수 있습니다.` : `**리밸런싱**: 목표로 정한 '${rg.tg.name}' 비중 안에 있습니다 (±5%p).`);
+    if (rg && rg.gaps.length && yearsBetween(rg.tg.at, today()) < 0.5) tips.push(`**기준 비중과 차이**: '${rg.tg.name}' (${rg.tg.at}에 기준으로 기록). 남은 차이 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")}.`);
+    else if (rg) tips.push(rg.gaps.length ? `**기준 비중과 차이**: 기준으로 기록한 '${rg.tg.name}' 비중에서 ${rg.gaps.map(([t, d]) => `${t} ${d > 0 ? "+" : ""}${(d * 100).toFixed(0)}%p`).join(", ")} 벗어났습니다. '비중 조정'에서 비중별 확률 차이를 볼 수 있습니다.` : `**기준 비중**: 기록한 '${rg.tg.name}' 비중 안에 있습니다 (±5%p).`);
     if (common.length) tips.push(`**공통 일정** (모든 종목): ${common.slice(0, 4).map((c) => `${c.k} ${c.d.join(", ")}`).join(" · ")}`);
     $("#stratSummary").innerHTML = `<div class="md small">${md2html(tips.map((t) => "- " + t).join("\n"))}</div>`;
 
@@ -1846,9 +1867,9 @@
       if (f.cash) { act = "현금성 (완충)"; klass = "cash"; why.push(`**성격**: 비중 ${pct(w[i], 1)}, 연 ${pct(f.mu.base)} 수준의 단기 국채형`); }
       else if (f.n < 252) { act = "이력 짧음 · 추정 불확실"; klass = "wait"; why.push(`**이력**: 상장 후 ${f.n}거래일로 짧아 변동성(${pct(f.vol, 0)}) 추정이 불확실`); if (lock) why.push(`**${lock.event.kind}**: ${lock.date} 예정. 과거에는 물량 출회로 단기 하락이 잦았음`); }
       else if (w[i] > 0.45) {
-        const tgt = 0.45, sell = Math.ceil(((w[i] - tgt) * total) / (h.valueKrw / h.shares));
+        const tgt = 0.45;
         act = `한 종목 집중 (비중 ${pct(w[i], 0)})`; klass = "trim";
-        why.push(`**비중**: ${pct(w[i], 0)}로 한 종목 집중. 비중이 ${pct(tgt, 0)}가 되는 수량 차이는 약 **${nf(sell)}주** (계산값)`);
+        why.push(`**비중**: ${pct(w[i], 0)}로 한 종목 집중. 비중 ${pct(w[i], 0)}→${pct(tgt, 0)}일 때 확률이 어떻게 달라지는지는 '비중 조정'에서 비교 (계산값)`);
         why.push("**세금**: 해외주식 양도차익은 연 250만원까지 공제 (연도별 계산은 '배당·세금')");
       } else if (sg && sg.trend === "하락 추세") { act = "하락 추세"; klass = "wait"; }
       else if (sg && /상승/.test(sg.trend) && w[i] > 0.25) { act = `상승 추세 · 비중 ${pct(w[i], 0)}`; klass = "hold"; }
@@ -2285,7 +2306,7 @@
       const defs = {}; for (const [k, D] of Object.entries(ALLOC_DEF)) defs[k] = { cap: D.cap, cutSmall: { agg: 0.1, mid: 0.25, con: 0.4 }[k] };
       const inp = { base, series, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goal: g, mixes, defs };
       const r = await allocCompute(inp, prog), top = r.top;
-      const out = r.out.map((o) => ({ ...o, name: o.k === "keep" ? "현재 유지" : `${ALLOC_DEF[o.k].n} (${base[top].ticker} ${pct(o.w[top], 0)})` }));
+      const out = r.out.map((o) => ({ ...o, name: o.k === "keep" ? "현재 유지" : `${ALLOC_DEF[o.k].n} (가장 큰 종목 ${pct(o.w[top], 0)})` }));
       const model = { monthDates: r.fd };
       lastAlloc = { base: base.map((h) => ({ ticker: h.ticker, price0: h.price0, ccy: h.ccy, shares: h.shares })), V0, top, out, subs, fd: model.monthDates, at: Date.now() }; allocDirty = false;
       try { localStorage.setItem(AL_KEY, JSON.stringify({ sig: fcSig() + "|" + JSON.stringify(S.state.alloc_mix || {}), ...lastAlloc })); } catch (e) { /* 무시 */ }
@@ -2348,7 +2369,7 @@
       (r.rate ? `<p class="small">금리 반영: 10년물 금리 1년 변화 ${r.rate.dr >= 0 ? "+" : ""}${r.rate.dr.toFixed(2)}%p → 시장 기대수익 연 ${pct(r.rate.p50, 1)} 조정 (식단 하위10~상위10 ${pct(r.rate.p10, 1)} ~ ${pct(r.rate.p90, 1)}, 종목은 시장 민감도 β 배). 이익 자료 ${esc(r.epsLast || "")}까지, 출처 Robert J. Shiller.</p>` : "") +
       `<p class="small"><b>제어기가 고른 비중</b></p><ul class="small stabw">${steps.map(([l, w]) => `<li><span class="muted">${l}</span> ${wStr(w)}</li>`).join("")}</ul>` +
       `<p class="small">처음 옮길 때 예상 양도세 ${krw(r.firstTax)}. 외란 방향(시장 공통 오차에 가장 크게 흔들리는 조합): ${r.disturbance.map((x, i) => `${esc(r.tickers[i])} ${x.toFixed(2)}`).join(" · ")}.` +
-      (r.hasAvg ? "" : ` <span class="bad">평균 단가가 없어 세금을 0에 가깝게 계산했습니다. 설정의 보유 종목에서 평균 단가를 넣으면 더 정확해집니다.</span>`) + `</p>`;
+      (r.hasAvg ? "" : ` <span class="bad">평균 단가가 없어 세금을 0에 가깝게 계산했습니다. 종목 탭의 보유 종목에서 매수 단가를 넣으면 더 정확해집니다.</span>`) + `</p>`;
   }
   const AL_KEY = "naeilo-alloc2";
   function allocRestore() {
@@ -2358,34 +2379,35 @@
   function renderAllocTable() {
     const { base, out } = lastAlloc, pick = S.state.alloc_pick || "mid", tgt = S.state.alloc_target;
     $("#allocBoxes").innerHTML = out.map((o, j) => `<button type="button" class="abox ${o.k === pick ? "on" : ""}" data-ak="${o.k}" style="--ac:${C[j % C.length]}">
-      <div class="lh"><b>${esc(o.k === "keep" ? "현재 유지" : ALLOC_DEF[o.k].n)}</b>${tgt && tgt.k === o.k ? '<span class="tag">목표</span>' : ""}</div>
+      <div class="lh"><b>${esc(o.k === "keep" ? "현재 유지" : ALLOC_DEF[o.k].n)}</b>${tgt && tgt.k === o.k ? '<span class="tag">기준</span>' : ""}</div>
       <div class="lv">${pct(o.R.p_goal, 0)} <small>목표 확률</small></div>
       <p>중앙값 ${krw(o.R.terminal.p50)} · 나쁜 5% ${krw(o.R.terminal.p5)}</p><p>최대 낙폭 ${pct(o.R.mdd_median, 0)} · 낮을 확률 ${pct(o.R.p_loss, 0)}</p>
-      <p class="muted">${base.map((h, i) => (o.w[i] > 0.004 ? `${esc(h.ticker)} ${pct(o.w[i], 0)}` : "")).filter(Boolean).join(" · ")}</p></button>`).join("");
+      <p class="muted">${[...base.map((h, i) => (!h.extra && o.w[i] > 0.004 ? `${esc(h.ticker)} ${pct(o.w[i], 0)}` : "")).filter(Boolean), ...(() => { const x = base.reduce((a, h, i) => a + (h.extra ? o.w[i] : 0), 0); return x > 0.004 ? [`옮긴 몫 ${pct(x, 0)}`] : []; })()].join(" · ")}</p></button>`).join("");
     $("#allocStatus").textContent = `${dtStr(lastAlloc.at || Date.now())} 계산 · 안별 1,500경로` + (lastAlloc.subs && lastAlloc.subs.length ? ` · 시세가 없어 대신 씀: ${[...new Set(lastAlloc.subs)].join(", ")}` : "");
-    $("#allocMix").innerHTML = Object.entries(ALLOC_DEF).map(([k, D]) => `<label><span class="row between"><span>${D.n} · ${esc(D.d)}</span><span class="muted small">기본 ${esc(D.mix)}</span></span><input type="text" data-mix="${k}" value="${esc((S.state.alloc_mix || {})[k] || D.mix)}" style="width:100%"></label>`).join("") + `<p class="muted small">"종목 비중, 종목 비중" 형식.</p>`;
+    $("#allocMix").innerHTML = Object.entries(ALLOC_DEF).map(([k, D]) => `<label><span class="row between"><span>${D.n} · ${esc(D.d)}</span><span class="muted small">기본 ${esc(D.mix)}</span></span><input type="text" data-mix="${k}" value="${esc((S.state.alloc_mix || {})[k] || D.mix)}" style="width:100%"></label>`).join("") + `<p class="muted small">"종목 비중, 종목 비중" 형식. 기본값은 계산에 쓰는 대표 지수 예시이며 추천 종목이 아닙니다.</p>`;
     renderAllocPlan();
   }
-  // 고른 비중 조정안의 실행 계획: 6개월 분할 + 세금(연도 나누기) + 목표로 정하면 리밸런싱 신호
+  // 고른 비중 조정안: 비중·확률 변화 + 세금 예시(연도 나누기) + 기준으로 기록하면 벗어날 때 알림. 종목별 수량·금액은 보이지 않는다
   function renderAllocPlan() {
     const card = $("#allocPlanCard"); if (!lastAlloc) return;
     const { base, out, top, V0 } = lastAlloc, k = S.state.alloc_pick || "mid", o = out.find((x) => x.k === k);
     if (!o || k === "keep") { card.style.display = "none"; return; }
     card.style.display = "block";
-    $("#allocPlanTitle").textContent = `수량·세금 계산 · ${ALLOC_DEF[k].n}`;
+    $("#allocPlanTitle").textContent = `비중·확률 비교 · ${ALLOC_DEF[k].n}`;
     const fx = (h) => fxNow(h.ccy) || 1, w0 = out[0].w, L = [];
     const sells = [], buys = [];
     base.forEach((h, i) => { const dv = (o.w[i] - w0[i]) * V0, sh = dv / (h.price0 * fx(h)); if (Math.abs(sh) < 0.5) return; (dv < 0 ? sells : buys).push({ t: h.ticker, sh: Math.abs(sh), v: Math.abs(dv) }); });
-    L.push(`<p><b>수량 차이</b> (지금 → 이 안): ${[...sells.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh))}주 적음`), ...buys.map((x) => `${esc(x.t)} 약 ${nf(Math.ceil(x.sh))}주 (${krw(x.v)}원) 많음`)].join(", ")}. 6개월로 나누면 한 달에 그 1/6입니다. 매매 권유가 아닌 계산값입니다.</p>`);
+    const R0 = out[0].R, R1 = o.R;
+    L.push(`<p>가장 큰 종목 비중 <b>${pct(w0[top], 0)}→${pct(o.w[top], 0)}</b>이면 목표 확률 <b>${pct(R0.p_goal, 0)}→${pct(R1.p_goal, 0)}</b>, 나쁜 경우 5% ${krw(R0.terminal.p5)}→${krw(R1.terminal.p5)}, 최대 낙폭 ${pct(R0.mdd_median, 0)}→${pct(R1.mdd_median, 0)}로 달라져요. 매매 권유가 아닌 계산값입니다.</p>`);
     const th = S.state.holdings.find((h) => h.ticker === base[top].ticker), avg = Number(th?.avg_cost) || 0, s0 = sells.find((x) => x.t === base[top].ticker);
     if (s0 && avg) {
       const gps = (base[top].price0 - avg) * fx(base[top]), used = Math.max(0, realizedYear(new Date().getFullYear()));
       const tax = (n, first) => Math.max(0, n * gps - Math.max(0, CGT_DED - first)) * CGT;
       const one = tax(s0.sh, used), two = tax(s0.sh / 2, used) + tax(s0.sh / 2, 0);
-      L.push(`<p><b>세금</b>: 올해 안에 모두 팔면 약 ${krw(one)}원, 올해와 내년에 반씩 나누면 약 ${krw(two)}원${one - two > 0 ? ` (<b>${krw(one - two)}원 절약</b>)` : ""}.${used ? ` 올해 이미 실현한 이익 ${krw(used)}원 반영.` : ""}</p>`);
+      L.push(`<p><b>세금 예시</b>: 이 비중으로 줄이는 부분의 이익을 한 해에 모두 실현하면 약 ${krw(one)}원, 두 해에 나누면 약 ${krw(two)}원 (해마다 공제 250만원).${used ? ` 올해 이미 실현한 이익 ${krw(used)}원 반영.` : ""}</p>`);
     } else if (s0) L.push(`<p class="muted small">매수 단가를 넣으면 연도별 세금을 계산합니다.</p>`);
     const tgt = S.state.alloc_target;
-    L.push(`<div class="row wrap"><button class="primary sm" id="allocSetTgt">${tgt && tgt.k === k ? "목표로 정해 둠 (해제)" : "이 비중 조정안을 목표로 정하기"}</button><span class="muted small">5%p 넘게 벗어나면 알려 줍니다.</span></div>`);
+    L.push(`<div class="row wrap"><button class="primary sm" id="allocSetTgt">${tgt && tgt.k === k ? "기준으로 기록해 둠 (해제)" : "이 비율을 내 기준으로 기록"}</button><span class="muted small">기록한 비율에서 5%p 넘게 벗어나면 알려 줍니다.</span></div>`);
     $("#allocPlan").innerHTML = L.join("");
     $("#allocSetTgt").onclick = () => {
       if (tgt && tgt.k === k) delete S.state.alloc_target;
@@ -2515,26 +2537,25 @@
       for (const v of R.term) { const t = Math.max(0, v - basis - CGT_DED) * CGT; taxes.push(t); ok.push(v - t >= g.amount); }
       const pAfter = ok.filter(Boolean).length / ok.length, tMed = Math.max(0, R.terminal.p50 - basis - CGT_DED) * CGT;
       $("#taxGoal").innerHTML = `<div class="kpis">${[["세후 목표 달성 확률", pct(pAfter, 0), `세전 ${pct(R.p_goal, 0)} · 목표일에 모두 판다면`], ["현금화 세금 (중앙값)", krw(tMed) + "원", `중앙값 ${krw(R.terminal.p50)}원 → 세후 ${krw(R.terminal.p50 - tMed)}원`], [`세후 ${krw(g.amount)}이 되려면`, krw(g.amount + Math.max(0, g.amount - basis - CGT_DED) * CGT / (1 - CGT)) + "원", "세전으로 필요한 금액 (근사)"]].map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("")}</div><p class="muted small">원금 ${krw(cb ?? R.V0)}원${cb ? "" : "(오늘 평가액)"} 기준.</p>`;
-    } else $("#taxGoal").innerHTML = `<p class="muted small">3년 전망을 계산하면 세후 확률이 나옵니다.</p>`;
+    } else $("#taxGoal").innerHTML = `<p class="muted small">목표일 전망을 계산하면 세후 확률이 나옵니다.</p>`;
     const wa = hs.filter((r) => r.avg && r.ccy !== "KRW");
     if (!wa.length) { $("#taxBox").innerHTML = `<p>매수 단가를 넣으면 종목별 세금을 계산합니다. <a href="#" data-go="stocks">매수 단가 넣기</a></p>`; $("#taxYears").innerHTML = ""; return; }
     const gains = wa.map((r) => ({ t: r.h.ticker, g: (r.p.v - r.avg) * r.sh * r.fx, gps: (r.p.v - r.avg) * r.fx, sh: r.sh, w: r.w, px: r.p.v * r.fx }));
     const sum = gains.reduce((a, x) => a + x.g, 0), taxAll = Math.max(0, sum - CGT_DED) * CGT;
-    const best = gains.filter((x) => x.gps > 0).sort((a, b) => b.g - a.g)[0];
     const L = [`<table class="grid"><tr><th class="l">종목</th><th>평가 이익 (원)</th><th>주당 이익</th></tr>${gains.map((x) => `<tr><td class="l">${esc(x.t)}</td><td class="${cls(x.g)}">${krw(x.g)}</td><td>${krw(x.gps)}</td></tr>`).join("")}</table>`];
     L.push(`<p>지금 모두 판다면 세금 약 <b>${krw(taxAll)}원</b> (이익 합계 ${krw(sum)}원).${used ? ` 올해 이미 실현한 이익 ${krw(used)}원.` : ""}</p>`);
     $("#taxBox").innerHTML = L.join("");
-    // 연도별: 해마다 공제 250만원. 계획 매도 = 목표로 정한 비중 조정안(없으면 집중 종목 45%로)을 처음 두 해에 나눠
+    // 연도별: 해마다 공제 250만원. 비중을 줄이는 경우 = 기준으로 기록한 비중 조정안(없으면 집중 종목 45%로)을 처음 두 해에 나눠. 수량 대신 %p로 보인다
     const top = gains.filter((x) => x.gps > 0).sort((a, b) => b.w - a.w)[0];
     const tg = S.state.alloc_target, tw = tg && top ? tg.w[top.t] ?? null : null;
     const sellAll = top ? Math.max(0, Math.ceil((((top.w - (tw != null ? tw : Math.min(top.w, 0.45))) * total) / top.px))) : 0;
     const yEnd = +g.date.slice(0, 4), years = []; for (let y = yNow; y <= Math.max(yNow, yEnd); y++) years.push(y);
     const nSplit = Math.min(2, years.length);
-    $("#taxYears").innerHTML = `<tr><th class="l">연도</th><th>남은 공제</th><th>세금 없이<br>팔 수 있는 수량</th><th>계획 매도</th><th>예상 세금</th></tr>` + years.map((y, k) => {
-      const left = Math.max(0, CGT_DED - (y === yNow ? used : 0)), free = best && best.gps > 0 ? Math.floor(left / best.gps) : 0;
+    $("#taxYears").innerHTML = `<tr><th class="l">연도</th><th>남은 공제</th><th>비중 줄이는 몫</th><th>예상 세금</th></tr>` + years.map((y, k) => {
+      const left = Math.max(0, CGT_DED - (y === yNow ? used : 0));
       const sell = top && k < nSplit ? Math.round(sellAll / nSplit) : 0, tax = sell ? Math.max(0, sell * top.gps - left) * CGT : 0;
-      return `<tr><td class="l">${y}${y === yNow ? " (올해)" : ""}</td><td>${krw(left)}원</td><td>${best ? `${esc(best.t)} ${nf(free)}주` : "-"}</td><td>${sell ? `${esc(top.t)} ${nf(sell)}주` : "-"}</td><td>${sell ? krw(tax) + "원" : "-"}</td></tr>`;
-    }).join("") + `<tr><td class="l muted wrapc" colspan="5">계획 매도: ${tg ? `목표로 정한 '${esc(tg.name)}' 비중 조정안` : "집중 종목을 45%로 줄이는 경우"}을 처음 ${nSplit}년에 나눔. 한 해에 모두 팔면 세금 약 ${top && sellAll ? krw(Math.max(0, sellAll * top.gps - Math.max(0, CGT_DED - used)) * CGT) + "원" : "-"}.</td></tr>`;
+      return `<tr><td class="l">${y}${y === yNow ? " (올해)" : ""}</td><td>${krw(left)}원</td><td>${sell ? `−${((sell * top.px) / total * 100).toFixed(0)}%p` : "-"}</td><td>${sell ? krw(tax) + "원" : "-"}</td></tr>`;
+    }).join("") + `<tr><td class="l muted wrapc" colspan="4">계산 예시: ${tg ? `기준으로 기록한 '${esc(tg.name)}' 비중` : "가장 큰 종목 비중을 45%로 줄이는 경우"}을 ${nSplit}년에 나눈 세금. 한 해에 모두면 약 ${top && sellAll ? krw(Math.max(0, sellAll * top.gps - Math.max(0, CGT_DED - used)) * CGT) + "원" : "-"}. 매매 권유가 아닙니다.</td></tr>`;
   }
 
 
@@ -2558,7 +2579,7 @@
     const { sg, now, usdW, total, T, at } = F;
     const effect1y = sg.ret_1y != null ? usdW * sg.ret_1y : null;
     $("#fxKpis").innerHTML = [
-      ["현재 원/달러", nf(now, 1), `칼만 추세 ${nf(sg.kalman_level, 1)} (${spct(sg.dev_from_kalman)})`],
+      ["현재 원/달러", nf(now, 1), `추세 ${nf(sg.kalman_level, 1)} (${spct(sg.dev_from_kalman)})`],
       ["매매기준율", marUsd() ? nf(marUsd().rate, 2) : "-", marUsd() ? `${marUsd().date} · 서울외국환중개 · 평가액에 적용` : "받지 못함 · 평가액은 현재 환율"],
       ["1개월 · 3개월", `<span class="${cls(sg.ret_1m)}">${spct(sg.ret_1m)}</span>`, `3개월 <span class="${cls(sg.ret_3m)}">${spct(sg.ret_3m)}</span>`],
       ["1년 변화", `<span class="${cls(sg.ret_1y)}">${spct(sg.ret_1y)}</span>`, `1년 범위 ${nf(F.lo1, 0)}~${nf(F.hi1, 0)}`],
@@ -2575,7 +2596,7 @@
     const fd = [today(), ...md], ft = fd.map((d) => yearsBetween(today(), d)), band = (k) => ft.map((t) => at(t, k));
     Charts.lineChart($("#fxChart"), { x, height: 300, yfmt: (v) => nf(v, 0),
       bands: [{ x: fd, lo: band("p5"), hi: band("p95"), color: "var(--band)", opacity: 0.13, name: "전망 5~95%" }, { x: fd, lo: band("p25"), hi: band("p75"), color: "var(--band)", opacity: 0.25, name: "25~75%" }],
-      series: [{ name: "칼만 추세", y: ind.level.slice(k0), color: "var(--c1)", width: 3 }, { name: "원/달러", y: ind.close.slice(k0), color: "var(--fg)", width: 1 },
+      series: [{ name: "추세", y: ind.level.slice(k0), color: "var(--c1)", width: 3 }, { name: "원/달러", y: ind.close.slice(k0), color: "var(--fg)", width: 1 },
         { name: "EMA50", y: ind.ema50.slice(k0), color: "var(--c3)", dash: "4 3" }, ...(ind.dates.length >= 200 ? [{ name: "EMA200", y: ind.ema200.slice(k0), color: "var(--c2)", dash: "6 3" }] : []),
         { name: "전망 중앙값", x: fd, y: band("p50"), color: "var(--c1)", width: 1.6, dash: "2 2" }],
       vlines: [{ x: today(), label: "오늘" }] });
@@ -2591,8 +2612,12 @@
   // ------------------------------------------------------------ 설정
   function renderGh() {
     const box = $("#ghBox"); if (!box) return;
-    if (MODE !== "static") { $("#devCard").style.display = "none"; return; }
     const has = !!ghToken();
+    // 개발자용 카드는 일반 사용자에게 숨긴다. 토큰을 넣은 기기이거나 주소에 ?dev=1 을 붙여 연 기기에서만 (?dev=0 으로 끔)
+    let dev = has;
+    try { const q = new URLSearchParams(location.search).get("dev"); if (q === "1") localStorage.setItem("naeilo-dev", "1"); else if (q === "0") localStorage.removeItem("naeilo-dev"); dev ||= localStorage.getItem("naeilo-dev") === "1"; } catch (e) { /* 무시 */ }
+    $("#devCard").style.display = MODE === "static" && dev ? "" : "none";
+    if (MODE !== "static" || !dev) return;
     box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). 기록 탭의 미래 설계 글도 이 토큰으로 저장소(data/beyora.json)에 저장되고, 토큰이 없는 사람은 읽기만 합니다. ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
       ${has ? `<p class="small">기기 자동 동기화: ${!S.config?.push ? "중계 주소 없음" : !S.sync ? "확인 중…" : S.sync.ok ? `<b class="good">켜짐</b> · 이 토큰을 넣은 기기끼리 보유 수량·목표를 자동으로 맞춤 (마지막 ${new Date(S.sync.at).toLocaleTimeString()})` : `꺼짐 (${esc(S.sync.err)}) · 중계를 다시 배포해야 할 수 있음`}</p>` : ""}
       <div class="row wrap"><input id="ghToken" type="password" size="40" placeholder="${has ? "새 토큰으로 바꾸려면 붙여넣기" : "GitHub 토큰 붙여넣기 (github_pat_...)"}">
@@ -2614,8 +2639,21 @@
       $("#ghDel").onclick = (e) => { if (armed(e.target)) { try { localStorage.removeItem(TOKEN_KEY); } catch (er) { /* 무시 */ } renderGh(); } };
     }
   }
+  // 새 소식: 사이트 data/app_news.json (앱 소식함과 같은 개발자 소식). 말풍선·업적 소식은 앱에만
+  let newsP = null;
+  function renderNews() {
+    const box = $("#newsList"); if (!box) return;
+    (newsP ||= fetch((MODE === "static" ? "../data/" : "/data/") + "app_news.json?t=" + Date.now(), { cache: "no-store" }).then((r) => (r.ok ? r.json() : [])).catch(() => []))
+      .then((xs) => {
+        xs = (Array.isArray(xs) ? xs : []).filter((x) => x && x.text).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        const wk = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10); // 7일 안 = 새
+        $("#newsN").textContent = xs.length ? `· ${xs.length}건` : "";
+        box.innerHTML = xs.length ? `<ul class="newslist">${xs.slice(0, 20).map((x) => `<li><span class="muted small">${esc(String(x.date || "").slice(5).replace("-", "."))}</span> ${x.date >= wk ? '<b class="newtag">새</b> ' : ""}${esc(x.text)}</li>`).join("")}</ul>`
+          : `<p class="muted small">아직 새 소식이 없습니다.</p>`;
+      });
+  }
   function renderSettings() {
-    renderGh();
+    renderGh(); renderNews();
     const m = S.state.model;
     $("#modelForm").innerHTML = MODEL_FIELDS.map(([k, lab, desc, type]) => type === "bool"
       ? `<div><label><span>${lab}</span><input type="checkbox" data-k="${k}" ${m[k] ? "checked" : ""}></label><span class="desc">${desc}</span></div>`
@@ -2629,170 +2667,25 @@
 
   // ------------------------------------------------------------ 공통
   // ------------------------------------------------------------ 엑셀 대시보드에서 온 기능
-  // 선택 기능(현금·실제 기록). 개발·시험 중에는 개발자용·사용자용을 나누지 않고 모두에게 켠다 (나중에 나눌 때 여기 한 곳만)
+  // 선택 기능(현금). 지금은 모두에게 켠다 (나중에 무료·유료를 나눌 때 여기 한 곳만)
   const premium = () => true;
   function cashKrw() {
     const c = S.state.cash; if (!premium() || !c) return 0;
     return (Number(c.krw) || 0) + (Number(c.usd) || 0) * (fxBase("USD") || 0);
   }
-  // 실제 기록: 날짜별 실제 총자산(원). 엑셀에서 가져오거나, 켜 두면 하루 한 번 오늘 총액을 남긴다
-  const actualRec = () => { const a = S.state.actual; return premium() && a && a.d && a.d.length ? a : null; };
-  function actualPut(d, v) {
-    const a = (S.state.actual ||= { d: [], v: [] });
-    let i = a.d.length; while (i > 0 && a.d[i - 1] > d) i--;
-    if (i > 0 && a.d[i - 1] === d) { if (a.v[i - 1] === v) return false; a.v[i - 1] = v; } else { a.d.splice(i, 0, d); a.v.splice(i, 0, v); }
-    return true;
-  }
-  // 자동 기록은 미국 장 마감 값(그날 종가 × 그날 환율 + 현금)으로, 마감이 끝난 거래일만 남긴다.
-  // 앱을 열지 않은 날은 다음에 열 때 마지막 기록 이후 거래일을 한꺼번에 채운다 (수량은 바뀐 날 기록, 현금은 지금 값).
-  // 이미 있는 날(엑셀에서 가져온 밤 12시 값 등)은 덮어쓰지 않는다
-  function actualAuto(H, cash) {
-    if (!premium() || !S.state.actual || S.state.sample || !H.dates.length) return;
-    let i = H.dates.length - 1; if (Date.now() < Date.parse(H.dates[i] + "T21:00:00Z")) i--; // 아직 장중이면 전 거래일
-    if (i < 0) return;
-    const a = S.state.actual, last = a.d[a.d.length - 1], A = actualSeries(H) || H.total, have = new Set(a.d);
-    let j = last ? H.dates.findIndex((d) => d > last) : i; if (j < 0) return;
-    let n = 0;
-    for (; j <= i; j++) {
-      const d = H.dates[j], v = (A[j] ?? H.total[j]) + cash;
-      if (!have.has(d) && v > 0 && actualPut(d, Math.round(v))) n++;
-    }
-    if (n) save(false);
-  }
-  function exportActualCsv() {
-    const a = S.state.actual; if (!a || !a.d.length) return;
-    const memo = {}; (S.state.memos || []).forEach((m) => (memo[m.d] = memo[m.d] ? memo[m.d] + " / " + m.t : m.t));
-    const q = (t) => `"${String(t).replace(/"/g, '""')}"`;
-    const csv = "\ufeff날짜,총자산(원),메모\n" + a.d.map((d, i) => `${d},${a.v[i]},${memo[d] ? q(memo[d]) : ""}`).join("\n") + "\n";
-    const u = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })), el = document.createElement("a");
-    el.href = u; el.download = `naeilo-actual-${today()}.csv`; document.body.appendChild(el); el.click(); setTimeout(() => { el.remove(); URL.revokeObjectURL(u); }, 1000);
-  }
-  let xlsxP = null;
-  const loadXlsx = () => (xlsxP ||= new Promise((res, rej) => {
-    if (window.XLSX) return res(window.XLSX);
-    const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-    s.onload = () => res(window.XLSX); s.onerror = () => { xlsxP = null; rej(new Error("엑셀 읽기 도구를 받지 못했습니다")); }; document.head.appendChild(s);
-  }));
-  // 날짜 칸 → "YYYY-MM-DD". 엑셀 날짜는 자정 근처 오차가 있어 12시간 더해 날짜만 쓴다
-  function cellDate(v) {
-    if (v instanceof Date && !isNaN(v)) { const t = new Date(v.getTime() + 12 * 3600e3); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`; }
-    const m = typeof v === "string" && v.trim().match(/^(\d{4})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})/);
-    return m ? `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}` : null;
-  }
-  const cellNum = (v) => (typeof v === "number" && isFinite(v) ? v : typeof v === "string" && /^-?[\d,.]+$/.test(v.trim()) ? Number(v.replace(/,/g, "")) : null);
-  // 시트 한 장 → 실제 기록 후보. 세 가지 모양을 안다:
-  //  ① 'YYYY년 시작' 표시가 있는 긴 표 (날짜 칸은 월·일만 의미, 월·일이 12/31 → 1/1 처럼 되돌아가면 다음 해. 다음 칸이 실제 금액, 표시가 있는 칸에 사건 메모)
-  //  ② 머리글이 '2024년, 2025년 …'인 표 (날짜 칸의 월·일 + 해당 연도. 월·일이 되돌아가는 아래쪽 보조 표는 읽지 않음)
-  //  ③ 날짜 + 금액 두 칸
-  function parseSheet(rows) {
-    const W = Math.max(0, ...rows.map((r) => r.length)), cnt = Array(W).fill(0);
-    rows.forEach((r) => r.forEach((v, j) => { if (cellDate(v)) cnt[j]++; }));
-    const dc = cnt.indexOf(Math.max(...cnt)); if (dc < 0 || cnt[dc] < 20) return null;
-    const pts = [], memos = [];
-    const head = rows.find((r) => r.some((v) => typeof v === "string" && /^\s*\d{4}년\s*$/.test(v))) || null;
-    let mc = -1; rows.forEach((r) => r.forEach((v, j) => { if (mc < 0 && typeof v === "string" && /\d{4}년\s*시작/.test(v)) mc = j; }));
-    if (mc >= 0) {
-      let Y = null, prev = null;
-      rows.forEach((r) => {
-        const t = r[mc], ym = typeof t === "string" && t.match(/(\d{4})년\s*시작/); if (ym && Y == null) Y = +ym[1];
-        const d0 = cellDate(r[dc]); if (Y == null || !d0) return;
-        if (prev && d0.slice(5) < prev) Y++; prev = d0.slice(5);
-        const d = Y + d0.slice(4), v = cellNum(r[dc + 1]);
-        if (v > 0) pts.push([d, v]);
-        if (typeof t === "string" && t.trim() && !/\d{4}년\s*(시작|끝)/.test(t)) memos.push({ d, t: t.trim().slice(0, 40) });
-      });
-      return { pts, memos, kind: "years" };
-    }
-    if (head) {
-      const cols = head.map((v, j) => [j, typeof v === "string" && v.match(/^\s*(\d{4})년\s*$/)]).filter((x) => x[1]).map(([j, m]) => [j, m[1]]);
-      const body = []; let prev = null;
-      for (const r of rows.slice(rows.indexOf(head) + 1)) { const d0 = cellDate(r[dc]); if (!d0) continue; if (prev && d0.slice(5) < prev) break; prev = d0.slice(5); body.push([d0, r]); }
-      cols.forEach(([j, Y]) => body.forEach(([d0, r]) => { const v = cellNum(r[j]); if (v > 0) pts.push([Y + d0.slice(4), v]); }));
-      return { pts, memos, kind: "cols" };
-    }
-    rows.forEach((r) => { const d = cellDate(r[dc]), v = cellNum(r[dc + 1]); if (d && v > 0) pts.push([d, v]); });
-    return { pts, memos, kind: "plain" };
-  }
-  let actPend = null; // 가져오기 미리보기
-  async function importActual(file) {
-    const X = await loadXlsx();
-    const wb = /\.csv$/i.test(file.name) ? X.read((await file.text()).replace(/^﻿/, ""), { type: "string", cellDates: true, raw: false })
-      : X.read(await file.arrayBuffer(), { type: "array", cellDates: true });
-    let best = null;
-    for (const name of wb.SheetNames) {
-      const r = parseSheet(X.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null }));
-      if (r) r.score = new Set(r.pts.filter((p) => p[0] <= today()).map((p) => p[0])).size * 10 + r.memos.length; // 오늘까지의 날 수, 같으면 메모 많은 쪽
-      if (r && r.score && (!best || r.score > best.score)) best = { ...r, sheet: name };
-    }
-    if (!best) throw new Error("날짜와 금액이 있는 표를 찾지 못했습니다");
-    const m = new Map(best.pts); best.pts = [...m.entries()].filter(([d]) => d <= today()).sort((a, b) => (a[0] < b[0] ? -1 : 1));
-    const med = best.pts.map((p) => p[1]).sort((a, b) => a - b)[best.pts.length >> 1];
-    best.unit = med < 1e5 ? 1e6 : med < 1e8 ? 1e4 : 1; // 백만원·만원·원 추정
-    best.file = file.name;
-    return best;
-  }
   function renderPrem() {
     const card = $("#premCard"); if (!card) return;
     card.style.display = premium() ? "" : "none"; if (!premium()) return;
-    const c = S.state.cash || {}, a = S.state.actual, n = a?.d?.length || 0;
-    const u = actPend ? `<div class="help small" style="margin-top:8px"><b>${esc(actPend.file)}</b> · 시트 ${esc(actPend.sheet)} · ${actPend.pts.length}일 (${actPend.pts[0][0]} ~ ${actPend.pts[actPend.pts.length - 1][0]})${actPend.memos.length ? ` · 메모 ${actPend.memos.length}개` : ""}<br>
-      금액 단위 <select id="actUnit">${[[1, "원"], [1e4, "만원"], [1e6, "백만원"]].map(([v, l]) => `<option value="${v}" ${v === actPend.unit ? "selected" : ""}>${l}</option>`).join("")}</select>
-      → 마지막 값 ${krw(actPend.pts[actPend.pts.length - 1][1] * actPend.unit)}원 <div class="row wrap" style="margin-top:6px"><button class="primary sm" id="actApply">합치기</button><button class="sm" id="actCancel">취소</button></div></div>` : "";
-    $("#premBox").innerHTML = `<p class="small muted" style="margin:0 0 8px">지금은 개발자 기기에서만 보입니다. 기본 기능과 차이가 정리되면 모두에게 열 예정입니다.</p>
-      <h3 style="margin:0 0 4px">현금</h3><div class="row wrap"><label class="small">원화 <input class="num" id="cashKrw" inputmode="decimal" value="${c.krw ? nf(c.krw) : ""}" placeholder="0" style="width:9em"></label><label class="small">달러 <input class="num" id="cashUsd" inputmode="decimal" value="${c.usd ? nf(c.usd, 2) : ""}" placeholder="0" style="width:7em"></label></div>
-      <p class="small muted" style="margin:4px 0 12px">총자산·목표 대비·전망에 더합니다 (전망에서는 그대로 있다고 봄).</p>
-      <h3 style="margin:0 0 4px">실제 기록</h3><p class="small" style="margin:0 0 6px">${n ? `${n}일 기록 (${a.d[0]} ~ ${a.d[n - 1]})${(S.state.memos || []).length ? ` · 메모 ${S.state.memos.length}개` : ""} · 장이 끝난 날마다 마감 값(종가 × 그날 환율 + 현금)을 자동으로 더합니다. 며칠 안 열어도 다음에 열 때 빈 거래일을 채웁니다(현금은 지금 값). 가져온 날짜는 덮어쓰지 않습니다` : "아직 없음. 엑셀(날짜·금액)을 가져오거나 오늘부터 기록을 시작하세요."}</p>
-      <div class="row wrap"><label class="filebtn">엑셀·CSV 가져오기<input id="actFile" type="file" accept=".xlsx,.xls,.csv"></label>${n ? `<button class="sm" id="actCsv">CSV 내보내기</button><button class="sm" id="actClear">기록 지우기</button>` : `<button class="sm" id="actStart">오늘부터 기록</button>`}</div>${u}`;
+    const c = S.state.cash || {};
+    $("#premBox").innerHTML = `<h3 style="margin:0 0 4px">현금</h3><div class="row wrap"><label class="small">원화 <input class="num" id="cashKrw" inputmode="decimal" value="${c.krw ? nf(c.krw) : ""}" placeholder="0" style="width:9em"></label><label class="small">달러 <input class="num" id="cashUsd" inputmode="decimal" value="${c.usd ? nf(c.usd, 2) : ""}" placeholder="0" style="width:7em"></label></div>
+      <p class="small muted" style="margin:4px 0 0">총자산·목표 대비·전망에 더합니다 (전망에서는 그대로 있다고 봄).</p>`;
   }
   function onPrem(e) {
     const t = e.target;
     if (e.type === "change" && (t.id === "cashKrw" || t.id === "cashUsd")) {
       const v = Number(String(t.value).replace(/,/g, "")) || 0;
-      S.state.cash = { ...(S.state.cash || {}), [t.id === "cashKrw" ? "krw" : "usd"]: v }; save(); renderAll(); return;
+      S.state.cash = { ...(S.state.cash || {}), [t.id === "cashKrw" ? "krw" : "usd"]: v }; save(); renderAll();
     }
-    if (e.type === "change" && t.id === "actFile" && t.files[0]) {
-      importActual(t.files[0]).then((r) => { actPend = r; renderPrem(); }).catch((err) => toast("가져오기 실패: " + err.message)); return;
-    }
-    if (e.type === "change" && t.id === "actUnit" && actPend) { actPend.unit = +t.value; renderPrem(); return; }
-    if (e.type !== "click") return;
-    if (t.id === "actApply" && actPend) {
-      S.state.actual ||= { d: [], v: [] };
-      actPend.pts.forEach(([d, v]) => actualPut(d, Math.round(v * actPend.unit)));
-      const have = new Set((S.state.memos || []).map((m) => m.d + m.t));
-      S.state.memos = [...(S.state.memos || []), ...actPend.memos.filter((m) => !have.has(m.d + m.t))].sort((a, b) => (a.d < b.d ? -1 : 1));
-      toast(`실제 기록 ${actPend.pts.length}일을 합쳤습니다`); actPend = null; save(false); renderPrem(); renderAll();
-    }
-    if (t.id === "actCancel") { actPend = null; renderPrem(); }
-    if (t.id === "actCsv") exportActualCsv();
-    if (t.id === "actStart") { S.state.actual = { d: [], v: [] }; save(false); renderAll(); renderPrem(); }
-    if (t.id === "actClear" && armed(t)) { delete S.state.actual; delete S.state.memos; save(false); renderPrem(); renderAll(); }
-  }
-  // 대시보드 '실제 기록' 카드: 연도 겹쳐 보기 + 연도별 표
-  function renderAct() {
-    const card = $("#actCard"), a = actualRec();
-    card.style.display = a ? "" : "none"; if (!a) return;
-    const view = $("#actView .on")?.dataset.v || "year", years = [...new Set(a.d.map((d) => d.slice(0, 4)))].sort();
-    // 오늘은 아직 기록 전이면 실시간 값(현재 평가액)을 빈 점으로 이어 그린다. 저장은 장 마감 뒤 자동 기록이 한다
-    const td = today(), nowV = S.state.sample ? 0 : valuation().total + cashKrw(), lv = nowV > 0 && td > a.d[a.d.length - 1];
-    const ad = lv ? [...a.d, td] : a.d, av = lv ? [...a.v, nowV] : a.v;
-    if (view === "year") {
-      const series = years.map((Y, j) => {
-        const ix = ad.map((d, i) => [d, i]).filter(([d]) => d.startsWith(Y) && d.slice(5) !== "02-29");
-        return { name: Y + "년", x: ix.map(([d]) => "2001" + d.slice(4)), y: ix.map(([, i]) => av[i]), color: j === years.length - 1 ? "var(--c1)" : C[(years.length - 1 - j) % C.length], width: j === years.length - 1 ? 2.2 : 1.3, lastDot: lv && td.startsWith(Y) ? "2001" + td.slice(4) : null };
-      });
-      if (!lv && td.startsWith(years[years.length - 1])) series.push({ x: ["2001" + td.slice(4)], y: [a.v[a.v.length - 1]], color: "transparent" }); // 오늘 세로선이 보이게 가로축을 오늘까지
-      Charts.lineChart($("#actChart"), { series, yfmt: krwAxis, height: 260, axisOut: true, vlines: [{ x: "2001" + td.slice(4), label: "오늘" }], xlab: (dd) => `${dd.getUTCMonth() + 1}월`, tipx: (d) => d.slice(5).replace("-", "/") });
-    } else {
-      Charts.lineChart($("#actChart"), { x: ad, series: [{ name: "실제 기록", y: av, color: "var(--c1)", width: 1.8, lastDot: lv ? td : null }, ...(lv ? [] : [{ x: [td], y: [a.v[a.v.length - 1]], color: "transparent" }])], yfmt: krwAxis, tipx: (d) => (lv && d === td ? `${d} (오늘 실시간)` : d), vlines: [{ x: td, label: "오늘" }], height: 260, axisOut: true,
-        hlines: [{ y: S.state.goal.amount, label: "목표" }], hlinesInRange: false, markers: (S.state.memos || []).map((m) => ({ x: m.d, label: `${m.d} ${m.t}` })) });
-    }
-    const rows = years.map((Y) => {
-      const ix = a.d.map((d, i) => i).filter((i) => a.d[i].startsWith(Y)), prevI = ix[0] - 1;
-      const s = prevI >= 0 ? a.v[prevI] : a.v[ix[0]], e = a.v[ix[ix.length - 1]];
-      return [Y, s, e, e - s, s ? e / s - 1 : null, a.d[ix[ix.length - 1]]];
-    });
-    $("#actYears").innerHTML = `<tr><th>연도</th><th>시작</th><th>끝</th><th>증가액</th><th>증가율</th></tr>` + rows.map(([Y, s, e, d, r, last]) =>
-      `<tr><td>${Y}${last < Y + "-12-20" ? " (진행)" : ""}</td><td>${krw(s)}</td><td>${krw(e)}</td><td class="${cls(d)}">${d >= 0 ? "+" : "-"}${krw(Math.abs(d))}</td><td class="${cls(r)}">${spct(r)}</td></tr>`).join("");
   }
 
   // ------------------------------------------------------------ 패턴 예측 (엑셀 '26 예측'을 고친 것)
@@ -2931,23 +2824,9 @@
     while (d <= end || fr.length < 8) { fr.push(d); d = addDays(d, 7); }
     return rows.concat(hitTent(H, M, cash, fr, hmd));
   }
-  // 월 보기: 실제 기록이 있는 지난 달(최대 2년 전 1월부터)은 월말 실제와, 그 달 직전 월말에서 다시 계산한 패턴 예측(사후 계산)을 비교.
-  // 이번 달부터 2년 뒤 12월까지는 가예측
+  // 월 보기: 이번 달부터 2년 뒤 12월까지 가예측
   function hitMonthCols(H, M, cash) {
-    const A = actualRec(), cur = today().slice(0, 7), y = +cur.slice(0, 4), cols = [], ml = (d) => `${+d.slice(5, 7)}월`;
-    if (A) {
-      const lastIn = (m) => { let v = null, d = null; A.d.forEach((x, i) => { if (x.slice(0, 7) === m) { v = A.v[i]; d = x; } }); return v != null ? { v, d } : null; };
-      for (let m = `${y - 2}-01`; m < cur; m = Model.addMonths(m + "-01", 1).slice(0, 7)) {
-        const a = lastIn(m); if (!a) continue;
-        const r = { f: monthEnd(m), lab: ml(m), done: true, retro: true, act: Math.round(a.v) };
-        const pm = Model.addMonths(m + "-01", -1).slice(0, 7), p = lastIn(pm);
-        if (p && M) {
-          const s0 = idxAtOrBefore(H, p.d), ds = H.dates.filter((x) => x > H.dates[s0] && x <= a.d);
-          if (s0 >= 260 && ds.length) { Object.assign(r, hitVals(p.v, 0, patPred(patFeat(M.P, s0, ds), M.p), M.sd * Math.sqrt(ds.length / 21)), { by: "패턴 (사후 계산)" }); r.hit = r.act >= r.lo && r.act <= r.hi; }
-        }
-        cols.push(r);
-      }
-    }
+    const cur = today().slice(0, 7), y = +cur.slice(0, 4), cols = [], ml = (d) => `${+d.slice(5, 7)}월`;
     const fut = []; for (let m = cur; m <= `${y + 2}-12`; m = Model.addMonths(m + "-01", 1).slice(0, 7)) fut.push(monthEnd(m));
     return cols.concat(hitTent(H, M, cash, fut, ml));
   }
@@ -2967,10 +2846,9 @@
       if (done.length) sum.push(`지금까지 적중 <b>${done.filter((r) => r.hit).length}/${done.length}</b> · 평균 차이 ${pct(done.reduce((a, r) => a + Math.abs(r.act / r.p50 - 1), 0) / done.length)}`);
       else sum.push(`<span class="muted">첫 체크는 이번 주 금요일 마감 뒤.</span>`);
     } else {
-      const ye = list.find((r) => r.tent && r.f.endsWith("-12-31")), last = list[list.length - 1], rd = list.filter((r) => r.retro && r.p50);
+      const ye = list.find((r) => r.tent && r.f.endsWith("-12-31")), last = list[list.length - 1];
       if (ye) sum.push(`<b>올해 말 예상</b> ${krw(ye.p50)} (${krw(ye.lo)}~${krw(ye.hi)}, ${esc(ye.by)})`);
       if (last && last.tent && last !== ye) sum.push(`<b>${last.f.slice(0, 4)}년 말 예상</b> ${krw(last.p50)} (${krw(last.lo)}~${krw(last.hi)})`);
-      if (rd.length) sum.push(`지난 ${rd.length}달 사후 계산 적중 <b>${rd.filter((r) => r.hit).length}/${rd.length}</b>`);
     }
     $("#hitSum").innerHTML = sum.join("<br>");
     if (!list.length) { $("#hitGrid").innerHTML = ""; $("#hitNote").textContent = "전망을 계산하는 중입니다…"; return; }
@@ -2996,7 +2874,7 @@
     const wrap = $("#hitGrid").parentElement, th = $("#hitGrid th.now");
     if (wrap && th) wrap.scrollLeft = Math.max(0, th.offsetLeft - wrap.clientWidth / 2 + th.offsetWidth / 2);
     $("#hitNote").innerHTML = `한 칸 ${krw(bin)}원 · 옅은 칸 = 예측 범위(25~75%) · 날짜 = 적중, X·O = 빗나간 예측·실제 · `
-      + (mode === "w" ? "점선 칸은 가예측(그 주에 처음 열 때 잠김, 마감 전 수량·현금 변경은 반영)" : "점선 칸은 가예측, 흐린 칸은 사후 계산(참고용)");
+      + (mode === "w" ? "점선 칸은 가예측(그 주에 처음 열 때 잠김, 마감 전 수량·현금 변경은 반영)" : "점선 칸은 가예측");
   }
   function patScores(M) { // 다시 맞춰 본 12달: 칸 적중 수와 평균 오차 (패턴 sp, 추세만 st)
     const bin = hitBin(), sc = (pr) => ({ hit: M.folds.filter((x, j) => Math.floor((x.v1 * Math.exp(pr[j] - x.act)) / bin) === Math.floor(x.v1 / bin)).length,
@@ -3065,8 +2943,8 @@
   }
   const onTab = (t) => $("#tabs .on")?.dataset.tab === t;
   // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
-  const ensureForecast = () => { if (!lastForecast && !fcRestore()) runForecast(); else renderForecast(); };
-  // 전망 탭: 3년 전망 · 외부 요인 · 환율 영향을 한 화면에
+  const ensureForecast = () => { if ((!lastForecast && !fcRestore()) || fcDirty) runForecast(); else renderForecast(); }; // 입력·기준값이 바뀌었으면 바로 다시 (앱처럼)
+  // 전망 탭: 목표일 전망 · 외부 요인 · 환율 영향을 한 화면에
   function renderForecastTab() { renderSchedule(); renderSens(); renderFx(); renderRateScen(); ensureForecast(); }
   // 종목 탭: 보유 종목 · 종목 진단 · 비중 조정 · 배당·세금을 한 화면에
   function renderStocksTab() {
@@ -3078,31 +2956,33 @@
   // 앞으로 45일 동안의 내 종목·시장 일정 (켜 둔 사건 + 지난해 배당일로 짐작한 배당). 숫자와 날짜만, 매매 권유 없음
   function renderUpcoming() {
     const box = $("#upList"), lim = new Date(Date.now() + 45 * 864e5).toISOString().slice(0, 10), td = today();
-    const rows = [];
+    const rows = [], val = valuation().rows.filter((r) => r.valueKrw > 0), held = new Set(val.map((r) => r.h.ticker));
     try {
       const m = buildModelNow();
       if (m) m.model.eventList.filter((x) => x.date >= td && x.date <= lim).forEach((x) => {
         const e = x.event, earn = /실적/.test(e.kind);
-        rows.push({ d: x.date, who: tgtLab(e), what: earn ? quarterOf(x.date).label + " 실적" : e.kind, note: `±${e.sd}${e.factor === "rate" ? "bp" : "%"}`, cls: e.repeat && e.repeat !== "none" ? "earn" : "once" });
+        rows.push({ d: x.date, who: tgtLab(e), mine: held.has(e.target), what: earn ? quarterOf(x.date).label + " 실적" : e.kind, note: `±${e.sd}${e.factor === "rate" ? "bp" : "%"}`, cls: e.repeat && e.repeat !== "none" ? "earn" : "once" });
       });
     } catch (e) { /* 목표일 없음 등: 일정만 건너뜀 */ }
     const yAgo = Model.addMonths(td, -12);
-    valuation().rows.filter((r) => r.valueKrw > 0).forEach((r) => {
+    val.forEach((r) => {
       dividends(r.h.ticker).filter((x) => x.d > yAgo).forEach((x) => {
         const d = Model.addMonths(x.d, 12); if (d < td || d > lim) return;
         const v = x.amt * r.sh * (r.fx || 1) * (1 - (r.ccy === "KRW" ? 0.154 : WHT));
-        rows.push({ d, who: r.h.ticker, what: "배당", note: `세후 약 ${krw(v)}원`, cls: "div" });
+        rows.push({ d, who: r.h.ticker, mine: true, what: "배당", note: `세후 약 ${krw(v)}원`, cls: "div" });
       });
     });
-    rows.sort((a, b) => a.d.localeCompare(b.d));
+    // 앱 소식함 일정 띠처럼 보유 종목 일정을 먼저, 그 안에서 날짜순 (진한 테두리는 그대로 가장 가까운 일정)
+    rows.sort((a, b) => (b.mine - a.mine) || a.d.localeCompare(b.d));
+    const near = rows.reduce((n, x) => (!n || x.d < n.d ? x : n), null);
     $("#upSum").textContent = rows.length ? `· 앞으로 45일 ${rows.length}건` : "";
     // 펼친 일정(외부 요인)과 같은 모양: 대상별 한 줄, 날짜순 작은 칩. 가장 가까운 일정은 진한 테두리
     const groups = new Map(); rows.forEach((x) => { if (!groups.has(x.who)) groups.set(x.who, []); groups.get(x.who).push(x); });
     const dow = (d) => "일월화수목금토"[new Date(d + "T00:00:00").getDay()];
-    const chip = (x) => `<span class="chip ${x.cls} ${x === rows[0] ? "next" : ""}" title="${esc(`${x.d} ${x.what} · ${x.note}`)}"><b>${esc(x.what)}</b><span>${x.d.slice(5).replace("-", ".")} ${dow(x.d)} · ${esc(x.note)}</span></span>`;
+    const chip = (x) => `<span class="chip ${x.cls} ${x === near ? "next" : ""}" title="${esc(`${x.d} ${x.what} · ${x.note}`)}"><b>${esc(x.what)}</b><span>${x.d.slice(5).replace("-", ".")} ${dow(x.d)} · ${esc(x.note)}</span></span>`;
     // 대상 묶음은 줄을 따로 쓰지 않고 옆으로 이어 붙인다 (빈 오른쪽을 다음 묶음이 채움)
     box.innerHTML = rows.length ? `<div class="upflow">${[...groups].map(([t, xs]) => `<div class="upgrp"><div class="schedhead"><b>${esc(t)}</b> <span class="muted">${xs.length}건</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`).join("")}</div>`
-      + `<p class="muted small">회색 = 분기 실적, 주황 = 한 번 있는 사건, 초록 = 배당, 진한 테두리 = 가장 가까운 일정. ±는 그날 평소 움직임. 실적 날짜는 회사 발표 전까지 추정, 배당은 지난해 같은 때를 기준으로 짐작한 값.</p>`
+      + `<p class="muted small">보유 종목 일정이 먼저. 회색 = 분기 실적, 주황 = 한 번 있는 사건, 초록 = 배당, 진한 테두리 = 가장 가까운 일정. ±는 그날 평소 움직임. 실적 날짜는 회사 발표 전까지 추정, 배당은 지난해 같은 때를 기준으로 짐작한 값.</p>`
       : `<p class="muted small">앞으로 45일 안에 켜 둔 일정이 없습니다. 일정은 '전망 → 외부 요인'에서 켜고 끕니다.</p>`;
   }
   // 예전 탭 이름(분석·전략의 하위 탭, 시세 수집)으로 저장된 값을 새 탭으로
@@ -3168,8 +3048,8 @@
       try { const ids = new Set(foldGet()); on ? ids.add(card.id) : ids.delete(card.id); localStorage.setItem(foldKey, JSON.stringify([...ids])); } catch (e2) { /* 무시 */ }
     });
     segClick("#histRange", renderDash); segClick("#histFc", () => { try { localStorage.setItem("naeilo-histfc", $("#histFc .on").dataset.f); } catch (e) { /* 무시 */ } renderDash(); }); segClick("#progRange", () => { const H = history(); renderProgress(H, valuation().total, cashKrw()); }); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
-    segClick("#actView", renderAct); segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
-    $("#premBox").addEventListener("change", onPrem); $("#premBox").addEventListener("click", onPrem);
+    segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
+    $("#premBox").addEventListener("change", onPrem);
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
     document.addEventListener("click", (e) => { const b = e.target.closest("[data-jump]"); if (b) $("#" + b.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
     $("#btnAlloc").onclick = () => { allocDirty = true; runAlloc(); };
@@ -3191,7 +3071,7 @@
       S.state.events.push({ id: "e" + Date.now(), on: true, cat: c, factor: fk || "none", date: Model.addMonths(today(), 1), target: c === "fx" ? "FX" : fk ? "ALL" : S.state.holdings[0]?.ticker || "ALL", kind: "기타", repeat: "none", prob: 100, mean: 0, sd: fk === "rate" ? 20 : 5, vol_mult: 1, vol_days: 0, note: "" });
       save(); renderEvents();
     };
-    $("#scenBox").addEventListener("click", (e) => { const b = e.target.closest("button[data-s]"); if (!b || b.disabled) return; S.state.model.scenario = b.dataset.s; save(false); viewChanged(true); }); // 누르면 아래 공통 설정으로 다시 계산
+    $("#fcOpt").addEventListener("click", (e) => { const b = e.target.closest("button[data-s]"); if (!b || b.disabled) return; S.state.model.scenario = b.dataset.s; save(false); viewChanged(true); }); // 누르면 아래 공통 설정으로 다시 계산
     const optDirty = () => { const st = $("#fcStatus"); if (lastForecast && !/다시 계산/.test(st.textContent)) st.textContent += " · 설정이 바뀜, 시나리오를 눌러 다시 계산"; };
     $("#trust").oninput = (e) => { S.state.model.trust = +e.target.value; S.state.model.scenario = "blend"; $("#trustVal").textContent = e.target.value + "%"; viewChanged(false); };
     $("#trust").onchange = () => { save(false); viewChanged(true); };
@@ -3396,7 +3276,7 @@
       $("#modeNote").innerHTML = `시세는 평일 30분마다 자동 수집, '시세 수집'을 누르면 바로 받음. 입력값은 <b>이 브라우저에만</b> 저장.`;
       $("#modeNote").style.display = "block";
       logLine(`웹 데이터 수집 시각: ${S.dataUpdated ? new Date(S.dataUpdated).toLocaleString() : "-"}`);
-      if (S.firstVisit) logLine("처음 여셨습니다. 보유 종목의 수량을 넣어 주세요. 저장해 둔 파일이 있으면 아래 '입력값 불러오기'.", false);
+      if (S.firstVisit) logLine("처음 여셨습니다. 보유 종목의 수량을 넣어 주세요. 저장해 둔 파일이 있으면 설정 → '입력값 저장·불러오기'.", false);
       const miss = missingTickers();
       if (miss.length) {
         if (GH && ghToken()) ghCollect(miss);

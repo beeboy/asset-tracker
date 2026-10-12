@@ -304,7 +304,7 @@ async function sendPush(env, sub, sid, msg) {
 //   GET  /store/admin/sponsors   POST /store/admin/sponsor {id, action:"approve"|"reject"|"remove"}
 //   POST /store/book 에 개발자 토큰을 붙이면 구매 없이 받는다 (TestFlight·Xcode 빌드 확인용)
 const STORE_TIERS = { mix: 1, dabang: 2, franchise: 3, specialty: 4 };
-const STORE_BOOKS = { side: { need: 1, langs: ["ko", "en"] }, vol1: { need: 3, langs: ["ko"] } };
+const STORE_BOOKS = { side: { need: 1, langs: ["ko", "en"] }, vol1: { need: 3, langs: ["ko", "en"] } };
 const LOGO_MAX = 200 * 1024;
 
 async function store(req, env, u, out, cors) {
@@ -402,7 +402,8 @@ async function store(req, env, u, out, cors) {
     const admin = tier < def.need && (await isAdmin());
     if (tier < def.need && !admin) return out({ error: def.need === 1 ? "믹스커피 이상 후원하면 열려요" : "프랜차이즈 커피 이상 후원하면 열려요", tier }, 403);
     const lang = def.langs.includes(b.lang) ? b.lang : def.langs[0];
-    const raw = await kv.get(`st:book:${b.book}:${lang}`);
+    // 번역본을 아직 안 올렸으면 한글 원고를 준다 (앱은 받은 book.lang 으로 저장한다)
+    const raw = (await kv.get(`st:book:${b.book}:${lang}`)) || (lang !== def.langs[0] ? await kv.get(`st:book:${b.book}:${def.langs[0]}`) : null);
     if (!raw) return out({ error: "원고가 아직 서버에 올라가지 않았습니다", tier }, 404);
     return new Response(`{"tier":${admin ? 4 : tier},"book":${raw}}`, { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
   }

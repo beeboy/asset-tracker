@@ -301,15 +301,15 @@ struct ShelterView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(title), \(right), \(open ? "펼침" : "접힘")")
     }
-    /// 본편 1권의 부: 장 제목 앞의 'N부' 로 묶고, 이름은 그 부 첫 장의 '1부. 거부할 권리' 같은 절 제목
+    /// 본편 1권의 부: 장 제목 앞의 'N부'('Part N, …') 로 묶고, 이름은 그 부 첫 장의 '1부. 거부할 권리'('Part One — The Right to Refuse') 같은 절 제목
     private var vol1Parts: [(id: String, name: String, idx: [Int])] {
         var out: [(id: String, name: String, idx: [Int])] = []
         for i in 0..<story.count(.vol1) {
-            let ch = story.chapter(i, .vol1)
-            let p = ch?.title.split(separator: " ").first.map(String.init) ?? ""
+            let ch = story.chapter(i, .vol1), title = ch?.title ?? ""
+            let p = title.hasPrefix("Part") ? title.components(separatedBy: ",")[0] : title.split(separator: " ").first.map(String.init) ?? ""
             if out.last?.id != "vol1-" + p {
-                let h = ch?.blocks.first { $0.k == "h" && $0.t.hasPrefix(p) }?.t
-                out.append((id: "vol1-" + p, name: h.map { $0.replacingOccurrences(of: ". ", with: " · ") } ?? p, idx: []))
+                let h = ch?.blocks.first { $0.k == "h" && ($0.t.hasPrefix(p) || $0.t.hasPrefix("Part ")) }?.t
+                out.append((id: "vol1-" + p, name: h.map { $0.replacingOccurrences(of: ". ", with: " · ").replacingOccurrences(of: " — ", with: " · ") } ?? p, idx: []))
             }
             out[out.count - 1].idx.append(i)
         }

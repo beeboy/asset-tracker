@@ -6,6 +6,7 @@ struct Sparkline: View {
     var avg: Double? = nil
     var lineWidth: CGFloat = 1.6
     var showEndDot = false
+    var avgLabel: String? = nil      // 점선 바로 밑, 오른쪽에 붙이는 글자
 
     var body: some View {
         GeometryReader { g in
@@ -14,12 +15,20 @@ struct Sparkline: View {
             let lo = avgIn ? min(lo0, avg!) : lo0, hi = avgIn ? max(hi0, avg!) : hi0
             let n = max(1, points.count - 1)
             let x = { (i: Int) in CGFloat(i) / CGFloat(n) * g.size.width }
-            let y = { (v: Double) in (1 - CGFloat((v - lo) / max(1e-9, hi - lo))) * (g.size.height - 4) + 2 }
+            // 점선 금액을 붙일 때는 아래에 글자 한 줄 자리를 남겨 두어 늘 점선 밑에 들어가게 한다
+            let bot: CGFloat = avgIn && avgLabel != nil ? 18 : 2
+            let y = { (v: Double) in (1 - CGFloat((v - lo) / max(1e-9, hi - lo))) * (g.size.height - 2 - bot) + 2 }
             let up = (points.last ?? 0) >= (points.first ?? 0)
             ZStack {
                 if avgIn, let a = avg {
                     Path { p in p.move(to: CGPoint(x: 0, y: y(a))); p.addLine(to: CGPoint(x: g.size.width, y: y(a))) }
                         .stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    if let t = avgLabel {
+                        Text(t).appFont(11, .semibold).foregroundStyle(Theme.muted).lineLimit(1)
+                            .padding(.horizontal, 3).background(Theme.card.opacity(0.85), in: Capsule())
+                            .frame(width: g.size.width, alignment: .trailing)
+                            .position(x: g.size.width / 2, y: y(a) + 9)
+                    }
                 }
                 Path { p in
                     for (i, v) in points.enumerated() {

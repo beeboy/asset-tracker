@@ -47,6 +47,10 @@ struct Progress: Codable, Equatable {
     var goalStartAt: Double? = nil
     var meGate1At: Double? = nil
     var itemsOff: Set<String>? = nil   // 쉼터 방에서 뺀 물건 (모은 건 그대로, 다시 놓을 수 있다)
+    var gInterStartAt: Double? = nil   // 목표 루트 인터미션 시작 날
+    var recM: Int? = nil               // 회복 루트 적립 지렛대 (만원)
+    var gTo: String? = nil             // 목표일·목표 시작일 (사이트와 같은 값)
+    var gFrom: String? = nil
 
     private static let key = "progress.v1"
     static func load() -> Progress? {
@@ -71,7 +75,8 @@ extension AppModel {
                  day: day, dayLog: dayLog, lastOpen: Day.today, weekGuess: weekGuess, itemsBack: itemsBack, itemsBackDay: itemsBackDay,
                  homeFriend: homeFriend, readPos: readPos, readLast: readLast,
                  lens: lens, trust: trust, shock: shock, monthly: monthly, syncOn: syncOn, widgetSel: widgetSel,
-                 me: me, meBg: meBg, interStartAt: interStartAt, goalStartAt: goalStartAt, meGate1At: meGate1At, itemsOff: itemsOff.isEmpty ? nil : itemsOff)
+                 me: me, meBg: meBg, interStartAt: interStartAt, goalStartAt: goalStartAt, meGate1At: meGate1At, itemsOff: itemsOff.isEmpty ? nil : itemsOff,
+                 gInterStartAt: gInterStartAt, recM: recM == 0 ? nil : recM, gTo: gTo, gFrom: gFrom)
     }
 
     func apply(_ p: Progress) {
@@ -87,6 +92,10 @@ extension AppModel {
         day = p.day
         itemsBack = p.itemsBack ?? min(10, streak / 7); itemsBackDay = p.itemsBackDay
         itemsOff = p.itemsOff ?? []
+        gInterStartAt = p.gInterStartAt; recM = p.recM ?? 0
+        gTo = p.gTo     // gY 다음에 둔다 (gY 를 바꾸면 목표일이 지워진다)
+        // 예전 저장: 목표 루트 시작일을 목표 시작일로
+        gFrom = p.gFrom ?? (p.route != .recover ? Day.str(p.goalStartAt.map { Date(timeIntervalSince1970: $0) } ?? Date()) : nil)
         catchUpDay(from: p.lastOpen)
     }
 

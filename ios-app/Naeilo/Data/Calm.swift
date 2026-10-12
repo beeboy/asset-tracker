@@ -448,6 +448,7 @@ extension AppModel {
     /// 홈을 열 때: 함께한 날을 세고, 내 종목이 ±5% 넘게 움직였는데 오늘 매매가 없으면 기다림 +1 (하루 한 번)
     func calmOpen() {
         let today = Day.today
+        recordDay()   // 내 기록: 홈을 연 날 한 줄 (같은 날은 지금 값으로 고침)
         if !calm.events.contains(where: { $0.day == today }),
            let r = rows.filter({ abs($0.sym.quote.change) >= 0.05 }).max(by: { abs($0.sym.quote.change) < abs($1.sym.quote.change) }) {
             calm.record(CalmEvent(day: today, sym: r.sym.id, buy: false, win: r.value >= r.cost, act: .wait, big: true, pts: 0))

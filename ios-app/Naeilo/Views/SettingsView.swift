@@ -16,7 +16,7 @@ struct SettingsView: View {
             ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
             ("개발자 후원", Support.shared.tier == .free ? "커피 한 잔 · 구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
             ("루트", m.route == .recover ? "회복 · 마이너스" : m.route == .plus ? "목표 · 플러스" : "목표 · 시작 전", .route),
-        ] + (m.isGoal ? [("목표", "\(m.gY)년 뒤 \(AppModel.wonK(m.gK)) · 고치기", SettingsRoute.goal)] : [])
+        ] + (m.isGoal ? [("목표", "\(m.goalToText)까지 \(AppModel.wonK(m.gK)) · 고치기", SettingsRoute.goal)] : [])
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "설정").padding(.horizontal, -16)
@@ -45,12 +45,15 @@ struct SettingsView: View {
                 Text("앱 아이콘").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
                 AppIconPicker()
                 GuidePickRow().padding(.top, 4)
-                Text("시안 조작").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
-                HStack(spacing: 8) {
-                    demoButton("첫 질문부터") { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
-                    demoButton("미션 1부터") { m.resetDemo(.fresh) }
-                    demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
-                    demoButton("모든 화면 열기") { m.resetDemo(.all) }
+                // 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
+                if m.devAll {
+                    Text("시연 상태 (개발자)").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
+                    HStack(spacing: 8) {
+                        demoButton("첫 질문부터") { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
+                        demoButton("미션 1부터") { m.resetDemo(.fresh) }
+                        demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
+                        demoButton("모든 화면 열기") { m.resetDemo(.all) }
+                    }
                 }
                 Text("시세: \(Market.shared.source)").appFont(12).foregroundStyle(Theme.muted)
                 Text("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)").appFont(12).foregroundStyle(Theme.muted)
@@ -101,6 +104,7 @@ struct PriceBasisView: View {
                 Card {
                     row("미국 종목", "지금 가격과 전일 종가")
                     row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change))")
+                    row("평가 환율", mk.marRate != nil ? "매매기준율 \(String(format: "%.2f", mk.valFx))원 · 웹 평가액과 같아요" : "매매기준율을 아직 못 받아 지금 환율")
                     row("한국 종목", "전일 종가")
                     row("오늘의 움직임", "전일 대비 지금 평가액")
                     row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : mk.site != nil ? "사이트가 평일 30분마다 모으는 테스트 자료. 당기면 바로 받아요" : "앱에 넣어 둔 테스트 자료")

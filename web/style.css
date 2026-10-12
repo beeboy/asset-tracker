@@ -343,3 +343,12 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .seri-say b { color: var(--accent); margin-right: 4px; }
 .seri-body { line-height: 1.6; }
 .seri-app { margin-top: 6px; }
+/* 설정 › 새 소식 (개발자 소식) */
+.newslist { list-style: none; margin: 0; padding: 0; }
+.newslist li { padding: 6px 0; border-top: 1px solid var(--line, rgba(127,127,127,.2)); line-height: 1.5; }
+.newslist li:first-child { border-top: 0; }
+.newtag { font-size: 11px; color: var(--accent, #e67e22); }
+.sitefoot { margin: 18px 4px 0; line-height: 1.6; text-align: center; }
+.sitefoot a { color: inherit; }
+.bepv { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 8px 0 2px; } .bepv > b { font-size: 1.6rem; }
+.bepp { margin-top: 6px; }
