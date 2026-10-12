@@ -55,7 +55,7 @@ struct HomeView: View {
             }
             .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(AppModel.wonK(now)).appFont(32, .bold).tracking(-0.5)
+                Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5)
                 if m.route == .plus {
                     Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 }

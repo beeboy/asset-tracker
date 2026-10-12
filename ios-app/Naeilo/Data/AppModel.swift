@@ -172,6 +172,22 @@ final class AppModel {
         let eok = a / 10_000, rest = a % 10_000
         return sign + "\(eok.formatted())억" + (rest > 0 ? " \(rest.formatted())만원" : "원")
     }
+    /// 웹 krw()+"원"과 같은 표시: 1억 넘으면 소수 둘째 자리 억 (5.25억원), 1만 넘으면 만원 (826만원). 내 길·전망·홈 평가액
+    static func eok(_ krw: Double) -> String {
+        let a = abs(krw), s = krw < 0 ? "-" : ""
+        if a >= 1e8 { return s + String(format: a >= 1e10 ? "%.0f억원" : "%.2f억원", a / 1e8) }
+        if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + "만원" }
+        return s + Int(a.rounded()).formatted() + "원"
+    }
+    /// 부호 붙인 금액 (+826만원, −826만원)
+    static func eokS(_ krw: Double) -> String { (krw >= 0 ? "+" : "−") + eok(abs(krw)) }
+    /// 남은 기간 (웹 목표 진행과 같은 표시): 1년 넘으면 소수 한 자리 년, 안 되면 개월·일
+    static func leftText(_ y: Double) -> String {
+        guard y > 0 else { return "지남" }
+        if y >= 1 { return String(format: "%.1f년", y) }
+        if y * 12 >= 1 { return "\(Int(y * 12))개월" }
+        return "\(Int((y * 365.25).rounded(.up)))일"
+    }
     static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
     static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "") + String(format: "%.1f%%", p * 100) }
     static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "") + "\(Int((p * 100).rounded()))%" }

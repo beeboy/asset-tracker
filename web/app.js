@@ -88,6 +88,8 @@
   const pct = (v, d = 1) => (v == null || !isFinite(v) ? "-" : (v * 100).toFixed(d) + "%");
   const spct = (v, d = 1) => (v == null || !isFinite(v) ? "-" : (v >= 0 ? "+" : "") + (v * 100).toFixed(d) + "%");
   const cls = (v) => (v == null ? "" : v > 0 ? "up" : v < 0 ? "dn" : "");
+  // 남은 기간: 1년 넘으면 소수 한 자리 년, 안 되면 개월·일 (앱 내 길과 같은 표시)
+  const leftStr = (y) => (!(y > 0) ? "지남" : y >= 1 ? y.toFixed(1) + "년" : y * 12 >= 1 ? Math.floor(y * 12) + "개월" : Math.ceil(y * 365.25) + "일");
   function krw(v) {
     if (v == null || !isFinite(v)) return "-";
     const a = Math.abs(v), s = v < 0 ? "-" : "";
@@ -959,11 +961,13 @@
     const k = H.dates.length - 1, now = total + cash, td = today();
     const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
     const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
+    const pg = fcReady(S.state.model.scenario)?.R?.p_goal ?? null; // 앱 내 길의 목표 달성 확률과 같은 값 (전망을 계산해 둔 뒤에만)
     card.style.display = "block";
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
-      ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${spct(gap)}`, need ? (Math.abs(now - need) < need * 0.0005 ? "내 길과 같음" : `경로보다 ${krw(Math.abs(now - need))}원 ${now >= need ? "많음" : "적음"}`) : ""],
+      ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `내 길보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
+      ...(pg != null ? [["목표 달성 확률", pct(pg, 0), "3년 전망과 같은 값"]] : []),
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
     ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "내 길 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
@@ -1023,7 +1027,8 @@
     $("#dashEmpty").style.display = total > 0 && !S.state.sample ? "none" : "block";
     $("#dashEmpty").innerHTML = seriCard() + (S.state.sample ? `<b>샘플 화면 (가상 종목 DRNK 4주·QQQ 1주)</b> <span class="small">${S.sampleCalc ? `${S.sampleCalc === today() ? "오늘" : `${+S.sampleCalc.slice(5, 7)}/${+S.sampleCalc.slice(8)}`} 9시 기준 계산값 · ` : ""}내 종목을 넣으면 지금 값으로 다시 계산합니다.</span> <button class="primary" data-go="stocks">내 수량 넣기</button>`
       : `<b>보유 수량을 넣어 주세요.</b> <span class="small">종목 탭에서 종목별 수량만 넣으면 나머지는 자동.</span> <button class="primary" data-go="stocks">수량 입력하러 가기</button>`) + `<div class="seri-app muted small">naeilo 앱에서는 세리 말고도 네 명이 더 함께해요.</div></div></div></div>`;
-    const need = g.amount - tot, req = yrs > 0 && tot > 0 ? (g.amount / tot) ** (1 / yrs) - 1 : null;
+    // 필요 연수익률: 남은 기간에 넣을 적립을 뺀 나머지를 지금 자산이 불려야 하는 속도 (앱 내 길과 같은 식)
+    const need = g.amount - tot, kAdj = g.amount - (Number(g.monthly_contribution) || 0) * 12 * Math.max(0, yrs), req = yrs > 0 && tot > 0 ? (Math.max(1, kAdj) / tot) ** (1 / yrs) - 1 : null;
     const H = history(), M = patModel(H);
     // 미래 기준을 직접 고른 적이 없고, 지난 12달 채점에서 패턴이 추세만보다 나으면 패턴을 기본으로
     if (!S.basisAuto) { S.basisAuto = true; let mine = null; try { mine = localStorage.getItem("naeilo-basis"); } catch (e) { /* 무시 */ } if (!mine && patWins(M)) $$("#histBasis button").forEach((b) => b.classList.toggle("on", b.dataset.b === "pattern")); }
@@ -1037,8 +1042,8 @@
       ["현재 평가액", `<a href="#" class="plain" data-go="stocks" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(tot / g.amount), `<div class="bar"><i style="width:${Math.min(100, (tot / g.amount) * 100)}%"></i></div>`],
       ["남은 금액", krw(Math.max(0, need)) + "원", `목표 ${krw(g.amount)}원`],
-      ["남은 기간", yrs > 0 ? yrs.toFixed(1) + "년" : "지남", g.date],
-      ["필요 연평균 수익률", req != null ? pct(req) : "-", "지금 자산만으로"],
+      ["남은 기간", leftStr(yrs), g.date],
+      ["필요 연수익률", req != null ? spct(req) : "-", Number(g.monthly_contribution) > 0 ? "적립 포함" : "지금 자산만으로"],
       ["과거 연평균 (원화)", pct(pastCagr), `${H.dates[jc] || "-"} 이후`],
     ].map(([k, v, s]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
@@ -1521,6 +1526,8 @@
   function fcRestore() {
     try {
       const c = JSON.parse(localStorage.getItem(FC_KEY) || "null"); if (!c || !c.withEv) return false;
+      // 다른 날 계산한 전망은 쓰지 않는다 (오늘 평가액·오늘부터의 날짜로 다시. 앱도 하루 한 번 새로 계산)
+      const at = new Date(c.at); if (new Date(at.getTime() - at.getTimezoneOffset() * 60000).toISOString().slice(0, 10) !== today()) return false;
       const b = buildModelNow(); if (!b || b.holdings.map((h) => h.ticker).join() !== c.tks) return false;
       const common = simCommon(b, c.scen);
       lastForecast = { b, sim: null, simNo: null, withEv: c.withEv, noEv: c.noEv || c.withEv, lens: c.lens || {}, bep: c.bep || null, hasEv: c.hasEv, common, grp: {}, scen: c.scen, at: new Date(c.at), ms: c.ms };
@@ -1637,9 +1644,9 @@
       : `<p>켜진 외부 요인 없음.</p>`) + "</div>";
     $("#lenses").innerHTML = lens("base", "현재 정세", `과거 수익률을 장기 평균(연 ${m.prior_mu}%) 쪽으로`, portMu("base"), D.base) + lens("smooth", "과거 추세", "지난 3년 성장 속도가 이어지면", portMu("smooth"), D.smooth) + shock;
     const on = m.scenario === "blend";
-    $("#trust").value = String(m.trust); $("#trustVal").textContent = on ? m.trust + "%" : "-";
+    $("#trust").value = String(m.trust); $("#trustVal").textContent = on ? `${m.trust}% · 연 기대 ${spct(portMu(viewKey()), 0)}` : "-";
     $(".trust").classList.toggle("off", !on);
-    $("#trustNote").textContent = on ? `연 기대 ${spct(portMu(viewKey()), 0)}` : `'${SCEN_SHORT[m.scenario] || m.scenario}' 시나리오 사용 중. 움직이면 내 관점으로.`;
+    $("#trustNote").textContent = on ? "" : `'${SCEN_SHORT[m.scenario] || m.scenario}' 시나리오 사용 중. 움직이면 내 관점으로.`;
     // 만약에
     const ok = !!(L.sim && L.sim.raw) || !L.sim;
     const { top, cash } = wiTop(), th = L.b.holdings[top], plain = Number(S.state.goal.monthly_contribution) || 0;
@@ -1726,10 +1733,10 @@
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) : [],
       });
       $("#fcViewNote").innerHTML = !hasEv ? `<span class="muted">켜진 외부 요인이 없어 미반영 전망과 같습니다. '외부 요인'에서 켜 주세요.</span>`
-        : `<b>${FCV[v]}</b>: 목표 달성 확률 <b>${pct(R.p_goal, 0)}</b>, 목표일 중앙값 <b>${krw(R.terminal.p50)}원</b>, 나쁜 경우 5% ${krw(R.terminal.p5)}원` +
+        : `<b>${FCV[v]}</b>: 목표 달성 확률 <b>${pct(R.p_goal, 0)}</b>, 목표일 중앙값 <b>${krw(R.terminal.p50)}원</b>, 나쁜 5% ${krw(R.terminal.p5)}원` +
           (v === "none" ? "" : ` <span class="muted">(미반영 ${pct(noEv.p_goal, 0)} · ${krw(noEv.terminal.p50)}원${v === "all" ? "" : `, 반영 사건 ${evs.length}건`})</span>`);
-      $("#fcYearsTitle").textContent = `목표 도달 확률 (연도별 누적 · ${vName})`;
-      $("#fcYears").innerHTML = R.byYear.map((y) => `<div class="probbar"><span>${y.year}년 내 (${y.date})</span><div class="b"><i style="width:${y.p * 100}%"></i></div><span>${pct(y.p, 0)}</span></div>`).join("") || "기간이 1년 미만입니다.";
+      $("#fcYearsTitle").textContent = `목표에 한 번이라도 닿을 확률 (${vName})`;
+      $("#fcYears").innerHTML = R.byYear.map((y) => `<div class="probbar" title="${y.date}까지"><span>${y.year}년 안</span><div class="b"><i style="width:${y.p * 100}%"></i></div><span>${pct(y.p, 0)}</span></div>`).join("") || "기간이 1년 미만입니다.";
       $("#fcEvTitle").textContent = "외부 요인 반영 효과 (전체)";
       $("#fcEvents").innerHTML = !hasEv ? `<p class="muted">켜진 사건이 없습니다. '외부 요인'에서 켜 주세요.</p>`
         : evTable([["목표 달성 확률", pct(noEv.p_goal, 0), pct(Rc.p_goal, 0)], ["목표일 중앙값", krw(noEv.terminal.p50), krw(Rc.terminal.p50)], ["하위 5%", krw(noEv.terminal.p5), krw(Rc.terminal.p5)],
@@ -1798,10 +1805,10 @@
     const lossS = cb ? `매수 원금 ${krw(cb)}원${mv ? " + 적립" : ""} 기준` : mv ? `지금 ${krw(R.V0)}원 + 적립 기준` : `지금 ${krw(R.V0)}원 기준`;
     $("#fcKpis").innerHTML = [
       ["목표 달성 확률", pct(R.p_goal, 0), `목표일 ${krw(g.amount)}원 이상`],
-      ["한 번이라도 도달", pct(R.p_touch, 0), "목표일 전 언제나"],
+      ["한 번이라도 닿을 확률", pct(R.p_touch, 0), "목표일 전 언제나"],
       ["목표일 중앙값", krw(R.terminal.p50) + "원", `평균 <b>${krw(R.terminal.mean)}원</b>`],
-      ["나쁜 경우 (하위 5%)", krw(R.terminal.p5) + "원", `하위 25% ${krw(R.terminal.p25)}원`],
-      ["좋은 경우 (상위 5%)", krw(R.terminal.p95) + "원", `상위 25% ${krw(R.terminal.p75)}원`],
+      ["나쁜 5%", krw(R.terminal.p5) + "원", `하위 25% ${krw(R.terminal.p25)}원`],
+      ["좋은 5%", krw(R.terminal.p95) + "원", `상위 25% ${krw(R.terminal.p75)}원`],
       [lossK, pct(R.p_loss, 0), lossS],
       ["최대 낙폭 (중앙값)", pct(R.mdd_median, 0), `나쁜 10%: ${pct(R.mdd_p10, 0)}`],
       ["확률 50% 위한 월 적립", R.req50 == null ? "-" : R.req50 === 0 ? "0원" : krw(R.req50) + "원", R.req50 == null ? "재조정 끄면 계산" : "매월 정액 매수 가정"],
