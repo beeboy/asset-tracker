@@ -343,8 +343,8 @@ final class Sync {
         let daily = MyRecord.merge(MyRecord.fromJSON(st["daily"]), m.myRecord)
         if !daily.isEmpty, let j = MyRecord.toJSON(daily) { st["daily"] = j }
         // 수량 기록은 사이트와 같은 칸(lots)에 날짜별로 합쳐 둔다 (내 길 실제 평가액을 웹과 같은 수량으로)
-        // 지난 날은 사이트 값이 먼저 (앱이 처음 남긴 시작일 줄이 웹의 진짜 기록을 덮지 않게), 오늘 줄은 이 기기 값
-        let lots = Lots.merge(Lots.merge(m.lots, Lots.fromJSON(st["lots"])), m.lots.filter { $0.d >= Day.today })
+        // 지난 날은 사이트 값만 (앱에만 남은 예전 줄이 웹과 다른 시작값을 만들지 않게), 오늘 줄은 이 기기 값
+        let lots = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)
         if !lots.isEmpty, let j = Lots.toJSON(lots) { st["lots"] = j }
         st.removeValue(forKey: "ui")
         st.removeValue(forKey: "_w")
@@ -404,7 +404,7 @@ final class Sync {
         // 회복 루트는 본전이 기준이라 화면에는 안 쓰지만, 목표 루트로 넘어갈 때 이 목표를 그대로 쓴다. 사이트 샘플 목표는 받지 않는다
         if (st["sample"] as? Bool) != true, let g = st["goal"] as? [String: Any] { m.takeSiteGoal(g) }
         m.myRecord = MyRecord.merge(m.myRecord, MyRecord.fromJSON(st["daily"]))
-        m.lots = Lots.merge(m.lots, Lots.fromJSON(st["lots"]))    // 종목보다 먼저: 종목을 바꾸면 수량 기록이 오늘 줄을 남긴다
+        m.lots = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)    // 종목보다 먼저: 종목을 바꾸면 수량 기록이 오늘 줄을 남긴다
         m.holdings = hs
         // 새 폰에서 첫 질문 전에 불러왔으면 첫 질문은 건너뛴다 (진행이 없으면 회복 루트 미션 1부터)
         if !m.onboarded { m.onboarded = true; UserDefaults.standard.set(true, forKey: "onboarded"); m.tab = .board }

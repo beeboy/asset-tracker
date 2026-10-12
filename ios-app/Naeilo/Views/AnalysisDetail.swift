@@ -237,7 +237,7 @@ struct MyPathView: View {
                     .accessibilityElement(children: .combine)
                     // 개발자 줄: 웹 목표 진행 개발자 줄과 같은 값 (시작·지금·길·현금, 만원). '뒤처짐'이 갈릴 때 어느 값이 다른지 본다
                     if Sync.shared.isDev {
-                        Text(devLine(v0, act(mS), need(mS))).appFont(11).foregroundStyle(Theme.sub)
+                        Text(devLine(v0, act(mS), need(mS))).appFont(11).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 // 웹 목표 진행 요약과 같은 목표 달성 확률 (전망 계산이 끝나기 전에는 '계산 중')

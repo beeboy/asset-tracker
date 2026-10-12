@@ -1801,7 +1801,7 @@
     $("#fcWarn").style.display = $("#fcWarn").innerHTML ? "block" : "none";
     $("#fcStatus").textContent = `${SCEN_SHORT[lastForecast.scen] || ""} 시나리오, ${dtStr(lastForecast.at)}` + (fcDirty ? " · 입력이 바뀜, 시나리오를 눌러 다시 계산" : "");
     // 개발자 기기: 앱 개발자 줄과 같은 항목 (기준 평가액·목표(현금 뺀)·경로·사건·마지막 종가일). 웹·앱 숫자가 갈릴 때 어느 입력이 다른지 본다
-    if (isDev()) { const man = (v) => nf(Math.round(v / 1e4)) + "만"; $("#fcStatus").textContent += ` · 개발자: 기준 ${man(b.holdings.reduce((s2, h) => s2 + h.valueKrw, 0))} · 목표 ${man(Math.max(1, g.amount - cashKrw()))} · 경로 ${nf(lastForecast.common.nPaths)} · 사건 ${md.eventList.length} · 종가일 ${[...b.holdings.map((h) => h.ticker), "KRW=X"].map((t) => S.prices[t]?.dates?.slice(-1)[0] || "").sort().pop() || "-"}`; }
+    if (isDev()) { const man = (v) => nf(Math.round(v / 1e4)) + "만"; $("#fcStatus").textContent += ` · 개발자: 기준 ${man(b.holdings.reduce((s2, h) => s2 + h.valueKrw, 0))} · 목표 ${man(Math.max(1, g.amount - cashKrw()))} · 경로 ${nf(lastForecast.common.nPaths)} · 사건 ${md.eventList.length} · 연 기대 ${spct(portMu(viewKey()), 0)} · 확률 ${pct(R.p_goal, 1)} · 종가일 ${[...b.holdings.map((h) => h.ticker), "KRW=X"].map((t) => S.prices[t]?.dates?.slice(-1)[0] || "").sort().pop() || "-"}`; }
     $("#fcStatus").title = `${SCEN_LAB[lastForecast.scen] || ""} · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초`;
     renderForecastView(true);
     // 모형 값
