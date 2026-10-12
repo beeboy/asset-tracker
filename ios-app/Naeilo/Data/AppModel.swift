@@ -95,6 +95,7 @@ final class AppModel {
     /// 평행 세계의 나 (Parallel.swift). 샘플·시안 실행에서는 남기지 않는다
     var pworld: PWorld? = PWorld.load() { didSet { if persists { PWorld.save(pworld) } } }
     @ObservationIgnored var raceCache: (key: String, race: PRace?)? = nil
+    @ObservationIgnored var raceCacheOther: (key: String, race: PRace?)? = nil   // 인물 자세히 보기: 다른 인물 규칙으로 굴린 경주
     /// 수량이 바뀐 날만 남기는 기록 (Lots.swift, 사이트 lots 칸과 같은 모양). 내 길 실제 평가액을 그날 수량으로 계산한다
     var lots: [Lot] = Lots.load() { didSet { Lots.save(lots) } }
     /// 종목 추가: 수량·평균 단가가 0보다 큰 숫자여야 한다 (쉼표·공백 허용). 같은 종목은 새 값으로 바꾼다

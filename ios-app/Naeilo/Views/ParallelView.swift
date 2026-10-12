@@ -145,7 +145,7 @@ struct ParallelView: View {
                     Text(AppModel.eok(amount)).appFont(12).foregroundStyle(Theme.sub)
                 }
             }
-            Text(distance(amount)).appFont(13, .semibold).foregroundStyle(ParallelUI.colors[k])
+            Text(m.parallelDistance(amount)).appFont(13, .semibold).foregroundStyle(ParallelUI.colors[k])
             // 홈 평가액과 다른 까닭: 경주는 마감 종가·출발 금액 기준, 홈은 지금 시세·국내 합계 포함
             if k == 0 && !m.isSample && abs(m.total - amount) >= 1e4 {
                 Text("홈 평가액 \(AppModel.eok(m.total)) (지금 시세·국내 합계 포함). 경주는 마감 종가로, 넣고 뺀 돈은 빼고 셈해요.")
@@ -171,16 +171,6 @@ struct ParallelView: View {
         default: return Parallel.rules[w.who] ?? ""
         }
     }
-    /// 마이너스족은 본전까지 남은 거리, 장투족은 목표까지 온 거리
-    private func distance(_ amount: Double) -> String {
-        if m.isGoal {
-            let k = m.gK * 1e4
-            return "목표 \(AppModel.wonK(m.gK))까지 \(AppModel.pct(min(1, amount / max(1, k)))) 왔어요"
-        }
-        let need = m.cost / max(1, amount) - 1
-        return need > 0 ? "본전까지 +\(String(format: "%.1f", need * 100))% 남음" : "본전을 넘었어요"
-    }
-
     private func basketLine(_ w: PWorld) -> some View {
         let seg = w.segs.last
         let parts: [String] = (seg?.w ?? [:]).sorted { $0.value > $1.value }.map { "\($0.key) \(AppModel.pct($0.value))" }
@@ -209,6 +199,10 @@ struct ParallelView: View {
             if w.who == "sua" && race.contrib > 0 {
                 Text("매달 \(AppModel.wonK(m.gM))씩 넣은 \(AppModel.eok(race.contrib))까지 넣은 돈으로 쳐서 셌어요.").appFont(12).foregroundStyle(Theme.sub)
             }
+            NavigationLink(value: "char:\(w.who):invest") {
+                Text("투자하는 \(who(w)) 자세히 ›").appFont(13, .bold).foregroundStyle(Theme.teal).frame(minHeight: 36)
+            }
+            .buttonStyle(.plain)
             HStack(spacing: 12) {
                 Button(ratio ? "비율 요약 접기" : "저쪽 세계 비율 보기 ›") { ratio.toggle() }
                     .appFont(13, .bold).foregroundStyle(Theme.teal).frame(minHeight: 36)

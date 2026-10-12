@@ -729,12 +729,21 @@ struct ReaderView: View {
     }
 }
 
-// 인물 자세히 보기: 『중첩된 현실』 등장 시점, 특징, 배경, 대표 장면 (캐릭터 설정 스레드 요약 기준)
+// 인물 자세히 보기: 위에 두 갈래 전환 "투자하는 ○○ | 소설 속 ○○" (한 화면 안, 깊이 추가 없음).
+// 소설 속 = 『중첩된 현실』 등장 시점, 특징, 배경, 대표 장면 (캐릭터 설정 스레드 요약 기준). 투자하는 = InvestBranch.
+// 들어온 길이 처음 갈래를 정한다: 쉼터 → 소설 속, 평정 지수·평행 세계·홈 리마인드 → 투자하는
 struct CharacterDetailView: View {
     let friend: Friend
+    @Environment(AppModel.self) private var m
+    @State private var invest: Bool
+
+    init(friend: Friend, invest: Bool = false) {
+        self.friend = friend
+        _invest = State(initialValue: invest && Calm.kind(friend.id) != nil)
+    }
 
     var body: some View {
-        let f = friend
+        let f = friend, k = Calm.kind(f.id)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .bottom, spacing: 14) {
@@ -742,37 +751,56 @@ struct CharacterDetailView: View {
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(Shelter.spriteBacking(f.id), in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(f.name).appFont(24, .bold)
+                        Text(f.name + (k.map { " · " + $0.title } ?? "")).appFont(24, .bold).lineLimit(1).minimumScaleFactor(0.7)
                         Text(f.line).appFont(14, .bold).foregroundStyle(Color(hex: 0x8A6400, dark: 0xE8C060))
                     }
                 }
-                Card {
-                    Text("소설에 나오는 곳").appFont(15, .bold)
-                    appear("본편", f.main)
-                    appear("외전 『이종 공명』", f.side)
-                    appear("프리퀄", f.prequel)
-                    if f.side == nil {
-                        Text("앱 서재의 외전에는 나오지 않아요. 쉼터에는 인터미션 체크인으로 찾아와요.").appFont(12).foregroundStyle(Theme.muted)
+                if k != nil {
+                    // 지금 나는 ○○형 (순위로 보여 주지 않는다)
+                    Text(meLine(f)).appFont(13).foregroundStyle(Theme.sub)
+                    Picker("갈래", selection: $invest) {
+                        Text("투자하는 \(f.name)").tag(true)
+                        Text("소설 속 \(f.name)").tag(false)
                     }
+                    .pickerStyle(.segmented)
                 }
-                section("특징", f.traits)
-                section("배경", f.background)
-                Card {
-                    Text("대표 장면").appFont(15, .bold)
-                    ForEach(f.scenes, id: \.1) { k, v in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(k).appFont(12, .bold).foregroundStyle(Theme.teal)
-                            Text(v).appFont(14).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-                Text("본편 9·10권의 결말과 일부 인물 이야기는 넣지 않았어요.").appFont(12).foregroundStyle(Theme.muted)
+                if invest { InvestBranch(id: f.id) } else { novel(f) }
             }
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
         .navigationTitle(f.name).navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func meLine(_ f: Friend) -> String {
+        guard let k = Calm.kind(m.calm.type) else { return "아직 내 유형은 정해지지 않았어요." }
+        let same: String = m.calm.type == f.id ? ". \(f.name)와 같은 유형이에요." : ""
+        return "지금 나는 " + k.title + same
+    }
+
+    @ViewBuilder private func novel(_ f: Friend) -> some View {
+        Card {
+            Text("소설에 나오는 곳").appFont(15, .bold)
+            appear("본편", f.main)
+            appear("외전 『이종 공명』", f.side)
+            appear("프리퀄", f.prequel)
+            if f.side == nil {
+                Text("앱 서재의 외전에는 나오지 않아요. 쉼터에는 인터미션 체크인으로 찾아와요.").appFont(12).foregroundStyle(Theme.muted)
+            }
+        }
+        section("특징", f.traits)
+        section("배경", f.background)
+        Card {
+            Text("대표 장면").appFont(15, .bold)
+            ForEach(f.scenes, id: \.1) { k, v in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(k).appFont(12, .bold).foregroundStyle(Theme.teal)
+                    Text(v).appFont(14).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        Text("본편 9·10권의 결말과 일부 인물 이야기는 넣지 않았어요.").appFont(12).foregroundStyle(Theme.muted)
     }
 
     private func appear(_ k: String, _ v: String?) -> some View {

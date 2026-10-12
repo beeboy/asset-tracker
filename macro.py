@@ -3,6 +3,9 @@
   python macro.py                # 실러 ie_data.xls 를 받아 data/macro/rates_earnings.json 을 만든다
   python macro.py --xls 파일.xls  # 받은 파일로 계산만 (오프라인 확인용)
 
+같이 data/macro/sp_monthly.json (1990년부터 월간 S&P500, 실러 P 열 = 그 달 일별 종가 평균)도 만든다.
+앱 인물 자세히 보기의 사건 그래프는 ios-app/tools/invest_events.py 가 이 파일로 미리 계산한다.
+
 출처: Robert J. Shiller, shillerdata.com (Irrational Exuberance 데이터). 화면에 출처를 표시한다.
 GitHub Actions 가 한 달에 한 번 실행한다. 받기에 실패하면 지난 파일을 그대로 둔다.
 필요한 라이브러리: xlrd (옛 .xls 형식 읽기).
@@ -19,6 +22,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "data" / "macro" / "rates_earnings.json"
+SP_OUT = ROOT / "data" / "macro" / "sp_monthly.json"   # 인물 자세히 보기 사건 그래프용 월간 S&P500 (1990~)
+SP_START = 1990
 TNX = ROOT / "data" / "prices" / "_TNX.json"
 PAGE = "https://shillerdata.com/"
 FALLBACK_XLS = "https://img1.wsimg.com/blobby/go/e5e77e0b-59d1-44d9-ab25-4763ac982e53/downloads/ie_data.xls"
@@ -83,7 +88,7 @@ def parse(path_or_bytes) -> list[dict]:
         d = shiller_month(sh.cell_value(r, 0))
         if not d:
             continue
-        rows.append({"d": d, "r": num(sh.cell_value(r, 6)), "e": num(sh.cell_value(r, 10))})
+        rows.append({"d": d, "p": num(sh.cell_value(r, 1)), "r": num(sh.cell_value(r, 6)), "e": num(sh.cell_value(r, 10))})
     return rows
 
 
@@ -198,7 +203,8 @@ def main(argv: list[str]) -> int:
             print("실러 파일 받기 실패, 지난 결과 유지:", url, e)
             return 0
     try:
-        st = stats(parse(data))
+        rows = parse(data)
+        st = stats(rows)
     except Exception as e:  # noqa: BLE001
         print("실러 파일 해석 실패, 지난 결과 유지:", e)
         return 0
@@ -210,7 +216,34 @@ def main(argv: list[str]) -> int:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print("저장:", OUT, "이익 마지막 달", st["eps_last"], "시차상관", st["lag_corr"], st["bands"])
+    write_sp(rows, url)
     return 0
+
+
+def write_sp(rows: list[dict], url: str) -> None:
+    """월간 S&P500 (실러 P 열, 그 달 일별 종가 평균). 1990년부터 빈 달 없이 이어진 데까지."""
+    sp = [x for x in rows if int(x["d"][:4]) >= SP_START]
+    out, prev = [], None
+    for x in sp:
+        if not x.get("p"):
+            break
+        if prev and x["d"] != next_month(prev):
+            break
+        out.append(round(x["p"], 2)); prev = x["d"]
+    if len(out) < 12 * 30:
+        print("월간 S&P 가 너무 짧아 지난 파일 유지:", len(out))
+        return
+    SP_OUT.write_text(json.dumps({"source": "Robert J. Shiller, shillerdata.com", "source_url": url,
+                                  "updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                  "note": "S&P500 월간 (그 달 일별 종가 평균). from 달부터 한 달에 하나",
+                                  "from": sp[0]["d"], "to": prev, "p": out},
+                                 ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print("저장:", SP_OUT, sp[0]["d"], "~", prev)
+
+
+def next_month(d: str) -> str:
+    y, m = int(d[:4]), int(d[5:7])
+    return f"{y + m // 12:04d}-{m % 12 + 1:02d}"
 
 
 if __name__ == "__main__":
