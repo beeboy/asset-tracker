@@ -325,6 +325,11 @@ final class Sync {
             if oldAvg == 0, let s = sub[h.symbol], abs(s - h.avg) < 1e-9 { /* 사이트에 단가가 없던 줄: 비워 둔 그대로 */ }
             else if oldAvg != h.avg { row["avg_cost"] = h.avg }
             row["ticker"] = (row["ticker"] as? String) ?? Self.siteTicker(h.symbol)
+            // 한국 종목: 넣은 가격과 그날 (웹 표의 가격 칸과 같은 값)
+            if let c = CustomSymbols.shared.saved(h.symbol), !c.usd, let p = c.kp {
+                row["price"] = p; row["price_date"] = c.kd ?? Day.today
+                if (row["name"] as? String ?? "").isEmpty { row["name"] = c.name }
+            }
             return row
         }
         var hs: [[String: Any]] = [], used = Set<String>()
@@ -367,15 +372,16 @@ final class Sync {
     private func apply(_ st: [String: Any], at: Double, to m: AppModel) async throws {
         var hs: [Holding] = []
         var unknown: [StockHit] = []
-        var keep = Set<String>(), sub: [String: Double] = [:]
+        var keep = Set<String>(), sub: [String: Double] = [:], krPrice: [String: (Double, String?)] = [:]
         for h in (st["holdings"] as? [[String: Any]]) ?? [] {
             guard let t = h["ticker"] as? String, let id = Self.appId(t) else { continue }
             let q = Self.num(h["shares"]), a = Self.num(h["avg_cost"])
             guard q > 0 else { keep.insert(t.uppercased()); continue }
             let kr = t.uppercased().hasSuffix(".KS") || t.uppercased().hasSuffix(".KQ")
+            if kr, Self.num(h["price"]) > 0 { krPrice[id] = (Self.num(h["price"]), h["price_date"] as? String) }
             if CustomSymbols.shared.symbol(id) == nil && YahooSample.quotes[id] == nil {
                 let ko = StockCatalog.all.first { $0.id == id }
-                unknown.append(StockHit(id: id, yahoo: kr ? t.uppercased() : id, name: ko?.name ?? Sample.symbols.first { $0.id == id }?.name ?? id,
+                unknown.append(StockHit(id: id, yahoo: kr ? t.uppercased() : id, name: ko?.name ?? Sample.symbols.first { $0.id == id }?.name ?? (h["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? id,
                                         market: ko?.market ?? (kr ? (t.uppercased().hasSuffix(".KQ") ? "코스닥" : "코스피") : "미국 주식"),
                                         currency: kr ? .krw : .usd))
             }
@@ -390,6 +396,8 @@ final class Sync {
                 keep.insert(Self.siteTicker(u.id).uppercased()); keep.insert(u.yahoo.uppercased())
             }
         }
+        // 한국 종목: 웹에 넣은 가격을 그대로 (가격이 없으면 종목 화면에서 넣게 둔다)
+        for (id, v) in krPrice { CustomSymbols.shared.setPrice(id, v.0, date: v.1) }
         hs = hs.map { h in
             guard h.avg <= 0, let s = Sample.symbol(h.symbol) else { return h }
             sub[h.symbol] = s.last
@@ -435,7 +443,7 @@ final class Sync {
     func signature(_ m: AppModel) -> String {
         var p = m.progress; p.lastOpen = ""
         let a = (try? JSONEncoder().encode(p)) ?? Data(), b = (try? JSONEncoder().encode(m.holdings)) ?? Data()
-        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
+        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
         return SHA256.hash(data: a + b + c).map { String(format: "%02x", $0) }.joined()
     }
 }

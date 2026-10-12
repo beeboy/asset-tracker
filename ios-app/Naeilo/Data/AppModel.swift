@@ -280,6 +280,8 @@ final class AppModel {
     var appearance = UserDefaults.standard.string(forKey: "appearance") ?? "system"   // system · light · dark
     // 종목 탭은 종목(Symbol)과 '종목 추가'(String)를, 분석 탭은 분석 화면과 종목을 같이 쌓으므로 NavigationPath
     var holdPath = NavigationPath()
+    /// 리마인드에서 국내 주식 합계 입력 칸 띄우기
+    var krSumAsk = false
 
     // 설정
     // 알림 설정은 기기에 남는다 (실제 예약은 Notifier)
@@ -584,9 +586,9 @@ final class AppModel {
             return q.prevClose > 0 ? q.prevClose : q.last
         }
         let fx0 = Market.shared.marRate ?? Market.shared.fx.prevClose
-        let hs = zip(rs, px).map { r, p in MC.Holding(key: SiteStats.key(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", valueKrw: r.h.qty * p * (r.sym.currency == .usd ? fx0 : 1), price0: p) }
+        let hs = zip(rs, px).map { r, p in MC.Holding(key: SiteStats.mcKey(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", valueKrw: r.h.qty * p * (r.sym.currency == .usd ? fx0 : 1), price0: p) }
         let st = inp.st, settings = inp.settings, events = inp.events
-        let snap = zip(rs, px).map { "\(SiteStats.key($0.id)):\($0.h.qty):\($1)" }.joined(separator: ",")
+        let snap = zip(rs, px).map { "\(SiteStats.mcKey($0.id)):\($0.h.qty):\($1)" }.joined(separator: ",")
         let key = [today, H, snap, String(fx0), inp.sig].joined(separator: "|")
         return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: monthly * 1e4)
     }

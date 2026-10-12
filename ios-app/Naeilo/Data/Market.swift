@@ -46,6 +46,8 @@ final class Market {
                 return Quote(last: q.last, prevClose: q.prev, live: s.currency == .usd)
             }
             if let c { return Quote(last: c.last, prevClose: c.prev, live: c.usd) }
+            // 한국 종목은 넣은 가격이 없으면 값이 없다 (시안 값을 쓰지 않는다)
+            if s.currency == .krw { return Quote(last: 0, prevClose: 0, live: false) }
         }
         if let q = YahooSample.quotes[s.id] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
         if let m = Self.todayMove[s.id] { return Quote(last: s.close * (1 + m), prevClose: s.close, live: true) }
@@ -66,14 +68,14 @@ final class Market {
             let d = Date(timeIntervalSince1970: t)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm" : "M월 d일 a h:mm"
             let ago = Int(Date().timeIntervalSince1970 - s.got) / 60
-            return "\(f.string(from: d)) 시세 · \(ago < 1 ? "방금" : "\(ago)분 전") 받음 · 한국 종목은 전일 종가"
+            return "\(f.string(from: d)) 시세 · \(ago < 1 ? "방금" : "\(ago)분 전") 받음 · 한국 종목은 넣은 가격 기준"
         }
         if live.isEmpty, let t = YahooSample.asOf {
             f.dateFormat = "M월 d일 a h:mm"
-            return "\(f.string(from: t)) 시세 (테스트 자료) · 한국 종목은 전일 종가"
+            return "\(f.string(from: t)) 시세 (테스트 자료) · 한국 종목은 넣은 가격 기준"
         }
         f.dateFormat = "a h:mm"
-        return "지금 시세 · \(f.string(from: updatedAt)) 갱신 · 한국 종목은 전일 종가"
+        return "지금 시세 · \(f.string(from: updatedAt)) 갱신 · 한국 종목은 넣은 가격 기준"
     }
 
     /// force: 아래로 당겨 갱신할 때. 받은 지 얼마 안 됐어도 다시 받는다
@@ -87,7 +89,7 @@ final class Market {
         if let f = await QuoteFeed.fetch(minAge: force ? 0 : 240) { site = f }
         if let r = await MarFeed.fetch(minAge: force ? 0 : 1800) { mar = r }
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
-        let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key))
+        let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
         if let p = await SitePrices.fetch(keys: keys.union(["KRW=X"]), old: prices, minAge: force ? 0 : 1800) { prices = p }
         // 전망 입력값: 하루 한 번 바뀌므로 6시간에 한 번 (당겨 갱신하면 바로)
         if let s = await SiteStats.fetch(minAge: force ? 0 : 6 * 3600) { stats = s }

@@ -96,8 +96,9 @@ struct HoldingsView: View {
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
+                if KoreaEstimate.direct || m.holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) { KoreaSumCard() }
                 MyRecordCard()
-                Text("비중은 내 전체 평가액 중 그 종목 몫 · 점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가 · 연필을 누르면 목록에서 바로 고쳐요 · 왼쪽으로 밀면 지울 수 있어요")
+                Text("비중은 내 전체 평가액 중 그 종목 몫 · 점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 넣은 가격 기준 · 연필을 누르면 목록에서 바로 고쳐요 · 왼쪽으로 밀면 지울 수 있어요")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
@@ -306,13 +307,14 @@ struct HoldingDetailView: View {
                     VStack(spacing: 0) {
                         kv("보유 수량", h.qty.formatted() + "주")
                         kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv(sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
+                        kv(sym.currency == .krw ? (KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
                         kv(need > 0 ? "본전까지" : "본전 대비", need > 0.0005 ? "+" + String(format: "%.1f", need * 100) + "% 올라야 해요"
                            : need > -0.0005 ? "본전과 같아요" : "본전보다 " + String(format: "%.1f", -need * 100) + "% 위")
                         kv("비중", m.total > 0 ? AppModel.pct(val / m.total) : "-", last: sym.sector.isEmpty)
                         if !sym.sector.isEmpty { kv("업종", sym.sector, last: true) }
                     }
                 }
+                if sym.currency == .krw, let c = CustomSymbols.shared.saved(sym.id) { KRPriceCard(saved: c) }
                 if h.qty > 0 {
                     NavigationLink { HoldingEditView(sym: sym) } label: {
                         Label("수량·단가 고치기", systemImage: "pencil").appFont(15, .bold)
@@ -380,6 +382,58 @@ struct HoldingDetailView: View {
 
 // 종목 추가: 한글·영문·티커·종목 코드 검색 → 수량·평균 단가
 // 앱 안 목록(예시 종목 + 한글 이름 목록)은 바로, Yahoo 검색은 입력을 멈추면 아래에 더 붙는다 (StockSearch)
+/// 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄로. 0 이면 지운다 (웹 보유 종목 아래 칸과 같다)
+struct KoreaSumCard: View {
+    @Environment(AppModel.self) private var m
+    var done: (() -> Void)? = nil
+    @State private var t = ""
+    var body: some View {
+        let cur = CustomSymbols.shared.saved(KoreaEstimate.sumId)?.kp
+        Card {
+            Text("국내 주식 합계").appFont(15, .bold)
+            Text("증권사 앱의 국내 주식 평가액 합계를 넣어요. 바뀌면 이 금액만 고쳐요 (0이면 지움).")
+                .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                TextField(cur.map { Int($0.rounded()).formatted() + "원" } ?? "금액 (원)", text: $t).keyboardType(.decimalPad)
+                    .padding(.horizontal, 12).frame(minHeight: 44)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
+                Button("저장") {
+                    guard let v = Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v >= 0 else { return }
+                    let id = KoreaEstimate.sumId
+                    if v == 0 { m.holdings.removeAll { $0.symbol == id } }
+                    else {
+                        CustomSymbols.shared.setKoreaSum(v)
+                        if !m.holdings.contains(where: { $0.symbol == id }) { _ = m.addHolding(id, "1", String(v)) }
+                    }
+                    t = ""; done?()
+                }.appFont(15, .bold).foregroundStyle(Theme.teal).frame(minHeight: 44)
+            }
+        }
+    }
+}
+
+/// 한국 종목 가격 다시 넣기 (시세를 받지 않으므로 사용자가 넣은 가격으로 계산)
+struct KRPriceCard: View {
+    let saved: CustomSymbols.Saved
+    @State private var t = ""
+    var body: some View {
+        Card {
+            Text(saved.id == KoreaEstimate.sumId ? "국내 주식 합계" : "한국 종목 가격").appFont(15, .bold)
+            Text(KoreaEstimate.note(saved)).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                TextField(saved.id == KoreaEstimate.sumId ? "합계 금액 (원)" : "지금 가격 (원)", text: $t).keyboardType(.decimalPad)
+                    .padding(.horizontal, 12).frame(minHeight: 44)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
+                Button("저장") {
+                    if let v = Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v > 0 {
+                        CustomSymbols.shared.setPrice(saved.id, v); t = ""
+                    }
+                }.appFont(15, .bold).foregroundStyle(Theme.teal).frame(minHeight: 44)
+            }
+        }
+    }
+}
+
 struct AddHoldingView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.dismiss) private var dismiss
@@ -391,6 +445,7 @@ struct AddHoldingView: View {
     @State private var failed: String? = nil
     @State private var qty = ""
     @State private var avg = ""
+    @State private var kp = ""                        // 한국 종목: 지금 가격 (시세를 받지 않는다)
     @State private var warn = false
     @FocusState private var focus: Int?
 
@@ -423,7 +478,7 @@ struct AddHoldingView: View {
                         Text("찾는 종목이 없어요. 미국 주식·ETF와 코스피·코스닥 종목을 한글 이름, 영문 이름, 티커, 종목 코드로 찾을 수 있어요. 한글 이름은 자주 찾는 종목만 알아요.")
                             .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     }
-                    Text("시세는 테스트용 Yahoo 중계 자료예요. 미국 종목은 지금 가격, 한국 종목은 전일 종가예요.")
+                    Text("시세는 테스트용 Yahoo 중계 자료예요. 미국 종목은 지금 가격이에요. 한국 종목은 시세를 받지 않아 가격을 한 번 넣어요. 미국 지수를 따르는 국내 ETF는 그 뒤로 미국 ETF × 원/달러로 추정해요.")
                         .appFont(12).foregroundStyle(Theme.muted)
                 }
             }
@@ -457,12 +512,12 @@ struct AddHoldingView: View {
                         LogoTile(symbol: h.id, size: 32)
                         VStack(alignment: .leading) {
                             Text(h.name).appFont(15, .bold).lineLimit(1)
-                            Text("\(h.id) · \(h.market)").appFont(12).foregroundStyle(Theme.sub)
+                            Text("\(h.id) · \(h.market)\(KoreaEstimate.tag(h))").appFont(12).foregroundStyle(Theme.sub)
                         }
                         Spacer()
                         if loading == h.id { ProgressView() }
                         else if held { Text("보유 중").appFont(13, .semibold).foregroundStyle(Theme.muted) }
-                        else if let s = known(h) { Text(AppModel.price(s, s.last)).appFont(13, .semibold) }
+                        else if let s = known(h), s.last > 0 { Text(AppModel.price(s, s.last)).appFont(13, .semibold) }
                     }
                     .padding(.horizontal, 14).frame(minHeight: 56).contentShape(Rectangle())
                 }
@@ -494,7 +549,8 @@ struct AddHoldingView: View {
     }
     private func open(_ s: Symbol) {
         picked = s; qty = ""; warn = false
-        avg = s.currency == .usd ? String(format: "%.2f", s.last) : String(Int(s.last.rounded()))
+        avg = s.currency == .usd ? String(format: "%.2f", s.last) : ""
+        kp = s.currency == .krw && s.last > 0 ? String(Int(s.last.rounded())) : ""
     }
 
     private func form(_ p: Symbol) -> some View {
@@ -504,12 +560,26 @@ struct AddHoldingView: View {
                 Spacer()
                 Button("다른 종목") { picked = nil }.appFont(13, .semibold).foregroundStyle(Theme.teal)
             }
-            Text((p.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
+            if p.currency == .krw {
+                let pk = KoreaEstimate.info(id: p.id, name: p.name).proxy != nil
+                Text(pk ? "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 그 뒤로는 같은 미국 ETF × 원/달러 움직임으로 추정해요."
+                        : "한국 시세는 받지 않아요. 넣은 가격 그대로 계산하고, 움직임 예측은 한국 시장 평균(EWY × 원/달러)으로 해요.")
+                    .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                field("지금 가격 (원)", $kp).focused($focus, equals: 3)
+            } else {
+                Text((p.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
+            }
             field("수량 (주)", $qty).focused($focus, equals: 1)
-            field("평균 단가 (\(p.currency == .usd ? "달러" : "원"))", $avg).focused($focus, equals: 2)
-            if warn { Text("수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
+            field("평균 단가 (\(p.currency == .usd ? "달러" : "원, 비우면 지금 가격"))", $avg).focused($focus, equals: 2)
+            if warn { Text(p.currency == .krw ? "지금 가격과 수량을 0보다 큰 숫자로 넣어 주세요." : "수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
             PrimaryButton(title: "추가하기") {
                 focus = nil
+                if p.currency == .krw {
+                    guard let v = Double(kp.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v > 0 else { warn = true; return }
+                    CustomSymbols.shared.setPrice(p.id, v)
+                    if m.addHolding(p.id, qty, avg.trimmingCharacters(in: .whitespaces).isEmpty ? kp : avg) { dismiss() } else { warn = true }
+                    return
+                }
                 if m.addHolding(p.id, qty, avg) { dismiss() } else { warn = true }
             }
         }

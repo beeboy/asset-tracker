@@ -4,7 +4,7 @@ import Observation
 // 종목 찾기·추가 (테스트: 사이트가 쓰는 Yahoo 중계). 시세 계약(Tiingo 등)이 정해지면 Relay 만 바꾸면 된다.
 // - 찾기: 앱에 넣어 둔 한글 이름 목록(StockCatalog) + Yahoo 검색(영문 이름·티커·종목 코드). 미국 주식·ETF 와 코스피·코스닥만.
 // - 추가: 고르는 순간 3년 일별 종가를 받아 기기에 저장하고, 그 뒤로는 앱이 시세를 갱신할 때 같이 갱신한다.
-// - 미국 종목은 지금 가격, 한국 종목은 전일 종가 (시세 기준과 같음).
+// - 미국 종목은 지금 가격. 한국 종목은 시세를 받지 않고 사용자가 넣은 가격 하나로 계산한다 (KoreaEstimate).
 
 struct StockHit: Identifiable, Hashable {
     let id: String          // 앱 안의 이름: 미국은 티커, 한국은 6자리 코드
@@ -31,6 +31,76 @@ enum Relay {
     }
 }
 
+/// 한국 종목 (시세 계약 없음. 웹 app.js synthKR · data/kr_proxy.json 과 같은 규칙): 한국 가격은 받지 않고 사용자가 넣은 가격 하나에 맞춘다
+/// - 미국 지수를 따르는 국내 상장 ETF: 그 미국 ETF(SPY·QQQ 등) × 원/달러 움직임으로 오늘 가격을 추정 (환헤지 (H)면 환율 빼고)
+/// - 그 밖의 국내 종목은 종목별로 넣지 않는다. 국내 주식 합계 (시세 기준 화면에서 켠 경우만): 증권사 앱의 합계 금액 그대로,
+///   지난 움직임·변동성은 미국 상장 EWY(MSCI Korea) × 원/달러로 대신 (웹 KOREA.KS 줄과 같은 종목 KOREA)
+enum KoreaEstimate {
+    static let market = "EWY"
+    static let exclude = "레버리지|인버스|2X|커버드콜|액티브|Leverage|Inverse|Covered|Active"
+    static let hedged = "\\(H\\)|Hedged"
+    static let rules: [(match: String, proxy: String, label: String)] = [
+        ("S&P\\s?500|에스앤피500", "SPY", "S&P500"),
+        ("나스닥\\s?100|NASDAQ\\s?100", "QQQ", "나스닥100"),
+        ("배당다우존스|Dividend\\s?(Equity|Dow)", "SCHD", "미국 배당다우존스"),
+        ("필라델피아반도체|Philadelphia\\s?Semi|PHLX\\s?Semi", "SOXX", "필라델피아 반도체"),
+    ]
+    struct Info { let proxy: String?; let hedged: Bool; var base: String { proxy ?? KoreaEstimate.market } }
+
+    static func isKR(_ yahoo: String) -> Bool { let u = yahoo.uppercased(); return u.hasSuffix(".KS") || u.hasSuffix(".KQ") }
+    private static func has(_ re: String, _ s: String) -> Bool { s.range(of: re, options: [.regularExpression, .caseInsensitive]) != nil }
+    static func info(_ names: [String]) -> Info {
+        let t = names.joined(separator: " ")
+        guard !has(exclude, t), let r = rules.first(where: { has($0.match, t) }) else { return Info(proxy: nil, hedged: false) }
+        return Info(proxy: r.proxy, hedged: has(hedged, t))
+    }
+    static func info(id: String, name: String, en: String = "") -> Info {
+        let ko = StockCatalog.all.first { $0.id == id }
+        return info([name, en, ko?.name ?? "", ko?.en ?? ""])
+    }
+    /// 국내 주식 합계 한 줄 (사이트 KOREA.KS, 수량 1·가격 = 합계 금액)
+    static let sumId = "KOREA"
+    /// 국내 주식 합계 직접 입력 (숨긴 선택 항목, 시세 기준 화면)
+    static var direct: Bool {
+        get { UserDefaults.standard.bool(forKey: "krDirect") }
+        set { UserDefaults.standard.set(newValue, forKey: "krDirect") }
+    }
+    static func allowed(_ h: StockHit) -> Bool { h.currency == .usd || info(id: h.id, name: h.name, en: h.en).proxy != nil }
+    static func tag(_ h: StockHit) -> String { h.currency == .usd ? "" : " · 미국 지수로 추정" }
+    /// 내 한국 종목이 쓰는 사이트 티커 (SPY·EWY 등)
+    static func baseKeys(_ held: Set<String>) -> Set<String> {
+        Set(CustomSymbols.shared.items.filter { held.contains($0.id) && !$0.usd }.map { info(id: $0.id, name: $0.name).base })
+    }
+    /// 넣은 가격(원)과 날짜로 날짜별 가격을 만든다 (웹 synthKR 과 같은 식: 기준 종가 × 원/달러, 넣은 날 값이 넣은 가격이 되게)
+    static func synth(price: Double, date: String, info: Info) -> CustomSymbols.Hist? {
+        guard price > 0, let P = Market.shared.prices?.h, let base = P[info.base], !base.dates.isEmpty else { return nil }
+        let fx = P["KRW=X"]
+        var fm: [String: Double] = [:]
+        if let fx { for (d, v) in zip(fx.dates, fx.closes) { fm[d] = v } }
+        var f = fx?.closes.first ?? 1, dates: [String] = [], raw: [Double] = []
+        for (d, v) in zip(base.dates, base.closes) {
+            if let x = fm[d] { f = x }
+            if info.proxy == nil && d > date { continue }
+            dates.append(d); raw.append(v * (info.hedged ? 1 : f))
+        }
+        guard !dates.isEmpty else { return nil }
+        var j = dates.count - 1
+        while j > 0 && dates[j] > date { j -= 1 }
+        guard raw[j] > 0 else { return nil }
+        let k = price / raw[j]
+        return .init(dates: dates, closes: raw.map { $0 * k })
+    }
+    /// 종목 화면 설명
+    static func note(_ s: CustomSymbols.Saved) -> String {
+        let i = info(id: s.id, name: s.name), at = s.kd ?? ""
+        guard let p = s.kp else { return "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 계산해요." }
+        let won = Int(p.rounded()).formatted() + "원"
+        if s.id == sumId { return "\(at)에 넣은 합계 \(won) 그대로예요. 움직임 예측은 한국 시장 평균(\(i.base) × 원/달러)으로 해요." }
+        return i.proxy != nil ? "\(at)에 넣은 \(won)에서 \(i.base)\(i.hedged ? "" : " × 원/달러") 움직임으로 추정한 값이에요."
+            : "\(at)에 넣은 \(won) 그대로예요. 움직임 예측은 한국 시장 평균(\(i.base) × 원/달러)으로 해요."
+    }
+}
+
 enum StockSearch {
     private static let usEx: Set<String> = ["NMS", "NYQ", "NGM", "NCM", "PCX", "ASE", "BTS", "NAS", "NYS"]
 
@@ -50,7 +120,8 @@ enum StockSearch {
         if !k.isEmpty {
             for h in StockCatalog.all where norm("\(h.id)\(h.name)\(h.alias)\(h.en)").contains(k) { add(h) }
         }
-        return out
+        let mine = Set(CustomSymbols.shared.items.map(\.id))
+        return out.filter { mine.contains($0.id) || KoreaEstimate.allowed($0) }
     }
 
     /// Yahoo 검색 (한글은 못 찾는다)
@@ -74,7 +145,7 @@ enum StockSearch {
             guard usEx.contains(ex), !sym.contains(".") else { return nil }
             let ko = StockCatalog.all.first { $0.id == sym }
             return StockHit(id: sym, yahoo: sym, name: ko?.name ?? name, en: name, market: type == "ETF" ? "미국 ETF" : "미국 주식", currency: .usd)
-        }
+        }.filter(KoreaEstimate.allowed)
     }
 }
 
@@ -86,6 +157,7 @@ final class CustomSymbols {
     struct Saved: Codable, Hashable {
         let id: String, yahoo: String, name: String, market: String, usd: Bool
         var prev: Double, last: Double, at: Date
+        var kp: Double? = nil, kd: String? = nil     // 한국 종목: 사용자가 넣은 가격(원)과 그날
     }
     struct Hist: Codable { let dates: [String]; let closes: [Double] }
 
@@ -103,6 +175,8 @@ final class CustomSymbols {
     init() {
         if let d = try? Data(contentsOf: Self.file), let disk = try? JSONDecoder().decode(Disk.self, from: d) {
             items = disk.items; hist = disk.hist
+            // 한국 종목은 시세를 받지 않는다: 예전에 Yahoo 에서 받아 둔 종가는 버리고, 넣은 가격으로 다시 만든다 (rebuildKR)
+            for s in items where !s.usd { hist[s.id] = nil }
         }
     }
     /// 내 폰에 저장한 파일에서 불러오기: 같은 종목은 파일 값으로
@@ -132,6 +206,18 @@ final class CustomSymbols {
     /// 3년 종가를 받아 저장 (추가할 때). 실패하면 이유를 던진다
     @discardableResult
     func fetch(_ h: StockHit) async throws -> Symbol {
+        if h.currency == .krw {
+            // 한국 종목: 받지 않는다. 넣은 가격이 있으면 그 값으로 계산
+            return await MainActor.run {
+                let old = items.first { $0.id == h.id }
+                var s = Saved(id: h.id, yahoo: h.yahoo, name: h.name, market: h.market, usd: false, prev: 0, last: 0, at: Date())
+                s.kp = old?.kp; s.kd = old?.kd
+                items.removeAll { $0.id == h.id }
+                items.append(s)
+                rebuildKR(); save()
+                return symbol(items.first { $0.id == h.id } ?? s)
+            }
+        }
         let (q, hs) = try await Self.chart(h.yahoo, range: "3y")
         let s = Saved(id: h.id, yahoo: h.yahoo, name: h.name, market: h.market, usd: h.currency == .usd, prev: q.prev, last: q.last, at: Date())
         await MainActor.run {
@@ -147,7 +233,7 @@ final class CustomSymbols {
     func refresh(held: Set<String>, force: Bool = false) async {
         guard force || Date().timeIntervalSince(refreshedAt) > 300 else { return }
         refreshedAt = Date()
-        for s in items where held.contains(s.id) {
+        for s in items where held.contains(s.id) && s.usd {
             guard let (q, recent) = try? await Self.chart(s.yahoo, range: "5d") else { continue }
             await MainActor.run {
                 guard let i = items.firstIndex(where: { $0.id == s.id }) else { return }
@@ -161,7 +247,38 @@ final class CustomSymbols {
                 }
             }
         }
-        await MainActor.run { save() }   // 종목마다 전체를 다시 쓰지 않고 끝에 한 번만 저장
+        await MainActor.run { rebuildKR(); save() }   // 종목마다 전체를 다시 쓰지 않고 끝에 한 번만 저장
+    }
+
+    /// 한국 종목 가격 넣기 (date 없으면 오늘)
+    @MainActor
+    func setPrice(_ id: String, _ price: Double, date: String? = nil) {
+        guard price > 0, let i = items.firstIndex(where: { $0.id == id }) else { return }
+        items[i].kp = price; items[i].kd = date ?? Day.today
+        rebuildKR(); save()
+    }
+    func saved(_ id: String) -> Saved? { items.first { $0.id == id } }
+    /// 한국 종목에 넣은 가격이 바뀌면 바뀌는 값 (기기 동기화가 이것도 보낸다)
+    var krStamp: String { items.filter { !$0.usd }.map { "\($0.id)=\($0.kp ?? 0)@\($0.kd ?? "")" }.joined(separator: ",") }
+    /// 국내 주식 합계 금액 넣기 (없으면 만든다)
+    @MainActor
+    func setKoreaSum(_ won: Double) {
+        let id = KoreaEstimate.sumId
+        if !items.contains(where: { $0.id == id }) {
+            items.append(Saved(id: id, yahoo: id + ".KS", name: "국내 주식 합계", market: "국내 주식", usd: false, prev: 0, last: 0, at: Date()))
+        }
+        setPrice(id, won)
+    }
+    /// 한국 종목의 날짜별 가격·지금 값을 넣은 가격과 사이트 미국 종가로 다시 만든다
+    func rebuildKR() {
+        for i in items.indices where !items[i].usd {
+            let s = items[i]
+            if let p = s.kp, let h = KoreaEstimate.synth(price: p, date: s.kd ?? Day.today, info: KoreaEstimate.info(id: s.id, name: s.name)) {
+                hist[s.id] = h; items[i].last = h.closes.last ?? p; items[i].prev = items[i].last   // 전일 대비는 없음 (웹과 같다)
+            } else {
+                hist[s.id] = nil; items[i].last = s.kp ?? 0; items[i].prev = items[i].last
+            }
+        }
     }
 
     /// Yahoo 일별 차트: (지금 가격·전일 종가, 날짜별 종가)

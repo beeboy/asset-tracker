@@ -131,7 +131,13 @@
     for (const [k, p] of Object.entries(P || {})) { const c = p.close || []; for (let i = c.length - 1; i >= 0; i--) if (c[i] > 0) { out[k] = c[i]; break; } }
     return out;
   }
+  // 불러온 뒤 한국 종목 추정 시세를 만든다 (규칙 파일은 처음 한 번)
   async function reload() {
+    await reloadData();
+    if (!S.krRules) S.krRules = await fetch("../data/kr_proxy.json", { cache: "no-cache" }).then((r) => r.json()).catch(() => ({}));
+    synthKR();
+  }
+  async function reloadData() {
     if (MODE === "local") {
       try {
         const d = await api("/api/data");
@@ -340,7 +346,7 @@
 
   // ------------------------------------------------------------ 평가
   const fxOf = (ccy) => (!ccy || ccy === "KRW" ? null : ccy === "USD" ? "KRW=X" : ccy + "KRW=X");
-  const ccyOf = (t) => S.prices[t]?.currency || S.quotes[t]?.currency || "USD";
+  const ccyOf = (t) => (isKR(t) ? "KRW" : S.prices[t]?.currency || S.quotes[t]?.currency || "USD");
   const lastOf = (sym) => { const p = S.prices[sym]; return p && p.close.length ? { v: p.close[p.close.length - 1], d: p.dates[p.dates.length - 1] } : null; };
   function fxNow(ccy) {
     const s = fxOf(ccy); if (!s) return 1;
@@ -355,7 +361,7 @@
     try { const r = await fetch(base.replace(/\/$/, "") + "/mar"); const j = await r.json(); if (j?.USD?.rate > 0 && (!S.mar?.USD?.date || j.USD.date > S.mar.USD.date)) { S.mar = j; renderAll(); } } catch (e) { /* 기존 환율 유지 */ }
   }
   function curPrice(h) {
-    if (S.state?.ui?.manual_price && h.price != null && h.price !== "" && Number(h.price) > 0) return { v: Number(h.price), src: "manual" };
+    if (S.state?.ui?.manual_price && !isKR(h.ticker) && h.price != null && h.price !== "" && Number(h.price) > 0) return { v: Number(h.price), src: "manual" };
     const q = S.quotes[h.ticker], l = lastOf(h.ticker);
     if (q && q.last && (!l || (q.last_time || 0) * 1000 >= Date.parse(l.d))) return { v: q.last, src: q.last_session || "regular", t: q.last_time };
     if (l) return { v: l.v, src: "close", d: l.d };
@@ -432,7 +438,7 @@
     const last = $("#logLast"); if (last) last.textContent = "· " + div.textContent.trim(); // 접힌 채로도 마지막 줄은 보이게
   }
   function symbolsToCollect(list) {
-    const ts = list || S.state.holdings.map((h) => h.ticker);
+    const ts = (list || S.state.holdings.map((h) => h.ticker)).filter((t) => !isKR(t));
     const fx = new Set(["KRW=X"]); ts.forEach((t) => { const f = fxOf(ccyOf(t)); if (f) fx.add(f); });
     return [...new Set([...ts, ...fx, ...(list ? [] : FACTOR_SYMS)])];
   }
@@ -530,6 +536,8 @@
   function mergeExtra() {
     const x = loadExtra();
     if ([...PURGED].some((k) => x.prices[k] || x.quotes[k])) { PURGED.forEach((k) => { delete x.prices[k]; delete x.quotes[k]; }); saveExtra(x); }
+    // 한국 종목은 시세를 받지 않는다 (계약 없음): 예전에 이 브라우저가 Yahoo 에서 받아 둔 값도 지운다
+    if (Object.keys(x.prices).concat(Object.keys(x.quotes)).some(isKR)) { for (const k of Object.keys(x.prices)) if (isKR(k)) delete x.prices[k]; for (const k of Object.keys(x.quotes)) if (isKR(k)) delete x.quotes[k]; saveExtra(x); }
     for (const [k, p] of Object.entries(x.prices)) { const cur = S.prices[k]; if (!cur || (p.dates.at(-1) || "") > (cur.dates.at(-1) || "")) S.prices[k] = p; }
     for (const [k, q] of Object.entries(x.quotes)) { if (!S.quotes[k] || (q.last_time || 0) > (S.quotes[k].last_time || 0)) S.quotes[k] = q; }
   }
@@ -537,7 +545,8 @@
   async function browserCollect(newSyms) {
     if (bBusy) return; bBusy = true;
     const btns = [$("#btnCollect")]; btns.forEach((b) => b && (b.disabled = true));
-    const x = loadExtra(), held = S.state.holdings.map((h) => h.ticker);
+    const x = loadExtra(), held = S.state.holdings.map((h) => h.ticker).filter((t) => !isKR(t));
+    newSyms = newSyms.filter((t) => !isKR(t));
     const need = [...new Set([...newSyms, ...held.filter((t) => !S.prices[t])])];
     let ok = 0, bad = [];
     logLine(`시세 받는 중: ${esc([...new Set([...need, ...held])].join(", "))}`, true, true);
@@ -559,7 +568,7 @@
   function missingTickers() {
     if (MODE !== "static") return [];
     const have = new Set((S.tickerCfg?.tickers || []).map((t) => t.toUpperCase()));
-    return S.state.holdings.map((h) => h.ticker).filter((t) => !have.has(t) && !S.prices[t]);
+    return S.state.holdings.map((h) => h.ticker).filter((t) => !isKR(t) && !have.has(t) && !S.prices[t]);
   }
   async function collectStatic(manual) {
     // 개발자용 토큰이 있어도 내 보유 종목 시세는 브라우저에서 바로 받는다.
@@ -620,6 +629,9 @@
   };
   function renderQuotes() {
     const { rows, total } = valuation();
+    const ks = S.state.holdings.find((h) => h.ticker === KR_SUM);
+    $("#krSumRow").hidden = !S.state.ui.kr_direct && !ks;
+    if (document.activeElement !== $("#krSum")) $("#krSum").value = ks ? nf(Number(ks.price)) : "";
     const fx = fxNow("USD"), fq = S.quotes["KRW=X"];
     $("#fxLine").textContent = `원/달러 ${nf(fx, 2)}${fq?.last_time ? " (" + dtStr(fq.last_time * 1000) + ")" : ""}`;
     const adv = !!S.state.ui.manual_price, hasPl = rows.some((r) => r.pl != null); // 매수 단가가 하나도 없으면 손익 칸은 숨김
@@ -637,11 +649,11 @@
       const pl = r.pl != null ? `<span class="${cls(r.pl)}" title="${nf(r.pl, 0)} ${r.ccy}">${spct(r.plPct, 0)}</span><br><span class="muted small">${krw(r.pl * (r.fx || 1))}</span>` : `<span class="muted">-</span>`;
       // 수량·단가는 글자로만 보인다. 누르면 ✎ 와 같이 그 줄 아래에 고치기 칸이 펼쳐진다 (산 것·판 것을 구분해 남기려고)
       return `<tr data-i="${i}"${open ? ' class="hon"' : ""}>
-        <td class="l tkc">${logo(r.h.ticker, r.name)}<b>${esc(r.h.ticker)}</b></td>
-        <td class="hnum" data-pen="${i}">${r.sh ? r.sh.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) : '<span class="muted">수량 없음</span>'}</td>
+        <td class="l tkc">${logo(r.h.ticker, r.name)}<b>${esc(isKR(r.h.ticker) ? r.h.name || r.name || codeOf(r.h.ticker) : r.h.ticker)}</b></td>
+        <td class="hnum"${r.h.ticker === KR_SUM ? "><span class='muted'>합계</span>" : ` data-pen="${i}">`}${r.h.ticker === KR_SUM ? "" : r.sh ? r.sh.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) : '<span class="muted">수량 없음</span>'}</td>
         <td class="hnum" data-pen="${i}">${r.avg ? nf(r.avg, 2) : '<span class="muted">-</span>'}</td>
-        <td>${p.v != null ? nf(p.v, 2) + " <span class='muted small'>" + r.ccy + "</span>" : "-"}${tag}<br><b>${krw(r.valueKrw)}</b></td>
-        ${adv ? `<td><input data-f="price" type="text" inputmode="decimal" placeholder="자동" value="${r.h.price ?? ""}">${warn}</td>` : ""}
+        <td>${isKR(r.h.ticker) ? krCell(r) : `${p.v != null ? nf(p.v, 2) + " <span class='muted small'>" + r.ccy + "</span>" : "-"}${tag}<br><b>${krw(r.valueKrw)}</b>`}</td>
+        ${adv && isKR(r.h.ticker) ? "<td></td>" : adv ? `<td><input data-f="price" type="text" inputmode="decimal" placeholder="자동" value="${r.h.price ?? ""}">${warn}</td>` : ""}
         <td>${pct(r.w, 0)}<br><span class="${cls(r.dayChg)}">${spct(r.dayChg, 1)}</span></td>${hasPl ? `<td>${pl}</td>` : ""}<td class="hbtn"><button class="x pen${open ? " on" : ""}" data-pen="${i}" title="수량·단가 고치기">✎</button><button class="danger x" data-del="${i}" title="이 종목 삭제">✕</button></td></tr>` +
         (open ? holdEditRow(r, cols) : "");
     }).join("");
@@ -649,6 +661,14 @@
     const foot = `<tr><td class="l"><b>합계</b></td><td></td><td></td><td><b>${krw(total)}</b></td>${adv ? "<td></td>" : ""}<td>100%</td>${hasPl ? `<td><span class="${cls(plTot)}">${krw(plTot)}</span></td>` : ""}<td></td></tr>`;
     $("#holdTable").innerHTML = head + body + foot;
     renderTrades();
+  }
+  // 한국 종목 현재가 칸: 넣은 가격 하나로 계산 (추정·입력 표시). 가격은 언제든 다시 넣을 수 있다
+  function krCell(r) {
+    const P = S.prices[r.h.ticker], inp = (ph) => `<input data-f="kprice" type="text" inputmode="decimal" placeholder="${ph}" size="8">`;
+    if (!P || r.p.v == null) return `${inp("지금 가격(원)")}<br><span class="muted small">한국 시세는 받지 않아요. 가격을 한 번 넣으면 계산해요</span>`;
+    if (r.h.ticker === KR_SUM) return `<span class="tag" title="${esc(`${r.h.price_date || ""}에 넣은 합계 금액 그대로예요. 움직임 예측은 한국 시장 평균(${P.basis} × 원/달러)으로 해요`)}">입력</span><br><b>${krw(r.valueKrw)}</b><br>${inp("합계 다시 넣기")}`;
+    const tip = P.est === "proxy" ? `${r.h.price_date || ""}에 넣은 ${nf(Number(r.h.price))}원에서 ${P.basis}${P.hedged ? "" : " × 원/달러"} 움직임으로 추정한 값이에요` : `${r.h.price_date || ""}에 넣은 가격 그대로예요. 움직임 예측은 한국 시장 평균(${P.basis})으로 해요`;
+    return `${nf(r.p.v, 0)} <span class='muted small'>KRW</span><span class="tag" title="${esc(tip)}">${P.est === "proxy" ? "추정" : "입력"}</span><br><b>${krw(r.valueKrw)}</b><br>${inp("가격 다시 넣기")}`;
   }
   // ✎ 고치기: 직접 고치기(오타·처음 입력, 매매로 세지 않음) / 더 샀어요 / 팔았어요 (iOS HoldingEdit 와 같은 계산)
   const HOLD_MODES = { fix: "직접 고치기", buy: "더 샀어요", sell: "팔았어요" };
@@ -719,6 +739,11 @@
     }
     const tr = e.target.closest("tr[data-i]"); if (!tr) return;
     const h = S.state.holdings[+tr.dataset.i], f = e.target.dataset.f; if (!f) return;
+    if (f === "kprice") {
+      if (e.type !== "change") return;
+      const v = parseDec(e.target.value); if (!(v > 0)) return;
+      h.price = v; h.price_date = today(); synthKR(); markDirty(); save(); setTimeout(renderAll, 0); return; // 입력칸이 바뀌는 중에 표를 다시 그리지 않게
+    }
     if (S.state.sample && f !== "note") endSample(true);
     if (f === "note") h.note = e.target.value;
     else { const v = parseDec(e.target.value); if (v === undefined) return; h[f] = v; }
@@ -735,11 +760,50 @@
   }
   // 새 종목: 그 종목 분기 실적 사건을 함께 넣는다 (날짜는 1·4·7·10월 하순으로 추정). 지수·현금성 ETF 는 제외
   function addEarnEvent(t) {
-    if (INS_SKIP.has(t) || t.includes("=") || S.state.events.some((e) => e.target === t && /실적/.test(e.kind))) return;
+    if (INS_SKIP.has(t) || isKR(t) || t.includes("=") || S.state.events.some((e) => e.target === t && /실적/.test(e.kind))) return;
     const d = new Date(today()); let y = d.getFullYear(), m = [0, 3, 6, 9].find((k) => k > d.getMonth() || (k === d.getMonth() && d.getDate() < 25));
     if (m == null) { m = 0; y++; }
     S.state.events.push({ id: "auto_" + t, on: true, date: `${y}-${String(m + 1).padStart(2, "0")}-25`, target: t, kind: "실적", cat: "corp", repeat: "quarterly", prob: 100, mean: 0, sd: 8, vol_mult: 1, vol_days: 0, note: "분기 실적 (날짜 추정)" });
   }
+  // 한국 종목 (시세 계약 없음, data/kr_proxy.json · iOS KoreaEstimate 와 같은 규칙): 한국 가격은 받지 않고 사용자가 넣은 가격 하나에 맞춘다
+  //  · 미국 지수를 따르는 국내 상장 ETF: 그 미국 ETF(SPY·QQQ 등) × 원/달러 움직임으로 오늘 가격을 추정 (환헤지 (H)면 환율 빼고)
+  //  · 그 밖의 국내 종목 (설정에서 켠 경우만 추가): 넣은 가격 그대로. 지난 움직임·변동성은 미국 상장 EWY(MSCI Korea) × 원/달러로 대신
+  const isKR = (t) => /\.(KS|KQ)$/i.test(t || "");
+  function krInfo(t, names) {
+    const R = S.krRules || {}, txt = names.filter(Boolean).join(" "), re = (x) => x && new RegExp(x, "i");
+    const rule = R.exclude && re(R.exclude).test(txt) ? null : (R.rules || []).find((r) => re(r.match).test(txt));
+    return rule ? { proxy: rule.proxy, label: rule.label, hedged: !!(R.hedged && re(R.hedged).test(txt)) } : { proxy: null, market: R.market || "EWY" };
+  }
+  const krOf = (h) => krInfo(h.ticker, [h.name, koOf(h.ticker)?.k, koOf(h.ticker)?.e]);
+  const krOk = (o) => !isKR(o.s) || !!krInfo(o.s, [o.k, o.e]).proxy;
+  // 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄(수량 1, 가격 = 금액)로. 움직임 예측은 한국 시장 평균
+  const KR_SUM = "KOREA.KS";
+  function setKrSum(v) {
+    const i = S.state.holdings.findIndex((h) => h.ticker === KR_SUM);
+    if (!(v > 0)) { if (i >= 0) S.state.holdings.splice(i, 1); }
+    else if (i >= 0) Object.assign(S.state.holdings[i], { price: v, price_date: today() });
+    else { endSample(false); S.state.holdings.push({ ticker: KR_SUM, shares: 1, price: v, price_date: today(), avg_cost: null, note: "", name: "국내 주식 합계" }); }
+    synthKR(); markDirty(); save(); renderAll();
+  }
+  function synthKR() {
+    for (const k of Object.keys(S.prices)) if (isKR(k)) delete S.prices[k];
+    const fx = S.prices["KRW=X"];
+    for (const h of S.state?.holdings || []) {
+      if (!isKR(h.ticker) || !(Number(h.price) > 0)) continue;
+      const info = krOf(h), base = S.prices[info.proxy || info.market], a = h.price_date || today(), px = Number(h.price);
+      // 기준 시세가 아직 없으면 (새로 넣은 EWY·SCHD·SOXX 첫 수집 전) 넣은 가격 하나만 (앱 rebuildKR 과 같다)
+      if (!base || !base.dates.length) { S.prices[h.ticker] = { symbol: h.ticker, currency: "KRW", name: h.name || koOf(h.ticker)?.k || h.ticker, dates: [a], close: [px], adj: [px], est: "input", basis: info.proxy || info.market, hedged: info.hedged }; continue; }
+      // 가격(close): 기준 종가 × 원/달러, 넣은 날 값 = 넣은 가격. 직접 입력 종목은 넣은 날 뒤로 넣은 가격 그대로
+      // 수익률(adj): 기준 수정 종가 × 원/달러 (전망·지난 움직임). 사이트 stats.json 의 KR~SPY 등과 같은 값
+      const C = Model.krSeries(base, fx, info.hedged, "close"), A = Model.krSeries(base, fx, info.hedged, "adj"), dates = C.dates;
+      let j = dates.length - 1; while (j > 0 && dates[j] > a) j--;
+      if (!(C.vals[j] > 0) || !(A.vals[j] > 0)) continue;
+      const kc = px / C.vals[j], ka = px / A.vals[j];
+      const close = C.vals.map((v, i) => (!info.proxy && i > j ? px : v == null ? null : v * kc)), adj = A.vals.map((v) => (v == null ? null : v * ka));
+      S.prices[h.ticker] = { symbol: h.ticker, currency: "KRW", name: h.name || koOf(h.ticker)?.k || h.ticker, dates, close, adj, est: info.proxy ? "proxy" : "input", basis: info.proxy || info.market, hedged: info.hedged };
+    }
+  }
+
   // 종목 찾기 (iOS 앱과 같은 방식): 앱의 한글 이름 목록(stocks.js) + Yahoo 검색(영문 이름·티커·종목 코드). 미국 주식·ETF 와 코스피·코스닥만
   const STOCKS = window.STOCKS || [];
   const US_EX = new Set(["NMS", "NYQ", "NGM", "NCM", "PCX", "ASE", "BTS", "NAS", "NYS"]);
@@ -753,7 +817,7 @@
       const keys = [o.s, codeOf(o.s), o.k, o.a, o.e].map(snorm);
       return keys.includes(k) ? 0 : keys.some((x) => x.startsWith(k)) ? 1 : keys.some((x) => x.includes(k)) ? 2 : 9;
     };
-    return STOCKS.map((o) => [rank(o), o]).filter((x) => x[0] < 9).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+    return STOCKS.map((o) => [rank(o), o]).filter((x) => x[0] < 9 && krOk(x[1])).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   }
   // Yahoo 검색 (한글은 못 찾는다). 중계 순서는 시세와 같다
   async function stockRemote(q) {
@@ -772,7 +836,7 @@
           if (/\.(KS|KQ)$/.test(sym)) { const ko = koOf(sym); return { s: sym, k: ko?.k || name, e: name, m: (sym.endsWith(".KS") ? "코스피" : "코스닥") + (type === "ETF" ? " ETF" : "") }; }
           if (!US_EX.has(x.exchange) || sym.includes(".")) return null;
           const ko = koOf(sym); return { s: sym, k: ko?.k || name, e: name, m: type === "ETF" ? "미국 ETF" : "미국 주식" };
-        }).filter(Boolean);
+        }).filter((o) => o && krOk(o));
       } catch (e) { /* 다음 중계 */ } finally { clearTimeout(t); }
     }
     return [];
@@ -785,7 +849,7 @@
     box.hidden = false;
     box.innerHTML = sug.list.map((o, i) => {
       const t = o.s.endsWith(".KS") || o.s.endsWith(".KQ") ? codeOf(o.s) : o.s, sub = o.e && o.e !== o.k ? o.e : "";
-      return `<button type="button" role="option" data-i="${i}" class="${i === sug.i ? "on" : ""}"><b>${esc(o.k)}</b> <span class="muted">${esc(t)} · ${esc(o.m)}</span>${sub ? `<br><span class="muted small">${esc(sub)}</span>` : ""}</button>`;
+      return `<button type="button" role="option" data-i="${i}" class="${i === sug.i ? "on" : ""}"><b>${esc(o.k)}</b> <span class="muted">${esc(t)} · ${esc(o.m)}${isKR(o.s) ? (krInfo(o.s, [o.k, o.e]).proxy ? " · 미국 지수로 추정" : " · 가격 직접 입력") : ""}</span>${sub ? `<br><span class="muted small">${esc(sub)}</span>` : ""}</button>`;
     }).join("");
   }
   function sugUpdate() {
@@ -801,7 +865,7 @@
     }, 300);
   }
   function sugPick(o) {
-    $("#addTicker").value = o.s; sug.list = []; sug.seq++; sugRender();
+    S.picked = o; $("#addTicker").value = o.s; sug.list = []; sug.seq++; sugRender();
     $("#addShares").focus();
   }
   // 고르지 않고 바로 '종목 추가'를 누른 경우: 이름·종목 코드를 Yahoo 기호로 바꾼다
@@ -820,6 +884,8 @@
     const t = await resolveTicker(raw), sh = parseDec($("#addShares").value), avg = parseDec($("#addAvg").value);
     if (!t) return toast(raw.trim() ? "종목을 찾지 못했습니다. 목록에서 골라 주세요" : "종목을 넣어 주세요");
     if (!(sh > 0)) return toast("수량을 넣어 주세요");
+    const pk = S.picked && S.picked.s === t ? S.picked : koOf(t); S.picked = null;
+    if (isKR(t) && !krOk({ s: t, k: pk?.k, e: pk?.e })) return toast("국내 개별 종목은 설정 > 표시 옵션의 '국내 주식 합계 직접 입력'을 켜고 합계 금액으로 넣어 주세요");
     endSample(false);
     const ex = S.state.holdings.find((h) => h.ticker === t);
     if (ex) {
@@ -828,9 +894,10 @@
       if (avg > 0) ex.avg_cost = Number(ex.avg_cost) > 0 && old > 0 ? (Number(ex.avg_cost) * old + avg * sh) / (old + sh) : avg;
       ex.shares = old + sh; toast(`${t} 수량을 더했습니다`);
     }
-    else { S.state.holdings.push({ ticker: t, shares: sh, price: null, avg_cost: avg || null, note: "" }); addEarnEvent(t); }
+    else { S.state.holdings.push({ ticker: t, shares: sh, price: null, avg_cost: avg || null, note: "", ...(isKR(t) ? { name: pk?.k || pk?.e || "" } : {}) }); addEarnEvent(t); }
     $("#addTicker").value = $("#addShares").value = $("#addAvg").value = "";
     save(); renderAll();
+    if (isKR(t)) { if (!S.prices[t]) { showTab("stocks"); toast("한국 시세는 받지 않아요. 표에 지금 가격을 한 번 넣어 주세요"); $("#holdTable [data-f='kprice']")?.focus(); } return; }
     if (!S.prices[t]) {
       if (MODE === "static") {
         showTab("stocks");
@@ -1529,7 +1596,7 @@
   const FC_KEY = "naeilo-forecast";
   // 전망 기준 가격: 직접 넣은 현재가 > 사이트 마지막 종가 > 지금 시세
   const snapPx = (r) => (r.p.src === "manual" || !(S.siteClose?.[r.h.ticker] > 0) ? r.p.v : S.siteClose[r.h.ticker]);
-  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares, S.siteClose?.[h.ticker] ?? null]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, cashKrw(), fxBase("USD")]));
+  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares, S.siteClose?.[h.ticker] ?? (isKR(h.ticker) ? [h.price, h.price_date] : null)]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, cashKrw(), fxBase("USD")]));
   function fcStore() {
     const L = lastForecast; if (!L) return;
     const strip = (k, v) => (k === "raw" || k === "term" ? undefined : v);
@@ -2935,7 +3002,7 @@
     if (mode !== "stock") $("#diaNote").innerHTML = `<b>${nf(f)}칸</b> 채움 / ${nf(N)}칸 · ${d ? `<span class="${cls(d)}">어제보다 ${d > 0 ? "+" : ""}${d}칸</span> · ` : ""}목표까지 ${nf(N - f)}칸` + (mode === "spiral" ? " · 바깥에서 안쪽 ★으로" : "");
   }
   function renderAll() {
-    renderHeader(); renderQuotes(); renderGoalInputs(); renderEvents(); renderSettings(); renderPrem();
+    synthKR(); renderHeader(); renderQuotes(); renderGoalInputs(); renderEvents(); renderSettings(); renderPrem();
     if (onTab("dash")) renderDash();
     if (onTab("forecast")) renderForecastTab();
     if (onTab("stocks")) renderStocksTab();
@@ -3020,6 +3087,8 @@
     $("#holdTable").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset.e) holdEditSave(); else if (e.key === "Escape" && S.holdEdit) { S.holdEdit = null; renderQuotes(); } });
     $("#holdSort").onchange = (e) => { S.state.ui.hold_sort = e.target.value; save(false); renderQuotes(); };
     $("#btnAdd").onclick = addHolding;
+    $("#btnKrSum").onclick = () => { const v = parseDec($("#krSum").value); setKrSum(v > 0 ? v : 0); $("#krSum").blur(); toast(v > 0 ? "국내 주식 합계를 넣었어요" : "국내 주식 합계를 지웠어요"); };
+    $("#krSum").addEventListener("keydown", (e) => e.key === "Enter" && $("#btnKrSum").click());
     $("#addTicker").addEventListener("input", sugUpdate);
     // 한글 입력 중 엔터: 글자 조합이 끝난 뒤에 고른다 (먼저 수량 칸으로 옮기면 마지막 글자가 그쪽에 들어간다)
     let enterAfterIme = false;
@@ -3086,6 +3155,8 @@
     $("#btnResetModel").onclick = (e) => { if (armed(e.target)) { S.state.model = { ...DEFAULT_MODEL }; save(); renderSettings(); } };
     $("#optManual").checked = !!S.state.ui.manual_price;
     $("#optManual").onchange = (e) => { S.state.ui.manual_price = e.target.checked; save(); renderAll(); };
+    $("#optKrDirect").checked = !!S.state.ui.kr_direct;
+    $("#optKrDirect").onchange = (e) => { S.state.ui.kr_direct = e.target.checked; save(false); renderQuotes(); };
     $("#btnExport").onclick = () => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([JSON.stringify({ ...S.state, beyora: bvExport() }, null, 1)], { type: "application/json" }));

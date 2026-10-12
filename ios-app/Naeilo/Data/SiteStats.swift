@@ -36,9 +36,19 @@ enum SiteStats {
         return Sample.symbol(id).map { CustomSymbols.yahoo(for: $0) } ?? id
     }
 
+    /// 전망 계산용 사이트 티커: 한국 종목은 기준 미국 ETF 의 원화 환산 묶음 KR~SPY (환헤지면 KR~SPY~H, 직접 입력 종목은 KR~EWY).
+    /// tools/site_stats.mjs 가 만들고, 웹 synthKR 의 종목 시세와 같은 수익률이다 (KoreaEstimate)
+    static func mcKey(_ id: String) -> String {
+        if let c = CustomSymbols.shared.saved(id), !c.usd {
+            let i = KoreaEstimate.info(id: id, name: c.name)
+            return "KR~" + i.base + (i.hedged ? "~H" : "")
+        }
+        return key(id)
+    }
+
     /// (현재 정세 연 기대, 과거 추세 연 기대, 연 변동성). 사이트 값 → 앱에 넣은 예시 표 → 웹이 모르는 종목에 쓰는 기본값
     static func params(_ id: String, _ f: File? = Market.shared.stats) -> (Double, Double, Double) {
-        if let t = f?.tickers[key(id)], let mu = t.mu, let vol = t.vol { return (mu, t.trend ?? mu, vol) }
+        if let t = f?.tickers[mcKey(id)], let mu = t.mu, let vol = t.vol { return (mu, t.trend ?? mu, vol) }
         if let p = Sample.lensParams[id] { return p }
         let d = f?.defaults ?? D(mu: 0.10, vol: 0.40, corr: 0.3)
         return (d.mu, d.mu, d.vol)
