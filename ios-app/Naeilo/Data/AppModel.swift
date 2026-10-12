@@ -225,6 +225,12 @@ final class AppModel {
         }
     }
     var total: Double { rows.reduce(0) { $0 + $1.value } }
+    /// 사이트에 넣은 현금 (원화 + 달러 × 매매기준율, 웹 cashKrw 와 같다). 앱에는 입력 칸이 없고 동기화로 받은 값만. 샘플·회복 루트는 0
+    var cashKrw: Double {
+        guard isGoal, route != .novice, !isSample else { return 0 }
+        let c = Sync.shared.siteCash
+        return c.krw + c.usd * Market.shared.valFx
+    }
     var cost: Double { rows.reduce(0) { $0 + $1.cost } }
     var ret: Double { cost > 0 ? total / cost - 1 : 0 }
     /// 회복 루트의 '몰린 종목' 비중 (내 평가액이 가장 큰 종목, Recovery.swift focusRow)
@@ -560,17 +566,29 @@ final class AppModel {
         }
     }
     var forecastTitle: String { isGoal ? "목표일 전망" : "3년 전망" }
+    /// 몬테카를로에 넣는 목표: 웹처럼 현금은 그대로 있다고 보고 목표에서 뺀다 (전망 경로는 종목만)
+    var mcGoal: Double { isGoal ? max(1, keyValue - cashKrw) : keyValue }
     /// 전망 끝날: 목표 루트는 목표일, 회복 루트는 3년 뒤 (웹: 목표일)
     var forecastHorizon: String { isGoal ? Day.str(goalToDate) : MC.addMonths(Day.today, 36) }
 
     /// 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 nil (닫힌 식만)
     var forecastJob: ForecastEngine.Job? {
         let rs = rows, today = Day.today, H = forecastHorizon
-        guard route != .novice, !rs.isEmpty, H > today, let inp = mcInputs else { return nil }
-        let hs = rs.map { MC.Holding(key: SiteStats.key($0.id), ccy: $0.sym.currency == .usd ? "USD" : "KRW", valueKrw: $0.value, price0: $0.sym.last) }
+        guard route != .novice, !rs.isEmpty, H > today, let inp = mcInputs(full: true) else { return nil }
+        // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
+        // 사이트에 없는 종목은 지금 가격
+        // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
+        let px = rs.map { r -> Double in
+            if r.id != "DRNK", let c = Market.shared.prices?.h[SiteStats.key(r.id)]?.closes.last, c > 0 { return c }
+            let q = r.sym.quote
+            return q.prevClose > 0 ? q.prevClose : q.last
+        }
+        let fx0 = Market.shared.marRate ?? Market.shared.fx.prevClose
+        let hs = zip(rs, px).map { r, p in MC.Holding(key: SiteStats.key(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", valueKrw: r.h.qty * p * (r.sym.currency == .usd ? fx0 : 1), price0: p) }
         let st = inp.st, settings = inp.settings, events = inp.events
-        let key = [today, H, rs.map { "\(SiteStats.key($0.id)):\($0.h.qty)" }.joined(separator: ","), inp.sig].joined(separator: "|")
-        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: keyValue, monthly: monthly * 1e4)
+        let snap = zip(rs, px).map { "\(SiteStats.key($0.id)):\($0.h.qty):\($1)" }.joined(separator: ",")
+        let key = [today, H, snap, String(fx0), inp.sig].joined(separator: "|")
+        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: monthly * 1e4)
     }
 
     var forecast: Forecast {
@@ -580,10 +598,10 @@ final class AppModel {
         eng.ensure(job)
         let lensKey = lens == .base ? "base" : lens == .smooth ? "smooth" : "mine"
         guard let run = eng.run, run.key == job.key,
-              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: keyValue, monthly: monthly * 1e4, withEvents: shock) else { return cf }
+              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: mcGoal, monthly: monthly * 1e4, withEvents: shock) else { return cf }
         let sim = run.ev, s0 = MC.dayNum(sim.start)
         let tY = sim.monthDates.map { Double(MC.dayNum($0) - s0) / 365.25 }
-        let dates = sim.monthDates, cum = r.cumHit, V0 = r.V0, K = keyValue
+        let dates = sim.monthDates, cum = r.cumHit, V0 = r.V0, K = mcGoal
         // 연 기대 (웹 portMu): 계산 때 평가액 비중으로 종목 기대수익을 더한다
         let fs = run.factors.prefix(sim.A), w = sim.v0.map { $0 / max(1, V0) }
         let wsum = { (f: (MC.Factor) -> Double) in zip(fs, w).reduce(0) { $0 + $1.1 * f($1.0) } }

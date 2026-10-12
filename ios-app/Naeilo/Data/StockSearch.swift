@@ -200,9 +200,14 @@ final class CustomSymbols {
 
 /// 가격 흐름: 앱에 넣은 테스트 자료가 먼저, 없으면 추가한 종목의 저장값
 enum PriceHistory {
+    /// 지난 종가: 사이트 파일(웹과 같은 자료)과 이 기기가 직접 받은 값 중 마지막 날이 늦은 쪽 (웹 mergeExtra 와 같은 규칙).
+    /// 둘 다 없으면 빌드 때 넣은 파일. 가상 종목 DRNK 는 샘플 흐름을 따로 쓴다
     static func of(_ id: String) -> YahooSample.Hist? {
-        if let h = YahooSample.history[id] { return h }
-        if let h = CustomSymbols.shared.hist[id], h.closes.count > 1 { return YahooSample.Hist(dates: h.dates, closes: h.closes) }
-        return nil
+        let key = SiteStats.key(id)
+        let site = id == "DRNK" ? nil : Market.shared.prices?.h[key]
+        let mine = CustomSymbols.shared.hist[id].flatMap { $0.closes.count > 1 ? YahooSample.Hist(dates: $0.dates, closes: $0.closes) : nil }
+        if let s = site, let c = mine { return (c.dates.last ?? "") > (s.dates.last ?? "") ? c : s }
+        if let h = site ?? mine { return h }
+        return YahooSample.history[id] ?? (id == "DRNK" ? nil : YahooSample.bundled[key])
     }
 }

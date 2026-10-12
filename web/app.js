@@ -125,11 +125,17 @@
     if (!r.ok) throw new Error(j.error || r.statusText);
     return j;
   }
+  // 종목별 사이트 마지막 종가 (전망 기준값. 앱도 같은 data/prices 파일의 마지막 종가를 쓴다)
+  function lastCloses(P) {
+    const out = {};
+    for (const [k, p] of Object.entries(P || {})) { const c = p.close || []; for (let i = c.length - 1; i >= 0; i--) if (c[i] > 0) { out[k] = c[i]; break; } }
+    return out;
+  }
   async function reload() {
     if (MODE === "local") {
       try {
         const d = await api("/api/data");
-        S.prices = d.prices || {}; S.quotes = d.quotes || {}; S.mar = d.mar || {};
+        S.prices = d.prices || {}; S.quotes = d.quotes || {}; S.mar = d.mar || {}; S.siteClose = lastCloses(S.prices);
         if (!S.state) S.state = normalize(d.state || {});
         S.config = d.config || {};
         return;
@@ -145,7 +151,7 @@
     const ver = (sym) => "?v=" + encodeURIComponent(idx.v?.[sym] || idx.updated || Date.now());
     const getPx = async (sym, f) => { const r = await fetch(base + "prices/" + encodeURIComponent(f) + ver(sym)); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); };
     await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await getPx(sym, f); } catch (e) { /* 없는 파일 무시 */ } }));
-    S.prices = prices; S.dataUpdated = idx.updated;
+    S.prices = prices; S.dataUpdated = idx.updated; S.siteClose = lastCloses(prices); // 전망 기준값: 브라우저가 따로 받은 시세를 섞기 전 사이트 종가
     [S.quotes, S.tickerCfg, S.config, S.mar] = await side;
     mergeExtra();
     if (!S.state) {
@@ -464,7 +470,7 @@
         // Pages 반영을 기다리지 않고 저장소에서 바로 읽는다
         const prices = {};
         await Promise.all(Object.entries(idx.prices || {}).map(async ([sym, f]) => { try { prices[sym] = await ghApi("contents/data/prices/" + encodeURIComponent(f) + "?ref=main", { raw: true }); } catch (e) { /* 무시 */ } }));
-        S.prices = prices; S.quotes = await ghApi("contents/data/quotes.json?ref=main", { raw: true }); S.dataUpdated = idx.updated;
+        S.prices = prices; S.siteClose = lastCloses(prices); S.quotes = await ghApi("contents/data/quotes.json?ref=main", { raw: true }); S.dataUpdated = idx.updated;
         S.tickerCfg = await ghApi("contents/data/tickers.json?ref=main", { raw: true });
         S.mar = await ghApi("contents/data/mar.json?ref=main", { raw: true }).catch(() => S.mar);
         markDirty(); renderAll();
@@ -954,6 +960,7 @@
     const at = (d) => { const t = yearsBetween(start, d); return M * t + (kAdj > 0 ? V0 * (kAdj / V0) ** (t / span) : V0 + (g.amount - V0) * t / span); };
     return { A, start, i0, V0, at }; // 시작일 전은 같은 속도로 거꾸로 늘인 길
   }
+  let progAsked = "";
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
     if (!(total > 0) || !H.dates.length) { card.style.display = "none"; return; } // 샘플(DRNK 4주·QQQ 1주)에도 보여 준다
@@ -961,13 +968,15 @@
     const k = H.dates.length - 1, now = total + cash, td = today();
     const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
     const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
-    const pg = fcReady(S.state.model.scenario)?.R?.p_goal ?? null; // 앱 내 길의 목표 달성 확률과 같은 값 (전망을 계산해 둔 뒤에만)
+    if (!lastForecast) fcRestore();
+    const pg = fcReady(S.state.model.scenario)?.R?.p_goal ?? null; // 앱 내 길의 목표 달성 확률과 같은 값. 아직 없으면 '계산 중'으로 두고 한 번 계산
+    if (pg == null && !S.state.model.rebalance_yearly && progAsked !== fcSig()) { progAsked = fcSig(); fcDirty = true; setTimeout(runForecast, 0); }
     card.style.display = "block";
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
       ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `내 길보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
-      ...(pg != null ? [["목표 달성 확률", pct(pg, 0), "3년 전망과 같은 값"]] : []),
+      ["목표 달성 확률", pg != null ? pct(pg, 0) : "계산 중", "목표일 전망과 같은 값"],
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
     ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "내 길 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
@@ -982,7 +991,8 @@
     const sg = (v) => `${v >= 0 ? "+" : "−"}${krw(Math.abs(v))}원`;
     if (pts.length) {
       const first = pts[0][1], last = pts[pts.length - 1][1], diff = last - first;
-      $("#progTrend").innerHTML = pts.length < 2 ? `경로 대비 <b class="${cls(last)}">${sg(last)}</b>` : `${lab} 전보다 <b class="${cls(diff)}">${sg(diff)}</b> <span class="muted">(${sg(first)} → ${sg(last)})</span>`;
+      // 오늘 차이 금액은 위 요약과 막대 끝 라벨에만 (여기서는 기간 동안 바뀐 만큼만)
+      $("#progTrend").innerHTML = pts.length < 2 ? "" : `${lab} 전보다 <b class="${cls(diff)}">${sg(diff)}</b>`;
       $("#progChart").style.display = "block";
       // 수량 바뀐 날을 그 날짜가 든 막대(1년은 그 주, 3년은 그 달)에 모은다
       const tr = trades(), evAt = {};
@@ -1053,7 +1063,7 @@
     const future = rsel === "future", n = future ? 780 : +rsel; // 미래: 과거 3년 + 목표일까지
     // 과거 선은 지금 수량 × 지난 가격이라 "내가 지나온 길"이 아니다. 제목에서 그렇게 읽히게
     $("#histTitle").textContent = future ? "지금 구성으로 본 지난 3년과 앞으로" : `지금 구성으로 본 지난 ${{ 5: "1주", 22: "1달", 66: "3달", 252: "1년", 780: "3년" }[n] || "기간"}`;
-    const fcOn = $("#histFc .on")?.dataset.f === "on"; // 미래 보기에서 3년 전망 띠를 겹칠지 (기본: 내 길만)
+    const fcOn = $("#histFc .on")?.dataset.f === "on"; // 미래 보기에서 목표일 전망 띠를 겹칠지 (기본: 내 길만)
     $("#histFc").style.display = future ? "" : "none"; $("#histBasis").style.display = future && !fcOn ? "none" : "";
     const k0 = Math.max(0, H.dates.length - 1 - n);
     // 간격: 3년·미래는 월간(그 달의 마지막 거래일 값), 1년은 주간(그 주 마지막 거래일), 3달 이하는 일간
@@ -1123,14 +1133,14 @@
           : `<b>내 관점</b> (추세 신뢰 ${S.state.model.scenario === "blend" ? S.state.model.trust + "%" : scenName(S.state.model.scenario)}): ` + (mode === "total" ? "진한 띠 25~75%, 옅은 띠 5~95%" : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%" : "쌓은 띠 = 종목별 중앙값"));
         if (Number(g.monthly_contribution) > 0) notes.push(`· 월 적립 ${krw(Number(g.monthly_contribution))}원 포함`);
       } else if (fcOn && total > 0 && basis !== "pattern") notes.push("전망을 계산하는 중입니다…");
-      if (!fcOn) notes.push("보라 점선은 <b>내 길</b>: 목표 시작일의 평가액에서 목표일 목표액까지 정한 대로 가는 길. 시장이 줄 수 있는 범위는 '예보 겹치기'를 누르면 3년 전망 띠로 겹쳐 봅니다.");
+      if (!fcOn) notes.push("보라 점선은 <b>내 길</b>: 목표 시작일의 평가액에서 목표일 목표액까지 정한 대로 가는 길. 시장이 줄 수 있는 범위는 '예보 겹치기'를 누르면 목표일 전망 띠로 겹쳐 봅니다.");
       if (fcOn && mode === "total" && basis === "smooth") {
         const pf = pastFit(H, basis);
         opt.series.push({ name: "3년 추세선 (과거)", y: ix.map((i) => conv(pf[i], i)), color: "var(--c7)", width: 1.4, dash: "4 3" });
       }
       const md = []; for (let k = 0; k <= 1200 && Model.addMonths(today(), k) <= g.date; k++) md.push(Model.addMonths(today(), k));
       if (md[md.length - 1] !== g.date) md.push(g.date);
-      // 내 길: 목표 진행·3년 전망과 같은 길 (목표 시작일부터 목표일까지). 시작일 전은 그리지 않는다
+      // 내 길: 목표 진행·목표일 전망과 같은 길 (목표 시작일부터 목표일까지). 시작일 전은 그리지 않는다
       const GP = V0 > 0 && mode !== "each" ? goalPath(H, cash) : null;
       if (GP && GP.at(today()) != null) {
         const px = [...x.filter((d) => d >= GP.start), ...md.filter((d) => d > last)], u = inUsd ? fxNowUsd : 1;
@@ -1346,7 +1356,7 @@
       `<tr><td class="l">${H}년 누적</td><td>${sg(cb[H - 1][0])}</td><td><b>${sg(cb[H - 1][1])}</b></td><td>${sg(cb[H - 1][2])}</td><td>${pct(cum.filter((t) => t[H - 1] < 0).length / cum.length, 0)}</td></tr>` +
       `<tr><td class="l">시장 연 기대수익</td><td>${spct(mkt[0], 1)}</td><td><b>${spct(mkt[1], 1)}</b></td><td>${spct(mkt[2], 1)}</td><td></td></tr></table></div>`;
     let goal = "";
-    // 내 목표 확률 근사: 3년 전망 만기 분포(로그정규 근사)를 시장 조정분 × β 만큼 옮긴다
+    // 내 목표 확률 근사: 목표일 전망 만기 분포(로그정규 근사)를 시장 조정분 × β 만큼 옮긴다
     const R = lastForecast && lastForecast.withEv, g = S.state.goal;
     if (R && R.terminal && R.terminal.p50 > 0 && R.terminal.p5 > 0 && g && g.date > t0) {
       const T = (Date.parse(g.date) - Date.parse(t0)) / (365.25 * 86400e3), { rows } = valuation(), bm = factorBetas().beta.mkt || {};
@@ -1355,8 +1365,8 @@
       const P = (shift) => { const z = (Math.log(R.terminal.p50) + kb * shift * T - lnG) / sig; return 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z * z * z))); };
       const shifts = M.coef.map((c) => { let s2 = 0; for (let y = 0; y < c.length; y++) s2 += c[y][1] * dr * Math.max(0, Math.min(1, T - y)); return s2 / 100 / Math.max(T, 0.25) + m; });
       const base = P(0), pb = band(shifts.map((x) => R.p_goal + P(x) - base));
-      goal = `<p class="small">내 목표 확률 (3년 전망 ${pct(R.p_goal, 0)} 기준, 포트폴리오 시장 민감도 β ${kb.toFixed(2)}): <b>${pct(Math.max(0, Math.min(1, pb[1])), 0)}</b> <span class="muted">(식단 하위10~상위10 ${pct(Math.max(0, Math.min(1, pb[0])), 0)} ~ ${pct(Math.max(0, Math.min(1, pb[2])), 0)})</span></p>`;
-    } else goal = `<p class="muted small">3년 전망을 한 번 계산하면 내 목표 확률 변화도 함께 나옵니다.</p>`;
+      goal = `<p class="small">내 목표 확률 (목표일 전망 ${pct(R.p_goal, 0)} 기준, 포트폴리오 시장 민감도 β ${kb.toFixed(2)}): <b>${pct(Math.max(0, Math.min(1, pb[1])), 0)}</b> <span class="muted">(식단 하위10~상위10 ${pct(Math.max(0, Math.min(1, pb[0])), 0)} ~ ${pct(Math.max(0, Math.min(1, pb[2])), 0)})</span></p>`;
+    } else goal = `<p class="muted small">목표일 전망을 한 번 계산하면 내 목표 확률 변화도 함께 나옵니다.</p>`;
     $("#rsOut").innerHTML = goal + tbl;
   }
   // 묶음 하나의 분석: 대리 지표 시세·민감도(같은 지표는 소분류 안에서 한 번만), 과거 반응일
@@ -1504,7 +1514,8 @@
     const g = S.state.goal, start = today();
     if (g.date <= start) throw new Error("목표일이 오늘 이후여야 합니다.");
     const { rows } = valuation();
-    const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw }));
+    // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (앱과 같은 값. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게)
+    const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => { const p0 = snapPx(r); return { ticker: r.h.ticker, shares: r.sh, price0: p0, ccy: r.ccy, valueKrw: r.sh * p0 * r.fx }; });
     if (!holdings.length) return null;
     const series = {};
     for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
@@ -1516,7 +1527,9 @@
   function dtStr(t) { const d = new Date(t), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${z(d.getHours())}:${z(d.getMinutes())}`; }
   // 전망 결과를 이 브라우저에 저장해 두고 리로드 때 다시 쓴다. 종목 구성이 바뀌었을 때만 새로 계산
   const FC_KEY = "naeilo-forecast";
-  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, cashKrw()]));
+  // 전망 기준 가격: 직접 넣은 현재가 > 사이트 마지막 종가 > 지금 시세
+  const snapPx = (r) => (r.p.src === "manual" || !(S.siteClose?.[r.h.ticker] > 0) ? r.p.v : S.siteClose[r.h.ticker]);
+  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares, S.siteClose?.[h.ticker] ?? null]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, cashKrw(), fxBase("USD")]));
   function fcStore() {
     const L = lastForecast; if (!L) return;
     const strip = (k, v) => (k === "raw" || k === "term" ? undefined : v);
@@ -2523,7 +2536,7 @@
       for (const v of R.term) { const t = Math.max(0, v - basis - CGT_DED) * CGT; taxes.push(t); ok.push(v - t >= g.amount); }
       const pAfter = ok.filter(Boolean).length / ok.length, tMed = Math.max(0, R.terminal.p50 - basis - CGT_DED) * CGT;
       $("#taxGoal").innerHTML = `<div class="kpis">${[["세후 목표 달성 확률", pct(pAfter, 0), `세전 ${pct(R.p_goal, 0)} · 목표일에 모두 판다면`], ["현금화 세금 (중앙값)", krw(tMed) + "원", `중앙값 ${krw(R.terminal.p50)}원 → 세후 ${krw(R.terminal.p50 - tMed)}원`], [`세후 ${krw(g.amount)}이 되려면`, krw(g.amount + Math.max(0, g.amount - basis - CGT_DED) * CGT / (1 - CGT)) + "원", "세전으로 필요한 금액 (근사)"]].map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("")}</div><p class="muted small">원금 ${krw(cb ?? R.V0)}원${cb ? "" : "(오늘 평가액)"} 기준.</p>`;
-    } else $("#taxGoal").innerHTML = `<p class="muted small">3년 전망을 계산하면 세후 확률이 나옵니다.</p>`;
+    } else $("#taxGoal").innerHTML = `<p class="muted small">목표일 전망을 계산하면 세후 확률이 나옵니다.</p>`;
     const wa = hs.filter((r) => r.avg && r.ccy !== "KRW");
     if (!wa.length) { $("#taxBox").innerHTML = `<p>매수 단가를 넣으면 종목별 세금을 계산합니다. <a href="#" data-go="stocks">매수 단가 넣기</a></p>`; $("#taxYears").innerHTML = ""; return; }
     const gains = wa.map((r) => ({ t: r.h.ticker, g: (r.p.v - r.avg) * r.sh * r.fx, gps: (r.p.v - r.avg) * r.fx, sh: r.sh, w: r.w, px: r.p.v * r.fx }));
@@ -2929,8 +2942,8 @@
   }
   const onTab = (t) => $("#tabs .on")?.dataset.tab === t;
   // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
-  const ensureForecast = () => { if (!lastForecast && !fcRestore()) runForecast(); else renderForecast(); };
-  // 전망 탭: 3년 전망 · 외부 요인 · 환율 영향을 한 화면에
+  const ensureForecast = () => { if ((!lastForecast && !fcRestore()) || fcDirty) runForecast(); else renderForecast(); }; // 입력·기준값이 바뀌었으면 바로 다시 (앱처럼)
+  // 전망 탭: 목표일 전망 · 외부 요인 · 환율 영향을 한 화면에
   function renderForecastTab() { renderSchedule(); renderSens(); renderFx(); renderRateScen(); ensureForecast(); }
   // 종목 탭: 보유 종목 · 종목 진단 · 비중 조정 · 배당·세금을 한 화면에
   function renderStocksTab() {

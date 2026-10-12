@@ -53,7 +53,8 @@ extension AppModel {
     /// 분석 화면의 기준선 (원): 회복 = 들어간 돈(본전), 목표 = 목표 금액
     var keyValue: Double { isGoal ? gK * 1e4 : cost }
     var keyName: String { isGoal ? "목표" : "본전" }
-    var trackValue: Double { route == .novice ? goalSaved * 1e4 : total }   // 시작 전: 모아 둔 돈 + 인터미션에 넣은 돈
+    /// 시작 전: 모아 둔 돈 + 인터미션에 넣은 돈. 목표 루트는 웹 총자산처럼 현금도 더한다
+    var trackValue: Double { route == .novice ? goalSaved * 1e4 : total + cashKrw }
 
     // 목표 시작일·목표일: 사이트(goal.start_date·goal.date)와 같은 값을 쓴다 (기기 동기화로 양쪽이 맞춘다)
     var goalFromDate: Date { gFrom.flatMap(Day.date) ?? goalStartAt.map { Date(timeIntervalSince1970: $0) } ?? Date() }
