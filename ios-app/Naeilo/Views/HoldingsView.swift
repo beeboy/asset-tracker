@@ -97,7 +97,7 @@ struct HoldingsView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
                 MyRecordCard()
-                Text("점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가 · 연필을 누르면 목록에서 바로 고쳐요 · 왼쪽으로 밀면 지울 수 있어요")
+                Text("비중은 내 전체 평가액 중 그 종목 몫 · 점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가 · 연필을 누르면 목록에서 바로 고쳐요 · 왼쪽으로 밀면 지울 수 있어요")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
@@ -157,8 +157,9 @@ struct HoldingsView: View {
                     Text("\(r.h.qty.formatted())주 · 평균 \(AppModel.price(r.sym, r.h.avg))")
                         .appFont(12, .semibold).foregroundStyle(Theme.teal)
                 } else {
-                    Text("\(r.id) · \(AppModel.price(r.sym, r.sym.last)) · \(AppModel.pct(r.value / max(1, m.total)))")
-                        .appFont(12).foregroundStyle(Theme.sub)
+                    // 티커 · 수량 · 지금 가격 · 비중(내 전체 평가액 중 이 종목 몫)
+                    Text("\(r.id) · \(r.h.qty.formatted())주 · \(AppModel.price(r.sym, r.sym.last)) · 비중 \(AppModel.pct(r.value / max(1, m.total)))")
+                        .appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
                 }
             }
         }
