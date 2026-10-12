@@ -104,6 +104,7 @@ struct HoldingsView: View {
             }
             .screen()
         }
+        .scrollDismissesKeyboard(.immediately)
         .background(Theme.bg)
         .refreshable { await Market.shared.pullRefresh(m) }
         .toolbar(.hidden, for: .navigationBar)
@@ -326,6 +327,7 @@ struct HoldingDetailView: View {
             }
             .screen().padding(.top, 8)
         }
+        .scrollDismissesKeyboard(.immediately)
         .background(Theme.bg)
         .navigationTitle(sym.id).navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $editing) { HoldingEditView(sym: sym) }
@@ -387,6 +389,7 @@ struct KoreaSumCard: View {
     @Environment(AppModel.self) private var m
     var done: (() -> Void)? = nil
     @State private var t = ""
+    @FocusState private var focus: Bool
     var body: some View {
         let cur = CustomSymbols.shared.saved(KoreaEstimate.sumId)?.kp
         Card {
@@ -394,7 +397,7 @@ struct KoreaSumCard: View {
             Text("증권사 앱의 국내 주식 평가액 합계를 넣어요. 바뀌면 이 금액만 고쳐요 (0이면 지움).")
                 .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                TextField(cur.map { Int($0.rounded()).formatted() + "원" } ?? "금액 (원)", text: $t).keyboardType(.decimalPad)
+                TextField(cur.map { Int($0.rounded()).formatted() + "원" } ?? "금액 (원)", text: $t).keyboardType(.decimalPad).focused($focus)
                     .padding(.horizontal, 12).frame(minHeight: 44)
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
                 Button("저장") {
@@ -405,10 +408,11 @@ struct KoreaSumCard: View {
                         CustomSymbols.shared.setKoreaSum(v)
                         if !m.holdings.contains(where: { $0.symbol == id }) { _ = m.addHolding(id, "1", String(v)) }
                     }
-                    t = ""; done?()
+                    t = ""; focus = false; done?()
                 }.appFont(15, .bold).foregroundStyle(Theme.teal).frame(minHeight: 44)
             }
         }
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { if focus { Spacer(); Button("완료") { focus = false } } } }
     }
 }
 
@@ -416,21 +420,24 @@ struct KoreaSumCard: View {
 struct KRPriceCard: View {
     let saved: CustomSymbols.Saved
     @State private var t = ""
+    @FocusState private var focus: Bool
     var body: some View {
         Card {
             Text(saved.id == KoreaEstimate.sumId ? "국내 주식 합계" : "한국 종목 가격").appFont(15, .bold)
             Text(KoreaEstimate.note(saved)).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                TextField(saved.id == KoreaEstimate.sumId ? "합계 금액 (원)" : "지금 가격 (원)", text: $t).keyboardType(.decimalPad)
+                TextField(saved.id == KoreaEstimate.sumId ? "합계 금액 (원)" : "지금 가격 (원)", text: $t).keyboardType(.decimalPad).focused($focus)
                     .padding(.horizontal, 12).frame(minHeight: 44)
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
                 Button("저장") {
                     if let v = Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v > 0 {
                         CustomSymbols.shared.setPrice(saved.id, v); t = ""
                     }
+                    focus = false
                 }.appFont(15, .bold).foregroundStyle(Theme.teal).frame(minHeight: 44)
             }
         }
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { if focus { Spacer(); Button("완료") { focus = false } } } }
     }
 }
 
