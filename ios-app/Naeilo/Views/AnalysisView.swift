@@ -126,20 +126,18 @@ struct AnalysisView: View {
                 SampleNote()
                 CalmCard()
                 ForEach(cards, id: \.0) { t, sub, tag, color, route in
-                    NavigationLink(value: route) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(t).appFont(16, .bold)
-                                Text(sub).appFont(13).foregroundStyle(Theme.sub)
-                            }
-                            Spacer()
-                            Text(tag).appFont(15, .bold).foregroundStyle(color)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(t).appFont(16, .bold)
+                            Text(sub).appFont(13).foregroundStyle(Theme.sub)
                         }
-                        .padding(.horizontal, 16).frame(minHeight: 68)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+                        Spacer()
+                        Text(tag).appFont(15, .bold).foregroundStyle(color)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16).frame(minHeight: 68)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+                    .modifier(OpenOnTap(route: route))
                 }
                 Text("계산 옵션과 상세 표는 PC naeilo.com에서 크게 봐요.").appFont(13).foregroundStyle(Theme.sub).padding(.top, 4)
             }
@@ -150,6 +148,18 @@ struct AnalysisView: View {
         .task { await MacroData.shared.load() }
         .task { await SiteCalc.shared.refresh() }
         .navigationDestination(for: AnalysisRoute.self) { AnalysisPager(start: $0) }
+    }
+}
+
+/// 분석 목록 카드: 탭할 때만 연다. 카드가 화면 너비라 버튼(NavigationLink)이면 옆으로 민 것도
+/// 카드 안에서 손을 떼면 탭으로 쳐서 세부 분석이 열렸다 (좌우 넘기기는 세부 분석 안에서만)
+struct OpenOnTap: ViewModifier {
+    @Environment(AppModel.self) private var m
+    let route: AnalysisRoute
+    func body(content: Content) -> some View {
+        content.contentShape(Rectangle())
+            .onTapGesture { m.analysisPath.append(route) }
+            .accessibilityAddTraits(.isButton)
     }
 }
 
