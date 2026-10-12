@@ -158,12 +158,12 @@ struct ForecastView: View {
     @Environment(AppModel.self) private var m
 
     /// 개발자 줄: 실제 계산 시간 (사건 반영 + 사건 없이 두 번)과 웹 개발자 줄과 같은 입력 (기준 평가액·현금 뺀 목표·경로·사건·마지막 종가일)
-    private func devLine(_ r: ForecastEngine.Run) -> String {
+    private func devLine(_ r: ForecastEngine.Run, _ f: AppModel.Forecast) -> String {
         let man = { (v: Double) in Int((v / 1e4).rounded()).formatted() + "만" }
         let px = Market.shared.prices?.h, keys = m.rows.map { SiteStats.key($0.id) } + ["KRW=X"]
         let last = keys.compactMap { px?[$0]?.dates.last }.max() ?? "-"
         return "개발자 · 전망 \(String(format: "%.1f", r.ms / 1000))초 · 경로 \(r.ev.P.formatted())개 · 사건 \(r.events)건 · 다른 구성 \(PathRuns.shared.runs.count)개 \(String(format: "%.1f", PathRuns.shared.msToday / 1000))초"
-            + " · 기준 \(man(r.ev.v0.reduce(0, +))) · 목표 \(man(m.mcGoal)) · 종가일 \(last)"
+            + " · 기준 \(man(r.ev.v0.reduce(0, +))) · 목표 \(man(m.mcGoal)) · 연 기대 \(AppModel.sgn0(f.mu)) · 확률 \(String(format: "%.1f", f.pGoal * 100))% · 종가일 \(last)"
     }
 
     var body: some View {
@@ -234,7 +234,7 @@ struct ForecastView: View {
             Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: Binding(get: { m.lens }, set: { m.lens = $0 }), fill: true)
             if Sync.shared.isDev, let r = ForecastEngine.shared.run, r.key == m.forecastJob?.key {
-                Text(devLine(r))
+                Text(devLine(r, f))
                     .appFont(11).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             }
         }
