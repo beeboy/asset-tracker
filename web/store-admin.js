@@ -5,7 +5,7 @@
 
 export const SOURCES = {
   side: { ko: "원고/side_story_v2.1.md", en: "원고/Side Story - Resonance Across Kinds.md" },
-  vol1: { ko: "원고/vol1_v8.1.md", en: "원고/Nested Reality - Volume 1.md" },
+  vol1: { ko: "원고/vol1_v8.2.md", en: "원고/Volume 1 - Waves of Relationship.md" },
 };
 export const SIDE_FREE = 6; // 프롤로그~5장은 앱·사이트에 공개. 6장부터만 올린다
 // 장별 도트 그림 (MyVault, 640×400 = 128×80 을 5배로 키운 것). 장 순서대로. 128×80 으로 줄여 장마다 cover 로 붙인다
