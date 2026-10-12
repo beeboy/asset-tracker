@@ -58,6 +58,7 @@ struct AnalysisPager: View {
             ForEach(Self.order, id: \.self) { r in page(r).tag(r) }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        .background(ContentPopBlock())
         .environment(\.detailInPager, true)
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle(title(sel))
@@ -150,6 +151,29 @@ struct AnalysisView: View {
         .task { await SiteCalc.shared.refresh() }
         .navigationDestination(for: AnalysisRoute.self) { AnalysisPager(start: $0) }
     }
+}
+
+/// iOS 26 은 화면 아무 데서나 오른쪽으로 밀어도 뒤로 간다. 넘기기 화면에서 그게 켜져 있으면
+/// 첫 분석에서 오른쪽으로 밀 때 분석 목록으로 나가 헷갈린다: 넘기기 화면이 보일 때만 끈다 (가장자리 밀기·뒤로 버튼은 그대로)
+private struct ContentPopBlock: UIViewRepresentable {
+    final class V: UIView {
+        weak var nav: UINavigationController?
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window == nil { set(nav, true); return }
+            var r: UIResponder? = self
+            while let n = r {
+                if let vc = n as? UIViewController, let nc = vc.navigationController { nav = nc; break }
+                r = n.next
+            }
+            set(nav, false)
+        }
+        private func set(_ nc: UINavigationController?, _ on: Bool) {
+            if #available(iOS 26.0, *) { nc?.interactiveContentPopGestureRecognizer?.isEnabled = on }
+        }
+    }
+    func makeUIView(context: Context) -> V { let v = V(); v.isUserInteractionEnabled = false; return v }
+    func updateUIView(_ v: V, context: Context) {}
 }
 
 // 3년 전망: 위에 확률·중앙값·나쁜 5%와 범위 그래프·렌즈 설명·렌즈 칩 고정, 아래 추세 믿음·외부 요인·적립
