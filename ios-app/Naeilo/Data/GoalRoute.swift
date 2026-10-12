@@ -104,7 +104,7 @@ extension AppModel {
         var rest = 1.0
         if route != .novice, let f = focusRow {
             let tT = min(focusWeight, 0.10)
-            out.append((key: SiteStats.key(f.id), ccy: f.sym.currency == .usd ? "USD" : "KRW", w: tT))
+            out.append((key: SiteStats.mcKey(f.id), ccy: f.sym.currency == .usd ? "USD" : "KRW", w: tT))
             rest = 1 - tT
         }
         for k in ["I", "G", "B", "C"] { if let x = mx.comp[k] { out.append((key: proxy(k), ccy: "USD", w: x * rest)) } }

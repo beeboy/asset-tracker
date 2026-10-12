@@ -121,7 +121,7 @@ extension AppModel {
     var mineParts: [Part] {
         let t = max(1, total)
         var out: [Part] = []
-        for r in rows { out.append((key: SiteStats.key(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", w: r.value / t)) }
+        for r in rows { out.append((key: SiteStats.mcKey(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", w: r.value / t)) }
         return out
     }
     /// 같은 종목은 합친다 (같은 요인 둘은 상관 1 이라 모형이 흔들린다)
@@ -216,8 +216,8 @@ extension AppModel {
     func planParts(wt: Double, mix: [Basket: Double]) -> [Part] {
         guard let f = focusRow else { return [] }
         let t = max(1, total), w = f.value / t, ccy = { (r: Row) in r.sym.currency == .usd ? "USD" : "KRW" }
-        var out: [Part] = [(key: SiteStats.key(f.id), ccy: ccy(f), w: wt)]
-        for r in restRows { out.append((key: SiteStats.key(r.id), ccy: ccy(r), w: r.value / t)) }
+        var out: [Part] = [(key: SiteStats.mcKey(f.id), ccy: ccy(f), w: wt)]
+        for r in restRows { out.append((key: SiteStats.mcKey(r.id), ccy: ccy(r), w: r.value / t)) }
         let freed = max(0, w - wt), tot = mix.values.reduce(0, +)
         if freed > 0, tot > 0 { for b in Basket.allCases { if let x = mix[b], x > 0 { out.append((key: proxy(b.rawValue), ccy: "USD", w: freed * x / tot)) } } }
         return out
