@@ -63,6 +63,13 @@ struct RootView: View {
         // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
         .onChange(of: model.progress) { _, _ in model.saveProgress(); if model.persists { Sync.shared.changed(model) } }
         .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }
+        // 한국 종목 가격·국내 주식 합계를 고치면 다른 기기로도
+        .onChange(of: CustomSymbols.shared.krStamp) { _, _ in if model.persists { Sync.shared.changed(model) } }
+        // 리마인드 '오늘 국내 주식 합계'를 누르면 입력 칸을 한 번 띄운다
+        .sheet(isPresented: $model.krSumAsk) {
+            ScrollView { KoreaSumCard(done: { model.krSumAsk = false }).padding(16) }
+                .background(Theme.bg).presentationDetents([.medium])
+        }
         // 내 기록: 새 날 줄이 생기면 다른 기기로도 (같은 날 값 고침은 다음 변경 때 같이)
         .onChange(of: model.myRecord.count) { _, _ in if model.persists { Sync.shared.changed(model) } }
         // 앱을 열거나 앞으로 올 때 다른 기기 값 받기

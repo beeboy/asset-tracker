@@ -31,8 +31,8 @@
 <meta name="twitter:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 목표일 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/web/","description":"내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 목표일 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
-<script src="theme.js?v=20261012g"></script>
-<link rel="stylesheet" href="style.css?v=20261012g">
+<script src="theme.js?v=20261012h"></script>
+<link rel="stylesheet" href="style.css?v=20261012h">
 <script>(function(u,c){if(/Edg\//.test(u))c.add("edg");else if(/Chrome\//.test(u)&&!/OPR\//.test(u))c.add("chr");else if(/Safari\//.test(u)&&!/Chrome|Chromium|CriOS|FxiOS|Android/.test(u))c.add("saf");})(navigator.userAgent,document.documentElement.classList);</script>
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
@@ -63,7 +63,12 @@
         <input id="addAvg" class="num" type="text" inputmode="decimal" placeholder="매수 단가">
         <button id="btnAdd" class="primary sm">종목 추가</button>
       </div>
-      <p class="muted small">종목 찾기: 한글·영문 이름, 티커, 종목 코드 (예: 삼성전자, Tesla, NVDA, 005930). 종목과 수량 입력 (선택, 매수 단가 넣으면 손익 표시)</p>
+      <div class="row addrow" id="krSumRow" hidden>
+        <label class="muted small">국내 주식 합계 <input id="krSum" class="num" type="text" inputmode="decimal" placeholder="금액 (원)"></label>
+        <button id="btnKrSum" class="sm">저장</button>
+        <span class="muted small">증권사 앱의 국내 주식 평가액 합계. 바뀌면 이 금액만 고쳐요 (0이면 지움)</span>
+      </div>
+      <p class="muted small">종목 찾기: 한글·영문 이름, 티커 (예: Tesla, NVDA, TIGER 미국S&amp;P500). 종목과 수량 입력 (선택, 매수 단가 넣으면 손익 표시)</p>
     </div>
     <div class="card">
       <div class="row between">
@@ -137,7 +142,7 @@
     <details class="card opt" id="themeDet"><summary>화면 (다크 모드·색 조합)</summary><div id="themeBox" style="margin-top:8px"></div></details>
     <details class="card opt"><summary>표시 옵션</summary>
       <p class="small"><label><input type="checkbox" id="optManual"> 보유 종목 표에 "현재가 직접 입력" 칸 보이기</label></p>
-      <p class="small"><label><input type="checkbox" id="optKrDirect"> 국내 종목 직접 입력: 미국 지수를 따르지 않는 국내 주식·ETF도 종목 찾기에 보이기</label><br><span class="muted">한국 시세는 받지 않아요. 가격은 직접 넣고, 움직임 예측은 한국 시장 평균(미국 상장 EWY × 원/달러)으로 해요.</span></p>
+      <p class="small"><label><input type="checkbox" id="optKrDirect"> 국내 주식 합계 직접 입력: 보유 종목 아래에 국내 주식 합계 금액 칸 보이기</label><br><span class="muted">한국 시세는 받지 않아요. 증권사 앱의 국내 주식 합계를 넣으면 그 금액 그대로 계산하고, 움직임 예측은 한국 시장 평균(미국 상장 EWY × 원/달러)으로 해요.</span></p>
     </details>
     <details class="card opt"><summary>자세히 · 모형 설정 (기본값 그대로 써도 됨)</summary>
       <div class="formgrid" id="modelForm" style="margin-top:10px"></div>
@@ -356,11 +361,11 @@
     시세 Yahoo Finance (지연될 수 있음) · 환율 서울외국환중개 매매기준율 · <a href="privacy.html">개인정보 처리방침</a> · <a href="guide.html">사용법</a></footer>
 </main>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261012g"></script>
-<script src="model.js?v=20261012g"></script>
-<script src="research.js?v=20261012g"></script>
-<script src="sharecard.js?v=20261012g"></script>
-<script src="stocks.js?v=20261012g"></script>
-<script src="app.js?v=20261012g"></script>
+<script src="charts.js?v=20261012h"></script>
+<script src="model.js?v=20261012h"></script>
+<script src="research.js?v=20261012h"></script>
+<script src="sharecard.js?v=20261012h"></script>
+<script src="stocks.js?v=20261012h"></script>
+<script src="app.js?v=20261012h"></script>
 </body>
 </html>

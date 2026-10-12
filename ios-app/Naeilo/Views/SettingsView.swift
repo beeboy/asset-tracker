@@ -106,7 +106,7 @@ struct PriceBasisView: View {
                     row("미국 종목", "지금 가격과 전일 종가")
                     row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change))")
                     row("평가 환율", mk.marRate != nil ? "매매기준율 \(String(format: "%.2f", mk.valFx))원 · 웹 평가액과 같아요" : "매매기준율을 아직 못 받아 지금 환율")
-                    row("한국 종목", "시세를 받지 않아요. 넣은 가격 하나로 계산하고, 미국 지수를 따르는 국내 ETF는 그 미국 ETF × 원/달러 움직임으로 오늘 가격을 추정해요")
+                    row("한국 종목", "시세를 받지 않아요. 미국 지수를 따르는 국내 ETF는 넣은 가격에서 그 미국 ETF × 원/달러 움직임으로 오늘 가격을 추정하고, 그 밖의 국내 주식은 합계 금액 한 줄로 넣어요")
                     row("오늘의 움직임", "전일 대비 지금 평가액")
                     row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : mk.site != nil ? "사이트가 평일 30분마다 모으는 테스트 자료. 당기면 바로 받아요" : "앱에 넣어 둔 테스트 자료")
                 }
@@ -114,8 +114,8 @@ struct PriceBasisView: View {
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 Toggle(isOn: Binding(get: { krDirect }, set: { krDirect = $0; KoreaEstimate.direct = $0 })) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("국내 종목 직접 입력").appFont(15, .bold)
-                        Text("미국 지수를 따르지 않는 국내 주식·ETF도 종목 찾기에 보여요. 가격은 직접 넣고, 움직임 예측은 한국 시장 평균(미국 상장 EWY × 원/달러)으로 해요.")
+                        Text("국내 주식 합계 직접 입력").appFont(15, .bold)
+                        Text("종목 탭에 국내 주식 합계 칸이 생겨요. 증권사 앱의 국내 주식 평가액 합계를 넣으면 그 금액 그대로 계산하고, 움직임 예측은 한국 시장 평균(미국 상장 EWY × 원/달러)으로 해요.")
                             .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     }
                 }.tint(Theme.teal).padding(.top, 8)

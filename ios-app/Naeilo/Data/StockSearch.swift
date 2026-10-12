@@ -33,7 +33,8 @@ enum Relay {
 
 /// 한국 종목 (시세 계약 없음. 웹 app.js synthKR · data/kr_proxy.json 과 같은 규칙): 한국 가격은 받지 않고 사용자가 넣은 가격 하나에 맞춘다
 /// - 미국 지수를 따르는 국내 상장 ETF: 그 미국 ETF(SPY·QQQ 등) × 원/달러 움직임으로 오늘 가격을 추정 (환헤지 (H)면 환율 빼고)
-/// - 그 밖의 국내 종목 (시세 기준 화면에서 켠 경우만 추가): 넣은 가격 그대로. 지난 움직임·변동성은 미국 상장 EWY(MSCI Korea) × 원/달러로 대신
+/// - 그 밖의 국내 종목은 종목별로 넣지 않는다. 국내 주식 합계 (시세 기준 화면에서 켠 경우만): 증권사 앱의 합계 금액 그대로,
+///   지난 움직임·변동성은 미국 상장 EWY(MSCI Korea) × 원/달러로 대신 (웹 KOREA.KS 줄과 같은 종목 KOREA)
 enum KoreaEstimate {
     static let market = "EWY"
     static let exclude = "레버리지|인버스|2X|커버드콜|액티브|Leverage|Inverse|Covered|Active"
@@ -57,15 +58,15 @@ enum KoreaEstimate {
         let ko = StockCatalog.all.first { $0.id == id }
         return info([name, en, ko?.name ?? "", ko?.en ?? ""])
     }
-    /// 국내 종목 직접 입력 (숨긴 선택 항목, 시세 기준 화면)
+    /// 국내 주식 합계 한 줄 (사이트 KOREA.KS, 수량 1·가격 = 합계 금액)
+    static let sumId = "KOREA"
+    /// 국내 주식 합계 직접 입력 (숨긴 선택 항목, 시세 기준 화면)
     static var direct: Bool {
         get { UserDefaults.standard.bool(forKey: "krDirect") }
         set { UserDefaults.standard.set(newValue, forKey: "krDirect") }
     }
-    static func allowed(_ h: StockHit) -> Bool { h.currency == .usd || direct || info(id: h.id, name: h.name, en: h.en).proxy != nil }
-    static func tag(_ h: StockHit) -> String {
-        h.currency == .usd ? "" : info(id: h.id, name: h.name, en: h.en).proxy != nil ? " · 미국 지수로 추정" : " · 가격 직접 입력"
-    }
+    static func allowed(_ h: StockHit) -> Bool { h.currency == .usd || info(id: h.id, name: h.name, en: h.en).proxy != nil }
+    static func tag(_ h: StockHit) -> String { h.currency == .usd ? "" : " · 미국 지수로 추정" }
     /// 내 한국 종목이 쓰는 사이트 티커 (SPY·EWY 등)
     static func baseKeys(_ held: Set<String>) -> Set<String> {
         Set(CustomSymbols.shared.items.filter { held.contains($0.id) && !$0.usd }.map { info(id: $0.id, name: $0.name).base })
@@ -94,6 +95,7 @@ enum KoreaEstimate {
         let i = info(id: s.id, name: s.name), at = s.kd ?? ""
         guard let p = s.kp else { return "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 계산해요." }
         let won = Int(p.rounded()).formatted() + "원"
+        if s.id == sumId { return "\(at)에 넣은 합계 \(won) 그대로예요. 움직임 예측은 한국 시장 평균(\(i.base) × 원/달러)으로 해요." }
         return i.proxy != nil ? "\(at)에 넣은 \(won)에서 \(i.base)\(i.hedged ? "" : " × 원/달러") 움직임으로 추정한 값이에요."
             : "\(at)에 넣은 \(won) 그대로예요. 움직임 예측은 한국 시장 평균(\(i.base) × 원/달러)으로 해요."
     }
@@ -256,6 +258,17 @@ final class CustomSymbols {
         rebuildKR(); save()
     }
     func saved(_ id: String) -> Saved? { items.first { $0.id == id } }
+    /// 한국 종목에 넣은 가격이 바뀌면 바뀌는 값 (기기 동기화가 이것도 보낸다)
+    var krStamp: String { items.filter { !$0.usd }.map { "\($0.id)=\($0.kp ?? 0)@\($0.kd ?? "")" }.joined(separator: ",") }
+    /// 국내 주식 합계 금액 넣기 (없으면 만든다)
+    @MainActor
+    func setKoreaSum(_ won: Double) {
+        let id = KoreaEstimate.sumId
+        if !items.contains(where: { $0.id == id }) {
+            items.append(Saved(id: id, yahoo: id + ".KS", name: "국내 주식 합계", market: "국내 주식", usd: false, prev: 0, last: 0, at: Date()))
+        }
+        setPrice(id, won)
+    }
     /// 한국 종목의 날짜별 가격·지금 값을 넣은 가격과 사이트 미국 종가로 다시 만든다
     func rebuildKR() {
         for i in items.indices where !items[i].usd {

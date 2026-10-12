@@ -280,6 +280,8 @@ final class AppModel {
     var appearance = UserDefaults.standard.string(forKey: "appearance") ?? "system"   // system · light · dark
     // 종목 탭은 종목(Symbol)과 '종목 추가'(String)를, 분석 탭은 분석 화면과 종목을 같이 쌓으므로 NavigationPath
     var holdPath = NavigationPath()
+    /// 리마인드에서 국내 주식 합계 입력 칸 띄우기
+    var krSumAsk = false
 
     // 설정
     // 알림 설정은 기기에 남는다 (실제 예약은 Notifier)

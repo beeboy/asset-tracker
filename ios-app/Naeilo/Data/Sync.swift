@@ -426,7 +426,7 @@ final class Sync {
     func signature(_ m: AppModel) -> String {
         var p = m.progress; p.lastOpen = ""
         let a = (try? JSONEncoder().encode(p)) ?? Data(), b = (try? JSONEncoder().encode(m.holdings)) ?? Data()
-        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
+        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
         return SHA256.hash(data: a + b + c).map { String(format: "%02x", $0) }.joined()
     }
 }

@@ -20,7 +20,7 @@ enum RemindCat: String, CaseIterable, Codable {
 
 /// 소식을 누르면 갈 곳
 enum RemindGo: Hashable {
-    case nowhere, shelter, char(String), me, reader(Int), board, calm, myPath, forecast, rateScen, external, hold(String), support, widgets, sync, alerts
+    case nowhere, shelter, char(String), me, reader(Int), board, calm, myPath, forecast, rateScen, external, hold(String), support, widgets, sync, alerts, krSum
 
     /// 사이트 소식 파일의 go 글자 ("shelter", "char:ir", "read:3", "hold:TSLA" …)
     init(_ s: String?) {
@@ -390,6 +390,11 @@ final class Remind {
             a.append(.init(id: tid, cat: .news, text: "\(t.name) 후원 고마워요! " + t.adds.joined(separator: ", ") + "이 열렸어요.", go: .support))
         }
         if log.tier != t.rawValue { log.tier = t.rawValue }
+        // 국내 주식 합계 (선택 항목을 켠 사람만): 평일에 오늘 값을 아직 안 넣었으면 하루 한 번
+        let wday = Calendar.current.component(.weekday, from: Date())
+        if KoreaEstimate.direct, wday != 1, wday != 7, CustomSymbols.shared.saved(KoreaEstimate.sumId)?.kd != Day.today {
+            a.append(.init(id: "krsum.\(Day.today)", cat: .news, text: "오늘 국내 주식 합계를 넣어 줄래요? 증권사 앱에 보이는 금액 그대로면 돼요.", go: .krSum))
+        }
         if case .failed = Sync.shared.state {
             a.append(.init(id: "sync.fail", cat: .news, text: "기기 동기화가 멈췄어요. 한번 확인해 볼래요?", go: .sync, once: false))
         }
@@ -522,6 +527,7 @@ extension AppModel {
         case .widgets: tab = .settings; settingsPath = [.widgets]
         case .sync: tab = .settings; settingsPath = [.sync]
         case .alerts: tab = .settings; settingsPath = [.alerts]
+        case .krSum: krSumAsk = true
         }
     }
 }

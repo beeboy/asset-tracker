@@ -96,8 +96,9 @@ struct HoldingsView: View {
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
+                if KoreaEstimate.direct || m.holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) { KoreaSumCard() }
                 MyRecordCard()
-                Text("점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 전일 종가 · 연필을 누르면 목록에서 바로 고쳐요 · 왼쪽으로 밀면 지울 수 있어요")
+                Text("점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 넣은 가격 기준 · 연필을 누르면 목록에서 바로 고쳐요 · 왼쪽으로 밀면 지울 수 있어요")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
@@ -380,16 +381,46 @@ struct HoldingDetailView: View {
 
 // 종목 추가: 한글·영문·티커·종목 코드 검색 → 수량·평균 단가
 // 앱 안 목록(예시 종목 + 한글 이름 목록)은 바로, Yahoo 검색은 입력을 멈추면 아래에 더 붙는다 (StockSearch)
+/// 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄로. 0 이면 지운다 (웹 보유 종목 아래 칸과 같다)
+struct KoreaSumCard: View {
+    @Environment(AppModel.self) private var m
+    var done: (() -> Void)? = nil
+    @State private var t = ""
+    var body: some View {
+        let cur = CustomSymbols.shared.saved(KoreaEstimate.sumId)?.kp
+        Card {
+            Text("국내 주식 합계").appFont(15, .bold)
+            Text("증권사 앱의 국내 주식 평가액 합계를 넣어요. 바뀌면 이 금액만 고쳐요 (0이면 지움).")
+                .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                TextField(cur.map { Int($0.rounded()).formatted() + "원" } ?? "금액 (원)", text: $t).keyboardType(.decimalPad)
+                    .padding(.horizontal, 12).frame(minHeight: 44)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
+                Button("저장") {
+                    guard let v = Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v >= 0 else { return }
+                    let id = KoreaEstimate.sumId
+                    if v == 0 { m.holdings.removeAll { $0.symbol == id } }
+                    else {
+                        CustomSymbols.shared.setKoreaSum(v)
+                        if !m.holdings.contains(where: { $0.symbol == id }) { _ = m.addHolding(id, "1", String(v)) }
+                    }
+                    t = ""; done?()
+                }.appFont(15, .bold).foregroundStyle(Theme.teal).frame(minHeight: 44)
+            }
+        }
+    }
+}
+
 /// 한국 종목 가격 다시 넣기 (시세를 받지 않으므로 사용자가 넣은 가격으로 계산)
 struct KRPriceCard: View {
     let saved: CustomSymbols.Saved
     @State private var t = ""
     var body: some View {
         Card {
-            Text("한국 종목 가격").appFont(15, .bold)
+            Text(saved.id == KoreaEstimate.sumId ? "국내 주식 합계" : "한국 종목 가격").appFont(15, .bold)
             Text(KoreaEstimate.note(saved)).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                TextField("지금 가격 (원)", text: $t).keyboardType(.decimalPad)
+                TextField(saved.id == KoreaEstimate.sumId ? "합계 금액 (원)" : "지금 가격 (원)", text: $t).keyboardType(.decimalPad)
                     .padding(.horizontal, 12).frame(minHeight: 44)
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
                 Button("저장") {
