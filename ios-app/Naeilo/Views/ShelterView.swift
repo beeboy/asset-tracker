@@ -14,6 +14,7 @@ struct ShelterView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("쉼터").appFont(22, .bold)
                 hero
+                ParallelDoor()
                 header("친구", "\((0..<5).filter { m.friendOn($0) }.count)/5")
                 // 친구 다섯 + 본인(내 캐릭터) 한 줄
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 6), spacing: 6) {

@@ -13,6 +13,7 @@ struct HomeView: View {
                 // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
                 if !m.isGoal, m.done.contains(3), m.cost > m.total, !m.rows.isEmpty { DepositLeverCard(plan: m.keepPlan) }
                 shelterBox
+                ParallelHomeLine()
                 reminder
                 if m.playUnlocked { RoutineCard() } else { lockedRoutine }
                 if !m.playUnlocked, !m.rows.isEmpty { yesterdayCard }
@@ -27,6 +28,8 @@ struct HomeView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { route in
             if route == "shelter" { ShelterView() }
+            else if route == "parallel" { ParallelView() }
+            else if route == "parallel:basket" { ParallelBasketView() }
             else if route == "goal" { GoalSetView(fromSettings: true) }
             else if route.hasPrefix("read:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i) }
             else if route.hasPrefix("vol1:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i, book: .vol1) }
