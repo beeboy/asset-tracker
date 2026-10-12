@@ -216,8 +216,9 @@ export default {
     if (!r) return out({ error: "Yahoo 에 연결하지 못했습니다" }, 502);
     return new Response(r.body, { status: r.status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "max-age=60" } });
   },
-  // 30분마다 (Cron Trigger): 구독마다 하루 변동·실적 하루 전 검사
+  // 30분마다 (Cron Trigger): 구독마다 하루 변동·실적 하루 전 검사. 15분 cron 은 시세 수집 깨우기만 한다 (10번)
   async scheduled(event, env, ctx) {
+    if (event.cron === COLLECT_CRON) return wakeCollect(env);
     if (!env.VIEWS) return;
     const q = await fetch(env.SITE_QUOTES || "https://naeilo.com/data/quotes.json", { cf: { cacheTtl: 60, cacheEverything: true }, signal: AbortSignal.timeout(10000) }).then((r) => r.json()).catch(() => null);
     const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10), tmr = new Date(kst.getTime() + 86400e3).toISOString().slice(0, 10);
@@ -243,6 +244,20 @@ export default {
     } while (cursor);
   },
 };
+
+// 10) 시세 수집 깨우기: GitHub 예약 실행은 밀리거나 빠질 때가 많아서, 이 중계의 Cron 이 collect 작업을 직접 실행시킨다.
+//       Settings → Triggers → Cron Triggers 에 "*/15 * * * *" 추가 (위 알림 cron 과 따로). 비밀값 GH_DISPATCH =
+//       GitHub fine-grained 토큰 (이 저장소만, Actions: Read and write). 수집 시간은 collect.yml 예약과 같다 (평일 UTC 8~23시 + 다음날 0시대).
+const COLLECT_CRON = "*/15 * * * *";
+async function wakeCollect(env) {
+  if (!env.GH_DISPATCH) return;
+  const d = new Date(), wd = d.getUTCDay(), h = d.getUTCHours();
+  if (!((wd >= 1 && wd <= 5 && h >= 8) || (wd >= 2 && wd <= 6 && h === 0 && d.getUTCMinutes() < 30))) return;
+  await fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}/actions/workflows/collect.yml/dispatches`, {
+    method: "POST", body: JSON.stringify({ ref: "main" }), signal: AbortSignal.timeout(10000),
+    headers: { Authorization: "Bearer " + env.GH_DISPATCH.trim(), Accept: "application/vnd.github+json", "User-Agent": "naeilo-worker", "Content-Type": "application/json" },
+  }).catch(() => null);
+}
 
 // ------------------------------------------------------------ GitHub 토큰 확인: 저장소 쓰기 권한이 있으면 계정 이름 (10분 기억)
 async function ghWho(env, tok) {
