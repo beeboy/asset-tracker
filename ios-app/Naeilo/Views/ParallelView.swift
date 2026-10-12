@@ -146,6 +146,11 @@ struct ParallelView: View {
                 }
             }
             Text(distance(amount)).appFont(13, .semibold).foregroundStyle(ParallelUI.colors[k])
+            // 홈 평가액과 다른 까닭: 경주는 마감 종가·출발 금액 기준, 홈은 지금 시세·국내 합계 포함
+            if k == 0 && !m.isSample && abs(m.total - amount) >= 1e4 {
+                Text("홈 평가액 \(AppModel.eok(m.total)) (지금 시세·국내 합계 포함). 경주는 마감 종가로, 넣고 뺀 돈은 빼고 셈해요.")
+                    .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            }
             if k == 1 { basketLine(w) }
             if k == 2 { charPart(place, race, w) }
         }
