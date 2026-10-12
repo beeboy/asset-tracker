@@ -235,7 +235,7 @@ struct ForecastView: View {
             ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: Binding(get: { m.lens }, set: { m.lens = $0 }), fill: true)
             if Sync.shared.isDev, let r = ForecastEngine.shared.run, r.key == m.forecastJob?.key {
                 Text(devLine(r))
-                    .appFont(11).foregroundStyle(Theme.sub)
+                    .appFont(11).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
