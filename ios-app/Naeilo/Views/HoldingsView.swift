@@ -98,7 +98,7 @@ struct HoldingsView: View {
                 }.buttonStyle(.plain)
                 if KoreaEstimate.direct || m.holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) { KoreaSumCard() }
                 MyRecordCard()
-                Text("비중은 내 전체 평가액 중 그 종목 몫 · 점선은 평균 단가 · 빨강 오름, 파랑 내림 · 한국 종목은 넣은 가격 기준 · 연필을 누르면 목록에서 바로 고쳐요 · 왼쪽으로 밀면 지울 수 있어요")
+                Text("비중 = 전체 중 그 종목 몫 · 점선 = 평균 단가 · 연필로 고치기 · 왼쪽으로 밀어 지우기")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
@@ -397,11 +397,8 @@ struct KoreaSumCard: View {
         let ago = lastD.flatMap(Day.date).map { Int((Date().timeIntervalSince($0) / 86400).rounded(.down)) } ?? 0
         Card {
             Text(title).appFont(15, .bold)
-            Text("증권사 앱의 국내 주식 평가액 합계를 넣어요. 바뀌면 이 금액만 고쳐요 (0이면 지움)."
-                 + (held && ago > 0 ? " 지금 금액은 \(ago)일 전 금액이에요." : ""))
-                .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-            // 웹 입력 칸 밑 안내와 같은 문구. 뒷부분을 누르면 내 기록의 '국내 주식 합계' 그래프로 간다
-            (Text("전망은 한국 시장 평균(EWY×원/달러) 움직임으로 계산해요 · ") + Text("넣은 금액은 날마다 기록돼 '국내 주식 합계' 그래프로 볼 수 있어요").foregroundColor(Theme.teal))
+            // 웹 입력 칸 밑 안내와 같은 문구. '기록 그래프'를 누르면 내 기록의 '국내 주식 합계' 그래프로 간다
+            (Text("증권사 앱 합계 그대로 (0이면 지움)" + (held && ago > 0 ? " · \(ago)일 전 금액" : "") + " · 전망은 EWY×원/달러 · ") + Text("기록 그래프").foregroundColor(Theme.teal))
                 .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 .onTapGesture { focus = false; m.recKr = true; m.tab = .hold; m.holdPath = NavigationPath(); done?() }
             HStack(spacing: 8) {
