@@ -778,7 +778,8 @@
     for (const h of S.state?.holdings || []) {
       if (!isKR(h.ticker) || !(Number(h.price) > 0)) continue;
       const info = krOf(h), base = S.prices[info.proxy || info.market], a = h.price_date || today(), px = Number(h.price);
-      if (!base || !base.dates.length) continue;
+      // 기준 시세가 아직 없으면 (새로 넣은 EWY·SCHD·SOXX 첫 수집 전) 넣은 가격 하나만 (앱 rebuildKR 과 같다)
+      if (!base || !base.dates.length) { S.prices[h.ticker] = { symbol: h.ticker, currency: "KRW", name: h.name || koOf(h.ticker)?.k || h.ticker, dates: [a], close: [px], adj: [px], est: "input", basis: info.proxy || info.market, hedged: info.hedged }; continue; }
       // 가격(close): 기준 종가 × 원/달러, 넣은 날 값 = 넣은 가격. 직접 입력 종목은 넣은 날 뒤로 넣은 가격 그대로
       // 수익률(adj): 기준 수정 종가 × 원/달러 (전망·지난 움직임). 사이트 stats.json 의 KR~SPY 등과 같은 값
       const C = Model.krSeries(base, fx, info.hedged, "close"), A = Model.krSeries(base, fx, info.hedged, "adj"), dates = C.dates;
