@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */; };
 		02D7A588AC677280C686D8DD /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCACC287684D148B6C75C94F /* SampleData.swift */; };
 		08C597E8BE414747DD18FC1F /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113FC119D1DE4AE5F19B494E /* Engine.swift */; };
 		0AB939B5C4907CBD8CD2BCE5 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A659ACA7844B039CC6E3E3 /* HomeView.swift */; };
@@ -124,6 +125,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0020D03B6A8743286E629278 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		012F5C5676B198E5CF433509 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		0331F7703E5FBD6276E1B388 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -358,6 +360,7 @@
 				0A149C71953E24CEC80C3679 /* App.swift */,
 				AF1B4BB6CF97D8922C1704B6 /* Assets.xcassets */,
 				8380C2A50584D047AFCD6E3D /* Info.plist */,
+				A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */,
 				96EDF9F440F10C712447019C /* Theme.swift */,
 				75F568A375635F9FEAD2A9A2 /* Data */,
 				85AFDE161B334BAE630AF09D /* Resources */,
@@ -474,6 +477,7 @@
 				E1B1111A3CFA95DFAE235456 /* Assets.xcassets in Resources */,
 				29994FFBE4FD5658AB15B368 /* Assets.xcassets in Resources */,
 				694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */,
+				B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */,
 				B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */,
 				8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */,
 				CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */,
@@ -700,7 +704,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -784,7 +788,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
