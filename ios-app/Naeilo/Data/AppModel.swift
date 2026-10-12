@@ -393,7 +393,6 @@ final class AppModel {
     var itemsOff: Set<String> = []   // 쉼터 방 배치에서 뺀 물건
     var itemsOn: Int { devAll ? 10 : playOn ? min(10, itemsBack) : 0 }   // 개발자 권한은 물건 모두
     /// 다음 물건까지 남은 날
-    var itemDaysLeft: Int { 7 - streak % 7 }
 
     // 오늘 숫자와 질문은 내 종목의 실제 시세로 만든다 (Market: 전일 종가 → 지금, 종목 통화 기준)
     static func won(_ krw: Double) -> String { abs(krw) < 1e4 ? Int(abs(krw).rounded()).formatted() + "원" : wonK(abs(krw) / 1e4) }
@@ -544,13 +543,12 @@ final class AppModel {
         var t = today; t.seen = true; t.answer = i; t.q = q.id
         if q.right >= 0 { t.ok = i == q.right }
         dayLog[day] = t
-        let s = streak
-        if playOn && s > 0 && s % 7 == 0 && itemsBackDay != day && itemsBack < 10 { itemsBack += 1; itemsBackDay = day }
+        if playOn && itemsBackDay != day && itemsBack < 10 { itemsBack += 1; itemsBackDay = day }
     }
     var routineDoneText: String {
         let n = itemsOn
-        if itemsBackDay == day && n > 0 { return "오늘 루틴 끝! 7일 연속이라 쉼터에 물건(\(Shelter.items[n - 1].name))이 돌아왔어요." }
-        if n < 10 { return "오늘 루틴 끝! \(itemDaysLeft)일 더 하면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." }
+        if itemsBackDay == day && n > 0 { return "오늘 루틴 끝! 쉼터에 물건(\(Shelter.items[n - 1].name))이 돌아왔어요." }
+        if n < 10 { return "오늘 루틴 끝! 내일도 하면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." }
         return "오늘 루틴 끝! 물건이 모두 돌아왔어요."
     }
     var homeSay: String {
@@ -560,7 +558,7 @@ final class AppModel {
         }
         if today.answer != nil {
             let n = itemsOn
-            let info = n < 10 ? "\(itemDaysLeft)일 더 오면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." : ""
+            let info = n < 10 ? "내일 또 오면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." : ""
             return [Lines.pick("home.done.\(who)") ?? "오늘은 여기까지예요.", info].filter { !$0.isEmpty }.joined(separator: " ")
         }
         return Lines.pick("home.fresh.\(who)", ["move": Self.sgn(todayMove)]) ?? "오늘 숫자 가져왔어요. 한 번만 보고 가요."
