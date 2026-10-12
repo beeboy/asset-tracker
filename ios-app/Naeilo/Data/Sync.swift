@@ -349,6 +349,8 @@ final class Sync {
         var app: [String: Any] = ["v": 1]
         if let p = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(m.progress)) { app["progress"] = p }
         app["virtual"] = m.holdings.filter { $0.symbol == "DRNK" }.map { ["t": $0.symbol, "q": $0.qty, "a": $0.avg] }
+        // 평행 세계의 나: 연 날·바구니·인물·본선 기록 (앱만 쓴다)
+        if let w = m.pworld, let d = try? JSONEncoder().encode(w), let j = try? JSONSerialization.jsonObject(with: d) { app["parallel"] = j }
         st["app"] = app
         // 목표는 사이트와 같은 칸(goal)에. 회복 루트(본전 기준)와 사이트 샘플 중에는 사이트 목표를 그대로 둔다
         if m.isGoal, (st["sample"] as? Bool) != true { st["goal"] = m.siteGoal(st["goal"] as? [String: Any]) }
@@ -422,6 +424,10 @@ final class Sync {
             for v in (app["virtual"] as? [[String: Any]]) ?? [] {
                 if let t = v["t"] as? String, let q = v["q"] as? Double, let a = v["a"] as? Double { hs.insert(Holding(symbol: t, qty: q, avg: a), at: 0) }
             }
+            if let p = app["parallel"], let data = try? JSONSerialization.data(withJSONObject: p),
+               let w = try? JSONDecoder().decode(PWorld.self, from: data) {
+                m.pworld = PWorld.merge(m.pworld, w)
+            }
             if let p = app["progress"], let data = try? JSONSerialization.data(withJSONObject: p),
                let prog = try? JSONDecoder().decode(Progress.self, from: data) {
                 m.apply(prog)
@@ -450,7 +456,8 @@ final class Sync {
     func signature(_ m: AppModel) -> String {
         var p = m.progress; p.lastOpen = ""
         let a = (try? JSONEncoder().encode(p)) ?? Data(), b = (try? JSONEncoder().encode(m.holdings)) ?? Data()
-        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
+        let pw = m.pworld.map { "\($0.days.count)|\($0.segs.count)|\($0.segs.last?.from ?? "")|\($0.who)|\($0.opened)" } ?? "-"
+        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)|\(pw)".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
         return SHA256.hash(data: a + b + c).map { String(format: "%02x", $0) }.joined()
     }
 }

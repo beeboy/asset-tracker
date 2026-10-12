@@ -90,7 +90,7 @@ final class Market {
         if let r = await MarFeed.fetch(minAge: force ? 0 : 1800) { mar = r }
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
         let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
-        if let p = await SitePrices.fetch(keys: keys.union(["KRW=X"]), old: prices, minAge: force ? 0 : 1800) { prices = p }
+        if let p = await SitePrices.fetch(keys: keys.union(["KRW=X"]).union(Parallel.wantKeys), old: prices, minAge: force ? 0 : 1800) { prices = p }
         // 전망 입력값: 하루 한 번 바뀌므로 6시간에 한 번 (당겨 갱신하면 바로)
         if let s = await SiteStats.fetch(minAge: force ? 0 : 6 * 3600) { stats = s }
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
