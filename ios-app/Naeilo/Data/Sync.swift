@@ -339,6 +339,13 @@ final class Sync {
         st["app"] = app
         // 목표는 사이트와 같은 칸(goal)에. 회복 루트(본전 기준)와 사이트 샘플 중에는 사이트 목표를 그대로 둔다
         if m.isGoal, (st["sample"] as? Bool) != true { st["goal"] = m.siteGoal(st["goal"] as? [String: Any]) }
+        // 전망 관점(현재 정세·내 관점·과거 추세)과 추세 신뢰는 웹 전망 설정과 같은 칸(model.scenario·trust)에. 웹이 다른 시나리오(보수 등)면 그대로 둔다
+        var md = st["model"] as? [String: Any] ?? [:]
+        if ["blend", "base", "smooth", nil].contains(md["scenario"] as? String) {
+            md["scenario"] = m.lens == .base ? "base" : m.lens == .smooth ? "smooth" : "blend"
+            md["trust"] = m.trust
+            st["model"] = md
+        }
         // 내 기록은 사이트와 같은 칸(daily)에 날짜별로 합쳐 둔다
         let daily = MyRecord.merge(MyRecord.fromJSON(st["daily"]), m.myRecord)
         if !daily.isEmpty, let j = MyRecord.toJSON(daily) { st["daily"] = j }
@@ -403,6 +410,11 @@ final class Sync {
         // 목표(금액·목표일·시작일·매달 넣는 돈)는 받을 때마다 사이트 값으로 맞춘다 (진행보다 뒤에: 진행에 든 예전 목표를 덮는다).
         // 회복 루트는 본전이 기준이라 화면에는 안 쓰지만, 목표 루트로 넘어갈 때 이 목표를 그대로 쓴다. 사이트 샘플 목표는 받지 않는다
         if (st["sample"] as? Bool) != true, let g = st["goal"] as? [String: Any] { m.takeSiteGoal(g) }
+        // 전망 관점·추세 신뢰도 웹 설정을 그대로 (진행보다 뒤에: 앱에 따로 남은 값이 웹과 다른 연 기대·확률을 만들지 않게)
+        if let md = st["model"] as? [String: Any] {
+            switch md["scenario"] as? String { case "base": m.lens = .base; case "smooth": m.lens = .smooth; case "blend": m.lens = .mine; default: break }
+            if md["trust"] != nil { let t = Self.num(md["trust"]); if t.isFinite { m.trust = min(100, max(0, t)) } }
+        }
         m.myRecord = MyRecord.merge(m.myRecord, MyRecord.fromJSON(st["daily"]))
         m.lots = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)    // 종목보다 먼저: 종목을 바꾸면 수량 기록이 오늘 줄을 남긴다
         m.holdings = hs
