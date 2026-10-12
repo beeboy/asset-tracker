@@ -673,7 +673,7 @@
     const P = S.prices[r.h.ticker], inp = (ph) => `<input data-f="kprice" type="text" inputmode="decimal" placeholder="${ph}" size="8">`;
     if (!P || r.p.v == null) return `${inp("지금 가격(원)")}<br><span class="muted small">한국 시세는 받지 않아요. 가격을 한 번 넣으면 계산해요</span>`;
     if (r.h.ticker === KR_SUM) { const L = S.state.kr_log || [], ld = L[L.length - 1]?.d, ago = ld ? Math.round(yearsBetween(ld, today()) * 365.25) : 0;
-      return `<span class="tag" title="${esc(`${ld || ""}에 넣은 합계 금액 그대로예요. 전망은 이 금액에서 한국 시장 평균(EWY×원/달러) 움직임으로 계산해요`)}">입력</span><br><b>${krw(r.valueKrw)}</b>${ago > 0 ? `<br><span class="muted small">${ago}일 전 금액</span>` : ""}<br>${inp("합계 다시 넣기")}`; }
+      return `<span class="tag" title="${esc(`${ld || ""}에 넣은 금액 · 전망은 EWY×원/달러`)}">입력</span><br><b>${krw(r.valueKrw)}</b>${ago > 0 ? `<br><span class="muted small">${ago}일 전 금액</span>` : ""}<br>${inp("합계 다시 넣기")}`; }
     const tip = P.est === "proxy" ? `${r.h.price_date || ""}에 넣은 ${nf(Number(r.h.price))}원에서 ${P.basis}${P.hedged ? "" : " × 원/달러"} 움직임으로 추정한 값이에요` : `${r.h.price_date || ""}에 넣은 가격 그대로예요. 움직임 예측은 한국 시장 평균(${P.basis})으로 해요`;
     return `${nf(r.p.v, 0)} <span class='muted small'>KRW</span><span class="tag" title="${esc(tip)}">${P.est === "proxy" ? "추정" : "입력"}</span><br><b>${krw(r.valueKrw)}</b><br>${inp("가격 다시 넣기")}`;
   }
@@ -1152,9 +1152,9 @@
       ["지난번 대비", chg == null ? "-" : spct(chg), prev != null ? `${krw(prev)}원 → ${krw(L.v)}원` : "한 번 넣음"],
     ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "지난번 대비" ? cls(chg) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
     $("#recChart").style.display = "block";
-    Charts.lineChart($("#recChart"), { x, height: 220, yfmt: krwAxis, ymin: 0, series: [{ name: "국내 주식 합계", y, color: "var(--c1)", width: 2 }],
+    Charts.lineChart($("#recChart"), { x, height: 220, yfmt: krwAxis, ymin: 0, series: [{ name: "국내 주식 합계", y, color: "var(--c1)", width: 2, lastDot: x.length < 2 ? x[0] : null }], // 첫날은 점 하나
       markers: K.map((k) => ({ x: k.d, label: `${k.d} ${krw(k.v)}원 넣음`, color: "var(--c1)" })) });
-    $("#recNote").textContent = "넣은 금액 그대로예요 (삼각형 = 넣은 날). 넣지 않은 날은 앞 금액을 이어 그려요. 처음 넣은 금액은 들어온 돈으로, 그 뒤 바뀐 금액은 시장 움직임으로 셉니다.";
+    $("#recNote").textContent = x.length < 2 ? "오늘 처음 넣었어요. 다음에 넣으면 선이 그려져요." : "삼각형 = 넣은 날. 안 넣은 날은 앞 금액 그대로예요.";
   }
   // 국내 주식 합계 기록 엑셀: 날짜·금액 두 칸. .xlsx 는 SheetJS 를 그때 불러와 읽고 쓴다 (못 불러오면 .csv)
   let xlsxP = null;

@@ -111,7 +111,9 @@ private struct KrRecord: View {
             cell("처음 넣은 금액", AppModel.man(F.v), Day.md(F.d))
             cell("지난번 대비", prev.map { $0 > 0 ? AppModel.sgn(L.v / $0 - 1) : "-" } ?? "-", prev.map { AppModel.man($0) + " →" } ?? "한 번 넣음")
         }
-        if xs.count >= 2 {
+        if xs.count < 2 {   // 첫날: 점 하나 (웹과 같다)
+            Circle().fill(Theme.teal).frame(width: 8, height: 8).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 6).accessibilityHidden(true)
+        } else {
             GeometryReader { g in
                 let hi = max(1, (ys.max() ?? 1) * 1.05), t0 = MC.dayNum(xs[0]), span = Double(max(1, MC.dayNum(xs[xs.count - 1]) - t0))
                 let pt = { (d: String, v: Double) in CGPoint(x: CGFloat(Double(MC.dayNum(d) - t0) / span) * g.size.width, y: (1 - CGFloat(v / hi)) * (g.size.height - 6) + 3) }
@@ -126,7 +128,7 @@ private struct KrRecord: View {
             .frame(height: 110).accessibilityHidden(true)
             HStack { Text(Day.md(xs[0])); Spacer(); Text(Day.md(xs[xs.count - 1])) }.appFont(11).foregroundStyle(Theme.muted)
         }
-        Text("넣은 금액 그대로예요 (점 = 넣은 날). 넣지 않은 날은 앞 금액을 이어 그려요. 처음 넣은 금액은 들어온 돈으로, 그 뒤 바뀐 금액은 시장 움직임으로 셉니다. 엑셀로 내보내기·불러오기는 naeilo.com 내 기록에서 해요.")
+        Text(xs.count < 2 ? "오늘 처음 넣었어요. 다음에 넣으면 선이 그려져요." : "점 = 넣은 날. 안 넣은 날은 앞 금액 그대로예요. 엑셀은 naeilo.com 내 기록에서.")
             .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
     }
     private func cell(_ k: String, _ v: String, _ sub: String) -> some View {

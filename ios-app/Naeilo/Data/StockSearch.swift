@@ -95,7 +95,7 @@ enum KoreaEstimate {
         let i = info(id: s.id, name: s.name), at = s.kd ?? ""
         guard let p = s.kp else { return "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 계산해요." }
         let won = Int(p.rounded()).formatted() + "원"
-        if s.id == sumId { return "\(at)에 넣은 합계 \(won) 그대로예요. 전망은 이 금액에서 한국 시장 평균(EWY × 원/달러) 움직임으로 해요." }
+        if s.id == sumId { return "\(at)에 넣은 \(won) · 전망은 EWY×원/달러" }
         return i.proxy != nil ? "\(at)에 넣은 \(won)에서 \(i.base)\(i.hedged ? "" : " × 원/달러") 움직임으로 추정한 값이에요."
             : "\(at)에 넣은 \(won) 그대로예요. 움직임 예측은 한국 시장 평균(\(i.base) × 원/달러)으로 해요."
     }
