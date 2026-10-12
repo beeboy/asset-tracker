@@ -78,7 +78,17 @@ final class AppModel {
     // 보유
     // 내 종목은 앱을 다시 켜도 남는다 (다른 시안 상태는 켤 때마다 시연 상태로 시작)
     var holdings: [Holding] = AppModel.savedHoldings ?? Sample.startHoldings {
-        didSet { if let d = try? JSONEncoder().encode(holdings) { UserDefaults.standard.set(d, forKey: "holdings") }; recordDay() }
+        didSet {
+            if let d = try? JSONEncoder().encode(holdings) { UserDefaults.standard.set(d, forKey: "holdings") }
+            // 국내 주식 합계 줄을 목록에서 지우면 0원으로 남긴다 (다 팔았어요. 지난 기록은 그대로, 웹 delHolding 과 같다)
+            let k = KoreaEstimate.sumId
+            // (그 줄만 빠진 경우만. 루트를 다시 고르거나 샘플로 바꾸는 중에 잠깐 비는 것은 세지 않는다)
+            let was = Set(oldValue.map(\.symbol)), now = Set(holdings.map(\.symbol))
+            if was.contains(k), now == was.subtracting([k]), CustomSymbols.shared.krNow > 0 {
+                Task { @MainActor in CustomSymbols.shared.setKoreaSum(0) }
+            }
+            recordDay()
+        }
     }
     /// naeilo를 쓴 날부터의 내 기록 (MyRecord.swift). 수량을 처음 넣은 날부터 하루 한 줄
     var myRecord: [DayRec] = MyRecord.load() { didSet { MyRecord.save(myRecord) } }
@@ -206,7 +216,8 @@ final class AppModel {
             guard h.qty > 0, let s = Sample.symbol(h.symbol) else { return nil }
             return (s, h)
         }.enumerated().map { i, p in
-            Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: costKrw(p.0, p.1.qty * p.1.avg),
+            // 국내 주식 합계는 현금처럼: 들어간 돈 = 지금 금액 (본전·수익률을 움직이지 않는다)
+            Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: p.0.id == KoreaEstimate.sumId ? krw(p.0, p.1.qty * p.0.last) : costKrw(p.0, p.1.qty * p.1.avg),
                 color: Theme.holdColors[i % Theme.holdColors.count])
         }
     }
@@ -231,14 +242,22 @@ final class AppModel {
         let c = Sync.shared.siteCash
         return c.krw + c.usd * Market.shared.valFx
     }
+    /// 국내 주식 합계 (날짜별 기록의 오늘 금액, 웹 krNow 와 같다). 샘플·시작 전 루트는 0. 전망은 다른 종목처럼 EWY × 원/달러 움직임으로
+    var krSum: Double {
+        guard route != .novice, !isSample, holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) else { return 0 }
+        return CustomSymbols.shared.krNow
+    }
     var cost: Double { rows.reduce(0) { $0 + $1.cost } }
     var ret: Double { cost > 0 ? total / cost - 1 : 0 }
     /// 회복 루트의 '몰린 종목' 비중 (내 평가액이 가장 큰 종목, Recovery.swift focusRow)
     var focusWeight: Double { total > 0 ? (focusRow?.value ?? 0) / total : 0 }
+    /// 국내 주식 합계를 뺀 평가액 (오늘 움직임용: 합계는 넣은 날만 바뀐다)
+    var stockTotal: Double { rows.reduce(0) { $0 + ($1.id == KoreaEstimate.sumId ? 0 : $1.value) } }
     /// 오늘의 움직임: 원화 평가액 기준 (전일 종가·전일 환율 → 지금)
     var todayMove: Double {
         let fx = Market.shared.fx
         let usd = { (r: Row) in r.sym.currency == .usd }
+        let rows = self.rows.filter { $0.id != KoreaEstimate.sumId }   // 국내 주식 합계는 넣은 날만 바뀌어 0%로 전체 폭을 줄이지 않게 뺀다
         let prev = rows.reduce(0) { a, r in a + r.h.qty * r.sym.quote.prevClose * (usd(r) ? fx.prevClose : 1) }
         let now = rows.reduce(0) { a, r in a + r.h.qty * r.sym.last * (usd(r) ? fx.last : 1) }   // 같은 환율 계열끼리 (평가액은 매매기준율)
         return prev > 0 ? now / prev - 1 : 0
@@ -280,6 +299,8 @@ final class AppModel {
     var appearance = UserDefaults.standard.string(forKey: "appearance") ?? "system"   // system · light · dark
     // 종목 탭은 종목(Symbol)과 '종목 추가'(String)를, 분석 탭은 분석 화면과 종목을 같이 쌓으므로 NavigationPath
     var holdPath = NavigationPath()
+    /// 내 기록 카드에서 '국내 주식 합계' 그래프를 보고 있는지 (합계 입력 칸의 안내 줄에서 바로 연다)
+    var recKr = false
     /// 리마인드에서 국내 주식 합계 입력 칸 띄우기
     var krSumAsk = false
 
@@ -409,7 +430,7 @@ final class AppModel {
         var qs: [Question] = []
         let rs = rows, tot = max(1, total), mv = todayMove
         if !rs.isEmpty {
-            let diff = total - total / (1 + mv)
+            let diff = stockTotal - stockTotal / (1 + mv)     // 오늘 움직임은 종목만 (국내 주식 합계 빼고)
             qs.append(.init(id: "updown", tag: "오늘 움직임", q: "어제 종가와 비교해, 오늘 내 평가액은?", opts: ["올랐어요", "내렸어요"], right: mv >= 0 ? 0 : 1,
                             fb: { _ in "오늘 \(Self.sgn(mv)), 원화로 \(Self.won(diff)) \(diff >= 0 ? "늘었어요" : "줄었어요")." }))
         }

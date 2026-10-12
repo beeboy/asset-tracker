@@ -9,6 +9,8 @@ struct Input: Decodable {
         var name: String; var holdings: [H]; var events: [MC.Event]; var goal: Double; var goalDate: String; var monthly: Double; var nPaths: Int; var trust: Double
     }
     var stats: MC.Stats; var start: String; var cases: [Case]
+    struct Kr: Decodable { var log: [MC.KrDay]; var dates: [String] }
+    var kr: Kr
 }
 struct R: Encodable {
     var p_goal, p_touch, mdd_median: Double
@@ -30,6 +32,8 @@ struct Out: Encodable {
     struct B: Encodable { var all: [Double?]; var first: [Double?]; var req50: Double }
     struct C: Encodable { var name: String; var nPaths: Int; var trust: Int; var ms: Double; var model: M; var sim: R; var simNo: R; var views: [String: R]; var bep: B; var paths: R }
     var cases: [C] = []
+    struct K: Encodable { var norm: [MC.KrDay]; var at: [Double] }
+    var kr = K(norm: [], at: [])
 }
 
 let dir = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "."
@@ -78,6 +82,9 @@ for c in inp.cases {
                            sim: R(ev.summary), simNo: R(no.summary), views: views, bep: bep, paths: R(pr)))
     print("앱 \(c.name): 경로 \(c.nPaths) · \(model.days.count)거래일 · 사건 \(model.eventCount)회 · 시뮬레이션 2번 \(Int(ms))ms · 다시 무게 주기 1번 \(Int(rw))ms · 목표 확률 \(String(format: "%.1f", ev.summary.pGoal * 100))%")
 }
+// 국내 주식 합계 기록 (웹 krNorm·krAt 과 같은 값)
+let kn = MC.krNorm(inp.kr.log)
+out.kr = .init(norm: kn, at: inp.kr.dates.map { MC.krAt(kn, $0) })
 try JSONEncoder().encode(out).write(to: URL(fileURLWithPath: dir + "/app.json"))
 
 // 시간 재기 (폰 발열 점검): 개발자 구성으로 목표일 전망(3년, 사건 반영 + 사건 없이)과 목표 자동 고르기용 10년 경로를

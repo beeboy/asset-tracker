@@ -57,6 +57,12 @@ if (cmd === "gen") {
     });
     console.log(`웹 ${c.name}: 경로 ${c.nPaths} · ${model.days.length}거래일 · 사건 ${model.eventList.length}회 · ${ms.toFixed(0)}ms · 목표 확률 ${(sim.p_goal * 100).toFixed(1)}%`);
   }
+  // 국내 주식 합계 기록 (model.js krNorm·krAt ↔ MonteCarlo.swift MC.krNorm·krAt): 순서가 섞이고 같은 날이 두 번, 0원(다 팔았어요)·다시 넣음
+  const krLog = [{ d: "2026-10-08", v: 52000000 }, { d: "2026-09-30", v: 50000000.4 }, { d: "2026-10-08", v: 51500000 }, { d: "2026-10-10", v: 0 }, { d: "2026-10-12", v: 49800000.5 }];
+  const krDates = ["2026-09-29", "2026-09-30", "2026-10-01", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11", "2026-10-12", "2026-12-31"];
+  input.kr = { log: krLog, dates: krDates };
+  const kn = Model.krNorm(krLog);
+  web.kr = { norm: kn, at: krDates.map((d) => Model.krAt(kn, d)) };
   writeFileSync(dir + "/input.json", JSON.stringify(input));
   writeFileSync(dir + "/web.json", JSON.stringify(web));
 } else if (cmd === "cmp") {
@@ -100,6 +106,10 @@ if (cmd === "gen") {
     res(`${w.name}.paths`, w.views["ev:" + a.trust], a.paths, P);
     console.log(`${w.name}: 웹 ${w.model.days}거래일 ${w.ms.toFixed(0)}ms · 앱 ${a.ms.toFixed(0)}ms · 목표 확률 웹 ${(w.sim.p_goal * 100).toFixed(2)}% 앱 ${(a.sim?.p_goal * 100).toFixed(2)}%`);
   }
+  // 국내 주식 합계 기록
+  const kj = (a) => JSON.stringify((a || []).map((x) => [x.d, x.v]));
+  if (kj(web.kr.norm) !== kj(app.kr?.norm)) fail("kr.norm", kj(web.kr.norm), kj(app.kr?.norm));
+  web.kr.at.forEach((v, i) => num(`kr.at[${i}]`, v, app.kr?.at?.[i], { abs: 0.5 }));
   console.log(`비교 ${n}개, 다름 ${bad}개, 금액 최대 상대 오차 ${worst.toExponential(2)}`);
   process.exit(bad ? 1 : 0);
 }

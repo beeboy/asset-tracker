@@ -77,6 +77,9 @@ final class Sync {
         get { (d.dictionary(forKey: "sync.subAvg") as? [String: Double]) ?? [:] }
         set { d.set(newValue, forKey: "sync.subAvg") }
     }
+    static func krFromJSON(_ any: Any?) -> [MC.KrDay] {
+        ((any as? [[String: Any]]) ?? []).compactMap { x in (x["d"] as? String).map { MC.KrDay(d: $0, v: num(x["v"])) } }
+    }
     static func num(_ v: Any?) -> Double {
         if let x = v as? Double { return x }
         if let x = v as? Int { return Double(x) }
@@ -363,6 +366,9 @@ final class Sync {
         // 지난 날은 사이트 값만 (앱에만 남은 예전 줄이 웹과 다른 시작값을 만들지 않게), 오늘 줄은 이 기기 값
         let lots = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)
         if !lots.isEmpty, let j = Lots.toJSON(lots) { st["lots"] = j }
+        // 국내 주식 합계 기록도 같은 칸(kr_log)에 날짜별로 합친다 (같은 날은 이 기기 값)
+        let kr = MC.krNorm(Self.krFromJSON(st["kr_log"]) + CustomSymbols.shared.krLog)
+        if !kr.isEmpty { st["kr_log"] = kr.map { ["d": $0.d, "v": $0.v] as [String: Any] } }
         st.removeValue(forKey: "ui")
         st.removeValue(forKey: "_w")
         return st
@@ -398,6 +404,7 @@ final class Sync {
         }
         // 한국 종목: 웹에 넣은 가격을 그대로 (가격이 없으면 종목 화면에서 넣게 둔다)
         for (id, v) in krPrice { CustomSymbols.shared.setPrice(id, v.0, date: v.1) }
+        CustomSymbols.shared.mergeKr(Self.krFromJSON(st["kr_log"]))     // 국내 주식 합계 날짜별 기록 (같은 날은 받은 쪽)
         hs = hs.map { h in
             guard h.avg <= 0, let s = Sample.symbol(h.symbol) else { return h }
             sub[h.symbol] = s.last

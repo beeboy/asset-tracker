@@ -8,6 +8,21 @@ import Foundation
 enum MC {
     static let TD = 252.0
 
+    // MARK: 국내 주식 합계 기록 (웹 model.js krNorm·krAt 과 같은 식, 사이트 kr_log 칸)
+    struct KrDay: Codable, Equatable { var d: String; var v: Double }
+    /// 하루 한 줄(같은 날은 뒤에 온 값), 날짜순, 최대 1,200줄. 금액은 원 단위로 반올림
+    static func krNorm(_ log: [KrDay]) -> [KrDay] {
+        var m: [String: Double] = [:]
+        for x in log where x.d.count == 10 && x.v.isFinite && x.v >= 0 { m[x.d] = x.v.rounded() }
+        return m.keys.sorted().suffix(1200).map { KrDay(d: $0, v: m[$0]!) }
+    }
+    /// 그날 금액: 그날까지 마지막으로 넣은 금액. 첫 기록 전은 0 (처음 넣은 금액은 들어온 돈)
+    static func krAt(_ log: [KrDay], _ d: String) -> Double {
+        var v = 0.0
+        for x in log { if x.d > d { break }; v = x.v }
+        return v
+    }
+
     // MARK: 사이트 통계 (data/stats.json)
     struct Stats: Codable {
         struct Ticker: Codable { var mu: Double?; var trend: Double?; var gs: Double?; var vol: Double?; var n: Int?; var cash: Bool?; var fx: Bool? }

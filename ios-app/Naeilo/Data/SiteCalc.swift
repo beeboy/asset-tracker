@@ -46,7 +46,8 @@ final class SiteCalc {
     }
     func div(_ id: String) -> Div? { file?.divs[Self.key(id)] }
     /// 요인 민감도 (웹 Model.factorBetas, 사이트 stats.json): mkt = S&P500 로그 변화당, rate = 10년 금리 1bp 당, oil·gold·cmdty = 그 지표 로그 변화당 (시장 움직임 뺀 값)
-    func beta(_ factor: String, _ id: String) -> Double? { Market.shared.stats?.betas?[factor]?[Self.key(id)] }
+    /// 한국 종목·국내 주식 합계는 전망과 같은 키(KR~기준 ETF, 합계는 KR~EWY. 웹과 같은 수익률)로 찾는다
+    func beta(_ factor: String, _ id: String) -> Double? { Market.shared.stats?.betas?[factor]?[SiteStats.mcKey(id)] }
 
     // MARK: 웹과 같은 식
 
