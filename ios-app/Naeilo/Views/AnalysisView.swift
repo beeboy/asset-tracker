@@ -2,6 +2,86 @@ import SwiftUI
 
 enum AnalysisRoute: Hashable { case forecast, myPath, rateScen, external, dividend, fx, glance, calm }
 
+/// 분석 상세 화면을 좌우로 넘겨 바로 옆 분석으로 간다 (분석 탭 목록 순서)
+private struct DetailInPagerKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var detailInPager: Bool {
+        get { self[DetailInPagerKey.self] }
+        set { self[DetailInPagerKey.self] = newValue }
+    }
+}
+
+/// 상세 화면 제목: 넘기기 화면 안에서는 넘기기 화면이 지금 쪽 제목을 단다 (쪽마다 달면 서로 덮음)
+struct DetailTitle: ViewModifier {
+    @Environment(\.detailInPager) private var inPager
+    let title: String
+    func body(content: Content) -> some View {
+        if inPager { content } else { content.navigationTitle(title) }
+    }
+}
+
+struct AnalysisPager: View {
+    @Environment(AppModel.self) private var m
+    @State private var sel: AnalysisRoute
+    static let order: [AnalysisRoute] = [.calm, .myPath, .forecast, .rateScen, .external, .dividend, .fx, .glance]
+
+    init(start: AnalysisRoute) { _sel = State(initialValue: start) }
+
+    private func title(_ r: AnalysisRoute) -> String {
+        switch r {
+        case .calm: return "평정 지수"
+        case .myPath: return "내 길"
+        case .forecast: return m.forecastTitle
+        case .rateScen: return "금리 시나리오"
+        case .external: return "외부 요인"
+        case .dividend: return "배당·세금"
+        case .fx: return "환율 영향"
+        case .glance: return "종목 한눈에"
+        }
+    }
+
+    @ViewBuilder private func page(_ r: AnalysisRoute) -> some View {
+        switch r {
+        case .forecast: ForecastView()
+        case .myPath: MyPathView()
+        case .rateScen: RateScenarioView()
+        case .external: ExternalView()
+        case .dividend: DividendView()
+        case .fx: FxImpactView()
+        case .glance: GlanceView()
+        case .calm: CalmView()
+        }
+    }
+
+    var body: some View {
+        TabView(selection: $sel) {
+            ForEach(Self.order, id: \.self) { r in page(r).tag(r) }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .environment(\.detailInPager, true)
+        .background(Theme.bg.ignoresSafeArea())
+        .navigationTitle(title(sel))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // 제목 밑 점: 지금 몇 번째 분석인지, 좌우로 넘길 수 있다는 표시
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 3) {
+                    Text(title(sel)).appFont(16, .bold).lineLimit(1)
+                    HStack(spacing: 4) {
+                        ForEach(Self.order, id: \.self) { r in
+                            Circle().fill(r == sel ? Theme.teal : Theme.border).frame(width: 5, height: 5)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(title(sel)), \((Self.order.firstIndex(of: sel) ?? 0) + 1) / \(Self.order.count), 좌우로 넘기면 다른 분석")
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: sel)
+        .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: .y1) }
+    }
+}
+
 // 분석 탭: naeilo.com 분석·전략을 폰에 맞게. 카드 머리 숫자는 각 화면 첫 숫자와 같은 계산.
 struct AnalysisView: View {
     @Environment(AppModel.self) private var m
@@ -69,18 +149,7 @@ struct AnalysisView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task { await MacroData.shared.load() }
         .task { await SiteCalc.shared.refresh() }
-        .navigationDestination(for: AnalysisRoute.self) { r in
-            switch r {
-            case .forecast: ForecastView()
-            case .myPath: MyPathView()
-            case .rateScen: RateScenarioView()
-            case .external: ExternalView()
-            case .dividend: DividendView()
-            case .fx: FxImpactView()
-            case .glance: GlanceView()
-            case .calm: CalmView()
-            }
-        }
+        .navigationDestination(for: AnalysisRoute.self) { AnalysisPager(start: $0) }
     }
 }
 

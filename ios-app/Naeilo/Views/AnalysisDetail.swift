@@ -93,7 +93,7 @@ struct DetailHead: View {
         Text(sub).appFont(14).foregroundStyle(Theme.sub)
             .frame(maxWidth: .infinity, maxHeight: sub.isEmpty ? 0 : nil, alignment: .leading)
             .opacity(sub.isEmpty ? 0 : 1)
-            .navigationTitle(title)
+            .modifier(DetailTitle(title: title))
     }
 }
 
@@ -968,6 +968,5 @@ struct GlanceView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: .y1) }
     }
 }
