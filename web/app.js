@@ -973,8 +973,6 @@
     if (pg == null && !S.state.model.rebalance_yearly && progAsked !== fcSig()) { progAsked = fcSig(); fcDirty = true; setTimeout(runForecast, 0); }
     card.style.display = "block";
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
-    // 개발자 기기: 앱 내 길 개발자 줄과 같은 값 (시작·지금·길·현금, 만원). 웹·앱 '뒤처짐'이 갈릴 때 어느 값이 다른지 본다
-    if (isDev()) { const man = (v) => nf(Math.round(v / 1e4)) + "만"; $("#progSub").textContent += ` · 개발자: 시작 ${H.dates[i0]} ${man(V0)} · 지금 ${man(now)} · 길 ${man(need)} · 현금 ${man(cash)} · 환율 ${nf(fxBase("USD"), 2)}`; }
     $("#prog").innerHTML = [
       ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
       ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `내 길보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
@@ -1787,8 +1785,6 @@
           `종목 가격(${h.ccy}) 기준, 사건만 빼고 다시 계산한 비교. 이 종목에 걸린 사건(시장·요인 사건 포함) ${md.eventList.filter((e) => inC(e) && onTk(e)).length}건.`);
     }
   }
-  // 개발자 기기: 토큰을 넣었거나 ?dev=1 로 연 기기
-  const isDev = () => { try { return !!ghToken() || localStorage.getItem("naeilo-dev") === "1"; } catch (e) { return false; } };
   function renderForecast() {
     const m = S.state.model;
     $$("#fcOpt button[data-s]").forEach((x) => x.classList.toggle("on", x.dataset.s === m.scenario)); if ($("#scenMore button.on")) $("#scenMore").open = true; $("#nPaths").value = String(m.n_paths); $("#rebalance").checked = !!m.rebalance_yearly;
@@ -1800,8 +1796,6 @@
     $("#fcWarn").innerHTML = manual.length && lastHist ? `오늘 평가액(${krw(R.V0)}원)이 시세 기준(${krw(lastHist)}원)과 ${spct(R.V0 / lastHist - 1, 0)} 다릅니다. <b>${manual.map((h) => esc(h.ticker)).join(", ")}</b>에 현재가를 직접 넣었기 때문입니다. 매수 단가였다면 종목 탭에서 그 값을 지우고 '매수 단가' 칸으로 옮겨 주세요.` : "";
     $("#fcWarn").style.display = $("#fcWarn").innerHTML ? "block" : "none";
     $("#fcStatus").textContent = `${SCEN_SHORT[lastForecast.scen] || ""} 시나리오, ${dtStr(lastForecast.at)}` + (fcDirty ? " · 입력이 바뀜, 시나리오를 눌러 다시 계산" : "");
-    // 개발자 기기: 앱 개발자 줄과 같은 항목 (기준 평가액·목표(현금 뺀)·경로·사건·마지막 종가일). 웹·앱 숫자가 갈릴 때 어느 입력이 다른지 본다
-    if (isDev()) { const man = (v) => nf(Math.round(v / 1e4)) + "만"; $("#fcStatus").textContent += ` · 개발자: 기준 ${man(b.holdings.reduce((s2, h) => s2 + h.valueKrw, 0))} · 목표 ${man(Math.max(1, g.amount - cashKrw()))} · 경로 ${nf(lastForecast.common.nPaths)} · 사건 ${md.eventList.length} · 연 기대 ${spct(portMu(viewKey()), 0)} · 확률 ${pct(R.p_goal, 1)} · μ ${md.factors.filter((f) => f.kind === "asset").map((f) => `${f.key} ${Math.round(f.mu.base * 100)}/${Math.round(f.mu.smooth * 100)}`).join(" ")} · 기본과 다른 설정 ${Object.keys(DEFAULT_MODEL).filter((k) => String(m[k]) !== String(DEFAULT_MODEL[k])).map((k) => `${k}=${m[k]}`).join(" ") || "없음"} · 종가일 ${[...b.holdings.map((h) => h.ticker), "KRW=X"].map((t) => S.prices[t]?.dates?.slice(-1)[0] || "").sort().pop() || "-"}`; }
     $("#fcStatus").title = `${SCEN_LAB[lastForecast.scen] || ""} · 경로 ${nf(m.n_paths)}개 × ${md.days.length}거래일 · ${(lastForecast.ms / 1000).toFixed(1)}초`;
     renderForecastView(true);
     // 모형 값
