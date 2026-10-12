@@ -76,6 +76,19 @@ extension AppModel {
         let need: (Double) -> Double = { t in mM * 12 * t + (kAdj > 0 && vS > 0 ? vS * pow(kAdj / vS, t / mEnd) : vS + (K - vS) * t / mEnd) }
         return MyPath(start: mS, end: mEnd, key: K, monthly: mM, pts: P, act: act, need: need)
     }
+    /// 개발자 줄: 내 길 시작일(그 뒤 첫 거래일)의 종목별 수량×종가와 환율 (웹과 시작값이 갈릴 때 어느 값이 다른지)
+    var pathStartDetail: String {
+        let sD = Day.str(pathStartDate), fxH = PriceHistory.of("FX")
+        let ds = rows.compactMap { PriceHistory.of($0.id)?.dates.first { $0 >= sD } }
+        guard let d = ds.min() else { return "-" }
+        let q = Lots.on(lots, d)
+        let parts = rows.map { r -> String in
+            let n = q.map { $0[Sync.siteTicker(r.id)] ?? 0 } ?? r.h.qty
+            let px = PriceHistory.of(r.id)?.on(d).map { String(format: "%.2f", $0) } ?? "-"
+            return "\(Sync.siteTicker(r.id)) \(n.formatted())×\(px)"
+        }
+        return "\(d) " + parts.joined(separator: " ") + " · 환율 \(fxH?.on(d).map { String(format: "%.2f", $0) } ?? "-")"
+    }
     var myPathGapToday: Double { let p = myPath; let n = p.need(p.start); return n > 0 ? p.act(p.start) / n - 1 : 0 }
 
     static func manS(_ krw: Double) -> String { (krw >= 0 ? "+" : "−") + man(abs(krw)) }
@@ -186,7 +199,7 @@ struct MyPathView: View {
     @State private var picked: String? = nil
     private func devLine(_ v0: Double, _ now: Double, _ need: Double) -> String {
         let man = { (v: Double) in Int((v / 1e4).rounded()).formatted() + "만" }
-        return "개발자 · 시작 \(man(v0)) · 지금 \(man(now)) · 길 \(man(need)) · 현금 \(man(m.cashKrw)) · 환율 \(String(format: "%.2f", Market.shared.valFx))"
+        return "개발자 · \(m.pathStartDetail) · 시작 \(man(v0)) · 지금 \(man(now)) · 길 \(man(need)) · 현금 \(man(m.cashKrw)) · 환율 \(String(format: "%.2f", Market.shared.valFx))"
     }
 
     var body: some View {
