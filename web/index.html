@@ -125,16 +125,6 @@
   </section>
 
   <section id="tab-settings" class="tab">
-    <details class="card opt" id="premCard" style="display:none"><summary>선택 기능 (미리보기) · 현금</summary>
-      <div id="premBox" style="margin-top:8px"></div>
-    </details>
-    <details class="card opt"><summary>입력값 저장·불러오기 (백업, 다른 기기로 옮기기)</summary>
-      <p class="small">입력값은 이 브라우저에만 저장됩니다.</p>
-      <div class="row wrap"><button id="btnXfer" class="primary">다른 기기로 옮기기 (QR·링크)</button><button id="btnExport">입력값 내보내기 (JSON)</button><label class="filebtn">입력값 불러오기<input id="fileImport" type="file" accept=".json"></label></div>
-      <div id="xferBox" style="display:none;margin-top:10px"><div id="xferQr" class="qr"></div><input id="xferLink" type="text" readonly style="width:100%;margin:8px 0"><div class="row wrap"><button id="xferCopy">링크 복사</button><button id="xferShare">공유</button></div>
-        <p class="muted small">QR을 찍거나 링크를 열면 입력값이 옮겨집니다. 링크에 보유 내역이 담기니 남에게 보내지 마세요.</p></div>
-      <div id="esyncBox" style="margin-top:12px"></div>
-    </details>
     <details class="card opt" id="pushDet"><summary>알림 (큰 하락·실적 하루 전)</summary>
       <p class="small">하루 5% 넘게 빠지거나 실적 하루 전에 알림. 수량·금액은 보내지 않습니다.</p>
       <div class="row wrap"><button id="btnPush" class="primary">알림 켜기</button><button id="btnPushTest" style="display:none">시험 알림</button><span class="small muted" id="pushNote"></span></div>
@@ -144,11 +134,21 @@
       <p class="small"><label><input type="checkbox" id="optManual"> 보유 종목 표에 "현재가 직접 입력" 칸 보이기</label></p>
       <p class="small"><label><input type="checkbox" id="optKrDirect"> 국내 주식 합계 직접 입력: 보유 종목 아래에 국내 주식 합계 금액 칸 보이기</label><br><span class="muted">한국 시세는 받지 않아요. 증권사 앱의 국내 주식 합계를 넣으면 그 금액 그대로 계산하고, 움직임 예측은 한국 시장 평균(미국 상장 EWY × 원/달러)으로 해요.</span></p>
     </details>
+    <details class="card opt" id="premCard" style="display:none"><summary>선택 기능 (미리보기) · 현금</summary>
+      <div id="premBox" style="margin-top:8px"></div>
+    </details>
+    <div class="card" id="newsCard"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">새 소식</h2><span class="muted small" id="newsN"></span></div><div id="newsList" style="margin-top:6px"></div></div>
+    <details class="card opt"><summary>입력값 저장·불러오기 (백업, 다른 기기로 옮기기)</summary>
+      <p class="small">입력값은 이 브라우저에만 저장됩니다.</p>
+      <div class="row wrap"><button id="btnXfer" class="primary">다른 기기로 옮기기 (QR·링크)</button><button id="btnExport">입력값 내보내기 (JSON)</button><label class="filebtn">입력값 불러오기<input id="fileImport" type="file" accept=".json"></label></div>
+      <div id="xferBox" style="display:none;margin-top:10px"><div id="xferQr" class="qr"></div><input id="xferLink" type="text" readonly style="width:100%;margin:8px 0"><div class="row wrap"><button id="xferCopy">링크 복사</button><button id="xferShare">공유</button></div>
+        <p class="muted small">QR을 찍거나 링크를 열면 입력값이 옮겨집니다. 링크에 보유 내역이 담기니 남에게 보내지 마세요.</p></div>
+      <div id="esyncBox" style="margin-top:12px"></div>
+    </details>
     <details class="card opt"><summary>자세히 · 모형 설정 (기본값 그대로 써도 됨)</summary>
       <div class="formgrid" id="modelForm" style="margin-top:10px"></div>
       <div class="row"><button id="btnResetModel">기본값으로</button></div>
     </details>
-    <div class="card" id="newsCard"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">새 소식</h2><span class="muted small" id="newsN"></span></div><div id="newsList" style="margin-top:6px"></div></div>
     <details class="card opt" id="devCard" style="display:none"><summary>개발자용: GitHub 연결</summary>
       <div id="ghBox" style="margin-top:8px"></div>
     </details>
