@@ -12,7 +12,6 @@ struct ShelterView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("쉼터").appFont(22, .bold)
                 hero
                 ParallelDoor()
                 header("친구", "\((0..<5).filter { m.friendOn($0) }.count)/5")
@@ -45,7 +44,7 @@ struct ShelterView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("쉼터").navigationBarTitleDisplayMode(.inline)
         .onAppear {
             sel = m.shelterSel ?? m.homeFriend
             for i in 0..<5 where m.readPos.contains(i + 1) { story.markDone(.side, i) }   // 다음 장을 연 장은 다 읽은 것으로 (예전 기록)

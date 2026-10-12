@@ -16,7 +16,6 @@ struct ParallelView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("평행 세계의 나").appFont(22, .bold)
                 Text("어느 쪽이 이겨도 나예요. 세 명의 내가 같은 날 같은 금액에서 출발해 실제 종가로 달려요.")
                     .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 if let w = m.pworldShown, let race = m.parallelRace {
@@ -37,7 +36,7 @@ struct ParallelView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("평행 세계의 나").navigationBarTitleDisplayMode(.inline)
         .onAppear {
             m.openParallelIfNeeded()
             m.parallelTick()
@@ -315,7 +314,6 @@ struct ParallelBasketView: View {
         let sum = w.values.reduce(0, +)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("모의 바구니 고치기").appFont(22, .bold)
                 Text("고치면 오늘부터 새 기록이 시작되고, 지금까지 기록은 지난 바구니로 남아요. 출발 금액은 진짜 나와 같아요.")
                     .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 Text("견본에서 시작").appFont(15, .bold)
@@ -361,7 +359,7 @@ struct ParallelBasketView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("모의 바구니 고치기").navigationBarTitleDisplayMode(.inline)
         .onAppear {
             guard !loaded else { return }
             loaded = true
