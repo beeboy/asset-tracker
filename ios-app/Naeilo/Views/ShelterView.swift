@@ -38,7 +38,7 @@ struct ShelterView: View {
                 }
                 itemNote
                 ShelterBGBox(support: $support)
-                Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 7일 연속 할 때마다 하나씩 돌아오고, 연속이 끊겨도 돌아온 물건은 그대로 있어요. 방에 놓인 물건을 누르면 배치에서 빠지고, 아래 칸에서 다시 놓을 수 있어요.")
+                Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 한 날마다 하나씩 돌아와요. 방에 놓인 물건을 누르면 배치에서 빠지고, 아래 칸에서 다시 놓을 수 있어요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
             .screen().padding(.top, 8)
@@ -382,7 +382,7 @@ struct ShelterView: View {
             VStack(spacing: 2) {
                 Pixel(name: "art_" + it.id + (on || m.peekItems ? "" : "_l"), width: 32, height: 32).opacity(off ? 0.4 : on ? 1 : m.peekItems ? 0.6 : 1)
                 Text(on ? it.name : "???").appFont(11, .bold).lineLimit(2).multilineTextAlignment(.center)
-                Text(off ? "빼 둠" : i == m.itemsOn ? "\(m.itemDaysLeft)일 남음" : "\(i + 1)번째").appFont(10).foregroundStyle(i == m.itemsOn ? Theme.teal : Theme.sub)
+                Text(off ? "빼 둠" : i == m.itemsOn ? "다음 차례" : "\(i + 1)번째").appFont(10).foregroundStyle(i == m.itemsOn ? Theme.teal : Theme.sub)
             }
             .foregroundStyle(on ? Theme.ink : Theme.muted)
             .frame(maxWidth: .infinity, minHeight: 84)
@@ -390,7 +390,7 @@ struct ShelterView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? (item == it.id ? Theme.teal : Theme.border) : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: on ? [] : [4, 3])))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(on ? it.name + (off ? ", 방에서 빼 둠" : "") : i == m.itemsOn ? "다음에 돌아오는 물건, \(m.itemDaysLeft)일 남음" : "\(i + 1)번째로 돌아오는 물건")
+        .accessibilityLabel(on ? it.name + (off ? ", 방에서 빼 둠" : "") : i == m.itemsOn ? "다음에 돌아오는 물건" : "\(i + 1)번째로 돌아오는 물건")
     }
 
     /// 쉼터 방: 돌아온 물건이 제자리에 놓이고, 홈에 둔 친구는 물건과 겹치지 않게 문 앞에 선다.
@@ -430,7 +430,7 @@ struct ShelterView: View {
             Pixel(name: "art_" + (cur?.id ?? "barley_tea") + (cur == nil ? "_l" : ""), width: 32, height: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(cur?.name ?? "아직 돌아오지 않았어요").appFont(14, .bold)
-                Text(cur?.line ?? "오늘의 1분을 7일 연속 하면 첫 물건이 돌아와요.").appFont(13).foregroundStyle(Theme.sub)
+                Text(cur?.line ?? "오늘의 1분을 하면 첫 물건이 돌아와요.").appFont(13).foregroundStyle(Theme.sub)
                 if let c = cur, let say = Lines.pick("item.\(c.id).\(m.voice(m.homeFriendShown))") ?? WItem.say(c.id, m.voice(m.homeFriendShown)) {
                     let who = m.friendName(m.homeFriendShown)
                     Text("\(who) “\(say)”").appFont(13, .bold).foregroundStyle(Theme.teal)

@@ -32,7 +32,7 @@ struct BrickGameHub: View {
     private var players: [String] {
         Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id) + (m.meUnlocked ? ["me"] : [])
     }
-    private var items: [String] { Shelter.items.prefix(m.itemsOn).map(\.id) }
+    private var items: [String] { Shelter.items.map(\.id) }   // 게임에선 처음부터 물건 모두 (쉼터 방은 하루 하나씩 돌아온 만큼)
 
     var body: some View {
         NavigationStack {

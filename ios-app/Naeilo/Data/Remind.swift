@@ -325,7 +325,7 @@ final class Remind {
             a.append(.init(id: "do.friend", cat: .doing, text: "다음 친구 \(Shelter.friends[i].name)는 \(m.friendWhen(i))에 와요.", go: .shelter, once: false))
         }
         if m.playOn, m.itemsOn < 10 {
-            a.append(.init(id: "do.items", cat: .doing, text: "연속 \(m.itemDaysLeft)일 더 하면 물건(\(Shelter.items[m.itemsOn].name))이 돌아와요.", go: .shelter, once: false))
+            a.append(.init(id: "do.items", cat: .doing, text: "오늘의 1분을 하면 물건(\(Shelter.items[m.itemsOn].name))이 돌아와요.", go: .shelter, once: false))
         }
         if m.playUnlocked && m.weekGuess == nil {
             a.append(.init(id: "do.week", cat: .doing, text: "이번 주 금요일 평가액은 어디쯤일까요? 예보를 골라 봐요.", go: .board, once: false))
