@@ -201,7 +201,7 @@ struct MiniLines: View {
         GeometryReader { g in
             let all = a + b + [100]
             let lo = all.min() ?? 0, hi = all.max() ?? 1, span = max(1e-6, hi - lo)
-            let y = { (v: Double) in g.size.height * (1 - (v - lo) / span) }
+            let y = { (v: Double) -> CGFloat in g.size.height * CGFloat(1 - (v - lo) / span) }
             ZStack {
                 Path { p in p.move(to: CGPoint(x: 0, y: y(100))); p.addLine(to: CGPoint(x: g.size.width, y: y(100))) }
                     .stroke(Theme.dash, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
