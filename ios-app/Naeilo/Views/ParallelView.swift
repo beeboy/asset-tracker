@@ -224,10 +224,9 @@ struct ParallelView: View {
                 Button(f.name + " · " + (Calm.kind(f.id)?.title ?? "")) { m.pickWho(f.id) }
             }
         } label: {
-            Text(m.canPickWho ? "인물 바꾸기" : "이번 달은 바꿨어요").appFont(12, .bold).foregroundStyle(m.canPickWho ? Theme.sub : Theme.muted)
+            Text("인물 바꾸기").appFont(12, .bold).foregroundStyle(Theme.sub)
                 .padding(.horizontal, 10).frame(minHeight: 32).overlay(Capsule().stroke(Theme.border))
         }
-        .disabled(!m.canPickWho)
     }
 
     // MARK: 지난 바구니 (고친 결과로 과거 기록을 덮지 않는다)

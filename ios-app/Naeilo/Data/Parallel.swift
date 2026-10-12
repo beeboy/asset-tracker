@@ -14,7 +14,7 @@ struct PWorld: Codable, Equatable {
     var start: String               // 예선 출발일 (연 날 정해 두고 바꾸지 않는다)
     var segs: [PBasketSeg]
     var who: String                 // 인물 세계의 인물
-    var whoPick: String? = nil      // 사용자가 직접 바꾼 달 (yyyy-MM). 한 달에 한 번
+    var whoPick: String? = nil      // 사용자가 마지막으로 직접 바꾼 때 (ISO 시각, 동기화에서 나중 것을 쓴다). 횟수 제한 없음
     var days: [PDay] = []
 
     static let key = "parallel.v1"
@@ -461,11 +461,11 @@ extension AppModel {
         else { p.segs.append(PBasketSeg(from: today, w: norm)) }
         pworld = p
     }
-    /// 인물 바꾸기: 한 달에 한 번
-    var canPickWho: Bool { (pworld?.whoPick ?? "") != String(Day.today.prefix(7)) }
+    /// 인물 바꾸기: 횟수 제한 없이 (비교해 보는 재미, 사용자 결정 2026-10-12). 바꾸면 인물 세계는 출발일부터 새 규칙으로 다시 계산
+    var canPickWho: Bool { pworld != nil }
     func pickWho(_ id: String) {
         guard var p = pworld, canPickWho, id != p.who else { return }
-        p.who = id; p.whoPick = String(Day.today.prefix(7))
+        p.who = id; p.whoPick = ISO8601DateFormatter().string(from: Date())
         pworld = p
     }
     /// 홈 한 줄: 오늘 앞선 나
