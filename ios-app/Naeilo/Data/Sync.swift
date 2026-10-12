@@ -220,6 +220,11 @@ final class Sync {
         state = .working
         do {
             let r = try await call()
+            // 지난 날 수량 기록은 언제나 사이트 값으로 (이 기기 값이 더 새로워 받지 않을 때도: 앱에만 남은 예전 줄이 내 길 시작값을 웹과 다르게 만든다)
+            if let st = r.state, !(localAt == 0 && hasLocalData(m)) {
+                let L = Lots.withSite(Lots.fromJSON(st["lots"]), m.lots)
+                if L != m.lots { m.lots = L }
+            }
             if let st = r.state, r.at > localAt {
                 if localAt == 0 && hasLocalData(m) {
                     // 처음 켤 때 양쪽 다 값이 있으면 묻는다 (사이트와 같은 동작)
