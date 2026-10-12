@@ -1338,7 +1338,7 @@
     S.state.holdings.filter((h) => S.prices[h.ticker]).forEach((h, j) => {
       const p = S.prices[h.ticker], i0 = Math.max(0, p.dates.findIndex((d) => d >= from)), xs = p.dates.slice(i0), ys = p.close.slice(i0);
       const ch = ys.length > 1 ? ys[ys.length - 1] / ys[0] - 1 : null, box = document.createElement("div");
-      box.innerHTML = `<h3>${esc(h.ticker)} <span class="muted small">${nf(ys[ys.length - 1], 2)} ${ccyOf(h.ticker)} · 기간 <span class="${cls(ch)}">${spct(ch)}</span></span></h3><div class="chartbox"></div>`;
+      box.innerHTML = `<h3>${esc(h.ticker === KR_SUM ? "국내 주식 합계" : h.ticker)} <span class="muted small">${nf(ys[ys.length - 1], 2)} ${ccyOf(h.ticker)} · 기간 <span class="${cls(ch)}">${spct(ch)}</span></span></h3><div class="chartbox"></div>`;
       host.appendChild(box);
       Charts.lineChart(box.querySelector(".chartbox"), { x: xs, height: 170, legend: false, axisOut: true, yfmt: priceAxis([ys]), series: [{ name: h.ticker, y: ys, color: C[j % C.length], width: 1.6 }] });
     });
@@ -1428,7 +1428,7 @@
   function factorBetas() {
     const stamp = Object.values(S.prices).map((p) => p.dates.at(-1)).join() + S.state.holdings.map((h) => h.ticker).join();
     if (betaCache && betaCache.stamp === stamp) return betaCache;
-    const tks = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]);
+    const tks = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t] && t !== KR_SUM); // 국내 주식 합계는 현금처럼 민감도 없음
     return (betaCache = { stamp, ...Model.factorBetas(S.prices, tks, today()) }); // 계산은 model.js (사이트 통계 stats.json 도 같은 함수)
   }
   // 하루 수익률 (그날 종가 / 전 거래일 종가). 그날 거래가 없으면 다음 거래일
