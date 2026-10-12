@@ -223,6 +223,15 @@ struct MyPathView: View {
                     // 웹 목표 진행처럼 금액 차이 (금액은 이 요약과 아래 달마다 막대에만)
                     Text("내 길보다 \(AppModel.eokS(act(mS) - need(mS)))").appFont(13, .semibold).foregroundStyle(lead)
                 }
+                // 웹 목표 진행의 '시작 대비'와 같은 줄: 시작일 평가액 → 지금 평가액 (웹과 숫자를 나란히 맞춰 볼 수 있게)
+                if let v0 = p.pts.first?.1, v0 > 0 {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("시작 대비 \(AppModel.sgn(act(mS) / v0 - 1))").appFont(13).foregroundStyle(Theme.sub)
+                        Spacer()
+                        Text("\(AppModel.eok(v0)) → \(AppModel.eok(act(mS)))").appFont(13).foregroundStyle(Theme.sub)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
                 // 웹 목표 진행 요약과 같은 목표 달성 확률 (전망 계산이 끝나기 전에는 '계산 중')
                 HStack(alignment: .firstTextBaseline) {
                     Text(m.isGoal ? "목표 달성 확률" : "\(m.keyName) 확률").appFont(13).foregroundStyle(Theme.sub)
