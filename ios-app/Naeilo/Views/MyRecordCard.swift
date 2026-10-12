@@ -5,11 +5,10 @@ import SwiftUI
 struct MyRecordCard: View {
     @Environment(AppModel.self) private var m
     /// 국내 주식 합계 기록 보기 (넣은 금액이 있을 때만 버튼이 보인다. 웹 내 기록과 같다)
-    @State private var kr = false
 
     var body: some View {
         let D = m.isSample ? [] : m.myRecord, K = m.isSample ? [] : CustomSymbols.shared.krLog
-        if !K.isEmpty && (kr || D.isEmpty) {
+        if !K.isEmpty && (m.recKr || D.isEmpty) {
             Card {
                 head(D, K)
                 KrRecord(log: K)
@@ -50,11 +49,11 @@ struct MyRecordCard: View {
     @ViewBuilder private func head(_ D: [DayRec], _ K: [MC.KrDay]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("naeilo를 쓴 날부터의 내 기록").appFont(15, .bold)
-            if let f = D.first, !(kr && !K.isEmpty) { Text("\(Day.md(f.d))부터 · \(D.count)일 기록").appFont(12).foregroundStyle(Theme.muted) }
+            if let f = D.first, !(m.recKr && !K.isEmpty) { Text("\(Day.md(f.d))부터 · \(D.count)일 기록").appFont(12).foregroundStyle(Theme.muted) }
             else if let f = K.first { Text("\(Day.md(f.d))부터 · \(K.count)번 넣음").appFont(12).foregroundStyle(Theme.muted) }
         }
         if !K.isEmpty && !D.isEmpty {
-            ChipRow(items: [(false, "내 기록"), (true, "국내 주식 합계")], selection: $kr, fill: true)
+            ChipRow(items: [(false, "내 기록"), (true, "국내 주식 합계")], selection: Binding(get: { m.recKr }, set: { m.recKr = $0 }), fill: true)
         }
     }
 

@@ -202,8 +202,8 @@ struct MyPathView: View {
         let needPts = (0...60).map { i -> (Double, Double) in let t = x1 * Double(i) / 60; return (t, need(t)) }
         let bandPts: [(Double, Double, Double)] = view == "band"
             // 전망(오늘부터 목표일까지 월 경계마다)을 그래프 끝까지 겹친다
-            // 전망 경로는 종목만이라 현금·국내 주식 합계를 더해 내 길(둘 다 포함)과 같은 기준으로
-            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i] + m.mcFixed, f.q25[i] + m.mcFixed) } : []
+            // 전망 경로는 종목만이라 현금을 더해 내 길(현금 포함)과 같은 기준으로
+            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i] + m.cashKrw, f.q25[i] + m.cashKrw) } : []
         let vals = actPts.map(\.1) + needPts.map(\.1) + bandPts.flatMap { [$0.1, $0.2] }
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }

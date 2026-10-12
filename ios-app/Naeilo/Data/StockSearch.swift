@@ -95,7 +95,7 @@ enum KoreaEstimate {
         let i = info(id: s.id, name: s.name), at = s.kd ?? ""
         guard let p = s.kp else { return "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 계산해요." }
         let won = Int(p.rounded()).formatted() + "원"
-        if s.id == sumId { return "\(at)에 넣은 합계 \(won) 그대로예요. 현금처럼 전망에서도 이 금액 그대로 둬요." }
+        if s.id == sumId { return "\(at)에 넣은 합계 \(won) 그대로예요. 전망은 이 금액에서 한국 시장 평균(EWY × 원/달러) 움직임으로 해요." }
         return i.proxy != nil ? "\(at)에 넣은 \(won)에서 \(i.base)\(i.hedged ? "" : " × 원/달러") 움직임으로 추정한 값이에요."
             : "\(at)에 넣은 \(won) 그대로예요. 움직임 예측은 한국 시장 평균(\(i.base) × 원/달러)으로 해요."
     }
@@ -163,7 +163,7 @@ final class CustomSymbols {
 
     private(set) var items: [Saved] = []
     private(set) var hist: [String: Hist] = [:]
-    /// 국내 주식 합계 날짜별 금액 (사이트 kr_log 와 같은 칸, MC.krNorm). 현금처럼: 첫 기록 전은 0, 전망에서는 그대로
+    /// 국내 주식 합계 날짜별 금액 (사이트 kr_log 와 같은 칸, MC.krNorm). 지난 기록은 현금처럼: 첫 기록 전은 0. 전망은 KR~EWY 움직임으로
     private(set) var krLog: [MC.KrDay] = (UserDefaults.standard.data(forKey: "krLog").flatMap { try? JSONDecoder().decode([MC.KrDay].self, from: $0) }) ?? [] {
         didSet { if let d = try? JSONEncoder().encode(krLog) { UserDefaults.standard.set(d, forKey: "krLog") } }
     }

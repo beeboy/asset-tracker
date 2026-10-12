@@ -118,18 +118,6 @@ extension AppModel {
     /// k·years·start 를 주면 지금 목표 대신 그 값으로 (목표 자동 고르기에서 씀, cache: false 면 캐시에 넣지 않는다).
     /// years 를 주면 오늘부터 그 햇수, 안 주면 목표일까지
     func simulate(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true) -> GoalSim {
-        // 국내 주식 합계는 현금처럼 그대로 둔다: 구성 경로는 나머지만, 목표에서 그만큼 빼고, 보여 줄 금액에는 다시 더한다
-        let F = krFixedMan
-        if F > 0 {
-            let r = simulateX(mx, monthly: monthly, k: (k ?? gK) - F, years: years, start: (start ?? goalStart) - F, cache: cache)
-            let add = { (a: [Double]) in a.map { $0 + F } }
-            return GoalSim(mix: r.mix, prob: r.prob, etaMonths: r.etaMonths, med: add(r.med), lo: add(r.lo), hi: add(r.hi), principal: add(r.principal), badYear: r.badYear, capYears: r.capYears)
-        }
-        return simulateX(mx, monthly: monthly, k: k, years: years, start: start, cache: cache)
-    }
-    /// 목표 루트 구성 계산에서 그대로 두는 국내 주식 합계 (만원). 지금 금액(goalStart·trackValue)에 들어 있어 뺀다
-    var krFixedMan: Double { route == .plus ? krSum / 1e4 : 0 }
-    private func simulateX(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true) -> GoalSim {
         let mo = monthly ?? gM, yrs = years ?? gY, K = k ?? gK, A = start ?? goalStart
         let parts = mixParts(mx)
         guard let ps = paths(parts, horizon: years == nil ? goalHorizon : longHorizon(yrs)) else {
@@ -196,23 +184,23 @@ extension AppModel {
         let mx = route == .novice ? Self.mixes[0] : mineMix, K = k ?? gK, yrs = years ?? gY
         let parts = mixParts(mx)
         if let ps = paths(parts, horizon: years == nil ? goalHorizon : longHorizon(yrs)) {
-            return ps.req50((goalStart - krFixedMan) * 1e4, goal: (K - krFixedMan) * 1e4, kEnd: years == nil ? ps.M - 1 : ps.k(months: 12 * yrs)) / 1e4
+            return ps.req50(goalStart * 1e4, goal: K * 1e4, kEnd: years == nil ? ps.M - 1 : ps.k(months: 12 * yrs)) / 1e4
         }
-        let c = closedParams(parts), A = goalStart - krFixedMan
+        let c = closedParams(parts)
         let gmm = exp((c.mu - c.sigma * c.sigma / 2) / 12), fv = pow(gmm, Double(yrs * 12))
-        return max(0, (K - krFixedMan - A * fv) * (gmm - 1) / (fv - 1))
+        return max(0, (K - goalStart * fv) * (gmm - 1) / (fv - 1))
     }
     /// 지금 start(만원)에서 매달 monthly(만원)씩 넣을 때 보통의 경우 목표에 처음 닿는 개월
     func monthsTo(from start: Double, monthly: Double) -> Double {
         if start >= gK { return 0 }
-        let parts = mixParts(route == .novice ? Self.mixes[0] : mineMix), F = krFixedMan
+        let parts = mixParts(route == .novice ? Self.mixes[0] : mineMix)
         if let ps = paths(parts, horizon: longHorizon(gY)) {
-            let v = ps.values((start - F) * 1e4, monthly: monthly * 1e4), K = (gK - F) * 1e4
+            let v = ps.values(start * 1e4, monthly: monthly * 1e4), K = gK * 1e4
             return ps.medianMonths(ps.firstHits(v, upTo: ps.M - 1) { _ in K })
         }
         let c = closedParams(parts), gmm = exp((c.mu - c.sigma * c.sigma / 2) / 12)
-        var v = start - F
-        for k in 1...480 { v = v * gmm + monthly; if v >= gK - F { return Double(k) } }
+        var v = start
+        for k in 1...480 { v = v * gmm + monthly; if v >= gK { return Double(k) } }
         return .infinity
     }
 
@@ -232,9 +220,8 @@ extension AppModel {
         if let ps = paths(parts, horizon: longHorizon(years)) {
             let ck = "x|\(ps.key)|\(mo)|\(years)|\(A)"
             if let c = autoCache[ck] { return (c, true) }
-            let F = min(krFixedMan, A)     // 국내 주식 합계는 그대로 두고 나머지만 경로로
-            let v = ps.values((A - F) * 1e4, monthly: mo * 1e4), kEnd = ps.k(months: 12 * years)
-            let K = ps.quantile(v, k: kEnd, 0.5, minus: kEnd > 0 && kEnd < ps.M - 1 ? mo * 1e4 : 0) / 1e4 + F
+            let v = ps.values(A * 1e4, monthly: mo * 1e4), kEnd = ps.k(months: 12 * years)
+            let K = ps.quantile(v, k: kEnd, 0.5, minus: kEnd > 0 && kEnd < ps.M - 1 ? mo * 1e4 : 0) / 1e4
             let r = max(Self.round2(A + 1), Self.round2(K))
             if autoCache.count > 64 { autoCache.removeAll() }
             autoCache[ck] = r

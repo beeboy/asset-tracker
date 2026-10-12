@@ -673,7 +673,7 @@
     const P = S.prices[r.h.ticker], inp = (ph) => `<input data-f="kprice" type="text" inputmode="decimal" placeholder="${ph}" size="8">`;
     if (!P || r.p.v == null) return `${inp("지금 가격(원)")}<br><span class="muted small">한국 시세는 받지 않아요. 가격을 한 번 넣으면 계산해요</span>`;
     if (r.h.ticker === KR_SUM) { const L = S.state.kr_log || [], ld = L[L.length - 1]?.d, ago = ld ? Math.round(yearsBetween(ld, today()) * 365.25) : 0;
-      return `<span class="tag" title="${esc(`${ld || ""}에 넣은 합계 금액 그대로예요. 현금처럼 전망에서도 이 금액 그대로 둬요`)}">입력</span><br><b>${krw(r.valueKrw)}</b>${ago > 0 ? `<br><span class="muted small">${ago}일 전 금액</span>` : ""}<br>${inp("합계 다시 넣기")}`; }
+      return `<span class="tag" title="${esc(`${ld || ""}에 넣은 합계 금액 그대로예요. 전망은 이 금액에서 한국 시장 평균(EWY×원/달러) 움직임으로 계산해요`)}">입력</span><br><b>${krw(r.valueKrw)}</b>${ago > 0 ? `<br><span class="muted small">${ago}일 전 금액</span>` : ""}<br>${inp("합계 다시 넣기")}`; }
     const tip = P.est === "proxy" ? `${r.h.price_date || ""}에 넣은 ${nf(Number(r.h.price))}원에서 ${P.basis}${P.hedged ? "" : " × 원/달러"} 움직임으로 추정한 값이에요` : `${r.h.price_date || ""}에 넣은 가격 그대로예요. 움직임 예측은 한국 시장 평균(${P.basis})으로 해요`;
     return `${nf(r.p.v, 0)} <span class='muted small'>KRW</span><span class="tag" title="${esc(tip)}">${P.est === "proxy" ? "추정" : "입력"}</span><br><b>${krw(r.valueKrw)}</b><br>${inp("가격 다시 넣기")}`;
   }
@@ -784,9 +784,9 @@
   }
   const krOf = (h) => krInfo(h.ticker, [h.name, koOf(h.ticker)?.k, koOf(h.ticker)?.e]);
   const krOk = (o) => !isKR(o.s) || !!krInfo(o.s, [o.k, o.e]).proxy;
-  // 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄(수량 1, 가격 = 금액)로. 현금처럼 다룬다 (앱 KOREA 와 같다)
-  //  · 넣은 금액은 날짜별로 남긴다 (state.kr_log). 그날 값 = 그날까지 마지막 금액, 첫 기록 전은 0 (처음 넣은 금액은 들어온 돈)
-  //  · 전망에서는 금액 그대로 둔다: 몬테카를로는 종목만, 목표에서 이 금액을 뺀다 (현금과 같다)
+  // 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄(수량 1, 가격 = 금액)로 (앱 KOREA 와 같다)
+  //  · 지난 기록은 현금처럼: 넣은 금액을 날짜별로 남긴다 (state.kr_log). 그날 값 = 그날까지 마지막 금액, 첫 기록 전은 0 (처음 넣은 금액은 들어온 돈)
+  //  · 전망·민감도는 마지막 금액에서 EWY × 원/달러 움직임으로 (사이트 stats.json 의 KR~EWY 와 같은 수익률)
   const KR_SUM = "KOREA.KS";
   function krPut(v, d = today()) { S.state.kr_log = Model.krNorm([...(S.state.kr_log || []), { d, v: Math.max(0, v || 0) }]); }
   // 기록의 마지막 금액에 표의 한 줄을 맞춘다 (0원이면 줄을 뺀다)
@@ -803,10 +803,9 @@
   }
   // 지금 국내 주식 합계 (전망에서 그대로 두는 금액). 샘플·줄 없음은 0
   const krNow = () => (S.state.sample || !S.state.holdings.some((h) => h.ticker === KR_SUM) ? 0 : Model.krAt(S.state.kr_log, today()));
-  // 전망에서 움직이지 않는 돈 = 현금 + 국내 주식 합계 (목표에서 빼고 종목만 몬테카를로. 앱 fixedKrw 와 같다)
-  const fixedKrw = () => cashKrw() + krNow();
   function synthKR() {
     for (const k of Object.keys(S.prices)) if (isKR(k)) delete S.prices[k];
+    S.krMove = null;
     const fx = S.prices["KRW=X"];
     for (const h of S.state?.holdings || []) {
       if (h.ticker === KR_SUM) { krSynth(h, fx); continue; }
@@ -831,6 +830,13 @@
     const L = S.state.kr_log || []; if (!L.length) return;
     const d0 = L[0].d, dates = fx?.dates?.length ? fx.dates.filter((d) => d >= d0) : L.map((x) => x.d), close = dates.map((d) => Model.krAt(L, d));
     S.prices[KR_SUM] = { symbol: KR_SUM, currency: "KRW", name: h.name || "국내 주식 합계", dates, close, adj: close, est: "input", basis: "입력" };
+    const base = S.prices[krOf(h).market || "EWY"], A = base?.dates?.length && fx ? Model.krSeries(base, fx, false, "adj") : null;
+    S.krMove = A ? { dates: A.dates, adj: A.vals } : { dates: [L[L.length - 1].d], adj: [L[L.length - 1].v || 1] }; // 기준 시세가 아직 없으면 한 점 (전망 기본값)
+  }
+  // 전망·민감도에 쓰는 시세: 국내 주식 합계만 넣은 금액 대신 EWY × 원/달러 움직임
+  function mcPrices() {
+    const o = {}; for (const k in S.prices) o[k] = k === KR_SUM && S.krMove ? S.krMove : S.prices[k];
+    return o;
   }
 
   // 종목 찾기 (iOS 앱과 같은 방식): 앱의 한글 이름 목록(stocks.js) + Yahoo 검색(영문 이름·티커·종목 코드). 미국 주식·ETF 와 코스피·코스닥만
@@ -984,7 +990,7 @@
   const BASIS = { model: "내 관점", base: "현재 정세", smooth: "과거 추세" };
   function simCommon(b, scen) {
     const m = S.state.model, g = S.state.goal;
-    return { holdings: b.holdings, scenario: scen, nPaths: Number(m.n_paths), seed: Number(m.seed) || 1, goal: Math.max(1, g.amount - fixedKrw()), // 현금·국내 주식 합계는 그대로 있다고 보고 목표에서 뺀다
+    return { holdings: b.holdings, scenario: scen, nPaths: Number(m.n_paths), seed: Number(m.seed) || 1, goal: Math.max(1, g.amount - cashKrw()), // 현금은 그대로 있다고 보고 목표에서 뺀다
       monthly: Number(g.monthly_contribution) || 0, rebalance: !!m.rebalance_yearly, dof: m.t_dof, fxOf, usdKrw0: fxNow("USD") };
   }
   // 계산해 둔 전망만 돌려준다 (없으면 null)
@@ -1258,13 +1264,13 @@
     const maxV = Math.max(...ix.map(tv));
     const notes = [];
     if (future) {
-      const kr = krNow(), V0 = tot, last = x[x.length - 1] || today(), cashU = (inUsd ? (cash + kr) / fxNowUsd : cash + kr), addC = (a) => (cashU ? a.map((v) => (v == null ? v : v + cashU)) : a);
+      const V0 = tot, last = x[x.length - 1] || today(), cashU = inUsd ? cash / fxNowUsd : cash, addC = (a) => (cashU ? a.map((v) => (v == null ? v : v + cashU)) : a);
       opt.vlines.push({ x: today(), label: "오늘" });
       if (mode !== "each") opt.hlines.push({ y: goalV, label: goalLab });
       const scen = basisScen(basis), F = fcOn && total > 0 && basis !== "pattern" ? fcReady(scen) : null;
       if (fcOn && basis === "pattern") {
         if (M && total > 0) {
-          const pf = patFuture(M, g.date), u = inUsd ? fxNowUsd : 1, at = (k, z) => ((total - kr) * Math.exp(pf.cum[k] + z * M.sd * Math.sqrt(k)) + cash + kr) / u;
+          const pf = patFuture(M, g.date), u = inUsd ? fxNowUsd : 1, at = (k, z) => (total * Math.exp(pf.cum[k] + z * M.sd * Math.sqrt(k)) + cash) / u;
           if (mode === "total") {
             opt.bands.push({ x: pf.md, lo: pf.md.map((_, k) => at(k, -1.645)), hi: pf.md.map((_, k) => at(k, 1.645)), color: "var(--band)", opacity: 0.13, name: "패턴 5~95%" },
               { x: pf.md, lo: pf.md.map((_, k) => at(k, -0.674)), hi: pf.md.map((_, k) => at(k, 0.674)), color: "var(--band)", opacity: 0.25, name: "패턴 25~75%" });
@@ -1428,8 +1434,8 @@
   function factorBetas() {
     const stamp = Object.values(S.prices).map((p) => p.dates.at(-1)).join() + S.state.holdings.map((h) => h.ticker).join();
     if (betaCache && betaCache.stamp === stamp) return betaCache;
-    const tks = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t] && t !== KR_SUM); // 국내 주식 합계는 현금처럼 민감도 없음
-    return (betaCache = { stamp, ...Model.factorBetas(S.prices, tks, today()) }); // 계산은 model.js (사이트 통계 stats.json 도 같은 함수)
+    const tks = S.state.holdings.map((h) => h.ticker).filter((t) => S.prices[t]);
+    return (betaCache = { stamp, ...Model.factorBetas(mcPrices(), tks, today()) }); // 계산은 model.js (사이트 통계 stats.json 도 같은 함수)
   }
   // 하루 수익률 (그날 종가 / 전 거래일 종가). 그날 거래가 없으면 다음 거래일
   function dayRet(sym, d) {
@@ -1527,7 +1533,7 @@
     if (R && R.terminal && R.terminal.p50 > 0 && R.terminal.p5 > 0 && g && g.date > t0) {
       const T = (Date.parse(g.date) - Date.parse(t0)) / (365.25 * 86400e3), { rows } = valuation(), bm = factorBetas().beta.mkt || {};
       const kb = rows.filter((r) => r.valueKrw > 0).reduce((s2, r) => s2 + r.w * (Number.isFinite(bm[r.h.ticker]) ? bm[r.h.ticker] : 1), 0);
-      const sig = Math.max(0.05, (Math.log(R.terminal.p50) - Math.log(R.terminal.p5)) / 1.645), lnG = Math.log(Math.max(1, g.amount - fixedKrw()));
+      const sig = Math.max(0.05, (Math.log(R.terminal.p50) - Math.log(R.terminal.p5)) / 1.645), lnG = Math.log(Math.max(1, g.amount - cashKrw()));
       const P = (shift) => { const z = (Math.log(R.terminal.p50) + kb * shift * T - lnG) / sig; return 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z * z * z))); };
       const shifts = M.coef.map((c) => { let s2 = 0; for (let y = 0; y < c.length; y++) s2 += c[y][1] * dr * Math.max(0, Math.min(1, T - y)); return s2 / 100 / Math.max(T, 0.25) + m; });
       const base = P(0), pb = band(shifts.map((x) => R.p_goal + P(x) - base));
@@ -1681,10 +1687,10 @@
     if (g.date <= start) throw new Error("목표일이 오늘 이후여야 합니다.");
     const { rows } = valuation();
     // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (앱과 같은 값. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게)
-    const holdings = rows.filter((r) => r.valueKrw > 0 && r.h.ticker !== KR_SUM).map((r) => { const p0 = snapPx(r); return { ticker: r.h.ticker, shares: r.sh, price0: p0, ccy: r.ccy, valueKrw: r.sh * p0 * r.fx }; });
+    const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => { const p0 = snapPx(r); return { ticker: r.h.ticker, shares: r.sh, price0: p0, ccy: r.ccy, valueKrw: r.sh * p0 * r.fx }; });
     if (!holdings.length) return null;
     const series = {};
-    for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
+    { const P = mcPrices(); for (const k in P) series[k] = { dates: P[k].dates, adj: P[k].adj }; }
     const model = Model.buildModel({ holdings, series, fxOf, settings: S.state.model, events: S.state.events, betas: factorBetas().beta, startDate: start, goalDate: g.date });
     return { holdings, model };
   }
@@ -1695,7 +1701,7 @@
   const FC_KEY = "naeilo-forecast";
   // 전망 기준 가격: 직접 넣은 현재가 > 사이트 마지막 종가 > 지금 시세
   const snapPx = (r) => (r.p.src === "manual" || !(S.siteClose?.[r.h.ticker] > 0) ? r.p.v : S.siteClose[r.h.ticker]);
-  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares, S.siteClose?.[h.ticker] ?? (isKR(h.ticker) ? [h.price, h.price_date] : null)]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, fixedKrw(), fxBase("USD")]));
+  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares, S.siteClose?.[h.ticker] ?? (isKR(h.ticker) ? [h.price, h.price_date] : null)]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, cashKrw(), krNow(), fxBase("USD")]));
   function fcStore() {
     const L = lastForecast; if (!L) return;
     const strip = (k, v) => (k === "raw" || k === "term" ? undefined : v);
@@ -1787,7 +1793,7 @@
     const L = lastForecast; if (!L || !L.sim) return;
     const md = L.b.model, g = S.state.goal, lossRef = costBasis() ?? undefined, plain = Number(g.monthly_contribution) || 0;
     if (L.sim.raw) {
-      const gK = Math.max(1, g.amount - fixedKrw()); // 현금·국내 주식 합계는 그대로 있다고 보고 목표에서 뺀다 (simCommon·앱과 같다)
+      const gK = Math.max(1, g.amount - cashKrw()); // 현금은 그대로 있다고 보고 목표에서 뺀다 (simCommon·앱과 같다)
       const rw = (sim, key, wi) => Model.reweight(sim, { mu: viewMu(md, key), goal: gK, monthly: wi ? wi.monthly : plain, move: wi ? wi.move : null, lossRef });
       const k = viewKey(), wi = wiOpt();
       L.withEv = rw(L.sim, k); L.noEv = L.hasEv ? rw(L.simNo, k) : L.withEv;
@@ -1894,9 +1900,8 @@
     if (tk === "port") {
       $("#fcTitle").textContent = "원화 평가액 전망 (환율·외부 요인 포함)";
       const H = history(), k0 = Math.max(0, H.dates.length - 781), V0 = R.V0, yrs = yearsBetween(md.startDate, g.date);
-      const GP = goalPath(H, cashKrw()), gpOk = GP && GP.at(md.startDate) != null; // 내 길: 자산 추이·목표 진행과 같은 길 (목표 시작일부터). 전망 값에는 현금·국내 주식 합계가 빠져 있어 그만큼 뺀다
-      const reqPath = fx.map((d) => gpOk ? GP.at(d) - fixedKrw() : V0 * (g.amount / V0) ** (yearsBetween(md.startDate, d) / yrs));
-      const krE = H.each[KR_SUM], past = H.total.map((v, i) => v - (krE?.[i] || 0)); // 과거 선도 전망처럼 종목만
+      const GP = goalPath(H, cashKrw()), gpOk = GP && GP.at(md.startDate) != null; // 내 길: 자산 추이·목표 진행과 같은 길 (목표 시작일부터). 전망 값에는 현금이 빠져 있어 현금만큼 뺀다
+      const reqPath = fx.map((d) => gpOk ? GP.at(d) - cashKrw() : V0 * (g.amount / V0) ** (yearsBetween(md.startDate, d) / yrs));
       const evs = v === "none" ? [] : md.eventList.filter(inV);
       // 전체 보기: 내 관점 띠 + 두 렌즈의 중앙값 + 외부 요인 없을 때의 5~95% 선(충격이 넓힌 폭)
       const lensLines = v === "all" ? [...(D.base ? [{ name: "현재 정세", y: D.base.bands.p50, color: "var(--c3)", width: 1.3 }] : []), ...(D.smooth ? [{ name: "과거 추세", y: D.smooth.bands.p50, color: "var(--c4)", width: 1.3 }] : []),
@@ -1904,12 +1909,12 @@
       Charts.lineChart($("#fcChart"), {
         x: fx, height: 340, yfmt: krwAxis,
         bands: [{ lo: R.bands.p5, hi: R.bands.p95, color: "var(--band)", opacity: 0.13, name: "5~95%" }, { lo: R.bands.p25, hi: R.bands.p75, color: "var(--band)", opacity: 0.25, name: "25~75%" }],
-        series: [{ name: "과거", x: [...H.dates.slice(k0), md.startDate], y: [...past.slice(k0), V0], color: "var(--fg)", width: 1.4 },
+        series: [{ name: "과거", x: [...H.dates.slice(k0), md.startDate], y: [...H.total.slice(k0), V0], color: "var(--fg)", width: 1.4 },
           ...lensLines,
           { name: lab, y: R.bands.p50, color: "var(--c1)", width: 2.4 },
           ...(hasEv && v !== "none" && v !== "all" ? [{ name: "미반영 중앙값", y: noEv.bands.p50, color: "var(--muted)", width: 1.2, dash: "2 3" }] : []),
           { name: "내 길", y: reqPath, color: "var(--goal)", dash: "5 4", width: 1.8 }],
-        hlines: [{ y: Math.max(1, g.amount - fixedKrw()), label: "목표 " + krw(g.amount) + (fixedKrw() > 0 ? ` − 그대로 둔 ${krw(fixedKrw())}` : "") }], // 전망은 종목만이라 기준선도 현금·국내 주식 합계를 뺀 값 (확률과 같은 기준)
+        hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) : [],
       });
@@ -2465,13 +2470,13 @@
     try {
       const g = S.state.goal, m = S.state.model, { rows } = valuation(), subs = [];
       const res = (t) => (S.prices[t] ? t : ALLOC_SUB[t] && S.prices[ALLOC_SUB[t]] ? (subs.push(`${t}→${ALLOC_SUB[t]}`), ALLOC_SUB[t]) : null);
-      const base = rows.filter((r) => r.valueKrw > 0 && r.h.ticker !== KR_SUM).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw })); // 국내 주식 합계는 고정 (한 줄을 사고팔 수 없다)
+      const base = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw }));
       const V0 = base.reduce((a, h) => a + h.valueKrw, 0);
       const mixes = {}; for (const k of Object.keys(ALLOC_DEF)) mixes[k] = allocMix(k).map(([t, w]) => [res(t), w]).filter((x) => x[0]);
       for (const t of new Set(Object.values(mixes).flat().map((x) => x[0]))) if (!base.some((h) => h.ticker === t)) { const q = S.prices[t]; base.push({ ticker: t, shares: 0, price0: q.close[q.close.length - 1], ccy: ccyOf(t), valueKrw: 1, extra: true }); }
-      const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
+      const series = {}; { const P = mcPrices(); for (const k in P) series[k] = { dates: P[k].dates, adj: P[k].adj }; }
       const defs = {}; for (const [k, D] of Object.entries(ALLOC_DEF)) defs[k] = { cap: D.cap, cutSmall: { agg: 0.1, mid: 0.25, con: 0.4 }[k] };
-      const inp = { base, series, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goal: { ...g, amount: Math.max(1, g.amount - krNow()) }, mixes, defs };
+      const inp = { base, series, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goal: g, mixes, defs };
       const r = await allocCompute(inp, prog), top = r.top;
       const out = r.out.map((o) => ({ ...o, name: o.k === "keep" ? "현재 유지" : `${ALLOC_DEF[o.k].n} (가장 큰 종목 ${pct(o.w[top], 0)})` }));
       const model = { monthDates: r.fd };
@@ -2508,13 +2513,13 @@
     btn.disabled = true; prog(0, 1); await new Promise((r) => setTimeout(r, 30));
     try {
       const g = S.state.goal, { rows } = valuation();
-      const holdings = rows.filter((r) => r.valueKrw > 0 && r.h.ticker !== KR_SUM).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw, avgCost: Number(r.h.avg_cost) > 0 ? Number(r.h.avg_cost) : null }));
+      const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw, avgCost: Number(r.h.avg_cost) > 0 ? Number(r.h.avg_cost) : null }));
       if (holdings.length < 2) throw new Error("종목이 2개 이상 있어야 비교할 수 있습니다.");
       if (g.date <= today()) throw new Error("목표일이 오늘 이후여야 합니다.");
-      const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
+      const series = {}; { const P = mcPrices(); for (const k in P) series[k] = { dates: P[k].dates, adj: P[k].adj }; }
       const fb = factorBetas().beta;
       const rate = await stabRate();
-      const inp = { holdings, series, settings: S.state.model, events: S.state.events, betas: fb, mktBeta: fb.mkt || {}, startDate: today(), goal: { amount: Math.max(1, g.amount - fixedKrw()), date: g.date }, usdKrw0: fxNow("USD"), rate: rate && { b: rate.b, dr: rate.dr } };
+      const inp = { holdings, series, settings: S.state.model, events: S.state.events, betas: fb, mktBeta: fb.mkt || {}, startDate: today(), goal: { amount: Math.max(1, g.amount - cashKrw()), date: g.date }, usdKrw0: fxNow("USD"), rate: rate && { b: rate.b, dr: rate.dr } };
       const r = await allocCompute(inp, prog, "stab");
       lastStab = { ...r, at: Date.now(), epsLast: rate && rate.epsLast };
       try { localStorage.setItem(ST_KEY, JSON.stringify({ sig: stabSig(), ...lastStab })); } catch (e) { /* 무시 */ }
@@ -3189,6 +3194,7 @@
     $("#btnAdd").onclick = addHolding;
     $("#btnKrSum").onclick = () => { const v = parseDec($("#krSum").value); setKrSum(v > 0 ? v : 0); $("#krSum").blur(); toast(v > 0 ? "국내 주식 합계를 넣었어요" : "국내 주식 합계를 지웠어요"); };
     $("#krSum").addEventListener("keydown", (e) => e.key === "Enter" && $("#btnKrSum").click());
+    $("#krToRec").onclick = (e) => { e.preventDefault(); showTab("dash"); $$("#recMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === "kr")); renderMyRec(); $("#recCard").scrollIntoView({ behavior: "smooth" }); };
     $("#addTicker").addEventListener("input", sugUpdate);
     // 한글 입력 중 엔터: 글자 조합이 끝난 뒤에 고른다 (먼저 수량 칸으로 옮기면 마지막 글자가 그쪽에 들어간다)
     let enterAfterIme = false;
