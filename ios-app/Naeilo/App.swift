@@ -166,8 +166,13 @@ struct KoreaSumHooks: ViewModifier {
         content
             .onChange(of: CustomSymbols.shared.krStamp) { _, _ in if model.persists { Sync.shared.changed(model) } }
             .sheet(isPresented: $model.krSumAsk) {
-                ScrollView { KoreaSumCard(done: { model.krSumAsk = false }).padding(16) }
-                    .background(Theme.bg).presentationDetents([.medium])
+                // 키보드 위 '완료' 버튼이 뜨도록 NavigationStack 으로 감싼다
+                NavigationStack {
+                    ScrollView { KoreaSumCard(done: { model.krSumAsk = false }).padding(16) }
+                        .scrollDismissesKeyboard(.immediately).background(Theme.bg)
+                        .toolbar(.hidden, for: .navigationBar)
+                }
+                .presentationDetents([.medium])
             }
     }
 }
