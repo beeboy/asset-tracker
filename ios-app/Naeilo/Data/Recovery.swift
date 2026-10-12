@@ -132,27 +132,24 @@ extension AppModel {
         }
         return out
     }
-    /// 전망과 같은 사이트 통계·설정·사건 (forecastJob 도 이 값). 동기화로 받은 웹 설정의 경로 수가 사이트 기본보다 많으면
-    /// 앱은 사이트 기본(3,000개)까지만 돈다 (폰이 뜨거워지지 않게. 기본 설정이면 웹과 같은 숫자)
-    var mcInputs: (st: MC.Stats, settings: MC.Settings, events: [MC.Event], sig: String)? {
+    /// 전망과 같은 사이트 통계·설정·사건. 내 전망(forecastJob)은 동기화로 받은 웹 설정의 경로 수 그대로 돈다 (웹과 같은 숫자.
+    /// 웹 선택지의 최대 10,000개). 다른 구성 비교(계획·묶음)는 앱에만 있는 화면이라 사이트 기본(3,000개)까지만
+    var mcInputs: (st: MC.Stats, settings: MC.Settings, events: [MC.Event], sig: String)? { mcInputs(full: false) }
+    func mcInputs(full: Bool) -> (st: MC.Stats, settings: MC.Settings, events: [MC.Event], sig: String)? {
         guard let st = Market.shared.stats else { return nil }
         let site = Sync.shared.siteForecast
         var settings = (st.model ?? MC.Settings()).merged(site.model)
-        let cap = mcPathCap(st)
+        let cap = full ? Self.webPathMax : mcPathCap(st)
         if settings.nPaths > cap { settings.n_paths = Double(cap) }
         let events = site.events ?? st.events ?? []
         let enc = JSONEncoder(); enc.outputFormatting = .sortedKeys
         let evSig = ForecastEngine.fnv(String(data: (try? enc.encode(events)) ?? Data(), encoding: .utf8) ?? "")
         return (st, settings, events, [st.date, evSig, "\(settings.nPaths)|\(settings.seedU32)|\(settings.dof)|\(settings.earnings_adjust ?? true)"].joined(separator: "|"))
     }
-    /// 앱이 도는 경로 수 상한 = 사이트 기본 설정의 경로 수 (없으면 3,000)
+    /// 웹 '경로' 선택지의 최대
+    static let webPathMax = 10_000
+    /// 다른 구성 비교가 도는 경로 수 상한 = 사이트 기본 설정의 경로 수 (없으면 3,000)
     func mcPathCap(_ st: MC.Stats?) -> Int { max(500, (st?.model ?? MC.Settings()).nPaths) }
-    /// 웹 설정 경로 수가 앱 상한보다 많아 줄여서 도는 중이면 (웹 설정, 앱) 개수
-    var mcPathCapped: (web: Int, app: Int)? {
-        guard let n = Sync.shared.siteForecast.model?.n_paths, n.isFinite else { return nil }
-        let web = max(1, Int(n)), cap = mcPathCap(Market.shared.stats)
-        return web > cap ? (web, cap) : nil
-    }
     /// 종목별 연 기대수익: 전망 화면과 같은 관점(현재 정세·과거 추세·내 관점)
     func lensMu(_ fs: [MC.Factor], _ A: Int) -> [Double] {
         fs.prefix(A).map { lens == .base ? $0.base : lens == .smooth ? $0.smooth : MC.blendMu($0.base, $0.smooth, trust / 100) }

@@ -26,19 +26,22 @@ extension AppModel {
     }
     /// 내 길 실제 평가액 (웹 목표 진행 actualSeries 와 같은 식): 시작일 무렵부터 거래일마다
     /// 그날 수량(수량 기록, 없으면 지금 수량) × 그날 종가 × 그날 원/달러 종가. 과거 시세가 없는 종목은 지금 평가액 그대로
+    /// 현금은 그대로 있다고 보고 날마다 더한다 (웹 goalPath 와 같다)
     func pathSeries(from start: String) -> [(d: String, v: Double)] {
-        let rs = rows, today = Day.today, fxH = PriceHistory.of("FX")
+        let rs = rows, today = Day.today, fxH = PriceHistory.of("FX"), cash = cashKrw
+        let hs = rs.map { (r: $0, h: PriceHistory.of($0.id), t: Sync.siteTicker($0.id)) }
         let from = Day.str(Calendar.current.date(byAdding: .day, value: -10, to: Day.date(start) ?? Date()) ?? Date())
         var ds = Set<String>()
-        for r in rs { if let h = PriceHistory.of(r.id) { for d in h.dates.reversed() { if d < from { break }; if d < today { ds.insert(d) } } } }
+        for x in hs { if let h = x.h { for d in h.dates.reversed() { if d < from { break }; if d < today { ds.insert(d) } } } }
         return ds.sorted().map { d in
             let q = Lots.on(lots, d)
-            let v = rs.reduce(0.0) { a, r in
-                guard let h = PriceHistory.of(r.id), let px = h.on(d) else { return a + (PriceHistory.of(r.id) == nil ? r.value : 0) }
-                let n = q.map { $0[Sync.siteTicker(r.id)] ?? 0 } ?? r.h.qty
-                return a + px * n * (r.sym.currency == .usd ? (fxH?.on(d) ?? Market.shared.valFx) : 1)
+            let v = hs.reduce(0.0) { a, x in
+                guard let h = x.h else { return a + x.r.value }
+                guard let px = h.on(d) else { return a }
+                let n = q.map { $0[x.t] ?? 0 } ?? x.r.h.qty
+                return a + px * n * (x.r.sym.currency == .usd ? (fxH?.on(d) ?? Market.shared.valFx) : 1)
             }
-            return (d: d, v: v)
+            return (d: d, v: v + cash)
         }
     }
     var myPath: MyPath {
@@ -192,7 +195,8 @@ struct MyPathView: View {
         let needPts = (0...60).map { i -> (Double, Double) in let t = x1 * Double(i) / 60; return (t, need(t)) }
         let bandPts: [(Double, Double, Double)] = view == "band"
             // 전망(오늘부터 목표일까지 월 경계마다)을 그래프 끝까지 겹친다
-            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i], f.q25[i]) } : []
+            // 전망 경로는 종목만이라 현금을 더해 내 길(현금 포함)과 같은 기준으로
+            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i] + m.cashKrw, f.q25[i] + m.cashKrw) } : []
         let vals = actPts.map(\.1) + needPts.map(\.1) + bandPts.flatMap { [$0.1, $0.2] }
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
@@ -216,9 +220,16 @@ struct MyPathView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("\(gap >= 0 ? "앞섬" : "뒤처짐") \(String(format: "%.1f", abs(gap) * 100))%").appFont(22, .bold).foregroundStyle(lead)
                     Spacer()
-                    // 웹 목표 진행처럼 금액 차이
+                    // 웹 목표 진행처럼 금액 차이 (금액은 이 요약과 아래 달마다 막대에만)
                     Text("내 길보다 \(AppModel.eokS(act(mS) - need(mS)))").appFont(13, .semibold).foregroundStyle(lead)
                 }
+                // 웹 목표 진행 요약과 같은 목표 달성 확률 (전망 계산이 끝나기 전에는 '계산 중')
+                HStack(alignment: .firstTextBaseline) {
+                    Text(m.isGoal ? "목표 달성 확률" : "\(m.keyName) 확률").appFont(13).foregroundStyle(Theme.sub)
+                    Spacer()
+                    Text(f.exact ? AppModel.pct(pPlan) : "계산 중").appFont(f.exact ? 17 : 13, .bold).foregroundStyle(f.exact ? Theme.teal : Theme.muted)
+                }
+                .accessibilityElement(children: .combine)
                 Canvas { ctx, size in
                     if !bandPts.isEmpty {
                         var band = linePath(bandPts.map { (X($0.0), Y($0.1)) }, in: size)
@@ -250,7 +261,7 @@ struct MyPathView: View {
                     .padding(6).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
                 }
                 .overlay(alignment: .bottomTrailing) {
-                    if view == "band" {
+                    if view == "band" && f.exact {
                         Text("넘을 확률 \(AppModel.pct(pPlan))").appFont(12, .bold).foregroundStyle(Theme.purple)
                             .padding(.horizontal, 8).padding(.vertical, 4).background(Theme.card.opacity(0.85), in: Capsule())
                             .padding(.bottom, 4)
@@ -275,9 +286,8 @@ struct MyPathView: View {
                     Kpi(k: "남은 기간", v: leftText, sub: m.isGoal ? m.goalToText : "1년 목표"),
                     Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? (mM > 0 ? "적립 포함" : "지금 자산만으로") : "본전까지"),
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
-                    Kpi(k: m.isGoal ? "목표 달성 확률" : "\(m.keyName) 확률", v: AppModel.pct(pPlan), sub: "\(m.forecastTitle)과 같은 값"),
                 ], dark: true)
-                footnote(m.isGoal ? "예측이 아닌 기준선이에요. 실제는 그날 수량·종가·환율(오늘은 매매기준율)로 센 값으로, naeilo.com 목표 진행과 같은 계산이에요."
+                footnote(m.isGoal ? "예측이 아닌 기준선이에요. 실제는 그날 수량·종가·환율(오늘은 매매기준율)로 센 값\(m.cashKrw > 0 ? "에 사이트에 넣은 현금을 더한 값" : "")으로, naeilo.com 목표 진행과 같은 계산이에요. 목표 달성 확률은 \(m.forecastTitle)과 같은 값이에요."
                          : "예측이 아닌 기준선이에요. 회복 루트는 본전 기준이라 naeilo.com(목표 기준)과 달라요.")
             }
             .padding(16)
