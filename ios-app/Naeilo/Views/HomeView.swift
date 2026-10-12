@@ -42,11 +42,11 @@ struct HomeView: View {
 
     // 목표 루트: 지금 평가액(플러스) 또는 모은 돈(시작 전)과 목표 진행
     private var goalSummary: some View {
-        let now = m.route == .novice ? m.gA : m.total / 1e4, prog = min(1, now / max(1, m.gK))
+        let now = m.route == .novice ? m.goalSaved : m.total / 1e4, value = m.route == .plus || m.noviceOwn, prog = min(1, now / max(1, m.gK))
         return VStack(alignment: .leading, spacing: 10) {
             // 목표 금액을 누르면 고친다
             HStack(spacing: 4) {
-                Text((m.route == .novice ? "지금 모은 돈" : "지금 평가액") + " · 목표 \(AppModel.wonK(m.gK))").foregroundStyle(Color(hex: 0xC9D0D6))
+                Text((value ? "지금 평가액" : "지금 모은 돈") + " · 목표 \(AppModel.wonK(m.gK))").foregroundStyle(Color(hex: 0xC9D0D6))
                 NavigationLink(value: "goal") {
                     Image(systemName: "pencil").foregroundStyle(.white).frame(minWidth: 28, minHeight: 28)
                 }
@@ -56,7 +56,7 @@ struct HomeView: View {
             .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5)
-                if m.route == .plus {
+                if value && m.cost > 0 {
                     Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 }
                 Spacer(minLength: 8)
