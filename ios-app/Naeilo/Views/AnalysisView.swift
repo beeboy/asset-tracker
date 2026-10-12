@@ -89,8 +89,7 @@ struct AnalysisView: View {
     /// 금리 시나리오 카드 머리: 지난 1년 금리 변화가 이어질 때 S&P 실질 이익 3년 누적 중앙값
     private var rateTag: String {
         let md = MacroData.shared
-        guard let M = md.file?.meals else { return md.failed ? "자료 없음" : "…" }
-        let r = RateScen(coef: M.coef, g0: M.g_now, dr: md.defaultDr, m: 0)
+        guard let r = md.scen(dr: md.defaultDr, m: 0) else { return md.failed ? "자료 없음" : "…" }
         guard let c = r.cum.last else { return "…" }
         return "이익 \(r.years)년 " + AppModel.sgn0(exp(c[1] / 100) - 1)
     }

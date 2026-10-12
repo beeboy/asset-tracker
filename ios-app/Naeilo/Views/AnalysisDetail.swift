@@ -486,12 +486,19 @@ final class MacroData {
     var failed = false
     private var loading = false
     private static let name = "macro.json"
+    /// 이미 가진 파일 그대로 (같은 파일이 다시 오면 화면을 다시 그리지 않는다)
+    @ObservationIgnored private var raw: Data?
+    /// 마지막으로 받은 날 (파일은 매달 5일에만 바뀌니 하루 한 번만 받는다)
+    @ObservationIgnored private var fetchedDay: String?
+    /// 금리·기대수익 슬라이드 값별 계산 결과 (넘길 때마다 식단 1000벌을 다시 계산하지 않게)
+    @ObservationIgnored private var memo: [String: RateScen] = [:]
 
     init() {
-        if let d = Store.readData(Self.name) { file = try? JSONDecoder().decode(File.self, from: d) }
+        if let d = Store.readData(Self.name) { raw = d; file = try? JSONDecoder().decode(File.self, from: d) }
     }
     func load() async {
-        guard !loading else { return }
+        let day = SiteCalc.today()
+        guard !loading, fetchedDay != day || file == nil else { return }
         loading = true; defer { loading = false }
         var req = URLRequest(url: Config.data.appendingPathComponent("macro/rates_earnings.json"))
         req.cachePolicy = .reloadIgnoringLocalCacheData
@@ -499,13 +506,27 @@ final class MacroData {
         do {
             let (d, r) = try await URLSession.shared.data(for: req)
             guard (r as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
-            let f = try JSONDecoder().decode(File.self, from: d)
+            fetchedDay = day
+            if d == raw, file != nil { failed = false; return }
+            // 110KB JSON 풀기는 화면 밖에서
+            let f = try await Task.detached(priority: .utility) { try JSONDecoder().decode(File.self, from: d) }.value
             guard f.meals?.coef.isEmpty == false else { throw URLError(.cannotParseResponse) }
+            raw = d; memo = [:]
             file = f; failed = false
             Store.writeData(d, Self.name)
         } catch {
             if file == nil { failed = true }
         }
+    }
+    /// 슬라이드 값 (dr %p, m 연) 에서의 계산. 같은 값이면 저장해 둔 결과
+    func scen(dr: Double, m: Double) -> RateScen? {
+        guard let M = file?.meals else { return nil }
+        let k = String(format: "%.2f|%.3f", dr, m)
+        if let r = memo[k] { return r }
+        let r = RateScen(coef: M.coef, g0: M.g_now, dr: dr, m: m)
+        if memo.count > 64 { memo = [:] }
+        memo[k] = r
+        return r
     }
     /// 지난 1년 10년물 금리 변화 (%p)
     var change1y: Double? { file?.now?.change_1y }
@@ -587,26 +608,30 @@ struct RateScenarioView: View {
         return m.rows.reduce(0) { $0 + $1.value / tot * ExternalView.coef($1.sym).0 }
     }
 
-    /// 연 기대를 shift 만큼 옮겼을 때 목표 확률. 웹처럼 전망(몬테카를로) 목표 확률에 닫힌 식의 차이만 더한다
-    private func prob(_ f: AppModel.Forecast, _ shift: Double) -> Double {
-        max(0, min(1, f.pGoal + closed(f, shift) - closed(f, 0)))
+    /// 닫힌 식에 드는 값. 평가액·원금은 종목 목록을 매번 다시 만드니 한 번만 읽는다 (식단 1000벌 × 2번 부르면 넘길 때 멈칫)
+    private struct Closed { let T, sg, mu, V0, K, M: Double }
+    private func closedInput(_ f: AppModel.Forecast) -> Closed {
+        Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: m.monthly * 1e4)
     }
-    private func closed(_ f: AppModel.Forecast, _ shift: Double) -> Double {
-        let T = max(1.0 / 12, f.tY.last ?? 3), sg = max(0.01, f.sigma), g: Double = f.mu - sg * sg / 2 + shift
-        let V0 = m.trackValue, K = m.keyValue, M = m.monthly * 1e4
-        let eff: Double = V0 + M * 12 * T * exp(-g * T / 2)
-        guard eff > 0, K > 0 else { return 0 }
-        let num: Double = log(eff / K) + g * T
+    /// 연 기대를 shift 만큼 옮겼을 때 목표 확률. 웹처럼 전망(몬테카를로) 목표 확률에 닫힌 식의 차이만 더한다
+    private static func prob(_ f: AppModel.Forecast, _ c: Closed, _ shift: Double) -> Double {
+        max(0, min(1, f.pGoal + closed(c, shift) - closed(c, 0)))
+    }
+    private static func closed(_ c: Closed, _ shift: Double) -> Double {
+        let T = c.T, sg = c.sg, g: Double = c.mu - sg * sg / 2 + shift
+        let eff: Double = c.V0 + c.M * 12 * T * exp(-g * T / 2)
+        guard eff > 0, c.K > 0 else { return 0 }
+        let num: Double = log(eff / c.K) + g * T
         return AppModel.normCDF(num / (sg * sqrt(T)))
     }
 
     @ViewBuilder private func main(_ file: MacroData.File, _ M: MacroData.File.Meals) -> some View {
         let d = dr ?? macro.defaultDr, mm = mk / 100
-        let r = RateScen(coef: M.coef, g0: M.g_now, dr: d, m: mm)
-        let f = m.forecast, kb = beta
-        let base = prob(f, 0)
+        let r = macro.scen(dr: d, m: mm) ?? RateScen(coef: M.coef, g0: M.g_now, dr: d, m: mm)
+        let f = m.forecast, kb = beta, ci = closedInput(f)
+        let base = Self.prob(f, ci, 0)
         let shifts: [Double] = r.slope.map { b in kb * (b * d / 3 / 100 + mm) }
-        let pb = RateScen.band(shifts.map { prob(f, $0) })
+        let pb = RateScen.band(shifts.map { Self.prob(f, ci, $0) })
         let drBinding = Binding<Double>(get: { dr ?? macro.defaultDr }, set: { dr = $0 })
         let H = r.years
 
