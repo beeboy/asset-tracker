@@ -6,6 +6,7 @@ import SwiftUI
 
 struct InvestBranch: View {
     let id: String
+    var focus: Int? = nil
     @Environment(AppModel.self) private var m
     @State private var habitsOpen = false
 
@@ -25,6 +26,7 @@ struct InvestBranch: View {
             quotes
             Text(Invest.disclaimer).appFont(12).foregroundStyle(Theme.muted)
         }
+        .onAppear { if focus != nil { habitsOpen = true } }
     }
 
     // MARK: 버릇 (세부 규칙, 접어 둔다)
@@ -44,8 +46,10 @@ struct InvestBranch: View {
                 ForEach(Array((Invest.habits[id] ?? []).enumerated()), id: \.offset) { i, h in
                     HStack(alignment: .top, spacing: 8) {
                         Text("\(i + 1)").appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 16)
-                        Text(h).appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                        Text(h).appFont(14, i == focus ? .bold : .regular).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     }
+                    .padding(.vertical, i == focus ? 6 : 0).padding(.horizontal, i == focus ? 6 : 0)
+                    .background(i == focus ? Theme.tealBg : Color.clear, in: RoundedRectangle(cornerRadius: 8))
                 }
                 if let n = Invest.habitNote[id] { Text(n).appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true) }
                 Text("평행 세계의 \(name) 세계도 이 버릇대로 움직여요.").appFont(12).foregroundStyle(Theme.sub)

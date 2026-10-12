@@ -12,6 +12,8 @@ struct ParallelView: View {
     @Environment(AppModel.self) private var m
     @State private var prog = 0.0
     @State private var ratio = false
+    @State private var logOpen = false
+    @State private var logShown = 8
 
     var body: some View {
         ScrollView {
@@ -199,6 +201,7 @@ struct ParallelView: View {
             if w.who == "sua" && race.contrib > 0 {
                 Text("매달 \(AppModel.wonK(m.gM))씩 넣은 \(AppModel.eok(race.contrib))까지 넣은 돈으로 쳐서 셌어요.").appFont(12).foregroundStyle(Theme.sub)
             }
+            ruleLog(race, w)
             NavigationLink(value: "char:\(w.who):invest") {
                 Text("투자하는 \(who(w)) 자세히 ›").appFont(13, .bold).foregroundStyle(Theme.teal).frame(minHeight: 36)
             }
@@ -214,6 +217,57 @@ struct ParallelView: View {
                     .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    // MARK: 규칙 일지: 인물 세계가 어떤 세부 규칙으로 움직였나 (주 단위, 비율만. 종목 이름·수량 없음). 누르면 그 버릇으로
+    @ViewBuilder private func ruleLog(_ race: PRace, _ w: PWorld) -> some View {
+        let all = Array(race.log.reversed())
+        Button { withAnimation(.easeInOut(duration: 0.2)) { logOpen.toggle() } } label: {
+            HStack {
+                Text("규칙 일지").appFont(13, .bold)
+                Text(all.isEmpty ? "아직 없음" : "\(all.count)줄").appFont(12).foregroundStyle(Theme.sub)
+                Spacer()
+                Image(systemName: logOpen ? "chevron.up" : "chevron.down").foregroundStyle(Theme.muted)
+            }
+            .frame(minHeight: 36).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(logOpen ? "규칙 일지 접기" : "규칙 일지 펴기")
+        if logOpen {
+            if all.isEmpty {
+                Text("아직 규칙이 움직이거나 점검할 때가 오지 않았어요.").appFont(12).foregroundStyle(Theme.sub)
+            }
+            ForEach(Array(all.prefix(logShown).enumerated()), id: \.offset) { _, x in
+                NavigationLink(value: "char:\(w.who):invest:h\(x.rule)") { logRow(x, race, w) }.buttonStyle(.plain)
+            }
+            if all.count > logShown {
+                Button("더 보기") { logShown += 12 }.appFont(12, .bold).foregroundStyle(Theme.teal).frame(minHeight: 32)
+            }
+        }
+    }
+    private func logRow(_ x: PLog, _ race: PRace, _ w: PWorld) -> some View {
+        let past = x.t < race.open
+        return HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Self.week(race.dates[x.t]) + (past ? " · 예선" : "")).appFont(11, .bold).foregroundStyle(past ? Theme.muted : Theme.purple)
+                Text("\(who(w)) · \(x.text)").appFont(13).fixedSize(horizontal: false, vertical: true)
+                if let k = x.metric {
+                    Text("\(k) \(AppModel.pct(x.a)) → \(AppModel.pct(x.b))").appFont(12).foregroundStyle(Theme.sub)
+                }
+            }
+            Spacer(minLength: 4)
+            Text("›").appFont(13, .bold).foregroundStyle(Theme.muted)
+        }
+        .padding(.vertical, 6)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
+        .contentShape(Rectangle())
+    }
+    /// 날짜를 주 단위로 뭉갬: "25년 3월 둘째 주"
+    static func week(_ d: String) -> String {
+        let p = d.split(separator: "-").compactMap { Int($0) }
+        guard p.count == 3 else { return d }
+        let n = ["첫째", "둘째", "셋째", "넷째", "다섯째"][min(4, (p[2] - 1) / 7)]
+        return "\(p[0] % 100)년 \(p[1])월 \(n) 주"
     }
 
     private func whoMenu(_ w: PWorld) -> some View {

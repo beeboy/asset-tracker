@@ -736,9 +736,11 @@ struct CharacterDetailView: View {
     let friend: Friend
     @Environment(AppModel.self) private var m
     @State private var invest: Bool
+    var focus: Int? = nil          // 규칙 일지에서 왔으면 그 버릇 번호 (펴서 표시)
 
-    init(friend: Friend, invest: Bool = false) {
+    init(friend: Friend, invest: Bool = false, focus: Int? = nil) {
         self.friend = friend
+        self.focus = focus
         _invest = State(initialValue: invest && Calm.kind(friend.id) != nil)
     }
 
@@ -764,7 +766,7 @@ struct CharacterDetailView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                if invest { InvestBranch(id: f.id) } else { novel(f) }
+                if invest { InvestBranch(id: f.id, focus: focus) } else { novel(f) }
             }
             .screen().padding(.top, 8)
         }
