@@ -3021,10 +3021,15 @@
     $("#holdSort").onchange = (e) => { S.state.ui.hold_sort = e.target.value; save(false); renderQuotes(); };
     $("#btnAdd").onclick = addHolding;
     $("#addTicker").addEventListener("input", sugUpdate);
+    // 한글 입력 중 엔터: 글자 조합이 끝난 뒤에 고른다 (먼저 수량 칸으로 옮기면 마지막 글자가 그쪽에 들어간다)
+    let enterAfterIme = false;
+    const tickerEnter = () => { if (sug.list.length) sugPick(sug.list[Math.max(0, sug.i)]); else $("#addShares").focus(); };
+    $("#addTicker").addEventListener("compositionend", () => { if (enterAfterIme) { enterAfterIme = false; setTimeout(() => { sugUpdate(); tickerEnter(); }, 0); } });
     $("#addTicker").addEventListener("keydown", (e) => {
-      if (!sug.list.length) { if (e.key === "Enter") $("#addShares").focus(); return; }
+      if (e.key === "Enter" && e.isComposing) { e.preventDefault(); enterAfterIme = true; return; }
+      if (e.key === "Enter") { e.preventDefault(); enterAfterIme = false; setTimeout(tickerEnter, 0); return; }
+      if (!sug.list.length) return;
       if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); sug.i = (sug.i + (e.key === "ArrowDown" ? 1 : -1) + sug.list.length) % sug.list.length; sugRender(); }
-      else if (e.key === "Enter") { e.preventDefault(); sugPick(sug.list[Math.max(0, sug.i)]); }
       else if (e.key === "Escape") { sug.list = []; sug.seq++; sugRender(); }
     });
     $("#addSug").addEventListener("mousedown", (e) => e.preventDefault()); // 고르기 전에 입력칸이 포커스를 잃지 않게
