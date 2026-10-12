@@ -353,7 +353,9 @@ struct GoalSetView: View {
                 }
                 inputField("목표 금액 (만원)", $k).focused($focus).onChange(of: k) { _, v in if let d = Double(v.replacingOccurrences(of: ",", with: "")), d > 0 { m.gK = d } }
                 inputField("몇 년 뒤", $y).focused($focus).onChange(of: y) { _, v in if let d = Int(v.replacingOccurrences(of: ",", with: "")) { m.gY = min(30, max(1, d)) } }
-                if m.route == .novice {
+                if m.noviceOwn {
+                    Text("출발점: 지금 평가액 \(AppModel.wonK(start)) (종목 탭에 넣은 종목 기준)").appFont(13).foregroundStyle(Theme.sub)
+                } else if m.route == .novice {
                     inputField("지금 모아 둔 투자금 (만원, 없으면 0)", $a).focused($focus).onChange(of: a) { _, v in m.gA = max(0, Double(v) ?? 0) }
                 } else {
                     inputField("매달 넣을 돈 (만원, 없으면 0)", $mo).focused($focus).onChange(of: mo) { _, v in m.gM = max(0, Double(v.replacingOccurrences(of: ",", with: "")) ?? 0) }

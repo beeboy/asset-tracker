@@ -47,8 +47,10 @@ extension AppModel {
     }
 
     var isGoal: Bool { route != .recover }
-    /// 출발 금액 (만원): 플러스는 지금 평가액, 시작 전은 모아 둔 투자금
-    var goalStart: Double { route == .plus ? total / 1e4 : gA }
+    /// 시작 전 루트에 내가 넣은 종목(샘플 아님)이 있으면 모아 둔 투자금 대신 그 평가액으로 본다
+    var noviceOwn: Bool { route == .novice && !isSample && total > 0 }
+    /// 출발 금액 (만원): 플러스는 지금 평가액, 시작 전은 모아 둔 투자금 (넣은 종목이 있으면 평가액)
+    var goalStart: Double { route == .plus || noviceOwn ? total / 1e4 : gA }
     /// 1000칸·주간 예보에서 쓰는 지금 금액 (원)
     /// 분석 화면의 기준선 (원): 회복 = 들어간 돈(본전), 목표 = 목표 금액
     var keyValue: Double { isGoal ? gK * 1e4 : cost }
@@ -352,7 +354,8 @@ extension AppModel {
         guard let c = gWeekCur, gWeeks.count < 3, monthGate == .open else { return }
         gWeeks.append(c); gWeekCur = nil
     }
-    var goalSaved: Double { gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
+    /// 넣은 종목이 있으면 그 평가액 (적립도 종목 수량으로 들어가니 따로 더하지 않는다)
+    var goalSaved: Double { noviceOwn ? total / 1e4 : gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
 
     func switchRoute(_ r: Route) {
         route = r; boardPath = []; analysisPath = NavigationPath()

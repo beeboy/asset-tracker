@@ -404,7 +404,7 @@ final class AppModel {
         let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
         let head = rows.isEmpty ? "" : "**오늘 \(Self.sgn(tot))**" + (mv.isEmpty ? "" : " (\(mv))") + ". "     // 오늘 움직임은 진하게 (마크다운)
         if route == .novice {
-            return head + "모은 돈은 목표의 \(AppModel.pct(gA / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
+            return head + (noviceOwn ? "평가액은" : "모은 돈은") + " 목표의 \(AppModel.pct(goalSaved / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
         }
         guard total > 0 else { return "아직 넣은 종목이 없어요. 종목 탭에서 수량을 넣으면 내일부터 내 숫자를 가져올게요." }
         let vY = total / (1 + tot)
