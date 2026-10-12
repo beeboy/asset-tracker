@@ -5,7 +5,7 @@ import WidgetKit
 // 서재 원고: 외전 『이종 공명』 프롤로그~5장 (한글 원고 + 영문 번역본). 사이트 공개 범위와 같아서 앱에 같이 넣는다.
 // Resources/story_ko.json · story_en.json 은 tools/story.py 가 MyVault 원고에서 만든다. 두 언어는 블록이 하나씩 맞아서
 // 언어를 바꿔도 읽던 자리(블록 번호)가 그대로다.
-// 6장~코다(믹스커피 이상)와 본편 1권(프랜차이즈 이상, 한국어만)은 후원 서버에서 받아(StoreAPI) 이 기기에 저장해 둔다.
+// 6장~코다(믹스커피 이상)와 본편 1권(프랜차이즈 이상, 한글·영문)은 후원 서버에서 받아(StoreAPI) 이 기기에 저장해 둔다.
 
 struct StoryBlock: Codable {
     let k: String           // h 절 제목, q 인용(화면·메시지), p 문단, s 장면 나눔, t 표
@@ -25,7 +25,7 @@ enum StoryLang: String, CaseIterable { case ko, en
 /// 외전(side) 또는 본편 1권(vol1)
 enum StoryBook: String { case side, vol1
     var need: SupportTier { self == .side ? .mix : .franchise }
-    var langs: [StoryLang] { self == .side ? [.ko, .en] : [.ko] }
+    var langs: [StoryLang] { [.ko, .en] }
     /// 앱에 들어 있는 장 수 (외전 프롤로그~5장)
     var bundled: Int { self == .side ? 6 : 0 }
     var route: String { self == .side ? "read:" : "vol1:" }
@@ -40,7 +40,7 @@ final class Story {
         didSet { UserDefaults.standard.set(picked?.rawValue, forKey: "storyLang") }
     }
     var lang: StoryLang { picked ?? Self.deviceLang }
-    /// 그 책에서 실제로 읽는 언어 (본편 1권은 한국어만)
+    /// 그 책에서 실제로 읽는 언어
     func lang(_ b: StoryBook) -> StoryLang { b.langs.contains(lang) ? lang : .ko }
     /// 기기 언어 목록의 첫 번째가 한국어면 한글, 아니면 영문
     static var deviceLang: StoryLang { (Locale.preferredLanguages.first ?? "ko").hasPrefix("ko") ? .ko : .en }
@@ -94,13 +94,14 @@ final class Story {
             }
             return bundledBooks[l].flatMap { i < $0.count ? $0[i] : nil }
         }
-        guard let r = remote[Self.id(b, l)], i >= r.from, i - r.from < r.chapters.count else { return nil }
+        // 번역본을 아직 못 받았으면 한글 원고로 읽는다
+        guard let r = remote[Self.id(b, l)] ?? remote[Self.id(b, .ko)], i >= r.from, i - r.from < r.chapters.count else { return nil }
         return r.chapters[i - r.from]
     }
     /// 지금 읽을 수 있는 장 수 (앱에 든 것 + 받아 둔 것)
     func count(_ b: StoryBook, _ l: StoryLang? = nil) -> Int {
         let l = l ?? lang(b)
-        guard let r = remote[Self.id(b, l)] else { return b.bundled }
+        guard let r = remote[Self.id(b, l)] ?? remote[Self.id(b, .ko)] else { return b.bundled }
         return max(b.bundled, r.from + r.chapters.count)
     }
     func isLoading(_ b: StoryBook) -> Bool { loading.contains(Self.id(b, lang(b))) }
@@ -148,10 +149,10 @@ final class Story {
         return out
     }
 
-    /// 머리글 "외전 『이종 공명』 · 1장" / "Resonance Across Kinds · Chapter 1" / "본편 1권 · 1장"
+    /// 머리글 "외전 『이종 공명』 · 1장" / "Resonance Across Kinds · Chapter 1" / "『중첩된 현실』 1권 · 1부 제1장" / "Nested Reality, Vol. 1 · Part 1, Chapter 1"
     func heading(_ i: Int, _ b: StoryBook = .side) -> String {
         let t = chapter(i, b)?.title ?? (b == .side && i < 6 ? Shelter.chapters[i].title : "")
-        if b == .vol1 { return "『중첩된 현실』 1권 · \(t)" }
+        if b == .vol1 { return chapter(i, b)?.title.hasPrefix("Part") == true ? "Nested Reality, Vol. 1 · \(t)" : "『중첩된 현실』 1권 · \(t)" }
         return lang == .ko ? "외전 『이종 공명』 · \(t)" : "Resonance Across Kinds · \(t)"
     }
 

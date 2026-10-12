@@ -5,7 +5,7 @@
 
 export const SOURCES = {
   side: { ko: "원고/side_story_v2.1.md", en: "원고/Side Story - Resonance Across Kinds.md" },
-  vol1: { ko: "원고/vol1_v8.1.md" },
+  vol1: { ko: "원고/vol1_v8.1.md", en: "원고/Nested Reality - Volume 1.md" },
 };
 export const SIDE_FREE = 6; // 프롤로그~5장은 앱·사이트에 공개. 6장부터만 올린다
 // 장별 도트 그림 (MyVault, 640×400 = 128×80 을 5배로 키운 것). 장 순서대로. 128×80 으로 줄여 장마다 cover 로 붙인다
@@ -16,11 +16,14 @@ export const ART = {
 };
 export const ART_SIZE = [128, 80];
 
-/** 마크다운 원고 → [{title, name, blocks}]. vol1 은 '## N부.' 아래 '## 제N장 — 이름' 으로 장이 나뉜다 */
+const PART_EN = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+
+/** 마크다운 원고 → [{title, name, blocks}]. vol1 은 '## N부.' 아래 '## 제N장 — 이름' 으로 장이 나뉜다
+ *  (영문본은 '# Part One — …' 아래 '## Chapter N — …', 장 제목은 'Part 1, Chapter 1') */
 export function parseBook(md, kind) {
   const vol = kind === "vol1", lvl = vol ? "## " : "# ";
   const chapters = [];
-  let cur = null, part = null, pre = null, buf = [], k = "p";
+  let cur = null, part = null, en = false, pre = null, buf = [], k = "p";
   const target = () => cur || pre;
   const flush = () => {
     const tg = target();
@@ -37,13 +40,14 @@ export function parseBook(md, kind) {
     if (line.startsWith(lvl) || (vol && line.startsWith("# "))) {
       flush();
       const head = line.replace(/^#+ /, "").trim();
+      const pe = vol && /^Part\s+(\w+)\b/i.exec(head);
+      const pm = vol && (/^(\d+)부\.?\s*(.*)$/.exec(head) || (pe && [head, PART_EN[pe[1].toLowerCase()] || pe[1]]));
+      if (pm) { part = pm[1]; en = !!pe; cur = null; pre = { blocks: [{ k: "h", t: head }] }; continue; }
       if (vol && line.startsWith("# ")) continue; // 책 제목
-      const pm = vol && /^(\d+)부\.?\s*(.*)$/.exec(head);
-      if (pm) { part = pm[1]; cur = null; pre = { blocks: [{ k: "h", t: head }] }; continue; }
       const parts = head.split(/\s+[―—]\s+/);
       if (parts.length >= 2 && !/^(중첩된 현실|Nested Reality)/.test(head)) {
         const name = parts.slice(1).join(" — ");
-        cur = { title: vol && part ? `${part}부 ${parts[0]}` : parts[0], name, blocks: pre ? pre.blocks : [] };
+        cur = { title: vol && part ? (en ? `Part ${part}, ${parts[0]}` : `${part}부 ${parts[0]}`) : parts[0], name, blocks: pre ? pre.blocks : [] };
         pre = null; chapters.push(cur);
       }
       continue;
@@ -61,8 +65,8 @@ export function parseBook(md, kind) {
   return chapters;
 }
 
-/** 외전 한글·영문을 맞춰 본다 (story.py 와 같은 검사). 영문은 인용 표시가 없어서 한글 쪽을 따른다 */
-export function alignSide(ko, en) {
+/** 한글·영문을 맞춰 본다 (story.py 와 같은 검사). 영문은 인용 표시가 없어서 한글 쪽을 따른다 */
+export function align(ko, en) {
   if (ko.length !== en.length) throw new Error(`장 수가 다름 (한 ${ko.length} / 영 ${en.length})`);
   ko.forEach((a, i) => {
     const b = en[i];
@@ -89,17 +93,18 @@ export function attachCovers(list, covers) {
   return [...new Set(warn)];
 }
 
-/** 세 원고 → 올릴 책들 [{book, lang, data}] */
+/** 네 원고 → 올릴 책들 [{book, lang, data}] */
 export function buildBooks(texts) {
   const side = { ko: parseBook(texts.side.ko, "side"), en: parseBook(texts.side.en, "side") };
-  alignSide(side.ko, side.en);
+  align(side.ko, side.en);
   if (side.ko.length <= SIDE_FREE) throw new Error(`외전 장이 ${side.ko.length}개뿐 (6장부터가 없음)`);
-  const vol1 = parseBook(texts.vol1.ko, "vol1");
-  if (!vol1.length) throw new Error("본편 1권에서 장을 찾지 못했습니다");
+  const vol1 = { ko: parseBook(texts.vol1.ko, "vol1"), en: parseBook(texts.vol1.en, "vol1") };
+  if (!vol1.ko.length) throw new Error("본편 1권에서 장을 찾지 못했습니다");
+  try { align(vol1.ko, vol1.en); } catch (e) { throw new Error("본편 1권 " + e.message); }
   const name = (p) => p.split("/").pop();
   return [
     ...["ko", "en"].map((lang) => ({ book: "side", lang, data: { from: SIDE_FREE, source: name(SOURCES.side[lang]), chapters: side[lang].slice(SIDE_FREE) } })),
-    { book: "vol1", lang: "ko", data: { from: 0, source: name(SOURCES.vol1.ko), chapters: vol1 } },
+    ...["ko", "en"].map((lang) => ({ book: "vol1", lang, data: { from: 0, source: name(SOURCES.vol1[lang]), chapters: vol1[lang] } })),
   ];
 }
 
@@ -156,8 +161,8 @@ if (typeof document !== "undefined") {
       say(msg, "원고 읽는 중…");
       const texts = { side: {}, vol1: {} };
       if (fromFiles) {
-        for (const [id, b, l] of [["#f-side-ko", "side", "ko"], ["#f-side-en", "side", "en"], ["#f-vol1", "vol1", "ko"]]) {
-          const f = $(id).files[0]; if (!f) throw new Error("파일 세 개를 모두 골라 주세요");
+        for (const [id, b, l] of [["#f-side-ko", "side", "ko"], ["#f-side-en", "side", "en"], ["#f-vol1", "vol1", "ko"], ["#f-vol1-en", "vol1", "en"]]) {
+          const f = $(id).files[0]; if (!f) throw new Error("파일 네 개를 모두 골라 주세요");
           texts[b][l] = await f.text();
         }
       } else {
