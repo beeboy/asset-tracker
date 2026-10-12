@@ -111,7 +111,7 @@ struct AnalysisView: View {
             return a + (o?.y1 ?? 0)
         }
         let cards: [(String, String, String, Color, AnalysisRoute)] = [
-            ("내 길", "정한 목표대로 가고 있나", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + "\(Int((abs(gap) * 100).rounded()))%",
+            ("내 길", "정한 목표대로 가고 있나", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + String(format: "%.1f%%", abs(gap) * 100),
              gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060), .myPath),
             (m.forecastTitle, "시장이 줄 수 있는 미래의 범위", fc.exact ? AppModel.pct(fc.pGoal) : "계산 중", Theme.teal, .forecast),
             ("금리 시나리오", "금리가 움직이면 시장 이익과 내 목표는", rateTag, Theme.purple, .rateScen),
@@ -181,7 +181,7 @@ struct ForecastView: View {
                         Text("실적 발표·금리 결정·환율 같은 일정을 웹과 같은 목록으로 반영해요. 끄면 일정 없이 계산해요.").appFont(12).foregroundStyle(Theme.muted)
                     }
                     Card {
-                        Text("만약에 매달 더 넣는다면 · \(m.monthly > 0 ? AppModel.man(m.monthly * 1e4) : "없음")").appFont(14, .bold)
+                        Text("만약에 매달 더 넣는다면 · \(m.monthly > 0 ? AppModel.eok(m.monthly * 1e4) : "없음")").appFont(14, .bold)
                         Slider(value: $m.monthly, in: 0...300, step: 10).tint(Theme.teal)
                     }
                     Card(dark: true) {
@@ -195,8 +195,8 @@ struct ForecastView: View {
                             }
                         }
                     }
-                    Text("한 숫자 예측이 아닌 가능성의 범위예요. naeilo.com과 같은 계산이에요: 지난 3년 움직임으로 낸 종목별 기대·흔들림·함께 움직이는 정도로 하루 단위로 3,000갈래 길을 만들어 셌어요 (같은 입력이면 웹과 같은 숫자). 종목 추천이 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
-                    if !m.isGoal { Text("회복 루트는 본전 기준이에요. naeilo.com 전망은 목표 기준이에요.").appFont(12).foregroundStyle(Theme.muted) }
+                    Text(m.isGoal ? "예측이 아닌 가능성의 범위예요. naeilo.com 3년 전망과 같은 계산(지난 3년 움직임으로 3,000갈래 길, 하루 한 번)이에요."
+                         : "예측이 아닌 가능성의 범위예요. 회복 루트는 본전 기준이라 naeilo.com(목표 기준)과 달라요.").appFont(12).foregroundStyle(Theme.muted)
                 }
                 .padding(16)
         }
@@ -217,11 +217,11 @@ struct ForecastView: View {
         VStack(alignment: .leading, spacing: 10) {
             DetailHead(title: m.forecastTitle, sub: f.exact ? "시장이 줄 수 있는 미래의 범위" : "시장이 줄 수 있는 미래의 범위 · 계산 중 (어림값)")
             HStack(spacing: 8) {
-                kpi("\(m.keyName) 확률 (\(m.isGoal ? "목표일" : "3년"))", AppModel.pct(f.pGoal), Theme.teal, 20)
-                kpi(m.isGoal ? "목표일 중앙값" : "3년 뒤 중앙값", AppModel.man(f.q50.last ?? 0), Theme.ink, 17)
-                kpi("나쁜 5%", AppModel.man(f.q5.last ?? 0), Theme.down, 17)
+                kpi(m.isGoal ? "목표 달성 확률" : "\(m.keyName) 확률 (3년)", AppModel.pct(f.pGoal), Theme.teal, 20)
+                kpi(m.isGoal ? "목표일 중앙값" : "3년 뒤 중앙값", AppModel.eok(f.q50.last ?? 0), Theme.ink, 17)
+                kpi("나쁜 5%", AppModel.eok(f.q5.last ?? 0), Theme.down, 17)
             }
-            FanChart(f: f, goal: m.keyValue, goalLabel: "\(m.keyName) \(AppModel.man(m.keyValue))").frame(height: 150)
+            FanChart(f: f, goal: m.keyValue, goalLabel: "\(m.keyName) \(AppModel.eok(m.keyValue))").frame(height: 150)
             Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: Binding(get: { m.lens }, set: { m.lens = $0 }), fill: true)
             if let c = m.mcPathCapped {

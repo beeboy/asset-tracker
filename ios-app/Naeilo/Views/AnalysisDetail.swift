@@ -197,12 +197,8 @@ struct MyPathView: View {
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
         let yrsLeft = mEnd - mS
-        // 남은 기간: 달력으로 센다 (2년 12개월 대신 3년, 2년 11개월)
-        let endDate = m.isGoal ? m.goalToDate : (Calendar.current.date(byAdding: .year, value: 1, to: m.pathStartDate) ?? Date())
-        let left = Calendar.current.dateComponents([.year, .month, .day], from: Calendar.current.startOfDay(for: Date()), to: endDate)
-        let leftText = (left.year ?? 0) > 0 || (left.month ?? 0) > 0
-            ? ((left.year ?? 0) > 0 ? "\(left.year!)년" : "") + ((left.month ?? 0) > 0 ? ((left.year ?? 0) > 0 ? " " : "") + "\(left.month!)개월" : "")
-            : "\(max(0, left.day ?? 0))일"
+        // 남은 기간: 웹 목표 진행과 같은 표시 (3.0년, 1년 안 되면 개월)
+        let leftText = AppModel.leftText(m.isGoal ? AppModel.yrs(Day.today, Day.str(m.goalToDate)) : yrsLeft)
         // 지난 달마다: 시작한 날부터 꽉 채운 달만 (최근 6달), 끝은 오늘
         let months = Calendar.current.dateComponents([.month], from: m.pathStartDate, to: Date()).month ?? 0
         let monthRows: [(String, Double)] = (max(1, months - 5)...max(1, months)).compactMap { k -> (String, Double)? in
@@ -216,11 +212,12 @@ struct MyPathView: View {
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.goalToText)까지 · 매달 \(AppModel.wonK(m.gM)) (\(m.pathStartText) 시작)" : "본전 \(AppModel.man(K)) · 1년 안에 (\(m.pathStartText) 시작)")
+                DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.goalToText)까지 · 매달 \(AppModel.wonK(m.gM)) (\(m.pathStartText) 시작)" : "본전 \(AppModel.eok(K)) · 1년 안에 (\(m.pathStartText) 시작)")
                 HStack(alignment: .firstTextBaseline) {
-                    Text("내 길보다 \(String(format: "%.1f", abs(gap) * 100))% \(gap >= 0 ? "앞섬" : "뒤처짐")").appFont(22, .bold).foregroundStyle(lead)
+                    Text("\(gap >= 0 ? "앞섬" : "뒤처짐") \(String(format: "%.1f", abs(gap) * 100))%").appFont(22, .bold).foregroundStyle(lead)
                     Spacer()
-                    Text("오늘 내 길 \(AppModel.man(need(mS)))").appFont(12).foregroundStyle(Theme.sub)
+                    // 웹 목표 진행처럼 금액 차이
+                    Text("내 길보다 \(AppModel.eokS(act(mS) - need(mS)))").appFont(13, .semibold).foregroundStyle(lead)
                 }
                 Canvas { ctx, size in
                     if !bandPts.isEmpty {
@@ -266,24 +263,22 @@ struct MyPathView: View {
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 Card {
-                    Text("달마다 내 길보다 앞섰나").appFont(15, .bold)
+                    Text("달마다 내 길과 차이").appFont(15, .bold)
                     ForEach(monthRows.indices, id: \.self) { i in
                         let t = monthRows[i].1, g = need(t) > 0 ? act(t) / need(t) - 1 : 0
-                        SignedBar(label: monthRows[i].0, value: AppModel.sgn(g), g: g, scale: 0.2, pos: Theme.green, neg: Theme.orange,
+                        SignedBar(label: monthRows[i].0, value: AppModel.eokS(act(t) - need(t)), g: g, scale: 0.2, pos: Theme.green, neg: Theme.orange,
                                   valueColor: g >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
                     }
                     if months < 1 { Text("시작한 지 한 달이 지나면 달마다 쌓여요.").appFont(12).foregroundStyle(Theme.muted) }
                 }
                 kpiGrid([
-                    Kpi(k: "목표일까지", v: leftText, sub: m.isGoal ? "\(m.goalToText)까지" : "1년 목표"),
-                    Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? "적립 포함, 남은 기간" : "본전까지 남은 기간"),
+                    Kpi(k: "남은 기간", v: leftText, sub: m.isGoal ? m.goalToText : "1년 목표"),
+                    Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? (mM > 0 ? "적립 포함" : "지금 자산만으로") : "본전까지"),
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "내 길에 들어 있음" : "회복은 적립 없이"),
-                    Kpi(k: "내 길대로 갈 확률", v: AppModel.pct(pPlan), sub: "\(m.forecastTitle) (\(m.lens.label))"),
+                    Kpi(k: m.isGoal ? "목표 달성 확률" : "\(m.keyName) 확률", v: AppModel.pct(pPlan), sub: "\(m.forecastTitle)과 같은 값"),
                 ], dark: true)
-                footnote("예측이 아닌 기준선. 목표와 적립으로 그은 길보다 실제가 앞섰는지 봐요. 종목 추천이 아닙니다.")
-                footnote("실제는 날마다 그날 수량 × 그날 종가·환율, 오늘은 매매기준율로 센 평가액이에요 (naeilo.com 목표 진행과 같은 계산).")
-                footnote(m.isGoal ? "목표 금액·목표일·시작일·매달 넣는 돈은 naeilo.com과 같은 값이에요 (기기 동기화를 켰을 때)."
-                         : "회복 루트는 본전 기준이에요. naeilo.com의 내 길은 목표 기준이라 다르게 보여요.")
+                footnote(m.isGoal ? "예측이 아닌 기준선이에요. 실제는 그날 수량·종가·환율(오늘은 매매기준율)로 센 값으로, naeilo.com 목표 진행과 같은 계산이에요."
+                         : "예측이 아닌 기준선이에요. 회복 루트는 본전 기준이라 naeilo.com(목표 기준)과 달라요.")
             }
             .padding(16)
         }
