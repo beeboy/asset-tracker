@@ -31,6 +31,10 @@ enum Lots {
     /// 날짜 d 에 들고 있던 수량 (그날 또는 그 전 마지막 기록). 기록이 없으면 nil
     static func on(_ L: [Lot], _ d: String) -> [String: Double]? { L.last { $0.d <= d }?.h }
 
+    /// 동기화: 지난 날은 사이트 기록만 쓰고 (앱에만 남은 예전 줄이 웹과 다른 시작값을 만들지 않게), 오늘 줄은 이 기기 값. 사이트에 기록이 없으면 이 기기 기록
+    static func withSite(_ site: [Lot], _ mine: [Lot]) -> [Lot] {
+        site.isEmpty ? mine : merge(site, mine.filter { $0.d >= Day.today })
+    }
     /// 동기화: 날짜별로 합친다 (같은 날은 받은 쪽)
     static func merge(_ mine: [Lot], _ remote: [Lot]) -> [Lot] {
         var m: [String: Lot] = [:]

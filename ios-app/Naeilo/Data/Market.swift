@@ -261,7 +261,8 @@ enum MarFeed {
     /// 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 실패하면 저장해 둔 값
     static func fetch(minAge: TimeInterval = 0) async -> File? {
         let old = cached()
-        if let o = old, Date().timeIntervalSince1970 - o.got < minAge { return o }
+        // 오늘 고시가 아닌 값은 10분만 믿는다 (앱을 새로 깔거나 빌드한 직후 며칠 묵은 값을 30분 넘게 쓰지 않게)
+        if let o = old, Date().timeIntervalSince1970 - o.got < (o.date >= Day.today ? minAge : min(minAge, 600)) { return o }
         var c = URLComponents(url: Config.data.appendingPathComponent("mar.json"), resolvingAgainstBaseURL: false)!
         c.queryItems = [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970 / 600)))]
         var best: File? = await get(URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10))

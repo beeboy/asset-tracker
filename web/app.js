@@ -1036,7 +1036,7 @@
     const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
     const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
     if (!lastForecast) fcRestore();
-    const pg = fcReady(S.state.model.scenario)?.R?.p_goal ?? null; // 앱 내 길의 목표 달성 확률과 같은 값. 아직 없으면 '계산 중'으로 두고 한 번 계산
+    const pg = lastForecast && fcDirty ? null : fcReady(S.state.model.scenario)?.R?.p_goal ?? null; // 입력이 바뀐 뒤의 저장값은 쓰지 않는다. // 앱 내 길의 목표 달성 확률과 같은 값. 아직 없으면 '계산 중'으로 두고 한 번 계산
     if (pg == null && !S.state.model.rebalance_yearly && progAsked !== fcSig()) { progAsked = fcSig(); fcDirty = true; setTimeout(runForecast, 0); }
     card.style.display = "block";
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
@@ -1688,7 +1688,8 @@
     const L = lastForecast; if (!L || !L.sim) return;
     const md = L.b.model, g = S.state.goal, lossRef = costBasis() ?? undefined, plain = Number(g.monthly_contribution) || 0;
     if (L.sim.raw) {
-      const rw = (sim, key, wi) => Model.reweight(sim, { mu: viewMu(md, key), goal: g.amount, monthly: wi ? wi.monthly : plain, move: wi ? wi.move : null, lossRef });
+      const gK = Math.max(1, g.amount - cashKrw()); // 현금은 그대로 있다고 보고 목표에서 뺀다 (simCommon·앱과 같다)
+      const rw = (sim, key, wi) => Model.reweight(sim, { mu: viewMu(md, key), goal: gK, monthly: wi ? wi.monthly : plain, move: wi ? wi.move : null, lossRef });
       const k = viewKey(), wi = wiOpt();
       L.withEv = rw(L.sim, k); L.noEv = L.hasEv ? rw(L.simNo, k) : L.withEv;
       if (full || !L.lens || !L.lens.base) L.lens = { base: rw(L.sim, "base"), smooth: rw(L.sim, "smooth") };

@@ -58,6 +58,7 @@ struct AnalysisPager: View {
             ForEach(Self.order, id: \.self) { r in page(r).tag(r) }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+        .background(ContentPopBlock())
         .environment(\.detailInPager, true)
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle(title(sel))
@@ -89,8 +90,7 @@ struct AnalysisView: View {
     /// 금리 시나리오 카드 머리: 지난 1년 금리 변화가 이어질 때 S&P 실질 이익 3년 누적 중앙값
     private var rateTag: String {
         let md = MacroData.shared
-        guard let M = md.file?.meals else { return md.failed ? "자료 없음" : "…" }
-        let r = RateScen(coef: M.coef, g0: M.g_now, dr: md.defaultDr, m: 0)
+        guard let r = md.scen(dr: md.defaultDr, m: 0) else { return md.failed ? "자료 없음" : "…" }
         guard let c = r.cum.last else { return "…" }
         return "이익 \(r.years)년 " + AppModel.sgn0(exp(c[1] / 100) - 1)
     }
@@ -126,20 +126,18 @@ struct AnalysisView: View {
                 SampleNote()
                 CalmCard()
                 ForEach(cards, id: \.0) { t, sub, tag, color, route in
-                    NavigationLink(value: route) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(t).appFont(16, .bold)
-                                Text(sub).appFont(13).foregroundStyle(Theme.sub)
-                            }
-                            Spacer()
-                            Text(tag).appFont(15, .bold).foregroundStyle(color)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(t).appFont(16, .bold)
+                            Text(sub).appFont(13).foregroundStyle(Theme.sub)
                         }
-                        .padding(.horizontal, 16).frame(minHeight: 68)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+                        Spacer()
+                        Text(tag).appFont(15, .bold).foregroundStyle(color)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16).frame(minHeight: 68)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+                    .modifier(OpenOnTap(route: route))
                 }
                 Text("계산 옵션과 상세 표는 PC naeilo.com에서 크게 봐요.").appFont(13).foregroundStyle(Theme.sub).padding(.top, 4)
             }
@@ -151,6 +149,47 @@ struct AnalysisView: View {
         .task { await SiteCalc.shared.refresh() }
         .navigationDestination(for: AnalysisRoute.self) { AnalysisPager(start: $0) }
     }
+}
+
+/// 분석 목록 카드: 누르면 살짝 눌리고 탭하면 연다. 카드가 화면 너비라 옆으로 밀고 카드 안에서 손을 떼도
+/// 버튼은 탭으로 쳐서 세부 분석이 열렸다: 옆으로 움직였으면 열지 않는다 (좌우 넘기기는 세부 분석 안에서만)
+struct OpenOnTap: ViewModifier {
+    @Environment(AppModel.self) private var m
+    @State private var movedAt = Date.distantPast
+    let route: AnalysisRoute
+    func body(content: Content) -> some View {
+        Button {
+            if Date().timeIntervalSince(movedAt) < 0.3 { return }
+            m.analysisPath.append(route)
+        } label: { content }
+        .buttonStyle(.plain)
+        .simultaneousGesture(DragGesture(minimumDistance: 12)
+            // 손을 떼기 직전까지 움직였으면 탭이 아님 (스크롤에 밀려 끝이 안 와도 시간이 지나면 풀린다)
+            .onChanged { _ in movedAt = Date() })
+    }
+}
+
+/// iOS 26 은 화면 아무 데서나 오른쪽으로 밀어도 뒤로 간다. 넘기기 화면에서 그게 켜져 있으면
+/// 첫 분석에서 오른쪽으로 밀 때 분석 목록으로 나가 헷갈린다: 넘기기 화면이 보일 때만 끈다 (가장자리 밀기·뒤로 버튼은 그대로)
+private struct ContentPopBlock: UIViewRepresentable {
+    final class V: UIView {
+        weak var nav: UINavigationController?
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window == nil { set(nav, true); return }
+            var r: UIResponder? = self
+            while let n = r {
+                if let vc = n as? UIViewController, let nc = vc.navigationController { nav = nc; break }
+                r = n.next
+            }
+            set(nav, false)
+        }
+        private func set(_ nc: UINavigationController?, _ on: Bool) {
+            if #available(iOS 26.0, *) { nc?.interactiveContentPopGestureRecognizer?.isEnabled = on }
+        }
+    }
+    func makeUIView(context: Context) -> V { let v = V(); v.isUserInteractionEnabled = false; return v }
+    func updateUIView(_ v: V, context: Context) {}
 }
 
 // 3년 전망: 위에 확률·중앙값·나쁜 5%와 범위 그래프·렌즈 설명·렌즈 칩 고정, 아래 추세 믿음·외부 요인·적립
@@ -224,11 +263,6 @@ struct ForecastView: View {
             FanChart(f: f, goal: m.keyValue, goalLabel: "\(m.keyName) \(AppModel.eok(m.keyValue))").frame(height: 150)
             Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: Binding(get: { m.lens }, set: { m.lens = $0 }), fill: true)
-            if Sync.shared.isDev, let r = ForecastEngine.shared.run, r.key == m.forecastJob?.key {
-                // 개발자 줄: 실제 계산 시간 (사건 반영 + 사건 없이 두 번)
-                Text("개발자 · 전망 \(String(format: "%.1f", r.ms / 1000))초 · 경로 \(r.ev.P.formatted())개 · 사건 \(r.events)건 · 다른 구성 \(PathRuns.shared.runs.count)개 \(String(format: "%.1f", PathRuns.shared.msToday / 1000))초")
-                    .appFont(11).foregroundStyle(Theme.sub)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)

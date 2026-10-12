@@ -8,32 +8,30 @@ struct CalmCard: View {
 
     var body: some View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
-        NavigationLink(value: AnalysisRoute.calm) {
-            HStack(alignment: .center, spacing: 12) {
-                CharPixel(id: who, width: 42, height: 60)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("평정 지수").appFont(13, .bold).foregroundStyle(Theme.mint)
-                        if let k { Text("· \(k.title)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
-                        Spacer()
-                        Text(s.n < Calm.minEvents ? "–" : "\(s.index)").appFont(28, .bold).tracking(-0.5)
-                    }
-                    Text(m.calm.say(s, who: m.voice(who))).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                        .foregroundStyle(Color(hex: 0xEEF0F3))
-                    Text(Calm.meaning(s)).appFont(12).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                        .foregroundStyle(Color(hex: 0xC9D0D6))
-                    if let l = m.calm.ladder, let p = m.calm.progress() {
-                        Text("걸음 \(l.step)/3 · \(p.text)").appFont(12).foregroundStyle(Theme.mint)
-                    }
+        HStack(alignment: .center, spacing: 12) {
+            CharPixel(id: who, width: 42, height: 60)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("평정 지수").appFont(13, .bold).foregroundStyle(Theme.mint)
+                    if let k { Text("· \(k.title)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
+                    Spacer()
+                    Text(s.n < Calm.minEvents ? "–" : "\(s.index)").appFont(28, .bold).tracking(-0.5)
+                }
+                Text(m.calm.say(s, who: m.voice(who))).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(Color(hex: 0xEEF0F3))
+                Text(Calm.meaning(s)).appFont(12).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(Color(hex: 0xC9D0D6))
+                if let l = m.calm.ladder, let p = m.calm.progress() {
+                    Text("걸음 \(l.step)/3 · \(p.text)").appFont(12).foregroundStyle(Theme.mint)
                 }
             }
-            // 홈의 지금 평가액 카드처럼 진한 바탕
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14).padding(.vertical, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
         }
-        .buttonStyle(.plain)
+        // 홈의 지금 평가액 카드처럼 진한 바탕
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14).padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+        .modifier(OpenOnTap(route: .calm))
         .accessibilityLabel("평정 지수 보기")
         .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
     }
