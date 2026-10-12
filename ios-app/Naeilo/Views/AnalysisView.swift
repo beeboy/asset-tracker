@@ -151,15 +151,21 @@ struct AnalysisView: View {
     }
 }
 
-/// 분석 목록 카드: 탭할 때만 연다. 카드가 화면 너비라 버튼(NavigationLink)이면 옆으로 민 것도
-/// 카드 안에서 손을 떼면 탭으로 쳐서 세부 분석이 열렸다 (좌우 넘기기는 세부 분석 안에서만)
+/// 분석 목록 카드: 누르면 살짝 눌리고 탭하면 연다. 카드가 화면 너비라 옆으로 밀고 카드 안에서 손을 떼도
+/// 버튼은 탭으로 쳐서 세부 분석이 열렸다: 옆으로 움직였으면 열지 않는다 (좌우 넘기기는 세부 분석 안에서만)
 struct OpenOnTap: ViewModifier {
     @Environment(AppModel.self) private var m
+    @State private var movedAt = Date.distantPast
     let route: AnalysisRoute
     func body(content: Content) -> some View {
-        content.contentShape(Rectangle())
-            .onTapGesture { m.analysisPath.append(route) }
-            .accessibilityAddTraits(.isButton)
+        Button {
+            if Date().timeIntervalSince(movedAt) < 0.3 { return }
+            m.analysisPath.append(route)
+        } label: { content }
+        .buttonStyle(.plain)
+        .simultaneousGesture(DragGesture(minimumDistance: 12)
+            // 손을 떼기 직전까지 움직였으면 탭이 아님 (스크롤에 밀려 끝이 안 와도 시간이 지나면 풀린다)
+            .onChanged { _ in movedAt = Date() })
     }
 }
 

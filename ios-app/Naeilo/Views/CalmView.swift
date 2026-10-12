@@ -32,7 +32,6 @@ struct CalmCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
         .modifier(OpenOnTap(route: .calm))
-        .accessibilityElement(children: .combine)
         .accessibilityLabel("평정 지수 보기")
         .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
     }
