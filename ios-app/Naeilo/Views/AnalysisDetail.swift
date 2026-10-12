@@ -184,6 +184,10 @@ struct MyPathView: View {
     @Environment(AppModel.self) private var m
     // 고르기 전에는 시작한 지 석 달이 안 됐으면 '시작부터' (목표일까지 보면 실제 선이 점처럼 짧다)
     @State private var picked: String? = nil
+    private func devLine(_ v0: Double, _ now: Double, _ need: Double) -> String {
+        let man = { (v: Double) in Int((v / 1e4).rounded()).formatted() + "만" }
+        return "개발자 · 시작 \(man(v0)) · 지금 \(man(now)) · 길 \(man(need)) · 현금 \(man(m.cashKrw)) · 환율 \(String(format: "%.2f", Market.shared.valFx))"
+    }
 
     var body: some View {
         let p = m.myPath, mS = p.start, mEnd = p.end, K = p.key, act = p.act, need = p.need
@@ -231,6 +235,10 @@ struct MyPathView: View {
                         Text("\(AppModel.eok(v0)) → \(AppModel.eok(act(mS)))").appFont(13).foregroundStyle(Theme.sub)
                     }
                     .accessibilityElement(children: .combine)
+                    // 개발자 줄: 웹 목표 진행 개발자 줄과 같은 값 (시작·지금·길·현금, 만원). '뒤처짐'이 갈릴 때 어느 값이 다른지 본다
+                    if Sync.shared.isDev {
+                        Text(devLine(v0, act(mS), need(mS))).appFont(11).foregroundStyle(Theme.sub)
+                    }
                 }
                 // 웹 목표 진행 요약과 같은 목표 달성 확률 (전망 계산이 끝나기 전에는 '계산 중')
                 HStack(alignment: .firstTextBaseline) {
