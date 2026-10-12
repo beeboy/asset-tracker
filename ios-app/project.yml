@@ -10,7 +10,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1"
+    # TestFlight: 앱·위젯이 같은 버전·빌드 번호를 쓴다 (Info.plist 가 이 값을 읽음). 올릴 때마다 빌드 번호는 Xcode 업로드가 자동으로 올린다
+    MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
     # Xcode 에서 고른 서명 팀 (xcodegen 을 다시 돌려도 유지)
@@ -48,6 +49,8 @@ targets:
       path: Naeilo/Info.plist
       properties:
         CFBundleDisplayName: naeilo
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleURLTypes:
           - CFBundleURLName: com.naeilo.widget
             CFBundleURLSchemes: [naeilo]
@@ -81,6 +84,8 @@ targets:
       path: Widgets/Info.plist
       properties:
         CFBundleDisplayName: naeilo
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:

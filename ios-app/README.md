@@ -90,3 +90,11 @@ open NaeiloApp.xcodeproj   # 시뮬레이터 고르고 ▶
 
 - 외전 6장~코다와 본편 1권의 장별 도트 그림은 유료라 저장소에 넣지 않는다. MyVault `원고/chapter-art/` 에 두고, store-admin 이 원고와 같이 읽어 128×80 으로 줄여 장마다 `cover`(PNG data URL)로 올린다.
 - 앱은 받은 장의 `cover` 를 서재 줄과 읽기 화면 맨 위에 보여 준다 (`Story.cover`). 그림이 없는 장은 예전처럼 6장 그림 또는 빈 칸. 그림이 들어간 원고를 받으려면 store-admin 에서 다시 올린 뒤 서재의 '다시 받기'(또는 캐시가 없을 때 처음 받기).
+
+## TestFlight 내부 테스트
+
+- 번들 ID: 앱 `com.naeilo.widget`, 위젯 `com.naeilo.widget.widgets`, 앱 그룹 `group.com.naeilo.widget`. 팀 `252W43H2KE`, 자동 서명.
+- 버전은 `project.yml` 의 `MARKETING_VERSION`(1.0), 빌드 번호는 `CURRENT_PROJECT_VERSION`. 앱·위젯 Info.plist 가 같은 값을 읽는다. 업로드 때 Xcode 가 겹치는 빌드 번호를 자동으로 올린다.
+- 암호화 신고: `ITSAppUsesNonExemptEncryption = NO` (HTTPS 만 씀). 개인정보 매니페스트: 앱 `Naeilo/PrivacyInfo.xcprivacy`, 위젯 `Widgets/PrivacyInfo.xcprivacy`.
+- 올리기: Xcode 에서 기기를 Any iOS Device (arm64) 로 고르고 Product > Archive → Organizer 의 Distribute App → TestFlight Internal Only.
+- 인앱 구매(후원)는 App Store Connect 에 상품을 만들어야 TestFlight 에서 시험된다 (위 상품 ID).
