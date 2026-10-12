@@ -18,7 +18,10 @@ extension AppModel {
     var pathStartText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"; return f.string(from: pathStartDate) }
     var pathStartMonth: String { "\(Calendar.current.component(.month, from: pathStartDate))월" }
     /// pts = 실제 평가액 (시작부터 년, 원). 거래일마다 하나, 끝은 오늘 지금 평가액
-    struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let pts: [(Double, Double)]; let act: (Double) -> Double; let need: (Double) -> Double }
+    struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let pts: [(Double, Double)]; let act: (Double) -> Double; let need: (Double) -> Double
+        /// 시작일 뒤에 처음 넣은 국내 주식 합계 (들어온 돈, 원). 시작 대비에서 뺀다
+        var krIn = 0.0
+    }
     /// 두 날짜("yyyy-MM-dd") 사이 년 (웹 yearsBetween 과 같은 식)
     static func yrs(_ a: String, _ b: String) -> Double {
         guard let x = Day.date(a), let y = Day.date(b) else { return 0 }
@@ -73,8 +76,12 @@ extension AppModel {
             return (P.last { $0.0 <= t } ?? P.first)?.1 ?? now
         }
         let vS = P.first?.1 ?? now, kAdj = K - mM * 12 * mEnd
-        let need: (Double) -> Double = { t in mM * 12 * t + (kAdj > 0 && vS > 0 ? vS * pow(kAdj / vS, t / mEnd) : vS + (K - vS) * t / mEnd) }
-        return MyPath(start: mS, end: mEnd, key: K, monthly: mM, pts: P, act: act, need: need)
+        // 시작일 뒤에 처음 넣은 국내 주식 합계는 들어온 돈: 그날부터 길에도 그 금액을 더한다 (앞선 것으로 보이지 않게. 웹 goalPath 와 같다)
+        let KL = CustomSymbols.shared.krLog
+        let kin = krSum > 0 && route != .novice && !isSample && MC.krAt(KL, sD) == 0 ? KL.first(where: { $0.d > sD && $0.v > 0 }) : nil
+        let tIn = kin.map { Self.yrs(sD, $0.d) } ?? .infinity, vIn = kin?.v ?? 0
+        let need: (Double) -> Double = { t in mM * 12 * t + (kAdj > 0 && vS > 0 ? vS * pow(kAdj / vS, t / mEnd) : vS + (K - vS) * t / mEnd) + (t >= tIn ? vIn : 0) }
+        return MyPath(start: mS, end: mEnd, key: K, monthly: mM, pts: P, act: act, need: need, krIn: vIn)
     }
     var myPathGapToday: Double { let p = myPath; let n = p.need(p.start); return n > 0 ? p.act(p.start) / n - 1 : 0 }
 
@@ -195,8 +202,8 @@ struct MyPathView: View {
         let needPts = (0...60).map { i -> (Double, Double) in let t = x1 * Double(i) / 60; return (t, need(t)) }
         let bandPts: [(Double, Double, Double)] = view == "band"
             // 전망(오늘부터 목표일까지 월 경계마다)을 그래프 끝까지 겹친다
-            // 전망 경로는 종목만이라 현금을 더해 내 길(현금 포함)과 같은 기준으로
-            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i] + m.cashKrw, f.q25[i] + m.cashKrw) } : []
+            // 전망 경로는 종목만이라 현금·국내 주식 합계를 더해 내 길(둘 다 포함)과 같은 기준으로
+            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i] + m.mcFixed, f.q25[i] + m.mcFixed) } : []
         let vals = actPts.map(\.1) + needPts.map(\.1) + bandPts.flatMap { [$0.1, $0.2] }
         let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
         let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
@@ -226,7 +233,7 @@ struct MyPathView: View {
                 // 웹 목표 진행의 '시작 대비'와 같은 줄: 시작일 평가액 → 지금 평가액 (웹과 숫자를 나란히 맞춰 볼 수 있게)
                 if let v0 = p.pts.first?.1, v0 > 0 {
                     HStack(alignment: .firstTextBaseline) {
-                        Text("시작 대비 \(AppModel.sgn(act(mS) / v0 - 1))").appFont(13).foregroundStyle(Theme.sub)
+                        Text("시작 대비 \(AppModel.sgn((act(mS) - p.krIn) / v0 - 1))").appFont(13).foregroundStyle(Theme.sub)
                         Spacer()
                         Text("\(AppModel.eok(v0)) → \(AppModel.eok(act(mS)))").appFont(13).foregroundStyle(Theme.sub)
                     }

@@ -209,6 +209,10 @@
     // 렌즈 도입 전 저장값: 기본 시나리오(기준)였다면 내 관점(추세 신뢰 50%)으로 옮긴다
     st.model = Model.normModel(st.model);
     st.ui = Object.assign({ auto_refresh_min: 0, manual_price: false }, st.ui || {});
+    // 국내 주식 합계: 날짜별 금액 기록. 기록 없이 금액 하나만 있던 예전 저장값은 그 금액·날짜를 첫 줄로
+    const ks = st.holdings.find((h) => h.ticker === "KOREA.KS");
+    if (!st.kr_log?.length && ks && Number(ks.price) > 0) st.kr_log = [{ d: ks.price_date || today(), v: Number(ks.price) }];
+    if (st.kr_log) st.kr_log = Model.krNorm(st.kr_log);
     return st;
   }
   // 수량이 바뀐 날만 기록해 둔다 (목표 진행을 그때 수량으로 계산하려고). 같은 날 여러 번 바꾸면 마지막 것만
@@ -250,6 +254,7 @@
     return !cur;
   }
   // 동기화로 다른 기기 값을 받을 때: 날짜별로 합친다 (같은 날은 받은 쪽)
+  const mergeKr = (a, b) => Model.krNorm([...(b || []), ...(a || [])]); // 국내 주식 합계 기록도 날짜별로 (같은 날은 받은 쪽 a)
   const mergeDaily = (a, b) => { const m = new Map(); (b || []).forEach((x) => m.set(x.d, x)); (a || []).forEach((x) => m.set(x.d, x)); return [...m.values()].sort((x, y) => (x.d < y.d ? -1 : 1)).slice(-1200); };
   function save(dirtyForecast = true) {
     recordLot(); recordDay();
@@ -319,7 +324,7 @@
       if (j.state && j.at > mine && hashStr(JSON.stringify({ ...normalize(j.state), ui: null })) !== syncLast) {
         // 이 기기에서 처음 켤 때만 묻는다 (이 기기 값이 더 맞을 수 있으니)
         if (!mine && !confirm(`다른 기기 입력값(${new Date(j.at).toLocaleString()})으로 이 기기를 맞출까요?\n취소하면 이 기기 값을 다른 기기로 보냅니다.`)) { S.state.ui.sync_at = Date.now(); save(false); return syncPush(); }
-        const ui = S.state.ui, myDaily = S.state.daily; S.state = normalize(j.state); S.state.ui = { ...ui, sync_at: j.at }; if (myDaily?.length) S.state.daily = mergeDaily(S.state.daily, myDaily); syncLast = syncSig();
+        const ui = S.state.ui, myDaily = S.state.daily, myKr = S.state.kr_log; S.state = normalize(j.state); S.state.ui = { ...ui, sync_at: j.at }; if (myDaily?.length) S.state.daily = mergeDaily(S.state.daily, myDaily); if (myKr?.length) { S.state.kr_log = mergeKr(S.state.kr_log, myKr); krHold(); } syncLast = syncSig();
         try { localStorage.setItem(LS_KEY, JSON.stringify(S.state)); } catch (e) { /* 무시 */ }
         markDirty(); renderAll(); toast("다른 기기 입력값으로 맞췄습니다");
       } else if (!j.state || j.at < mine) { if (!mine) S.state.ui.sync_at = Date.now(); await syncPush(); }
@@ -361,6 +366,7 @@
     try { const r = await fetch(base.replace(/\/$/, "") + "/mar"); const j = await r.json(); if (j?.USD?.rate > 0 && (!S.mar?.USD?.date || j.USD.date > S.mar.USD.date)) { S.mar = j; renderAll(); } } catch (e) { /* 기존 환율 유지 */ }
   }
   function curPrice(h) {
+    if (h.ticker === KR_SUM) return { v: Model.krAt(S.state.kr_log, today()) || null, src: "input" };
     if (S.state?.ui?.manual_price && !isKR(h.ticker) && h.price != null && h.price !== "" && Number(h.price) > 0) return { v: Number(h.price), src: "manual" };
     const q = S.quotes[h.ticker], l = lastOf(h.ticker);
     if (q && q.last && (!l || (q.last_time || 0) * 1000 >= Date.parse(l.d))) return { v: q.last, src: q.last_session || "regular", t: q.last_time };
@@ -666,7 +672,8 @@
   function krCell(r) {
     const P = S.prices[r.h.ticker], inp = (ph) => `<input data-f="kprice" type="text" inputmode="decimal" placeholder="${ph}" size="8">`;
     if (!P || r.p.v == null) return `${inp("지금 가격(원)")}<br><span class="muted small">한국 시세는 받지 않아요. 가격을 한 번 넣으면 계산해요</span>`;
-    if (r.h.ticker === KR_SUM) return `<span class="tag" title="${esc(`${r.h.price_date || ""}에 넣은 합계 금액 그대로예요. 움직임 예측은 한국 시장 평균(${P.basis} × 원/달러)으로 해요`)}">입력</span><br><b>${krw(r.valueKrw)}</b><br>${inp("합계 다시 넣기")}`;
+    if (r.h.ticker === KR_SUM) { const L = S.state.kr_log || [], ld = L[L.length - 1]?.d, ago = ld ? Math.round(yearsBetween(ld, today()) * 365.25) : 0;
+      return `<span class="tag" title="${esc(`${ld || ""}에 넣은 합계 금액 그대로예요. 현금처럼 전망에서도 이 금액 그대로 둬요`)}">입력</span><br><b>${krw(r.valueKrw)}</b>${ago > 0 ? `<br><span class="muted small">${ago}일 전 금액</span>` : ""}<br>${inp("합계 다시 넣기")}`; }
     const tip = P.est === "proxy" ? `${r.h.price_date || ""}에 넣은 ${nf(Number(r.h.price))}원에서 ${P.basis}${P.hedged ? "" : " × 원/달러"} 움직임으로 추정한 값이에요` : `${r.h.price_date || ""}에 넣은 가격 그대로예요. 움직임 예측은 한국 시장 평균(${P.basis})으로 해요`;
     return `${nf(r.p.v, 0)} <span class='muted small'>KRW</span><span class="tag" title="${esc(tip)}">${P.est === "proxy" ? "추정" : "입력"}</span><br><b>${krw(r.valueKrw)}</b><br>${inp("가격 다시 넣기")}`;
   }
@@ -742,6 +749,7 @@
     if (f === "kprice") {
       if (e.type !== "change") return;
       const v = parseDec(e.target.value); if (!(v > 0)) return;
+      if (h.ticker === KR_SUM) { setTimeout(() => setKrSum(v), 0); return; }
       h.price = v; h.price_date = today(); synthKR(); markDirty(); save(); setTimeout(renderAll, 0); return; // 입력칸이 바뀌는 중에 표를 다시 그리지 않게
     }
     if (S.state.sample && f !== "note") endSample(true);
@@ -776,19 +784,32 @@
   }
   const krOf = (h) => krInfo(h.ticker, [h.name, koOf(h.ticker)?.k, koOf(h.ticker)?.e]);
   const krOk = (o) => !isKR(o.s) || !!krInfo(o.s, [o.k, o.e]).proxy;
-  // 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄(수량 1, 가격 = 금액)로. 움직임 예측은 한국 시장 평균
+  // 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄(수량 1, 가격 = 금액)로. 현금처럼 다룬다 (앱 KOREA 와 같다)
+  //  · 넣은 금액은 날짜별로 남긴다 (state.kr_log). 그날 값 = 그날까지 마지막 금액, 첫 기록 전은 0 (처음 넣은 금액은 들어온 돈)
+  //  · 전망에서는 금액 그대로 둔다: 몬테카를로는 종목만, 목표에서 이 금액을 뺀다 (현금과 같다)
   const KR_SUM = "KOREA.KS";
+  function krPut(v, d = today()) { S.state.kr_log = Model.krNorm([...(S.state.kr_log || []), { d, v: Math.max(0, v || 0) }]); }
+  // 기록의 마지막 금액에 표의 한 줄을 맞춘다 (0원이면 줄을 뺀다)
+  function krHold() {
+    const L = S.state.kr_log || [], last = L[L.length - 1], i = S.state.holdings.findIndex((h) => h.ticker === KR_SUM);
+    if (!last || !(last.v > 0)) { if (i >= 0) S.state.holdings.splice(i, 1); return; }
+    if (i >= 0) Object.assign(S.state.holdings[i], { price: last.v, price_date: last.d });
+    else S.state.holdings.push({ ticker: KR_SUM, shares: 1, price: last.v, price_date: last.d, avg_cost: null, note: "", name: "국내 주식 합계" });
+  }
   function setKrSum(v) {
-    const i = S.state.holdings.findIndex((h) => h.ticker === KR_SUM);
-    if (!(v > 0)) { if (i >= 0) S.state.holdings.splice(i, 1); }
-    else if (i >= 0) Object.assign(S.state.holdings[i], { price: v, price_date: today() });
-    else { endSample(false); S.state.holdings.push({ ticker: KR_SUM, shares: 1, price: v, price_date: today(), avg_cost: null, note: "", name: "국내 주식 합계" }); }
+    if (v > 0 && S.state.sample) endSample(false);
+    krPut(v > 0 ? v : 0); krHold();
     synthKR(); markDirty(); save(); renderAll();
   }
+  // 지금 국내 주식 합계 (전망에서 그대로 두는 금액). 샘플·줄 없음은 0
+  const krNow = () => (S.state.sample || !S.state.holdings.some((h) => h.ticker === KR_SUM) ? 0 : Model.krAt(S.state.kr_log, today()));
+  // 전망에서 움직이지 않는 돈 = 현금 + 국내 주식 합계 (목표에서 빼고 종목만 몬테카를로. 앱 fixedKrw 와 같다)
+  const fixedKrw = () => cashKrw() + krNow();
   function synthKR() {
     for (const k of Object.keys(S.prices)) if (isKR(k)) delete S.prices[k];
     const fx = S.prices["KRW=X"];
     for (const h of S.state?.holdings || []) {
+      if (h.ticker === KR_SUM) { krSynth(h, fx); continue; }
       if (!isKR(h.ticker) || !(Number(h.price) > 0)) continue;
       const info = krOf(h), base = S.prices[info.proxy || info.market], a = h.price_date || today(), px = Number(h.price);
       // 기준 시세가 아직 없으면 (새로 넣은 EWY·SCHD·SOXX 첫 수집 전) 넣은 가격 하나만 (앱 rebuildKR 과 같다)
@@ -802,6 +823,14 @@
       const close = C.vals.map((v, i) => (!info.proxy && i > j ? px : v == null ? null : v * kc)), adj = A.vals.map((v) => (v == null ? null : v * ka));
       S.prices[h.ticker] = { symbol: h.ticker, currency: "KRW", name: h.name || koOf(h.ticker)?.k || h.ticker, dates, close, adj, est: info.proxy ? "proxy" : "input", basis: info.proxy || info.market, hedged: info.hedged };
     }
+  }
+
+  // 국내 주식 합계의 날짜별 값: 첫 기록 날부터 원/달러 거래일마다 그날까지 마지막 금액 (앱 rebuildKR 과 같다). 첫 기록 전 날짜는 없다 (지난 그래프에서 들어온 돈으로)
+  // 지금 값은 curPrice 가 기록에서 바로 (아직 시세가 없는 오늘 넣은 금액도)
+  function krSynth(h, fx) {
+    const L = S.state.kr_log || []; if (!L.length) return;
+    const d0 = L[0].d, dates = fx?.dates?.length ? fx.dates.filter((d) => d >= d0) : L.map((x) => x.d), close = dates.map((d) => Model.krAt(L, d));
+    S.prices[KR_SUM] = { symbol: KR_SUM, currency: "KRW", name: h.name || "국내 주식 합계", dates, close, adj: close, est: "input", basis: "입력" };
   }
 
   // 종목 찾기 (iOS 앱과 같은 방식): 앱의 한글 이름 목록(stocks.js) + Yahoo 검색(영문 이름·티커·종목 코드). 미국 주식·ETF 와 코스피·코스닥만
@@ -918,6 +947,7 @@
     if (!armed(btn)) return;
     const h = S.state.holdings[i];
     S.state.holdings.splice(i, 1); endSample(true);
+    if (h.ticker === KR_SUM) krPut(0); // 국내 주식 합계 줄을 지우면 0원으로 남긴다 (지난 기록은 그대로)
     toast(`${h.ticker} 삭제함`);
     save(); renderAll();
   }
@@ -954,7 +984,7 @@
   const BASIS = { model: "내 관점", base: "현재 정세", smooth: "과거 추세" };
   function simCommon(b, scen) {
     const m = S.state.model, g = S.state.goal;
-    return { holdings: b.holdings, scenario: scen, nPaths: Number(m.n_paths), seed: Number(m.seed) || 1, goal: Math.max(1, g.amount - cashKrw()), // 현금은 그대로 있다고 보고 목표에서 뺀다
+    return { holdings: b.holdings, scenario: scen, nPaths: Number(m.n_paths), seed: Number(m.seed) || 1, goal: Math.max(1, g.amount - fixedKrw()), // 현금·국내 주식 합계는 그대로 있다고 보고 목표에서 뺀다
       monthly: Number(g.monthly_contribution) || 0, rebalance: !!m.rebalance_yearly, dof: m.t_dof, fxOf, usdKrw0: fxNow("USD") };
   }
   // 계산해 둔 전망만 돌려준다 (없으면 null)
@@ -1024,7 +1054,9 @@
     if (!(V0 > 0) || !(span > 0)) return { A, start, i0, V0, at: () => null };
     // 매달 넣는 돈은 그대로 쌓고, 나머지(목표 − 넣을 돈)를 같은 속도로 불린다 (앱 내 길과 같은 식)
     const M = (Number(g.monthly_contribution) || 0) * 12, kAdj = g.amount - M * span;
-    const at = (d) => { const t = yearsBetween(start, d); return M * t + (kAdj > 0 ? V0 * (kAdj / V0) ** (t / span) : V0 + (g.amount - V0) * t / span); };
+    // 목표 시작일 뒤에 처음 넣은 국내 주식 합계는 들어온 돈: 그날부터 길에도 그 금액을 더한다 (앞선 것으로 보이지 않게. 앱 내 길과 같다)
+    const KL = S.state.kr_log || [], kin = krNow() && !Model.krAt(KL, start) ? KL.find((x) => x.d > start && x.v > 0) : null;
+    const at = (d) => { const t = yearsBetween(start, d); return M * t + (kAdj > 0 ? V0 * (kAdj / V0) ** (t / span) : V0 + (g.amount - V0) * t / span) + (kin && d >= kin.d ? kin.v : 0); };
     return { A, start, i0, V0, at }; // 시작일 전은 같은 속도로 거꾸로 늘인 길
   }
   let progAsked = "";
@@ -1034,19 +1066,21 @@
     const P = goalPath(H, cash), { A, start, i0, V0 } = P;
     const k = H.dates.length - 1, now = total + cash, td = today();
     const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
-    const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? A[k] / a - 1 : null; };
+    // 그사이 처음 넣은 국내 주식 합계는 오른 것이 아니라 들어온 돈이라 뺀다 (그 뒤 금액 변화는 시장 움직임)
+    const KL = S.state.kr_log || [], krIn = (j) => (krNow() && !Model.krAt(KL, H.dates[j]) ? KL.find((x) => x.d > H.dates[j] && x.v > 0)?.v || 0 : 0), r0 = (now - krIn(i0)) / V0 - 1;
+    const back = (n) => { const j = k - n; if (j < 0) return null; const a = A[j] ?? H.total[j]; return a ? (A[k] - krIn(j)) / a - 1 : null; };
     if (!lastForecast) fcRestore();
     const pg = lastForecast && fcDirty ? null : fcReady(S.state.model.scenario)?.R?.p_goal ?? null; // 입력이 바뀐 뒤의 저장값은 쓰지 않는다. // 앱 내 길의 목표 달성 확률과 같은 값. 아직 없으면 '계산 중'으로 두고 한 번 계산
     if (pg == null && !S.state.model.rebalance_yearly && progAsked !== fcSig()) { progAsked = fcSig(); fcDirty = true; setTimeout(runForecast, 0); }
     card.style.display = "block";
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
     $("#prog").innerHTML = [
-      ["시작 대비", spct(now / V0 - 1), `${krw(V0)}원 → ${krw(now)}원`],
+      ["시작 대비", spct(r0), `${krw(V0)}원 → ${krw(now)}원${krIn(i0) ? ` (국내 합계 ${krw(krIn(i0))}원 들어옴)` : ""}`],
       ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `내 길보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
       ["목표 달성 확률", pg != null ? pct(pg, 0) : "계산 중", "목표일 전망과 같은 값"],
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
-    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "내 길 대비" ? cls(gap) : a === "시작 대비" ? cls(now / V0 - 1) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
+    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "내 길 대비" ? cls(gap) : a === "시작 대비" ? cls(r0) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
     // 경로 대비 +/− 막대: 날짜별 (실제 − 필요 경로). 1년은 주, 3년은 달 단위로 묶고(그 주·달 마지막 값), 끝에 오늘 실시간 막대
     const rsel = $("#progRange .on")?.dataset.r || "66", n = +rsel, unit = n >= 780 ? "m" : n >= 252 ? "w" : "d";
     const key = (d) => { if (unit === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
@@ -1078,9 +1112,12 @@
   // naeilo를 쓴 날부터의 내 기록 (지금 구성으로 본 지난 3년과 따로): 그날그날 남긴 평가액과 넣은 돈
   function renderMyRec() {
     if (recordDay()) save(false); // 하루 첫 기록만 저장(동기화)한다. 같은 날 시세가 바뀌면 화면 값만 고치고 다음 저장 때 같이 남는다
-    const card = $("#recCard"), D = S.state.sample ? [] : S.state.daily || [];
-    if (!D.length) { card.style.display = "none"; return; }
+    const card = $("#recCard"), D = S.state.sample ? [] : S.state.daily || [], K = S.state.sample ? [] : S.state.kr_log || [];
+    if (!D.length && !K.length) { card.style.display = "none"; return; }
     card.style.display = "block";
+    $("#recMode").hidden = !K.length; $("#recKrIo").hidden = !K.length;
+    if (K.length && ($("#recMode .on")?.dataset.m === "kr" || !D.length)) return renderKrRec(K);
+    if (!K.length) $$("#recMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === "rec"));
     const L = D[D.length - 1], gain = L.c > 0 ? L.v / L.c - 1 : null;
     $("#recSub").textContent = `${D[0].d}부터 · ${D.length}일 기록`;
     $("#recKpis").innerHTML = [
@@ -1094,6 +1131,68 @@
     Charts.lineChart($("#recChart"), { x: D.map((x) => x.d), height: 220, yfmt: krwAxis, series: [
       { name: "평가액", y: D.map((x) => x.v), color: "var(--c1)", width: 2 },
       { name: "넣은 돈", y: D.map((x) => x.c), color: "var(--fg)", width: 1.2, dash: "4 3" }] });
+  }
+  // 내 기록 '국내 주식 합계': 넣은 금액을 날짜별 선으로 (넣은 날은 아래 삼각형, 안 넣은 날은 앞 금액을 이어 그림). 앱 내 기록 카드와 같다
+  function renderKrRec(K) {
+    $$("#recMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === "kr"));
+    const L = K[K.length - 1], F = K[0], td = today(), x = [];
+    for (let t = new Date(F.d + "T00:00:00Z"); x.length < 4000; t.setUTCDate(t.getUTCDate() + 1)) { const d = t.toISOString().slice(0, 10); if (d > td) break; x.push(d); } // 날마다 (금액이 바뀐 날만 계단처럼 오르내린다)
+    const y = x.map((d) => Model.krAt(K, d));
+    const prev = K.length > 1 ? K[K.length - 2].v : null, chg = prev > 0 ? L.v / prev - 1 : null;
+    $("#recSub").textContent = `${F.d}부터 · ${K.length}번 넣음`;
+    $("#recKpis").innerHTML = [
+      ["지금 합계", krw(L.v) + "원", L.d === td ? "오늘 넣음" : `${Math.round(yearsBetween(L.d, td) * 365.25)}일 전 금액`],
+      ["처음 넣은 금액", krw(F.v) + "원", F.d],
+      ["지난번 대비", chg == null ? "-" : spct(chg), prev != null ? `${krw(prev)}원 → ${krw(L.v)}원` : "한 번 넣음"],
+    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "지난번 대비" ? cls(chg) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
+    $("#recChart").style.display = "block";
+    Charts.lineChart($("#recChart"), { x, height: 220, yfmt: krwAxis, ymin: 0, series: [{ name: "국내 주식 합계", y, color: "var(--c1)", width: 2 }],
+      markers: K.map((k) => ({ x: k.d, label: `${k.d} ${krw(k.v)}원 넣음`, color: "var(--c1)" })) });
+    $("#recNote").textContent = "넣은 금액 그대로예요 (삼각형 = 넣은 날). 넣지 않은 날은 앞 금액을 이어 그려요. 처음 넣은 금액은 들어온 돈으로, 그 뒤 바뀐 금액은 시장 움직임으로 셉니다.";
+  }
+  // 국내 주식 합계 기록 엑셀: 날짜·금액 두 칸. .xlsx 는 SheetJS 를 그때 불러와 읽고 쓴다 (못 불러오면 .csv)
+  let xlsxP = null;
+  const xlsxLib = () => (window.XLSX ? Promise.resolve(window.XLSX) : (xlsxP ||= new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; sc.onload = () => ok(window.XLSX); sc.onerror = () => { xlsxP = null; no(new Error("엑셀 도구를 불러오지 못했어요")); }; document.head.appendChild(sc); })));
+  async function krExport() {
+    const K = S.state.kr_log || [], rows = [["날짜", "금액(원)"], ...K.map((k) => [k.d, k.v])], name = `국내주식합계_${today()}`;
+    const dl = (blob, f) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = f; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+    try { const X = await xlsxLib(), wb = X.utils.book_new(); X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(rows), "국내 주식 합계"); X.writeFile(wb, name + ".xlsx"); }
+    catch (e) { dl(new Blob(["\ufeff" + rows.map((r) => r.join(",")).join("\r\n")], { type: "text/csv" }), name + ".csv"); }
+  }
+  // 날짜 칸: 2026-10-12 · 2026.10.12 · 2026/10/12 · 엑셀 날짜(숫자). 금액 칸: 쉼표·원 허용. 같은 날은 파일 값으로
+  function krRowsParse(rows) {
+    const out = [], pad = (n) => String(n).padStart(2, "0");
+    for (const r of rows) {
+      let [d, v] = r; if (d == null) continue;
+      if (d instanceof Date) d = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      else if (typeof d === "number" && d > 20000 && d < 80000) { const t = new Date(Math.round((d - 25569) * 86400e3)); d = t.toISOString().slice(0, 10); }
+      else { const m = String(d).trim().match(/^(\d{4})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})/); if (!m) continue; d = `${m[1]}-${pad(m[2])}-${pad(m[3])}`; }
+      const n = typeof v === "number" ? v : parseNum(v);
+      if (n != null && n >= 0 && d <= today()) out.push({ d, v: n });
+    }
+    return out;
+  }
+  // CSV 한 줄 → 칸 (쉼표·탭·세미콜론, 따옴표 안 쉼표는 그대로: "45,000,000")
+  function csvCells(l) {
+    const out = []; let c = "", q = false;
+    for (let i = 0; i < l.length; i++) {
+      const ch = l[i];
+      if (q) { if (ch === '"' && l[i + 1] === '"') { c += '"'; i++; } else if (ch === '"') q = false; else c += ch; }
+      else if (ch === '"') q = true; else if (",\t;".includes(ch)) { out.push(c.trim()); c = ""; } else c += ch;
+    }
+    out.push(c.trim()); return out;
+  }
+  async function krImport(f) {
+    try {
+      let rows;
+      if (/\.csv$/i.test(f.name) || f.type === "text/csv") rows = (await f.text()).replace(/^\ufeff/, "").split(/\r?\n/).map(csvCells);
+      else { const X = await xlsxLib(), wb = X.read(await f.arrayBuffer(), { cellDates: true }); rows = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true }); }
+      const add = krRowsParse(rows);
+      if (!add.length) return toast("날짜·금액 줄을 찾지 못했어요");
+      if (S.state.sample) endSample(false);
+      S.state.kr_log = Model.krNorm([...(S.state.kr_log || []), ...add]); krHold();
+      synthKR(); markDirty(); save(); renderAll(); toast(`${add.length}줄 불러왔어요`);
+    } catch (e) { toast("불러오지 못했어요: " + e.message); }
   }
   // 웹 첫 화면에만 세리 한 명 (앱의 인물 다섯 명 중 원칙형). 내 수량을 넣으면 이 카드째 사라진다
   const SERI_WEB = ["숫자부터 넣어 볼까요. 판단은 그다음이에요.", "수량만 알려 주세요. 나머지는 제가 계산할게요.", "처음 오셨군요. 할 일은 하나예요. 수량 넣기.", "지금 보이는 건 샘플이에요. 내 숫자로 바꿔 보세요.", "어서 오세요. 숫자 하나면 시작돼요.", "추측은 나중에요. 먼저 숫자요.", "보유 수량만요. 그 이상은 묻지 않을게요.", "기록이 있어야 볼 수 있어요. 수량부터요.", "샘플은 샘플일 뿐이에요. 내 것을 넣어 보세요.", "드링커는 가상 종목이에요. 내 종목으로 바꿔 보세요.", "한 줄이면 돼요. 종목과 수량.", "오래 안 걸려요. 수량만 넣으면 끝나요.", "관찰은 숫자에서 시작해요.", "처음이시군요. 수량을 넣으면 오늘 값으로 다시 볼게요.", "판단은 제가 하지 않아요. 숫자를 보여 줄 뿐이에요.", "기준이 있어야 흔들리지 않아요. 먼저 지금을 적어요.", "숫자를 넣으면 목표까지 얼마 남았는지 보여요.", "잠깐요. 수량부터 넣고 이야기해요.", "사실만 볼게요. 내 수량을 알려 주세요.", "한 번 넣어 두면 다음부터는 보기만 하면 돼요.", "어서 오세요. 내일을 보려면 오늘 숫자가 필요해요."];
@@ -1159,13 +1258,13 @@
     const maxV = Math.max(...ix.map(tv));
     const notes = [];
     if (future) {
-      const V0 = tot, last = x[x.length - 1] || today(), cashU = inUsd ? cash / fxNowUsd : cash, addC = (a) => (cashU ? a.map((v) => (v == null ? v : v + cashU)) : a);
+      const kr = krNow(), V0 = tot, last = x[x.length - 1] || today(), cashU = (inUsd ? (cash + kr) / fxNowUsd : cash + kr), addC = (a) => (cashU ? a.map((v) => (v == null ? v : v + cashU)) : a);
       opt.vlines.push({ x: today(), label: "오늘" });
       if (mode !== "each") opt.hlines.push({ y: goalV, label: goalLab });
       const scen = basisScen(basis), F = fcOn && total > 0 && basis !== "pattern" ? fcReady(scen) : null;
       if (fcOn && basis === "pattern") {
         if (M && total > 0) {
-          const pf = patFuture(M, g.date), u = inUsd ? fxNowUsd : 1, at = (k, z) => (total * Math.exp(pf.cum[k] + z * M.sd * Math.sqrt(k)) + cash) / u;
+          const pf = patFuture(M, g.date), u = inUsd ? fxNowUsd : 1, at = (k, z) => ((total - kr) * Math.exp(pf.cum[k] + z * M.sd * Math.sqrt(k)) + cash + kr) / u;
           if (mode === "total") {
             opt.bands.push({ x: pf.md, lo: pf.md.map((_, k) => at(k, -1.645)), hi: pf.md.map((_, k) => at(k, 1.645)), color: "var(--band)", opacity: 0.13, name: "패턴 5~95%" },
               { x: pf.md, lo: pf.md.map((_, k) => at(k, -0.674)), hi: pf.md.map((_, k) => at(k, 0.674)), color: "var(--band)", opacity: 0.25, name: "패턴 25~75%" });
@@ -1428,7 +1527,7 @@
     if (R && R.terminal && R.terminal.p50 > 0 && R.terminal.p5 > 0 && g && g.date > t0) {
       const T = (Date.parse(g.date) - Date.parse(t0)) / (365.25 * 86400e3), { rows } = valuation(), bm = factorBetas().beta.mkt || {};
       const kb = rows.filter((r) => r.valueKrw > 0).reduce((s2, r) => s2 + r.w * (Number.isFinite(bm[r.h.ticker]) ? bm[r.h.ticker] : 1), 0);
-      const sig = Math.max(0.05, (Math.log(R.terminal.p50) - Math.log(R.terminal.p5)) / 1.645), lnG = Math.log(Math.max(1, g.amount - cashKrw()));
+      const sig = Math.max(0.05, (Math.log(R.terminal.p50) - Math.log(R.terminal.p5)) / 1.645), lnG = Math.log(Math.max(1, g.amount - fixedKrw()));
       const P = (shift) => { const z = (Math.log(R.terminal.p50) + kb * shift * T - lnG) / sig; return 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z * z * z))); };
       const shifts = M.coef.map((c) => { let s2 = 0; for (let y = 0; y < c.length; y++) s2 += c[y][1] * dr * Math.max(0, Math.min(1, T - y)); return s2 / 100 / Math.max(T, 0.25) + m; });
       const base = P(0), pb = band(shifts.map((x) => R.p_goal + P(x) - base));
@@ -1582,7 +1681,7 @@
     if (g.date <= start) throw new Error("목표일이 오늘 이후여야 합니다.");
     const { rows } = valuation();
     // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (앱과 같은 값. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게)
-    const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => { const p0 = snapPx(r); return { ticker: r.h.ticker, shares: r.sh, price0: p0, ccy: r.ccy, valueKrw: r.sh * p0 * r.fx }; });
+    const holdings = rows.filter((r) => r.valueKrw > 0 && r.h.ticker !== KR_SUM).map((r) => { const p0 = snapPx(r); return { ticker: r.h.ticker, shares: r.sh, price0: p0, ccy: r.ccy, valueKrw: r.sh * p0 * r.fx }; });
     if (!holdings.length) return null;
     const series = {};
     for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
@@ -1596,7 +1695,7 @@
   const FC_KEY = "naeilo-forecast";
   // 전망 기준 가격: 직접 넣은 현재가 > 사이트 마지막 종가 > 지금 시세
   const snapPx = (r) => (r.p.src === "manual" || !(S.siteClose?.[r.h.ticker] > 0) ? r.p.v : S.siteClose[r.h.ticker]);
-  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares, S.siteClose?.[h.ticker] ?? (isKR(h.ticker) ? [h.price, h.price_date] : null)]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, cashKrw(), fxBase("USD")]));
+  const fcSig = () => hashStr(JSON.stringify([S.state.holdings.map((h) => [h.ticker, h.shares, S.siteClose?.[h.ticker] ?? (isKR(h.ticker) ? [h.price, h.price_date] : null)]), S.state.goal, S.state.events.map((e) => [e.id, e.on, e.date, e.prob, e.mean, e.sd, e.repeat]), S.state.model, fixedKrw(), fxBase("USD")]));
   function fcStore() {
     const L = lastForecast; if (!L) return;
     const strip = (k, v) => (k === "raw" || k === "term" ? undefined : v);
@@ -1688,7 +1787,7 @@
     const L = lastForecast; if (!L || !L.sim) return;
     const md = L.b.model, g = S.state.goal, lossRef = costBasis() ?? undefined, plain = Number(g.monthly_contribution) || 0;
     if (L.sim.raw) {
-      const gK = Math.max(1, g.amount - cashKrw()); // 현금은 그대로 있다고 보고 목표에서 뺀다 (simCommon·앱과 같다)
+      const gK = Math.max(1, g.amount - fixedKrw()); // 현금·국내 주식 합계는 그대로 있다고 보고 목표에서 뺀다 (simCommon·앱과 같다)
       const rw = (sim, key, wi) => Model.reweight(sim, { mu: viewMu(md, key), goal: gK, monthly: wi ? wi.monthly : plain, move: wi ? wi.move : null, lossRef });
       const k = viewKey(), wi = wiOpt();
       L.withEv = rw(L.sim, k); L.noEv = L.hasEv ? rw(L.simNo, k) : L.withEv;
@@ -1795,8 +1894,9 @@
     if (tk === "port") {
       $("#fcTitle").textContent = "원화 평가액 전망 (환율·외부 요인 포함)";
       const H = history(), k0 = Math.max(0, H.dates.length - 781), V0 = R.V0, yrs = yearsBetween(md.startDate, g.date);
-      const GP = goalPath(H, cashKrw()), gpOk = GP && GP.at(md.startDate) != null; // 내 길: 자산 추이·목표 진행과 같은 길 (목표 시작일부터). 전망 값에는 현금이 빠져 있어 현금만큼 뺀다
-      const reqPath = fx.map((d) => gpOk ? GP.at(d) - cashKrw() : V0 * (g.amount / V0) ** (yearsBetween(md.startDate, d) / yrs));
+      const GP = goalPath(H, cashKrw()), gpOk = GP && GP.at(md.startDate) != null; // 내 길: 자산 추이·목표 진행과 같은 길 (목표 시작일부터). 전망 값에는 현금·국내 주식 합계가 빠져 있어 그만큼 뺀다
+      const reqPath = fx.map((d) => gpOk ? GP.at(d) - fixedKrw() : V0 * (g.amount / V0) ** (yearsBetween(md.startDate, d) / yrs));
+      const krE = H.each[KR_SUM], past = H.total.map((v, i) => v - (krE?.[i] || 0)); // 과거 선도 전망처럼 종목만
       const evs = v === "none" ? [] : md.eventList.filter(inV);
       // 전체 보기: 내 관점 띠 + 두 렌즈의 중앙값 + 외부 요인 없을 때의 5~95% 선(충격이 넓힌 폭)
       const lensLines = v === "all" ? [...(D.base ? [{ name: "현재 정세", y: D.base.bands.p50, color: "var(--c3)", width: 1.3 }] : []), ...(D.smooth ? [{ name: "과거 추세", y: D.smooth.bands.p50, color: "var(--c4)", width: 1.3 }] : []),
@@ -1804,12 +1904,12 @@
       Charts.lineChart($("#fcChart"), {
         x: fx, height: 340, yfmt: krwAxis,
         bands: [{ lo: R.bands.p5, hi: R.bands.p95, color: "var(--band)", opacity: 0.13, name: "5~95%" }, { lo: R.bands.p25, hi: R.bands.p75, color: "var(--band)", opacity: 0.25, name: "25~75%" }],
-        series: [{ name: "과거", x: [...H.dates.slice(k0), md.startDate], y: [...H.total.slice(k0), V0], color: "var(--fg)", width: 1.4 },
+        series: [{ name: "과거", x: [...H.dates.slice(k0), md.startDate], y: [...past.slice(k0), V0], color: "var(--fg)", width: 1.4 },
           ...lensLines,
           { name: lab, y: R.bands.p50, color: "var(--c1)", width: 2.4 },
           ...(hasEv && v !== "none" && v !== "all" ? [{ name: "미반영 중앙값", y: noEv.bands.p50, color: "var(--muted)", width: 1.2, dash: "2 3" }] : []),
           { name: "내 길", y: reqPath, color: "var(--goal)", dash: "5 4", width: 1.8 }],
-        hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }],
+        hlines: [{ y: Math.max(1, g.amount - fixedKrw()), label: "목표 " + krw(g.amount) + (fixedKrw() > 0 ? ` − 그대로 둔 ${krw(fixedKrw())}` : "") }], // 전망은 종목만이라 기준선도 현금·국내 주식 합계를 뺀 값 (확률과 같은 기준)
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) : [],
       });
@@ -2365,13 +2465,13 @@
     try {
       const g = S.state.goal, m = S.state.model, { rows } = valuation(), subs = [];
       const res = (t) => (S.prices[t] ? t : ALLOC_SUB[t] && S.prices[ALLOC_SUB[t]] ? (subs.push(`${t}→${ALLOC_SUB[t]}`), ALLOC_SUB[t]) : null);
-      const base = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw }));
+      const base = rows.filter((r) => r.valueKrw > 0 && r.h.ticker !== KR_SUM).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw })); // 국내 주식 합계는 고정 (한 줄을 사고팔 수 없다)
       const V0 = base.reduce((a, h) => a + h.valueKrw, 0);
       const mixes = {}; for (const k of Object.keys(ALLOC_DEF)) mixes[k] = allocMix(k).map(([t, w]) => [res(t), w]).filter((x) => x[0]);
       for (const t of new Set(Object.values(mixes).flat().map((x) => x[0]))) if (!base.some((h) => h.ticker === t)) { const q = S.prices[t]; base.push({ ticker: t, shares: 0, price0: q.close[q.close.length - 1], ccy: ccyOf(t), valueKrw: 1, extra: true }); }
       const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
       const defs = {}; for (const [k, D] of Object.entries(ALLOC_DEF)) defs[k] = { cap: D.cap, cutSmall: { agg: 0.1, mid: 0.25, con: 0.4 }[k] };
-      const inp = { base, series, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goal: g, mixes, defs };
+      const inp = { base, series, settings: m, events: S.state.events, betas: factorBetas().beta, startDate: today(), goal: { ...g, amount: Math.max(1, g.amount - krNow()) }, mixes, defs };
       const r = await allocCompute(inp, prog), top = r.top;
       const out = r.out.map((o) => ({ ...o, name: o.k === "keep" ? "현재 유지" : `${ALLOC_DEF[o.k].n} (가장 큰 종목 ${pct(o.w[top], 0)})` }));
       const model = { monthDates: r.fd };
@@ -2408,13 +2508,13 @@
     btn.disabled = true; prog(0, 1); await new Promise((r) => setTimeout(r, 30));
     try {
       const g = S.state.goal, { rows } = valuation();
-      const holdings = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw, avgCost: Number(r.h.avg_cost) > 0 ? Number(r.h.avg_cost) : null }));
+      const holdings = rows.filter((r) => r.valueKrw > 0 && r.h.ticker !== KR_SUM).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw, avgCost: Number(r.h.avg_cost) > 0 ? Number(r.h.avg_cost) : null }));
       if (holdings.length < 2) throw new Error("종목이 2개 이상 있어야 비교할 수 있습니다.");
       if (g.date <= today()) throw new Error("목표일이 오늘 이후여야 합니다.");
       const series = {}; for (const k in S.prices) series[k] = { dates: S.prices[k].dates, adj: S.prices[k].adj };
       const fb = factorBetas().beta;
       const rate = await stabRate();
-      const inp = { holdings, series, settings: S.state.model, events: S.state.events, betas: fb, mktBeta: fb.mkt || {}, startDate: today(), goal: { amount: Math.max(1, g.amount - cashKrw()), date: g.date }, usdKrw0: fxNow("USD"), rate: rate && { b: rate.b, dr: rate.dr } };
+      const inp = { holdings, series, settings: S.state.model, events: S.state.events, betas: fb, mktBeta: fb.mkt || {}, startDate: today(), goal: { amount: Math.max(1, g.amount - fixedKrw()), date: g.date }, usdKrw0: fxNow("USD"), rate: rate && { b: rate.b, dr: rate.dr } };
       const r = await allocCompute(inp, prog, "stab");
       lastStab = { ...r, at: Date.now(), epsLast: rate && rate.epsLast };
       try { localStorage.setItem(ST_KEY, JSON.stringify({ sig: stabSig(), ...lastStab })); } catch (e) { /* 무시 */ }
@@ -3116,6 +3216,10 @@
       const on = card.classList.toggle("folded"); b.title = on ? "펼치기" : "접기";
       try { const ids = new Set(foldGet()); on ? ids.add(card.id) : ids.delete(card.id); localStorage.setItem(foldKey, JSON.stringify([...ids])); } catch (e2) { /* 무시 */ }
     });
+    segClick("#recMode", renderMyRec);
+    $("#krExport").onclick = (e) => { e.preventDefault(); krExport(); };
+    $("#krImport").onclick = (e) => { e.preventDefault(); $("#krFile").click(); };
+    $("#krFile").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) krImport(f); };
     segClick("#histRange", renderDash); segClick("#histFc", () => { try { localStorage.setItem("naeilo-histfc", $("#histFc .on").dataset.f); } catch (e) { /* 무시 */ } renderDash(); }); segClick("#progRange", () => { const H = history(); renderProgress(H, valuation().total, cashKrw()); }); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
     segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
     $("#premBox").addEventListener("change", onPrem);
@@ -3193,7 +3297,7 @@
     return new Uint8Array(await new Response(st).arrayBuffer());
   }
   async function xferEncode() {
-    const st = S.state, j = { v: 1, h: st.holdings.filter((h) => !h.sample && Number(h.shares) > 0).map((h) => [h.ticker, Number(h.shares), Number(h.avg_cost) || 0]), g: [st.goal.amount, st.goal.date, st.goal.start_date, Number(st.goal.monthly_contribution) || 0], m: [st.model.scenario, st.model.trust], l: (st.lots || []).slice(-30).map((x) => [x.d, Object.entries(x.h)]) };
+    const st = S.state, j = { v: 1, h: st.holdings.filter((h) => !h.sample && Number(h.shares) > 0).map((h) => [h.ticker, Number(h.shares), Number(h.avg_cost) || 0]), g: [st.goal.amount, st.goal.date, st.goal.start_date, Number(st.goal.monthly_contribution) || 0], m: [st.model.scenario, st.model.trust], l: (st.lots || []).slice(-30).map((x) => [x.d, Object.entries(x.h)]), k: (st.kr_log || []).slice(-30).map((x) => [x.d, x.v]) }; // k: 국내 주식 합계 기록
     const raw = new TextEncoder().encode(JSON.stringify(j)), z = await zip(raw);
     return z ? "z" + b64u(z) : "j" + b64u(raw);
   }
@@ -3222,6 +3326,7 @@
       j.h.forEach(([t]) => addEarnEvent(t));
       st.goal = { ...st.goal, amount: j.g[0], date: j.g[1], start_date: j.g[2] || st.goal.start_date, monthly_contribution: j.g[3] || 0 };
       if (j.l) st.lots = j.l.map(([d, h]) => ({ d, h: Object.fromEntries(h) }));
+      st.kr_log = Model.krNorm((j.k || []).map(([d, v]) => ({ d, v }))); krHold(); synthKR();
       if (j.m) { st.model.scenario = j.m[0] || st.model.scenario; st.model.trust = j.m[1] ?? st.model.trust; }
       save(); renderAll(); done(); toast("불러왔습니다");
       const miss = missingTickers(); if (miss.length && MODE === "static") browserCollect(miss);

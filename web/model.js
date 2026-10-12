@@ -701,5 +701,17 @@
     base.dates.forEach((d, i) => { if (fm.has(d)) f = fm.get(d); const v = src[i]; dates.push(d); vals.push(v > 0 ? v * (hedged ? 1 : f || 1) : null); });
     return { dates, vals };
   }
-  window.Model = { DEFAULT_MODEL, krSeries, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  // 국내 주식 합계 기록 (state.kr_log = [{d, v}], 앱 MC.krNorm·krAt 과 같은 식): 하루 한 줄(같은 날은 마지막 값), 날짜순, 최대 1,200줄
+  function krNorm(log) {
+    const m = new Map();
+    for (const x of log || []) { const v = Number(x && x.v); if (x && /^\d{4}-\d\d-\d\d$/.test(x.d) && isFinite(v) && v >= 0) m.set(x.d, Math.round(v)); }
+    return [...m].sort((a, b) => (a[0] < b[0] ? -1 : 1)).slice(-1200).map(([d, v]) => ({ d, v }));
+  }
+  // 그날 금액: 그날까지 마지막으로 넣은 금액 (넣지 않은 날은 앞 금액 그대로). 첫 기록 전은 0 (처음 넣은 금액은 들어온 돈)
+  function krAt(log, d) {
+    let v = 0;
+    for (const x of log || []) { if (x.d > d) break; v = x.v; }
+    return v;
+  }
+  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();

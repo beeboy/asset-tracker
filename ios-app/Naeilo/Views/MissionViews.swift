@@ -91,6 +91,8 @@ struct Mission1View: View {
             NavigationLink { AddHoldingView() } label: {
                 Label("종목 추가", systemImage: "plus").appFont(14, .semibold).foregroundStyle(Theme.teal)
             }
+            // 선택: 국내 주식은 종목별 대신 합계 하나 (현금처럼 그대로 두고 계산)
+            KoreaSumCard(title: "국내 주식 합계 (선택)")
             PrimaryButton(title: ok ? (m.route == .recover ? "회복 확률 보기" : "평가액 보기") : "수량과 단가를 넣어 주세요", color: ok ? Theme.teal : Theme.muted) {
                 guard ok else { return }
                 for id in ids {
@@ -110,7 +112,7 @@ struct Mission1View: View {
 
     private func load() {
         // 샘플(가상 DRNK·QQQ)이면 빈칸으로 시작한다: 종목 추가로 내 종목을 넣는다
-        let want = m.isSample ? [] : m.holdings.map(\.symbol)
+        let want = m.isSample ? [] : m.holdings.map(\.symbol).filter { $0 != KoreaEstimate.sumId }   // 국내 주식 합계는 아래 칸에서
         for id in want where !ids.contains(id) {
             ids.append(id)
             if let h = m.holdings.first(where: { $0.symbol == id }) { q[id] = h.qty.formatted(.number.grouping(.never)); p[id] = h.avg.formatted(.number.grouping(.never)) }

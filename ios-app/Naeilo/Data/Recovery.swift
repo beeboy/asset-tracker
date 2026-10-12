@@ -40,37 +40,40 @@ struct Plan: Identifiable {
     let g: Double           // 보통의 연 성장 (로그, 닫힌 식)
     let mix: [Basket: Double]
     let mixText: String
-    let V: Double
+    let V: Double              // 경로로 움직이는 종목 평가액 (국내 주식 합계는 빼고)
     var focus = "몰린 종목"     // 몰린 종목 이름 (설명용)
+    var fixed = 0.0            // 그대로 두는 국내 주식 합계 (현금처럼): 기준선과 비교할 때 더한다
     /// 전망과 같은 몬테카를로 경로 (웹 본전 카드와 같은 셈). 계산이 끝나기 전에는 nil → 닫힌 식
     var paths: PathSet? = nil
 
     /// T년 안에 월말 평가액이 K 이상이 되는 달이 올 확률 (웹 본전 카드 breakeven 과 같은 셈)
     func prob(_ K: Double, _ T: Double) -> Double {
         guard V > 0, K > 0 else { return 0 }
+        let Ks = K - fixed     // 종목만의 기준선
+        guard Ks > 0 else { return 1 }
         if let ps = paths {
             let v = ps.values(V)
-            return ps.touch(v, upTo: ps.k(months: Int((T * 12).rounded()))) { _ in K }
+            return ps.touch(v, upTo: ps.k(months: Int((T * 12).rounded()))) { _ in Ks }
         }
-        return AppModel.normCDF((log(V / K) + g * T) / (sigma * sqrt(T)))
+        return AppModel.normCDF((log(V / Ks) + g * T) / (sigma * sqrt(T)))
     }
     /// T년 뒤 손익 (k = -1 나쁜 경우 5%, 0 보통, 1 좋은 경우 95%), 들어간 돈 C 대비
     func outcome(_ C: Double, _ T: Double, _ k: Double) -> Double {
         guard C > 0 else { return 0 }
         if let ps = paths {
             let b = ps.bands(V), kk = ps.k(months: Int((T * 12).rounded()))
-            return b[k < 0 ? 0 : k > 0 ? 4 : 2][kk] / C - 1
+            return (b[k < 0 ? 0 : k > 0 ? 4 : 2][kk] + fixed) / C - 1
         }
-        return V * exp(g * T + k * 1.645 * sigma * sqrt(T)) / C - 1
+        return (V * exp(g * T + k * 1.645 * sigma * sqrt(T)) + fixed) / C - 1
     }
     /// 그래프: t개월 뒤 평가액 (z = -1 나쁜 경우, 0 보통, 1 좋은 경우). 경로면 월 경계 사이를 곧게 잇는다
     func level(_ t: Double, _ z: Double) -> Double {
-        guard let ps = paths else { return V * exp(g * t / 12 + z * 1.645 * sigma * sqrt(t / 12)) }
+        guard let ps = paths else { return V * exp(g * t / 12 + z * 1.645 * sigma * sqrt(t / 12)) + fixed }
         let b = ps.bands(V)[z < 0 ? 0 : z > 0 ? 4 : 2], tm = ps.tM
         var k = 0; while k + 1 < tm.count && tm[k + 1] < t { k += 1 }
-        guard k + 1 < tm.count else { return b[k] }
+        guard k + 1 < tm.count else { return b[k] + fixed }
         let f = max(0, min(1, (t - tm[k]) / max(1e-9, tm[k + 1] - tm[k])))
-        return b[k] * (1 - f) + b[k + 1] * f
+        return b[k] * (1 - f) + b[k + 1] * f + fixed
     }
     /// 1년 흔들림(로그 성장의 표준편차) · 보통의 연 성장(로그 중앙값) · 평균 연 수익
     var year: (sigma: Double, g: Double, mean: Double) {
@@ -89,8 +92,8 @@ struct Plan: Identifiable {
 extension AppModel {
     /// 회복 루트는 '한 종목에 몰린 비중'을 다룬다: 몰린 종목 = 내 평가액이 가장 큰 종목, 나머지는 한 묶음
     /// (시안은 DRNK·QQQ 두 종목이었고, 내 종목이 그 둘이면 결과는 시안과 같다)
-    var focusRow: Row? { rows.max { $0.value < $1.value } }
-    var restRows: [Row] { rows.filter { $0.id != focusRow?.id } }
+    var focusRow: Row? { rows.filter { $0.id != KoreaEstimate.sumId }.max { $0.value < $1.value } }   // 국내 주식 합계(현금처럼)는 빼고
+    var restRows: [Row] { mcRows.filter { $0.id != focusRow?.id } }
     var focusName: String { focusRow?.sym.short ?? "몰린 종목" }
     /// 나머지 이름: 하나면 그 종목, 여럿이면 "나머지 n종목"
     var restName: String {
@@ -119,9 +122,9 @@ extension AppModel {
     }
     /// 지금 내 종목 (사이트 티커·통화·평가액 비중)
     var mineParts: [Part] {
-        let t = max(1, total)
+        let rs = mcRows, t = max(1, rs.reduce(0) { $0 + $1.value })     // 국내 주식 합계는 현금처럼 빼고 종목만
         var out: [Part] = []
-        for r in rows { out.append((key: SiteStats.mcKey(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", w: r.value / t)) }
+        for r in rs { out.append((key: SiteStats.mcKey(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", w: r.value / t)) }
         return out
     }
     /// 같은 종목은 합친다 (같은 요인 둘은 상관 1 이라 모형이 흔들린다)
@@ -215,7 +218,7 @@ extension AppModel {
     /// 계획 구성: 몰린 종목은 wt 까지, 나머지 종목은 그대로, 줄인 몫은 묶음 비율대로 (묶음 = 대표 ETF)
     func planParts(wt: Double, mix: [Basket: Double]) -> [Part] {
         guard let f = focusRow else { return [] }
-        let t = max(1, total), w = f.value / t, ccy = { (r: Row) in r.sym.currency == .usd ? "USD" : "KRW" }
+        let t = max(1, stockTotal), w = f.value / t, ccy = { (r: Row) in r.sym.currency == .usd ? "USD" : "KRW" }
         var out: [Part] = [(key: SiteStats.mcKey(f.id), ccy: ccy(f), w: wt)]
         for r in restRows { out.append((key: SiteStats.mcKey(r.id), ccy: ccy(r), w: r.value / t)) }
         let freed = max(0, w - wt), tot = mix.values.reduce(0, +)
@@ -225,12 +228,12 @@ extension AppModel {
 
     var plans: [Plan] {
         // 닫힌 식(계산 중 잠깐)의 흔들림·기대 수익도 사이트가 매일 만드는 종목 값 (웹 전망과 같은 값)
-        let w = focusWeight, V = total, fn = focusName, H = planHorizon
+        let w = focusWeight, V = stockTotal, fn = focusName, H = planHorizon
         func mk(_ id: String, _ name: String, _ tag: String, _ cap: Double, _ mix: [Basket: Double], _ mixText: String) -> Plan {
             let wt = min(w, cap)
             let parts = id == "keep" ? mineParts : planParts(wt: wt, mix: mix)
             let c = closedParams(parts)
-            var p = Plan(id: id, name: name, tag: tag, wt: wt, sigma: c.sigma, g: c.mu - c.sigma * c.sigma / 2, mix: mix, mixText: mixText, V: V, focus: fn)
+            var p = Plan(id: id, name: name, tag: tag, wt: wt, sigma: c.sigma, g: c.mu - c.sigma * c.sigma / 2, mix: mix, mixText: mixText, V: V, focus: fn, fixed: krSum)
             p.paths = paths(parts, horizon: H)
             return p
         }
@@ -254,15 +257,15 @@ extension AppModel {
     var quizRight: String { focusWeight > 0.5 && lossShareFocus > 0.6 ? "conc" : "mkt" }
 
     // 미션 3 결과: 옮길 금액 (나머지는 그대로, 줄인 몰린 종목 금액을 묶음에 나눔)
-    var freedAmount: Double { max(0, (focusRow?.value ?? 0) - selectedPlan.wt * total) }
+    var freedAmount: Double { max(0, (focusRow?.value ?? 0) - selectedPlan.wt * stockTotal) }
 
     // 적립 지렛대: 매달 같은 돈을 지금 구성에 더 넣을 때. 본전 = 들어간 돈 + 그동안 넣은 돈 (넣은 만큼 같이 오른다)
     /// prob = months 안에 본전에 닿을 확률, eta = 보통의 경우 본전에 처음 닿는 개월 (3년 안에 없으면 무한대)
     struct Deposit { let prob: Double; let eta: Double }
     func deposit(_ p: Plan, monthly mo: Int, months T: Int) -> Deposit {
-        let D = Double(mo) * 1e4, C = cost
+        let D = Double(mo) * 1e4, C = cost - p.fixed     // 종목만 경로로: 기준선도 그대로 둔 합계만큼 뺀다
         if let ps = p.paths {
-            if total >= C { return Deposit(prob: 1, eta: 0) }
+            if p.V >= C { return Deposit(prob: 1, eta: 0) }
             let v = ps.values(p.V, monthly: D), M = ps.M
             let hits = ps.firstHits(v, upTo: M - 1) { k in C + D * Double(min(k, M - 2)) }
             let kT = ps.k(months: T)

@@ -31,10 +31,12 @@ enum WidgetBridge {
         // 요약: 최근 3달 평가액(만원), 3년 전망 부채꼴, 이번 주 예보
         let spark: [Double?] = (0..<63).map { i in m.totalAt(1 - Double(62 - i) / 756) / 1e4 }
         let f = m.forecast
-        let man = { (a: [Double]) in a.map { Optional($0 / 1e4) } }
+        // 전망 경로는 종목만이라 현금·국내 주식 합계를 더해 기준선(목표·본전)과 같은 기준으로
+        let fixed = m.isGoal ? m.fixedKrw : m.krSum
+        let man = { (a: [Double]) in a.map { Optional(($0 + fixed) / 1e4) } }
         // 앱 전망과 같은 값 (웹과 같은 몬테카를로, 목표일까지 월 경계마다)
         let fc = WSummary.Forecast(scen: m.lens.label, md: f.dates, p5: man(f.q5), p25: man(f.q25), p50: man(f.q50), p75: man(f.q75), p95: man(f.q95),
-                                   pg: f.pGoal, t: .init(p5: (f.q5.last ?? 0) / 1e4, p50: (f.q50.last ?? 0) / 1e4, p95: (f.q95.last ?? 0) / 1e4))
+                                   pg: f.pGoal, t: .init(p5: ((f.q5.last ?? 0) + fixed) / 1e4, p50: ((f.q50.last ?? 0) + fixed) / 1e4, p95: ((f.q95.last ?? 0) + fixed) / 1e4))
         let wr = m.weekRange
         let friday = Calendar.current.nextDate(after: now, matching: DateComponents(weekday: 6), matchingPolicy: .nextTime) ?? now
         let week = WSummary.Week(f: Day.str(friday), p50: (wr.lo + wr.hi) / 2, lo: wr.lo, hi: wr.hi, base: m.total, cash: 0, t0: m.total, tent: nil)

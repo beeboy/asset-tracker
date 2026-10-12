@@ -95,7 +95,7 @@ enum KoreaEstimate {
         let i = info(id: s.id, name: s.name), at = s.kd ?? ""
         guard let p = s.kp else { return "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 계산해요." }
         let won = Int(p.rounded()).formatted() + "원"
-        if s.id == sumId { return "\(at)에 넣은 합계 \(won) 그대로예요. 움직임 예측은 한국 시장 평균(\(i.base) × 원/달러)으로 해요." }
+        if s.id == sumId { return "\(at)에 넣은 합계 \(won) 그대로예요. 현금처럼 전망에서도 이 금액 그대로 둬요." }
         return i.proxy != nil ? "\(at)에 넣은 \(won)에서 \(i.base)\(i.hedged ? "" : " × 원/달러") 움직임으로 추정한 값이에요."
             : "\(at)에 넣은 \(won) 그대로예요. 움직임 예측은 한국 시장 평균(\(i.base) × 원/달러)으로 해요."
     }
@@ -163,6 +163,10 @@ final class CustomSymbols {
 
     private(set) var items: [Saved] = []
     private(set) var hist: [String: Hist] = [:]
+    /// 국내 주식 합계 날짜별 금액 (사이트 kr_log 와 같은 칸, MC.krNorm). 현금처럼: 첫 기록 전은 0, 전망에서는 그대로
+    private(set) var krLog: [MC.KrDay] = (UserDefaults.standard.data(forKey: "krLog").flatMap { try? JSONDecoder().decode([MC.KrDay].self, from: $0) }) ?? [] {
+        didSet { if let d = try? JSONEncoder().encode(krLog) { UserDefaults.standard.set(d, forKey: "krLog") } }
+    }
     private var refreshedAt = Date.distantPast
 
     private static var file: URL {
@@ -178,6 +182,8 @@ final class CustomSymbols {
             // 한국 종목은 시세를 받지 않는다: 예전에 Yahoo 에서 받아 둔 종가는 버리고, 넣은 가격으로 다시 만든다 (rebuildKR)
             for s in items where !s.usd { hist[s.id] = nil }
         }
+        // 기록 없이 금액 하나만 있던 예전 저장값은 그 금액·날짜를 첫 줄로
+        if krLog.isEmpty, let s = items.first(where: { $0.id == KoreaEstimate.sumId }), let p = s.kp, p > 0 { krLog = [.init(d: s.kd ?? Day.today, v: p)] }
     }
     /// 내 폰에 저장한 파일에서 불러오기: 같은 종목은 파일 값으로
     func restore(_ new: [Saved], _ h: [String: Hist]) {
@@ -254,25 +260,50 @@ final class CustomSymbols {
     @MainActor
     func setPrice(_ id: String, _ price: Double, date: String? = nil) {
         guard price > 0, let i = items.firstIndex(where: { $0.id == id }) else { return }
+        if id == KoreaEstimate.sumId { setKoreaSum(price, date: date ?? Day.today); return }
         items[i].kp = price; items[i].kd = date ?? Day.today
         rebuildKR(); save()
     }
     func saved(_ id: String) -> Saved? { items.first { $0.id == id } }
     /// 한국 종목에 넣은 가격이 바뀌면 바뀌는 값 (기기 동기화가 이것도 보낸다)
-    var krStamp: String { items.filter { !$0.usd }.map { "\($0.id)=\($0.kp ?? 0)@\($0.kd ?? "")" }.joined(separator: ",") }
-    /// 국내 주식 합계 금액 넣기 (없으면 만든다)
+    var krStamp: String { items.filter { !$0.usd }.map { "\($0.id)=\($0.kp ?? 0)@\($0.kd ?? "")" }.joined(separator: ",") + "|kr\(krLog.count)=\(krLog.last?.v ?? 0)@\(krLog.last?.d ?? "")" }
+    /// 국내 주식 합계 금액 넣기 (날짜별 기록에 남긴다. 0 = 다 팔았어요, 지난 기록은 그대로)
     @MainActor
-    func setKoreaSum(_ won: Double) {
+    func setKoreaSum(_ won: Double, date: String = Day.today) {
         let id = KoreaEstimate.sumId
-        if !items.contains(where: { $0.id == id }) {
+        krLog = MC.krNorm(krLog + [.init(d: date, v: max(0, won))])
+        if won > 0 && !items.contains(where: { $0.id == id }) {
             items.append(Saved(id: id, yahoo: id + ".KS", name: "국내 주식 합계", market: "국내 주식", usd: false, prev: 0, last: 0, at: Date()))
         }
-        setPrice(id, won)
+        if let i = items.firstIndex(where: { $0.id == id }), let l = krLog.last { items[i].kp = l.v > 0 ? l.v : items[i].kp; items[i].kd = l.d }
+        rebuildKR(); save()
     }
+    /// 동기화: 날짜별로 합친다 (같은 날은 받은 쪽)
+    @MainActor
+    func mergeKr(_ remote: [MC.KrDay]) {
+        guard !remote.isEmpty else { return }
+        let L = MC.krNorm(krLog + remote)
+        guard L != krLog else { return }
+        krLog = L
+        if let i = items.firstIndex(where: { $0.id == KoreaEstimate.sumId }), let l = L.last, l.v > 0 { items[i].kp = l.v; items[i].kd = l.d }
+        rebuildKR(); save()
+    }
+    /// 지금 국내 주식 합계 (기록의 오늘 값)
+    var krNow: Double { MC.krAt(krLog, Day.today) }
     /// 한국 종목의 날짜별 가격·지금 값을 넣은 가격과 사이트 미국 종가로 다시 만든다
     func rebuildKR() {
         for i in items.indices where !items[i].usd {
             let s = items[i]
+            if s.id == KoreaEstimate.sumId {
+                // 국내 주식 합계: 첫 기록 날부터 원/달러 거래일마다 그날까지 마지막 금액 (웹 krSynth 와 같다). 지금 값은 기록의 오늘 값
+                let L = krLog, fx = Market.shared.prices?.h["KRW=X"]?.dates ?? []
+                if let d0 = L.first?.d {
+                    let ds = fx.isEmpty ? L.map(\.d) : fx.filter { $0 >= d0 }
+                    hist[s.id] = ds.isEmpty ? nil : Hist(dates: ds, closes: ds.map { MC.krAt(L, $0) })
+                } else { hist[s.id] = nil }
+                items[i].last = L.isEmpty ? (s.kp ?? 0) : MC.krAt(L, Day.today); items[i].prev = items[i].last
+                continue
+            }
             if let p = s.kp, let h = KoreaEstimate.synth(price: p, date: s.kd ?? Day.today, info: KoreaEstimate.info(id: s.id, name: s.name)) {
                 hist[s.id] = h; items[i].last = h.closes.last ?? p; items[i].prev = items[i].last   // 전일 대비는 없음 (웹과 같다)
             } else {
@@ -322,6 +353,8 @@ enum PriceHistory {
     static func of(_ id: String) -> YahooSample.Hist? {
         let key = SiteStats.key(id)
         let site = id == "DRNK" ? nil : Market.shared.prices?.h[key]
+        // 국내 주식 합계는 넣은 기록만 (하루치여도. 첫 기록 전은 없음 = 0)
+        if id == KoreaEstimate.sumId { return CustomSymbols.shared.hist[id].map { YahooSample.Hist(dates: $0.dates, closes: $0.closes) } }
         let mine = CustomSymbols.shared.hist[id].flatMap { $0.closes.count > 1 ? YahooSample.Hist(dates: $0.dates, closes: $0.closes) : nil }
         // 둘 다 있으면 사이트 값을 쓰고, 이 기기가 받은 값은 사이트 마지막 날 뒤의 날만 잇는다
         // (겹치는 날을 기기 값으로 쓰면 수정주가·출처 차이로 웹과 지난 종가가 갈린다: 내 길 시작값 차이)

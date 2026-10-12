@@ -387,14 +387,18 @@ struct HoldingDetailView: View {
 /// 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄로. 0 이면 지운다 (웹 보유 종목 아래 칸과 같다)
 struct KoreaSumCard: View {
     @Environment(AppModel.self) private var m
+    var title = "국내 주식 합계"
     var done: (() -> Void)? = nil
     @State private var t = ""
     @FocusState private var focus: Bool
     var body: some View {
-        let cur = CustomSymbols.shared.saved(KoreaEstimate.sumId)?.kp
+        let held = m.holdings.contains { $0.symbol == KoreaEstimate.sumId }
+        let cur: Double? = held ? CustomSymbols.shared.krNow : nil, lastD = CustomSymbols.shared.krLog.last?.d
+        let ago = lastD.flatMap(Day.date).map { Int((Date().timeIntervalSince($0) / 86400).rounded(.down)) } ?? 0
         Card {
-            Text("국내 주식 합계").appFont(15, .bold)
-            Text("증권사 앱의 국내 주식 평가액 합계를 넣어요. 바뀌면 이 금액만 고쳐요 (0이면 지움).")
+            Text(title).appFont(15, .bold)
+            Text("증권사 앱의 국내 주식 평가액 합계를 넣어요. 날짜별로 남고, 현금처럼 전망에서는 이 금액 그대로 둬요. 바뀌면 이 금액만 고쳐요 (0이면 지움)."
+                 + (held && ago > 0 ? " 지금 금액은 \(ago)일 전 금액이에요." : ""))
                 .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
                 TextField(cur.map { Int($0.rounded()).formatted() + "원" } ?? "금액 (원)", text: $t).keyboardType(.decimalPad).focused($focus)
@@ -403,11 +407,10 @@ struct KoreaSumCard: View {
                 Button("저장") {
                     guard let v = Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v >= 0 else { return }
                     let id = KoreaEstimate.sumId
+                    CustomSymbols.shared.setKoreaSum(v)     // 날짜별 기록 (0 = 다 팔았어요, 지난 기록은 남는다)
                     if v == 0 { m.holdings.removeAll { $0.symbol == id } }
-                    else {
-                        CustomSymbols.shared.setKoreaSum(v)
-                        if !m.holdings.contains(where: { $0.symbol == id }) { _ = m.addHolding(id, "1", String(v)) }
-                    }
+                    else if !m.holdings.contains(where: { $0.symbol == id }) { _ = m.addHolding(id, "1", String(v)) }
+                    else { m.recordDay() }
                     t = ""; focus = false; done?()
                 }.appFont(15, .bold).foregroundStyle(Theme.teal).frame(minHeight: 44)
             }

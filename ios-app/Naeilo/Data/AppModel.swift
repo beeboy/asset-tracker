@@ -78,7 +78,17 @@ final class AppModel {
     // 보유
     // 내 종목은 앱을 다시 켜도 남는다 (다른 시안 상태는 켤 때마다 시연 상태로 시작)
     var holdings: [Holding] = AppModel.savedHoldings ?? Sample.startHoldings {
-        didSet { if let d = try? JSONEncoder().encode(holdings) { UserDefaults.standard.set(d, forKey: "holdings") }; recordDay() }
+        didSet {
+            if let d = try? JSONEncoder().encode(holdings) { UserDefaults.standard.set(d, forKey: "holdings") }
+            // 국내 주식 합계 줄을 목록에서 지우면 0원으로 남긴다 (다 팔았어요. 지난 기록은 그대로, 웹 delHolding 과 같다)
+            let k = KoreaEstimate.sumId
+            // (그 줄만 빠진 경우만. 루트를 다시 고르거나 샘플로 바꾸는 중에 잠깐 비는 것은 세지 않는다)
+            let was = Set(oldValue.map(\.symbol)), now = Set(holdings.map(\.symbol))
+            if was.contains(k), now == was.subtracting([k]), CustomSymbols.shared.krNow > 0 {
+                Task { @MainActor in CustomSymbols.shared.setKoreaSum(0) }
+            }
+            recordDay()
+        }
     }
     /// naeilo를 쓴 날부터의 내 기록 (MyRecord.swift). 수량을 처음 넣은 날부터 하루 한 줄
     var myRecord: [DayRec] = MyRecord.load() { didSet { MyRecord.save(myRecord) } }
@@ -206,7 +216,8 @@ final class AppModel {
             guard h.qty > 0, let s = Sample.symbol(h.symbol) else { return nil }
             return (s, h)
         }.enumerated().map { i, p in
-            Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: costKrw(p.0, p.1.qty * p.1.avg),
+            // 국내 주식 합계는 현금처럼: 들어간 돈 = 지금 금액 (본전·수익률을 움직이지 않는다)
+            Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: p.0.id == KoreaEstimate.sumId ? krw(p.0, p.1.qty * p.0.last) : costKrw(p.0, p.1.qty * p.1.avg),
                 color: Theme.holdColors[i % Theme.holdColors.count])
         }
     }
@@ -231,14 +242,26 @@ final class AppModel {
         let c = Sync.shared.siteCash
         return c.krw + c.usd * Market.shared.valFx
     }
+    /// 국내 주식 합계 (날짜별 기록의 오늘 금액, 웹 krNow 와 같다). 현금처럼 전망에서는 그대로 둔다. 샘플·시작 전 루트는 0. 회복 루트에도 들어간다
+    var krSum: Double {
+        guard route != .novice, !isSample, holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) else { return 0 }
+        return CustomSymbols.shared.krNow
+    }
+    /// 전망에서 움직이지 않는 돈 = 현금 + 국내 주식 합계 (몬테카를로는 종목만, 기준선에서 뺀다. 웹 fixedKrw 와 같다)
+    var fixedKrw: Double { cashKrw + krSum }
+    /// 이 루트의 전망에서 뺀 금액 (목표 = 현금 + 합계, 회복 = 합계. trackValue − 이 값 = 전망 출발 금액)
+    var mcFixed: Double { route == .novice ? 0 : isGoal ? fixedKrw : krSum }
     var cost: Double { rows.reduce(0) { $0 + $1.cost } }
     var ret: Double { cost > 0 ? total / cost - 1 : 0 }
     /// 회복 루트의 '몰린 종목' 비중 (내 평가액이 가장 큰 종목, Recovery.swift focusRow)
-    var focusWeight: Double { total > 0 ? (focusRow?.value ?? 0) / total : 0 }
+    var focusWeight: Double { stockTotal > 0 ? (focusRow?.value ?? 0) / stockTotal : 0 }
+    /// 종목만의 평가액 (국내 주식 합계 빼고). 비중·계획은 이 값으로
+    var stockTotal: Double { mcRows.reduce(0) { $0 + $1.value } }
     /// 오늘의 움직임: 원화 평가액 기준 (전일 종가·전일 환율 → 지금)
     var todayMove: Double {
         let fx = Market.shared.fx
         let usd = { (r: Row) in r.sym.currency == .usd }
+        let rows = self.rows.filter { $0.id != KoreaEstimate.sumId }   // 국내 주식 합계는 넣은 날만 바뀌어 0%로 전체 폭을 줄이지 않게 뺀다
         let prev = rows.reduce(0) { a, r in a + r.h.qty * r.sym.quote.prevClose * (usd(r) ? fx.prevClose : 1) }
         let now = rows.reduce(0) { a, r in a + r.h.qty * r.sym.last * (usd(r) ? fx.last : 1) }   // 같은 환율 계열끼리 (평가액은 매매기준율)
         return prev > 0 ? now / prev - 1 : 0
@@ -409,7 +432,7 @@ final class AppModel {
         var qs: [Question] = []
         let rs = rows, tot = max(1, total), mv = todayMove
         if !rs.isEmpty {
-            let diff = total - total / (1 + mv)
+            let diff = stockTotal - stockTotal / (1 + mv)     // 오늘 움직임은 종목만 (국내 주식 합계 빼고)
             qs.append(.init(id: "updown", tag: "오늘 움직임", q: "어제 종가와 비교해, 오늘 내 평가액은?", opts: ["올랐어요", "내렸어요"], right: mv >= 0 ? 0 : 1,
                             fb: { _ in "오늘 \(Self.sgn(mv)), 원화로 \(Self.won(diff)) \(diff >= 0 ? "늘었어요" : "줄었어요")." }))
         }
@@ -568,14 +591,16 @@ final class AppModel {
         }
     }
     var forecastTitle: String { isGoal ? "목표일 전망" : "3년 전망" }
+    /// 몬테카를로에 넣는 종목 (국내 주식 합계는 현금처럼 밖에서 그대로)
+    var mcRows: [Row] { rows.filter { $0.id != KoreaEstimate.sumId } }
     /// 몬테카를로에 넣는 목표: 웹처럼 현금은 그대로 있다고 보고 목표에서 뺀다 (전망 경로는 종목만)
-    var mcGoal: Double { isGoal ? max(1, keyValue - cashKrw) : keyValue }
+    var mcGoal: Double { max(1, keyValue - mcFixed) }
     /// 전망 끝날: 목표 루트는 목표일, 회복 루트는 3년 뒤 (웹: 목표일)
     var forecastHorizon: String { isGoal ? Day.str(goalToDate) : MC.addMonths(Day.today, 36) }
 
     /// 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 nil (닫힌 식만)
     var forecastJob: ForecastEngine.Job? {
-        let rs = rows, today = Day.today, H = forecastHorizon
+        let rs = mcRows, today = Day.today, H = forecastHorizon
         guard route != .novice, !rs.isEmpty, H > today, let inp = mcInputs(full: true) else { return nil }
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 지금 가격
@@ -621,7 +646,7 @@ final class AppModel {
 
     /// 닫힌 식 (로그정규 근사): 몬테카를로가 끝나기 전 잠깐, 시작 전 루트, 주간 예보 폭(sigma)
     var closedForecast: Forecast {
-        let rs = rows, tot = max(1, total)
+        let rs = mcRows, tot = max(1, rs.reduce(0) { $0 + $1.value })
         // 종목 값은 사이트가 매일 만드는 stats.json (웹 전망과 같은 μ·σ·상관). 달러 종목은 원/달러 흔들림도 더한다
         let st = Market.shared.stats, t = trust / 100
         var parts: [(w: Double, id: String, p: (Double, Double, Double))] = rs.isEmpty || route == .novice ? [(1, "", (0.07, 0.11, 0.16))]
@@ -642,7 +667,8 @@ final class AppModel {
         } }
         let sg = sqrt(max(0, v))
         let mu = lens == .base ? muB : lens == .smooth ? muS : muM
-        let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = monthly * 1e4
+        // 몬테카를로처럼 종목만: 현금·국내 주식 합계는 빼고 기준선(mcGoal)도 그만큼 뺀 값과 비교
+        let g = mu - sg * sg / 2, V0 = max(1, trackValue - mcFixed), K = mcGoal, M = monthly * 1e4
         let qAt = { (T: Double, z: Double) -> Double in
             let shockT: Double = z * sg * sqrt(T)
             let lump: Double = V0 * exp(g * T + shockT)

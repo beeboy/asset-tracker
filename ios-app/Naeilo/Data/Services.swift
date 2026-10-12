@@ -35,12 +35,15 @@ struct StubPriceProvider: PriceProvider {
 
     func close(_ symbol: Symbol) -> Double { symbol.close }
     func price(_ s: Symbol, at x: Double) -> Double {
+        // 국내 주식 합계: 그날까지 넣은 마지막 금액 (첫 기록 전은 0). x 를 3년 날짜로 (0 = 3년 전, 1 = 오늘)
+        if s.id == KoreaEstimate.sumId { return MC.krAt(CustomSymbols.shared.krLog, Day.str(Date().addingTimeInterval(-(1 - x) * 1095.75 * 86400))) }
         if PriceHistory.of(s.id) != nil { return exp(logPrice(s, x)) }   // 실제 종가 그대로
         return s.close * exp(logPrice(s, x) - logPrice(s, 1))
     }
 
     /// 로그 가격. x = 0 (3년 전) … 1 (어제). 시안의 lfA 와 같은 식.
     func logPrice(_ s: Symbol, _ x: Double) -> Double {
+        if s.id == KoreaEstimate.sumId { return log(max(1, price(s, at: x))) }
         if let h = PriceHistory.of(s.id), h.closes.count > 1 {
             // 3년치 거래일을 0…1 로 펴서 사이를 잇는다
             let L = Double(h.closes.count - 1), t = max(0, min(L, x * L)), i = Int(t), f = t - Double(i)

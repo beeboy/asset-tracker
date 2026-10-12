@@ -260,7 +260,8 @@ struct ForecastView: View {
                 kpi(m.isGoal ? "목표일 중앙값" : "3년 뒤 중앙값", AppModel.eok(f.q50.last ?? 0), Theme.ink, 17)
                 kpi("나쁜 5%", AppModel.eok(f.q5.last ?? 0), Theme.down, 17)
             }
-            FanChart(f: f, goal: m.keyValue, goalLabel: "\(m.keyName) \(AppModel.eok(m.keyValue))").frame(height: 150)
+            // 전망은 종목만이라 기준선도 현금·국내 주식 합계를 뺀 값에 긋는다 (확률과 같은 기준)
+            FanChart(f: f, goal: m.mcGoal, goalLabel: "\(m.keyName) \(AppModel.eok(m.keyValue))" + (m.mcFixed > 0 ? " − 그대로 둔 \(AppModel.eok(m.mcFixed))" : "")).frame(height: 150)
             Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: Binding(get: { m.lens }, set: { m.lens = $0 }), fill: true)
         }
