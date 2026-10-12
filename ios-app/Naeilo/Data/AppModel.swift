@@ -577,14 +577,17 @@ final class AppModel {
         guard route != .novice, !rs.isEmpty, H > today, let inp = mcInputs(full: true) else { return nil }
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 지금 가격
+        // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
         let px = rs.map { r -> Double in
             if r.id != "DRNK", let c = Market.shared.prices?.h[SiteStats.key(r.id)]?.closes.last, c > 0 { return c }
-            return r.sym.last
+            let q = r.sym.quote
+            return q.prevClose > 0 ? q.prevClose : q.last
         }
-        let hs = zip(rs, px).map { r, p in MC.Holding(key: SiteStats.key(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", valueKrw: krw(r.sym, r.h.qty * p), price0: p) }
+        let fx0 = Market.shared.marRate ?? Market.shared.fx.prevClose
+        let hs = zip(rs, px).map { r, p in MC.Holding(key: SiteStats.key(r.id), ccy: r.sym.currency == .usd ? "USD" : "KRW", valueKrw: r.h.qty * p * (r.sym.currency == .usd ? fx0 : 1), price0: p) }
         let st = inp.st, settings = inp.settings, events = inp.events
         let snap = zip(rs, px).map { "\(SiteStats.key($0.id)):\($0.h.qty):\($1)" }.joined(separator: ",")
-        let key = [today, H, snap, String(Market.shared.valFx), inp.sig].joined(separator: "|")
+        let key = [today, H, snap, String(fx0), inp.sig].joined(separator: "|")
         return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: monthly * 1e4)
     }
 
