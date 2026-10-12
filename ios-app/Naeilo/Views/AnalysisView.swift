@@ -162,8 +162,9 @@ struct ForecastView: View {
         let man = { (v: Double) in Int((v / 1e4).rounded()).formatted() + "만" }
         let px = Market.shared.prices?.h, keys = m.rows.map { SiteStats.key($0.id) } + ["KRW=X"]
         let last = keys.compactMap { px?[$0]?.dates.last }.max() ?? "-"
+        let mu = r.factors.filter { !$0.isFx }.map { "\($0.key) \(Int(($0.base * 100).rounded()))/\(Int(($0.smooth * 100).rounded()))" }.joined(separator: " ")
         return "개발자 · 전망 \(String(format: "%.1f", r.ms / 1000))초 · 경로 \(r.ev.P.formatted())개 · 사건 \(r.events)건 · 다른 구성 \(PathRuns.shared.runs.count)개 \(String(format: "%.1f", PathRuns.shared.msToday / 1000))초"
-            + " · 기준 \(man(r.ev.v0.reduce(0, +))) · 목표 \(man(m.mcGoal)) · 연 기대 \(AppModel.sgn0(f.mu)) · 확률 \(String(format: "%.1f", f.pGoal * 100))% · 종가일 \(last)"
+            + " · 기준 \(man(r.ev.v0.reduce(0, +))) · 목표 \(man(m.mcGoal)) · 연 기대 \(AppModel.sgn0(f.mu)) · 확률 \(String(format: "%.1f", f.pGoal * 100))% · μ \(mu) · 종가일 \(last)"
     }
 
     var body: some View {
