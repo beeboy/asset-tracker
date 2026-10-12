@@ -219,7 +219,7 @@ final class Remind {
             a.append(.init(id: "calm.type.\(t).\(c.typeMonth ?? "")", cat: .done, text: text, go: .calm))
             if c.stage >= 2 {
                 let d = c.stage == 2 ? 14 : 60
-                a.append(.init(id: "calm.stage.\(t).\(c.stage)", cat: .done, text: "\(who)와 함께한 지 \(d)일. 말투가 조금 바뀔 거예요.", go: .char(t)))
+                a.append(.init(id: "calm.stage.\(t).\(c.stage)", cat: .done, text: "\(who)와 함께한 지 \(d)일. 말투가 조금 바뀔 거예요.", go: .char(t + ":invest")))
             }
         }
         if let ch = calmChange(c) {

@@ -34,7 +34,12 @@ struct HomeView: View {
             else if route.hasPrefix("read:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i) }
             else if route.hasPrefix("vol1:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i, book: .vol1) }
             else if route == "me" { MeEditView() }
-            else if route.hasPrefix("char:"), let f = Shelter.friends.first(where: { $0.id == route.dropFirst(5) }) { CharacterDetailView(friend: f) }
+            else if route.hasPrefix("char:"), let f = Shelter.friends.first(where: { $0.id == route.dropFirst(5).split(separator: ":").first.map(String.init) }) {
+                // char:<인물> = 소설 속 갈래로, char:<인물>:invest = 투자하는 갈래로, …:invest:h<번호> = 그 버릇을 펴서
+                let parts = route.split(separator: ":")
+                CharacterDetailView(friend: f, invest: parts.contains("invest"),
+                                    focus: parts.last.flatMap { $0.hasPrefix("h") ? Int($0.dropFirst()) : nil })
+            }
         }
     }
 

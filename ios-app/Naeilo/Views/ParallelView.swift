@@ -12,6 +12,8 @@ struct ParallelView: View {
     @Environment(AppModel.self) private var m
     @State private var prog = 0.0
     @State private var ratio = false
+    @State private var logOpen = false
+    @State private var logShown = 8
 
     var body: some View {
         ScrollView {
@@ -145,7 +147,7 @@ struct ParallelView: View {
                     Text(AppModel.eok(amount)).appFont(12).foregroundStyle(Theme.sub)
                 }
             }
-            Text(distance(amount)).appFont(13, .semibold).foregroundStyle(ParallelUI.colors[k])
+            Text(m.parallelDistance(amount)).appFont(13, .semibold).foregroundStyle(ParallelUI.colors[k])
             // 홈 평가액과 다른 까닭: 경주는 마감 종가·출발 금액 기준, 홈은 지금 시세·국내 합계 포함
             if k == 0 && !m.isSample && abs(m.total - amount) >= 1e4 {
                 Text("홈 평가액 \(AppModel.eok(m.total)) (지금 시세·국내 합계 포함). 경주는 마감 종가로, 넣고 뺀 돈은 빼고 셈해요.")
@@ -171,16 +173,6 @@ struct ParallelView: View {
         default: return Parallel.rules[w.who] ?? ""
         }
     }
-    /// 마이너스족은 본전까지 남은 거리, 장투족은 목표까지 온 거리
-    private func distance(_ amount: Double) -> String {
-        if m.isGoal {
-            let k = m.gK * 1e4
-            return "목표 \(AppModel.wonK(m.gK))까지 \(AppModel.pct(min(1, amount / max(1, k)))) 왔어요"
-        }
-        let need = m.cost / max(1, amount) - 1
-        return need > 0 ? "본전까지 +\(String(format: "%.1f", need * 100))% 남음" : "본전을 넘었어요"
-    }
-
     private func basketLine(_ w: PWorld) -> some View {
         let seg = w.segs.last
         let parts: [String] = (seg?.w ?? [:]).sorted { $0.value > $1.value }.map { "\($0.key) \(AppModel.pct($0.value))" }
@@ -209,6 +201,11 @@ struct ParallelView: View {
             if w.who == "sua" && race.contrib > 0 {
                 Text("매달 \(AppModel.wonK(m.gM))씩 넣은 \(AppModel.eok(race.contrib))까지 넣은 돈으로 쳐서 셌어요.").appFont(12).foregroundStyle(Theme.sub)
             }
+            ruleLog(race, w)
+            NavigationLink(value: "char:\(w.who):invest") {
+                Text("투자하는 \(who(w)) 자세히 ›").appFont(13, .bold).foregroundStyle(Theme.teal).frame(minHeight: 36)
+            }
+            .buttonStyle(.plain)
             HStack(spacing: 12) {
                 Button(ratio ? "비율 요약 접기" : "저쪽 세계 비율 보기 ›") { ratio.toggle() }
                     .appFont(13, .bold).foregroundStyle(Theme.teal).frame(minHeight: 36)
@@ -220,6 +217,57 @@ struct ParallelView: View {
                     .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    // MARK: 규칙 일지: 인물 세계가 어떤 세부 규칙으로 움직였나 (주 단위, 비율만. 종목 이름·수량 없음). 누르면 그 버릇으로
+    @ViewBuilder private func ruleLog(_ race: PRace, _ w: PWorld) -> some View {
+        let all = Array(race.log.reversed())
+        Button { withAnimation(.easeInOut(duration: 0.2)) { logOpen.toggle() } } label: {
+            HStack {
+                Text("규칙 일지").appFont(13, .bold)
+                Text(all.isEmpty ? "아직 없음" : "\(all.count)줄").appFont(12).foregroundStyle(Theme.sub)
+                Spacer()
+                Image(systemName: logOpen ? "chevron.up" : "chevron.down").foregroundStyle(Theme.muted)
+            }
+            .frame(minHeight: 36).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(logOpen ? "규칙 일지 접기" : "규칙 일지 펴기")
+        if logOpen {
+            if all.isEmpty {
+                Text("아직 규칙이 움직이거나 점검할 때가 오지 않았어요.").appFont(12).foregroundStyle(Theme.sub)
+            }
+            ForEach(Array(all.prefix(logShown).enumerated()), id: \.offset) { _, x in
+                NavigationLink(value: "char:\(w.who):invest:h\(x.rule)") { logRow(x, race, w) }.buttonStyle(.plain)
+            }
+            if all.count > logShown {
+                Button("더 보기") { logShown += 12 }.appFont(12, .bold).foregroundStyle(Theme.teal).frame(minHeight: 32)
+            }
+        }
+    }
+    private func logRow(_ x: PLog, _ race: PRace, _ w: PWorld) -> some View {
+        let past = x.t < race.open
+        return HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Self.week(race.dates[x.t]) + (past ? " · 예선" : "")).appFont(11, .bold).foregroundStyle(past ? Theme.muted : Theme.purple)
+                Text("\(who(w)) · \(x.text)").appFont(13).fixedSize(horizontal: false, vertical: true)
+                if let k = x.metric {
+                    Text("\(k) \(AppModel.pct(x.a)) → \(AppModel.pct(x.b))").appFont(12).foregroundStyle(Theme.sub)
+                }
+            }
+            Spacer(minLength: 4)
+            Text("›").appFont(13, .bold).foregroundStyle(Theme.muted)
+        }
+        .padding(.vertical, 6)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.line).frame(height: 1) }
+        .contentShape(Rectangle())
+    }
+    /// 날짜를 주 단위로 뭉갬: "25년 3월 둘째 주"
+    static func week(_ d: String) -> String {
+        let p = d.split(separator: "-").compactMap { Int($0) }
+        guard p.count == 3 else { return d }
+        let n = ["첫째", "둘째", "셋째", "넷째", "다섯째"][min(4, (p[2] - 1) / 7)]
+        return "\(p[0] % 100)년 \(p[1])월 \(n) 주"
     }
 
     private func whoMenu(_ w: PWorld) -> some View {

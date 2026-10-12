@@ -51,7 +51,14 @@ struct CalmView: View {
                     HStack(alignment: .bottom, spacing: 12) {
                         CharPixel(id: who, width: 56, height: 80)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(k.map { "\(name) · \($0.title)" } ?? "아직 매칭 전").appFont(17, .bold)
+                            if let k, let f = Shelter.friends.first(where: { $0.id == m.calm.type }) {
+                                NavigationLink { CharacterDetailView(friend: f, invest: true) } label: {
+                                    Text("\(name) · \(k.title) ›").appFont(17, .bold).foregroundStyle(Theme.ink)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                Text(k.map { "\(name) · \($0.title)" } ?? "아직 매칭 전").appFont(17, .bold)
+                            }
                             if let k { Text(k.like).appFont(13).foregroundStyle(Theme.sub) }
                             if m.calm.type != nil {
                                 Text(m.calm.stageLine).appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
@@ -100,16 +107,25 @@ struct CalmView: View {
                 // 다섯 유형
                 Card {
                     Text("다섯 가지 유형").appFont(15, .bold)
+                    // 유형 이름을 누르면 그 인물 자세히 보기의 "투자하는" 갈래로
                     ForEach(Calm.kinds, id: \.id) { kd in
                         let on = kd.id == m.calm.type
-                        HStack(alignment: .top, spacing: 10) {
-                            Pixel(name: "spr_" + kd.id, width: 21, height: 30)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text((Shelter.friends.first { $0.id == kd.id }?.name ?? "") + " · " + kd.title).appFont(14, on ? .bold : .semibold)
-                                    .foregroundStyle(on ? Theme.teal : Theme.ink)
-                                Text(kd.when).appFont(12).foregroundStyle(Theme.sub)
+                        NavigationLink {
+                            if let f = Shelter.friends.first(where: { $0.id == kd.id }) { CharacterDetailView(friend: f, invest: true) }
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Pixel(name: "spr_" + kd.id, width: 21, height: 30)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text((Shelter.friends.first { $0.id == kd.id }?.name ?? "") + " · " + kd.title).appFont(14, on ? .bold : .semibold)
+                                        .foregroundStyle(on ? Theme.teal : Theme.ink)
+                                    Text(kd.when).appFont(12).foregroundStyle(Theme.sub).multilineTextAlignment(.leading)
+                                }
+                                Spacer(minLength: 0)
+                                Text("›").appFont(14, .bold).foregroundStyle(Theme.muted)
                             }
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
 

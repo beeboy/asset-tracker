@@ -48,6 +48,8 @@
 		BF68BCC5144E0E7462B09B86 /* MonteCarlo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DD14CB2396A6A77E94DBE3 /* MonteCarlo.swift */; };
 		E3FB07F4BE646998B06B8FE1 /* MyRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 119A53A8985910EE71D6B0B9 /* MyRecord.swift */; };
 		B1C2D3E4F5061728394A5B6C /* Parallel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6D /* Parallel.swift */; };
+		D1E2F3A4B5C6D7E8F9A0B1C4 /* InvestEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E2F3A4B5C6D7E8F9A0B1C5 /* InvestEvents.swift */; };
+		D1E2F3A4B5C6D7E8F9A0B1C2 /* Invest.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E2F3A4B5C6D7E8F9A0B1C3 /* Invest.swift */; };
 		A1B2C3D4E5F60718293A4B5C /* Lots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* Lots.swift */; };
 		5CB59D91AF71FB20220B5C04 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A149C71953E24CEC80C3679 /* App.swift */; };
 		5DF46E2B4E8263C2CDE8D7DF /* Reward.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B116C077153565363572A59 /* Reward.swift */; };
@@ -92,6 +94,7 @@
 		CDC9A9B0B5F97C64D91F58A7 /* Industries.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D0C4109B5070AD88349788 /* Industries.swift */; };
 		DC15E84938D3B3EDB0FB4481 /* ShelterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9051E09656ED51EFBF91911 /* ShelterView.swift */; };
 		C1D2E3F405162738495A6B7C /* ParallelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F405162738495A6B7D /* ParallelView.swift */; };
+		D1E2F3A4B5C6D7E8F9A0B1C6 /* InvestViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E2F3A4B5C6D7E8F9A0B1C7 /* InvestViews.swift */; };
 		DC6166C3D3B536F49DEE74F6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4580C08E6C4978E007DCE313 /* Assets.xcassets */; };
 		E1B1111A3CFA95DFAE235456 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AF1B4BB6CF97D8922C1704B6 /* Assets.xcassets */; };
 		E51C1315B1D9332B58C546E0 /* Intent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05FDC3EDA031D566D478FEDE /* Intent.swift */; };
@@ -162,6 +165,8 @@
 		89DD14CB2396A6A77E94DBE3 /* MonteCarlo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonteCarlo.swift; sourceTree = "<group>"; };
 		119A53A8985910EE71D6B0B9 /* MyRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyRecord.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5061728394A5B6D /* Parallel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parallel.swift; sourceTree = "<group>"; };
+		D1E2F3A4B5C6D7E8F9A0B1C5 /* InvestEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestEvents.swift; sourceTree = "<group>"; };
+		D1E2F3A4B5C6D7E8F9A0B1C3 /* Invest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Invest.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5D /* Lots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lots.swift; sourceTree = "<group>"; };
 		752819BFD13B67854C54F1A0 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		7582FC7C75EA724D55C6EBB8 /* LockWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockWidgets.swift; sourceTree = "<group>"; };
@@ -187,6 +192,7 @@
 		AF1B4BB6CF97D8922C1704B6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B9051E09656ED51EFBF91911 /* ShelterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelterView.swift; sourceTree = "<group>"; };
 		C1D2E3F405162738495A6B7D /* ParallelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallelView.swift; sourceTree = "<group>"; };
+		D1E2F3A4B5C6D7E8F9A0B1C7 /* InvestViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestViews.swift; sourceTree = "<group>"; };
 		BE16646A583833EE1115FA08 /* prices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = prices; path = ../data/prices; sourceTree = SOURCE_ROOT; };
 		BE199ACA459A1DB92E4427A3 /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
 		BF7DFE9A58B7B9416B105E91 /* HomeWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgets.swift; sourceTree = "<group>"; };
@@ -266,6 +272,8 @@
 				A1B2C3D4E5F60718293A4B5D /* Lots.swift */,
 				119A53A8985910EE71D6B0B9 /* MyRecord.swift */,
 				B1C2D3E4F5061728394A5B6D /* Parallel.swift */,
+				D1E2F3A4B5C6D7E8F9A0B1C5 /* InvestEvents.swift */,
+				D1E2F3A4B5C6D7E8F9A0B1C3 /* Invest.swift */,
 				CCACC287684D148B6C75C94F /* SampleData.swift */,
 				4439B2462725991C102336E8 /* Services.swift */,
 				7C0F24B12A0E97C97C96F8E2 /* StockCatalog.swift */,
@@ -330,6 +338,7 @@
 				5A1E0C7D2B9F4E6A8C3D1B04 /* RemindViews.swift */,
 				B9051E09656ED51EFBF91911 /* ShelterView.swift */,
 				C1D2E3F405162738495A6B7D /* ParallelView.swift */,
+				D1E2F3A4B5C6D7E8F9A0B1C7 /* InvestViews.swift */,
 				012F5C5676B198E5CF433509 /* StartView.swift */,
 				38754B5097170C13E85C8926 /* SupportView.swift */,
 				3A7566F7A44493F3D6599BE7 /* SponsorViews.swift */,
@@ -565,6 +574,8 @@
 				BF68BCC5144E0E7462B09B86 /* MonteCarlo.swift in Sources */,
 				E3FB07F4BE646998B06B8FE1 /* MyRecord.swift in Sources */,
 				B1C2D3E4F5061728394A5B6C /* Parallel.swift in Sources */,
+				D1E2F3A4B5C6D7E8F9A0B1C4 /* InvestEvents.swift in Sources */,
+				D1E2F3A4B5C6D7E8F9A0B1C2 /* Invest.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5C /* Lots.swift in Sources */,
 				5DF46E2B4E8263C2CDE8D7DF /* Reward.swift in Sources */,
 				02D7A588AC677280C686D8DD /* SampleData.swift in Sources */,
@@ -579,6 +590,7 @@
 				5A1E0C7D2B9F4E6A8C3D1B03 /* RemindViews.swift in Sources */,
 				DC15E84938D3B3EDB0FB4481 /* ShelterView.swift in Sources */,
 				C1D2E3F405162738495A6B7C /* ParallelView.swift in Sources */,
+				D1E2F3A4B5C6D7E8F9A0B1C6 /* InvestViews.swift in Sources */,
 				27B98CF0F3A9E3308C683492 /* StartView.swift in Sources */,
 				7A47E9AE200D65D15BBCA430 /* StockCatalog.swift in Sources */,
 				1A944CD8310789082F51DDA9 /* StockSearch.swift in Sources */,

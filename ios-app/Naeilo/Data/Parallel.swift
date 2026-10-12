@@ -6,8 +6,8 @@ import Foundation
 
 /// 모의 바구니 한 칸: 그날부터 이 비중 (티커 → 비중, 합 1). 고치면 그날부터 새 칸이 붙고 지난 칸은 그대로 남는다
 struct PBasketSeg: Codable, Equatable { var from: String; var w: [String: Double] }
-/// 본선 기록 한 줄: 그날 종가 기준 세 명의 수익률 (진짜·담아 본·인물). who = 그날 인물 세계의 인물
-struct PDay: Codable, Equatable { var d: String; var r: [Double]; var who: String }
+/// 본선 기록 한 줄: 그날 종가 기준 세 명의 수익률 (진짜·담아 본·인물). who = 그날 인물 세계의 인물, v = 그날 인물 규칙 판 (없으면 1)
+struct PDay: Codable, Equatable { var d: String; var r: [Double]; var who: String; var v: Int? = nil }
 
 struct PWorld: Codable, Equatable {
     var opened: String              // 평행 세계를 연 날 (본선 시작)
@@ -16,6 +16,7 @@ struct PWorld: Codable, Equatable {
     var who: String                 // 인물 세계의 인물
     var whoPick: String? = nil      // 사용자가 마지막으로 직접 바꾼 때 (ISO 시각, 동기화에서 나중 것을 쓴다). 횟수 제한 없음
     var days: [PDay] = []
+    var ver: Int? = nil             // 기록 형식 판. 2 = 인물 세부 규칙 (2026-10-12). 저장 키는 그대로 두고 지난 기록을 잇는다
 
     static let key = "parallel.v1"
     static func load() -> PWorld? { UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(PWorld.self, from: $0) } }
@@ -37,6 +38,17 @@ struct PWorld: Codable, Equatable {
     }
 }
 
+/// 규칙 일지 한 줄: 그날(화면에는 주 단위로 뭉갬) 어떤 세부 규칙이 움직였나(또는 움직이지 않기로 했나)와 비율 변화.
+/// 종목 이름·수량은 담지 않는다. rule = Invest.habits 의 번호
+struct PLog: Equatable {
+    let t: Int
+    let rule: Int
+    let text: String
+    var metric: String? = nil      // "현금 비중" · "가장 큰 종목 비중"
+    var a: Double = 0
+    var b: Double = 0
+}
+
 /// 경주 결과 (그래프·순위·카드가 같이 쓴다)
 struct PRace {
     let dates: [String]
@@ -47,6 +59,7 @@ struct PRace {
     let top: (now: Double, before: Double)    // 인물 세계 가장 큰 한 종목 비중
     let segRet: [Double]       // 바구니 칸마다 그 칸 동안 수익률
     let contrib: Double        // 수아 세계: 넣은 적립 합 (원)
+    let log: [PLog]            // 인물 세계 규칙 일지 (오래된 것부터)
     var last: Int { dates.count - 1 }
     func rank(at t: Int) -> [Int] { [0, 1, 2].sorted { r[$0][t] > r[$1][t] } }
     func place(_ k: Int, at t: Int) -> Int { (rank(at: t).firstIndex(of: k) ?? 0) + 1 }
@@ -107,7 +120,9 @@ enum Parallel {
         return s
     }
 
-    // MARK: 인물 규칙 (하루 한 번 종가 기준)
+    // MARK: 인물 규칙 (하루 한 번 종가 기준). 세부 규칙은 Invest.habits, 엔진은 run 의 ③
+    /// 인물 규칙 판: 1 = 대표 규칙만, 2 = 세부 규칙까지 (인물 자세히 보기와 같은 규칙). 바뀐 날부터 새 규칙으로 이어 간다
+    static let rulesVersion = 2
     static let rules: [String: String] = [
         "seri": "1년에 한 번, 처음 비율로 되돌려요.",
         "sio": "20%를 현금으로 들고 있다가, 고점보다 20% 빠지면 그 현금의 절반을 넣어요.",
@@ -249,63 +264,196 @@ enum Parallel {
         }
         if cur >= 0 { segRet.append(segV > 0 ? (V0 * (1 + r1[n - 1])) / segV - 1 : 0) }
 
-        // ③ 인물 세계의 나: 진짜 나의 출발 비중에서 시작해 인물 규칙대로 스스로 움직인다
+        // ③ 인물 세계의 나: 진짜 나의 출발 비중에서 시작해 인물 규칙(대표 + 세부, Invest.habits)대로 스스로 움직인다
         var w0: [String: Double] = [:]
         for (k, x) in baseQ where p(k, 0) > 0 { w0[k] = x * p(k, 0) / V0 }
         var u = alloc(w0, inp.who == "sio" ? V0 * 0.8 : V0, 0)
         var cashU = inp.who == "sio" ? V0 * 0.2 / max(1e-9, p(cashId, 0)) : 0
         var parked: [String: Double] = [:]          // 이르: 평균선 아래로 내려가 현금으로 옮긴 몫 (현금 단위)
+        var below: [String: Int] = [:]              // 이르: 평균선 아래로 이어진 거래일 수
         var invested = V0, contrib = 0.0
-        var peak = V0, armed = true
+        var sIdx = 1.0, sPeak = 1.0, stage = 0, refill = false   // 시오: 주식 쪽 지수·고점·넣은 단계
         var nextYear = 1, monthStartV = V0
+        var lastQ = Self.quarter(dates[0])
+        var trades: [Substring: Int] = [:]          // 달마다 매매 횟수 (시오 2번·이르 4번까지)
         var r2 = [Double](repeating: 0, count: n)
         var cashW: [Int: Double] = [:], topW: [Int: Double] = [:]
         let sma = SMA(assets: assets)
+        let spy = hist("SPY")
         let before = max(0, n - 22)
-        func charV(_ t: Int) -> Double { value(u, t) + (cashU + parked.values.reduce(0, +)) * p(cashId, t) }
+        func cashV(_ t: Int) -> Double { (cashU + parked.values.reduce(0, +)) * p(cashId, t) }
+        func charV(_ t: Int) -> Double { value(u, t) + cashV(t) }
+        var log: [PLog] = []
+        /// (현금 비중, 가장 큰 한 종목 비중)
+        func ratios(_ t: Int) -> (cash: Double, top: Double) {
+            let V = charV(t)
+            guard V > 0 else { return (0, 0) }
+            let c = cashV(t) + (u[cashId] ?? 0) * p(cashId, t)
+            return (c / V, (u.filter { $0.key != cashId }.map { $0.value * p($0.key, t) }.max() ?? 0) / V)
+        }
+        func note(_ t: Int, _ rule: Int, _ text: String, cash: (Double, Double)? = nil, top: (Double, Double)? = nil) {
+            if let c = cash { log.append(PLog(t: t, rule: rule, text: text, metric: "현금 비중", a: c.0, b: c.1)) }
+            else if let x = top { log.append(PLog(t: t, rule: rule, text: text, metric: "가장 큰 종목 비중", a: x.0, b: x.1)) }
+            else { log.append(PLog(t: t, rule: rule, text: text)) }
+        }
+        var capNoted: Substring = ""                // 같은 달 "한도 다 씀"은 한 번만 적는다
+        /// 지금 들고 있는 비중 (현금 칸 빼고)
+        func weights(_ t: Int) -> [String: Double] {
+            let V = value(u, t)
+            guard V > 0 else { return w0 }
+            var w: [String: Double] = [:]
+            for (k, x) in u { w[k] = x * p(k, t) / V }
+            return w
+        }
+        /// 그 종목을 돈만큼 사고팔기 (+ 사기, − 팔기)
+        func trade(_ k: String, _ won: Double, _ t: Int) {
+            guard p(k, t) > 0 else { return }
+            u[k, default: 0] += won / p(k, t)
+            if (u[k] ?? 0) <= 1e-12 { u[k] = nil }
+        }
+        func toCash(_ won: Double, _ t: Int) { cashU += won / max(1e-9, p(cashId, t)) }
+        /// 시오: 지수가 하루 ±3% 넘게 움직인 날 (S&P500 ETF 기준)
+        func bigDay(_ t: Int) -> Bool {
+            guard t > 0, let a = spy?.on(dates[t]), let b = spy?.on(dates[t - 1]), b > 0 else { return false }
+            return abs(a / b - 1) > 0.03
+        }
         for t in 0..<n {
-            let d = dates[t]
+            let d = dates[t], mk = d.prefix(7)
+            if t > 0 { let a = value(u, t), b = value(u, t - 1); if b > 0 && a > 0 { sIdx *= a / b } }
             switch inp.who {
             case "seri":
+                // 기념일에만. 처음 비율(한 종목 40% 상한)에서 ±5%p 넘게 벗어난 종목이 있을 때만 되돌린다
                 if t > 0, let anniv = addYears(dates[0], nextYear), d >= anniv {
-                    u = alloc(w0, value(u, t), t); nextYear += 1
-                }
-            case "seonbae":
-                let V = value(u, t)
-                var bestK = "", bestEx = 0.0
-                if V > 0 { for (k, x) in u { let ex = x * p(k, t) / V - (w0[k] ?? 0); if ex > bestEx { bestEx = ex; bestK = k } } }
-                if bestEx > 0.10 {
-                    let cut = bestEx * V
-                    u[bestK, default: 0] -= cut / max(1e-9, p(bestK, t))
-                    let others = u.filter { $0.key != bestK && $0.value * p($0.key, t) > 0 }
-                    let ov = others.reduce(0.0) { $0 + $1.value * p($1.key, t) }
-                    if ov > 0 { for (j, x) in others { u[j] = x + cut * (x * p(j, t) / ov) / p(j, t) } }
-                    else { cashU += cut / max(1e-9, p(cashId, t)) }
-                }
-            case "sio":
-                let V = charV(t)
-                if V > peak { peak = V; armed = true }
-                else if armed && cashU > 0 && V <= peak * 0.8 {
-                    let put = cashU / 2 * p(cashId, t)
-                    cashU /= 2
-                    for (k, x) in alloc(w0, put, t) { u[k, default: 0] += x }
-                    armed = false
-                }
-            case "ir":
-                for k in Array(u.keys) + Array(parked.keys) where k != cashId && k != "SGOV" {
-                    guard let m = sma.at(k, d) else { continue }
-                    let px = p(k, t)
-                    if let c = parked[k] {
-                        if px >= m { u[k, default: 0] += c * p(cashId, t) / max(1e-9, px); parked[k] = nil }
-                    } else if px < m, let x = u[k], x > 0 {
-                        parked[k] = x * px / max(1e-9, p(cashId, t)); u[k] = nil
+                    nextYear += 1
+                    let (target, cashT) = Self.capped(w0, 0.40)
+                    let V = charV(t)
+                    var off = abs(cashV(t) / V - cashT)
+                    for k in Set(target.keys).union(u.keys) { off = max(off, abs((u[k] ?? 0) * p(k, t) / V - (target[k] ?? 0))) }
+                    if V > 0 && off > 0.05 {
+                        let q0 = ratios(t)
+                        u = alloc(target, V * (1 - cashT), t)
+                        cashU = V * cashT / max(1e-9, p(cashId, t))
+                        let q1 = ratios(t)
+                        let capped = w0.values.contains { $0 > 0.40 + 1e-9 }
+                        note(t, capped ? 2 : 0, capped ? "기념일, 한 종목 40% 상한에 맞춰 되돌리기" : "기념일, 처음 비율로 되돌리기", top: (q0.top, q1.top))
+                    } else if V > 0 {
+                        note(t, 1, "기념일 점검, ±5%p 안이라 그해는 그대로")
                     }
                 }
+            case "seonbae":
+                // 분기에 한 번 되묻는다: 처음보다 10%p 넘게 커진 종목은 덜고, 작아진 종목은 다른 데서 덜어 채운다
+                let q = Self.quarter(d)
+                guard t > 0, q != lastQ else { break }
+                lastQ = q
+                let V = charV(t)
+                guard V > 0 else { break }
+                func wt(_ k: String) -> Double { (u[k] ?? 0) * p(k, t) / V }
+                // 수익 난 직후(최근 20거래일 오른 종목)에는 더 사지 않는다
+                func gained(_ k: String) -> Bool { p(k, t) > p(k, max(0, t - 20)) }
+                let q0 = ratios(t)
+                var pool = 0.0, filled = false, held = false
+                for k in w0.keys where wt(k) - (w0[k] ?? 0) > 0.10 {
+                    let cut = (wt(k) - (w0[k] ?? 0)) * V
+                    trade(k, -cut, t); pool += cut
+                }
+                if pool > 0 {
+                    // 덜어낸 돈: 절반은 가장 작아진 종목에, 절반은 현금에
+                    let small = w0.keys.filter { !gained($0) && wt($0) < (w0[$0] ?? 0) }.min { wt($0) - (w0[$0] ?? 0) < wt($1) - (w0[$1] ?? 0) }
+                    if let s = small { trade(s, pool / 2, t); toCash(pool / 2, t) } else { toCash(pool, t) }
+                }
+                for k in w0.keys.sorted() where (w0[k] ?? 0) - wt(k) > 0.10 {
+                    if gained(k) { held = true; continue }
+                    filled = true
+                    // "정말 버릴 거야?": 현금에서 먼저, 모자라면 다른 종목에서 고르게 덜어 채운다
+                    var need = ((w0[k] ?? 0) - wt(k)) * V
+                    let fromCash = min(need, cashU * p(cashId, t))
+                    cashU -= fromCash / max(1e-9, p(cashId, t)); need -= fromCash
+                    var got = fromCash
+                    if need > 0 {
+                        let others = u.filter { $0.key != k }
+                        let ov = others.reduce(0.0) { $0 + $1.value * p($1.key, t) }
+                        if ov > 0 { let f = min(1, need / ov); for (j, x) in others { trade(j, -x * p(j, t) * f, t) }; got += min(need, ov) }
+                    }
+                    trade(k, got, t)
+                }
+                let q1 = ratios(t)
+                if pool > 0 { note(t, 1, "분기 점검, 10%p 넘게 커진 몫을 덜어 절반은 현금으로", top: (q0.top, q1.top)) }
+                if filled { note(t, 2, "분기 점검, 10%p 넘게 작아진 몫을 다시 채우기", cash: (q0.cash, q1.cash)) }
+                if held { note(t, 4, "작아졌지만 막 오른 참이라 이번엔 채우지 않음") }
+                if pool == 0 && !filled && !held { note(t, 0, "분기 점검, 모두 ±10%p 안이라 그대로") }
+            case "sio":
+                // 주식 쪽 고점 대비 −20%에 현금 절반, −30%에 나머지. 넣은 뒤 고점을 다시 넘으면 현금 20%로 다시 채운다.
+                // 지수가 하루 ±3% 넘게 움직인 날에는 매매하지 않고 다음 날 판단, 한 달에 2번까지
+                if sIdx > sPeak { sPeak = sIdx; if stage > 0 { refill = true }; stage = 0 }
+                let dd = sIdx / sPeak - 1
+                let due = (stage == 0 && dd <= -0.20) || (stage == 1 && dd <= -0.30)
+                if refill || (due && cashU > 0) {
+                    if bigDay(t) { note(t, 3, "하루에 3% 넘게 움직인 날이라 하루 기다리기"); break }
+                    if trades[mk, default: 0] >= 2 {
+                        if capNoted != mk { capNoted = mk; note(t, 2, "이번 달 매매 두 번을 다 써서 다음 달로") }
+                        break
+                    }
+                }
+                let q0 = ratios(t)
+                if refill {
+                    refill = false
+                    let V = charV(t), c = cashV(t)
+                    if V > 0 && c < V * 0.2 {
+                        let need = V * 0.2 - c, sv = value(u, t)
+                        if sv > 0 { for (k, x) in u { trade(k, -need * x * p(k, t) / sv, t) }; toCash(need, t) }
+                        trades[mk, default: 0] += 1
+                        note(t, 1, "고점을 다시 넘어 현금을 20%까지 다시 채우기", cash: (q0.cash, ratios(t).cash))
+                    }
+                } else if due, cashU > 0 {
+                    let first = stage == 0
+                    let put = (first ? cashU / 2 : cashU) * p(cashId, t)
+                    cashU -= put / max(1e-9, p(cashId, t))
+                    for (k, x) in alloc(w0, put, t) { u[k, default: 0] += x }
+                    stage += 1; trades[mk, default: 0] += 1
+                    note(t, 0, first ? "고점 −20%, 현금 절반 넣기" : "고점 −30%, 남은 현금 넣기", cash: (q0.cash, ratios(t).cash))
+                }
+            case "ir":
+                // 200일선보다 3% 넘게 내려가거나 5거래일 연속 아래면 판다. 3% 넘게 올라오면 다시 산다. 오르는 종목은 덜지 않는다. 한 달 4번까지
+                let q0 = ratios(t)
+                var outBy3 = false, outBy5 = false, back = false, capped = false
+                for k in Set(u.keys).union(parked.keys).sorted() where k != cashId && k != "SGOV" {
+                    guard let m = sma.at(k, d) else { continue }
+                    let px = p(k, t)
+                    below[k] = px < m ? (below[k] ?? 0) + 1 : 0
+                    let wantIn = parked[k] != nil && px > m * 1.03
+                    let wantOut = parked[k] == nil && (u[k] ?? 0) > 0 && (px < m * 0.97 || (below[k] ?? 0) >= 5)
+                    guard wantIn || wantOut else { continue }
+                    guard trades[mk, default: 0] < 4 else { capped = true; continue }
+                    if wantIn, let c = parked[k] {
+                        u[k, default: 0] += c * p(cashId, t) / max(1e-9, px); parked[k] = nil; trades[mk, default: 0] += 1; back = true
+                    } else if wantOut, let x = u[k] {
+                        if px < m * 0.97 { outBy3 = true } else { outBy5 = true }
+                        parked[k] = x * px / max(1e-9, p(cashId, t)); u[k] = nil; trades[mk, default: 0] += 1
+                    }
+                }
+                if outBy3 || outBy5 || back {
+                    let q1 = ratios(t)
+                    if outBy3 || outBy5 {
+                        let all = q1.cash > 0.995
+                        note(t, all ? 4 : 0, all ? "모두 200일선 아래, 전부 현금으로" : outBy3 ? "200일선보다 3% 넘게 내려가 현금으로 옮기기" : "5거래일 내내 200일선 아래라 현금으로 옮기기", cash: (q0.cash, q1.cash))
+                    }
+                    if back { note(t, 1, "200일선보다 3% 넘게 올라와 다시 들어가기", cash: (q0.cash, q1.cash)) }
+                }
+                if capped && capNoted != mk { capNoted = mk; note(t, 3, "이번 달 매매 네 번을 다 써서 다음 달로") }
             case "sua":
-                if t > 0 && inp.monthly > 0 && d.prefix(7) != dates[t - 1].prefix(7) {
-                    let fell = charV(t - 1) < monthStartV
-                    let c = inp.monthly * (fell ? 1.5 : 1)
-                    for (k, x) in alloc(w0, c, t) { u[k, default: 0] += x }
+                // 매달 같은 금액. 지난달 바구니가 −5% 넘게 빠졌으면 1.5배, −15% 넘게 2배, +10% 넘게 올랐으면 0.7배.
+                // 지금 바구니 비율대로 나눠 넣고(한 종목에 몰지 않음), 팔지 않고, 못 넣은 달을 몰아 넣지 않는다
+                if t > 0 && inp.monthly > 0 && mk != dates[t - 1].prefix(7) {
+                    let m = monthStartV > 0 ? charV(t - 1) / monthStartV - 1 : 0
+                    let times = Self.suaTimes(m), c = inp.monthly * times
+                    for (k, x) in alloc(weights(t), c, t) { u[k, default: 0] += x }
+                    let pct = "\(Int((m * 100).rounded()))%"
+                    switch times {
+                    case 2: note(t, 1, "지난달 바구니 \(pct), 2배 넣기")
+                    case 1.5: note(t, 0, "지난달 바구니 \(pct), 1.5배 넣기")
+                    case 0.7: note(t, 2, "지난달 바구니 +\(pct), 0.7배만 넣기")
+                    default: note(t, 3, "보통 달, 같은 금액을 지금 비율대로 넣기")
+                    }
                     invested += c; contrib += c
                     monthStartV = charV(t)
                 }
@@ -314,7 +462,7 @@ enum Parallel {
             let V = charV(t)
             r2[t] = V / invested - 1
             if t == n - 1 || t == before {
-                let cv = (cashU + parked.values.reduce(0, +)) * p(cashId, t) + (u[cashId] ?? 0) * p(cashId, t)
+                let cv = cashV(t) + (u[cashId] ?? 0) * p(cashId, t)
                 cashW[t] = V > 0 ? cv / V : 0
                 topW[t] = V > 0 ? (u.filter { $0.key != cashId }.map { $0.value * p($0.key, t) }.max() ?? 0) / V : 0
             }
@@ -322,12 +470,35 @@ enum Parallel {
         let open = dates.firstIndex(where: { $0 >= inp.opened }) ?? n
         return PRace(dates: dates, r: [r0, r1, r2], open: open, V0: V0,
                      cash: (cashW[n - 1] ?? 0, cashW[before] ?? 0), top: (topW[n - 1] ?? 0, topW[before] ?? 0),
-                     segRet: segRet, contrib: contrib)
+                     segRet: segRet, contrib: contrib, log: log)
     }
 
     static func addYears(_ d: String, _ y: Int) -> String? {
         guard let x = Day.date(d), let z = Calendar(identifier: .gregorian).date(byAdding: .year, value: y, to: x) else { return nil }
         return Day.str(z)
+    }
+
+    /// 분기 (yyyy-Qn)
+    static func quarter(_ d: String) -> String {
+        let m = Int(d.dropFirst(5).prefix(2)) ?? 1
+        return String(d.prefix(4)) + "-Q\((m - 1) / 3 + 1)"
+    }
+    /// 수아: 지난달 바구니 변화에 따른 적립 배수
+    static func suaTimes(_ m: Double) -> Double { m <= -0.15 ? 2 : m <= -0.05 ? 1.5 : m >= 0.10 ? 0.7 : 1 }
+    /// 세리: 한 종목 상한. 넘친 몫은 다른 종목에 비율대로, 모두 상한이면 현금으로 (현금 비중을 같이 돌려준다)
+    static func capped(_ w: [String: Double], _ cap: Double) -> (w: [String: Double], cash: Double) {
+        var w = w, cash = 0.0
+        for _ in 0..<10 {
+            let over = w.filter { $0.value > cap + 1e-9 }
+            if over.isEmpty { break }
+            var ex = 0.0
+            for (k, x) in over { ex += x - cap; w[k] = cap }
+            let room = w.filter { $0.value < cap - 1e-9 }
+            let tot = room.values.reduce(0, +)
+            if tot <= 0 { cash += ex; break }
+            for (k, x) in room { w[k] = x + ex * x / tot }
+        }
+        return (w, cash)
     }
 
     /// 200일 평균선 (그날까지의 종가 200개, 100개 안 되면 판단하지 않는다)
@@ -395,7 +566,7 @@ extension AppModel {
         let tpl = Parallel.templates.first { $0.id == tid } ?? Parallel.templates[1]
         let w = Parallel.resolve(tpl.w)
         return PWorld(opened: today, start: Parallel.clampStart(s0), segs: [PBasketSeg(from: today, w: w)],
-                      who: Parallel.match(type: calm.type, aggressive: Parallel.aggressive(w)))
+                      who: Parallel.match(type: calm.type, aggressive: Parallel.aggressive(w)), ver: Parallel.rulesVersion)
     }
     /// 화면에 쓰는 세계: 저장된 것, 샘플·시안 실행이면 그때그때 만든 것 (남기지 않는다)
     var pworldShown: PWorld? { pworld ?? (isSample || !persists ? newParallel() : nil) }
@@ -406,6 +577,10 @@ extension AppModel {
 
     var parallelRace: PRace? {
         guard let w = pworldShown else { return nil }
+        return parallelRun(w, who: w.who)
+    }
+    /// 인물 세계를 그 인물 규칙으로 굴린 경주 (평행 세계 화면은 지금 인물, 인물 자세히 보기는 그 인물)
+    func parallelRun(_ w: PWorld, who: String) -> PRace? {
         let base = parallelBaseAt(w.opened)
         let lotsIn: [(d: String, q: [String: Double])] = lots.filter { $0.d >= w.opened }.map { l -> (d: String, q: [String: Double]) in
             var q: [String: Double] = [:]
@@ -415,11 +590,12 @@ extension AppModel {
         let monthly = gM * 1e4
         let pk = Market.shared.prices.map { "\($0.got)" } ?? "-"
         let segKey = w.segs.map(Parallel.segText).joined(separator: ";")
-        let key = [w.start, w.opened, w.who, segKey, base.map { "\($0.id):\($0.qty)" }.joined(separator: ","),
+        let key = [w.start, w.opened, who, segKey, base.map { "\($0.id):\($0.qty)" }.joined(separator: ","),
                    "\(lotsIn.count):\(lotsIn.last?.d ?? "")", pk, "\(monthly)", Day.today].joined(separator: "|")
-        if let c = raceCache, c.key == key { return c.race }
-        let race = Parallel.run(.init(start: w.start, opened: w.opened, base: base, lots: lotsIn, segs: w.segs, who: w.who, monthly: monthly))
-        raceCache = (key, race)
+        let mine = who == w.who
+        if let c = mine ? raceCache : raceCacheOther, c.key == key { return c.race }
+        let race = Parallel.run(.init(start: w.start, opened: w.opened, base: base, lots: lotsIn, segs: w.segs, who: who, monthly: monthly))
+        if mine { raceCache = (key, race) } else { raceCacheOther = (key, race) }
         return race
     }
 
@@ -429,23 +605,30 @@ extension AppModel {
         let have = Set(w.days.map(\.d))
         var add: [PDay] = []
         for t in race.open..<race.last where !have.contains(race.dates[t]) {
-            add.append(PDay(d: race.dates[t], r: (0..<3).map { (race.r[$0][t] * 1e5).rounded() / 1e5 }, who: w.who))
+            add.append(PDay(d: race.dates[t], r: (0..<3).map { (race.r[$0][t] * 1e5).rounded() / 1e5 }, who: w.who, v: Parallel.rulesVersion))
         }
+        if w.ver != Parallel.rulesVersion { w.ver = Parallel.rulesVersion; if add.isEmpty { pworld = w; return } }
         guard !add.isEmpty else { return }
         w.days = (w.days + add).sorted { $0.d < $1.d }
         if w.days.count > 1200 { w.days.removeFirst(w.days.count - 1200) }
         pworld = w
     }
-    /// 그래프·순위에 쓰는 수익률: 본선에 남긴 날은 남긴 값 (같은 인물일 때), 나머지는 계산값
+    /// 그래프·순위에 쓰는 수익률: 본선에 남긴 날은 남긴 값 (같은 인물일 때), 나머지는 계산값.
+    /// 인물 세계는 마지막으로 남긴 날 값에서 계산값의 하루하루 변화를 이어 붙인다 (규칙 판이 바뀌어도 지난 기록을 덮지 않고 그날부터 새 규칙으로)
     func parallelSeries(_ race: PRace) -> [[Double]] {
         guard let w = pworldShown, !w.days.isEmpty else { return race.r }
         var byDay: [String: PDay] = [:]
         for x in w.days { byDay[x.d] = x }
         var r = race.r
+        var lastChar = -1
         for t in race.dates.indices {
             guard let x = byDay[race.dates[t]], x.r.count == 3 else { continue }
             r[0][t] = x.r[0]; r[1][t] = x.r[1]
-            if x.who == w.who { r[2][t] = x.r[2] }
+            if x.who == w.who { r[2][t] = x.r[2]; lastChar = t }
+        }
+        if lastChar >= 0 && lastChar < race.last {
+            let base = 1 + r[2][lastChar], from = 1 + race.r[2][lastChar]
+            if from > 0 { for t in (lastChar + 1)...race.last { r[2][t] = base * (1 + race.r[2][t]) / from - 1 } }
         }
         return r
     }
@@ -467,6 +650,15 @@ extension AppModel {
         guard var p = pworld, canPickWho, id != p.who else { return }
         p.who = id; p.whoPick = ISO8601DateFormatter().string(from: Date())
         pworld = p
+    }
+    /// 마이너스족은 본전까지 남은 거리, 장투족은 목표까지 온 거리 (평행 세계 카드·인물 자세히 보기)
+    func parallelDistance(_ amount: Double) -> String {
+        if isGoal {
+            let k = gK * 1e4
+            return "목표 \(AppModel.wonK(gK))까지 \(AppModel.pct(min(1, amount / max(1, k)))) 왔어요"
+        }
+        let need = cost / max(1, amount) - 1
+        return need > 0 ? "본전까지 +\(String(format: "%.1f", need * 100))% 남음" : "본전을 넘었어요"
     }
     /// 홈 한 줄: 오늘 앞선 나
     var parallelLeader: String? {
