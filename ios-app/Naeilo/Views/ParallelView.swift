@@ -102,8 +102,9 @@ struct ParallelView: View {
                             .stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
                     }
                     ForEach(0..<3, id: \.self) { k in
-                        RaceLine(pts: pts[k], from: 0, progress: prog).stroke(ParallelUI.colors[k].opacity(0.35), lineWidth: 2)
-                        RaceLine(pts: pts[k], from: openX, progress: prog).stroke(ParallelUI.colors[k], lineWidth: 2.5)
+                        // 인물 세계는 규칙이 움직이기 전까지 진짜 나와 같은 길이라 점선으로 위에 그린다 (밑의 진짜 나가 보이게)
+                        RaceLine(pts: pts[k], from: 0, progress: prog).stroke(ParallelUI.colors[k].opacity(0.55), style: Self.lineStyle(k, 2))
+                        RaceLine(pts: pts[k], from: openX, progress: prog).stroke(ParallelUI.colors[k], style: Self.lineStyle(k, 2.5))
                     }
                 }
             }
@@ -117,7 +118,8 @@ struct ParallelView: View {
             HStack(spacing: 12) {
                 ForEach(0..<3, id: \.self) { k in
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(ParallelUI.colors[k]).frame(width: 14, height: 4)
+                        Path { p in p.move(to: CGPoint(x: 0, y: 2)); p.addLine(to: CGPoint(x: 16, y: 2)) }
+                            .stroke(ParallelUI.colors[k], style: Self.lineStyle(k, 3)).frame(width: 16, height: 4)
                         Text(k == 2 ? "인물 세계" : Parallel.names[k]).appFont(11).foregroundStyle(Theme.sub)
                     }
                 }
@@ -196,6 +198,10 @@ struct ParallelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.mintBg, in: UnevenRoundedRectangle(topLeadingRadius: 4, bottomLeadingRadius: 14, bottomTrailingRadius: 14, topTrailingRadius: 14))
                 .fixedSize(horizontal: false, vertical: true)
+            if Self.sameRoad(race) {
+                Text("아직 규칙이 움직일 때가 오지 않아 진짜 나와 같은 길을 가고 있어요. 그래프에서는 점선이 진짜 나 위에 겹쳐 있어요.")
+                    .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            }
             if w.who == "sua" && race.contrib > 0 {
                 Text("매달 \(AppModel.wonK(m.gM))씩 넣은 \(AppModel.eok(race.contrib))까지 넣은 돈으로 쳐서 셌어요.").appFont(12).foregroundStyle(Theme.sub)
             }
@@ -245,6 +251,20 @@ struct ParallelView: View {
                 }
             }
         }
+    }
+
+    /// 인물 세계가 지금까지 진짜 나와 같은 길인지 (규칙이 한 번도 움직이지 않음)
+    static func sameRoad(_ race: PRace) -> Bool {
+        var d = 0.0
+        for t in race.dates.indices { d = max(d, abs(race.r[0][t] - race.r[2][t])) }
+        return d < 0.0005
+    }
+
+    /// 진짜 나는 굵게, 인물 세계는 점선 (두 줄이 겹쳐도 둘 다 보이게)
+    static func lineStyle(_ k: Int, _ w: CGFloat) -> StrokeStyle {
+        k == 0 ? StrokeStyle(lineWidth: w + 1.5, lineCap: .round, lineJoin: .round)
+            : k == 2 ? StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round, dash: [5, 4])
+            : StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round)
     }
 
     /// 그래프 점 (x 0~1 날짜 순서, y 0~1 위가 높은 수익률)
