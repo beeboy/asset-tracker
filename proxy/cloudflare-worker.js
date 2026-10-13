@@ -65,7 +65,7 @@ export default {
       return out({ error: "모르는 주소" }, 404);
     }
     if (u.pathname === "/mar") { const m = await mar(), r = out(m || { error: "매매기준율을 받지 못했습니다" }, 200); if (m) r.headers.set("Cache-Control", "public, max-age=600"); return r; } // 받은 값은 브라우저도 10분 기억
-    if (u.pathname === "/collect") return out({ secret: !!env.GH_DISPATCH, last: env.VIEWS ? JSON.parse((await env.VIEWS.get("collect:last")) || "null") : "VIEWS 없음", cron: env.VIEWS ? JSON.parse((await env.VIEWS.get("cron:last")) || "null") : null }); // 시세 수집 깨우기 확인 (10번)
+    if (u.pathname === "/collect") return out({ secret: !!env.GH_DISPATCH, last: env.VIEWS ? JSON.parse((await env.VIEWS.get("collect:last")) || "null") : "VIEWS 없음", crons: env.VIEWS ? JSON.parse((await env.VIEWS.get("cron:log")) || "[]") : null }); // 시세 수집 깨우기 확인 (10번)
     if (u.pathname === "/cu") return claudeUsage(env, out).catch((e) => out({ error: "사용량 오류: " + (e?.message || e) }, 502));
     if (u.pathname === "/sync") {
       // GET /sync → { state, at },  POST /sync {"state","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
@@ -221,12 +221,13 @@ export default {
     if (!r) return out({ error: "Yahoo 에 연결하지 못했습니다" }, 502);
     return new Response(r.body, { status: r.status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "max-age=60" } });
   },
-  // Cron Trigger: 모든 cron 이 시세 수집을 깨우고 (10번), 알림 cron 만 구독마다 하루 변동·실적 하루 전을 검사한다
+  // Cron Trigger (15분): 시세 수집을 깨우고 (10번), 미국 장중 30분마다 구독마다 하루 변동·실적 하루 전을 검사한다
   async scheduled(event, env, ctx) {
-    if (env.VIEWS) ctx.waitUntil(env.VIEWS.put("cron:last", JSON.stringify({ cron: event.cron, at: new Date().toISOString() }))); // /collect 에서 실제 cron 식 확인
-    // 수집 깨우기는 어떤 cron 이 불려도 한다 (15분 cron 이 안 불리는 일이 있었다). 같은 10분 안에 두 번은 깨우지 않는다
-    ctx.waitUntil(wakeCollect(env));
-    if (event.cron !== ALERT_CRON) return; // 알림 검사는 미국 장중 cron 에서만
+    const now = new Date(), log = { cron: event.cron, at: now.toISOString() };
+    ctx.waitUntil(wakeCollect(env, log)); // 수집 깨우기 (시간 판단은 wakeCollect 안에서)
+    // cron 은 15분 하나뿐이라 (여러 개 두면 알림 cron 만 불렸다) 알림 검사는 평일 UTC 13~22시의 :00, :30 에만
+    const wd = now.getUTCDay(), h = now.getUTCHours();
+    if (!(wd >= 1 && wd <= 5 && h >= 13 && h <= 22 && now.getUTCMinutes() % 30 < 10)) return;
     if (!env.VIEWS) return;
     const q = await fetch(env.SITE_QUOTES || "https://naeilo.com/data/quotes.json", { cf: { cacheTtl: 60, cacheEverything: true }, signal: AbortSignal.timeout(10000) }).then((r) => r.json()).catch(() => null);
     const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10), tmr = new Date(kst.getTime() + 86400e3).toISOString().slice(0, 10);
@@ -254,18 +255,23 @@ export default {
 };
 
 // 10) 시세 수집 깨우기: GitHub 예약 실행은 밀리거나 빠질 때가 많아서, 이 중계의 Cron 이 collect 작업을 직접 실행시킨다.
-//       cron 은 proxy/wrangler.toml (알림 cron 외에 수집 시간 cron 두 개). 비밀값 GH_DISPATCH =
+//       cron 은 proxy/wrangler.toml 의 15분 하나. 비밀값 GH_DISPATCH =
 //       GitHub fine-grained 토큰 (이 저장소만, Actions: Read and write). 수집 시간은 collect.yml 예약과 같다 (평일 UTC 8~23시 + 다음날 0시대).
-//       배포 버튼(Actions worker)을 쓰면 proxy/wrangler.toml 의 cron 이 그대로 들어간다. 수집은 어떤 cron 에서도 깨운다
-const ALERT_CRON = "*/30 13-22 * * 1-5";
-//       잘 되는지는 /collect 로 확인: last 가 없으면 cron 이 안 돈다, status 가 204 가 아니면 토큰 문제
-async function wakeCollect(env) {
+//       배포 버튼(Actions worker)을 쓰면 proxy/wrangler.toml 의 cron 이 그대로 들어간다
+//       잘 되는지는 /collect 로 확인: cron 기록(최근 12번)이 없으면 cron 이 안 돈다, status 가 204 가 아니면 토큰 문제.
+//       collect.yml 도 실행할 때마다 /collect 를 로그에 찍어서 GitHub 기록만 보고 확인할 수 있다
+async function wakeCollect(env, log) {
   const d = new Date(), wd = d.getUTCDay(), h = d.getUTCHours();
-  const note = (v) => env.VIEWS && env.VIEWS.put("collect:last", JSON.stringify({ at: d.toISOString(), ...v }));
+  const note = async (v) => {
+    if (!env.VIEWS) return;
+    if (v.status || v.error) await env.VIEWS.put("collect:last", JSON.stringify({ at: d.toISOString(), ...v }));
+    const past = JSON.parse((await env.VIEWS.get("cron:log")) || "[]");
+    await env.VIEWS.put("cron:log", JSON.stringify([{ ...log, ...v }, ...past].slice(0, 12)));
+  };
   if (!env.GH_DISPATCH) return note({ error: "비밀값 GH_DISPATCH 없음" });
-  if (!((wd >= 1 && wd <= 5 && h >= 8) || (wd >= 2 && wd <= 6 && h === 0 && d.getUTCMinutes() < 30))) return;
+  if (!((wd >= 1 && wd <= 5 && h >= 8) || (wd >= 2 && wd <= 6 && h === 0 && d.getUTCMinutes() < 30))) return note({ skip: "수집 시간 아님" });
   const prev = env.VIEWS && JSON.parse((await env.VIEWS.get("collect:last")) || "null");
-  if (prev && prev.status && d - new Date(prev.at) < 10 * 60e3) return;
+  if (prev && prev.status && d - new Date(prev.at) < 10 * 60e3) return note({ skip: "10분 안 중복" });
   const r = await fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}/actions/workflows/collect.yml/dispatches`, {
     method: "POST", body: JSON.stringify({ ref: "main" }), signal: AbortSignal.timeout(10000),
     headers: { Authorization: "Bearer " + env.GH_DISPATCH.trim(), Accept: "application/vnd.github+json", "User-Agent": "naeilo-worker", "Content-Type": "application/json" },
