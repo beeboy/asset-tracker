@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // 위젯 그림 (시안 /mnt/project-files/designs/claude-usage-widget src-home.html · src-lock.html).
 // 앱 화면의 미리보기도 같은 뷰를 쓴다. 크기는 시안의 170pt 작은 위젯 기준 값을 폭에 맞춰 늘이고 줄인다.
@@ -15,6 +16,9 @@ struct BlockView: View {
     let u: Usage
     let c: UChar
     let now: Date
+    /// 투명·틴트 홈 화면: 시스템이 색을 지우고 한 색으로 칠한다 (naeilo 인물 위젯과 같은 처리, ios-app/Widgets/CharWidgets.swift)
+    @Environment(\.widgetRenderingMode) private var mode
+    private var tinted: Bool { mode == .accented }
 
     var body: some View {
         GeometryReader { g in
@@ -48,14 +52,17 @@ struct BlockView: View {
             .lineSpacing(0)
             .lineLimit(2)
             .minimumScaleFactor(0.8)
-            .foregroundStyle(Color(hex: 0x1b1d27))
+            // 흰 말풍선은 투명·틴트에서 글자까지 한 색 덩어리가 되니, 그때는 옅은 말풍선에 밝은 글자 (naeilo 말풍선과 같음)
+            .foregroundStyle(tinted ? Color.white : Color(hex: 0x1b1d27))
             .padding(.vertical, 5 * s).padding(.horizontal, 8 * s)
             .frame(width: width, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 9 * s).fill(.white))
+            .background(RoundedRectangle(cornerRadius: 9 * s).fill(bubbleFill))
             .overlay(alignment: .bottomTrailing) {
-                Tail().fill(.white).frame(width: 10 * s, height: 5 * s).offset(x: -30 * s, y: 5 * s)
+                Tail().fill(bubbleFill).frame(width: 10 * s, height: 5 * s).offset(x: -30 * s, y: 5 * s)
             }
     }
+
+    private var bubbleFill: Color { tinted ? .white.opacity(0.14) : .white }
 
     private func grid(cell: CGFloat, gap: CGFloat, ac: Color) -> some View {
         let n = Int((Double(u.p5) / 2).rounded()), locked = u.weekFull, hot = u.p5 >= 90
@@ -75,7 +82,12 @@ struct BlockView: View {
 
     @ViewBuilder private func sprite(_ s: CGFloat) -> some View {
         if let img = c.sprite {
-            Image(uiImage: img).interpolation(.none).resizable().scaledToFit()
+            Group {
+                // 투명·틴트: 그대로 두면 시스템이 그림 전체를 한 색(흰색)으로 칠한다. 원래 색 그대로 둔다
+                if tinted, #available(iOS 18, *) { Image(uiImage: img).interpolation(.none).resizable().widgetAccentedRenderingMode(.fullColor) }
+                else { Image(uiImage: img).interpolation(.none).resizable() }
+            }
+            .scaledToFit()
                 .frame(height: 62 * s)
                 .padding(.horizontal, -4 * s)
                 .offset(y: 10 * s)
