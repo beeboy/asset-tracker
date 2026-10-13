@@ -122,7 +122,7 @@ enum StockCatalog {
         .init(id: "SOXL", yahoo: "SOXL", name: "SOXL", alias: "SOXL 반도체 3배", en: "Direxion Daily Semiconductor Bull 3X Shares", market: "미국 ETF", currency: .usd),
         .init(id: "SOXX", yahoo: "SOXX", name: "SOXX", alias: "SOXX 반도체 ETF", en: "iShares Semiconductor ETF", market: "미국 ETF", currency: .usd),
         .init(id: "JEPI", yahoo: "JEPI", name: "JEPI", alias: "JEPI 커버드콜", en: "JPMorgan Equity Premium Income ETF", market: "미국 ETF", currency: .usd),
-        .init(id: "GPCR", yahoo: "GPCR", name: "스트럭쳐 테라퓨틱스", alias: "스트럭처 테라퓨틱스 ARD", en: "Structure Therapeutics Inc.", market: "미국 주식", currency: .usd),
+        .init(id: "GPCR", yahoo: "GPCR", name: "스트럭쳐 테라퓨틱스", alias: "스트럭처 테라퓨틱스 ADR", en: "Structure Therapeutics Inc.", market: "미국 주식", currency: .usd),
         // 내부 테스트 시세 종목 (KoreaEstimate.liveIds)
         .init(id: "010170", yahoo: "010170.KQ", name: "대한광통신", alias: "대한광통신", en: "Taihan Fiberoptics Co., Ltd.", market: "코스닥", currency: .krw),
         .init(id: "073490", yahoo: "073490.KQ", name: "LIG아큐버", alias: "LIG아큐버 이노와이어리스", en: "LIG Accuver Co., Ltd.", market: "코스닥", currency: .krw),
