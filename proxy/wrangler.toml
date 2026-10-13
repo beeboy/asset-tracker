@@ -1,0 +1,12 @@
+# Worker 배포 설정 (.github/workflows/worker.yml 가 버튼으로 배포할 때 쓴다). 비밀값은 여기 두지 않는다 (Cloudflare 에 그대로 남는다)
+name = "asset-ai"
+main = "cloudflare-worker.js"
+compatibility_date = "2025-01-01"
+keep_vars = true   # 대시보드에서 넣은 일반 변수(REPO 등)를 지우지 않는다
+
+[[kv_namespaces]]
+binding = "VIEWS"
+id = "__KV_VIEWS_ID__"   # 배포할 때 GitHub 저장소 변수 CF_KV_VIEWS_ID 로 바꾼다
+
+[triggers]
+crons = ["*/15 * * * *", "*/30 13-22 * * 1-5"]   # 시세 수집 깨우기, 알림 검사

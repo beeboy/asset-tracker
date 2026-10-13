@@ -1,0 +1,30 @@
+name: worker
+# Cloudflare Worker(asset-ai) 배포. 자동으로 돌지 않고, Actions 에서 "Run workflow" 를 눌러야 배포한다.
+# 처음 한 번: 저장소 Settings → Secrets and variables → Actions 에
+#   Secrets: CLOUDFLARE_API_TOKEN (Cloudflare 토큰, 템플릿 "Edit Cloudflare Workers", 이 계정만)
+#   Variables: CF_ACCOUNT_ID (Cloudflare 계정 ID), CF_KV_VIEWS_ID (VIEWS KV 의 Namespace ID)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: worker
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: KV ID 넣기
+        env:
+          KV: ${{ vars.CF_KV_VIEWS_ID }}
+        run: |
+          test -n "$KV" || { echo "저장소 변수 CF_KV_VIEWS_ID 가 없습니다"; exit 1; }
+          sed -i "s/__KV_VIEWS_ID__/$KV/" proxy/wrangler.toml
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CF_ACCOUNT_ID }}
+          workingDirectory: proxy
+          command: deploy
