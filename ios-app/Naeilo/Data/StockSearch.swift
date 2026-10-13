@@ -65,8 +65,25 @@ enum KoreaEstimate {
         get { UserDefaults.standard.bool(forKey: "krDirect") }
         set { UserDefaults.standard.set(newValue, forKey: "krDirect") }
     }
-    static func allowed(_ h: StockHit) -> Bool { h.currency == .usd || info(id: h.id, name: h.name, en: h.en).proxy != nil }
-    static func tag(_ h: StockHit) -> String { h.currency == .usd ? "" : " · 미국 지수로 추정" }
+    /// 내부 테스트용 국내 자동 시세 (시세 기준 화면의 숨은 스위치). 켜면 아래 종목만 Yahoo 전일 종가를 받는다 (출시 전에 끈다)
+    static var live: Bool {
+        get { UserDefaults.standard.bool(forKey: "krLive") }
+        set { UserDefaults.standard.set(newValue, forKey: "krLive") }
+    }
+    /// 테스트 시세를 받는 종목 (6자리 코드)
+    static let liveIds: Set<String> = ["010170", "073490", "081180", "001440", "298380"]   // 대한광통신·LIG아큐버·쎄크·대한전선·에이비엘바이오
+    static let liveMax = 5
+    /// 스위치는 TestFlight·Xcode 빌드에서만 보이고 켜진다 (App Store 판에서는 늘 꺼짐)
+    static let testBuild: Bool = {
+        #if DEBUG
+        return true
+        #else
+        return Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+        #endif
+    }()
+    static func liveOK(_ id: String) -> Bool { testBuild && live && id != sumId && (liveIds.isEmpty || liveIds.contains(id)) }
+    static func allowed(_ h: StockHit) -> Bool { h.currency == .usd || liveOK(h.id) || info(id: h.id, name: h.name, en: h.en).proxy != nil }
+    static func tag(_ h: StockHit) -> String { h.currency == .usd ? "" : liveOK(h.id) ? " · 테스트 시세" : " · 미국 지수로 추정" }
     /// 내 한국 종목이 쓰는 사이트 티커 (SPY·EWY 등)
     static func baseKeys(_ held: Set<String>) -> Set<String> {
         Set(CustomSymbols.shared.items.filter { held.contains($0.id) && !$0.usd }.map { info(id: $0.id, name: $0.name).base })
@@ -93,6 +110,7 @@ enum KoreaEstimate {
     /// 종목 화면 설명
     static func note(_ s: CustomSymbols.Saved) -> String {
         let i = info(id: s.id, name: s.name), at = s.kd ?? ""
+        if CustomSymbols.shared.isLive(s.id) { return "내부 테스트용 Yahoo 전일 종가예요. 스위치를 끄면 \(at) 종가에서 \(i.base) × 원/달러 움직임으로 이어 가요." }
         guard let p = s.kp else { return "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 계산해요." }
         let won = Int(p.rounded()).formatted() + "원"
         if s.id == sumId { return "\(at)에 넣은 \(won) · 전망은 EWY×원/달러" }
@@ -158,6 +176,7 @@ final class CustomSymbols {
         let id: String, yahoo: String, name: String, market: String, usd: Bool
         var prev: Double, last: Double, at: Date
         var kp: Double? = nil, kd: String? = nil     // 한국 종목: 사용자가 넣은 가격(원)과 그날
+        var lv: Bool? = nil                          // 한국 종목: 테스트 시세를 받아 둔 종목 (KoreaEstimate.live)
     }
     struct Hist: Codable { let dates: [String]; let closes: [Double] }
 
@@ -180,7 +199,7 @@ final class CustomSymbols {
         if let d = try? Data(contentsOf: Self.file), let disk = try? JSONDecoder().decode(Disk.self, from: d) {
             items = disk.items; hist = disk.hist
             // 한국 종목은 시세를 받지 않는다: 예전에 Yahoo 에서 받아 둔 종가는 버리고, 넣은 가격으로 다시 만든다 (rebuildKR)
-            for s in items where !s.usd { hist[s.id] = nil }
+            for s in items where !s.usd && !(s.lv == true && KoreaEstimate.liveOK(s.id)) { hist[s.id] = nil }
         }
         // 기록 없이 금액 하나만 있던 예전 저장값은 그 금액·날짜를 첫 줄로
         if krLog.isEmpty, let s = items.first(where: { $0.id == KoreaEstimate.sumId }), let p = s.kp, p > 0 { krLog = [.init(d: s.kd ?? Day.today, v: p)] }
@@ -212,6 +231,20 @@ final class CustomSymbols {
     /// 3년 종가를 받아 저장 (추가할 때). 실패하면 이유를 던진다
     @discardableResult
     func fetch(_ h: StockHit) async throws -> Symbol {
+        if h.currency == .krw && KoreaEstimate.liveOK(h.id) {
+            // 내부 테스트: 국내 종목도 Yahoo 3년 종가를 받는다. 넣은 가격 칸에는 마지막 종가를 넣어 두어 스위치를 꺼도 이어진다
+            let (q, hs) = try await Self.chart(h.yahoo, range: "3y")
+            let pc = hs.closes.count > 1 ? hs.closes[hs.closes.count - 2] : q.prev   // 전일 대비: 그 전 거래일 종가
+            var s = Saved(id: h.id, yahoo: h.yahoo, name: h.name, market: h.market, usd: false, prev: pc, last: q.last, at: Date())
+            s.kp = q.last; s.kd = hs.dates.last; s.lv = true
+            await MainActor.run {
+                items.removeAll { $0.id == h.id }
+                items.append(s)
+                hist[h.id] = hs
+                save()
+            }
+            return symbol(s)
+        }
         if h.currency == .krw {
             // 한국 종목: 받지 않는다. 넣은 가격이 있으면 그 값으로 계산
             return await MainActor.run {
@@ -239,11 +272,16 @@ final class CustomSymbols {
     func refresh(held: Set<String>, force: Bool = false) async {
         guard force || Date().timeIntervalSince(refreshedAt) > 300 else { return }
         refreshedAt = Date()
-        for s in items where held.contains(s.id) && s.usd {
+        for s in items where held.contains(s.id) && !s.usd && s.lv != true && KoreaEstimate.liveOK(s.id) {
+            // 스위치를 켜기 전에 넣은 국내 종목: 3년 종가를 처음 받는다
+            _ = try? await fetch(StockHit(id: s.id, yahoo: s.yahoo, name: s.name, market: s.market, currency: .krw))
+        }
+        for s in items where held.contains(s.id) && (s.usd || isLive(s.id)) {
             guard let (q, recent) = try? await Self.chart(s.yahoo, range: "5d") else { continue }
             await MainActor.run {
                 guard let i = items.firstIndex(where: { $0.id == s.id }) else { return }
                 items[i].prev = q.prev; items[i].last = q.last; items[i].at = Date()
+                if !s.usd { items[i].kp = q.last; items[i].kd = recent.dates.last ?? items[i].kd }
                 // 3년 종가 끝에 새 날을 이어 붙인다
                 if var h = hist[s.id], let lastDay = h.dates.last {
                     var d = h.dates, c = h.closes
@@ -251,6 +289,7 @@ final class CustomSymbols {
                     if let ld = recent.dates.last, ld == lastDay, let lv = recent.closes.last { c[c.count - 1] = lv }
                     h = Hist(dates: d, closes: c); hist[s.id] = h
                 }
+                if !s.usd, let c = hist[s.id]?.closes, c.count > 1 { items[i].prev = c[c.count - 2] }
             }
         }
         await MainActor.run { rebuildKR(); save() }   // 종목마다 전체를 다시 쓰지 않고 끝에 한 번만 저장
@@ -259,12 +298,14 @@ final class CustomSymbols {
     /// 한국 종목 가격 넣기 (date 없으면 오늘)
     @MainActor
     func setPrice(_ id: String, _ price: Double, date: String? = nil) {
-        guard price > 0, let i = items.firstIndex(where: { $0.id == id }) else { return }
+        guard price > 0, let i = items.firstIndex(where: { $0.id == id }), !isLive(id) else { return }
         if id == KoreaEstimate.sumId { setKoreaSum(price, date: date ?? Day.today); return }
         items[i].kp = price; items[i].kd = date ?? Day.today
         rebuildKR(); save()
     }
     func saved(_ id: String) -> Saved? { items.first { $0.id == id } }
+    /// 테스트 시세를 받는 국내 종목인가 (스위치를 끄면 다시 넣은 가격 방식)
+    func isLive(_ id: String) -> Bool { saved(id)?.lv == true && KoreaEstimate.liveOK(id) }
     /// 한국 종목에 넣은 가격이 바뀌면 바뀌는 값 (기기 동기화가 이것도 보낸다)
     var krStamp: String { items.filter { !$0.usd }.map { "\($0.id)=\($0.kp ?? 0)@\($0.kd ?? "")" }.joined(separator: ",") + "|kr\(krLog.count)=\(krLog.last?.v ?? 0)@\(krLog.last?.d ?? "")" }
     /// 국내 주식 합계 금액 넣기 (날짜별 기록에 남긴다. 0 = 다 팔았어요, 지난 기록은 그대로)
@@ -294,6 +335,7 @@ final class CustomSymbols {
     func rebuildKR() {
         for i in items.indices where !items[i].usd {
             let s = items[i]
+            if s.lv == true && KoreaEstimate.liveOK(s.id) { continue }   // 테스트 시세: 받은 종가 그대로
             if s.id == KoreaEstimate.sumId {
                 // 국내 주식 합계: 첫 기록 날부터 원/달러 거래일마다 그날까지 마지막 금액 (웹 krSynth 와 같다). 지금 값은 기록의 오늘 값
                 let L = krLog, fx = Market.shared.prices?.h["KRW=X"]?.dates ?? []
