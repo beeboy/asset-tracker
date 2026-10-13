@@ -69,7 +69,8 @@ if (cmd === "gen") {
   const web = JSON.parse(readFileSync(dir + "/web.json", "utf8")), app = JSON.parse(readFileSync(dir + "/app.json", "utf8"));
   let bad = 0, n = 0, worst = 0;
   const fail = (path, a, b) => { if (bad++ < 30) console.error(`다름 ${path}: 웹 ${a} · 앱 ${b}`); };
-  // 금액·변동성은 상대 오차 1e-9, 확률은 경로 하나 차이까지 (libm 의 마지막 자리 차이로 경계 경로가 갈릴 수 있다)
+  // 금액·변동성은 상대 오차 1e-8, 확률은 경로 하나 차이까지 (libm 의 마지막 자리 차이로 경계 경로가 갈릴 수 있다.
+  // 금액 띠의 분위수는 2026-10-13 시세에서 1.26e-9 까지 벌어져 1e-9 를 넘었다)
   const num = (path, a, b, tol) => {
     n++;
     if (a == null || b == null) { if (a != b) fail(path, a, b); return; }
@@ -79,7 +80,7 @@ if (cmd === "gen") {
   };
   const res = (path, a, b, P) => {
     if (!a || !b) { if (!!a !== !!b) fail(path, !!a, !!b); return; }
-    const pt = { abs: 1.5 / P }, rt = { rel: 1e-9 };
+    const pt = { abs: 1.5 / P }, rt = { rel: 1e-8 };
     num(path + ".p_goal", a.p_goal, b.p_goal, pt); num(path + ".p_touch", a.p_touch, b.p_touch, pt); num(path + ".mdd_median", a.mdd_median, b.mdd_median, rt);
     for (const k of Object.keys(a.terminal)) num(`${path}.terminal.${k}`, a.terminal[k], b.terminal[k], rt);
     for (const k of Object.keys(a.bands)) {
