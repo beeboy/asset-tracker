@@ -224,7 +224,9 @@ export default {
   // 30분마다 (Cron Trigger): 구독마다 하루 변동·실적 하루 전 검사. 15분 cron 은 시세 수집 깨우기만 한다 (10번)
   async scheduled(event, env, ctx) {
     if (env.VIEWS) ctx.waitUntil(env.VIEWS.put("cron:last", JSON.stringify({ cron: event.cron, at: new Date().toISOString() }))); // /collect 에서 실제 cron 식 확인
-    if (isCollectCron(event.cron)) return wakeCollect(env);
+    // 수집 깨우기는 어떤 cron 이 불려도 한다 (15분 cron 이 안 불리는 일이 있었다). 같은 10분 안에 두 번은 깨우지 않는다
+    ctx.waitUntil(wakeCollect(env));
+    if (isCollectCron(event.cron)) return;
     if (!env.VIEWS) return;
     const q = await fetch(env.SITE_QUOTES || "https://naeilo.com/data/quotes.json", { cf: { cacheTtl: 60, cacheEverything: true }, signal: AbortSignal.timeout(10000) }).then((r) => r.json()).catch(() => null);
     const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10), tmr = new Date(kst.getTime() + 86400e3).toISOString().slice(0, 10);
@@ -262,6 +264,8 @@ async function wakeCollect(env) {
   const note = (v) => env.VIEWS && env.VIEWS.put("collect:last", JSON.stringify({ at: d.toISOString(), ...v }));
   if (!env.GH_DISPATCH) return note({ error: "비밀값 GH_DISPATCH 없음" });
   if (!((wd >= 1 && wd <= 5 && h >= 8) || (wd >= 2 && wd <= 6 && h === 0 && d.getUTCMinutes() < 30))) return;
+  const prev = env.VIEWS && JSON.parse((await env.VIEWS.get("collect:last")) || "null");
+  if (prev && prev.status && d - new Date(prev.at) < 10 * 60e3) return;
   const r = await fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}/actions/workflows/collect.yml/dispatches`, {
     method: "POST", body: JSON.stringify({ ref: "main" }), signal: AbortSignal.timeout(10000),
     headers: { Authorization: "Bearer " + env.GH_DISPATCH.trim(), Accept: "application/vnd.github+json", "User-Agent": "naeilo-worker", "Content-Type": "application/json" },
