@@ -28,6 +28,9 @@ jobs:
         env:
           ADD: ${{ github.event.inputs.add_tickers }}
         run: python server.py --collect --add "$ADD"
+      - name: 깨우기 기록 (Worker /collect)
+        continue-on-error: true
+        run: curl -sS --max-time 10 https://asset-ai.drinker.workers.dev/collect || true
       - name: 커밋
         run: |
           git config user.name "github-actions[bot]"
