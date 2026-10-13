@@ -7,11 +7,11 @@
   "regular_time": 1791921600,
   "prev_close": 226.32,
   "pre": 224.32,
-  "post": 229.2545,
-  "last": 229.2545,
-  "last_time": 1791925274,
+  "post": 229.19,
+  "last": 229.19,
+  "last_time": 1791927023,
   "last_session": "post",
-  "fetched": 1791925281
+  "fetched": 1791927026
  },
  "SGOV": {
   "symbol": "SGOV",
@@ -23,9 +23,9 @@
   "pre": 100.5285,
   "post": 100.53,
   "last": 100.53,
-  "last_time": 1791925139,
+  "last_time": 1791926952,
   "last_session": "post",
-  "fetched": 1791925282
+  "fetched": 1791927026
  },
  "SPCX": {
   "symbol": "SPCX",
@@ -35,11 +35,11 @@
   "regular_time": 1791921600,
   "prev_close": 163.42,
   "pre": 161.94,
-  "post": 156.8501,
-  "last": 156.8501,
-  "last_time": 1791925276,
+  "post": 156.9795,
+  "last": 156.9795,
+  "last_time": 1791927009,
   "last_session": "post",
-  "fetched": 1791925282
+  "fetched": 1791927026
  },
  "TSLA": {
   "symbol": "TSLA",
@@ -49,25 +49,25 @@
   "regular_time": 1791921600,
   "prev_close": 378.03,
   "pre": 372.37,
-  "post": 374.71,
-  "last": 374.71,
-  "last_time": 1791925257,
+  "post": 374.5,
+  "last": 374.5,
+  "last_time": 1791926914,
   "last_session": "post",
-  "fetched": 1791925281
+  "fetched": 1791927025
  },
  "KRW=X": {
   "symbol": "KRW=X",
   "currency": "KRW",
   "name": "USD/KRW",
-  "regular": 1340.31,
-  "regular_time": 1791925275,
+  "regular": 1340.13,
+  "regular_time": 1791926661,
   "prev_close": 1334.16,
   "pre": null,
   "post": null,
-  "last": 1340.3101,
-  "last_time": 1791925275,
+  "last": 1340.13,
+  "last_time": 1791926661,
   "last_session": "regular",
-  "fetched": 1791925287
+  "fetched": 1791927030
  },
  "QQQ": {
   "symbol": "QQQ",
@@ -77,11 +77,11 @@
   "regular_time": 1791921600,
   "prev_close": 746.04,
   "pre": 739.58,
-  "post": 743.45,
-  "last": 743.45,
-  "last_time": 1791925196,
+  "post": 743.6482,
+  "last": 743.6482,
+  "last_time": 1791926953,
   "last_session": "post",
-  "fetched": 1791925283
+  "fetched": 1791927027
  },
  "SPY": {
   "symbol": "SPY",
@@ -91,11 +91,11 @@
   "regular_time": 1791921600,
   "prev_close": 778.1,
   "pre": 777.4,
-  "post": 778.0685,
-  "last": 778.0685,
-  "last_time": 1791925098,
+  "post": 778.07,
+  "last": 778.07,
+  "last_time": 1791926907,
   "last_session": "post",
-  "fetched": 1791925284
+  "fetched": 1791927027
  },
  "^TNX": {
   "symbol": "^TNX",
@@ -109,35 +109,35 @@
   "last": 5.217,
   "last_time": 1791917940,
   "last_session": "regular",
-  "fetched": 1791925287
+  "fetched": 1791927031
  },
  "CL=F": {
   "symbol": "CL=F",
   "currency": "USD",
   "name": "Crude Oil Nov 26",
-  "regular": 94.86,
-  "regular_time": 1791924677,
+  "regular": 94.79,
+  "regular_time": 1791925195,
   "prev_close": 93.74,
   "pre": null,
   "post": null,
-  "last": 94.86,
-  "last_time": 1791924677,
+  "last": 94.79,
+  "last_time": 1791925195,
   "last_session": "regular",
-  "fetched": 1791925288
+  "fetched": 1791927031
  },
  "GC=F": {
   "symbol": "GC=F",
   "currency": "USD",
   "name": "Gold Dec 26",
-  "regular": 4182.0,
-  "regular_time": 1791924665,
+  "regular": 4184.2,
+  "regular_time": 1791925200,
   "prev_close": 4190.6,
   "pre": null,
   "post": null,
-  "last": 4182.0,
-  "last_time": 1791924665,
+  "last": 4184.2002,
+  "last_time": 1791925200,
   "last_session": "regular",
-  "fetched": 1791925288
+  "fetched": 1791927032
  },
  "DBC": {
   "symbol": "DBC",
@@ -151,7 +151,7 @@
   "last": 33.51,
   "last_time": 1791922869,
   "last_session": "post",
-  "fetched": 1791925288
+  "fetched": 1791927032
  },
  "MANA": {
   "symbol": "MANA",
@@ -165,7 +165,7 @@
   "last": 0.83,
   "last_time": 1791921120,
   "last_session": "regular",
-  "fetched": 1791925284
+  "fetched": 1791927028
  },
  "AAPL": {
   "symbol": "AAPL",
@@ -175,11 +175,11 @@
   "regular_time": 1791921601,
   "prev_close": 340.97,
   "pre": 344.69,
-  "post": 340.5368,
-  "last": 340.5368,
-  "last_time": 1791925258,
+  "post": 340.831,
+  "last": 340.831,
+  "last_time": 1791926990,
   "last_session": "post",
-  "fetched": 1791925284
+  "fetched": 1791927028
  },
  "SMH": {
   "symbol": "SMH",
@@ -189,11 +189,11 @@
   "regular_time": 1791921600,
   "prev_close": 590.99,
   "pre": 578.0,
-  "post": 589.7499,
-  "last": 589.7499,
-  "last_time": 1791925258,
+  "post": 588.12,
+  "last": 588.12,
+  "last_time": 1791926641,
   "last_session": "post",
-  "fetched": 1791925285
+  "fetched": 1791927028
  },
  "GLD": {
   "symbol": "GLD",
@@ -203,11 +203,11 @@
   "regular_time": 1791921600,
   "prev_close": 382.15,
   "pre": 382.84,
-  "post": 381.1477,
-  "last": 381.1477,
-  "last_time": 1791924113,
+  "post": 381.53,
+  "last": 381.53,
+  "last_time": 1791926891,
   "last_session": "post",
-  "fetched": 1791925285
+  "fetched": 1791927028
  },
  "EWY": {
   "symbol": "EWY",
@@ -217,11 +217,11 @@
   "regular_time": 1791921600,
   "prev_close": 170.11,
   "pre": 163.22,
-  "post": 166.48,
-  "last": 166.48,
-  "last_time": 1791924698,
+  "post": 166.61,
+  "last": 166.61,
+  "last_time": 1791926567,
   "last_session": "post",
-  "fetched": 1791925285
+  "fetched": 1791927029
  },
  "SCHD": {
   "symbol": "SCHD",
@@ -233,9 +233,9 @@
   "pre": 33.5191,
   "post": 33.37,
   "last": 33.37,
-  "last_time": 1791925167,
+  "last_time": 1791926852,
   "last_session": "post",
-  "fetched": 1791925286
+  "fetched": 1791927029
  },
  "SOXX": {
   "symbol": "SOXX",
@@ -245,11 +245,11 @@
   "regular_time": 1791921600,
   "prev_close": 544.85,
   "pre": 530.88,
-  "post": 544.95,
-  "last": 544.95,
-  "last_time": 1791925190,
+  "post": 543.9,
+  "last": 543.9,
+  "last_time": 1791926641,
   "last_session": "post",
-  "fetched": 1791925286
+  "fetched": 1791927030
  },
  "VTV": {
   "symbol": "VTV",
@@ -263,7 +263,7 @@
   "last": 220.7,
   "last_time": 1791921879,
   "last_session": "post",
-  "fetched": 1791925289
+  "fetched": 1791927032
  },
  "USMV": {
   "symbol": "USMV",
@@ -277,7 +277,7 @@
   "last": 100.6253,
   "last_time": 1791922010,
   "last_session": "post",
-  "fetched": 1791925289
+  "fetched": 1791927032
  },
  "GPCR": {
   "symbol": "GPCR",
@@ -286,11 +286,11 @@
   "regular": 22.31,
   "regular_time": 1791921601,
   "prev_close": 23.91,
-  "pre": 23.7825,
-  "post": 22.3989,
-  "last": 22.3989,
-  "last_time": 1791925210,
+  "pre": 23.8507,
+  "post": 22.3907,
+  "last": 22.3907,
+  "last_time": 1791925847,
   "last_session": "post",
-  "fetched": 1791925287
+  "fetched": 1791927030
  }
 }
