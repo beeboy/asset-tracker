@@ -23,6 +23,9 @@
 //       선택 변수: BUNDLE_ID (기본 com.naeilo.widget), NO_SANDBOX=1 (TestFlight 샌드박스 구매를 받지 않음).
 // 9) 판 깨기 순위판 (/scores): 아이폰 앱 게임의 익명 주간 순위. 같은 VIEWS KV, 비밀값 없음.
 //       저장값은 점수·별명(선택, 3글자)·선수 인물 id·날짜뿐. 계정·기기 ID·IP 는 받지도 두지도 않는다. 단계·난이도·주마다 상위 20개, 5주 뒤 지워짐.
+// 11) Claude 사용량 (/cu): 본인용 사용량 위젯 앱(usage-app/)이 15분마다 묻는다. 5시간·주간 한도 사용률(%)과 리셋 시각만 돌려준다.
+//       비밀값 CLAUDE_TOKEN = 맥 터미널에서 `claude setup-token` 으로 받은 토큰 (sk-ant-oat01-…, 1년). 폰에는 토큰을 두지 않는다.
+//       먼저 OAuth 사용량 주소를 묻고, 안 되면 가장 작은 메시지 한 번(1토큰)의 응답 머리글(unified 한도)에서 읽는다. 결과는 5분 기억.
 const ALLOW = /^https:\/\/query[12]\.finance\.yahoo\.com\/(v8\/finance\/chart|v1\/finance\/search)/;
 // 구글이 모델을 바꾸면 차례로 시도한다. 비밀값/변수 GEMINI_MODEL 을 넣으면 그 모델을 먼저 쓴다
 const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
@@ -62,6 +65,7 @@ export default {
       return out({ error: "모르는 주소" }, 404);
     }
     if (u.pathname === "/mar") { const m = await mar(), r = out(m || { error: "매매기준율을 받지 못했습니다" }, 200); if (m) r.headers.set("Cache-Control", "public, max-age=600"); return r; } // 받은 값은 브라우저도 10분 기억
+    if (u.pathname === "/cu") return claudeUsage(env, out).catch((e) => out({ error: "사용량 오류: " + (e?.message || e) }, 502));
     if (u.pathname === "/sync") {
       // GET /sync → { state, at },  POST /sync {"state","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
       if (!env.VIEWS) return noKv();
@@ -536,4 +540,37 @@ function rawSig(d, n) {
     out.set(v, k * n + n - v.length);
   }
   return out;
+}
+
+// 11) Claude 사용량: 공식 공개 API 가 아니라 바뀔 수 있다. 응답 형식 { five: { p, reset }, week: { p, reset }, at, src }
+async function claudeUsage(env, out) {
+  const tok = (env.CLAUDE_TOKEN || "").trim();
+  if (!tok) return out({ error: "중계에 CLAUDE_TOKEN 비밀값이 없어요" }, 400);
+  const key = new Request("https://cu.internal/usage"), cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit) return out(await hit.json());
+  const iso = (v) => { if (v == null || v === "") return null; const n = Number(v); const d = isNaN(n) ? new Date(v) : new Date(n < 1e12 ? n * 1000 : n); return isNaN(d) ? null : d.toISOString().replace(/\.\d{3}Z$/, "Z"); }; // 초 아래는 뺀다 (앱의 ISO 8601 읽기)
+  const auth = { Authorization: "Bearer " + tok, "anthropic-beta": "oauth-2025-04-20", "anthropic-version": "2023-06-01", "User-Agent": "naeilo-usage" };
+  let res = null;
+  // 1) OAuth 사용량 주소 (utilization 은 0~100)
+  const r1 = await fetch("https://api.anthropic.com/api/oauth/usage", { headers: auth, signal: AbortSignal.timeout(10000) }).catch(() => null);
+  if (r1 && r1.ok) {
+    const j = await r1.json().catch(() => null);
+    if (j && j.five_hour && j.seven_day) res = { five: { p: Number(j.five_hour.utilization) || 0, reset: iso(j.five_hour.resets_at) }, week: { p: Number(j.seven_day.utilization) || 0, reset: iso(j.seven_day.resets_at) }, src: "oauth" };
+  }
+  // 2) 가장 작은 메시지 응답의 한도 머리글 (utilization 은 0~1)
+  let why = r1 ? "usage " + r1.status : "usage 연결 실패";
+  if (!res) {
+    const body = JSON.stringify({ model: env.CLAUDE_MODEL || "claude-haiku-4-5", max_tokens: 1, system: "You are Claude Code, Anthropic's official CLI for Claude.", messages: [{ role: "user", content: "." }] });
+    const r2 = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body, signal: AbortSignal.timeout(15000) }).catch(() => null);
+    const h = (k) => r2 && r2.headers.get("anthropic-ratelimit-unified-" + k);
+    if (r2 && h("5h-utilization") != null) {
+      const pc = (v) => { const n = Number(v) || 0; return n <= 1.5 ? n * 100 : n; };
+      res = { five: { p: pc(h("5h-utilization")), reset: iso(h("5h-reset")) }, week: { p: pc(h("7d-utilization")), reset: iso(h("7d-reset")) }, src: "headers" };
+    } else why += ", messages " + (r2 ? r2.status : "연결 실패");
+  }
+  if (!res) return out({ error: "Claude 사용량을 받지 못했어요 (" + why + ")" }, 502);
+  res.at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  await cache.put(key, new Response(JSON.stringify(res), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=300" } }));
+  return out(res);
 }
