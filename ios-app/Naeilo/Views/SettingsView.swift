@@ -109,6 +109,7 @@ struct SettingsView: View {
 struct PriceBasisView: View {
     @Environment(AppModel.self) private var m
     @State private var krDirect = KoreaEstimate.direct
+    @State private var krLive = KoreaEstimate.live
     var body: some View {
         let mk = Market.shared, fx = mk.fx
         ScrollView {
@@ -138,6 +139,18 @@ struct PriceBasisView: View {
                             .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     }
                 }.tint(Theme.teal).padding(.top, 8)
+                if KoreaEstimate.testBuild {
+                    Toggle(isOn: Binding(get: { krLive }, set: { v in
+                        krLive = v; KoreaEstimate.live = v
+                        Task { await Market.shared.pullRefresh(m) }
+                    })) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("내부 테스트: 국내 종목 시세").appFont(15, .bold)
+                            Text("테스트 빌드에서만 보여요. 켜면 대한광통신·LIG아큐버·쎄크·대한전선·에이비엘바이오를 종목으로 넣을 수 있고, Yahoo 전일 종가를 받아요. 전망은 한국 시장 평균(EWY × 원/달러)으로 해요.")
+                                .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }.tint(Theme.teal)
+                }
                 // 시세 업체와 계약하면 그 업체의 출처 표기를 여기에 넣는다 (Tiingo: "Data powered by Tiingo.com")
             }
             .padding(16)

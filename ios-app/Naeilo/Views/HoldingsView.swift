@@ -308,14 +308,14 @@ struct HoldingDetailView: View {
                     VStack(spacing: 0) {
                         kv("보유 수량", h.qty.formatted() + "주")
                         kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv(sym.currency == .krw ? (KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
+                        kv(sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
                         kv(need > 0 ? "본전까지" : "본전 대비", need > 0.0005 ? "+" + String(format: "%.1f", need * 100) + "% 올라야 해요"
                            : need > -0.0005 ? "본전과 같아요" : "본전보다 " + String(format: "%.1f", -need * 100) + "% 위")
                         kv("비중", m.total > 0 ? AppModel.pct(val / m.total) : "-", last: sym.sector.isEmpty)
                         if !sym.sector.isEmpty { kv("업종", sym.sector, last: true) }
                     }
                 }
-                if sym.currency == .krw, let c = CustomSymbols.shared.saved(sym.id) { KRPriceCard(saved: c) }
+                if sym.currency == .krw, let c = CustomSymbols.shared.saved(sym.id), !CustomSymbols.shared.isLive(sym.id) { KRPriceCard(saved: c) }
                 if h.qty > 0 {
                     NavigationLink { HoldingEditView(sym: sym) } label: {
                         Label("수량·단가 고치기", systemImage: "pencil").appFont(15, .bold)
@@ -542,12 +542,18 @@ struct AddHoldingView: View {
 
     /// 이미 시세를 아는 종목 (예시 종목 중 앱에 자료가 있는 것, 전에 추가한 것)
     private func known(_ h: StockHit) -> Symbol? {
+        if h.currency == .krw && KoreaEstimate.liveOK(h.id) && !CustomSymbols.shared.isLive(h.id) { return nil }   // 테스트 시세를 새로 받는다
         if h.id == "DRNK" || YahooSample.quotes[h.id] != nil || CustomSymbols.shared.symbol(h.id) != nil { return Sample.symbol(h.id) }
         return nil
     }
 
     private func pick(_ h: StockHit) async {
         failed = nil; focus = nil
+        // 내부 테스트 시세는 국내 종목 5개까지
+        if h.currency == .krw && KoreaEstimate.liveOK(h.id),
+           m.holdings.filter({ $0.symbol != h.id && CustomSymbols.shared.isLive($0.symbol) }).count >= KoreaEstimate.liveMax {
+            failed = "테스트 시세는 국내 종목 \(KoreaEstimate.liveMax)개까지 받을 수 있어요."; return
+        }
         if let s = known(h) { open(s); return }
         loading = h.id
         defer { loading = nil }
@@ -571,7 +577,7 @@ struct AddHoldingView: View {
                 Spacer()
                 Button("다른 종목") { picked = nil }.appFont(13, .semibold).foregroundStyle(Theme.teal)
             }
-            if p.currency == .krw {
+            if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
                 let pk = KoreaEstimate.info(id: p.id, name: p.name).proxy != nil
                 Text(pk ? "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 그 뒤로는 같은 미국 ETF × 원/달러 움직임으로 추정해요."
                         : "한국 시세는 받지 않아요. 넣은 가격 그대로 계산하고, 움직임 예측은 한국 시장 평균(EWY × 원/달러)으로 해요.")
@@ -585,7 +591,7 @@ struct AddHoldingView: View {
             if warn { Text(p.currency == .krw ? "지금 가격과 수량을 0보다 큰 숫자로 넣어 주세요." : "수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
             PrimaryButton(title: "추가하기") {
                 focus = nil
-                if p.currency == .krw {
+                if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
                     guard let v = Double(kp.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v > 0 else { warn = true; return }
                     CustomSymbols.shared.setPrice(p.id, v)
                     if m.addHolding(p.id, qty, avg.trimmingCharacters(in: .whitespaces).isEmpty ? kp : avg) { dismiss() } else { warn = true }
