@@ -32,12 +32,19 @@ enum MarketHours {
         if wd == 1 || wd == 7 { return wd == 7 && h == 0 } // 토요일 0시 UTC 는 금요일 장 마감 직후
         return h >= 8 || (wd != 2 && h == 0)
     }
+    /// 한국 장 (평일 KST 9:00~16:00 = UTC 0~7시). 내부 테스트 국내 시세 종목이 있을 때만 갱신 시간에 넣는다
+    static func isKR(_ d: Date = Date()) -> Bool {
+        var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "UTC")!
+        let wd = c.component(.weekday, from: d), h = c.component(.hour, from: d)
+        return wd >= 2 && wd <= 6 && h < 7
+    }
     /// 다음 갱신 시각: 장중엔 설정한 주기, 장 밖엔 3시간 (그 사이 장이 열리면 그때)
-    static func nextRefresh(_ now: Date = Date()) -> Date {
+    static func nextRefresh(_ now: Date = Date(), kr: Bool = false) -> Date {
         let iv = TimeInterval(Store.intervalMin * 60)
-        if isActive(now) { return now.addingTimeInterval(iv) }
+        let open = { (d: Date) in isActive(d) || (kr && isKR(d)) }
+        if open(now) { return now.addingTimeInterval(iv) }
         var t = now
-        for _ in 0..<36 { t = t.addingTimeInterval(300); if isActive(t) { return t.addingTimeInterval(120) } }
+        for _ in 0..<36 { t = t.addingTimeInterval(300); if open(t) { return t.addingTimeInterval(120) } }
         return now.addingTimeInterval(3 * 3600)
     }
 }

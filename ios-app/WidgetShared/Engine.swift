@@ -71,11 +71,14 @@ enum Engine {
         let live = Store.read(WLive.self, "live.json")
         guard s != nil || live != nil else { return .sample }
         // 위젯이 직접 받은 사이트 시세가 앱이 마지막으로 넘긴 값보다 나중이면 그 값으로
-        let site = QuoteFeed.cached().flatMap { $0.got > (Store.lastCheck?.timeIntervalSince1970 ?? 0) ? $0 : nil }
-        return build(s, f, live, site: site)
+        let after = Store.lastCheck?.timeIntervalSince1970 ?? 0
+        let site = QuoteFeed.cached().flatMap { $0.got > after ? $0 : nil }
+        // 국내 테스트 시세도 같게: 앱이 지금 넘긴 종목만 (스위치를 끄면 앱이 넘기지 않는다)
+        let kr = KrQuoteFeed.cached().flatMap { k in k.got > after ? QuoteFeed.File(got: k.got, q: k.q.filter { f?.ky?[$0.key] != nil }) : nil }
+        return build(s, f, live, site: site, kr: kr)
     }
 
-    static func build(_ s: WSummary?, _ f: WFeed?, _ live: WLive?, site: QuoteFeed.File? = nil) -> Snapshot {
+    static func build(_ s: WSummary?, _ f: WFeed?, _ live: WLive?, site: QuoteFeed.File? = nil, kr: QuoteFeed.File? = nil) -> Snapshot {
         // 수량·현금·목표는 최신 입력값, 없으면 요약의 것
         struct H { let t: String; let sh: Double; let manual: Double? }
         let hold: [H]
@@ -94,7 +97,7 @@ enum Engine {
         var tot = 0.0, prev = 0.0
         for h in hold {
             let ccy = f?.ccy[h.t] ?? s?.hold.first(where: { $0.t == h.t })?.ccy ?? "USD"
-            let q = f?.q[h.t], sq = site?.q[h.t]
+            let q = f?.q[h.t], sq = site?.q[h.t] ?? kr?.q[h.t]
             let last = sq?.last ?? h.manual ?? (q?.first ?? nil) ?? f?.c[h.t]?.c.compactMap { $0 }.last
             let pc = sq?.prev ?? ((q?.count ?? 0) > 1 ? q![1] : nil)
             guard let p = last else { continue }
