@@ -544,7 +544,7 @@ function rawSig(d, n) {
 
 // 11) Claude 사용량: 공식 공개 API 가 아니라 바뀔 수 있다. 응답 형식 { five: { p, reset }, week: { p, reset }, at, src }
 async function claudeUsage(env, out) {
-  const tok = (env.CLAUDE_TOKEN || "").trim();
+  const tok = (env.CLAUDE_TOKEN || "").replace(/\s+/g, "").replace(/^["']|["']$/g, "").replace(/^Bearer/i, ""); // 터미널에서 줄바꿈된 채 복사해도 된다
   if (!tok) return out({ error: "중계에 CLAUDE_TOKEN 비밀값이 없어요" }, 400);
   const key = new Request("https://cu.internal/usage"), cache = caches.default;
   const hit = await cache.match(key);
@@ -569,7 +569,8 @@ async function claudeUsage(env, out) {
       res = { five: { p: pc(h("5h-utilization")), reset: iso(h("5h-reset")) }, week: { p: pc(h("7d-utilization")), reset: iso(h("7d-reset")) }, src: "headers" };
     } else why += ", messages " + (r2 ? r2.status : "연결 실패");
   }
-  if (!res) return out({ error: "Claude 사용량을 받지 못했어요 (" + why + ")" }, 502);
+  // 토큰 모양만 알려 준다 (값은 보이지 않는다): sk-ant-oat01- 로 시작하고 100자 남짓이어야 한다
+  if (!res) return out({ error: "Claude 사용량을 받지 못했어요 (" + why + ")", token: tok.slice(0, 13) + "… " + tok.length + "자" }, 502);
   res.at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
   await cache.put(key, new Response(JSON.stringify(res), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=300" } }));
   return out(res);
