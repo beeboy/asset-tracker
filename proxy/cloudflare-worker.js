@@ -65,6 +65,7 @@ export default {
       return out({ error: "모르는 주소" }, 404);
     }
     if (u.pathname === "/mar") { const m = await mar(), r = out(m || { error: "매매기준율을 받지 못했습니다" }, 200); if (m) r.headers.set("Cache-Control", "public, max-age=600"); return r; } // 받은 값은 브라우저도 10분 기억
+    if (u.pathname === "/collect") return out({ secret: !!env.GH_DISPATCH, last: env.VIEWS ? JSON.parse((await env.VIEWS.get("collect:last")) || "null") : "VIEWS 없음" }); // 시세 수집 깨우기 확인 (10번)
     if (u.pathname === "/cu") return claudeUsage(env, out).catch((e) => out({ error: "사용량 오류: " + (e?.message || e) }, 502));
     if (u.pathname === "/sync") {
       // GET /sync → { state, at },  POST /sync {"state","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
@@ -253,14 +254,17 @@ export default {
 //       Settings → Triggers → Cron Triggers 에 "*/15 * * * *" 추가 (위 알림 cron 과 따로). 비밀값 GH_DISPATCH =
 //       GitHub fine-grained 토큰 (이 저장소만, Actions: Read and write). 수집 시간은 collect.yml 예약과 같다 (평일 UTC 8~23시 + 다음날 0시대).
 const COLLECT_CRON = "*/15 * * * *";
+//       잘 되는지는 /collect 로 확인: last 가 없으면 cron 이 안 돈다, status 가 204 가 아니면 토큰 문제
 async function wakeCollect(env) {
-  if (!env.GH_DISPATCH) return;
   const d = new Date(), wd = d.getUTCDay(), h = d.getUTCHours();
+  const note = (v) => env.VIEWS && env.VIEWS.put("collect:last", JSON.stringify({ at: d.toISOString(), ...v }));
+  if (!env.GH_DISPATCH) return note({ error: "비밀값 GH_DISPATCH 없음" });
   if (!((wd >= 1 && wd <= 5 && h >= 8) || (wd >= 2 && wd <= 6 && h === 0 && d.getUTCMinutes() < 30))) return;
-  await fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}/actions/workflows/collect.yml/dispatches`, {
+  const r = await fetch(`https://api.github.com/repos/${env.REPO || "beeboy/asset-tracker"}/actions/workflows/collect.yml/dispatches`, {
     method: "POST", body: JSON.stringify({ ref: "main" }), signal: AbortSignal.timeout(10000),
     headers: { Authorization: "Bearer " + env.GH_DISPATCH.trim(), Accept: "application/vnd.github+json", "User-Agent": "naeilo-worker", "Content-Type": "application/json" },
   }).catch(() => null);
+  await note(r ? { status: r.status, body: r.ok ? "" : (await r.text()).slice(0, 200) } : { error: "GitHub 연결 실패" });
 }
 
 // ------------------------------------------------------------ GitHub 토큰 확인: 저장소 쓰기 권한이 있으면 계정 이름 (10분 기억)

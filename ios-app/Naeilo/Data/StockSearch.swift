@@ -16,21 +16,6 @@ struct StockHit: Identifiable, Hashable {
     let currency: Currency
 }
 
-enum Relay {
-    static let base = "https://asset-ai.drinker.workers.dev/?url="
-
-    static func yahoo(_ path: String) async throws -> [String: Any] {
-        let target = "https://query1.finance.yahoo.com" + path
-        guard let enc = target.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
-              let url = URL(string: base + enc) else { throw URLError(.badURL) }
-        var req = URLRequest(url: url, timeoutInterval: 15)
-        req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
-        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-    }
-}
-
 /// 한국 종목 (시세 계약 없음. 웹 app.js synthKR · data/kr_proxy.json 과 같은 규칙): 한국 가격은 받지 않고 사용자가 넣은 가격 하나에 맞춘다
 /// - 미국 지수를 따르는 국내 상장 ETF: 그 미국 ETF(SPY·QQQ 등) × 원/달러 움직임으로 오늘 가격을 추정 (환헤지 (H)면 환율 빼고)
 /// - 그 밖의 국내 종목은 종목별로 넣지 않는다. 국내 주식 합계 (시세 기준 화면에서 켠 경우만): 증권사 앱의 합계 금액 그대로,
@@ -233,7 +218,7 @@ final class CustomSymbols {
     func fetch(_ h: StockHit) async throws -> Symbol {
         if h.currency == .krw && KoreaEstimate.liveOK(h.id) {
             // 내부 테스트: 국내 종목도 Yahoo 3년 종가를 받는다. 넣은 가격 칸에는 마지막 종가를 넣어 두어 스위치를 꺼도 이어진다
-            let (q, hs) = try await Self.chart(h.yahoo, range: "3y")
+            let (q, hs) = try await Self.chart(h.yahoo, range: "3y", today: true)
             let pc = hs.closes.count > 1 ? hs.closes[hs.closes.count - 2] : q.prev   // 전일 대비: 그 전 거래일 종가
             var s = Saved(id: h.id, yahoo: h.yahoo, name: h.name, market: h.market, usd: false, prev: pc, last: q.last, at: Date())
             s.kp = q.last; s.kd = hs.dates.last; s.lv = true
@@ -277,7 +262,7 @@ final class CustomSymbols {
             _ = try? await fetch(StockHit(id: s.id, yahoo: s.yahoo, name: s.name, market: s.market, currency: .krw))
         }
         for s in items where held.contains(s.id) && (s.usd || isLive(s.id)) {
-            guard let (q, recent) = try? await Self.chart(s.yahoo, range: "5d") else { continue }
+            guard let (q, recent) = try? await Self.chart(s.yahoo, range: "5d", today: isLive(s.id)) else { continue }
             await MainActor.run {
                 guard let i = items.firstIndex(where: { $0.id == s.id }) else { return }
                 items[i].prev = q.prev; items[i].last = q.last; items[i].at = Date()
@@ -355,7 +340,8 @@ final class CustomSymbols {
     }
 
     /// Yahoo 일별 차트: (지금 가격·전일 종가, 날짜별 종가)
-    static func chart(_ yahoo: String, range: String) async throws -> ((last: Double, prev: Double), Hist) {
+    /// today: 한국 종목도 오늘 장중 값(Yahoo 지연 시세)을 쓴다 (내부 테스트 시세)
+    static func chart(_ yahoo: String, range: String, today keepToday: Bool = false) async throws -> ((last: Double, prev: Double), Hist) {
         let sym = yahoo.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? yahoo
         let o = try await Relay.yahoo("/v8/finance/chart/\(sym)?range=\(range)&interval=1d")
         guard let r = ((o["chart"] as? [String: Any])?["result"] as? [[String: Any]])?.first,
@@ -377,7 +363,7 @@ final class CustomSymbols {
         let today = f.string(from: Date())
         // 마지막 막대가 오늘이면 그 전날이 전일 종가
         let prevClose = dates.last == today && cl.count > 1 ? cl[cl.count - 2] : lastClose
-        if cur == "KRW" {
+        if cur == "KRW" && !keepToday {
             // 한국 종목은 전일 종가 기준 (오늘 장중 값은 쓰지 않는다)
             let done = dates.last == today && cl.count > 1 ? Array(cl.dropLast()) : cl
             let dd = dates.last == today && cl.count > 1 ? Array(dates.dropLast()) : dates

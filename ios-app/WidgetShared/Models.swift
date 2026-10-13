@@ -41,6 +41,7 @@ struct WFeed: Codable {
     var c: [String: Tail]
     var ccy: [String: String]
     var mar: Mar?
+    var ky: [String: String]? = nil  // 내부 테스트 국내 시세 종목 → Yahoo 기호. 위젯이 직접 받는다
 }
 
 // 동기화된 입력값에서 위젯이 바로 쓰는 부분 (전체 입력값은 계산용으로 따로 저장)
@@ -62,6 +63,54 @@ func num(_ v: Any?) -> Double? {
     if let s = v as? String { return Double(s.replacingOccurrences(of: ",", with: "")) }
     if let n = v as? NSNumber { return n.doubleValue }
     return nil
+}
+
+// Yahoo 중계 (naeilo Worker). 앱의 종목 검색·추가한 종목 시세와 위젯의 국내 테스트 시세가 같이 쓴다
+enum Relay {
+    static let base = "https://asset-ai.drinker.workers.dev/?url="
+
+    static func yahoo(_ path: String) async throws -> [String: Any] {
+        let target = "https://query1.finance.yahoo.com" + path
+        guard let enc = target.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
+              let url = URL(string: base + enc) else { throw URLError(.badURL) }
+        var req = URLRequest(url: url, timeoutInterval: 15)
+        req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+    }
+}
+
+// 내부 테스트 국내 시세 (KoreaEstimate.liveIds). 사이트 quotes.json 에 없어서 위젯도 앱처럼 Yahoo 중계로 직접 받는다
+enum KrQuoteFeed {
+    static let name = "kr_quotes.json"
+    static func cached() -> QuoteFeed.File? { Store.read(QuoteFeed.File.self, name) }
+
+    /// syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐거나 받을 종목이 같으면 저장해 둔 값
+    @discardableResult
+    static func fetch(_ syms: [String: String], minAge: TimeInterval = 0) async -> QuoteFeed.File? {
+        let old = cached()
+        guard !syms.isEmpty else { return old }
+        if let o = old, Date().timeIntervalSince1970 - o.got < minAge, Set(o.q.keys) == Set(syms.keys) { return o }
+        var q: [String: QuoteFeed.Q] = [:]
+        for (id, y) in syms {
+            let sym = y.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? y
+            guard let o = try? await Relay.yahoo("/v8/finance/chart/\(sym)?range=5d&interval=1d"),
+                  let r = ((o["chart"] as? [String: Any])?["result"] as? [[String: Any]])?.first,
+                  let meta = r["meta"] as? [String: Any],
+                  let raw = ((((r["indicators"] as? [String: Any])?["quote"] as? [[String: Any]])?.first)?["close"] as? [Any])
+            else { continue }
+            let cl = raw.compactMap { ($0 as? Double).flatMap { $0 > 0 ? $0 : nil } }
+            guard let lc = cl.last else { continue }
+            // 앱(CustomSymbols.refresh)과 같게: 지금 가격 = 오늘 장중 값, 전일 = 그 전 거래일 종가
+            let last = meta["regularMarketPrice"] as? Double ?? lc
+            q[id] = .init(last: last, prev: cl.count > 1 ? cl[cl.count - 2] : last, at: meta["regularMarketTime"] as? Double ?? Date().timeIntervalSince1970)
+        }
+        guard !q.isEmpty else { return old }
+        let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
+        Store.write(f, name)
+        return f
+    }
 }
 
 // 사이트 시세 (naeilo.com/data/quotes.json). 사이트가 평일 30분마다 모으는 Yahoo 중계 값을 앱과 위젯이 직접 받는다.

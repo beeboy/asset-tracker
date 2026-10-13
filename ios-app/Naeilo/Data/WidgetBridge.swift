@@ -22,7 +22,11 @@ enum WidgetBridge {
             ccy[r.id] = r.sym.currency == .usd ? "USD" : "KRW"
         }
         q["KRW=X"] = [fx.last, fx.prevClose, now.timeIntervalSince1970]
-        let feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Market.shared.mar.map { WFeed.Mar(rate: $0.rate, date: $0.date) })   // 위젯 평가액도 앱·웹처럼 매매기준율
+        // 내부 테스트 국내 시세 종목: 위젯이 Yahoo 중계로 직접 받는다 (앱을 열지 않아도 오늘 값)
+        var ky: [String: String] = [:]
+        for r in rows where r.sym.currency == .krw && CustomSymbols.shared.isLive(r.id) { ky[r.id] = CustomSymbols.yahoo(for: r.sym) }
+        var feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Market.shared.mar.map { WFeed.Mar(rate: $0.rate, date: $0.date) })   // 위젯 평가액도 앱·웹처럼 매매기준율
+        feed.ky = ky.isEmpty ? nil : ky
 
         let live = WLive(hold: rows.map { .init(t: $0.id, sh: $0.h.qty, price: $0.sym.last) },
                          cashKrw: 0, cashUsd: 0, goalAmount: goal, goalDate: Day.str(end), goalStart: Day.str(start),
