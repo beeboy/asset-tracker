@@ -65,7 +65,7 @@ export default {
       return out({ error: "모르는 주소" }, 404);
     }
     if (u.pathname === "/mar") { const m = await mar(), r = out(m || { error: "매매기준율을 받지 못했습니다" }, 200); if (m) r.headers.set("Cache-Control", "public, max-age=600"); return r; } // 받은 값은 브라우저도 10분 기억
-    if (u.pathname === "/collect") return out({ secret: !!env.GH_DISPATCH, last: env.VIEWS ? JSON.parse((await env.VIEWS.get("collect:last")) || "null") : "VIEWS 없음" }); // 시세 수집 깨우기 확인 (10번)
+    if (u.pathname === "/collect") return out({ secret: !!env.GH_DISPATCH, last: env.VIEWS ? JSON.parse((await env.VIEWS.get("collect:last")) || "null") : "VIEWS 없음", cron: env.VIEWS ? JSON.parse((await env.VIEWS.get("cron:last")) || "null") : null }); // 시세 수집 깨우기 확인 (10번)
     if (u.pathname === "/cu") return claudeUsage(env, out).catch((e) => out({ error: "사용량 오류: " + (e?.message || e) }, 502));
     if (u.pathname === "/sync") {
       // GET /sync → { state, at },  POST /sync {"state","at"} → { ok, at } (더 새 값이 이미 있으면 { stale: true })
@@ -223,7 +223,8 @@ export default {
   },
   // 30분마다 (Cron Trigger): 구독마다 하루 변동·실적 하루 전 검사. 15분 cron 은 시세 수집 깨우기만 한다 (10번)
   async scheduled(event, env, ctx) {
-    if (event.cron === COLLECT_CRON) return wakeCollect(env);
+    if (env.VIEWS) ctx.waitUntil(env.VIEWS.put("cron:last", JSON.stringify({ cron: event.cron, at: new Date().toISOString() }))); // /collect 에서 실제 cron 식 확인
+    if (isCollectCron(event.cron)) return wakeCollect(env);
     if (!env.VIEWS) return;
     const q = await fetch(env.SITE_QUOTES || "https://naeilo.com/data/quotes.json", { cf: { cacheTtl: 60, cacheEverything: true }, signal: AbortSignal.timeout(10000) }).then((r) => r.json()).catch(() => null);
     const kst = new Date(Date.now() + 9 * 3600e3), today = kst.toISOString().slice(0, 10), tmr = new Date(kst.getTime() + 86400e3).toISOString().slice(0, 10);
@@ -253,7 +254,8 @@ export default {
 // 10) 시세 수집 깨우기: GitHub 예약 실행은 밀리거나 빠질 때가 많아서, 이 중계의 Cron 이 collect 작업을 직접 실행시킨다.
 //       Settings → Triggers → Cron Triggers 에 "*/15 * * * *" 추가 (위 알림 cron 과 따로). 비밀값 GH_DISPATCH =
 //       GitHub fine-grained 토큰 (이 저장소만, Actions: Read and write). 수집 시간은 collect.yml 예약과 같다 (평일 UTC 8~23시 + 다음날 0시대).
-const COLLECT_CRON = "*/15 * * * *";
+// 대시보드에서 "Every 15 minutes" 를 고르면 식이 다르게 저장될 수 있어서 15분 간격 식은 모두 수집 깨우기로 본다
+const isCollectCron = (c) => /^(\*|0)\/15\s|^0,15,30,45\s/.test(String(c || "").trim());
 //       잘 되는지는 /collect 로 확인: last 가 없으면 cron 이 안 돈다, status 가 204 가 아니면 토큰 문제
 async function wakeCollect(env) {
   const d = new Date(), wd = d.getUTCDay(), h = d.getUTCHours();
