@@ -118,5 +118,11 @@ window.STOCKS = [
 {"s": "TQQQ", "k": "TQQQ", "a": "TQQQ 나스닥 3배", "e": "ProShares UltraPro QQQ", "m": "미국 ETF"},
 {"s": "SOXL", "k": "SOXL", "a": "SOXL 반도체 3배", "e": "Direxion Daily Semiconductor Bull 3X Shares", "m": "미국 ETF"},
 {"s": "SOXX", "k": "SOXX", "a": "SOXX 반도체 ETF", "e": "iShares Semiconductor ETF", "m": "미국 ETF"},
-{"s": "JEPI", "k": "JEPI", "a": "JEPI 커버드콜", "e": "JPMorgan Equity Premium Income ETF", "m": "미국 ETF"}
+{"s": "JEPI", "k": "JEPI", "a": "JEPI 커버드콜", "e": "JPMorgan Equity Premium Income ETF", "m": "미국 ETF"},
+{"s": "GPCR", "k": "스트럭쳐 테라퓨틱스", "a": "스트럭처 테라퓨틱스 ADR", "e": "Structure Therapeutics Inc.", "m": "미국 주식"},
+{"s": "010170.KQ", "k": "대한광통신", "a": "", "e": "Taihan Fiberoptics Co., Ltd.", "m": "코스닥"},
+{"s": "073490.KQ", "k": "LIG아큐버", "a": "LIG아큐버 이노와이어리스", "e": "LIG Accuver Co., Ltd.", "m": "코스닥"},
+{"s": "081180.KQ", "k": "쎄크", "a": "쎄크 SEC", "e": "SEC Co., Ltd.", "m": "코스닥"},
+{"s": "001440.KS", "k": "대한전선", "a": "", "e": "Taihan Cable & Solution Co., Ltd.", "m": "코스피"},
+{"s": "298380.KQ", "k": "에이비엘바이오", "a": "에이비엘바이오 ABL", "e": "ABL Bio Inc.", "m": "코스닥"}
 ];
