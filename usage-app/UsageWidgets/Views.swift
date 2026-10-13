@@ -148,8 +148,9 @@ struct RingView: View {
         GeometryReader { g in
             let side = min(g.size.width, g.size.height), s = side / 72
             ZStack {
-                ring(r: 30 * s, w: 5 * s, p: u.weekFull ? 100 : Double(u.p5))
-                ring(r: 20 * s, w: 5 * s, p: Double(u.pw))
+                // 바깥 링은 배터리 위젯처럼 원 가장자리까지 꽉 채움
+                ring(r: 33 * s, w: 6 * s, p: u.weekFull ? 100 : Double(u.p5))
+                ring(r: 25.5 * s, w: 5 * s, p: Double(u.pw))
                 face(s)
             }
             .frame(width: side, height: side)
@@ -171,9 +172,9 @@ struct RingView: View {
         if let img = c.face {
             Image(uiImage: img).interpolation(c.id == "me" ? .medium : .none).resizable()
                 .aspectRatio(contentMode: c.id == "me" ? .fill : .fit)
-                .frame(width: 34 * s, height: 34 * s, alignment: .top)
-                .offset(y: 2 * s)
-                .frame(width: 26 * s, height: 26 * s)
+                .frame(width: 44 * s, height: 44 * s, alignment: .top)
+                .offset(y: 3 * s)
+                .frame(width: 34 * s, height: 34 * s)
                 .clipShape(Circle())
         }
     }

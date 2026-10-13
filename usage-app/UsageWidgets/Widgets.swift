@@ -79,6 +79,7 @@ struct UsageRingWidget: Widget {
         .configurationDisplayName("Claude 사용량 링")
         .description("바깥 링은 5시간, 안쪽 링은 주간 사용량이에요.")
         .supportedFamilies([.accessoryCircular])
+        .contentMarginsDisabled()
     }
 }
 
