@@ -64,7 +64,7 @@
     trade: [["2025-04-03", "상호관세 발표 다음 날"], ["2025-04-04", "관세 충격 이틀째"], ["2025-04-09", "관세 90일 유예"], ["2025-04-16", "엔비디아 H20 수출 규제 공시"], ["2025-05-12", "미·중 관세 인하 합의"]],
     war: [["2023-10-09", "하마스 이스라엘 공격 뒤 첫 거래일"], ["2024-04-15", "이란의 이스라엘 공격 뒤 첫 거래일"], ["2024-10-01", "이란 미사일 공격"], ["2025-06-13", "이스라엘의 이란 공습"], ["2025-06-23", "미국의 이란 핵시설 공습 뒤 첫 거래일"]],
   };
-  const SESS = { pre: "프리", regular: "정규", post: "애프터", close: "종가", manual: "수동" };
+  const SESS = { pre: "프리", regular: "정규", post: "애프터", close: "종가", manual: "수동", toss: "토스" };
 
   let S = { state: null, prices: {}, quotes: {} };
   // 실행 방식: "local" = 내 PC 의 server.py, "static" = GitHub Pages 같은 정적 사이트 (입력은 이 브라우저에 저장)
@@ -137,6 +137,12 @@
     if (!S.krRules) S.krRules = await fetch("../data/kr_proxy.json", { cache: "no-cache" }).then((r) => r.json()).catch(() => ({}));
     synthKR();
   }
+  // 토스증권 국내 지금 가격 (개발자 전용: 키를 넣은 PC 의 server.py 에서만 값이 온다. 정적 사이트는 부르지 않는다)
+  async function tossQuotes() {
+    const ks = (S.state?.holdings || []).map((h) => h.ticker).filter((t) => isKR(t) && t !== KR_SUM);
+    if (!ks.length) return;
+    try { const j = await api("/api/toss/prices?symbols=" + encodeURIComponent(ks.join(","))); Object.assign(S.quotes, j.quotes || {}); if (j.error) logLine("토스 시세: " + j.error, false); } catch (e) { /* 무시 */ }
+  }
   async function reloadData() {
     if (MODE === "local") {
       try {
@@ -144,6 +150,7 @@
         S.prices = d.prices || {}; S.quotes = d.quotes || {}; S.mar = d.mar || {}; S.siteClose = lastCloses(S.prices);
         if (!S.state) S.state = normalize(d.state || {});
         S.config = d.config || {};
+        await tossQuotes();
         return;
       } catch (e) { if (S.state) throw e; MODE = "static"; }
     }
