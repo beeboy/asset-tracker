@@ -31,7 +31,7 @@
 ## 2. 진행 중·미완성
 | 항목 | 상태 |
 |---|---|
-| 외부 요인 화면 개편 | 2026-10-14 1단계(데이터)·2단계(요인 상세, 앱 `FactorDetailView`: 프리셋 2×2·판정·상쇄·종목별 신뢰도·큰 변화 경고·비교·관련 일정·직접 정하기. 지금은 기존 외부 요인 화면의 "자세히 보기"로 들어감) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. 다음: ③ 메인 순위(앱) ④ 웹 같은 화면 ⑤ 과거 재생(고정 표) ⑥ 일정 미리 보기(`EXT_EVENTS.sd`) ⑦ 회고·알림(나중). 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
+| 외부 요인 화면 개편 | 2026-10-14 1단계(데이터)·2단계(요인 상세, 앱 `FactorDetailView`: 프리셋 2×2·판정·상쇄·종목별 신뢰도·큰 변화 경고·비교·관련 일정·직접 정하기. 메인 순위에서 들어감)·3단계(메인: 스크롤·질문형 제목·요인 순위 `ExternalView.ranks`·자동 요약·점 표시 없앰, 슬라이더는 요인 상세 "직접 정하기"로만) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. 다음: ④ 웹 같은 화면 ⑤ 과거 재생(고정 표) ⑥ 일정 미리 보기(`EXT_EVENTS.sd`) ⑦ 회고·알림(나중). 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
 | Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |
 | 15분 collect cron | PR #166으로 `*/15` 단일 cron. 실제로 도는지 collect 작업 로그로 확인 필요. 워커 머리 주석(`*/30 13-22`)은 낡음 |
 | 워커 재배포 | 2026-10-14 재배포함. 1권 영문판 원고, 순위판 `/scores`, 댓글은 마무리 안 한 것으로 보임 → 보류 |

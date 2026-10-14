@@ -322,12 +322,6 @@ private func legend(_ c: Color, _ t: String) -> some View {
 
 struct ExternalView: View {
     @Environment(AppModel.self) private var m
-    @State private var factor = "mkt"
-    @State private var mkt = -10.0
-    @State private var rate = 0.5
-    @State private var fx = -100.0
-    @State private var oil = 10.0
-    @State private var gold = 10.0
 
     /// 시장 민감도(베타): 사이트가 웹과 같은 식(factorBetas)으로 매일 낸 값. 사이트 자료가 없는 종목(직접 추가한 종목)은
     /// 같은 회귀를 앱이 가진 지난 3년 종가로 한다. 둘 다 없으면 nil
@@ -366,7 +360,6 @@ struct ExternalView: View {
     }
 
     /// 웹 renderSens 와 같은 식: 종목 가격 변화 = exp(β × 요인 변화) − 1, 원/달러는 달러 종목에 그대로
-    private func move(_ id: String, _ sym: Symbol, _ v: Double) -> Double? { Self.move(factor, id, sym, v) }
     static func move(_ factor: String, _ id: String, _ sym: Symbol, _ v: Double) -> Double? {
         switch factor {
         case "fx": return sym.currency == .usd ? v / Market.shared.fx.last : 0
@@ -376,72 +369,112 @@ struct ExternalView: View {
         }
     }
 
-    var body: some View {
-        let vals: [String: Double] = ["mkt": self.mkt, "rate": self.rate, "fx": self.fx, "oil": self.oil, "gold": self.gold]
-        let v: Double = vals[factor] ?? 0
-        let list = m.rows.map { r -> (id: String, label: String, dv: Double, known: Bool) in
-            let mv = move(r.id, r.sym, v)
-            return (r.id, r.sym.short, r.value * (mv ?? 0), mv != nil)
+    /// 요인의 '보통 한 달 변화'를 요인 상세와 같은 단위로 (금리 %p, 원/달러 원, 나머지 %)
+    static func monthShock(_ k: String) -> Double? {
+        guard let sd = SiteCalc.shared.factorMonth(k)?.sd, sd > 0 else { return nil }
+        switch k {
+        case "rate": return sd / 100
+        case "fx": return Market.shared.fx.last * (exp(sd) - 1)
+        default: return (exp(sd) - 1) * 100
         }
-        let tot = list.reduce(0.0) { $0 + $1.dv }, maxAbs = max(1, list.map { abs($0.dv) }.max() ?? 1)
-        let after = m.total + tot
-        let sg: (Double, String) -> String = { x, d in (x > 0 ? "+" : "") + String(format: d, x) }
-        let asks: [String: String] = ["mkt": "S&P500이 얼마나 움직이면", "rate": "미국 10년 금리가 얼마나 바뀌면", "oil": "유가(WTI)가 얼마나 움직이면", "gold": "금값이 얼마나 움직이면"]
-        let ask: String = asks[factor] ?? "환율이 \(Int(Market.shared.fx.last).formatted())원에서 얼마나 바뀌면"
-        let vText = factor == "rate" ? sg(v, "%g") + "%p" : factor == "fx" ? sg(v, "%.0f") + "원" : sg(v, "%.0f") + "%"
-        let unknown = list.filter { !$0.known }.map(\.label)
-        let coef = m.rows.filter { factor == "fx" || move($0.id, $0.sym, v) != nil }.map { r -> String in
-            switch factor {
-            case "fx": return r.sym.short + (r.sym.currency == .usd ? " 환율만큼" : " 영향 없음")
-            case "mkt": return r.sym.short + " " + String(format: "%.2f", Self.mktBeta(r.id) ?? 1) + "배"
-            case "rate": return r.sym.short + " " + sg((SiteCalc.shared.beta("rate", r.id) ?? 0) * 10 * 100, "%.2f") + "%"
-            default: return r.sym.short + " " + sg(SiteCalc.factorMove(factor, beta: SiteCalc.shared.beta(factor, r.id) ?? 0, shock: 10) * 100, "%.1f") + "%"
-            }
-        }.joined(separator: ", ")
-        let miss = unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 지난 3년 시세가 부족해 0으로 계산했어요."
-        let note = (factor == "mkt" ? "시장이 1% 움직일 때 평균 반응(베타): \(coef). 시장보다 등락이 큰 종목이 많을수록 하락 때 손실이 커져요."
-            : factor == "rate" ? "10년 금리 +0.1%p 일 때 평균 반응 (시장 움직임을 뺀 값): \(coef)."
-            : factor == "fx" ? "원화로 환산하면: \(coef). 미국 종목은 주가가 그대로여도 환율이 \(Int(abs(v)))원 \(v >= 0 ? "오르면" : "내리면") 원화 평가액이 \(String(format: "%.1f", abs(v) / Market.shared.fx.last * 100))% \(v >= 0 ? "늘어요." : "줄어요.")"
-            : "\(factor == "oil" ? "유가" : "금값") +10% 일 때 평균 반응 (시장 움직임을 뺀 값): \(coef).") + miss
-            + (factor == "fx" ? "" : " 지난 3년 일별 변화로 계산 (웹과 같은 값).")
-        let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).sorted { $0.day < $1.day }.prefix(8)
+    }
+    private struct Rank { let k: String; let amt: Double; let gross: Double; let weak: Bool }
 
-        PinnedLayout {
-            pinnedBox {
-                DetailHead(title: "외부 요인", sub: "")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("평가액 " + AppModel.manS(tot)).appFont(22, .bold).foregroundStyle(Theme.change(tot))
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(AppModel.sgn(tot / max(1, m.total))).appFont(14, .semibold).foregroundStyle(Theme.change(tot))
-                        Text("\(AppModel.man(m.total)) → \(AppModel.man(after))").appFont(12).foregroundStyle(Theme.sub)
-                    }
-                }
-                ForEach(list, id: \.id) { x in SignedBar(label: x.label, value: AppModel.manS(x.dv), g: x.dv, scale: maxAbs) }
-                ChipRow(items: [("mkt", "미국 시장"), ("rate", "미국 금리"), ("fx", "원/달러"), ("oil", "유가"), ("gold", "금값")], selection: $factor, accent: Theme.orange, fill: true)
-            }
-        } content: {
+    private var ranks: [Rank] {
+        let total = max(1, m.total)
+        return ["mkt", "fx", "rate", "oil", "gold"].map { k -> Rank in
+            guard let v = Self.monthShock(k) else { return Rank(k: k, amt: 0, gross: 0, weak: true) }
+            let dvs = m.rows.map { r in r.value * (Self.move(k, r.id, r.sym, v) ?? 0) }
+            let tot = dvs.reduce(0, +), gross = dvs.reduce(0) { $0 + abs($1) }
+            let agreeWeak = k != "fx" && m.rows.allSatisfy { r in SiteCalc.shared.betaStat(k, r.id)?.agree.map { abs($0 - 0.5) < FactorDetailView.weakAgree } ?? true }
+            return Rank(k: k, amt: abs(tot), gross: gross, weak: abs(tot) < total * FactorDetailView.tiny || agreeWeak)
+        }.sorted { ($0.weak ? 0 : 1, $0.amt) > ($1.weak ? 0 : 1, $1.amt) }
+    }
+
+    private func desc(_ x: Rank) -> String {
+        if x.weak { return "지난 3년 동안 내 종목과 일정한 관계가 보이지 않았어요." }
+        let tot = max(1, m.total)
+        switch x.k {
+        case "mkt":
+            let b = m.rows.reduce(0) { $0 + $1.value / tot * (Self.mktBeta($1.id) ?? 1) }
+            return b > 1.15 ? "내 종목은 시장보다 \(String(format: "%.1f", b))배쯤 크게 움직여요." : b < 0.85 ? "내 종목은 시장보다 작게 움직여요." : "내 종목은 시장과 비슷하게 움직여요."
+        case "fx":
+            let usd = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / tot
+            return "달러 자산이 \(AppModel.pct(usd))라서 환율이 그대로 반영돼요. 시장이 급락할 땐 오히려 손실을 막아주기도 해요."
+        default:
+            if x.gross > x.amt * 2 { return "종목별로는 ±\(AppModel.man(x.gross / 2))씩 움직이지만, 서로 반대로 움직여서 상쇄돼요." }
+            return "\(FactorDetailView.names[x.k] ?? "")\(x.k == "rate" ? "가" : "이") 움직이면 내 종목 대부분이 같은 쪽으로 반응해요."
+        }
+    }
+
+    private func summary(_ rs: [Rank]) -> String? {
+        let strong = rs.filter { !$0.weak }
+        guard let top = strong.first, top.amt > 0 else { return nil }
+        let name = FactorDetailView.names[top.k] ?? ""
+        let rest = strong.dropFirst().reduce(0) { $0 + $1.amt }
+        let tail = " 요인마다 따로 움직였을 때의 영향이에요."
+        if strong.count == 1 { return "내 자산을 흔드는 건 사실상 \(name) 하나예요." + tail }
+        if rest < top.amt / 3 { return "내 자산이 흔들리는 이유는 대부분 \(name) 하나예요. 다른 요인을 다 합쳐도 \(name)의 3분의 1이 안 돼요." + tail }
+        if rest < top.amt { return "내 자산을 가장 크게 흔드는 건 \(name)이고, 나머지를 다 합쳐도 그보다 작아요." + tail }
+        return "\(name)과 \(FactorDetailView.names[strong[1].k] ?? "")이 비슷하게 내 자산을 흔들어요." + tail
+    }
+
+    var body: some View {
+        let rs = ranks
+        let scale = max(1, rs.filter { !$0.weak }.map(\.amt).max() ?? 1)
+        let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).sorted { $0.day < $1.day }.prefix(8)
+        let nos: [String: String] = Dictionary(uniqueKeysWithValues: rs.filter { !$0.weak }.enumerated().map { ($1.k, "\($0 + 1)") })
+
+        ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("바깥에서 무슨 일이 생기면, 지금 내 돈은 얼마나 움직일까요?").appFont(20, .bold)
+                    Text("지난 3년 동안 실제로 하루하루 움직인 만큼으로 계산해요. 목표까지의 영향은 \(m.forecastTitle)에서 봐요.")
+                        .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
+                }
                 Card {
-                    HStack { Text(ask).appFont(14); Spacer(); Text(vText).appFont(15, .bold) }
-                    switch factor {
-                    case "mkt": Slider(value: $mkt, in: -30...30, step: 5).tint(Theme.orange).accessibilityLabel(ask)
-                    case "rate": Slider(value: $rate, in: -1.5...1.5, step: 0.25).tint(Theme.orange).accessibilityLabel(ask)
-                    case "oil": Slider(value: $oil, in: -40...40, step: 5).tint(Theme.orange).accessibilityLabel(ask)
-                    case "gold": Slider(value: $gold, in: -30...30, step: 5).tint(Theme.orange).accessibilityLabel(ask)
-                    default: Slider(value: $fx, in: -300...300, step: 20).tint(Theme.orange).accessibilityLabel(ask)
+                    Text("내 자산을 흔드는 요인").appFont(16, .bold)
+                    Text("요인마다 '보통 한 달에 움직이는 만큼'으로 맞춰서 비교했어요.").appFont(12).foregroundStyle(Theme.sub)
+                    ForEach(rs, id: \.k) { x in
+                        let no = nos[x.k] ?? "–"
+                        NavigationLink { FactorDetailView(factor: x.k) } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Text(no).appFont(12, .bold).frame(width: 24, height: 24)
+                                    .foregroundStyle(no == "1" ? Color.white : Theme.ink)
+                                    .background(no == "1" ? Theme.ink : Theme.border, in: Circle())
+                                VStack(alignment: .leading, spacing: 5) {
+                                    HStack {
+                                        Text(FactorDetailView.names[x.k] ?? x.k).appFont(15, .bold)
+                                        Spacer()
+                                        Text(x.weak ? "뚜렷한 관계 없음" : "±" + AppModel.man(x.amt)).appFont(14, x.weak ? .regular : .bold)
+                                            .foregroundStyle(x.weak ? Theme.muted : Theme.ink)
+                                    }
+                                    if !x.weak {
+                                        GeometryReader { g in
+                                            ZStack(alignment: .leading) {
+                                                Capsule().fill(Theme.border)
+                                                Capsule().fill(Theme.teal).frame(width: max(3, g.size.width * x.amt / scale))
+                                            }
+                                        }
+                                        .frame(height: 6)
+                                    }
+                                    Text(desc(x)).appFont(12).foregroundStyle(Theme.sub).lineSpacing(2).multilineTextAlignment(.leading)
+                                }
+                                Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.muted).padding(.top, 5)
+                            }
+                            .padding(.vertical, 6).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(FactorDetailView.names[x.k] ?? ""), \(x.weak ? "뚜렷한 관계 없음" : "보통 한 달 ±" + AppModel.man(x.amt)). 자세히 보기")
                     }
-                    Text(note).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
-                }
-                NavigationLink { FactorDetailView(factor: factor) } label: {
-                    HStack {
-                        Text("\(FactorDetailView.names[factor] ?? "") 자세히 보기").appFont(15, .bold).foregroundStyle(Theme.ink)
-                        Spacer()
-                        Image(systemName: "chevron.right").foregroundStyle(Theme.muted)
+                    if let s = summary(rs) {
+                        Text(s).appFont(13).foregroundStyle(Theme.ink).lineSpacing(2)
+                            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                    } else if SiteCalc.shared.factorMonth("mkt") == nil {
+                        Text("요인 자료를 불러오는 중이에요.").appFont(12).foregroundStyle(Theme.muted)
                     }
-                    .padding(16).background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
                 }
-                .buttonStyle(.plain)
                 Card(dark: true) {
                     Text("다가오는 일정 (45일)").appFont(15, .bold)
                     ForEach(Array(events.enumerated()), id: \.offset) { _, e in
@@ -455,8 +488,9 @@ struct ExternalView: View {
                         }
                     }
                     if events.isEmpty { Text("45일 안에 정해진 일정이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
-                    Text("\(m.forecastTitle)에서 \"외부 요인\"을 켜면 반영돼요.").appFont(12).foregroundStyle(Theme.muted)
                 }
+                Text("예측이 아니라 '만약에'를 보는 화면이에요. 지난 3년 하루 단위 움직임을 바탕으로 했고, 큰 변화일수록 실제와 다를 수 있어요.")
+                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
             }
             .padding(16)
         }
