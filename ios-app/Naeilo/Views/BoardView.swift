@@ -219,81 +219,187 @@ struct BoardView: View {
 
 struct WeekForecastCard: View {
     @Environment(AppModel.self) private var m
+    @State private var whyOpen = false
 
-    // 이번 주 예보: 월요일에 금요일 평가액 50% 범위를 적어 두고, 금요일 종가로 도장
+    static let names = ["lo": "더 낮게", "in": "예보대로", "hi": "더 높게"]
+
+    /// 범위 숫자: 억 단위 소수 한 자리 (lo·hi가 같게 반올림되면 두 자리), 1억 아래는 만원 단위
+    static func eok(_ v: Double, _ d: Int) -> String {
+        v < 1e8 ? AppModel.man((v / 1e5).rounded() * 1e5) : String(format: "%.\(d)f억", v / 1e8)
+    }
+
+    // 이번 주 예보: 그 주 처음 연 날에 금요일 평가액 범위를 적어 두고, 금요일 종가로 판정한다.
+    // 예보 · 맞혀보기 · 예보 성적 세 카드로 나눈다 (예보는 앱의 것, 맞혀보기는 사용자의 것).
     var body: some View {
-        @Bindable var m = m
         let r = m.weekRange
         let span = r.hi - r.lo, x0 = r.lo - span * 0.6, x1 = r.hi + span * 0.6
         let px = { (v: Double) in max(0, min(1, (v - x0) / (x1 - x0))) }
         let inside = r.actual >= r.lo && r.actual <= r.hi
         let pos = r.actual < r.lo ? "lo" : r.actual > r.hi ? "hi" : "in"
-        let stamps = m.weekFriday ? Array(m.pastWeeks.dropFirst()) + [inside ? 1 : 0] : m.pastWeeks
-        // 파란 테두리와 큰 범위 숫자로 눈에 띄게 둔다
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 8) {
-                Label("이번 주 예보", systemImage: "scope").appFont(14, .bold).foregroundStyle(.white)
-                    .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.blue, in: Capsule())
-                Spacer()
-                Text(m.weekFriday ? "\(m.weekFridayText) 금요일 마감" : "월요일에 적음 · 금요일 마감").appFont(12).foregroundStyle(Theme.sub)
-            }
-            Text("금요일 종가 평가액, 절반의 경우 이 안").appFont(13).foregroundStyle(Theme.sub)
-            Text("\(AppModel.man(r.lo)) ~ \(AppModel.man(r.hi))").appFont(24, .bold).foregroundStyle(Color(hex: 0x1B5E96))
-                .lineLimit(1).minimumScaleFactor(0.7)
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.line).frame(height: 14)
-                    Capsule().fill(Theme.blue.opacity(0.33)).frame(width: (px(r.hi) - px(r.lo)) * g.size.width, height: 14).offset(x: px(r.lo) * g.size.width)
-                    Circle().fill(m.weekFriday ? (inside ? Theme.green : Theme.orange) : Theme.night)
-                        .overlay(Circle().stroke(.white, lineWidth: 3))
-                        .frame(width: 20, height: 20).offset(x: px(r.actual) * g.size.width - 10)
-                }
-                .frame(maxHeight: .infinity)
-            }
-            .frame(height: 30)
-            HStack {
-                Text(AppModel.man(r.lo)); Spacer()
-                Text((m.weekFriday ? "금요일 " : "지금 ") + AppModel.man(r.actual)).fontWeight(.bold); Spacer()
-                Text(AppModel.man(r.hi))
-            }
-            .appFont(12).foregroundStyle(Theme.sub)
-            if !m.weekFriday {
-                Text("금요일엔 어디쯤일까요?").appFont(15, .bold)
-                ChipRow(items: [("lo", "범위 아래"), ("in", "범위 안"), ("hi", "범위 위")],
-                        selection: Binding(get: { m.weekGuess ?? "" }, set: { m.weekGuess = $0 }), accent: Theme.blue, fill: true)
-                if m.devAll {
-                    Button("금요일로 넘기기 (개발자)") { withAnimation { m.weekFridaySkip = true } }
-                        .appFont(13).underline().foregroundStyle(Theme.sub).frame(minHeight: 40)
-                }
-            } else {
-                let names = ["lo": "범위 아래", "in": "범위 안", "hi": "범위 위"]
-                Text((inside ? "범위 안에 들어왔어요. 도장 꽝!" : "범위 \(pos == "lo" ? "아래" : "위")로 나갔어요. 이런 주도 절반쯤 있어요.")
-                     + (m.weekGuess.map { $0 == pos ? " 맞혔어요." : " 고른 답은 \"\(names[$0] ?? "")\"였어요." } ?? ""))
-                    .appFont(14, .semibold)
-                    .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(inside ? Color(hex: 0xE3F4EC, dark: 0x163226) : Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
-            }
-            HStack {
-                Text(stamps.isEmpty ? "지난 주들" : "지난 \(stamps.count)주").appFont(13, .bold)
-                Spacer()
-                if stamps.isEmpty { Text("첫 주가 끝나면 도장이 찍혀요").appFont(13).foregroundStyle(Theme.sub) }
-                else { Text("범위 안 \(stamps.reduce(0, +)) / \(stamps.count)주").appFont(13).foregroundStyle(Theme.sub) }
-            }
-            HStack(spacing: 4) {
-                ForEach(stamps.indices, id: \.self) { i in
-                    Text(stamps[i] == 1 ? "안" : "밖").appFont(11, .bold)
-                        .frame(maxWidth: .infinity, minHeight: 30)
-                        .foregroundStyle(stamps[i] == 1 ? .white : Color(hex: 0x8A4B12, dark: 0xF0B888))
-                        .background(stamps[i] == 1 ? Theme.green : Color(hex: 0xFBE3CF, dark: 0x4A3020), in: RoundedRectangle(cornerRadius: 8))
-                }
-            }
-            Text("절반쯤 \"안\"이면 믿을 만한 예보예요.")
-                .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
+        let d = Self.eok(r.lo, 1) == Self.eok(r.hi, 1) ? 2 : 1
+        let lo = Self.eok(r.lo, d), hi = Self.eok(r.hi, d)
+        // 개발자 넘기기는 기록에 없으니 이번 주 결과를 붙여 본다
+        let stamps = m.weekFridaySkip ? Array((m.pastWeeks + [inside ? 1 : 0]).suffix(8)) : m.pastWeeks
+        return VStack(spacing: 12) {
+            forecastCard(r: r, px: px, inside: inside, lo: lo, hi: hi)
+            guessCard(pos: pos, inside: inside, lo: lo, hi: hi)
+            recordCard(stamps)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(hex: 0xF3F8FD, dark: 0x142230), in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.blue, lineWidth: 2))
+        .onAppear { Remind.shared.recordWeek(m) }
+    }
+
+    // 1. 예보
+    private func forecastCard(r: (lo: Double, hi: Double, actual: Double), px: @escaping (Double) -> Double, inside: Bool, lo: String, hi: String) -> some View {
+            Card {
+                Label("이번 주 예보 · 금요일 장 마감 기준", systemImage: "sun.max.fill").appFont(13, .bold).foregroundStyle(Theme.forecast)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(m.weekFriday ? "\(m.weekFridayText) 금요일 예보는" : "금요일엔 아마").appFont(14).foregroundStyle(Theme.sub)
+                    Text("\(lo) ~ \(hi)").appFont(28, .bold).lineLimit(1).minimumScaleFactor(0.7)
+                    Text("사이일 거예요").appFont(15, .semibold)
+                }
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.track).frame(height: 12)
+                        Capsule().fill(Theme.blue.opacity(0.55)).frame(width: (px(r.hi) - px(r.lo)) * g.size.width, height: 12).offset(x: px(r.lo) * g.size.width)
+                        Circle().fill(m.weekFriday ? (inside ? Theme.green : Theme.orange) : Theme.ink)
+                            .overlay(Circle().stroke(Theme.card, lineWidth: 3))
+                            .frame(width: 18, height: 18).offset(x: px(r.actual) * g.size.width - 9)
+                    }
+                    .frame(maxHeight: .infinity)
+                }
+                .frame(height: 26)
+                HStack {
+                    Text(lo); Spacer()
+                    Text((m.weekFriday ? "금요일 " : "지금 ") + Self.eok(r.actual, 2)).fontWeight(.bold); Spacer()
+                    Text(hi)
+                }
+                .appFont(12).foregroundStyle(Theme.sub)
+                (Text("평소 움직임을 보면, ") + Text("두 주 중 한 주").fontWeight(.bold) + Text("는 이 범위 안에서 끝나요. 범위 밖이라고 이상한 건 아니에요."))
+                    .appFont(13).foregroundStyle(Theme.ink).lineSpacing(2)
+                    .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.forecastBg, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .accessibilityElement(children: .combine)
+    }
+
+    // 2. 맞혀보기
+    private func guessCard(pos: String, inside: Bool, lo: String, hi: String) -> some View {
+            Card {
+                Text("미니 미션 · 맞혀보기").appFont(12, .bold).foregroundStyle(Theme.brown)
+                Text("금요일엔 예보보다 어떨까요?").appFont(17, .bold)
+                Text("맞히면 배지를 받아요. 토요일에 여기서 결과를 보여드려요.").appFont(13).foregroundStyle(Theme.sub)
+                HStack(spacing: 8) {
+                    ForEach([("lo", "\(lo) 아래"), ("in", "범위 안"), ("hi", "\(hi) 위")], id: \.0) { o in
+                        let on = m.weekGuess == o.0
+                        Button { m.weekGuess = o.0; Remind.shared.recordWeek(m) } label: {
+                            VStack(spacing: 2) {
+                                Text(Self.names[o.0] ?? "").appFont(15, .bold)
+                                Text(o.1).appFont(11).opacity(0.85).lineLimit(1).minimumScaleFactor(0.7)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 64)
+                            .foregroundStyle(on ? .white : Theme.ink)
+                            .background(on ? Theme.forecast : Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? Theme.forecast : Theme.border, lineWidth: 2))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(m.weekFriday)
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                    }
+                }
+                if m.weekFriday {
+                    let out = pos == "in" ? "예보대로 범위 안에서 끝났어요." : "예보보다 \(pos == "hi" ? "높게" : "낮게") 끝났어요."
+                    Text(out + (m.weekGuess.map { $0 == pos ? " 맞혔어요!" : " 고른 답은 ‘\(Self.names[$0] ?? "")’였어요." } ?? ""))
+                        .appFont(14, .semibold)
+                        .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(inside ? Color(hex: 0xE3F4EC, dark: 0x163226) : Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
+                } else {
+                    if let g = m.weekGuess { Text("‘\(Self.names[g] ?? "")’로 골랐어요. 금요일 마감 뒤에 확인해요!").appFont(13, .semibold).foregroundStyle(Theme.forecast) }
+                    if m.devAll {
+                        Button("금요일로 넘기기 (개발자)") { withAnimation { m.weekFridaySkip = true } }
+                            .appFont(13).underline().foregroundStyle(Theme.sub).frame(minHeight: 40)
+                    }
+                }
+            }
+    }
+
+    // 3. 예보 성적 + 배지
+    private func recordCard(_ stamps: [Int]) -> some View {
+            Card {
+                HStack {
+                    Text(stamps.isEmpty ? "예보 성적" : "지난 \(stamps.count)주 예보 성적").appFont(15, .bold)
+                    Spacer()
+                    if !stamps.isEmpty { Text("\(stamps.count)번 중 \(stamps.reduce(0, +))번 범위 안").appFont(13).foregroundStyle(Theme.sub) }
+                }
+                if stamps.isEmpty {
+                    Text("첫 주가 끝나면 성적이 쌓여요").appFont(13).foregroundStyle(Theme.sub)
+                } else {
+                    HStack(spacing: 6) {
+                        ForEach(stamps.indices, id: \.self) { i in
+                            VStack(spacing: 4) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(stamps[i] == 1 ? Theme.forecast : Theme.card)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(stamps[i] == 1 ? Theme.forecast : Theme.dash, lineWidth: 2))
+                                    .overlay { if stamps[i] == 1 { Image(systemName: "checkmark").appFont(13, .bold).foregroundStyle(.white) } }
+                                    .frame(height: 32)
+                                Text(i == stamps.count - 1 ? "지난주" : "\(stamps.count - i)주 전").appFont(10).foregroundStyle(Theme.muted)
+                                    .lineLimit(1).minimumScaleFactor(0.7)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(stamps.count)주 중 \(stamps.reduce(0, +))주 범위 안")
+                    HStack(spacing: 14) {
+                        legend(Theme.forecast, nil, "범위 안")
+                        legend(Theme.card, Theme.dash, "범위 밖")
+                    }
+                }
+                Divider()
+                HStack {
+                    Text("맞혀보기 배지").appFont(14, .bold)
+                    Spacer()
+                    Text("맞힌 횟수 \(m.guessHits)번").appFont(13).foregroundStyle(Theme.sub)
+                }
+                HStack(spacing: 6) {
+                    ForEach(Remind.badges, id: \.n) { b in
+                        let got = m.guessHits >= b.n
+                        VStack(spacing: 4) {
+                            Image(systemName: b.icon).appFont(16, .bold)
+                                .foregroundStyle(got ? Theme.inkFixed : Theme.muted)
+                                .frame(width: 40, height: 40)
+                                .background(got ? Theme.gold : Theme.track, in: Circle())
+                            Text(b.name).appFont(10).foregroundStyle(got ? Theme.ink : Theme.muted).lineLimit(1).minimumScaleFactor(0.7)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(b.name) 배지, \(got ? "받음" : "\(b.n)번 맞히면 받아요")")
+                    }
+                }
+                Button { withAnimation { whyOpen.toggle() } } label: {
+                    HStack {
+                        Text(whyOpen ? "접기" : "반만 맞아도 괜찮은 이유 보기").appFont(13, .semibold)
+                        Spacer()
+                        Image(systemName: whyOpen ? "chevron.up" : "chevron.down").appFont(12)
+                    }
+                    .foregroundStyle(Theme.forecast).frame(minHeight: 40).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                if whyOpen {
+                    Text("이 예보는 처음부터 \"두 번 중 한 번\"을 맞히도록 범위를 정해요. 범위를 넓히면 늘 맞지만 쓸모가 없고, 좁히면 자주 틀려요. 그래서 반쯤 맞을 때가 가장 정직한 예보예요.")
+                        .appFont(13).foregroundStyle(Theme.ink).lineSpacing(2)
+                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.forecastBg, in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+    }
+
+    private func legend(_ c: Color, _ stroke: Color?, _ t: String) -> some View {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 4).fill(c)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(stroke ?? c, lineWidth: 2))
+                .frame(width: 14, height: 14)
+            Text(t).appFont(12).foregroundStyle(Theme.sub)
+        }
     }
 }
 
