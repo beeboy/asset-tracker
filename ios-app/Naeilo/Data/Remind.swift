@@ -43,6 +43,12 @@ struct RemindItem: Identifiable, Equatable {
     var big = false          // 위젯에도 보여 줄 큰 달성 (내 캐릭터 열림, 새 친구, 1000칸 이정표)
     var day: String? = nil   // 일정 날짜 (yyyy-MM-dd)
     var sub: String? = nil   // 일정의 대상 (전 종목, 환율, 종목 이름)
+    var action: String? = nil  // 할 일 버튼 이름 (있으면 소식함 맨 위 '지금 해 주면 좋아요'에 올린다)
+    var why: String? = nil     // 왜 중요한지 한 줄 (할 일·일정)
+    var checks: [Check]? = nil // 체크리스트 (내 투자 캐릭터 찾기)
+    struct Check: Equatable { let text: String; let ok: Bool }
+    /// 소식함 '할 일': 행동 버튼이 있거나 조건이 풀릴 때까지 남는 진행 중 소식
+    var isTodo: Bool { cat != .event && (action != nil || !once) }
 }
 
 /// 기기에 남는 기록 (다른 기기와 맞추지 않는다)
@@ -171,7 +177,7 @@ final class Remind {
         out += achievements(m)
         out += progress(m)
         out += MarketEvents.upcoming(held: m.rows.map(\.id), days: 7).map { e in
-            RemindItem(id: "ev.\(e.id).\(e.day)", cat: .event, text: e.kind, go: .external, once: false, day: e.day, sub: e.sub)
+            RemindItem(id: "ev.\(e.id).\(e.day)", cat: .event, text: e.kind, go: .external, once: false, day: e.day, sub: e.sub, why: MarketEvents.why(e.id))
         }
         out += analysis(m)
         out += news()
@@ -354,15 +360,20 @@ final class Remind {
             a.append(.init(id: "do.inter", cat: .doing, text: t, go: .board, once: false))
         }
         let n = m.calm.events.count
-        if (1..<Calm.minEvents).contains(n) {
-            a.append(.init(id: "do.calm", cat: .doing, text: "내 투자 습관까지 매매 기록 \(Calm.minEvents - n)건 남았어요.", go: .calm, once: false))
-        }
+        let calmLeft = (1..<Calm.minEvents).contains(n) ? Calm.minEvents - n : nil
         if let l = m.calm.ladder, (1...3).contains(l.step), let st = Calm.steps[l.type]?[l.step - 1], let p = m.calm.progress() {
             a.append(.init(id: "do.ladder", cat: .doing, text: "다음 걸음 \(l.step)/3 ‘\(st.name)’ · \(p.text)", go: .calm, once: false))
         }
-        let left = [(m.meGate1, m.meGate1Text), (m.meGate2, "평정 지수 유형 매칭"), (m.meGate3, "다방커피 후원")].filter { !$0.0 }.map { $0.1 }
-        if (1...2).contains(left.count) {
-            a.append(.init(id: "do.me", cat: .doing, text: "내 캐릭터 조건 \(3 - left.count)/3 · 남은 조건: " + left.joined(separator: ", "), go: .me, once: false))
+        // 내 투자 캐릭터 찾기: 조건 3개를 체크리스트 하나로 (투자 습관 기록 건수는 그 안 한 줄로)
+        let gates = [(m.meGate1, m.meGate1Short),
+                     (m.meGate2, "내 투자 습관 유형 찾기" + (calmLeft.map { " · 기록 \($0)건 남음" } ?? "")),
+                     (m.meGate3, "다방커피 후원")]
+        let ok = gates.filter(\.0).count
+        if (1...2).contains(ok) {
+            a.append(.init(id: "do.me", cat: .doing, text: "내 투자 캐릭터 찾기 · 3개 중 \(ok)개", go: .me, once: false,
+                           why: "다 채우면 나와 가장 닮은 인물을 알려드려요.", checks: gates.map { .init(text: $0.1, ok: $0.0) }))
+        } else if let c = calmLeft {
+            a.append(.init(id: "do.calm", cat: .doing, text: "내 투자 습관까지 매매 기록 \(c)건 남았어요.", go: .calm, once: false))
         }
         if let i = (0..<Shelter.friends.count).first(where: { !m.friendOn($0) }) {
             a.append(.init(id: "do.friend", cat: .doing, text: "다음 친구 \(Shelter.friends[i].name)는 \(m.friendWhen(i))에 와요.", go: .shelter, once: false))
@@ -540,6 +551,15 @@ enum MarketEvents {
         }.sorted { $0.day < $1.day }
     }
 
+    /// 일정이 내게 왜 중요한지 한 줄 (금리·물가·고용·실적 4종)
+    static func why(_ id: String) -> String? {
+        switch id {
+        case "x_fomc", "x_bok": "금리가 바뀌면 환율이 움직이고, 미국 주식의 원화 평가액이 달라질 수 있어요."
+        case "x_cpi": "물가가 예상과 다르면 금리 전망이 바뀌어 주가가 크게 흔들릴 수 있어요."
+        case "x_jobs": "일자리 숫자는 금리 전망에 영향을 줘서 주가와 환율이 함께 움직일 수 있어요."
+        default: id.hasPrefix("e_") ? "실적이 기대와 다르면 그 종목 값이 하루에 크게 움직일 수 있어요." : nil
+        }
+    }
     /// "내일", "10/22 (D-11)" 처럼
     static func when(_ day: String) -> String {
         let n = Day.dday(day)
