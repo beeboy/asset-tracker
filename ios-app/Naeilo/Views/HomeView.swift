@@ -53,16 +53,8 @@ struct HomeView: View {
     private var goalSummary: some View {
         let now = m.route == .novice ? m.goalSaved : m.total / 1e4, value = m.route == .plus || m.noviceOwn, prog = min(1, now / max(1, m.gK))
         return VStack(alignment: .leading, spacing: 10) {
-            // 목표 금액을 누르면 고친다
-            HStack(spacing: 4) {
-                Text((value ? "지금 평가액" : "지금 모은 돈") + " · 목표 \(AppModel.wonK(m.gK))").foregroundStyle(Color(hex: 0xC9D0D6))
-                NavigationLink(value: "goal") {
-                    Image(systemName: "pencil").foregroundStyle(.white).frame(minWidth: 28, minHeight: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("목표 \(AppModel.wonK(m.gK)), 눌러서 고치기")
-            }
-            .appFont(13)
+            Text((value ? "지금 평가액" : "지금 모은 돈") + " · 목표 \(AppModel.wonK(m.gK))").foregroundStyle(Color(hex: 0xC9D0D6))
+                .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5)
                 if value && m.cost > 0 {
@@ -341,28 +333,32 @@ struct RoutineCard: View {
 struct MiniPath: View {
     @Environment(AppModel.self) private var m
     var body: some View {
-        let p = m.myPath, x1 = p.start + 1.0 / 12, gap = m.myPathGapToday
-        let act: [Double] = (0...20).map { i in p.act(p.start * Double(i) / 20) }
-        let need: [Double] = (0...20).map { i in p.need(x1 * Double(i) / 20) }
-        let vals = act + need
-        let hi = (vals.max() ?? 1) * 1.01, lo = (vals.min() ?? 0) * 0.99
+        // 분석 > 내 길 '지금까지' 그래프와 같은 점·같은 세로 범위 (목표 금액 포함), 눈금·범위 띠만 뺀다
+        let p = m.myPath, x1 = p.start + 1.0 / 12, gap = m.myPathGapToday, K = m.gK * 1e4
+        let act = p.pts
+        let need: [(Double, Double)] = (0...30).map { i in let t = x1 * Double(i) / 30; return (t, p.need(t)) }
+        let needAll = (0...30).map { i in p.need(p.end * Double(i) / 30) }
+        let vals = act.map(\.1) + needAll + [K]
+        let hi = (vals.max() ?? 1) * 1.05, lo = (vals.filter { $0 > 0 }.min() ?? 0) * 0.9
         Button {
             m.tab = .analysis
             m.analysisPath = NavigationPath([AnalysisRoute.myPath])
         } label: {
             Canvas { ctx, size in
-                let Y = { (v: Double) -> CGFloat in CGFloat((hi - v) / max(1, hi - lo)) * size.height }
-                let xA = { (i: Int) -> CGFloat in CGFloat(p.start / x1 * Double(i) / 20) * size.width }
-                let xN = { (i: Int) -> CGFloat in CGFloat(Double(i) / 20) * size.width }
-                var n = Path(), a = Path()
-                for i in 0...20 {
-                    let pn = CGPoint(x: xN(i), y: Y(need[i])), pa = CGPoint(x: xA(i), y: Y(act[i]))
-                    if i == 0 { n.move(to: pn); a.move(to: pa) } else { n.addLine(to: pn); a.addLine(to: pa) }
+                let pt = { (q: (Double, Double)) -> CGPoint in
+                    CGPoint(x: CGFloat(q.0 / max(1e-6, x1)) * size.width, y: CGFloat((hi - q.1) / max(1, hi - lo)) * size.height)
                 }
-                ctx.stroke(n, with: .color(Color(hex: 0xB79CF0)), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                ctx.stroke(a, with: .color(Theme.mint), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
-                let end = CGPoint(x: xA(20), y: Y(act[20]))
-                ctx.fill(Path(ellipseIn: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)), with: .color(Theme.mint))
+                func line(_ qs: [(Double, Double)]) -> Path {
+                    var path = Path()
+                    for (i, q) in qs.enumerated() { i == 0 ? path.move(to: pt(q)) : path.addLine(to: pt(q)) }
+                    return path
+                }
+                ctx.stroke(line(need), with: .color(Color(hex: 0xB79CF0)), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                ctx.stroke(line(act), with: .color(Theme.mint), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                if let last = act.last {
+                    let end = pt((p.start, last.1))
+                    ctx.fill(Path(ellipseIn: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)), with: .color(Theme.mint))
+                }
             }
             .frame(width: 84, height: 40)
             .overlay(alignment: .bottom) {

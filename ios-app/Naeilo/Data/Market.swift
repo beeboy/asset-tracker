@@ -84,14 +84,14 @@ final class Market {
             let d = Date(timeIntervalSince1970: t)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm" : "M월 d일 a h:mm"
             let ago = Int(Date().timeIntervalSince1970 - s.got) / 60
-            return "\(f.string(from: d)) 시세 · \(ago < 1 ? "방금" : "\(ago)분 전") 받음 · 한국 종목은 넣은 가격 기준"
+            return "\(f.string(from: d)) 시세 · \(ago < 1 ? "방금" : "\(ago)분 전") 받음"
         }
         if live.isEmpty, let t = YahooSample.asOf {
             f.dateFormat = "M월 d일 a h:mm"
-            return "\(f.string(from: t)) 시세 (테스트 자료) · 한국 종목은 넣은 가격 기준"
+            return "\(f.string(from: t)) 시세 (테스트 자료)"
         }
         f.dateFormat = "a h:mm"
-        return "지금 시세 · \(f.string(from: updatedAt)) 갱신 · 한국 종목은 넣은 가격 기준"
+        return "지금 시세 · \(f.string(from: updatedAt)) 갱신"
     }
 
     /// force: 아래로 당겨 갱신할 때. 받은 지 얼마 안 됐어도 다시 받는다
