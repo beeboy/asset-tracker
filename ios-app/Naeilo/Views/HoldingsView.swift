@@ -49,7 +49,6 @@ struct HoldingsView: View {
                 }.buttonStyle(.plain)
                 Text("미국 종목은 달러 가격 × 원/달러로, 국내 종목은 원화 가격 그대로 계산해요")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
-                if KoreaEstimate.direct || m.holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) { KoreaSumCard() }
                 MyRecordCard()
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
@@ -498,18 +497,13 @@ struct AddHoldingView: View {
 
     /// 이미 시세를 아는 종목 (예시 종목 중 앱에 자료가 있는 것, 전에 추가한 것)
     private func known(_ h: StockHit) -> Symbol? {
-        if h.currency == .krw && KoreaEstimate.liveOK(h.id) && !CustomSymbols.shared.isLive(h.id) { return nil }   // 테스트 시세를 새로 받는다
+        if h.currency == .krw && KoreaEstimate.liveOK(h.id, name: h.name) && !CustomSymbols.shared.isLive(h.id) { return nil }   // 테스트 시세를 새로 받는다
         if h.id == "DRNK" || YahooSample.quotes[h.id] != nil || CustomSymbols.shared.symbol(h.id) != nil { return Sample.symbol(h.id) }
         return nil
     }
 
     private func pick(_ h: StockHit) async {
         failed = nil; focus = nil
-        // 내부 테스트 시세는 국내 종목 5개까지
-        if h.currency == .krw && KoreaEstimate.liveOK(h.id),
-           m.holdings.filter({ $0.symbol != h.id && CustomSymbols.shared.isLive($0.symbol) }).count >= KoreaEstimate.liveMax {
-            failed = "테스트 시세는 국내 종목 \(KoreaEstimate.liveMax)개까지 받을 수 있어요."; return
-        }
         if let s = known(h) { open(s); return }
         loading = h.id
         defer { loading = nil }
