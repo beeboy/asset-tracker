@@ -561,7 +561,7 @@
       p_loss: term.filter((v) => v < invested).length / nPaths,
       terminal: { p5: quantileSorted(term, 0.05), p25: quantileSorted(term, 0.25), p50: quantileSorted(term, 0.5), p75: quantileSorted(term, 0.75), p95: quantileSorted(term, 0.95), mean: mean(term) },
       mdd_median: quantileSorted(mdds, 0.5), mdd_p10: quantileSorted(mdds, 0.1),
-      req50, byYear,
+      req50, byYear, hits: opt.hits ? Array.from(firstHit) : undefined,
       stocks: holdings.map((hd, a) => {
         const b = bandsOf(stock[a]);
         let up = 0; for (let p = 0; p < nPaths; p++) if (stock[a][(M - 1) * nPaths + p] > hd.price0) up++;
@@ -693,6 +693,27 @@
     return { V0, top, out, fd: model.monthDates };
   }
 
+  // 목표에 처음 닿는 때 (내 길 개편 4단계, 앱 GoalRoute.simulate(years:) 의 etaLo·etaMonths·etaHi 와 같은 생각)
+  // 오늘부터 목표일 뒤 넉넉히(최소 10년) 경로에서, 경로마다 처음 목표 이상이 된 때의 10·50·90% (개월). 그 분위까지 못 닿으면 null
+  // inp: {base, series, settings, events, betas, startDate, horizonDate, goal, plans: [{k, w}]} (w 는 base 순서 비중, 합 1)
+  function reachTimes(inp, onProg) {
+    const fxOf = (ccy) => (!ccy || ccy === "KRW" ? null : ccy === "USD" ? "KRW=X" : ccy + "KRW=X");
+    const { base, settings: m, goal: g, plans } = inp;
+    const V0 = base.reduce((a, h) => a + (h.extra ? 0 : h.valueKrw), 0);
+    const model = buildModel({ holdings: base, series: inp.series, fxOf, settings: m, events: inp.events, betas: inp.betas, startDate: inp.startDate, goalDate: inp.horizonDate });
+    const cap = Math.round(yrs(inp.startDate, inp.horizonDate) * 12), out = [];
+    for (const pl of plans) {
+      const hs = base.map((h, i) => ({ ...h, valueKrw: Math.max(1, V0 * pl.w[i]) }));
+      const R = simulate(model, { holdings: hs, scenario: m.scenario, nPaths: 1000, seed: Number(m.seed) || 1, goal: g.amount, monthly: Number(g.monthly_contribution) || 0, rebalance: false, withEvents: true, dof: m.t_dof, fxOf, hits: true });
+      const ms = R.hits.map((d) => (d < 0 ? Infinity : Math.round(yrs(inp.startDate, model.days[Math.min(model.days.length - 1, d - 1)]) * 12))).sort((a, b) => a - b);
+      const q = (f) => { const v = V0 >= g.amount ? 0 : ms[Math.min(ms.length - 1, Math.floor(f * ms.length))]; return Number.isFinite(v) ? v : null; };
+      out.push({ k: pl.k, lo: q(0.1), mid: q(0.5), hi: q(0.9), p_goal: R.p_goal });
+      if (onProg) onProg(out.length, plans.length);
+    }
+    return { cap, out };
+  }
+  const yrs = (a, b) => (Date.parse(b) - Date.parse(a)) / (365.25 * 864e5);
+
   // 한국 종목 (시세 계약 없음): 기준 미국 ETF 시세 × 원/달러(앞 값으로 메움). 환헤지면 환율 없이. 웹 synthKR 과 tools/site_stats.mjs(KR~SPY 등)가 같이 쓴다
   function krSeries(base, fx, hedged, field = "adj") {
     const fm = new Map(); if (fx) fx.dates.forEach((d, i) => { const v = (fx.adj || fx.close)[i]; if (v > 0) fm.set(d, v); });
@@ -713,5 +734,5 @@
     for (const x of log || []) { if (x.d > d) break; v = x.v; }
     return v;
   }
-  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, allocPlans, reachTimes, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();

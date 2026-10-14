@@ -244,6 +244,91 @@
     if (last.d === d) last.h = h; else st.lots.push({ d, h });
     if (st.lots.length > 400) st.lots.splice(0, st.lots.length - 400);
   }
+  // ------------------------------------------------------------ 내 길 판정·닿는 때·비중 바꿔 보기 (내 길 개편 4단계, 앱 MyPathView·MyPathCompareView 와 같은 화면)
+  // 구성 3줄은 앱 GoalRoute 의 성장 더하기·버팀목 더하기와 같은 정의 (가장 큰 종목 10%까지 + 나머지를 대표 ETF 로). 비중 바꿔 보기는 저장 없이 보기만 (모의 바구니 저장은 앱)
+  const PATH_MIX = { grow: { n: "성장 더하기", c: [["SPY", 0.6], ["QQQ", 0.3], ["SGOV", 0.1]] }, steady: { n: "버팀목 더하기", c: [["SPY", 0.5], ["USMV", 0.3], ["SGOV", 0.2]] } };
+  const pathVerdict = (p) => (p < 0.3 ? "가능성이 낮아요" : p > 0.7 ? "가능성이 높아요" : "가능성은 반반이에요");
+  // 오늘부터 mo개월 뒤를 "2031년 봄"처럼 (앱 whenText 와 같다)
+  const pathWhen = (mo) => { if (mo == null) return "-"; const d = new Date(); d.setMonth(d.getMonth() + Math.round(mo)); const m = d.getMonth() + 1; return `${d.getFullYear()}년 ${m >= 3 && m <= 5 ? "봄" : m <= 8 && m >= 6 ? "여름" : m >= 9 && m <= 11 ? "가을" : "겨울"}`; };
+  let pathR = null, pathKey = "", pathTry = null, pathStart = null, pathRun = 0;
+  function pathBase() {
+    const { rows } = valuation(), base = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw }));
+    const add = (t) => { if (base.some((h) => h.ticker === t)) return true; const q = S.prices[t]; if (!q || !q.close?.length) return false; base.push({ ticker: t, shares: 0, price0: q.close[q.close.length - 1], ccy: ccyOf(t), valueKrw: 1, extra: true }); return true; };
+    return { base, add };
+  }
+  function pathPlans(base, add, V0) {
+    const w0 = base.map((h) => (h.extra ? 0 : h.valueKrw / V0)), top = w0.indexOf(Math.max(...w0)), plans = [{ k: "keep", w: w0 }];
+    for (const [k, D] of Object.entries(PATH_MIX)) {
+      const c = D.c.map(([t, x]) => [add(t) ? t : add("SPY") ? "SPY" : null, x]).filter((x) => x[0]); if (!c.length) continue;
+      const tT = Math.min(w0[top], 0.1), rest = 1 - tT, tot = c.reduce((a, x) => a + x[1], 0), w = base.map(() => 0);
+      w[top] += tT; c.forEach(([t, x]) => { w[base.findIndex((h) => h.ticker === t)] += (rest * x) / tot; });
+      plans.push({ k, w });
+    }
+    if (pathTry) { const sum = Object.values(pathTry).reduce((a, x) => a + x, 0); if (sum > 0) { Object.keys(pathTry).forEach(add); plans.push({ k: "try", w: base.map((h) => (pathTry[h.ticker] || 0) / sum) }); } }
+    return plans;
+  }
+  async function runPath() {
+    const g = S.state.goal, { base, add } = pathBase(), V0 = base.reduce((a, h) => a + h.valueKrw, 0);
+    if (!(V0 > 0) || !(g.amount > 0)) return;
+    const plans = pathPlans(base, add, V0), y = Math.max(10, Math.ceil(yearsBetween(today(), g.date)));
+    const key = JSON.stringify([plans.map((p) => [p.k, p.w.map((x) => Math.round(x * 1e4))]), base.map((h) => [h.ticker, Math.round(h.valueKrw)]), g.amount, g.monthly_contribution, g.date, S.state.model.scenario]);
+    if (key === pathKey) return; pathKey = key;
+    const id = ++pathRun, series = {}; { const P = mcPrices(); for (const k in P) series[k] = { dates: P[k].dates, adj: P[k].adj }; }
+    const inp = { base, series, settings: S.state.model, events: S.state.events, betas: factorBetas().beta, startDate: today(), horizonDate: Model.addMonths(today(), 12 * y), goal: g, plans: plans.map(({ k, w }) => ({ k, w })) };
+    if (!pathR) $("#pathWhen").innerHTML = `<div class="muted small">계산 중...</div>`;
+    try { const r = await allocCompute(inp, null, "reach"); if (id !== pathRun) return; pathR = r; renderPath(); }
+    catch (e) { if (id === pathRun) $("#pathWhen").innerHTML = `<div class="muted small">계산하지 못했어요: ${esc(e.message)}</div>`; }
+  }
+  function renderPath() {
+    const card = $("#pathCard"), g = S.state.goal, { total } = valuation(), now = total + cashKrw();
+    if (!(total > 0) || !(g.amount > 0)) { card.style.display = "none"; return; }
+    card.style.display = "block";
+    if (!lastForecast) fcRestore();
+    const pg = lastForecast && fcDirty ? null : fcReady(S.state.model.scenario)?.R?.p_goal ?? null;
+    $("#pathVerdict").innerHTML = `<div class="row between" style="align-items:baseline"><b style="font-size:1.3rem;color:${pg == null ? "var(--muted)" : "var(--fg)"}">${pg == null ? "계산 중" : pathVerdict(pg)}</b>${pg == null ? "" : `<span class="muted small">목표 확률 ${pct(pg, 0)}</span>`}</div>
+      <div class="bar" style="margin:8px 0 4px"><i style="width:${Math.min(100, Math.max(0, (now / g.amount) * 100))}%"></i></div>
+      <div class="row between muted small"><span>지금 ${krw(now)}원</span><span>목표 ${krw(g.amount)}원</span></div>`;
+    if (!pathStart) { const { rows } = valuation(), x = {}; rows.filter((r) => r.valueKrw > 0).forEach((r) => (x[r.h.ticker] = (x[r.h.ticker] || 0) + Math.round((r.valueKrw / total) * 100))); pathStart = x; }
+    renderPathTry();
+    if (!pathR) { runPath(); return; }
+    runPath(); // 입력이 바뀌었으면 다시 (같으면 바로 끝남)
+    const goalMo = Math.max(0, yearsBetween(today(), g.date) * 12), cap = pathR.cap, y0 = new Date().getFullYear(), by = Object.fromEntries(pathR.out.map((o) => [o.k, o]));
+    const lineOf = (lab, o, col) => {
+      if (!o) return "";
+      const lo = o.lo ?? cap, hi = o.hi ?? cap, ends = [lo, hi];
+      return { lab, o, col, ends };
+    };
+    const draw = (rows) => {
+      rows = rows.filter(Boolean); if (!rows.length) return "";
+      const all = rows.flatMap((r) => r.ends).concat(goalMo), x0 = Math.max(0, Math.min(...all) - 6), x1 = Math.max(x0 + 12, Math.max(...all) + 6), X = (m) => (((m == null ? cap : Math.min(cap, m)) - x0) / (x1 - x0)) * 100;
+      return rows.map(({ lab, o, col }) => `<div style="margin:10px 0 4px"><div class="row between small"><b>${lab}</b><b style="color:${col}">${o.mid == null ? `${y0 + Math.round(cap / 12)}년 이후` : pathWhen(o.mid)}</b></div>
+        <div style="position:relative;height:14px;margin-top:4px"><span style="position:absolute;left:${X(goalMo)}%;top:0;bottom:0;border-left:1px dashed var(--muted)"></span><span style="position:absolute;left:${X(o.lo)}%;width:max(4px,${X(o.hi) - X(o.lo)}%);top:3px;height:8px;border-radius:4px;background:${col};opacity:.3"></span>${o.mid == null ? "" : `<span style="position:absolute;left:calc(${X(o.mid)}% - 5px);top:2px;width:10px;height:10px;border-radius:50%;background:${col}"></span>`}</div>
+        <div class="muted small">${o.lo == null ? `${y0 + Math.round(cap / 12)}년 이후` : `${pathWhen(o.lo)} ~ ${o.hi == null ? `${y0 + Math.round(cap / 12)}년 이후` : pathWhen(o.hi)}`}</div></div>`).join("") + `<div class="row between muted small"><span>${y0 + Math.floor(x0 / 12)}년</span><span>점선 목표일</span><span>${y0 + Math.floor(x1 / 12)}년</span></div>`;
+    };
+    $("#pathWhen").innerHTML = draw([lineOf("지금 구성", by.keep, "var(--c1)"), lineOf(PATH_MIX.grow.n, by.grow, "var(--c2)"), lineOf(PATH_MIX.steady.n, by.steady, "var(--c2)")]);
+    $("#pathTryLines").innerHTML = by.try ? draw([lineOf("지금", by.keep, "var(--c1)"), lineOf("바꾼 비중", by.try, "var(--c2)")]) : "";
+    $("#pathRead").textContent = by.try && by.keep ? pathReadText(by.keep, by.try, goalMo, cap, y0) : "";
+  }
+  // 해석: 바꾼 보통 시점 vs 목표일·지금 구성, 막대 폭(10~90%)으로 흔들림 (앱 MyPathCompareView.read 와 같다)
+  function pathReadText(b, a, goalMo, cap, y0) {
+    if (a.mid == null) return `바꾼 비중으로는 보통의 경우 ${y0 + Math.round(cap / 12)}년 안에 목표에 닿지 못해요.`;
+    const span = (m) => { m = Math.round(m); const y = Math.floor(m / 12), r = m % 12; return (y ? `${y}년` : "") + (r ? `${y ? " " : ""}${r}개월` : ""); };
+    const d = b.mid == null ? -Infinity : a.mid - b.mid;
+    const vsNow = Math.abs(d) < 3 ? "지금 구성과 거의 같아요" : d < 0 ? (Number.isFinite(d) ? `지금 구성보다 ${span(-d)} 빨라요` : "지금 구성보다 빨라요") : `지금 구성보다 ${span(d)} 늦어요`;
+    const wA = (a.hi ?? cap) - (a.lo ?? cap), wB = (b.hi ?? cap) - (b.lo ?? cap);
+    const spread = wA > wB * 1.2 ? "빠를 때와 늦을 때 차이가 커져요" : wA < wB * 0.8 ? "닿는 때가 더 고르게 모여요" : "흔들림은 비슷해요";
+    return `보통 ${pathWhen(a.mid)}, ${a.mid <= goalMo ? "목표일보다 먼저 닿는 편이에요" : "목표일보다 늦게 닿는 편이에요"}. ${vsNow}. ${spread}.`;
+  }
+  function renderPathTry() {
+    const w = pathTry || pathStart, sum = Object.values(w).reduce((a, x) => a + x, 0), changed = !!pathTry && JSON.stringify(pathTry) !== JSON.stringify(pathStart);
+    $("#pathRows").innerHTML = Object.keys(w).sort((a, b) => (pathStart[b] ?? -1) - (pathStart[a] ?? -1) || a.localeCompare(b)).map((t) => `<div class="row between" style="padding:4px 0"><div><b>${esc(S.prices[t]?.name || t)}</b> <span class="muted small">지금 ${pathStart[t] || 0}%</span></div><div class="row" style="gap:6px"><button class="sm" data-pw="${esc(t)}" data-d="-5" aria-label="${esc(t)} 5%p 줄이기">−</button><b style="min-width:3em;text-align:center;color:${w[t] === (pathStart[t] || 0) ? "var(--fg)" : "var(--c2)"}">${w[t]}%</b><button class="sm" data-pw="${esc(t)}" data-d="5" aria-label="${esc(t)} 5%p 늘리기">+</button></div></div>`).join("");
+    $("#pathSum").innerHTML = `합계 <b style="color:${sum === 100 ? "var(--good)" : "var(--bad)"}">${sum}%</b>` + (sum !== 100 && sum > 0 ? ` <span class="small" style="color:var(--bad)">합이 100%가 아니라 비율대로 맞춰 계산해요.</span>` : "");
+    $("#pathReset").disabled = !changed;
+  }
+  function pathBump(t, d) {
+    const w = { ...(pathTry || pathStart) }; w[t] = Math.min(100, Math.max(0, (w[t] || 0) + d));
+    pathTry = JSON.stringify(w) === JSON.stringify(pathStart) ? null : w; renderPathTry(); renderPath();
+  }
   // naeilo를 쓴 날부터의 내 기록: 하루 한 줄 {d, v 평가액, c 넣은 돈, q {티커: [수량, 원화 주가]}, f {티커: [산·판 수량, 원화 금액]}}
   // 넣은 돈 = 전날 넣은 돈 + 그날 '더 샀어요·팔았어요' 금액(그때 가격) + 그 밖에 바뀐 수량(직접 고치기·추가·삭제)×그날 가격. 첫날은 그날 평가액.
   // 이 브라우저에만 쌓이고 백업 파일·기기 동기화에 같이 들어간다. 앱(iOS)과 같은 모양. 바뀐 게 새 날이면 true (그때만 저장)
@@ -1099,11 +1184,11 @@
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(r0), `${krw(V0)}원 → ${krw(now)}원${krIn(i0) ? ` (국내 합계 ${krw(krIn(i0))}원 들어옴)` : ""}`],
-      ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `내 길보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
+      ["계획선 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `계획선보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
       ["목표 달성 확률", pg != null ? pct(pg, 0) : "계산 중", "목표일 전망과 같은 값"],
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
-    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "내 길 대비" ? cls(gap) : a === "시작 대비" ? cls(r0) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
+    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "계획선 대비" ? cls(gap) : a === "시작 대비" ? cls(r0) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
     // 경로 대비 +/− 막대: 날짜별 (실제 − 필요 경로). 1년은 주, 3년은 달 단위로 묶고(그 주·달 마지막 값), 끝에 오늘 실시간 막대
     const rsel = $("#progRange .on")?.dataset.r || "66", n = +rsel, unit = n >= 780 ? "m" : n >= 252 ? "w" : "d";
     const key = (d) => { if (unit === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
@@ -1127,7 +1212,7 @@
       Charts.barChart($("#progChart"), { x: pts.map((p) => p[0]), y: pts.map((p) => p[1]), height: 170, yfmt: krwAxis, live: td,
         xlab: (d) => (d === td ? "오늘" : unit === "m" ? `${d.slice(2, 4)}.${+d.slice(5, 7)}` : `${+d.slice(5, 7)}/${+d.slice(8)}`),
         tipx: (d) => (d === td ? `${d} (오늘 실시간)` : unit === "m" ? `${d.slice(0, 7)} 말` : unit === "w" ? `${d} 주 마지막` : d),
-        tipy: (i) => `내 길보다 ${sg(pts[i][1])}` + (evAt[i] ? `<br>▲ ${evAt[i].map(esc).join("<br>▲ ")}` : "") + (pts[i][0] < start ? `<br><span class="muted">목표 시작 전 (거꾸로 늘인 경로)</span>` : ""),
+        tipy: (i) => `계획선보다 ${sg(pts[i][1])}` + (evAt[i] ? `<br>▲ ${evAt[i].map(esc).join("<br>▲ ")}` : "") + (pts[i][0] < start ? `<br><span class="muted">목표 시작 전 (거꾸로 늘인 경로)</span>` : ""),
         labelLast: (pts[pts.length - 1][0] === td ? "오늘 " : "") + sg(last),
         dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
@@ -1236,7 +1321,7 @@
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
     const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
-    renderProgress(H, total, cash); renderBackupNag(); renderBep(); renderMyRec();
+    renderProgress(H, total, cash); renderPath(); renderBackupNag(); renderBep(); renderMyRec();
     $("#goalKpis").innerHTML = [
       ["현재 평가액", `<a href="#" class="plain" data-go="stocks" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(tot / g.amount), `<div class="bar"><i style="width:${Math.min(100, (tot / g.amount) * 100)}%"></i></div>`],
@@ -3191,6 +3276,8 @@
 
   function bind() {
     $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
+    document.addEventListener("click", (e) => { const b = e.target.closest("[data-pw]"); if (b) pathBump(b.dataset.pw, +b.dataset.d); });
+    $("#pathReset").addEventListener("click", () => { pathTry = null; renderPathTry(); renderPath(); });
     document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "stocks" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); if (g.dataset.add) setTimeout(() => $("#addTicker")?.focus({ preventScroll: true }), 300); } });
     $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     $("#btnCollect").onclick = () => collect(false);
