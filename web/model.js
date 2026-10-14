@@ -239,6 +239,19 @@
     return { x: xs, y: ys, d: ds };
   }
   // 종목별 요인 민감도 β (요인 사건을 종목에 나눠 줄 때 쓴다). prices: {sym: {dates, adj}}, tks: 종목 티커
+  // 요인별 '보통 한 달 변화': 지난 years 년 일별 종가를 21거래일씩 끊은 변화의 표준편차(sd)와 가장 큰 변화(max).
+  // 단위는 factorBetas 와 같다 (금리는 bp, 나머지는 로그 변화). fx(원/달러)도 같이
+  function factorMoves(prices, todayStr, years = 3) {
+    const out = {}, cut = addMonths(todayStr, -12 * years);
+    for (const [fk, sym] of Object.entries({ ...FACTOR_SYM, fx: "KRW=X" })) {
+      const P = prices[sym]; if (!P) continue;
+      const v = []; P.dates.forEach((d, i) => { if (d >= cut && P.adj[i] != null && (fk === "rate" || P.adj[i] > 0)) v.push(P.adj[i]); });
+      const ch = []; for (let i = 21; i < v.length; i += 21) ch.push(fk === "rate" ? (v[i] - v[i - 21]) * 100 : Math.log(v[i] / v[i - 21]));
+      if (ch.length < 6) continue;
+      out[fk] = { sd: std(ch), max: Math.max(...ch.map(Math.abs)), n: ch.length };
+    }
+    return out;
+  }
   function factorBetas(prices, tks, todayStr) {
     const out = { beta: {}, stat: {} };
     for (const [fk, sym] of Object.entries(FACTOR_SYM)) {
@@ -250,7 +263,7 @@
         const n = r.y.length, mx = mean(r.x), my = mean(r.y);
         let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++) { sxy += (r.x[i] - mx) * (r.y[i] - my); sxx += (r.x[i] - mx) ** 2; syy += (r.y[i] - my) ** 2; }
         const corr = sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0;
-        let beta = sxx ? sxy / sxx : 0;
+        let beta = sxx ? sxy / sxx : 0, b2 = 0, ax = r.x, ay2 = r.y;
         // 시장 외 요인은 시장(SPY) 움직임을 뺀 순수 민감도 (두 변수 회귀)
         if (fk !== "mkt" && prices.SPY && t !== "SPY") {
           const m2 = alignedChanges(prices, t, "SPY", false, todayStr), mm = new Map(m2 ? m2.d.map((d, i) => [d, m2.x[i]]) : []);
@@ -258,11 +271,13 @@
           if (Y.length > 30) {
             const a1 = mean(X1), a2 = mean(X2), ay = mean(Y); let s11 = 0, s22 = 0, s12 = 0, s1y = 0, s2y = 0;
             for (let i = 0; i < Y.length; i++) { const u = X1[i] - a1, v = X2[i] - a2, w = Y[i] - ay; s11 += u * u; s22 += v * v; s12 += u * v; s1y += u * w; s2y += v * w; }
-            const det = s11 * s22 - s12 * s12; if (det > 0) beta = (s1y * s22 - s2y * s12) / det;
+            const det = s11 * s22 - s12 * s12; if (det > 0) { beta = (s1y * s22 - s2y * s12) / det; b2 = (s2y * s11 - s1y * s12) / det; ax = X1; ay2 = Y.map((y, i) => y - b2 * X2[i]); }
           }
         }
         const w = n / (n + 60), prior = fk === "mkt" ? 1 : 0; // 이력이 짧으면 기본값 쪽으로 당긴다
-        out.beta[fk][t] = w * beta + (1 - w) * prior; out.stat[fk][t] = { beta: out.beta[fk][t], raw: beta, corr, n };
+        // 같은 방향 비율: 요인이 움직인 날 중 종목(시장 몫 뺀 값)이 β 방향대로 움직인 날의 비율 ("10번 중 N번")
+        let hit = 0, cnt = 0; for (let i = 0; i < ax.length; i++) { if (!ax[i] || !ay2[i]) continue; cnt++; if (Math.sign(ax[i] * beta) === Math.sign(ay2[i])) hit++; }
+        out.beta[fk][t] = w * beta + (1 - w) * prior; out.stat[fk][t] = { beta: out.beta[fk][t], raw: beta, corr, n, agree: cnt ? hit / cnt : 0.5 };
       }
     }
     return out;
@@ -713,5 +728,5 @@
     for (const x of log || []) { if (x.d > d) break; v = x.v; }
     return v;
   }
-  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, factorMoves, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();
