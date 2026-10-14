@@ -591,7 +591,7 @@ final class AppModel {
             return k
         }
     }
-    var forecastTitle: String { isGoal ? "목표일 전망" : "3년 전망" }
+    var forecastTitle: String { "목표일 전망" }   // 회복 루트도 같은 이름 (끝날만 3년 뒤)
     /// 몬테카를로에 넣는 목표: 웹처럼 현금은 그대로 있다고 보고 목표에서 뺀다 (전망 경로는 종목만)
     var mcGoal: Double { isGoal ? max(1, keyValue - cashKrw) : keyValue }
     /// 전망 끝날: 목표 루트는 목표일, 회복 루트는 3년 뒤 (웹: 목표일)
