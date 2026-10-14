@@ -99,10 +99,11 @@ final class Market {
             if let q = try? await p.quotes(tickers) { live = q }
             if let f = try? await p.usdkrw() { liveFx = f }
         }
-        // 토스 시세 (주소를 넣은 개발자 기기만): 국내·미국 종목. 실패·3초 넘김이면 nil → 아래 Yahoo 값
+        // 토스 시세 (주소를 넣은 개발자 기기만): 국내·미국 종목. 다른 시세를 기다리게 하지 않게 같이 받는다.
+        // 실패하면 15분 안에 받은 값, 그것도 없으면 nil → Yahoo 값
         var ty: [String: String] = [:]
         for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
-        if !held.isEmpty { toss = await TossFeed.fetch(ty) }
+        async let tossNew = TossFeed.fetch(ty)
         // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
         if let f = await QuoteFeed.fetch(minAge: force ? 0 : 240) { site = f }
         if let r = await MarFeed.fetch(minAge: force ? 0 : 1800) { mar = r }
@@ -113,6 +114,8 @@ final class Market {
         if let s = await SiteStats.fetch(minAge: force ? 0 : 6 * 3600) { stats = s }
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
         await CustomSymbols.shared.refresh(held: held, force: force)
+        let t = await tossNew
+        if !held.isEmpty { toss = t }
         updatedAt = Date()
     }
 

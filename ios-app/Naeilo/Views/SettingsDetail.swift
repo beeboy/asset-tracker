@@ -173,6 +173,20 @@ struct SyncView: View {
     @State private var exportDoc: BackupFile? = nil
     @State private var pending: Backup? = nil
     @State private var fileMsg: String? = nil
+    /// 토스 시세 상태 (주소를 넣은 개발자 기기만): 마지막 성공 시각, 마지막 실패 이유
+    private var tossStatus: String {
+        _ = Market.shared.updatedAt     // 시세를 새로 받으면 다시 그린다
+        let t = TossFeed.okAt
+        var s = "토스: "
+        if t > 0 {
+            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+            let d = Date(timeIntervalSince1970: t)
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : "M월 d일 a h:mm"
+            s += "마지막 성공 \(f.string(from: d))"
+        } else { s += "아직 성공 없음" }
+        if let e = TossFeed.lastError { s += " · 실패: \(e)" }
+        return s
+    }
     private var sync: Sync { .shared }
 
     var body: some View {
@@ -239,6 +253,7 @@ struct SyncView: View {
                         }
                         Text("토큰은 이 폰 키체인에만 둬요. 개발자 칸은 암호화하지 않아요.")
                             .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                        if TossFeed.base != nil { Text(tossStatus).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
                     }
                     .padding(.top, 8)
                 } label: { Text("개발자용").appFont(14, .semibold).foregroundStyle(Theme.sub) }

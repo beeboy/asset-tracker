@@ -115,13 +115,20 @@ enum KrQuoteFeed {
 
 // 토스증권 지금 가격 (개발자 전용). 키를 넣은 PC 의 server.py 를 Tailscale 주소로 부른다.
 // 주소는 naeilo://toss?u=https://내PC.ts.net 을 한 번 열면 저장 (u 가 비면 지움). 저장소에 주소를 쓰지 않는다.
-// 국내·미국 종목만 오고, 실패하거나 3초를 넘기면 저장해 둔 값도 버려서 지금처럼 Yahoo 값을 쓴다.
+// 국내·미국 종목만 오고, 8초를 기다린다. 실패하면 15분 안에 받은 값은 그대로 쓰고, 그보다 오래되면 Yahoo 값을 쓴다.
 enum TossFeed {
     static let name = "toss_quotes.json"
     static let key = "toss_base"
     static var base: String? {
         get { Store.defaults.string(forKey: key).flatMap { $0.isEmpty ? nil : $0 } }
         set { Store.defaults.set(newValue, forKey: key) }
+    }
+    /// 설정 > 개발자용에 보이는 상태: 마지막 성공 시각(초), 마지막 실패 이유 (성공하면 지움)
+    static var okAt: Double { Store.defaults.double(forKey: "toss_ok_at") }
+    static var lastError: String? { Store.defaults.string(forKey: "toss_err") }
+    private static func fail(_ why: String) -> QuoteFeed.File? {
+        Store.defaults.set(why, forKey: "toss_err")
+        return cached()
     }
     /// naeilo://toss?u=… 로 주소를 넣거나 지운다. ts.net 주소만 받는다
     static func setBase(from url: URL) {
@@ -146,19 +153,27 @@ enum TossFeed {
         let list = Set(want.values).sorted().joined(separator: ",")
         guard let enc = list.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
               let url = URL(string: b + "/api/toss/prices?symbols=" + enc) else { return nil }
-        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 3)
+        // 없는 종목이 섞이면 server.py 가 하나씩 다시 물어 3초를 넘기기도 한다 → 8초
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
         req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
-        guard let (data, resp) = try? await URLSession.shared.data(for: req),
-              (resp as? HTTPURLResponse)?.statusCode == 200,
-              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let qs = o["quotes"] as? [String: Any] else { Store.remove(name); return nil }
+        let data: Data, resp: URLResponse
+        do { (data, resp) = try await URLSession.shared.data(for: req) }
+        catch let e as URLError { return fail(e.code == .timedOut ? "8초 안에 응답 없음" : "연결 실패 (\(e.code.rawValue))") }
+        catch { return fail("연결 실패") }
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        guard code == 200 else { return fail("서버 응답 \(code)") }
+        guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let qs = o["quotes"] as? [String: Any] else { return fail("응답을 읽지 못함") }
         var q: [String: QuoteFeed.Q] = [:]
         for (id, y) in want {
             guard let v = qs[y] as? [String: Any], let last = num(v["last"]), last > 0 else { continue }
             q[id] = .init(last: last, prev: 0, at: num(v["last_time"]) ?? Date().timeIntervalSince1970)
         }
+        guard !q.isEmpty else { return fail("받은 종목 없음") }
         let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
         Store.write(f, name)
+        Store.defaults.set(f.got, forKey: "toss_ok_at")
+        Store.defaults.removeObject(forKey: "toss_err")
         return f
     }
 }
