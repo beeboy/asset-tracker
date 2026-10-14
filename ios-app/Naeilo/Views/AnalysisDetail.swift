@@ -457,10 +457,43 @@ struct ExternalView: View {
         }
     }
 
+    /// 일정 하나: 요인, 미리 보기 값(나쁘게 나온 쪽, 요인 상세 단위), 내 자산 보통 움직임 (웹 xfEvents 와 같은 식)
+    private struct Ev { let hit: MarketEvents.Hit; let k: String; let sd: Double; let v: Double; let amt: Double }
+    private var evs: [Ev] {
+        MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).compactMap { h -> Ev? in
+            guard let em = SiteCalc.eventMoves[h.id] else { return nil }
+            let v = em.factor == "fx" ? -Market.shared.fx.last * em.sd / 100 : -em.sd
+            let amt = abs(m.rows.reduce(0) { $0 + $1.value * (Self.move(em.factor, $1.id, $1.sym, v) ?? (em.factor == "mkt" ? v / 100 : 0)) })
+            return Ev(hit: h, k: em.factor, sd: em.sd, v: v, amt: amt)
+        }.sorted { $0.hit.day < $1.hit.day }
+    }
+    private static let evBase = ["mkt": "미국 시장", "fx": "원/달러", "oil": "유가"]
+
+    /// 오늘의 이벤트 카드: 가장 가까운 일정 하나 (45일 안에 없으면 숨김)
+    @ViewBuilder private func todayCard(_ x: Ev?) -> some View {
+        if let x {
+            let tot = max(1, m.total)
+            let b = m.rows.reduce(0) { $0 + $1.value / tot * (Self.mktBeta($1.id) ?? 1) }
+            Card(dark: true) {
+                Text("\(MarketEvents.when(x.hit.day)) · \(x.hit.kind)").appFont(12, .semibold).foregroundStyle(Theme.teal)
+                Text("결과에 따라 내 자산은 보통").appFont(13).foregroundStyle(Theme.sub)
+                Text("약 ±" + AppModel.man(x.amt)).appFont(26, .bold)
+                Text("발표일 \(Self.evBase[x.k] ?? "") 보통 ±\(String(format: "%g", x.sd))%" + (x.k == "mkt" ? ", 내 종목은 시장의 \(String(format: "%.1f", b))배쯤" : "") + " (가정값)")
+                    .appFont(12).foregroundStyle(Theme.sub)
+                NavigationLink { FactorDetailView(factor: x.k, start: x.v) } label: {
+                    Text("이 상황 미리 보기").appFont(13, .semibold).foregroundStyle(.white)
+                        .padding(.horizontal, 12).padding(.vertical, 8).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     var body: some View {
         let rs = ranks
         let scale = max(1, rs.filter { !$0.weak }.map(\.amt).max() ?? 1)
-        let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).sorted { $0.day < $1.day }.prefix(8)
+        let es = evs
+        let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).filter { SiteCalc.eventMoves[$0.id] == nil }.sorted { $0.day < $1.day }.prefix(5)
         let nos: [String: String] = Dictionary(uniqueKeysWithValues: rs.filter { !$0.weak }.enumerated().map { ($1.k, "\($0 + 1)") })
 
         ScrollView {
@@ -470,6 +503,7 @@ struct ExternalView: View {
                     Text("지난 3년 동안 실제로 하루하루 움직인 만큼으로 계산해요. 목표까지의 영향은 \(m.forecastTitle)에서 봐요.")
                         .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
+                todayCard(es.first)
                 Card {
                     Text("내 자산을 흔드는 요인").appFont(16, .bold)
                     Text("요인마다 '보통 한 달에 움직이는 만큼'으로 맞춰서 비교했어요.").appFont(12).foregroundStyle(Theme.sub)
@@ -514,8 +548,28 @@ struct ExternalView: View {
                     }
                 }
                 replayCard
-                Card(dark: true) {
-                    Text("다가오는 일정 (45일)").appFont(15, .bold)
+                Card {
+                    Text("다가오는 일, 미리 겪어보기").appFont(16, .bold)
+                    ForEach(Array(es.prefix(8).enumerated()), id: \.offset) { _, x in
+                        HStack(alignment: .center, spacing: 10) {
+                            Text(MarketEvents.when(x.hit.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(x.hit.kind).appFont(14, .bold)
+                                Text("\(Self.evBase[x.k] ?? "")\(x.k == "mkt" ? "을" : "를") 통해 보통 ±\(AppModel.man(x.amt))").appFont(12).foregroundStyle(Theme.sub)
+                            }
+                            Spacer()
+                            NavigationLink { FactorDetailView(factor: x.k, start: x.v) } label: {
+                                Text("미리 보기").appFont(12, .semibold).padding(.horizontal, 10).padding(.vertical, 6)
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if es.isEmpty { Text("45일 안에 정해진 일정이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
+                    Text("일정마다 발표일 보통 움직임은 고정 가정값이에요. 미리 보기는 나쁘게 나온 쪽으로 열어요.").appFont(11).foregroundStyle(Theme.muted)
+                }
+                if !events.isEmpty { Card(dark: true) {
+                    Text("내 종목 일정 (45일)").appFont(15, .bold)
                     ForEach(Array(events.enumerated()), id: \.offset) { _, e in
                         HStack(alignment: .top, spacing: 10) {
                             Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
@@ -526,8 +580,7 @@ struct ExternalView: View {
                             }
                         }
                     }
-                    if events.isEmpty { Text("45일 안에 정해진 일정이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
-                }
+                } }
                 Text("예측이 아니라 '만약에'를 보는 화면이에요. 지난 3년 하루 단위 움직임을 바탕으로 했고, 큰 변화일수록 실제와 다를 수 있어요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
             }
@@ -546,6 +599,13 @@ struct FactorDetailView: View {
     let factor: String
     @State private var shock: Double? = nil
     @State private var custom = false
+
+    /// start: 일정 미리 보기처럼 정해진 값으로 열 때 (직접 정하기 안에 보인다)
+    init(factor: String, start: Double? = nil) {
+        self.factor = factor
+        _shock = State(initialValue: start)
+        _custom = State(initialValue: start != nil)
+    }
 
     static let names: [String: String] = ["mkt": "미국 시장", "rate": "미국 금리", "fx": "원/달러", "oil": "유가", "gold": "금값"]
     /// 관계 없음·거의 그대로 기준: 평가액의 0.1%, 같은 방향 비율 50%±5%p
