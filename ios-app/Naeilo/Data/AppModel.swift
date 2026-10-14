@@ -12,7 +12,7 @@ enum WeekPick: String, CaseIterable, Codable { case kept, changed, raised
 struct DayLog: Codable, Equatable { var seen = false; var answer: Int? = nil; var q: String? = nil; var ok: Bool? = nil }   // q = 그날 낸 질문, ok = 퀴즈를 맞혔는지
 
 enum HoldSort: String, CaseIterable { case added, value, name, ret, today
-    var label: String { switch self { case .added: "넣은 순"; case .value: "금액 순"; case .name: "이름 순"; case .ret: "수익률 순"; case .today: "오늘 등락 순" } }
+    var label: String { switch self { case .added: "넣은 순"; case .value: "평가액 큰 순"; case .name: "이름 순"; case .ret: "수익률 순"; case .today: "오늘 등락 순" } }
 }
 
 enum Lens: String, CaseIterable, Codable { case base, mine, smooth
@@ -222,8 +222,17 @@ final class AppModel {
                 color: Theme.holdColors[i % Theme.holdColors.count])
         }
     }
-    /// 내 종목 정렬 (종목 탭 목록·종목 한눈에 카드가 같이 따른다). 색은 넣은 순서 그대로
-    var holdSort = HoldSort(rawValue: UserDefaults.standard.string(forKey: "holdSort") ?? "") ?? .added {
+    /// 종목 하나의 숫자 (종목 상세·종목 한눈에가 같이 쓴다)
+    /// dd 고점 대비 · r1 1년 전 대비(현지 통화) · vc 산 가격 대비(원화) · w 비중 · yr 1년 주간 종가
+    struct HoldMetrics { let dd, r1, vc, w: Double; let yr: [Double]; let hi, lo: Double }
+    func metrics(_ r: Row) -> HoldMetrics {
+        let yr = (0...52).map { prices.price(r.sym, at: 2.0 / 3 + Double($0) / 156) }
+        let hi = yr.max() ?? 1, lo = yr.min() ?? 1, p1 = yr.last ?? 1
+        return HoldMetrics(dd: p1 / hi - 1, r1: p1 / yr[0] - 1, vc: r.cost > 0 ? r.value / r.cost - 1 : 0,
+                           w: r.value / max(1, total), yr: yr, hi: hi, lo: lo)
+    }
+    /// 내 종목 정렬 (종목 탭 목록. 종목 한눈에는 자기 정렬을 쓴다). 색은 넣은 순서 그대로
+    var holdSort = HoldSort(rawValue: UserDefaults.standard.string(forKey: "holdSort") ?? "") ?? .value {
         didSet { UserDefaults.standard.set(holdSort.rawValue, forKey: "holdSort") }
     }
     var sortedRows: [Row] {

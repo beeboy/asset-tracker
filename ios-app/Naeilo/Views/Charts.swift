@@ -7,11 +7,12 @@ struct Sparkline: View {
     var lineWidth: CGFloat = 1.6
     var showEndDot = false
     var avgLabel: String? = nil      // 점선 바로 밑, 오른쪽에 붙이는 글자
+    var avgAlways = false            // 평균 단가가 범위 밖이어도 세로 범위를 넓혀 점선을 늘 보인다
 
     var body: some View {
         GeometryReader { g in
             let lo0 = points.min() ?? 0, hi0 = points.max() ?? 1
-            let avgIn = avg.map { $0 >= lo0 && $0 <= hi0 } ?? false
+            let avgIn = avg.map { avgAlways || ($0 >= lo0 && $0 <= hi0) } ?? false
             let lo = avgIn ? min(lo0, avg!) : lo0, hi = avgIn ? max(hi0, avg!) : hi0
             let n = max(1, points.count - 1)
             let x = { (i: Int) in CGFloat(i) / CGFloat(n) * g.size.width }
