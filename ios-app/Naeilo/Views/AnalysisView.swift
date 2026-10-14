@@ -125,7 +125,7 @@ struct AnalysisView: View {
     private var habitBand: some View {
         let s = m.calm.stats(), done = s.n >= Calm.minEvents
         return HStack(spacing: 12) {
-            CharPixel(id: m.calmSpeaker, width: 22, height: 32)
+            CharHead(id: m.calmSpeaker, size: 32)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("내 투자 습관").appFont(14, .bold).foregroundStyle(Theme.mint)
