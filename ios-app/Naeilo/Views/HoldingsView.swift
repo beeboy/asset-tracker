@@ -96,7 +96,6 @@ struct HoldingsView: View {
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
-                if KoreaEstimate.direct || m.holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) { KoreaSumCard() }
                 MyRecordCard()
                 Text("비중 = 전체 중 그 종목 몫 · 점선 = 평균 단가 · 연필로 고치기 · 왼쪽으로 밀어 지우기")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
@@ -549,11 +548,6 @@ struct AddHoldingView: View {
 
     private func pick(_ h: StockHit) async {
         failed = nil; focus = nil
-        // 내부 테스트 시세는 국내 종목 5개까지
-        if h.currency == .krw && KoreaEstimate.liveOK(h.id),
-           m.holdings.filter({ $0.symbol != h.id && CustomSymbols.shared.isLive($0.symbol) }).count >= KoreaEstimate.liveMax {
-            failed = "테스트 시세는 국내 종목 \(KoreaEstimate.liveMax)개까지 받을 수 있어요."; return
-        }
         if let s = known(h) { open(s); return }
         loading = h.id
         defer { loading = nil }
