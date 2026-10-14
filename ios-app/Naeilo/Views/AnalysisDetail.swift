@@ -841,7 +841,12 @@ struct ExternalView: View {
 
     /// 일정 하나: 요인, 미리 보기 값(나쁘게 나온 쪽, 요인 상세 단위), 내 자산 보통 움직임 (웹 xfEvents 와 같은 식)
     private struct Ev { let hit: MarketEvents.Hit; let k: String; let sd: Double; let v: Double; let amt: Double }
-    private var evs: [Ev] {
+    private var evs: [Ev] { Self.events(m) }
+    /// 분석 허브 줄: 가장 가까운 일정과 내 자산 보통 움직임 (아래 오늘의 이벤트 카드와 같은 값)
+    static func hubNext(_ m: AppModel) -> (day: String, kind: String, amt: Double)? {
+        events(m).first.map { ($0.hit.day, $0.hit.kind, $0.amt) }
+    }
+    private static func events(_ m: AppModel) -> [Ev] {
         MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).compactMap { h -> Ev? in
             guard let em = SiteCalc.eventMoves[h.id] else { return nil }
             let v = em.factor == "fx" ? -Market.shared.fx.last * em.sd / 100 : -em.sd
@@ -926,7 +931,7 @@ struct ExternalView: View {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("바깥에서 무슨 일이 생기면, 지금 내 돈은 얼마나 움직일까요?").appFont(20, .bold)
-                    Text("지난 3년 동안 실제로 하루하루 움직인 만큼으로 계산해요. 목표까지의 영향은 \(m.forecastTitle)에서 봐요.")
+                    Text("단기 흔들림(오늘~한 달) 기준이에요. 지난 3년 동안 실제로 하루하루 움직인 만큼으로 계산해요. 목표까지의 긴 영향은 금리 충격 테스트와 \(m.forecastTitle)에서 봐요.")
                         .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
                 .onAppear {
@@ -1398,7 +1403,7 @@ struct RateScenarioView: View {
     /// 닫힌 식에 드는 값. 평가액·원금은 종목 목록을 매번 다시 만드니 한 번만 읽는다 (식단 1000벌 × 2번 부르면 넘길 때 멈칫)
     private struct Closed { let T, sg, mu, V0, K, M: Double }
     private func closedInput(_ f: AppModel.Forecast) -> Closed {
-        Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: 0)   // 전망과 같게 월 적립 없이
+        Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: m.fcMonthly)   // 전망과 같게 월 적립 포함 (웹 ci.M)
     }
     /// 연 기대를 shift 만큼 옮겼을 때 목표 확률. 웹처럼 전망(몬테카를로) 목표 확률에 닫힌 식의 차이만 더한다
     private static func prob(_ f: AppModel.Forecast, _ c: Closed, _ shift: Double) -> Double {
@@ -1474,7 +1479,7 @@ struct RateScenarioView: View {
                     bar("지금", base, Theme.muted)
                     bar("이 경우", pb[1], delta < 0 ? Theme.orange : Theme.teal)
                     Divider()
-                    infoRow("\(AppModel.eok(m.keyValue))에 닿는 시점", timing(m0, m1))
+                    infoRow("\(AppModel.eok(m.keyValue))에 닿는 시점", Self.timing(m0, m1))
                     if endAmt > 0, let ds = f.dates.last {
                         infoRow("\(Self.ym(ds)) 그럴듯한 금액", "\(AppModel.eok(endAmt)) → \(AppModel.eok(endAmt * exp(mid * T)))")
                     }
@@ -1577,7 +1582,20 @@ struct RateScenarioView: View {
         EmptyView()
     }
 
-    private func timing(_ a: Int?, _ b: Int?) -> String {
+    /// 분석 허브 줄: 기본 프리셋("작년만큼 또 오른다")에서 목표에 닿는 시점 변화 (이 화면 첫 카드와 같은 값)
+    static func hubTiming(_ m: AppModel) -> String? {
+        let macro = MacroData.shared
+        guard let file = macro.file, let M = file.meals else { return nil }
+        let d = macro.defaultDr
+        let r = macro.scen(dr: d, m: 0) ?? RateScen(coef: M.coef, g0: M.g_now, dr: d, m: 0)
+        let f = m.forecast, tot = max(1, m.total)
+        let kb = m.rows.reduce(0) { $0 + $1.value / tot * ExternalView.coef($1.sym).0 }
+        let ci = Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: m.fcMonthly)
+        let mid = RateScen.band(r.slope.map { b in kb * (b * d / 3 / 100) })[1]
+        return timing(months(ci, 0), months(ci, mid))
+    }
+
+    private static func timing(_ a: Int?, _ b: Int?) -> String {
         guard let a, let b else { return b == nil && a != nil ? "50년 안에 닿기 어려워요" : "계산할 수 없어요" }
         if a == 0 { return "이미 닿았어요" }
         let n = b - a
@@ -1738,6 +1756,17 @@ struct DividendView: View {
 
     /// 종목 하나의 앞으로 1년 배당 (화면용)
     struct Paid { let id: String; let name: String; let out: SiteCalc.DivOut; let tax: Double; let krw: Bool; let payMonths: [Int] }
+
+    /// 분석 허브 줄: 한 달 평균 세후 배당(원)과 내년 5월 양도세(원). 이 화면 첫 문장과 같은 식
+    static func hubMonthly(_ m: AppModel) -> Double {
+        let t = SiteCalc.today(), fx = Market.shared.valFx
+        return m.rows.reduce(0.0) { a, r in
+            let krw = r.sym.currency == .krw
+            let o = SiteCalc.shared.div(r.id).flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fx, krw: krw, price: r.sym.last, today: t) }
+            return a + (o?.y1 ?? 0)
+        } / 12
+    }
+    static func hubTax(_ m: AppModel) -> Double { m.taxGain > 0 ? max(0, SiteCalc.capGainTax(m.taxGain * 1e4)) : 0 }
 
     var body: some View {
         // 웹(종목 › 배당·세금)과 같은 식: 지난 12개월 배당락(사이트 시세에서 뽑은 날짜·금액)이 앞으로 같은 달에 (1+증가율)로 다시 온다고 본 세후 원화
