@@ -952,10 +952,8 @@ struct GlanceView: View {
     var body: some View {
         // 카드 순서는 내 종목 탭에서 고른 정렬을 따른다
         let data = m.sortedRows.map { r -> (row: AppModel.Row, yr: [Double], hi: Double, lo: Double, m: [String: Double]) in
-            let yr = (0...52).map { m.prices.price(r.sym, at: 2.0 / 3 + Double($0) / 156) }
-            let hi = yr.max() ?? 1, lo = yr.min() ?? 1, p1 = yr.last ?? 1
-            return (r, yr, hi, lo, ["dd": p1 / hi - 1, "r1": p1 / yr[0] - 1, "vc": r.cost > 0 ? r.value / r.cost - 1 : 0,
-                                     "w": r.value / max(1, m.total), "vol": SiteStats.params(r.id).2])
+            let k = m.metrics(r)
+            return (r, k.yr, k.hi, k.lo, ["dd": k.dd, "r1": k.r1, "vc": k.vc, "w": k.w, "vol": SiteStats.params(r.id).2])
         }
         let signed = metric != "w" && metric != "vol"
         let fmt = { (k: String, v: Double) in k == "w" || k == "vol" ? AppModel.pct(v) : AppModel.sgn(v) }

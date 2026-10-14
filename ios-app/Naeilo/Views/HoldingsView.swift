@@ -217,51 +217,59 @@ struct HoldingDetailView: View {
         let h = m.holdings.first { $0.symbol == sym.id } ?? Holding(symbol: sym.id, qty: 0, avg: sym.close)
         let pts = m.prices.series(sym, period: period)
         let chg = (pts.last ?? 1) / (pts.first ?? 1) - 1
-        let val = m.krw(sym, h.qty * sym.last), cost = m.costKrw(sym, h.qty * h.avg)
-        let r = cost > 0 ? val / cost - 1 : 0, need = h.avg / sym.last - 1
-        let avgIn = period == .y1 || period == .y3 || (h.avg >= (pts.min() ?? 0) && h.avg <= (pts.max() ?? 0))
+        let row = m.rows.first { $0.id == sym.id }
+        let k = row.map { m.metrics($0) }
+        let val = row?.value ?? 0, cost = row?.cost ?? 0, gain = val - cost
+        let r = k?.vc ?? 0, need = h.avg / sym.last - 1
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    LogoTile(symbol: sym.id, size: 44)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(sym.name).appFont(22, .bold)
-                        Text(([sym.id, sym.market] + (sym.sector.isEmpty ? [] : [sym.sector])).joined(separator: " · ")).appFont(13).foregroundStyle(Theme.sub)
+                // 이름은 위 제목줄에 있으니 여기선 로고와 시장·업종만
+                HStack(spacing: 10) {
+                    LogoTile(symbol: sym.id, size: 36)
+                    Text(([sym.id, sym.market] + (sym.sector.isEmpty ? [] : [sym.sector])).joined(separator: " · ")).appFont(13).foregroundStyle(Theme.sub)
+                }
+                if h.qty > 0 {
+                    Card {
+                        Text("내 평가액").appFont(13).foregroundStyle(Theme.sub)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(AppModel.man(val)).appFont(28, .bold)
+                            Text(AppModel.sgn(r)).appFont(15, .bold).foregroundStyle(Theme.change(r))
+                        }
+                        Text(summary(gain: gain, r: r, k: k)).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Card {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(AppModel.man(val)).appFont(26, .bold)
-                        Text(AppModel.sgn(r)).appFont(15, .bold).foregroundStyle(Theme.change(r))
+                    HStack {
+                        Text("주가").appFont(15, .bold)
                         Spacer()
                         Text("\(period == .d1 ? "오늘" : period.label) \(AppModel.sgn(chg))")
                             .appFont(13, .bold).foregroundStyle(Theme.change(chg))
                     }
                     if period != .d1 && !m.prices.hasHistory(sym) {
-                        Text("과거 시세 없음").appFont(15, .bold).foregroundStyle(Theme.sub)
-                            .frame(maxWidth: .infinity, minHeight: 116)
+                        Text("기록 모으는 중").appFont(15, .bold).foregroundStyle(Theme.sub)
+                            .frame(maxWidth: .infinity, minHeight: 140)
                     } else {
-                        Sparkline(points: pts, avg: avgIn ? h.avg : nil, lineWidth: 2.2, showEndDot: true).frame(height: 116)
+                        Sparkline(points: pts, avg: h.qty > 0 ? h.avg : nil, lineWidth: 2.2, showEndDot: true,
+                                  avgLabel: h.qty > 0 ? "평균 단가 \(AppModel.price(sym, h.avg))" : nil, avgAlways: true).frame(height: 140)
                     }
-                    Text(avgIn ? "점선은 평균 단가 \(AppModel.price(sym, h.avg))" : "평균 단가 \(AppModel.price(sym, h.avg))는 이 범위 밖")
-                        .appFont(12).foregroundStyle(Theme.muted)
+                    ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true)
                 }
-                ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true)
                 Card(padding: 0) {
                     VStack(spacing: 0) {
                         kv("보유 수량", h.qty.formatted() + "주")
                         kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv(Market.shared.isToss(sym) ? "토스 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
-                        kv(need > 0 ? "본전까지" : "본전 대비", need > 0.0005 ? "+" + String(format: "%.1f", need * 100) + "% 올라야 해요"
+                        kv(Market.shared.isToss(sym) ? "토스 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last))
+                        if sym.quote.live { kv("오늘 등락", AppModel.sgn(sym.quote.change)) }
+                        if sym.currency == .usd { kv("환율", "1달러 " + Int(Market.shared.valFx.rounded()).formatted() + "원") }
+                        kv(need > 0.0005 ? "본전까지" : "본전 대비", need > 0.0005 ? "주가가 " + String(format: "%.1f", need * 100) + "% 오르면 본전"
                            : need > -0.0005 ? "본전과 같아요" : "본전보다 " + String(format: "%.1f", -need * 100) + "% 위")
-                        kv("비중", m.total > 0 ? AppModel.pct(val / m.total) : "-", last: sym.sector.isEmpty)
-                        if !sym.sector.isEmpty { kv("업종", sym.sector, last: true) }
+                        kv("비중", k.map { AppModel.pct($0.w) } ?? "-", last: true)
                     }
                 }
                 if sym.currency == .krw, let c = CustomSymbols.shared.saved(sym.id), !CustomSymbols.shared.isLive(sym.id) { KRPriceCard(saved: c) }
                 if h.qty > 0 {
                     NavigationLink { HoldingEditView(sym: sym) } label: {
-                        Label("수량·단가 고치기", systemImage: "pencil").appFont(15, .bold)
+                        Label("수량·평균 단가 고치기", systemImage: "pencil").appFont(15, .bold)
                             .frame(maxWidth: .infinity, minHeight: 48).foregroundStyle(Theme.teal)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                     }.buttonStyle(.plain)
@@ -272,9 +280,16 @@ struct HoldingDetailView: View {
         }
         .scrollDismissesKeyboard(.immediately)
         .background(Theme.bg)
-        .navigationTitle(sym.id).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(sym.name).navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $editing) { HoldingEditView(sym: sym) }
         .onAppear { if UserDefaults.standard.string(forKey: "editMode") != nil && !opened { opened = true; editing = true } }
+    }
+
+    /// 평가액 아래 한 줄: 원화로 얼마 벌었/잃었는지 + 1년 고점 대비 (환율은 지금 기준)
+    private func summary(gain: Double, r: Double, k: AppModel.HoldMetrics?) -> String {
+        let g = abs(r) < 0.0005 ? "산 가격과 같아요" : "산 가격보다 \(AppModel.won(gain)) \(gain >= 0 ? "벌었어요" : "줄었어요")"
+        guard let k, m.prices.hasHistory(sym) else { return g }
+        return g + " · 1년 고점보다 " + String(format: "%.0f", abs(k.dd) * 100) + "% " + (k.dd > -0.005 ? "가까이" : "아래")
     }
 
     private func kv(_ k: String, _ v: String, last: Bool = false) -> some View {
@@ -289,15 +304,13 @@ struct HoldingDetailView: View {
     private var noProfile: some View {
         Card {
             Text("이 종목은").appFont(15, .bold)
-            ForEach([("이름", sym.name), ("시장", sym.market)] + (sym.sector.isEmpty ? [] : [("업종", sym.sector)]), id: \.0) { k, v in
-                HStack(alignment: .top) { Text(k).foregroundStyle(Theme.sub).frame(width: 72, alignment: .leading); Text(v) }.appFont(13)
-            }
-            Text("대표·하는 일·비전 소개는 아직 준비하지 않은 종목이에요.").appFont(12).foregroundStyle(Theme.muted)
+            Text(sym.currency == .krw ? "한국 시장 \(sym.sector.isEmpty ? "종목" : sym.sector + " 종목")이에요." : "\(sym.market) \(sym.sector.isEmpty ? "종목" : sym.sector + " 종목")이에요.")
+                .appFont(14)
         }
     }
 
     private func profile(_ p: Profile) -> some View {
-        Card(dark: true) {
+        Card {
             HStack {
                 Text(p.etf ? "이 ETF는" : "이 회사는").appFont(15, .bold)
                 Spacer()
@@ -319,7 +332,7 @@ struct HoldingDetailView: View {
                     .appFont(13)
             }
             Text(p.virtual ? "드링커는 『중첩된 현실』 속 회사를 바탕으로 한 가상 종목이에요. 가격 흐름은 내 지난 자산 기록을 비율로 바꾼 값이고, 투자 권유가 아니에요."
-                 : "소개는 공개 정보 기준(2026년 10월 확인)이에요. 실제 앱은 공시와 데이터 제공처 값을 받아 와요. 종목 추천이 아니에요.")
+                 : "공개 정보 기준(2026년 10월)이에요. 종목 추천이 아니에요.")
                 .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
         }
     }
