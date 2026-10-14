@@ -26,11 +26,9 @@ targets:
     type: application
     platform: iOS
     sources:
-      - path: Naeilo
-        excludes: ["* 2.*", "**/* 2.*"]   # Finder 복사본(파일명 끝 " 2")은 빌드에서 뺀다
+      - Naeilo
       # 위젯과 같이 쓰는 파일 (App Group 저장소, 위젯이 읽는 요약 형식)
-      - path: WidgetShared
-        excludes: ["* 2.*", "**/* 2.*"]   # Finder 복사본(파일명 끝 " 2")은 빌드에서 뺀다
+      - WidgetShared
       # 인물 위젯: 앱의 미리보기 화면에서도 같은 그림을 쓴다
       - Widgets/CharWidgets.swift
       - Widgets/Views/Catalog.swift
@@ -80,10 +78,8 @@ targets:
     type: app-extension
     platform: iOS
     sources:
-      - path: Widgets
-        excludes: ["* 2.*", "**/* 2.*"]   # Finder 복사본(파일명 끝 " 2")은 빌드에서 뺀다
-      - path: WidgetShared
-        excludes: ["* 2.*", "**/* 2.*"]   # Finder 복사본(파일명 끝 " 2")은 빌드에서 뺀다
+      - Widgets
+      - WidgetShared
     info:
       path: Widgets/Info.plist
       properties:
