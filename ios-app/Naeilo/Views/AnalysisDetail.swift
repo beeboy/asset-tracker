@@ -849,6 +849,15 @@ struct ExternalView: View {
             return Ev(hit: h, k: em.factor, sd: em.sd, v: v, amt: amt)
         }.sorted { $0.hit.day < $1.hit.day }
     }
+    /// 허브 카드: 가장 가까운 일정과 그날 내 자산 보통 움직임 (이 화면 오늘의 이벤트 카드와 같은 식)
+    static func nextEvent(_ m: AppModel) -> (hit: MarketEvents.Hit, amt: Double)? {
+        MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).compactMap { h -> (hit: MarketEvents.Hit, amt: Double)? in
+            guard let em = SiteCalc.eventMoves[h.id] else { return nil }
+            let v = em.factor == "fx" ? -Market.shared.fx.last * em.sd / 100 : -em.sd
+            let amt = abs(m.rows.reduce(0) { $0 + $1.value * (move(em.factor, $1.id, $1.sym, v) ?? (em.factor == "mkt" ? v / 100 : 0)) })
+            return (h, amt)
+        }.min { $0.hit.day < $1.hit.day }
+    }
     private static let evBase = ["mkt": "미국 시장", "fx": "원/달러", "oil": "유가"]
 
     /// 오늘의 이벤트 카드: 가장 가까운 일정 하나 (45일 안에 없으면 숨김)
@@ -1577,7 +1586,21 @@ struct RateScenarioView: View {
         EmptyView()
     }
 
-    private func timing(_ a: Int?, _ b: Int?) -> String {
+    /// 허브 카드: "작년만큼 또 오른다" 프리셋의 목표 도달 시점 변화 (이 화면 첫 줄과 같은 식). 자료 전엔 nil
+    static func hubDelay(_ m: AppModel) -> String? {
+        let macro = MacroData.shared
+        guard let file = macro.file, let M = file.meals else { return nil }
+        let d = macro.defaultDr
+        let r = macro.scen(dr: d, m: 0) ?? RateScen(coef: M.coef, g0: M.g_now, dr: d, m: 0)
+        let f = m.forecast, tot = max(1, m.total)
+        let kb = m.rows.reduce(0) { $0 + $1.value / tot * ExternalView.coef($1.sym).0 }
+        let ci = Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: 0)
+        let mid = RateScen.band(r.slope.map { kb * ($0 * d / 3 / 100) })[1]
+        return timingText(months(ci, 0), months(ci, mid))
+    }
+
+    private func timing(_ a: Int?, _ b: Int?) -> String { Self.timingText(a, b) }
+    static func timingText(_ a: Int?, _ b: Int?) -> String {
         guard let a, let b else { return b == nil && a != nil ? "50년 안에 닿기 어려워요" : "계산할 수 없어요" }
         if a == 0 { return "이미 닿았어요" }
         let n = b - a
