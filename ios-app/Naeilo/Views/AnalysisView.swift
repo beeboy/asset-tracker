@@ -194,133 +194,244 @@ private struct ContentPopBlock: UIViewRepresentable {
     func updateUIView(_ v: V, context: Context) {}
 }
 
-// 3년 전망: 위에 확률·중앙값·나쁜 5%와 범위 그래프·렌즈 설명·렌즈 칩 고정, 아래 추세 믿음·외부 요인·적립
+// 목표일 전망: 시장이 어떻게 가느냐에 따라 목표일 자산이 얼마나 갈리나. 목표 판정은 내 목표(내 길) 화면 몫
 struct ForecastView: View {
     @Environment(AppModel.self) private var m
+    @State private var open = false
 
     var body: some View {
         @Bindable var m = m
-        let f = m.forecast
-        PinnedLayout {
-            pinned(f)
-        } content: {
-                VStack(alignment: .leading, spacing: 12) {
-                    if m.lens == .mine {
-                        Card {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text("추세를 얼마나 믿나요 · \(Int(m.trust))%").appFont(14, .bold)
-                                Spacer()
-                                Text("연 기대 \(AppModel.sgn0(f.mu))").appFont(14, .bold).foregroundStyle(Theme.teal)
-                            }
-                            Slider(value: $m.trust, in: 0...100, step: 5).tint(Theme.teal).accessibilityLabel("추세를 얼마나 믿나요")
-                            HStack { Text("현재 정세"); Spacer(); Text("반반"); Spacer(); Text("과거 추세") }
-                                .appFont(12).foregroundStyle(Theme.muted)
-                        }
-                    }
+        let fs = Dictionary(uniqueKeysWithValues: Lens.allCases.map { ($0, m.forecast($0)) })
+        let sel = m.lens, f = fs[sel] ?? m.forecast
+        // 몬테카를로 경로는 종목만이라 현금을 더해 지금 평가액과 같은 기준으로 (닫힌 식은 이미 포함)
+        let add = { (x: AppModel.Forecast) -> Double in x.exact ? m.cashKrw : 0 }
+        let now = (f.q50.first ?? 0) + add(f)
+        let med = (f.q50.last ?? 0) + add(f), lo = (f.q5.last ?? 0) + add(f), hi = (f.q95.last ?? 0) + add(f)
+        let chg = now > 0 ? med / now - 1 : 0
+        let end = Self.ym(m.forecastHorizon)
+        let others: [(label: String, med: [Double])] = Self.others(fs, sel: sel, add: add)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                DetailHead(title: m.forecastTitle, sub: f.exact ? "" : "계산 중이에요 (어림값)")
+                Text("시장이 어떻게 움직이느냐에 따라\n\(m.isGoal ? "\(end.long) 내 자산은" : "3년 뒤 내 자산은") 이만큼 달라져요")
+                    .appFont(20, .bold).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
+
+                Card {
+                    segments
+                    trustSlider
+                    Text(note(sel, f)).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     VStack(alignment: .leading, spacing: 4) {
-                        Toggle(isOn: $m.shock) { Text("외부 요인 넣기").appFont(14, .bold) }.tint(Theme.orange)
-                        Text("실적 발표·금리 결정·환율 같은 일정을 웹과 같은 목록으로 반영해요. 끄면 일정 없이 계산해요.").appFont(12).foregroundStyle(Theme.muted)
-                    }
-                    Card {
-                        Text("만약에 매달 더 넣는다면 · \(m.monthly > 0 ? AppModel.eok(m.monthly * 1e4) : "없음")").appFont(14, .bold)
-                        Slider(value: $m.monthly, in: 0...300, step: 10).tint(Theme.teal)
-                    }
-                    Card(dark: true) {
-                        Text("\(m.keyName)에 한 번이라도 닿을 확률").appFont(14, .bold)
-                        ForEach(0..<f.byYear.count, id: \.self) { i in
-                            let y = f.byYear[i].year, p = f.byYear[i].p
-                            HStack(spacing: 10) {
-                                Text("\(y)년 안").appFont(13).frame(width: 46, alignment: .leading)
-                                ProgressBar(value: p, height: 10, fill: Theme.teal, track: Theme.track)
-                                Text(AppModel.pct(p)).appFont(13, .bold).frame(width: 40, alignment: .trailing)
-                            }
+                        Text("가장 그럴듯한 금액").appFont(13).foregroundStyle(Theme.sub)
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(Self.amt(med) + " 원").font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.ink)
+                                .lineLimit(1).minimumScaleFactor(0.7)
+                            Text("지금보다 \(AppModel.sgn0(chg))").appFont(13, .bold).foregroundStyle(chg >= 0 ? Theme.green : Theme.up)
                         }
+                        Text("10번 중 9번은 \(Self.amt(lo)) ~ \(Self.amt(hi)) 사이").appFont(13).foregroundStyle(Theme.sub)
                     }
-                    Text(m.isGoal ? "예측이 아닌 가능성의 범위예요. naeilo.com 목표일 전망과 같은 계산(지난 3년 움직임으로 3,000갈래 길, 하루 한 번)이에요."
-                         : "예측이 아닌 가능성의 범위예요. 회복 루트는 본전 기준이라 naeilo.com(목표 기준)과 달라요.").appFont(12).foregroundStyle(Theme.muted)
+                    ScenarioChart(sel: f, selShift: add(f), selLabel: Self.short(sel), others: others,
+                                  goal: m.keyValue, goalLabel: m.keyName, endLabel: m.isGoal ? end.short : "3년 뒤")
+                        .frame(height: 190)
+                    legend
+                    if f.mu > 0.30 {
+                        Text("연 \(AppModel.sgn0(f.mu))는 흔치 않은 속도예요. 지난 3년이 유난히 좋았다면 실제로는 이보다 낮을 수 있어요.")
+                            .appFont(12).foregroundStyle(Theme.ink).padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.cream, in: RoundedRectangle(cornerRadius: 10))
+                    }
                 }
-                .padding(16)
+
+                table(fs, now: now, add: add)
+                schedule
+                details(f)
+
+                Text("예측이 아니라 가능한 범위예요. 지난 3년 움직임을 바탕으로 3,000가지 경우를 계산했어요.")
+                    .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                NavigationLink(value: AnalysisRoute.myPath) {
+                    Text("납입이나 종목 구성을 바꿔 보려면 내 목표로 →").appFont(14, .bold).foregroundStyle(Theme.teal)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: Theme.maxWidth)
+            .frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    /// 그래프 바로 밑 렌즈 설명 (렌즈마다 연 기대)
-    private func lensNote(_ f: AppModel.Forecast) -> String {
-        switch m.lens {
-        case .base: return "과거 수익률을 장기 평균 쪽으로 당긴 값. 연 기대 \(AppModel.sgn0(f.muBase))."
-        case .mine: return "현재 정세와 과거 추세에서 고른 값. 연 기대 \(AppModel.sgn0(f.mu))."
-        case .smooth: return "지난 3년 성장 속도가 이어진 값. 연 기대 \(AppModel.sgn0(f.muTrend))."
-        }
-    }
-
-    private func pinned(_ f: AppModel.Forecast) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            DetailHead(title: m.forecastTitle, sub: f.exact ? "시장이 줄 수 있는 미래의 범위" : "시장이 줄 수 있는 미래의 범위 · 계산 중 (어림값)")
-            HStack(spacing: 8) {
-                kpi(m.isGoal ? "목표 달성 확률" : "\(m.keyName) 확률 (3년)", AppModel.pct(f.pGoal), Theme.teal, 20)
-                kpi(m.isGoal ? "목표일 중앙값" : "3년 뒤 중앙값", AppModel.eok(f.q50.last ?? 0), Theme.ink, 17)
-                kpi("나쁜 5%", AppModel.eok(f.q5.last ?? 0), Theme.down, 17)
+    // MARK: 시나리오 버튼 3개 + 추세 슬라이더 (같은 축: 신중하게 = 0%, 지난 3년처럼 = 100%)
+    private var segments: some View {
+        HStack(spacing: 4) {
+            ForEach(Lens.allCases, id: \.self) { l in
+                let on = m.lens == l
+                Button { m.lens = l } label: {
+                    Text(l.label).appFont(13, on ? .bold : .regular).foregroundStyle(on ? Color.white : Theme.sub)
+                        .frame(maxWidth: .infinity).padding(.vertical, 8)
+                        .background(on ? Theme.teal : Color.clear, in: RoundedRectangle(cornerRadius: 9))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
-            FanChart(f: f, goal: m.keyValue, goalLabel: "\(m.keyName) \(AppModel.eok(m.keyValue))").frame(height: 150)
-            Text(lensNote(f)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-            ChipRow(items: Lens.allCases.map { ($0, $0.label) }, selection: Binding(get: { m.lens }, set: { m.lens = $0 }), fill: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Theme.card)
-        .overlay(alignment: .bottom) { Divider() }
-    }
-
-    private func kpi(_ k: String, _ v: String, _ c: Color, _ size: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(k).appFont(11).foregroundStyle(Theme.sub)
-            Text(v).font(.system(size: size, weight: .bold)).foregroundStyle(c).lineLimit(1).minimumScaleFactor(0.7)
-        }
-        .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+        .padding(3)
         .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
     }
-}
 
-// 로그 축 범위 그래프
-struct FanChart: View {
-    let f: AppModel.Forecast
-    let goal: Double
-    var goalLabel: String? = nil
-    var body: some View {
-        Canvas { ctx, size in
-            let hi = log(max(goal, f.q95.max() ?? 1) * 1.02), lo = log(max(1, min(goal, f.q5.min() ?? 1) * 0.98))
-            let n = f.q50.count - 1, span = max(1e-9, f.tY.last ?? 1)
-            let x = { (i: Int) in CGFloat(f.tY[i] / span) * size.width }
-            let y = { (v: Double) in CGFloat((hi - log(max(1, v))) / max(1e-9, hi - lo)) * size.height }
-            func band(_ a: [Double], _ b: [Double]) -> Path {
-                Path { p in
-                    for i in 0...n { let pt = CGPoint(x: x(i), y: y(a[i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) }
-                    for i in stride(from: n, through: 0, by: -1) { p.addLine(to: CGPoint(x: x(i), y: y(b[i]))) }
-                    p.closeSubpath()
-                }
+    /// 슬라이더에 보이는 값. 버튼을 골라도 '내 설정' 값(m.trust)은 그대로 기억한다
+    private var shownTrust: Double { m.lens == .base ? 0 : m.lens == .smooth ? 100 : m.trust }
+
+    private var trustSlider: some View {
+        let b = Binding<Double>(get: { shownTrust }, set: { v in
+            if v <= 0 { m.lens = .base } else if v >= 100 { m.lens = .smooth } else { m.lens = .mine; m.trust = v }
+        })
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text("지난 3년 추세를 얼마나 믿나요").appFont(13, .bold)
+                Spacer()
+                Text("\(Int(shownTrust))%").appFont(13, .bold).foregroundStyle(Theme.teal)
             }
-            ctx.fill(band(f.q95, f.q5), with: .color(Theme.green.opacity(0.16)))
-            ctx.fill(band(f.q75, f.q25), with: .color(Theme.green.opacity(0.32)))
-            ctx.stroke(Path { p in for i in 0...n { let pt = CGPoint(x: x(i), y: y(f.q50[i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } },
-                       with: .color(Theme.green), lineWidth: 2)
-            ctx.stroke(Path { p in p.move(to: CGPoint(x: 0, y: y(goal))); p.addLine(to: CGPoint(x: size.width, y: y(goal))) },
-                       with: .color(Theme.orange), style: StrokeStyle(lineWidth: 1.6, dash: [5, 4]))
-            // 해마다 눈금 (5년이 넘으면 2년마다)
-            let yrs = Int(span + 1.0 / 48), step = yrs > 5 ? 2 : 1
-            for yr in stride(from: step, through: yrs, by: step) {
-                let xx = CGFloat(Double(yr) / span) * size.width
-                ctx.draw(Text("\(yr)년").font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: xx - 12, y: size.height - 6))
-            }
-            // 그래프 안 설명: 왼쪽 위 범위, 목표 점선 위 금액
-            if let goalLabel {
-                let gy = y(goal)
-                ctx.draw(Text(goalLabel).font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.orange),
-                         at: CGPoint(x: size.width - 2, y: gy < 14 ? gy + 8 : gy - 8), anchor: .trailing)
-                ctx.draw(Text("50%·90% 범위").font(.system(size: 10)).foregroundStyle(Theme.green),
-                         at: CGPoint(x: 2, y: 8), anchor: .leading)
+            Slider(value: b, in: 0...100, step: 5).tint(Theme.teal).accessibilityLabel("지난 3년 추세를 얼마나 믿나요")
+            HStack { Text("0% 신중하게"); Spacer(); Text("50% 반반"); Spacer(); Text("100% 지난 3년처럼") }
+                .appFont(11).foregroundStyle(Theme.muted)
+        }
+    }
+
+    private func note(_ l: Lens, _ f: AppModel.Forecast) -> String {
+        switch l {
+        case .base: return "높았던 수익률이 장기 평균으로 돌아온다고 볼 때 · 연 \(AppModel.sgn0(f.mu))"
+        case .mine: return "지난 3년 추세를 \(Int(m.trust))% 믿는다고 볼 때 · 연 \(AppModel.sgn0(f.mu))"
+        case .smooth: return "지난 3년 속도가 그대로 이어진다고 볼 때 · 연 \(AppModel.sgn0(f.mu))"
+        }
+    }
+
+    private var legend: some View {
+        HStack(spacing: 12) {
+            sw(Theme.teal.opacity(0.35), "10번 중 5번")
+            sw(Theme.teal.opacity(0.14), "10번 중 9번")
+            HStack(spacing: 4) {
+                Path { $0.move(to: .init(x: 0, y: 5)); $0.addLine(to: .init(x: 14, y: 5)) }
+                    .stroke(Theme.muted, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])).frame(width: 14, height: 10)
+                Text("다른 시나리오")
             }
         }
-        .accessibilityLabel("전망 범위 그래프")
+        .appFont(11).foregroundStyle(Theme.sub)
+    }
+    private func sw(_ c: Color, _ t: String) -> some View {
+        HStack(spacing: 4) { RoundedRectangle(cornerRadius: 2).fill(c).frame(width: 14, height: 10); Text(t) }
+    }
+
+    // MARK: 세 가지 미래 한눈에
+    private func table(_ fs: [Lens: AppModel.Forecast], now: Double, add: @escaping (AppModel.Forecast) -> Double) -> some View {
+        let lineName = m.isGoal ? Self.amt(m.keyValue) : "본전"
+        let bads = Lens.allCases.map { l in fs[l].map { ($0.q5.last ?? 0) + add($0) } ?? now }
+        let below = bads.filter { $0 < now }.count
+        let msg = below == bads.count ? "어느 시나리오든 운이 나쁘면 지금(\(Self.amt(now)))보다 줄어들 수 있어요."
+            : below > 0 ? "신중하게 보면 운이 나쁠 때 지금(\(Self.amt(now)))보다 줄어들 수 있어요."
+            : "운이 나빠도 지금(\(Self.amt(now)))보다는 많을 가능성이 커요."
+        return Card {
+            Text("세 가지 미래 한눈에").appFont(15, .bold)
+            HStack {
+                Text("시나리오").frame(maxWidth: .infinity, alignment: .leading)
+                Text("그럴듯한 값").frame(width: 70, alignment: .trailing)
+                Text("나쁘면").frame(width: 58, alignment: .trailing)
+                Text("\(lineName) 넘을 확률").frame(width: 78, alignment: .trailing)
+            }
+            .appFont(11).foregroundStyle(Theme.muted)
+            ForEach(Lens.allCases, id: \.self) { l in
+                if let x = fs[l] {
+                    let on = m.lens == l
+                    Button { m.lens = l } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(l.label).appFont(13, on ? .bold : .regular)
+                                Text("연 \(AppModel.sgn0(x.mu))").appFont(11).foregroundStyle(Theme.muted)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(Self.amt((x.q50.last ?? 0) + add(x))).frame(width: 70, alignment: .trailing)
+                            Text(Self.amt((x.q5.last ?? 0) + add(x))).frame(width: 58, alignment: .trailing)
+                            Text(AppModel.pct(x.pGoal)).frame(width: 78, alignment: .trailing)
+                        }
+                        .appFont(13, on ? .bold : .regular).foregroundStyle(Theme.ink)
+                        .padding(.vertical, 8).padding(.horizontal, 8)
+                        .background(on ? Theme.tealBg : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+            Text(msg).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: 전망을 흔들 수 있는 일정 (외부 요인 토글 자리)
+    private var schedule: some View {
+        @Bindable var m = m
+        let hits = Array(MarketEvents.upcoming(held: m.rows.map(\.id), days: 60).prefix(4))
+        return Card {
+            Toggle(isOn: $m.shock) { Text("전망을 흔들 수 있는 일정").appFont(15, .bold) }.tint(Theme.teal)
+            Text("켜면 이런 날에 더 크게 흔들린다고 보고 계산해요.").appFont(12).foregroundStyle(Theme.sub)
+            ForEach(hits.indices, id: \.self) { i in ScheduleRow(hit: hits[i]) }
+        }
+    }
+
+    // MARK: 자세히 보기 (기본 접힘)
+    private func details(_ f: AppModel.Forecast) -> some View {
+        let what = m.isGoal ? Self.amt(m.keyValue) : "본전"
+        return VStack(alignment: .leading, spacing: 10) {
+            Button { withAnimation { open.toggle() } } label: {
+                HStack {
+                    Text("자세히 보기").appFont(15, .bold)
+                    Spacer()
+                    Text(open ? "접기" : "펼치기").appFont(13).foregroundStyle(Theme.muted)
+                    Image(systemName: open ? "chevron.up" : "chevron.down").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if open {
+                Card(dark: true) {
+                    Text("중간에 한 번이라도 \(what)을 넘을 확률").appFont(14, .bold)
+                    Text("잠깐 넘었다가 다시 내려오는 경우도 세요. 그래서 표의 확률보다 높아요.").appFont(12).foregroundStyle(.secondary)
+                    ForEach(0..<f.byYear.count, id: \.self) { i in
+                        let y = f.byYear[i].year, p = f.byYear[i].p
+                        HStack(spacing: 10) {
+                            Text("\(y)년 안").appFont(13).frame(width: 46, alignment: .leading)
+                            ProgressBar(value: p, height: 10, fill: Theme.teal, track: Theme.track)
+                            Text(AppModel.pct(p)).appFont(13, .bold).frame(width: 40, alignment: .trailing)
+                        }
+                    }
+                }
+                Text("버튼은 슬라이더를 0%·내 설정·100%로 옮기는 지름길이에요. 슬라이더를 직접 움직이면 그 값이 '내 설정'으로 기억돼요.")
+                    .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(16)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .overlay { RoundedRectangle(cornerRadius: 18).stroke(Theme.border, lineWidth: 1) }
+    }
+
+    /// 비교선: 고르지 않은 두 시나리오의 중앙값 (현금 더함)
+    static func others(_ fs: [Lens: AppModel.Forecast], sel: Lens, add: (AppModel.Forecast) -> Double) -> [(label: String, med: [Double])] {
+        var out: [(label: String, med: [Double])] = []
+        for l in Lens.allCases where l != sel {
+            if let x = fs[l] { let c = add(x); out.append((short(l), x.q50.map { $0 + c })) }
+        }
+        return out
+    }
+
+    // MARK: 표시
+    /// 3.30억 · 11.5억 · 826만 (목업 표기)
+    static func amt(_ v: Double) -> String {
+        let a = abs(v), s = v < 0 ? "-" : ""
+        if a >= 1e9 { return s + String(format: "%.1f억", a / 1e8) }
+        if a >= 1e8 { return s + String(format: "%.2f억", a / 1e8) }
+        return s + Int((a / 1e4).rounded()).formatted() + "만"
+    }
+    static func short(_ l: Lens) -> String { l == .base ? "신중" : l == .smooth ? "3년처럼" : "내 설정" }
+    /// "2029-10-14" → ("2029년 10월", "2029.10")
+    static func ym(_ d: String) -> (long: String, short: String) {
+        let p = d.split(separator: "-")
+        guard p.count >= 2, let y = Int(p[0]), let mo = Int(p[1]) else { return (d, d) }
+        return ("\(y)년 \(mo)월", String(format: "%d.%02d", y, mo))
     }
 }

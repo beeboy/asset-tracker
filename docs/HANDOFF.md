@@ -35,6 +35,7 @@
 | 항목 | 상태 |
 |---|---|
 | 외부 요인 화면 개편 | 2026-10-14 1단계(데이터) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. 다음: ② 요인 상세(앱) ③ 메인 순위(앱) ④ 웹 같은 화면 ⑤ 과거 재생(고정 표) ⑥ 일정 미리 보기(`EXT_EVENTS.sd`) ⑦ 회고·알림(나중). 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
+| iOS 목표일 전망 화면 개편 | 2026-10-14 PR 올림(브랜치 claude/project-thread-u2k6oi). 버튼 3개=추세 슬라이더 한 축, 선형 축 차트, 세 시나리오 표, 일정 카드, 월 적립 0. 웹 전망 탭은 아직 옛 화면 |
 | Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |
 | 15분 collect cron | PR #166으로 `*/15` 단일 cron. 실제로 도는지 collect 작업 로그로 확인 필요. 워커 머리 주석(`*/30 13-22`)은 낡음 |
 | 워커 재배포 | 2026-10-14 재배포함. 1권 영문판 원고, 순위판 `/scores`, 댓글은 마무리 안 한 것으로 보임 → 보류 |
