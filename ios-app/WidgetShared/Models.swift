@@ -113,6 +113,56 @@ enum KrQuoteFeed {
     }
 }
 
+// 토스증권 지금 가격 (개발자 전용). 키를 넣은 PC 의 server.py 를 Tailscale 주소로 부른다.
+// 주소는 naeilo://toss?u=https://내PC.ts.net 을 한 번 열면 저장 (u 가 비면 지움). 저장소에 주소를 쓰지 않는다.
+// 국내·미국 종목만 오고, 실패하거나 3초를 넘기면 저장해 둔 값도 버려서 지금처럼 Yahoo 값을 쓴다.
+enum TossFeed {
+    static let name = "toss_quotes.json"
+    static let key = "toss_base"
+    static var base: String? {
+        get { Store.defaults.string(forKey: key).flatMap { $0.isEmpty ? nil : $0 } }
+        set { Store.defaults.set(newValue, forKey: key) }
+    }
+    /// naeilo://toss?u=… 로 주소를 넣거나 지운다. ts.net 주소만 받는다
+    static func setBase(from url: URL) {
+        let u = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "u" }?.value ?? ""
+        if let h = URL(string: u)?.host, u.hasPrefix("https://"), h.hasSuffix(".ts.net") {
+            base = u.hasSuffix("/") ? String(u.dropLast()) : u
+        } else { base = nil; Store.remove(name) }
+    }
+    /// 15분 안에 받은 값만 (오래된 토스 값보다 Yahoo 값이 낫다)
+    static func cached() -> QuoteFeed.File? {
+        guard base != nil, let f = Store.read(QuoteFeed.File.self, name), Date().timeIntervalSince1970 - f.got < 900 else { return nil }
+        return f
+    }
+
+    /// syms: 종목 → Yahoo 기호. prev 는 모르므로 0 (전일 종가는 사이트·Yahoo 값을 쓴다)
+    @discardableResult
+    static func fetch(_ syms: [String: String], minAge: TimeInterval = 0) async -> QuoteFeed.File? {
+        guard let b = base else { return nil }
+        let want = syms.filter { !$0.value.contains("^") && !$0.value.contains("=") }
+        guard !want.isEmpty else { return nil }
+        if let o = cached(), Date().timeIntervalSince1970 - o.got < minAge { return o }
+        let list = Set(want.values).sorted().joined(separator: ",")
+        guard let enc = list.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
+              let url = URL(string: b + "/api/toss/prices?symbols=" + enc) else { return nil }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 3)
+        req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let qs = o["quotes"] as? [String: Any] else { Store.remove(name); return nil }
+        var q: [String: QuoteFeed.Q] = [:]
+        for (id, y) in want {
+            guard let v = qs[y] as? [String: Any], let last = num(v["last"]), last > 0 else { continue }
+            q[id] = .init(last: last, prev: 0, at: num(v["last_time"]) ?? Date().timeIntervalSince1970)
+        }
+        let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
+        Store.write(f, name)
+        return f
+    }
+}
+
 // 사이트 시세 (naeilo.com/data/quotes.json). 사이트가 평일 30분마다 모으는 Yahoo 중계 값을 앱과 위젯이 직접 받는다.
 // 계약 뒤에는 중계 서버 쪽 출처만 바꾸면 앱·위젯은 그대로 쓴다.
 enum QuoteFeed {

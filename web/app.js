@@ -64,7 +64,7 @@
     trade: [["2025-04-03", "상호관세 발표 다음 날"], ["2025-04-04", "관세 충격 이틀째"], ["2025-04-09", "관세 90일 유예"], ["2025-04-16", "엔비디아 H20 수출 규제 공시"], ["2025-05-12", "미·중 관세 인하 합의"]],
     war: [["2023-10-09", "하마스 이스라엘 공격 뒤 첫 거래일"], ["2024-04-15", "이란의 이스라엘 공격 뒤 첫 거래일"], ["2024-10-01", "이란 미사일 공격"], ["2025-06-13", "이스라엘의 이란 공습"], ["2025-06-23", "미국의 이란 핵시설 공습 뒤 첫 거래일"]],
   };
-  const SESS = { pre: "프리", regular: "정규", post: "애프터", close: "종가", manual: "수동", toss: "토스" };
+  const SESS = { pre: "프리", regular: "정규", post: "애프터", close: "종가", manual: "수동", toss: "토스 시세" };
 
   let S = { state: null, prices: {}, quotes: {} };
   // 실행 방식: "local" = 내 PC 의 server.py, "static" = GitHub Pages 같은 정적 사이트 (입력은 이 브라우저에 저장)
@@ -138,15 +138,21 @@
     if (!S.krRules) S.krRules = await fetch("../data/kr_proxy.json", { cache: "no-cache" }).then((r) => r.json()).catch(() => ({}));
     synthKR();
   }
-  // 토스증권 국내 지금 가격 (개발자 전용: 키를 넣은 PC 의 server.py 에서만 값이 온다)
+  // 토스증권 국내·미국 지금 가격 (개발자 전용: 키를 넣은 PC 의 server.py 에서만 값이 온다). 지수·환율·토스에 없는 종목, 실패·3초 넘김은 Yahoo 값 그대로
   // 정적 사이트(naeilo.com)는 이 브라우저에 PC 의 Tailscale 주소를 넣어 둔 경우만: naeilo.com/web/?toss=https://my-pc….ts.net 을 한 번 열면 저장 (?toss= 빈 값이면 지움)
   async function tossQuotes() {
     let base = "";
     if (MODE !== "local") { try { const u = new URL(location.href), t = u.searchParams.get("toss"); if (t != null) { if (/^https:\/\/[\w.-]+\.ts\.net\/?$/.test(t)) localStorage.setItem("toss_base", t); else localStorage.removeItem("toss_base"); u.searchParams.delete("toss"); history.replaceState(null, "", u); } } catch (e) { /* 무시 */ }
       try { base = (localStorage.getItem("toss_base") || "").replace(/\/$/, ""); } catch (e) { /* 무시 */ } if (!base) return; }
-    const ks = (S.state?.holdings || []).map((h) => h.ticker).filter((t) => isKR(t) && t !== KR_SUM);
+    const ks = (S.state?.holdings || []).map((h) => h.ticker).filter((t) => t && t !== KR_SUM && !/[\^=]/.test(t));
     if (!ks.length) return;
-    try { const j = await api(base + "/api/toss/prices?symbols=" + encodeURIComponent(ks.join(","))); Object.assign(S.quotes, j.quotes || {}); if (j.error) logLine("토스 시세: " + j.error, false); } catch (e) { /* 무시 */ }
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 3000);
+    try {
+      const r = await fetch(base + "/api/toss/prices?symbols=" + encodeURIComponent(ks.join(",")), { signal: ac.signal }), j = await r.json();
+      // Yahoo 전일 종가 등은 두고 지금 가격·통화만 토스 값으로
+      for (const [k, q] of Object.entries(j.quotes || {})) S.quotes[k] = { ...(S.quotes[k] || {}), ...q };
+      if (j.error) logLine("토스 시세: " + j.error, false);
+    } catch (e) { /* 무시 */ } finally { clearTimeout(tm); }
   }
   async function reloadData() {
     if (MODE === "local") {

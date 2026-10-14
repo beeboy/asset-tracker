@@ -160,7 +160,7 @@ struct HoldingsView: View {
                         .appFont(12, .semibold).foregroundStyle(Theme.teal)
                 } else {
                     // 티커 · 수량 · 지금 가격 · 비중(내 전체 평가액 중 이 종목 몫)
-                    Text("\(r.id) · \(r.h.qty.formatted())주 · \(AppModel.price(r.sym, r.sym.last)) · 비중 \(AppModel.pct(r.value / max(1, m.total)))")
+                    Text("\(r.id) · \(r.h.qty.formatted())주 · \(AppModel.price(r.sym, r.sym.last))\(Market.shared.isToss(r.sym) ? " (토스 시세)" : "") · 비중 \(AppModel.pct(r.value / max(1, m.total)))")
                         .appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
                 }
             }
@@ -308,7 +308,7 @@ struct HoldingDetailView: View {
                     VStack(spacing: 0) {
                         kv("보유 수량", h.qty.formatted() + "주")
                         kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv(sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
+                        kv(Market.shared.isToss(sym) ? "토스 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last) + (sym.quote.live ? " (\(AppModel.sgn(sym.quote.change)))" : ""))
                         kv(need > 0 ? "본전까지" : "본전 대비", need > 0.0005 ? "+" + String(format: "%.1f", need * 100) + "% 올라야 해요"
                            : need > -0.0005 ? "본전과 같아요" : "본전보다 " + String(format: "%.1f", -need * 100) + "% 위")
                         kv("비중", m.total > 0 ? AppModel.pct(val / m.total) : "-", last: sym.sector.isEmpty)

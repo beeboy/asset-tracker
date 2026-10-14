@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 import threading
@@ -90,7 +91,7 @@ def toss_get(keys: tuple[str, str], path: str) -> dict:
     for renew in (False, True):
         req = urllib.request.Request(TOSS + path, headers={"Authorization": "Bearer " + toss_token(keys, renew), "Accept": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=10) as r:
+            with urllib.request.urlopen(req, timeout=3) as r:  # 앱·웹은 3초 넘으면 Yahoo 로 넘어간다
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             if e.code != 401 or renew:
@@ -98,31 +99,64 @@ def toss_get(keys: tuple[str, str], path: str) -> dict:
     return {}
 
 
+_toss_miss: dict[str, float] = {}  # 토스에 없는 종목 코드 → 다시 물어볼 시각 (하루 동안 안 묻는다)
+
+
+def toss_code(sym: str) -> str | None:
+    """Yahoo 기호 → 토스 종목 코드. 토스에 없는 시장(지수·환율·코인·일본 등)은 None → 그 종목은 Yahoo 값 그대로
+    - 국내: 005930.KS·0101N0.KQ → 005930·0101N0 (6자리)
+    - 미국: AAPL → AAPL, 클래스 주식 BRK-B → BRK.B (토스는 '.' 로 쓴다고 보고 맞춤. 없으면 하루 동안 안 묻는다)"""
+    u = sym.strip().upper()
+    if u.endswith((".KS", ".KQ")):
+        c = u[:-3]
+        return c if len(c) == 6 and c.isalnum() else None
+    m = re.fullmatch(r"([A-Z]{1,5})(?:-([A-Z]))?", u)  # ^GSPC·KRW=X·GC=F·BTC-USD·7203.T 는 여기서 걸러진다
+    return (m.group(1) + ("." + m.group(2) if m.group(2) else "")) if m else None
+
+
 def toss_prices(symbols: list[str]) -> dict:
-    """국내 종목(005930.KS·.KQ)의 지금 가격. 사이트 quotes 와 같은 모양으로 돌려준다"""
+    """국내(.KS·.KQ)·미국 종목의 지금 가격. 사이트 quotes 와 같은 모양으로, 통화는 토스 응답 그대로 (KRW·USD)"""
     keys = toss_keys()
     if not keys:
         return {"enabled": False, "quotes": {}}
-    codes = {}
+    now = time.time()
+    codes: dict[str, list[str]] = {}  # 토스 코드 → Yahoo 기호들
     for s in symbols:
-        c = s.split(".")[0]
-        if s.upper().endswith((".KS", ".KQ")) and c.isdigit() and len(c) == 6:
-            codes[c] = s
+        c = toss_code(s)
+        if c and _toss_miss.get(c, 0) < now:
+            codes.setdefault(c, []).append(s)
     out = {}
+
+    def ask(cs: list[str]) -> None:
+        j = toss_get(keys, "/api/v1/prices?symbols=" + urllib.parse.quote(",".join(cs)))
+        for q in j.get("result") or []:
+            v = float(q.get("lastPrice") or 0)
+            if v <= 0:
+                continue
+            try:
+                t = int(datetime.fromisoformat(str(q.get("timestamp"))).timestamp())
+            except ValueError:
+                t = int(now)
+            ccy = q.get("currency") or ("KRW" if str(q.get("symbol", "")).isdigit() else "USD")
+            for sym in codes.get(str(q.get("symbol")).upper(), []):
+                out[sym] = {"symbol": sym, "last": v, "last_time": t, "last_session": "toss", "currency": ccy}
+
     try:
         cs = list(codes)
         for i in range(0, len(cs), 200):  # 한 번에 200개까지
-            j = toss_get(keys, "/api/v1/prices?symbols=" + urllib.parse.quote(",".join(cs[i:i + 200])))
-            for q in j.get("result") or []:
-                sym = codes.get(str(q.get("symbol")))
-                v = float(q.get("lastPrice") or 0)
-                if not sym or v <= 0:
-                    continue
-                try:
-                    t = int(datetime.fromisoformat(str(q.get("timestamp"))).timestamp())
-                except ValueError:
-                    t = int(time.time())
-                out[sym] = {"symbol": sym, "last": v, "last_time": t, "last_session": "toss", "currency": q.get("currency") or "KRW"}
+            part = cs[i:i + 200]
+            try:
+                ask(part)
+            except urllib.error.HTTPError as e:
+                if e.code != 404:
+                    raise
+                for c in part[:30]:  # 묶음에 없는 종목이 끼면 하나씩 다시 (없는 종목은 하루 동안 빼고 Yahoo)
+                    try:
+                        ask([c])
+                    except urllib.error.HTTPError as e2:
+                        if e2.code != 404:
+                            raise
+                        _toss_miss[c] = now + 86400
     except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
         code = getattr(e, "code", None)
         msg = "허용 IP 가 아니에요" if code == 403 else "키를 확인하세요" if code in (400, 401) else str(e)
@@ -403,7 +437,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(read_json(DATA / "macro" / "rates_earnings.json", {}))
         if self.path.startswith("/api/beyora"):
             return self.send_json(read_json(DATA / "beyora.json", {"cats": [], "posts": []}))
-        if self.path.startswith("/api/toss/prices"):  # 토스증권 국내 시세 (키 있는 개발자 PC 만)
+        if self.path.startswith("/api/toss/prices"):  # 토스증권 국내·미국 시세 (키 있는 개발자 PC 만)
             o = self.headers.get("Origin") or ""
             self.cors = o if toss_origin_ok(o) else None
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)

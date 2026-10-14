@@ -87,6 +87,7 @@ struct RootView: View {
         }
         // 잠긴 위젯을 누르면 앱 시작 3단계로
         .onOpenURL { url in
+            if url.host == "toss" { TossFeed.setBase(from: url); Task { await Market.shared.refresh(held: Set(model.holdings.map(\.symbol)), force: true) }; return }   // 개발자: 토스 시세 주소
             if url.host == "shelter" { model.tab = .home; model.homePath = ["shelter"]; return }   // 인물 위젯 (못 만난 인물)
             if url.host == "read", let i = Int(url.lastPathComponent), (0..<6).contains(i), model.chapterOn(i) {   // 서재 위젯
                 model.tab = .home; model.homePath = ["shelter", "read:\(i)"]; return
