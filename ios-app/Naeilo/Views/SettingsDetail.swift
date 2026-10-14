@@ -178,6 +178,7 @@ struct SyncView: View {
         _ = Market.shared.updatedAt     // 시세를 새로 받으면 다시 그린다
         let t = TossFeed.okAt
         var s = "토스: "
+        guard TossFeed.base != nil else { return s + "주소 없음" }
         if t > 0 {
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
             let d = Date(timeIntervalSince1970: t)
@@ -253,12 +254,13 @@ struct SyncView: View {
                         }
                         Text("토큰은 이 폰 키체인에만 둬요. 개발자 칸은 암호화하지 않아요.")
                             .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-                        if TossFeed.base != nil { Text(tossStatus).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
                     }
                     .padding(.top, 8)
                 } label: { Text("개발자용").appFont(14, .semibold).foregroundStyle(Theme.sub) }
                 .tint(Theme.sub)
             }
+            // 토스 상태는 동기화 켜짐·꺼짐과 상관없이 늘 보인다
+            Text(tossStatus).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             fileCard
             note("서버에는 암호화한 값만 둬요. 비밀번호는 저장하지 않아서 잊으면 새로 켜야 해요.")
         }
