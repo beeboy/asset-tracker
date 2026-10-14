@@ -813,6 +813,7 @@ struct CharacterDetailView: View {
     let friend: Friend
     @Environment(AppModel.self) private var m
     @State private var invest: Bool
+    @State private var story = Story.shared
     var focus: Int? = nil          // 규칙 일지에서 왔으면 그 버릇 번호 (펴서 표시)
 
     init(friend: Friend, invest: Bool = false, focus: Int? = nil) {
@@ -831,30 +832,24 @@ struct CharacterDetailView: View {
                         .background(Shelter.spriteBacking(f.id), in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 6) {
                         Text(f.name + (k.map { " · " + $0.title } ?? "")).appFont(24, .bold).lineLimit(1).minimumScaleFactor(0.7)
-                        Text(f.line).appFont(14, .bold).foregroundStyle(Color(hex: 0x8A6400, dark: 0xE8C060))
+                        // 대사 대신 하는 일 한 줄 (투자 성향이 없는 인물은 기존 대사)
+                        Text(f.does.isEmpty ? f.line : f.does).appFont(14, .semibold).foregroundStyle(Theme.sub)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if k != nil {
-                    // 지금 나는 ○○형 (순위로 보여 주지 않는다)
-                    Text(meLine(f)).appFont(13).foregroundStyle(Theme.sub)
                     Picker("갈래", selection: $invest) {
-                        Text("투자하는 \(f.name)").tag(true)
-                        Text("소설 속 \(f.name)").tag(false)
+                        Text("규칙과 결과").tag(true)
+                        Text("\(f.name) 이야기").tag(false)
                     }
                     .pickerStyle(.segmented)
                 }
-                if invest { InvestBranch(id: f.id, focus: focus) } else { novel(f) }
+                if invest { InvestBranch(id: f.id, focus: focus) { invest = false } } else { novel(f) }
             }
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle(f.name).navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func meLine(_ f: Friend) -> String {
-        guard let k = Calm.kind(m.calm.type) else { return "아직 내 유형은 정해지지 않았어요." }
-        let same: String = m.calm.type == f.id ? ". \(f.name)와 같은 유형이에요." : ""
-        return "지금 나는 " + k.title + same
+        .navigationTitle(invest ? "\(f.name) 규칙" : f.name).navigationBarTitleDisplayMode(.inline)
     }
 
     @ViewBuilder private func novel(_ f: Friend) -> some View {
@@ -862,7 +857,7 @@ struct CharacterDetailView: View {
             Text("소설에 나오는 곳").appFont(15, .bold)
             appear("본편", f.main)
             appear("외전 『이종 공명』", f.side)
-            appear("프리퀄", f.prequel)
+            appear("프리퀄", f.prequel.map { $0 + " · 아직 준비 중이에요" })
             if f.side == nil {
                 Text("앱 서재의 외전에는 나오지 않아요. 쉼터에는 인터미션 체크인으로 찾아와요.").appFont(12).foregroundStyle(Theme.muted)
             }
@@ -870,16 +865,46 @@ struct CharacterDetailView: View {
         section("특징", f.traits)
         section("배경", f.background)
         Card {
+            let open = f.scenes.filter { Self.sceneOpen($0.0, story) }, shut = f.scenes.filter { !Self.sceneOpen($0.0, story) }
             Text("대표 장면").appFont(15, .bold)
-            ForEach(f.scenes, id: \.1) { k, v in
+            Text("읽은 장면만 보여요").appFont(12).foregroundStyle(Theme.muted)
+            ForEach(open, id: \.1) { k, v in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(k).appFont(12, .bold).foregroundStyle(Theme.teal)
                     Text(v).appFont(14).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, 4)
             }
+            if !shut.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "lock.fill").foregroundStyle(Theme.muted)
+                    Text(Self.lockedText(shut.map(\.0))).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
+            }
         }
         Text("본편 9·10권의 결말과 일부 인물 이야기는 넣지 않았어요.").appFont(12).foregroundStyle(Theme.muted)
+    }
+
+    /// 장면 잠금: 앱에서 읽을 수 있는 책의 장을 끝까지 읽어야 열린다. 외전 장면 = 외전 마지막 장, 본편 1권 장면 = 본편 1권 1장.
+    /// 앱에 없는 책(본편 2권~, 프리퀄)의 장면은 잠긴 채로 둔다
+    static func sceneOpen(_ label: String, _ s: Story) -> Bool {
+        switch label {
+        case "외전": return s.isDone(.side, StoryBook.side.bundled - 1)
+        case "본편 1권": return s.isDone(.vol1, 1)
+        default: return false
+        }
+    }
+    /// "본편 3·4권, 프리퀄 장면 3개는 해당 장을 읽으면 열려요."
+    static func lockedText(_ labels: [String]) -> String {
+        var vols: [String] = [], other: [String] = []
+        for l in labels {
+            if l.hasPrefix("본편 "), l.hasSuffix("권") { let v = String(l.dropFirst(3).dropLast()); if !vols.contains(v) { vols.append(v) } }
+            else if !other.contains(l) { other.append(l) }
+        }
+        let parts = (vols.isEmpty ? [] : ["본편 " + vols.joined(separator: "·") + "권"]) + other
+        return parts.joined(separator: ", ") + " 장면 \(labels.count)개는 해당 장을 읽으면 열려요."
     }
 
     private func appear(_ k: String, _ v: String?) -> some View {
