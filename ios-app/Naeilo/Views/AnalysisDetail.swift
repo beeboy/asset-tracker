@@ -940,86 +940,275 @@ struct FxImpactView: View {
 
 // MARK: 종목 한눈에 — 숫자만, 추천 문구 없음
 
+/// 종목 한눈에: 지금 가격이 지난 1년 중 어디쯤인지. 정렬은 종목 탭과 따로 (2026-10-14 결정)
 struct GlanceView: View {
     @Environment(AppModel.self) private var m
-    @State private var metric = "dd"
+    @State private var order = "w"
+    @State private var tip: GlanceTip?
 
-    private let names: [(String, String, String)] = [
-        ("dd", "고점 대비", "지난 1년 가장 높았던 종가와 비교한 값이에요."), ("r1", "1년", "1년 전 종가와 비교한 값이에요 (현지 통화)."),
-        ("vc", "내 단가 대비", "내 평균 단가와 비교한 값이에요."), ("w", "비중", "내 평가액에서 차지하는 몫이에요."), ("vol", "흔들림", "1년에 보통 이 정도 오르내렸어요 (연 변동성)."),
-    ]
+    struct Item { let row: AppModel.Row; let k: AppModel.HoldMetrics; let vol: Double; let has: Bool }
+
+    /// 출렁임 단계: 연 변동성 20% 미만 작은 편 / 40% 미만 보통 / 그 위 큰 편 (2026-10-14 결정)
+    static func swing(_ v: Double) -> Int { v < 0.2 ? 0 : v < 0.4 ? 1 : 2 }
+    static let swingName = ["작은 편", "보통", "큰 편"]
 
     var body: some View {
-        // 카드 순서는 내 종목 탭에서 고른 정렬을 따른다
-        let data = m.sortedRows.map { r -> (row: AppModel.Row, yr: [Double], hi: Double, lo: Double, m: [String: Double]) in
-            let yr = (0...52).map { m.prices.price(r.sym, at: 2.0 / 3 + Double($0) / 156) }
-            let hi = yr.max() ?? 1, lo = yr.min() ?? 1, p1 = yr.last ?? 1
-            return (r, yr, hi, lo, ["dd": p1 / hi - 1, "r1": p1 / yr[0] - 1, "vc": r.cost > 0 ? r.value / r.cost - 1 : 0,
-                                     "w": r.value / max(1, m.total), "vol": SiteStats.params(r.id).2])
+        let all = m.rows.map { r in Item(row: r, k: m.metrics(r), vol: SiteStats.params(r.id).2, has: m.prices.hasHistory(r.sym)) }
+        let sorted = all.sorted {
+            switch order {
+            case "dd": return $0.k.dd < $1.k.dd
+            case "vol": return $0.vol > $1.vol
+            default: return $0.k.w > $1.k.w
+            }
         }
-        let signed = metric != "w" && metric != "vol"
-        let fmt = { (k: String, v: Double) in k == "w" || k == "vol" ? AppModel.pct(v) : AppModel.sgn(v) }
-        let col = { (k: String, v: Double) -> Color in k == "w" || k == "vol" ? Theme.ink : Theme.change(v) }
-        let maxAbs = max(0.01, data.map { abs($0.m[metric] ?? 0) }.max() ?? 0.01)
-        let info = names.first { $0.0 == metric }!
+        // 거의 안 움직이는 자산(SGOV 등)은 "그 외"로, 국내는 한 카드에 줄로
+        let calm = sorted.filter { $0.has && $0.vol < 0.02 }
+        let kr = sorted.filter { $0.row.sym.currency == .krw && !calm.map(\.row.id).contains($0.row.id) }
+        let us = sorted.filter { $0.row.sym.currency != .krw && !calm.map(\.row.id).contains($0.row.id) }
 
-        PinnedLayout {
-            pinnedBox {
-                DetailHead(title: "종목 한눈에", sub: "종목마다 지금 상태를 숫자로만 보여 줘요")
-                Text("\(info.1) (큰 순서)").appFont(14, .bold)
-                ForEach(data.sorted { ($0.m[metric] ?? 0) > ($1.m[metric] ?? 0) }, id: \.row.id) { d in
-                    let v = d.m[metric] ?? 0
-                    if signed {
-                        SignedBar(label: d.row.sym.short, value: fmt(metric, v), g: v, scale: maxAbs)
-                    } else {
-                        HStack(spacing: 8) {
-                            Text(d.row.sym.short).appFont(13, .semibold).frame(minWidth: 52, alignment: .leading)
-                            GeometryReader { g in
-                                RoundedRectangle(cornerRadius: 3).fill(Theme.sub2).frame(width: g.size.width * v / maxAbs, height: 12).frame(maxHeight: .infinity)
-                            }.frame(height: 16)
-                            Text(fmt(metric, v)).appFont(13, .bold).frame(minWidth: 60, alignment: .trailing)
-                        }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                DetailHead(title: "종목 한눈에", sub: "지금 가격이 지난 1년 중 어디쯤인지 봐요")
+                if let top = all.max(by: { $0.k.w < $1.k.w }) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("한 줄 요약").appFont(12, .semibold).foregroundStyle(Theme.teal)
+                        Text(summary(top)).appFont(14).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
                     }
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 14))
                 }
-                Text(info.2).appFont(12).foregroundStyle(Theme.sub)
-                ChipRow(items: names.map { ($0.0, $0.1) }, selection: $metric)
+                ChipRow(items: [("w", "비중 큰 순"), ("dd", "많이 내려온 순"), ("vol", "출렁임 큰 순")], selection: $order, fill: true)
+                ForEach(us, id: \.row.id) { card($0) }
+                if !kr.isEmpty { krCard(kr) }
+                if !calm.isEmpty { calmCard(calm) }
+                footnote("상태를 보여 줄 뿐이에요. 사거나 팔라는 뜻이 아니에요.")
             }
-        } content: {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(data, id: \.row.id) { d in
-                    NavigationLink(value: d.row.sym) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("\(d.row.sym.name) \(d.row.id)").appFont(15, .bold)
-                                    Text("지금 \(AppModel.price(d.row.sym, d.row.sym.last)) · 1년 \(AppModel.price(d.row.sym, d.lo))~\(AppModel.price(d.row.sym, d.hi))")
-                                        .appFont(12).foregroundStyle(Theme.sub)
-                                }
-                                Spacer(minLength: 6)
-                                Sparkline(points: d.yr).frame(width: 96, height: 34)
-                            }
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), alignment: .leading, spacing: 8) {
-                                ForEach(names, id: \.0) { k, n, _ in
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(n).appFont(11).foregroundStyle(Theme.sub)
-                                        Text(fmt(k, d.m[k] ?? 0)).appFont(14, .bold).foregroundStyle(col(k, d.m[k] ?? 0))
-                                            .underline(k == metric)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                footnote("상태를 숫자로만 보여 줘요. 사거나 팔라는 뜻이 아니에요.")
-            }
-            .padding(16)
+            .padding(16).padding(.bottom, 40)
+            .frame(maxWidth: Theme.maxWidth)
+            .frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $tip) { t in GlanceSheet(tip: t, items: all).presentationDetents([.medium, .large]) }
     }
+
+    private func summary(_ t: Item) -> String {
+        let n = t.row.sym.name, w = AppModel.pct(t.k.w)
+        if t.k.w >= 0.5 { return "내 자산의 \(w)가 \(n)예요. \(n) 가격이 움직이면 내 자산도 거의 같이 움직여요." }
+        if t.k.w >= 0.3 { return "내 자산의 \(w)가 \(n)예요. \(n) 가격이 움직이면 내 자산도 크게 따라 움직여요." }
+        return "가장 큰 종목은 \(n)로 내 자산의 \(w)예요. 여러 종목에 나뉘어 있어요."
+    }
+
+    private func info(_ t: String, _ d: Item) -> some View {
+        Button { tip = GlanceTip(topic: t, id: d.row.id) } label: { Image(systemName: "info.circle").font(.system(size: 12)) }
+            .buttonStyle(.plain).foregroundStyle(Theme.muted)
+    }
+
+    private func chip(_ text: String, _ t: String, _ d: Item) -> some View {
+        Button { tip = GlanceTip(topic: t, id: d.row.id) } label: {
+            HStack(spacing: 3) { Text(text).appFont(12, .semibold); Image(systemName: "info.circle").font(.system(size: 10)) }
+                .padding(.horizontal, 9).padding(.vertical, 5).foregroundStyle(Theme.ink)
+                .background(Theme.line, in: Capsule())
+        }.buttonStyle(.plain)
+    }
+
+    private func card(_ d: Item) -> some View {
+        let s = d.row.sym
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(s.name).appFont(16, .bold)
+                Text(s.short).appFont(12).foregroundStyle(Theme.muted)
+                Spacer()
+                Button { tip = GlanceTip(topic: "w", id: d.row.id) } label: {
+                    Text("내 자산의 \(AppModel.pct(d.k.w))").appFont(12, .semibold).foregroundStyle(Theme.tealDark)
+                        .padding(.horizontal, 9).padding(.vertical, 4).background(Theme.tealBg, in: Capsule())
+                }.buttonStyle(.plain)
+            }
+            if d.has {
+                HStack(spacing: 4) { Text("1년 중 가장 비쌀 때보다").appFont(13).foregroundStyle(Theme.sub); info("dd", d) }
+                Text(d.k.dd > -0.0005 ? "지금이 가장 비싸요" : AppModel.sgn(d.k.dd)).appFont(28, .bold).foregroundStyle(d.k.dd > -0.0005 ? Theme.up : Theme.down)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("지금 \(AppModel.price(s, s.last))").appFont(13, .semibold)
+                        Spacer()
+                        Text("최근 1년 가격 범위").appFont(11).foregroundStyle(Theme.muted)
+                    }
+                    RangeBar(lo: d.k.lo, hi: d.k.hi, now: s.last)
+                    HStack {
+                        Text("최저 \(AppModel.price(s, d.k.lo))").appFont(11).foregroundStyle(Theme.sub)
+                        Spacer()
+                        Text("최고 \(AppModel.price(s, d.k.hi))").appFont(11).foregroundStyle(Theme.sub)
+                    }
+                }
+                .padding(12).background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
+                HStack(spacing: 6) {
+                    chip("1년 전보다 \(AppModel.sgn(d.k.r1))", "r1", d)
+                    chip("출렁임 \(Self.swingName[Self.swing(d.vol)])", "vol", d)
+                }
+            } else {
+                Text("지금 \(AppModel.price(s, s.last))").appFont(13, .semibold)
+                RangeBar(lo: 0, hi: 0, now: 0)
+                Text("1년 가격 기록을 모으는 중이에요. 기록이 쌓이면 범위를 보여드려요.").appFont(12).foregroundStyle(Theme.sub)
+            }
+            Divider()
+            NavigationLink(value: s) {
+                HStack {
+                    Text(d.row.cost > 0 && s.id != KoreaEstimate.sumId ? "내 보유 보기 · 산 가격보다 \(AppModel.sgn(d.k.vc))" : "내 보유 보기").appFont(13, .semibold)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 12))
+                }.foregroundStyle(Theme.teal).contentShape(Rectangle())
+            }.buttonStyle(.plain)
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+    }
+
+    private func krCard(_ list: [Item]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("국내 주식 \(list.count)").appFont(15, .bold)
+                Spacer()
+                Text("합쳐서 내 자산의 \(AppModel.pct(list.map(\.k.w).reduce(0, +)))").appFont(12).foregroundStyle(Theme.sub)
+            }
+            ForEach(Array(list.enumerated()), id: \.element.row.id) { i, d in
+                if i > 0 { Divider() }
+                let s = d.row.sym
+                NavigationLink(value: s) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(s.name).appFont(14, .semibold)
+                            Spacer()
+                            Text(!d.has ? "지금 \(AppModel.price(s, s.last))" : d.k.dd > -0.0005 ? "1년 중 가장 비싼 가격" : "가장 비쌀 때보다 \(AppModel.sgn(d.k.dd))")
+                                .appFont(12, .semibold).foregroundStyle(!d.has ? Theme.sub : Theme.change(d.k.dd > -0.0005 ? 1 : -1))
+                        }
+                        if d.has {
+                            RangeBar(lo: d.k.lo, hi: d.k.hi, now: s.last)
+                            Text("최저 \(AppModel.price(s, d.k.lo)) · 최고 \(AppModel.price(s, d.k.hi)) · 1년 전보다 \(AppModel.sgn(d.k.r1)) · 출렁임 \(Self.swingName[Self.swing(d.vol)])")
+                                .appFont(11).foregroundStyle(Theme.sub)
+                        } else {
+                            RangeBar(lo: 0, hi: 0, now: 0)
+                            Text("1년 가격 기록을 모으는 중이에요. 기록이 쌓이면 범위를 보여드려요.").appFont(11).foregroundStyle(Theme.sub)
+                        }
+                    }.contentShape(Rectangle())
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+    }
+
+    private func calmCard(_ list: [Item]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("그 외").appFont(15, .bold)
+            ForEach(list, id: \.row.id) { d in
+                NavigationLink(value: d.row.sym) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(d.row.sym.name).appFont(14, .semibold)
+                            Text("가격이 거의 움직이지 않아요").appFont(12).foregroundStyle(Theme.sub)
+                        }
+                        Spacer()
+                        Text("현금처럼 쓰는 자산").appFont(11, .semibold).foregroundStyle(Theme.tealDark)
+                            .padding(.horizontal, 8).padding(.vertical, 4).background(Theme.tealBg, in: Capsule())
+                    }.contentShape(Rectangle())
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+    }
+}
+
+/// 1년 가격 범위 막대 (최저~최고, 지금 위치에 점). 기록이 없으면 점선만
+private struct RangeBar: View {
+    let lo, hi, now: Double
+    var body: some View {
+        GeometryReader { g in
+            let ok = hi > lo && hi > 0
+            let x = ok ? min(1, max(0, (now - lo) / (hi - lo))) : 0
+            ZStack(alignment: .leading) {
+                if ok {
+                    Capsule().fill(Theme.track).frame(height: 6)
+                    Capsule().fill(Theme.dash).frame(width: max(6, g.size.width * x), height: 6)
+                    Circle().fill(Theme.ink).frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(Theme.card, lineWidth: 2))
+                        .offset(x: max(0, g.size.width * x - 6))
+                } else {
+                    Path { p in p.move(to: CGPoint(x: 0, y: 6)); p.addLine(to: CGPoint(x: g.size.width, y: 6)) }
+                        .stroke(Theme.dash, style: StrokeStyle(lineWidth: 2, dash: [4, 4]))
+                }
+            }.frame(maxHeight: .infinity)
+        }.frame(height: 12)
+    }
+}
+
+struct GlanceTip: Identifiable { let topic: String; let id: String }
+
+/// ⓘ 설명 시트 ("숫자 풀이" 화면을 대신한다)
+private struct GlanceSheet: View {
+    let tip: GlanceTip
+    let items: [GlanceView.Item]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let d = items.first { $0.row.id == tip.id }
+        let n = d?.row.sym.name ?? ""
+        VStack(alignment: .leading, spacing: 14) {
+            switch tip.topic {
+            case "vol":
+                head("가격 출렁임", "지난 1년 동안 가격이 하루하루 얼마나 크게 오르내렸는지예요. 크면 크게 오를 수도, 크게 내릴 수도 있어요.")
+                let lv = GlanceView.swing(d?.vol ?? 0)
+                HStack(spacing: 4) {
+                    ForEach(0..<3, id: \.self) { i in
+                        VStack(spacing: 4) {
+                            RoundedRectangle(cornerRadius: 3).fill(i == lv ? Theme.teal : Theme.track).frame(height: 8)
+                            Text(GlanceView.swingName[i] + (i == lv ? " · \(n)" : "")).appFont(11, i == lv ? .bold : .regular)
+                                .foregroundStyle(i == lv ? Theme.ink : Theme.muted)
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("내 종목으로 보면").appFont(13, .bold)
+                    ForEach([2, 1, 0], id: \.self) { i in
+                        let names = items.filter { GlanceView.swing($0.vol) == i }.map(\.row.sym.name)
+                        if !names.isEmpty {
+                            HStack(alignment: .top) {
+                                Text(GlanceView.swingName[i]).appFont(12, .semibold).frame(width: 52, alignment: .leading)
+                                Text(names.joined(separator: ", ")).appFont(12).foregroundStyle(Theme.sub)
+                            }
+                        }
+                    }
+                }
+                small("숫자로 보고 싶다면: \(n)의 1년 변동성은 연 \(AppModel.pct(d?.vol ?? 0))예요.")
+            case "dd":
+                head("1년 중 가장 비쌀 때보다", "지난 1년 동안 가장 높았던 종가와 지금 가격을 비교한 값이에요. 0%에 가까우면 1년 중 가장 비싼 쪽이에요.")
+                if let d { small("\(n): 가장 비쌀 때 \(AppModel.price(d.row.sym, d.k.hi)), 지금 \(AppModel.price(d.row.sym, d.row.sym.last)) (\(AppModel.sgn(d.k.dd)))") }
+            case "r1":
+                head("1년 전보다", "1년 전 종가와 지금 가격을 비교한 값이에요. 환율은 빼고 그 나라 돈으로 계산해요.")
+                if let d { small("\(n): \(AppModel.sgn(d.k.r1))") }
+            default:
+                head("내 자산에서 차지하는 몫", "내 종목 평가액을 모두 더한 것 중 이 종목이 차지하는 몫이에요. 크면 이 종목 가격이 내 자산을 크게 움직여요.")
+                if let d { small("\(n): 내 자산의 \(AppModel.pct(d.k.w))") }
+            }
+            Spacer(minLength: 0)
+            Button { dismiss() } label: {
+                Text("알겠어요").appFont(15, .bold).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 13)
+                    .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain)
+        }
+        .padding(20).padding(.top, 8)
+        .presentationDragIndicator(.visible)
+    }
+
+    private func head(_ t: String, _ s: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(t).appFont(18, .bold)
+            Text(s).appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    private func small(_ t: String) -> some View { Text(t).appFont(12).foregroundStyle(Theme.muted) }
 }
