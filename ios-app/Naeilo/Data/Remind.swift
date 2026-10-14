@@ -492,6 +492,16 @@ enum MarketEvents {
         return out.sorted { ($0.held ? 0 : 1, $0.day) < ($1.held ? 0 : 1, $1.day) }
     }
 
+    /// 금리 결정 일정 (FOMC·한국은행)인지
+    static func isRate(_ id: String) -> Bool { id == "x_fomc" || id == "x_bok" }
+    /// 오늘부터 days 일 안의 금리 결정 일정, 날짜순 (보유 종목과 상관없이)
+    static func rateUpcoming(days: Int) -> [Hit] {
+        let from = Day.today, until = Day.str(Date().addingTimeInterval(Double(days) * 86400))
+        return rules.filter { isRate($0.id) }.flatMap { r in
+            dates(r, from: from, until: until).map { Hit(id: r.id, target: r.target, day: $0, kind: r.kind, sub: r.target == "FX" ? "환율" : "전 종목", held: false) }
+        }.sorted { $0.day < $1.day }
+    }
+
     /// "내일", "10/22 (D-11)" 처럼
     static func when(_ day: String) -> String {
         let n = Day.dday(day)

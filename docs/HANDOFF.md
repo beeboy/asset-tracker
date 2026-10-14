@@ -29,7 +29,7 @@
 - 웹·앱 숫자 맞추기: 몬테카를로 이식 + CI parity, stats.json·calc.json, 입력값 차이 수정(PR #121~#131).
 
 ## 2. 진행 중·미완성
-- 금리 충격 테스트 (계획: claude/rate-shock-handoff 브랜치 docs/handoff/rate-shock-test/). ① 앱 메인 완료(프리셋 4개·결과 카드·3단계·직접 정하기, 근거 화면은 기존 표·그래프 이동). ② 근거 화면 완료(해마다 누적 수준·감소 확률 표, 그래프 y축·오늘선). ③ 금리에 약한 종목 카드 완료(coef 정렬·크게/보통/덜 흔들려요). "구성 바꿔서 다시 테스트" 버튼은 `compareLink`에 자리만 있고 숨김: 내 길 개편의 MyPathCompareView가 들어오면 그 NavigationLink로 바꾼다. 남은 것: ④ 목표일 전망 일정 진입점·알림 ⑤ 웹 같은 화면 + calc_parity(도달 시점·금액).
+- 금리 충격 테스트 (계획: claude/rate-shock-handoff 브랜치 docs/handoff/rate-shock-test/). ① 앱 메인 완료(프리셋 4개·결과 카드·3단계·직접 정하기, 근거 화면은 기존 표·그래프 이동). ② 근거 화면 완료(해마다 누적 수준·감소 확률 표, 그래프 y축·오늘선). ③ 금리에 약한 종목 카드 완료(coef 정렬·크게/보통/덜 흔들려요). "구성 바꿔서 다시 테스트" 버튼은 `compareLink`에 자리만 있고 숨김: 내 길 개편의 MyPathCompareView가 들어오면 그 NavigationLink로 바꾼다. ④ 진입점·알림 완료(목표일 전망에 '외부 요인 넣기' 켜면 일정 목록, 금리 행에만 미리 보기 버튼. 금리 화면 '다가오는 금리 일정' + 결정 전날 오전 9시 로컬 알림, alerts["rate"]). 남은 것: ⑤ 웹 같은 화면 + calc_parity(도달 시점·금액).
 | 항목 | 상태 |
 |---|---|
 | Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |

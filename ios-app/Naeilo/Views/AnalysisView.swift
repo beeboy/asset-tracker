@@ -219,6 +219,7 @@ struct ForecastView: View {
                         Toggle(isOn: $m.shock) { Text("외부 요인 넣기").appFont(14, .bold) }.tint(Theme.orange)
                         Text("실적 발표·금리 결정·환율 같은 일정을 웹과 같은 목록으로 반영해요. 끄면 일정 없이 계산해요.").appFont(12).foregroundStyle(Theme.muted)
                     }
+                    if m.shock { eventsCard }
                     Card {
                         Text("만약에 매달 더 넣는다면 · \(m.monthly > 0 ? AppModel.eok(m.monthly * 1e4) : "없음")").appFont(14, .bold)
                         Slider(value: $m.monthly, in: 0...300, step: 10).tint(Theme.teal)
@@ -241,6 +242,34 @@ struct ForecastView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// 전망을 흔들 수 있는 일정 (45일). 금리 결정 행 아래에만 금리 충격 테스트로 가는 버튼
+    @ViewBuilder private var eventsCard: some View {
+        let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).sorted { $0.day < $1.day }.prefix(8)
+        if !events.isEmpty {
+            Card {
+                Text("전망을 흔들 수 있는 일정").appFont(15, .bold)
+                ForEach(Array(events.enumerated()), id: \.offset) { _, e in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
+                            Text(e.kind).appFont(14, .bold)
+                            Spacer()
+                            Text(e.sub).appFont(12).foregroundStyle(Theme.muted)
+                        }
+                        if MarketEvents.isRate(e.id) {
+                            NavigationLink(value: AnalysisRoute.rateScen) {
+                                Text("금리가 오르면 내 목표는? 미리 보기").appFont(13, .bold).foregroundStyle(Theme.purple)
+                                    .padding(.horizontal, 12).padding(.vertical, 7)
+                                    .background(Theme.purple.opacity(0.12), in: Capsule())
+                            }
+                            .buttonStyle(.plain).padding(.leading, 74)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// 그래프 바로 밑 렌즈 설명 (렌즈마다 연 기대)
