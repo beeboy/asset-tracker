@@ -606,7 +606,9 @@ struct CharHead: View {
                 if let me = model?.me ?? MeChar.current { MeAvatar(me: me, width: 40 * s, height: 58 * s) }
                 else { Color.clear }
             } else {
-                Image("u_\(id)_face").interpolation(.none).resizable().aspectRatio(contentMode: .fit)
+                // 원래 색 캐릭터 그림에서 머리만 잘라 씀 (u_*_face는 잠금화면 위젯용 색)
+                Image("spr_\(id)").interpolation(.none).resizable().aspectRatio(contentMode: .fit)
+                    .frame(width: 40 * s, height: 58 * s)
             }
         }
         .frame(width: 40 * s, height: 40 * s, alignment: .top)
