@@ -134,14 +134,18 @@
   // 불러온 뒤 한국 종목 추정 시세를 만든다 (규칙 파일은 처음 한 번)
   async function reload() {
     await reloadData();
+    await tossQuotes();
     if (!S.krRules) S.krRules = await fetch("../data/kr_proxy.json", { cache: "no-cache" }).then((r) => r.json()).catch(() => ({}));
     synthKR();
   }
-  // 토스증권 국내 지금 가격 (개발자 전용: 키를 넣은 PC 의 server.py 에서만 값이 온다. 정적 사이트는 부르지 않는다)
+  // 토스증권 국내 지금 가격 (개발자 전용: 키를 넣은 PC 의 server.py 에서만 값이 온다)
+  // 정적 사이트(naeilo.com)는 이 브라우저에 PC 의 Tailscale 주소를 넣어 둔 경우만: localStorage.toss_base = "https://my-pc….ts.net"
   async function tossQuotes() {
+    let base = "";
+    if (MODE !== "local") { try { base = (localStorage.getItem("toss_base") || "").replace(/\/$/, ""); } catch (e) { /* 무시 */ } if (!base) return; }
     const ks = (S.state?.holdings || []).map((h) => h.ticker).filter((t) => isKR(t) && t !== KR_SUM);
     if (!ks.length) return;
-    try { const j = await api("/api/toss/prices?symbols=" + encodeURIComponent(ks.join(","))); Object.assign(S.quotes, j.quotes || {}); if (j.error) logLine("토스 시세: " + j.error, false); } catch (e) { /* 무시 */ }
+    try { const j = await api(base + "/api/toss/prices?symbols=" + encodeURIComponent(ks.join(","))); Object.assign(S.quotes, j.quotes || {}); if (j.error) logLine("토스 시세: " + j.error, false); } catch (e) { /* 무시 */ }
   }
   async function reloadData() {
     if (MODE === "local") {
@@ -150,7 +154,6 @@
         S.prices = d.prices || {}; S.quotes = d.quotes || {}; S.mar = d.mar || {}; S.siteClose = lastCloses(S.prices);
         if (!S.state) S.state = normalize(d.state || {});
         S.config = d.config || {};
-        await tossQuotes();
         return;
       } catch (e) { if (S.state) throw e; MODE = "static"; }
     }

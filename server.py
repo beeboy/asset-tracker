@@ -50,19 +50,26 @@ LOCK = threading.Lock()
 
 
 # ---------------------------------------------------------------- 토스증권 시세 (개발자 전용)
-# 키가 있는 PC 에서만 켜진다: 환경변수 TOSS_CLIENT_ID·TOSS_CLIENT_SECRET 또는 toss_keys.json (.gitignore, 저장소에 안 올림).
+# 키가 있는 PC 에서만 켜진다: toss_keys.json {"client_id","client_secret"} (.gitignore, 저장소에 안 올림).
+# 아이폰·naeilo.com 은 Tailscale 주소(https://…ts.net)로 이 서버의 /api/toss/prices 를 부른다 (CORS 허용: TOSS_ORIGINS).
 # 토스는 허용 IP 에서만 받으므로 그 IP 를 등록한 PC 의 이 서버에서만 부른다. 키·토큰은 브라우저로 보내지 않는다.
 TOSS = "https://openapi.tossinvest.com"
 TOSS_KEYS = ROOT / "toss_keys.json"
+TOSS_ORIGINS = ("https://naeilo.com", "https://www.naeilo.com")
+
+
+def toss_origin_ok(o: str) -> bool:
+    # naeilo.com 과 Tailscale 주소(내 기기끼리만 닿음)만 허용
+    return o in TOSS_ORIGINS or (o.startswith("https://") and o.endswith(".ts.net"))
+
+
 _toss = {"token": None, "exp": 0.0}
 TOSS_LOCK = threading.Lock()
 
 
 def toss_keys() -> tuple[str, str] | None:
-    i, s = os.environ.get("TOSS_CLIENT_ID", ""), os.environ.get("TOSS_CLIENT_SECRET", "")
-    if not (i and s):
-        k = read_json(TOSS_KEYS, {})
-        i, s = str(k.get("client_id", "")).strip(), str(k.get("client_secret", "")).strip()
+    k = read_json(TOSS_KEYS, {})
+    i, s = str(k.get("client_id", "")).strip(), str(k.get("client_secret", "")).strip()
     return (i, s) if i and s else None
 
 
@@ -367,8 +374,13 @@ class Handler(SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):  # 조용히
         pass
 
+    cors = None
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
+        if self.cors:
+            self.send_header("Access-Control-Allow-Origin", self.cors)
+            self.send_header("Vary", "Origin")
         super().end_headers()
 
     def send_json(self, obj, code=200):
@@ -392,9 +404,21 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/beyora"):
             return self.send_json(read_json(DATA / "beyora.json", {"cats": [], "posts": []}))
         if self.path.startswith("/api/toss/prices"):  # 토스증권 국내 시세 (키 있는 개발자 PC 만)
+            o = self.headers.get("Origin") or ""
+            self.cors = o if toss_origin_ok(o) else None
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self.send_json(toss_prices([x for x in (q.get("symbols") or [""])[0].split(",") if x]))
         return super().do_GET()
+
+    def do_OPTIONS(self):  # 토스 시세 사전 요청 (CORS)
+        o = self.headers.get("Origin") or ""
+        if not (self.path.startswith("/api/toss/") and toss_origin_ok(o)):
+            return self.send_json({"error": "forbidden"}, 403)
+        self.cors = o
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Methods", "GET")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
 
     def do_POST(self):
         # 같은 PC 의 다른 웹사이트가 몰래 부르는 것을 막는다

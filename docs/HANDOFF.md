@@ -15,7 +15,7 @@
 | 15분 collect cron | PR #166으로 `*/15` 단일 cron. 실제로 도는지 collect 작업 로그로 확인 필요. 워커 머리 주석(`*/30 13-22`)은 낡음 |
 | 워커 재배포 | 2026-10-14 재배포함. 1권 영문판 원고, 순위판 `/scores`, 댓글은 마무리 안 한 것으로 보임 → 보류 |
 | Claude 사용량 위젯 | 워커 `/cu`가 401 (`CLAUDE_TOKEN`). PR #156 이후 확인 안 됨 |
-| 토스증권 국내 시세 (개발자 전용) | 2026-10-14 `server.py /api/toss/prices` + 웹 로컬 모드 `tossQuotes`. 키는 `TOSS_CLIENT_ID`·`TOSS_CLIENT_SECRET` 또는 `toss_keys.json`(gitignore), 토스에 PC IP 등록 필요. 실제 키로 확인 안 됨. iOS·정적 사이트는 안 씀 |
+| 토스증권 국내 시세 (개발자 전용) | 2026-10-14 `server.py /api/toss/prices` + 웹 로컬 모드 `tossQuotes`. 키는 `toss_keys.json`(gitignore). naeilo.com·아이폰 브라우저는 Tailscale 주소로 부름(CORS: naeilo.com·*.ts.net, 정적 사이트는 `localStorage.toss_base`). iOS 앱 연결은 아직, 토스에 PC IP 등록 필요. 실제 키로 확인 안 됨. iOS·정적 사이트는 안 씀 |
 | 국내 실시간 시세 스위치 | 내부 테스트 전용(`KoreaEstimate.live`, 5종목). 공개 출시 전에 끄거나 제거 |
 | 무료/프리미엄 분리 | 웹 현금 기능 `premium()`이 항상 true ("나중에 무료·유료를 나눌 때 여기 한 곳만", `web/app.js` 설정 섹션) |
 | 웹-앱 차이 ② | 평정 지수 웹 보기(사건 표·추이 그래프) 미착수 |
