@@ -480,11 +480,55 @@ struct ExternalView: View {
                 Text("약 ±" + AppModel.man(x.amt)).appFont(26, .bold)
                 Text("발표일 \(Self.evBase[x.k] ?? "") 보통 ±\(String(format: "%g", x.sd))%" + (x.k == "mkt" ? ", 내 종목은 시장의 \(String(format: "%.1f", b))배쯤" : "") + " (가정값)")
                     .appFont(12).foregroundStyle(Theme.sub)
-                NavigationLink { FactorDetailView(factor: x.k, start: x.v) } label: {
-                    Text("이 상황 미리 보기").appFont(13, .semibold).foregroundStyle(.white)
-                        .padding(.horizontal, 12).padding(.vertical, 8).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                HStack(spacing: 8) {
+                    NavigationLink { FactorDetailView(factor: x.k, start: x.v) } label: {
+                        Text("이 상황 미리 보기").appFont(13, .semibold).foregroundStyle(.white)
+                            .padding(.horizontal, 12).padding(.vertical, 8).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                    let on = asked.contains("\(x.hit.id).\(x.hit.day)")
+                    Button {
+                        let k = "\(x.hit.id).\(x.hit.day)"
+                        if on { asked.remove(k) } else { asked.insert(k) }
+                        Task { await EventRetro.ask(id: x.hit.id, kind: x.hit.kind, day: x.hit.day, on: !on) }
+                    } label: {
+                        Label(on ? "다음 날 알림 켬" : "다음 날 결과 알림", systemImage: on ? "bell.fill" : "bell")
+                            .appFont(13, .semibold).foregroundStyle(.white)
+                            .padding(.horizontal, 12).padding(.vertical, 8).background(Color.white.opacity(on ? 0.25 : 0.12), in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+            }
+        }
+    }
+    @State private var asked: Set<String> = []
+    @State private var retro: EventRetro.Snap?
+
+    /// 지난 일 돌아보기: 가장 최근 지난 일정의 미리 본 범위 vs 실제 평가액 변화 (기기에 적어 둔 값, 없으면 숨김)
+    @ViewBuilder private var retroCard: some View {
+        if let r = retro, let after = r.after {
+            let real = after - r.base
+            let inside = abs(real) <= r.amt
+            Card {
+                Text("지난 일 돌아보기").appFont(16, .bold)
+                Text("\(Int(r.day.dropFirst(5).prefix(2)) ?? 0)/\(Int(r.day.suffix(2)) ?? 0) · \(r.kind)").appFont(12).foregroundStyle(Theme.sub)
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("미리 본 범위").appFont(12).foregroundStyle(Theme.sub)
+                        Text("±" + AppModel.man(r.amt)).appFont(18, .bold)
+                    }
+                    .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Theme.border.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("실제로는").appFont(12).foregroundStyle(Theme.sub)
+                        Text((real > 0 ? "+" : real < 0 ? "−" : "") + AppModel.man(abs(real))).appFont(18, .bold)
+                            .foregroundStyle(real > 0 ? Color.red : real < 0 ? Theme.blue : Theme.ink)
+                    }
+                    .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Theme.border.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+                }
+                Text(inside ? "미리 본 범위 안이었어요. 보통 움직임으로 준비해도 충분했어요." : "미리 본 범위보다 크게 움직였어요. 그날 다른 일도 함께 있었을 수 있어요.")
+                    .appFont(13).foregroundStyle(inside ? Theme.teal : Color.orange)
+                Text("실제는 일정 전에 본 평가액과 다음에 앱을 연 때의 평가액 차이예요. 그 사이 다른 움직임도 섞여 있어요.")
+                    .appFont(11).foregroundStyle(Theme.muted)
             }
         }
     }
@@ -503,7 +547,13 @@ struct ExternalView: View {
                     Text("지난 3년 동안 실제로 하루하루 움직인 만큼으로 계산해요. 목표까지의 영향은 \(m.forecastTitle)에서 봐요.")
                         .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
+                .onAppear {
+                    EventRetro.record(es.map { (id: $0.hit.id, kind: $0.hit.kind, day: $0.hit.day, amt: $0.amt) }, total: m.total)
+                    asked = Set(es.filter { EventRetro.isAsked($0.hit.id, $0.hit.day) }.map { "\($0.hit.id).\($0.hit.day)" })
+                    retro = EventRetro.latest
+                }
                 todayCard(es.first)
+                retroCard
                 Card {
                     Text("내 자산을 흔드는 요인").appFont(16, .bold)
                     Text("요인마다 '보통 한 달에 움직이는 만큼'으로 맞춰서 비교했어요.").appFont(12).foregroundStyle(Theme.sub)
