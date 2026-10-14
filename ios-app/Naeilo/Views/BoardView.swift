@@ -110,7 +110,7 @@ struct BoardView: View {
         let i = m.weeks.count, step = Shelter.weekSteps[min(i, 3)]
         let f = Shelter.friends[min(i + 1, 4)]
         return VStack(alignment: .leading, spacing: 10) {
-            Text("인터미션 \(i + 1)주차 · 매주 1분").appFont(13, .bold).foregroundStyle(Theme.mint)
+            Text("처음 4주 체크인 · \(i + 1)주차").appFont(13, .bold).foregroundStyle(Theme.mint)
             HStack(spacing: 8) {
                 Text(step.whereText).appFont(11, .bold).foregroundStyle(Theme.inkFixed)
                     .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.mint, in: Capsule())
