@@ -43,12 +43,6 @@ struct RemindItem: Identifiable, Equatable {
     var big = false          // 위젯에도 보여 줄 큰 달성 (내 캐릭터 열림, 새 친구, 1000칸 이정표)
     var day: String? = nil   // 일정 날짜 (yyyy-MM-dd)
     var sub: String? = nil   // 일정의 대상 (전 종목, 환율, 종목 이름)
-    var action: String? = nil  // 할 일 버튼 이름 (있으면 소식함 맨 위 '지금 해 주면 좋아요'에 올린다)
-    var why: String? = nil     // 왜 중요한지 한 줄 (할 일·일정)
-    var checks: [Check]? = nil // 체크리스트 (내 투자 캐릭터 찾기)
-    struct Check: Equatable { let text: String; let ok: Bool }
-    /// 소식함 '할 일': 행동 버튼이 있거나 조건이 풀릴 때까지 남는 진행 중 소식
-    var isTodo: Bool { cat != .event && (action != nil || !once) }
 }
 
 /// 기기에 남는 기록 (다른 기기와 맞추지 않는다)
@@ -67,7 +61,14 @@ struct RemindLog: Codable {
     var weeks: [String: Wk] = [:]       // 주간 예보: 주(yyyy-Www)마다 처음 연 날의 범위와 마지막으로 본 평가액
     var snap: [String: [Double]] = [:]  // 분석: 주마다 [목표(본전) 가능성, 내 길 앞섬]
     var analysisWeek: String? = nil     // 분석 소식이 마지막으로 뜬 주 (주 1회까지)
-    struct Wk: Codable { var lo: Double; var hi: Double; var last: Double }
+    var guessHits: Int? = nil           // 맞혀보기를 맞힌 횟수 (배지). 옛 기록에 없는 키라 옵셔널
+    struct Wk: Codable {
+        var lo: Double; var hi: Double; var last: Double
+        var guess: String? = nil        // 그 주에 고른 답 (lo·in·hi)
+        var scored: Bool? = nil         // 맞힌 횟수에 이미 셌는지
+        /// 금요일 값이 범위의 어디서 끝났는지 (lo·in·hi)
+        var pos: String { last < lo ? "lo" : last > hi ? "hi" : "in" }
+    }
 }
 
 /// 개발자 소식: 앱 버전마다 적어 두는 목록 + 사이트 data/app_news.json (앱 업데이트 없이 올라온 글·일정)
@@ -170,7 +171,7 @@ final class Remind {
         out += achievements(m)
         out += progress(m)
         out += MarketEvents.upcoming(held: m.rows.map(\.id), days: 7).map { e in
-            RemindItem(id: "ev.\(e.id).\(e.day)", cat: .event, text: e.kind, go: .external, once: false, day: e.day, sub: e.sub, why: MarketEvents.why(e.id))
+            RemindItem(id: "ev.\(e.id).\(e.day)", cat: .event, text: e.kind, go: .external, once: false, day: e.day, sub: e.sub)
         }
         out += analysis(m)
         out += news()
@@ -277,24 +278,60 @@ final class Remind {
         return a
     }
 
+    /// 맞혀보기 배지: 맞힌 횟수가 이만큼 되면 받는다
+    static let badges: [(n: Int, name: String, icon: String)] = [
+        (1, "첫 적중", "star.fill"), (3, "세 번 적중", "sparkles"), (5, "다섯 번 적중", "medal.fill"),
+        (10, "열 번 적중", "trophy.fill"), (20, "예보 달인", "crown.fill"),
+    ]
+
+    /// 끝난 주: 지난주들, 또는 토·일요일의 이번 주 (오래된 순)
+    static func endedWeeks(_ w: [String: RemindLog.Wk], now: Date = Date()) -> [String] {
+        let wk = week(now), wd = Calendar.current.component(.weekday, from: now)
+        return w.keys.filter { $0 < wk || ($0 == wk && (wd == 7 || wd == 1)) }.sorted()
+    }
+
+    /// 주간 예보 기록: 그 주 처음 연 날(월~금)의 범위를 적어 두고, 고른 답과 마지막 평가액을 이어 적는다.
+    /// 끝난 주의 고른 답은 한 번만 맞힌 횟수에 센다. 홈 리마인드와 미션 탭 예보 카드가 함께 부른다.
+    @MainActor func recordWeek(_ m: AppModel) {
+        guard m.playUnlocked, !m.rows.isEmpty else { return }
+        let now = Date(), wk = Self.week(now), wd = Calendar.current.component(.weekday, from: now)
+        var w = log.weeks
+        if w[wk] == nil, (2...6).contains(wd) {
+            let r = m.weekRange
+            if m.weekGuess != nil { m.weekGuess = nil }   // 새 주: 지난주에 고른 답은 지난주 기록에만 남는다
+            w[wk] = .init(lo: r.lo, hi: r.hi, last: m.trackValue)
+        } else if w[wk] != nil {
+            w[wk]?.last = m.trackValue
+            if (2...6).contains(wd) { w[wk]?.guess = m.weekGuess }   // 금요일 마감 전까지만 고칠 수 있다
+        }
+        var hits = log.guessHits ?? 0
+        for k in Self.endedWeeks(w, now: now) {
+            guard let x = w[k], let g = x.guess, x.scored != true else { continue }
+            w[k]?.scored = true
+            if g == x.pos { hits += 1 }
+        }
+        if w.count > 12 { for k in w.keys.sorted().prefix(w.count - 12) { w.removeValue(forKey: k) } }
+        if hits != (log.guessHits ?? 0) { log.guessHits = hits }
+        if w.count != log.weeks.count || w[wk]?.last != log.weeks[wk]?.last || w[wk]?.guess != log.weeks[wk]?.guess
+            || w.contains(where: { $0.value.scored != log.weeks[$0.key]?.scored }) { log.weeks = w }
+    }
+
     /// 주간 예보 결과: 그 주 처음 연 날의 범위와 금요일 뒤 평가액을 견준다
     @MainActor private func week(_ m: AppModel) -> [RemindItem] {
         guard m.playUnlocked, !m.rows.isEmpty else { return [] }
-        let now = Date(), wk = Self.week(now), wd = Calendar.current.component(.weekday, from: now)
-        var w = log.weeks
-        if w[wk] == nil, (2...6).contains(wd) { let r = m.weekRange; w[wk] = .init(lo: r.lo, hi: r.hi, last: m.trackValue) }
-        else if w[wk] != nil { w[wk]?.last = m.trackValue }
-        // 끝난 주: 지난주들, 또는 토·일요일의 이번 주
-        let ended = w.keys.filter { $0 < wk || ($0 == wk && (wd == 7 || wd == 1)) }.sorted()
-        if w.count > 12 { for k in w.keys.sorted().prefix(w.count - 12) { w.removeValue(forKey: k) } }
-        if w.count != log.weeks.count || w[wk]?.last != log.weeks[wk]?.last { log.weeks = w }
-        guard let last = ended.last, let r = w[last] else { return [] }
+        recordWeek(m)
+        let w = log.weeks, ended = Self.endedWeeks(w)
+        var a: [RemindItem] = []
+        if let b = Self.badges.last(where: { $0.n <= (log.guessHits ?? 0) }) {
+            a.append(.init(id: "badge.\(b.n)", cat: .done, text: "맞혀보기 배지 ‘\(b.name)’를 받았어요. 예보를 \(b.n)번 맞혔어요.", go: .board))
+        }
+        guard let last = ended.last, let r = w[last] else { return a }
         let inside = r.last >= r.lo && r.last <= r.hi
         var run = 0
         for k in ended.reversed() { guard let x = w[k], x.last >= x.lo && x.last <= x.hi else { break }; run += 1 }
         let text = inside ? "이번 주 예보 적중! 범위 안에서 마쳤어요." + (run >= 2 ? " \(run)주 연속이에요." : "")
             : "이번 주는 예보 범위 \(r.last > r.hi ? "위" : "아래")로 나갔어요. 이런 주도 절반쯤 있어요."
-        return [.init(id: "wk.\(last)", cat: .done, text: text, go: .board)]
+        return a + [.init(id: "wk.\(last)", cat: .done, text: text, go: .board)]
     }
 
     /// 평정 지수 달 변화: 이번 달 전까지의 기록과 지금을 견준다 (양쪽 10건 이상, 5점 넘게 바뀌었을 때)
@@ -317,20 +354,15 @@ final class Remind {
             a.append(.init(id: "do.inter", cat: .doing, text: t, go: .board, once: false))
         }
         let n = m.calm.events.count
-        let calmLeft = (1..<Calm.minEvents).contains(n) ? Calm.minEvents - n : nil
+        if (1..<Calm.minEvents).contains(n) {
+            a.append(.init(id: "do.calm", cat: .doing, text: "평정 지수까지 기록 \(Calm.minEvents - n)건 남았어요.", go: .calm, once: false))
+        }
         if let l = m.calm.ladder, (1...3).contains(l.step), let st = Calm.steps[l.type]?[l.step - 1], let p = m.calm.progress() {
             a.append(.init(id: "do.ladder", cat: .doing, text: "다음 걸음 \(l.step)/3 ‘\(st.name)’ · \(p.text)", go: .calm, once: false))
         }
-        // 내 투자 캐릭터 찾기: 조건 3개를 체크리스트 하나로 (투자 습관 기록 건수는 그 안 한 줄로)
-        let gates = [(m.meGate1, m.meGate1Short),
-                     (m.meGate2, "내 투자 습관 유형 찾기" + (calmLeft.map { " · 기록 \($0)건 남음" } ?? "")),
-                     (m.meGate3, "다방커피 후원")]
-        let ok = gates.filter(\.0).count
-        if (1...2).contains(ok) {
-            a.append(.init(id: "do.me", cat: .doing, text: "내 투자 캐릭터 찾기 · 3개 중 \(ok)개", go: .me, once: false,
-                           why: "다 채우면 나와 가장 닮은 인물을 알려드려요.", checks: gates.map { .init(text: $0.1, ok: $0.0) }))
-        } else if let c = calmLeft {
-            a.append(.init(id: "do.calm", cat: .doing, text: "내 투자 습관까지 기록 \(c)건 남았어요.", go: .calm, once: false))
+        let left = [(m.meGate1, m.meGate1Text), (m.meGate2, "평정 지수 유형 매칭"), (m.meGate3, "다방커피 후원")].filter { !$0.0 }.map { $0.1 }
+        if (1...2).contains(left.count) {
+            a.append(.init(id: "do.me", cat: .doing, text: "내 캐릭터 조건 \(3 - left.count)/3 · 남은 조건: " + left.joined(separator: ", "), go: .me, once: false))
         }
         if let i = (0..<Shelter.friends.count).first(where: { !m.friendOn($0) }) {
             a.append(.init(id: "do.friend", cat: .doing, text: "다음 친구 \(Shelter.friends[i].name)는 \(m.friendWhen(i))에 와요.", go: .shelter, once: false))
@@ -401,12 +433,6 @@ final class Remind {
             a.append(.init(id: tid, cat: .news, text: "\(t.name) 후원 고마워요! " + t.adds.joined(separator: ", ") + "이 열렸어요.", go: .support))
         }
         if log.tier != t.rawValue { log.tier = t.rawValue }
-        // 국내 주식 합계 (선택 항목을 켠 사람만): 평일에 오늘 값을 아직 안 넣었으면 하루 한 번
-        let wday = Calendar.current.component(.weekday, from: Date())
-        if KoreaEstimate.direct, wday != 1, wday != 7, CustomSymbols.shared.saved(KoreaEstimate.sumId)?.kd != Day.today {
-            a.append(.init(id: "krsum.\(Day.today)", cat: .news, text: "국내 주식 합계 넣기", go: .krSum,
-                           action: "금액 넣기", why: "넣으면 홈 평가액이 정확해져요. 증권사 앱에 보이는 금액 그대로면 돼요."))
-        }
         if case .failed = Sync.shared.state {
             a.append(.init(id: "sync.fail", cat: .news, text: "기기 동기화가 멈췄어요. 한번 확인해 볼래요?", go: .sync, once: false))
         }
@@ -504,15 +530,6 @@ enum MarketEvents {
         return out.sorted { ($0.held ? 0 : 1, $0.day) < ($1.held ? 0 : 1, $1.day) }
     }
 
-    /// 일정이 내게 왜 중요한지 한 줄 (금리·물가·고용·실적 4종)
-    static func why(_ id: String) -> String? {
-        switch id {
-        case "x_fomc", "x_bok": "금리가 바뀌면 환율이 움직이고, 미국 주식의 원화 평가액이 달라질 수 있어요."
-        case "x_cpi": "물가가 예상과 다르면 금리 전망이 바뀌어 주가가 크게 흔들릴 수 있어요."
-        case "x_jobs": "일자리 숫자는 금리 전망에 영향을 줘서 주가와 환율이 함께 움직일 수 있어요."
-        default: id.hasPrefix("e_") ? "실적이 기대와 다르면 그 종목 값이 하루에 크게 움직일 수 있어요." : nil
-        }
-    }
     /// "내일", "10/22 (D-11)" 처럼
     static func when(_ day: String) -> String {
         let n = Day.dday(day)
