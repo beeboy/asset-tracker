@@ -47,6 +47,7 @@
 - 비밀값은 Actions/워커 시크릿에만. 저장소에 쓰지 않는다.
 
 ## 작업 규칙
+- 사용자가 직접 할 일(링크 열기·명령 실행 등)은 바로 복사해 쓸 수 있는 완성된 값으로 답에 적는다. 사용자가 알려 준 값(주소 등)은 채워 넣고, 지난 스레드를 찾게 하지 않는다. 단, 공개 저장소 파일에는 그 값을 쓰지 않는다.
 - 빌드·테스트 출력은 실패 부분만 보이게 줄인다 (예: `2>&1 | grep -E "error|FAIL" | head -50`, `tail -40`).
 - 읽지 말 것: `data/prices/`, `data/quotes.json`, `data/stats.json`, `data/calc.json`, `data/sample_calc.json`, `data/beyora.json`, `data/app_news.json`, `data/macro/`, `web/stocks.js`, `ios-app/Naeilo/Resources/*.json`, `*.xcassets`, `*.png`, `*.pbxproj` 전체 읽기(필요한 줄만 grep), `node_modules/`, `build/`, `DerivedData/`, `Pods/`.
 - `web/app.js`(약 3,500줄)는 통째로 읽지 말고 함수 이름으로 grep한다.
