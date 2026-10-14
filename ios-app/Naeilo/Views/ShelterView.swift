@@ -9,46 +9,111 @@ struct ShelterView: View {
     @State private var story = Story.shared
     @State private var fold: [String: Bool] = [:]   // 손으로 펼치고 접은 묶음 (없으면 읽는 묶음만 펼침)
 
+    var onlyLibrary = false   // 서재 전체: 장 목록만 따로 보는 화면
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                hero
-                header("친구", "\((0..<5).filter { m.friendOn($0) }.count)/5")
-                // 친구 다섯 + 본인(내 캐릭터) 한 줄
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 6), spacing: 6) {
-                    ForEach(Array(Shelter.friends.enumerated()), id: \.element.id) { i, f in friendTile(i, f) }
-                    meTile
-                }
-                header("서재 · 외전 『이종 공명』", "\((0..<6).filter { m.chapterOn($0) }.count)/6장 열림")
-                if let last = m.readLast, m.chapterOn(last) {
-                    NavigationLink(value: "read:\(last)") {
-                        HStack { Text("이어 읽기 · \(Shelter.chapters[last].title) \(Shelter.chapters[last].name)"); Spacer(); Text("›") }
-                            .appFont(15, .bold).foregroundStyle(.white)
-                            .padding(.horizontal, 14).frame(minHeight: 48)
-                            .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
-                    }.buttonStyle(.plain)
-                }
-                library
-                if Support.shared.has(.franchise) { vol1 }
-                header("쉼터에 돌아온 물건", "\(m.itemsOn)/10")
-                room
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
-                    ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in itemTile(i, it) }
-                }
-                itemNote
-                ShelterBGBox(support: $support)
-                Text("외전 프롤로그부터 5장까지는 내 행동으로 열리고, 6장부터는 커피 후원으로 이어져요. 친구와 장은 내 행동으로만 열리고, 시장 숫자와는 상관없어요. 물건은 오늘의 1분을 한 날마다 하나씩 돌아와요. 방에 놓인 물건을 누르면 배치에서 빠지고, 아래 칸에서 다시 놓을 수 있어요.")
-                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
+                if onlyLibrary {
+                    library
+                    if Support.shared.has(.franchise) { vol1 }
+                } else { shelter }
             }
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("쉼터").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(onlyLibrary ? "서재" : "쉼터").navigationBarTitleDisplayMode(.inline)
         .onAppear {
             sel = m.shelterSel ?? m.homeFriend
             for i in 0..<5 where m.readPos.contains(i + 1) { story.markDone(.side, i) }   // 다음 장을 연 장은 다 읽은 것으로 (예전 기록)
         }
         .sheet(isPresented: $support) { NavigationStack { SupportView() } }
+    }
+
+    @ViewBuilder private var shelter: some View {
+        Text("앱을 꾸준히 쓰면 물건과 이야기가 하나씩 돌아와요").appFont(13).foregroundStyle(Theme.sub)
+        hero
+        let met = (0..<5).filter { m.friendOn($0) }.count
+        header("만난 친구", met == 5 ? "5명 모두 만났어요" : "5명 중 \(met)명")
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 5), spacing: 6) {
+            ForEach(Array(Shelter.friends.enumerated()), id: \.element.id) { i, f in friendTile(i, f) }
+        }
+        Text("누르면 홈에서 함께할 인물을 바꿀 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+        // 내 캐릭터는 친구와 따로 한 줄
+        meTile
+        header("이어서 읽기", "")
+        continueCard
+        NavigationLink(value: "library") {
+            HStack { Text("서재 전체").appFont(14, .bold); Spacer(); Text("›").foregroundStyle(Theme.muted) }
+                .foregroundStyle(Theme.ink).padding(.horizontal, 14).frame(minHeight: 44)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
+        }.buttonStyle(.plain)
+        let placed = (0..<m.itemsOn).filter { !m.itemsOff.contains(Shelter.items[$0].id) }.count
+        header("돌아온 물건", "10개 중 \(placed)개 방에 놓임")
+        room
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
+            ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in itemTile(i, it) }
+        }
+        itemNote
+        openTable
+        ShelterBGBox(support: $support)
+    }
+
+    /// 이어서 읽기: 마지막에 읽던 장 큰 카드 하나 + 작품별 진도
+    private var continueCard: some View {
+        let i = m.readLast.flatMap { $0 < 6 && m.chapterOn($0) ? $0 : nil } ?? (0..<6).first { m.chapterOn($0) && !story.isDone(.side, $0) } ?? 0
+        let ch = Shelter.chapters[i], on = m.chapterOn(i)
+        let sideDone = (0..<6).filter { story.isDone(.side, $0) }.count
+        let v1 = story.count(.vol1)
+        return VStack(alignment: .leading, spacing: 10) {
+            NavigationLink(value: "read:\(i)") {
+                HStack(spacing: 12) {
+                    ChapterCover(index: i, on: on).frame(width: 72, height: 46)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("외전 『이종 공명』 · \(ch.title)").appFont(12).foregroundStyle(Theme.sub)
+                        Text(on ? ch.name : "???").appFont(15, .bold)
+                        ProgressView(value: Double(sideDone), total: 6).tint(Theme.teal)
+                    }
+                    Image(systemName: "play.fill").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
+                        .frame(width: 40, height: 40).background(Theme.teal, in: Circle())
+                }
+                .foregroundStyle(Theme.ink).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).disabled(!on)
+            .accessibilityLabel("이어 읽기, \(ch.title) \(on ? ch.name : "")")
+            Divider().overlay(Theme.line)
+            progressLine("외전 『이종 공명』", "6장 중 \(sideDone)장")
+            if Support.shared.has(.franchise), v1 > 0 {
+                progressLine("본편 1권", "\(v1)장 중 \((0..<v1).filter { story.isDone(.vol1, $0) }.count)장")
+            }
+        }
+        .padding(14)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+    }
+    private func progressLine(_ t: String, _ r: String) -> some View {
+        HStack { Text(t).appFont(13); Spacer(); Text(r).appFont(13).foregroundStyle(Theme.sub) }
+    }
+
+    /// 무엇이 어떻게 열려요? (예전 맨 아래 긴 문단을 표로)
+    private var openTable: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("무엇이 어떻게 열려요?").appFont(15, .bold)
+            ForEach([("물건", "오늘의 1분을 확인한 날마다 1개"), ("친구 · 외전 5장까지", "앱을 쓴 주차에 따라"), ("외전 6장부터", "커피 후원으로")], id: \.0) { r in
+                HStack(alignment: .firstTextBaseline) {
+                    Text(r.0).appFont(13, .bold).frame(width: 130, alignment: .leading)
+                    Text(r.1).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Text("수익률이나 시장 숫자와는 상관없어요. 잃어도 이야기는 계속 열려요.")
+                .appFont(13, .semibold).padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
+            Text("방에 놓인 물건을 누르면 배치에서 빠지고, 위 칸에서 다시 놓을 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+        }
+        .padding(14)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
     }
 
     private func header(_ t: String, _ r: String) -> some View {
@@ -132,17 +197,30 @@ struct ShelterView: View {
         }
     }
     private var meTileLabel: some View {
-        let cur = sel == "me", made = m.me != nil
-        return VStack(spacing: 2) {
-            CharPixel(id: "me", width: 34, height: 48)
-            Text(m.me?.shownName ?? "본인").appFont(12, .bold).lineLimit(1).minimumScaleFactor(0.8)
-            Text(!made ? "만들기" : m.homeFriendShown == "me" ? "홈에 있음" : m.meUnlocked ? "열림" : "잠김")
-                .appFont(10).foregroundStyle(made ? Theme.sub : Theme.teal)
+        let cur = sel == "me", made = m.me != nil, open = m.meUnlocked
+        let gates = [(m.meGate1, m.meGate1Text), (m.meGate2, "평정 지수 성향 매칭"), (m.meGate3, "다방커피 이상 후원")]
+        let done = gates.filter { $0.0 }.count
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                // 잠겼을 땐 그림자
+                CharPixel(id: "me", width: 28, height: 40).brightness(open ? 0 : -1).opacity(open ? 1 : 0.45)
+                Text("나" + (m.me.map { " · " + $0.shownName } ?? "")).appFont(14, .bold).lineLimit(1)
+                Spacer(minLength: 0)
+                Text(!made ? "만들기 ›" : m.homeFriendShown == "me" ? "홈에 있음" : open ? "열림" : "3개 중 \(done)개")
+                    .appFont(12).foregroundStyle(made ? Theme.sub : Theme.teal)
+            }
+            if !open {
+                ForEach(Array(gates.enumerated()).filter { !$0.element.0 }, id: \.offset) { g in
+                    Text("· " + g.element.1).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
-        .frame(maxWidth: .infinity, minHeight: 96)
+        .foregroundStyle(Theme.ink)
+        .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .background(cur ? Theme.mintBg : made ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(cur ? Theme.teal : made ? Theme.border : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: made ? [] : [4, 3])))
-        .accessibilityLabel(made ? "본인, \(m.me?.shownName ?? "")" : "본인, 내 캐릭터 만들기")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(made ? "나, \(m.me?.shownName ?? ""), \(open ? "열림" : "3개 중 \(done)개 채움")" : "나, 내 캐릭터 만들기")
     }
 
     /// 내 캐릭터 소개: 투자 유형, 열림 조건 세 가지, 고치기·홈에 두기
@@ -386,7 +464,7 @@ struct ShelterView: View {
             .foregroundStyle(on ? Theme.ink : Theme.muted)
             .frame(maxWidth: .infinity, minHeight: 84)
             .background(on ? (item == it.id ? Theme.mintBg : Theme.card) : Color(hex: 0xF6F7F8, dark: 0x1D252E), in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? (item == it.id ? Theme.teal : Theme.border) : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: on ? [] : [4, 3])))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? (item == it.id ? Theme.teal : off ? Theme.dash : Theme.border) : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: on && !off ? [] : [4, 3])))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(on ? it.name + (off ? ", 방에서 빼 둠" : "") : i == m.itemsOn ? "다음에 돌아오는 물건" : "\(i + 1)번째로 돌아오는 물건")

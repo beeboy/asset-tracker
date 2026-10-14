@@ -28,6 +28,7 @@ struct HomeView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { route in
             if route == "shelter" { ShelterView() }
+            else if route == "library" { ShelterView(onlyLibrary: true) }
             else if route == "parallel" { ParallelView() }
             else if route == "parallel:basket" { ParallelBasketView() }
             else if route == "goal" { GoalSetView(fromSettings: true) }
