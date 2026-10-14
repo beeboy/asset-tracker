@@ -698,14 +698,21 @@ final class AppModel {
     var cellsYesterday: Int { cells(total / (1 + todayMove)) }
 
     // MARK: 주간 예보 (월요일에 적은 금요일 평가액 50% 범위)
+    /// 이번 주에 적어 둔 범위가 있으면 그 값 (주중에 평가액이 움직여도 범위는 그대로), 없으면 지금 값으로 계산
     var weekRange: (lo: Double, hi: Double, actual: Double) {
         let now = trackValue
+        if let w = Remind.shared.log.weeks[Remind.week(Date())] { return (w.lo, w.hi, now) }
         let wSg = forecast.sigma / sqrt(52), base = now / 1.004
-        let actual = now
-        return (base * exp(-0.674 * wSg), base * exp(0.674 * wSg), actual)
+        return (base * exp(-0.674 * wSg), base * exp(0.674 * wSg), now)
     }
-    /// 지난 주간 예보 도장 (1 = 범위 안). 아직 주간 기록을 남기지 않아 비어 있다. 개발자 기기에서는 시연 값
-    var pastWeeks: [Int] { devAll ? [1, 0, 1, 1, 0, 1, 0, 1] : [] }
+    /// 지난 주간 예보 성적 (1 = 범위 안, 오래된 순, 최근 8주). 기록이 없으면 비어 있다. 개발자 기기에서는 시연 값
+    var pastWeeks: [Int] {
+        let w = Remind.shared.log.weeks
+        let r = Remind.endedWeeks(w).suffix(8).compactMap { w[$0].map { $0.pos == "in" ? 1 : 0 } }
+        return r.isEmpty && devAll ? [1, 0, 1, 1, 0, 1, 0, 1] : r
+    }
+    /// 맞혀보기를 맞힌 횟수 (배지)
+    var guessHits: Int { Remind.shared.log.guessHits ?? 0 }
 
     // MARK: 시안 조작
     enum Demo { case fresh, week1, all }
