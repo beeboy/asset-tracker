@@ -80,13 +80,8 @@ final class AppModel {
     var holdings: [Holding] = AppModel.savedHoldings ?? Sample.startHoldings {
         didSet {
             if let d = try? JSONEncoder().encode(holdings) { UserDefaults.standard.set(d, forKey: "holdings") }
-            // 국내 주식 합계 줄을 목록에서 지우면 0원으로 남긴다 (다 팔았어요. 지난 기록은 그대로, 웹 delHolding 과 같다)
-            let k = KoreaEstimate.sumId
-            // (그 줄만 빠진 경우만. 루트를 다시 고르거나 샘플로 바꾸는 중에 잠깐 비는 것은 세지 않는다)
-            let was = Set(oldValue.map(\.symbol)), now = Set(holdings.map(\.symbol))
-            if was.contains(k), now == was.subtracting([k]), CustomSymbols.shared.krNow > 0 {
-                Task { @MainActor in CustomSymbols.shared.setKoreaSum(0) }
-            }
+            // 국내 주식 합계(KOREA) 줄은 없앴다: 국내 주식은 종목별로 넣는다. 예전 저장값·동기화로 들어와도 뺀다 (kr_log 기록은 그대로)
+            if holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) { holdings.removeAll { $0.symbol == KoreaEstimate.sumId } }
             recordDay()
         }
     }
@@ -118,7 +113,7 @@ final class AppModel {
     /// 둘러보기 샘플 수량: DRNK 4주 (가장 큰 종목이 DRNK가 되게), QQQ 1주
     static func sampleQty(_ id: String) -> Double { id == "DRNK" ? 4 : 1 }
     static var savedHoldings: [Holding]? {
-        UserDefaults.standard.data(forKey: "holdings").flatMap { try? JSONDecoder().decode([Holding].self, from: $0) }
+        UserDefaults.standard.data(forKey: "holdings").flatMap { try? JSONDecoder().decode([Holding].self, from: $0) }?.filter { $0.symbol != KoreaEstimate.sumId }
     }
 
     // 미션 (회복 루트): 1 종목·단가, 2 원인 진단, 3 내 계획, 5 앱 시작 3단계, 6 인터미션
