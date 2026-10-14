@@ -318,7 +318,7 @@ struct ForecastView: View {
     }
 
     // MARK: 세 가지 미래 한눈에
-    private func table(_ fs: [Lens: AppModel.Forecast], now: Double, add: (AppModel.Forecast) -> Double) -> some View {
+    private func table(_ fs: [Lens: AppModel.Forecast], now: Double, add: @escaping (AppModel.Forecast) -> Double) -> some View {
         let lineName = m.isGoal ? Self.amt(m.keyValue) : "본전"
         let bads = Lens.allCases.map { l in fs[l].map { ($0.q5.last ?? 0) + add($0) } ?? now }
         let below = bads.filter { $0 < now }.count
