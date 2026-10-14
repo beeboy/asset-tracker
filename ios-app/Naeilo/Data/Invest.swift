@@ -20,8 +20,33 @@ enum Invest {
         var id: String { who + title + when }
         var ruleRet: Double { (rule.last ?? 100) / 100 - 1 }
         var holdRet: Double { (hold.last ?? 100) / 100 - 1 }
+        var ruleWins: Bool { (rule.last ?? 100) > (hold.last ?? 100) }
     }
     static func events(_ who: String, strong: Bool) -> [Event] { events.filter { $0.who == who && $0.strong == strong } }
+
+    /// 인물 상세 맨 위 한 줄 결론 (사례 카드를 다 읽지 않아도 되게)
+    static let summary: [String: String] = [
+        "seri": "몇 년씩 떨어지는 하락장엔 덜 잃었고, 오래 오르는 상승장엔 덜 벌었어요.",
+        "sio": "크게 빠졌다 회복하는 하락장엔 강했고, 몇 년씩 계속 떨어지는 하락장엔 약했어요.",
+        "seonbae": "한쪽으로 쏠린 거품이 꺼질 땐 강했고, 오르는 종목이 계속 오를 땐 덜 벌었어요.",
+        "ir": "천천히 길게 떨어지는 하락장엔 강했고, 빨리 빠졌다 바로 오르거나 오르내림만 반복할 땐 약했어요.",
+        "sua": "떨어질 때 더 사 둔 덕에 회복 뒤 앞섰어요. 다만 시장이 오래 못 오르거나 넣을 돈이 끊기면 약해요.",
+    ]
+    /// 과거 사례 앞 전제 문장 (굵게는 **)
+    static let premise: [String: String] = [
+        "seri": "두 사람 모두 **주식 60 · 현금 40**으로 시작했다고 가정해요. 한 명은 세리 규칙대로, 한 명은 **아무것도 안 하고 그냥 둔** 경우예요.",
+        "sio": "두 사람 모두 **주식 80 · 현금 20**으로 시작했다고 가정해요. 한 명은 시오 규칙대로, 한 명은 **아무것도 안 하고 그냥 둔** 경우예요.",
+        "seonbae": "두 사람 모두 **주식 60 · 현금 40**으로 시작했다고 가정해요. 한 명은 선배 규칙대로, 한 명은 **아무것도 안 하고 그냥 둔** 경우예요.",
+        "ir": "두 사람 모두 **주식 100**으로 시작했다고 가정해요. 한 명은 이르 규칙대로, 한 명은 **아무것도 안 하고 그냥 둔** 경우예요.",
+        "sua": "두 사람 모두 **매달 같은 금액**을 넣는다고 가정해요. 한 명은 수아 규칙대로 떨어진 달엔 더 넣고, 한 명은 **늘 같은 금액만** 넣은 경우예요. 숫자는 넣은 돈 대비예요.",
+    ]
+    /// 과거 사례 (그래프 있는 것만): 연도 최신순. 유리/불리는 strong 이 아니라 끝값으로 정한다
+    static func cases(_ who: String) -> [Event] {
+        events.filter { $0.who == who && $0.fact == nil }.sorted { year($0.when) > year($1.when) }
+    }
+    /// 규칙이 못 막는 하락 (숫자 카드)
+    static func facts(_ who: String) -> [Event] { events.filter { $0.who == who && $0.fact != nil } }
+    private static func year(_ s: String) -> Int { Int(s.prefix(4)) ?? 0 }
 
     /// 사건 그래프의 "그냥 둠"이 무엇인지 (같은 비율로 출발해 아무것도 안 함)
     static let holdNote: [String: String] = [
