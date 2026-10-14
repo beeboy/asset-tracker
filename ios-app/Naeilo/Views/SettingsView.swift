@@ -135,8 +135,6 @@ struct SettingsView: View {
 
 struct PriceBasisView: View {
     @Environment(AppModel.self) private var m
-    @State private var krDirect = KoreaEstimate.direct
-    @State private var krLive = KoreaEstimate.live
     var body: some View {
         let mk = Market.shared, fx = mk.fx
         ScrollView {
@@ -153,31 +151,12 @@ struct PriceBasisView: View {
                     row("미국 종목", "지금 가격과 전일 종가")
                     row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change))")
                     row("평가 환율", mk.marRate != nil ? "매매기준율 \(String(format: "%.2f", mk.valFx))원 · 웹 평가액과 같아요" : "매매기준율을 아직 못 받아 지금 환율")
-                    row("한국 종목", "시세를 받지 않아요. 미국 지수를 따르는 국내 ETF는 넣은 가격에서 그 미국 ETF × 원/달러 움직임으로 오늘 가격을 추정하고, 그 밖의 국내 주식은 합계 금액 한 줄로 넣어요")
+                    row("한국 종목", "많이 찾는 국내 주식은 사이트가 매일 모은 가격이에요. 1년 기록은 모으기 시작한 날부터 쌓여요. 미국 지수를 따르는 국내 ETF는 넣은 가격에서 그 미국 ETF × 원/달러 움직임으로 추정해요")
                     row("오늘의 움직임", "전일 대비 지금 평가액")
                     row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : mk.site != nil ? "사이트가 평일 30분마다 모으는 테스트 자료. 당기면 바로 받아요" : "앱에 넣어 둔 테스트 자료")
                 }
                 Text("그래프와 미션은 종가로 계산해요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
-                Toggle(isOn: Binding(get: { krDirect }, set: { krDirect = $0; KoreaEstimate.direct = $0 })) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("국내 주식 합계 직접 입력").appFont(15, .bold)
-                        Text("종목 탭에 국내 주식 합계 칸이 생겨요. 증권사 앱의 국내 주식 평가액 합계를 넣으면 그 금액 그대로 계산하고, 움직임 예측은 한국 시장 평균(미국 상장 EWY × 원/달러)으로 해요.")
-                            .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                    }
-                }.tint(Theme.teal).padding(.top, 8)
-                if KoreaEstimate.testBuild {
-                    Toggle(isOn: Binding(get: { krLive }, set: { v in
-                        krLive = v; KoreaEstimate.live = v
-                        Task { await Market.shared.pullRefresh(m) }
-                    })) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("내부 테스트: 국내 종목 시세").appFont(15, .bold)
-                            Text("테스트 빌드에서만 보여요. 켜면 대한광통신·LIG아큐버·쎄크·대한전선·에이비엘바이오를 종목으로 넣을 수 있고, Yahoo 전일 종가를 받아요. 전망은 한국 시장 평균(EWY × 원/달러)으로 해요.")
-                                .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                        }
-                    }.tint(Theme.teal)
-                }
                 // 시세 업체와 계약하면 그 업체의 출처 표기를 여기에 넣는다 (Tiingo: "Data powered by Tiingo.com")
             }
             .padding(16)

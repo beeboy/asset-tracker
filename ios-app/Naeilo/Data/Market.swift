@@ -24,6 +24,8 @@ final class Market {
     var site: QuoteFeed.File? = QuoteFeed.cached()
     /// 토스증권 지금 가격 (개발자 전용, 종목 id → 값). 있으면 Yahoo 값보다 먼저
     var toss: QuoteFeed.File? = TossFeed.cached()
+    /// 토스 시세를 받는 중 (겹쳐 묻지 않게)
+    @ObservationIgnored private var tossBusy = false
     /// 매매기준율 (사이트 data/mar.json, 서울외국환중개). 웹 평가액과 같은 환율
     var mar: MarFeed.File? = MarFeed.cached()
     /// 원화 평가에 쓰는 원/달러: 웹 fxBase 와 같게 매매기준율, 없거나 5일 넘게 묵었으면 지금 환율
@@ -99,23 +101,35 @@ final class Market {
             if let q = try? await p.quotes(tickers) { live = q }
             if let f = try? await p.usdkrw() { liveFx = f }
         }
-        // 토스 시세 (주소를 넣은 개발자 기기만): 국내·미국 종목. 다른 시세를 기다리게 하지 않게 같이 받는다.
-        // 실패하면 15분 안에 받은 값, 그것도 없으면 nil → Yahoo 값
-        var ty: [String: String] = [:]
-        for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
-        async let tossNew = TossFeed.fetch(ty)
-        // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
-        if let f = await QuoteFeed.fetch(minAge: force ? 0 : 240) { site = f }
-        if let r = await MarFeed.fetch(minAge: force ? 0 : 1800) { mar = r }
+        // 토스 시세 (주소를 넣은 개발자 기기만): 국내·미국 종목. 기다리지 않고 따로 받아 도착하면 반영한다 (앱 시작을 늦추지 않게).
+        // 1분 안에 받았으면 그대로. 실패하면 15분 안에 받은 값, 그것도 없으면 nil → Yahoo 값
+        if !held.isEmpty && !tossBusy {
+            var ty: [String: String] = [:]
+            for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
+            tossBusy = true
+            Task {
+                let t = await TossFeed.fetch(ty, minAge: force ? 0 : 60)
+                self.toss = t
+                self.tossBusy = false
+            }
+        }
+        // 나머지 시세는 한꺼번에 받는다 (차례로 기다리지 않게)
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
         let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
-        if let p = await SitePrices.fetch(keys: keys.union(["KRW=X"]).union(Parallel.wantKeys), old: prices, minAge: force ? 0 : 1800) { prices = p }
+        let oldPrices = prices
+        // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
+        async let siteNew = QuoteFeed.fetch(minAge: force ? 0 : 240)
+        async let marNew = MarFeed.fetch(minAge: force ? 0 : 1800)
+        async let pricesNew = SitePrices.fetch(keys: keys.union(["KRW=X"]).union(Parallel.wantKeys), old: oldPrices, minAge: force ? 0 : 1800)
         // 전망 입력값: 하루 한 번 바뀌므로 6시간에 한 번 (당겨 갱신하면 바로)
-        if let s = await SiteStats.fetch(minAge: force ? 0 : 6 * 3600) { stats = s }
+        async let statsNew = SiteStats.fetch(minAge: force ? 0 : 6 * 3600)
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
-        await CustomSymbols.shared.refresh(held: held, force: force)
-        let t = await tossNew
-        if !held.isEmpty { toss = t }
+        async let customDone: Void = CustomSymbols.shared.refresh(held: held, force: force)
+        if let f = await siteNew { site = f }
+        if let r = await marNew { mar = r }
+        if let p = await pricesNew { prices = p }
+        if let s = await statsNew { stats = s }
+        await customDone
         updatedAt = Date()
     }
 
