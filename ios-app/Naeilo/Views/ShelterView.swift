@@ -197,19 +197,30 @@ struct ShelterView: View {
         }
     }
     private var meTileLabel: some View {
-        let cur = sel == "me", made = m.me != nil
-        return HStack(spacing: 10) {
-            CharPixel(id: "me", width: 28, height: 40)
-            Text("나 · " + (m.me?.shownName ?? "내 캐릭터")).appFont(14, .bold).lineLimit(1)
-            Spacer(minLength: 0)
-            Text(!made ? "만들기 ›" : m.homeFriendShown == "me" ? "홈에 있음" : m.meUnlocked ? "열림" : "잠김")
-                .appFont(12).foregroundStyle(made ? Theme.sub : Theme.teal)
+        let cur = sel == "me", made = m.me != nil, open = m.meUnlocked
+        let gates = [(m.meGate1, m.meGate1Text), (m.meGate2, "평정 지수 성향 매칭"), (m.meGate3, "다방커피 이상 후원")]
+        let done = gates.filter { $0.0 }.count
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                // 잠겼을 땐 그림자
+                CharPixel(id: "me", width: 28, height: 40).brightness(open ? 0 : -1).opacity(open ? 1 : 0.45)
+                Text("나" + (m.me.map { " · " + $0.shownName } ?? "")).appFont(14, .bold).lineLimit(1)
+                Spacer(minLength: 0)
+                Text(!made ? "만들기 ›" : m.homeFriendShown == "me" ? "홈에 있음" : open ? "열림" : "3개 중 \(done)개")
+                    .appFont(12).foregroundStyle(made ? Theme.sub : Theme.teal)
+            }
+            if !open {
+                ForEach(Array(gates.enumerated()).filter { !$0.element.0 }, id: \.offset) { g in
+                    Text("· " + g.element.1).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
         .foregroundStyle(Theme.ink)
-        .padding(.horizontal, 14).frame(maxWidth: .infinity, minHeight: 56)
+        .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .background(cur ? Theme.mintBg : made ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(cur ? Theme.teal : made ? Theme.border : Theme.dash, style: StrokeStyle(lineWidth: 2, dash: made ? [] : [4, 3])))
-        .accessibilityLabel(made ? "나, \(m.me?.shownName ?? "")" : "나, 내 캐릭터 만들기")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(made ? "나, \(m.me?.shownName ?? ""), \(open ? "열림" : "3개 중 \(done)개 채움")" : "나, 내 캐릭터 만들기")
     }
 
     /// 내 캐릭터 소개: 투자 유형, 열림 조건 세 가지, 고치기·홈에 두기
