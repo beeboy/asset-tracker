@@ -1478,24 +1478,128 @@
     }
     return REF_DAYS[cat] || [];
   }
-  // 외부 요인이 이만큼 움직이면 내 평가액은 (종목 베타 × 비중, 달러 비중은 환율)
+  // 외부 요인: 요인 순위(보통 한 달 변화 × 내 종목 민감도)와 요인 상세 (앱 외부 요인 화면과 같은 식)
+  const XF_NAMES = { mkt: "미국 시장", fx: "원/달러", rate: "미국 금리", oil: "유가", gold: "금값" };
+  const XF_TINY = 0.001, XF_WEAK = 0.05; // 평가액 0.1% 미만이면 '거의 그대로', 같은 방향 비율이 50%±5%p 안이면 '뚜렷한 관계 없음'
+  const XS = { k: null, v: null, custom: false };
+  const josa = (k, a, b) => (k === "rate" || k === "fx" ? a : b);
+  const man = (v) => { const a = Math.abs(v); return a >= 1e8 ? `${Math.floor(a / 1e8)}억${Math.round((a % 1e8) / 1e4) ? " " + nf(Math.round((a % 1e8) / 1e4)) + "만" : ""}원` : `${nf(Math.round(a / 1e4))}만원`; };
+  const manS = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + man(v);
+  // 요인이 v 만큼 움직일 때 종목 하나의 변화율 (금리 %p, 원/달러 원, 나머지 %). 모르면 null
+  function xfMove(k, r, v) {
+    if (k === "fx") { const fx = fxNow("USD"); return r.ccy === "USD" && fx ? v / fx : 0; }
+    const b = factorBetas().beta[k]?.[r.h.ticker]; if (b == null) return null;
+    return Math.exp(b * (k === "rate" ? v * 100 : Math.log(1 + v / 100))) - 1;
+  }
+  // 요인의 '보통 한 달 변화'를 상세와 같은 단위로
+  let xfMovesCache = null;
+  function xfMonth(k) {
+    const stamp = Object.values(S.prices).map((p) => p.dates.at(-1)).join();
+    if (!xfMovesCache || xfMovesCache.stamp !== stamp) xfMovesCache = { stamp, m: Model.factorMoves(mcPrices(), today()) };
+    return xfMovesCache.m[k];
+  }
+  function xfMonthShock(k) {
+    const sd = xfMonth(k)?.sd; if (!(sd > 0)) return null;
+    return k === "rate" ? sd / 100 : k === "fx" ? fxNow("USD") * (Math.exp(sd) - 1) : (Math.exp(sd) - 1) * 100;
+  }
+  const xfAgree = (k, r) => (k === "fx" ? null : factorBetas().stat[k]?.[r.h.ticker]?.agree ?? null);
+  function xfRanks(hs, total) {
+    return ["mkt", "fx", "rate", "oil", "gold"].map((k) => {
+      const v = xfMonthShock(k); if (v == null) return { k, amt: 0, gross: 0, weak: true };
+      const dvs = hs.map((r) => r.valueKrw * (xfMove(k, r, v) ?? 0)), tot = dvs.reduce((a, x) => a + x, 0), gross = dvs.reduce((a, x) => a + Math.abs(x), 0);
+      const agreeWeak = k !== "fx" && hs.every((r) => { const g = xfAgree(k, r); return g == null || Math.abs(g - 0.5) < XF_WEAK; });
+      return { k, amt: Math.abs(tot), gross, weak: Math.abs(tot) < total * XF_TINY || agreeWeak };
+    }).sort((a, b) => (b.weak ? 0 : 1) - (a.weak ? 0 : 1) || b.amt - a.amt);
+  }
+  function xfDesc(x, hs, total) {
+    if (x.weak) return "지난 3년 동안 내 종목과 일정한 관계가 보이지 않았어요.";
+    if (x.k === "mkt") { const bm = factorBetas().beta.mkt || {}, b = hs.reduce((a, r) => a + r.w * (bm[r.h.ticker] ?? 1), 0); return b > 1.15 ? `내 종목은 시장보다 ${b.toFixed(1)}배쯤 크게 움직여요.` : b < 0.85 ? "내 종목은 시장보다 작게 움직여요." : "내 종목은 시장과 비슷하게 움직여요."; }
+    if (x.k === "fx") return `달러 자산이 ${pct(hs.filter((r) => r.ccy === "USD").reduce((a, r) => a + r.valueKrw, 0) / total, 0)}라서 환율이 그대로 반영돼요. 시장이 급락할 땐 오히려 손실을 막아주기도 해요.`;
+    if (x.gross > x.amt * 2) return `종목별로는 ±${man(x.gross / 2)}씩 움직이지만, 서로 반대로 움직여서 상쇄돼요.`;
+    return `${XF_NAMES[x.k]}${josa(x.k, "가", "이")} 움직이면 내 종목 대부분이 같은 쪽으로 반응해요.`;
+  }
+  function xfSummary(rs) {
+    const strong = rs.filter((x) => !x.weak), top = strong[0]; if (!top || !(top.amt > 0)) return null;
+    const n = XF_NAMES[top.k], rest = strong.slice(1).reduce((a, x) => a + x.amt, 0), tail = " 요인마다 따로 움직였을 때의 영향이에요.";
+    if (strong.length === 1) return `내 자산을 흔드는 건 사실상 ${n} 하나예요.` + tail;
+    if (rest < top.amt / 3) return `내 자산이 흔들리는 이유는 대부분 ${n} 하나예요. 다른 요인을 다 합쳐도 ${n}의 3분의 1이 안 돼요.` + tail;
+    if (rest < top.amt) return `내 자산을 가장 크게 흔드는 건 ${n}이고, 나머지를 다 합쳐도 그보다 작아요.` + tail;
+    return `${n}과 ${XF_NAMES[strong[1].k]}이 비슷하게 내 자산을 흔들어요.` + tail;
+  }
+  function xfPresets(k) {
+    const fx = fxNow("USD") || 1300;
+    if (k === "rate") { const y = rateChange1y(null), yr = Number.isFinite(y) ? Math.round(y * 10) / 10 : 0; return [["내린다", -0.5], ["오른다", 0.5], [yr ? (yr > 0 ? "작년만큼 또 오른다" : "작년만큼 또 바뀐다") : "크게 오른다", yr || 1], ["2022년처럼 급등", 2.5]]; }
+    if (k === "fx") return [["1,300원", 1300 - fx], ["1,500원", 1500 - fx], ["10% 내린다", -fx * 0.1], ["2022년처럼 +20%", fx * 0.2]];
+    if (k === "mkt") return [["흔한 나쁜 날", -2], ["나쁜 한 달", -8], ["2022년처럼", -25], ["좋은 한 달", 8]];
+    return [["10% 내린다", -10], ["10% 오른다", 10], ["30% 내린다", -30], ["30% 오른다", 30]];
+  }
+  const xfRange = (k) => (k === "rate" ? [-1.5, 1.5, 0.25] : k === "fx" ? [-300, 300, 20] : k === "oil" ? [-40, 40, 5] : [-30, 30, 5]);
+  function xfText(k, v, short) {
+    const sg = v > 0 ? "+" : v < 0 ? "−" : "", a = Math.abs(v);
+    if (k === "rate") return sg + Number(a.toFixed(2)) + "%p";
+    if (k === "fx") return short ? `${sg}${nf(a)}원` : `${nf(fxNow("USD") + v)}원 (${sg}${nf(a)}원)`;
+    return sg + Number(a.toFixed(1)) + "%";
+  }
+  function xfHuge(k, v) {
+    const mx = xfMonth(k)?.max; if (!(mx > 0)) return false;
+    return k === "rate" ? Math.abs(v * 100) > mx : k === "fx" ? Math.abs(Math.log((fxNow("USD") + v) / fxNow("USD"))) > mx : Math.abs(Math.log(1 + v / 100)) > mx;
+  }
   function renderSens() {
     const card = $("#sensCard"); if (!card) return;
     const { rows, total } = valuation(), hs = rows.filter((r) => r.valueKrw > 0);
     if (!(total > 0)) { card.style.display = "none"; return; }
-    const B = factorBetas().beta, out = [];
-    for (const [fk, F] of Object.entries(FACTORS)) {
-      if (fk === "cmdty") continue;
-      const sh = fk === "mkt" ? -10 : fk === "rate" ? 50 : 10, txt = fk === "mkt" ? "미국 증시 -10%" : fk === "rate" ? "10년 금리 +0.5%p" : fk === "oil" ? "유가 +10%" : "금값 +10%";
-      let r = 0, ok = false;
-      hs.forEach((x) => { const b = B[fk] && B[fk][x.h.ticker]; if (b == null) return; ok = true; r += x.w * (Math.exp(b * (fk === "rate" ? sh : Math.log(1 + sh / 100))) - 1); });
-      if (ok) out.push([txt, Math.abs(r) < 0.0005 ? 0 : r]);
-    }
-    const usdW = hs.filter((x) => x.ccy === "USD").reduce((a, x) => a + x.w, 0);
-    if (usdW > 0) out.push(["원화 10% 강세", -0.1 * usdW]);
-    card.style.display = out.length ? "block" : "none";
-    $("#sens").innerHTML = out.map(([t, r]) => `<div class="kpi"><div class="k">${t}</div><div class="v ${cls(r)}">${spct(r, 1)}</div><div class="s">${krw(r * total)}원</div></div>`).join("");
+    card.style.display = "block";
+    $("#sens").innerHTML = XS.k ? xfDetail(XS.k, hs, total) : xfMain(hs, total);
   }
+  function xfMain(hs, total) {
+    const rs = xfRanks(hs, total), strong = rs.filter((x) => !x.weak), scale = Math.max(1, ...strong.map((x) => x.amt)), sum = xfSummary(rs);
+    return `<h2 class="xq">바깥에서 무슨 일이 생기면, 지금 내 돈은 얼마나 움직일까요?</h2>
+      <p class="muted small">지난 3년 동안 실제로 하루하루 움직인 만큼으로 계산해요. 목표까지의 영향은 목표일 전망에서 봐요.</p>
+      <h3 class="xh">내 자산을 흔드는 요인</h3><p class="muted small">요인마다 '보통 한 달에 움직이는 만큼'으로 맞춰서 비교했어요.</p>` +
+      rs.map((x) => { const no = strong.indexOf(x) + 1;
+        return `<button type="button" class="xrank${x.weak ? " weak" : ""}" data-xf="${x.k}"><span class="no${no === 1 ? " one" : ""}">${no || "–"}</span><span class="bd">
+          <span class="row between"><b>${XF_NAMES[x.k]}</b><span class="${x.weak ? "muted" : "amt"}">${x.weak ? "뚜렷한 관계 없음" : "±" + man(x.amt)}</span></span>
+          ${x.weak ? "" : `<span class="bar"><i style="width:${Math.max(1, (100 * x.amt) / scale)}%"></i></span>`}<span class="muted small">${xfDesc(x, hs, total)}</span></span><span class="chev">›</span></button>`; }).join("") +
+      (sum ? `<p class="xsum">${sum}</p>` : !xfMonth("mkt") ? `<p class="muted small">요인 자료를 불러오는 중이에요.</p>` : "") +
+      `<p class="muted small">예측이 아니라 '만약에'를 보는 화면이에요. 지난 3년 하루 단위 움직임을 바탕으로 했고, 큰 변화일수록 실제와 다를 수 있어요.</p>`;
+  }
+  function xfDetail(k, hs, total) {
+    const name = XF_NAMES[k], ps = xfPresets(k), v = XS.v ?? ps[1][1], ups = k === "rate" ? "금리가 오르면" : k === "fx" ? "환율이 오르면" : `${name}이 오르면`;
+    const rows = hs.map((r) => { const mv = xfMove(k, r, v), dv = r.valueKrw * (mv ?? 0), ag = xfAgree(k, r);
+      return { r, dv, ag, known: mv != null, weak: mv == null || Math.abs(dv) < total * XF_TINY || (ag != null && Math.abs(ag - 0.5) < XF_WEAK) }; }).sort((a, b) => Math.abs(b.dv) - Math.abs(a.dv));
+    const tot = rows.reduce((a, x) => a + x.dv, 0), up = rows.filter((x) => x.dv > 0).reduce((a, x) => a + x.dv, 0), dn = rows.filter((x) => x.dv < 0).reduce((a, x) => a + x.dv, 0), rr = tot / total;
+    const verdict = Math.abs(rr) < XF_TINY ? "거의 그대로예요" : Math.abs(rr) < 0.02 ? (rr > 0 ? "조금 늘어요" : "조금 줄어요") : rr > 0 ? "많이 늘어요" : "많이 줄어요";
+    const allWeak = rows.every((x) => x.weak), weak = rows.filter((x) => x.weak), shown = weak.length > 3 ? rows.filter((x) => !x.weak) : rows;
+    const sMax = Math.max(up, -dn, 1), scale = Math.max(1, ...rows.map((x) => Math.abs(x.dv))), sgn = v >= 0 ? 1 : -1;
+    const lab = (x) => !x.known ? "지난 3년 시세가 부족해 0으로 봤어요" : k === "fx" ? (x.dv === 0 ? "원화 자산이라 영향 없어요" : "달러 자산이라 환율만큼 움직여요") : x.weak ? "뚜렷한 관계 없음" : `${ups} ${(x.dv > 0) === (sgn > 0) ? "함께 올랐어요" : "내렸어요"}`;
+    const side = (t, x, c) => `<div class="xside"><span>${t}</span><span class="bar"><i style="width:${(100 * Math.abs(x)) / sMax}%;background:var(--${c})"></i></span><b>${manS(x)}</b></div>`;
+    const [lo, hi, st] = xfRange(k), sv = Math.min(hi, Math.max(lo, v));
+    const desc = k === "rate" ? "미국 10년 금리 기준이에요. 시장 전체 움직임은 빼고, 지난 3년 하루하루 실제로 움직인 만큼으로 계산해요." : k === "fx" ? `달러 자산은 환율이 바뀐 만큼 원화 평가액이 바뀌어요. 지금 환율 ${nf(fxNow("USD"))}원 기준이에요.` : k === "mkt" ? "S&amp;P500 기준이에요. 지난 3년 하루하루 실제로 함께 움직인 만큼으로 계산해요." : "시장 전체 움직임은 빼고, 지난 3년 하루하루 실제로 움직인 만큼으로 계산해요.";
+    return `<button type="button" class="sm" data-xf="">‹ 외부 요인</button>
+      <h2 class="xq">${name}${josa(k, "가", "이")} 이렇게 되면, 지금 내 돈은 얼마나 움직일까요?</h2><p class="muted small">${desc}</p>
+      <div class="xpre">${ps.map(([t, p], i) => `<button type="button" class="${!XS.custom && Math.abs(v - p) < 1e-9 ? "on" : ""}" data-xp="${i}"><b>${t}</b><span>${xfText(k, p, true)}</span></button>`).join("")}</div>
+      <div class="xverd"><p>${name} ${xfText(k, v)}이면, 내 자산은</p><div class="big">${allWeak && k !== "fx" ? "뚜렷한 관계 없음" : verdict}</div>
+        <p class="${cls(tot)}"><b>내 자산 ${manS(tot)} · ${spct(rr, 2)}</b></p>${up > 0 || dn < 0 ? side("오르는 쪽", up, "up") + side("내리는 쪽", dn, "dn") : ""}
+        ${up > 0 && dn < 0 && Math.abs(tot) < Math.min(up, -dn) ? `<p>종목끼리 반대로 움직여서 서로 상당 부분 상쇄돼요.</p>` : ""}</div>
+      ${xfHuge(k, v) ? `<p class="xwarn">이만큼 큰 변화는 지난 3년 안에 한 달 사이에 없었어요. 그동안의 관계가 그대로 이어진다는 가정이라 실제와 많이 다를 수 있어요.</p>` : ""}
+      <h3 class="xh">종목별로 보면</h3>${shown.map((x) => { const w = 50 * Math.min(1, Math.abs(x.dv) / scale);
+        return `<div class="xstk${x.weak ? " weak" : ""}"><div class="row between"><b>${esc(x.r.h.ticker)}</b><span class="${x.weak ? "muted" : cls(x.dv)}">${x.weak ? "뚜렷한 관계 없음" : manS(x.dv)}</span></div>
+          <span class="cbar"><i style="${x.dv >= 0 ? "left:50%" : `left:${50 - w}%`};width:${Math.max(0.5, w)}%;background:var(--${x.dv >= 0 ? "up" : "dn"})"></i></span>
+          <span class="muted small">${lab(x)}${x.ag != null && !x.weak ? ` · 10번 중 ${Math.round(x.ag * 10)}번 이 방향이었어요` : ""}</span></div>`; }).join("")}
+      ${weak.length > 3 ? `<p class="muted small">나머지 ${weak.length}개 · 뚜렷한 관계 없음</p>` : ""}${rows.length ? "" : `<p class="muted small">보유 종목이 없어요.</p>`}
+      <h3 class="xh">${k === "rate" ? "금리 시나리오와" : "목표일 전망과"} 숫자가 왜 달라요?</h3>
+      <div class="xcmp"><div><b>이 화면</b><span>그날그날 실제로 함께 움직인 만큼. 오늘~한 달 사이의 영향</span></div><div><b>${k === "rate" ? "금리 시나리오" : "목표일 전망"}</b><span>${k === "rate" ? "금리가 회사 이익을 바꾸는 길로 본 3년 영향" : "모든 요인이 함께 움직이는 3년 뒤 분포"}</span></div></div>
+      <p class="muted small">보는 기간과 길이 달라서 방향이 다를 수 있어요. 목표에 닿는지는 그 화면에서 봐요. <button type="button" class="sm" data-jump="${k === "rate" ? "sec-rs" : "sec-fc"}">목표에 미치는 영향 보기</button></p>
+      <details class="xcust"${XS.custom ? " open" : ""}><summary><b>${name} 변화 직접 정하기</b></summary><label class="row between"><span>직접 정한 값</span><b id="xsV">${xfText(k, v)}</b></label><input type="range" id="xsR" min="${lo}" max="${hi}" step="${st}" value="${sv}"></details>
+      <p class="muted small">예측이 아니라 '만약에'를 보는 화면이에요. 요인 하나만 바뀐다고 가정한 값이고, 실제로는 여러 요인이 함께 움직여요.</p>`;
+  }
+  document.addEventListener("click", (e) => {
+    const f = e.target.closest("[data-xf]"), p = e.target.closest("[data-xp]");
+    if (f) { XS.k = f.dataset.xf || null; XS.v = null; XS.custom = false; renderSens(); $("#sensCard")?.scrollIntoView({ block: "start" }); }
+    else if (p && XS.k) { XS.v = xfPresets(XS.k)[+p.dataset.xp][1]; XS.custom = false; renderSens(); }
+  });
+  document.addEventListener("change", (e) => { if (e.target.id === "xsR" && XS.k) { XS.v = +e.target.value; XS.custom = true; renderSens(); } });
+  document.addEventListener("input", (e) => { if (e.target.id === "xsR" && XS.k) $("#xsV").textContent = xfText(XS.k, +e.target.value); });
   function renderXf() {
     const sub = curSub(), host = $("#xfAnalysis"); if (!host || !heldTks().length) return;
     host.style.display = "block";
