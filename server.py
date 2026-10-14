@@ -25,6 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import date, datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -81,7 +82,7 @@ def toss_token(keys: tuple[str, str], renew: bool = False) -> str:
             return _toss["token"]
         body = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": keys[0], "client_secret": keys[1]}).encode()
         req = urllib.request.Request(TOSS + "/oauth2/token", data=body, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=4) as r:  # 앱은 8초까지만 기다린다
             j = json.loads(r.read().decode("utf-8"))
         _toss["token"], _toss["exp"] = j["access_token"], time.time() + float(j.get("expires_in") or 3600)
         return _toss["token"]
@@ -141,6 +142,15 @@ def toss_prices(symbols: list[str]) -> dict:
             for sym in codes.get(str(q.get("symbol")).upper(), []):
                 out[sym] = {"symbol": sym, "last": v, "last_time": t, "last_session": "toss", "currency": ccy}
 
+    def one(c: str) -> None:
+        try:
+            ask([c])
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            _toss_miss[c] = now + 86400
+
+    err = None
     try:
         cs = list(codes)
         for i in range(0, len(cs), 200):  # 한 번에 200개까지
@@ -150,17 +160,23 @@ def toss_prices(symbols: list[str]) -> dict:
             except urllib.error.HTTPError as e:
                 if e.code != 404:
                     raise
-                for c in part[:30]:  # 묶음에 없는 종목이 끼면 하나씩 다시 (없는 종목은 하루 동안 빼고 Yahoo)
-                    try:
-                        ask([c])
-                    except urllib.error.HTTPError as e2:
-                        if e2.code != 404:
-                            raise
-                        _toss_miss[c] = now + 86400
+                # 묶음에 없는 종목이 끼면 하나씩 다시 (없는 종목은 하루 동안 빼고 Yahoo).
+                # 하나씩 차례로 물으면 종목이 많을 때 앱의 8초를 넘긴다 → 동시에 묻고 4초까지만 기다린다
+                pool = ThreadPoolExecutor(max_workers=8)
+                fs = [pool.submit(one, c) for c in part[:30]]
+                done, _ = wait(fs, timeout=max(0.5, now + 4 - time.time()))
+                pool.shutdown(wait=False, cancel_futures=True)
+                for f in done:
+                    if f.exception():
+                        raise f.exception()
+                if len(done) < len(fs):
+                    err = "토스 응답이 느려 일부만 받음"
     except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
         code = getattr(e, "code", None)
         msg = "허용 IP 가 아니에요" if code == 403 else "키를 확인하세요" if code in (400, 401) else str(e)
         return {"enabled": True, "quotes": out, "error": msg}
+    if err:
+        return {"enabled": True, "quotes": out, "error": err}
     return {"enabled": True, "quotes": out}
 
 
