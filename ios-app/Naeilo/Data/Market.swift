@@ -22,6 +22,8 @@ final class Market {
     var liveFx: (Double, Double)? = nil
     /// 사이트가 30분마다 모으는 시세 (앱·위젯이 같이 받는다). 없으면 빌드 때 넣은 테스트 자료
     var site: QuoteFeed.File? = QuoteFeed.cached()
+    /// 토스증권 지금 가격 (개발자 전용, 종목 id → 값). 있으면 Yahoo 값보다 먼저
+    var toss: QuoteFeed.File? = TossFeed.cached()
     /// 매매기준율 (사이트 data/mar.json, 서울외국환중개). 웹 평가액과 같은 환율
     var mar: MarFeed.File? = MarFeed.cached()
     /// 원화 평가에 쓰는 원/달러: 웹 fxBase 와 같게 매매기준율, 없거나 5일 넘게 묵었으면 지금 환율
@@ -37,6 +39,18 @@ final class Market {
     static let todayMove: [String: Double] = ["DRNK": -0.0221]
 
     func quote(_ s: Symbol) -> Quote {
+        let b = yahooQuote(s)
+        guard let t = tossLast(s) else { return b }
+        return Quote(last: t, prevClose: b.prevClose > 0 ? b.prevClose : t, live: true)
+    }
+    /// 토스 값을 쓰는 종목 (종목 화면에 "토스 시세" 표시)
+    func isToss(_ s: Symbol) -> Bool { tossLast(s) != nil }
+    private func tossLast(_ s: Symbol) -> Double? {
+        guard live[s.id] == nil, s.id != "DRNK", let v = toss?.q[s.id]?.last, v > 0 else { return nil }
+        return v
+    }
+
+    private func yahooQuote(_ s: Symbol) -> Quote {
         if let q = live[s.id] { return Quote(last: q.0, prevClose: q.1, live: true) }
         if s.id != "DRNK" {
             // 사이트 시세와 추가한 종목(5분마다 Yahoo 중계) 중 나중에 받은 값
@@ -85,6 +99,10 @@ final class Market {
             if let q = try? await p.quotes(tickers) { live = q }
             if let f = try? await p.usdkrw() { liveFx = f }
         }
+        // 토스 시세 (주소를 넣은 개발자 기기만): 국내·미국 종목. 실패·3초 넘김이면 nil → 아래 Yahoo 값
+        var ty: [String: String] = [:]
+        for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
+        if !held.isEmpty { toss = await TossFeed.fetch(ty) }
         // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
         if let f = await QuoteFeed.fetch(minAge: force ? 0 : 240) { site = f }
         if let r = await MarFeed.fetch(minAge: force ? 0 : 1800) { mar = r }
