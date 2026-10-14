@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>이번 주 예보</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2C62A8}a:hover{color:#1E4A82}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1120px; box-sizing: border-box; background: #F2F4F6; font-family: 'IBM Plex Sans KR', sans-serif; color: #1A2027; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 16px">
+
+  <section style="background: #FFFFFF; border-radius: 20px; padding: 22px 20px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2C62A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+      <span style="font-size: 14px; font-weight: 600; color: #2C62A8">이번 주 예보 · 금요일 장 마감 기준</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 15px; color: #5B6570">금요일엔 아마</span>
+      <span style="font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25">4.8억 ~ 5.3억<br>사이일 거예요</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 6px">
+      <div style="position: relative; height: 28px">
+        <div style="position: absolute; left: 0; right: 0; top: 10px; height: 8px; border-radius: 4px; background: #E6E9ED"></div>
+        <div style="position: absolute; left: 22%; right: 22%; top: 10px; height: 8px; border-radius: 4px; background: #9DC0EA"></div>
+        <div style="position: absolute; left: 48%; top: 2px; width: 24px; height: 24px; margin-left: -12px; border-radius: 12px; background: #1A2027; border: 3px solid #FFFFFF; box-sizing: border-box; box-shadow: 0 1px 4px rgba(0,0,0,0.25)"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px; color: #5B6570; padding: 0 16%">
+        <span>4.8억</span>
+        <span style="font-weight: 700; color: #1A2027">지금 5.07억</span>
+        <span>5.3억</span>
+      </div>
+    </div>
+
+    <div style="background: #EEF4FB; border-radius: 14px; padding: 14px 16px; font-size: 14px; line-height: 1.6; color: #2B3A4D">
+      평소 움직임을 보면, <b>두 주 중 한 주</b>는 이 범위 안에서 끝나요. 범위 밖이라고 이상한 건 아니에요.
+    </div>
+  </section>
+
+  <section style="background: #FFFFFF; border-radius: 20px; padding: 22px 20px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 13px; font-weight: 600; color: #8A5A12">미니 미션 · 맞혀보기</span>
+      <span style="font-size: 18px; font-weight: 700">금요일엔 예보보다 어떨까요?</span>
+      <span style="font-size: 13px; color: #5B6570">맞히면 배지를 받아요. 금요일 저녁에 결과를 알려드려요.</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <sc-for list="{{opts}}" as="o" hint-placeholder-count="3">
+        <button onClick="{{o.pick}}" style="height: 64px; border-radius: 14px; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; {{o.style}}">
+          <span style="font-size: 15px; font-weight: 700">{{o.label}}</span>
+          <span style="font-size: 12px; opacity: 0.8">{{o.sub}}</span>
+        </button>
+      </sc-for>
+    </div>
+    <sc-if value="{{hasPick}}" hint-placeholder-val="{{ false }}">
+      <span style="font-size: 14px; color: #2C62A8; font-weight: 600">{{pickMsg}}</span>
+    </sc-if>
+  </section>
+
+  <section style="background: #FFFFFF; border-radius: 20px; padding: 22px 20px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <span style="font-size: 16px; font-weight: 700">지난 8주 예보 성적</span>
+      <span style="font-size: 14px; color: #5B6570">8번 중 5번 범위 안</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px">
+      <sc-for list="{{weeks}}" as="w" hint-placeholder-count="8">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+          <div style="width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; {{w.style}}">
+            <sc-if value="{{w.hit}}" hint-placeholder-val="{{ true }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+            </sc-if>
+          </div>
+          <span style="font-size: 11px; color: #5B6570">{{w.label}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display: flex; gap: 16px; font-size: 13px; color: #5B6570">
+      <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #2C62A8"></span>범위 안</span>
+      <span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #FFFFFF; border: 2px solid #B8C2CE; box-sizing: border-box"></span>범위 밖</span>
+    </div>
+    <button onClick="{{toggleWhy}}" aria-expanded="{{whyOpen}}" style="min-height: 44px; border: 0; background: transparent; padding: 0; text-align: left; font-family: inherit; font-size: 14px; font-weight: 600; color: #2C62A8; cursor: pointer">{{whyLabel}}</button>
+    <sc-if value="{{whyOpen}}" hint-placeholder-val="{{ false }}">
+      <div style="font-size: 14px; line-height: 1.6; color: #2B3A4D; background: #F5F7F9; border-radius: 12px; padding: 14px 16px">
+        이 예보는 처음부터 "두 번 중 한 번"을 맞히도록 범위를 정해요. 범위를 넓히면 늘 맞지만 쓸모가 없고, 좁히면 자주 틀려요. 그래서 반쯤 맞을 때가 가장 정직한 예보예요.
+      </div>
+    </sc-if>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1120}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { pick: null, whyOpen: false };
+  }
+  renderVals() {
+    var self = this;
+    var defs = [
+      { id: 'low', label: '더 낮게', sub: '4.8억 아래' },
+      { id: 'in', label: '예보대로', sub: '범위 안' },
+      { id: 'high', label: '더 높게', sub: '5.3억 위' }
+    ];
+    var opts = defs.map(function (d) {
+      var on = self.state.pick === d.id;
+      return {
+        label: d.label,
+        sub: d.sub,
+        style: on ? 'background: #2C62A8; color: #FFFFFF; border: 2px solid #2C62A8;' : 'background: #FFFFFF; color: #1A2027; border: 2px solid #DDE2E7;',
+        pick: function () { self.setState({ pick: d.id }); }
+      };
+    });
+    var picked = defs.filter(function (d) { return d.id === self.state.pick; })[0];
+    var results = [true, false, true, true, false, true, false, true];
+    var weeks = results.map(function (hit, i) {
+      return {
+        hit: hit,
+        label: (8 - i) + '주 전',
+        style: hit ? 'background: #2C62A8;' : 'background: #FFFFFF; border: 2px solid #B8C2CE; box-sizing: border-box;'
+      };
+    });
+    weeks[7].label = '지난주';
+    return {
+      opts: opts,
+      hasPick: !!picked,
+      pickMsg: picked ? '"' + picked.label + '"로 골랐어요. 금요일에 확인해요!' : '',
+      weeks: weeks,
+      whyOpen: this.state.whyOpen,
+      whyLabel: this.state.whyOpen ? '접기' : '반만 맞아도 괜찮은 이유 보기',
+      toggleWhy: function () { self.setState({ whyOpen: !self.state.whyOpen }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
