@@ -25,6 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import date, datetime, timedelta, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -37,6 +38,8 @@ STATE = DATA / "state.json"
 STATE_DEFAULT = DATA / "state.default.json"
 TICKERS = DATA / "tickers.json"
 QUOTES = DATA / "quotes.json"
+KR_STOCKS = DATA / "kr_stocks.json"  # 매일 모으는 국내 개별 종목 (tools/gen_stock_catalog.py 가 만든다)
+KR_DAILY = DATA / "kr_daily.json"  # 국내 개별 종목 날짜별 종가 (모으기 시작한 날부터 쌓는다, 최근 1년치)
 MAR = DATA / "mar.json"  # 매매기준율 (서울외국환중개 시장평균환율)
 SMBS = "http://www.smbs.biz/ExRate/"
 BACKUP = DATA / "backup"
@@ -81,7 +84,7 @@ def toss_token(keys: tuple[str, str], renew: bool = False) -> str:
             return _toss["token"]
         body = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": keys[0], "client_secret": keys[1]}).encode()
         req = urllib.request.Request(TOSS + "/oauth2/token", data=body, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=4) as r:  # 앱은 8초까지만 기다린다
             j = json.loads(r.read().decode("utf-8"))
         _toss["token"], _toss["exp"] = j["access_token"], time.time() + float(j.get("expires_in") or 3600)
         return _toss["token"]
@@ -141,6 +144,15 @@ def toss_prices(symbols: list[str]) -> dict:
             for sym in codes.get(str(q.get("symbol")).upper(), []):
                 out[sym] = {"symbol": sym, "last": v, "last_time": t, "last_session": "toss", "currency": ccy}
 
+    def one(c: str) -> None:
+        try:
+            ask([c])
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            _toss_miss[c] = now + 86400
+
+    err = None
     try:
         cs = list(codes)
         for i in range(0, len(cs), 200):  # 한 번에 200개까지
@@ -150,17 +162,23 @@ def toss_prices(symbols: list[str]) -> dict:
             except urllib.error.HTTPError as e:
                 if e.code != 404:
                     raise
-                for c in part[:30]:  # 묶음에 없는 종목이 끼면 하나씩 다시 (없는 종목은 하루 동안 빼고 Yahoo)
-                    try:
-                        ask([c])
-                    except urllib.error.HTTPError as e2:
-                        if e2.code != 404:
-                            raise
-                        _toss_miss[c] = now + 86400
+                # 묶음에 없는 종목이 끼면 하나씩 다시 (없는 종목은 하루 동안 빼고 Yahoo).
+                # 하나씩 차례로 물으면 종목이 많을 때 앱의 8초를 넘긴다 → 동시에 묻고 4초까지만 기다린다
+                pool = ThreadPoolExecutor(max_workers=8)
+                fs = [pool.submit(one, c) for c in part[:30]]
+                done, _ = wait(fs, timeout=max(0.5, now + 4 - time.time()))
+                pool.shutdown(wait=False, cancel_futures=True)
+                for f in done:
+                    if f.exception():
+                        raise f.exception()
+                if len(done) < len(fs):
+                    err = "토스 응답이 느려 일부만 받음"
     except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
         code = getattr(e, "code", None)
         msg = "허용 IP 가 아니에요" if code == 403 else "키를 확인하세요" if code in (400, 401) else str(e)
         return {"enabled": True, "quotes": out, "error": msg}
+    if err:
+        return {"enabled": True, "quotes": out, "error": err}
     return {"enabled": True, "quotes": out}
 
 
@@ -368,6 +386,38 @@ def collect(symbols: list[str], years: float, quotes_only: bool) -> dict:
     return {"log": log}
 
 
+def collect_kr(quotes: dict, log: list):
+    """국내 개별 종목: 지금 가격은 quotes.json 에 (앱이 Yahoo 기호로 읽는다), 그날 종가는 kr_daily.json 에 하루 한 칸씩 쌓는다.
+    지난 기록은 한꺼번에 받지 않고 모으기 시작한 날부터 매일 쌓는다 (쌓이기 전에는 앱이 "기록 모으는 중")."""
+    stocks = (read_json(KR_STOCKS, {}) or {}).get("stocks") or []
+    if not stocks:
+        return
+    daily = read_json(KR_DAILY, None) or {"s": {}}
+    ok = 0
+    for st in stocks:
+        y = st["yahoo"]
+        try:
+            q = get_quote(y)
+        except Exception as e:  # noqa: BLE001 - 종목 하나 실패해도 나머지는 계속
+            log.append({"ok": False, "msg": f"국내 {y}: {e}"})
+            continue
+        quotes[y.upper()] = q
+        ok += 1
+        v, t = q.get("regular") or q.get("last"), q.get("regular_time") or q.get("last_time")
+        if not v or not t:
+            continue
+        d = datetime.fromtimestamp(int(t), tz=timezone(timedelta(hours=9))).date().isoformat()   # 한국 날짜
+        r = daily["s"].setdefault(st["id"], {"d": [], "c": []})
+        if r["d"] and r["d"][-1] == d:
+            r["c"][-1] = round(float(v), 2)   # 같은 날은 마지막 값 (장이 끝나면 종가)
+        elif not r["d"] or r["d"][-1] < d:
+            r["d"].append(d); r["c"].append(round(float(v), 2))
+        r["d"], r["c"] = r["d"][-260:], r["c"][-260:]   # 1년 (거래일 약 250일)
+    daily["updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    write_json(KR_DAILY, daily, compact=True)
+    log.append({"ok": ok > 0, "msg": f"국내 개별 종목: {ok}/{len(stocks)}개 받음"})
+
+
 def write_index():
     """정적 사이트(GitHub Pages)가 읽을 시세 파일 목록."""
     files, ver = {}, {}
@@ -538,10 +588,13 @@ def cli_collect(add: str, quotes_only: bool):
         if s not in syms:
             syms.append(s)
     r = collect(syms, float(cfg.get("history_years", 3)), quotes_only)
-    bad = 0
-    for line in r["log"]:
+    bad = sum(not line["ok"] for line in r["log"])
+    quotes, krlog = read_json(QUOTES, {}), []   # 국내 개별 종목 (Actions 수집만. 로컬 화면의 수집 단추는 건너뛴다)
+    collect_kr(quotes, krlog)
+    if krlog:
+        write_json(QUOTES, quotes)
+    for line in r["log"] + krlog:
         print(("  " if line["ok"] else "! ") + line["msg"])
-        bad += not line["ok"]
     if bad == len(syms):
         sys.exit(1)
 
