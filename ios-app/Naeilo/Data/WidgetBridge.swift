@@ -11,8 +11,12 @@ enum WidgetBridge {
         let rows = m.rows
         let now = Date()
         let goal = m.keyValue
-        let start = Calendar.current.date(byAdding: .month, value: -3, to: now)!    // 시작은 3개월 전 (내 길과 같은 가정)
-        let end = m.isGoal ? m.goalToDate : Calendar.current.date(byAdding: .month, value: 9, to: now)!
+        // 위젯 페이스(시작·목표일·시작 금액)는 앱 내 길과 같은 값: 시작 = 내 길 시작일, 목표일 = 목표 루트는 목표일, 회복 루트는 시작 뒤 1년
+        // (전망 부채꼴·확률은 앱 전망 그대로라 회복 루트는 3년. 위젯도 '3년 뒤'로 적는다)
+        let path = m.myPath
+        let start = m.pathStartDate
+        let end = m.isGoal ? m.goalToDate : Calendar.current.date(byAdding: .year, value: 1, to: start)!
+        let cash = m.cashKrw      // 목표 루트에서 사이트에 넣은 현금 (앱 홈·내 길처럼 총액에 더한다). 회복·시작 전·샘플은 0
 
         // 지금 시세: [지금 가격, 전일 종가, 시각]
         var q: [String: [Double?]] = [:], ccy: [String: String] = [:]
@@ -29,11 +33,15 @@ enum WidgetBridge {
         feed.ky = ky.isEmpty ? nil : ky
 
         let live = WLive(hold: rows.map { .init(t: $0.id, sh: $0.h.qty, price: $0.sym.last) },
-                         cashKrw: 0, cashUsd: 0, goalAmount: goal, goalDate: Day.str(end), goalStart: Day.str(start),
+                         cashKrw: cash, cashUsd: 0, goalAmount: goal, goalDate: Day.str(end), goalStart: Day.str(start),
                          manualPrice: true, stateAt: now.timeIntervalSince1970 * 1000)
 
         // 요약: 최근 3달 평가액(만원), 3년 전망 부채꼴, 이번 주 예보
-        let spark: [Double?] = (0..<63).map { i in m.totalAt(1 - Double(62 - i) / 756) / 1e4 }
+        // 최근 3달은 앱 내 길과 같은 식: 그날 수량(수량 기록) × 그날 종가 × 그날 원/달러 종가 + 현금. 마지막 점은 위젯이 지금 값으로 바꾼다
+        let hist: [Double] = m.isSample || m.route == .novice ? [] : m.pathSeries(from: Day.str(Calendar.current.date(byAdding: .month, value: -3, to: now)!)).map(\.v)
+        let spark: [Double?] = hist.isEmpty
+            ? (0..<63).map { i in Optional((m.totalAt(1 - Double(62 - i) / 756) + cash) / 1e4) }   // 샘플·시작 전·과거 시세가 없을 때: 지금 수량 × 과거 가격
+            : (hist.suffix(62) + [m.total + cash]).map { Optional($0 / 1e4) }
         let f = m.forecast
         let man = { (a: [Double]) in a.map { Optional($0 / 1e4) } }
         // 앱 전망과 같은 값 (웹과 같은 몬테카를로, 목표일까지 월 경계마다)
@@ -41,13 +49,13 @@ enum WidgetBridge {
                                    pg: f.pGoal, t: .init(p5: (f.q5.last ?? 0) / 1e4, p50: (f.q50.last ?? 0) / 1e4, p95: (f.q95.last ?? 0) / 1e4))
         let wr = m.weekRange
         let friday = Calendar.current.nextDate(after: now, matching: DateComponents(weekday: 6), matchingPolicy: .nextTime) ?? now
-        let week = WSummary.Week(f: Day.str(friday), p50: (wr.lo + wr.hi) / 2, lo: wr.lo, hi: wr.hi, base: m.total, cash: 0, t0: m.total, tent: nil)
+        let week = WSummary.Week(f: Day.str(friday), p50: (wr.lo + wr.hi) / 2, lo: wr.lo, hi: wr.hi, base: m.total, cash: cash, t0: m.total, tent: nil)
         let hits = m.pastWeeks.enumerated().map { WSummary.Hit(f: Day.str(now.addingTimeInterval(-Double(8 - $0) * 7 * 86400)), h: $1, r: nil) }
-        let summary = WSummary(v: 2, at: now.timeIntervalSince1970 * 1000, asof: Day.today, today: Day.today, cash: 0,
-                               goal: .init(amount: goal, date: Day.str(end), start: Day.str(start), v0: m.totalAt(1 - 0.25 / 3)),
+        let summary = WSummary(v: 2, at: now.timeIntervalSince1970 * 1000, asof: Day.today, today: Day.today, cash: cash,
+                               goal: .init(amount: goal, date: Day.str(end), start: Day.str(start), v0: path.pts.first?.1 ?? m.trackValue, m: path.monthly),
                                hold: rows.map { .init(t: $0.id, sh: $0.h.qty, ccy: ccy[$0.id] ?? "USD", manual: $0.sym.last) },
                                spark: spark, fc: fc, hits: hits, week: week,
-                               prev: m.total / (1 + m.todayMove), events: [])
+                               prev: m.total / (1 + m.todayMove) + cash, events: [])
 
         // 인물 보상 위젯: 본전(목표)까지, 1000칸, 오늘의 움직임
         let key = max(1, goal), track = m.trackValue, yTrack = track / (1 + m.todayMove)
@@ -60,7 +68,7 @@ enum WidgetBridge {
                              cells: Int(frac(track) * 1000), cellsYesterday: Int(frac(yTrack) * 1000),
                              total: m.total, dayChg: m.todayMove, tiles: Array(tiles), next: MarketEvents.widgetNext(held: rows.map(\.id)),
                              friendsOn: Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map(\.element.id) + (m.meUnlocked ? ["me"] : []),
-                             homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0 },
+                             homeFriend: m.homeFriendShown, spark: spark.suffix(10).compactMap { $0.map { $0 - cash / 1e4 } },   // 인물 위젯 총액(m.total)처럼 현금은 뺀다
                              items: Shelter.items.prefix(m.itemsOn).map(\.id))
         var sy = says(reward)
         // 내 캐릭터는 투자 유형 인물의 대사를 같이 쓴다

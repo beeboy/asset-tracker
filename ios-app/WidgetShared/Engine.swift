@@ -17,6 +17,7 @@ struct Snapshot {
     var spark: [Double]          // 최근 3달 일별 (마지막 = 지금)
     var fan: Fan?
     var pGoal: Double?
+    var monthly: Double = 0      // 매달 넣는 돈 (원). 필요 경로에 더한다
     var term: (p5: Double, p50: Double, p95: Double)?
     var fcAsOf: String?
     struct Hit { var hit: Bool; var retro: Bool }
@@ -35,6 +36,12 @@ struct Snapshot {
         return "적중 \(real.filter { $0.hit }.count)/\(real.count)"
     }
 
+    /// 전망 끝 이름: 목표 루트는 목표일까지, 회복 루트는 앱 전망처럼 3년 (페이스의 목표일과 다르다)
+    var termLabel: String {
+        guard let last = fan?.md.last else { return "3년 뒤" }
+        return Day.str(last) == goalDate ? "목표일" : "3년 뒤"
+    }
+
     var dayChg: Double { prevTotal > 0 ? total / prevTotal - 1 : 0 }
     var dayAmt: Double { total - prevTotal }
     var progress: Double { goal > 0 ? total / goal : 0 }
@@ -42,13 +49,23 @@ struct Snapshot {
     var unit: Double { goal / 1000 }
     var cells: Int { min(1000, Int(total / unit)) }
     var cellsPrev: Int { min(1000, Int(prevTotal / unit)) }
-    /// 필요 경로(시작일 평가액 → 목표일 목표 금액, 같은 연 수익률) 대비 지금
+    /// 시작일부터 목표일까지 (년)
+    var span: Double? {
+        guard let start, let s = Day.date(start), let e = Day.date(goalDate) else { return nil }
+        let y = e.timeIntervalSince(s) / (365.25 * 86400); return y > 0 ? y : nil
+    }
+    /// 필요 경로의 금액 (f = 시작 0 → 목표일 1). 앱 내 길 need 와 같은 식: 적립 + 시작 금액이 같은 연 수익률로 (목표 − 적립 합)까지
+    func need(_ f: Double) -> Double {
+        guard let v0, let span else { return goal }
+        let t = f * span, kAdj = goal - monthly * 12 * span
+        return monthly * 12 * t + (kAdj > 0 && v0 > 0 ? v0 * pow(kAdj / v0, f) : v0 + (goal - v0) * f)
+    }
+    /// 필요 경로 대비 지금
     var pace: (ahead: Double, need: Double, req: Double)? {
-        guard let v0, v0 > 0, let start, let s = Day.date(start), let e = Day.date(goalDate) else { return nil }
-        let span = e.timeIntervalSince(s) / (365.25 * 86400); guard span > 0 else { return nil }
+        guard let v0, v0 > 0, let start, let s = Day.date(start), let span else { return nil }
         let el = max(0, Date().timeIntervalSince(s) / (365.25 * 86400))
-        let need = v0 * pow(goal / v0, el / span)
-        return (total / need - 1, need, pow(goal / v0, 1 / span) - 1)
+        let n = need(min(1, el / span)), kAdj = goal - monthly * 12 * span
+        return (total / n - 1, n, kAdj > 0 ? pow(kAdj / v0, 1 / span) - 1 : 0)
     }
 }
 
@@ -130,7 +147,7 @@ enum Engine {
         let t = s?.fc?.t
         return Snapshot(total: total, prevTotal: prevTotal, goal: goal, goalDate: goalDate, dday: Day.dday(goalDate),
                         v0: s?.goal.v0, start: live?.goalStart ?? s?.goal.start, spark: spark, fan: fan, pGoal: s?.fc?.pg,
-                        term: termOf(t),
+                        monthly: s?.goal.m ?? 0, term: termOf(t),
                         fcAsOf: s?.asof, hits: (s?.hits ?? []).map { Snapshot.Hit(hit: $0.h == 1, retro: $0.r == 1) }, week: week, moves: moves, events: Array(evs),
                         updated: Store.lastCheck, source: Store.summarySource)
     }

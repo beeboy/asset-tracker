@@ -37,7 +37,7 @@ struct LockFutureView: View { // 3 미래: 3년 뒤 막대 하나
     @Environment(\.widgetKind) var kind
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("3년 뒤 · 목표 확률 \(s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-")").font(.system(size: 11, weight: .bold)).opacity(0.75)
+            Text("\(s.termLabel) · 목표 확률 \(s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-")").font(.system(size: 11, weight: .bold)).opacity(0.75)
             if let f = s.fan, let k = f.p50.indices.last {
                 Money { h in
                     (Text(h ? hiddenAmount : Fmt.eok(f.p50[k])).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text(h ? "" : "  \(Fmt.eok(f.p25[k]))~\(Fmt.eok(f.p75[k]))").font(.system(size: 10, weight: .semibold)))

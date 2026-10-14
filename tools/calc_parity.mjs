@@ -155,16 +155,15 @@ function swiftSrc() {
   const divFx = grab(div, /\bfx = (Market\.shared\.[\w.]+)/, "DividendView"), sumFx = grab(ana, /\bfxNow = (Market\.shared\.[\w.]+)/, "AnalysisView");
   const us = line(div, "let us = m.rows.filter", "DividendView"), usU = line(div, "let usU = ", "DividendView");
   const shifts = line(det, "let shifts: [Double] = r.slope.map", "RateScenarioView");
-  // 위젯 필요 경로 (PR #170 이 들어온 뒤의 Snapshot.span·need). 아직 없으면 빈 값을 돌려 비교에서 "건너뜀"으로 적는다
-  const hasNeed = eng.includes("func need(_ f: Double) -> Double {");
-  const wpath = hasNeed ? `struct WPath {
+  // 위젯 필요 경로 (Snapshot.span·need)
+  const wpath = `struct WPath {
     var v0: Double?; var start: String?; var goalDate: String; var goal: Double; var monthly: Double
     ${block(eng, "var span: Double? {", "Engine.swift")}
     ${block(eng, "func need(_ f: Double) -> Double {", "Engine.swift")}
 }
 func widgetNeed(v0: Double, start: String, goalDate: String, goal: Double, monthly: Double, f: [Double]) -> [Double]? {
     let w = WPath(v0: v0, start: start, goalDate: goalDate, goal: goal, monthly: monthly); return f.map { w.need($0) }
-}` : `func widgetNeed(v0: Double, start: String, goalDate: String, goal: Double, monthly: Double, f: [Double]) -> [Double]? { nil }`;
+}`;
   return `import Foundation
 // tools/calc_parity.mjs gen 이 앱 원본에서 그대로 꺼낸 코드. 손으로 고치지 않는다
 
@@ -267,8 +266,7 @@ if (cmd === "gen") {
   }
   for (const w of W.wpath || []) {
     const a = by(A.wpath, w.name);
-    if (!a || a.need == null) { console.log(`위젯 필요 경로 ${w.name}: 앱에 아직 Snapshot.need 가 없어 건너뜀 (PR #170)`); continue; }
-    arr(`위젯필요경로.${w.name}`, w.need, a.need);
+    arr(`위젯필요경로.${w.name}`, w.need, a?.need);
   }
   for (const k of Object.keys(KNOWN)) if (!knownHit.has(k)) console.log(`::warning::알려진 차이 "${k}" 가 이제 같아요. tools/calc_parity.mjs KNOWN 에서 지워 주세요`);
   console.log(`비교 ${n}개, 다름 ${bad}개, 알려진 차이 ${knownHit.size}개`);
