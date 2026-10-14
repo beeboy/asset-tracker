@@ -206,6 +206,26 @@ extension AppModel {
         return .infinity
     }
 
+    /// 페이스 판정: 목표일까지 남은 개월과 지금 금액·적립으로 처음 닿는 개월(보통의 경우)을 비교한다. ±1개월은 예정대로
+    enum GoalPace: Equatable { case onTrack, ahead(Int), behind(Int), unreachable }
+    func goalPace() -> GoalPace {
+        let left = goalToDate.timeIntervalSince(Date()) / (365.25 * 86400) * 12
+        let eta = monthsTo(from: trackValue / 1e4, monthly: gM)
+        guard eta.isFinite else { return .unreachable }
+        let d = left - eta
+        if abs(d) <= 1 { return .onTrack }
+        return d > 0 ? .ahead(Int(d.rounded())) : .behind(Int((-d).rounded()))
+    }
+    /// 홈 카드 페이스 문장
+    static func paceText(_ p: GoalPace) -> String {
+        switch p {
+        case .onTrack: return "계획한 속도대로 가고 있어요."
+        case .ahead(let n): return n > 6 ? "계획보다 많이 빨라요." : "계획한 속도보다 조금 빨라요."
+        case .behind(let n): return n > 6 ? "계획보다 많이 늦어요." : "계획한 속도보다 조금 늦어요."
+        case .unreachable: return "지금 속도로는 목표에 닿기 어려워요."
+        }
+    }
+
     /// 보기 좋은 금액 (만원): 앞 두 자리만 남긴다 (5억 4천 → 5.4억, 3,460만 → 3,500만)
     static func round2(_ x: Double) -> Double {
         guard x >= 100 else { return 100 }
