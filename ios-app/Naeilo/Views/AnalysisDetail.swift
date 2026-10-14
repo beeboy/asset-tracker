@@ -833,102 +833,182 @@ struct DividendView: View {
 struct FxImpactView: View {
     @Environment(AppModel.self) private var m
     @State private var period = "1y"
-    @State private var what = Market.shared.valFx.rounded()
+    /// nil 이면 지금 환율(BASE). 시세가 늦게 와도 시작 상태 변화가 0 이 되게
+    @State private var what: Double? = nil
+    @State private var more = false
 
     var body: some View {
-        // 웹(전망 › 환율 영향)과 같은 자료·식: 지난 원/달러와 칼만 추세는 사이트 값(calc.json), 앞날 범위는 웹 전망 모형의 환율 μ·σ(stats.json)로
+        // 웹(전망 › 환율 영향)과 같은 자료·식: 지난 원/달러는 사이트 값(calc.json), 앞날 범위는 웹 전망 모형의 환율 μ·σ(stats.json)로
         // 지금·exp((μ − σ²/2)t + zσ√t)
-        // 원/달러 표시와 앞날 범위는 웹처럼 지금 환율, 평가액 계산은 웹 fxBase 와 같게 매매기준율(BASE) 기준
+        // 차트와 앞날 범위는 웹처럼 지금 환율(FX), 화면의 "지금 환율"·평가액 계산은 웹 fxBase 와 같게 매매기준율(BASE) 하나로
         let FX = Market.shared.fx.last, BASE = Market.shared.valFx, c = SiteCalc.shared.file?.fx, fxp = SiteStats.fx(), mu = fxp.0, vol = fxp.1
         let usd = m.rows.filter { $0.sym.currency == .usd }
         let usdV = usd.reduce(0) { $0 + $1.value }, usdW = usdV / max(1, m.total)
         let n = ["1m": 22, "3m": 64, "1y": 253, "3y": 780][period] ?? 253
         let label = ["1m": "1개월", "3m": "3개월", "1y": "1년", "3y": "3년"][period] ?? "1년"
         let yh = YahooSample.history["FX"]
-        let closesAll = c?.closes ?? yh?.closes ?? [], levelAll = c?.level ?? []
-        let k0 = max(0, closesAll.count - n), closes = Array(closesAll[k0...]), level = levelAll.count == closesAll.count ? Array(levelAll[k0...]) : []
+        let closesAll = c?.closes ?? yh?.closes ?? []
+        let k0 = max(0, closesAll.count - n), closes = Array(closesAll[k0...])
         let past = closes.enumerated().map { (i, v) in (closes.count > 1 ? Double(i) / Double(closes.count - 1) - 1 : 0, v) }
-        let trend = level.enumerated().map { (i, v) in (level.count > 1 ? Double(i) / Double(level.count - 1) - 1 : 0, v) }
         let q = { (z: Double) in (0...20).map { i -> (Double, Double) in let t = Double(i) / 20; return (t, SiteCalc.fxAt(now: FX, t: t, z: z, mu: mu, vol: vol)) } }
-        let vals = past.map(\.1) + [FX, SiteCalc.fxAt(now: FX, t: 1, z: 1.645, mu: mu, vol: vol), SiteCalc.fxAt(now: FX, t: 1, z: -1.645, mu: mu, vol: vol)]
-        let pad = ((vals.max() ?? FX) - (vals.min() ?? FX)) * 0.1 + 5
-        let hi = (vals.max() ?? FX) + pad, lo = (vals.min() ?? FX) - pad
+        let end = [1.645, 0.674, -0.674, -1.645].map { SiteCalc.fxAt(now: FX, t: 1, z: $0, mu: mu, vol: vol) }
+        let vals = past.map(\.1) + [FX] + end
+        let ticks = fxTicks(lo: vals.min() ?? FX, hi: vals.max() ?? FX)
+        let hi = ticks.last ?? FX + 10, lo = ticks.first ?? FX - 10
         let X = { (t: Double) in t <= 0 ? (t + 1) * 0.7 : 0.7 + t * 0.3 }
-        let Y = { (v: Double) in max(0, min(1, (hi - v) / (hi - lo))) }
+        let Y = { (v: Double) in max(0, min(1, (hi - v) / max(1, hi - lo))) }
         let valAt = { (r: Double) in m.total + usdV * (r / BASE - 1) }
-        let pMin = past.map(\.1).min() ?? FX, pMax = past.map(\.1).max() ?? FX
-        let chg = FX / (past.first?.1 ?? FX) - 1
+        let r = what ?? BASE, dv = valAt(r) - m.total
+        let per10 = usdV * 10 / BASE
         let T = max(0.01, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400))
         let goalD = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy년 M월"; return f.string(from: m.goalToDate) }()
         let at = { (z: Double) in Int(SiteCalc.fxAt(now: FX, t: T, z: z, mu: mu, vol: vol).rounded()).formatted() }
+        let won = { (v: Double) in "\(Int(v.rounded()).formatted())원" }
         let eff1y = c?.ret_1y.map { usdW * $0 }
-        let range1y: String = {
-            guard let l = c?.lo1, let h = c?.hi1 else { return "" }
-            return "1년 범위 \(Int(l.rounded()).formatted())~\(Int(h.rounded()).formatted())"
+        let baseDay: String = {
+            let s = Market.shared.marRate != nil ? (Market.shared.mar?.date ?? "") : ""
+            let p = s.split(separator: "-").compactMap { Int($0) }
+            if p.count == 3 { return "\(p[1])월 \(p[2])일 기준" }
+            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일 기준"; return f.string(from: Date())
         }()
-        let trendSub: String = c.map { "추세 \(Int($0.kalman_level.rounded()).formatted())원 · 기울기 연 \(AppModel.sgn($0.slope_ann ?? 0))" } ?? "사이트 자료를 받으면 나와요"
-        let trendText: String = c?.trend?.replacingOccurrences(of: " (추세 판단 대상 아님)", with: "") ?? "-"
+        let why = usdW >= 0.995 ? "내 주식은 모두 달러라서" : "내 자산 중 \(AppModel.pct(usdW))가 달러라서"
+        let lo1 = c?.lo1, hi1 = c?.hi1
+        let gap = max(0, m.keyValue - valAt(r)), prog = m.keyValue > 0 ? min(1, max(0, valAt(r) / m.keyValue)) : 0
+        let sMin = min(1100, (BASE - 50).rounded(.down)), sMax = max(1600, (BASE + 50).rounded(.up))
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "환율 영향", sub: "달러 자산 비중 \(AppModel.pct(usdW)) · 환율 1%면 평가액 \(AppModel.man(usdV * 0.01))")
-                HStack(alignment: .firstTextBaseline) {
-                    Text("원/달러 (지금 · 오늘 \(AppModel.sgn(Market.shared.fx.change)))").appFont(13).foregroundStyle(Theme.sub)
-                    Spacer()
-                    Text("\(Int(FX).formatted())원").appFont(22, .bold)
-                }
-                Text("\(label) 동안 \(AppModel.sgn(chg)) · 범위 \(Int(pMin.rounded()).formatted())~\(Int(pMax.rounded()).formatted())원")
-                    .appFont(13, .bold).foregroundStyle(Theme.change(chg))
-                Canvas { ctx, size in
-                    func band(_ a: [(Double, Double)], _ b: [(Double, Double)]) -> Path {
-                        var p = linePath(a.map { (X($0.0), Y($0.1)) }, in: size)
-                        for x in b.reversed() { p.addLine(to: CGPoint(x: X(x.0) * size.width, y: Y(x.1) * size.height)) }
-                        p.closeSubpath(); return p
-                    }
-                    ctx.fill(band(q(1.645), q(-1.645)), with: .color(Theme.blue.opacity(0.12)))
-                    ctx.fill(band(q(0.674), q(-0.674)), with: .color(Theme.blue.opacity(0.24)))
-                    let nx = X(0) * size.width
-                    ctx.stroke(Path { $0.move(to: CGPoint(x: nx, y: 0)); $0.addLine(to: CGPoint(x: nx, y: size.height)) }, with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    if trend.count > 1 { ctx.stroke(linePath(trend.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.orange), style: StrokeStyle(lineWidth: 1.8)) }
-                    if past.count > 1 { ctx.stroke(linePath(past.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1.2, lineJoin: .round)) }
-                    ctx.stroke(linePath(q(0).map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.blue), style: StrokeStyle(lineWidth: 1.6, dash: [2, 2]))
-                }
-                .frame(height: 140)
-                .accessibilityLabel("원/달러 지난 흐름과 앞으로 1년 범위")
-                HStack { Text("\(label) 전"); Spacer(); Text("오늘"); Spacer().frame(maxWidth: 60); Text("1년 뒤") }.appFont(11).foregroundStyle(Theme.muted)
-                if past.count < 2 { Text("지난 환율 자료가 없어 지금 값으로만 그렸어요").appFont(11).foregroundStyle(Theme.muted) }
-                Text("검은 선: 지난 환율 · 주황 선: 추세(칼만) · 파란 띠: 앞으로 1년 25~75%(진함)·5~95%")
-                    .appFont(11).foregroundStyle(Theme.sub)
-                ChipRow(items: [("1m", "1개월"), ("3m", "3개월"), ("1y", "1년"), ("3y", "3년")], selection: $period, accent: Theme.blue, fill: true)
+                DetailHead(title: "환율 영향", sub: "")
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
-                kpiGrid([
-                    Kpi(k: "지난 1년 환율 효과", v: eff1y.map { AppModel.sgn($0) } ?? "-", sub: "원화 평가액에 더해진 몫 (근사)", color: Theme.change(eff1y ?? 0)),
-                    Kpi(k: "추세", v: trendText, sub: trendSub),
-                    Kpi(k: "목표일 환율 중앙값", v: at(0) + "원", sub: "\(goalD) · 5~95% \(at(-1.645))~\(at(1.645))"),
-                    Kpi(k: "원화 10% 강세면", v: AppModel.manS(-usdV * 0.1), sub: "주가 변동 없이 환율만", color: Theme.down),
-                    Kpi(k: "1년 변화", v: c?.ret_1y.map { AppModel.sgn($0) } ?? "-", sub: range1y),
-                    Kpi(k: "변동성 (연)", v: String(format: "%.1f%%", vol * 100), sub: "전망 모형 적용 값"),
-                ])
-                Card {
-                    HStack { Text("환율이 이렇게 되면").appFont(14); Spacer(); Text("\(Int(what).formatted())원").appFont(15, .bold) }
-                    Slider(value: $what, in: 1200...1600, step: 10).tint(Theme.blue).accessibilityLabel("환율")
-                    Text("내 평가액 \(AppModel.man(valAt(what))) (\(AppModel.manS(valAt(what) - m.total))) · \(m.keyName)까지 \(AppModel.man(max(0, m.keyValue - valAt(what))))")
-                        .appFont(13, .semibold)
-                }
+                // 1. 한 줄 요약
                 Card(dark: true) {
-                    Text("환율별 내 평가액 (주가는 그대로)").appFont(15, .bold)
-                    ForEach([1250.0, 1300, BASE, 1450, 1500], id: \.self) { r in
-                        HStack {
-                            Text("\(Int(r).formatted())원" + (r == BASE ? " (지금)" : "")).appFont(13, r == BASE ? .bold : .regular)
-                            Spacer()
-                            Text(AppModel.man(valAt(r))).appFont(14, .bold)
-                            Text("\(m.keyName)까지 \(AppModel.man(max(0, m.keyValue - valAt(r))))").appFont(12).foregroundStyle(Theme.sub).frame(minWidth: 110, alignment: .trailing)
+                    Text("한 줄 요약").appFont(12, .semibold).foregroundStyle(Theme.sub)
+                    if usdV <= 0 {
+                        Text("달러 자산이 없어 환율이 움직여도 내 자산은 그대로예요").appFont(18, .bold)
+                    } else {
+                        Text("환율이 10원 내리면\n내 자산은 약 \(AppModel.man(per10)) 줄어요").appFont(20, .bold)
+                        Text("\(why), 환율이 내려가면(원화가 강해지면) 원화로 본 금액이 줄어요. 반대로 환율이 오르면 늘어요.")
+                            .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
+                        HStack(spacing: 6) {
+                            pill("요즘 흐름 · \(trendWord(c?.trend))")
+                            if let y = c?.ret_1y { pill("1년 전보다 \(AppModel.sgn(y))") }
                         }
                     }
                 }
-                footnote("웹과 같은 계산: 추세는 지난 환율의 칼만 추세, 앞날 범위는 3년 전망 모형의 환율 기대·흔들림\(c.map { " (\($0.date) 기준)" } ?? "").")
+                // 2. 환율 카드
+                Card {
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("지금 원/달러 환율").appFont(13).foregroundStyle(Theme.sub)
+                            Text(verbatim: BASE.formatted(.number.precision(.fractionLength(0...1))) + "원")
+                                .appFont(26, .bold).monospacedDigit()
+                        }
+                        Spacer()
+                        Text(baseDay).appFont(12).foregroundStyle(Theme.muted)
+                    }
+                    HStack(alignment: .top, spacing: 4) {
+                        // y축 눈금
+                        GeometryReader { g in
+                            ForEach(ticks, id: \.self) { t in
+                                Text(Int(t).formatted()).appFont(10).foregroundStyle(Theme.muted).monospacedDigit()
+                                    .position(x: 18, y: Y(t) * g.size.height)
+                            }
+                        }
+                        .frame(width: 36, height: 160)
+                        Canvas { ctx, size in
+                            func band(_ a: [(Double, Double)], _ b: [(Double, Double)]) -> Path {
+                                var p = linePath(a.map { (X($0.0), Y($0.1)) }, in: size)
+                                for x in b.reversed() { p.addLine(to: CGPoint(x: X(x.0) * size.width, y: Y(x.1) * size.height)) }
+                                p.closeSubpath(); return p
+                            }
+                            for t in ticks {
+                                let y = Y(t) * size.height
+                                ctx.stroke(Path { $0.move(to: CGPoint(x: 0, y: y)); $0.addLine(to: CGPoint(x: size.width, y: y)) }, with: .color(Theme.line), lineWidth: 1)
+                            }
+                            ctx.fill(band(q(1.645), q(-1.645)), with: .color(Theme.blue.opacity(0.12)))
+                            ctx.fill(band(q(0.674), q(-0.674)), with: .color(Theme.blue.opacity(0.26)))
+                            let nx = X(0) * size.width
+                            ctx.stroke(Path { $0.move(to: CGPoint(x: nx, y: 0)); $0.addLine(to: CGPoint(x: nx, y: size.height)) }, with: .color(Theme.muted), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                            if past.count > 1 { ctx.stroke(linePath(past.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1.4, lineJoin: .round)) }
+                            let ny = Y(FX) * size.height
+                            ctx.fill(Path(ellipseIn: CGRect(x: nx - 4, y: ny - 4, width: 8, height: 8)), with: .color(Theme.blue))
+                            // 띠 오른쪽 끝 값 4개 (겹치면 위아래로 띄움)
+                            var ys = end.map { Y($0) * size.height }
+                            for i in 1..<ys.count where ys[i] - ys[i - 1] < 11 { ys[i] = ys[i - 1] + 11 }
+                            for (i, v) in end.enumerated() {
+                                ctx.draw(Text(verbatim: Int(v.rounded()).formatted()).font(.system(size: 9, weight: .semibold)).foregroundColor(Theme.sub),
+                                         at: CGPoint(x: size.width - 2, y: min(size.height - 5, max(5, ys[i]))), anchor: .trailing)
+                            }
+                        }
+                        .frame(height: 160)
+                        .accessibilityLabel("원/달러 지난 흐름과 앞으로 1년 범위")
+                    }
+                    HStack { Text("\(label) 전"); Spacer(); Text("오늘"); Spacer().frame(maxWidth: 60); Text("1년 뒤") }
+                        .appFont(11).foregroundStyle(Theme.muted).padding(.leading, 40)
+                    if past.count < 2 { Text("지난 환율 자료가 없어 지금 값으로만 그렸어요").appFont(11).foregroundStyle(Theme.muted) }
+                    VStack(alignment: .leading, spacing: 4) {
+                        legend(Theme.ink, 2, "지난 \(label) 실제 환율")
+                        legend(Theme.blue.opacity(0.4), 10, "1년 뒤, 둘 중 하나는 이 안 (\(Int(end[2].rounded()).formatted())~\(Int(end[1].rounded()).formatted())원)")
+                        legend(Theme.blue.opacity(0.15), 10, "1년 뒤, 열에 아홉은 이 안 (\(Int(end[3].rounded()).formatted())~\(Int(end[0].rounded()).formatted())원)")
+                    }
+                    ChipRow(items: [("1m", "1개월"), ("3m", "3개월"), ("1y", "1년"), ("3y", "3년")], selection: $period, accent: Theme.blue, fill: true)
+                }
+                // 3. 환율이 바뀌면 내 자산은?
+                if usdV > 0 {
+                    Card {
+                        Text("환율이 바뀌면 내 자산은?").appFont(16, .bold)
+                        Text("주가는 그대로라고 가정해요").appFont(12).foregroundStyle(Theme.muted)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("환율이 \(won(r))이 되면").appFont(13).foregroundStyle(Theme.sub)
+                            Text(AppModel.man(valAt(r))).appFont(24, .bold).monospacedDigit()
+                            Text(abs(dv) < 0.5 ? "지금과 같아요" : "지금보다 \(AppModel.man(abs(dv))) \(dv > 0 ? "늘어요" : "줄어요")")
+                                .appFont(13, .bold).foregroundStyle(abs(dv) < 0.5 ? Theme.muted : Theme.change(dv))
+                        }
+                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
+                        Slider(value: Binding(get: { r }, set: { what = $0 }), in: sMin...sMax, step: 1).tint(Theme.blue).accessibilityLabel("환율")
+                        HStack(spacing: 6) {
+                            ForEach([1250.0, 1300, 0, 1450, 1500], id: \.self) { v in
+                                let on = v == 0 ? what == nil || what == BASE : what == v
+                                Button { what = v == 0 ? nil : v } label: {
+                                    Text(v == 0 ? "지금" : Int(v).formatted()).appFont(12, .bold).lineLimit(1)
+                                        .frame(maxWidth: .infinity, minHeight: 34)
+                                        .foregroundStyle(on ? .white : Theme.ink)
+                                        .background(on ? Theme.blue : Theme.card, in: Capsule())
+                                        .overlay(Capsule().stroke(on ? Theme.blue : Theme.border, lineWidth: 1.5))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        Divider()
+                        Text(gap > 0 ? "\(m.keyName)까지 \(AppModel.man(gap)) 남음" : "\(m.keyName) 도달").appFont(13, .semibold)
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Theme.track)
+                                Capsule().fill(Theme.blue).frame(width: g.size.width * prog)
+                            }
+                        }
+                        .frame(height: 8)
+                    }
+                }
+                // 4. 자세히 보기
+                DisclosureGroup(isExpanded: $more) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        kpiGrid([
+                            Kpi(k: "1년 동안 오간 범위", v: lo1.flatMap { l in hi1.map { "\(Int(l.rounded()).formatted())~\(Int($0.rounded()).formatted())원" } } ?? "-", sub: "지난 1년 가장 낮을 때~높을 때"),
+                            Kpi(k: "1년간 출렁인 정도", v: "\(volWord(vol)) (연 \(String(format: "%.1f", vol * 100))%)", sub: "클수록 환율이 크게 움직여요"),
+                            Kpi(k: "\(goalD) 가장 그럴듯한 값", v: at(0) + "원", sub: "열에 아홉은 \(at(-1.645))~\(at(1.645))원"),
+                            Kpi(k: "환율 때문에 생긴 1년 손익", v: eff1y.map { AppModel.sgn($0) } ?? "-", sub: "주가 말고 환율로만 늘거나 준 몫", color: Theme.change(eff1y ?? 0)),
+                        ])
+                        footnote("예상 범위는 지난 환율의 흐름과 출렁임으로 계산한 값이라 실제와 다를 수 있어요.")
+                    }
+                    .padding(.top, 8)
+                } label: {
+                    Text("자세히 보기").appFont(14, .semibold).foregroundStyle(Theme.ink)
+                }
+                .tint(Theme.sub)
             }
             .padding(16)
         }
@@ -936,7 +1016,43 @@ struct FxImpactView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await SiteCalc.shared.refresh() }
     }
+
+    private func pill(_ s: String) -> some View {
+        Text(verbatim: s).appFont(12, .semibold).padding(.horizontal, 10).padding(.vertical, 5)
+            .background(Color.white.opacity(0.12), in: Capsule())
+    }
+
+    private func legend(_ c: Color, _ h: CGFloat, _ s: String) -> some View {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 2).fill(c).frame(width: 16, height: h)
+            // ~ 두 개가 마크다운 취소선이 되지 않게 verbatim
+            Text(verbatim: s).appFont(11).foregroundStyle(Theme.sub)
+        }
+    }
 }
+
+/// 깔끔한 y축 눈금: 20·50·100·200원 단위 중 눈금 3~5개가 되는 것
+private func fxTicks(lo: Double, hi: Double) -> [Double] {
+    for step in [20.0, 50, 100, 200, 500] {
+        let a = (lo / step).rounded(.down) * step, b = (hi / step).rounded(.up) * step
+        let k = Int(((b - a) / step).rounded())
+        if k <= 4 { return (0...max(1, k)).map { a + Double($0) * step } }
+    }
+    let a = (lo / 500).rounded(.down) * 500
+    return [a, (hi / 500).rounded(.up) * 500]
+}
+
+/// 사이트 추세 문구(웹 model.js trendLabel)를 쉬운 말로
+private func trendWord(_ t: String?) -> String {
+    switch t ?? "" {
+    case "상승 추세", "약한 상승": return "오르는 중"
+    case "하락 추세", "약세 전환 주의": return "내려가는 중"
+    default: return "옆으로"
+    }
+}
+
+/// 연 변동성을 말로
+private func volWord(_ v: Double) -> String { v < 0.07 ? "낮음" : v <= 0.12 ? "보통" : "큼" }
 
 // MARK: 종목 한눈에 — 숫자만, 추천 문구 없음
 
