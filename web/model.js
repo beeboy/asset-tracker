@@ -239,6 +239,24 @@
     return { x: xs, y: ys, d: ds };
   }
   // 종목별 요인 민감도 β (요인 사건을 종목에 나눠 줄 때 쓴다). prices: {sym: {dates, adj}}, tks: 종목 티커
+  // 과거 재생: 실제로 함께 움직인 요인 변화 (고정 표). 기간 시작~바닥 종가 기준 어림값
+  // 출처: S&P500(SPY)·미국 10년물·원/달러·WTI·금 종가 (Yahoo Finance 일별 시세를 손으로 읽은 값). 3년 시세 파일 밖이라 상수로 둔다
+  // 단위: mkt·fx·oil·gold 는 %, rate 는 %p. 앱 SiteCalc.replays 와 같은 값
+  const REPLAYS = [
+    { id: "2020", when: "2020년 3월", name: "코로나 급락", mv: { mkt: -34, rate: -0.8, fx: 8, oil: -56, gold: -3 } },
+    { id: "2022", when: "2022년", name: "금리 급등기", mv: { mkt: -25, rate: 2.3, fx: 21, oil: 15, gold: -7 } },
+    { id: "2024", when: "2024년 8월", name: "엔캐리 청산", mv: { mkt: -8.5, rate: -0.4, fx: -1.5, oil: -10, gold: -2.5 } },
+  ];
+  // 과거 재생 한 종목: 원화 평가액 변화율과 그중 환율 몫. betaOf(k) 는 β 또는 null (모르면 시장 1, 그 외 0)
+  function replayMove(rp, usd, betaOf) {
+    let lg = 0;
+    for (const k of ["mkt", "rate", "oil", "gold"]) {
+      const b = betaOf(k) ?? (k === "mkt" ? 1 : 0), x = rp.mv[k];
+      lg += b * (k === "rate" ? x * 100 : Math.log(1 + x / 100));
+    }
+    const p = Math.exp(lg) - 1, f = usd ? rp.mv.fx / 100 : 0;
+    return { total: (1 + p) * (1 + f) - 1, fx: (1 + p) * f };
+  }
   // 요인별 '보통 한 달 변화': 지난 years 년 일별 종가를 21거래일씩 끊은 변화의 표준편차(sd)와 가장 큰 변화(max).
   // 단위는 factorBetas 와 같다 (금리는 bp, 나머지는 로그 변화). fx(원/달러)도 같이
   function factorMoves(prices, todayStr, years = 3) {
@@ -728,5 +746,5 @@
     for (const x of log || []) { if (x.d > d) break; v = x.v; }
     return v;
   }
-  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, factorMoves, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, factorMoves, REPLAYS, replayMove, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();

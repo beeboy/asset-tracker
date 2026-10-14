@@ -94,6 +94,23 @@ final class SiteCalc {
     static func factorMove(_ factor: String, beta b: Double, shock: Double) -> Double {
         exp(b * (factor == "rate" ? shock : log(1 + shock / 100))) - 1
     }
+    /// 과거 재생 기간 (web/model.js REPLAYS 와 같은 값). 단위: mkt·fx·oil·gold %, rate %p
+    struct Replay { let when: String; let name: String; let mv: [String: Double] }
+    static let replays: [Replay] = [
+        Replay(when: "2020년 3월", name: "코로나 급락", mv: ["mkt": -34, "rate": -0.8, "fx": 8, "oil": -56, "gold": -3]),
+        Replay(when: "2022년", name: "금리 급등기", mv: ["mkt": -25, "rate": 2.3, "fx": 21, "oil": 15, "gold": -7]),
+        Replay(when: "2024년 8월", name: "엔캐리 청산", mv: ["mkt": -8.5, "rate": -0.4, "fx": -1.5, "oil": -10, "gold": -2.5]),
+    ]
+    /// web/model.js replayMove 와 같은 식: 원화 평가액 변화율과 그중 환율 몫. β 를 모르면 시장 1, 그 외 0
+    static func replayMove(_ rp: Replay, usd: Bool, beta: (String) -> Double?) -> (total: Double, fx: Double) {
+        var lg = 0.0
+        for k in ["mkt", "rate", "oil", "gold"] {
+            let b = beta(k) ?? (k == "mkt" ? 1 : 0), x = rp.mv[k] ?? 0
+            lg += b * (k == "rate" ? x * 100 : log(1 + x / 100))
+        }
+        let p = exp(lg) - 1, f = usd ? (rp.mv["fx"] ?? 0) / 100 : 0
+        return ((1 + p) * (1 + f) - 1, (1 + p) * f)
+    }
     /// 해외주식 양도세 (웹과 같은 식): 이익에서 공제 250만원을 빼고 22%
     static func capGainTax(_ gain: Double) -> Double { max(0, gain - cgtDed) * cgt }
 

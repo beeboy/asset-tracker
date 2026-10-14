@@ -1561,7 +1561,22 @@
           <span class="row between"><b>${XF_NAMES[x.k]}</b><span class="${x.weak ? "muted" : "amt"}">${x.weak ? "뚜렷한 관계 없음" : "±" + man(x.amt)}</span></span>
           ${x.weak ? "" : `<span class="bar"><i style="width:${Math.max(1, (100 * x.amt) / scale)}%"></i></span>`}<span class="muted small">${xfDesc(x, hs, total)}</span></span><span class="chev">›</span></button>`; }).join("") +
       (sum ? `<p class="xsum">${sum}</p>` : !xfMonth("mkt") ? `<p class="muted small">요인 자료를 불러오는 중이에요.</p>` : "") +
+      xfReplays(hs, total) +
       `<p class="muted small">예측이 아니라 '만약에'를 보는 화면이에요. 지난 3년 하루 단위 움직임을 바탕으로 했고, 큰 변화일수록 실제와 다를 수 있어요.</p>`;
+  }
+  // 과거 재생: 그때 함께 움직인 요인 변화 × 지금 내 종목 민감도
+  function xfReplays(hs, total) {
+    const fb = factorBetas().beta;
+    return `<h3 class="xh">그때 그 일이 지금 일어나면</h3><p class="muted small">그때 실제로 함께 움직인 만큼을 지금 내 구성에 적용했어요.</p>` +
+      Model.REPLAYS.map((rp) => {
+        let tot = 0, fx = 0;
+        hs.forEach((r) => { const o = Model.replayMove(rp, r.ccy === "USD", (k) => fb[k]?.[r.h.ticker] ?? null); tot += r.valueKrw * o.total; fx += r.valueKrw * o.fx; });
+        const chips = ["mkt", "rate", "fx"].filter((k) => k !== "rate" || Math.abs(rp.mv.rate) >= 1).map((k) => `${XF_NAMES[k]} ${xfText(k === "fx" ? "pct" : k, rp.mv[k])}`);
+        const small = Math.abs(fx) < total * XF_TINY, good = !small && (tot < 0 ? fx > 0 : fx > 0);
+        const note = small ? "달러 자산이 거의 없어 환율 영향은 작았어요." : tot < 0 ? (fx > 0 ? `환율이 오르면서 ${man(fx)}을 막아줬어요.` : `이번엔 환율도 함께 내려서 손실을 ${man(fx)} 더 키웠어요.`) : fx > 0 ? `환율이 오르면서 ${man(fx)}을 보탰어요.` : `환율이 내리면서 ${man(fx)}을 깎았어요.`;
+        return `<div class="xrep"><div class="row between"><span class="muted small">${rp.when} · ${rp.name}</span><b class="${cls(tot)}">${manS(tot)}</b></div>
+          <div class="xchips">${chips.map((c) => `<span>${c}</span>`).join("")}</div><p class="small ${good ? "xok" : "xbad"}">${note}</p></div>`;
+      }).join("") + `<p class="muted small">요인마다 따로가 아니라 그때 함께 움직인 값을 썼어요. 지난 3년 시세가 없는 종목은 시장과 같이 움직인다고 봤어요.</p>`;
   }
   function xfDetail(k, hs, total) {
     const name = XF_NAMES[k], ps = xfPresets(k), v = XS.v ?? ps[1][1], ups = k === "rate" ? "금리가 오르면" : k === "fx" ? "환율이 오르면" : `${name}이 오르면`;
