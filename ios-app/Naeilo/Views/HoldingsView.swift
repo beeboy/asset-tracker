@@ -541,7 +541,7 @@ struct AddHoldingView: View {
 
     /// 이미 시세를 아는 종목 (예시 종목 중 앱에 자료가 있는 것, 전에 추가한 것)
     private func known(_ h: StockHit) -> Symbol? {
-        if h.currency == .krw && KoreaEstimate.liveOK(h.id) && !CustomSymbols.shared.isLive(h.id) { return nil }   // 테스트 시세를 새로 받는다
+        if h.currency == .krw && KoreaEstimate.liveOK(h.id, name: h.name) && !CustomSymbols.shared.isLive(h.id) { return nil }   // 테스트 시세를 새로 받는다
         if h.id == "DRNK" || YahooSample.quotes[h.id] != nil || CustomSymbols.shared.symbol(h.id) != nil { return Sample.symbol(h.id) }
         return nil
     }
