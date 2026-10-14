@@ -48,6 +48,10 @@ final class SiteCalc {
     /// 요인 민감도 (웹 Model.factorBetas, 사이트 stats.json): mkt = S&P500 로그 변화당, rate = 10년 금리 1bp 당, oil·gold·cmdty = 그 지표 로그 변화당 (시장 움직임 뺀 값)
     /// 한국 종목·국내 주식 합계는 전망과 같은 키(KR~기준 ETF, 합계는 KR~EWY. 웹과 같은 수익률)로 찾는다
     func beta(_ factor: String, _ id: String) -> Double? { Market.shared.stats?.betas?[factor]?[SiteStats.mcKey(id)] }
+    /// 민감도 신뢰도 (같은 방향 비율 agree 등). 외부 요인 화면용
+    func betaStat(_ factor: String, _ id: String) -> MC.BetaStat? { Market.shared.stats?.betaStat?[factor]?[SiteStats.mcKey(id)] }
+    /// 요인 보통 한 달 변화 (fx = 원/달러 포함)
+    func factorMonth(_ factor: String) -> MC.FactorMove? { Market.shared.stats?.factors?[factor] }
 
     // MARK: 웹과 같은 식
 

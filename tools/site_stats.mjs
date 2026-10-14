@@ -60,8 +60,12 @@ export function buildStats(startDate, { series, holdings } = siteSeries()) {
       ? { fx: true, mu: p12(f.mu.base), vol: p12(f.vol), n: f.n }
       : { mu: p12(f.mu.base), trend: p12(f.mu.smooth), gs: p12(f.gSmooth), vol: p12(f.vol), n: f.n, cash: f.cash || undefined, ccy: holdings.find((h) => h.ticker === f.key)?.ccy };
   }
-  const betas = Model.factorBetas(series, holdings.map((h) => h.ticker), startDate).beta;
+  const fb = Model.factorBetas(series, holdings.map((h) => h.ticker), startDate), betas = fb.beta, betaStat = {};
   for (const fk of Object.keys(betas)) for (const t of Object.keys(betas[fk])) betas[fk][t] = p12(betas[fk][t]);
+  // 외부 요인 화면의 신뢰도 ("10번 중 N번" = agree, 상관 corr, 날 수 n)
+  for (const [fk, o] of Object.entries(fb.stat)) { betaStat[fk] = {}; for (const [t, v] of Object.entries(o)) betaStat[fk][t] = { corr: p12(v.corr), agree: p12(v.agree ?? 1), n: v.n }; }
+  // 요인별 보통 한 달 변화 (외부 요인 순위·큰 변화 경고)
+  const factors = Object.fromEntries(Object.entries(Model.factorMoves(series, startDate)).map(([k, v]) => [k, { sd: p12(v.sd), max: p12(v.max), n: v.n }]));
   const pick = (o, ks) => Object.fromEntries(ks.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
   return {
     date: startDate,
@@ -72,6 +76,8 @@ export function buildStats(startDate, { series, holdings } = siteSeries()) {
     model: pick(settings, ["scenario", "trust", "n_paths", "seed", "t_dof", "earnings_adjust", "fx_drift", "fx_vol_mult", "prior_mu", "default_vol", "default_corr", "rebalance_yearly"]),
     events: events.map((e) => pick(e, ["id", "on", "date", "target", "factor", "kind", "cat", "repeat", "prob", "mean", "sd", "vol_mult", "vol_days"])),
     betas,
+    betaStat,
+    factors,
     tickers,
     corr: { keys: model.factors.map((f) => f.key), m: model.corr.map((r) => r.map(p12)) },
   };

@@ -36,7 +36,13 @@ enum MC {
         var model: Settings? = nil
         var events: [Event]? = nil
         var betas: [String: [String: Double]]? = nil
+        /// 요인 민감도의 신뢰도 [요인][종목]: corr 상관, agree 같은 방향 비율("10번 중 N번"), n 날 수
+        var betaStat: [String: [String: BetaStat]]? = nil
+        /// 요인별 보통 한 달 변화 (21거래일 변화 표준편차 sd · 가장 큰 변화 max. 금리는 bp, 나머지는 로그 변화)
+        var factors: [String: FactorMove]? = nil
     }
+    struct BetaStat: Codable { var corr: Double?; var agree: Double?; var n: Double? }
+    struct FactorMove: Codable { var sd: Double; var max: Double; var n: Double? }
 
     /// 전망 설정 (웹 state.model 과 같은 칸). 없는 칸은 웹 기본값
     struct Settings: Codable {
