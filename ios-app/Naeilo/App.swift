@@ -81,6 +81,7 @@ struct RootView: View {
                 switch o {
                 case "home": model.tab = .home
                 case "tax": model.tab = .settings; model.settingsPath = [.tax]
+                case "rate": model.go(.rateScen)
                 default: model.tab = .board
                 }
             }

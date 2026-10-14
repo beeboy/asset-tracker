@@ -8,6 +8,7 @@ import UIKit
 // - 아침 한 줄: 다음 평일 아침 한 번만 지금 숫자로 예약하고, 그 뒤 평일 4번은 숫자 없이 예약한다.
 //   앱을 열 때마다 다시 예약하므로, 앱을 자주 열면 늘 숫자가 들어간 알림이 온다. 숫자가 오래되면 넣지 않는다.
 // - 연말 세금 정리: 매년 12월 1일 오전 9시.
+// - 금리 결정 전날: 앞으로 90일 안의 FOMC·한국은행 결정 하루 전 오전 9시 (금리 충격 테스트에서 켬). 날짜는 고정 규칙이라 근사일 수 있다.
 enum Notifier {
     static let center = UNUserNotificationCenter.current()
     private static let d = UserDefaults.standard
@@ -45,8 +46,25 @@ enum Notifier {
     // MARK: 예약 (설정이 바뀌거나 앱을 열 때)
     @MainActor
     static func reschedule(_ m: AppModel) async {
-        center.removePendingNotificationRequests(withIdentifiers: (0..<5).map { "morn.\($0)" } + ["dep"])
+        let old = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix("rate.") }
+        center.removePendingNotificationRequests(withIdentifiers: (0..<5).map { "morn.\($0)" } + ["dep"] + old)
         guard await status() == .allowed else { return }
+
+        if m.alerts["rate"] == true {
+            let cal = Calendar.current
+            for e in MarketEvents.rateUpcoming(days: 90) {
+                guard let d = Day.date(e.day), let prev = cal.date(byAdding: .day, value: -1, to: d),
+                      let at = cal.date(bySettingHour: 9, minute: 0, second: 0, of: prev), at > Date() else { continue }
+                let c = UNMutableNotificationContent()
+                c.title = "내일 \(e.kind)"
+                c.body = "금리가 움직이면 내 목표는 어떻게 될까요? 금리 충격 테스트를 다시 보세요."
+                c.sound = .default
+                c.userInfo = ["open": "rate"]
+                let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
+                try? await center.add(UNNotificationRequest(identifier: "rate.\(e.id).\(e.day)", content: withIcon(c),
+                                                            trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
+            }
+        }
 
         if m.alerts["dep"] == true {
             let c = UNMutableNotificationContent()

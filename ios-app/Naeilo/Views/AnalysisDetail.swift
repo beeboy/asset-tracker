@@ -702,6 +702,7 @@ struct RateScenarioView: View {
                     }
                 }
                 weakCard
+                rateEventsCard
                 Card {
                     Button { withAnimation { open.toggle() } } label: {
                         HStack { Text("금리 변화 직접 정하기").appFont(15, .bold); Spacer(); Image(systemName: open ? "chevron.up" : "chevron.down") }
@@ -719,6 +720,26 @@ struct RateScenarioView: View {
                 footnote("예측이 아니라 '만약에'를 보는 화면이에요. 금리 말고 다른 조건은 목표일 전망의 내 설정과 같아요. 종목 추천이 아닙니다.")
             }
             .padding(16)
+        }
+    }
+
+    /// 다가오는 금리 일정 (FOMC·한국은행) + 결정 하루 전 알림 토글. 날짜는 고정 규칙이라 근사일 수 있다
+    @ViewBuilder private var rateEventsCard: some View {
+        let events = MarketEvents.rateUpcoming(days: 60).prefix(4)
+        Card {
+            Text("다가오는 금리 일정").appFont(16, .bold)
+            ForEach(Array(events.enumerated()), id: \.offset) { _, e in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
+                    Text(e.kind).appFont(14, .bold)
+                    Spacer()
+                }
+            }
+            if events.isEmpty { Text("60일 안에 정해진 금리 일정이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
+            Toggle(isOn: Binding(get: { m.alerts["rate"] == true }, set: { on in
+                if on { Task { if await Notifier.request() { m.alerts["rate"] = true } } } else { m.alerts["rate"] = false }
+            })) { Text("결정 하루 전에 이 테스트 다시 보기").appFont(14) }.tint(Theme.purple)
+            Text("날짜는 정해진 주기로 계산해 실제 일정과 하루이틀 다를 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
         }
     }
 
