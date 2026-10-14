@@ -234,7 +234,7 @@ struct ForecastView: View {
                             }
                         }
                     }
-                    Text(m.isGoal ? "예측이 아닌 가능성의 범위예요. naeilo.com 3년 전망과 같은 계산(지난 3년 움직임으로 3,000갈래 길, 하루 한 번)이에요."
+                    Text(m.isGoal ? "예측이 아닌 가능성의 범위예요. naeilo.com 목표일 전망과 같은 계산(지난 3년 움직임으로 3,000갈래 길, 하루 한 번)이에요."
                          : "예측이 아닌 가능성의 범위예요. 회복 루트는 본전 기준이라 naeilo.com(목표 기준)과 달라요.").appFont(12).foregroundStyle(Theme.muted)
                 }
                 .padding(16)
