@@ -33,7 +33,7 @@ struct FutureSmallView: View {
         let t = Tint(mode: mode)
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 1) { Label2(text: "3년 뒤 예상"); Money { h in Mid(text: h ? hiddenAmount : s.term.map { Fmt.eok($0.p50) } ?? "-") } }
+                VStack(alignment: .leading, spacing: 1) { Label2(text: "\(s.termLabel) 예상"); Money { h in Mid(text: h ? hiddenAmount : s.term.map { Fmt.eok($0.p50) } ?? "-") } }
                 Spacer(minLength: 2)
                 VStack(alignment: .trailing, spacing: 1) { Label2(text: "목표"); Mid(text: s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-").foregroundStyle(t.c(Palette.goal)).widgetAccentable() }
             }
@@ -146,7 +146,7 @@ struct PaceChart: View {
             let fNow = min(1, max(0, Date().timeIntervalSince(Day.date(s.start ?? Day.today) ?? Date()) / span))
             let X: (Double) -> CGFloat = { 6 + CGFloat($0) * (w - 20) }
             let Y: (Double) -> CGFloat = { h * (1 - CGFloat((min(max($0, lo), hi) - lo) / (hi - lo))) }
-            let req: (Double) -> Double = { v0 * pow(s.goal / v0, $0) }
+            let req: (Double) -> Double = { s.v0 == nil ? v0 * pow(s.goal / v0, $0) : s.need($0) }   // 앱 내 길과 같은 필요 경로 (적립 포함)
             ZStack(alignment: .topLeading) {
                 Path { p in for i in 0...40 { let f = Double(i) / 40, pt = CGPoint(x: X(f), y: Y(req(f))); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } }
                     .stroke(tint.c(Palette.goal, 0.9), style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
@@ -262,7 +262,7 @@ struct FutureLargeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Label2(text: "미래 평가액 추이 · 내 관점")
                     Money { h in Big(text: h ? hiddenAmount : s.term.map { Fmt.eok($0.p50) } ?? "-") }
-                    Text("목표일 예상 중앙값").font(.system(size: 12)).opacity(0.6)
+                    Text("\(s.termLabel) 예상 중앙값").font(.system(size: 12)).opacity(0.6)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) { Label2(text: "목표 확률"); Big(text: s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-").foregroundStyle(t.c(Palette.goal)).widgetAccentable() }
