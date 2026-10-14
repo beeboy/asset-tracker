@@ -4,19 +4,13 @@ import SwiftUI
 // 위 '지금 구성으로 본' 그래프(지금 수량 × 지난 가격)와 따로 보여 준다
 struct MyRecordCard: View {
     @Environment(AppModel.self) private var m
-    /// 국내 주식 합계 기록 보기 (넣은 금액이 있을 때만 버튼이 보인다. 웹 내 기록과 같다)
 
     var body: some View {
-        let D = m.isSample ? [] : m.myRecord, K = m.isSample ? [] : CustomSymbols.shared.krLog
-        if !K.isEmpty && (m.recKr || D.isEmpty) {
-            Card {
-                head(D, K)
-                KrRecord(log: K)
-            }
-        } else if let L = D.last, let first = D.first {
+        let D = m.isSample ? [] : m.myRecord
+        if let L = D.last, let first = D.first {
             let gain = L.c > 0 ? L.v / L.c - 1 : nil
             Card {
-                head(D, K)
+                head(D)
                 HStack(alignment: .top, spacing: 8) {
                     cell("평가액", AppModel.man(L.v), Theme.ink)
                     cell("넣은 돈", AppModel.man(L.c), Theme.ink)
@@ -46,14 +40,10 @@ struct MyRecordCard: View {
         }
     }
 
-    @ViewBuilder private func head(_ D: [DayRec], _ K: [MC.KrDay]) -> some View {
+    private func head(_ D: [DayRec]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("naeilo를 쓴 날부터의 내 기록").appFont(15, .bold)
-            if let f = D.first, !(m.recKr && !K.isEmpty) { Text("\(Day.md(f.d))부터 · \(D.count)일 기록").appFont(12).foregroundStyle(Theme.muted) }
-            else if let f = K.first { Text("\(Day.md(f.d))부터 · \(K.count)번 넣음").appFont(12).foregroundStyle(Theme.muted) }
-        }
-        if !K.isEmpty && !D.isEmpty {
-            ChipRow(items: [(false, "내 기록"), (true, "국내 주식 합계")], selection: Binding(get: { m.recKr }, set: { m.recKr = $0 }), fill: true)
+            if let f = D.first { Text("\(Day.md(f.d))부터 · \(D.count)일 기록").appFont(12).foregroundStyle(Theme.muted) }
         }
     }
 
@@ -89,53 +79,5 @@ private struct RecordLines: View {
             }
         }
         .accessibilityHidden(true)
-    }
-}
-
-/// 내 기록 '국내 주식 합계': 넣은 금액을 날짜별 선으로 (점 = 넣은 날, 넣지 않은 날은 앞 금액을 이어 그림)
-private struct KrRecord: View {
-    let log: [MC.KrDay]
-    var body: some View {
-        let today = Day.today, L = log.last!, F = log.first!
-        // 날마다 (금액이 바뀐 날만 계단처럼 오르내린다. 웹과 같다)
-        let xs: [String] = {
-            var out: [String] = [], t = Day.date(F.d) ?? Date()
-            while out.count < 4000 { let d = Day.str(t); if d > today { break }; out.append(d); t = Calendar.current.date(byAdding: .day, value: 1, to: t) ?? t.addingTimeInterval(86400) }
-            return out.isEmpty ? [today] : out
-        }()
-        let ys = xs.map { MC.krAt(log, $0) }
-        let prev = log.count > 1 ? log[log.count - 2].v : nil
-        let ago = Day.date(L.d).map { Int((Date().timeIntervalSince($0) / 86400).rounded(.down)) } ?? 0
-        HStack(alignment: .top, spacing: 8) {
-            cell("지금 합계", AppModel.man(L.v), L.d == today ? "오늘 넣음" : "\(ago)일 전 금액")
-            cell("처음 넣은 금액", AppModel.man(F.v), Day.md(F.d))
-            cell("지난번 대비", prev.map { $0 > 0 ? AppModel.sgn(L.v / $0 - 1) : "-" } ?? "-", prev.map { AppModel.man($0) + " →" } ?? "한 번 넣음")
-        }
-        if xs.count < 2 {   // 첫날: 점 하나 (웹과 같다)
-            Circle().fill(Theme.teal).frame(width: 8, height: 8).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 6).accessibilityHidden(true)
-        } else {
-            GeometryReader { g in
-                let hi = max(1, (ys.max() ?? 1) * 1.05), t0 = MC.dayNum(xs[0]), span = Double(max(1, MC.dayNum(xs[xs.count - 1]) - t0))
-                let pt = { (d: String, v: Double) in CGPoint(x: CGFloat(Double(MC.dayNum(d) - t0) / span) * g.size.width, y: (1 - CGFloat(v / hi)) * (g.size.height - 6) + 3) }
-                ZStack {
-                    Path { p in for (i, d) in xs.enumerated() { i == 0 ? p.move(to: pt(d, ys[i])) : p.addLine(to: pt(d, ys[i])) } }
-                        .stroke(Theme.teal, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
-                    ForEach(log, id: \.d) { x in
-                        Circle().fill(Theme.teal).frame(width: 6, height: 6).position(pt(x.d, x.v))
-                    }
-                }
-            }
-            .frame(height: 110).accessibilityHidden(true)
-            HStack { Text(Day.md(xs[0])); Spacer(); Text(Day.md(xs[xs.count - 1])) }.appFont(11).foregroundStyle(Theme.muted)
-        }
-        Text(xs.count < 2 ? "오늘 처음 넣었어요. 다음에 넣으면 선이 그려져요." : "점 = 넣은 날. 안 넣은 날은 앞 금액 그대로예요. 엑셀은 naeilo.com 내 기록에서.")
-            .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-    }
-    private func cell(_ k: String, _ v: String, _ sub: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(k).appFont(12).foregroundStyle(Theme.sub)
-            Text(v).appFont(15, .bold).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.6)
-            Text(sub).appFont(11).foregroundStyle(Theme.muted).lineLimit(1).minimumScaleFactor(0.7)
-        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }

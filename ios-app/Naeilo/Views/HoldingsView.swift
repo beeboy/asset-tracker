@@ -352,10 +352,8 @@ struct KoreaSumCard: View {
         let ago = lastD.flatMap(Day.date).map { Int((Date().timeIntervalSince($0) / 86400).rounded(.down)) } ?? 0
         Card {
             Text(title).appFont(15, .bold)
-            // 웹 입력 칸 밑 안내와 같은 문구. '기록 그래프'를 누르면 내 기록의 '국내 주식 합계' 그래프로 간다
-            (Text("증권사 앱 합계 그대로 (0이면 지움)" + (held && ago > 0 ? " · \(ago)일 전 금액" : "") + " · 전망은 EWY×원/달러 · ") + Text("기록 그래프").foregroundColor(Theme.teal))
+            Text("증권사 앱 합계 그대로 (0이면 지움)" + (held && ago > 0 ? " · \(ago)일 전 금액" : "") + " · 전망은 EWY×원/달러")
                 .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                .onTapGesture { focus = false; m.recKr = true; m.tab = .hold; m.holdPath = NavigationPath(); done?() }
             HStack(spacing: 8) {
                 TextField(cur.map { Int($0.rounded()).formatted() + "원" } ?? "금액 (원)", text: $t).keyboardType(.decimalPad).focused($focus)
                     .padding(.horizontal, 12).frame(minHeight: 44)
