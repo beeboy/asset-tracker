@@ -139,10 +139,11 @@
     synthKR();
   }
   // 토스증권 국내 지금 가격 (개발자 전용: 키를 넣은 PC 의 server.py 에서만 값이 온다)
-  // 정적 사이트(naeilo.com)는 이 브라우저에 PC 의 Tailscale 주소를 넣어 둔 경우만: localStorage.toss_base = "https://my-pc….ts.net"
+  // 정적 사이트(naeilo.com)는 이 브라우저에 PC 의 Tailscale 주소를 넣어 둔 경우만: naeilo.com/web/?toss=https://my-pc….ts.net 을 한 번 열면 저장 (?toss= 빈 값이면 지움)
   async function tossQuotes() {
     let base = "";
-    if (MODE !== "local") { try { base = (localStorage.getItem("toss_base") || "").replace(/\/$/, ""); } catch (e) { /* 무시 */ } if (!base) return; }
+    if (MODE !== "local") { try { const u = new URL(location.href), t = u.searchParams.get("toss"); if (t != null) { if (/^https:\/\/[\w.-]+\.ts\.net\/?$/.test(t)) localStorage.setItem("toss_base", t); else localStorage.removeItem("toss_base"); u.searchParams.delete("toss"); history.replaceState(null, "", u); } } catch (e) { /* 무시 */ }
+      try { base = (localStorage.getItem("toss_base") || "").replace(/\/$/, ""); } catch (e) { /* 무시 */ } if (!base) return; }
     const ks = (S.state?.holdings || []).map((h) => h.ticker).filter((t) => isKR(t) && t !== KR_SUM);
     if (!ks.length) return;
     try { const j = await api(base + "/api/toss/prices?symbols=" + encodeURIComponent(ks.join(","))); Object.assign(S.quotes, j.quotes || {}); if (j.error) logLine("토스 시세: " + j.error, false); } catch (e) { /* 무시 */ }
