@@ -419,6 +419,44 @@ struct ExternalView: View {
         return "\(name)과 \(FactorDetailView.names[strong[1].k] ?? "")이 비슷하게 내 자산을 흔들어요." + tail
     }
 
+    /// 과거 재생: 그때 함께 움직인 요인 변화 × 지금 내 종목 민감도 (웹 xfReplays 와 같은 식)
+    private var replayCard: some View {
+        let total = max(1, m.total)
+        return Card {
+            Text("그때 그 일이 지금 일어나면").appFont(16, .bold)
+            Text("그때 실제로 함께 움직인 만큼을 지금 내 구성에 적용했어요.").appFont(12).foregroundStyle(Theme.sub)
+            ForEach(SiteCalc.replays, id: \.when) { rp in
+                let os = m.rows.map { r in (r.value, SiteCalc.replayMove(rp, usd: r.sym.currency == .usd) { k in k == "mkt" ? Self.mktBeta(r.id) : SiteCalc.shared.beta(k, r.id) }) }
+                let tot = os.reduce(0) { $0 + $1.0 * $1.1.total }, fx = os.reduce(0) { $0 + $1.0 * $1.1.fx }
+                let small = abs(fx) < total * FactorDetailView.tiny
+                let note = small ? "달러 자산이 거의 없어 환율 영향은 작았어요."
+                    : tot < 0 ? (fx > 0 ? "환율이 오르면서 \(AppModel.man(fx))을 막아줬어요." : "이번엔 환율도 함께 내려서 손실을 \(AppModel.man(-fx)) 더 키웠어요.")
+                    : fx > 0 ? "환율이 오르면서 \(AppModel.man(fx))을 보탰어요." : "환율이 내리면서 \(AppModel.man(-fx))을 깎았어요."
+                let chips = ["mkt", "rate", "fx"].filter { $0 != "rate" || abs(rp.mv["rate"] ?? 0) >= 1 }.map { k -> String in
+                    let v = rp.mv[k] ?? 0
+                    return "\(FactorDetailView.names[k] ?? "") \(v > 0 ? "+" : "−")\(String(format: "%g", abs(v)))\(k == "rate" ? "%p" : "%")"
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("\(rp.when) · \(rp.name)").appFont(12).foregroundStyle(Theme.sub)
+                        Spacer()
+                        Text((tot > 0 ? "+" : tot < 0 ? "−" : "") + AppModel.man(abs(tot))).appFont(15, .bold)
+                    }
+                    HStack(spacing: 6) {
+                        ForEach(chips, id: \.self) { c in
+                            Text(c).appFont(11).padding(.horizontal, 8).padding(.vertical, 3).background(Theme.border, in: Capsule())
+                        }
+                    }
+                    Text(note).appFont(12).foregroundStyle(!small && fx > 0 ? Theme.teal : Color.orange)
+                }
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
+            }
+            Text("요인마다 따로가 아니라 그때 함께 움직인 값을 썼어요. 지난 3년 시세가 없는 종목은 시장과 같이 움직인다고 봤어요.")
+                .appFont(11).foregroundStyle(Theme.muted).lineSpacing(2)
+        }
+    }
+
     var body: some View {
         let rs = ranks
         let scale = max(1, rs.filter { !$0.weak }.map(\.amt).max() ?? 1)
@@ -475,6 +513,7 @@ struct ExternalView: View {
                         Text("요인 자료를 불러오는 중이에요.").appFont(12).foregroundStyle(Theme.muted)
                     }
                 }
+                replayCard
                 Card(dark: true) {
                     Text("다가오는 일정 (45일)").appFont(15, .bold)
                     ForEach(Array(events.enumerated()), id: \.offset) { _, e in

@@ -383,3 +383,8 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .xcmp div { background: rgba(43, 107, 93, 0.08); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .xcmp span { font-size: 12px; color: var(--muted, #777); }
 .xcust { margin: 14px 0 6px; } .xcust input[type=range] { width: 100%; }
+.xrep { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.xchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.xchips span { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--line); }
+.xok { color: #1f4d43; margin: 0; }
+.xbad { color: #9a4a1f; margin: 0; }
