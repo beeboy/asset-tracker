@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>종목 비중 바꿔 비교</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2D6A62}a:hover{color:#1E4A44}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1240px; box-sizing: border-box; background: #F2F3F5; font-family: 'Noto Sans KR', sans-serif; color: #1A1F2B; display: flex; flex-direction: column">
+  <header style="display: flex; align-items: center; gap: 12px; padding: 16px 16px 12px">
+    <a href="B.dc.html" aria-label="뒤로" style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 22px; border: 1px solid #D9DCE1; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1F2B" stroke-width="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </a>
+    <div style="flex-grow: 1; text-align: center; font-weight: 700; font-size: 18px; margin-right: 56px">비중 바꿔 보기</div>
+  </header>
+
+  <section style="padding: 4px 20px 16px; display: flex; flex-direction: column; gap: 6px">
+    <h1 style="margin: 0; font-size: 22px; line-height: 1.4; font-weight: 700">종목 비중을 바꾸면<br>10억에 닿는 시점이 달라져요</h1>
+    <p style="margin: 0; font-size: 13px; color: #5B6270">목표 10억 · 목표일 2029년 10월 5일</p>
+  </section>
+
+  <section style="margin: 0 16px; background: #FFFFFF; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; justify-content: space-between; align-items: center">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 700">내 종목 비중</h2>
+      <button onClick="{{reset}}" style="min-height: 36px; border: 0; background: transparent; color: #2D6A62; font-size: 13px; font-weight: 700; font-family: inherit">처음으로</button>
+    </div>
+
+    <div style="display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #EEF0F2">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+        <div style="{{r.seg}}"></div>
+      </sc-for>
+    </div>
+
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid #F0F1F3">
+        <div style="{{r.chip}}"></div>
+        <div style="flex-grow: 1; min-width: 0">
+          <div style="font-size: 14px; font-weight: 700">{{r.name}}</div>
+          <div style="font-size: 12px; color: #5B6270">{{r.kind}} · {{r.delta}}</div>
+        </div>
+        <button onClick="{{r.dec}}" aria-label="{{r.decLabel}}" style="width: 36px; height: 36px; border-radius: 18px; border: 1px solid #D9DCE1; background: #FFFFFF; font-size: 18px; color: #1A1F2B; font-family: inherit">−</button>
+        <div style="width: 44px; text-align: center; font-size: 15px; font-weight: 700">{{r.w}}%</div>
+        <button onClick="{{r.inc}}" aria-label="{{r.incLabel}}" style="width: 36px; height: 36px; border-radius: 18px; border: 1px solid #D9DCE1; background: #FFFFFF; font-size: 18px; color: #1A1F2B; font-family: inherit">+</button>
+      </div>
+    </sc-for>
+
+    <div style="{{totalBox}}">{{totalText}}</div>
+    <button style="min-height: 40px; border: 1px dashed #B8BEC9; border-radius: 12px; background: #FFFFFF; color: #3E4450; font-size: 13px; font-family: inherit">+ 종목 추가</button>
+  </section>
+
+  <section style="margin: 12px 16px 0; background: #FFFFFF; border-radius: 20px; padding: 18px 16px; display: flex; flex-direction: column; gap: 14px">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 700">10억에 닿는 시점</h2>
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #7A818E; padding-left: 76px">
+      <span>2028</span><span>2030</span><span>2032</span><span>2034</span><span>2036</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <div style="width: 68px; flex-shrink: 0; font-size: 13px; color: #5B6270">지금 비중</div>
+      <div style="position: relative; flex-grow: 1; height: 28px">
+        <div style="position: absolute; left: 21.9%; top: 0; bottom: 0; border-left: 1.5px dashed #1A1F2B"></div>
+        <div style="{{nowBar}}"></div>
+        <div style="{{nowDot}}"></div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <div style="width: 68px; flex-shrink: 0; font-size: 13px; font-weight: 700">바꾼 비중</div>
+      <div style="position: relative; flex-grow: 1; height: 28px">
+        <div style="position: absolute; left: 21.9%; top: 0; bottom: 0; border-left: 1.5px dashed #1A1F2B"></div>
+        <div style="{{newBar}}"></div>
+        <div style="{{newDot}}"></div>
+      </div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #3E4450; padding-left: 76px">
+      <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #2D6A62"></span>보통 닿는 시점</span>
+      <span style="display: flex; align-items: center; gap: 6px"><span style="width: 16px; height: 6px; border-radius: 3px; background: #9CCFC6"></span>10번 중 8번</span>
+      <span>┆ 목표일</span>
+    </div>
+  </section>
+
+  <section style="margin: 12px 16px 0; background: #1A1F2B; color: #FFFFFF; border-radius: 20px; padding: 18px 16px; display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 13px; color: #B8BEC9">바꾼 비중이라면</div>
+    <div style="font-size: 18px; font-weight: 700; line-height: 1.4">{{headline}}</div>
+    <div style="font-size: 14px; color: #E2E5EA; line-height: 1.5">{{spread}}</div>
+    <div style="font-size: 13px; color: #B8BEC9">보통 [예상 시점] · 범위 [빠른 시점] ~ [늦은 시점]</div>
+  </section>
+
+  <div style="padding: 20px 16px; display: flex; flex-direction: column; gap: 10px">
+    <button disabled="{{cantSave}}" style="{{saveStyle}}">이 비중으로 계획 저장</button>
+    <p style="margin: 0; font-size: 12px; color: #7A818E; line-height: 1.5; text-align: center">과거 수익률로 만든 예상이에요. 실제 결과는 달라질 수 있어요.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1240}}'>
+var HOLDINGS = [
+  { id: 'a', name: '[종목 A]', kind: '성장주', agg: 100, color: '#1E4A44', start: 40 },
+  { id: 'b', name: '[ETF B]', kind: '지수', agg: 70, color: '#2D6A62', start: 25 },
+  { id: 'c', name: '[종목 C]', kind: '배당주', agg: 45, color: '#6FB3A7', start: 25 },
+  { id: 'd', name: '현금', kind: '예금·MMF', agg: 0, color: '#C9DCD8', start: 10 }
+];
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { w: this.initial() }; }
+  initial() { var o = {}; HOLDINGS.forEach(function (h) { o[h.id] = h.start; }); return o; }
+  score(w) {
+    var tot = 0, s = 0;
+    HOLDINGS.forEach(function (h) { tot += w[h.id]; s += w[h.id] * h.agg; });
+    return tot > 0 ? s / tot : 0;
+  }
+  model(s) {
+    var mid = 62 - 0.45 * s, half = 6 + 0.25 * s;
+    return { mid: mid, lo: Math.max(1, mid - half * 0.6), hi: Math.min(99, mid + half * 1.4) };
+  }
+  bar(m, strong) {
+    return 'position: absolute; top: 11px; height: 6px; border-radius: 3px; left: ' + m.lo + '%; width: ' + (m.hi - m.lo) + '%; background: ' + (strong ? '#9CCFC6' : '#D5E3E0') + '; transition: all .25s';
+  }
+  dot(m, strong) {
+    return 'position: absolute; top: 8px; width: 12px; height: 12px; border-radius: 6px; left: calc(' + m.mid + '% - 6px); background: ' + (strong ? '#2D6A62' : '#9AA0AA') + '; transition: all .25s';
+  }
+  change(id, d) {
+    var w = Object.assign({}, this.state.w);
+    w[id] = Math.max(0, Math.min(100, w[id] + d));
+    this.setState({ w: w });
+  }
+  renderVals() {
+    var self = this, w = this.state.w, init = this.initial();
+    var total = 0; HOLDINGS.forEach(function (h) { total += w[h.id]; });
+    var rows = HOLDINGS.map(function (h) {
+      var diff = w[h.id] - init[h.id];
+      return {
+        name: h.name, kind: h.kind, w: w[h.id],
+        delta: diff === 0 ? '그대로' : (diff > 0 ? '+' + diff + '%p' : diff + '%p'),
+        seg: 'width: ' + (total > 0 ? w[h.id] / Math.max(total, 100) * 100 : 0) + '%; background: ' + h.color + '; transition: width .25s',
+        chip: 'width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; background: ' + h.color,
+        dec: function () { self.change(h.id, -5); },
+        inc: function () { self.change(h.id, 5); },
+        decLabel: h.name + ' 비중 5% 줄이기',
+        incLabel: h.name + ' 비중 5% 늘리기'
+      };
+    });
+    var ok = total === 100;
+    var now = this.model(this.score(init)), m = this.model(this.score(w)), target = 21.9;
+    var headline = m.mid <= target ? '보통 목표일 안에 닿아요'
+      : (m.mid < now.mid - 0.5 ? '지금보다 빨라지지만, 보통 목표일은 넘겨요'
+      : (m.mid > now.mid + 0.5 ? '지금보다 늦어지고, 보통 목표일을 넘겨요' : '지금과 비슷해요. 보통 목표일을 넘겨요'));
+    var width = m.hi - m.lo;
+    var spread = width > 40 ? '대신 결과 차이가 커요. 아주 빨리 닿을 수도, 한참 늦어질 수도 있어요.'
+      : (width > 25 ? '결과 차이는 보통 수준이에요.' : '결과가 비교적 고르게 모여 있어요. 대신 시간이 더 걸려요.');
+    return {
+      rows: rows,
+      reset: function () { self.setState({ w: self.initial() }); },
+      totalText: ok ? '합계 100%' : '합계 ' + total + '% · 100%가 되도록 맞춰 주세요 (시점은 비율대로 계산했어요)',
+      totalBox: 'font-size: 13px; font-weight: 700; padding: 10px 12px; border-radius: 10px; ' + (ok ? 'background: #E6F1EF; color: #1E4A44' : 'background: #FCEBDD; color: #8A4614'),
+      nowBar: this.bar(now, false), nowDot: this.dot(now, false),
+      newBar: this.bar(m, true), newDot: this.dot(m, true),
+      headline: headline, spread: spread,
+      cantSave: !ok,
+      saveStyle: 'height: 52px; border: 0; border-radius: 14px; font-size: 16px; font-weight: 700; font-family: inherit; ' + (ok ? 'background: #2D6A62; color: #FFFFFF' : 'background: #D9DCE1; color: #5B6270')
+    };
+  }
+}
+</script>
+</body>
+</html>
