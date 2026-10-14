@@ -104,7 +104,7 @@ struct AnalysisView: View {
         let mkt10 = m.rows.reduce(0.0) { a, r in
             a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0)
         } / max(1, m.total)
-        let fxNow = Market.shared.fx.last, today = SiteCalc.today()
+        let fxNow = Market.shared.valFx, today = SiteCalc.today()   // 배당은 웹 fxBase 와 같게 매매기준율
         let div = m.rows.reduce(0.0) { a, r in
             let krw = r.sym.currency == .krw
             let o = SiteCalc.shared.div(r.id).flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fxNow, krw: krw, price: r.sym.last, today: today) }
@@ -234,7 +234,7 @@ struct ForecastView: View {
                             }
                         }
                     }
-                    Text(m.isGoal ? "예측이 아닌 가능성의 범위예요. naeilo.com 3년 전망과 같은 계산(지난 3년 움직임으로 3,000갈래 길, 하루 한 번)이에요."
+                    Text(m.isGoal ? "예측이 아닌 가능성의 범위예요. naeilo.com 목표일 전망과 같은 계산(지난 3년 움직임으로 3,000갈래 길, 하루 한 번)이에요."
                          : "예측이 아닌 가능성의 범위예요. 회복 루트는 본전 기준이라 naeilo.com(목표 기준)과 달라요.").appFont(12).foregroundStyle(Theme.muted)
                 }
                 .padding(16)

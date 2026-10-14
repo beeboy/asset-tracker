@@ -66,16 +66,16 @@
 ## 5. 계산이 있는 곳과 웹·앱 중복
 | 계산 | 웹 | 앱 | 위젯 | CI 검사 |
 |---|---|---|---|---|
-| 평가액 | `valuation`, `fxBase`, `curPrice` (app.js) | `AppModel.total`, `Market.valFx` | `Engine.build` | 없음 |
+| 평가액 | `valuation`, `fxBase`, `curPrice` (app.js) | `AppModel.total`, `Market.valFx` | `Engine.build` | **있음** (`calc_parity`: 환율 고르기·행 평가액) |
 | 일간 변화 | 종목별만 (`dayChg`) | `todayMove` | `Engine.build` | 없음 |
 | 몬테카를로 전망·목표 확률 | `model.js simulate/reweight`, `buildModelNow` | `MonteCarlo.swift`, `ForecastEngine` | 앱이 쓴 스냅샷 | **있음** (`mc_parity`, 같은 입력일 때만) |
 | 내 길(lots) | `recordLot`, `history`, `actualSeries` | `Lots.record`, `AnalysisDetail.pathSeries` | 3개월 전 고정 시작 | 없음 |
 | 국내 ETF 추정 | `synthKR` (`data/kr_proxy.json`) | `KoreaEstimate.synth` (규칙 하드코딩) | 앱 값 고정 | `krNorm/krAt`만 |
 | 외부 요인·베타 | `factorBetas` (실시간 계산) | `SiteCalc.beta` (stats.json) | - | 없음 |
-| 배당 | `dividends`, `divGrowth` | `SiteCalc.project` (calc.json) | - | 웹 쪽 calc.json만 |
+| 배당 | `dividends`, `divGrowth` | `SiteCalc.project` (calc.json) | - | **있음** (`calc_parity`: 화면이 쓰는 환율 포함), `check_calc`는 calc.json |
 | 환율 영향 | `fxInfo` | `FxImpactView` | - | 없음 |
-| 세금(지금 모두 판다면) | app.js 배당·세금 섹션 | `AnalysisDetail` `capGainTax` | - | 없음 |
-| 금리 시나리오 | `rateScenDraw` | `RateScenarioView` | - | 없음 |
+| 세금(지금 모두 판다면) | app.js 배당·세금 섹션 | `AnalysisDetail` `capGainTax` | - | **있음** (`calc_parity`, 미국 종목·실현 이익 0만) |
+| 금리 시나리오 | `rateScenDraw` | `RateScenarioView` | - | **있음** (`calc_parity`: 식단 띠·목표 확률 이동, 기간 3년만 같음) |
 | 동기화 키 유도 | `esDerive` | `Sync.derive` | - | 없음 |
 | 회복 경로·목표 경로·평정·평행 세계 | 없음 | 앱 전용 | - | - |
 
@@ -88,7 +88,7 @@
 **환율 기준**
 1. 평가액: 웹·앱 모두 "5일 이내 매매기준율, 아니면 실시간 환율". 다만 5일 판정이 웹은 `yearsBetween*365 ≤ 5`, 앱·위젯은 KST 날짜 차이 `≥ -5`.
 2. 전망 시작값 환율: 웹은 매매기준율 또는 **실시간** 환율, 앱은 매매기준율 또는 **전일 종가** 환율(`forecastJob`). 매매기준율이 있으면 같음; 대체값만 다름.
-3. 배당·환율 영향·세금: 웹은 `fxBase`(매매기준율), 앱은 `Market.fx.last`(실시간). → 고칠 곳: 앱.
+3. 배당·환율 영향·세금: 웹은 `fxBase`(매매기준율), 앱도 `Market.valFx`(매매기준율)로 맞춤(2026-10-14). 환율 영향 화면의 "지금 원/달러"와 앞날 범위는 웹(`fxInfo`의 `fxNow`)·앱 모두 실시간 환율. 외부 요인의 환율 충격(`ExternalView.move`)은 아직 `fx.last`로 나눔.
 4. 위젯 환율 대체값은 하드코딩 1350.
 
 **시세 기준**
@@ -100,20 +100,20 @@
 8. 웹 시나리오가 conservative/history/trend면 앱은 blend로 계산(`scenarioMu`).
 9. 베타: 웹은 브라우저에서 실시간 계산, 앱은 하루 1번 만든 stats.json. stats.json 종목 값은 기본 설정으로 만들어져 사용자 설정은 모르는 종목에만 반영.
 10. 경로 수: 앱 자체 전망 최대 10,000, 비교용 3,000. 웹은 선택 안 된 시나리오 1,500.
-11. 앱 회복 루트 전망 기간은 목표일이 아니라 36개월.
+11. 앱 회복 루트 전망 기간은 목표일이 아니라 36개월. 위젯 부채꼴·확률도 같은 36개월("3년 뒤"), 위젯 페이스 목표일은 앱 내 길과 같은 시작 + 1년.
 12. 몬테카를로가 끝나기 전 앱은 닫힌 식(log-normal) 값을 먼저 보여 줌. 여기서 국내 종목은 상관을 기본값으로 씀(`SiteStats.key` vs `mcKey`).
 
 **화면별**
-13. 일간 변화: 앱은 환율 변화 포함, 홈·잠금 위젯은 같은 환율로 비교해 환율 변화 제외(결정된 기준). 인물 위젯은 앱 값 사용. 웹에는 전체 일간 % 없음. → 고칠 곳: 앱 `todayMove`, 인물 위젯.
-14. 현금: 웹·앱 홈은 포함, 위젯은 항상 0.
-15. 위젯 스파크라인·목표 시작값: 오늘 수량 × 과거 가격 × **오늘 환율**, 시작일 3개월 전 고정, 회복 루트 목표일 +9개월 고정. 앱 내 길은 lots × 과거 종가 × 그날 환율.
+13. 일간 변화: 앱 `todayMove`와 홈·잠금 위젯 모두 전일·지금을 같은 환율(평가액 환율)로 비교해 환율 변화 제외(결정된 기준, 2026-10-14 앱 수정). 인물 위젯은 앱 값 사용. 웹에는 전체 일간 % 없음.
+14. 현금: 웹·앱 홈·위젯 모두 포함(목표 루트, 앱 `cashKrw`). 인물 위젯 총액은 앱 `m.total`이라 현금 제외.
+15. 위젯 스파크라인·목표 시작값: 앱 내 길(`pathSeries`)과 같이 lots × 과거 종가 × 그날 환율 + 현금. 시작일·시작 금액·필요 경로(적립 포함)도 앱 내 길 값. 샘플·시작 전 루트만 예전처럼 지금 수량 × 과거 가격.
 16. 내 길: 가격 이력이 없는 종목을 웹은 빼고, 앱은 현재가로 더함.
-17. 세금: 웹은 실현 이익을 합산하지 않고 원화 외 전 종목, 앱은 입력한 실현 이익을 더하고 USD 종목만. 환율은 매매기준율로 통일(→ 앱). 실현 이익 포함 여부는 미정.
+17. 세금: 웹은 실현 이익을 합산하지 않고 원화 외 전 종목, 앱은 입력한 실현 이익을 더하고 USD 종목만. 환율은 매매기준율로 통일함(2026-10-14). 실현 이익 포함 여부는 미정.
 18. 금리 시나리오: 앱은 기간을 3년으로 고정해 나누고 목표에서 현금을 빼지 않음. 웹은 목표일까지 기간과 목표 − 현금.
 19. 주간 범위: 웹은 패턴 모델, 앱·위젯은 닫힌 식 σ/√52.
 20. 국내 ETF 규칙: 웹은 `data/kr_proxy.json`, 앱은 코드에 하드코딩(파일이 바뀌면 어긋날 수 있음).
 
-**CI의 한계**: `mc_parity`는 같은 입력을 넣었을 때 공식만 비교합니다. 입력(평가액, 환율, 설정 매핑)은 검사하지 않고, 경로 필터 때문에 `data/stats.json` 변경이나 봇 커밋에서는 돌지 않습니다(추정). `check_calc`는 웹 함수와 calc.json만 비교하고 Swift 쪽은 보지 않습니다.
+**CI 검사 (2026-10-14 넓힘)**: `mc_parity`는 같은 입력에서 몬테카를로 공식을 비교합니다. `calc_parity`(`tools/calc_parity.mjs` + `ios-app/tools/calc_parity`)는 웹 `app.js`와 앱 Swift 원본에서 함수·줄을 그대로 꺼내 같은 입력으로 돌립니다: 환율 고르기(`fxBase` ↔ `valFx`, 매매기준율 0~30일), 평가액, 배당(화면이 쓰는 환율 식 포함), 세금, 금리 시나리오, 위젯 필요 경로(`goalPath.at` ↔ `Snapshot.need`). 아직 못 고친 차이는 도구의 `KNOWN`에 적어 경고만 합니다(지금: 금리 기간 3년 고정, 18번). 두 검사 모두 `ios.yml` parity 잡이 PR·push와 stats·macro 작업이 끝난 뒤(`workflow_run`)에 돌아 봇이 올린 `data/stats.json`·`calc.json`·금리 식단 변경도 봅니다. 남은 한계: 세금의 실현 이익·미국 밖 외화 종목(17번, 미정), 환율 영향 화면, 설정 매핑(7·8번), 국내 ETF 규칙(20번)은 검사하지 않습니다. `check_calc`는 웹 함수와 calc.json을 비교합니다.
 
 ## 7. 동기화 범위 (웹 ↔ 앱)
 - 앱이 올리는 것: holdings, `app`(앱 전용 상태), goal(목표 루트일 때), `model.scenario`·`trust`(웹 시나리오가 blend/base/smooth일 때만), daily, lots, kr_log.
