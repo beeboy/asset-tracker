@@ -32,7 +32,7 @@ struct AnalysisPager: View {
         case .calm: return "평정 지수"
         case .myPath: return "내 길"
         case .forecast: return m.forecastTitle
-        case .rateScen: return "금리 시나리오"
+        case .rateScen: return "금리 충격 테스트"
         case .external: return "외부 요인"
         case .dividend: return "배당·세금"
         case .fx: return "환율 영향"
@@ -116,7 +116,7 @@ struct AnalysisView: View {
                 : ("내 길", "정한 목표대로 가고 있나", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + String(format: "%.1f%%", abs(gap) * 100),
                    gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060), AnalysisRoute.myPath),
             (m.forecastTitle, "시장이 줄 수 있는 미래의 범위", fc.exact ? AppModel.pct(fc.pGoal) : "계산 중", Theme.teal, .forecast),
-            ("금리 시나리오", "금리가 움직이면 시장 이익과 내 목표는", rateTag, Theme.purple, .rateScen),
+            ("금리 충격 테스트", "금리가 움직이면 내 목표는 얼마나 흔들릴까", rateTag, Theme.purple, .rateScen),
             ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "시장 −10%: " + AppModel.sgn(mkt10), Theme.down, .external),
             ("배당·세금", "앞으로 12개월 배당, 팔 때 세금", "연 " + AppModel.won1(div), Theme.teal, .dividend),
             ("환율 영향", "환율이 바뀌면 내 평가액은", "달러 " + AppModel.pct(usd), Theme.blue, .fx),

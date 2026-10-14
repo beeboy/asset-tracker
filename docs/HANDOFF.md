@@ -31,6 +31,7 @@
 
 ## 2. 진행 중·미완성
 - 분석 탭 "내 길" 개편 (B안·B-2안, 목업은 handoff/naeil-path 브랜치 docs/handoff/): 1~4단계 PR #183. 앱 `MyPathGoalView`(목표 루트)·`MyPathCompareView`(비중 비교, 저장=모의 바구니), 회복 루트는 `MyPathClassicView` 그대로(용어만 계획선). 웹 `renderEta`(#etaCard)·`Model.etaPlans`. 알려진 차이: 성장·안정 줄은 앱(지수·업종 묶음 구성)과 웹(비중안 비교 공격적·보수적 규칙) 정의가 달라 숫자가 다름. 웹 비중 비교는 저장 없음(앱만). 앱 빌드는 CI로만 확인
+- 금리 충격 테스트 (계획: claude/rate-shock-handoff 브랜치 docs/handoff/rate-shock-test/). ① 앱 메인 완료(프리셋 4개·결과 카드·3단계·직접 정하기, 근거 화면은 기존 표·그래프 이동). ② 근거 화면 완료(해마다 누적 수준·감소 확률 표, 그래프 y축·오늘선). ③ 금리에 약한 종목 카드 완료(coef 정렬·크게/보통/덜 흔들려요). "구성 바꿔서 다시 테스트" 버튼은 `compareLink`에 자리만 있고 숨김: 내 길 개편의 MyPathCompareView가 들어오면 그 NavigationLink로 바꾼다. ④ 진입점·알림 완료(목표일 전망에 '외부 요인 넣기' 켜면 일정 목록, 금리 행에만 미리 보기 버튼. 금리 화면 '다가오는 금리 일정' + 결정 전날 오전 9시 로컬 알림, alerts["rate"]). ⑤ 웹 같은 화면 완료(#sec-rs: 프리셋·결과 카드·3단계·근거 접기·약한 종목·금리 일정, 알림 토글은 앱만) + calc_parity에 닫힌 식(목표 가능성·도달 개월) 추가. 5단계 모두 끝.
 - 미션 탭 개편 (인계: `docs/handoff/mission-board/`, `claude/mission-board-handoff` 브랜치). ① 이번 주 예보 3카드(예보·맞혀보기·예보 성적) + 주간 범위 저장 + 맞혀보기 배지: PR 올림, 실기기 확인 필요. ② 목표 카드·다음 미션 카드·100칸(회복 루트 `CellGrid` 포함, 공유·벽돌깨기는 1000칸 값 따로 계산): 새 스레드에서. 결정은 decisions.md 2026-10-14
 | 항목 | 상태 |
 |---|---|

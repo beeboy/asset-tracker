@@ -97,10 +97,21 @@ struct ScenarioChart: View {
 struct ScheduleRow: View {
     let hit: MarketEvents.Hit
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(MarketEvents.when(hit.day)).appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 92, alignment: .leading)
-            Text(hit.kind).appFont(13).foregroundStyle(Theme.ink)
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(MarketEvents.when(hit.day)).appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 92, alignment: .leading)
+                Text(hit.kind).appFont(13).foregroundStyle(Theme.ink)
+                Spacer(minLength: 0)
+            }
+            // 금리 결정 행 아래에만 금리 충격 테스트로 가는 버튼
+            if MarketEvents.isRate(hit.id) {
+                NavigationLink(value: AnalysisRoute.rateScen) {
+                    Text("금리가 오르면 내 목표는? 미리 보기").appFont(13, .bold).foregroundStyle(Theme.purple)
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                        .background(Theme.purple.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain).padding(.leading, 102)
+            }
         }
         .padding(.vertical, 2)
     }

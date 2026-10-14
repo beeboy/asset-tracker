@@ -901,6 +901,7 @@ struct RateScen {
     let cum: [[Double]]         // y년까지 누적
     let dropYr: [Double]        // y년째 감소 비율
     let dropCum: Double         // 끝 해 누적 감소 비율
+    let dropCumYr: [Double]     // y년까지 누적으로 오늘보다 줄어 있을 비율 (근거 표)
     let mkt: [Double]           // 시장 연 기대수익 [하위10, 중앙, 상위10]
     let slope: [Double]         // 식단마다 3년 동안의 b 합 (금리 1%p 당 이익 변화 %)
 
@@ -931,7 +932,8 @@ struct RateScen {
         yr = (0..<H).map { y in Self.band(tot.map { $0[y] }) }
         cum = (0..<H).map { y in Self.band(acc.map { $0[y] }) }
         dropYr = (0..<H).map { y in Double(tot.filter { $0[y] < 0 }.count) / n }
-        dropCum = H > 0 ? Double(acc.filter { $0[H - 1] < 0 }.count) / n : 0
+        dropCumYr = (0..<H).map { y in Double(acc.filter { $0[y] < 0 }.count) / n }
+        dropCum = dropCumYr.last ?? 0
         // 시장 연 수익 ≈ 3년 누적 이익 변화(연) + 배당 1.5% + 금리 외 공통 기대수익 (PER 그대로)
         let Hd = Double(max(1, H))
         mkt = Self.band(acc.map { a in exp((a.last ?? 0) / 100 / Hd) - 1 + 0.015 + m })
@@ -939,10 +941,12 @@ struct RateScen {
     }
 }
 
+/// 금리 충격 테스트: 목표일 전망(내 설정)을 기준선으로 두고 금리만 바꿨을 때 달라지는 만큼 (2026-10-14 시안)
 struct RateScenarioView: View {
     @Environment(AppModel.self) private var m
-    @State private var dr: Double? = nil
-    @State private var mk = 0.0
+    @State private var pick = 2              // 프리셋 번호. 기본 "작년만큼 또 오른다". -1 이면 직접 정한 값
+    @State private var custom = 0.0
+    @State private var open = false
     private var macro: MacroData { MacroData.shared }
 
     var body: some View {
@@ -960,6 +964,13 @@ struct RateScenarioView: View {
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
         .task { await macro.load() }
+    }
+
+    /// 프리셋 4개: 이름, 설명, 10년물 변화(%p). "작년만큼"은 지난 1년 실제 변화
+    private var presets: [(label: String, sub: String, dr: Double)] {
+        let y = macro.defaultDr
+        return [("내린다", "10년물 −0.5%p", -0.5), ("그대로", "변화 없음", 0),
+                ("작년만큼 또 오른다", Self.signed(y, "%p", 1), y), ("2022년처럼 급등", "+2.5%p", 2.5)]
     }
 
     /// 포트폴리오 시장 민감도 β (외부 요인 화면과 같은 값)
@@ -984,61 +995,263 @@ struct RateScenarioView: View {
         let num: Double = log(eff / c.K) + g * T
         return AppModel.normCDF(num / (sg * sqrt(T)))
     }
+    /// 보통의 경우(로그 기대 g + shift) 매달 M씩 넣으며 K에 처음 닿는 개월. 50년 안에 못 닿으면 nil
+    private static func months(_ c: Closed, _ shift: Double) -> Int? {
+        guard c.K > 0 else { return nil }
+        if c.V0 >= c.K { return 0 }
+        let gm = exp((c.mu - c.sg * c.sg / 2 + shift) / 12)
+        var v = c.V0
+        for n in 1...600 { v = v * gm + c.M; if v >= c.K { return n } }
+        return nil
+    }
 
     @ViewBuilder private func main(_ file: MacroData.File, _ M: MacroData.File.Meals) -> some View {
-        let d = dr ?? macro.defaultDr, mm = mk / 100
+        let d = pick >= 0 ? presets[pick].dr : custom, mm = 0.0   // 시장 공통 기대수익은 이 화면에서 뺐다 (목표일 전망의 추세 믿음과 같은 레버)
         let r = macro.scen(dr: d, m: mm) ?? RateScen(coef: M.coef, g0: M.g_now, dr: d, m: mm)
         let f = m.forecast, kb = beta, ci = closedInput(f)
         let base = Self.prob(f, ci, 0)
         let shifts: [Double] = r.slope.map { b in kb * (b * d / 3 / 100 + mm) }
         let pb = RateScen.band(shifts.map { Self.prob(f, ci, $0) })
-        let drBinding = Binding<Double>(get: { dr ?? macro.defaultDr }, set: { dr = $0 })
+        let mid = RateScen.band(shifts)[1]
+        let delta = Int(((pb[1] - base) * 100).rounded())
         let H = r.years
+        let eps = H > 0 ? exp(r.cum[H - 1][1] / 100) - 1 : 0
+        let m0 = Self.months(ci, 0), m1 = Self.months(ci, mid)
+        let endAmt = f.q50.last ?? 0, T = ci.T
+        let when = pick >= 0 ? (pick == 0 ? "금리가 내리면" : pick == 1 ? "금리가 그대로면" : pick == 2 ? "금리가 작년만큼 또 오르면" : "금리가 2022년처럼 급등하면")
+                             : "금리가 \(Self.signed(d, "%p", 1)) 움직이면"
 
-        PinnedLayout {
-            pinnedBox {
-                DetailHead(title: "금리 시나리오", sub: "")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(m.keyName) 확률 " + AppModel.pct(pb[1])).appFont(22, .bold).foregroundStyle(Theme.teal)
-                    Text("모형 범위 \(AppModel.pct(pb[0]))~\(AppModel.pct(pb[2])) · 금리 영향 빼면 \(AppModel.pct(base))").appFont(12).foregroundStyle(Theme.sub)
-                }
-                RateBandChart(cum: r.cum).frame(height: 130)
-                Text("S&P500 실질 이익 (오늘 = 100) · 진한 선: 중앙 · 띠: 모형 80%가 드는 범위").appFont(12).foregroundStyle(Theme.sub)
-            }
-        } content: {
+        ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Card {
-                    HStack { Text("앞으로 1년 10년물 금리 변화").appFont(14); Spacer(); Text(signed(d, "%p", 1)).appFont(15, .bold) }
-                    Slider(value: drBinding, in: -2...3, step: 0.1).tint(Theme.orange).accessibilityLabel("앞으로 1년 10년물 금리 변화")
-                    if let c = macro.change1y {
-                        Text("지난 1년 실제 변화 \(signed(c, "%p", 2))" + (file.now?.rate.map { String(format: " · 지금 %.2f%%", $0) } ?? "")).appFont(12).foregroundStyle(Theme.muted)
+                DetailHead(title: "금리 충격 테스트", sub: "")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("금리가 이렇게 되면, 내 목표는 얼마나 흔들릴까요?").appFont(20, .bold)
+                    Text("목표일 전망의 내 설정을 기준으로, 금리만 바꿔 봤을 때 달라지는 만큼만 보여줘요.").appFont(13).foregroundStyle(Theme.sub)
+                }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    ForEach(presets.indices, id: \.self) { i in
+                        let on = pick == i
+                        Button { pick = i } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(presets[i].label).appFont(14, .bold)
+                                Text(presets[i].sub).appFont(12).foregroundStyle(on ? Theme.tealDark : Theme.sub)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                            .background(on ? Theme.tealBg : Theme.card, in: RoundedRectangle(cornerRadius: 14))
+                            .overlay { RoundedRectangle(cornerRadius: 14).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 2 : 1) }
+                        }
+                        .buttonStyle(.plain).foregroundStyle(Theme.ink)
                     }
-                    HStack { Text("시장 공통 기대수익 (금리 외 요인, 연)").appFont(14); Spacer(); Text(signed(mk, "%", 0)).appFont(15, .bold) }
-                    Slider(value: $mk, in: -10...10, step: 1).tint(Theme.orange).accessibilityLabel("시장 공통 기대수익")
-                    Button("지금 값으로") { dr = nil; mk = 0 }.appFont(13, .bold).foregroundStyle(Theme.teal)
                 }
                 Card(dark: true) {
-                    Text("S&P 실질 이익").appFont(15, .bold)
-                    tableRow("", "하위 10%", "중앙", "상위 10%", "감소", head: true)
-                    ForEach(0..<H, id: \.self) { y in
-                        tableRow("\(y + 1)년째 변화", signed(r.yr[y][0], "%", 1), signed(r.yr[y][1], "%", 1), signed(r.yr[y][2], "%", 1), AppModel.pct(r.dropYr[y]))
+                    Text(when).appFont(13).foregroundStyle(Theme.sub)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(m.keyName) 가능성").appFont(14)
+                        Text(AppModel.pct(base)).appFont(18).foregroundStyle(Theme.sub)
+                        Text("→").appFont(16).foregroundStyle(Theme.sub)
+                        Text(AppModel.pct(pb[1])).appFont(28, .bold)
+                        Spacer()
+                        Text(delta == 0 ? "변화 없음" : (delta > 0 ? "+" : "−") + "\(abs(delta))%p").appFont(13, .bold)
+                            .padding(.horizontal, 10).padding(.vertical, 4)
+                            .background(delta < 0 ? Theme.orange : delta > 0 ? Theme.teal : Theme.muted, in: Capsule()).foregroundStyle(.white)
                     }
-                    if H > 0 {
-                        tableRow("\(H)년 누적", signed(r.cum[H - 1][0], "%", 1), signed(r.cum[H - 1][1], "%", 1), signed(r.cum[H - 1][2], "%", 1), AppModel.pct(r.dropCum))
-                    }
+                    bar("지금", base, Theme.muted)
+                    bar("이 경우", pb[1], delta < 0 ? Theme.orange : Theme.teal)
                     Divider()
-                    tableRow("시장 연 기대수익", AppModel.sgn(r.mkt[0]), AppModel.sgn(r.mkt[1]), AppModel.sgn(r.mkt[2]), "")
-                    Text("포트폴리오 시장 민감도 β \(String(format: "%.2f", kb)) · \(m.forecastTitle) \(m.keyName) 확률 \(AppModel.pct(base)) 기준").appFont(12).foregroundStyle(Theme.muted)
+                    infoRow("\(AppModel.eok(m.keyValue))에 닿는 시점", timing(m0, m1))
+                    if endAmt > 0, let ds = f.dates.last {
+                        infoRow("\(Self.ym(ds)) 그럴듯한 금액", "\(AppModel.eok(endAmt)) → \(AppModel.eok(endAmt * exp(mid * T)))")
+                    }
                 }
-                footnote("예측이 아닌 \"만약\" 도구. 1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산. 이익 자료 \(file.eps_last ?? "")까지. 출처 Robert J. Shiller. 종목 추천이 아닙니다.")
+                Card {
+                    Text("어떻게 내 자산까지 오나요?").appFont(16, .bold)
+                    Text("금리는 세 단계를 거쳐 내 목표에 닿아요.").appFont(13).foregroundStyle(Theme.sub)
+                    step(1, "금리", file.now?.rate.map { String(format: "%.2f%% → %.2f%%", $0, $0 + d) } ?? Self.signed(d, "%p", 1), "미국 10년물 국채 금리 기준")
+                    step(2, "기업이 버는 돈", abs(eps) < 0.005 ? "\(H)년 동안 이익이 거의 그대로예요" : "\(H)년 동안 이익이 약 \(Int((abs(eps) * 100).rounded()))% \(eps < 0 ? "줄어요" : "늘어요")",
+                         "빌리는 돈이 비싸지면 이익이 줄어드는 경향이 있어요")
+                    step(3, "내 자산", abs(mid) < 0.0005 ? "1년 기대수익이 거의 그대로예요" : "1년 기대수익이 약 \(String(format: "%.1f", abs(mid) * 100))%p \(mid < 0 ? "낮아져요" : "높아져요")",
+                         "그래서 \(m.keyName) 가능성이 위 숫자만큼 달라져요")
+                    NavigationLink { RateWhyView(r: r, when: when, epsLast: file.eps_last) } label: {
+                        Text("2단계 근거 자세히 보기").appFont(13, .bold).foregroundStyle(Theme.teal)
+                    }
+                }
+                weakCard
+                rateEventsCard
+                Card {
+                    Button { withAnimation { open.toggle() } } label: {
+                        HStack { Text("금리 변화 직접 정하기").appFont(15, .bold); Spacer(); Image(systemName: open ? "chevron.up" : "chevron.down") }
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Theme.ink)
+                    if open {
+                        HStack { Text("앞으로 1년 10년물 금리 변화").appFont(14); Spacer(); Text(Self.signed(d, "%p", 1)).appFont(15, .bold) }
+                        Slider(value: Binding(get: { d }, set: { custom = $0; pick = -1 }), in: -2...3, step: 0.1)
+                            .tint(Theme.orange).accessibilityLabel("앞으로 1년 10년물 금리 변화")
+                        if let c = macro.change1y {
+                            Text("지난 1년 실제 변화 \(Self.signed(c, "%p", 2))").appFont(12).foregroundStyle(Theme.muted)
+                        }
+                    }
+                }
+                footnote("예측이 아니라 '만약에'를 보는 화면이에요. 금리 말고 다른 조건은 목표일 전망의 내 설정과 같아요. 종목 추천이 아닙니다.")
             }
             .padding(16)
         }
     }
 
-    private func signed(_ v: Double, _ unit: String, _ digits: Int) -> String {
+    /// 다가오는 금리 일정 (FOMC·한국은행) + 결정 하루 전 알림 토글. 날짜는 고정 규칙이라 근사일 수 있다
+    @ViewBuilder private var rateEventsCard: some View {
+        let events = MarketEvents.rateUpcoming(days: 60).prefix(4)
+        Card {
+            Text("다가오는 금리 일정").appFont(16, .bold)
+            ForEach(Array(events.enumerated()), id: \.offset) { _, e in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
+                    Text(e.kind).appFont(14, .bold)
+                    Spacer()
+                }
+            }
+            if events.isEmpty { Text("60일 안에 정해진 금리 일정이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
+            Toggle(isOn: Binding(get: { m.alerts["rate"] == true }, set: { on in
+                if on { Task { if await Notifier.request() { m.alerts["rate"] = true } } } else { m.alerts["rate"] = false }
+            })) { Text("결정 하루 전에 이 테스트 다시 보기").appFont(14) }.tint(Theme.purple)
+            Text("날짜는 정해진 주기로 계산해 실제 일정과 하루이틀 다를 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+        }
+    }
+
+    /// 내 종목 중 금리에 약한 곳: 10년물 +1%p 때 움직임(coef.1)이 낮은 순. 비율·민감도로만 보여 준다 (종목 조언 아님)
+    @ViewBuilder private var weakCard: some View {
+        let tot = max(1, m.total)
+        let list = m.rows.filter { $0.value > 0 }
+            .map { (r: $0, c: ExternalView.coef($0.sym).1) }
+            .sorted { $0.c < $1.c }
+        if !list.isEmpty {
+            let lo = list.map { $0.c }.min() ?? 0, hi = list.map { $0.c }.max() ?? 0
+            let span = max(0.0001, hi - lo)
+            Card {
+                Text("내 종목 중 금리에 약한 곳").appFont(16, .bold)
+                Text("금리가 오를 때 더 크게 흔들리는 순서예요.").appFont(13).foregroundStyle(Theme.sub)
+                ForEach(Array(list.prefix(6).enumerated()), id: \.offset) { _, e in
+                    // 가장 약한 쪽 1/3 은 크게, 가장 강한 쪽 1/3 은 덜, 나머지는 보통
+                    let t = (e.c - lo) / span
+                    let tier = list.count < 2 ? 1 : (t < 1.0 / 3 ? 0 : t > 2.0 / 3 ? 2 : 1)
+                    let col = tier == 0 ? Theme.orange : tier == 1 ? Theme.muted : Theme.teal
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(e.r.sym.name).appFont(14, .bold).lineLimit(1)
+                            Spacer()
+                            Text(["크게 흔들려요", "보통이에요", "덜 흔들려요"][tier]).appFont(12, .bold).foregroundStyle(col)
+                        }
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Theme.muted.opacity(0.2))
+                                Capsule().fill(col).frame(width: g.size.width * (0.15 + 0.85 * (1 - t)))
+                            }
+                        }
+                        .frame(height: 8)
+                        Text("비중 \(Int((e.r.value / tot * 100).rounded()))% · \(e.r.sym.sector)").appFont(12).foregroundStyle(Theme.muted)
+                    }
+                }
+                compareLink
+            }
+        }
+    }
+
+    /// "구성 바꿔서 다시 테스트하기": 내 길 개편의 비중 비교 화면(MyPathCompareView, 개편 PR에서 추가)으로 간다.
+    /// 그 화면이 들어오기 전에는 버튼을 숨긴다. 들어오면 아래 EmptyView 를 NavigationLink { MyPathCompareView() } 로 바꾼다
+    @ViewBuilder private var compareLink: some View {
+        EmptyView()
+    }
+
+    private func timing(_ a: Int?, _ b: Int?) -> String {
+        guard let a, let b else { return b == nil && a != nil ? "50년 안에 닿기 어려워요" : "계산할 수 없어요" }
+        if a == 0 { return "이미 닿았어요" }
+        let n = b - a
+        if n == 0 { return "거의 같아요" }
+        let y = abs(n) / 12, mo = abs(n) % 12
+        let span = (y > 0 ? "\(y)년" : "") + (y > 0 && mo > 0 ? " " : "") + (mo > 0 ? "\(mo)개월" : "")
+        return "약 \(span) " + (n > 0 ? "늦어져요" : "빨라져요")
+    }
+
+    private func bar(_ k: String, _ p: Double, _ c: Color) -> some View {
+        HStack(spacing: 8) {
+            Text(k).appFont(12).foregroundStyle(Theme.sub).frame(width: 44, alignment: .leading)
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.muted.opacity(0.25))
+                    Capsule().fill(c).frame(width: g.size.width * max(0, min(1, p)))
+                }
+            }
+            .frame(height: 8)
+        }
+    }
+
+    private func infoRow(_ k: String, _ v: String) -> some View {
+        HStack { Text(k).appFont(13).foregroundStyle(Theme.sub); Spacer(); Text(v).appFont(14, .bold) }
+    }
+
+    private func step(_ n: Int, _ title: String, _ v: String, _ note: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(n)").appFont(13, .bold).foregroundStyle(.white).frame(width: 24, height: 24).background(Theme.teal, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).appFont(13).foregroundStyle(Theme.sub)
+                Text(v).appFont(15, .bold)
+                Text(note).appFont(12).foregroundStyle(Theme.muted)
+            }
+        }
+    }
+
+    /// "2029-10-01" → "2029년 10월"
+    static func ym(_ s: String) -> String {
+        let p = s.split(separator: "-")
+        guard p.count >= 2, let mo = Int(p[1]) else { return s }
+        return "\(p[0])년 \(mo)월"
+    }
+
+    static func signed(_ v: Double, _ unit: String, _ digits: Int) -> String {
         (v >= 0 ? "+" : "−") + String(format: "%.\(digits)f", abs(v)) + unit
     }
+}
+
+/// 근거 화면 (2단계 · 기업이 버는 돈): 해마다 변화 표 + 해마다 누적 수준·감소 확률 표, y축·오늘선 있는 띠 그래프
+private struct RateWhyView: View {
+    let r: RateScen
+    let when: String
+    let epsLast: String?
+
+    var body: some View {
+        let H = r.years
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                DetailHead(title: "근거 자세히 보기", sub: "")
+                Text("2단계 · 기업이 버는 돈").appFont(12, .bold).foregroundStyle(Theme.teal)
+                Text("\(when), 미국 대표 기업들의 이익은 이렇게 움직여요").appFont(18, .bold)
+                Card {
+                    RateBandChart(cum: r.cum).frame(height: 150)
+                    Text("S&P500 이익 (오늘 = 100, 물가 뺀 값) · 진한 선: 보통의 경우 · 띠: 10번 중 8번").appFont(12).foregroundStyle(Theme.sub)
+                }
+                Card(dark: true) {
+                    tableRow("", "하위 10%", "중앙", "상위 10%", "감소", head: true)
+                    ForEach(0..<H, id: \.self) { y in
+                        tableRow("\(y + 1)년째 변화", s(r.yr[y][0]), s(r.yr[y][1]), s(r.yr[y][2]), AppModel.pct(r.dropYr[y]))
+                    }
+                    Text("감소는 그 해 이익이 줄어들 확률이에요.").appFont(12).foregroundStyle(Theme.muted)
+                }
+                Card(dark: true) {
+                    tableRow("오늘 = 100", "하위 10%", "중앙", "상위 10%", "감소", head: true)
+                    ForEach(0..<H, id: \.self) { y in
+                        tableRow("\(y + 1)년 뒤", lv(r.cum[y][0]), lv(r.cum[y][1]), lv(r.cum[y][2]), AppModel.pct(r.dropCumYr[y]))
+                    }
+                    Text("감소는 그때 이익이 오늘보다 적을 확률이에요.").appFont(12).foregroundStyle(Theme.muted)
+                }
+                footnote("1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산. 이익 자료 \(epsLast ?? "")까지. 출처 Robert J. Shiller.")
+            }
+            .padding(16)
+        }
+        .background(Theme.bg)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func s(_ v: Double) -> String { RateScenarioView.signed(v, "%", 1) }
+    private func lv(_ v: Double) -> String { String(format: "%.0f", 100 * exp(v / 100)) }
 
     private func tableRow(_ k: String, _ a: String, _ b: String, _ c: String, _ e: String, head: Bool = false) -> some View {
         HStack(spacing: 4) {
@@ -1061,7 +1274,8 @@ private struct RateBandChart: View {
             let n = lv[1].count
             let all = lv.flatMap { $0 }
             let hi = (all.max() ?? 110) * 1.03, lo = (all.min() ?? 90) * 0.97
-            let x = { (i: Int) -> CGFloat in CGFloat(i) / CGFloat(max(1, n - 1)) * (size.width - 8) + 4 }
+            let x0: CGFloat = 30   // 왼쪽 y축 눈금 자리
+            let x = { (i: Int) -> CGFloat in CGFloat(i) / CGFloat(max(1, n - 1)) * (size.width - x0 - 8) + x0 }
             let y = { (v: Double) -> CGFloat in CGFloat((hi - v) / max(1e-9, hi - lo)) * (size.height - 14) }
             let area = Path { p in
                 for i in 0..<n { let pt = CGPoint(x: x(i), y: y(lv[2][i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) }
@@ -1069,8 +1283,20 @@ private struct RateBandChart: View {
                 p.closeSubpath()
             }
             ctx.fill(area, with: .color(Theme.teal.opacity(0.16)))
-            ctx.stroke(Path { p in p.move(to: CGPoint(x: 0, y: y(100))); p.addLine(to: CGPoint(x: size.width, y: y(100))) },
+            // y축 눈금 (오늘 = 100 기준 10 간격)
+            var t = (lo / 10).rounded(.up) * 10
+            while t <= hi {
+                ctx.stroke(Path { p in p.move(to: CGPoint(x: x0, y: y(t))); p.addLine(to: CGPoint(x: size.width, y: y(t))) },
+                           with: .color(Theme.muted.opacity(0.25)), lineWidth: 0.5)
+                ctx.draw(Text(String(format: "%.0f", t)).font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: x0 - 4, y: y(t)), anchor: .trailing)
+                t += 10
+            }
+            ctx.stroke(Path { p in p.move(to: CGPoint(x: x0, y: y(100))); p.addLine(to: CGPoint(x: size.width, y: y(100))) },
                        with: .color(Theme.muted), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            // 오늘 세로선
+            ctx.stroke(Path { p in p.move(to: CGPoint(x: x(0), y: 0)); p.addLine(to: CGPoint(x: x(0), y: size.height - 14)) },
+                       with: .color(Theme.ink.opacity(0.5)), lineWidth: 1)
+            ctx.draw(Text("오늘").font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: x(0), y: size.height - 6), anchor: .leading)
             for k in [0, 2] {
                 ctx.stroke(Path { p in for i in 0..<n { let pt = CGPoint(x: x(i), y: y(lv[k][i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } },
                            with: .color(Theme.teal.opacity(0.6)), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
