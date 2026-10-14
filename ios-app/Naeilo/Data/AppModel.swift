@@ -257,13 +257,14 @@ final class AppModel {
     var focusWeight: Double { total > 0 ? (focusRow?.value ?? 0) / total : 0 }
     /// 국내 주식 합계를 뺀 평가액 (오늘 움직임용: 합계는 넣은 날만 바뀐다)
     var stockTotal: Double { rows.reduce(0) { $0 + ($1.id == KoreaEstimate.sumId ? 0 : $1.value) } }
-    /// 오늘의 움직임: 원화 평가액 기준 (전일 종가·전일 환율 → 지금)
+    /// 오늘의 움직임: 원화 평가액 기준 (전일 종가 → 지금). 환율 변화는 빼고 전일·지금 모두 같은 환율(평가액과 같은 매매기준율)로 비교한다.
+    /// 홈·잠금 위젯(WidgetShared/Engine.swift)과 같은 기준. 홈·목표·알림·인물 위젯이 이 값을 쓴다
     var todayMove: Double {
-        let fx = Market.shared.fx
+        let fx = Market.shared.valFx
         let usd = { (r: Row) in r.sym.currency == .usd }
         let rows = self.rows.filter { $0.id != KoreaEstimate.sumId }   // 국내 주식 합계는 넣은 날만 바뀌어 0%로 전체 폭을 줄이지 않게 뺀다
-        let prev = rows.reduce(0) { a, r in a + r.h.qty * r.sym.quote.prevClose * (usd(r) ? fx.prevClose : 1) }
-        let now = rows.reduce(0) { a, r in a + r.h.qty * r.sym.last * (usd(r) ? fx.last : 1) }   // 같은 환율 계열끼리 (평가액은 매매기준율)
+        let prev = rows.reduce(0) { a, r in a + r.h.qty * r.sym.quote.prevClose * (usd(r) ? fx : 1) }
+        let now = rows.reduce(0) { a, r in a + r.h.qty * r.sym.last * (usd(r) ? fx : 1) }
         return prev > 0 ? now / prev - 1 : 0
     }
 

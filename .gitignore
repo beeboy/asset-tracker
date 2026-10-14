@@ -5,3 +5,8 @@ data/backup/
 *.log
 __pycache__/
 node_modules/
+
+# 옵시디안·맥·Xcode 개인 파일은 올리지 않는다
+.obsidian/
+.DS_Store
+xcuserdata/
