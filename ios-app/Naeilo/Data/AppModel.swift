@@ -205,9 +205,12 @@ final class AppModel {
     /// 퍼센트와 금액을 함께: "−2.1% · 약 1,060만원". 금액 = base × rate, 만원 반올림, 1억 이상은 "약 1.2억원"
     static func pctWon(_ rate: Double, base: Double) -> String {
         let p = (rate >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(rate) * 100)
-        let a = abs(base * rate)
-        let w = a >= 1e8 ? String(format: "%.1f억원", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만원"
-        return p + " · 약 " + w
+        return p + " · 약 " + aboutWon(base * rate)
+    }
+    /// 금액 어림: 만원 반올림, 1억 이상은 "1.2억원" (부호 없음)
+    static func aboutWon(_ krw: Double) -> String {
+        let a = abs(krw)
+        return a >= 1e8 ? String(format: "%.1f억원", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만원"
     }
     /// 아직 값이 없으면 0 대신 "—"
     static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }

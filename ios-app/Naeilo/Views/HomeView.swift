@@ -13,7 +13,7 @@ struct HomeView: View {
                 // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
                 if !m.isGoal, m.done.contains(3), m.cost > m.total, !m.rows.isEmpty { DepositLeverCard(plan: m.keepPlan) }
                 shelterBox
-                ParallelHomeLine()
+                ParallelHomeCard()
                 reminder
                 if m.playUnlocked { RoutineCard() } else { lockedRoutine }
                 if !m.playUnlocked, !m.rows.isEmpty { yesterdayCard }
