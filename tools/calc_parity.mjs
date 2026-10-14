@@ -158,7 +158,7 @@ function swiftSrc() {
   const siteCalc = cls.slice(mark, cls.lastIndexOf("}"));
   const div = block(det, "struct DividendView: View {", "AnalysisDetail.swift");
   // 화면이 쓰는 환율 식 (Market.shared.fx.last / Market.shared.valFx 등)
-  const divFx = grab(div, /\bfx = (Market\.shared\.[\w.]+)/, "DividendView"), sumFx = grab(ana, /\bfxNow = (Market\.shared\.[\w.]+)/, "AnalysisView");
+  const divFx = grab(div, /\bfx = (Market\.shared\.[\w.]+)/, "DividendView"), sumFx = grab(det, /hubMonthly[\s\S]*?\bfx = (Market\.shared\.[\w.]+)/, "DividendView.hubMonthly");
   const us = line(div, "let us = m.rows.filter", "DividendView"), usU = line(div, "let usU = ", "DividendView");
   const shifts = line(det, "let shifts: [Double] = r.slope.map", "RateScenarioView");
   // 금리 충격 테스트 닫힌 식 (RateScenarioView 의 Closed·closed·months). private 만 떼어 낸다
@@ -211,7 +211,7 @@ struct M { var rows: [Row] }
 enum App {
     // AppModel.swift 원본
     ${line(am, "func krw(_ s: Symbol, _ x: Double) -> Double", "AppModel.swift").replace(/^func /, "static func ")}
-    // 배당·세금 화면(DividendView)과 분석 첫 화면 배당(AnalysisView)이 쓰는 환율
+    // 배당·세금 화면(DividendView)과 분석 허브 배당(DividendView.hubMonthly)이 쓰는 환율
     static func divFx() -> Double { ${divFx} }
     static func sumFx() -> Double { ${sumFx} }
     // DividendView 원본: 미국 종목 평가 이익
