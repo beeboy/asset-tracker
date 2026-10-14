@@ -234,7 +234,7 @@ final class AppModel {
         return HoldMetrics(dd: p1 / hi - 1, r1: p1 / yr[0] - 1, vc: r.cost > 0 ? r.value / r.cost - 1 : 0,
                            w: r.value / max(1, total), yr: yr, hi: hi, lo: lo)
     }
-    /// 내 종목 정렬 (종목 탭 목록·종목 한눈에 카드가 같이 따른다). 색은 넣은 순서 그대로
+    /// 내 종목 정렬 (종목 탭 목록. 종목 한눈에는 자기 정렬을 쓴다). 색은 넣은 순서 그대로
     var holdSort = HoldSort(rawValue: UserDefaults.standard.string(forKey: "holdSort") ?? "") ?? .value {
         didSet { UserDefaults.standard.set(holdSort.rawValue, forKey: "holdSort") }
     }
