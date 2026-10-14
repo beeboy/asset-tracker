@@ -169,7 +169,7 @@ enum TossFeed {
             guard let v = qs[y] as? [String: Any], let last = num(v["last"]), last > 0 else { continue }
             q[id] = .init(last: last, prev: 0, at: num(v["last_time"]) ?? Date().timeIntervalSince1970)
         }
-        guard !q.isEmpty else { return fail("받은 종목 없음") }
+        guard !q.isEmpty else { return fail((o["error"] as? String).map { "서버: " + $0 } ?? "받은 종목 없음") }
         let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
         Store.write(f, name)
         Store.defaults.set(f.got, forKey: "toss_ok_at")
