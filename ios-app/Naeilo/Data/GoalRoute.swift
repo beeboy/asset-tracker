@@ -120,10 +120,10 @@ extension AppModel {
     func longHorizon(_ y: Int) -> String { MC.addMonths(Day.today, 12 * max(10, y)) }
 
     /// k·years·start 를 주면 지금 목표 대신 그 값으로 (목표 자동 고르기에서 씀, cache: false 면 캐시에 넣지 않는다).
-    /// years 를 주면 오늘부터 그 햇수, 안 주면 목표일까지
-    func simulate(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true) -> GoalSim {
+    /// years 를 주면 오늘부터 그 햇수, 안 주면 목표일까지. parts 를 주면 구성 대신 그 종목·비중으로 (내 길 비중 바꿔 보기)
+    func simulate(_ mx: GoalMix, parts ps0: [Part]? = nil, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true) -> GoalSim {
         let mo = monthly ?? gM, yrs = years ?? gY, K = k ?? gK, A = start ?? goalStart
-        let parts = mixParts(mx)
+        let parts = ps0 ?? mixParts(mx)
         guard let ps = paths(parts, horizon: years == nil ? goalHorizon : longHorizon(yrs)) else {
             return closedSim(mx, parts: parts, monthly: mo, k: K, years: yrs, start: A, cache: cache)
         }

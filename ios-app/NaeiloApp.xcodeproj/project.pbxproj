@@ -86,6 +86,7 @@
 		E2A350EDE7A37B5464944041 /* StoreAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 043CD3937D8B52409651AF04 /* StoreAPI.swift */; };
 		C1ACA8A4BE1F8612E44ECAFB /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113FC119D1DE4AE5F19B494E /* Engine.swift */; };
 		CB09D15A0B85AA1E4B93E903 /* AnalysisDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C4668A7B9FECB1D2C27F7F /* AnalysisDetail.swift */; };
+		A1C3E5F7092B4D6F8A0C2E41 /* MyPathCompareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D4F6A8193C5E7F9B1D3F52 /* MyPathCompareView.swift */; };
 		CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */ = {isa = PBXBuildFile; fileRef = CA972EE98F92EF464180B15F /* quotes.json */; };
 		81A915C15DB304AE45CD6B4A /* stats.json in Resources */ = {isa = PBXBuildFile; fileRef = EE06E92AB3F3E0602FB28BB1 /* stats.json */; };
 		76175DF9F7E9BADC8A2992F0 /* calc.json in Resources */ = {isa = PBXBuildFile; fileRef = F509A415790715D23F1E6D7B /* calc.json */; };
@@ -220,6 +221,7 @@
 		F2A824AF1DB8AF8410F855C8 /* Catalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Catalog.swift; sourceTree = "<group>"; };
 		F34CF3A1B831F99BE76F325E /* NaeiloApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NaeiloApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F4C4668A7B9FECB1D2C27F7F /* AnalysisDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisDetail.swift; sourceTree = "<group>"; };
+		B2D4F6A8193C5E7F9B1D3F52 /* MyPathCompareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPathCompareView.swift; sourceTree = "<group>"; };
 		FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Guide.swift; sourceTree = "<group>"; };
 		FFF12A424D20E007AF664931 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -320,6 +322,7 @@
 			isa = PBXGroup;
 			children = (
 				F4C4668A7B9FECB1D2C27F7F /* AnalysisDetail.swift */,
+				B2D4F6A8193C5E7F9B1D3F52 /* MyPathCompareView.swift */,
 				0020D03B6A8743286E629278 /* AnalysisView.swift */,
 				FFF12A424D20E007AF664931 /* BoardView.swift */,
 				7C59880D308D978CDFD58A8E /* Charts.swift */,
@@ -545,6 +548,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CB09D15A0B85AA1E4B93E903 /* AnalysisDetail.swift in Sources */,
+				A1C3E5F7092B4D6F8A0C2E41 /* MyPathCompareView.swift in Sources */,
 				1DFBD64F26F68ABE1A9B5193 /* AnalysisView.swift in Sources */,
 				5CB59D91AF71FB20220B5C04 /* App.swift in Sources */,
 				10C6615D5203C5E06D9C2CF9 /* AppModel.swift in Sources */,
