@@ -597,7 +597,7 @@ struct RateScenarioView: View {
     /// 닫힌 식에 드는 값. 평가액·원금은 종목 목록을 매번 다시 만드니 한 번만 읽는다 (식단 1000벌 × 2번 부르면 넘길 때 멈칫)
     private struct Closed { let T, sg, mu, V0, K, M: Double }
     private func closedInput(_ f: AppModel.Forecast) -> Closed {
-        Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: m.monthly * 1e4)
+        Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: 0)   // 전망과 같게 월 적립 없이
     }
     /// 연 기대를 shift 만큼 옮겼을 때 목표 확률. 웹처럼 전망(몬테카를로) 목표 확률에 닫힌 식의 차이만 더한다
     private static func prob(_ f: AppModel.Forecast, _ c: Closed, _ shift: Double) -> Double {

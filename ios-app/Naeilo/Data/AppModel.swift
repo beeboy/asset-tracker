@@ -16,7 +16,7 @@ enum HoldSort: String, CaseIterable { case added, value, name, ret, today
 }
 
 enum Lens: String, CaseIterable, Codable { case base, mine, smooth
-    var label: String { switch self { case .base: "현재 정세"; case .mine: "내 관점"; case .smooth: "과거 추세" } }
+    var label: String { switch self { case .base: "신중하게"; case .mine: "내 설정"; case .smooth: "지난 3년처럼" } }
 }
 
 @Observable
@@ -172,7 +172,9 @@ final class AppModel {
     }
 
     // 3년 전망
+    /// 전망 시나리오. 신중하게 = 추세 0%, 지난 3년처럼 = 추세 100% 와 계산이 같다 (MC.blendMu)
     var lens: Lens = .mine
+    /// '내 설정'의 추세 신뢰 % (신중하게·지난 3년처럼을 골라도 이 값은 기억해 둔다)
     var trust = 50.0
     var shock = true
     var monthly = 0.0
@@ -614,17 +616,20 @@ final class AppModel {
         let st = inp.st, settings = inp.settings, events = inp.events
         let snap = zip(rs, px).map { "\(SiteStats.mcKey($0.id)):\($0.h.qty):\($1)" }.joined(separator: ",")
         let key = [today, H, snap, String(fx0), inp.sig].joined(separator: "|")
-        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: monthly * 1e4)
+        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: 0)
     }
 
-    var forecast: Forecast {
-        let cf = closedForecast
+    /// 전망은 월 적립 없이 계산한다 (납입은 내 목표 몫. 웹 기본 monthly_contribution 0 과 같다). m.monthly 는 동기화 호환으로만 남긴다
+    var forecast: Forecast { forecast(lens) }
+    /// 시나리오 하나의 전망. 같은 경로를 μ만 바꿔 다시 무게를 달아서(reweight) 셋을 같이 불러도 싸다
+    func forecast(_ lens: Lens) -> Forecast {
+        let cf = closedForecast(lens)
         guard let job = forecastJob else { return cf }
         let eng = ForecastEngine.shared
         eng.ensure(job)
         let lensKey = lens == .base ? "base" : lens == .smooth ? "smooth" : "mine"
         guard let run = eng.run, run.key == job.key,
-              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: mcGoal, monthly: monthly * 1e4, withEvents: shock) else { return cf }
+              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: mcGoal, monthly: 0, withEvents: shock) else { return cf }
         let sim = run.ev, s0 = MC.dayNum(sim.start)
         let tY = sim.monthDates.map { Double(MC.dayNum($0) - s0) / 365.25 }
         let dates = sim.monthDates, cum = r.cumHit, V0 = r.V0, K = mcGoal
@@ -644,7 +649,7 @@ final class AppModel {
     }
 
     /// 닫힌 식 (로그정규 근사): 몬테카를로가 끝나기 전 잠깐, 시작 전 루트, 주간 예보 폭(sigma)
-    var closedForecast: Forecast {
+    func closedForecast(_ lens: Lens) -> Forecast {
         let rs = rows, tot = max(1, total)
         // 종목 값은 사이트가 매일 만드는 stats.json (웹 전망과 같은 μ·σ·상관). 달러 종목은 원/달러 흔들림도 더한다
         let st = Market.shared.stats, t = trust / 100
@@ -666,7 +671,7 @@ final class AppModel {
         } }
         let sg = sqrt(max(0, v))
         let mu = lens == .base ? muB : lens == .smooth ? muS : muM
-        let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = monthly * 1e4
+        let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = 0.0
         let qAt = { (T: Double, z: Double) -> Double in
             let shockT: Double = z * sg * sqrt(T)
             let lump: Double = V0 * exp(g * T + shockT)
