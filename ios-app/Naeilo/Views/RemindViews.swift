@@ -1,36 +1,47 @@
 import SwiftUI
 
 // 소식함: 홈 말풍선의 '새 소식 n' 또는 노란 띠를 누르면 열린다.
-// 분류 칩 → 안 본 소식 → 진행 중 → 이번 주 일정 → 지난 소식(흐리게, 30일)
+// 칩 4개(전체·할 일·일정·지난 소식) → 지금 해 주면 좋아요 → 진행 중 → 다가오는 일정 → 지난 30일
 struct RemindSheet: View {
     @Environment(AppModel.self) private var m
     @Environment(\.dismiss) private var dismiss
-    @State private var cat: RemindCat? = nil
+    private enum Tab { case all, todo, event, past }
+    @State private var tab: Tab = .all
 
     var body: some View {
         let r = Remind.shared
-        let keep = { (i: RemindItem) in cat == nil || i.cat == cat }
-        let fresh = r.fresh.filter(keep), doing = r.doing.filter(keep), events = r.events.filter(keep), past = r.past.filter(keep)
+        let todo = (r.fresh + r.doing + r.past).filter(\.isTodo)
+        let top = todo.first { $0.action != nil }
+        let doing = todo.filter { $0.id != top?.id }
+        let events = r.events
+        let past = (r.fresh + r.past).filter { !$0.isTodo }
+        let showTodo = tab == .all || tab == .todo, showEv = tab == .all || tab == .event, showPast = tab == .all || tab == .past
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
-                            chip(nil, "전체")
-                            ForEach(RemindCat.allCases.filter { r.isOn($0) }, id: \.self) { c in chip(c, c.label) }
+                            chip(.all, "전체")
+                            chip(.todo, todo.isEmpty ? "할 일" : "할 일 \(todo.count)")
+                            chip(.event, "일정")
+                            chip(.past, "지난 소식")
                         }
                     }
-                    if !fresh.isEmpty { section("안 본 소식 \(fresh.count)", fresh) }
-                    if !doing.isEmpty { section("진행 중", doing) }
-                    if !events.isEmpty {
-                        section("이번 주 일정 (내 종목 먼저)", events)
-                        Text("naeilo.com 외부 요인의 날짜가 정해진 일정이에요. 날짜는 근사일 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+                    if showTodo, let t = top { actionCard(t) }
+                    if showTodo && !doing.isEmpty {
+                        section("진행 중") { ForEach(doing) { i in i.checks == nil ? AnyView(row(i)) : AnyView(checkCard(i)) } }
                     }
-                    if !past.isEmpty { section("지난 소식 (30일)", past, faded: true) }
-                    if fresh.isEmpty && doing.isEmpty && events.isEmpty && past.isEmpty {
+                    if showEv && !events.isEmpty {
+                        section("다가오는 일정") { ForEach(events) { eventRow($0) } }
+                        Text("날짜는 하루 이틀 바뀔 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+                    }
+                    if showPast && !past.isEmpty {
+                        section("지난 30일") { ForEach(past) { pastRow($0) } }
+                    }
+                    if (showTodo ? todo.count : 0) + (showEv ? events.count : 0) + (showPast ? past.count : 0) == 0 {
                         Text("아직 소식이 없어요.").appFont(14).foregroundStyle(Theme.sub).padding(.vertical, 20)
                     }
-                    if (cat == nil || cat == .analysis) && (r.items.contains { $0.cat == .analysis }) {
+                    if showPast && past.contains(where: { $0.cat == .analysis }) {
                         Text("분석 소식은 내 숫자로 계산한 값이에요. 종목 추천이 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
                     }
                 }
@@ -39,31 +50,123 @@ struct RemindSheet: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.bg)
-            .navigationTitle("새 소식")
+            .navigationTitle("소식")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() }.frame(minWidth: 44, minHeight: 44) } }
         }
         .presentationDetents([.large])
     }
 
-    private func chip(_ c: RemindCat?, _ t: String) -> some View {
-        let sel = cat == c
-        return Button { cat = c } label: {
-            Text(t).appFont(13, .semibold)
+    private func chip(_ t: Tab, _ label: String) -> some View {
+        let sel = tab == t
+        return Button { tab = t } label: {
+            Text(label).appFont(13, .semibold)
                 .foregroundStyle(sel ? .white : Theme.sub)
                 .padding(.horizontal, 12).frame(minHeight: 34)
-                .background(sel ? (c?.color ?? Theme.teal) : Theme.card, in: Capsule())
+                .background(sel ? Theme.teal : Theme.card, in: Capsule())
                 .overlay(Capsule().stroke(sel ? .clear : Theme.border))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(sel ? .isSelected : [])
     }
 
-    private func section(_ title: String, _ list: [RemindItem], faded: Bool = false) -> some View {
+    private func section<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).appFont(13, .bold).foregroundStyle(Theme.sub)
-            ForEach(list) { i in row(i).opacity(faded ? 0.55 : 1) }
+            content()
         }
+    }
+
+    private func open(_ i: RemindItem) {
+        guard i.go != .nowhere else { return }
+        dismiss()
+        m.go(i.go)
+    }
+
+    /// 지금 해 주면 좋아요: 진한 초록 테두리, 이유 한 줄, 버튼
+    private func actionCard(_ i: RemindItem) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("지금 해 주면 좋아요").appFont(12, .bold).foregroundStyle(Theme.green)
+            Text(i.text).appFont(16, .bold).foregroundStyle(Theme.ink)
+            if let w = i.why { Text(w).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
+            Button { open(i) } label: {
+                Text(i.action ?? "열기").appFont(15, .bold).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Theme.green, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.green, lineWidth: 2))
+    }
+
+    /// 체크리스트 카드 (내 투자 캐릭터 찾기)
+    private func checkCard(_ i: RemindItem) -> some View {
+        let c = i.checks ?? [], n = c.filter(\.ok).count
+        return Button { open(i) } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(i.text).appFont(15, .bold).foregroundStyle(Theme.ink)
+                ProgressView(value: Double(n), total: Double(max(c.count, 1))).tint(Theme.purple)
+                ForEach(c.indices, id: \.self) { k in
+                    HStack(spacing: 8) {
+                        Image(systemName: c[k].ok ? "checkmark.circle.fill" : "circle").appFont(13)
+                            .foregroundStyle(c[k].ok ? Theme.green : Theme.muted)
+                        Text(c[k].text).appFont(13).foregroundStyle(c[k].ok ? Theme.sub : Theme.ink)
+                    }
+                }
+                if let w = i.why { Text(w).appFont(12).foregroundStyle(Theme.muted) }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 일정: 날짜 블록 + 제목 + 왜 중요한지
+    private func eventRow(_ i: RemindItem) -> some View {
+        let d = i.day ?? "", n = Day.dday(d)
+        return Button { open(i) } label: {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(spacing: 0) {
+                    Text(Day.md(d)).appFont(13, .bold).foregroundStyle(Theme.orange)
+                    Text(n == 0 ? "오늘" : "D-\(n)").appFont(11).foregroundStyle(Theme.sub)
+                }
+                .frame(width: 52, height: 48)
+                .background(Theme.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(i.text + (i.sub.map { " · \($0)" } ?? "")).appFont(14, .semibold).foregroundStyle(Theme.ink)
+                    if let w = i.why { Text(w).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 지난 30일: 아이콘 없는 한 줄과 날짜
+    private func pastRow(_ i: RemindItem) -> some View {
+        Button { open(i) } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(i.text).appFont(14).foregroundStyle(Remind.shared.isSeen(i) ? Theme.sub : Theme.ink)
+                    .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if let t = Remind.shared.log.first[i.id] { Text(Self.ago(t)).appFont(11).foregroundStyle(Theme.muted) }
+            }
+            .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func row(_ i: RemindItem) -> some View {
