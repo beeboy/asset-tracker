@@ -61,7 +61,7 @@ struct HoldingsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
         .navigationDestination(for: String.self) { _ in AddHoldingView() }
-        .alert("평정 지수", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
+        .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
         .confirmationDialog("\(askDel?.name ?? "") 종목을 지울까요?", isPresented: Binding(get: { askDel != nil }, set: { if !$0 { askDel = nil } }), titleVisibility: .visible) {
@@ -636,7 +636,7 @@ struct HoldingEditView: View {
             Button("지우기", role: .destructive) { if let s = HoldingEdit.save(m, sym, 0, p0, trade: false) { said = s } else { dismiss() } }
             Button("취소", role: .cancel) {}
         } message: { Text("목록과 평가액에서 빠져요. 다시 넣으려면 종목 추가에서 넣으면 돼요.") }
-        .alert("평정 지수", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil; dismiss() } })) {
+        .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil; dismiss() } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
     }

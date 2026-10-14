@@ -29,7 +29,7 @@ struct AnalysisPager: View {
 
     private func title(_ r: AnalysisRoute) -> String {
         switch r {
-        case .calm: return "평정 지수"
+        case .calm: return "내 투자 습관"
         case .myPath: return "내 길"
         case .forecast: return m.forecastTitle
         case .rateScen: return "금리 충격 테스트"
