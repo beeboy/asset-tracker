@@ -9,7 +9,8 @@ struct Input: Decodable {
     struct ValCase: Decodable { var name: String; var mar: MarFile?; var live: Double; var rows: [H] }
     struct DivCase: Decodable { var name: String; var ccy: String; var events: [SiteCalc.Ev]; var shares: Double; var price: Double }
     struct TaxCase: Decodable { var name: String; var rows: [H] }
-    struct Rate: Decodable { struct C: Decodable { var dr: Double; var m: Double }; var coef: [[[Double]]]; var g0: Double; var cases: [C]; var kb: Double; var T: [Double] }
+    struct Rate: Decodable { struct C: Decodable { var dr: Double; var m: Double }; var coef: [[[Double]]]; var g0: Double; var cases: [C]; var kb: Double; var T: [Double]
+        struct CI: Decodable { var T, sg, mu, V0, K, M: Double }; var closed: [CI]; var shifts: [Double] }
     var today: String; var live: Double; var fresh: MarFile
     struct WPathCase: Decodable { var name: String; var start: String; var goalDate: String; var goal: Double; var v0: Double; var monthly: Double }
     var fxRule: [FxCase]; var val: [ValCase]; var divs: [DivCase]; var tax: [TaxCase]; var rate: Rate; var wpath: [WPathCase]
@@ -23,6 +24,8 @@ struct Out: Encodable {
     struct Rate: Encodable { var dr, m, T: Double; var yr, cum: [[Double]]; var drop: [Double]; var dropCum: Double; var mkt: [Double]; var shift: [Double] }
     var consts: [String: Double] = [:]
     struct WPath: Encodable { var name: String; var need: [Double]? }
+    struct Closed: Encodable { var p: [Double]; var months: [Int?] }
+    var closed: [Closed] = []
     var fxRule: [Named] = []; var val: [Val] = []; var divs: [Div] = []; var tax: [Tax] = []; var rate: [Rate] = []; var wpath: [WPath] = []
 }
 
@@ -63,6 +66,11 @@ for c in inp.rate.cases {
     for T in inp.rate.T {
         out.rate.append(.init(dr: c.dr, m: c.m, T: T, yr: r.yr, cum: r.cum, drop: r.dropYr, dropCum: r.dropCum, mkt: r.mkt, shift: s))
     }
+}
+// 금리 충격 테스트 닫힌 식 (RateScenarioView.closed·months)
+for c in inp.rate.closed {
+    let ci = RSV.Closed(T: c.T, sg: c.sg, mu: c.mu, V0: c.V0, K: c.K, M: c.M)
+    out.closed.append(.init(p: inp.rate.shifts.map { RSV.closed(ci, $0) }, months: inp.rate.shifts.map { RSV.months(ci, $0) }))
 }
 // 위젯 필요 경로 (Snapshot.need). 비율 f 는 웹이 계산한 값을 받는다 (web.json)
 struct WebW: Decodable { struct C: Decodable { var name: String; var f: [Double] }; var wpath: [C] }

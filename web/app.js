@@ -1501,62 +1501,134 @@
     host.style.display = "block";
     const seen = new Set(), charts = [];
     host.innerHTML = `<h2>${esc(sub.g.n)} · ${esc(sub.n)} 분석</h2>` + sub.cats.map((c, j) => xfSection(c, seen, j, charts, sub.cats.length > 1)).join("") +
-      (sub.k === "fin" ? `<p class="small" style="margin-top:12px">금리가 움직이면 시장 이익과 내 목표 확률이 어떻게 바뀌는지는 위 <b>금리 시나리오</b>에서 봅니다. <button type="button" class="sm" data-jump="sec-rs">보러 가기</button></p>` : "");
+      (sub.k === "fin" ? `<p class="small" style="margin-top:12px">금리가 움직이면 시장 이익과 내 목표 확률이 어떻게 바뀌는지는 위 <b>금리 충격 테스트</b>에서 봅니다. <button type="button" class="sm" data-jump="sec-rs">보러 가기</button></p>` : "");
     charts.forEach((f) => f());
   }
   // ------------------------------------------------------------ 금리 시나리오: 금리→이익 관계식 식단 1000벌 (data/macro, 실러 데이터)
   // 식단 j, y년째 S&P 실질 EPS 변화(로그 %) = a + b·Δ금리 + c·지금 EPS 증가율. 무작위 경로 없이 식단마다 답 하나
-  const RS = { dr: null, m: 0 };
+  const RS = { pick: 2, custom: 0, dr: 0, m: 0 };   // pick: 프리셋 번호 (기본 "작년만큼 또 오른다"), -1 이면 직접 정한 값. 시장 공통 기대수익(m)은 이 화면에서 뺐다
+  // 금리 충격 테스트 닫힌 식 (앱 RateScenarioView 의 closed·months 와 같은 식. tools/calc_parity.mjs 가 비교)
+  // c = { T 햇수, sg 연 변동성, mu 연 기대, V0 지금 자산, K 목표, M 매달 넣는 돈 }
+  function rsNormCDF(x) {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x * x / 2);
+    const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    return x > 0 ? 1 - p : p;
+  }
+  function rsClosed(c, shift) {
+    const T = c.T, sg = c.sg, g = c.mu - sg * sg / 2 + shift;
+    const eff = c.V0 + c.M * 12 * T * Math.exp(-g * T / 2);
+    if (!(eff > 0) || !(c.K > 0)) return 0;
+    return rsNormCDF((Math.log(eff / c.K) + g * T) / (sg * Math.sqrt(T)));
+  }
+  // 보통의 경우(로그 기대 + shift) 매달 M씩 넣으며 K에 처음 닿는 개월. 50년 안에 못 닿으면 null
+  function rsMonths(c, shift) {
+    if (!(c.K > 0)) return null;
+    if (c.V0 >= c.K) return 0;
+    const gm = Math.exp((c.mu - c.sg * c.sg / 2 + shift) / 12);
+    let v = c.V0;
+    for (let n = 1; n <= 600; n++) { v = v * gm + c.M; if (v >= c.K) return n; }
+    return null;
+  }
+  const rsPresets = (y) => [["내린다", "10년물 −0.5%p", -0.5], ["그대로", "변화 없음", 0], ["작년만큼 또 오른다", `${y >= 0 ? "+" : "−"}${Math.abs(y).toFixed(1)}%p`, y], ["2022년처럼 급등", "+2.5%p", 2.5]];
+  // 다가오는 금리 일정: 앱 MarketEvents 와 같은 고정 규칙 (FOMC·한국은행, 6주 반복). 실제 일정과 하루이틀 다를 수 있다
+  function rsEvents(days) {
+    const t0 = today(), until = new Date(Date.parse(t0) + days * 86400e3).toISOString().slice(0, 10), out = [];
+    for (const [d0, kind] of [["2026-10-28", "미국 금리 결정(FOMC)"], ["2026-10-22", "한국은행 금리 결정"]]) {
+      for (let k = -60; k < 60; k++) { const d = new Date(Date.parse(d0) + k * 42 * 86400e3).toISOString().slice(0, 10); if (d >= t0 && d <= until) out.push({ d, kind }); }
+    }
+    return out.sort((a, b) => (a.d < b.d ? -1 : 1));
+  }
   async function renderRateScen() {
     const box = $("#rsBox"); if (!box) return;
-    let d; try { d = await loadMacro(); } catch (e) { box.innerHTML = `<p class="muted small">금리 시나리오 자료를 불러오지 못했습니다 (${esc(e.message)}).</p>`; return; }
+    let d; try { d = await loadMacro(); } catch (e) { box.innerHTML = `<p class="muted small">금리 자료를 불러오지 못했습니다 (${esc(e.message)}).</p>`; return; }
     const M = d.meals; if (!M || !M.coef || !$("#rsBox")) return;
-    const now = rateChange1y(d); if (RS.dr === null) RS.dr = Number.isFinite(now) ? Math.round(now * 10) / 10 : 0;
-    box.innerHTML = `<div class="row between wrap"><h2 style="margin:0">금리가 움직이면 시장 이익과 내 목표는</h2><span class="muted small">"만약" 도구</span></div>
-      <div class="wi">
-        <label><span class="row between"><span>앞으로 1년 10년물 금리 변화</span><b id="rsDrV"></b></span><input type="range" id="rsDr" min="-2" max="3" step="0.1" value="${RS.dr}"></label>
-        <label><span class="row between"><span>시장 공통 기대수익 (금리 외 요인, 연)</span><b id="rsMV"></b></span><input type="range" id="rsM" min="-10" max="10" step="1" value="${RS.m}"></label>
-      </div>
-      <div class="row wrap" style="gap:6px;margin:6px 0"><button type="button" class="sm" id="rsReset">지금 값으로</button></div>
-      <div id="rsChart" class="chartbox"></div><p class="muted small" style="margin:2px 0 8px">S&amp;P500 실질 이익 (오늘 = 100) · 진한 선 중앙, 띠는 관계식 80%가 드는 범위</p><div id="rsOut"></div>
-      <p class="muted small">예측이 아닌 "만약" 도구. 1960년 이후 금리와 S&amp;P500 이익의 관계식 1000개로 계산. 이익 자료 ${esc(d.eps_last || "")}까지, 출처 Robert J. Shiller. 투자 권유가 아닙니다.</p>`;
-    const draw = RS.draw = () => rateScenDraw(d, now);
-    $("#rsDr").oninput = (e) => { RS.dr = +e.target.value; draw(); };
-    $("#rsM").oninput = (e) => { RS.m = +e.target.value; draw(); };
-    $("#rsReset").onclick = () => { RS.dr = Number.isFinite(now) ? Math.round(now * 10) / 10 : 0; RS.m = 0; $("#rsDr").value = RS.dr; $("#rsM").value = 0; draw(); };
+    const now = rateChange1y(d), y = Number.isFinite(now) ? Math.round(now * 10) / 10 : 0, P = rsPresets(y);
+    box.innerHTML = `<h2 style="margin:0 0 4px">금리가 이렇게 되면, 내 목표는 얼마나 흔들릴까요?</h2>
+      <p class="muted small" style="margin:0 0 10px">목표일 전망의 내 설정을 기준으로, 금리만 바꿔 봤을 때 달라지는 만큼만 보여줘요.</p>
+      <div id="rsPick" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${P.map(([l, s2], i) => `<button type="button" data-i="${i}" style="text-align:left;padding:10px;border-radius:12px"><b>${esc(l)}</b><br><span class="small muted">${esc(s2)}</span></button>`).join("")}</div>
+      <div id="rsOut"></div>
+      <details style="margin-top:10px"><summary><b>금리 변화 직접 정하기</b></summary>
+        <label><span class="row between"><span>앞으로 1년 10년물 금리 변화</span><b id="rsDrV"></b></span><input type="range" id="rsDr" min="-2" max="3" step="0.1" value="${RS.custom}"></label>
+        ${Number.isFinite(now) ? `<p class="muted small">지난 1년 실제 변화 ${now >= 0 ? "+" : "−"}${Math.abs(now).toFixed(2)}%p</p>` : ""}
+      </details>
+      <p class="muted small">예측이 아니라 '만약에'를 보는 화면이에요. 금리 말고 다른 조건은 목표일 전망의 내 설정과 같아요. 1960년 이후 금리와 S&amp;P500 이익의 관계식 1000개로 계산 (이익 자료 ${esc(d.eps_last || "")}까지, 출처 Robert J. Shiller). 종목 추천이 아닙니다.</p>`;
+    const draw = RS.draw = () => { RS.dr = RS.pick >= 0 ? P[RS.pick][2] : RS.custom; RS.m = 0; rateScenDraw(d, P); };
+    box.querySelectorAll("#rsPick button").forEach((b) => (b.onclick = () => { RS.pick = +b.dataset.i; draw(); }));
+    $("#rsDr").oninput = (e) => { RS.custom = +e.target.value; RS.pick = -1; draw(); };
     draw();
   }
-  function rateScenDraw(d, now) {
+  function rateScenDraw(d, P) {
     const M = d.meals, H = M.coef[0].length, dr = RS.dr, m = RS.m / 100, g0 = M.g_now, q = (a, p) => Model.quantileSorted(Float64Array.from(a).sort(), p);
-    $("#rsDrV").textContent = `${dr >= 0 ? "+" : ""}${dr.toFixed(1)}%p` + (Number.isFinite(now) ? ` (지난 1년 ${now >= 0 ? "+" : ""}${now.toFixed(2)}%p)` : "");
-    $("#rsMV").textContent = `${RS.m >= 0 ? "+" : ""}${RS.m}%`;
+    const sgn = (v, u, k) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(k)}${u}`;
+    $("#rsDrV").textContent = sgn(dr, "%p", 1);
+    $("#rsPick").querySelectorAll("button").forEach((b, i) => { const on = i === RS.pick; b.style.border = on ? "2px solid var(--accent)" : "1px solid var(--line)"; b.setAttribute("aria-pressed", on); });
     const tot = M.coef.map((c) => c.map(([a, b, cc]) => a + b * dr + cc * g0)), cum = tot.map((t) => t.reduce((x, y, i) => (x.push((x[i - 1] || 0) + y), x), []));
     const band = (arr) => [0.1, 0.5, 0.9].map((p) => q(arr, p));
     const yr = Array.from({ length: H }, (_, y) => band(tot.map((t) => t[y]))), cb = Array.from({ length: H }, (_, y) => band(cum.map((t) => t[y])));
-    const t0 = today(), xs = [t0, ...Array.from({ length: H }, (_, y) => String(Number(t0.slice(0, 4)) + y + 1) + t0.slice(4))];
-    const lvl = (k) => [100, ...cb.map((b) => 100 * Math.exp(b[k] / 100))];
-    Charts.lineChart($("#rsChart"), { x: xs, height: 190, yfmt: (v) => nf(v, 0), bands: [{ lo: lvl(0), hi: lvl(2), color: "var(--c2)", opacity: 0.12 }], series: [
-      { name: "상위 10%", y: lvl(2), color: "var(--c2)", width: 1, dash: "4 3" }, { name: "중앙", y: lvl(1), color: "var(--c1)", width: 2 }, { name: "하위 10%", y: lvl(0), color: "var(--c2)", width: 1, dash: "4 3" }] });
-    const sg = (v) => `${v >= 0 ? "+" : ""}${nf(v, 1)}%`;
     // 시장 연 수익 ≈ 3년 누적 이익 변화/3 + 배당 1.5% + 금리 외 공통 기대수익
     const mkt = band(cum.map((t) => Math.exp(t[H - 1] / 100 / H) - 1 + 0.015 + m));
-    const tbl = `<div class="tablewrap"><table class="grid"><tr><th class="l">S&amp;P 실질 이익</th><th>하위 10%</th><th>중앙</th><th>상위 10%</th><th>감소 비율</th></tr>` +
-      yr.map((b, y) => `<tr><td class="l">${y + 1}년째 변화</td><td>${sg(b[0])}</td><td><b>${sg(b[1])}</b></td><td>${sg(b[2])}</td><td>${pct(tot.filter((t) => t[y] < 0).length / tot.length, 0)}</td></tr>`).join("") +
-      `<tr><td class="l">${H}년 누적</td><td>${sg(cb[H - 1][0])}</td><td><b>${sg(cb[H - 1][1])}</b></td><td>${sg(cb[H - 1][2])}</td><td>${pct(cum.filter((t) => t[H - 1] < 0).length / cum.length, 0)}</td></tr>` +
-      `<tr><td class="l">시장 연 기대수익</td><td>${spct(mkt[0], 1)}</td><td><b>${spct(mkt[1], 1)}</b></td><td>${spct(mkt[2], 1)}</td><td></td></tr></table></div>`;
-    let goal = "";
-    // 내 목표 확률 근사: 목표일 전망 만기 분포(로그정규 근사)를 시장 조정분 × β 만큼 옮긴다
-    const R = lastForecast && lastForecast.withEv, g = S.state.goal;
+    // 포트폴리오 시장 민감도 β (외부 요인 화면과 같은 값)
+    const { rows, total } = valuation(), bm = factorBetas().beta.mkt || {}, held = rows.filter((r) => r.valueKrw > 0);
+    const kb = held.length ? held.reduce((s2, r) => s2 + r.w * (Number.isFinite(bm[r.h.ticker]) ? bm[r.h.ticker] : 1), 0) : 1;
+    // 식단마다 1년 기대수익을 옮기는 양 (앱 RateScenarioView 와 같은 식: 3년 동안의 b 합 × Δ금리 ÷ 3)
+    const shifts = M.coef.map((c) => kb * (c.reduce((s2, x) => s2 + x[1], 0) * dr / 3 / 100 + m));
+    const mid = band(shifts)[1], eps = H > 0 ? Math.exp(cb[H - 1][1] / 100) - 1 : 0;
+    const when = RS.pick === 0 ? "금리가 내리면" : RS.pick === 1 ? "금리가 그대로면" : RS.pick === 2 ? "금리가 작년만큼 또 오르면" : RS.pick === 3 ? "금리가 2022년처럼 급등하면" : `금리가 ${sgn(dr, "%p", 1)} 움직이면`;
+    // 기준선: 목표일 전망 결과. 닫힌 식 입력은 전망 만기 분포에서 거꾸로 구한다 (변동성 = 중앙과 하위 5%의 거리)
+    const R = lastForecast && lastForecast.withEv, g = S.state.goal, t0 = today(), cash = cashKrw();
+    let res = `<p class="muted small" style="margin:12px 0">목표일 전망을 한 번 계산하면 내 목표 가능성 변화가 여기에 나와요.</p>`;
     if (R && R.terminal && R.terminal.p50 > 0 && R.terminal.p5 > 0 && g && g.date > t0) {
-      const T = (Date.parse(g.date) - Date.parse(t0)) / (365.25 * 86400e3), { rows } = valuation(), bm = factorBetas().beta.mkt || {};
-      const kb = rows.filter((r) => r.valueKrw > 0).reduce((s2, r) => s2 + r.w * (Number.isFinite(bm[r.h.ticker]) ? bm[r.h.ticker] : 1), 0);
-      const sig = Math.max(0.05, (Math.log(R.terminal.p50) - Math.log(R.terminal.p5)) / 1.645), lnG = Math.log(Math.max(1, g.amount - cashKrw()));
-      const P = (shift) => { const z = (Math.log(R.terminal.p50) + kb * shift * T - lnG) / sig; return 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z * z * z))); };
-      const shifts = M.coef.map((c) => { let s2 = 0; for (let y = 0; y < c.length; y++) s2 += c[y][1] * dr * Math.max(0, Math.min(1, T - y)); return s2 / 100 / Math.max(T, 0.25) + m; });
-      const base = P(0), pb = band(shifts.map((x) => R.p_goal + P(x) - base));
-      goal = `<p class="small">내 목표 확률 (목표일 전망 ${pct(R.p_goal, 0)} 기준, 포트폴리오 시장 민감도 β ${kb.toFixed(2)}): <b>${pct(Math.max(0, Math.min(1, pb[1])), 0)}</b> <span class="muted">(식단 하위10~상위10 ${pct(Math.max(0, Math.min(1, pb[0])), 0)} ~ ${pct(Math.max(0, Math.min(1, pb[2])), 0)})</span></p>`;
-    } else goal = `<p class="muted small">목표일 전망을 한 번 계산하면 내 목표 확률 변화도 함께 나옵니다.</p>`;
-    $("#rsOut").innerHTML = goal + tbl;
+      const T = Math.max(1 / 12, yearsBetween(t0, g.date)), V0 = total + cash, sgT = Math.max(0.01, Math.log(R.terminal.p50 / R.terminal.p5) / 1.645), sg = Math.max(0.01, sgT / Math.sqrt(T));
+      const ci = { T, sg, mu: Math.log((R.terminal.p50 + cash) / Math.max(1, V0)) / T + sg * sg / 2, V0, K: g.amount, M: Number(g.monthly_contribution) || 0 };
+      const prob = (s2) => Math.max(0, Math.min(1, R.p_goal + rsClosed(ci, s2) - rsClosed(ci, 0)));
+      const base = prob(0), pb = band(shifts.map(prob)), delta = Math.round((pb[1] - base) * 100);
+      const m0 = rsMonths(ci, 0), m1 = rsMonths(ci, mid), endAmt = R.terminal.p50 + cash;
+      const timing = m0 == null || m1 == null ? (m1 == null && m0 != null ? "50년 안에 닿기 어려워요" : "계산할 수 없어요") : m0 === 0 ? "이미 닿았어요" : m1 === m0 ? "거의 같아요"
+        : (() => { const n = m1 - m0, yy = Math.floor(Math.abs(n) / 12), mo = Math.abs(n) % 12; return `약 ${yy ? yy + "년" : ""}${yy && mo ? " " : ""}${mo ? mo + "개월" : ""} ${n > 0 ? "늦어져요" : "빨라져요"}`; })();
+      const col = delta < 0 ? "var(--accent2)" : delta > 0 ? "var(--good)" : "var(--muted)";
+      const bar = (k, p, c) => `<div class="row" style="gap:8px;align-items:center"><span class="small muted" style="width:44px">${k}</span><span style="flex:1;height:8px;border-radius:4px;background:var(--line);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;border-radius:4px;width:${(p * 100).toFixed(1)}%;background:${c}"></span></span></div>`;
+      res = `<div style="margin:12px 0;padding:14px;border-radius:14px;border:1px solid var(--line)">
+        <p class="small muted" style="margin:0">${when}</p>
+        <p style="margin:4px 0 8px">목표 가능성 <span class="muted">${pct(base, 0)}</span> → <b style="font-size:1.6rem">${pct(pb[1], 0)}</b>
+          <span class="small" style="margin-left:6px;padding:2px 8px;border-radius:10px;background:${col};color:#fff">${delta === 0 ? "변화 없음" : (delta > 0 ? "+" : "−") + Math.abs(delta) + "%p"}</span></p>
+        ${bar("지금", base, "var(--muted)")}${bar("이 경우", pb[1], col)}
+        <p class="small row between" style="margin:10px 0 2px"><span class="muted">${krw(g.amount)}원에 닿는 시점</span><b>${timing}</b></p>
+        <p class="small row between" style="margin:2px 0"><span class="muted">${g.date.slice(0, 4)}년 ${Number(g.date.slice(5, 7))}월 그럴듯한 금액</span><b>${krw(endAmt)}원 → ${krw(endAmt * Math.exp(mid * T))}원</b></p></div>`;
+    }
+    const step = (n, t, v, note) => `<div class="row" style="gap:10px;align-items:flex-start;margin:8px 0"><span style="flex:none;width:22px;height:22px;border-radius:11px;background:var(--accent);color:#fff;text-align:center;font-size:.8rem;line-height:22px">${n}</span><span><span class="small muted">${t}</span><br><b>${v}</b><br><span class="small muted">${note}</span></span></div>`;
+    const r0 = d.now && Number.isFinite(d.now.rate) ? d.now.rate : null;
+    const chain = `<h3 style="margin:14px 0 2px">어떻게 내 자산까지 오나요?</h3><p class="small muted" style="margin:0">금리는 세 단계를 거쳐 내 목표에 닿아요.</p>` +
+      step(1, "금리", r0 != null ? `${r0.toFixed(2)}% → ${(r0 + dr).toFixed(2)}%` : sgn(dr, "%p", 1), "미국 10년물 국채 금리 기준") +
+      step(2, "기업이 버는 돈", Math.abs(eps) < 0.005 ? `${H}년 동안 이익이 거의 그대로예요` : `${H}년 동안 이익이 약 ${Math.round(Math.abs(eps) * 100)}% ${eps < 0 ? "줄어요" : "늘어요"}`, "빌리는 돈이 비싸지면 이익이 줄어드는 경향이 있어요") +
+      step(3, "내 자산", Math.abs(mid) < 0.0005 ? "1년 기대수익이 거의 그대로예요" : `1년 기대수익이 약 ${(Math.abs(mid) * 100).toFixed(1)}%p ${mid < 0 ? "낮아져요" : "높아져요"}`, "그래서 목표 가능성이 위 숫자만큼 달라져요");
+    // 근거 (2단계): 그래프 + 해마다 변화·누적 수준·줄어 있을 확률
+    const dropCumYr = Array.from({ length: H }, (_, y) => cum.filter((t) => t[y] < 0).length / cum.length);
+    const sg1 = (v) => `${v >= 0 ? "+" : "−"}${nf(Math.abs(v), 1)}%`;
+    const why = `<details style="margin:6px 0"><summary class="small"><b>2단계 근거 자세히 보기</b></summary>
+      <div id="rsChart" class="chartbox"></div><p class="muted small" style="margin:2px 0 8px">S&amp;P500 실질 이익 (오늘 = 100). 진한 선은 보통의 경우, 띠는 10번 중 8번이 드는 범위</p>
+      <div class="tablewrap"><table class="grid"><tr><th class="l">해</th><th>그 해 변화</th><th>오늘 대비 수준</th><th>오늘보다 줄어 있을 확률</th></tr>` +
+      yr.map((b, y) => `<tr><td class="l">${y + 1}년째</td><td>${sg1(b[1])}</td><td><b>${nf(100 * Math.exp(cb[y][1] / 100), 0)}</b></td><td>${pct(dropCumYr[y], 0)}</td></tr>`).join("") +
+      `</table></div><p class="muted small">시장 1년 기대수익 (보통의 경우) ${spct(mkt[1], 1)}</p></details>`;
+    // 내 종목 중 금리에 약한 곳: 금리 민감도(시장 제외)가 낮은 순. 비율·민감도로만 (종목 조언 아님)
+    const st = factorBetas().stat.rate || {}, list = held.filter((r) => st[r.h.ticker]).map((r) => ({ r, c: st[r.h.ticker].beta })).sort((a, b) => a.c - b.c);
+    let weak = "";
+    if (list.length) {
+      const lo = list[0].c, hi = list[list.length - 1].c, span = Math.max(1e-4, hi - lo);
+      weak = `<h3 style="margin:14px 0 2px">내 종목 중 금리에 약한 곳</h3><p class="small muted" style="margin:0 0 6px">금리가 오를 때 더 크게 흔들리는 순서예요.</p>` + list.slice(0, 6).map((e) => {
+        const t = (e.c - lo) / span, tier = list.length < 2 ? 1 : t < 1 / 3 ? 0 : t > 2 / 3 ? 2 : 1, c = ["var(--accent2)", "var(--muted)", "var(--good)"][tier];
+        return `<div style="margin:6px 0"><p class="small row between" style="margin:0"><b>${esc(e.r.h.ticker)}</b><b style="color:${c}">${["크게 흔들려요", "보통이에요", "덜 흔들려요"][tier]}</b></p>
+          <span style="display:block;height:8px;border-radius:4px;background:var(--line);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;border-radius:4px;width:${(15 + 85 * (1 - t)).toFixed(1)}%;background:${c}"></span></span>
+          <span class="small muted">비중 ${pct(e.r.w, 0)}</span></div>`; }).join("");
+    }
+    const ev = rsEvents(60).slice(0, 4);
+    const evs = `<h3 style="margin:14px 0 2px">다가오는 금리 일정</h3>` + (ev.length ? ev.map((e) => { const n = Math.round(yearsBetween(t0, e.d) * 365.25);
+      return `<p class="small" style="margin:4px 0"><b style="color:var(--accent)">${n === 0 ? "오늘" : n === 1 ? "내일" : `${Number(e.d.slice(5, 7))}/${Number(e.d.slice(8))} (D-${n})`}</b> ${esc(e.kind)}</p>`; }).join("") : `<p class="small muted">60일 안에 정해진 금리 일정이 없어요.</p>`) +
+      `<p class="muted small">날짜는 정해진 주기로 계산해 실제 일정과 하루이틀 다를 수 있어요.</p>`;
+    $("#rsOut").innerHTML = res + chain + why + weak + evs;
+    const xs = [t0, ...Array.from({ length: H }, (_, y) => String(Number(t0.slice(0, 4)) + y + 1) + t0.slice(4))];
+    const lvl = (k) => [100, ...cb.map((b) => 100 * Math.exp(b[k] / 100))];
+    Charts.lineChart($("#rsChart"), { x: xs, height: 190, yfmt: (v) => nf(v, 0), bands: [{ lo: lvl(0), hi: lvl(2), color: "var(--c2)", opacity: 0.12 }], series: [
+      { name: "10번 중 9번 이 아래", y: lvl(2), color: "var(--c2)", width: 1, dash: "4 3" }, { name: "보통의 경우", y: lvl(1), color: "var(--c1)", width: 2 }, { name: "10번 중 1번 이 아래", y: lvl(0), color: "var(--c2)", width: 1, dash: "4 3" }] });
   }
   // 묶음 하나의 분석: 대리 지표 시세·민감도(같은 지표는 소분류 안에서 한 번만), 과거 반응일
   function xfSection(cat, seen, j, charts, multi) {
