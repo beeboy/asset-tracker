@@ -7,7 +7,7 @@ const sim = ({ model, opt, cats, slim }) => {
   return slim ? { p_goal: R.p_goal, terminal: R.terminal } : R;
 };
 self.onmessage = (e) => {
-  const { id, inp, kind } = e.data, fn = kind === "sim" ? sim : kind === "stab" ? Research.stabilizer : Model.allocPlans;
+  const { id, inp, kind } = e.data, fn = kind === "sim" ? sim : kind === "stab" ? Research.stabilizer : kind === "reach" ? Model.reachTimes : Model.allocPlans;
   try { const r = fn(inp, (k, n) => self.postMessage({ id, prog: [k, n] })); self.postMessage({ id, done: r }); }
   catch (err) { self.postMessage({ id, err: String(err && err.message || err) }); }
 };

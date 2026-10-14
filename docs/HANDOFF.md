@@ -29,7 +29,7 @@
 - 웹·앱 숫자 맞추기: 몬테카를로 이식 + CI parity, stats.json·calc.json, 입력값 차이 수정(PR #121~#131).
 
 ## 2. 진행 중·미완성
-- 분석 탭 "내 길" 개편 (B안·B-2안, 목업은 handoff/naeil-path 브랜치 docs/handoff/): 1단계 계산 완료 — `GoalSim.etaLo/etaHi`(첫 도달 10·90%). 2단계 앱 B 화면 완료(`MyPathView` 판정 카드·구성별 닿는 때·고정 눈금·숫자 자세히, 목록 카드 판정 문장; 시뮬레이터 빌드는 CI로 확인). 3단계 B-2 완료(`MyPathCompareView` 비중 ±5%·처음으로·합계 경고·지금/바꾼 비중 닿는 때·해석 카드·모의 바구니 저장, `simulate(parts:)`). 다음: 4단계 웹.
+- 분석 탭 "내 길" 개편 (B안·B-2안, 목업은 handoff/naeil-path 브랜치 docs/handoff/): 1단계 계산 완료 — `GoalSim.etaLo/etaHi`(첫 도달 10·90%). 2단계 앱 B 화면 완료(`MyPathView` 판정 카드·구성별 닿는 때·고정 눈금·숫자 자세히, 목록 카드 판정 문장; 시뮬레이터 빌드는 CI로 확인). 3단계 B-2 완료(`MyPathCompareView` 비중 ±5%·처음으로·합계 경고·지금/바꾼 비중 닿는 때·해석 카드·모의 바구니 저장, `simulate(parts:)`). 다음: 4단계 웹 — 내 길 탭 위 '내 길' 카드(판정·구성 3줄 닿는 때·비중 바꿔 보기, `Model.reachTimes`, worker kind "reach"). 웹은 모의 바구니가 없어 저장은 앱에서만. 웹 닿는 때는 parity 도구 비교 없음.
 | 항목 | 상태 |
 |---|---|
 | Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |
