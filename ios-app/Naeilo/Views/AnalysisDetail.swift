@@ -301,6 +301,14 @@ struct MyPathView: View {
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 if m.isGoal { WhenCard() }
+                if m.isGoal && !m.rows.isEmpty {
+                    NavigationLink { MyPathCompareView() } label: {
+                        HStack { Text("비중 바꿔 보기").appFont(14, .semibold); Spacer(); Image(systemName: "chevron.right") }
+                            .foregroundStyle(Theme.teal).padding(14)
+                            .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
                 // 시작한 지 석 달이 안 되면 달마다 차이는 숨긴다 (자료가 적어 흔들림만 크다)
                 if months >= 3 {
                     Card {
