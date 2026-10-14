@@ -25,6 +25,7 @@
 - 종목 탭 개편 ④: 국내 개별 종목(앱 한글 목록의 국내 주식 67개)을 사이트가 매일 모음(`data/kr_daily.json`, 지금 가격은 quotes.json). 앱 KOREA 합계 줄·설정 스위치·합계 알림 삭제, 테스트 시세 5종목 제한 없앰. 남은 것: 웹 KOREA.KS 처리(웹 단위), "기록 모으는 중" 화면 표시는 ②③에서 `CustomSymbols.collectingDays` 사용. 목록 밖 국내 종목은 추가 즉시 Yahoo 중계로 지금 가격·1년 종가, 실패하면 넣은 가격
 
 - 앱 분석 탭 "환율 영향"(FxImpactView) 개편: 한 줄 요약 → 환율 차트(y눈금·띠 끝 값) → 환율별 내 자산(슬라이더·칩) → 자세히 보기. 화면의 지금 환율은 매매기준율 하나로 통일, 범례 취소선 버그 수정. 계산식 변화 없음. 웹 전망 탭 환율 영향은 아직 옛 구성(별도 스레드 예정). Mac에서 화면 확인 필요.
+- 쉬운 말 ⑥ 소식(앱): 소식함 칩 4개(전체·할 일·일정·지난 소식), 맨 위 '지금 해 주면 좋아요'(국내 합계 넣기), 내 투자 캐릭터 찾기 체크리스트, 일정마다 왜 중요한지 한 줄. 웹은 안 바꿈.
 
 ## 1. 완성된 기능
 - 웹(naeilo.com): 내 길, 목표일 전망(몬테카를로), 렌즈·추세 신뢰·만약에, 외부 요인, 금리 시나리오, 환율 영향, 본전 카드, 배당·세금, 비중안·연구 비교, 패턴 예측·적중 기록판, 1000칸·공유 이미지, 종목 찾기·편집, 국내 ETF 추정·국내 주식 합계, 엑셀 입출력, 첫 방문 샘플, 암호화 기기 동기화, 웹 푸시, PWA·다크 모드. 공개 전 점검 P0~P2 완료(PR #97~#105).
@@ -41,6 +42,7 @@
 |---|---|
 | 외부 요인 화면 개편 | 2026-10-14 1단계(데이터) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. 다음: ② 요인 상세(앱) ③ 메인 순위(앱) ④ 웹 같은 화면 ⑤ 과거 재생(고정 표) ⑥ 일정 미리 보기(`EXT_EVENTS.sd`) ⑦ 회고·알림(나중). 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
 | iOS 목표일 전망 화면 개편 | 2026-10-14 PR 올림(브랜치 claude/project-thread-u2k6oi). 버튼 3개=추세 슬라이더 한 축, 선형 축 차트, 세 시나리오 표, 일정 카드, 월 적립 0. 웹 전망 탭은 아직 옛 화면 |
+| 외부 요인 화면 개편 | 2026-10-14 1단계(데이터)·2단계(요인 상세, 앱 `FactorDetailView`: 프리셋 2×2·판정·상쇄·종목별 신뢰도·큰 변화 경고·비교·관련 일정·직접 정하기. 메인 순위에서 들어감)·3단계(메인: 스크롤·질문형 제목·요인 순위 `ExternalView.ranks`·자동 요약·점 표시 없앰, 슬라이더는 요인 상세 "직접 정하기"로만)·4단계(웹 `renderSens`를 같은 순위·요인 상세로 교체, `xfRanks`·`xfDetail`, 웹은 `Model.factorMoves`를 직접 계산)·5단계(과거 재생: `Model.REPLAYS`·`replayMove` 고정 표 3기간, 앱 `SiteCalc.replays`, 웹 `xfReplays`·앱 `ExternalView.replayCard`)·6단계(오늘의 이벤트 카드 + 다가오는 일 미리 겪어보기: 시장 전체 확정 일정 7개의 `EXT_EVENTS.sd` × 내 종목 민감도, [미리 보기]는 요인 상세를 나쁜 쪽 값으로 열기. 웹 `xfEvents`·`xfToday`·`xfUpcoming`, 앱 `SiteCalc.eventMoves`·`ExternalView.todayCard`, `FactorDetailView(factor:start:)`) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. ·7단계(지난 일 돌아보기 + 다음 날 결과 알림, 앱만: `EventRetro`(Notifier.swift)가 일정 전날·당일 미리 본 ±금액과 평가액을 기기에 적고 다음에 열 때 실제 변화와 비교, 오늘의 이벤트 카드 [다음 날 결과 알림]은 다음 날 오전 9시 로컬 알림 id `xf.*`, 누르면 외부 요인 화면) 완료. 웹 회고·알림은 없음. 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
 | Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |
 | 15분 collect cron | PR #166으로 `*/15` 단일 cron. 실제로 도는지 collect 작업 로그로 확인 필요. 워커 머리 주석(`*/30 13-22`)은 낡음 |
 | 워커 재배포 | 2026-10-14 재배포함. 1권 영문판 원고, 순위판 `/scores`, 댓글은 마무리 안 한 것으로 보임 → 보류 |

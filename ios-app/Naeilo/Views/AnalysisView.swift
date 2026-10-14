@@ -68,9 +68,11 @@ struct AnalysisPager: View {
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 3) {
                     Text(title(sel)).appFont(16, .bold).lineLimit(1)
-                    HStack(spacing: 4) {
-                        ForEach(Self.order, id: \.self) { r in
-                            Circle().fill(r == sel ? Theme.teal : Theme.border).frame(width: 5, height: 5)
+                    if sel != .external {      // 외부 요인은 점 표시 없이 (개편안)
+                        HStack(spacing: 4) {
+                            ForEach(Self.order, id: \.self) { r in
+                                Circle().fill(r == sel ? Theme.teal : Theme.border).frame(width: 5, height: 5)
+                            }
                         }
                     }
                 }

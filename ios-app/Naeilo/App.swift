@@ -82,6 +82,7 @@ struct RootView: View {
                 case "home": model.tab = .home
                 case "tax": model.tab = .settings; model.settingsPath = [.tax]
                 case "rate": model.go(.rateScen)
+                case "ext": model.go(.external)
                 default: model.tab = .board
                 }
             }

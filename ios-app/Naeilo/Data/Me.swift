@@ -265,6 +265,13 @@ extension AppModel {
         guard let s = goalStartAt, let now = TrustedClock.shared.now?.timeIntervalSince1970 else { return "목표 루트에서 4주 지나기" }
         return "목표 루트에서 4주 지나기 (\(max(1, Int(ceil((s + 28 * Self.dayS - now) / Self.dayS))))일 남음)"
     }
+    /// ① 소식함 체크리스트용 짧은 문구 (루트별)
+    var meGate1Short: String {
+        if route == .recover { return meGate1 ? "4주 체크인 마치기" : "4주 체크인 마치기 · \(weeks.count)/4주" }
+        if meGate1 { return "목표를 정한 뒤 4주 지나기" }
+        guard let s = goalStartAt, let now = TrustedClock.shared.now?.timeIntervalSince1970 else { return "목표를 정한 뒤 4주 지나기" }
+        return "목표를 정한 뒤 4주 지나기 · \(max(1, Int(ceil((s + 28 * Self.dayS - now) / Self.dayS))))일 남음"
+    }
     /// ② 평정 지수 성향 매칭
     var meGate2: Bool { calm.type != nil }
     /// ③ 다방커피 이상
