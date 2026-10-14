@@ -98,6 +98,25 @@ extension AppModel {
         .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(AppModel.pct(focusWeight))" + (restRows.isEmpty ? "" : " · \(restName) \(AppModel.pct(1 - focusWeight))") + " 그대로",
               comp: [:], basket: nil, own: true)
     }
+    /// 내 길의 '지금 구성': 시작 전 루트는 지수 중심 (neededMonthly 와 같다)
+    var nowMix: GoalMix { route == .novice ? Self.mixes[0] : mineMix }
+    /// 처음 닿는 때를 셀 긴 기간 (햇수): 목표일 뒤에 닿는 경우도 보이게
+    var etaYears: Int { max(10, gY * 2) }
+    /// 목표 확률을 쉬운 말로
+    static func verdict(_ p: Double) -> String { p >= 0.7 ? "높아요" : p >= 0.3 ? "반반이에요" : "낮아요" }
+    /// 오늘부터 mo 개월 뒤를 연도 소수로 (2031.25 = 2031년 4월 무렵)
+    static func yearAt(_ mo: Double) -> Double {
+        let c = Calendar.current.dateComponents([.year, .month], from: Date())
+        return Double(c.year ?? 2026) + (Double((c.month ?? 1) - 1) + mo) / 12
+    }
+    /// 오늘부터 mo 개월 뒤 "2031년 4월" (기간 안에 없으면 "N년 넘게")
+    static func whenText(_ mo: Double, cap: Int) -> String {
+        guard mo.isFinite else { return "\(cap)년 넘게" }
+        guard mo > 0 else { return "지금" }
+        let d = Calendar.current.date(byAdding: .month, value: Int(mo.rounded()), to: Date()) ?? Date()
+        let c = Calendar.current.dateComponents([.year, .month], from: d)
+        return "\(c.year ?? 0)년 \(c.month ?? 0)월"
+    }
     var goalMixes: [GoalMix] { route == .novice ? Self.mixes : [mineMix] + Self.mixes }
     var selectedMix: GoalMix { goalMixes.first { $0.id == gMix } ?? goalMixes[0] }
 
@@ -121,9 +140,10 @@ extension AppModel {
 
     /// k·years·start 를 주면 지금 목표 대신 그 값으로 (목표 자동 고르기에서 씀, cache: false 면 캐시에 넣지 않는다).
     /// years 를 주면 오늘부터 그 햇수, 안 주면 목표일까지
-    func simulate(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true) -> GoalSim {
+    /// parts 를 주면 구성 대신 그 종목·비중으로 (내 길 비중 바꿔 비교)
+    func simulate(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true, parts over: [Part]? = nil) -> GoalSim {
         let mo = monthly ?? gM, yrs = years ?? gY, K = k ?? gK, A = start ?? goalStart
-        let parts = mixParts(mx)
+        let parts = over ?? mixParts(mx)
         guard let ps = paths(parts, horizon: years == nil ? goalHorizon : longHorizon(yrs)) else {
             return closedSim(mx, parts: parts, monthly: mo, k: K, years: yrs, start: A, cache: cache)
         }
