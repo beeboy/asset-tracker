@@ -96,10 +96,7 @@ struct GoalBoardView: View {
                 if m.boardPage == 1 {
                     if m.playUnlocked { WeekForecastCard() } else { lockedPlay }
                 } else {
-                    if m.gDone.contains("goal") { goalCard } else {
-                        ScreenTitle(kicker: "목표 달성 루트" + (m.route == .plus ? " · 플러스" : " · 시작 전"), title: "목표까지 가는 길")
-                    }
-                    // 인터미션 카드와 접히는 시작 미션 목록은 그대로
+                    // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
                     if let inter = steps.first(where: \.inter) { interCard(inter) }
                     startList(steps.filter { !$0.inter }, done: done.filter { !$0.inter }.count)
                     if m.goalReached {
@@ -130,65 +127,6 @@ struct GoalBoardView: View {
         }
     }
 
-    /// 목표 카드: 지금 금액(원) → 진행 바 → 목표 페이스
-    private var goalCard: some View {
-        let v = m.trackValue, K = m.gK * 1e4, p = max(0, min(1, v / max(1, K)))
-        // 홈 카드와 같은 페이스 판정 (goalPace, ±1개월은 예정대로)
-        let pace = m.goalPace(), eta = m.monthsTo(from: v / 1e4, monthly: m.gM)
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy년 M월"
-        let arrive = Calendar.current.date(byAdding: .month, value: eta.isFinite ? Int(eta.rounded()) : 0, to: Date()) ?? Date()
-        let line1: String = {
-            switch pace {
-            case .onTrack: return "예정대로 가고 있어요"
-            case .ahead(let n): return "예정보다 \(n)개월 앞서 있어요"
-            case .behind(let n): return "예정보다 \(n)개월 늦어요"
-            case .unreachable: return "지금 속도로는 목표일 안에 닿기 어려워요"
-            }
-        }()
-        let ok: Bool = { if case .behind = pace { return false }; return pace != .unreachable }()
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("\(m.gY)년 뒤 \(AppModel.wonK(m.gK)) 목표").appFont(14, .bold).foregroundStyle(Theme.tealDark)
-                Spacer()
-                Button { m.boardPath.append(.g1) } label: {
-                    Image(systemName: "pencil").appFont(17, .semibold).foregroundStyle(Theme.teal).frame(width: 44, height: 44)
-                }.buttonStyle(.plain).accessibilityLabel("목표 고치기")
-            }
-            .padding(.bottom, -8)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(AppModel.man(v)).appFont(32, .bold).lineLimit(1).minimumScaleFactor(0.7)
-                Text(v >= K ? "목표에 닿았어요" : "목표까지 \(AppModel.man(K - v)) 남았어요").appFont(15).foregroundStyle(Theme.sub)
-            }
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.track)
-                    Capsule().fill(Theme.teal).frame(width: g.size.width * p)
-                }
-            }
-            .frame(height: 10)
-            HStack {
-                Text("\(Int(p * 100))% 달성"); Spacer(); Text("목표 \(AppModel.wonK(m.gK))")
-            }
-            .appFont(13).foregroundStyle(Theme.sub)
-            HStack(spacing: 12) {
-                Image(systemName: ok ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis").appFont(18, .semibold)
-                    .foregroundStyle(ok ? Theme.teal : Theme.orange)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(line1).appFont(15, .bold)
-                    if pace != .unreachable { Text("지금 속도면 \(f.string(from: arrive))쯤 도착해요").appFont(13).foregroundStyle(Theme.sub) }
-                    else {
-                        Button("목표 고치기") { m.boardPath.append(.g1) }.appFont(13, .semibold).foregroundStyle(Theme.teal)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(14)
-            .background(ok ? Theme.tealBg : Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
-            .accessibilityElement(children: .combine)
-        }
-        .padding(18)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
-    }
 
     /// 다음 미션: 진한 초록 블록
     private func nextCard(_ next: AppModel.GoalStep, steps: [AppModel.GoalStep]) -> some View {
