@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>받는 배당</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2B6A62}a:hover{color:#1E4F49}
+</style>
+</helmet>
+<div style="width: 390px; height: 1320px; box-sizing: border-box; background: #F2F3F5; font-family: 'IBM Plex Sans KR', sans-serif; color: #191F28; font-variant-numeric: tabular-nums; padding: 12px 16px 40px; display: flex; flex-direction: column; gap: 16px">
+
+<div style="display: flex; align-items: center; gap: 12px; height: 48px">
+<button aria-label="뒤로" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #E1E4E8; background: #FFFFFF; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#191F28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+<h1 style="margin: 0; font-size: 19px; font-weight: 700">배당·세금</h1>
+</div>
+
+<nav aria-label="화면 전환" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #E4E7EB; border-radius: 14px">
+<a href="Main.dc.html" aria-current="page" style="height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #FFFFFF; color: #191F28; font-weight: 700; font-size: 15px; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.08)">받는 배당</a>
+<a href="Tax.dc.html" style="height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #4A5260; font-weight: 500; font-size: 15px; text-decoration: none">낼 양도세</a>
+</nav>
+
+<section style="background: #FFFFFF; border-radius: 20px; padding: 24px 20px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<p style="margin: 0; font-size: 14px; color: #5B6470">앞으로 1년 · 2026년 11월 ~ 2027년 10월</p>
+<p style="margin: 0; font-size: 26px; line-height: 1.35; font-weight: 700; letter-spacing: -0.5px">한 달에 평균<br><span style="color: #2B6A62">약 4만 6천원</span>이<br>배당으로 들어와요</p>
+<p style="margin: 0; font-size: 15px; color: #4A5260">1년 합계 <strong style="color: #191F28">55만원</strong> · 세금 떼고 실제로 받는 돈</p>
+</div>
+
+<sc-if value="{{isMonth}}" hint-placeholder-val="{{ true }}">
+<div role="group" aria-label="배당 보기 방식" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F2F3F5; border-radius: 12px">
+<button aria-pressed="true" onClick="{{showMonth}}" style="height: 44px; border: 0; border-radius: 9px; background: #2B6A62; color: #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer">달별로 보기</button>
+<button aria-pressed="false" onClick="{{showStock}}" style="height: 44px; border: 0; border-radius: 9px; background: transparent; color: #4A5260; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer">종목별로 보기</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; height: 176px; align-items: end">
+<div style="height: 36px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; font-weight: 600; color: #2B6A62">6.5만</span><div style="width: 100%; height: 80px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div></div>
+<div style="height: 2px; background: #D5D9DE; border-radius: 1px"></div>
+<div style="height: 36px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div>
+<div style="height: 36px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div>
+<div style="height: 36px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div>
+<div style="height: 36px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; font-weight: 600; color: #2B6A62">11.4만</span><div style="width: 100%; height: 140px; background: #2B6A62; border-radius: 4px 4px 2px 2px"></div></div>
+<div style="height: 36px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div>
+<div style="height: 36px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; font-weight: 600; color: #2B6A62">11.4만</span><div style="width: 100%; height: 140px; background: #2B6A62; border-radius: 4px 4px 2px 2px"></div></div>
+<div style="height: 36px; background: #9CC6BE; border-radius: 4px 4px 2px 2px"></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; font-size: 12px; color: #5B6470; text-align: center">
+<span>11</span><span>12</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span style="font-weight: 700; color: #191F28">6</span><span>7</span><span>8</span><span style="font-weight: 700; color: #191F28">9</span><span>10</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; font-size: 11px; color: #5B6470">
+<span style="grid-column: span 2; border-top: 1px solid #C9CED4; padding-top: 4px; text-align: center">2026년</span>
+<span style="grid-column: span 10; border-top: 1px solid #C9CED4; padding-top: 4px; text-align: center">2027년 (월)</span>
+</div>
+<p class="sr-only" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">달마다 약 2만 9천원, 12월 6만 5천원, 6월과 9월 11만 4천원, 1월은 0원.</p>
+</div>
+
+<ul style="margin: 0; padding: 14px 16px; list-style: none; background: #F2F3F5; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5; color: #353C47">
+<li style="display: flex; gap: 10px"><span aria-hidden="true" style="flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 4px; background: #2B6A62"></span><span><strong>6월·9월</strong>이 많은 건 NVDA 배당이 같이 들어와서예요.</span></li>
+<li style="display: flex; gap: 10px"><span aria-hidden="true" style="flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 4px; background: #9CC6BE"></span><span>나머지 달은 SGOV에서 <strong>약 2만 9천원</strong>씩, <strong>1월</strong>은 들어오는 배당이 없어요.</span></li>
+</ul>
+</sc-if>
+
+<sc-if value="{{isStock}}" hint-placeholder-val="{{ false }}">
+<div role="group" aria-label="배당 보기 방식" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F2F3F5; border-radius: 12px">
+<button aria-pressed="false" onClick="{{showMonth}}" style="height: 44px; border: 0; border-radius: 9px; background: transparent; color: #4A5260; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer">달별로 보기</button>
+<button aria-pressed="true" onClick="{{showStock}}" style="height: 44px; border: 0; border-radius: 9px; background: #2B6A62; color: #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer">종목별로 보기</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 16px; font-weight: 700">SGOV <span style="font-size: 13px; font-weight: 400; color: #5B6470">미국 단기국채 ETF</span></span>
+<span style="font-size: 17px; font-weight: 700">38만원</span>
+</div>
+<div aria-hidden="true" style="height: 10px; background: #EEF0F2; border-radius: 5px"><div style="width: 100%; height: 10px; background: #2B6A62; border-radius: 5px"></div></div>
+<span style="font-size: 13px; color: #5B6470">매달 들어와요 · 1년에 투자금의 3.65%</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 16px; font-weight: 700">NVDA <span style="font-size: 13px; font-weight: 400; color: #5B6470">엔비디아</span></span>
+<span style="font-size: 17px; font-weight: 700">17만원</span>
+</div>
+<div aria-hidden="true" style="height: 10px; background: #EEF0F2; border-radius: 5px"><div style="width: 45%; height: 10px; background: #2B6A62; border-radius: 5px"></div></div>
+<span style="font-size: 13px; color: #5B6470">1년에 2번(6월·9월) · 1년에 투자금의 0.22%</span>
+</div>
+<p style="margin: 0; padding: 12px 14px; background: #F2F3F5; border-radius: 12px; font-size: 13px; line-height: 1.5; color: #4A5260">TSLA, SPCX는 배당을 주지 않아서 목록에 없어요.</p>
+</div>
+</sc-if>
+</section>
+
+<section style="background: #FFFFFF; border-radius: 20px; padding: 22px 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 700">세금은 이미 빠진 금액이에요</h2>
+<div style="display: flex; flex-direction: column; gap: 10px; font-size: 15px">
+<div style="display: flex; justify-content: space-between"><span style="color: #4A5260">배당 원래 금액</span><span>65만원</span></div>
+<div style="display: flex; justify-content: space-between"><span style="color: #4A5260">미국에서 떼는 세금 15%</span><span style="color: #4A5260">−10만원</span></div>
+<div style="height: 1px; background: #E8EAED"></div>
+<div style="display: flex; justify-content: space-between; font-weight: 700"><span>내 계좌에 들어오는 돈</span><span style="color: #2B6A62">55만원</span></div>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #4A5260">미국 주식 배당은 한국에서 세금을 더 내지 않아요.</p>
+</section>
+
+<section style="background: #FFFFFF; border-radius: 20px; padding: 22px 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 17px; line-height: 1.45; font-weight: 700">1년 배당·이자가 2,000만원을 넘으면 세금 계산이 달라져요</h2>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div role="img" aria-label="2,000만원 중 65만원" style="height: 10px; background: #EEF0F2; border-radius: 5px"><div style="width: 4%; height: 10px; background: #2B6A62; border-radius: 5px"></div></div>
+<div style="display: flex; justify-content: space-between; font-size: 14px"><span>지금 <strong>65만원</strong></span><span style="color: #4A5260">기준까지 1,935만원 남음</span></div>
+</div>
+<p style="margin: 0; padding: 12px 14px; background: #E2EFEC; border-radius: 12px; font-size: 14px; line-height: 1.5; color: #1E4F49">지금은 걱정 없어요. 은행 예금 이자도 이 2,000만원에 같이 들어가요.</p>
+</section>
+
+<details style="background: #FFFFFF; border-radius: 16px; padding: 0 20px">
+<summary style="min-height: 52px; display: flex; align-items: center; font-size: 15px; font-weight: 600; cursor: pointer">이 숫자는 어떻게 계산했나요?</summary>
+<p style="margin: 0 0 18px; font-size: 14px; line-height: 1.6; color: #4A5260">지난 12개월 동안 받은 배당이 앞으로도 같은 달에 들어오고, 지난 3년 동안 늘어난 속도만큼 조금씩 늘어난다고 보고 계산했어요. 실제 배당은 회사 결정에 따라 달라질 수 있어요. 세무 상담이 아니에요.</p>
+</details>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1320}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: 'month' };
+  }
+  renderVals() {
+    var v = this.state.view;
+    return {
+      isMonth: v === 'month',
+      isStock: v === 'stock',
+      showMonth: () => this.setState({ view: 'month' }),
+      showStock: () => this.setState({ view: 'stock' })
+    };
+  }
+}
+</script>
+</body>
+</html>
