@@ -3,15 +3,22 @@ name: ios
 # 맥에서 쓰는 Xcode 26 과 맞춘다 (Xcode 16 은 일부 긴 식의 타입 추론이 시간 초과로 실패)
 on:
   push:
-    paths: ["ios-app/**", "data/prices/**", "web/model.js", "tools/site_stats.mjs", "tools/mc_parity.mjs", ".github/workflows/ios.yml"]
+    paths: ["ios-app/**", "data/prices/**", "data/stats.json", "data/calc.json", "data/macro/rates_earnings.json", "web/model.js", "web/app.js", "tools/site_stats.mjs", "tools/mc_parity.mjs", "tools/calc_parity.mjs", ".github/workflows/ios.yml"]
   pull_request:
-    paths: ["ios-app/**", "data/prices/**", "web/model.js", "tools/site_stats.mjs", "tools/mc_parity.mjs", ".github/workflows/ios.yml"]
+    paths: ["ios-app/**", "data/prices/**", "data/stats.json", "data/calc.json", "data/macro/rates_earnings.json", "web/model.js", "web/app.js", "tools/site_stats.mjs", "tools/mc_parity.mjs", "tools/calc_parity.mjs", ".github/workflows/ios.yml"]
+  # 봇이 올린 데이터 커밋(stats.json·calc.json·금리 식단)은 push 로 이 작업을 깨우지 못한다 (GITHUB_TOKEN 커밋).
+  # 그래서 stats·macro 작업이 끝나면 main 최신으로 parity 만 다시 돈다
+  workflow_run:
+    workflows: [stats, macro]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 concurrency:
-  group: ios-${{ github.ref }}
+  group: ios-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
+    if: github.event_name != 'workflow_run'
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -24,7 +31,9 @@ jobs:
           xcodebuild -version
           cd ios-app && xcodebuild -project NaeiloApp.xcodeproj -target NaeiloApp -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|warning: .*(deprecated|never)|BUILD (SUCCEEDED|FAILED)|\*\* " | head -80
   # 전망 몬테카를로: 같은 입력에 웹(web/model.js)과 앱(MonteCarlo.swift)이 같은 결과를 내는지 (tools/mc_parity.mjs)
+  # 화면 계산: 평가액·배당·세금·금리 시나리오와 고르는 환율이 웹(web/app.js)과 앱이 같은지 (tools/calc_parity.mjs)
   parity:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -40,3 +49,9 @@ jobs:
           "$RUNNER_TEMP/mc_parity" "$RUNNER_TEMP/par"
       - name: 비교
         run: node tools/mc_parity.mjs cmp "$RUNNER_TEMP/par"
+      - name: 화면 계산 비교 (평가액·배당·세금·금리)
+        run: |
+          node tools/calc_parity.mjs gen "$RUNNER_TEMP/calc"
+          swiftc -O "$RUNNER_TEMP/calc/CalcSrc.swift" ios-app/tools/calc_parity/main.swift -o "$RUNNER_TEMP/calc_parity"
+          "$RUNNER_TEMP/calc_parity" "$RUNNER_TEMP/calc"
+          node tools/calc_parity.mjs cmp "$RUNNER_TEMP/calc"
