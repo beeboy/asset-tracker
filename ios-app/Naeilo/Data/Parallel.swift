@@ -66,7 +66,7 @@ struct PRace {
 }
 
 enum Parallel {
-    static let names = ["진짜 나", "담아 본 나", "인물 세계의 나"]
+    static let names = ["내 실제 투자", "모의 바구니", "인물 규칙대로"]
 
     /// v1에 담을 수 있는 종목: 사이트가 지난 종가를 모으는 종목 + 견본 ETF (VTV·USMV)
     struct Item { let id: String; let name: String }
@@ -660,12 +660,25 @@ extension AppModel {
         let need = cost / max(1, amount) - 1
         return need > 0 ? "본전까지 +\(String(format: "%.1f", need * 100))% 남음" : "본전을 넘었어요"
     }
-    /// 홈 한 줄: 오늘 앞선 나
-    var parallelLeader: String? {
-        guard pworld != nil, let race = parallelRace else { return nil }
-        let r = parallelSeries(race)
-        let k = [0, 1, 2].max { r[$0][race.last] < r[$1][race.last] } ?? 0
-        return k == 2 ? "\(friendName(pworldShown?.who ?? "seri")) 세계의 나" : Parallel.names[k]
+    /// 세 방식 이름 (인물 규칙은 인물 이름이 붙는다)
+    func parallelTitle(_ k: Int, who: String) -> String { k == 2 ? "\(friendName(who)) 규칙대로" : Parallel.names[k] }
+    /// 홈 비교 카드: 지금 결론 한 줄. 아직 열지 않았으면 처음 열 때 정할 세계로 미리 계산
+    var parallelVerdictLine: String? {
+        guard let w = pworldShown ?? newParallel(), let race = parallelRun(w, who: w.who) else { return nil }
+        let v = Parallel.verdict(pworldShown == nil ? race.r : parallelSeries(race), at: race.last)
+        let gap = String(format: "%.1f%%p", v.gap * 100)
+        return v.similar ? "지금은 셋 다 비슷해요 (차이 \(gap))" : "지금은 \(parallelTitle(v.order[0], who: w.who)) 쪽이 앞서요 (차이 \(gap))"
+    }
+}
+
+/// 결론 규칙: 가장 앞선 쪽과 뒤진 쪽 차이가 1.0%p 미만이면 "비슷해요"
+struct PVerdict { let order: [Int]; let gap: Double; var similar: Bool { gap < Parallel.similarGap } }
+
+extension Parallel {
+    static let similarGap = 0.01
+    static func verdict(_ r: [[Double]], at t: Int) -> PVerdict {
+        let order = [0, 1, 2].sorted { r[$0][t] > r[$1][t] }
+        return PVerdict(order: order, gap: r[order[0]][t] - r[order[2]][t])
     }
 }
 
