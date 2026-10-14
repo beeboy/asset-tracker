@@ -701,6 +701,7 @@ struct RateScenarioView: View {
                         Text("2단계 근거 자세히 보기").appFont(13, .bold).foregroundStyle(Theme.teal)
                     }
                 }
+                weakCard
                 Card {
                     Button { withAnimation { open.toggle() } } label: {
                         HStack { Text("금리 변화 직접 정하기").appFont(15, .bold); Spacer(); Image(systemName: open ? "chevron.up" : "chevron.down") }
@@ -719,6 +720,50 @@ struct RateScenarioView: View {
             }
             .padding(16)
         }
+    }
+
+    /// 내 종목 중 금리에 약한 곳: 10년물 +1%p 때 움직임(coef.1)이 낮은 순. 비율·민감도로만 보여 준다 (종목 조언 아님)
+    @ViewBuilder private var weakCard: some View {
+        let tot = max(1, m.total)
+        let list = m.rows.filter { $0.value > 0 }
+            .map { (r: $0, c: ExternalView.coef($0.sym).1) }
+            .sorted { $0.c < $1.c }
+        if !list.isEmpty {
+            let lo = list.map { $0.c }.min() ?? 0, hi = list.map { $0.c }.max() ?? 0
+            let span = max(0.0001, hi - lo)
+            Card {
+                Text("내 종목 중 금리에 약한 곳").appFont(16, .bold)
+                Text("금리가 오를 때 더 크게 흔들리는 순서예요.").appFont(13).foregroundStyle(Theme.sub)
+                ForEach(Array(list.prefix(6).enumerated()), id: \.offset) { _, e in
+                    // 가장 약한 쪽 1/3 은 크게, 가장 강한 쪽 1/3 은 덜, 나머지는 보통
+                    let t = (e.c - lo) / span
+                    let tier = list.count < 2 ? 1 : (t < 1.0 / 3 ? 0 : t > 2.0 / 3 ? 2 : 1)
+                    let col = tier == 0 ? Theme.orange : tier == 1 ? Theme.muted : Theme.teal
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(e.r.sym.name).appFont(14, .bold).lineLimit(1)
+                            Spacer()
+                            Text(["크게 흔들려요", "보통이에요", "덜 흔들려요"][tier]).appFont(12, .bold).foregroundStyle(col)
+                        }
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Theme.muted.opacity(0.2))
+                                Capsule().fill(col).frame(width: g.size.width * (0.15 + 0.85 * (1 - t)))
+                            }
+                        }
+                        .frame(height: 8)
+                        Text("비중 \(Int((e.r.value / tot * 100).rounded()))% · \(e.r.sym.sector)").appFont(12).foregroundStyle(Theme.muted)
+                    }
+                }
+                compareLink
+            }
+        }
+    }
+
+    /// "구성 바꿔서 다시 테스트하기": 내 길 개편의 비중 비교 화면(MyPathCompareView, 개편 PR에서 추가)으로 간다.
+    /// 그 화면이 들어오기 전에는 버튼을 숨긴다. 들어오면 아래 EmptyView 를 NavigationLink { MyPathCompareView() } 로 바꾼다
+    @ViewBuilder private var compareLink: some View {
+        EmptyView()
     }
 
     private func timing(_ a: Int?, _ b: Int?) -> String {
