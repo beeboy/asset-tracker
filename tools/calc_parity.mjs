@@ -20,7 +20,6 @@ if (!cmd || !dir) { console.error("사용: node tools/calc_parity.mjs gen|cmp <�
 // 아직 고치지 않은 차이. 여기 적힌 항목이 다르면 실패 대신 경고만 한다. 고쳐져서 같아지면 "지워 주세요" 경고가 뜬다.
 // 원인은 docs/architecture.md 6절 번호
 const KNOWN = {
-  "rate.shift.T1.5": "6절 18번: 앱 금리 시나리오는 기간을 3년으로 고정",
 };
 
 // ---------------------------------------------------------------- 원본 꺼내기
@@ -69,7 +68,11 @@ function inputs(T) {
   // 세금: 미국 종목만, 올해 실현 이익 0 (실현 이익을 더할지, 미국 밖 외화 종목을 넣을지는 아직 안 정함: 6절 17번. 검사하지 않는다)
   const tax = [{ name: "usd-gain", rows: hold }, { name: "usd-loss", rows: [{ t: "SCHD", ccy: "USD", qty: 300, last: 27.41, avg: 29.9 }] }];
   // 금리: 식단 1000벌, 금리 변화·기대수익 몇 가지. 목표 확률 이동(shift)은 기간 3년(같아야 함)·1.5년(알려진 차이)
-  const rate = { coef: macro.meals.coef, g0: macro.meals.g_now, cases: [[-1, 0], [0, 0], [0.5, 0.03], [2, -0.02]].map(([dr, m]) => ({ dr, m })), kb: 1.23, T: [3, 1.5] };
+  const rate = { coef: macro.meals.coef, g0: macro.meals.g_now, cases: [[-1, 0], [0, 0], [0.5, 0.03], [2, -0.02]].map(([dr, m]) => ({ dr, m })), kb: 1.23, T: [3, 1.5],
+    // 금리 충격 테스트 닫힌 식 (목표 가능성 변화·도달 시점·금액) 입력: 기간·변동성·기대·지금 자산·목표·매달 넣는 돈
+    closed: [{ T: 3, sg: 0.18, mu: 0.08, V0: 3e8, K: 1e9, M: 2e6 }, { T: 1.5, sg: 0.25, mu: 0.05, V0: 5e8, K: 4e8, M: 0 }, { T: 10, sg: 0.15, mu: 0.07, V0: 1e8, K: 5e8, M: 1e6 },
+      { T: 2, sg: 0.2, mu: -0.02, V0: 1e7, K: 1e10, M: 0 }],
+    shifts: [-0.03, -0.013, 0, 0.004, 0.02] };
   // 위젯 페이스의 필요 경로 (웹 내 길 goalPath 의 at ↔ 위젯 Snapshot.need): 적립 없음, 적립 있음, 적립 합이 목표보다 큼
   const start = daysAgo(T, 200), goalDate = `${Number(start.slice(0, 4)) + 3}${start.slice(4)}`;
   const dates = [start, daysAgo(T, 100), T, `${Number(T.slice(0, 4)) + 1}${T.slice(4)}`, goalDate];
@@ -92,6 +95,7 @@ function web(I) {
   const rsrc = block(src, "function rateScenDraw(", F);
   const rate = { head: stmt(rsrc, "const M = d.meals", F), tot: stmt(rsrc, "const tot = ", F), band: stmt(rsrc, "const band = ", F), yr: stmt(rsrc, "const yr = ", F),
     mkt: stmt(rsrc, "const mkt = band(", F), shifts: stmt(rsrc, "const shifts = M.coef.map(", F) };
+  const closedSrc = ["function rsNormCDF(", "function rsClosed(", "function rsMonths("].map((k) => block(src, k, F)).join("\n");
 
   // 웹 상태 하나 (매매기준율·지금 환율·보유)
   const env = (mar, live, rows = []) => {
@@ -123,13 +127,15 @@ function web(I) {
   }
   // 금리 시나리오: 웹 rateScenDraw 의 식단 계산
   for (const c of I.rate.cases) for (const T of I.rate.T) {
-    const ctx = { Math, Float64Array, Model, d: { meals: { coef: I.rate.coef, g_now: I.rate.g0 } }, RS: { dr: c.dr, m: c.m * 100 }, T };
+    const ctx = { Math, Float64Array, Model, d: { meals: { coef: I.rate.coef, g_now: I.rate.g0 } }, RS: { dr: c.dr, m: c.m * 100 }, T, kb: I.rate.kb };
     const r = vm.runInNewContext(`(() => { ${rate.head}\n${rate.tot}\n${rate.band}\n${rate.yr}\n${rate.mkt}\n${rate.shifts}
       const drop = Array.from({ length: H }, (_, y) => tot.filter((t) => t[y] < 0).length / tot.length), dropCum = cum.filter((t) => t[H - 1] < 0).length / cum.length;
       return { yr, cum: cb, drop, dropCum, mkt, shifts }; })()`, ctx);
-    // 웹은 목표 확률에서 이동을 β 와 곱한다 (P(shift) 안의 kb * shift). 앱은 이동에 β 를 미리 곱해 둔다. 같은 값으로 맞춰 비교
-    out.rate.push({ dr: c.dr, m: c.m, T, yr: r.yr, cum: r.cum, drop: r.drop, dropCum: r.dropCum, mkt: r.mkt, shift: r.shifts.map((s) => I.rate.kb * s) });
+    out.rate.push({ dr: c.dr, m: c.m, T, yr: r.yr, cum: r.cum, drop: r.drop, dropCum: r.dropCum, mkt: r.mkt, shift: r.shifts });
   }
+  // 금리 충격 테스트 닫힌 식: 웹 rsClosed·rsMonths
+  const cf = vm.runInNewContext(`${closedSrc}\n({ rsClosed, rsMonths })`, { Math });
+  out.closed = I.rate.closed.map((c) => ({ p: I.rate.shifts.map((s) => cf.rsClosed(c, s)), months: I.rate.shifts.map((s) => cf.rsMonths(c, s)) }));
   // 위젯 필요 경로: 웹 내 길 goalPath 의 at(날짜). 위젯에는 0~1 비율 f = 시작부터 날짜까지 ÷ 시작부터 목표일까지 로 넘긴다
   const gp = block(src, "function goalPath(", F), yb = block(src, "function yearsBetween(", F);
   out.wpath = I.wpath.map((c) => {
@@ -155,6 +161,10 @@ function swiftSrc() {
   const divFx = grab(div, /\bfx = (Market\.shared\.[\w.]+)/, "DividendView"), sumFx = grab(ana, /\bfxNow = (Market\.shared\.[\w.]+)/, "AnalysisView");
   const us = line(div, "let us = m.rows.filter", "DividendView"), usU = line(div, "let usU = ", "DividendView");
   const shifts = line(det, "let shifts: [Double] = r.slope.map", "RateScenarioView");
+  // 금리 충격 테스트 닫힌 식 (RateScenarioView 의 Closed·closed·months). private 만 떼어 낸다
+  const rsv = block(det, "struct RateScenarioView: View {", "AnalysisDetail.swift");
+  const closedSw = [line(rsv, "private struct Closed {", "RateScenarioView"), block(rsv, "private static func closed(", "RateScenarioView"), block(rsv, "private static func months(", "RateScenarioView")]
+    .map((x) => x.replace(/^private /, "")).join("\n    ");
   // 위젯 필요 경로 (Snapshot.span·need)
   const wpath = `struct WPath {
     var v0: Double?; var start: String?; var goalDate: String; var goal: Double; var monthly: Double
@@ -173,6 +183,12 @@ ${siteCalc}
 }
 
 ${block(det, "struct RateScen {", "AnalysisDetail.swift")}
+
+// RateScenarioView 원본: 금리 충격 테스트 닫힌 식
+enum AppModel { ${block(am, "static func normCDF(", "AppModel.swift")} }
+enum RSV {
+    ${closedSw}
+}
 
 ${block(eng, "enum Day {", "Engine.swift")}
 
@@ -264,6 +280,11 @@ if (cmd === "gen") {
     }
     arr(`rate.shift.T${w.T}.${w.dr}.${w.m}`, w.shift, a.shift, 1e-9);
   }
+  (W.closed || []).forEach((w, i) => {
+    const a = (A.closed || [])[i], p = `금리충격.닫힌식[${i}]`;
+    if (!a) return fail(p, "있음", "없음");
+    arr(p + ".p", w.p, a.p); arr(p + ".months", w.months, a.months);
+  });
   for (const w of W.wpath || []) {
     const a = by(A.wpath, w.name);
     arr(`위젯필요경로.${w.name}`, w.need, a?.need);
