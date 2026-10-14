@@ -269,14 +269,14 @@ struct AnalysisView: View {
         if let e = ExternalView.hubNext(m) {
             let n = Day.dday(e.day)
             ext = Line(icon: "globe", head: "외부 요인 · \(Day.md(e.day)) \(e.kind)", answer: Text("발표날 보통 ±\(AppModel.man(e.amt)) 움직여요"),
-                       sub: "하루하루 흔들림 기준이에요", badge: n == 0 ? "오늘" : "D-\(n)", route: .external)
+                       sub: "단기 흔들림(오늘~한 달) 기준이에요", badge: n == 0 ? "오늘" : "D-\(n)", route: .external)
         } else {
             let mkt10 = m.rows.reduce(0.0) { a, r in
                 a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0)
             }
             ext = Line(icon: "globe", head: "외부 요인 · 시장이 10% 내리면",
                        answer: Text("내 자산은 약 ") + Text(AppModel.man(abs(mkt10)) + " 줄어요").foregroundColor(Self.warn),
-                       sub: "하루하루 흔들림 기준이에요", route: .external)
+                       sub: "단기 흔들림(오늘~한 달) 기준이에요", route: .external)
         }
         // 환율 영향: 상세 첫 문장과 같은 per10 = 달러 평가액 × 10 / 기준 환율
         let usdW = usdV / tot, per10 = usdV * 10 / max(1, Market.shared.valFx)
