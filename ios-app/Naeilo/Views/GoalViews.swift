@@ -108,24 +108,9 @@ struct GoalBoardView: View {
                         Text("지금 \(AppModel.wonK(start)) · 목표까지 \(AppModel.wonK(max(0, m.gK - start))) 남았어요").appFont(15).foregroundStyle(Theme.sub)
                     }
                 }
-                if !done.isEmpty {
-                    Button { withAnimation { openDone.toggle() } } label: {
-                        HStack(spacing: 8) {
-                            Text("✓ \(done.count)개 끝냄").fontWeight(.bold)
-                            Text(done.map(\.title).joined(separator: " · ")).lineLimit(1)
-                            Spacer(minLength: 0)
-                            Text(openDone ? "접기 ▴" : "펼치기 ▾")
-                        }
-                        .appFont(14, .semibold).foregroundStyle(Theme.tealDark)
-                        .padding(.horizontal, 12).frame(minHeight: 48)
-                        .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
-                    }.buttonStyle(.plain)
-                }
-                let shown = steps.filter { openDone || !m.gDone.contains($0.id) }
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                    ForEach(shown.filter { !$0.inter }) { block($0) }
-                }
-                ForEach(shown.filter(\.inter)) { block($0) }
+                // 인터미션 카드가 위, 시작 미션은 접는 번호 목록 한 줄 (쉬운 말 ⑧)
+                if let inter = steps.first(where: \.inter) { interCard(inter) }
+                startList(steps.filter { !$0.inter }, done: done.filter { !$0.inter }.count)
                 if m.goalReached {
                     Card(padding: 18) {
                         GuideBubble(pose: .cheer, text: "목표 \(AppModel.wonK(m.gK))에 닿았어요! 여기까지 온 길, 축하해요.")
@@ -155,38 +140,85 @@ struct GoalBoardView: View {
         .navigationDestination(for: MissionRoute.self) { MissionScreen(route: $0) }
     }
 
-    private func block(_ b: AppModel.GoalStep) -> some View {
-        let done = m.gDone.contains(b.id), avail = m.goalAvailable(b)
+    /// 처음 석 달 체크인 카드: 달마다 계획대로 넣었는지와 받은 위젯
+    private func interCard(_ b: AppModel.GoalStep) -> some View {
+        let done = m.gDone.contains(b.id), avail = m.goalAvailable(b), n = m.gWeeks.count
         return Button { if done || avail { m.boardPath.append(b.to) } } label: {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(b.num).appFont(13, .bold)
+                    Text("처음 석 달 체크인 · 인터미션").appFont(12, .bold).foregroundStyle(Theme.mint)
                     Spacer()
-                    if done { Image(systemName: "checkmark").appFont(13, .bold) } else if !avail { Image(systemName: "lock").appFont(12) }
+                    if done { Text("다 했어요 ✓").appFont(12, .bold).foregroundStyle(Theme.yellow) }
+                    else if !avail { Image(systemName: "lock").appFont(12) }
                 }
-                Text(b.title).appFont(13, .semibold).lineLimit(2).multilineTextAlignment(.leading)
-                if b.inter && !done && avail {
-                    HStack(spacing: 4) {
-                        ForEach(0..<3, id: \.self) { i in
-                            let pick = i < m.gWeeks.count ? m.gWeeks[i] : nil
-                            Text("\(i + 1)달").appFont(11, .bold).frame(maxWidth: .infinity, minHeight: 20)
-                                .foregroundStyle(pick != nil ? .white : i == m.gWeeks.count ? Theme.yellow : Theme.muted)
-                                .background(pick?.color ?? (i == m.gWeeks.count ? .clear : Theme.slate), in: RoundedRectangle(cornerRadius: 6))
-                                .overlay { if pick == nil && i == m.gWeeks.count { RoundedRectangle(cornerRadius: 6).stroke(Theme.yellow, lineWidth: 2) } }
+                Text(done || n >= 3 ? "석 달 동안 한 달에 한 번, 계획대로 넣었는지 표시했어요"
+                     : avail ? "한 달에 한 번, 계획대로 넣었는지 표시해요 · \(n)/3달"
+                     : "앞의 시작 미션을 마치면 시작해요")
+                    .appFont(16, .bold).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    ForEach(0..<3, id: \.self) { i in
+                        let pick: GoalWeek? = i < n ? m.gWeeks[i] : nil
+                        VStack(spacing: 2) {
+                            Text("\(i + 1)달째").appFont(11)
+                            Text(pick?.label ?? (avail && i == n ? "이번 달" : "–")).appFont(13, .bold)
+                            Text(AppModel.goalMonthSteps[i].reward + " 위젯").appFont(11)
                         }
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                        .foregroundStyle(pick != nil ? .white : avail && i == n ? Theme.yellow : Theme.muted)
+                        .background(pick?.color ?? .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(pick?.color ?? (avail && i == n ? Theme.yellow : Theme.slate),
+                                                                          style: StrokeStyle(lineWidth: 2, dash: pick == nil ? [5, 4] : [])))
                     }
-                    Text("\(m.gWeeks.count)/3달 · 이번 달: \(AppModel.goalMonthSteps[min(m.gWeeks.count, 2)].task)").appFont(12).foregroundStyle(Color(hex: 0xC9D0D6))
+                }
+                if n > 0 {
+                    Text("받은 위젯 \(n)개는 설정 › 홈 화면 위젯에서 쓸 수 있어요.").appFont(12).foregroundStyle(Color(hex: 0xC9D0D6))
+                } else if avail {
+                    Text("이번 달: \(AppModel.goalMonthSteps[0].task)").appFont(12).foregroundStyle(Color(hex: 0xC9D0D6))
                 }
             }
-            .padding(b.inter ? 12 : 10)
-            .frame(maxWidth: .infinity, minHeight: b.inter ? 72 : 88, alignment: .topLeading)
-            .foregroundStyle(b.inter ? (done ? Theme.yellow : avail ? .white : Theme.sub2) : (done ? .white : avail ? Theme.ink : Theme.sub2))
-            .background(b.inter ? (done || avail ? Theme.night : Theme.track) : (done ? Theme.teal : avail ? Theme.card : Theme.track), in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(b.inter ? (done ? Theme.ink : avail ? Theme.yellow : Theme.dash) : (done || avail ? Theme.teal : Theme.track),
-                                                               style: StrokeStyle(lineWidth: 2, dash: b.inter && !done ? [6, 4] : [])))
+            .foregroundStyle(done || avail ? .white : Theme.sub2)
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+            .background(done || avail ? Theme.night : Theme.track, in: RoundedRectangle(cornerRadius: 18))
         }
         .buttonStyle(.plain).disabled(!(done || avail))
-        .accessibilityLabel("미션 \(b.num): \(b.title)")
+        .accessibilityLabel("처음 석 달 체크인, \(n)/3달")
+    }
+
+    /// 시작 미션: 접힌 한 줄, 펼치면 번호 목록. 끝냈거나 열린 미션은 눌러서 들어간다
+    private func startList(_ list: [AppModel.GoalStep], done: Int) -> some View {
+        let all = done == list.count
+        return VStack(alignment: .leading, spacing: 0) {
+            Button { withAnimation { openDone.toggle() } } label: {
+                HStack(spacing: 8) {
+                    Text(all ? "✓ 시작 미션 \(list.count)개 모두 끝냈어요" : "시작 미션 \(done)/\(list.count) 끝냄").fontWeight(.bold)
+                    Spacer(minLength: 0)
+                    Text(openDone ? "접기 ▴" : "펼치기 ▾")
+                }
+                .appFont(14, .semibold).foregroundStyle(all ? Theme.tealDark : Theme.ink)
+                .padding(.horizontal, 14).frame(minHeight: 48)
+            }.buttonStyle(.plain)
+            if openDone {
+                ForEach(Array(list.enumerated()), id: \.element.id) { i, b in
+                    let ok = m.gDone.contains(b.id), avail = m.goalAvailable(b)
+                    Divider().overlay(Theme.border)
+                    Button { if ok || avail { m.boardPath.append(b.to) } } label: {
+                        HStack(spacing: 10) {
+                            Text("\(i + 1)").appFont(13, .bold).foregroundStyle(Theme.sub).frame(width: 18)
+                            Text(b.title).appFont(14).foregroundStyle(ok || avail ? Theme.ink : Theme.sub2)
+                            Spacer(minLength: 0)
+                            if ok { Image(systemName: "checkmark").foregroundStyle(Theme.teal) }
+                            else if !avail { Image(systemName: "lock").foregroundStyle(Theme.sub2) }
+                            else { Image(systemName: "chevron.right").foregroundStyle(Theme.sub) }
+                        }
+                        .appFont(13, .bold).padding(.horizontal, 14).frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain).disabled(!(ok || avail))
+                    .accessibilityLabel("시작 미션 \(i + 1): \(b.title)" + (ok ? ", 끝냄" : ""))
+                }
+            }
+        }
+        .background(all ? Theme.tealBg : Theme.card, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
     }
 }
 
@@ -588,8 +620,8 @@ struct GoalIntermissionView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack { Text("INTERMISSION · 3 MONTHS").appFont(12, .bold).tracking(1).foregroundStyle(Theme.mint); Spacer(); Text("\(fixed.count)/3").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
-                    Text("매달 1분, 블록 하나씩 채워요").appFont(20, .bold)
+                    HStack { Text("처음 석 달 체크인 · 인터미션").appFont(12, .bold).foregroundStyle(Theme.mint); Spacer(); Text("\(fixed.count)/3").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
+                    Text("한 달에 한 번, 계획대로 넣었는지 표시해요").appFont(20, .bold)
                     HStack(spacing: 6) {
                         ForEach(0..<3, id: \.self) { j in
                             let p: GoalWeek? = j < fixed.count ? fixed[j] : (j == fixed.count ? m.gWeekCur : nil)
@@ -603,8 +635,6 @@ struct GoalIntermissionView: View {
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(j == fixed.count ? Theme.yellow : (p?.color ?? Theme.slate), style: StrokeStyle(lineWidth: 2, dash: p == nil ? [5, 4] : [])))
                         }
                     }
-                    HStack { Text("목표까지"); Spacer(); Text("\(AppModel.wonK(now)) / \(AppModel.wonK(m.gK))") }.appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                    ProgressBar(value: now / max(1, m.gK))
                     if let last {
                         Text((last == .more ? "더 넣었어요! " : last == .less ? "이번 달은 덜 넣었어요. " : "계획대로 넣었어요. ")
                              + (eta.isFinite ? "이 속도면 \(AppModel.eta(eta)) 도착 (" + (eta < plan ? "\(Int(plan - eta))개월 빠름" : eta > plan ? "\(Int(eta - plan))개월 늦음" : "목표 시점") + ")" : ""))

@@ -332,11 +332,11 @@ extension AppModel {
     var goalSteps: [GoalStep] {
         let list: [(String, String, String, MissionRoute, Bool)] = route == .novice ? [
             ("goal", "목표 정하기", "목표까지 경로", .g1, false), ("mix", "투자 구성 고르기", "구성 비교", .g3, false),
-            ("link", "앱 시작 3단계", "위젯 전부", .nx, false), ("inter", "3개월, 매달 1분", "캐릭터 위젯 3개", .gi, true),
+            ("link", "앱 시작 3단계", "위젯 전부", .nx, false), ("inter", "처음 석 달 체크인", "캐릭터 위젯 3개", .gi, true),
         ] : [
-            ("hold", "종목·단가 넣기", "평가액·수익률", .m1, false), ("goal", "목표 정하기", "목표까지 경로", .g1, false),
-            ("mix", "내 구성과 비교", "구성 비교", .g3, false), ("tax", "비중 조정 세금", "절세 순서", .gt, false),
-            ("link", "앱 시작 3단계", "위젯 전부", .nx, false), ("inter", "3개월, 매달 1분", "캐릭터 위젯 3개", .gi, true),
+            ("hold", "종목과 산 가격 넣기", "평가액·수익률", .m1, false), ("goal", "목표 정하기", "목표까지 경로", .g1, false),
+            ("mix", "다른 방식과 비교", "구성 비교", .g3, false), ("tax", "세금 알아보기", "절세 순서", .gt, false),
+            ("link", "앱 시작 3단계", "위젯 전부", .nx, false), ("inter", "처음 석 달 체크인", "캐릭터 위젯 3개", .gi, true),
         ]
         return list.enumerated().map { i, x in GoalStep(id: x.0, num: x.4 ? "인터미션" : "\(i + 1)", title: x.1, reward: x.2, to: x.3, inter: x.4) }
     }

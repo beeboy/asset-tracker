@@ -350,7 +350,7 @@ final class AppModel {
         .init(id: 2, num: "2", title: "원인 진단", reward: "회복 경로", inter: false),
         .init(id: 3, num: "3", title: "내 계획 정하기", reward: "비중 비교", inter: false),
         .init(id: 5, num: "4", title: "앱 시작 3단계", reward: "위젯 전부", inter: false),
-        .init(id: 6, num: "인터미션", title: "4주, 매주 1분", reward: "캐릭터 위젯 4개, 1년 전망", inter: true),
+        .init(id: 6, num: "인터미션", title: "처음 4주 체크인", reward: "캐릭터 위젯 4개, 1년 전망", inter: true),
     ]
     func available(_ b: Block) -> Bool {
         guard let i = blocks.firstIndex(where: { $0.id == b.id }) else { return false }
