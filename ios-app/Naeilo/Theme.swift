@@ -50,6 +50,14 @@ enum Theme {
     static let holdColors: [Color] = [Color(hex: 0x7A4FC8), Color(hex: 0x2F8FD8), Color(hex: 0x12A06E),
                                       Color(hex: 0xE8862A), Color(hex: 0xC2477A), Color(hex: 0x5B6670)]
 
+    // 쉬운 말 개편 색 규칙: 화면 사이에서 같은 뜻엔 같은 색 (유리/불리는 색맹을 고려해 파랑/주황)
+    static let myReal = Color(hex: 0x2E6B63, dark: 0x5FB3A6)     // 내 실제 투자
+    static let basket = Color(hex: 0xD9873A, dark: 0xE9A564)     // 모의 바구니
+    static let rule = Color(hex: 0x6847B8, dark: 0x9B78E0)       // 인물 규칙 (점선과 함께)
+    static let hold = Color(hex: 0x9AA1AC, dark: 0x7F8792)       // 그냥 둠
+    static let favor = Color(hex: 0x2F6FB8, dark: 0x6FA6E6)      // 유리
+    static let against = Color(hex: 0xD9873A, dark: 0xE9A564)    // 불리
+
     static func change(_ r: Double) -> Color { r >= 0 ? up : down }
     /// 가로 화면에서 내용 폭 상한
     static let maxWidth: CGFloat = 720

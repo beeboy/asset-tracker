@@ -312,7 +312,7 @@ final class Remind {
         }
         let n = m.calm.events.count
         if (1..<Calm.minEvents).contains(n) {
-            a.append(.init(id: "do.calm", cat: .doing, text: "평정 지수까지 기록 \(Calm.minEvents - n)건 남았어요.", go: .calm, once: false))
+            a.append(.init(id: "do.calm", cat: .doing, text: "내 투자 습관까지 매매 기록 \(Calm.minEvents - n)건 남았어요.", go: .calm, once: false))
         }
         if let l = m.calm.ladder, (1...3).contains(l.step), let st = Calm.steps[l.type]?[l.step - 1], let p = m.calm.progress() {
             a.append(.init(id: "do.ladder", cat: .doing, text: "다음 걸음 \(l.step)/3 ‘\(st.name)’ · \(p.text)", go: .calm, once: false))

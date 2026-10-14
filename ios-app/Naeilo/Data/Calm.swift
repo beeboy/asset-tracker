@@ -182,6 +182,25 @@ struct Calm: Codable, Equatable {
     ]
     static func kind(_ id: String?) -> Kind? { kinds.first { $0.id == id } }
 
+    /// 인물 행동 한 줄 (쉬운 말 요약. 정확한 기준은 kinds.when과 match)
+    static let does: [String: String] = [
+        "seri": "대부분 정해 둔 규칙대로 사고판다",
+        "sio": "거의 안 사고팔고, 크게 흔들리면 기다린다",
+        "seonbae": "오르면 조금 덜어내며 거꾸로 생각한다",
+        "ir": "오르면 더 사고, 내리면 바로 판다",
+        "sua": "점수가 한 달 새 눈에 띄게 좋아지는 중",
+    ]
+    /// 기록마다 왜 그 점수인지 한 줄 (점수표 points와 같은 뜻)
+    static func reason(_ a: CalmEvent.Act) -> String {
+        switch a {
+        case .rule: return "정해 둔 규칙대로 해서 +2점"
+        case .wait: return "크게 움직인 날 기다려서 +1점"
+        case .chase: return "오른 뒤 더 사서 −1점"
+        case .switchOut: return "내린 뒤 팔아서 −1점"
+        case .avgDown, .trim: return "물타기·덜어내기는 규칙 밖이라 점수가 없어요"
+        }
+    }
+
     /// 지수가 무슨 뜻인지 한 줄 (100 = 직전 수익·손실과 무관하게 매매)
     static func meaning(_ s: CalmStats) -> String {
         guard s.n >= minEvents else { return "기록 \(minEvents)건이 모이면 지수가 나와요." }

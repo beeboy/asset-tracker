@@ -202,6 +202,15 @@ final class AppModel {
         if y * 12 >= 1 { return "\(Int(y * 12))개월" }
         return "\(Int((y * 365.25).rounded(.up)))일"
     }
+    /// 퍼센트와 금액을 함께: "−2.1% · 약 1,060만원". 금액 = base × rate, 만원 반올림, 1억 이상은 "약 1.2억원"
+    static func pctWon(_ rate: Double, base: Double) -> String {
+        let p = (rate >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(rate) * 100)
+        let a = abs(base * rate)
+        let w = a >= 1e8 ? String(format: "%.1f억원", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만원"
+        return p + " · 약 " + w
+    }
+    /// 아직 값이 없으면 0 대신 "—"
+    static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }
     static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
     static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "") + String(format: "%.1f%%", p * 100) }
     static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "") + "\(Int((p * 100).rounded()))%" }
