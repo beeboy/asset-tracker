@@ -49,6 +49,87 @@ BASKET_SYMBOLS = ["QQQ", "SGOV", "VTV", "USMV"]
 LOCK = threading.Lock()
 
 
+# ---------------------------------------------------------------- 토스증권 시세 (개발자 전용)
+# 키가 있는 PC 에서만 켜진다: toss_keys.json {"client_id","client_secret"} (.gitignore, 저장소에 안 올림).
+# 아이폰·naeilo.com 은 Tailscale 주소(https://…ts.net)로 이 서버의 /api/toss/prices 를 부른다 (CORS 허용: TOSS_ORIGINS).
+# 토스는 허용 IP 에서만 받으므로 그 IP 를 등록한 PC 의 이 서버에서만 부른다. 키·토큰은 브라우저로 보내지 않는다.
+TOSS = "https://openapi.tossinvest.com"
+TOSS_KEYS = ROOT / "toss_keys.json"
+TOSS_ORIGINS = ("https://naeilo.com", "https://www.naeilo.com")
+
+
+def toss_origin_ok(o: str) -> bool:
+    # naeilo.com 과 Tailscale 주소(내 기기끼리만 닿음)만 허용
+    return o in TOSS_ORIGINS or (o.startswith("https://") and o.endswith(".ts.net"))
+
+
+_toss = {"token": None, "exp": 0.0}
+TOSS_LOCK = threading.Lock()
+
+
+def toss_keys() -> tuple[str, str] | None:
+    k = read_json(TOSS_KEYS, {})
+    i, s = str(k.get("client_id", "")).strip(), str(k.get("client_secret", "")).strip()
+    return (i, s) if i and s else None
+
+
+def toss_token(keys: tuple[str, str], renew: bool = False) -> str:
+    # 클라이언트당 토큰은 1개 (새로 받으면 예전 것은 바로 무효) → 한 번 받아 만료 전까지 같이 쓴다
+    with TOSS_LOCK:
+        if not renew and _toss["token"] and time.time() < _toss["exp"] - 60:
+            return _toss["token"]
+        body = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": keys[0], "client_secret": keys[1]}).encode()
+        req = urllib.request.Request(TOSS + "/oauth2/token", data=body, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            j = json.loads(r.read().decode("utf-8"))
+        _toss["token"], _toss["exp"] = j["access_token"], time.time() + float(j.get("expires_in") or 3600)
+        return _toss["token"]
+
+
+def toss_get(keys: tuple[str, str], path: str) -> dict:
+    for renew in (False, True):
+        req = urllib.request.Request(TOSS + path, headers={"Authorization": "Bearer " + toss_token(keys, renew), "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code != 401 or renew:
+                raise
+    return {}
+
+
+def toss_prices(symbols: list[str]) -> dict:
+    """국내 종목(005930.KS·.KQ)의 지금 가격. 사이트 quotes 와 같은 모양으로 돌려준다"""
+    keys = toss_keys()
+    if not keys:
+        return {"enabled": False, "quotes": {}}
+    codes = {}
+    for s in symbols:
+        c = s.split(".")[0]
+        if s.upper().endswith((".KS", ".KQ")) and c.isdigit() and len(c) == 6:
+            codes[c] = s
+    out = {}
+    try:
+        cs = list(codes)
+        for i in range(0, len(cs), 200):  # 한 번에 200개까지
+            j = toss_get(keys, "/api/v1/prices?symbols=" + urllib.parse.quote(",".join(cs[i:i + 200])))
+            for q in j.get("result") or []:
+                sym = codes.get(str(q.get("symbol")))
+                v = float(q.get("lastPrice") or 0)
+                if not sym or v <= 0:
+                    continue
+                try:
+                    t = int(datetime.fromisoformat(str(q.get("timestamp"))).timestamp())
+                except ValueError:
+                    t = int(time.time())
+                out[sym] = {"symbol": sym, "last": v, "last_time": t, "last_session": "toss", "currency": q.get("currency") or "KRW"}
+    except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
+        code = getattr(e, "code", None)
+        msg = "허용 IP 가 아니에요" if code == 403 else "키를 확인하세요" if code in (400, 401) else str(e)
+        return {"enabled": True, "quotes": out, "error": msg}
+    return {"enabled": True, "quotes": out}
+
+
 # ---------------------------------------------------------------- 파일
 def read_json(p: Path, default):
     try:
@@ -293,8 +374,13 @@ class Handler(SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):  # 조용히
         pass
 
+    cors = None
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
+        if self.cors:
+            self.send_header("Access-Control-Allow-Origin", self.cors)
+            self.send_header("Vary", "Origin")
         super().end_headers()
 
     def send_json(self, obj, code=200):
@@ -317,7 +403,22 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(read_json(DATA / "macro" / "rates_earnings.json", {}))
         if self.path.startswith("/api/beyora"):
             return self.send_json(read_json(DATA / "beyora.json", {"cats": [], "posts": []}))
+        if self.path.startswith("/api/toss/prices"):  # 토스증권 국내 시세 (키 있는 개발자 PC 만)
+            o = self.headers.get("Origin") or ""
+            self.cors = o if toss_origin_ok(o) else None
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            return self.send_json(toss_prices([x for x in (q.get("symbols") or [""])[0].split(",") if x]))
         return super().do_GET()
+
+    def do_OPTIONS(self):  # 토스 시세 사전 요청 (CORS)
+        o = self.headers.get("Origin") or ""
+        if not (self.path.startswith("/api/toss/") and toss_origin_ok(o)):
+            return self.send_json({"error": "forbidden"}, 403)
+        self.cors = o
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Methods", "GET")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
 
     def do_POST(self):
         # 같은 PC 의 다른 웹사이트가 몰래 부르는 것을 막는다
