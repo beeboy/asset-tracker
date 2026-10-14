@@ -1083,6 +1083,82 @@
     return { A, start, i0, V0, at }; // 시작일 전은 같은 속도로 거꾸로 늘인 길
   }
   let progAsked = "";
+  // ---- 내 길: 판정 + 구성에 따라 언제 닿을까 + 비중 바꿔 비교 (앱 내 길과 같은 화면. 점 = 보통 닿는 때, 막대 = 10번 중 8번)
+  // 성장 중심·안정 중심은 비중안 비교(공격적·보수적)와 같은 규칙. 저장(모의 바구니)은 앱에만 있다
+  let etaOpen = false, etaRes = null, etaSig = "", etaRun = 0, etaW0 = null, etaW = null, etaTimer = null;
+  const etaVerdict = (p) => (p >= 0.7 ? "높아요" : p >= 0.3 ? "반반이에요" : "낮아요");
+  const etaYear = (d) => (d ? +d.slice(0, 4) + (+d.slice(5, 7) - 1) / 12 : null);
+  const etaText = (d, cap) => (d ? `${d.slice(0, 4)}년 ${+d.slice(5, 7)}월` : `${cap}년 넘게`);
+  function etaBase() {
+    const { rows } = valuation(), base = rows.filter((r) => r.valueKrw > 0).map((r) => ({ ticker: r.h.ticker, shares: r.sh, price0: r.p.v, ccy: r.ccy, valueKrw: r.valueKrw }));
+    const mixes = {}, defs = {};
+    for (const k of ["agg", "con"]) { mixes[k] = allocMix(k).map(([t, w]) => [S.prices[t] ? t : ALLOC_SUB[t] && S.prices[ALLOC_SUB[t]] ? ALLOC_SUB[t] : null, w]).filter((x) => x[0]); defs[k] = { cap: ALLOC_DEF[k].cap, cutSmall: { agg: 0.1, con: 0.4 }[k] }; }
+    for (const t of new Set(Object.values(mixes).flat().map((x) => x[0]))) if (!base.some((h) => h.ticker === t)) { const q = S.prices[t]; base.push({ ticker: t, shares: 0, price0: q.close[q.close.length - 1], ccy: ccyOf(t), valueKrw: 1, extra: true }); }
+    return { base, mixes, defs };
+  }
+  function etaCompute(custom) {
+    const g = S.state.goal, yrs = Math.max(10, Math.ceil(yearsBetween(today(), g.date) * 2));
+    const { base, mixes, defs } = etaBase();
+    const series = {}; { const P = mcPrices(); for (const k in P) series[k] = { dates: P[k].dates, adj: P[k].adj }; }
+    const inp = { base, series, settings: S.state.model, events: S.state.events, betas: factorBetas().beta, startDate: today(), horizon: Model.addMonths(today(), 12 * yrs), goal: g, mixes, defs, custom: custom ? base.map((h) => custom[h.ticker] || 0) : null };
+    return allocCompute(inp, null, "eta").then((r) => ({ r, base, yrs }));
+  }
+  function renderEta(pg, now) {
+    const card = $("#etaCard"), g = S.state.goal;
+    if (!card) return;
+    if (!(now > 0) || !(g.amount > 0)) { card.style.display = "none"; return; }
+    card.style.display = "block";
+    const sig = fcSig() + JSON.stringify(S.state.alloc_mix || {});
+    if (sig !== etaSig) {
+      etaSig = sig; etaRes = null; etaW0 = etaW = null; const my = ++etaRun;
+      etaCompute(null).then((x) => { if (my !== etaRun) return; etaRes = x; renderEta(pg, now); }).catch((e) => { console.error(e); });
+    }
+    const left = yearsBetween(today(), g.date), gy = etaYear(g.date), R = etaRes?.r;
+    const keep = R?.find((o) => o.k === "keep"), cap = etaRes?.yrs || 10;
+    if (R && !etaW0) { etaW0 = {}; etaRes.base.forEach((h, i) => { if (!h.extra) etaW0[h.ticker] = Math.round(keep.w[i] * 100); }); const top = Object.keys(etaW0).sort((a, b) => etaW0[b] - etaW0[a])[0]; if (top) etaW0[top] += 100 - Object.values(etaW0).reduce((a, x) => a + x, 0); etaW = { ...etaW0 }; }
+    const cust = R?.find((o) => o.k === "custom");
+    const rows = R ? [["지금 구성", keep, true], ["성장 중심", R.find((o) => o.k === "agg"), false], ["안정 중심", R.find((o) => o.k === "con"), false]].filter((x) => x[1]) : [];
+    const all = rows.map((x) => x[1]).concat(cust ? [cust] : []);
+    let a0 = gy, a1 = gy;
+    for (const o of all) { a0 = Math.min(a0, etaYear(o.eta.p10) ?? a0); a1 = Math.max(a1, etaYear(o.eta.p90) ?? etaYear(Model.addMonths(today(), 12 * cap))); }
+    a0 = Math.floor(a0); a1 = Math.max(a0 + 2, Math.ceil(a1));
+    const X = (y) => Math.min(100, Math.max(0, ((y - a0) / (a1 - a0)) * 100));
+    const line = (name, o, strong) => { const lo = X(etaYear(o.eta.p10) ?? a1), hi = o.eta.p90 ? X(etaYear(o.eta.p90)) : 100, mid = o.eta.p50 ? X(etaYear(o.eta.p50)) : 100;
+      return `<div class="etarow"><div class="row between"><b>${esc(name)}</b><span class="${strong ? "pos" : "muted"}">보통 ${etaText(o.eta.p50, cap)}</span></div><div class="etabar"><i style="left:${lo}%;width:${Math.max(1, hi - lo)}%" class="${strong ? "on" : ""}"></i><b style="left:calc(${mid}% - 6px)" class="${strong ? "on" : ""}"></b><u style="left:${X(gy)}%"></u></div></div>`; };
+    const ticks = []; for (let y = a0; y <= a1; y += a1 - a0 > 6 ? 2 : 1) ticks.push(`<span style="left:${X(y)}%">${y}</span>`);
+    const sum = etaW ? Object.values(etaW).reduce((a, x) => a + x, 0) : 0;
+    let cmp = "";
+    if (etaW) {
+      const ed = (t) => { const d = (etaW[t] || 0) - (etaW0[t] || 0); return d === 0 ? "그대로" : d > 0 ? `+${d}%p` : `${d}%p`; };
+      const m = cust || keep, goalM = gy, mid = etaYear(m.eta.p50) ?? Infinity, midNow = etaYear(keep.eta.p50) ?? Infinity;
+      const head = mid <= goalM ? "보통 목표일 안에 닿아요" : mid < midNow - 0.04 ? "지금보다 빨라지지만, 보통 목표일은 넘겨요" : mid > midNow + 0.04 ? "지금보다 늦어지고, 보통 목표일을 넘겨요" : "지금과 비슷해요. 보통 목표일을 넘겨요";
+      const wd = m.eta.p90 && m.eta.p10 ? etaYear(m.eta.p90) - etaYear(m.eta.p10) : Infinity;
+      cmp = `<details class="etacmp"${etaOpen ? " open" : ""}><summary>내 구성 바꿔서 비교해 보기</summary>
+        <div class="row between" style="margin-top:8px"><b>내 종목 비중</b><button class="sm" data-eta="reset">처음으로</button></div>
+        ${Object.keys(etaW).map((t) => `<div class="row between etaw"><span>${esc(t)} <span class="muted small">${ed(t)}</span></span><span class="row"><button class="sm" data-eta="-" data-t="${esc(t)}" aria-label="${esc(t)} 비중 5% 줄이기">−</button><b style="width:3em;text-align:center">${etaW[t]}%</b><button class="sm" data-eta="+" data-t="${esc(t)}" aria-label="${esc(t)} 비중 5% 늘리기">+</button></span></div>`).join("")}
+        <div class="small ${sum === 100 ? "pos" : "neg"}" style="margin:6px 0">${sum === 100 ? "합계 100%" : `합계 ${sum}% · 100%가 되도록 맞춰 주세요 (시점은 비율대로 계산했어요)`}</div>
+        <div class="etaaxis">${ticks.join("")}</div>${line("지금 비중", keep, false)}${line("바꾼 비중", m, true)}
+        <p style="margin:8px 0 2px"><b>${head}</b></p><p class="small muted" style="margin:0">${wd > 4 ? "대신 결과 차이가 커요. 아주 빨리 닿을 수도, 한참 늦어질 수도 있어요." : wd > 2 ? "결과 차이는 보통 수준이에요." : "결과가 비교적 고르게 모여 있어요."}</p>
+        <p class="small muted">이 비중을 모의 바구니로 저장하는 건 앱 내 길에서 할 수 있어요. 과거 수익률로 만든 예상이에요.</p></details>`;
+    }
+    card.innerHTML = `<div class="etahead"><div class="small">내 목표 · ${krw(g.amount)}원 · ${esc(g.date)}까지 · 남은 ${leftStr(left)}</div>
+      <h2>${pg != null ? `목표까지 가능성은 ${etaVerdict(pg)}` : "목표까지 가능성을 계산하고 있어요"}</h2>
+      <div class="bar"><i style="width:${Math.min(100, (now / g.amount) * 100)}%"></i></div><div class="row between small"><span>지금 ${krw(now)}원</span><span>목표 ${krw(g.amount)}원</span></div>
+      <p class="small">${keep ? `지금 포트폴리오 그대로라면 ${krw(g.amount)}원에 닿는 시점은 보통 ${etaText(keep.eta.p50, cap)}이에요. 구성을 바꾸면 이 시점이 달라져요.` : "닿는 시점을 계산하고 있어요."}</p></div>
+      <h2 style="margin-top:14px">구성에 따라 언제 닿을까?</h2><p class="small muted">점은 보통 닿는 시점, 막대는 10번 중 8번이 들어오는 범위예요. 점선 = 목표일 ${esc(g.date.slice(0, 7))}</p>
+      ${R ? `<div class="etaaxis">${ticks.join("")}</div>${rows.map(([n, o, st]) => line(n, o, st)).join("")}<p class="small muted">빨리 닿을 수도 있는 구성은 범위도 넓어요. 일찍 닿는 대신 크게 늦어질 수도 있어요.</p>${cmp}` : `<p class="muted small">계산 중...</p>`}`;
+    card.querySelector(".etacmp")?.addEventListener("toggle", (e) => { etaOpen = e.target.open; });
+    card.querySelectorAll("[data-eta]").forEach((b) => b.addEventListener("click", () => {
+      const k = b.dataset.eta, t = b.dataset.t;
+      if (k === "reset") etaW = { ...etaW0 }; else etaW[t] = Math.max(0, Math.min(100, (etaW[t] || 0) + (k === "+" ? 5 : -5)));
+      const same = JSON.stringify(etaW) === JSON.stringify(etaW0);
+      if (same) { etaRes.r = etaRes.r.filter((o) => o.k !== "custom"); renderEta(pg, now); return; }
+      renderEta(pg, now);
+      clearTimeout(etaTimer); const my = etaRun;
+      etaTimer = setTimeout(() => etaCompute({ ...etaW }).then((x) => { if (my !== etaRun || !etaRes) return; const c = x.r.find((o) => o.k === "custom"); etaRes.r = etaRes.r.filter((o) => o.k !== "custom").concat(c ? [c] : []); renderEta(pg, now); }).catch((e) => console.error(e)), 400);
+    }));
+  }
+
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
     if (!(total > 0) || !H.dates.length) { card.style.display = "none"; return; } // 샘플(DRNK 4주·QQQ 1주)에도 보여 준다
@@ -1096,14 +1172,15 @@
     const pg = lastForecast && fcDirty ? null : fcReady(S.state.model.scenario)?.R?.p_goal ?? null; // 입력이 바뀐 뒤의 저장값은 쓰지 않는다. // 앱 내 길의 목표 달성 확률과 같은 값. 아직 없으면 '계산 중'으로 두고 한 번 계산
     if (pg == null && !S.state.model.rebalance_yearly && progAsked !== fcSig()) { progAsked = fcSig(); fcDirty = true; setTimeout(runForecast, 0); }
     card.style.display = "block";
+    renderEta(pg, now);
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(r0), `${krw(V0)}원 → ${krw(now)}원${krIn(i0) ? ` (국내 합계 ${krw(krIn(i0))}원 들어옴)` : ""}`],
-      ["내 길 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `내 길보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
+      ["계획선 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `계획선보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
       ["목표 달성 확률", pg != null ? pct(pg, 0) : "계산 중", "목표일 전망과 같은 값"],
       ["지난주", spct(back(5)), "실제 수량 기준"],
       ["지난달", spct(back(21)), "실제 수량 기준"],
-    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "내 길 대비" ? cls(gap) : a === "시작 대비" ? cls(r0) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
+    ].map(([a, v, s2]) => `<div class="kpi"><div class="k">${a}</div><div class="v ${a === "계획선 대비" ? cls(gap) : a === "시작 대비" ? cls(r0) : ""}">${v}</div><div class="s">${s2}</div></div>`).join("");
     // 경로 대비 +/− 막대: 날짜별 (실제 − 필요 경로). 1년은 주, 3년은 달 단위로 묶고(그 주·달 마지막 값), 끝에 오늘 실시간 막대
     const rsel = $("#progRange .on")?.dataset.r || "66", n = +rsel, unit = n >= 780 ? "m" : n >= 252 ? "w" : "d";
     const key = (d) => { if (unit === "m") return d.slice(0, 7); const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
@@ -1127,7 +1204,7 @@
       Charts.barChart($("#progChart"), { x: pts.map((p) => p[0]), y: pts.map((p) => p[1]), height: 170, yfmt: krwAxis, live: td,
         xlab: (d) => (d === td ? "오늘" : unit === "m" ? `${d.slice(2, 4)}.${+d.slice(5, 7)}` : `${+d.slice(5, 7)}/${+d.slice(8)}`),
         tipx: (d) => (d === td ? `${d} (오늘 실시간)` : unit === "m" ? `${d.slice(0, 7)} 말` : unit === "w" ? `${d} 주 마지막` : d),
-        tipy: (i) => `내 길보다 ${sg(pts[i][1])}` + (evAt[i] ? `<br>▲ ${evAt[i].map(esc).join("<br>▲ ")}` : "") + (pts[i][0] < start ? `<br><span class="muted">목표 시작 전 (거꾸로 늘인 경로)</span>` : ""),
+        tipy: (i) => `계획선보다 ${sg(pts[i][1])}` + (evAt[i] ? `<br>▲ ${evAt[i].map(esc).join("<br>▲ ")}` : "") + (pts[i][0] < start ? `<br><span class="muted">목표 시작 전 (거꾸로 늘인 경로)</span>` : ""),
         labelLast: (pts[pts.length - 1][0] === td ? "오늘 " : "") + sg(last),
         dots: Object.keys(evAt).map((j) => ({ x: pts[j][0], label: evAt[j].join("\n") })) });
     } else { $("#progTrend").textContent = ""; $("#progChart").style.display = "none"; }
@@ -1322,7 +1399,7 @@
           : `<b>내 관점</b> (추세 신뢰 ${S.state.model.scenario === "blend" ? S.state.model.trust + "%" : scenName(S.state.model.scenario)}): ` + (mode === "total" ? "진한 띠 25~75%, 옅은 띠 5~95%" : mode === "each" ? "점선은 종목별 중앙값, 띠는 25~75%" : "쌓은 띠 = 종목별 중앙값"));
         if (Number(g.monthly_contribution) > 0) notes.push(`· 월 적립 ${krw(Number(g.monthly_contribution))}원 포함`);
       } else if (fcOn && total > 0 && basis !== "pattern") notes.push("전망을 계산하는 중입니다…");
-      if (!fcOn) notes.push("보라 점선은 <b>내 길</b>: 목표 시작일의 평가액에서 목표일 목표액까지 정한 대로 가는 길. 시장이 줄 수 있는 범위는 '예보 겹치기'를 누르면 목표일 전망 띠로 겹쳐 봅니다.");
+      if (!fcOn) notes.push("보라 점선은 <b>계획선</b>: 목표 시작일의 평가액에서 목표일 목표액까지 정한 대로 가는 길. 시장이 줄 수 있는 범위는 '예보 겹치기'를 누르면 목표일 전망 띠로 겹쳐 봅니다.");
       if (fcOn && mode === "total" && basis === "smooth") {
         const pf = pastFit(H, basis);
         opt.series.push({ name: "3년 추세선 (과거)", y: ix.map((i) => conv(pf[i], i)), color: "var(--c7)", width: 1.4, dash: "4 3" });
@@ -1333,8 +1410,8 @@
       const GP = V0 > 0 && mode !== "each" ? goalPath(H, cash) : null;
       if (GP && GP.at(today()) != null) {
         const px = [...x.filter((d) => d >= GP.start), ...md.filter((d) => d > last)], u = inUsd ? fxNowUsd : 1;
-        opt.series.push({ name: "내 길", x: px, y: px.map((d) => GP.at(d) / u), color: "var(--goal)", dash: "5 4", width: 1.8 });
-      } else if (V0 > 0 && mode !== "each") opt.series.push({ name: "내 길", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--goal)", dash: "5 4", width: 1.8 });
+        opt.series.push({ name: "계획선", x: px, y: px.map((d) => GP.at(d) / u), color: "var(--goal)", dash: "5 4", width: 1.8 });
+      } else if (V0 > 0 && mode !== "each") opt.series.push({ name: "계획선", x: [last, ...md], y: [conv(H.total[H.total.length - 1] + cash, H.total.length - 1), ...md.map((d) => (V0 * (g.amount / V0) ** (yearsBetween(today(), d) / Math.max(0.01, yearsBetween(today(), g.date)))) / (inUsd ? fxNowUsd : 1))], color: "var(--goal)", dash: "5 4", width: 1.8 });
     } else {
       if (mode !== "each" && goalV <= maxV * 1.05) opt.hlines.push({ y: goalV, label: "목표" });
       notes.push("지금 수량을 지난 가격에 대입한 값이에요. 실제로 지나온 기록과는 달라요" + (inUsd ? " (달러 환산)." : "."));
@@ -1343,7 +1420,7 @@
       const P = mode !== "each" && tot > 0 ? goalPath(H, cash) : null;
       if (P) {
         const py = ix.map((i, k) => { const v = P.at(x[k]); return v == null ? null : i < 0 ? lconv(v) : conv(v, i); });
-        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "내 길", y: py, color: "var(--goal)", dash: "5 4", width: 1.8 }); notes.push(`· 보라 점선은 내 길 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
+        if (py.filter((v) => v != null).length >= 2) { opt.series.push({ name: "계획선", y: py, color: "var(--goal)", dash: "5 4", width: 1.8 }); notes.push(`· 보라 점선은 계획선 (${P.start} 시작, 그 전은 같은 속도로 거꾸로 늘인 길).`); }
       }
     }
     $("#histNote").innerHTML = notes.join(" ");
@@ -1930,7 +2007,7 @@
           ...lensLines,
           { name: lab, y: R.bands.p50, color: "var(--c1)", width: 2.4 },
           ...(hasEv && v !== "none" && v !== "all" ? [{ name: "미반영 중앙값", y: noEv.bands.p50, color: "var(--muted)", width: 1.2, dash: "2 3" }] : []),
-          { name: "내 길", y: reqPath, color: "var(--goal)", dash: "5 4", width: 1.8 }],
+          { name: "계획선", y: reqPath, color: "var(--goal)", dash: "5 4", width: 1.8 }],
         hlines: [{ y: g.amount, label: "목표 " + krw(g.amount) }],
         vlines: [{ x: md.startDate, label: "오늘" }],
         markers: marks ? evs.map((e) => ({ x: e.date, label: `${e.date} ${e.event.target} ${e.event.kind}` })) : [],

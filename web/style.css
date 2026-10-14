@@ -352,3 +352,20 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .sitefoot a { color: inherit; }
 .bepv { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 8px 0 2px; } .bepv > b { font-size: 1.6rem; }
 .bepp { margin-top: 6px; }
+/* 내 길: 판정 카드 · 언제 닿을까 (점 = 보통, 막대 = 10번 중 8번, 점선 = 목표일) */
+#etaCard .etahead { background: #1E4A44; color: #fff; border-radius: 14px; padding: 14px 16px; }
+#etaCard .etahead h2 { color: #fff; margin: 6px 0 10px; }
+#etaCard .etahead .bar { height: 8px; background: rgba(255,255,255,.18); border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
+#etaCard .etahead .bar i { display: block; height: 100%; background: #9CCFC6; }
+#etaCard .etarow { margin: 8px 0; }
+#etaCard .etabar { position: relative; height: 20px; }
+#etaCard .etabar::before { content: ""; position: absolute; left: 0; right: 0; top: 9px; height: 2px; background: var(--line); }
+#etaCard .etabar i { position: absolute; top: 7px; height: 6px; border-radius: 3px; background: var(--line); transition: all .25s; }
+#etaCard .etabar i.on { background: #9CCFC6; }
+#etaCard .etabar b { position: absolute; top: 4px; width: 12px; height: 12px; border-radius: 6px; background: var(--muted); transition: all .25s; }
+#etaCard .etabar b.on { background: #2D6A62; }
+#etaCard .etabar u { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--text, #333); }
+#etaCard .etaaxis { position: relative; height: 16px; font-size: 0.7059rem; color: var(--muted); margin-top: 6px; }
+#etaCard .etaaxis span { position: absolute; transform: translateX(-50%); }
+#etaCard .etacmp { margin-top: 10px; } #etaCard .etacmp summary { font-weight: 700; color: #2D6A62; cursor: pointer; }
+#etaCard .etaw { margin: 4px 0; }

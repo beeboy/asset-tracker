@@ -29,6 +29,8 @@ struct GoalSim {
     let med: [Double], lo: [Double], hi: [Double], principal: [Double]   // 해마다 (만원)
     let badYear: Double            // 한 해 손익 하위 5% (적립 없이)
     let capYears: Int              // 경로 기간 (햇수)
+    var etaLo: Double = 0          // 처음 닿는 때 10% (개월, 10번 중 빠른 1번)
+    var etaHi: Double = .infinity  // 처음 닿는 때 90% (개월, 경로 기간 안에 없으면 무한대)
     var etaText: String { AppModel.eta(etaMonths, cap: capYears) }
 }
 
@@ -96,6 +98,25 @@ extension AppModel {
         .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(AppModel.pct(focusWeight))" + (restRows.isEmpty ? "" : " · \(restName) \(AppModel.pct(1 - focusWeight))") + " 그대로",
               comp: [:], basket: nil, own: true)
     }
+    /// 내 길의 '지금 구성': 시작 전 루트는 지수 중심 (neededMonthly 와 같다)
+    var nowMix: GoalMix { route == .novice ? Self.mixes[0] : mineMix }
+    /// 처음 닿는 때를 셀 긴 기간 (햇수): 목표일 뒤에 닿는 경우도 보이게
+    var etaYears: Int { max(10, gY * 2) }
+    /// 목표 확률을 쉬운 말로
+    static func verdict(_ p: Double) -> String { p >= 0.7 ? "높아요" : p >= 0.3 ? "반반이에요" : "낮아요" }
+    /// 오늘부터 mo 개월 뒤를 연도 소수로 (2031.25 = 2031년 4월 무렵)
+    static func yearAt(_ mo: Double) -> Double {
+        let c = Calendar.current.dateComponents([.year, .month], from: Date())
+        return Double(c.year ?? 2026) + (Double((c.month ?? 1) - 1) + mo) / 12
+    }
+    /// 오늘부터 mo 개월 뒤 "2031년 4월" (기간 안에 없으면 "N년 넘게")
+    static func whenText(_ mo: Double, cap: Int) -> String {
+        guard mo.isFinite else { return "\(cap)년 넘게" }
+        guard mo > 0 else { return "지금" }
+        let d = Calendar.current.date(byAdding: .month, value: Int(mo.rounded()), to: Date()) ?? Date()
+        let c = Calendar.current.dateComponents([.year, .month], from: d)
+        return "\(c.year ?? 0)년 \(c.month ?? 0)월"
+    }
     var goalMixes: [GoalMix] { route == .novice ? Self.mixes : [mineMix] + Self.mixes }
     var selectedMix: GoalMix { goalMixes.first { $0.id == gMix } ?? goalMixes[0] }
 
@@ -119,26 +140,29 @@ extension AppModel {
 
     /// k·years·start 를 주면 지금 목표 대신 그 값으로 (목표 자동 고르기에서 씀, cache: false 면 캐시에 넣지 않는다).
     /// years 를 주면 오늘부터 그 햇수, 안 주면 목표일까지
-    func simulate(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true) -> GoalSim {
+    /// parts 를 주면 구성 대신 그 종목·비중으로 (내 길 비중 바꿔 비교)
+    func simulate(_ mx: GoalMix, monthly: Double? = nil, k: Double? = nil, years: Int? = nil, start: Double? = nil, cache: Bool = true, parts over: [Part]? = nil) -> GoalSim {
         let mo = monthly ?? gM, yrs = years ?? gY, K = k ?? gK, A = start ?? goalStart
-        let parts = mixParts(mx)
+        let parts = over ?? mixParts(mx)
         guard let ps = paths(parts, horizon: years == nil ? goalHorizon : longHorizon(yrs)) else {
             return closedSim(mx, parts: parts, monthly: mo, k: K, years: yrs, start: A, cache: cache)
         }
         let ck = "x|\(ps.key)|\(mo)|\(yrs)|\(K)|\(A)|\(years == nil)"
-        if cache, let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal, badYear: c.badYear, capYears: c.capYears) }
+        if cache, let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal, badYear: c.badYear, capYears: c.capYears, etaLo: c.etaLo, etaHi: c.etaHi) }
         let V = A * 1e4, Mo = mo * 1e4, Kw = K * 1e4, M = ps.M
         let v = ps.values(V, monthly: Mo)
         // 그 햇수 뒤 칸: 그 달 적립은 빼고 센다 (목표일 당일에는 넣지 않는다, 웹과 같게)
         let kEnd = years == nil ? M - 1 : ps.k(months: 12 * yrs)
         let prob = ps.share(v, k: kEnd, minus: kEnd > 0 && kEnd < M - 1 ? Mo : 0, atLeast: Kw)
-        let eta = V >= Kw ? 0 : ps.medianMonths(ps.firstHits(v, upTo: M - 1) { _ in Kw })
+        let hits = V >= Kw ? [] : ps.firstHits(v, upTo: M - 1) { _ in Kw }
+        let eta = V >= Kw ? 0 : ps.medianMonths(hits)
+        let etaLo = V >= Kw ? 0 : ps.quantileMonths(hits, 0.1), etaHi = V >= Kw ? 0 : ps.quantileMonths(hits, 0.9)
         let ks = (0...yrs).map { y in y == 0 ? 0 : min(kEnd, ps.k(months: 12 * y)) }
         let q = { (f: Double) in ks.map { k in k == 0 ? A : ps.quantile(v, k: k, f) / 1e4 } }
         let b = ps.bands(max(V, 1e6)), k12 = ps.k(months: 12)
         let r = GoalSim(mix: mx, prob: prob, etaMonths: eta, med: q(0.5), lo: q(0.05), hi: q(0.95),
                         principal: (0...yrs).map { A + mo * 12 * Double($0) }, badYear: b[0][k12] / max(V, 1e6) - 1,
-                        capYears: Int((ps.tM.last ?? 12) / 12 + 0.5))
+                        capYears: Int((ps.tM.last ?? 12) / 12 + 0.5), etaLo: etaLo, etaHi: etaHi)
         if cache {
             if simCache.count > 64 { simCache.removeAll() }
             simCache[ck] = r
@@ -150,7 +174,7 @@ extension AppModel {
     private func closedSim(_ mx: GoalMix, parts: [Part], monthly mo: Double, k K: Double, years gY: Int, start A: Double, cache: Bool) -> GoalSim {
         let c = closedParams(parts)
         let ck = "c|\(c.mu)|\(c.sigma)|\(mo)|\(gY)|\(K)|\(A)"
-        if cache, let x = simCache[ck] { return GoalSim(mix: mx, prob: x.prob, etaMonths: x.etaMonths, med: x.med, lo: x.lo, hi: x.hi, principal: x.principal, badYear: x.badYear, capYears: x.capYears) }
+        if cache, let x = simCache[ck] { return GoalSim(mix: mx, prob: x.prob, etaMonths: x.etaMonths, med: x.med, lo: x.lo, hi: x.hi, principal: x.principal, badYear: x.badYear, capYears: x.capYears, etaLo: x.etaLo, etaHi: x.etaHi) }
         var seed = 12345
         func rnd() -> Double { seed = (seed &* 1103515245 &+ 12345) % 2147483648; return (Double(seed) + 0.5) / 2147483648 }
         let NP = 500, H = min(40, gY * 2 + 5) * 12
@@ -173,7 +197,8 @@ extension AppModel {
         let r = GoalSim(mix: mx, prob: Double(byYear[gY].filter { $0 >= K }.count) / Double(max(1, byYear[gY].count)), etaMonths: q(hits, 0.5),
                         med: byYear.map { q($0, 0.5) }, lo: byYear.map { q($0, 0.05) }, hi: byYear.map { q($0, 0.95) },
                         principal: (0...gY).map { A + mo * 12 * Double($0) },
-                        badYear: exp(c.mu - c.sigma * c.sigma / 2 - 1.645 * c.sigma) - 1, capYears: H / 12)
+                        badYear: exp(c.mu - c.sigma * c.sigma / 2 - 1.645 * c.sigma) - 1, capYears: H / 12,
+                        etaLo: q(hits, 0.1), etaHi: q(hits, 0.9))
         if cache {
             if simCache.count > 64 { simCache.removeAll() }
             simCache[ck] = r
