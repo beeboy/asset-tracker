@@ -13,6 +13,10 @@ struct BoardView: View {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: "미션").padding(.horizontal, -16)
                 SampleNote()
+                MissionPagePicker()
+                if m.boardPage == 1 {
+                    if m.playUnlocked { WeekForecastCard() } else { lockedPlay }
+                } else {
                 VStack(alignment: .leading, spacing: 4) {
                     ScreenTitle(kicker: "회복 루트", title: "본전까지 가는 길")
                     (Text("지금 \(AppModel.sgn(m.ret)) · 본전까지 ") + Text("+" + String(format: "%.1f", need * 100) + "%").bold().foregroundColor(Theme.ink) + Text(" 올라야 해요"))
@@ -38,11 +42,13 @@ struct BoardView: View {
                 ForEach(shown.filter { $0.inter }) { b in tappable(b) }
                 if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter { nextCard(next) }
                 if !m.interDone && m.playOn { checkIn }
-                // 1000칸 다음에 이번 주 예보
-                if m.playUnlocked { cells; WeekForecastCard() } else { lockedPlay }
+                // 이번 주 예보는 두 번째 페이지
+                if m.playUnlocked { cells } else { lockedPlay }
+                }
             }
             .screen()
         }
+        .modifier(MissionPageSwipe())
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: MissionRoute.self) { MissionScreen(route: $0) }
@@ -157,7 +163,7 @@ struct BoardView: View {
 
     private var lockedPlay: some View {
         DashedCard {
-            Label("1000칸 · 이번 주 예보", systemImage: "lock").appFont(15, .bold)
+            Label(m.boardPage == 1 ? "이번 주 예보" : "1000칸", systemImage: "lock").appFont(15, .bold)
             Text("앱 시작 3단계를 마치면 열려요. 인터미션 동안에도 칸을 채우고 매주 예보를 맞혀 볼 수 있어요.").appFont(13)
         }
     }

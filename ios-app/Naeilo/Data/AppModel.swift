@@ -313,6 +313,7 @@ final class AppModel {
     var taxSellQty = 0.0
     var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
     var boardPath: [MissionRoute] = []
+    var boardPage = 0   // 미션 탭 페이지: 0 목표(본전) 진행, 1 이번 주 예보
     var analysisPath = NavigationPath()
     var homePath: [String] = []
     var tab: Tab = RootView.launchTab

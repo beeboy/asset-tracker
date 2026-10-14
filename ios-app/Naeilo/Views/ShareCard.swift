@@ -5,13 +5,16 @@ struct ShareCardButton: View {
     let filled: Int, mine: Int, market: Int
     let kicker: String
     let amountLine: String
+    var title = "공유 카드"
+    var plain = false   // 흰 바탕 · 회색 테두리 (미션 탭 보조 버튼)
     @State private var show = false
     var body: some View {
         Button { show = true } label: {
-            Label("공유 카드", systemImage: "square.and.arrow.up")
+            Label(title, systemImage: "square.and.arrow.up")
                 .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
-                .foregroundStyle(Theme.teal)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
+                .foregroundStyle(plain ? Theme.ink : Theme.teal)
+                .background(plain ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(plain ? Theme.border : Theme.teal, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $show) { ShareCardSheet(filled: filled, mine: mine, market: market, kicker: kicker, amountLine: amountLine) }
