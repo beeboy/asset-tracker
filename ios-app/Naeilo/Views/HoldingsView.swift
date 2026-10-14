@@ -3,7 +3,7 @@ import SwiftUI
 // 종목 탭: 내 돈이 얼마 있고 얼마 벌었나. 맨 위 평가액 → 1년 전부터 가졌다면 그래프 → 미국/국내 묶음 목록
 struct HoldingsView: View {
     @Environment(AppModel.self) private var m
-    @State private var period: Period = .y1        // 위 그래프에만 걸린다 (목록 %는 늘 산 가격 대비)
+    @State private var period: Period = .m1        // 위 그래프에만 걸린다 (목록 %는 늘 산 가격 대비)
     @State private var said: String? = nil          // 지운 뒤 인물의 한 줄 (평정 지수)
     @State private var swiped: String? = nil        // 왼쪽으로 밀어 지우기 버튼이 보이는 종목
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
