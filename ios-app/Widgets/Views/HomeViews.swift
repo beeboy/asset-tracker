@@ -260,7 +260,7 @@ struct FutureLargeView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label2(text: "미래 평가액 추이 · 내 관점")
+                    Label2(text: "미래 평가액 추이 · 내 설정")
                     Money { h in Big(text: h ? hiddenAmount : s.term.map { Fmt.eok($0.p50) } ?? "-") }
                     Text("\(s.termLabel) 예상 중앙값").font(.system(size: 12)).opacity(0.6)
                 }

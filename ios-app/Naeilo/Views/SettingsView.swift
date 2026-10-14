@@ -1,43 +1,41 @@
 import SwiftUI
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route, goal, charPreview, support }
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, howto, route, goal, charPreview, support, icon }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
 
     var body: some View {
         let onN = m.alerts.values.filter { $0 }.count
-        // 자주 쓰는 것부터: 내 목표 → 알림·위젯 → 꾸미기 → 참고 → 기기·후원 → 개발자
-        let goalRows: [(String, String, SettingsRoute)] = [
-            ("루트", m.route == .recover ? "회복 · 마이너스" : m.route == .plus ? "목표 · 플러스" : "목표 · 시작 전", .route),
-        ] + (m.isGoal ? [("목표", "\(m.goalToText)까지 \(AppModel.wonK(m.gK)) · 고치기", SettingsRoute.goal)] : [])
+        // 위에서 아래로: 목표 카드 → 알림과 위젯 → 함께할 인물 → 화면 → 계산 기준 → 도움과 기타
         let oftenRows: [(String, String, SettingsRoute)] = [
             ("알림", onN > 0 ? "\(onN)개 켜짐" : "모두 꺼짐", .alerts),
-            ("위젯", "받은 위젯 \(m.baseWidgets.filter(\.ok).count)/\(m.baseWidgets.count) · 인물 \(Shelter.friends.indices.filter { m.friendOn($0) }.count)/\(Shelter.friends.count) · 미리보기", .widgets),
+            ("홈 화면 위젯", "\(m.baseWidgets.count + Shelter.friends.count)가지 · 미리보기", .widgets),
         ]
         let refRows: [(String, String, SettingsRoute)] = [
-            ("사용 방법", "매일 루틴, 1000칸, 주간 예보", .howto),
-            ("시세 기준", "미국 종목·환율 지금 가격 · 한국 종목 넣은 가격", .price),
-            ("세금 규칙", "대한민국 거주자", .tax),
+            ("가격 기준", "미국 종목·환율은 지금 가격 · 한국 종목은 넣은 가격", .price),
+            ("세금", "한국 거주자 기준으로 계산해요", .tax),
         ]
-        let deviceRows: [(String, String, SettingsRoute)] = [
-            ("기기 동기화", m.syncOn ? "자동 동기화 켜짐 · naeilo.com과 같은 값" : "꺼짐", .sync),
-            ("개발자 후원", Support.shared.tier == .free ? "커피 한 잔 · 구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
+        let helpRows: [(String, String, SettingsRoute)] = [
+            ("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto),
+            ("웹과 동기화", m.syncOn ? "켜짐 · naeilo.com과 같은 값" : "꺼짐", .sync),
+            ("개발자에게 커피 한 잔", Support.shared.tier == .free ? "구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "설정").padding(.horizontal, -16)
-                group("내 목표", goalRows)
-                group("자주 바꾸는 것", oftenRows)
-                head("꾸미기")
-                Text("화면 모드").appFont(13, .bold).foregroundStyle(Theme.sub)
-                ChipRow(items: [("system", "아이폰 설정 따라가기"), ("light", "밝게"), ("dark", "어둡게")],
+                Text("naeilo 설정").appFont(22, .bold)
+                goalCard
+                group("알림과 위젯", oftenRows)
+                head("함께할 인물")
+                GuidePickRow()
+                head("화면")
+                Text("밝기 모드").appFont(13, .bold).foregroundStyle(Theme.sub)
+                ChipRow(items: [("system", "기기 설정대로"), ("light", "밝게"), ("dark", "어둡게")],
                         selection: Binding(get: { m.appearance }, set: { m.appearance = $0; UserDefaults.standard.set($0, forKey: "appearance") }), fill: true)
-                Text("앱 아이콘").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 4)
-                AppIconPicker()
-                GuidePickRow().padding(.top, 4)
-                group("참고 · 가끔", refRows)
-                group("기기 · 후원", deviceRows)
+                group(nil, [("앱 아이콘", AppIconPicker.currentName, .icon)])
+                group("숫자를 계산하는 기준", refRows)
+                group("도움과 기타", helpRows)
                 // 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
                 if m.devAll {
                     Text("시연 상태 (개발자)").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
@@ -66,17 +64,46 @@ struct SettingsView: View {
             case .route: RouteView()
             case .goal: GoalSetView(fromSettings: true)
             case .support: SupportView()
+            case .icon: AppIconScreen()
             case .charPreview: WidgetPickView()     // 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
             }
         }
+    }
+
+    /// 목표 카드: 날짜·금액 + 지금 어느 길인지 쉬운 말 한 줄 (예전 "루트 · 플러스" 줄을 합쳤다)
+    private var goalCard: some View {
+        let routeLine = m.route == .recover ? "본전부터 되찾는 중이에요" : m.route == .plus ? "목표를 향해 가는 중이에요" : "아직 첫 단계예요"
+        return VStack(alignment: .leading, spacing: 6) {
+            if m.isGoal {
+                Text("\(m.goalToText)까지").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                Text(AppModel.wonK(m.gK)).appFont(28, .bold)
+            } else {
+                Text("내 목표").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+            }
+            NavigationLink(value: SettingsRoute.route) {
+                HStack(spacing: 4) {
+                    Text(routeLine).appFont(15, .semibold)
+                    Image(systemName: "chevron.right").appFont(12)
+                }.frame(minHeight: 44).contentShape(Rectangle())
+            }.buttonStyle(.plain)
+            if m.isGoal {
+                NavigationLink(value: SettingsRoute.goal) {
+                    Text("목표 고치기").appFont(15, .bold).foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+        }
+        .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
     }
 
     private func head(_ t: String) -> some View {
         Text(t).appFont(13, .bold).foregroundStyle(Theme.teal).padding(.top, 8)
     }
 
-    @ViewBuilder private func group(_ title: String, _ rows: [(String, String, SettingsRoute)]) -> some View {
-        head(title)
+    @ViewBuilder private func group(_ title: String?, _ rows: [(String, String, SettingsRoute)]) -> some View {
+        if let title { head(title) }
         VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.offset) { i, r in
                 if i > 0 { Divider().overlay(Theme.line) }
@@ -153,6 +180,7 @@ struct AppIconPicker: View {
         ("AppIcon-seonbae", "선배", "iconprev_seonbae", 2), ("AppIcon-ir", "이르", "iconprev_ir", 3), ("AppIcon-sua", "수아", "iconprev_sua", 4),
     ]
     @State private var current: String? = UIApplication.shared.alternateIconName
+    static var currentName: String { icons.first { $0.id == UIApplication.shared.alternateIconName }?.name ?? "내일의 별" }
 
     private func open(_ f: Int?) -> Bool { f.map { m.friendOn($0) } ?? true }
     private func set(_ id: String?) {
@@ -190,5 +218,20 @@ struct AppIconPicker: View {
         .onAppear {
             if let c = current, let ic = Self.icons.first(where: { $0.id == c }), !open(ic.friend) { set(nil) }
         }
+    }
+}
+
+/// 설정 > 앱 아이콘 › 고르는 화면 (설정 첫 화면에서 격자를 뺐다)
+struct AppIconScreen: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("앱 아이콘").appFont(22, .bold)
+                Text("인물 아이콘은 그 인물을 만나면 열려요.").appFont(13).foregroundStyle(Theme.sub)
+                AppIconPicker()
+            }.padding(16)
+        }
+        .background(Theme.bg)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

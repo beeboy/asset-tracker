@@ -12,11 +12,11 @@ enum WeekPick: String, CaseIterable, Codable { case kept, changed, raised
 struct DayLog: Codable, Equatable { var seen = false; var answer: Int? = nil; var q: String? = nil; var ok: Bool? = nil }   // q = 그날 낸 질문, ok = 퀴즈를 맞혔는지
 
 enum HoldSort: String, CaseIterable { case added, value, name, ret, today
-    var label: String { switch self { case .added: "넣은 순"; case .value: "금액 순"; case .name: "이름 순"; case .ret: "수익률 순"; case .today: "오늘 등락 순" } }
+    var label: String { switch self { case .added: "넣은 순"; case .value: "평가액 큰 순"; case .name: "이름 순"; case .ret: "수익률 순"; case .today: "오늘 등락 순" } }
 }
 
 enum Lens: String, CaseIterable, Codable { case base, mine, smooth
-    var label: String { switch self { case .base: "현재 정세"; case .mine: "내 관점"; case .smooth: "과거 추세" } }
+    var label: String { switch self { case .base: "신중하게"; case .mine: "내 설정"; case .smooth: "지난 3년처럼" } }
 }
 
 @Observable
@@ -167,7 +167,9 @@ final class AppModel {
     }
 
     // 3년 전망
+    /// 전망 시나리오. 신중하게 = 추세 0%, 지난 3년처럼 = 추세 100% 와 계산이 같다 (MC.blendMu)
     var lens: Lens = .mine
+    /// '내 설정'의 추세 신뢰 % (신중하게·지난 3년처럼을 골라도 이 값은 기억해 둔다)
     var trust = 50.0
     var shock = true
     var monthly = 0.0
@@ -197,6 +199,18 @@ final class AppModel {
         if y * 12 >= 1 { return "\(Int(y * 12))개월" }
         return "\(Int((y * 365.25).rounded(.up)))일"
     }
+    /// 퍼센트와 금액을 함께: "−2.1% · 약 1,060만원". 금액 = base × rate, 만원 반올림, 1억 이상은 "약 1.2억원"
+    static func pctWon(_ rate: Double, base: Double) -> String {
+        let p = (rate >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(rate) * 100)
+        return p + " · 약 " + aboutWon(base * rate)
+    }
+    /// 금액 어림: 만원 반올림, 1억 이상은 "1.2억원" (부호 없음)
+    static func aboutWon(_ krw: Double) -> String {
+        let a = abs(krw)
+        return a >= 1e8 ? String(format: "%.1f억원", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만원"
+    }
+    /// 아직 값이 없으면 0 대신 "—"
+    static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }
     static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
     static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "") + String(format: "%.1f%%", p * 100) }
     static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "") + "\(Int((p * 100).rounded()))%" }
@@ -220,8 +234,17 @@ final class AppModel {
                 color: Theme.holdColors[i % Theme.holdColors.count])
         }
     }
-    /// 내 종목 정렬 (종목 탭 목록·종목 한눈에 카드가 같이 따른다). 색은 넣은 순서 그대로
-    var holdSort = HoldSort(rawValue: UserDefaults.standard.string(forKey: "holdSort") ?? "") ?? .added {
+    /// 종목 하나의 숫자 (종목 상세·종목 한눈에가 같이 쓴다)
+    /// dd 고점 대비 · r1 1년 전 대비(현지 통화) · vc 산 가격 대비(원화) · w 비중 · yr 1년 주간 종가
+    struct HoldMetrics { let dd, r1, vc, w: Double; let yr: [Double]; let hi, lo: Double }
+    func metrics(_ r: Row) -> HoldMetrics {
+        let yr = (0...52).map { prices.price(r.sym, at: 2.0 / 3 + Double($0) / 156) }
+        let hi = yr.max() ?? 1, lo = yr.min() ?? 1, p1 = yr.last ?? 1
+        return HoldMetrics(dd: p1 / hi - 1, r1: p1 / yr[0] - 1, vc: r.cost > 0 ? r.value / r.cost - 1 : 0,
+                           w: r.value / max(1, total), yr: yr, hi: hi, lo: lo)
+    }
+    /// 내 종목 정렬 (종목 탭 목록. 종목 한눈에는 자기 정렬을 쓴다). 색은 넣은 순서 그대로
+    var holdSort = HoldSort(rawValue: UserDefaults.standard.string(forKey: "holdSort") ?? "") ?? .value {
         didSet { UserDefaults.standard.set(holdSort.rawValue, forKey: "holdSort") }
     }
     var sortedRows: [Row] {
@@ -327,7 +350,7 @@ final class AppModel {
         .init(id: 2, num: "2", title: "원인 진단", reward: "회복 경로", inter: false),
         .init(id: 3, num: "3", title: "내 계획 정하기", reward: "비중 비교", inter: false),
         .init(id: 5, num: "4", title: "앱 시작 3단계", reward: "위젯 전부", inter: false),
-        .init(id: 6, num: "인터미션", title: "4주, 매주 1분", reward: "캐릭터 위젯 4개, 1년 전망", inter: true),
+        .init(id: 6, num: "인터미션", title: "처음 4주 체크인", reward: "캐릭터 위젯 4개, 1년 전망", inter: true),
     ]
     func available(_ b: Block) -> Bool {
         guard let i = blocks.firstIndex(where: { $0.id == b.id }) else { return false }
@@ -624,17 +647,20 @@ final class AppModel {
         let st = inp.st, settings = inp.settings, events = inp.events
         let snap = zip(rs, px).map { "\(SiteStats.mcKey($0.id)):\($0.h.qty):\($1)" }.joined(separator: ",")
         let key = [today, H, snap, String(fx0), inp.sig].joined(separator: "|")
-        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: monthly * 1e4)
+        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: 0)
     }
 
-    var forecast: Forecast {
-        let cf = closedForecast
+    /// 전망은 월 적립 없이 계산한다 (납입은 내 목표 몫. 웹 기본 monthly_contribution 0 과 같다). m.monthly 는 동기화 호환으로만 남긴다
+    var forecast: Forecast { forecast(lens) }
+    /// 시나리오 하나의 전망. 같은 경로를 μ만 바꿔 다시 무게를 달아서(reweight) 셋을 같이 불러도 싸다
+    func forecast(_ lens: Lens) -> Forecast {
+        let cf = closedForecast(lens)
         guard let job = forecastJob else { return cf }
         let eng = ForecastEngine.shared
         eng.ensure(job)
         let lensKey = lens == .base ? "base" : lens == .smooth ? "smooth" : "mine"
         guard let run = eng.run, run.key == job.key,
-              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: mcGoal, monthly: monthly * 1e4, withEvents: shock) else { return cf }
+              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: mcGoal, monthly: 0, withEvents: shock) else { return cf }
         let sim = run.ev, s0 = MC.dayNum(sim.start)
         let tY = sim.monthDates.map { Double(MC.dayNum($0) - s0) / 365.25 }
         let dates = sim.monthDates, cum = r.cumHit, V0 = r.V0, K = mcGoal
@@ -654,7 +680,7 @@ final class AppModel {
     }
 
     /// 닫힌 식 (로그정규 근사): 몬테카를로가 끝나기 전 잠깐, 시작 전 루트, 주간 예보 폭(sigma)
-    var closedForecast: Forecast {
+    func closedForecast(_ lens: Lens) -> Forecast {
         let rs = rows, tot = max(1, total)
         // 종목 값은 사이트가 매일 만드는 stats.json (웹 전망과 같은 μ·σ·상관). 달러 종목은 원/달러 흔들림도 더한다
         let st = Market.shared.stats, t = trust / 100
@@ -676,7 +702,7 @@ final class AppModel {
         } }
         let sg = sqrt(max(0, v))
         let mu = lens == .base ? muB : lens == .smooth ? muS : muM
-        let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = monthly * 1e4
+        let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = 0.0
         let qAt = { (T: Double, z: Double) -> Double in
             let shockT: Double = z * sg * sqrt(T)
             let lump: Double = V0 * exp(g * T + shockT)

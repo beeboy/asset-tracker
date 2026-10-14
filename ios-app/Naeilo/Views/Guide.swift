@@ -110,32 +110,36 @@ enum Voice {
     }
 }
 
-/// 설정 > 미션 안내 인물
+/// 설정 > 함께할 인물: 한 줄(그림·이름·바꾸기) + 자동 토글. 토글 = 예전 "자동" 칩, 끄면 고른 인물로 고정
 struct GuidePickRow: View {
     @Environment(AppModel.self) private var m
     var body: some View {
         let _ = m.guideTick
-        let opts: [(String?, String)] = [(nil, "자동")] + Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map { ($0.element.id, $0.element.name) }
+        let opts: [(String, String)] = Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map { ($0.element.id, $0.element.name) }
             + (m.meUnlocked ? [("me", m.friendName("me"))] : [])
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 MotionSprite(friend: m.guideFriend, pose: .wave, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("미션 안내 인물").appFont(15, .bold)
-                    Text("자동: 처음엔 세리, 그 뒤로는 가장 최근에 만난 인물 (홈에 내 캐릭터를 두면 내 캐릭터)").appFont(12).foregroundStyle(Theme.sub)
+                    Text(m.friendName(m.guideFriend)).appFont(15, .bold)
+                    Text("홈과 미션에서 말을 거는 인물이에요").appFont(12).foregroundStyle(Theme.sub)
+                }
+                Spacer()
+                Menu {
+                    ForEach(opts, id: \.0) { id, name in
+                        Button { m.guidePick = id } label: { Text(name) }
+                    }
+                } label: {
+                    Text("바꾸기").appFont(14, .bold).foregroundStyle(Theme.teal).frame(minWidth: 44, minHeight: 44)
                 }
             }
-            FlowRow(spacing: 6) {
-                ForEach(opts, id: \.1) { id, name in
-                    let on = m.guidePick == id
-                    Button { m.guidePick = id } label: {
-                        Text(name).appFont(13, on ? .bold : .regular).padding(.horizontal, 12).frame(minHeight: 34)
-                            .foregroundStyle(on ? .white : Theme.ink)
-                            .background(on ? Theme.teal : Theme.card, in: Capsule())
-                            .overlay(Capsule().stroke(on ? Theme.teal : Theme.border))
-                    }.buttonStyle(.plain)
+            Divider().overlay(Theme.line)
+            Toggle(isOn: Binding(get: { m.guidePick == nil }, set: { m.guidePick = $0 ? nil : m.guideFriend })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("새 친구를 만나면 자동으로 바꾸기").appFont(14, .semibold)
+                    Text("처음엔 세리, 그 뒤로는 가장 최근에 만난 인물이에요").appFont(12).foregroundStyle(Theme.sub)
                 }
-            }
+            }.tint(Theme.teal).frame(minHeight: 44)
         }
         .padding(14)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
