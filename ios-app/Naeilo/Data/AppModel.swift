@@ -12,7 +12,7 @@ enum WeekPick: String, CaseIterable, Codable { case kept, changed, raised
 struct DayLog: Codable, Equatable { var seen = false; var answer: Int? = nil; var q: String? = nil; var ok: Bool? = nil }   // q = 그날 낸 질문, ok = 퀴즈를 맞혔는지
 
 enum HoldSort: String, CaseIterable { case added, value, name, ret, today
-    var label: String { switch self { case .added: "넣은 순"; case .value: "금액 순"; case .name: "이름 순"; case .ret: "수익률 순"; case .today: "오늘 등락 순" } }
+    var label: String { switch self { case .added: "넣은 순"; case .value: "평가액 큰 순"; case .name: "이름 순"; case .ret: "수익률 순"; case .today: "오늘 등락 순" } }
 }
 
 enum Lens: String, CaseIterable, Codable { case base, mine, smooth
@@ -226,7 +226,7 @@ final class AppModel {
         }
     }
     /// 내 종목 정렬 (종목 탭 목록·종목 한눈에 카드가 같이 따른다). 색은 넣은 순서 그대로
-    var holdSort = HoldSort(rawValue: UserDefaults.standard.string(forKey: "holdSort") ?? "") ?? .added {
+    var holdSort = HoldSort(rawValue: UserDefaults.standard.string(forKey: "holdSort") ?? "") ?? .value {
         didSet { UserDefaults.standard.set(holdSort.rawValue, forKey: "holdSort") }
     }
     var sortedRows: [Row] {
