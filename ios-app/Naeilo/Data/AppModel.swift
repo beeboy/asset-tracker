@@ -403,6 +403,20 @@ final class AppModel {
     static func won(_ krw: Double) -> String { abs(krw) < 1e4 ? Int(abs(krw).rounded()).formatted() + "원" : wonK(abs(krw) / 1e4) }
     /// 오늘 많이 움직인 순서
     var movers: [Row] { rows.sorted { abs($0.sym.quote.change) > abs($1.sym.quote.change) } }
+    /// 홈 말풍선 정보 문장: 오늘 평가액 움직임(원화)에 크게 기여한 종목 1~2개. 전체 움직임의 30% 이상일 때만 이름을 쓴다
+    var todayMoversText: String? {
+        let fx = Market.shared.valFx
+        let rs = rows.filter { $0.id != KoreaEstimate.sumId }
+        guard !rs.isEmpty else { return nil }
+        let c = rs.map { r in (r, r.h.qty * r.sym.quote.prevClose * (r.sym.currency == .usd ? fx : 1) * r.sym.quote.change) }
+        let all = c.reduce(0) { $0 + abs($1.1) }
+        guard all > 0 else { return nil }
+        let mv = todayMove, up = mv >= 0
+        let top = c.filter { ($0.1 >= 0) == up }.sorted { abs($0.1) > abs($1.1) }.prefix(2).filter { abs($0.1) >= all * 0.3 }
+        if top.isEmpty { return "오늘은 여러 종목이 고르게 움직였어요." }
+        let names = top.map { "\($0.0.sym.short)(\(Self.sgn($0.0.sym.quote.change)))" }.joined(separator: "와 ")
+        return "오늘 \(up ? "상승" : "하락")은 주로 \(names) 때문이에요."
+    }
     var routineFact: String {
         let tot = todayMove
         let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
@@ -414,7 +428,8 @@ final class AppModel {
         let vY = total / (1 + tot)
         if route == .plus {
             let k = gK * 1e4
-            return head + "목표까지 \(String(format: "%.1f", vY / k * 100))% → \(String(format: "%.1f", total / k * 100))%."
+            let a = Self.pct(vY / k), b = Self.pct(total / k)
+            return head + (a == b ? "목표까지 **\(b)** 그대로예요." : "목표까지 **\(a) → \(b)**로 " + (total >= vY ? "한 칸 다가갔어요." : "한 칸 물러났어요."))
         }
         let distNow = cost / total - 1, distY = cost / vY - 1
         if distNow <= 0 { return head + "본전보다 \(Self.sgn(ret)) 위에 있어요." }

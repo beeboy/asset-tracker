@@ -65,21 +65,30 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5)
                 if value && m.cost > 0 {
-                    Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
+                    Text("산 가격보다 " + AppModel.sgn(m.ret)).appFont(14, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 }
                 Spacer(minLength: 8)
                 MiniPath()
             }
+            if value && m.route == .plus && m.total > 0 {
+                let mv = m.todayMove, diff = m.stockTotal - m.stockTotal / (1 + mv)
+                Text("오늘 \(AppModel.sgn(mv)) · 약 \(AppModel.won(diff)) " + (diff >= 0 ? "올라갔어요" : "내려갔어요"))
+                    .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+            }
             HStack {
-                Text("\(m.gY)년 목표까지"); Spacer()
-                Text(AppModel.pct(prog)).fontWeight(.bold).foregroundStyle(Theme.yellow)
+                Text("목표 \(AppModel.wonK(m.gK)) · \(m.gY)년 안에"); Spacer()
+                Text(AppModel.pct(prog) + " 왔어요").fontWeight(.bold).foregroundStyle(Theme.yellow)
             }
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: prog)
             Text(m.goalReached ? "목표 \(AppModel.wonK(m.gK))에 닿았어요! 축하해요. 지금 금액에서 다음 목표를 정해 볼까요?"
                  : m.route == .novice ? "매달 \(AppModel.wonK(m.gM))씩 모아 \(m.gY)년 뒤 \(AppModel.wonK(m.gK)). 목표까지 \(AppModel.pct(prog)) 왔어요. 다음 적립일에 \(AppModel.wonK(m.gM))이 더해져요."
-                 : "오늘 \(AppModel.sgn(m.todayMove)) 움직여 목표까지 \(AppModel.pct(prog)) 도달. 다음달 \(AppModel.wonK(m.gM)) 적립 예정.")
+                 : AppModel.paceText(m.goalPace()) + (m.gM > 0 ? " 다음달 \(AppModel.wonK(m.gM)) 적립 예정이에요." : " 다음달 추가 적립은 아직 정하지 않았어요."))
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
+            if !m.goalReached && m.route != .novice && m.gM <= 0 {
+                NavigationLink(value: "goal") { Text("정하기 ›").appFont(13, .bold).foregroundStyle(Theme.yellow).frame(minHeight: 32) }
+                    .buttonStyle(.plain).accessibilityLabel("다음달 적립 정하기")
+            }
             if m.goalReached { darkButton("다음 목표 정하기") { m.suggestNextGoal(); m.homePath.append("goal") } }
         }
         .foregroundStyle(.white)
@@ -134,7 +143,9 @@ struct HomeView: View {
         let on = (0..<5).filter { m.friendOn($0) }.count
         let next = (0..<5).first { !m.friendOn($0) }
         let r = Remind.shared, b = r.bubble, n = r.fresh.count
-        let say: String = b.map { $0.text + ($0.go != .nowhere ? " ›" : "") } ?? m.homeSay
+        let line: String = b.map { $0.text + ($0.go != .nowhere ? " ›" : "") } ?? m.homeSay
+        // 정보 문장(오늘 움직인 종목)을 먼저, 대사는 그 아래
+        let say = m.todayMoversText.map { $0 + "\n" + m.friendName(m.homeFriendShown) + ": “" + line + "”" } ?? line
         let tint: Color = b.map { $0.cat.color.opacity(0.14) } ?? Theme.mintBg
         return VStack(alignment: .leading, spacing: 10) {
             Button {
@@ -239,6 +250,10 @@ struct HomeView: View {
 struct RoutineCard: View {
     @Environment(AppModel.self) private var m
     private let days = ["월", "화", "수", "목", "금", "토", "일"]
+    /// 이번 주 칸 중 채운 날 수 (요일 7칸과 같은 기준)
+    private var weekDone: Int {
+        (0..<7).filter { i in let d = m.day - m.day % 7 + i; return m.dayLog[d].map { $0.answer != nil } ?? (d < 5 && d < m.day) }.count
+    }
 
     var body: some View {
         let t = m.today, q = m.question
@@ -246,7 +261,7 @@ struct RoutineCard: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("오늘의 1분").appFont(13, .bold).tracking(1).foregroundStyle(Theme.mint)
                 Spacer()
-                Text("\(m.day + 1)일째 · 연속 \(m.streak)일").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                Text("이번 주 \(weekDone)일 확인했어요").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             }
             HStack(spacing: 4) {
                 ForEach(0..<7, id: \.self) { i in
@@ -262,7 +277,7 @@ struct RoutineCard: View {
             step(tag: "1 · 오늘 숫자") {
                 Text((try? AttributedString(markdown: m.routineFact)) ?? AttributedString(m.routineFact)).appFont(15).lineSpacing(3)
                 if !t.seen {
-                    Button("봤어요") { withAnimation { m.markSeen() } }
+                    Button("확인했어요") { withAnimation { m.markSeen() } }
                         .appFont(14, .bold).foregroundStyle(.white)
                         .padding(.horizontal, 16).frame(minHeight: 40)
                         .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
@@ -350,7 +365,7 @@ struct MiniPath: View {
             }
             .frame(width: 84, height: 40)
             .overlay(alignment: .bottom) {
-                Text(String(format: "%.1f%%", abs(gap) * 100) + (gap >= 0 ? " 앞섬" : " 뒤처짐")).appFont(10, .bold)
+                Text(gap >= 0 ? "계획대로" : "조금 늦어요").appFont(10, .bold)
                     .foregroundStyle(gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
                     .fixedSize().offset(y: 16)
             }
@@ -358,7 +373,7 @@ struct MiniPath: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("내 길 그래프, 내 길보다 \(String(format: "%.1f%%", abs(gap) * 100)) \(gap >= 0 ? "앞섬" : "뒤처짐"), 눌러서 분석의 내 길 보기")
+        .accessibilityLabel("내 길 그래프, \(gap >= 0 ? "계획대로" : "계획보다 조금 늦어요"), 눌러서 분석의 내 길 보기")
     }
 }
 
