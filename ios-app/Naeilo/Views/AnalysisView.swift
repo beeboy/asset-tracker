@@ -23,7 +23,7 @@ struct DetailTitle: ViewModifier {
 struct AnalysisPager: View {
     @Environment(AppModel.self) private var m
     @State private var sel: AnalysisRoute
-    static let order: [AnalysisRoute] = [.calm, .myPath, .forecast, .rateScen, .external, .dividend, .fx, .glance]
+    static let order: [AnalysisRoute] = [.calm, .myPath, .forecast, .rateScen, .external, .fx, .glance, .dividend]   // 허브 순서와 같게
 
     init(start: AnalysisRoute) { _sel = State(initialValue: start) }
 
@@ -68,11 +68,9 @@ struct AnalysisPager: View {
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 3) {
                     Text(title(sel)).appFont(16, .bold).lineLimit(1)
-                    if sel != .external {      // 외부 요인은 점 표시 없이 (개편안)
-                        HStack(spacing: 4) {
-                            ForEach(Self.order, id: \.self) { r in
-                                Circle().fill(r == sel ? Theme.teal : Theme.border).frame(width: 5, height: 5)
-                            }
+                    HStack(spacing: 4) {
+                        ForEach(Self.order, id: \.self) { r in
+                            Circle().fill(r == sel ? Theme.teal : Theme.border).frame(width: 5, height: 5)
                         }
                     }
                 }
@@ -85,65 +83,40 @@ struct AnalysisPager: View {
     }
 }
 
-// 분석 탭: naeilo.com 분석·전략을 폰에 맞게. 카드 머리 숫자는 각 화면 첫 숫자와 같은 계산.
+// 분석 탭 허브: 맨 위 습관 띠, 결론 카드, 그룹 3개 아래 한 줄 결과 행.
+// 행의 답 문장은 그 상세 화면 첫 문장을 줄인 것 (허브 전용 숫자를 따로 계산하지 않는다)
 struct AnalysisView: View {
     @Environment(AppModel.self) private var m
+    /// 허브 색은 의미 3개만: 들어오는 돈·좋아짐 / 나가는 돈·늦어짐·주의 / 회색 정보
+    static let good = Color(hex: 0x2C5A54, dark: 0x8FD0C4)
+    static let warn = Color(hex: 0xA8521A, dark: 0xE8A060)
 
-    /// 금리 시나리오 카드 머리: 지난 1년 금리 변화가 이어질 때 S&P 실질 이익 3년 누적 중앙값
-    private var rateTag: String {
-        let md = MacroData.shared
-        guard let r = md.scen(dr: md.defaultDr, m: 0) else { return md.failed ? "자료 없음" : "…" }
-        guard let c = r.cum.last else { return "…" }
-        return "이익 \(r.years)년 " + AppModel.sgn0(exp(c[1] / 100) - 1)
+    struct Line { let icon: String; let head: String; let answer: Text?; let sub: String?; var badge: String? = nil; var extra: AnyView? = nil; let route: AnalysisRoute }
+
+    /// 확률을 빈도로: 3번 중 1번처럼
+    static func freq(_ p: Double) -> String {
+        for (a, b) in [(1, 2), (1, 3), (2, 3), (1, 4), (3, 4)] where abs(p - Double(a) / Double(b)) < 0.03 { return "\(b)번 중 \(a)번" }
+        let n = Int((p * 10).rounded())
+        return n <= 0 ? "10번 중 1번도 안 되게" : n >= 10 ? "10번 중 거의 10번" : "10번 중 \(n)번"
     }
 
+    private func name(_ r: AppModel.Row) -> String { r.sym.name.isEmpty ? r.id : r.sym.name }
+
     var body: some View {
-        let fc = m.forecast
-        let usd = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / max(1, m.total)
-        // 내 길: 실제로 시작한 날부터 본전까지 1년에 걸친 선과 오늘 비교
-        let gap = m.myPathGapToday
-        // 외부 요인·배당은 상세 화면과 같은 값 (웹과 같은 사이트 자료·식)
-        let mkt10 = m.rows.reduce(0.0) { a, r in
-            a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0)
-        } / max(1, m.total)
-        let fxNow = Market.shared.valFx, today = SiteCalc.today()   // 배당은 웹 fxBase 와 같게 매매기준율
-        let div = m.rows.reduce(0.0) { a, r in
-            let krw = r.sym.currency == .krw
-            let o = SiteCalc.shared.div(r.id).flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fxNow, krw: krw, price: r.sym.last, today: today) }
-            return a + (o?.y1 ?? 0)
-        }
-        let cards: [(String, String, String, Color, AnalysisRoute)] = [
-            m.isGoal
-                ? ("내 길", "목표에 언제 닿을까", fc.exact ? "가능성 " + AppModel.verdict(fc.pGoal) : "계산 중", Theme.teal, AnalysisRoute.myPath)
-                : ("내 길", "정한 목표대로 가고 있나", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + String(format: "%.1f%%", abs(gap) * 100),
-                   gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060), AnalysisRoute.myPath),
-            (m.forecastTitle, "시장이 줄 수 있는 미래의 범위", fc.exact ? AppModel.pct(fc.pGoal) : "계산 중", Theme.teal, .forecast),
-            ("금리 충격 테스트", "금리가 움직이면 내 목표는 얼마나 흔들릴까", rateTag, Theme.purple, .rateScen),
-            ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "시장 −10%: " + AppModel.sgn(mkt10), Theme.down, .external),
-            ("배당·세금", "앞으로 1년 배당, 내년 5월 양도세", "연 " + AppModel.won1(div), Theme.teal, .dividend),
-            ("환율 영향", "환율이 바뀌면 내 평가액은", "달러 " + AppModel.pct(usd), Theme.blue, .fx),
-            ("종목 한눈에", "고점 대비, 비중, 흔들림을 숫자로", "\(m.rows.count)종목", Theme.teal, .glance),
-        ]
+        let fc = m.forecast, K = m.keyValue, now = m.trackValue
+        let tot = max(1, m.total)
+        let ranked = m.rows.sorted { $0.value > $1.value }
+        let usdV = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value }
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 0) {
                 AppHeader(tab: "분석").padding(.horizontal, -16)
                 SampleNote()
-                CalmCard()
-                ForEach(cards, id: \.0) { t, sub, tag, color, route in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(t).appFont(16, .bold)
-                            Text(sub).appFont(13).foregroundStyle(Theme.sub)
-                        }
-                        Spacer()
-                        Text(tag).appFont(15, .bold).foregroundStyle(color)
-                    }
-                    .padding(.horizontal, 16).frame(minHeight: 68)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
-                    .modifier(OpenOnTap(route: route))
-                }
-                Text("계산 옵션과 상세 표는 PC naeilo.com에서 크게 봐요.").appFont(13).foregroundStyle(Theme.sub).padding(.top, 4)
+                habitBand
+                Divider().padding(.vertical, 14)
+                summary(fc: fc, K: K, now: now, top: ranked.first, tot: tot)
+                group("목표에 닿을까?", goalLines(fc: fc))
+                group("지금 내 돈은 얼마나 흔들릴까?", shakeLines(ranked: ranked, tot: tot, usdV: usdV))
+                group("들어오고 나갈 돈", [moneyLine])
             }
             .screen()
         }
@@ -153,23 +126,207 @@ struct AnalysisView: View {
         .task { await SiteCalc.shared.refresh() }
         .navigationDestination(for: AnalysisRoute.self) { AnalysisPager(start: $0) }
     }
+
+    // MARK: 내 투자 습관 띠 (위젯처럼 성격이 다른 영역, 대사는 상세에만)
+    private var habitBand: some View {
+        let s = m.calm.stats(), k = Calm.kind(m.calm.type), need = max(0, Calm.minEvents - s.n)
+        return HStack(spacing: 12) {
+            CharPixel(id: m.calmSpeaker, width: 25, height: 36)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("내 투자 습관").appFont(14, .bold)
+                    Spacer()
+                    Text(need > 0 ? "기록 \(s.n)/\(Calm.minEvents)" : "지수 \(s.index)").appFont(12).foregroundStyle(Theme.muted)
+                }
+                Text(need > 0 ? "\(need)건 더 모으면 나와 닮은 인물을 알려드려요" : (k.map { "나는 \($0.title)에 가까워요" } ?? "기록이 모였어요"))
+                    .appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
+                if need > 0 {
+                    GeometryReader { g in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Theme.track)
+                            Capsule().fill(Theme.muted).frame(width: g.size.width * Double(s.n) / Double(Calm.minEvents))
+                        }
+                    }
+                    .frame(height: 4)
+                }
+            }
+            chevron
+        }
+        .padding(.vertical, 4)
+        .modifier(OpenOnTap(route: .calm))
+        .accessibilityElement(children: .combine)
+        .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
+    }
+
+    // MARK: 지금 내 상황 (결론)
+    @ViewBuilder
+    private func summary(fc: AppModel.Forecast, K: Double, now: Double, top: AppModel.Row?, tot: Double) -> some View {
+        let r = K > 0 ? now / K : 0
+        let pct = Int((r * 100).rounded())
+        let first = r >= 1 ? "\(m.keyName)에 닿았어요." : (40...60).contains(pct) ? "\(m.keyName)까지 절반 왔어요." : "\(m.keyName)까지 \(pct)% 왔어요."
+        let when = m.isGoal ? "목표일에" : "3년 뒤에"
+        let second = fc.exact ? "지금대로면 \(Self.freq(fc.pGoal))은 \(when) \(AppModel.eok(K))에 닿아요." : "가능성을 계산하고 있어요."
+        let end = ForecastView.ym(m.forecastHorizon).short
+        VStack(alignment: .leading, spacing: 10) {
+            Text("지금 내 상황").appFont(12, .semibold).foregroundStyle(.white.opacity(0.75))
+            Text(first + "\n" + second).appFont(19, .bold).foregroundStyle(.white).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 5) {
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(.white.opacity(0.2))
+                        Capsule().fill(.white).frame(width: g.size.width * min(1, max(0, r)))
+                    }
+                }
+                .frame(height: 6)
+                HStack {
+                    Text("지금 \(AppModel.eok(now))"); Spacer(); Text("\(end) · \(m.keyName) \(AppModel.eok(K))")
+                }
+                .appFont(12).foregroundStyle(.white.opacity(0.8))
+            }
+            if let t = top, t.value / tot >= 0.2 {
+                let w = Int((t.value / tot * 100).rounded())
+                Text(w >= 40 ? "자산의 \(w)%가 \(name(t)) 한 종목이라, 이 종목이 움직이면 내 자산도 거의 같이 움직여요."
+                             : "가장 큰 종목 \(name(t))이 자산의 \(w)%예요.")
+                    .appFont(13).foregroundStyle(.white.opacity(0.9)).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Self.good, in: RoundedRectangle(cornerRadius: 18))
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: 그룹
+    private func group(_ title: String, _ lines: [Line]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).appFont(15, .bold).padding(.top, 22)
+            VStack(spacing: 0) {
+                ForEach(lines.indices, id: \.self) { i in
+                    if i > 0 { Divider().padding(.leading, 56) }
+                    row(lines[i])
+                }
+            }
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border))
+        }
+    }
+
+    private var chevron: some View { Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted) }
+
+    private func row(_ l: Line) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: l.icon).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.sub)
+                .frame(width: 32, height: 32).background(Theme.line, in: Circle())
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    if let b = l.badge {
+                        Text(b).appFont(11, .bold).foregroundStyle(.white).padding(.horizontal, 6).padding(.vertical, 1).background(Self.warn, in: Capsule())
+                    }
+                    Text(l.head).appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
+                }
+                if let a = l.answer { a.appFont(16, .bold).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true) }
+                if let x = l.extra { x }
+                if let s = l.sub { Text(s).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
+            }
+            Spacer(minLength: 4)
+            chevron
+        }
+        .padding(.horizontal, 12).padding(.vertical, 14)
+        .modifier(OpenOnTap(route: l.route))
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: 줄 문구
+    private func goalLines(fc: AppModel.Forecast) -> [Line] {
+        let gap = m.myPathGapToday
+        let my: Line = m.isGoal
+            ? Line(icon: "point.topleft.down.to.point.bottomright.curvepath", head: "내 길 · 구성 바꾸면 언제 닿을까",
+                   answer: fc.exact ? Text("지금 구성은 ") + Text(Self.freq(fc.pGoal)).foregroundColor(Self.good) + Text(" 닿아요") : Text("가능성을 계산하고 있어요"),
+                   sub: "다른 구성 2가지와 비교해 볼 수 있어요", route: .myPath)
+            : Line(icon: "point.topleft.down.to.point.bottomright.curvepath", head: "내 길 · 정한 길대로 가고 있나",
+                   answer: Text("정한 길보다 ") + Text(String(format: "%.1f%%", abs(gap) * 100) + (gap >= 0 ? " 앞서요" : " 뒤처져요")).foregroundColor(gap >= 0 ? Self.good : Self.warn),
+                   sub: nil, route: .myPath)
+        // 목표일 전망: 상세 화면 첫 카드와 같게 경로 값에 현금을 더한다
+        let add = fc.exact ? m.cashKrw : 0
+        let med = (fc.q50.last ?? 0) + add, lo = (fc.q5.last ?? 0) + add, hi = (fc.q95.last ?? 0) + add
+        let end = ForecastView.ym(m.forecastHorizon).long
+        let fcLine = Line(icon: "chart.line.uptrend.xyaxis", head: "\(m.forecastTitle) · \(m.isGoal ? end : "3년 뒤") 내 자산은",
+                          answer: Text("보통 ") + Text(AppModel.eok(med)) + Text(" 정도예요"),
+                          sub: "10번 중 9번은 \(AppModel.eok(lo)) ~ \(AppModel.eok(hi)) 사이", route: .forecast)
+        let t = RateScenarioView.hubTiming(m)
+        let late = t?.contains("늦어져요") == true, early = t?.contains("빨라져요") == true
+        let tShort = (t ?? "").replacingOccurrences(of: "약 ", with: "")
+        let rate = Line(icon: "percent", head: "금리 충격 테스트 · 금리가 작년만큼 또 오르면",
+                        answer: t == nil ? Text(MacroData.shared.failed ? "금리 자료를 불러오지 못했어요" : "금리 자료를 불러오는 중이에요")
+                            : late || early ? Text(m.keyName + (m.keyName == "목표" ? "가 " : "이 ")) + Text(tShort).foregroundColor(late ? Self.warn : Self.good)
+                            : Text("\(m.keyName)에 닿는 시점: ") + Text(tShort),
+                        sub: "내릴 때, 2022년처럼 급등할 때도 볼 수 있어요", route: .rateScen)
+        return [my, fcLine, rate]
+    }
+
+    private func shakeLines(ranked: [AppModel.Row], tot: Double, usdV: Double) -> [Line] {
+        // 외부 요인: 가장 가까운 발표 일정 (없으면 시장 −10% 일 때)
+        let ext: Line
+        if let e = ExternalView.hubNext(m) {
+            let n = Day.dday(e.day)
+            ext = Line(icon: "globe", head: "외부 요인 · \(Day.md(e.day)) \(e.kind)", answer: Text("발표날 보통 ±\(AppModel.man(e.amt)) 움직여요"),
+                       sub: "하루하루 흔들림 기준이에요", badge: n == 0 ? "오늘" : "D-\(n)", route: .external)
+        } else {
+            let mkt10 = m.rows.reduce(0.0) { a, r in
+                a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0)
+            }
+            ext = Line(icon: "globe", head: "외부 요인 · 시장이 10% 내리면",
+                       answer: Text("내 자산은 약 ") + Text(AppModel.man(abs(mkt10)) + " 줄어요").foregroundColor(Self.warn),
+                       sub: "하루하루 흔들림 기준이에요", route: .external)
+        }
+        // 환율 영향: 상세 첫 문장과 같은 per10 = 달러 평가액 × 10 / 기준 환율
+        let usdW = usdV / tot, per10 = usdV * 10 / max(1, Market.shared.valFx)
+        let fx = Line(icon: "dollarsign.arrow.circlepath",
+                      head: "환율 영향 · " + (usdV <= 0 ? "달러 자산이 없어요" : usdW > 0.995 ? "내 자산은 모두 달러예요" : "달러 자산이 \(AppModel.pct(usdW))예요"),
+                      answer: usdV <= 0 ? Text("환율이 바뀌어도 그대로예요") : Text("환율 10원 오르면 약 ") + Text("+" + AppModel.man(per10)).foregroundColor(Self.good),
+                      sub: usdV <= 0 ? nil : "내리면 그만큼 줄어요", route: .fx)
+        // 종목 한눈에: 비중 막대 (1·2위와 나머지)
+        let top = Array(ranked.prefix(2)), w = top.map { $0.value / tot }, rest = max(0, 1 - w.reduce(0, +))
+        let parts: [(String, Double, Color)] = zip(top, w).enumerated().map { i, x in (name(x.0), x.1, i == 0 ? Theme.sub : Theme.muted) }
+            + (rest > 0.005 ? [("나머지", rest, Theme.dash)] : [])
+        let bar = VStack(alignment: .leading, spacing: 4) {
+            GeometryReader { g in
+                HStack(spacing: 2) { ForEach(parts.indices, id: \.self) { i in Rectangle().fill(parts[i].2).frame(width: max(2, g.size.width * parts[i].1 - 2)) } }
+            }
+            .frame(height: 6).clipShape(Capsule())
+            HStack(spacing: 10) { ForEach(parts.indices, id: \.self) { i in Text("\(parts[i].0) \(AppModel.pct(parts[i].1))").lineLimit(1) } }
+                .appFont(11).foregroundStyle(Theme.muted)
+        }.padding(.top, 2)
+        let gl = Line(icon: "square.grid.2x2", head: "종목 한눈에 · \(m.rows.count)종목",
+                      answer: ranked.first.map { Text("\(name($0))가 내 자산의 \(AppModel.pct($0.value / tot))") } ?? Text("종목이 없어요"),
+                      sub: nil, extra: ranked.isEmpty ? nil : AnyView(bar), route: .glance)
+        return [ext, fx, gl]
+    }
+
+    /// 배당·세금: 들어올 배당(초록)과 낼 양도세(주황)를 두 줄로, 한 숫자로 합치지 않는다
+    private var moneyLine: Line {
+        let mo = DividendView.hubMonthly(m), tax = DividendView.hubTax(m)
+        let year = (Int(SiteCalc.today().prefix(4)) ?? 2026) + 1
+        let two = VStack(alignment: .leading, spacing: 6) {
+            HStack { Text("들어올 배당").foregroundStyle(Theme.sub); Spacer()
+                Text(mo > 0 ? "한 달 평균 \(AppModel.wonRead(mo))" : "없어요").bold().foregroundStyle(mo > 0 ? Self.good : Theme.muted) }
+            Divider()
+            HStack { Text("낼 양도세").foregroundStyle(Theme.sub); Spacer()
+                Text(tax > 0 ? "\(String(year % 100))년 5월 약 \(AppModel.man(tax))" : "없어요").bold().foregroundStyle(tax > 0 ? Self.warn : Theme.muted) }
+        }.appFont(14).padding(.top, 4)
+        return Line(icon: "wonsign.circle", head: "배당·세금", answer: nil, sub: nil, extra: AnyView(two), route: .dividend)
+    }
 }
 
-/// 분석 목록 카드: 누르면 살짝 눌리고 탭하면 연다. 카드가 화면 너비라 옆으로 밀고 카드 안에서 손을 떼도
-/// 버튼은 탭으로 쳐서 세부 분석이 열렸다: 옆으로 움직였으면 열지 않는다 (좌우 넘기기는 세부 분석 안에서만)
+/// 분석 허브 행: 탭하면 연다. 버튼 + 끌기 제스처를 겹치면 스크롤 안에서 눌림이 늦게 잡혀 터치가 밀렸다.
+/// 탭 제스처는 손가락이 움직이면 저절로 취소되므로 옆으로 밀다 떼도 열리지 않는다
 struct OpenOnTap: ViewModifier {
     @Environment(AppModel.self) private var m
-    @State private var movedAt = Date.distantPast
     let route: AnalysisRoute
     func body(content: Content) -> some View {
-        Button {
-            if Date().timeIntervalSince(movedAt) < 0.3 { return }
-            m.analysisPath.append(route)
-        } label: { content }
-        .buttonStyle(.plain)
-        .simultaneousGesture(DragGesture(minimumDistance: 12)
-            // 손을 떼기 직전까지 움직였으면 탭이 아님 (스크롤에 밀려 끝이 안 와도 시간이 지나면 풀린다)
-            .onChanged { _ in movedAt = Date() })
+        content
+            .contentShape(Rectangle())
+            .onTapGesture { m.analysisPath.append(route) }
+            .accessibilityAddTraits(.isButton)
     }
 }
 
