@@ -527,6 +527,7 @@ struct RateScen {
     let cum: [[Double]]         // y년까지 누적
     let dropYr: [Double]        // y년째 감소 비율
     let dropCum: Double         // 끝 해 누적 감소 비율
+    let dropCumYr: [Double]     // y년까지 누적으로 오늘보다 줄어 있을 비율 (근거 표)
     let mkt: [Double]           // 시장 연 기대수익 [하위10, 중앙, 상위10]
     let slope: [Double]         // 식단마다 3년 동안의 b 합 (금리 1%p 당 이익 변화 %)
 
@@ -557,7 +558,8 @@ struct RateScen {
         yr = (0..<H).map { y in Self.band(tot.map { $0[y] }) }
         cum = (0..<H).map { y in Self.band(acc.map { $0[y] }) }
         dropYr = (0..<H).map { y in Double(tot.filter { $0[y] < 0 }.count) / n }
-        dropCum = H > 0 ? Double(acc.filter { $0[H - 1] < 0 }.count) / n : 0
+        dropCumYr = (0..<H).map { y in Double(acc.filter { $0[y] < 0 }.count) / n }
+        dropCum = dropCumYr.last ?? 0
         // 시장 연 수익 ≈ 3년 누적 이익 변화(연) + 배당 1.5% + 금리 외 공통 기대수익 (PER 그대로)
         let Hd = Double(max(1, H))
         mkt = Self.band(acc.map { a in exp((a.last ?? 0) / 100 / Hd) - 1 + 0.015 + m })
@@ -769,7 +771,7 @@ struct RateScenarioView: View {
     }
 }
 
-/// 근거 화면 (2단계 · 기업이 버는 돈). 표·그래프 재구성은 다음 단계에서 하고, 지금은 기존 그래프·표를 옮겨 둔다
+/// 근거 화면 (2단계 · 기업이 버는 돈): 해마다 변화 표 + 해마다 누적 수준·감소 확률 표, y축·오늘선 있는 띠 그래프
 private struct RateWhyView: View {
     let r: RateScen
     let when: String
@@ -791,10 +793,14 @@ private struct RateWhyView: View {
                     ForEach(0..<H, id: \.self) { y in
                         tableRow("\(y + 1)년째 변화", s(r.yr[y][0]), s(r.yr[y][1]), s(r.yr[y][2]), AppModel.pct(r.dropYr[y]))
                     }
-                    if H > 0 {
-                        tableRow("\(H)년 누적", s(r.cum[H - 1][0]), s(r.cum[H - 1][1]), s(r.cum[H - 1][2]), AppModel.pct(r.dropCum))
-                    }
                     Text("감소는 그 해 이익이 줄어들 확률이에요.").appFont(12).foregroundStyle(Theme.muted)
+                }
+                Card(dark: true) {
+                    tableRow("오늘 = 100", "하위 10%", "중앙", "상위 10%", "감소", head: true)
+                    ForEach(0..<H, id: \.self) { y in
+                        tableRow("\(y + 1)년 뒤", lv(r.cum[y][0]), lv(r.cum[y][1]), lv(r.cum[y][2]), AppModel.pct(r.dropCumYr[y]))
+                    }
+                    Text("감소는 그때 이익이 오늘보다 적을 확률이에요.").appFont(12).foregroundStyle(Theme.muted)
                 }
                 footnote("1960년 이후 금리와 S&P500 이익의 관계식 1000개로 계산. 이익 자료 \(epsLast ?? "")까지. 출처 Robert J. Shiller.")
             }
@@ -805,6 +811,7 @@ private struct RateWhyView: View {
     }
 
     private func s(_ v: Double) -> String { RateScenarioView.signed(v, "%", 1) }
+    private func lv(_ v: Double) -> String { String(format: "%.0f", 100 * exp(v / 100)) }
 
     private func tableRow(_ k: String, _ a: String, _ b: String, _ c: String, _ e: String, head: Bool = false) -> some View {
         HStack(spacing: 4) {
@@ -827,7 +834,8 @@ private struct RateBandChart: View {
             let n = lv[1].count
             let all = lv.flatMap { $0 }
             let hi = (all.max() ?? 110) * 1.03, lo = (all.min() ?? 90) * 0.97
-            let x = { (i: Int) -> CGFloat in CGFloat(i) / CGFloat(max(1, n - 1)) * (size.width - 8) + 4 }
+            let x0: CGFloat = 30   // 왼쪽 y축 눈금 자리
+            let x = { (i: Int) -> CGFloat in CGFloat(i) / CGFloat(max(1, n - 1)) * (size.width - x0 - 8) + x0 }
             let y = { (v: Double) -> CGFloat in CGFloat((hi - v) / max(1e-9, hi - lo)) * (size.height - 14) }
             let area = Path { p in
                 for i in 0..<n { let pt = CGPoint(x: x(i), y: y(lv[2][i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) }
@@ -835,8 +843,20 @@ private struct RateBandChart: View {
                 p.closeSubpath()
             }
             ctx.fill(area, with: .color(Theme.teal.opacity(0.16)))
-            ctx.stroke(Path { p in p.move(to: CGPoint(x: 0, y: y(100))); p.addLine(to: CGPoint(x: size.width, y: y(100))) },
+            // y축 눈금 (오늘 = 100 기준 10 간격)
+            var t = (lo / 10).rounded(.up) * 10
+            while t <= hi {
+                ctx.stroke(Path { p in p.move(to: CGPoint(x: x0, y: y(t))); p.addLine(to: CGPoint(x: size.width, y: y(t))) },
+                           with: .color(Theme.muted.opacity(0.25)), lineWidth: 0.5)
+                ctx.draw(Text(String(format: "%.0f", t)).font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: x0 - 4, y: y(t)), anchor: .trailing)
+                t += 10
+            }
+            ctx.stroke(Path { p in p.move(to: CGPoint(x: x0, y: y(100))); p.addLine(to: CGPoint(x: size.width, y: y(100))) },
                        with: .color(Theme.muted), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            // 오늘 세로선
+            ctx.stroke(Path { p in p.move(to: CGPoint(x: x(0), y: 0)); p.addLine(to: CGPoint(x: x(0), y: size.height - 14)) },
+                       with: .color(Theme.ink.opacity(0.5)), lineWidth: 1)
+            ctx.draw(Text("오늘").font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: x(0), y: size.height - 6), anchor: .leading)
             for k in [0, 2] {
                 ctx.stroke(Path { p in for i in 0..<n { let pt = CGPoint(x: x(i), y: y(lv[k][i])); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } },
                            with: .color(Theme.teal.opacity(0.6)), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
