@@ -32,6 +32,7 @@
 - 웹·앱 숫자 맞추기: 몬테카를로 이식 + CI parity, stats.json·calc.json, 입력값 차이 수정(PR #121~#131).
 
 ## 2. 진행 중·미완성
+- 미션 탭 개편 (인계: `docs/handoff/mission-board/`, `claude/mission-board-handoff` 브랜치). ① 이번 주 예보 3카드(예보·맞혀보기·예보 성적) + 주간 범위 저장 + 맞혀보기 배지: PR 올림, 실기기 확인 필요. ② 목표 카드·다음 미션 카드·100칸(회복 루트 `CellGrid` 포함, 공유·벽돌깨기는 1000칸 값 따로 계산): 새 스레드에서. 결정은 decisions.md 2026-10-14
 | 항목 | 상태 |
 |---|---|
 | Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |

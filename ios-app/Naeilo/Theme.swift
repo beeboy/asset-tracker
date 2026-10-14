@@ -47,6 +47,9 @@ enum Theme {
     static let purple = Color(hex: 0x7A4FC8, dark: 0x9B78E0)
     static let blue = Color(hex: 0x2F8FD8)
     static let green = Color(hex: 0x12A06E)
+    static let forecast = Color(hex: 0x2C62A8, dark: 0x6FA6E8)      // 이번 주 예보 글자·고른 칸
+    static let forecastBg = Color(hex: 0xEEF4FB, dark: 0x16263A)    // 예보 설명 상자
+    static let brown = Color(hex: 0x8A5A1E, dark: 0xD9A86A)         // 미니 미션 작은 제목
     static let holdColors: [Color] = [Color(hex: 0x7A4FC8), Color(hex: 0x2F8FD8), Color(hex: 0x12A06E),
                                       Color(hex: 0xE8862A), Color(hex: 0xC2477A), Color(hex: 0x5B6670)]
 
