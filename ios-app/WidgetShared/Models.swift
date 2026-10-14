@@ -81,7 +81,7 @@ enum Relay {
     }
 }
 
-// 내부 테스트 국내 시세 (KoreaEstimate.liveIds). 사이트 quotes.json 에 없어서 위젯도 앱처럼 Yahoo 중계로 직접 받는다
+// 국내 개별 종목 시세 (KoreaEstimate.popular). 사이트 quotes.json 에 없어서 위젯도 앱처럼 Yahoo 중계로 직접 받는다
 enum KrQuoteFeed {
     static let name = "kr_quotes.json"
     static func cached() -> QuoteFeed.File? { Store.read(QuoteFeed.File.self, name) }
