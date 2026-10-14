@@ -245,16 +245,11 @@ struct AnalysisView: View {
     }
 }
 
-/// 분석 허브 행: 탭하면 연다. 버튼 + 끌기 제스처를 겹치면 스크롤 안에서 눌림이 늦게 잡혀 터치가 밀렸다.
-/// 탭 제스처는 손가락이 움직이면 저절로 취소되므로 옆으로 밀다 떼도 열리지 않는다
+/// 분석 허브 행: 앱 다른 화면처럼 기본 이동 링크 그대로 (예전엔 옆으로 밀기 막는 끌기 제스처를 겹쳐 탭이 씹혔다)
 struct OpenOnTap: ViewModifier {
-    @Environment(AppModel.self) private var m
     let route: AnalysisRoute
     func body(content: Content) -> some View {
-        content
-            .contentShape(Rectangle())
-            .onTapGesture { m.analysisPath.append(route) }
-            .accessibilityAddTraits(.isButton)
+        NavigationLink(value: route) { content }.buttonStyle(.plain)
     }
 }
 
