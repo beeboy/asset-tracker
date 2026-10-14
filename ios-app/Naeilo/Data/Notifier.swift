@@ -8,6 +8,8 @@ import UIKit
 // - 아침 한 줄: 다음 평일 아침 한 번만 지금 숫자로 예약하고, 그 뒤 평일 4번은 숫자 없이 예약한다.
 //   앱을 열 때마다 다시 예약하므로, 앱을 자주 열면 늘 숫자가 들어간 알림이 온다. 숫자가 오래되면 넣지 않는다.
 // - 연말 세금 정리: 매년 12월 1일 오전 9시.
+// - 일정 다음 날 결과: 외부 요인 '오늘의 이벤트' 카드에서 켠 일정만, 일정 다음 날 오전 9시 한 번 (id "xf.…").
+//   금리 결정 '전날' 알림(id "rate.…")과는 시점·이름이 달라 겹치지 않는다.
 enum Notifier {
     static let center = UNUserNotificationCenter.current()
     private static let d = UserDefaults.standard
@@ -138,6 +140,59 @@ enum Notifier {
         c.sound = .default
         try? await center.add(UNNotificationRequest(identifier: "test", content: withIcon(c),
                                                     trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)))
+    }
+}
+
+/// 지난 일 돌아보기: 일정 전에 미리 본 범위(±금액)와 그때 평가액을 기기에 적어 두고,
+/// 일정 다음 날 이후 처음 볼 때의 평가액과 비교한다. 서버 없음, 최근 10개만 둔다
+enum EventRetro {
+    struct Snap: Codable { var kind: String; var day: String; var amt: Double; var base: Double; var after: Double? }
+    private static let key = "xf.retro.v1", askKey = "xf.ask.v1"
+    private static let d = UserDefaults.standard
+
+    static var snaps: [String: Snap] {
+        get { (d.data(forKey: key)).flatMap { try? JSONDecoder().decode([String: Snap].self, from: $0) } ?? [:] }
+        set { if let x = try? JSONEncoder().encode(newValue) { d.set(x, forKey: key) } }
+    }
+    /// 일정 당일·전날에 본 값을 적는다 (일정 날까지 덮어써서 가장 가까운 값이 남는다). 지난 일정은 결과 평가액을 한 번 채운다
+    static func record(_ evs: [(id: String, kind: String, day: String, amt: Double)], total: Double) {
+        guard total > 0 else { return }
+        var s = snaps
+        let today = Day.today
+        for e in evs where Day.dday(e.day) <= 1 && e.day >= today {
+            s["\(e.id).\(e.day)"] = Snap(kind: e.kind, day: e.day, amt: e.amt, base: total, after: nil)
+        }
+        for (k, v) in s where v.after == nil && v.day < today { s[k]?.after = total }
+        if s.count > 10 { for k in s.sorted(by: { $0.value.day < $1.value.day }).prefix(s.count - 10).map(\.key) { s.removeValue(forKey: k) } }
+        snaps = s
+    }
+    /// 결과까지 채워진 가장 최근 지난 일정
+    static var latest: Snap? { snaps.values.filter { $0.after != nil }.max { $0.day < $1.day } }
+
+    // MARK: 다음 날 결과 알림
+    static func isAsked(_ id: String, _ day: String) -> Bool { (d.stringArray(forKey: askKey) ?? []).contains("\(id).\(day)") }
+    @MainActor
+    static func ask(id: String, kind: String, day: String, on: Bool) async {
+        let k = "\(id).\(day)"
+        // 이 일정과, 다음 날 알림까지 끝난 지난 일정은 목록에서 뺀다
+        var a = (d.stringArray(forKey: askKey) ?? []).filter { $0 != k && (String($0.split(separator: ".").last ?? "")) >= Day.today }
+        Notifier.center.removePendingNotificationRequests(withIdentifiers: ["xf.\(k)"])
+        if on {
+            guard await Notifier.request() else { d.set(a, forKey: askKey); return }
+            let cal = Calendar.current
+            guard let dd = Day.date(day), let next = cal.date(byAdding: .day, value: 1, to: dd),
+                  let at = cal.date(bySettingHour: 9, minute: 0, second: 0, of: next), at > Date() else { return }
+            let c = UNMutableNotificationContent()
+            c.title = "어제 \(kind) 결과"
+            c.body = "내 자산이 미리 본 범위 안에서 움직였는지 '지난 일 돌아보기'에서 확인해 보세요."
+            c.sound = .default
+            c.userInfo = ["open": "ext"]
+            let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
+            try? await Notifier.center.add(UNNotificationRequest(identifier: "xf.\(k)", content: Notifier.withIcon(c),
+                                                                 trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
+            a.append(k)
+        }
+        d.set(a, forKey: askKey)
     }
 }
 
