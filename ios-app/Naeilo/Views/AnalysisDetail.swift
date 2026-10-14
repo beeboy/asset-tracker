@@ -720,7 +720,8 @@ struct DividendView: View {
 
     var body: some View {
         // 웹(종목 › 배당·세금)과 같은 식: 지난 12개월 배당락(사이트 시세에서 뽑은 날짜·금액)이 앞으로 같은 달에 (1+증가율)로 다시 온다고 본 세후 원화
-        let t = SiteCalc.today(), fx = Market.shared.fx.last
+        // 환율은 웹 fxBase 와 같게 매매기준율 (없거나 5일 넘게 묵었으면 지금 환율)
+        let t = SiteCalc.today(), fx = Market.shared.valFx
         let per = m.rows.map { r -> (id: String, out: SiteCalc.DivOut?, known: Bool, tax: Double) in
             let d = calc.div(r.id), krw = r.sym.currency == .krw
             let o = d.flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fx, krw: krw, price: r.sym.last, today: t) }
@@ -734,7 +735,7 @@ struct DividendView: View {
         let mMax = max(1, byMonth.max() ?? 1), sMax = max(1, paid.map { $0.out!.y1 }.max() ?? 1)
         let zero = per.filter { $0.known && $0.out == nil }.map(\.id)
         let unknown = per.filter { !$0.known }.map(\.id)
-        // 해외주식 평가 이익: 웹과 같게 (지금 가격 − 매수 단가) × 수량 × 지금 환율. 매수 단가를 넣은 종목만
+        // 해외주식 평가 이익: 웹과 같게 (지금 가격 − 매수 단가) × 수량 × 매매기준율. 매수 단가를 넣은 종목만
         let us = m.rows.filter { $0.sym.currency == .usd && $0.h.avg > 0 }
         let usU = us.reduce(0.0) { $0 + ($1.sym.last - $1.h.avg) * $1.h.qty * fx }
         let G = m.taxGain * 1e4
@@ -798,7 +799,7 @@ struct DividendView: View {
                 Card(dark: true) {
                     Text("팔 때 세금 (해외주식 양도세, 내년 5월 신고)").appFont(15, .bold)
                     ruleRow("올해 이미 판 이익", "세금 규칙에 넣은 값", AppModel.man(G))
-                    ruleRow("미국 종목 평가 이익", us.isEmpty ? "매수 단가를 넣은 미국 종목이 없어요" : us.map(\.id).joined(separator: ", ") + " · 지금 환율 기준", AppModel.manS(usU),
+                    ruleRow("미국 종목 평가 이익", us.isEmpty ? "매수 단가를 넣은 미국 종목이 없어요" : us.map(\.id).joined(separator: ", ") + (Market.shared.marRate != nil ? " · 매매기준율 기준" : " · 지금 환율 기준"), AppModel.manS(usU),
                             color: Theme.change(usU))
                     ruleRow("내년 5월 낼 세금", "지금 그대로 / 미국 종목 다 판다면", AppModel.man(SiteCalc.capGainTax(G)) + " / " + AppModel.man(SiteCalc.capGainTax(G + usU)))
                     Text(usU < 0
@@ -832,12 +833,13 @@ struct DividendView: View {
 struct FxImpactView: View {
     @Environment(AppModel.self) private var m
     @State private var period = "1y"
-    @State private var what = Market.shared.fx.last.rounded()
+    @State private var what = Market.shared.valFx.rounded()
 
     var body: some View {
         // 웹(전망 › 환율 영향)과 같은 자료·식: 지난 원/달러와 칼만 추세는 사이트 값(calc.json), 앞날 범위는 웹 전망 모형의 환율 μ·σ(stats.json)로
         // 지금·exp((μ − σ²/2)t + zσ√t)
-        let FX = Market.shared.fx.last, c = SiteCalc.shared.file?.fx, fxp = SiteStats.fx(), mu = fxp.0, vol = fxp.1
+        // 원/달러 표시와 앞날 범위는 웹처럼 지금 환율, 평가액 계산은 웹 fxBase 와 같게 매매기준율(BASE) 기준
+        let FX = Market.shared.fx.last, BASE = Market.shared.valFx, c = SiteCalc.shared.file?.fx, fxp = SiteStats.fx(), mu = fxp.0, vol = fxp.1
         let usd = m.rows.filter { $0.sym.currency == .usd }
         let usdV = usd.reduce(0) { $0 + $1.value }, usdW = usdV / max(1, m.total)
         let n = ["1m": 22, "3m": 64, "1y": 253, "3y": 780][period] ?? 253
@@ -853,7 +855,7 @@ struct FxImpactView: View {
         let hi = (vals.max() ?? FX) + pad, lo = (vals.min() ?? FX) - pad
         let X = { (t: Double) in t <= 0 ? (t + 1) * 0.7 : 0.7 + t * 0.3 }
         let Y = { (v: Double) in max(0, min(1, (hi - v) / (hi - lo))) }
-        let valAt = { (r: Double) in m.total + usdV * (r / FX - 1) }
+        let valAt = { (r: Double) in m.total + usdV * (r / BASE - 1) }
         let pMin = past.map(\.1).min() ?? FX, pMax = past.map(\.1).max() ?? FX
         let chg = FX / (past.first?.1 ?? FX) - 1
         let T = max(0.01, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400))
@@ -917,9 +919,9 @@ struct FxImpactView: View {
                 }
                 Card(dark: true) {
                     Text("환율별 내 평가액 (주가는 그대로)").appFont(15, .bold)
-                    ForEach([1250.0, 1300, FX, 1450, 1500], id: \.self) { r in
+                    ForEach([1250.0, 1300, BASE, 1450, 1500], id: \.self) { r in
                         HStack {
-                            Text("\(Int(r).formatted())원" + (r == FX ? " (지금)" : "")).appFont(13, r == FX ? .bold : .regular)
+                            Text("\(Int(r).formatted())원" + (r == BASE ? " (지금)" : "")).appFont(13, r == BASE ? .bold : .regular)
                             Spacer()
                             Text(AppModel.man(valAt(r))).appFont(14, .bold)
                             Text("\(m.keyName)까지 \(AppModel.man(max(0, m.keyValue - valAt(r))))").appFont(12).foregroundStyle(Theme.sub).frame(minWidth: 110, alignment: .trailing)

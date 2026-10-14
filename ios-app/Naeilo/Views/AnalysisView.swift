@@ -104,7 +104,7 @@ struct AnalysisView: View {
         let mkt10 = m.rows.reduce(0.0) { a, r in
             a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0)
         } / max(1, m.total)
-        let fxNow = Market.shared.fx.last, today = SiteCalc.today()
+        let fxNow = Market.shared.valFx, today = SiteCalc.today()   // 배당은 웹 fxBase 와 같게 매매기준율
         let div = m.rows.reduce(0.0) { a, r in
             let krw = r.sym.currency == .krw
             let o = SiteCalc.shared.div(r.id).flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fxNow, krw: krw, price: r.sym.last, today: today) }
