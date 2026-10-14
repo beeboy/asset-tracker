@@ -153,12 +153,12 @@ enum TossFeed {
         let list = Set(want.values).sorted().joined(separator: ",")
         guard let enc = list.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
               let url = URL(string: b + "/api/toss/prices?symbols=" + enc) else { return nil }
-        // 없는 종목이 섞이면 server.py 가 하나씩 다시 물어 3초를 넘기기도 한다 → 8초
-        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+        // 3초 넘으면 포기 (웹 tossQuotes 와 같다). 없는 종목은 server.py 가 하루 제외하므로 다음 번엔 빨라진다
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 3)
         req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
         let data: Data, resp: URLResponse
         do { (data, resp) = try await URLSession.shared.data(for: req) }
-        catch let e as URLError { return fail(e.code == .timedOut ? "8초 안에 응답 없음" : "연결 실패 (\(e.code.rawValue))") }
+        catch let e as URLError { return fail(e.code == .timedOut ? "3초 안에 응답 없음" : "연결 실패 (\(e.code.rawValue))") }
         catch { return fail("연결 실패") }
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         guard code == 200 else { return fail("서버 응답 \(code)") }
