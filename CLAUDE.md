@@ -11,13 +11,13 @@
 | `server.py` | 로컬 서버(`/api/*`) + Yahoo 시세 수집(`--collect`) + 매매기준율(`data/mar.json`) |
 | `macro.py` | Shiller 데이터 → `data/macro/` |
 | `proxy/` | Cloudflare 워커 `asset-ai` (`cloudflare-worker.js`, `wrangler.toml`) |
-| `tools/` | CI 도구: `site_stats.mjs`→stats.json, `site_calc.mjs`/`check_calc.mjs`→calc.json, `mc_parity.mjs`, `sample_snapshot.mjs`, `drnk_prices.py`, `gen_stock_catalog.py` |
+| `tools/` | CI 도구: `site_stats.mjs`→stats.json, `site_calc.mjs`/`check_calc.mjs`→calc.json, `mc_parity.mjs`, `calc_parity.mjs`, `sample_snapshot.mjs`, `drnk_prices.py`, `gen_stock_catalog.py` |
 | `data/` | 사이트가 읽는 데이터 (시세·환율·통계·설정). 수집 봇이 커밋 |
 | `research/` | 오프라인 Node 연구 스크립트 (앙상블 전망) |
 | `ios-app/Naeilo/` | iOS 앱. `Data/` 모델·계산·동기화, `Views/` 화면, `Resources/` 대사·이야기 |
 | `ios-app/WidgetShared/` | 앱과 위젯이 함께 쓰는 코드 (`Engine.swift`, `Models.swift`, `Config.swift`) |
 | `ios-app/Widgets/` | 위젯 확장 (홈·잠금화면·인물·서재) |
-| `ios-app/tools/mc_parity/` | Swift 몬테카를로를 웹과 비교하는 CLI |
+| `ios-app/tools/mc_parity/`, `calc_parity/` | Swift 몬테카를로·화면 계산(평가액·배당·세금·금리)을 웹과 비교하는 CLI |
 | `usage-app/` | 별도 개인용 앱: Claude 사용량 위젯 |
 | `.github/workflows/` | collect·stats·macro·sample(자동), worker(수동), ios·usage(빌드) |
 
@@ -32,6 +32,7 @@
 - 시세 수집만: `python server.py --collect [--add T1,T2]`
 - 계산 검사: `node tools/site_calc.mjs && node tools/check_calc.mjs`
 - 웹↔Swift 몬테카를로 비교: `node tools/mc_parity.mjs gen DIR` → swiftc로 `ios-app/tools/mc_parity` 실행 → `node tools/mc_parity.mjs cmp DIR` (`.github/workflows/ios.yml` parity 잡 참고)
+- 웹↔Swift 화면 계산 비교: `node tools/calc_parity.mjs gen DIR` → `swiftc DIR/CalcSrc.swift ios-app/tools/calc_parity/main.swift` 실행 → `node tools/calc_parity.mjs cmp DIR`. 앱·웹 원본에서 코드를 꺼내 쓰므로 함수 이름을 바꾸면 도구의 꺼내는 곳도 고친다
 - iOS 빌드: `cd ios-app && xcodegen && xcodebuild -project NaeiloApp.xcodeproj -target NaeiloApp -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build`
 - 단위 테스트 프레임워크·린터는 없음.
 
