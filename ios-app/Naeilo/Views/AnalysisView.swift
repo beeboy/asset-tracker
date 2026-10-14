@@ -98,8 +98,6 @@ struct AnalysisView: View {
     var body: some View {
         let fc = m.forecast
         let usd = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / max(1, m.total)
-        // 내 길: 실제로 시작한 날부터 본전까지 1년에 걸친 선과 오늘 비교
-        let gap = m.myPathGapToday
         // 외부 요인·배당은 상세 화면과 같은 값 (웹과 같은 사이트 자료·식)
         let mkt10 = m.rows.reduce(0.0) { a, r in
             a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0)
@@ -111,8 +109,8 @@ struct AnalysisView: View {
             return a + (o?.y1 ?? 0)
         }
         let cards: [(String, String, String, Color, AnalysisRoute)] = [
-            ("내 길", "정한 목표대로 가고 있나", (gap >= 0 ? "앞섬 " : "뒤처짐 ") + String(format: "%.1f%%", abs(gap) * 100),
-             gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060), .myPath),
+            ("내 길", "나 \(m.keyName)까지 갈 수 있을까", fc.exact ? AppModel.verdict(m.pathProb) : "계산 중",
+             !fc.exact || m.pathProb >= 0.3 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060), .myPath),
             (m.forecastTitle, "시장이 줄 수 있는 미래의 범위", fc.exact ? AppModel.pct(fc.pGoal) : "계산 중", Theme.teal, .forecast),
             ("금리 시나리오", "금리가 움직이면 시장 이익과 내 목표는", rateTag, Theme.purple, .rateScen),
             ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "시장 −10%: " + AppModel.sgn(mkt10), Theme.down, .external),
