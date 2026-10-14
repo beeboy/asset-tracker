@@ -87,6 +87,14 @@ extension AppModel {
 
     static func manS(_ krw: Double) -> String { (krw >= 0 ? "+" : "−") + man(abs(krw)) }
     static func won1(_ krw: Double) -> String { krw > 0 && krw < 1e4 ? Int(krw.rounded()).formatted() + "원" : man(krw) }
+    /// 읽기 쉬운 금액: 4만 6천원 · 9천원 (천원 단위 반올림, 1천만원 넘으면 man)
+    static func wonRead(_ krw: Double) -> String {
+        let k = Int((krw / 1e3).rounded())
+        if k <= 0 { return won1(krw) }
+        if k >= 10_000 { return man(krw) }
+        let w = k / 10, c = k % 10
+        return w == 0 ? "\(c)천원" : c == 0 ? "\(w)만원" : "\(w)만 \(c)천원"
+    }
     /// x 시점(0 = 3년 전, 1 = 어제)의 전체 평가액 (원화)
     func totalAt(_ x: Double) -> Double {
         rows.reduce(0) { $0 + krw($1.sym, $1.h.qty * prices.price($1.sym, at: x)) }
@@ -715,8 +723,13 @@ private struct RateBandChart: View {
 
 struct DividendView: View {
     @Environment(AppModel.self) private var m
+    @State private var tab = "div"
     @State private var mode = "month"
+    @State private var extra = 0.0
     private var calc: SiteCalc { SiteCalc.shared }
+
+    /// 종목 하나의 앞으로 1년 배당 (화면용)
+    struct Paid { let id: String; let name: String; let out: SiteCalc.DivOut; let tax: Double; let krw: Bool; let payMonths: [Int] }
 
     var body: some View {
         // 웹(종목 › 배당·세금)과 같은 식: 지난 12개월 배당락(사이트 시세에서 뽑은 날짜·금액)이 앞으로 같은 달에 (1+증가율)로 다시 온다고 본 세후 원화
@@ -727,12 +740,16 @@ struct DividendView: View {
             let o = d.flatMap { SiteCalc.project($0.events, shares: r.h.qty, fx: krw ? 1 : fx, krw: krw, price: r.sym.last, today: t) }
             return (r.id, o, d != nil, krw ? SiteCalc.krDivTax : SiteCalc.wht)
         }
-        let paid = per.filter { $0.out != nil }
-        let net = paid.reduce(0.0) { $0 + $1.out!.y1 }, gross = paid.reduce(0.0) { $0 + $1.out!.y1 / (1 - $1.tax) }
-        let net3 = paid.reduce(0.0) { $0 + $1.out!.y3 }
         let months = (1...12).map { String(SiteCalc.addMonths(t, $0).prefix(7)) }
-        let byMonth = months.map { mo in paid.reduce(0.0) { $0 + ($1.out!.byMonth[mo] ?? 0) } }
-        let mMax = max(1, byMonth.max() ?? 1), sMax = max(1, paid.map { $0.out!.y1 }.max() ?? 1)
+        let names = Dictionary(m.rows.map { ($0.id, $0.sym.name) }, uniquingKeysWith: { a, _ in a })
+        let paid = per.compactMap { p -> Paid? in
+            guard let o = p.out else { return nil }
+            let pm = months.filter { (o.byMonth[$0] ?? 0) > 0 }.map { Int($0.suffix(2)) ?? 0 }
+            let nm = names[p.id] ?? ""
+            return Paid(id: p.id, name: nm == p.id ? "" : nm, out: o, tax: p.tax, krw: p.tax == SiteCalc.krDivTax, payMonths: pm)
+        }
+        let net = paid.reduce(0.0) { $0 + $1.out.y1 }, gross = paid.reduce(0.0) { $0 + $1.out.y1 / (1 - $1.tax) }
+        let byMonth = months.map { mo in paid.reduce(0.0) { $0 + ($1.out.byMonth[mo] ?? 0) } }
         let zero = per.filter { $0.known && $0.out == nil }.map(\.id)
         let unknown = per.filter { !$0.known }.map(\.id)
         // 해외주식 평가 이익: 웹과 같게 (지금 가격 − 매수 단가) × 수량 × 매매기준율. 매수 단가를 넣은 종목만
@@ -742,72 +759,16 @@ struct DividendView: View {
 
         PinnedLayout {
             pinnedBox {
-                DetailHead(title: "배당·세금", sub: "앞으로 12개월 받을 배당과, 팔 때 낼 세금")
-                HStack(alignment: .firstTextBaseline) {
-                    Text("세후(원화)").appFont(13).foregroundStyle(Theme.sub)
-                    Spacer()
-                    Text(AppModel.won1(net)).appFont(22, .bold).foregroundStyle(Theme.teal)
-                }
-                if mode == "month" {
-                    HStack(alignment: .bottom, spacing: 4) {
-                        ForEach(months.indices, id: \.self) { i in
-                            VStack(spacing: 4) {
-                                RoundedRectangle(cornerRadius: 3).fill(byMonth[i] > 0 ? Theme.teal : Theme.track)
-                                    .frame(height: max(2, byMonth[i] / mMax * 80))
-                                Text("\(Int(months[i].suffix(2)) ?? 0)").appFont(10).foregroundStyle(Theme.muted)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .frame(height: 100, alignment: .bottom)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("달마다 배당: " + months.indices.filter { byMonth[$0] > 0 }.map { "\(Int(months[$0].suffix(2)) ?? 0)월 \(AppModel.won1(byMonth[$0]))" }.joined(separator: ", "))
-                } else {
-                    ForEach(paid, id: \.id) { x in
-                        HStack(spacing: 8) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(x.id).appFont(13, .semibold)
-                                Text("\(x.out!.n)회 · \(String(format: "%.2f", x.out!.yld * 100))%").appFont(10).foregroundStyle(Theme.muted)
-                            }.frame(minWidth: 64, alignment: .leading)
-                            GeometryReader { g in
-                                RoundedRectangle(cornerRadius: 3).fill(Theme.teal).frame(width: g.size.width * x.out!.y1 / sMax, height: 12)
-                                    .frame(maxHeight: .infinity)
-                            }.frame(height: 16)
-                            Text(AppModel.won1(x.out!.y1)).appFont(13, .bold).frame(minWidth: 70, alignment: .trailing)
-                        }
-                    }
-                    if paid.isEmpty { Text("지난 12개월 배당·이자를 준 종목이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
-                }
-                Text("세전 \(AppModel.won1(gross)) · 월평균 \(AppModel.won1(net / 12)) · 평가액의 \(String(format: "%.2f", net / max(1, m.total) * 100))% · 3년 합계 \(AppModel.won1(net3))")
-                    .appFont(12).foregroundStyle(Theme.sub)
-                ChipRow(items: [("month", "달마다"), ("stock", "종목별")], selection: $mode, fill: true)
+                DetailHead(title: "배당·세금", sub: "")
+                SegTabs(items: [("div", "받는 배당"), ("tax", "낼 양도세")], selection: $tab)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
-                if net < 10e4 {
-                    Text("지금 구성은 배당이 적어요." + (zero.isEmpty ? "" : " \(zero.joined(separator: ", "))는 배당을 주지 않아요.") + (unknown.isEmpty ? "" : " \(unknown.joined(separator: ", "))는 사이트 시세 자료가 없어 배당을 0으로 계산했어요.") + " 이 구성에서는 배당보다 가격 움직임이 평가액을 더 크게 바꿔요.")
-                        .appFont(13).padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
+                if tab == "div" {
+                    income(months: months, byMonth: byMonth, paid: paid, net: net, gross: gross, zero: zero, unknown: unknown)
+                } else {
+                    capTax(G: G, usU: usU, usIds: us.map(\.id))
                 }
-                Card {
-                    Text("배당에 붙는 세금").appFont(15, .bold)
-                    ruleRow("미국 종목 배당", "미국에서 15%를 떼고 들어와요. 국내에서 더 내지 않아요", "15%")
-                    ruleRow("국내 종목·국내 상장 ETF 배당", "배당소득세 14% + 지방세 1.4%", "15.4%")
-                    ruleRow("배당·이자 합계 2,000만원까지", "넘으면 다른 소득과 합쳐 계산(금융소득 종합과세). 지금 1년 \(AppModel.won1(gross))",
-                            gross >= 2000e4 ? "넘음" : AppModel.man(2000e4 - gross) + " 남음")
-                }
-                Card(dark: true) {
-                    Text("팔 때 세금 (해외주식 양도세, 내년 5월 신고)").appFont(15, .bold)
-                    ruleRow("올해 이미 판 이익", "세금 규칙에 넣은 값", AppModel.man(G))
-                    ruleRow("미국 종목 평가 이익", us.isEmpty ? "매수 단가를 넣은 미국 종목이 없어요" : us.map(\.id).joined(separator: ", ") + (Market.shared.marRate != nil ? " · 매매기준율 기준" : " · 지금 환율 기준"), AppModel.manS(usU),
-                            color: Theme.change(usU))
-                    ruleRow("내년 5월 낼 세금", "지금 그대로 / 미국 종목 다 판다면", AppModel.man(SiteCalc.capGainTax(G)) + " / " + AppModel.man(SiteCalc.capGainTax(G + usU)))
-                    Text(usU < 0
-                         ? "손실은 확정된 해의 이익과 합쳐 계산돼요. 위 '다 판다면' 줄은 계산 예시이고, 매매 권유가 아니에요."
-                         : "이익 250만원까지는 세금이 없고, 넘는 부분에 22%(지방세 포함)를 내요. 국내 상장주식은 대주주가 아니면 팔 때 양도세가 없어요(거래세만).")
-                        .appFont(12).foregroundStyle(Theme.sub).lineSpacing(2)
-                }
-                footnote("지난 12개월 배당이 앞으로도 같은 달에, 지난 3년 증가율만큼 늘며 온다고 본 값이에요 (웹과 같은 계산). 세무 상담이 아니에요.")
             }
             .padding(16)
         }
@@ -816,15 +777,309 @@ struct DividendView: View {
         .task { await calc.refresh() }
     }
 
-    private func ruleRow(_ k: String, _ sub: String, _ v: String, color: Color = Theme.ink) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(k).appFont(14, .semibold)
-                Text(sub).appFont(12).foregroundStyle(Theme.sub)
+    // MARK: ① 받는 배당
+
+    @ViewBuilder
+    private func income(months: [String], byMonth: [Double], paid: [Paid], net: Double, gross: Double, zero: [String], unknown: [String]) -> some View {
+        Card {
+            Text("앞으로 1년 · \(Self.ym(months.first ?? "")) ~ \(Self.ym(months.last ?? ""))").appFont(12).foregroundStyle(Theme.sub)
+            if paid.isEmpty {
+                Text("앞으로 1년 들어올 배당이 없어요").appFont(20, .bold)
+            } else {
+                (Text("한 달에 평균\n") + Text("약 \(AppModel.wonRead(net / 12))").foregroundColor(Theme.teal) + Text("이\n배당으로 들어와요"))
+                    .appFont(22, .bold).lineSpacing(2)
+                (Text("1년 합계 ") + Text(AppModel.won1(net)).bold() + Text(" · 세금 떼고 실제로 받는 돈"))
+                    .appFont(13).foregroundStyle(Theme.sub)
             }
-            Spacer(minLength: 4)
-            Text(v).appFont(14, .bold).foregroundStyle(color).multilineTextAlignment(.trailing)
         }
+        if !paid.isEmpty {
+            Card {
+                SegTabs(items: [("month", "달별로 보기"), ("stock", "종목별로 보기")], selection: $mode, small: true)
+                if mode == "month" { monthChart(months: months, byMonth: byMonth, paid: paid) } else { stockList(paid) }
+            }
+        }
+        let none = (zero.isEmpty ? "" : "\(zero.joined(separator: ", "))는 배당을 주지 않아서 목록에 없어요.")
+            + (unknown.isEmpty ? "" : (zero.isEmpty ? "" : " ") + "\(unknown.joined(separator: ", "))는 시세 자료가 없어 배당을 0으로 계산했어요.")
+        if !none.isEmpty {
+            Text(none).appFont(13).foregroundStyle(Theme.sub).padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.line, in: RoundedRectangle(cornerRadius: 12))
+        }
+        if !paid.isEmpty {
+            let usP = paid.filter { !$0.krw }, krP = paid.filter(\.krw)
+            let usTax = usP.reduce(0.0) { $0 + $1.out.y1 / (1 - $1.tax) - $1.out.y1 }, krTax = krP.reduce(0.0) { $0 + $1.out.y1 / (1 - $1.tax) - $1.out.y1 }
+            Card {
+                Text("세금은 이미 빠진 금액이에요").appFont(15, .bold)
+                receiptRow("배당 원래 금액", AppModel.won1(gross))
+                if !usP.isEmpty { receiptRow("미국에서 떼는 세금 15%", "−" + AppModel.won1(usTax)) }
+                if !krP.isEmpty { receiptRow("국내에서 떼는 세금 15.4%", "−" + AppModel.won1(krTax)) }
+                Divider()
+                receiptRow("내 계좌에 들어오는 돈", AppModel.won1(net), bold: true)
+                if !usP.isEmpty { Text("미국 주식 배당은 한국에서 세금을 더 내지 않아요.").appFont(12).foregroundStyle(Theme.sub) }
+            }
+            Card {
+                Text("1년 배당·이자가 2,000만원을 넘으면 세금 계산이 달라져요").appFont(15, .bold)
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.track)
+                        Capsule().fill(Theme.teal).frame(width: max(4, g.size.width * min(1, gross / 2000e4)))
+                    }
+                }.frame(height: 8)
+                HStack {
+                    (Text("지금 ") + Text(AppModel.won1(gross)).bold()).appFont(13)
+                    Spacer()
+                    Text(gross >= 2000e4 ? "기준을 넘었어요" : "기준까지 \(AppModel.man(2000e4 - gross)) 남음").appFont(13).foregroundStyle(Theme.sub)
+                }
+                Text(gross >= 2000e4
+                     ? "기준을 넘으면 넘는 부분을 다른 소득과 합쳐 세금을 계산해요. 다음 해 5월 종합소득세 신고 때 같이 계산돼요."
+                     : "지금은 걱정 없어요. 은행 예금 이자도 이 2,000만원에 같이 들어가요.")
+                    .appFont(13).padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(gross >= 2000e4 ? Theme.cream : Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        howCalc(["지난 12개월 동안 받은 배당이 앞으로도 같은 달에 들어오고, 지난 3년 동안 늘어난 속도만큼 조금씩 늘어난다고 보고 계산했어요. 실제 배당은 회사 결정에 따라 달라질 수 있어요. 세무 상담이 아니에요."])
+    }
+
+    private func monthChart(months: [String], byMonth: [Double], paid: [Paid]) -> some View {
+        let mMax = max(1, byMonth.max() ?? 1)
+        let pos = byMonth.filter { $0 > 0 }.sorted()
+        let med = pos.isEmpty ? 0 : pos[pos.count / 2]
+        // 큰 달: 배당이 있는 달 중앙값의 1.5배 이상인 달, 큰 순으로 3개까지
+        let hi = Set(byMonth.indices.filter { byMonth[$0] > 0 && byMonth[$0] >= med * 1.5 }.sorted { byMonth[$0] > byMonth[$1] }.prefix(3))
+        let mo = { (i: Int) in Int(months[i].suffix(2)) ?? 0 }
+        // 연도 구간: 같은 해 달끼리 묶음
+        var years: [(y: String, n: Int)] = []
+        for s in months { let y = String(s.prefix(4)); if years.last?.y == y { years[years.count - 1].n += 1 } else { years.append((y, 1)) } }
+        // 설명 문장
+        var notes: [String] = []
+        let hiSorted = hi.sorted()
+        let causes = Array(Set(hiSorted.flatMap { i in paid.filter { $0.payMonths.count < 12 && ($0.out.byMonth[months[i]] ?? 0) > 0 }.map(\.id) })).sorted()
+        if !hiSorted.isEmpty, (1...2).contains(causes.count) {
+            notes.append("\(hiSorted.map { "\(mo($0))월" }.joined(separator: "·"))이 많은 건 \(causes.joined(separator: "·")) 배당이 같이 들어와서예요.")
+        }
+        let rest = byMonth.indices.filter { byMonth[$0] > 0 && !hi.contains($0) }.map { byMonth[$0] }.sorted()
+        let zeroM = byMonth.indices.filter { byMonth[$0] <= 0 }
+        let monthly = paid.filter { $0.payMonths.count == 12 }
+        var line = ""
+        if !rest.isEmpty, !hi.isEmpty {
+            line = "나머지 달은 " + (monthly.count == 1 ? "\(monthly[0].id)에서 " : "") + "약 \(AppModel.wonRead(rest[rest.count / 2]))씩"
+        }
+        if (1...3).contains(zeroM.count) {
+            let z = zeroM.map { "\(mo($0))월" }.joined(separator: "·") + "은 들어오는 배당이 없어요."
+            line += line.isEmpty ? z : ", " + z
+        } else if zeroM.count > 3 {
+            line += (line.isEmpty ? "" : ". ") + "배당이 없는 달이 \(zeroM.count)개 있어요."
+        } else if !line.isEmpty { line += " 들어와요." }
+        if !line.isEmpty { notes.append(line) }
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 4) {
+                ForEach(months.indices, id: \.self) { i in
+                    VStack(spacing: 3) {
+                        Text(hi.contains(i) ? Self.short(byMonth[i]) : " ").appFont(9, .semibold).foregroundStyle(Theme.tealDark)
+                            .lineLimit(1).fixedSize()
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(byMonth[i] <= 0 ? Theme.track : hi.contains(i) || hi.isEmpty ? Theme.teal : Theme.teal.opacity(0.4))
+                            .frame(height: max(2, byMonth[i] / mMax * 80))
+                        Text("\(mo(i))").appFont(10).foregroundStyle(Theme.muted)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(height: 118, alignment: .bottom)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("달마다 배당: " + months.indices.filter { byMonth[$0] > 0 }.map { "\(mo($0))월 \(AppModel.won1(byMonth[$0]))" }.joined(separator: ", "))
+            // 연도 구간: 막대 칸 폭(12칸, 사이 4)에 맞춰 해마다 선 + 연도
+            GeometryReader { g in
+                let cell = (g.size.width - 44) / 12
+                HStack(spacing: 4) {
+                    ForEach(years.indices, id: \.self) { k in
+                        Text(years[k].y + "년").appFont(10).foregroundStyle(Theme.muted).lineLimit(1)
+                            .frame(width: cell * CGFloat(years[k].n) + 4 * CGFloat(years[k].n - 1)).padding(.top, 3)
+                            .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+                    }
+                }
+            }.frame(height: 18)
+            ForEach(notes, id: \.self) { n in
+                HStack(alignment: .top, spacing: 6) {
+                    Circle().fill(Theme.teal).frame(width: 5, height: 5).padding(.top, 6)
+                    Text(n).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func stockList(_ paid: [Paid]) -> some View {
+        let sMax = max(1, paid.map(\.out.y1).max() ?? 1)
+        return VStack(alignment: .leading, spacing: 14) {
+            ForEach(paid.sorted { $0.out.y1 > $1.out.y1 }, id: \.id) { x in
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(x.id).appFont(14, .bold)
+                        if !x.name.isEmpty { Text(x.name).appFont(12).foregroundStyle(Theme.muted).lineLimit(1) }
+                        Spacer()
+                        Text(AppModel.won1(x.out.y1)).appFont(14, .bold)
+                    }
+                    GeometryReader { g in
+                        RoundedRectangle(cornerRadius: 3).fill(Theme.teal).frame(width: max(4, g.size.width * x.out.y1 / sMax))
+                    }.frame(height: 8)
+                    Text((x.out.n == 12 ? "매달 들어와요" : "1년에 \(x.out.n)번" + (x.payMonths.isEmpty ? "" : "(\(x.payMonths.map { "\($0)월" }.joined(separator: "·")))"))
+                         + " · 1년에 투자금의 \(String(format: "%.2f", x.out.yld * 100))%")
+                        .appFont(12).foregroundStyle(Theme.sub)
+                }
+            }
+        }
+    }
+
+    // MARK: ② 낼 양도세
+
+    @ViewBuilder
+    private func capTax(G: Double, usU: Double, usIds: [String]) -> some View {
+        let tax = SiteCalc.capGainTax(G), ded = SiteCalc.cgtDed
+        let year = (Int(SiteCalc.today().prefix(4)) ?? 2026) + 1
+        Card {
+            Text("올해 판 미국 주식 기준").appFont(12).foregroundStyle(Theme.sub)
+            if G <= 0 {
+                Text("올해 판 이익이 없어서\n내년 5월에 낼 양도세가 없어요").appFont(20, .bold).lineSpacing(2)
+            } else if tax <= 0 {
+                Text("\(AppModel.man(ded))까지는 세금이 없어\n낼 세금이 없어요").appFont(20, .bold).lineSpacing(2)
+            } else {
+                (Text("내년 5월에\n") + Text("약 \(AppModel.man(tax))").foregroundColor(Theme.orange) + Text("을\n세금으로 내야 해요"))
+                    .appFont(22, .bold).lineSpacing(2)
+                Text("올해 미국 주식을 팔아 남긴 이익 때문이에요. 12월 31일 전에 더 팔면 늘어나요.").appFont(13).foregroundStyle(Theme.sub)
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar").foregroundStyle(Theme.muted)
+                    (Text("신고·납부 ") + Text("\(String(year))년 5월 1일 ~ 31일").bold()).appFont(13)
+                }
+                .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.line, in: RoundedRectangle(cornerRadius: 10))
+            }
+            if G > 0 {
+                GeometryReader { g in
+                    HStack(spacing: 2) {
+                        Rectangle().fill(Theme.green.opacity(0.25)).frame(width: g.size.width * min(1, ded / G))
+                        if G > ded { Rectangle().fill(Theme.orange.opacity(0.3)) }
+                    }.clipShape(RoundedRectangle(cornerRadius: 4))
+                }.frame(height: 14)
+                HStack(spacing: 12) {
+                    legend(Theme.green.opacity(0.25), "\(AppModel.man(ded))까지 세금 없음")
+                    if G > ded { legend(Theme.orange.opacity(0.3), "나머지에 22%") }
+                }
+            }
+            if tax > 0 {
+                VStack(spacing: 8) {
+                    receiptRow("올해 판 이익", AppModel.man(G))
+                    receiptRow("세금 없는 몫", "−" + AppModel.man(ded))
+                    receiptRow("세금 붙는 이익", AppModel.man(G - ded))
+                    receiptRow("세율 (지방세 포함)", "× 22%")
+                    Divider()
+                    receiptRow("낼 세금", "약 " + AppModel.man(tax), bold: true, color: Theme.orange)
+                }
+                .padding(12).background(Theme.line.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        Card {
+            Text("올해 더 팔면 세금은 얼마?").appFont(15, .bold)
+            if usIds.isEmpty {
+                Text("매수 단가를 넣은 미국 주식이 없어요. 매수 단가를 넣으면 계산해 드려요.").appFont(13).foregroundStyle(Theme.sub)
+            } else if usU <= 0 {
+                Text("아직 안 판 미국 주식에 이익이 없어요." + (usU < 0 ? " 손실은 판 해의 이익에서 빠져요." : "")).appFont(13).foregroundStyle(Theme.sub)
+            } else {
+                let x = min(extra, usU), after = SiteCalc.capGainTax(G + x)
+                (Text("아직 안 판 미국 주식에 ") + Text(AppModel.man(usU)).bold() + Text("의 이익이 있어요 (\(usIds.joined(separator: "·"))).")).appFont(13).foregroundStyle(Theme.sub)
+                HStack {
+                    Text("추가로 팔 이익").appFont(13).foregroundStyle(Theme.sub)
+                    Spacer()
+                    Text(x <= 0 ? "0원" : AppModel.man(x)).appFont(14, .bold)
+                }
+                Slider(value: $extra, in: 0...usU, step: max(1e4, (usU / 200 / 1e4).rounded() * 1e4)).tint(Theme.orange)
+                    .accessibilityLabel("추가로 팔 이익")
+                    .accessibilityValue(x <= 0 ? "0원" : AppModel.man(x))
+                HStack { Text("안 팔면"); Spacer(); Text("전부 팔면") }.appFont(11).foregroundStyle(Theme.muted)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("내년 5월 낼 세금").appFont(13)
+                        Spacer()
+                        Text("약 " + AppModel.man(after)).appFont(17, .bold).foregroundStyle(Theme.orange)
+                    }
+                    Text(x <= 0 ? "지금 그대로면 이 금액이에요." : "지금보다 약 \(AppModel.man(after - tax)) 늘어요.").appFont(12).foregroundStyle(Theme.sub)
+                }
+                .padding(12).background(Theme.line.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        Card {
+            Text("알아두면 좋은 것").appFont(15, .bold)
+            tip(1, "손실은 같은 해에 판 이익에서 빠져요. 그해 세금 붙는 이익이 그만큼 줄어요.")
+            tip(2, "\(AppModel.man(ded)) 공제는 해마다 새로 생겨요. 쓰지 않은 몫은 다음 해로 넘어가지 않아요.")
+            Text("매매 권유가 아니에요.").appFont(12).foregroundStyle(Theme.muted)
+        }
+        howCalc(["올해 판 이익은 앱에 입력해 둔 값이에요. 안 판 이익은 산 날과 오늘의 환율을 각각 적용해 원화로 계산했어요.",
+                 "국내 상장 주식은 대주주가 아니면 팔 때 양도세가 없어요(거래세만 내요).",
+                 "세무 상담이 아니에요."])
+    }
+
+    // MARK: 작은 조각
+
+    private func receiptRow(_ k: String, _ v: String, bold: Bool = false, color: Color = Theme.ink) -> some View {
+        HStack {
+            Text(k).appFont(13, bold ? .bold : .regular).foregroundStyle(bold ? Theme.ink : Theme.sub)
+            Spacer(minLength: 8)
+            Text(v).appFont(bold ? 15 : 13, bold ? .bold : .semibold).foregroundStyle(color)
+        }
+    }
+
+    private func legend(_ c: Color, _ t: String) -> some View {
+        HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 2).fill(c).frame(width: 10, height: 10)
+            Text(t).appFont(11).foregroundStyle(Theme.sub)
+        }
+    }
+
+    private func tip(_ n: Int, _ t: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text("\(n)").appFont(12, .bold).foregroundStyle(.white).frame(width: 20, height: 20).background(Theme.teal, in: Circle())
+            Text(t).appFont(13).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func howCalc(_ lines: [String]) -> some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(lines, id: \.self) { footnote($0) }
+            }.padding(.top, 6)
+        } label: {
+            Text("이 숫자는 어떻게 계산했나요?").appFont(13, .semibold).foregroundStyle(Theme.sub)
+        }
+        .tint(Theme.sub)
+        .padding(.horizontal, 4)
+    }
+
+    /// "2026-11" → "2026년 11월"
+    static func ym(_ s: String) -> String { s.count >= 7 ? "\(s.prefix(4))년 \(Int(s.suffix(2)) ?? 0)월" : "" }
+    /// 막대 위 짧은 금액: 11.4만 · 6천
+    static func short(_ v: Double) -> String { v >= 1e4 ? String(format: "%.1f만", v / 1e4) : "\(Int((v / 1e3).rounded()))천" }
+}
+
+/// 흰 배경 + 굵게가 선택된 쪽인 전환 칸 (화면 전환·보기 전환)
+private struct SegTabs: View {
+    let items: [(String, String)]
+    @Binding var selection: String
+    var small = false
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(items, id: \.0) { it in
+                let on = it.0 == selection
+                Button { selection = it.0 } label: {
+                    Text(it.1).appFont(small ? 12 : 14, on ? .bold : .regular).lineLimit(1)
+                        .foregroundStyle(on ? Theme.ink : Theme.sub)
+                        .frame(maxWidth: .infinity, minHeight: small ? 32 : 40)
+                        .background(on ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Theme.track, in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

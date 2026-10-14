@@ -116,7 +116,7 @@ struct AnalysisView: View {
             (m.forecastTitle, "시장이 줄 수 있는 미래의 범위", fc.exact ? AppModel.pct(fc.pGoal) : "계산 중", Theme.teal, .forecast),
             ("금리 시나리오", "금리가 움직이면 시장 이익과 내 목표는", rateTag, Theme.purple, .rateScen),
             ("외부 요인", "시장·금리·환율이 움직이면 내 자산은", "시장 −10%: " + AppModel.sgn(mkt10), Theme.down, .external),
-            ("배당·세금", "앞으로 12개월 배당, 팔 때 세금", "연 " + AppModel.won1(div), Theme.teal, .dividend),
+            ("배당·세금", "앞으로 1년 배당, 내년 5월 양도세", "연 " + AppModel.won1(div), Theme.teal, .dividend),
             ("환율 영향", "환율이 바뀌면 내 평가액은", "달러 " + AppModel.pct(usd), Theme.blue, .fx),
             ("종목 한눈에", "고점 대비, 비중, 흔들림을 숫자로", "\(m.rows.count)종목", Theme.teal, .glance),
         ]
