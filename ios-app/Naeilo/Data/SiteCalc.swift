@@ -94,6 +94,11 @@ final class SiteCalc {
     static func factorMove(_ factor: String, beta b: Double, shock: Double) -> Double {
         exp(b * (factor == "rate" ? shock : log(1 + shock / 100))) - 1
     }
+    /// 일정별 발표일 '보통 움직임' (web/model.js EXT_EVENTS 의 factor·sd 와 같은 고정 가정값). 단위 %
+    static let eventMoves: [String: (factor: String, sd: Double)] = [
+        "x_fomc": ("mkt", 1.0), "x_cpi": ("mkt", 0.8), "x_jobs": ("mkt", 0.6), "x_bok": ("fx", 0.4),
+        "x_opec": ("oil", 4), "x_mid": ("mkt", 1.5), "x_witch": ("mkt", 0.5),
+    ]
     /// 과거 재생 기간 (web/model.js REPLAYS 와 같은 값). 단위: mkt·fx·oil·gold %, rate %p
     struct Replay { let when: String; let name: String; let mv: [String: Double] }
     static let replays: [Replay] = [

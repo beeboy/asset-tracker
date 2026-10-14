@@ -1555,14 +1555,39 @@
     const rs = xfRanks(hs, total), strong = rs.filter((x) => !x.weak), scale = Math.max(1, ...strong.map((x) => x.amt)), sum = xfSummary(rs);
     return `<h2 class="xq">바깥에서 무슨 일이 생기면, 지금 내 돈은 얼마나 움직일까요?</h2>
       <p class="muted small">지난 3년 동안 실제로 하루하루 움직인 만큼으로 계산해요. 목표까지의 영향은 목표일 전망에서 봐요.</p>
-      <h3 class="xh">내 자산을 흔드는 요인</h3><p class="muted small">요인마다 '보통 한 달에 움직이는 만큼'으로 맞춰서 비교했어요.</p>` +
+      ${xfToday(hs, total)}<h3 class="xh">내 자산을 흔드는 요인</h3><p class="muted small">요인마다 '보통 한 달에 움직이는 만큼'으로 맞춰서 비교했어요.</p>` +
       rs.map((x) => { const no = strong.indexOf(x) + 1;
         return `<button type="button" class="xrank${x.weak ? " weak" : ""}" data-xf="${x.k}"><span class="no${no === 1 ? " one" : ""}">${no || "–"}</span><span class="bd">
           <span class="row between"><b>${XF_NAMES[x.k]}</b><span class="${x.weak ? "muted" : "amt"}">${x.weak ? "뚜렷한 관계 없음" : "±" + man(x.amt)}</span></span>
           ${x.weak ? "" : `<span class="bar"><i style="width:${Math.max(1, (100 * x.amt) / scale)}%"></i></span>`}<span class="muted small">${xfDesc(x, hs, total)}</span></span><span class="chev">›</span></button>`; }).join("") +
       (sum ? `<p class="xsum">${sum}</p>` : !xfMonth("mkt") ? `<p class="muted small">요인 자료를 불러오는 중이에요.</p>` : "") +
-      xfReplays(hs, total) +
+      xfReplays(hs, total) + xfUpcoming(hs) +
       `<p class="muted small">예측이 아니라 '만약에'를 보는 화면이에요. 지난 3년 하루 단위 움직임을 바탕으로 했고, 큰 변화일수록 실제와 다를 수 있어요.</p>`;
+  }
+  // 일정별 '보통 움직임': 확률 100%·날짜가 정해진 시장 전체 일정만. 발표일 요인 변화 = EXT_EVENTS.sd (고정 가정값). 앱 SiteCalc.eventMoves 와 같은 값
+  function xfEvents() {
+    const t0 = today(), d = new Date(t0 + "T00:00:00Z"), ds = (n) => new Date(d.getTime() + n * 864e5).toISOString().slice(0, 10), fx = fxNow("USD") || 1300;
+    return Model.EXT_EVENTS.filter((e) => e.prob === 100 && (e.target === "ALL" || e.target === "FX") && (e.factor || e.target === "FX"))
+      .flatMap((e) => { const k = e.factor || "fx", v = k === "fx" ? -fx * e.sd / 100 : -e.sd;
+        return Model.occurrences(e, ds(-1), ds(45)).map((day) => ({ e, k, v, day, n: Math.round((new Date(day + "T00:00:00Z") - d) / 864e5) })); })
+      .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  }
+  const xfEvAmt = (x, hs) => Math.abs(hs.reduce((a, r) => a + r.valueKrw * (xfMove(x.k, r, x.v) ?? (x.k === "mkt" ? x.v / 100 : 0)), 0));
+  const xfWhen = (n, day) => (n === 0 ? "오늘" : n === 1 ? "내일" : `${+day.slice(5, 7)}/${+day.slice(8)} (D-${n})`);
+  const XF_EV_BASE = { mkt: "미국 시장", fx: "원/달러", oil: "유가" };
+  // 오늘의 이벤트 카드: 가장 가까운 일정 하나. 45일 안에 없으면 숨김
+  function xfToday(hs, total) {
+    const x = xfEvents()[0]; if (!x) return "";
+    const bm = factorBetas().beta.mkt || {}, b = hs.reduce((a, r) => a + r.w * (bm[r.h.ticker] ?? 1), 0);
+    const why = `발표일 ${XF_EV_BASE[x.k]} 보통 ±${x.e.sd}%` + (x.k === "mkt" ? `, 내 종목은 시장의 ${b.toFixed(1)}배쯤` : "");
+    return `<div class="xtoday"><span class="small">${xfWhen(x.n, x.day)} · ${x.e.kind}</span><p class="small">결과에 따라 내 자산은 보통</p><b>약 ±${man(xfEvAmt(x, hs))}</b>
+      <p class="small">${why} (가정값)</p><button type="button" data-xe="${x.k}:${x.v}">이 상황 미리 보기</button></div>`;
+  }
+  // 다가오는 일, 미리 겪어보기
+  function xfUpcoming(hs) {
+    const xs = xfEvents().slice(0, 8);
+    return `<h3 class="xh">다가오는 일, 미리 겪어보기</h3>` + (xs.length ? xs.map((x) => `<div class="xev"><span class="muted small">${xfWhen(x.n, x.day)}</span><span class="bd"><b>${x.e.kind}</b><span class="muted small">${XF_EV_BASE[x.k]}${x.k === "mkt" ? "을" : "를"} 통해 보통 ±${man(xfEvAmt(x, hs))}</span></span><button type="button" data-xe="${x.k}:${x.v}">미리 보기</button></div>`).join("")
+      : `<p class="muted small">45일 안에 정해진 일정이 없어요.</p>`) + `<p class="muted small">일정마다 발표일 보통 움직임은 고정 가정값이에요. 미리 보기는 나쁘게 나온 쪽으로 열어요.</p>`;
   }
   // 과거 재생: 그때 함께 움직인 요인 변화 × 지금 내 종목 민감도
   function xfReplays(hs, total) {
@@ -1610,6 +1635,8 @@
   }
   document.addEventListener("click", (e) => {
     const f = e.target.closest("[data-xf]"), p = e.target.closest("[data-xp]");
+    const xe = e.target.closest("[data-xe]");
+    if (xe) { const [k, v] = xe.dataset.xe.split(":"); XS.k = k; XS.v = +v; XS.custom = true; renderSens(); $("#sensCard")?.scrollIntoView({ block: "start" }); return; }
     if (f) { XS.k = f.dataset.xf || null; XS.v = null; XS.custom = false; renderSens(); $("#sensCard")?.scrollIntoView({ block: "start" }); }
     else if (p && XS.k) { XS.v = xfPresets(XS.k)[+p.dataset.xp][1]; XS.custom = false; renderSens(); }
   });
