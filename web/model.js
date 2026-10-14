@@ -552,6 +552,10 @@
       byYear.push({ year: y, date: days[lim - 1], p: n / nPaths });
       if (lim >= D) break;
     }
+    // 처음 닿는 날의 10·50·90% (못 닿은 경로는 맨 뒤로 셈, 그 분위까지 못 닿으면 null). 내 길 '언제 닿을까'
+    const hitS = Array.from(firstHit).map((d) => (d < 0 ? Infinity : d)).sort((a, b) => a - b);
+    const hitQ = (q) => { const d = hitS[Math.min(nPaths - 1, Math.floor(q * nPaths))]; return d === Infinity ? null : days[Math.max(0, d - 1)]; };
+    const eta = { p10: hitQ(0.1), p50: hitQ(0.5), p90: hitQ(0.9) };
     const mdds = Array.from(mddArr).sort((a, b) => a - b);
     const raw = keep ? { A, M, P: nPaths, cg, stock, fxLv, v0, muD: muD.slice(0, A), monthIdx: Array.from(monthIdx), price0: holdings.map((x) => x.price0), tickers: holdings.map((x) => x.ticker), cash: factors.slice(0, A).map((f) => !!f.cash), goal, monthly, startDate: model.startDate, monthDates: model.monthDates } : null;
     return {
@@ -561,7 +565,7 @@
       p_loss: term.filter((v) => v < invested).length / nPaths,
       terminal: { p5: quantileSorted(term, 0.05), p25: quantileSorted(term, 0.25), p50: quantileSorted(term, 0.5), p75: quantileSorted(term, 0.75), p95: quantileSorted(term, 0.95), mean: mean(term) },
       mdd_median: quantileSorted(mdds, 0.5), mdd_p10: quantileSorted(mdds, 0.1),
-      req50, byYear,
+      req50, byYear, eta,
       stocks: holdings.map((hd, a) => {
         const b = bandsOf(stock[a]);
         let up = 0; for (let p = 0; p < nPaths; p++) if (stock[a][(M - 1) * nPaths + p] > hd.price0) up++;
@@ -693,6 +697,28 @@
     return { V0, top, out, fd: model.monthDates };
   }
 
+  // 내 길 '언제 닿을까': 지금 구성 + 비중안(allocPlans 와 같은 규칙) + 직접 바꾼 비중(custom)을 목표일 뒤 긴 기간(horizon)까지 돌려 처음 닿는 날 분포
+  function etaPlans(inp) {
+    const fxOf = (ccy) => (!ccy || ccy === "KRW" ? null : ccy === "USD" ? "KRW=X" : ccy + "KRW=X");
+    const { base, settings: m, goal: g, mixes, defs, custom } = inp;
+    const V0 = base.reduce((a, h) => a + (h.extra ? 0 : h.valueKrw), 0);
+    const model = buildModel({ holdings: base, series: inp.series, fxOf, settings: m, events: inp.events, betas: inp.betas, startDate: inp.startDate, goalDate: inp.horizon });
+    const w0 = base.map((h) => (h.extra ? 0 : h.valueKrw / V0));
+    const risky = base.map((h, i) => (model.factors[i].cash || h.extra ? 0 : w0[i])), top = risky.indexOf(Math.max(...risky));
+    const plans = [{ k: "keep", w: w0 }];
+    for (const [k, D] of Object.entries(defs || {})) {
+      const w = [...w0], cut = w0[top] > D.cap ? w0[top] - D.cap : w0[top] * D.cutSmall, tot = mixes[k].reduce((a, x) => a + x[1], 0);
+      w[top] -= cut; mixes[k].forEach(([t, x]) => { w[base.findIndex((h) => h.ticker === t)] += (cut * x) / tot; });
+      plans.push({ k, w });
+    }
+    if (custom) { const t = custom.reduce((a, x) => a + x, 0) || 1; plans.push({ k: "custom", w: custom.map((x) => x / t) }); }
+    return (custom ? plans.filter((pl) => pl.k === "custom") : plans).map((pl) => {
+      const hs = base.map((h, i) => ({ ...h, valueKrw: Math.max(1e-6, V0 * pl.w[i]) }));
+      const R = simulate(model, { holdings: hs, scenario: m.scenario, nPaths: 1500, seed: Number(m.seed) || 1, goal: g.amount, monthly: Number(g.monthly_contribution) || 0, rebalance: false, withEvents: true, dof: m.t_dof, fxOf });
+      return { k: pl.k, w: pl.w, eta: R.eta };
+    });
+  }
+
   // 한국 종목 (시세 계약 없음): 기준 미국 ETF 시세 × 원/달러(앞 값으로 메움). 환헤지면 환율 없이. 웹 synthKR 과 tools/site_stats.mjs(KR~SPY 등)가 같이 쓴다
   function krSeries(base, fx, hedged, field = "adj") {
     const fm = new Map(); if (fx) fx.dates.forEach((d, i) => { const v = (fx.adj || fx.close)[i]; if (v > 0) fm.set(d, v); });
@@ -713,5 +739,5 @@
     for (const x of log || []) { if (x.d > d) break; v = x.v; }
     return v;
   }
-  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, allocPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
+  window.Model = { DEFAULT_MODEL, krSeries, krNorm, krAt, normModel, FACTOR_SYM, KIND_CAT, catOfKind, EXT_EVENTS, EXT_V2, normEvents, alignedChanges, factorBetas, allocPlans, etaPlans, TD, occurrences, PER_YEAR, indicators, buildModel, simulate, reweight, breakeven, blendMu, addMonths, quantileSorted, mean, std, smoothFit, trendGrowth };
 })();

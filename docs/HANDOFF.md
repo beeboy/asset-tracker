@@ -29,7 +29,7 @@
 - 웹·앱 숫자 맞추기: 몬테카를로 이식 + CI parity, stats.json·calc.json, 입력값 차이 수정(PR #121~#131).
 
 ## 2. 진행 중·미완성
-- 분석 탭 "내 길" 개편 (B안·B-2안, 목업은 handoff/naeil-path 브랜치 docs/handoff/): 1단계 계산 완료 — `GoalSim.etaLo/etaHi`(첫 도달 10·90%). 다음: 2단계 앱 B 화면(`MyPathView`), 3단계 B-2 비중 비교(모의 바구니 저장), 4단계 웹.
+- 분석 탭 "내 길" 개편 (B안·B-2안, 목업은 handoff/naeil-path 브랜치 docs/handoff/): 1~4단계 PR #183. 앱 `MyPathGoalView`(목표 루트)·`MyPathCompareView`(비중 비교, 저장=모의 바구니), 회복 루트는 `MyPathClassicView` 그대로(용어만 계획선). 웹 `renderEta`(#etaCard)·`Model.etaPlans`. 알려진 차이: 성장·안정 줄은 앱(지수·업종 묶음 구성)과 웹(비중안 비교 공격적·보수적 규칙) 정의가 달라 숫자가 다름. 웹 비중 비교는 저장 없음(앱만). 앱 빌드는 CI로만 확인
 | 항목 | 상태 |
 |---|---|
 | Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |
