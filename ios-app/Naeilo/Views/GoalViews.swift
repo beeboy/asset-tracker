@@ -127,7 +127,6 @@ struct GoalBoardView: View {
         }
     }
 
-
     /// 다음 미션: 진한 초록 블록
     private func nextCard(_ next: AppModel.GoalStep, steps: [AppModel.GoalStep]) -> some View {
         let idx = (steps.firstIndex { $0.id == next.id } ?? 0) + 1
