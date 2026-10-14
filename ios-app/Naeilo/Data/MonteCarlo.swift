@@ -688,6 +688,11 @@ final class PathSet {
         let ms = hits.map { $0 >= 0 ? (tM[$0]).rounded() : Double.infinity }.sorted()
         return ms[ms.count / 2]
     }
+    /// 첫 도달 칸들의 q 분위 (개월, 그 분위까지 못 닿으면 무한대). 0.1·0.5·0.9 로 '보통'과 '10번 중 8번' 범위
+    func quantileMonths(_ hits: [Int], _ q: Double) -> Double {
+        let ms = hits.map { $0 >= 0 ? (tM[$0]).rounded() : Double.infinity }.sorted()
+        return ms[min(ms.count - 1, Int(q * Double(ms.count)))]
+    }
     /// 웹 req50 (reweight 와 같은 50번 이분법): 마지막 칸(kEnd) 평가액이 K 이상인 경로가 절반이 되는 월 적립 (원). 적립은 kEnd 앞 달까지
     func req50(_ V: Double, goal K: Double, kEnd: Int) -> Double {
         let v0 = values(V), v1 = values(V, monthly: 1e6), last = kEnd >= M - 1

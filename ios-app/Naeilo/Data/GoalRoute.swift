@@ -29,6 +29,8 @@ struct GoalSim {
     let med: [Double], lo: [Double], hi: [Double], principal: [Double]   // 해마다 (만원)
     let badYear: Double            // 한 해 손익 하위 5% (적립 없이)
     let capYears: Int              // 경로 기간 (햇수)
+    var etaLo: Double = 0          // 처음 닿는 때 10% (개월, 10번 중 빠른 1번)
+    var etaHi: Double = .infinity  // 처음 닿는 때 90% (개월, 경로 기간 안에 없으면 무한대)
     var etaText: String { AppModel.eta(etaMonths, cap: capYears) }
 }
 
@@ -126,19 +128,21 @@ extension AppModel {
             return closedSim(mx, parts: parts, monthly: mo, k: K, years: yrs, start: A, cache: cache)
         }
         let ck = "x|\(ps.key)|\(mo)|\(yrs)|\(K)|\(A)|\(years == nil)"
-        if cache, let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal, badYear: c.badYear, capYears: c.capYears) }
+        if cache, let c = simCache[ck] { return GoalSim(mix: mx, prob: c.prob, etaMonths: c.etaMonths, med: c.med, lo: c.lo, hi: c.hi, principal: c.principal, badYear: c.badYear, capYears: c.capYears, etaLo: c.etaLo, etaHi: c.etaHi) }
         let V = A * 1e4, Mo = mo * 1e4, Kw = K * 1e4, M = ps.M
         let v = ps.values(V, monthly: Mo)
         // 그 햇수 뒤 칸: 그 달 적립은 빼고 센다 (목표일 당일에는 넣지 않는다, 웹과 같게)
         let kEnd = years == nil ? M - 1 : ps.k(months: 12 * yrs)
         let prob = ps.share(v, k: kEnd, minus: kEnd > 0 && kEnd < M - 1 ? Mo : 0, atLeast: Kw)
-        let eta = V >= Kw ? 0 : ps.medianMonths(ps.firstHits(v, upTo: M - 1) { _ in Kw })
+        let hits = V >= Kw ? [] : ps.firstHits(v, upTo: M - 1) { _ in Kw }
+        let eta = V >= Kw ? 0 : ps.medianMonths(hits)
+        let etaLo = V >= Kw ? 0 : ps.quantileMonths(hits, 0.1), etaHi = V >= Kw ? 0 : ps.quantileMonths(hits, 0.9)
         let ks = (0...yrs).map { y in y == 0 ? 0 : min(kEnd, ps.k(months: 12 * y)) }
         let q = { (f: Double) in ks.map { k in k == 0 ? A : ps.quantile(v, k: k, f) / 1e4 } }
         let b = ps.bands(max(V, 1e6)), k12 = ps.k(months: 12)
         let r = GoalSim(mix: mx, prob: prob, etaMonths: eta, med: q(0.5), lo: q(0.05), hi: q(0.95),
                         principal: (0...yrs).map { A + mo * 12 * Double($0) }, badYear: b[0][k12] / max(V, 1e6) - 1,
-                        capYears: Int((ps.tM.last ?? 12) / 12 + 0.5))
+                        capYears: Int((ps.tM.last ?? 12) / 12 + 0.5), etaLo: etaLo, etaHi: etaHi)
         if cache {
             if simCache.count > 64 { simCache.removeAll() }
             simCache[ck] = r
@@ -150,7 +154,7 @@ extension AppModel {
     private func closedSim(_ mx: GoalMix, parts: [Part], monthly mo: Double, k K: Double, years gY: Int, start A: Double, cache: Bool) -> GoalSim {
         let c = closedParams(parts)
         let ck = "c|\(c.mu)|\(c.sigma)|\(mo)|\(gY)|\(K)|\(A)"
-        if cache, let x = simCache[ck] { return GoalSim(mix: mx, prob: x.prob, etaMonths: x.etaMonths, med: x.med, lo: x.lo, hi: x.hi, principal: x.principal, badYear: x.badYear, capYears: x.capYears) }
+        if cache, let x = simCache[ck] { return GoalSim(mix: mx, prob: x.prob, etaMonths: x.etaMonths, med: x.med, lo: x.lo, hi: x.hi, principal: x.principal, badYear: x.badYear, capYears: x.capYears, etaLo: x.etaLo, etaHi: x.etaHi) }
         var seed = 12345
         func rnd() -> Double { seed = (seed &* 1103515245 &+ 12345) % 2147483648; return (Double(seed) + 0.5) / 2147483648 }
         let NP = 500, H = min(40, gY * 2 + 5) * 12
@@ -173,7 +177,8 @@ extension AppModel {
         let r = GoalSim(mix: mx, prob: Double(byYear[gY].filter { $0 >= K }.count) / Double(max(1, byYear[gY].count)), etaMonths: q(hits, 0.5),
                         med: byYear.map { q($0, 0.5) }, lo: byYear.map { q($0, 0.05) }, hi: byYear.map { q($0, 0.95) },
                         principal: (0...gY).map { A + mo * 12 * Double($0) },
-                        badYear: exp(c.mu - c.sigma * c.sigma / 2 - 1.645 * c.sigma) - 1, capYears: H / 12)
+                        badYear: exp(c.mu - c.sigma * c.sigma / 2 - 1.645 * c.sigma) - 1, capYears: H / 12,
+                        etaLo: q(hits, 0.1), etaHi: q(hits, 0.9))
         if cache {
             if simCache.count > 64 { simCache.removeAll() }
             simCache[ck] = r
