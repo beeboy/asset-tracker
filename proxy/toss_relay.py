@@ -6,7 +6,7 @@
 
 - 키(client_id·client_secret)와 토큰은 저장하지 않는다. 받은 그대로 토스에 넘기고 토스 응답을 그대로 돌려준다.
 - 기록(로그)에 키·토큰·요청 본문을 남기지 않는다.
-- 토큰 발급과 현재가(/api/v1/prices)만 넘긴다. 주문·계좌·자산 경로는 없다 (계좌 헤더도 넘기지 않는다).
+- 토큰 발급, 현재가(/api/v1/prices), 일봉(/api/v1/candles, 1d만), 원/달러(/api/v1/exchange-rate)만 넘긴다. 주문·계좌·자산 경로는 없다 (계좌 헤더도 넘기지 않는다).
 - 한 IP 가 1분에 60번 넘게 부르면 429 (열린 중계로 쓰이지 않게).
 
 실행: NAEILO_TOSS_IP=<이 서버 공인 IP> python3 proxy/toss_relay.py [--port 8766]
@@ -25,6 +25,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOSS = "https://openapi.tossinvest.com"
 SYMBOLS = re.compile(r"[A-Za-z0-9.,]{1,2400}")  # 6자리 국내 코드·미국 티커, 쉼표로 200개까지
+SYMBOL = re.compile(r"[A-Za-z0-9.]{1,12}")  # 일봉은 한 종목씩
+ISO = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})")
 PER_MIN = 60
 
 _hits: dict[str, list[float]] = {}
@@ -81,17 +83,40 @@ class Relay(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         if u.path == "/api/toss/ip":  # 사용자가 토스에 등록할 IP (앱 설정 화면에 보여 준다)
             return self.reply(200, json.dumps({"ip": os.environ.get("NAEILO_TOSS_IP", "")}).encode())
-        if u.path != "/api/toss/v1/prices":
+        if u.path not in ("/api/toss/v1/prices", "/api/toss/v1/candles", "/api/toss/v1/exchange-rate"):
             return self.err(404, "없는 경로")
         if too_many(self.client_ip()):
             return self.err(429, "잠시 뒤에 다시")
-        syms = (urllib.parse.parse_qs(u.query).get("symbols") or [""])[0]
+        q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         auth = self.headers.get("Authorization") or ""
-        if not SYMBOLS.fullmatch(syms) or not auth.startswith("Bearer "):
+        if not auth.startswith("Bearer "):
             return self.err(400, "잘못된 요청")
-        req = urllib.request.Request(TOSS + "/api/v1/prices?symbols=" + urllib.parse.quote(syms, safe=","),
-                                     headers={"Authorization": auth, "Accept": "application/json"})
-        self.forward(req)
+        if u.path == "/api/toss/v1/prices":
+            syms = q.get("symbols", "")
+            if not SYMBOLS.fullmatch(syms):
+                return self.err(400, "잘못된 요청")
+            out = "/api/v1/prices?symbols=" + urllib.parse.quote(syms, safe=",")
+        elif u.path == "/api/toss/v1/candles":
+            # 일봉만 (지난 종가). 한 번에 200개까지, before 로 더 지난 쪽을 받는다
+            sym, before = q.get("symbol", ""), q.get("before", "")
+            cnt = q.get("count", "200")
+            if not SYMBOL.fullmatch(sym) or q.get("interval", "1d") != "1d" or not cnt.isdigit() or not 1 <= int(cnt) <= 200 \
+                    or (before and not ISO.fullmatch(before)) or q.get("adjusted", "false") not in ("true", "false"):
+                return self.err(400, "잘못된 요청")
+            p = {"symbol": sym, "interval": "1d", "count": cnt, "adjusted": q.get("adjusted", "false")}
+            if before:
+                p["before"] = before
+            out = "/api/v1/candles?" + urllib.parse.urlencode(p)
+        else:
+            # 원/달러만 (dateTime 을 주면 그 시각 값)
+            dt = q.get("dateTime", "")
+            if dt and not ISO.fullmatch(dt):
+                return self.err(400, "잘못된 요청")
+            p = {"baseCurrency": "USD", "quoteCurrency": "KRW"}
+            if dt:
+                p["dateTime"] = dt
+            out = "/api/v1/exchange-rate?" + urllib.parse.urlencode(p)
+        self.forward(urllib.request.Request(TOSS + out, headers={"Authorization": auth, "Accept": "application/json"}))
 
     def do_POST(self):
         if urllib.parse.urlparse(self.path).path != "/api/toss/token":
