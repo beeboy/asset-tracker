@@ -29,12 +29,17 @@ final class Market {
     /// 매매기준율 (사이트 data/mar.json, 서울외국환중개). 웹 평가액과 같은 환율
     var mar: MarFeed.File? = MarFeed.cached()
     /// 원화 평가에 쓰는 원/달러: 웹 fxBase 와 같게 매매기준율, 없거나 5일 넘게 묵었으면 지금 환율
-    var valFx: Double { marRate ?? fx.last }
+    var valFx: Double { tossFx?.rate ?? marRate ?? fx.last }
     var marRate: Double? { mar.flatMap { $0.rate > 0 && Day.dday($0.date) >= -5 ? $0.rate : nil } }
     /// 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일
     var stats: SiteStats.File? = SiteStats.load()
-    /// 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만
-    var prices: SitePrices.File? = SitePrices.cached()
+    /// 내 토스 키로 받은 지난 종가(일봉)·원/달러. 키를 넣은 기기만
+    var tossHist: TossHistory.File? = TossHistory.cached()
+    /// 토스 원/달러 (하루 안에 받은 값만)
+    var tossFx: TossHistory.FX? { tossHist?.fx.flatMap { Date().timeIntervalSince1970 - $0.got < 86400 ? $0 : nil } }
+    /// 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만.
+    /// 내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged)
+    var prices: SitePrices.File? = TossHistory.merged(SitePrices.cached(), TossHistory.cached())
     var source: String { !live.isEmpty ? "Tiingo" : site != nil ? "naeilo 사이트" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
 
     // 샘플 종목 DRNK 의 하루 움직임 (샘플 기록의 마지막 날). 다른 종목은 받은 시세가 없으면 움직임을 만들지 않는다
@@ -73,6 +78,7 @@ final class Market {
     /// 원/달러 (지금, 전일)
     var fx: Quote {
         if let f = liveFx { return Quote(last: f.0, prevClose: f.1, live: true) }
+        if let t = tossFx { return Quote(last: t.rate, prevClose: t.prev, live: true) }
         if let q = site?.q["KRW=X"] { return Quote(last: q.last, prevClose: q.prev, live: true) }
         if let q = YahooSample.quotes["FX"] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
         return Quote(last: Sample.fx, prevClose: Sample.fx, live: false)
@@ -110,13 +116,18 @@ final class Market {
             Task {
                 let t = await TossFeed.fetch(ty, minAge: force ? 0 : 60)
                 self.toss = t
+                // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번)
+                if let h = await TossHistory.fetch(Dictionary(ty.map { (SiteStats.key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a }), force: force) {
+                    self.tossHist = h
+                    self.prices = TossHistory.merged(SitePrices.cached(), h)
+                }
                 self.tossBusy = false
             }
         }
         // 나머지 시세는 한꺼번에 받는다 (차례로 기다리지 않게)
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
         let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
-        let oldPrices = prices
+        let oldPrices = SitePrices.cached()   // 토스 값을 섞지 않은 사이트 값
         // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
         async let siteNew = QuoteFeed.fetch(minAge: force ? 0 : 240)
         async let marNew = MarFeed.fetch(minAge: force ? 0 : 1800)
@@ -127,7 +138,7 @@ final class Market {
         async let customDone: Void = CustomSymbols.shared.refresh(held: held, force: force)
         if let f = await siteNew { site = f }
         if let r = await marNew { mar = r }
-        if let p = await pricesNew { prices = p }
+        if let p = await pricesNew { prices = TossHistory.merged(p, tossHist) }
         if let s = await statsNew { stats = s }
         await customDone
         updatedAt = Date()
@@ -284,6 +295,90 @@ enum SitePrices {
         let out = File(got: now, updated: updated, asked: keys.sorted(), h: h)
         Store.write(out, name)
         return out
+    }
+}
+
+/// 내 토스 키로 받는 지난 종가(일봉)와 원/달러. 키를 넣은 기기만 (공개 버전은 사용자 키로만 시세를 보여 준다).
+/// 일봉은 수정 안 한 종가(adjusted=false): 사이트 data/prices 의 close 와 같은 기준. 받은 종목은 사이트 값 대신 쓰고, 못 받은 종목은 사이트 값 그대로.
+/// 원/달러 지난 흐름(KRW=X)은 토스에 일봉이 없어 아직 사이트 값이다.
+enum TossHistory {
+    struct FX: Codable { var rate: Double; var prev: Double; var got: Double }   // 지금, 24시간 전, 받은 시각(초)
+    /// h 키 = 사이트 티커, day = 그 종목을 마지막으로 받은 날
+    struct File: Codable { var h: [String: YahooSample.Hist]; var day: [String: String]; var fx: FX? }
+    static let name = "toss_history.json"
+    static func cached() -> File? { TossKeys.on ? Store.read(File.self, name) : nil }
+
+    static func merged(_ p: SitePrices.File?, _ t: File?) -> SitePrices.File? {
+        guard let t, TossKeys.on, !t.h.isEmpty else { return p }
+        var out = p ?? SitePrices.File(got: 0, updated: "", asked: [], h: [:])
+        for (k, v) in t.h { out.h[k] = v }
+        return out
+    }
+
+    private static func enc(_ v: String) -> String {
+        v.addingPercentEncoding(withAllowedCharacters: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))) ?? v
+    }
+    /// 그 시장의 오늘 날짜와, 오늘 장이 끝났는지 (끝나기 전 오늘 일봉은 종가가 아니라 뺀다)
+    private static func marketDay(kr: Bool) -> (String, Bool) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: kr ? "Asia/Seoul" : "America/New_York")!
+        let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: Date())
+        let d = String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)
+        let m = c.hour! * 60 + c.minute!
+        return (d, m >= (kr ? 15 * 60 + 40 : 16 * 60 + 10))
+    }
+
+    /// keys: 사이트 티커 → Yahoo 기호. 종목마다 하루 한 번: 처음엔 3년치(200개씩), 그다음엔 최근 30개만 받아 잇는다.
+    /// 너무 많이 부르면(429)·중계에 못 닿으면 거기서 멈추고 다음 갱신 때 이어 받는다
+    static func fetch(_ keys: [String: String], force: Bool) async -> File? {
+        guard TossKeys.on else { return nil }
+        var f = Store.read(File.self, name) ?? File(h: [:], day: [:], fx: nil)
+        let now = Date().timeIntervalSince1970, today = Day.today
+        let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))   // 사이트 파일과 같은 3년 남짓
+        var miss = TossFeed.miss
+        var stop = false
+        for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop {
+            guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != today || f.h[k] == nil else { continue }
+            let have = f.h[k]
+            let full = (have?.dates.first ?? "9999") > Day.str(Date().addingTimeInterval(-(3 * 365 - 15) * 86400))
+            var bars: [String: Double] = [:], before: String? = nil, ok = false
+            for _ in 0..<(full ? 5 : 1) {
+                var path = "/api/toss/v1/candles?symbol=\(enc(c))&interval=1d&adjusted=false&count=\(full ? 200 : 30)"
+                if let b = before { path += "&before=" + enc(b) }
+                let (code, o, e) = await TossFeed.userGet(path)
+                if code == 404 { miss[c] = now + 86400; break }
+                guard code == 200, let r = o?["result"] as? [String: Any] else { if e != nil || code == 429 || code == 401 || code == 403 { stop = true }; ok = false; break }
+                ok = true
+                var oldest = "9999"
+                for v in r["candles"] as? [[String: Any]] ?? [] {
+                    guard let t = v["timestamp"] as? String, t.count >= 10, let cl = num(v["closePrice"]), cl > 0 else { continue }
+                    let d = String(t.prefix(10)); bars[d] = cl; oldest = min(oldest, d)
+                }
+                before = r["nextBefore"] as? String
+                if before == nil || oldest <= from { break }
+            }
+            guard ok, !bars.isEmpty else { continue }
+            var all: [String: Double] = full ? [:] : Dictionary(zip(have!.dates, have!.closes), uniquingKeysWith: { _, b in b })
+            for (d, v) in bars { all[d] = v }
+            let (md, closed) = marketDay(kr: y.hasSuffix(".KS") || y.hasSuffix(".KQ"))
+            let ds = all.keys.filter { $0 >= from && ($0 < md || ($0 == md && closed)) }.sorted()
+            guard !ds.isEmpty else { continue }
+            f.h[k] = .init(dates: ds, closes: ds.map { all[$0]! })
+            f.day[k] = today
+        }
+        TossFeed.miss = miss
+        // 원/달러: 10분에 한 번 (당겨 갱신하면 바로). 전일 값은 24시간 전 시각의 값
+        if !stop, force || now - (f.fx?.got ?? 0) > 600 {
+            let (code, o, _) = await TossFeed.userGet("/api/toss/v1/exchange-rate")
+            if code == 200, let rate = num((o?["result"] as? [String: Any])?["rate"]), rate > 0 {
+                let iso = ISO8601DateFormatter(); iso.timeZone = TimeZone(identifier: "Asia/Seoul")
+                let (c2, o2, _) = await TossFeed.userGet("/api/toss/v1/exchange-rate?dateTime=" + enc(iso.string(from: Date().addingTimeInterval(-86400))))
+                let prev = c2 == 200 ? num((o2?["result"] as? [String: Any])?["rate"]) : nil
+                f.fx = .init(rate: rate, prev: (prev ?? 0) > 0 ? prev! : (f.fx?.prev ?? rate), got: now)
+            }
+        }
+        Store.write(f, name)
+        return f
     }
 }
 

@@ -244,8 +244,23 @@ enum TossFeed {
         return await relayCall(r)
     }
 
+    /// 내 키로 중계 GET (일봉·환율). 토큰이 끊겼으면(401) 한 번만 새로 받는다. path 예: "/api/toss/v1/candles?symbol=AAPL&…"
+    static func userGet(_ path: String, timeout: TimeInterval = 5) async -> (Int, [String: Any]?, String?) {
+        guard TossKeys.on, let url = URL(string: Config.tossRelay + path) else { return (0, nil, "키 없음") }
+        var (tok, e) = await token()
+        for renew in [false, true] {
+            if renew { (tok, e) = await token(renew: true) }
+            guard let t = tok else { return (0, nil, e ?? "토큰 실패") }
+            var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
+            r.setValue("Bearer " + t, forHTTPHeaderField: "Authorization")
+            let out = await relayCall(r)
+            if out.0 != 401 { return out }
+        }
+        return (401, nil, "토큰 실패")
+    }
+
     /// 토스에 없는 종목 코드 → 다시 물어볼 시각 (하루 동안 안 묻는다, server.py 와 같다)
-    private static var miss: [String: Double] {
+    static var miss: [String: Double] {
         get { Store.defaults.dictionary(forKey: "toss_miss") as? [String: Double] ?? [:] }
         set { Store.defaults.set(newValue, forKey: "toss_miss") }
     }
@@ -334,6 +349,7 @@ enum TossKeys {
         Store.defaults.removeObject(forKey: "toss_err")
         Store.defaults.removeObject(forKey: "toss_ok_at")
         Store.remove(TossFeed.name)
+        Store.remove("toss_history.json")   // 내 키로 받은 지난 종가·환율 (앱 TossHistory)
     }
     static var token: Token? {
         get { get(Token.self, "token") }
