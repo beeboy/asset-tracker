@@ -237,10 +237,10 @@ struct TossKeyView: View {
                 Image(systemName: "info.circle.fill").foregroundStyle(Theme.teal)
                 Text("토스증권 오픈 API 서비스를 연결하면 시세를 받아올 수 있어요.").fixedSize(horizontal: false, vertical: true)
             }
-            .appFont(13, .semibold)
-            Text("1. 토스 허용 IP에 이 중계 IP를 넣어 주세요.").appFont(15, .bold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
+            .appFont(15, .bold)
+            Text("1. 토스 허용 IP에 이 중계 IP를 넣어 주세요.").appFont(14, .semibold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
             if let ip { ipRow(ip) } else { Text("중계 IP를 불러오는 중이에요…").appFont(13).foregroundStyle(Theme.muted) }
-            Text("2. 클라이언트 키를 넣고 서버와 연결하세요.").appFont(15, .bold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
+            Text("2. 클라이언트 키를 넣고 서버와 연결하세요.").appFont(14, .semibold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
             field("client_id", $id, secure: true)
             field("client_secret", $secret, secure: true)
             let ok = !id.trimmingCharacters(in: .whitespaces).isEmpty && !secret.trimmingCharacters(in: .whitespaces).isEmpty
