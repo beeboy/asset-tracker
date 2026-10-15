@@ -650,40 +650,54 @@
     ret: (a, b) => (b.plPct ?? -Infinity) - (a.plPct ?? -Infinity),
     today: (a, b) => (b.dayChg ?? -Infinity) - (a.dayChg ?? -Infinity),
   };
+  // 종목 탭 (앱 HoldingsView 와 같은 틀): 지금 평가액 → 지금 종목을 N 전부터 가졌다면 → 미국/국내 묶음 목록
+  //  · 목록 %는 늘 산 가격 대비 (기간 버튼은 위 그래프에만). 줄을 누르면 그 아래에 고치기·지우기가 펼쳐진다
+  const avgTxt = (r, v) => (r.ccy === "USD" ? "$" + nf(v, 2) : r.ccy === "KRW" ? nf(v) + "원" : nf(v, 2) + " " + r.ccy);
   function renderQuotes() {
     const { rows, total } = valuation();
     const ks = S.state.holdings.find((h) => h.ticker === KR_SUM);
     $("#krSumRow").hidden = !S.state.ui.kr_direct && !ks;
     if (document.activeElement !== $("#krSum")) $("#krSum").value = ks ? nf(Number(ks.price)) : "";
-    const fx = fxNow("USD"), fq = S.quotes["KRW=X"];
-    $("#fxLine").textContent = `원/달러 ${nf(fx, 2)}${fq?.last_time ? " (" + dtStr(fq.last_time * 1000) + ")" : ""}`;
-    const adv = !!S.state.ui.manual_price, hasPl = rows.some((r) => r.pl != null); // 매수 단가가 하나도 없으면 손익 칸은 숨김
-    const sortBy = S.state.ui.hold_sort || "added"; $("#holdSort").value = sortBy;
+    const sortBy = S.state.ui.hold_sort || "value"; $("#holdSort").value = sortBy;
     const order = rows.map((r, i) => ({ ...r, i }));
     if (HOLD_SORT[sortBy]) order.sort(HOLD_SORT[sortBy]);
-    const cols = 6 + (adv ? 1 : 0) + (hasPl ? 1 : 0);
-    const head = `<tr><th class="l">종목</th><th>수량</th><th>매수 단가</th><th>현재가<br><span class="muted">평가액</span></th>${adv ? "<th>현재가 직접 입력</th>" : ""}<th>비중<br><span class="muted">전일</span></th>${hasPl ? "<th>손익</th>" : ""}<th></th></tr>`;
-    const body = order.map((r) => {
-      const i = r.i, open = S.holdEdit?.i === i;
-      const mk = r.p.src === "manual" ? curPrice({ ...r.h, price: null }).v : null;
-      const gap = mk ? r.p.v / mk - 1 : 0;
-      const warn = Math.abs(gap) > 0.05 ? `<br><span class="bad small">시세 ${nf(mk, 2)}와 ${spct(gap, 0)} 차이</span>` : "";
-      const p = r.p, tag = p.src && p.src !== "regular" ? `<span class="tag ${p.src === "manual" ? "manual" : ""}">${SESS[p.src] || p.src}</span>` : "";
-      const pl = r.pl != null ? `<span class="${cls(r.pl)}" title="${nf(r.pl, 0)} ${r.ccy}">${spct(r.plPct, 0)}</span><br><span class="muted small">${krw(r.pl * (r.fx || 1))}</span>` : `<span class="muted">-</span>`;
-      // 수량·단가는 글자로만 보인다. 누르면 ✎ 와 같이 그 줄 아래에 고치기 칸이 펼쳐진다 (산 것·판 것을 구분해 남기려고)
-      return `<tr data-i="${i}"${open ? ' class="hon"' : ""}>
-        <td class="l tkc">${logo(r.h.ticker, r.name)}<b>${esc(isKR(r.h.ticker) ? r.h.name || r.name || codeOf(r.h.ticker) : r.h.ticker)}</b></td>
-        <td class="hnum"${r.h.ticker === KR_SUM ? "><span class='muted'>합계</span>" : ` data-pen="${i}">`}${r.h.ticker === KR_SUM ? "" : r.sh ? r.sh.toLocaleString("ko-KR", { maximumFractionDigits: 4 }) : '<span class="muted">수량 없음</span>'}</td>
-        <td class="hnum" data-pen="${i}">${r.avg ? nf(r.avg, 2) : '<span class="muted">-</span>'}</td>
-        <td>${isKR(r.h.ticker) ? krCell(r) : `${p.v != null ? nf(p.v, 2) + " <span class='muted small'>" + r.ccy + "</span>" : "-"}${tag}<br><b>${krw(r.valueKrw)}</b>`}</td>
-        ${adv && isKR(r.h.ticker) ? "<td></td>" : adv ? `<td><input data-f="price" type="text" inputmode="decimal" placeholder="자동" value="${r.h.price ?? ""}">${warn}</td>` : ""}
-        <td>${pct(r.w, 0)}<br><span class="${cls(r.dayChg)}">${spct(r.dayChg, 1)}</span></td>${hasPl ? `<td>${pl}</td>` : ""}<td class="hbtn"><button class="x pen${open ? " on" : ""}" data-pen="${i}" title="수량·단가 고치기">✎</button><button class="danger x" data-del="${i}" title="이 종목 삭제">✕</button></td></tr>` +
-        (open ? holdEditRow(r, cols) : "");
-    }).join("");
-    const plTot = rows.filter((r) => r.pl != null).reduce((s, r) => s + r.pl * (r.fx || 1), 0);
-    const foot = `<tr><td class="l"><b>합계</b></td><td></td><td></td><td><b>${krw(total)}</b></td>${adv ? "<td></td>" : ""}<td>100%</td>${hasPl ? `<td><span class="${cls(plTot)}">${krw(plTot)}</span></td>` : ""}<td></td></tr>`;
-    $("#holdTable").innerHTML = head + body + foot;
+    const us = order.filter((r) => r.ccy === "USD"), kr = order.filter((r) => r.ccy === "KRW"), etc = order.filter((r) => r.ccy !== "USD" && r.ccy !== "KRW");
+    // 평가액 카드: 산 돈 대비는 매수 단가를 넣은 종목만 (원화 환산은 지금 환율)
+    const mr = myReturn(), fx = fxNow("USD"), withAvg = rows.filter((r) => r.avg && r.sh > 0).length;
+    $("#holdTotal").innerHTML = `<span class="muted small">지금 평가액</span><div class="hbig">${rows.length ? man(total) : "0원"}</div>` +
+      (mr ? `<div class="small">산 돈보다 <b class="${cls(mr.pl)}">${mr.pl >= 0 ? "+" : "−"}${man(mr.pl)} (${spct(mr.r)})</b>${withAvg < rows.length ? ` <span class="muted">· 단가 넣은 ${mr.n}종목</span>` : ""}</div>` : rows.length ? `<div class="small muted">매수 단가를 넣으면 산 돈 대비 수익을 보여 줘요</div>` : "") +
+      `<div class="muted small">${rows.length}종목 · 미국 ${us.length} · 국내 ${kr.length}${etc.length ? ` · 그 외 ${etc.length}` : ""} · 원/달러 ${nf(fx)}원</div>`;
+    $("#holdCount").textContent = `종목 ${rows.length}`;
+    const group = (title, rs) => !rs.length ? "" : `<div class="hgroup"><div class="hghead row between"><b>${title} ${rs.length}</b><span class="muted">${man(rs.reduce((s, r) => s + (r.valueKrw || 0), 0))}</span></div>${rs.map(holdRow).join("")}</div>`;
+    $("#holdList").innerHTML = rows.length ? group("미국 주식", us) + group("국내 주식", kr) + group("그 외", etc) : `<p class="muted small">아직 종목이 없어요. 아래에서 종목과 수량을 넣어 주세요.</p>`;
+    renderHoldBack();
     renderTrades();
+  }
+  // 한 줄: 로고 · 이름 · "수량 · 평균 단가" / 평가액 · 산 가격 대비 %. 국내 종목에 가격이 없으면 넣는 칸을 바로 보인다
+  function holdRow(r) {
+    const i = r.i, open = S.holdEdit?.i === i, sum = r.h.ticker === KR_SUM;
+    const name = sum ? "국내 주식 합계" : isKR(r.h.ticker) ? r.h.name || r.name || codeOf(r.h.ticker) : r.name || r.h.ticker;
+    const sub = sum ? "증권사 앱 합계" : [isKR(r.h.ticker) || !r.name ? "" : r.h.ticker, r.sh ? `${r.sh.toLocaleString("ko-KR", { maximumFractionDigits: 4 })}주` : "수량 없음", r.avg ? "평균 " + avgTxt(r, r.avg) : ""].filter(Boolean).join(" · ");
+    const needPx = isKR(r.h.ticker) && (!S.prices[r.h.ticker] || r.p.v == null);
+    return `<div class="hitem${open ? " hon" : ""}" data-i="${i}">
+      <div class="hrow" data-pen="${i}" role="button" tabindex="0" aria-expanded="${open}">${logo(r.h.ticker, name)}<span class="hname"><b>${esc(name)}</b><span class="muted small">${esc(sub)}</span></span>
+        <span class="hamt"><b>${r.valueKrw != null ? man(r.valueKrw) : "-"}</b><span class="small ${cls(r.plPct)}">${r.plPct != null ? spct(r.plPct) : "<span class='muted'>단가 없음</span>"}</span></span><span class="hgo">${open ? "⌃" : "›"}</span></div>
+      ${needPx && !open ? `<div class="hneed small">${krCell(r)}</div>` : ""}${open ? holdEditRow(r) : ""}</div>`;
+  }
+  // 위 그래프: 지금 수량을 기간 전부터 그대로 가졌다면 (원화 평가액, 점선은 시작 금액)
+  function renderHoldBack() {
+    const box = $("#holdBack"), H = history(), btn = $("#holdRange .on"), n = +(btn?.dataset.r || 22), lab = btn?.textContent || "1개월";
+    box.hidden = H.dates.length < 2;
+    if (box.hidden) return;
+    const i0 = Math.max(0, H.dates.length - 1 - n), x = H.dates.slice(i0), y = H.total.slice(i0), first = y[0], last = y[y.length - 1], chg = first > 0 ? last / first - 1 : null;
+    $("#holdBackTitle").textContent = `지금 종목을 ${lab} 전부터 가졌다면`;
+    $("#holdBackSub").textContent = `비중을 그대로 두고 지난 ${lab} 가격으로 다시 계산했어요`;
+    $("#holdBackAmt").textContent = `${man(first)} → ${man(last)}`;
+    const c = $("#holdBackChg"); c.textContent = spct(chg); c.className = cls(chg);
+    $("#holdBackFrom").textContent = `${+x[0].slice(0, 4)}년 ${+x[0].slice(5, 7)}월 · 점선은 시작 금액`;
+    Charts.lineChart($("#holdBackChart"), { x, height: 150, legend: false, axisOut: true, yfmt: krwAxis, hlines: [{ y: first, label: "" }], series: [{ name: "평가액", y, color: chg != null && chg < 0 ? "var(--dn)" : "var(--up)", width: 2 }] });
+    const no = S.state.holdings.filter((h) => Number(h.shares) > 0 && !S.prices[h.ticker]).map((h) => h.name || h.ticker);
+    const p = $("#holdBackNo"); p.hidden = !no.length; p.textContent = no.length ? `과거 시세 없음: ${no.join(", ")} (그래프에서 빠졌어요)` : "";
   }
   // 한국 종목 현재가 칸: 넣은 가격 하나로 계산 (추정·입력 표시). 가격은 언제든 다시 넣을 수 있다
   function krCell(r) {
@@ -726,14 +740,22 @@
     }
     return { qi, pi, q1, p1, bad, note, ccy };
   }
-  function holdEditRow(r, cols) {
-    const E = S.holdEdit, c = holdEditCalc(), trade = E.mode !== "fix";
-    return `<tr class="hedit"><td colspan="${cols}" class="l">
-      <div class="row hedbox"><div class="seg">${Object.entries(HOLD_MODES).map(([k, v]) => `<button data-hmode="${k}" class="${E.mode === k ? "on" : ""}">${v}</button>`).join("")}</div>
+  function holdEditRow(r) {
+    const E = S.holdEdit, c = holdEditCalc(), trade = E.mode !== "fix", p = r.p, sum = r.h.ticker === KR_SUM;
+    const tag = p.src && p.src !== "regular" ? `<span class="tag ${p.src === "manual" ? "manual" : ""}">${SESS[p.src] || p.src}</span>` : "";
+    const mk = p.src === "manual" ? curPrice({ ...r.h, price: null }).v : null, gap = mk ? p.v / mk - 1 : 0;
+    const warn = Math.abs(gap) > 0.05 ? ` <span class="bad small">시세 ${nf(mk, 2)}와 ${spct(gap, 0)} 차이</span>` : "";
+    const info = isKR(r.h.ticker) ? krCell(r) : `지금 가격 <b>${p.v != null ? avgTxt(r, p.v) : "-"}</b>${tag}${r.dayChg != null ? ` · 오늘 <span class="${cls(r.dayChg)}">${spct(r.dayChg)}</span>` : ""}`;
+    const manual = S.state.ui.manual_price && !isKR(r.h.ticker) ? `<label class="small">지금 가격 직접 <input data-f="price" type="text" inputmode="decimal" placeholder="자동" value="${r.h.price ?? ""}" size="7"></label>${warn}` : "";
+    const pl = r.pl != null ? ` · 산 돈보다 <span class="${cls(r.pl)}">${r.pl >= 0 ? "+" : "−"}${man(r.pl * (r.fx || 1))}</span>` : "";
+    return `<div class="hedit">
+      <div class="small">${info} · 비중 ${pct(r.w, 0)}${pl}</div>${manual ? `<div class="row" style="margin-top:6px">${manual}</div>` : ""}
+      ${sum ? "" : `<div class="row hedbox"><div class="seg">${Object.entries(HOLD_MODES).map(([k, v]) => `<button data-hmode="${k}" class="${E.mode === k ? "on" : ""}">${v}</button>`).join("")}</div>
       <label>${trade ? (E.mode === "buy" ? "산 수량" : "판 수량") : "수량"} <input data-e="q" type="text" inputmode="decimal" value="${esc(E.q)}" placeholder="${trade ? "몇 주" : "수량"}" size="6"></label>
       <label>${trade ? "가격" : "매수 단가"} <input data-e="p" type="text" inputmode="decimal" value="${esc(E.p)}" placeholder="${trade ? "주당" : "선택"}" size="7"> <span class="muted small">${c.ccy}</span></label>
-      <button class="primary" data-esave ${c.bad ? "disabled" : ""}>저장</button><button data-eclose>닫기</button></div>
-      <div class="hpv muted small">${esc(c.note)}</div></td></tr>`;
+      <button class="primary sm" data-esave ${c.bad ? "disabled" : ""}>저장</button></div>
+      <div class="hpv muted small">${esc(c.note)}</div>`}
+      <div class="row between" style="margin-top:8px"><button class="sm" data-eclose>닫기</button><button class="danger sm" data-del="${r.i}">이 종목 지우기</button></div></div>`;
   }
   function holdEditSave() {
     const E = S.holdEdit, c = holdEditCalc(); if (c.bad) return;
@@ -757,11 +779,11 @@
     const ed = e.target.dataset.e;
     if (ed && S.holdEdit) { // 고치기 칸: 전체를 다시 그리지 않고 미리 보기·저장 버튼만 바꾼다
       S.holdEdit[ed] = e.target.value;
-      const c = holdEditCalc(), box = e.target.closest("tr.hedit");
+      const c = holdEditCalc(), box = e.target.closest(".hedit");
       box.querySelector(".hpv").textContent = c.note; box.querySelector("[data-esave]").disabled = c.bad;
       return;
     }
-    const tr = e.target.closest("tr[data-i]"); if (!tr) return;
+    const tr = e.target.closest("[data-i]"); if (!tr) return;
     const h = S.state.holdings[+tr.dataset.i], f = e.target.dataset.f; if (!f) return;
     if (f === "kprice") {
       if (e.type !== "change") return;
@@ -778,8 +800,8 @@
   function onHoldClick(e) {
     const d = e.target.closest("[data-del]"); if (d) { if (S.holdEdit?.i === +d.dataset.del) S.holdEdit = null; return delHolding(+d.dataset.del, d); }
     const pen = e.target.closest("[data-pen]");
-    if (pen) { const i = +pen.dataset.pen; if (S.holdEdit?.i === i && pen.tagName === "BUTTON") S.holdEdit = null; else if (S.holdEdit?.i !== i) holdEditStart(i, "fix"); renderQuotes(); const inp = $("#holdTable [data-e='q']"); if (inp) inp.focus(); return; }
-    const m = e.target.closest("[data-hmode]"); if (m && S.holdEdit) { holdEditStart(S.holdEdit.i, m.dataset.hmode); renderQuotes(); $("#holdTable [data-e='q']")?.focus(); return; }
+    if (pen) { const i = +pen.dataset.pen; if (S.holdEdit?.i === i) S.holdEdit = null; else holdEditStart(i, "fix"); renderQuotes(); $("#holdList [data-e='q']")?.focus({ preventScroll: true }); return; }
+    const m = e.target.closest("[data-hmode]"); if (m && S.holdEdit) { holdEditStart(S.holdEdit.i, m.dataset.hmode); renderQuotes(); $("#holdList [data-e='q']")?.focus(); return; }
     if (e.target.closest("[data-esave]")) return holdEditSave();
     if (e.target.closest("[data-eclose]")) { S.holdEdit = null; renderQuotes(); }
   }
@@ -949,7 +971,7 @@
     else { S.state.holdings.push({ ticker: t, shares: sh, price: null, avg_cost: avg || null, note: "", ...(isKR(t) ? { name: pk?.k || pk?.e || "" } : {}) }); addEarnEvent(t); }
     $("#addTicker").value = $("#addShares").value = $("#addAvg").value = "";
     save(); renderAll();
-    if (isKR(t)) { if (!S.prices[t]) { showTab("stocks"); toast("한국 시세는 받지 않아요. 표에 지금 가격을 한 번 넣어 주세요"); $("#holdTable [data-f='kprice']")?.focus(); } return; }
+    if (isKR(t)) { if (!S.prices[t]) { showTab("stocks"); toast("한국 시세는 받지 않아요. 표에 지금 가격을 한 번 넣어 주세요"); $("#holdList [data-f='kprice']")?.focus(); } return; }
     if (!S.prices[t]) {
       if (MODE === "static") {
         showTab("stocks");
@@ -1987,7 +2009,7 @@
     } catch (e) { $("#eventSchedule").textContent = e.message; }
   }
   function onEventEdit(e) {
-    const tr = e.target.closest("tr[data-i]"); if (!tr) return;
+    const tr = e.target.closest("[data-i]"); if (!tr) return;
     const ev = S.state.events[+tr.dataset.i], f = e.target.dataset.f; if (!f) return;
     if (f === "on") ev.on = e.target.checked;
     else if (["prob", "mean", "sd", "vol_mult", "vol_days"].includes(f)) ev[f] = e.target.value === "" ? 0 : Number(e.target.value);
@@ -3613,10 +3635,10 @@
     $("#btnQuotes").onclick = () => collect(true);
     $("#autoRefresh").value = String(S.state.ui.auto_refresh_min || 0);
     $("#autoRefresh").onchange = (e) => { S.state.ui.auto_refresh_min = +e.target.value; setAuto(+e.target.value); save(false); };
-    $("#holdTable").addEventListener("input", onHoldEdit);
-    $("#holdTable").addEventListener("change", onHoldEdit);
-    $("#holdTable").addEventListener("click", onHoldClick);
-    $("#holdTable").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset.e) holdEditSave(); else if (e.key === "Escape" && S.holdEdit) { S.holdEdit = null; renderQuotes(); } });
+    $("#holdList").addEventListener("input", onHoldEdit);
+    $("#holdList").addEventListener("change", onHoldEdit);
+    $("#holdList").addEventListener("click", onHoldClick);
+    $("#holdList").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset.e) holdEditSave(); else if ((e.key === "Enter" || e.key === " ") && e.target.dataset.pen) { e.preventDefault(); e.target.click(); } else if (e.key === "Escape" && S.holdEdit) { S.holdEdit = null; renderQuotes(); } });
     $("#holdSort").onchange = (e) => { S.state.ui.hold_sort = e.target.value; save(false); renderQuotes(); };
     $("#btnAdd").onclick = addHolding;
     $("#btnKrSum").onclick = () => { const v = parseDec($("#krSum").value); setKrSum(v > 0 ? v : 0); $("#krSum").blur(); toast(v > 0 ? "국내 주식 합계를 넣었어요" : "국내 주식 합계를 지웠어요"); };
@@ -3656,7 +3678,7 @@
     segClick("#histRange", renderDash); segClick("#histFc", () => { try { localStorage.setItem("naeilo-histfc", $("#histFc .on").dataset.f); } catch (e) { /* 무시 */ } renderDash(); }); segClick("#progRange", () => { const H = history(); renderProgress(H, valuation().total, cashKrw()); }); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
     segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
     $("#premBox").addEventListener("change", onPrem);
-    segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
+    segClick("#stockRange", renderStockPrices); segClick("#holdRange", renderHoldBack); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
     document.addEventListener("click", (e) => { // 다른 분석 화면에 있는 곳이면 그 화면을 열고 간다
       const b = e.target.closest("[data-jump]"); if (!b) return; const el = $("#" + b.dataset.jump); if (!el) return;
       const pg = el.closest(".anapage"); if (pg) { if (!onTab("analysis")) showTab("analysis"); if (anaPage !== pg.dataset.ana) openAna(pg.dataset.ana); }

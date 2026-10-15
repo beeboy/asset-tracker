@@ -31,8 +31,8 @@
 <meta name="twitter:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 목표일 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/web/","description":"내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 목표일 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
-<script src="theme.js?v=20261015d"></script>
-<link rel="stylesheet" href="style.css?v=20261015d">
+<script src="theme.js?v=20261015e"></script>
+<link rel="stylesheet" href="style.css?v=20261015e">
 <script>(function(u,c){if(/Edg\//.test(u))c.add("edg");else if(/Chrome\//.test(u)&&!/OPR\//.test(u))c.add("chr");else if(/Safari\//.test(u)&&!/Chrome|Chromium|CriOS|FxiOS|Android/.test(u))c.add("saf");})(navigator.userAgent,document.documentElement.classList);</script>
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
@@ -77,9 +77,20 @@
   <!-- 종목: 내가 뭘 가졌지? -->
   <section id="tab-stocks" class="tab">
     <div class="card" id="sec-hold">
-      <details id="holdDet" class="holddet" open><summary class="row between"><h2>보유 종목</h2><div class="muted small" id="fxLine"></div></summary>
-      <div class="row holdsort"><label class="muted small">정렬 <select id="holdSort"><option value="added">넣은 순</option><option value="value">금액 순</option><option value="name">이름 순</option><option value="ret">수익률 순</option><option value="today">오늘 등락 순</option></select></label></div>
-      <div class="tablewrap"><table id="holdTable" class="grid"></table></div></details>
+      <h2 style="margin:0 0 10px">내 종목</h2>
+      <div class="htotal" id="holdTotal"></div>
+      <div class="hback" id="holdBack">
+        <b id="holdBackTitle">지금 종목을 1개월 전부터 가졌다면</b>
+        <p class="muted small" id="holdBackSub" style="margin:2px 0 6px"></p>
+        <div class="row between"><b class="small" id="holdBackAmt"></b><b id="holdBackChg"></b></div>
+        <div id="holdBackChart" class="chartbox"></div>
+        <div class="row between muted small"><span id="holdBackFrom"></span><span>오늘</span></div>
+        <div class="row seg hseg" id="holdRange"><button data-r="22" class="on">1개월</button><button data-r="66">3개월</button><button data-r="130">6개월</button><button data-r="252">1년</button><button data-r="780">3년</button></div>
+        <p class="muted small" id="holdBackNo" hidden></p>
+      </div>
+      <div class="row between" id="holdDet" style="margin:14px 0 6px;align-items:flex-end"><div><b id="holdCount">종목</b><div class="muted small">%는 내가 산 가격 대비예요</div></div>
+        <label class="muted small">정렬 <select id="holdSort"><option value="value">평가액 큰 순</option><option value="added">넣은 순</option><option value="name">이름 순</option><option value="ret">수익률 순</option><option value="today">오늘 등락 순</option></select></label></div>
+      <div id="holdList"></div>
       <div class="row addrow">
         <div class="addfind"><input id="addTicker" placeholder="종목 (이름·티커·코드)" autocomplete="off" role="combobox" aria-controls="addSug"><div id="addSug" class="addsug" role="listbox" hidden></div></div>
         <input id="addShares" class="num" type="text" inputmode="decimal" placeholder="수량">
@@ -91,7 +102,8 @@
         <button id="btnKrSum" class="sm">저장</button>
         <span class="muted small">증권사 앱 합계 그대로 (0이면 지움) · 전망은 EWY×원/달러 · <a href="#" id="krToRec">기록 그래프</a></span>
       </div>
-      <p class="muted small">종목 찾기: 한글·영문 이름, 티커 (예: Tesla, NVDA, TIGER 미국S&amp;P500). 종목과 수량 입력 (선택, 매수 단가 넣으면 손익 표시)</p>
+      <p class="muted small">종목 찾기: 한글·영문 이름, 티커 (예: Tesla, NVDA, TIGER 미국S&amp;P500). 매수 단가를 넣으면 산 돈 대비 수익을 보여 줘요. 종목을 누르면 수량·단가를 고치거나 지울 수 있어요.</p>
+      <p class="muted small">미국 종목은 달러 가격 × 원/달러로, 국내 종목은 원화 가격 그대로 계산해요</p>
     </div>
     <h2 class="sechead" id="sec-diag">종목 진단</h2>
     <div class="ana" id="ana-strategy">
@@ -399,11 +411,11 @@
     시세 Yahoo Finance (지연될 수 있음) · 환율 서울외국환중개 매매기준율 · <a href="#" data-go="blog">미래 설계 naeilo</a> · <a href="privacy.html">개인정보 처리방침</a> · <a href="guide.html">사용법</a></footer>
 </main>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261015d"></script>
-<script src="model.js?v=20261015d"></script>
-<script src="research.js?v=20261015d"></script>
-<script src="sharecard.js?v=20261015d"></script>
-<script src="stocks.js?v=20261015d"></script>
-<script src="app.js?v=20261015d"></script>
+<script src="charts.js?v=20261015e"></script>
+<script src="model.js?v=20261015e"></script>
+<script src="research.js?v=20261015e"></script>
+<script src="sharecard.js?v=20261015e"></script>
+<script src="stocks.js?v=20261015e"></script>
+<script src="app.js?v=20261015e"></script>
 </body>
 </html>
