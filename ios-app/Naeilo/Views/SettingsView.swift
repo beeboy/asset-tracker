@@ -89,9 +89,10 @@ struct SettingsView: View {
             }.buttonStyle(.plain)
             if m.isGoal {
                 NavigationLink(value: SettingsRoute.goal) {
-                    Text("목표 고치기").appFont(15, .bold).foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                    // 다른 버튼(PrimaryButton)과 같은 모양: 청록 바탕 + 흰 글자 (라이트·다크 공통)
+                    Text("목표 고치기").appFont(16, .bold).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
                 }.buttonStyle(.plain)
             }
         }
