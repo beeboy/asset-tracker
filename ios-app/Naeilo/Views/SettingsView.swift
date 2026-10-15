@@ -334,7 +334,7 @@ struct TossLinkMap: View {
     }
 }
 
-/// 두 칸 사이 줄: 끊김은 점선 + 빨간 끊긴 표시, 이어짐은 청록 실선 위로 점이 흐른다
+/// 두 칸 사이 줄: 끊김은 점선 + 빨간 끊긴 표시, 이어짐은 청록 실선 위로 점이 오른쪽에서 왼쪽(내 폰 쪽)으로 흐른다
 private struct TossLinkLine: View {
     let on: Bool
     @Environment(\.accessibilityReduceMotion) private var still
@@ -345,7 +345,7 @@ private struct TossLinkLine: View {
             if on {
                 Rectangle().fill(Theme.teal).frame(height: 2)
                 Circle().fill(Theme.teal).frame(width: 8, height: 8)
-                    .offset(x: still ? 11 : (flow ? 22 : 0))
+                    .offset(x: still ? 11 : (flow ? 0 : 22))   // 시세가 토스에서 내 폰 쪽으로 온다
                     .onAppear { if !still { withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) { flow = true } } }
                     .onDisappear { flow = false }
             } else {
