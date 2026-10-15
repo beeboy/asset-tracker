@@ -1,7 +1,7 @@
 import SwiftUI
 
 // 평정 지수 (가위바위보 지수): 분석 탭 맨 위 카드 + 상세. 계산은 Data/Calm.swift
-// 앱은 지수·내 인물·최근 기록만 짧게, 사건별 표와 추이 그래프는 PC naeilo.com 몫.
+// 앱은 지수·내 인물·최근 기록만 짧게, 사건별 표와 추이 그래프는 두지 않는다.
 
 struct CalmCard: View {
     @Environment(AppModel.self) private var m

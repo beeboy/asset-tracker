@@ -1,13 +1,13 @@
 # naeilo (asset-tracker)
 
-자산 관찰 및 미래 분석 서비스입니다. 웹(naeilo.com)과 iOS 앱(naeilo)이 있습니다. 사용자가 보유 수량만 넣으면 원화 평가액, 목표·본전까지의 길, 확률 전망을 보여 줍니다. 종목별 조언이 아니라 거시 관찰 도구입니다.
+자산 관찰 및 미래 분석 서비스입니다. 중심은 iOS 앱(naeilo)이고, 웹 naeilo.com은 앱 소개와 해 보기 카드 한 장, 앱 받기만 있는 입구입니다 (2026-10-15 결정). 예전 전체 웹(`web/`)은 개발자용으로 남기고 검색에서 뺐습니다. 사용자가 보유 수량만 넣으면 원화 평가액, 목표·본전까지의 길, 확률 전망을 보여 줍니다. 종목별 조언이 아니라 거시 관찰 도구입니다.
 
 ## 폴더 지도
 | 위치 | 내용 |
 |---|---|
 | `index.html` | 루트 SEO 페이지, `web/`으로 보냄 |
-| `web/` | 웹 전체 (번들러 없음). `app.js` 화면 로직(섹션 주석 `// ----` 로 구분), `model.js` 계산(`window.Model`, 몬테카를로), `charts.js` SVG 차트, `research.js` 연구 비교, `alloc-worker.js` 무거운 계산, `sw.js` 서비스워커, `stocks.js` 종목 목록(생성 파일) |
-| `web/index.html` | 탭 5개: 내 길(dash)·전망·종목·기록·설정. 스크립트 `?v=` 판 번호 |
+| `web/` | 예전 전체 웹, 개발자용 (번들러 없음, 검색 제외). CI 도구가 `app.js` 함수 원문을 꺼내 쓰니 함수를 지우지 않는다. `app.js` 화면 로직(섹션 주석 `// ----` 로 구분), `model.js` 계산(`window.Model`, 몬테카를로), `charts.js` SVG 차트, `research.js` 연구 비교, `alloc-worker.js` 무거운 계산, `sw.js` 서비스워커, `stocks.js` 종목 목록(생성 파일) |
+| `web/index.html` | 개발자용 전체 웹 (`noindex`). 탭: 홈·종목·분석·설정. 스크립트 `?v=` 판 번호 |
 | `server.py` | 로컬 서버(`/api/*`) + Yahoo 시세 수집(`--collect`) + 매매기준율(`data/mar.json`) |
 | `macro.py` | Shiller 데이터 → `data/macro/` |
 | `proxy/` | Cloudflare 워커 `asset-ai` (`cloudflare-worker.js`, `wrangler.toml`) |
@@ -17,7 +17,7 @@
 | `ios-app/Naeilo/` | iOS 앱. `Data/` 모델·계산·동기화, `Views/` 화면, `Resources/` 대사·이야기 |
 | `ios-app/WidgetShared/` | 앱과 위젯이 함께 쓰는 코드 (`Engine.swift`, `Models.swift`, `Config.swift`) |
 | `ios-app/Widgets/` | 위젯 확장 (홈·잠금화면·인물·서재) |
-| `ios-app/tools/mc_parity/`, `calc_parity/` | Swift 몬테카를로·화면 계산(평가액·배당·세금·금리)을 웹과 비교하는 CLI |
+| `ios-app/tools/mc_parity/`, `calc_parity/` | 앱 Swift 계산(몬테카를로·평가액·배당·세금·금리)이 웹 계산 원문(`model.js`·`app.js` 함수)과 같은지 보는 CLI |
 | `usage-app/` | 별도 개인용 앱: Claude 사용량 위젯 |
 | `.github/workflows/` | collect·stats·macro·sample(자동), worker(수동), ios·usage(빌드) |
 
@@ -32,15 +32,15 @@
 - 시세 수집만: `python server.py --collect [--add T1,T2]`
 - 계산 검사: `node tools/site_calc.mjs && node tools/check_calc.mjs`
 - 웹↔Swift 몬테카를로 비교: `node tools/mc_parity.mjs gen DIR` → swiftc로 `ios-app/tools/mc_parity` 실행 → `node tools/mc_parity.mjs cmp DIR` (`.github/workflows/ios.yml` parity 잡 참고)
-- 웹↔Swift 화면 계산 비교: `node tools/calc_parity.mjs gen DIR` → `swiftc DIR/CalcSrc.swift ios-app/tools/calc_parity/main.swift` 실행 → `node tools/calc_parity.mjs cmp DIR`. 앱·웹 원본에서 코드를 꺼내 쓰므로 함수 이름을 바꾸면 도구의 꺼내는 곳도 고친다
+- 앱 계산↔웹 계산 원문 비교: `node tools/calc_parity.mjs gen DIR` → `swiftc DIR/CalcSrc.swift ios-app/tools/calc_parity/main.swift` 실행 → `node tools/calc_parity.mjs cmp DIR`. 앱·웹 원본에서 코드를 꺼내 쓰므로 함수 이름을 바꾸면 도구의 꺼내는 곳도 고친다
 - iOS 빌드: `cd ios-app && xcodegen && xcodebuild -project NaeiloApp.xcodeproj -target NaeiloApp -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build`
 - 단위 테스트 프레임워크·린터는 없음.
 
 ## 코딩 규칙
 - 주석·UI 문구·커밋 메시지는 한국어, 쉬운 말.
-- 웹 JS/CSS를 고치면 `web/index.html`의 `?v=YYYYMMDDx`를 반드시 올린다 (alloc-worker도 같은 판 사용).
+- `web/`(개발자용) JS/CSS를 고칠 때만 `web/index.html`의 `?v=YYYYMMDDx`를 올린다 (alloc-worker도 같은 판 사용). 입구 파일은 입구의 규칙을 따른다.
 - 웹: IIFE + `"use strict"`, 전역 `window.X`, 상태는 `S` 한 객체. 빈 catch는 `/* 무시 */`.
-- 웹에 같은 화면이 있는 앱 숫자는 웹 기본 옵션 결과와 같아야 한다. 계산을 고치면 양쪽과 parity 도구를 같이 고친다.
+- 입구 해 보기 카드 숫자는 같은 입력의 앱 홈 숫자와 같아야 한다. 계산 규칙(`web/model.js`·`calc.json`·`app.js` 계산 함수)은 웹·앱이 같게 두고, 고치면 양쪽과 parity 도구를 같이 고친다. 웹 화면을 앱 화면에 맞춰 새로 만들지는 않는다.
 - 새 Swift 파일은 `project.yml`뿐 아니라 커밋된 `project.pbxproj`에도 손으로 넣는다 (Mac은 xcodegen을 돌리지 않음).
 - 화면에 "종목 + 금액 + 시점" 조언을 쓰지 않는다. 비율·확률로만 보여 준다.
 - 사용자에게 토큰·개발 설정을 묻지 않는다. 입력은 수량만, 나머지는 기본값과 숨김 옵션.

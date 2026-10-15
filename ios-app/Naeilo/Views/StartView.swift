@@ -30,7 +30,7 @@ struct StartView: View {
                 }
                 Text("잘 모르겠다면 \"마이너스\"로 시작하세요. 매수 단가를 넣으면 자동으로 알려드려요.").appFont(13).foregroundStyle(Theme.muted)
                 Button { restore = true } label: {
-                    Label("PC나 다른 폰에서 쓰던 값 불러오기", systemImage: "arrow.triangle.2.circlepath").appFont(14, .semibold)
+                    Label("다른 폰에서 쓰던 값 불러오기", systemImage: "arrow.triangle.2.circlepath").appFont(14, .semibold)
                         .foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.plain)
