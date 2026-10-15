@@ -20,6 +20,7 @@
 3. Caddy 설치 후 `/etc/caddy/Caddyfile`:
    ```
    toss.naeilo.com {
+       bind <서버 내부 IP>   # 개발자용 Tailscale 이 443 을 쓰므로 겹치지 않게 (hostname -I 첫 값)
        reverse_proxy 127.0.0.1:8766
        log { output discard }
    }
