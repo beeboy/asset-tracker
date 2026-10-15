@@ -1085,7 +1085,7 @@
   let progAsked = "";
   // ---- 내 길: 판정 + 구성에 따라 언제 닿을까 + 비중 바꿔 비교 (앱 내 길과 같은 화면. 점 = 보통 닿는 때, 막대 = 10번 중 8번)
   // 성장 중심·안정 중심은 비중안 비교(공격적·보수적)와 같은 규칙. 저장(모의 바구니)은 앱에만 있다
-  let etaOpen = false, etaRes = null, etaSig = "", etaRun = 0, etaW0 = null, etaW = null, etaTimer = null;
+  let etaOpen = false, etaMore = false, etaRes = null, etaSig = "", etaRun = 0, etaW0 = null, etaW = null, etaTimer = null;
   const etaVerdict = (p) => (p >= 0.7 ? "높아요" : p >= 0.3 ? "반반이에요" : "낮아요");
   const etaYear = (d) => (d ? +d.slice(0, 4) + (+d.slice(5, 7) - 1) / 12 : null);
   const etaText = (d, cap) => (d ? `${d.slice(0, 4)}년 ${+d.slice(5, 7)}월` : `${cap}년 넘게`);
@@ -1144,9 +1144,10 @@
     card.innerHTML = `<div class="etahead"><div class="small">내 목표 · ${krw(g.amount)}원 · ${esc(g.date)}까지 · 남은 ${leftStr(left)}</div>
       <h2>${pg != null ? `목표까지 가능성은 ${etaVerdict(pg)}` : "목표까지 가능성을 계산하고 있어요"}</h2>
       <div class="bar"><i style="width:${Math.min(100, (now / g.amount) * 100)}%"></i></div><div class="row between small"><span>지금 ${krw(now)}원</span><span>목표 ${krw(g.amount)}원</span></div>
-      <p class="small">${keep ? `지금 포트폴리오 그대로라면 ${krw(g.amount)}원에 닿는 시점은 보통 ${etaText(keep.eta.p50, cap)}이에요. 구성을 바꾸면 이 시점이 달라져요.` : "닿는 시점을 계산하고 있어요."}</p></div>
-      <h2 style="margin-top:14px">구성에 따라 언제 닿을까?</h2><p class="small muted">점은 보통 닿는 시점, 막대는 10번 중 8번이 들어오는 범위예요. 점선 = 목표일 ${esc(g.date.slice(0, 7))}</p>
-      ${R ? `<div class="etaaxis">${ticks.join("")}</div>${rows.map(([n, o, st]) => line(n, o, st)).join("")}<p class="small muted">빨리 닿을 수도 있는 구성은 범위도 넓어요. 일찍 닿는 대신 크게 늦어질 수도 있어요.</p>${cmp}` : `<p class="muted small">계산 중...</p>`}`;
+      <p class="small">${keep ? `지금 포트폴리오 그대로라면 ${krw(g.amount)}원에 닿는 시점은 보통 ${etaText(keep.eta.p50, cap)}이에요.` : "닿는 시점을 계산하고 있어요."}</p></div>
+      <details class="opt etamore"${etaMore ? " open" : ""}><summary>자세히 · 구성에 따라 언제 닿을까?</summary><p class="small muted">점은 보통 닿는 시점, 막대는 10번 중 8번이 들어오는 범위예요. 점선 = 목표일 ${esc(g.date.slice(0, 7))}</p>
+      ${R ? `<div class="etaaxis">${ticks.join("")}</div>${rows.map(([n, o, st]) => line(n, o, st)).join("")}<p class="small muted">빨리 닿을 수도 있는 구성은 범위도 넓어요. 일찍 닿는 대신 크게 늦어질 수도 있어요.</p>${cmp}` : `<p class="muted small">계산 중...</p>`}</details>`;
+    card.querySelector(".etamore")?.addEventListener("toggle", (e) => { etaMore = e.target.open; });
     card.querySelector(".etacmp")?.addEventListener("toggle", (e) => { etaOpen = e.target.open; });
     card.querySelectorAll("[data-eta]").forEach((b) => b.addEventListener("click", () => {
       const k = b.dataset.eta, t = b.dataset.t;
@@ -1174,6 +1175,8 @@
     card.style.display = "block";
     renderEta(pg, now);
     $("#progSub").textContent = `${start} 시작 · 바뀐 날 수량 기준`;
+    // 한 줄 결론: 계획선과의 차이 (없으면 시작 대비). 나머지 숫자·기간 막대·공유는 자세히 안에
+    $("#progLine").innerHTML = need && gap != null ? `시작보다 <b class="${cls(r0)}">${spct(r0)}</b>, 계획선보다 <b class="${cls(gap)}">${krw(Math.abs(now - need))}원 ${now >= need ? "앞서" : "뒤처져"}</b> 있어요.` : `시작보다 <b class="${cls(r0)}">${spct(r0)}</b> 움직였어요.`;
     $("#prog").innerHTML = [
       ["시작 대비", spct(r0), `${krw(V0)}원 → ${krw(now)}원${krIn(i0) ? ` (국내 합계 ${krw(krIn(i0))}원 들어옴)` : ""}`],
       ["계획선 대비", gap == null ? "-" : `${gap >= 0 ? "앞섬" : "뒤처짐"} ${pct(Math.abs(gap))}`, need ? `계획선보다 ${now >= need ? "+" : "−"}${krw(Math.abs(now - need))}원` : ""],
