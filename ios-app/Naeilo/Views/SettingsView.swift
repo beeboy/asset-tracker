@@ -235,7 +235,7 @@ struct TossKeyView: View {
             // 안내는 세 줄만 (토스 키 발급 절차는 설명하지 않는다)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: "info.circle.fill").foregroundStyle(Theme.teal)
-                Text("토스증권 오픈 API 서비스를 연결하면 시세를 받아올 수 있어요.").fixedSize(horizontal: false, vertical: true)
+                Text("투자자가 본인의 API Key를 통해 본인 정보를 호출하는 구조예요.").fixedSize(horizontal: false, vertical: true)
             }
             .appFont(15, .bold)
             Text("1. 토스 허용 IP에 이 중계 IP를 넣어 주세요.").appFont(14, .semibold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
