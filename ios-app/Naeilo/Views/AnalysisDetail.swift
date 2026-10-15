@@ -318,8 +318,8 @@ struct MyPathClassicView: View {
                     Kpi(k: "필요 연수익률", v: AppModel.sgn(needCagr), sub: m.isGoal ? (mM > 0 ? "적립 포함" : "지금 자산만으로") : "본전까지"),
                     Kpi(k: "이번 달 넣을 돈", v: m.isGoal ? AppModel.wonK(m.gM) : "없음", sub: m.isGoal ? "계획선에 들어 있음" : "회복은 적립 없이"),
                 ], dark: true)
-                footnote(m.isGoal ? "예측이 아닌 기준선이에요. 실제는 그날 수량·종가·환율(오늘은 매매기준율)로 센 값\(m.cashKrw > 0 ? "에 사이트에 넣은 현금을 더한 값" : "")으로, naeilo.com 목표 진행과 같은 계산이에요. 목표 달성 확률은 \(m.forecastTitle)과 같은 값이에요."
-                         : "예측이 아닌 기준선이에요. 회복 루트는 본전 기준이라 naeilo.com(목표 기준)과 달라요.")
+                footnote(m.isGoal ? "예측이 아닌 기준선이에요. 실제는 그날 수량·종가·환율(오늘은 매매기준율)로 센 값\(m.cashKrw > 0 ? "에 사이트에 넣은 현금을 더한 값" : "")이에요. 목표 달성 확률은 \(m.forecastTitle)과 같은 값이에요."
+                         : "예측이 아닌 기준선이에요. 회복 루트는 본전을 기준으로 그려요.")
             }
             .padding(16)
         }

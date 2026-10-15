@@ -224,9 +224,9 @@ enum Shelter {
     // 인터미션 주차별 할 일 (회복 루트)
     static let weekSteps: [(task: String, whereText: String)] = [
         ("홈 화면 위젯에서 오늘 블록 보기", "위젯"),
-        ("PC 브라우저로 naeilo.com 열어 내 계획 크게 보기", "PC 웹"),
+        ("앱 분석 탭에서 내 계획 다시 보기", "앱"),
         ("앱에서 이번 주 비중 한 번 확인하기", "앱"),
-        ("PC에서 1년 전망 자세히 열기", "PC 웹"),
+        ("앱에서 1년 전망 자세히 열기", "앱"),
     ]
 
     static let items: [ShelterItem] = [

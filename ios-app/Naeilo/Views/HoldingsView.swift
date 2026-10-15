@@ -617,7 +617,7 @@ struct HoldingEditView: View {
                 Button("이 종목 지우기") { askDel = true }
                     .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
-                Text("거래를 하나씩 기록하거나 증권사 파일로 맞추는 건 PC naeilo.com에서 할 수 있어요. 앱에서는 수량과 평균 단가만 바꿔요.")
+                Text("거래가 생기면 바뀐 수량과 평균 단가를 넣어 주세요. 앱은 거래를 하나씩 기록하지 않아요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
             }
             .padding(16)
