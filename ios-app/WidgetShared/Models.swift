@@ -153,7 +153,7 @@ enum TossFeed {
         let want = syms.filter { !$0.value.contains("^") && !$0.value.contains("=") }
         guard !want.isEmpty else { return nil }
         if let o = cached(), Date().timeIntervalSince1970 - o.got < minAge { return o }
-        guard let b = base else { return TossKeys.on ? await fetchUser(want) : nil }
+        guard let b = base else { return TossKeys.on ? await fetchUser(want, force: minAge == 0) : nil }
         let list = Set(want.values).sorted().joined(separator: ",")
         guard let enc = list.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
               let url = URL(string: b + "/api/toss/prices?symbols=" + enc) else { return nil }
@@ -264,13 +264,20 @@ enum TossFeed {
         get { Store.defaults.dictionary(forKey: "toss_miss") as? [String: Double] ?? [:] }
         set { Store.defaults.set(newValue, forKey: "toss_miss") }
     }
+    /// 일봉이 없는 종목 코드 → 다시 물어볼 시각. 지금 가격의 miss 와 따로 둔다 (일봉 404 로 지금 가격까지 빠지지 않게)
+    static var missHist: [String: Double] {
+        get { Store.defaults.dictionary(forKey: "toss_miss_hist") as? [String: Double] ?? [:] }
+        set { Store.defaults.set(newValue, forKey: "toss_miss_hist") }
+    }
 
-    private static func fetchUser(_ want: [String: String]) async -> QuoteFeed.File? {
+    /// force: 지금 다시 받기. 하루 빼 둔 종목도 다시 묻는다
+    private static func fetchUser(_ want: [String: String], force: Bool) async -> QuoteFeed.File? {
         let now = Date().timeIntervalSince1970
         var ids: [String: [String]] = [:]   // 토스 코드 → 앱 종목들
-        let skip = miss
+        let skip = force ? [:] : miss
         for (id, y) in want { if let c = code(y), (skip[c] ?? 0) < now { ids[c, default: []].append(id) } }
-        guard !ids.isEmpty else { return cached() }
+        // 받을 종목이 없으면 조용히 넘어가지 않고 이유를 남긴다 (상태 줄 시각이 그대로인 까닭이 보이게)
+        guard !ids.isEmpty else { return fail("토스에서 받을 수 있는 종목이 없어요") }
         var (tok, e) = await token()
         guard var t = tok else { return fail(e ?? "토큰 실패") }
         var q: [String: QuoteFeed.Q] = [:]
@@ -342,6 +349,7 @@ enum TossKeys {
         put(k, "keys"); put(Token?.none, "token")
         Store.defaults.set(true, forKey: "toss_user")
         Store.defaults.removeObject(forKey: "toss_miss")
+        Store.defaults.removeObject(forKey: "toss_miss_hist")
     }
     static func clear() {
         put(Keys?.none, "keys"); put(Token?.none, "token")

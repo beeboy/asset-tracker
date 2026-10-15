@@ -140,7 +140,12 @@ final class Market {
     func refreshToss(held: Set<String>, force: Bool) async {
         var ty: [String: String] = [:]
         for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
-        guard !ty.isEmpty, TossFeed.base != nil || TossKeys.on else { return }
+        guard TossFeed.base != nil || TossKeys.on else { return }
+        guard !ty.isEmpty else {
+            // 내 종목이 없거나 토스로 받을 수 없는 것뿐이면 이유를 남기고 화면을 다시 그린다
+            if force { Store.defaults.set("토스에서 받을 수 있는 종목이 없어요", forKey: "toss_err"); tossDone = Date() }
+            return
+        }
         if tossTask != nil && !force { return }
         while let t = tossTask { await t.value }
         let t = Task { @MainActor in
@@ -349,7 +354,7 @@ enum TossHistory {
         var f = Store.read(File.self, name) ?? File(h: [:], day: [:], fx: nil)
         let now = Date().timeIntervalSince1970, today = Day.today
         let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))   // 사이트 파일과 같은 3년 남짓
-        var miss = TossFeed.miss
+        var miss = TossFeed.missHist   // 일봉 전용 (지금 가격의 miss 와 따로)
         var stop = false
         for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop {
             guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != today || f.h[k] == nil else { continue }
@@ -380,7 +385,7 @@ enum TossHistory {
             f.h[k] = .init(dates: ds, closes: ds.map { all[$0]! })
             f.day[k] = today
         }
-        TossFeed.miss = miss
+        TossFeed.missHist = miss
         // 원/달러: 10분에 한 번 (당겨 갱신하면 바로). 전일 값은 24시간 전 시각의 값
         if !stop, force || now - (f.fx?.got ?? 0) > 600 {
             let (code, o, _) = await TossFeed.userGet("/api/toss/v1/exchange-rate")
