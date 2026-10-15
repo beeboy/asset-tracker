@@ -47,6 +47,15 @@
 - 입구 직접 해보기 숫자(닫힌 식, 예시 자산)는 앱 몬테카를로와 기준이 다름(의도된 예시).
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 배포 단계 구분 (2026-10-15, 내부 베타 준비만)
+- 앱 `Config.channel`(`ios-app/WidgetShared/Config.swift`) = `.internalBeta`. 설정 맨 아래 "시세: … · 내부 베타"로 보인다. `Config.usesCollectedData`는 내부 베타에서만 참(아직 아무 코드도 이 값으로 막지 않음).
+- 내부 베타: 지금처럼 사이트가 Yahoo로 모은 자료를 쓰고, 테스터는 설정 > 토스증권 시세에서 본인 키 등록도 시험한다.
+- **공개 베타·출시 때 할 일(아직 안 함)**: `channel`을 바꾸고, 아래 Yahoo 수집 자료를 받는 곳을 `usesCollectedData`로 막고, 본인 키 시세(토스 현재가·일봉·환율)와 가상 샘플로 바꾼다.
+  - 사이트 시세 `QuoteFeed`(`Models.swift`, data/quotes.json), 지난 종가 `SitePrices`(`Market.swift`, data/prices), 매매기준율 `MarFeed`(data/mar.json)
+  - 전망 입력 `SiteStats`(stats.json), 계산 자료 `SiteCalc`(calc.json), 종목 검색·국내 종가 `StockSearch`(Yahoo 중계·kr_daily), 추가 종목 `CustomSymbols`
+  - 빌드에 넣는 자료 `project.yml` resources(quotes.json·stats.json·calc.json·prices/), `YahooSample`
+  - 사이트 자료 중 Yahoo로 만든 계산값(stats·calc)을 공개 버전에서 뺄지는 6번 결정(공개 버전에서 뺄 듯)
+
 ## 토스 시세: 일반 사용자 내 키 (2026-10-15, PR 올림)
 - 앱 설정 > 숫자를 계산하는 기준 > 토스증권 시세: 사용자가 client_id·secret 을 넣으면 키체인에 두고 공용 중계 `https://toss.naeilo.com`(`proxy/toss_relay.py`)로 토큰·현재가를 받는다. 사용자는 중계 IP 를 토스 허용 IP 에 등록. 자세한 흐름·서버 올리기는 `docs/toss-relay.md`.
 - **아직 서버에 안 올림**: DNS·Caddy·systemd 설정 필요(문서 참고). 올리기 전엔 화면에 "중계 IP를 불러오는 중"만 보이고 연결이 실패한다.
