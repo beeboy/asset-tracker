@@ -593,3 +593,27 @@ struct ShelterBGBox: View {
         .accessibilityLabel((volume.map { $0 + " " } ?? "") + name + (on ? ", 지금 배경" : locked ? ", 잠김" : ""))
     }
 }
+
+/// 둥근 머리만 (사용량 잠금 화면 위젯과 같은 자르기: 얼굴 그림을 위쪽 맞춤으로 키워 동그랗게)
+struct CharHead: View {
+    let id: String
+    var size: CGFloat
+    @Environment(AppModel.self) private var model: AppModel?
+    var body: some View {
+        let s = size / 31
+        Group {
+            if id == "me" {
+                if let me = model?.me ?? MeChar.current { MeAvatar(me: me, width: 40 * s, height: 58 * s) }
+                else { Color.clear }
+            } else {
+                // 원래 색 캐릭터 그림에서 머리만 잘라 씀 (u_*_face는 잠금화면 위젯용 색)
+                Image("spr_\(id)").interpolation(.none).resizable().aspectRatio(contentMode: .fit)
+                    .frame(width: 40 * s, height: 58 * s)
+            }
+        }
+        .frame(width: 40 * s, height: 40 * s, alignment: .top)
+        .offset(y: 3 * s)
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+    }
+}

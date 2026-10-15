@@ -24,7 +24,6 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "설정").padding(.horizontal, -16)
-                Text("naeilo 설정").appFont(22, .bold)
                 goalCard
                 group("알림과 위젯", oftenRows)
                 head("함께할 인물")

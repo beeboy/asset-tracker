@@ -28,6 +28,7 @@ enum Theme {
     static let tealDark = Color(hex: 0x0B4F4B, dark: 0x8FD8CE)
     static let mint = Color(hex: 0x5FD0C4)
     static let mintBg = Color(hex: 0xF3FAF9, dark: 0x16302D)
+    static let missionGreen = Color(hex: 0x2E6B63, dark: 0x24564F)   // 미션 탭 다음 미션 블록
     static let tealBg = Color(hex: 0xE3F1EF, dark: 0x173531)
     static let sub = Color(hex: 0x4A5560, dark: 0xAEB8C2)
     static let sub2 = Color(hex: 0x5B6670, dark: 0x9AA5AF)

@@ -20,7 +20,7 @@ enum RemindCat: String, CaseIterable, Codable {
 
 /// 소식을 누르면 갈 곳
 enum RemindGo: Hashable {
-    case nowhere, shelter, char(String), me, reader(Int), board, calm, myPath, forecast, rateScen, external, hold(String), support, widgets, sync, alerts, krSum
+    case nowhere, shelter, char(String), me, reader(Int), board, week, calm, myPath, forecast, rateScen, external, hold(String), support, widgets, sync, alerts, krSum
 
     /// 사이트 소식 파일의 go 글자 ("shelter", "char:ir", "read:3", "hold:TSLA" …)
     init(_ s: String?) {
@@ -28,7 +28,7 @@ enum RemindGo: Hashable {
         if s.hasPrefix("char:") { self = .char(String(s.dropFirst(5))); return }
         if s.hasPrefix("read:"), let i = Int(s.dropFirst(5)) { self = .reader(i); return }
         if s.hasPrefix("hold:") { self = .hold(String(s.dropFirst(5))); return }
-        let m: [String: RemindGo] = ["shelter": .shelter, "me": .me, "board": .board, "calm": .calm, "myPath": .myPath, "forecast": .forecast,
+        let m: [String: RemindGo] = ["shelter": .shelter, "me": .me, "board": .board, "week": .week, "calm": .calm, "myPath": .myPath, "forecast": .forecast,
                                      "rateScen": .rateScen, "external": .external, "support": .support, "widgets": .widgets, "sync": .sync, "alerts": .alerts]
         self = m[s] ?? .nowhere
     }
@@ -329,7 +329,7 @@ final class Remind {
         let w = log.weeks, ended = Self.endedWeeks(w)
         var a: [RemindItem] = []
         if let b = Self.badges.last(where: { $0.n <= (log.guessHits ?? 0) }) {
-            a.append(.init(id: "badge.\(b.n)", cat: .done, text: "맞혀보기 배지 ‘\(b.name)’를 받았어요. 예보를 \(b.n)번 맞혔어요.", go: .board))
+            a.append(.init(id: "badge.\(b.n)", cat: .done, text: "맞혀보기 배지 ‘\(b.name)’를 받았어요. 예보를 \(b.n)번 맞혔어요.", go: .week))
         }
         guard let last = ended.last, let r = w[last] else { return a }
         let inside = r.last >= r.lo && r.last <= r.hi
@@ -337,7 +337,7 @@ final class Remind {
         for k in ended.reversed() { guard let x = w[k], x.last >= x.lo && x.last <= x.hi else { break }; run += 1 }
         let text = inside ? "이번 주 예보 적중! 범위 안에서 마쳤어요." + (run >= 2 ? " \(run)주 연속이에요." : "")
             : "이번 주는 예보 범위 \(r.last > r.hi ? "위" : "아래")로 나갔어요. 이런 주도 절반쯤 있어요."
-        return a + [.init(id: "wk.\(last)", cat: .done, text: text, go: .board)]
+        return a + [.init(id: "wk.\(last)", cat: .done, text: text, go: .week)]
     }
 
     /// 평정 지수 달 변화: 이번 달 전까지의 기록과 지금을 견준다 (양쪽 10건 이상, 5점 넘게 바뀌었을 때)
@@ -382,7 +382,7 @@ final class Remind {
             a.append(.init(id: "do.items", cat: .doing, text: "오늘의 1분을 하면 물건(\(Shelter.items[m.itemsOn].name))이 돌아와요.", go: .shelter, once: false))
         }
         if m.playUnlocked && m.weekGuess == nil {
-            a.append(.init(id: "do.week", cat: .doing, text: "이번 주 금요일 평가액은 어디쯤일까요? 예보를 골라 봐요.", go: .board, once: false))
+            a.append(.init(id: "do.week", cat: .doing, text: "이번 주 금요일 평가액은 어디쯤일까요? 예보를 골라 봐요.", go: .week, once: false))
         }
         // 서재: 열렸지만 다 안 읽은 장 하나
         let story = Story.shared
@@ -582,7 +582,8 @@ extension AppModel {
         case .char(let id): tab = .home; homePath = ["shelter", "char:\(id)"]
         case .me: tab = .home; homePath = ["me"]
         case .reader(let i): tab = .home; homePath = ["shelter", "read:\(i)"]
-        case .board: tab = .board; boardPath = []
+        case .board: tab = .board; boardPath = []; boardPage = 0
+        case .week: tab = .board; boardPath = []; boardPage = 1
         case .calm: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.calm])
         case .myPath: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.myPath])
         case .forecast: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.forecast])

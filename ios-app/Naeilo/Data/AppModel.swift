@@ -313,6 +313,7 @@ final class AppModel {
     var taxSellQty = 0.0
     var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
     var boardPath: [MissionRoute] = []
+    var boardPage = 0   // 미션 탭 페이지: 0 목표(본전) 진행, 1 이번 주 예보
     var analysisPath = NavigationPath()
     var homePath: [String] = []
     var tab: Tab = RootView.launchTab
@@ -647,10 +648,11 @@ final class AppModel {
         let st = inp.st, settings = inp.settings, events = inp.events
         let snap = zip(rs, px).map { "\(SiteStats.mcKey($0.id)):\($0.h.qty):\($1)" }.joined(separator: ",")
         let key = [today, H, snap, String(fx0), inp.sig].joined(separator: "|")
-        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: 0)
+        return .init(key: key, holdings: hs, stats: st, settings: settings, events: events, start: today, horizon: H, goal: mcGoal, monthly: fcMonthly)
     }
 
-    /// 전망은 월 적립 없이 계산한다 (납입은 내 목표 몫. 웹 기본 monthly_contribution 0 과 같다). m.monthly 는 동기화 호환으로만 남긴다
+    /// 전망의 월 적립 (원): 웹처럼 목표의 매달 넣는 돈(monthly_contribution)을 넣는다. 목표 루트가 아니면 0. m.monthly 는 동기화 호환으로만 남긴다
+    var fcMonthly: Double { isGoal ? gM * 1e4 : 0 }
     var forecast: Forecast { forecast(lens) }
     /// 시나리오 하나의 전망. 같은 경로를 μ만 바꿔 다시 무게를 달아서(reweight) 셋을 같이 불러도 싸다
     func forecast(_ lens: Lens) -> Forecast {
@@ -660,7 +662,7 @@ final class AppModel {
         eng.ensure(job)
         let lensKey = lens == .base ? "base" : lens == .smooth ? "smooth" : "mine"
         guard let run = eng.run, run.key == job.key,
-              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: mcGoal, monthly: 0, withEvents: shock) else { return cf }
+              let r = eng.view(key: job.key, lens: lensKey, trust: trust, goal: mcGoal, monthly: fcMonthly, withEvents: shock) else { return cf }
         let sim = run.ev, s0 = MC.dayNum(sim.start)
         let tY = sim.monthDates.map { Double(MC.dayNum($0) - s0) / 365.25 }
         let dates = sim.monthDates, cum = r.cumHit, V0 = r.V0, K = mcGoal
@@ -702,7 +704,7 @@ final class AppModel {
         } }
         let sg = sqrt(max(0, v))
         let mu = lens == .base ? muB : lens == .smooth ? muS : muM
-        let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = 0.0
+        let g = mu - sg * sg / 2, V0 = trackValue, K = keyValue, M = fcMonthly
         let qAt = { (T: Double, z: Double) -> Double in
             let shockT: Double = z * sg * sqrt(T)
             let lump: Double = V0 * exp(g * T + shockT)

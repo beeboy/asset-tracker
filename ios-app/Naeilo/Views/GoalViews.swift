@@ -88,56 +88,61 @@ struct GoalBoardView: View {
 
     var body: some View {
         let steps = m.goalSteps, done = steps.filter { m.gDone.contains($0.id) }
-        let start = m.goalStart
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: "미션").padding(.horizontal, -16)
                 SampleNote()
-                VStack(alignment: .leading, spacing: 4) {
-                    ScreenTitle(kicker: "목표 달성 루트" + (m.route == .plus ? " · 플러스" : " · 시작 전"),
-                                title: m.gDone.contains("goal") ? "\(m.gY)년 뒤 \(AppModel.wonK(m.gK))까지" : "목표까지 가는 길")
-                        // 목표를 정한 뒤에는 제목(목표 금액)을 누르면 고친다
-                        .overlay(alignment: .bottomTrailing) {
-                            if m.gDone.contains("goal") { Image(systemName: "pencil").appFont(16, .semibold).foregroundStyle(Theme.teal).padding(.bottom, 6) }
+                MissionPagePicker()
+                if m.boardPage == 1 {
+                    if m.playUnlocked { WeekForecastCard() } else { lockedPlay }
+                } else {
+                    // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
+                    if let inter = steps.first(where: \.inter) { interCard(inter) }
+                    startList(steps.filter { !$0.inter }, done: done.filter { !$0.inter }.count)
+                    if m.goalReached {
+                        Card(padding: 18) {
+                            GuideBubble(pose: .cheer, text: "목표 \(AppModel.wonK(m.gK))에 닿았어요! 여기까지 온 길, 축하해요.")
+                            Text("지금 \(AppModel.wonK(m.trackValue / 1e4))에서 다음 목표를 정해요. 3년 안에 닿을 확률 50% 근처로 골라 둘게요.").appFont(14).foregroundStyle(Theme.sub)
+                            PrimaryButton(title: "다음 목표 정하기") { m.suggestNextGoal(); m.boardPath.append(.g1) }
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture { if m.gDone.contains("goal") { m.boardPath.append(.g1) } }
-                        .accessibilityAddTraits(m.gDone.contains("goal") ? .isButton : [])
-                        .accessibilityHint(m.gDone.contains("goal") ? "눌러서 목표 고치기" : "")
-                    if m.gDone.contains("goal") {
-                        Text("지금 \(AppModel.wonK(start)) · 목표까지 \(AppModel.wonK(max(0, m.gK - start))) 남았어요").appFont(15).foregroundStyle(Theme.sub)
                     }
-                }
-                // 인터미션 카드가 위, 시작 미션은 접는 번호 목록 한 줄 (쉬운 말 ⑧)
-                if let inter = steps.first(where: \.inter) { interCard(inter) }
-                startList(steps.filter { !$0.inter }, done: done.filter { !$0.inter }.count)
-                if m.goalReached {
-                    Card(padding: 18) {
-                        GuideBubble(pose: .cheer, text: "목표 \(AppModel.wonK(m.gK))에 닿았어요! 여기까지 온 길, 축하해요.")
-                        Text("지금 \(AppModel.wonK(m.trackValue / 1e4))에서 다음 목표를 정해요. 3년 안에 닿을 확률 50% 근처로 골라 둘게요.").appFont(14).foregroundStyle(Theme.sub)
-                        PrimaryButton(title: "다음 목표 정하기") { m.suggestNextGoal(); m.boardPath.append(.g1) }
+                    if let next = steps.first(where: { !m.gDone.contains($0.id) && m.goalAvailable($0) }), !next.inter {
+                        nextCard(next, steps: steps.filter { !$0.inter })
                     }
-                }
-                if let next = steps.first(where: { !m.gDone.contains($0.id) && m.goalAvailable($0) }), !next.inter {
-                    Card(padding: 18) {
-                        Text("다음 미션 \(next.num)").appFont(13, .semibold).foregroundStyle(Theme.teal)
-                        Text(next.title).appFont(19, .bold)
-                        (Text("끝내면 열려요: ") + Text(next.reward).bold().foregroundColor(Theme.ink)).appFont(14).foregroundStyle(Theme.sub)
-                        PrimaryButton(title: "시작하기") { m.boardPath.append(next.to) }
-                    }
-                }
-                if m.playUnlocked { GoalCellsCard(); WeekForecastCard() } else {
-                    DashedCard {
-                        Label("1000칸 · 이번 주 예보", systemImage: "lock").appFont(15, .bold)
-                        Text("앱 시작 3단계를 마치면 열려요. 인터미션 동안에도 칸을 채우고 매주 예보를 맞혀 볼 수 있어요.").appFont(13)
-                    }
+                    if m.playUnlocked { GoalCellsCard() } else { lockedPlay }
                 }
             }
             .screen()
         }
+        .modifier(MissionPageSwipe())
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: MissionRoute.self) { MissionScreen(route: $0) }
+    }
+
+    private var lockedPlay: some View {
+        DashedCard {
+            Label(m.boardPage == 1 ? "이번 주 예보" : "목표 100칸", systemImage: "lock").appFont(15, .bold)
+            Text("앱 시작 3단계를 마치면 열려요. 인터미션 동안에도 칸을 채우고 매주 예보를 맞혀 볼 수 있어요.").appFont(13)
+        }
+    }
+
+    /// 다음 미션: 진한 초록 블록
+    private func nextCard(_ next: AppModel.GoalStep, steps: [AppModel.GoalStep]) -> some View {
+        let idx = (steps.firstIndex { $0.id == next.id } ?? 0) + 1
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("다음 미션 · \(steps.count)개 중 \(idx)번째").appFont(13, .semibold).foregroundStyle(.white.opacity(0.8))
+            Text(next.title).appFont(20, .bold)
+            Text("끝내면 열려요: \(next.reward)").appFont(14).foregroundStyle(.white.opacity(0.85))
+            Button { m.boardPath.append(next.to) } label: {
+                Text("시작하기").appFont(16, .bold).foregroundStyle(Theme.missionGreen)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 14))
+            }.buttonStyle(.plain).padding(.top, 4)
+        }
+        .foregroundStyle(.white)
+        .padding(20).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.missionGreen, in: RoundedRectangle(cornerRadius: 20))
     }
 
     /// 처음 석 달 체크인 카드: 달마다 계획대로 넣었는지와 받은 위젯
@@ -222,67 +227,96 @@ struct GoalBoardView: View {
     }
 }
 
-// 목표까지 1000칸: 진한 칸 = 내가 넣은 돈(안 사라짐), 연한 칸 = 시장이 준 칸, 주황 = 시장이 잠시 가져간 칸
+// 목표까지 100칸 (1칸 = 목표의 1/100): 진한 칸 = 내가 넣은 돈, 민트 = 투자로 불어난 돈, 주황 = 잠시 줄어든 돈
+// 공유 카드·벽돌깨기는 1000칸 그대로 (값만 넘긴다)
 struct GoalCellsCard: View {
     @Environment(AppModel.self) private var m
-    @State private var mode = "mine"
     var body: some View {
-        let unit = m.gK * 1e4 / 1000
-        let cl = { (v: Double) in max(0, min(1000, Int(floor(v / max(1, unit))))) }
+        let K = m.gK * 1e4, unit = K / 100
         let tkV = m.trackValue
         let tkP = m.route == .novice ? tkV / 1.02 : tkV * max(0.8, min(1.25, m.cost / max(1, m.total)))
-        let nV = cl(tkV), nP = cl(tkP), nMine = min(nV, nP), nMkt = max(0, nV - nP), nLost = max(0, nP - nV)
-        let nY = cl(tkV / (1 + m.todayMove)), chg = nV - nY
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("목표까지 1000칸").appFont(13, .bold).foregroundStyle(Theme.sub)
-                Spacer()
-                Text("1칸 = \(AppModel.man(unit).replacingOccurrences(of: "만원", with: ""))만원").appFont(12).foregroundStyle(Theme.sub)
+        let fV = min(100, tkV / max(1, unit)), fP = min(100, tkP / max(1, unit))
+        let mine = min(fV, fP), lost = max(0, fP - fV), gain = max(0, tkV - tkP)
+        let diff = tkV - tkV / (1 + m.todayMove)
+        let ms = Int(fV / 10) * 10
+        // 공유 카드·벽돌깨기용 1000칸
+        let cl = { (v: Double) in max(0, min(1000, Int(floor(v / max(1, K / 1000))))) }
+        let nV = cl(tkV), nP = cl(tkP), nMine = min(nV, nP), nY = cl(tkV / (1 + m.todayMove))
+        let pct = Int(tkV / max(1, K) * 100), stone = [75, 50, 25].first { pct >= $0 }
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(AppModel.wonK(m.gK).replacingOccurrences(of: "원", with: ""))까지 100칸").appFont(18, .bold)
+                    Text("한 칸에 \(AppModel.man(unit))이에요." + (fV >= 100 ? " 100칸을 다 채웠어요!" : ms >= 10 ? " \(ms)칸 넘게 채웠어요." : " 첫 칸부터 채워 가요."))
+                        .appFont(14).foregroundStyle(Theme.sub)
+                }
+                GoalCellGrid(mine: mine, filled: fV, lost: lost)
+                    .aspectRatio(1, contentMode: .fit)
+                    .accessibilityLabel("100칸 중 \(Int(fV))칸, 목표의 \(pct)%")
+                VStack(spacing: 10) {
+                    legend(Theme.teal, nil, "내가 넣은 돈", AppModel.man(min(tkV, tkP)))
+                    if lost > 0 { legend(Self.lostC, nil, "잠시 줄어든 돈", "−" + AppModel.man(tkP - tkV)) }
+                    else { legend(Self.mintC, nil, "투자로 불어난 돈", "+" + AppModel.man(gain)) }
+                    legend(Theme.card, Theme.gold, "마지막 칸을 채우면 목표 달성", nil)
+                }
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(abs(diff) < 5e3 ? "어제와 같아요" : "어제보다 \(AppModel.man(abs(diff))) \(diff > 0 ? "늘었어요" : "줄었어요")").appFont(15, .bold)
+                    Text("시장이 움직여서 생긴 변화예요. 하루 오르내림은 흔한 일이에요.").appFont(13).foregroundStyle(Theme.sub)
+                }
             }
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(nV.formatted())칸").appFont(26, .bold)
-                Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
-                Text(chg == 0 ? "어제와 같음" : "어제 종가보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
-            }
-            ChipRow(items: [("mine", "내 칸 / 시장 칸"), ("chg", "오늘 바뀐 칸")], selection: $mode)
-            GoalCellGrid(mine: nMine, market: nMkt, lost: nLost, yesterday: nY, showChange: true)
-                .aspectRatio(320.0 / 200.0, contentMode: .fit)
-                .accessibilityLabel("1000칸 중 \(nV)칸")
-            FlowRow(spacing: 10) {
-                legend(Theme.teal, "내가 넣은 돈 \(nMine)칸")
-                legend(Color(hex: 0x7FD3C9, dark: 0x3C8F86), "시장이 준 칸 \(nMkt)칸")
-                if nLost > 0 { legend(Color(hex: 0xFBE3CF, dark: 0x4A3020), "시장이 잠시 가져간 칸 \(nLost)칸") }
-                legend(Theme.yellow, "마지막 칸 = 목표")
-            }
-            // 공유 카드와 벽돌깨기를 한 줄에
+            .padding(18)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
             HStack(spacing: 8) {
-                ShareCardButton(filled: nV, mine: nMine, market: nMkt, kicker: "목표까지 가는 중",
-                                amountLine: "목표 \(AppModel.wonK(m.gK)) 중 \(AppModel.man(tkV)) 모았어요.")
-                BrickGameButton(filled: nV, floor: nMine, yesterday: nY)
+                ShareCardButton(filled: nV, mine: nMine, market: max(0, nV - nP), kicker: "목표까지 가는 중",
+                                amountLine: "목표 \(AppModel.wonK(m.gK)) 중 \(AppModel.man(tkV)) 모았어요.",
+                                title: stone.map { $0 == 50 ? "절반 돌파 카드 공유" : "\($0)% 돌파 카드 공유" } ?? "내 진행 카드 공유", plain: true)
+                BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: "내 칸으로 벽돌깨기", plain: true)
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.ink, lineWidth: 2))
+    }
+
+    static let mintC = Color(hex: 0x8FCFC3, dark: 0x3C8F86)
+    static let lostC = Color(hex: 0xFBE3CF, dark: 0x4A3020)
+
+    private func legend(_ c: Color, _ stroke: Color?, _ t: String, _ v: String?) -> some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 4).fill(c)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(stroke ?? c, lineWidth: 1.5))
+                .frame(width: 14, height: 14)
+            Text(t).appFont(14).foregroundStyle(Theme.sub)
+            Spacer()
+            if let v { Text(v).appFont(14, .bold) }
+        }
     }
 }
 
+/// 10×10 칸, 왼쪽 위부터 줄마다 채운다. 경계 칸은 비율만큼 가로로 나눠 칠한다. 마지막 칸(오른쪽 아래)은 금색 테두리 = 목표
 struct GoalCellGrid: View {
-    let mine: Int, market: Int, lost: Int, yesterday: Int
-    var showChange = false
+    let mine: Double, filled: Double, lost: Double
     var body: some View {
         Canvas { ctx, size in
-            let s = size.width / 40
-            func rect(_ i: Int) -> CGRect { CGRect(x: CGFloat(i % 40) * s + 0.5, y: CGFloat(24 - i / 40) * s + 0.5, width: s - 1, height: s - 1) }
-            let now = mine + market
-            for i in 0..<1000 {
-                let c: Color = i < mine ? Theme.teal : i < now ? Color(hex: 0x7FD3C9, dark: 0x3C8F86) : i < now + lost ? Color(hex: 0xFBE3CF, dark: 0x4A3020) : Theme.track
-                ctx.fill(Path(rect(i)), with: .color(c))
+            let gap: CGFloat = 4, s = (size.width - gap * 9) / 10
+            for i in 0..<100 {
+                let r = CGRect(x: CGFloat(i % 10) * (s + gap), y: CGFloat(i / 10) * (s + gap), width: s, height: s)
+                let path = Path(roundedRect: r, cornerRadius: 5)
+                ctx.fill(path, with: .color(Theme.track))
+                if i == 99 && filled < 100 {
+                    ctx.fill(path, with: .color(Theme.card))
+                    ctx.stroke(Path(roundedRect: r.insetBy(dx: 1, dy: 1), cornerRadius: 4), with: .color(Theme.gold), lineWidth: 2)
+                    continue
+                }
+                // 이 칸 [i, i+1] 안에서 각 색이 차지하는 비율
+                let lo = Double(i)
+                let seg: [(Double, Double, Color)] = [(0, mine, Theme.teal), (mine, filled, GoalCellsCard.mintC), (filled, filled + lost, GoalCellsCard.lostC)]
+                ctx.drawLayer { l in
+                    l.clip(to: path)
+                    for (a, b, c) in seg {
+                        let x0 = max(0, min(1, a - lo)), x1 = max(0, min(1, b - lo))
+                        if x1 > x0 { l.fill(Path(CGRect(x: r.minX + s * x0, y: r.minY, width: s * (x1 - x0), height: s)), with: .color(c)) }
+                    }
+                }
             }
-            if showChange {
-                for i in min(now, yesterday)..<max(now, yesterday) { ctx.stroke(Path(rect(i)), with: .color(now >= yesterday ? Theme.up : Theme.down), lineWidth: 1.2) }
-            }
-            ctx.fill(Path(ellipseIn: rect(999).insetBy(dx: 0.5, dy: 0.5)), with: .color(Theme.yellow))
         }
     }
 }
@@ -714,5 +748,37 @@ struct GoalIntermissionView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// 미션 탭 두 페이지 전환: 목표(본전) 진행 | 이번 주 예보. 옆으로 밀어도 넘어간다
+struct MissionPagePicker: View {
+    @Environment(AppModel.self) private var m
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach([(0, m.isGoal ? "목표 진행" : "본전 진행"), (1, "이번 주 예보")], id: \.0) { i, t in
+                let on = m.boardPage == i
+                Button { withAnimation(.easeOut(duration: 0.2)) { m.boardPage = i } } label: {
+                    Text(t).appFont(14, .bold).foregroundStyle(on ? Theme.ink : Theme.sub)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(on ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(Theme.track, in: RoundedRectangle(cornerRadius: 13))
+    }
+}
+
+/// 옆으로 밀어 미션 탭 페이지 넘기기
+struct MissionPageSwipe: ViewModifier {
+    @Environment(AppModel.self) private var m
+    func body(content: Content) -> some View {
+        content.simultaneousGesture(DragGesture(minimumDistance: 30).onEnded { g in
+            guard abs(g.translation.width) > abs(g.translation.height) * 2, abs(g.translation.width) > 60 else { return }
+            withAnimation(.easeOut(duration: 0.2)) { m.boardPage = g.translation.width < 0 ? 1 : 0 }
+        })
     }
 }

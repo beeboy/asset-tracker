@@ -3,7 +3,7 @@ import SwiftUI
 // 종목 탭: 내 돈이 얼마 있고 얼마 벌었나. 맨 위 평가액 → 1년 전부터 가졌다면 그래프 → 미국/국내 묶음 목록
 struct HoldingsView: View {
     @Environment(AppModel.self) private var m
-    @State private var period: Period = .y1        // 위 그래프에만 걸린다 (목록 %는 늘 산 가격 대비)
+    @State private var period: Period = .m1        // 위 그래프에만 걸린다 (목록 %는 늘 산 가격 대비)
     @State private var said: String? = nil          // 지운 뒤 인물의 한 줄 (평정 지수)
     @State private var swiped: String? = nil        // 왼쪽으로 밀어 지우기 버튼이 보이는 종목
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
@@ -352,10 +352,8 @@ struct KoreaSumCard: View {
         let ago = lastD.flatMap(Day.date).map { Int((Date().timeIntervalSince($0) / 86400).rounded(.down)) } ?? 0
         Card {
             Text(title).appFont(15, .bold)
-            // 웹 입력 칸 밑 안내와 같은 문구. '기록 그래프'를 누르면 내 기록의 '국내 주식 합계' 그래프로 간다
-            (Text("증권사 앱 합계 그대로 (0이면 지움)" + (held && ago > 0 ? " · \(ago)일 전 금액" : "") + " · 전망은 EWY×원/달러 · ") + Text("기록 그래프").foregroundColor(Theme.teal))
+            Text("증권사 앱 합계 그대로 (0이면 지움)" + (held && ago > 0 ? " · \(ago)일 전 금액" : "") + " · 전망은 EWY×원/달러")
                 .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                .onTapGesture { focus = false; m.recKr = true; m.tab = .hold; m.holdPath = NavigationPath(); done?() }
             HStack(spacing: 8) {
                 TextField(cur.map { Int($0.rounded()).formatted() + "원" } ?? "금액 (원)", text: $t).keyboardType(.decimalPad).focused($focus)
                     .padding(.horizontal, 12).frame(minHeight: 44)
