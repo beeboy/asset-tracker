@@ -1,0 +1,16 @@
+# 토스증권 공용 중계 (proxy/toss_relay.py). 고정 IP 서버에 둔다: /etc/systemd/system/naeilo-toss-relay.service
+# NAEILO_TOSS_IP 는 서버에서 채운다 (저장소에 쓰지 않는다): sudo systemctl edit naeilo-toss-relay
+#   [Service]
+#   Environment=NAEILO_TOSS_IP=<서버 고정 IP>
+[Unit]
+Description=naeilo toss relay
+After=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/asset-tracker
+ExecStart=/usr/bin/python3 proxy/toss_relay.py --port 8766
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

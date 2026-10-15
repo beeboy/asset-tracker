@@ -101,7 +101,7 @@ final class Market {
             if let q = try? await p.quotes(tickers) { live = q }
             if let f = try? await p.usdkrw() { liveFx = f }
         }
-        // 토스 시세 (주소를 넣은 개발자 기기만): 국내·미국 종목. 기다리지 않고 따로 받아 도착하면 반영한다 (앱 시작을 늦추지 않게).
+        // 토스 시세 (개발자 주소를 넣었거나, 사용자가 설정 > 토스증권 시세에 내 키를 넣은 기기만): 국내·미국 종목. 기다리지 않고 따로 받아 도착하면 반영한다 (앱 시작을 늦추지 않게).
         // 1분 안에 받았으면 그대로. 실패하면 15분 안에 받은 값, 그것도 없으면 nil → Yahoo 값
         if !held.isEmpty && !tossBusy {
             var ty: [String: String] = [:]
