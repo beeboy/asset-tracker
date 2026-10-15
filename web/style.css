@@ -424,3 +424,16 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .routeopts button b { font-size: 1.1rem; }
 .routeopts button span { color: var(--muted); font-size: .9rem; }
 .routebar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 2px 10px; }
+/* 목표일 전망 (앱 ForecastView 와 같은 구성) */
+.fchead { font-size: 1.1765rem; font-weight: 700; line-height: 1.45; margin: 4px 2px 12px; }
+.seg.fclens { display: flex; gap: 4px; padding: 3px; background: var(--bg); border-radius: 10px; margin-bottom: 10px; }
+.seg.fclens button { flex: 1; font-size: 0.7647rem; padding: 7px 4px; border: 0; background: none; color: var(--muted); }
+.seg.fclens button.on { background: var(--accent); color: #fff; font-weight: 700; }
+.fcbig { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 6px; }
+.fcbig #fcMed { font-size: 1.6471rem; }
+.fclegend { gap: 4px 12px; margin-top: 4px; } .fclegend span { display: inline-flex; align-items: center; gap: 4px; }
+.fclegend .sw { display: inline-block; width: 14px; height: 10px; border-radius: 2px; background: var(--band); }
+.fclegend .s50 { opacity: .35; } .fclegend .s90 { opacity: .14; } .fclegend .sdash { height: 0; border-top: 1.5px dashed var(--muted); background: none; border-radius: 0; }
+.fctable tr[data-l] { cursor: pointer; } .fctable tr.on td { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 700; }
+.fcsched { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 0.7647rem; } .fcsched b { color: var(--accent); min-width: 8.5em; font-size: 0.7059rem; }
+.fcsched-go { margin: 0 0 6px 9.2em; font-size: 0.7353rem; } .fcsched-go a { color: var(--c4); font-weight: 700; }

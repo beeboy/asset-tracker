@@ -20,7 +20,7 @@
 - 분석 허브: 내 길 '처음 닿는 때'와 목표일 확률 차이, 내 길 상세 '반반이에요' 문구.
 - 실기기 확인: 앱 시작 속도, 토스 시세 표시, 미션 예보 카드.
 - 웹 쪽 따라가기: 전망 탭 새 화면, 종목 표, 배당·세금, 환율 영향, 평정 지수 보기.
-- 웹 쉬운 화면 개편 (계획 `docs/plans/web-tabs.md`): 1 탭 구조(홈·종목·분석·설정) 코드 끝, PR 대기(브랜치 `claude/project-thread-99ritl`; 분석 목록 한 줄 요약은 아직 고정 문구, 시세 수집 카드는 개발자 모드·내 PC 서버에서만) → 2 홈·내 길: 첫 질문(마이너스=회복 길 본전 카드만 / 플러스=목표 길 목표 카드만, `S.state.route`) 코드 끝, PR 대기(브랜치 `claude/web-home-route`, #218 위에 쌓음. 앱과 루트 동기화는 아직 안 함) → 2-2 홈 카드 줄이기: 도달 예상(구성 비교 막대·비중 바꾸기)과 목표 진행(숫자 5칸·기간 버튼·막대 차트·공유 이미지)을 결론 한 줄 + "자세히" 안으로, PR 대기(브랜치 `claude/project-thread-8wtmoi`, #219 위에 쌓음) → 3 전망 → 4 종목 → 5 배당·세금·환율.
+- 웹 쉬운 화면 개편 (계획 `docs/plans/web-tabs.md`): 1 탭 구조(홈·종목·분석·설정) 코드 끝, PR 대기(브랜치 `claude/project-thread-99ritl`; 분석 목록 한 줄 요약은 아직 고정 문구, 시세 수집 카드는 개발자 모드·내 PC 서버에서만) → 2 홈·내 길: 첫 질문(마이너스=회복 길 본전 카드만 / 플러스=목표 길 목표 카드만, `S.state.route`) 코드 끝, PR 대기(브랜치 `claude/web-home-route`, #218 위에 쌓음. 앱과 루트 동기화는 아직 안 함) → 2-2 홈 카드 줄이기: 도달 예상(구성 비교 막대·비중 바꾸기)과 목표 진행(숫자 5칸·기간 버튼·막대 차트·공유 이미지)을 결론 한 줄 + "자세히" 안으로, PR 대기(브랜치 `claude/project-thread-8wtmoi`, #219 위에 쌓음) → 3 전망: 앱 목표일 전망과 같은 구성(헤드라인 → 버튼 3개+추세 슬라이더 한 축 → 가장 그럴듯한 금액·10번 중 9번 범위 → 0부터 선형 축 그래프(고른 시나리오 띠 + 다른 둘 점선) → 세 가지 미래 표 → 전망을 흔들 일정 4개 → 자세히 보기(한 번이라도 넘을 확률·만약에·숫자 더 보기·종목별 그래프·계산 옵션)), PR 대기(브랜치 `claude/project-thread-fuubi8`, #220 위에 쌓음. 고른 버튼은 브라우저에만 `naeilo-fc-lens`. 앱의 일정 켜고 끄기 토글은 웹에 없음: 켜 둔 외부 요인이 늘 반영, 외부 요인 화면 링크. 회복 길도 웹은 목표일 기준) → 4 종목 → 5 배당·세금·환율.
 - 출시 전: 국내 실시간 시세 스위치 끄기, 무료/프리미엄 분리(`premium()`), 시세 재배포 조건(Tiingo·EODHD 보류).
 - 워커 `/cu` 401(Claude 사용량 위젯), 15분 collect cron 실제 동작 확인.
 
@@ -69,7 +69,7 @@
 | 항목 | 상태 |
 |---|---|
 | 외부 요인 화면 개편 | 2026-10-14 1단계(데이터) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. 다음: ② 요인 상세(앱) ③ 메인 순위(앱) ④ 웹 같은 화면 ⑤ 과거 재생(고정 표) ⑥ 일정 미리 보기(`EXT_EVENTS.sd`) ⑦ 회고·알림(나중). 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
-| iOS 목표일 전망 화면 개편 | 2026-10-14 PR 올림(브랜치 claude/project-thread-u2k6oi). 버튼 3개=추세 슬라이더 한 축, 선형 축 차트, 세 시나리오 표, 일정 카드, 월 적립 0. 웹 전망 탭은 아직 옛 화면 |
+| iOS 목표일 전망 화면 개편 | 2026-10-14 PR 올림(브랜치 claude/project-thread-u2k6oi). 버튼 3개=추세 슬라이더 한 축, 선형 축 차트, 세 시나리오 표, 일정 카드, 월 적립 0. 웹도 같은 구성으로 따라감(웹 쉬운 화면 3단계, 브랜치 claude/project-thread-fuubi8) |
 | 외부 요인 화면 개편 | 2026-10-14 1단계(데이터)·2단계(요인 상세, 앱 `FactorDetailView`: 프리셋 2×2·판정·상쇄·종목별 신뢰도·큰 변화 경고·비교·관련 일정·직접 정하기. 메인 순위에서 들어감)·3단계(메인: 스크롤·질문형 제목·요인 순위 `ExternalView.ranks`·자동 요약·점 표시 없앰, 슬라이더는 요인 상세 "직접 정하기"로만)·4단계(웹 `renderSens`를 같은 순위·요인 상세로 교체, `xfRanks`·`xfDetail`, 웹은 `Model.factorMoves`를 직접 계산)·5단계(과거 재생: `Model.REPLAYS`·`replayMove` 고정 표 3기간, 앱 `SiteCalc.replays`, 웹 `xfReplays`·앱 `ExternalView.replayCard`)·6단계(오늘의 이벤트 카드 + 다가오는 일 미리 겪어보기: 시장 전체 확정 일정 7개의 `EXT_EVENTS.sd` × 내 종목 민감도, [미리 보기]는 요인 상세를 나쁜 쪽 값으로 열기. 웹 `xfEvents`·`xfToday`·`xfUpcoming`, 앱 `SiteCalc.eventMoves`·`ExternalView.todayCard`, `FactorDetailView(factor:start:)`) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. ·7단계(지난 일 돌아보기 + 다음 날 결과 알림, 앱만: `EventRetro`(Notifier.swift)가 일정 전날·당일 미리 본 ±금액과 평가액을 기기에 적고 다음에 열 때 실제 변화와 비교, 오늘의 이벤트 카드 [다음 날 결과 알림]은 다음 날 오전 9시 로컬 알림 id `xf.*`, 누르면 외부 요인 화면) 완료. 웹 회고·알림은 없음. 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
 | 쉬운 말 ⑦ 설정 (iOS) | 목표 카드에 루트 한 줄, 함께할 인물 한 줄+자동 토글, 앱 아이콘은 고르는 화면으로, 용어 바꿈. PR 머지 대기 |
 | Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |

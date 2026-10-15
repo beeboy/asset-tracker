@@ -2164,19 +2164,67 @@
       else renderForecastView();
     });
   }
+  // ------------------------------------------------------------ 목표일 전망 화면 (앱 ForecastView 와 같은 구성)
+  // 버튼 3개(신중하게·내 설정·지난 3년처럼)는 슬라이더 0%·내 설정·100%로 가는 지름길. 버튼을 골라도 내 설정 값(trust)은 그대로 기억
+  const FC_LENS_KEY = "naeilo-fc-lens", FC_LENS = ["base", "mine", "smooth"];
+  const FC_LAB = { base: "신중하게", mine: "내 설정", smooth: "지난 3년처럼" }, FC_SHORT = { base: "신중", mine: "내 설정", smooth: "3년처럼" };
+  let fcLens = (() => { try { const v = localStorage.getItem(FC_LENS_KEY); return FC_LENS.includes(v) ? v : "mine"; } catch (e) { return "mine"; } })();
+  function setFcLens(l) { fcLens = l; try { localStorage.setItem(FC_LENS_KEY, l); } catch (e) { /* 무시 */ } }
+  const fcSets = () => { const D = fcDisp(); return { base: D.base, mine: D.R, smooth: D.smooth }; };
+  const fcMu = (l) => portMu(l === "mine" ? viewKey() : l);
+  // 3.30억 · 11.5억 · 826만 (앱 ForecastView.amt 와 같은 표기)
+  function fcAmt(v) {
+    if (v == null || !isFinite(v)) return "-";
+    const a = Math.abs(v), s = v < 0 ? "-" : "";
+    if (a >= 1e9) return s + (a / 1e8).toFixed(1) + "억";
+    if (a >= 1e8) return s + (a / 1e8).toFixed(2) + "억";
+    return s + nf(a / 1e4) + "만";
+  }
   function renderLenses() {
-    const L = lastForecast, D = fcDisp(), m = S.state.model, n = L.b.model.eventList.length;
-    const lens = (k, name, sub, mu, R) => `<div class="lens l-${k}"><div class="lh"><b>${name}</b><span class="small muted">연 기대 <b class="${cls(mu)}">${spct(mu, 0)}</b></span></div>
-      <div class="lv">${R ? pct(R.p_goal, 0) : "-"} <small>목표 확률</small></div><p>목표일 중앙값 ${R ? krw(R.terminal.p50) + "원" : "-"}</p><p>${sub}</p></div>`;
-    const No = D.No, R = D.R;
-    const shock = `<div class="lens l-shock"><div class="lh"><b>충격 반영</b><span class="small muted">외부 요인 ${nf(n)}건</span></div>` + (L.hasEv && No
-      ? `<div class="lv">${pct(R.p_goal, 0)} <small>목표 확률</small></div><p>목표일 중앙값 ${krw(R.terminal.p50)}원</p><p>외부 요인이 없으면 ${pct(No.p_goal, 0)} · ${krw(No.terminal.p50)}원</p>`
-      : `<p>켜진 외부 요인 없음.</p>`) + "</div>";
-    $("#lenses").innerHTML = lens("base", "현재 정세", `과거 수익률을 장기 평균(연 ${m.prior_mu}%) 쪽으로`, portMu("base"), D.base) + lens("smooth", "과거 추세", "지난 3년 성장 속도가 이어지면", portMu("smooth"), D.smooth) + shock;
-    const on = m.scenario === "blend";
-    $("#trust").value = String(m.trust); $("#trustVal").textContent = on ? `${m.trust}% · 연 기대 ${spct(portMu(viewKey()), 0)}` : "-";
-    $(".trust").classList.toggle("off", !on);
-    $("#trustNote").textContent = on ? "" : `'${SCEN_SHORT[m.scenario] || m.scenario}' 시나리오 사용 중. 움직이면 내 관점으로.`;
+    const L = lastForecast, m = S.state.model, g = S.state.goal, fs = fcSets(), cashK = cashKrw();
+    if (!fs[fcLens]) fcLens = "mine";
+    const sel = fcLens, f = fs[sel], blend = m.scenario === "blend";
+    const [gy, gm] = String(g.date || "").split("-").map(Number);
+    $("#fcHead").innerHTML = `시장이 어떻게 움직이느냐에 따라<br>${gy && gm ? `${gy}년 ${gm}월` : "목표일에"} 내 자산은 이만큼 달라져요`;
+    $$("#fcLens button").forEach((x) => { x.classList.toggle("on", x.dataset.l === sel); x.setAttribute("aria-pressed", x.dataset.l === sel); });
+    const shown = sel === "base" ? 0 : sel === "smooth" ? 100 : Number(m.trust);
+    $("#trust").value = String(shown); $("#trustVal").textContent = shown + "%";
+    $("#trustNote").textContent = sel === "mine" && !blend ? `지금 내 설정은 '${SCEN_SHORT[m.scenario] || m.scenario}' 시나리오예요 (자세히 보기 › 계산 옵션). 슬라이더를 움직이면 추세 믿음으로 바뀌어요.` : "";
+    const mu = fcMu(sel), muS = `연 ${spct(mu, 0)}`;
+    $("#fcNote").textContent = sel === "base" ? `높았던 수익률이 장기 평균으로 돌아온다고 볼 때 · ${muS}` : sel === "smooth" ? `지난 3년 속도가 그대로 이어진다고 볼 때 · ${muS}`
+      : blend ? `지난 3년 추세를 ${m.trust}% 믿는다고 볼 때 · ${muS}` : `'${SCEN_SHORT[m.scenario] || m.scenario}' 시나리오로 볼 때 · ${muS}`;
+    // 가장 그럴듯한 금액 (전망 경로는 종목만이라 현금을 더해 지금 평가액과 같은 기준으로. 앱과 같다)
+    const ready = !!(f && f.terminal && f.bands);
+    const now = ready ? f.V0 + cashK : 0, med = ready ? f.terminal.p50 + cashK : null, chg = ready && now > 0 ? med / now - 1 : null;
+    $("#fcMed").textContent = ready ? fcAmt(med) + " 원" : "-";
+    $("#fcChg").innerHTML = chg == null ? "" : `<b class="${chg >= 0 ? "good" : "bad"}">지금보다 ${spct(chg, 0)}</b>`;
+    $("#fcRange").textContent = ready ? `10번 중 9번은 ${fcAmt(f.terminal.p5 + cashK)} ~ ${fcAmt(f.terminal.p95 + cashK)} 사이` : "계산 중이에요";
+    // 그래프: 고른 시나리오의 50%·90% 띠와 중앙값, 다른 두 시나리오 중앙값(회색 점선), 목표선 (0부터 선형 축)
+    if (ready) {
+      const add = (a) => a.map((v) => (v == null ? v : v + cashK)), fx = L.b.model.monthDates;
+      const others = FC_LENS.filter((l) => l !== sel && fs[l] && fs[l].bands).map((l) => ({ name: FC_SHORT[l], y: add(fs[l].bands.p50), color: "var(--muted)", width: 1.4, dash: "4 3" }));
+      Charts.lineChart($("#fcMainChart"), {
+        x: fx, height: 230, ymin: 0, yfmt: fcAmt, axisOut: true, legend: false,
+        bands: [{ lo: add(f.bands.p5), hi: add(f.bands.p95), color: "var(--band)", opacity: 0.14, name: "10번 중 9번" }, { lo: add(f.bands.p25), hi: add(f.bands.p75), color: "var(--band)", opacity: 0.3, name: "10번 중 5번" }],
+        series: [...others, { name: FC_SHORT[sel], y: add(f.bands.p50), color: "var(--c1)", width: 2.4 }],
+        hlines: [{ y: g.amount, label: "목표 " + fcAmt(g.amount) }],
+        vlines: [{ x: L.b.model.startDate, label: "지금 " + fcAmt(now) }],
+      });
+    } else $("#fcMainChart").innerHTML = "";
+    $("#fcHot").textContent = mu > 0.3 ? `연 ${spct(mu, 0)}는 흔치 않은 속도예요. 지난 3년이 유난히 좋았다면 실제로는 이보다 낮을 수 있어요.` : "";
+    $("#fcHot").style.display = mu > 0.3 ? "block" : "none";
+    // 세 가지 미래 한눈에
+    const bads = FC_LENS.map((l) => (fs[l] && fs[l].terminal ? fs[l].terminal.p5 + cashK : now)), below = bads.filter((x) => x < now).length;
+    const msg = below === bads.length ? `어느 시나리오든 운이 나쁘면 지금(${fcAmt(now)})보다 줄어들 수 있어요.`
+      : below > 0 ? `신중하게 보면 운이 나쁠 때 지금(${fcAmt(now)})보다 줄어들 수 있어요.` : `운이 나빠도 지금(${fcAmt(now)})보다는 많을 가능성이 커요.`;
+    $("#fcTable").innerHTML = `<h2 style="margin:0 0 6px">세 가지 미래 한눈에</h2><div class="tablewrap"><table class="grid fctable"><tr><th class="l">시나리오</th><th>그럴듯한 값</th><th>나쁘면</th><th>${esc(fcAmt(g.amount))} 넘을 확률</th></tr>` +
+      FC_LENS.map((l) => { const x = fs[l]; if (!x || !x.terminal) return ""; return `<tr data-l="${l}" class="${l === sel ? "on" : ""}" tabindex="0" role="button" aria-pressed="${l === sel}"><td class="l"><b>${FC_LAB[l]}</b><br><span class="muted small">연 ${spct(fcMu(l), 0)}</span></td><td>${fcAmt(x.terminal.p50 + cashK)}</td><td>${fcAmt(x.terminal.p5 + cashK)}</td><td>${pct(x.p_goal, 0)}</td></tr>`; }).join("") +
+      `</table></div><p class="muted small" style="margin:6px 0 0">${ready ? msg : ""}</p>`;
+    // 자세히 보기: 중간에 한 번이라도 목표를 넘을 확률 (고른 시나리오)
+    $("#fcYearsTitle").textContent = `중간에 한 번이라도 ${fcAmt(g.amount)}을 넘을 확률 (${FC_LAB[sel]})`;
+    $("#fcYears").innerHTML = ready && f.byYear ? f.byYear.map((y) => `<div class="probbar" title="${y.date}까지"><span>${y.year}년 안</span><div class="b"><i style="width:${y.p * 100}%"></i></div><span>${pct(y.p, 0)}</span></div>`).join("") || `<p class="muted small">기간이 1년 미만이에요.</p>` : "";
+    renderFcSched();
+    $("#fcFoot").textContent = `예측이 아니라 가능한 범위예요. 지난 3년 움직임을 바탕으로 ${nf(m.n_paths)}가지 경우를 계산했어요.`;
     // 만약에
     const ok = !!(L.sim && L.sim.raw) || !L.sim;
     const { top, cash } = wiTop(), th = L.b.holdings[top], plain = Number(S.state.goal.monthly_contribution) || 0;
@@ -2188,6 +2236,20 @@
     $$("#wiDet input").forEach((x) => (x.disabled = !ok || m.rebalance_yearly));
     $("#wiNote").textContent = m.rebalance_yearly ? "연 1회 재조정 중엔 꺼집니다." : "저장 안 되는 가정. 세금·수수료 제외.";
     $("#wiSum").textContent = L.disp ? `· 적용 중 (월 ${krw(mv)}원${WI.sell ? `, 가장 큰 종목 비중 ${WI.sell}% 줄임` : ""})` : "";
+  }
+  // 전망을 흔들 수 있는 일정: 앞으로 60일 켜 둔 외부 요인 4개 (앱 ScheduleRow 와 같은 모양). 금리 결정·금리 사건 행에만 금리 충격 테스트로 가는 버튼
+  function renderFcSched() {
+    const L = lastForecast, box = $("#fcSchedList"); if (!L || !box) return;
+    const td = today(), lim = Model.addMonths(td, 2), held = new Set(L.b.holdings.map((h) => h.ticker));
+    const rows = L.b.model.eventList.filter((x) => x.date >= td && x.date <= lim)
+      .sort((a, c) => a.date.localeCompare(c.date) || (held.has(c.event.target) - held.has(a.event.target))).slice(0, 4);
+    const dday = (d) => Math.round((new Date(d + "T00:00:00") - new Date(td + "T00:00:00")) / 864e5);
+    const dow = (d) => "일월화수목금토"[new Date(d + "T00:00:00").getDay()];
+    box.innerHTML = `<p class="muted small" style="margin:4px 0 8px">켜 둔 일정은 그날 더 크게 흔들린다고 보고 전망에 이미 넣었어요. 켜고 끄기는 <a href="#" data-ana-to="events">외부 요인</a>에서 해요.</p>` +
+      (rows.length ? rows.map((x) => { const e = x.event, n = dday(x.date), earn = /실적/.test(e.kind);
+        return `<div class="fcsched"><b>${x.date.slice(5).replace("-", ".")} (${dow(x.date)}) ${n === 0 ? "오늘" : "D-" + n}</b><span>${esc(tgtLab(e))} ${esc(earn ? quarterOf(x.date).label + " 실적" : e.kind)}</span></div>` +
+          (e.cat === "rate" || /금리 결정/.test(e.kind) ? `<p class="fcsched-go"><a href="#" data-ana-to="rate">금리가 오르면 내 목표는? 미리 보기</a></p>` : ""); }).join("")
+        : `<p class="muted small">앞으로 60일 안에 켜 둔 일정이 없어요.</p>`);
   }
   let fcSeq = 0;
   async function runForecast() {
@@ -2265,8 +2327,7 @@
       $("#fcViewNote").innerHTML = !hasEv ? `<span class="muted">켜진 외부 요인이 없어 미반영 전망과 같습니다. '외부 요인'에서 켜 주세요.</span>`
         : `<b>${FCV[v]}</b>: 목표 달성 확률 <b>${pct(R.p_goal, 0)}</b>, 목표일 중앙값 <b>${krw(R.terminal.p50)}원</b>, 나쁜 5% ${krw(R.terminal.p5)}원` +
           (v === "none" ? "" : ` <span class="muted">(미반영 ${pct(noEv.p_goal, 0)} · ${krw(noEv.terminal.p50)}원${v === "all" ? "" : `, 반영 사건 ${evs.length}건`})</span>`);
-      $("#fcYearsTitle").textContent = `목표에 한 번이라도 닿을 확률 (${vName})`;
-      $("#fcYears").innerHTML = R.byYear.map((y) => `<div class="probbar" title="${y.date}까지"><span>${y.year}년 안</span><div class="b"><i style="width:${y.p * 100}%"></i></div><span>${pct(y.p, 0)}</span></div>`).join("") || "기간이 1년 미만입니다.";
+      $("#fcTkYears").innerHTML = ""; // 전체의 한 번이라도 닿을 확률은 자세히 보기 맨 위 (고른 시나리오 기준)
       $("#fcEvTitle").textContent = "외부 요인 반영 효과 (전체)";
       $("#fcEvents").innerHTML = !hasEv ? `<p class="muted">켜진 사건이 없습니다. '외부 요인'에서 켜 주세요.</p>`
         : evTable([["목표 달성 확률", pct(noEv.p_goal, 0), pct(Rc.p_goal, 0)], ["목표일 중앙값", krw(noEv.terminal.p50), krw(Rc.terminal.p50)], ["하위 5%", krw(noEv.terminal.p5), krw(Rc.terminal.p5)],
@@ -2291,8 +2352,7 @@
       const T = s1.bands.p50.length - 1, f2 = (x) => nf(x, 2), T6 = Math.min(T, 6);
       $("#fcViewNote").innerHTML = `<b>${esc(tk)} · ${FCV[v]}</b>: 현재 ${f2(h.price0)} ${h.ccy}, 목표일 중앙값 <b>${f2(s1.bands.p50[T])}</b>, 나쁜 경우 5% ${f2(s1.bands.p5[T])}, 좋은 경우 95% ${f2(s1.bands.p95[T])}, 오를 확률 <b>${pct(s1.p_up, 0)}</b>` +
         (hasEv && v !== "none" ? ` <span class="muted">(미반영 중앙값 ${f2(s0.bands.p50[T])} · 오를 확률 ${pct(s0.p_up, 0)}${v === "all" ? "" : `, 반영 사건 ${evs.length}건`})</span>` : "");
-      $("#fcYearsTitle").textContent = `${tk} 연도별 확률 (${vName})`;
-      $("#fcYears").innerHTML = (s1.byYear || []).map((y) => `<div class="probbar"><span>${y.year}년 뒤 (${fx[y.k]}) 현재가 이상</span><div class="b"><i style="width:${y.p_up * 100}%"></i></div><span>${pct(y.p_up, 0)}</span></div>`).join("") +
+      $("#fcTkYears").innerHTML = `<h2 style="margin-top:10px">${esc(tk)} 연도별 확률 (${vName})</h2>` + (s1.byYear || []).map((y) => `<div class="probbar"><span>${y.year}년 뒤 (${fx[y.k]}) 현재가 이상</span><div class="b"><i style="width:${y.p_up * 100}%"></i></div><span>${pct(y.p_up, 0)}</span></div>`).join("") +
         `<p class="muted small">그 시점 가격이 오늘(${f2(h.price0)} ${h.ccy})보다 높을 확률. 2배 이상: ${(s1.byYear || []).map((y) => `${y.year}년 ${pct(y.p_x2, 0)}`).join(" · ")}. 포트폴리오 목표 확률은 '전체'에서 봄.</p>`;
       $("#fcEvTitle").textContent = `외부 요인 반영 효과 (${tk})`;
       $("#fcEvents").innerHTML = !hasEv ? `<p class="muted">켜진 사건이 없습니다. '외부 요인'에서 켜 주세요.</p>`
@@ -3539,6 +3599,8 @@
     $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.tab === "analysis" && onTab("analysis")) { openAna(""); return; } showTab(b.dataset.tab); }); // 분석에서 분석을 다시 누르면 목록으로
     $("#anaHub").addEventListener("click", (e) => { const b = e.target.closest("[data-ana]"); if (b) { openAna(b.dataset.ana); window.scrollTo({ top: 0 }); } });
     document.addEventListener("click", (e) => { if (e.target.closest("[data-ana-back]")) { openAna(""); window.scrollTo({ top: 0 }); } });
+    // 화면 안 링크로 다른 분석 화면 열기 (목표일 전망 → 내 길·외부 요인·금리 충격 테스트)
+    document.addEventListener("click", (e) => { const t = e.target.closest("[data-ana-to]"); if (!t) return; e.preventDefault(); openAna(t.dataset.anaTo); window.scrollTo({ top: 0 }); });
     document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "stocks" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); if (g.dataset.add) setTimeout(() => $("#addTicker")?.focus({ preventScroll: true }), 300); } });
     $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     $("#btnCollect").onclick = () => collect(false);
@@ -3622,8 +3684,18 @@
     };
     $("#fcOpt").addEventListener("click", (e) => { const b = e.target.closest("button[data-s]"); if (!b || b.disabled) return; S.state.model.scenario = b.dataset.s; save(false); viewChanged(true); }); // 누르면 아래 공통 설정으로 다시 계산
     const optDirty = () => { const st = $("#fcStatus"); if (lastForecast && !/다시 계산/.test(st.textContent)) st.textContent += " · 설정이 바뀜, 시나리오를 눌러 다시 계산"; };
-    $("#trust").oninput = (e) => { S.state.model.trust = +e.target.value; S.state.model.scenario = "blend"; $("#trustVal").textContent = e.target.value + "%"; viewChanged(false); };
-    $("#trust").onchange = () => { save(false); viewChanged(true); };
+    // 슬라이더 끝(0%·100%)은 신중하게·지난 3년처럼 버튼과 같다. 그 사이 값만 내 설정(trust)으로 기억 (앱과 같다)
+    $("#trust").oninput = (e) => {
+      const v = +e.target.value; $("#trustVal").textContent = v + "%";
+      if (v <= 0 || v >= 100) { setFcLens(v <= 0 ? "base" : "smooth"); if (lastForecast) renderLenses(); return; }
+      setFcLens("mine"); $$("#fcLens button").forEach((x) => x.classList.toggle("on", x.dataset.l === "mine"));
+      S.state.model.trust = v; S.state.model.scenario = "blend"; viewChanged(false);
+    };
+    $("#trust").onchange = (e) => { const v = +e.target.value; if (v <= 0 || v >= 100) return; save(false); viewChanged(true); };
+    const pickLens = (l) => { if (!FC_LENS.includes(l)) return; setFcLens(l); if (lastForecast) renderLenses(); };
+    $("#fcLens").addEventListener("click", (e) => { const b = e.target.closest("button[data-l]"); if (b) pickLens(b.dataset.l); });
+    $("#fcTable").addEventListener("click", (e) => { const r = e.target.closest("tr[data-l]"); if (r) pickLens(r.dataset.l); });
+    $("#fcTable").addEventListener("keydown", (e) => { const r = e.target.closest("tr[data-l]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); pickLens(r.dataset.l); } });
     $("#wiMonthly").oninput = (e) => { WI.monthly = +e.target.value * 1e4; viewChanged(false); };
     $("#wiSell").oninput = (e) => { WI.sell = +e.target.value; viewChanged(false); };
     $("#wiMonthly").onchange = $("#wiSell").onchange = () => viewChanged(true);
