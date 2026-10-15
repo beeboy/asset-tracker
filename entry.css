@@ -39,7 +39,7 @@ img.px, .wspr, .bye img { image-rendering: pixelated; }
 .home-screen { background: radial-gradient(120% 70% at 20% 10%, #4a5d8a 0%, transparent 60%), radial-gradient(90% 60% at 90% 90%, #a8646e 0%, transparent 60%), linear-gradient(160deg, #263452, #5b4a68 55%, #8a5b5e); padding: 0 18px; }
 .sbar { display: flex; justify-content: space-between; align-items: center; height: 46px; padding: 0 14px 0 18px; font-size: 0.875rem; font-weight: 600; color: #fff; }
 .sbar.dark { color: #15202b; }
-.sb-ic { width: 46px; height: 11px; border-radius: 3px; background: linear-gradient(90deg, currentColor 0 18px, transparent 18px 24px, currentColor 24px); opacity: 0.85; }
+.sb-ic { width: 66px; height: 12px; }  /* 셀룰러·와이파이·배터리 */
 .wrow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
 .wcell { min-width: 0; }
 
