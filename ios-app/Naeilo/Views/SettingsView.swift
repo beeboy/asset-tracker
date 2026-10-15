@@ -15,12 +15,13 @@ struct SettingsView: View {
         let refRows: [(String, String, SettingsRoute)] = [
             ("가격 기준", "미국 종목·환율은 지금 가격 · 한국 종목은 넣은 가격", .price),
             ("세금", "한국 거주자 기준으로 계산해요", .tax),
-            ("토스증권 시세", TossKeys.on ? "내 토스 키로 받는 중" : "내 토스 Open API 키로 지금 가격 받기", .toss),
         ]
-        // 기기 동기화는 웹이 입구로 줄어 숨긴다. 이미 켠 사람만 끌 수 있게 보인다 (코드는 남김)
-        let helpRows: [(String, String, SettingsRoute)] = [("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto)]
-            + (m.syncOn ? [("기기 동기화", "켜짐 · 같은 비밀번호의 기기와 같은 값", .sync)] : [])
-            + [("개발자에게 커피 한 잔", Support.shared.tier == .free ? "구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support)]
+        // 기기 동기화(웹과 앱) 자리를 내 토스 키 입력으로 바꿨다 (동기화 코드는 남김)
+        let helpRows: [(String, String, SettingsRoute)] = [
+            ("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto),
+            ("내 토스 키", TossKeys.on ? "내 토스 키로 시세 받는 중" : "내 토스증권 Open API 키 연결하기", .toss),
+            ("개발자에게 커피 한 잔", Support.shared.tier == .free ? "구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
+        ]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "설정").padding(.horizontal, -16)
@@ -202,14 +203,8 @@ struct TossKeyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("토스증권 시세").appFont(22, .bold)
-                Text("토스증권에서 받은 내 Open API 키를 넣으면 국내·미국 종목 지금 가격을 토스에서 받아요. 키가 없거나 못 받으면 지금처럼 기본 시세를 써요.")
-                    .appFont(14).foregroundStyle(Theme.sub).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                Text("내 토스 키").appFont(22, .bold)
                 if on { onCard } else { steps }
-                Text("키는 이 폰 키체인에만 저장해요. naeilo 중계 서버는 키를 저장하지 않고 토스에 넘기기만 하며, 시세 조회 말고는 아무것도 하지 않아요 (주문·계좌 조회 없음).")
-                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
-                Text("토스는 키 하나에 토큰을 하나만 둬요. 같은 키를 다른 프로그램에서도 쓰면 서로 끊길 수 있으니 naeilo용 키를 따로 받는 게 좋아요.")
-                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
             .padding(16)
         }
@@ -235,14 +230,11 @@ struct TossKeyView: View {
 
     private var steps: some View {
         Card {
-            Text("1. 토스증권 PC 웹에서 키 받기").appFont(15, .bold)
-            Text("PC에서 토스증권 웹에 로그인 → 설정 → Open API에서 client_id와 client_secret을 받아요. 휴대폰 앱에는 이 메뉴가 없어요.")
-                .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-            Text("2. 허용 IP에 naeilo 중계 IP 넣기").appFont(15, .bold).padding(.top, 6)
-            Text("같은 화면 아래 '허용 IP 관리'에 이 IP를 넣어요. 토스는 등록한 IP에서 온 요청만 받아요.")
-                .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            // 안내는 세 줄만 (토스 키 발급 절차는 설명하지 않는다)
+            Text("1. 내 토스증권 Open API 키를 연결하면 시세를 받을 수 있어요.").appFont(15, .bold).fixedSize(horizontal: false, vertical: true)
+            Text("2. 토스 허용 IP에 이 중계 IP를 넣어 주세요.").appFont(15, .bold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
             if let ip { ipRow(ip) } else { Text("중계 IP를 불러오는 중이에요…").appFont(13).foregroundStyle(Theme.muted) }
-            Text("3. 키 넣기").appFont(15, .bold).padding(.top, 6)
+            Text("3. client_id·client_secret을 넣고 연결하기를 눌러 주세요.").appFont(15, .bold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
             field("client_id", $id, secure: false)
             field("client_secret", $secret, secure: true)
             let ok = !id.trimmingCharacters(in: .whitespaces).isEmpty && !secret.trimmingCharacters(in: .whitespaces).isEmpty
