@@ -31,8 +31,8 @@
 <meta name="twitter:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 목표일 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/web/","description":"내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 목표일 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
-<script src="theme.js?v=20261015e"></script>
-<link rel="stylesheet" href="style.css?v=20261015e">
+<script src="theme.js?v=20261015f"></script>
+<link rel="stylesheet" href="style.css?v=20261015f">
 <script>(function(u,c){if(/Edg\//.test(u))c.add("edg");else if(/Chrome\//.test(u)&&!/OPR\//.test(u))c.add("chr");else if(/Safari\//.test(u)&&!/Chrome|Chromium|CriOS|FxiOS|Android/.test(u))c.add("saf");})(navigator.userAgent,document.documentElement.classList);</script>
 <script>if (navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("standalone");</script>
 </head>
@@ -323,23 +323,63 @@
     <div class="anapage" id="sec-fx" data-ana="fx" hidden>
       <div class="anaback row"><button type="button" class="sm" data-ana-back>‹ 분석</button><h2 style="margin:0">환율 영향</h2></div>
       <div class="ana" id="ana-fx">
-      <div class="kpis" id="fxKpis"></div>
+      <div class="card fxsum" id="fxSum"></div>
       <div class="card">
+        <div class="row between" style="align-items:baseline"><div><span class="small muted">지금 원/달러 환율</span><div class="fxnow" id="fxNowV">-</div></div><span class="small muted" id="fxDay"></span></div>
+        <div id="fxMainChart" class="chartbox"></div>
+        <div class="small muted fxleg" id="fxLeg"></div>
+        <div class="row seg fclens" id="fxPer"><button type="button" data-p="22">1개월</button><button type="button" data-p="64">3개월</button><button type="button" data-p="253" class="on">1년</button><button type="button" data-p="780">3년</button></div>
+      </div>
+      <div class="card" id="fxWhat" style="display:none">
+        <h2 style="margin:0">환율이 바뀌면 내 자산은?</h2><p class="small muted" style="margin:2px 0 8px">주가는 그대로라고 가정해요</p>
+        <div class="fxres"><span class="small muted" id="fxWhatLab"></span><b id="fxWhatV"></b><span class="small" id="fxWhatD"></span></div>
+        <input type="range" id="fxWhatR" step="1" aria-label="환율">
+        <div class="row fxpre" id="fxPre"><button type="button" data-v="1250">1,250</button><button type="button" data-v="1300">1,300</button><button type="button" data-v="0">지금</button><button type="button" data-v="1450">1,450</button><button type="button" data-v="1500">1,500</button></div>
+        <hr><div class="small" id="fxGoalLab"></div><div class="fxbar"><i id="fxGoalBar"></i></div>
+      </div>
+      <details class="card" id="fxMore"><summary><b>자세히 보기</b> <span class="muted small">오간 범위 · 출렁임 · 목표일 값 · 옛 화면</span></summary>
+        <div class="kpis" id="fxKpi4" style="margin-top:10px"></div>
+        <p class="muted small">예상 범위는 지난 환율의 흐름과 출렁임으로 계산한 값이라 실제와 다를 수 있어요.</p>
+        <details class="opt"><summary>숫자 더 보기 · 추세 그래프 · 바뀌는 만큼 표</summary>
+        <div class="kpis" id="fxKpis" style="margin-top:8px"></div>
         <div class="row between wrap"><h2>원/달러 환율 전망</h2><div class="row seg wrap" id="fxRange"><button data-r="5">1주</button><button data-r="22">1달</button><button data-r="66">3달</button><button data-r="252">1년</button><button data-r="780" class="on">3년</button></div></div>
         <div id="fxChart" class="chartbox"></div>
         <p class="muted small">파란 선은 잔물결을 걸러 낸 추세, 점선은 최근 평균, 띠는 목표일까지 범위.</p>
-      </div>
-      <div class="card"><h2>환율이 바뀌면 내 평가액은</h2><div class="tablewrap"><table id="fxSens" class="grid"></table></div><p class="muted small">주가는 그대로, 환율만 바뀐다고 본 값.</p></div>
+        <h2>환율이 바뀌면 내 평가액은</h2><div class="tablewrap"><table id="fxSens" class="grid"></table></div><p class="muted small">주가는 그대로, 환율만 바뀐다고 본 값.</p>
+        </details>
+      </details>
       </div>
     </div>
     <div class="anapage" id="sec-cash" data-ana="cash" hidden>
       <div class="anaback row"><button type="button" class="sm" data-ana-back>‹ 분석</button><h2 style="margin:0">배당·세금</h2></div>
       <div class="ana" id="ana-cash">
-      <div class="kpis" id="divKpis"></div>
-      <div class="card"><div class="row between wrap"><h2 style="margin:0" id="divTitle">앞으로 3년 예상 배당·이자 (세후, 원화)</h2><div class="row seg" id="divSpan"><button data-y="1">1년</button><button data-y="3" class="on">3년</button></div></div><div id="divChart" class="chartbox"></div><div class="tablewrap"><table id="divTable" class="grid"></table></div>
-        <p class="muted small">지난 12개월 지급이 반복되고 배당 증가율만큼 늘어난다고 본 값. 원천징수 15% 제외.</p></div>
-      <div class="card"><h2>양도소득세 (해외주식)</h2><div id="taxGoal"></div><div id="taxBox"></div><h3 style="margin:12px 0 4px">연도별 세금 예시</h3><div class="tablewrap"><table id="taxYears" class="grid"></table></div>
-        <p class="muted small">연간 이익에서 250만원 공제 후 22%, 이듬해 5월 신고. 같은 해 손실과 상계.</p></div>
+      <div class="row seg fclens" id="cashTab"><button type="button" data-t="div" class="on">받는 배당</button><button type="button" data-t="tax">낼 양도세</button></div>
+      <div id="cashDiv">
+        <div class="card" id="divHead"></div>
+        <div class="card" id="divView"><div class="row seg fclens" id="divMode"><button type="button" data-m="month" class="on">달별로 보기</button><button type="button" data-m="stock">종목별로 보기</button></div><div id="divBody"></div></div>
+        <p class="help small" id="divNone" style="display:none;padding:8px 12px"></p>
+        <div class="card" id="divReceipt"></div>
+        <div class="card" id="divLimit"></div>
+        <details class="opt howcalc"><summary>이 숫자는 어떻게 계산했나요?</summary><p class="muted small">지난 12개월 동안 받은 배당이 앞으로도 같은 달에 들어오고, 지난 3년 동안 늘어난 속도만큼 조금씩 늘어난다고 보고 계산했어요. 실제 배당은 회사 결정에 따라 달라질 수 있어요. 세무 상담이 아니에요.</p></details>
+        <details class="card" id="divMore"><summary><b>자세히 보기</b> <span class="muted small">3년 합계 · 종목별 표</span></summary>
+          <div class="kpis" id="divKpis" style="margin-top:10px"></div>
+          <div class="row between wrap"><h2 style="margin:0" id="divTitle">앞으로 3년 예상 배당·이자 (세후, 원화)</h2><div class="row seg" id="divSpan"><button data-y="1">1년</button><button data-y="3" class="on">3년</button></div></div><div id="divChart" class="chartbox"></div><div class="tablewrap"><table id="divTable" class="grid"></table></div>
+          <p class="muted small">지난 12개월 지급이 반복되고 배당 증가율만큼 늘어난다고 본 값. 원천징수 15% 제외.</p>
+        </details>
+      </div>
+      <div id="cashTax" hidden>
+        <div class="card" id="taxHead"></div>
+        <div class="card" id="taxMoreSell"></div>
+        <div class="card"><h2 style="margin:0 0 6px">알아두면 좋은 것</h2>
+          <p class="tip"><i>1</i>손실은 같은 해에 판 이익에서 빠져요. 그해 세금 붙는 이익이 그만큼 줄어요.</p>
+          <p class="tip"><i>2</i>250만원 공제는 해마다 새로 생겨요. 쓰지 않은 몫은 다음 해로 넘어가지 않아요.</p>
+          <p class="muted small" style="margin:0">매매 권유가 아니에요.</p></div>
+        <details class="opt howcalc"><summary>이 숫자는 어떻게 계산했나요?</summary><p class="muted small">올해 판 이익은 거래 기록(수량을 줄인 날의 가격 − 매수 단가)으로 센 값이에요. 안 판 이익은 (지금 가격 − 매수 단가) × 수량을 오늘 환율로 원화로 바꿨어요.</p><p class="muted small">국내 상장 주식은 대주주가 아니면 팔 때 양도세가 없어요(거래세만 내요).</p><p class="muted small">세무 상담이 아니에요.</p></details>
+        <details class="card" id="taxMore"><summary><b>자세히 보기</b> <span class="muted small">세후 목표 확률 · 종목별 이익 · 연도별 예시</span></summary>
+          <div id="taxGoal" style="margin-top:10px"></div><div id="taxBox"></div><h3 style="margin:12px 0 4px">연도별 세금 예시</h3><div class="tablewrap"><table id="taxYears" class="grid"></table></div>
+          <p class="muted small">연간 이익에서 250만원 공제 후 22%, 이듬해 5월 신고. 같은 해 손실과 상계.</p>
+        </details>
+      </div>
     </div>
     </div>
   </section>
@@ -411,11 +451,11 @@
     시세 Yahoo Finance (지연될 수 있음) · 환율 서울외국환중개 매매기준율 · <a href="#" data-go="blog">미래 설계 naeilo</a> · <a href="privacy.html">개인정보 처리방침</a> · <a href="guide.html">사용법</a></footer>
 </main>
 <p class="slogan">See Tomorrow, Today.</p>
-<script src="charts.js?v=20261015e"></script>
-<script src="model.js?v=20261015e"></script>
-<script src="research.js?v=20261015e"></script>
-<script src="sharecard.js?v=20261015e"></script>
-<script src="stocks.js?v=20261015e"></script>
-<script src="app.js?v=20261015e"></script>
+<script src="charts.js?v=20261015f"></script>
+<script src="model.js?v=20261015f"></script>
+<script src="research.js?v=20261015f"></script>
+<script src="sharecard.js?v=20261015f"></script>
+<script src="stocks.js?v=20261015f"></script>
+<script src="app.js?v=20261015f"></script>
 </body>
 </html>
