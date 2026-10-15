@@ -79,6 +79,18 @@
     finally { btn.disabled = false; }
   }
 
+
+  // ------------------------------------------------------------ 맨 위 두 인물의 한마디: 앱 위젯의 내린 날 대사(lines_ko.json widget.down)에서 골라, 열 때마다 하나씩
+  const SAYS = {
+    sua: ["조용히 볼게요. 내린 날이에요.", "내린 날이에요. 천천히 봐요.", "순서대로요. 내린 날이에요.", "여기 있어요. 내린 날이에요.", "내린 날이에요. 한 박자 쉬어요.",
+      "조용히 볼게요. 내린 날이에요. 기록해 둘게요.", "왔어요. 내린 날이에요. 제때 오는 게 느껴져요.", "제때 오셨어요. 내린 날이에요. 천천히 봐요.", "내린 날이에요. 기록해 둘게요."],
+    sio: ["−0.8. 급할 거 없어.", "음. −0.8. 됐어.", "봤어. −0.8. 셌어.", "짧게. −0.8. 내일도 셀게.", "하나. −0.8. 급할 거 없어.",
+      "그래. −0.8. 그거면 돼.", "오늘도. −0.8. 세어 둘게.", "왔네. −0.8. 셌어.", "−0.8. 셌어. 됐어."],
+  };
+  [["#saySua", SAYS.sua, "수아"], ["#saySio", SAYS.sio, "시오"]].forEach(([sel, l, who]) => {
+    const el = $(sel); if (el) el.innerHTML = `${l[Math.floor(Math.random() * l.length)]}<b>${who}</b>`;
+  });
+
   // ------------------------------------------------------------ 시작
   document.querySelectorAll(".phone img").forEach((img) => img.addEventListener("error", () => img.classList.add("miss")));
   $("#fcMonths").addEventListener("input", draw);

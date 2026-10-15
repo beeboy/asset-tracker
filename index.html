@@ -26,7 +26,7 @@
 <meta name="twitter:description" content="수량만 넣으면, 내 자산의 내일이 보여요. 평가액, 본전·목표까지의 길과 확률을 보여 주는 아이폰 앱.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"MobileApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/","description":"보유 주식 수량만 넣으면 원화 평가액, 본전·목표까지의 길, 그 길에 닿을 확률을 보여 주는 자산 관찰 앱. 종목 추천·투자 자문이 아닙니다.","applicationCategory":"FinanceApplication","operatingSystem":"iOS","inLanguage":"ko"}</script>
-<link rel="stylesheet" href="entry.css?v=20261015b">
+<link rel="stylesheet" href="entry.css?v=20261015c">
 </head>
 <body>
 <header class="top wrap">
@@ -42,6 +42,8 @@
       <p class="lead">보유 수량만 넣으면 내 자산이 홈 화면에 들어와요.<br>지나온 추이와 앞으로 2~3년의 길도 함께.</p>
       <div class="cta"><a class="btn" href="#get">출시 알림 받기</a><a class="btn ghost" href="#try">직접 해보기</a></div>
     </div>
+    <div class="stage">
+    <figure class="pal sua"><p class="say" id="saySua">조용히 볼게요. 내린 날이에요.<b>수아</b></p><img src="img/char/w_sua.png" alt="수아"></figure>
     <div class="home" role="img" aria-label="아이폰 홈 화면에 수아의 자산 추이 위젯과 시오의 본전 진행 위젯이 있어요. 금액은 가려져 있어요.">
       <div class="home-screen">
         <div class="sbar"><span>9:41</span><span class="sb-ic"></span></div>
@@ -54,7 +56,6 @@
               <svg class="wspark" viewBox="0 0 80 30" aria-hidden="true"><polyline points="3,8 11,6 19,10 27,9 35,13 43,11 51,15 59,14 67,19 75,24" /><g><circle cx="3" cy="8" r="2"/><circle cx="11" cy="6" r="2"/><circle cx="19" cy="10" r="2"/><circle cx="27" cy="9" r="2"/><circle cx="35" cy="13" r="2"/><circle cx="43" cy="11" r="2"/><circle cx="51" cy="15" r="2"/><circle cx="59" cy="14" r="2"/><circle cx="67" cy="19" r="2"/><circle cx="75" cy="24" r="2" class="last"/></g></svg>
               <img class="wspr" src="img/char/w_sua.png" alt="">
             </div>
-            <p class="say">조용히 볼게요. 내린 날이에요.<b>수아</b></p>
           </div>
           <div class="wcell">
             <div class="widget w-sio">
@@ -64,12 +65,13 @@
               <div class="wsub">남은 ••••<br>어제 <span class="dn">−0.8%p</span></div>
               <img class="wspr raise" src="img/char/w_sio_raise.png" alt="">
             </div>
-            <p class="say">−0.8. 급할 거 없어.<b>시오</b></p>
           </div>
         </div>
         <div class="icons" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <div class="dock" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       </div>
+    </div>
+    <figure class="pal sio"><p class="say" id="saySio">−0.8. 급할 거 없어.<b>시오</b></p><img src="img/char/w_sio.png" alt="시오"></figure>
     </div>
   </section>
 
@@ -78,9 +80,9 @@
     <h2>앱을 열면, 인물이 먼저 말을 걸어요</h2>
     <p class="muted">세리·시오·선배·이르·수아. 다섯 사람이 오늘 숫자를 각자 말투로 전해 줘요. 사라·팔라는 말은 하지 않아요.</p>
     <div class="rail">
-      <figure><div class="phone"><img src="img/app-home.png" alt="naeilo 앱 홈 화면. 세리가 오늘 숫자를 말해 줘요" loading="lazy"></div><figcaption>홈: 오늘 숫자와 인물의 한마디</figcaption></figure>
-      <figure><div class="phone"><img src="img/app-people.png" alt="쉼터 화면. 만난 인물과 아직 못 만난 인물" loading="lazy"></div><figcaption>쉼터: 꾸준히 쓰면 한 명씩 만나요</figcaption></figure>
-      <figure><div class="phone"><img src="img/app-mission.png" alt="미션 화면" loading="lazy"></div><figcaption>미션: 1000칸을 매일 한 칸씩</figcaption></figure>
+      <figure><div class="phone"><img src="img/app-home.png?v=2" alt="naeilo 앱 홈 화면. 수아가 오늘 숫자를 말해 줘요" loading="lazy"></div><figcaption>홈: 오늘 숫자와 인물의 한마디</figcaption></figure>
+      <figure><div class="phone"><img src="img/app-people.png?v=2" alt="쉼터 화면. 다섯 친구를 모두 만났어요" loading="lazy"></div><figcaption>쉼터: 꾸준히 쓰면 한 명씩 만나요</figcaption></figure>
+      <figure><div class="phone"><img src="img/app-mission.png?v=2" alt="미션 화면" loading="lazy"></div><figcaption>미션: 1000칸을 매일 한 칸씩</figcaption></figure>
     </div>
     <p class="note">화면 속 금액은 샘플 자료(가상 종목 DRNK·QQQ)예요.</p>
   </section>
@@ -143,6 +145,6 @@
   <span>© naeilo</span>
 </footer>
 
-<script src="entry.js?v=20261015b"></script>
+<script src="entry.js?v=20261015c"></script>
 </body>
 </html>
