@@ -11,7 +11,7 @@
 | `server.py` | 로컬 서버(`/api/*`) + Yahoo 시세 수집(`--collect`) + 매매기준율(`data/mar.json`) |
 | `macro.py` | Shiller 데이터 → `data/macro/` |
 | `proxy/` | Cloudflare 워커 `asset-ai` (`cloudflare-worker.js`, `wrangler.toml`), 토스 공용 중계 `toss_relay.py`(고정 IP 서버, `docs/toss-relay.md`) |
-| `tools/` | CI 도구: `site_stats.mjs`→stats.json, `site_calc.mjs`/`check_calc.mjs`→calc.json, `mc_parity.mjs`, `calc_parity.mjs`, `sample_snapshot.mjs`, `drnk_prices.py`, `gen_stock_catalog.py` |
+| `tools/` | CI 도구: `site_stats.mjs`→stats.json, `site_calc.mjs`/`check_calc.mjs`→calc.json, `mc_parity.mjs`, `calc_parity.mjs`, `sample_snapshot.mjs`, `drnk_prices.py`, `gen_stock_catalog.py`, `sample_market.py`(키 등록 전 가상 시장 샘플 → `data/sample/`) |
 | `data/` | 사이트가 읽는 데이터 (시세·환율·통계·설정). 수집 봇이 커밋 |
 | `research/` | 오프라인 Node 연구 스크립트 (앙상블 전망) |
 | `ios-app/Naeilo/` | iOS 앱. `Data/` 모델·계산·동기화, `Views/` 화면, `Resources/` 대사·이야기 |
@@ -55,7 +55,7 @@
 - 바뀐 것은 머지를 기다리지 않고 바로 웹·앱에서 볼 수 있게 띄워 준다. 웹 미리보기: `web/`만 바꿨으면 `server.py`, 루트(`index.html`·`entry.*`·`img/`)를 바꿨으면 저장소 루트에서 `python3 -m http.server PORT` (앱은 `/web/`). 다른 세션과 겹치지 않게 PR 브랜치는 따로 worktree로 꺼낸다.
 - 시킨 작업은 묻지 않고 커밋·push·draft PR까지 하고, CI가 초록이면 바로 머지한다 (쌓인 PR은 아래부터).
 - 빌드·테스트 출력은 실패 부분만 보이게 줄인다 (예: `2>&1 | grep -E "error|FAIL" | head -50`, `tail -40`).
-- 읽지 말 것: `data/prices/`, `data/quotes.json`, `data/stats.json`, `data/calc.json`, `data/sample_calc.json`, `data/beyora.json`, `data/app_news.json`, `data/macro/`, `web/stocks.js`, `ios-app/Naeilo/Resources/*.json`, `*.xcassets`, `*.png`, `*.pbxproj` 전체 읽기(필요한 줄만 grep), `node_modules/`, `build/`, `DerivedData/`, `Pods/`.
+- 읽지 말 것: `data/prices/`, `data/sample/prices/`, `data/quotes.json`, `data/stats.json`, `data/calc.json`, `data/sample_calc.json`, `data/beyora.json`, `data/app_news.json`, `data/macro/`, `web/stocks.js`, `ios-app/Naeilo/Resources/*.json`, `*.xcassets`, `*.png`, `*.pbxproj` 전체 읽기(필요한 줄만 grep), `node_modules/`, `build/`, `DerivedData/`, `Pods/`.
 - `web/app.js`(약 3,500줄)는 통째로 읽지 말고 함수 이름으로 grep한다.
 - 작업이 끝나면 `docs/HANDOFF.md`의 상태(완성·진행 중·버그·다음 순서)를 갱신한다.
 - 결정이 생기면 `docs/decisions.md`에 날짜·이유와 함께 한 줄 추가한다.
