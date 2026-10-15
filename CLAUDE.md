@@ -51,7 +51,7 @@
 - 사용자에게 주는 링크는 코드 블록에 넣지 않고 누르면 바로 열리는 링크로 쓴다. `naeilo://`처럼 채팅에서 안 눌리는 앱 링크는 누를 수 있는 https 주소로 감싸서 준다.
 - 코드를 고친 답에는 커밋 해시·push한 브랜치·PR 링크·머지 여부를 한 줄로 꼭 적는다 (예: "커밋 abc1234 push 완료 (브랜치 X), PR #N CI 대기").
 - 빌드·테스트 출력은 실패 부분만 보이게 줄인다 (예: `2>&1 | grep -E "error|FAIL" | head -50`, `tail -40`).
-- 읽지 말 것: `data/prices/`, `data/quotes.json`, `data/stats.json`, `data/calc.json`, `data/sample_calc.json`, `data/beyora.json`, `data/app_news.json`, `data/macro/`, `web/stocks.js`, `ios-app/Naeilo/Resources/*.json`, `*.xcassets`, `*.png`, `*.pbxproj` 전체 읽기(필요한 줄만 grep), `node_modules/`, `build/`, `DerivedData/`, `Pods/`.
+- 읽지 말 것: `data/prices/`, `data/quotes.json`, `data/stats.json`, `data/calc.json`, `data/sample_calc.json`, `data/blog.json`, `data/app_news.json`, `data/macro/`, `web/stocks.js`, `ios-app/Naeilo/Resources/*.json`, `*.xcassets`, `*.png`, `*.pbxproj` 전체 읽기(필요한 줄만 grep), `node_modules/`, `build/`, `DerivedData/`, `Pods/`.
 - `web/app.js`(약 3,500줄)는 통째로 읽지 말고 함수 이름으로 grep한다.
 - 작업이 끝나면 `docs/HANDOFF.md`의 상태(완성·진행 중·버그·다음 순서)를 갱신한다.
 - 결정이 생기면 `docs/decisions.md`에 날짜·이유와 함께 한 줄 추가한다.

@@ -485,8 +485,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(all_data())
         if self.path.startswith("/api/macro"):  # 금리→이익 관계 (macro.py 가 매달 만든다)
             return self.send_json(read_json(DATA / "macro" / "rates_earnings.json", {}))
-        if self.path.startswith("/api/beyora"):
-            return self.send_json(read_json(DATA / "beyora.json", {"cats": [], "posts": []}))
+        if self.path.startswith("/api/blog"):
+            return self.send_json(read_json(DATA / "blog.json", {"cats": [], "posts": []}))
         if self.path.startswith("/api/toss/prices"):  # 토스증권 국내·미국 시세 (키 있는 개발자 PC 만)
             o = self.headers.get("Origin") or ""
             self.cors = o if toss_origin_ok(o) else None
@@ -520,9 +520,9 @@ class Handler(SimpleHTTPRequestHandler):
                 with LOCK:
                     return self.send_json(collect(b.get("symbols", []), float(b.get("years", 3)),
                                                   bool(b.get("quotes_only"))))
-            if self.path == "/api/beyora":
+            if self.path == "/api/blog":
                 with LOCK:
-                    write_json(DATA / "beyora.json", {"cats": b.get("cats") or [], "posts": b.get("posts") or []})
+                    write_json(DATA / "blog.json", {"cats": b.get("cats") or [], "posts": b.get("posts") or []})
                 return self.send_json({"ok": True})
             if self.path == "/api/delete_prices":
                 with LOCK:

@@ -2553,7 +2553,7 @@
   const INS_SKIP = new Set(["QQQ", "SPY", "SGOV", "BIL", "SHV", "TLT", "DBC", "^TNX", "CL=F", "GC=F"]);
 
   // ------------------------------------------------------------ 미래 설계 Beyora (블로그)
-  // 글은 저장소의 data/beyora.json 에 둔다. 누구나 읽고, 개발자 토큰이 있는 브라우저(또는 내 PC 프로그램)만 쓴다.
+  // 글은 저장소의 data/blog.json 에 둔다. 누구나 읽고, 개발자 토큰이 있는 브라우저(또는 내 PC 프로그램)만 쓴다.
   // 이 브라우저의 "beyora-blog" 에는 아직 저장소에 못 올린 글만 남고, 올리고 나면 비운다.
   const BV_KEY = "beyora-blog", BV_VIEWS = "beyora-views", BV_SORT = "beyora-sort";
   const BV_BASE = [["past", "과거"], ["now", "현재"], ["future", "미래"]];
@@ -2655,26 +2655,26 @@
     flush();
     return out.join("").replace(/<a href=/g, '<a class="bvlink" href=');
   }
-  // 저장소에서 읽기: 토큰이 있으면 GitHub API(바로 최신), 없으면 Pages 의 ../data/beyora.json
+  // 저장소에서 읽기: 토큰이 있으면 GitHub API(바로 최신), 없으면 Pages 의 ../data/blog.json
   async function bvFetch(needSha) {
-    if (MODE === "local") return { data: await api("/api/beyora") };
+    if (MODE === "local") return { data: await api("/api/blog") };
     if (GH && ghToken()) {
       try {
-        const j = await ghApi("contents/data/beyora.json?ref=main", { need: "Contents" });
-        if (j.encoding !== "base64") return { data: await ghApi("contents/data/beyora.json?ref=main", { raw: true, need: "Contents" }), sha: j.sha };
+        const j = await ghApi("contents/data/blog.json?ref=main", { need: "Contents" });
+        if (j.encoding !== "base64") return { data: await ghApi("contents/data/blog.json?ref=main", { raw: true, need: "Contents" }), sha: j.sha };
         const bin = atob(String(j.content || "").replace(/\s/g, ""));
         return { data: JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))) || "{}"), sha: j.sha };
       } catch (e) { if (e.status === 404) return { data: {}, sha: null }; if (needSha) throw e; }
     }
     if (needSha || !GH && MODE === "static") return { data: {} };
-    const r = await fetch("../data/beyora.json?t=" + Date.now(), { cache: "no-store" });
+    const r = await fetch("../data/blog.json?t=" + Date.now(), { cache: "no-store" });
     return { data: r.ok ? await r.json() : {} };
   }
   async function bvPut(D, sha, msg) {
-    if (MODE === "local") return api("/api/beyora", D);
+    if (MODE === "local") return api("/api/blog", D);
     const bytes = new TextEncoder().encode(JSON.stringify(D, null, 1) + "\n"); let bin = "";
     bytes.forEach((b) => { bin += String.fromCharCode(b); });
-    return ghApi("contents/data/beyora.json", { method: "PUT", need: "Contents", body: JSON.stringify({ message: msg, content: btoa(bin), branch: "main", ...(sha ? { sha } : {}) }) });
+    return ghApi("contents/data/blog.json", { method: "PUT", need: "Contents", body: JSON.stringify({ message: msg, content: btoa(bin), branch: "main", ...(sha ? { sha } : {}) }) });
   }
   function bvLoad(force) {
     if (bvLoading && !force) return bvLoading;
@@ -3354,14 +3354,14 @@
     $("#devCard").style.display = MODE === "static" && dev ? "" : "none";
     $("#collectCard").style.display = dev || MODE === "local" ? "" : "none"; // 시세 수집·로그는 개발자용 (내 PC 서버에서는 늘 보임)
     if (MODE !== "static" || !dev) return;
-    box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). 기록 탭의 미래 설계 글도 이 토큰으로 저장소(data/beyora.json)에 저장되고, 토큰이 없는 사람은 읽기만 합니다. ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
+    box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). 기록 탭의 미래 설계 글도 이 토큰으로 저장소(data/blog.json)에 저장되고, 토큰이 없는 사람은 읽기만 합니다. ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
       ${has ? `<p class="small">기기 자동 동기화: ${!S.config?.push ? "중계 주소 없음" : !S.sync ? "확인 중…" : S.sync.ok ? `<b class="good">켜짐</b> · 이 토큰을 넣은 기기끼리 보유 수량·목표를 자동으로 맞춤 (마지막 ${new Date(S.sync.at).toLocaleTimeString()})` : `꺼짐 (${esc(S.sync.err)}) · 중계를 다시 배포해야 할 수 있음`}</p>` : ""}
       <div class="row wrap"><input id="ghToken" type="password" size="40" placeholder="${has ? "새 토큰으로 바꾸려면 붙여넣기" : "GitHub 토큰 붙여넣기 (github_pat_...)"}">
       <button id="ghSave" class="primary">저장</button>${has ? '<button id="ghTest">연결 확인</button><button id="ghDel" class="danger">연결 해제</button>' : ""}</div>
       <details class="small" ${has ? "" : "open"}><summary>토큰 만드는 법 (1분)</summary><ol>
       <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub 토큰 만들기</a> 페이지를 엽니다 (Fine-grained token).</li>
       <li>Token name 아무거나, Expiration 원하는 기간, Repository access → <b>Only select repositories</b> → <b>${GH ? esc(GH.repo) : "asset-tracker"}</b>.</li>
-      <li>Permissions → Repository permissions → <b>Actions: Read and write</b>, <b>Contents: Read and write</b> (Beyora 글을 저장소에 저장).</li>
+      <li>Permissions → Repository permissions → <b>Actions: Read and write</b>, <b>Contents: Read and write</b> (미래 설계 글을 저장소에 저장).</li>
       <li>Generate token → 복사해서 위 칸에 붙여넣고 저장.</li></ol></details>`;
     $("#ghSave").onclick = async () => {
       const v = $("#ghToken").value.replace(/\s+/g, ""); if (!v) return toast("토큰을 붙여넣어 주세요");
