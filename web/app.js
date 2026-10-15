@@ -3110,15 +3110,16 @@
   }
   function renderCash() {
     const { rows, total } = valuation(), hs = rows.filter((r) => r.valueKrw > 0);
-    if (!hs.length) { $("#divKpis").innerHTML = ""; $("#taxBox").innerHTML = "<p class='muted'>보유 수량을 넣으면 계산합니다.</p>"; $("#taxGoal").innerHTML = ""; $("#taxYears").innerHTML = ""; return; }
+    if (!hs.length) { $("#divKpis").innerHTML = ""; $("#taxBox").innerHTML = "<p class='muted'>보유 수량을 넣으면 계산합니다.</p>"; $("#taxGoal").innerHTML = ""; $("#taxYears").innerHTML = ""; renderCashEasy([], [], hs); return; }
     const span = +($("#divSpan .on")?.dataset.y || 3), yAgo = Model.addMonths(today(), -12), months = []; for (let k = 1; k <= 36; k++) months.push(Model.addMonths(today(), k).slice(0, 7));
     const byM = Object.fromEntries(months.map((m) => [m, 0])), per = [];
     hs.forEach((r) => {
       const all = dividends(r.h.ticker), ds = all.filter((x) => x.d > yAgo), tax = r.ccy === "KRW" ? 0.154 : WHT, gr = divGrowth(r.h.ticker, all);
-      let y1 = 0, y3 = 0;
-      ds.forEach((x) => { for (let n = 1; n <= 3; n++) { const m = Model.addMonths(x.d, 12 * n).slice(0, 7), v = x.amt * r.sh * (r.fx || 1) * (1 - tax) * (1 + gr) ** (n - 1); if (m in byM) { byM[m] += v; y3 += v; if (n === 1) y1 += v; } } });
-      if (ds.length) per.push({ t: r.h.ticker, n: ds.length, y1, y3, gr, yld: ds.reduce((a, x) => a + x.amt, 0) / r.p.v });
+      let y1 = 0, y3 = 0; const by = {};
+      ds.forEach((x) => { for (let n = 1; n <= 3; n++) { const m = Model.addMonths(x.d, 12 * n).slice(0, 7), v = x.amt * r.sh * (r.fx || 1) * (1 - tax) * (1 + gr) ** (n - 1); if (m in byM) { byM[m] += v; by[m] = (by[m] || 0) + v; y3 += v; if (n === 1) y1 += v; } } });
+      if (ds.length) per.push({ t: r.h.ticker, name: r.name, krw: r.ccy === "KRW", tax, n: ds.length, y1, y3, gr, yld: ds.reduce((a, x) => a + x.amt, 0) / r.p.v, by });
     });
+    renderCashEasy(months.slice(0, 12), per, hs);
     const Y1 = per.reduce((a, x) => a + x.y1, 0), Y3 = per.reduce((a, x) => a + x.y3, 0), shown = months.slice(0, span * 12);
     $("#divTitle").textContent = `앞으로 ${span}년 예상 배당·이자 (세후, 원화)`;
     $("#divKpis").innerHTML = [["1년 예상 (세후)", krw(Y1) + "원", `평가액의 ${pct(Y1 / total, 2)}`], ["3년 합계 (세후)", krw(Y3) + "원", "증가율 반영"], ["월 평균 (1년)", krw(Y1 / 12) + "원", per.map((x) => x.t).join(", ") || "지급 종목 없음"]]
@@ -3156,6 +3157,90 @@
     }).join("") + `<tr><td class="l muted wrapc" colspan="4">계산 예시: ${tg ? `기준으로 기록한 '${esc(tg.name)}' 비중` : "가장 큰 종목 비중을 45%로 줄이는 경우"}을 ${nSplit}년에 나눈 세금. 한 해에 모두면 약 ${top && sellAll ? krw(Math.max(0, sellAll * top.gps - Math.max(0, CGT_DED - used)) * CGT) + "원" : "-"}. 매매 권유가 아닙니다.</td></tr>`;
   }
 
+  // 배당·세금 첫 화면 (앱 분석 › 배당·세금과 같은 구성): 받는 배당 / 낼 양도세 두 칸. 숫자는 위 renderCash 와 같은 식
+  const CASH = { tab: "div", mode: "month", extra: 0 };
+  // 읽기 쉬운 금액: 4만 6천원 · 9천원 (천원 단위, 1천만원 넘으면 만원) — 앱 AppModel.wonRead 와 같게
+  const won1 = (v) => (v > 0 && v < 1e4 ? nf(Math.round(v)) + "원" : man(v));
+  const wonRead = (v) => { const k = Math.round(v / 1e3); if (k <= 0) return won1(v); if (k >= 1e4) return man(v); const w = Math.floor(k / 10), c = k % 10; return w === 0 ? `${c}천원` : c === 0 ? `${w}만원` : `${w}만 ${c}천원`; };
+  const ymStr = (s) => (s && s.length >= 7 ? `${s.slice(0, 4)}년 ${+s.slice(5, 7)}월` : "");
+  const shortAmt = (v) => (v >= 1e4 ? (v / 1e4).toFixed(1) + "만" : Math.round(v / 1e3) + "천");
+  const rcpt = (k, v, b, c) => `<div class="rcpt${b ? " b" : ""}"><span>${k}</span><span${c ? ` class="${c}"` : ""}>${v}</span></div>`;
+  function renderCashEasy(months, per, hs) {
+    $$("#cashTab button").forEach((b) => b.classList.toggle("on", b.dataset.t === CASH.tab));
+    $("#cashDiv").hidden = CASH.tab !== "div"; $("#cashTax").hidden = CASH.tab !== "tax";
+    // ① 받는 배당
+    const paid = per.filter((x) => x.y1 > 0).map((x) => ({ ...x, pm: months.filter((m) => x.by[m] > 0).map((m) => +m.slice(5, 7)), cnt: months.filter((m) => x.by[m] > 0).length }));
+    const net = paid.reduce((a, x) => a + x.y1, 0), gross = paid.reduce((a, x) => a + x.y1 / (1 - x.tax), 0);
+    const byMonth = months.map((m) => paid.reduce((a, x) => a + (x.by[m] || 0), 0));
+    $("#divHead").innerHTML = `<span class="small muted">앞으로 1년 · ${ymStr(months[0])} ~ ${ymStr(months[months.length - 1])}</span>` + (!paid.length
+      ? `<p class="bighead">앞으로 1년 들어올 배당이 없어요</p>`
+      : `<p class="bighead">한 달에 평균<br><span class="teal">약 ${wonRead(net / 12)}</span>이<br>배당으로 들어와요</p><span class="small muted">1년 합계 <b>${won1(net)}</b> · 세금 떼고 실제로 받는 돈</span>`);
+    $("#divView").style.display = $("#divReceipt").style.display = $("#divLimit").style.display = paid.length ? "" : "none";
+    if (paid.length) {
+      $$("#divMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === CASH.mode));
+      $("#divBody").innerHTML = CASH.mode === "month" ? divMonthHtml(months, byMonth, paid) : divStockHtml(paid);
+      const usP = paid.filter((x) => !x.krw), krP = paid.filter((x) => x.krw), tx = (xs) => xs.reduce((a, x) => a + x.y1 / (1 - x.tax) - x.y1, 0);
+      $("#divReceipt").innerHTML = `<h2 style="margin:0 0 6px">세금은 이미 빠진 금액이에요</h2>` + rcpt("배당 원래 금액", won1(gross))
+        + (usP.length ? rcpt("미국에서 떼는 세금 15%", "−" + won1(tx(usP))) : "") + (krP.length ? rcpt("국내에서 떼는 세금 15.4%", "−" + won1(tx(krP))) : "")
+        + `<hr>` + rcpt("내 계좌에 들어오는 돈", won1(net), true) + (usP.length ? `<p class="small muted" style="margin:6px 0 0">미국 주식 배당은 한국에서 세금을 더 내지 않아요.</p>` : "");
+      const over = gross >= 2000e4;
+      $("#divLimit").innerHTML = `<h2 style="margin:0 0 8px">1년 배당·이자가 2,000만원을 넘으면 세금 계산이 달라져요</h2><div class="fxbar"><i style="width:${Math.max(1, Math.min(100, gross / 2000e4 * 100))}%;background:var(--c3)"></i></div>
+        <div class="row between small" style="margin:6px 0"><span>지금 <b>${won1(gross)}</b></span><span class="muted">${over ? "기준을 넘었어요" : `기준까지 ${man(2000e4 - gross)} 남음`}</span></div>
+        <p class="help small" style="padding:8px 12px">${over ? "기준을 넘으면 넘는 부분을 다른 소득과 합쳐 세금을 계산해요. 다음 해 5월 종합소득세 신고 때 같이 계산돼요." : "지금은 걱정 없어요. 은행 예금 이자도 이 2,000만원에 같이 들어가요."}</p>`;
+    }
+    const zero = hs.filter((r) => S.prices[r.h.ticker]?.adj && !per.some((x) => x.t === r.h.ticker)).map((r) => r.h.ticker);
+    const unknown = hs.filter((r) => !S.prices[r.h.ticker]?.adj).map((r) => r.h.ticker);
+    const none = (zero.length ? `${zero.join(", ")}는 배당을 주지 않아서 목록에 없어요.` : "") + (unknown.length ? (zero.length ? " " : "") + `${unknown.join(", ")}는 시세 자료가 없어 배당을 0으로 계산했어요.` : "");
+    $("#divNone").style.display = none ? "" : "none"; $("#divNone").textContent = none;
+    // ② 낼 양도세: 올해 판 해외주식 이익(거래 기록) + 아직 안 판 미국 주식 이익
+    const yNow = new Date().getFullYear(), ded = CGT_DED, capTax = (g) => Math.max(0, g - ded) * CGT;
+    const G = trades().filter((x) => x.real != null && x.d.startsWith(String(yNow)) && ccyOf(x.t) !== "KRW").reduce((a, x) => a + x.real, 0), tax = capTax(G);
+    let h = `<span class="small muted">올해 판 미국 주식 기준</span>`;
+    if (G <= 0) h += `<p class="bighead">올해 판 이익이 없어서<br>내년 5월에 낼 양도세가 없어요</p>`;
+    else if (tax <= 0) h += `<p class="bighead">${man(ded)}까지는 세금이 없어<br>낼 세금이 없어요</p>`;
+    else h += `<p class="bighead">내년 5월에<br><span class="orange">약 ${man(tax)}</span>을<br>세금으로 내야 해요</p><p class="small muted" style="margin:0 0 8px">올해 미국 주식을 팔아 남긴 이익 때문이에요. 12월 31일 전에 더 팔면 늘어나요.</p><p class="help small" style="padding:8px 12px">📅 신고·납부 <b>${yNow + 1}년 5월 1일 ~ 31일</b></p>`;
+    if (G > 0) h += `<div class="taxbar"><i style="width:${Math.min(100, ded / G * 100)}%"></i>${G > ded ? "<s></s>" : ""}</div><div class="row wrap small muted taxleg"><span><i class="g"></i>${man(ded)}까지 세금 없음</span>${G > ded ? `<span><i class="o"></i>나머지에 22%</span>` : ""}</div>`;
+    if (tax > 0) h += `<div class="rcptbox">${rcpt("올해 판 이익", man(G))}${rcpt("세금 없는 몫", "−" + man(ded))}${rcpt("세금 붙는 이익", man(G - ded))}${rcpt("세율 (지방세 포함)", "× 22%")}<hr>${rcpt("낼 세금", "약 " + man(tax), true, "orange")}</div>`;
+    $("#taxHead").innerHTML = h;
+    const us = hs.filter((r) => r.ccy === "USD" && r.avg > 0), usU = us.reduce((a, r) => a + (r.p.v - r.avg) * r.sh * r.fx, 0);
+    let m = `<h2 style="margin:0 0 6px">올해 더 팔면 세금은 얼마?</h2>`;
+    if (!us.length) m += `<p class="small muted">매수 단가를 넣은 미국 주식이 없어요. 매수 단가를 넣으면 계산해 드려요. <a href="#" data-go="stocks">매수 단가 넣기</a></p>`;
+    else if (usU <= 0) m += `<p class="small muted">아직 안 판 미국 주식에 이익이 없어요.${usU < 0 ? " 손실은 판 해의 이익에서 빠져요." : ""}</p>`;
+    else {
+      const step = Math.max(1e4, Math.round(usU / 200 / 1e4) * 1e4);
+      m += `<p class="small muted">아직 안 판 미국 주식에 <b>${man(usU)}</b>의 이익이 있어요 (${us.map((r) => esc(r.h.ticker)).join("·")}).</p>
+        <div class="row between small"><span class="muted">추가로 팔 이익</span><b id="taxXV"></b></div>
+        <input type="range" id="taxX" min="0" max="${usU}" step="${step}" value="${Math.min(CASH.extra, usU)}" aria-label="추가로 팔 이익">
+        <div class="row between small muted"><span>안 팔면</span><span>전부 팔면</span></div>
+        <div class="rcptbox"><div class="rcpt b"><span>내년 5월 낼 세금</span><span class="orange" id="taxXT"></span></div><span class="small muted" id="taxXN"></span></div>`;
+    }
+    $("#taxMoreSell").innerHTML = m;
+    const sl = $("#taxX");
+    if (sl) { const upd = () => { const x = Math.min(+sl.value, usU), after = capTax(G + x); CASH.extra = x; $("#taxXV").textContent = x <= 0 ? "0원" : man(x); $("#taxXT").textContent = "약 " + man(after); $("#taxXN").textContent = x <= 0 ? "지금 그대로면 이 금액이에요." : `지금보다 약 ${man(after - tax)} 늘어요.`; }; sl.oninput = upd; upd(); }
+  }
+  // 달별 막대: 배당이 있는 달 중앙값의 1.5배 이상인 달(큰 순 3개까지)만 금액을 적고 진하게 (앱 monthChart 와 같은 규칙)
+  function divMonthHtml(months, byMonth, paid) {
+    const mMax = Math.max(1, ...byMonth), pos = byMonth.filter((v) => v > 0).sort((a, b) => a - b), med = pos.length ? pos[Math.floor(pos.length / 2)] : 0;
+    const hi = new Set(byMonth.map((v, i) => i).filter((i) => byMonth[i] > 0 && byMonth[i] >= med * 1.5).sort((a, b) => byMonth[b] - byMonth[a]).slice(0, 3));
+    const mo = (i) => +months[i].slice(5, 7), hiS = [...hi].sort((a, b) => a - b), notes = [];
+    const causes = [...new Set(hiS.flatMap((i) => paid.filter((x) => x.cnt < 12 && x.by[months[i]] > 0).map((x) => x.t)))].sort();
+    if (hiS.length && causes.length >= 1 && causes.length <= 2) notes.push(`${hiS.map((i) => mo(i) + "월").join("·")}이 많은 건 ${causes.join("·")} 배당이 같이 들어와서예요.`);
+    const rest = byMonth.filter((v, i) => v > 0 && !hi.has(i)).sort((a, b) => a - b), zeroM = byMonth.map((v, i) => i).filter((i) => byMonth[i] <= 0), monthly = paid.filter((x) => x.cnt === 12);
+    let line = rest.length && hi.size ? "나머지 달은 " + (monthly.length === 1 ? `${monthly[0].t}에서 ` : "") + `약 ${wonRead(rest[Math.floor(rest.length / 2)])}씩` : "";
+    if (zeroM.length >= 1 && zeroM.length <= 3) { const z = zeroM.map((i) => mo(i) + "월").join("·") + "은 들어오는 배당이 없어요."; line += line ? ", " + z : z; }
+    else if (zeroM.length > 3) line += (line ? ". " : "") + `배당이 없는 달이 ${zeroM.length}개 있어요.`;
+    else if (line) line += " 들어와요.";
+    if (line) notes.push(line);
+    const years = []; months.forEach((s) => { const y = s.slice(0, 4); if (years.length && years[years.length - 1].y === y) years[years.length - 1].n++; else years.push({ y, n: 1 }); });
+    return `<div class="divbars" role="img" aria-label="달마다 배당: ${months.map((m, i) => byMonth[i] > 0 ? `${mo(i)}월 ${won1(byMonth[i])}` : "").filter(Boolean).join(", ")}">${months.map((m, i) => `<div><span>${hi.has(i) ? shortAmt(byMonth[i]) : ""}</span><i class="${byMonth[i] <= 0 ? "z" : hi.has(i) || !hi.size ? "" : "l"}" style="height:${Math.max(2, byMonth[i] / mMax * 80)}px"></i><em>${mo(i)}</em></div>`).join("")}</div>
+      <div class="divyears">${years.map((y) => `<span style="flex:${y.n}">${y.y}년</span>`).join("")}</div>` + notes.map((n) => `<p class="divnote small muted">${esc(n)}</p>`).join("");
+  }
+  function divStockHtml(paid) {
+    const mx = Math.max(1, ...paid.map((x) => x.y1));
+    return [...paid].sort((a, b) => b.y1 - a.y1).map((x) => `<div class="divstock"><div class="row between"><span><b>${esc(x.t)}</b> ${x.name && x.name !== x.t ? `<span class="muted small">${esc(x.name)}</span>` : ""}</span><b>${won1(x.y1)}</b></div>
+      <div class="fxbar"><i style="width:${Math.max(1, x.y1 / mx * 100)}%;background:var(--c3)"></i></div>
+      <span class="small muted">${x.cnt === 12 ? "매달 들어와요" : `1년에 ${x.n}번` + (x.pm.length ? `(${x.pm.map((m) => m + "월").join("·")})` : "")} · 1년에 투자금의 ${(x.yld * 100).toFixed(2)}%</span></div>`).join("");
+  }
 
   // ------------------------------------------------------------ 환율 (원/달러)
   function fxInfo() {
@@ -3173,7 +3258,8 @@
   }
   function renderFx() {
     const F = fxInfo();
-    if (!F) { $("#fxKpis").innerHTML = ""; $("#fxChart").textContent = "환율 시세가 없습니다. 시세 수집을 눌러 주세요."; return; }
+    if (!F) { $("#fxKpis").innerHTML = ""; $("#fxChart").textContent = "환율 시세가 없습니다. 시세 수집을 눌러 주세요."; $("#fxSum").innerHTML = `<p class="muted">환율 시세가 아직 없어요.</p>`; return; }
+    renderFxEasy(F);
     const { sg, now, usdW, total, T, at } = F;
     const effect1y = sg.ret_1y != null ? usdW * sg.ret_1y : null;
     $("#fxKpis").innerHTML = [
@@ -3203,6 +3289,57 @@
       const d = total * usdW * c, v = total + d;
       return `<tr><td class="l">${c < 0 ? "원화 강세" : "원화 약세"} ${spct(c, 0)}</td><td>${nf(now * (1 + c), 0)}</td><td class="${cls(d)}">${krw(d)}원</td><td>${krw(v)}원</td><td>${pct(v / S.state.goal.amount)}</td></tr>`;
     }).join("");
+  }
+
+  // 환율 영향 첫 화면 (앱 분석 › 환율 영향과 같은 구성): 한 줄 요약 → 지금 환율·지난 흐름과 1년 범위 → 환율이 바뀌면 내 자산은 → 자세히
+  // 차트와 앞날 범위는 지금 환율(now), "지금 환율"·평가액 계산은 fxBase(매매기준율) 하나로
+  const FXW = { r: null };
+  const fxWord = (t) => (/상승 추세|약한 상승/.test(t || "") ? "오르는 중" : /하락 추세|약세 전환/.test(t || "") ? "내려가는 중" : "옆으로");
+  function renderFxEasy(F) {
+    const { p, sg, now, at } = F, BASE = fxBase("USD") || now;
+    const { rows, total } = valuation(), usdV = rows.filter((r) => r.ccy === "USD").reduce((a, r) => a + (r.valueKrw || 0), 0), usdW = total ? usdV / total : 0;
+    const per10 = usdV * 10 / BASE, why = usdW >= 0.995 ? "내 주식은 모두 달러라서" : `내 자산 중 ${pct(usdW, 0)}가 달러라서`;
+    $("#fxSum").innerHTML = `<span class="small muted">한 줄 요약</span>` + (usdV <= 0 ? `<p class="bighead">달러 자산이 없어 환율이 움직여도 내 자산은 그대로예요</p>`
+      : `<p class="bighead">환율이 10원 내리면<br>내 자산은 약 ${man(per10)} 줄어요</p><p class="small muted" style="margin:0 0 8px">${why}, 환율이 내려가면(원화가 강해지면) 원화로 본 금액이 줄어요. 반대로 환율이 오르면 늘어요.</p>
+        <div class="row wrap fxpills"><span>요즘 흐름 · ${fxWord(sg.trend)}</span>${sg.ret_1y != null ? `<span>1년 전보다 ${spct(sg.ret_1y)}</span>` : ""}</div>`);
+    const mu = marUsd(), d = mu ? mu.date.split("-").map(Number) : null;
+    $("#fxNowV").textContent = nf(BASE, BASE % 1 ? 1 : 0) + "원";
+    $("#fxDay").textContent = d && d.length === 3 ? `${d[1]}월 ${d[2]}일 기준` : `${new Date().getMonth() + 1}월 ${new Date().getDate()}일 기준`;
+    // 지난 흐름(기간 버튼) + 오늘부터 1년 뒤 띠 (둘 중 하나 / 열에 아홉)
+    const n = +($("#fxPer .on")?.dataset.p || 253), lab = { 22: "1개월", 64: "3개월", 253: "1년", 780: "3년" }[n] || "1년";
+    // 앱처럼 지난 기간은 왼쪽 70%, 앞으로 1년은 오른쪽 30%: 앞날 날짜를 지난 기간 길이에 맞춰 줄여 그리고, 축·말풍선 글자는 실제 기간으로
+    const k0 = Math.max(0, p.dates.length - n), t0 = Date.parse(today()), past = (t0 - Date.parse(p.dates[k0])) / 864e5, fut = past * 3 / 7;
+    const ns = Math.max(2, Math.min(12, Math.floor(fut))), fd = [], ft = [], tipF = {};
+    for (let k = 0; k <= ns; k++) { const d = new Date(t0 + fut * k / ns * 864e5).toISOString().slice(0, 10); if (fd.includes(d)) continue; fd.push(d); ft.push(k / ns); tipF[d] = k ? `약 ${Math.round(k / ns * 12)}개월 뒤` : "오늘"; }
+    const band = (q) => ft.map((t) => at(t, q)), end = ["p95", "p75", "p25", "p5"].map((q) => at(1, q));
+    Charts.lineChart($("#fxMainChart"), { x: p.dates.slice(k0), height: 200, yfmt: (v) => nf(v, 0), legend: false,
+      xlab: (dd) => (dd.getTime() > t0 ? "" : n <= 64 ? `${dd.getUTCMonth() + 1}/${dd.getUTCDate()}` : `${String(dd.getUTCFullYear()).slice(2)}.${dd.getUTCMonth() + 1}`), tipx: (d) => tipF[d] || d,
+      bands: [{ x: fd, lo: band("p5"), hi: band("p95"), color: "var(--band)", opacity: 0.13, name: "열에 아홉" }, { x: fd, lo: band("p25"), hi: band("p75"), color: "var(--band)", opacity: 0.28, name: "둘 중 하나" }],
+      series: [{ name: "원/달러", y: p.close.slice(k0), color: "var(--fg)", width: 1.4 }], vlines: [{ x: today(), label: "오늘" }, { x: fd[fd.length - 1], label: "1년 뒤" }] });
+    const r0 = (v) => nf(Math.round(v));
+    $("#fxLeg").innerHTML = `<span><i class="ln"></i>지난 ${lab} 실제 환율</span><span><i class="b2"></i>1년 뒤, 둘 중 하나는 이 안 (${r0(end[2])}~${r0(end[1])}원)</span><span><i class="b1"></i>1년 뒤, 열에 아홉은 이 안 (${r0(end[3])}~${r0(end[0])}원)</span>`;
+    // 환율이 바뀌면 내 자산은? (주가 그대로)
+    $("#fxWhat").style.display = usdV > 0 ? "" : "none";
+    if (usdV > 0) {
+      const sl = $("#fxWhatR"); sl.min = Math.min(1100, Math.floor(BASE - 50)); sl.max = Math.max(1600, Math.ceil(BASE + 50));
+      const valAt = (r) => total + usdV * (r / BASE - 1);
+      const rt = routeOf(), bep = rt === "recover" ? costBasis() : null, key = bep || S.state.goal.amount, keyName = bep ? "본전" : "목표";
+      const upd = () => {
+        const r = FXW.r ?? BASE, v = valAt(r), dv = v - total, gap = Math.max(0, key - v);
+        sl.value = r; $("#fxWhatLab").textContent = `환율이 ${nf(Math.round(r))}원이 되면`; $("#fxWhatV").textContent = man(v);
+        const z = Math.abs(dv) < 0.5; $("#fxWhatD").textContent = z ? "지금과 같아요" : `지금보다 ${man(Math.abs(dv))} ${dv > 0 ? "늘어요" : "줄어요"}`; $("#fxWhatD").className = "small " + (z ? "muted" : cls(dv));
+        $$("#fxPre button").forEach((b) => b.classList.toggle("on", +b.dataset.v === 0 ? FXW.r == null || FXW.r === BASE : FXW.r === +b.dataset.v));
+        $("#fxGoalLab").innerHTML = `<b>${gap > 0 ? `${keyName}까지 ${man(gap)} 남음` : `${keyName} 도달`}</b>`; $("#fxGoalBar").style.width = (key > 0 ? Math.min(100, Math.max(0, v / key * 100)) : 0) + "%";
+      };
+      sl.oninput = () => { FXW.r = +sl.value; upd(); };
+      $$("#fxPre button").forEach((b) => (b.onclick = () => { FXW.r = +b.dataset.v || null; upd(); }));
+      upd();
+    }
+    // 자세히: 4칸
+    const T = F.T, gd = S.state.goal.date, e1 = sg.ret_1y != null ? usdW * sg.ret_1y : null, vw = F.vol < 0.07 ? "낮음" : F.vol <= 0.12 ? "보통" : "큼";
+    $("#fxKpi4").innerHTML = [["1년 동안 오간 범위", `${r0(F.lo1)}~${r0(F.hi1)}원`, "지난 1년 가장 낮을 때~높을 때"], ["1년간 출렁인 정도", `${vw} (연 ${(F.vol * 100).toFixed(1)}%)`, "클수록 환율이 크게 움직여요"],
+      [`${gd.slice(2, 4)}년 ${+gd.slice(5, 7)}월 가장 그럴듯한 값`, r0(at(T, "p50")) + "원", `열에 아홉은 ${r0(at(T, "p5"))}~${r0(at(T, "p95"))}원`], ["환율 때문에 생긴 1년 손익", e1 == null ? "-" : `<span class="${cls(e1)}">${spct(e1)}</span>`, "주가 말고 환율로만 늘거나 준 몫"]]
+      .map(([k, v, s2]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join("");
   }
 
   // ------------------------------------------------------------ 추세
@@ -3678,7 +3815,8 @@
     segClick("#histRange", renderDash); segClick("#histFc", () => { try { localStorage.setItem("naeilo-histfc", $("#histFc .on").dataset.f); } catch (e) { /* 무시 */ } renderDash(); }); segClick("#progRange", () => { const H = history(); renderProgress(H, valuation().total, cashKrw()); }); segClick("#histMode", renderDash); segClick("#histCcy", renderDash); segClick("#histBasis", () => { try { localStorage.setItem("naeilo-basis", $("#histBasis .on").dataset.b); } catch (e) { /* 무시 */ } renderDash(); }); // 보기 옵션은 위 기간 버튼을 바꾸지 않는다
     segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
     $("#premBox").addEventListener("change", onPrem);
-    segClick("#stockRange", renderStockPrices); segClick("#holdRange", renderHoldBack); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
+    segClick("#stockRange", renderStockPrices); segClick("#holdRange", renderHoldBack); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash); segClick("#fxPer", renderFx); segClick("#divMode", () => { CASH.mode = $("#divMode .on")?.dataset.m || "month"; renderCash(); });
+    $$("#cashTab button").forEach((b) => (b.onclick = () => { CASH.tab = b.dataset.t; renderCash(); }));
     document.addEventListener("click", (e) => { // 다른 분석 화면에 있는 곳이면 그 화면을 열고 간다
       const b = e.target.closest("[data-jump]"); if (!b) return; const el = $("#" + b.dataset.jump); if (!el) return;
       const pg = el.closest(".anapage"); if (pg) { if (!onTab("analysis")) showTab("analysis"); if (anaPage !== pg.dataset.ana) openAna(pg.dataset.ana); }

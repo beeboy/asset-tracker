@@ -456,3 +456,34 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .hneed { padding: 0 14px 10px 56px; }
 .hedit { padding: 8px 14px 12px; background: var(--bg); }
 .hedit .hedbox { margin-top: 8px; }
+/* 배당·세금 · 환율 영향 (앱 DividendView·FxImpactView 와 같은 구성) */
+.bighead { font-size: 1.2941rem; font-weight: 700; line-height: 1.45; margin: 6px 0; }
+.bighead .teal { color: var(--c3); } .orange { color: var(--accent2); }
+.rcpt { display: flex; justify-content: space-between; gap: 8px; font-size: 0.7647rem; color: var(--muted); padding: 3px 0; }
+.rcpt span:last-child { color: var(--fg); font-weight: 600; } .rcpt.b { color: var(--fg); font-weight: 700; } .rcpt.b span:last-child { font-size: 0.8824rem; font-weight: 700; }
+.rcpt span.orange:last-child { color: var(--accent2); }
+.rcptbox { background: var(--bg); border-radius: 12px; padding: 10px 12px; margin-top: 10px; }
+.fxbar { height: 8px; border-radius: 4px; background: var(--bg); overflow: hidden; } .fxbar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.divbars { display: flex; gap: 4px; align-items: flex-end; height: 118px; margin-top: 10px; }
+.divbars > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; min-width: 0; }
+.divbars span { font-size: 0.5294rem; font-weight: 600; color: var(--c3); white-space: nowrap; min-height: 1em; }
+.divbars i { display: block; width: 100%; max-width: 26px; border-radius: 3px; background: var(--c3); } .divbars i.l { opacity: .4; } .divbars i.z { background: var(--bg); }
+.divbars em { font-style: normal; font-size: 0.5882rem; color: var(--muted); }
+.divyears { display: flex; gap: 4px; margin: 2px 0 8px; } .divyears span { border-top: 1px solid var(--line); font-size: 0.5882rem; color: var(--muted); text-align: center; padding-top: 3px; }
+.divnote { position: relative; padding-left: 12px; margin: 4px 0; } .divnote::before { content: ""; position: absolute; left: 2px; top: .55em; width: 5px; height: 5px; border-radius: 50%; background: var(--c3); }
+.divstock { margin: 10px 0 14px; } .divstock .fxbar { margin: 5px 0; }
+.taxbar { display: flex; gap: 2px; height: 14px; border-radius: 4px; overflow: hidden; margin: 10px 0 6px; }
+.taxbar i { background: color-mix(in srgb, var(--good) 30%, transparent); } .taxbar s { flex: 1; background: color-mix(in srgb, var(--accent2) 35%, transparent); }
+.taxleg { gap: 4px 12px; } .taxleg span { display: inline-flex; align-items: center; gap: 4px; } .taxleg i { width: 10px; height: 10px; border-radius: 2px; }
+.taxleg i.g { background: color-mix(in srgb, var(--good) 30%, transparent); } .taxleg i.o { background: color-mix(in srgb, var(--accent2) 35%, transparent); }
+.tip { display: flex; gap: 8px; align-items: flex-start; font-size: 0.7647rem; margin: 6px 0; } .tip i { font-style: normal; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--c3); color: #fff; font-size: 0.7059rem; font-weight: 700; display: grid; place-items: center; }
+.howcalc { margin: 4px 4px 12px; } .howcalc summary { font-size: 0.7647rem; font-weight: 600; color: var(--muted); }
+.fxnow { font-size: 1.5294rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fxpills { gap: 6px; } .fxpills span { font-size: 0.7059rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: var(--bg); }
+.fxleg { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 10px; } .fxleg span { display: inline-flex; align-items: center; gap: 8px; }
+.fxleg i { display: inline-block; width: 16px; border-radius: 2px; background: var(--band); } .fxleg i.ln { height: 2px; background: var(--fg); } .fxleg i.b2 { height: 10px; opacity: .4; } .fxleg i.b1 { height: 10px; opacity: .15; }
+.fxres { display: flex; flex-direction: column; gap: 2px; background: var(--bg); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; } .fxres b { font-size: 1.4118rem; font-variant-numeric: tabular-nums; }
+#fxWhatR { width: 100%; }
+.fxpre { gap: 6px; margin: 6px 0 10px; } .fxpre button { flex: 1; border-radius: 99px; font-size: 0.7059rem; font-weight: 700; padding: 7px 0; }
+.fxpre button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+#fxGoalLab { margin-bottom: 6px; }
