@@ -487,3 +487,7 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .fxpre { gap: 6px; margin: 6px 0 10px; } .fxpre button { flex: 1; border-radius: 99px; font-size: 0.7059rem; font-weight: 700; padding: 7px 0; }
 .fxpre button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 #fxGoalLab { margin-bottom: 6px; }
+
+/* 맨 위 띠: 앱으로 옮겨 가요 · 입구로 */
+.movebar { display: block; text-align: center; padding: 8px 12px; font-size: 0.8235rem; background: var(--accent); color: #fff; text-decoration: none; }
+.movebar b { text-decoration: underline; }
