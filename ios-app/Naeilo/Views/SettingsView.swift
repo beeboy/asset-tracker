@@ -188,7 +188,7 @@ struct TossKeyView: View {
     @State private var copied = false
 
     private var status: String {
-        _ = Market.shared.updatedAt     // 시세를 새로 받으면 다시 그린다
+        _ = Market.shared.tossDone      // 토스 받기를 마치면 다시 그린다
         let t = TossFeed.okAt
         var s = ""
         if t > 0 {
@@ -270,7 +270,8 @@ struct TossKeyView: View {
     /// 토큰을 새로 받아 키·허용 IP 를 확인하고, 되면 시세를 바로 받는다
     private func check() async {
         busy = true; msg = nil
-        let (t, e) = await TossFeed.token(renew: true)
+        // 토큰은 만료 전이면 그대로 쓴다 (새로 받으면 받는 중인 다른 요청의 토큰이 끊긴다). 처음 연결이면 키를 넣을 때 토큰을 지워 새로 받는다
+        let (t, e) = await TossFeed.token()
         if t == nil {
             msg = (e ?? "연결 실패") + (e == "허용 IP에 중계 IP가 없어요" ? ". 토스 허용 IP에 위 IP를 넣고 다시 눌러 주세요." : "")
             if !on { TossKeys.clear() }     // 처음 연결이 실패하면 키를 남기지 않는다
