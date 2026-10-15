@@ -24,8 +24,10 @@ final class Market {
     var site: QuoteFeed.File? = QuoteFeed.cached()
     /// 토스증권 지금 가격 (개발자 전용, 종목 id → 값). 있으면 Yahoo 값보다 먼저
     var toss: QuoteFeed.File? = TossFeed.cached()
-    /// 토스 시세를 받는 중 (겹쳐 묻지 않게)
-    @ObservationIgnored private var tossBusy = false
+    /// 토스 시세를 받는 중인 일 (겹쳐 묻지 않게). 다시 받기는 이 일이 끝나길 기다렸다가 한 번 더 받는다
+    @ObservationIgnored private var tossTask: Task<Void, Never>? = nil
+    /// 토스 받기를 마친 때 (성공·실패 모두). 설정 > 내 토스 키 화면이 이걸 보고 다시 그린다
+    var tossDone = Date.distantPast
     /// 매매기준율 (사이트 data/mar.json, 서울외국환중개). 웹 평가액과 같은 환율
     var mar: MarFeed.File? = MarFeed.cached()
     /// 원화 평가에 쓰는 원/달러: 웹 fxBase 와 같게 매매기준율, 없거나 5일 넘게 묵었으면 지금 환율
@@ -107,23 +109,11 @@ final class Market {
             if let q = try? await p.quotes(tickers) { live = q }
             if let f = try? await p.usdkrw() { liveFx = f }
         }
-        // 토스 시세 (개발자 주소를 넣었거나, 사용자가 설정 > 토스증권 시세에 내 키를 넣은 기기만): 국내·미국 종목. 기다리지 않고 따로 받아 도착하면 반영한다 (앱 시작을 늦추지 않게).
+        // 토스 시세 (개발자 주소를 넣었거나, 사용자가 설정 > 토스증권 시세에 내 키를 넣은 기기만): 국내·미국 종목.
+        // 평소에는 기다리지 않고 따로 받아 도착하면 반영한다 (앱 시작을 늦추지 않게). 당겨 갱신·다시 받기(force)는 토스까지 기다린다.
         // 1분 안에 받았으면 그대로. 실패하면 15분 안에 받은 값, 그것도 없으면 nil → Yahoo 값
-        if !held.isEmpty && !tossBusy {
-            var ty: [String: String] = [:]
-            for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
-            tossBusy = true
-            Task {
-                let t = await TossFeed.fetch(ty, minAge: force ? 0 : 60)
-                self.toss = t
-                // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번)
-                if let h = await TossHistory.fetch(Dictionary(ty.map { (SiteStats.key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a }), force: force) {
-                    self.tossHist = h
-                    self.prices = TossHistory.merged(SitePrices.cached(), h)
-                }
-                self.tossBusy = false
-            }
-        }
+        async let tossWait: Void = force ? refreshToss(held: held, force: true) : ()
+        if !force { Task { await refreshToss(held: held, force: false) } }
         // 나머지 시세는 한꺼번에 받는다 (차례로 기다리지 않게)
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
         let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
@@ -141,7 +131,31 @@ final class Market {
         if let p = await pricesNew { prices = TossHistory.merged(p, tossHist) }
         if let s = await statsNew { stats = s }
         await customDone
+        await tossWait
         updatedAt = Date()
+    }
+
+    /// 토스 지금 가격과 지난 종가·원/달러를 받는다. 받는 중이면 평소에는 건너뛰고, force 면 그 일이 끝난 뒤 새로 한 번 더 받는다
+    @MainActor
+    func refreshToss(held: Set<String>, force: Bool) async {
+        var ty: [String: String] = [:]
+        for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
+        guard !ty.isEmpty, TossFeed.base != nil || TossKeys.on else { return }
+        if tossTask != nil && !force { return }
+        while let t = tossTask { await t.value }
+        let t = Task { @MainActor in
+            let q = await TossFeed.fetch(ty, minAge: force ? 0 : 60)
+            self.toss = q
+            // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번)
+            if let h = await TossHistory.fetch(Dictionary(ty.map { (SiteStats.key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a }), force: force) {
+                self.tossHist = h
+                self.prices = TossHistory.merged(SitePrices.cached(), h)
+            }
+            self.tossDone = Date()
+        }
+        tossTask = t
+        await t.value
+        tossTask = nil
     }
 
     /// 아래로 당겨 갱신: 내 종목을 바로 받고 위젯에도 넘긴다
