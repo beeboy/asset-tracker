@@ -37,7 +37,7 @@
 3. **입구 다듬기**: 실제 폰·PC 화면에서 확인, 말풍선·위젯 위치, 공유 미리보기(og.png)를 새 첫 페이지에 맞추기, Google 색인 다시 요청.
 4. **앱 남은 결정**: 분석 허브 내 길 '처음 닿는 때' vs 목표일 확률 차이, 내 길 상세 '반반이에요' 문구.
 5. **실기기 확인**: 앱 시작 속도(`Market.refresh()` 병렬화), 미션 예보 카드, 위젯 일간 변화·현금.
-6. **출시 전**: 국내 실시간 시세 스위치 끄기(`KoreaEstimate.live`), `StubPriceProvider` 대체, 무료/프리미엄 분리(`premium()`), TestFlight 외부 테스트용 재아카이브·IAP 등록, 시세 재배포 조건(Tiingo·EODHD 보류).
+6. **출시 전**: 키 등록 전 화면을 가상 시장 샘플(`data/sample/`, `tools/sample_market.py`, 2026-10-15 만듦·아직 연결 안 함)로 바꾸기(앱 `Sample`·`YahooSample`, 웹 첫 방문 샘플 QQQ→NXIX, `sample.yml`에서 날짜 맞추기), 국내 실시간 시세 스위치 끄기(`KoreaEstimate.live`), `StubPriceProvider` 대체, 무료/프리미엄 분리(`premium()`), TestFlight 외부 테스트용 재아카이브·IAP 등록, 시세 재배포 조건(Tiingo·EODHD 보류).
 7. **운영 확인**: 워커 `/cu` 401(Claude 사용량 위젯), 15분 collect cron 실제 동작.
 - 열린 PR: #225(초안, 미래 설계 글 파일 이름 `data/beyora.json`→`data/blog.json`) 아직 안 합침.
 - 멈춘 채 남은 스레드(맥 세션이 꺼져 대기 중, 새 프로젝트에서 이어 하지 않아도 됨): "내일로 입구 페이지 기획"(앱 받기 버튼 결정 → 출시 알림 신청으로 결정됨), "웹 정리"(띠 켜기 남음 = 위 2번), "naeilo 첫 페이지 시안"(#231로 반영됨).

@@ -1,0 +1,78 @@
+{
+ "note": "가상 종목·가상 가격 (tools/sample_market.py). 실제 시세가 아니다. 키 등록 전 화면용",
+ "updated": "2026-10-14T00:00:00+00:00",
+ "start_holdings": [
+  {
+   "symbol": "DRNK",
+   "qty": 4,
+   "avg": 400
+  },
+  {
+   "symbol": "NXIX",
+   "qty": 1,
+   "avg": 430
+  }
+ ],
+ "symbols": [
+  {
+   "id": "DRNK",
+   "name": "드링커",
+   "market": "미국 주식",
+   "currency": "USD",
+   "sector": "우주항공·궤도 통신",
+   "search": "drinker",
+   "about": "하늘의 깜빡이지 않는 별, 궤도 정거장을 설계하고 지었어요.",
+   "virtual": true
+  },
+  {
+   "id": "NXIX",
+   "name": "내일100 지수 ETF",
+   "market": "미국 ETF",
+   "currency": "USD",
+   "sector": "지수",
+   "search": "naeilo index",
+   "about": "가상 미국 대형주 100개를 담는 가상 ETF예요.",
+   "virtual": true
+  },
+  {
+   "id": "SERI",
+   "name": "세리 로보틱스",
+   "market": "미국 주식",
+   "currency": "USD",
+   "sector": "로봇·AI",
+   "search": "seri robotics",
+   "about": "집안일을 돕는 안드로이드와 그 위에서 도는 AI를 만드는 가상 회사예요.",
+   "virtual": true
+  },
+  {
+   "id": "NLBD",
+   "name": "내일 단기채 ETF",
+   "market": "미국 ETF",
+   "currency": "USD",
+   "sector": "채권",
+   "search": "naeilo bond",
+   "about": "만기가 짧은 가상 국채만 담는 가상 ETF예요. 가격이 거의 그대로예요.",
+   "virtual": true
+  },
+  {
+   "id": "V00001",
+   "name": "한빛반도체",
+   "market": "코스피",
+   "currency": "KRW",
+   "sector": "반도체",
+   "search": "hanbit semi",
+   "about": "메모리 반도체를 만드는 가상 회사예요.",
+   "virtual": true
+  },
+  {
+   "id": "V00002",
+   "name": "내일 코스피 ETF",
+   "market": "코스피 ETF",
+   "currency": "KRW",
+   "sector": "지수",
+   "search": "naeilo kospi",
+   "about": "가상 한국 대형주 200개를 담는 가상 ETF예요.",
+   "virtual": true
+  }
+ ]
+}
