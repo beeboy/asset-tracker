@@ -46,7 +46,7 @@ struct SettingsView: View {
                         demoButton("모든 화면 열기") { m.resetDemo(.all) }
                     }
                 }
-                Text("시세: \(Market.shared.source)").appFont(12).foregroundStyle(Theme.muted)
+                Text("시세: \(Market.shared.source) · \(Config.channel.rawValue)").appFont(12).foregroundStyle(Theme.muted)
                 Text("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)").appFont(12).foregroundStyle(Theme.muted)
             }
             .screen()
