@@ -1376,7 +1376,7 @@
             + (yg ? ` · 연초 예측 대비 연말 예상 <b class="${cls(yg.gap)}">${spct(yg.gap)}</b>` : "") + ". 띠는 지난 12달 오차 크기.");
         } else notes.push("패턴 예측에는 1년 반 넘는 시세 이력이 필요합니다.");
       }
-      if (fcOn && !F && total > 0 && basis !== "pattern") forecastLater(scen, () => { if ($("#tabs .on")?.dataset.tab === "dash") renderDash(); });
+      if (fcOn && !F && total > 0 && basis !== "pattern") forecastLater(scen, () => { if (dashOn()) renderDash(); });
       if (F && F.err) notes.push("전망 계산 실패: " + esc(F.err));
       else if (F) {
         const R = F.R, fd = F.model.monthDates, B = inUsd ? R.bandsUsd : R.bands;
@@ -2085,7 +2085,7 @@
         (bp.pr.some((x) => x.p == null) ? `<p class="muted small">목표일이 그보다 가까워 '-'로 둡니다.</p>` : "");
     card.innerHTML = `<div class="row between wrap"><div class="row wrap" style="gap:4px 8px"><h2 style="margin:0">본전까지</h2><span class="muted small">${sub}</span></div></div>
       <div class="bepv"><b class="${cls(gap)}">${spct(gap, 1)}</b>${gap < 0 ? `<span class="small muted">원금 대비 · 본전이 되려면 <b>${spct(need, 1)}</b> 올라야 해요</span>` : ""}</div>` + probs +
-      `<p class="muted small">관찰용 숫자예요. 지금 구성 그대로(적립·매매 없이) 들고 있을 때 월말 평가액이 매수 원금에 닿을 확률로, 전망 탭 내 관점과 같은 계산이에요. 매수 때 환율은 모르니 지금 환율로 원금을 셉니다.</p>`;
+      `<p class="muted small">관찰용 숫자예요. 지금 구성 그대로(적립·매매 없이) 들고 있을 때 월말 평가액이 매수 원금에 닿을 확률로, 분석 › 목표일 전망의 내 관점과 같은 계산이에요. 매수 때 환율은 모르니 지금 환율로 원금을 셉니다.</p>`;
   }
   const WI = { monthly: null, sell: 0 }; // 만약에: 저장하지 않는 임시 가정
   function wiTop() {
@@ -2182,7 +2182,7 @@
       } catch (e) { /* 무시 */ }
       fcStore();
       renderForecast();
-      if ($("#tabs .on").dataset.tab === "dash") renderDash();
+      if (dashOn()) renderDash();
     } catch (e) { st.textContent = "오류: " + e.message; console.error(e); }
     btns.forEach((x) => (x.disabled = false));
   }
@@ -2289,7 +2289,7 @@
         <td>${f.kind === "asset" ? pct(b.holdings[i].valueKrw / R.V0, 0) : "-"}</td><td>${pct(f.vol, 0)}</td><td>${pct(f.mu.base, 0)}<br><span class="muted">${pct(f.mu.smooth ?? f.mu.base, 0)}</span></td><td><b>${pct(f.mu[scen], 0)}</b></td></tr>`).join("") +
       `<tr><td class="l muted wrapc" colspan="5">상관: ${md.factors.map((f, i) => md.factors.slice(0, i).map((g2, j) => `${f.key}–${g2.key} ${md.corr[i][j].toFixed(2)}`).join(", ")).filter(Boolean).join(" · ")}</td></tr>`;
     renderStrategy();
-    if (onTab("forecast")) { renderFx(); runXfEffect(); }
+    if (onTab("analysis")) { renderFx(); runXfEffect(); }
   }
 
   // 내 관점 숫자·렌즈·그래프 (슬라이더를 움직일 때는 이것만 다시 그린다)
@@ -2743,7 +2743,7 @@
     allocTimer = setTimeout(() => {
       if (allocRun || !S.state || !(valuation().total > 0)) return;
       if (lastAlloc && !allocDirty) return;
-      if (allocRestore()) { if (onTab("stocks")) { renderAllocTable(); renderAllocChart(); } return; }
+      if (allocRestore()) { if (anaOn("road")) { renderAllocTable(); renderAllocChart(); } return; }
       const go = () => runAlloc();
       if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 }); else go();
     }, delay);
@@ -2952,17 +2952,17 @@
     const v = L[i].h[t], a = L[i - 1].h[t];
     for (let j = i - 1; j >= 0 && L[j].h[t] === a; j--) { if (v) L[j].h[t] = v; else delete L[j].h[t]; }
     for (let j = L.length - 1; j > 0; j--) if (JSON.stringify(L[j].h) === JSON.stringify(L[j - 1].h)) L.splice(j, 1);
-    save(false); renderTrades(); if ($("#tabs .on").dataset.tab === "dash") renderDash();
+    save(false); renderTrades(); if (dashOn()) renderDash();
   }
   function clearTrades() {
     if (!confirm("거래 기록을 모두 지울까요? 목표 진행 그래프도 지금 수량 기준으로 다시 그립니다.")) return;
-    S.state.lots = []; save(false); renderTrades(); if ($("#tabs .on").dataset.tab === "dash") renderDash();
+    S.state.lots = []; save(false); renderTrades(); if (dashOn()) renderDash();
   }
   function onTradeDate(e) {
     const i = +e.target.dataset.lot, L = S.state.lots, d = e.target.value; if (!L[i] || !d) return;
     const lo = L[i - 1]?.d || "0000", hi = L[i + 1]?.d || "9999";
     if (d <= lo || d >= hi) { toast(`${lo} 과 ${hi} 사이 날짜만 됩니다`); e.target.value = L[i].d; return; }
-    L[i].d = d; save(false); renderTrades(); if ($("#tabs .on").dataset.tab === "dash") renderDash();
+    L[i].d = d; save(false); renderTrades(); if (dashOn()) renderDash();
   }
   // 백업 알림: 입력값이 이 브라우저에만 있으므로, 바뀐 뒤 14일 넘게 백업하지 않았으면 대시보드에 알린다
   function markBackup() { S.state.ui.last_backup = today(); save(false); renderBackupNag(); }
@@ -3101,6 +3101,7 @@
     let dev = has;
     try { const q = new URLSearchParams(location.search).get("dev"); if (q === "1") localStorage.setItem("naeilo-dev", "1"); else if (q === "0") localStorage.removeItem("naeilo-dev"); dev ||= localStorage.getItem("naeilo-dev") === "1"; } catch (e) { /* 무시 */ }
     $("#devCard").style.display = MODE === "static" && dev ? "" : "none";
+    $("#collectCard").style.display = dev || MODE === "local" ? "" : "none"; // 시세 수집·로그는 개발자용 (내 PC 서버에서는 늘 보임)
     if (MODE !== "static" || !dev) return;
     box.innerHTML = `<p class="small">일반 사용자는 필요 없습니다. 토큰을 넣으면 '시세 수집'이 GitHub Actions 수집을 직접 실행하고 저장소 데이터를 갱신합니다(공개 중계 대신). 기록 탭의 미래 설계 글도 이 토큰으로 저장소(data/beyora.json)에 저장되고, 토큰이 없는 사람은 읽기만 합니다. ${has ? "<b class='good'>연결됨.</b>" : ""} 토큰은 이 브라우저에만 저장됩니다.</p>
       ${has ? `<p class="small">기기 자동 동기화: ${!S.config?.push ? "중계 주소 없음" : !S.sync ? "확인 중…" : S.sync.ok ? `<b class="good">켜짐</b> · 이 토큰을 넣은 기기끼리 보유 수량·목표를 자동으로 맞춤 (마지막 ${new Date(S.sync.at).toLocaleTimeString()})` : `꺼짐 (${esc(S.sync.err)}) · 중계를 다시 배포해야 할 수 있음`}</p>` : ""}
@@ -3258,7 +3259,7 @@
     const basis = $("#histBasis .on")?.dataset.b || "model";
     if (basis === "pattern" && M) return { name: "패턴", at: (d) => { const w = weekdays(H.dates[o], d); return { mu: patPred(patFeat(M.P, o, w), M.p), sd: M.sd * Math.sqrt(w.length / 21) }; } };
     const scen = basisScen(basis), F = fcReady(scen), B = F && !F.err && F.R?.bands, fd = F && F.model?.monthDates;
-    if (!B || !fd) { if (!F) forecastLater(scen, () => { if ($("#tabs .on")?.dataset.tab === "dash") renderDash(); }); return null; }
+    if (!B || !fd) { if (!F) forecastLater(scen, () => { if (dashOn()) renderDash(); }); return null; }
     const lr = (k) => Math.log(B.p50[k] / B.p50[0]), vr = (k) => ((Math.log(B.p75[k]) - Math.log(B.p25[k])) / 1.349) ** 2, T = (d) => Date.parse(d + "T00:00:00Z");
     return { name: BASIS[basis] || "패턴", at: (d) => { // 달 사이는 날짜 비율로 잇는다 (분산은 시간에 비례)
       let k = 0; while (k + 1 < fd.length - 1 && fd[k + 1] <= d) k++;
@@ -3420,23 +3421,39 @@
   }
   function renderAll() {
     synthKR(); renderHeader(); renderQuotes(); renderGoalInputs(); renderEvents(); renderSettings(); renderPrem();
-    if (onTab("dash")) renderDash();
-    if (onTab("forecast")) renderForecastTab();
+    if (onTab("dash")) renderHome();
     if (onTab("stocks")) renderStocksTab();
-    if (onTab("record")) renderRecord();
+    if (onTab("analysis")) renderAnalysisTab();
   }
   const onTab = (t) => $("#tabs .on")?.dataset.tab === t;
+  // 분석 탭은 목록(허브)과 항목 화면 하나. anaPage 가 "" 이면 목록
+  const ANA_PAGES = ["road", "forecast", "rate", "events", "fx", "cash"];
+  let anaPage = "";
+  const anaOn = (k) => onTab("analysis") && anaPage === k;
+  // renderDash 는 홈(목표 카드)과 분석 › 내 길(그래프·내 기록·적중 기록판·1000칸)을 함께 그린다
+  const dashOn = () => onTab("dash") || anaOn("road");
   // 리로드해도 저장된 전망을 쓰고, 다시 계산은 시나리오 박스를 누를 때만
   const ensureForecast = () => { if ((!lastForecast && !fcRestore()) || fcDirty) runForecast(); else renderForecast(); }; // 입력·기준값이 바뀌었으면 바로 다시 (앱처럼)
-  // 전망 탭: 목표일 전망 · 외부 요인 · 환율 영향을 한 화면에
-  function renderForecastTab() { renderSchedule(); renderSens(); renderFx(); renderRateScen(); ensureForecast(); }
-  // 종목 탭: 보유 종목 · 종목 진단 · 비중 조정 · 배당·세금을 한 화면에
-  function renderStocksTab() {
-    renderStockPrices(); renderCash(); ensureForecast();
-    if ((!lastAlloc || allocDirty) && !allocRestore()) runAlloc(); else { renderAllocTable(); renderAllocChart(); }
+  // 홈: 목표 카드 + 가까운 일정
+  function renderHome() { renderDash(); renderUpcoming(); }
+  // 종목 탭: 보유 종목 · 종목 진단 · 기간 수익률(renderDash 가 계산) · 거래 기록
+  function renderStocksTab() { renderStockPrices(); renderDash(); ensureForecast(); }
+  // 분석 탭: 고른 화면 하나만 그린다 (목록에서는 아무것도 계산하지 않음)
+  function renderAnalysisTab() {
+    const k = anaPage; if (!k) return;
+    if (k === "road") {
+      renderDash();
+      if ((!lastAlloc || allocDirty) && !allocRestore()) runAlloc(); else { renderAllocTable(); renderAllocChart(); }
+    } else if (k === "cash") renderCash();
+    else { renderSchedule(); renderSens(); renderFx(); renderRateScen(); }
+    ensureForecast();
   }
-  // 기록 탭: 다가오는 일정 + 적중 기록판·다이어그램·실제 기록(계산은 renderDash 가 함께 한다) + 미래 설계 글
-  function renderRecord() { renderUpcoming(); renderDash(); renderBeyora(); bvLoad(); }
+  function openAna(k) {
+    anaPage = ANA_PAGES.includes(k) ? k : "";
+    $("#anaHub").hidden = !!anaPage;
+    $$(".anapage").forEach((p) => (p.hidden = p.dataset.ana !== anaPage));
+    renderAnalysisTab();
+  }
   // 앞으로 45일 동안의 내 종목·시장 일정 (켜 둔 사건 + 지난해 배당일로 짐작한 배당). 숫자와 날짜만, 매매 권유 없음
   function renderUpcoming() {
     const box = $("#upList"), lim = new Date(Date.now() + 45 * 864e5).toISOString().slice(0, 10), td = today();
@@ -3457,9 +3474,11 @@
       });
     });
     // 앱 소식함 일정 띠처럼 보유 종목 일정을 먼저, 그 안에서 날짜순 (진한 테두리는 그대로 가장 가까운 일정)
+    const all = rows.length; // 홈에는 날짜가 가장 가까운 3개만 (전체는 분석 › 외부 요인 › 펼친 일정)
+    rows.sort((a, b) => a.d.localeCompare(b.d)); rows.splice(3);
     rows.sort((a, b) => (b.mine - a.mine) || a.d.localeCompare(b.d));
     const near = rows.reduce((n, x) => (!n || x.d < n.d ? x : n), null);
-    $("#upSum").textContent = rows.length ? `· 앞으로 45일 ${rows.length}건` : "";
+    $("#upSum").textContent = all ? `· 앞으로 45일 ${all}건${all > rows.length ? ` 중 가까운 ${rows.length}건` : ""}` : "";
     // 펼친 일정(외부 요인)과 같은 모양: 대상별 한 줄, 날짜순 작은 칩. 가장 가까운 일정은 진한 테두리
     const groups = new Map(); rows.forEach((x) => { if (!groups.has(x.who)) groups.set(x.who, []); groups.get(x.who).push(x); });
     const dow = (d) => "일월화수목금토"[new Date(d + "T00:00:00").getDay()];
@@ -3467,25 +3486,27 @@
     // 대상 묶음은 줄을 따로 쓰지 않고 옆으로 이어 붙인다 (빈 오른쪽을 다음 묶음이 채움)
     box.innerHTML = rows.length ? `<div class="upflow">${[...groups].map(([t, xs]) => `<div class="upgrp"><div class="schedhead"><b>${esc(t)}</b> <span class="muted">${xs.length}건</span></div><div class="chips">${xs.map(chip).join("")}</div></div>`).join("")}</div>`
       + `<p class="muted small">보유 종목 일정이 먼저. 회색 = 분기 실적, 주황 = 한 번 있는 사건, 초록 = 배당, 진한 테두리 = 가장 가까운 일정. ±는 그날 평소 움직임. 실적 날짜는 회사 발표 전까지 추정, 배당은 지난해 같은 때를 기준으로 짐작한 값.</p>`
-      : `<p class="muted small">앞으로 45일 안에 켜 둔 일정이 없습니다. 일정은 '전망 → 외부 요인'에서 켜고 끕니다.</p>`;
+      : `<p class="muted small">앞으로 45일 안에 켜 둔 일정이 없습니다. 일정은 '분석 › 외부 요인'에서 켜고 끕니다.</p>`;
   }
-  // 예전 탭 이름(분석·전략의 하위 탭, 시세 수집)으로 저장된 값을 새 탭으로
-  const TAB_OLD = { analysis: "forecast", quotes: "stocks", insight: "record" }, ANA_TAB = { strategy: "stocks", alloc: "stocks", cash: "stocks" };
+  // 예전 탭 이름(전망·기록, 시세 수집 등)으로 저장된 값을 새 탭으로
+  const TAB_OLD = { forecast: "analysis", record: "dash", insight: "dash", quotes: "stocks" };
   function showTab(name) {
     if (TAB_OLD[name]) name = TAB_OLD[name];
-    if (!$(`#tabs button[data-tab="${name}"]`)) name = "dash";
+    if (!$("#tab-" + name)) name = "dash"; // 미래 설계 글(blog)은 탭 줄에 없지만 열 수 있다
     $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
     $$(".tab").forEach((t) => t.classList.toggle("on", t.id === "tab-" + name));
-    if (name === "dash") renderDash();
-    if (name === "forecast") renderForecastTab();
+    if (name === "dash") renderHome();
     if (name === "stocks") renderStocksTab();
-    if (name === "record") renderRecord();
+    if (name === "analysis") renderAnalysisTab();
+    if (name === "blog") { renderBeyora(); bvLoad(); }
     try { localStorage.setItem("tab", name); } catch (e) { /* 무시 */ }
   }
   function segClick(id, cb) { $(id).addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; $$(id + " button").forEach((x) => x.classList.toggle("on", x === b)); cb(); }); }
 
   function bind() {
-    $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
+    $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.tab === "analysis" && onTab("analysis")) { openAna(""); return; } showTab(b.dataset.tab); }); // 분석에서 분석을 다시 누르면 목록으로
+    $("#anaHub").addEventListener("click", (e) => { const b = e.target.closest("[data-ana]"); if (b) { openAna(b.dataset.ana); window.scrollTo({ top: 0 }); } });
+    document.addEventListener("click", (e) => { if (e.target.closest("[data-ana-back]")) { openAna(""); window.scrollTo({ top: 0 }); } });
     document.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (!g) return; e.preventDefault(); showTab(g.dataset.go); const d = $("#holdDet"); if (g.dataset.go === "stocks" && d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); if (g.dataset.add) setTimeout(() => $("#addTicker")?.focus({ preventScroll: true }), 300); } });
     $("header .logo").onclick = () => { showTab("dash"); window.scrollTo({ top: 0, behavior: "smooth" }); };
     $("#btnCollect").onclick = () => collect(false);
@@ -3506,7 +3527,7 @@
     $("#btnAdd").onclick = addHolding;
     $("#btnKrSum").onclick = () => { const v = parseDec($("#krSum").value); setKrSum(v > 0 ? v : 0); $("#krSum").blur(); toast(v > 0 ? "국내 주식 합계를 넣었어요" : "국내 주식 합계를 지웠어요"); };
     $("#krSum").addEventListener("keydown", (e) => e.key === "Enter" && $("#btnKrSum").click());
-    $("#krToRec").onclick = (e) => { e.preventDefault(); showTab("dash"); $$("#recMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === "kr")); renderMyRec(); $("#recCard").scrollIntoView({ behavior: "smooth" }); };
+    $("#krToRec").onclick = (e) => { e.preventDefault(); showTab("analysis"); openAna("road"); $$("#recMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === "kr")); renderMyRec(); $("#recCard").scrollIntoView({ behavior: "smooth" }); };
     $("#addTicker").addEventListener("input", sugUpdate);
     // 한글 입력 중 엔터: 글자 조합이 끝난 뒤에 고른다 (먼저 수량 칸으로 옮기면 마지막 글자가 그쪽에 들어간다)
     let enterAfterIme = false;
@@ -3542,7 +3563,12 @@
     segClick("#diaMode", renderDash); segClick("#hitMode", renderDash);
     $("#premBox").addEventListener("change", onPrem);
     segClick("#stockRange", renderStockPrices); segClick("#allocQ", renderAllocChart); segClick("#fxRange", renderFx); segClick("#divSpan", renderCash);
-    document.addEventListener("click", (e) => { const b = e.target.closest("[data-jump]"); if (b) $("#" + b.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
+    document.addEventListener("click", (e) => { // 다른 분석 화면에 있는 곳이면 그 화면을 열고 간다
+      const b = e.target.closest("[data-jump]"); if (!b) return; const el = $("#" + b.dataset.jump); if (!el) return;
+      const pg = el.closest(".anapage"); if (pg) { if (!onTab("analysis")) showTab("analysis"); if (anaPage !== pg.dataset.ana) openAna(pg.dataset.ana); }
+      if (el.tagName === "DETAILS") el.open = true;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
     $("#btnAlloc").onclick = () => { allocDirty = true; runAlloc(); };
     $("#btnStab").onclick = runStab; $("#stabRate").onchange = () => { lastStab = null; $("#stabOut").innerHTML = ""; $("#stabStatus").textContent = "계산 전 (몇 초 걸립니다)"; stabRestore(); }; stabRestore();
     $("#allocBoxes").addEventListener("click", (e) => { const b = e.target.closest("[data-ak]"); if (!b) return; S.state.alloc_pick = b.dataset.ak; save(false); renderAllocTable(); renderAllocChart(); });
@@ -3603,7 +3629,7 @@
       const f = e.target.files[0]; if (!f) return;
       try { const j = JSON.parse(await f.text()); bvMerge(j.beyora); delete j.beyora; S.state = normalize(j); save(); renderAll(); toast("불러왔습니다"); } catch (err) { alert("파일을 읽지 못했습니다: " + err.message); }
     };
-    let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const t = $("#tabs .on").dataset.tab; if (t === "dash") renderDash(); if (t === "stocks") { renderStockPrices(); renderAllocChart(); if (lastForecast) renderForecast(); } if (t === "forecast") { if (lastForecast) renderForecast(); else renderFx(); } }, 200); });
+    let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const t = $("#tabs .on").dataset.tab; if (t === "dash") renderDash(); if (t === "stocks") { renderStockPrices(); if (lastForecast) renderForecast(); } if (t === "analysis") renderAnalysisTab(); }, 200); });
   }
 
   // ------------------------------------------------------------ 다른 기기로 옮기기 (링크·QR, 서버 저장 없음)
@@ -3760,7 +3786,7 @@
     bind(); renderAll(); marFetch(); syncPull(); renderEsync(); allocWarm(2500);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncPull(); });
     setAuto(S.state.ui.auto_refresh_min || 0);
-    let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; if (tab === "analysis") tab = ANA_TAB[localStorage.getItem("ana")] || "forecast"; } catch (e) { /* 무시 */ }
+    let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; } catch (e) { /* 무시 */ }
     showTab(tab);
     xferCheck();
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(() => { pushRender(); pushSync(); }).catch(() => {});
