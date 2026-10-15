@@ -91,6 +91,14 @@
     const el = $(sel); if (el) el.innerHTML = `${l[Math.floor(Math.random() * l.length)]}<b>${who}</b>`;
   });
 
+  // ------------------------------------------------------------ 아이폰 상단 시계: 보는 사람 기기의 지금 시각 (아이폰처럼 12시간, 오전·오후 없이)
+  function tick() {
+    const d = new Date(), t = `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")}`;
+    document.querySelectorAll(".sbar .clock").forEach((el) => { el.textContent = t; });
+    setTimeout(tick, 60000 - (d.getSeconds() * 1000 + d.getMilliseconds()) + 50); // 다음 분이 바뀔 때
+  }
+  tick();
+
   // ------------------------------------------------------------ 시작
   document.querySelectorAll(".phone img").forEach((img) => img.addEventListener("error", () => img.classList.add("miss")));
   $("#fcMonths").addEventListener("input", draw);
