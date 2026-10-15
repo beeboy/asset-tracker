@@ -354,6 +354,8 @@ final class Sync {
         st["app"] = app
         // 목표는 사이트와 같은 칸(goal)에. 회복 루트(본전 기준)와 사이트 샘플 중에는 사이트 목표를 그대로 둔다
         if m.isGoal, (st["sample"] as? Bool) != true { st["goal"] = m.siteGoal(st["goal"] as? [String: Any]) }
+        // 내 길(회복·목표)은 웹 홈 첫 질문과 같은 칸(route)에. 목표 루트(플러스·처음)는 웹에서 "goal"
+        if (st["sample"] as? Bool) != true { st["route"] = m.isGoal ? "goal" : "recover" }
         // 전망 관점(현재 정세·내 관점·과거 추세)과 추세 신뢰는 웹 전망 설정과 같은 칸(model.scenario·trust)에. 웹이 다른 시나리오(보수 등)면 그대로 둔다
         var md = st["model"] as? [String: Any] ?? [:]
         if ["blend", "base", "smooth", nil].contains(md["scenario"] as? String) {
@@ -418,7 +420,9 @@ final class Sync {
             // 사이트에서만 쓰던 값: 미션은 처음부터. 이익이면 목표 루트, 손실이면 회복 루트
             let cost = hs.reduce(0.0) { a, h in a + (Sample.symbol(h.symbol).map { m.krw($0, h.qty * h.avg) } ?? 0) }
             let val = hs.reduce(0.0) { a, h in a + (Sample.symbol(h.symbol).map { m.krw($0, h.qty * $0.last) } ?? 0) }
-            m.startRoute(cost > 0 && val >= cost ? .plus : .recover)
+            // 웹 홈에서 길을 이미 골랐으면 그 길로
+            let web = (st["sample"] as? Bool) == true ? nil : st["route"] as? String
+            m.startRoute(web == "recover" ? .recover : web == "goal" ? .plus : cost > 0 && val >= cost ? .plus : .recover)
         }
         if let app {
             for v in (app["virtual"] as? [[String: Any]]) ?? [] {
@@ -432,6 +436,11 @@ final class Sync {
                let prog = try? JSONDecoder().decode(Progress.self, from: data) {
                 m.apply(prog)
             }
+        }
+        // 웹 홈에서 고른 길(route)을 따른다 (진행보다 뒤에: 웹에서 바꾼 길이 진행에 든 예전 길을 덮는다). 목표는 플러스·처음 중 지금 것을 그대로
+        if (st["sample"] as? Bool) != true, let r = st["route"] as? String {
+            if r == "recover", m.isGoal { m.switchRoute(.recover) }
+            else if r == "goal", !m.isGoal { m.switchRoute(.plus) }
         }
         // 목표(금액·목표일·시작일·매달 넣는 돈)는 받을 때마다 사이트 값으로 맞춘다 (진행보다 뒤에: 진행에 든 예전 목표를 덮는다).
         // 회복 루트는 본전이 기준이라 화면에는 안 쓰지만, 목표 루트로 넘어갈 때 이 목표를 그대로 쓴다. 사이트 샘플 목표는 받지 않는다
