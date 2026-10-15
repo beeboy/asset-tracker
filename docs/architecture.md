@@ -16,6 +16,7 @@
 ```
 
 ## 2. 웹 (`web/`)
+- 2026-10-15부터 개발자용 (`noindex`, 입구는 루트 `naeilo.com/`). 지우지 않는 이유: `check_calc`·`calc_parity`가 `app.js` 함수 원문을 꺼내 쓰고, 입구 카드가 `model.js`를 그대로 불러 쓴다.
 - 정적 사이트. `web/index.html`이 `charts.js → model.js → research.js → sharecard.js → stocks.js → app.js` 순서로 읽음 (모두 `?v=` 판 번호).
 - `app.js`: 화면 로직 전체. 섹션: 서버/데이터 로드(`reloadData`), 동기화(`syncPull/syncPush`, esync), 평가(`valuation`), 시세·종목(`collect`, `yahoo`, KR 추정), 목표·현황(`renderDash`), 외부 요인, 금리 충격 테스트, 전망(`buildModelNow`, `runForecast`), 본전(`calcBep`), 비중안, 거래 기록, 배당·세금, 환율, 설정, 패턴 예측, 적중 기록판, 1000칸, 공유 이미지, init.
 - `model.js` (`window.Model`): 순수 계산. `indicators`, `kalmanTrend`, `buildModel`, `simulate`(다변량 t 몬테카를로 + 환율 + 사건 점프), `reweight`, `breakeven`, `allocPlans`, `krSeries/krNorm/krAt`, `factorBetas`.
@@ -113,7 +114,7 @@
 19. 주간 범위: 웹은 패턴 모델, 앱·위젯은 닫힌 식 σ/√52.
 20. 국내 ETF 규칙: 웹은 `data/kr_proxy.json`, 앱은 코드에 하드코딩(파일이 바뀌면 어긋날 수 있음).
 
-**CI 검사 (2026-10-14 넓힘)**: `mc_parity`는 같은 입력에서 몬테카를로 공식을 비교합니다. `calc_parity`(`tools/calc_parity.mjs` + `ios-app/tools/calc_parity`)는 웹 `app.js`와 앱 Swift 원본에서 함수·줄을 그대로 꺼내 같은 입력으로 돌립니다: 환율 고르기(`fxBase` ↔ `valFx`, 매매기준율 0~30일), 평가액, 배당(화면이 쓰는 환율 식 포함), 세금, 금리 시나리오, 위젯 필요 경로(`goalPath.at` ↔ `Snapshot.need`). 아직 못 고친 차이는 도구의 `KNOWN`에 적어 경고만 합니다(지금: 없음). 두 검사 모두 `ios.yml` parity 잡이 PR·push와 stats·macro 작업이 끝난 뒤(`workflow_run`)에 돌아 봇이 올린 `data/stats.json`·`calc.json`·금리 식단 변경도 봅니다. 남은 한계: 세금의 실현 이익·미국 밖 외화 종목(17번, 미정), 환율 영향 화면, 설정 매핑(7·8번), 국내 ETF 규칙(20번)은 검사하지 않습니다. `check_calc`는 웹 함수와 calc.json을 비교합니다.
+**CI 검사 (2026-10-14 넓힘, 2026-10-15 웹 입구 전환 뒤에도 유지)**: 웹 화면은 더 만들지 않지만 `app.js` 계산 함수는 앱 계산의 기준 원문으로 남는다. `mc_parity`는 같은 입력에서 몬테카를로 공식을 비교합니다. `calc_parity`(`tools/calc_parity.mjs` + `ios-app/tools/calc_parity`)는 웹 `app.js`와 앱 Swift 원본에서 함수·줄을 그대로 꺼내 같은 입력으로 돌립니다: 환율 고르기(`fxBase` ↔ `valFx`, 매매기준율 0~30일), 평가액, 배당(화면이 쓰는 환율 식 포함), 세금, 금리 시나리오, 위젯 필요 경로(`goalPath.at` ↔ `Snapshot.need`). 아직 못 고친 차이는 도구의 `KNOWN`에 적어 경고만 합니다(지금: 없음). 두 검사 모두 `ios.yml` parity 잡이 PR·push와 stats·macro 작업이 끝난 뒤(`workflow_run`)에 돌아 봇이 올린 `data/stats.json`·`calc.json`·금리 식단 변경도 봅니다. 남은 한계: 세금의 실현 이익·미국 밖 외화 종목(17번, 미정), 환율 영향 화면, 설정 매핑(7·8번), 국내 ETF 규칙(20번)은 검사하지 않습니다. `check_calc`는 웹 함수와 calc.json을 비교합니다.
 
 ## 7. 동기화 범위 (웹 ↔ 앱)
 - 앱이 올리는 것: holdings, `app`(앱 전용 상태), goal(목표 루트일 때), `model.scenario`·`trust`(웹 시나리오가 blend/base/smooth일 때만), daily, lots, kr_log.

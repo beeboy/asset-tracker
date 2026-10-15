@@ -607,7 +607,7 @@ struct AppStartView: View {
     private let steps = [
         ("앱에서 종목 하나 이상 추가", "이미 넣은 종목이 있으면 확인만", "자산 추이 위젯"),
         ("앱 알림 하나 켜기", "본전 도달, 비중 이탈 중 하나", "본전 진행 위젯"),
-        ("기기 자동 동기화 켜기", "폰에서 넣어도 PC naeilo.com에 같은 숫자", "블록 위젯"),
+        ("오늘의 1분 한 번 해 보기", "홈의 숫자 하나와 질문 하나", "블록 위젯"),
     ]
     /// 내 종목 전체 평가액 3개월 흐름 (원화)
     private var totalSeries: [Double] {
@@ -663,13 +663,6 @@ struct AppStartView: View {
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                         if denied { Text("알림이 꺼져 있어요. 아이폰 설정 > 알림 > naeilo에서 허용한 뒤 다시 눌러 주세요.").appFont(12).foregroundStyle(Theme.sub) }
-                    } else if cur && i == 2 {
-                        // 3단계는 실제로: 동기화 화면에서 켜면 끝난다
-                        NavigationLink { SyncView() } label: {
-                            Text("동기화 켜러 가기").appFont(14, .bold).foregroundStyle(.white)
-                                .padding(.horizontal, 14).frame(minHeight: 44).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
-                        }
-                        if !m.syncOn { Text("PC가 없으면 이 폰에서만 켜 두어도 돼요. 폰을 바꿀 때 같은 비밀번호로 되찾을 수 있어요.").appFont(12).foregroundStyle(Theme.sub) }
                     } else if cur {
                         Button("앱에서 했어요") { withAnimation { m.nxStep += 1 } }
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)

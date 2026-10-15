@@ -48,10 +48,8 @@ struct RootView: View {
         .onChange(of: model.nxStep) { _, _ in WidgetBridge.write(model) }
         // 홈 인물을 바꾸면 위젯 인물도 같이 ('홈 인물 따라가기' 위젯)
         .onChange(of: model.homeFriend) { _, _ in WidgetBridge.write(model) }
-        // 앱 시작 3단계: 동기화를 켜면 끝난다 (이미 켜져 있으면 3단계에 오는 순간)
-        .onChange(of: Sync.shared.isOn, initial: true) { _, on in if on && model.nxStep == 2 { model.nxStep = 3 }; WidgetBridge.write(model) }
+        .onChange(of: Sync.shared.isOn) { _, _ in WidgetBridge.write(model) }
         .onChange(of: Sync.shared.isDev) { _, _ in WidgetBridge.write(model) }
-        .onChange(of: model.nxStep) { _, n in if n == 2 && Sync.shared.isOn { model.nxStep = 3 } }
         // 인물 대사: 화면을 열거나 앱을 앞으로 가져올 때만 다음 줄로 (1분 자동 갱신으로는 안 바뀐다)
         .modifier(LineTurns(model: model, phase: phase))
         // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로.

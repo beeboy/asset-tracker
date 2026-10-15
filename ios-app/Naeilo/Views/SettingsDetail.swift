@@ -159,7 +159,7 @@ struct AlertsView: View {
     }
 }
 
-// MARK: 기기 동기화 — PC naeilo.com 6자리 코드
+// MARK: 기기 동기화 — 같은 비밀번호의 기기끼리 (설정 목록에는 이미 켠 사람에게만 보인다)
 
 struct SyncView: View {
     @Environment(AppModel.self) private var m
@@ -227,7 +227,7 @@ struct SyncView: View {
                 let ok = pw.count >= 10 && pw == pw2
                 Card {
                     Text("동기화 켜기").appFont(15, .bold)
-                    Text("기기마다 같은 비밀번호를 넣으면 자동으로 맞춰져요. PC는 naeilo.com 설정에서 넣어요.")
+                    Text("기기마다 같은 비밀번호를 넣으면 자동으로 맞춰져요.")
                         .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                     SecureField("동기화 비밀번호 (10자 이상)", text: $pw).textContentType(.newPassword)
                         .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
@@ -309,7 +309,7 @@ struct SyncView: View {
 
     private var statusText: String {
         switch sync.state {
-        case .off: return "폰과 PC가 같은 숫자를 보려면 켜요"
+        case .off: return "폰을 바꿔도 같은 숫자를 보려면 켜요"
         case .idle: return sync.isDev ? "같은 GitHub 계정의 개발자 기기끼리 맞춰져요" : "같은 비밀번호를 넣은 기기끼리 맞춰져요"
         case .working: return "맞추는 중…"
         case .ok(let d):
@@ -581,8 +581,7 @@ struct HowToView: View {
                      ("홈", "리마인드", "달성·새 소식은 친구 말풍선으로, 3일 안의 일정은 노란 띠로 떠요. 지난 소식은 ‘새 소식’에 30일 남아요."),
                      ("알림", "알림", "비중이 계획에서 5%p 넘게 벗어난 날만 울려요."),
                      ("미션", "1000칸", "본전을 1000칸으로 나눠 채워요."),
-                     ("미션", "주간 예보", "월요일에 금요일 범위를 적고, 금요일 종가로 도장을 찍어요."),
-                     ("PC", "naeilo.com", "여러 종목 한 번에 넣기, 증권사 파일, 긴 표와 근거는 PC에서 봐요.")], id: \.1) { w, t, v in
+                     ("미션", "주간 예보", "월요일에 금요일 범위를 적고, 금요일 종가로 도장을 찍어요.")], id: \.1) { w, t, v in
                 HStack(alignment: .top, spacing: 10) {
                     Text(w).appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 3)
                         .background(Theme.mint, in: Capsule())

@@ -16,11 +16,10 @@ struct SettingsView: View {
             ("가격 기준", "미국 종목·환율은 지금 가격 · 한국 종목은 넣은 가격", .price),
             ("세금", "한국 거주자 기준으로 계산해요", .tax),
         ]
-        let helpRows: [(String, String, SettingsRoute)] = [
-            ("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto),
-            ("웹과 동기화", m.syncOn ? "켜짐 · naeilo.com과 같은 값" : "꺼짐", .sync),
-            ("개발자에게 커피 한 잔", Support.shared.tier == .free ? "구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
-        ]
+        // 기기 동기화는 웹이 입구로 줄어 숨긴다. 이미 켠 사람만 끌 수 있게 보인다 (코드는 남김)
+        let helpRows: [(String, String, SettingsRoute)] = [("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto)]
+            + (m.syncOn ? [("기기 동기화", "켜짐 · 같은 비밀번호의 기기와 같은 값", .sync)] : [])
+            + [("개발자에게 커피 한 잔", Support.shared.tier == .free ? "구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support)]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "설정").padding(.horizontal, -16)
