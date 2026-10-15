@@ -23,6 +23,9 @@
 //       선택 변수: BUNDLE_ID (기본 com.naeilo.widget), NO_SANDBOX=1 (TestFlight 샌드박스 구매를 받지 않음).
 // 9) 판 깨기 순위판 (/scores): 아이폰 앱 게임의 익명 주간 순위. 같은 VIEWS KV, 비밀값 없음.
 //       저장값은 점수·별명(선택, 3글자)·선수 인물 id·날짜뿐. 계정·기기 ID·IP 는 받지도 두지도 않는다. 단계·난이도·주마다 상위 20개, 5주 뒤 지워짐.
+// 12) 출시 알림 신청 (/notify): 입구 페이지(naeilo.com)의 "앱 받기". 같은 VIEWS KV, 비밀값 없음.
+//       저장값은 이메일과 신청 날짜뿐 (KV 키 n:<이메일 해시>). 출시 알림 한 번 보내고 지운다. 신청 취소는 /notify/del.
+//       목록: GET /notify/list (Authorization: Bearer <ADMIN_KEY 또는 저장소 쓰기 권한 GitHub 토큰>).
 // 11) Claude 사용량 (/cu): 본인용 사용량 위젯 앱(usage-app/)이 15분마다 묻는다. 5시간·주간 한도 사용률(%)과 리셋 시각만 돌려준다.
 //       비밀값 CLAUDE_TOKEN = 맥 터미널에서 `claude setup-token` 으로 받은 토큰 (sk-ant-oat01-…, 1년). 폰에는 토큰을 두지 않는다.
 //       먼저 OAuth 사용량 주소를 묻고, 안 되면 가장 작은 메시지 한 번(1토큰)의 응답 머리글(unified 한도)에서 읽는다. 결과는 5분 기억.
@@ -106,6 +109,25 @@ export default {
       const n = Math.max(0, (Number(await env.VIEWS.get("l:" + id)) || 0) + (d === -1 ? -1 : 1));
       await env.VIEWS.put("l:" + id, String(n));
       return out({ id, n });
+    }
+    if (u.pathname === "/notify" || u.pathname === "/notify/del" || u.pathname === "/notify/list") {
+      // POST /notify {"email":"a@b.c"} → { ok } (같은 이메일은 한 줄), POST /notify/del {"email"} → { ok }
+      if (!env.VIEWS) return noKv();
+      if (u.pathname === "/notify/list") {
+        const tok = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+        if (!tok || !((env.ADMIN_KEY && tok === env.ADMIN_KEY) || (await ghWho(env, tok)))) return out({ error: "관리자만 볼 수 있습니다" }, 403);
+        const rows = []; let cur;
+        do { const r = await env.VIEWS.list({ prefix: "n:", cursor: cur }); for (const k of r.keys) { const v = JSON.parse((await env.VIEWS.get(k.name)) || "null"); if (v) rows.push(v); } cur = r.list_complete ? null : r.cursor; } while (cur);
+        return out({ n: rows.length, rows });
+      }
+      if (req.method !== "POST") return out({ error: "POST 만 받습니다" }, 400);
+      const { email } = await req.json().catch(() => ({}));
+      const e = String(email || "").trim().toLowerCase();
+      if (e.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return out({ error: "이메일 주소가 맞지 않습니다" }, 400);
+      const k = "n:" + [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(e)))].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+      if (u.pathname === "/notify/del") { await env.VIEWS.delete(k); return out({ ok: true }); }
+      if (!(await env.VIEWS.get(k))) await env.VIEWS.put(k, JSON.stringify({ email: e, at: new Date().toISOString().slice(0, 10) }));
+      return out({ ok: true });
     }
     if (u.pathname === "/comments" || u.pathname === "/comments/del") {
       // GET /comments?id=a → { comments: [{ cid, at, text }] }

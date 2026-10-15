@@ -3,27 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>naeilo · 내 자산 추이와 미래 전망</title>
+<title>naeilo · 수량만 넣으면 보이는 내 자산의 내일 (iOS 앱)</title>
 <meta name="google-site-verification" content="yJYwSCazu8d8X9h-fCIE78maFdnTA1CYLphG8CRUDgQ">
-<meta name="description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.">
-<meta name="keywords" content="naeilo, 내일로, 자산 관리, 자산 추이, 주식 포트폴리오, 목표 달성 확률, 미국 주식, 3년 전망">
-<link rel="canonical" href="https://naeilo.com/web/">
+<meta name="description" content="naeilo(내일로)는 보유 주식 수량만 넣으면 원화 평가액, 본전·목표까지의 길, 그 길에 닿을 확률을 보여 주는 아이폰 앱입니다. 종목을 사라·팔라는 조언이 아니라 비율과 확률로 보는 자산 관찰 도구예요.">
+<meta name="keywords" content="naeilo, 내일로, 자산 관리 앱, 주식 평가액, 본전 확률, 목표 달성 확률, 미국 주식, 아이폰 위젯">
+<meta name="theme-color" content="#0e161e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f7f8" media="(prefers-color-scheme: light)">
+<link rel="canonical" href="https://naeilo.com/">
+<link rel="icon" href="web/icon-192.png">
+<link rel="apple-touch-icon" href="web/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="naeilo">
 <meta property="og:title" content="naeilo · See Tomorrow, Today.">
-<meta property="og:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.">
-<meta property="og:url" content="https://naeilo.com/web/">
+<meta property="og:description" content="수량만 넣으면, 내 자산의 내일이 보여요. 평가액, 본전·목표까지의 길과 확률을 보여 주는 아이폰 앱.">
+<meta property="og:url" content="https://naeilo.com/">
 <meta property="og:image" content="https://naeilo.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="naeilo · See Tomorrow, Today.">
-<meta name="twitter:description" content="내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.">
+<meta name="twitter:description" content="수량만 넣으면, 내 자산의 내일이 보여요. 평가액, 본전·목표까지의 길과 확률을 보여 주는 아이폰 앱.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/web/","description":"내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
-<meta http-equiv="refresh" content="0; url=web/">
-<script>location.replace("web/" + location.search + location.hash);</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"MobileApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/","description":"보유 주식 수량만 넣으면 원화 평가액, 본전·목표까지의 길, 그 길에 닿을 확률을 보여 주는 자산 관찰 앱. 종목 추천·투자 자문이 아닙니다.","applicationCategory":"FinanceApplication","operatingSystem":"iOS","inLanguage":"ko"}</script>
+<link rel="stylesheet" href="entry.css?v=20261015a">
 </head>
-<body><h1>naeilo</h1><p>내 보유 주식 수량만 입력하면 자산 추이, 목표 달성 확률, 3년 전망, 외부 요인과 다가오는 일정을 한눈에 보여주는 무료 자산 관찰 도구. 종목 추천·투자 자문이 아닙니다.</p><p><a href="web/">naeilo 열기</a></p></body>
+<body>
+<header class="top wrap">
+  <a class="logo" href="./">naeilo</a>
+  <a class="btn sm" href="#get">앱 받기</a>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <h1>수량만 넣으면,<br>내 자산의 내일이 보여요.</h1>
+    <p class="tag">See Tomorrow, Today.</p>
+    <p class="lead">naeilo는 가진 주식 수량만 넣으면 원화 평가액과 본전·목표까지 남은 길, 그 길에 닿을 확률을 매일 보여 주는 아이폰 앱이에요.</p>
+    <div class="cta"><a class="btn" href="#get">출시 알림 받기</a><a class="btn ghost" href="#try">지금 해 보기</a></div>
+  </section>
+
+  <section class="shots" aria-label="앱 화면">
+    <div class="rail">
+      <figure><div class="phone"><img src="img/app-home.png" alt="naeilo 앱 홈 화면" loading="lazy"></div><figcaption>목표까지, 본전까지 남은 길</figcaption></figure>
+      <figure><div class="phone"><img src="img/app-forecast.png" alt="목표일 전망 화면" loading="lazy"></div><figcaption>가장 그럴듯한 금액과 10번 중 9번 범위</figcaption></figure>
+      <figure><div class="phone"><img src="img/app-mission.png" alt="미션 화면" loading="lazy"></div><figcaption>미션을 하나씩 열어 가는 습관</figcaption></figure>
+      <figure><div class="phone"><img src="img/app-people.png" alt="인물과 쉼터 화면" loading="lazy"></div><figcaption>같이 가는 다섯 사람</figcaption></figure>
+    </div>
+    <p class="note wrap">화면 속 금액은 샘플 자료(가상 종목 DRNK·QQQ)예요.</p>
+  </section>
+
+  <section class="wrap">
+    <h2>앱에서만 되는 것</h2>
+    <ul class="feats">
+      <li><span class="ic" aria-hidden="true">👥</span><b>인물 5명과 쉼터</b><span>세리·시오·선배·이르·수아와 함께 가요. 내 캐릭터도 만들어요.</span></li>
+      <li><span class="ic" aria-hidden="true">🧩</span><b>미션과 인터미션</b><span>1000칸 판을 매일 한 칸씩. 4주·3달마다 쉬어 가요.</span></li>
+      <li><span class="ic" aria-hidden="true">📱</span><b>위젯</b><span>홈·잠금화면에서 자산·목표·오늘의 움직임을 봐요.</span></li>
+      <li><span class="ic" aria-hidden="true">📚</span><b>서재</b><span>외전과 1권 이야기를 읽어요.</span></li>
+    </ul>
+  </section>
+
+  <section class="wrap" id="try">
+    <div class="card try">
+      <h2>해 보기</h2>
+      <p class="small muted">종목과 수량만 넣으면 돼요. 넣은 값은 이 브라우저에만 남고 어디로도 보내지 않아요.</p>
+      <div class="rowhead small muted"><span>종목</span><span>수량</span><span>평균 단가 (선택)</span><span></span></div>
+      <div id="rows"></div>
+      <button type="button" class="link" id="addRow">+ 종목 더하기</button>
+      <datalist id="stockList"></datalist>
+      <label class="goal">목표 금액 (선택, 원)<input id="goal" inputmode="numeric" placeholder="예: 5,000,000" autocomplete="off"></label>
+      <p class="small muted">목표일은 3년 뒤로 봐요. 평균 단가를 넣으면 본전까지의 확률도 보여 드려요.</p>
+      <div class="res" id="res" aria-live="polite"></div>
+      <p class="small muted" id="asof"></p>
+      <p class="small">앱에서는 매일 이 길을 이어서 보여 줘요. <a href="#get">출시 알림 받기</a></p>
+    </div>
+  </section>
+
+  <section class="wrap" id="get">
+    <div class="card get">
+      <h2>앱 받기</h2>
+      <p>naeilo 아이폰 앱은 곧 나와요. 이메일을 남기면 출시할 때 한 번만 알려 드려요.</p>
+      <form id="notify" novalidate>
+        <input type="email" id="email" autocomplete="email" placeholder="이메일 주소" required>
+        <button class="btn" type="submit">출시 알림 받기</button>
+      </form>
+      <p class="small" id="notifyMsg" aria-live="polite"></p>
+      <p class="small muted">이메일은 출시 알림 한 번에만 쓰고 보낸 뒤 지워요. 마음이 바뀌면 같은 이메일을 넣고 <button type="button" class="link" id="unsub">신청 취소</button>를 눌러 주세요.</p>
+    </div>
+    <p class="small muted center">종목을 사라·팔라는 조언이 아니라 비율과 확률로 보여 주는 관찰 도구예요.</p>
+  </section>
+</main>
+
+<footer class="wrap">
+  <a href="web/privacy.html">개인정보 처리방침</a>
+  <a href="web/privacy.html#contact">문의</a>
+  <span>© naeilo</span>
+</footer>
+
+<script src="web/stocks.js?v=20261015a"></script>
+<script src="web/model.js?v=20261015a"></script>
+<script src="entry.js?v=20261015a"></script>
+</body>
 </html>
