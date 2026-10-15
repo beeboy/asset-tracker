@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 // 사이트(web/widget-core.js)가 만드는 위젯 요약. 금액 배열은 만원 단위 정수, 나머지 금액은 원
 struct WSummary: Codable {
@@ -113,9 +114,12 @@ enum KrQuoteFeed {
     }
 }
 
-// 토스증권 지금 가격 (개발자 전용). 키를 넣은 PC 의 server.py 를 Tailscale 주소로 부른다.
-// 주소는 naeilo://toss?u=https://내PC.ts.net 을 한 번 열면 저장 (u 가 비면 지움). 저장소에 주소를 쓰지 않는다.
-// 국내·미국 종목만 오고, 8초를 기다린다. 실패하면 15분 안에 받은 값은 그대로 쓰고, 그보다 오래되면 Yahoo 값을 쓴다.
+// 토스증권 지금 가격. 두 길이 있다 (개발자 주소가 있으면 그쪽이 먼저):
+// - 개발자: 키를 넣은 PC 의 server.py 를 Tailscale 주소로 부른다.
+//   주소는 naeilo://toss?u=https://내PC.ts.net 을 한 번 열면 저장 (u 가 비면 지움). 저장소에 주소를 쓰지 않는다.
+// - 일반 사용자: 자기 토스 키(TossKeys, 이 폰 키체인)로 공용 중계(Config.tossRelay)를 거쳐 토스를 직접 부른다.
+//   중계는 키·토큰을 저장하지 않고 넘기기만 한다. 사용자는 중계 IP 를 토스 허용 IP 로 등록해야 한다.
+// 국내·미국 종목만 오고, 3초를 기다린다. 실패하면 15분 안에 받은 값은 그대로 쓰고, 그보다 오래되면 Yahoo 값을 쓴다.
 enum TossFeed {
     static let name = "toss_quotes.json"
     static let key = "toss_base"
@@ -139,17 +143,17 @@ enum TossFeed {
     }
     /// 15분 안에 받은 값만 (오래된 토스 값보다 Yahoo 값이 낫다)
     static func cached() -> QuoteFeed.File? {
-        guard base != nil, let f = Store.read(QuoteFeed.File.self, name), Date().timeIntervalSince1970 - f.got < 900 else { return nil }
+        guard base != nil || TossKeys.on, let f = Store.read(QuoteFeed.File.self, name), Date().timeIntervalSince1970 - f.got < 900 else { return nil }
         return f
     }
 
     /// syms: 종목 → Yahoo 기호. prev 는 모르므로 0 (전일 종가는 사이트·Yahoo 값을 쓴다)
     @discardableResult
     static func fetch(_ syms: [String: String], minAge: TimeInterval = 0) async -> QuoteFeed.File? {
-        guard let b = base else { return nil }
         let want = syms.filter { !$0.value.contains("^") && !$0.value.contains("=") }
         guard !want.isEmpty else { return nil }
         if let o = cached(), Date().timeIntervalSince1970 - o.got < minAge { return o }
+        guard let b = base else { return TossKeys.on ? await fetchUser(want) : nil }
         let list = Set(want.values).sorted().joined(separator: ",")
         guard let enc = list.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
               let url = URL(string: b + "/api/toss/prices?symbols=" + enc) else { return nil }
@@ -170,11 +174,177 @@ enum TossFeed {
             q[id] = .init(last: last, prev: 0, at: num(v["last_time"]) ?? Date().timeIntervalSince1970)
         }
         guard !q.isEmpty else { return fail((o["error"] as? String).map { "서버: " + $0 } ?? "받은 종목 없음") }
+        return save(q)
+    }
+
+    private static func save(_ q: [String: QuoteFeed.Q]) -> QuoteFeed.File {
         let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
         Store.write(f, name)
         Store.defaults.set(f.got, forKey: "toss_ok_at")
         Store.defaults.removeObject(forKey: "toss_err")
         return f
+    }
+
+    /// Yahoo 기호 → 토스 종목 코드 (server.py toss_code 와 같다). 토스에 없는 시장은 nil
+    /// 국내 005930.KS·0101N0.KQ → 6자리, 미국 AAPL → AAPL, BRK-B → BRK.B
+    static func code(_ sym: String) -> String? {
+        let u = sym.trimmingCharacters(in: .whitespaces).uppercased()
+        if u.hasSuffix(".KS") || u.hasSuffix(".KQ") {
+            let c = String(u.dropLast(3))
+            return c.count == 6 && c.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) ? c : nil
+        }
+        // ^GSPC·KRW=X·GC=F·BTC-USD·7203.T 는 여기서 걸러진다
+        let p = u.split(separator: "-", omittingEmptySubsequences: false)
+        let az = { (x: Substring) in x.allSatisfy { $0 >= "A" && $0 <= "Z" } }
+        guard (1...2).contains(p.count), (1...5).contains(p[0].count), az(p[0]) else { return nil }
+        if p.count == 1 { return String(p[0]) }
+        return p[1].count == 1 && az(p[1]) ? String(p[0]) + "." + String(p[1]) : nil
+    }
+
+    // MARK: 일반 사용자 (내 키 + 공용 중계)
+
+    private static func relayCall(_ r: URLRequest) async -> (Int, [String: Any]?, String?) {
+        do {
+            let (d, resp) = try await URLSession.shared.data(for: r)
+            return ((resp as? HTTPURLResponse)?.statusCode ?? 0, try? JSONSerialization.jsonObject(with: d) as? [String: Any], nil)
+        } catch let e as URLError { return (0, nil, e.code == .timedOut ? "3초 안에 응답 없음" : "중계에 닿지 못함") }
+        catch { return (0, nil, "중계에 닿지 못함") }
+    }
+
+    /// 토스 오류를 쉬운 말로 (허용 IP 미등록이 가장 흔하다)
+    static func why(_ code: Int, _ o: [String: Any]?) -> String {
+        let c = ((o?["error"] as? [String: Any])?["code"] as? String) ?? (o?["error"] as? String) ?? ""
+        if code == 403 || c == "access_denied" { return "허용 IP에 중계 IP가 없어요" }
+        if c == "invalid_client" { return "키가 맞지 않아요" }
+        if code == 429 { return "잠시 뒤에 다시 받아요" }
+        return "토스 응답 \(code)" + (c.isEmpty ? "" : " (\(c))")
+    }
+
+    /// 토큰: 키체인에 둔 것을 만료 1분 전까지 쓴다. 토스는 키당 토큰 1개라 새로 받으면 예전 것은 끊긴다
+    static func token(renew: Bool = false) async -> (String?, String?) {
+        if !renew, let t = TossKeys.token, t.exp - 60 > Date().timeIntervalSince1970 { return (t.value, nil) }
+        guard let k = TossKeys.load(), let url = URL(string: Config.tossRelay + "/api/toss/token") else { return (nil, "키 없음") }
+        var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
+        r.httpMethod = "POST"
+        r.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        let ok = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
+        let enc = { (v: String) in v.addingPercentEncoding(withAllowedCharacters: ok) ?? "" }
+        r.httpBody = "client_id=\(enc(k.id))&client_secret=\(enc(k.secret))".data(using: .utf8)
+        let (code, o, e) = await relayCall(r)
+        if let e { return (nil, e) }
+        guard code == 200, let o, let t = o["access_token"] as? String else { return (nil, why(code, o)) }
+        TossKeys.token = .init(value: t, exp: Date().timeIntervalSince1970 + (num(o["expires_in"]) ?? 3600))
+        return (t, nil)
+    }
+
+    private static func prices(_ codes: [String], _ tok: String) async -> (Int, [String: Any]?, String?) {
+        guard let url = URL(string: Config.tossRelay + "/api/toss/v1/prices?symbols=" + codes.joined(separator: ",")) else { return (0, nil, "잘못된 종목") }
+        var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 3)
+        r.setValue("Bearer " + tok, forHTTPHeaderField: "Authorization")
+        return await relayCall(r)
+    }
+
+    /// 토스에 없는 종목 코드 → 다시 물어볼 시각 (하루 동안 안 묻는다, server.py 와 같다)
+    private static var miss: [String: Double] {
+        get { Store.defaults.dictionary(forKey: "toss_miss") as? [String: Double] ?? [:] }
+        set { Store.defaults.set(newValue, forKey: "toss_miss") }
+    }
+
+    private static func fetchUser(_ want: [String: String]) async -> QuoteFeed.File? {
+        let now = Date().timeIntervalSince1970
+        var ids: [String: [String]] = [:]   // 토스 코드 → 앱 종목들
+        let skip = miss
+        for (id, y) in want { if let c = code(y), (skip[c] ?? 0) < now { ids[c, default: []].append(id) } }
+        guard !ids.isEmpty else { return cached() }
+        var (tok, e) = await token()
+        guard var t = tok else { return fail(e ?? "토큰 실패") }
+        var q: [String: QuoteFeed.Q] = [:]
+        func take(_ o: [String: Any]?) {
+            for v in o?["result"] as? [[String: Any]] ?? [] {
+                guard let c = (v["symbol"] as? String)?.uppercased(), let last = num(v["lastPrice"]), last > 0 else { continue }
+                let at = (v["timestamp"] as? String).flatMap { try? Date($0, strategy: .iso8601) }?.timeIntervalSince1970 ?? now
+                for id in ids[c] ?? [] { q[id] = .init(last: last, prev: 0, at: at) }
+            }
+        }
+        let all = ids.keys.sorted()
+        for i in stride(from: 0, to: all.count, by: 200) {   // 한 번에 200개까지
+            let part = Array(all[i..<min(i + 200, all.count)])
+            var (code, o, err) = await prices(part, t)
+            if code == 401 {   // 만료·다른 곳에서 새로 받아 끊김 → 한 번만 다시 받는다
+                (tok, e) = await token(renew: true)
+                guard let n = tok else { return fail(e ?? "토큰 실패") }
+                t = n
+                (code, o, err) = await prices(part, t)
+            }
+            if let err { return fail(err) }
+            if code == 404 && part.count > 1 {
+                // 묶음 안에 토스에 없는 종목이 있으면 하나씩 동시에 묻고, 없는 것은 하루 뺀다
+                var m = miss
+                let tk = t
+                await withTaskGroup(of: (String, Int, [String: Any]?).self) { g in
+                    for c in part.prefix(15) { g.addTask { let (k, oo, _) = await prices([c], tk); return (c, k, oo) } }
+                    for await (c, k, oo) in g { if k == 404 { m[c] = now + 86400 } else if k == 200 { take(oo) } }
+                }
+                miss = m
+                continue
+            }
+            if code == 404 { var m = miss; m[part[0]] = now + 86400; miss = m; continue }
+            guard code == 200 else { return fail(why(code, o)) }
+            take(o)
+        }
+        guard !q.isEmpty else { return fail("받은 종목 없음") }
+        return save(q)
+    }
+}
+
+/// 사용자가 넣은 토스증권 키와 토큰. 이 폰 키체인에만 둔다 (백업·동기화·서버에 안 들어감)
+enum TossKeys {
+    struct Keys: Codable { var id: String; var secret: String }
+    struct Token: Codable { var value: String; var exp: Double }
+    private static func q(_ account: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.toss", kSecAttrAccount as String: account]
+    }
+    private static func put<T: Encodable>(_ v: T?, _ account: String) {
+        SecItemDelete(q(account) as CFDictionary)
+        guard let v, let d = try? JSONEncoder().encode(v) else { return }
+        var a = q(account)
+        a[kSecValueData as String] = d
+        a[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(a as CFDictionary, nil)
+    }
+    private static func get<T: Decodable>(_ t: T.Type, _ account: String) -> T? {
+        var a = q(account)
+        a[kSecReturnData as String] = true
+        a[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(a as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
+        return try? JSONDecoder().decode(T.self, from: d)
+    }
+    /// 키를 넣었는지 (위젯도 보므로 키 자체가 아니라 표시만 공유 저장소에 둔다)
+    static var on: Bool { Store.defaults.bool(forKey: "toss_user") }
+    static func load() -> Keys? { get(Keys.self, "keys") }
+    static func save(_ k: Keys) {
+        put(k, "keys"); put(Token?.none, "token")
+        Store.defaults.set(true, forKey: "toss_user")
+        Store.defaults.removeObject(forKey: "toss_miss")
+    }
+    static func clear() {
+        put(Keys?.none, "keys"); put(Token?.none, "token")
+        Store.defaults.set(false, forKey: "toss_user")
+        Store.defaults.removeObject(forKey: "toss_err")
+        Store.defaults.removeObject(forKey: "toss_ok_at")
+        Store.remove(TossFeed.name)
+    }
+    static var token: Token? {
+        get { get(Token.self, "token") }
+        set { put(newValue, "token") }
+    }
+    /// 사용자가 토스에 등록할 중계 IP (중계가 알려 준다)
+    static func relayIP() async -> String? {
+        guard let url = URL(string: Config.tossRelay + "/api/toss/ip"),
+              let (d, _) = try? await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 5)),
+              let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any], let ip = o["ip"] as? String, !ip.isEmpty else { return nil }
+        return ip
     }
 }
 

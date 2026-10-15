@@ -10,7 +10,7 @@
 | `web/index.html` | 개발자용 전체 웹 (`noindex`). 탭: 홈·종목·분석·설정. 스크립트 `?v=` 판 번호 |
 | `server.py` | 로컬 서버(`/api/*`) + Yahoo 시세 수집(`--collect`) + 매매기준율(`data/mar.json`) |
 | `macro.py` | Shiller 데이터 → `data/macro/` |
-| `proxy/` | Cloudflare 워커 `asset-ai` (`cloudflare-worker.js`, `wrangler.toml`) |
+| `proxy/` | Cloudflare 워커 `asset-ai` (`cloudflare-worker.js`, `wrangler.toml`), 토스 공용 중계 `toss_relay.py`(고정 IP 서버, `docs/toss-relay.md`) |
 | `tools/` | CI 도구: `site_stats.mjs`→stats.json, `site_calc.mjs`/`check_calc.mjs`→calc.json, `mc_parity.mjs`, `calc_parity.mjs`, `sample_snapshot.mjs`, `drnk_prices.py`, `gen_stock_catalog.py` |
 | `data/` | 사이트가 읽는 데이터 (시세·환율·통계·설정). 수집 봇이 커밋 |
 | `research/` | 오프라인 Node 연구 스크립트 (앙상블 전망) |
