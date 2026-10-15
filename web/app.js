@@ -2084,7 +2084,14 @@
   }
   // ------------------------------------------------------------ 홈 첫 질문: 회복 길(본전까지) / 목표 길 (앱 첫 질문과 같은 길. 앱의 '시작 전'은 웹에선 목표 길)
   // 고른 길에 맞는 카드만 홈에 둔다. 고르기 전에는 두 카드 모두. 샘플은 목표 길
-  const routeOf = () => (S.state.sample ? "goal" : S.state.route === "recover" || S.state.route === "goal" ? S.state.route : null);
+  // 길은 앱과 같은 칸(route)에. 예전 앱이 보낸 값은 앱 진행(app.progress.route: recover·plus·novice)에서 읽는다
+  const routeOf = () => {
+    if (S.state.sample) return "goal";
+    if (S.state.route === "recover" || S.state.route === "goal") return S.state.route;
+    if (S.state.route !== undefined) return null;
+    const ar = S.state.app?.progress?.route;
+    return ar === "recover" ? "recover" : ar === "plus" || ar === "novice" ? "goal" : null;
+  };
   function renderRoute() {
     const card = $("#routeCard"), r = routeOf(), B = S.state.sample ? null : bepRows();
     $("#goalKpis").style.display = r === "recover" ? "none" : "";
@@ -2101,7 +2108,7 @@
       card.innerHTML = `<span class="small muted">내 길 · <b>${r === "recover" ? "본전까지 (회복)" : "목표까지"}</b></span><button type="button" class="sm" data-route="">길 다시 고르기</button>`;
     }
     card.querySelectorAll("[data-route]").forEach((b) => b.addEventListener("click", () => {
-      if (b.dataset.route) S.state.route = b.dataset.route; else delete S.state.route;
+      S.state.route = b.dataset.route; // 다시 고르기는 빈 값 (앱이 보낸 예전 길로 되돌아가지 않게)
       save(false); renderDash();
     }));
   }
