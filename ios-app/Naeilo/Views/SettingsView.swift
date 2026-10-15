@@ -205,6 +205,7 @@ struct TossKeyView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text("내 토스 키").appFont(22, .bold)
+                TossLinkMap(on: on)
                 if on { onCard } else { steps }
             }
             .padding(16)
@@ -232,11 +233,15 @@ struct TossKeyView: View {
     private var steps: some View {
         Card {
             // 안내는 세 줄만 (토스 키 발급 절차는 설명하지 않는다)
-            Text("1. 내 토스증권 Open API 키를 연결하면 시세를 받을 수 있어요.").appFont(15, .bold).fixedSize(horizontal: false, vertical: true)
-            Text("2. 토스 허용 IP에 이 중계 IP를 넣어 주세요.").appFont(15, .bold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "info.circle.fill").foregroundStyle(Theme.teal)
+                Text("투자자가 본인의 API Key를 통해 본인 정보를 호출하는 구조예요.").fixedSize(horizontal: false, vertical: true)
+            }
+            .appFont(15, .bold)
+            Text("1. 토스 허용 IP에 이 중계 IP를 넣어 주세요.").appFont(14, .semibold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
             if let ip { ipRow(ip) } else { Text("중계 IP를 불러오는 중이에요…").appFont(13).foregroundStyle(Theme.muted) }
-            Text("3. client_id·client_secret을 넣고 연결하기를 눌러 주세요.").appFont(15, .bold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
-            field("client_id", $id, secure: false)
+            Text("2. 클라이언트 키를 넣고 서버와 연결하세요.").appFont(14, .semibold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
+            field("client_id", $id, secure: true)
             field("client_secret", $secret, secure: true)
             let ok = !id.trimmingCharacters(in: .whitespaces).isEmpty && !secret.trimmingCharacters(in: .whitespaces).isEmpty
             PrimaryButton(title: busy ? "확인 중…" : "연결하기", color: ok ? Theme.teal : Theme.muted) {
@@ -263,7 +268,7 @@ struct TossKeyView: View {
         Group {
             if secure { SecureField(title, text: v) } else { TextField(title, text: v) }
         }
-        .textContentType(secure ? .password : nil).autocorrectionDisabled().textInputAutocapitalization(.never)
+        .textContentType(nil).autocorrectionDisabled().textInputAutocapitalization(.never)
         .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
     }
 
@@ -280,6 +285,84 @@ struct TossKeyView: View {
             await Market.shared.refresh(held: Set(m.holdings.map(\.symbol)), force: true)
         }
         busy = false
+    }
+}
+
+/// 내 토스 키 맨 위 그림: 내 폰 · naeilo 서버 · 토스 시세. 키를 넣기 전에는 끊겨 있고, 넣으면 이어진다
+/// (키는 이 폰 키체인에만 두고, 중계 서버는 저장·기록 없이 넘기기만 한다. docs/toss-relay.md)
+struct TossLinkMap: View {
+    let on: Bool
+
+    var body: some View {
+        Card {
+            HStack(alignment: .top, spacing: 0) {
+                node("iphone", "내 폰", "열쇠는 나만", lock: true)
+                TossLinkLine(on: on)
+                node("server.rack", "naeilo 서버", "통로만 해요", lock: false)
+                TossLinkLine(on: on)
+                node("chart.line.uptrend.xyaxis", "토스 시세", " ", lock: false)
+            }
+            Text(on ? "이어졌어요" : "키를 넣으면 이어져요").appFont(13, .semibold)
+                .foregroundStyle(on ? Theme.teal : Theme.muted).frame(maxWidth: .infinity)
+            Text(on ? "지금 이어져 있어요." : "어디에도 남지 않아요.").appFont(17, .heavy).padding(.top, 4)
+            Text(on ? "그만두려면 아래 키 지우기를 누르면 돼요." : "키는 암호화되어 지나가기만 해요.")
+                .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Image(systemName: on ? "chart.line.uptrend.xyaxis" : "key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.teal)
+                Text(on ? "현재가·일봉·환율 정보만 받아 오고 있어요." : "열쇠는 이 폰에만 있어요. 언제든 지울 수 있어요.")
+                    .appFont(13).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 10).background(Theme.track, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .animation(.easeInOut(duration: 0.4), value: on)
+    }
+
+    private func node(_ icon: String, _ name: String, _ note: String, lock: Bool) -> some View {
+        VStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 16).fill(on ? Theme.teal : Theme.track)
+                .frame(width: 52, height: 52)
+                .overlay { Image(systemName: icon).font(.system(size: 22, weight: .semibold)).foregroundStyle(on ? .white : Theme.muted) }
+                .overlay(alignment: .bottomTrailing) {
+                    if lock {
+                        Image(systemName: "lock.fill").font(.system(size: 10, weight: .bold)).foregroundStyle(on ? Theme.teal : Theme.muted)
+                            .frame(width: 22, height: 22).background(Theme.card, in: Circle())
+                            .overlay(Circle().stroke(on ? Theme.teal : Theme.muted, lineWidth: 2)).offset(x: 6, y: 6)
+                    }
+                }
+            Text(name).appFont(12, .bold).multilineTextAlignment(.center)
+            Text(note).appFont(11, lock ? .semibold : .regular).foregroundStyle(lock && on ? Theme.teal : Theme.muted).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// 두 칸 사이 줄: 끊김은 점선 + 빨간 끊긴 표시, 이어짐은 청록 실선 위로 점이 오른쪽에서 왼쪽(내 폰 쪽)으로 흐른다
+private struct TossLinkLine: View {
+    let on: Bool
+    @Environment(\.accessibilityReduceMotion) private var still
+    @State private var flow = false
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            if on {
+                Rectangle().fill(Theme.teal).frame(height: 2)
+                Circle().fill(Theme.teal).frame(width: 8, height: 8)
+                    .offset(x: still ? 11 : (flow ? 0 : 22))   // 시세가 토스에서 내 폰 쪽으로 온다
+                    .onAppear { if !still { withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) { flow = true } } }
+                    .onDisappear { flow = false }
+            } else {
+                Line().stroke(Theme.muted.opacity(0.7), style: StrokeStyle(lineWidth: 2, dash: [4, 3])).frame(height: 2)
+                Rectangle().fill(Theme.up.opacity(0.9)).frame(width: 2, height: 16).rotationEffect(.degrees(25)).offset(x: 14)
+            }
+        }
+        .frame(width: 30, height: 52)
+        .accessibilityHidden(true)
+    }
+
+    private struct Line: Shape {
+        func path(in r: CGRect) -> Path { Path { p in p.move(to: CGPoint(x: 0, y: r.midY)); p.addLine(to: CGPoint(x: r.maxX, y: r.midY)) } }
     }
 }
 
