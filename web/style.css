@@ -417,3 +417,10 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .xev { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .xev .bd { flex: 1; display: flex; flex-direction: column; } .xev > span:first-child { min-width: 70px; }
 .xev button { border: 1px solid var(--line); background: none; border-radius: 10px; padding: 6px 10px; }
+/* 홈 첫 질문: 회복 길 / 목표 길 */
+.routeq h2 { margin: 0 0 10px; }
+.routeopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.routeopts button { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 16px; border-radius: 14px; text-align: left; white-space: normal; }
+.routeopts button b { font-size: 1.1rem; }
+.routeopts button span { color: var(--muted); font-size: .9rem; }
+.routebar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 2px 10px; }

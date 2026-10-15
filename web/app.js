@@ -1106,7 +1106,7 @@
   function renderEta(pg, now) {
     const card = $("#etaCard"), g = S.state.goal;
     if (!card) return;
-    if (!(now > 0) || !(g.amount > 0)) { card.style.display = "none"; return; }
+    if (!(now > 0) || !(g.amount > 0) || routeOf() === "recover") { card.style.display = "none"; return; }
     card.style.display = "block";
     const sig = fcSig() + JSON.stringify(S.state.alloc_mix || {});
     if (sig !== etaSig) {
@@ -1161,7 +1161,7 @@
 
   function renderProgress(H, total, cash = 0) {
     const card = $("#progCard"), g = S.state.goal;
-    if (!(total > 0) || !H.dates.length) { card.style.display = "none"; return; } // 샘플(DRNK 4주·QQQ 1주)에도 보여 준다
+    if (!(total > 0) || !H.dates.length || routeOf() === "recover") { card.style.display = "none"; $("#etaCard").style.display = "none"; return; } // 회복 길에서는 본전 카드만. 샘플(DRNK 4주·QQQ 1주)에도 보여 준다
     const P = goalPath(H, cash), { A, start, i0, V0 } = P;
     const k = H.dates.length - 1, now = total + cash, td = today();
     const need = P.at(td > start ? td : start), gap = need ? now / need - 1 : null;
@@ -1313,7 +1313,7 @@
     const ret = (n) => { const k = H.index.length - 1; if (k < n && k >= n * 0.97) n = k; return k - n >= 0 ? H.index[k] / H.index[k - n] - 1 : null; };
     const kc = H.index.length - 1, jc = Math.max(0, kc - 756); // 과거 연평균은 최근 3년 (이력이 더 길어도)
     const pastCagr = kc - jc > 30 ? (H.index[kc] / H.index[jc]) ** (252 / (kc - jc)) - 1 : null;
-    renderProgress(H, total, cash); renderBackupNag(); renderBep(); renderMyRec();
+    renderRoute(); renderProgress(H, total, cash); renderBackupNag(); renderBep(); renderMyRec();
     $("#goalKpis").innerHTML = [
       ["현재 평가액", `<a href="#" class="plain" data-go="stocks" data-add="1" title="종목 추가">${krw(tot)}원</a>`, cash ? `현금 ${krw(cash)}원 포함` : marUsd() ? `매매기준율 ${nf(marUsd().rate, 2)}원` : `매매기준율 없음 · 현재 환율 ${nf(fxNow("USD"), 1)}원`],
       ["목표 대비", pct(tot / g.amount), `<div class="bar"><i style="width:${Math.min(100, (tot / g.amount) * 100)}%"></i></div>`],
@@ -2057,6 +2057,29 @@
     const rows = Object.values(by), basis = rows.reduce((a, x) => a + x.basis, 0), cur = rows.reduce((a, x) => a + x.cur, 0);
     return rows.length ? { rows, basis, cur, n: rows.length, all: rows.length === valuation().rows.filter((r) => r.valueKrw > 0).length } : null;
   }
+  // ------------------------------------------------------------ 홈 첫 질문: 회복 길(본전까지) / 목표 길 (앱 첫 질문과 같은 길. 앱의 '시작 전'은 웹에선 목표 길)
+  // 고른 길에 맞는 카드만 홈에 둔다. 고르기 전에는 두 카드 모두. 샘플은 목표 길
+  const routeOf = () => (S.state.sample ? "goal" : S.state.route === "recover" || S.state.route === "goal" ? S.state.route : null);
+  function renderRoute() {
+    const card = $("#routeCard"), r = routeOf(), B = S.state.sample ? null : bepRows();
+    $("#goalKpis").style.display = r === "recover" ? "none" : "";
+    if (S.state.sample || !(valuation().total > 0)) { card.style.display = "none"; return; } // 샘플·빈 화면은 세리 카드가 먼저
+    card.style.display = "block";
+    const gap = B ? B.cur / B.basis - 1 : null;
+    if (!r) {
+      card.className = "card routeq";
+      card.innerHTML = `<h2>지금 내 투자, 플러스인가요 마이너스인가요?</h2>
+        <div class="routeopts"><button type="button" data-route="recover"><b>마이너스예요</b><span>본전까지 가는 길을 같이 봐요</span></button><button type="button" data-route="goal"><b>플러스예요</b><span>목표 금액까지 가는 길을 그려요</span></button></div>
+        <p class="small muted" style="margin:8px 0 0">${gap == null ? "잘 모르겠다면 종목 탭에서 매수 단가를 넣어 보세요. 어느 쪽인지 알려 드려요." : `넣은 매수 단가로 보면 지금 <b class="${cls(gap)}">${gap < 0 ? "마이너스" : "플러스"}</b>예요 (${spct(gap, 1)}).`} 고른 길에 맞는 카드만 홈에 보여 드려요.</p>`;
+    } else {
+      card.className = "routebar";
+      card.innerHTML = `<span class="small muted">내 길 · <b>${r === "recover" ? "본전까지 (회복)" : "목표까지"}</b></span><button type="button" class="sm" data-route="">길 다시 고르기</button>`;
+    }
+    card.querySelectorAll("[data-route]").forEach((b) => b.addEventListener("click", () => {
+      if (b.dataset.route) S.state.route = b.dataset.route; else delete S.state.route;
+      save(false); renderDash();
+    }));
+  }
   const bepSig = () => fcSig() + "|" + hashStr(JSON.stringify(S.state.holdings.map((h) => [h.ticker, h.shares, h.avg_cost])));
   // 전망 경로(내 관점)에서 그 종목들만 들고 있을 때 월말 평가액이 원금 이상이 되는 첫 달 → 6개월·1년·3년 안 확률
   function calcBep(L) {
@@ -2067,8 +2090,14 @@
   }
   let bepAsked = "";
   function renderBep() {
-    const card = $("#bepCard"), B = S.state.sample ? null : bepRows();
-    if (!B) { card.style.display = "none"; return; }
+    const card = $("#bepCard"), B = S.state.sample ? null : bepRows(), r = routeOf();
+    if (r === "goal") { card.style.display = "none"; return; } // 목표 길에서는 목표 카드만
+    if (!B) {
+      // 회복 길을 골랐는데 매수 단가가 없으면 넣는 곳으로 안내
+      card.style.display = r === "recover" && valuation().total > 0 ? "block" : "none";
+      card.innerHTML = `<h2 style="margin:0">본전까지</h2><p class="small">매수 단가를 넣으면 본전까지 거리와 6개월·1년·3년 안에 본전에 닿을 확률을 보여 드려요.</p><button class="primary" data-go="stocks">매수 단가 넣으러 가기</button>`;
+      return;
+    }
     card.style.display = "block";
     const gap = B.cur / B.basis - 1, need = B.basis / B.cur - 1, sub = B.all ? "매수 단가를 넣은 모든 종목 기준" : `매수 단가를 넣은 ${B.n}종목 기준 (${B.rows.map((x) => esc(x.t)).join(", ")})`;
     if (!lastForecast) fcRestore();
