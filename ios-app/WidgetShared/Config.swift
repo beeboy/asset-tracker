@@ -7,6 +7,18 @@ enum Config {
     static let relay = URL(string: "https://asset-ai.drinker.workers.dev/")!
     /// 토스증권 공용 중계 (고정 IP 서버, proxy/toss_relay.py). 사용자는 이 서버 IP 를 토스 허용 IP 로 등록한다
     static let tossRelay = "https://toss.naeilo.com"
+
+    /// 배포 단계. 내부 베타까지만 사이트가 Yahoo 에서 모은 시세·종가·환율·계산 자료를 쓴다 (2026-10-15 결정).
+    /// 공개 베타·출시 빌드는 이 값을 바꾸고, 사용자 본인 키로 받은 시세와 가상 샘플만 쓴다 (아직 구현 안 함)
+    static let channel: Channel = .internalBeta
+    /// 사이트가 Yahoo 로 모은 자료(data/quotes.json·prices·stats·calc 등, 추가 종목 Yahoo 중계)를 써도 되는 빌드인가
+    static var usesCollectedData: Bool { channel == .internalBeta }
+}
+
+enum Channel: String {
+    case internalBeta = "내부 베타"
+    case publicBeta = "공개 베타"
+    case release = "출시"
 }
 
 /// 앱과 위젯이 같이 쓰는 저장소 (App Group 폴더의 JSON 파일)
