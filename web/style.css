@@ -437,3 +437,22 @@ table.grid tr.hedit td { background: var(--bg); white-space: normal; }
 .fctable tr[data-l] { cursor: pointer; } .fctable tr.on td { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 700; }
 .fcsched { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 0.7647rem; } .fcsched b { color: var(--accent); min-width: 8.5em; font-size: 0.7059rem; }
 .fcsched-go { margin: 0 0 6px 9.2em; font-size: 0.7353rem; } .fcsched-go a { color: var(--c4); font-weight: 700; }
+/* 종목 탭 (앱 종목 화면과 같은 틀): 평가액 카드 · 1년 전부터 가졌다면 그래프 · 미국/국내 묶음 목록 */
+.htotal, .hback { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.htotal { display: flex; flex-direction: column; gap: 3px; }
+.hbig { font-size: 1.6471rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hback .chartbox { margin: 6px 0 2px; }
+.hseg { display: flex; margin-top: 8px; } .hseg button { flex: 1; }
+.hgroup { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+.hghead { padding: 9px 14px; font-size: 0.8235rem; }
+.hitem { border-top: 1px solid var(--line); }
+.hrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; min-height: 44px; cursor: pointer; }
+.hrow:hover, .hitem.hon .hrow { background: var(--bg); }
+.hrow .tlogo { width: 32px; height: 32px; border-radius: 8px; font-size: 0.8235rem; }
+.hname { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.hname > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hamt { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hgo { color: var(--muted); width: 10px; text-align: center; }
+.hneed { padding: 0 14px 10px 56px; }
+.hedit { padding: 8px 14px 12px; background: var(--bg); }
+.hedit .hedbox { margin-top: 8px; }
