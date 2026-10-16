@@ -157,8 +157,11 @@ struct RemindSheet: View {
     private func pastRow(_ i: RemindItem) -> some View {
         Button { open(i) } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(i.text).appFont(14).foregroundStyle(Remind.shared.isSeen(i) ? Theme.sub : Theme.ink)
-                    .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(i.text).appFont(14).foregroundStyle(Remind.shared.isSeen(i) ? Theme.sub : Theme.ink)
+                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    if let u = i.link { webLink(u) }
+                }
                 Spacer(minLength: 0)
                 if let t = Remind.shared.log.first[i.id] { Text(Self.ago(t)).appFont(11).foregroundStyle(Theme.muted) }
             }
@@ -184,6 +187,7 @@ struct RemindSheet: View {
                     }
                     Text(i.text).appFont(14).foregroundStyle(Theme.ink).multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let u = i.link { webLink(u) }
                     if let t = Remind.shared.log.first[i.id], i.once {
                         Text(Self.ago(t)).appFont(11).foregroundStyle(Theme.muted)
                     }
@@ -198,6 +202,13 @@ struct RemindSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    /// 소식 아래 웹 링크 한 줄 (미래 설계 글)
+    private func webLink(_ u: URL) -> some View {
+        Link(destination: u) {
+            Label("naeilo.com에서 읽기", systemImage: "arrow.up.right.square").appFont(12, .semibold).foregroundStyle(Theme.blue)
+        }
     }
 
     static func ago(_ t: Double) -> String {

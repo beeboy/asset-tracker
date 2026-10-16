@@ -3850,6 +3850,11 @@
     if (window.QRCode) draw();
     else { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"; sc.onload = draw; sc.onerror = () => ($("#xferQr").textContent = "QR 도구를 불러오지 못했습니다. 링크를 복사해 보내 주세요."); document.head.appendChild(sc); }
   }
+  // 글 바로 열기 링크 (#post=글id): 앱 소식함의 '웹에서 읽기'가 쓴다
+  async function postCheck() {
+    const m = location.hash.match(/^#post=([A-Za-z0-9_-]+)/); if (!m) return;
+    showTab("blog"); await bvLoad(); bvOpen(m[1]);
+  }
   async function xferCheck() {
     const m = location.hash.match(/^#d=([A-Za-z0-9_-]+)/); if (!m) return;
     let j; try { j = await xferDecode(m[1]); } catch (e) { toast("옮기기 링크를 읽지 못했습니다"); return; }
@@ -3982,6 +3987,7 @@
     let tab = "dash"; try { tab = localStorage.getItem("tab") || "dash"; } catch (e) { /* 무시 */ }
     showTab(tab);
     xferCheck();
+    postCheck(); window.addEventListener("hashchange", postCheck);
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").then(() => { pushRender(); pushSync(); }).catch(() => {});
     else pushRender();
     if (MODE === "static") {
