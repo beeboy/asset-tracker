@@ -63,7 +63,7 @@ struct CharProvider: AppIntentTimelineProvider {
 struct CharTrend: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.trend", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.trend") { TrendCharView(e: e) }
+            Gate(kind: "char.trend", preview: false) { CharFrame(e: e, kind: "char.trend") { TrendCharView(e: e) } }
         }
         .configurationDisplayName("인물 · 자산 추이").description("총자산·오늘 등락·최근 10일 흐름, 인물이 옆에서 봐요")
         .supportedFamilies([.systemSmall])
@@ -72,7 +72,7 @@ struct CharTrend: Widget {
 struct CharRecover: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.recover", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.recover") { RecoverCharView(e: e) }
+            Gate(kind: "char.recover", preview: false) { CharFrame(e: e, kind: "char.recover") { RecoverCharView(e: e) } }
         }
         .configurationDisplayName("인물 · 본전 진행").description("본전(목표)까지 몇 %인지, 인물이 같이 봐요")
         .supportedFamilies([.systemSmall])
@@ -81,7 +81,7 @@ struct CharRecover: Widget {
 struct CharBlock: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.block", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.block") { BlockCharView(e: e) }
+            Gate(kind: "char.block", preview: false) { CharFrame(e: e, kind: "char.block") { BlockCharView(e: e) } }
         }
         .configurationDisplayName("인물 · 블록").description("1000칸 중 지금 채우는 100칸과 10층 탑")
         .supportedFamilies([.systemSmall])
@@ -90,7 +90,7 @@ struct CharBlock: Widget {
 struct CharMoves: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "char.moves", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.moves") { MovesCharView(e: e) }
+            Gate(kind: "char.moves", preview: false) { CharFrame(e: e, kind: "char.moves") { MovesCharView(e: e) } }
         }
         .configurationDisplayName("인물 · 오늘의 움직임").description("종목별 오늘 등락과 인물의 한마디")
         .supportedFamilies([.systemMedium])

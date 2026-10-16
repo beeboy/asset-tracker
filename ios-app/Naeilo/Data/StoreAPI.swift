@@ -1,23 +1,17 @@
 import Foundation
 import StoreKit
 
-// 커피 후원 서버 (naeilo 중계 워커의 /store/*). 앱은 가진 구매의 서명된 거래(JWS)를 그대로 보내고,
-// 서버가 Apple 서명과 등급을 확인한 뒤 유료 원고를 건넨다. 개발자 빌드(TestFlight·Xcode)에서 개발자 동기화 토큰이 있으면 구매 없이 받는다.
-//   POST /store/book {jws, book:"side"|"vol1", lang}   → { tier, book:{lang, from, chapters} }   (등급 모자람 403, 원고 없음 404)
-//   POST /store/sponsor {jws, name, logo?}            → { ok, status:"pending" }   (스페셜티만)
-//   POST /store/sponsor/me {jws}                      → { pending, approved }
-//   GET  /store/sponsors                              → { sponsors:[{name, logo}] }
+// 구독 원고 서버 (naeilo 중계 워커의 /store/*). 앱은 구독의 서명된 거래(JWS)를 그대로 보내고,
+// 서버가 Apple 서명과 구독을 확인한 뒤 유료 원고를 건넨다. 개발자 빌드(TestFlight·Xcode)에서 개발자 동기화 토큰이 있으면 구매 없이 받는다.
+//   POST /store/book {jws, book:"side"|"vol1", lang}   → { book:{lang, from, chapters} }   (구독 모자람 403, 원고 없음 404)
 enum StoreAPI {
     struct Book: Decodable { let lang: String; let from: Int; let chapters: [StoryChapter] }
-    struct Sponsor: Decodable, Hashable { let name: String; let logo: String? }
-    struct Named: Decodable { let name: String }
-    struct Mine: Decodable { let pending: Named?; let approved: Named? }
 
     enum Fail: LocalizedError {
         case tier, missing, server(String)
         var errorDescription: String? {
             switch self {
-            case .tier: "이 등급으로는 아직 열리지 않아요."
+            case .tier: "구독하면 열려요."
             case .missing: "원고가 아직 올라오지 않았어요. 준비되면 여기서 바로 받을 수 있어요."
             case .server(let s): s
             }
@@ -26,7 +20,6 @@ enum StoreAPI {
 
     private struct BookReply: Decodable { let book: Book }
     private struct ErrorReply: Decodable { let error: String? }
-    private struct SponsorsReply: Decodable { let sponsors: [Sponsor] }
 
     static func url(_ path: String) -> URL { Config.relay.appendingPathComponent("store").appendingPathComponent(path) }
 
@@ -53,19 +46,5 @@ enum StoreAPI {
     @MainActor static func book(_ id: StoryBook, _ lang: StoryLang) async throws -> Book {
         let r: BookReply = try await post("book", ["book": id.rawValue, "lang": lang.rawValue])
         return r.book
-    }
-
-    struct Ok: Decodable { let ok: Bool? }
-    @MainActor static func sponsor(name: String, logo: String?) async throws {
-        var b: [String: Any] = ["name": name]
-        if let logo { b["logo"] = logo }
-        let _: Ok = try await post("sponsor", b)
-    }
-    @MainActor static func mine() async throws -> Mine { try await post("sponsor/me", [:]) }
-
-    static func sponsors() async -> [Sponsor] {
-        guard let (d, _) = try? await URLSession.shared.data(for: URLRequest(url: url("sponsors"), timeoutInterval: 15)),
-              let r = try? JSONDecoder().decode(SponsorsReply.self, from: d) else { return [] }
-        return r.sponsors
     }
 }

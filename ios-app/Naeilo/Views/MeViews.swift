@@ -532,7 +532,7 @@ struct RoomImage: View {
     }
 }
 
-/// 쉼터 아래 '쉼터 배경 변경' 상자 (접어 둠). 프랜차이즈 커피 이상이면 고를 수 있다
+/// 쉼터 아래 '쉼터 배경 변경' 상자 (접어 둠). 처음 연 날부터 하루 2곳씩 열린다
 struct ShelterBGBox: View {
     @Environment(AppModel.self) private var m
     @Binding var support: Bool
@@ -546,7 +546,7 @@ struct ShelterBGBox: View {
                         .rotationEffect(.degrees(open ? 90 : 0))
                     Text("쉼터 배경 변경").appFont(14, .bold)
                     Spacer(minLength: 0)
-                    Text(m.bgUnlocked ? (Shelter.background(m.meBg)?.name ?? "기본 쉼터") : "☕︎ 프랜차이즈 커피").appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
+                    Text(Shelter.background(m.roomBG)?.name ?? "기본 쉼터").appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 .foregroundStyle(Theme.ink)
                 .padding(.horizontal, 14).frame(minHeight: 44)
@@ -569,8 +569,9 @@ struct ShelterBGBox: View {
     }
 
     private func row(_ id: String?, _ name: String, _ intro: String, _ volume: String? = nil) -> some View {
-        let locked = !m.bgUnlocked, on = !locked && m.meBg == id
-        return Button { if locked { support = true } else { m.meBg = id } } label: {
+        // 하루 2곳씩 열린다. 아직이면 열리는 날을 보여 준다
+        let locked = !m.bgOn(id), on = !locked && m.meBg == id
+        return Button { if !locked { m.meBg = id } } label: {
             HStack(spacing: 10) {
                 RoomImage(bg: id).frame(width: 64, height: 40).clipShape(RoundedRectangle(cornerRadius: 6))
                     .grayscale(locked && id != nil ? 1 : 0).opacity(locked && id != nil ? 0.6 : 1)
@@ -579,7 +580,7 @@ struct ShelterBGBox: View {
                         Text(name).appFont(14, .bold)
                         if let volume { Text(volume).appFont(11).foregroundStyle(Theme.muted) }
                     }
-                    Text(intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
+                    Text(locked ? "\(id.map(m.bgDay) ?? 1)일째에 열려요" : intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
                 }
                 Spacer(minLength: 0)
                 if on { Image(systemName: "checkmark").font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.teal) }
