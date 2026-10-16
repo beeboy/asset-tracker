@@ -231,7 +231,7 @@ struct TossKeyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("토스증권 오픈 API").appFont(22, .bold)
+                Text("오픈 API").appFont(22, .bold)
                 TossLinkMap(on: on)
                 if on { onCard } else { steps }
             }
@@ -251,7 +251,7 @@ struct TossKeyView: View {
             if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
             Button("키 지우기") { askOff = true }
                 .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
-                .confirmationDialog("토스 키를 이 폰에서 지울까요?", isPresented: $askOff, titleVisibility: .visible) {
+                .confirmationDialog("오픈 API 키를 이 폰에서 지울까요?", isPresented: $askOff, titleVisibility: .visible) {
                     Button("지우기", role: .destructive) { TossKeys.clear(); on = false; msg = nil; Task { await Market.shared.pullRefresh(m) } }
                 } message: { Text("기본 시세로 돌아가요. 토스에서 받은 키는 토스 WTS에서 따로 지울 수 있어요.") }
         }
@@ -265,7 +265,7 @@ struct TossKeyView: View {
                 Text("투자자가 본인의 API Key를 통해 본인 정보를 호출하는 구조예요.").fixedSize(horizontal: false, vertical: true)
             }
             .appFont(15, .bold)
-            Text("1. 토스 허용 IP에 이 중계 IP를 넣어 주세요.").appFont(14, .semibold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
+            Text("1. 허용 IP에 서버 중계 IP를 넣어 주세요.").appFont(14, .semibold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
             if let ip { ipRow(ip) } else { Text("중계 IP를 불러오는 중이에요…").appFont(13).foregroundStyle(Theme.muted) }
             Text("2. 클라이언트 키를 넣고 서버와 연결하세요.").appFont(14, .semibold).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
             field("client_id", $id, secure: true)
@@ -315,7 +315,7 @@ struct TossKeyView: View {
     }
 }
 
-/// 내 토스 키 맨 위 그림: 내 폰 · naeilo 서버 · 토스 시세. 키를 넣기 전에는 끊겨 있고, 넣으면 이어진다
+/// 오픈 API 맨 위 그림: 내 폰 · naeilo 서버 · 토스 시세. 키를 넣기 전에는 끊겨 있고, 넣으면 이어진다
 /// (키는 이 폰 키체인에만 두고, 중계 서버는 저장·기록 없이 넘기기만 한다. docs/toss-relay.md)
 struct TossLinkMap: View {
     let on: Bool
