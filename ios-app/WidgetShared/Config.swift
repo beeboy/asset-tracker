@@ -56,6 +56,16 @@ enum Store {
         get { defaults.object(forKey: "lastCheck") as? Date }
         set { defaults.set(newValue, forKey: "lastCheck") }
     }
+    /// ↻ 를 누른 시각. 받는 동안 위젯 버튼을 '받는 중'으로 그린다 (다 받으면 지운다)
+    static var reloadingSince: Date? {
+        get { defaults.object(forKey: "reloadingSince") as? Date }
+        set { defaults.set(newValue, forKey: "reloadingSince") }
+    }
+    /// 받는 중인지 (12초가 지나면 끝난 것으로 본다: 받기는 8초 안에 끊긴다)
+    static var isReloading: Bool {
+        guard let t = reloadingSince else { return false }
+        return Date().timeIntervalSince(t) < 12
+    }
     /// 지금 쓰는 요약이 어디서 왔는지 ("site" / "app")
     static var summarySource: String? {
         get { defaults.string(forKey: "summarySource") }

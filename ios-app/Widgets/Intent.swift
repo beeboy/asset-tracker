@@ -5,12 +5,16 @@ import WidgetKit
 struct ReloadIntent: AppIntent {
     static var title: LocalizedStringResource = "다시 받기"
     func perform() async throws -> some IntentResult {
+        // 누르자마자 버튼을 '받는 중'으로 다시 그린다 (받기가 끝날 때까지 기다리면 반응이 없어 보인다)
+        Store.reloadingSince = Date()
+        WidgetLine.bump(minGap: 0)   // ↻: 인물 대사도 다음 줄로 (바로 이어지는 다시 그리기는 세지 않는다)
+        WidgetCenter.shared.reloadAllTimelines()
         _ = try? await withTimeout(8) {
             async let site: Void = { _ = await QuoteFeed.fetch() }()
             async let toss: Void = { _ = await TossFeed.widgetFetch(minAge: 0) }()
             _ = await (site, toss)
         }
-        WidgetLine.bump(minGap: 0)   // ↻: 인물 대사도 다음 줄로 (바로 이어지는 다시 그리기는 세지 않는다)
+        Store.reloadingSince = nil
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }

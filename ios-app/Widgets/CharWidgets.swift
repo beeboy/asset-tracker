@@ -532,9 +532,10 @@ extension EnvironmentValues {
 /// ↻ 다시 받기: 앱이 써 둔 최신 값으로 위젯을 다시 그린다 (기본 위젯의 버튼과 같은 동작)
 struct CharReload: View {
     var body: some View {
-        let icon = Image(systemName: "arrow.clockwise").font(.system(size: 10, weight: .bold))
-            .frame(width: 20, height: 20).background(Circle().fill(Color.white.opacity(0.18)))
-            .accessibilityLabel("다시 받기")
+        let busy = Store.isReloading // 누른 뒤 받는 동안은 '받는 중' 모양
+        let icon = Image(systemName: busy ? "ellipsis" : "arrow.clockwise").font(.system(size: 10, weight: .bold))
+            .frame(width: 20, height: 20).background(Circle().fill(Color.white.opacity(busy ? 0.35 : 0.18)))
+            .accessibilityLabel(busy ? "받는 중" : "다시 받기")
         #if WIDGET_EXT
         Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain)
         #else
