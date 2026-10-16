@@ -57,7 +57,7 @@
 - 코드 수정은 별도 worktree가 아니라 맥 폴더(`/Users/drinker/Documents/asset-tracker`)에 바로 쓴다. 고치는 즉시 사용자가 Xcode로 빌드해 볼 수 있어야 한다. 시작할 때 맥 폴더를 최신 main에서 새 브랜치로 바꾸고 거기서 바로 고친 뒤, 고치자마자 "지금 빌드해 보세요"라고 먼저 말한다. 커밋·push·PR·머지는 그 다음에 백그라운드로 하고, 사용자가 기다리게 하지 않는다. 머지 뒤에는 맥 폴더를 최신 main으로 돌린다. 다른 세션의 커밋 안 된 변경은 버리지 말고 그대로 두고 그렇다고 말한다.
 - 시킨 작업은 묻지 않고 커밋·push·draft PR까지 하고, CI가 초록이면 바로 머지한다 (쌓인 PR은 아래부터). 이건 사용자가 빌드해 볼 수 있게 된 뒤에 백그라운드로 한다.
 - 빌드·테스트 출력은 실패 부분만 보이게 줄인다 (예: `2>&1 | grep -E "error|FAIL" | head -50`, `tail -40`).
-- 읽지 말 것: `data/prices/`, `data/sample/prices/`, `data/quotes.json`, `data/stats.json`, `data/calc.json`, `data/sample_calc.json`, `data/beyora.json`, `data/app_news.json`, `data/macro/`, `web/stocks.js`, `ios-app/Naeilo/Resources/*.json`, `*.xcassets`, `*.png`, `*.pbxproj` 전체 읽기(필요한 줄만 grep), `node_modules/`, `build/`, `DerivedData/`, `Pods/`.
+- 읽지 말 것: `data/prices/`, `data/sample/prices/`, `data/quotes.json`, `data/stats.json`, `data/calc.json`, `data/sample_calc.json`, `data/blog.json`, `data/app_news.json`, `data/macro/`, `web/stocks.js`, `ios-app/Naeilo/Resources/*.json`, `*.xcassets`, `*.png`, `*.pbxproj` 전체 읽기(필요한 줄만 grep), `node_modules/`, `build/`, `DerivedData/`, `Pods/`.
 - `web/app.js`(약 3,500줄)는 통째로 읽지 말고 함수 이름으로 grep한다.
 - 작업이 끝나면 `docs/HANDOFF.md`의 상태(완성·진행 중·버그·다음 순서)를 갱신한다.
 - 결정이 생기면 `docs/decisions.md`에 날짜·이유와 함께 한 줄 추가한다.
