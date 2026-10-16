@@ -20,7 +20,7 @@ enum RemindCat: String, CaseIterable, Codable {
 
 /// 소식을 누르면 갈 곳
 enum RemindGo: Hashable {
-    case nowhere, shelter, char(String), me, reader(Int), board, week, calm, myPath, forecast, rateScen, external, hold(String), support, widgets, sync, alerts, krSum
+    case nowhere, web(URL), shelter, char(String), me, reader(Int), board, week, calm, myPath, forecast, rateScen, external, hold(String), support, widgets, sync, alerts, krSum
 
     /// 사이트 소식 파일의 go 글자 ("shelter", "char:ir", "read:3", "hold:TSLA" …)
     init(_ s: String?) {
@@ -46,6 +46,7 @@ struct RemindItem: Identifiable, Equatable {
     var action: String? = nil  // 할 일 버튼 이름 (있으면 소식함 맨 위 '지금 해 주면 좋아요'에 올린다)
     var why: String? = nil     // 왜 중요한지 한 줄 (할 일·일정)
     var checks: [Check]? = nil // 체크리스트 (내 투자 캐릭터 찾기)
+    var link: URL? = nil       // 아래에 다는 웹 링크 (미래 설계 글)
     struct Check: Equatable { let text: String; let ok: Bool }
     /// 소식함 '할 일': 행동 버튼이 있거나 조건이 풀릴 때까지 남는 진행 중 소식
     var isTodo: Bool { cat != .event && (action != nil || !once) }
@@ -77,6 +78,14 @@ struct RemindLog: Codable {
     }
 }
 
+/// 사이트 미래 설계 글 묶음 data/blog.json (본문은 받지 않고 제목·날짜만 쓴다)
+struct BlogFile: Codable {
+    struct Cat: Codable { let id: String; let name: String }
+    struct Post: Codable { let id: String; let title: String; let cat: String; let created: String? }
+    var cats: [Cat] = []
+    var posts: [Post] = []
+}
+
 /// 개발자 소식: 앱 버전마다 적어 두는 목록 + 사이트 data/app_news.json (앱 업데이트 없이 올라온 글·일정)
 struct RemindNews: Codable {
     let id: String
@@ -102,11 +111,16 @@ final class Remind {
     /// 지금 소식 (refresh 가 채운다. 화면은 이 값만 읽는다)
     private(set) var items: [RemindItem] = []
     private(set) var site: [RemindNews] = []
+    private(set) var blog = BlogFile()
+    /// 소식함에 올리는 미래 설계 카테고리와 앱에 남기는 날 수
+    static let blogCat = "2026 지구"
+    private static let blogDays = 10.0
     @ObservationIgnored private var siteAt = Date.distantPast
 
     init() {
         log = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode(RemindLog.self, from: $0) } ?? RemindLog()
         if let d = Store.readData("app_news.json") { site = (try? JSONDecoder().decode([RemindNews].self, from: d)) ?? [] }
+        if let d = Store.readData("blog.json"), let b = try? JSONDecoder().decode(BlogFile.self, from: d) { blog = b }
     }
     private func save() { if let d = try? JSONEncoder().encode(log) { UserDefaults.standard.set(d, forKey: Self.key) } }
 
@@ -437,13 +451,26 @@ final class Remind {
         for n in RemindNews.app + site where n.date >= from && n.date <= Day.today && ids.insert(n.id).inserted {
             a.append(.init(id: "news.\(n.id)", cat: .news, text: n.text, go: RemindGo(n.go)))
         }
+        a += blogNews()
         return a
+    }
+
+    /// 미래 설계 '2026 지구' 새 글: 올라온 지 10일까지만 (지나면 소식함에서도 빠진다). 누르면 웹 글로
+    private func blogNews() -> [RemindItem] {
+        let ids = Set(blog.cats.filter { $0.name == Self.blogCat }.map(\.id))
+        let from = Day.str(Date().addingTimeInterval(-Self.blogDays * 86400))
+        return blog.posts.compactMap { p in
+            guard ids.contains(p.cat), let c = p.created?.prefix(10), String(c) >= from, String(c) <= Day.today,
+                  let url = URL(string: "https://naeilo.com/web/#post=\(p.id)") else { return nil }
+            return RemindItem(id: "blog.\(p.id)", cat: .news, text: "미래 설계 ‘\(Self.blogCat)’에 새 글이 올라왔어요: 「\(p.title)」", go: .web(url), link: url)
+        }
     }
 
     /// 사이트 소식 파일 (6시간에 한 번)
     @MainActor private func loadSite() async {
         guard Date().timeIntervalSince(siteAt) > 6 * 3600 else { return }
         siteAt = Date()
+        await loadBlog()
         var req = URLRequest(url: Config.data.appendingPathComponent("app_news.json"))
         req.cachePolicy = .reloadIgnoringLocalCacheData
         req.timeoutInterval = 20
@@ -451,6 +478,17 @@ final class Remind {
               let list = try? JSONDecoder().decode([RemindNews].self, from: d) else { return }
         Store.writeData(d, "app_news.json")
         site = list
+    }
+
+    /// 미래 설계 글 묶음 (소식 파일과 같이 6시간에 한 번)
+    @MainActor private func loadBlog() async {
+        var req = URLRequest(url: Config.data.appendingPathComponent("blog.json"))
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.timeoutInterval = 20
+        guard let (d, r) = try? await URLSession.shared.data(for: req), (r as? HTTPURLResponse)?.statusCode == 200,
+              let b = try? JSONDecoder().decode(BlogFile.self, from: d) else { return }
+        Store.writeData(d, "blog.json")
+        blog = b
     }
 
     /// 주 이름 (yyyy-Www, 월요일 시작)
@@ -562,6 +600,7 @@ extension AppModel {
     func go(_ g: RemindGo) {
         switch g {
         case .nowhere: return
+        case .web(let u): UIApplication.shared.open(u)
         case .shelter: tab = .home; homePath = ["shelter"]
         case .char(let id): tab = .home; homePath = ["shelter", "char:\(id)"]
         case .me: tab = .home; homePath = ["me"]
