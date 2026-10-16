@@ -63,7 +63,7 @@
 ## 다른 증권사 오픈 API (2026-10-16, PR 올림)
 - 검토 표와 키움 중계 사용법: `docs/broker-apis.md`.
 - 키움 중계 `proxy/kiwoom_relay.py` 추가 (서버 배포 전). 앱 쪽 키움 연결은 아직 없음.
-- 다음: 서버 배포 → 앱 키움 키 입력·`KiwoomFeed` → 한국투자 앱 직결 → LS 검토.
+- 다음: 서버 배포 → 앱 키움 키 입력·`KiwoomFeed` → LS 검토. 한국투자는 보류(2026-10-16, `docs/broker-apis.md`).
 
 ## 토스 시세: 일반 사용자 내 키 (2026-10-15, PR 올림)
 - 앱 설정 맨 위 오픈 API 카드 › 토스증권 오픈 API(2026-10-16 '도움과 기타'에서 맨 위로 옮김, 안내는 세 줄만): 사용자가 client_id·secret 을 넣으면 키체인에 두고 공용 중계 `https://toss.naeilo.com`(`proxy/toss_relay.py`)로 토큰·현재가를 받는다. 사용자는 중계 IP 를 토스 허용 IP 에 등록. 자세한 흐름·서버 올리기는 `docs/toss-relay.md`.
