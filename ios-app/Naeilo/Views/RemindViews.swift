@@ -1,11 +1,11 @@
 import SwiftUI
 
 // 소식함: 홈 말풍선의 '새 소식 n' 또는 노란 띠를 누르면 열린다.
-// 칩 4개(전체·할 일·일정·지난 소식) → 지금 해 주면 좋아요 → 진행 중 → 다가오는 일정 → 지난 30일
+// 칩 5개(전체·할 일·일정·증시 요약·지난 소식) → 지금 해 주면 좋아요 → 진행 중 → 다가오는 일정 → 증시 요약 → 지난 30일
 struct RemindSheet: View {
     @Environment(AppModel.self) private var m
     @Environment(\.dismiss) private var dismiss
-    private enum Tab { case all, todo, event, past }
+    private enum Tab { case all, todo, event, market, past }
     @State private var tab: Tab = .all
 
     var body: some View {
@@ -14,8 +14,10 @@ struct RemindSheet: View {
         let top = todo.first { $0.action != nil }
         let doing = todo.filter { $0.id != top?.id }
         let events = r.events
-        let past = (r.fresh + r.past).filter { !$0.isTodo }
+        let market = (r.fresh + r.past).filter { !$0.isTodo && $0.cat == .market }
+        let past = (r.fresh + r.past).filter { !$0.isTodo && $0.cat != .market }
         let showTodo = tab == .all || tab == .todo, showEv = tab == .all || tab == .event, showPast = tab == .all || tab == .past
+        let showMk = tab == .all || tab == .market
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
@@ -24,6 +26,7 @@ struct RemindSheet: View {
                             chip(.all, "전체")
                             chip(.todo, todo.isEmpty ? "할 일" : "할 일 \(todo.count)")
                             chip(.event, "일정")
+                            chip(.market, "증시 요약")
                             chip(.past, "지난 소식")
                         }
                     }
@@ -35,10 +38,13 @@ struct RemindSheet: View {
                         section("다가오는 일정") { ForEach(events) { eventRow($0) } }
                         Text("날짜는 하루 이틀 바뀔 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
                     }
+                    if showMk && !market.isEmpty {
+                        section("증시 요약") { ForEach(market) { pastRow($0) } }
+                    }
                     if showPast && !past.isEmpty {
                         section("지난 30일") { ForEach(past) { pastRow($0) } }
                     }
-                    if (showTodo ? todo.count : 0) + (showEv ? events.count : 0) + (showPast ? past.count : 0) == 0 {
+                    if (showTodo ? todo.count : 0) + (showEv ? events.count : 0) + (showMk ? market.count : 0) + (showPast ? past.count : 0) == 0 {
                         Text("아직 소식이 없어요.").appFont(14).foregroundStyle(Theme.sub).padding(.vertical, 20)
                     }
                     if showPast && past.contains(where: { $0.cat == .analysis }) {
@@ -160,7 +166,6 @@ struct RemindSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(i.text).appFont(14).foregroundStyle(Remind.shared.isSeen(i) ? Theme.sub : Theme.ink)
                         .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                    if let u = i.link { webLink(u) }
                 }
                 Spacer(minLength: 0)
                 if let t = Remind.shared.log.first[i.id] { Text(Self.ago(t)).appFont(11).foregroundStyle(Theme.muted) }
@@ -187,7 +192,6 @@ struct RemindSheet: View {
                     }
                     Text(i.text).appFont(14).foregroundStyle(Theme.ink).multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let u = i.link { webLink(u) }
                     if let t = Remind.shared.log.first[i.id], i.once {
                         Text(Self.ago(t)).appFont(11).foregroundStyle(Theme.muted)
                     }
@@ -202,13 +206,6 @@ struct RemindSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    /// 소식 아래 웹 링크 한 줄 (미래 설계 글)
-    private func webLink(_ u: URL) -> some View {
-        Link(destination: u) {
-            Label("naeilo.com에서 읽기", systemImage: "arrow.up.right.square").appFont(12, .semibold).foregroundStyle(Theme.blue)
-        }
     }
 
     static func ago(_ t: Double) -> String {

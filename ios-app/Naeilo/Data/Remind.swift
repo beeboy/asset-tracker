@@ -6,15 +6,15 @@ import Observation
 // 항목표: project-files notes/홈-리마인드-항목표-2026-10-11.md
 
 enum RemindCat: String, CaseIterable, Codable {
-    case done, doing, event, analysis, news
+    case done, doing, event, market, analysis, news
     var label: String {
-        switch self { case .done: "달성"; case .doing: "진행 중"; case .event: "일정"; case .analysis: "분석"; case .news: "설정·새 소식" }
+        switch self { case .done: "달성"; case .doing: "진행 중"; case .event: "일정"; case .market: "증시 요약"; case .analysis: "분석"; case .news: "설정·새 소식" }
     }
     var color: Color {
-        switch self { case .done: Theme.green; case .doing: Theme.purple; case .event: Theme.orange; case .analysis: Theme.blue; case .news: Theme.teal }
+        switch self { case .done: Theme.green; case .doing: Theme.purple; case .event: Theme.orange; case .market: Theme.blue; case .analysis: Theme.blue; case .news: Theme.teal }
     }
     var icon: String {
-        switch self { case .done: "sparkles"; case .doing: "hourglass"; case .event: "calendar"; case .analysis: "chart.line.uptrend.xyaxis"; case .news: "gift" }
+        switch self { case .done: "sparkles"; case .doing: "hourglass"; case .event: "calendar"; case .market: "newspaper"; case .analysis: "chart.line.uptrend.xyaxis"; case .news: "gift" }
     }
 }
 
@@ -46,7 +46,6 @@ struct RemindItem: Identifiable, Equatable {
     var action: String? = nil  // 할 일 버튼 이름 (있으면 소식함 맨 위 '지금 해 주면 좋아요'에 올린다)
     var why: String? = nil     // 왜 중요한지 한 줄 (할 일·일정)
     var checks: [Check]? = nil // 체크리스트 (내 투자 캐릭터 찾기)
-    var link: URL? = nil       // 아래에 다는 웹 링크 (미래 설계 글)
     struct Check: Equatable { let text: String; let ok: Bool }
     /// 소식함 '할 일': 행동 버튼이 있거나 조건이 풀릴 때까지 남는 진행 중 소식
     var isTodo: Bool { cat != .event && (action != nil || !once) }
@@ -78,10 +77,20 @@ struct RemindLog: Codable {
     }
 }
 
-/// 사이트 미래 설계 글 묶음 data/blog.json (본문은 받지 않고 제목·날짜만 쓴다)
+/// 사이트 미래 설계 글 묶음 data/blog.json (제목·날짜와 본문 첫 문장만 쓴다)
 struct BlogFile: Codable {
     struct Cat: Codable { let id: String; let name: String }
-    struct Post: Codable { let id: String; let title: String; let cat: String; let created: String? }
+    struct Post: Codable {
+        let id: String; let title: String; let cat: String; let created: String?; var body: String? = nil
+        /// 본문 첫 문장 (빈 줄·제목 기호를 건너뛰고 첫 . ? ! 까지)
+        var lead: String {
+            let line = (body ?? "").split(separator: "\n").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "#>*- ").union(.whitespaces)) }.first { !$0.isEmpty } ?? ""
+            // 3.5% 같은 숫자에서 끊지 않게, 뒤가 띄어쓰기이거나 줄 끝인 . ? ! 에서 끊는다
+            let cs = Array(line)
+            guard let e = cs.indices.first(where: { ".?!".contains(cs[$0]) && ($0 + 1 == cs.count || cs[$0 + 1] == " ") }) else { return line }
+            return String(cs[...e])
+        }
+    }
     var cats: [Cat] = []
     var posts: [Post] = []
 }
@@ -455,14 +464,14 @@ final class Remind {
         return a
     }
 
-    /// 미래 설계 '2026 지구' 새 글: 올라온 지 10일까지만 (지나면 소식함에서도 빠진다). 누르면 웹 글로
+    /// 미래 설계 '2026 지구' 새 글 → 증시 요약: "제목 - 첫 문장". 올라온 지 10일까지만 (지나면 소식함에서도 빠진다). 누르면 웹 글로
     private func blogNews() -> [RemindItem] {
         let ids = Set(blog.cats.filter { $0.name == Self.blogCat }.map(\.id))
         let from = Day.str(Date().addingTimeInterval(-Self.blogDays * 86400))
         return blog.posts.compactMap { p in
             guard ids.contains(p.cat), let c = p.created?.prefix(10), String(c) >= from, String(c) <= Day.today,
                   let url = URL(string: "https://naeilo.com/web/#post=\(p.id)") else { return nil }
-            return RemindItem(id: "blog.\(p.id)", cat: .news, text: "미래 설계 ‘\(Self.blogCat)’에 새 글이 올라왔어요: 「\(p.title)」", go: .web(url), link: url)
+            return RemindItem(id: "blog.\(p.id)", cat: .market, text: p.lead.isEmpty ? p.title : "\(p.title) - \(p.lead)", go: .web(url))
         }
     }
 
