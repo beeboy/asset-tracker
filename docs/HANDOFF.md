@@ -37,7 +37,7 @@
 2. ~~`/web/` 위 "앱으로 옮겨 가요 · 입구로" 띠~~: 2026-10-15 켬(`web/index.html` 맨 위 `.movebar`, 판 20261015i).
 3. **입구 다듬기**: 실제 폰·PC 화면에서 확인, 말풍선·위젯 위치, 공유 미리보기(og.png)를 새 첫 페이지에 맞추기, Google 색인 다시 요청.
 4. **앱 남은 결정**: 분석 허브 내 길 '처음 닿는 때' vs 목표일 확률 차이, 내 길 상세 '반반이에요' 문구.
-5. **실기기 확인**: 앱 시작 속도(`Market.refresh()` 병렬화), 미션 예보 카드, 위젯 일간 변화·현금, 위젯 ↻ 누르면 바로 '받는 중'(…)으로 바뀌는지(2026-10-16, `Store.reloadingSince`).
+5. **실기기 확인**: 앱 시작 속도(`Market.refresh()` 병렬화), 미션 예보 카드, 위젯 일간 변화·현금, 위젯 ↻ 누르면 바로 '받는 중'(…)으로 바뀌는지(2026-10-16, `Store.reloadingSince`), 인물 위젯 ↻ 때 금액이 새 시세로 바뀌는지·인물 흔들림·숫자 플립(2026-10-16, `Engine.liveHoldings`, `charShake`·`charFlip`).
 6. **출시 전**: 키 등록 전 화면을 가상 시장 샘플(`data/sample/`, `tools/sample_market.py`, 2026-10-15 만듦·아직 연결 안 함)로 바꾸기(앱 `Sample`·`YahooSample`, 웹 첫 방문 샘플 QQQ→NXIX, `sample.yml`에서 날짜 맞추기), 국내 실시간 시세 스위치 끄기(`KoreaEstimate.live`), `StubPriceProvider` 대체, 무료/프리미엄 분리(`premium()`), TestFlight 외부 테스트용 재아카이브·IAP 등록, 시세 재배포 조건(Tiingo·EODHD 보류).
 7. **운영 확인**: 워커 `/cu` 401(Claude 사용량 위젯), 15분 collect cron 실제 동작.
 8. ~~**커피 한 잔 → 구독 재편**~~: 2026-10-16 앱 코드 반영(`Data/Support.swift` 구독, `SupportView` 구독 화면, 위젯 `Gate`가 `Store.widgetsOpen`, 분석 내 길·전망 `SubLocked`, 열림 시간은 `Support.dayN` 기준 `AppModel.friendsOpen`·`itemsOn`·`chapterOn`, `bgOpen`). 워커 `/store/book`은 `sub.*` 구독으로 확인(재배포 필요). 남은 일: App Store Connect 구독 그룹·상품 2개 등록(`com.naeilo.widget.sub.monthly` 1,000원 P1M, `com.naeilo.widget.sub.yearly` 9,000원 P1Y), 워커 재배포. 개인정보처리방침은 구독 화면 링크(`https://naeilo.com/web/privacy.html`)와 구독·판 깨기 기기 저장 문구로 맞춤(2026-10-16), App Store Connect 개인정보처리방침 URL 칸에도 같은 주소 넣기.
@@ -71,8 +71,8 @@
 
 ## 다른 증권사 오픈 API (2026-10-16, PR 올림)
 - 검토 표와 키움 중계 사용법: `docs/broker-apis.md`.
-- 키움 중계 `proxy/kiwoom_relay.py` 추가 (서버 배포 전). 앱 쪽 키움 연결은 아직 없음.
-- 다음: 서버 배포 → 앱 키움 키 입력·`KiwoomFeed` → LS 검토. 한국투자는 보류(2026-10-16, `docs/broker-apis.md`).
+- 키움 중계 `proxy/kiwoom_relay.py`는 있지만 **일시 보류** (국내 주식만이라서, Drinker 결정 2026-10-16). 서버에 안 올림, 앱 화면 없음.
+- 다음 후보: LS 검토. 한국투자도 보류(2026-10-16, `docs/broker-apis.md`).
 
 ## 토스 시세: 일반 사용자 내 키 (2026-10-15, PR 올림)
 - 앱 설정 맨 위 오픈 API 카드 › 토스증권 오픈 API(2026-10-16 '도움과 기타'에서 맨 위로 옮김, 안내는 세 줄만): 사용자가 client_id·secret 을 넣으면 키체인에 두고 공용 중계 `https://toss.naeilo.com`(`proxy/toss_relay.py`)로 토큰·현재가를 받는다. 사용자는 중계 IP 를 토스 허용 IP 에 등록. 자세한 흐름·서버 올리기는 `docs/toss-relay.md`.
