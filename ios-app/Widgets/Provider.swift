@@ -31,6 +31,8 @@ struct Provider: TimelineProvider {
             await KrQuoteFeed.fetch(ky, minAge: 600)
             // 내 토스 키가 있으면 토스 지금 가격도 위젯이 직접 (앱을 안 열어도 앱과 같은 값). 국내 종목이 있으면 한국 장중에도 갱신
             let toss = await TossFeed.widgetFetch(minAge: 600)
+            // 내 Alpaca 키가 있으면 미국 종목 지금 가격도 위젯이 직접
+            await AlpacaFeed.widgetFetch(minAge: 600)
             let tossKr = toss != nil && (feed?.ty ?? [:]).values.contains { $0.hasSuffix(".KS") || $0.hasSuffix(".KQ") }
             completion(Timeline(entries: [Entry(date: Date(), snap: Engine.snapshot())], policy: .after(MarketHours.nextRefresh(kr: !ky.isEmpty || tossKr))))
         }

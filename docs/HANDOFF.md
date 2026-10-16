@@ -54,6 +54,12 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 내 Alpaca 키 (2026-10-17, PR 올림)
+- 설정 '숫자를 계산하는 기준'에 '내 Alpaca 키' 줄 하나 추가 → `AlpacaKeyView`. 키를 넣지 않으면 다른 화면은 그대로.
+- `AlpacaKeys`·`AlpacaFeed`(`WidgetShared/Models.swift`): 키는 키체인(위젯과 같은 그룹), 미국 종목만 `v2/stocks/snapshots?feed=iex`. 지금 가격 = latestTrade.p, 전일 종가는 사이트 값 먼저(없으면 prevDailyBar.c). 15분 넘은 값은 안 씀.
+- 우선순위: 토스 키 > Alpaca 키 > 사이트 시세 > 예시 값. 위젯(Provider·↻)도 같은 키로 직접 받음. 종목 화면 출처 "Alpaca(IEX) 시세".
+- 남은 것: 일봉(지난 종가)은 Alpaca 로 덮어쓰지 않았다 (IEX 일봉 종가는 공식 종가와 달라서). 실제 키로 받아 보기 확인 필요.
+
 ## 미래 설계 새 글 → 앱 소식 (2026-10-17, PR 올림)
 - 앱 `Remind.swift`가 6시간에 한 번 `data/blog.json`을 받아 '2026 지구' 글 중 10일 안의 것을 소식(설정·새 소식)으로 올린다. 소식 아래 'naeilo.com에서 읽기' 링크.
 - 웹 `app.js` `postCheck`: `/web/#post=글id`로 열면 그 글을 바로 연다. 카테고리 이름으로 찾으니 이름을 바꾸면 `Remind.blogCat`도 바꾼다.
