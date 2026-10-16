@@ -1,5 +1,10 @@
 {
- "cats": [],
+ "cats": [
+  {
+   "id": "cmvb2r1nw",
+   "name": "2026 지구"
+  }
+ ],
  "posts": [
   {
    "id": "pmuuvoolg",
