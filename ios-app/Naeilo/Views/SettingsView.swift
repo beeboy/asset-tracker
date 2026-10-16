@@ -7,7 +7,12 @@ struct SettingsView: View {
 
     var body: some View {
         let onN = m.alerts.values.filter { $0 }.count
-        // 위에서 아래로: 목표 카드 → 알림과 위젯 → 함께할 인물 → 화면 → 계산 기준 → 도움과 기타
+        // 위에서 아래로: 오픈 API 카드 → 내 목표 → 알림과 위젯 → 함께할 인물 → 화면 → 계산 기준 → 도움과 기타
+        let routeLine = m.route == .recover ? "본전부터 되찾는 중이에요" : m.route == .plus ? "목표를 향해 가는 중이에요" : "아직 첫 단계예요"
+        let goalRows: [(String, String, SettingsRoute)] = [
+            ("목표 고치기", m.isGoal ? "\(m.goalToText)까지 \(AppModel.wonK(m.gK))" : "아직 목표가 없어요", .goal),
+            ("루트 바꾸기", routeLine, .route),
+        ]
         let oftenRows: [(String, String, SettingsRoute)] = [
             ("알림", onN > 0 ? "\(onN)개 켜짐" : "모두 꺼짐", .alerts),
             ("홈 화면 위젯", "\(m.baseWidgets.count + Shelter.friends.count)가지 · 미리보기", .widgets),
@@ -16,16 +21,16 @@ struct SettingsView: View {
             ("가격 기준", "미국 종목·환율은 지금 가격 · 한국 종목은 넣은 가격", .price),
             ("세금", "한국 거주자 기준으로 계산해요", .tax),
         ]
-        // 기기 동기화(웹과 앱) 자리를 내 토스 키 입력으로 바꿨다 (동기화 코드는 남김)
+        // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
         let helpRows: [(String, String, SettingsRoute)] = [
             ("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto),
-            ("토스증권 오픈 API", TossKeys.on ? "내 토스 키로 시세 받는 중" : "내 토스증권 Open API 키 연결하기", .toss),
             ("개발자에게 커피 한 잔", Support.shared.tier == .free ? "구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "설정").padding(.horizontal, -16)
-                goalCard
+                apiCard
+                group("내 목표", goalRows)
                 group("알림과 위젯", oftenRows)
                 head("함께할 인물")
                 GuidePickRow()
@@ -71,33 +76,55 @@ struct SettingsView: View {
         }
     }
 
-    /// 목표 카드: 날짜·금액 + 지금 어느 길인지 쉬운 말 한 줄 (예전 "루트 · 플러스" 줄을 합쳤다)
-    private var goalCard: some View {
-        let routeLine = m.route == .recover ? "본전부터 되찾는 중이에요" : m.route == .plus ? "목표를 향해 가는 중이에요" : "아직 첫 단계예요"
-        return VStack(alignment: .leading, spacing: 6) {
-            if m.isGoal {
-                Text("\(m.goalToText)까지").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                Text(AppModel.wonK(m.gK)).appFont(28, .bold)
-            } else {
-                Text("내 목표").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-            }
-            NavigationLink(value: SettingsRoute.route) {
+    /// 맨 위 오픈 API 카드: 연결 상태 한 줄 + 내 폰·서버·토스 작은 띠. 누르면 토스증권 오픈 API 화면으로
+    private var apiCard: some View {
+        _ = Market.shared.tossDone      // 토스 받기를 마치면 다시 그린다
+        let on = TossKeys.on
+        return NavigationLink(value: SettingsRoute.toss) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 4) {
-                    Text(routeLine).appFont(15, .semibold)
-                    Image(systemName: "chevron.right").appFont(12)
-                }.frame(minHeight: 44).contentShape(Rectangle())
-            }.buttonStyle(.plain)
-            if m.isGoal {
-                NavigationLink(value: SettingsRoute.goal) {
+                    Text(on ? "내 오픈 API 키로 시세 받는 중" : "내 오픈 API 키 연결 안 됨").appFont(15, .semibold)
+                    if on { Image(systemName: "chevron.right").appFont(12) }
+                }
+                HStack(spacing: 5) {
+                    miniNode("iphone", on); miniLine(on)
+                    miniNode("server.rack", on); miniLine(on)
+                    miniNode("chart.line.uptrend.xyaxis", on)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(on ? "이어져 있어요" : "키는 이 폰에만 있어요").appFont(13, .bold)
+                        Text(on ? "현재가·일봉·환율만 받아 왔어요" : "서버는 지나가기만 해요 · 현재가·일봉·환율만")
+                            .appFont(11).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
+                    }.padding(.leading, 5)
+                    Spacer(minLength: 0)
+                }
+                .padding(10).background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                if !on {
                     // 다른 버튼(PrimaryButton)과 같은 모양: 청록 바탕 + 흰 글자 (라이트·다크 공통)
-                    Text("목표 고치기").appFont(16, .bold).foregroundStyle(.white)
+                    Text("연결하기").appFont(16, .bold).foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
-                }.buttonStyle(.plain)
+                }
             }
+            .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+            .contentShape(Rectangle())
         }
-        .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+        .buttonStyle(.plain)
+    }
+
+    private func miniNode(_ icon: String, _ on: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 8).fill(on ? Theme.teal : Color.white.opacity(0.12))
+            .frame(width: 30, height: 30)
+            .overlay { Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(on ? .white : Color(hex: 0xC9D0D6)) }
+            .accessibilityHidden(true)
+    }
+
+    /// 작은 띠의 줄: 끊김은 회색 점선, 이어짐은 청록 실선
+    private func miniLine(_ on: Bool) -> some View {
+        Path { p in p.move(to: CGPoint(x: 0, y: 1)); p.addLine(to: CGPoint(x: 12, y: 1)) }
+            .stroke(on ? Theme.teal : Theme.muted, style: StrokeStyle(lineWidth: 2, dash: on ? [] : [3, 2]))
+            .frame(width: 12, height: 2)
+            .accessibilityHidden(true)
     }
 
     private func head(_ t: String) -> some View {
@@ -309,7 +336,7 @@ struct TossLinkMap: View {
                 .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Image(systemName: on ? "chart.line.uptrend.xyaxis" : "key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.teal)
-                Text(on ? "현재가·일봉·환율 정보만 받아 오고 있어요." : "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요.")
+                Text(on ? "현재가·일봉·환율 정보만 받아 왔어요." : "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요.")
                     .appFont(13).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
