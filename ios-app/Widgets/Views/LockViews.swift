@@ -9,10 +9,10 @@ struct LockAssetView: View { // 1 자산 추이
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("총자산 · 목표 \(Int((s.progress * 100).rounded()))%").font(.system(size: 11, weight: .bold)).opacity(0.75)
-            Money { h in Text(h ? hiddenAmount : Fmt.eok(s.total)).font(.system(size: 20, weight: .heavy, design: .rounded)).minimumScaleFactor(0.7) }
+            Money { h in Text(h ? hiddenAmount : Fmt.eok(s.total)).font(.system(size: 20, weight: .heavy, design: .rounded)).minimumScaleFactor(0.7).flip(s.total) }
             HStack(spacing: 6) {
-                Text("\(Fmt.arrow(s.dayChg))\(Fmt.pct(s.dayChg))").font(.system(size: 12, weight: .bold))
-                Spark(values: Array(s.spark.suffix(21)), color: Color.primary, width: 1.6).frame(width: 60, height: 14)
+                Text("\(Fmt.arrow(s.dayChg))\(Fmt.pct(s.dayChg))").font(.system(size: 12, weight: .bold)).flip(s.dayChg)
+                Spark(values: Array(s.spark.suffix(21)), color: Color.primary, width: 1.6).frame(width: 60, height: 14).flipFade()
                 Text("1달").font(.system(size: 9)).opacity(0.7)
             }
         }
@@ -26,7 +26,7 @@ struct LockGoalView: View { // 2 목표
         Gauge(value: min(1, max(0, s.progress))) {
             Text("목표")
         } currentValueLabel: {
-            Text("\(Int((s.progress * 100).rounded()))%").font(.system(size: 15, weight: .heavy))
+            Text("\(Int((s.progress * 100).rounded()))%").font(.system(size: 15, weight: .heavy)).flip(s.progress)
         }
         .gaugeStyle(.accessoryCircularCapacity)
     }
@@ -41,7 +41,7 @@ struct LockFutureView: View { // 3 미래: 3년 뒤 막대 하나
             if let f = s.fan, let k = f.p50.indices.last {
                 Money { h in
                     (Text(h ? hiddenAmount : Fmt.eok(f.p50[k])).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text(h ? "" : "  \(Fmt.eok(f.p25[k]))~\(Fmt.eok(f.p75[k]))").font(.system(size: 10, weight: .semibold)))
-                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .lineLimit(1).minimumScaleFactor(0.7).flip(f.p50[k])
                 }
                 GeometryReader { g in
                     let lo = log(max(1, min(f.p5[k], s.goal) * 0.8)), hi = log(max(f.p95[k], s.goal) * 1.1), w = g.size.width
@@ -53,7 +53,7 @@ struct LockFutureView: View { // 3 미래: 3년 뒤 막대 하나
                         Rectangle().fill(Color.primary).frame(width: 2, height: 14).offset(x: x(s.goal) - 1)
                     }
                 }
-                .frame(height: 8)
+                .frame(height: 8).flipFade()
             } else {
                 Text("앱을 열면 계산").font(.system(size: 13, weight: .bold))
             }
@@ -69,7 +69,7 @@ struct LockTargetView: View { // 4 적중 과녁
             Text("이번 주 과녁 · \(s.hitText)").font(.system(size: 11, weight: .bold)).opacity(0.75)
             if let w = s.week {
                 Money { h in
-                    (Text(h ? hiddenAmount : Fmt.eok(w.act)).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text(h ? "" : "  예측 \(Fmt.eok(w.p50))").font(.system(size: 11, weight: .semibold))).lineLimit(1)
+                    (Text(h ? hiddenAmount : Fmt.eok(w.act)).font(.system(size: 18, weight: .heavy, design: .rounded)) + Text(h ? "" : "  예측 \(Fmt.eok(w.p50))").font(.system(size: 11, weight: .semibold))).lineLimit(1).flip(w.act)
                 }
                 GeometryReader { g in
                     let x = g.size.width * CGFloat(min(1, max(0, (w.act - w.lo) / max(1, w.hi - w.lo))))
@@ -78,7 +78,7 @@ struct LockTargetView: View { // 4 적중 과녁
                         RoundedRectangle(cornerRadius: 3).fill(Color.primary).frame(width: 10, height: 12).offset(x: x - 5)
                     }
                 }
-                .frame(height: 12)
+                .frame(height: 12).flipFade()
             } else {
                 Text("이번 주 예측 대기").font(.system(size: 13, weight: .bold))
             }
