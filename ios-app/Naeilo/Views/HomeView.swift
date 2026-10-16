@@ -57,8 +57,10 @@ struct HomeView: View {
                 .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5)
+                    .lineLimit(1).fixedSize()   // 금액은 꺾지 않고 한 줄로
                 if value && m.cost > 0 {
                     Text("산 가격보다 " + AppModel.sgn(m.ret)).appFont(14, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
+                        .lineLimit(1).minimumScaleFactor(0.7)
                 }
                 Spacer(minLength: 8)
                 MiniPath()
@@ -97,6 +99,7 @@ struct HomeView: View {
             Text("지금 평가액 · 들어간 돈 \(AppModel.man(m.cost))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(AppModel.man(m.total)).appFont(32, .bold).tracking(-0.5)
+                    .lineLimit(1).fixedSize()
                 Text(AppModel.sgn(m.ret)).appFont(16, .bold)
                     .foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 Spacer(minLength: 8)
