@@ -31,6 +31,10 @@ enum WidgetBridge {
         for r in rows where r.sym.currency == .krw && CustomSymbols.shared.isLive(r.id) { ky[r.id] = CustomSymbols.yahoo(for: r.sym) }
         var feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Market.shared.mar.map { WFeed.Mar(rate: $0.rate, date: $0.date) })   // 위젯 평가액도 앱·웹처럼 매매기준율
         feed.ky = ky.isEmpty ? nil : ky
+        // 토스로 받을 종목 (Market.refreshToss 와 같은 목록): 내 키가 있으면 위젯이 이걸로 토스 지금 가격을 받는다
+        var ty: [String: String] = [:]
+        for r in rows where r.id != "DRNK" && r.id != KoreaEstimate.sumId { ty[r.id] = CustomSymbols.yahoo(for: r.sym) }
+        feed.ty = ty.isEmpty ? nil : ty
 
         let live = WLive(hold: rows.map { .init(t: $0.id, sh: $0.h.qty, price: $0.sym.last) },
                          cashKrw: cash, cashUsd: 0, goalAmount: goal, goalDate: Day.str(end), goalStart: Day.str(start),

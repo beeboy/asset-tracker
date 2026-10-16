@@ -6,6 +6,7 @@ struct NaeiloApp: App {
     @State private var model = AppModel()
     init() {
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        TossKeys.share()   // 내 토스 키를 위젯도 읽는 자리로 (예전 판에서 넣은 키)
         Task { @MainActor in Support.shared.start() }   // 구독: 지금 구독 확인, 거래 듣기
     }
     var body: some Scene {
