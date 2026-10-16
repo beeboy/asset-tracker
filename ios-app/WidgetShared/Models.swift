@@ -148,12 +148,13 @@ enum TossFeed {
     }
 
     /// syms: 종목 → Yahoo 기호. prev 는 모르므로 0 (전일 종가는 사이트·Yahoo 값을 쓴다)
+    /// force: 다시 받기·당겨 갱신. 하루 빼 둔 종목도 다시 묻는다
     @discardableResult
-    static func fetch(_ syms: [String: String], minAge: TimeInterval = 0) async -> QuoteFeed.File? {
+    static func fetch(_ syms: [String: String], minAge: TimeInterval = 0, force: Bool = false) async -> QuoteFeed.File? {
         let want = syms.filter { !$0.value.contains("^") && !$0.value.contains("=") }
         guard !want.isEmpty else { return nil }
         if let o = cached(), Date().timeIntervalSince1970 - o.got < minAge { return o }
-        guard let b = base else { return TossKeys.on ? await fetchUser(want) : nil }
+        guard let b = base else { return TossKeys.on ? await fetchUser(want, force: force) : nil }
         let list = Set(want.values).sorted().joined(separator: ",")
         guard let enc = list.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
               let url = URL(string: b + "/api/toss/prices?symbols=" + enc) else { return nil }
@@ -259,18 +260,23 @@ enum TossFeed {
         return (401, nil, "토큰 실패")
     }
 
-    /// 토스에 없는 종목 코드 → 다시 물어볼 시각 (하루 동안 안 묻는다, server.py 와 같다)
+    /// 토스에 없는 종목 코드 → 다시 물어볼 시각 (하루 동안 안 묻는다, server.py 와 같다). 현재가에서 404 난 것만
     static var miss: [String: Double] {
         get { Store.defaults.dictionary(forKey: "toss_miss") as? [String: Double] ?? [:] }
         set { Store.defaults.set(newValue, forKey: "toss_miss") }
     }
+    /// 일봉에서 404 난 종목 (현재가 목록과 따로 둔다. 같이 쓰면 일봉 404 하나로 그 종목 현재가도 하루 못 받는다)
+    static var histMiss: [String: Double] {
+        get { Store.defaults.dictionary(forKey: "toss_hist_miss") as? [String: Double] ?? [:] }
+        set { Store.defaults.set(newValue, forKey: "toss_hist_miss") }
+    }
 
-    private static func fetchUser(_ want: [String: String]) async -> QuoteFeed.File? {
+    private static func fetchUser(_ want: [String: String], force: Bool) async -> QuoteFeed.File? {
         let now = Date().timeIntervalSince1970
         var ids: [String: [String]] = [:]   // 토스 코드 → 앱 종목들
-        let skip = miss
+        let skip: [String: Double] = force ? [:] : miss     // 다시 받기는 빼 둔 종목도 다시 묻는다 (없으면 아래에서 다시 뺀다)
         for (id, y) in want { if let c = code(y), (skip[c] ?? 0) < now { ids[c, default: []].append(id) } }
-        guard !ids.isEmpty else { return cached() }
+        guard !ids.isEmpty else { return fail("토스에서 받을 종목 없음") }
         var (tok, e) = await token()
         guard var t = tok else { return fail(e ?? "토큰 실패") }
         var q: [String: QuoteFeed.Q] = [:]
@@ -342,6 +348,7 @@ enum TossKeys {
         put(k, "keys"); put(Token?.none, "token")
         Store.defaults.set(true, forKey: "toss_user")
         Store.defaults.removeObject(forKey: "toss_miss")
+        Store.defaults.removeObject(forKey: "toss_hist_miss")
     }
     static func clear() {
         put(Keys?.none, "keys"); put(Token?.none, "token")
