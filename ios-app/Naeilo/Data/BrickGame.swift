@@ -231,8 +231,10 @@ struct GameRecord: Codable, Equatable {
     var level: GameLevel = .normal
     var tilt = true
     var player = "seri"
-    var share: Bool? = nil     // 익명 주간 순위판에 점수 올리기 (기본 끔)
-    var nick: String? = nil    // 순위판 별명 (선택, 3글자)
+    var plays: [String: [Play]]? = nil  // "난이도.단계" → 이 폰의 높은 점수 10판 (내 기록 순위)
+
+    /// 내 기록 순위 한 줄: 점수·고른 인물·날짜. 서버로 보내지 않는다
+    struct Play: Codable, Equatable, Hashable { let score: Int; let p: String; let at: Date }
 
     private static let key = "game.v1"
     static func load() -> GameRecord {
@@ -244,40 +246,22 @@ struct GameRecord: Codable, Equatable {
     func bestOf(_ n: Int, _ lv: GameLevel) -> Int? { best["\(lv.rawValue).\(n)"] }
     func total(_ lv: GameLevel) -> Int { GameStage.all.reduce(0) { $0 + (bestOf($1.n, lv) ?? 0) } }
     func lossCount(_ n: Int, _ lv: GameLevel) -> Int { losses["\(lv.rawValue).\(n)"] ?? 0 }
+    func top(_ n: Int, _ lv: GameLevel) -> [Play] { plays?["\(lv.rawValue).\(n)"] ?? [] }
 
     /// 한 판 끝: 새 최고 점수면 true
     @discardableResult
-    mutating func finish(_ n: Int, _ lv: GameLevel, score: Int, won: Bool) -> Bool {
+    mutating func finish(_ n: Int, _ lv: GameLevel, score: Int, won: Bool, player: String = "seri") -> Bool {
         let k = "\(lv.rawValue).\(n)"
+        if score > 0 {
+            var list = plays?[k] ?? []
+            list.append(Play(score: score, p: player, at: Date()))
+            list.sort { $0.score > $1.score }
+            plays = (plays ?? [:]).merging([k: Array(list.prefix(10))]) { $1 }
+        }
         if won { cleared[lv.rawValue, default: []].insert(n); losses[k] = 0 } else { losses[k, default: 0] += 1 }
         let isBest = score > (best[k] ?? 0)
         if isBest { best[k] = score }
         return isBest
-    }
-}
-
-/// 익명 주간 순위판 (중계 /scores): 점수·별명(선택)·선수 인물만 보낸다. 계정·기기 ID 없음
-enum GameBoard {
-    static let url = "https://asset-ai.drinker.workers.dev/scores"
-    struct Entry: Decodable, Hashable { let nick: String; let p: String; let score: Int }
-    private struct Top: Decodable { let week: String; let top: [Entry] }
-    private struct Sent: Decodable { let rank: Int? }
-
-    /// 별명: 한글·영문·숫자 3글자까지
-    static func clean(_ s: String) -> String { String(s.filter { $0.isLetter || $0.isNumber }.prefix(3)) }
-
-    static func top(_ n: Int, _ lv: GameLevel) async -> (week: String, list: [Entry])? {
-        guard let u = URL(string: "\(url)?lv=\(lv.rawValue)&n=\(n)"),
-              let (d, _) = try? await URLSession.shared.data(from: u), let t = try? JSONDecoder().decode(Top.self, from: d) else { return nil }
-        return (t.week, t.top)
-    }
-    /// 이번 주 순위 (20위 밖이면 nil)
-    static func send(_ n: Int, _ lv: GameLevel, score: Int, nick: String, player: String) async -> Int? {
-        guard score > 0, let u = URL(string: url) else { return nil }
-        var r = URLRequest(url: u); r.httpMethod = "POST"; r.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        r.httpBody = try? JSONSerialization.data(withJSONObject: ["lv": lv.rawValue, "n": n, "score": score, "nick": clean(nick), "p": player])
-        guard let (d, _) = try? await URLSession.shared.data(for: r), let s = try? JSONDecoder().decode(Sent.self, from: d) else { return nil }
-        return s.rank
     }
 }
 
