@@ -141,10 +141,12 @@ final class Market {
         var ty: [String: String] = [:]
         for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
         guard !ty.isEmpty, TossFeed.base != nil || TossKeys.on else { return }
-        if tossTask != nil && !force { return }
-        while let t = tossTask { await t.value }
+        if let t = tossTask {
+            if !force { return }
+            await t.value     // 받는 중인 일이 끝나길 기다렸다가 새로 받는다 (끝난 일을 거듭 기다리며 도는 일이 없게 한 번만)
+        }
         let t = Task { @MainActor in
-            let q = await TossFeed.fetch(ty, minAge: force ? 0 : 60)
+            let q = await TossFeed.fetch(ty, minAge: force ? 0 : 60, force: force)
             self.toss = q
             // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번)
             if let h = await TossHistory.fetch(Dictionary(ty.map { (SiteStats.key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a }), force: force) {
@@ -155,7 +157,7 @@ final class Market {
         }
         tossTask = t
         await t.value
-        tossTask = nil
+        if tossTask == t { tossTask = nil }
     }
 
     /// 아래로 당겨 갱신: 내 종목을 바로 받고 위젯에도 넘긴다
@@ -349,7 +351,7 @@ enum TossHistory {
         var f = Store.read(File.self, name) ?? File(h: [:], day: [:], fx: nil)
         let now = Date().timeIntervalSince1970, today = Day.today
         let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))   // 사이트 파일과 같은 3년 남짓
-        var miss = TossFeed.miss
+        var miss = TossFeed.histMiss
         var stop = false
         for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop {
             guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != today || f.h[k] == nil else { continue }
@@ -380,7 +382,7 @@ enum TossHistory {
             f.h[k] = .init(dates: ds, closes: ds.map { all[$0]! })
             f.day[k] = today
         }
-        TossFeed.miss = miss
+        TossFeed.histMiss = miss
         // 원/달러: 10분에 한 번 (당겨 갱신하면 바로). 전일 값은 24시간 전 시각의 값
         if !stop, force || now - (f.fx?.got ?? 0) > 600 {
             let (code, o, _) = await TossFeed.userGet("/api/toss/v1/exchange-rate")
