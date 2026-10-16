@@ -71,8 +71,10 @@ struct ReloadButton: View { // ↻ 다시 받기 (예시 값이면 앞에 '예�
     }
 
     @ViewBuilder private var button: some View {
-        let icon = Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .bold))
-            .frame(width: 22, height: 22).background(Circle().fill(Palette.ink.opacity(0.14)))
+        let busy = Store.isReloading
+        let icon = Image(systemName: busy ? "ellipsis" : "arrow.clockwise").font(.system(size: 11, weight: .bold))
+            .frame(width: 22, height: 22).background(Circle().fill(Palette.ink.opacity(busy ? 0.3 : 0.14)))
+            .accessibilityLabel(busy ? "받는 중" : "다시 받기")
         #if WIDGET_EXT
         Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain)
         #else

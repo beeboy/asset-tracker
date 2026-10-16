@@ -392,7 +392,7 @@ extension AppModel {
 
     // 3개월 인터미션
     static let goalMonthSteps: [(task: String, whereText: String, reward: String)] = [
-        ("앱에서 이번 달 적립 기록하기", "앱", "세리"), ("PC에서 증권사 거래내역 파일 올리기", "PC 웹", "시오"), ("앱에서 배당·세금 요약 보기", "앱", "모두"),
+        ("앱에서 이번 달 적립 기록하기", "앱", "세리"), ("앱에서 내 종목 수량·평균 단가 맞춰 보기", "앱", "시오"), ("앱에서 배당·세금 요약 보기", "앱", "모두"),
     ]
     /// 체크인: 시작한 날부터 30일마다 한 달씩 (서버 시각, Me.swift monthGate). 회복 루트 주차와 같은 방식
     func confirmGoalMonth() {

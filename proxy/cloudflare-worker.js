@@ -17,12 +17,15 @@
 // 6) 기기 동기화 (/sync): 개발자 기기끼리만. 저장소 쓰기 권한이 있는 GitHub 토큰으로 확인하고, 같은 VIEWS KV 에 GitHub 계정별로 입력값을 둔다.
 //       일반 사용자는 /esync: 동기화 비밀번호로 브라우저에서 암호화한 값(c)만 받는다. 중계는 내용을 읽을 수 없다 (KV 키 e:<id>, id 도 비밀번호에서 만든 해시).
 // 7) 매매기준율 (/mar): 서울외국환중개 고시 미국 달러 매매기준율. 저장소 수집(data/mar.json)이 못 받았을 때 화면이 부른다.
-// 8) 커피 후원 (/store/*): 아이폰 앱 인앱 구매를 확인하고 유료 원고를 건넨다. 같은 VIEWS KV 를 쓰고, 비밀값 설정은 없다.
+// 8) 구독 원고 (/store/*): 아이폰 앱 구독(인앱 결제)을 확인하고 유료 원고를 건넨다. 같은 VIEWS KV 를 쓰고, 비밀값 설정은 없다.
 //       구매 확인은 앱이 보낸 StoreKit 2 서명 거래(JWS)를 Apple 루트 인증서(G3)까지 따라가 직접 검증한다 (Apple API 키 불필요).
-//       유료 원고(외전 6장부터·본편 1권)는 저장소에 두지 않고 KV(st:book:*)에만 둔다. 올리기·후원자 승인은 web/store-admin.html.
+//       유료 원고(외전 6장부터·앱 연재판 1권)는 저장소에 두지 않고 KV(st:book:*)에만 둔다. 올리기는 web/store-admin.html.
 //       선택 변수: BUNDLE_ID (기본 com.naeilo.widget), NO_SANDBOX=1 (TestFlight 샌드박스 구매를 받지 않음).
 // 9) 판 깨기 순위판 (/scores): 아이폰 앱 게임의 익명 주간 순위. 같은 VIEWS KV, 비밀값 없음.
 //       저장값은 점수·별명(선택, 3글자)·선수 인물 id·날짜뿐. 계정·기기 ID·IP 는 받지도 두지도 않는다. 단계·난이도·주마다 상위 20개, 5주 뒤 지워짐.
+// 12) 출시 알림 신청 (/notify): 입구 페이지(naeilo.com)의 "앱 받기". 같은 VIEWS KV, 비밀값 없음.
+//       저장값은 이메일과 신청 날짜뿐 (KV 키 n:<이메일 해시>). 출시 알림 한 번 보내고 지운다. 신청 취소는 /notify/del.
+//       목록: GET /notify/list (Authorization: Bearer <ADMIN_KEY 또는 저장소 쓰기 권한 GitHub 토큰>).
 // 11) Claude 사용량 (/cu): 본인용 사용량 위젯 앱(usage-app/)이 15분마다 묻는다. 5시간·주간 한도 사용률(%)과 리셋 시각만 돌려준다.
 //       비밀값 CLAUDE_TOKEN = 맥 터미널에서 `claude setup-token` 으로 받은 토큰 (sk-ant-oat01-…, 1년). 폰에는 토큰을 두지 않는다.
 //       먼저 OAuth 사용량 주소를 묻고, 안 되면 가장 작은 메시지 한 번(1토큰)의 응답 머리글(unified 한도)에서 읽는다. 결과는 5분 기억.
@@ -106,6 +109,25 @@ export default {
       const n = Math.max(0, (Number(await env.VIEWS.get("l:" + id)) || 0) + (d === -1 ? -1 : 1));
       await env.VIEWS.put("l:" + id, String(n));
       return out({ id, n });
+    }
+    if (u.pathname === "/notify" || u.pathname === "/notify/del" || u.pathname === "/notify/list") {
+      // POST /notify {"email":"a@b.c"} → { ok } (같은 이메일은 한 줄), POST /notify/del {"email"} → { ok }
+      if (!env.VIEWS) return noKv();
+      if (u.pathname === "/notify/list") {
+        const tok = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+        if (!tok || !((env.ADMIN_KEY && tok === env.ADMIN_KEY) || (await ghWho(env, tok)))) return out({ error: "관리자만 볼 수 있습니다" }, 403);
+        const rows = []; let cur;
+        do { const r = await env.VIEWS.list({ prefix: "n:", cursor: cur }); for (const k of r.keys) { const v = JSON.parse((await env.VIEWS.get(k.name)) || "null"); if (v) rows.push(v); } cur = r.list_complete ? null : r.cursor; } while (cur);
+        return out({ n: rows.length, rows });
+      }
+      if (req.method !== "POST") return out({ error: "POST 만 받습니다" }, 400);
+      const { email } = await req.json().catch(() => ({}));
+      const e = String(email || "").trim().toLowerCase();
+      if (e.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return out({ error: "이메일 주소가 맞지 않습니다" }, 400);
+      const k = "n:" + [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(e)))].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+      if (u.pathname === "/notify/del") { await env.VIEWS.delete(k); return out({ ok: true }); }
+      if (!(await env.VIEWS.get(k))) await env.VIEWS.put(k, JSON.stringify({ email: e, at: new Date().toISOString().slice(0, 10) }));
+      return out({ ok: true });
     }
     if (u.pathname === "/comments" || u.pathname === "/comments/del") {
       // GET /comments?id=a → { comments: [{ cid, at, text }] }
@@ -327,27 +349,26 @@ async function sendPush(env, sub, sid, msg) {
   return fetch(sub.endpoint, { method: "POST", headers: { TTL: "43200", Urgency: "normal", "Content-Length": "0", Authorization: `vapid t=${head}.${body}.${b64u(sig)}, k=${v.pub}` }, signal: AbortSignal.timeout(10000) }).catch(() => ({ ok: false, status: 0 })); // 알림 서버가 멈춰도 다음 구독으로
 }
 
-// ------------------------------------------------------------ 커피 후원 (/store/*)
-// 등급: 1 믹스커피 (외전 6장부터), 2 다방커피, 3 프랜차이즈 커피 (본편 1권), 4 고급 스페셜티 커피 (후원자 이름·로고)
-// 앱이 부르는 것 (jws 는 Transaction.currentEntitlements 의 jwsRepresentation 들. 가족 공유로 받은 것도 그대로 보낸다)
-//   POST /store/book {jws:[..], book:"side"|"vol1", lang:"ko"|"en"} → { tier, book:{lang, from, chapters} }  (등급이 모자라면 403 { error, tier })
-//   POST /store/sponsor {jws:[..], name, logo?:"data:image/png;base64,…"} → { ok, status:"pending" }  (스페셜티만, 개발자 승인 뒤 공개)
-//   POST /store/sponsor/me {jws:[..]} → { pending:{name,logo}|null, approved:{name,logo}|null }
-//   GET  /store/sponsors → { sponsors:[{ name, logo:url|null }] }   GET /store/logo/<id> → 그림
+// ------------------------------------------------------------ 구독 원고 (/store/*)
+// 구독 (2026-10-16 결정): 월 구독(sub.monthly)·연 구독(sub.yearly), 자동 갱신. 커피 후원 등급은 없앴다.
+//   외전 6장부터 = 구독 중. 앱 연재판 1권 = 연 구독 중, 또는 월 구독을 9번 이상 결제 (끝난 결제도 센다)
+// 앱이 부르는 것 (jws 는 지금 구독의 jwsRepresentation + 1권 자격용 지난 월 구독 결제 최근 9개)
+//   POST /store/book {jws:[..], book:"side"|"vol1", lang:"ko"|"en"} → { tier, book:{lang, from, chapters} }  (구독이 모자라면 403 { error, tier })
+//       tier: 0 없음, 1 구독 중, 2 1권 자격
+//   GET  /store/sponsors → { sponsors:[{ name, logo:url|null }] }   GET /store/logo/<id> → 그림  (예전 후원자, 새 신청은 받지 않음)
 // 개발자 (Authorization: Bearer <저장소 쓰기 권한 GitHub 토큰 또는 ADMIN_KEY>)
 //   POST /store/admin/book {book, lang, data:{lang, from, chapters}}   GET /store/admin/books
 //   GET  /store/admin/sponsors   POST /store/admin/sponsor {id, action:"approve"|"reject"|"remove"}
 //   POST /store/book 에 개발자 토큰을 붙이면 구매 없이 받는다 (TestFlight·Xcode 빌드 확인용)
-const STORE_TIERS = { mix: 1, dabang: 2, franchise: 3, specialty: 4 };
-const STORE_BOOKS = { side: { need: 1, langs: ["ko", "en"] }, vol1: { need: 3, langs: ["ko", "en"] } };
-const LOGO_MAX = 200 * 1024;
+const STORE_PLANS = ["monthly", "yearly"];
+const STORE_BOOKS = { side: { need: 1, langs: ["ko", "en"] }, vol1: { need: 2, langs: ["ko", "en"] } };   // need: 오류 문구 고르기용
+const VOL1_MONTHS = 9;
 
 async function store(req, env, u, out, cors) {
   const p = u.pathname.slice("/store/".length);
   const kv = env.VIEWS;
   const tok = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   const isAdmin = async () => !!tok && ((env.ADMIN_KEY && tok === env.ADMIN_KEY) || !!(await ghWho(env, tok)));
-  const sid = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("sponsor:" + s)))].slice(0, 9).map((b) => b.toString(16).padStart(2, "0")).join("");
   const logoUrl = (id, at) => `${u.origin}/store/logo/${id}?v=${encodeURIComponent(at || "")}`;
 
   if (req.method === "GET" && p === "sponsors") {
@@ -428,58 +449,37 @@ async function store(req, env, u, out, cors) {
   // ---- 앱 (구매 확인)
   if (req.method !== "POST") return out({ error: "POST 만 받습니다" }, 400);
   const b = await req.json().catch(() => ({}));
-  const tx = await storeEntitlements(env, b.jws);
-  const tier = tx.reduce((m, t) => Math.max(m, t.tier), 0);
+  const tx = await storeEntitlements(env, b.jws), now = Date.now();
+  const active = tx.filter((t) => !t.expiresDate || t.expiresDate > now);
+  const months = new Set(tx.filter((t) => t.plan === "monthly").map((t) => t.transactionId)).size;
+  const vol1Ok = active.some((t) => t.plan === "yearly") || months >= VOL1_MONTHS;
+  const tier = vol1Ok ? 2 : active.length ? 1 : 0;
+  const can = { side: active.length > 0, vol1: vol1Ok };   // 외전은 지금 구독 중일 때만
 
   if (p === "book") {
     const def = STORE_BOOKS[b.book];
     if (!def) return out({ error: "book 은 side·vol1" }, 400);
-    const admin = tier < def.need && (await isAdmin());
-    if (tier < def.need && !admin) return out({ error: def.need === 1 ? "믹스커피 이상 후원하면 열려요" : "프랜차이즈 커피 이상 후원하면 열려요", tier }, 403);
+    const admin = !can[b.book] && (await isAdmin());
+    if (!can[b.book] && !admin) return out({ error: def.need === 1 ? "구독하면 열려요" : "연 구독, 또는 월 구독 9개월 이상이면 열려요", tier }, 403);
     const lang = def.langs.includes(b.lang) ? b.lang : def.langs[0];
     // 번역본을 아직 안 올렸으면 한글 원고를 준다 (앱은 받은 book.lang 으로 저장한다)
     const raw = (await kv.get(`st:book:${b.book}:${lang}`)) || (lang !== def.langs[0] ? await kv.get(`st:book:${b.book}:${def.langs[0]}`) : null);
     if (!raw) return out({ error: "원고가 아직 서버에 올라가지 않았습니다", tier }, 404);
-    return new Response(`{"tier":${admin ? 4 : tier},"book":${raw}}`, { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
-  }
-  if (p === "sponsor" || p === "sponsor/me") {
-    const sp = tx.filter((t) => t.tier >= 4).sort((x, y) => x.purchaseDate - y.purchaseDate)[0];
-    if (!sp) return out({ error: "고급 스페셜티 커피 후원자만 이름을 올릴 수 있어요", tier }, 403);
-    const id = await sid(sp.originalTransactionId), k = "st:sp:" + id;
-    const rec = JSON.parse((await kv.get(k)) || "null") || { id, since: new Date(sp.purchaseDate || Date.now()).toISOString(), env: sp.environment, pending: null, approved: null };
-    const view = (x) => x && { name: x.name, logo: !!x.logo };
-    if (p === "sponsor/me") return out({ pending: view(rec.pending), approved: view(rec.approved) });
-    const name = String(b.name || "").replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g, "").replace(/\s+/g, " ").trim();
-    if (!name || [...name].length > 40) return out({ error: "이름은 1~40자로 적어 주세요" }, 400);
-    let logo = null;
-    if (b.logo) {
-      const m = /^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)$/.exec(String(b.logo));
-      if (!m) return out({ error: "로고는 PNG·JPEG 만 받아요" }, 400);
-      const bin = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
-      const png = bin[0] === 0x89 && bin[1] === 0x50 && bin[2] === 0x4e && bin[3] === 0x47, jpg = bin[0] === 0xff && bin[1] === 0xd8 && bin[2] === 0xff;
-      if (!png && !jpg) return out({ error: "로고 파일이 PNG·JPEG 가 아니에요" }, 400);
-      if (bin.length > LOGO_MAX) return out({ error: "로고는 200KB 이하로 올려 주세요" }, 400);
-      logo = { type: png ? "image/png" : "image/jpeg", bin };
-    }
-    rec.pending = { name, logo: !!logo, at: new Date().toISOString() };
-    if (logo) await kv.put(`st:logo:${id}:p`, logo.bin, { metadata: { type: logo.type } });
-    else await kv.delete(`st:logo:${id}:p`);
-    await kv.put(k, JSON.stringify(rec));
-    return out({ ok: true, status: "pending" });
+    return new Response(`{"tier":${admin ? 2 : tier},"book":${raw}}`, { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
   }
   return out({ error: "모르는 주소" }, 404);
 }
 
-// 앱이 보낸 서명 거래 중 검증되고, 이 앱의 후원 상품이며, 환불·취소되지 않은 것만 { tier, … } 로
+// 앱이 보낸 서명 거래 중 검증되고, 이 앱의 구독 상품이며, 환불·취소되지 않은 것만 { plan, … } 로 (끝난 것도 넣는다, 판단은 부르는 쪽)
 async function storeEntitlements(env, list) {
-  const bundle = env.BUNDLE_ID || "com.naeilo.widget", prefix = bundle + ".support.";
+  const bundle = env.BUNDLE_ID || "com.naeilo.widget", prefix = bundle + ".sub.";
   const res = [];
-  for (const jws of (Array.isArray(list) ? list : [list]).filter((x) => typeof x === "string").slice(0, 10)) {
+  for (const jws of (Array.isArray(list) ? list : [list]).filter((x) => typeof x === "string").slice(0, 12)) {
     const t = await verifyAppleJWS(jws).catch(() => null);
     if (!t || t.bundleId !== bundle || t.revocationDate || !String(t.productId || "").startsWith(prefix)) continue;
     if (t.environment !== "Production" && (env.NO_SANDBOX || t.environment !== "Sandbox")) continue;
-    const tier = STORE_TIERS[t.productId.slice(prefix.length)];
-    if (tier) res.push({ ...t, tier });
+    const plan = t.productId.slice(prefix.length);
+    if (STORE_PLANS.includes(plan)) res.push({ ...t, plan });
   }
   return res;
 }

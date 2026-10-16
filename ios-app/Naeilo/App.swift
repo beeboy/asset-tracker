@@ -6,7 +6,8 @@ struct NaeiloApp: App {
     @State private var model = AppModel()
     init() {
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
-        Task { @MainActor in Support.shared.start() }   // 커피 후원: 가진 등급 확인, 거래 듣기
+        TossKeys.share()   // 내 토스 키를 위젯도 읽는 자리로 (예전 판에서 넣은 키)
+        Task { @MainActor in Support.shared.start() }   // 구독: 지금 구독 확인, 거래 듣기
     }
     var body: some Scene {
         WindowGroup {
@@ -48,10 +49,8 @@ struct RootView: View {
         .onChange(of: model.nxStep) { _, _ in WidgetBridge.write(model) }
         // 홈 인물을 바꾸면 위젯 인물도 같이 ('홈 인물 따라가기' 위젯)
         .onChange(of: model.homeFriend) { _, _ in WidgetBridge.write(model) }
-        // 앱 시작 3단계: 동기화를 켜면 끝난다 (이미 켜져 있으면 3단계에 오는 순간)
-        .onChange(of: Sync.shared.isOn, initial: true) { _, on in if on && model.nxStep == 2 { model.nxStep = 3 }; WidgetBridge.write(model) }
+        .onChange(of: Sync.shared.isOn) { _, _ in WidgetBridge.write(model) }
         .onChange(of: Sync.shared.isDev) { _, _ in WidgetBridge.write(model) }
-        .onChange(of: model.nxStep) { _, n in if n == 2 && Sync.shared.isOn { model.nxStep = 3 } }
         // 인물 대사: 화면을 열거나 앱을 앞으로 가져올 때만 다음 줄로 (1분 자동 갱신으로는 안 바뀐다)
         .modifier(LineTurns(model: model, phase: phase))
         // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로.
@@ -70,7 +69,7 @@ struct RootView: View {
         // 서버 시각도 같이 받는다 (인터미션 날짜·내 캐릭터 조건, Me.swift)
         .onChange(of: phase, initial: true) { _, p in
             guard p == .active else { return }
-            Task { await TrustedClock.shared.sync(); model.fixStarts() }
+            Task { await TrustedClock.shared.sync(); model.fixStarts(); Support.shared.tick() }   // 7일 무료·캐릭터 상품 열림 날짜도
             if model.persists { Task { await Sync.shared.pull(model) } }
         }
         // 알림: 설정이 바뀌면 다시 예약
@@ -94,6 +93,7 @@ struct RootView: View {
             if url.host == "read", let i = Int(url.lastPathComponent), (0..<6).contains(i), model.chapterOn(i) {   // 서재 위젯
                 model.tab = .home; model.homePath = ["shelter", "read:\(i)"]; return
             }
+            if url.host == "subscribe" { model.tab = .settings; model.settingsPath = [.support]; return }   // 7일 무료가 끝나 잠긴 위젯
             guard url.host == "unlock" else { return }
             model.tab = .board
             model.boardPath = model.playOn ? [] : [.nx]

@@ -607,7 +607,7 @@ struct AppStartView: View {
     private let steps = [
         ("앱에서 종목 하나 이상 추가", "이미 넣은 종목이 있으면 확인만", "자산 추이 위젯"),
         ("앱 알림 하나 켜기", "본전 도달, 비중 이탈 중 하나", "본전 진행 위젯"),
-        ("기기 자동 동기화 켜기", "폰에서 넣어도 PC naeilo.com에 같은 숫자", "블록 위젯"),
+        ("오픈 API 연결하기", "연결하지 않으면 실제 주식이 아닌 가상 주식으로 보여 주는 샘플만 볼 수 있어요", "블록 위젯"),
     ]
     /// 내 종목 전체 평가액 3개월 흐름 (원화)
     private var totalSeries: [Double] {
@@ -664,12 +664,16 @@ struct AppStartView: View {
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                         if denied { Text("알림이 꺼져 있어요. 아이폰 설정 > 알림 > naeilo에서 허용한 뒤 다시 눌러 주세요.").appFont(12).foregroundStyle(Theme.sub) }
                     } else if cur && i == 2 {
-                        // 3단계는 실제로: 동기화 화면에서 켜면 끝난다
-                        NavigationLink { SyncView() } label: {
-                            Text("동기화 켜러 가기").appFont(14, .bold).foregroundStyle(.white)
-                                .padding(.horizontal, 14).frame(minHeight: 44).background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                        // 3단계: 키를 넣었으면 확인만, 아니면 설정의 오픈 API 화면으로. 키 없이도 샘플로 계속할 수 있다
+                        Button(TossKeys.on ? "연결했어요" : "오픈 API 연결하러 가기") {
+                            if TossKeys.on { withAnimation { m.nxStep += 1 } } else { m.tab = .settings; m.settingsPath = [.toss] }
                         }
-                        if !m.syncOn { Text("PC가 없으면 이 폰에서만 켜 두어도 돼요. 폰을 바꿀 때 같은 비밀번호로 되찾을 수 있어요.").appFont(12).foregroundStyle(Theme.sub) }
+                            .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
+                            .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                        if !TossKeys.on {
+                            Button("샘플로 계속하기") { withAnimation { m.nxStep += 1 } }
+                                .appFont(13, .semibold).foregroundStyle(Theme.teal).frame(minHeight: 44)
+                        }
                     } else if cur {
                         Button("앱에서 했어요") { withAnimation { m.nxStep += 1 } }
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)

@@ -257,7 +257,7 @@ struct HoldingDetailView: View {
                     VStack(spacing: 0) {
                         kv("보유 수량", h.qty.formatted() + "주")
                         kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv(Market.shared.isToss(sym) ? "토스 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last))
+                        kv(Market.shared.isToss(sym) ? "오픈 API 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last))
                         if sym.quote.live { kv("오늘 등락", AppModel.sgn(sym.quote.change)) }
                         if sym.currency == .usd { kv("환율", "1달러 " + Int(Market.shared.valFx.rounded()).formatted() + "원") }
                         kv(need > 0.0005 ? "본전까지" : "본전 대비", need > 0.0005 ? "주가가 " + String(format: "%.1f", need * 100) + "% 오르면 본전"
@@ -617,7 +617,7 @@ struct HoldingEditView: View {
                 Button("이 종목 지우기") { askDel = true }
                     .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
-                Text("거래를 하나씩 기록하거나 증권사 파일로 맞추는 건 PC naeilo.com에서 할 수 있어요. 앱에서는 수량과 평균 단가만 바꿔요.")
+                Text("거래가 생기면 바뀐 수량과 평균 단가를 넣어 주세요. 앱은 거래를 하나씩 기록하지 않아요.")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
             }
             .padding(16)
