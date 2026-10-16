@@ -52,7 +52,12 @@ struct CharProvider: AppIntentTimelineProvider {
         WhoEnum.choices.map { AppIntentRecommendation(intent: WhoIntent($0), description: $0 == .home ? "앱 홈의 인물" : WChar.of($0.charId).name) }
     }
     private func entry(_ cfg: WhoIntent, preview: Bool) -> CharEntry {
-        let r = Store.read(WReward.self, "reward.json") ?? .sample
+        var r = Store.read(WReward.self, "reward.json") ?? .sample
+        // ↻·정기 갱신으로 위젯이 앱보다 나중에 받은 시세가 있으면 금액·오늘 등락·점선 끝점을 지금 값으로 (기본 위젯과 같은 값)
+        if !preview, let h = Engine.liveHoldings() {
+            r.total = h.total; r.dayChg = h.dayChg
+            if var sp = r.spark, !sp.isEmpty { sp[sp.count - 1] = h.total / 1e4; r.spark = sp }
+        }
         // '홈 인물 따라가기'면 앱 홈에 둔 인물 (앱에서 홈 인물을 바꾸면 위젯도 바뀐다)
         let c = WChar.of(cfg.who.follows ? (r.homeFriend ?? "seri") : cfg.who.charId)
         // 갤러리 미리보기는 실제 모습, 홈 화면에서는 만난 인물만
@@ -189,6 +194,7 @@ struct CharSprite: View {
         }
         .aspectRatio(contentMode: .fit)
         .frame(height: height)
+        .charShake()
         .accessibilityHidden(true)
     }
 }
@@ -235,9 +241,9 @@ struct TrendCharView: View {
                         Text("인터미션\n\(e.c.week)주차에 만나요").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
                             .fixedSize(horizontal: false, vertical: true)
                     } else {
-                        CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1) }
+                        CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1).charFlip(r.total) }
                         Text(Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100) + " 오늘")
-                            .font(.system(size: 11, weight: .semibold)).foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable()
+                            .font(.system(size: 11, weight: .semibold)).foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable().charFlip(r.dayChg)
                     }
                     Spacer(minLength: 0)
                     if !e.locked && sp.count >= 2 {
@@ -296,7 +302,7 @@ struct RecoverCharView: View {
                         Text("인터미션\n\(e.c.week)주차에 만나요").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
                             .fixedSize(horizontal: false, vertical: true)
                     } else {
-                        Text("\(Int((r.pct * 100).rounded()))%").font(.system(size: 34, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1)
+                        Text("\(Int((r.pct * 100).rounded()))%").font(.system(size: 34, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1).charFlip(r.pct)
                         GeometryReader { g in
                             ZStack(alignment: .leading) {
                                 Capsule().fill(.white.opacity(0.18))
@@ -423,7 +429,7 @@ struct MovesCharView: View {
                     CharMoney { h in
                         (Text(e.locked ? "" : (h ? charHidden : eokMan(r.total)) + " ").foregroundColor(.white)
                          + Text(e.locked ? " " : Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100)).foregroundColor(r.dayChg >= 0 ? upC : dnC).bold())
-                            .font(.system(size: 12, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                            .font(.system(size: 12, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8).charFlip(r.total)
                     }
                     tiles(r, dark: dark)
                 }
@@ -541,6 +547,27 @@ struct CharReload: View {
         #else
         icon
         #endif
+    }
+}
+
+// ↻ 효과: 누르면 '받는 중'(Store.isReloading)으로 한 번, 다 받으면 다시 한 번 그려진다. 위젯은 두 그림 사이를 애니메이션으로 잇는다
+private let shakeSpring = Animation.interpolatingSpring(stiffness: 220, damping: 6)   // 덜 멈추는 용수철: 좌우로 몇 번 흔들리다 선다
+
+extension View {
+    /// 인물: 받는 동안 왼쪽으로 기울었다가, 다 받으면 제자리로 돌아오며 좌우로 흔들린다
+    func charShake() -> some View {
+        let busy = Store.isReloading
+        return self.rotationEffect(.degrees(busy ? -9 : 0), anchor: .bottom)
+            .offset(x: busy ? -5 : 0)
+            .animation(shakeSpring, value: busy)
+    }
+    /// 숫자: 받는 동안 흐려졌다가, 다 받으면 바뀐 자리만 숫자가 굴러가며(플립) 새 값으로
+    func charFlip(_ v: Double) -> some View {
+        let busy = Store.isReloading
+        return self.contentTransition(.numericText(value: v))
+            .opacity(busy ? 0.35 : 1)
+            .animation(.snappy(duration: 0.6), value: v)
+            .animation(.easeInOut(duration: 0.25), value: busy)
     }
 }
 
