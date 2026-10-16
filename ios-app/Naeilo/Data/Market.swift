@@ -24,6 +24,10 @@ final class Market {
     var site: QuoteFeed.File? = QuoteFeed.cached()
     /// 토스증권 지금 가격 (개발자 전용, 종목 id → 값). 있으면 Yahoo 값보다 먼저
     var toss: QuoteFeed.File? = TossFeed.cached()
+    /// 내 Alpaca 키로 받은 미국 종목 지금 가격 (종목 id → 값). 토스 값이 없을 때 사이트 값보다 먼저
+    var alpaca: QuoteFeed.File? = AlpacaFeed.cached()
+    /// Alpaca 받기를 마친 때. 설정 > 내 Alpaca 키 화면이 이걸 보고 다시 그린다
+    var alpacaDone = Date.distantPast
     /// 토스 시세를 받는 중인 일 (겹쳐 묻지 않게). 다시 받기는 이 일이 끝나길 기다렸다가 한 번 더 받는다
     @ObservationIgnored private var tossTask: Task<Void, Never>? = nil
     /// 토스 받기를 마친 때 (성공·실패 모두). 설정 > 내 토스 키 화면이 이걸 보고 다시 그린다
@@ -49,8 +53,16 @@ final class Market {
 
     func quote(_ s: Symbol) -> Quote {
         let b = yahooQuote(s)
-        guard let t = tossLast(s) else { return b }
-        return Quote(last: t, prevClose: b.prevClose > 0 ? b.prevClose : t, live: true)
+        if let t = tossLast(s) { return Quote(last: t, prevClose: b.prevClose > 0 ? b.prevClose : t, live: true) }
+        // Alpaca: 전일 종가는 사이트(공식 종가)가 먼저, 없으면 Alpaca 전일 IEX 종가
+        guard let a = alpacaQ(s) else { return b }
+        return Quote(last: a.last, prevClose: b.prevClose > 0 ? b.prevClose : a.prev > 0 ? a.prev : a.last, live: true)
+    }
+    /// Alpaca 값을 쓰는 종목 (종목 화면에 "Alpaca(IEX) 시세" 표시)
+    func isAlpaca(_ s: Symbol) -> Bool { tossLast(s) == nil && alpacaQ(s) != nil }
+    private func alpacaQ(_ s: Symbol) -> QuoteFeed.Q? {
+        guard live[s.id] == nil, s.id != "DRNK", s.currency == .usd, let q = alpaca?.q[s.id], q.last > 0 else { return nil }
+        return q
     }
     /// 토스 값을 쓰는 종목 (종목 화면에 "토스 시세" 표시)
     func isToss(_ s: Symbol) -> Bool { tossLast(s) != nil }
@@ -114,6 +126,9 @@ final class Market {
         // 1분 안에 받았으면 그대로. 실패하면 15분 안에 받은 값, 그것도 없으면 nil → Yahoo 값
         async let tossWait: Void = force ? refreshToss(held: held, force: true) : ()
         if !force { Task { await refreshToss(held: held, force: false) } }
+        // Alpaca 시세 (설정 > 내 Alpaca 키를 넣은 기기만): 미국 종목. 토스와 같은 방식
+        async let alpacaWait: Void = force ? refreshAlpaca(held: held, force: true) : ()
+        if !force { Task { await refreshAlpaca(held: held, force: false) } }
         // 나머지 시세는 한꺼번에 받는다 (차례로 기다리지 않게)
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
         let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
@@ -132,6 +147,7 @@ final class Market {
         if let s = await statsNew { stats = s }
         await customDone
         await tossWait
+        await alpacaWait
         updatedAt = Date()
     }
 
@@ -158,6 +174,17 @@ final class Market {
         tossTask = t
         await t.value
         if tossTask == t { tossTask = nil }
+    }
+
+    /// Alpaca 지금 가격을 받는다 (1분 안에 받았으면 그대로, 당겨 갱신은 바로)
+    @MainActor
+    func refreshAlpaca(held: Set<String>, force: Bool) async {
+        guard AlpacaKeys.on else { if alpaca != nil { alpaca = nil }; return }
+        var ty: [String: String] = [:]
+        for id in held where id != "DRNK" { if let s = Sample.symbol(id), s.currency == .usd { ty[id] = CustomSymbols.yahoo(for: s) } }
+        guard !ty.isEmpty else { return }
+        alpaca = await AlpacaFeed.fetch(ty, minAge: force ? 0 : 60)
+        alpacaDone = Date()
     }
 
     /// 아래로 당겨 갱신: 내 종목을 바로 받고 위젯에도 넘긴다

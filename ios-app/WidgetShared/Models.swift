@@ -393,6 +393,134 @@ enum TossKeys {
     }
 }
 
+// Alpaca 지금 가격 (미국 종목만). 사용자가 app.alpaca.markets 모의 계정에서 무료로 받은 키로 Alpaca 를 직접 부른다 (중계 없음).
+// 무료 키는 IEX 거래소 실시간. 우선순위: 토스 키 > Alpaca 키 > 사이트 시세. 한국 종목·원/달러는 그대로.
+// 전일 종가는 사이트(공식 종가) 값을 먼저 쓰고, 없을 때만 Alpaca prevDailyBar(IEX 종가)를 쓴다.
+enum AlpacaFeed {
+    static let name = "alpaca_quotes.json"
+    static let base = "https://data.alpaca.markets/v2/stocks/snapshots"
+    /// 설정 > 내 Alpaca 키에 보이는 상태: 마지막 성공 시각(초), 마지막 실패 이유 (성공하면 지움)
+    static var okAt: Double { Store.defaults.double(forKey: "alpaca_ok_at") }
+    static var lastError: String? { Store.defaults.string(forKey: "alpaca_err") }
+    private static func fail(_ why: String) -> QuoteFeed.File? {
+        Store.defaults.set(why, forKey: "alpaca_err")
+        return cached()
+    }
+    /// 15분 안에 받은 값만 (토스와 같다)
+    static func cached() -> QuoteFeed.File? {
+        guard AlpacaKeys.on, let f = Store.read(QuoteFeed.File.self, name), Date().timeIntervalSince1970 - f.got < 900 else { return nil }
+        return f
+    }
+    /// Yahoo 기호 → Alpaca 기호. 미국 종목만 (BRK-B → BRK.B, 토스 코드와 같은 꼴). 국내·지수·환율은 nil
+    static func code(_ sym: String) -> String? {
+        let u = sym.uppercased()
+        guard !u.hasSuffix(".KS"), !u.hasSuffix(".KQ") else { return nil }
+        return TossFeed.code(u)
+    }
+
+    /// syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 5초를 기다린다
+    @discardableResult
+    static func fetch(_ syms: [String: String], minAge: TimeInterval = 0) async -> QuoteFeed.File? {
+        guard let k = AlpacaKeys.load() else { return nil }
+        var ids: [String: [String]] = [:]   // Alpaca 기호 → 앱 종목들
+        for (id, y) in syms { if let c = code(y) { ids[c, default: []].append(id) } }
+        guard !ids.isEmpty else { return nil }
+        if let o = cached(), Date().timeIntervalSince1970 - o.got < minAge { return o }
+        var q: [String: QuoteFeed.Q] = [:]
+        let all = ids.keys.sorted()
+        for i in stride(from: 0, to: all.count, by: 100) {
+            let part = all[i..<min(i + 100, all.count)].joined(separator: ",")
+            guard let enc = part.addingPercentEncoding(withAllowedCharacters: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: ".,"))),
+                  let url = URL(string: base + "?symbols=" + enc + "&feed=iex") else { return fail("잘못된 종목") }
+            let (code, o, e) = await get(url, k)
+            if let e { return fail(e) }
+            guard code == 200, let o else { return fail(why(code)) }
+            for (c, v) in o {
+                guard let s = v as? [String: Any], let t = s["latestTrade"] as? [String: Any], let last = num(t["p"]), last > 0 else { continue }
+                let prev = num((s["prevDailyBar"] as? [String: Any])?["c"]) ?? 0
+                let at = (t["t"] as? String).flatMap { try? Date($0, strategy: .iso8601) }?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+                for id in ids[c.uppercased()] ?? [] { q[id] = .init(last: last, prev: prev, at: at) }
+            }
+        }
+        guard !q.isEmpty else { return fail("받은 종목 없음") }
+        let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
+        Store.write(f, name)
+        Store.defaults.set(f.got, forKey: "alpaca_ok_at")
+        Store.defaults.removeObject(forKey: "alpaca_err")
+        return f
+    }
+
+    private static func get(_ url: URL, _ k: AlpacaKeys.Keys) async -> (Int, [String: Any]?, String?) {
+        var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
+        r.setValue(k.id, forHTTPHeaderField: "APCA-API-KEY-ID")
+        r.setValue(k.secret, forHTTPHeaderField: "APCA-API-SECRET-KEY")
+        do {
+            let (d, resp) = try await URLSession.shared.data(for: r)
+            return ((resp as? HTTPURLResponse)?.statusCode ?? 0, try? JSONSerialization.jsonObject(with: d) as? [String: Any], nil)
+        } catch let e as URLError { return (0, nil, e.code == .timedOut ? "5초 안에 응답 없음" : "Alpaca에 닿지 못함") }
+        catch { return (0, nil, "Alpaca에 닿지 못함") }
+    }
+
+    static func why(_ code: Int) -> String {
+        if code == 401 || code == 403 { return "키가 맞지 않아요" }
+        if code == 429 { return "잠시 뒤에 다시 받아요" }
+        return "Alpaca 응답 \(code)"
+    }
+
+    /// 키 확인: AAPL 하나를 물어 본다 (설정 화면 '연결하기')
+    static func check() async -> String? {
+        guard let k = AlpacaKeys.load(), let url = URL(string: base + "?symbols=AAPL&feed=iex") else { return "키 없음" }
+        let (code, _, e) = await get(url, k)
+        return e ?? (code == 200 ? nil : why(code))
+    }
+
+    /// 위젯: 앱이 feed.json 에 넘긴 내 종목을 위젯이 직접 Alpaca 에 묻는다
+    @discardableResult
+    static func widgetFetch(minAge: TimeInterval) async -> QuoteFeed.File? {
+        guard AlpacaKeys.on, let ty = Store.read(WFeed.self, "feed.json")?.ty, !ty.isEmpty else { return nil }
+        return await fetch(ty, minAge: minAge)
+    }
+}
+
+/// 사용자가 넣은 Alpaca 키. 토스 키처럼 이 폰 키체인(위젯과 같이 쓰는 그룹)에만 둔다
+enum AlpacaKeys {
+    struct Keys: Codable { var id: String; var secret: String }
+    private static func q() -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.alpaca", kSecAttrAccount as String: "keys"]
+    }
+    private static func put(_ v: Keys?) {
+        SecItemDelete(q() as CFDictionary)
+        guard let v, let d = try? JSONEncoder().encode(v) else { return }
+        var a = q()
+        a[kSecAttrAccessGroup as String] = TossKeys.group
+        a[kSecValueData as String] = d
+        a[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(a as CFDictionary, nil)
+    }
+    /// 키를 넣었는지 (위젯도 보므로 표시만 공유 저장소에 둔다)
+    static var on: Bool { Store.defaults.bool(forKey: "alpaca_user") }
+    static func load() -> Keys? {
+        guard on else { return nil }
+        var a = q()
+        a[kSecReturnData as String] = true
+        a[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(a as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
+        return try? JSONDecoder().decode(Keys.self, from: d)
+    }
+    static func save(_ k: Keys) {
+        put(k)
+        Store.defaults.set(true, forKey: "alpaca_user")
+    }
+    static func clear() {
+        put(nil)
+        Store.defaults.set(false, forKey: "alpaca_user")
+        Store.defaults.removeObject(forKey: "alpaca_err")
+        Store.defaults.removeObject(forKey: "alpaca_ok_at")
+        Store.remove(AlpacaFeed.name)
+    }
+}
+
 // 사이트 시세 (naeilo.com/data/quotes.json). 사이트가 평일 30분마다 모으는 Yahoo 중계 값을 앱과 위젯이 직접 받는다.
 // 계약 뒤에는 중계 서버 쪽 출처만 바꾸면 앱·위젯은 그대로 쓴다.
 enum QuoteFeed {
