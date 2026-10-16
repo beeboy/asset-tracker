@@ -126,6 +126,21 @@ figcaption { font-size: 0.875rem; color: var(--muted); margin-top: 10px; }
 .tabs { display: flex; justify-content: space-around; padding: 9px 0 22px; border-top: 1px solid #e3e8ec; background: #fafbfc; font-size: 10px; color: #9aa6b0; }
 .tabs .on { color: var(--teal); font-weight: 700; }
 
+/* ---------------------------------------------------------------- 구독 */
+.price h2 { margin-bottom: 6px; }
+.price > p.muted { margin: 0 0 16px; }
+.plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.plan { position: relative; display: flex; flex-direction: column; gap: 2px; margin: 0; }
+.plan .pname { font-size: 0.875rem; color: var(--muted); font-weight: 600; }
+.plan b { font-size: 1.625rem; letter-spacing: -0.02em; }
+.plan.best { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.plan .tag { position: absolute; top: 14px; right: 14px; font-size: 0.75rem; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 2px 8px; }
+.incl { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+.incl h3 { font-size: 0.9375rem; margin: 0 0 6px; }
+.incl ul { margin: 0; padding-left: 18px; color: var(--muted); }
+.incl li { margin: 2px 0; }
+@media (max-width: 480px) { .incl { grid-template-columns: 1fr; } }
+
 /* ---------------------------------------------------------------- 앱 받기·마지막 한 줄 */
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; margin: 0 0 16px; }
 input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%; min-width: 0; }
