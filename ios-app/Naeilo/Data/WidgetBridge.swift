@@ -5,6 +5,12 @@ import WidgetKit
 // summary.json(요약) · feed.json(지금 시세) · live.json(보유·목표)을 읽어 그린다.
 // 예전 위젯 앱은 사이트 동기화 비밀번호로 이 파일들을 받았지만, 한 앱으로 합치면서 앱이 직접 쓴다.
 enum WidgetBridge {
+    /// 위젯 평가 환율: 앱 valFx 와 같게 내 키 원/달러가 있으면 그것, 없으면 매매기준율.
+    /// 예전엔 늘 매매기준율이라 내 키를 쓰는 앱·증권사 화면과 위젯 금액이 달랐다
+    @MainActor static func fxMar() -> WFeed.Mar? {
+        if let t = Market.shared.tossFx { return WFeed.Mar(rate: t.rate, date: Day.str(Date(timeIntervalSince1970: t.got))) }
+        return Market.shared.mar.map { WFeed.Mar(rate: $0.rate, date: $0.date) }
+    }
     @MainActor
     static func write(_ m: AppModel) {
         let fx = Market.shared.fx
@@ -29,7 +35,7 @@ enum WidgetBridge {
         // 내부 테스트 국내 시세 종목: 위젯이 Yahoo 중계로 직접 받는다 (앱을 열지 않아도 오늘 값)
         var ky: [String: String] = [:]
         for r in rows where r.sym.currency == .krw && CustomSymbols.shared.isLive(r.id) { ky[r.id] = CustomSymbols.yahoo(for: r.sym) }
-        var feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Market.shared.mar.map { WFeed.Mar(rate: $0.rate, date: $0.date) })   // 위젯 평가액도 앱·웹처럼 매매기준율
+        var feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Self.fxMar())   // 위젯 평가액도 앱과 같은 원/달러 (valFx)
         feed.ky = ky.isEmpty ? nil : ky
 
         let live = WLive(hold: rows.map { .init(t: $0.id, sh: $0.h.qty, price: $0.sym.last) },
