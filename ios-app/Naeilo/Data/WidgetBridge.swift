@@ -83,7 +83,6 @@ enum WidgetBridge {
         Store.write(live, "live.json")
         Store.write(Story.shared.widget(m), "story.json")   // 서재 위젯: 읽던 자리 한 문단
         Store.lastCheck = now
-        Store.unlockedKinds = WidgetUnlock.kinds(doneSteps: m.devAll ? 3 : m.nxStep)   // 앱 시작 단계로 받은 위젯
         Store.summarySource = "app"
         WidgetCenter.shared.reloadAllTimelines()
     }

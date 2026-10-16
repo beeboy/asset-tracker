@@ -2,8 +2,7 @@ import SwiftUI
 import Observation
 
 // 내 캐릭터(본인): 쉼터 '친구' 옆 여섯 번째 칸. 부품을 골라 만들고(저장 칸 1개), 열리면 홈·위젯에서 기본 인물 대신 보인다.
-// 열리는 조건: ① 회복 루트 인터미션 4주를 모두 했거나 목표 루트에서 4주가 지남 → ② 평정 지수 성향 매칭 + ③ 다방커피 이상 후원.
-// 만들기·저장은 앱 시작 3단계부터 할 수 있지만, 열리기 전에는 쉼터에서만 보인다 (홈·위젯에는 안 나온다).
+// 만들면 처음부터 홈·위젯에 둘 수 있다 (2026-10-16 결정. 예전 조건 ①②는 기록용으로만 남는다).
 // 캐릭터는 미션 진행(Progress)에 같이 들어가서 내 폰에 저장하기·불러오기와 기기 동기화로 종목과 함께 옮겨진다.
 // 인터미션 날짜는 기기 시계가 아니라 naeilo.com 서버 시각(TrustedClock)으로 센다 (폰 시간을 바꿔 앞당길 수 없게).
 
@@ -274,10 +273,8 @@ extension AppModel {
     }
     /// ② 평정 지수 성향 매칭
     var meGate2: Bool { calm.type != nil }
-    /// ③ 다방커피 이상
-    var meGate3: Bool { Support.shared.has(.dabang) }
-    /// 홈·위젯에 내 캐릭터를 둘 수 있는지
-    var meUnlocked: Bool { me != nil && (devAll || (meGate1 && meGate2 && meGate3)) }
+    /// 홈·위젯에 내 캐릭터를 둘 수 있는지: 만들면 처음부터 (2026-10-16 결정. 예전 조건 ①②는 기록만 남는다)
+    var meUnlocked: Bool { me != nil }
 
     /// 내 캐릭터의 말투 = 투자 유형 인물 (매칭되면 평정 지수 유형, 아니면 고른 유형)
     var meVoice: String { calm.type ?? me?.type ?? "seri" }
@@ -286,11 +283,11 @@ extension AppModel {
     func friendName(_ id: String) -> String {
         id == "me" ? (me?.shownName ?? "나") : Shelter.friends.first { $0.id == id }?.name ?? "세리"
     }
-    /// 미리 보기: 못 만난 친구는 믹스커피, 안 돌아온 물건은 다방커피 이상 (여는 건 여전히 미션으로)
-    var peekFriends: Bool { Support.shared.tier >= .mix }
-    var peekItems: Bool { Support.shared.tier >= .dabang }
-    /// 쉼터 배경 바꾸기: 프랜차이즈 커피 이상
-    var bgUnlocked: Bool { Support.shared.has(.franchise) }
+    /// 열린 쉼터 배경 수: 처음 연 날부터 하루 2곳 (2026-10-16 결정). 기본 방은 늘 열림
+    var bgOpen: Int { devAll ? Shelter.backgrounds.count : min(Shelter.backgrounds.count, 2 * Support.shared.dayN) }
+    func bgOn(_ id: String?) -> Bool { id.flatMap { i in Shelter.backgrounds.firstIndex { $0.id == i } }.map { $0 < bgOpen } ?? true }
+    /// 이 배경이 열리는 날 (처음 연 날 = 1일째)
+    func bgDay(_ id: String) -> Int { (Shelter.backgrounds.firstIndex { $0.id == id } ?? 0) / 2 + 1 }
     /// 지금 쉼터 방 그림 (배경을 고르지 않았거나 잠기면 기본 방)
-    var roomBG: String? { bgUnlocked ? meBg : nil }
+    var roomBG: String? { bgOn(meBg) ? meBg : nil }
 }

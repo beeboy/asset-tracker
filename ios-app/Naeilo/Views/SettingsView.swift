@@ -24,7 +24,7 @@ struct SettingsView: View {
         // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
         let helpRows: [(String, String, SettingsRoute)] = [
             ("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto),
-            ("개발자에게 커피 한 잔", Support.shared.tier == .free ? "구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
+            ("구독", Support.shared.plan.map { "\($0.name) 중 · 고마워요" } ?? (Support.shared.inTrial ? "7일 무료 · \(Support.shared.trialLeft)일 남음" : "월 1,000원 · 연 9,000원"), .support),
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {

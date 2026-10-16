@@ -373,9 +373,10 @@ final class AppModel {
     }
 
     // MARK: 친구·장
-    // 세리 외에 열린 친구 수. 목표 루트는 미션 없이 첫 달 1~4주차에 같은 순서로 열림 (시안 39판)
+    // 세리 외에 열린 친구 수. 처음 연 날부터 이틀째에 한 명씩 하루 1명 (2026-10-16 결정, Support.dayN).
+    // 미션으로 먼저 만난 친구도 그대로 (목표 루트는 첫 달 1~4주차, 회복 루트는 인터미션 주마다)
     /// 개발자 계정(개발자 동기화로 연결한 기기)은 모든 보상이 열린다. 미션 진행 자체는 그대로 둔다.
-    /// Xcode·TestFlight 빌드에서만: App Store 빌드에서 자체 방식으로 여는 건 지침 3.1.1 위반이라 끈다 (후원은 인앱 구매로)
+    /// Xcode·TestFlight 빌드에서만: App Store 빌드에서 자체 방식으로 여는 건 지침 3.1.1 위반이라 끈다 (구독은 인앱 구매로)
     var devAll: Bool {
         #if DEBUG
         if UserDefaults.standard.bool(forKey: "devAllTest") { return true }   // 확인용: -devAllTest YES
@@ -386,19 +387,18 @@ final class AppModel {
     var playUnlocked: Bool { playOn || devAll }
     var friendsOpen: Int {
         if devAll { return 4 }
+        let byDay = min(4, Support.shared.dayN - 1)
         // 루트를 바꿔도 이미 만난 친구는 그대로 (회복 → 목표로 넘어간 뒤에도)
         if done.contains(6) || gDone.contains("inter") { return 4 }
-        if route == .recover { return weeks.count }
-        return max(weeks.count, !gWeeks.isEmpty ? 4 : playOn ? min(4, day / 7) : 0)
+        if route == .recover { return max(byDay, weeks.count) }
+        return max(byDay, weeks.count, !gWeeks.isEmpty ? 4 : playOn ? min(4, day / 7) : 0)
     }
     func friendOn(_ i: Int) -> Bool { i == 0 || i <= friendsOpen }
-    func chapterOn(_ i: Int) -> Bool {
-        if devAll { return true }
-        if i < 2 { return playOn }
-        let fid = Shelter.chapters[i].friend
-        return friendOn(Shelter.friends.firstIndex { $0.id == fid } ?? 0)
+    /// 외전 프롤로그~5장: 처음부터 프롤로그, 앞 장을 끝까지 읽으면 다음 장 (2026-10-16 결정)
+    @MainActor func chapterOn(_ i: Int) -> Bool {
+        devAll || i == 0 || Story.shared.isDone(.side, i - 1)
     }
-    func friendWhen(_ i: Int) -> String { i == 0 ? "처음부터 · 홈" : "인터미션 \(i)주차" }
+    func friendWhen(_ i: Int) -> String { i == 0 ? "처음부터 · 홈" : "\(i + 1)일째" }
 
     // MARK: 오늘의 1분
     var today: DayLog { dayLog[day] ?? DayLog() }
@@ -415,7 +415,8 @@ final class AppModel {
     var itemsBack = 0
     var itemsBackDay: Int? = nil   // 마지막으로 물건이 돌아온 날 (같은 날 답을 바꿔도 두 번 세지 않게)
     var itemsOff: Set<String> = []   // 쉼터 방 배치에서 뺀 물건
-    var itemsOn: Int { devAll ? 10 : playOn ? min(10, itemsBack) : 0 }   // 개발자 권한은 물건 모두
+    /// 열린 물건: 처음 연 날부터 하루 2개 (2026-10-16 결정). 오늘의 1분으로 먼저 돌아온 것도 그대로. 개발자 권한은 물건 모두
+    var itemsOn: Int { devAll ? 10 : min(10, max(playOn ? itemsBack : 0, 2 * Support.shared.dayN)) }
     /// 다음 물건까지 남은 날
 
     // 오늘 숫자와 질문은 내 종목의 실제 시세로 만든다 (Market: 전일 종가 → 지금, 종목 통화 기준)

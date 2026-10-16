@@ -121,6 +121,23 @@ struct CharFrame<Content: View>: View {
     @ViewBuilder var content: Content
     @Environment(\.colorScheme) private var scheme
     var body: some View {
+        // 7일 무료가 끝나고 구독하지 않았으면 잠긴 모습 (누르면 구독 화면). 이 파일은 앱에도 들어가서 위젯 쪽 Gate 대신 여기서
+        if !Store.widgetsOpen {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: "lock.fill").font(.system(size: 14, weight: .bold))
+                Spacer(minLength: 0)
+                Text("7일 무료가 끝났어요").font(.system(size: 13, weight: .bold))
+                Text("눌러서 구독하면 다시 보여요 ›").font(.system(size: 11, weight: .semibold)).opacity(0.75)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .containerBackground(for: .widget) { CharBG(c: e.c, locked: true, dark: scheme == .dark) }
+            .widgetURL(URL(string: "naeilo://subscribe")!)
+        } else {
+            open
+        }
+    }
+    private var open: some View {
         content
             .environment(\.charKind, kind)
             .foregroundStyle(.white)

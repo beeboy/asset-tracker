@@ -18,13 +18,15 @@ struct StoryProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<StoryEntry>) -> Void) {
         // 읽던 자리가 바뀔 때 앱이 다시 그리게 한다
         let s = Store.read(WStory.self, "story.json") ?? WStory(open: false, chapter: 0, label: "프롤로그 · 핵심 코어", line: "앱을 열면 서재가 준비돼요.", friend: "seri", progress: 0, lang: "ko")
-        completion(Timeline(entries: [StoryEntry(date: Date(), s: s)], policy: .never))
+        // 7일 무료가 끝나는 때에 한 번 더 그려 잠근다
+        let end = Store.trialEnd
+        completion(Timeline(entries: [StoryEntry(date: Date(), s: s)], policy: !Store.subOn && end > Date().timeIntervalSince1970 ? .after(Date(timeIntervalSince1970: end)) : .never))
     }
 }
 
 struct StoryWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "story", provider: StoryProvider()) { e in StoryWidgetView(s: e.s) }
+        StaticConfiguration(kind: "story", provider: StoryProvider()) { e in Gate(kind: "story", preview: false) { StoryWidgetView(s: e.s) } }
             .configurationDisplayName("서재 · 이어 읽기")
             .description("외전 『이종 공명』에서 읽던 자리의 한 문단. 누르면 그 장으로 가요")
             .supportedFamilies([.systemSmall, .systemMedium])

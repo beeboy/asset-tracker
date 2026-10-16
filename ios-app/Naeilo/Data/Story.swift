@@ -5,7 +5,7 @@ import WidgetKit
 // 서재 원고: 외전 『이종 공명』 프롤로그~5장 (한글 원고 + 영문 번역본). 사이트 공개 범위와 같아서 앱에 같이 넣는다.
 // Resources/story_ko.json · story_en.json 은 tools/story.py 가 MyVault 원고에서 만든다. 두 언어는 블록이 하나씩 맞아서
 // 언어를 바꿔도 읽던 자리(블록 번호)가 그대로다.
-// 6장~코다(믹스커피 이상)와 본편 1권(프랜차이즈 이상, 한글·영문)은 후원 서버에서 받아(StoreAPI) 이 기기에 저장해 둔다.
+// 6장~코다(구독)와 앱 연재판 1권(연 구독 또는 월 구독 9개월 이상, 한글·영문)은 서버에서 받아(StoreAPI) 이 기기에 저장해 둔다.
 
 struct StoryBlock: Codable {
     let k: String           // h 절 제목, q 인용(화면·메시지), p 문단, s 장면 나눔, t 표
@@ -24,7 +24,6 @@ enum StoryLang: String, CaseIterable { case ko, en
 
 /// 외전(side) 또는 본편 1권(vol1)
 enum StoryBook: String { case side, vol1
-    var need: SupportTier { self == .side ? .mix : .franchise }
     var langs: [StoryLang] { [.ko, .en] }
     /// 앱에 들어 있는 장 수 (외전 프롤로그~5장)
     var bundled: Int { self == .side ? 6 : 0 }
@@ -107,12 +106,12 @@ final class Story {
     func isLoading(_ b: StoryBook) -> Bool { loading.contains(Self.id(b, lang(b))) }
     func failText(_ b: StoryBook) -> String? { failure[Self.id(b, lang(b))] }
 
-    /// 서버에서 받기 (등급이 되면). 받은 것은 이 기기에 저장해서 다음부터는 바로 연다
+    /// 서버에서 받기 (구독이 되면). 받은 것은 이 기기에 저장해서 다음부터는 바로 연다
     func fetch(_ b: StoryBook, force: Bool = false) async {
         let l = lang(b), k = Self.id(b, l)
         // 그림(cover)이 없던 예전 캐시는 앱을 켤 때마다 한 번 다시 받아 본다
         let stale = remote[k].map { $0.chapters.allSatisfy { $0.cover == nil } } == true && !recheck.contains(k)
-        guard Support.shared.has(b.need), !loading.contains(k), force || remote[k] == nil || stale else { return }
+        guard Support.shared.open(b), !loading.contains(k), force || remote[k] == nil || stale else { return }
         recheck.insert(k)
         loading.insert(k); failure[k] = nil
         defer { loading.remove(k) }
