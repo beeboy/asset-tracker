@@ -39,6 +39,9 @@
 5. **실기기 확인**: 앱 시작 속도(`Market.refresh()` 병렬화), 미션 예보 카드, 위젯 일간 변화·현금.
 6. **출시 전**: 키 등록 전 화면을 가상 시장 샘플(`data/sample/`, `tools/sample_market.py`, 2026-10-15 만듦·아직 연결 안 함)로 바꾸기(앱 `Sample`·`YahooSample`, 웹 첫 방문 샘플 QQQ→NXIX, `sample.yml`에서 날짜 맞추기), 국내 실시간 시세 스위치 끄기(`KoreaEstimate.live`), `StubPriceProvider` 대체, 무료/프리미엄 분리(`premium()`), TestFlight 외부 테스트용 재아카이브·IAP 등록, 시세 재배포 조건(Tiingo·EODHD 보류).
 7. **운영 확인**: 워커 `/cu` 401(Claude 사용량 위젯), 15분 collect cron 실제 동작.
+8. **커피 한 잔 → 구독 재편** (2026-10-16 결정, decisions.md): 7일 무료·월 1,000원·연 9,000원, 7일 뒤 위젯 전부·목표·확률 전망 잠금, 캐릭터 상품 열림 시간(친구 이틀째부터 하루 1명, 물건·쉼터 배경 하루 2개, 위젯·내 캐릭터·외전 5장 처음부터), 1권은 연 구독 또는 월 구독 9개월 이상. 지금 코드는 `Data/Support.swift` 등급 4개·`Data/Me.swift`·`Data/AppModel.swift` 열림 조건. 화면별로 나눠서 작업.
+9. **'토스' 문구 빼기**: 앱 화면에 보이는 '토스' 말을 '오픈 API'로 (HoldingsView "토스 시세", SettingsView 연결 그림·끊기·실패 안내, WidgetShared/Models 오류 문구, SettingsDetail 개발자 상태 줄). 루트 마지막 '동기화' 미션을 '오픈 API 연결' 미션으로 바꾸기.
+10. **다른 증권사 오픈 API 검토**: 국내 증권사 먼저, 그다음 해외 포함. 연결할 수 있는 곳은 출시 전에 중계 서버(`proxy/`)에 미리 세팅해 둔다.
 - 열린 PR: #225(초안, 미래 설계 글 파일 이름 `data/beyora.json`→`data/blog.json`) 아직 안 합침.
 - 멈춘 채 남은 스레드(맥 세션이 꺼져 대기 중, 새 프로젝트에서 이어 하지 않아도 됨): "내일로 입구 페이지 기획"(앱 받기 버튼 결정 → 출시 알림 신청으로 결정됨), "웹 정리"(띠 켜기 남음 = 위 2번), "naeilo 첫 페이지 시안"(#231로 반영됨).
 
