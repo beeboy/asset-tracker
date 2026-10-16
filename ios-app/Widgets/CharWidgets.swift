@@ -247,7 +247,7 @@ struct TrendCharView: View {
                     }
                     Spacer(minLength: 0)
                     if !e.locked && sp.count >= 2 {
-                        CharSpark(values: sp, color: s.accent).frame(height: 30).padding(.trailing, 50).widgetAccentable()
+                        CharSpark(values: sp, color: s.accent).frame(height: 30).padding(.trailing, 50).widgetAccentable().flipFade()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -309,7 +309,7 @@ struct RecoverCharView: View {
                                 Capsule().fill(s.accent).frame(width: g.size.width * r.pct)
                             }
                         }
-                        .frame(height: 6).padding(.trailing, 46)
+                        .frame(height: 6).padding(.trailing, 46).flipFade()
                     }
                     Spacer(minLength: 0)
                     if !e.locked {
@@ -317,7 +317,7 @@ struct RecoverCharView: View {
                         CharMoney { h in
                             (Text("남은 \(h ? charHidden : eokMan(r.remain)) · 어제 ").foregroundStyle(.white.opacity(0.75))
                              + Text((d >= 0 ? "+" : "") + String(format: "%.1f%%p", d)).foregroundStyle(d >= 0 ? upC : dnC))
-                                .font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                                .font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8).charFlip(r.remain)
                         }
                     }
                 }
@@ -374,6 +374,7 @@ struct BlockCharView: View {
                         }
                     }
                     .frame(height: grid)
+                    .flipFade()
                     // 발은 칸의 맨 아랫줄, 두 팔은 칸과 탑에 닿게
                     CharSprite(name: "w_\(e.c.id)_spread", locked: e.locked, height: 62)
                         .offset(y: 9)    // 그림 아래 빈 줄만큼 내려 발을 칸 맨 아랫줄에
@@ -385,7 +386,7 @@ struct BlockCharView: View {
                     let d = r.cells - r.cellsYesterday
                     (Text("\(fill)").font(.system(size: 20)) + Text("/100 · 어제 ").font(.system(size: 10)).foregroundColor(.white.opacity(0.75))
                      + Text((d >= 0 ? "+" : "") + "\(d)").font(.system(size: 10)).foregroundColor(d >= 0 ? upC : dnC))
-                        .lineLimit(1)
+                        .lineLimit(1).charFlip(Double(fill))
                 } else {
                     Text("앱의 쉼터에서 봐요 ›").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
                 }
@@ -418,7 +419,7 @@ struct MovesCharView: View {
                             .padding(.horizontal, 8).padding(.vertical, 6)
                             .background(s.bubbleFill, in: RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(s.bubbleStroke, lineWidth: 1))
-                            .padding(.top, 4)
+                            .padding(.top, 4).flipFade()
                     }
                     Spacer(minLength: 0)
                     Text("다음: " + (r.next ?? "예정된 일정 없음")).font(.system(size: 10, weight: .medium))
@@ -431,7 +432,7 @@ struct MovesCharView: View {
                          + Text(e.locked ? " " : Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100)).foregroundColor(r.dayChg >= 0 ? upC : dnC).bold())
                             .font(.system(size: 12, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8).charFlip(r.total)
                     }
-                    tiles(r, dark: dark)
+                    tiles(r, dark: dark).flipFade()
                 }
                 .frame(width: 138)
             }
@@ -475,7 +476,7 @@ struct MovesCharView: View {
                             Text(Fmt.arrow(t.c) + String(format: "%.1f%%", abs(t.c) * 100))
                                 .font(.system(size: max(10, min(20, 26 * max(0.2, t.w) / sumW * 1.6)), weight: tinted ? .semibold : .regular))
                                 .lineLimit(1).minimumScaleFactor(0.6)
-                                .widgetAccentable()
+                                .widgetAccentable().charFlip(t.c)
                         }
                     }
                     .padding(6)
