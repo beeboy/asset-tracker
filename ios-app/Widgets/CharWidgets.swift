@@ -121,6 +121,23 @@ struct CharFrame<Content: View>: View {
     @ViewBuilder var content: Content
     @Environment(\.colorScheme) private var scheme
     var body: some View {
+        // 7일 무료가 끝나고 구독하지 않았으면 잠긴 모습 (누르면 구독 화면). 이 파일은 앱에도 들어가서 위젯 쪽 Gate 대신 여기서
+        if !Store.widgetsOpen {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: "lock.fill").font(.system(size: 14, weight: .bold))
+                Spacer(minLength: 0)
+                Text("7일 무료가 끝났어요").font(.system(size: 13, weight: .bold))
+                Text("눌러서 구독하면 다시 보여요 ›").font(.system(size: 11, weight: .semibold)).opacity(0.75)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .containerBackground(for: .widget) { CharBG(c: e.c, locked: true, dark: scheme == .dark) }
+            .widgetURL(URL(string: "naeilo://subscribe")!)
+        } else {
+            open
+        }
+    }
+    private var open: some View {
         content
             .environment(\.charKind, kind)
             .foregroundStyle(.white)
@@ -515,9 +532,10 @@ extension EnvironmentValues {
 /// ↻ 다시 받기: 앱이 써 둔 최신 값으로 위젯을 다시 그린다 (기본 위젯의 버튼과 같은 동작)
 struct CharReload: View {
     var body: some View {
-        let icon = Image(systemName: "arrow.clockwise").font(.system(size: 10, weight: .bold))
-            .frame(width: 20, height: 20).background(Circle().fill(Color.white.opacity(0.18)))
-            .accessibilityLabel("다시 받기")
+        let busy = Store.isReloading // 누른 뒤 받는 동안은 '받는 중' 모양
+        let icon = Image(systemName: busy ? "ellipsis" : "arrow.clockwise").font(.system(size: 10, weight: .bold))
+            .frame(width: 20, height: 20).background(Circle().fill(Color.white.opacity(busy ? 0.35 : 0.18)))
+            .accessibilityLabel(busy ? "받는 중" : "다시 받기")
         #if WIDGET_EXT
         Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain)
         #else

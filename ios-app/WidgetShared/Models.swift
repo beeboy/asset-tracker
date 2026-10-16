@@ -43,6 +43,7 @@ struct WFeed: Codable {
     var ccy: [String: String]
     var mar: Mar?
     var ky: [String: String]? = nil  // 내부 테스트 국내 시세 종목 → Yahoo 기호. 위젯이 직접 받는다
+    var ty: [String: String]? = nil  // 토스로 받을 내 종목 → Yahoo 기호. 내 키가 있으면 위젯도 토스 지금 가격을 직접 받는다
 }
 
 // 동기화된 입력값에서 위젯이 바로 쓰는 부분 (전체 입력값은 계산용으로 따로 저장)
@@ -218,7 +219,7 @@ enum TossFeed {
         if code == 403 || c == "access_denied" { return "허용 IP에 중계 IP가 없어요" }
         if c == "invalid_client" { return "키가 맞지 않아요" }
         if code == 429 { return "잠시 뒤에 다시 받아요" }
-        return "토스 응답 \(code)" + (c.isEmpty ? "" : " (\(c))")
+        return "오픈 API 응답 \(code)" + (c.isEmpty ? "" : " (\(c))")
     }
 
     /// 토큰: 키체인에 둔 것을 만료 1분 전까지 쓴다. 토스는 키당 토큰 1개라 새로 받으면 예전 것은 끊긴다
@@ -271,18 +272,29 @@ enum TossFeed {
         set { Store.defaults.set(newValue, forKey: "toss_hist_miss") }
     }
 
+    /// 위젯: 앱이 feed.json 에 넘긴 내 종목을 위젯이 직접 토스에 묻는다 (앱을 안 열어도 위젯이 토스 값)
+    @discardableResult
+    static func widgetFetch(minAge: TimeInterval) async -> QuoteFeed.File? {
+        guard base != nil || TossKeys.on, let ty = Store.read(WFeed.self, "feed.json")?.ty, !ty.isEmpty else { return nil }
+        return await fetch(ty, minAge: minAge)
+    }
+
     private static func fetchUser(_ want: [String: String], force: Bool) async -> QuoteFeed.File? {
         let now = Date().timeIntervalSince1970
         var ids: [String: [String]] = [:]   // 토스 코드 → 앱 종목들
-        let skip: [String: Double] = force ? [:] : miss     // 다시 받기는 빼 둔 종목도 다시 묻는다 (없으면 아래에서 다시 뺀다)
+        var skip: [String: Double] = force ? [:] : miss     // 다시 받기는 빼 둔 종목도 다시 묻는다 (없으면 아래에서 다시 뺀다)
+        // 내 종목이 모두 빠져 있으면 그래도 묻는다 (한 번 404 가 나면 다시 받기 전까지 하루 내내 실패로 남던 일)
+        if !skip.isEmpty, want.values.compactMap(code).allSatisfy({ (skip[$0] ?? 0) >= now }) { skip = [:] }
         for (id, y) in want { if let c = code(y), (skip[c] ?? 0) < now { ids[c, default: []].append(id) } }
-        guard !ids.isEmpty else { return fail("토스에서 받을 종목 없음") }
+        guard !ids.isEmpty else { return fail("오픈 API로 받을 종목 없음") }
         var (tok, e) = await token()
         guard var t = tok else { return fail(e ?? "토큰 실패") }
         var q: [String: QuoteFeed.Q] = [:]
+        var got: Set<String> = []   // 받은 토스 코드 (빼 둔 목록에서 지운다)
         func take(_ o: [String: Any]?) {
             for v in o?["result"] as? [[String: Any]] ?? [] {
                 guard let c = (v["symbol"] as? String)?.uppercased(), let last = num(v["lastPrice"]), last > 0 else { continue }
+                got.insert(c)
                 let at = (v["timestamp"] as? String).flatMap { try? Date($0, strategy: .iso8601) }?.timeIntervalSince1970 ?? now
                 for id in ids[c] ?? [] { q[id] = .init(last: last, prev: 0, at: at) }
             }
@@ -313,6 +325,7 @@ enum TossFeed {
             guard code == 200 else { return fail(why(code, o)) }
             take(o)
         }
+        if !got.isEmpty, !Set(miss.keys).isDisjoint(with: got) { var m = miss; for c in got { m[c] = nil }; miss = m }
         guard !q.isEmpty else { return fail("받은 종목 없음") }
         return save(q)
     }
@@ -325,10 +338,13 @@ enum TossKeys {
     private static func q(_ account: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.toss", kSecAttrAccount as String: account]
     }
+    /// 앱 그룹을 키체인 그룹으로 써서 위젯도 같은 키·토큰을 읽는다 (토스는 키당 토큰 1개라 위젯이 따로 받으면 앱 토큰이 끊긴다)
+    static let group = "group.com.naeilo.widget"
     private static func put<T: Encodable>(_ v: T?, _ account: String) {
-        SecItemDelete(q(account) as CFDictionary)
+        SecItemDelete(q(account) as CFDictionary)   // 예전 앱 전용 자리와 그룹 자리를 같이 지운다
         guard let v, let d = try? JSONEncoder().encode(v) else { return }
         var a = q(account)
+        a[kSecAttrAccessGroup as String] = group
         a[kSecValueData as String] = d
         a[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         SecItemAdd(a as CFDictionary, nil)
@@ -344,6 +360,12 @@ enum TossKeys {
     /// 키를 넣었는지 (위젯도 보므로 키 자체가 아니라 표시만 공유 저장소에 둔다)
     static var on: Bool { Store.defaults.bool(forKey: "toss_user") }
     static func load() -> Keys? { get(Keys.self, "keys") }
+    /// 예전 판은 키를 앱 전용 자리에 두어 위젯이 못 읽었다. 앱이 열릴 때 한 번 그룹 자리로 옮긴다
+    static func share() {
+        guard on, !Store.defaults.bool(forKey: "toss_kc_group") else { return }
+        if let k = load() { let t = token; put(k, "keys"); put(t, "token") }
+        Store.defaults.set(true, forKey: "toss_kc_group")
+    }
     static func save(_ k: Keys) {
         put(k, "keys"); put(Token?.none, "token")
         Store.defaults.set(true, forKey: "toss_user")

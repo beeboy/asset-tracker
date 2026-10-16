@@ -1,7 +1,7 @@
 import SwiftUI
 import Observation
 
-// 홈 리마인드: 앱의 단계·달성, 일정, 내 종목 분석, 설정·후원·새 소식을 푸시 알림 없이 홈에서만 보여 준다.
+// 홈 리마인드: 앱의 단계·달성, 일정, 내 종목 분석, 설정·구독·새 소식을 푸시 알림 없이 홈에서만 보여 준다.
 // 쉼터 친구가 말풍선으로 하나씩 전하고 (홈을 열 때마다 하나, 하루 3개까지), 일정은 노란 띠, 나머지는 소식함에 30일 남는다.
 // 항목표: project-files notes/홈-리마인드-항목표-2026-10-11.md
 
@@ -60,7 +60,7 @@ struct RemindLog: Codable {
     var bubbleDay: String? = nil        // 말풍선 하루 3개 세기
     var bubbleN = 0
     var bubble: String? = nil           // 지금 말풍선에 띄운 소식
-    var tier: Int? = nil                // 지난번 후원 단계
+    var tier: Int? = nil                // 예전 후원 단계 (지금은 안 씀, 저장 파일 호환)
     var cellsMax = 0                    // 1000칸 최고 기록
     var cellsWeek: String? = nil        // 최고 기록을 잰 주와 그 주가 시작될 때의 최고 기록
     var cellsWeekMax = 0
@@ -252,15 +252,9 @@ final class Remind {
                 a.append(.init(id: "calm.keep.\(l.keeps)", cat: .done, text: "평정 지수 80 이상을 \(6 * (l.keeps + 1))달 지켰어요.", go: .calm))
             }
         }
-        // 내 캐릭터 조건
-        let g = [m.meGate1, m.meGate2, m.meGate3].filter { $0 }.count
-        if g == 3 {
-            let text = m.me == nil ? "이제 내 캐릭터가 홈과 위젯에서 함께할 수 있어요. 만들어 볼래요?" : "이제 내 캐릭터가 홈과 위젯에서 함께해요."
-            a.append(.init(id: "me.open", cat: .done, text: text, go: .me, big: true))
-        } else if g >= 1 {
-            a.append(.init(id: "me.gate.\(g)", cat: .done, text: "내 캐릭터 조건 \(g)/3 달성.", go: .me))
-        }
-        if m.bgUnlocked { a.append(.init(id: "bg.open", cat: .done, text: "쉼터 배경을 바꿀 수 있어요. 12곳 중 골라 봐요.", go: .shelter)) }
+        // 쉼터 배경: 하루 2곳씩 열린다 (2026-10-16 결정)
+        let bg = m.bgOpen
+        if bg > 0 { a.append(.init(id: "bg.open.\(bg)", cat: .done, text: "쉼터 배경 \(bg)곳이 열렸어요 (\(bg)/\(Shelter.backgrounds.count)). 골라 봐요.", go: .shelter)) }
         a += cells(m)
         a += week(m)
         return a
@@ -364,15 +358,7 @@ final class Remind {
         if let l = m.calm.ladder, (1...3).contains(l.step), let st = Calm.steps[l.type]?[l.step - 1], let p = m.calm.progress() {
             a.append(.init(id: "do.ladder", cat: .doing, text: "다음 걸음 \(l.step)/3 ‘\(st.name)’ · \(p.text)", go: .calm, once: false))
         }
-        // 내 투자 캐릭터 찾기: 조건 3개를 체크리스트 하나로 (투자 습관 기록 건수는 그 안 한 줄로)
-        let gates = [(m.meGate1, m.meGate1Short),
-                     (m.meGate2, "내 투자 습관 유형 찾기" + (calmLeft.map { " · 기록 \($0)건 남음" } ?? "")),
-                     (m.meGate3, "다방커피 후원")]
-        let ok = gates.filter(\.0).count
-        if (1...2).contains(ok) {
-            a.append(.init(id: "do.me", cat: .doing, text: "내 투자 캐릭터 찾기 · 3개 중 \(ok)개", go: .me, once: false,
-                           why: "다 채우면 나와 가장 닮은 인물을 알려드려요.", checks: gates.map { .init(text: $0.1, ok: $0.0) }))
-        } else if let c = calmLeft {
+        if let c = calmLeft {
             a.append(.init(id: "do.calm", cat: .doing, text: "내 투자 습관까지 매매 기록 \(c)건 남았어요.", go: .calm, once: false))
         }
         if let i = (0..<Shelter.friends.count).first(where: { !m.friendOn($0) }) {
@@ -433,17 +419,15 @@ final class Remind {
         return out
     }
 
-    /// 설정·후원·개발자 소식
+    /// 설정·구독·개발자 소식
     @MainActor private func news() -> [RemindItem] {
         var a: [RemindItem] = []
-        let t = Support.shared.tier
-        if let old = log.tier, t.rawValue > old {
-            let adds = SupportTier.allCases.filter { $0.rawValue > old && $0.rawValue <= t.rawValue }.flatMap(\.adds)
-            a.append(.init(id: "tier.\(t.rawValue)", cat: .news, text: "\(t.name) 후원 고마워요! " + adds.joined(separator: ", ") + "이 열렸어요.", go: .support))
-        } else if let tid = log.first.keys.first(where: { $0 == "tier.\(t.rawValue)" }) {
-            a.append(.init(id: tid, cat: .news, text: "\(t.name) 후원 고마워요! " + t.adds.joined(separator: ", ") + "이 열렸어요.", go: .support))
+        let sub = Support.shared
+        if let p = sub.plan {
+            a.append(.init(id: "sub.\(p.rawValue)", cat: .news, text: "\(p.name) 고마워요! 위젯, 목표·확률 전망, 서재 외전이 열려 있어요.", go: .support))
+        } else if sub.trialLeft == 1 && !sub.dev {
+            a.append(.init(id: "trial.last", cat: .news, text: "7일 무료가 오늘 끝나요. 내일부터 위젯과 목표·확률 전망은 구독하면 볼 수 있어요.", go: .support))
         }
-        if log.tier != t.rawValue { log.tier = t.rawValue }
         if case .failed = Sync.shared.state {
             a.append(.init(id: "sync.fail", cat: .news, text: "기기 동기화가 멈췄어요. 한번 확인해 볼래요?", go: .sync, once: false))
         }

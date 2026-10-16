@@ -42,8 +42,9 @@ struct AnalysisPager: View {
 
     @ViewBuilder private func page(_ r: AnalysisRoute) -> some View {
         switch r {
-        case .forecast: ForecastView()
-        case .myPath: MyPathView()
+        // 7일 무료 뒤 구독하지 않으면 목표(내 길)·확률 전망만 잠근다 (Support.pro)
+        case .forecast: if Support.shared.pro { ForecastView() } else { SubLocked(what: "확률 전망") }
+        case .myPath: if Support.shared.pro { MyPathView() } else { SubLocked(what: "내 길(목표까지 확률)") }
         case .rateScen: RateScenarioView()
         case .external: ExternalView()
         case .dividend: DividendView()
@@ -205,8 +206,11 @@ struct AnalysisView: View {
     private var lines: [Line] {
         let fc = m.forecast, tot = max(1, m.total)
         var out: [Line] = []
-        // 내 길: 목표일에 목표 이상일 확률을 빈도로
-        if m.isGoal {
+        // 내 길: 목표일에 목표 이상일 확률을 빈도로 (7일 무료 뒤 구독하지 않으면 잠금)
+        let pro = Support.shared.pro
+        if !pro {
+            out.append(Line(icon: "lock.fill", tone: .info, label: "내 길", value: "구독하면 열려요", route: .myPath))
+        } else if m.isGoal {
             out.append(Line(icon: "flag", tone: .good, label: "내 길", value: fc.exact ? Self.freq(fc.pGoal) + " 닿아요" : "계산 중", valueTone: .good, route: .myPath))
         } else {
             let gap = m.myPathGapToday
@@ -214,7 +218,8 @@ struct AnalysisView: View {
         }
         // 전망: 상세 첫 카드처럼 경로 값에 현금을 더한다
         let med = (fc.q50.last ?? 0) + (fc.exact ? m.cashKrw : 0)
-        out.append(Line(icon: "calendar", tone: .good, label: m.isGoal ? "\(ForecastView.ym(m.forecastHorizon).short) 전망" : "3년 뒤 전망", value: "보통 " + AppModel.eok(med), route: .forecast))
+        out.append(Line(icon: pro ? "calendar" : "lock.fill", tone: pro ? .good : .info, label: m.isGoal ? "\(ForecastView.ym(m.forecastHorizon).short) 전망" : "3년 뒤 전망",
+                        value: pro ? "보통 " + AppModel.eok(med) : "구독하면 열려요", route: .forecast))
         // 금리 충격: 기본 프리셋("작년만큼 또 오른다")의 도착 시점 변화
         let t = RateScenarioView.hubTiming(m)
         let late = t?.contains("늦어져요") == true, early = t?.contains("빨라져요") == true
