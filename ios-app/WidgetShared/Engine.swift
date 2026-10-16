@@ -97,6 +97,20 @@ enum Engine {
         return build(s, f, live, site: site, kr: kr, toss: toss)
     }
 
+    /// 인물 위젯용: 위젯이 앱보다 나중에 직접 받은 시세가 있으면 종목 평가액(현금 뺌)과 오늘 등락을 그 값으로 다시 낸다.
+    /// 없으면 nil (앱이 reward.json 에 써 둔 값을 그대로 쓴다)
+    static func liveHoldings() -> (total: Double, dayChg: Double)? {
+        let after = Store.lastCheck?.timeIntervalSince1970 ?? 0
+        let fresh = [QuoteFeed.cached()?.got, KrQuoteFeed.cached()?.got, TossFeed.cached()?.got].contains { ($0 ?? 0) > after }
+        guard fresh else { return nil }
+        let s = snapshot()
+        guard !s.placeholder, !s.moves.isEmpty else { return nil }
+        let tot = s.moves.reduce(0) { $0 + $1.krw }
+        let prev = s.moves.reduce(0) { $0 + $1.krw / (1 + $1.pct) }
+        guard tot > 0 else { return nil }
+        return (tot, prev > 0 ? tot / prev - 1 : 0)
+    }
+
     static func build(_ s: WSummary?, _ f: WFeed?, _ live: WLive?, site: QuoteFeed.File? = nil, kr: QuoteFeed.File? = nil, toss: QuoteFeed.File? = nil) -> Snapshot {
         // 수량·현금·목표는 최신 입력값, 없으면 요약의 것
         struct H { let t: String; let sh: Double; let manual: Double? }
