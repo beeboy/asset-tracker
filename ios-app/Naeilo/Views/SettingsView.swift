@@ -19,7 +19,7 @@ struct SettingsView: View {
         // 기기 동기화(웹과 앱) 자리를 내 토스 키 입력으로 바꿨다 (동기화 코드는 남김)
         let helpRows: [(String, String, SettingsRoute)] = [
             ("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto),
-            ("내 토스 키", TossKeys.on ? "내 토스 키로 시세 받는 중" : "내 토스증권 Open API 키 연결하기", .toss),
+            ("토스증권 오픈 API", TossKeys.on ? "내 토스 키로 시세 받는 중" : "내 토스증권 Open API 키 연결하기", .toss),
             ("개발자에게 커피 한 잔", Support.shared.tier == .free ? "구매 복원" : "\(Support.shared.tier.name) · 고마워요", .support),
         ]
         ScrollView {
@@ -204,7 +204,7 @@ struct TossKeyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("내 토스 키").appFont(22, .bold)
+                Text("토스증권 오픈 API").appFont(22, .bold)
                 TossLinkMap(on: on)
                 if on { onCard } else { steps }
             }
@@ -309,7 +309,7 @@ struct TossLinkMap: View {
                 .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Image(systemName: on ? "chart.line.uptrend.xyaxis" : "key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.teal)
-                Text(on ? "현재가·일봉·환율 정보만 받아 오고 있어요." : "열쇠는 이 폰에만 있어요. 언제든 지울 수 있어요.")
+                Text(on ? "현재가·일봉·환율 정보만 받아 오고 있어요." : "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요.")
                     .appFont(13).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
