@@ -40,6 +40,8 @@ struct SupportView: View {
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 Link("이용약관 (Apple 표준 EULA)", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                     .appFont(12, .bold).foregroundStyle(Theme.teal)
+                Link("개인정보처리방침", destination: URL(string: "https://naeilo.com/web/privacy.html")!)
+                    .appFont(12, .bold).foregroundStyle(Theme.teal)
             }
             .screen().padding(.top, 8)
         }
