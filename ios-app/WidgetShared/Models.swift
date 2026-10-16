@@ -218,7 +218,7 @@ enum TossFeed {
         if code == 403 || c == "access_denied" { return "허용 IP에 중계 IP가 없어요" }
         if c == "invalid_client" { return "키가 맞지 않아요" }
         if code == 429 { return "잠시 뒤에 다시 받아요" }
-        return "토스 응답 \(code)" + (c.isEmpty ? "" : " (\(c))")
+        return "오픈 API 응답 \(code)" + (c.isEmpty ? "" : " (\(c))")
     }
 
     /// 토큰: 키체인에 둔 것을 만료 1분 전까지 쓴다. 토스는 키당 토큰 1개라 새로 받으면 예전 것은 끊긴다
@@ -276,7 +276,7 @@ enum TossFeed {
         var ids: [String: [String]] = [:]   // 토스 코드 → 앱 종목들
         let skip: [String: Double] = force ? [:] : miss     // 다시 받기는 빼 둔 종목도 다시 묻는다 (없으면 아래에서 다시 뺀다)
         for (id, y) in want { if let c = code(y), (skip[c] ?? 0) < now { ids[c, default: []].append(id) } }
-        guard !ids.isEmpty else { return fail("토스에서 받을 종목 없음") }
+        guard !ids.isEmpty else { return fail("오픈 API로 받을 종목 없음") }
         var (tok, e) = await token()
         guard var t = tok else { return fail(e ?? "토큰 실패") }
         var q: [String: QuoteFeed.Q] = [:]
