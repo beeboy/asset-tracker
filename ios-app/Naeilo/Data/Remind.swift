@@ -462,7 +462,7 @@ final class Remind {
         return blog.posts.compactMap { p in
             guard ids.contains(p.cat), let c = p.created?.prefix(10), String(c) >= from, String(c) <= Day.today,
                   let url = URL(string: "https://naeilo.com/web/#post=\(p.id)") else { return nil }
-            return RemindItem(id: "blog.\(p.id)", cat: .news, text: "미래 설계 ‘\(Self.blogCat)’에 새 글이 올라왔어요: 「\(p.title)」", go: .web(url), link: url)
+            return RemindItem(id: "blog.\(p.id)", cat: .news, text: p.title, go: .web(url), link: url)
         }
     }
 
