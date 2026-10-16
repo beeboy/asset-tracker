@@ -231,7 +231,7 @@ struct TossKeyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("토스증권 오픈 API").appFont(22, .bold)
+                Text("오픈 API").appFont(22, .bold)
                 TossLinkMap(on: on)
                 if on { onCard } else { steps }
             }
