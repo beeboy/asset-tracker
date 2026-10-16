@@ -1,7 +1,7 @@
 import AppIntents
 import WidgetKit
 
-/// 위젯의 ↻ 버튼: 사이트 시세를 바로 받고 모든 위젯을 다시 그린다
+/// 위젯의 ↻ 버튼: 사이트 시세와 (내 키가 있으면) 토스 지금 가격을 바로 받고 모든 위젯을 다시 그린다
 struct ReloadIntent: AppIntent {
     static var title: LocalizedStringResource = "다시 받기"
     func perform() async throws -> some IntentResult {
@@ -9,7 +9,11 @@ struct ReloadIntent: AppIntent {
         Store.reloadingSince = Date()
         WidgetLine.bump(minGap: 0)   // ↻: 인물 대사도 다음 줄로 (바로 이어지는 다시 그리기는 세지 않는다)
         WidgetCenter.shared.reloadAllTimelines()
-        _ = try? await withTimeout(8) { await QuoteFeed.fetch() }
+        _ = try? await withTimeout(8) {
+            async let site: Void = { _ = await QuoteFeed.fetch() }()
+            async let toss: Void = { _ = await TossFeed.widgetFetch(minAge: 0) }()
+            _ = await (site, toss)
+        }
         Store.reloadingSince = nil
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
