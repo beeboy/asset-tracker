@@ -253,7 +253,7 @@ struct TossKeyView: View {
                 .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
                 .confirmationDialog("오픈 API 키를 이 폰에서 지울까요?", isPresented: $askOff, titleVisibility: .visible) {
                     Button("지우기", role: .destructive) { TossKeys.clear(); on = false; msg = nil; Task { await Market.shared.pullRefresh(m) } }
-                } message: { Text("기본 시세로 돌아가요. 토스에서 받은 키는 토스 WTS에서 따로 지울 수 있어요.") }
+                } message: { Text("기본 시세로 돌아가요. 증권사에서 받은 키는 그 증권사에서 따로 지울 수 있어요.") }
         }
     }
 
@@ -305,7 +305,7 @@ struct TossKeyView: View {
         // 토큰은 만료 전이면 그대로 쓴다 (새로 받으면 받는 중인 다른 요청의 토큰이 끊긴다). 처음 연결이면 키를 넣을 때 토큰을 지워 새로 받는다
         let (t, e) = await TossFeed.token()
         if t == nil {
-            msg = (e ?? "연결 실패") + (e == "허용 IP에 중계 IP가 없어요" ? ". 토스 허용 IP에 위 IP를 넣고 다시 눌러 주세요." : "")
+            msg = (e ?? "연결 실패") + (e == "허용 IP에 중계 IP가 없어요" ? ". 오픈 API 허용 IP에 위 IP를 넣고 다시 눌러 주세요." : "")
             if !on { TossKeys.clear() }     // 처음 연결이 실패하면 키를 남기지 않는다
         } else {
             on = true
@@ -327,7 +327,7 @@ struct TossLinkMap: View {
                 TossLinkLine(on: on)
                 node("server.rack", "naeilo 서버", "통로만 해요", lock: false)
                 TossLinkLine(on: on)
-                node("chart.line.uptrend.xyaxis", "토스 시세", " ", lock: false)
+                node("chart.line.uptrend.xyaxis", "증권사 시세", " ", lock: false)
             }
             Text(on ? "이어졌어요" : "키를 넣으면 이어져요").appFont(13, .semibold)
                 .foregroundStyle(on ? Theme.teal : Theme.muted).frame(maxWidth: .infinity)

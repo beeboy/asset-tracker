@@ -177,7 +177,7 @@ struct SyncView: View {
     private var tossStatus: String {
         _ = Market.shared.updatedAt     // 시세를 새로 받으면 다시 그린다
         let t = TossFeed.okAt
-        var s = "토스: "
+        var s = "오픈 API: "
         guard TossFeed.base != nil else { return s + "주소 없음" }
         if t > 0 {
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")

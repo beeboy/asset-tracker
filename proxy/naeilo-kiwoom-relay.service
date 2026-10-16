@@ -1,0 +1,16 @@
+# 키움증권 공용 중계 (proxy/kiwoom_relay.py). 고정 IP 서버에 둔다: /etc/systemd/system/naeilo-kiwoom-relay.service
+# NAEILO_TOSS_IP 는 서버에서 채운다 (저장소에 쓰지 않는다): sudo systemctl edit naeilo-kiwoom-relay
+#   [Service]
+#   Environment=NAEILO_TOSS_IP=<서버 고정 IP>
+[Unit]
+Description=naeilo kiwoom relay
+After=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/asset-tracker
+ExecStart=/usr/bin/python3 proxy/kiwoom_relay.py --port 8767
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
