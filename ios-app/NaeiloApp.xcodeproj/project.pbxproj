@@ -422,6 +422,7 @@
 				C7FF9AF98A7310DC6786FB02 /* Sources */,
 				774616BC84B2C3A599B85107 /* Resources */,
 				8054E53D3E26278BFFC23C39 /* Embed Foundation Extensions */,
+				B11D0A000000000000000001 /* 빌드 번호 */,
 			);
 			buildRules = (
 			);
@@ -441,6 +442,7 @@
 			buildPhases = (
 				A88E782199CE2004570CEEB6 /* Sources */,
 				CE227EB84A314E546877FFFB /* Resources */,
+				B11D0A000000000000000002 /* 빌드 번호 */,
 			);
 			buildRules = (
 			);
@@ -523,6 +525,49 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		B11D0A000000000000000001 /* 빌드 번호 */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "빌드 번호";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "[ \"$CONFIGURATION\" = \"Debug\" ] || exit 0\nV=$(cat \"$BUILT_PRODUCTS_DIR/.naeilo-build\" 2>/dev/null || date +%y%m%d.%H%M%S)\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $V\" \"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n";
+		};
+		B11D0A000000000000000002 /* 빌드 번호 */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "빌드 번호";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "[ \"$CONFIGURATION\" = \"Debug\" ] || exit 0\nV=$(date +%y%m%d.%H%M%S)\necho \"$V\" > \"$BUILT_PRODUCTS_DIR/.naeilo-build\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $V\" \"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A88E782199CE2004570CEEB6 /* Sources */ = {
@@ -640,6 +685,7 @@
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-seri AppIcon-sio AppIcon-seonbae AppIcon-ir AppIcon-sua";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Naeilo/App.entitlements;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Naeilo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -656,6 +702,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widgets/Widgets.entitlements;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Widgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -675,6 +722,7 @@
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-seri AppIcon-sio AppIcon-seonbae AppIcon-ir AppIcon-sua";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Naeilo/App.entitlements;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Naeilo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -752,6 +800,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widgets/Widgets.entitlements;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Widgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
