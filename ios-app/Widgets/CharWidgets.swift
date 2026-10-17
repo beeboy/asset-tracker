@@ -2,7 +2,7 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 
-// 인물 보상 위젯 (캐릭터 설정 스레드 시안 reward-widgets): 본전 진행(작은) · 블록(작은) · 오늘의 움직임(중간)
+// 인물 보상 위젯: 모두 작은 크기 8개. 확정 시안 B(자산 언덕 · 본전 사다리 · 블록 탑 · 전광판) + 키 재기 · 퍼즐 · 꽃밭 · 줄다리기
 // 위젯마다 인물을 고른다. 아직 못 만난 인물은 실루엣으로 보이고, 누르면 앱의 쉼터로 간다.
 // 앱 타깃에도 같이 넣어 설정의 시안 조작 > 인물 위젯 미리보기에서 다섯 인물을 한 번에 본다.
 // 기본은 인물 색 그라데이션 바탕, 다크 모드는 #1c1c1f 바탕에 인물 색은 빛·제목·막대·블록·말풍선 테두리에만.
@@ -23,7 +23,11 @@ enum WhoEnum: String, AppEnum {
 }
 
 struct WhoOptions: DynamicOptionsProvider {
-    func results() async throws -> [WhoEnum] { WhoEnum.choices }
+    /// 만난 인물만 고를 수 있다 (2026-10-16 결정: 못 만난 친구 미리 보기는 뺌)
+    func results() async throws -> [WhoEnum] {
+        let on = Store.read(WReward.self, "reward.json")?.friendsOn
+        return WhoEnum.choices.filter { $0 == .home || $0 == .seri || on?.contains($0.charId) ?? true }
+    }
 }
 
 struct WhoIntent: WidgetConfigurationIntent {
@@ -42,6 +46,7 @@ struct CharEntry: TimelineEntry {
     var preview = false         // 위젯 갤러리 미리보기면 7일 무료 뒤에도 잠그지 않는다 (다른 위젯과 같이)
     var at: Date? = nil         // 지금 값의 시세를 받은 시각과 출처 (큰 위젯 아래 줄 '3분 전 · 토스')
     var feed: String? = nil
+    var frame = 0               // ↻ 받는 동안 몇 번째 그림인지 (전광판 인물이 포즈를 돌린다)
 }
 
 struct CharProvider: AppIntentTimelineProvider {
@@ -49,7 +54,12 @@ struct CharProvider: AppIntentTimelineProvider {
     func snapshot(for cfg: WhoIntent, in context: Context) async -> CharEntry { entry(cfg, preview: context.isPreview) }
     func timeline(for cfg: WhoIntent, in context: Context) async -> Timeline<CharEntry> {
         // ↻ 직후 '받는 중' 그리기: 받지 않고 바로 그린다 (받기는 ReloadIntent 가 하고, 끝나면 다시 그린다)
-        if Store.isReloading { return Timeline(entries: [entry(cfg, preview: false)], policy: .after(Date().addingTimeInterval(15))) }
+        if Store.isReloading {
+            // 1초마다 다음 포즈 (15초 동안)
+            let base = entry(cfg, preview: false)
+            let es = (0..<15).map { i -> CharEntry in var x = base; x.date = base.date.addingTimeInterval(Double(i)); x.frame = i; return x }
+            return Timeline(entries: es, policy: .after(base.date.addingTimeInterval(15)))
+        }
         WidgetLine.bump()   // 새로 그릴 때마다 다음 대사
         // 기본 위젯처럼 지금 가격을 직접 받는다 (전에는 받지 않아, 인물 위젯만 두면 ↻나 앱을 열 때까지 금액이 멈춰 있었다).
         // 다음 갱신도 기본 위젯과 같이: 국내 종목이 있으면 한국 장중에도, 7일 무료가 끝나는 때에도
@@ -69,60 +79,32 @@ struct CharProvider: AppIntentTimelineProvider {
             if var sp = r.spark, !sp.isEmpty { sp[sp.count - 1] = h.total / 1e4; r.spark = sp }
         }
         // '홈 인물 따라가기'면 앱 홈에 둔 인물 (앱에서 홈 인물을 바꾸면 위젯도 바뀐다)
-        let c = WChar.of(cfg.who.follows ? (r.homeFriend ?? "seri") : cfg.who.charId)
-        // 갤러리 미리보기는 실제 모습, 홈 화면에서는 만난 인물만
-        var e = CharEntry(date: Date(), r: r, c: c, locked: !preview && !(c.id == "seri" || r.friendsOn.contains(c.id)), preview: preview)
+        // 못 만난 친구는 실루엣으로도 보이지 않는다 (2026-10-16 결정: 미리 보기 뺌). 고른 인물을 아직 못 만났으면 홈 인물로
+        let met = { (id: String) in id == "seri" || r.friendsOn.contains(id) }
+        let want = cfg.who.follows ? (r.homeFriend ?? "seri") : cfg.who.charId
+        let c = WChar.of(preview || met(want) ? want : (r.homeFriend.flatMap { met($0) ? $0 : nil } ?? "seri"))
+        var e = CharEntry(date: Date(), r: r, c: c, locked: false, preview: preview)
         if !preview { let s = Engine.snapshot(); if !s.placeholder { e.at = s.pricedAt; e.feed = s.feed } }
         return e
     }
 }
 
-struct CharTrend: Widget {
-    var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "char.trend", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.trend") { TrendCharView(e: e) }
-        }
-        .catalog("char.trend")
-        .supportedFamilies([.systemSmall])
+/// 인물 위젯은 모두 작은 크기 (2026-10-17 큰·중간 삭제, 시안 B 4개 추가)
+private func charWidget<V: View>(_ kind: String, @ViewBuilder _ v: @escaping (CharEntry) -> V) -> some WidgetConfiguration {
+    AppIntentConfiguration(kind: kind, intent: WhoIntent.self, provider: CharProvider()) { e in
+        CharFrame(e: e, kind: kind) { v(e) }
     }
+    .catalog(kind)
+    .supportedFamilies([.systemSmall])
 }
-struct CharRecover: Widget {
-    var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "char.recover", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.recover") { RecoverCharView(e: e) }
-        }
-        .catalog("char.recover")
-        .supportedFamilies([.systemSmall])
-    }
-}
-struct CharBlock: Widget {
-    var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "char.block", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.block") { BlockCharView(e: e) }
-        }
-        .catalog("char.block")
-        .supportedFamilies([.systemSmall])
-    }
-}
-struct CharMoves: Widget {
-    var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "char.moves", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.moves") { MovesCharView(e: e) }
-        }
-        .catalog("char.moves")
-        .supportedFamilies([.systemMedium])
-    }
-}
-
-struct CharLarge: Widget {
-    var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "char.large", intent: WhoIntent.self, provider: CharProvider()) { e in
-            CharFrame(e: e, kind: "char.large") { LargeCharView(e: e) }
-        }
-        .catalog("char.large")
-        .supportedFamilies([.systemLarge])
-    }
-}
+struct CharHill: Widget { var body: some WidgetConfiguration { charWidget("char.hill") { HillCharView(e: $0) } } }
+struct CharLadder: Widget { var body: some WidgetConfiguration { charWidget("char.ladder") { LadderCharView(e: $0) } } }
+struct CharTower: Widget { var body: some WidgetConfiguration { charWidget("char.tower") { TowerCharView(e: $0) } } }
+struct CharBoard: Widget { var body: some WidgetConfiguration { charWidget("char.board") { BoardCharView(e: $0) } } }
+struct CharHeight: Widget { var body: some WidgetConfiguration { charWidget("char.height") { HeightCharView(e: $0) } } }
+struct CharPuzzle: Widget { var body: some WidgetConfiguration { charWidget("char.puzzle") { PuzzleCharView(e: $0) } } }
+struct CharGarden: Widget { var body: some WidgetConfiguration { charWidget("char.garden") { GardenCharView(e: $0) } } }
+struct CharTug: Widget { var body: some WidgetConfiguration { charWidget("char.tug") { TugCharView(e: $0) } } }
 
 // MARK: 공통
 
@@ -200,11 +182,17 @@ struct CharSprite: View {
     let name: String
     let locked: Bool
     var height: CGFloat
+    /// false: 위젯이 갱신 때 따로 움직인다 (새 시안 4개: 동작 그림 바꾸기·톡 뛰기)
+    var shake = true
     @Environment(\.widgetRenderingMode) private var mode
     var body: some View {
+        // 포즈 그림이 없어 기본 그림으로 떨어진 인물은 동작이 안 바뀌니, 갱신 때 흔들어 움직임을 보인다
+        if shake || !name.contains("_pose_") { sprite.charShake() } else { sprite }
+    }
+    private var sprite: some View {
         Group {
-            // 내 캐릭터: 앱이 겹쳐 그린 그림 하나 (동작별 그림 없음)
-            if name.hasPrefix("w_me"), let img = WMe.image {
+            // 내 캐릭터: 앱이 겹쳐 그린 그림 (동작별 me_pose_*.png, 없으면 me.png)
+            if name.hasPrefix("w_me"), let img = WMe.image(name) {
                 if locked { Image(uiImage: img).interpolation(.none).resizable().renderingMode(.template).foregroundStyle(Color.white.opacity(0.22)) }
                 else if mode == .accented, #available(iOS 18, *) {
                     // 투명·틴트: 기본 인물처럼 원래 색 그대로 (안 그러면 시스템이 한 색으로 칠해 흰 덩어리가 된다)
@@ -220,7 +208,6 @@ struct CharSprite: View {
         }
         .aspectRatio(contentMode: .fit)
         .frame(height: height)
-        .charShake()
         .accessibilityHidden(true)
     }
 }
@@ -246,404 +233,636 @@ private func eokMan(_ v: Double) -> String {
 }
 private let upC = Color(red: 1, green: 0.42, blue: 0.42)
 private let dnC = Color(red: 0.42, green: 0.61, blue: 1)
+private func pctText(_ c: Double) -> String { Fmt.arrow(c) + String(format: "%.1f%%", abs(c) * 100) }
 
-// MARK: 자산 추이 (작은): 총자산 · 오늘 등락 · 최근 10일 점선, 인물은 오른쪽 아래
+/// 동작 그림 w_<인물>_<동작> 이 있으면 그것, 없으면 기본 그림. '위젯 인물 포즈 그리기'에서 그림이 오면 그 이름으로 넣기만 하면 바뀐다
+/// 확정 포즈(인물만 자른 그림, 크기 제각각)가 없으면 fallback 그림
+private func poseOr(_ c: WChar, _ p: String, else fallback: String) -> String {
+    let n = "w_\(c.id)_\(p)"
+    if c.id == "me" { return Store.readData("me_\(p).png") != nil ? n : fallback }
+    return UIImage(named: n) != nil ? n : fallback
+}
+/// 확정 포즈는 28×34 그림을 64pt로 그릴 때와 같은 배율(1px = 64/34pt), 발은 아래 맞춤. 그 밖은 64pt
+private func poseH(_ name: String) -> CGFloat {
+    guard name.contains("_pose_"), let i = UIImage(named: name) else { return 64 }
+    return i.size.height * 64 / 34
+}
+private func poseOr(_ c: WChar, _ p: String) -> String {
+    let n = "w_\(c.id)_\(p)"
+    if c.id == "me" { return Store.readData("me_\(p).png") != nil ? n : "w_\(c.id)" }
+    return UIImage(named: n) != nil ? n : "w_\(c.id)"
+}
 
-struct TrendCharView: View {
+fileprivate extension View {
+    /// 시안처럼 위젯 가장자리부터 그리는 그림 (Canvas 좌표 = 위젯 좌표)
+    func charBleed() -> some View { frame(maxWidth: .infinity, maxHeight: .infinity).padding(-16) }
+    /// 갱신 때 인물이 dy 만큼 톡 움직였다가, 다 받으면 통통 돌아온다
+    func charHop(_ dy: CGFloat) -> some View {
+        let busy = Store.isReloading
+        return offset(y: busy ? dy : 0).animation(.interpolatingSpring(stiffness: 180, damping: 7), value: busy)
+    }
+    /// 시안 좌표(위젯 가장자리부터 pt)로 놓는다. 위젯 콘텐츠 여백 16 안에 그리므로 16을 뺀다
+    func charPin(_ a: Alignment, x: CGFloat = 16, y: CGFloat = 16) -> some View {
+        let ox: CGFloat = a.horizontal == .leading ? x - 16 : a.horizontal == .trailing ? 16 - x : 0
+        let oy: CGFloat = a.vertical == .top ? y - 16 : a.vertical == .bottom ? 16 - y : 0
+        return frame(maxWidth: .infinity, maxHeight: .infinity, alignment: a).offset(x: ox, y: oy)
+    }
+}
+
+/// '3분 전': 지금 값의 시세를 받은 때 (갤러리 미리보기처럼 모르면 안 보인다)
+struct CharAgo: View {
+    let e: CharEntry
+    var body: some View {
+        if let at = e.at { Text(Fresh.ago(at, now: e.date)).font(.system(size: 9, weight: .medium)).opacity(0.55).lineLimit(1).fixedSize() }
+    }
+}
+
+/// 작은 위젯 윗줄: 제목 · '3분 전' · ↻
+struct CharTop: View {
+    let title: String, e: CharEntry, s: CharStyle
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(title).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1)
+            Spacer(minLength: 0)
+            if !e.locked { CharAgo(e: e).padding(.trailing, 2); CharReload() }
+        }
+        .frame(height: 20)
+    }
+}
+
+/// 새 디자인(B) 오른쪽 위: '3분 전'과 ↻
+@ViewBuilder private func cornerB(_ e: CharEntry) -> some View {
+    if !e.locked {
+        CharAgo(e: e).charPin(.topTrailing, x: 38, y: 17)
+        CharReload().charPin(.topTrailing, x: 12, y: 12)
+    }
+}
+
+/// 못 만난 인물: 자물쇠와 만나는 주차
+private func meetLater(_ c: WChar) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+        Image(systemName: "lock.fill").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+        Text(WL.t("인터미션\n{w}주차에 만나요", ["w": "\(c.week)"])).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private func speakMoney(_ e: CharEntry, _ kind: String) -> String {
+    e.locked ? "\(e.c.title), \(lockLine(e.c))"
+        : "\(Catalog.name(kind)). \(e.c.title), " + WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": Store.isHidden(kind) ? WL.t("숨김") : eokMan(e.r.total), "p": String(format: "%.1f%%", abs(e.r.dayChg) * 100), "dir": WL.dir(e.r.dayChg)])
+}
+private func speakRecover(_ e: CharEntry, _ kind: String) -> String {
+    e.locked ? "\(e.c.title), \(lockLine(e.c))"
+        : "\(Catalog.name(kind)). \(e.c.title), " + WL.t("{key}까지 {p}%, 남은 금액 {v}", ["key": WL.t(e.r.keyName), "p": "\(Int((e.r.pct * 100).rounded()))", "v": Store.isHidden(kind) ? WL.t("숨김") : eokMan(e.r.remain)])
+}
+private func speakBlock(_ e: CharEntry, _ kind: String) -> String {
+    e.locked ? "\(e.c.title), \(lockLine(e.c))"
+        : "\(Catalog.name(kind)). \(e.c.title), " + WL.t("1000칸 중 {n}칸, 어제보다 {d}칸", ["n": "\(e.r.cells)", "d": (e.r.cells >= e.r.cellsYesterday ? "+" : "") + "\(e.r.cells - e.r.cellsYesterday)"])
+}
+
+// MARK: 시안 B ① 자산 추이 · 픽셀 언덕: 최근 10일을 기둥 10개로, 인물은 오른쪽 아래
+
+struct HillCharView: View {
     let e: CharEntry
     var body: some View {
         StyleReader { dark in
             let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
-            let sp = r.spark ?? []
-            ZStack(alignment: .bottomTrailing) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Text(WL.t("자산 추이")).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
-                        Spacer(minLength: 0)
-                        if !e.locked { CharReload() }
-                    }
-                    if e.locked {
-                        Image(systemName: "lock.fill").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.7)).padding(.vertical, 4)
-                        Text(WL.t("인터미션\n{w}주차에 만나요", ["w": "\(e.c.week)"])).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1).charFlip(r.total) }
-                        Text(Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100) + " " + WL.t("오늘"))
-                            .font(.system(size: 11, weight: .semibold)).foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable().charFlip(r.dayChg)
-                    }
-                    Spacer(minLength: 0)
-                    if !e.locked && sp.count >= 2 {
-                        CharSpark(values: sp, color: s.accent).frame(height: 30).padding(.trailing, 50).widgetAccentable().flipFade()
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                CharSprite(name: "w_\(e.c.id)", locked: e.locked, height: 70)
-                    .offset(x: 8, y: 6)
-            }
-        }
-        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))"
-               : "\(Catalog.name("char.trend")). \(e.c.title), " + WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": Store.isHidden("char.trend") ? WL.t("숨김") : eokMan(e.r.total), "p": String(format: "%.1f%%", abs(e.r.dayChg) * 100), "dir": WL.dir(e.r.dayChg)]),
-               kind: "char.trend", money: !e.locked, reload: !e.locked)
-    }
-}
-
-/// 최근 며칠: 선 + 속 빈 점, 마지막 점만 채움
-struct CharSpark: View {
-    let values: [Double]
-    let color: Color
-    var body: some View {
-        GeometryReader { g in
-            let lo = values.min() ?? 0, hi = values.max() ?? 1, span = max(hi - lo, 1e-9)
-            let pts = values.enumerated().map { i, v in
-                CGPoint(x: g.size.width * CGFloat(i) / CGFloat(max(1, values.count - 1)),
-                        y: 3 + (g.size.height - 6) * CGFloat(1 - (v - lo) / span))
-            }
+            let sp = Array((r.spark ?? []).suffix(10))
             ZStack {
-                Path { p in p.addLines(pts) }.stroke(color.opacity(0.9), lineWidth: 1.5)
-                ForEach(Array(pts.enumerated()), id: \.offset) { i, pt in
-                    Circle().fill(i == pts.count - 1 ? color : Color.black.opacity(0.001))
-                        .overlay(Circle().stroke(color, lineWidth: 1.2))
-                        .frame(width: 5, height: 5).position(pt)
+                Group {
+                    if e.locked { meetLater(e.c) } else {
+                        VStack(alignment: .leading, spacing: 0) {
+                            CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24)).lineLimit(1).minimumScaleFactor(0.6).charFlip(r.total) }
+                            Text(pctText(r.dayChg) + " " + WL.t("오늘")).font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable().charFlip(r.dayChg)
+                        }
+                    }
                 }
+                .charPin(.topLeading, y: 36)
+                if !e.locked && sp.count >= 2 { hill(sp, s.accent).charPin(.bottomLeading) }
+                Rectangle().fill(.white.opacity(0.35)).frame(height: 1).charPin(.bottomLeading, y: 15)
+                // 오른 날 trend_up, 내린 날 trend_down, 갱신 중엔 trend_up 으로 1pt 뛴다
+                let hn = poseOr(e.c, !Store.isReloading && r.dayChg < 0 ? "pose_trend_down" : "pose_trend_up")
+                CharSprite(name: hn, locked: e.locked, height: poseH(hn), shake: false).charHop(-1).charPin(.bottomTrailing)
+                cornerB(e)
             }
         }
+        .speak(speakMoney(e, "char.hill"), kind: "char.hill", money: !e.locked, reload: !e.locked)
+    }
+
+    /// 기둥 10개: 가장 낮은 날 8pt ~ 가장 높은 날 30pt, 오래된 날일수록 옅게, 오늘만 진하게
+    private func hill(_ v: [Double], _ c: Color) -> some View {
+        let lo = v.min() ?? 0, hi = v.max() ?? 1, span = max(hi - lo, 1e-9)
+        return HStack(alignment: .bottom, spacing: 1.5) {
+            ForEach(Array(v.enumerated()), id: \.offset) { i, x in
+                RoundedRectangle(cornerRadius: 1).fill(c)
+                    .opacity(i == v.count - 1 ? 1 : 0.25 + 0.04 * Double(i))
+                    .frame(width: 7.5, height: 8 + 22 * CGFloat((x - lo) / span))
+            }
+        }
+        .widgetAccentable().flipFade()
     }
 }
 
-// MARK: 본전 진행 (작은)
+// MARK: 시안 B ② 본전 진행 · 사다리: 오른쪽 사다리가 차오르고 꼭대기에 깃발, 인물이 옆에서 오른다
 
-struct RecoverCharView: View {
+struct LadderCharView: View {
     let e: CharEntry
     var body: some View {
         StyleReader { dark in
             let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
-            ZStack(alignment: .bottomTrailing) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Text(WL.t("{key}까지", ["key": WL.t(r.keyName)])).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
-                        Spacer(minLength: 0)
-                        if !e.locked { CharReload() }      // ↻ 앱이 써 둔 최신 값으로 다시 그리기
-                    }
-                    if e.locked {
-                        Image(systemName: "lock.fill").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.7)).padding(.vertical, 4)
-                        Text(WL.t("인터미션\n{w}주차에 만나요", ["w": "\(e.c.week)"])).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        Text("\(Int((r.pct * 100).rounded()))%").font(.system(size: 34, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1).charFlip(r.pct)
-                        GeometryReader { g in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(.white.opacity(0.18))
-                                Capsule().fill(s.accent).frame(width: g.size.width * r.pct)
-                            }
+            let p = e.locked ? 0 : min(1, max(0, r.pct))
+            ZStack {
+                VStack(spacing: 0) {
+                    flag(s.accent).offset(x: -4)
+                    ZStack(alignment: .bottom) {
+                        RoundedRectangle(cornerRadius: 2).fill(.white.opacity(0.12))
+                        RoundedRectangle(cornerRadius: 2).fill(s.accent).frame(height: 96 * p).widgetAccentable()
+                        VStack(spacing: 0) {
+                            ForEach(1..<10, id: \.self) { _ in Spacer(minLength: 0); Rectangle().fill(.white.opacity(0.25)).frame(height: 1) }
+                            Spacer(minLength: 0)
                         }
-                        .frame(height: 6).padding(.trailing, 46).flipFade()
                     }
-                    Spacer(minLength: 0)
-                    if !e.locked {
-                        let d = (r.pct - r.pctYesterday) * 100
-                        CharMoney { h in
-                            (Text(WL.t("남은 {v} · 어제 ", ["v": h ? charHidden : eokMan(r.remain)])).foregroundStyle(.white.opacity(0.75))
-                             + Text((d >= 0 ? "+" : "") + String(format: "%.1f%%p", d)).foregroundStyle(d >= 0 ? upC : dnC))
-                                .font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8).charFlip(r.remain)
+                    .frame(width: 12, height: 96)
+                }
+                .flipFade()
+                .charPin(.bottomTrailing, x: 18)
+                // 오른 날 push_up, 내린 날 push_down, 갱신 중엔 push_up 으로 1pt 앞으로
+                let ln = poseOr(e.c, !Store.isReloading && r.pct < r.pctYesterday ? "pose_push_down" : "pose_push_up", else: "w_\(e.c.id)_raise")
+                CharSprite(name: ln, locked: e.locked, height: poseH(ln), shake: false)
+                    .offset(x: Store.isReloading ? 1 : 0).animation(.interpolatingSpring(stiffness: 180, damping: 7), value: Store.isReloading)
+                    .charPin(.bottomTrailing, x: 31.5)
+                Group {
+                    if e.locked { meetLater(e.c) } else {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(Int((r.pct * 100).rounded()))%").font(.system(size: 34)).lineLimit(1).minimumScaleFactor(0.6).charFlip(r.pct)
+                            Text(WL.t("{key}까지", ["key": WL.t(r.keyName)])).font(.system(size: 10, weight: .semibold)).opacity(0.6)
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                CharSprite(name: "w_\(e.c.id)_raise", locked: e.locked, height: 72)
-                    .offset(x: 8, y: -10)
-            }
-        }
-        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))"
-               : "\(Catalog.name("char.recover")). \(e.c.title), " + WL.t("{key}까지 {p}%, 남은 금액 {v}", ["key": WL.t(e.r.keyName), "p": "\(Int((e.r.pct * 100).rounded()))", "v": Store.isHidden("char.recover") ? WL.t("숨김") : eokMan(e.r.remain)]),
-               kind: "char.recover", money: !e.locked, reload: !e.locked)
-    }
-}
-
-// MARK: 블록 (작은): 10×10 칸 + 10층 탑, 인물이 둘 사이에서 팔을 벌려 잇는다
-
-struct BlockCharView: View {
-    let e: CharEntry
-    var body: some View {
-        StyleReader { dark in
-            let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
-            let block = min(10, r.cells / 100 + 1), fill = r.cells >= 1000 ? 100 : r.cells % 100
-            let cell: CGFloat = 7, gap: CGFloat = 1.6, grid = cell * 10 + gap * 9
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 4) {
-                    Text(e.locked ? lockLine(e.c) : r.badgeToday ?? WL.t("{n}번째 블록 채우는 중", ["n": "\(block)"])).font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(!e.locked && r.badgeToday != nil ? s.accent : s.heading).lineLimit(1).minimumScaleFactor(0.8)
-                    Spacer(minLength: 0)
-                    if !e.locked { CharReload() }
-                }
-                ZStack(alignment: .bottomLeading) {
-                    HStack(alignment: .bottom, spacing: 0) {
-                        // 10×10: 위에서부터 왼→오로 채운다
-                        VStack(spacing: gap) {
-                            ForEach(0..<10, id: \.self) { row in
-                                HStack(spacing: gap) {
-                                    ForEach(0..<10, id: \.self) { col in
-                                        RoundedRectangle(cornerRadius: 1.2)
-                                            .fill(row * 10 + col < (e.locked ? 0 : fill) ? s.accent : Color.white.opacity(0.13))
-                                            .frame(width: cell, height: cell)
-                                    }
-                                }
-                            }
-                        }
-                        Spacer(minLength: 0)
-                        // 10층 탑: 아래에서부터, 다 채운 블록은 진하게, 지금 블록은 테두리
-                        VStack(spacing: 2) {
-                            ForEach((0..<10).reversed(), id: \.self) { f in
-                                let done = !e.locked && f < block - 1, cur = !e.locked && f == block - 1
-                                RoundedRectangle(cornerRadius: 1.5)
-                                    .fill(done ? s.accent : cur ? s.accent.opacity(0.45) : Color.white.opacity(0.13))
-                                    .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(cur ? s.accent : .clear, lineWidth: 1))
-                                    .frame(width: 16, height: (grid - 18) / 10)
-                            }
-                        }
-                    }
-                    .frame(height: grid)
-                    .flipFade()
-                    // 발은 칸의 맨 아랫줄, 두 팔은 칸과 탑에 닿게
-                    CharSprite(name: "w_\(e.c.id)_spread", locked: e.locked, height: 62)
-                        .offset(y: 9)    // 그림 아래 빈 줄만큼 내려 발을 칸 맨 아랫줄에
-                        .frame(maxWidth: .infinity)
-                        .padding(.leading, grid - 6).padding(.trailing, 10)
-                }
-                Spacer(minLength: 0)
+                .charPin(.topLeading, y: 36)
                 if !e.locked {
-                    let d = r.cells - r.cellsYesterday
-                    (Text("\(fill)").font(.system(size: 20)) + Text(WL.t("/100 · 어제 ")).font(.system(size: 10)).foregroundColor(.white.opacity(0.75))
-                     + Text((d >= 0 ? "+" : "") + "\(d)").font(.system(size: 10)).foregroundColor(d >= 0 ? upC : dnC))
-                        .lineLimit(1).charFlip(Double(fill))
-                } else {
-                    Text(WL.t("앱의 쉼터에서 봐요 ›")).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
+                    let d = (r.pct - r.pctYesterday) * 100
+                    VStack(alignment: .leading, spacing: 2) {
+                        CharMoney { h in Text(WL.t("남은 {v}", ["v": h ? charHidden : eokMan(r.remain)])).font(.system(size: 11)).lineLimit(1).charFlip(r.remain) }
+                        (Text(WL.t("어제 ")).foregroundColor(.white.opacity(0.75))
+                         + Text((d >= 0 ? "+" : "") + String(format: "%.1f%%p", d)).foregroundColor(d >= 0 ? upC : dnC))
+                            .font(.system(size: 10)).lineLimit(1)
+                    }
+                    .charPin(.topLeading, y: 118)
                 }
+                cornerB(e)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))"
-               : "\(Catalog.name("char.block")). \(e.c.title), " + WL.t("1000칸 중 {n}칸, 어제보다 {d}칸", ["n": "\(e.r.cells)", "d": (e.r.cells >= e.r.cellsYesterday ? "+" : "") + "\(e.r.cells - e.r.cellsYesterday)"]),
-               kind: "char.block", money: false, reload: !e.locked)
+        .speak(speakRecover(e, "char.ladder"), kind: "char.ladder", money: !e.locked, reload: !e.locked)
+    }
+
+    /// 깃대(흰색 2pt) + 인물 색 깃발
+    private func flag(_ c: Color) -> some View {
+        ZStack(alignment: .topLeading) {
+            Rectangle().fill(.white).frame(width: 2, height: 16).offset(x: 9)
+            Rectangle().fill(c).frame(width: 9, height: 6)
+        }
+        .frame(width: 12, height: 16, alignment: .topLeading)
     }
 }
 
-// MARK: 오늘의 움직임 (중간)
+// MARK: 시안 B ③ 블록 · 탑 쌓기: 100칸이 한 층, 10층 탑. 쉼터 고양이가 왼쪽 아래에
 
-struct MovesCharView: View {
+struct TowerCharView: View {
+    let e: CharEntry
+    @Environment(\.widgetRenderingMode) private var mode
+    var body: some View {
+        StyleReader { dark in
+            let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
+            let floor = min(10, r.cells / 100 + 1), fill = r.cells >= 1000 ? 100 : r.cells % 100, d = r.cells - r.cellsYesterday
+            ZStack {
+                Group {
+                    if e.locked { meetLater(e.c) } else {
+                        VStack(alignment: .leading, spacing: 5) {
+                            (Text("\(floor)").font(.system(size: 30)) + Text(" " + WL.t("층")).font(.system(size: 13, weight: .semibold)).foregroundColor(.white.opacity(0.8)))
+                                .lineLimit(1).charFlip(Double(floor))
+                            (Text("\(fill)/100") + Text(WL.t(" · 어제 ")).foregroundColor(.white.opacity(0.75))
+                             + Text((d >= 0 ? "+" : "") + "\(d)").foregroundColor(d >= 0 ? upC : dnC))
+                                .font(.system(size: 10)).lineLimit(1)
+                        }
+                    }
+                }
+                .charPin(.topLeading)
+                tower(floor, fill, s.accent).frame(width: 56).charPin(.bottomTrailing, y: 17.5)
+                // 칸이 는 날 block_up, 준 날 block_down, 갱신 중엔 block_refresh2 (블록을 탑 위에)
+                let tn = poseOr(e.c, Store.isReloading ? "pose_block_refresh2" : d < 0 ? "pose_block_down" : "pose_block_up", else: "w_\(e.c.id)_spread")
+                CharSprite(name: tn, locked: e.locked, height: poseH(tn), shake: false).charPin(.bottomTrailing, x: 67.5)
+                if !e.locked && mode != .accented {
+                    Image("w_cat").interpolation(.none).resizable().frame(width: 16, height: 16).accessibilityHidden(true).charPin(.bottomLeading, x: 20)
+                }
+                cornerB(e)
+            }
+        }
+        .speak(speakBlock(e, "char.tower"), kind: "char.tower", money: false, reload: !e.locked)
+    }
+
+    /// 다 쌓은 층은 진하게, 지금 층은 10칸(한 칸 = 10칸), 남은 층은 점선
+    private func tower(_ floor: Int, _ fill: Int, _ c: Color) -> some View {
+        VStack(spacing: 1.5) {
+            ForEach((0..<10).reversed(), id: \.self) { f in
+                let done = !e.locked && f < floor - 1, cur = !e.locked && f == floor - 1
+                Group {
+                    if done { RoundedRectangle(cornerRadius: 1.5).fill(c) }
+                    else if cur {
+                        HStack(spacing: 1.1) {
+                            ForEach(0..<10, id: \.self) { k in RoundedRectangle(cornerRadius: 1).fill(k < fill / 10 ? c : Color.white.opacity(0.15)) }
+                        }
+                    } else {
+                        RoundedRectangle(cornerRadius: 1.5).strokeBorder(Color.white.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                    }
+                }
+                .frame(height: 9)
+            }
+        }
+        .widgetAccentable().flipFade()
+    }
+}
+
+// MARK: 시안 B ④ 오늘의 움직임 · 전광판: 총자산·다음 일정, 아래에 종목 2줄 + '외 n개' 줄, 인물은 오른쪽 아래
+
+struct BoardCharView: View {
+    let e: CharEntry
+    @Environment(\.widgetRenderingMode) private var mode
+    var body: some View {
+        StyleReader { dark in
+            let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
+            ZStack {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(WL.t("오늘의 움직임")).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1).padding(.bottom, 12)
+                    if e.locked {
+                        Text(lockLine(e.c)).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true).frame(width: 84, alignment: .leading)
+                    } else {
+                        CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 15)).lineLimit(1).minimumScaleFactor(0.7).charFlip(r.total) }
+                        Text(pctText(r.dayChg) + " " + WL.t("오늘")).font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(r.dayChg >= 0 ? upC : dnC).lineLimit(1).widgetAccentable().charFlip(r.dayChg)
+                        Text(WL.t("다음: ") + (r.next ?? WL.t("예정된 일정 없음"))).font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.8)).lineLimit(1).padding(.top, 3)
+                    }
+                }
+                .charPin(.topLeading)
+                // 오른 날 point_up, 내린 날 point_down, 갱신 중엔 point_refresh1 → point_up → point_refresh3
+                let spin = ["pose_point_refresh1", "pose_point_up", "pose_point_refresh3"][e.frame % 3]
+                let bn = poseOr(e.c, Store.isReloading ? spin : r.dayChg < 0 ? "pose_point_down" : "pose_point_up", else: poseOr(e.c, "pose_point_up"))
+                CharSprite(name: bn, locked: e.locked, height: poseH(bn), shake: false)
+                    .charPin(.bottomTrailing, x: 6)
+                if !e.locked && !r.tiles.isEmpty { rows(r).frame(width: 92).charPin(.bottomLeading, y: 18) }
+                cornerB(e)
+            }
+        }
+        .speak(speakMoney(e, "char.board"), kind: "char.board", money: !e.locked, reload: !e.locked)
+    }
+
+    private func rows(_ r: WReward) -> some View {
+        let all = r.tiles.sorted { $0.w > $1.w }
+        let top = Array(all.prefix(2)), rest = Array(all.dropFirst(2))
+        let w = rest.reduce(0) { $0 + $1.w }, rc = w > 0 ? rest.reduce(0) { $0 + $1.w * $1.c } / w : 0
+        return VStack(spacing: 2) {
+            ForEach(Array(top.enumerated()), id: \.offset) { _, t in row(t.t, t.c) }
+            if !rest.isEmpty { row(WL.t("외 {n}개", ["n": "\(rest.count)"]), rc) }
+        }
+        .flipFade()
+    }
+
+    /// 한 줄: 점 · 이름(길면 말줄임) · 등락
+    private func row(_ name: String, _ c: Double) -> some View {
+        let col: Color = mode == .accented ? .white : c >= 0 ? upC : dnC
+        return HStack(spacing: 4) {
+            Circle().fill(col).frame(width: 4, height: 4)
+            Text(name).font(.system(size: 9, weight: .semibold)).lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
+            Text(pctText(c)).font(.system(size: 9.5, weight: .semibold)).monospacedDigit().foregroundStyle(col).lineLimit(1).fixedSize()
+                .widgetAccentable().charFlip(c)
+        }
+        .padding(.horizontal, 4).frame(height: 14)
+        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
+    }
+}
+
+// MARK: 새 시안 ① 자산 추이 · 키 재기: 문틀 기둥에 지난 6거래일 자산을 금으로, 오늘 금은 인물 머리 높이에 빨갛게
+
+struct HeightCharView: View {
+    let e: CharEntry
+    var body: some View {
+        StyleReader { _ in
+            let r = e.r
+            ZStack {
+                HeightMarks(v: e.locked ? [] : Array((r.spark ?? []).suffix(7)), today: e.date).charBleed()
+                let pn = poseOr(e.c, Store.isReloading ? "pose_measure_up" : r.dayChg < 0 ? "pose_measure_down" : "pose_measure_base")
+                CharSprite(name: pn, locked: e.locked, height: poseH(pn), shake: false)
+                    .charHop(-4).charPin(.bottomLeading, x: 60, y: 10)
+                Group {
+                    if e.locked { meetLater(e.c) } else {
+                        VStack(alignment: .leading, spacing: 4) {
+                            CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24)).lineLimit(1).minimumScaleFactor(0.6).frame(maxWidth: 92, alignment: .leading).charFlip(r.total) }
+                            (Text(pctText(r.dayChg)).foregroundColor(r.dayChg >= 0 ? upC : dnC) + Text(" " + WL.t("오늘")))
+                                .font(.system(size: 11, weight: .semibold)).lineLimit(1).widgetAccentable().charFlip(r.dayChg)
+                        }
+                    }
+                }
+                .charPin(.topLeading, y: 40)
+                cornerB(e)
+            }
+        }
+        .speak(speakMoney(e, "char.height"), kind: "char.height", money: !e.locked, reload: !e.locked)
+    }
+}
+
+/// 기둥은 오른쪽 가장자리에서 46~56pt, 오늘 금은 인물 머리(아래에서 74pt). 가장 멀리 간 날이 머리에서 54pt (2% 안쪽 차이는 덜 벌린다)
+/// 금액이 줄면 지난 날 금이 머리 위로 올라간다
+private struct HeightMarks: View {
+    let v: [Double], today: Date
+    @Environment(\.widgetRenderingMode) private var mode
+    var body: some View {
+        Canvas { ctx, size in
+            let mono = mode != .fullColor
+            let px = size.width - 56, head = size.height - 74
+            var ys: [CGFloat] = []
+            if let now = v.last, v.count >= 2 {
+                let past = v.dropLast(), dev = max(past.map { abs($0 - now) }.max() ?? 0, abs(now) * 0.02, 1e-9)
+                ys = past.map { min(size.height - 6, max(44, head + CGFloat((now - $0) / dev) * 54)) }
+            }
+            let top = min(head - 8, (ys.min() ?? head) - 8)
+            ctx.fill(Path(CGRect(x: px, y: top, width: 10, height: size.height - top)), with: .color(mono ? .white.opacity(0.22) : rgb(0xd9a877)))
+            if !mono { ctx.fill(Path(CGRect(x: px, y: top, width: 2, height: size.height - top)), with: .color(rgb(0xf0c89a))) }
+            var used: [CGFloat] = v.isEmpty ? [] : [head]
+            for (i, y) in ys.enumerated().reversed() {   // 최근 날부터: 날짜 글자가 겹치면 오래된 날 글자를 뺀다
+                var l = Path(); l.move(to: CGPoint(x: px - 2, y: y)); l.addLine(to: CGPoint(x: px + 12, y: y))
+                ctx.stroke(l, with: .color(mono ? .white.opacity(0.7) : rgb(0x4a3426)), lineWidth: 1.5)
+                guard used.allSatisfy({ abs($0 - y) >= 9 }) else { continue }
+                used.append(y)
+                ctx.draw(Text(tradeDay(back: ys.count - i, from: today)).font(.system(size: 8)).foregroundColor(.white.opacity(0.7)),
+                         at: CGPoint(x: px + 16, y: y), anchor: .leading)
+            }
+            if !v.isEmpty {
+                var l = Path(); l.move(to: CGPoint(x: px - 46, y: head)); l.addLine(to: CGPoint(x: px + 12, y: head))
+                ctx.stroke(l, with: .color(upC), lineWidth: 2)
+                ctx.draw(Text(WL.t("오늘")).font(.system(size: 8, weight: .bold)).foregroundColor(upC), at: CGPoint(x: px + 16, y: head), anchor: .leading)
+            }
+        }
+        .flipFade()
+    }
+}
+
+/// n 거래일 전 'M/d' (주말은 건너뛴다. 공휴일은 모른다)
+private func tradeDay(back n: Int, from d: Date) -> String {
+    let cal = Calendar.current
+    var x = d, k = 0
+    while k < n { x = cal.date(byAdding: .day, value: -1, to: x)!; if !cal.isDateInWeekend(x) { k += 1 } }
+    let c = cal.dateComponents([.month, .day], from: x)
+    return "\(c.month ?? 0)/\(c.day ?? 0)"
+}
+
+// MARK: 새 시안 ② 본전 진행 · 퍼즐: 5×4=20조각(1조각 5%), 다 맞추면 깃발 그림. 인물이 다음 조각을 든다
+
+struct PuzzleCharView: View {
     let e: CharEntry
     var body: some View {
         StyleReader { dark in
             let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
-            HStack(alignment: .top, spacing: 8) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(WL.t("오늘의 움직임")).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
-                        if !e.locked { CharReload() }
+            let n = min(20, max(0, Int((r.pct * 20 + 1e-9).rounded(.down))))
+            ZStack {
+                if !e.locked { PuzzleBoard(n: n, c: s.accent).charBleed() }
+                let pn = poseOr(e.c, Store.isReloading ? "pose_puzzle_refresh" : "pose_puzzle_base")
+                CharSprite(name: pn, locked: e.locked, height: poseH(pn), shake: false)
+                    .charHop(3).charPin(.bottomTrailing, x: 8, y: 26)
+                Text(WL.t("{key}까지", ["key": WL.t(r.keyName)])).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                    .lineLimit(1).frame(height: 20).charPin(.topLeading)
+                Group {
+                    if e.locked { meetLater(e.c) } else {
+                        Text("\(Int((r.pct * 100).rounded()))%").font(.system(size: 34)).lineLimit(1).minimumScaleFactor(0.6).charFlip(r.pct)
                     }
-                    HStack(alignment: .top, spacing: 4) {
-                        CharSprite(name: "w_\(e.c.id)", locked: e.locked, height: 92).frame(width: 66)
-                            .overlay(alignment: .bottomTrailing) { if !e.locked, let it = WItem.shown(r) { CharItem(id: it).offset(x: 6) } }
-                        Text(e.locked ? WL.t("인터미션 {w}주차에\n만나요", ["w": "\(e.c.week)"]) : r.newsToday ?? e.c.line(r))
-                            .font(.system(size: 11, weight: .medium)).lineLimit(3).fixedSize(horizontal: false, vertical: true)
-                            .padding(.horizontal, 8).padding(.vertical, 6)
-                            .background(s.bubbleFill, in: RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(s.bubbleStroke, lineWidth: 1))
-                            .padding(.top, 4).flipFade()
-                    }
-                    Spacer(minLength: 0)
-                    Text(WL.t("다음: ") + (r.next ?? WL.t("예정된 일정 없음"))).font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.8)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                VStack(alignment: .trailing, spacing: 6) {
-                    CharMoney { h in
-                        (Text(e.locked ? "" : (h ? charHidden : eokMan(r.total)) + " ").foregroundColor(.white)
-                         + Text(e.locked ? " " : Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100)).foregroundColor(r.dayChg >= 0 ? upC : dnC).bold())
-                            .font(.system(size: 12, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8).charFlip(r.total)
+                .charPin(.topLeading, y: 38)
+                if !e.locked {
+                    let d = (r.pct - r.pctYesterday) * 100
+                    HStack(spacing: 0) {
+                        CharMoney { h in Text(WL.t("남은 {v}", ["v": h ? charHidden : eokMan(r.remain)])).charFlip(r.remain) }
+                        Text(WL.t(" · 어제 "))
+                        Text((d >= 0 ? "+" : "") + String(format: "%.1f%%p", d)).foregroundStyle(d >= 0 ? upC : dnC)
                     }
-                    tiles(r, dark: dark).flipFade()
+                    .font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
+                    .charPin(.bottomLeading)
                 }
-                .frame(width: 138)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))"
-               : "\(Catalog.name("char.moves")). " + WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": Store.isHidden("char.moves") ? WL.t("숨김") : eokMan(e.r.total), "p": String(format: "%.1f%%", abs(e.r.dayChg) * 100), "dir": WL.dir(e.r.dayChg)])
-                 + ". \(e.c.title): \(e.r.newsToday ?? e.c.line(e.r))",
-               kind: "char.moves", money: !e.locked, reload: !e.locked)
-    }
-
-    /// 종목 칸: 비중이 큰 3개까지 칸으로 (넓이는 비중, 오르면 빨강, 내리면 파랑).
-    /// 4개 이상이면 나머지는 아래 한 줄에 '외 n개' + 종목마다 점 하나(오름 ●, 내림 ○) + 합친 등락
-    private func tiles(_ r: WReward, dark: Bool) -> some View {
-        let all = r.tiles.isEmpty ? [WReward.Tile(t: "-", w: 1, c: 0)] : r.tiles.sorted { $0.w > $1.w }
-        let top = Array(all.prefix(3)), rest = Array(all.dropFirst(3))
-        return VStack(spacing: 5) {
-            tileRow(top, dark: dark)
-            if !rest.isEmpty && !e.locked { restStrip(rest, dark: dark).frame(height: 22) }
-        }
-    }
-
-    @Environment(\.widgetRenderingMode) private var mode
-    /// 투명·틴트 홈 화면: 시스템이 색을 지우고 한 색으로 칠하므로, 불투명한 칸은 흰 덩어리가 된다.
-    /// 그때는 칸을 옅게 두고 등락 글자만 틴트 색(강조)으로, 오름·내림은 ▲▼와 점 모양으로 가른다
-    private var tinted: Bool { mode == .accented }
-
-    private func tileRow(_ ts: [WReward.Tile], dark: Bool) -> some View {
-        GeometryReader { g in
-            let sumW = ts.reduce(0) { $0 + max(0.2, $1.w) }, gap: CGFloat = 5
-            let avail = g.size.width - gap * CGFloat(ts.count - 1)
-            HStack(spacing: gap) {
-                ForEach(Array(ts.enumerated()), id: \.offset) { _, t in
-                    let up = t.c >= 0
-                    let fillC: Color = e.locked ? .white.opacity(0.1)
-                        : tinted ? .white.opacity(up ? 0.16 : 0.08)
-                        : dark ? (up ? Color(red: 0.49, green: 0.21, blue: 0.21) : Color(red: 0.2, green: 0.26, blue: 0.36))
-                        : (up ? Color(red: 0.95, green: 0.35, blue: 0.38).opacity(0.55) : Color(red: 0.42, green: 0.58, blue: 0.95).opacity(0.45))
-                    VStack(alignment: .leading) {
-                        Text(e.locked ? "" : t.t).font(.system(size: 11, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
-                        Spacer(minLength: 0)
-                        if !e.locked {
-                            Text(Fmt.arrow(t.c) + String(format: "%.1f%%", abs(t.c) * 100))
-                                .font(.system(size: max(10, min(20, 26 * max(0.2, t.w) / sumW * 1.6)), weight: tinted ? .semibold : .regular))
-                                .lineLimit(1).minimumScaleFactor(0.6)
-                                .widgetAccentable().charFlip(t.c)
-                        }
-                    }
-                    .padding(6)
-                    .frame(width: avail * max(0.2, t.w) / sumW, height: g.size.height, alignment: .leading)
-                    .background(fillC, in: RoundedRectangle(cornerRadius: 8))
-                }
+                cornerB(e)
             }
         }
-    }
-
-    private func restStrip(_ rest: [WReward.Tile], dark: Bool) -> some View {
-        let w = rest.reduce(0) { $0 + $1.w }
-        let c = w > 0 ? rest.reduce(0) { $0 + $1.w * $1.c } / w : 0      // 비중으로 합친 등락
-        let dots = Array(rest.prefix(8))
-        return HStack(spacing: 4) {
-            Text(WL.t("외 {n}개", ["n": "\(rest.count)"])).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.85)).fixedSize()
-            HStack(spacing: 2.5) {
-                ForEach(Array(dots.enumerated()), id: \.offset) { _, t in
-                    let up = t.c >= 0
-                    Circle().fill(tinted ? (up ? Color.white : .clear) : (up ? upC : dnC))
-                        .overlay(Circle().stroke(Color.white.opacity(tinted ? 0.9 : 0), lineWidth: 1))
-                        .frame(width: 5, height: 5)
-                }
-                if rest.count > dots.count { Text("…").font(.system(size: 8)).foregroundStyle(.white.opacity(0.6)) }
-            }
-            .widgetAccentable()
-            Spacer(minLength: 2)
-            Text(Fmt.arrow(c) + String(format: "%.1f%%", abs(c) * 100)).font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(tinted ? Color.white : c >= 0 ? upC : dnC).lineLimit(1).fixedSize()
-                .widgetAccentable()
-        }
-        .padding(.horizontal, 6)
-        .frame(maxHeight: .infinity)
-        .background(Color.white.opacity(tinted ? 0.08 : dark ? 0.07 : 0.12), in: RoundedRectangle(cornerRadius: 7))
-        .accessibilityLabel(WL.t("그 외 {n}개 종목, 합쳐서 {p} {dir}", ["n": "\(rest.count)", "p": String(format: "%.1f%%", abs(c) * 100), "dir": WL.dir(c)]))
+        .speak(speakRecover(e, "char.puzzle"), kind: "char.puzzle", money: !e.locked, reload: !e.locked)
     }
 }
 
-// MARK: 하루 한눈에 (큰): 총자산 · 최근 흐름 · 인물과 한마디 · 본전 · 블록 · '몇 분 전 · 출처'
+/// 조각 하나: 오른쪽·위에 둥근 이음새. 시안 170pt 좌표
+private func puzzlePiece(_ x: CGFloat, _ y: CGFloat, right: Bool, top: Bool) -> Path {
+    let w: CGFloat = 12.5, r: CGFloat = 2.2
+    var p = Path()
+    p.move(to: CGPoint(x: x, y: y + w))
+    p.addLine(to: CGPoint(x: x, y: y))
+    if top { p.addLine(to: CGPoint(x: x + w / 2 - r, y: y)); p.addArc(center: CGPoint(x: x + w / 2, y: y), radius: r, startAngle: .degrees(180), endAngle: .degrees(360), clockwise: false) }
+    p.addLine(to: CGPoint(x: x + w, y: y))
+    if right { p.addLine(to: CGPoint(x: x + w, y: y + w / 2 - r)); p.addArc(center: CGPoint(x: x + w, y: y + w / 2), radius: r, startAngle: .degrees(-90), endAngle: .degrees(90), clockwise: false) }
+    p.addLine(to: CGPoint(x: x + w, y: y + w))
+    p.closeSubpath()
+    return p
+}
 
-struct LargeCharView: View {
+/// 아래 줄 왼쪽부터 맞춘다. 맞춘 조각에만 깃발 그림이 보이고, 다음 조각은 인물 손 위에 (위젯이 작으면 같이 줄인다)
+private struct PuzzleBoard: View {
+    let n: Int, c: Color
+    @Environment(\.widgetRenderingMode) private var mode
+    var body: some View {
+        Canvas { ctx, size in
+            let mono = mode != .fullColor, fc: Color = mono ? .white.opacity(0.35) : c
+            let k = min(size.width, size.height) / 170
+            ctx.scaleBy(x: k, y: k)
+            let w: CGFloat = 12.5, y0: CGFloat = 134 - 4 * w
+            var done = Path(), pieces: [Path] = []
+            for i in 0..<20 {
+                let col = i % 5, row = i / 5   // row 0 = 맨 아래 줄
+                let p = puzzlePiece(16 + CGFloat(col) * w, y0 + CGFloat(3 - row) * w, right: col < 4, top: row < 3)
+                if i < n { done.addPath(p); pieces.append(p) }
+                else { ctx.stroke(p, with: .color(.white.opacity(mono ? 0.25 : 0.4)), style: StrokeStyle(lineWidth: 1, dash: [2, 1.5])) }
+            }
+            ctx.fill(done, with: .color(fc))
+            var flag = ctx
+            flag.clip(to: done)
+            // 떠오르는 해: 지평선 위 해 + 햇살, 아래 물에 비친 빛
+            let sun: Color = mono ? .white.opacity(0.9) : rgb(0xffb547), cx: CGFloat = 47.25, hy: CGFloat = 114
+            flag.fill(Path(ellipseIn: CGRect(x: cx - 12, y: hy - 12, width: 24, height: 24)), with: .color(sun))
+            for a in stride(from: 30.0, through: 150.0, by: 30.0) {
+                let r = a * .pi / 180, dx = CGFloat(cos(r)), dy = CGFloat(sin(r))
+                var ray = Path(); ray.move(to: CGPoint(x: cx + 16 * dx, y: hy - 16 * dy)); ray.addLine(to: CGPoint(x: cx + 24 * dx, y: hy - 24 * dy))
+                flag.stroke(ray, with: .color(sun), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            }
+            flag.fill(Path(CGRect(x: 16, y: hy, width: 62.5, height: 134 - hy)), with: .color(fc))
+            flag.fill(Path(CGRect(x: 16, y: hy - 0.75, width: 62.5, height: 1.5)), with: .color(.white))
+            for (i, bw) in [18.0, 11.0, 5.0].enumerated() {
+                flag.fill(Path(roundedRect: CGRect(x: cx - bw / 2, y: hy + 4 + CGFloat(i) * 5, width: bw, height: 1.8), cornerRadius: 0.9), with: .color(sun))
+            }
+            for p in pieces { ctx.stroke(p, with: .color(.black.opacity(0.3)), lineWidth: 0.8) }
+            if n < 20 {
+                let p = puzzlePiece(146, 64, right: true, top: false)
+                ctx.fill(p, with: .color(fc)); ctx.stroke(p, with: .color(.white), lineWidth: 1)
+            }
+        }
+        .flipFade()
+    }
+}
+
+// MARK: 새 시안 ③ 블록 · 꽃밭: 100칸 밭에 블록 1개 = 꽃 1송이, 어제 늘어난 칸은 봉오리. 밭은 10번째까지
+
+struct GardenCharView: View {
     let e: CharEntry
     var body: some View {
         StyleReader { dark in
-            let s = CharStyle(c: e.c, locked: e.locked, dark: dark)
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Text(e.locked ? WL.t("인물 · 하루 한눈에") : e.c.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1)
-                    Spacer(minLength: 0)
-                    if !e.locked { CharReload() }
+            let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
+            let g = min(10, r.cells / 100 + 1), fill = r.cells >= 1000 ? 100 : r.cells % 100
+            let gy = min(10, r.cellsYesterday / 100 + 1), fy = gy == g ? (r.cellsYesterday >= 1000 ? 100 : r.cellsYesterday % 100) : 0
+            let d = r.cells - r.cellsYesterday
+            ZStack {
+                if !e.locked { GardenBed(fill: fill, bloom: min(fill, fy), garden: g, c: s.accent).charBleed() }
+                let pn = poseOr(e.c, Store.isReloading ? "pose_garden_refresh" : "pose_garden_base")
+                CharSprite(name: pn, locked: e.locked, height: poseH(pn), shake: false)
+                    .charPin(.bottomTrailing, x: 8, y: 10)
+                Text(WL.t("{n}번째 꽃밭", ["n": "\(g)"])).font(.system(size: 11, weight: .semibold)).foregroundStyle(s.heading)
+                    .lineLimit(1).frame(height: 20).charPin(.topLeading)
+                if e.locked { meetLater(e.c).charPin(.topLeading, y: 40) } else {
+                    (Text("\(fill)").font(.system(size: 20))
+                     + Text("/100" + WL.t(" · 어제 ")).font(.system(size: 10)).foregroundColor(.white.opacity(0.75))
+                     + Text((d >= 0 ? "+" : "") + "\(d)").font(.system(size: 10)).foregroundColor(d >= 0 ? upC : dnC))
+                        .lineLimit(1).charFlip(Double(fill)).charPin(.bottomLeading)
                 }
-                if e.locked { closed } else { open(s, dark: dark) }
+                cornerB(e)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))" : spoken, kind: "char.large", money: !e.locked, reload: !e.locked)
+        .speak(speakBlock(e, "char.garden"), kind: "char.garden", money: false, reload: !e.locked)
+    }
+}
+
+/// 아래 줄 왼쪽부터 핀다. 오른쪽 위에 밭 탭: 다 핀 밭(최근 3개까지) + 테두리 친 지금 밭. 물뿌리개는 밭 오른쪽 아래
+private struct GardenBed: View {
+    let fill: Int, bloom: Int, garden: Int, c: Color
+    @Environment(\.widgetRenderingMode) private var mode
+    var body: some View {
+        Canvas { ctx, size in
+            let mono = mode != .fullColor
+            let k = min(size.width, size.height) / 170
+            ctx.scaleBy(x: k, y: k)
+            let dirt = mono ? GraphicsContext.Shading.color(.white.opacity(0.15)) : GraphicsContext.Shading.color(rgb(0x5a3a28)), leaf = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0x7bc46a))
+            let petal = mono ? GraphicsContext.Shading.color(.white.opacity(0.95)) : GraphicsContext.Shading.color(rgb(0xff9fb4)), core = mono ? GraphicsContext.Shading.color(.white.opacity(0)) : GraphicsContext.Shading.color(rgb(0xffe27a))
+            for i in 0..<100 {
+                let x = 16 + CGFloat(i % 10) * 8.6, y = 42 + CGFloat(9 - i / 10) * 8.6
+                ctx.fill(Path(roundedRect: CGRect(x: x, y: y, width: 7, height: 7), cornerRadius: 1.2), with: dirt)
+                if i < bloom {
+                    ctx.fill(Path(CGRect(x: x + 3, y: y + 4, width: 1, height: 3)), with: leaf)
+                    ctx.fill(Path(roundedRect: CGRect(x: x + 1.5, y: y + 1, width: 4, height: 3.4), cornerRadius: 1), with: petal)
+                    ctx.fill(Path(CGRect(x: x + 3, y: y + 2, width: 1, height: 1)), with: core)
+                } else if i < fill {
+                    ctx.fill(Path(CGRect(x: x + 3, y: y + 3.5, width: 1, height: 3.5)), with: leaf)
+                    ctx.fill(Path(ellipseIn: CGRect(x: x + 2.5, y: y + 2, width: 2, height: 2)), with: leaf)
+                }
+            }
+            for j in 0..<min(3, garden - 1) {
+                let x = 132 - CGFloat(j) * 12
+                ctx.fill(Path(roundedRect: CGRect(x: x, y: 44, width: 9, height: 9), cornerRadius: 2), with: petal)
+                ctx.fill(Path(CGRect(x: x + 3, y: 47, width: 3, height: 3)), with: core)
+            }
+            let cur = CGRect(x: 144.5, y: 43.5, width: 10, height: 10)
+            ctx.fill(Path(roundedRect: cur, cornerRadius: 2), with: dirt)
+            ctx.stroke(Path(roundedRect: cur, cornerRadius: 2), with: .color(c), lineWidth: 1.5)
+            ctx.draw(Text("\(garden)").font(.system(size: 7, weight: .bold)).foregroundColor(c), at: CGPoint(x: cur.midX, y: cur.midY))
+            let can = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0x8fb7d9)), drop = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0xbfe3ff))
+            ctx.fill(Path(roundedRect: CGRect(x: 104, y: 106, width: 9, height: 7), cornerRadius: 1), with: can)
+            var spout = Path(); spout.move(to: CGPoint(x: 104.5, y: 107)); spout.addLine(to: CGPoint(x: 100, y: 104.5))
+            ctx.stroke(spout, with: can, lineWidth: 2)
+            ctx.fill(Path(ellipseIn: CGRect(x: 97.2, y: 108.2, width: 1.6, height: 1.6)), with: drop)
+            ctx.fill(Path(ellipseIn: CGRect(x: 95.2, y: 111.2, width: 1.6, height: 1.6)), with: drop)
+        }
+        .flipFade()
+    }
+}
+
+// MARK: 새 시안 ④ 오늘의 움직임 · 줄다리기: 왼쪽 내린 종목 팀, 오른쪽 오른 종목 팀. 리본이 오늘 등락만큼 끌려가고 인물은 심판
+
+struct TugCharView: View {
+    let e: CharEntry
+    @Environment(\.widgetRenderingMode) private var mode
+    var body: some View {
+        StyleReader { dark in
+            let s = CharStyle(c: e.c, locked: e.locked, dark: dark), r = e.r
+            ZStack {
+                TugRope(chg: e.locked ? 0 : r.dayChg).charBleed()
+                if !e.locked {
+                    team(r.tiles.filter { $0.c < 0 }, up: false).charPin(.topLeading, y: 64)
+                    team(r.tiles.filter { $0.c > 0 }, up: true).charPin(.topTrailing, x: 4, y: 64)
+                }
+                let pn = poseOr(e.c, Store.isReloading ? "pose_tug_refresh" : abs(r.dayChg) < 0.0005 ? "pose_tug_tie" : r.dayChg > 0 ? "pose_tug_right" : "pose_tug_left")
+                CharSprite(name: pn,
+                           locked: e.locked, height: poseH(pn), shake: false).charPin(.bottomLeading, x: 44, y: 8)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(WL.t("오늘의 움직임")).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1).frame(height: 20)
+                    Text(e.locked ? lockLine(e.c) : WL.t("다음: ") + (r.next ?? WL.t("예정된 일정 없음"))).font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.8)).lineLimit(1).padding(.top, 4)
+                }
+                .charPin(.topLeading)
+                if !e.locked {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 12)).lineLimit(1).charFlip(r.total) }
+                        Text(pctText(r.dayChg) + " " + WL.t("오늘")).font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(r.dayChg >= 0 ? upC : dnC).lineLimit(1).widgetAccentable().charFlip(r.dayChg)
+                    }
+                    .charPin(.bottomTrailing, x: 12)
+                }
+                cornerB(e)
+            }
+        }
+        .speak(speakMoney(e, "char.tug"), kind: "char.tug", money: !e.locked, reload: !e.locked)
     }
 
-    private var spoken: String {
-        let r = e.r, hide = Store.isHidden("char.large")
-        let parts = [
-            WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": hide ? WL.t("숨김") : eokMan(r.total), "p": String(format: "%.1f%%", abs(r.dayChg) * 100), "dir": WL.dir(r.dayChg)]),
-            WL.t("{key}까지 {p}%, 남은 금액 {v}", ["key": WL.t(r.keyName), "p": "\(Int((r.pct * 100).rounded()))", "v": hide ? WL.t("숨김") : eokMan(r.remain)]),
-            WL.t("1000칸 중 {n}칸, 어제보다 {d}칸", ["n": "\(r.cells)", "d": (r.cells >= r.cellsYesterday ? "+" : "") + "\(r.cells - r.cellsYesterday)"]),
-            "\(e.c.title): \(r.newsToday ?? e.c.line(r))",
-            Fresh.label(e.at, e.feed, now: e.date),
-        ]
-        return "\(Catalog.name("char.large")). " + parts.joined(separator: ". ")
+    /// 한 팀: 비중 큰 종목 하나 + 나머지는 '외 n' 한 칸
+    private func team(_ t: [WReward.Tile], up: Bool) -> some View {
+        let all = t.sorted { $0.w > $1.w }, rest = Array(all.dropFirst())
+        let w = rest.reduce(0) { $0 + $1.w }, rc = w > 0 ? rest.reduce(0) { $0 + $1.w * $1.c } / w : 0
+        return HStack(spacing: 2) {
+            if let top = all.first { block(top.t, top.c, width: 38, up: up) }
+            if !rest.isEmpty { block(WL.t("외 {n}", ["n": "\(rest.count)"]), rc, width: 26, up: up) }
+        }
+        .flipFade()
     }
 
-    private var closed: some View {
-        VStack(spacing: 10) {
+    private func block(_ name: String, _ c: Double, width: CGFloat, up: Bool) -> some View {
+        let fill: Color = mode == .accented ? .white.opacity(0.2)
+            : up ? Color(red: 0.95, green: 0.35, blue: 0.38).opacity(0.55) : Color(red: 0.42, green: 0.58, blue: 0.95).opacity(0.6)
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(name).font(.system(size: 8, weight: .semibold)).lineLimit(1).truncationMode(.tail)
             Spacer(minLength: 0)
-            CharSprite(name: "w_\(e.c.id)", locked: true, height: 150)
-            Text(lockLine(e.c)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
-            Text(WL.t("앱의 쉼터에서 봐요 ›")).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
-            Spacer(minLength: 0)
+            Text(pctText(c)).font(.system(size: 9)).lineLimit(1).minimumScaleFactor(0.7).charFlip(c)
         }
-        .frame(maxWidth: .infinity)
+        .padding(3).frame(width: width, height: 28, alignment: .leading)
+        .background(fill, in: RoundedRectangle(cornerRadius: 6))
     }
+}
 
-    @ViewBuilder private func open(_ s: CharStyle, dark: Bool) -> some View {
-        let r = e.r, sp = r.spark ?? []
-        HStack(alignment: .lastTextBaseline, spacing: 8) {
-            CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 32, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1).charFlip(r.total) }
-            Text(Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100) + " " + WL.t("오늘"))
-                .font(.system(size: 13, weight: .semibold)).foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable().lineLimit(1).fixedSize().charFlip(r.dayChg)
+/// 밧줄(위에서 78pt)과 가운데 점선. 리본은 오늘 1%에 6.7pt, 많아야 40pt 끌려간다
+private struct TugRope: View {
+    let chg: Double
+    var body: some View {
+        Canvas { ctx, size in
+            let mid = size.width / 2, y: CGFloat = 78
+            var c = Path(); c.move(to: CGPoint(x: mid, y: 60)); c.addLine(to: CGPoint(x: mid, y: 98))
+            ctx.stroke(c, with: .color(.white.opacity(0.4)), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+            var rope = Path(); rope.move(to: CGPoint(x: 6, y: y)); rope.addLine(to: CGPoint(x: size.width - 6, y: y))
+            ctx.stroke(rope, with: .color(rgb(0xe8d3a8)), lineWidth: 2.5)
+            let x = mid + CGFloat(max(-40, min(40, chg * 100 * 6.7))), col = chg >= 0 ? upC : dnC
+            var tri = Path(); tri.move(to: CGPoint(x: x, y: y)); tri.addLine(to: CGPoint(x: x - 4, y: y - 8)); tri.addLine(to: CGPoint(x: x + 4, y: y - 8)); tri.closeSubpath()
+            ctx.fill(tri, with: .color(col))
+            ctx.fill(Path(CGRect(x: x - 1.5, y: y - 4, width: 3, height: 8)), with: .color(col))
         }
-        if sp.count >= 2 { CharSpark(values: sp, color: s.accent).frame(height: 40).widgetAccentable().flipFade() }
-        HStack(alignment: .bottom, spacing: 8) {
-            CharSprite(name: "w_\(e.c.id)", locked: false, height: 104).frame(width: 76)
-                .overlay(alignment: .bottomTrailing) { if let it = WItem.shown(r) { CharItem(id: it).offset(x: 8) } }
-            Text(r.newsToday ?? e.c.line(r))
-                .font(.system(size: 12, weight: .medium)).lineLimit(4).fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 10).padding(.vertical, 8)
-                .background(s.bubbleFill, in: RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(s.bubbleStroke, lineWidth: 1))
-                .padding(.bottom, 14).flipFade()
-            Spacer(minLength: 0)
-        }
-        HStack(spacing: 8) {
-            box(dark: dark) {
-                Text(WL.t("{key}까지", ["key": WL.t(r.keyName)])).font(.system(size: 11, weight: .semibold)).foregroundStyle(s.heading)
-                Text("\(Int((r.pct * 100).rounded()))%").font(.system(size: 20)).charFlip(r.pct)
-                bar(min(1, max(0, r.pct)), s.accent)
-            }
-            box(dark: dark) {
-                let block = min(10, r.cells / 100 + 1), fill = r.cells >= 1000 ? 100 : r.cells % 100
-                Text(WL.t("{n}번째 블록 채우는 중", ["n": "\(block)"])).font(.system(size: 11, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1).minimumScaleFactor(0.8)
-                Text("\(fill)").font(.system(size: 20)) + Text("/100").font(.system(size: 11)).foregroundColor(.white.opacity(0.75))
-                bar(Double(fill) / 100, s.accent)
-            }
-        }
-        Spacer(minLength: 0)
-        HStack(spacing: 6) {
-            Text(Fresh.label(e.at, e.feed, now: e.date)).lineLimit(1)
-            Spacer(minLength: 4)
-            Text(WL.t("다음: ") + (r.next ?? WL.t("예정된 일정 없음"))).lineLimit(1).minimumScaleFactor(0.8)
-        }
-        .font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.75))
-    }
-
-    private func box<V: View>(dark: Bool, @ViewBuilder _ v: () -> V) -> some View {
-        VStack(alignment: .leading, spacing: 3) { v() }
-            .padding(8).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(dark ? 0.07 : 0.12), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func bar(_ x: Double, _ c: Color) -> some View {
-        GeometryReader { g in
-            ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.18))
-                Capsule().fill(c).frame(width: g.size.width * x)
-            }
-        }
-        .frame(height: 5).widgetAccentable().flipFade()
+        .flipFade()
     }
 }
 

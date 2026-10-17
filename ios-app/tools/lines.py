@@ -317,6 +317,17 @@ WIDGET_UI = {
     "토스": "Toss", "사이트": "site", "앱": "app", "직접 입력": "manual",
     "naeilo 다시 받기": "Refresh naeilo", "위젯의 지금 가격을 바로 받아 다시 그려요": "Get current prices now and redraw your widgets",
     "인물 · 하루 한눈에": "Character · Day at a glance",
+    "인물 · 자산 언덕": "Character · Asset hill", "최근 10일 총자산을 픽셀 언덕으로": "Your last 10 days as a pixel hill",
+    "인물 · 본전 사다리": "Character · Break-even ladder", "본전(목표)까지 사다리를 오르는 인물": "Your character climbs the ladder to break-even (or goal)",
+    "인물 · 블록 탑": "Character · Block tower", "100칸이 한 층, 10층 탑을 쌓아요": "100 cells make a floor; build a 10-floor tower",
+    "인물 · 전광판": "Character · Ticker board", "총자산·오늘 등락·큰 종목 2개를 전광판으로": "Total, today's change and top 2 holdings on a board",
+    "총자산·오늘 등락·큰 종목 2개와 다음 일정": "Total, today's change, top 2 holdings and the next event",
+    "인물 · 키 재기": "Character · Height chart", "문틀 기둥에 지난 날 자산을 금으로, 오늘은 인물 머리 높이": "Past days marked on a door frame, today at your character's head",
+    "인물 · 퍼즐 맞추기": "Character · Puzzle", "본전(목표)까지 20조각 퍼즐, 다 맞추면 깃발": "A 20-piece puzzle to break-even (or goal); finish it to see the flag",
+    "인물 · 꽃밭": "Character · Flower bed", "블록 1개가 꽃 1송이, 100송이면 다음 밭": "Each block is a flower; 100 flowers start the next bed",
+    "인물 · 줄다리기": "Character · Tug of war", "오른 종목과 내린 종목이 당기는 오늘의 줄다리기": "Today's risers and fallers in a tug of war",
+    "{n}번째 꽃밭": "Flower bed {n}", "외 {n}": "+{n}", "키 재기": "Height chart", "퍼즐 맞추기": "Puzzle", "꽃밭": "Flower bed", "줄다리기": "Tug of war",
+    "남은 {v}": "{v} to go", "어제 ": "Yesterday ", "층": "F", " · 어제 ": " · yesterday ",
     "총자산·최근 흐름·본전·블록을 한 장에, 인물의 한마디와 함께": "Total, recent trend, break-even and blocks in one view, with a word from your character",
 }
 

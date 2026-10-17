@@ -398,11 +398,11 @@ struct WidgetPickView: View {
                     stat("인물", "\(friendsOn)/\(Shelter.friends.count)")
                 }
 
-                // 인물 위젯: 인물을 고르면 네 가지 모양을 바로 본다. 못 만난 인물은 홈 화면에서처럼 실루엣
+                // 인물 위젯: 만난 인물을 고르면 여덟 가지 모양을 바로 본다 (못 만난 친구는 목록에 없다)
                 Text("인물 위젯").appFont(17, .bold).padding(.top, 6)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(Array(Shelter.friends.enumerated()), id: \.element.id) { i, f in
+                        ForEach(Array(Shelter.friends.enumerated()).filter { m.friendOn($0.offset) }, id: \.element.id) { i, f in
                             let ok = m.friendOn(i), cur = f.id == sel
                             Button { who = f.id } label: {
                                 VStack(spacing: 2) {
@@ -434,28 +434,29 @@ struct WidgetPickView: View {
                     }
                 }
                 Picker("", selection: $dark) { Text("기본").tag(false); Text("다크").tag(true) }.pickerStyle(.segmented)
-                let c = WChar.of(sel), e = CharEntry(date: Date(), r: reward, c: c, locked: !on)
-                if !on {
-                    Label("인터미션 \(fi)주차에 만나요.", systemImage: "lock.fill")
-                        .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                }
+                let c = WChar.of(on ? sel : "seri"), e = CharEntry(date: Date(), r: reward, c: c, locked: false)
                 GeometryReader { g in
                     let w = (g.size.width - 12) / 2
                     VStack(spacing: 12) {
                         HStack(spacing: 12) {
-                            caption("자산 추이") { tile(e, w: w, h: w) { TrendCharView(e: e) } }
-                            caption("본전 진행") { tile(e, w: w, h: w) { RecoverCharView(e: e) } }
+                            caption("자산 언덕") { tile(e, w: w, h: w) { HillCharView(e: e) } }
+                            caption("본전 사다리") { tile(e, w: w, h: w) { LadderCharView(e: e) } }
                         }
                         HStack(spacing: 12) {
-                            caption("블록") { tile(e, w: w, h: w) { BlockCharView(e: e) } }
-                            Spacer(minLength: 0)
+                            caption("블록 탑") { tile(e, w: w, h: w) { TowerCharView(e: e) } }
+                            caption("전광판") { tile(e, w: w, h: w) { BoardCharView(e: e) } }
                         }
-                        caption("오늘의 움직임") { tile(e, w: g.size.width, h: w) { MovesCharView(e: e) } }
+                        HStack(spacing: 12) {
+                            caption("키 재기") { tile(e, w: w, h: w) { HeightCharView(e: e) } }
+                            caption("퍼즐 맞추기") { tile(e, w: w, h: w) { PuzzleCharView(e: e) } }
+                        }
+                        HStack(spacing: 12) {
+                            caption("꽃밭") { tile(e, w: w, h: w) { GardenCharView(e: e) } }
+                            caption("줄다리기") { tile(e, w: w, h: w) { TugCharView(e: e) } }
+                        }
                     }
                 }
-                .aspectRatio(1 / 1.62, contentMode: .fit)
-                GeometryReader { g in caption("하루 한눈에 (큰)") { largeTile(e, w: g.size.width) { LargeCharView(e: e) } } }
-                    .aspectRatio(338 / 374, contentMode: .fit)
+                .aspectRatio(1 / 2.3, contentMode: .fit)
                 note("인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요.")
 
                 // 기본 위젯: 앱 시작 단계로 열림

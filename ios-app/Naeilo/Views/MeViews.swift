@@ -127,7 +127,10 @@ enum MeArt {
     @MainActor
     static func push(_ m: AppModel) {
         guard let me = m.me, m.meUnlocked else {
-            if lastKey != "none" { Store.remove("me.json"); Store.remove("me.png"); lastKey = "none" }
+            if lastKey != "none" {
+                Store.remove("me.json"); Store.remove("me.png"); MePose.all.keys.forEach { Store.remove("me_\($0).png") }
+                lastKey = "none"
+            }
             return
         }
         let i = MeColor.idx(me)
@@ -138,6 +141,10 @@ enum MeArt {
         r.scale = 1
         guard let png = r.uiImage?.pngData() else { return }
         Store.writeData(png, "me.png")
+        // 위젯 포즈 28장 (부품 그림이 다 있을 때만. 없으면 위젯은 서 있는 me.png)
+        for k in MePose.all.keys {
+            if let d = MePose.image(me, k)?.pngData() { Store.writeData(d, "me_\(k).png") } else { Store.remove("me_\(k).png") }
+        }
         Store.write(w, "me.json")
         lastKey = key
     }
@@ -616,5 +623,148 @@ struct CharHead: View {
         .offset(y: 3 * s)
         .frame(width: size, height: size)
         .clipShape(Circle())
+    }
+}
+
+/// 내 캐릭터 위젯 포즈 28장 ('내 캐릭터 위젯 포즈' 스레드 확정, widget-drafts/me-poses/pose.py 와 같은 규칙)
+/// 몸·상의의 팔 칸(x5-6·17-18, y16-24, 2×9)을 지우고, 포즈별 팔 9마디에 원래 팔 색을 그대로 옮긴다. 팔 길이는 그대로, 방향만.
+/// 그림 폭 32(좌우 4px 여백). 위젯은 me_<포즈>.png 를 읽는다 (CharWidgets.swift poseOr)
+enum MePose {
+    /// l·r: 팔 9마디 × [바깥칸 x,y, 안쪽칸 x,y] (24×34 기준). prop 0 오른손 · 1 왼손(좌우 뒤집기) · 2 숨김. ex: 손에 든 물건 [x,y,w,h,색]
+    struct P { let l: [Int], r: [Int]; let dx: Int, dy: Int; let prop: Int; let ex: [[Int]] }
+    static let W = 32, PAD = 4
+    static let restL: [Int] = (0..<9).flatMap { [5, 16 + $0, 6, 16 + $0] }
+    static let restR: [Int] = (0..<9).flatMap { [18, 16 + $0, 17, 16 + $0] }
+    static let all: [String: P] = [
+        "pose_trend_up": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,4,12,5,12,4,11,5,11,4,10,5,10,4,9,5,9,3,8,4,8], r: restR, dx: 0, dy: 0, prop: 0, ex: []),
+        "pose_trend_down": P(l: [6,16,6,17,5,16,5,17,4,16,4,17,3,16,3,17,2,16,2,17,1,16,1,17,0,15,0,16,-1,15,-1,16,-2,15,-2,16], r: restR, dx: 0, dy: 0, prop: 0, ex: []),
+        "pose_trend_refresh1": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,5,12,6,12,5,11,6,11,5,10,6,10,5,9,6,9,5,8,6,8], r: restR, dx: 0, dy: 0, prop: 0, ex: []),
+        "pose_trend_refresh2": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,4,12,5,12,4,11,5,11,4,10,5,10,4,9,5,9,3,8,4,8], r: restR, dx: 0, dy: -1, prop: 0, ex: []),
+        "pose_push_up": P(l: restL, r: [17,17,17,18,18,17,18,18,19,17,19,18,20,17,20,18,21,17,21,18,22,17,22,18,23,17,23,18,24,17,24,18,25,17,25,18], dx: 0, dy: 0, prop: 1, ex: []),
+        "pose_push_down": P(l: restL, r: [17,17,17,18,17,17,17,18,18,17,18,18,19,18,19,19,19,18,19,19,20,18,20,19,21,19,21,20,21,19,21,20,22,19,22,20], dx: -1, dy: 0, prop: 1, ex: []),
+        "pose_push_refresh1": P(l: restL, r: [17,16,17,17,18,16,18,17,19,16,19,17,20,16,20,17,21,16,21,17,22,16,22,17,23,16,23,17,24,16,24,17,25,16,25,17], dx: 0, dy: 0, prop: 1, ex: []),
+        "pose_push_refresh2": P(l: restL, r: [17,17,17,18,18,17,18,18,19,17,19,18,20,17,20,18,21,17,21,18,22,17,22,18,23,17,23,18,24,17,24,18,25,17,25,18], dx: 1, dy: 0, prop: 1, ex: []),
+        "pose_block_up": P(l: restL, r: [17,17,17,18,18,17,18,18,19,17,19,18,20,17,20,18,21,17,21,18,22,17,22,18,23,17,23,18,24,17,24,18,25,17,25,18], dx: 0, dy: 0, prop: 1, ex: [[25,15,3,3,0xF0A268]]),
+        "pose_block_down": P(l: [5,16,6,16,5,17,6,17,5,18,6,18,7,19,7,20,8,19,8,20,9,19,9,20,10,19,10,20,11,19,11,20,12,19,12,20], r: [18,16,17,16,18,17,17,17,18,18,17,18,16,20,16,21,15,20,15,21,14,20,14,21,13,20,13,21,12,20,12,21,11,20,11,21], dx: 0, dy: 0, prop: 2, ex: [[10,16,4,3,0xF0A268]]),
+        "pose_block_refresh1": P(l: restL, r: [17,16,17,17,18,16,18,17,19,16,19,17,20,16,20,17,21,16,21,17,22,16,22,17,23,16,23,17,24,16,24,17,25,16,25,17], dx: 0, dy: -1, prop: 1, ex: [[25,14,3,3,0xF0A268]]),
+        "pose_block_refresh2": P(l: restL, r: [17,17,17,18,18,17,18,18,19,17,19,18,20,17,20,18,21,17,21,18,22,17,22,18,23,17,23,18,24,17,24,18,25,17,25,18], dx: 0, dy: 0, prop: 1, ex: []),
+        "pose_point_up": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,4,12,5,12,4,11,5,11,4,10,5,10,4,9,5,9,3,8,4,8], r: [17,16,17,17,18,17,18,18,19,17,19,18,20,18,20,19,21,18,21,19,22,19,22,20,23,20,23,21,24,20,24,21,25,21,25,22], dx: 0, dy: 0, prop: 2, ex: []),
+        "pose_point_down": P(l: [5,16,6,16,5,15,6,15,6,14,7,14,6,13,7,13,7,12,8,12,7,11,8,11,7,10,8,10,8,9,9,9,8,8,9,8], r: [17,16,17,17,18,17,18,18,19,17,19,18,20,18,20,19,21,18,21,19,22,19,22,20,23,20,23,21,24,20,24,21,25,21,25,22], dx: 0, dy: 0, prop: 2, ex: []),
+        "pose_point_refresh1": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,4,12,5,12,4,11,5,11,4,10,5,10,4,9,5,9,3,8,4,8], r: [17,16,17,17,18,16,18,17,19,17,19,18,20,17,20,18,21,17,21,18,22,18,22,19,23,18,23,19,24,18,24,19,25,18,25,19], dx: 0, dy: 0, prop: 2, ex: []),
+        "pose_point_refresh2": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,4,12,5,12,4,11,5,11,4,10,5,10,4,9,5,9,3,8,4,8], r: [17,16,17,17,18,17,18,18,19,17,19,18,20,18,20,19,21,18,21,19,22,19,22,20,23,20,23,21,24,20,24,21,25,21,25,22], dx: 0, dy: 0, prop: 2, ex: []),
+        "pose_point_refresh3": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,4,12,5,12,4,11,5,11,4,10,5,10,4,9,5,9,3,8,4,8], r: [17,16,17,17,18,17,18,18,19,18,19,19,20,19,20,20,21,20,21,21,22,21,22,22,23,22,23,23,24,23,24,24,25,24,25,25], dx: 0, dy: 0, prop: 2, ex: []),
+        "pose_measure_base": P(l: restL, r: [18,16,17,16,18,15,17,15,18,14,17,14,18,13,17,13,18,12,17,12,18,11,17,11,18,10,17,10,18,9,17,9,18,8,17,8], dx: 0, dy: 0, prop: 1, ex: []),
+        "pose_measure_up": P(l: restL, r: [18,16,17,16,18,15,17,15,18,14,17,14,18,13,17,13,18,12,17,12,18,11,17,11,18,10,17,10,18,9,17,9,18,8,17,8], dx: 0, dy: -2, prop: 1, ex: []),
+        "pose_measure_down": P(l: restL, r: [18,16,17,16,18,15,17,15,18,14,17,14,18,13,17,13,19,12,18,12,19,11,18,11,19,10,18,10,19,9,18,9,20,8,19,8], dx: 0, dy: 0, prop: 1, ex: []),
+        "pose_puzzle_base": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,5,12,6,12,5,11,6,11,5,10,6,10,5,9,6,9,5,8,6,8], r: [18,16,17,16,18,15,17,15,18,14,17,14,18,13,17,13,18,12,17,12,18,11,17,11,18,10,17,10,18,9,17,9,18,8,17,8], dx: 0, dy: 0, prop: 2, ex: [[16,5,3,3,0xF0A268]]),
+        "pose_puzzle_refresh": P(l: [5,16,6,16,5,15,6,15,5,14,6,14,5,13,6,13,5,12,6,12,5,11,6,11,5,10,6,10,5,9,6,9,5,8,6,8], r: [18,16,17,16,18,15,17,15,18,14,17,14,18,13,17,13,18,12,17,12,18,11,17,11,18,10,17,10,18,9,17,9,18,8,17,8], dx: 0, dy: 0, prop: 2, ex: [[16,4,3,3,0xF0A268]]),
+        "pose_garden_base": P(l: restL, r: [17,16,17,17,18,16,18,17,19,17,19,18,20,17,20,18,21,18,21,19,22,18,22,19,23,18,23,19,24,19,24,20,25,19,25,20], dx: 0, dy: 0, prop: 1, ex: [[24,19,4,3,0x4A6FB0]]),
+        "pose_garden_refresh": P(l: restL, r: [17,16,17,17,18,17,18,18,19,17,19,18,20,18,20,19,21,18,21,19,22,19,22,20,23,20,23,21,24,20,24,21,25,21,25,22], dx: 0, dy: 0, prop: 1, ex: [[24,21,4,3,0x4A6FB0], [27,25,1,1,0x9FD3F0], [26,27,1,1,0x9FD3F0]]),
+        "pose_tug_right": P(l: restL, r: [17,18,17,19,18,18,18,19,19,18,19,19,20,18,20,19,21,18,21,19,22,18,22,19,23,18,23,19,24,18,24,19,25,18,25,19], dx: 1, dy: 0, prop: 1, ex: []),
+        "pose_tug_left": P(l: [6,16,6,17,5,16,5,17,4,16,4,17,3,16,3,17,2,16,2,17,1,16,1,17,0,15,0,16,-1,15,-1,16,-2,15,-2,16], r: restR, dx: -1, dy: 0, prop: 0, ex: []),
+        "pose_tug_tie": P(l: [5,16,6,16,5,17,6,17,5,18,6,18,7,19,7,20,8,19,8,20,9,19,9,20,10,19,10,20,11,19,11,20,12,19,12,20], r: [18,16,17,16,18,17,17,17,18,18,17,18,16,20,16,21,15,20,15,21,14,20,14,21,13,20,13,21,12,20,12,21,11,20,11,21], dx: 0, dy: 0, prop: 2, ex: []),
+        "pose_tug_refresh": P(l: restL, r: [18,16,17,16,18,15,17,15,18,14,17,14,18,13,17,13,18,12,17,12,18,11,17,11,18,10,17,10,18,9,17,9,18,8,17,8], dx: 0, dy: 0, prop: 1, ex: []),
+    ]
+
+    /// RGB → 버퍼 한 칸 (RGBA 바이트 순서)
+    private static func px(_ rgb: UInt32) -> UInt32 { 0xFF00_0000 | (rgb & 0xFF) << 16 | (rgb & 0xFF00) | (rgb >> 16 & 0xFF) }
+
+    /// 부품이 다 있어야 그린다 (자리표시 도트일 땐 nil → 위젯은 서 있는 me.png)
+    static func image(_ me: MeChar, _ pose: String) -> UIImage? {
+        guard let p = all[pose] else { return nil }
+        let w = MeArt.W, h = MeArt.H, cw = W
+        func pixels(_ name: String) -> [UInt32]? {
+            guard let cg = UIImage(named: name)?.cgImage else { return nil }
+            var buf = [UInt32](repeating: 0, count: w * h)
+            let ok = buf.withUnsafeMutableBytes { b -> Bool in
+                guard let ctx = CGContext(data: b.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+                ctx.interpolationQuality = .none
+                ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+                return true
+            }
+            return ok ? buf : nil
+        }
+        var layers: [(String, [UInt32])] = []
+        for layer in MeGroup.layers {
+            let n = MeArt.option(me, layer)
+            guard n > 0 else { continue }
+            guard let b = pixels(MeArt.asset(layer, n, me)) else { return nil }
+            layers.append((layer, b))
+        }
+        // 원래 팔 색을 떼어 두고 몸·상의에서 팔 칸을 지운다 (키: 쪽*100 + 마디*2 + 바깥0/안쪽1)
+        var tex: [Int: UInt32] = [:]
+        for k in layers.indices where layers[k].0 == "body" || layers[k].0 == "top" {
+            for (s, rest) in [restL, restR].enumerated() {
+                for i in 0..<9 {
+                    for j in 0..<2 {
+                        let at = rest[i * 4 + j * 2 + 1] * w + rest[i * 4 + j * 2]
+                        if layers[k].1[at] >> 24 != 0 { tex[s * 100 + i * 2 + j] = layers[k].1[at] }
+                        layers[k].1[at] = 0
+                    }
+                }
+            }
+        }
+        var cv = [UInt32](repeating: 0, count: cw * h), torso = [Bool](repeating: false, count: cw * h)
+        func put(_ src: [UInt32], flip: Bool = false, mark: Bool = false) {
+            for y in 0..<h {
+                for x in 0..<w {
+                    let v = src[y * w + (flip ? w - 1 - x : x)]
+                    let X = x + PAD + p.dx, Y = y + p.dy
+                    guard v >> 24 != 0, X >= 0, X < cw, Y >= 0, Y < h else { continue }
+                    cv[Y * cw + X] = v
+                    if mark { torso[Y * cw + X] = true }
+                }
+            }
+        }
+        for (k, b) in layers where k != "prop" { put(b, mark: k == "body" || k == "top" || k == "bottom") }
+        // 새 팔 (키: y*1000 + x). 몸 앞을 지나면 테두리선, 어깨 이음새(첫 두 마디 근처)만 빼고
+        var arm: [Int: UInt32] = [:]
+        var root = Set<Int>()
+        for (s, a) in [p.l, p.r].enumerated() {
+            for i in 0..<9 {
+                for j in 0..<2 {
+                    let X = a[i * 4 + j * 2] + PAD + p.dx, Y = a[i * 4 + j * 2 + 1] + p.dy
+                    if i < 2 { for (ox, oy) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)] { root.insert((Y + oy) * 1000 + X + ox) } }
+                    if let v = tex[s * 100 + i * 2 + j] { arm[Y * 1000 + X] = v }
+                }
+            }
+        }
+        let line = px(MeArt.outline)
+        for key in arm.keys {
+            let x = key % 1000, y = key / 1000
+            for (nx, ny) in [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)] where nx >= 0 && nx < cw && ny >= 0 && ny < h {
+                let i = ny * cw + nx
+                if arm[ny * 1000 + nx] != nil || cv[i] >> 24 == 0 || (torso[i] && root.contains(ny * 1000 + nx)) { continue }
+                cv[i] = line
+            }
+        }
+        for (key, v) in arm where key % 1000 < cw && key / 1000 < h { cv[(key / 1000) * cw + key % 1000] = v }
+        for e in p.ex {
+            let x0 = e[0] + PAD + p.dx, y0 = e[1] + p.dy, c = px(UInt32(e[4]))
+            for y in (y0 - 1)...(y0 + e[3]) {
+                for x in (x0 - 1)...(x0 + e[2]) where x >= 0 && x < cw && y >= 0 && y < h {
+                    cv[y * cw + x] = x >= x0 && x < x0 + e[2] && y >= y0 && y < y0 + e[3] ? c : line
+                }
+            }
+        }
+        if p.prop != 2, let b = layers.first(where: { $0.0 == "prop" })?.1 { put(b, flip: p.prop == 1) }
+        // 바깥 테두리 (MeArt.image 와 같은 규칙)
+        let filled = cv.map { $0 >> 24 != 0 }
+        for y in 0..<h {
+            for x in 0..<cw where !filled[y * cw + x] {
+                if (x > 0 && filled[y * cw + x - 1]) || (x < cw - 1 && filled[y * cw + x + 1])
+                    || (y > 0 && filled[(y - 1) * cw + x]) || (y < h - 1 && filled[(y + 1) * cw + x]) { cv[y * cw + x] = line }
+            }
+        }
+        // 8배로 키워 me.png(8배)와 같은 해상도
+        let s = 8, bw = cw * s, bh = h * s
+        var big = [UInt32](repeating: 0, count: bw * bh)
+        for y in 0..<bh { for x in 0..<bw { big[y * bw + x] = cv[(y / s) * cw + x / s] } }
+        let cg: CGImage? = big.withUnsafeMutableBytes { b in
+            CGContext(data: b.baseAddress, width: bw, height: bh, bitsPerComponent: 8, bytesPerRow: bw * 4,
+                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.makeImage()
+        }
+        return cg.map { UIImage(cgImage: $0) }
     }
 }

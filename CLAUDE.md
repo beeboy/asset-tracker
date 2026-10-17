@@ -52,11 +52,14 @@
 - **최우선 규칙**: 사용자가 기다리지 않고 바뀐 것을 바로 빌드할 수 있게 한다. 작업은 맥 폴더(`/Users/drinker/Documents/asset-tracker`)에서 하는 것이 먼저다.
 - 사용자가 직접 할 일(링크 열기·명령 실행 등)은 바로 복사해 쓸 수 있는 완성된 값으로 답에 적는다. 사용자가 알려 준 값(주소 등)은 채워 넣고, 지난 스레드를 찾게 하지 않는다. 단, 공개 저장소 파일에는 그 값을 쓰지 않는다.
 - 사용자에게 주는 링크는 코드 블록에 넣지 않고 누르면 바로 열리는 링크로 쓴다. `naeilo://`처럼 채팅에서 안 눌리는 앱 링크는 누를 수 있는 https 주소로 감싸서 준다.
-- 코드를 고친 답에는 커밋 해시·push한 브랜치·PR 링크·머지 여부를 한 줄로 꼭 적는다 (예: "커밋 abc1234 push 완료 (브랜치 X), PR #N CI 대기").
+- 코드를 고친 답에는 커밋 해시·브랜치를 한 줄로 꼭 적는다. GitHub에 올렸을 때만 PR 링크·머지 여부도 적는다 (예: "커밋 abc1234 (브랜치 X), PR #N CI 대기").
 - "됐다", "띄웠다"고 말하기 전에 결과를 직접 확인한다 (화면이면 바뀐 내용이 실제로 나오는지 curl·스크린샷으로). 한 번에 맞게 한다.
 - 바뀐 것은 머지를 기다리지 않고 바로 웹·앱에서 볼 수 있게 띄워 준다. 웹 미리보기: `web/`만 바꿨으면 `server.py`, 루트(`index.html`·`entry.*`·`img/`)를 바꿨으면 저장소 루트에서 `python3 -m http.server PORT` (앱은 `/web/`).
-- 코드 수정은 별도 worktree가 아니라 맥 폴더(`/Users/drinker/Documents/asset-tracker`)에 바로 쓴다. 고치는 즉시 사용자가 Xcode로 빌드해 볼 수 있어야 한다. 시작할 때 맥 폴더를 최신 main에서 새 브랜치로 바꾸고 거기서 바로 고친 뒤, 고치자마자 "지금 빌드해 보세요"라고 먼저 말한다. 커밋·push·PR·머지는 그 다음에 백그라운드로 하고, 사용자가 기다리게 하지 않는다. 머지 뒤에는 맥 폴더를 최신 main으로 돌린다. 다른 세션의 커밋 안 된 변경은 버리지 말고 그대로 두고 그렇다고 말한다.
-- 시킨 작업은 묻지 않고 커밋·push·draft PR까지 하고, CI가 초록이면 바로 머지한다 (쌓인 PR은 아래부터). 이건 사용자가 빌드해 볼 수 있게 된 뒤에 백그라운드로 한다.
+- 코드 수정은 별도 worktree가 아니라 맥 폴더(`/Users/drinker/Documents/asset-tracker`)에 바로 쓴다. 고치는 즉시 사용자가 Xcode로 빌드해 볼 수 있어야 한다. 시작할 때 맥 폴더의 main에서 새 브랜치를 만들고 거기서 바로 고친 뒤, 고치자마자 "지금 빌드해 보세요"라고 먼저 말한다. 다른 세션의 커밋 안 된 변경은 버리지 말고 그대로 두고 그렇다고 말한다.
+- GitHub 연결은 작업 종류에 따라 다르다 (2026-10-17 결정).
+  - 앱 작업(`ios-app/`, `usage-app/`): GitHub에 연결하지 않는다. fetch·pull·push·PR·머지·CI 확인을 하지 않고, 저장소를 클론해 빌드하지 않는다. 맥 폴더에서 고치고 맥에서 빌드하며, 기록은 로컬 커밋으로만 남긴다.
+  - 백업: 사용자가 "백업해"라고 할 때만 GitHub에 연결해 쌓인 로컬 커밋을 push·PR·머지한다. CI가 초록이면 머지하고(쌓인 PR은 아래부터), 머지 뒤에는 맥 폴더를 최신 main으로 돌린다.
+  - 웹 작업(`index.html`·`entry.*`·`web/`·`data/`·`proxy/`·`tools/`): GitHub Pages로 나가니 그때그때 연결한다. 시킨 작업은 묻지 않고 커밋·push·draft PR까지 하고, CI가 초록이면 바로 머지한다. 사용자가 빌드·미리보기를 볼 수 있게 된 뒤에 백그라운드로 한다.
 - 빌드·테스트 출력은 실패 부분만 보이게 줄인다 (예: `2>&1 | grep -E "error|FAIL" | head -50`, `tail -40`).
 - 읽지 말 것: `data/prices/`, `data/sample/prices/`, `data/quotes.json`, `data/stats.json`, `data/calc.json`, `data/sample_calc.json`, `data/blog.json`, `data/app_news.json`, `data/macro/`, `web/stocks.js`, `ios-app/Naeilo/Resources/*.json`, `*.xcassets`, `*.png`, `*.pbxproj` 전체 읽기(필요한 줄만 grep), `node_modules/`, `build/`, `DerivedData/`, `Pods/`.
 - `web/app.js`(약 3,500줄)는 통째로 읽지 말고 함수 이름으로 grep한다.
