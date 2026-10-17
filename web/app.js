@@ -366,10 +366,16 @@
     const base = S.config?.push; if ((marUsd() && marUsd().date >= today()) || !base) return; // 오늘 고시가 아직 저장소에 없으면 중계에서 한 번 더
     try { const r = await fetch(base.replace(/\/$/, "") + "/mar"); const j = await r.json(); if (j?.USD?.rate > 0 && (!S.mar?.USD?.date || j.USD.date > S.mar.USD.date)) { S.mar = j; renderAll(); } } catch (e) { /* 기존 환율 유지 */ }
   }
+  // 미국 장이 다 끝난 때: 뉴욕 시각 평일 20시~다음 날 4시와 주말 (앱 USSession.closed 와 같다)
+  function usClosed() {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hourCycle: "h23" }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+    const hr = Number(p.hour); return p.weekday === "Sat" || p.weekday === "Sun" || hr >= 20 || hr < 4;
+  }
   function curPrice(h) {
     if (h.ticker === KR_SUM) return { v: Model.krAt(S.state.kr_log, today()) || null, src: "input" };
     if (S.state?.ui?.manual_price && !isKR(h.ticker) && h.price != null && h.price !== "" && Number(h.price) > 0) return { v: Number(h.price), src: "manual" };
     const q = S.quotes[h.ticker], l = lastOf(h.ticker);
+    if (q && q.last && usClosed() && ccyOf(h.ticker) === "USD" && q.regular > 0) return { v: q.regular, src: "regular", t: q.regular_time }; // 미국 장이 다 끝나면 정규장 종가 (토스 총자산과 같은 기준, 앱 USSession)
     if (q && q.last && (!l || (q.last_time || 0) * 1000 >= Date.parse(l.d))) return { v: q.last, src: q.last_session || "regular", t: q.last_time };
     if (l) return { v: l.v, src: "close", d: l.d };
     if (q && q.last) return { v: q.last, src: q.last_session || "regular", t: q.last_time };
