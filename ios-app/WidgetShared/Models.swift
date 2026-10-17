@@ -521,10 +521,24 @@ enum AlpacaKeys {
     }
 }
 
+/// 미국 장이 다 끝난 때: 뉴욕 시각 평일 20시(애프터마켓 끝)부터 다음 날 4시(프리마켓 시작)까지와 주말.
+/// 이때는 애프터마켓 가격 대신 정규장 종가로 센다. 토스 총자산·오늘 손익이 이렇게 센다 (2026-10-17 토스 화면과 맞춰 봄)
+enum USSession {
+    static func closed(_ d: Date = Date()) -> Bool {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/New_York")!
+        let c = cal.dateComponents([.weekday, .hour], from: d)
+        return c.weekday == 7 || c.weekday == 1 || c.hour! >= 20 || c.hour! < 4   // 7 토요일, 1 일요일
+    }
+}
+
 // 사이트 시세 (naeilo.com/data/quotes.json). 사이트가 평일 30분마다 모으는 Yahoo 중계 값을 앱과 위젯이 직접 받는다.
 // 계약 뒤에는 중계 서버 쪽 출처만 바꾸면 앱·위젯은 그대로 쓴다.
 enum QuoteFeed {
-    struct Q: Codable { var last: Double; var prev: Double; var at: Double }   // 지금 가격, 전일 종가, 가격 시각(초)
+    struct Q: Codable {
+        var last: Double; var prev: Double; var at: Double   // 지금 가격, 전일 종가, 가격 시각(초)
+        var reg: Double? = nil                               // 정규장 가격 (사이트 시세만. 미국 장이 다 끝나면 이 값으로 센다)
+    }
     struct File: Codable { var got: Double; var q: [String: Q] }               // got = 받은 시각(초)
 
     static let name = "site_quotes.json"
@@ -545,7 +559,7 @@ enum QuoteFeed {
         var q: [String: Q] = [:]
         for (k, any) in o {   // 종목이 아닌 칸(예: 갱신 시각)이 생겨도 나머지는 읽는다
             guard let v = any as? [String: Any], let prev = num(v["prev_close"]), let last = num(v["last"]) ?? num(v["regular"]) else { continue }
-            q[k] = Q(last: last, prev: prev, at: num(v["last_time"]) ?? num(v["regular_time"]) ?? 0)
+            q[k] = Q(last: last, prev: prev, at: num(v["last_time"]) ?? num(v["regular_time"]) ?? 0, reg: num(v["regular"]))
         }
         guard !q.isEmpty else { return old }
         let f = File(got: Date().timeIntervalSince1970, q: q)

@@ -61,14 +61,19 @@ final class Market {
     /// Alpaca 값을 쓰는 종목 (종목 화면에 "Alpaca(IEX) 시세" 표시)
     func isAlpaca(_ s: Symbol) -> Bool { tossLast(s) == nil && alpacaQ(s) != nil }
     private func alpacaQ(_ s: Symbol) -> QuoteFeed.Q? {
-        guard live[s.id] == nil, s.id != "DRNK", s.currency == .usd, let q = alpaca?.q[s.id], q.last > 0 else { return nil }
+        guard live[s.id] == nil, s.id != "DRNK", s.currency == .usd, regClose(s) == nil, let q = alpaca?.q[s.id], q.last > 0 else { return nil }
         return q
     }
     /// 토스 값을 쓰는 종목 (종목 화면에 "토스 시세" 표시)
     func isToss(_ s: Symbol) -> Bool { tossLast(s) != nil }
     private func tossLast(_ s: Symbol) -> Double? {
-        guard live[s.id] == nil, s.id != "DRNK", let v = toss?.q[s.id]?.last, v > 0 else { return nil }
+        guard live[s.id] == nil, s.id != "DRNK", regClose(s) == nil, let v = toss?.q[s.id]?.last, v > 0 else { return nil }
         return v
+    }
+    /// 미국 장이 다 끝났으면 사이트 정규장 종가. 토스·Alpaca 의 애프터마켓 가격 대신 이걸로 센다 (토스 총자산과 같은 기준)
+    private func regClose(_ s: Symbol) -> Double? {
+        guard s.currency == .usd, USSession.closed(), let r = site?.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)]?.reg, r > 0 else { return nil }
+        return r
     }
 
     private func yahooQuote(_ s: Symbol) -> Quote {
@@ -78,7 +83,7 @@ final class Market {
             let c = CustomSymbols.shared.items.first { $0.id == s.id }
             if let f = site, let q = f.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)],
                c == nil || c!.at.timeIntervalSince1970 < f.got {
-                return Quote(last: q.last, prevClose: q.prev, live: s.currency == .usd)
+                return Quote(last: regClose(s) ?? q.last, prevClose: q.prev, live: s.currency == .usd)
             }
             if let c { return Quote(last: c.last, prevClose: c.prev, live: c.usd) }
             // 한국 종목은 넣은 가격이 없으면 값이 없다 (시안 값을 쓰지 않는다)
@@ -411,7 +416,8 @@ enum TossHistory {
         }
         TossFeed.histMiss = miss
         // 원/달러: 10분에 한 번 (당겨 갱신하면 바로). 전일 값은 24시간 전 시각의 값
-        if !stop, force || now - (f.fx?.got ?? 0) > 600 {
+        // 일봉 받기가 막혀도(429 등) 환율은 따로 묻는다. 안 그러면 하루 묵은 환율로 평가액이 토스와 달라진다
+        if force || now - (f.fx?.got ?? 0) > 600 {
             let (code, o, _) = await TossFeed.userGet("/api/toss/v1/exchange-rate")
             if code == 200, let rate = num((o?["result"] as? [String: Any])?["rate"]), rate > 0 {
                 let iso = ISO8601DateFormatter(); iso.timeZone = TimeZone(identifier: "Asia/Seoul")
