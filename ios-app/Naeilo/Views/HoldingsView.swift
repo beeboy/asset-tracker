@@ -209,20 +209,28 @@ struct HoldingsView: View {
         let name = HStack(spacing: 10) {
             LogoTile(symbol: r.id, size: 36)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(r.sym.name).appFont(15, .bold).lineLimit(1).layoutPriority(1)
-                    Text("\(r.h.qty.formatted())주 · 평균 \(AppModel.price(r.sym, r.h.avg))")
-                        .appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                // 글자를 줄이지 않는다(종목마다 크기가 같게). 이름 옆에 다 안 들어가면 수량·평균을 다음 줄로
+                let qty = Text("\(r.h.qty.formatted())주 · 평균 \(AppModel.price(r.sym, r.h.avg))")
+                    .appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(r.sym.name).appFont(15, .bold).lineLimit(1).fixedSize()
+                        qty.fixedSize()
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(r.sym.name).appFont(15, .bold).lineLimit(1)
+                        qty
+                    }
                 }
                 HStack(spacing: 4) {
                     Text("지금 \(AppModel.price(r.sym, r.sym.last))").foregroundStyle(Theme.sub)
                     Text("오늘 " + (day >= 0 ? "+" : "") + String(format: "%.2f%%", day * 100)).foregroundStyle(Theme.change(day))
                 }
-                .appFont(12).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                .appFont(12).monospacedDigit().lineLimit(1)
             }
         }
         let amount = VStack(alignment: .trailing, spacing: 2) {
-            Text(amountText([r])).appFont(15, .bold).monospacedDigit().lineLimit(1)
+            Text(amountText([r])).appFont(15, .bold).monospacedDigit().lineLimit(1).fixedSize()
             Text(AppModel.sgn(chg)).appFont(13, .bold).foregroundStyle(Theme.change(chg))
         }
         return Group {
