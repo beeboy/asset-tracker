@@ -170,8 +170,13 @@ struct CharSprite: View {
     let name: String
     let locked: Bool
     var height: CGFloat
+    /// false: 위젯이 갱신 때 따로 움직인다 (새 시안 4개: 동작 그림 바꾸기·톡 뛰기)
+    var shake = true
     @Environment(\.widgetRenderingMode) private var mode
     var body: some View {
+        if shake { sprite.charShake() } else { sprite }
+    }
+    private var sprite: some View {
         Group {
             // 내 캐릭터: 앱이 겹쳐 그린 그림 하나 (동작별 그림 없음)
             if name.hasPrefix("w_me"), let img = WMe.image {
@@ -190,7 +195,6 @@ struct CharSprite: View {
         }
         .aspectRatio(contentMode: .fit)
         .frame(height: height)
-        .charShake()
         .accessibilityHidden(true)
     }
 }
@@ -227,6 +231,11 @@ private func poseOr(_ c: WChar, _ p: String) -> String {
 fileprivate extension View {
     /// 시안처럼 위젯 가장자리부터 그리는 그림 (Canvas 좌표 = 위젯 좌표)
     func charBleed() -> some View { frame(maxWidth: .infinity, maxHeight: .infinity).padding(-16) }
+    /// 갱신 때 인물이 dy 만큼 톡 움직였다가, 다 받으면 통통 돌아온다
+    func charHop(_ dy: CGFloat) -> some View {
+        let busy = Store.isReloading
+        return offset(y: busy ? dy : 0).animation(.interpolatingSpring(stiffness: 180, damping: 7), value: busy)
+    }
     /// 시안 좌표(위젯 가장자리부터 pt)로 놓는다. 위젯 콘텐츠 여백 16 안에 그리므로 16을 뺀다
     func charPin(_ a: Alignment, x: CGFloat = 16, y: CGFloat = 16) -> some View {
         let ox: CGFloat = a.horizontal == .leading ? x - 16 : a.horizontal == .trailing ? 16 - x : 0
@@ -530,7 +539,8 @@ struct HeightCharView: View {
             let r = e.r
             ZStack {
                 HeightMarks(v: e.locked ? [] : Array((r.spark ?? []).suffix(7)), today: e.date).charBleed()
-                CharSprite(name: poseOr(e.c, "measure"), locked: e.locked, height: 64).charPin(.bottomLeading, x: 66, y: 10)
+                CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_measure_up" : r.dayChg < 0 ? "pose_measure_down" : "pose_measure_base"), locked: e.locked, height: 64, shake: false)
+                    .charHop(-4).charPin(.bottomLeading, x: 66, y: 10)
                 Group {
                     if e.locked { meetLater(e.c) } else {
                         VStack(alignment: .leading, spacing: 4) {
@@ -601,7 +611,8 @@ struct PuzzleCharView: View {
             let n = min(20, max(0, Int((r.pct * 20 + 1e-9).rounded(.down))))
             ZStack {
                 if !e.locked { PuzzleBoard(n: n, c: s.accent).charBleed() }
-                CharSprite(name: poseOr(e.c, "puzzle"), locked: e.locked, height: 64).charPin(.bottomTrailing, x: 8, y: 26)
+                CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_puzzle_refresh" : "pose_puzzle_base"), locked: e.locked, height: 64, shake: false)
+                    .charHop(3).charPin(.bottomTrailing, x: 8, y: 26)
                 Text(WL.t("{key}까지", ["key": WL.t(r.keyName)])).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
                     .lineLimit(1).frame(height: 20).charPin(.topLeading)
                 Group {
@@ -684,7 +695,8 @@ struct GardenCharView: View {
             let d = r.cells - r.cellsYesterday
             ZStack {
                 if !e.locked { GardenBed(fill: fill, bloom: min(fill, fy), garden: g, c: s.accent).charBleed() }
-                CharSprite(name: poseOr(e.c, "water"), locked: e.locked, height: 64).charPin(.bottomTrailing, x: 8, y: 10)
+                CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_garden_refresh" : "pose_garden_base"), locked: e.locked, height: 64, shake: false)
+                    .charPin(.bottomTrailing, x: 8, y: 10)
                 Text(WL.t("{n}번째 꽃밭", ["n": "\(g)"])).font(.system(size: 11, weight: .semibold)).foregroundStyle(s.heading)
                     .lineLimit(1).frame(height: 20).charPin(.topLeading)
                 if e.locked { meetLater(e.c).charPin(.topLeading, y: 40) } else {
@@ -755,7 +767,8 @@ struct TugCharView: View {
                     team(r.tiles.filter { $0.c < 0 }, up: false).charPin(.topLeading, y: 64)
                     team(r.tiles.filter { $0.c > 0 }, up: true).charPin(.topTrailing, x: 4, y: 64)
                 }
-                CharSprite(name: poseOr(e.c, "referee"), locked: e.locked, height: 64).charPin(.bottomLeading, x: 44, y: 8)
+                CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_tug_refresh" : abs(r.dayChg) < 0.0005 ? "pose_tug_tie" : r.dayChg > 0 ? "pose_tug_right" : "pose_tug_left"),
+                           locked: e.locked, height: 64, shake: false).charPin(.bottomLeading, x: 44, y: 8)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(WL.t("오늘의 움직임")).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1).frame(height: 20)
                     Text(e.locked ? lockLine(e.c) : WL.t("다음: ") + (r.next ?? WL.t("예정된 일정 없음"))).font(.system(size: 9, weight: .medium))
