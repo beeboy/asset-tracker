@@ -209,13 +209,22 @@ struct HoldingsView: View {
         let name = HStack(spacing: 10) {
             LogoTile(symbol: r.id, size: 36)
             VStack(alignment: .leading, spacing: 2) {
-                // 글자를 줄이지 않는다(종목마다 크기가 같게). 이름 옆에 다 안 들어가면 수량·평균을 다음 줄로
-                let qty = Text("\(r.h.qty.formatted())주 · 평균 \(AppModel.price(r.sym, r.h.avg))")
-                    .appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
+                // 글자를 줄이지 않는다(종목마다 크기가 같게). 이름 옆 한 줄이 먼저: 안 맞으면 평균 단가를 정수로 줄여 보고,
+                // 그래도 안 맞을 때(이름이 길 때)만 수량·평균을 다음 줄로
+                let qtyText = { (avg: String) in
+                    Text("\(r.h.qty.formatted())주 · 평균 \(avg)").appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
+                }
+                let full = AppModel.price(r.sym, r.h.avg)
+                let short = r.sym.currency == .usd ? "$" + Int(r.h.avg.rounded()).formatted() : full
+                let qty = qtyText(full)
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(r.sym.name).appFont(15, .bold).lineLimit(1).fixedSize()
                         qty.fixedSize()
+                    }
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(r.sym.name).appFont(15, .bold).lineLimit(1).fixedSize()
+                        qtyText(short).fixedSize()
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(r.sym.name).appFont(15, .bold).lineLimit(1)
