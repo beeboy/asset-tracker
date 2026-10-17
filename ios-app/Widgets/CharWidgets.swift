@@ -46,6 +46,7 @@ struct CharEntry: TimelineEntry {
     var preview = false         // 위젯 갤러리 미리보기면 7일 무료 뒤에도 잠그지 않는다 (다른 위젯과 같이)
     var at: Date? = nil         // 지금 값의 시세를 받은 시각과 출처 (큰 위젯 아래 줄 '3분 전 · 토스')
     var feed: String? = nil
+    var frame = 0               // ↻ 받는 동안 몇 번째 그림인지 (전광판 인물이 포즈를 돌린다)
 }
 
 struct CharProvider: AppIntentTimelineProvider {
@@ -53,7 +54,12 @@ struct CharProvider: AppIntentTimelineProvider {
     func snapshot(for cfg: WhoIntent, in context: Context) async -> CharEntry { entry(cfg, preview: context.isPreview) }
     func timeline(for cfg: WhoIntent, in context: Context) async -> Timeline<CharEntry> {
         // ↻ 직후 '받는 중' 그리기: 받지 않고 바로 그린다 (받기는 ReloadIntent 가 하고, 끝나면 다시 그린다)
-        if Store.isReloading { return Timeline(entries: [entry(cfg, preview: false)], policy: .after(Date().addingTimeInterval(15))) }
+        if Store.isReloading {
+            // 1초마다 다음 포즈 (15초 동안)
+            let base = entry(cfg, preview: false)
+            let es = (0..<15).map { i -> CharEntry in var x = base; x.date = base.date.addingTimeInterval(Double(i)); x.frame = i; return x }
+            return Timeline(entries: es, policy: .after(base.date.addingTimeInterval(15)))
+        }
         WidgetLine.bump()   // 새로 그릴 때마다 다음 대사
         // 기본 위젯처럼 지금 가격을 직접 받는다 (전에는 받지 않아, 인물 위젯만 두면 ↻나 앱을 열 때까지 금액이 멈춰 있었다).
         // 다음 갱신도 기본 위젯과 같이: 국내 종목이 있으면 한국 장중에도, 7일 무료가 끝나는 때에도
@@ -499,8 +505,8 @@ struct BoardCharView: View {
                 }
                 .charPin(.topLeading)
                 // 오른 날 point_up, 내린 날 point_down, 갱신 중엔 point_refresh1 → point_up → point_refresh3
-                // (point_down·point_refresh3 그림이 아직 없으면 point_up)
-                let bn = poseOr(e.c, Store.isReloading ? "pose_point_refresh1" : r.dayChg < 0 ? "pose_point_down" : "pose_point_up", else: poseOr(e.c, "pose_point_up"))
+                let spin = ["pose_point_refresh1", "pose_point_up", "pose_point_refresh3"][e.frame % 3]
+                let bn = poseOr(e.c, Store.isReloading ? spin : r.dayChg < 0 ? "pose_point_down" : "pose_point_up", else: poseOr(e.c, "pose_point_up"))
                 CharSprite(name: bn, locked: e.locked, height: poseH(bn), shake: false)
                     .charPin(.bottomTrailing, x: 6)
                 if !e.locked && !r.tiles.isEmpty { rows(r).frame(width: 92).charPin(.bottomLeading, y: 18) }
