@@ -148,6 +148,8 @@ struct CharFrame<Content: View>: View {
         }
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(WL.t("{name} 잠김. {how}", ["name": Catalog.name(kind), "how": WidgetUnlock.how(kind)]))
         .containerBackground(for: .widget) { CharBG(c: e.c, locked: true, dark: scheme == .dark) }
     }
     private var open: some View {
@@ -218,7 +220,7 @@ struct CharItem: View {
     }
 }
 
-private func lockLine(_ c: WChar) -> String { "인터미션 \(c.week)주차에 만나요" }
+private func lockLine(_ c: WChar) -> String { WL.t("인터미션 {w}주차에 만나요", ["w": "\(c.week)"]) }
 
 /// 1억 2,340만
 private func eokMan(_ v: Double) -> String {
@@ -240,17 +242,17 @@ struct TrendCharView: View {
             ZStack(alignment: .bottomTrailing) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
-                        Text("자산 추이").font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                        Text(WL.t("자산 추이")).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
                         Spacer(minLength: 0)
                         if !e.locked { CharReload() }
                     }
                     if e.locked {
                         Image(systemName: "lock.fill").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.7)).padding(.vertical, 4)
-                        Text("인터미션\n\(e.c.week)주차에 만나요").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
+                        Text(WL.t("인터미션\n{w}주차에 만나요", ["w": "\(e.c.week)"])).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
                             .fixedSize(horizontal: false, vertical: true)
                     } else {
                         CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1).charFlip(r.total) }
-                        Text(Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100) + " 오늘")
+                        Text(Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100) + " " + WL.t("오늘"))
                             .font(.system(size: 11, weight: .semibold)).foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable().charFlip(r.dayChg)
                     }
                     Spacer(minLength: 0)
@@ -263,8 +265,9 @@ struct TrendCharView: View {
                     .offset(x: 8, y: 6)
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "\(e.c.name), 자산 \(Store.isHidden("char.trend") ? "숨김" : eokMan(e.r.total)), 오늘 \(e.r.dayChg >= 0 ? "올라" : "내려") \(String(format: "%.1f%%", abs(e.r.dayChg) * 100))")
+        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))"
+               : "\(Catalog.name("char.trend")). \(e.c.title), " + WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": Store.isHidden("char.trend") ? WL.t("숨김") : eokMan(e.r.total), "p": String(format: "%.1f%%", abs(e.r.dayChg) * 100), "dir": WL.dir(e.r.dayChg)]),
+               kind: "char.trend", money: !e.locked, reload: !e.locked)
     }
 }
 
@@ -301,13 +304,13 @@ struct RecoverCharView: View {
             ZStack(alignment: .bottomTrailing) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
-                        Text("\(r.keyName)까지").font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                        Text(WL.t("{key}까지", ["key": WL.t(r.keyName)])).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
                         Spacer(minLength: 0)
                         if !e.locked { CharReload() }      // ↻ 앱이 써 둔 최신 값으로 다시 그리기
                     }
                     if e.locked {
                         Image(systemName: "lock.fill").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.7)).padding(.vertical, 4)
-                        Text("인터미션\n\(e.c.week)주차에 만나요").font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
+                        Text(WL.t("인터미션\n{w}주차에 만나요", ["w": "\(e.c.week)"])).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
                             .fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text("\(Int((r.pct * 100).rounded()))%").font(.system(size: 34, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1).charFlip(r.pct)
@@ -323,7 +326,7 @@ struct RecoverCharView: View {
                     if !e.locked {
                         let d = (r.pct - r.pctYesterday) * 100
                         CharMoney { h in
-                            (Text("남은 \(h ? charHidden : eokMan(r.remain)) · 어제 ").foregroundStyle(.white.opacity(0.75))
+                            (Text(WL.t("남은 {v} · 어제 ", ["v": h ? charHidden : eokMan(r.remain)])).foregroundStyle(.white.opacity(0.75))
                              + Text((d >= 0 ? "+" : "") + String(format: "%.1f%%p", d)).foregroundStyle(d >= 0 ? upC : dnC))
                                 .font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8).charFlip(r.remain)
                         }
@@ -334,8 +337,9 @@ struct RecoverCharView: View {
                     .offset(x: 8, y: -10)
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "\(e.c.name), \(e.r.keyName)까지 \(Int((e.r.pct * 100).rounded()))%")
+        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))"
+               : "\(Catalog.name("char.recover")). \(e.c.title), " + WL.t("{key}까지 {p}%, 남은 금액 {v}", ["key": WL.t(e.r.keyName), "p": "\(Int((e.r.pct * 100).rounded()))", "v": Store.isHidden("char.recover") ? WL.t("숨김") : eokMan(e.r.remain)]),
+               kind: "char.recover", money: !e.locked, reload: !e.locked)
     }
 }
 
@@ -350,7 +354,7 @@ struct BlockCharView: View {
             let cell: CGFloat = 7, gap: CGFloat = 1.6, grid = cell * 10 + gap * 9
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 4) {
-                    Text(e.locked ? lockLine(e.c) : r.badgeToday ?? "\(block)번째 블록 채우는 중").font(.system(size: 11, weight: .semibold))
+                    Text(e.locked ? lockLine(e.c) : r.badgeToday ?? WL.t("{n}번째 블록 채우는 중", ["n": "\(block)"])).font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(!e.locked && r.badgeToday != nil ? s.accent : s.heading).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
                     if !e.locked { CharReload() }
@@ -392,17 +396,18 @@ struct BlockCharView: View {
                 Spacer(minLength: 0)
                 if !e.locked {
                     let d = r.cells - r.cellsYesterday
-                    (Text("\(fill)").font(.system(size: 20)) + Text("/100 · 어제 ").font(.system(size: 10)).foregroundColor(.white.opacity(0.75))
+                    (Text("\(fill)").font(.system(size: 20)) + Text(WL.t("/100 · 어제 ")).font(.system(size: 10)).foregroundColor(.white.opacity(0.75))
                      + Text((d >= 0 ? "+" : "") + "\(d)").font(.system(size: 10)).foregroundColor(d >= 0 ? upC : dnC))
                         .lineLimit(1).charFlip(Double(fill))
                 } else {
-                    Text("앱의 쉼터에서 봐요 ›").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
+                    Text(WL.t("앱의 쉼터에서 봐요 ›")).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "\(e.c.name), 1000칸 중 \(e.r.cells)칸")
+        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))"
+               : "\(Catalog.name("char.block")). \(e.c.title), " + WL.t("1000칸 중 {n}칸, 어제보다 {d}칸", ["n": "\(e.r.cells)", "d": (e.r.cells >= e.r.cellsYesterday ? "+" : "") + "\(e.r.cells - e.r.cellsYesterday)"]),
+               kind: "char.block", money: false, reload: !e.locked)
     }
 }
 
@@ -416,13 +421,13 @@ struct MovesCharView: View {
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text("오늘의 움직임").font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
+                        Text(WL.t("오늘의 움직임")).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
                         if !e.locked { CharReload() }
                     }
                     HStack(alignment: .top, spacing: 4) {
                         CharSprite(name: "w_\(e.c.id)", locked: e.locked, height: 92).frame(width: 66)
                             .overlay(alignment: .bottomTrailing) { if !e.locked, let it = WItem.shown(r) { CharItem(id: it).offset(x: 6) } }
-                        Text(e.locked ? "인터미션 \(e.c.week)주차에\n만나요" : r.newsToday ?? e.c.line(r))
+                        Text(e.locked ? WL.t("인터미션 {w}주차에\n만나요", ["w": "\(e.c.week)"]) : r.newsToday ?? e.c.line(r))
                             .font(.system(size: 11, weight: .medium)).lineLimit(3).fixedSize(horizontal: false, vertical: true)
                             .padding(.horizontal, 8).padding(.vertical, 6)
                             .background(s.bubbleFill, in: RoundedRectangle(cornerRadius: 8))
@@ -430,7 +435,7 @@ struct MovesCharView: View {
                             .padding(.top, 4).flipFade()
                     }
                     Spacer(minLength: 0)
-                    Text("다음: " + (r.next ?? "예정된 일정 없음")).font(.system(size: 10, weight: .medium))
+                    Text(WL.t("다음: ") + (r.next ?? WL.t("예정된 일정 없음"))).font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -446,8 +451,10 @@ struct MovesCharView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(e.locked ? "\(e.c.name), \(lockLine(e.c))" : "오늘의 움직임, \(e.c.name): \(e.r.newsToday ?? e.c.line(e.r))")
+        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))"
+               : "\(Catalog.name("char.moves")). " + WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": Store.isHidden("char.moves") ? WL.t("숨김") : eokMan(e.r.total), "p": String(format: "%.1f%%", abs(e.r.dayChg) * 100), "dir": WL.dir(e.r.dayChg)])
+                 + ". \(e.c.title): \(e.r.newsToday ?? e.c.line(e.r))",
+               kind: "char.moves", money: !e.locked, reload: !e.locked)
     }
 
     /// 종목 칸: 비중이 큰 3개까지 칸으로 (넓이는 비중, 오르면 빨강, 내리면 파랑).
@@ -500,7 +507,7 @@ struct MovesCharView: View {
         let c = w > 0 ? rest.reduce(0) { $0 + $1.w * $1.c } / w : 0      // 비중으로 합친 등락
         let dots = Array(rest.prefix(8))
         return HStack(spacing: 4) {
-            Text("외 \(rest.count)개").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.85)).fixedSize()
+            Text(WL.t("외 {n}개", ["n": "\(rest.count)"])).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white.opacity(0.85)).fixedSize()
             HStack(spacing: 2.5) {
                 ForEach(Array(dots.enumerated()), id: \.offset) { _, t in
                     let up = t.c >= 0
@@ -519,7 +526,7 @@ struct MovesCharView: View {
         .padding(.horizontal, 6)
         .frame(maxHeight: .infinity)
         .background(Color.white.opacity(tinted ? 0.08 : dark ? 0.07 : 0.12), in: RoundedRectangle(cornerRadius: 7))
-        .accessibilityLabel("그 외 \(rest.count)개 종목, 합쳐서 \(c >= 0 ? "올라" : "내려") \(String(format: "%.1f%%", abs(c) * 100))")
+        .accessibilityLabel(WL.t("그 외 {n}개 종목, 합쳐서 {p} {dir}", ["n": "\(rest.count)", "p": String(format: "%.1f%%", abs(c) * 100), "dir": WL.dir(c)]))
     }
 }
 
@@ -552,12 +559,33 @@ struct CharReload: View {
         let busy = Store.isReloading // 누른 뒤 받는 동안은 '받는 중' 모양
         let icon = Image(systemName: busy ? "ellipsis" : "arrow.clockwise").font(.system(size: 10, weight: .bold))
             .frame(width: 20, height: 20).background(Circle().fill(Color.white.opacity(busy ? 0.35 : 0.18)))
-            .accessibilityLabel(busy ? "받는 중" : "다시 받기")
+            .accessibilityLabel(WL.t(busy ? "받는 중" : "다시 받기"))
         #if WIDGET_EXT
         if storyOnly { Button(intent: StoryReloadIntent()) { icon }.buttonStyle(.plain) }
         else { Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain) }
         #else
         icon
+        #endif
+    }
+}
+
+extension View {
+    /// VoiceOver: 위젯 하나를 한 문장으로 읽는다 (숫자 조각을 따로 읽지 않게). ↻·금액 숨기기는 따로 고를 수 있는 동작으로 남긴다
+    /// 기본·잠금화면 위젯(HomeWidgets.swift)도 이것을 쓴다. 앱 미리보기에서는 문장만
+    @ViewBuilder func speak(_ label: String, kind: String, money: Bool = true, reload: Bool = true) -> some View {
+        let v = accessibilityElement(children: .ignore).accessibilityLabel(label)
+        #if WIDGET_EXT
+        let reloadName = Text(WL.t("다시 받기")), moneyName = Text(WL.t(Store.isHidden(kind) ? "금액 보이기" : "금액 숨기기"))
+        if #available(iOS 18, *) {   // 동작에 App Intent 를 거는 것은 iOS 18 부터. 17 에서는 문장만 읽는다
+            switch (reload, money) {
+            case (true, true): v.accessibilityAction(named: reloadName, intent: ReloadIntent()).accessibilityAction(named: moneyName, intent: ToggleAmountIntent(kind: kind))
+            case (true, false): v.accessibilityAction(named: reloadName, intent: ReloadIntent())
+            case (false, true): v.accessibilityAction(named: moneyName, intent: ToggleAmountIntent(kind: kind))
+            case (false, false): v
+            }
+        } else { v }
+        #else
+        v
         #endif
     }
 }

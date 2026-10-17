@@ -13,9 +13,16 @@
 - 수아: 공손한 해요체, 제때. "또 올게요. 약속은 아니에요."
 숫자 뒤에는 조사를 붙이지 않는다 ({n}. / {n}점 처럼). 사거나 팔라는 말은 넣지 않는다.
 
-    python3 tools/lines.py   # ios-app 에서 실행
+영어 (WidgetShared/lines_en.json, 기기 언어가 한국어가 아니면 앱·위젯이 읽는다)
+- lines: 영어 말투가 정해진 키만 (지금은 위젯 말풍선 widget.*). 없는 키는 한국어 줄을 쓴다
+- ui: 위젯 문구 표 (한국어 문구 → 영어). Swift 에서 WL.t("한국어") 로 부른다. {v} 같은 자리는 그대로 둔다
+- 영어 말투 (첫 안, 영어판 인물 대사 단계에서 다시 본다): 세리 사실만·짧은 관찰, 시오 아주 짧게·센다,
+  선배 질문으로, 이르 차분하게 서두르지 말라고, 수아 공손하게·제때
+
+    python3 tools/lines.py          # ios-app 에서 실행
+    python3 tools/lines.py --check  # 위젯 코드의 WL.t("…") 문구가 영어 표에 다 있는지만 본다 (CI)
 """
-import json, random, re
+import json, random, re, sys
 from pathlib import Path
 
 LIMIT = 100
@@ -215,13 +222,134 @@ ITEM_CORE = {
     "sua": ["{item}, 아직 있어요.", "{item}, 제자리예요.", "{item}, 오늘도 봤어요."],
 }
 
+# ---- 영어 ----
+# 위젯 말풍선은 영어가 30~50% 길어서 40자까지
+EN_MAXLEN = 40
+EN_VOICE = {
+    "seri": {"open": ["", "……", "Noted.", "Observed."], "close": ["", "That's all.", "Logged.", "Still watching."]},
+    "sio": {"open": ["", "Mm.", "Short one.", "Saw it."], "close": ["", "Counted.", "That's it.", "No rush."]},
+    "seonbae": {"open": ["", "Hey.", "Got a sec?", "One question."], "close": ["", "What do you think?", "Is that really your call?", "Why, though?"]},
+    "ir": {"open": ["", "Easy.", "It's okay.", "Breathe."], "close": ["", "No rush.", "Slow is fine.", "Let's look together."]},
+    "sua": {"open": ["", "Here I am.", "Right on time.", "Hello."], "close": ["", "Noted for you.", "Take a breath."]},
+}
+EN_CORE = {
+    "widget.up": {
+        "seri": ["{t} moved first.", "{t} +{c}%.", "{t} went up today.", "{t}, up {c}%."],
+        "sio": ["{t} {c}. Counted.", "{t} +{c}.", "{t} up. {c}.", "Today, {t}. +{c}."],
+        "seonbae": ["Up today. Why do you think?", "{t} +{c}%. Know why?", "{t} went up.", "What do you look at on up days?"],
+        "ir": ["Up, but don't hurry.", "{t} +{c}%.", "{t} went up.", "Slower on the up days."],
+        "sua": ["Right on time today.", "{t} is up {c}%.", "{t} went up.", "It's an up day."],
+    },
+    "widget.down": {
+        "seri": ["{t} moved first.", "{t} −{c}%.", "{t} went down today.", "{t}, down {c}%."],
+        "sio": ["{t} {c}. Counted.", "{t} −{c}.", "{t} down. {c}.", "Today, {t}. −{c}."],
+        "seonbae": ["Down today. Why do you think?", "{t} −{c}%. Know why?", "{t} went down.", "What do you look at on down days?"],
+        "ir": ["Shaky, but don't hurry.", "{t} −{c}%.", "{t} went down.", "Slower on the down days."],
+        "sua": ["Right on time today.", "{t} is down {c}%.", "{t} went down.", "It's a down day."],
+    },
+}
+# 위젯 문구 (한국어 → 영어). 한국어 쪽은 Swift 코드의 문구와 한 글자도 다르면 안 된다 (--check 가 본다)
+WIDGET_UI = {
+    # 위젯 이름·설명 (Catalog.swift)
+    "자산 추이": "Asset trend", "총자산·오늘 등락·최근 10일 흐름": "Total, today's change, last 10 days",
+    "미래 평가액": "Future value", "3년 뒤 예상과 목표 확률": "3-year outlook and goal odds",
+    "지금 채우는 블록": "Current block", "목표를 1000칸으로 나눠 지금 채우는 100칸": "Your goal in 1,000 cells: the 100 you're filling now",
+    "목표 페이스": "Goal pace", "필요한 경로보다 앞섰는지": "Ahead of or behind the path you need",
+    "이번 주 과녁": "This week's target", "금요일 마감 예측 범위와 지금 위치": "Friday close forecast range and where you are",
+    "오늘의 움직임": "Today's moves", "종목별 오늘 등락과 다음 이벤트": "Each holding today and the next event",
+    "미래 평가액 추이": "Future value outlook", "전망 부채꼴과 좋을 때·나쁠 때": "Forecast fan with good and bad cases",
+    "총자산·오늘 등락·1달 흐름": "Total, today's change, last month",
+    "목표 진행": "Goal progress", "목표 대비 %": "Percent of goal",
+    "3년 뒤": "In 3 years", "3년 뒤 예상 범위": "Expected range in 3 years",
+    "금요일 마감 예측과 지금": "Friday close forecast and now",
+    "인물 · 자산 추이": "Character · Asset trend", "총자산·오늘 등락·최근 10일 흐름, 인물이 옆에서 봐요": "Total, today's change, last 10 days, with a character beside you",
+    "인물 · 본전 진행": "Character · Break-even", "본전(목표)까지 몇 %인지, 인물이 같이 봐요": "How close you are to break-even (or goal), watched together",
+    "인물 · 블록": "Character · Blocks", "1000칸 중 지금 채우는 100칸과 10층 탑": "The 100 cells you're filling and the 10-floor tower",
+    "인물 · 오늘의 움직임": "Character · Today's moves", "종목별 오늘 등락과 인물의 한마디": "Each holding today and a word from your character",
+    "서재 · 이어 읽기": "Library · Keep reading", "외전 『이종 공명』에서 읽던 자리의 한 문단. 누르면 그 장으로 가요": "A paragraph from where you left off in Resonance Across Kinds. Tap to open the chapter.",
+    "naeilo 위젯": "naeilo widget",
+    # 인물 이름 (내 캐릭터는 지은 이름 그대로)
+    "세리": "Seri", "시오": "Sio", "선배": "Seonbae", "이르": "Ir", "수아": "Sua", "내 캐릭터": "My character",
+    # 앱이 넘겨주는 낱말
+    "본전": "break-even", "실적": "earnings", "배당": "dividend", "배당락": "ex-dividend",
+    # 잠금 (Config.swift WidgetUnlock)
+    "7일 무료가 끝났어요. 구독하면 다시 보여요": "Your 7-day free trial ended. Subscribe to see it again.",
+    "눌러서 구독하기 ›": "Tap to subscribe ›", "{name} 잠김. {how}": "{name} is locked. {how}",
+    # 공통
+    "오늘": "Today", "상승": "up", "하락": "down", "숨김": "hidden", "예시": "Sample", "예시 값": "sample values",
+    "받는 중": "Loading", "다시 받기": "Refresh", "금액 보이기": "Show amounts", "금액 숨기기": "Hide amounts",
+    "목표": "Goal", "목표일": "Goal date", "시작": "Start",
+    "사후 {a}/{b}": "Backtest {a}/{b}", "적중 {a}/{b}": "Hits {a}/{b}",
+    # 기본 위젯 (HomeViews.swift · Charts.swift)
+    "10일 · {time}": "10 days · {time}", "{term} 예상": "{term} est.", "앱을 열면 계산합니다": "Open the app to calculate",
+    "{n}번째 블록 채우는 중": "Filling block {n}", "어제 {d}": "Yesterday {d}",
+    "필요 속도보다 ": "", " 앞섬": " ahead of pace", " 뒤처짐": " behind pace",
+    "목표 시작일 확인 중": "Checking goal start date", "연 {p}% 필요 경로": "Needed path {p}%/yr", "지금 {v}": "Now {v}",
+    "이번 주 과녁 · 금 {d} 마감": "This week · closes Fri {d}", "예측보다 {p}": "{p} vs forecast",
+    "마감까지": "Until close", "예측 범위": "Forecast range",
+    "이번 주 예측은 앱이나 사이트를 열면 만들어집니다": "Open the app or site to make this week's forecast",
+    "다음: ": "Next: ", "미래 평가액 추이 · 내 설정": "Future value · my settings", "{term} 예상 중앙값": "{term} median",
+    "목표 확률": "Goal odds", "앱을 한 번 열면 전망을 계산합니다": "Open the app once to build the forecast",
+    "나쁠 때 (하위 5%)": "Bad case (low 5%)", "보통": "Typical", "좋을 때 (상위 5%)": "Good case (top 5%)",
+    "{d} 종가 기준": "As of {d} close", "목표 {v}": "Goal {v}",
+    # 잠금화면 위젯 (LockViews.swift)
+    "총자산 · 목표 {p}%": "Total · {p}% of goal", "1달": "1 mo", "{term} · 목표 확률 {p}": "{term} · goal odds {p}",
+    "앱을 열면 계산": "Open app to calculate", "이번 주 과녁 · {hit}": "This week · {hit}", "예측 {v}": "Forecast {v}",
+    "이번 주 예측 대기": "Waiting for this week's forecast",
+    # 인물 위젯 (CharWidgets.swift)
+    "인터미션 {w}주차에 만나요": "Meet in Intermission week {w}", "인터미션\n{w}주차에 만나요": "Meet in\nIntermission week {w}",
+    "인터미션 {w}주차에\n만나요": "Meet in Intermission\nweek {w}", "{key}까지": "To {key}", "남은 {v} · 어제 ": "{v} left · yesterday ",
+    "/100 · 어제 ": "/100 · yesterday ", "앱의 쉼터에서 봐요 ›": "See them in the Shelter ›", "예정된 일정 없음": "Nothing scheduled",
+    "외 {n}개": "+{n} more",
+    # VoiceOver 한 문장 (HomeWidgets.swift Speech, CharWidgets.swift)
+    "총자산 {v}, 오늘 {p} {dir}": "Total {v}, {dir} {p} today",
+    "{term} 예상 {v}, 목표 확률 {p}": "{term}: expected {v}, goal odds {p}",
+    "{b}번째 블록 100칸 중 {n}칸, 어제보다 {d}칸": "Block {b}: {n} of 100 cells, {d} since yesterday",
+    "목표 {p} 진행, D-{d}": "{p} of goal, D-{d}", "목표 {p} 진행": "{p} of goal",
+    "필요 속도보다 {p} 앞섬": "{p} ahead of the pace you need", "필요 속도보다 {p} 뒤처짐": "{p} behind the pace you need",
+    "지금 {v}, 예측 {m}, 예측보다 {p}, {hit}": "Now {v}, forecast {m}, {p} vs forecast, {hit}",
+    "{term} 예상 중앙값 {v}, 목표 확률 {p}, 나쁠 때 {lo}, 좋을 때 {hi}": "{term}: median {v}, goal odds {p}, bad case {lo}, good case {hi}",
+    "{key}까지 {p}%, 남은 금액 {v}": "{p}% to {key}, {v} left",
+    "1000칸 중 {n}칸, 어제보다 {d}칸": "{n} of 1,000 cells, {d} since yesterday",
+    "그 외 {n}개 종목, 합쳐서 {p} {dir}": "{n} more holdings, together {dir} {p}",
+}
+
+
+def swift_ui_keys(root):
+    """위젯 코드에서 WL.t 로 부르는 한국어 문구 (보간 \\( 가 든 문자열은 빼고)"""
+    lit = re.compile(r'"((?:[^"\\]|\\.)*)"')
+    files = list((root / "Widgets").rglob("*.swift")) + list((root / "WidgetShared").glob("*.swift")) + [root / "Naeilo/Data/WidgetBridge.swift"]
+    keys = {}
+    for f in sorted(files):
+        for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if line.lstrip().startswith("//") or ("WL.t(" not in line and "static func dir" not in line):
+                continue
+            for m in lit.finditer(line.split(" // ")[0]):
+                t = m.group(1)
+                if re.search("[가-힣]", t) and "\\(" not in t:
+                    keys.setdefault(t.replace("\\n", "\n").replace('\\"', '"'), f"{f.relative_to(root)}:{i}")
+    return keys
+
+
+def check(root):
+    """WL.t 문구와 위젯 이름표(Catalog)가 영어 표에 다 있는지"""
+    miss = {k: v for k, v in swift_ui_keys(root).items() if k not in WIDGET_UI}
+    cat = (root / "Widgets/Views/Catalog.swift").read_text(encoding="utf-8")
+    for m in re.finditer(r'name: "([^"]+)", desc: "([^"]+)"', cat):
+        for t in m.groups():
+            if t not in WIDGET_UI:
+                miss[t] = "Widgets/Views/Catalog.swift"
+    for k, v in miss.items():
+        print(f"영어 없음: {k!r} ({v})")
+    return not miss
+
 
 def join(*parts):
     s = " ".join(p for p in parts if p)
     return re.sub(r"\s+", " ", s).strip()
 
 
-def build(key, who, cores, opens, closes):
+def build(key, who, cores, opens, closes, maxlen=None):
     rnd = random.Random(f"{key}.{who}")
     out = []
     for c in cores:
@@ -235,7 +363,7 @@ def build(key, who, cores, opens, closes):
                 if o == "……" and c.startswith("……"):
                     continue
                 out.append(join(o, c, e))
-    out = [x for x in dict.fromkeys(out) if len(x) <= MAXLEN.get(key.split(".")[0], 90)]
+    out = [x for x in dict.fromkeys(out) if len(x) <= (maxlen or MAXLEN.get(key.split(".")[0], 90))]
     # 원래 문장(여는 말·맺는 말 없음)은 앞에 두고 나머지는 섞는다
     base = [c for c in cores if c in out]
     rest = [x for x in out if x not in base]
@@ -262,6 +390,20 @@ def main():
     out.write_text(json.dumps({"v": 1, "count": total, "lines": lines}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"{len(lines)} keys, {total} lines -> {out} ({out.stat().st_size // 1024} KB)")
 
+    en = {}
+    for key, per in EN_CORE.items():
+        for who, cores in per.items():
+            v = EN_VOICE[who]
+            en[f"{key}.{who}"] = build(key, who, cores, v["open"], v["close"], maxlen=EN_MAXLEN)
+    out = Path(__file__).resolve().parent.parent / "WidgetShared/lines_en.json"
+    out.write_text(json.dumps({"v": 1, "count": sum(len(v) for v in en.values()), "lines": en, "ui": WIDGET_UI},
+                              ensure_ascii=False, separators=(",", ":"), sort_keys=True), encoding="utf-8")
+    print(f"{len(en)} keys, {len(WIDGET_UI)} ui -> {out} ({out.stat().st_size // 1024} KB)")
+    if not check(Path(__file__).resolve().parent.parent):
+        sys.exit(1)
+
 
 if __name__ == "__main__":
+    if "--check" in sys.argv:
+        sys.exit(0 if check(Path(__file__).resolve().parent.parent) else 1)
     main()

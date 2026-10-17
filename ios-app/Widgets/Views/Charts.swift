@@ -91,7 +91,7 @@ struct FanChart: View {
                 band(fan.p25, fan.p75).fill(tint.c(Palette.acc, 0.38))
                 Path { p in p.move(to: CGPoint(x: 0, y: y(goal))); p.addLine(to: CGPoint(x: w, y: y(goal))) }
                     .stroke(tint.c(Palette.goal, 0.9), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
-                Text(labels ? "목표 \(Fmt.eok(goal, 0))" : Fmt.eok(goal, 0)).font(.system(size: 10, weight: .bold)).foregroundStyle(tint.c(Palette.goal))
+                Text(labels ? WL.t("목표 {v}", ["v": Fmt.eok(goal, 0)]) : Fmt.eok(goal, 0)).font(.system(size: 10, weight: .bold)).foregroundStyle(tint.c(Palette.goal))
                     .position(x: w - 24, y: y(goal) - 7)
                 Path { p in for k in 0..<m { let pt = CGPoint(x: xf(k), y: y(fan.p50[k])); k == 0 ? p.move(to: pt) : p.addLine(to: pt) } }
                     .stroke(Palette.ink.opacity(0.95), lineWidth: 1.8)
@@ -99,7 +99,7 @@ struct FanChart: View {
                     .stroke(Palette.ink, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
                 Path { p in p.move(to: CGPoint(x: xh(n - 1), y: 0)); p.addLine(to: CGPoint(x: xh(n - 1), y: h)) }.stroke(Palette.ink.opacity(0.35), lineWidth: 1)
                 if labels {
-                    Text("오늘").font(.system(size: 9.5)).foregroundStyle(Palette.ink.opacity(0.6)).position(x: xh(n - 1), y: h + 8)
+                    Text(WL.t("오늘")).font(.system(size: 9.5)).foregroundStyle(Palette.ink.opacity(0.6)).position(x: xh(n - 1), y: h + 8)
                     Text(fan.md.last.map { yymm($0) } ?? "").font(.system(size: 9.5)).foregroundStyle(Palette.ink.opacity(0.6)).position(x: w - 14, y: h + 8)
                 }
             }

@@ -1,5 +1,25 @@
 import Foundation
 
+/// 위젯 문구의 영어. 기기 언어가 한국어가 아니면 lines_en.json 의 ui 표(한국어 문구 → 영어)에서 찾는다 (tools/lines.py 가 만든다).
+/// 한국어 기기이거나 표에 없으면 한국어 그대로. {n} 같은 자리는 vars 로 채운다 (예: WL.t("{n}번째 블록", ["n": "3"]))
+enum WL {
+    /// 서재와 같은 규칙: 기기 첫 언어가 한국어가 아니면 영어
+    static let en = !(Locale.preferredLanguages.first ?? "ko").hasPrefix("ko")
+    private struct File: Decodable { let ui: [String: String] }
+    private static let ui: [String: String] = {
+        guard en, let url = Bundle.main.url(forResource: "lines_en", withExtension: "json"),
+              let d = try? Data(contentsOf: url), let f = try? JSONDecoder().decode(File.self, from: d) else { return [:] }
+        return f.ui
+    }()
+    static func t(_ ko: String, _ vars: [String: String] = [:]) -> String {
+        var s = en ? (ui[ko] ?? ko) : ko
+        for (k, v) in vars { s = s.replacingOccurrences(of: "{\(k)}", with: v) }
+        return s
+    }
+    /// 등락 방향 한 낱말: 상승·하락 (영어 기기면 up·down)
+    static func dir(_ x: Double) -> String { t(x >= 0 ? "상승" : "하락") }
+}
+
 enum Fmt {
     /// 5.27억
     /// 1억이 안 되면 만원으로 (4,002만)

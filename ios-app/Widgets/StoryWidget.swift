@@ -67,7 +67,7 @@ struct StoryWidgetView: View {
                     .frame(height: 3)
                     .flipFade()
                 } else {
-                    Label("잠김", systemImage: "lock.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+                    Label(s.lang == "en" ? "Locked" : "잠김", systemImage: "lock.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
                 }
             }
             if !small {
@@ -86,6 +86,7 @@ struct StoryWidgetView: View {
         }
         .widgetURL(s.url)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(s.open ? "서재, \(s.label). \(s.line)" : "서재 잠김. \(s.line)")
+        .accessibilityLabel(s.lang == "en" ? (s.open ? "Library, \(s.label). \(s.line)" : "Library locked. \(s.line)")
+                            : (s.open ? "서재, \(s.label). \(s.line)" : "서재 잠김. \(s.line)"))
     }
 }

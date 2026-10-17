@@ -25,6 +25,8 @@
 		9D0C8DCF6E59E311B4506B5B /* BrickGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2905AA73F54471654DDD97 /* BrickGame.swift */; };
 		39FFBAF05DA8DDC0379F1167 /* Lines.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50761DC24E0F1E341B2A8C09 /* Lines.swift */; };
 		B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */ = {isa = PBXBuildFile; fileRef = C9B0595773BCD7CC543FB16E /* lines_ko.json */; };
+		E7A1C0DE00000000000000A1 /* lines_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000F1 /* lines_en.json */; };
+		E7A1C0DE00000000000000B1 /* lines_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000F1 /* lines_en.json */; };
 		1DFBD64F26F68ABE1A9B5193 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0020D03B6A8743286E629278 /* AnalysisView.swift */; };
 		25763D697BF9918DDB053C1C /* StoryWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2AE2773680D746DCD4D27F5 /* StoryWidgetData.swift */; };
 		27B98CF0F3A9E3308C683492 /* StartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012F5C5676B198E5CF433509 /* StartView.swift */; };
@@ -214,6 +216,7 @@
 		5F2905AA73F54471654DDD97 /* BrickGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrickGame.swift; sourceTree = "<group>"; };
 		50761DC24E0F1E341B2A8C09 /* Lines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lines.swift; sourceTree = "<group>"; };
 		C9B0595773BCD7CC543FB16E /* lines_ko.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_ko.json; sourceTree = "<group>"; };
+		E7A1C0DE00000000000000F1 /* lines_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_en.json; sourceTree = "<group>"; };
 		D9CB3081436E1A6F74D763B5 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = drnk_ratio.json; sourceTree = "<group>"; };
 		E8980507A377896324ED840E /* Story.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Story.swift; sourceTree = "<group>"; };
@@ -305,6 +308,7 @@
 				F11B0000000000000000A001 /* Flip.swift */,
 				6B116C077153565363572A59 /* Reward.swift */,
 				D2AE2773680D746DCD4D27F5 /* StoryWidgetData.swift */,
+				E7A1C0DE00000000000000F1 /* lines_en.json */,
 			);
 			path = WidgetShared;
 			sourceTree = "<group>";
@@ -498,6 +502,7 @@
 				694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */,
 				B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */,
 				B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */,
+				E7A1C0DE00000000000000A1 /* lines_en.json in Resources */,
 				8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */,
 				CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */,
 				81A915C15DB304AE45CD6B4A /* stats.json in Resources */,
@@ -513,6 +518,7 @@
 			files = (
 				DC6166C3D3B536F49DEE74F6 /* Assets.xcassets in Resources */,
 				17F4BF227BB8ABA88817F833 /* PrivacyInfo.xcprivacy in Resources */,
+				E7A1C0DE00000000000000B1 /* lines_en.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

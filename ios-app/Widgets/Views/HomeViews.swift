@@ -19,7 +19,7 @@ struct AssetSmallView: View {
             Money { h in Big(text: h ? hiddenAmount : Fmt.eok(s.total)).flip(s.total) }
             Text("\(Fmt.arrow(s.dayChg)) \(Fmt.pct(s.dayChg))" + (hide ? "" : " · \(Fmt.man(s.dayAmt))")).font(.system(size: 12, weight: .bold)).foregroundStyle(t.chg(s.dayChg)).lineLimit(1).flip(s.dayChg)
             DotSpark(values: Array(s.spark.suffix(10)), color: Palette.ink.opacity(0.9), tint: t, labels: !hide).widgetAccentable().flipFade().padding(.top, 6)
-            Foot(text: "10일 · \(shortTime(s.updated))")
+            Foot(text: WL.t("10일 · {time}", ["time": shortTime(s.updated)]))
         }
         .foregroundStyle(Palette.ink)
     }
@@ -33,14 +33,14 @@ struct FutureSmallView: View {
         let t = Tint(mode: mode)
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 1) { Label2(text: "\(s.termLabel) 예상"); Money { h in Mid(text: h ? hiddenAmount : s.term.map { Fmt.eok($0.p50) } ?? "-").flip(s.term?.p50 ?? 0) } }
+                VStack(alignment: .leading, spacing: 1) { Label2(text: WL.t("{term} 예상", ["term": s.termLabel])); Money { h in Mid(text: h ? hiddenAmount : s.term.map { Fmt.eok($0.p50) } ?? "-").flip(s.term?.p50 ?? 0) } }
                 Spacer(minLength: 2)
-                VStack(alignment: .trailing, spacing: 1) { Label2(text: "목표"); Mid(text: s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-").foregroundStyle(t.c(Palette.goal)).widgetAccentable().flip(s.pGoal ?? 0) }
+                VStack(alignment: .trailing, spacing: 1) { Label2(text: WL.t("목표")); Mid(text: s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-").foregroundStyle(t.c(Palette.goal)).widgetAccentable().flip(s.pGoal ?? 0) }
             }
             if let f = s.fan {
                 FanChart(hist: Array(s.spark.suffix(63)), fan: f, goal: s.goal, log: true, tint: t, labels: false).flipFade().padding(.top, 4)
                     .overlay(alignment: .bottomLeading) { ReloadButton() }
-            } else { Spacer(); Text("앱을 열면 계산합니다").font(.caption2).foregroundStyle(Palette.ink.opacity(0.6)); Spacer(); ReloadButton() }
+            } else { Spacer(); Text(WL.t("앱을 열면 계산합니다")).font(.caption2).foregroundStyle(Palette.ink.opacity(0.6)); Spacer(); ReloadButton() }
         }
         .foregroundStyle(Palette.ink)
     }
@@ -58,7 +58,7 @@ struct BlockSmallView: View {
         let d = s.cells - s.cellsPrev
         let side = cell * 10 + gap * 9, floorTop = CGFloat(10 - block) * (cell + gap)
         VStack(alignment: .leading, spacing: 6) {
-            Label2(text: "\(block)번째 블록 채우는 중")
+            Label2(text: WL.t("{n}번째 블록 채우는 중", ["n": "\(block)"]))
             HStack(spacing: 0) {
                 Grid(horizontalSpacing: gap, verticalSpacing: gap) {
                     ForEach(0..<10, id: \.self) { r in
@@ -101,7 +101,7 @@ struct BlockSmallView: View {
             }
             HStack(alignment: .center, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 1) { Mid(text: "\(inBlock)").flip(Double(inBlock)); Text("/100").font(.system(size: 11)).opacity(0.6) }
-                Text("어제 \(d >= 0 ? "+" : "")\(d)").font(.system(size: 11, weight: .bold)).foregroundStyle(d == 0 ? Palette.ink : t.chg(Double(d))).lineLimit(1).flip(Double(d))
+                Text(WL.t("어제 {d}", ["d": "\(d >= 0 ? "+" : "")\(d)"])).font(.system(size: 11, weight: .bold)).foregroundStyle(d == 0 ? Palette.ink : t.chg(Double(d))).lineLimit(1).flip(Double(d))
                 Spacer(minLength: 0)
                 ReloadButton()
             }
@@ -119,11 +119,11 @@ struct PaceMediumView: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label2(text: "목표 페이스")
+                    Label2(text: WL.t("목표 페이스"))
                     if let p = pace {
-                        (Text("필요 속도보다 ") + Text(Fmt.pct(p.ahead)).foregroundColor(t.chg(p.ahead)) + Text(p.ahead >= 0 ? " 앞섬" : " 뒤처짐"))
+                        (Text(WL.t("필요 속도보다 ")) + Text(Fmt.pct(p.ahead)).foregroundColor(t.chg(p.ahead)) + Text(WL.t(p.ahead >= 0 ? " 앞섬" : " 뒤처짐")))
                             .font(.system(size: 19, weight: .heavy, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7).flip(p.ahead)
-                    } else { Mid(text: "목표 시작일 확인 중") }
+                    } else { Mid(text: WL.t("목표 시작일 확인 중")) }
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 1) { Mid(text: String(format: "%.1f%%", s.progress * 100)).flip(s.progress); Text("D-\(Fmt.comma(s.dday))").font(.system(size: 12)).opacity(0.6) }
@@ -151,11 +151,11 @@ struct PaceChart: View {
                 Path { p in for i in 0...40 { let f = Double(i) / 40, pt = CGPoint(x: X(f), y: Y(req(f))); i == 0 ? p.move(to: pt) : p.addLine(to: pt) } }
                     .stroke(tint.c(Palette.goal, 0.9), style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
                 Text("⚑ \(Fmt.eok(s.goal, 0))").font(.system(size: 12, weight: .bold)).position(x: w - 26, y: Y(s.goal) + 12)
-                if let p = s.pace { Text("연 \(String(format: "%.1f", p.req * 100))% 필요 경로").font(.system(size: 10)).opacity(0.6).position(x: X(0.55), y: Y(req(0.55)) + 14) }
+                if let p = s.pace { Text(WL.t("연 {p}% 필요 경로", ["p": String(format: "%.1f", p.req * 100)])).font(.system(size: 10)).opacity(0.6).position(x: X(0.55), y: Y(req(0.55)) + 14) }
                 Circle().fill(Palette.ink).frame(width: 12, height: 12).overlay(Circle().stroke(tint.c(Palette.goal), lineWidth: 3)).position(x: X(fNow), y: Y(s.total))
-                Money { h in Text("지금 \(h ? hiddenAmount : Fmt.eok(s.total))").font(.system(size: 11, weight: .bold)).flip(s.total) }.position(x: X(fNow) + 42, y: Y(s.total) - 13)
-                Text("시작").font(.system(size: 9.5)).opacity(0.5).position(x: 12, y: h + 8)
-                Text("목표일").font(.system(size: 9.5)).opacity(0.5).position(x: w - 16, y: h - 20)
+                Money { h in Text(WL.t("지금 {v}", ["v": h ? hiddenAmount : Fmt.eok(s.total)])).font(.system(size: 11, weight: .bold)).flip(s.total) }.position(x: X(fNow) + 42, y: Y(s.total) - 13)
+                Text(WL.t("시작")).font(.system(size: 9.5)).opacity(0.5).position(x: 12, y: h + 8)
+                Text(WL.t("목표일")).font(.system(size: 9.5)).opacity(0.5).position(x: w - 16, y: h - 20)
             }
         }
     }
@@ -173,17 +173,17 @@ struct TargetMediumView: View {
                 let g = w.act / w.p50 - 1
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Label2(text: "이번 주 과녁 · 금 \(Day.md(w.f)) 마감")
+                        Label2(text: WL.t("이번 주 과녁 · 금 {d} 마감", ["d": Day.md(w.f)]))
                         Money { h in
-                            (Text("지금 \(h ? hiddenAmount : Fmt.eok(w.act)) ").font(.system(size: 19, weight: .heavy, design: .rounded))
-                             + Text("예측보다 \(Fmt.pct(g))").font(.system(size: 14, weight: .bold)).foregroundColor(t.chg(g))).lineLimit(1).minimumScaleFactor(0.7).flip(w.act)
+                            (Text(WL.t("지금 {v}", ["v": h ? hiddenAmount : Fmt.eok(w.act)]) + " ").font(.system(size: 19, weight: .heavy, design: .rounded))
+                             + Text(WL.t("예측보다 {p}", ["p": Fmt.pct(g)])).font(.system(size: 14, weight: .bold)).foregroundColor(t.chg(g))).lineLimit(1).minimumScaleFactor(0.7).flip(w.act)
                         }
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 1) { Label2(text: "마감까지"); Mid(text: w.dday == 0 ? "오늘" : "D-\(w.dday)").flip(Double(w.dday)) }
+                    VStack(alignment: .trailing, spacing: 1) { Label2(text: WL.t("마감까지")); Mid(text: w.dday == 0 ? WL.t("오늘") : "D-\(w.dday)").flip(Double(w.dday)) }
                 }
                 RangeBar(lo: w.lo, hi: w.hi, mid: w.p50, now: w.act, tint: t).frame(height: 26).padding(.top, 10).widgetAccentable().flipFade()
-                HStack { Text(hide ? "예측 범위" : Fmt.eok(w.lo)); Spacer(); Text(hide ? "" : Fmt.eok(w.hi)) }.font(.system(size: 11)).opacity(0.6)
+                HStack { Text(hide ? WL.t("예측 범위") : Fmt.eok(w.lo)); Spacer(); Text(hide ? "" : Fmt.eok(w.hi)) }.font(.system(size: 11)).opacity(0.6)
                 HStack(spacing: 4) {
                     Text(s.hitText).font(.system(size: 11)).opacity(0.6)
                     ForEach(Array(s.hits.suffix(8).enumerated()), id: \.offset) { _, h in
@@ -193,9 +193,9 @@ struct TargetMediumView: View {
                     ReloadButton()
                 }
             } else {
-                Label2(text: "이번 주 과녁")
+                Label2(text: WL.t("이번 주 과녁"))
                 Spacer()
-                Text("이번 주 예측은 앱이나 사이트를 열면 만들어집니다").font(.system(size: 13)).opacity(0.7)
+                Text(WL.t("이번 주 예측은 앱이나 사이트를 열면 만들어집니다")).font(.system(size: 13)).opacity(0.7)
                 Spacer()
                 Foot(text: shortTime(s.updated))
             }
@@ -213,7 +213,7 @@ struct MovesMediumView: View {
         let t = Tint(mode: mode), ms = s.moves
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Label2(text: "오늘의 움직임")
+                Label2(text: WL.t("오늘의 움직임"))
                 Spacer()
                 Money { h in Text("\(h ? hiddenAmount + " " : Fmt.eok(s.total) + " ")\(Fmt.arrow(s.dayChg))\(Fmt.pct(s.dayChg))").font(.system(size: 12, weight: .heavy)).foregroundStyle(t.chg(s.dayChg)).flip(s.total) }
             }
@@ -227,7 +227,7 @@ struct MovesMediumView: View {
                 }
             }
             HStack {
-                if let e = s.events.first { Text("다음: ").font(.system(size: 11)) + Text("\(e.t) \(e.k)").font(.system(size: 11, weight: .bold)) + Text(" D-\(e.dday) (\(Day.md(e.d)))").font(.system(size: 11)) }
+                if let e = s.events.first { Text(WL.t("다음: ")).font(.system(size: 11)) + Text("\(e.t) \(WL.t(e.k))").font(.system(size: 11, weight: .bold)) + Text(" D-\(e.dday) (\(Day.md(e.d)))").font(.system(size: 11)) }
                 Spacer(minLength: 0)
                 ReloadButton()
             }
@@ -260,21 +260,21 @@ struct FutureLargeView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label2(text: "미래 평가액 추이 · 내 설정")
+                    Label2(text: WL.t("미래 평가액 추이 · 내 설정"))
                     Money { h in Big(text: h ? hiddenAmount : s.term.map { Fmt.eok($0.p50) } ?? "-").flip(s.term?.p50 ?? 0) }
-                    Text("\(s.termLabel) 예상 중앙값").font(.system(size: 12)).opacity(0.6)
+                    Text(WL.t("{term} 예상 중앙값", ["term": s.termLabel])).font(.system(size: 12)).opacity(0.6)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 2) { Label2(text: "목표 확률"); Big(text: s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-").foregroundStyle(t.c(Palette.goal)).widgetAccentable().flip(s.pGoal ?? 0) }
+                VStack(alignment: .trailing, spacing: 2) { Label2(text: WL.t("목표 확률")); Big(text: s.pGoal.map { "\(Int(($0 * 100).rounded()))%" } ?? "-").foregroundStyle(t.c(Palette.goal)).widgetAccentable().flip(s.pGoal ?? 0) }
             }
             if let f = s.fan { FanChart(hist: Array(s.spark.suffix(63)), fan: f, goal: s.goal, tint: t).widgetAccentable().flipFade() }
-            else { Spacer(); Text("앱을 한 번 열면 전망을 계산합니다").font(.system(size: 13)).opacity(0.7).frame(maxWidth: .infinity); Spacer() }
+            else { Spacer(); Text(WL.t("앱을 한 번 열면 전망을 계산합니다")).font(.system(size: 13)).opacity(0.7).frame(maxWidth: .infinity); Spacer() }
             if let tm = s.term {
                 HStack(spacing: 6) {
-                    cell("나쁠 때 (하위 5%)", tm.p5); cell("보통", tm.p50); cell("좋을 때 (상위 5%)", tm.p95)
+                    cell(WL.t("나쁠 때 (하위 5%)"), tm.p5); cell(WL.t("보통"), tm.p50); cell(WL.t("좋을 때 (상위 5%)"), tm.p95)
                 }
             }
-            Foot(text: "\(s.fcAsOf.map { Day.md($0) + " 종가 기준" } ?? "") · \(shortTime(s.updated))")
+            Foot(text: "\(s.fcAsOf.map { WL.t("{d} 종가 기준", ["d": Day.md($0)]) } ?? "") · \(shortTime(s.updated))")
         }
         .foregroundStyle(Palette.ink)
     }
