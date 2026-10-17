@@ -61,6 +61,11 @@
 - 기호 변환은 홍콩(0700.HK→700.HK)·상하이(.SS→.SH)·선전(.SZ)도 되지만, 앱이 원화·달러 종목만 다뤄 지금은 미국 종목만 받는다.
 - 남은 것: 실제 키로 받아 보기 확인 필요(서명·HTTP 시세 경로). Access Token 기한이 지나면 사용자가 새로 넣어야 함(자동 갱신 `/v1/token/refresh` 없음). 홍콩·중국 종목을 넣으려면 홍콩달러·위안 환율과 종목을 앱·웹에 같이 넣어야 함.
 
+## 위젯 갱신 바로잡기 (2026-10-17, PR #292)
+- 위젯 정기 갱신 받기를 `WidgetRefresh.fetch()`(`WidgetShared/Format.swift`)로 모아 기본·잠금·인물 위젯이 같이 씀. 인물 위젯도 이제 정기 갱신 때 시세를 직접 받고(전엔 받지 않아 인물 위젯만 두면 금액이 멈춤), 국내 종목이 있으면 한국 장중에도 갱신.
+- 다음 갱신 시각을 7일 무료 끝(`Store.trialEnd`)까지로 잘라 모든 위젯이 그때 바로 잠김. 서재 ↻는 `StoryReloadIntent`로 시세 없이 서재 위젯만 다시 그림.
+- 실기기 확인 필요: 인물 위젯만 둔 홈에서 금액이 갱신되는지, 7일 무료 끝 시각에 잠기는지. 분석 문서: https://claude.ai/code/artifact/b2ee909c-be79-4114-bd74-e8400e1e94fa (다음: B 잠금·이름표 정리, C 영어·접근성, D 새 경험)
+
 ## 내 Alpaca 키 (2026-10-17, PR 올림)
 - 설정 '숫자를 계산하는 기준'에 '내 Alpaca 키' 줄 하나 추가 → `AlpacaKeyView`. 키를 넣지 않으면 다른 화면은 그대로.
 - `AlpacaKeys`·`AlpacaFeed`(`WidgetShared/Models.swift`): 키는 키체인(위젯과 같은 그룹), 미국 종목만 `v2/stocks/snapshots?feed=iex`. 지금 가격 = latestTrade.p, 전일 종가는 사이트 값 먼저(없으면 prevDailyBar.c). 15분 넘은 값은 안 씀.

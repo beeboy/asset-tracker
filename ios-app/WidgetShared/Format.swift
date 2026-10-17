@@ -48,3 +48,30 @@ enum MarketHours {
         return now.addingTimeInterval(3 * 3600)
     }
 }
+
+/// 위젯 정기 갱신 (기본·잠금화면·인물 위젯이 같이 쓴다): 지금 가격·환율을 위젯이 직접 받고 다음 갱신 시각을 준다.
+/// 숫자는 naeilo 앱이 계산해서 App Group 폴더에 써 둔다. 10분 안에 받았으면 다시 받지 않는다 (위젯이 여럿이어도 요청이 적다)
+enum WidgetRefresh {
+    static func fetch() async -> Date {
+        await QuoteFeed.fetch(minAge: 600)
+        // 내부 테스트 국내 시세 종목이 있으면 그것도 (한국 장중에도 갱신)
+        let feed = Store.read(WFeed.self, "feed.json")
+        let ky = feed?.ky ?? [:]
+        await KrQuoteFeed.fetch(ky, minAge: 600)
+        // 내 토스 키가 있으면 토스 지금 가격도 위젯이 직접 (앱을 안 열어도 앱과 같은 값). 국내 종목이 있으면 한국 장중에도 갱신
+        let toss = await TossFeed.widgetFetch(minAge: 600)
+        // 내 Alpaca 키가 있으면 미국 종목 지금 가격도 위젯이 직접
+        await AlpacaFeed.widgetFetch(minAge: 600)
+        // 내 Longbridge 키가 있으면 그것도
+        await LongbridgeFeed.widgetFetch(minAge: 600)
+        let tossKr = toss != nil && (feed?.ty ?? [:]).values.contains { $0.hasSuffix(".KS") || $0.hasSuffix(".KQ") }
+        return untilTrialEnd(MarketHours.nextRefresh(kr: !ky.isEmpty || tossKr))
+    }
+
+    /// 7일 무료가 다음 갱신보다 먼저 끝나면 그때 한 번 더 그려 바로 잠근다 (전에는 다음 갱신까지, 장 밖이면 최대 3시간 열려 있었다)
+    static func untilTrialEnd(_ next: Date) -> Date {
+        let end = Store.trialEnd
+        guard !Store.subOn, end > Date().timeIntervalSince1970 else { return next }
+        return min(next, Date(timeIntervalSince1970: end))
+    }
+}

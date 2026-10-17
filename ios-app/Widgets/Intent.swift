@@ -24,6 +24,20 @@ struct ReloadIntent: AppIntent {
     }
 }
 
+/// 서재 위젯의 ↻: 시세는 받지 않고 읽던 자리(story.json)로 서재 위젯만 다시 그린다.
+/// 잠깐 '받는 중'으로 그렸다가 되돌려, 다른 위젯과 같은 흐림·뛰어오름 효과를 낸다
+struct StoryReloadIntent: AppIntent {
+    static var title: LocalizedStringResource = "서재 다시 그리기"
+    func perform() async throws -> some IntentResult {
+        Store.reloadingSince = Date()
+        WidgetCenter.shared.reloadTimelines(ofKind: "story")
+        try? await Task.sleep(nanoseconds: 800_000_000)
+        Store.reloadingSince = nil
+        WidgetCenter.shared.reloadTimelines(ofKind: "story")
+        return .result()
+    }
+}
+
 func withTimeout<T: Sendable>(_ sec: Double, _ op: @escaping @Sendable () async throws -> T) async throws -> T {
     try await withThrowingTaskGroup(of: T.self) { g in
         g.addTask { try await op() }
