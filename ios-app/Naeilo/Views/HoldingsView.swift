@@ -7,6 +7,7 @@ struct HoldingsView: View {
     @State private var said: String? = nil          // 지운 뒤 인물의 한 줄 (평정 지수)
     @State private var swiped: String? = nil        // 왼쪽으로 밀어 지우기 버튼이 보이는 종목
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
+    @AppStorage("holdUsd") private var inUsd = false // 목록 금액: 미국 종목을 달러로 볼지
     @Environment(\.dynamicTypeSize) private var dts
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
 
@@ -27,6 +28,7 @@ struct HoldingsView: View {
                         Text("%는 내가 산 가격 대비예요").appFont(12).foregroundStyle(Theme.sub)
                     }
                     Spacer()
+                    unitToggle
                     Menu {
                         ForEach(HoldSort.allCases, id: \.self) { c in
                             Button { m.holdSort = c } label: {
@@ -128,12 +130,38 @@ struct HoldingsView: View {
     }
 
     // 미국 주식 / 국내 주식 묶음 카드
+    // 목록 금액 단위: $ / 원 (미국 종목만 바뀐다)
+    private var unitToggle: some View {
+        HStack(spacing: 0) {
+            ForEach([true, false], id: \.self) { u in
+                Button { inUsd = u } label: {
+                    Text(u ? "$" : "원").appFont(13, .bold)
+                        .foregroundStyle(inUsd == u ? .white : Theme.sub)
+                        .frame(width: 32, height: 28)
+                        .background(inUsd == u ? Theme.teal : .clear, in: Capsule())
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding(2).overlay(Capsule().stroke(Theme.border))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("금액 단위: \(inUsd ? "달러" : "원")")
+        .accessibilityAction { inUsd.toggle() }
+    }
+
+    private func usd(_ r: AppModel.Row) -> Bool { inUsd && r.sym.currency == .usd }
+    private func amountText(_ rs: [AppModel.Row]) -> String {
+        if !rs.isEmpty, rs.allSatisfy(usd) {
+            return "$" + rs.reduce(0) { $0 + $1.h.qty * $1.sym.last }.formatted(.number.precision(.fractionLength(2)))
+        }
+        return AppModel.man(rs.reduce(0) { $0 + $1.value })
+    }
+
     private func group(_ title: String, _ rs: [AppModel.Row]) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text("\(title) \(rs.count)").appFont(14, .bold)
                 Spacer()
-                Text(AppModel.man(rs.reduce(0) { $0 + $1.value })).appFont(14, .semibold).foregroundStyle(Theme.sub).monospacedDigit()
+                Text(amountText(rs)).appFont(14, .semibold).foregroundStyle(Theme.sub).monospacedDigit()
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
             ForEach(rs) { r in
@@ -173,19 +201,27 @@ struct HoldingsView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
-    // 행: 로고 · 이름 · "수량 · 평균 단가" / 평가액 · 산 가격 대비 %
+    // 행: 로고 · "이름 수량 · 평균 단가" · "지금 가격 · 오늘 %" / 평가액 · 산 가격 대비 %
     private func row(_ r: AppModel.Row) -> some View {
         let chg = r.cost > 0 ? r.value / r.cost - 1 : 0
+        let day = r.sym.quote.change
         let name = HStack(spacing: 10) {
             LogoTile(symbol: r.id, size: 36)
             VStack(alignment: .leading, spacing: 2) {
-                Text(r.sym.name).appFont(15, .bold).lineLimit(1)
-                Text("\(r.h.qty.formatted())주 · 평균 \(AppModel.price(r.sym, r.h.avg))")
-                    .appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(r.sym.name).appFont(15, .bold).lineLimit(1).layoutPriority(1)
+                    Text("\(r.h.qty.formatted())주 · 평균 \(AppModel.price(r.sym, r.h.avg))")
+                        .appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                }
+                HStack(spacing: 4) {
+                    Text("지금 \(AppModel.price(r.sym, r.sym.last))").foregroundStyle(Theme.sub)
+                    Text("오늘 " + (day >= 0 ? "+" : "") + String(format: "%.2f%%", day * 100)).foregroundStyle(Theme.change(day))
+                }
+                .appFont(12).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
             }
         }
         let amount = VStack(alignment: .trailing, spacing: 2) {
-            Text(AppModel.man(r.value)).appFont(15, .bold).monospacedDigit().lineLimit(1)
+            Text(amountText([r])).appFont(15, .bold).monospacedDigit().lineLimit(1)
             Text(AppModel.sgn(chg)).appFont(13, .bold).foregroundStyle(Theme.change(chg))
         }
         return Group {
@@ -257,7 +293,7 @@ struct HoldingDetailView: View {
                     VStack(spacing: 0) {
                         kv("보유 수량", h.qty.formatted() + "주")
                         kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv(Market.shared.isToss(sym) ? "오픈 API 시세" : Market.shared.isAlpaca(sym) ? "Alpaca(IEX) 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last))
+                        kv(Market.shared.isToss(sym) ? "오픈 API 시세" : Market.shared.isAlpaca(sym) ? "Alpaca(IEX) 시세" : Market.shared.isLongbridge(sym) ? "Longbridge 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last))
                         if sym.quote.live { kv("오늘 등락", AppModel.sgn(sym.quote.change)) }
                         if sym.currency == .usd { kv("환율", "1달러 " + Int(Market.shared.valFx.rounded()).formatted() + "원") }
                         kv(need > 0.0005 ? "본전까지" : "본전 대비", need > 0.0005 ? "주가가 " + String(format: "%.1f", need * 100) + "% 오르면 본전"
@@ -414,7 +450,8 @@ struct AddHoldingView: View {
     @FocusState private var focus: Int?
 
     var body: some View {
-        let local = StockSearch.local(query)
+        let blank = query.trimmingCharacters(in: .whitespaces).isEmpty   // 빈칸이면 목록을 띄우지 않는다
+        let local = blank ? [] : StockSearch.local(query)
         let more = remote.filter { r in !local.contains { $0.id == r.id } }
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -433,17 +470,15 @@ struct AddHoldingView: View {
                     }
                     if !local.isEmpty { list(local) }
                     if !more.isEmpty {
-                        Text("Yahoo에서 더 찾은 종목").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 4)
+                        Text("더 찾은 종목").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 4)
                         list(more)
                     }
                     if searching {
-                        HStack(spacing: 8) { ProgressView(); Text("Yahoo에서 찾는 중").appFont(13).foregroundStyle(Theme.sub) }
-                    } else if local.isEmpty && more.isEmpty {
-                        Text("찾는 종목이 없어요. 미국 주식·ETF와 코스피·코스닥 종목을 한글 이름, 영문 이름, 티커, 종목 코드로 찾을 수 있어요. 한글 이름은 자주 찾는 종목만 알아요.")
+                        HStack(spacing: 8) { ProgressView(); Text("찾는 중").appFont(13).foregroundStyle(Theme.sub) }
+                    } else if !blank && local.isEmpty && more.isEmpty {
+                        Text("찾는 종목이 없어요. 이름, 티커, 종목 코드로 찾아 보세요.")
                             .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     }
-                    Text("시세는 테스트용 Yahoo 중계 자료예요. 미국 종목은 지금 가격이에요. 한국 종목은 시세를 받지 않아 가격을 한 번 넣어요. 미국 지수를 따르는 국내 ETF는 그 뒤로 미국 ETF × 원/달러로 추정해요.")
-                        .appFont(12).foregroundStyle(Theme.muted)
                 }
             }
             .screen().padding(.top, 8)
