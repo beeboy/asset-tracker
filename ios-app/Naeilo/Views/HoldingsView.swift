@@ -257,7 +257,7 @@ struct HoldingDetailView: View {
                     VStack(spacing: 0) {
                         kv("보유 수량", h.qty.formatted() + "주")
                         kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv(Market.shared.isToss(sym) ? "오픈 API 시세" : Market.shared.isAlpaca(sym) ? "Alpaca(IEX) 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last))
+                        kv(Market.shared.isToss(sym) ? "오픈 API 시세" : Market.shared.isAlpaca(sym) ? "Alpaca(IEX) 시세" : Market.shared.isLongbridge(sym) ? "Longbridge 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last))
                         if sym.quote.live { kv("오늘 등락", AppModel.sgn(sym.quote.change)) }
                         if sym.currency == .usd { kv("환율", "1달러 " + Int(Market.shared.valFx.rounded()).formatted() + "원") }
                         kv(need > 0.0005 ? "본전까지" : "본전 대비", need > 0.0005 ? "주가가 " + String(format: "%.1f", need * 100) + "% 오르면 본전"

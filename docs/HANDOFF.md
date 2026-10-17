@@ -54,6 +54,13 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 내 Longbridge 키 (2026-10-17, PR 올림)
+- 설정 '숫자를 계산하는 기준'에 '내 Longbridge 키' 줄 추가 → `LongbridgeKeyView` (App Key·App Secret·Access Token).
+- `LongbridgeKeys`·`LongbridgeFeed`(`WidgetShared/Models.swift`): 공식 Go SDK 의 HTTP 방식 `POST /quote/quotes` + HMAC-SHA256 서명(`x-api-signature`, 밀리초 `x-timestamp`, `us_` 키는 `x-dc-region: us`). 웹소켓·protobuf 없음.
+- 우선순위: 토스 > Alpaca > Longbridge > 사이트. 전일 종가는 사이트 값 먼저. 위젯도 같은 키로 직접. 종목 화면 출처 "Longbridge 시세".
+- 기호 변환은 홍콩(0700.HK→700.HK)·상하이(.SS→.SH)·선전(.SZ)도 되지만, 앱이 원화·달러 종목만 다뤄 지금은 미국 종목만 받는다.
+- 남은 것: 실제 키로 받아 보기 확인 필요(서명·HTTP 시세 경로). Access Token 기한이 지나면 사용자가 새로 넣어야 함(자동 갱신 `/v1/token/refresh` 없음). 홍콩·중국 종목을 넣으려면 홍콩달러·위안 환율과 종목을 앱·웹에 같이 넣어야 함.
+
 ## 내 Alpaca 키 (2026-10-17, PR 올림)
 - 설정 '숫자를 계산하는 기준'에 '내 Alpaca 키' 줄 하나 추가 → `AlpacaKeyView`. 키를 넣지 않으면 다른 화면은 그대로.
 - `AlpacaKeys`·`AlpacaFeed`(`WidgetShared/Models.swift`): 키는 키체인(위젯과 같은 그룹), 미국 종목만 `v2/stocks/snapshots?feed=iex`. 지금 가격 = latestTrade.p, 전일 종가는 사이트 값 먼저(없으면 prevDailyBar.c). 15분 넘은 값은 안 씀.

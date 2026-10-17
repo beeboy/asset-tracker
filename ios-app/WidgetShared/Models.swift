@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import CryptoKit
 
 // 사이트(web/widget-core.js)가 만드는 위젯 요약. 금액 배열은 만원 단위 정수, 나머지 금액은 원
 struct WSummary: Codable {
@@ -518,6 +519,171 @@ enum AlpacaKeys {
         Store.defaults.removeObject(forKey: "alpaca_err")
         Store.defaults.removeObject(forKey: "alpaca_ok_at")
         Store.remove(AlpacaFeed.name)
+    }
+}
+
+// Longbridge 지금 가격. 사용자가 open.longbridge.com 개발자 센터에서 받은 App Key·App Secret·Access Token 으로 Longbridge 를 직접 부른다 (중계 없음).
+// 모의(paper) 계정에도 홍콩·미국·A주 기본 실시간 시세가 들어 있다. 공식 SDK 의 HTTP 방식(POST /quote/quotes, HMAC-SHA256 서명)을 그대로 쓴다.
+// 앱은 아직 원화·달러 종목만 다루므로 지금은 미국 종목에 쓰인다. 홍콩(.HK)·상하이(.SS)·선전(.SZ) 기호도 알아듣게 해 두었다.
+// 우선순위: 토스 키 > Alpaca 키 > Longbridge 키 > 사이트 시세. 전일 종가는 Alpaca 처럼 사이트(공식 종가) 값이 먼저다.
+enum LongbridgeFeed {
+    static let name = "longbridge_quotes.json"
+    static let base = "https://openapi.longbridge.com"
+    /// 설정 > 내 Longbridge 키에 보이는 상태: 마지막 성공 시각(초), 마지막 실패 이유 (성공하면 지움)
+    static var okAt: Double { Store.defaults.double(forKey: "longbridge_ok_at") }
+    static var lastError: String? { Store.defaults.string(forKey: "longbridge_err") }
+    private static func fail(_ why: String) -> QuoteFeed.File? {
+        Store.defaults.set(why, forKey: "longbridge_err")
+        return cached()
+    }
+    /// 15분 안에 받은 값만 (토스·Alpaca 와 같다)
+    static func cached() -> QuoteFeed.File? {
+        guard LongbridgeKeys.on, let f = Store.read(QuoteFeed.File.self, name), Date().timeIntervalSince1970 - f.got < 900 else { return nil }
+        return f
+    }
+    /// Yahoo 기호 → Longbridge 기호. AAPL → AAPL.US, BRK-B → BRK.B.US, 0700.HK → 700.HK, 600519.SS → 600519.SH, 000001.SZ → 000001.SZ. 국내·지수·환율은 nil
+    static func code(_ sym: String) -> String? {
+        let u = sym.trimmingCharacters(in: .whitespaces).uppercased()
+        let digits = { (x: Substring) in !x.isEmpty && x.allSatisfy { $0 >= "0" && $0 <= "9" } }
+        if u.hasSuffix(".HK") {
+            let c = u.dropLast(3)
+            guard digits(c) else { return nil }
+            let n = c.drop { $0 == "0" }
+            return (n.isEmpty ? "0" : String(n)) + ".HK"
+        }
+        if u.hasSuffix(".SS") || u.hasSuffix(".SZ") {
+            let c = u.dropLast(3)
+            guard c.count == 6, digits(c) else { return nil }
+            return String(c) + (u.hasSuffix(".SS") ? ".SH" : ".SZ")
+        }
+        return AlpacaFeed.code(u).map { $0 + ".US" }
+    }
+
+    /// syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 5초를 기다린다
+    @discardableResult
+    static func fetch(_ syms: [String: String], minAge: TimeInterval = 0) async -> QuoteFeed.File? {
+        guard let k = LongbridgeKeys.load() else { return nil }
+        var ids: [String: [String]] = [:]   // Longbridge 기호 → 앱 종목들
+        for (id, y) in syms { if let c = code(y) { ids[c, default: []].append(id) } }
+        guard !ids.isEmpty else { return nil }
+        if let o = cached(), Date().timeIntervalSince1970 - o.got < minAge { return o }
+        var q: [String: QuoteFeed.Q] = [:]
+        let all = ids.keys.sorted()
+        for i in stride(from: 0, to: all.count, by: 500) {   // 한 번에 500종목까지
+            let (o, e) = await post("/quote/quotes", ["symbol": Array(all[i..<min(i + 500, all.count)])], k)
+            if let e { return fail(e) }
+            for v in o?["secu_quote"] as? [[String: Any]] ?? [] {
+                guard let c = (v["symbol"] as? String)?.uppercased(), let last = num(v["last_done"]), last > 0 else { continue }
+                let at = num(v["timestamp"]).flatMap { $0 > 0 ? $0 : nil } ?? Date().timeIntervalSince1970
+                for id in ids[c] ?? [] { q[id] = .init(last: last, prev: num(v["prev_close"]) ?? 0, at: at) }
+            }
+        }
+        guard !q.isEmpty else { return fail("받은 종목 없음") }
+        let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
+        Store.write(f, name)
+        Store.defaults.set(f.got, forKey: "longbridge_ok_at")
+        Store.defaults.removeObject(forKey: "longbridge_err")
+        return f
+    }
+
+    /// 서명한 POST. 응답 {code, message, data} 에서 data 만 돌려준다
+    private static func post(_ path: String, _ body: [String: Any], _ k: LongbridgeKeys.Keys) async -> ([String: Any]?, String?) {
+        guard let url = URL(string: base + path), let b = try? JSONSerialization.data(withJSONObject: body) else { return (nil, "잘못된 요청") }
+        let token = k.token.hasPrefix("Bearer ") ? String(k.token.dropFirst(7)) : k.token
+        let ts = String(Int64(Date().timeIntervalSince1970 * 1000))
+        var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
+        r.httpMethod = "POST"
+        r.httpBody = b
+        r.setValue("application/json; charset=utf-8", forHTTPHeaderField: "content-type")
+        r.setValue(k.key, forHTTPHeaderField: "x-api-key")
+        r.setValue(token, forHTTPHeaderField: "authorization")
+        r.setValue(ts, forHTTPHeaderField: "x-timestamp")
+        // 미국 데이터센터 계정은 키 앞에 us_ 가 붙는다 (공식 SDK 와 같게)
+        r.setValue([k.key, k.secret, token].contains { $0.hasPrefix("us_") } ? "us" : "ap", forHTTPHeaderField: "x-dc-region")
+        r.setValue(sign(path: path, key: k.key, token: token, ts: ts, body: b, secret: k.secret), forHTTPHeaderField: "x-api-signature")
+        do {
+            let (d, resp) = try await URLSession.shared.data(for: r)
+            let http = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any]
+            let code = o.flatMap { num($0["code"]) } ?? -1
+            if http == 200 && code == 0 { return (o?["data"] as? [String: Any] ?? [:], nil) }
+            return (nil, why(http, o?["message"] as? String))
+        } catch let e as URLError { return (nil, e.code == .timedOut ? "5초 안에 응답 없음" : "Longbridge에 닿지 못함") }
+        catch { return (nil, "Longbridge에 닿지 못함") }
+    }
+
+    /// 공식 SDK 서명: "방법|경로|쿼리|서명할 헤더들\n|헤더 이름들|본문 SHA1" 의 SHA1 을 "HMAC-SHA256|…" 로 묶어 App Secret 으로 HMAC
+    static func sign(path: String, key: String, token: String, ts: String, body: Data, secret: String) -> String {
+        let names = "authorization;x-api-key;x-timestamp"
+        var plain = "POST|" + path + "||"
+        plain += "authorization:\(token)\nx-api-key:\(key)\nx-timestamp:\(ts)\n"
+        plain += "|" + names + "|"
+        if !body.isEmpty { plain += hex(Insecure.SHA1.hash(data: body)) }
+        let text = "HMAC-SHA256|" + hex(Insecure.SHA1.hash(data: Data(plain.utf8)))
+        let mac = HMAC<SHA256>.authenticationCode(for: Data(text.utf8), using: SymmetricKey(data: Data(secret.utf8)))
+        return "HMAC-SHA256 SignedHeaders=\(names), Signature=" + hex(mac)
+    }
+    private static func hex<S: Sequence>(_ d: S) -> String where S.Element == UInt8 { d.map { String(format: "%02x", $0) }.joined() }
+
+    static func why(_ http: Int, _ message: String?) -> String {
+        if http == 401 || http == 403 { return "키가 맞지 않거나 토큰 기한이 지났어요" }
+        if http == 429 { return "잠시 뒤에 다시 받아요" }
+        if let m = message, !m.isEmpty { return "Longbridge: " + String(m.prefix(60)) }
+        return "Longbridge 응답 \(http)"
+    }
+
+    /// 키 확인: AAPL 하나를 물어 본다 (설정 화면 '연결하기')
+    static func check() async -> String? {
+        guard let k = LongbridgeKeys.load() else { return "키 없음" }
+        let (o, e) = await post("/quote/quotes", ["symbol": ["AAPL.US"]], k)
+        if let e { return e }
+        return (o?["secu_quote"] as? [Any])?.isEmpty == false ? nil : "시세 권한이 없어요"
+    }
+
+    /// 위젯: 앱이 feed.json 에 넘긴 내 종목을 위젯이 직접 Longbridge 에 묻는다
+    @discardableResult
+    static func widgetFetch(minAge: TimeInterval) async -> QuoteFeed.File? {
+        guard LongbridgeKeys.on, let ty = Store.read(WFeed.self, "feed.json")?.ty, !ty.isEmpty else { return nil }
+        return await fetch(ty, minAge: minAge)
+    }
+}
+
+/// 사용자가 넣은 Longbridge 키. Alpaca 키처럼 이 폰 키체인(위젯과 같이 쓰는 그룹)에만 둔다
+enum LongbridgeKeys {
+    struct Keys: Codable { var key: String; var secret: String; var token: String }
+    private static func q() -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.longbridge", kSecAttrAccount as String: "keys"]
+    }
+    private static func put(_ v: Keys?) {
+        SecItemDelete(q() as CFDictionary)
+        guard let v, let d = try? JSONEncoder().encode(v) else { return }
+        var a = q()
+        a[kSecAttrAccessGroup as String] = TossKeys.group
+        a[kSecValueData as String] = d
+        a[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(a as CFDictionary, nil)
+    }
+    /// 키를 넣었는지 (위젯도 보므로 표시만 공유 저장소에 둔다)
+    static var on: Bool { Store.defaults.bool(forKey: "longbridge_user") }
+    static func load() -> Keys? {
+        guard on else { return nil }
+        var a = q()
+        a[kSecReturnData as String] = true
+        a[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(a as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
+        return try? JSONDecoder().decode(Keys.self, from: d)
+    }
+    static func save(_ k: Keys) {
+        put(k)
+        Store.defaults.set(true, forKey: "longbridge_user")
+    }
+    static func clear() {
+        put(nil)
+        Store.defaults.set(false, forKey: "longbridge_user")
+        Store.defaults.removeObject(forKey: "longbridge_err")
+        Store.defaults.removeObject(forKey: "longbridge_ok_at")
+        Store.remove(LongbridgeFeed.name)
     }
 }
 
