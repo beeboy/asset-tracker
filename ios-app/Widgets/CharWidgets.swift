@@ -555,7 +555,7 @@ struct HeightCharView: View {
                 Group {
                     if e.locked { meetLater(e.c) } else {
                         VStack(alignment: .leading, spacing: 4) {
-                            CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24)).lineLimit(1).minimumScaleFactor(0.6).charFlip(r.total) }
+                            CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 24)).lineLimit(1).minimumScaleFactor(0.6).frame(maxWidth: 92, alignment: .leading).charFlip(r.total) }
                             (Text(pctText(r.dayChg)).foregroundColor(r.dayChg >= 0 ? upC : dnC) + Text(" " + WL.t("오늘")))
                                 .font(.system(size: 11, weight: .semibold)).lineLimit(1).widgetAccentable().charFlip(r.dayChg)
                         }
@@ -573,8 +573,10 @@ struct HeightCharView: View {
 /// 금액이 줄면 지난 날 금이 머리 위로 올라간다
 private struct HeightMarks: View {
     let v: [Double], today: Date
+    @Environment(\.widgetRenderingMode) private var mode
     var body: some View {
         Canvas { ctx, size in
+            let mono = mode != .fullColor
             let px = size.width - 56, head = size.height - 74
             var ys: [CGFloat] = []
             if let now = v.last, v.count >= 2 {
@@ -582,12 +584,12 @@ private struct HeightMarks: View {
                 ys = past.map { min(size.height - 6, max(44, head + CGFloat((now - $0) / dev) * 54)) }
             }
             let top = min(head - 8, (ys.min() ?? head) - 8)
-            ctx.fill(Path(CGRect(x: px, y: top, width: 10, height: size.height - top)), with: .color(rgb(0xd9a877)))
-            ctx.fill(Path(CGRect(x: px, y: top, width: 2, height: size.height - top)), with: .color(rgb(0xf0c89a)))
+            ctx.fill(Path(CGRect(x: px, y: top, width: 10, height: size.height - top)), with: .color(mono ? .white.opacity(0.22) : rgb(0xd9a877)))
+            if !mono { ctx.fill(Path(CGRect(x: px, y: top, width: 2, height: size.height - top)), with: .color(rgb(0xf0c89a))) }
             var used: [CGFloat] = v.isEmpty ? [] : [head]
             for (i, y) in ys.enumerated().reversed() {   // 최근 날부터: 날짜 글자가 겹치면 오래된 날 글자를 뺀다
                 var l = Path(); l.move(to: CGPoint(x: px - 2, y: y)); l.addLine(to: CGPoint(x: px + 12, y: y))
-                ctx.stroke(l, with: .color(rgb(0x4a3426)), lineWidth: 1.5)
+                ctx.stroke(l, with: .color(mono ? .white.opacity(0.7) : rgb(0x4a3426)), lineWidth: 1.5)
                 guard used.allSatisfy({ abs($0 - y) >= 9 }) else { continue }
                 used.append(y)
                 ctx.draw(Text(tradeDay(back: ys.count - i, from: today)).font(.system(size: 8)).foregroundColor(.white.opacity(0.7)),
@@ -666,8 +668,10 @@ private func puzzlePiece(_ x: CGFloat, _ y: CGFloat, right: Bool, top: Bool) -> 
 /// 아래 줄 왼쪽부터 맞춘다. 맞춘 조각에만 깃발 그림이 보이고, 다음 조각은 인물 손 위에 (위젯이 작으면 같이 줄인다)
 private struct PuzzleBoard: View {
     let n: Int, c: Color
+    @Environment(\.widgetRenderingMode) private var mode
     var body: some View {
         Canvas { ctx, size in
+            let mono = mode != .fullColor, fc: Color = mono ? .white.opacity(0.35) : c
             let k = min(size.width, size.height) / 170
             ctx.scaleBy(x: k, y: k)
             let w: CGFloat = 12.5, y0: CGFloat = 134 - 4 * w
@@ -676,18 +680,18 @@ private struct PuzzleBoard: View {
                 let col = i % 5, row = i / 5   // row 0 = 맨 아래 줄
                 let p = puzzlePiece(16 + CGFloat(col) * w, y0 + CGFloat(3 - row) * w, right: col < 4, top: row < 3)
                 if i < n { done.addPath(p); pieces.append(p) }
-                else { ctx.stroke(p, with: .color(.white.opacity(0.4)), style: StrokeStyle(lineWidth: 1, dash: [2, 1.5])) }
+                else { ctx.stroke(p, with: .color(.white.opacity(mono ? 0.25 : 0.4)), style: StrokeStyle(lineWidth: 1, dash: [2, 1.5])) }
             }
-            ctx.fill(done, with: .color(c))
+            ctx.fill(done, with: .color(fc))
             var flag = ctx
             flag.clip(to: done)
-            flag.fill(Path(CGRect(x: 30, y: 86, width: 3, height: 48)), with: .color(rgb(0x5a3324)))
+            flag.fill(Path(CGRect(x: 30, y: 86, width: 3, height: 48)), with: .color(mono ? .white.opacity(0.9) : rgb(0x5a3324)))
             var tri = Path(); tri.move(to: CGPoint(x: 33, y: 86)); tri.addLine(to: CGPoint(x: 70, y: 96)); tri.addLine(to: CGPoint(x: 33, y: 108)); tri.closeSubpath()
             flag.fill(tri, with: .color(.white))
             for p in pieces { ctx.stroke(p, with: .color(.black.opacity(0.3)), lineWidth: 0.8) }
             if n < 20 {
                 let p = puzzlePiece(146, 64, right: true, top: false)
-                ctx.fill(p, with: .color(c)); ctx.stroke(p, with: .color(.white), lineWidth: 1)
+                ctx.fill(p, with: .color(fc)); ctx.stroke(p, with: .color(.white), lineWidth: 1)
             }
         }
         .flipFade()
@@ -726,12 +730,14 @@ struct GardenCharView: View {
 /// 아래 줄 왼쪽부터 핀다. 오른쪽 위에 밭 탭: 다 핀 밭(최근 3개까지) + 테두리 친 지금 밭. 물뿌리개는 밭 오른쪽 아래
 private struct GardenBed: View {
     let fill: Int, bloom: Int, garden: Int, c: Color
+    @Environment(\.widgetRenderingMode) private var mode
     var body: some View {
         Canvas { ctx, size in
+            let mono = mode != .fullColor
             let k = min(size.width, size.height) / 170
             ctx.scaleBy(x: k, y: k)
-            let dirt = GraphicsContext.Shading.color(rgb(0x5a3a28)), leaf = GraphicsContext.Shading.color(rgb(0x7bc46a))
-            let petal = GraphicsContext.Shading.color(rgb(0xff9fb4)), core = GraphicsContext.Shading.color(rgb(0xffe27a))
+            let dirt = mono ? GraphicsContext.Shading.color(.white.opacity(0.15)) : GraphicsContext.Shading.color(rgb(0x5a3a28)), leaf = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0x7bc46a))
+            let petal = mono ? GraphicsContext.Shading.color(.white.opacity(0.95)) : GraphicsContext.Shading.color(rgb(0xff9fb4)), core = mono ? GraphicsContext.Shading.color(.white.opacity(0)) : GraphicsContext.Shading.color(rgb(0xffe27a))
             for i in 0..<100 {
                 let x = 16 + CGFloat(i % 10) * 8.6, y = 42 + CGFloat(9 - i / 10) * 8.6
                 ctx.fill(Path(roundedRect: CGRect(x: x, y: y, width: 7, height: 7), cornerRadius: 1.2), with: dirt)
@@ -753,7 +759,7 @@ private struct GardenBed: View {
             ctx.fill(Path(roundedRect: cur, cornerRadius: 2), with: dirt)
             ctx.stroke(Path(roundedRect: cur, cornerRadius: 2), with: .color(c), lineWidth: 1.5)
             ctx.draw(Text("\(garden)").font(.system(size: 7, weight: .bold)).foregroundColor(c), at: CGPoint(x: cur.midX, y: cur.midY))
-            let can = GraphicsContext.Shading.color(rgb(0x8fb7d9)), drop = GraphicsContext.Shading.color(rgb(0xbfe3ff))
+            let can = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0x8fb7d9)), drop = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0xbfe3ff))
             ctx.fill(Path(roundedRect: CGRect(x: 104, y: 106, width: 9, height: 7), cornerRadius: 1), with: can)
             var spout = Path(); spout.move(to: CGPoint(x: 104.5, y: 107)); spout.addLine(to: CGPoint(x: 100, y: 104.5))
             ctx.stroke(spout, with: can, lineWidth: 2)
