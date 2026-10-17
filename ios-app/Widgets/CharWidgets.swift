@@ -452,7 +452,7 @@ struct TowerCharView: View {
                 tower(floor, fill, s.accent).frame(width: 56).charPin(.bottomTrailing, y: 17.5)
                 // 칸이 는 날 block_up, 준 날 block_down, 갱신 중엔 block_refresh2 (블록을 탑 위에)
                 let tn = poseOr(e.c, Store.isReloading ? "pose_block_refresh2" : d < 0 ? "pose_block_down" : "pose_block_up", else: "w_\(e.c.id)_spread")
-                CharSprite(name: tn, locked: e.locked, height: poseH(tn), shake: false).charPin(.bottom)
+                CharSprite(name: tn, locked: e.locked, height: poseH(tn), shake: false).charPin(.bottom).offset(x: -16)  // 탑과 키 재기 기둥 간격만큼 띄움
                 if !e.locked && mode != .accented {
                     Image("w_cat").interpolation(.none).resizable().frame(width: 16, height: 16).accessibilityHidden(true).charPin(.bottomLeading, x: 20)
                 }
