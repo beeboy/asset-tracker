@@ -23,7 +23,11 @@ enum WhoEnum: String, AppEnum {
 }
 
 struct WhoOptions: DynamicOptionsProvider {
-    func results() async throws -> [WhoEnum] { WhoEnum.choices }
+    /// 만난 인물만 고를 수 있다 (2026-10-16 결정: 못 만난 친구 미리 보기는 뺌)
+    func results() async throws -> [WhoEnum] {
+        let on = Store.read(WReward.self, "reward.json")?.friendsOn
+        return WhoEnum.choices.filter { $0 == .home || $0 == .seri || on?.contains($0.charId) ?? true }
+    }
 }
 
 struct WhoIntent: WidgetConfigurationIntent {
@@ -69,9 +73,11 @@ struct CharProvider: AppIntentTimelineProvider {
             if var sp = r.spark, !sp.isEmpty { sp[sp.count - 1] = h.total / 1e4; r.spark = sp }
         }
         // '홈 인물 따라가기'면 앱 홈에 둔 인물 (앱에서 홈 인물을 바꾸면 위젯도 바뀐다)
-        let c = WChar.of(cfg.who.follows ? (r.homeFriend ?? "seri") : cfg.who.charId)
-        // 갤러리 미리보기는 실제 모습, 홈 화면에서는 만난 인물만
-        var e = CharEntry(date: Date(), r: r, c: c, locked: !preview && !(c.id == "seri" || r.friendsOn.contains(c.id)), preview: preview)
+        // 못 만난 친구는 실루엣으로도 보이지 않는다 (2026-10-16 결정: 미리 보기 뺌). 고른 인물을 아직 못 만났으면 홈 인물로
+        let met = { (id: String) in id == "seri" || r.friendsOn.contains(id) }
+        let want = cfg.who.follows ? (r.homeFriend ?? "seri") : cfg.who.charId
+        let c = WChar.of(preview || met(want) ? want : (r.homeFriend.flatMap { met($0) ? $0 : nil } ?? "seri"))
+        var e = CharEntry(date: Date(), r: r, c: c, locked: false, preview: preview)
         if !preview { let s = Engine.snapshot(); if !s.placeholder { e.at = s.pricedAt; e.feed = s.feed } }
         return e
     }
