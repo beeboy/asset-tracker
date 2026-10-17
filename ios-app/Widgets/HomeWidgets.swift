@@ -13,7 +13,7 @@ struct FutureLarge: Widget { var body: some WidgetConfiguration { homeWidget("fu
 /// 기본 위젯 하나: 앱 색 바탕, 누르면 앱 첫 탭
 func homeWidget<V: View>(_ kind: String, _ family: WidgetFamily, @ViewBuilder view: @escaping (Snapshot) -> V) -> some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: Provider()) { e in
-        Gate(kind: kind, preview: e.preview) { view(e.snap).kind(kind).environment(\.isSample, e.snap.placeholder).speak(Speech.of(kind, e.snap), kind: kind, money: kind != "block.small").widgetBG().widgetURL(Catalog.openURL) }
+        Gate(kind: kind, preview: e.preview) { view(e.snap).kind(kind).environment(\.isSample, e.snap.placeholder).environment(\.entryDate, e.date).speak(Speech.of(kind, e.snap), kind: kind, money: kind != "block.small").widgetBG().widgetURL(Catalog.openURL) }
     }
     .catalog(kind).supportedFamilies([family])
 }
@@ -21,15 +21,27 @@ func homeWidget<V: View>(_ kind: String, _ family: WidgetFamily, @ViewBuilder vi
 /// 잠금화면 위젯 하나: 바탕 없음, 누르면 앱 첫 탭
 func lockWidget<V: View>(_ kind: String, _ family: WidgetFamily, @ViewBuilder view: @escaping (Snapshot) -> V) -> some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: Provider()) { e in
-        Gate(kind: kind, preview: e.preview) { view(e.snap).kind(kind).speak(Speech.of(kind, e.snap), kind: kind, money: kind != "lock.goal", reload: false).containerBackground(for: .widget) { Color.clear }.widgetURL(Catalog.openURL) }
+        Gate(kind: kind, preview: e.preview) { LockSpeak(kind: kind, s: e.snap) { view(e.snap).kind(kind).environment(\.entryDate, e.date) }.containerBackground(for: .widget) { Color.clear }.widgetURL(Catalog.openURL) }
     }
     .catalog(kind).supportedFamilies([family])
 }
 
+/// 잠금화면 위젯의 VoiceOver 문장: 폰이 잠겨 금액이 가려졌으면 금액도 '숨김'으로 읽는다. ↻(직사각형만)·금액 숨기기는 동작으로
+struct LockSpeak<Content: View>: View {
+    let kind: String
+    let s: Snapshot
+    @ViewBuilder var content: Content
+    @Environment(\.redactionReasons) private var reasons
+    var body: some View {
+        let hide = Store.lockPrivate && reasons.contains(.privacy)
+        content.speak(Speech.of(kind, s, hide: hide), kind: kind, money: kind != "lock.goal", reload: kind != "lock.goal")
+    }
+}
+
 /// VoiceOver 가 위젯마다 읽는 한 문장 (숫자 조각을 따로 읽지 않게). 금액을 숨겼으면 '숨김'으로 읽는다
 enum Speech {
-    static func of(_ kind: String, _ s: Snapshot) -> String {
-        let hide = Store.isHidden(kind), name = Catalog.name(kind)
+    static func of(_ kind: String, _ s: Snapshot, hide forced: Bool = false) -> String {
+        let hide = forced || Store.isHidden(kind), name = Catalog.name(kind)
         let money: (Double) -> String = { hide ? WL.t("숨김") : Fmt.eok($0) }
         let pct: (Double?) -> String = { $0.map { "\(Int(($0 * 100).rounded()))%" } ?? "-" }
         let mag: (Double) -> String = { String(format: "%.1f%%", abs($0) * 100) }   // 부호 없이, 방향은 상승·하락으로

@@ -312,6 +312,12 @@ WIDGET_UI = {
     "{key}까지 {p}%, 남은 금액 {v}": "{p}% to {key}, {v} left",
     "1000칸 중 {n}칸, 어제보다 {d}칸": "{n} of 1,000 cells, {d} since yesterday",
     "그 외 {n}개 종목, 합쳐서 {p} {dir}": "{n} more holdings, together {dir} {p}",
+    # 새 경험 (D): '몇 분 전 · 출처', 잠금화면 ↻, 제어 센터, 인물 큰 위젯
+    "10일": "10 days", "방금": "Just now", "{n}분 전": "{n} min ago", "{n}시간 전": "{n} hr ago", "받기 실패": "Refresh failed",
+    "토스": "Toss", "사이트": "site", "앱": "app", "직접 입력": "manual",
+    "naeilo 다시 받기": "Refresh naeilo", "위젯의 지금 가격을 바로 받아 다시 그려요": "Get current prices now and redraw your widgets",
+    "인물 · 하루 한눈에": "Character · Day at a glance",
+    "총자산·최근 흐름·본전·블록을 한 장에, 인물의 한마디와 함께": "Total, recent trend, break-even and blocks in one view, with a word from your character",
 }
 
 

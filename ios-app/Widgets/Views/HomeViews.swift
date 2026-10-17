@@ -19,7 +19,7 @@ struct AssetSmallView: View {
             Money { h in Big(text: h ? hiddenAmount : Fmt.eok(s.total)).flip(s.total) }
             Text("\(Fmt.arrow(s.dayChg)) \(Fmt.pct(s.dayChg))" + (hide ? "" : " · \(Fmt.man(s.dayAmt))")).font(.system(size: 12, weight: .bold)).foregroundStyle(t.chg(s.dayChg)).lineLimit(1).flip(s.dayChg)
             DotSpark(values: Array(s.spark.suffix(10)), color: Palette.ink.opacity(0.9), tint: t, labels: !hide).widgetAccentable().flipFade().padding(.top, 6)
-            Foot(text: WL.t("10일 · {time}", ["time": shortTime(s.updated)]))
+            Foot(text: WL.t("10일"), s: s)
         }
         .foregroundStyle(Palette.ink)
     }
@@ -197,7 +197,7 @@ struct TargetMediumView: View {
                 Spacer()
                 Text(WL.t("이번 주 예측은 앱이나 사이트를 열면 만들어집니다")).font(.system(size: 13)).opacity(0.7)
                 Spacer()
-                Foot(text: shortTime(s.updated))
+                Foot(s: s)
             }
         }
         .foregroundStyle(Palette.ink)
@@ -274,7 +274,7 @@ struct FutureLargeView: View {
                     cell(WL.t("나쁠 때 (하위 5%)"), tm.p5); cell(WL.t("보통"), tm.p50); cell(WL.t("좋을 때 (상위 5%)"), tm.p95)
                 }
             }
-            Foot(text: "\(s.fcAsOf.map { WL.t("{d} 종가 기준", ["d": Day.md($0)]) } ?? "") · \(shortTime(s.updated))")
+            Foot(text: s.fcAsOf.map { WL.t("{d} 종가 기준", ["d": Day.md($0)]) } ?? "", s: s)
         }
         .foregroundStyle(Palette.ink)
     }
