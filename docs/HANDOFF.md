@@ -63,7 +63,7 @@
 - 위젯 문구는 `WL.t("한국어")`(`WidgetShared/Format.swift`)로 부른다. 기기 첫 언어가 한국어가 아니면 `WidgetShared/lines_en.json`의 `ui` 표(한국어 → 영어)에서 찾고, 없으면 한국어 그대로. 한국어 기기의 글자는 바뀌지 않음. 서재 `Story.deviceLang`도 같은 `WL.en`을 봄.
 - `lines_en.json`은 `tools/lines.py`가 만든다: `lines`에 인물 위젯 말풍선(widget.up/down, 인물별 영어 말투 첫 안, 40자까지), `ui`에 위젯 문구 113개. 앱 `Lines`는 영어 기기면 영어가 있는 키만 영어로 덮음. 물건 대사(item.*)는 아직 한국어만이라 영어 기기에서는 말풍선에 물건 얘기를 넣지 않음.
 - `python3 ios-app/tools/lines.py --check`가 위젯 코드의 `WL.t` 문구와 Catalog 이름·설명이 영어 표에 다 있는지 본다(ios CI 첫 단계).
-- VoiceOver: 기본 7·잠금화면 4·인물 4·잠긴 위젯이 한 문장으로 읽힘(`Speech.of`, `HomeWidgets.swift`; 인물은 `CharWidgets.swift`). ↻와 금액 숨기기는 `.speak(...)`가 동작(Actions)으로 남김.
+- VoiceOver: 기본 7·잠금화면 4·인물 4·잠긴 위젯이 한 문장으로 읽힘(`Speech.of`, `HomeWidgets.swift`; 인물은 `CharWidgets.swift`). ↻와 금액 숨기기는 `.speak(...)`가 동작(Actions)으로 남김 (iOS 18부터, 17은 문장만).
 - 아직 한국어인 곳: 금액 단위(억·만, 영어판 1단계 `Fmt` 나누기), 앱이 넘기는 문장(오늘 소식·블록 이정표·다음 일정 `next`), App Intent 이름(인물 고르기·다시 받기 등, 컴파일 때 정해지는 값이라 String Catalog 단계에서). 영어 말풍선은 사용자 검토 전 첫 안. 실기기(영어 기기·VoiceOver) 확인 필요.
 
 ## 위젯 잠금·이름표 정리 (2026-10-17, B단계)

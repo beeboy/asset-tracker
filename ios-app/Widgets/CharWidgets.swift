@@ -576,12 +576,14 @@ extension View {
         let v = accessibilityElement(children: .ignore).accessibilityLabel(label)
         #if WIDGET_EXT
         let reloadName = Text(WL.t("다시 받기")), moneyName = Text(WL.t(Store.isHidden(kind) ? "금액 보이기" : "금액 숨기기"))
-        switch (reload, money) {
-        case (true, true): v.accessibilityAction(named: reloadName, intent: ReloadIntent()).accessibilityAction(named: moneyName, intent: ToggleAmountIntent(kind: kind))
-        case (true, false): v.accessibilityAction(named: reloadName, intent: ReloadIntent())
-        case (false, true): v.accessibilityAction(named: moneyName, intent: ToggleAmountIntent(kind: kind))
-        case (false, false): v
-        }
+        if #available(iOS 18, *) {   // 동작에 App Intent 를 거는 것은 iOS 18 부터. 17 에서는 문장만 읽는다
+            switch (reload, money) {
+            case (true, true): v.accessibilityAction(named: reloadName, intent: ReloadIntent()).accessibilityAction(named: moneyName, intent: ToggleAmountIntent(kind: kind))
+            case (true, false): v.accessibilityAction(named: reloadName, intent: ReloadIntent())
+            case (false, true): v.accessibilityAction(named: moneyName, intent: ToggleAmountIntent(kind: kind))
+            case (false, false): v
+            }
+        } else { v }
         #else
         v
         #endif
