@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: 위젯 영어 문구 (빠진 영어가 없는지)
+        run: python3 ios-app/tools/lines.py --check
       - name: XcodeGen
         run: brew install xcodegen && cd ios-app && xcodegen
       - name: 빌드 (시뮬레이터)

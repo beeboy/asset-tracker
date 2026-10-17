@@ -66,6 +66,20 @@ enum Store {
         guard let t = reloadingSince else { return false }
         return Date().timeIntervalSince(t) < 12
     }
+    /// 마지막 ↻ 에서 시세를 하나도 새로 받지 못했는지. 위젯 아래 줄에 '받기 실패'로 보인다 (다음에 하나라도 받으면 지운다)
+    static var fetchFailed: Bool {
+        get { defaults.bool(forKey: "fetchFailed") }
+        set { defaults.set(newValue, forKey: "fetchFailed") }
+    }
+    /// 위젯·앱이 받아 둔 시세 파일(사이트·국내·토스·Alpaca) 중 가장 나중에 받은 시각 (초)
+    static var newestGot: Double {
+        ["site_quotes.json", "kr_quotes.json", "toss_quotes.json", "alpaca_quotes.json"].compactMap { read(QuoteFeed.File.self, $0)?.got }.max() ?? 0
+    }
+    /// 잠금화면 위젯의 금액을 폰이 잠겨 있을 때 가린다 (기본 켬). 얼굴·지문으로 풀면 보인다
+    static var lockPrivate: Bool {
+        get { defaults.object(forKey: "lockPrivate") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "lockPrivate") }
+    }
     /// 지금 쓰는 요약이 어디서 왔는지 ("site" / "app")
     static var summarySource: String? {
         get { defaults.string(forKey: "summarySource") }
@@ -111,6 +125,6 @@ enum Store {
 
 /// 잠긴 위젯 문구 (기본·잠금화면·인물·서재가 같이 쓴다). 예전에는 앱 시작 단계로 하나씩 열었는데, 이제는 처음부터 모두 열리고 7일 무료 뒤에는 구독으로 연다
 enum WidgetUnlock {
-    static func how(_ kind: String) -> String { "7일 무료가 끝났어요. 구독하면 다시 보여요" }
-    static let cta = "눌러서 구독하기 ›"
+    static func how(_ kind: String) -> String { WL.t("7일 무료가 끝났어요. 구독하면 다시 보여요") }
+    static var cta: String { WL.t("눌러서 구독하기 ›") }
 }

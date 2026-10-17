@@ -25,7 +25,9 @@ struct Provider: TimelineProvider {
             }
             // 지금 가격·환율 받기와 다음 갱신 시각은 인물 위젯과 같이 쓴다 (WidgetShared/Format.swift 의 WidgetRefresh)
             let next = await WidgetRefresh.fetch()
-            completion(Timeline(entries: [Entry(date: Date(), snap: Engine.snapshot())], policy: .after(next)))
+            // 같은 값을 몇 장 더 그려 둔다: 아래 줄의 '몇 분 전'이 시간이 지나면서 바뀌게
+            let snap = Engine.snapshot()
+            completion(Timeline(entries: Fresh.dates(Date(), until: next).map { Entry(date: $0, snap: snap) }, policy: .after(next)))
         }
     }
 }

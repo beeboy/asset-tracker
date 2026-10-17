@@ -20,17 +20,19 @@ enum Catalog {
         Item(kind: "lock.future", name: "3년 뒤", desc: "3년 뒤 예상 범위", size: "잠금 화면"),
         Item(kind: "lock.target", name: "이번 주 과녁", desc: "금요일 마감 예측과 지금", size: "잠금 화면"),
     ]
-    /// 인물 4개 + 서재
+    /// 인물 5개 + 서재
     static let more: [Item] = [
         Item(kind: "char.trend", name: "인물 · 자산 추이", desc: "총자산·오늘 등락·최근 10일 흐름, 인물이 옆에서 봐요", size: "작은"),
         Item(kind: "char.recover", name: "인물 · 본전 진행", desc: "본전(목표)까지 몇 %인지, 인물이 같이 봐요", size: "작은"),
         Item(kind: "char.block", name: "인물 · 블록", desc: "1000칸 중 지금 채우는 100칸과 10층 탑", size: "작은"),
         Item(kind: "char.moves", name: "인물 · 오늘의 움직임", desc: "종목별 오늘 등락과 인물의 한마디", size: "중간"),
+        Item(kind: "char.large", name: "인물 · 하루 한눈에", desc: "총자산·최근 흐름·본전·블록을 한 장에, 인물의 한마디와 함께", size: "큰"),
         Item(kind: "story", name: "서재 · 이어 읽기", desc: "외전 『이종 공명』에서 읽던 자리의 한 문단. 누르면 그 장으로 가요", size: "작은·중간"),
     ]
     static func item(_ kind: String) -> Item? { (base + more).first { $0.kind == kind } }
-    static func name(_ kind: String) -> String { item(kind)?.name ?? "naeilo 위젯" }
-    static func desc(_ kind: String) -> String { item(kind)?.desc ?? "" }
+    /// 위젯 추가 화면·잠긴 위젯·VoiceOver 가 쓰는 이름과 설명 (영어 기기면 WL 표의 영어)
+    static func name(_ kind: String) -> String { WL.t(item(kind)?.name ?? "naeilo 위젯") }
+    static func desc(_ kind: String) -> String { item(kind).map { WL.t($0.desc) } ?? "" }
 
     /// 위젯을 누르면 앱의 첫 탭(naeilo)으로
     static let openURL = URL(string: "naeilo://guide")!

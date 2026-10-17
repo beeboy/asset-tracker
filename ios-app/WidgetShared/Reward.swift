@@ -45,6 +45,8 @@ struct WChar: Identifiable {
         .init(id: "ir", name: "이르", week: 3, accent: 0xffd36b, g0: 0x1a1830, g1: 0x4a3f72),
         .init(id: "sua", name: "수아", week: 4, accent: 0xf2a070, g0: 0x3a2228, g1: 0xb06448),
     ]
+    /// 위젯에 쓰는 이름 (영어 기기면 Seri 처럼, 내 캐릭터는 지은 이름 그대로)
+    var title: String { WL.t(name) }
     static func of(_ id: String) -> WChar {
         if id == "me", let m = WMe.saved { return .init(id: "me", name: m.name, week: 0, accent: m.accent, g0: m.g0, g1: m.g1, voice: m.voice) }
         return all.first { $0.id == id } ?? all[0]
@@ -56,9 +58,19 @@ struct WChar: Identifiable {
         if let l = r.saysNext?[id], !l.isEmpty { return l[WidgetLine.index() % l.count] }
         if let s = r.says?[id], !s.isEmpty { return s }
         let v = voice ?? id
-        if let it = WItem.today(r), let say = WItem.say(it, v) { return say }
+        if !WL.en, let it = WItem.today(r), let say = WItem.say(it, v) { return say }
         let top = r.tiles.max { abs($0.c) < abs($1.c) }
-        let t = top?.t ?? "오늘", c = top?.c ?? 0
+        let t = top?.t ?? WL.t("오늘"), c = top?.c ?? 0
+        if WL.en {
+            let n = String(format: "%.1f", abs(c) * 100)
+            switch v {
+            case "seri": return "…… \(t) moved first."
+            case "sio": return "\(t) \(n). Counted."
+            case "seonbae": return r.dayChg >= 0 ? "Up today. Why do you think?" : "Down today. Why do you think?"
+            case "ir": return "Shaky, but don't hurry."
+            default: return "Right on time today."
+            }
+        }
         switch v {
         case "seri": return "……\(t)\(Self.josa(t)) 먼저 움직였어요."
         case "sio": return "\(t) \(String(format: "%.1f", abs(c) * 100)). 셌어."

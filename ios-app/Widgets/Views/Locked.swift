@@ -23,8 +23,9 @@ struct LockedWidget: View {
                 Text(WidgetUnlock.how(kind)).font(.system(size: 11)).lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .speakLocked(title, kind)
         case .accessoryCircular, .accessoryInline:
-            Image(systemName: "lock.fill").font(.system(size: 16, weight: .bold))
+            Image(systemName: "lock.fill").font(.system(size: 16, weight: .bold)).speakLocked(title, kind)
         default:
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
@@ -46,6 +47,14 @@ struct LockedWidget: View {
             }
             .foregroundStyle(Palette.ink)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .speakLocked(title, kind)
         }
+    }
+}
+
+private extension View {
+    /// VoiceOver: 잠긴 위젯은 이름과 여는 방법을 한 문장으로
+    func speakLocked(_ title: String, _ kind: String) -> some View {
+        accessibilityElement(children: .ignore).accessibilityLabel(WL.t("{name} 잠김. {how}", ["name": title, "how": WidgetUnlock.how(kind)]))
     }
 }

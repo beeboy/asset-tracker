@@ -1,16 +1,22 @@
 import Foundation
 import Observation
 
-// 인물 대사 데이터: Resources/lines_ko.json (tools/lines.py 가 만든다, 146개 상황 × 인물별 최대 100줄).
+// 인물 대사 데이터: Resources/lines_ko.json (tools/lines.py 가 만든다, 146개 상황 × 인물별 최대 100줄). 영어 기기는 WidgetShared/lines_en.json 이 있는 키만 영어.
 // 키는 "상황.인물" (예: "calm.2.sio", "fb.chase.ir", "item.barley_tea.sua"). 줄 안의 {n} 같은 자리는 값으로 채운다.
 // 볼 때마다(화면을 열거나 앱을 앞으로 가져오거나 당겨서 갱신) 같은 상황에서 다음 줄을 고른다. 파일에 없는 키는 nil 이라 부르는 쪽이 원래 문장을 쓴다.
 enum Lines {
     private struct File: Decodable { let lines: [String: [String]] }
     private static let all: [String: [String]] = {
-        guard let url = Bundle.main.url(forResource: "lines_ko", withExtension: "json"),
+        var a = load("lines_ko")
+        // 영어 기기: 영어 줄이 있는 키만 영어로 (지금은 위젯 말풍선 widget.*, 나머지는 영어판 인물 대사 단계에서)
+        if WL.en { a.merge(load("lines_en")) { _, en in en } }
+        return a
+    }()
+    private static func load(_ name: String) -> [String: [String]] {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "json"),
               let d = try? Data(contentsOf: url), let f = try? JSONDecoder().decode(File.self, from: d) else { return [:] }
         return f.lines
-    }()
+    }
 
     /// key 의 줄 하나. 볼 때(차례가 바뀐 뒤 처음 그릴 때)만 다음 줄로 넘어가서, 한 바퀴 돌 때까지 겹치지 않는다.
     /// salt 로 같은 화면의 다른 자리끼리 따로 센다

@@ -65,6 +65,19 @@
 - 다음 갱신 시각을 7일 무료 끝(`Store.trialEnd`)까지로 잘라 모든 위젯이 그때 바로 잠김. 서재 ↻는 `StoryReloadIntent`로 시세 없이 서재 위젯만 다시 그림.
 - 실기기 확인 필요: 인물 위젯만 둔 홈에서 금액이 갱신되는지, 7일 무료 끝 시각에 잠기는지. 분석 문서: https://claude.ai/code/artifact/b2ee909c-be79-4114-bd74-e8400e1e94fa (다음: B 잠금·이름표 정리, C 영어·접근성, D 새 경험)
 
+## 위젯 새 경험 (2026-10-17, D단계)
+- 위젯 아래 줄이 '3분 전 · 토스'처럼 지금 값의 시세를 받은 때와 출처를 보여 줌(`Snapshot.pricedAt`·`feed`, `Engine.build`에서 평가액이 가장 큰 출처). ↻에서 시세를 하나도 새로 못 받으면 앞에 '받기 실패'(`Store.fetchFailed`). '몇 분 전'이 바뀌게 같은 값을 여러 장 그려 둠(`Fresh.dates`).
+- 잠금화면: 직사각형 3개에 ↻(`LockReload`)와 '몇 분 전'. 금액은 폰이 잠긴 동안 시스템이 가림(`privacySensitive`, `Store.lockPrivate` 기본 켬, 설정 > 위젯 > 금액 가리기에서 끔).
+- 제어 센터 ↻ `ReloadControl`(iOS 18부터, `LockWidgets.swift`). 인물 큰 위젯 `char.large` '하루 한눈에'(`LargeCharView`, 앱 위젯 탭에도 미리보기).
+- 실기기 확인 필요: 잠긴 폰에서 잠금화면 금액이 가려지는지, 제어 센터 버튼이 보이고 눌리는지, 큰 위젯 배치.
+
+## 위젯 영어·VoiceOver (2026-10-17, C단계)
+- 위젯 문구는 `WL.t("한국어")`(`WidgetShared/Format.swift`)로 부른다. 기기 첫 언어가 한국어가 아니면 `WidgetShared/lines_en.json`의 `ui` 표(한국어 → 영어)에서 찾고, 없으면 한국어 그대로. 한국어 기기의 글자는 바뀌지 않음. 서재 `Story.deviceLang`도 같은 `WL.en`을 봄.
+- `lines_en.json`은 `tools/lines.py`가 만든다: `lines`에 인물 위젯 말풍선(widget.up/down, 인물별 영어 말투 첫 안, 40자까지), `ui`에 위젯 문구 113개. 앱 `Lines`는 영어 기기면 영어가 있는 키만 영어로 덮음. 물건 대사(item.*)는 아직 한국어만이라 영어 기기에서는 말풍선에 물건 얘기를 넣지 않음.
+- `python3 ios-app/tools/lines.py --check`가 위젯 코드의 `WL.t` 문구와 Catalog 이름·설명이 영어 표에 다 있는지 본다(ios CI 첫 단계).
+- VoiceOver: 기본 7·잠금화면 4·인물 4·잠긴 위젯이 한 문장으로 읽힘(`Speech.of`, `HomeWidgets.swift`; 인물은 `CharWidgets.swift`). ↻와 금액 숨기기는 `.speak(...)`가 동작(Actions)으로 남김 (iOS 18부터, 17은 문장만).
+- 아직 한국어인 곳: 금액 단위(억·만, 영어판 1단계 `Fmt` 나누기), 앱이 넘기는 문장(오늘 소식·블록 이정표·다음 일정 `next`), App Intent 이름(인물 고르기·다시 받기 등, 컴파일 때 정해지는 값이라 String Catalog 단계에서). 영어 말풍선은 사용자 검토 전 첫 안. 실기기(영어 기기·VoiceOver) 확인 필요.
+
 ## 위젯 잠금·이름표 정리 (2026-10-17, B단계)
 - 위젯 이름·설명·크기를 `Catalog.base`(기본 7 + 잠금화면 4)·`Catalog.more`(인물 4 + 서재) 한 표로 모음(`Widgets/Views/Catalog.swift`, 앱에도 들어감). 위젯 추가 화면(`.catalog(kind)`), 잠긴 위젯 제목, 앱 '위젯' 탭(`baseWidgets`), 금액 가리기 목록이 모두 이 표를 읽음. 예전 Locked.swift 사전·StoryWidget·CharWidgets 안의 이름은 뺌.
 - 잠금은 `Gate` 하나(Catalog.swift)로: 기본·잠금화면·서재는 `LockedWidget`, 인물 위젯은 인물 바탕의 잠긴 모습을 `locked:`로 넘김. 문구는 `WidgetUnlock.how`·`cta`로 같게. 갤러리 미리보기는 인물·서재 위젯도 잠그지 않음(전에는 7일 무료 뒤 갤러리에서도 잠겨 보였음).

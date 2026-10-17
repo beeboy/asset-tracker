@@ -28,18 +28,21 @@ struct Snapshot {
     var updated: Date?
     var source: String?
     var placeholder = false
+    /// 지금 값의 시세를 받은 시각과 출처 (평가액이 가장 큰 쪽: 토스·Alpaca·사이트·직접 입력·앱). 위젯 아래 '3분 전 · 토스'
+    var pricedAt: Date?
+    var feed: String?
 
     /// "적중 1/1" (실제 예측만). 실제 예측이 아직 없으면 "사후 7/12"
     var hitText: String {
         let real = hits.filter { !$0.retro }
-        if real.isEmpty, !hits.isEmpty { return "사후 \(hits.filter { $0.hit }.count)/\(hits.count)" }
-        return "적중 \(real.filter { $0.hit }.count)/\(real.count)"
+        if real.isEmpty, !hits.isEmpty { return WL.t("사후 {a}/{b}", ["a": "\(hits.filter { $0.hit }.count)", "b": "\(hits.count)"]) }
+        return WL.t("적중 {a}/{b}", ["a": "\(real.filter { $0.hit }.count)", "b": "\(real.count)"])
     }
 
     /// 전망 끝 이름: 목표 루트는 목표일까지, 회복 루트는 앱 전망처럼 3년 (페이스의 목표일과 다르다)
     var termLabel: String {
-        guard let last = fan?.md.last else { return "3년 뒤" }
-        return Day.str(last) == goalDate ? "목표일" : "3년 뒤"
+        guard let last = fan?.md.last else { return WL.t("3년 뒤") }
+        return WL.t(Day.str(last) == goalDate ? "목표일" : "3년 뒤")
     }
 
     var dayChg: Double { prevTotal > 0 ? total / prevTotal - 1 : 0 }
@@ -130,6 +133,7 @@ enum Engine {
         let cash = live.map { $0.cashKrw + $0.cashUsd * fx("USD") } ?? (s?.cash ?? 0)
         var moves: [Snapshot.Move] = []
         var tot = 0.0, prev = 0.0
+        var feedVal: [String: Double] = [:], feedAt: [String: Double] = [:]
         for h in hold {
             let ccy = f?.ccy[h.t] ?? s?.hold.first(where: { $0.t == h.t })?.ccy ?? "USD"
             let q = f?.q[h.t], sq = site?.q[h.t] ?? kr?.q[h.t]
@@ -143,6 +147,15 @@ enum Engine {
             guard let p = last else { continue }
             let v = h.sh * p * fx(ccy), pv = h.sh * (pc ?? p) * fx(ccy)
             tot += v; prev += pv
+            // 이 종목 값이 어디서 왔는지 (위의 last 와 같은 순서)
+            var tag = "앱", at: Double? = nil
+            if toss?.q[h.t] != nil { tag = "토스"; at = toss?.got }
+            else if aq != nil { tag = "Alpaca"; at = alpaca?.got }
+            else if site?.q[h.t] != nil { tag = "사이트"; at = site?.got }
+            else if kr?.q[h.t] != nil { tag = "사이트"; at = kr?.got }
+            else if h.manual != nil { tag = "직접 입력" }
+            feedVal[tag, default: 0] += v
+            if let at { feedAt[tag] = max(feedAt[tag] ?? 0, at) }
             moves.append(.init(t: h.t, pct: pc.map { p / $0 - 1 } ?? 0, krw: v, w: 0))
         }
         if tot <= 0, let s { tot = (s.spark.compactMap { $0 }.last ?? 0) * 1e4 - cash; prev = s.prev - cash } // 시세 파일이 없으면 요약 값
@@ -168,11 +181,13 @@ enum Engine {
         }
         let evs = (s?.events ?? []).filter { Day.dday($0.d) >= 0 }.prefix(4).map { Snapshot.Ev(d: $0.d, t: $0.t, k: $0.k, dday: Day.dday($0.d)) }
         let t = s?.fc?.t
+        let feed = feedVal.max { $0.value < $1.value }?.key
         return Snapshot(total: total, prevTotal: prevTotal, goal: goal, goalDate: goalDate, dday: Day.dday(goalDate),
                         v0: s?.goal.v0, start: live?.goalStart ?? s?.goal.start, spark: spark, fan: fan, pGoal: s?.fc?.pg,
                         monthly: s?.goal.m ?? 0, term: termOf(t),
                         fcAsOf: s?.asof, hits: (s?.hits ?? []).map { Snapshot.Hit(hit: $0.h == 1, retro: $0.r == 1) }, week: week, moves: moves, events: Array(evs),
-                        updated: Store.lastCheck, source: Store.summarySource)
+                        updated: Store.lastCheck, source: Store.summarySource,
+                        pricedAt: feedAt[feed ?? ""].map { Date(timeIntervalSince1970: $0) } ?? Store.lastCheck, feed: feed)
     }
 }
 

@@ -348,6 +348,7 @@ extension AppModel {
 /// 설정 > 위젯 > 금액 가리기: 금액을 누르면 모든 위젯 함께 / 누른 위젯만
 struct AmountHideCard: View {
     @State private var each = Store.hideEach
+    @State private var lockPrivate = Store.lockPrivate
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -357,6 +358,7 @@ struct AmountHideCard: View {
                 Text("누른 위젯만").tag(true)
             }
             .pickerStyle(.segmented)
+            Toggle("잠긴 동안 잠금화면 금액 가리기", isOn: $lockPrivate).appFont(14).tint(Theme.teal).padding(.top, 4)
         }
         .padding(14)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
@@ -366,6 +368,10 @@ struct AmountHideCard: View {
             let kinds = Catalog.base.map(\.kind).sorted()
             if v { Store.hiddenKinds = Store.hideAll ? kinds : [] } else { Store.hideAll = Set(kinds).isSubset(of: Store.hiddenKinds) }
             Store.hideEach = v
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        .onChange(of: lockPrivate) { _, v in
+            Store.lockPrivate = v
             WidgetCenter.shared.reloadAllTimelines()
         }
     }
@@ -448,6 +454,8 @@ struct WidgetPickView: View {
                     }
                 }
                 .aspectRatio(1 / 1.62, contentMode: .fit)
+                GeometryReader { g in caption("하루 한눈에 (큰)") { largeTile(e, w: g.size.width) { LargeCharView(e: e) } } }
+                    .aspectRatio(338 / 374, contentMode: .fit)
                 note("인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요.")
 
                 // 기본 위젯: 앱 시작 단계로 열림
@@ -476,7 +484,7 @@ struct WidgetPickView: View {
                 // 금액 가리기: 위젯에서 금액을 누르면 •••• 로 가려진다. 함께/따로는 Store.hideEach
                 Text("금액 가리기").appFont(17, .bold).padding(.top, 6)
                 AmountHideCard()
-                note("금액을 누르면 가려지고, 다시 누르면 보여요.")
+                note("금액을 누르면 가려지고, 다시 누르면 보여요. 잠금화면 위젯은 폰이 잠겨 있는 동안 금액을 가리고, 얼굴이나 지문으로 풀면 보여요.")
             }
             .screen()
         }
@@ -496,6 +504,18 @@ struct WidgetPickView: View {
 
     private func caption<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View {
         VStack(alignment: .leading, spacing: 4) { v(); Text(t).appFont(12).foregroundStyle(Theme.sub) }
+    }
+
+    /// 큰 위젯 크기 그대로 (338×354 를 폭에 맞춰 줄인다)
+    private func largeTile<V: View>(_ e: CharEntry, w: CGFloat, @ViewBuilder _ v: () -> V) -> some View {
+        let k = min(1, w / 338)
+        return ZStack {
+            CharBG(c: e.c, locked: e.locked, dark: dark)
+            v().padding(16).foregroundStyle(.white).environment(\.colorScheme, .dark).environment(\.charDark, dark)
+                .frame(width: 338, height: 354).scaleEffect(k)
+        }
+        .frame(width: w, height: 354 * k)
+        .clipShape(RoundedRectangle(cornerRadius: 22 * k, style: .continuous))
     }
 
     /// 위젯 크기 그대로 (바탕 + 위젯 안쪽 여백)
