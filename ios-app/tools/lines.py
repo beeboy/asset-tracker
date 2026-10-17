@@ -317,6 +317,12 @@ WIDGET_UI = {
     "토스": "Toss", "사이트": "site", "앱": "app", "직접 입력": "manual",
     "naeilo 다시 받기": "Refresh naeilo", "위젯의 지금 가격을 바로 받아 다시 그려요": "Get current prices now and redraw your widgets",
     "인물 · 하루 한눈에": "Character · Day at a glance",
+    "총자산·오늘 등락·큰 종목 2개와 다음 일정": "Total, today's change, top 2 holdings and the next event",
+    "인물 · 자산 언덕": "Character · Asset hill", "최근 10일 총자산을 픽셀 언덕으로": "Your last 10 days as a pixel hill",
+    "인물 · 본전 사다리": "Character · Break-even ladder", "본전(목표)까지 사다리를 오르는 인물": "Your character climbs the ladder to break-even (or goal)",
+    "인물 · 블록 탑": "Character · Block tower", "100칸이 한 층, 10층 탑을 쌓아요": "100 cells make a floor; build a 10-floor tower",
+    "인물 · 전광판": "Character · Ticker board", "총자산·오늘 등락·큰 종목 2개를 전광판으로": "Total, today's change and top 2 holdings on a board",
+    "남은 {v}": "{v} to go", "어제 ": "Yesterday ", "층": "F", " · 어제 ": " · yesterday ",
     "총자산·최근 흐름·본전·블록을 한 장에, 인물의 한마디와 함께": "Total, recent trend, break-even and blocks in one view, with a word from your character",
 }
 

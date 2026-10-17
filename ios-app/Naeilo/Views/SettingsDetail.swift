@@ -448,14 +448,19 @@ struct WidgetPickView: View {
                         }
                         HStack(spacing: 12) {
                             caption("블록") { tile(e, w: w, h: w) { BlockCharView(e: e) } }
-                            Spacer(minLength: 0)
+                            caption("오늘의 움직임") { tile(e, w: w, h: w) { MovesCharView(e: e) } }
                         }
-                        caption("오늘의 움직임") { tile(e, w: g.size.width, h: w) { MovesCharView(e: e) } }
+                        HStack(spacing: 12) {
+                            caption("자산 언덕") { tile(e, w: w, h: w) { HillCharView(e: e) } }
+                            caption("본전 사다리") { tile(e, w: w, h: w) { LadderCharView(e: e) } }
+                        }
+                        HStack(spacing: 12) {
+                            caption("블록 탑") { tile(e, w: w, h: w) { TowerCharView(e: e) } }
+                            caption("전광판") { tile(e, w: w, h: w) { BoardCharView(e: e) } }
+                        }
                     }
                 }
-                .aspectRatio(1 / 1.62, contentMode: .fit)
-                GeometryReader { g in caption("하루 한눈에 (큰)") { largeTile(e, w: g.size.width) { LargeCharView(e: e) } } }
-                    .aspectRatio(338 / 374, contentMode: .fit)
+                .aspectRatio(1 / 2.3, contentMode: .fit)
                 note("인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요.")
 
                 // 기본 위젯: 앱 시작 단계로 열림
