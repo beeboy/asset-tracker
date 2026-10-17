@@ -554,7 +554,7 @@ struct HeightCharView: View {
             ZStack {
                 HeightMarks(v: e.locked ? [] : Array((r.spark ?? []).suffix(7)), today: e.date).charBleed()
                 CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_measure_up" : r.dayChg < 0 ? "pose_measure_down" : "pose_measure_base"), locked: e.locked, height: 64, shake: false)
-                    .charHop(-4).charPin(.bottomLeading, x: 66, y: 10)
+                    .charHop(-4).charPin(.bottomLeading, x: 60, y: 10)
                 Group {
                     if e.locked { meetLater(e.c) } else {
                         VStack(alignment: .leading, spacing: 4) {
@@ -599,7 +599,7 @@ private struct HeightMarks: View {
                          at: CGPoint(x: px + 16, y: y), anchor: .leading)
             }
             if !v.isEmpty {
-                var l = Path(); l.move(to: CGPoint(x: px - 40, y: head)); l.addLine(to: CGPoint(x: px + 12, y: head))
+                var l = Path(); l.move(to: CGPoint(x: px - 46, y: head)); l.addLine(to: CGPoint(x: px + 12, y: head))
                 ctx.stroke(l, with: .color(upC), lineWidth: 2)
                 ctx.draw(Text(WL.t("오늘")).font(.system(size: 8, weight: .bold)).foregroundColor(upC), at: CGPoint(x: px + 16, y: head), anchor: .leading)
             }
