@@ -114,5 +114,3 @@ enum WidgetUnlock {
     static func how(_ kind: String) -> String { "7일 무료가 끝났어요. 구독하면 다시 보여요" }
     static let cta = "눌러서 구독하기 ›"
 }
-    static func how(_ kind: String) -> String { "7일 무료가 끝났어요. 구독하면 다시 보여요" }
-}
