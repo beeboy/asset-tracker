@@ -398,7 +398,7 @@ struct WidgetPickView: View {
                     stat("인물", "\(friendsOn)/\(Shelter.friends.count)")
                 }
 
-                // 인물 위젯: 만난 인물을 고르면 네 가지 모양을 바로 본다 (못 만난 친구는 목록에 없다)
+                // 인물 위젯: 만난 인물을 고르면 여덟 가지 모양을 바로 본다 (못 만난 친구는 목록에 없다)
                 Text("인물 위젯").appFont(17, .bold).padding(.top, 6)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -439,6 +439,14 @@ struct WidgetPickView: View {
                     let w = (g.size.width - 12) / 2
                     VStack(spacing: 12) {
                         HStack(spacing: 12) {
+                            caption("자산 언덕") { tile(e, w: w, h: w) { HillCharView(e: e) } }
+                            caption("본전 사다리") { tile(e, w: w, h: w) { LadderCharView(e: e) } }
+                        }
+                        HStack(spacing: 12) {
+                            caption("블록 탑") { tile(e, w: w, h: w) { TowerCharView(e: e) } }
+                            caption("전광판") { tile(e, w: w, h: w) { BoardCharView(e: e) } }
+                        }
+                        HStack(spacing: 12) {
                             caption("키 재기") { tile(e, w: w, h: w) { HeightCharView(e: e) } }
                             caption("퍼즐 맞추기") { tile(e, w: w, h: w) { PuzzleCharView(e: e) } }
                         }
@@ -448,7 +456,7 @@ struct WidgetPickView: View {
                         }
                     }
                 }
-                .aspectRatio(1 / 1.05, contentMode: .fit)
+                .aspectRatio(1 / 2.3, contentMode: .fit)
                 note("인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요.")
 
                 // 기본 위젯: 앱 시작 단계로 열림

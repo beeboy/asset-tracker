@@ -20,8 +20,12 @@ enum Catalog {
         Item(kind: "lock.future", name: "3년 뒤", desc: "3년 뒤 예상 범위", size: "잠금 화면"),
         Item(kind: "lock.target", name: "이번 주 과녁", desc: "금요일 마감 예측과 지금", size: "잠금 화면"),
     ]
-    /// 인물 4개 + 서재
+    /// 인물 8개 + 서재
     static let more: [Item] = [
+        Item(kind: "char.hill", name: "인물 · 자산 언덕", desc: "최근 10일 총자산을 픽셀 언덕으로", size: "작은"),
+        Item(kind: "char.ladder", name: "인물 · 본전 사다리", desc: "본전(목표)까지 사다리를 오르는 인물", size: "작은"),
+        Item(kind: "char.tower", name: "인물 · 블록 탑", desc: "100칸이 한 층, 10층 탑을 쌓아요", size: "작은"),
+        Item(kind: "char.board", name: "인물 · 전광판", desc: "총자산·오늘 등락·큰 종목 2개를 전광판으로", size: "작은"),
         Item(kind: "char.height", name: "인물 · 키 재기", desc: "문틀 기둥에 지난 날 자산을 금으로, 오늘은 인물 머리 높이", size: "작은"),
         Item(kind: "char.puzzle", name: "인물 · 퍼즐 맞추기", desc: "본전(목표)까지 20조각 퍼즐, 다 맞추면 깃발", size: "작은"),
         Item(kind: "char.garden", name: "인물 · 꽃밭", desc: "블록 1개가 꽃 1송이, 100송이면 다음 밭", size: "작은"),
