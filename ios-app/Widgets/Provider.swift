@@ -23,18 +23,9 @@ struct Provider: TimelineProvider {
                 completion(Timeline(entries: [Entry(date: Date(), snap: Engine.snapshot())], policy: .after(Date().addingTimeInterval(15))))
                 return
             }
-            // 숫자는 naeilo 앱이 계산해서 App Group 폴더에 써 둔다. 지금 가격·환율만 위젯이 사이트에서 직접 받는다 (10분 안에 받았으면 그대로)
-            await QuoteFeed.fetch(minAge: 600)
-            // 내부 테스트 국내 시세 종목이 있으면 그것도 (한국 장중에도 갱신)
-            let feed = Store.read(WFeed.self, "feed.json")
-            let ky = feed?.ky ?? [:]
-            await KrQuoteFeed.fetch(ky, minAge: 600)
-            // 내 토스 키가 있으면 토스 지금 가격도 위젯이 직접 (앱을 안 열어도 앱과 같은 값). 국내 종목이 있으면 한국 장중에도 갱신
-            let toss = await TossFeed.widgetFetch(minAge: 600)
-            // 내 Alpaca 키가 있으면 미국 종목 지금 가격도 위젯이 직접
-            await AlpacaFeed.widgetFetch(minAge: 600)
-            let tossKr = toss != nil && (feed?.ty ?? [:]).values.contains { $0.hasSuffix(".KS") || $0.hasSuffix(".KQ") }
-            completion(Timeline(entries: [Entry(date: Date(), snap: Engine.snapshot())], policy: .after(MarketHours.nextRefresh(kr: !ky.isEmpty || tossKr))))
+            // 지금 가격·환율 받기와 다음 갱신 시각은 인물 위젯과 같이 쓴다 (WidgetShared/Format.swift 의 WidgetRefresh)
+            let next = await WidgetRefresh.fetch()
+            completion(Timeline(entries: [Entry(date: Date(), snap: Engine.snapshot())], policy: .after(next)))
         }
     }
 }
