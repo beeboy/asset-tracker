@@ -229,6 +229,16 @@ private let dnC = Color(red: 0.42, green: 0.61, blue: 1)
 private func pctText(_ c: Double) -> String { Fmt.arrow(c) + String(format: "%.1f%%", abs(c) * 100) }
 
 /// 동작 그림 w_<인물>_<동작> 이 있으면 그것, 없으면 기본 그림. '위젯 인물 포즈 그리기'에서 그림이 오면 그 이름으로 넣기만 하면 바뀐다
+/// 확정 포즈(인물만 자른 그림, 크기 제각각)가 없으면 fallback 그림
+private func poseOr(_ c: WChar, _ p: String, else fallback: String) -> String {
+    let n = "w_\(c.id)_\(p)"
+    return UIImage(named: n) != nil ? n : fallback
+}
+/// 확정 포즈는 28×34 그림을 64pt로 그릴 때와 같은 배율(1px = 64/34pt), 발은 아래 맞춤. 그 밖은 64pt
+private func poseH(_ name: String) -> CGFloat {
+    guard name.contains("_pose_"), let i = UIImage(named: name) else { return 64 }
+    return i.size.height * 64 / 34
+}
 private func poseOr(_ c: WChar, _ p: String) -> String {
     let n = "w_\(c.id)_\(p)"
     return UIImage(named: n) != nil ? n : "w_\(c.id)"
@@ -322,7 +332,9 @@ struct HillCharView: View {
                 .charPin(.topLeading, y: 36)
                 if !e.locked && sp.count >= 2 { hill(sp, s.accent).charPin(.bottomLeading) }
                 Rectangle().fill(.white.opacity(0.35)).frame(height: 1).charPin(.bottomLeading, y: 15)
-                CharSprite(name: "w_\(e.c.id)", locked: e.locked, height: 64).charPin(.bottomTrailing)
+                // 오른 날 trend_up, 내린 날 trend_down, 갱신 중엔 trend_up 으로 1pt 뛴다
+                let hn = poseOr(e.c, !Store.isReloading && r.dayChg < 0 ? "pose_trend_down" : "pose_trend_up")
+                CharSprite(name: hn, locked: e.locked, height: poseH(hn), shake: false).charHop(-1).charPin(.bottomTrailing)
                 cornerB(e)
             }
         }
@@ -366,7 +378,11 @@ struct LadderCharView: View {
                 }
                 .flipFade()
                 .charPin(.bottomTrailing, x: 18)
-                CharSprite(name: "w_\(e.c.id)_raise", locked: e.locked, height: 64).charPin(.bottomTrailing, x: 31.5)
+                // 오른 날 push_up, 내린 날 push_down, 갱신 중엔 push_up 으로 1pt 앞으로
+                let ln = poseOr(e.c, !Store.isReloading && r.pct < r.pctYesterday ? "pose_push_down" : "pose_push_up", else: "w_\(e.c.id)_raise")
+                CharSprite(name: ln, locked: e.locked, height: poseH(ln), shake: false)
+                    .offset(x: Store.isReloading ? 1 : 0).animation(.interpolatingSpring(stiffness: 180, damping: 7), value: Store.isReloading)
+                    .charPin(.bottomTrailing, x: 31.5)
                 Group {
                     if e.locked { meetLater(e.c) } else {
                         VStack(alignment: .leading, spacing: 4) {
@@ -425,7 +441,9 @@ struct TowerCharView: View {
                 }
                 .charPin(.topLeading)
                 tower(floor, fill, s.accent).frame(width: 56).charPin(.bottomTrailing, y: 17.5)
-                CharSprite(name: "w_\(e.c.id)_spread", locked: e.locked, height: 64).charPin(.bottomTrailing, x: 67.5)
+                // 칸이 는 날 block_up, 준 날 block_down, 갱신 중엔 block_refresh2 (블록을 탑 위에)
+                let tn = poseOr(e.c, Store.isReloading ? "pose_block_refresh2" : d < 0 ? "pose_block_down" : "pose_block_up", else: "w_\(e.c.id)_spread")
+                CharSprite(name: tn, locked: e.locked, height: poseH(tn), shake: false).charPin(.bottomTrailing, x: 67.5)
                 if !e.locked && mode != .accented {
                     Image("w_cat").interpolation(.none).resizable().frame(width: 16, height: 16).accessibilityHidden(true).charPin(.bottomLeading, x: 20)
                 }
@@ -480,7 +498,11 @@ struct BoardCharView: View {
                     }
                 }
                 .charPin(.topLeading)
-                CharSprite(name: poseOr(e.c, "pose_lefthand_up"), locked: e.locked, height: 64).charPin(.bottomTrailing, x: 6)
+                // 오른 날 point_up, 내린 날 point_down, 갱신 중엔 point_refresh1 → point_up → point_refresh3
+                // (point_down·point_refresh3 그림이 아직 없으면 point_up)
+                let bn = poseOr(e.c, Store.isReloading ? "pose_point_refresh1" : r.dayChg < 0 ? "pose_point_down" : "pose_point_up", else: poseOr(e.c, "pose_point_up"))
+                CharSprite(name: bn, locked: e.locked, height: poseH(bn), shake: false)
+                    .charPin(.bottomTrailing, x: 6)
                 if !e.locked && !r.tiles.isEmpty { rows(r).frame(width: 92).charPin(.bottomLeading, y: 18) }
                 cornerB(e)
             }
