@@ -553,7 +553,8 @@ struct HeightCharView: View {
             let r = e.r
             ZStack {
                 HeightMarks(v: e.locked ? [] : Array((r.spark ?? []).suffix(7)), today: e.date).charBleed()
-                CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_measure_up" : r.dayChg < 0 ? "pose_measure_down" : "pose_measure_base"), locked: e.locked, height: 64, shake: false)
+                let pn = poseOr(e.c, Store.isReloading ? "pose_measure_up" : r.dayChg < 0 ? "pose_measure_down" : "pose_measure_base")
+                CharSprite(name: pn, locked: e.locked, height: poseH(pn), shake: false)
                     .charHop(-4).charPin(.bottomLeading, x: 60, y: 10)
                 Group {
                     if e.locked { meetLater(e.c) } else {
@@ -627,7 +628,8 @@ struct PuzzleCharView: View {
             let n = min(20, max(0, Int((r.pct * 20 + 1e-9).rounded(.down))))
             ZStack {
                 if !e.locked { PuzzleBoard(n: n, c: s.accent).charBleed() }
-                CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_puzzle_refresh" : "pose_puzzle_base"), locked: e.locked, height: 64, shake: false)
+                let pn = poseOr(e.c, Store.isReloading ? "pose_puzzle_refresh" : "pose_puzzle_base")
+                CharSprite(name: pn, locked: e.locked, height: poseH(pn), shake: false)
                     .charHop(3).charPin(.bottomTrailing, x: 8, y: 26)
                 Text(WL.t("{key}까지", ["key": WL.t(r.keyName)])).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading)
                     .lineLimit(1).frame(height: 20).charPin(.topLeading)
@@ -713,7 +715,8 @@ struct GardenCharView: View {
             let d = r.cells - r.cellsYesterday
             ZStack {
                 if !e.locked { GardenBed(fill: fill, bloom: min(fill, fy), garden: g, c: s.accent).charBleed() }
-                CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_garden_refresh" : "pose_garden_base"), locked: e.locked, height: 64, shake: false)
+                let pn = poseOr(e.c, Store.isReloading ? "pose_garden_refresh" : "pose_garden_base")
+                CharSprite(name: pn, locked: e.locked, height: poseH(pn), shake: false)
                     .charPin(.bottomTrailing, x: 8, y: 10)
                 Text(WL.t("{n}번째 꽃밭", ["n": "\(g)"])).font(.system(size: 11, weight: .semibold)).foregroundStyle(s.heading)
                     .lineLimit(1).frame(height: 20).charPin(.topLeading)
@@ -787,8 +790,9 @@ struct TugCharView: View {
                     team(r.tiles.filter { $0.c < 0 }, up: false).charPin(.topLeading, y: 64)
                     team(r.tiles.filter { $0.c > 0 }, up: true).charPin(.topTrailing, x: 4, y: 64)
                 }
-                CharSprite(name: poseOr(e.c, Store.isReloading ? "pose_tug_refresh" : abs(r.dayChg) < 0.0005 ? "pose_tug_tie" : r.dayChg > 0 ? "pose_tug_right" : "pose_tug_left"),
-                           locked: e.locked, height: 64, shake: false).charPin(.bottomLeading, x: 44, y: 8)
+                let pn = poseOr(e.c, Store.isReloading ? "pose_tug_refresh" : abs(r.dayChg) < 0.0005 ? "pose_tug_tie" : r.dayChg > 0 ? "pose_tug_right" : "pose_tug_left")
+                CharSprite(name: pn,
+                           locked: e.locked, height: poseH(pn), shake: false).charPin(.bottomLeading, x: 44, y: 8)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(WL.t("오늘의 움직임")).font(.system(size: 12, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1).frame(height: 20)
                     Text(e.locked ? lockLine(e.c) : WL.t("다음: ") + (r.next ?? WL.t("예정된 일정 없음"))).font(.system(size: 9, weight: .medium))
