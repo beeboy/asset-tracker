@@ -109,14 +109,8 @@ enum Store {
     static func isUnlocked(_ kind: String) -> Bool { widgetsOpen }
 }
 
-/// 기본 위젯 목록. 예전에는 앱 시작 단계로 하나씩 받았는데, 이제는 처음부터 모두 열리고 7일 무료 뒤에는 구독으로 연다
+/// 잠긴 위젯 문구 (기본·잠금화면·인물·서재가 같이 쓴다). 예전에는 앱 시작 단계로 하나씩 열었는데, 이제는 처음부터 모두 열리고 7일 무료 뒤에는 구독으로 연다
 enum WidgetUnlock {
-    static let step: [String: Int] = [
-        "asset.small": 1, "lock.asset": 1,
-        "pace.medium": 2, "lock.goal": 2,
-        "block.small": 3,
-        "future.small": 4, "target.medium": 4, "moves.medium": 4, "future.large": 4, "lock.future": 4, "lock.target": 4,
-    ]
-    static func kinds(doneSteps n: Int) -> [String] { Store.widgetsOpen ? step.keys.sorted() : [] }
     static func how(_ kind: String) -> String { "7일 무료가 끝났어요. 구독하면 다시 보여요" }
+    static let cta = "눌러서 구독하기 ›"
 }

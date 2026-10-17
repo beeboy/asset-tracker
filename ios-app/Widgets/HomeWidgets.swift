@@ -1,46 +1,27 @@
 import WidgetKit
 import SwiftUI
 
-// MARK: 위젯 정의
-struct AssetSmall: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "asset.small", provider: Provider()) { e in Gate(kind: "asset.small", preview: e.preview) { AssetSmallView(s: e.snap).kind("asset.small").environment(\.isSample, e.snap.placeholder).widgetBG().widgetURL(Catalog.openURL) } }
-            .configurationDisplayName(Catalog.asset.0).description(Catalog.asset.1).supportedFamilies([.systemSmall])
+// MARK: 위젯 정의 (이름표는 Catalog, 잠금은 Gate, 값은 Provider. 새 위젯은 Catalog 에 한 줄, 여기 한 줄, NaeiloWidgets 묶음에 한 줄)
+struct AssetSmall: Widget { var body: some WidgetConfiguration { homeWidget("asset.small", .systemSmall) { AssetSmallView(s: $0) } } }
+struct FutureSmall: Widget { var body: some WidgetConfiguration { homeWidget("future.small", .systemSmall) { FutureSmallView(s: $0) } } }
+struct BlockSmall: Widget { var body: some WidgetConfiguration { homeWidget("block.small", .systemSmall) { BlockSmallView(s: $0) } } }
+struct PaceMedium: Widget { var body: some WidgetConfiguration { homeWidget("pace.medium", .systemMedium) { PaceMediumView(s: $0) } } }
+struct TargetMedium: Widget { var body: some WidgetConfiguration { homeWidget("target.medium", .systemMedium) { TargetMediumView(s: $0) } } }
+struct MovesMedium: Widget { var body: some WidgetConfiguration { homeWidget("moves.medium", .systemMedium) { MovesMediumView(s: $0) } } }
+struct FutureLarge: Widget { var body: some WidgetConfiguration { homeWidget("future.large", .systemLarge) { FutureLargeView(s: $0) } } }
+
+/// 기본 위젯 하나: 앱 색 바탕, 누르면 앱 첫 탭
+func homeWidget<V: View>(_ kind: String, _ family: WidgetFamily, @ViewBuilder view: @escaping (Snapshot) -> V) -> some WidgetConfiguration {
+    StaticConfiguration(kind: kind, provider: Provider()) { e in
+        Gate(kind: kind, preview: e.preview) { view(e.snap).kind(kind).environment(\.isSample, e.snap.placeholder).widgetBG().widgetURL(Catalog.openURL) }
     }
+    .catalog(kind).supportedFamilies([family])
 }
-struct FutureSmall: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "future.small", provider: Provider()) { e in Gate(kind: "future.small", preview: e.preview) { FutureSmallView(s: e.snap).kind("future.small").environment(\.isSample, e.snap.placeholder).widgetBG().widgetURL(Catalog.openURL) } }
-            .configurationDisplayName(Catalog.future.0).description(Catalog.future.1).supportedFamilies([.systemSmall])
+
+/// 잠금화면 위젯 하나: 바탕 없음, 누르면 앱 첫 탭
+func lockWidget<V: View>(_ kind: String, _ family: WidgetFamily, @ViewBuilder view: @escaping (Snapshot) -> V) -> some WidgetConfiguration {
+    StaticConfiguration(kind: kind, provider: Provider()) { e in
+        Gate(kind: kind, preview: e.preview) { view(e.snap).kind(kind).containerBackground(for: .widget) { Color.clear }.widgetURL(Catalog.openURL) }
     }
-}
-struct BlockSmall: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "block.small", provider: Provider()) { e in Gate(kind: "block.small", preview: e.preview) { BlockSmallView(s: e.snap).kind("block.small").environment(\.isSample, e.snap.placeholder).widgetBG().widgetURL(Catalog.openURL) } }
-            .configurationDisplayName(Catalog.block.0).description(Catalog.block.1).supportedFamilies([.systemSmall])
-    }
-}
-struct PaceMedium: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "pace.medium", provider: Provider()) { e in Gate(kind: "pace.medium", preview: e.preview) { PaceMediumView(s: e.snap).kind("pace.medium").environment(\.isSample, e.snap.placeholder).widgetBG().widgetURL(Catalog.openURL) } }
-            .configurationDisplayName(Catalog.pace.0).description(Catalog.pace.1).supportedFamilies([.systemMedium])
-    }
-}
-struct TargetMedium: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "target.medium", provider: Provider()) { e in Gate(kind: "target.medium", preview: e.preview) { TargetMediumView(s: e.snap).kind("target.medium").environment(\.isSample, e.snap.placeholder).widgetBG().widgetURL(Catalog.openURL) } }
-            .configurationDisplayName(Catalog.target.0).description(Catalog.target.1).supportedFamilies([.systemMedium])
-    }
-}
-struct MovesMedium: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "moves.medium", provider: Provider()) { e in Gate(kind: "moves.medium", preview: e.preview) { MovesMediumView(s: e.snap).kind("moves.medium").environment(\.isSample, e.snap.placeholder).widgetBG().widgetURL(Catalog.openURL) } }
-            .configurationDisplayName(Catalog.moves.0).description(Catalog.moves.1).supportedFamilies([.systemMedium])
-    }
-}
-struct FutureLarge: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "future.large", provider: Provider()) { e in Gate(kind: "future.large", preview: e.preview) { FutureLargeView(s: e.snap).kind("future.large").environment(\.isSample, e.snap.placeholder).widgetBG().widgetURL(Catalog.openURL) } }
-            .configurationDisplayName(Catalog.futureL.0).description(Catalog.futureL.1).supportedFamilies([.systemLarge])
-    }
+    .catalog(kind).supportedFamilies([family])
 }
