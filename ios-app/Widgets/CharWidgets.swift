@@ -190,8 +190,8 @@ struct CharSprite: View {
     }
     private var sprite: some View {
         Group {
-            // 내 캐릭터: 앱이 겹쳐 그린 그림 하나 (동작별 그림 없음)
-            if name.hasPrefix("w_me"), let img = WMe.image {
+            // 내 캐릭터: 앱이 겹쳐 그린 그림 (동작별 me_pose_*.png, 없으면 me.png)
+            if name.hasPrefix("w_me"), let img = WMe.image(name) {
                 if locked { Image(uiImage: img).interpolation(.none).resizable().renderingMode(.template).foregroundStyle(Color.white.opacity(0.22)) }
                 else if mode == .accented, #available(iOS 18, *) {
                     // 투명·틴트: 기본 인물처럼 원래 색 그대로 (안 그러면 시스템이 한 색으로 칠해 흰 덩어리가 된다)
@@ -238,6 +238,7 @@ private func pctText(_ c: Double) -> String { Fmt.arrow(c) + String(format: "%.1
 /// 확정 포즈(인물만 자른 그림, 크기 제각각)가 없으면 fallback 그림
 private func poseOr(_ c: WChar, _ p: String, else fallback: String) -> String {
     let n = "w_\(c.id)_\(p)"
+    if c.id == "me" { return Store.readData("me_\(p).png") != nil ? n : fallback }
     return UIImage(named: n) != nil ? n : fallback
 }
 /// 확정 포즈는 28×34 그림을 64pt로 그릴 때와 같은 배율(1px = 64/34pt), 발은 아래 맞춤. 그 밖은 64pt
@@ -247,6 +248,7 @@ private func poseH(_ name: String) -> CGFloat {
 }
 private func poseOr(_ c: WChar, _ p: String) -> String {
     let n = "w_\(c.id)_\(p)"
+    if c.id == "me" { return Store.readData("me_\(p).png") != nil ? n : "w_\(c.id)" }
     return UIImage(named: n) != nil ? n : "w_\(c.id)"
 }
 

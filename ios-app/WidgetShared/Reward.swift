@@ -94,6 +94,10 @@ struct WMe: Codable {
     var accent: UInt32, g0: UInt32, g1: UInt32
     static var saved: WMe? { Store.read(WMe.self, "me.json") }
     static var image: UIImage? { Store.readData("me.png").flatMap { UIImage(data: $0) } }
+    /// w_me → me.png, w_me_pose_<동작> → me_pose_<동작>.png (없으면 me.png). 앱이 MePose 로 그려 둔다
+    static func image(_ name: String) -> UIImage? {
+        Store.readData(String(name.dropFirst(2)) + ".png").flatMap { UIImage(data: $0) } ?? image
+    }
 }
 
 /// 쉼터에 돌아온 물건: 위젯 그림 이름은 w_item_<id> (앱 쪽 art_<id> 와 같은 도트)
