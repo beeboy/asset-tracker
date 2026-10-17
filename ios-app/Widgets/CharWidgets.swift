@@ -452,7 +452,7 @@ struct TowerCharView: View {
                 tower(floor, fill, s.accent).frame(width: 56).charPin(.bottomTrailing, y: 17.5)
                 // 칸이 는 날 block_up, 준 날 block_down, 갱신 중엔 block_refresh2 (블록을 탑 위에)
                 let tn = poseOr(e.c, Store.isReloading ? "pose_block_refresh2" : d < 0 ? "pose_block_down" : "pose_block_up", else: "w_\(e.c.id)_spread")
-                CharSprite(name: tn, locked: e.locked, height: poseH(tn), shake: false).charPin(.bottomTrailing, x: 67.5)
+                CharSprite(name: tn, locked: e.locked, height: poseH(tn), shake: false).charPin(.bottom)
                 if !e.locked && mode != .accented {
                     Image("w_cat").interpolation(.none).resizable().frame(width: 16, height: 16).accessibilityHidden(true).charPin(.bottomLeading, x: 20)
                 }
@@ -555,7 +555,7 @@ struct HeightCharView: View {
                 HeightMarks(v: e.locked ? [] : Array((r.spark ?? []).suffix(7)), today: e.date).charBleed()
                 let pn = poseOr(e.c, Store.isReloading ? "pose_measure_up" : r.dayChg < 0 ? "pose_measure_down" : "pose_measure_base")
                 CharSprite(name: pn, locked: e.locked, height: poseH(pn), shake: false)
-                    .charHop(-4).charPin(.bottomLeading, x: 60, y: 10)
+                    .charHop(-4).charPin(.bottom, y: 10)
                 Group {
                     if e.locked { meetLater(e.c) } else {
                         VStack(alignment: .leading, spacing: 4) {
@@ -743,7 +743,7 @@ struct GardenCharView: View {
     }
 }
 
-/// 아래 줄 왼쪽부터 핀다. 오른쪽 위에 밭 탭: 다 핀 밭(최근 3개까지) + 테두리 친 지금 밭. 물뿌리개는 밭 오른쪽 아래
+/// 아래 줄 왼쪽부터 핀다. 오른쪽 위에 밭 10개(5×2): 다 핀 밭 + 테두리 친 지금 밭 + 남은 밭. 물뿌리개는 밭 오른쪽 아래
 private struct GardenBed: View {
     let fill: Int, bloom: Int, garden: Int, c: Color
     @Environment(\.widgetRenderingMode) private var mode
@@ -766,15 +766,20 @@ private struct GardenBed: View {
                     ctx.fill(Path(ellipseIn: CGRect(x: x + 2.5, y: y + 2, width: 2, height: 2)), with: leaf)
                 }
             }
-            for j in 0..<min(3, garden - 1) {
-                let x = 132 - CGFloat(j) * 12
-                ctx.fill(Path(roundedRect: CGRect(x: x, y: 44, width: 9, height: 9), cornerRadius: 2), with: petal)
-                ctx.fill(Path(CGRect(x: x + 3, y: 47, width: 3, height: 3)), with: core)
+            // 밭 10개를 5개씩 2줄: 다 핀 밭은 꽃, 지금 밭은 테두리+번호, 남은 밭은 흐린 칸
+            for j in 0..<10 {
+                let b = CGRect(x: 105 + CGFloat(j % 5) * 10, y: 43.5 + CGFloat(j / 5) * 10, width: 9, height: 9)
+                if j < garden - 1 {
+                    ctx.fill(Path(roundedRect: b, cornerRadius: 2), with: petal)
+                    ctx.fill(Path(CGRect(x: b.minX + 3, y: b.minY + 3, width: 3, height: 3)), with: core)
+                } else if j == garden - 1 {
+                    ctx.fill(Path(roundedRect: b, cornerRadius: 2), with: dirt)
+                    ctx.stroke(Path(roundedRect: b, cornerRadius: 2), with: .color(c), lineWidth: 1.2)
+                    ctx.draw(Text("\(garden)").font(.system(size: 6, weight: .bold)).foregroundColor(c), at: CGPoint(x: b.midX, y: b.midY))
+                } else {
+                    ctx.stroke(Path(roundedRect: b.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 2), with: .color(.white.opacity(0.22)), lineWidth: 1)
+                }
             }
-            let cur = CGRect(x: 144.5, y: 43.5, width: 10, height: 10)
-            ctx.fill(Path(roundedRect: cur, cornerRadius: 2), with: dirt)
-            ctx.stroke(Path(roundedRect: cur, cornerRadius: 2), with: .color(c), lineWidth: 1.5)
-            ctx.draw(Text("\(garden)").font(.system(size: 7, weight: .bold)).foregroundColor(c), at: CGPoint(x: cur.midX, y: cur.midY))
             let can = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0x8fb7d9)), drop = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0xbfe3ff))
             ctx.fill(Path(roundedRect: CGRect(x: 104, y: 106, width: 9, height: 7), cornerRadius: 1), with: can)
             var spout = Path(); spout.move(to: CGPoint(x: 104.5, y: 107)); spout.addLine(to: CGPoint(x: 100, y: 104.5))
