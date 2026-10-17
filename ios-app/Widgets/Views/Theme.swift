@@ -50,11 +50,14 @@ struct Label2: View { // 작은 회색 제목
     var body: some View { Text(text).font(.system(size: 12, weight: .bold)).foregroundStyle(Palette.ink.opacity(0.62)).lineLimit(1) }
 }
 
-struct Foot: View { // 아래 줄: 갱신 시각 + 다시 받기 버튼
-    let text: String
+struct Foot: View { // 아래 줄: 앞말 + '3분 전 · 토스' + 다시 받기 버튼
+    var text = ""
+    let s: Snapshot
+    @Environment(\.entryDate) private var now
     var body: some View {
+        let fresh = Fresh.label(s.pricedAt, s.feed, now: now)
         HStack(spacing: 4) {
-            Text(text).font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.ink.opacity(0.55)).lineLimit(1)
+            Text(text.isEmpty ? fresh : text + " · " + fresh).font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.ink.opacity(0.55)).lineLimit(1)
             Spacer(minLength: 0)
             ReloadButton()
         }
@@ -90,7 +93,6 @@ struct SampleBadge: View { // 체험 모드·연결 전: 실제 값이 아님을
     }
 }
 
-func shortTime(_ d: Date?) -> String { Fmt.time(d) }
 
 // MARK: 금액 숨기기
 private struct KindKey: EnvironmentKey { static let defaultValue = "" }
@@ -99,7 +101,10 @@ extension EnvironmentValues {
     var widgetKind: String { get { self[KindKey.self] } set { self[KindKey.self] = newValue } }
     /// 예시 값으로 그리는 중 (체험 모드이거나 아직 연결 전)
     var isSample: Bool { get { self[SampleKey.self] } set { self[SampleKey.self] = newValue } }
+    /// 이 그림의 시각 (타임라인 항목 시각). '3분 전'을 여기서부터 센다
+    var entryDate: Date { get { self[EntryDateKey.self] } set { self[EntryDateKey.self] = newValue } }
 }
+private struct EntryDateKey: EnvironmentKey { static var defaultValue: Date { Date() } }
 private struct SampleKey: EnvironmentKey { static let defaultValue = false }
 
 /// 숨긴 금액 자리
@@ -110,10 +115,12 @@ struct Money<L: View>: View {
     @Environment(\.widgetKind) private var kind
     @ViewBuilder let label: (Bool) -> L
     var body: some View {
+        // 잠금화면 위젯의 금액은 폰이 잠겨 있으면 시스템이 가린다 (설정에서 끌 수 있다)
+        let lockPrivate = kind.hasPrefix("lock.") && Store.lockPrivate
         #if WIDGET_EXT
-        Button(intent: ToggleAmountIntent(kind: kind)) { label(Store.isHidden(kind)) }.buttonStyle(.plain)
+        Button(intent: ToggleAmountIntent(kind: kind)) { label(Store.isHidden(kind)).privacySensitive(lockPrivate) }.buttonStyle(.plain)
         #else
-        label(Store.isHidden(kind))
+        label(Store.isHidden(kind)).privacySensitive(lockPrivate)
         #endif
     }
 }

@@ -35,11 +35,13 @@ struct WhoIntent: WidgetConfigurationIntent {
 }
 
 struct CharEntry: TimelineEntry {
-    let date: Date
+    var date: Date
     let r: WReward
     let c: WChar
     var locked: Bool            // 아직 못 만난 인물 (실루엣). 7일 무료 뒤 잠금은 이것과 따로 Gate 가 한다
     var preview = false         // 위젯 갤러리 미리보기면 7일 무료 뒤에도 잠그지 않는다 (다른 위젯과 같이)
+    var at: Date? = nil         // 지금 값의 시세를 받은 시각과 출처 (큰 위젯 아래 줄 '3분 전 · 토스')
+    var feed: String? = nil
 }
 
 struct CharProvider: AppIntentTimelineProvider {
@@ -52,7 +54,9 @@ struct CharProvider: AppIntentTimelineProvider {
         // 기본 위젯처럼 지금 가격을 직접 받는다 (전에는 받지 않아, 인물 위젯만 두면 ↻나 앱을 열 때까지 금액이 멈춰 있었다).
         // 다음 갱신도 기본 위젯과 같이: 국내 종목이 있으면 한국 장중에도, 7일 무료가 끝나는 때에도
         let next = await WidgetRefresh.fetch()
-        return Timeline(entries: [entry(cfg, preview: false)], policy: .after(next))
+        // 같은 값을 몇 장 더 그려 둔다: 큰 위젯 아래 줄의 '몇 분 전'이 시간이 지나면서 바뀌게
+        let base = entry(cfg, preview: false)
+        return Timeline(entries: Fresh.dates(base.date, until: next).map { var x = base; x.date = $0; return x }, policy: .after(next))
     }
     func recommendations() -> [AppIntentRecommendation<WhoIntent>] {
         WhoEnum.choices.map { AppIntentRecommendation(intent: WhoIntent($0), description: $0 == .home ? "앱 홈의 인물" : WChar.of($0.charId).name) }
@@ -67,7 +71,9 @@ struct CharProvider: AppIntentTimelineProvider {
         // '홈 인물 따라가기'면 앱 홈에 둔 인물 (앱에서 홈 인물을 바꾸면 위젯도 바뀐다)
         let c = WChar.of(cfg.who.follows ? (r.homeFriend ?? "seri") : cfg.who.charId)
         // 갤러리 미리보기는 실제 모습, 홈 화면에서는 만난 인물만
-        return CharEntry(date: Date(), r: r, c: c, locked: !preview && !(c.id == "seri" || r.friendsOn.contains(c.id)), preview: preview)
+        var e = CharEntry(date: Date(), r: r, c: c, locked: !preview && !(c.id == "seri" || r.friendsOn.contains(c.id)), preview: preview)
+        if !preview { let s = Engine.snapshot(); if !s.placeholder { e.at = s.pricedAt; e.feed = s.feed } }
+        return e
     }
 }
 
@@ -105,6 +111,16 @@ struct CharMoves: Widget {
         }
         .catalog("char.moves")
         .supportedFamilies([.systemMedium])
+    }
+}
+
+struct CharLarge: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: "char.large", intent: WhoIntent.self, provider: CharProvider()) { e in
+            CharFrame(e: e, kind: "char.large") { LargeCharView(e: e) }
+        }
+        .catalog("char.large")
+        .supportedFamilies([.systemLarge])
     }
 }
 
@@ -527,6 +543,107 @@ struct MovesCharView: View {
         .frame(maxHeight: .infinity)
         .background(Color.white.opacity(tinted ? 0.08 : dark ? 0.07 : 0.12), in: RoundedRectangle(cornerRadius: 7))
         .accessibilityLabel(WL.t("그 외 {n}개 종목, 합쳐서 {p} {dir}", ["n": "\(rest.count)", "p": String(format: "%.1f%%", abs(c) * 100), "dir": WL.dir(c)]))
+    }
+}
+
+// MARK: 하루 한눈에 (큰): 총자산 · 최근 흐름 · 인물과 한마디 · 본전 · 블록 · '몇 분 전 · 출처'
+
+struct LargeCharView: View {
+    let e: CharEntry
+    var body: some View {
+        StyleReader { dark in
+            let s = CharStyle(c: e.c, locked: e.locked, dark: dark)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text(e.locked ? WL.t("인물 · 하루 한눈에") : e.c.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1)
+                    Spacer(minLength: 0)
+                    if !e.locked { CharReload() }
+                }
+                if e.locked { closed } else { open(s, dark: dark) }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .speak(e.locked ? "\(e.c.title), \(lockLine(e.c))" : spoken, kind: "char.large", money: !e.locked, reload: !e.locked)
+    }
+
+    private var spoken: String {
+        let r = e.r, hide = Store.isHidden("char.large")
+        let parts = [
+            WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": hide ? WL.t("숨김") : eokMan(r.total), "p": String(format: "%.1f%%", abs(r.dayChg) * 100), "dir": WL.dir(r.dayChg)]),
+            WL.t("{key}까지 {p}%, 남은 금액 {v}", ["key": WL.t(r.keyName), "p": "\(Int((r.pct * 100).rounded()))", "v": hide ? WL.t("숨김") : eokMan(r.remain)]),
+            WL.t("1000칸 중 {n}칸, 어제보다 {d}칸", ["n": "\(r.cells)", "d": (r.cells >= r.cellsYesterday ? "+" : "") + "\(r.cells - r.cellsYesterday)"]),
+            "\(e.c.title): \(r.newsToday ?? e.c.line(r))",
+            Fresh.label(e.at, e.feed, now: e.date),
+        ]
+        return "\(Catalog.name("char.large")). " + parts.joined(separator: ". ")
+    }
+
+    private var closed: some View {
+        VStack(spacing: 10) {
+            Spacer(minLength: 0)
+            CharSprite(name: "w_\(e.c.id)", locked: true, height: 150)
+            Text(lockLine(e.c)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+            Text(WL.t("앱의 쉼터에서 봐요 ›")).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder private func open(_ s: CharStyle, dark: Bool) -> some View {
+        let r = e.r, sp = r.spark ?? []
+        HStack(alignment: .lastTextBaseline, spacing: 8) {
+            CharMoney { h in Text(h ? charHidden : eokMan(r.total)).font(.system(size: 32, weight: .regular)).minimumScaleFactor(0.6).lineLimit(1).charFlip(r.total) }
+            Text(Fmt.arrow(r.dayChg) + String(format: "%.1f%%", abs(r.dayChg) * 100) + " " + WL.t("오늘"))
+                .font(.system(size: 13, weight: .semibold)).foregroundStyle(r.dayChg >= 0 ? upC : dnC).widgetAccentable().lineLimit(1).fixedSize().charFlip(r.dayChg)
+        }
+        if sp.count >= 2 { CharSpark(values: sp, color: s.accent).frame(height: 40).widgetAccentable().flipFade() }
+        HStack(alignment: .bottom, spacing: 8) {
+            CharSprite(name: "w_\(e.c.id)", locked: false, height: 104).frame(width: 76)
+                .overlay(alignment: .bottomTrailing) { if let it = WItem.shown(r) { CharItem(id: it).offset(x: 8) } }
+            Text(r.newsToday ?? e.c.line(r))
+                .font(.system(size: 12, weight: .medium)).lineLimit(4).fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 10).padding(.vertical, 8)
+                .background(s.bubbleFill, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(s.bubbleStroke, lineWidth: 1))
+                .padding(.bottom, 14).flipFade()
+            Spacer(minLength: 0)
+        }
+        HStack(spacing: 8) {
+            box(dark: dark) {
+                Text(WL.t("{key}까지", ["key": WL.t(r.keyName)])).font(.system(size: 11, weight: .semibold)).foregroundStyle(s.heading)
+                Text("\(Int((r.pct * 100).rounded()))%").font(.system(size: 20)).charFlip(r.pct)
+                bar(min(1, max(0, r.pct)), s.accent)
+            }
+            box(dark: dark) {
+                let block = min(10, r.cells / 100 + 1), fill = r.cells >= 1000 ? 100 : r.cells % 100
+                Text(WL.t("{n}번째 블록 채우는 중", ["n": "\(block)"])).font(.system(size: 11, weight: .semibold)).foregroundStyle(s.heading).lineLimit(1).minimumScaleFactor(0.8)
+                Text("\(fill)").font(.system(size: 20)) + Text("/100").font(.system(size: 11)).foregroundColor(.white.opacity(0.75))
+                bar(Double(fill) / 100, s.accent)
+            }
+        }
+        Spacer(minLength: 0)
+        HStack(spacing: 6) {
+            Text(Fresh.label(e.at, e.feed, now: e.date)).lineLimit(1)
+            Spacer(minLength: 4)
+            Text(WL.t("다음: ") + (r.next ?? WL.t("예정된 일정 없음"))).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.75))
+    }
+
+    private func box<V: View>(dark: Bool, @ViewBuilder _ v: () -> V) -> some View {
+        VStack(alignment: .leading, spacing: 3) { v() }
+            .padding(8).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(dark ? 0.07 : 0.12), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func bar(_ x: Double, _ c: Color) -> some View {
+        GeometryReader { g in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.18))
+                Capsule().fill(c).frame(width: g.size.width * x)
+            }
+        }
+        .frame(height: 5).widgetAccentable().flipFade()
     }
 }
 

@@ -9,6 +9,7 @@ struct ReloadIntent: AppIntent {
         Store.reloadingSince = Date()
         WidgetLine.bump(minGap: 0)   // ↻: 인물 대사도 다음 줄로 (바로 이어지는 다시 그리기는 세지 않는다)
         WidgetCenter.shared.reloadAllTimelines()
+        let before = Store.newestGot
         _ = try? await withTimeout(8) {
             async let site: Void = { _ = await QuoteFeed.fetch() }()
             async let toss: Void = { _ = await TossFeed.widgetFetch(minAge: 0) }()
@@ -17,6 +18,8 @@ struct ReloadIntent: AppIntent {
             async let kr: Void = { _ = await KrQuoteFeed.fetch(Store.read(WFeed.self, "feed.json")?.ky ?? [:], minAge: 0) }()
             _ = await (site, toss, kr, alpaca)
         }
+        // 하나도 새로 받지 못했으면 위젯 아래 줄에 '받기 실패'
+        Store.fetchFailed = Store.newestGot <= before
         Store.reloadingSince = nil
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
