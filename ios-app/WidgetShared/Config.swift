@@ -111,6 +111,6 @@ enum Store {
 
 /// 잠긴 위젯 문구 (기본·잠금화면·인물·서재가 같이 쓴다). 예전에는 앱 시작 단계로 하나씩 열었는데, 이제는 처음부터 모두 열리고 7일 무료 뒤에는 구독으로 연다
 enum WidgetUnlock {
-    static func how(_ kind: String) -> String { "7일 무료가 끝났어요. 구독하면 다시 보여요" }
-    static let cta = "눌러서 구독하기 ›"
+    static func how(_ kind: String) -> String { WL.t("7일 무료가 끝났어요. 구독하면 다시 보여요") }
+    static var cta: String { WL.t("눌러서 구독하기 ›") }
 }

@@ -42,7 +42,7 @@ final class Story {
     /// 그 책에서 실제로 읽는 언어
     func lang(_ b: StoryBook) -> StoryLang { b.langs.contains(lang) ? lang : .ko }
     /// 기기 언어 목록의 첫 번째가 한국어면 한글, 아니면 영문
-    static var deviceLang: StoryLang { (Locale.preferredLanguages.first ?? "ko").hasPrefix("ko") ? .ko : .en }
+    static var deviceLang: StoryLang { WL.en ? .en : .ko }   // 위젯 문구와 같은 규칙
     /// 토글: 기기 언어를 고르면 다시 '기기 언어 따라가기'로
     func pick(_ l: StoryLang) { picked = l == Self.deviceLang ? nil : l }
 

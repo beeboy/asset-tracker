@@ -101,14 +101,14 @@ enum WidgetBridge {
     /// 위젯은 갱신하거나 ↻를 누를 때마다 다음 줄을 쓴다 (saysNext). 앱이 다시 쓸 때는 위젯에서 본 만큼 넘기고 그 다음부터 준다
     static func says(_ r: WReward) -> (now: [String: String], next: [String: [String]]) {
         let top = r.tiles.max { abs($0.c) < abs($1.c) }
-        let t = top?.t ?? "오늘", c = top?.c ?? r.dayChg
+        let t = top?.t ?? WL.t("오늘"), c = top?.c ?? r.dayChg
         let seen = WidgetLine.index()
         var now: [String: String] = [:], next: [String: [String]] = [:]
         for w in WChar.all {
             var key = "widget.\(c >= 0 ? "up" : "down").\(w.id)"
             var vars = ["t": t, "c": String(format: "%.1f", abs(c) * 100)]
             var fallback: String? = nil
-            if let it = WItem.today(r) { key = "item.\(it).\(w.id)"; vars = [:]; fallback = WItem.say(it, w.id) }
+            if !WL.en, let it = WItem.today(r) { key = "item.\(it).\(w.id)"; vars = [:]; fallback = WItem.say(it, w.id) }   // 물건 대사는 아직 한국어만
             Lines.skip(key, seen)
             let list = Lines.peek(key, vars, 10)
             next[w.id] = list

@@ -74,7 +74,7 @@ struct ReloadButton: View { // ↻ 다시 받기 (예시 값이면 앞에 '예�
         let busy = Store.isReloading
         let icon = Image(systemName: busy ? "ellipsis" : "arrow.clockwise").font(.system(size: 11, weight: .bold))
             .frame(width: 22, height: 22).background(Circle().fill(Palette.ink.opacity(busy ? 0.3 : 0.14)))
-            .accessibilityLabel(busy ? "받는 중" : "다시 받기")
+            .accessibilityLabel(WL.t(busy ? "받는 중" : "다시 받기"))
         #if WIDGET_EXT
         Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain)
         #else
@@ -85,7 +85,7 @@ struct ReloadButton: View { // ↻ 다시 받기 (예시 값이면 앞에 '예�
 
 struct SampleBadge: View { // 체험 모드·연결 전: 실제 값이 아님을 표시
     var body: some View {
-        Text("예시").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
+        Text(WL.t("예시")).font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
             .padding(.horizontal, 6).frame(height: 16).background(Capsule().fill(Color.orange))
     }
 }

@@ -29,8 +29,9 @@ enum Catalog {
         Item(kind: "story", name: "서재 · 이어 읽기", desc: "외전 『이종 공명』에서 읽던 자리의 한 문단. 누르면 그 장으로 가요", size: "작은·중간"),
     ]
     static func item(_ kind: String) -> Item? { (base + more).first { $0.kind == kind } }
-    static func name(_ kind: String) -> String { item(kind)?.name ?? "naeilo 위젯" }
-    static func desc(_ kind: String) -> String { item(kind)?.desc ?? "" }
+    /// 위젯 추가 화면·잠긴 위젯·VoiceOver 가 쓰는 이름과 설명 (영어 기기면 WL 표의 영어)
+    static func name(_ kind: String) -> String { WL.t(item(kind)?.name ?? "naeilo 위젯") }
+    static func desc(_ kind: String) -> String { item(kind).map { WL.t($0.desc) } ?? "" }
 
     /// 위젯을 누르면 앱의 첫 탭(naeilo)으로
     static let openURL = URL(string: "naeilo://guide")!

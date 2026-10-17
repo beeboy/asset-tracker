@@ -32,14 +32,14 @@ struct Snapshot {
     /// "적중 1/1" (실제 예측만). 실제 예측이 아직 없으면 "사후 7/12"
     var hitText: String {
         let real = hits.filter { !$0.retro }
-        if real.isEmpty, !hits.isEmpty { return "사후 \(hits.filter { $0.hit }.count)/\(hits.count)" }
-        return "적중 \(real.filter { $0.hit }.count)/\(real.count)"
+        if real.isEmpty, !hits.isEmpty { return WL.t("사후 {a}/{b}", ["a": "\(hits.filter { $0.hit }.count)", "b": "\(hits.count)"]) }
+        return WL.t("적중 {a}/{b}", ["a": "\(real.filter { $0.hit }.count)", "b": "\(real.count)"])
     }
 
     /// 전망 끝 이름: 목표 루트는 목표일까지, 회복 루트는 앱 전망처럼 3년 (페이스의 목표일과 다르다)
     var termLabel: String {
-        guard let last = fan?.md.last else { return "3년 뒤" }
-        return Day.str(last) == goalDate ? "목표일" : "3년 뒤"
+        guard let last = fan?.md.last else { return WL.t("3년 뒤") }
+        return WL.t(Day.str(last) == goalDate ? "목표일" : "3년 뒤")
     }
 
     var dayChg: Double { prevTotal > 0 ? total / prevTotal - 1 : 0 }
