@@ -20,10 +20,10 @@ struct NaeiloWidgets: WidgetBundle {
         CharRecover()
         CharBlock()
         CharMoves()
-        CharHill()
-        CharLadder()
-        CharTower()
-        CharBoard()
+        CharHeight()
+        CharPuzzle()
+        CharGarden()
+        CharTug()
         StoryWidget()
         LockWidgets().body
         if #available(iOS 18.0, *) { ReloadControl() }

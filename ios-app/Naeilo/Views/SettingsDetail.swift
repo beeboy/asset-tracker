@@ -451,12 +451,12 @@ struct WidgetPickView: View {
                             caption("오늘의 움직임") { tile(e, w: w, h: w) { MovesCharView(e: e) } }
                         }
                         HStack(spacing: 12) {
-                            caption("자산 언덕") { tile(e, w: w, h: w) { HillCharView(e: e) } }
-                            caption("본전 사다리") { tile(e, w: w, h: w) { LadderCharView(e: e) } }
+                            caption("키 재기") { tile(e, w: w, h: w) { HeightCharView(e: e) } }
+                            caption("퍼즐 맞추기") { tile(e, w: w, h: w) { PuzzleCharView(e: e) } }
                         }
                         HStack(spacing: 12) {
-                            caption("블록 탑") { tile(e, w: w, h: w) { TowerCharView(e: e) } }
-                            caption("전광판") { tile(e, w: w, h: w) { BoardCharView(e: e) } }
+                            caption("꽃밭") { tile(e, w: w, h: w) { GardenCharView(e: e) } }
+                            caption("줄다리기") { tile(e, w: w, h: w) { TugCharView(e: e) } }
                         }
                     }
                 }
