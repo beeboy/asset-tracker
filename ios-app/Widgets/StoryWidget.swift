@@ -3,7 +3,7 @@ import SwiftUI
 
 // 서재 위젯: 외전 『이종 공명』에서 읽던 자리의 한 문단. 위젯은 스크롤이 안 되니 한 문단만 보여 주고, 누르면 앱의 그 장 그 자리로 간다.
 // 값은 앱이 story.json 으로 쓴다 (언어도 앱의 읽기 화면에서 고른 것). 서재가 아직 안 열렸으면 앱 시작 3단계로 간다.
-// ↻: 다른 위젯과 같은 다시 받기. 받는 동안 글·막대가 흐려지고 인물이 뛰어올랐다 내려앉는다 (Flip.swift)
+// ↻: 시세는 받지 않고 서재 위젯만 다시 그린다 (StoryReloadIntent). 그동안 글·막대가 흐려지고 인물이 뛰어올랐다 내려앉는다 (Flip.swift)
 
 struct StoryEntry: TimelineEntry {
     let date: Date
@@ -46,7 +46,7 @@ struct StoryWidgetView: View {
                 HStack(spacing: 4) {
                     Text(s.lang == "en" ? "Library" : "서재").font(.system(size: 11, weight: .semibold)).foregroundStyle(mint).widgetAccentable()
                     Spacer(minLength: 0)
-                    if small { CharReload() }
+                    if small { CharReload(storyOnly: true) }
                 }
                 Text(s.label).font(.system(size: small ? 12 : 13, weight: .bold)).lineLimit(1).minimumScaleFactor(0.8).flipFade()
                 Text(s.line)
@@ -72,7 +72,7 @@ struct StoryWidgetView: View {
             }
             if !small {
                 VStack(alignment: .trailing, spacing: 0) {
-                    CharReload()
+                    CharReload(storyOnly: true)
                     Spacer(minLength: 0)
                     CharSprite(name: "w_\(s.friend)", locked: !s.open, height: 86).offset(x: 6, y: 6)
                 }

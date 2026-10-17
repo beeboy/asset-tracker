@@ -45,8 +45,13 @@ struct CharProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> CharEntry { CharEntry(date: Date(), r: .sample, c: WChar.all[0], locked: false) }
     func snapshot(for cfg: WhoIntent, in context: Context) async -> CharEntry { entry(cfg, preview: context.isPreview) }
     func timeline(for cfg: WhoIntent, in context: Context) async -> Timeline<CharEntry> {
+        // ↻ 직후 '받는 중' 그리기: 받지 않고 바로 그린다 (받기는 ReloadIntent 가 하고, 끝나면 다시 그린다)
+        if Store.isReloading { return Timeline(entries: [entry(cfg, preview: false)], policy: .after(Date().addingTimeInterval(15))) }
         WidgetLine.bump()   // 새로 그릴 때마다 다음 대사
-        return Timeline(entries: [entry(cfg, preview: false)], policy: .after(MarketHours.nextRefresh()))
+        // 기본 위젯처럼 지금 가격을 직접 받는다 (전에는 받지 않아, 인물 위젯만 두면 ↻나 앱을 열 때까지 금액이 멈춰 있었다).
+        // 다음 갱신도 기본 위젯과 같이: 국내 종목이 있으면 한국 장중에도, 7일 무료가 끝나는 때에도
+        let next = await WidgetRefresh.fetch()
+        return Timeline(entries: [entry(cfg, preview: false)], policy: .after(next))
     }
     func recommendations() -> [AppIntentRecommendation<WhoIntent>] {
         WhoEnum.choices.map { AppIntentRecommendation(intent: WhoIntent($0), description: $0 == .home ? "앱 홈의 인물" : WChar.of($0.charId).name) }
@@ -537,14 +542,17 @@ extension EnvironmentValues {
 }
 
 /// ↻ 다시 받기: 앱이 써 둔 최신 값으로 위젯을 다시 그린다 (기본 위젯의 버튼과 같은 동작)
+/// 서재 위젯(storyOnly)은 시세와 상관이 없어서 시세는 받지 않고 읽던 자리만 다시 그린다
 struct CharReload: View {
+    var storyOnly = false
     var body: some View {
         let busy = Store.isReloading // 누른 뒤 받는 동안은 '받는 중' 모양
         let icon = Image(systemName: busy ? "ellipsis" : "arrow.clockwise").font(.system(size: 10, weight: .bold))
             .frame(width: 20, height: 20).background(Circle().fill(Color.white.opacity(busy ? 0.35 : 0.18)))
             .accessibilityLabel(busy ? "받는 중" : "다시 받기")
         #if WIDGET_EXT
-        Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain)
+        if storyOnly { Button(intent: StoryReloadIntent()) { icon }.buttonStyle(.plain) }
+        else { Button(intent: ReloadIntent()) { icon }.buttonStyle(.plain) }
         #else
         icon
         #endif
