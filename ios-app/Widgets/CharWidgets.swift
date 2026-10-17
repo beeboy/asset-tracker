@@ -690,9 +690,19 @@ private struct PuzzleBoard: View {
             ctx.fill(done, with: .color(fc))
             var flag = ctx
             flag.clip(to: done)
-            flag.fill(Path(CGRect(x: 30, y: 86, width: 3, height: 48)), with: .color(mono ? .white.opacity(0.9) : rgb(0x5a3324)))
-            var tri = Path(); tri.move(to: CGPoint(x: 33, y: 86)); tri.addLine(to: CGPoint(x: 70, y: 96)); tri.addLine(to: CGPoint(x: 33, y: 108)); tri.closeSubpath()
-            flag.fill(tri, with: .color(.white))
+            // 떠오르는 해: 지평선 위 해 + 햇살, 아래 물에 비친 빛
+            let sun: Color = mono ? .white.opacity(0.9) : rgb(0xffb547), cx: CGFloat = 47.25, hy: CGFloat = 114
+            flag.fill(Path(ellipseIn: CGRect(x: cx - 12, y: hy - 12, width: 24, height: 24)), with: .color(sun))
+            for a in stride(from: 30.0, through: 150.0, by: 30.0) {
+                let r = a * .pi / 180, dx = CGFloat(cos(r)), dy = CGFloat(sin(r))
+                var ray = Path(); ray.move(to: CGPoint(x: cx + 16 * dx, y: hy - 16 * dy)); ray.addLine(to: CGPoint(x: cx + 24 * dx, y: hy - 24 * dy))
+                flag.stroke(ray, with: .color(sun), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            }
+            flag.fill(Path(CGRect(x: 16, y: hy, width: 62.5, height: 134 - hy)), with: .color(fc))
+            flag.fill(Path(CGRect(x: 16, y: hy - 0.75, width: 62.5, height: 1.5)), with: .color(.white))
+            for (i, bw) in [18.0, 11.0, 5.0].enumerated() {
+                flag.fill(Path(roundedRect: CGRect(x: cx - bw / 2, y: hy + 4 + CGFloat(i) * 5, width: bw, height: 1.8), cornerRadius: 0.9), with: .color(sun))
+            }
             for p in pieces { ctx.stroke(p, with: .color(.black.opacity(0.3)), lineWidth: 0.8) }
             if n < 20 {
                 let p = puzzlePiece(146, 64, right: true, top: false)
