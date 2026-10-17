@@ -153,7 +153,8 @@ struct HoldingsView: View {
         if !rs.isEmpty, rs.allSatisfy(usd) {
             return "$" + rs.reduce(0) { $0 + $1.h.qty * $1.sym.last }.formatted(.number.precision(.fractionLength(2)))
         }
-        return AppModel.man(rs.reduce(0) { $0 + $1.value })
+        // 목록은 칸이 좁아 억을 쓰지 않고 만원으로만 (3억 2,862만원 → 32,862만원)
+        return Int((rs.reduce(0) { $0 + $1.value } / 1e4).rounded()).formatted() + "만원"
     }
 
     private func group(_ title: String, _ rs: [AppModel.Row]) -> some View {
