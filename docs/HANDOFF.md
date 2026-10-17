@@ -59,6 +59,11 @@
 - 다음 갱신 시각을 7일 무료 끝(`Store.trialEnd`)까지로 잘라 모든 위젯이 그때 바로 잠김. 서재 ↻는 `StoryReloadIntent`로 시세 없이 서재 위젯만 다시 그림.
 - 실기기 확인 필요: 인물 위젯만 둔 홈에서 금액이 갱신되는지, 7일 무료 끝 시각에 잠기는지. 분석 문서: https://claude.ai/code/artifact/b2ee909c-be79-4114-bd74-e8400e1e94fa (다음: B 잠금·이름표 정리, C 영어·접근성, D 새 경험)
 
+## 위젯 잠금·이름표 정리 (2026-10-17, B단계)
+- 위젯 이름·설명·크기를 `Catalog.base`(기본 7 + 잠금화면 4)·`Catalog.more`(인물 4 + 서재) 한 표로 모음(`Widgets/Views/Catalog.swift`, 앱에도 들어감). 위젯 추가 화면(`.catalog(kind)`), 잠긴 위젯 제목, 앱 '위젯' 탭(`baseWidgets`), 금액 가리기 목록이 모두 이 표를 읽음. 예전 Locked.swift 사전·StoryWidget·CharWidgets 안의 이름은 뺌.
+- 잠금은 `Gate` 하나(Catalog.swift)로: 기본·잠금화면·서재는 `LockedWidget`, 인물 위젯은 인물 바탕의 잠긴 모습을 `locked:`로 넘김. 문구는 `WidgetUnlock.how`·`cta`로 같게. 갤러리 미리보기는 인물·서재 위젯도 잠그지 않음(전에는 7일 무료 뒤 갤러리에서도 잠겨 보였음).
+- 기본·잠금화면 위젯 정의는 `homeWidget`·`lockWidget` 한 줄씩. 새 위젯은 Catalog 한 줄, 정의 한 줄, `NaeiloWidgets` 묶음 한 줄. 예전 `WidgetUnlock.step`(앱 시작 단계별 열림)은 쓰지 않아 뺌.
+
 ## 내 Alpaca 키 (2026-10-17, PR 올림)
 - 설정 '숫자를 계산하는 기준'에 '내 Alpaca 키' 줄 하나 추가 → `AlpacaKeyView`. 키를 넣지 않으면 다른 화면은 그대로.
 - `AlpacaKeys`·`AlpacaFeed`(`WidgetShared/Models.swift`): 키는 키체인(위젯과 같은 그룹), 미국 종목만 `v2/stocks/snapshots?feed=iex`. 지금 가격 = latestTrade.p, 전일 종가는 사이트 값 먼저(없으면 prevDailyBar.c). 15분 넘은 값은 안 씀.

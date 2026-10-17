@@ -38,7 +38,8 @@ struct CharEntry: TimelineEntry {
     let date: Date
     let r: WReward
     let c: WChar
-    var locked: Bool
+    var locked: Bool            // 아직 못 만난 인물 (실루엣). 7일 무료 뒤 잠금은 이것과 따로 Gate 가 한다
+    var preview = false         // 위젯 갤러리 미리보기면 7일 무료 뒤에도 잠그지 않는다 (다른 위젯과 같이)
 }
 
 struct CharProvider: AppIntentTimelineProvider {
@@ -66,7 +67,7 @@ struct CharProvider: AppIntentTimelineProvider {
         // '홈 인물 따라가기'면 앱 홈에 둔 인물 (앱에서 홈 인물을 바꾸면 위젯도 바뀐다)
         let c = WChar.of(cfg.who.follows ? (r.homeFriend ?? "seri") : cfg.who.charId)
         // 갤러리 미리보기는 실제 모습, 홈 화면에서는 만난 인물만
-        return CharEntry(date: Date(), r: r, c: c, locked: !preview && !(c.id == "seri" || r.friendsOn.contains(c.id)))
+        return CharEntry(date: Date(), r: r, c: c, locked: !preview && !(c.id == "seri" || r.friendsOn.contains(c.id)), preview: preview)
     }
 }
 
@@ -75,7 +76,7 @@ struct CharTrend: Widget {
         AppIntentConfiguration(kind: "char.trend", intent: WhoIntent.self, provider: CharProvider()) { e in
             CharFrame(e: e, kind: "char.trend") { TrendCharView(e: e) }
         }
-        .configurationDisplayName("인물 · 자산 추이").description("총자산·오늘 등락·최근 10일 흐름, 인물이 옆에서 봐요")
+        .catalog("char.trend")
         .supportedFamilies([.systemSmall])
     }
 }
@@ -84,7 +85,7 @@ struct CharRecover: Widget {
         AppIntentConfiguration(kind: "char.recover", intent: WhoIntent.self, provider: CharProvider()) { e in
             CharFrame(e: e, kind: "char.recover") { RecoverCharView(e: e) }
         }
-        .configurationDisplayName("인물 · 본전 진행").description("본전(목표)까지 몇 %인지, 인물이 같이 봐요")
+        .catalog("char.recover")
         .supportedFamilies([.systemSmall])
     }
 }
@@ -93,7 +94,7 @@ struct CharBlock: Widget {
         AppIntentConfiguration(kind: "char.block", intent: WhoIntent.self, provider: CharProvider()) { e in
             CharFrame(e: e, kind: "char.block") { BlockCharView(e: e) }
         }
-        .configurationDisplayName("인물 · 블록").description("1000칸 중 지금 채우는 100칸과 10층 탑")
+        .catalog("char.block")
         .supportedFamilies([.systemSmall])
     }
 }
@@ -102,7 +103,7 @@ struct CharMoves: Widget {
         AppIntentConfiguration(kind: "char.moves", intent: WhoIntent.self, provider: CharProvider()) { e in
             CharFrame(e: e, kind: "char.moves") { MovesCharView(e: e) }
         }
-        .configurationDisplayName("인물 · 오늘의 움직임").description("종목별 오늘 등락과 인물의 한마디")
+        .catalog("char.moves")
         .supportedFamilies([.systemMedium])
     }
 }
@@ -131,21 +132,23 @@ struct CharFrame<Content: View>: View {
     @ViewBuilder var content: Content
     @Environment(\.colorScheme) private var scheme
     var body: some View {
-        // 7일 무료가 끝나고 구독하지 않았으면 잠긴 모습 (누르면 구독 화면). 이 파일은 앱에도 들어가서 위젯 쪽 Gate 대신 여기서
-        if !Store.widgetsOpen {
-            VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: "lock.fill").font(.system(size: 14, weight: .bold))
-                Spacer(minLength: 0)
-                Text("7일 무료가 끝났어요").font(.system(size: 13, weight: .bold))
-                Text("눌러서 구독하면 다시 보여요 ›").font(.system(size: 11, weight: .semibold)).opacity(0.75)
+        // 7일 무료 뒤 잠금은 다른 위젯과 같은 Gate 로. 잠긴 모습만 인물 바탕을 지킨다 (이 파일은 앱에도 들어가 Locked.swift 를 못 쓴다)
+        Gate(kind: kind, preview: e.preview) { open } locked: { closed }
+    }
+    private var closed: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "lock.fill").font(.system(size: 12, weight: .bold))
+                Text(Catalog.name(kind)).font(.system(size: 13, weight: .bold)).lineLimit(1).minimumScaleFactor(0.8)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .containerBackground(for: .widget) { CharBG(c: e.c, locked: true, dark: scheme == .dark) }
-            .widgetURL(URL(string: "naeilo://subscribe")!)
-        } else {
-            open
+            Spacer(minLength: 0)
+            Text(WidgetUnlock.how(kind)).font(.system(size: 11, weight: .semibold)).opacity(0.75)
+                .lineLimit(3).fixedSize(horizontal: false, vertical: true)
+            Text(WidgetUnlock.cta).font(.system(size: 10, weight: .bold)).opacity(0.5)
         }
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .containerBackground(for: .widget) { CharBG(c: e.c, locked: true, dark: scheme == .dark) }
     }
     private var open: some View {
         content

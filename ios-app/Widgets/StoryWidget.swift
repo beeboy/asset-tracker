@@ -8,13 +8,14 @@ import SwiftUI
 struct StoryEntry: TimelineEntry {
     let date: Date
     let s: WStory
+    var preview = false     // 위젯 갤러리 미리보기면 잠그지 않는다 (다른 위젯과 같이)
 }
 
 struct StoryProvider: TimelineProvider {
     func placeholder(in context: Context) -> StoryEntry { StoryEntry(date: Date(), s: .sample) }
     func getSnapshot(in context: Context, completion: @escaping (StoryEntry) -> Void) {
         let s = Store.read(WStory.self, "story.json")
-        completion(StoryEntry(date: Date(), s: context.isPreview && !(s?.open ?? false) ? .sample : s ?? .sample))
+        completion(StoryEntry(date: Date(), s: context.isPreview && !(s?.open ?? false) ? .sample : s ?? .sample, preview: context.isPreview))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<StoryEntry>) -> Void) {
         // 읽던 자리가 바뀔 때 앱이 다시 그리게 한다
@@ -27,9 +28,8 @@ struct StoryProvider: TimelineProvider {
 
 struct StoryWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "story", provider: StoryProvider()) { e in Gate(kind: "story", preview: false) { StoryWidgetView(s: e.s) } }
-            .configurationDisplayName("서재 · 이어 읽기")
-            .description("외전 『이종 공명』에서 읽던 자리의 한 문단. 누르면 그 장으로 가요")
+        StaticConfiguration(kind: "story", provider: StoryProvider()) { e in Gate(kind: "story", preview: e.preview) { StoryWidgetView(s: e.s) } }
+            .catalog("story")
             .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

@@ -339,17 +339,9 @@ struct SyncView: View {
 
 extension AppModel {
     struct WidgetInfo: Identifiable { let id: String; let name: String; let desc: String; let size: String; let ok: Bool; let how: String }
-    /// 기본 위젯 (위젯 추가 화면과 같은 이름·순서). 열림은 앱 시작 단계로 (WidgetUnlock)
+    /// 기본 위젯 (위젯 추가 화면과 같은 이름·순서, Catalog). 구독 중이거나 7일 무료 동안 모두 열린다
     var baseWidgets: [WidgetInfo] {
-        let open = Set(WidgetUnlock.kinds(doneSteps: devAll ? 3 : nxStep))
-        let list: [(String, (String, String), String)] = [
-            ("asset.small", Catalog.asset, "작은"), ("future.small", Catalog.future, "작은"), ("block.small", Catalog.block, "작은"),
-            ("pace.medium", Catalog.pace, "중간"), ("target.medium", Catalog.target, "중간"), ("moves.medium", Catalog.moves, "중간"),
-            ("future.large", Catalog.futureL, "큰"),
-            ("lock.asset", Catalog.lAsset, "잠금 화면"), ("lock.goal", Catalog.lGoal, "잠금 화면"),
-            ("lock.future", Catalog.lFuture, "잠금 화면"), ("lock.target", Catalog.lTarget, "잠금 화면"),
-        ]
-        return list.map { k, c, sz in WidgetInfo(id: k, name: c.0, desc: c.1, size: sz, ok: open.contains(k), how: WidgetUnlock.how(k)) }
+        Catalog.base.map { WidgetInfo(id: $0.kind, name: $0.name, desc: $0.desc, size: $0.size, ok: Store.widgetsOpen, how: WidgetUnlock.how($0.kind)) }
     }
 }
 
@@ -371,7 +363,7 @@ struct AmountHideCard: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
         .onChange(of: each) { _, v in
             // 방식을 바꿔도 지금 가려진 상태는 그대로 둔다
-            let kinds = WidgetUnlock.step.keys.sorted()
+            let kinds = Catalog.base.map(\.kind).sorted()
             if v { Store.hiddenKinds = Store.hideAll ? kinds : [] } else { Store.hideAll = Set(kinds).isSubset(of: Store.hiddenKinds) }
             Store.hideEach = v
             WidgetCenter.shared.reloadAllTimelines()
