@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, howto, route, goal, charPreview, support, icon }
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, longbridge, howto, route, goal, charPreview, support, icon }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
@@ -21,6 +21,7 @@ struct SettingsView: View {
             ("가격 기준", "미국 종목·환율은 지금 가격 · 한국 종목은 넣은 가격", .price),
             ("세금", "한국 거주자 기준으로 계산해요", .tax),
             ("내 Alpaca 키", AlpacaKeys.on ? "미국 종목을 Alpaca(IEX) 시세로 받는 중" : "넣지 않음 · 미국 종목 실시간 시세", .alpaca),
+            ("내 Longbridge 키", LongbridgeKeys.on ? "미국 종목을 Longbridge 시세로 받는 중" : "넣지 않음 · 미국·홍콩·중국 실시간 시세", .longbridge),
         ]
         // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
         let helpRows: [(String, String, SettingsRoute)] = [
@@ -68,6 +69,7 @@ struct SettingsView: View {
             case .price: PriceBasisView()
             case .toss: TossKeyView()
             case .alpaca: AlpacaKeyView()
+            case .longbridge: LongbridgeKeyView()
             case .howto: HowToView()
             case .route: RouteView()
             case .goal: GoalSetView(fromSettings: true)
@@ -392,6 +394,92 @@ struct AlpacaKeyView: View {
         if let e = await AlpacaFeed.check() {
             msg = e
             if !on { AlpacaKeys.clear() }
+        } else {
+            on = true
+            await Market.shared.refresh(held: Set(m.holdings.map(\.symbol)), force: true)
+        }
+        busy = false
+    }
+}
+
+// 내 Longbridge 키: open.longbridge.com 개발자 센터에서 받은 App Key·App Secret·Access Token 을 넣으면 지금 가격을 Longbridge 에서 받는다.
+// 앱은 아직 원화·달러 종목만 다루므로 지금은 미국 종목만. 키는 이 폰 키체인에만 두고 Longbridge 를 직접 부른다 (중계 없음). 토스·Alpaca 키가 있으면 그 값이 먼저다.
+struct LongbridgeKeyView: View {
+    @Environment(AppModel.self) private var m
+    @State private var key = ""
+    @State private var secret = ""
+    @State private var token = ""
+    @State private var busy = false
+    @State private var msg: String? = nil
+    @State private var on = LongbridgeKeys.on
+    @State private var askOff = false
+
+    private var status: String {
+        _ = Market.shared.longbridgeDone      // Longbridge 받기를 마치면 다시 그린다
+        let t = LongbridgeFeed.okAt
+        var s = ""
+        if t > 0 {
+            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+            let d = Date(timeIntervalSince1970: t)
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : "M월 d일 a h:mm"
+            s = "마지막으로 받은 때 \(f.string(from: d))"
+        } else { s = "아직 받은 적 없어요" }
+        if let e = LongbridgeFeed.lastError { s += " · 실패: \(e)" }
+        return s
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("내 Longbridge 키").appFont(22, .bold)
+                Card {
+                    if on {
+                        Text("내 키로 받는 중").appFont(15, .bold)
+                        Text(status).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                        PrimaryButton(title: busy ? "받는 중…" : "지금 다시 받기") { Task { await check() } }
+                        if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
+                        Button("키 지우기") { askOff = true }
+                            .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
+                            .confirmationDialog("Longbridge 키를 이 폰에서 지울까요?", isPresented: $askOff, titleVisibility: .visible) {
+                                Button("지우기", role: .destructive) { LongbridgeKeys.clear(); on = false; msg = nil; Task { await Market.shared.pullRefresh(m) } }
+                            } message: { Text("기본 시세로 돌아가요.") }
+                    } else {
+                        Text("미국 종목 지금 가격을 Longbridge에서 받아요. 키는 이 폰에만 둬요.").appFont(15, .bold).fixedSize(horizontal: false, vertical: true)
+                        Text("Longbridge 앱에서 모의 계정을 만든 뒤 open.longbridge.com 개발자 센터에서 무료로 받아요. Access Token은 기한이 있어서 지나면 새로 넣어야 해요. 홍콩·중국 종목은 앱이 그 종목을 다루게 되면 같은 키로 받아요.")
+                            .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                        field("App Key", $key)
+                        field("App Secret", $secret)
+                        field("Access Token", $token)
+                        let t = { (v: String) in v.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        let ok = !t(key).isEmpty && !t(secret).isEmpty && !t(token).isEmpty
+                        PrimaryButton(title: busy ? "확인 중…" : "연결하기", color: ok ? Theme.teal : Theme.muted) {
+                            guard ok, !busy else { return }
+                            LongbridgeKeys.save(.init(key: t(key), secret: t(secret), token: t(token)))
+                            secret = ""; token = ""
+                            Task { await check() }
+                        }
+                        if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .background(Theme.bg)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func field(_ title: String, _ v: Binding<String>) -> some View {
+        SecureField(title, text: v)
+            .textContentType(nil).autocorrectionDisabled().textInputAutocapitalization(.never)
+            .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+    }
+
+    /// 키를 확인하고, 되면 시세를 바로 받는다. 처음 연결이 실패하면 키를 남기지 않는다
+    private func check() async {
+        busy = true; msg = nil
+        if let e = await LongbridgeFeed.check() {
+            msg = e
+            if !on { LongbridgeKeys.clear() }
         } else {
             on = true
             await Market.shared.refresh(held: Set(m.holdings.map(\.symbol)), force: true)

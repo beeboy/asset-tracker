@@ -54,6 +54,13 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 내 Longbridge 키 (2026-10-17, PR 올림)
+- 설정 '숫자를 계산하는 기준'에 '내 Longbridge 키' 줄 추가 → `LongbridgeKeyView` (App Key·App Secret·Access Token).
+- `LongbridgeKeys`·`LongbridgeFeed`(`WidgetShared/Models.swift`): 공식 Go SDK 의 HTTP 방식 `POST /quote/quotes` + HMAC-SHA256 서명(`x-api-signature`, 밀리초 `x-timestamp`, `us_` 키는 `x-dc-region: us`). 웹소켓·protobuf 없음.
+- 우선순위: 토스 > Alpaca > Longbridge > 사이트. 전일 종가는 사이트 값 먼저. 위젯도 같은 키로 직접. 종목 화면 출처 "Longbridge 시세".
+- 기호 변환은 홍콩(0700.HK→700.HK)·상하이(.SS→.SH)·선전(.SZ)도 되지만, 앱이 원화·달러 종목만 다뤄 지금은 미국 종목만 받는다.
+- 남은 것: 실제 키로 받아 보기 확인 필요(서명·HTTP 시세 경로). Access Token 기한이 지나면 사용자가 새로 넣어야 함(자동 갱신 `/v1/token/refresh` 없음). 홍콩·중국 종목을 넣으려면 홍콩달러·위안 환율과 종목을 앱·웹에 같이 넣어야 함.
+
 ## 위젯 갱신 바로잡기 (2026-10-17, PR #292)
 - 위젯 정기 갱신 받기를 `WidgetRefresh.fetch()`(`WidgetShared/Format.swift`)로 모아 기본·잠금·인물 위젯이 같이 씀. 인물 위젯도 이제 정기 갱신 때 시세를 직접 받고(전엔 받지 않아 인물 위젯만 두면 금액이 멈춤), 국내 종목이 있으면 한국 장중에도 갱신.
 - 다음 갱신 시각을 7일 무료 끝(`Store.trialEnd`)까지로 잘라 모든 위젯이 그때 바로 잠김. 서재 ↻는 `StoryReloadIntent`로 시세 없이 서재 위젯만 다시 그림.

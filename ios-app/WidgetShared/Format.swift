@@ -62,6 +62,8 @@ enum WidgetRefresh {
         let toss = await TossFeed.widgetFetch(minAge: 600)
         // 내 Alpaca 키가 있으면 미국 종목 지금 가격도 위젯이 직접
         await AlpacaFeed.widgetFetch(minAge: 600)
+        // 내 Longbridge 키가 있으면 그것도
+        await LongbridgeFeed.widgetFetch(minAge: 600)
         let tossKr = toss != nil && (feed?.ty ?? [:]).values.contains { $0.hasSuffix(".KS") || $0.hasSuffix(".KQ") }
         return untilTrialEnd(MarketHours.nextRefresh(kr: !ky.isEmpty || tossKr))
     }
