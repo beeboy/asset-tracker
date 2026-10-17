@@ -79,7 +79,7 @@ enum KoreaEstimate {
     /// 종목 화면 설명
     static func note(_ s: CustomSymbols.Saved) -> String {
         let i = info(id: s.id, name: s.name), at = s.kd ?? ""
-        if CustomSymbols.shared.isLive(s.id) { return KoreaEstimate.popular.contains(s.id) ? "사이트가 매일 모으는 가격이에요. 1년 기록은 모으기 시작한 날부터 쌓여요." : "Yahoo 중계로 받은 가격이에요. 앱이 시세를 갱신할 때 같이 갱신해요." }
+        if CustomSymbols.shared.isLive(s.id) { return KoreaEstimate.popular.contains(s.id) ? "사이트가 매일 모으는 가격이에요. 1년 기록은 모으기 시작한 날부터 쌓여요." : "시세를 갱신할 때 같이 갱신해요." }
         guard let p = s.kp else { return "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 계산해요." }
         let won = Int(p.rounded()).formatted() + "원"
         if s.id == sumId { return "\(at)에 넣은 \(won) · 전망은 EWY×원/달러" }
