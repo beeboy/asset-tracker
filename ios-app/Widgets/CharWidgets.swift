@@ -186,7 +186,8 @@ struct CharSprite: View {
     var shake = true
     @Environment(\.widgetRenderingMode) private var mode
     var body: some View {
-        if shake { sprite.charShake() } else { sprite }
+        // 포즈 그림이 없어 기본 그림으로 떨어진 인물은 동작이 안 바뀌니, 갱신 때 흔들어 움직임을 보인다
+        if shake || !name.contains("_pose_") { sprite.charShake() } else { sprite }
     }
     private var sprite: some View {
         Group {
