@@ -56,6 +56,7 @@
 		F11B0000000000000000A002 /* Flip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11B0000000000000000A001 /* Flip.swift */; };
 		F11B0000000000000000A003 /* Flip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11B0000000000000000A001 /* Flip.swift */; };
 		5DF46E2B4E8263C2CDE8D7DF /* Reward.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B116C077153565363572A59 /* Reward.swift */; };
+		E7A1C0DE00000000000000B9 /* krx_stocks.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000F9 /* krx_stocks.json */; };
 		694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */ = {isa = PBXBuildFile; fileRef = E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */; };
 		6BDC5AA10D896E497C9C4B75 /* LockWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7582FC7C75EA724D55C6EBB8 /* LockWidgets.swift */; };
 		7107A43B79E31316CBE1B701 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CB3081436E1A6F74D763B5 /* Config.swift */; };
@@ -218,6 +219,7 @@
 		C9B0595773BCD7CC543FB16E /* lines_ko.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_ko.json; sourceTree = "<group>"; };
 		E7A1C0DE00000000000000F1 /* lines_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_en.json; sourceTree = "<group>"; };
 		D9CB3081436E1A6F74D763B5 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		E7A1C0DE00000000000000F9 /* krx_stocks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = krx_stocks.json; sourceTree = "<group>"; };
 		E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = drnk_ratio.json; sourceTree = "<group>"; };
 		E8980507A377896324ED840E /* Story.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Story.swift; sourceTree = "<group>"; };
 		043CD3937D8B52409651AF04 /* StoreAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreAPI.swift; sourceTree = "<group>"; };
@@ -317,6 +319,7 @@
 			isa = PBXGroup;
 			children = (
 				E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */,
+				E7A1C0DE00000000000000F9 /* krx_stocks.json */,
 				C9B0595773BCD7CC543FB16E /* lines_ko.json */,
 				A01E38615C5B56866E9049C5 /* story_en.json */,
 				A34C703A77797FBE1F14AB80 /* story_ko.json */,
@@ -502,6 +505,7 @@
 				E1B1111A3CFA95DFAE235456 /* Assets.xcassets in Resources */,
 				29994FFBE4FD5658AB15B368 /* Assets.xcassets in Resources */,
 				694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */,
+				E7A1C0DE00000000000000B9 /* krx_stocks.json in Resources */,
 				B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */,
 				B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */,
 				E7A1C0DE00000000000000A1 /* lines_en.json in Resources */,

@@ -106,6 +106,9 @@ enum StockSearch {
         }
         if !k.isEmpty {
             for h in StockCatalog.all where norm("\(h.id)\(h.name)\(h.alias)\(h.en)").contains(k) { add(h) }
+            // 코스피·코스닥 전체 상장 종목 (이름이 찾는 말로 시작하면 먼저, 너무 많으면 앞의 40개만)
+            let hits = KrxList.all.filter { $0.key.contains(k) }
+            for h in (hits.filter { $0.key.hasPrefix(k) || $0.hit.id.hasPrefix(k) } + hits).prefix(40) { add(h.hit) }
         }
         let mine = Set(CustomSymbols.shared.items.map(\.id))
         return out.filter { mine.contains($0.id) || KoreaEstimate.allowed($0) }
@@ -125,8 +128,8 @@ enum StockSearch {
             if sym.hasSuffix(".KS") || sym.hasSuffix(".KQ") {
                 let code = String(sym.prefix(6))
                 // 한글 이름을 아는 종목이면 한글로
-                let ko = StockCatalog.all.first { $0.id == code }
-                return StockHit(id: code, yahoo: sym, name: ko?.name ?? name, en: name,
+                let ko = StockCatalog.all.first { $0.id == code }?.name ?? KrxList.name(code)
+                return StockHit(id: code, yahoo: sym, name: ko ?? name, en: name,
                                 market: (sym.hasSuffix(".KS") ? "코스피" : "코스닥") + (type == "ETF" ? " ETF" : ""), currency: .krw)
             }
             guard usEx.contains(ex), !sym.contains(".") else { return nil }
@@ -134,6 +137,26 @@ enum StockSearch {
             return StockHit(id: sym, yahoo: sym, name: ko?.name ?? name, en: name, market: type == "ETF" ? "미국 ETF" : "미국 주식", currency: .usd)
         }.filter(KoreaEstimate.allowed)
     }
+}
+
+/// 코스피·코스닥 전체 상장 종목 (Resources/krx_stocks.json, tools/gen_krx_list.py 가 KRX KIND 목록으로 만든다).
+/// 한글 이름으로 찾기용. [[코드, 이름, "K"|"Q"]], K = 코스피(.KS), Q = 코스닥(.KQ)
+enum KrxList {
+    struct Row { let key: String; let hit: StockHit }
+    static let all: [Row] = {
+        guard let url = Bundle.main.url(forResource: "krx_stocks", withExtension: "json"),
+              let d = try? Data(contentsOf: url),
+              let rows = try? JSONDecoder().decode([[String]].self, from: d) else { return [] }
+        return rows.compactMap { r in
+            guard r.count >= 3 else { return nil }
+            let ks = r[2] == "K"
+            let h = StockHit(id: r[0], yahoo: r[0] + (ks ? ".KS" : ".KQ"), name: r[1], market: ks ? "코스피" : "코스닥", currency: .krw)
+            return Row(key: StockSearch.norm(r[0] + r[1]), hit: h)
+        }
+    }()
+    private static let byId: [String: StockHit] = Dictionary(all.map { ($0.hit.id, $0.hit) }, uniquingKeysWith: { a, _ in a })
+    static func name(_ code: String) -> String? { byId[code]?.name }
+    static func hit(_ code: String) -> StockHit? { byId[code] }
 }
 
 /// 사이트가 매일 모으는 국내 개별 종목 종가 (data/kr_daily.json, server.py collect_kr). 모으기 시작한 날부터 하루 한 칸, 최근 1년
@@ -220,6 +243,7 @@ final class CustomSymbols {
     static func yahoo(for s: Symbol) -> String {
         if let c = shared.items.first(where: { $0.id == s.id }) { return c.yahoo }
         if let c = StockCatalog.all.first(where: { $0.id == s.id }) { return c.yahoo }
+        if let c = KrxList.hit(s.id) { return c.yahoo }
         return s.currency == .krw ? s.id + ".KS" : s.id
     }
 
