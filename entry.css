@@ -45,8 +45,15 @@ img.px, .bye img { image-rendering: pixelated; }
 
 /* 인물 위젯 4개: 앱 CharWidgets.swift 의 170pt 시안 좌표를 그대로 SVG viewBox 로 옮겨 크기에 맞춰 줄인다 */
 .cw { aspect-ratio: 1; border-radius: 20px; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25); }
-.cw.sua { background: linear-gradient(135deg, #3a2228, #b06448); }
-.cw.sio { background: linear-gradient(135deg, #122838, #265c76); }
+/* 인물 위젯: 다크에선 앱 CharBG 처럼 짙은 회색에 왼쪽 아래 인물 색 빛, 제목은 인물 색. 밝은 모드에선 인물 색 바탕 */
+.cw.sua { --acc: #f2a070; background: radial-gradient(circle at 0 100%, rgba(242, 160, 112, 0.22), transparent 92%), #1c1c1f; }
+.cw.sio { --acc: #7fd6ff; background: radial-gradient(circle at 0 100%, rgba(127, 214, 255, 0.22), transparent 92%), #1c1c1f; }
+.cw.sua .hd, .cw.sio .hd { fill: var(--acc); }
+@media (prefers-color-scheme: light) {
+  .cw.sua { background: linear-gradient(135deg, #3a2228, #b06448); }
+  .cw.sio { background: linear-gradient(135deg, #122838, #265c76); }
+  .cw.sua .hd, .cw.sio .hd { fill: rgba(255, 255, 255, 0.78); }
+}
 .cw.hw { --hw-ink: #fff; --hw-up: #ff6b6b; --hw-dn: #6c9cff; --hw-teal: #5fd0c4; --hw-plan: #b79cf0; --hw-band: #2a9d93; background: linear-gradient(135deg, #20252f, #15181f); fill: var(--hw-ink); }
 @media (prefers-color-scheme: light) { .cw.hw { --hw-ink: #1b2230; --hw-up: #d63939; --hw-dn: #2f6fed; --hw-teal: #2a9d93; --hw-plan: #8e6bd8; --hw-band: #2a9d93; background: linear-gradient(135deg, #ffffff, #eef1f6); } }  /* 기본 위젯(HomeViews.swift) 다크 바탕 */
 .cw.hw svg { fill: var(--hw-ink); }
