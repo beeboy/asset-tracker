@@ -332,8 +332,8 @@ struct ForecastView: View {
 
                 Text("지난 3년 기준 3,000가지 경우")
                     .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
-                NavigationLink(value: AnalysisRoute.myPath) {
-                    Text("구성 바꾸기 → 내 목표").appFont(14, .bold).foregroundStyle(Theme.teal)
+                NavigationLink { GoalSetView(fromSettings: true) } label: {
+                    Text("구성 바꾸기 → 목표 고치기").appFont(14, .bold).foregroundStyle(Theme.teal)
                 }
             }
             .padding(16)

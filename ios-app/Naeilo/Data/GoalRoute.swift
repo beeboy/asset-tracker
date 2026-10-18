@@ -103,7 +103,7 @@ extension AppModel {
     /// 처음 닿는 때를 셀 긴 기간 (햇수): 목표일 뒤에 닿는 경우도 보이게
     var etaYears: Int { max(10, gY * 2) }
     /// 목표 확률을 쉬운 말로
-    static func verdict(_ p: Double) -> String { p >= 0.7 ? "높음" : p >= 0.3 ? "반반" : "낮음" }
+    static func verdict(_ p: Double) -> String { p >= 0.6 ? "높음" : p >= 0.4 ? "반반" : "낮음" }   // 반반은 40~60% (30%를 반반이라 부르지 않게)
     /// 오늘부터 mo 개월 뒤를 연도 소수로 (2031.25 = 2031년 4월 무렵)
     static func yearAt(_ mo: Double) -> Double {
         let c = Calendar.current.dateComponents([.year, .month], from: Date())

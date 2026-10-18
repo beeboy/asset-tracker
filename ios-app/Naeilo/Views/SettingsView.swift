@@ -18,7 +18,7 @@ struct SettingsView: View {
             ("홈 화면 위젯", "\(m.baseWidgets.count + Shelter.friends.count)가지 · 미리보기", .widgets),
         ]
         let refRows: [(String, String, SettingsRoute)] = [
-            ("가격 기준", "미국 종목·환율은 지금 가격 · 한국 종목은 넣은 가격", .price),
+            ("시세 기준", "종목·환율 시세를 어디서 받는지", .price),
             ("세금", "한국 거주자 기준으로 계산해요", .tax),
             ("내 Alpaca 키", AlpacaKeys.on ? "미국 종목을 Alpaca(IEX) 시세로 받는 중" : "넣지 않음 · 미국 종목 실시간 시세", .alpaca),
         ]
@@ -173,20 +173,22 @@ struct PriceBasisView: View {
                 Text("시세 기준").appFont(22, .bold)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("지금 보는 숫자").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                    Text(mk.source == "Tiingo" ? "실시간 참고 시세" : "테스트 자료").appFont(28, .bold)
-                    Text(mk.asOfText).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                let main = mk.toss != nil ? "토스 오픈 API" : mk.alpaca != nil ? "Alpaca 시세" : mk.longbridge != nil ? "Longbridge 시세" : mk.source == "Tiingo" ? "Tiingo 시세" : mk.site != nil ? "naeilo 사이트 시세" : "예시 값"
+                    Text(main).appFont(28, .bold)
+                    Text(mk.asOfText.replacingOccurrences(of: " (테스트 자료)", with: "")).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 }
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 Card {
-                    row("미국 종목", "지금 가격과 전일 종가")
+                    row("받는 순서", "내 토스 키 → 내 Alpaca·Longbridge 키 → naeilo 사이트. 앞에서 받은 값을 먼저 써요")
+                    row("미국 종목", mk.toss != nil ? "토스 지금 가격" : mk.alpaca != nil ? "Alpaca(IEX) 지금 가격" : mk.longbridge != nil ? "Longbridge 지금 가격" : "사이트가 평일 30분마다 모은 가격")
+                    row("한국 종목", mk.toss != nil ? "토스 지금 가격" : "사이트가 모은 가격. 미국 지수를 따르는 국내 ETF는 그 미국 ETF × 원/달러로 추정해요")
+                    row("장 마감 뒤", "미국 장이 끝나면 정규장 종가로 세요 (토스 총자산과 같은 기준)")
                     row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change))")
                     row("평가 환율", mk.marRate != nil ? "매매기준율 \(String(format: "%.2f", mk.valFx))원 · 웹 평가액과 같아요" : "매매기준율을 아직 못 받아 지금 환율")
-                    row("한국 종목", "많이 찾는 국내 주식은 사이트가 매일 모은 가격이에요. 1년 기록은 모으기 시작한 날부터 쌓여요. 미국 지수를 따르는 국내 ETF는 넣은 가격에서 그 미국 ETF × 원/달러 움직임으로 추정해요")
-                    row("오늘의 움직임", "전일 대비 지금 평가액")
-                    row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : mk.site != nil ? "사이트가 평일 30분마다 모으는 테스트 자료. 당기면 바로 받아요" : "앱에 넣어 둔 테스트 자료")
+                    row("오늘의 움직임", "전일 종가 대비 지금 평가액")
                 }
-                Text("그래프와 미션은 종가로 계산해요.")
+                Text("그래프와 미션은 종가로 계산해요. 아래로 당기면 바로 다시 받아요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 // 시세 업체와 계약하면 그 업체의 출처 표기를 여기에 넣는다 (Tiingo: "Data powered by Tiingo.com")
             }

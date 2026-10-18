@@ -434,7 +434,7 @@ struct MyPathGoalView: View {
                 // 1. 판정 카드
                 VStack(alignment: .leading, spacing: 10) {
                     Text("\(AppModel.wonK(m.gK)) · \(m.goalToText) · \(leftText) 남음").appFont(13).foregroundStyle(.white.opacity(0.85))
-                    Text(f.exact ? "가능성 \(AppModel.verdict(f.pGoal))" : "가능성 계산 중")
+                    Text(f.exact ? "가능성 \(AppModel.verdict(f.pGoal)) · \(AppModel.pct(f.pGoal))" : "가능성 계산 중")
                         .appFont(22, .bold).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
                     GeometryReader { g in
                         ZStack(alignment: .leading) {
@@ -2164,9 +2164,8 @@ struct FxImpactView: View {
         let sMin = min(1100, (BASE - 50).rounded(.down)), sMax = max(1600, (BASE + 50).rounded(.up))
 
         PinnedLayout {
-            pinnedBox {
-                DetailHead(title: "환율 영향", sub: "")
-            }
+            // 설명 줄이 없어 흰 띠만 남았다: 띠 없이 제목만 건다
+            DetailHead(title: "환율 영향", sub: "")
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 // 1. 한 줄 요약
