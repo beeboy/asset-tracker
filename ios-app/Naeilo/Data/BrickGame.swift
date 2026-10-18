@@ -14,7 +14,7 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
     var title: String { switch self { case .easy: "하수"; case .normal: "중수"; case .hard: "고수" } }
     var speed: Double { switch self { case .easy: 21; case .normal: 24; case .hard: 27 } }      // 칸/초
     var paddle: Double { switch self { case .easy: 9; case .normal: 8; case .hard: 7 } }     // 판 길이 (칸)
-    var lives: Int { 5 }
+    var lives: Int { switch self { case .easy: 5; case .normal: 4; case .hard: 3 } }
     /// 단계를 깨는 기준: 깰 수 있는 벽돌 중 이만큼
     var clear: Double { switch self { case .easy: 0.6; case .normal: 0.75; case .hard: 0.9 } }
     var note: String {
@@ -42,6 +42,8 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
 struct GameStage: Identifiable {
     let n: Int
     let rule: String
+    /// 시작 카드: 장면 한 줄 · 규칙 한 줄 (글줄이기 2026-10-18)
+    var scene = "", short = ""
     var speedMul = 1.0, paddleMul = 1.0, extraLives = 0, items = true
     var mirror = false        // 프리퀄: 거울에 공이 비쳐 보임 (그림만)
     var flicker = false       // 1권: 형광등이 깜빡여 벽돌이 잠깐 안 보임, 출구 칸만 빛남
@@ -65,18 +67,18 @@ struct GameStage: Identifiable {
     var bg: ShelterBG { Shelter.backgrounds[n] }
 
     static let all: [GameStage] = [
-        GameStage(n: 0, rule: "연습판. 거울 셋에 공이 비쳐 보여요. 공이 느리고 목숨이 둘 더 있어요.", speedMul: 0.85, extraLives: 2, mirror: true),
-        GameStage(n: 1, rule: "형광등이 가끔 깜빡여 벽돌이 안 보여요. 노랗게 빛나는 출구 칸은 보너스.", flicker: true),
-        GameStage(n: 2, rule: "중력이 약해요. 공이 느리고 벽돌 쪽으로 천천히 휘어요.", speedMul: 0.85, gravity: 7),
-        GameStage(n: 3, rule: "가운데 원형 구조물이 지나가는 공을 끌어당겨요.", well: true),
-        GameStage(n: 4, rule: "양쪽 벽이 입구예요. 공이 반대편 입구로 나와요.", portal: true),
-        GameStage(n: 5, rule: "벽돌 줄이 운하 물결처럼 천천히 흔들려요.", sway: true),
-        GameStage(n: 6, rule: "창이 좁아 판이 짧아요. 대신 공이 느려요.", speedMul: 0.8, paddleMul: 0.75),
-        GameStage(n: 7, rule: "가운데 줄표(—)는 깨지지 않는 벽이에요.", dash: true),
-        GameStage(n: 8, rule: "충전할 곳이 없어요. 물건이 떨어지지 않아요.", items: false),
-        GameStage(n: 9, rule: "화산 연기가 공을 판 쪽으로 밀어 올려요.", gravity: -6),
-        GameStage(n: 10, rule: "안 구운 그릇 벽돌은 세 번 쳐야 깨져요.", hard2: 0.3),
-        GameStage(n: 11, rule: "모든 규칙이 조금씩 섞인 자유판.", flicker: true, portal: true, sway: true, hard2: 0.15),
+        GameStage(n: 0, rule: "연습판. 거울 셋에 공이 비쳐 보여요. 공이 느리고 목숨이 둘 더 있어요.", scene: "거울 셋, 조금씩 다른 얼굴", short: "연습판 · 공 느림 · 목숨 +2", speedMul: 0.85, extraLives: 2, mirror: true),
+        GameStage(n: 1, rule: "형광등이 가끔 깜빡여 벽돌이 안 보여요. 노랗게 빛나는 출구 칸은 보너스.", scene: "떨리는 형광등, 끝없는 복도", short: "형광등 깜빡임 · 노란 출구 칸 +100", flicker: true),
+        GameStage(n: 2, rule: "중력이 약해요. 공이 느리고 벽돌 쪽으로 천천히 휘어요.", scene: "붉은 평원이 보이는 창", short: "약한 중력 · 공 느림 · 벽돌 쪽으로 휨", speedMul: 0.85, gravity: 7),
+        GameStage(n: 3, rule: "가운데 원형 구조물이 지나가는 공을 끌어당겨요.", scene: "물 위 첨탑과 원형 구조물", short: "가운데 구조물이 공을 끌어당김", well: true),
+        GameStage(n: 4, rule: "양쪽 벽이 입구예요. 공이 반대편 입구로 나와요.", scene: "두 입구 사이의 틈", short: "양쪽 벽이 입구 · 반대편으로 나옴", portal: true),
+        GameStage(n: 5, rule: "벽돌 줄이 운하 물결처럼 천천히 흔들려요.", scene: "운하 건너 백 명의 마을", short: "벽돌 줄이 물결처럼 흔들림", sway: true),
+        GameStage(n: 6, rule: "창이 좁아 판이 짧아요. 대신 공이 느려요.", scene: "손가락 몇 개만큼 연 창", short: "판 짧음 · 공 느림", speedMul: 0.8, paddleMul: 0.75),
+        GameStage(n: 7, rule: "가운데 줄표(—)는 깨지지 않는 벽이에요.", scene: "빈 현수막과 줄표 하나", short: "줄표(—)는 안 깨지는 벽", dash: true),
+        GameStage(n: 8, rule: "충전할 곳이 없어요. 물건이 떨어지지 않아요.", scene: "붉은 노을, 충전할 곳 없음", short: "물건 안 떨어짐", items: false),
+        GameStage(n: 9, rule: "화산 연기가 공을 판 쪽으로 밀어 올려요.", scene: "계단식 논과 연기 오르는 화산", short: "연기가 공을 판 쪽으로 밂", gravity: -6),
+        GameStage(n: 10, rule: "안 구운 그릇 벽돌은 세 번 쳐야 깨져요.", scene: "물레와 안 구운 그릇", short: "안 구운 그릇 · 세 번 쳐야 깨짐", hard2: 0.3),
+        GameStage(n: 11, rule: "모든 규칙이 조금씩 섞인 자유판.", scene: "도시 불빛이 보이는 방", short: "모든 규칙 조금씩 섞임", flicker: true, portal: true, sway: true, hard2: 0.15),
     ]
 }
 
@@ -84,11 +86,27 @@ struct GameStage: Identifiable {
 enum GamePlayer {
     static func skill(_ id: String) -> String {
         switch id {
-        case "sio": "기다림 · 공을 판에 붙였다가 원할 때 보내요"
+        case "sio": "안전망 · 판 뒤 노란 줄이 공을 한 번 받아 줘요"
         case "seonbae": "되묻기 · 놓친 공을 판마다 한 번 되감아요"
         case "ir": "앞서 달림 · 공이 빠르고 점수 1.5배"
         case "sua": "자라기 · 깰수록 판이 조금씩 길어져요"
         default: "원칙 · 판이 길고 공 속도가 늘 같아요"
+        }
+    }
+    /// 물건을 먹었을 때 뜨는 짧은 말 (예: 현관 등 · 10초 공 길 보임)
+    static func itemShort(_ id: String) -> String {
+        switch id {
+        case "barley_tea": "10초 공 느림"
+        case "porch_light": "10초 공 길 보임"
+        case "wall_clock": "3초 공 멈춤"
+        case "hair_tie": "15초 판 길게"
+        case "table_chair": "공 하나 더"
+        case "asym_bowl": "10초 벽돌 많은 쪽으로"
+        case "unfired_bowl": "보호막 1번"
+        case "jujube_seed": "10초 점수 2배"
+        case "elder_bead": "5초 벽돌 뚫기"
+        case "rice_seeds": "공 셋으로"
+        default: item(id)
         }
     }
     /// 쉼터 물건이 아이템일 때 하는 일
@@ -312,6 +330,11 @@ final class BrickGame: Identifiable {
     @ObservationIgnored var drops: [Drop] = []
     @ObservationIgnored var effects: [String: Double] = [:]   // 이름 → 끝나는 시각
     @ObservationIgnored var shield = false
+    @ObservationIgnored var net = 0                       // 시오 안전망: 판 뒤 노란 줄이 놓친 공을 받아 주는 남은 횟수
+    static let netY = 2.4
+    /// 이어하기: 앞 단계를 깨고 바로 넘어온 횟수. 단계마다 점수 +10%
+    let chain: Int
+    var scoreMul: Double { 1 + 0.1 * Double(chain) }
     @ObservationIgnored var rewindUsed = false
     @ObservationIgnored var paddleX = BrickGame.W / 2
     @ObservationIgnored var t = 0.0
@@ -343,11 +366,14 @@ final class BrickGame: Identifiable {
     var target: Int { max(1, Int((Double(total) * level.clear).rounded(.up))) }
 
     init(stage: GameStage, level: GameLevel, player: String, skill: String, items: [String], tilt: Bool, assist: Bool,
-         filled: Int, floor: Int, yesterday: Int) {
+         filled: Int, floor: Int, yesterday: Int, chain: Int = 0, lives: Int? = nil) {
         self.stage = stage; self.level = level; self.player = player; self.skill = skill
         self.items = stage.items ? items : []
         self.tilt = tilt; self.assist = assist
-        self.lives = level.lives + stage.extraLives
+        self.chain = chain
+        // 어느 단계에서 시작해도 난이도 기본 생명, 이어하면 남은 생명 그대로
+        self.lives = lives ?? level.lives + stage.extraLives
+        self.net = skill == "sio" ? 1 : 0
         // 벽돌 수는 난이도·단계로 정한다. 내 채운 칸이 먼저 (아래부터), 모자라면 그 위에 더 쌓는다
         let n = stage.bricks(level), f = max(0, min(n, filled))
         for i in 0..<n {
@@ -414,13 +440,16 @@ final class BrickGame: Identifiable {
         DispatchQueue.main.async { self.phase = p }
     }
 
-    /// 화면을 누르면: 처음엔 시작, 붙은 공은 보낸다
+    /// 시작 카드의 "눌러서 시작"
+    func startPlay() {
+        guard phase == .ready else { return }
+        phase = .playing
+        GameSound.shared.play(.start)
+        launch()
+    }
+    /// 화면을 누르면 붙은 공을 보낸다 (시작은 시작 카드 버튼으로만)
     func launch() {
-        switch phase {
-        case .ready: phase = .playing
-        case .playing: break
-        default: return
-        }
+        guard phase == .playing else { return }
         let sp = speed
         for i in balls.indices where balls[i].stuck { send(&balls[i], sp) }
     }
@@ -581,6 +610,11 @@ final class BrickGame: Identifiable {
             ny = face + Self.r
             paddleHit(&b, sp)
         }
+        // 시오 안전망: 판을 지나 위로 간 공을 한 번 받아 준다
+        if net > 0, b.vy < 0, b.y >= Self.netY, ny < Self.netY {
+            net -= 1; ny = Self.netY; b.vy = abs(b.vy)
+            GameSound.shared.play(.paddle); say("안전망이 받았어요")
+        }
         b.y = ny
         if b.y < Self.r && shield { shield = false; b.y = Self.r; b.vy = abs(b.vy); say("보호막이 막았어요") }
         return b.y > -Self.r
@@ -589,10 +623,6 @@ final class BrickGame: Identifiable {
     private func paddleHit(_ b: inout Ball, _ sp: Double) {
         buzz(); GameSound.shared.play(.paddle)
         combo = 0; comboSaid = 0
-        if skill == "sio" {
-            b.stuck = true; b.off = b.x - paddleX; b.until = t + 2
-            b.vx = 0; b.vy = 0; return
-        }
         var a = max(-1, min(1, (b.x - paddleX) / (paddleW / 2))) * .pi / 3
         if on("aim") {
             // 남은 벽돌이 가장 많은 세로줄 쪽으로
@@ -631,7 +661,7 @@ final class BrickGame: Identifiable {
     /// 한 칸 깎기. 깨지면 점수, 특수 블럭이면 터질 차례에 넣는다
     private func crack(_ j: Int, _ queue: inout [Int], all: Bool = false) {
         guard hp[j] > 0 else { return }
-        if group[j] >= 0 { crackBig(group[j], j); return }
+        if group[j] >= 0 { crackBig(group[j], j, &queue); return }
         hp[j] = all ? 0 : hp[j] - 1
         revealed[j] = true
         guard hp[j] == 0 else { return }
@@ -639,6 +669,7 @@ final class BrickGame: Identifiable {
         var mul = skill == "ir" ? 1.5 : 1.0
         if on("double") { mul *= 2 }
         if combo > 10 { mul *= 1.5 }    // 한 번에 많이 깨면 점수가 더
+        mul *= scoreMul
         let p: Double = switch kind[j] { case 2: 2; case 3: 3; default: 1 }
         score += Int((p * mul).rounded())
         if j == exitCell { score += 100; say("출구 칸 +100") }
@@ -647,7 +678,7 @@ final class BrickGame: Identifiable {
 
     /// 테트리스 블럭: 숨어 있을 땐 칸마다 보통 두 번 맞는 벽돌과 똑같다. 그중 한 칸이 깨지면 조각 전체가 드러나고,
     /// 그 뒤로 한 번 맞을 때(폭발 한 번도) 1씩, 칸 수만큼 더 맞으면 한꺼번에 없어진다
-    private func crackBig(_ g: Int, _ j: Int) {
+    private func crackBig(_ g: Int, _ j: Int, _ queue: inout [Int]) {
         guard bigs[g].hp > 0 else { return }
         if !bigs[g].revealed {
             revealed[j] = true
@@ -656,18 +687,28 @@ final class BrickGame: Identifiable {
             for c in bigs[g].cells { hp[c] = 1 }
             touched.insert(g)
             say("테트리스 블럭! \(bigs[g].hp)번 더")
-            GameSound.shared.play(.item); return
+            GameSound.shared.play(.tetris(bigs[g].shape)); return
         }
         guard !touched.contains(g) else { return }
         touched.insert(g)
         bigs[g].hp -= 1
         guard bigs[g].hp == 0 else { GameSound.shared.play(.tough); return }
-        let b = bigs[g], bonus = b.cells.count * 10
-        for c in b.cells where hp[c] > 0 { hp[c] = 0; broken += 1; combo += 1; score += 2 }
+        let b = bigs[g], bonus = Int((Double(b.cells.count * 10) * scoreMul).rounded())
+        for c in b.cells where hp[c] > 0 { hp[c] = 0; broken += 1; combo += 1; score += Int((2 * scoreMul).rounded()) }
         score += bonus
+        // 모양을 따라 바로 옆 한 칸씩 같이 깨진다 (위·아래·왼쪽·오른쪽)
+        for c in b.cells {
+            let r = c / 40, col = c % 40
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let cc = col + dx, rr = r + dy
+                guard cc >= 0, cc < 40, rr >= 0, rr < 25 else { continue }
+                let k = rr * 40 + cc
+                if group[k] != g { crack(k, &queue, all: true) }
+            }
+        }
         let xs = b.cells.map { rect($0).midX }, ys = b.cells.map { rect($0).midY }
         blasts.append(Blast(x: xs.reduce(0, +) / Double(xs.count), y: ys.reduce(0, +) / Double(ys.count), kind: .bomb, t0: t))
-        GameSound.shared.play(.boom)
+        GameSound.shared.play(.tetris(b.shape))
         say("테트리스 블럭 +\(bonus)")
     }
 
@@ -679,29 +720,29 @@ final class BrickGame: Identifiable {
         blasts.append(Blast(x: c.midX, y: c.midY, kind: sp, t0: t))
         switch sp {
         case .bomb:
-            GameSound.shared.play(.boom)
+            GameSound.shared.play(.bomb)
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
             for dy in -2...2 { for dx in -2...2 where abs(dx) + abs(dy) <= 3 {
                 let cc = col + dx, r = row + dy
                 if cc >= 0, cc < 40, r >= 0, r < 25 { crack(r * 40 + cc, &queue, all: true) }
             } }
         case .row:
-            GameSound.shared.play(.line)
+            GameSound.shared.play(.row)
             for cc in 0..<40 { crack(row * 40 + cc, &queue, all: true) }
         case .col:
-            GameSound.shared.play(.line)
+            GameSound.shared.play(.col)
             for r in 0..<25 { crack(r * 40 + col, &queue, all: true) }
         case .multi:
-            GameSound.shared.play(.item)
+            GameSound.shared.play(.multi)
             let v = speed
             for a in [-0.6, 0.0, 0.6] where balls.count < 12 {
                 balls.append(Ball(x: c.midX, y: c.minY - Self.r - 0.05, vx: v * sin(a), vy: -v * cos(a), stuck: false, spawned: true))
             }
             say("공 셋!")
         case .gift:
-            GameSound.shared.play(.item)
+            GameSound.shared.play(.gift)
             if let it = items.randomElement() { drops.append(Drop(id: it, x: c.midX, y: c.midY)) }
-            else { score += 50; say("선물 +50") }
+            else { let p = Int((50 * scoreMul).rounded()); score += p; say("선물 +\(p)") }
         }
     }
 
@@ -717,7 +758,7 @@ final class BrickGame: Identifiable {
 
     private func use(_ id: String) {
         let name = Shelter.items.first { $0.id == id }?.name ?? id
-        say("\(name) · \(GamePlayer.item(id))")
+        say("\(name) · \(GamePlayer.itemShort(id))")
         picked[id, default: 0] += 1
         GameSound.shared.play(.item)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -756,14 +797,14 @@ final class BrickGame: Identifiable {
         lives -= 1
         GameSound.shared.play(.lose)
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
-        if lives <= 0 { talk(.over); finish(.over); return }
+        if lives <= 0 { talk(.over); GameSound.shared.play(.over); finish(.over); return }
         talk(lives == 1 ? .last : .lose)
         drops = []
         balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 2.5)]
     }
 
     private func win() {
-        score += lives * 50
+        score += Int((Double(lives * 50) * scoreMul).rounded())
         GameSound.shared.play(.clear)
         talk(.clear)
         finish(.cleared)
@@ -801,7 +842,7 @@ final class BrickGame: Identifiable {
 
 /// 효과음: 짧은 소리를 코드로 만들어 둔다 (파일 없음). 무음 스위치를 따르고 다른 앱 소리와 섞인다
 final class GameSound {
-    enum Kind: CaseIterable { case hit, tough, paddle, item, lose, clear, boom, line }
+    enum Kind: Hashable { case hit, tough, paddle, item, lose, clear, over, start, bomb, row, col, multi, gift, tetris(Int) }
     static let shared = GameSound()
     private let engine = AVAudioEngine()
     private var players: [AVAudioPlayerNode] = []
@@ -827,8 +868,22 @@ final class GameSound {
             .item: [(660, 0.06), (880, 0.06), (1320, 0.09)],
             .lose: [(440, 0.1), (330, 0.1), (220, 0.18)],
             .clear: [(523, 0.1), (659, 0.1), (784, 0.1), (1047, 0.25)],
-            .boom: [(140, 0.06), (95, 0.08), (70, 0.14)],
-            .line: [(1047, 0.04), (1397, 0.04), (1760, 0.07)],
+            .over: [(392, 0.14), (330, 0.14), (262, 0.14), (196, 0.35)],
+            .start: [(392, 0.07), (523, 0.07), (659, 0.07), (784, 0.16)],
+            // 특수 블럭마다 다른 소리: 폭탄 낮게 쿵, 주황 줄 가로는 위로·세로는 아래로 쓸기, 파랑 공 셋 통통통, 노랑 선물 반짝
+            .bomb: [(140, 0.06), (95, 0.08), (70, 0.14)],
+            .row: [(1047, 0.04), (1397, 0.04), (1760, 0.07)],
+            .col: [(1760, 0.04), (1397, 0.04), (1047, 0.07)],
+            .multi: [(784, 0.05), (0, 0.02), (784, 0.05), (0, 0.02), (1047, 0.08)],
+            .gift: [(1568, 0.05), (2093, 0.05), (1568, 0.05), (2637, 0.1)],
+            // 테트리스 일곱 조각 (I O T S Z J L) 마다 다른 가락
+            .tetris(0): [(523, 0.05), (659, 0.05), (784, 0.05), (1047, 0.12)],
+            .tetris(1): [(587, 0.08), (587, 0.08), (880, 0.14)],
+            .tetris(2): [(659, 0.06), (880, 0.06), (659, 0.12)],
+            .tetris(3): [(440, 0.06), (554, 0.06), (659, 0.06), (554, 0.1)],
+            .tetris(4): [(698, 0.06), (587, 0.06), (466, 0.06), (587, 0.1)],
+            .tetris(5): [(330, 0.06), (392, 0.06), (494, 0.06), (659, 0.12)],
+            .tetris(6): [(988, 0.06), (784, 0.06), (659, 0.06), (523, 0.12)],
         ]
         for (k, ns) in notes { buffers[k] = tone(ns, fmt) }
         do { try engine.start(); ready = true } catch { ready = false }
@@ -855,7 +910,7 @@ final class GameSound {
             for j in 0..<n {
                 let t = Double(j) / sr, env = min(1, Double(j) / 200) * (1 - Double(j) / Double(n))
                 // 네모파에 가까운 8비트 소리 (홀수 배음 셋)
-                let w = sin(2 * .pi * f * t) + sin(6 * .pi * f * t) / 3 + sin(10 * .pi * f * t) / 5
+                let w = f == 0 ? 0 : sin(2 * .pi * f * t) + sin(6 * .pi * f * t) / 3 + sin(10 * .pi * f * t) / 5
                 d[i + j] = Float(w * env * 0.35)
             }
             i += n
