@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>금리 충격 테스트 시안</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2F6E62;text-decoration:none}a:hover{color:#1F4D44}
+</style>
+</helmet>
+<div style="width: 468px; height: 1920px; box-sizing: border-box; padding: 24px; background: #E5E7EB; font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; color: #15191E">
+<div style="width: 420px; height: 1872px; box-sizing: border-box; background: #F2F3F5; padding: 20px 16px 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+
+<div style="display: grid; grid-template-columns: 48px 1fr 48px; align-items: center">
+<button type="button" aria-label="뒤로" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid #DADDE2; background: #FFFFFF; display: flex; align-items: center; justify-content: center; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#15191E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 L8 12 L15 19"></path></svg></button>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="font-size: 18px; font-weight: 800">금리 충격 테스트</span>
+<div style="display: flex; gap: 4px" aria-hidden="true"><span style="width: 5px; height: 5px; border-radius: 50%; background: #CDD1D6"></span><span style="width: 5px; height: 5px; border-radius: 50%; background: #CDD1D6"></span><span style="width: 5px; height: 5px; border-radius: 50%; background: #CDD1D6"></span><span style="width: 5px; height: 5px; border-radius: 50%; background: #2F6E62"></span><span style="width: 5px; height: 5px; border-radius: 50%; background: #CDD1D6"></span><span style="width: 5px; height: 5px; border-radius: 50%; background: #CDD1D6"></span><span style="width: 5px; height: 5px; border-radius: 50%; background: #CDD1D6"></span><span style="width: 5px; height: 5px; border-radius: 50%; background: #CDD1D6"></span></div>
+</div>
+<span></span>
+</div>
+
+<span style="font-size: 24px; font-weight: 800; padding: 4px 4px 0">금리가 바뀌면 내 목표는?</span>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<button type="button" style="min-height: 60px; border-radius: 16px; border: 1px solid #E3E6EA; background: #FFFFFF; font: inherit; text-align: left; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 700; color: #15191E">내린다</span><span style="font-size: 13px; color: #6B7280">−0.5%p</span></button>
+<button type="button" style="min-height: 60px; border-radius: 16px; border: 1px solid #E3E6EA; background: #FFFFFF; font: inherit; text-align: left; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 700; color: #15191E">그대로</span><span style="font-size: 13px; color: #6B7280">0</span></button>
+<button type="button" style="min-height: 60px; border-radius: 16px; border: 2px solid #2F6E62; background: #E6F0ED; font: inherit; text-align: left; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 800; color: #15191E">작년만큼</span><span style="font-size: 13px; color: #2F6E62">+1.1%p</span></button>
+<button type="button" style="min-height: 60px; border-radius: 16px; border: 1px solid #E3E6EA; background: #FFFFFF; font: inherit; text-align: left; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 700; color: #15191E">2022년처럼</span><span style="font-size: 13px; color: #6B7280">+2.5%p</span></button>
+</div>
+
+<div style="background: #1B2431; border-radius: 22px; padding: 18px; color: #FFFFFF; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 15px; color: #C9D0DA">목표 가능성 30% →</span><span style="font-size: 32px; font-weight: 800">22%</span></div>
+<span style="background: #E08A3C; color: #15191E; border-radius: 999px; padding: 4px 12px; font-size: 14px; font-weight: 800">−8%p</span>
+</div>
+<div style="display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: center; font-size: 13px; color: #AEB6C2">
+<span>지금</span><div style="height: 8px; border-radius: 4px; background: #364152; overflow: hidden"><div style="width: 30%; height: 8px; background: #8A94A3"></div></div>
+<span>이 경우</span><div style="height: 8px; border-radius: 4px; background: #364152; overflow: hidden"><div style="width: 22%; height: 8px; background: #E08A3C"></div></div>
+</div>
+<div style="height: 1px; background: #364152"></div>
+<div style="display: flex; justify-content: space-between; font-size: 14px"><span style="color: #C9D0DA">10억 도달</span><span style="font-weight: 800">2년 7개월 늦게</span></div>
+<div style="display: flex; justify-content: space-between; font-size: 14px"><span style="color: #C9D0DA">2029.10 금액</span><span style="font-weight: 800">6.39억 → 5.36억</span></div>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 22px; padding: 18px 16px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 18px; font-weight: 800">어떻게 번지나?</span>
+<div style="display: grid; grid-template-columns: 28px 1fr; gap: 10px 10px; align-items: start">
+<span style="width: 26px; height: 26px; border-radius: 50%; background: #2F5A50; color: #FFFFFF; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center">1</span>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 800">금리 5.24% → 6.34%</span><span style="font-size: 12px; color: #8A929C">미국 10년물</span></div>
+<span style="width: 26px; height: 26px; border-radius: 50%; background: #2F5A50; color: #FFFFFF; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center">2</span>
+<span style="font-size: 16px; font-weight: 800">기업 이익 3년간 −8%</span>
+<span style="width: 26px; height: 26px; border-radius: 50%; background: #2F5A50; color: #FFFFFF; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center">3</span>
+<span style="font-size: 16px; font-weight: 800">내 기대수익 연 −5.9%p</span>
+</div>
+<a href="#" style="font-size: 14px; font-weight: 700">근거 ›</a>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 22px; padding: 18px 16px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 18px; font-weight: 800">금리에 약한 종목</span>
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 15px"><span style="font-weight: 700">깨끗한나라 <span style="font-size: 12px; font-weight: 500; color: #8A929C">0%</span></span><span style="font-size: 13px; font-weight: 700; color: #C8701E">크게</span></div><div style="height: 8px; border-radius: 4px; background: #EEF0F2; overflow: hidden"><div style="width: 100%; height: 8px; background: #E08A3C"></div></div></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 15px"><span style="font-weight: 700">SPCX <span style="font-size: 12px; font-weight: 500; color: #8A929C">13%</span></span><span style="font-size: 13px; font-weight: 700; color: #C8701E">크게</span></div><div style="height: 8px; border-radius: 4px; background: #EEF0F2; overflow: hidden"><div style="width: 92%; height: 8px; background: #E08A3C"></div></div></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 15px"><span style="font-weight: 700">테슬라 <span style="font-size: 12px; font-weight: 500; color: #8A929C">67%</span></span><span style="font-size: 13px; font-weight: 700; color: #6B7280">보통</span></div><div style="height: 8px; border-radius: 4px; background: #EEF0F2; overflow: hidden"><div style="width: 63%; height: 8px; background: #8A929C"></div></div></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 15px"><span style="font-weight: 700">SGOV <span style="font-size: 12px; font-weight: 500; color: #8A929C">3%</span></span><span style="font-size: 13px; font-weight: 700; color: #6B7280">보통</span></div><div style="height: 8px; border-radius: 4px; background: #EEF0F2; overflow: hidden"><div style="width: 61%; height: 8px; background: #8A929C"></div></div></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 15px"><span style="font-weight: 700">엔비디아 <span style="font-size: 12px; font-weight: 500; color: #8A929C">18%</span></span><span style="font-size: 13px; font-weight: 700; color: #2F6E62">덜</span></div><div style="height: 8px; border-radius: 4px; background: #EEF0F2; overflow: hidden"><div style="width: 15%; height: 8px; background: #2F5A50"></div></div></div>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 22px; padding: 18px 16px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 18px; font-weight: 800">금리 일정</span>
+<div style="display: grid; grid-template-columns: 96px 1fr; row-gap: 8px; font-size: 15px">
+<span style="font-weight: 700; color: #2F6E62">10/22 D-4</span><span style="font-weight: 700">한은</span>
+<span style="font-weight: 700; color: #2F6E62">10/28 D-10</span><span style="font-weight: 700">미국 FOMC</span>
+<span style="font-weight: 700; color: #2F6E62">12/3 D-46</span><span style="font-weight: 700">한은</span>
+<span style="font-weight: 700; color: #2F6E62">12/9 D-52</span><span style="font-weight: 700">미국 FOMC</span>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; min-height: 44px">
+<span style="font-size: 15px">전날 다시 보기</span>
+<button type="button" role="switch" aria-checked="false" aria-label="결정 전날 다시 보기" style="width: 56px; height: 32px; border: 0; border-radius: 16px; background: #D5D9DF; position: relative; padding: 0"><span style="position: absolute; left: 3px; top: 3px; width: 26px; height: 26px; border-radius: 50%; background: #FFFFFF"></span></button>
+</div>
+<span style="font-size: 12px; color: #8A929C">날짜는 추정 · ±1~2일</span>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 22px; padding: 6px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+<a href="#" style="min-height: 44px; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 700; color: #15191E">직접 정하기<span aria-hidden="true" style="color: #8A929C">⌃</span></a>
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 15px">1년 뒤 10년물</span><span style="font-size: 18px; font-weight: 800">+1.1%p</span></div>
+<div style="position: relative; height: 28px">
+<div style="position: absolute; left: 0; right: 0; top: 12px; height: 5px; border-radius: 3px; background: #E4E7EB"></div>
+<div style="position: absolute; left: 0; width: 61%; top: 12px; height: 5px; border-radius: 3px; background: #E08A3C"></div>
+<div style="position: absolute; left: calc(61% - 20px); top: 0; width: 40px; height: 28px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,0.2)"></div>
+</div>
+<span style="font-size: 12px; color: #8A929C">작년 +1.10%p</span>
+</div>
+<span style="font-size: 12px; color: #8A929C; padding: 0 4px">'만약에' 화면 · 추천 아님</span>
+
+<nav aria-label="아래 탭" style="margin-top: 4px; background: rgba(255,255,255,0.92); border: 1px solid #DADDE2; border-radius: 30px; padding: 8px 6px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px">
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11 V21 H14 V15 H10 V21 H3 Z"></path></svg>홈</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20 V12 M12 20 V7 M19 20 V4"></path></svg>종목</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border-radius: 22px; background: #E4E7EB; color: #2F6E62; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3 V21 H21 M6 16 L11 11 L14 14 L20 8"></path></svg>분석</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>미션</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2.5 V5.5 M12 18.5 V21.5 M2.5 12 H5.5 M18.5 12 H21.5 M5.3 5.3 L7.4 7.4 M16.6 16.6 L18.7 18.7 M5.3 18.7 L7.4 16.6 M16.6 7.4 L18.7 5.3"></path></svg>설정</a>
+</nav>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":468,"height":1920}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

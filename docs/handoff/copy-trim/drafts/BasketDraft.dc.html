@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>모의 바구니 고치기 시안</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1E6B60;text-decoration:none}a:hover{color:#14504A}
+</style>
+</helmet>
+<div style="width: 468px; height: 1008px; box-sizing: border-box; padding: 24px; background: #E5E7EB; font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; color: #15191E">
+<div style="width: 420px; height: 960px; box-sizing: border-box; background: #F2F3F5; padding: 20px 16px 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+
+<div style="display: grid; grid-template-columns: 48px 1fr 48px; align-items: center">
+<button type="button" aria-label="뒤로" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid #DADDE2; background: #FFFFFF; display: flex; align-items: center; justify-content: center; padding: 0"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#15191E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 L8 12 L15 19"></path></svg></button>
+<span style="font-size: 18px; font-weight: 800; text-align: center">모의 바구니 고치기</span>
+<span></span>
+</div>
+
+<span style="font-size: 14px; color: #4B5563; padding: 0 4px">고치면 오늘부터 새 기록 · 이전 기록은 보관</span>
+
+<span style="font-size: 16px; font-weight: 800; padding: 4px 4px 0">견본</span>
+<div style="display: flex; gap: 8px; overflow: hidden">
+<button type="button" style="min-height: 44px; border-radius: 22px; border: 1.5px solid #D9DDE2; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; padding: 0 16px; flex-shrink: 0">도전</button>
+<button type="button" style="min-height: 44px; border-radius: 22px; border: 1.5px solid #D9DDE2; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; padding: 0 16px; flex-shrink: 0">균형</button>
+<button type="button" style="min-height: 44px; border-radius: 22px; border: 1.5px solid #D9DDE2; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; padding: 0 16px; flex-shrink: 0">방어</button>
+<button type="button" style="min-height: 44px; border-radius: 22px; border: 1.5px solid #D9DDE2; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; padding: 0 16px; flex-shrink: 0">지수 중심</button>
+<button type="button" style="min-height: 44px; border-radius: 22px; border: 1.5px solid #D9DDE2; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; padding: 0 16px; flex-shrink: 0">성장 더하기</button>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: grid; grid-template-columns: 1fr 44px 52px 44px 44px; align-items: center; gap: 2px">
+<div style="display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 800">QQQ</span><span style="font-size: 12px; color: #6B7280">나스닥100</span></div>
+<button type="button" aria-label="QQQ 줄이기" style="height: 44px; border: 0; background: transparent; font-size: 22px">−</button><span style="text-align: center; font-size: 17px; font-weight: 800">30%</span><button type="button" aria-label="QQQ 늘리기" style="height: 44px; border: 0; background: transparent; font-size: 22px">+</button><button type="button" aria-label="QQQ 빼기" style="height: 44px; border: 0; background: transparent; font-size: 18px; color: #8A929C">✕</button>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 44px 52px 44px 44px; align-items: center; gap: 2px">
+<div style="display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 800">SGOV</span><span style="font-size: 12px; color: #6B7280">단기 국채</span></div>
+<button type="button" aria-label="SGOV 줄이기" style="height: 44px; border: 0; background: transparent; font-size: 22px">−</button><span style="text-align: center; font-size: 17px; font-weight: 800">10%</span><button type="button" aria-label="SGOV 늘리기" style="height: 44px; border: 0; background: transparent; font-size: 22px">+</button><button type="button" aria-label="SGOV 빼기" style="height: 44px; border: 0; background: transparent; font-size: 18px; color: #8A929C">✕</button>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 44px 52px 44px 44px; align-items: center; gap: 2px">
+<div style="display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 800">SPY</span><span style="font-size: 12px; color: #6B7280">S&amp;P500</span></div>
+<button type="button" aria-label="SPY 줄이기" style="height: 44px; border: 0; background: transparent; font-size: 22px">−</button><span style="text-align: center; font-size: 17px; font-weight: 800">60%</span><button type="button" aria-label="SPY 늘리기" style="height: 44px; border: 0; background: transparent; font-size: 22px">+</button><button type="button" aria-label="SPY 빼기" style="height: 44px; border: 0; background: transparent; font-size: 18px; color: #8A929C">✕</button>
+</div>
+<a href="#" style="font-size: 16px; font-weight: 700">+ 종목 담기</a>
+<span style="font-size: 12px; color: #8A929C">종가 있는 종목·견본 ETF만</span>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px"><span style="font-size: 16px; font-weight: 800">합계</span><span style="font-size: 18px; font-weight: 800; color: #1E9A6A">100%</span></div>
+<button type="button" style="min-height: 52px; border: 0; border-radius: 16px; background: #13685F; color: #FFFFFF; font: inherit; font-size: 17px; font-weight: 700">오늘부터 시작</button>
+<span style="font-size: 12px; color: #8A929C; padding: 0 4px">모의 결과 · 투자 권유 아님</span>
+
+<nav aria-label="아래 탭" style="margin-top: auto; margin-bottom: 16px; background: rgba(255,255,255,0.92); border: 1px solid #DADDE2; border-radius: 30px; padding: 8px 6px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px">
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border-radius: 22px; background: #E4E7EB; color: #2F6E62; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11 V21 H14 V15 H10 V21 H3 Z"></path></svg>홈</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20 V12 M12 20 V7 M19 20 V4"></path></svg>종목</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3 V21 H21 M6 16 L11 11 L14 14 L20 8"></path></svg>분석</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>미션</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2.5 V5.5 M12 18.5 V21.5 M2.5 12 H5.5 M18.5 12 H21.5 M5.3 5.3 L7.4 7.4 M16.6 16.6 L18.7 18.7 M5.3 18.7 L7.4 16.6 M16.6 7.4 L18.7 5.3"></path></svg>설정</a>
+</nav>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":468,"height":1008}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

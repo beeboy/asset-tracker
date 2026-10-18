@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>미션 시안</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2F5D9E;text-decoration:none}a:hover{color:#1F4475}
+</style>
+</helmet>
+<div style="width: 468px; height: 1300px; box-sizing: border-box; padding: 24px; background: #E5E7EB; font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; color: #15191E">
+<div style="width: 420px; height: 1252px; box-sizing: border-box; background: #F2F3F5; padding: 28px 16px 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+
+<div style="display: flex; align-items: baseline; gap: 6px; padding: 0 4px 4px">
+<span style="font-size: 22px; font-weight: 800">naeilo</span>
+<span style="font-size: 22px; font-weight: 500; color: #4B5563">미션</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #E4E7EB; border-radius: 14px; padding: 4px">
+<button type="button" style="min-height: 44px; border: 0; border-radius: 11px; background: transparent; font: inherit; font-size: 16px; font-weight: 600; color: #4B5563">목표 진행</button>
+<button type="button" style="min-height: 44px; border: 0; border-radius: 11px; background: #FFFFFF; font: inherit; font-size: 16px; font-weight: 700; color: #15191E">이번 주 예보</button>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 22px; padding: 18px 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: #2F5D9E">
+<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2 V4 M12 20 V22 M2 12 H4 M20 12 H22 M4.9 4.9 L6.3 6.3 M17.7 17.7 L19.1 19.1 M4.9 19.1 L6.3 17.7 M17.7 6.3 L19.1 4.9"></path></svg>
+<span>10/16 금 마감 예보</span>
+</div>
+<span style="font-size: 34px; font-weight: 800; letter-spacing: -0.5px">4.7억 ~ 5.1억</span>
+<div style="position: relative; height: 18px">
+<div style="position: absolute; left: 0; right: 0; top: 6px; height: 6px; border-radius: 3px; background: #E4E7EB"></div>
+<div style="position: absolute; left: 25%; right: 25%; top: 6px; height: 6px; border-radius: 3px; background: #8DB3E2"></div>
+<div style="position: absolute; left: calc(50% - 9px); top: 0; width: 14px; height: 14px; border-radius: 50%; background: #3F9E6E; border: 2px solid #FFFFFF"></div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 13px; color: #6B7280"><span>4.7억</span><span style="color: #15191E; font-weight: 700">금 4.90억</span><span>5.1억</span></div>
+<div style="background: #EEF3FA; border-radius: 12px; padding: 10px 12px; font-size: 14px; color: #374151">2주 중 1주는 이 범위 안</div>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 22px; padding: 18px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 13px; font-weight: 700; color: #9A6A1F">맞혀보기</span>
+<span style="font-size: 13px; color: #8A929C">결과는 토요일</span>
+</div>
+<span style="font-size: 20px; font-weight: 800">금요일엔?</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<button type="button" style="min-height: 60px; border-radius: 14px; border: 1.5px solid #E1E4E8; background: #FFFFFF; color: #9AA1AB; font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px"><span style="font-size: 16px; font-weight: 700">더 낮게</span><span style="font-size: 12px">4.7억 ↓</span></button>
+<button type="button" style="min-height: 60px; border-radius: 14px; border: 2px solid #4C6FA8; background: #A9BEDD; color: #FFFFFF; font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px"><span style="font-size: 16px; font-weight: 800">예보대로</span><span style="font-size: 12px">범위 안</span></button>
+<button type="button" style="min-height: 60px; border-radius: 14px; border: 1.5px solid #E1E4E8; background: #FFFFFF; color: #9AA1AB; font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px"><span style="font-size: 16px; font-weight: 700">더 높게</span><span style="font-size: 12px">5.1억 ↑</span></button>
+</div>
+<div style="background: #E8F3EC; border-radius: 12px; padding: 10px 12px; font-size: 15px; font-weight: 700; color: #1F5A3A">맞혔어요! 범위 안</div>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 22px; padding: 18px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 18px; font-weight: 800">지난 8주</span>
+<span style="font-size: 14px; color: #4B5563">5/8 범위 안</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px">
+<span style="height: 34px; border-radius: 9px; background: #3A5F9E; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12 L10 17 L19 7"></path></svg></span>
+<span style="height: 34px; border-radius: 9px; border: 2px solid #D5D9DF; box-sizing: border-box"></span>
+<span style="height: 34px; border-radius: 9px; background: #3A5F9E; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12 L10 17 L19 7"></path></svg></span>
+<span style="height: 34px; border-radius: 9px; background: #3A5F9E; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12 L10 17 L19 7"></path></svg></span>
+<span style="height: 34px; border-radius: 9px; border: 2px solid #D5D9DF; box-sizing: border-box"></span>
+<span style="height: 34px; border-radius: 9px; background: #3A5F9E; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12 L10 17 L19 7"></path></svg></span>
+<span style="height: 34px; border-radius: 9px; border: 2px solid #D5D9DF; box-sizing: border-box"></span>
+<span style="height: 34px; border-radius: 9px; background: #3A5F9E; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12 L10 17 L19 7"></path></svg></span>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #8A929C"><span>8주 전</span><span>지난주</span></div>
+<div style="height: 1px; background: #EEF0F2"></div>
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 18px; font-weight: 800">배지</span>
+<span style="font-size: 14px; color: #4B5563">0개</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; text-align: center; font-size: 12px; color: #8A929C">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 44px; height: 44px; border-radius: 50%; background: #E8EAED; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="#9AA1AB"><path d="M12 3 L14.6 9 L21 9.5 L16 13.6 L17.6 20 L12 16.5 L6.4 20 L8 13.6 L3 9.5 L9.4 9 Z"></path></svg></span>1회</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 44px; height: 44px; border-radius: 50%; background: #E8EAED; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="#9AA1AB"><path d="M12 4 L13.8 10.2 L20 12 L13.8 13.8 L12 20 L10.2 13.8 L4 12 L10.2 10.2 Z"></path></svg></span>3회</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 44px; height: 44px; border-radius: 50%; background: #E8EAED; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#9AA1AB" stroke-width="2.4"><path d="M8 3 L12 9 L16 3"></path><circle cx="12" cy="15" r="5.5"></circle></svg></span>5회</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 44px; height: 44px; border-radius: 50%; background: #E8EAED; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="#9AA1AB"><path d="M6 4 H18 V9 C18 12.5 15.5 14.5 13 14.8 V18 H16 V20 H8 V18 H11 V14.8 C8.5 14.5 6 12.5 6 9 Z"></path></svg></span>10회</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 44px; height: 44px; border-radius: 50%; background: #E8EAED; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="#9AA1AB"><path d="M3 8 L7.5 12 L12 5 L16.5 12 L21 8 L19 18 H5 Z"></path></svg></span>달인</div>
+</div>
+<a href="#" style="display: flex; justify-content: space-between; align-items: center; min-height: 44px; font-size: 15px; font-weight: 700">반만 맞아도 괜찮은 이유<span aria-hidden="true">⌃</span></a>
+<div style="background: #EEF3FA; border-radius: 12px; padding: 12px 14px; font-size: 15px; line-height: 1.5; color: #374151">범위는 2번 중 1번 맞게 잡아요.<br>넓으면 쓸모없고, 좁으면 자주 틀려요.</div>
+</div>
+
+<nav aria-label="아래 탭" style="margin-top: 4px; background: rgba(255,255,255,0.92); border: 1px solid #DADDE2; border-radius: 30px; padding: 8px 6px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px">
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11 V21 H14 V15 H10 V21 H3 Z"></path></svg>홈</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20 V12 M12 20 V7 M19 20 V4"></path></svg>종목</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3 V21 H21 M6 16 L11 11 L14 14 L20 8"></path></svg>분석</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border-radius: 22px; background: #E4E7EB; color: #2F6E62; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>미션</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #15191E; font-size: 11px; font-weight: 700"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2.5 V5.5 M12 18.5 V21.5 M2.5 12 H5.5 M18.5 12 H21.5 M5.3 5.3 L7.4 7.4 M16.6 16.6 L18.7 18.7 M5.3 18.7 L7.4 16.6 M16.6 7.4 L18.7 5.3"></path></svg>설정</a>
+</nav>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":468,"height":1300}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
