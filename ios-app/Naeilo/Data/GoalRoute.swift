@@ -307,23 +307,23 @@ extension AppModel {
     var goalPresets: [GoalPreset] {
         let A = goalStart
         func meaning(_ k: Double) -> String {
-            k <= 1000 ? "첫 목표 · 적립 습관 만들기" : k <= 10000 ? "연 7%면 한 해 \(Self.wonK(k * 0.07))씩 불어나는 크기" : "연 4%씩 꺼내 쓰면 월 \(Self.wonK(k * 0.04 / 12))"
+            k <= 1000 ? "첫 목표 · 적립 습관" : k <= 10000 ? "연 7%면 해마다 +\(Self.wonK(k * 0.07).replacingOccurrences(of: "원", with: ""))" : "연 4% 꺼내면 월 \(Self.wonK(k * 0.04 / 12).replacingOccurrences(of: "원", with: ""))"
         }
         // 플러스: 기간마다 '매달 넣는 돈으로 닿을 확률 50% 근처' 금액 (배수 프리셋 대신, 2026-10-11 결정)
         if route != .novice {
             return [1, 3, 5, 10].map { y in
                 let k = autoGoal(years: y)
                 return GoalPreset(k: k, y: y, name: Self.wonK(k).replacingOccurrences(of: "원", with: ""),
-                                  mean: (gM > 0 ? "월 \(Self.wonK(gM))씩 넣으면" : "적립 없이") + " 닿을 확률 50% 근처",
-                                  need: A > 0 ? "지금의 \(String(format: "%.1f", k / A))배" : "")
+                                  mean: "",   // '적립 없이 확률 50%' 는 카드 위에 한 번만
+                                  need: A > 0 ? "×\(String(format: "%.1f", k / A))" : "")
             }
         }
-        let raw: [(Double, Int, String, Int?)] = [(1000, 3, "첫 1,000만원", nil), (10000, 5, "1억", nil), (30000, 10, "3억", nil), (100000, 20, "10억", nil)]
+        let raw: [(Double, Int, String, Int?)] = [(1000, 3, "첫 1,000만", nil), (10000, 5, "1억", nil), (30000, 10, "3억", nil), (100000, 20, "10억", nil)]
         return raw.map { k, y, name, x in
             let nm = neededMonthly(k: k, years: y), cagr = A > 0 ? pow(k / A, 1 / Double(y)) - 1 : 0
             return GoalPreset(k: k, y: y, name: x.map { "\(name) (\($0)배)" } ?? name,
-                              mean: x != nil ? "적립 없이 가려면 한 해 +\(Int((cagr * 100).rounded()))%씩" : meaning(k),
-                              need: nm > 0 ? "월 " + Self.wonK(nm) : "이미 충분")
+                              mean: x != nil ? "적립 없이 연 +\(Int((cagr * 100).rounded()))%" : meaning(k),
+                              need: nm > 0 ? "월 " + Self.wonK(nm).replacingOccurrences(of: "원", with: "") : "이미 충분")
         }
     }
 
@@ -363,7 +363,7 @@ extension AppModel {
             if !restRows.isEmpty { rs.append((rn, AppModel.pct(1 - w), "그대로", true)) }
             return Shift(rows: rs,
                          line: "\(fn) \(sec.isEmpty ? "" : sec + " ")\(AppModel.pct(w))" + (restRows.isEmpty ? "" : " · \(rn) \(AppModel.pct(1 - w))"),
-                         note: (hot ? "\(fn) 업종(\(ind?.ko ?? ""))은 지금 과열이에요. " : "") + "다른 구성 카드에서 바꿀 비중을 볼 수 있어요.", weights: ["T": w, "I": 1 - w])
+                         note: (hot ? "\(fn) 업종(\(ind?.ko ?? "")) 과열 · " : "") + "바꿀 비중은 다른 구성에서", weights: ["T": w, "I": 1 - w])
         }
         let keys = ["T", "I", "G", "B", "C"]
         if route == .novice {
@@ -382,10 +382,10 @@ extension AppModel {
         }
         let short = ["T": fn, "I": label["I"]!, "G": "성장", "B": "버팀목", "C": "현금"]
         let line = used.map { k in short[k]! + " " + ((now[k] ?? 0) > 0 ? "\(Int(((now[k] ?? 0) * 100).rounded()))→\(AppModel.pct(tgt[k] ?? 0))" : "+" + AppModel.pct(tgt[k] ?? 0)) }.joined(separator: " · ")
-        var note = hot ? "이 구성은 과열 업종 한 종목을 10%까지로 잡아요." : "이 구성은 한 종목을 10%까지로 잡아요."
+        var note = hot ? "과열 업종 한 종목 최대 10%" : "한 종목 최대 10%"
         if tT < w && gM > 0 && tot > 0 {
             let mo = ceil((w * tot / tT - tot) / gM)
-            note += " 적립만으로 비중이 맞춰지려면 약 \(Self.eta(mo).replacingOccurrences(of: " 뒤", with: "")) 걸려요. 매도로 맞추면 이익에 세금이 붙어요 (세금 화면)."
+            note += " · 적립만으로 약 \(Self.eta(mo).replacingOccurrences(of: " 뒤", with: "")) · 팔면 세금 (세금 화면)"
         }
         return Shift(rows: rows, line: line, note: note, weights: tgt, sell: max(0, w - tT))
     }
