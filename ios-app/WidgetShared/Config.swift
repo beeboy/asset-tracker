@@ -141,7 +141,7 @@ enum Store {
 enum WidgetUnlock {
     static func how(_ kind: String) -> String {
         if !Store.widgetsOpen { return WL.t("7일 무료가 끝났어요. 구독하면 다시 보여요") }
-        return WL.en ? "Opens at step \(Store.stepNeed(kind)) of mission 4" : "미션 4의 \(Store.stepNeed(kind))단계를 하면 열려요"
+        return WL.en ? "Opens at app start step \(Store.stepNeed(kind))" : "앱 시작 \(Store.stepNeed(kind))단계를 하면 열려요"
     }
     static var cta: String { Store.widgetsOpen ? WL.t("눌러서 미션 보기 ›") : WL.t("눌러서 구독하기 ›") }
 }
