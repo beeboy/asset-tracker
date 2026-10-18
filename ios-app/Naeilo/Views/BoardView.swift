@@ -17,10 +17,14 @@ struct BoardView: View {
                 if m.boardPage == 1 {
                     if m.playUnlocked { WeekForecastCard() } else { lockedPlay }
                 } else {
+                let first = m.blocks.first.map { b in !m.done.contains(b.id) ? b : nil } ?? nil
+                // 미션 1 전에는 '본전까지 가는 길' 대신 다음 미션 카드부터 (목표 루트처럼 '시작하기'로 시작)
+                if let first { nextCard(first) } else {
                 VStack(alignment: .leading, spacing: 4) {
                     ScreenTitle(kicker: "회복 루트", title: "본전까지 가는 길")
                     (Text("지금 \(AppModel.sgn(m.ret)) · 본전까지 ") + Text("+" + String(format: "%.1f", need * 100) + "%").bold().foregroundColor(Theme.ink) + Text(" 올라야 해요"))
                         .appFont(15).foregroundStyle(Theme.sub)
+                }
                 }
                 if !doneBlocks.isEmpty {
                     Button { withAnimation { openDone.toggle() } } label: {
@@ -40,7 +44,7 @@ struct BoardView: View {
                     ForEach(shown.filter { !$0.inter }) { b in tappable(b) }
                 }
                 ForEach(shown.filter { $0.inter }) { b in tappable(b) }
-                if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter { nextCard(next) }
+                if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter, first == nil { nextCard(next) }
                 if !m.interDone && m.playOn { checkIn }
                 // 이번 주 예보는 두 번째 페이지
                 if m.playUnlocked { cells } else { lockedPlay }

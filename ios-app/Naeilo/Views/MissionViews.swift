@@ -78,6 +78,8 @@ struct Mission1View: View {
     @State private var ids: [String] = []
     @State private var q: [String: String] = [:]
     @State private var p: [String: String] = [:]
+    @State private var adding = false
+    @State private var autoAdd = false
 
     private func num(_ t: String?) -> Double { Double((t ?? "").replacingOccurrences(of: ",", with: "")) ?? 0 }
 
@@ -91,8 +93,6 @@ struct Mission1View: View {
             NavigationLink { AddHoldingView() } label: {
                 Label("종목 추가", systemImage: "plus").appFont(14, .semibold).foregroundStyle(Theme.teal)
             }
-            // 선택: 국내 주식은 종목별 대신 합계 하나 (전망은 EWY × 원/달러 움직임으로)
-            KoreaSumCard(title: "국내 주식 합계 (선택)")
             PrimaryButton(title: ok ? (m.route == .recover ? "회복 확률 보기" : "평가액 보기") : "수량과 단가를 넣어 주세요", color: ok ? Theme.teal : Theme.muted) {
                 guard ok else { return }
                 for id in ids {
@@ -106,8 +106,10 @@ struct Mission1View: View {
             }
         }
         // 종목 추가에서 돌아오면 새 종목도 칸에 넣는다
-        .onAppear { load() }
+        .onAppear { load(); if ids.isEmpty && !autoAdd { autoAdd = true; adding = true } }
         .onChange(of: m.holdings) { _, _ in load() }
+        // 넣은 종목이 없으면 들어오자마자 종목 추가 입력을 연다 (한 번만)
+        .navigationDestination(isPresented: $adding) { AddHoldingView() }
     }
 
     private func load() {
