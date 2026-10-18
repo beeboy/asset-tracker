@@ -562,11 +562,28 @@ extension AppModel {
         let base = parallelBase
         guard !base.isEmpty else { return nil }
         let s0 = isGoal ? Day.str(goalFromDate) : (Parallel.bottomDay(base) ?? today)
-        let tid = isGoal ? (gMix == "mine" ? "index" : gMix) : (planKey == "keep" ? "balance" : planKey)
+        let tid = gMix == "mine" ? "index" : gMix
         let tpl = Parallel.templates.first { $0.id == tid } ?? Parallel.templates[1]
-        let w = Parallel.resolve(tpl.w)
+        let w = isGoal ? Parallel.resolve(tpl.w) : planBasket(selectedPlan)
         return PWorld(opened: today, start: Parallel.clampStart(s0), segs: [PBasketSeg(from: today, w: w)],
                       who: Parallel.match(type: calm.type, aggressive: Parallel.aggressive(w)), ver: Parallel.rulesVersion)
+    }
+    /// 회복 루트: 미션 3에서 고른 계획대로 바꾼 내 종목 비중. 몰린 종목은 계획 비중까지, 줄인 몫은 묶음 대표 ETF로. 유지 = 지금 비중
+    func planBasket(_ p: Plan) -> [String: Double] {
+        let rs = rows.filter { $0.id != KoreaEstimate.sumId }
+        let t = rs.reduce(0) { $0 + $1.value }
+        guard t > 0 else { return Parallel.resolve(Parallel.templates[1].w) }
+        var w: [String: Double] = [:]
+        for r in rs { w[r.id, default: 0] += r.value / t }
+        guard p.id != "keep", let f = focusRow, let fw = w[f.id] else { return w }
+        let freed = max(0, fw - p.wt * max(1, total) / t), tot = p.mix.values.reduce(0, +)
+        guard freed > 0, tot > 0 else { return w }
+        w[f.id] = fw - freed
+        let etf: [Basket: String] = [.G: "QQQ", .V: "VTV", .B: "USMV", .C: "SGOV"]
+        var add: [String: Double] = [:]
+        for (b, x) in p.mix where x > 0 { add[etf[b] ?? "SPY", default: 0] += freed * x / tot }
+        for (k, v) in Parallel.resolve(add) { w[k, default: 0] += v }
+        return w
     }
     /// 화면에 쓰는 세계: 저장된 것, 샘플·시안 실행이면 그때그때 만든 것 (남기지 않는다)
     var pworldShown: PWorld? { pworld ?? (isSample || !persists ? newParallel() : nil) }

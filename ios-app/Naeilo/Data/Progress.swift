@@ -96,6 +96,8 @@ extension AppModel {
         gTo = p.gTo     // gY 다음에 둔다 (gY 를 바꾸면 목표일이 지워진다)
         // 예전 저장: 목표 루트 시작일을 목표 시작일로
         gFrom = p.gFrom ?? (p.route != .recover ? Day.str(p.goalStartAt.map { Date(timeIntervalSince1970: $0) } ?? Date()) : nil)
+        // 예전 기본값(3)으로 저장돼 미션 4 전에 위젯이 다 열려 보이던 것: 앱 시작을 마치기 전이면 1단계부터
+        if !(route == .recover ? done.contains(5) : gDone.contains("link")), nxStep >= 3 { nxStep = 1 }
         catchUpDay(from: p.lastOpen)
     }
 

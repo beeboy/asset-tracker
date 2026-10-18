@@ -337,6 +337,8 @@ struct Mission3View: View {
                     pill("나쁜 경우", AppModel.sgn0(sel.outcome(m.cost, T, -1)))
                 }
                 ChipRow(items: m.plans.map { ($0.id, $0.name) }, selection: $m.planKey, fill: true)
+                    // 모의 바구니는 고른 계획대로 바꾼 내 종목 비중을 따른다
+                    .onChange(of: m.planKey) { _, _ in if m.pworld != nil { m.saveBasket(m.planBasket(m.selectedPlan)) } }
                 horizonChips($m.horizon)
             }
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
@@ -604,7 +606,7 @@ struct AppStartView: View {
     private let steps = [
         ("앱에서 종목 하나 이상 추가", "이미 넣은 종목이 있으면 확인만", "자산 추이 위젯"),
         ("앱 알림 하나 켜기", "본전 도달, 비중 이탈 중 하나", "본전 진행 위젯"),
-        ("오픈 API 연결하기", "연결하지 않으면 실제 주식이 아닌 가상 주식으로 보여 주는 샘플만 볼 수 있어요", "블록 위젯"),
+        ("오픈 API 연결하기", "연결하지 않으면 실제 주식이 아닌 가상 주식으로 보여 주는 샘플만 볼 수 있어요", "블록 위젯, 오늘의 움직임 위젯"),
     ]
     /// 내 종목 전체 평가액 3개월 흐름 (원화)
     private var totalSeries: [Double] {
@@ -613,7 +615,7 @@ struct AppStartView: View {
         return (0..<n).map { i in s.reduce(0) { $0 + $1[i] } }
     }
     var body: some View {
-        let n = m.nxStep
+        let n = max(1, m.nxStep)   // 미션 4에 왔으면 1단계(종목 추가)는 이미 한 것
         MissionPage(kicker: "미션 4 / 4", title: "앱에서 세 가지만 하면 위젯을 하나씩 드려요") {
             GuideBubble(pose: .wave, text: "마지막이에요. 위젯은 미리 드리지 않아요. 한 단계마다 하나씩, 세 단계를 다 하면 나머지 위젯도 모두 열려요.")
             HStack(spacing: 8) {
@@ -635,6 +637,10 @@ struct AppStartView: View {
                         }
                     }
                     Text("미션 진행").appFont(11).foregroundStyle(Theme.sub)
+                }
+                tile(3, n) {
+                    Text("오늘의 움직임").appFont(11, .bold)
+                    Text(AppModel.sgn(m.todayMove)).appFont(18, .bold).foregroundStyle(Theme.change(m.todayMove))
                 }
             }
             ForEach(steps.indices, id: \.self) { i in
@@ -689,13 +695,13 @@ struct AppStartView: View {
                 }
                 .padding(.top, done || cur ? 24 : 0)
             }
-            // 내 캐릭터는 여기서부터 만들어 보고 저장할 수 있다 (홈·위젯에는 조건을 채운 뒤에 나온다)
+            // 내 캐릭터는 여기서부터 만들어 보고 저장할 수 있다 (홈·위젯에 나온다)
             NavigationLink { MeEditView() } label: {
                 HStack(spacing: 12) {
                     CharPixel(id: "me", width: 30, height: 42)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(m.me == nil ? "내 캐릭터 만들어 보기 (선택)" : "내 캐릭터 고치기 (선택)").appFont(15, .bold)
-                        Text("쉼터 '본인' 칸에 저장돼요. 홈과 위젯에는 조건을 채운 뒤에 나와요.").appFont(12).foregroundStyle(Theme.sub)
+                        Text(m.me == nil ? "내 캐릭터 만들어 보기" : "내 캐릭터 고치기").appFont(15, .bold)
+                        Text("쉼터 '본인' 칸에 저장돼요. 홈과 위젯에 나와요.").appFont(12).foregroundStyle(Theme.sub)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
@@ -712,7 +718,7 @@ struct AppStartView: View {
                     Text("특별 선물").appFont(13, .bold).foregroundStyle(Theme.yellow)
                     Text("나머지 위젯도 모두 열렸어요").appFont(17, .bold)
                     FlowRow(spacing: 6) {
-                        ForEach(["오늘의 움직임 (중간)", "비중", "배당 달력", "환율", "본전 진행 (큰)"], id: \.self) {
+                        ForEach(["비중", "배당 달력", "환율", "본전 진행 (큰)"], id: \.self) {
                             Text($0).appFont(12, .semibold).padding(.horizontal, 10).padding(.vertical, 4)
                                 .background(Theme.slate, in: Capsule())
                         }

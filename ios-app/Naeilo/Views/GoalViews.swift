@@ -683,8 +683,10 @@ struct GoalIntermissionView: View {
                 GuideBubble(pose: .stand, text: "3개월 동안 매달 1분이면 돼요. 이번 달 할 일을 하고 나서 표시해 주세요. 체크인할 때마다 캐릭터 위젯이 하나씩 열려요.")
 
                 if fixed.count < 3 {
+                    // 다음 달이 열리기 전에는 방금 한 달을 다시 고를 수 있다
+                    let edit = m.monthEditable, k = edit ? fixed.count - 1 : fixed.count, step = AppModel.goalMonthSteps[k]
                     Card {
-                        Text("\(fixed.count + 1)달째 할 일").appFont(13, .bold).foregroundStyle(Theme.teal)
+                        Text("\(k + 1)달째 체크인").appFont(13, .bold).foregroundStyle(Theme.teal)
                         HStack(spacing: 8) {
                             Text(step.whereText).appFont(11, .bold).padding(.horizontal, 8).padding(.vertical, 2).background(Theme.mint, in: Capsule())
                             Text(step.task).appFont(15, .bold)
@@ -692,8 +694,8 @@ struct GoalIntermissionView: View {
                         Text("하고 나서 표시해 주세요").appFont(13).foregroundStyle(Theme.sub)
                         HStack(spacing: 6) {
                             ForEach(GoalWeek.allCases, id: \.self) { p in
-                                let on = m.gWeekCur == p
-                                Button { m.gWeekCur = p } label: {
+                                let on = edit ? fixed[k] == p : m.gWeekCur == p
+                                Button { if edit { m.editLastMonth(p) } else { m.gWeekCur = p } } label: {
                                     VStack(spacing: 2) {
                                         Text(p.label).appFont(15, .bold)
                                         Text("월 " + AppModel.wonK(m.gM * p.factor)).appFont(11).foregroundStyle(Theme.sub)
@@ -705,13 +707,13 @@ struct GoalIntermissionView: View {
                                 }.buttonStyle(.plain)
                             }
                         }
-                        Text("이번 달이 끝나기 전까지는 다시 고를 수 있어요. 지난 달은 바꿀 수 없어요.").appFont(12).foregroundStyle(Theme.muted)
+                        Text(edit ? "다음 달이 열리기 전까지 바꿀 수 있어요." : "다음 달이 열리기 전까지 다시 고를 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
                         // 달은 시작한 날부터 30일마다 열린다 (서버 시각). 열리기 전에는 남은 날을 보여 준다
                         if let wait = m.monthGateText {
                             Label(wait, systemImage: "clock").appFont(13).foregroundStyle(Theme.sub)
                                 .fixedSize(horizontal: false, vertical: true)
                         } else if m.gWeekCur != nil {
-                            Button(fixed.count == 2 ? "3달째 마치기" : "이번 달 마치기") { withAnimation { m.confirmGoalMonth() } }
+                            Button("체크인") { withAnimation { m.confirmGoalMonth() } }
                                 .appFont(14, .semibold).foregroundStyle(Theme.ink).frame(maxWidth: .infinity, minHeight: 44)
                                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                         }

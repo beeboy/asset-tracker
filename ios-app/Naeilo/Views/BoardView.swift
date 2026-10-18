@@ -77,7 +77,6 @@ struct BoardView: View {
                     VStack(spacing: 2) {
                         Text("\(i + 1)주째").appFont(11)
                         Text(pick?.label ?? (cur ? "이번 주" : "–")).appFont(13, .bold)
-                        Text(Shelter.friends[min(i + 1, 4)].name).appFont(11).lineLimit(1)
                     }
                     .frame(maxWidth: .infinity, minHeight: 60)
                     .foregroundStyle(pick != nil ? .white : cur ? Theme.yellow : Theme.muted)
@@ -134,20 +133,20 @@ struct BoardView: View {
     // 인터미션 체크인: 이번 주 비중을 지켰는지 고르면 블록이 채워지고 친구가 하나 온다
     private var checkIn: some View {
         @Bindable var m = m
-        let i = m.weeks.count, step = Shelter.weekSteps[min(i, 3)]
-        let f = Shelter.friends[min(i + 1, 4)]
+        // 다음 주차가 열리기 전에는 방금 한 주차를 다시 고를 수 있다
+        let edit = m.weekEditable, i = edit ? m.weeks.count - 1 : m.weeks.count, step = Shelter.weekSteps[min(i, 3)]
         return VStack(alignment: .leading, spacing: 10) {
-            Text("처음 4주 체크인 · \(i + 1)주차").appFont(13, .bold).foregroundStyle(Theme.mint)
+            Text("\(i + 1)주차 체크인").appFont(13, .bold).foregroundStyle(Theme.teal)
             HStack(spacing: 8) {
                 Text(step.whereText).appFont(11, .bold).foregroundStyle(Theme.inkFixed)
                     .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.mint, in: Capsule())
-                Text(step.task).appFont(14, .semibold)
+                Text(step.task).appFont(14, .semibold).foregroundStyle(Theme.ink)
             }
-            Text("이번 주 \(m.focusName) 비중은 어땠나요?").appFont(14)
+            Text("이번 주 \(m.focusName) 비중은 어땠나요?").appFont(14).foregroundStyle(Theme.ink)
             HStack(spacing: 6) {
                 ForEach(WeekPick.allCases, id: \.self) { p in
-                    let on = m.weekCur == p
-                    Button { m.weekCur = p } label: {
+                    let on = edit ? m.weeks[i] == p : m.weekCur == p
+                    Button { if edit { m.editLastWeek(p) } else { m.weekCur = p } } label: {
                         VStack(spacing: 2) {
                             Text(p.label).appFont(15, .bold)
                             Text(p.sub).appFont(11).foregroundStyle(Theme.sub)
@@ -162,24 +161,22 @@ struct BoardView: View {
                 }
             }
             // 주차는 시작한 날부터 7일마다 열린다 (서버 시각). 열리기 전에는 남은 날을 보여 준다
+            if edit { Text("다음 주차가 열리기 전까지 바꿀 수 있어요.").appFont(12).foregroundStyle(Theme.muted) }
             if let wait = m.weekGateText {
-                Label(wait, systemImage: "clock").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                Label(wait, systemImage: "clock").appFont(13).foregroundStyle(Theme.sub)
                     .fixedSize(horizontal: false, vertical: true)
             } else if m.weekCur != nil {
                 Button { withAnimation { m.confirmWeek() } } label: {
-                    HStack(spacing: 8) {
-                        Pixel(name: "spr_" + f.id, width: 20, height: 28)
-                        Text("체크인하고 \(f.name) 만나기").appFont(14, .semibold)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .foregroundStyle(Theme.ink)
-                    .background(Color(hex: 0xF7F8FA, dark: 0x202933), in: RoundedRectangle(cornerRadius: 10))
+                    Text("체크인").appFont(14, .semibold)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(.white)
+                        .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                 }.buttonStyle(.plain)
             }
         }
-        .foregroundStyle(.white)
-        .padding(16)
-        .background(Theme.night, in: RoundedRectangle(cornerRadius: 18))
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
     private var lockedPlay: some View {

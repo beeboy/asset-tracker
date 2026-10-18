@@ -312,11 +312,11 @@ final class AppModel {
     var gWeeks: [GoalWeek] = []
     var gWeekCur: GoalWeek? = nil
     var goalTaxPick = "split"
-    var horizon = 6              // 미션 1·3의 기간 칩 (3·6·12개월)
+    var horizon = 3              // 미션 1·3의 기간 칩 (3·6·12개월)
     var quizAnswer: String? = nil
     var taxGain = 0.0            // 올해 실현 이익 (만원). 사용자가 넣는다
     var taxSellQty = 0.0
-    var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
+    var nxStep = 1               // 앱 시작 3단계 중 끝낸 단계 수 (미션 4에 왔으면 1단계 종목 추가는 이미 한 것)
     var boardPath: [MissionRoute] = []
     var boardPage = 0   // 미션 탭 페이지: 0 목표(본전) 진행, 1 이번 주 예보
     var analysisPath = NavigationPath()
@@ -376,6 +376,9 @@ final class AppModel {
         weeks.append(c); weekCur = nil
         if weeks.count == 4 { done.insert(6) }
     }
+    /// 지난 주차 체크인은 다음 주차가 열리기 전까지 바꿀 수 있다
+    var weekEditable: Bool { !weeks.isEmpty && weeks.count < 4 && weekGate != .open }
+    func editLastWeek(_ p: WeekPick) { if weekEditable { weeks[weeks.count - 1] = p } }
 
     // MARK: 친구·장
     // 세리 외에 열린 친구 수. 처음 연 날부터 이틀째에 한 명씩 하루 1명 (2026-10-16 결정, Support.dayN).
@@ -777,14 +780,14 @@ final class AppModel {
     func resetDemo(_ d: Demo) {
         holdings = Sample.startHoldings
         switch d {
-        case .fresh: done = []; weeks = []; nxStep = 0
+        case .fresh: done = []; weeks = []; nxStep = 1
         case .week1: done = [1, 2, 3, 5]; weeks = [.kept]; nxStep = 3
         case .all: done = [1, 2, 3, 5, 6]; weeks = [.kept, .kept, .changed, .kept]; nxStep = 3
         }
         route = .recover; gDone = []; gWeeks = []; gWeekCur = nil
         weekCur = nil; day = 5; dayLog = [:]; itemsBack = 0; itemsBackDay = nil; itemsOff = []; homeFriend = "seri"; readPos = []; readLast = nil
         interStartAt = nil; goalStartAt = nil; gInterStartAt = nil; recM = 0
-        weekGuess = nil; weekFridaySkip = false; planKey = "balance"; horizon = 6; quizAnswer = nil
+        weekGuess = nil; weekFridaySkip = false; planKey = "balance"; horizon = 3; quizAnswer = nil
         taxGain = 0; taxSellQty = 0; boardPath = []
     }
 }

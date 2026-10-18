@@ -399,6 +399,9 @@ extension AppModel {
         guard let c = gWeekCur, gWeeks.count < 3, monthGate == .open else { return }
         gWeeks.append(c); gWeekCur = nil
     }
+    /// 지난 달 체크인은 다음 달이 열리기 전까지 바꿀 수 있다
+    var monthEditable: Bool { !gWeeks.isEmpty && gWeeks.count < 3 && monthGate != .open }
+    func editLastMonth(_ p: GoalWeek) { if monthEditable { gWeeks[gWeeks.count - 1] = p } }
     /// 넣은 종목이 있으면 그 평가액 (적립도 종목 수량으로 들어가니 따로 더하지 않는다)
     var goalSaved: Double { noviceOwn ? total / 1e4 : gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
 
