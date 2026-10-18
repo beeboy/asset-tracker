@@ -47,6 +47,9 @@
 - A 화면에 번지는 것: `ParallelView` "○○ 규칙이 뭐예요?" 카드와 인물 고르기 줄이 같은 규칙 데이터를 써서 새 3줄·한 줄 소개로 보임 (화면 파일은 안 건드림).
 - 사용자 확인 필요: 쉼터 배경 짧은 말(6~12권은 시안에 없어 B가 지음), 인물 한 줄 결론 문장.
 
+## 스레드 C 결과 (2026-10-18)
+- C 회복 루트: 완료 (미션 1~4·절세·매달 더 넣으면?). 원문→새 문구 표와 다른 스레드 몫 목록은 `recovery.md`. 기존 빌드 오류: HoldingsView 314줄 `Market.isLongbridge` 가 커밋된 Market.swift 에 없음 (메인 폴더 미커밋 변경에만 있음).
+
 ## 주의
 - 메인 폴더(`~/Documents/asset-tracker`)에 다른 세션의 커밋 안 된 변경이 있다 (SettingsView.swift, Market.swift 등). 절대 버리지 않는다. 각 스레드는 자기 worktree 에서 작업한다.
 - 기록은 로컬 커밋만. GitHub(fetch·push·PR) 연결 안 함. 고치면 바로 "지금 빌드해 보세요".

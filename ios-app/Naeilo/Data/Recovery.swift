@@ -82,7 +82,7 @@ struct Plan: Identifiable {
         return (sd, MC.quantileSorted(r, 0.5), mean)
     }
     var desc: String {
-        id == "keep" ? "지금 비중 그대로 (\(focus) \(AppModel.pct(wt)))" : "\(focus) \(AppModel.pct(wt))로 줄이고, 줄인 돈은 \(mixText)"
+        id == "keep" ? "지금 그대로 (\(focus) \(AppModel.pct(wt)))" : "\(focus) \(AppModel.pct(wt))로 · 줄인 돈은 \(mixText)"
     }
 }
 
