@@ -76,8 +76,8 @@ struct ShareCardSheet: View {
                     card.frame(maxWidth: .infinity)
 
                     ChipRow(items: [("hide", "금액 숨기기"), ("show", "금액 보이기")], selection: $showAmount, fill: true)
-                    if let img = rendered {
-                        ShareLink(item: img, preview: SharePreview("naeilo 미션 위젯", image: img)) {
+                    if let url = rendered {
+                        ShareLink(item: url, preview: SharePreview(url.deletingPathExtension().lastPathComponent, image: Image(uiImage: UIImage(contentsOfFile: url.path) ?? UIImage()))) {
                             Label("이미지로 저장 · 공유", systemImage: "square.and.arrow.up").appFont(16, .bold)
                                 .frame(maxWidth: .infinity, minHeight: 50).foregroundStyle(.white)
                                 .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
@@ -92,39 +92,52 @@ struct ShareCardSheet: View {
         }
     }
 
-    // 공유 이미지는 화면 모드와 상관없이 같은 어두운 카드
+    /// 카드 색: 라이트는 흰 카드, 다크는 어두운 카드, 투명은 배경화면 같은 하늘색 그라데이션(유리 위젯이 비쳐 보이게), 틴트는 깊은 청록 그라데이션
+    private struct Look { let bg: [UInt32]; let stroke: Color; let fg: Color; let sub: Color; let bubble: Color; let name: Color }
+    private var look: Look {
+        switch curMode {
+        case 0: return Look(bg: [0xFFFFFF], stroke: Color(hex: 0xE3E7EC), fg: Color(hex: 0x15202B), sub: Color(hex: 0x5D6673), bubble: Color(hex: 0xF0F2F5), name: Color(hex: 0x0B6B66))
+        case 2: return Look(bg: [0x3A6EA5, 0x7A6BBF, 0xD98FA8], stroke: .clear, fg: .white, sub: Color.white.opacity(0.8), bubble: Color.white.opacity(0.2), name: .white)
+        case 3: return Look(bg: [0x0C2622, 0x1F4A42], stroke: .clear, fg: Color(hex: 0xF2F4F7), sub: Color(hex: 0x9CC9BF), bubble: Color(hex: 0x1E3A35), name: Theme.mint)
+        default: return Look(bg: [0x10151F], stroke: Color(hex: 0x222A37), fg: Color(hex: 0xF2F4F7), sub: Color(hex: 0xAAB3C2), bubble: Color(hex: 0x1D2430), name: Theme.mint)
+        }
+    }
+
+    // 공유 이미지 카드: 고른 위젯 모양에 맞춰 바탕색이 바뀐다
     private var card: some View {
-        let w = Self.list[picked], f = m.homeFriendShown
+        let w = Self.list[picked], f = m.homeFriendShown, l = look
         return VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("귀여운 주식 위젯").font(.system(size: 24, weight: .bold))
-                Text(w.intro).font(.system(size: 13)).foregroundStyle(Color(hex: 0xAAB3C2))
+                Text(w.intro).font(.system(size: 13)).foregroundStyle(l.sub)
             }
             HStack(alignment: .center, spacing: 14) {
                 widget(f)
                 // 말풍선: 왼쪽 꼬리가 위젯 속 인물을 가리킨다
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(m.friendName(f)).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.mint)
+                    Text(m.friendName(f)).font(.system(size: 12, weight: .semibold)).foregroundStyle(l.name)
                     Text(w.say).font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)   // 풍선이 오른쪽 여백 20 까지 찬다
                 .padding(.horizontal, 14).padding(.vertical, 12)
-                .background(Color(hex: 0x1D2430), in: RoundedRectangle(cornerRadius: 16))
+                .background(l.bubble, in: RoundedRectangle(cornerRadius: 16))
                 .overlay(alignment: .bottomLeading) {
-                    BubbleTail().fill(Color(hex: 0x1D2430)).frame(width: 10, height: 16).offset(x: -9, y: -18)
+                    BubbleTail().fill(l.bubble).frame(width: 10, height: 16).offset(x: -9, y: -18)
                 }
             }
+            Spacer(minLength: 0)
             HStack {
-                Text("매일 1분").foregroundStyle(Color(hex: 0x8B95A5))
+                Text("매일 1분").foregroundStyle(l.sub)
                 Spacer()
                 Text("App Store에서 naeilo").fontWeight(.semibold)
             }
             .font(.system(size: 12))
         }
-        .foregroundStyle(Color(hex: 0xF2F4F7))
+        .foregroundStyle(l.fg)
         .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 20)
-        .background(Color(hex: 0x10151F), in: RoundedRectangle(cornerRadius: 28))
-        .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color(hex: 0x222A37)))
-        .frame(width: 358)
+        .frame(width: 340, height: 340)   // 정사각형 카드, 좌우 여백 같은 20
+        .background(LinearGradient(colors: l.bg.map { Color(hex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 28))
+        .overlay(RoundedRectangle(cornerRadius: 28).stroke(l.stroke))
         .environment(\.colorScheme, .dark)
     }
 
@@ -161,10 +174,15 @@ struct ShareCardSheet: View {
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(curMode == 2 ? Color.white.opacity(0.25) : .clear))
     }
 
-    @MainActor private var rendered: Image? {
+    /// 저장 파일 이름: 날짜-위젯명-naeilo.png ('PNG 이미지' 대신)
+    @MainActor private var rendered: URL? {
         let r = ImageRenderer(content: card.environment(m))
         r.scale = 3
-        return r.uiImage.map { Image(uiImage: $0) }
+        guard let data = r.uiImage?.pngData() else { return nil }
+        let d = DateFormatter(); d.locale = Locale(identifier: "ko_KR"); d.dateFormat = "yyyy-MM-dd"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(d.string(from: Date()))-\(Self.list[picked].name)-naeilo.png")
+        try? data.write(to: url)
+        return url
     }
 }
 
