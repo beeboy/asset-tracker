@@ -138,7 +138,11 @@ enum Engine {
             let ccy = f?.ccy[h.t] ?? s?.hold.first(where: { $0.t == h.t })?.ccy ?? "USD"
             let q = f?.q[h.t], sq = site?.q[h.t] ?? kr?.q[h.t]
             let aq = alpaca?.q[h.t]
-            let last = toss?.q[h.t]?.last ?? aq?.last ?? sq?.last ?? h.manual ?? (q?.first ?? nil) ?? f?.c[h.t]?.c.compactMap { $0 }.last
+            // 미국 장이 다 끝났으면 애프터마켓 가격 대신 정규장 종가 (앱 Market.regClose 와 같다)
+            var reg: Double? = nil
+            if ccy == "USD", USSession.closed(), let r = sq?.reg, r > 0 { reg = r }
+            let quoted: Double? = reg ?? toss?.q[h.t]?.last ?? aq?.last
+            let last = quoted ?? sq?.last ?? h.manual ?? (q?.first ?? nil) ?? f?.c[h.t]?.c.compactMap { $0 }.last
             let pc = sq?.prev ?? ((q?.count ?? 0) > 1 ? q![1] : nil) ?? aq.flatMap { $0.prev > 0 ? $0.prev : nil }
             guard let p = last else { continue }
             let v = h.sh * p * fx(ccy), pv = h.sh * (pc ?? p) * fx(ccy)
