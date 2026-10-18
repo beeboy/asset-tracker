@@ -122,7 +122,7 @@ struct GuidePickRow: View {
                 MotionSprite(friend: m.guideFriend, pose: .wave, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.friendName(m.guideFriend)).appFont(15, .bold)
-                    Text("홈과 미션에서 말을 거는 인물이에요").appFont(12).foregroundStyle(Theme.sub)
+                    Text("홈·미션에서 말 걸어요").appFont(12).foregroundStyle(Theme.sub)
                 }
                 Spacer()
                 Menu {
@@ -136,8 +136,8 @@ struct GuidePickRow: View {
             Divider().overlay(Theme.line)
             Toggle(isOn: Binding(get: { m.guidePick == nil }, set: { m.guidePick = $0 ? nil : m.guideFriend })) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("새 친구를 만나면 자동으로 바꾸기").appFont(14, .semibold)
-                    Text("처음엔 세리, 그 뒤로는 가장 최근에 만난 인물이에요").appFont(12).foregroundStyle(Theme.sub)
+                    Text("새 친구 만나면 자동 교체").appFont(14, .semibold)
+                    Text("처음 세리 → 최근 만난 인물").appFont(12).foregroundStyle(Theme.sub)
                 }
             }.tint(Theme.teal).frame(minHeight: 44)
         }
