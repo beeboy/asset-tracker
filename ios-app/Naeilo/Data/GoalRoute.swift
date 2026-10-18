@@ -398,6 +398,7 @@ extension AppModel {
     func confirmGoalMonth() {
         guard let c = gWeekCur, gWeeks.count < 3, monthGate == .open else { return }
         gWeeks.append(c); gWeekCur = nil
+        if gWeeks.count == 3 { gDone.insert("inter") }
     }
     /// 지난 달 체크인은 다음 달이 열리기 전까지 바꿀 수 있다
     var monthEditable: Bool { !gWeeks.isEmpty && gWeeks.count < 3 && monthGate != .open }
@@ -411,11 +412,11 @@ extension AppModel {
         switch r {
         case .recover: break
         case .plus:
-            // 기본 목표: 3년 안에 닿을 확률 50% 근처 (매달 넣는 돈은 회복 루트에서 고른 값, 없으면 30만원)
+            // 기본 목표: 3년 안에 닿을 확률 50% 근처 (매달 넣는 돈은 회복 루트에서 고른 값, 없으면 0)
             gMix = "mine"
             // 사이트와 동기화 중이고 사이트에 정한 목표가 아직 남아 있으면 그 목표를 그대로 쓴다
             if Sync.shared.isOn, gTo != nil, goalToDate > Date() { break }
-            gM = recM > 0 ? Double(recM) : 30; gY = 3; gFrom = Day.today; setAutoGoal(years: 3)
+            gM = recM > 0 ? Double(recM) : 0; gY = 3; gFrom = Day.today; setAutoGoal(years: 3)
         case .novice: gA = 0; gK = 1000; gY = 3; gM = 30; gMix = "index"; gFrom = Day.today
         }
         monthly = r == .recover ? 0 : gM     // 3년 전망의 '만약에 매달' 기본값 = 적립액

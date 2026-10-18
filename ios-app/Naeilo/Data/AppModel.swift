@@ -306,7 +306,7 @@ final class AppModel {
     var gTo: String? = nil       // 목표일 (yyyy-MM-dd, 사이트 goal.date). nil = 시작일 + gY년
     var gFrom: String? = nil     // 목표 시작일 (사이트 goal.start_date). 내 길이 여기서 출발한다
     var gA = 2000.0
-    var gM = 100.0
+    var gM = 0.0
     var gMix = "index"
     var gDone: Set<String> = []
     var gWeeks: [GoalWeek] = []
