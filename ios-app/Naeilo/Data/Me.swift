@@ -102,6 +102,8 @@ struct ShelterBG: Identifiable, Hashable {
     let name: String
     let intro: String
     let volume: String
+    /// 쉼터 배경 고르기 칸의 짧은 말 (글줄이기 2026-10-18, 원문 intro 유지 여부는 사용자 확인 전. 벽돌 깨기는 intro 그대로)
+    var short: String { Shelter.bgShort[id] ?? intro }
 }
 
 extension Shelter {
@@ -119,6 +121,11 @@ extension Shelter {
         ShelterBG(id: "bg_10", name: "화산 아래 논", intro: "응아디레조의 계단식 논과 대추나무, 연기 오르는 화산.", volume: "9권"),
         ShelterBG(id: "bg_11", name: "응아디레조 집 작업실", intro: "물레와 안 구운 그릇들, 진흙으로 메운 벽 금, 마당의 우물.", volume: "10권"),
         ShelterBG(id: "bg_12", name: "도시의 시오 방", intro: "도시 불빛이 보이는 방. 휴대전화 속 세리의 프로필.", volume: "외전")
+    ]
+    static let bgShort: [String: String] = [
+        "bg_01": "거울 셋, 가위 소리", "bg_02": "끝없는 노란 복도", "bg_03": "붉은 평원이 보이는 창", "bg_04": "물 위 첨탑과 구름 다리",
+        "bg_05": "두 입구 사이의 틈", "bg_06": "운하 건너 백 명의 마을", "bg_07": "흙길과 지붕이 보이는 창", "bg_08": "빈 현수막과 줄표 하나",
+        "bg_09": "붉은 노을과 강", "bg_10": "계단식 논과 화산", "bg_11": "물레와 안 구운 그릇", "bg_12": "도시 불빛이 보이는 방",
     ]
     static func background(_ id: String?) -> ShelterBG? { backgrounds.first { $0.id == id } }
 }

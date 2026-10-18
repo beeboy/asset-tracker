@@ -539,7 +539,7 @@ struct RoomImage: View {
     }
 }
 
-/// 쉼터 아래 '쉼터 배경 변경' 상자 (접어 둠). 처음 연 날부터 하루 2곳씩 열린다
+/// 쉼터 아래 '쉼터 배경' 상자 (접어 둠). 처음 연 날부터 하루 2곳씩 열린다
 struct ShelterBGBox: View {
     @Environment(AppModel.self) private var m
     @Binding var support: Bool
@@ -551,7 +551,7 @@ struct ShelterBGBox: View {
                 HStack(spacing: 8) {
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.teal)
                         .rotationEffect(.degrees(open ? 90 : 0))
-                    Text("쉼터 배경 변경").appFont(14, .bold)
+                    Text("쉼터 배경").appFont(14, .bold)
                     Spacer(minLength: 0)
                     Text(Shelter.background(m.roomBG)?.name ?? "기본 쉼터").appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
                 }
@@ -560,13 +560,13 @@ struct ShelterBGBox: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("쉼터 배경 변경, \(open ? "펼침" : "접힘")")
+            .accessibilityLabel("쉼터 배경, \(open ? "펼침" : "접힘")")
             if open {
                 Divider().overlay(Theme.line)
-                row(nil, "기본 쉼터", "돌아온 물건이 놓이는 처음 방")
+                row(nil, "기본 쉼터", "처음 방")
                 ForEach(Shelter.backgrounds) { b in
                     Divider().overlay(Theme.line)
-                    row(b.id, b.name, b.intro, b.volume)
+                    row(b.id, b.name, b.short, b.volume)
                 }
             }
         }
@@ -587,7 +587,7 @@ struct ShelterBGBox: View {
                         Text(name).appFont(14, .bold)
                         if let volume { Text(volume).appFont(11).foregroundStyle(Theme.muted) }
                     }
-                    Text(locked ? "\(id.map(m.bgDay) ?? 1)일째에 열려요" : intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
+                    Text(locked ? "\(id.map(m.bgDay) ?? 1)일째 열림" : intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
                 }
                 Spacer(minLength: 0)
                 if on { Image(systemName: "checkmark").font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.teal) }
