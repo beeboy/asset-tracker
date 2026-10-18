@@ -31,14 +31,14 @@ struct ShelterView: View {
     }
 
     @ViewBuilder private var shelter: some View {
-        Text("앱을 꾸준히 쓰면 물건과 이야기가 하나씩 돌아와요").appFont(13).foregroundStyle(Theme.sub)
+        Text("꾸준히 쓰면 물건·이야기가 돌아와요").appFont(13).foregroundStyle(Theme.sub)
         hero
         let met = (0..<5).filter { m.friendOn($0) }.count
-        header("만난 친구", met == 5 ? "5명 모두 만났어요" : "5명 중 \(met)명")
+        header("만난 친구", "\(met)/5")
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 5), spacing: 6) {
             ForEach(Array(Shelter.friends.enumerated()), id: \.element.id) { i, f in friendTile(i, f) }
         }
-        Text("누르면 홈에서 함께할 인물을 바꿀 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+        Text("눌러서 홈 인물 바꾸기").appFont(12).foregroundStyle(Theme.muted)
         // 내 캐릭터는 친구와 따로 한 줄
         meTile
         header("이어서 읽기", "")
@@ -50,7 +50,7 @@ struct ShelterView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
         }.buttonStyle(.plain)
         let placed = (0..<m.itemsOn).filter { !m.itemsOff.contains(Shelter.items[$0].id) }.count
-        header("돌아온 물건", "10개 중 \(placed)개 방에 놓임")
+        header("돌아온 물건", "\(placed)/\(Shelter.items.count) 배치")
         room
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
             ForEach(Array(Shelter.items.enumerated()), id: \.element.id) { i, it in itemTile(i, it) }
@@ -71,7 +71,7 @@ struct ShelterView: View {
                 HStack(spacing: 12) {
                     ChapterCover(index: i, on: on).frame(width: 72, height: 46)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("외전 『이종 공명』 · \(ch.title)").appFont(12).foregroundStyle(Theme.sub)
+                        Text("『이종 공명』 · \(ch.title)").appFont(12).foregroundStyle(Theme.sub)
                         Text(on ? ch.name : "???").appFont(15, .bold)
                         ProgressView(value: Double(sideDone), total: 6).tint(Theme.teal)
                     }
@@ -83,9 +83,9 @@ struct ShelterView: View {
             .buttonStyle(.plain).disabled(!on)
             .accessibilityLabel("이어 읽기, \(ch.title) \(on ? ch.name : "")")
             Divider().overlay(Theme.line)
-            progressLine("외전 『이종 공명』", "6장 중 \(sideDone)장")
+            progressLine("『이종 공명』", "\(sideDone)/6장")
             if vol1Shown, v1 > 0 {
-                progressLine("본편 1권", "\(v1)장 중 \((0..<v1).filter { story.isDone(.vol1, $0) }.count)장")
+                progressLine("본편 1권", "\((0..<v1).filter { story.isDone(.vol1, $0) }.count)/\(v1)장")
             }
         }
         .padding(14)
@@ -96,20 +96,20 @@ struct ShelterView: View {
         HStack { Text(t).appFont(13); Spacer(); Text(r).appFont(13).foregroundStyle(Theme.sub) }
     }
 
-    /// 무엇이 어떻게 열려요? (예전 맨 아래 긴 문단을 표로)
+    /// 열리는 방법 (예전 맨 아래 긴 문단을 표로)
     private var openTable: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("무엇이 어떻게 열려요?").appFont(15, .bold)
-            ForEach([("물건 · 쉼터 배경", "처음 연 날부터 하루 2개씩"), ("친구", "이틀째부터 하루 1명"), ("외전 5장까지", "앞 장을 읽으면 다음 장"), ("외전 6장부터", "구독으로")], id: \.0) { r in
+            Text("열리는 방법").appFont(15, .bold)
+            ForEach([("물건·배경", "하루 2개"), ("친구", "이틀째부터 하루 1명"), ("외전 ~5장", "앞 장 읽으면"), ("외전 6장~", "구독")], id: \.0) { r in
                 HStack(alignment: .firstTextBaseline) {
                     Text(r.0).appFont(13, .bold).frame(width: 130, alignment: .leading)
                     Text(r.1).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Text("수익률이나 시장 숫자와는 상관없어요. 잃어도 이야기는 계속 열려요.")
+            Text("수익률과 무관 · 잃어도 계속 열려요")
                 .appFont(13, .semibold).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
-            Text("방에 놓인 물건을 누르면 배치에서 빠지고, 위 칸에서 다시 놓을 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+            Text("방 물건 누르면 빼기 · 위 칸에서 다시 놓기").appFont(12).foregroundStyle(Theme.muted)
         }
         .padding(14)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
@@ -139,7 +139,7 @@ struct ShelterView: View {
                     Text(on ? f.name : "???").appFont(20, .bold)
                     Text(real ? f.appearsText : on ? "미리 보기 · 인터미션 \(i)주차에 만나요" : "인터미션 \(i)주차에 만나요").appFont(12).foregroundStyle(Color(hex: 0x8FD0FF))
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(on ? f.bio : "아직 만나지 않았어요. 인터미션 \(i)주차 체크인: \(Shelter.weekSteps[max(0, i - 1)].task).")
+                    Text(on ? f.bio : "\(i)주차 체크인: \(Shelter.weekSteps[max(0, i - 1)].task)")
                         .appFont(13).lineSpacing(3).foregroundStyle(Color(hex: 0xD5D9E6))
                         .fixedSize(horizontal: false, vertical: true)
                     if on { Text(f.line).appFont(13, .bold).foregroundStyle(Theme.gold) }
@@ -149,7 +149,7 @@ struct ShelterView: View {
             if on {
                 HStack(spacing: 8) {
                     NavigationLink(value: "char:" + f.id) {
-                        Text("자세히 보기 ›").appFont(13, .bold).foregroundStyle(Color(hex: 0xEEF0F7))
+                        Text("자세히 ›").appFont(13, .bold).foregroundStyle(Color(hex: 0xEEF0F7))
                             .padding(.horizontal, 14).frame(minHeight: 40)
                             .overlay(Capsule().stroke(Color(hex: 0x8FD0FF), lineWidth: 1.5))
                     }
@@ -159,7 +159,7 @@ struct ShelterView: View {
                             .appFont(13, .bold).foregroundStyle(Theme.inkFixed)
                             .padding(.horizontal, 14).frame(minHeight: 40).background(Theme.mint, in: Capsule())
                     } else if real {
-                        Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
+                        Text("홈에 있음").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
                             .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.gold, in: Capsule())
                     }
                     Spacer(minLength: 0)
@@ -258,7 +258,7 @@ struct ShelterView: View {
                         .appFont(13, .bold).foregroundStyle(Theme.inkFixed)
                         .padding(.horizontal, 14).frame(minHeight: 40).background(Theme.mint, in: Capsule())
                 } else if open {
-                    Text("홈에 있어요").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
+                    Text("홈에 있음").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
                         .padding(.horizontal, 10).padding(.vertical, 4).background(Theme.gold, in: Capsule())
                 }
                 Spacer(minLength: 0)
@@ -852,9 +852,9 @@ struct CharacterDetailView: View {
             Text("소설에 나오는 곳").appFont(15, .bold)
             appear("본편", f.main)
             appear("외전 『이종 공명』", f.side)
-            appear("프리퀄", f.prequel.map { $0 + " · 아직 준비 중이에요" })
+            appear("프리퀄", f.prequel.map { $0 + " · 준비 중" })
             if f.side == nil {
-                Text("앱 서재의 외전에는 나오지 않아요. 쉼터에는 인터미션 체크인으로 찾아와요.").appFont(12).foregroundStyle(Theme.muted)
+                Text("앱 외전엔 안 나옴 · 쉼터엔 인터미션 체크인으로").appFont(12).foregroundStyle(Theme.muted)
             }
         }
         section("특징", f.traits)
@@ -862,7 +862,7 @@ struct CharacterDetailView: View {
         Card {
             let open = f.scenes.filter { Self.sceneOpen($0.0, story) }, shut = f.scenes.filter { !Self.sceneOpen($0.0, story) }
             Text("대표 장면").appFont(15, .bold)
-            Text("읽은 장면만 보여요").appFont(12).foregroundStyle(Theme.muted)
+            Text("읽은 장면만").appFont(12).foregroundStyle(Theme.muted)
             ForEach(open, id: \.1) { k, v in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(k).appFont(12, .bold).foregroundStyle(Theme.teal)
@@ -879,7 +879,7 @@ struct CharacterDetailView: View {
                 .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
             }
         }
-        Text("본편 9·10권의 결말과 일부 인물 이야기는 넣지 않았어요.").appFont(12).foregroundStyle(Theme.muted)
+        Text("본편 9·10권 결말·일부 인물 이야기 제외").appFont(12).foregroundStyle(Theme.muted)
     }
 
     /// 장면 잠금: 앱에서 읽을 수 있는 책의 장을 끝까지 읽어야 열린다. 외전 장면 = 외전 마지막 장, 본편 1권 장면 = 본편 1권 1장.
@@ -891,7 +891,7 @@ struct CharacterDetailView: View {
         default: return false
         }
     }
-    /// "본편 3·4권, 프리퀄 장면 3개는 해당 장을 읽으면 열려요."
+    /// "본편 3·4권, 프리퀄 장면 3개 · 그 장 읽으면 열림"
     static func lockedText(_ labels: [String]) -> String {
         var vols: [String] = [], other: [String] = []
         for l in labels {
@@ -899,7 +899,7 @@ struct CharacterDetailView: View {
             else if !other.contains(l) { other.append(l) }
         }
         let parts = (vols.isEmpty ? [] : ["본편 " + vols.joined(separator: "·") + "권"]) + other
-        return parts.joined(separator: ", ") + " 장면 \(labels.count)개는 해당 장을 읽으면 열려요."
+        return parts.joined(separator: ", ") + " 장면 \(labels.count)개 · 그 장 읽으면 열림"
     }
 
     private func appear(_ k: String, _ v: String?) -> some View {

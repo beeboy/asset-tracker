@@ -40,6 +40,13 @@
 - 목표일 전망 일정 목록이 날짜순 아님 — 차후 확인
 - 설정 "가격 기준: 한국 종목은 넣은 가격" vs 종목 화면은 국내 현재가 — 확인 필요
 
+## 스레드 B 결과 (2026-10-18)
+- 시오 규칙(=인물 자세히 보기 "규칙과 결과")·쉼터·쉼터 배경·인물 소설 갈래 글을 줄임. 세리·선배·이르·수아도 같은 규칙.
+- 고친 파일: `Data/SampleData.swift`(규칙 3줄·한 줄 소개), `Data/Invest.swift`(결론·전제·반대로 간 사람·기준 줄), `Data/InvestEvents.swift` + `tools/invest_events.py`(사례 설명 한 줄, 같은 글), `Views/InvestViews.swift`, `Views/ShelterView.swift`, `Views/MeViews.swift`(쉼터 배경 상자), `Data/Me.swift`(배경 짧은 말 `bgShort`, 원문 `intro`는 벽돌 깨기용으로 남김).
+- 같이 고친 버그: 규칙 3줄 `**` 노출(닫는 `**` 뒤 글자 붙음), "더 벌었을"→ 부호 맞춤("덜 잃었을" 등).
+- A 화면에 번지는 것: `ParallelView` "○○ 규칙이 뭐예요?" 카드와 인물 고르기 줄이 같은 규칙 데이터를 써서 새 3줄·한 줄 소개로 보임 (화면 파일은 안 건드림).
+- 사용자 확인 필요: 쉼터 배경 짧은 말(6~12권은 시안에 없어 B가 지음), 인물 한 줄 결론 문장.
+
 ## 주의
 - 메인 폴더(`~/Documents/asset-tracker`)에 다른 세션의 커밋 안 된 변경이 있다 (SettingsView.swift, Market.swift 등). 절대 버리지 않는다. 각 스레드는 자기 worktree 에서 작업한다.
 - 기록은 로컬 커밋만. GitHub(fetch·push·PR) 연결 안 함. 고치면 바로 "지금 빌드해 보세요".
