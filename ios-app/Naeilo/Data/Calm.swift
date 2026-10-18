@@ -194,12 +194,12 @@ struct Calm: Codable, Equatable {
     /// 기록마다 왜 그 점수인지 한 줄 (점수표 points와 같은 뜻)
     static func reason(_ a: CalmEvent.Act) -> String {
         switch a {
-        case .rule: return "정해 둔 규칙대로 해서 +2점"
-        case .wait: return "크게 움직인 날 기다려서 +1점"
-        case .chase: return "오른 뒤 더 사서 −1점"
-        case .switchOut: return "내린 뒤 팔아서 −1점"
-        case .avgDown, .trim: return "물타기·덜어내기는 규칙 밖이라 점수가 없어요"
-        case .fresh: return "새로 산 종목이라 점수 없이 기록만 해요"
+        case .rule: return "규칙대로"
+        case .wait: return "급변일 기다림"
+        case .chase: return ""
+        case .switchOut: return "내린 뒤 매도"
+        case .avgDown, .trim: return "규칙 밖"
+        case .fresh: return "새 종목 · 기록만"
         }
     }
 

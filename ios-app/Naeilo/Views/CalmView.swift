@@ -61,7 +61,7 @@ struct CalmView: View {
                                 Text(m.calm.stageLine).appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                             } else {
                                 Text("아직 모으는 중").appFont(17, .bold)
-                                Text("사고판 기록이 \(Calm.minEvents)건 모이면, 나와 닮은 인물을 알려드려요")
+                                Text("\(Calm.minEvents)건 모이면 닮은 인물 공개")
                                     .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                             }
                         }
@@ -88,23 +88,23 @@ struct CalmView: View {
 
                 // 뭐예요
                 Card {
-                    Text("평정 지수가 뭐예요?").appFont(15, .bold)
-                    (Text("사고팔 때 기분보다 ") + Text("정해 둔 규칙").bold() + Text("을 따랐는지 보는 점수예요. 규칙대로 하면 오르고, 물타기는 점수가 없어요."))
+                    Text("평정 지수란?").appFont(15, .bold)
+                    (Text("규칙").bold() + Text("대로 하면 점수 ↑ · 물타기 0점"))
                         .appFont(13).lineSpacing(2).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                    Text("이번 주 \(s.weekPts)점 · 한 주에 최대 \(Calm.weekCap)점까지 받을 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+                    Text("이번 주 \(s.weekPts < 0 ? "−" : "")\(abs(s.weekPts))점 · 주 최대 \(Calm.weekCap)점").appFont(12).foregroundStyle(Theme.muted)
                 }
 
                 // 네 가지 (10건 전에는 0% 대신 —)
                 Card {
                     HStack(alignment: .firstTextBaseline) {
-                        Text("내 매매 습관 네 가지").appFont(15, .bold)
+                        Text("내 매매 습관").appFont(15, .bold)
                         Spacer()
-                        if !ready { Text("\(Calm.minEvents)건부터 보여요").appFont(12).foregroundStyle(Theme.muted) }
+                        if !ready { Text("\(Calm.minEvents)건부터").appFont(12).foregroundStyle(Theme.muted) }
                     }
-                    row("오른 뒤 더 산 비율", AppModel.dash(AppModel.pct(s.chase), ready: ready))
-                    row("내린 뒤 판 비율", AppModel.dash(AppModel.pct(s.switchR), ready: ready))
-                    row("크게 움직인 날 기다린 비율", AppModel.dash(AppModel.pct(s.waitR), ready: ready))
-                    row("규칙대로 한 매매", AppModel.dash(AppModel.pct(s.ruleR), ready: ready))
+                    row("오른 뒤 추가 매수", AppModel.dash(AppModel.pct(s.chase), ready: ready))
+                    row("내린 뒤 매도", AppModel.dash(AppModel.pct(s.switchR), ready: ready))
+                    row("급변일 기다림", AppModel.dash(AppModel.pct(s.waitR), ready: ready))
+                    row("규칙대로 매매", AppModel.dash(AppModel.pct(s.ruleR), ready: ready))
                     if ready, let t = s.trend { row("최근 30일 변화", (t >= 0 ? "+" : "") + "\(t)") }
                 }
 
@@ -113,13 +113,13 @@ struct CalmView: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text("최근 기록").appFont(15, .bold)
                         Spacer()
-                        Text("모두 \(m.calm.events.count)건").appFont(12).foregroundStyle(Theme.muted)
+                        Text("\(m.calm.events.count)건").appFont(12).foregroundStyle(Theme.muted)
                     }
                     ForEach(Array(m.calm.events.suffix(shown).reversed().enumerated()), id: \.offset) { _, e in
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("\(e.sym) · \(e.label)").appFont(13)
-                                Text("\(Day.md(e.day)) · \(Calm.reason(e.act))").appFont(12).foregroundStyle(Theme.muted)
+                                Text(Calm.reason(e.act).isEmpty ? Day.md(e.day) : "\(Day.md(e.day)) · \(Calm.reason(e.act))").appFont(12).foregroundStyle(Theme.muted)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer()
@@ -132,12 +132,12 @@ struct CalmView: View {
                             .appFont(13, .semibold).foregroundStyle(Theme.teal)
                     }
                     // 손으로 남기는 기록은 없다: 수량 고치기(더 샀어요·팔았어요)와 크게 움직인 날 앱 열기로 생긴다
-                    Text("종목 수량을 고치면 기록이 생겨요.").appFont(12).foregroundStyle(Theme.muted)
+                    Text("수량 바꾸면 기록").appFont(12).foregroundStyle(Theme.muted)
                 }
 
                 // 다섯 인물 (행동으로 설명)
                 Card {
-                    Text("닮을 수 있는 다섯 인물").appFont(15, .bold)
+                    Text("닮을 인물").appFont(15, .bold)
                     ForEach(Calm.kinds, id: \.id) { kd in
                         let on = kd.id == m.calm.type
                         NavigationLink {
@@ -158,19 +158,18 @@ struct CalmView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    Text("정확한 기준은 인물을 누르면 볼 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
                 }
 
                 // 다음 걸음 (잠겼으면 점선 상자)
                 if let l = m.calm.ladder, let steps = Calm.steps[l.type] { ladder(l, steps) }
                 else {
-                    Text("닮은 인물이 정해지면, 나에게 맞는 다음 걸음 3개가 여기에 열려요.")
+                    Text("인물 정해지면 다음 걸음 3개")
                         .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.dash, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
                 }
 
-                Text("한 달에 한 번 다시 정해져요. 최근 \(Calm.keep)건까지만 계산에 써요.")
+                Text("매달 갱신 · 최근 \(Calm.keep)건 기준")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
             }
             .padding(16)
