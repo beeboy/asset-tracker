@@ -743,7 +743,7 @@ struct GardenCharView: View {
     }
 }
 
-/// 아래 줄 왼쪽부터 핀다. 오른쪽 위에 밭 10개(5×2): 다 핀 밭 + 테두리 친 지금 밭 + 남은 밭. 물뿌리개는 밭 오른쪽 아래
+/// 아래 줄 왼쪽부터 핀다. 오른쪽 위에 밭 10개(5×2): 다 핀 밭 + 테두리 친 지금 밭 + 남은 밭. 물뿌리개는 마지막으로 핀 칸의 줄 오른쪽 끝 옆
 private struct GardenBed: View {
     let fill: Int, bloom: Int, garden: Int, c: Color
     @Environment(\.widgetRenderingMode) private var mode
@@ -781,11 +781,19 @@ private struct GardenBed: View {
                 }
             }
             let can = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0x8fb7d9)), drop = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0xbfe3ff))
-            ctx.fill(Path(roundedRect: CGRect(x: 104, y: 106, width: 9, height: 7), cornerRadius: 1), with: can)
-            var spout = Path(); spout.move(to: CGPoint(x: 104.5, y: 107)); spout.addLine(to: CGPoint(x: 100, y: 104.5))
+            // 물뿌리개: 마지막으로 핀 칸(0송이면 첫 칸)이 있는 줄의 오른쪽 끝 옆. 7~9번째 줄은 밭 칸과 겹쳐서 줄 끝 칸 위(빈 윗줄)에 둔다
+            let t = max(fill, 1) - 1, row = t / 10, ry = 42 + CGFloat(9 - row) * 8.6
+            let bx: CGFloat = (6...8).contains(row) ? 92 : 104, by = ry - 9
+            ctx.fill(Path(roundedRect: CGRect(x: bx, y: by, width: 9, height: 7), cornerRadius: 1), with: can)
+            let tip = CGPoint(x: bx - 4, y: by - 1.5)
+            var spout = Path(); spout.move(to: CGPoint(x: bx + 0.5, y: by + 1)); spout.addLine(to: tip)
             ctx.stroke(spout, with: can, lineWidth: 2)
-            ctx.fill(Path(ellipseIn: CGRect(x: 97.2, y: 108.2, width: 1.6, height: 1.6)), with: drop)
-            ctx.fill(Path(ellipseIn: CGRect(x: 95.2, y: 111.2, width: 1.6, height: 1.6)), with: drop)
+            // 물방울: 주둥이에서 그 칸 위로 떨어지는 곡선 위 3개
+            let px = 16 + CGFloat(t % 10) * 8.6 + 3.5, py = ry + 1
+            for f in [0.35, 0.65, 0.9] as [CGFloat] {
+                let x = tip.x + (px - tip.x) * f, y = tip.y + (py - tip.y) * f * f
+                ctx.fill(Path(ellipseIn: CGRect(x: x - 0.8, y: y - 0.8, width: 1.6, height: 1.6)), with: drop)
+            }
         }
         .flipFade()
     }
