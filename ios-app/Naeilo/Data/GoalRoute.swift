@@ -37,8 +37,8 @@ struct GoalSim {
 extension AppModel {
     static func wonK(_ m: Double) -> String {
         if m < 0.5 { return "0원" }
-        if m >= 10000 { return ((m / 1000).rounded() / 10).formatted() + "억원" }
-        return Int(m.rounded()).formatted() + "만원"
+        if m >= 10000 { return ((m / 1000).rounded() / 10).formatted() + "억" }
+        return Int(m.rounded()).formatted() + "만"
     }
     /// cap: 경로 기간 (햇수). 그 안에 닿지 않으면 "N년 넘게"
     static func eta(_ mo: Double, cap: Int = 40) -> String {
@@ -65,7 +65,7 @@ extension AppModel {
     var goalToDate: Date { gTo.flatMap(Day.date) ?? Calendar.current.date(byAdding: .year, value: gY, to: goalFromDate)! }
     /// 목표 시작일부터 목표일까지 (년)
     var goalSpan: Double { max(1.0 / 12, goalToDate.timeIntervalSince(goalFromDate) / (365.25 * 86400)) }
-    var goalToText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy년 M월 d일"; return f.string(from: goalToDate) }
+    var goalToText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.M.d"; return f.string(from: goalToDate) }
 
     /// 사이트 목표(goal)를 그대로 받는다: 금액·목표일·시작일·매달 넣는 돈 (원 → 만원)
     func takeSiteGoal(_ g: [String: Any]) {
@@ -90,12 +90,12 @@ extension AppModel {
     }
 
     static let mixes: [GoalMix] = [
-        .init(id: "index", name: "지수 중심", tag: "단순하게", desc: "미국 전체 지수 80% · 현금 20%", comp: ["I": 0.8, "C": 0.2], basket: nil),
-        .init(id: "grow", name: "성장 더하기", tag: "더 빨리, 더 흔들림", desc: "지수 60% · 성장 지속 업종 30% · 현금 10%", comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
-        .init(id: "steady", name: "버팀목 더하기", tag: "덜 흔들림", desc: "지수 50% · 버팀목 업종 30% · 채권·현금 20%", comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
+        .init(id: "index", name: "지수 중심", tag: "단순하게", desc: "미국 지수 80 · 현금 20", comp: ["I": 0.8, "C": 0.2], basket: nil),
+        .init(id: "grow", name: "성장 더하기", tag: "더 빨리, 더 흔들림", desc: "지수 60 · 성장 업종 30 · 현금 10", comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
+        .init(id: "steady", name: "버팀목 더하기", tag: "덜 흔들림", desc: "지수 50 · 버팀목 업종 30 · 채권·현금 20", comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
     ]
     var mineMix: GoalMix {
-        .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(AppModel.pct(focusWeight))" + (restRows.isEmpty ? "" : " · \(restName) \(AppModel.pct(1 - focusWeight))") + " 그대로",
+        .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(Int((focusWeight * 100).rounded()))" + (restRows.isEmpty ? "" : " · \(restName) \(Int(((1 - focusWeight) * 100).rounded()))"),
               comp: [:], basket: nil, own: true)
     }
     /// 내 길의 '지금 구성': 시작 전 루트는 지수 중심 (neededMonthly 와 같다)
@@ -103,19 +103,19 @@ extension AppModel {
     /// 처음 닿는 때를 셀 긴 기간 (햇수): 목표일 뒤에 닿는 경우도 보이게
     var etaYears: Int { max(10, gY * 2) }
     /// 목표 확률을 쉬운 말로
-    static func verdict(_ p: Double) -> String { p >= 0.7 ? "높아요" : p >= 0.3 ? "반반이에요" : "낮아요" }
+    static func verdict(_ p: Double) -> String { p >= 0.7 ? "높음" : p >= 0.3 ? "반반" : "낮음" }
     /// 오늘부터 mo 개월 뒤를 연도 소수로 (2031.25 = 2031년 4월 무렵)
     static func yearAt(_ mo: Double) -> Double {
         let c = Calendar.current.dateComponents([.year, .month], from: Date())
         return Double(c.year ?? 2026) + (Double((c.month ?? 1) - 1) + mo) / 12
     }
-    /// 오늘부터 mo 개월 뒤 "2031년 4월" (기간 안에 없으면 "N년 넘게")
+    /// 오늘부터 mo 개월 뒤 "2031.4" (기간 안에 없으면 "N년 넘게")
     static func whenText(_ mo: Double, cap: Int) -> String {
         guard mo.isFinite else { return "\(cap)년 넘게" }
         guard mo > 0 else { return "지금" }
         let d = Calendar.current.date(byAdding: .month, value: Int(mo.rounded()), to: Date()) ?? Date()
         let c = Calendar.current.dateComponents([.year, .month], from: d)
-        return "\(c.year ?? 0)년 \(c.month ?? 0)월"
+        return "\(c.year ?? 0).\(c.month ?? 0)"
     }
     var goalMixes: [GoalMix] { route == .novice ? Self.mixes : [mineMix] + Self.mixes }
     var selectedMix: GoalMix { goalMixes.first { $0.id == gMix } ?? goalMixes[0] }
@@ -244,10 +244,10 @@ extension AppModel {
     /// 홈 카드 페이스 문장
     static func paceText(_ p: GoalPace) -> String {
         switch p {
-        case .onTrack: return "계획한 속도대로 가고 있어요."
-        case .ahead(let n): return n > 6 ? "계획보다 많이 빨라요." : "계획한 속도보다 조금 빨라요."
-        case .behind(let n): return n > 6 ? "계획보다 많이 늦어요." : "계획한 속도보다 조금 늦어요."
-        case .unreachable: return "지금 속도로는 목표에 닿기 어려워요."
+        case .onTrack: return "계획대로"
+        case .ahead(let n): return n > 6 ? "많이 빨라요" : "조금 빨라요"
+        case .behind(let n): return n > 6 ? "많이 늦어요" : "조금 늦어요"
+        case .unreachable: return "지금 속도론 어려워요"
         }
     }
 

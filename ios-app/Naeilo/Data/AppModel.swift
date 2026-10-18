@@ -167,7 +167,7 @@ final class AppModel {
         var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
         let now = Date(), wd = c.component(.weekday, from: now)
         let fri = c.date(byAdding: .day, value: wd == 1 ? -2 : 6 - wd, to: now) ?? now
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.timeZone = c.timeZone; f.dateFormat = "M월 d일"
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.timeZone = c.timeZone; f.dateFormat = "M/d"
         return f.string(from: fri)
     }
 
@@ -180,22 +180,22 @@ final class AppModel {
     var monthly = 0.0
 
     // MARK: 형식
-    /// 1억 이상은 "5억 2,528만원"처럼 억과 만을 나눠 쓴다 (만 단위에 다섯 자리 숫자는 읽기 어렵다)
+    /// 1억 이상은 "5억 2,528만"처럼 억과 만을 나눠 쓴다 (만 단위에 다섯 자리 숫자는 읽기 어렵다). 만·억 뒤 "원"은 뺀다 (글줄이기)
     static func man(_ krw: Double) -> String {
         let n = Int((krw / 1e4).rounded())
         let a = abs(n), sign = n < 0 ? "-" : ""
-        guard a >= 10_000 else { return n.formatted(.number.grouping(.automatic)) + "만원" }
+        guard a >= 10_000 else { return n.formatted(.number.grouping(.automatic)) + "만" }
         let eok = a / 10_000, rest = a % 10_000
-        return sign + "\(eok.formatted())억" + (rest > 0 ? " \(rest.formatted())만원" : "원")
+        return sign + "\(eok.formatted())억" + (rest > 0 ? " \(rest.formatted())만" : "")
     }
-    /// 웹 krw()+"원"과 같은 표시: 1억 넘으면 소수 둘째 자리 억 (5.25억원), 1만 넘으면 만원 (826만원). 내 길·전망·홈 평가액
+    /// 웹 krw()와 같은 표시: 1억 넘으면 소수 둘째 자리 억 (5.25억), 1만 넘으면 만 (826만). 내 길·전망·홈 평가액
     static func eok(_ krw: Double) -> String {
         let a = abs(krw), s = krw < 0 ? "-" : ""
-        if a >= 1e8 { return s + String(format: a >= 1e10 ? "%.0f억원" : "%.2f억원", a / 1e8) }
-        if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + "만원" }
+        if a >= 1e8 { return s + String(format: a >= 1e10 ? "%.0f억" : "%.2f억", a / 1e8) }
+        if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + "만" }
         return s + Int(a.rounded()).formatted() + "원"
     }
-    /// 부호 붙인 금액 (+826만원, −826만원)
+    /// 부호 붙인 금액 (+826만, −826만)
     static func eokS(_ krw: Double) -> String { (krw >= 0 ? "+" : "−") + eok(abs(krw)) }
     /// 남은 기간 (웹 목표 진행과 같은 표시): 1년 넘으면 소수 한 자리 년, 안 되면 개월·일
     static func leftText(_ y: Double) -> String {
@@ -212,7 +212,7 @@ final class AppModel {
     /// 금액 어림: 만원 반올림, 1억 이상은 "1.2억원" (부호 없음)
     static func aboutWon(_ krw: Double) -> String {
         let a = abs(krw)
-        return a >= 1e8 ? String(format: "%.1f억원", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만원"
+        return a >= 1e8 ? String(format: "%.1f억", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만"
     }
     /// 아직 값이 없으면 0 대신 "—"
     static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }
@@ -448,7 +448,7 @@ final class AppModel {
     var routineFact: String {
         let tot = todayMove
         let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
-        let head = rows.isEmpty ? "" : "**오늘 \(Self.sgn(tot))**" + (mv.isEmpty ? "" : " (\(mv))") + ". "     // 오늘 움직임은 진하게 (마크다운)
+        let head = rows.isEmpty ? "" : "**\(Self.sgn(tot))**" + (mv.isEmpty ? "" : " · \(mv)") + "\n"     // 오늘 움직임은 진하게 (마크다운)
         if route == .novice {
             return head + (noviceOwn ? "평가액은" : "모은 돈은") + " 목표의 \(AppModel.pct(goalSaved / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
         }
@@ -457,7 +457,7 @@ final class AppModel {
         if route == .plus {
             let k = gK * 1e4
             let a = Self.pct(vY / k), b = Self.pct(total / k)
-            return head + (a == b ? "목표까지 **\(b)** 그대로예요." : "목표까지 **\(a) → \(b)**로 " + (total >= vY ? "한 칸 다가갔어요." : "한 칸 물러났어요."))
+            return head + (a == b ? "목표 **\(b)** 그대로" : "목표 **\(a) → \(b)**")
         }
         let distNow = cost / total - 1, distY = cost / vY - 1
         if distNow <= 0 { return head + "본전보다 \(Self.sgn(ret)) 위에 있어요." }
@@ -487,13 +487,13 @@ final class AppModel {
             let c = byW.prefix(3).sorted { $0.sym.short < $1.sym.short }
             let chg = c.map { abs($0.sym.quote.change) }, wt = c.map { $0.value / tot }
             let mvList = c.map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
-            let wtList = c.map { "\($0.sym.short) \(Self.pct($0.value / tot))" }.joined(separator: " · ")
+            let wtList = c.sorted { $0.value > $1.value }.map { "\($0.sym.short) \(Self.pct($0.value / tot))" }.joined(separator: " · ")
             qs.append(.init(id: "mover", tag: "오늘 움직임", q: "오늘 가장 크게 움직인 종목은?", opts: c.map(\.sym.short),
                             right: chg.indices.max { chg[$0] < chg[$1] } ?? 0,
                             fb: { _ in "\(mvList). 크게 움직인 종목일수록 내 평가액도 많이 흔들어요." }))
-            qs.append(.init(id: "weight", tag: "비중 퀴즈", q: "내 종목 중 평가액이 가장 큰 건?", opts: c.map(\.sym.short),
+            qs.append(.init(id: "weight", tag: "비중 퀴즈", q: "가장 큰 종목은?", opts: c.map(\.sym.short),
                             right: wt.indices.max { wt[$0] < wt[$1] } ?? 0,
-                            fb: { _ in "\(wtList). 비중이 큰 종목이 내 하루를 가장 많이 정해요." }))
+                            fb: { _ in wtList }))
             let top = byW[0], w = top.value / tot, n = Self.near3(w, step: 0.2, lo: 0, hi: 1)
             qs.append(.init(id: "topshare", tag: "비중 퀴즈", q: "\(top.sym.short)는 내 평가액의 몇 %쯤일까요?", opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
                             fb: { _ in "\(top.sym.short) \(Self.won(top.value)) ÷ 전체 \(Self.won(tot)) = \(Self.pct(w))." }))
@@ -595,9 +595,9 @@ final class AppModel {
     }
     var routineDoneText: String {
         let n = itemsOn
-        if itemsBackDay == day && n > 0 { return "오늘 루틴 끝! 쉼터에 물건(\(Shelter.items[n - 1].name))이 돌아왔어요." }
-        if n < 10 { return "오늘 루틴 끝! 내일도 하면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." }
-        return "오늘 루틴 끝! 물건이 모두 돌아왔어요."
+        if itemsBackDay == day && n > 0 { let x = Shelter.items[n - 1].name; return "루틴 끝! \(x)\(WChar.josa(x)) 돌아왔어요" }
+        if n < 10 { let x = Shelter.items[n].name; return "루틴 끝! 내일 하면 \(x)\(WChar.josa(x)) 돌아와요" }
+        return "루틴 끝! 물건이 다 돌아왔어요"
     }
     var homeSay: String {
         let who = voice(homeFriendShown)

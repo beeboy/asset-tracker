@@ -124,11 +124,11 @@ enum Parallel {
     /// 인물 규칙 판: 1 = 대표 규칙만, 2 = 세부 규칙까지 (인물 자세히 보기와 같은 규칙). 바뀐 날부터 새 규칙으로 이어 간다
     static let rulesVersion = 2
     static let rules: [String: String] = [
-        "seri": "1년에 한 번, 처음 비율로 되돌려요.",
-        "sio": "20%를 현금으로 들고 있다가, 고점보다 20% 빠지면 그 현금의 절반을 넣어요.",
-        "seonbae": "한 종목 비중이 처음보다 10%p 넘게 커지면 그만큼 덜어 나머지에 나눠요.",
-        "ir": "200일 평균선 위인 종목만 들고, 아래로 가면 그 몫을 현금(단기 국채)으로 옮겨요.",
-        "sua": "매달 같은 금액을 넣고, 떨어진 달에는 1.5배를 넣어요.",
+        "seri": "1년에 한 번 처음 비율로",
+        "sio": "현금 20% · 고점 −20%면 절반 투입",
+        "seonbae": "한 종목 +10%p 넘으면 덜어서 나눔",
+        "ir": "200일선 위만 보유 · 아래면 현금",
+        "sua": "매달 같은 금액 · 떨어진 달 1.5배",
     ]
 
     /// 매칭: 평정 사다리에서 내 다음 칸 인물 (이르 → 수아 → 선배·시오 → 세리). 맨 위(세리)면 결이 다른 시오.
@@ -672,10 +672,10 @@ extension AppModel {
     func parallelDistance(_ amount: Double) -> String {
         if isGoal {
             let k = gK * 1e4
-            return "목표 \(AppModel.wonK(gK))까지 \(AppModel.pct(min(1, amount / max(1, k)))) 왔어요"
+            return "목표 \(AppModel.pct(min(1, amount / max(1, k))))"
         }
         let need = cost / max(1, amount) - 1
-        return need > 0 ? "본전까지 +\(String(format: "%.1f", need * 100))% 남음" : "본전을 넘었어요"
+        return need > 0 ? "본전까지 +\(String(format: "%.1f", need * 100))%" : "본전 넘음"
     }
     /// 세 방식 이름 (인물 규칙은 인물 이름이 붙는다)
     func parallelTitle(_ k: Int, who: String) -> String { k == 2 ? "\(friendName(who)) 규칙대로" : Parallel.names[k] }
@@ -684,7 +684,8 @@ extension AppModel {
         guard let w = pworldShown ?? newParallel(), let race = parallelRun(w, who: w.who) else { return nil }
         let v = Parallel.verdict(pworldShown == nil ? race.r : parallelSeries(race), at: race.last)
         let gap = String(format: "%.1f%%p", v.gap * 100)
-        return v.similar ? "지금은 셋 다 비슷해요 (차이 \(gap))" : "지금은 \(parallelTitle(v.order[0], who: w.who)) 쪽이 앞서요 (차이 \(gap))"
+        let lead = parallelTitle(v.order[0], who: w.who)
+        return v.similar ? "셋 다 비슷해요 · 차이 \(gap)" : "\(lead)\(WChar.josa(lead)) \(gap) 앞서요"
     }
 }
 

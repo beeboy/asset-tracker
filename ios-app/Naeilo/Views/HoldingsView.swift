@@ -19,13 +19,12 @@ struct HoldingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "종목").padding(.horizontal, -16)
                 SampleNote()
-                Text("내 종목").appFont(22, .bold)
                 totalCard(us: us.count, kr: kr.count)
                 totalChart(rows)
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("종목 \(rows.count)").appFont(15, .bold)
-                        Text("%는 내가 산 가격 대비예요").appFont(12).foregroundStyle(Theme.sub)
+                        Text("%는 산 가격 대비").appFont(12).foregroundStyle(Theme.sub)
                     }
                     Spacer()
                     unitToggle
@@ -41,16 +40,14 @@ struct HoldingsView: View {
                     }
                     .accessibilityLabel("정렬: \(m.holdSort.label)")
                 }
-                if !us.isEmpty { group("미국 주식", us) }
-                if !kr.isEmpty { group("국내 주식", kr) }
+                if !us.isEmpty { group("미국", us) }
+                if !kr.isEmpty { group("국내", kr) }
                 NavigationLink(value: "add") {
                     Label("종목 추가", systemImage: "plus").appFont(15, .bold)
                         .frame(maxWidth: .infinity, minHeight: 48)
                         .foregroundStyle(Theme.teal)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
-                Text("미국 종목은 달러 가격 × 원/달러로, 국내 종목은 원화 가격 그대로 계산해요")
-                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
                 MyRecordCard()
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
@@ -83,14 +80,13 @@ struct HoldingsView: View {
     private func totalCard(us: Int, kr: Int) -> some View {
         let gain = m.total - m.cost
         return Card {
-            Text("지금 평가액").appFont(13, .semibold).foregroundStyle(Theme.sub)
-            Text(AppModel.man(m.total)).appFont(28, .bold).monospacedDigit()
+            Text("평가액").appFont(13, .semibold).foregroundStyle(Theme.sub)
+            Text(AppModel.man(m.total) + "원").appFont(28, .bold).monospacedDigit()
             HStack(spacing: 6) {
-                Text("산 돈보다").appFont(14).foregroundStyle(Theme.sub)
                 Text("\(gain >= 0 ? "+" : "−")\(AppModel.man(abs(gain))) (\(AppModel.sgn(m.ret)))")
                     .appFont(14, .bold).foregroundStyle(Theme.change(gain))
             }
-            Text("\(us + kr)종목 · 미국 \(us) · 국내 \(kr) · 원/달러 \(Int(Market.shared.valFx.rounded()).formatted())원")
+            Text("\(us + kr)종목" + (us > 0 ? " · $1 = \(Int(Market.shared.valFx.rounded()).formatted())원" : ""))
                 .appFont(12).foregroundStyle(Theme.muted)
         }
     }
@@ -104,8 +100,7 @@ struct HoldingsView: View {
         let chg = last / max(1, first) - 1
         let start = Calendar.current.date(byAdding: .day, value: -Int(period.span * 1095), to: Date()) ?? Date()
         return Card {
-            Text("지금 종목을 \(period.label) 전부터 가졌다면").appFont(15, .bold)
-            Text("비중을 그대로 두고 지난 \(period.label) 가격으로 다시 계산했어요").appFont(12).foregroundStyle(Theme.sub)
+            Text("지금 구성, \(period.label) 전부터라면").appFont(15, .bold)
             HStack(alignment: .firstTextBaseline) {
                 Text("\(AppModel.man(first)) → \(AppModel.man(last))").appFont(14, .semibold).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.8)
@@ -115,7 +110,7 @@ struct HoldingsView: View {
             // 점선 = 시작 금액
             Sparkline(points: tot, avg: first, lineWidth: 2.2, showEndDot: true).frame(height: 120)
             HStack {
-                Text("\(Calendar.current.component(.year, from: start).formatted(.number.grouping(.never)))년 \(Calendar.current.component(.month, from: start))월 · 점선은 시작 금액")
+                Text(period.span < 1 ? "\(Calendar.current.component(.month, from: start))월" : "\(Calendar.current.component(.year, from: start).formatted(.number.grouping(.never))).\(Calendar.current.component(.month, from: start))")
                 Spacer()
                 Text("오늘")
             }
@@ -123,7 +118,7 @@ struct HoldingsView: View {
             ChipRow(items: Self.periods.map { ($0, $0.label) }, selection: $period, fill: true)
             let noHist = rows.filter { !m.prices.hasHistory($0.sym) }.map(\.sym.name)
             if !noHist.isEmpty {
-                Text("과거 시세 없음: \(noHist.joined(separator: ", ")) (지금 가격으로 평평하게 그렸어요)")
+                Text("과거 시세 없음: \(noHist.joined(separator: ", ")) · 평평하게 그림")
                     .appFont(12).foregroundStyle(Theme.muted)
             }
         }
@@ -153,8 +148,7 @@ struct HoldingsView: View {
         if !rs.isEmpty, rs.allSatisfy(usd) {
             return "$" + rs.reduce(0) { $0 + $1.h.qty * $1.sym.last }.formatted(.number.precision(.fractionLength(2)))
         }
-        // 목록은 칸이 좁아 억을 쓰지 않고 만원으로만 (3억 2,862만원 → 32,862만원)
-        return Int((rs.reduce(0) { $0 + $1.value } / 1e4).rounded()).formatted() + "만원"
+        return AppModel.man(rs.reduce(0) { $0 + $1.value })
     }
 
     private func group(_ title: String, _ rs: [AppModel.Row]) -> some View {
@@ -202,7 +196,7 @@ struct HoldingsView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
-    // 행: 로고 · "이름 수량 · 평균 단가" · "지금 가격 · 오늘 %" / 평가액 · 산 가격 대비 %
+    // 행: 로고 · "이름 수량" · "지금 가격 · 오늘 %" / 평가액 · 산 가격 대비 %
     private func row(_ r: AppModel.Row) -> some View {
         let chg = r.cost > 0 ? r.value / r.cost - 1 : 0
         let day = r.sym.quote.change
@@ -211,20 +205,11 @@ struct HoldingsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 // 글자를 줄이지 않는다(종목마다 크기가 같게). 이름 옆 한 줄이 먼저: 안 맞으면 평균 단가를 정수로 줄여 보고,
                 // 그래도 안 맞을 때(이름이 길 때)만 수량·평균을 다음 줄로
-                let qtyText = { (avg: String) in
-                    Text("\(r.h.qty.formatted())주 · 평균 \(avg)").appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
-                }
-                let full = AppModel.price(r.sym, r.h.avg)
-                let short = r.sym.currency == .usd ? "$" + Int(r.h.avg.rounded()).formatted() : full
-                let qty = qtyText(full)
+                let qty = Text("\(r.h.qty.formatted())주").appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(r.sym.name).appFont(15, .bold).lineLimit(1).fixedSize()
                         qty.fixedSize()
-                    }
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(r.sym.name).appFont(15, .bold).lineLimit(1).fixedSize()
-                        qtyText(short).fixedSize()
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(r.sym.name).appFont(15, .bold).lineLimit(1)
@@ -232,8 +217,8 @@ struct HoldingsView: View {
                     }
                 }
                 HStack(spacing: 4) {
-                    Text("지금 \(AppModel.price(r.sym, r.sym.last))").foregroundStyle(Theme.sub)
-                    Text("오늘 " + (day >= 0 ? "+" : "") + String(format: "%.2f%%", day * 100)).foregroundStyle(Theme.change(day))
+                    Text("\(AppModel.price(r.sym, r.sym.last)) ·").foregroundStyle(Theme.sub)
+                    Text((day >= 0 ? "+" : "−") + String(format: "%.2f%%", abs(day) * 100)).foregroundStyle(Theme.change(day))
                 }
                 .appFont(12).monospacedDigit().lineLimit(1)
             }

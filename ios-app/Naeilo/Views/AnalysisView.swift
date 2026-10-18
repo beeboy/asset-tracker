@@ -129,9 +129,9 @@ struct AnalysisView: View {
             CharHead(id: m.calmSpeaker, size: 32)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("내 투자 습관").appFont(14, .bold).foregroundStyle(Theme.mint)
+                    Text("투자 습관").appFont(14, .bold).foregroundStyle(Theme.mint)
                     Spacer()
-                    Text(done ? "지수 \(s.index)" : "\(s.n) / \(Calm.minEvents)").appFont(13).foregroundStyle(Color(hex: 0xC3C8D0))
+                    Text(done ? "지수 \(s.index)" : "\(s.n)/\(Calm.minEvents)").appFont(13).foregroundStyle(Color(hex: 0xC3C8D0))
                 }
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
@@ -153,7 +153,7 @@ struct AnalysisView: View {
     // MARK: 결론 카드
     private var summary: some View {
         let K = m.keyValue, now = m.trackValue, r = K > 0 ? now / K : 0, pct = Int((r * 100).rounded())
-        let head = r >= 1 ? "\(m.keyName)에 닿았어요" : (45...55).contains(pct) ? "\(m.keyName)까지 절반 왔어요" : "\(m.keyName)까지 \(pct)% 왔어요"
+        let head = r >= 1 ? "\(m.keyName) 도달" : (45...55).contains(pct) ? "\(m.keyName)까지 절반" : "\(m.keyName)까지 \(pct)%"
         let end = ForecastView.ym(m.forecastHorizon).short
         return VStack(spacing: 14) {
             Text(head).appFont(24, .bold).foregroundStyle(.white)
@@ -209,43 +209,43 @@ struct AnalysisView: View {
         // 내 길: 목표일에 목표 이상일 확률을 빈도로 (7일 무료 뒤 구독하지 않으면 잠금)
         let pro = Support.shared.pro
         if !pro {
-            out.append(Line(icon: "lock.fill", tone: .info, label: "내 길", value: "구독하면 열려요", route: .myPath))
+            out.append(Line(icon: "lock.fill", tone: .info, label: "내 길", value: "구독 시 열림", route: .myPath))
         } else if m.isGoal {
-            out.append(Line(icon: "flag", tone: .good, label: "내 길", value: fc.exact ? Self.freq(fc.pGoal) + " 닿아요" : "계산 중", valueTone: .good, route: .myPath))
+            out.append(Line(icon: "flag", tone: .good, label: "내 길", value: fc.exact ? Self.freq(fc.pGoal) : "계산 중", valueTone: .good, route: .myPath))
         } else {
             let gap = m.myPathGapToday
-            out.append(Line(icon: "flag", tone: .good, label: "내 길", value: String(format: "%.1f%% ", abs(gap) * 100) + (gap >= 0 ? "앞서요" : "뒤처져요"), valueTone: gap >= 0 ? .good : .warn, route: .myPath))
+            out.append(Line(icon: "flag", tone: .good, label: "내 길", value: String(format: "%.1f%% ", abs(gap) * 100) + (gap >= 0 ? "앞섬" : "뒤처짐"), valueTone: gap >= 0 ? .good : .warn, route: .myPath))
         }
         // 전망: 상세 첫 카드처럼 경로 값에 현금을 더한다
         let med = (fc.q50.last ?? 0) + (fc.exact ? m.cashKrw : 0)
         out.append(Line(icon: pro ? "calendar" : "lock.fill", tone: pro ? .good : .info, label: m.isGoal ? "\(ForecastView.ym(m.forecastHorizon).short) 전망" : "3년 뒤 전망",
-                        value: pro ? "보통 " + AppModel.eok(med) : "구독하면 열려요", route: .forecast))
+                        value: pro ? AppModel.eok(med) : "구독 시 열림", route: .forecast))
         // 금리 충격: 기본 프리셋("작년만큼 또 오른다")의 도착 시점 변화
         let t = RateScenarioView.hubTiming(m)
-        let late = t?.contains("늦어져요") == true, early = t?.contains("빨라져요") == true
-        out.append(Line(icon: "chart.line.uptrend.xyaxis", tone: .warn, label: "금리가 또 오르면",
+        let late = t?.hasSuffix("늦게") == true, early = t?.hasSuffix("빨리") == true
+        out.append(Line(icon: "chart.line.uptrend.xyaxis", tone: .warn, label: "금리 오르면",
                         value: t.map { $0.replacingOccurrences(of: "약 ", with: "") } ?? (MacroData.shared.failed ? "자료 없음" : "계산 중"),
                         valueTone: late ? .warn : early ? .good : .info, route: .rateScen))
         // 외부 요인: 가장 가까운 발표 일정 (없으면 시장 −10% 일 때)
         if let e = ExternalView.hubNext(m) {
             let n = Day.dday(e.day)
-            out.append(Line(icon: "building.columns", tone: .info, label: "\(e.kind) " + (n == 0 ? "오늘" : "D-\(n)"), value: "±" + AppModel.man(e.amt), route: .external))
+            out.append(Line(icon: "building.columns", tone: .info, label: e.kind.replacingOccurrences(of: " 결정", with: "") + " " + (n == 0 ? "오늘" : "D-\(n)"), value: "±" + AppModel.man(e.amt), route: .external))
         } else {
             let mkt10 = m.rows.reduce(0.0) { a, r in a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0) }
-            out.append(Line(icon: "building.columns", tone: .info, label: "시장이 10% 내리면", value: AppModel.man(mkt10), valueTone: .warn, route: .external))
+            out.append(Line(icon: "building.columns", tone: .info, label: "시장 −10%면", value: AppModel.man(mkt10), valueTone: .warn, route: .external))
         }
         // 환율: 상세 첫 문장과 같은 per10 = 달러 평가액 × 10 / 기준 환율
         let usdV = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value }
-        out.append(Line(icon: "arrow.left.arrow.right", tone: .info, label: "환율 10원 오르면",
-                        value: usdV > 0 ? "+" + AppModel.man(usdV * 10 / max(1, Market.shared.valFx)) : "그대로예요", route: .fx))
+        out.append(Line(icon: "arrow.left.arrow.right", tone: .info, label: "환율 +10원",
+                        value: usdV > 0 ? "+" + AppModel.man(usdV * 10 / max(1, Market.shared.valFx)) : "그대로", route: .fx))
         // 종목 한눈에: 비중 1위
         let top = m.rows.max { $0.value < $1.value }
         out.append(Line(icon: "chart.pie", tone: .info, label: "종목 한눈에", value: top.map { "\(name($0)) \(AppModel.pct($0.value / tot))" } ?? "종목 없음",
                         donut: top.map { $0.value / tot }, route: .glance))
         // 배당·세금: 두 줄로 따로, 한 숫자로 합치지 않는다
         let mo = DividendView.hubMonthly(m), tax = DividendView.hubTax(m)
-        out.append(Line(icon: "arrow.down.to.line", tone: .good, label: "배당 · 한 달", value: mo > 0 ? "+" + AppModel.wonRead(mo) : "없어요", valueTone: mo > 0 ? .good : .info, route: .dividend))
-        out.append(Line(icon: "arrow.up.to.line", tone: .warn, label: "세금 · 내년 5월", value: tax > 0 ? "−" + AppModel.man(tax) : "없어요", valueTone: tax > 0 ? .warn : .info, route: .dividend))
+        out.append(Line(icon: "arrow.down.to.line", tone: .good, label: "배당 · 월", value: mo > 0 ? "+" + AppModel.wonRead(mo) : "없음", valueTone: mo > 0 ? .good : .info, route: .dividend))
+        out.append(Line(icon: "arrow.up.to.line", tone: .warn, label: "세금 · 내년 5월", value: tax > 0 ? "−" + AppModel.man(tax) : "없음", valueTone: tax > 0 ? .warn : .info, route: .dividend))
         return out
     }
 }
@@ -299,29 +299,28 @@ struct ForecastView: View {
         let others: [(label: String, med: [Double])] = Self.others(fs, sel: sel, add: add)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                DetailHead(title: m.forecastTitle, sub: f.exact ? "" : "계산 중이에요 (어림값)")
-                Text("시장이 어떻게 움직이느냐에 따라\n\(m.isGoal ? "\(end.long) 내 자산은" : "3년 뒤 내 자산은") 이만큼 달라져요")
+                DetailHead(title: m.forecastTitle, sub: f.exact ? "" : "계산 중 (어림값)")
+                Text(m.isGoal ? "\(end.short) 내 자산은?" : "3년 뒤 내 자산은?")
                     .appFont(20, .bold).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
 
                 Card {
                     segments
                     trustSlider
-                    Text(note(sel, f)).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("가장 그럴듯한 금액").appFont(13).foregroundStyle(Theme.sub)
+                        Text("그럴듯한 금액 · 연 \(AppModel.sgn0(f.mu))").appFont(13).foregroundStyle(Theme.sub)
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(Self.amt(med) + " 원").font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.ink)
+                            Text(Self.amt(med)).font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.ink)
                                 .lineLimit(1).minimumScaleFactor(0.7)
-                            Text("지금보다 \(AppModel.sgn0(chg))").appFont(13, .bold).foregroundStyle(chg >= 0 ? Theme.green : Theme.up)
+                            Text(AppModel.sgn0(chg)).appFont(13, .bold).foregroundStyle(chg >= 0 ? Theme.green : Theme.up)
                         }
-                        Text("10번 중 9번은 \(Self.amt(lo)) ~ \(Self.amt(hi)) 사이").appFont(13).foregroundStyle(Theme.sub)
+                        Text("10번 중 9번 \(Self.amt(lo)) ~ \(Self.amt(hi))").appFont(13).foregroundStyle(Theme.sub)
                     }
                     ScenarioChart(sel: f, selShift: add(f), selLabel: Self.short(sel), others: others,
                                   goal: m.keyValue, goalLabel: m.keyName, endLabel: m.isGoal ? end.short : "3년 뒤")
                         .frame(height: 190)
                     legend
                     if f.mu > 0.30 {
-                        Text("연 \(AppModel.sgn0(f.mu))는 흔치 않은 속도예요. 지난 3년이 유난히 좋았다면 실제로는 이보다 낮을 수 있어요.")
+                        Text("연 \(AppModel.sgn0(f.mu))는 드문 속도 · 실제론 더 낮을 수도")
                             .appFont(12).foregroundStyle(Theme.ink).padding(10).frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.cream, in: RoundedRectangle(cornerRadius: 10))
                     }
@@ -331,10 +330,10 @@ struct ForecastView: View {
                 schedule
                 details(f)
 
-                Text("예측이 아니라 가능한 범위예요. 지난 3년 움직임을 바탕으로 3,000가지 경우를 계산했어요.")
+                Text("지난 3년 기준 3,000가지 경우")
                     .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                 NavigationLink(value: AnalysisRoute.myPath) {
-                    Text("납입이나 종목 구성을 바꿔 보려면 내 목표로 →").appFont(14, .bold).foregroundStyle(Theme.teal)
+                    Text("구성 바꾸기 → 내 목표").appFont(14, .bold).foregroundStyle(Theme.teal)
                 }
             }
             .padding(16)
@@ -372,21 +371,13 @@ struct ForecastView: View {
         })
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("지난 3년 추세를 얼마나 믿나요").appFont(13, .bold)
+                Text("지난 3년 추세 반영").appFont(13, .bold)
                 Spacer()
                 Text("\(Int(shownTrust))%").appFont(13, .bold).foregroundStyle(Theme.teal)
             }
             Slider(value: b, in: 0...100, step: 5).tint(Theme.teal).accessibilityLabel("지난 3년 추세를 얼마나 믿나요")
-            HStack { Text("0% 신중하게"); Spacer(); Text("50% 반반"); Spacer(); Text("100% 지난 3년처럼") }
+            HStack { Text("신중"); Spacer(); Text("반반"); Spacer(); Text("3년처럼") }
                 .appFont(11).foregroundStyle(Theme.muted)
-        }
-    }
-
-    private func note(_ l: Lens, _ f: AppModel.Forecast) -> String {
-        switch l {
-        case .base: return "높았던 수익률이 장기 평균으로 돌아온다고 볼 때 · 연 \(AppModel.sgn0(f.mu))"
-        case .mine: return "지난 3년 추세를 \(Int(m.trust))% 믿는다고 볼 때 · 연 \(AppModel.sgn0(f.mu))"
-        case .smooth: return "지난 3년 속도가 그대로 이어진다고 볼 때 · 연 \(AppModel.sgn0(f.mu))"
         }
     }
 
@@ -411,16 +402,16 @@ struct ForecastView: View {
         let lineName = m.isGoal ? Self.amt(m.keyValue) : "본전"
         let bads = Lens.allCases.map { l in fs[l].map { ($0.q5.last ?? 0) + add($0) } ?? now }
         let below = bads.filter { $0 < now }.count
-        let msg = below == bads.count ? "어느 시나리오든 운이 나쁘면 지금(\(Self.amt(now)))보다 줄어들 수 있어요."
-            : below > 0 ? "신중하게 보면 운이 나쁠 때 지금(\(Self.amt(now)))보다 줄어들 수 있어요."
-            : "운이 나빠도 지금(\(Self.amt(now)))보다는 많을 가능성이 커요."
+        let msg = below == bads.count ? "운 나쁘면 지금(\(Self.amt(now)))보다 줄 수도"
+            : below > 0 ? "신중하게 보면 지금(\(Self.amt(now)))보다 줄 수도"
+            : "운 나빠도 지금(\(Self.amt(now)))보다 많을 가능성 큼"
         return Card {
-            Text("세 가지 미래 한눈에").appFont(15, .bold)
+            Text("세 가지 미래").appFont(15, .bold)
             HStack {
-                Text("시나리오").frame(maxWidth: .infinity, alignment: .leading)
-                Text("그럴듯한 값").frame(width: 70, alignment: .trailing)
+                Text("").frame(maxWidth: .infinity, alignment: .leading)
+                Text("보통").frame(width: 70, alignment: .trailing)
                 Text("나쁘면").frame(width: 58, alignment: .trailing)
-                Text("\(lineName) 넘을 확률").frame(width: 78, alignment: .trailing)
+                Text("\(lineName)↑").frame(width: 78, alignment: .trailing)
             }
             .appFont(11).foregroundStyle(Theme.muted)
             ForEach(Lens.allCases, id: \.self) { l in
@@ -429,8 +420,8 @@ struct ForecastView: View {
                     Button { m.lens = l } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(l.label).appFont(13, on ? .bold : .regular)
-                                Text("연 \(AppModel.sgn0(x.mu))").appFont(11).foregroundStyle(Theme.muted)
+                                Text(Self.short(l)).appFont(13, on ? .bold : .regular)
+                                Text(AppModel.sgn0(x.mu)).appFont(11).foregroundStyle(Theme.muted)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             Text(Self.amt((x.q50.last ?? 0) + add(x))).frame(width: 70, alignment: .trailing)
@@ -455,8 +446,8 @@ struct ForecastView: View {
         @Bindable var m = m
         let hits = Array(MarketEvents.upcoming(held: m.rows.map(\.id), days: 60).prefix(4))
         return Card {
-            Toggle(isOn: $m.shock) { Text("전망을 흔들 수 있는 일정").appFont(15, .bold) }.tint(Theme.teal)
-            Text("켜면 이런 날에 더 크게 흔들린다고 보고 계산해요.").appFont(12).foregroundStyle(Theme.sub)
+            Toggle(isOn: $m.shock) { Text("흔들 일정").appFont(15, .bold) }.tint(Theme.teal)
+            Text("켜면 계산에 반영").appFont(12).foregroundStyle(Theme.sub)
             ForEach(hits.indices, id: \.self) { i in ScheduleRow(hit: hits[i]) }
         }
     }
@@ -467,9 +458,8 @@ struct ForecastView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Button { withAnimation { open.toggle() } } label: {
                 HStack {
-                    Text("자세히 보기").appFont(15, .bold)
+                    Text("자세히").appFont(15, .bold)
                     Spacer()
-                    Text(open ? "접기" : "펼치기").appFont(13).foregroundStyle(Theme.muted)
                     Image(systemName: open ? "chevron.up" : "chevron.down").font(.system(size: 12)).foregroundStyle(Theme.muted)
                 }
                 .contentShape(Rectangle())
@@ -477,18 +467,18 @@ struct ForecastView: View {
             .buttonStyle(.plain)
             if open {
                 Card(dark: true) {
-                    Text("중간에 한 번이라도 \(what)을 넘을 확률").appFont(14, .bold)
-                    Text("잠깐 넘었다가 다시 내려오는 경우도 세요. 그래서 표의 확률보다 높아요.").appFont(12).foregroundStyle(.secondary)
+                    Text("한 번이라도 \(what) 넘을 확률").appFont(14, .bold)
+                    Text("잠깐 넘는 경우 포함").appFont(12).foregroundStyle(.secondary)
                     ForEach(0..<f.byYear.count, id: \.self) { i in
                         let y = f.byYear[i].year, p = f.byYear[i].p
                         HStack(spacing: 10) {
-                            Text("\(y)년 안").appFont(13).frame(width: 46, alignment: .leading)
+                            Text("\(y)년").appFont(13).frame(width: 46, alignment: .leading)
                             ProgressBar(value: p, height: 10, fill: Theme.teal, track: Theme.track)
                             Text(AppModel.pct(p)).appFont(13, .bold).frame(width: 40, alignment: .trailing)
                         }
                     }
                 }
-                Text("버튼은 슬라이더를 0%·내 설정·100%로 옮기는 지름길이에요. 슬라이더를 직접 움직이면 그 값이 '내 설정'으로 기억돼요.")
+                Text("직접 옮긴 슬라이더 값은 '내 설정'에 저장")
                     .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             }
         }

@@ -26,15 +26,16 @@ struct ParallelView: View {
                     ruleCard(race, r, w)
                     buttons(w)
                     pastBaskets(race, w)
-                    basis(race, r)
+                    if m.isSample { Text("샘플 종목 · 내 종목 넣으면 그날부터 비교").appFont(12).foregroundStyle(Theme.sub) }
+                    basis()
                 } else {
                     Card {
-                        Text(m.parallelBase.isEmpty ? "종목 탭에서 내 종목 수량을 넣으면 비교가 시작돼요." : "지난 종가를 받는 중이에요. 잠시 뒤 다시 열어 주세요.")
+                        Text(m.parallelBase.isEmpty ? "종목 탭에서 수량을 넣으면 비교 시작" : "지난 종가 받는 중 · 잠시 뒤 다시")
                             .appFont(14).foregroundStyle(Theme.sub)
                     }
+                    if m.isSample { Text("샘플 종목 · 내 종목 넣으면 그날부터 비교").appFont(12).foregroundStyle(Theme.sub) }
+                    Text("모의 결과 · 투자 권유 아님").appFont(12).foregroundStyle(Theme.muted)
                 }
-                if m.isSample { Text("지금은 샘플 종목으로 보여 줘요. 내 종목을 넣으면 그날부터 내 비교가 시작돼요.").appFont(12).foregroundStyle(Theme.sub) }
-                Text("모의 결과이며 투자 권유가 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
             }
             .screen().padding(.top, 8)
         }
@@ -60,19 +61,19 @@ struct ParallelView: View {
     private func verdict(_ race: PRace, _ r: [[Double]], _ v: PVerdict, _ w: PWorld) -> some View {
         let t = race.last
         let start = Self.md(race.dates.first ?? "")
-        let first = m.isGoal ? "\(start), 같은 \(AppModel.eok(race.V0))으로 세 가지 방식을 동시에 시작했어요."
-            : "가장 낮았던 \(start)부터, 같은 \(AppModel.eok(race.V0))으로 세 가지 방식을 동시에 시작했어요."
-        let head = v.similar ? "지금은 셋 다 비슷해요" : "지금은 \(title(v.order[0], w)) 쪽이 앞서요"
-        let gap = String(format: "%.1f%%p", v.gap * 100) + ", 약 " + AppModel.aboutWon(race.V0 * v.gap)
+        let first = (m.isGoal ? "" : "최저점 ") + "\(start) · 같은 \(AppModel.eok(race.V0))으로 출발"
+        let lead = title(v.order[0], w)
+        let head = v.similar ? "셋 다 비슷해요" : "\(lead)\(WChar.josa(lead)) 앞서요"
+        let gap = String(format: "%.1f%%p", v.gap * 100) + " · " + AppModel.aboutWon(race.V0 * v.gap)
         let goalPcts = Set((0..<3).map { AppModel.pct(min(1, race.V0 * (1 + r[$0][t]) / max(1, m.gK * 1e4))) })
         let mid = race.V0 * (1 + r[v.order[1]][t])
         return VStack(alignment: .leading, spacing: 8) {
             Text(first).appFont(13).foregroundStyle(Color.white.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
             Text(head).appFont(22, .bold).foregroundStyle(.white)
-            Text("가장 앞선 쪽과 뒤진 쪽 차이는 **\(gap)**. 한 달 차이는 우연일 때가 많아서, 몇 달 더 지켜볼게요.")
+            Text("차이 **\(gap)** · 몇 달 더 지켜봐요")
                 .appFont(13).foregroundStyle(Color.white.opacity(0.85)).fixedSize(horizontal: false, vertical: true)
             if m.isGoal && goalPcts.count == 1, let p = goalPcts.first {
-                Text("셋 다 목표 \(AppModel.wonK(m.gK))의 약 \(p)").appFont(13, .bold).foregroundStyle(.white)
+                Text("셋 다 목표 \(p)").appFont(13, .bold).foregroundStyle(.white)
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.white.opacity(0.2))
@@ -97,7 +98,7 @@ struct ParallelView: View {
                 HStack(spacing: 6) {
                     Text(title(k, w)).appFont(15, .bold)
                     if k == v.order[0] && !v.similar {
-                        Text("지금 가장 앞섬").appFont(11, .bold).foregroundStyle(Theme.sub)
+                        Text("1위").appFont(11, .bold).foregroundStyle(Theme.sub)
                             .padding(.horizontal, 7).padding(.vertical, 2).background(Theme.line, in: Capsule())
                     }
                 }
@@ -117,10 +118,10 @@ struct ParallelView: View {
     }
     private func desc(_ k: Int, _ w: PWorld) -> String {
         switch k {
-        case 0: return "지금 갖고 있는 종목·수량 그대로"
+        case 0: return "지금 종목 그대로"
         case 1:
             let parts = (w.segs.last?.w ?? [:]).sorted { $0.value > $1.value }.map { "\($0.key) \(Int(($0.value * 100).rounded()))" }
-            return parts.joined(separator: " · ") + "으로 샀다고 가정"
+            return parts.joined(separator: " · ")
         default: return Parallel.rules[w.who] ?? ""
         }
     }
@@ -136,7 +137,11 @@ struct ParallelView: View {
         let zeroY = hi / span
         let ends = [0, 1, 2].sorted { r[$0][t] > r[$1][t] }
         return Card {
-            Text("출발 후 수익률 흐름").appFont(15, .bold)
+            HStack(alignment: .firstTextBaseline) {
+                Text("출발 후 수익률").appFont(15, .bold)
+                Spacer()
+                Text("최대 차이 \(String(format: "%.1f%%p", Self.maxSpread(r, race) * 100))").appFont(12).foregroundStyle(Theme.sub)
+            }
             HStack(alignment: .top, spacing: 8) {
                 GeometryReader { g in
                     ZStack(alignment: .topLeading) {
@@ -145,7 +150,7 @@ struct ParallelView: View {
                         if race.open < n && race.open > 0 {
                             Path { p in p.move(to: CGPoint(x: openX * g.size.width, y: 0)); p.addLine(to: CGPoint(x: openX * g.size.width, y: g.size.height)) }
                                 .stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                            Text("이 앱을 연 날").appFont(10).foregroundStyle(Theme.muted)
+                            Text("앱 연 날").appFont(10).foregroundStyle(Theme.muted)
                                 .position(x: min(g.size.width - 34, max(34, openX * g.size.width)), y: 6)
                         }
                         ForEach(0..<3, id: \.self) { k in
@@ -165,20 +170,22 @@ struct ParallelView: View {
                 .fixedSize()
             }
             HStack {
-                Text(Self.md(race.dates.first ?? "")).appFont(11).foregroundStyle(Theme.muted)
+                Text(Self.mdShort(race.dates.first ?? "")).appFont(11).foregroundStyle(Theme.muted)
                 Spacer()
-                Text("0% = 출발 · " + Self.md(race.dates.last ?? "")).appFont(11).foregroundStyle(Theme.muted)
+                Text("0% = 출발").appFont(11).foregroundStyle(Theme.muted)
+                Spacer()
+                Text(Self.mdShort(race.dates.last ?? "")).appFont(11).foregroundStyle(Theme.muted)
             }
-            Text(reading(race, r, w)).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            if Self.sameRoad(race) {
+                Text("\(who(w)) 규칙 아직 실행 전 · 실제와 같은 길").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
-    /// 차트 아래 해석 한 줄
-    private func reading(_ race: PRace, _ r: [[Double]], _ w: PWorld) -> String {
+    /// 세 선이 가장 크게 벌어진 차이
+    static func maxSpread(_ r: [[Double]], _ race: PRace) -> Double {
         var spread = 0.0
         for t in race.dates.indices { spread = max(spread, (0..<3).map { r[$0][t] }.max()! - (0..<3).map { r[$0][t] }.min()!) }
-        let a = spread < Parallel.similarGap ? "세 선이 거의 같이 움직였어요." : "세 선이 가장 크게 벌어졌을 때 \(String(format: "%.1f%%p", spread * 100)) 차이가 났어요."
-        let b = Self.sameRoad(race) ? " \(who(w)) 규칙은 아직 한 번도 실행되지 않아서 내 실제 투자와 같은 길이에요." : ""
-        return a + b
+        return spread
     }
 
     // MARK: 인물 규칙 카드
@@ -186,7 +193,7 @@ struct ParallelView: View {
         let f = Shelter.friends.first { $0.id == w.who }
         let place = Parallel.verdict(r, at: race.last).order.firstIndex(of: 2).map { $0 + 1 } ?? 2
         return Card {
-            Text("\(who(w)) 규칙이 뭐예요?").appFont(15, .bold)
+            Text("\(who(w)) 규칙").appFont(15, .bold)
             ForEach(Array((f?.ruleSteps ?? []).enumerated()), id: \.offset) { i, s in
                 HStack(alignment: .top, spacing: 8) {
                     Text("\(i + 1)").appFont(12, .bold).foregroundStyle(.white)
@@ -195,7 +202,7 @@ struct ParallelView: View {
                 }
             }
             if w.who == "sua" && race.contrib > 0 {
-                Text("매달 \(AppModel.wonK(m.gM))씩 넣은 \(AppModel.eok(race.contrib))까지 넣은 돈으로 쳐서 셌어요.").appFont(12).foregroundStyle(Theme.sub)
+                Text("월 \(AppModel.wonK(m.gM)) 적립분 \(AppModel.eok(race.contrib)) 포함").appFont(12).foregroundStyle(Theme.sub)
             }
             Text("\(who(w)): “\(Parallel.line(w.who, place: place, day: Day.today))”").appFont(13).lineSpacing(3)
                 .padding(.horizontal, 12).padding(.vertical, 10)
@@ -203,7 +210,7 @@ struct ParallelView: View {
                 .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 12))
                 .fixedSize(horizontal: false, vertical: true)
             NavigationLink(value: "char:\(w.who):invest") {
-                Text("이 규칙, 과거 폭락장에선 어땠을까 ›").appFont(13, .bold).foregroundStyle(Theme.rule).frame(minHeight: 44)
+                Text("과거 폭락장에선? ›").appFont(13, .bold).foregroundStyle(Theme.rule).frame(minHeight: 44)
             }
             .buttonStyle(.plain)
         }
@@ -213,12 +220,12 @@ struct ParallelView: View {
     @ViewBuilder private func buttons(_ w: PWorld) -> some View {
         if m.pworld != nil {
             HStack(spacing: 8) {
-                NavigationLink(value: "parallel:basket") { pill("바구니 비율 바꾸기") }.buttonStyle(.plain)
+                NavigationLink(value: "parallel:basket") { pill("바구니 바꾸기") }.buttonStyle(.plain)
                 Menu {
                     ForEach(Shelter.friends.filter { $0.id != w.who && $0.id != m.calm.type }, id: \.id) { f in
                         Button(f.name + " · " + f.does) { m.pickWho(f.id) }
                     }
-                } label: { pill("다른 인물과 비교") }
+                } label: { pill("다른 인물 비교") }
             }
         }
     }
@@ -230,10 +237,8 @@ struct ParallelView: View {
     }
 
     // MARK: 기준 문단
-    private func basis(_ race: PRace, _ r: [[Double]]) -> some View {
-        let real = race.V0 * (1 + r[0][race.last])
-        let home = !m.isSample && abs(m.total - real) >= 1e4 ? " 홈의 \(AppModel.eok(m.total))은 지금 실시간 시세(국내 합계 포함)라 조금 달라요." : ""
-        return Text("여기 숫자는 어제 마감 종가 기준이에요." + home + " 출발한 뒤 넣고 뺀 돈은 수익률에서 빼고 셈해요.")
+    private func basis() -> some View {
+        Text("어제 종가 기준 · 입출금 제외 · 투자 권유 아님")
             .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
     }
 
@@ -287,7 +292,13 @@ struct ParallelView: View {
 
     static func md(_ d: String) -> String {
         guard let x = Day.date(d) else { return d }
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy년 M월 d일"
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy.M.d"
+        return f.string(from: x)
+    }
+    /// 그래프 축: "9.11"
+    static func mdShort(_ d: String) -> String {
+        guard let x = Day.date(d) else { return d }
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M.d"
         return f.string(from: x)
     }
     /// "**굵게**" 표시가 든 문구
@@ -325,9 +336,9 @@ struct ParallelBasketView: View {
         let sum = w.values.reduce(0, +)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("고치면 오늘부터 새 기록이 시작되고, 지금까지 기록은 지난 바구니로 남아요. 출발 금액은 진짜 나와 같아요.")
+                Text("고치면 오늘부터 새 기록 · 이전 기록은 보관")
                     .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                Text("견본에서 시작").appFont(15, .bold)
+                Text("견본").appFont(15, .bold)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(Parallel.templates, id: \.id) { tpl in
@@ -340,7 +351,7 @@ struct ParallelBasketView: View {
                 }
                 Card {
                     ForEach(w.keys.sorted(), id: \.self) { k in row(k) }
-                    if w.isEmpty { Text("담은 종목이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
+                    if w.isEmpty { Text("담은 종목 없음").appFont(13).foregroundStyle(Theme.sub) }
                     Menu {
                         ForEach(Parallel.universe.filter { w[$0.id] == nil }, id: \.id) { u in
                             Button(u.id + " · " + u.name + (Parallel.has(u.id) ? "" : " (시세 준비 중)")) { w[u.id] = 10 }
@@ -349,23 +360,23 @@ struct ParallelBasketView: View {
                     } label: {
                         Text("+ 종목 담기").appFont(14, .bold).foregroundStyle(Theme.teal).frame(minHeight: 40)
                     }
-                    Text("지금은 사이트가 지난 종가를 모으는 종목과 견본 ETF만 담을 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
+                    Text("종가 있는 종목·견본 ETF만").appFont(12).foregroundStyle(Theme.muted)
                 }
                 HStack {
                     Text("합계").appFont(14, .bold); Spacer()
                     Text("\(sum)%").appFont(14, .bold).foregroundStyle(sum == 100 ? Theme.green : Theme.orange)
                 }
-                if sum != 100 && sum > 0 { Text("저장하면 합이 100%가 되게 비율대로 맞춰요.").appFont(12).foregroundStyle(Theme.sub) }
+                if sum != 100 && sum > 0 { Text("저장 시 비율대로 100% 맞춤").appFont(12).foregroundStyle(Theme.sub) }
                 Button {
                     m.saveBasket(w.mapValues { Double($0) })
                     dismiss()
                 } label: {
-                    Text("이 바구니로 오늘부터").appFont(15, .bold).foregroundStyle(.white)
+                    Text("오늘부터 시작").appFont(15, .bold).foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 48)
                         .background(sum > 0 ? Theme.teal : Theme.muted, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain).disabled(sum <= 0)
-                Text("모의 결과이며 투자 권유가 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
+                Text("모의 결과 · 투자 권유 아님").appFont(12).foregroundStyle(Theme.muted)
             }
             .screen().padding(.top, 8)
         }
@@ -409,12 +420,10 @@ struct ParallelHomeCard: View {
     @Environment(AppModel.self) private var m
     var body: some View {
         if !m.parallelBase.isEmpty {
-            let who = m.friendName((m.pworldShown ?? m.newParallel())?.who ?? "sio")
             Button { m.homePath.append("parallel") } label: {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("다른 방식이었다면?").appFont(15, .bold)
-                        Text("내 투자 · 모의 바구니 · \(who) 규칙 비교").appFont(12).foregroundStyle(Theme.sub)
                         if let v = m.parallelVerdictLine { Text(v).appFont(13, .semibold).foregroundStyle(Theme.myReal) }
                     }
                     Spacer(minLength: 0)

@@ -7,43 +7,41 @@ struct MyRecordCard: View {
 
     var body: some View {
         let D = m.isSample ? [] : m.myRecord
-        if let L = D.last, let first = D.first {
+        if let L = D.last {
             let gain = L.c > 0 ? L.v / L.c - 1 : nil
             Card {
                 head(D)
                 HStack(alignment: .top, spacing: 8) {
                     cell("평가액", AppModel.man(L.v), Theme.ink)
                     cell("넣은 돈", AppModel.man(L.c), Theme.ink)
-                    cell("넣은 돈 대비", gain.map(AppModel.sgn) ?? "-", gain.map(Theme.change) ?? Theme.ink)
+                    cell("손익", gain.map(AppModel.sgn) ?? "-", gain.map(Theme.change) ?? Theme.ink)
                 }
                 if D.count >= 2 {
                     RecordLines(v: D.map(\.v), c: D.map(\.c)).frame(height: 110)
                     HStack(spacing: 12) {
                         legend("평가액", Theme.teal, dash: false)
                         legend("넣은 돈", Theme.muted, dash: true)
-                        Spacer()
-                        Text("\(Day.md(first.d)) → \(Day.md(L.d))").appFont(11).foregroundStyle(Theme.muted)
                     }
+                } else {
+                    Text("내일 다시 열면 선이 그려져요").appFont(12).foregroundStyle(Theme.muted)
                 }
-                Text(D.count < 2 ? "오늘부터 쌓기 시작했어요. 내일 다시 열면 선이 그려져요."
-                     : "연 날마다 남긴 실제 값이에요. 넣은 돈은 '더 샀어요·팔았어요' 금액으로 바뀌어요. 위 그래프는 지금 수량을 지난 가격에 대입한 값이라 달라요.")
-                    .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3)
             }
         } else {
             // 아직 한 줄도 없을 때도 카드 자리는 보인다 (어디에 쌓이는지 알 수 있게)
             Card {
-                Text("naeilo를 쓴 날부터의 내 기록").appFont(15, .bold)
-                Text(m.isSample || m.holdings.isEmpty ? "내 종목을 넣은 날부터 하루 한 줄씩 평가액과 넣은 돈이 쌓여요. 샘플 종목은 남기지 않아요."
-                     : "오늘 시세를 받으면 첫 줄이 남아요. 잠시 뒤 다시 열거나 아래로 당겨 새로 고쳐 보세요.")
+                Text("내 기록").appFont(15, .bold)
+                Text(m.isSample || m.holdings.isEmpty ? "내 종목 넣은 날부터 하루 한 줄 · 샘플은 안 남김"
+                     : "시세 받으면 첫 줄이 남아요 · 당겨서 새로 고침")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
     private func head(_ D: [DayRec]) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("naeilo를 쓴 날부터의 내 기록").appFont(15, .bold)
-            if let f = D.first { Text("\(Day.md(f.d))부터 · \(D.count)일 기록").appFont(12).foregroundStyle(Theme.muted) }
+        HStack(alignment: .firstTextBaseline) {
+            Text("내 기록").appFont(15, .bold)
+            Spacer()
+            if let f = D.first, let l = D.last { Text("\(Day.md(f.d)) → \(Day.md(l.d))").appFont(12).foregroundStyle(Theme.muted) }
         }
     }
 
