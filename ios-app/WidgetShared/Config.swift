@@ -120,16 +120,16 @@ enum Store {
     }
     /// 위젯 전부(기본·인물·서재)는 구독 중이거나 7일 무료 동안만 보인다 (2026-10-16 결정)
     static var widgetsOpen: Bool { subOn || trialEnd <= 0 || Date().timeIntervalSince1970 < trialEnd }
-    /// 미션 4(앱 시작 3단계)에서 끝낸 단계 (앱이 쓴다). 값이 없으면 3 = 다 열림 (앱이 아직 안 쓴 설치)
+    /// 미션 4(앱 시작 3단계)에서 실제로 끝낸 단계 (앱이 쓴다). 값이 없으면 0 = 단계 위젯은 잠김
     static var widgetStep: Int {
-        get { defaults.object(forKey: "widgetStep") as? Int ?? 3 }
+        get { defaults.object(forKey: "widgetStep") as? Int ?? 0 }
         set { defaults.set(newValue, forKey: "widgetStep") }
     }
-    /// 위젯마다 열리는 단계: 1 자산 추이·인물 자산 언덕, 2 본전 진행·인물 본전 사다리, 3 블록·오늘의 움직임. 나머지도 세 단계를 다 하면 열린다
+    /// 위젯마다 열리는 단계: 1 자산 추이·인물 자산 언덕·키 재기, 2 본전 진행·인물 본전 사다리·퍼즐, 3 블록·오늘의 움직임·인물 꽃밭·줄다리기. 나머지도 세 단계를 다 하면 열린다
     static func stepNeed(_ kind: String) -> Int {
         switch kind {
-        case "asset.small", "lock.asset", "char.hill": 1
-        case "pace.medium", "lock.goal", "char.ladder": 2
+        case "asset.small", "lock.asset", "char.hill", "char.height": 1
+        case "pace.medium", "lock.goal", "char.ladder", "char.puzzle": 2
         default: 3
         }
     }

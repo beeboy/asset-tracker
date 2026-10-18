@@ -94,7 +94,7 @@ enum WidgetBridge {
         Store.write(Story.shared.widget(m), "story.json")   // 서재 위젯: 읽던 자리 한 문단
         Store.lastCheck = now
         Store.summarySource = "app"
-        Store.widgetStep = m.playUnlocked ? 3 : max(1, m.nxStep)   // 위젯은 미션 4 단계에 맞춰 하나씩 열린다
+        Store.widgetStep = m.playOn ? 3 : max(1, m.nxStep)   // 위젯은 미션 4에서 실제로 한 단계에 맞춰 하나씩 열린다 (개발자 계정도 같게)
         WidgetCenter.shared.reloadAllTimelines()
     }
 
