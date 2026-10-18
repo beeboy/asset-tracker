@@ -1,6 +1,100 @@
 import SwiftUI
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, howto, route, goal, charPreview, support, icon }
+// 개발자: 출시 알림 신청 목록 (워커 GET /notify/list). 관리자 키는 키체인에, 비어 있으면 개발자 동기화 토큰을 쓴다.
+struct NotifyListView: View {
+    struct Row: Decodable, Hashable { let email: String; let at: String }
+    private struct Resp: Decodable { let n: Int?; let rows: [Row]?; let error: String? }
+
+    @State private var key = AdminKey.load() ?? ""
+    @State private var rows: [Row] = []
+    @State private var busy = false
+    @State private var msg: String? = nil
+    @State private var copied = false
+
+    private var token: String { key.isEmpty ? (Sync.shared.creds?.token ?? "") : key }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("출시 알림 신청").appFont(22, .bold)
+                Card {
+                    SecureField("관리자 키", text: $key)
+                        .textContentType(nil).autocorrectionDisabled().textInputAutocapitalization(.never)
+                        .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                        .onSubmit { Task { await load() } }
+                    PrimaryButton(title: busy ? "받는 중…" : "새로고침") { Task { await load() } }
+                    if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
+                }
+                if !rows.isEmpty {
+                    HStack {
+                        Text("\(rows.count)명").appFont(17, .bold)
+                        Spacer()
+                        Button(copied ? "복사됨" : "주소 전부 복사") {
+                            UIPasteboard.general.string = rows.map(\.email).joined(separator: ", "); copied = true
+                        }.appFont(15, .semibold)
+                    }
+                    Card {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { i, r in
+                            if i > 0 { Divider().overlay(Theme.line) }
+                            HStack {
+                                Text(r.email).appFont(14).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+                                Spacer()
+                                Text(r.at).appFont(13).foregroundStyle(Theme.sub)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .background(Theme.bg)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { if !token.isEmpty { await load() } }
+    }
+
+    private func load() async {
+        guard !token.isEmpty else { msg = "관리자 키를 넣어 주세요"; return }
+        busy = true; msg = nil; copied = false
+        defer { busy = false }
+        var req = URLRequest(url: URL(string: "https://asset-ai.drinker.workers.dev/notify/list")!)
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.timeoutInterval = 20
+        do {
+            let (d, res) = try await URLSession.shared.data(for: req)
+            let r = try? JSONDecoder().decode(Resp.self, from: d)
+            let code = (res as? HTTPURLResponse)?.statusCode ?? 0
+            if code == 403 { msg = "키가 맞지 않아요"; return }
+            guard code == 200, let list = r?.rows else { msg = r?.error ?? "목록을 못 받았어요 (\(code))"; return }
+            if !key.isEmpty { AdminKey.save(key) }
+            rows = list.sorted { $0.at > $1.at }
+            if rows.isEmpty { msg = "아직 신청한 사람이 없어요" }
+        } catch {
+            msg = "인터넷 연결을 확인해 주세요"
+        }
+    }
+}
+
+/// 출시 알림 목록용 관리자 키 (이 기기 키체인에만)
+enum AdminKey {
+    private static let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.admin", kSecAttrAccount as String: "notify"]
+    static func save(_ k: String) {
+        SecItemDelete(q as CFDictionary)
+        var a = q
+        a[kSecValueData as String] = Data(k.utf8)
+        a[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(a as CFDictionary, nil)
+    }
+    static func load() -> String? {
+        var a = q
+        a[kSecReturnData as String] = true
+        a[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(a as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
+        return String(data: d, encoding: .utf8)
+    }
+}
+
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, howto, route, goal, charPreview, support, icon, notifyList }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
@@ -51,6 +145,7 @@ struct SettingsView: View {
                         demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
                         demoButton("모든 화면 열기") { m.resetDemo(.all) }
                     }
+                    group(nil, [("출시 알림 신청 목록", "naeilo.com 앱 받기 신청", .notifyList)])
                 }
                 Text("시세: \(Market.shared.source) · \(Config.channel.rawValue)").appFont(12).foregroundStyle(Theme.muted)
                 Text("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)").appFont(12).foregroundStyle(Theme.muted)
@@ -73,6 +168,7 @@ struct SettingsView: View {
             case .goal: GoalSetView(fromSettings: true)
             case .support: SupportView()
             case .icon: AppIconScreen()
+            case .notifyList: NotifyListView()
             case .charPreview: WidgetPickView()     // 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
             }
         }
