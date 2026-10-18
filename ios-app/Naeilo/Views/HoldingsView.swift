@@ -493,6 +493,8 @@ struct AddHoldingView: View {
                 TextField("한글·영문 이름, 티커, 종목 코드", text: $query)
                     .autocorrectionDisabled().textInputAutocapitalization(.never)
                     .focused($focus, equals: 0)
+                    // 종목을 고른 뒤에도 위 칸에 글자를 넣으면 바로 아래에 다시 찾는다 ('다른 종목' 버튼 대신)
+                    .onChange(of: query) { _, _ in picked = nil }
                     .padding(.horizontal, 14).frame(minHeight: 48)
                     .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
@@ -584,8 +586,6 @@ struct AddHoldingView: View {
         Card {
             HStack {
                 Text("\(p.name) (\(p.id))").appFont(16, .bold)
-                Spacer()
-                Button("다른 종목") { picked = nil }.appFont(13, .semibold).foregroundStyle(Theme.teal)
             }
             if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
                 let pk = KoreaEstimate.info(id: p.id, name: p.name).proxy != nil
