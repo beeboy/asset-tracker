@@ -466,14 +466,30 @@ struct AddHoldingView: View {
     @State private var kp = ""                        // 한국 종목: 지금 가격 (시세를 받지 않는다)
     @State private var warn = false
     @FocusState private var focus: Int?
+    /// 다른 화면 안에 상자로 넣을 때 (미션 1): 스크롤·제목 없이, 추가하면 닫지 않고 빈칸으로
+    var inline = false
 
     var body: some View {
+        if inline {
+            box.task(id: query) { await search() }
+        } else {
+            ScrollView { box.screen().padding(.top, 8) }
+                .background(Theme.bg)
+                .navigationBarTitleDisplayMode(.inline)
+                .scrollDismissesKeyboard(.interactively)
+                // 숫자 자판에는 닫기 키가 없어서 자판 위에 '완료'를 둔다
+                .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = nil } } }
+                // 입력을 0.4초 멈추면 Yahoo 검색
+                .task(id: query) { await search() }
+        }
+    }
+
+    private var box: some View {
         let blank = query.trimmingCharacters(in: .whitespaces).isEmpty   // 빈칸이면 목록을 띄우지 않는다
         let local = blank ? [] : StockSearch.local(query)
         let more = remote.filter { r in !local.contains { $0.id == r.id } }
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("종목 추가").appFont(22, .bold)
+        return VStack(alignment: .leading, spacing: 12) {
+                Text("종목 추가").appFont(inline ? 17 : 22, .bold)
                 TextField("한글·영문 이름, 티커, 종목 코드", text: $query)
                     .autocorrectionDisabled().textInputAutocapitalization(.never)
                     .focused($focus, equals: 0)
@@ -499,25 +515,18 @@ struct AddHoldingView: View {
                     }
                 }
             }
-            .screen().padding(.top, 8)
-        }
-        .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
-        .scrollDismissesKeyboard(.interactively)
-        // 숫자 자판에는 닫기 키가 없어서 자판 위에 '완료'를 둔다
-        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = nil } } }
-        // 입력을 0.4초 멈추면 Yahoo 검색
-        .task(id: query) {
-            remote = []; failed = nil
-            let q = query.trimmingCharacters(in: .whitespaces)
-            guard !q.isEmpty, q.unicodeScalars.allSatisfy({ $0.isASCII }) else { searching = false; return }
-            searching = true
-            try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled else { return }
-            let r = await StockSearch.remote(q)
-            guard !Task.isCancelled else { return }
-            remote = r; searching = false
-        }
+    }
+
+    private func search() async {
+        remote = []; failed = nil
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty, q.unicodeScalars.allSatisfy({ $0.isASCII }) else { searching = false; return }
+        searching = true
+        try? await Task.sleep(for: .milliseconds(400))
+        guard !Task.isCancelled else { return }
+        let r = await StockSearch.remote(q)
+        guard !Task.isCancelled else { return }
+        remote = r; searching = false
     }
 
     private func list(_ hits: [StockHit]) -> some View {
@@ -595,12 +604,16 @@ struct AddHoldingView: View {
                 if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
                     guard let v = Double(kp.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v > 0 else { warn = true; return }
                     CustomSymbols.shared.setPrice(p.id, v)
-                    if m.addHolding(p.id, qty, avg.trimmingCharacters(in: .whitespaces).isEmpty ? kp : avg) { dismiss() } else { warn = true }
+                    if m.addHolding(p.id, qty, avg.trimmingCharacters(in: .whitespaces).isEmpty ? kp : avg) { added() } else { warn = true }
                     return
                 }
-                if m.addHolding(p.id, qty, avg) { dismiss() } else { warn = true }
+                if m.addHolding(p.id, qty, avg) { added() } else { warn = true }
             }
         }
+    }
+
+    private func added() {
+        if inline { picked = nil; query = ""; qty = ""; avg = ""; kp = "" } else { dismiss() }
     }
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {
