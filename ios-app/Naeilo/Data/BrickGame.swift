@@ -335,6 +335,8 @@ final class BrickGame: Identifiable {
     /// 이어하기: 앞 단계를 깨고 바로 넘어온 횟수. 단계마다 점수 +10%
     let chain: Int
     var scoreMul: Double { 1 + 0.1 * Double(chain) }
+    /// 연속 3단계를 깰 때마다 (3·6·9…번째) 생명 +1
+    var lifeBonus: Bool { chain > 0 && chain % 3 == 0 }
     @ObservationIgnored var rewindUsed = false
     @ObservationIgnored var paddleX = BrickGame.W / 2
     @ObservationIgnored var t = 0.0
@@ -373,6 +375,7 @@ final class BrickGame: Identifiable {
         self.chain = chain
         // 어느 단계에서 시작해도 난이도 기본 생명, 이어하면 남은 생명 그대로
         self.lives = lives ?? level.lives + stage.extraLives
+        if lives != nil && chain > 0 && chain % 3 == 0 { self.lives += 1 }
         self.net = skill == "sio" ? 1 : 0
         // 벽돌 수는 난이도·단계로 정한다. 내 채운 칸이 먼저 (아래부터), 모자라면 그 위에 더 쌓는다
         let n = stage.bricks(level), f = max(0, min(n, filled))
@@ -444,7 +447,8 @@ final class BrickGame: Identifiable {
     func startPlay() {
         guard phase == .ready else { return }
         phase = .playing
-        GameSound.shared.play(.start)
+        GameSound.shared.play(lifeBonus ? .item : .start)
+        if lifeBonus { say("생명 +1 · 연속 \(chain)단계") }
         launch()
     }
     /// 화면을 누르면 붙은 공을 보낸다 (시작은 시작 카드 버튼으로만)

@@ -621,6 +621,7 @@ struct BrickPlayView: View {
             }
             Group {
                 if g.chain > 0 { line("이어하기 · 점수 ×" + String(format: "%.1f", g.scoreMul) + " · 생명 \(g.lives)") }
+                if g.lifeBonus { line("연속 \(g.chain)단계 · 생명 +1").foregroundStyle(Theme.up).bold() }
                 line(g.stage.short)
                 line("▣ 두 번 맞아야 깨짐")
                 if !g.bigs.isEmpty { line("테트리스 · 모양 둘레까지") }
