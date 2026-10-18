@@ -106,8 +106,8 @@ struct StoryWidgetView: View {
     /// 장 그림 띠: 투명·틴트에서도 그림 원래 색 그대로 (인물 그림과 같게). 그림이 아직 없으면 줄무늬 자리
     @ViewBuilder private var art: some View {
         if let img = UIImage(contentsOfFile: Store.url(WStory.artFile).path) {
-            let pic = Image(uiImage: img).interpolation(.none).resizable().aspectRatio(contentMode: .fill)
-            if mode == .accented, #available(iOS 18, *) { pic.widgetAccentedRenderingMode(.fullColor) } else { pic }
+            let pic = Image(uiImage: img).interpolation(.none).resizable()
+            if mode == .accented, #available(iOS 18, *) { pic.widgetAccentedRenderingMode(.fullColor).aspectRatio(contentMode: .fill) } else { pic.aspectRatio(contentMode: .fill) }
         } else {
             RoundedRectangle(cornerRadius: 6).fill(mint.opacity(0.18))
         }
