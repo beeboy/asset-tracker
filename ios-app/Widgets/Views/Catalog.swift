@@ -61,6 +61,6 @@ struct Gate<Content: View, Locked: View>: View {
     @ViewBuilder var locked: Locked
     var body: some View {
         if preview || Store.isUnlocked(kind) { content }
-        else { locked.widgetURL(Catalog.subscribeURL) }
+        else { locked.widgetURL(Store.widgetsOpen ? Catalog.openURL : Catalog.subscribeURL) }   // 단계로 잠겼으면 앱으로, 구독으로 잠겼으면 구독 화면으로
     }
 }

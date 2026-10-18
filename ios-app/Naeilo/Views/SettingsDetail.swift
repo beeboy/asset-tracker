@@ -341,7 +341,7 @@ extension AppModel {
     struct WidgetInfo: Identifiable { let id: String; let name: String; let desc: String; let size: String; let ok: Bool; let how: String }
     /// 기본 위젯 (위젯 추가 화면과 같은 이름·순서, Catalog). 구독 중이거나 7일 무료 동안 모두 열린다
     var baseWidgets: [WidgetInfo] {
-        Catalog.base.map { WidgetInfo(id: $0.kind, name: $0.name, desc: $0.desc, size: $0.size, ok: Store.widgetsOpen, how: WidgetUnlock.how($0.kind)) }
+        Catalog.base.map { WidgetInfo(id: $0.kind, name: $0.name, desc: $0.desc, size: $0.size, ok: Store.isUnlocked($0.kind), how: WidgetUnlock.how($0.kind)) }
     }
 }
 
