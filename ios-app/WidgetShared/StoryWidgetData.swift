@@ -10,6 +10,9 @@ struct WStory: Codable {
     var progress: Double    // 이 장에서 읽은 만큼 0~1
     var lang: String        // ko | en
 
+    /// 그 장의 도트 그림 (앱이 png 로 둔다. 위젯 묶음에는 장 그림이 없다)
+    static let artFile = "story_art.png"
+
     var url: URL { URL(string: open ? "naeilo://read/\(chapter)" : "naeilo://unlock")! }
 
     static let sample = WStory(open: true, chapter: 1, label: "1장 · 무명의 인터페이스",

@@ -12,6 +12,19 @@ enum Palette {
     static let ink = dyn(0xffffff, 0x1b2230)
     static let bgTop = dyn(0x20252f, 0xffffff)
     static let bgBottom = dyn(0x15181f, 0xeef1f6)
+    /// 내 길: 실제 선·앞섬 (앱 내 길 화면의 민트·청록), 계획선 보라, 뒤처짐·모의 바구니 주황
+    static let teal = dyn(0x5fd0c4, 0x2a9d93)
+    static let plan = dyn(0xb79cf0, 0x8e6bd8)
+    static let orange = dyn(0xe9a564, 0xd9873a)
+    /// 목표일 전망 띠·중앙선 (분석 화면 목표일 전망과 같은 청록)
+    static let band = dyn(0x2a9d93, 0x2a9d93)
+    static let bandLine = dyn(0x8fd8ce, 0x1f7f76)
+    /// 오늘의 움직임 히트맵: 바탕 칸 위에 등락색을 진하기만큼 덮는다
+    static let heatBase = dyn(0x38425a, 0xdfe3ea)
+    static let heatUp = dyn(0xe5484d, 0xe5484d)
+    static let heatDn = dyn(0x3d63c9, 0x3d63c9)
+    /// 밝은·다크 화면에서 같은 색 (과녁판 고리)
+    static func fixed(_ x: UInt32) -> Color { dyn(x, x) }
 
     static func dyn(_ dark: UInt32, _ light: UInt32) -> Color {
         Color(UIColor { $0.userInterfaceStyle == .dark ? rgb(dark) : rgb(light) })
@@ -57,9 +70,22 @@ struct Foot: View { // 아래 줄: 앞말 + '3분 전 · 토스' + 다시 받기
     var body: some View {
         let fresh = Fresh.label(s.pricedAt, s.feed, now: now)
         HStack(spacing: 4) {
-            Text(text.isEmpty ? fresh : text + " · " + fresh).font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.ink.opacity(0.55)).lineLimit(1)
+            Text(text.isEmpty ? fresh : text + " · " + fresh).font(.system(size: 11, weight: .medium)).foregroundStyle(Palette.ink.opacity(0.7)).lineLimit(1)
             Spacer(minLength: 0)
             ReloadButton()
+        }
+    }
+}
+
+struct Stamp: View { // 갱신 시간 + ↻ (자리가 좁은 위젯의 머리·꼬리). 투명 바탕에서도 읽히게 글자를 너무 옅게 하지 않는다
+    let s: Snapshot
+    var button = true
+    var time = true
+    @Environment(\.entryDate) private var now
+    var body: some View {
+        HStack(spacing: 4) {
+            if time { Text(Store.fetchFailed ? WL.t("받기 실패") : Fresh.ago(s.pricedAt, now: now)).font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.ink.opacity(0.7)).lineLimit(1).fixedSize() }
+            if button { ReloadButton() }
         }
     }
 }

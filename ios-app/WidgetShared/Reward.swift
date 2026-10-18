@@ -138,3 +138,26 @@ enum WidgetLine {
     }
     static func reset() { Store.defaults.set(0, forKey: "lineTaps"); Store.defaults.set(Date().timeIntervalSince1970, forKey: "lineBumpAt") }
 }
+
+/// 작은 위젯 내 길·목표 페이스가 읽는 값 (앱이 small.json 으로 쓴다). 모두 앱의 계산값이다
+struct WSmall: Codable {
+    var path: [[Double]]     // 내 길 실제 평가액 [f, 원]: f = 시작 0 → 목표일 1. 마지막 점 = 앱이 쓴 때의 지금
+    var need: [Double]       // 계획선 41점 (f = 0, 0.025 … 1)
+    var gap: Double          // 계획선보다 앞섬(+)·뒤처짐(−) (앱 내 길 화면과 같은 값)
+    var t0: Double           // 앱이 쓴 때의 위젯 총액. 위젯은 지금 총액과의 비율로 지금 점·앞섬을 맞춘다
+    var me: Double?          // 평행 세계: 같은 날 출발한 뒤 진짜 나의 수익률 (모의 바구니가 없으면 nil)
+    var basket: Double?      // 모의 바구니 수익률
+
+    static let file = "small.json"
+    static func load() -> WSmall? { Store.read(WSmall.self, file) }
+    /// 지금 점 (앱이 쓴 뒤 받은 시세만큼)
+    func nowValue(_ total: Double) -> Double { (path.last?.last ?? total) * (t0 > 0 && total > 0 ? total / t0 : 1) }
+    func gapNow(_ total: Double) -> Double { t0 > 0 && total > 0 ? (1 + gap) * total / t0 - 1 : gap }
+
+    /// 위젯 갤러리·연결 전 예시
+    static var sample: WSmall {
+        let need = (0...40).map { 4.8e8 * pow(1e9 / 4.8e8, Double($0) / 40) }
+        let path = (0...10).map { i -> [Double] in let f = 0.25 * Double(i) / 10; return [f, 4.8e8 * pow(1e9 / 4.8e8, f) * (1 + 0.012 * sin(Double(i)) + 0.001 * Double(i))] }
+        return WSmall(path: path, need: need, gap: 0.011, t0: 0, me: 0.084, basket: 0.078)
+    }
+}

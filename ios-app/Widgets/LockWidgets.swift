@@ -9,13 +9,6 @@ struct LockTarget: Widget { var body: some WidgetConfiguration { lockWidget("loc
 @main
 struct NaeiloWidgets: WidgetBundle {
     var body: some Widget {
-        AssetSmall()
-        FutureSmall()
-        BlockSmall()
-        PaceMedium()
-        TargetMedium()
-        MovesMedium()
-        FutureLarge()
         CharHill()
         CharLadder()
         CharTower()
@@ -24,6 +17,13 @@ struct NaeiloWidgets: WidgetBundle {
         CharPuzzle()
         CharGarden()
         CharTug()
+        AssetSmall()
+        PathSmall()
+        FutureSmall()
+        BlockSmall()
+        PaceSmall()
+        TargetSmall()
+        MovesSmall()
         StoryWidget()
         LockWidgets().body
         if #available(iOS 18.0, *) { ReloadControl() }

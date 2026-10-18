@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Observation
 import WidgetKit
 
@@ -170,8 +171,18 @@ final class Story {
                       lang: lang.rawValue)
     }
 
+    /// 서재 위젯 장 그림: 마지막으로 연 장의 표지 도트 그림을 App Group 에 png 로 둔다 (바뀔 때만)
+    static func pushArt(_ m: AppModel) {
+        let name = Shelter.cover(min(m.readLast ?? 0, 5))
+        guard Store.defaults.string(forKey: "storyArt") != name || Store.readData(WStory.artFile) == nil,
+              let d = UIImage(named: name)?.pngData() else { return }
+        Store.writeData(d, WStory.artFile)
+        Store.defaults.set(name, forKey: "storyArt")
+    }
+
     /// 서재 위젯만 다시 그린다 (읽던 자리·언어가 바뀌었을 때)
     func pushWidget(_ m: AppModel) {
+        Self.pushArt(m)
         Store.write(widget(m), "story.json")
         WidgetCenter.shared.reloadTimelines(ofKind: "story")
     }

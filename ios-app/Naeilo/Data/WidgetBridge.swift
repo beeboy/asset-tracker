@@ -91,11 +91,26 @@ enum WidgetBridge {
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")
         Store.write(live, "live.json")
+        Story.pushArt(m)
         Store.write(Story.shared.widget(m), "story.json")   // 서재 위젯: 읽던 자리 한 문단
+        Store.write(small(m, path, cash: cash), WSmall.file)   // 작은 위젯 내 길·목표 페이스
         Store.lastCheck = now
         Store.summarySource = "app"
         Store.widgetStep = m.playOn ? 3 : max(1, m.nxStep)   // 위젯은 미션 4에서 실제로 한 단계에 맞춰 하나씩 열린다 (개발자 계정도 같게)
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// 작은 위젯 값: 내 길(실제는 40점 안쪽으로 줄인다, 계획선 41점, 앞섬)과 평행 세계 나·모의 바구니 수익률
+    @MainActor static func small(_ m: AppModel, _ p: AppModel.MyPath, cash: Double) -> WSmall {
+        let e = max(p.end, 1e-6), step = max(1, p.pts.count / 40)
+        var pts = stride(from: 0, to: p.pts.count, by: step).map { [p.pts[$0].0 / e, p.pts[$0].1] }
+        if let l = p.pts.last, pts.last?.first != l.0 / e { pts.append([l.0 / e, l.1]) }
+        var me: Double?, bk: Double?
+        if let race = m.parallelRace, race.last >= 0 {
+            let r = m.parallelSeries(race)
+            if r.count > 1, race.last < r[0].count, race.last < r[1].count { me = r[0][race.last]; bk = r[1][race.last] }
+        }
+        return WSmall(path: pts, need: (0...40).map { p.need(e * Double($0) / 40) }, gap: m.myPathGapToday, t0: m.total + cash, me: me, basket: bk)
     }
 
     /// 인물별 위젯 말풍선: 사흘에 한 번은 돌아온 물건 얘기, 나머지 날은 오늘 가장 크게 움직인 종목 (대사 데이터에서)
