@@ -315,9 +315,7 @@ struct GoalCellsCard: View {
             .padding(18)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
             HStack(spacing: 8) {
-                ShareCardButton(filled: nV, mine: nMine, market: max(0, nV - nP), kicker: "목표까지 가는 중",
-                                amountLine: "목표 \(AppModel.wonK(m.gK)) 중 \(AppModel.man(tkV))",
-                                title: stone.map { "\($0)% 카드 공유" } ?? "진행 카드 공유", plain: true)
+                ShareCardButton(plain: true)
                 BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: "벽돌깨기", plain: true)
             }
         }

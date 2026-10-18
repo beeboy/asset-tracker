@@ -888,11 +888,17 @@ struct StyleReader<Content: View>: View {
 
 private struct CharDarkKey: EnvironmentKey { static let defaultValue = false }
 private struct CharKindKey: EnvironmentKey { static let defaultValue = "" }
+private struct CharHideKey: EnvironmentKey { static let defaultValue: Bool? = nil }
 extension EnvironmentValues {
     /// 이 화면을 그리는 인물 위젯 종류 (금액 숨기기를 위젯마다 따로 할 때)
     var charKind: String {
         get { self[CharKindKey.self] }
         set { self[CharKindKey.self] = newValue }
+    }
+    /// 앱 공유 카드가 금액 숨김을 정할 때 (nil 이면 위젯 설정을 따른다)
+    var charHide: Bool? {
+        get { self[CharHideKey.self] }
+        set { self[CharHideKey.self] = newValue }
     }
     var charDark: Bool {
         get { self[CharDarkKey.self] }
@@ -945,12 +951,13 @@ private let charHidden = "••••"
 /// 금액: 누르면 숨기고 한 번 더 누르면 보인다 (기본 위젯의 Money 와 같은 동작, 앱 미리보기에서는 그리기만)
 struct CharMoney<L: View>: View {
     @Environment(\.charKind) private var kind
+    @Environment(\.charHide) private var force
     @ViewBuilder let label: (Bool) -> L
     var body: some View {
         #if WIDGET_EXT
         Button(intent: ToggleAmountIntent(kind: kind)) { label(Store.isHidden(kind)) }.buttonStyle(.plain)
         #else
-        label(Store.isHidden(kind))
+        label(force ?? Store.isHidden(kind))
         #endif
     }
 }

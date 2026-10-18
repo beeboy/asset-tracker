@@ -1,11 +1,9 @@
 import SwiftUI
 
-// 1000칸 공유 카드 (시안 34판): 기본은 금액을 숨기고 칸 수와 %만, 종목 이름은 넣지 않는다.
+// 미션 위젯 공유 (확정 시안): 인물 위젯 8개 중 하나와 위젯 모양(라이트·다크·투명·틴트)을 골라 이미지로 보낸다.
+// 기본은 꽃밭, 모양은 아이폰 라이트/다크 설정, 금액은 숨김. 종목 이름은 위젯에 원래 없다.
 struct ShareCardButton: View {
-    let filled: Int, mine: Int, market: Int
-    let kicker: String
-    let amountLine: String
-    var title = "공유 카드"
+    var title = "미션 위젯 공유"
     var plain = false   // 흰 바탕 · 회색 테두리 (미션 탭 보조 버튼)
     @State private var show = false
     var body: some View {
@@ -17,122 +15,168 @@ struct ShareCardButton: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(plain ? Theme.border : Theme.teal, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
-        .sheet(isPresented: $show) { ShareCardSheet(filled: filled, mine: mine, market: market, kicker: kicker, amountLine: amountLine) }
+        .sheet(isPresented: $show) { ShareCardSheet() }
     }
 }
 
 struct ShareCardSheet: View {
-    let filled: Int, mine: Int, market: Int
-    let kicker: String
-    let amountLine: String
+    /// 위젯 8개: 고르기 칸 이름·아이콘, 카드 소개 한 줄, 인물 한마디
+    private struct W { let name: String; let icon: String; let intro: String; let say: String }
+    private static let list: [W] = [
+        W(name: "언덕", icon: "chart.line.uptrend.xyaxis", intro: "최근 10일 자산이 픽셀 언덕이 돼요.", say: "언덕이 조금 높아졌네."),
+        W(name: "사다리", icon: "stairs", intro: "본전까지 사다리를 한 칸씩 올라요.", say: "한 칸 더 올라왔어."),
+        W(name: "블록 탑", icon: "square.stack.3d.up", intro: "100칸이 한 층, 10층 탑을 쌓아요.", say: "한 층씩 쌓고 있어."),
+        W(name: "전광판", icon: "tv", intro: "오늘 내 자산이 전광판에 떠요.", say: "오늘도 불 켜졌어."),
+        W(name: "키 재기", icon: "ruler", intro: "지난 날과 오늘, 키를 재 봐요.", say: "어제보다 조금 컸네."),
+        W(name: "퍼즐", icon: "puzzlepiece", intro: "20조각 퍼즐, 다 맞추면 깃발.", say: "조각 하나 더 맞췄어."),
+        W(name: "꽃밭", icon: "camera.macro", intro: "내 목표가 홈 화면에서 꽃으로 피어나요.", say: "다 피면 다음 밭이야."),
+        W(name: "줄다리기", icon: "arrow.left.and.right", intro: "오른 종목과 내린 종목이 줄을 당겨요.", say: "오늘은 우리 편이 당겼어."),
+    ]
+    private static let modes = ["라이트", "다크", "투명", "틴트"]
+
+    @State private var picked = 6          // 기본 꽃밭
+    @State private var mode: Int?          // nil: 아이폰 설정 따라감
     @State private var showAmount = "hide"
+    @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var m
+
+    private var curMode: Int { mode ?? (scheme == .dark ? 1 : 0) }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    card.padding(.horizontal, 16)
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("보낼 위젯 고르기").appFont(13).foregroundStyle(Theme.sub)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                        ForEach(Self.list.indices, id: \.self) { i in
+                            let on = i == picked
+                            Button { picked = i } label: {
+                                VStack(spacing: 4) {
+                                    Image(systemName: Self.list[i].icon).font(.system(size: 20))
+                                    Text(Self.list[i].name).appFont(11, .semibold).lineLimit(1)
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 64)
+                                .foregroundStyle(on ? .white : Theme.ink)
+                                .background(on ? Theme.teal : Theme.card, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay(RoundedRectangle(cornerRadius: 16).stroke(on ? Theme.teal : Theme.border))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(on ? .isSelected : [])
+                        }
+                    }
+                    HStack {
+                        Text("위젯 모양").appFont(13).foregroundStyle(Theme.sub)
+                        Spacer()
+                        Text("기본: 아이폰 설정 (\(Self.modes[scheme == .dark ? 1 : 0]))").appFont(11).foregroundStyle(Theme.muted)
+                    }
+                    ChipRow(items: Self.modes.indices.map { ($0, Self.modes[$0]) },
+                            selection: Binding(get: { curMode }, set: { mode = $0 }), fill: true)
+
+                    card.frame(maxWidth: .infinity)
+
                     ChipRow(items: [("hide", "금액 숨기기"), ("show", "금액 보이기")], selection: $showAmount, fill: true)
-                        .padding(.horizontal, 16)
                     if let img = rendered {
-                        ShareLink(item: img, preview: SharePreview("naeilo 1000칸", image: img)) {
+                        ShareLink(item: img, preview: SharePreview("naeilo 미션 위젯", image: img)) {
                             Label("이미지로 저장 · 공유", systemImage: "square.and.arrow.up").appFont(16, .bold)
                                 .frame(maxWidth: .infinity, minHeight: 50).foregroundStyle(.white)
                                 .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
                         }
-                        .padding(.horizontal, 16)
                     }
-                    Text("기본은 금액을 숨기고 칸 수와 %만 보여 줘요. 종목 이름은 넣지 않아요.").appFont(12).foregroundStyle(Theme.muted).padding(.horizontal, 16)
                 }
-                .padding(.vertical, 16)
+                .padding(16)
             }
             .background(Theme.bg)
-            .navigationTitle("1000칸 공유 카드").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("미션 위젯 공유").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
         }
     }
 
-    private var line: String {
-        showAmount == "show" ? amountLine : String(format: "%.1f", Double(filled) / 10) + "% 채웠어요." + (filled >= 100 ? " \(filled / 100 * 100)칸 넘었어요!" : "")
-    }
-
     // 공유 이미지는 화면 모드와 상관없이 같은 어두운 카드
     private var card: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack { Text("naeilo").font(.system(size: 16, weight: .bold)); Spacer(); Text(today).font(.system(size: 12)).foregroundStyle(Color(hex: 0xC9D0D6)) }
-            Text(kicker).font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.mint)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(filled.formatted()).font(.system(size: 36, weight: .bold))
-                Text("/ 1,000칸").font(.system(size: 14)).foregroundStyle(Color(hex: 0xC9D0D6))
+        let w = Self.list[picked], f = m.homeFriendShown
+        return VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("귀여운 주식 위젯").font(.system(size: 24, weight: .bold))
+                Text(w.intro).font(.system(size: 13)).foregroundStyle(Color(hex: 0xAAB3C2))
             }
-            Canvas { ctx, size in
-                let s = size.width / 40
-                for i in 0..<1000 {
-                    let r = CGRect(x: CGFloat(i % 40) * s + 0.5, y: CGFloat(24 - i / 40) * s + 0.5, width: s - 1, height: s - 1)
-                    let c: Color = i < mine ? Theme.mint : i < mine + market ? Color(hex: 0xA8E8E1) : Theme.slate
-                    ctx.fill(Path(r), with: .color(c))
+            HStack(alignment: .center, spacing: 14) {
+                widget(f)
+                // 말풍선: 왼쪽 꼬리가 위젯 속 인물을 가리킨다
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(m.friendName(f)).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.mint)
+                    Text(w.say).font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
                 }
-                let r = CGRect(x: 39 * s + 1, y: 1, width: s - 2, height: s - 2)
-                ctx.fill(Path(ellipseIn: r), with: .color(Theme.yellow))
-            }
-            .aspectRatio(320.0 / 200.0, contentMode: .fit)
-            Text(line).font(.system(size: 15, weight: .semibold))
-            // 홈에 둔 인물이 한마디 (금액·종목 이름은 넣지 않는다)
-            let f = m.homeFriendShown, name = m.friendName(f)
-            HStack(alignment: .bottom, spacing: 8) {
-                MotionSprite(friend: f, pose: .cheer, height: 84).frame(width: 72)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(name).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.mint)
-                    Text(Self.say(m.voice(f), filled)).font(.system(size: 14, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 14).padding(.vertical, 12)
+                .background(Color(hex: 0x1D2430), in: RoundedRectangle(cornerRadius: 16))
+                .overlay(alignment: .bottomLeading) {
+                    BubbleTail().fill(Color(hex: 0x1D2430)).frame(width: 10, height: 16).offset(x: -9, y: -18)
                 }
-                .padding(.horizontal, 12).padding(.vertical, 9)
-                .background(Color.white.opacity(0.08), in: BubbleShape())
-                .overlay(BubbleShape().stroke(Color.white.opacity(0.25), lineWidth: 1))
-                .padding(.bottom, 18)
-                Spacer(minLength: 0)
             }
-            Text("매일 1분, naeilo로").font(.system(size: 12)).foregroundStyle(Color(hex: 0xC9D0D6))
+            HStack {
+                Text("매일 1분").foregroundStyle(Color(hex: 0x8B95A5))
+                Spacer()
+                Text("App Store에서 naeilo").fontWeight(.semibold)
+            }
+            .font(.system(size: 12))
         }
-        .foregroundStyle(.white)
-        .padding(18)
-        .background(Color(hex: 0x15202B), in: RoundedRectangle(cornerRadius: 20))
+        .foregroundStyle(Color(hex: 0xF2F4F7))
+        .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 20)
+        .background(Color(hex: 0x10151F), in: RoundedRectangle(cornerRadius: 28))
+        .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color(hex: 0x222A37)))
         .frame(width: 358)
         .environment(\.colorScheme, .dark)
     }
 
-    private var today: String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"
-        return f.string(from: Date())
-    }
-
-    /// 인물별 한마디 (미션 안내 말투와 같은 결)
-    static func say(_ f: String, _ n: Int) -> String {
-        let left = 100 - n % 100           // 다음 100칸까지
-        if let l = Lines.pick(n >= 1000 ? "share.full.\(f)" : "share.\(f)", ["n": n.formatted(), "left": "\(left)"]) { return l }
-        if n >= 1000 {
-            switch f {
-            case "sio": return "1,000칸. 다 셌어."
-            case "seonbae": return "다 채웠네. 여기까지 온 이유, 기억나?"
-            case "ir": return "다 채웠어. 서두르지 않았잖아."
-            case "sua": return "제때 다 채웠어요. 1,000칸이에요."
-            default: return "…… 1,000칸, 다 채웠어요."
+    /// 실제 인물 위젯을 고른 모양으로 그린다 (앱 '인물 위젯' 미리보기와 같은 크기 158)
+    private func widget(_ f: String) -> some View {
+        let e = CharEntry(date: Date(), r: Store.read(WReward.self, "reward.json") ?? .sample, c: WChar.of(f), locked: false, preview: true)
+        let dark = curMode != 0
+        let content = Group {
+            switch picked {
+            case 0: HillCharView(e: e)
+            case 1: LadderCharView(e: e)
+            case 2: TowerCharView(e: e)
+            case 3: BoardCharView(e: e)
+            case 4: HeightCharView(e: e)
+            case 5: PuzzleCharView(e: e)
+            case 6: GardenCharView(e: e)
+            default: TugCharView(e: e)
             }
         }
-        switch f {
-        case "sio": return "\(n.formatted())칸. 다음 100칸까지 \(left)칸. 셌어."
-        case "seonbae": return "\(n.formatted())칸까지 왔네. 남은 \(left)칸은 언제쯤 채울 것 같아?"
-        case "ir": return "다음 100칸까지 \(left)칸. 서두르지 않아도 채워져."
-        case "sua": return "오늘도 제때 왔어요. 다음 100칸까지 \(left)칸이에요."
-        default: return "…… 한 칸씩 왔어요. 다음 100칸까지 \(left)칸이에요."
+        .padding(16).foregroundStyle(.white)
+        .environment(\.colorScheme, .dark).environment(\.charDark, dark)
+        .environment(\.charHide, showAmount == "hide")
+        .frame(width: 158, height: 158)
+        return ZStack {
+            switch curMode {
+            case 0, 1: CharBG(c: e.c, locked: false, dark: dark)
+            case 2: Color.white.opacity(0.10)
+            default: Color(hex: 0x15201E)
+            }
+            if curMode == 3 { content.grayscale(1).colorMultiply(Theme.mint) } else { content }
         }
+        .frame(width: 158, height: 158)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(curMode == 2 ? Color.white.opacity(0.25) : .clear))
     }
 
     @MainActor private var rendered: Image? {
         let r = ImageRenderer(content: card.environment(m))
         r.scale = 3
         return r.uiImage.map { Image(uiImage: $0) }
+    }
+}
+
+/// 말풍선 꼬리: 오른쪽 변이 풍선에 붙고 왼쪽 끝이 뾰족하다
+struct BubbleTail: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.maxX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - r.height / 4))
+        p.closeSubpath()
+        return p
     }
 }
 

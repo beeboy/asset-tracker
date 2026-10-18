@@ -216,8 +216,7 @@ struct BoardView: View {
             }
             // 공유 카드와 벽돌깨기를 한 줄에
             HStack(spacing: 8) {
-                ShareCardButton(filled: n, mine: nFloor, market: n - nFloor, kicker: "본전까지 가는 중",
-                                amountLine: "본전 \(AppModel.man(m.cost)) 중 \(AppModel.man(m.total))")
+                ShareCardButton(title: "공유 카드")
                 BrickGameButton(filled: n, floor: nFloor, yesterday: nY)
             }
         }
