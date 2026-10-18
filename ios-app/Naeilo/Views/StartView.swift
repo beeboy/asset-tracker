@@ -19,18 +19,18 @@ struct StartView: View {
                         .overlay(UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14).stroke(Theme.border))
                         .padding(.bottom, 14)
                 }
-                Text("지금 내 투자,\n플러스인가요\n마이너스인가요?").appFont(30, .bold).lineSpacing(4)
+                Text("지금 내 투자,\n플러스? 마이너스?").appFont(30, .bold).lineSpacing(4)
                 VStack(spacing: 10) {
                     option("마이너스예요", "본전까지 가는 길을 같이 찾아요", .recover)
-                    option("플러스예요", "목표 금액까지 가는 길을 그려요", .plus)
-                    option("아직 시작 전이에요", "한 달에 얼마씩이면 언제 얼마가 되는지 봐요", .novice)
+                    option("플러스예요", "목표까지 가는 길", .plus)
+                    option("아직 시작 전이에요", "매달 얼마면 언제 얼마?", .novice)
                 }
                 if let pick {
-                    PrimaryButton(title: "이 길로 시작하기") { m.startRoute(pick) }
+                    PrimaryButton(title: "시작하기") { m.startRoute(pick) }
                 }
                 Text("잘 모르겠다면 \"마이너스\"로 시작하세요. 매수 단가를 넣으면 자동으로 알려드려요.").appFont(13).foregroundStyle(Theme.muted)
                 Button { restore = true } label: {
-                    Label("다른 폰에서 쓰던 값 불러오기", systemImage: "arrow.triangle.2.circlepath").appFont(14, .semibold)
+                    Label("다른 폰 값 불러오기", systemImage: "arrow.triangle.2.circlepath").appFont(14, .semibold)
                         .foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.plain)
@@ -83,12 +83,12 @@ struct StartForecastCard: View {
             return Ex(v0: v0, monthly: 0, line: c, lineName: "본전", big: AppModel.eta(mo).replacingOccurrences(of: " 뒤", with: "").replacingOccurrences(of: "뒤", with: ""), sub: "본전까지 보통 걸리는 기간")
         case .novice:
             let m = 50.0, v = Self.value(0, m, 3, 0)
-            return Ex(v0: 0, monthly: m, line: m * 36, lineName: "넣은 돈", big: AppModel.wonK(v), sub: "매달 50만원이면 3년 뒤 보통")
+            return Ex(v0: 0, monthly: m, line: m * 36, lineName: "넣은 돈", big: AppModel.wonK(v), sub: "월 50만 · 3년 뒤 보통")
         default:
             // 5,000만원 → 목표 5,800만원, 3년 뒤 목표 이상일 확률
             let v0 = 5000.0, k = 5800.0
             let p = AppModel.normCDF((log(v0 / k) + g * 3) / (s * sqrt(3)))
-            return Ex(v0: v0, monthly: 0, line: k, lineName: "목표", big: AppModel.pct(p), sub: "3년 안에 목표에 닿을 확률")
+            return Ex(v0: v0, monthly: 0, line: k, lineName: "목표", big: AppModel.pct(p), sub: "3년 안 목표 확률")
         }
     }
 
@@ -113,9 +113,9 @@ struct StartForecastCard: View {
                     if t != "3년" { Spacer() }
                 }
             }
-            Text("종목과 수량만 넣으면 내 숫자로 바뀌어요. 루트를 고르면 그 길의 숫자를 보여 드려요.")
+            Text("수량만 넣으면 내 숫자로")
                 .appFont(14).foregroundStyle(Color(hex: 0xEEF0F7)).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-            Text("예시 화면이에요 · 확률 모형의 결과이며 투자 권유가 아니에요").appFont(11).foregroundStyle(Color(hex: 0x8A93A6))
+            Text("예시 · 확률 모형 · 투자 권유 아님").appFont(11).foregroundStyle(Color(hex: 0x8A93A6))
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
