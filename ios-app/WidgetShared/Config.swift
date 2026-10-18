@@ -125,11 +125,11 @@ enum Store {
         get { defaults.object(forKey: "widgetStep") as? Int ?? 3 }
         set { defaults.set(newValue, forKey: "widgetStep") }
     }
-    /// 위젯마다 열리는 단계: 1 자산 추이, 2 본전 진행, 3 블록·오늘의 움직임. 나머지도 세 단계를 다 하면 열린다
+    /// 위젯마다 열리는 단계: 1 자산 추이·인물 자산 언덕, 2 본전 진행·인물 본전 사다리, 3 블록·오늘의 움직임. 나머지도 세 단계를 다 하면 열린다
     static func stepNeed(_ kind: String) -> Int {
         switch kind {
-        case "asset.small", "lock.asset": 1
-        case "pace.medium", "lock.goal": 2
+        case "asset.small", "lock.asset", "char.hill": 1
+        case "pace.medium", "lock.goal", "char.ladder": 2
         default: 3
         }
     }
