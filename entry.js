@@ -117,6 +117,17 @@
   tick();
 
   // ------------------------------------------------------------ 시작
+  // 삼성 인터넷·크롬 안드로이드의 '웹 페이지 어둡게'(자동 다크)는 prefers-color-scheme 을 바꾸지 않고 색만 덮는다.
+  // 그래서 <picture> 의 다크판이 안 골라지니, 자동 다크면 앱 화면 3장을 다크판으로 직접 바꾼다 (Chrome 문서의 감지법)
+  const probe = document.createElement("div");
+  probe.style.cssText = "display:none;background-color:canvas;color-scheme:light";
+  document.body.appendChild(probe);
+  const autoDark = getComputedStyle(probe).backgroundColor !== "rgb(255, 255, 255)";
+  probe.remove();
+  if (autoDark) document.querySelectorAll(".phone picture").forEach((p) => {
+    const src = p.querySelector("source"), img = p.querySelector("img");
+    if (src && img) { img.src = src.srcset; src.remove(); }
+  });
   document.querySelectorAll(".phone img").forEach((img) => img.addEventListener("error", () => img.classList.add("miss")));
   $("#fcTrustIn").addEventListener("input", (e) => {
     const v = Number(e.target.value);
