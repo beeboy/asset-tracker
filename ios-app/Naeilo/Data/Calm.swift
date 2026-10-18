@@ -5,7 +5,7 @@ import Foundation
 // 근거: project-files research/가위바위보-심리학과-투자.md 6절, notes/가위바위보-지수-캐릭터-매칭안-2026-10-10.md
 
 struct CalmEvent: Codable, Equatable {
-    enum Act: String, Codable { case rule, chase, switchOut, avgDown, trim, wait }
+    enum Act: String, Codable { case rule, chase, switchOut, avgDown, trim, wait, fresh }   // fresh: 새 종목 매수
     var day: String        // yyyy-MM-dd
     var sym: String
     var buy: Bool          // 산 것인지 (판 것·기다림은 false)
@@ -23,6 +23,7 @@ struct CalmEvent: Codable, Equatable {
         case .avgDown: "손실 뒤 추가 매수"
         case .trim: "수익 뒤 덜어내기"
         case .wait: "큰 변동일 기다림"
+        case .fresh: "새 종목 매수"
         }
     }
 }
@@ -65,7 +66,7 @@ struct Calm: Codable, Equatable {
         case .rule: return 2
         case .wait: return 1
         case .chase, .switchOut: return -1
-        case .avgDown, .trim: return 0
+        case .avgDown, .trim, .fresh: return 0
         }
     }
 
@@ -198,6 +199,7 @@ struct Calm: Codable, Equatable {
         case .chase: return "오른 뒤 더 사서 −1점"
         case .switchOut: return "내린 뒤 팔아서 −1점"
         case .avgDown, .trim: return "물타기·덜어내기는 규칙 밖이라 점수가 없어요"
+        case .fresh: return "새로 산 종목이라 점수 없이 기록만 해요"
         }
     }
 
@@ -274,7 +276,7 @@ struct Calm: Codable, Equatable {
             "sua": [.rule: "제때 했어요.", .chase: "말이 먼저 왔네요. 다음엔 한 박자 쉬어요.", .switchOut: "먼저 돌아섰네요. 다음엔 한 박자 쉬어요.",
                     .avgDown: "더 샀네요. 점수는 그대로예요.", .trim: "덜었네요. 점수는 그대로예요.", .wait: "오늘은 침묵을 골랐어요."],
         ]
-        return lines[who]?[a] ?? lines["seri"]![a]!
+        return lines[who]?[a] ?? lines["seri"]?[a] ?? "기록했어요."
     }
 }
 
@@ -449,9 +451,9 @@ extension AppModel {
     /// 규칙 신호: 회복 루트는 몰린 종목 비중이 계획에서 5%p 넘게 벗어났을 때, 목표 루트는 그달 첫 적립 매수
     func calmDrift() -> Double? { isGoal ? nil : abs(focusWeight - planWeight) }
 
-    /// 수량 고치기에서 '더 샀어요'·'팔았어요'·'지우기'를 저장한 뒤 부른다. 기록한 행동을 돌려준다
+    /// 수량 고치기(직접 고치기로 수량이 바뀐 것 포함)·종목 추가를 저장한 뒤 부른다. 기록한 행동을 돌려준다
     @discardableResult
-    func calmTrade(_ sym: Symbol, buy: Bool, avgBefore: Double, driftBefore: Double?) -> CalmEvent.Act {
+    func calmTrade(_ sym: Symbol, buy: Bool, avgBefore: Double, driftBefore: Double?, fresh: Bool = false) -> CalmEvent.Act {
         let today = Day.today, win = sym.last >= avgBefore
         var rule = false
         if let d0 = driftBefore, d0 >= 0.05, let d1 = calmDrift() { rule = d1 < d0 }
@@ -459,7 +461,7 @@ extension AppModel {
             let month = String(today.prefix(7))
             rule = !calm.events.contains { $0.buy && $0.day.hasPrefix(month) }
         }
-        let act: CalmEvent.Act = rule ? .rule : win ? (buy ? .chase : .trim) : (buy ? .avgDown : .switchOut)
+        let act: CalmEvent.Act = rule ? .rule : fresh ? .fresh : win ? (buy ? .chase : .trim) : (buy ? .avgDown : .switchOut)
         calm.record(CalmEvent(day: today, sym: sym.id, buy: buy, win: win, act: act, big: abs(sym.quote.change) >= 0.05, pts: 0))
         return act
     }

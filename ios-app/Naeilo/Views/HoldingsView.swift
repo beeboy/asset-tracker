@@ -746,14 +746,14 @@ enum HoldingEdit {
         return said
     }
 
-    /// trade: 산 것(true)·판 것(false)이면 평정 지수에 기록하고 인물의 한 줄을 돌려준다. 직접 고치기(nil)는 기록하지 않는다
+    /// trade: 산 것(true)·판 것(false)이면 평정 지수에 기록하고 인물의 한 줄을 돌려준다. 직접 고치기(nil)는 수량이 바뀌었을 때만 늘면 산 것, 줄면 판 것으로 기록
     @discardableResult
     static func save(_ m: AppModel, _ sym: Symbol, _ qty: Double, _ avg: Double, trade buy: Bool? = nil) -> String? {
         let before = m.holdings.first(where: { $0.symbol == sym.id && $0.qty > 0 }), drift0 = m.calmDrift()
         if let i = m.holdings.firstIndex(where: { $0.symbol == sym.id }) {
             if qty > 0 { m.holdings[i] = Holding(symbol: sym.id, qty: qty, avg: (avg * 100).rounded() / 100) } else { m.holdings.remove(at: i) }
         }
-        guard let buy, let before else { return nil }
+        guard let before, let buy = buy ?? (qty == before.qty ? nil : qty > before.qty) else { return nil }
         let act = m.calmTrade(sym, buy: buy, avgBefore: before.avg, driftBefore: drift0)
         let pts = m.calm.events.last?.pts ?? 0, who = m.calmSpeaker
         return "\(m.friendName(who)): \(Calm.feedback(m.voice(who), act))" + (pts != 0 ? " (\(pts > 0 ? "+" : "")\(pts)점)" : "")

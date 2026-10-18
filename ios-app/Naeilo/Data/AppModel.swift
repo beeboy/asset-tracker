@@ -98,9 +98,14 @@ final class AppModel {
     func addHolding(_ id: String, _ qty: String, _ avg: String) -> Bool {
         let num = { (t: String) in Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)) }
         guard Sample.symbol(id) != nil, let q = num(qty), q > 0, let a = num(avg), a > 0 else { return false }
+        let old = isSample ? nil : holdings.first { $0.symbol == id }, drift0 = calmDrift()
         if isSample { holdings = [] }       // 처음 넣는 내 종목이면 샘플(DRNK·QQQ)은 치운다
         holdings.removeAll { $0.symbol == id }
         holdings.append(Holding(symbol: id, qty: q, avg: a))
+        // 내 투자 습관 기록: 새 종목은 '새 종목 매수', 있던 종목은 수량이 늘면 산 것·줄면 판 것 (국내 합계는 빼고)
+        if id != KoreaEstimate.sumId, let s = Sample.symbol(id), old?.qty != q {
+            calmTrade(s, buy: old.map { q > $0.qty } ?? true, avgBefore: old?.avg ?? a, driftBefore: drift0, fresh: old == nil)
+        }
         return true
     }
     /// 평정 지수 기록 (Calm.swift). 내 종목처럼 앱을 다시 켜도 남는다
