@@ -466,9 +466,38 @@ extension AppModel {
         return act
     }
 
+    /// 한 번만: 이 기록이 생기기 전 수량 기록(lots)에서 날짜별 수량 변화를 찾아 내 투자 습관에 채운다.
+    /// 첫 줄은 시작 수량이라 빼고, 이미 있는 날·종목은 건너뛴다. 그날 종가와 지금 평균 단가로 수익·손실을 보고, 종가를 모르면 점수 없는 기록으로
+    func calmBackfill() {
+        let flag = "calm.backfill.v1", ud = UserDefaults.standard
+        guard !isSample, persists, !ud.bool(forKey: flag) else { return }
+        ud.set(true, forKey: flag)
+        var add: [CalmEvent] = []
+        for (a, b) in zip(lots, lots.dropFirst()) where b.d < Day.today {
+            for t in Set(a.h.keys).union(b.h.keys) {
+                let q0 = a.h[t] ?? 0, q1 = b.h[t] ?? 0
+                guard q0 != q1, let id = Sync.appId(t), id != "DRNK",
+                      !calm.events.contains(where: { $0.day == b.d && $0.sym == id }) else { continue }
+                let buy = q1 > q0, h = PriceHistory.of(id), close = h?.on(b.d)
+                let prev = h.flatMap { h in h.dates.lastIndex { $0 < b.d }.map { h.closes[$0] } }
+                let big = close.flatMap { c in prev.map { abs(c / $0 - 1) >= 0.05 } } ?? false
+                let avg = holdings.first { $0.symbol == id }?.avg
+                let win = close.flatMap { c in avg.map { c >= $0 } }
+                let act: CalmEvent.Act = q0 == 0 ? .fresh : win.map { $0 ? (buy ? .chase : .trim) : (buy ? .avgDown : .switchOut) } ?? (buy ? .avgDown : .trim)
+                add.append(CalmEvent(day: b.d, sym: id, buy: buy, win: win ?? false, act: act, big: big, pts: Calm.points(act)))
+            }
+        }
+        guard !add.isEmpty else { return }
+        var c = calm
+        c.events = (add + c.events).sorted { $0.day < $1.day }.suffix(Calm.keep).map { $0 }
+        c.refreshType(); c.climb()
+        calm = c
+    }
+
     /// 홈을 열 때: 함께한 날을 세고, 내 종목이 ±5% 넘게 움직였는데 오늘 매매가 없으면 기다림 +1 (하루 한 번)
     func calmOpen() {
         let today = Day.today
+        calmBackfill()
         recordDay()   // 내 기록: 홈을 연 날 한 줄 (같은 날은 지금 값으로 고침)
         if !calm.events.contains(where: { $0.day == today }),
            let r = rows.filter({ abs($0.sym.quote.change) >= 0.05 }).max(by: { abs($0.sym.quote.change) < abs($1.sym.quote.change) }) {
