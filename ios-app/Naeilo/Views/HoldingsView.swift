@@ -1345,6 +1345,14 @@ struct TownTalk: View {
                     .padding(.horizontal, 8).padding(.vertical, 6)
                     .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
                 }
+                // 우리 사이·꾸미기: 대사 박스 안 오른쪽 아래에 붙인다
+                if res.id != TownLook.mayorID && res.id != TownLook.warshID {
+                    HStack(spacing: 6) {
+                        Spacer(minLength: 0)
+                        chip("우리 사이", us)
+                        chip("꾸미기", dress)
+                    }
+                }
             }
             .padding(.leading, 128).padding(.trailing, 12).padding(.vertical, 12)
             .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
@@ -1366,15 +1374,6 @@ struct TownTalk: View {
             }
             .padding(.leading, 6).padding(.bottom, 6)
             .allowsHitTesting(false)
-        }
-        .overlay(alignment: .topTrailing) {
-            if res.id != TownLook.mayorID && res.id != TownLook.warshID {
-                HStack(spacing: 6) {
-                    chip("우리 사이", us)
-                    chip("꾸미기", dress)
-                }
-                .offset(y: -34)
-            }
         }
         .onChange(of: focus) { _, v in
             typing = v
@@ -1399,7 +1398,6 @@ struct TownTalk: View {
     private func chip(_ t: String, _ a: @escaping () -> Void) -> some View {
         Button(t, action: a).appFont(12, .bold).foregroundStyle(.white)
             .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(Color(red: 0.10, green: 0.11, blue: 0.20).opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
     }
 }
