@@ -917,6 +917,7 @@ struct TownView: View {
     @State private var kbTop: CGFloat = .infinity   // 키보드 윗변 (화면 좌표)
     @State private var talkBottom: CGFloat = 0      // 대사창 제자리 아랫변 (화면 좌표)
     @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
+    @State private var tick = 0                     // 2초마다 한 칸: 살짝 걷기·잡담 (가볍게, 화면에 있을 때만)
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
     // 주민 자리 (동네 판 안의 비율 좌표). 앞 번호부터 채운다
@@ -958,6 +959,12 @@ struct TownView: View {
                     .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
                 ForEach(folk.indices, id: \.self) { i in
                     let r = folk[i].0, p = folk[i].1
+                    // 걸음: 주민마다 다른 박자로 옆으로 한두 걸음 오가고, 가끔 폴짝
+                    let sd = Int(TownLook.seed(r.id) % 7)
+                    let dx = CGFloat([0, 5, 9, 5, 0, -5, -9, -5][(tick + sd) % 8]) * (sd % 2 == 0 ? 1 : -1)
+                    let hop: CGFloat = (tick + sd) % 5 == 0 ? -3 : 0
+                    // 잡담: 4칸(8초)마다 한 명이 2칸 동안 말풍선
+                    let chat = tick % 4 < 2 && Int(TownLook.seed("chat\(tick / 4)") % UInt64(max(1, folk.count))) == i && talk == nil
                     Button { talk = r } label: {
                         TownFace(id: r.id, note: book.note(r.id), width: 48, height: 68)
                             .overlay(alignment: .topTrailing) {
@@ -969,6 +976,17 @@ struct TownView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(TownLook.shown(r, book.note(r.id)))
+                    .overlay(alignment: .top) {
+                        if chat {
+                            Text(TownLook.chat(r, tick / 4)).appFont(11).foregroundStyle(.black).lineLimit(1).fixedSize()
+                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .background(.white, in: RoundedRectangle(cornerRadius: 6))
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.black.opacity(0.6), lineWidth: 1.5))
+                                .offset(y: -24).transition(.opacity).allowsHitTesting(false)
+                        }
+                    }
+                    .offset(x: dx, y: hop)
+                    .animation(.easeInOut(duration: 1.6), value: tick)
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
                 }
                 TownWeather(kind: sky.kind).allowsHitTesting(false)
@@ -1007,6 +1025,13 @@ struct TownView: View {
         }
 
         .task { await sky.refresh() }      // 날씨는 하루 한 번만 받는다
+        .task {
+            // 화면에 있을 때만 2초에 한 번 (사라지면 저절로 멈춤)
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                tick += 1
+            }
+        }
         .task(id: all.map(\.id).joined(separator: ",")) {
             // 다 판 주민은 떠난 날을 적어 옛 이웃으로 (시세·보유를 아직 못 읽었으면 건너뜀)
             if !m.rows.isEmpty { book.sync(all) }
@@ -1142,6 +1167,16 @@ enum TownLook {
     /// 옛 이웃: 다 팔아 떠난 주민이 가끔 놀러 와 함께한 시간을 얘기한다
     static let oldFrames = ["오랜만이에요! 놀러 왔어요.\n{days}일 함께했던 거 기억나요?", "지나가다 들렀어요. 다들 잘 지내죠?", "{weather} 옛날 생각나서 왔어요.",
                             "여기 그대로네요. 반가워요!", "함께한 {days}일, 가끔 생각나요."]
+    /// 잡담 말풍선: 짧은 혼잣말 (기분·자리로 고름)
+    static func chat(_ res: Resident, _ k: Int) -> String {
+        let pool: [String]
+        if res.id == mayorID { pool = ["환율 좀 봐!", "동네 최고!", "다들 잘하고 있어", "아주 훌륭해"] }
+        else if res.id == warshID { pool = ["금리는…", "데이터를 봐야죠", "음, 물가가…", "곧 FOMC"] }
+        else if res.old != nil { pool = ["그대로네", "반가워!", "놀러 왔어"] }
+        else if mood(res) < 0 { pool = ["흑…", "괜찮아질 거야", "오늘은 쉬자", "…"] }
+        else { pool = ["♪", "날씨 좋다", "차트 봤어?", "음냐", "산책 중", "기분 좋아!", "하암…"] }
+        return pool[Int(seed(res.id + "\(k)") % UInt64(pool.count))]
+    }
     /// 계절: 0 봄 · 1 여름 · 2 가을 · 3 겨울 (실제 달력)
     static func season(_ d: Date = Date()) -> Int {
         let mo = Calendar.current.component(.month, from: d)
