@@ -775,10 +775,11 @@ struct HoldPagePicker: View {
         HStack(spacing: 4) {
             ForEach([(0, "내 종목"), (1, "소식판")], id: \.0) { i, t in
                 let on = page == i
-                Button { withAnimation(.easeOut(duration: 0.2)) { page = i } } label: {
+                Button { page = i } label: {   // 애니메이션 없이: 내 종목 화면이 커서 바꿀 때 버벅인다
                     Text(t).appFont(14, .bold).foregroundStyle(on ? Theme.ink : Theme.sub)
                         .frame(maxWidth: .infinity, minHeight: 40)
                         .background(on ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .contentShape(Rectangle())   // 고르지 않은 칸은 배경이 투명이라 글자만 눌리던 것
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
