@@ -1016,6 +1016,30 @@ enum TownLook {
         c.parts[MeGroup.prop.rawValue] = 0
         return c
     }
+    /// 하루 한마디: 언어별 문장 틀 + 빈칸({move} 오르내림 · {season} 계절 · {days} 함께한 날).
+    /// 틀은 주민·날짜 씨앗으로 골라 날마다 바뀐다. 외부 생성·번역 없음 (옛 내비처럼 앱 안에서 조합)
+    static let frames: [String: [String]] = ["ko": [
+        "{season}이네요. {move}",
+        "같이 지낸 지 {days}일째예요. {move}",
+        "{move}\n오늘 마음은 어때요?",
+        "{move}\n내일은 어떨 것 같아요?",
+        "{season} 바람이 좋네요. {move}",
+        "벌써 {days}일이나 함께했네요. {move}",
+        "안녕하세요! {move}",
+        "{move}\n한 줄 남겨 줄래요?",
+    ]]
+    static func daily(_ res: Resident, _ n: TownBook.Note, lang: String = "ko") -> String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        let days = f.date(from: n.moved).map { (Calendar.current.dateComponents([.day], from: $0, to: Date()).day ?? 0) + 1 } ?? 0
+        let mo = Calendar.current.component(.month, from: Date())
+        let season = (3...5).contains(mo) ? "봄" : (6...8).contains(mo) ? "여름" : (9...11).contains(mo) ? "가을" : "겨울"
+        let all = frames[lang] ?? frames["ko"]!
+        let pool = days > 1 ? all : all.filter { !$0.contains("{days}") }
+        let t = pool[Int(seed(res.id + TownLog.day) % UInt64(pool.count))]
+        return t.replacingOccurrences(of: "{move}", with: line(res))
+            .replacingOccurrences(of: "{season}", with: season)
+            .replacingOccurrences(of: "{days}", with: "\(days)")
+    }
     /// 오르내림 한 줄. 오늘 시세가 있으면 오늘, 없으면 산 가격 대비
     /// 주민 대사: 맡은 종목이 여럿이면 종목 이름을 붙여 한 줄씩
     static func line(_ res: Resident) -> String {
@@ -1031,7 +1055,8 @@ enum TownLook {
     }
 }
 
-/// 고전 RPG 대사창: 얼굴 · 이름 · 한 글자씩 찍히는 대사. 누르면 다 찍기 → 한 번 더 누르면 닫기
+/// 고전 RPG 대사창: 얼굴 · 이름 · 한 글자씩 찍히는 하루 한마디 · 내 답 한 줄. 위로 넘기면 지난 대사.
+/// 대사를 누르면 다 찍기 → 한 번 더 누르면 닫기
 struct TownTalk: View {
     let res: TownLook.Resident
     let note: TownBook.Note
@@ -1039,8 +1064,14 @@ struct TownTalk: View {
     let dress: () -> Void
     let close: () -> Void
     @State private var shown = 0
+    @State private var say = ""
+    @State private var me = ""
+    private var log: TownLog { TownLog.shared }
+    private var full: String { (hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + say }
     var body: some View {
-        let full = (hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + TownLook.line(res)
+        let full = self.full
+        let today = TownLog.day
+        let past = log.log(res.id).filter { $0.day != today }
         HStack(alignment: .top, spacing: 12) {
             TownFace(id: res.id, note: note, width: 56, height: 79)
                 .frame(width: 56, height: 46, alignment: .top).clipped()
@@ -1055,23 +1086,61 @@ struct TownTalk: View {
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
                 }
-                Text(String(full.prefix(shown))).appFont(15).foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+                Group {
+                    if past.isEmpty {
+                        now(full)
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(past, id: \.day) { pastRow($0) }
+                                now(full)
+                            }
+                        }
+                        .defaultScrollAnchor(.bottom)
+                        .frame(height: 120)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { if shown < full.count { shown = full.count } else { close() } }
+                if !say.isEmpty && shown >= full.count {
+                    TextField("", text: $me, prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
+                        .appFont(14).foregroundStyle(.white).submitLabel(.done)
+                        .onSubmit { log.answer(res.id, me) }
+                        .padding(.horizontal, 8).padding(.vertical, 6)
+                        .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                }
             }
         }
         .padding(12)
         .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
-        .contentShape(Rectangle())
-        .onTapGesture { if shown < full.count { shown = full.count } else { close() } }
+        .onDisappear { if !say.isEmpty { log.answer(res.id, me) } }
         .task(id: res.id) {
+            // 오늘 처음 말을 걸 때 한마디를 정해 기록에 남긴다 (하루 동안 같은 말)
+            let e = log.today(res.id) { TownLook.daily(res, note) }
+            say = e.say; me = e.me ?? ""
             shown = 0
-            while shown < full.count {
+            let n = self.full.count
+            while shown < n {
                 try? await Task.sleep(nanoseconds: 45_000_000)
                 if Task.isCancelled { return }
                 shown += 1
             }
         }
+    }
+
+    private func now(_ full: String) -> some View {
+        Text(String(full.prefix(shown))).appFont(15).foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+    }
+    // 지난 대사: 날짜 · 주민 말 · 내 답 (흐리게)
+    private func pastRow(_ e: TownLog.Entry) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(e.day.dropFirst(5).replacingOccurrences(of: "-", with: ".")).appFont(10).foregroundStyle(.white.opacity(0.4))
+            Text(e.say).appFont(13).foregroundStyle(.white.opacity(0.6))
+            if let a = e.me { Text("나: " + a).appFont(13).foregroundStyle(Color(red: 0.6, green: 0.85, blue: 1).opacity(0.75)) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -1096,6 +1165,45 @@ struct TownTalk: View {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         set(id, Note(moved: f.string(from: Date())))
         return true
+    }
+}
+
+/// 대화 기록(일기장): 주민마다 날짜 · 하루 한마디 · 내 답 한 줄. 몇 글자라 UserDefaults 한 칸에 JSON, 주민마다 최근 400일만
+@Observable final class TownLog {
+    static let shared = TownLog()
+    struct Entry: Codable, Equatable { var day: String; var say: String; var me: String? = nil }
+    private(set) var logs: [String: [Entry]]
+    private static let key = "town.log"
+    private static let keep = 400
+    private init() {
+        logs = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: [Entry]].self, from: $0) } ?? [:]
+    }
+    static var day: String { let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: Date()) }
+    func log(_ id: String) -> [Entry] { logs[id] ?? [] }
+    /// 오늘 한마디. 오늘 처음이면 make 로 정해 적는다
+    func today(_ id: String, _ make: () -> String) -> Entry {
+        let d = Self.day
+        if let e = logs[id]?.last, e.day == d { return e }
+        let e = Entry(day: d, say: make())
+        var l = logs[id] ?? []
+        l.append(e)
+        if l.count > Self.keep { l.removeFirst(l.count - Self.keep) }
+        logs[id] = l
+        save()
+        return e
+    }
+    /// 오늘 내 답 한 줄 (빈 칸이면 지움)
+    func answer(_ id: String, _ me: String) {
+        guard var l = logs[id], let last = l.last, last.day == Self.day else { return }
+        let t = me.trimmingCharacters(in: .whitespacesAndNewlines)
+        let v: String? = t.isEmpty ? nil : String(t.prefix(60))
+        guard v != last.me else { return }
+        l[l.count - 1].me = v
+        logs[id] = l
+        save()
+    }
+    private func save() {
+        if let d = try? JSONEncoder().encode(logs) { UserDefaults.standard.set(d, forKey: Self.key) }
     }
 }
 
