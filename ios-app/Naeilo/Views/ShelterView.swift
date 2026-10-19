@@ -492,7 +492,7 @@ struct ShelterView: View {
                         .accessibilityHint(on ? "누르면 방에서 빼요" : "")
                     }
                 }
-                CharPixel(id: m.homeFriendShown, width: 24 * u, height: 34 * u)
+                CharPixel(id: m.homeFriendShown, width: 24 * u, height: 34 * u).charIdle()
                     .offset(x: 4 * u, y: 42 * u)     // 문(6~26) 앞. 의자는 30부터라 겹치지 않는다
                     .allowsHitTesting(false).accessibilityHidden(true)
             }
@@ -829,7 +829,7 @@ struct CharacterDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .bottom, spacing: 14) {
-                    Pixel(name: "spr_" + f.id, width: 84, height: 119)
+                    Pixel(name: "spr_" + f.id, width: 84, height: 119).charIdle()
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(Shelter.spriteBacking(f.id), in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 6) {
