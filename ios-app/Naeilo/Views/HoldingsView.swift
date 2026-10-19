@@ -1,6 +1,6 @@
 import SwiftUI
 
-// 종목 탭: 내 돈이 얼마 있고 얼마 벌었나. 맨 위 평가액 → 1년 전부터 가졌다면 그래프 → 미국/국내 묶음 목록
+// 종목 탭: 내 종목 | 소식판. 내 종목은 내 돈이 얼마 있고 얼마 벌었나. 맨 위 평가액 → 1년 전부터 가졌다면 그래프 → 미국/국내 묶음 목록
 struct HoldingsView: View {
     @Environment(AppModel.self) private var m
     @State private var period: Period = .m1        // 위 그래프에만 걸린다 (목록 %는 늘 산 가격 대비)
@@ -9,6 +9,7 @@ struct HoldingsView: View {
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
     @AppStorage("holdUsd") private var inUsd = false // 목록 금액: 미국 종목을 달러로 볼지
     @Environment(\.dynamicTypeSize) private var dts
+    @State private var page = 0                     // 0 내 종목, 1 소식판 (미션 탭처럼 위에서 고른다)
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
 
     var body: some View {
@@ -19,6 +20,8 @@ struct HoldingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: "종목").padding(.horizontal, -16)
                 SampleNote()
+                HoldPagePicker(page: $page)
+                if page == 1 { HoldingsNews() } else {
                 totalCard(us: us.count, kr: kr.count)
                 totalChart(rows)
                 HStack(alignment: .firstTextBaseline) {
@@ -49,6 +52,7 @@ struct HoldingsView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                 }.buttonStyle(.plain)
                 MyRecordCard()
+                }
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
             }
@@ -761,5 +765,133 @@ enum HoldingEdit {
         let act = m.calmTrade(sym, buy: buy, avgBefore: before.avg, driftBefore: drift0)
         let pts = m.calm.events.last?.pts ?? 0, who = m.calmSpeaker
         return "\(m.friendName(who)): \(Calm.feedback(m.voice(who), act))" + (pts != 0 ? " (\(pts > 0 ? "+" : "")\(pts)점)" : "")
+    }
+}
+
+/// 종목 탭 위 페이지 고르기 (미션 탭 MissionPagePicker와 같은 모양)
+struct HoldPagePicker: View {
+    @Binding var page: Int
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach([(0, "내 종목"), (1, "소식판")], id: \.0) { i, t in
+                let on = page == i
+                Button { withAnimation(.easeOut(duration: 0.2)) { page = i } } label: {
+                    Text(t).appFont(14, .bold).foregroundStyle(on ? Theme.ink : Theme.sub)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(on ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(Theme.track, in: RoundedRectangle(cornerRadius: 13))
+    }
+}
+
+// 소식판 (시안): 나라와 상관없이 내 종목에서 바로 나오는 것만. 새로 받는 시세 없음 (이미 받은 시세·지난 종가로 계산)
+// 시장과 비교 → 오늘 많이 움직인 종목 → 1년 고점·저점 가까운 종목
+struct HoldingsNews: View {
+    @Environment(AppModel.self) private var m
+
+    var body: some View {
+        let rows = m.rows
+        let ks = rows.filter { m.prices.hasHistory($0.sym) }.map { ($0, m.metrics($0)) }
+        VStack(alignment: .leading, spacing: 12) {
+            if let c = compare(ks) { compareCard(c) }
+            moversCard(rows)
+            nearCard(ks)
+        }
+    }
+
+    // MARK: 시장과 비교 (최근 1달). 시장 = 대표 ETF: 미국 종목이 절반 넘으면 S&P500(SPY), 아니면 전 세계(VT). 기록이 없으면 안 보인다
+    private struct Cmp { let mine, mkt: Double; let name: String }
+    private func compare(_ ks: [(AppModel.Row, AppModel.HoldMetrics)]) -> Cmp? {
+        let w = ks.reduce(0.0) { $0 + $1.1.w }
+        guard w > 0 else { return nil }
+        // 지금 비중으로 4주 전부터 가졌다면 (yr: 1년을 52주로 나눈 가격)
+        let mine = ks.reduce(0.0) { a, k in let y = k.1.yr; return a + k.1.w / w * (y[52] / max(1e-9, y[48]) - 1) }
+        let usd = m.rows.filter { $0.sym.currency == .usd }.reduce(0.0) { $0 + $1.value } / max(1, m.rows.reduce(0.0) { $0 + $1.value })
+        for (id, name) in usd >= 0.5 ? [("SPY", "S&P500 ETF")] : [("VT", "전 세계 ETF"), ("SPY", "S&P500 ETF")] {
+            guard let c = PriceHistory.of(id)?.closes, c.count > 21 else { continue }
+            return Cmp(mine: mine, mkt: c[c.count - 1] / c[c.count - 21] - 1, name: name)
+        }
+        return nil
+    }
+
+    private func compareCard(_ c: Cmp) -> some View {
+        let gap = c.mine - c.mkt
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("최근 1달, 시장과 비교").appFont(15, .bold)
+            HStack(spacing: 10) {
+                cell("내 종목", c.mine)
+                cell(c.name, c.mkt)
+            }
+            Text(abs(gap) < 0.001 ? "시장과 거의 같게 움직였어요" : "시장보다 \(String(format: "%.1f", abs(gap) * 100))%p \(gap > 0 ? "앞섰어요" : "뒤졌어요")")
+                .appFont(13).foregroundStyle(Theme.sub)
+        }
+        .card()
+    }
+
+    private func cell(_ t: String, _ v: Double) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(t).appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
+            Text(AppModel.sgn(v)).appFont(20, .bold).foregroundStyle(Theme.change(v)).monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: 오늘 많이 움직인 종목 (오늘 % 크기순 3개)
+    private func moversCard(_ rows: [AppModel.Row]) -> some View {
+        let top = rows.sorted { abs($0.sym.quote.change) > abs($1.sym.quote.change) }.prefix(3)
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("오늘 많이 움직인 종목").appFont(15, .bold).padding(.bottom, 6)
+            if top.isEmpty { Text("종목을 넣으면 보여요").appFont(13).foregroundStyle(Theme.sub) }
+            ForEach(Array(top)) { r in
+                let d = r.sym.quote.change
+                line(r, Text((d >= 0 ? "+" : "−") + String(format: "%.2f%%", abs(d) * 100)).foregroundColor(Theme.change(d)))
+            }
+        }
+        .card()
+    }
+
+    // MARK: 1년 고점·저점 가까운 종목 (5% 안)
+    private func nearCard(_ ks: [(AppModel.Row, AppModel.HoldMetrics)]) -> some View {
+        let hi = ks.filter { $0.1.dd > -0.05 }.sorted { $0.1.dd > $1.1.dd }
+        let lo = ks.filter { $0.1.dd <= -0.05 && $0.0.sym.last / max(1e-9, $0.1.lo) - 1 < 0.05 }
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("1년 고점·저점 가까이").appFont(15, .bold).padding(.bottom, 6)
+            if hi.isEmpty && lo.isEmpty { Text("고점·저점 5% 안에 있는 종목은 없어요").appFont(13).foregroundStyle(Theme.sub) }
+            ForEach(hi, id: \.0.id) { r, k in
+                line(r, Text(k.dd > -0.005 ? "1년 고점" : "고점까지 \(String(format: "%.0f", abs(k.dd) * 100))%").foregroundColor(Theme.up))
+            }
+            ForEach(lo, id: \.0.id) { r, k in
+                line(r, Text("저점 위 \(String(format: "%.0f", (r.sym.last / max(1e-9, k.lo) - 1) * 100))%").foregroundColor(Theme.down))
+            }
+        }
+        .card()
+    }
+
+    private func line(_ r: AppModel.Row, _ right: Text) -> some View {
+        NavigationLink(value: r.sym) {
+            HStack(spacing: 10) {
+                LogoTile(symbol: r.id, size: 28)
+                Text(r.sym.name).appFont(14, .semibold).lineLimit(1)
+                Spacer(minLength: 4)
+                right.appFont(14, .bold).monospacedDigit()
+            }
+            .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private extension View {
+    func card() -> some View {
+        frame(maxWidth: .infinity, alignment: .leading).padding(16)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 }
