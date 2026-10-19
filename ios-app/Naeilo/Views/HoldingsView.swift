@@ -957,8 +957,11 @@ struct TownView: View {
         GeometryReader { g in
             ZStack {
                 ground(g.size).clipShape(RoundedRectangle(cornerRadius: 18))
-                    // 배경을 누르면 키보드를 내린다 (쓰던 답은 '그만'처럼)
-                    .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+                    // 배경을 누르면 키보드를 내리고 대사창도 닫는다 (쓰던 답은 '그만'처럼)
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        talk = nil; typing = false
+                    }
                 ForEach(folk.indices, id: \.self) { i in
                     let r = folk[i].0, p = folk[i].1
                     // 잡담: 4칸(8초)마다 한 명이 2칸 동안 말풍선
