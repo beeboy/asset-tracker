@@ -61,6 +61,8 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
+        # 동네 날씨: 대략적인 위치로 하루 한 번
+        NSLocationWhenInUseUsageDescription: "동네 날씨를 내 지역 날씨로 보여 주려고 대략적인 위치를 써요."
         # 개발용 Tiingo 토큰 (계약 전이라 비워 둠). 출시 때는 naeilo 중계 서버를 거친다
         TIINGO_TOKEN: ""
     # 위젯 앱(ios/)과 합친 앱: App Store Connect 의 기존 앱 기록·TestFlight 를 이어 쓰려고 번들 ID 를 그대로 쓴다

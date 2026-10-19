@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 import Observation
 
 // 종목 탭: 내 종목 | 소식판. 내 종목은 내 돈이 얼마 있고 얼마 벌었나. 맨 위 평가액 → 1년 전부터 가졌다면 그래프 → 미국/국내 묶음 목록
@@ -63,7 +64,6 @@ struct HoldingsView: View {
         .ignoresSafeArea(.keyboard, edges: page == 2 ? .bottom : [])   // 동네는 키보드에 안 들썩이게
         .scrollDismissesKeyboard(.immediately)
         .background(Theme.bg)
-        .safeAreaInset(edge: .bottom, spacing: 0) { if page == 2 { TownReplyBar() } }
         .refreshable { await Market.shared.pullRefresh(m) }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
@@ -913,6 +913,9 @@ struct TownView: View {
     @State private var talk: TownLook.Resident? = nil
     @State private var dress: TownLook.Resident? = nil
     @State private var us: TownLook.Resident? = nil
+    @State private var typing = false          // 내 답을 쓰는 중
+    @State private var kbTop: CGFloat = .infinity   // 키보드 윗변 (화면 좌표)
+    @State private var talkBottom: CGFloat = 0      // 대사창 제자리 아랫변 (화면 좌표)
     @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
@@ -923,13 +926,23 @@ struct TownView: View {
         .init(x: 0.30, y: 0.86), .init(x: 0.66, y: 0.90),
     ]
 
+    private static let mayorSpot = CGPoint(x: 0.92, y: 0.20)      // 이장은 늘 오른쪽 위
+    private static let visitSpot = CGPoint(x: 0.06, y: 0.50)      // 옛 이웃은 길 어귀에
+    private var sky: TownSky { TownSky.shared }
+
     var body: some View {
-        let res = Array(TownLook.residents(m.rows).prefix(Self.maxRes))
+        let all = TownLook.residents(m.rows)
+        let res = Array(all.prefix(Self.maxRes))
+        // 동네에 서 있는 이들: 주민 + 이장 + (오늘 놀러 온 옛 이웃)
+        let mayor = TownLook.Resident(id: TownLook.mayorID, rows: [])
+        let guest = book.visitor(except: Set(all.map(\.id))).map { TownLook.Resident(id: $0, rows: [], old: book.note($0).co ?? $0) }
+        let folk: [(TownLook.Resident, CGPoint)] = res.enumerated().map { ($1, Self.spots[$0]) } + [(mayor, Self.mayorSpot)]
+            + (guest.map { [($0, res.count < Self.maxRes ? Self.spots[res.count] : Self.visitSpot)] } ?? [])
         GeometryReader { g in
             ZStack {
-                ground(g.size)
-                ForEach(Array(res.enumerated()), id: \.element.id) { i, r in
-                    let p = Self.spots[i]
+                ground(g.size).clipShape(RoundedRectangle(cornerRadius: 18))
+                ForEach(folk.indices, id: \.self) { i in
+                    let r = folk[i].0, p = folk[i].1
                     Button { talk = r } label: {
                         TownFace(id: r.id, note: book.note(r.id), width: 48, height: 68)
                             .overlay(alignment: .topTrailing) {
@@ -942,22 +955,37 @@ struct TownView: View {
                     .accessibilityLabel(TownLook.shown(r, book.note(r.id)))
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
                 }
+                TownWeather(kind: sky.kind).allowsHitTesting(false)
                 if res.isEmpty {
                     Text("아직 이사 온 주민이 없어요").appFont(14).foregroundStyle(.white)
                 }
-                if let r = talk, TownTyping.shared.res == nil {   // 답 쓰는 동안엔 대사창이 키보드 위로 옮겨 간다
+                if let r = talk {
+                    // 답을 쓰는 동안 대사창만 제자리에서 키보드 바로 위까지 올라간다 (동네는 고정)
+                    let lift = typing ? min(0, kbTop - 8 - talkBottom) : 0
                     VStack {
                         Spacer()
-                        TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), dress: { dress = r }, us: { us = r }) { talk = nil; TownTyping.shared.res = nil }
+                        TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), typing: $typing, dress: { dress = r }, us: { us = r }) { talk = nil; typing = false }
+                            .offset(y: lift)
+                            .animation(.easeOut(duration: 0.25), value: lift)
                     }
                     .padding(10)
+                    .background(GeometryReader { p in
+                        Color.clear
+                            .onAppear { talkBottom = p.frame(in: .global).maxY - 10 }
+                            .onChange(of: p.frame(in: .global).maxY) { _, v in talkBottom = v - 10 }
+                    })
                 }
             }
         }
         .frame(height: 440)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { n in
+            if let f = n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect { kbTop = f.minY }
+        }
 
-        .task(id: res.map(\.id).joined(separator: ",")) {
+        .task { await sky.refresh() }      // 날씨는 하루 한 번만 받는다
+        .task(id: all.map(\.id).joined(separator: ",")) {
+            // 다 판 주민은 떠난 날을 적어 옛 이웃으로 (시세·보유를 아직 못 읽었으면 건너뜀)
+            if !m.rows.isEmpty { book.sync(all) }
             // 처음 본 주민은 오늘을 이사 온 날로 적는다 (수첩이 비어 있던 첫 실행은 인사 없이)
             let first = book.isEmpty
             for r in res where book.welcome(r.id) && !first { fresh.insert(r.id) }
@@ -970,16 +998,31 @@ struct TownView: View {
         .sheet(item: $us) { TownUs(res: $0) }
     }
 
-    // 바닥: 풀밭과 흙길 (그림 파일 없이 색만)
+    // 바닥: 풀밭과 흙길 + 나무 몇 그루 (그림 파일 없이 색만). 계절은 실제 달력으로 풀·잎 색만 바뀐다
+    private static let trees: [CGPoint] = [.init(x: 0.07, y: 0.13), .init(x: 0.68, y: 0.10), .init(x: 0.95, y: 0.58), .init(x: 0.05, y: 0.93)]
     private func ground(_ s: CGSize) -> some View {
-        ZStack {
-            Color(red: 0.47, green: 0.71, blue: 0.40)
+        let se = TownLook.season()
+        let grass = [Color(red: 0.55, green: 0.78, blue: 0.43), Color(red: 0.40, green: 0.68, blue: 0.35),
+                     Color(red: 0.66, green: 0.67, blue: 0.37), Color(red: 0.84, green: 0.88, blue: 0.91)][se]
+        let leaf = [Color(red: 0.98, green: 0.74, blue: 0.82), Color(red: 0.20, green: 0.50, blue: 0.24),
+                    Color(red: 0.92, green: 0.52, blue: 0.20), Color(red: 0.97, green: 0.98, blue: 1.0)][se]
+        return ZStack {
+            grass
             Path { p in
                 p.move(to: .init(x: 0, y: s.height * 0.62))
                 p.addCurve(to: .init(x: s.width, y: s.height * 0.42),
                            control1: .init(x: s.width * 0.35, y: s.height * 0.40), control2: .init(x: s.width * 0.65, y: s.height * 0.66))
             }
             .stroke(Color(red: 0.84, green: 0.74, blue: 0.53), lineWidth: 26)
+            ForEach(0..<Self.trees.count, id: \.self) { i in
+                let t = Self.trees[i]
+                VStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 6).fill(leaf).frame(width: 34, height: 30)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.black.opacity(0.25), lineWidth: 2))
+                    Rectangle().fill(Color(red: 0.45, green: 0.30, blue: 0.18)).frame(width: 7, height: 12)
+                }
+                .position(x: t.x * s.width, y: t.y * s.height)
+            }
         }
     }
 }
@@ -987,8 +1030,8 @@ struct TownView: View {
 /// 주민 얼굴: 종목 코드를 씨앗으로 캐릭터 생성 부품을 즉석 조합 (저장 없음, 같은 종목은 늘 같은 얼굴)
 enum TownLook {
     /// 주민 = 사람. 대표가 같은 종목(테슬라·스페이스X → 머스크)은 한 주민이 같이 맡는다. 대표 정보가 없으면 종목마다 한 명
-    struct Resident: Identifiable { let id: String; let rows: [AppModel.Row]
-        var name: String { rows.map(\.sym.name).joined(separator: " · ") }
+    struct Resident: Identifiable { let id: String; let rows: [AppModel.Row]; var old: String? = nil   // old: 옛 이웃이면 그때 회사 이름
+        var name: String { id == TownLook.mayorID ? "원·달러" : old ?? rows.map(\.sym.name).joined(separator: " · ") }
         var value: Double { rows.reduce(0) { $0 + $1.value } }
     }
     static func residents(_ rows: [AppModel.Row]) -> [Resident] {
@@ -1002,7 +1045,8 @@ enum TownLook {
     }
     /// 기본 별명: 회사 이름 앞 글자 + 꼬리 (같은 주민은 늘 같은 별명)
     static func nick(_ res: Resident) -> String {
-        let base = (res.rows.first?.sym.name ?? res.id).replacingOccurrences(of: " ", with: "")
+        if res.id == mayorID { return "이장님" }
+        let base = (res.rows.first?.sym.name ?? res.old ?? res.id).replacingOccurrences(of: " ", with: "")
         let ko = base.unicodeScalars.first.map { (0xAC00...0xD7A3).contains($0.value) } ?? false
         let tails = ko ? ["돌이", "순이", "찡", "뽀", "군"] : ["y", "o", "ie", "ster"]
         return String(base.prefix(ko ? 2 : 4)) + tails[Int(seed(res.id) % UInt64(tails.count))]
@@ -1042,10 +1086,40 @@ enum TownLook {
         "{move}\n한 줄 남겨 줄래요?",
         "왔어요? {move}",
         "{move}\n오늘은 어떤 하루였어요?",
+        "{weather} {move}",
+        "{weather}\n{move}",
     ]]
+    /// 이장 = 큰손. 동네에 늘 있고 원·달러 이야기를 한다 (이미 받은 환율만)
+    static let mayorID = "mayor"
+    static let mayorFrames = ["동네는 오늘도 평화로워요. {fx}", "{weather} {fx}", "{fx}\n다들 잘 지내죠?", "이장이에요. {fx}", "{fx}\n바다 건너 소식도 챙겨요."]
+    /// 옛 이웃: 다 팔아 떠난 주민이 가끔 놀러 와 함께한 시간을 얘기한다
+    static let oldFrames = ["오랜만이에요! 놀러 왔어요.\n{days}일 함께했던 거 기억나요?", "지나가다 들렀어요. 다들 잘 지내죠?", "{weather} 옛날 생각나서 왔어요.",
+                            "여기 그대로네요. 반가워요!", "함께한 {days}일, 가끔 생각나요."]
+    /// 계절: 0 봄 · 1 여름 · 2 가을 · 3 겨울 (실제 달력)
+    static func season(_ d: Date = Date()) -> Int {
+        let mo = Calendar.current.component(.month, from: d)
+        return (3...5).contains(mo) ? 0 : (6...8).contains(mo) ? 1 : (9...11).contains(mo) ? 2 : 3
+    }
+    static func fxLine() -> String {
+        let q = Market.shared.fx
+        guard q.last > 0 else { return "오늘 환율은 아직 못 봤어요." }
+        let w = String(format: "%.0f", q.last), d = q.last - q.prevClose
+        if !q.live || abs(d) < 0.5 { return "원·달러는 \(w)원이에요." }
+        return String(format: "원·달러는 \(w)원, 어제보다 %.0f원 ", abs(d)) + (d > 0 ? "올랐어요. 달러가 힘이 세졌네요." : "내렸어요. 원화가 힘을 냈네요.")
+    }
     static func daily(_ res: Resident, _ n: TownBook.Note, lang: String = "ko") -> String {
+        let wx = TownSky.shared.phrase
+        func pick(_ a: [String]) -> String {
+            let pool = a.filter { wx != nil || !$0.contains("{weather}") }
+            return pool[Int(seed(res.id + TownLog.day) % UInt64(pool.count))].replacingOccurrences(of: "{weather}", with: wx ?? "")
+        }
+        if res.id == mayorID { return pick(mayorFrames).replacingOccurrences(of: "{fx}", with: fxLine()) }
         // 몇 달 전 내 답이 있으면 그날은 그걸 꺼내 얘기한다
-        if let back = TownLog.shared.recall(res.id, price(res)) { return back + "\n" + line(res) }
+        if let back = TownLog.shared.recall(res.id, price(res)) { return res.old != nil ? back : back + "\n" + line(res) }
+        if res.old != nil {
+            let together = n.moved.isEmpty ? 0 : max(1, TownLog.age(n.moved) - TownLog.age(n.left ?? TownLog.day) + 1)
+            return pick(oldFrames.filter { together > 1 || !$0.contains("{days}") }).replacingOccurrences(of: "{days}", with: "\(together)")
+        }
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         let days = f.date(from: n.moved).map { (Calendar.current.dateComponents([.day], from: $0, to: Date()).day ?? 0) + 1 } ?? 0
         let mo = Calendar.current.component(.month, from: Date())
@@ -1053,8 +1127,7 @@ enum TownLook {
         let all = frames[lang] ?? frames["ko"]!
         // 계절은 석 달 내내 같아서 매일 말하면 지겹다. 계절이 바뀐 첫 주에만 꺼낸다
         let fresh = [3, 6, 9, 12].contains(mo) && Calendar.current.component(.day, from: Date()) <= 7
-        let pool = all.filter { (days > 1 || !$0.contains("{days}")) && (fresh || !$0.contains("{season}")) }
-        let t = pool[Int(seed(res.id + TownLog.day) % UInt64(pool.count))]
+        let t = pick(all.filter { (days > 1 || !$0.contains("{days}")) && (fresh || !$0.contains("{season}")) })
         return t.replacingOccurrences(of: "{move}", with: line(res))
             .replacingOccurrences(of: "{season}", with: season)
             .replacingOccurrences(of: "{days}", with: "\(days)")
@@ -1100,10 +1173,13 @@ struct TownTalk: View {
     let res: TownLook.Resident
     let note: TownBook.Note
     var hello = false
+    @Binding var typing: Bool
     let dress: () -> Void
     let us: () -> Void
     let close: () -> Void
     @State private var shown = 0
+    @State private var me = ""
+    @FocusState private var focus: Bool
     @State private var say = ""
     private var log: TownLog { TownLog.shared }
     private var full: String { (hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + say }
@@ -1121,12 +1197,14 @@ struct TownTalk: View {
                     Text(TownLook.shown(res, note)).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
                     Text(res.name).appFont(11).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
                     Spacer(minLength: 0)
+                    if res.id != TownLook.mayorID {
                     Button("우리 사이", action: us).appFont(12, .bold).foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
                     Button("꾸미기", action: dress).appFont(12, .bold).foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
+                    }
                 }
                 Group {
                     if past.isEmpty {
@@ -1145,15 +1223,24 @@ struct TownTalk: View {
                 .contentShape(Rectangle())
                 .onTapGesture { if shown < full.count { shown = full.count } else { close() } }
                 if !say.isEmpty && shown >= full.count {
-                    // 누르면 쓰는 칸이 키보드 바로 위에 뜬다 (동네·대사창은 그대로)
-                    let mine = log.log(res.id).last.flatMap { $0.day == today ? $0.me : nil }
-                    Button { TownTyping.shared.text = mine ?? ""; TownTyping.shared.res = res } label: {
-                        Text(mine ?? "한 줄 답 (예측·마음)").appFont(14).foregroundStyle(.white.opacity(mine == nil ? 0.4 : 1))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 8).padding(.vertical, 6)
-                            .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                    HStack(spacing: 8) {
+                        TextField("", text: $me, prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
+                            .appFont(14).foregroundStyle(.white).submitLabel(.done)
+                            .focused($focus)
+                            .onSubmit { log.answer(res.id, me, price: TownLook.price(res)) }
+                        if focus {
+                            Button("그만") { focus = false }.appFont(13).foregroundStyle(.white.opacity(0.7))
+                            Button("남기기") { log.answer(res.id, me, price: TownLook.price(res)); focus = false }
+                                .appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4))
+                        }
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                    .onChange(of: focus) { _, v in
+                        typing = v
+                        // 남기지 않고 닫으면 쓰던 글은 버리고 남겨 둔 답으로
+                        if !v { me = log.log(res.id).last.flatMap { $0.day == TownLog.day ? $0.me : nil } ?? "" }
+                    }
                 }
             }
         }
@@ -1163,7 +1250,7 @@ struct TownTalk: View {
         .task(id: res.id) {
             // 오늘 처음 말을 걸 때 한마디를 정해 기록에 남긴다 (하루 동안 같은 말)
             let e = log.today(res.id) { TownLook.daily(res, note) }
-            say = e.say
+            say = e.say; me = e.me ?? ""
             shown = 0
             let n = self.full.count
             while shown < n {
@@ -1192,14 +1279,15 @@ struct TownTalk: View {
 /// 주민 수첩: 별명 · 모자 · 모자 색 · 이사 온 날. 주민마다 몇 글자라 UserDefaults 한 칸에 JSON (떠나도 지우지 않는다: 옛 이웃)
 @Observable final class TownBook {
     static let shared = TownBook()
-    struct Note: Codable, Equatable { var name: String? = nil; var hat = 0; var tint = 0; var moved = ""; var gifts: Int? = nil; var cheer: String? = nil }
+    struct Note: Codable, Equatable { var name: String? = nil; var hat = 0; var tint = 0; var moved = ""; var gifts: Int? = nil; var cheer: String? = nil
+        var co: String? = nil; var left: String? = nil }   // co: 회사 이름(떠나도 부르려고), left: 다 팔고 떠난 날
     private(set) var notes: [String: Note]
     private static let key = "town.book"
     private init() {
         notes = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: Note].self, from: $0) } ?? [:]
     }
     var isEmpty: Bool { notes.isEmpty }
-    func note(_ id: String) -> Note { notes[id] ?? Note() }
+    func note(_ id: String) -> Note { notes[id] ?? (id == TownLook.mayorID ? Note(hat: 1) : Note()) }   // 이장은 밀짚모자
     func set(_ id: String, _ n: Note) {
         notes[id] = n
         if let d = try? JSONEncoder().encode(notes) { UserDefaults.standard.set(d, forKey: Self.key) }
@@ -1226,6 +1314,120 @@ struct TownTalk: View {
         set(id, n)
     }
     func cheered(_ id: String) -> Bool { notes[id]?.cheer == TownLog.day }
+    /// 지금 주민과 수첩 맞추기: 있는 주민은 회사 이름을 적고 떠난 표시를 지운다, 없어진 주민은 오늘을 떠난 날로
+    func sync(_ res: [TownLook.Resident]) {
+        let now = Set(res.map(\.id))
+        for r in res {
+            guard var n = notes[r.id] else { continue }
+            if n.co != r.name || n.left != nil { n.co = r.name; n.left = nil; set(r.id, n) }
+        }
+        for (id, var n) in notes where !now.contains(id) && n.left == nil && id != TownLook.mayorID {
+            n.left = TownLog.day; set(id, n)
+        }
+    }
+    /// 오늘 놀러 온 옛 이웃 (사흘에 한 번쯤, 날마다 한 명). 지금 주민은 빼고
+    func visitor(except now: Set<String>) -> String? {
+        let olds = notes.filter { $0.value.left != nil && !now.contains($0.key) }.keys.sorted()
+        let s = TownLook.seed("visit" + TownLog.day)
+        guard !olds.isEmpty, s % 3 == 0 else { return nil }
+        return olds[Int((s / 3) % UInt64(olds.count))]
+    }
+}
+
+/// 동네 날씨: 내 지역 실제 날씨를 하루 한 번만 받는다 (Open-Meteo, 키 없음). 위치는 대략(소수 한 자리)만 쓰고, 못 쓰면 서울
+@Observable final class TownSky: NSObject, CLLocationManagerDelegate {
+    static let shared = TownSky()
+    enum Kind: Int { case clear, cloud, fog, rain, snow, storm }
+    private(set) var kind: Kind? = nil
+    @ObservationIgnored private let lm = CLLocationManager()
+    @ObservationIgnored private var busy = false
+    private override init() {
+        super.init()
+        let d = UserDefaults.standard
+        if d.string(forKey: "town.skyDay") == TownLog.day { kind = Kind(rawValue: d.integer(forKey: "town.sky")) }
+    }
+    var phrase: String? {
+        switch kind {
+        case .clear: return "오늘은 맑네요."
+        case .cloud: return "구름이 꼈네요."
+        case .fog: return "안개가 자욱해요."
+        case .rain: return "비가 오네요."
+        case .snow: return "눈이 와요!"
+        case .storm: return "천둥이 쳐요!"
+        case nil: return nil
+        }
+    }
+    @MainActor func refresh() async {
+        let d = UserDefaults.standard
+        guard d.string(forKey: "town.skyDay") != TownLog.day, !busy else { return }
+        busy = true; defer { busy = false }
+        if lm.authorizationStatus == .notDetermined {
+            lm.delegate = self
+            lm.desiredAccuracy = kCLLocationAccuracyReduced
+            lm.requestWhenInUseAuthorization()      // 답이 오면 위치 → 다시 refresh
+            return
+        }
+        if [.authorizedWhenInUse, .authorizedAlways].contains(lm.authorizationStatus), d.object(forKey: "town.lat") == nil {
+            lm.delegate = self
+            lm.desiredAccuracy = kCLLocationAccuracyReduced
+            lm.requestLocation()                    // 처음 한 번만. 받으면 다시 refresh
+            return
+        }
+        let lat = d.object(forKey: "town.lat") as? Double ?? 37.6, lon = d.object(forKey: "town.lon") as? Double ?? 127.0
+        guard let url = URL(string: "https://api.open-meteo.com/v1/forecast?latitude=\(lat)&longitude=\(lon)&current=weather_code"),
+              let got = try? await URLSession.shared.data(from: url),
+              let j = try? JSONSerialization.jsonObject(with: got.0) as? [String: Any],
+              let c = (j["current"] as? [String: Any])?["weather_code"] as? Int else { return }
+        let k: Kind = c <= 1 ? .clear : c <= 3 ? .cloud : c <= 48 ? .fog : (71...77).contains(c) || (85...86).contains(c) ? .snow : c >= 95 ? .storm : .rain
+        kind = k
+        d.set(k.rawValue, forKey: "town.sky"); d.set(TownLog.day, forKey: "town.skyDay")
+    }
+    func locationManagerDidChangeAuthorization(_ m: CLLocationManager) {
+        Task { @MainActor in if m.authorizationStatus != .notDetermined { await self.refresh() } }
+    }
+    func locationManager(_ m: CLLocationManager, didUpdateLocations l: [CLLocation]) {
+        guard let c = l.last?.coordinate else { return }
+        let lat = (c.latitude * 10).rounded() / 10, lon = (c.longitude * 10).rounded() / 10
+        Task { @MainActor in
+            UserDefaults.standard.set(lat, forKey: "town.lat"); UserDefaults.standard.set(lon, forKey: "town.lon")
+            await self.refresh()
+        }
+    }
+    func locationManager(_ m: CLLocationManager, didFailWithError e: Error) {
+        Task { @MainActor in
+            UserDefaults.standard.set(37.6, forKey: "town.lat"); UserDefaults.standard.set(127.0, forKey: "town.lon")   // 못 찾으면 서울
+            await self.refresh()
+        }
+    }
+}
+
+/// 날씨 그림: 멈춘 빗줄기·눈송이·구름 그늘 (애니메이션 없음)
+struct TownWeather: View {
+    let kind: TownSky.Kind?
+    var body: some View {
+        Canvas { ctx, s in
+            switch kind {
+            case .rain?, .storm?:
+                if kind == .storm { ctx.fill(Path(CGRect(origin: .zero, size: s)), with: .color(.black.opacity(0.18))) }
+                for i in 0..<40 {
+                    let x = CGFloat(TownLook.seed("r\(i)") % 1000) / 1000 * s.width, y = CGFloat(TownLook.seed("ry\(i)") % 1000) / 1000 * s.height
+                    var p = Path(); p.move(to: .init(x: x, y: y)); p.addLine(to: .init(x: x - 4, y: y + 12))
+                    ctx.stroke(p, with: .color(Color(red: 0.75, green: 0.85, blue: 1).opacity(0.7)), lineWidth: 1.5)
+                }
+            case .snow?:
+                for i in 0..<36 {
+                    let x = CGFloat(TownLook.seed("s\(i)") % 1000) / 1000 * s.width, y = CGFloat(TownLook.seed("sy\(i)") % 1000) / 1000 * s.height
+                    ctx.fill(Path(CGRect(x: x, y: y, width: 4, height: 4)), with: .color(.white.opacity(0.9)))
+                }
+            case .cloud?, .fog?:
+                ctx.fill(Path(CGRect(origin: .zero, size: s)), with: .color(Color.white.opacity(kind == .fog ? 0.28 : 0.0)))
+                ctx.fill(Path(CGRect(origin: .zero, size: s)), with: .color(Color.black.opacity(kind == .cloud ? 0.10 : 0.0)))
+            case .clear?:
+                ctx.fill(Path(ellipseIn: CGRect(x: s.width * 0.42, y: 8, width: 22, height: 22)), with: .color(Color(red: 1, green: 0.86, blue: 0.35)))
+            case nil: break
+            }
+        }
+    }
 }
 
 /// 대화 기록(일기장): 주민마다 날짜 · 하루 한마디 · 내 답 한 줄. 몇 글자라 UserDefaults 한 칸에 JSON, 주민마다 최근 400일만
@@ -1402,7 +1604,7 @@ struct TownUs: View {
     var body: some View {
         let n = book.note(res.id)
         let s = TownLog.shared.score(res.id, TownLook.price(res))
-        let days = n.moved.isEmpty ? 0 : TownLog.age(n.moved) + 1
+        let days = n.moved.isEmpty ? 0 : TownLog.age(n.moved) - TownLog.age(n.left ?? TownLog.day) + 1
         let sad = TownLook.mood(res) < 0
         let cheer = book.cheered(res.id)
         NavigationStack {
@@ -1411,6 +1613,7 @@ struct TownUs: View {
                 VStack(spacing: 0) {
                     row("이사 온 날", n.moved.replacingOccurrences(of: "-", with: "."))
                     row("함께한 날", "\(days)일")
+                    if let l = n.left { row("떠난 날", l.replacingOccurrences(of: "-", with: ".")) }
                     row("남긴 답", "\(s.said)줄")
                     row("예측 적중", s.judged == 0 ? "석 달 뒤부터" : "\(s.hit) / \(s.judged)")
                     row("받은 별사탕", "\(n.gifts ?? 0)개")
@@ -1435,56 +1638,5 @@ struct TownUs: View {
     private func row(_ k: String, _ v: String) -> some View {
         HStack { Text(k).appFont(14).foregroundStyle(.secondary); Spacer(); Text(v).appFont(14, .bold) }
             .padding(.horizontal, 14).padding(.vertical, 10)
-    }
-}
-
-/// 한 줄 답 쓰기: 동네는 그대로 두고, 대사창만 키보드 바로 위로 옮긴다
-@Observable final class TownTyping {
-    static let shared = TownTyping()
-    var res: TownLook.Resident? = nil
-    var text = ""
-}
-
-struct TownReplyBar: View {
-    @FocusState private var focus: Bool
-    private var t: TownTyping { TownTyping.shared }
-    var body: some View {
-        if let r = t.res {
-            let n = TownBook.shared.note(r.id)
-            HStack(alignment: .top, spacing: 12) {
-                TownFace(id: r.id, note: n, width: 56, height: 79)
-                    .frame(width: 56, height: 46, alignment: .top).clipped()
-                    .padding(4)
-                    .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(TownLook.shown(r, n)).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
-                    Text(TownLog.shared.log(r.id).last?.say ?? "").appFont(15).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    field(r)
-                }
-            }
-            .padding(12)
-            .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
-            .padding(.horizontal, 26).padding(.bottom, 8)
-            .onAppear { focus = true }
-            .onChange(of: focus) { _, v in if !v { t.res = nil } }   // 키보드를 내리면 안 남기고 닫기
-        }
-    }
-    private func field(_ r: TownLook.Resident) -> some View {
-            HStack(spacing: 8) {
-                TextField("", text: Binding(get: { t.text }, set: { t.text = $0 }), prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
-                    .appFont(15).foregroundStyle(.white).submitLabel(.done)
-                    .focused($focus)
-                    .onSubmit { save(r) }
-                Button("그만") { t.res = nil }.appFont(14).foregroundStyle(.white.opacity(0.7))
-                Button("남기기") { save(r) }.appFont(14, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4))
-            }
-            .padding(.horizontal, 8).padding(.vertical, 6)
-            .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
-    }
-    private func save(_ r: TownLook.Resident) {
-        TownLog.shared.answer(r.id, t.text, price: TownLook.price(r))
-        t.res = nil
     }
 }
