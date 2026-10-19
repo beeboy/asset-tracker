@@ -34,8 +34,9 @@ final class Market {
     /// 매매기준율 (사이트 data/mar.json, 서울외국환중개). 웹 평가액과 같은 환율
     var mar: MarFeed.File? = MarFeed.cached()
     /// 원화 평가에 쓰는 원/달러: 웹 fxBase 와 같게 매매기준율, 없거나 5일 넘게 묵었으면 지금 환율
-    /// 평가 환율: 매매기준율 먼저 (토스 총자산이 이걸로 센다). 없으면 토스 원/달러, 그다음 지금 환율
-    var valFx: Double { marRate ?? tossFx?.rate ?? fx.last }
+    /// 평가 환율: 토스 원/달러 먼저 (토스 총자산이 이 값으로 센다. 서울외국환중개 고시는 하루 한 번이라 토스와 10원쯤 달랐다).
+    /// 토스 키가 없으면 매매기준율, 그다음 지금 환율
+    var valFx: Double { tossFx?.rate ?? marRate ?? fx.last }
     var marRate: Double? { mar.flatMap { $0.rate > 0 && Day.dday($0.date) >= -5 ? $0.rate : nil } }
     /// 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일
     var stats: SiteStats.File? = SiteStats.load()
