@@ -68,19 +68,48 @@ func num(_ v: Any?) -> Double? {
     return nil
 }
 
-// Yahoo 중계 (naeilo Worker). 앱의 종목 검색·추가한 종목 시세와 위젯의 국내 테스트 시세가 같이 쓴다
+// Yahoo 받기. 앱·위젯이 Yahoo 를 직접 부르고, 안 되면 중계(naeilo Worker)로 한 번 더 (웹은 백업)
 enum Relay {
     static let base = "https://asset-ai.drinker.workers.dev/?url="
+    static let host = "https://query1.finance.yahoo.com"
 
-    static func yahoo(_ path: String) async throws -> [String: Any] {
-        let target = "https://query1.finance.yahoo.com" + path
+    static func yahoo(_ path: String, timeout: TimeInterval = 15) async throws -> [String: Any] {
+        let target = host + path
+        if let url = URL(string: target), let o = try? await get(url, timeout: timeout, ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)") { return o }
         guard let enc = target.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
               let url = URL(string: base + enc) else { throw URLError(.badURL) }
-        var req = URLRequest(url: url, timeoutInterval: 15)
-        req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
+        return try await get(url, timeout: timeout, ua: "naeilo-ios/0.1")
+    }
+
+    private static func get(_ url: URL, timeout: TimeInterval, ua: String) async throws -> [String: Any] {
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
+        req.setValue(ua, forHTTPHeaderField: "User-Agent")
         let (data, resp) = try await URLSession.shared.data(for: req)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
-        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        guard (resp as? HTTPURLResponse)?.statusCode == 200,
+              let o = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw URLError(.badServerResponse) }
+        return o
+    }
+
+    /// 지금 가격 하나 (사이트 quotes.json 과 같은 식: 오늘 5분봉에서 정규장·프리·애프터 중 마지막 값, 전일 종가)
+    static func quote(_ sym: String) async -> QuoteFeed.Q? {
+        let enc = sym.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? sym
+        guard let o = try? await yahoo("/v8/finance/chart/\(enc)?range=1d&interval=5m&includePrePost=true", timeout: 8),
+              let r = ((o["chart"] as? [String: Any])?["result"] as? [[String: Any]])?.first,
+              let m = r["meta"] as? [String: Any], let reg = num(m["regularMarketPrice"]), reg > 0,
+              let prev = num(m["chartPreviousClose"]) ?? num(m["previousClose"]) else { return nil }
+        var last = reg, at = num(m["regularMarketTime"]) ?? 0
+        let ts = r["timestamp"] as? [Double] ?? []
+        let cl = ((((r["indicators"] as? [String: Any])?["quote"] as? [[String: Any]])?.first)?["close"] as? [Any]) ?? []
+        let per = m["currentTradingPeriod"] as? [String: Any] ?? [:]
+        func inside(_ k: String, _ t: Double) -> Bool {
+            guard let p = per[k] as? [String: Any], let a = num(p["start"]), let b = num(p["end"]) else { return false }
+            return a <= t && t < b
+        }
+        for (t, c) in zip(ts, cl) {
+            guard let v = num(c), v > 0, inside("pre", t) || inside("post", t) || inside("regular", t) else { continue }
+            last = v; at = t
+        }
+        return .init(last: last, prev: prev, at: at, reg: reg)
     }
 }
 
@@ -698,7 +727,7 @@ enum LongbridgeKeys {
     }
 }
 
-// 사이트 시세 (naeilo.com/data/quotes.json). 사이트가 평일 30분마다 모으는 Yahoo 중계 값을 앱과 위젯이 직접 받는다.
+// 지금 가격·원/달러: 내 종목(Store.quoteSyms)을 Yahoo 에서 직접 받는다. 못 받은 종목만 사이트(naeilo.com/data/quotes.json, 평일 30분마다 모음)로 채운다.
 enum QuoteFeed {
     struct Q: Codable {
         var last: Double; var prev: Double; var at: Double   // 지금 가격, 전일 종가, 가격 시각(초)
@@ -713,22 +742,40 @@ enum QuoteFeed {
     @discardableResult
     static func fetch(minAge: TimeInterval = 0) async -> File? {
         let old = cached()
-        if let o = old, Date().timeIntervalSince1970 - o.got < minAge { return o }
+        let want = Set(Store.quoteSyms ?? [])
+        if let o = old, Date().timeIntervalSince1970 - o.got < minAge, want.isSubset(of: Set(o.q.keys)) { return o }
+        var q: [String: Q] = [:]
+        await withTaskGroup(of: (String, Q?).self) { g in
+            for k in want { g.addTask { (k, await Relay.quote(k)) } }
+            for await (k, v) in g { if let v { q[k] = v } }
+        }
+        if !want.isEmpty, want.isSubset(of: Set(q.keys)) { return save(q) }
+        // 못 받은 종목은 사이트 값 (사이트도 안 되면 받아 둔 값)
+        if let site = await siteFetch() { for (k, v) in site where q[k] == nil { q[k] = v } }
+        for (k, v) in old?.q ?? [:] where q[k] == nil && (want.contains(k) || want.isEmpty) { q[k] = v }
+        guard !q.isEmpty else { return old }
+        return save(q)
+    }
+
+    private static func save(_ q: [String: Q]) -> File {
+        let f = File(got: Date().timeIntervalSince1970, q: q)
+        Store.write(f, name)
+        return f
+    }
+
+    private static func siteFetch() async -> [String: Q]? {
         var c = URLComponents(url: Config.data.appendingPathComponent("quotes.json"), resolvingAgainstBaseURL: false)!
         c.queryItems = [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970 / 60)))]   // 사이트 캐시를 피한다 (1분 단위)
         var req = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
         req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200,
-              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return old }
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         var q: [String: Q] = [:]
         for (k, any) in o {   // 종목이 아닌 칸(예: 갱신 시각)이 생겨도 나머지는 읽는다
             guard let v = any as? [String: Any], let prev = num(v["prev_close"]), let last = num(v["last"]) ?? num(v["regular"]) else { continue }
             q[k] = Q(last: last, prev: prev, at: num(v["last_time"]) ?? num(v["regular_time"]) ?? 0, reg: num(v["regular"]))
         }
-        guard !q.isEmpty else { return old }
-        let f = File(got: Date().timeIntervalSince1970, q: q)
-        Store.write(f, name)
-        return f
+        return q.isEmpty ? nil : q
     }
 }

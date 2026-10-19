@@ -52,6 +52,12 @@ enum Store {
         get { let v = defaults.integer(forKey: "intervalMin"); return v > 0 ? v : 30 }
         set { defaults.set(newValue, forKey: "intervalMin") }
     }
+    /// 지금 가격을 Yahoo 에서 직접 받을 기호 (내 종목 + KRW=X). 앱이 시세를 갱신할 때 써 두고 위젯도 같이 쓴다
+    /// 아직 앱이 써 두지 않았으면 nil (그때는 사이트 값만)
+    static var quoteSyms: [String]? {
+        get { defaults.stringArray(forKey: "quoteSyms") }
+        set { defaults.set(newValue, forKey: "quoteSyms") }
+    }
     static var lastCheck: Date? {
         get { defaults.object(forKey: "lastCheck") as? Date }
         set { defaults.set(newValue, forKey: "lastCheck") }
