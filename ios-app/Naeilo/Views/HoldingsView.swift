@@ -945,7 +945,7 @@ struct TownView: View {
                 if res.isEmpty {
                     Text("아직 이사 온 주민이 없어요").appFont(14).foregroundStyle(.white)
                 }
-                if let r = talk {
+                if let r = talk, TownTyping.shared.res == nil {   // 답 쓰는 동안엔 대사창이 키보드 위로 옮겨 간다
                     VStack {
                         Spacer()
                         TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), dress: { dress = r }, us: { us = r }) { talk = nil; TownTyping.shared.res = nil }
@@ -1438,7 +1438,7 @@ struct TownUs: View {
     }
 }
 
-/// 한 줄 답 쓰기: 동네와 대사창은 그대로 두고, 쓰는 칸만 키보드 바로 위에 띄운다
+/// 한 줄 답 쓰기: 동네는 그대로 두고, 대사창만 키보드 바로 위로 옮긴다
 @Observable final class TownTyping {
     static let shared = TownTyping()
     var res: TownLook.Resident? = nil
@@ -1450,6 +1450,28 @@ struct TownReplyBar: View {
     private var t: TownTyping { TownTyping.shared }
     var body: some View {
         if let r = t.res {
+            let n = TownBook.shared.note(r.id)
+            HStack(alignment: .top, spacing: 12) {
+                TownFace(id: r.id, note: n, width: 56, height: 79)
+                    .frame(width: 56, height: 46, alignment: .top).clipped()
+                    .padding(4)
+                    .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(TownLook.shown(r, n)).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
+                    Text(TownLog.shared.log(r.id).last?.say ?? "").appFont(15).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    field(r)
+                }
+            }
+            .padding(12)
+            .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
+            .padding(.horizontal, 26).padding(.bottom, 8)
+            .onAppear { focus = true }
+            .onChange(of: focus) { _, v in if !v { t.res = nil } }   // 키보드를 내리면 안 남기고 닫기
+        }
+    }
+    private func field(_ r: TownLook.Resident) -> some View {
             HStack(spacing: 8) {
                 TextField("", text: Binding(get: { t.text }, set: { t.text = $0 }), prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
                     .appFont(15).foregroundStyle(.white).submitLabel(.done)
@@ -1458,11 +1480,8 @@ struct TownReplyBar: View {
                 Button("그만") { t.res = nil }.appFont(14).foregroundStyle(.white.opacity(0.7))
                 Button("남기기") { save(r) }.appFont(14, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4))
             }
-            .padding(.horizontal, 12).padding(.vertical, 10)
-            .background(Color(red: 0.10, green: 0.11, blue: 0.20))
-            .onAppear { focus = true }
-            .onChange(of: focus) { _, v in if !v { t.res = nil } }   // 키보드를 내리면 안 남기고 닫기
-        }
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
     }
     private func save(_ r: TownLook.Resident) {
         TownLog.shared.answer(r.id, t.text, price: TownLook.price(r))
