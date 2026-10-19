@@ -914,6 +914,10 @@ struct TownView: View {
     @State private var talk: TownLook.Resident? = nil
     @State private var dress: TownLook.Resident? = nil
     @State private var us: TownLook.Resident? = nil
+    @State private var tab = 0                       // 대사창 아래 칸: 0 기본, 1 우리 사이, 2 꾸미기
+    @State private var line: String? = nil           // 고른 말에 대한 주민 대답 (대사창에)
+    @State private var look: TownBook.Note? = nil    // 꾸미기 미리 보기
+    @State private var ask = 0                       // 오늘의 한 줄을 누르면 답장 칸 열기
     @State private var typing = false          // 내 답을 쓰는 중
     @State private var kbTop: CGFloat = .infinity   // 키보드 윗변 (화면 좌표)
     @State private var talkBottom: CGFloat = 0      // 대사창 제자리 아랫변 (화면 좌표)
@@ -1033,7 +1037,8 @@ struct TownView: View {
                     let lift = typing ? min(0, kbTop - 8 - talkBottom) : 0
                     VStack {
                         Spacer()
-                        TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), typing: $typing, dress: { dress = r }, us: { us = r }) { talk = nil; typing = false }
+                        TownTalk(res: r, note: look ?? book.note(r.id), hello: fresh.contains(r.id), typing: $typing, line: line, tab: tab, ask: ask,
+                                 dress: { tab = tab == 2 ? 0 : 2 }, us: { tab = tab == 1 ? 0 : 1 }) { talk = nil; typing = false }
                             .offset(y: lift)
                             .animation(.easeOut(duration: 0.25), value: lift)
                     }
@@ -1046,10 +1051,11 @@ struct TownView: View {
                 }
             }
         }
-        .frame(height: 440)
-        // 지난 대화(어제까지)는 대사창 아래 빈 공간에 목록으로. 대사창엔 오늘 한마디만
-        if let r = talk { TownPast(id: r.id) }
+        .frame(height: talk == nil ? 440 : 290)   // 말 거는 동안은 아래 칸까지 한 화면에 들어가게 낮춘다
+        // 대사창 아래 칸: 오늘의 한 줄·할 말 고르기 / 우리 사이 / 꾸미기 (지난 대화는 우리 사이 → 전체 보기)
+        if let r = talk { TownPanel(res: r, tab: $tab, line: $line, look: $look, ask: $ask) }
         }
+        .onChange(of: talk?.id) { _, _ in tab = 0; line = nil; look = nil }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { n in
             if let f = n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect { kbTop = f.minY }
         }
@@ -1335,6 +1341,9 @@ struct TownTalk: View {
     let note: TownBook.Note
     var hello = false
     @Binding var typing: Bool
+    var line: String? = nil          // 할 말 고르기·꾸미기에서 온 대답 (있으면 오늘 한마디 대신)
+    var tab = 0
+    var ask = 0
     let dress: () -> Void
     let us: () -> Void
     let close: () -> Void
@@ -1344,7 +1353,7 @@ struct TownTalk: View {
     @FocusState private var focus: Bool
     @State private var say = ""
     private var log: TownLog { TownLog.shared }
-    private var full: String { (hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + say }
+    private var full: String { line ?? ((hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + say) }
     private let gold = Color(red: 1, green: 0.85, blue: 0.4)
     var body: some View {
         let full = self.full
@@ -1372,8 +1381,8 @@ struct TownTalk: View {
                 if res.id != TownLook.mayorID && res.id != TownLook.warshID {
                     HStack(spacing: 6) {
                         Spacer(minLength: 0)
-                        chip("우리 사이", us)
-                        chip("꾸미기", dress)
+                        chip("우리 사이", tab == 1, us)
+                        chip("꾸미기", tab == 2, dress)
                     }
                 }
             }
@@ -1403,7 +1412,8 @@ struct TownTalk: View {
             // 남기지 않고 닫으면 쓰던 글은 버리고 남겨 둔 답으로
             if !v { me = log.log(res.id).last.flatMap { $0.day == TownLog.day ? $0.me : nil } ?? "" }
         }
-        .task(id: res.id) {
+        .onChange(of: ask) { _, _ in if !say.isEmpty { reply = true; focus = true } }
+        .task(id: res.id + "|" + (line ?? "")) {
             // 오늘 처음 말을 걸 때 한마디를 정해 기록에 남긴다 (하루 동안 같은 말)
             let e = log.today(res.id) { TownLook.daily(res, note) }
             say = e.say; me = e.me ?? ""
@@ -1418,9 +1428,10 @@ struct TownTalk: View {
         }
     }
 
-    private func chip(_ t: String, _ a: @escaping () -> Void) -> some View {
-        Button(t, action: a).appFont(12, .bold).foregroundStyle(.white)
+    private func chip(_ t: String, _ on: Bool, _ a: @escaping () -> Void) -> some View {
+        Button(t, action: a).appFont(12, .bold).foregroundStyle(on ? Color(red: 0.10, green: 0.11, blue: 0.20) : .white)
             .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(on ? gold : .clear, in: RoundedRectangle(cornerRadius: 4))
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
     }
 }
@@ -1496,6 +1507,12 @@ struct TownPast: View {
         candy -= 1; UserDefaults.standard.set(candy, forKey: "town.candy")
         var n = note(id); n.gifts = (n.gifts ?? 0) + 1; n.cheer = TownLog.day
         set(id, n)
+    }
+    /// 꾸미기에서 별사탕으로 사기. 모자라면 false
+    func spend(_ n: Int) -> Bool {
+        guard n > 0, candy >= n else { return n <= 0 }
+        candy -= n; UserDefaults.standard.set(candy, forKey: "town.candy")
+        return true
     }
     func cheered(_ id: String) -> Bool { notes[id]?.cheer == TownLog.day }
     /// 지금 주민과 수첩 맞추기: 있는 주민은 회사 이름을 적고 떠난 표시를 지운다, 없어진 주민은 오늘을 떠난 날로
