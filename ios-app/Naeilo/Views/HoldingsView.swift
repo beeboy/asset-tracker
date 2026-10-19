@@ -1106,7 +1106,7 @@ struct TownFace: View {
     var width: CGFloat
     var height: CGFloat
     static let hats = ["없음", "밀짚모자", "비니", "왕관", "야구모자", "꽃"]
-    static let tints: [UInt32] = [0xE8B04B, 0xD94F4F, 0x4F7FD9, 0x4FB06A, 0x8A5FD0, 0xF2F2F2]
+    static let tints: [UInt32] = [0xE8B04B, 0xD94F4F, 0x4F7FD9, 0x4FB06A, 0x8A5FD0, 0xF2F2F2, 0x303030]
     var body: some View {
         MeAvatar(me: TownLook.char(id), width: width, height: height)
             .overlay {
