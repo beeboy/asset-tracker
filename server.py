@@ -340,7 +340,18 @@ def fetch_mar() -> dict | None:
                         d = f"{y:04d}-{int(m[1]):02d}-{int(m[2]):02d}"
                     rate = float(val.replace(",", ""))
                     if 500 < rate < 5000:
-                        return {"USD": {"rate": rate, "date": d, "src": "서울외국환중개", "fetched": int(time.time())}}
+                        out = {"USD": {"rate": rate, "date": d, "src": "서울외국환중개", "fetched": int(time.time())}}
+                        # 앞 날짜 고시: 토스는 새 고시를 그날 오전 9시부터 쓴다 (앱이 9시 전엔 이 값)
+                        if len(sets) > 1:
+                            pl, pvv = sets[-2]
+                            pm = re.findall(r"\d+", pl)
+                            pr = float(pvv.replace(",", ""))
+                            if len(pm) >= 3 and 500 < pr < 5000:
+                                py = int(pm[0]) + (2000 if int(pm[0]) < 100 else 0)
+                                pd = f"{py:04d}-{int(pm[1]):02d}-{int(pm[2]):02d}"
+                                if pd < d:
+                                    out["USD_prev"] = {"rate": pr, "date": pd}
+                        return out
             else:
                 m = re.search(r"USD.{0,400}?(\d,\d{3}\.\d{1,2})", txt, re.S)
                 if m:

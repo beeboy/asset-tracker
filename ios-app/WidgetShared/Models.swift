@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import CryptoKit
 
 // 사이트(web/widget-core.js)가 만드는 위젯 요약. 금액 배열은 만원 단위 정수, 나머지 금액은 원
 struct WSummary: Codable {
@@ -67,19 +68,48 @@ func num(_ v: Any?) -> Double? {
     return nil
 }
 
-// Yahoo 중계 (naeilo Worker). 앱의 종목 검색·추가한 종목 시세와 위젯의 국내 테스트 시세가 같이 쓴다
+// Yahoo 받기. 앱·위젯이 Yahoo 를 직접 부르고, 안 되면 중계(naeilo Worker)로 한 번 더 (웹은 백업)
 enum Relay {
     static let base = "https://asset-ai.drinker.workers.dev/?url="
+    static let host = "https://query1.finance.yahoo.com"
 
-    static func yahoo(_ path: String) async throws -> [String: Any] {
-        let target = "https://query1.finance.yahoo.com" + path
+    static func yahoo(_ path: String, timeout: TimeInterval = 15) async throws -> [String: Any] {
+        let target = host + path
+        if let url = URL(string: target), let o = try? await get(url, timeout: timeout, ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)") { return o }
         guard let enc = target.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
               let url = URL(string: base + enc) else { throw URLError(.badURL) }
-        var req = URLRequest(url: url, timeoutInterval: 15)
-        req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
+        return try await get(url, timeout: timeout, ua: "naeilo-ios/0.1")
+    }
+
+    private static func get(_ url: URL, timeout: TimeInterval, ua: String) async throws -> [String: Any] {
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
+        req.setValue(ua, forHTTPHeaderField: "User-Agent")
         let (data, resp) = try await URLSession.shared.data(for: req)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
-        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        guard (resp as? HTTPURLResponse)?.statusCode == 200,
+              let o = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw URLError(.badServerResponse) }
+        return o
+    }
+
+    /// 지금 가격 하나 (사이트 quotes.json 과 같은 식: 오늘 5분봉에서 정규장·프리·애프터 중 마지막 값, 전일 종가)
+    static func quote(_ sym: String) async -> QuoteFeed.Q? {
+        let enc = sym.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? sym
+        guard let o = try? await yahoo("/v8/finance/chart/\(enc)?range=1d&interval=5m&includePrePost=true", timeout: 8),
+              let r = ((o["chart"] as? [String: Any])?["result"] as? [[String: Any]])?.first,
+              let m = r["meta"] as? [String: Any], let reg = num(m["regularMarketPrice"]), reg > 0,
+              let prev = num(m["chartPreviousClose"]) ?? num(m["previousClose"]) else { return nil }
+        var last = reg, at = num(m["regularMarketTime"]) ?? 0
+        let ts = r["timestamp"] as? [Double] ?? []
+        let cl = ((((r["indicators"] as? [String: Any])?["quote"] as? [[String: Any]])?.first)?["close"] as? [Any]) ?? []
+        let per = m["currentTradingPeriod"] as? [String: Any] ?? [:]
+        func inside(_ k: String, _ t: Double) -> Bool {
+            guard let p = per[k] as? [String: Any], let a = num(p["start"]), let b = num(p["end"]) else { return false }
+            return a <= t && t < b
+        }
+        for (t, c) in zip(ts, cl) {
+            guard let v = num(c), v > 0, inside("pre", t) || inside("post", t) || inside("regular", t) else { continue }
+            last = v; at = t
+        }
+        return .init(last: last, prev: prev, at: at, reg: reg)
     }
 }
 
@@ -521,10 +551,220 @@ enum AlpacaKeys {
     }
 }
 
-// 사이트 시세 (naeilo.com/data/quotes.json). 사이트가 평일 30분마다 모으는 Yahoo 중계 값을 앱과 위젯이 직접 받는다.
-// 계약 뒤에는 중계 서버 쪽 출처만 바꾸면 앱·위젯은 그대로 쓴다.
+/// 미국 장이 다 끝난 때: 뉴욕 시각 평일 20시(애프터마켓 끝)부터 다음 날 4시(프리마켓 시작)까지와 주말.
+/// 이때는 애프터마켓 가격 대신 정규장 종가로 센다. 토스 총자산·오늘 손익이 이렇게 센다 (2026-10-17 토스 화면과 맞춰 봄)
+/// 내 토스 키로 받아 둔 일봉 (앱 TossHistory 가 쓰는 toss_history.json, 키 = Yahoo 기호). 토스 값의 전일 종가·정규장 종가를 여기서 센다
+enum TossDaily {
+    struct Hist: Codable { let dates: [String]; let closes: [Double] }
+    struct File: Codable { var h: [String: Hist] }
+    static func cached() -> File? { TossKeys.on ? Store.read(File.self, "toss_history.json") : nil }
+
+    private static func day(_ t: Double, kr: Bool) -> (String, Int) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: kr ? "Asia/Seoul" : "America/New_York")!
+        let c = cal.dateComponents([.year, .month, .day, .hour], from: Date(timeIntervalSince1970: t))
+        return (String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!), c.hour!)
+    }
+    /// 토스 주간거래 시간(미국 동부 20시~4시)에 체결된 값인가
+    static func daytime(_ at: Double) -> Bool { let h = day(at, kr: false).1; return h >= 20 || h < 4 }
+    /// 토스 값(at 시각)의 전일 종가: 그 거래일 앞 마지막 종가.
+    /// 미국 20시 뒤 주간거래는 다음 거래일 몫이라 그날 종가까지 넣는다 (4시 전은 이미 다음 날짜)
+    static func prev(_ h: Hist?, at: Double, kr: Bool) -> Double? {
+        guard let h, at > 0 else { return nil }
+        let (d, hr) = day(at, kr: kr)
+        let late = !kr && hr >= 20
+        guard let i = h.dates.lastIndex(where: { late ? $0 <= d : $0 < d }) else { return nil }
+        return h.closes[i]
+    }
+    /// 미국 정규장 종가: 토스 값이 주간거래가 아니면 그날 일봉 종가 (그날 일봉을 아직 못 받았으면 nil)
+    static func reg(_ h: Hist?, at: Double) -> Double? {
+        guard let h, at > 0, !daytime(at) else { return nil }
+        let d = day(at, kr: false).0
+        guard let i = h.dates.lastIndex(of: d) else { return nil }
+        return h.closes[i]
+    }
+}
+
+enum USSession {
+    static func closed(_ d: Date = Date()) -> Bool {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/New_York")!
+        let c = cal.dateComponents([.weekday, .hour], from: d)
+        return c.weekday == 7 || c.weekday == 1 || c.hour! >= 20 || c.hour! < 4   // 7 토요일, 1 일요일
+    }
+}
+
+// Longbridge 지금 가격. 사용자가 open.longbridge.com 개발자 센터에서 받은 App Key·App Secret·Access Token 으로 Longbridge 를 직접 부른다 (중계 없음).
+// 모의(paper) 계정에도 홍콩·미국·A주 기본 실시간 시세가 들어 있다. 공식 SDK 의 HTTP 방식(POST /quote/quotes, HMAC-SHA256 서명)을 그대로 쓴다.
+// 앱은 아직 원화·달러 종목만 다루므로 지금은 미국 종목에 쓰인다. 홍콩(.HK)·상하이(.SS)·선전(.SZ) 기호도 알아듣게 해 두었다.
+// 우선순위: 토스 키 > Alpaca 키 > Longbridge 키 > 사이트 시세. 전일 종가는 Alpaca 처럼 사이트(공식 종가) 값이 먼저다.
+enum LongbridgeFeed {
+    static let name = "longbridge_quotes.json"
+    static let base = "https://openapi.longbridge.com"
+    /// 설정 > 내 Longbridge 키에 보이는 상태: 마지막 성공 시각(초), 마지막 실패 이유 (성공하면 지움)
+    static var okAt: Double { Store.defaults.double(forKey: "longbridge_ok_at") }
+    static var lastError: String? { Store.defaults.string(forKey: "longbridge_err") }
+    private static func fail(_ why: String) -> QuoteFeed.File? {
+        Store.defaults.set(why, forKey: "longbridge_err")
+        return cached()
+    }
+    /// 15분 안에 받은 값만 (토스·Alpaca 와 같다)
+    static func cached() -> QuoteFeed.File? {
+        guard LongbridgeKeys.on, let f = Store.read(QuoteFeed.File.self, name), Date().timeIntervalSince1970 - f.got < 900 else { return nil }
+        return f
+    }
+    /// Yahoo 기호 → Longbridge 기호. AAPL → AAPL.US, BRK-B → BRK.B.US, 0700.HK → 700.HK, 600519.SS → 600519.SH, 000001.SZ → 000001.SZ. 국내·지수·환율은 nil
+    static func code(_ sym: String) -> String? {
+        let u = sym.trimmingCharacters(in: .whitespaces).uppercased()
+        let digits = { (x: Substring) in !x.isEmpty && x.allSatisfy { $0 >= "0" && $0 <= "9" } }
+        if u.hasSuffix(".HK") {
+            let c = u.dropLast(3)
+            guard digits(c) else { return nil }
+            let n = c.drop { $0 == "0" }
+            return (n.isEmpty ? "0" : String(n)) + ".HK"
+        }
+        if u.hasSuffix(".SS") || u.hasSuffix(".SZ") {
+            let c = u.dropLast(3)
+            guard c.count == 6, digits(c) else { return nil }
+            return String(c) + (u.hasSuffix(".SS") ? ".SH" : ".SZ")
+        }
+        return AlpacaFeed.code(u).map { $0 + ".US" }
+    }
+
+    /// syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 5초를 기다린다
+    @discardableResult
+    static func fetch(_ syms: [String: String], minAge: TimeInterval = 0) async -> QuoteFeed.File? {
+        guard let k = LongbridgeKeys.load() else { return nil }
+        var ids: [String: [String]] = [:]   // Longbridge 기호 → 앱 종목들
+        for (id, y) in syms { if let c = code(y) { ids[c, default: []].append(id) } }
+        guard !ids.isEmpty else { return nil }
+        if let o = cached(), Date().timeIntervalSince1970 - o.got < minAge { return o }
+        var q: [String: QuoteFeed.Q] = [:]
+        let all = ids.keys.sorted()
+        for i in stride(from: 0, to: all.count, by: 500) {   // 한 번에 500종목까지
+            let (o, e) = await post("/quote/quotes", ["symbol": Array(all[i..<min(i + 500, all.count)])], k)
+            if let e { return fail(e) }
+            for v in o?["secu_quote"] as? [[String: Any]] ?? [] {
+                guard let c = (v["symbol"] as? String)?.uppercased(), let last = num(v["last_done"]), last > 0 else { continue }
+                let at = num(v["timestamp"]).flatMap { $0 > 0 ? $0 : nil } ?? Date().timeIntervalSince1970
+                for id in ids[c] ?? [] { q[id] = .init(last: last, prev: num(v["prev_close"]) ?? 0, at: at) }
+            }
+        }
+        guard !q.isEmpty else { return fail("받은 종목 없음") }
+        let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
+        Store.write(f, name)
+        Store.defaults.set(f.got, forKey: "longbridge_ok_at")
+        Store.defaults.removeObject(forKey: "longbridge_err")
+        return f
+    }
+
+    /// 서명한 POST. 응답 {code, message, data} 에서 data 만 돌려준다
+    private static func post(_ path: String, _ body: [String: Any], _ k: LongbridgeKeys.Keys) async -> ([String: Any]?, String?) {
+        guard let url = URL(string: base + path), let b = try? JSONSerialization.data(withJSONObject: body) else { return (nil, "잘못된 요청") }
+        let token = k.token.hasPrefix("Bearer ") ? String(k.token.dropFirst(7)) : k.token
+        let ts = String(Int64(Date().timeIntervalSince1970 * 1000))
+        var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
+        r.httpMethod = "POST"
+        r.httpBody = b
+        r.setValue("application/json; charset=utf-8", forHTTPHeaderField: "content-type")
+        r.setValue(k.key, forHTTPHeaderField: "x-api-key")
+        r.setValue(token, forHTTPHeaderField: "authorization")
+        r.setValue(ts, forHTTPHeaderField: "x-timestamp")
+        // 미국 데이터센터 계정은 키 앞에 us_ 가 붙는다 (공식 SDK 와 같게)
+        r.setValue([k.key, k.secret, token].contains { $0.hasPrefix("us_") } ? "us" : "ap", forHTTPHeaderField: "x-dc-region")
+        r.setValue(sign(path: path, key: k.key, token: token, ts: ts, body: b, secret: k.secret), forHTTPHeaderField: "x-api-signature")
+        do {
+            let (d, resp) = try await URLSession.shared.data(for: r)
+            let http = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any]
+            let code = o.flatMap { num($0["code"]) } ?? -1
+            if http == 200 && code == 0 { return (o?["data"] as? [String: Any] ?? [:], nil) }
+            return (nil, why(http, o?["message"] as? String))
+        } catch let e as URLError { return (nil, e.code == .timedOut ? "5초 안에 응답 없음" : "Longbridge에 닿지 못함") }
+        catch { return (nil, "Longbridge에 닿지 못함") }
+    }
+
+    /// 공식 SDK 서명: "방법|경로|쿼리|서명할 헤더들\n|헤더 이름들|본문 SHA1" 의 SHA1 을 "HMAC-SHA256|…" 로 묶어 App Secret 으로 HMAC
+    static func sign(path: String, key: String, token: String, ts: String, body: Data, secret: String) -> String {
+        let names = "authorization;x-api-key;x-timestamp"
+        var plain = "POST|" + path + "||"
+        plain += "authorization:\(token)\nx-api-key:\(key)\nx-timestamp:\(ts)\n"
+        plain += "|" + names + "|"
+        if !body.isEmpty { plain += hex(Insecure.SHA1.hash(data: body)) }
+        let text = "HMAC-SHA256|" + hex(Insecure.SHA1.hash(data: Data(plain.utf8)))
+        let mac = HMAC<SHA256>.authenticationCode(for: Data(text.utf8), using: SymmetricKey(data: Data(secret.utf8)))
+        return "HMAC-SHA256 SignedHeaders=\(names), Signature=" + hex(mac)
+    }
+    private static func hex<S: Sequence>(_ d: S) -> String where S.Element == UInt8 { d.map { String(format: "%02x", $0) }.joined() }
+
+    static func why(_ http: Int, _ message: String?) -> String {
+        if http == 401 || http == 403 { return "키가 맞지 않거나 토큰 기한이 지났어요" }
+        if http == 429 { return "잠시 뒤에 다시 받아요" }
+        if let m = message, !m.isEmpty { return "Longbridge: " + String(m.prefix(60)) }
+        return "Longbridge 응답 \(http)"
+    }
+
+    /// 키 확인: AAPL 하나를 물어 본다 (설정 화면 '연결하기')
+    static func check() async -> String? {
+        guard let k = LongbridgeKeys.load() else { return "키 없음" }
+        let (o, e) = await post("/quote/quotes", ["symbol": ["AAPL.US"]], k)
+        if let e { return e }
+        return (o?["secu_quote"] as? [Any])?.isEmpty == false ? nil : "시세 권한이 없어요"
+    }
+
+    /// 위젯: 앱이 feed.json 에 넘긴 내 종목을 위젯이 직접 Longbridge 에 묻는다
+    @discardableResult
+    static func widgetFetch(minAge: TimeInterval) async -> QuoteFeed.File? {
+        guard LongbridgeKeys.on, let ty = Store.read(WFeed.self, "feed.json")?.ty, !ty.isEmpty else { return nil }
+        return await fetch(ty, minAge: minAge)
+    }
+}
+
+/// 사용자가 넣은 Longbridge 키. Alpaca 키처럼 이 폰 키체인(위젯과 같이 쓰는 그룹)에만 둔다
+enum LongbridgeKeys {
+    struct Keys: Codable { var key: String; var secret: String; var token: String }
+    private static func q() -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.longbridge", kSecAttrAccount as String: "keys"]
+    }
+    private static func put(_ v: Keys?) {
+        SecItemDelete(q() as CFDictionary)
+        guard let v, let d = try? JSONEncoder().encode(v) else { return }
+        var a = q()
+        a[kSecAttrAccessGroup as String] = TossKeys.group
+        a[kSecValueData as String] = d
+        a[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(a as CFDictionary, nil)
+    }
+    /// 키를 넣었는지 (위젯도 보므로 표시만 공유 저장소에 둔다)
+    static var on: Bool { Store.defaults.bool(forKey: "longbridge_user") }
+    static func load() -> Keys? {
+        guard on else { return nil }
+        var a = q()
+        a[kSecReturnData as String] = true
+        a[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(a as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
+        return try? JSONDecoder().decode(Keys.self, from: d)
+    }
+    static func save(_ k: Keys) {
+        put(k)
+        Store.defaults.set(true, forKey: "longbridge_user")
+    }
+    static func clear() {
+        put(nil)
+        Store.defaults.set(false, forKey: "longbridge_user")
+        Store.defaults.removeObject(forKey: "longbridge_err")
+        Store.defaults.removeObject(forKey: "longbridge_ok_at")
+        Store.remove(LongbridgeFeed.name)
+    }
+}
+
+// 지금 가격·원/달러 백업: 토스가 못 받는 내 종목(Store.quoteSyms)을 Yahoo 에서 직접 받는다. 그것도 못 받은 종목만 사이트(naeilo.com/data/quotes.json, 평일 30분마다 모음)로 채운다.
 enum QuoteFeed {
-    struct Q: Codable { var last: Double; var prev: Double; var at: Double }   // 지금 가격, 전일 종가, 가격 시각(초)
+    struct Q: Codable {
+        var last: Double; var prev: Double; var at: Double   // 지금 가격, 전일 종가, 가격 시각(초)
+        var reg: Double? = nil                               // 정규장 가격 (사이트 시세만. 미국 장이 다 끝나면 이 값으로 센다)
+    }
     struct File: Codable { var got: Double; var q: [String: Q] }               // got = 받은 시각(초)
 
     static let name = "site_quotes.json"
@@ -534,22 +774,42 @@ enum QuoteFeed {
     @discardableResult
     static func fetch(minAge: TimeInterval = 0) async -> File? {
         let old = cached()
-        if let o = old, Date().timeIntervalSince1970 - o.got < minAge { return o }
+        let list = Store.quoteSyms
+        if list?.isEmpty == true { return old }   // 토스가 다 받는다
+        let want = Set(list ?? [])
+        if let o = old, Date().timeIntervalSince1970 - o.got < minAge, want.isSubset(of: Set(o.q.keys)) { return o }
+        var q: [String: Q] = [:]
+        await withTaskGroup(of: (String, Q?).self) { g in
+            for k in want { g.addTask { (k, await Relay.quote(k)) } }
+            for await (k, v) in g { if let v { q[k] = v } }
+        }
+        if !want.isEmpty, want.isSubset(of: Set(q.keys)) { return save(q) }
+        // 못 받은 종목은 사이트 값 (사이트도 안 되면 받아 둔 값)
+        if let site = await siteFetch() { for (k, v) in site where q[k] == nil { q[k] = v } }
+        for (k, v) in old?.q ?? [:] where q[k] == nil && (want.contains(k) || want.isEmpty) { q[k] = v }
+        guard !q.isEmpty else { return old }
+        return save(q)
+    }
+
+    private static func save(_ q: [String: Q]) -> File {
+        let f = File(got: Date().timeIntervalSince1970, q: q)
+        Store.write(f, name)
+        return f
+    }
+
+    private static func siteFetch() async -> [String: Q]? {
         var c = URLComponents(url: Config.data.appendingPathComponent("quotes.json"), resolvingAgainstBaseURL: false)!
         c.queryItems = [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970 / 60)))]   // 사이트 캐시를 피한다 (1분 단위)
         var req = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
         req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200,
-              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return old }
+              let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         var q: [String: Q] = [:]
         for (k, any) in o {   // 종목이 아닌 칸(예: 갱신 시각)이 생겨도 나머지는 읽는다
             guard let v = any as? [String: Any], let prev = num(v["prev_close"]), let last = num(v["last"]) ?? num(v["regular"]) else { continue }
-            q[k] = Q(last: last, prev: prev, at: num(v["last_time"]) ?? num(v["regular_time"]) ?? 0)
+            q[k] = Q(last: last, prev: prev, at: num(v["last_time"]) ?? num(v["regular_time"]) ?? 0, reg: num(v["regular"]))
         }
-        guard !q.isEmpty else { return old }
-        let f = File(got: Date().timeIntervalSince1970, q: q)
-        Store.write(f, name)
-        return f
+        return q.isEmpty ? nil : q
     }
 }

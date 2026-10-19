@@ -513,20 +513,20 @@ final class Remind {
 enum MarketEvents {
     struct Rule { let id: String; let target: String; let kind: String; let date: String; let rep: String }
     static let rules: [Rule] = [
-        .init(id: "x_fomc", target: "ALL", kind: "미국 금리 결정(FOMC)", date: "2026-10-28", rep: "6w"),
-        .init(id: "x_cpi", target: "ALL", kind: "미국 물가(CPI) 발표", date: "2026-10-14", rep: "monthly"),
-        .init(id: "x_jobs", target: "ALL", kind: "미국 고용 지표", date: "2026-11-06", rep: "monthly"),
-        .init(id: "x_bok", target: "FX", kind: "한국은행 금리 결정", date: "2026-10-22", rep: "6w"),
-        .init(id: "x_dlv", target: "TSLA", kind: "테슬라 차량 인도량 발표", date: "2027-01-04", rep: "quarterly"),
-        .init(id: "x_gtc", target: "NVDA", kind: "엔비디아 GTC 신제품 발표", date: "2027-03-16", rep: "yearly"),
-        .init(id: "x_opec", target: "ALL", kind: "OPEC+ 회의", date: "2026-11-30", rep: "semi"),
-        .init(id: "x_mid", target: "ALL", kind: "미국 중간선거 결과", date: "2026-11-04", rep: "none"),
-        .init(id: "x_witch", target: "ALL", kind: "선물·옵션 동시 만기", date: "2026-12-18", rep: "quarterly"),
+        .init(id: "x_fomc", target: "ALL", kind: "미국 FOMC", date: "2026-10-28", rep: "6w"),
+        .init(id: "x_cpi", target: "ALL", kind: "미국 CPI", date: "2026-10-14", rep: "monthly"),
+        .init(id: "x_jobs", target: "ALL", kind: "미국 고용", date: "2026-11-06", rep: "monthly"),
+        .init(id: "x_bok", target: "FX", kind: "한은 금리 결정", date: "2026-10-22", rep: "6w"),
+        .init(id: "x_dlv", target: "TSLA", kind: "테슬라 인도량", date: "2027-01-04", rep: "quarterly"),
+        .init(id: "x_gtc", target: "NVDA", kind: "엔비디아 GTC", date: "2027-03-16", rep: "yearly"),
+        .init(id: "x_opec", target: "ALL", kind: "OPEC+", date: "2026-11-30", rep: "semi"),
+        .init(id: "x_mid", target: "ALL", kind: "미국 중간선거", date: "2026-11-04", rep: "none"),
+        .init(id: "x_witch", target: "ALL", kind: "선물·옵션 만기", date: "2026-12-18", rep: "quarterly"),
         // 보유 종목 실적 (위젯 '다음' 줄이 쓰던 값)
-        .init(id: "e_drnk", target: "DRNK", kind: "드링커 실적 발표", date: "2026-10-22", rep: "none"),
-        .init(id: "e_005930", target: "005930", kind: "삼성전자 실적 발표", date: "2026-10-29", rep: "none"),
-        .init(id: "e_aapl", target: "AAPL", kind: "애플 실적 발표", date: "2026-10-30", rep: "none"),
-        .init(id: "e_nvda", target: "NVDA", kind: "엔비디아 실적 발표", date: "2026-11-19", rep: "none"),
+        .init(id: "e_drnk", target: "DRNK", kind: "드링커 실적", date: "2026-10-22", rep: "none"),
+        .init(id: "e_005930", target: "005930", kind: "삼성전자 실적", date: "2026-10-29", rep: "none"),
+        .init(id: "e_aapl", target: "AAPL", kind: "애플 실적", date: "2026-10-30", rep: "none"),
+        .init(id: "e_nvda", target: "NVDA", kind: "엔비디아 실적", date: "2026-11-19", rep: "none"),
     ]
     struct Hit { let id: String; let target: String; let day: String; let kind: String; let sub: String; let held: Bool }
 
@@ -594,7 +594,7 @@ enum MarketEvents {
     /// "내일", "10/22 (D-11)" 처럼
     static func when(_ day: String) -> String {
         let n = Day.dday(day)
-        return n == 0 ? "오늘" : n == 1 ? "내일" : "\(Day.md(day)) (D-\(n))"
+        return n == 0 ? "오늘" : n == 1 ? "내일" : "\(Day.md(day)) D-\(n)"
     }
     /// 위젯 '다음' 줄: 30일 안의 첫 일정 (내 종목 먼저)
     static func widgetNext(held: [String]) -> String? {

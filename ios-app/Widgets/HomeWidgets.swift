@@ -3,17 +3,17 @@ import SwiftUI
 
 // MARK: 위젯 정의 (이름표는 Catalog, 잠금은 Gate, 값은 Provider. 새 위젯은 Catalog 에 한 줄, 여기 한 줄, NaeiloWidgets 묶음에 한 줄)
 struct AssetSmall: Widget { var body: some WidgetConfiguration { homeWidget("asset.small", .systemSmall) { AssetSmallView(s: $0) } } }
+struct PathSmall: Widget { var body: some WidgetConfiguration { homeWidget("path.small", .systemSmall) { PathSmallView(s: $0) } } }
 struct FutureSmall: Widget { var body: some WidgetConfiguration { homeWidget("future.small", .systemSmall) { FutureSmallView(s: $0) } } }
 struct BlockSmall: Widget { var body: some WidgetConfiguration { homeWidget("block.small", .systemSmall) { BlockSmallView(s: $0) } } }
-struct PaceMedium: Widget { var body: some WidgetConfiguration { homeWidget("pace.medium", .systemMedium) { PaceMediumView(s: $0) } } }
-struct TargetMedium: Widget { var body: some WidgetConfiguration { homeWidget("target.medium", .systemMedium) { TargetMediumView(s: $0) } } }
-struct MovesMedium: Widget { var body: some WidgetConfiguration { homeWidget("moves.medium", .systemMedium) { MovesMediumView(s: $0) } } }
-struct FutureLarge: Widget { var body: some WidgetConfiguration { homeWidget("future.large", .systemLarge) { FutureLargeView(s: $0) } } }
+struct PaceSmall: Widget { var body: some WidgetConfiguration { homeWidget("pace.small", .systemSmall) { PaceSmallView(s: $0) } } }
+struct TargetSmall: Widget { var body: some WidgetConfiguration { homeWidget("target.small", .systemSmall) { TargetSmallView(s: $0) } } }
+struct MovesSmall: Widget { var body: some WidgetConfiguration { homeWidget("moves.small", .systemSmall) { MovesSmallView(s: $0) } } }
 
 /// 기본 위젯 하나: 앱 색 바탕, 누르면 앱 첫 탭
 func homeWidget<V: View>(_ kind: String, _ family: WidgetFamily, @ViewBuilder view: @escaping (Snapshot) -> V) -> some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: Provider()) { e in
-        Gate(kind: kind, preview: e.preview) { view(e.snap).kind(kind).environment(\.isSample, e.snap.placeholder).environment(\.entryDate, e.date).speak(Speech.of(kind, e.snap), kind: kind, money: kind != "block.small").widgetBG().widgetURL(Catalog.openURL) }
+        Gate(kind: kind, preview: e.preview) { view(e.snap).kind(kind).environment(\.isSample, e.snap.placeholder).environment(\.entryDate, e.date).speak(Speech.of(kind, e.snap), kind: kind, money: kind == "asset.small" || kind == "future.small").widgetBG().widgetURL(Catalog.openURL) }
     }
     .catalog(kind).supportedFamilies([family])
 }
@@ -50,27 +50,32 @@ enum Speech {
         switch kind {
         case "asset.small", "lock.asset":
             line = WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": money(s.total)].merging(chg) { a, _ in a })
-        case "future.small", "lock.future":
+        case "future.small":
+            line = s.term == nil ? WL.t("앱을 열면 계산합니다")
+                : WL.t("{term} 예상 {v}, 지금보다 {p}", ["term": s.termLabel, "v": s.term.map { money($0.p50) } ?? "-", "p": s.term.map { Fmt.pct(s.total > 0 ? $0.p50 / s.total - 1 : 0, 0) } ?? "-"])
+        case "lock.future":
             line = s.term == nil && s.fan == nil ? WL.t("앱을 열면 계산합니다")
                 : WL.t("{term} 예상 {v}, 목표 확률 {p}", ["term": s.termLabel, "v": s.term.map { money($0.p50) } ?? "-", "p": pct(s.pGoal)])
+        case "path.small":
+            if let d = WSmall.load() ?? (s.placeholder ? .sample : nil) {
+                let g = d.gapNow(s.total)
+                line = WL.t(g >= 0 ? "계획선보다 {p} 앞섬, 달성 확률 {q}" : "계획선보다 {p} 뒤처짐, 달성 확률 {q}", ["p": mag(g), "q": pct(s.pGoal)])
+            } else { line = WL.t("앱을 열면 보여요") }
         case "block.small":
             let d = s.cells - s.cellsPrev
             line = WL.t("{b}번째 블록 100칸 중 {n}칸, 어제보다 {d}칸", ["b": "\(min(s.cells / 100 + 1, 10))", "n": "\(s.cells % 100)", "d": (d >= 0 ? "+" : "") + "\(d)"])
-        case "pace.medium":
-            line = WL.t("목표 {p} 진행, D-{d}", ["p": String(format: "%.1f%%", s.progress * 100), "d": Fmt.comma(s.dday)])
-            if let p = s.pace { line += ", " + WL.t(p.ahead >= 0 ? "필요 속도보다 {p} 앞섬" : "필요 속도보다 {p} 뒤처짐", ["p": mag(p.ahead)]) }
-        case "target.medium", "lock.target":
+        case "pace.small":
+            if let d = WSmall.load() ?? (s.placeholder ? .sample : nil), let me = d.me, let bk = d.basket {
+                line = WL.t(me >= bk ? "내가 {p} 빨라요" : "내가 {p} 느려요", ["p": mag(me - bk)]) + ". " + WL.t("나 {a}, 모의 바구니 {b}", ["a": Fmt.pct(me), "b": Fmt.pct(bk)])
+            } else { line = WL.t("앱에서 모의 바구니를 담으면 보여요") }
+        case "target.small", "lock.target":
             if let w = s.week {
                 line = WL.t("지금 {v}, 예측 {m}, 예측보다 {p}, {hit}", ["v": money(w.act), "m": money(w.p50), "p": Fmt.pct(w.act / w.p50 - 1), "hit": s.hitText])
             } else { line = WL.t("이번 주 예측 대기") }
-        case "moves.medium":
+        case "moves.small":
             line = WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": money(s.total)].merging(chg) { a, _ in a })
-            let ms = s.moves.prefix(5).map { "\($0.t) \(mag($0.pct)) \(WL.dir($0.pct))" }
+            let ms = s.moves.prefix(4).map { "\($0.t) \(mag($0.pct)) \(WL.dir($0.pct))" }
             if !ms.isEmpty { line += ". " + ms.joined(separator: ", ") }
-        case "future.large":
-            if let tm = s.term {
-                line = WL.t("{term} 예상 중앙값 {v}, 목표 확률 {p}, 나쁠 때 {lo}, 좋을 때 {hi}", ["term": s.termLabel, "v": money(tm.p50), "p": pct(s.pGoal), "lo": money(tm.p5), "hi": money(tm.p95)])
-            } else { line = WL.t("앱을 한 번 열면 전망을 계산합니다") }
         case "lock.goal":
             line = WL.t("목표 {p} 진행", ["p": pct(s.progress)])
         default:

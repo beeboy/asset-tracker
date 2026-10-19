@@ -28,54 +28,61 @@ struct StoryProvider: TimelineProvider {
 
 struct StoryWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "story", provider: StoryProvider()) { e in Gate(kind: "story", preview: e.preview) { StoryWidgetView(s: e.s) } }
+        StaticConfiguration(kind: "story", provider: StoryProvider()) { e in Gate(kind: "story", preview: e.preview) { StoryWidgetView(s: e.s, date: e.date) } }
             .catalog("story")
-            .supportedFamilies([.systemSmall, .systemMedium])
+            .supportedFamilies([.systemSmall])
     }
 }
 
+/// 작은 서재 (시안): 머리 '서재 · 3분 전 ↻', 장 그림 띠, 장 제목, 읽던 문장 한두 줄을 인용처럼, 아래 진행 숫자·막대와 인물
 struct StoryWidgetView: View {
     let s: WStory
-    @Environment(\.widgetFamily) private var family
+    var date = Date()
+    @Environment(\.widgetRenderingMode) private var mode
     private let mint = Color(red: 0x5F / 255, green: 0xD0 / 255, blue: 0xC4 / 255)
 
     var body: some View {
-        let small = family == .systemSmall
-        HStack(alignment: .bottom, spacing: 8) {
-            VStack(alignment: .leading, spacing: small ? 4 : 6) {
-                HStack(spacing: 4) {
-                    Text(s.lang == "en" ? "Library" : "서재").font(.system(size: 11, weight: .semibold)).foregroundStyle(mint).widgetAccentable()
-                    Spacer(minLength: 0)
-                    if small { CharReload(storyOnly: true) }
-                }
-                Text(s.label).font(.system(size: small ? 12 : 13, weight: .bold)).lineLimit(1).minimumScaleFactor(0.8).flipFade()
-                Text(s.line)
-                    .font(.system(size: small ? 12 : 14, design: .serif))
-                    .lineSpacing(2)
-                    .foregroundStyle(.white.opacity(s.open ? 0.88 : 0.7))
-                    .lineLimit(small ? 5 : 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .flipFade()
+        let en = s.lang == "en"
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text(en ? "Library" : "서재").font(.system(size: 11, weight: .semibold)).foregroundStyle(mint).widgetAccentable()
                 Spacer(minLength: 0)
+                Text(Fresh.ago(Self.written, now: date)).font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                CharReload(storyOnly: true)
+            }
+            art.frame(height: 34).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 6)).flipFade()
+            Text(s.label).font(.system(size: 11, weight: .bold)).lineLimit(1).minimumScaleFactor(0.8).opacity(0.85).flipFade()
+            Text("“\(s.line)”")
+                .font(.system(size: 13, design: .serif).italic())
+                .lineSpacing(1)
+                .foregroundStyle(.white.opacity(s.open ? 0.92 : 0.7))
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .flipFade()
+            Spacer(minLength: 0)
+            HStack(alignment: .bottom, spacing: 6) {
                 if s.open {
-                    GeometryReader { g in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(.white.opacity(0.18))
-                            Capsule().fill(mint).frame(width: max(4, g.size.width * s.progress)).widgetAccentable()
+                    VStack(spacing: 3) {
+                        HStack {
+                            Text("\(Int((s.progress * 100).rounded()))%").foregroundStyle(mint).widgetAccentable()
+                            Spacer(minLength: 0)
+                            Text(where_(en)).opacity(0.7)
                         }
+                        .font(.system(size: 10, weight: .semibold)).lineLimit(1)
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(.white.opacity(0.18))
+                                Capsule().fill(mint).frame(width: max(4, g.size.width * s.progress)).widgetAccentable()
+                            }
+                        }
+                        .frame(height: 3)
                     }
-                    .frame(height: 3)
                     .flipFade()
                 } else {
-                    Label(s.lang == "en" ? "Locked" : "잠김", systemImage: "lock.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
-                }
-            }
-            if !small {
-                VStack(alignment: .trailing, spacing: 0) {
-                    CharReload(storyOnly: true)
+                    Label(en ? "Locked" : "잠김", systemImage: "lock.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
                     Spacer(minLength: 0)
-                    CharSprite(name: "w_\(s.friend)", locked: !s.open, height: 86).offset(x: 6, y: 6)
                 }
+                CharSprite(name: "w_\(s.friend)", locked: !s.open, height: 30).offset(x: 4, y: 4)
             }
         }
         .foregroundStyle(.white)
@@ -86,7 +93,26 @@ struct StoryWidgetView: View {
         }
         .widgetURL(s.url)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(s.lang == "en" ? (s.open ? "Library, \(s.label). \(s.line)" : "Library locked. \(s.line)")
+        .accessibilityLabel(en ? (s.open ? "Library, \(s.label). \(s.line)" : "Library locked. \(s.line)")
                             : (s.open ? "서재, \(s.label). \(s.line)" : "서재 잠김. \(s.line)"))
     }
+
+    /// "6장 중 2장" (프롤로그는 '프롤로그')
+    private func where_(_ en: Bool) -> String {
+        if s.chapter == 0 { return en ? "Prologue" : "프롤로그" }
+        return en ? "Ch. \(s.chapter) of 6" : "6장 중 \(s.chapter)장"
+    }
+
+    /// 장 그림 띠: 투명·틴트에서도 그림 원래 색 그대로 (인물 그림과 같게). 그림이 아직 없으면 줄무늬 자리
+    @ViewBuilder private var art: some View {
+        if let img = UIImage(contentsOfFile: Store.url(WStory.artFile).path) {
+            let pic = Image(uiImage: img).interpolation(.none).resizable()
+            if mode == .accented, #available(iOS 18, *) { pic.widgetAccentedRenderingMode(.fullColor).aspectRatio(contentMode: .fill) } else { pic.aspectRatio(contentMode: .fill) }
+        } else {
+            RoundedRectangle(cornerRadius: 6).fill(mint.opacity(0.18))
+        }
+    }
+
+    /// 앱이 story.json 을 마지막으로 쓴 때
+    static var written: Date? { (try? FileManager.default.attributesOfItem(atPath: Store.url("story.json").path))?[.modificationDate] as? Date }
 }

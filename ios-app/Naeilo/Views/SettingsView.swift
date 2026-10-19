@@ -1,6 +1,100 @@
 import SwiftUI
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, howto, route, goal, charPreview, support, icon }
+// 개발자: 출시 알림 신청 목록 (워커 GET /notify/list). 관리자 키는 키체인에, 비어 있으면 개발자 동기화 토큰을 쓴다.
+struct NotifyListView: View {
+    struct Row: Decodable, Hashable { let email: String; let at: String }
+    private struct Resp: Decodable { let n: Int?; let rows: [Row]?; let error: String? }
+
+    @State private var key = AdminKey.load() ?? ""
+    @State private var rows: [Row] = []
+    @State private var busy = false
+    @State private var msg: String? = nil
+    @State private var copied = false
+
+    private var token: String { key.isEmpty ? (Sync.shared.creds?.token ?? "") : key }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("출시 알림 신청").appFont(22, .bold)
+                Card {
+                    SecureField("관리자 키", text: $key)
+                        .textContentType(nil).autocorrectionDisabled().textInputAutocapitalization(.never)
+                        .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                        .onSubmit { Task { await load() } }
+                    PrimaryButton(title: busy ? "받는 중…" : "새로고침") { Task { await load() } }
+                    if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
+                }
+                if !rows.isEmpty {
+                    HStack {
+                        Text("\(rows.count)명").appFont(17, .bold)
+                        Spacer()
+                        Button(copied ? "복사됨" : "주소 전부 복사") {
+                            UIPasteboard.general.string = rows.map(\.email).joined(separator: ", "); copied = true
+                        }.appFont(15, .semibold)
+                    }
+                    Card {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { i, r in
+                            if i > 0 { Divider().overlay(Theme.line) }
+                            HStack {
+                                Text(r.email).appFont(14).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+                                Spacer()
+                                Text(r.at).appFont(13).foregroundStyle(Theme.sub)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .background(Theme.bg)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { if !token.isEmpty { await load() } }
+    }
+
+    private func load() async {
+        guard !token.isEmpty else { msg = "관리자 키를 넣어 주세요"; return }
+        busy = true; msg = nil; copied = false
+        defer { busy = false }
+        var req = URLRequest(url: URL(string: "https://asset-ai.drinker.workers.dev/notify/list")!)
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.timeoutInterval = 20
+        do {
+            let (d, res) = try await URLSession.shared.data(for: req)
+            let r = try? JSONDecoder().decode(Resp.self, from: d)
+            let code = (res as? HTTPURLResponse)?.statusCode ?? 0
+            if code == 403 { msg = "키가 맞지 않아요"; return }
+            guard code == 200, let list = r?.rows else { msg = r?.error ?? "목록을 못 받았어요 (\(code))"; return }
+            if !key.isEmpty { AdminKey.save(key) }
+            rows = list.sorted { $0.at > $1.at }
+            if rows.isEmpty { msg = "아직 신청한 사람이 없어요" }
+        } catch {
+            msg = "인터넷 연결을 확인해 주세요"
+        }
+    }
+}
+
+/// 출시 알림 목록용 관리자 키 (이 기기 키체인에만)
+enum AdminKey {
+    private static let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.admin", kSecAttrAccount as String: "notify"]
+    static func save(_ k: String) {
+        SecItemDelete(q as CFDictionary)
+        var a = q
+        a[kSecValueData as String] = Data(k.utf8)
+        a[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(a as CFDictionary, nil)
+    }
+    static func load() -> String? {
+        var a = q
+        a[kSecReturnData as String] = true
+        a[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(a as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
+        return String(data: d, encoding: .utf8)
+    }
+}
+
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, longbridge, howto, route, goal, charPreview, support, icon, notifyList }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
@@ -18,9 +112,10 @@ struct SettingsView: View {
             ("홈 화면 위젯", "\(m.baseWidgets.count + Shelter.friends.count)가지 · 미리보기", .widgets),
         ]
         let refRows: [(String, String, SettingsRoute)] = [
-            ("가격 기준", "미국 종목·환율은 지금 가격 · 한국 종목은 넣은 가격", .price),
+            ("시세 기준", "종목·환율 시세를 어디서 받는지", .price),
             ("세금", "한국 거주자 기준으로 계산해요", .tax),
             ("내 Alpaca 키", AlpacaKeys.on ? "미국 종목을 Alpaca(IEX) 시세로 받는 중" : "넣지 않음 · 미국 종목 실시간 시세", .alpaca),
+            ("내 Longbridge 키", LongbridgeKeys.on ? "미국 종목을 Longbridge 시세로 받는 중" : "넣지 않음 · 미국·홍콩·중국 실시간 시세", .longbridge),
         ]
         // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
         let helpRows: [(String, String, SettingsRoute)] = [
@@ -51,6 +146,7 @@ struct SettingsView: View {
                         demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
                         demoButton("모든 화면 열기") { m.resetDemo(.all) }
                     }
+                    group(nil, [("출시 알림 신청 목록", "naeilo.com 앱 받기 신청", .notifyList)])
                 }
                 Text("시세: \(Market.shared.source) · \(Config.channel.rawValue)").appFont(12).foregroundStyle(Theme.muted)
                 Text("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)").appFont(12).foregroundStyle(Theme.muted)
@@ -68,11 +164,13 @@ struct SettingsView: View {
             case .price: PriceBasisView()
             case .toss: TossKeyView()
             case .alpaca: AlpacaKeyView()
+            case .longbridge: LongbridgeKeyView()
             case .howto: HowToView()
             case .route: RouteView()
             case .goal: GoalSetView(fromSettings: true)
             case .support: SupportView()
             case .icon: AppIconScreen()
+            case .notifyList: NotifyListView()
             case .charPreview: WidgetPickView()     // 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
             }
         }
@@ -171,24 +269,25 @@ struct PriceBasisView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text("시세 기준").appFont(22, .bold)
+                let main = mk.toss != nil ? "토스 오픈 API" : mk.alpaca != nil ? "Alpaca 시세" : mk.longbridge != nil ? "Longbridge 시세" : mk.site != nil ? "naeilo 사이트 시세" : "예시 값"
                 VStack(alignment: .leading, spacing: 6) {
                     Text("지금 보는 숫자").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                    Text(mk.source == "Tiingo" ? "실시간 참고 시세" : "테스트 자료").appFont(28, .bold)
-                    Text(mk.asOfText).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                    Text(main).appFont(28, .bold)
+                    Text(mk.asOfText.replacingOccurrences(of: " (테스트 자료)", with: "")).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 }
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 Card {
-                    row("미국 종목", "지금 가격과 전일 종가")
+                    row("받는 순서", "내 토스 키 → 내 Alpaca·Longbridge 키 → naeilo 사이트. 앞에서 받은 값을 먼저 써요")
+                    row("미국 종목", mk.toss != nil ? "토스 지금 가격" : mk.alpaca != nil ? "Alpaca(IEX) 지금 가격" : mk.longbridge != nil ? "Longbridge 지금 가격" : "사이트가 평일 30분마다 모은 가격")
+                    row("한국 종목", mk.toss != nil ? "토스 지금 가격" : "사이트가 모은 가격. 미국 지수를 따르는 국내 ETF는 그 미국 ETF × 원/달러로 추정해요")
+                    row("장 마감 뒤", "미국 장이 끝나면 정규장 종가로 세요 (토스 총자산과 같은 기준)")
                     row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change))")
                     row("평가 환율", mk.marRate != nil ? "매매기준율 \(String(format: "%.2f", mk.valFx))원 · 웹 평가액과 같아요" : "매매기준율을 아직 못 받아 지금 환율")
-                    row("한국 종목", "많이 찾는 국내 주식은 사이트가 매일 모은 가격이에요. 1년 기록은 모으기 시작한 날부터 쌓여요. 미국 지수를 따르는 국내 ETF는 넣은 가격에서 그 미국 ETF × 원/달러 움직임으로 추정해요")
-                    row("오늘의 움직임", "전일 대비 지금 평가액")
-                    row("지금 값", mk.source == "Tiingo" ? "Tiingo에서 받은 값" : mk.site != nil ? "사이트가 평일 30분마다 모으는 테스트 자료. 당기면 바로 받아요" : "앱에 넣어 둔 테스트 자료")
+                    row("오늘의 움직임", "전일 종가 대비 지금 평가액")
                 }
-                Text("그래프와 미션은 종가로 계산해요.")
+                Text("그래프와 미션은 종가로 계산해요. 아래로 당기면 바로 다시 받아요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
-                // 시세 업체와 계약하면 그 업체의 출처 표기를 여기에 넣는다 (Tiingo: "Data powered by Tiingo.com")
             }
             .padding(16)
         }
@@ -392,6 +491,92 @@ struct AlpacaKeyView: View {
         if let e = await AlpacaFeed.check() {
             msg = e
             if !on { AlpacaKeys.clear() }
+        } else {
+            on = true
+            await Market.shared.refresh(held: Set(m.holdings.map(\.symbol)), force: true)
+        }
+        busy = false
+    }
+}
+
+// 내 Longbridge 키: open.longbridge.com 개발자 센터에서 받은 App Key·App Secret·Access Token 을 넣으면 지금 가격을 Longbridge 에서 받는다.
+// 앱은 아직 원화·달러 종목만 다루므로 지금은 미국 종목만. 키는 이 폰 키체인에만 두고 Longbridge 를 직접 부른다 (중계 없음). 토스·Alpaca 키가 있으면 그 값이 먼저다.
+struct LongbridgeKeyView: View {
+    @Environment(AppModel.self) private var m
+    @State private var key = ""
+    @State private var secret = ""
+    @State private var token = ""
+    @State private var busy = false
+    @State private var msg: String? = nil
+    @State private var on = LongbridgeKeys.on
+    @State private var askOff = false
+
+    private var status: String {
+        _ = Market.shared.longbridgeDone      // Longbridge 받기를 마치면 다시 그린다
+        let t = LongbridgeFeed.okAt
+        var s = ""
+        if t > 0 {
+            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+            let d = Date(timeIntervalSince1970: t)
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : "M월 d일 a h:mm"
+            s = "마지막으로 받은 때 \(f.string(from: d))"
+        } else { s = "아직 받은 적 없어요" }
+        if let e = LongbridgeFeed.lastError { s += " · 실패: \(e)" }
+        return s
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("내 Longbridge 키").appFont(22, .bold)
+                Card {
+                    if on {
+                        Text("내 키로 받는 중").appFont(15, .bold)
+                        Text(status).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                        PrimaryButton(title: busy ? "받는 중…" : "지금 다시 받기") { Task { await check() } }
+                        if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
+                        Button("키 지우기") { askOff = true }
+                            .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
+                            .confirmationDialog("Longbridge 키를 이 폰에서 지울까요?", isPresented: $askOff, titleVisibility: .visible) {
+                                Button("지우기", role: .destructive) { LongbridgeKeys.clear(); on = false; msg = nil; Task { await Market.shared.pullRefresh(m) } }
+                            } message: { Text("기본 시세로 돌아가요.") }
+                    } else {
+                        Text("미국 종목 지금 가격을 Longbridge에서 받아요. 키는 이 폰에만 둬요.").appFont(15, .bold).fixedSize(horizontal: false, vertical: true)
+                        Text("Longbridge 앱에서 모의 계정을 만든 뒤 open.longbridge.com 개발자 센터에서 무료로 받아요. Access Token은 기한이 있어서 지나면 새로 넣어야 해요. 홍콩·중국 종목은 앱이 그 종목을 다루게 되면 같은 키로 받아요.")
+                            .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                        field("App Key", $key)
+                        field("App Secret", $secret)
+                        field("Access Token", $token)
+                        let t = { (v: String) in v.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        let ok = !t(key).isEmpty && !t(secret).isEmpty && !t(token).isEmpty
+                        PrimaryButton(title: busy ? "확인 중…" : "연결하기", color: ok ? Theme.teal : Theme.muted) {
+                            guard ok, !busy else { return }
+                            LongbridgeKeys.save(.init(key: t(key), secret: t(secret), token: t(token)))
+                            secret = ""; token = ""
+                            Task { await check() }
+                        }
+                        if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .background(Theme.bg)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func field(_ title: String, _ v: Binding<String>) -> some View {
+        SecureField(title, text: v)
+            .textContentType(nil).autocorrectionDisabled().textInputAutocapitalization(.never)
+            .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+    }
+
+    /// 키를 확인하고, 되면 시세를 바로 받는다. 처음 연결이 실패하면 키를 남기지 않는다
+    private func check() async {
+        busy = true; msg = nil
+        if let e = await LongbridgeFeed.check() {
+            msg = e
+            if !on { LongbridgeKeys.clear() }
         } else {
             on = true
             await Market.shared.refresh(held: Set(m.holdings.map(\.symbol)), force: true)

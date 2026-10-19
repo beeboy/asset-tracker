@@ -102,9 +102,9 @@ final class SiteCalc {
     /// 과거 재생 기간 (web/model.js REPLAYS 와 같은 값). 단위: mkt·fx·oil·gold %, rate %p
     struct Replay { let when: String; let name: String; let mv: [String: Double] }
     static let replays: [Replay] = [
-        Replay(when: "2020년 3월", name: "코로나 급락", mv: ["mkt": -34, "rate": -0.8, "fx": 8, "oil": -56, "gold": -3]),
-        Replay(when: "2022년", name: "금리 급등기", mv: ["mkt": -25, "rate": 2.3, "fx": 21, "oil": 15, "gold": -7]),
-        Replay(when: "2024년 8월", name: "엔캐리 청산", mv: ["mkt": -8.5, "rate": -0.4, "fx": -1.5, "oil": -10, "gold": -2.5]),
+        Replay(when: "2020.3", name: "코로나", mv: ["mkt": -34, "rate": -0.8, "fx": 8, "oil": -56, "gold": -3]),
+        Replay(when: "2022", name: "금리 급등", mv: ["mkt": -25, "rate": 2.3, "fx": 21, "oil": 15, "gold": -7]),
+        Replay(when: "2024.8", name: "엔캐리 청산", mv: ["mkt": -8.5, "rate": -0.4, "fx": -1.5, "oil": -10, "gold": -2.5]),
     ]
     /// web/model.js replayMove 와 같은 식: 원화 평가액 변화율과 그중 환율 몫. β 를 모르면 시장 1, 그 외 0
     static func replayMove(_ rp: Replay, usd: Bool, beta: (String) -> Double?) -> (total: Double, fx: Double) {

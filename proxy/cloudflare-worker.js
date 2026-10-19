@@ -322,10 +322,12 @@ async function mar() {
   const t = r && r.ok ? await r.text() : "";
   const sets = [...t.matchAll(/label=['"]([^'"]+)['"][^>]*?value=['"]([\d,.]+)['"]/g)];
   if (!sets.length) return null;
-  const [, lab, val] = sets[sets.length - 1], n = lab.match(/\d+/g) || [], rate = Number(val.replace(/,/g, ""));
+  const pick = ([, lab, val]) => { const n = lab.match(/\d+/g) || [], rate = Number(val.replace(/,/g, "")); return { rate, date: n.length >= 3 ? `${+n[0] < 100 ? 2000 + +n[0] : n[0]}-${n[1].padStart(2, "0")}-${n[2].padStart(2, "0")}` : end }; };
+  const { rate, date } = pick(sets[sets.length - 1]);
   if (!(rate > 500 && rate < 5000)) return null;
-  const date = n.length >= 3 ? `${+n[0] < 100 ? 2000 + +n[0] : n[0]}-${n[1].padStart(2, "0")}-${n[2].padStart(2, "0")}` : end;
-  return { USD: { rate, date, src: "서울외국환중개" } };
+  // 앞 날짜 고시: 새 고시는 전날 오후에 나오지만 토스는 그날 오전 9시부터 쓴다 (앱이 9시 전엔 이 값)
+  const p = sets.length > 1 ? pick(sets[sets.length - 2]) : null;
+  return { USD: { rate, date, src: "서울외국환중개" }, ...(p && p.rate > 500 && p.rate < 5000 && p.date < date ? { USD_prev: p } : {}) };
 }
 
 // ------------------------------------------------------------ 웹 푸시 (내용 없는 푸시 + 문구는 /push/latest 에서)

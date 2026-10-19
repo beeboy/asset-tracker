@@ -27,7 +27,7 @@ struct InvestBranch: View {
             facts
             mine
             foil
-            Text((Invest.holdNote[id] ?? "") + ". 현금은 연 2%로 셈. " + Invest.eventsSource + ". " + Invest.disclaimer)
+            Text(([Invest.holdNote[id], "현금 연 2%", Invest.eventsSource, Invest.disclaimer] as [String?]).compactMap { $0 }.joined(separator: " · "))
                 .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
         }
         .onAppear { if focus != nil { habitsOpen = true } }
@@ -47,7 +47,7 @@ struct InvestBranch: View {
             }
             Button { withAnimation(.easeInOut(duration: 0.2)) { habitsOpen.toggle() } } label: {
                 HStack {
-                    Text("더 자세한 규칙 \(more.count)가지").appFont(13, .bold).foregroundStyle(Theme.sub)
+                    Text("자세히 \(more.count)가지").appFont(13, .bold).foregroundStyle(Theme.sub)
                     Spacer()
                     Image(systemName: habitsOpen ? "chevron.up" : "chevron.down").foregroundStyle(Theme.muted)
                 }
@@ -74,7 +74,7 @@ struct InvestBranch: View {
         let list = Invest.cases(id)
         if !list.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("과거 폭락장에서 써봤다면").appFont(15, .bold)
+                Text("과거 폭락장이었다면").appFont(15, .bold)
                 if let p = Invest.premise[id] {
                     Text(ParallelView.md(bold: p)).appFont(13).foregroundStyle(Theme.sub).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 }
@@ -87,7 +87,7 @@ struct InvestBranch: View {
     @ViewBuilder private var facts: some View {
         ForEach(Invest.facts(id)) { e in
             VStack(alignment: .leading, spacing: 6) {
-                Text("이 규칙이 못 막는 하락도 있어요").appFont(13, .bold).foregroundStyle(Theme.against)
+                Text("못 막는 하락").appFont(13, .bold).foregroundStyle(Theme.against)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(e.fact ?? "").appFont(24, .bold).foregroundStyle(Theme.against)
                     Text("\(e.title) \(e.when)").appFont(14, .semibold)
@@ -104,8 +104,8 @@ struct InvestBranch: View {
     @ViewBuilder private var foil: some View {
         if let f = Invest.foils[id] {
             Card {
-                Text("같은 날, 반대로 간 사람").appFont(15, .bold)
-                Text(f.did).appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+                Text("반대로 간 사람").appFont(15, .bold)
+                Text(f.did + " →").appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 Text(f.result).appFont(14, .semibold).fixedSize(horizontal: false, vertical: true)
                 HStack(alignment: .center, spacing: 12) {
                     if let s = MeSample.all.first(where: { $0.name == f.name }) {
@@ -123,7 +123,7 @@ struct InvestBranch: View {
                         .accessibilityLabel("\(f.name)의 \(f.model) 컷과 같은 날의 \(name)")
                 }
                 Button(action: toStory) {
-                    Text("\(name) 이야기 전체 보기 ›").appFont(13, .bold).foregroundStyle(Theme.rule).frame(minHeight: 44)
+                    Text("\(name) 이야기 ›").appFont(13, .bold).foregroundStyle(Theme.rule).frame(minHeight: 44)
                 }
                 .buttonStyle(.plain)
             }
@@ -133,16 +133,16 @@ struct InvestBranch: View {
     // MARK: 이 규칙을 내 종목에 썼다면 (평행 세계 엔진, 같은 출발일·금액)
     @ViewBuilder private var mine: some View {
         Card {
-            Text("이 규칙을 내 종목에 썼다면").appFont(15, .bold)
+            Text("내 종목에 썼다면").appFont(15, .bold)
             if let w = m.pworld, let race = m.parallelRun(w, who: id) {
                 let s = m.parallelSeries(race)
                 let ret = (id == w.who ? s[2] : race.r[2])[race.last], real = s[0][race.last]
-                Text("\(ParallelView.md(race.dates.first ?? ""))부터 지금까지").appFont(13).foregroundStyle(Theme.sub)
+                Text(Self.since(race.dates.first ?? "")).appFont(13).foregroundStyle(Theme.sub)
                 HStack(spacing: 8) {
-                    cell("\(name) 규칙대로", ret, Theme.rule)
-                    cell("내 실제 투자", real, Theme.myReal)
+                    cell("\(name) 규칙", ret, Theme.rule)
+                    cell("내 실제", real, Theme.myReal)
                 }
-                Text(ParallelView.md(bold: Self.moneyLine(gap: (race.V0 + race.contrib) * (ret - real), idle: race.log.isEmpty, name: name)))
+                Text(ParallelView.md(bold: Self.moneyLine(gap: (race.V0 + race.contrib) * (ret - real), ret: ret, idle: race.log.isEmpty)))
                     .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 Text("\(name): “\(Parallel.line(id, place: ret > real ? 1 : 3, day: Day.today))”").appFont(13).lineSpacing(3)
                     .padding(.horizontal, 12).padding(.vertical, 10)
@@ -151,7 +151,7 @@ struct InvestBranch: View {
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 Button { m.tab = .home; m.homePath = ["shelter", "parallel"] } label: {
-                    Text("다른 방식이었다면? 에서 보기 ›").appFont(14, .bold).foregroundStyle(Theme.teal).frame(minHeight: 36)
+                    Text("다른 방식이었다면? ›").appFont(14, .bold).foregroundStyle(Theme.teal).frame(minHeight: 36)
                 }
                 .buttonStyle(.plain)
             }
@@ -165,11 +165,19 @@ struct InvestBranch: View {
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
     }
-    /// 금액 문장: gap = 규칙대로 평가액 − 실제 평가액 (원). 1만원 미만이면 "거의 같아요"
-    static func moneyLine(gap: Double, idle: Bool, name: String) -> String {
-        let why = idle ? " 이 기간엔 규칙이 아직 한 번도 실행되지 않았거든요." : ""
-        if abs(gap) < 5e3 { return "지금까지는 **거의 같아요**." + why }
-        return "약 **\(AppModel.aboutWon(gap)) \(gap > 0 ? "더" : "덜") 벌었을 거예요**." + why
+    /// 금액 문장: gap = 규칙대로 평가액 − 실제 평가액 (원). 1만원 미만이면 "거의 같음".
+    /// 부호 맞추기: 규칙 쪽이 손실이면 "덜 잃었을 / 더 잃었을", 이익이면 "더 벌었을 / 덜 벌었을"
+    static func moneyLine(gap: Double, ret: Double, idle: Bool) -> String {
+        let why = idle ? " · 규칙 실행 0회" : ""
+        if abs(gap) < 5e3 { return "**거의 같음**" + why }
+        let verb = ret < 0 ? (gap > 0 ? "덜 잃었을" : "더 잃었을") : (gap > 0 ? "더 벌었을" : "덜 벌었을")
+        return "**\(AppModel.aboutWon(gap).dropLast()) \(verb) 것**" + why
+    }
+    /// 출발일 "2026-09-11" → "26.9.11~"
+    static func since(_ d: String) -> String {
+        guard let x = Day.date(d) else { return d }
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy.M.d"
+        return f.string(from: x) + "~"
     }
 }
 
@@ -185,11 +193,11 @@ struct CaseCard: View {
                 Text(e.title).appFont(15, .bold).lineLimit(1).minimumScaleFactor(0.8)
                 Text(e.when).appFont(12).foregroundStyle(Theme.sub)
                 Spacer(minLength: 4)
-                Text(e.ruleWins ? "규칙이 유리" : "규칙이 불리").appFont(11, .bold).foregroundStyle(.white)
+                Text(e.ruleWins ? "유리" : "불리").appFont(11, .bold).foregroundStyle(.white)
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .background(e.ruleWins ? Theme.favor : Theme.against, in: Capsule())
             }
-            bar("\(name) 규칙", a, a / top, Theme.rule)
+            bar(name, a, a / top, Theme.rule)
             bar("그냥 둠", b, b / top, Theme.hold)
             Text(e.text).appFont(13).lineSpacing(2).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
         }

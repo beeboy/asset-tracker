@@ -80,6 +80,14 @@ private func inputField(_ label: String, _ text: Binding<String>) -> some View {
     }
 }
 
+/// 금액 끝의 "원"을 뗀다 (826만원 → 826만, 5.1억원 → 5.1억)
+private func noWon(_ s: String) -> String { s.hasSuffix("원") ? String(s.dropLast()) : s }
+
+private extension AppModel {
+    /// 목표일 짧게 (2029.10.5)
+    var goalToShort: String { let f = DateFormatter(); f.dateFormat = "yyyy.M.d"; return f.string(from: goalToDate) }
+}
+
 // MARK: 목표 미션 판
 
 struct GoalBoardView: View {
@@ -98,11 +106,12 @@ struct GoalBoardView: View {
                 } else {
                     // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
                     if let inter = steps.first(where: \.inter) { interCard(inter) }
+                    if !m.interDone && m.playOn { monthCheckIn }
                     startList(steps.filter { !$0.inter }, done: done.filter { !$0.inter }.count)
                     if m.goalReached {
                         Card(padding: 18) {
                             GuideBubble(pose: .cheer, text: "목표 \(AppModel.wonK(m.gK))에 닿았어요! 여기까지 온 길, 축하해요.")
-                            Text("지금 \(AppModel.wonK(m.trackValue / 1e4))에서 다음 목표를 정해요. 3년 안에 닿을 확률 50% 근처로 골라 둘게요.").appFont(14).foregroundStyle(Theme.sub)
+                            Text("지금 \(AppModel.wonK(m.trackValue / 1e4))에서 다음 목표 · 3년 확률 50% 근처").appFont(14).foregroundStyle(Theme.sub)
                             PrimaryButton(title: "다음 목표 정하기") { m.suggestNextGoal(); m.boardPath.append(.g1) }
                         }
                     }
@@ -120,10 +129,54 @@ struct GoalBoardView: View {
         .navigationDestination(for: MissionRoute.self) { MissionScreen(route: $0) }
     }
 
+    // 인터미션 체크인 (색 없는 박스): 첫 달은 바로, 지난 달은 다음 달이 열리기 전까지 다시 고를 수 있다
+    private var monthCheckIn: some View {
+        let edit = m.monthEditable, k = edit ? m.gWeeks.count - 1 : m.gWeeks.count, step = AppModel.goalMonthSteps[min(k, 2)]
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("\(k + 1)달째 체크인").appFont(13, .bold).foregroundStyle(Theme.teal)
+            HStack(spacing: 8) {
+                Text(step.whereText).appFont(11, .bold).foregroundStyle(Theme.inkFixed)
+                    .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.mint, in: Capsule())
+                Text(step.task).appFont(14, .semibold).foregroundStyle(Theme.ink)
+            }
+            Text("이번 달 계획대로?").appFont(14).foregroundStyle(Theme.ink)
+            HStack(spacing: 6) {
+                ForEach(GoalWeek.allCases, id: \.self) { p in
+                    let on = edit ? m.gWeeks[k] == p : m.gWeekCur == p
+                    Button { if edit { m.editLastMonth(p) } else { m.gWeekCur = p } } label: {
+                        VStack(spacing: 2) {
+                            Text(p.label).appFont(15, .bold)
+                            Text("월 " + AppModel.wonK(m.gM * p.factor)).appFont(11).foregroundStyle(Theme.sub)
+                        }
+                        .foregroundStyle(Theme.ink).padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, minHeight: 64)
+                        .background(on ? p.color.opacity(0.15) : Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(p.color, lineWidth: on ? 3 : 2))
+                    }.buttonStyle(.plain)
+                }
+            }
+            if edit { Text("다음 달 열리기 전까지 수정 가능").appFont(12).foregroundStyle(Theme.muted) }
+            if let wait = m.monthGateText {
+                Label(wait, systemImage: "clock").appFont(13).foregroundStyle(Theme.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if m.gWeekCur != nil {
+                Button { withAnimation { m.confirmGoalMonth() } } label: {
+                    Text("체크인").appFont(14, .semibold)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(.white)
+                        .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+    }
+
     private var lockedPlay: some View {
         DashedCard {
             Label(m.boardPage == 1 ? "이번 주 예보" : "목표 100칸", systemImage: "lock").appFont(15, .bold)
-            Text("앱 시작 3단계를 마치면 열려요. 인터미션 동안에도 칸을 채우고 매주 예보를 맞혀 볼 수 있어요.").appFont(13)
+            Text("시작 3단계 뒤 열림 · 칸 채우기·주간 예보").appFont(13)
         }
     }
 
@@ -131,11 +184,11 @@ struct GoalBoardView: View {
     private func nextCard(_ next: AppModel.GoalStep, steps: [AppModel.GoalStep]) -> some View {
         let idx = (steps.firstIndex { $0.id == next.id } ?? 0) + 1
         return VStack(alignment: .leading, spacing: 10) {
-            Text("다음 미션 · \(steps.count)개 중 \(idx)번째").appFont(13, .semibold).foregroundStyle(.white.opacity(0.8))
+            Text("다음 미션 · \(idx)/\(steps.count)").appFont(13, .semibold).foregroundStyle(.white.opacity(0.8))
             Text(next.title).appFont(20, .bold)
-            Text("끝내면 열려요: \(next.reward)").appFont(14).foregroundStyle(.white.opacity(0.85))
+            Text("열리는 것: \(next.reward)").appFont(14).foregroundStyle(.white.opacity(0.85))
             Button { m.boardPath.append(next.to) } label: {
-                Text("시작하기").appFont(16, .bold).foregroundStyle(Theme.missionGreen)
+                Text("시작").appFont(16, .bold).foregroundStyle(Theme.missionGreen)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .background(.white, in: RoundedRectangle(cornerRadius: 14))
             }.buttonStyle(.plain).padding(.top, 4)
@@ -151,22 +204,21 @@ struct GoalBoardView: View {
         return Button { if done || avail { m.boardPath.append(b.to) } } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("처음 석 달 체크인 · 인터미션").appFont(12, .bold).foregroundStyle(Theme.mint)
+                    Text("석 달 체크인").appFont(12, .bold).foregroundStyle(Theme.mint)
                     Spacer()
-                    if done { Text("다 했어요 ✓").appFont(12, .bold).foregroundStyle(Theme.yellow) }
+                    if done { Text("완료 ✓").appFont(12, .bold).foregroundStyle(Theme.yellow) }
                     else if !avail { Image(systemName: "lock").appFont(12) }
                 }
-                Text(done || n >= 3 ? "석 달 동안 한 달에 한 번, 계획대로 넣었는지 표시했어요"
-                     : avail ? "한 달에 한 번, 계획대로 넣었는지 표시해요 · \(n)/3달"
-                     : "앞의 시작 미션을 마치면 시작해요")
+                if !(done || n >= 3) {
+                    Text(avail ? "월 1회 계획대로 체크 · \(n)/3달" : "시작 미션 뒤 열림")
                     .appFont(16, .bold).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                }
                 HStack(spacing: 6) {
                     ForEach(0..<3, id: \.self) { i in
                         let pick: GoalWeek? = i < n ? m.gWeeks[i] : nil
                         VStack(spacing: 2) {
-                            Text("\(i + 1)달째").appFont(11)
+                            Text("\(i + 1)달").appFont(11)
                             Text(pick?.label ?? (avail && i == n ? "이번 달" : "–")).appFont(13, .bold)
-                            Text(AppModel.goalMonthSteps[i].reward + " 위젯").appFont(11)
                         }
                         .frame(maxWidth: .infinity, minHeight: 60)
                         .foregroundStyle(pick != nil ? .white : avail && i == n ? Theme.yellow : Theme.muted)
@@ -174,11 +226,6 @@ struct GoalBoardView: View {
                         .overlay(RoundedRectangle(cornerRadius: 10).stroke(pick?.color ?? (avail && i == n ? Theme.yellow : Theme.slate),
                                                                           style: StrokeStyle(lineWidth: 2, dash: pick == nil ? [5, 4] : [])))
                     }
-                }
-                if n > 0 {
-                    Text("받은 위젯 \(n)개는 설정 › 홈 화면 위젯에서 쓸 수 있어요.").appFont(12).foregroundStyle(Color(hex: 0xC9D0D6))
-                } else if avail {
-                    Text("이번 달: \(AppModel.goalMonthSteps[0].task)").appFont(12).foregroundStyle(Color(hex: 0xC9D0D6))
                 }
             }
             .foregroundStyle(done || avail ? .white : Theme.sub2)
@@ -195,9 +242,9 @@ struct GoalBoardView: View {
         return VStack(alignment: .leading, spacing: 0) {
             Button { withAnimation { openDone.toggle() } } label: {
                 HStack(spacing: 8) {
-                    Text(all ? "✓ 시작 미션 \(list.count)개 모두 끝냈어요" : "시작 미션 \(done)/\(list.count) 끝냄").fontWeight(.bold)
+                    Text(all ? "✓ 시작 미션 \(done)/\(list.count)" : "시작 미션 \(done)/\(list.count)").fontWeight(.bold)
                     Spacer(minLength: 0)
-                    Text(openDone ? "접기 ▴" : "펼치기 ▾")
+                    Image(systemName: openDone ? "chevron.up" : "chevron.down")
                 }
                 .appFont(14, .semibold).foregroundStyle(all ? Theme.tealDark : Theme.ink)
                 .padding(.horizontal, 14).frame(minHeight: 48)
@@ -238,40 +285,38 @@ struct GoalCellsCard: View {
         let fV = min(100, tkV / max(1, unit)), fP = min(100, tkP / max(1, unit))
         let mine = min(fV, fP), lost = max(0, fP - fV), gain = max(0, tkV - tkP)
         let diff = tkV - tkV / (1 + m.todayMove)
-        let ms = Int(fV / 10) * 10
         // 공유 카드·벽돌깨기용 1000칸
         let cl = { (v: Double) in max(0, min(1000, Int(floor(v / max(1, K / 1000))))) }
         let nV = cl(tkV), nP = cl(tkP), nMine = min(nV, nP), nY = cl(tkV / (1 + m.todayMove))
         let pct = Int(tkV / max(1, K) * 100), stone = [75, 50, 25].first { pct >= $0 }
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(AppModel.wonK(m.gK).replacingOccurrences(of: "원", with: ""))까지 100칸").appFont(18, .bold)
-                    Text("한 칸에 \(AppModel.man(unit))이에요." + (fV >= 100 ? " 100칸을 다 채웠어요!" : ms >= 10 ? " \(ms)칸 넘게 채웠어요." : " 첫 칸부터 채워 가요."))
-                        .appFont(14).foregroundStyle(Theme.sub)
+                HStack(alignment: .firstTextBaseline) {
+                    Text("\(AppModel.wonK(m.gK))까지 100칸").appFont(18, .bold)
+                    Spacer()
+                    Text(fV >= 100 ? "100칸 완성!" : "1칸 = \(AppModel.man(unit))").appFont(14).foregroundStyle(Theme.sub)
                 }
                 GoalCellGrid(mine: mine, filled: fV, lost: lost)
                     .aspectRatio(1, contentMode: .fit)
                     .accessibilityLabel("100칸 중 \(Int(fV))칸, 목표의 \(pct)%")
                 VStack(spacing: 10) {
-                    legend(Theme.teal, nil, "내가 넣은 돈", AppModel.man(min(tkV, tkP)))
-                    if lost > 0 { legend(Self.lostC, nil, "잠시 줄어든 돈", "−" + AppModel.man(tkP - tkV)) }
-                    else { legend(Self.mintC, nil, "투자로 불어난 돈", "+" + AppModel.man(gain)) }
-                    legend(Theme.card, Theme.gold, "마지막 칸을 채우면 목표 달성", nil)
+                    legend(Theme.teal, nil, "넣은 돈", AppModel.man(min(tkV, tkP)))
+                    if lost > 0 { legend(Self.lostC, nil, "줄어든 돈", "−" + AppModel.man(tkP - tkV)) }
+                    else { legend(Self.mintC, nil, "불어난 돈", "+" + AppModel.man(gain)) }
+                    legend(Theme.card, Theme.gold, "마지막 칸 = 목표", nil)
                 }
                 Divider()
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(abs(diff) < 5e3 ? "어제와 같아요" : "어제보다 \(AppModel.man(abs(diff))) \(diff > 0 ? "늘었어요" : "줄었어요")").appFont(15, .bold)
-                    Text("시장이 움직여서 생긴 변화예요. 하루 오르내림은 흔한 일이에요.").appFont(13).foregroundStyle(Theme.sub)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(abs(diff) < 5e3 ? "어제와 같음" : "어제보다 \(diff > 0 ? "+" : "−")\(AppModel.man(abs(diff)))").appFont(15, .bold)
+                    Spacer()
+                    Text("하루 오르내림은 흔해요").appFont(13).foregroundStyle(Theme.sub)
                 }
             }
             .padding(18)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
             HStack(spacing: 8) {
-                ShareCardButton(filled: nV, mine: nMine, market: max(0, nV - nP), kicker: "목표까지 가는 중",
-                                amountLine: "목표 \(AppModel.wonK(m.gK)) 중 \(AppModel.man(tkV)) 모았어요.",
-                                title: stone.map { $0 == 50 ? "절반 돌파 카드 공유" : "\($0)% 돌파 카드 공유" } ?? "내 진행 카드 공유", plain: true)
-                BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: "내 칸으로 벽돌깨기", plain: true)
+                ShareCardButton(plain: true)
+                BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: "벽돌깨기", plain: true)
             }
         }
     }
@@ -326,12 +371,12 @@ struct GoalCellGrid: View {
 struct GoalHoldResultView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
-        Page(kicker: "미션 1 완료 · 새로 열림: 평가액·수익률", title: "지금 내 평가액") {
+        Page(kicker: "미션 1 완료 · 평가액·수익률 열림", title: "지금 내 평가액") {
             if m.ret >= 0 { GuideBubble(pose: .spread, text: "지금 평가액이에요. 들어간 돈보다 \(AppModel.sgn(m.ret)) 위에 있어요. 여기서 출발해 목표 금액까지 가는 길을 그려요.") }
             VStack(alignment: .leading, spacing: 8) {
-                HStack { Text("지금 평가액"); Spacer(); Text("들어간 돈 \(AppModel.man(m.cost))") }.appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                HStack { Spacer(); Text("원금 \(noWon(AppModel.man(m.cost)))") }.appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(AppModel.man(m.total)).appFont(30, .bold)
+                    Text(noWon(AppModel.man(m.total))).appFont(30, .bold).roll(noWon(AppModel.man(m.total)))
                     Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 }
                 Text("\(m.focusName) 비중 \(AppModel.pct(m.focusWeight))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
@@ -339,14 +384,14 @@ struct GoalHoldResultView: View {
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             if m.ret >= 0 {
-                BoardLinks(next: "다음 미션: 목표 정하기", to: .g1)
+                BoardLinks(next: "다음: 목표 정하기", to: .g1)
             } else {
-                Text("숫자로 보면 지금은 마이너스예요. 본전까지 가는 길부터 보는 회복 루트가 더 맞아요. 넣은 종목은 그대로 가져가요.")
+                Text("지금 마이너스 · 회복 루트가 더 맞아요 · 종목은 그대로")
                     .appFont(15).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
-                PrimaryButton(title: "회복 루트로 옮기기") { m.switchRoute(.recover) }
+                PrimaryButton(title: "회복 루트로") { m.switchRoute(.recover) }
                 BoardLinks(next: nil, to: nil)
-                Button("그래도 목표 루트로 계속") { m.boardPath.append(.g1) }
+                Button("목표 루트로 계속") { m.boardPath.append(.g1) }
                     .appFont(15, .semibold).foregroundStyle(Theme.sub).frame(maxWidth: .infinity, minHeight: 44)
             }
         }
@@ -375,22 +420,22 @@ struct GoalSetView: View {
         PinnedLayout {
             VStack(alignment: .leading, spacing: 8) {
                 Text(fromSettings || m.gDone.contains("goal") ? "목표 고치기" : "미션 \(m.goalNo("goal")) / \(m.goalTotal)").appFont(14, .semibold).foregroundStyle(Theme.teal)
-                Text("언제까지, 얼마를 모으고 싶나요?").appFont(22, .bold)
+                Text("언제까지, 얼마나?").appFont(22, .bold)
                 HStack(alignment: .firstTextBaseline) {
-                    Text("\(m.gY)년 뒤 \(AppModel.wonK(m.gK))").appFont(17, .bold)
+                    Text("\(m.gY)년 뒤 \(noWon(AppModel.wonK(m.gK)))").appFont(17, .bold)
                     Spacer()
                     (Text("닿을 확률 ") + Text(AppModel.pct(path.prob)).bold().foregroundColor(Theme.teal)).appFont(14)
                 }
                 if plus {
-                    Text("월 \(AppModel.wonK(m.gM))씩 넣을 때 · " + (need > 0 ? "보통의 경우로 맞추려면 월 \(AppModel.wonK(need))" : "보통의 경우면 이미 충분")).appFont(14, .semibold)
+                    Text("월 \(noWon(AppModel.wonK(m.gM))) · " + (need > 0 ? "맞추려면 월 \(noWon(AppModel.wonK(need)))" : "이미 충분")).appFont(14, .semibold)
                 } else {
-                    Text((need > 0 ? "월 " + AppModel.wonK(need) : "이미 충분") + " (1년 \(AppModel.wonK(need * 12)))").appFont(14, .semibold)
+                    Text((need > 0 ? "월 " + noWon(AppModel.wonK(need)) : "이미 충분") + " · 1년 \(noWon(AppModel.wonK(need * 12)))").appFont(14, .semibold)
                 }
-                Text(m.route == .novice ? (m.gK <= 1000 ? "첫 목표 · 적립 습관 만들기" : "연 7%면 한 해 \(AppModel.wonK(m.gK * 0.07))씩 불어나는 크기")
-                     : "지금 \(AppModel.wonK(start))의 \(String(format: "%.1f", m.gK / max(1, start)))배 · 적립 없이 가려면 한 해 +\(Int((cagr * 100).rounded()))%씩")
+                Text(m.route == .novice ? (m.gK <= 1000 ? "첫 목표 · 적립 습관" : "연 7%면 해마다 +\(noWon(AppModel.wonK(m.gK * 0.07)))")
+                     : "지금의 \(String(format: "%.1f", m.gK / max(1, start)))배 · 적립 없이 연 +\(Int((cagr * 100).rounded()))%")
                     .appFont(13).foregroundStyle(Theme.sub)
                 GoalPathChart(sims: [(path, Theme.teal, true)], goal: m.gK).frame(height: 80)
-                HStack { Text("지금"); Spacer(); Text("빨간 선 = 목표 · 점선 = 넣은 원금"); Spacer(); Text("\(m.gY)년") }.appFont(11).foregroundStyle(Theme.muted)
+                HStack { Text("지금"); Spacer(); Text("┅ 목표 · ┈ 원금"); Spacer(); Text("\(m.gY)년") }.appFont(11).foregroundStyle(Theme.muted)
             }
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
@@ -402,13 +447,16 @@ struct GoalSetView: View {
                 } else {
                     GuideBubble(pose: .think, text: "언제까지, 얼마를 모으고 싶나요? …… 카드는 매달 넣는 돈으로 닿을 확률이 반반쯤인 금액이에요. 모두 지금 \(AppModel.wonK(start))에서 출발한 계산이에요.")
                 }
+                if m.route != .novice {
+                    Text((m.gM > 0 ? "월 \(noWon(AppModel.wonK(m.gM)))씩 넣으면" : "적립 없이") + " 확률 50%인 목표").appFont(13, .semibold).foregroundStyle(Theme.sub)
+                }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                     ForEach(m.goalPresets) { p in
                         let on = m.gK == p.k && m.gY == p.y
                         Button { m.gK = p.k; m.gY = p.y; k = String(Int(p.k)); y = String(p.y) } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(alignment: .firstTextBaseline) { Text(p.name).appFont(15, .bold); Text("\(p.y)년").appFont(12).foregroundStyle(Theme.sub) }
-                                Text(p.mean).appFont(12).foregroundStyle(Theme.sub).multilineTextAlignment(.leading)
+                                if !p.mean.isEmpty { Text(p.mean).appFont(12).foregroundStyle(Theme.sub).multilineTextAlignment(.leading) }
                                 Text(p.need).appFont(13, .bold).foregroundStyle(Theme.teal)
                             }
                             .padding(12).frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
@@ -417,20 +465,19 @@ struct GoalSetView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                inputField("목표 금액 (만원)", $k).focused($focus).onChange(of: k) { _, v in if let d = Double(v.replacingOccurrences(of: ",", with: "")), d > 0 { m.gK = d } }
-                inputField("몇 년 뒤", $y).focused($focus).onChange(of: y) { _, v in if let d = Int(v.replacingOccurrences(of: ",", with: "")) { m.gY = min(30, max(1, d)) } }
+                inputField("목표 (만원)", $k).focused($focus).onChange(of: k) { _, v in if let d = Double(v.replacingOccurrences(of: ",", with: "")), d > 0 { m.gK = d } }
+                inputField("기간 (년)", $y).focused($focus).onChange(of: y) { _, v in if let d = Int(v.replacingOccurrences(of: ",", with: "")) { m.gY = min(30, max(1, d)) } }
                 if m.noviceOwn {
-                    Text("출발점: 지금 평가액 \(AppModel.wonK(start)) (종목 탭에 넣은 종목 기준)").appFont(13).foregroundStyle(Theme.sub)
+                    Text("출발 \(noWon(AppModel.wonK(start))) · 내 종목 기준").appFont(13).foregroundStyle(Theme.sub)
                 } else if m.route == .novice {
-                    inputField("지금 모아 둔 투자금 (만원, 없으면 0)", $a).focused($focus).onChange(of: a) { _, v in m.gA = max(0, Double(v) ?? 0) }
+                    inputField("모아 둔 돈 (만원)", $a).focused($focus).onChange(of: a) { _, v in m.gA = max(0, Double(v) ?? 0) }
                 } else {
-                    inputField("매달 넣을 돈 (만원, 없으면 0)", $mo).focused($focus).onChange(of: mo) { _, v in m.gM = max(0, Double(v.replacingOccurrences(of: ",", with: "")) ?? 0) }
-                    Button("확률 50% 근처로 맞추기") { focus = false; m.gK = m.autoGoal(years: m.gY); k = String(Int(m.gK)) }
+                    inputField("월 적립 (만원)", $mo).focused($focus).onChange(of: mo) { _, v in m.gM = max(0, Double(v.replacingOccurrences(of: ",", with: "")) ?? 0) }
+                    Button("50%로 맞추기") { focus = false; m.gK = m.autoGoal(years: m.gY); k = String(Int(m.gK)) }
                         .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 44)
-                    Text("출발점: 지금 평가액 \(AppModel.wonK(start)) (미션 1에서 넣은 종목 기준)").appFont(13).foregroundStyle(Theme.sub)
-                    Text("목표일 \(m.goalToText)").appFont(13).foregroundStyle(Theme.sub)
+                    Text("출발 \(noWon(AppModel.wonK(start))) · 목표일 \(m.goalToShort)").appFont(13).foregroundStyle(Theme.sub)
                 }
-                PrimaryButton(title: fromSettings || m.gDone.contains("goal") ? "이 목표로 저장" : "목표까지 가는 길 보기", color: ok ? Theme.teal : Theme.muted) {
+                PrimaryButton(title: fromSettings || m.gDone.contains("goal") ? "저장" : "길 보기", color: ok ? Theme.teal : Theme.muted) {
                     guard ok else { return }
                     focus = false
                     if m.route == .novice { m.gM = max(5, (need / 5).rounded() * 5) }
@@ -454,11 +501,10 @@ struct GoalSetResultView: View {
     var body: some View {
         let need = m.neededMonthly(), base = m.route == .novice ? AppModel.mixes[0] : m.mineMix
         let path = m.simulate(base, monthly: need)
-        Page(kicker: "미션 \(m.goalNo("goal")) 완료 · 새로 열림: 목표까지 경로", title: "\(m.gY)년 뒤 \(AppModel.wonK(m.gK))까지 가는 길") {
+        Page(kicker: "미션 \(m.goalNo("goal")) 완료 · 경로 열림", title: "\(m.gY)년 뒤 \(noWon(AppModel.wonK(m.gK)))까지") {
             VStack(alignment: .leading, spacing: 6) {
-                Text("\(m.gY)년 뒤 \(AppModel.wonK(m.gK))을 모으려면").appFont(14).foregroundStyle(Color(hex: 0xC9D0D6))
-                Text("보통의 경우 기준으로 매달 약").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                Text(need > 0 ? AppModel.wonK(need) : "0원 (이미 충분해요)").appFont(30, .bold)
+                Text("보통의 경우 매달").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                Text(need > 0 ? noWon(AppModel.wonK(need)) : "0 · 이미 충분").appFont(30, .bold).roll(need > 0 ? noWon(AppModel.wonK(need)) : "0 · 이미 충분")
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
@@ -466,16 +512,16 @@ struct GoalSetResultView: View {
                         ? "같이 봐요. 매달 \(AppModel.wonK(need))씩 넣으면 지날 길이에요. 점선은 내가 넣은 원금이에요."
                         : "같이 봐요. 지금 금액이 보통의 경우처럼 자란다고 보고, 모자란 만큼을 매달로 나눈 금액이에요.", note: "그래프 쪽을 돌아봄")
             Card {
-                (Text("매달 \(AppModel.wonK(need))씩 넣으면 지날 길 ") + Text("(\(base.name) 기준)").foregroundColor(Theme.sub)).appFont(15, .bold)
+                (Text("월 \(noWon(AppModel.wonK(need)))씩 ") + Text("· \(base.name)").foregroundColor(Theme.sub)).appFont(15, .bold)
                 GoalPathChart(sims: [(path, Theme.teal, true)], goal: m.gK).frame(height: 150)
                 HStack { Text("지금"); Spacer(); Text("\(String(format: "%g", Double(m.gY) / 2))년"); Spacer(); Text("\(m.gY)년") }.appFont(11).foregroundStyle(Theme.muted)
                 FlowRow(spacing: 10) {
                     legend(Theme.teal, "보통의 경우"); legend(Theme.teal.opacity(0.2), "100번 중 90번")
-                    legend(Theme.muted, "넣은 원금"); legend(Color(hex: 0xC8352E), "목표")
+                    legend(Theme.muted, "원금"); legend(Color(hex: 0xC8352E), "목표")
                 }
-                (Text("목표일에 목표 이상일 확률 ") + Text(AppModel.pct(path.prob)).bold() + Text(" · 보통 \(path.etaText)")).appFont(14)
+                (Text("목표일 달성 ") + Text(AppModel.pct(path.prob)).bold() + Text(" · 보통 \(path.etaText)")).appFont(14)
             }
-            BoardLinks(next: "다음 미션: 투자 구성 고르기", to: .g3)
+            BoardLinks(next: "다음: 구성 고르기", to: .g3)
         }
     }
 }
@@ -509,8 +555,8 @@ struct GoalMixView: View {
         PinnedLayout {
             VStack(alignment: .leading, spacing: 8) {
                 Text("미션 \(m.goalNo("mix")) / \(m.goalTotal)").appFont(14, .semibold).foregroundStyle(Theme.teal)
-                Text("어떤 구성으로 모을지 비교해 보세요").appFont(20, .bold)
-                Text("지수와 업종 묶음으로만 · 매달 \(AppModel.wonK(m.gM)) · \(m.gY)년 기준").appFont(12).foregroundStyle(Theme.sub)
+                Text("어떤 구성으로?").appFont(20, .bold)
+                Text("지수·업종 묶음 · 월 \(noWon(AppModel.wonK(m.gM))) · \(m.gY)년").appFont(12).foregroundStyle(Theme.sub)
                 GoalPathChart(sims: sims.map { ($0, mixColor[$0.mix.id] ?? Theme.teal, $0.mix.id == sel.mix.id) }, goal: m.gK, showPrincipal: false).frame(height: 100)
                 FlowRow(spacing: 10) {
                     ForEach(sims, id: \.mix.id) { s in legend(mixColor[s.mix.id] ?? Theme.teal, s.mix.name) }
@@ -523,7 +569,7 @@ struct GoalMixView: View {
                 }
                 compositionBar(sh.weights)
                 HStack(spacing: 6) {
-                    pill("목표일에 목표 이상", AppModel.pct(sel.prob))
+                    pill("목표일 달성", AppModel.pct(sel.prob))
                     pill("보통 도착", sel.etaText)
                     pill("나쁜 해 한 번", AppModel.sgn0(sel.badYear))
                 }
@@ -539,8 +585,8 @@ struct GoalMixView: View {
                 }
                 if !sh.line.isEmpty { Text(sh.line).appFont(13).foregroundStyle(Theme.sub) }
                 Text(sel.mix.desc).appFont(15).lineSpacing(3)
-                BasketList(baskets: [.G, .B], open: $open, title: "구성에 쓰는 업종 묶음 · 눌러서 펼치기")
-                Text("나쁜 해 한 번: 20년에 한 번쯤 오는 나쁜 해의 1년 변화. 구성별 연 기대수익률과 흔들림은 가정값이고, 확률 모형의 결과예요. 투자 권유가 아니에요.")
+                BasketList(baskets: [.G, .B], open: $open, title: "업종 묶음")
+                Text("나쁜 해 한 번: 20년에 한 번쯤 오는 해의 1년 변화 · 가정값 · 투자 권유 아님")
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
                 PrimaryButton(title: "\"\(sel.mix.name)\"으로 정하기") { m.gDone.insert("mix"); m.boardPath.append(.g3r) }
             }
@@ -563,15 +609,15 @@ struct GoalMixResultView: View {
     var body: some View {
         let sel = m.simulate(m.selectedMix), sh = m.shift(m.selectedMix)
         let next = m.goalSteps.first { !m.gDone.contains($0.id) && m.goalAvailable($0) }
-        Page(kicker: "미션 \(m.goalNo("mix")) 완료 · 새로 열림: 구성 비교", title: "내 계획: \(sel.mix.name)") {
+        Page(kicker: "미션 \(m.goalNo("mix")) 완료 · 구성 비교 열림", title: "내 계획: \(sel.mix.name)") {
             GuideBubble(pose: .cheer, text: m.route == .novice ? "정했어요. 매달 적립을 나누는 비율이에요. 실제 매매 판단은 직접 하셔야 해요." : "정했어요. 계획만 기록해요. 실제 매매 판단은 직접 하셔야 해요.")
             Text(sel.mix.desc).appFont(15).foregroundStyle(Theme.sub)
             Card {
-                (Text("목표일에 목표 이상 ") + Text(AppModel.pct(sel.prob)).bold() + Text(" · 보통 ") + Text(sel.etaText).bold()).appFont(15)
+                (Text("목표일 달성 ") + Text(AppModel.pct(sel.prob)).bold() + Text(" · 보통 ") + Text(sel.etaText).bold()).appFont(15)
             }
             if !sh.rows.isEmpty {
                 Card {
-                    Text(m.route == .novice ? "매달 적립 나누기" : "비중이 바뀌면").appFont(15, .bold)
+                    Text(m.route == .novice ? "적립 나누기" : "비중이 바뀌면").appFont(15, .bold)
                     ForEach(sh.rows, id: \.0) { label, sub, amt, up in
                         HStack {
                             Text(label).appFont(15, .semibold)
@@ -584,9 +630,9 @@ struct GoalMixResultView: View {
                     if !sh.note.isEmpty { Text(sh.note).appFont(12).foregroundStyle(Theme.sub).lineSpacing(2) }
                 }
             }
-            if let b = sel.mix.basket { BasketList(baskets: [b], open: $open, title: "담을 업종 · 눌러서 펼치기") }
-            Text("계획만 기록해요. 매매는 증권사 앱에서 직접 하세요.").appFont(14).foregroundStyle(Theme.sub)
-            BoardLinks(next: next.map { "다음 미션: \($0.title)" }, to: next?.to)
+            if let b = sel.mix.basket { BasketList(baskets: [b], open: $open, title: "담을 업종") }
+            Text("계획만 기록 · 매매는 직접").appFont(14).foregroundStyle(Theme.sub)
+            BoardLinks(next: next.map { "다음: \($0.title)" }, to: next?.to)
         }
     }
 }
@@ -599,44 +645,46 @@ struct GoalTaxView: View {
     var body: some View {
         @Bindable var m = m
         let sh = m.shift(m.selectedMix), sale = sh.sell * m.goalStart
-        let drnk = m.focusRow, gainRate = drnk.map { 1 - $0.h.avg / $0.sym.last } ?? 0
+        // 양도세는 해외(미국) 주식만. 가장 큰 종목이 국내 주식이면 계산하지 않는다
+        let drnk = m.focusRow, us = drnk?.sym.currency == .usd, gainRate = us ? drnk.map { 1 - $0.h.avg / $0.sym.last } ?? 0 : 0
         let gainSale = sale * gainRate, G0 = m.taxGain
         let tx = { (x: Double) in max(0, x - 250) * 0.22 }
         let tOne = tx(G0 + gainSale), tSplit = tx(G0 + gainSale / 2) + tx(gainSale / 2), tNo = tx(G0)
         let rows: [(String, String, String, Double)] = [
-            ("one", "한 해에 모두", "이익 \(AppModel.wonK(max(0, G0 + gainSale))) − 공제 250만원", tOne),
-            ("split", "두 해에 반씩 나누기", "두 해에 공제 250만원씩 두 번", tSplit),
-            ("none", "적립으로만 맞추기", "대신 오래 걸림", tNo),
+            ("one", "한 해에 모두", "이익 \(noWon(AppModel.wonK(max(0, G0 + gainSale)))) − 공제 250만", tOne),
+            ("split", "두 해에 반씩", "공제 250만 × 2", tSplit),
+            ("none", "적립만", "오래 걸림", tNo),
         ]
         let pick = rows.first { $0.0 == m.goalTaxPick } ?? rows[1]
-        Page(kicker: "미션 \(m.goalNo("tax")) / \(m.goalTotal)", title: "비중을 맞추려 팔면 세금이 얼마나 나올까요?") {
+        Page(kicker: "미션 \(m.goalNo("tax")) / \(m.goalTotal)", title: "비중 맞추려 팔면 세금은?") {
             GuideBubble(pose: .point, text: "비중을 매도로 맞추면 이익에 세금이 붙어요. 공제는 해마다 있어서, 나누는 방식에 따라 세금이 달라져요. 계산 예시예요.")
-            Text("세금 규칙: 대한민국 거주자").appFont(13, .semibold).foregroundStyle(Theme.teal)
-            inputField("올해 이미 판 이익 (만원)", $gain).onChange(of: gain) { _, v in m.taxGain = max(0, Double(v) ?? 0) }
+            Text("한국 거주자 · 미국 주식만").appFont(13, .semibold).foregroundStyle(Theme.teal)
+            inputField("올해 해외주식 이익 (만원)", $gain).onChange(of: gain) { _, v in m.taxGain = max(0, Double(v) ?? 0) }
             if sh.sell > 0 && gainSale > 0 {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("내년 5월에 낼 세금 · \(pick.1)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                    Text("내년 5월 세금 · \(pick.1)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        if pick.0 != "one" { Text(AppModel.wonK(tOne)).appFont(18).strikethrough().foregroundStyle(Theme.muted) }
-                        Text(AppModel.wonK(pick.3)).appFont(30, .bold)
-                        Text(pick.0 == "one" ? "가장 많이 내는 방법" : "\(AppModel.wonK(max(0, tOne - pick.3))) 줄어요").appFont(13, .bold).foregroundStyle(Theme.mint)
+                        if pick.0 != "one" { Text(noWon(AppModel.wonK(tOne))).appFont(18).strikethrough().foregroundStyle(Theme.muted) }
+                        Text(noWon(AppModel.wonK(pick.3))).appFont(30, .bold).roll(noWon(AppModel.wonK(pick.3)))
+                        Text(pick.0 == "one" ? "가장 많음" : "−\(noWon(AppModel.wonK(max(0, tOne - pick.3))))").appFont(13, .bold).foregroundStyle(Theme.mint)
                     }
                     Text(pick.2).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 }
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 ChipRow(items: [("one", "한 해에"), ("split", "두 해에"), ("none", "적립만")], selection: $m.goalTaxPick, fill: true)
-                Text("\"\(m.selectedMix.name)\"으로 맞추면 가장 큰 종목 비중이 \(AppModel.pct(m.focusWeight))→\(AppModel.pct(m.focusWeight - sh.sell))로 줄어요. 두 해에 나누면 세금이 \(AppModel.wonK(max(0, tOne - tSplit))) 적은 예시예요.")
+                Text("가장 큰 종목 \(AppModel.pct(m.focusWeight))→\(AppModel.pct(m.focusWeight - sh.sell)) · 두 해에 나누면 세금 −\(noWon(AppModel.wonK(max(0, tOne - tSplit))))")
                     .appFont(14).foregroundStyle(Theme.sub).lineSpacing(2)
             } else {
-                Text(sh.sell > 0 ? "줄이는 부분이 손실이라 낼 세금이 없어요. 같은 해 다른 이익과 합쳐 계산돼요. (가장 큰 종목 평균 단가가 지금 가격보다 높아요)"
-                     : "지금 고른 구성(\"\(m.selectedMix.name)\")은 팔 게 없어요. 미션 \(m.goalNo("mix"))에서 다른 구성을 고르면 세금을 비교할 수 있어요.")
+                Text(!us ? "가장 큰 종목이 국내 주식 · 양도세 계산 제외"
+                     : sh.sell > 0 ? "줄이는 부분이 손실 · 낼 세금 없음 · 같은 해 이익과 합산"
+                     : "\"\(m.selectedMix.name)\"은 팔 게 없음 · 미션 \(m.goalNo("mix"))에서 다른 구성으로 비교")
                     .appFont(15).padding(14).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
             }
-            Text("결제일 기준으로 그해 손익에 들어가요. 계산 예시이며 세무 상담이나 매매 권유가 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
-            PrimaryButton(title: "확인했어요") { m.gDone.insert("tax"); m.boardPath = [] }
+            Text("결제일 기준 · 계산 예시 · 세무 상담·매매 권유 아님").appFont(12).foregroundStyle(Theme.muted)
+            PrimaryButton(title: "확인") { m.gDone.insert("tax"); m.boardPath = [] }
         }
         .onAppear { gain = String(Int(m.taxGain)) }
     }
@@ -654,8 +702,8 @@ struct GoalIntermissionView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack { Text("처음 석 달 체크인 · 인터미션").appFont(12, .bold).foregroundStyle(Theme.mint); Spacer(); Text("\(fixed.count)/3").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
-                    Text("한 달에 한 번, 계획대로 넣었는지 표시해요").appFont(20, .bold)
+                    HStack { Text("석 달 체크인").appFont(12, .bold).foregroundStyle(Theme.mint); Spacer(); Text("\(fixed.count)/3").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
+                    Text("이번 달, 계획대로 넣었나요?").appFont(20, .bold)
                     HStack(spacing: 6) {
                         ForEach(0..<3, id: \.self) { j in
                             let p: GoalWeek? = j < fixed.count ? fixed[j] : (j == fixed.count ? m.gWeekCur : nil)
@@ -670,8 +718,8 @@ struct GoalIntermissionView: View {
                         }
                     }
                     if let last {
-                        Text((last == .more ? "더 넣었어요! " : last == .less ? "이번 달은 덜 넣었어요. " : "계획대로 넣었어요. ")
-                             + (eta.isFinite ? "이 속도면 \(AppModel.eta(eta)) 도착 (" + (eta < plan ? "\(Int(plan - eta))개월 빠름" : eta > plan ? "\(Int(eta - plan))개월 늦음" : "목표 시점") + ")" : ""))
+                        Text((last == .more ? "더 넣음" : last == .less ? "덜 넣음" : "계획대로")
+                             + (eta.isFinite ? " · \(AppModel.eta(eta)) 도착 (" + (eta < plan ? "\(Int(plan - eta))개월 빠름" : eta > plan ? "\(Int(eta - plan))개월 늦음" : "목표 시점") + ")" : ""))
                             .appFont(14, .semibold).foregroundStyle(Theme.ink)
                             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                             .background(last == .less ? Color(hex: 0xFDF0E1, dark: 0x3A2A17) : last == .more ? Color(hex: 0xE4F0FB, dark: 0x16283A) : Color(hex: 0xE3F4EC, dark: 0x163226), in: RoundedRectangle(cornerRadius: 12))
@@ -683,17 +731,18 @@ struct GoalIntermissionView: View {
                 GuideBubble(pose: .stand, text: "3개월 동안 매달 1분이면 돼요. 이번 달 할 일을 하고 나서 표시해 주세요. 체크인할 때마다 캐릭터 위젯이 하나씩 열려요.")
 
                 if fixed.count < 3 {
+                    // 다음 달이 열리기 전에는 방금 한 달을 다시 고를 수 있다
+                    let edit = m.monthEditable, k = edit ? fixed.count - 1 : fixed.count, step = AppModel.goalMonthSteps[k]
                     Card {
-                        Text("\(fixed.count + 1)달째 할 일").appFont(13, .bold).foregroundStyle(Theme.teal)
+                        Text("\(k + 1)달째 체크인").appFont(13, .bold).foregroundStyle(Theme.teal)
                         HStack(spacing: 8) {
                             Text(step.whereText).appFont(11, .bold).padding(.horizontal, 8).padding(.vertical, 2).background(Theme.mint, in: Capsule())
                             Text(step.task).appFont(15, .bold)
                         }
-                        Text("하고 나서 표시해 주세요").appFont(13).foregroundStyle(Theme.sub)
                         HStack(spacing: 6) {
                             ForEach(GoalWeek.allCases, id: \.self) { p in
-                                let on = m.gWeekCur == p
-                                Button { m.gWeekCur = p } label: {
+                                let on = edit ? fixed[k] == p : m.gWeekCur == p
+                                Button { if edit { m.editLastMonth(p) } else { m.gWeekCur = p } } label: {
                                     VStack(spacing: 2) {
                                         Text(p.label).appFont(15, .bold)
                                         Text("월 " + AppModel.wonK(m.gM * p.factor)).appFont(11).foregroundStyle(Theme.sub)
@@ -705,21 +754,21 @@ struct GoalIntermissionView: View {
                                 }.buttonStyle(.plain)
                             }
                         }
-                        Text("이번 달이 끝나기 전까지는 다시 고를 수 있어요. 지난 달은 바꿀 수 없어요.").appFont(12).foregroundStyle(Theme.muted)
+                        Text("다음 달 전까지 바꿀 수 있음").appFont(12).foregroundStyle(Theme.muted)
                         // 달은 시작한 날부터 30일마다 열린다 (서버 시각). 열리기 전에는 남은 날을 보여 준다
                         if let wait = m.monthGateText {
                             Label(wait, systemImage: "clock").appFont(13).foregroundStyle(Theme.sub)
                                 .fixedSize(horizontal: false, vertical: true)
                         } else if m.gWeekCur != nil {
-                            Button(fixed.count == 2 ? "3달째 마치기" : "이번 달 마치기") { withAnimation { m.confirmGoalMonth() } }
+                            Button("체크인") { withAnimation { m.confirmGoalMonth() } }
                                 .appFont(14, .semibold).foregroundStyle(Theme.ink).frame(maxWidth: .infinity, minHeight: 44)
                                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                         }
                     }
                 }
                 Card {
-                    Text("체크인하면 받는 캐릭터 위젯").appFont(15, .bold)
-                    Text("중간 크기 오늘의 움직임 위젯에 1달째 세리, 2달째 시오가 들어오고, 3달째에는 모두 열려요.").appFont(13).foregroundStyle(Theme.sub)
+                    Text("체크인 보상 위젯").appFont(15, .bold)
+                    Text("오늘의 움직임 · 1달 세리 · 2달 시오 · 3달 모두").appFont(13).foregroundStyle(Theme.sub)
                     ForEach(0..<3, id: \.self) { j in
                         let on = j < fixed.count
                         HStack(spacing: 12) {

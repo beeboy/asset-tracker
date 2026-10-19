@@ -57,10 +57,18 @@ targets:
           - CFBundleURLName: com.naeilo.widget
             CFBundleURLSchemes: [naeilo]
         UILaunchScreen: {}
+        # 서울외국환중개 매매기준율은 http 로만 열린다 (https 인증서가 다른 이름) — 이 도메인만 허용
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            smbs.biz:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: true
         # 가로 화면도 지원 (아이폰은 거꾸로 세로 제외). 가로에서는 내용 폭을 720pt 로 묶고 고정 머리 없이 한 번에 스크롤
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
+        # 동네 날씨: 대략적인 위치로 하루 한 번
+        NSLocationWhenInUseUsageDescription: "동네 날씨를 내 지역 날씨로 보여 주려고 대략적인 위치를 써요."
         # 개발용 Tiingo 토큰 (계약 전이라 비워 둠). 출시 때는 naeilo 중계 서버를 거친다
         TIINGO_TOKEN: ""
     # 위젯 앱(ios/)과 합친 앱: App Store Connect 의 기존 앱 기록·TestFlight 를 이어 쓰려고 번들 ID 를 그대로 쓴다

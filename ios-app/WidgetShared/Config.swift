@@ -52,6 +52,12 @@ enum Store {
         get { let v = defaults.integer(forKey: "intervalMin"); return v > 0 ? v : 30 }
         set { defaults.set(newValue, forKey: "intervalMin") }
     }
+    /// 지금 가격을 Yahoo 에서 직접 받을 기호 (내 종목 + KRW=X). 앱이 시세를 갱신할 때 써 두고 위젯도 같이 쓴다
+    /// 아직 앱이 써 두지 않았으면 nil (그때는 사이트 값만)
+    static var quoteSyms: [String]? {
+        get { defaults.stringArray(forKey: "quoteSyms") }
+        set { defaults.set(newValue, forKey: "quoteSyms") }
+    }
     static var lastCheck: Date? {
         get { defaults.object(forKey: "lastCheck") as? Date }
         set { defaults.set(newValue, forKey: "lastCheck") }
@@ -120,11 +126,28 @@ enum Store {
     }
     /// 위젯 전부(기본·인물·서재)는 구독 중이거나 7일 무료 동안만 보인다 (2026-10-16 결정)
     static var widgetsOpen: Bool { subOn || trialEnd <= 0 || Date().timeIntervalSince1970 < trialEnd }
-    static func isUnlocked(_ kind: String) -> Bool { widgetsOpen }
+    /// 미션 4(앱 시작 3단계)에서 실제로 끝낸 단계 (앱이 쓴다). 값이 없으면 0 = 단계 위젯은 잠김
+    static var widgetStep: Int {
+        get { defaults.object(forKey: "widgetStep") as? Int ?? 0 }
+        set { defaults.set(newValue, forKey: "widgetStep") }
+    }
+    /// 위젯마다 열리는 단계: 1 자산 추이·인물 자산 언덕·키 재기, 2 목표일 전망·목표 페이스·본전 진행·인물 본전 사다리·퍼즐, 3 나머지 (내 길·블록·과녁·오늘의 움직임·서재·인물 꽃밭·줄다리기 등)
+    static func stepNeed(_ kind: String) -> Int {
+        switch kind {
+        case "asset.small", "lock.asset", "char.hill", "char.height": 1
+        case "future.small", "pace.small", "lock.goal", "char.ladder", "char.puzzle": 2
+        default: 3
+        }
+    }
+    static func stepOpen(_ kind: String) -> Bool { widgetStep >= stepNeed(kind) }
+    static func isUnlocked(_ kind: String) -> Bool { widgetsOpen && stepOpen(kind) }
 }
 
-/// 잠긴 위젯 문구 (기본·잠금화면·인물·서재가 같이 쓴다). 예전에는 앱 시작 단계로 하나씩 열었는데, 이제는 처음부터 모두 열리고 7일 무료 뒤에는 구독으로 연다
+/// 잠긴 위젯 문구 (기본·잠금화면·인물·서재가 같이 쓴다). 미션 4 단계로 하나씩 열리고, 7일 무료 뒤에는 구독으로 연다
 enum WidgetUnlock {
-    static func how(_ kind: String) -> String { WL.t("7일 무료가 끝났어요. 구독하면 다시 보여요") }
-    static var cta: String { WL.t("눌러서 구독하기 ›") }
+    static func how(_ kind: String) -> String {
+        if !Store.widgetsOpen { return WL.t("7일 무료가 끝났어요. 구독하면 다시 보여요") }
+        return WL.en ? "Opens at app start step \(Store.stepNeed(kind))" : "앱 시작 \(Store.stepNeed(kind))단계를 하면 열려요"
+    }
+    static var cta: String { Store.widgetsOpen ? WL.t("눌러서 미션 보기 ›") : WL.t("눌러서 구독하기 ›") }
 }

@@ -54,13 +54,12 @@
 - Yahoo Finance(시세, 검색): 수집기·브라우저·워커 `?url=` 프록시·앱 테스트 전용 국내 시세.
 - smbs.biz(서울외국환중개 매매기준율): `server.py`, 워커 `/mar`.
 - shillerdata.com(금리·이익), Google Gemini(워커 `/ai`), GitHub API(collect 깨우기, 개발자 동기화), Apple StoreKit(JWS 검증), api.anthropic.com(`/cu`, 사용량 앱).
-- Tiingo: 앱에 `TiingoProvider` 자리만 있음(`TIINGO_TOKEN` 비어 있음).
 
 ### 워커 경로 (`proxy/cloudflare-worker.js`)
 `/?url=`(Yahoo 프록시), `/ai`, `/views`, `/like`, `/comments`, `/push/*`, `/mar`, `/collect`, `/cu`, `/sync`(개발자), `/esync`(사용자 암호화 동기화), `/scores`, `/store/*`. `scheduled()`가 15분마다 collect를 깨우고 미국 장중 푸시 알림을 확인.
 
 ### 저장 방식
-- 공개 저장소 `data/`: 시세·환율·통계 (Tiingo 계약 시 원시 시세는 공개 저장소에서 빼야 함, decisions 참고).
+- 공개 저장소 `data/`: 시세·환율·통계.
 - 사용자 데이터: 웹 localStorage, 앱 UserDefaults·App Group 파일, 기기 간은 워커 KV `e:<id>`(PBKDF2-SHA256 30만 회 + AES-GCM, 서버는 내용을 모름). 로컬 서버는 `data/state.json`(gitignore).
 - 워커 KV(`VIEWS`): 조회수·좋아요·댓글·푸시 구독·동기화·순위·상점 데이터.
 
@@ -93,7 +92,7 @@
 4. 위젯 환율 대체값은 하드코딩 1350.
 
 **시세 기준**
-5. 웹 `curPrice`는 실시간 시세가 마지막 종가보다 오래되면 종가 사용, 앱은 비교 없이 실시간 우선. 앱만 Tiingo 경로가 있음.
+5. 웹 `curPrice`는 실시간 시세가 마지막 종가보다 오래되면 종가 사용, 앱은 비교 없이 실시간 우선.
 6. 전망 시작 가격은 양쪽 모두 사이트 마지막 종가(웹 `snapPx`/`S.siteClose`, 앱 `forecastJob`).
 
 **설정·모델**

@@ -28,7 +28,7 @@ export function siteSeries() {
     if (SKIP.has(k) || k.endsWith("=X")) continue;
     holdings.push({ ticker: k, ccy: o.currency || "USD", valueKrw: 1 });
   }
-  // 한국 종목 (시세 계약 없음, data/kr_proxy.json): 기준 미국 ETF × 원/달러를 원화 종목처럼. 앱은 한국 종목을 이 키로 계산한다 (웹 synthKR 과 같은 수익률)
+  // 한국 종목 (키 없을 때 추정, data/kr_proxy.json): 기준 미국 ETF × 원/달러를 원화 종목처럼. 앱은 한국 종목을 이 키로 계산한다 (웹 synthKR 과 같은 수익률)
   const R = read("data/kr_proxy.json"), fx = series["KRW=X"];
   for (const b of new Set([...R.rules.map((r) => r.proxy), R.market])) {
     if (!series[b]) continue;

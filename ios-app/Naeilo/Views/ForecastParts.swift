@@ -27,6 +27,17 @@ struct ScenarioChart: View {
         return e == e.rounded() ? "\(Int(e))억" : String(format: "%.1f억", e)
     }
 
+    /// 지금 점 자리 (박동 원을 그래프 위에 따로 얹는 데 쓴다). body 의 x·y 와 같은 셈
+    func nowPoint(_ size: CGSize) -> CGPoint? {
+        guard sel.q50.count > 1, let t0 = sel.tY.first else { return nil }
+        let sh = selShift
+        let top0 = max(goal, sel.q95.map { $0 + sh }.max() ?? 1, others.flatMap(\.med).max() ?? 0) * 1.05
+        let st = Self.step(top0), top = max(st, (top0 / st).rounded(.up) * st)
+        let left: CGFloat = 36, W = size.width - left, H = size.height - 20
+        let span = max(1e-9, sel.tY.last ?? 1), v = sel.q50[0] + sh
+        return CGPoint(x: left + CGFloat(t0 / span) * W, y: H - CGFloat(min(max(v, 0), top) / top) * H)
+    }
+
     var body: some View {
         Canvas { ctx, size in
             let n = sel.q50.count - 1
@@ -90,6 +101,7 @@ struct ScenarioChart: View {
             ctx.draw(Text(endLabel).font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: size.width, y: ly), anchor: .trailing)
         }
         .accessibilityLabel("시나리오별 자산 범위 그래프")
+        .pulse(Theme.ink, dot: 8) { s in nowPoint(s) }
     }
 }
 
@@ -106,7 +118,7 @@ struct ScheduleRow: View {
             // 금리 결정 행 아래에만 금리 충격 테스트로 가는 버튼
             if MarketEvents.isRate(hit.id) {
                 NavigationLink(value: AnalysisRoute.rateScen) {
-                    Text("금리가 오르면 내 목표는? 미리 보기").appFont(13, .bold).foregroundStyle(Theme.purple)
+                    Text("금리 오르면? ›").appFont(13, .bold).foregroundStyle(Theme.purple)
                         .padding(.horizontal, 12).padding(.vertical, 7)
                         .background(Theme.purple.opacity(0.12), in: Capsule())
                 }

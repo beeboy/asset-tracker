@@ -14,9 +14,10 @@ struct ReloadIntent: AppIntent {
             async let site: Void = { _ = await QuoteFeed.fetch() }()
             async let toss: Void = { _ = await TossFeed.widgetFetch(minAge: 0) }()
             async let alpaca: Void = { _ = await AlpacaFeed.widgetFetch(minAge: 0) }()
+            async let lb: Void = { _ = await LongbridgeFeed.widgetFetch(minAge: 0) }()
             // 국내 테스트 시세 종목도 ↻ 때 바로 (전에는 정기 갱신 때만 받아 ↻로는 안 바뀌었다)
             async let kr: Void = { _ = await KrQuoteFeed.fetch(Store.read(WFeed.self, "feed.json")?.ky ?? [:], minAge: 0) }()
-            _ = await (site, toss, kr, alpaca)
+            _ = await (site, toss, kr, alpaca, lb)
         }
         // 하나도 새로 받지 못했으면 위젯 아래 줄에 '받기 실패'
         Store.fetchFailed = Store.newestGot <= before

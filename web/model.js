@@ -752,7 +752,7 @@
     });
   }
 
-  // 한국 종목 (시세 계약 없음): 기준 미국 ETF 시세 × 원/달러(앞 값으로 메움). 환헤지면 환율 없이. 웹 synthKR 과 tools/site_stats.mjs(KR~SPY 등)가 같이 쓴다
+  // 한국 종목 (키 없을 때 추정): 기준 미국 ETF 시세 × 원/달러(앞 값으로 메움). 환헤지면 환율 없이. 웹 synthKR 과 tools/site_stats.mjs(KR~SPY 등)가 같이 쓴다
   function krSeries(base, fx, hedged, field = "adj") {
     const fm = new Map(); if (fx) fx.dates.forEach((d, i) => { const v = (fx.adj || fx.close)[i]; if (v > 0) fm.set(d, v); });
     let f = null; for (const v of fm.values()) { f = v; break; }

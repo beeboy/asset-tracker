@@ -341,7 +341,7 @@ extension AppModel {
     struct WidgetInfo: Identifiable { let id: String; let name: String; let desc: String; let size: String; let ok: Bool; let how: String }
     /// 기본 위젯 (위젯 추가 화면과 같은 이름·순서, Catalog). 구독 중이거나 7일 무료 동안 모두 열린다
     var baseWidgets: [WidgetInfo] {
-        Catalog.base.map { WidgetInfo(id: $0.kind, name: $0.name, desc: $0.desc, size: $0.size, ok: Store.widgetsOpen, how: WidgetUnlock.how($0.kind)) }
+        Catalog.base.map { WidgetInfo(id: $0.kind, name: $0.name, desc: $0.desc, size: $0.size, ok: Store.isUnlocked($0.kind), how: WidgetUnlock.how($0.kind)) }
     }
 }
 
@@ -552,7 +552,7 @@ struct TaxRulesView: View {
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("내년 5월에 낼 해외주식 세금 (예상)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                Text(won0(tax)).appFont(30, .bold)
+                Text(won0(tax)).appFont(30, .bold).roll(won0(tax))
                 Text(G > 250 ? "(\(won0(G)) − 기본공제 250만원) × 22%" : "이익이 250만원 이하라 낼 세금이 없어요").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
@@ -619,15 +619,15 @@ struct RouteView: View {
     @State private var pick = ""
 
     var body: some View {
-        let cards = [("minus", "회복 루트", "마이너스예요", "본전까지 가는 길. 원인 진단, 계획 4안, 절세, 4주 인터미션."),
-                     ("plus", "목표 루트 · 플러스", "플러스예요", "지금 평가액에서 목표 금액까지. 구성 비교, 비중 조정 세금, 3개월 인터미션."),
-                     ("none", "목표 루트 · 시작 전", "아직 시작 전이에요", "매달 넣는 돈으로 첫 목표까지. 구성 고르기, 3개월 인터미션.")]
+        let cards = [("minus", "회복 루트", "마이너스", "본전까지 · 원인 진단 · 계획 4안 · 절세 · 4주 인터미션"),
+                     ("plus", "목표 루트 · 플러스", "플러스", "지금 → 목표 금액 · 구성 비교 · 비중 세금 · 3개월 인터미션"),
+                     ("none", "목표 루트 · 시작 전", "시작 전", "매달 적립으로 첫 목표 · 구성 고르기 · 3개월 인터미션")]
         let cur = m.route == .recover ? "minus" : m.route == .plus ? "plus" : "none"
         let sel = pick.isEmpty ? cur : pick
         SettingsPage(title: "루트 바꾸기") {
             FriendSay(key: "route", fallback: "길을 고르면 아래 그래프가 바뀌어요.")
             if m.route == .recover && m.total >= m.cost {
-                Text("본전을 넘었어요. 이제 목표 루트 · 플러스로 바꿀 수 있어요.").appFont(14, .semibold).foregroundStyle(Color(hex: 0x0B5E40, dark: 0x7FD8B0))
+                Text("본전 넘음 · 목표 루트 · 플러스로 바꿀 수 있어요").appFont(14, .semibold).foregroundStyle(Color(hex: 0x0B5E40, dark: 0x7FD8B0))
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(hex: 0xE3F4EC, dark: 0x163226), in: RoundedRectangle(cornerRadius: 12))
             }
@@ -648,12 +648,12 @@ struct RouteView: View {
                 }
                 .buttonStyle(.plain)
             }
-            PrimaryButton(title: sel == cur ? "지금 루트예요" : "이 루트로 바꾸기", color: sel == cur ? Theme.muted : Theme.teal) {
+            PrimaryButton(title: sel == cur ? "지금 루트" : "이 루트로", color: sel == cur ? Theme.muted : Theme.teal) {
                 guard sel != cur else { return }
                 m.switchRoute(sel == "minus" ? .recover : sel == "plus" ? .plus : .novice)
                 pick = ""; m.settingsPath = []
             }
-            note("바꿔도 지금까지 받은 것은 그대로 남아요.")
+            note("바꿔도 받은 것은 그대로")
             // 첫 질문 화면처럼: 고른 루트에 따라 바뀌는 예시 3년 그래프
             StartForecastCard(route: sel == "minus" ? Route.recover : sel == "plus" ? Route.plus : Route.novice)
         }

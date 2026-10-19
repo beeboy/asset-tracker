@@ -452,7 +452,7 @@ struct TowerCharView: View {
                 tower(floor, fill, s.accent).frame(width: 56).charPin(.bottomTrailing, y: 17.5)
                 // 칸이 는 날 block_up, 준 날 block_down, 갱신 중엔 block_refresh2 (블록을 탑 위에)
                 let tn = poseOr(e.c, Store.isReloading ? "pose_block_refresh2" : d < 0 ? "pose_block_down" : "pose_block_up", else: "w_\(e.c.id)_spread")
-                CharSprite(name: tn, locked: e.locked, height: poseH(tn), shake: false).charPin(.bottomTrailing, x: 67.5)
+                CharSprite(name: tn, locked: e.locked, height: poseH(tn), shake: false).charPin(.bottom).offset(x: -16)  // 탑과 키 재기 기둥 간격만큼 띄움
                 if !e.locked && mode != .accented {
                     Image("w_cat").interpolation(.none).resizable().frame(width: 16, height: 16).accessibilityHidden(true).charPin(.bottomLeading, x: 20)
                 }
@@ -555,7 +555,7 @@ struct HeightCharView: View {
                 HeightMarks(v: e.locked ? [] : Array((r.spark ?? []).suffix(7)), today: e.date).charBleed()
                 let pn = poseOr(e.c, Store.isReloading ? "pose_measure_up" : r.dayChg < 0 ? "pose_measure_down" : "pose_measure_base")
                 CharSprite(name: pn, locked: e.locked, height: poseH(pn), shake: false)
-                    .charHop(-4).charPin(.bottomLeading, x: 60, y: 10)
+                    .charHop(-4).charPin(.bottom, y: 10)
                 Group {
                     if e.locked { meetLater(e.c) } else {
                         VStack(alignment: .leading, spacing: 4) {
@@ -743,7 +743,7 @@ struct GardenCharView: View {
     }
 }
 
-/// 아래 줄 왼쪽부터 핀다. 오른쪽 위에 밭 탭: 다 핀 밭(최근 3개까지) + 테두리 친 지금 밭. 물뿌리개는 밭 오른쪽 아래
+/// 아래 줄 왼쪽부터 핀다. 오른쪽 위에 밭 10개(5×2): 다 핀 밭 + 테두리 친 지금 밭 + 남은 밭. 물뿌리개는 마지막으로 핀 칸의 줄 오른쪽 끝 옆
 private struct GardenBed: View {
     let fill: Int, bloom: Int, garden: Int, c: Color
     @Environment(\.widgetRenderingMode) private var mode
@@ -766,21 +766,34 @@ private struct GardenBed: View {
                     ctx.fill(Path(ellipseIn: CGRect(x: x + 2.5, y: y + 2, width: 2, height: 2)), with: leaf)
                 }
             }
-            for j in 0..<min(3, garden - 1) {
-                let x = 132 - CGFloat(j) * 12
-                ctx.fill(Path(roundedRect: CGRect(x: x, y: 44, width: 9, height: 9), cornerRadius: 2), with: petal)
-                ctx.fill(Path(CGRect(x: x + 3, y: 47, width: 3, height: 3)), with: core)
+            // 밭 10개를 5개씩 2줄: 다 핀 밭은 꽃, 지금 밭은 테두리+번호, 남은 밭은 흐린 칸
+            for j in 0..<10 {
+                let b = CGRect(x: 105 + CGFloat(j % 5) * 10, y: 43.5 + CGFloat(j / 5) * 10, width: 9, height: 9)
+                if j < garden - 1 {
+                    ctx.fill(Path(roundedRect: b, cornerRadius: 2), with: petal)
+                    ctx.fill(Path(CGRect(x: b.minX + 3, y: b.minY + 3, width: 3, height: 3)), with: core)
+                } else if j == garden - 1 {
+                    ctx.fill(Path(roundedRect: b, cornerRadius: 2), with: dirt)
+                    ctx.stroke(Path(roundedRect: b, cornerRadius: 2), with: .color(c), lineWidth: 1.2)
+                    ctx.draw(Text("\(garden)").font(.system(size: 6, weight: .bold)).foregroundColor(c), at: CGPoint(x: b.midX, y: b.midY))
+                } else {
+                    ctx.stroke(Path(roundedRect: b.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 2), with: .color(.white.opacity(0.22)), lineWidth: 1)
+                }
             }
-            let cur = CGRect(x: 144.5, y: 43.5, width: 10, height: 10)
-            ctx.fill(Path(roundedRect: cur, cornerRadius: 2), with: dirt)
-            ctx.stroke(Path(roundedRect: cur, cornerRadius: 2), with: .color(c), lineWidth: 1.5)
-            ctx.draw(Text("\(garden)").font(.system(size: 7, weight: .bold)).foregroundColor(c), at: CGPoint(x: cur.midX, y: cur.midY))
             let can = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0x8fb7d9)), drop = mono ? GraphicsContext.Shading.color(.white.opacity(0.5)) : GraphicsContext.Shading.color(rgb(0xbfe3ff))
-            ctx.fill(Path(roundedRect: CGRect(x: 104, y: 106, width: 9, height: 7), cornerRadius: 1), with: can)
-            var spout = Path(); spout.move(to: CGPoint(x: 104.5, y: 107)); spout.addLine(to: CGPoint(x: 100, y: 104.5))
+            // 물뿌리개: 마지막으로 핀 칸(0송이면 첫 칸)이 있는 줄의 오른쪽 끝 옆. 7~9번째 줄은 밭 칸과 겹쳐서 줄 끝 칸 위(빈 윗줄)에 둔다
+            let t = max(fill, 1) - 1, row = t / 10, ry = 42 + CGFloat(9 - row) * 8.6
+            let bx: CGFloat = (6...8).contains(row) ? 92 : 104, by = ry - 9
+            ctx.fill(Path(roundedRect: CGRect(x: bx, y: by, width: 9, height: 7), cornerRadius: 1), with: can)
+            let tip = CGPoint(x: bx - 4, y: by - 1.5)
+            var spout = Path(); spout.move(to: CGPoint(x: bx + 0.5, y: by + 1)); spout.addLine(to: tip)
             ctx.stroke(spout, with: can, lineWidth: 2)
-            ctx.fill(Path(ellipseIn: CGRect(x: 97.2, y: 108.2, width: 1.6, height: 1.6)), with: drop)
-            ctx.fill(Path(ellipseIn: CGRect(x: 95.2, y: 111.2, width: 1.6, height: 1.6)), with: drop)
+            // 물방울: 주둥이에서 그 칸 위로 떨어지는 곡선 위 3개
+            let px = 16 + CGFloat(t % 10) * 8.6 + 3.5, py = ry + 1
+            for f in [0.35, 0.65, 0.9] as [CGFloat] {
+                let x = tip.x + (px - tip.x) * f, y = tip.y + (py - tip.y) * f * f
+                ctx.fill(Path(ellipseIn: CGRect(x: x - 0.8, y: y - 0.8, width: 1.6, height: 1.6)), with: drop)
+            }
         }
         .flipFade()
     }
@@ -875,11 +888,17 @@ struct StyleReader<Content: View>: View {
 
 private struct CharDarkKey: EnvironmentKey { static let defaultValue = false }
 private struct CharKindKey: EnvironmentKey { static let defaultValue = "" }
+private struct CharHideKey: EnvironmentKey { static let defaultValue: Bool? = nil }
 extension EnvironmentValues {
     /// 이 화면을 그리는 인물 위젯 종류 (금액 숨기기를 위젯마다 따로 할 때)
     var charKind: String {
         get { self[CharKindKey.self] }
         set { self[CharKindKey.self] = newValue }
+    }
+    /// 앱 공유 카드가 금액 숨김을 정할 때 (nil 이면 위젯 설정을 따른다)
+    var charHide: Bool? {
+        get { self[CharHideKey.self] }
+        set { self[CharHideKey.self] = newValue }
     }
     var charDark: Bool {
         get { self[CharDarkKey.self] }
@@ -932,12 +951,13 @@ private let charHidden = "••••"
 /// 금액: 누르면 숨기고 한 번 더 누르면 보인다 (기본 위젯의 Money 와 같은 동작, 앱 미리보기에서는 그리기만)
 struct CharMoney<L: View>: View {
     @Environment(\.charKind) private var kind
+    @Environment(\.charHide) private var force
     @ViewBuilder let label: (Bool) -> L
     var body: some View {
         #if WIDGET_EXT
         Button(intent: ToggleAmountIntent(kind: kind)) { label(Store.isHidden(kind)) }.buttonStyle(.plain)
         #else
-        label(Store.isHidden(kind))
+        label(force ?? Store.isHidden(kind))
         #endif
     }
 }

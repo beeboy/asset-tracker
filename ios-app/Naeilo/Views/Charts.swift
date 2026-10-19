@@ -8,6 +8,8 @@ struct Sparkline: View {
     var showEndDot = false
     var avgLabel: String? = nil      // 점선 바로 밑, 오른쪽에 붙이는 글자
     var avgAlways = false            // 평균 단가가 범위 밖이어도 세로 범위를 넓혀 점선을 늘 보인다
+    var scrub: Scrub? = nil          // 있으면 끌어서 그 시점 날짜·시세를 본다
+    @State private var at: Int? = nil
 
     var body: some View {
         GeometryReader { g in
@@ -38,12 +40,46 @@ struct Sparkline: View {
                     }
                 }
                 .stroke(Theme.change(up ? 1 : -1), style: StrokeStyle(lineWidth: lineWidth, lineJoin: .round))
-                if showEndDot, let l = points.last {
-                    Circle().fill(Theme.change(up ? 1 : -1)).frame(width: 7, height: 7).position(x: x(points.count - 1), y: y(l))
+                if showEndDot, let l = points.last, at == nil {
+                    PulseDot(color: Theme.change(up ? 1 : -1)).position(x: x(points.count - 1), y: y(l))
+                }
+                // 끄는 동안: 세로선 + 점 + 위쪽에 날짜·시각과 그때 시세
+                if let s = scrub, let i = at, i < points.count {
+                    let px = x(i), c = Theme.change(up ? 1 : -1)
+                    Path { p in p.move(to: CGPoint(x: px, y: 0)); p.addLine(to: CGPoint(x: px, y: g.size.height)) }
+                        .stroke(Theme.sub, lineWidth: 1)
+                    Circle().fill(c).frame(width: 8, height: 8).position(x: px, y: y(points[i]))
+                    // 그림처럼: 위에 날짜·시각(작게, 회색), 밑에 시세(크게). 테두리 없이 카드 바탕만 깔아 제목 글자를 가린다
+                    VStack(spacing: 2) {
+                        Text(Scrub.fmt.string(from: s.date(Double(i) / Double(n)))).appFont(12).monospacedDigit().foregroundStyle(Theme.muted)
+                        Text(s.value(points[i])).appFont(20, .bold).monospacedDigit().foregroundStyle(Theme.ink)
+                    }
+                    .lineLimit(1).fixedSize()
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(Theme.card)
+                    .position(x: min(max(px, 70), g.size.width - 70), y: -24)
                 }
             }
+            .contentShape(Rectangle())
+            .gesture(scrub == nil || points.count < 2 ? nil : DragGesture(minimumDistance: 0)
+                .onChanged { v in at = Int((min(max(v.location.x / max(1, g.size.width), 0), 1) * CGFloat(n)).rounded()) }
+                .onEnded { _ in at = nil })
+            .sensoryFeedback(.selection, trigger: at)
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// 그래프 끌어 보기: 0…1 위치 → 시점, 값 → 글자
+struct Scrub {
+    let date: (Double) -> Date
+    let value: (Double) -> String
+    static let fmt: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.MM.dd HH:mm"; return f }()
+    /// 기간 그래프: 왼쪽 끝 = 기간 전, 오른쪽 끝 = 지금
+    static func period(_ p: Period, _ value: @escaping (Double) -> String) -> Scrub {
+        let days: Double = p == .d1 ? 1 : p == .w1 ? 7 : p.span * 1095
+        let now = Date()
+        return Scrub(date: { now.addingTimeInterval(-(1 - $0) * days * 86400) }, value: value)
     }
 }
 
@@ -66,5 +102,75 @@ struct LogoTile: View {
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+}
+
+// 현재 점 심장 박동: 점에서 점 색 동심원이 두 번(두근) 살짝 퍼지다 사라지고 잠깐 쉰다.
+// 원만 따로 작은 층에 그려서, 움직이는 동안 그래프 자체는 다시 그리지 않는다
+enum Pulse {
+    static let period = 1.6, spread = 0.9, gap = 0.2
+}
+
+/// 퍼지는 원만 (가운데 = 점 자리). 동작 줄이기를 켜면 안 그린다
+struct PulseRing: View {
+    let color: Color
+    var dot: CGFloat = 7
+    @Environment(\.accessibilityReduceMotion) private var still
+    var body: some View {
+        if !still {
+            TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
+                Canvas { ctx, s in
+                    let c = CGPoint(x: s.width / 2, y: s.height / 2)
+                    let ph = tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: Pulse.period)
+                    for k in 0..<2 {
+                        let a = (ph - Double(k) * Pulse.gap) / Pulse.spread
+                        guard a > 0, a < 1 else { continue }
+                        let r = dot / 2 + CGFloat(a) * dot * 1.5
+                        ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
+                                   with: .color(color.opacity(0.6 * (1 - a))), lineWidth: 1.5)
+                    }
+                }
+            }
+            .frame(width: dot * 4.2, height: dot * 4.2)
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+/// SwiftUI 쪽에서 쓰는 박동 점 (원 + 점)
+struct PulseDot: View {
+    let color: Color
+    var dot: CGFloat = 7
+    var body: some View {
+        ZStack {
+            PulseRing(color: color, dot: dot)
+            Circle().fill(color).frame(width: dot, height: dot)
+        }
+    }
+}
+
+extension View {
+    /// 그래프(Canvas) 위에 박동 원만 얹는다. at: 그래프 크기 → 점 자리 (없으면 nil)
+    func pulse(_ color: Color, dot: CGFloat, at p: @escaping (CGSize) -> CGPoint?) -> some View {
+        overlay {
+            GeometryReader { g in
+                if let q = p(g.size) { PulseRing(color: color, dot: dot).position(q) }
+            }
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+// 금액이 바뀔 때 숫자가 한 자리씩 위아래로 넘어가며 바뀐다 (플립)
+extension View {
+    func roll(_ v: Double) -> some View {
+        contentTransition(.numericText(value: v)).animation(.snappy, value: v)
+    }
+}
+
+extension View {
+    /// 글로 된 숫자(분석 카드 값 등)가 바뀔 때 플립
+    func roll(_ s: String) -> some View {
+        contentTransition(.numericText()).animation(.snappy, value: s)
     }
 }

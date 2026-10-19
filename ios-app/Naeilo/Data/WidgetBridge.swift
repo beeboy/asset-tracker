@@ -5,11 +5,12 @@ import WidgetKit
 // summary.json(요약) · feed.json(지금 시세) · live.json(보유·목표)을 읽어 그린다.
 // 예전 위젯 앱은 사이트 동기화 비밀번호로 이 파일들을 받았지만, 한 앱으로 합치면서 앱이 직접 쓴다.
 enum WidgetBridge {
-    /// 위젯 평가 환율: 앱 valFx 와 같게 내 키 원/달러가 있으면 그것, 없으면 매매기준율.
+    /// 위젯 평가 환율: 앱 valFx 와 같게 매매기준율, 없으면 내 키 원/달러.
     /// 예전엔 늘 매매기준율이라 내 키를 쓰는 앱·증권사 화면과 위젯 금액이 달랐다
     @MainActor static func fxMar() -> WFeed.Mar? {
+        if let m = Market.shared.marUse { return WFeed.Mar(rate: m.rate, date: m.date) }
         if let t = Market.shared.tossFx { return WFeed.Mar(rate: t.rate, date: Day.str(Date(timeIntervalSince1970: t.got))) }
-        return Market.shared.mar.map { WFeed.Mar(rate: $0.rate, date: $0.date) }
+        return nil
     }
     @MainActor
     static func write(_ m: AppModel) {
@@ -34,7 +35,7 @@ enum WidgetBridge {
         q["KRW=X"] = [fx.last, fx.prevClose, now.timeIntervalSince1970]
         // 내부 테스트 국내 시세 종목: 위젯이 Yahoo 중계로 직접 받는다 (앱을 열지 않아도 오늘 값)
         var ky: [String: String] = [:]
-        for r in rows where r.sym.currency == .krw && CustomSymbols.shared.isLive(r.id) { ky[r.id] = CustomSymbols.yahoo(for: r.sym) }
+        for r in rows where r.sym.currency == .krw && CustomSymbols.shared.isLive(r.id) && !Market.shared.tossCovers(r.id) { ky[r.id] = CustomSymbols.yahoo(for: r.sym) }
         var feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Self.fxMar())   // 위젯 평가액도 앱과 같은 원/달러 (valFx)
         feed.ky = ky.isEmpty ? nil : ky
         // 토스로 받을 종목 (Market.refreshToss 와 같은 목록): 내 키가 있으면 위젯이 이걸로 토스 지금 가격을 받는다
@@ -91,10 +92,26 @@ enum WidgetBridge {
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")
         Store.write(live, "live.json")
+        Story.pushArt(m)
         Store.write(Story.shared.widget(m), "story.json")   // 서재 위젯: 읽던 자리 한 문단
+        Store.write(small(m, path, cash: cash), WSmall.file)   // 작은 위젯 내 길·목표 페이스
         Store.lastCheck = now
         Store.summarySource = "app"
+        Store.widgetStep = m.playOn ? 3 : max(1, m.nxStep)   // 위젯은 미션 4에서 실제로 한 단계에 맞춰 하나씩 열린다 (개발자 계정도 같게)
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// 작은 위젯 값: 내 길(실제는 40점 안쪽으로 줄인다, 계획선 41점, 앞섬)과 평행 세계 나·모의 바구니 수익률
+    @MainActor static func small(_ m: AppModel, _ p: AppModel.MyPath, cash: Double) -> WSmall {
+        let e = max(p.end, 1e-6), step = max(1, p.pts.count / 40)
+        var pts = stride(from: 0, to: p.pts.count, by: step).map { [p.pts[$0].0 / e, p.pts[$0].1] }
+        if let l = p.pts.last, pts.last?.first != l.0 / e { pts.append([l.0 / e, l.1]) }
+        var me: Double?, bk: Double?
+        if let race = m.parallelRace, race.last >= 0 {
+            let r = m.parallelSeries(race)
+            if r.count > 1, race.last < r[0].count, race.last < r[1].count { me = r[0][race.last]; bk = r[1][race.last] }
+        }
+        return WSmall(path: pts, need: (0...40).map { p.need(e * Double($0) / 40) }, gap: m.myPathGapToday, t0: m.total + cash, me: me, basket: bk)
     }
 
     /// 인물별 위젯 말풍선: 사흘에 한 번은 돌아온 물건 얘기, 나머지 날은 오늘 가장 크게 움직인 종목 (대사 데이터에서)

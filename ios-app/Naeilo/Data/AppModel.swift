@@ -98,9 +98,14 @@ final class AppModel {
     func addHolding(_ id: String, _ qty: String, _ avg: String) -> Bool {
         let num = { (t: String) in Double(t.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)) }
         guard Sample.symbol(id) != nil, let q = num(qty), q > 0, let a = num(avg), a > 0 else { return false }
+        let old = isSample ? nil : holdings.first { $0.symbol == id }, drift0 = calmDrift()
         if isSample { holdings = [] }       // 처음 넣는 내 종목이면 샘플(DRNK·QQQ)은 치운다
         holdings.removeAll { $0.symbol == id }
         holdings.append(Holding(symbol: id, qty: q, avg: a))
+        // 내 투자 습관 기록: 새 종목은 '새 종목 매수', 있던 종목은 수량이 늘면 산 것·줄면 판 것
+        if let s = Sample.symbol(id), old?.qty != q {
+            calmTrade(s, buy: old.map { q > $0.qty } ?? true, avgBefore: old?.avg ?? a, driftBefore: drift0, fresh: old == nil)
+        }
         return true
     }
     /// 평정 지수 기록 (Calm.swift). 내 종목처럼 앱을 다시 켜도 남는다
@@ -162,7 +167,7 @@ final class AppModel {
         var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
         let now = Date(), wd = c.component(.weekday, from: now)
         let fri = c.date(byAdding: .day, value: wd == 1 ? -2 : 6 - wd, to: now) ?? now
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.timeZone = c.timeZone; f.dateFormat = "M월 d일"
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.timeZone = c.timeZone; f.dateFormat = "M/d"
         return f.string(from: fri)
     }
 
@@ -175,22 +180,22 @@ final class AppModel {
     var monthly = 0.0
 
     // MARK: 형식
-    /// 1억 이상은 "5억 2,528만원"처럼 억과 만을 나눠 쓴다 (만 단위에 다섯 자리 숫자는 읽기 어렵다)
+    /// 1억 이상은 "5억 2,528만"처럼 억과 만을 나눠 쓴다 (만 단위에 다섯 자리 숫자는 읽기 어렵다). 만·억 뒤 "원"은 뺀다 (글줄이기)
     static func man(_ krw: Double) -> String {
         let n = Int((krw / 1e4).rounded())
-        let a = abs(n), sign = n < 0 ? "-" : ""
-        guard a >= 10_000 else { return n.formatted(.number.grouping(.automatic)) + "만원" }
+        let a = abs(n), sign = n < 0 ? "−" : ""
+        guard a >= 10_000 else { return sign + a.formatted(.number.grouping(.automatic)) + "만" }
         let eok = a / 10_000, rest = a % 10_000
-        return sign + "\(eok.formatted())억" + (rest > 0 ? " \(rest.formatted())만원" : "원")
+        return sign + "\(eok.formatted())억" + (rest > 0 ? " \(rest.formatted())만" : "")
     }
-    /// 웹 krw()+"원"과 같은 표시: 1억 넘으면 소수 둘째 자리 억 (5.25억원), 1만 넘으면 만원 (826만원). 내 길·전망·홈 평가액
+    /// 웹 krw()와 같은 표시: 1억 넘으면 소수 둘째 자리 억 (5.25억), 1만 넘으면 만 (826만). 내 길·전망·홈 평가액
     static func eok(_ krw: Double) -> String {
-        let a = abs(krw), s = krw < 0 ? "-" : ""
-        if a >= 1e8 { return s + String(format: a >= 1e10 ? "%.0f억원" : "%.2f억원", a / 1e8) }
-        if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + "만원" }
+        let a = abs(krw), s = krw < 0 ? "−" : ""
+        if a >= 1e8 { return s + String(format: a >= 1e10 ? "%.0f억" : "%.2f억", a / 1e8) }
+        if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + "만" }
         return s + Int(a.rounded()).formatted() + "원"
     }
-    /// 부호 붙인 금액 (+826만원, −826만원)
+    /// 부호 붙인 금액 (+826만, −826만)
     static func eokS(_ krw: Double) -> String { (krw >= 0 ? "+" : "−") + eok(abs(krw)) }
     /// 남은 기간 (웹 목표 진행과 같은 표시): 1년 넘으면 소수 한 자리 년, 안 되면 개월·일
     static func leftText(_ y: Double) -> String {
@@ -207,13 +212,13 @@ final class AppModel {
     /// 금액 어림: 만원 반올림, 1억 이상은 "1.2억원" (부호 없음)
     static func aboutWon(_ krw: Double) -> String {
         let a = abs(krw)
-        return a >= 1e8 ? String(format: "%.1f억원", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만원"
+        return a >= 1e8 ? String(format: "%.1f억", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만"
     }
     /// 아직 값이 없으면 0 대신 "—"
     static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }
     static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
-    static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "") + String(format: "%.1f%%", p * 100) }
-    static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "") + "\(Int((p * 100).rounded()))%" }
+    static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(p) * 100) }
+    static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "−") + "\(Int((abs(p) * 100).rounded()))%" }
     static func price(_ s: Symbol, _ x: Double) -> String {
         s.currency == .usd ? "$" + x.formatted(.number.precision(.fractionLength(0...2))) : Int(x.rounded()).formatted() + "원"
     }
@@ -301,17 +306,17 @@ final class AppModel {
     var gTo: String? = nil       // 목표일 (yyyy-MM-dd, 사이트 goal.date). nil = 시작일 + gY년
     var gFrom: String? = nil     // 목표 시작일 (사이트 goal.start_date). 내 길이 여기서 출발한다
     var gA = 2000.0
-    var gM = 100.0
+    var gM = 0.0
     var gMix = "index"
     var gDone: Set<String> = []
     var gWeeks: [GoalWeek] = []
     var gWeekCur: GoalWeek? = nil
     var goalTaxPick = "split"
-    var horizon = 6              // 미션 1·3의 기간 칩 (3·6·12개월)
+    var horizon = 3              // 미션 1·3의 기간 칩 (3·6·12개월)
     var quizAnswer: String? = nil
     var taxGain = 0.0            // 올해 실현 이익 (만원). 사용자가 넣는다
     var taxSellQty = 0.0
-    var nxStep = 3               // 앱 시작 3단계 중 끝낸 단계 수
+    var nxStep = 1               // 앱 시작 3단계 중 끝낸 단계 수 (미션 4에 왔으면 1단계 종목 추가는 이미 한 것)
     var boardPath: [MissionRoute] = []
     var boardPage = 0   // 미션 탭 페이지: 0 목표(본전) 진행, 1 이번 주 예보
     var analysisPath = NavigationPath()
@@ -371,6 +376,9 @@ final class AppModel {
         weeks.append(c); weekCur = nil
         if weeks.count == 4 { done.insert(6) }
     }
+    /// 지난 주차 체크인은 다음 주차가 열리기 전까지 바꿀 수 있다
+    var weekEditable: Bool { !weeks.isEmpty && weeks.count < 4 && weekGate != .open }
+    func editLastWeek(_ p: WeekPick) { if weekEditable { weeks[weeks.count - 1] = p } }
 
     // MARK: 친구·장
     // 세리 외에 열린 친구 수. 처음 연 날부터 이틀째에 한 명씩 하루 1명 (2026-10-16 결정, Support.dayN).
@@ -440,7 +448,7 @@ final class AppModel {
     var routineFact: String {
         let tot = todayMove
         let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
-        let head = rows.isEmpty ? "" : "**오늘 \(Self.sgn(tot))**" + (mv.isEmpty ? "" : " (\(mv))") + ". "     // 오늘 움직임은 진하게 (마크다운)
+        let head = rows.isEmpty ? "" : "**\(Self.sgn(tot))**" + (mv.isEmpty ? "" : " · \(mv)") + "\n"     // 오늘 움직임은 진하게 (마크다운)
         if route == .novice {
             return head + (noviceOwn ? "평가액은" : "모은 돈은") + " 목표의 \(AppModel.pct(goalSaved / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
         }
@@ -449,7 +457,7 @@ final class AppModel {
         if route == .plus {
             let k = gK * 1e4
             let a = Self.pct(vY / k), b = Self.pct(total / k)
-            return head + (a == b ? "목표까지 **\(b)** 그대로예요." : "목표까지 **\(a) → \(b)**로 " + (total >= vY ? "한 칸 다가갔어요." : "한 칸 물러났어요."))
+            return head + (a == b ? "목표 **\(b)** 그대로" : "목표 **\(a) → \(b)**")
         }
         let distNow = cost / total - 1, distY = cost / vY - 1
         if distNow <= 0 { return head + "본전보다 \(Self.sgn(ret)) 위에 있어요." }
@@ -479,13 +487,13 @@ final class AppModel {
             let c = byW.prefix(3).sorted { $0.sym.short < $1.sym.short }
             let chg = c.map { abs($0.sym.quote.change) }, wt = c.map { $0.value / tot }
             let mvList = c.map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
-            let wtList = c.map { "\($0.sym.short) \(Self.pct($0.value / tot))" }.joined(separator: " · ")
+            let wtList = c.sorted { $0.value > $1.value }.map { "\($0.sym.short) \(Self.pct($0.value / tot))" }.joined(separator: " · ")
             qs.append(.init(id: "mover", tag: "오늘 움직임", q: "오늘 가장 크게 움직인 종목은?", opts: c.map(\.sym.short),
                             right: chg.indices.max { chg[$0] < chg[$1] } ?? 0,
                             fb: { _ in "\(mvList). 크게 움직인 종목일수록 내 평가액도 많이 흔들어요." }))
-            qs.append(.init(id: "weight", tag: "비중 퀴즈", q: "내 종목 중 평가액이 가장 큰 건?", opts: c.map(\.sym.short),
+            qs.append(.init(id: "weight", tag: "비중 퀴즈", q: "가장 큰 종목은?", opts: c.map(\.sym.short),
                             right: wt.indices.max { wt[$0] < wt[$1] } ?? 0,
-                            fb: { _ in "\(wtList). 비중이 큰 종목이 내 하루를 가장 많이 정해요." }))
+                            fb: { _ in wtList }))
             let top = byW[0], w = top.value / tot, n = Self.near3(w, step: 0.2, lo: 0, hi: 1)
             qs.append(.init(id: "topshare", tag: "비중 퀴즈", q: "\(top.sym.short)는 내 평가액의 몇 %쯤일까요?", opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
                             fb: { _ in "\(top.sym.short) \(Self.won(top.value)) ÷ 전체 \(Self.won(tot)) = \(Self.pct(w))." }))
@@ -587,9 +595,9 @@ final class AppModel {
     }
     var routineDoneText: String {
         let n = itemsOn
-        if itemsBackDay == day && n > 0 { return "오늘 루틴 끝! 쉼터에 물건(\(Shelter.items[n - 1].name))이 돌아왔어요." }
-        if n < 10 { return "오늘 루틴 끝! 내일도 하면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." }
-        return "오늘 루틴 끝! 물건이 모두 돌아왔어요."
+        if itemsBackDay == day && n > 0 { let x = Shelter.items[n - 1].name; return "루틴 끝! \(x)\(WChar.josa(x)) 돌아왔어요" }
+        if n < 10 { let x = Shelter.items[n].name; return "루틴 끝! 내일 하면 \(x)\(WChar.josa(x)) 돌아와요" }
+        return "루틴 끝! 물건이 다 돌아왔어요"
     }
     var homeSay: String {
         let who = voice(homeFriendShown)
@@ -772,14 +780,14 @@ final class AppModel {
     func resetDemo(_ d: Demo) {
         holdings = Sample.startHoldings
         switch d {
-        case .fresh: done = []; weeks = []; nxStep = 0
+        case .fresh: done = []; weeks = []; nxStep = 1
         case .week1: done = [1, 2, 3, 5]; weeks = [.kept]; nxStep = 3
         case .all: done = [1, 2, 3, 5, 6]; weeks = [.kept, .kept, .changed, .kept]; nxStep = 3
         }
         route = .recover; gDone = []; gWeeks = []; gWeekCur = nil
         weekCur = nil; day = 5; dayLog = [:]; itemsBack = 0; itemsBackDay = nil; itemsOff = []; homeFriend = "seri"; readPos = []; readLast = nil
         interStartAt = nil; goalStartAt = nil; gInterStartAt = nil; recM = 0
-        weekGuess = nil; weekFridaySkip = false; planKey = "balance"; horizon = 6; quizAnswer = nil
+        weekGuess = nil; weekFridaySkip = false; planKey = "balance"; horizon = 3; quizAnswer = nil
         taxGain = 0; taxSellQty = 0; boardPath = []
     }
 }

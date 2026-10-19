@@ -37,8 +37,8 @@ struct GoalSim {
 extension AppModel {
     static func wonK(_ m: Double) -> String {
         if m < 0.5 { return "0원" }
-        if m >= 10000 { return ((m / 1000).rounded() / 10).formatted() + "억원" }
-        return Int(m.rounded()).formatted() + "만원"
+        if m >= 10000 { return ((m / 1000).rounded() / 10).formatted() + "억" }
+        return Int(m.rounded()).formatted() + "만"
     }
     /// cap: 경로 기간 (햇수). 그 안에 닿지 않으면 "N년 넘게"
     static func eta(_ mo: Double, cap: Int = 40) -> String {
@@ -65,7 +65,7 @@ extension AppModel {
     var goalToDate: Date { gTo.flatMap(Day.date) ?? Calendar.current.date(byAdding: .year, value: gY, to: goalFromDate)! }
     /// 목표 시작일부터 목표일까지 (년)
     var goalSpan: Double { max(1.0 / 12, goalToDate.timeIntervalSince(goalFromDate) / (365.25 * 86400)) }
-    var goalToText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy년 M월 d일"; return f.string(from: goalToDate) }
+    var goalToText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.M.d"; return f.string(from: goalToDate) }
 
     /// 사이트 목표(goal)를 그대로 받는다: 금액·목표일·시작일·매달 넣는 돈 (원 → 만원)
     func takeSiteGoal(_ g: [String: Any]) {
@@ -90,12 +90,12 @@ extension AppModel {
     }
 
     static let mixes: [GoalMix] = [
-        .init(id: "index", name: "지수 중심", tag: "단순하게", desc: "미국 전체 지수 80% · 현금 20%", comp: ["I": 0.8, "C": 0.2], basket: nil),
-        .init(id: "grow", name: "성장 더하기", tag: "더 빨리, 더 흔들림", desc: "지수 60% · 성장 지속 업종 30% · 현금 10%", comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
-        .init(id: "steady", name: "버팀목 더하기", tag: "덜 흔들림", desc: "지수 50% · 버팀목 업종 30% · 채권·현금 20%", comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
+        .init(id: "index", name: "지수 중심", tag: "단순하게", desc: "미국 지수 80 · 현금 20", comp: ["I": 0.8, "C": 0.2], basket: nil),
+        .init(id: "grow", name: "성장 더하기", tag: "더 빨리, 더 흔들림", desc: "지수 60 · 성장 업종 30 · 현금 10", comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
+        .init(id: "steady", name: "버팀목 더하기", tag: "덜 흔들림", desc: "지수 50 · 버팀목 업종 30 · 채권·현금 20", comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
     ]
     var mineMix: GoalMix {
-        .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(AppModel.pct(focusWeight))" + (restRows.isEmpty ? "" : " · \(restName) \(AppModel.pct(1 - focusWeight))") + " 그대로",
+        .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(Int((focusWeight * 100).rounded()))" + (restRows.isEmpty ? "" : " · \(restName) \(Int(((1 - focusWeight) * 100).rounded()))"),
               comp: [:], basket: nil, own: true)
     }
     /// 내 길의 '지금 구성': 시작 전 루트는 지수 중심 (neededMonthly 와 같다)
@@ -103,19 +103,19 @@ extension AppModel {
     /// 처음 닿는 때를 셀 긴 기간 (햇수): 목표일 뒤에 닿는 경우도 보이게
     var etaYears: Int { max(10, gY * 2) }
     /// 목표 확률을 쉬운 말로
-    static func verdict(_ p: Double) -> String { p >= 0.7 ? "높아요" : p >= 0.3 ? "반반이에요" : "낮아요" }
+    static func verdict(_ p: Double) -> String { p >= 0.6 ? "높음" : p >= 0.4 ? "반반" : "낮음" }   // 반반은 40~60% (30%를 반반이라 부르지 않게)
     /// 오늘부터 mo 개월 뒤를 연도 소수로 (2031.25 = 2031년 4월 무렵)
     static func yearAt(_ mo: Double) -> Double {
         let c = Calendar.current.dateComponents([.year, .month], from: Date())
         return Double(c.year ?? 2026) + (Double((c.month ?? 1) - 1) + mo) / 12
     }
-    /// 오늘부터 mo 개월 뒤 "2031년 4월" (기간 안에 없으면 "N년 넘게")
+    /// 오늘부터 mo 개월 뒤 "2031.4" (기간 안에 없으면 "N년 넘게")
     static func whenText(_ mo: Double, cap: Int) -> String {
         guard mo.isFinite else { return "\(cap)년 넘게" }
         guard mo > 0 else { return "지금" }
         let d = Calendar.current.date(byAdding: .month, value: Int(mo.rounded()), to: Date()) ?? Date()
         let c = Calendar.current.dateComponents([.year, .month], from: d)
-        return "\(c.year ?? 0)년 \(c.month ?? 0)월"
+        return "\(c.year ?? 0).\(c.month ?? 0)"
     }
     var goalMixes: [GoalMix] { route == .novice ? Self.mixes : [mineMix] + Self.mixes }
     var selectedMix: GoalMix { goalMixes.first { $0.id == gMix } ?? goalMixes[0] }
@@ -244,10 +244,10 @@ extension AppModel {
     /// 홈 카드 페이스 문장
     static func paceText(_ p: GoalPace) -> String {
         switch p {
-        case .onTrack: return "계획한 속도대로 가고 있어요."
-        case .ahead(let n): return n > 6 ? "계획보다 많이 빨라요." : "계획한 속도보다 조금 빨라요."
-        case .behind(let n): return n > 6 ? "계획보다 많이 늦어요." : "계획한 속도보다 조금 늦어요."
-        case .unreachable: return "지금 속도로는 목표에 닿기 어려워요."
+        case .onTrack: return "계획대로"
+        case .ahead(let n): return n > 6 ? "많이 빨라요" : "조금 빨라요"
+        case .behind(let n): return n > 6 ? "많이 늦어요" : "조금 늦어요"
+        case .unreachable: return "지금 속도론 어려워요"
         }
     }
 
@@ -307,23 +307,23 @@ extension AppModel {
     var goalPresets: [GoalPreset] {
         let A = goalStart
         func meaning(_ k: Double) -> String {
-            k <= 1000 ? "첫 목표 · 적립 습관 만들기" : k <= 10000 ? "연 7%면 한 해 \(Self.wonK(k * 0.07))씩 불어나는 크기" : "연 4%씩 꺼내 쓰면 월 \(Self.wonK(k * 0.04 / 12))"
+            k <= 1000 ? "첫 목표 · 적립 습관" : k <= 10000 ? "연 7%면 해마다 +\(Self.wonK(k * 0.07).replacingOccurrences(of: "원", with: ""))" : "연 4% 꺼내면 월 \(Self.wonK(k * 0.04 / 12).replacingOccurrences(of: "원", with: ""))"
         }
         // 플러스: 기간마다 '매달 넣는 돈으로 닿을 확률 50% 근처' 금액 (배수 프리셋 대신, 2026-10-11 결정)
         if route != .novice {
             return [1, 3, 5, 10].map { y in
                 let k = autoGoal(years: y)
                 return GoalPreset(k: k, y: y, name: Self.wonK(k).replacingOccurrences(of: "원", with: ""),
-                                  mean: (gM > 0 ? "월 \(Self.wonK(gM))씩 넣으면" : "적립 없이") + " 닿을 확률 50% 근처",
-                                  need: A > 0 ? "지금의 \(String(format: "%.1f", k / A))배" : "")
+                                  mean: "",   // '적립 없이 확률 50%' 는 카드 위에 한 번만
+                                  need: A > 0 ? "×\(String(format: "%.1f", k / A))" : "")
             }
         }
-        let raw: [(Double, Int, String, Int?)] = [(1000, 3, "첫 1,000만원", nil), (10000, 5, "1억", nil), (30000, 10, "3억", nil), (100000, 20, "10억", nil)]
+        let raw: [(Double, Int, String, Int?)] = [(1000, 3, "첫 1,000만", nil), (10000, 5, "1억", nil), (30000, 10, "3억", nil), (100000, 20, "10억", nil)]
         return raw.map { k, y, name, x in
             let nm = neededMonthly(k: k, years: y), cagr = A > 0 ? pow(k / A, 1 / Double(y)) - 1 : 0
             return GoalPreset(k: k, y: y, name: x.map { "\(name) (\($0)배)" } ?? name,
-                              mean: x != nil ? "적립 없이 가려면 한 해 +\(Int((cagr * 100).rounded()))%씩" : meaning(k),
-                              need: nm > 0 ? "월 " + Self.wonK(nm) : "이미 충분")
+                              mean: x != nil ? "적립 없이 연 +\(Int((cagr * 100).rounded()))%" : meaning(k),
+                              need: nm > 0 ? "월 " + Self.wonK(nm).replacingOccurrences(of: "원", with: "") : "이미 충분")
         }
     }
 
@@ -363,7 +363,7 @@ extension AppModel {
             if !restRows.isEmpty { rs.append((rn, AppModel.pct(1 - w), "그대로", true)) }
             return Shift(rows: rs,
                          line: "\(fn) \(sec.isEmpty ? "" : sec + " ")\(AppModel.pct(w))" + (restRows.isEmpty ? "" : " · \(rn) \(AppModel.pct(1 - w))"),
-                         note: (hot ? "\(fn) 업종(\(ind?.ko ?? ""))은 지금 과열이에요. " : "") + "다른 구성 카드에서 바꿀 비중을 볼 수 있어요.", weights: ["T": w, "I": 1 - w])
+                         note: (hot ? "\(fn) 업종(\(ind?.ko ?? "")) 과열 · " : "") + "바꿀 비중은 다른 구성에서", weights: ["T": w, "I": 1 - w])
         }
         let keys = ["T", "I", "G", "B", "C"]
         if route == .novice {
@@ -382,10 +382,10 @@ extension AppModel {
         }
         let short = ["T": fn, "I": label["I"]!, "G": "성장", "B": "버팀목", "C": "현금"]
         let line = used.map { k in short[k]! + " " + ((now[k] ?? 0) > 0 ? "\(Int(((now[k] ?? 0) * 100).rounded()))→\(AppModel.pct(tgt[k] ?? 0))" : "+" + AppModel.pct(tgt[k] ?? 0)) }.joined(separator: " · ")
-        var note = hot ? "이 구성은 과열 업종 한 종목을 10%까지로 잡아요." : "이 구성은 한 종목을 10%까지로 잡아요."
+        var note = hot ? "과열 업종 한 종목 최대 10%" : "한 종목 최대 10%"
         if tT < w && gM > 0 && tot > 0 {
             let mo = ceil((w * tot / tT - tot) / gM)
-            note += " 적립만으로 비중이 맞춰지려면 약 \(Self.eta(mo).replacingOccurrences(of: " 뒤", with: "")) 걸려요. 매도로 맞추면 이익에 세금이 붙어요 (세금 화면)."
+            note += " · 적립만으로 약 \(Self.eta(mo).replacingOccurrences(of: " 뒤", with: "")) · 팔면 세금 (세금 화면)"
         }
         return Shift(rows: rows, line: line, note: note, weights: tgt, sell: max(0, w - tT))
     }
@@ -398,7 +398,11 @@ extension AppModel {
     func confirmGoalMonth() {
         guard let c = gWeekCur, gWeeks.count < 3, monthGate == .open else { return }
         gWeeks.append(c); gWeekCur = nil
+        if gWeeks.count == 3 { gDone.insert("inter") }
     }
+    /// 지난 달 체크인은 다음 달이 열리기 전까지 바꿀 수 있다
+    var monthEditable: Bool { !gWeeks.isEmpty && gWeeks.count < 3 && monthGate != .open }
+    func editLastMonth(_ p: GoalWeek) { if monthEditable { gWeeks[gWeeks.count - 1] = p } }
     /// 넣은 종목이 있으면 그 평가액 (적립도 종목 수량으로 들어가니 따로 더하지 않는다)
     var goalSaved: Double { noviceOwn ? total / 1e4 : gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
 
@@ -408,11 +412,11 @@ extension AppModel {
         switch r {
         case .recover: break
         case .plus:
-            // 기본 목표: 3년 안에 닿을 확률 50% 근처 (매달 넣는 돈은 회복 루트에서 고른 값, 없으면 30만원)
+            // 기본 목표: 3년 안에 닿을 확률 50% 근처 (매달 넣는 돈은 회복 루트에서 고른 값, 없으면 0)
             gMix = "mine"
             // 사이트와 동기화 중이고 사이트에 정한 목표가 아직 남아 있으면 그 목표를 그대로 쓴다
             if Sync.shared.isOn, gTo != nil, goalToDate > Date() { break }
-            gM = recM > 0 ? Double(recM) : 30; gY = 3; gFrom = Day.today; setAutoGoal(years: 3)
+            gM = recM > 0 ? Double(recM) : 0; gY = 3; gFrom = Day.today; setAutoGoal(years: 3)
         case .novice: gA = 0; gK = 1000; gY = 3; gM = 30; gMix = "index"; gFrom = Day.today
         }
         monthly = r == .recover ? 0 : gM     // 3년 전망의 '만약에 매달' 기본값 = 적립액

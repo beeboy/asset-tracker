@@ -5,7 +5,7 @@ import Foundation
 // 근거: project-files research/가위바위보-심리학과-투자.md 6절, notes/가위바위보-지수-캐릭터-매칭안-2026-10-10.md
 
 struct CalmEvent: Codable, Equatable {
-    enum Act: String, Codable { case rule, chase, switchOut, avgDown, trim, wait }
+    enum Act: String, Codable { case rule, chase, switchOut, avgDown, trim, wait, fresh }   // fresh: 새 종목 매수
     var day: String        // yyyy-MM-dd
     var sym: String
     var buy: Bool          // 산 것인지 (판 것·기다림은 false)
@@ -23,6 +23,7 @@ struct CalmEvent: Codable, Equatable {
         case .avgDown: "손실 뒤 추가 매수"
         case .trim: "수익 뒤 덜어내기"
         case .wait: "큰 변동일 기다림"
+        case .fresh: "새 종목 매수"
         }
     }
 }
@@ -65,7 +66,7 @@ struct Calm: Codable, Equatable {
         case .rule: return 2
         case .wait: return 1
         case .chase, .switchOut: return -1
-        case .avgDown, .trim: return 0
+        case .avgDown, .trim, .fresh: return 0
         }
     }
 
@@ -193,11 +194,12 @@ struct Calm: Codable, Equatable {
     /// 기록마다 왜 그 점수인지 한 줄 (점수표 points와 같은 뜻)
     static func reason(_ a: CalmEvent.Act) -> String {
         switch a {
-        case .rule: return "정해 둔 규칙대로 해서 +2점"
-        case .wait: return "크게 움직인 날 기다려서 +1점"
-        case .chase: return "오른 뒤 더 사서 −1점"
-        case .switchOut: return "내린 뒤 팔아서 −1점"
-        case .avgDown, .trim: return "물타기·덜어내기는 규칙 밖이라 점수가 없어요"
+        case .rule: return "규칙대로"
+        case .wait: return "급변일 기다림"
+        case .chase: return ""
+        case .switchOut: return "내린 뒤 매도"
+        case .avgDown, .trim: return "규칙 밖"
+        case .fresh: return "새 종목 · 기록만"
         }
     }
 
@@ -274,7 +276,7 @@ struct Calm: Codable, Equatable {
             "sua": [.rule: "제때 했어요.", .chase: "말이 먼저 왔네요. 다음엔 한 박자 쉬어요.", .switchOut: "먼저 돌아섰네요. 다음엔 한 박자 쉬어요.",
                     .avgDown: "더 샀네요. 점수는 그대로예요.", .trim: "덜었네요. 점수는 그대로예요.", .wait: "오늘은 침묵을 골랐어요."],
         ]
-        return lines[who]?[a] ?? lines["seri"]![a]!
+        return lines[who]?[a] ?? lines["seri"]?[a] ?? "기록했어요."
     }
 }
 
@@ -449,9 +451,9 @@ extension AppModel {
     /// 규칙 신호: 회복 루트는 몰린 종목 비중이 계획에서 5%p 넘게 벗어났을 때, 목표 루트는 그달 첫 적립 매수
     func calmDrift() -> Double? { isGoal ? nil : abs(focusWeight - planWeight) }
 
-    /// 수량 고치기에서 '더 샀어요'·'팔았어요'·'지우기'를 저장한 뒤 부른다. 기록한 행동을 돌려준다
+    /// 수량 고치기(직접 고치기로 수량이 바뀐 것 포함)·종목 추가를 저장한 뒤 부른다. 기록한 행동을 돌려준다
     @discardableResult
-    func calmTrade(_ sym: Symbol, buy: Bool, avgBefore: Double, driftBefore: Double?) -> CalmEvent.Act {
+    func calmTrade(_ sym: Symbol, buy: Bool, avgBefore: Double, driftBefore: Double?, fresh: Bool = false) -> CalmEvent.Act {
         let today = Day.today, win = sym.last >= avgBefore
         var rule = false
         if let d0 = driftBefore, d0 >= 0.05, let d1 = calmDrift() { rule = d1 < d0 }
@@ -459,14 +461,43 @@ extension AppModel {
             let month = String(today.prefix(7))
             rule = !calm.events.contains { $0.buy && $0.day.hasPrefix(month) }
         }
-        let act: CalmEvent.Act = rule ? .rule : win ? (buy ? .chase : .trim) : (buy ? .avgDown : .switchOut)
+        let act: CalmEvent.Act = rule ? .rule : fresh ? .fresh : win ? (buy ? .chase : .trim) : (buy ? .avgDown : .switchOut)
         calm.record(CalmEvent(day: today, sym: sym.id, buy: buy, win: win, act: act, big: abs(sym.quote.change) >= 0.05, pts: 0))
         return act
+    }
+
+    /// 한 번만: 이 기록이 생기기 전 수량 기록(lots)에서 날짜별 수량 변화를 찾아 내 투자 습관에 채운다.
+    /// 첫 줄은 시작 수량이라 빼고, 이미 있는 날·종목은 건너뛴다. 그날 종가와 지금 평균 단가로 수익·손실을 보고, 종가를 모르면 점수 없는 기록으로
+    func calmBackfill() {
+        let flag = "calm.backfill.v1", ud = UserDefaults.standard
+        guard !isSample, persists, !ud.bool(forKey: flag) else { return }
+        ud.set(true, forKey: flag)
+        var add: [CalmEvent] = []
+        for (a, b) in zip(lots, lots.dropFirst()) where b.d < Day.today {
+            for t in Set(a.h.keys).union(b.h.keys) {
+                let q0 = a.h[t] ?? 0, q1 = b.h[t] ?? 0
+                guard q0 != q1, let id = Sync.appId(t), id != "DRNK",
+                      !calm.events.contains(where: { $0.day == b.d && $0.sym == id }) else { continue }
+                let buy = q1 > q0, h = PriceHistory.of(id), close = h?.on(b.d)
+                let prev = h.flatMap { h in h.dates.lastIndex { $0 < b.d }.map { h.closes[$0] } }
+                let big = close.flatMap { c in prev.map { abs(c / $0 - 1) >= 0.05 } } ?? false
+                let avg = holdings.first { $0.symbol == id }?.avg
+                let win = close.flatMap { c in avg.map { c >= $0 } }
+                let act: CalmEvent.Act = q0 == 0 ? .fresh : win.map { $0 ? (buy ? .chase : .trim) : (buy ? .avgDown : .switchOut) } ?? (buy ? .avgDown : .trim)
+                add.append(CalmEvent(day: b.d, sym: id, buy: buy, win: win ?? false, act: act, big: big, pts: Calm.points(act)))
+            }
+        }
+        guard !add.isEmpty else { return }
+        var c = calm
+        c.events = (add + c.events).sorted { $0.day < $1.day }.suffix(Calm.keep).map { $0 }
+        c.refreshType(); c.climb()
+        calm = c
     }
 
     /// 홈을 열 때: 함께한 날을 세고, 내 종목이 ±5% 넘게 움직였는데 오늘 매매가 없으면 기다림 +1 (하루 한 번)
     func calmOpen() {
         let today = Day.today
+        calmBackfill()
         recordDay()   // 내 기록: 홈을 연 날 한 줄 (같은 날은 지금 값으로 고침)
         if !calm.events.contains(where: { $0.day == today }),
            let r = rows.filter({ abs($0.sym.quote.change) >= 0.05 }).max(by: { abs($0.sym.quote.change) < abs($1.sym.quote.change) }) {
