@@ -910,6 +910,7 @@ struct TownView: View {
     @AppStorage("town.arrive") private var arrive = ""
     @State private var talk: TownLook.Resident? = nil
     @State private var dress: TownLook.Resident? = nil
+    @State private var us: TownLook.Resident? = nil
     @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
@@ -929,6 +930,11 @@ struct TownView: View {
                     let p = Self.spots[i]
                     Button { talk = r } label: {
                         TownFace(id: r.id, note: book.note(r.id), width: 48, height: 68)
+                            .overlay(alignment: .topTrailing) {
+                                // 기분: 별사탕 받은 날은 하트, 자기 종목이 내리면 시무룩
+                                if book.cheered(r.id) { Text("♥").appFont(13, .bold).foregroundStyle(Color(red: 0.95, green: 0.35, blue: 0.45)) }
+                                else if TownLook.mood(r) < 0 { Text("…").appFont(13, .bold).foregroundStyle(.white) }
+                            }
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(TownLook.shown(r, book.note(r.id)))
@@ -938,7 +944,7 @@ struct TownView: View {
                     Text("아직 이사 온 주민이 없어요").appFont(14).foregroundStyle(.white)
                 }
                 if let r = talk {
-                    VStack { Spacer(); TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), dress: { dress = r }) { talk = nil } }
+                    VStack { Spacer(); TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), dress: { dress = r }, us: { us = r }) { talk = nil } }
                         .padding(10)
                 }
             }
@@ -955,6 +961,7 @@ struct TownView: View {
             }
         }
         .sheet(item: $dress) { TownDress(res: $0) }
+        .sheet(item: $us) { TownUs(res: $0) }
     }
 
     // 바닥: 풀밭과 흙길 (그림 파일 없이 색만)
@@ -1031,6 +1038,8 @@ enum TownLook {
         "{move}\n오늘은 어떤 하루였어요?",
     ]]
     static func daily(_ res: Resident, _ n: TownBook.Note, lang: String = "ko") -> String {
+        // 몇 달 전 내 답이 있으면 그날은 그걸 꺼내 얘기한다
+        if let back = TownLog.shared.recall(res.id, price(res)) { return back + "\n" + line(res) }
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         let days = f.date(from: n.moved).map { (Calendar.current.dateComponents([.day], from: $0, to: Date()).day ?? 0) + 1 } ?? 0
         let mo = Calendar.current.component(.month, from: Date())
@@ -1051,11 +1060,31 @@ enum TownLook {
     }
     static func line(_ r: AppModel.Row) -> String {
         let live = r.sym.quote.live
-        let v = live ? r.sym.quote.change : (r.cost > 0 ? r.value / r.cost - 1 : 0)
+        let v = move(r)
         let pct = String(format: "%.1f%%", abs(v) * 100)
         let when = live ? "오늘" : "산 뒤로"
         if abs(v) < 0.001 { return live ? "오늘은 그대로예요. 조용한 하루네요." : "산 뒤로 그대로예요." }
         return v > 0 ? "\(when) \(pct) 올랐어요!" : "\(when) \(pct) 내렸어요…"
+    }
+    static func move(_ r: AppModel.Row) -> Double {
+        r.sym.quote.live ? r.sym.quote.change : (r.cost > 0 ? r.value / r.cost - 1 : 0)
+    }
+    /// 기분: 맡은 종목 오르내림을 평가액으로 묶은 값. 0 아래면 시무룩
+    static func mood(_ res: Resident) -> Double {
+        let v = res.value
+        return v > 0 ? res.rows.reduce(0) { $0 + move($1) * $1.value } / v : 0
+    }
+    /// 예측을 매길 값: 대표 종목의 지금 가격
+    static func price(_ res: Resident) -> Double? {
+        guard let p = res.rows.first?.sym.quote.last, p > 0 else { return nil }
+        return p
+    }
+    /// 내 답에서 방향 읽기: 오른다 +1, 내린다 -1, 모르겠으면 0
+    static func guess(_ s: String) -> Int {
+        let up = ["오를", "오르", "올라", "오른", "상승", "반등", "떡상", "↑"]
+        let dn = ["내릴", "내려", "내린", "떨어", "하락", "빠질", "빠져", "떡락", "↓"]
+        let u = up.contains { s.contains($0) }, d = dn.contains { s.contains($0) }
+        return u == d ? 0 : (u ? 1 : -1)
     }
 }
 
@@ -1066,6 +1095,7 @@ struct TownTalk: View {
     let note: TownBook.Note
     var hello = false
     let dress: () -> Void
+    let us: () -> Void
     let close: () -> Void
     @State private var shown = 0
     @State private var say = ""
@@ -1086,6 +1116,9 @@ struct TownTalk: View {
                     Text(TownLook.shown(res, note)).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
                     Text(res.name).appFont(11).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
                     Spacer(minLength: 0)
+                    Button("우리 사이", action: us).appFont(12, .bold).foregroundStyle(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
                     Button("꾸미기", action: dress).appFont(12, .bold).foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
@@ -1109,7 +1142,7 @@ struct TownTalk: View {
                 if !say.isEmpty && shown >= full.count {
                     TextField("", text: $me, prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
                         .appFont(14).foregroundStyle(.white).submitLabel(.done)
-                        .onSubmit { log.answer(res.id, me) }
+                        .onSubmit { log.answer(res.id, me, price: TownLook.price(res)) }
                         .padding(.horizontal, 8).padding(.vertical, 6)
                         .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
                 }
@@ -1118,7 +1151,7 @@ struct TownTalk: View {
         .padding(12)
         .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
-        .onDisappear { if !say.isEmpty { log.answer(res.id, me) } }
+        .onDisappear { if !say.isEmpty { log.answer(res.id, me, price: TownLook.price(res)) } }
         .task(id: res.id) {
             // 오늘 처음 말을 걸 때 한마디를 정해 기록에 남긴다 (하루 동안 같은 말)
             let e = log.today(res.id) { TownLook.daily(res, note) }
@@ -1151,7 +1184,7 @@ struct TownTalk: View {
 /// 주민 수첩: 별명 · 모자 · 모자 색 · 이사 온 날. 주민마다 몇 글자라 UserDefaults 한 칸에 JSON (떠나도 지우지 않는다: 옛 이웃)
 @Observable final class TownBook {
     static let shared = TownBook()
-    struct Note: Codable, Equatable { var name: String? = nil; var hat = 0; var tint = 0; var moved = "" }
+    struct Note: Codable, Equatable { var name: String? = nil; var hat = 0; var tint = 0; var moved = ""; var gifts: Int? = nil; var cheer: String? = nil }
     private(set) var notes: [String: Note]
     private static let key = "town.book"
     private init() {
@@ -1170,12 +1203,27 @@ struct TownTalk: View {
         set(id, Note(moved: f.string(from: Date())))
         return true
     }
+    /// 별사탕: 답을 남긴 날마다 하나 (하루 하나). 시무룩한 주민에게 주면 그날 기운 차림
+    private(set) var candy = UserDefaults.standard.integer(forKey: "town.candy")
+    func earn() {
+        let d = TownLog.day
+        guard UserDefaults.standard.string(forKey: "town.candyDay") != d else { return }
+        UserDefaults.standard.set(d, forKey: "town.candyDay")
+        candy += 1; UserDefaults.standard.set(candy, forKey: "town.candy")
+    }
+    func give(_ id: String) {
+        guard candy > 0 else { return }
+        candy -= 1; UserDefaults.standard.set(candy, forKey: "town.candy")
+        var n = note(id); n.gifts = (n.gifts ?? 0) + 1; n.cheer = TownLog.day
+        set(id, n)
+    }
+    func cheered(_ id: String) -> Bool { notes[id]?.cheer == TownLog.day }
 }
 
 /// 대화 기록(일기장): 주민마다 날짜 · 하루 한마디 · 내 답 한 줄. 몇 글자라 UserDefaults 한 칸에 JSON, 주민마다 최근 400일만
 @Observable final class TownLog {
     static let shared = TownLog()
-    struct Entry: Codable, Equatable { var day: String; var say: String; var me: String? = nil }
+    struct Entry: Codable, Equatable { var day: String; var say: String; var me: String? = nil; var p: Double? = nil; var back: Bool? = nil }   // p: 답할 때 가격, back: 꺼내 봤음
     private(set) var logs: [String: [Entry]]
     private static let key = "town.log"
     private static let keep = 400
@@ -1197,14 +1245,52 @@ struct TownTalk: View {
         return e
     }
     /// 오늘 내 답 한 줄 (빈 칸이면 지움)
-    func answer(_ id: String, _ me: String) {
+    func answer(_ id: String, _ me: String, price: Double? = nil) {
         guard var l = logs[id], let last = l.last, last.day == Self.day else { return }
         let t = me.trimmingCharacters(in: .whitespacesAndNewlines)
         let v: String? = t.isEmpty ? nil : String(t.prefix(60))
         guard v != last.me else { return }
         l[l.count - 1].me = v
+        l[l.count - 1].p = v == nil ? nil : (last.p ?? price)
         logs[id] = l
         save()
+        if v != nil { TownBook.shared.earn() }
+    }
+    static let ripe = 90    // 내 답을 꺼내고 예측을 매기는 날 수 (석 달)
+    static func age(_ day: String) -> Int {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: day).map { Calendar.current.dateComponents([.day], from: $0, to: Date()).day ?? 0 } ?? 0
+    }
+    /// 몇 달 전 내 답 하나 꺼내기 (오래된 것부터 한 번씩). 그때 가격과 견줘 맞혔는지
+    func recall(_ id: String, _ price: Double?) -> String? {
+        guard var l = logs[id], let i = l.firstIndex(where: { $0.me != nil && $0.back != true && Self.age($0.day) >= Self.ripe }),
+              let me = l[i].me else { return nil }
+        l[i].back = true
+        logs[id] = l
+        save()
+        var s = "\(max(3, Self.age(l[i].day) / 30))달 전에 \"\(me)\"라고 했죠."
+        if let p = l[i].p, let now = price, p > 0 {
+            let v = now / p - 1
+            s += String(format: " 그때보다 %.1f%% ", abs(v) * 100) + (v >= 0 ? "올랐어요." : "내렸어요.")
+            let g = TownLook.guess(me)
+            if g != 0 { s += (g > 0) == (v >= 0) ? " 맞혔네요!" : " 빗나갔네요." }
+        }
+        return s
+    }
+    /// 우리 사이: 남긴 답 · 매긴 예측(석 달 지난 것) · 맞힌 예측
+    func score(_ id: String, _ price: Double?) -> (said: Int, judged: Int, hit: Int) {
+        let mine = log(id).filter { $0.me != nil }
+        var j = 0, h = 0
+        if let now = price {
+            for e in mine where Self.age(e.day) >= Self.ripe {
+                guard let p = e.p, p > 0, let me = e.me else { continue }
+                let g = TownLook.guess(me)
+                if g == 0 { continue }
+                j += 1
+                if (g > 0) == (now >= p) { h += 1 }
+            }
+        }
+        return (mine.count, j, h)
     }
     private func save() {
         if let d = try? JSONEncoder().encode(logs) { UserDefaults.standard.set(d, forKey: Self.key) }
@@ -1297,5 +1383,49 @@ struct TownDress: View {
             }
         }
         .presentationDetents([.medium])
+    }
+}
+
+/// 우리 사이: 이사 온 날 · 함께한 날 · 내 답과 예측 적중 · 별사탕 주기 (시장 정보 아님)
+struct TownUs: View {
+    let res: TownLook.Resident
+    @Environment(\.dismiss) private var dismiss
+    private var book: TownBook { TownBook.shared }
+    var body: some View {
+        let n = book.note(res.id)
+        let s = TownLog.shared.score(res.id, TownLook.price(res))
+        let days = n.moved.isEmpty ? 0 : TownLog.age(n.moved) + 1
+        let sad = TownLook.mood(res) < 0
+        let cheer = book.cheered(res.id)
+        NavigationStack {
+            VStack(spacing: 14) {
+                TownFace(id: res.id, note: n, width: 72, height: 102)
+                VStack(spacing: 0) {
+                    row("이사 온 날", n.moved.replacingOccurrences(of: "-", with: "."))
+                    row("함께한 날", "\(days)일")
+                    row("남긴 답", "\(s.said)줄")
+                    row("예측 적중", s.judged == 0 ? "석 달 뒤부터" : "\(s.hit) / \(s.judged)")
+                    row("받은 별사탕", "\(n.gifts ?? 0)개")
+                }
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                Button { book.give(res.id) } label: {
+                    Text(cheer ? "기운 났어요! ♥" : sad ? "별사탕 주기 (\(book.candy)개)" : "지금은 기운이 넘쳐요")
+                        .appFont(15, .bold).frame(maxWidth: .infinity).padding(12)
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(cheer || !sad || book.candy == 0)
+                Text("별사탕은 답을 남긴 날마다 하나씩 생겨요").appFont(12).foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(20)
+            .navigationTitle(TownLook.shown(res, n)).navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+        }
+        .presentationDetents([.medium, .large])
+    }
+    private func row(_ k: String, _ v: String) -> some View {
+        HStack { Text(k).appFont(14).foregroundStyle(.secondary); Spacer(); Text(v).appFont(14, .bold) }
+            .padding(.horizontal, 14).padding(.vertical, 10)
     }
 }
