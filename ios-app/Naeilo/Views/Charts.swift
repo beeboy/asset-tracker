@@ -116,3 +116,10 @@ struct PulseDot: View {
         .allowsHitTesting(false)
     }
 }
+
+// 금액이 바뀔 때 숫자가 한 자리씩 위아래로 넘어가며 바뀐다 (플립)
+extension View {
+    func flip(_ v: Double) -> some View {
+        contentTransition(.numericText(value: v)).animation(.snappy, value: v)
+    }
+}

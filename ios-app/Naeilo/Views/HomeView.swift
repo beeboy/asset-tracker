@@ -57,7 +57,7 @@ struct HomeView: View {
                 .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 // 금액은 길어도 꺾지 않고 한 줄로, 자리가 모자라면 글자를 줄인다
-                Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5)
+                Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5).flip(now)
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
                 if value && m.cost > 0 {
                     Text(AppModel.sgn(m.ret)).appFont(14, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
@@ -102,7 +102,7 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("평가액 · 넣은 돈 \(AppModel.man(m.cost))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(AppModel.man(m.total)).appFont(32, .bold).tracking(-0.5)
+                Text(AppModel.man(m.total)).appFont(32, .bold).tracking(-0.5).flip(m.total)
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
                 Text(AppModel.sgn(m.ret)).appFont(16, .bold).lineLimit(1).fixedSize()
                     .foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
