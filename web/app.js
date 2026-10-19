@@ -2175,6 +2175,7 @@
         series: [...others, { name: FC_SHORT[sel], y: add(f.bands.p50), color: "var(--c1)", width: 2.4 }],
         hlines: [{ y: g.amount, label: "목표 " + fcAmt(g.amount) }],
         vlines: [{ x: L.b.model.startDate, label: "지금 " + fcAmt(now) }],
+        nowDot: { x: L.b.model.startDate, y: now, color: "var(--c1)" },
       });
     } else $("#fcMainChart").innerHTML = "";
     $("#fcHot").textContent = mu > 0.3 ? `연 ${spct(mu, 0)}는 흔치 않은 속도예요. 지난 3년이 유난히 좋았다면 실제로는 이보다 낮을 수 있어요.` : "";
