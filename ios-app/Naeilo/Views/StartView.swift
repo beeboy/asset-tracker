@@ -125,8 +125,15 @@ struct StartForecastCard: View {
     }
 
     // 3년 부채꼴: 5~95 띠, 25~75 띠, 보통의 경우 선, 노란 점선(목표·본전·넣은 돈)
+    /// 부채꼴 시작점 (박동 원 자리). fan 의 X·Y 와 같은 셈
+    private static func fanStart(_ e: Ex, _ s: CGSize) -> CGPoint {
+        let top = max(value(e.v0, e.monthly, 3, 1.645), (e.line ?? 0)) * 1.05
+        let bot = e.v0 > 0 ? min(value(e.v0, e.monthly, 3, -1.645), e.v0) * 0.97 : 0
+        let v = value(e.v0, e.monthly, 0, 0)
+        return CGPoint(x: 6, y: s.height - 6 - CGFloat((v - bot) / (top - bot)) * (s.height - 12))
+    }
+
     private func fan(_ e: Ex) -> some View {
-    
         Canvas { ctx, size in
             let W = size.width, H = size.height
             let ts = stride(from: 0.0, through: 3, by: 0.1).map { $0 }
