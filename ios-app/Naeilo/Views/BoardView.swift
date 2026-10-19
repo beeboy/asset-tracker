@@ -197,7 +197,7 @@ struct BoardView: View {
                 Text("1칸 = \(unit)").appFont(12).foregroundStyle(Theme.sub)
             }
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(n.formatted())칸").appFont(26, .bold)
+                Text("\(n.formatted())칸").appFont(26, .bold).flip("\(n.formatted())칸")
                 Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
                 Text(chg == 0 ? "어제와 같음" : "어제보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
             }
@@ -275,7 +275,7 @@ struct WeekForecastCard: View {
     private func forecastCard(r: (lo: Double, hi: Double, actual: Double), px: @escaping (Double) -> Double, inside: Bool, lo: String, hi: String) -> some View {
             Card {
                 Label("\(m.weekFridayText) 금 마감 예보", systemImage: "sun.max.fill").appFont(13, .bold).foregroundStyle(Theme.forecast)
-                Text("\(lo) ~ \(hi)").appFont(28, .bold).lineLimit(1).minimumScaleFactor(0.7)
+                Text("\(lo) ~ \(hi)").appFont(28, .bold).lineLimit(1).minimumScaleFactor(0.7).flip("\(lo) ~ \(hi)")
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Theme.track).frame(height: 12)

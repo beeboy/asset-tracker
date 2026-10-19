@@ -153,7 +153,7 @@ private struct Kpi: View {
     var body: some View {
         let box = VStack(alignment: .leading, spacing: 2) {
             Text(k).appFont(12).foregroundStyle(Theme.sub)
-            Text(v).appFont(18, .bold).foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.7)
+            Text(v).appFont(18, .bold).foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.7).flip(v)
             Text(sub).appFont(11).foregroundStyle(Theme.muted)
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -240,7 +240,7 @@ struct MyPathClassicView: View {
             pinnedBox {
                 DetailHead(title: "내 길", sub: m.isGoal ? "목표 \(AppModel.wonK(m.gK)) · \(m.goalToText) · 월 \(AppModel.wonK(m.gM)) · \(m.pathStartText) 시작" : "본전 \(AppModel.eok(K)) · 1년 안 · \(m.pathStartText) 시작")
                 HStack(alignment: .firstTextBaseline) {
-                    Text("\(gap >= 0 ? "앞섬" : "뒤처짐") \(String(format: "%.1f", abs(gap) * 100))%").appFont(22, .bold).foregroundStyle(lead)
+                    Text("\(gap >= 0 ? "앞섬" : "뒤처짐") \(String(format: "%.1f", abs(gap) * 100))%").appFont(22, .bold).foregroundStyle(lead).flip("\(gap >= 0 ? "앞섬" : "뒤처짐") \(String(format: "%.1f", abs(gap) * 100))%")
                     Spacer()
                     // 웹 목표 진행처럼 금액 차이 (금액은 이 요약과 아래 달마다 막대에만)
                     Text("계획보다 \(AppModel.eokS(act(mS) - need(mS)))").appFont(13, .semibold).foregroundStyle(lead)
@@ -437,7 +437,7 @@ struct MyPathGoalView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("\(AppModel.wonK(m.gK)) · \(m.goalToText) · \(leftText) 남음").appFont(13).foregroundStyle(.white.opacity(0.85))
                     Text(f.exact ? "가능성 \(AppModel.verdict(f.pGoal)) · \(AppModel.pct(f.pGoal))" : "가능성 계산 중")
-                        .appFont(22, .bold).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                        .appFont(22, .bold).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true).flip(f.exact ? "가능성 \(AppModel.verdict(f.pGoal)) · \(AppModel.pct(f.pGoal))" : "가능성 계산 중")
                     GeometryReader { g in
                         ZStack(alignment: .leading) {
                             Capsule().fill(.white.opacity(0.18))
@@ -866,7 +866,7 @@ struct ExternalView: View {
             let b = m.rows.reduce(0) { $0 + $1.value / tot * (Self.mktBeta($1.id) ?? 1) }
             Card(dark: true) {
                 Text("\(MarketEvents.when(x.hit.day)) · \(x.hit.kind)").appFont(12, .semibold).foregroundStyle(Theme.teal)
-                Text("±" + AppModel.man(x.amt)).appFont(26, .bold)
+                Text("±" + AppModel.man(x.amt)).appFont(26, .bold).flip("±" + AppModel.man(x.amt))
                 Text("\(Self.evBase[x.k] ?? "") ±\(String(format: "%g", x.sd))% 가정" + (x.k == "mkt" ? " · 시장의 \(String(format: "%.1f", b))배" : ""))
                     .appFont(12).foregroundStyle(Theme.sub)
                 HStack(spacing: 8) {
@@ -904,13 +904,13 @@ struct ExternalView: View {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("미리 본 범위").appFont(12).foregroundStyle(Theme.sub)
-                        Text("±" + AppModel.man(r.amt)).appFont(18, .bold)
+                        Text("±" + AppModel.man(r.amt)).appFont(18, .bold).flip("±" + AppModel.man(r.amt))
                     }
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Theme.border.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 4) {
                         Text("실제").appFont(12).foregroundStyle(Theme.sub)
                         Text((real > 0 ? "+" : real < 0 ? "−" : "") + AppModel.man(abs(real))).appFont(18, .bold)
-                            .foregroundStyle(real > 0 ? Color.red : real < 0 ? Theme.blue : Theme.ink)
+                            .foregroundStyle(real > 0 ? Color.red : real < 0 ? Theme.blue : Theme.ink).flip((real > 0 ? "+" : real < 0 ? "−" : "") + AppModel.man(abs(real)))
                     }
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Theme.border.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
                 }
@@ -1472,7 +1472,7 @@ struct RateScenarioView: View {
                         Text("\(m.keyName) 가능성").appFont(14)
                         Text(AppModel.pct(base)).appFont(18).foregroundStyle(Theme.sub)
                         Text("→").appFont(16).foregroundStyle(Theme.sub)
-                        Text(AppModel.pct(pb[1])).appFont(28, .bold)
+                        Text(AppModel.pct(pb[1])).appFont(28, .bold).flip(AppModel.pct(pb[1]))
                         Spacer()
                         Text(delta == 0 ? "그대로" : (delta > 0 ? "+" : "−") + "\(abs(delta))%p").appFont(13, .bold)
                             .padding(.horizontal, 10).padding(.vertical, 4)
@@ -1826,7 +1826,7 @@ struct DividendView: View {
                 Text("1년 배당 없음").appFont(20, .bold)
             } else {
                 (Text("월 평균\n") + Text(AppModel.wonRead(net / 12)).foregroundColor(Theme.teal))
-                    .appFont(22, .bold).lineSpacing(2)
+                    .appFont(22, .bold).lineSpacing(2).flip(AppModel.wonRead(net / 12))
                 (Text("1년 ") + Text(AppModel.won1(net)).bold() + Text(" · 세후"))
                     .appFont(13).foregroundStyle(Theme.sub)
             }
@@ -1980,7 +1980,7 @@ struct DividendView: View {
             if G <= 0 {
                 Text("올해 판 이익 없음\n낼 양도세 없음").appFont(20, .bold).lineSpacing(2)
             } else if tax <= 0 {
-                Text("\(AppModel.man(ded)) 공제 안\n낼 세금 없음").appFont(20, .bold).lineSpacing(2)
+                Text("\(AppModel.man(ded)) 공제 안\n낼 세금 없음").appFont(20, .bold).lineSpacing(2).flip("\(AppModel.man(ded)) 공제 안\n낼 세금 없음")
             } else {
                 (Text("내년 5월 세금\n") + Text("약 \(AppModel.man(tax))원").foregroundColor(Theme.orange))
                     .appFont(22, .bold).lineSpacing(2)
@@ -2038,7 +2038,7 @@ struct DividendView: View {
                     HStack {
                         Text("내년 5월 세금").appFont(13)
                         Spacer()
-                        Text("약 " + AppModel.man(after)).appFont(17, .bold).foregroundStyle(Theme.orange)
+                        Text("약 " + AppModel.man(after)).appFont(17, .bold).foregroundStyle(Theme.orange).flip("약 " + AppModel.man(after))
                     }
                     if x > 0 { Text("지금보다 +\(AppModel.man(after - tax))").appFont(12).foregroundStyle(Theme.sub) }
                 }
@@ -2178,7 +2178,7 @@ struct FxImpactView: View {
                     if usdV <= 0 {
                         Text("달러 자산 없음 · 영향 없음").appFont(18, .bold)
                     } else {
-                        Text("내 자산 \(AppModel.man(per10)) ↓").appFont(20, .bold)
+                        Text("내 자산 \(AppModel.man(per10)) ↓").appFont(20, .bold).flip("내 자산 \(AppModel.man(per10)) ↓")
                         Text(why)
                             .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                         HStack(spacing: 6) {
@@ -2255,7 +2255,7 @@ struct FxImpactView: View {
                         }
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(won(r))이면").appFont(13).foregroundStyle(Theme.sub)
-                            Text(AppModel.man(valAt(r))).appFont(24, .bold).monospacedDigit()
+                            Text(AppModel.man(valAt(r))).appFont(24, .bold).monospacedDigit().flip(AppModel.man(valAt(r)))
                             Text(abs(dv) < 0.5 ? "지금과 같음" : (dv > 0 ? "+" : "−") + AppModel.man(abs(dv)))
                                 .appFont(13, .bold).foregroundStyle(abs(dv) < 0.5 ? Theme.muted : Theme.change(dv))
                         }
@@ -2436,7 +2436,7 @@ struct GlanceView: View {
             }
             if d.has {
                 HStack(spacing: 4) { Text("1년 최고가 대비").appFont(13).foregroundStyle(Theme.sub); info("dd", d) }
-                Text(d.k.dd > -0.0005 ? "지금이 최고가" : AppModel.sgn(d.k.dd)).appFont(28, .bold).foregroundStyle(d.k.dd > -0.0005 ? Theme.up : Theme.down)
+                Text(d.k.dd > -0.0005 ? "지금이 최고가" : AppModel.sgn(d.k.dd)).appFont(28, .bold).foregroundStyle(d.k.dd > -0.0005 ? Theme.up : Theme.down).flip(d.k.dd > -0.0005 ? "지금이 최고가" : AppModel.sgn(d.k.dd))
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text(AppModel.price(s, s.last)).appFont(13, .semibold)

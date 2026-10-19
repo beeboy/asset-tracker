@@ -552,7 +552,7 @@ struct TaxRulesView: View {
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("내년 5월에 낼 해외주식 세금 (예상)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                Text(won0(tax)).appFont(30, .bold)
+                Text(won0(tax)).appFont(30, .bold).flip(won0(tax))
                 Text(G > 250 ? "(\(won0(G)) − 기본공제 250만원) × 22%" : "이익이 250만원 이하라 낼 세금이 없어요").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)

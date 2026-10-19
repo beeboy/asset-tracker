@@ -310,7 +310,7 @@ struct ForecastView: View {
                         Text("그럴듯한 금액 · 연 \(AppModel.sgn0(f.mu))").appFont(13).foregroundStyle(Theme.sub)
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(Self.amt(med)).font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.ink)
-                                .lineLimit(1).minimumScaleFactor(0.7)
+                                .lineLimit(1).minimumScaleFactor(0.7).flip(Self.amt(med))
                             Text(AppModel.sgn0(chg)).appFont(13, .bold).foregroundStyle(chg >= 0 ? Theme.green : Theme.up)
                         }
                         Text("10번 중 9번 \(Self.amt(lo)) ~ \(Self.amt(hi))").appFont(13).foregroundStyle(Theme.sub)

@@ -239,7 +239,7 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("오늘의 움직임").appFont(15, .bold)
                 Spacer()
-                Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal)
+                Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal).flip(AppModel.sgn(m.todayMove))
             }
             Text(m.rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + " · 원/달러 \(AppModel.sgn(Market.shared.fx.change))").appFont(13).foregroundStyle(Theme.sub)
         }
