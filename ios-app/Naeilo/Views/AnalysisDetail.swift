@@ -261,7 +261,7 @@ struct MyPathClassicView: View {
                     Text(f.exact ? AppModel.pct(pPlan) : "계산 중").appFont(f.exact ? 17 : 13, .bold).foregroundStyle(f.exact ? Theme.teal : Theme.muted)
                 }
                 .accessibilityElement(children: .combine)
-                Canvas { ctx, size in
+                PulseClock { beat in Canvas { ctx, size in
                     if !bandPts.isEmpty {
                         var band = linePath(bandPts.map { (X($0.0), Y($0.1)) }, in: size)
                         for q in bandPts.reversed() { band.addLine(to: CGPoint(x: X(q.0) * size.width, y: Y(q.2) * size.height)) }
@@ -281,6 +281,8 @@ struct MyPathClassicView: View {
                     }
                     let ty = Y(actPts.last?.1 ?? 0) * size.height
                     ctx.fill(Path(ellipseIn: CGRect(x: tx - 4, y: ty - 4, width: 8, height: 8)), with: .color(Theme.teal))
+                    ctx.pulse(CGPoint(x: tx, y: ty), Theme.teal, dot: 8, t: beat)
+                }
                 }
                 .frame(height: 140)
                 // 범례와 예보 겹치기 확률은 그래프 안에 작게
@@ -482,7 +484,7 @@ struct MyPathGoalView: View {
                 // 3. 계획선 그래프
                 Card {
                     Text(toGoal ? "목표일까지" : "시작부터 지금까지").appFont(15, .bold)
-                    Canvas { ctx, size in
+                    PulseClock { beat in Canvas { ctx, size in
                         if !bandPts.isEmpty {
                             var band = linePath(bandPts.map { (X($0.0), Y($0.1)) }, in: size)
                             for q in bandPts.reversed() { band.addLine(to: CGPoint(x: X(q.0) * size.width, y: Y(q.2) * size.height)) }
@@ -499,6 +501,8 @@ struct MyPathGoalView: View {
                         ctx.stroke(linePath(actPts.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.teal), style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
                         let ty = Y(actPts.last?.1 ?? now) * size.height
                         ctx.fill(Path(ellipseIn: CGRect(x: tx - 4, y: ty - 4, width: 8, height: 8)), with: .color(Theme.teal))
+                        ctx.pulse(CGPoint(x: tx, y: ty), Theme.teal, dot: 8, t: beat)
+                    }
                     }
                     .frame(height: 160)
                     .overlay(alignment: .topTrailing) {
@@ -2203,7 +2207,7 @@ struct FxImpactView: View {
                             }
                         }
                         .frame(width: 36, height: 160)
-                        Canvas { ctx, size in
+                        PulseClock { beat in Canvas { ctx, size in
                             func band(_ a: [(Double, Double)], _ b: [(Double, Double)]) -> Path {
                                 var p = linePath(a.map { (X($0.0), Y($0.1)) }, in: size)
                                 for x in b.reversed() { p.addLine(to: CGPoint(x: X(x.0) * size.width, y: Y(x.1) * size.height)) }
@@ -2291,6 +2295,7 @@ struct FxImpactView: View {
                             Kpi(k: "\(goalD) 예상", v: at(0) + "원", sub: "10번 중 9번 \(at(-1.645))~\(at(1.645))"),
                             Kpi(k: "환율 손익 · 1년", v: eff1y.map { AppModel.sgn($0) } ?? "-", sub: "", color: Theme.change(eff1y ?? 0)),
                         ])
+                            ctx.pulse(CGPoint(x: nx, y: ny), Theme.blue, dot: 8, t: beat)
                         footnote("지난 흐름 기준 예상")
                     }
                     .padding(.top, 8)
@@ -2299,6 +2304,7 @@ struct FxImpactView: View {
                 }
                 .tint(Theme.sub)
             }
+                        }
             .padding(16)
         }
         .background(Theme.bg)

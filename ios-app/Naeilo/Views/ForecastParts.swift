@@ -28,7 +28,7 @@ struct ScenarioChart: View {
     }
 
     var body: some View {
-        Canvas { ctx, size in
+        PulseClock { beat in Canvas { ctx, size in
             let n = sel.q50.count - 1
             guard n > 0 else { return }
             let sh = selShift
@@ -78,6 +78,7 @@ struct ScenarioChart: View {
             // 지금 점
             let p0 = CGPoint(x: x(0), y: y(q50[0]))
             ctx.fill(Path(ellipseIn: CGRect(x: p0.x - 4, y: p0.y - 4, width: 8, height: 8)), with: .color(Theme.ink))
+            ctx.pulse(p0, Theme.ink, dot: 8, t: beat)
             ctx.draw(Text("지금 \(ForecastView.amt(q50[0]))").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.ink),
                      at: CGPoint(x: p0.x + 6, y: p0.y + 12), anchor: .leading)
             // X축: 지금 / 1년 뒤 / 2년 뒤 / 끝날
@@ -88,6 +89,7 @@ struct ScenarioChart: View {
                 ctx.draw(Text("\(yr)년 뒤").font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: xx, y: ly))
             }
             ctx.draw(Text(endLabel).font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: size.width, y: ly), anchor: .trailing)
+        }
         }
         .accessibilityLabel("시나리오별 자산 범위 그래프")
     }
