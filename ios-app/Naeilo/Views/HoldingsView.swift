@@ -827,7 +827,7 @@ struct HoldingsNews: View {
                 cell("내 종목", c.mine)
                 cell(c.name, c.mkt)
             }
-            Text(abs(gap) < 0.001 ? "시장과 거의 같게 움직였어요" : "시장보다 \(String(format: "%.1f", abs(gap) * 100))%p \(gap > 0 ? "앞섰어요" : "뒤졌어요")")
+            Text(abs(gap) < 0.001 ? "시장과 거의 같게 움직였어요" : "시장보다 \(String(format: "%.1f", abs(gap) * 100))% \(gap > 0 ? "높아요" : "낮아요")")
                 .appFont(13).foregroundStyle(Theme.sub)
         }
         .card()
