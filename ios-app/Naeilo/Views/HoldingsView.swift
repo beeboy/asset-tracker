@@ -1031,10 +1031,11 @@ struct TownView: View {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 tick += 1
-                // 한 칸에 아무도 안 움직이거나, 한두 명만 옆으로 걷거나 폴짝
-                let ids = TownLook.residents(m.rows).prefix(Self.maxRes).map(\.id) + [TownLook.mayorID]
-                let n = [0, 0, 1, 1, 1, 2].randomElement()!
+                // 10초(5칸)에 한 번: 아무도 안 움직이거나, 한 명만 옆으로 걷거나 폴짝
                 hop = nil
+                guard tick % 5 == 0 else { continue }
+                let ids = TownLook.residents(m.rows).prefix(Self.maxRes).map(\.id) + [TownLook.mayorID]
+                let n = [0, 1, 1].randomElement()!
                 for id in ids.shuffled().prefix(n) {
                     if Bool.random() && hop == nil { hop = id }
                     else { step[id] = max(-12, min(12, (step[id] ?? 0) + [-6, 6].randomElement()!)) }
