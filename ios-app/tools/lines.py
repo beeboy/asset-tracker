@@ -329,6 +329,24 @@ WIDGET_UI = {
     "{n}번째 꽃밭": "Flower bed {n}", "외 {n}": "+{n}", "키 재기": "Height chart", "퍼즐 맞추기": "Puzzle", "꽃밭": "Flower bed", "줄다리기": "Tug of war",
     "남은 {v}": "{v} to go", "어제 ": "Yesterday ", "층": "F", " · 어제 ": " · yesterday ",
     "총자산·최근 흐름·본전·블록을 한 장에, 인물의 한마디와 함께": "Total, recent trend, break-even and blocks in one view, with a word from your character",
+    # 홈 위젯 (목표 전망·페이스·모의 바구니·과녁·히트맵)
+    "눌러서 미션 보기 ›": "Tap to see missions ›",
+    "{term} 예상 {v}, 지금보다 {p}": "{term} outlook {v}, {p} vs now",
+    "계획선보다 {p} 앞섬, 달성 확률 {q}": "{p} ahead of plan, {q} chance of goal",
+    "계획선보다 {p} 뒤처짐, 달성 확률 {q}": "{p} behind plan, {q} chance of goal",
+    "앱을 열면 보여요": "Open the app to see this",
+    "내가 {p} 빨라요": "You're {p} faster", "내가 {p} 느려요": "You're {p} slower",
+    "나 {a}, 모의 바구니 {b}": "You {a}, mock basket {b}",
+    "앱에서 모의 바구니를 담으면 보여요": "Fill a mock basket in the app to see this",
+    "지금": "Now", "{n}년 뒤": "In {n} yr", "내 길": "My path",
+    "앞섬 {p}": "Ahead {p}", "뒤처짐 {p}": "Behind {p}", "달성 확률": "Goal odds",
+    "목표일 전망": "Goal date outlook", "나": "Me", "모의 바구니": "Mock basket",
+    "예측보다": "vs forecast", "기타 {n}개": "{n} others",
+    "계획선보다 앞섰는지와 달성 확률": "Ahead of plan or not, and goal odds",
+    "목표일 예상과 지금보다 몇 %": "Expected goal date and % vs now",
+    "나와 모의 바구니, 누가 빠른지": "You vs your mock basket: who's faster",
+    "금요일 마감 예측과 지금 위치": "Friday close forecast and where you are",
+    "비중 큰 종목의 오늘 등락 히트맵": "Today's heatmap of your biggest holdings",
 }
 
 
