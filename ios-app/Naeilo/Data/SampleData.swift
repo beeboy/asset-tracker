@@ -1,6 +1,6 @@
 import Foundation
 
-// 시안 샘플 데이터. 전일 종가는 예시 값이고, 지금 가격은 Market(Tiingo 또는 예시 값)이 채운다.
+// 시안 샘플 데이터. 전일 종가는 예시 값이고, 지금 가격은 Market(내 API 키·사이트 또는 예시 값)이 채운다.
 // DRNK(드링커)는 『중첩된 현실』 속 회사를 바탕으로 한 가상 종목이다.
 
 enum Currency { case usd, krw }

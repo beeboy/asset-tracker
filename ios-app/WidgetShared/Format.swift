@@ -24,7 +24,7 @@ enum Fmt {
     /// 5.27억
     /// 1억이 안 되면 만원으로 (4,002만)
     static func eok(_ v: Double, _ digits: Int = 2) -> String {
-        abs(v) < 1e8 ? man(v) : String(format: "%.\(digits)f억", v / 1e8)
+        abs(v) < 1e8 ? man(v) : (v < 0 ? "−" : "") + String(format: "%.\(digits)f억", abs(v) / 1e8)
     }
     /// 499만
     static func man(_ v: Double) -> String {
@@ -35,7 +35,7 @@ enum Fmt {
     private static let hm: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "HH:mm"; return f }()
     private static let mdhm: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M/d HH:mm"; return f }()
     /// +1.8%
-    static func pct(_ x: Double, _ d: Int = 1) -> String { (x > 0 ? "+" : "") + String(format: "%.\(d)f%%", x * 100) }
+    static func pct(_ x: Double, _ d: Int = 1) -> String { (x > 0 ? "+" : x < 0 ? "−" : "") + String(format: "%.\(d)f%%", abs(x) * 100) }
     static func arrow(_ x: Double) -> String { x >= 0 ? "▲" : "▼" }
     static func comma(_ v: Int) -> String { dec.string(from: NSNumber(value: v)) ?? "\(v)" }
     static func time(_ d: Date?) -> String {
@@ -84,6 +84,8 @@ enum WidgetRefresh {
         let toss = await TossFeed.widgetFetch(minAge: 600)
         // 내 Alpaca 키가 있으면 미국 종목 지금 가격도 위젯이 직접
         await AlpacaFeed.widgetFetch(minAge: 600)
+        // 내 Longbridge 키가 있으면 그것도
+        await LongbridgeFeed.widgetFetch(minAge: 600)
         let tossKr = toss != nil && (feed?.ty ?? [:]).values.contains { $0.hasSuffix(".KS") || $0.hasSuffix(".KQ") }
         return untilTrialEnd(MarketHours.nextRefresh(kr: !ky.isEmpty || tossKr))
     }

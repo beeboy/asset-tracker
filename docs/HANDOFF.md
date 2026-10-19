@@ -54,6 +54,19 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 토스 총자산과 평가액 맞추기 (2026-10-17)
+- 원인: 토요일에 토스는 미국 종목을 정규장 종가 × 매매기준율로 세는데, 앱·위젯·웹은 애프터마켓 가격(사이트 `last`, 토스·Alpaca 지금 가격)으로 셌다. 테슬라 0.6%, 엔비디아 0.2%만큼 낮게 나왔다. 환율(1,348.5)은 같았다.
+- 바꿈: 뉴욕 시각 평일 20시~다음 날 4시와 주말에는 사이트 `regular`(정규장 종가)로 센다. 앱 `Market.regClose`, 위젯 `Engine.build`, 웹 `curPrice`·`usClosed`. 공통 판단은 `USSession.closed`.
+- 토스 일봉 받기가 막혀도(429 등) 원/달러는 따로 받는다 (`TossHistory.fetch`).
+- 남은 것: 평일 애프터마켓 중(16~20시)에는 그대로 애프터마켓 가격을 쓴다. 토스가 그 시간에 어떻게 세는지는 아직 맞춰 보지 않았다.
+- 2026-10-19 (월 오전) 고침: 앱 4억 8,780만 vs 토스 4억 9,364만. ① 평가 환율이 토스 원/달러(1,342)를 매매기준율(1,348.5)보다 먼저 썼다 → `Market.valFx`·`WidgetBridge.fxMar` 매매기준율 먼저. ② 장 닫힌 시간에도 토스 값이 애프터마켓 뒤 체결(토스 주간거래)이면 정규장 종가 대신 토스 값 (`Market.tossLast`, `Engine.build`, 사이트 `last_time`+60초보다 나중이면).
+## 내 Longbridge 키 (2026-10-17, PR 올림)
+- 설정 '숫자를 계산하는 기준'에 '내 Longbridge 키' 줄 추가 → `LongbridgeKeyView` (App Key·App Secret·Access Token).
+- `LongbridgeKeys`·`LongbridgeFeed`(`WidgetShared/Models.swift`): 공식 Go SDK 의 HTTP 방식 `POST /quote/quotes` + HMAC-SHA256 서명(`x-api-signature`, 밀리초 `x-timestamp`, `us_` 키는 `x-dc-region: us`). 웹소켓·protobuf 없음.
+- 우선순위: 토스 > Alpaca > Longbridge > 사이트. 전일 종가는 사이트 값 먼저. 위젯도 같은 키로 직접. 종목 화면 출처 "Longbridge 시세".
+- 기호 변환은 홍콩(0700.HK→700.HK)·상하이(.SS→.SH)·선전(.SZ)도 되지만, 앱이 원화·달러 종목만 다뤄 지금은 미국 종목만 받는다.
+- 남은 것: 실제 키로 받아 보기 확인 필요(서명·HTTP 시세 경로). Access Token 기한이 지나면 사용자가 새로 넣어야 함(자동 갱신 `/v1/token/refresh` 없음). 홍콩·중국 종목을 넣으려면 홍콩달러·위안 환율과 종목을 앱·웹에 같이 넣어야 함.
+
 ## 위젯 갱신 바로잡기 (2026-10-17, PR #292)
 - 위젯 정기 갱신 받기를 `WidgetRefresh.fetch()`(`WidgetShared/Format.swift`)로 모아 기본·잠금·인물 위젯이 같이 씀. 인물 위젯도 이제 정기 갱신 때 시세를 직접 받고(전엔 받지 않아 인물 위젯만 두면 금액이 멈춤), 국내 종목이 있으면 한국 장중에도 갱신.
 - 다음 갱신 시각을 7일 무료 끝(`Store.trialEnd`)까지로 잘라 모든 위젯이 그때 바로 잠김. 서재 ↻는 `StoryReloadIntent`로 시세 없이 서재 위젯만 다시 그림.
@@ -178,7 +191,6 @@
 | iOS 목표일 전망 화면 개편 | 2026-10-14 PR 올림(브랜치 claude/project-thread-u2k6oi). 버튼 3개=추세 슬라이더 한 축, 선형 축 차트, 세 시나리오 표, 일정 카드, 월 적립 0. 웹도 같은 구성으로 따라감(웹 쉬운 화면 3단계, 브랜치 claude/project-thread-fuubi8) |
 | 외부 요인 화면 개편 | 2026-10-14 1단계(데이터)·2단계(요인 상세, 앱 `FactorDetailView`: 프리셋 2×2·판정·상쇄·종목별 신뢰도·큰 변화 경고·비교·관련 일정·직접 정하기. 메인 순위에서 들어감)·3단계(메인: 스크롤·질문형 제목·요인 순위 `ExternalView.ranks`·자동 요약·점 표시 없앰, 슬라이더는 요인 상세 "직접 정하기"로만)·4단계(웹 `renderSens`를 같은 순위·요인 상세로 교체, `xfRanks`·`xfDetail`, 웹은 `Model.factorMoves`를 직접 계산)·5단계(과거 재생: `Model.REPLAYS`·`replayMove` 고정 표 3기간, 앱 `SiteCalc.replays`, 웹 `xfReplays`·앱 `ExternalView.replayCard`)·6단계(오늘의 이벤트 카드 + 다가오는 일 미리 겪어보기: 시장 전체 확정 일정 7개의 `EXT_EVENTS.sd` × 내 종목 민감도, [미리 보기]는 요인 상세를 나쁜 쪽 값으로 열기. 웹 `xfEvents`·`xfToday`·`xfUpcoming`, 앱 `SiteCalc.eventMoves`·`ExternalView.todayCard`, `FactorDetailView(factor:start:)`) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. ·7단계(지난 일 돌아보기 + 다음 날 결과 알림, 앱만: `EventRetro`(Notifier.swift)가 일정 전날·당일 미리 본 ±금액과 평가액을 기기에 적고 다음에 열 때 실제 변화와 비교, 오늘의 이벤트 카드 [다음 날 결과 알림]은 다음 날 오전 9시 로컬 알림 id `xf.*`, 누르면 외부 요인 화면) 완료. 웹 회고·알림은 없음. 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
 | 쉬운 말 ⑦ 설정 (iOS) | 목표 카드에 루트 한 줄, 함께할 인물 한 줄+자동 토글, 앱 아이콘은 고르는 화면으로, 용어 바꿈. PR 머지 대기 |
-| Tiingo·EODHD 시세 계약 | 2026-10-14 모두 보류. 재배포(공개 표시) 조건 확인 전까지 Yahoo 수집 유지. 앱 `TIINGO_TOKEN` 비어 있음, 출시 땐 워커 경유 필요(`Market.swift` 주석) |
 | 15분 collect cron | PR #166으로 `*/15` 단일 cron. 실제로 도는지 collect 작업 로그로 확인 필요. 워커 머리 주석(`*/30 13-22`)은 낡음 |
 | 워커 재배포 | 2026-10-14 재배포함. 1권 영문판 원고, 댓글은 마무리 안 한 것으로 보임 → 보류 |
 | Claude 사용량 위젯 | 워커 `/cu`가 401 (`CLAUDE_TOKEN`). PR #156 이후 확인 안 됨 |
@@ -195,7 +207,6 @@
 | 경주(평행 세계) 위젯 | 만들지 결정 보류 |
 | 인사이트 뉴스·`/ai` 중계 | 내부 테스트 기간 유지, 상용 전 재검토 |
 | 후원 | 없음 (2026-10-16 구독으로 바꿈). 나중에 다시 검토 |
-| 한국 시세(코스콤·EODHD) | 계약 없음, 보류 |
 | 앙상블·강건 제어기 연구 | 브랜치에만 있음. 다음은 세금 고려 제어기 |
 | Obsidian 볼트 백업 | 2026-10-14 볼트 백업 커밋이 " 2"·" 3" 사본 31개를 main에 올려 iOS 빌드가 깨짐 → PR #168에서 사본 삭제, 볼트 연결은 사용자가 끊음. `.obsidian/`·`.DS_Store`는 PR #171에서 정리 |
 
@@ -225,7 +236,6 @@
 1. **정해진 계산 기준 적용**(2026-10-14 결정): ~~앱 `todayMove`·인물 위젯에서 환율 변화 빼기~~(PR #168), ~~앱 배당·세금·환율 영향을 매매기준율로~~(PR #169), ~~위젯 현금·스파크라인을 앱과 맞춤~~(PR #170).
 2. ~~**parity 검사 넓히기**~~(PR #173, `calc_parity`). 금리 시나리오 3년 고정(6번)을 고치면 `calc_parity.mjs`의 `KNOWN`에서 지운다.
 3. **출시 차단 항목 정리**: 국내 실시간 스위치 끄기, `StubPriceProvider` 대체, TestFlight 외부 테스트용 재업로드, IAP 등록, 공개 전 재점검.
-4. **데이터 계약**: 보류. 재개하면 Tiingo 조건 확인 → 원시 시세 공개 저장소에서 빼기, 앱 Tiingo는 워커 경유.
 5. **운영 확인**: 15분 cron 실제 실행, `/cu` 401.
 6. **상용 전 정리**(출시 시점 정해지면): 인사이트 뉴스 라이선스·`/ai` 중계 잠금, README·사용법 갱신.
 7. 그다음 기능: 평정 지수 웹 보기, 무료/프리미엄 분리, 평행 세계 확장.

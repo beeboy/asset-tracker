@@ -1,9 +1,7 @@
 import Foundation
 import Observation
 
-// 지금 시세. 계약 전이라 테스트는 Yahoo 중계 자료(아래 YahooSample). Tiingo 회신(10월 10일): 월 $250 요금제로 미국 종목 실시간 참고 시세와 원/달러를 앱·위젯에 보여 줄 수 있다.
-// 한국 종목은 Tiingo에 없어서 한국 시세 제공처(EODHD 또는 코스콤)가 정해질 때까지 전일 종가를 쓴다.
-// 출처 표기 "Data powered by Tiingo.com"은 설정 화면에만 두면 된다.
+// 지금 시세. 사용자가 넣은 내 오픈 API 키(토스·Alpaca·Longbridge)로 받고, 없으면 naeilo 사이트 값.
 
 struct Quote {
     let last: Double        // 지금 가격 (실시간이 아니면 전일 종가)
@@ -17,9 +15,6 @@ final class Market {
     static let shared = Market()
 
     var updatedAt = Date()
-    /// Tiingo 에서 받은 값 (티커 → 지금 가격, 전일 종가). 비어 있으면 예시 값
-    var live: [String: (Double, Double)] = [:]
-    var liveFx: (Double, Double)? = nil
     /// 사이트가 30분마다 모으는 시세 (앱·위젯이 같이 받는다). 없으면 빌드 때 넣은 테스트 자료
     var site: QuoteFeed.File? = QuoteFeed.cached()
     /// 토스증권 지금 가격 (개발자 전용, 종목 id → 값). 있으면 Yahoo 값보다 먼저
@@ -28,6 +23,10 @@ final class Market {
     var alpaca: QuoteFeed.File? = AlpacaFeed.cached()
     /// Alpaca 받기를 마친 때. 설정 > 내 Alpaca 키 화면이 이걸 보고 다시 그린다
     var alpacaDone = Date.distantPast
+    /// 내 Longbridge 키로 받은 지금 가격 (종목 id → 값). 토스·Alpaca 값이 없을 때 사이트 값보다 먼저
+    var longbridge: QuoteFeed.File? = LongbridgeFeed.cached()
+    /// Longbridge 받기를 마친 때. 설정 > 내 Longbridge 키 화면이 이걸 보고 다시 그린다
+    var longbridgeDone = Date.distantPast
     /// 토스 시세를 받는 중인 일 (겹쳐 묻지 않게). 다시 받기는 이 일이 끝나길 기다렸다가 한 번 더 받는다
     @ObservationIgnored private var tossTask: Task<Void, Never>? = nil
     /// 토스 받기를 마친 때 (성공·실패 모두). 설정 > 내 토스 키 화면이 이걸 보고 다시 그린다
@@ -35,7 +34,8 @@ final class Market {
     /// 매매기준율 (사이트 data/mar.json, 서울외국환중개). 웹 평가액과 같은 환율
     var mar: MarFeed.File? = MarFeed.cached()
     /// 원화 평가에 쓰는 원/달러: 웹 fxBase 와 같게 매매기준율, 없거나 5일 넘게 묵었으면 지금 환율
-    var valFx: Double { tossFx?.rate ?? marRate ?? fx.last }
+    /// 평가 환율: 매매기준율 먼저 (토스 총자산이 이걸로 센다). 없으면 토스 원/달러, 그다음 지금 환율
+    var valFx: Double { marRate ?? tossFx?.rate ?? fx.last }
     var marRate: Double? { mar.flatMap { $0.rate > 0 && Day.dday($0.date) >= -5 ? $0.rate : nil } }
     /// 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일
     var stats: SiteStats.File? = SiteStats.load()
@@ -46,39 +46,60 @@ final class Market {
     /// 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만.
     /// 내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged)
     var prices: SitePrices.File? = TossHistory.merged(SitePrices.cached(), TossHistory.cached())
-    var source: String { !live.isEmpty ? "Tiingo" : site != nil ? "naeilo 사이트" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
+    var source: String { site != nil ? "naeilo 사이트" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
 
     // 샘플 종목 DRNK 의 하루 움직임 (샘플 기록의 마지막 날). 다른 종목은 받은 시세가 없으면 움직임을 만들지 않는다
     static let todayMove: [String: Double] = ["DRNK": -0.0221]
 
     func quote(_ s: Symbol) -> Quote {
         let b = yahooQuote(s)
-        if let t = tossLast(s) { return Quote(last: t, prevClose: b.prevClose > 0 ? b.prevClose : t, live: true) }
-        // Alpaca: 전일 종가는 사이트(공식 종가)가 먼저, 없으면 Alpaca 전일 IEX 종가
-        guard let a = alpacaQ(s) else { return b }
+        if let t = tossLast(s) { return Quote(last: t, prevClose: tossPrev(s, b) ?? t, live: true) }
+        // Alpaca·Longbridge: 전일 종가는 사이트(공식 종가)가 먼저, 없으면 받은 전일 종가
+        guard let a = alpacaQ(s) ?? lbQ(s) else { return b }
         return Quote(last: a.last, prevClose: b.prevClose > 0 ? b.prevClose : a.prev > 0 ? a.prev : a.last, live: true)
     }
     /// Alpaca 값을 쓰는 종목 (종목 화면에 "Alpaca(IEX) 시세" 표시)
     func isAlpaca(_ s: Symbol) -> Bool { tossLast(s) == nil && alpacaQ(s) != nil }
-    private func alpacaQ(_ s: Symbol) -> QuoteFeed.Q? {
-        guard live[s.id] == nil, s.id != "DRNK", s.currency == .usd, let q = alpaca?.q[s.id], q.last > 0 else { return nil }
+    /// Longbridge 값을 쓰는 종목 (종목 화면에 "Longbridge 시세" 표시)
+    func isLongbridge(_ s: Symbol) -> Bool { tossLast(s) == nil && alpacaQ(s) == nil && lbQ(s) != nil }
+    private func lbQ(_ s: Symbol) -> QuoteFeed.Q? {
+        guard s.id != "DRNK", s.currency == .usd, regClose(s) == nil, let q = longbridge?.q[s.id], q.last > 0 else { return nil }
         return q
+    }
+    private func alpacaQ(_ s: Symbol) -> QuoteFeed.Q? {
+        guard s.id != "DRNK", s.currency == .usd, regClose(s) == nil, let q = alpaca?.q[s.id], q.last > 0 else { return nil }
+        return q
+    }
+    /// 토스 값의 전일 종가. 사이트 시세가 토스 값보다 앞선 날 것이면 (주말·장중에 사이트가 아직 안 바뀜) 사이트 마지막 값이 전일 종가
+    private func tossPrev(_ s: Symbol, _ b: Quote) -> Double? {
+        if let t = toss?.q[s.id], let q = site?.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)], q.at > 0, t.at > q.at {
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = TimeZone(identifier: s.currency == .krw ? "Asia/Seoul" : "America/New_York")!
+            if !cal.isDate(Date(timeIntervalSince1970: q.at), inSameDayAs: Date(timeIntervalSince1970: t.at)) { return q.reg ?? q.last }
+        }
+        return b.prevClose > 0 ? b.prevClose : nil
     }
     /// 토스 값을 쓰는 종목 (종목 화면에 "토스 시세" 표시)
     func isToss(_ s: Symbol) -> Bool { tossLast(s) != nil }
     private func tossLast(_ s: Symbol) -> Double? {
-        guard live[s.id] == nil, s.id != "DRNK", let v = toss?.q[s.id]?.last, v > 0 else { return nil }
-        return v
+        guard s.id != "DRNK", let t = toss?.q[s.id], t.last > 0 else { return nil }
+        // 장이 끝난 때도 애프터마켓 뒤에 체결된 값(토스 주간거래)이면 그 값. 토스 총자산이 주간거래 가격으로 센다
+        if regClose(s) != nil, t.at <= (site?.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)]?.at ?? 0) + 60 { return nil }
+        return t.last
+    }
+    /// 미국 장이 다 끝났으면 사이트 정규장 종가. 토스·Alpaca 의 애프터마켓 가격 대신 이걸로 센다 (토스 총자산과 같은 기준)
+    private func regClose(_ s: Symbol) -> Double? {
+        guard s.currency == .usd, USSession.closed(), let r = site?.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)]?.reg, r > 0 else { return nil }
+        return r
     }
 
     private func yahooQuote(_ s: Symbol) -> Quote {
-        if let q = live[s.id] { return Quote(last: q.0, prevClose: q.1, live: true) }
         if s.id != "DRNK" {
             // 사이트 시세와 추가한 종목(5분마다 Yahoo 중계) 중 나중에 받은 값
             let c = CustomSymbols.shared.items.first { $0.id == s.id }
             if let f = site, let q = f.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)],
                c == nil || c!.at.timeIntervalSince1970 < f.got {
-                return Quote(last: q.last, prevClose: q.prev, live: s.currency == .usd)
+                return Quote(last: regClose(s) ?? q.last, prevClose: q.prev, live: s.currency == .usd)
             }
             if let c { return Quote(last: c.last, prevClose: c.prev, live: c.usd) }
             // 한국 종목은 넣은 가격이 없으면 값이 없다 (시안 값을 쓰지 않는다)
@@ -91,7 +112,6 @@ final class Market {
 
     /// 원/달러 (지금, 전일)
     var fx: Quote {
-        if let f = liveFx { return Quote(last: f.0, prevClose: f.1, live: true) }
         if let t = tossFx { return Quote(last: t.rate, prevClose: t.prev, live: true) }
         if let q = site?.q["KRW=X"] { return Quote(last: q.last, prevClose: q.prev, live: true) }
         if let q = YahooSample.quotes["FX"] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
@@ -100,13 +120,13 @@ final class Market {
 
     var asOfText: String {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
-        if live.isEmpty, let s = site, let t = s.q.values.map(\.at).max(), t > 0 {
+        if let s = site, let t = s.q.values.map(\.at).max(), t > 0 {
             let d = Date(timeIntervalSince1970: t)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm" : "M월 d일 a h:mm"
             let ago = Int(Date().timeIntervalSince1970 - s.got) / 60
             return "\(f.string(from: d)) 시세 · \(ago < 1 ? "방금" : "\(ago)분 전") 받음"
         }
-        if live.isEmpty, let t = YahooSample.asOf {
+        if let t = YahooSample.asOf {
             f.dateFormat = "M월 d일 a h:mm"
             return "\(f.string(from: t)) 시세 (테스트 자료)"
         }
@@ -116,11 +136,6 @@ final class Market {
 
     /// force: 아래로 당겨 갱신할 때. 받은 지 얼마 안 됐어도 다시 받는다
     func refresh(held: Set<String> = [], force: Bool = false) async {
-        if let p = TiingoProvider.fromConfig() {
-            let tickers = Sample.symbols.filter { $0.currency == .usd && $0.id != "DRNK" }.map(\.id)
-            if let q = try? await p.quotes(tickers) { live = q }
-            if let f = try? await p.usdkrw() { liveFx = f }
-        }
         // 토스 시세 (개발자 주소를 넣었거나, 사용자가 설정 > 토스증권 시세에 내 키를 넣은 기기만): 국내·미국 종목.
         // 평소에는 기다리지 않고 따로 받아 도착하면 반영한다 (앱 시작을 늦추지 않게). 당겨 갱신·다시 받기(force)는 토스까지 기다린다.
         // 1분 안에 받았으면 그대로. 실패하면 15분 안에 받은 값, 그것도 없으면 nil → Yahoo 값
@@ -129,6 +144,9 @@ final class Market {
         // Alpaca 시세 (설정 > 내 Alpaca 키를 넣은 기기만): 미국 종목. 토스와 같은 방식
         async let alpacaWait: Void = force ? refreshAlpaca(held: held, force: true) : ()
         if !force { Task { await refreshAlpaca(held: held, force: false) } }
+        // Longbridge 시세 (설정 > 내 Longbridge 키를 넣은 기기만): 지금은 미국 종목. 같은 방식
+        async let lbWait: Void = force ? refreshLongbridge(held: held, force: true) : ()
+        if !force { Task { await refreshLongbridge(held: held, force: false) } }
         // 나머지 시세는 한꺼번에 받는다 (차례로 기다리지 않게)
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
         let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
@@ -141,13 +159,16 @@ final class Market {
         async let statsNew = SiteStats.fetch(minAge: force ? 0 : 6 * 3600)
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
         async let customDone: Void = CustomSymbols.shared.refresh(held: held, force: force)
+        async let extraDone: Void = ExtraStats.shared.refresh(Parallel.wantKeys)
         if let f = await siteNew { site = f }
         if let r = await marNew { mar = r }
         if let p = await pricesNew { prices = TossHistory.merged(p, tossHist) }
         if let s = await statsNew { stats = s }
         await customDone
+        await extraDone
         await tossWait
         await alpacaWait
+        await lbWait
         updatedAt = Date()
     }
 
@@ -187,6 +208,17 @@ final class Market {
         alpacaDone = Date()
     }
 
+    /// Longbridge 지금 가격을 받는다 (1분 안에 받았으면 그대로, 당겨 갱신은 바로)
+    @MainActor
+    func refreshLongbridge(held: Set<String>, force: Bool) async {
+        guard LongbridgeKeys.on else { if longbridge != nil { longbridge = nil }; return }
+        var ty: [String: String] = [:]
+        for id in held where id != "DRNK" { if let s = Sample.symbol(id), s.currency == .usd { ty[id] = CustomSymbols.yahoo(for: s) } }
+        guard !ty.isEmpty else { return }
+        longbridge = await LongbridgeFeed.fetch(ty, minAge: force ? 0 : 60)
+        longbridgeDone = Date()
+    }
+
     /// 아래로 당겨 갱신: 내 종목을 바로 받고 위젯에도 넘긴다
     @MainActor
     func pullRefresh(_ m: AppModel) async {
@@ -201,47 +233,6 @@ extension Symbol {
     var quote: Quote { Market.shared.quote(self) }
     /// 지금 가격
     var last: Double { quote.last }
-}
-
-// Tiingo REST. 출시 때는 토큰을 앱에 넣지 않고 naeilo 중계 서버가 받아 캐시해서 내려준다 (견적 협의의 계약 조건).
-// 개발 중에는 Info.plist 의 TIINGO_TOKEN 에 개발용 토큰을 넣으면 시뮬레이터에서 실제 값을 볼 수 있다.
-struct TiingoProvider {
-    let token: String
-
-    static func fromConfig() -> TiingoProvider? {
-        guard let t = Bundle.main.object(forInfoDictionaryKey: "TIINGO_TOKEN") as? String, !t.isEmpty else { return nil }
-        return TiingoProvider(token: t)
-    }
-
-    private func get(_ path: String) async throws -> Any {
-        var c = URLComponents(string: "https://api.tiingo.com" + path)!
-        c.queryItems = (c.queryItems ?? []) + [URLQueryItem(name: "token", value: token)]
-        let (data, _) = try await URLSession.shared.data(for: URLRequest(url: c.url!, timeoutInterval: 15))   // 응답 없으면 15초 뒤 포기
-        return try JSONSerialization.jsonObject(with: data)
-    }
-
-    /// IEX 실시간 참고 시세: tngoLast(지금), prevClose(전일 종가)
-    func quotes(_ tickers: [String]) async throws -> [String: (Double, Double)] {
-        guard !tickers.isEmpty else { return [:] }
-        let arr = try await get("/iex/?tickers=" + tickers.joined(separator: ",").lowercased()) as? [[String: Any]] ?? []
-        var out: [String: (Double, Double)] = [:]
-        for o in arr {
-            guard let t = (o["ticker"] as? String)?.uppercased(), let last = (o["tngoLast"] ?? o["last"]) as? Double,
-                  let prev = o["prevClose"] as? Double else { continue }
-            out[t] = (last, prev)
-        }
-        return out
-    }
-
-    /// 원/달러: fx/top 의 midPrice, 전일 값은 일별 끝값
-    func usdkrw() async throws -> (Double, Double)? {
-        let arr = try await get("/tiingo/fx/top?tickers=usdkrw") as? [[String: Any]] ?? []
-        guard let o = arr.first, let mid = (o["midPrice"] ?? o["bidPrice"]) as? Double else { return nil }
-        let start = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-6 * 86400)).prefix(10)
-        let hist = try await get("/tiingo/fx/usdkrw/prices?resampleFreq=1day&startDate=\(start)") as? [[String: Any]] ?? []
-        let prev = hist.dropLast().last?["close"] as? Double ?? mid
-        return (mid, prev)
-    }
 }
 
 // 테스트 시세: 사이트가 모으는 Yahoo 중계 자료 (data/prices/*.json 3년 종가, data/quotes.json 전일 종가·현재가).
@@ -411,7 +402,8 @@ enum TossHistory {
         }
         TossFeed.histMiss = miss
         // 원/달러: 10분에 한 번 (당겨 갱신하면 바로). 전일 값은 24시간 전 시각의 값
-        if !stop, force || now - (f.fx?.got ?? 0) > 600 {
+        // 일봉 받기가 막혀도(429 등) 환율은 따로 묻는다. 안 그러면 하루 묵은 환율로 평가액이 토스와 달라진다
+        if force || now - (f.fx?.got ?? 0) > 600 {
             let (code, o, _) = await TossFeed.userGet("/api/toss/v1/exchange-rate")
             if code == 200, let rate = num((o?["result"] as? [String: Any])?["rate"]), rate > 0 {
                 let iso = ISO8601DateFormatter(); iso.timeZone = TimeZone(identifier: "Asia/Seoul")

@@ -176,7 +176,7 @@ extension AppModel {
         let key = [today, H, inp.sig, parts.map { "\($0.key):\($0.ccy):\(String(format: "%.4f", $0.w))" }.joined(separator: ",")].joined(separator: "|")
         let hs = parts.map { MC.Holding(key: $0.key, ccy: $0.ccy, valueKrw: $0.w * 1e6, price0: 1) }
         let group = [today, H, inp.sig, parts.map { "\($0.key):\($0.ccy)" }.joined(separator: ",")].joined(separator: "|")
-        let job = ForecastEngine.Job(key: key, holdings: hs, stats: inp.st, settings: inp.settings, events: inp.events, start: today, horizon: H,
+        let job = ForecastEngine.Job(key: key, holdings: hs, stats: ExtraStats.shared.augment(inp.st, keys: parts.map(\.key)), settings: inp.settings, events: inp.events, start: today, horizon: H,
                                      goal: .infinity, monthly: 0, group: group, w: parts.map { $0.w })
         guard let run = PathRuns.shared.get(job) else { return nil }
         let pk = "pr|\(run.key)|\(lk)"
@@ -188,7 +188,7 @@ extension AppModel {
     }
     /// 닫힌 식 값 (경로 계산이 끝나기 전 잠깐): 사이트 통계의 μ(지금 관점)·σ·상관으로 구성의 연 기대·흔들림. 달러 몫은 환율 흔들림도
     func closedParams(_ parts0: [Part]) -> (mu: Double, sigma: Double) {
-        let parts = Self.merged(parts0), st = Market.shared.stats, t = trust / 100
+        let parts = Self.merged(parts0), st = Market.shared.stats.map { ExtraStats.shared.augment($0, keys: parts0.map(\.key)) }, t = trust / 100
         let d = st?.defaults ?? MC.Stats.Defaults(mu: 0.10, vol: 0.40, corr: 0.3)
         var xs: [(k: String, w: Double, mu: Double, vol: Double)] = parts.map { p in
             let tk = st?.tickers[p.key], b = tk?.mu ?? d.mu, s = tk?.trend ?? b

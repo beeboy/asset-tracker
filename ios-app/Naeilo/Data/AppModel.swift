@@ -183,14 +183,14 @@ final class AppModel {
     /// 1억 이상은 "5억 2,528만"처럼 억과 만을 나눠 쓴다 (만 단위에 다섯 자리 숫자는 읽기 어렵다). 만·억 뒤 "원"은 뺀다 (글줄이기)
     static func man(_ krw: Double) -> String {
         let n = Int((krw / 1e4).rounded())
-        let a = abs(n), sign = n < 0 ? "-" : ""
-        guard a >= 10_000 else { return n.formatted(.number.grouping(.automatic)) + "만" }
+        let a = abs(n), sign = n < 0 ? "−" : ""
+        guard a >= 10_000 else { return sign + a.formatted(.number.grouping(.automatic)) + "만" }
         let eok = a / 10_000, rest = a % 10_000
         return sign + "\(eok.formatted())억" + (rest > 0 ? " \(rest.formatted())만" : "")
     }
     /// 웹 krw()와 같은 표시: 1억 넘으면 소수 둘째 자리 억 (5.25억), 1만 넘으면 만 (826만). 내 길·전망·홈 평가액
     static func eok(_ krw: Double) -> String {
-        let a = abs(krw), s = krw < 0 ? "-" : ""
+        let a = abs(krw), s = krw < 0 ? "−" : ""
         if a >= 1e8 { return s + String(format: a >= 1e10 ? "%.0f억" : "%.2f억", a / 1e8) }
         if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + "만" }
         return s + Int(a.rounded()).formatted() + "원"
@@ -217,8 +217,8 @@ final class AppModel {
     /// 아직 값이 없으면 0 대신 "—"
     static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }
     static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
-    static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "") + String(format: "%.1f%%", p * 100) }
-    static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "") + "\(Int((p * 100).rounded()))%" }
+    static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(p) * 100) }
+    static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "−") + "\(Int((abs(p) * 100).rounded()))%" }
     static func price(_ s: Symbol, _ x: Double) -> String {
         s.currency == .usd ? "$" + x.formatted(.number.precision(.fractionLength(0...2))) : Int(x.rounded()).formatted() + "원"
     }

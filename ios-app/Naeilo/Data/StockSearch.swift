@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-// 종목 찾기·추가 (테스트: 사이트가 쓰는 Yahoo 중계). 시세 계약(Tiingo 등)이 정해지면 Relay 만 바꾸면 된다.
+// 종목 찾기·추가 (테스트: 사이트가 쓰는 Yahoo 중계).
 // - 찾기: 앱에 넣어 둔 한글 이름 목록(StockCatalog) + Yahoo 검색(영문 이름·티커·종목 코드). 미국 주식·ETF 와 코스피·코스닥만.
 // - 추가: 고르는 순간 3년 일별 종가를 받아 기기에 저장하고, 그 뒤로는 앱이 시세를 갱신할 때 같이 갱신한다.
 // - 미국 종목은 지금 가격. 한국 종목은 시세를 받지 않고 사용자가 넣은 가격 하나로 계산한다 (KoreaEstimate).
@@ -16,7 +16,7 @@ struct StockHit: Identifiable, Hashable {
     let currency: Currency
 }
 
-/// 한국 종목 (시세 계약 없음. 웹 app.js synthKR · data/kr_proxy.json 과 같은 규칙): 한국 가격은 받지 않고 사용자가 넣은 가격 하나에 맞춘다
+/// 한국 종목 (웹 app.js synthKR · data/kr_proxy.json 과 같은 규칙): 한국 가격은 받지 않고 사용자가 넣은 가격 하나에 맞춘다
 /// - 미국 지수를 따르는 국내 상장 ETF: 그 미국 ETF(SPY·QQQ 등) × 원/달러 움직임으로 오늘 가격을 추정 (환헤지 (H)면 환율 빼고)
 /// - 그 밖의 국내 종목은 종목별로 넣지 않는다. 국내 주식 합계 (시세 기준 화면에서 켠 경우만): 증권사 앱의 합계 금액 그대로,
 ///   지난 움직임·변동성은 미국 상장 EWY(MSCI Korea) × 원/달러로 대신 (웹 KOREA.KS 줄과 같은 종목 KOREA)
@@ -462,6 +462,8 @@ enum PriceHistory {
             return YahooSample.Hist(dates: s.dates + c.dates[i...], closes: s.closes + c.closes[i...])
         }
         if let h = site ?? mine { return h }
+        // 비중 바꿔 비교에서 담은 종목 (모의 바구니)
+        if let e = ExtraStats.shared.items[id]?.hist { return e }
         return YahooSample.history[id] ?? (id == "DRNK" ? nil : YahooSample.bundled[key])
     }
 }

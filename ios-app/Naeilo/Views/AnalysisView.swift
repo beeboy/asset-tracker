@@ -499,7 +499,7 @@ struct ForecastView: View {
     // MARK: 표시
     /// 3.30억 · 11.5억 · 826만 (목업 표기)
     static func amt(_ v: Double) -> String {
-        let a = abs(v), s = v < 0 ? "-" : ""
+        let a = abs(v), s = v < 0 ? "−" : ""
         if a >= 1e9 { return s + String(format: "%.1f억", a / 1e8) }
         if a >= 1e8 { return s + String(format: "%.2f억", a / 1e8) }
         return s + Int((a / 1e4).rounded()).formatted() + "만"

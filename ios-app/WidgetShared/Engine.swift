@@ -99,14 +99,16 @@ enum Engine {
         let toss = TossFeed.cached().flatMap { $0.got > after ? $0 : nil }
         // Alpaca 시세 (내 키가 있을 때, 미국 종목): 토스 값이 없는 종목만
         let alpaca = AlpacaFeed.cached().flatMap { $0.got > after ? $0 : nil }
-        return build(s, f, live, site: site, kr: kr, toss: toss, alpaca: alpaca)
+        // Longbridge 시세 (내 키가 있을 때): 토스·Alpaca 값이 없는 종목만
+        let lb = LongbridgeFeed.cached().flatMap { $0.got > after ? $0 : nil }
+        return build(s, f, live, site: site, kr: kr, toss: toss, alpaca: alpaca, lb: lb)
     }
 
     /// 인물 위젯용: 위젯이 앱보다 나중에 직접 받은 시세가 있으면 종목 평가액(현금 뺌)과 오늘 등락을 그 값으로 다시 낸다.
     /// 없으면 nil (앱이 reward.json 에 써 둔 값을 그대로 쓴다)
     static func liveHoldings() -> (total: Double, dayChg: Double)? {
         let after = Store.lastCheck?.timeIntervalSince1970 ?? 0
-        let fresh = [QuoteFeed.cached()?.got, KrQuoteFeed.cached()?.got, TossFeed.cached()?.got, AlpacaFeed.cached()?.got].contains { ($0 ?? 0) > after }
+        let fresh = [QuoteFeed.cached()?.got, KrQuoteFeed.cached()?.got, TossFeed.cached()?.got, AlpacaFeed.cached()?.got, LongbridgeFeed.cached()?.got].contains { ($0 ?? 0) > after }
         guard fresh else { return nil }
         let s = snapshot()
         guard !s.placeholder, !s.moves.isEmpty else { return nil }
@@ -116,7 +118,7 @@ enum Engine {
         return (tot, prev > 0 ? tot / prev - 1 : 0)
     }
 
-    static func build(_ s: WSummary?, _ f: WFeed?, _ live: WLive?, site: QuoteFeed.File? = nil, kr: QuoteFeed.File? = nil, toss: QuoteFeed.File? = nil, alpaca: QuoteFeed.File? = nil) -> Snapshot {
+    static func build(_ s: WSummary?, _ f: WFeed?, _ live: WLive?, site: QuoteFeed.File? = nil, kr: QuoteFeed.File? = nil, toss: QuoteFeed.File? = nil, alpaca: QuoteFeed.File? = nil, lb: QuoteFeed.File? = nil) -> Snapshot {
         // 수량·현금·목표는 최신 입력값, 없으면 요약의 것
         struct H { let t: String; let sh: Double; let manual: Double? }
         let hold: [H]
@@ -137,8 +139,14 @@ enum Engine {
         for h in hold {
             let ccy = f?.ccy[h.t] ?? s?.hold.first(where: { $0.t == h.t })?.ccy ?? "USD"
             let q = f?.q[h.t], sq = site?.q[h.t] ?? kr?.q[h.t]
-            let aq = alpaca?.q[h.t]
-            let last = toss?.q[h.t]?.last ?? aq?.last ?? sq?.last ?? h.manual ?? (q?.first ?? nil) ?? f?.c[h.t]?.c.compactMap { $0 }.last
+            let aq = alpaca?.q[h.t] ?? lb?.q[h.t]   // Alpaca 가 없으면 Longbridge (둘 다 미국 종목 지금 가격)
+            // 미국 장이 다 끝났으면 애프터마켓 가격 대신 정규장 종가 (앱 Market.regClose 와 같다)
+            var reg: Double? = nil
+            if ccy == "USD", USSession.closed(), let r = sq?.reg, r > 0 { reg = r }
+            // 토스 주간거래 값(애프터마켓 뒤에 체결)이면 정규장 종가 대신 그 값 (앱 Market.tossLast 와 같다)
+            if reg != nil, let t = toss?.q[h.t], t.at > (sq?.at ?? 0) + 60 { reg = nil }
+            let quoted: Double? = reg ?? toss?.q[h.t]?.last ?? aq?.last
+            let last = quoted ?? sq?.last ?? h.manual ?? (q?.first ?? nil) ?? f?.c[h.t]?.c.compactMap { $0 }.last
             let pc = sq?.prev ?? ((q?.count ?? 0) > 1 ? q![1] : nil) ?? aq.flatMap { $0.prev > 0 ? $0.prev : nil }
             guard let p = last else { continue }
             let v = h.sh * p * fx(ccy), pv = h.sh * (pc ?? p) * fx(ccy)

@@ -1,5 +1,5 @@
 {
-  "note": "한국 시세 계약 없이 쓰는 규칙 (웹 app.js·iOS KoreaEstimate 가 같이 읽는다). 한국 가격은 받지 않고 사용자가 넣은 가격 하나에 맞춘다. proxy: 이름이 맞으면 그 미국 ETF × 원/달러로 움직임을 추정 (환헤지 (H)면 환율 빼고). 그 밖의 국내 종목은 넣은 가격 그대로, 지난 움직임·변동성은 market(EWY, MSCI Korea) × 원/달러로 대신한다.",
+  "note": "내 키가 없을 때 한국 종목 추정 규칙 (웹 app.js·iOS KoreaEstimate 가 같이 읽는다). 한국 가격은 받지 않고 사용자가 넣은 가격 하나에 맞춘다. proxy: 이름이 맞으면 그 미국 ETF × 원/달러로 움직임을 추정 (환헤지 (H)면 환율 빼고). 그 밖의 국내 종목은 넣은 가격 그대로, 지난 움직임·변동성은 market(EWY, MSCI Korea) × 원/달러로 대신한다.",
   "market": "EWY",
   "exclude": "레버리지|인버스|2X|커버드콜|액티브|Leverage|Inverse|Covered|Active",
   "hedged": "\\(H\\)|Hedged",

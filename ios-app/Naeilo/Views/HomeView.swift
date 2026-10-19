@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppModel.self) private var m
     @State private var inbox = false
+    @AppStorage("hideAmt") private var hideAmt = false
 
     var body: some View {
         ScrollView {
@@ -57,20 +58,16 @@ struct HomeView: View {
                 .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 // 금액은 길어도 꺾지 않고 한 줄로, 자리가 모자라면 글자를 줄인다
-                Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5).roll(now)
+                // 누르면 금액 가리기(다시 누르면 보이기)
+                Text(hideAmt ? "••••••" : AppModel.man(now * 1e4) + "원").appFont(32, .bold).tracking(-0.5).roll(now)
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
+                    .contentShape(Rectangle()).onTapGesture { hideAmt.toggle() }
                 if value && m.cost > 0 {
                     Text(AppModel.sgn(m.ret)).appFont(14, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                         .lineLimit(1).minimumScaleFactor(0.6)
                 }
-                Spacer(minLength: 8)
-                MiniPath()
             }
-            if value && m.route == .plus && m.total > 0 {
-                let mv = m.todayMove, diff = m.stockTotal - m.stockTotal / (1 + mv)
-                Text("오늘 \(AppModel.sgn(mv)) · " + (diff >= 0 ? "+" : "−") + AppModel.won(diff))
-                    .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-            }
+            if value && m.route == .plus && m.total > 0 { todayLine }
             HStack {
                 Text("목표 \(AppModel.wonK(m.gK)) · \(m.gY)년"); Spacer()
                 Text(AppModel.pct(prog)).fontWeight(.bold).foregroundStyle(Theme.yellow)
@@ -106,9 +103,8 @@ struct HomeView: View {
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
                 Text(AppModel.sgn(m.ret)).appFont(16, .bold).lineLimit(1).fixedSize()
                     .foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
-                Spacer(minLength: 8)
-                MiniPath()
             }
+            if m.total > 0 { todayLine }
             HStack {
                 Text("본전까지")
                 Spacer()
@@ -118,8 +114,8 @@ struct HomeView: View {
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: m.total / max(1, m.cost))
             Text(need > 0
-                 ? "본전까지 \(String(format: "%.1f", needY * 100))% → \(String(format: "%.1f", need * 100))%" + (need <= needY ? "" : " · 하루 숫자는 흔들려요")
-                 : "본전 넘음 · 목표 루트로 갈 수 있어요 (종목·친구 그대로)")
+                 ? "어제 \(String(format: "%.1f", needY * 100))% → 오늘 \(String(format: "%.1f", need * 100))%"
+                 : "본전 넘음 · 종목·친구 그대로")
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
             if need <= 0 { darkButton("목표 루트로") { m.graduateToGoal(); m.tab = .board } }
         }
@@ -127,6 +123,13 @@ struct HomeView: View {
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    // 오늘 등락: 부호는 한 번만 (▲/▼ 뒤 퍼센트·금액은 부호 없이). 목표·회복 카드 공통
+    private var todayLine: some View {
+        let mv = m.todayMove, diff = m.stockTotal - m.stockTotal / (1 + mv)
+        return Text("오늘 " + (mv >= 0 ? "▲ " : "▼ ") + String(format: "%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)))
+            .appFont(13).foregroundStyle(mv >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
     }
 
     // 어두운 요약 카드 안의 노란 버튼 (목표 루트로 · 다음 목표)

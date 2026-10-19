@@ -565,6 +565,78 @@ struct MyPathGoalView: View {
     }
 }
 
+/// 비중 바꿔 비교 · 종목 추가: 빈칸이면 자주 쓰는 목록, 찾으면 미국·한국 종목 아무거나. 사이트 표에 없는 종목은 3년 종가를 받아 앱에서 계산한다 (ExtraStats)
+struct CompareAddSheet: View {
+    let have: Set<String>
+    let add: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var remote: [StockHit] = []
+    @State private var searching = false
+    @State private var loading: String? = nil
+    @State private var failed: String? = nil
+
+    var body: some View {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        let local = q.isEmpty ? [] : StockSearch.local(q)
+        let hits = (local + remote.filter { r in !local.contains { $0.id == r.id } }).filter { !have.contains($0.id) }
+        NavigationStack {
+            List {
+                if q.isEmpty {
+                    ForEach(Parallel.universe.filter { !have.contains($0.id) }, id: \.id) { u in
+                        Button { add(u.id); dismiss() } label: { line(u.name, u.id, busy: false) }
+                    }
+                } else {
+                    ForEach(hits) { h in
+                        Button { Task { await pick(h) } } label: { line(h.name, h.id + " · " + h.market, busy: loading == h.id) }
+                            .disabled(loading != nil)
+                    }
+                    if searching { HStack(spacing: 8) { ProgressView(); Text("찾는 중").appFont(13).foregroundStyle(Theme.sub) } }
+                    else if hits.isEmpty { Text("없음 · 이름·티커·종목 코드로").appFont(13).foregroundStyle(Theme.sub) }
+                }
+                if let f = failed { Text(f).appFont(13).foregroundStyle(Theme.orange) }
+            }
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "이름·티커·종목 코드")
+            .task(id: query) { await search() }
+            .navigationTitle("종목 추가").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+        }
+    }
+
+    private func line(_ name: String, _ sub: String, busy: Bool) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).appFont(15, .bold).foregroundStyle(Theme.ink).lineLimit(1)
+                Text(sub).appFont(12).foregroundStyle(Theme.sub)
+            }
+            Spacer()
+            if busy { ProgressView() }
+        }
+    }
+
+    private func search() async {
+        remote = []
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty, q.unicodeScalars.allSatisfy({ $0.isASCII }) else { searching = false; return }
+        searching = true
+        try? await Task.sleep(for: .milliseconds(400))
+        guard !Task.isCancelled else { return }
+        let r = await StockSearch.remote(q)
+        guard !Task.isCancelled else { return }
+        remote = r; searching = false
+    }
+
+    /// 사이트 표에 있으면 바로, 없으면 3년 종가를 받은 뒤 넣는다
+    private func pick(_ h: StockHit) async {
+        failed = nil
+        if Market.shared.stats?.tickers[SiteStats.mcKey(h.id)] != nil { add(h.id); dismiss(); return }
+        loading = h.id
+        defer { loading = nil }
+        do { try await ExtraStats.shared.fetch(h); add(h.id); dismiss() }
+        catch { failed = "\(h.name) 시세 못 받음 · 다시 눌러 주세요" }
+    }
+}
+
 // MARK: 내 길 — 종목 비중 바꿔 비교 (B-2안). 저장하면 모의 바구니(담아 본 나)가 된다
 
 struct MyPathCompareView: View {
@@ -574,6 +646,7 @@ struct MyPathCompareView: View {
     @State private var w: [String: Int] = [:]
     @State private var order: [String] = []
     @State private var loaded = false
+    @State private var adding = false
 
     var body: some View {
         let sum = w.values.reduce(0, +)
@@ -581,7 +654,7 @@ struct MyPathCompareView: View {
         let nowSim = m.simulate(m.nowMix, years: yrsE)
         let parts: [AppModel.Part] = order.compactMap { id in
             guard let x = w[id], x > 0 else { return nil }
-            let usd = m.rows.first { $0.id == id }.map { $0.sym.currency == .usd } ?? true
+            let usd = m.rows.first { $0.id == id }.map { $0.sym.currency == .usd } ?? ExtraStats.shared.usd(id) ?? true
             return (key: SiteStats.mcKey(id), ccy: usd ? "USD" : "KRW", w: Double(x) / Double(max(1, sum)))
         }
         let newSim = w == w0 || parts.isEmpty ? nowSim : m.simulate(m.nowMix, years: yrsE, parts: parts)
@@ -591,25 +664,25 @@ struct MyPathCompareView: View {
         let gc = Calendar.current.dateComponents([.year, .month], from: m.goalToDate)
         let canSave = sum == 100 && m.pworld != nil && w.filter { $0.value > 0 }.keys.allSatisfy { Parallel.has($0) }
         let headline: String = {
-            if newSim.etaMonths <= goalMo { return "보통 목표일 안에 닿아요" }
-            if newSim.etaMonths < nowSim.etaMonths - 0.5 { return "지금보다 빨라지지만, 보통 목표일은 넘겨요" }
-            if newSim.etaMonths > nowSim.etaMonths + 0.5 { return "지금보다 늦어지고, 보통 목표일을 넘겨요" }
-            return "지금과 비슷해요. 보통 목표일을 넘겨요"
+            if newSim.etaMonths <= goalMo { return "보통 목표일 안" }
+            if newSim.etaMonths < nowSim.etaMonths - 0.5 { return "빨라짐 · 보통 목표일 넘김" }
+            if newSim.etaMonths > nowSim.etaMonths + 0.5 { return "늦어짐 · 보통 목표일 넘김" }
+            return "비슷 · 보통 목표일 넘김"
         }()
         let width = newSim.etaHi.isFinite ? newSim.etaHi - newSim.etaLo : .infinity
-        let spread = width > 48 ? "대신 결과 차이가 커요. 아주 빨리 닿을 수도, 한참 늦어질 수도 있어요."
-            : width > 24 ? "결과 차이는 보통 수준이에요." : "결과가 비교적 고르게 모여 있어요."
+        let spread = width > 48 ? "편차 큼 · 아주 빠를 수도, 한참 늦을 수도"
+            : width > 24 ? "편차 보통" : "편차 작음"
 
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("종목 비중을 바꾸면 \(AppModel.wonK(m.gK))에 닿는 시점이 달라져요").appFont(20, .bold).fixedSize(horizontal: false, vertical: true)
+                    Text("비중 바꾸면 언제 닿을까?").appFont(20, .bold).fixedSize(horizontal: false, vertical: true)
                     Text("목표 \(AppModel.wonK(m.gK)) · \(m.goalToText)까지").appFont(13).foregroundStyle(Theme.sub)
                 }
 
                 Card {
                     HStack {
-                        Text("내 종목 비중").appFont(15, .bold); Spacer()
+                        Text("비중").appFont(15, .bold); Spacer()
                         Button("처음으로") { w = w0; order = order.filter { w0[$0] != nil } }.appFont(13, .semibold).foregroundStyle(Theme.teal)
                     }
                     GeometryReader { g in
@@ -624,25 +697,24 @@ struct MyPathCompareView: View {
                     }
                     .frame(height: 12).clipShape(Capsule())
                     ForEach(order.indices, id: \.self) { i in row(order[i], color: Theme.holdColors[i % Theme.holdColors.count]) }
-                    Menu {
-                        ForEach(Parallel.universe.filter { w[$0.id] == nil }, id: \.id) { u in
-                            Button(u.id + " · " + u.name) { w[u.id] = 0; order.append(u.id) }
-                        }
-                    } label: {
+                    Button { adding = true } label: {
                         Text("+ 종목 추가").appFont(14, .bold).foregroundStyle(Theme.teal).frame(minHeight: 40)
                     }
-                    Text(sum == 100 ? "합계 100%" : "합계 \(sum)% · 100%가 되도록 맞춰 주세요 (시점은 비율대로 계산했어요)")
+                    .sheet(isPresented: $adding) {
+                        CompareAddSheet(have: Set(w.keys)) { id in w[id] = 0; order.append(id) }
+                    }
+                    Text(sum == 100 ? "합계 100%" : "합계 \(sum)% · 100%로 맞추기")
                         .appFont(13, .bold).foregroundStyle(sum == 100 ? Theme.teal : Color(hex: 0x8A4614, dark: 0xE8A060))
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background((sum == 100 ? Theme.teal : Theme.orange).opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
                 }
 
                 Card {
-                    Text("\(AppModel.wonK(m.gK))에 닿는 시점").appFont(15, .bold)
+                    Text("닿는 때").appFont(15, .bold)
                     EtaTicks(a0: a0, a1: a1)
                     EtaRow(name: "지금 비중", sub: "", sim: nowSim, a0: a0, a1: a1, goalYear: goalYear, strong: false)
                     EtaRow(name: "바꾼 비중", sub: "", sim: newSim, a0: a0, a1: a1, goalYear: goalYear, strong: true)
-                    Text("점선 = 목표일 \(String(gc.year ?? 0)).\(gc.month ?? 0) · 점은 보통, 막대는 10번 중 8번").appFont(11).foregroundStyle(Theme.muted)
+                    Text("점선 = 목표일 \(String(gc.year ?? 0)).\(gc.month ?? 0) · 점 보통 · 막대 10번 중 8번").appFont(11).foregroundStyle(Theme.muted)
                 }
 
                 Card {
@@ -654,14 +726,14 @@ struct MyPathCompareView: View {
                     m.saveBasket(w.filter { $0.value > 0 }.mapValues { Double($0) })
                     dismiss()
                 } label: {
-                    Text("이 비중으로 계획 저장").appFont(16, .bold).foregroundStyle(canSave ? Color.white : Theme.sub)
+                    Text("저장").appFont(16, .bold).foregroundStyle(canSave ? Color.white : Theme.sub)
                         .frame(maxWidth: .infinity, minHeight: 52)
                         .background(canSave ? Theme.teal : Theme.border, in: RoundedRectangle(cornerRadius: 14))
                 }
                 .buttonStyle(.plain).disabled(!canSave)
-                Text(m.pworld == nil ? "평행 세계를 열면 이 비중을 모의 바구니로 저장할 수 있어요." : "저장하면 모의 바구니(담아 본 나)가 오늘부터 이 비중으로 달려요. 실제 수량은 그대로예요.")
+                Text(m.pworld == nil ? "평행 세계를 열면 저장 가능" : "모의 바구니로 저장 · 실제 수량 그대로")
                     .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                Text("과거 수익률로 만든 예상이에요. 투자 권유가 아니에요.").appFont(12).foregroundStyle(Theme.muted)
+                Text("과거 수익률 기준 · 투자 권유 아님").appFont(12).foregroundStyle(Theme.muted)
             }
             .padding(16)
         }
@@ -681,7 +753,7 @@ struct MyPathCompareView: View {
 
     private func row(_ id: String, color: Color) -> some View {
         let r = m.rows.first { $0.id == id }
-        let name = r?.sym.name ?? Parallel.universe.first { $0.id == id }?.name ?? id
+        let name = r?.sym.name ?? Parallel.universe.first { $0.id == id }?.name ?? ExtraStats.shared.name(id) ?? id
         let kind = r?.sym.sector ?? "새로 담음"
         let d = (w[id] ?? 0) - (w0[id] ?? 0)
         return HStack(spacing: 8) {
@@ -1058,10 +1130,10 @@ struct FactorDetailView: View {
         switch factor {
         case "rate":
             let y = MacroData.shared.change1y.map { ($0 * 10).rounded() / 10 }
-            return [("내린다", -0.5), ("오른다", 0.5), (y.map { $0 > 0 ? "작년만큼 또 오른다" : "작년만큼 또 바뀐다" } ?? "크게 오른다", (y.flatMap { $0 == 0 ? nil : $0 }) ?? 1.0), ("2022년처럼 급등", 2.5)]
-        case "fx": return [("1,300원", 1300 - fx), ("1,500원", 1500 - fx), ("10% 내린다", -fx * 0.1), ("2022년처럼 +20%", fx * 0.2)]
+            return [("내린다", -0.5), ("오른다", 0.5), (y.map { _ in "작년만큼 또" } ?? "크게 오른다", (y.flatMap { $0 == 0 ? nil : $0 }) ?? 1.0), ("2022년처럼", 2.5)]
+        case "fx": return [("1,300원", 1300 - fx), ("1,500원", 1500 - fx), ("10% 하락", -fx * 0.1), ("2022년처럼", fx * 0.2)]
         case "mkt": return [("흔한 나쁜 날", -2), ("나쁜 한 달", -8), ("2022년처럼", -25), ("좋은 한 달", 8)]
-        default: return [("10% 내린다", -10), ("10% 오른다", 10), ("30% 내린다", -30), ("30% 오른다", 30)]
+        default: return [("10% 하락", -10), ("10% 상승", 10), ("30% 하락", -30), ("30% 상승", 30)]
         }
     }
     private var range: ClosedRange<Double> {
@@ -1105,18 +1177,17 @@ struct FactorDetailView: View {
         let offset = upSum > 0 && dnSum < 0 && abs(tot) < min(upSum, -dnSum)
         let strong = rows.filter { !$0.weak }, weak = rows.filter(\.weak)
         let scale = max(1, rows.map { abs($0.dv) }.max() ?? 1)
-        let ups = factor == "rate" ? "금리가 오르면" : factor == "fx" ? "환율이 오르면" : "\(name)이 오르면"
         let evIds: [String] = factor == "rate" ? ["x_fomc", "x_cpi", "x_jobs"] : factor == "fx" ? ["x_bok", "x_fomc"] : factor == "oil" ? ["x_opec"] : factor == "gold" ? ["x_fomc", "x_cpi"] : ["x_fomc", "x_cpi", "x_jobs", "x_mid", "x_witch"]
         let events = MarketEvents.upcoming(held: m.rows.map(\.id), days: 45).filter { evIds.contains($0.id) }.sorted { $0.day < $1.day }.prefix(5)
 
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(name)\(factor == "rate" || factor == "fx" ? "가" : "이") 이렇게 되면, 지금 내 돈은 얼마나 움직일까요?").appFont(20, .bold)
-                    Text(factor == "rate" ? "미국 10년 금리 기준이에요. 시장 전체 움직임은 빼고, 지난 3년 하루하루 실제로 움직인 만큼으로 계산해요."
-                         : factor == "fx" ? "달러 자산은 환율이 바뀐 만큼 원화 평가액이 바뀌어요. 지금 환율 \(Int(Market.shared.fx.last).formatted())원 기준이에요."
-                         : factor == "mkt" ? "S&P500 기준이에요. 지난 3년 하루하루 실제로 함께 움직인 만큼으로 계산해요."
-                         : "시장 전체 움직임은 빼고, 지난 3년 하루하루 실제로 움직인 만큼으로 계산해요.")
+                    Text("\(name)\(factor == "mkt" || factor == "gold" ? "이" : "가") 바뀌면 내 돈은?").appFont(20, .bold)
+                    Text(factor == "rate" ? "미국 10년 금리 기준 · 시장 몫 빼고 · 지난 3년 실제 움직임"
+                         : factor == "fx" ? "달러 자산은 환율만큼 · 지금 \(Int(Market.shared.fx.last).formatted())원 기준"
+                         : factor == "mkt" ? "S&P500 기준 · 지난 3년 실제 움직임"
+                         : "시장 몫 빼고 · 지난 3년 실제 움직임")
                         .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -1136,22 +1207,22 @@ struct FactorDetailView: View {
                     }
                 }
                 Card(dark: true) {
-                    Text("\(name) \(text(v))이면, 내 자산은").appFont(13).foregroundStyle(Theme.sub)
+                    Text("\(name) \(text(v))이면").appFont(13).foregroundStyle(Theme.sub)
                     Text(allWeak && factor != "fx" ? "뚜렷한 관계 없음" : verdict).appFont(24, .bold)
-                    Text("내 자산 \(AppModel.manS(tot)) · \(AppModel.sgn(r))").appFont(15, .semibold).foregroundStyle(Theme.change(tot))
+                    Text("\(AppModel.manS(tot)) · \(AppModel.sgn(r))").appFont(15, .semibold).foregroundStyle(Theme.change(tot))
                     if upSum > 0 || dnSum < 0 {
                         sideBar("오르는 쪽", upSum, max(upSum, -dnSum, 1), Theme.up)
                         sideBar("내리는 쪽", dnSum, max(upSum, -dnSum, 1), Theme.down)
                     }
-                    if offset { Text("종목끼리 반대로 움직여서 서로 상당 부분 상쇄돼요.").appFont(13).foregroundStyle(Theme.sub) }
+                    if offset { Text("종목끼리 반대로 움직여 상쇄").appFont(13).foregroundStyle(Theme.sub) }
                 }
                 if huge(v) {
-                    Text("이만큼 큰 변화는 지난 3년 안에 한 달 사이에 없었어요. 그동안의 관계가 그대로 이어진다는 가정이라 실제와 많이 다를 수 있어요.")
+                    Text("지난 3년엔 없던 큰 변화 · 실제와 많이 다를 수도")
                         .appFont(13).foregroundStyle(Theme.inkFixed).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.orange.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
                 }
                 Card {
-                    Text("종목별로 보면").appFont(15, .bold)
+                    Text("종목별").appFont(15, .bold)
                     ForEach(weak.count > 3 ? strong : rows, id: \.id) { x in
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
@@ -1160,8 +1231,8 @@ struct FactorDetailView: View {
                                 Text(x.weak ? "뚜렷한 관계 없음" : AppModel.manS(x.dv)).appFont(14, .semibold).foregroundStyle(x.weak ? Theme.muted : Theme.change(x.dv))
                             }
                             centerBar(x.dv, scale)
-                            Text(label(x.dv, x.weak, x.known, ups) + (x.agree.map { x.weak ? "" : " · 10번 중 \(Int(($0 * 10).rounded()))번 이 방향이었어요" } ?? ""))
-                                .appFont(12).foregroundStyle(Theme.sub)
+                            let note = label(x.dv, x.weak, x.known) + (x.agree.map { x.weak ? "" : " · 10번 중 \(Int(($0 * 10).rounded()))번" } ?? "")
+                            if !note.isEmpty { Text(note).appFont(12).foregroundStyle(Theme.sub) }
                         }
                         .opacity(x.weak ? 0.55 : 1)
                     }
@@ -1171,19 +1242,19 @@ struct FactorDetailView: View {
                     if rows.isEmpty { Text("보유 종목이 없어요.").appFont(13).foregroundStyle(Theme.sub) }
                 }
                 Card {
-                    Text(factor == "rate" ? "금리 시나리오와 숫자가 왜 달라요?" : "\(m.forecastTitle)과 숫자가 왜 달라요?").appFont(15, .bold)
+                    Text(factor == "rate" ? "금리 시나리오와 다른 이유" : "\(m.forecastTitle)과 다른 이유").appFont(15, .bold)
                     HStack(alignment: .top, spacing: 8) {
-                        compare("이 화면", "그날그날 실제로 함께 움직인 만큼. 오늘~한 달 사이의 영향")
-                        compare(factor == "rate" ? "금리 시나리오" : m.forecastTitle, factor == "rate" ? "금리가 회사 이익을 바꾸는 길로 본 3년 영향" : "모든 요인이 함께 움직이는 3년 뒤 분포")
+                        compare("이 화면", "그날그날 함께 움직인 만큼 · 한 달 이내")
+                        compare(factor == "rate" ? "금리 시나리오" : m.forecastTitle, factor == "rate" ? "회사 이익 경로 · 3년 영향" : "모든 요인 · 3년 뒤 분포")
                     }
-                    Text("보는 기간과 길이 달라서 방향이 다를 수 있어요. 목표에 닿는지는 그 화면에서 봐요.").appFont(12).foregroundStyle(Theme.sub)
+                    Text("기간·방법이 달라 방향이 다를 수도").appFont(12).foregroundStyle(Theme.sub)
                     NavigationLink(value: factor == "rate" ? AnalysisRoute.rateScen : AnalysisRoute.forecast) {
-                        Text("목표에 미치는 영향 보기").appFont(14, .semibold).foregroundStyle(Theme.teal)
+                        Text("목표 영향 보기").appFont(14, .semibold).foregroundStyle(Theme.teal)
                     }
                 }
                 if !events.isEmpty {
                     Card {
-                        Text("다가오는 \(name) 관련 일정").appFont(15, .bold)
+                        Text("다가오는 일정").appFont(15, .bold)
                         ForEach(Array(events.enumerated()), id: \.offset) { _, e in
                             HStack(alignment: .top, spacing: 10) {
                                 Text(MarketEvents.when(e.day)).appFont(12, .semibold).foregroundStyle(Theme.teal).frame(minWidth: 64, alignment: .leading)
@@ -1195,15 +1266,15 @@ struct FactorDetailView: View {
                 Card {
                     DisclosureGroup(isExpanded: $custom) {
                         VStack(alignment: .leading, spacing: 6) {
-                            HStack { Text("직접 정한 값").appFont(13).foregroundStyle(Theme.sub); Spacer(); Text(text(v)).appFont(14, .bold) }
+                            HStack { Text("값").appFont(13).foregroundStyle(Theme.sub); Spacer(); Text(text(v)).appFont(14, .bold) }
                             Slider(value: Binding(get: { min(max(v, range.lowerBound), range.upperBound) }, set: { shock = $0 }),
                                    in: range, step: factor == "rate" ? 0.25 : factor == "fx" ? 20 : 5).tint(Theme.teal)
                                 .accessibilityLabel("\(name) 변화 직접 정하기")
                         }
                         .padding(.top, 8)
-                    } label: { Text("\(name) 변화 직접 정하기").appFont(15, .bold).foregroundStyle(Theme.ink) }
+                    } label: { Text("직접 정하기").appFont(15, .bold).foregroundStyle(Theme.ink) }
                 }
-                Text("예측이 아니라 '만약에'를 보는 화면이에요. 요인 하나만 바뀐다고 가정한 값이고, 실제로는 여러 요인이 함께 움직여요.")
+                Text("예측 아님 · '만약에' 화면 · 요인 하나만 바꾼 값")
                     .appFont(12).foregroundStyle(Theme.muted)
             }
             .padding(16)
@@ -1214,12 +1285,12 @@ struct FactorDetailView: View {
         .task { await SiteCalc.shared.refresh(); if factor == "rate" { await MacroData.shared.load() } }
     }
 
-    private func label(_ dv: Double, _ weak: Bool, _ known: Bool, _ ups: String) -> String {
-        if !known { return "지난 3년 시세가 부족해 0으로 봤어요" }
-        if factor == "fx" { return dv == 0 ? "원화 자산이라 영향 없어요" : "달러 자산이라 환율만큼 움직여요" }
-        if weak { return "뚜렷한 관계 없음" }
+    private func label(_ dv: Double, _ weak: Bool, _ known: Bool) -> String {
+        if !known { return "3년 시세 부족 · 0으로 봄" }
+        if factor == "fx" { return dv == 0 ? "원화 자산 · 영향 없음" : "달러 자산 · 환율만큼" }
+        if weak { return "" }
         let sameDir = (dv > 0) == (shockSign > 0)
-        return "\(ups) " + (sameDir ? "함께 올랐어요" : "내렸어요")
+        return sameDir ? "같은 방향" : "반대 방향"
     }
     private var shockSign: Double { (shock ?? presets[1].1) >= 0 ? 1 : -1 }
     private func sideBar(_ t: String, _ x: Double, _ s: Double, _ c: Color) -> some View {

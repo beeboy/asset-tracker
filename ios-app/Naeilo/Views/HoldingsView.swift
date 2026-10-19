@@ -76,16 +76,18 @@ struct HoldingsView: View {
         } message: { Text("목록과 평가액에서 빠져요. 다시 넣으려면 종목 추가에서 넣으면 돼요.") }
     }
 
-    // 지금 평가액 + 산 돈 대비 수익(원·%)
+    // 손익 중심: 홈(평가액·목표)과 겹치지 않게 산 돈 대비 수익을 크게
     private func totalCard(us: Int, kr: Int) -> some View {
         let gain = m.total - m.cost
         return Card {
-            Text("평가액").appFont(13, .semibold).foregroundStyle(Theme.sub)
-            Text(AppModel.man(m.total) + "원").appFont(28, .bold).monospacedDigit().roll(m.total)
-            HStack(spacing: 6) {
-                Text("\(gain >= 0 ? "+" : "−")\(AppModel.man(abs(gain))) (\(AppModel.sgn(m.ret)))")
-                    .appFont(14, .bold).foregroundStyle(Theme.change(gain))
+            Text("수익").appFont(13, .semibold).foregroundStyle(Theme.sub)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("\(gain >= 0 ? "+" : "−")\(AppModel.man(abs(gain)))원").appFont(28, .bold).monospacedDigit()
+                    .foregroundStyle(Theme.change(gain)).roll(gain)
+                Text(AppModel.sgn(m.ret)).appFont(14, .bold).foregroundStyle(Theme.change(gain))
             }
+            Text("원금 \(AppModel.man(m.cost)) → 평가 \(AppModel.man(m.total))")
+                .appFont(14).monospacedDigit().foregroundStyle(Theme.sub)
             Text("\(us + kr)종목" + (us > 0 ? " · $1 = \(Int(Market.shared.valFx.rounded()).formatted())원" : ""))
                 .appFont(12).foregroundStyle(Theme.muted)
         }

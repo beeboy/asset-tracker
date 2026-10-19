@@ -1,6 +1,6 @@
 import Foundation
 
-// 시세 제공. 계약(데이터 형식)은 다른 스레드에서 정하는 중이라, 지금은 시안과 같은 값을 만드는 스텁만 있다.
+// 시세 제공 스텁: 시안과 같은 값을 만든다.
 // 실제 연결은 이 프로토콜을 구현해 AppModel.prices 에 넣으면 된다.
 protocol PriceProvider {
     /// 전일 종가

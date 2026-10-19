@@ -37,6 +37,7 @@ struct ShareCardSheet: View {
     @State private var picked = 6          // 기본 꽃밭
     @State private var mode: Int?          // nil: 아이폰 설정 따라감
     @State private var showAmount = "hide"
+    @State private var myMsg = ""          // 비우면 인물 기본 대사
     @State private var shareURL: URL?      // 버튼 누를 때만 그린 이미지
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
@@ -76,6 +77,12 @@ struct ShareCardSheet: View {
 
                     card.frame(maxWidth: .infinity)
 
+                    TextField("내 메시지 (비우면 기본 대사)", text: $myMsg)
+                        .appFont(14).padding(.horizontal, 14).frame(minHeight: 44)
+                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
+                        .onChange(of: myMsg) { if myMsg.count > 40 { myMsg = String(myMsg.prefix(40)) } }
+
                     ChipRow(items: [("hide", "금액 숨기기"), ("show", "금액 보이기")], selection: $showAmount, fill: true)
                     Button { shareURL = rendered } label: {
                             Label("이미지로 저장 · 공유", systemImage: "square.and.arrow.up").appFont(16, .bold)
@@ -113,7 +120,7 @@ struct ShareCardSheet: View {
                 // 말풍선: 왼쪽 꼬리가 위젯 속 인물을 가리킨다
                 VStack(alignment: .leading, spacing: 4) {
                     Text(m.friendName(f)).font(.system(size: 12, weight: .semibold)).foregroundStyle(l.name)
-                    Text(w.say).font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
+                    Text(myMsg.trimmingCharacters(in: .whitespaces).isEmpty ? w.say : myMsg).font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)   // 풍선이 오른쪽 여백 20 까지 찬다
                 .padding(.horizontal, 14).padding(.vertical, 12)
