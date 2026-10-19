@@ -154,7 +154,7 @@ struct MeSample: Identifiable {
 
 // MARK: 서버 시각
 
-/// 서버 시각: naeilo.com 응답의 Date 머리를 받고, 그 뒤로는 기기가 켜진 뒤 흐른 시간(잠자기 포함, 시계를 바꿔도 안 바뀜)을 더한다.
+/// 서버 시각: 애플 서버(안 되면 naeilo.com) 응답의 Date 머리를 받고, 그 뒤로는 기기가 켜진 뒤 흐른 시간(잠자기 포함, 시계를 바꿔도 안 바뀜)을 더한다.
 /// 기기를 다시 켜면 다시 받아야 한다. 받은 적이 없거나 다시 켠 뒤 인터넷이 없으면 nil (그동안 인터미션 체크인은 기다린다)
 @Observable
 final class TrustedClock {
@@ -187,7 +187,8 @@ final class TrustedClock {
     @MainActor func sync() async {
         guard !busy else { return }
         busy = true; defer { busy = false }
-        for u in [Config.site, Config.relay] {
+        // 애플 서버가 먼저, 안 되면 naeilo.com·중계 (웹은 백업)
+        for u in [URL(string: "https://www.apple.com/")!, Config.site, Config.relay] {
             var r = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10)
             r.httpMethod = "HEAD"
             guard let res = try? await URLSession.shared.data(for: r),
