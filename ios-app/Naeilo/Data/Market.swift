@@ -441,18 +441,46 @@ enum MarFeed {
         let old = cached()
         // 오늘 고시가 아닌 값은 10분만 믿는다 (앱을 새로 깔거나 빌드한 직후 며칠 묵은 값을 30분 넘게 쓰지 않게)
         if let o = old, Date().timeIntervalSince1970 - o.got < (o.date >= Day.today ? minAge : min(minAge, 600)) { return o }
-        var c = URLComponents(url: Config.data.appendingPathComponent("mar.json"), resolvingAgainstBaseURL: false)!
-        c.queryItems = [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970 / 600)))]
-        var best: File? = await get(URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10))
-        // 웹 marFetch 와 같게: 저장소 값이 오늘 고시가 아니면 중계(/mar)에서 한 번 더 (더 새 날짜일 때만 바꾼다)
-        let have = max(best?.date ?? "", old?.date ?? "")
-        if have < Day.today, let x = await get(URLRequest(url: Config.relay.appendingPathComponent("mar"), timeoutInterval: 10)), x.date > (best?.date ?? "") { best = x }
+        // 1순위: 서울외국환중개에서 직접 (최신 고시 + 앞 날짜 고시). 못 받을 때만 웹(data/mar.json → 중계 /mar)
+        var best: File? = await smbs()
+        if best == nil {
+            var c = URLComponents(url: Config.data.appendingPathComponent("mar.json"), resolvingAgainstBaseURL: false)!
+            c.queryItems = [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970 / 600)))]
+            best = await get(URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10))
+            // 웹 marFetch 와 같게: 저장소 값이 오늘 고시가 아니면 중계(/mar)에서 한 번 더 (더 새 날짜일 때만 바꾼다)
+            let have = max(best?.date ?? "", old?.date ?? "")
+            if have < Day.today, let x = await get(URLRequest(url: Config.relay.appendingPathComponent("mar"), timeoutInterval: 10)), x.date > (best?.date ?? "") { best = x }
+        }
         guard var f = best else { return old }
         if let o = old, o.date > f.date { f = File(rate: o.rate, date: o.date, got: f.got, prev: o.prev) }   // 중계에서 받아 둔 더 새 값은 지킨다
         else if let o = old, o.date < f.date, f.prev == nil { f.prev = Prev(rate: o.rate, date: o.date) }   // 날짜가 바뀌면 앞 고시를 남긴다
         else if let o = old, f.prev == nil { f.prev = o.prev }
         Store.write(f, name)
         return f
+    }
+    /// 서울외국환중개 매매기준율 표 (최근 2주): 마지막 = 최신 고시, 그 앞 = prev. 중계 worker·server.py 와 같은 파싱
+    private static func smbs() async -> File? {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = TimeZone(identifier: "Asia/Seoul"); f.dateFormat = "yyyy-MM-dd"
+        let st = f.string(from: Date().addingTimeInterval(-14 * 86400)), end = f.string(from: Date())
+        guard let url = URL(string: "http://www.smbs.biz/ExRate/StdExRate_xml.jsp?arr_value=USD_\(st)_\(end)") else { return nil }
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+        req.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+        req.setValue("http://www.smbs.biz/ExRate/StdExRate.jsp", forHTTPHeaderField: "Referer")
+        guard let (data, resp) = try? await URLSession.shared.data(for: req), (resp as? HTTPURLResponse)?.statusCode == 200,
+              let t = String(data: data, encoding: .isoLatin1),
+              let re = try? NSRegularExpression(pattern: "label=['\"]([^'\"]+)['\"][^>]*?value=['\"]([\\d,.]+)['\"]") else { return nil }
+        var days: [Prev] = []
+        for m in re.matches(in: t, range: NSRange(t.startIndex..., in: t)) {
+            guard let lr = Range(m.range(at: 1), in: t), let vr = Range(m.range(at: 2), in: t),
+                  let rate = Double(t[vr].replacingOccurrences(of: ",", with: "")), rate > 500, rate < 5000 else { continue }
+            let n = t[lr].split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+            guard n.count >= 3 else { continue }
+            days.append(Prev(rate: rate, date: String(format: "%04d-%02d-%02d", n[0] < 100 ? 2000 + n[0] : n[0], n[1], n[2])))
+        }
+        days.sort { $0.date < $1.date }
+        guard let last = days.last else { return nil }
+        let pv = days.dropLast().last
+        return File(rate: last.rate, date: last.date, got: Date().timeIntervalSince1970, prev: pv)
     }
     private static func get(_ req: URLRequest) async -> File? {
         guard let (data, resp) = try? await URLSession.shared.data(for: req),

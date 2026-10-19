@@ -57,6 +57,12 @@ targets:
           - CFBundleURLName: com.naeilo.widget
             CFBundleURLSchemes: [naeilo]
         UILaunchScreen: {}
+        # 서울외국환중개 매매기준율은 http 로만 열린다 (https 인증서가 다른 이름) — 이 도메인만 허용
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            smbs.biz:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: true
         # 가로 화면도 지원 (아이폰은 거꾸로 세로 제외). 가로에서는 내용 폭을 720pt 로 묶고 고정 머리 없이 한 번에 스크롤
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIRequiresFullScreen: true
