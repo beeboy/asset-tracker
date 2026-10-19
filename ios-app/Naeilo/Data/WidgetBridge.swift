@@ -35,7 +35,7 @@ enum WidgetBridge {
         q["KRW=X"] = [fx.last, fx.prevClose, now.timeIntervalSince1970]
         // 내부 테스트 국내 시세 종목: 위젯이 Yahoo 중계로 직접 받는다 (앱을 열지 않아도 오늘 값)
         var ky: [String: String] = [:]
-        for r in rows where r.sym.currency == .krw && CustomSymbols.shared.isLive(r.id) { ky[r.id] = CustomSymbols.yahoo(for: r.sym) }
+        for r in rows where r.sym.currency == .krw && CustomSymbols.shared.isLive(r.id) && !Market.shared.tossCovers(r.id) { ky[r.id] = CustomSymbols.yahoo(for: r.sym) }
         var feed = WFeed(v: 1, u: ISO8601DateFormatter().string(from: now), q: q, c: [:], ccy: ccy, mar: Self.fxMar())   // 위젯 평가액도 앱과 같은 원/달러 (valFx)
         feed.ky = ky.isEmpty ? nil : ky
         // 토스로 받을 종목 (Market.refreshToss 와 같은 목록): 내 키가 있으면 위젯이 이걸로 토스 지금 가격을 받는다

@@ -304,12 +304,13 @@ final class CustomSymbols {
         guard force || Date().timeIntervalSince(refreshedAt) > 300 else { return }
         refreshedAt = Date()
         for s in items where held.contains(s.id) && !s.usd && KoreaEstimate.liveOK(s.id, name: s.name)
-            && (s.lv != true || (KoreaEstimate.popular.contains(s.id) && (hist[s.id]?.dates.count ?? 0) < 200)) {
+            && (s.lv != true || (KoreaEstimate.popular.contains(s.id) && (hist[s.id]?.dates.count ?? 0) < 200 && !Market.shared.tossCovers(s.id))) {
             // 스위치를 켜기 전에 넣은 국내 종목, 사이트 기록(kr_daily)만 있던 국내 개별 종목: 1년 종가를 Yahoo 에서 처음 받는다
             _ = try? await fetch(StockHit(id: s.id, yahoo: s.yahoo, name: s.name, market: s.market, currency: .krw))
         }
         var missKr: Set<String> = []
-        for s in items where held.contains(s.id) && (s.usd || isLive(s.id)) {
+        // 토스가 지금 가격·일봉을 다 주는 종목은 Yahoo 를 부르지 않는다 (토스가 안 될 때만 Yahoo)
+        for s in items where held.contains(s.id) && (s.usd || isLive(s.id)) && !Market.shared.tossCovers(s.id) {
             guard let (q, recent) = try? await Self.chart(s.yahoo, range: "5d", today: !s.usd) else {
                 if !s.usd && KoreaEstimate.popular.contains(s.id) { missKr.insert(s.id) }
                 continue

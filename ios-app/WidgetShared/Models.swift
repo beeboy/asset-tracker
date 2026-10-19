@@ -553,6 +553,38 @@ enum AlpacaKeys {
 
 /// 미국 장이 다 끝난 때: 뉴욕 시각 평일 20시(애프터마켓 끝)부터 다음 날 4시(프리마켓 시작)까지와 주말.
 /// 이때는 애프터마켓 가격 대신 정규장 종가로 센다. 토스 총자산·오늘 손익이 이렇게 센다 (2026-10-17 토스 화면과 맞춰 봄)
+/// 내 토스 키로 받아 둔 일봉 (앱 TossHistory 가 쓰는 toss_history.json, 키 = Yahoo 기호). 토스 값의 전일 종가·정규장 종가를 여기서 센다
+enum TossDaily {
+    struct Hist: Codable { let dates: [String]; let closes: [Double] }
+    struct File: Codable { var h: [String: Hist] }
+    static func cached() -> File? { TossKeys.on ? Store.read(File.self, "toss_history.json") : nil }
+
+    private static func day(_ t: Double, kr: Bool) -> (String, Int) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: kr ? "Asia/Seoul" : "America/New_York")!
+        let c = cal.dateComponents([.year, .month, .day, .hour], from: Date(timeIntervalSince1970: t))
+        return (String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!), c.hour!)
+    }
+    /// 토스 주간거래 시간(미국 동부 20시~4시)에 체결된 값인가
+    static func daytime(_ at: Double) -> Bool { let h = day(at, kr: false).1; return h >= 20 || h < 4 }
+    /// 토스 값(at 시각)의 전일 종가: 그 거래일 앞 마지막 종가.
+    /// 미국 20시 뒤 주간거래는 다음 거래일 몫이라 그날 종가까지 넣는다 (4시 전은 이미 다음 날짜)
+    static func prev(_ h: Hist?, at: Double, kr: Bool) -> Double? {
+        guard let h, at > 0 else { return nil }
+        let (d, hr) = day(at, kr: kr)
+        let late = !kr && hr >= 20
+        guard let i = h.dates.lastIndex(where: { late ? $0 <= d : $0 < d }) else { return nil }
+        return h.closes[i]
+    }
+    /// 미국 정규장 종가: 토스 값이 주간거래가 아니면 그날 일봉 종가 (그날 일봉을 아직 못 받았으면 nil)
+    static func reg(_ h: Hist?, at: Double) -> Double? {
+        guard let h, at > 0, !daytime(at) else { return nil }
+        let d = day(at, kr: false).0
+        guard let i = h.dates.lastIndex(of: d) else { return nil }
+        return h.closes[i]
+    }
+}
+
 enum USSession {
     static func closed(_ d: Date = Date()) -> Bool {
         var cal = Calendar(identifier: .gregorian)
@@ -727,7 +759,7 @@ enum LongbridgeKeys {
     }
 }
 
-// 지금 가격·원/달러: 내 종목(Store.quoteSyms)을 Yahoo 에서 직접 받는다. 못 받은 종목만 사이트(naeilo.com/data/quotes.json, 평일 30분마다 모음)로 채운다.
+// 지금 가격·원/달러 백업: 토스가 못 받는 내 종목(Store.quoteSyms)을 Yahoo 에서 직접 받는다. 그것도 못 받은 종목만 사이트(naeilo.com/data/quotes.json, 평일 30분마다 모음)로 채운다.
 enum QuoteFeed {
     struct Q: Codable {
         var last: Double; var prev: Double; var at: Double   // 지금 가격, 전일 종가, 가격 시각(초)
@@ -742,7 +774,9 @@ enum QuoteFeed {
     @discardableResult
     static func fetch(minAge: TimeInterval = 0) async -> File? {
         let old = cached()
-        let want = Set(Store.quoteSyms ?? [])
+        let list = Store.quoteSyms
+        if list?.isEmpty == true { return old }   // 토스가 다 받는다
+        let want = Set(list ?? [])
         if let o = old, Date().timeIntervalSince1970 - o.got < minAge, want.isSubset(of: Set(o.q.keys)) { return o }
         var q: [String: Q] = [:]
         await withTaskGroup(of: (String, Q?).self) { g in

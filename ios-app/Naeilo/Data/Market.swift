@@ -78,6 +78,8 @@ final class Market {
     }
     /// 토스 값의 전일 종가. 사이트 시세가 토스 값보다 앞선 날 것이면 (주말·장중에 사이트가 아직 안 바뀜) 사이트 마지막 값이 전일 종가
     private func tossPrev(_ s: Symbol, _ b: Quote) -> Double? {
+        // 토스 일봉이 있으면 그 값 (토스 값 거래일 앞 마지막 종가)
+        if let t = toss?.q[s.id], let p = TossDaily.prev(tossDaily(s), at: t.at, kr: s.currency == .krw) { return p }
         if let t = toss?.q[s.id], let q = site?.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)], q.at > 0, t.at > q.at {
             var cal = Calendar(identifier: .gregorian)
             cal.timeZone = TimeZone(identifier: s.currency == .krw ? "Asia/Seoul" : "America/New_York")!
@@ -90,12 +92,21 @@ final class Market {
     private func tossLast(_ s: Symbol) -> Double? {
         guard s.id != "DRNK", let t = toss?.q[s.id], t.last > 0 else { return nil }
         // 장이 끝난 때도 애프터마켓 뒤에 체결된 값(토스 주간거래)이면 그 값. 토스 총자산이 주간거래 가격으로 센다
-        if regClose(s) != nil, t.at <= (site?.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)]?.at ?? 0) + 60 { return nil }
+        if regClose(s) != nil, !TossDaily.daytime(t.at) { return nil }
         return t.last
     }
+    /// 내 토스 키로 받은 이 종목 일봉
+    private func tossDaily(_ s: Symbol) -> TossDaily.Hist? {
+        tossHist?.h[SiteStats.key(s.id)].map { .init(dates: $0.dates, closes: $0.closes) }
+    }
+    /// 토스가 지금 가격과 일봉을 다 주는 종목 (Yahoo 를 부르지 않는다)
+    func tossCovers(_ id: String) -> Bool { toss?.q[id] != nil && tossHist?.h[SiteStats.key(id)] != nil }
     /// 미국 장이 다 끝났으면 사이트 정규장 종가. 토스·Alpaca 의 애프터마켓 가격 대신 이걸로 센다 (토스 총자산과 같은 기준)
     private func regClose(_ s: Symbol) -> Double? {
-        guard s.currency == .usd, USSession.closed(), let r = site?.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)]?.reg, r > 0 else { return nil }
+        guard s.currency == .usd, USSession.closed() else { return nil }
+        if let t = toss?.q[s.id], let r = TossDaily.reg(tossDaily(s), at: t.at) { return r }
+        if tossCovers(s.id) { return nil }   // 이 종목은 Yahoo 를 안 불러서 사이트 값이 묵었다
+        guard let r = site?.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)]?.reg, r > 0 else { return nil }
         return r
     }
 
@@ -161,14 +172,16 @@ final class Market {
         if !held.isEmpty {
             let syms = held.compactMap { id -> String? in
                 guard id != "DRNK", id != KoreaEstimate.sumId, let s = Sample.symbol(id) else { return nil }
-                guard s.currency == .usd || KoreaEstimate.popular.contains(id) else { return nil }
+                guard s.currency == .usd || KoreaEstimate.popular.contains(id), !tossCovers(id) else { return nil }
                 return YahooSample.keyFor[id] ?? CustomSymbols.yahoo(for: s)
             }
-            Store.quoteSyms = (Set(syms).union(["KRW=X"])).sorted()
+            Store.quoteSyms = (Set(syms).union(tossFx == nil ? ["KRW=X"] : [])).sorted()
         }
         async let siteNew = QuoteFeed.fetch(minAge: force ? 0 : 240)
         async let marNew = MarFeed.fetch(minAge: force ? 0 : 1800)
-        async let pricesNew = SitePrices.fetch(keys: keys.union(["KRW=X"]).union(Parallel.wantKeys), old: oldPrices, minAge: force ? 0 : 1800)
+        // 토스 일봉이 있는 종목은 빼고 (원/달러·지수는 토스에 일봉이 없어 늘 Yahoo)
+        let tossKeys = Set(TossKeys.on ? (tossHist?.h.keys).map(Array.init) ?? [] : [])
+        async let pricesNew = SitePrices.fetch(keys: keys.subtracting(tossKeys).union(["KRW=X"]).union(Parallel.wantKeys), old: oldPrices, minAge: force ? 0 : 1800)
         // 전망 입력값: 하루 한 번 바뀌므로 6시간에 한 번 (당겨 갱신하면 바로)
         async let statsNew = SiteStats.fetch(minAge: force ? 0 : 6 * 3600)
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
@@ -423,7 +436,10 @@ enum TossHistory {
         var miss = TossFeed.histMiss
         var stop = false
         for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop {
-            guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != today || f.h[k] == nil else { continue }
+            // 하루 한 번, 장이 끝난 뒤 한 번 더 (그날 종가가 정규장 종가·다음 날 전일 종가가 된다)
+            let (md, closed) = marketDay(kr: y.hasSuffix(".KS") || y.hasSuffix(".KQ"))
+            let stamp = closed ? today + "c" : today
+            guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != stamp || f.h[k] == nil else { continue }
             let have = f.h[k]
             let full = (have?.dates.first ?? "9999") > Day.str(Date().addingTimeInterval(-(3 * 365 - 15) * 86400))
             var bars: [String: Double] = [:], before: String? = nil, ok = false
@@ -445,11 +461,10 @@ enum TossHistory {
             guard ok, !bars.isEmpty else { continue }
             var all: [String: Double] = full ? [:] : Dictionary(zip(have!.dates, have!.closes), uniquingKeysWith: { _, b in b })
             for (d, v) in bars { all[d] = v }
-            let (md, closed) = marketDay(kr: y.hasSuffix(".KS") || y.hasSuffix(".KQ"))
             let ds = all.keys.filter { $0 >= from && ($0 < md || ($0 == md && closed)) }.sorted()
             guard !ds.isEmpty else { continue }
             f.h[k] = .init(dates: ds, closes: ds.map { all[$0]! })
-            f.day[k] = today
+            f.day[k] = stamp
         }
         TossFeed.histMiss = miss
         // 원/달러: 10분에 한 번 (당겨 갱신하면 바로). 전일 값은 24시간 전 시각의 값
