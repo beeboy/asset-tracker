@@ -1027,6 +1027,8 @@ enum TownLook {
         "벌써 {days}일이나 함께했네요. {move}",
         "안녕하세요! {move}",
         "{move}\n한 줄 남겨 줄래요?",
+        "왔어요? {move}",
+        "{move}\n오늘은 어떤 하루였어요?",
     ]]
     static func daily(_ res: Resident, _ n: TownBook.Note, lang: String = "ko") -> String {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
@@ -1034,7 +1036,9 @@ enum TownLook {
         let mo = Calendar.current.component(.month, from: Date())
         let season = (3...5).contains(mo) ? "봄" : (6...8).contains(mo) ? "여름" : (9...11).contains(mo) ? "가을" : "겨울"
         let all = frames[lang] ?? frames["ko"]!
-        let pool = days > 1 ? all : all.filter { !$0.contains("{days}") }
+        // 계절은 석 달 내내 같아서 매일 말하면 지겹다. 계절이 바뀐 첫 주에만 꺼낸다
+        let fresh = [3, 6, 9, 12].contains(mo) && Calendar.current.component(.day, from: Date()) <= 7
+        let pool = all.filter { (days > 1 || !$0.contains("{days}")) && (fresh || !$0.contains("{season}")) }
         let t = pool[Int(seed(res.id + TownLog.day) % UInt64(pool.count))]
         return t.replacingOccurrences(of: "{move}", with: line(res))
             .replacingOccurrences(of: "{season}", with: season)
