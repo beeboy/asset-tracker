@@ -1420,6 +1420,11 @@ struct TownTalk: View {
     private init() {
         notes = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: Note].self, from: $0) } ?? [:]
     }
+    /// 백업에서 불러온 뒤 다시 읽는다
+    func reload() {
+        notes = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: Note].self, from: $0) } ?? [:]
+        candy = UserDefaults.standard.integer(forKey: "town.candy")
+    }
     var isEmpty: Bool { notes.isEmpty }
     func note(_ id: String) -> Note { notes[id] ?? Note() }
     func set(_ id: String, _ n: Note) {
@@ -1572,6 +1577,9 @@ struct TownWeather: View {
     private static let key = "town.log"
     private static let keep = 400
     private init() {
+        logs = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: [Entry]].self, from: $0) } ?? [:]
+    }
+    func reload() {
         logs = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: [Entry]].self, from: $0) } ?? [:]
     }
     static var day: String { let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: Date()) }

@@ -13,11 +13,17 @@ struct Backup: Codable {
     var custom: [CustomSymbols.Saved]
     var hist: [String: CustomSymbols.Hist]
     var daily: [DayRec]? = nil     // 내 기록 (예전 파일에는 없다)
+    var town: [String: Data]? = nil  // 동네: 주민 수첩(이름·모자·이사 온 날)·대화 기록·별사탕 (예전 파일에는 없다)
+    static let townKeys = ["town.book", "town.log"]
 
     @MainActor
     init(_ m: AppModel) {
         at = Date(); holdings = m.holdings; progress = m.progress; homeFriend = m.homeFriend
         custom = CustomSymbols.shared.items; hist = CustomSymbols.shared.hist; daily = m.myRecord
+        var t: [String: Data] = [:]
+        for k in Self.townKeys { if let d = UserDefaults.standard.data(forKey: k) { t[k] = d } }
+        t["town.candy"] = Data(String(UserDefaults.standard.integer(forKey: "town.candy")).utf8)
+        town = t
     }
 
     /// 불러오기: 추가한 종목 시세부터 넣고(종목 이름·가격이 있어야 보유가 보인다) 종목·진행을 덮는다
@@ -27,6 +33,11 @@ struct Backup: Codable {
         m.apply(progress)
         if let h = homeFriend { m.homeFriend = h }
         if let daily { m.myRecord = MyRecord.merge(m.myRecord, daily) }
+        if let town {
+            for k in Self.townKeys { if let d = town[k] { UserDefaults.standard.set(d, forKey: k) } }
+            if let c = town["town.candy"].flatMap({ Int(String(decoding: $0, as: UTF8.self)) }) { UserDefaults.standard.set(c, forKey: "town.candy") }
+            TownBook.shared.reload(); TownLog.shared.reload()
+        }
         m.holdings = holdings
         m.saveProgress()
     }
