@@ -928,6 +928,7 @@ struct TownView: View {
 
     private static let mayorSpot = CGPoint(x: 0.92, y: 0.20)      // 이장은 늘 오른쪽 위
     private static let visitSpot = CGPoint(x: 0.06, y: 0.50)      // 옛 이웃은 길 어귀에
+    private static let stage = CGPoint(x: 0.50, y: 0.48)          // 어닝콜 날 그 주민이 서는 가운데
     private var sky: TownSky { TownSky.shared }
 
     var body: some View {
@@ -936,18 +937,30 @@ struct TownView: View {
         // 동네에 서 있는 이들: 주민 + 이장 + (오늘 놀러 온 옛 이웃)
         let mayor = TownLook.Resident(id: TownLook.mayorID, rows: [])
         let guest = book.visitor(except: Set(all.map(\.id))).map { TownLook.Resident(id: $0, rows: [], old: book.note($0).co ?? $0) }
-        let folk: [(TownLook.Resident, CGPoint)] = res.enumerated().map { ($1, Self.spots[$0]) } + [(mayor, Self.mayorSpot)]
+        // 행사: 누군가의 어닝콜 날이면 주민이 그 주민 둘레로 모여 듣는다
+        let host = res.first { TownLook.earnDay($0) != nil }
+        let others = res.filter { $0.id != host?.id }
+        let place: [(TownLook.Resident, CGPoint)] = host.map { h in
+            [(h, Self.stage)] + others.enumerated().map { i, r in
+                let a = Double(i) / Double(max(1, others.count)) * 2 * .pi + .pi / 2
+                return (r, CGPoint(x: Self.stage.x + 0.30 * cos(a), y: Self.stage.y + 0.32 * sin(a) + 0.04))
+            }
+        } ?? res.enumerated().map { ($1, Self.spots[$0]) }
+        let folk: [(TownLook.Resident, CGPoint)] = place + [(mayor, Self.mayorSpot)]
             + (guest.map { [($0, res.count < Self.maxRes ? Self.spots[res.count] : Self.visitSpot)] } ?? [])
         GeometryReader { g in
             ZStack {
                 ground(g.size).clipShape(RoundedRectangle(cornerRadius: 18))
+                    // 배경을 누르면 키보드를 내린다 (쓰던 답은 '그만'처럼)
+                    .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
                 ForEach(folk.indices, id: \.self) { i in
                     let r = folk[i].0, p = folk[i].1
                     Button { talk = r } label: {
                         TownFace(id: r.id, note: book.note(r.id), width: 48, height: 68)
                             .overlay(alignment: .topTrailing) {
                                 // 기분: 별사탕 받은 날은 하트, 자기 종목이 내리면 시무룩
-                                if book.cheered(r.id) { Text("♥").appFont(13, .bold).foregroundStyle(Color(red: 0.95, green: 0.35, blue: 0.45)) }
+                                if r.id == host?.id { Text("🎤").appFont(13) }
+                                else if book.cheered(r.id) { Text("♥").appFont(13, .bold).foregroundStyle(Color(red: 0.95, green: 0.35, blue: 0.45)) }
                                 else if TownLook.mood(r) < 0 { Text("…").appFont(13, .bold).foregroundStyle(.white) }
                             }
                     }
@@ -956,6 +969,14 @@ struct TownView: View {
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
                 }
                 TownWeather(kind: sky.kind).allowsHitTesting(false)
+                // 행사 띠: 어닝콜 모임 · 세계 기념일 (그날만)
+                if let t = host.flatMap({ TownLook.earnDay($0) }).map({ "\($0) 발표 날 · 다 같이 듣는 중" }) ?? TownLook.holiday().map({ "오늘은 " + $0 }) {
+                    Text(t).appFont(12, .bold).foregroundStyle(.white)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(Color.black.opacity(0.35), in: Capsule())
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).padding(.top, 8)
+                        .allowsHitTesting(false)
+                }
                 if res.isEmpty {
                     Text("아직 이사 온 주민이 없어요").appFont(14).foregroundStyle(.white)
                 }
@@ -986,6 +1007,7 @@ struct TownView: View {
         .task(id: all.map(\.id).joined(separator: ",")) {
             // 다 판 주민은 떠난 날을 적어 옛 이웃으로 (시세·보유를 아직 못 읽었으면 건너뜀)
             if !m.rows.isEmpty { book.sync(all) }
+            TownLook.host = res.first { TownLook.earnDay($0) != nil }.map { ($0.id, TownLook.shown($0, book.note($0.id))) }
             // 처음 본 주민은 오늘을 이사 온 날로 적는다 (수첩이 비어 있던 첫 실행은 인사 없이)
             let first = book.isEmpty
             for r in res where book.welcome(r.id) && !first { fresh.insert(r.id) }
@@ -1113,7 +1135,16 @@ enum TownLook {
             let pool = a.filter { wx != nil || !$0.contains("{weather}") }
             return pool[Int(seed(res.id + TownLog.day) % UInt64(pool.count))].replacingOccurrences(of: "{weather}", with: wx ?? "")
         }
-        if res.id == mayorID { return pick(mayorFrames).replacingOccurrences(of: "{fx}", with: fxLine()) }
+        let h = holiday().map { "오늘은 " + $0 + (batchim($0) ? "이에요!\n" : "예요!\n") } ?? ""
+        if res.id == mayorID { return h + pick(mayorFrames).replacingOccurrences(of: "{fx}", with: fxLine()) }
+        // 행사: 어닝콜 날은 모두 모여 그 주민의 한 줄을 듣는다. 전날엔 예측 한 줄을 부탁한다
+        if res.old == nil, earnDay(res) != nil {
+            let y = Day.str(Date().addingTimeInterval(-86400))
+            let mine = TownLog.shared.log(res.id).last { $0.day == y }?.me
+            return "오늘은 제 실적 발표 날이에요! 다들 들으러 모였네요.\n" + (mine.map { "어제 남긴 예측: “\($0)”\n" } ?? "") + line(res)
+        }
+        if res.old == nil, earnDay(res, 1) != nil { return "내일은 제 실적 발표 날이에요.\n어떨 것 같아요? 예측 한 줄 남겨 줄래요?" }
+        if res.old == nil, let ho = host, ho.id != res.id { return h + "오늘은 \(ho.name) 실적 날이라 다 같이 듣고 있어요.\n" + line(res) }
         // 몇 달 전 내 답이 있으면 그날은 그걸 꺼내 얘기한다
         if let back = TownLog.shared.recall(res.id, price(res)) { return res.old != nil ? back : back + "\n" + line(res) }
         if res.old != nil {
@@ -1128,9 +1159,31 @@ enum TownLook {
         // 계절은 석 달 내내 같아서 매일 말하면 지겹다. 계절이 바뀐 첫 주에만 꺼낸다
         let fresh = [3, 6, 9, 12].contains(mo) && Calendar.current.component(.day, from: Date()) <= 7
         let t = pick(all.filter { (days > 1 || !$0.contains("{days}")) && (fresh || !$0.contains("{season}")) })
-        return t.replacingOccurrences(of: "{move}", with: line(res))
+        return h + t.replacingOccurrences(of: "{move}", with: line(res))
             .replacingOccurrences(of: "{season}", with: season)
             .replacingOccurrences(of: "{days}", with: "\(days)")
+    }
+    /// 행사: 보유 종목 실적 날 (앱 일정표 MarketEvents 의 실적만, 바깥에서 따로 안 받음). ahead 0 오늘 · 1 내일
+    static func earnDay(_ res: Resident, _ ahead: Int = 0) -> String? {
+        guard res.id != mayorID, res.old == nil else { return nil }
+        let d = Day.str(Date().addingTimeInterval(Double(ahead) * 86400))
+        return MarketEvents.rules.first { r in r.id.hasPrefix("e_") && res.rows.contains { $0.id == r.target } && !MarketEvents.dates(r, from: d, until: d).isEmpty }?.kind
+    }
+    /// 오늘 모임의 주인공 (동네가 정해 둔다)
+    static var host: (id: String, name: String)? = nil
+    /// 세계 기념일 (달력 고정 날만, 앱 안 표)
+    static let holidays: [String: String] = [
+        "01-01": "새해 첫날", "02-14": "밸런타인데이", "03-08": "세계 여성의 날", "03-20": "국제 행복의 날",
+        "04-22": "지구의 날", "05-01": "노동절", "06-05": "세계 환경의 날", "09-21": "세계 평화의 날",
+        "10-24": "유엔의 날", "10-31": "핼러윈", "12-25": "크리스마스", "12-31": "한 해 마지막 날",
+    ]
+    static func holiday(_ d: Date = Date()) -> String? {
+        let f = DateFormatter(); f.dateFormat = "MM-dd"
+        return holidays[f.string(from: d)]
+    }
+    static func batchim(_ s: String) -> Bool {
+        guard let c = s.unicodeScalars.last?.value, (0xAC00...0xD7A3).contains(c) else { return false }
+        return (c - 0xAC00) % 28 != 0
     }
     /// 오르내림 한 줄. 오늘 시세가 있으면 오늘, 없으면 산 가격 대비
     /// 주민 대사: 맡은 종목이 여럿이면 종목 이름을 붙여 한 줄씩
