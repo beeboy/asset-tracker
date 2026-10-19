@@ -918,6 +918,8 @@ struct TownView: View {
     @State private var talkBottom: CGFloat = 0      // 대사창 제자리 아랫변 (화면 좌표)
     @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
     @State private var tick = 0                     // 2초마다 한 칸: 살짝 걷기·잡담 (가볍게, 화면에 있을 때만)
+    @State private var step: [String: CGFloat] = [:]   // 주민마다 옆으로 옮겨 선 만큼 (움직인 주민만 바뀜)
+    @State private var hop: String? = nil              // 이번 칸에 폴짝 뛴 주민
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
     // 주민 자리 (동네 판 안의 비율 좌표). 앞 번호부터 채운다
@@ -959,10 +961,6 @@ struct TownView: View {
                     .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
                 ForEach(folk.indices, id: \.self) { i in
                     let r = folk[i].0, p = folk[i].1
-                    // 걸음: 주민마다 다른 박자로 옆으로 한두 걸음 오가고, 가끔 폴짝
-                    let sd = Int(TownLook.seed(r.id) % 7)
-                    let dx = CGFloat([0, 5, 9, 5, 0, -5, -9, -5][(tick + sd) % 8]) * (sd % 2 == 0 ? 1 : -1)
-                    let hop: CGFloat = (tick + sd) % 5 == 0 ? -3 : 0
                     // 잡담: 4칸(8초)마다 한 명이 2칸 동안 말풍선
                     let chat = tick % 4 < 2 && Int(TownLook.seed("chat\(tick / 4)") % UInt64(max(1, folk.count))) == i && talk == nil
                     Button { talk = r } label: {
@@ -985,7 +983,7 @@ struct TownView: View {
                                 .offset(y: -24).transition(.opacity).allowsHitTesting(false)
                         }
                     }
-                    .offset(x: dx, y: hop)
+                    .offset(x: step[r.id] ?? 0, y: hop == r.id ? -3 : 0)
                     .animation(.easeInOut(duration: 1.6), value: tick)
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
                 }
@@ -1030,6 +1028,14 @@ struct TownView: View {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 tick += 1
+                // 한 칸에 아무도 안 움직이거나, 한두 명만 옆으로 걷거나 폴짝
+                let ids = TownLook.residents(m.rows).prefix(Self.maxRes).map(\.id) + [TownLook.mayorID]
+                let n = [0, 0, 1, 1, 1, 2].randomElement()!
+                hop = nil
+                for id in ids.shuffled().prefix(n) {
+                    if Bool.random() && hop == nil { hop = id }
+                    else { step[id] = max(-12, min(12, (step[id] ?? 0) + [-6, 6].randomElement()!)) }
+                }
             }
         }
         .task(id: all.map(\.id).joined(separator: ",")) {
@@ -1376,15 +1382,15 @@ struct TownTalk: View {
     }
 
     private func now(_ full: String) -> some View {
-        Text(String(full.prefix(shown))).appFont(15).foregroundStyle(.white)
+        Text(String(full.prefix(shown))).appFont(17).foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
     }
     // 지난 대사: 날짜 · 주민 말 · 내 답 (흐리게)
     private func pastRow(_ e: TownLog.Entry) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(e.day.dropFirst(5).replacingOccurrences(of: "-", with: ".")).appFont(10).foregroundStyle(.white.opacity(0.4))
-            Text(e.say).appFont(13).foregroundStyle(.white.opacity(0.6))
-            if let a = e.me { Text("나: " + a).appFont(13).foregroundStyle(Color(red: 0.6, green: 0.85, blue: 1).opacity(0.75)) }
+            Text(e.say).appFont(14).foregroundStyle(.white.opacity(0.6))
+            if let a = e.me { Text("나: " + a).appFont(14).foregroundStyle(Color(red: 0.6, green: 0.85, blue: 1).opacity(0.75)) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
