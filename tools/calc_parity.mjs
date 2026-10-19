@@ -193,7 +193,9 @@ enum RSV {
 ${block(eng, "enum Day {", "Engine.swift")}
 
 // Market 대신: 매매기준율·지금 환율만 가진 상태. 아래 두 줄은 Market.swift 원본
-struct MarFile: Codable { var rate: Double; var date: String }
+struct MarPrev: Codable { var rate: Double; var date: String }
+struct MarFile: Codable { var rate: Double; var date: String; var prev: MarPrev? = nil }
+enum MarFeed { ${block(mk, "static func started", "Market.swift")} }
 struct FxQuote { var last: Double }
 struct TossFx { var rate: Double }
 struct FxState {
@@ -202,6 +204,7 @@ struct FxState {
     var tossFx: TossFx? = nil   // 내 토스 키 환율: 웹에는 없어서 비교는 키 없는 경우만
     ${line(mk, "var valFx: Double", "Market.swift")}
     ${line(mk, "var marRate: Double?", "Market.swift")}
+    ${block(mk, "var marUse:", "Market.swift")}
 }
 enum Market { static var shared = FxState(mar: nil, fx: FxQuote(last: 0)) }
 
