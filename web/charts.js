@@ -107,6 +107,13 @@
         if (i >= 0 && x[i] === s.lastDot) el("circle", { cx: X(toT(x[i])), cy: Y(s.y[i]), r: 3.6, fill: "var(--card)", stroke: s.color, "stroke-width": 1.8 }, svg);
       }
     });
+    if (opt.nowDot) { // 현재 점: 같은 색 동심원 2개가 퍼지다 사라지는 박동 (앱과 같은 규격)
+      const d = opt.nowDot, cx = X(toT(d.x)), cy = Y(d.y);
+      if (cx >= m.l && cx <= W - m.r && isFinite(cy)) {
+        [0, 0.2].forEach((t) => el("circle", { cx, cy, r: 3.6, fill: "none", stroke: d.color, "stroke-width": 1.5, class: "pulse", style: `animation-delay:${t}s` }, svg));
+        el("circle", { cx, cy, r: 3.6, fill: d.color }, svg);
+      }
+    }
     (opt.markers || []).forEach((mk) => {
       const xx = X(toT(mk.x)); if (xx < m.l || xx > W - m.r) return;
       el("path", { d: `M${xx - 5},${H - m.b} L${xx + 5},${H - m.b} L${xx},${H - m.b - 8}Z`, fill: mk.color || "var(--warn)" }, svg)
