@@ -901,7 +901,7 @@ private extension View {
 // 가볍게: 그림은 멈춰 있고(애니메이션 없음), 대사창이 열렸을 때만 글자를 찍는다. 새로 받는 것 없음 (이미 받은 시세만)
 struct TownView: View {
     @Environment(AppModel.self) private var m
-    @State private var talk: AppModel.Row? = nil
+    @State private var talk: TownLook.Resident? = nil
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
     // 주민 자리 (동네 판 안의 비율 좌표). 앞 번호부터 채운다
     private static let spots: [CGPoint] = [
@@ -911,7 +911,7 @@ struct TownView: View {
     ]
 
     var body: some View {
-        let res = Array(m.rows.sorted { $0.value > $1.value }.prefix(Self.maxRes))
+        let res = Array(TownLook.residents(m.rows).prefix(Self.maxRes))
         GeometryReader { g in
             ZStack {
                 ground(g.size)
@@ -921,14 +921,14 @@ struct TownView: View {
                         MeAvatar(me: TownLook.char(r.id), width: 48, height: 68)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(r.sym.name)
+                    .accessibilityLabel(r.name)
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
                 }
                 if res.isEmpty {
                     Text("아직 이사 온 주민이 없어요").appFont(14).foregroundStyle(.white)
                 }
                 if let r = talk {
-                    VStack { Spacer(); TownTalk(row: r) { talk = nil } }
+                    VStack { Spacer(); TownTalk(res: r) { talk = nil } }
                         .padding(10)
                 }
             }
@@ -953,6 +953,20 @@ struct TownView: View {
 
 /// 주민 얼굴: 종목 코드를 씨앗으로 캐릭터 생성 부품을 즉석 조합 (저장 없음, 같은 종목은 늘 같은 얼굴)
 enum TownLook {
+    /// 주민 = 사람. 대표가 같은 종목(테슬라·스페이스X → 머스크)은 한 주민이 같이 맡는다. 대표 정보가 없으면 종목마다 한 명
+    struct Resident: Identifiable { let id: String; let rows: [AppModel.Row]
+        var name: String { rows.map(\.sym.name).joined(separator: " · ") }
+        var value: Double { rows.reduce(0) { $0 + $1.value } }
+    }
+    static func residents(_ rows: [AppModel.Row]) -> [Resident] {
+        var keys: [String] = [], by: [String: [AppModel.Row]] = [:]
+        for r in rows.sorted(by: { $0.value > $1.value }) {
+            let k = Sample.profiles[r.id].map { "ceo:" + $0.ceo.1 } ?? r.id
+            if by[k] == nil { keys.append(k) }
+            by[k, default: []].append(r)
+        }
+        return keys.map { Resident(id: $0, rows: by[$0]!) }.sorted { $0.value > $1.value }
+    }
     /// 기기·실행마다 같은 값이 나오는 해시 (Swift hashValue 는 실행마다 바뀐다)
     static func seed(_ s: String) -> UInt64 {
         var h: UInt64 = 0xcbf29ce484222325
@@ -975,6 +989,10 @@ enum TownLook {
         return c
     }
     /// 오르내림 한 줄. 오늘 시세가 있으면 오늘, 없으면 산 가격 대비
+    /// 주민 대사: 맡은 종목이 여럿이면 종목 이름을 붙여 한 줄씩
+    static func line(_ res: Resident) -> String {
+        res.rows.count == 1 ? line(res.rows[0]) : res.rows.map { $0.sym.name + ", " + line($0) }.joined(separator: "\n")
+    }
     static func line(_ r: AppModel.Row) -> String {
         let live = r.sym.quote.live
         let v = live ? r.sym.quote.change : (r.cost > 0 ? r.value / r.cost - 1 : 0)
@@ -987,18 +1005,18 @@ enum TownLook {
 
 /// 고전 RPG 대사창: 얼굴 · 이름 · 한 글자씩 찍히는 대사. 누르면 다 찍기 → 한 번 더 누르면 닫기
 struct TownTalk: View {
-    let row: AppModel.Row
+    let res: TownLook.Resident
     let close: () -> Void
     @State private var shown = 0
     var body: some View {
-        let full = TownLook.line(row)
+        let full = TownLook.line(res)
         HStack(alignment: .top, spacing: 12) {
-            MeAvatar(me: TownLook.char(row.id), width: 56, height: 79)
+            MeAvatar(me: TownLook.char(res.id), width: 56, height: 79)
                 .frame(width: 56, height: 46, alignment: .top).clipped()
                 .padding(4)
                 .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
             VStack(alignment: .leading, spacing: 6) {
-                Text(row.sym.name).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
+                Text(res.name).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
                 Text(String(full.prefix(shown))).appFont(15).foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
             }
@@ -1008,7 +1026,7 @@ struct TownTalk: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
         .contentShape(Rectangle())
         .onTapGesture { if shown < full.count { shown = full.count } else { close() } }
-        .task(id: row.id) {
+        .task(id: res.id) {
             shown = 0
             while shown < full.count {
                 try? await Task.sleep(nanoseconds: 45_000_000)
