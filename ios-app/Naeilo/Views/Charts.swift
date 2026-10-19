@@ -49,15 +49,15 @@ struct Sparkline: View {
                     Path { p in p.move(to: CGPoint(x: px, y: 0)); p.addLine(to: CGPoint(x: px, y: g.size.height)) }
                         .stroke(Theme.sub, lineWidth: 1)
                     Circle().fill(c).frame(width: 8, height: 8).position(x: px, y: y(points[i]))
-                    VStack(spacing: 1) {
+                    // 그림처럼: 위에 날짜·시각(작게, 회색), 밑에 시세(크게). 테두리 없이 카드 바탕만 깔아 제목 글자를 가린다
+                    VStack(spacing: 2) {
+                        Text(Scrub.fmt.string(from: s.date(Double(i) / Double(n)))).appFont(12).monospacedDigit().foregroundStyle(Theme.muted)
                         Text(s.value(points[i])).appFont(20, .bold).monospacedDigit().foregroundStyle(Theme.ink)
-                        Text(Scrub.fmt.string(from: s.date(Double(i) / Double(n)))).appFont(12, .semibold).monospacedDigit().foregroundStyle(Theme.sub)
                     }
                     .lineLimit(1).fixedSize()
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Theme.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
-                    .position(x: min(max(px, 70), g.size.width - 70), y: -22)
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(Theme.card)
+                    .position(x: min(max(px, 70), g.size.width - 70), y: -24)
                 }
             }
             .contentShape(Rectangle())
