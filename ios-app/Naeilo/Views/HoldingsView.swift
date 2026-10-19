@@ -919,7 +919,9 @@ struct TownView: View {
     @State private var talkBottom: CGFloat = 0      // 대사창 제자리 아랫변 (화면 좌표)
     @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
     @State private var tick = 0                     // 2초마다 한 칸: 살짝 걷기·잡담 (가볍게, 화면에 있을 때만)
-    @State private var step: [String: CGFloat] = [:]   // 주민마다 옆으로 옮겨 선 만큼 (움직인 주민만 바뀜)
+    @State private var walk: [String: CGSize] = [:]    // 주민마다 제자리에서 걸어 나간 만큼 (움직인 주민만 바뀜)
+    @State private var face: [String: CharDir] = [:]   // 주민이 보는 쪽 (걸어간 쪽)
+    @State private var moving: Set<String> = []        // 지금 걷는 중인 주민
     @State private var hop: String? = nil              // 이번 칸에 폴짝 뛴 주민
     @State private var order = Array(0..<13)           // 주민 → 자리 번호 (앱에 다시 들어올 때마다 섞는다)
     @Environment(\.scenePhase) private var phase
@@ -958,9 +960,10 @@ struct TownView: View {
         // 이장·워시·옛 이웃도 주민 다음 빈자리에 선다 (앱에 다시 들어오면 같이 섞임). 모임 날엔 가장자리 제자리
         let extra = [(mayor, Self.mayorSpot)] + (TownLook.fomc() != nil ? [(TownLook.Resident(id: TownLook.warshID, rows: []), Self.warshSpot)] : [])
             + (guest.map { [($0, Self.visitSpot)] } ?? [])
-        let folk: [(TownLook.Resident, CGPoint)] = place + extra.enumerated().map { k, e in
+        // 위에서 내려다보니 아래(앞)에 선 주민이 나중에 그려져 앞으로 겹친다
+        let folk: [(TownLook.Resident, CGPoint)] = (place + extra.enumerated().map { k, e in
             (e.0, host == nil && res.count + k < Self.spots.count ? Self.spots[order[res.count + k]] : e.1)
-        }
+        }).sorted { $0.1.y < $1.1.y }
         VStack(spacing: 10) {
         GeometryReader { g in
             ZStack {
@@ -978,7 +981,7 @@ struct TownView: View {
                     // 잡담: 4칸(8초)마다 한 명이 2칸 동안 말풍선
                     let chat = tick % 4 < 2 && Int(TownLook.seed("chat\(tick / 4)") % UInt64(max(1, folk.count))) == i && talk == nil
                     Button { talk = r } label: {
-                        TownFace(id: r.id, note: book.note(r.id), width: 48, height: 68)
+                        TownWalker(id: r.id, note: book.note(r.id), dir: face[r.id] ?? .down, walking: moving.contains(r.id))
                             .overlay(alignment: .topTrailing) {
                                 // 기분: 별사탕 받은 날은 하트, 자기 종목이 내리면 시무룩
                                 if r.id == host?.id { Text("🎤").appFont(13) }
@@ -997,8 +1000,11 @@ struct TownView: View {
                                 .offset(y: -24).transition(.opacity).allowsHitTesting(false)
                         }
                     }
-                    .offset(x: step[r.id] ?? 0, y: hop == r.id ? -3 : 0)
-                    .animation(.easeInOut(duration: 1.6), value: tick)
+                    .animation(.easeInOut(duration: 0.4), value: tick)
+                    .offset(y: hop == r.id ? -4 : 0)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.45), value: hop)
+                    .offset(walk[r.id] ?? .zero)
+                    .animation(.linear(duration: 1.8), value: walk[r.id])   // 걸어가는 동안 위치를 고르게 보간
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
                 }
                 TownWeather(kind: sky.kind).allowsHitTesting(false)
@@ -1051,22 +1057,26 @@ struct TownView: View {
         .task { await sky.refresh() }      // 날씨는 하루 한 번만 받는다
         .onChange(of: phase) { _, p in
             // 다른 앱에 갔다 돌아오면 주민들이 자리를 바꿔 서 있다
-            if p == .active { order.shuffle(); step = [:] }
+            if p == .active { order.shuffle(); walk = [:]; face = [:] }
         }
         .task {
             // 화면에 있을 때만 2초에 한 번 (사라지면 저절로 멈춤)
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 tick += 1
-                // 10초(5칸)에 한 번: 아무도 안 움직이거나, 한 명만 옆으로 걷거나 폴짝
-                hop = nil
-                guard tick % 5 == 0 else { continue }
+                // 4초(2칸)에 한 번: 한 명이 근처로 걸어가거나(방향 맞춰 걷기) 가끔 폴짝. 1.8초 걷고 다음 칸에 멈춘다
+                hop = nil; moving = []
+                guard tick % 2 == 0 else { continue }
                 let ids = TownLook.residents(m.rows).prefix(Self.maxRes).map(\.id) + [TownLook.mayorID] + (TownLook.fomc() != nil ? [TownLook.warshID] : [])
-                let n = [0, 1, 1].randomElement()!
-                for id in ids.shuffled().prefix(n) {
-                    if Bool.random() && hop == nil { hop = id }
-                    else { let x = step[id] ?? 0; step[id] = x != 0 ? 0 : [-6, 6].randomElement()! }   // 한 걸음 나갔으면 다음엔 제자리로
-                }
+                guard let id = ids.randomElement() else { continue }
+                if Int.random(in: 0..<4) == 0 { hop = id; continue }
+                let now = walk[id] ?? .zero
+                // 멀리 나갔으면 반쯤은 제자리로 돌아오고, 아니면 가까운 곳으로
+                let to = now != .zero && Bool.random() ? .zero
+                    : CGSize(width: CGFloat(Int.random(in: -26...26)), height: CGFloat(Int.random(in: -14...14)))
+                face[id] = CharDir.of(to.width - now.width, to.height - now.height)
+                moving.insert(id)
+                walk[id] = to
             }
         }
         .task(id: all.map(\.id).joined(separator: ",")) {
@@ -1690,10 +1700,16 @@ struct TownFace: View {
     let note: TownBook.Note
     var width: CGFloat
     var height: CGFloat
+    /// 동네에서 걷는 장면 (없으면 정면 서 있는 그림)
+    var frame: CharScene? = nil
     static let hats = ["없음", "밀짚모자", "비니", "왕관", "야구모자", "꽃"]
     static let tints: [UInt32] = [0xE8B04B, 0xD94F4F, 0x4F7FD9, 0x4FB06A, 0x8A5FD0, 0xF2F2F2, 0x303030]
     var body: some View {
-        MeAvatar(me: TownLook.char(id), width: width, height: height)
+        Group {
+            if let f = frame, let img = MeMotion.image(TownLook.char(id), f) {
+                Image(uiImage: img).interpolation(.none).resizable().frame(width: width, height: height)
+            } else { MeAvatar(me: TownLook.char(id), width: width, height: height) }
+        }
             .overlay {
                 let star = TownStar.find(id)?.px ?? []
                 if note.hat > 0 || !star.isEmpty {
@@ -1705,6 +1721,7 @@ struct TownFace: View {
                         for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0 - 1) * u, y: CGFloat(r.1 - 1) * u, width: CGFloat(r.2 + 2) * u, height: CGFloat(r.3 + 2) * u)), with: .color(col(MeArt.outline))) }
                         for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0) * u, y: CGFloat(r.1) * u, width: CGFloat(r.2) * u, height: CGFloat(r.3) * u)), with: .color(col(r.4))) }
                     }
+                    .offset(y: frame?.lift == true ? -height / CGFloat(MeArt.H) : 0)   // 숨·걸음에 머리가 1px 오르면 모자도 같이
                     .allowsHitTesting(false)
                 }
             }

@@ -132,7 +132,12 @@ struct ShelterView: View {
         let on = real
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
-                Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 84, height: 119).opacity(real ? 1 : on ? 0.75 : 1)
+                Group {
+                    // 만난 친구는 숨 쉬고, 누르면 한 바퀴 돌며 걷는다 (포즈 그림이 없으면 예전 그림)
+                    if on && FriendMotion.has(f.id) { CharFigure(friend: f.id, dot: 3.4).frame(width: 84, height: 119, alignment: .bottom) }
+                    else { Pixel(name: (on ? "spr_" : "sil_") + f.id, width: 84, height: 119) }
+                }
+                .opacity(real ? 1 : on ? 0.75 : 1)
                     .padding(.horizontal, 10).padding(.vertical, 8)
                     .background(Shelter.spriteBacking(f.id), in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 6) {
@@ -228,7 +233,9 @@ struct ShelterView: View {
         let open = m.meUnlocked, k = Calm.kind(m.meVoice)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
-                CharPixel(id: "me", width: 84, height: 119)
+                Group {
+                    if let me = m.me { CharFigure(me: me, dot: 3.5).frame(width: 84, height: 119) } else { CharPixel(id: "me", width: 84, height: 119) }
+                }
                     .padding(.horizontal, 10).padding(.vertical, 8)
                     .background(Color(hex: 0x232B42), in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 6) {
