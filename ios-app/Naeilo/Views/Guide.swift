@@ -53,7 +53,7 @@ struct GuideBubble: View {
         let f = m.guideFriend, name = m.friendName(f)
         let text = Voice.say(self.text, m.voice(f), pose)
         HStack(alignment: .center, spacing: 10) {
-            MotionSprite(friend: f, pose: pose).frame(width: 66)
+            MotionSprite(friend: f, pose: pose).charIdle().frame(width: 66)
             VStack(alignment: .leading, spacing: 4) {
                 Text(name + (note.map { " · " + $0 } ?? "")).appFont(12, .semibold).foregroundStyle(Theme.blue)
                 Text(text).appFont(14).foregroundStyle(Theme.ink).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
@@ -119,7 +119,7 @@ struct GuidePickRow: View {
             + (m.meUnlocked ? [("me", m.friendName("me"))] : [])
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                MotionSprite(friend: m.guideFriend, pose: .wave, height: 48)
+                MotionSprite(friend: m.guideFriend, pose: .wave, height: 48).charIdle(2)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.friendName(m.guideFriend)).appFont(15, .bold)
                     Text("홈·미션에서 말 걸어요").appFont(12).foregroundStyle(Theme.sub)

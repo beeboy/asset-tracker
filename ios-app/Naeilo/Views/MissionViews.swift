@@ -691,14 +691,14 @@ struct AppStartView: View {
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(done ? Color(hex: 0xB9DCD7, dark: 0x2E5A55) : cur ? Theme.teal : Theme.track, lineWidth: cur ? 2 : 1))
                 // 끝낸 단계엔 만세, 지금 단계엔 옆으로 걸어오는 인물 (카드 오른쪽 위에 올라선다)
                 .overlay(alignment: .topTrailing) {
-                    if done || cur { MotionSprite(friend: m.guideFriend, pose: done ? .cheer : .side, height: 44).offset(x: -14, y: -38) }
+                    if done || cur { MotionSprite(friend: m.guideFriend, pose: done ? .cheer : .side, height: 44).charIdle(4).offset(x: -14, y: -38) }
                 }
                 .padding(.top, done || cur ? 24 : 0)
             }
             // 내 캐릭터는 여기서부터 만들어 보고 저장할 수 있다 (홈·위젯에 나온다)
             NavigationLink { MeEditView() } label: {
                 HStack(spacing: 12) {
-                    CharPixel(id: "me", width: 30, height: 42)
+                    CharPixel(id: "me", width: 30, height: 42).charIdle(5)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(m.me == nil ? "내 캐릭터 만들어 보기" : "내 캐릭터 고치기").appFont(15, .bold)
                         Text("쉼터 '본인' 칸 · 홈·위젯에 나옴").appFont(12).foregroundStyle(Theme.sub)

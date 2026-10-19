@@ -155,7 +155,7 @@ struct HomeView: View {
                 if let b, b.go != .nowhere { m.go(b.go) } else { m.homePath.append("shelter") }
             } label: {
                 HStack(alignment: .bottom, spacing: 10) {
-                    CharPixel(id: m.homeFriendShown, width: 56, height: 80)
+                    CharPixel(id: m.homeFriendShown, width: 56, height: 80).charIdle()
                         .accessibilityLabel(m.friendName(m.homeFriendShown))
                     Text(say)
                         .appFont(14).lineSpacing(3)

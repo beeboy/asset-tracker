@@ -29,7 +29,7 @@ struct FriendSay: View {
     var body: some View {
         let who = m.homeFriendShown, name = m.friendName(who)
         HStack(alignment: .bottom, spacing: 10) {
-            CharPixel(id: who, width: 42, height: 60).accessibilityHidden(true)
+            CharPixel(id: who, width: 42, height: 60).charIdle().accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).appFont(12, .semibold).foregroundStyle(Theme.blue)
                 Text(Lines.pick("\(key).\(m.voice(who))") ?? fallback).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)

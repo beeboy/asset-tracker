@@ -9,7 +9,7 @@ struct CalmCard: View {
     var body: some View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
         HStack(alignment: .center, spacing: 12) {
-            CharPixel(id: who, width: 42, height: 60)
+            CharPixel(id: who, width: 42, height: 60).charIdle()
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("내 투자 습관").appFont(13, .bold).foregroundStyle(Theme.mint)
@@ -50,7 +50,7 @@ struct CalmView: View {
                 // 상태 카드 하나 (진한 바탕): 모으는 중이면 진행, 정해졌으면 내 인물
                 Card(dark: true) {
                     HStack(alignment: .bottom, spacing: 12) {
-                        CharPixel(id: who, width: 56, height: 80)
+                        CharPixel(id: who, width: 56, height: 80).charIdle(3)
                         VStack(alignment: .leading, spacing: 4) {
                             if let k, let f = Shelter.friends.first(where: { $0.id == m.calm.type }) {
                                 NavigationLink { CharacterDetailView(friend: f, invest: true) } label: {
