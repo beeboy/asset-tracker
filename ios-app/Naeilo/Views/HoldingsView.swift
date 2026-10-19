@@ -924,14 +924,14 @@ struct TownView: View {
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
     // 주민 자리 (동네 판 안의 비율 좌표). 앞 번호부터 채운다
     private static let spots: [CGPoint] = [
-        .init(x: 0.22, y: 0.30), .init(x: 0.55, y: 0.24), .init(x: 0.82, y: 0.34), .init(x: 0.38, y: 0.50),
-        .init(x: 0.70, y: 0.55), .init(x: 0.14, y: 0.66), .init(x: 0.50, y: 0.78), .init(x: 0.86, y: 0.76),
-        .init(x: 0.30, y: 0.86), .init(x: 0.66, y: 0.90),
+        .init(x: 0.28, y: 0.36), .init(x: 0.54, y: 0.32), .init(x: 0.76, y: 0.40), .init(x: 0.40, y: 0.54),
+        .init(x: 0.66, y: 0.58), .init(x: 0.22, y: 0.66), .init(x: 0.50, y: 0.74), .init(x: 0.78, y: 0.72),
+        .init(x: 0.34, y: 0.82), .init(x: 0.64, y: 0.84),
     ]
 
-    private static let mayorSpot = CGPoint(x: 0.92, y: 0.20)      // 이장은 늘 오른쪽 위
-    private static let visitSpot = CGPoint(x: 0.06, y: 0.50)      // 옛 이웃은 길 어귀에
-    private static let warshSpot = CGPoint(x: 0.10, y: 0.24)      // 워시는 왼쪽 위 나무 곁
+    private static let mayorSpot = CGPoint(x: 0.84, y: 0.26)      // 이장은 늘 오른쪽 위
+    private static let visitSpot = CGPoint(x: 0.14, y: 0.48)      // 옛 이웃은 길 어귀에
+    private static let warshSpot = CGPoint(x: 0.16, y: 0.28)      // 워시는 왼쪽 위 나무 곁
     private static let stage = CGPoint(x: 0.50, y: 0.48)          // 어닝콜 날 그 주민이 서는 가운데
     private var sky: TownSky { TownSky.shared }
 
@@ -947,7 +947,7 @@ struct TownView: View {
         let place: [(TownLook.Resident, CGPoint)] = host.map { h in
             [(h, Self.stage)] + others.enumerated().map { i, r in
                 let a = Double(i) / Double(max(1, others.count)) * 2 * .pi + .pi / 2
-                return (r, CGPoint(x: Self.stage.x + 0.30 * cos(a), y: Self.stage.y + 0.32 * sin(a) + 0.04))
+                return (r, CGPoint(x: Self.stage.x + 0.26 * cos(a), y: Self.stage.y + 0.26 * sin(a) + 0.04))
             }
         } ?? res.enumerated().map { ($1, Self.spots[$0]) }
         // 워시는 FOMC 앞뒤 며칠 동안 동네에 머문다
@@ -1038,7 +1038,7 @@ struct TownView: View {
                 let n = [0, 1, 1].randomElement()!
                 for id in ids.shuffled().prefix(n) {
                     if Bool.random() && hop == nil { hop = id }
-                    else { step[id] = max(-12, min(12, (step[id] ?? 0) + [-6, 6].randomElement()!)) }
+                    else { let x = step[id] ?? 0; step[id] = x != 0 ? 0 : [-6, 6].randomElement()! }   // 한 걸음 나갔으면 다음엔 제자리로
                 }
             }
         }
