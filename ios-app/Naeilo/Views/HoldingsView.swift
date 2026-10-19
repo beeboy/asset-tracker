@@ -928,6 +928,7 @@ struct TownView: View {
 
     private static let mayorSpot = CGPoint(x: 0.92, y: 0.20)      // 이장은 늘 오른쪽 위
     private static let visitSpot = CGPoint(x: 0.06, y: 0.50)      // 옛 이웃은 길 어귀에
+    private static let warshSpot = CGPoint(x: 0.10, y: 0.24)      // 워시는 왼쪽 위 나무 곁
     private static let stage = CGPoint(x: 0.50, y: 0.48)          // 어닝콜 날 그 주민이 서는 가운데
     private var sky: TownSky { TownSky.shared }
 
@@ -946,7 +947,9 @@ struct TownView: View {
                 return (r, CGPoint(x: Self.stage.x + 0.30 * cos(a), y: Self.stage.y + 0.32 * sin(a) + 0.04))
             }
         } ?? res.enumerated().map { ($1, Self.spots[$0]) }
-        let folk: [(TownLook.Resident, CGPoint)] = place + [(mayor, Self.mayorSpot)]
+        // 워시는 FOMC 앞뒤 며칠 동안 동네에 머문다
+        let warsh = TownLook.fomc() != nil ? [(TownLook.Resident(id: TownLook.warshID, rows: []), Self.warshSpot)] : []
+        let folk: [(TownLook.Resident, CGPoint)] = place + [(mayor, Self.mayorSpot)] + warsh
             + (guest.map { [($0, res.count < Self.maxRes ? Self.spots[res.count] : Self.visitSpot)] } ?? [])
         GeometryReader { g in
             ZStack {
@@ -1053,7 +1056,7 @@ struct TownView: View {
 enum TownLook {
     /// 주민 = 사람. 대표가 같은 종목(테슬라·스페이스X → 머스크)은 한 주민이 같이 맡는다. 대표 정보가 없으면 종목마다 한 명
     struct Resident: Identifiable { let id: String; let rows: [AppModel.Row]; var old: String? = nil   // old: 옛 이웃이면 그때 회사 이름
-        var name: String { id == TownLook.mayorID ? "원·달러" : old ?? rows.map(\.sym.name).joined(separator: " · ") }
+        var name: String { id == TownLook.mayorID ? "트럼프" : id == TownLook.warshID ? "연준 의장 워시" : old ?? rows.map(\.sym.name).joined(separator: " · ") }
         var value: Double { rows.reduce(0) { $0 + $1.value } }
     }
     static func residents(_ rows: [AppModel.Row]) -> [Resident] {
@@ -1068,6 +1071,7 @@ enum TownLook {
     /// 기본 별명: 회사 이름 앞 글자 + 꼬리 (같은 주민은 늘 같은 별명)
     static func nick(_ res: Resident) -> String {
         if res.id == mayorID { return "이장님" }
+        if res.id == warshID { return "워시" }
         let base = (res.rows.first?.sym.name ?? res.old ?? res.id).replacingOccurrences(of: " ", with: "")
         let ko = base.unicodeScalars.first.map { (0xAC00...0xD7A3).contains($0.value) } ?? false
         let tails = ko ? ["돌이", "순이", "찡", "뽀", "군"] : ["y", "o", "ie", "ster"]
@@ -1093,6 +1097,13 @@ enum TownLook {
         c.parts[MeGroup.glasses.rawValue] = next(4) == 0 ? 1 + next(MeGroup.glasses.count) : 0
         c.parts[MeGroup.mask.rawValue] = 0
         c.parts[MeGroup.prop.rawValue] = 0
+        // 유명인: 머리는 따로 그리니 부품 머리는 빼고, 피부·안경·윗옷만 맞춘다
+        if let st = TownStar.find(id) {
+            c.parts[MeGroup.hair.rawValue] = 0
+            c.parts["skin"] = st.skin
+            c.parts[MeGroup.glasses.rawValue] = st.glasses
+            if st.top > 0 { c.parts[MeGroup.top.rawValue] = st.top }
+        }
         return c
     }
     /// 하루 한마디: 언어별 문장 틀 + 빈칸({move} 오르내림 · {season} 계절 · {days} 함께한 날).
@@ -1113,6 +1124,20 @@ enum TownLook {
     ]]
     /// 이장 = 큰손. 동네에 늘 있고 원·달러 이야기를 한다 (이미 받은 환율만)
     static let mayorID = "mayor"
+    /// 워시: FOMC 5일 전부터 3일 뒤까지 상주. 남은 날(음수면 지난 날), 없으면 nil
+    static let warshID = "warsh"
+    static func fomc(_ now: Date = Date()) -> Int? {
+        let from = Day.str(now.addingTimeInterval(-3 * 86400)), until = Day.str(now.addingTimeInterval(5 * 86400))
+        guard let r = MarketEvents.rules.first(where: { $0.id == "x_fomc" }), let d = MarketEvents.dates(r, from: from, until: until).first else { return nil }
+        return Day.dday(d)
+    }
+    static func warshLine() -> String {
+        let n = fomc() ?? 0
+        if n > 1 { return "FOMC까지 \(n)일 남았어요. 금리 얘기하러 미리 왔어요." }
+        if n == 1 { return "내일이 FOMC예요. 다들 긴장되죠?" }
+        if n == 0 { return "오늘 FOMC예요. 결과가 나오면 알려 줄게요." }
+        return "FOMC 끝났어요. 며칠 더 머물다 갈게요."
+    }
     static let mayorFrames = ["동네는 오늘도 평화로워요. {fx}", "{weather} {fx}", "{fx}\n다들 잘 지내죠?", "이장이에요. {fx}", "{fx}\n바다 건너 소식도 챙겨요."]
     /// 옛 이웃: 다 팔아 떠난 주민이 가끔 놀러 와 함께한 시간을 얘기한다
     static let oldFrames = ["오랜만이에요! 놀러 왔어요.\n{days}일 함께했던 거 기억나요?", "지나가다 들렀어요. 다들 잘 지내죠?", "{weather} 옛날 생각나서 왔어요.",
@@ -1136,6 +1161,7 @@ enum TownLook {
             return pool[Int(seed(res.id + TownLog.day) % UInt64(pool.count))].replacingOccurrences(of: "{weather}", with: wx ?? "")
         }
         let h = holiday().map { "오늘은 " + $0 + (batchim($0) ? "이에요!\n" : "예요!\n") } ?? ""
+        if res.id == warshID { return h + warshLine() + "\n" + fxLine() }
         if res.id == mayorID { return h + pick(mayorFrames).replacingOccurrences(of: "{fx}", with: fxLine()) }
         // 행사: 어닝콜 날은 모두 모여 그 주민의 한 줄을 듣는다. 전날엔 예측 한 줄을 부탁한다
         if res.old == nil, earnDay(res) != nil {
@@ -1165,7 +1191,7 @@ enum TownLook {
     }
     /// 행사: 보유 종목 실적 날 (앱 일정표 MarketEvents 의 실적만, 바깥에서 따로 안 받음). ahead 0 오늘 · 1 내일
     static func earnDay(_ res: Resident, _ ahead: Int = 0) -> String? {
-        guard res.id != mayorID, res.old == nil else { return nil }
+        guard res.id != mayorID, res.id != warshID, res.old == nil else { return nil }
         let d = Day.str(Date().addingTimeInterval(Double(ahead) * 86400))
         return MarketEvents.rules.first { r in r.id.hasPrefix("e_") && res.rows.contains { $0.id == r.target } && !MarketEvents.dates(r, from: d, until: d).isEmpty }?.kind
     }
@@ -1250,7 +1276,7 @@ struct TownTalk: View {
                     Text(TownLook.shown(res, note)).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
                     Text(res.name).appFont(11).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
                     Spacer(minLength: 0)
-                    if res.id != TownLook.mayorID {
+                    if res.id != TownLook.mayorID && res.id != TownLook.warshID {
                     Button("우리 사이", action: us).appFont(12, .bold).foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
@@ -1340,7 +1366,7 @@ struct TownTalk: View {
         notes = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: Note].self, from: $0) } ?? [:]
     }
     var isEmpty: Bool { notes.isEmpty }
-    func note(_ id: String) -> Note { notes[id] ?? (id == TownLook.mayorID ? Note(hat: 1) : Note()) }   // 이장은 밀짚모자
+    func note(_ id: String) -> Note { notes[id] ?? Note() }
     func set(_ id: String, _ n: Note) {
         notes[id] = n
         if let d = try? JSONEncoder().encode(notes) { UserDefaults.standard.set(d, forKey: Self.key) }
@@ -1571,11 +1597,12 @@ struct TownFace: View {
     var body: some View {
         MeAvatar(me: TownLook.char(id), width: width, height: height)
             .overlay {
-                if note.hat > 0 {
+                let star = TownStar.find(id)?.px ?? []
+                if note.hat > 0 || !star.isEmpty {
                     Canvas { ctx, size in
                         let u = size.width / CGFloat(MeArt.W)
                         let c = Self.tints[min(note.tint, Self.tints.count - 1)]
-                        let px = Self.pixels(note.hat, c)
+                        let px = star + Self.pixels(note.hat, c)
                         func col(_ v: UInt32) -> Color { Color(red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255) }
                         for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0 - 1) * u, y: CGFloat(r.1 - 1) * u, width: CGFloat(r.2 + 2) * u, height: CGFloat(r.3 + 2) * u)), with: .color(col(MeArt.outline))) }
                         for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0) * u, y: CGFloat(r.1) * u, width: CGFloat(r.2) * u, height: CGFloat(r.3) * u)), with: .color(col(r.4))) }
@@ -1596,6 +1623,45 @@ struct TownFace: View {
         default: return []
         }
     }
+}
+
+/// 유명인 주민: 부품 얼굴 위에 머리 모양만 따로 그린 도트를 얹는다 (풍자 캐리커처).
+/// 주민 id 는 대표 이름("ceo:젠슨 황") 또는 종목 코드. 이장은 트럼프
+enum TownStar {
+    struct Look { var skin = 1; var glasses = 0; var top = 0; var px: [(Int, Int, Int, Int, UInt32)] }
+    typealias R = (Int, Int, Int, Int, UInt32)
+    /// 짧은 머리 기본꼴: 정수리 + 옆머리
+    private static func crop(_ c: UInt32, _ d: UInt32, side: Int = 3) -> [R] { [(7, 3, 10, 1, d), (6, 4, 12, 2, c), (5, 5, 2, side, c), (17, 5, 2, side, c)] }
+    static let looks: [String: Look] = {
+        let brown: UInt32 = 0x6B4A2E, dbrown: UInt32 = 0x4A3220, black: UInt32 = 0x26201E, grey: UInt32 = 0xA9ADB4, silver: UInt32 = 0xD4D7DC
+        var m: [String: Look] = [:]
+        // 빅7
+        m["musk"] = Look(px: crop(0x4A3426, 0x33241A) + [(6, 6, 5, 1, 0x4A3426)])
+        m["jensen"] = Look(top: 5, px: crop(black, 0x111111, side: 4) + [(8, 4, 4, 1, grey), (14, 4, 2, 1, grey)])
+        m["nadella"] = Look(skin: 2, glasses: 1, px: [(8, 4, 8, 1, grey), (5, 6, 2, 4, grey), (17, 6, 2, 4, grey)])
+        m["zuck"] = Look(top: 5, px: [(7, 3, 10, 1, dbrown), (6, 4, 12, 2, brown), (6, 6, 12, 1, brown), (5, 5, 1, 3, brown), (18, 5, 1, 3, brown)])
+        m["pichai"] = Look(skin: 2, px: [(8, 3, 8, 1, 0x111111), (6, 4, 12, 1, black), (5, 5, 2, 3, black), (17, 5, 2, 3, black)])
+        m["jassy"] = Look(px: [(5, 7, 2, 3, 0x5A4A40), (17, 7, 2, 3, 0x5A4A40), (9, 5, 2, 1, 0xFFF4E6)])     // 민머리 + 반짝
+        m["ternus"] = Look(px: crop(0x7A5134, 0x5A3A24) + [(12, 6, 5, 1, 0x7A5134)])
+        // AI
+        m["altman"] = Look(px: crop(brown, dbrown) + [(8, 2, 2, 1, brown), (12, 2, 2, 1, brown), (15, 2, 2, 1, brown)])
+        m["amodei"] = Look(glasses: 1, px: [(6, 2, 12, 2, black), (5, 4, 14, 2, black), (4, 5, 2, 5, black), (18, 5, 2, 5, black), (7, 6, 3, 1, black), (13, 6, 3, 1, black)])
+        m["hassabis"] = Look(px: [(8, 3, 8, 1, black), (6, 4, 12, 1, black), (5, 5, 2, 3, black), (17, 5, 2, 3, black)])
+        // 금리·정치
+        m["warsh"] = Look(top: 8, px: crop(silver, grey) + [(6, 6, 4, 1, silver), (11, 4, 1, 2, grey)])
+        m["trump"] = Look(top: 8, px: [(6, 2, 12, 2, 0xE8C060), (4, 4, 16, 2, 0xE8C060), (4, 6, 6, 1, 0xE8C060), (4, 5, 2, 4, 0xE8C060), (18, 5, 2, 4, 0xE8C060),
+                                       (12, 3, 6, 1, 0xC9A040), (11, 17, 2, 6, 0xD32F2F)])
+        return m
+    }()
+    /// 주민 id → 얼굴 열쇠 (대표 이름이나 종목 코드로 찾는다)
+    static let keys: [String: String] = [
+        "ceo:일론 머스크": "musk", "TSLA": "musk", "ceo:젠슨 황": "jensen", "NVDA": "jensen", "ceo:사티아 나델라": "nadella", "MSFT": "nadella",
+        "ceo:마크 저커버그": "zuck", "META": "zuck", "ceo:순다르 피차이": "pichai", "GOOGL": "pichai", "GOOG": "pichai",
+        "ceo:앤디 재시": "jassy", "AMZN": "jassy", "ceo:존 터너스": "ternus", "ceo:팀 쿡": "ternus", "AAPL": "ternus",
+        "ceo:샘 올트먼": "altman", "ceo:다리오 아모데이": "amodei", "ceo:데미스 허사비스": "hassabis",
+        TownLook.warshID: "warsh", TownLook.mayorID: "trump",
+    ]
+    static func find(_ id: String) -> Look? { keys[id].flatMap { looks[$0] } }
 }
 
 /// 꾸미기: 이름 · 모자 · 모자 색. 저장하면 수첩에 적는다
