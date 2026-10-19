@@ -156,7 +156,7 @@ struct AnalysisView: View {
         let head = r >= 1 ? "\(m.keyName) 도달" : (45...55).contains(pct) ? "\(m.keyName)까지 절반" : "\(m.keyName)까지 \(pct)%"
         let end = ForecastView.ym(m.forecastHorizon).short
         return VStack(spacing: 14) {
-            Text(head).appFont(24, .bold).foregroundStyle(.white)
+            Text(head).appFont(24, .bold).foregroundStyle(.white).flip(head)
             VStack(spacing: 8) {
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
@@ -195,7 +195,7 @@ struct AnalysisView: View {
             .frame(width: 44, height: 44).background(bg, in: RoundedRectangle(cornerRadius: 14))
             Text(l.label).appFont(15).foregroundStyle(Theme.sub).lineLimit(1)
             Spacer(minLength: 6)
-            Text(l.value).appFont(18, .bold).foregroundStyle(color(l.valueTone ?? .info)).lineLimit(1).minimumScaleFactor(0.7)
+            Text(l.value).appFont(18, .bold).foregroundStyle(color(l.valueTone ?? .info)).lineLimit(1).minimumScaleFactor(0.7).flip(l.value)
         }
         .padding(.leading, 14).padding(.trailing, 18).padding(.vertical, 14).frame(minHeight: 72)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))

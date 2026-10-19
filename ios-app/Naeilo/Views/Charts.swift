@@ -123,3 +123,10 @@ extension View {
         contentTransition(.numericText(value: v)).animation(.snappy, value: v)
     }
 }
+
+extension View {
+    /// 글로 된 숫자(분석 카드 값 등)가 바뀔 때 플립
+    func flip(_ s: String) -> some View {
+        contentTransition(.numericText()).animation(.snappy, value: s)
+    }
+}
