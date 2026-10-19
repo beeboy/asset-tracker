@@ -119,6 +119,12 @@ struct AnalysisView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task { await MacroData.shared.load() }
         .task { await SiteCalc.shared.refresh() }
+        // 당기면 시세는 새로, 계산·금리 자료는 아직 신선하면 다시 받지 않는다
+        .refreshable {
+            await Market.shared.pullRefresh(m)
+            await MacroData.shared.load()
+            await SiteCalc.shared.refresh()
+        }
         .navigationDestination(for: AnalysisRoute.self) { AnalysisPager(start: $0) }
     }
 

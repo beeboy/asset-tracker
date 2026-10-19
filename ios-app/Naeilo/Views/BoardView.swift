@@ -28,7 +28,6 @@ struct BoardView: View {
             }
             .screen()
         }
-        .modifier(MissionPageSwipe())
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: MissionRoute.self) { MissionScreen(route: $0) }
@@ -181,7 +180,7 @@ struct BoardView: View {
 
     private var lockedPlay: some View {
         DashedCard {
-            Label(m.boardPage == 1 ? "이번 주 예보" : "1000칸", systemImage: "lock").appFont(15, .bold)
+            Label(m.boardPage == 1 ? "이번 주 예보" : "100칸 블록", systemImage: "lock").appFont(15, .bold)
             Text("시작 3단계 뒤 열림 · 칸 채우기·주간 예보").appFont(13)
         }
     }
