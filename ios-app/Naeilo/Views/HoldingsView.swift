@@ -920,6 +920,8 @@ struct TownView: View {
     @State private var tick = 0                     // 2초마다 한 칸: 살짝 걷기·잡담 (가볍게, 화면에 있을 때만)
     @State private var step: [String: CGFloat] = [:]   // 주민마다 옆으로 옮겨 선 만큼 (움직인 주민만 바뀜)
     @State private var hop: String? = nil              // 이번 칸에 폴짝 뛴 주민
+    @State private var order = Array(0..<10)           // 주민 → 자리 번호 (앱에 다시 들어올 때마다 섞는다)
+    @Environment(\.scenePhase) private var phase
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
     // 주민 자리 (동네 판 안의 비율 좌표). 앞 번호부터 채운다
@@ -949,11 +951,11 @@ struct TownView: View {
                 let a = Double(i) / Double(max(1, others.count)) * 2 * .pi + .pi / 2
                 return (r, CGPoint(x: Self.stage.x + 0.26 * cos(a), y: Self.stage.y + 0.26 * sin(a) + 0.04))
             }
-        } ?? res.enumerated().map { ($1, Self.spots[$0]) }
+        } ?? res.enumerated().map { ($1, Self.spots[order[$0]]) }
         // 워시는 FOMC 앞뒤 며칠 동안 동네에 머문다
         let warsh = TownLook.fomc() != nil ? [(TownLook.Resident(id: TownLook.warshID, rows: []), Self.warshSpot)] : []
         let folk: [(TownLook.Resident, CGPoint)] = place + [(mayor, Self.mayorSpot)] + warsh
-            + (guest.map { [($0, res.count < Self.maxRes ? Self.spots[res.count] : Self.visitSpot)] } ?? [])
+            + (guest.map { [($0, res.count < Self.maxRes ? Self.spots[order[res.count]] : Self.visitSpot)] } ?? [])
         GeometryReader { g in
             ZStack {
                 ground(g.size).clipShape(RoundedRectangle(cornerRadius: 18))
@@ -1026,6 +1028,10 @@ struct TownView: View {
         }
 
         .task { await sky.refresh() }      // 날씨는 하루 한 번만 받는다
+        .onChange(of: phase) { _, p in
+            // 다른 앱에 갔다 돌아오면 주민들이 자리를 바꿔 서 있다
+            if p == .active { order.shuffle(); step = [:] }
+        }
         .task {
             // 화면에 있을 때만 2초에 한 번 (사라지면 저절로 멈춤)
             while !Task.isCancelled {
