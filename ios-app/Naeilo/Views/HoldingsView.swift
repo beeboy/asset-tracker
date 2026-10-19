@@ -108,7 +108,8 @@ struct HoldingsView: View {
                 Text(AppModel.sgn(chg)).appFont(15, .bold).foregroundStyle(Theme.change(chg))
             }
             // 점선 = 시작 금액
-            Sparkline(points: tot, avg: first, lineWidth: 2.2, showEndDot: true).frame(height: 120)
+            Sparkline(points: tot, avg: first, lineWidth: 2.2, showEndDot: true,
+                      scrub: .period(period) { AppModel.man($0) + "원" }).frame(height: 120)
             HStack {
                 Text(period.span < 1 ? "\(Calendar.current.component(.month, from: start))월" : "\(Calendar.current.component(.year, from: start).formatted(.number.grouping(.never))).\(Calendar.current.component(.month, from: start))")
                 Spacer()
@@ -289,7 +290,8 @@ struct HoldingDetailView: View {
                             .frame(maxWidth: .infinity, minHeight: 140)
                     } else {
                         Sparkline(points: pts, avg: h.qty > 0 ? h.avg : nil, lineWidth: 2.2, showEndDot: true,
-                                  avgLabel: h.qty > 0 ? "평균 단가 \(AppModel.price(sym, h.avg))" : nil, avgAlways: true).frame(height: 140)
+                                  avgLabel: h.qty > 0 ? "평균 단가 \(AppModel.price(sym, h.avg))" : nil, avgAlways: true,
+                                  scrub: .period(period) { AppModel.price(sym, $0) }).frame(height: 140)
                     }
                     ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true)
                 }

@@ -8,6 +8,8 @@ struct Sparkline: View {
     var showEndDot = false
     var avgLabel: String? = nil      // 점선 바로 밑, 오른쪽에 붙이는 글자
     var avgAlways = false            // 평균 단가가 범위 밖이어도 세로 범위를 넓혀 점선을 늘 보인다
+    var scrub: Scrub? = nil          // 있으면 끌어서 그 시점 날짜·시세를 본다
+    @State private var at: Int? = nil
 
     var body: some View {
         GeometryReader { g in
@@ -38,12 +40,46 @@ struct Sparkline: View {
                     }
                 }
                 .stroke(Theme.change(up ? 1 : -1), style: StrokeStyle(lineWidth: lineWidth, lineJoin: .round))
-                if showEndDot, let l = points.last {
+                if showEndDot, let l = points.last, at == nil {
                     PulseDot(color: Theme.change(up ? 1 : -1)).position(x: x(points.count - 1), y: y(l))
                 }
+                // 끄는 동안: 세로선 + 점 + 위쪽에 날짜·시각과 그때 시세
+                if let s = scrub, let i = at, i < points.count {
+                    let px = x(i), c = Theme.change(up ? 1 : -1)
+                    Path { p in p.move(to: CGPoint(x: px, y: 0)); p.addLine(to: CGPoint(x: px, y: g.size.height)) }
+                        .stroke(Theme.sub, lineWidth: 1)
+                    Circle().fill(c).frame(width: 8, height: 8).position(x: px, y: y(points[i]))
+                    VStack(spacing: 1) {
+                        Text(s.value(points[i])).appFont(20, .bold).monospacedDigit().foregroundStyle(Theme.ink)
+                        Text(Scrub.fmt.string(from: s.date(Double(i) / Double(n)))).appFont(12, .semibold).monospacedDigit().foregroundStyle(Theme.sub)
+                    }
+                    .lineLimit(1).fixedSize()
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(Theme.card.opacity(0.95), in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                    .position(x: min(max(px, 70), g.size.width - 70), y: -22)
+                }
             }
+            .contentShape(Rectangle())
+            .gesture(scrub == nil || points.count < 2 ? nil : DragGesture(minimumDistance: 0)
+                .onChanged { v in at = Int((min(max(v.location.x / max(1, g.size.width), 0), 1) * CGFloat(n)).rounded()) }
+                .onEnded { _ in at = nil })
+            .sensoryFeedback(.selection, trigger: at)
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// 그래프 끌어 보기: 0…1 위치 → 시점, 값 → 글자
+struct Scrub {
+    let date: (Double) -> Date
+    let value: (Double) -> String
+    static let fmt: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.MM.dd HH:mm"; return f }()
+    /// 기간 그래프: 왼쪽 끝 = 기간 전, 오른쪽 끝 = 지금
+    static func period(_ p: Period, _ value: @escaping (Double) -> String) -> Scrub {
+        let days: Double = p == .d1 ? 1 : p == .w1 ? 7 : p.span * 1095
+        let now = Date()
+        return Scrub(date: { now.addingTimeInterval(-(1 - $0) * days * 86400) }, value: value)
     }
 }
 
