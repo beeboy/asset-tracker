@@ -909,6 +909,7 @@ private extension View {
 // 가볍게: 그림은 멈춰 있고(애니메이션 없음), 대사창이 열렸을 때만 글자를 찍는다. 새로 받는 것 없음 (이미 받은 시세만)
 struct TownView: View {
     @Environment(AppModel.self) private var m
+    @AppStorage("town.bg") private var bg = 0          // 동네 배경 (TownGround.names)
     @AppStorage("town.arrive") private var arrive = ""
     @State private var talk: TownLook.Resident? = nil
     @State private var dress: TownLook.Resident? = nil
@@ -963,7 +964,10 @@ struct TownView: View {
         VStack(spacing: 10) {
         GeometryReader { g in
             ZStack {
-                ground(g.size).clipShape(RoundedRectangle(cornerRadius: 18))
+                Group {
+                    if bg == 0 { ground(g.size) } else { TownGround(kind: bg, season: TownLook.season()) }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 18))
                     // 배경을 누르면 키보드를 내리고 대사창도 닫는다 (쓰던 답은 '그만'처럼)
                     .onTapGesture {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -998,6 +1002,15 @@ struct TownView: View {
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
                 }
                 TownWeather(kind: sky.kind).allowsHitTesting(false)
+                // 배경 바꾸기: 누를 때마다 다음 그림
+                Button { bg = (bg + 1) % TownGround.names.count } label: {
+                    Label(TownGround.names[min(bg, TownGround.names.count - 1)], systemImage: "photo").appFont(11, .bold).foregroundStyle(.white)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Color.black.opacity(0.35), in: Capsule())
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).padding(.leading, 8)
                 // 행사 띠: 어닝콜 모임 · 세계 기념일 (그날만)
                 if let t = host.flatMap({ TownLook.earnDay($0) }).map({ "\($0) 발표 날 · 다 같이 듣는 중" }) ?? TownLook.holiday().map({ "오늘은 " + $0 }) {
                     Text(t).appFont(12, .bold).foregroundStyle(.white)
@@ -1842,5 +1855,139 @@ struct TownUs: View {
     private func row(_ k: String, _ v: String) -> some View {
         HStack { Text(k).appFont(14).foregroundStyle(.secondary); Spacer(); Text(v).appFont(14, .bold) }
             .padding(.horizontal, 14).padding(.vertical, 10)
+    }
+}
+
+/// 동네 배경 그림 (GBA 젤다처럼 위에서 비스듬히, 사물은 앞면·그림자로 입체감). 0번 들판은 TownView.ground 그대로.
+/// Canvas 하나로 한 번 그리고, 입력(kind·season)이 같으면 다시 그리지 않는다.
+struct TownGround: View, Equatable {
+    let kind: Int, season: Int
+    static let names = ["들판", "광장", "언덕 위 집", "노란 문 골목"]
+
+    var body: some View {
+        Canvas { ctx, s in
+            let W = s.width, H = s.height
+            let grass = [Color(hex: 0x8CC76E), Color(hex: 0x66AD59), Color(hex: 0xA8AB5E), Color(hex: 0xD6E0E8)][season]
+            let leaf = [Color(hex: 0xF5BBD0), Color(hex: 0x34803D), Color(hex: 0xEA8533), Color(hex: 0xF7FAFF)][season]
+            func R(_ x: Double, _ y: Double, _ w: Double, _ h: Double, _ c: Color, _ r: Double = 0) {
+                let rc = CGRect(x: x, y: y, width: w, height: h)
+                ctx.fill(r > 0 ? Path(roundedRect: rc, cornerRadius: r) : Path(rc), with: .color(c))
+            }
+            func O(_ x: Double, _ y: Double, _ w: Double, _ h: Double, _ c: Color) {
+                ctx.fill(Path(ellipseIn: CGRect(x: x, y: y, width: w, height: h)), with: .color(c))
+            }
+            func shadow(_ x: Double, _ y: Double, _ w: Double, _ h: Double) { O(x, y, w, h, .black.opacity(0.22)) }
+            func tufts(_ seed: Int) {
+                var v = seed
+                for _ in 0..<70 {
+                    v = (v * 9301 + 49297) % 233280; let x = Double(v % Int(max(1, W)))
+                    v = (v * 9301 + 49297) % 233280; let y = Double(v % Int(max(1, H)))
+                    R(x, y, 5, 3, .black.opacity(0.12), 1.5); R(x + 1, y - 2, 2, 2, .white.opacity(0.3))
+                }
+            }
+            func tree(_ x: Double, _ y: Double, _ k: Double, fruit: Bool = false) {
+                let w = 52 * k
+                shadow(x - 4, y + w * 0.74, w + 10, w * 0.26)
+                R(x + w * 0.4, y + w * 0.55, w * 0.2, w * 0.4, Color(hex: 0x7A4A2A), 2)
+                R(x + w * 0.5, y + w * 0.55, w * 0.1, w * 0.4, Color(hex: 0x5A3418))
+                O(x, y, w, w * 0.8, leaf); O(x, y, w, w * 0.8, .black.opacity(0.28))
+                O(x + w * 0.06, y + 2, w * 0.82, w * 0.62, leaf)
+                O(x + w * 0.18, y + w * 0.1, w * 0.36, w * 0.22, .white.opacity(0.3))
+                if fruit {
+                    for p in [(0.2, 0.4), (0.6, 0.3), (0.45, 0.52), (0.72, 0.48), (0.3, 0.2), (0.55, 0.12)] {
+                        O(x + w * p.0, y + w * p.1, 6, 6, Color(hex: 0xC83030)); R(x + w * p.0 + 1, y + w * p.1 + 1, 2, 2, Color(hex: 0xFF9080))
+                    }
+                }
+            }
+            func house(_ x: Double, _ y: Double, _ w: Double, _ roof: Color) {
+                let rh = w * 0.55, wh = w * 0.44, fy = y + rh + wh
+                shadow(x + 6, fy - 8, w + 12, 16)
+                R(x + 4, y + rh, w - 8, wh, Color(hex: 0xF0E0C0)); R(x + 4, fy - 7, w - 8, 7, Color(hex: 0xD0B890))
+                R(x, y, w, rh, roof, 3); R(x, y + rh - 9, w, 9, .black.opacity(0.25)); R(x, y + rh / 2 - 2, w, 3, .black.opacity(0.2))
+                R(x + 7, y + 5, w * 0.4, 3, .white.opacity(0.35))
+                R(x + w * 0.7, y - 12, 14, 18, Color(hex: 0xA89880)); R(x + w * 0.7, y - 12, 14, 4, Color(hex: 0xD8D0C0))
+                let dx = x + w / 2 - 10
+                R(dx, fy - 34, 20, 34, Color(hex: 0x6A4020)); R(dx + 2, fy - 32, 16, 3, Color(hex: 0x8A5A30)); R(dx + 13, fy - 19, 3, 3, Color(hex: 0xF0D060))
+                for wx in [x + 12, x + w - 32] {
+                    R(wx, y + rh + 10, 20, 16, Color(hex: 0x5A4030)); R(wx + 2, y + rh + 12, 16, 12, Color(hex: 0x88C8F0)); R(wx + 2, y + rh + 12, 7, 5, Color(hex: 0xC8ECFF))
+                }
+            }
+            func fence(_ x: Double, _ y: Double, _ n: Int) {
+                R(x, y + 5, Double(n) * 14 - 8, 3, Color(hex: 0xC08850)); R(x, y + 12, Double(n) * 14 - 8, 3, Color(hex: 0xC08850))
+                for i in 0..<n {
+                    let px = x + Double(i) * 14
+                    R(px, y, 5, 19, Color(hex: 0xA87040)); R(px, y, 5, 3, Color(hex: 0xD8A060)); R(px + 3, y + 3, 2, 16, Color(hex: 0x7A4A20))
+                }
+            }
+            func path(_ x: Double, _ y: Double, _ w: Double, _ h: Double) {
+                R(x, y, w, h, Color(hex: 0xE0C890)); R(x, y, w, 3, Color(hex: 0xC8A870)); R(x, y, 3, h, Color(hex: 0xC8A870))
+            }
+            func rock(_ x: Double, _ y: Double) {
+                shadow(x - 2, y + 11, 24, 8); R(x, y, 20, 15, Color(hex: 0x8A8A8A), 7); R(x + 3, y + 2, 12, 7, Color(hex: 0xC0C0C0), 5)
+            }
+            func pond(_ x: Double, _ y: Double, _ w: Double, _ h: Double) {
+                R(x - 4, y - 4, w + 8, h + 8, .black.opacity(0.18), 20); R(x, y, w, h, Color(hex: 0x3878C8), 18)
+                R(x + 5, y + 6, w - 10, h - 12, Color(hex: 0x58A8E8), 14)
+                R(x + w * 0.3, y + h * 0.35, 18, 3, Color(hex: 0xC8ECFF)); R(x + w * 0.55, y + h * 0.6, 12, 3, Color(hex: 0xC8ECFF))
+            }
+            func flowers(_ x: Double, _ y: Double, _ c: UInt32) {
+                O(x, y, 5, 5, Color(hex: c)); O(x + 9, y + 6, 5, 5, Color(hex: c)); O(x + 2, y + 12, 5, 5, .white); O(x + 12, y - 4, 4, 4, Color(hex: 0xF8E060))
+            }
+            func cat(_ x: Double, _ y: Double) {
+                let c = Color(hex: 0xE0A050)
+                R(x, y, 16, 9, c, 4); R(x + 10, y - 6, 9, 9, c, 3); R(x + 11, y - 9, 3, 4, c); R(x + 16, y - 9, 3, 4, c)
+                R(x - 5, y - 5, 4, 10, Color(hex: 0xC08030), 2); R(x + 15, y - 3, 2, 2, Color(hex: 0x203020))
+            }
+            func hedge(_ x: Double, _ y: Double, _ w: Double) {
+                shadow(x, y + 24, w, 9); R(x, y + 9, w, 19, .black.opacity(0.2), 6); R(x, y + 9, w, 19, leaf.opacity(0.85), 6)
+                R(x, y, w, 15, leaf, 7); R(x + 5, y + 3, w - 10, 3, .white.opacity(0.3), 1.5)
+            }
+
+            R(0, 0, W, H, grass)
+            switch kind {
+            case 1:   // 광장: 위에 집 두 채, 길이 만나는 곳, 대추나무, 연못
+                tufts(7)
+                path(W / 2 - 22, 0, 44, H); path(0, H * 0.5 - 18, W, 36)
+                tree(-18, -18, 1.0); tree(W - 46, -16, 0.9)
+                house(14, 10, 108, Color(hex: 0xD85848)); house(W - 122, 6, 108, Color(hex: 0x4878C8))
+                fence(14, 126, 6); fence(W - 106, 126, 6); cat(W - 64, 121)
+                tree(-12, H - 86, 1.3, fruit: true); pond(W - 96, H - 64, 82, 50)
+                rock(W * 0.3, H * 0.9); flowers(W * 0.12, H * 0.42, 0xF070A0); flowers(W * 0.8, H * 0.58, 0xF8F8F8)
+            case 2:   // 언덕 위 집: 절벽 위 집·대추나무, 계단으로 내려오는 아랫동네
+                tufts(11)
+                let cy = H * 0.26
+                R(0, 0, W, cy, .white.opacity(0.1))
+                tree(-16, -18, 0.9); house(W / 2 - 56, -6, 112, Color(hex: 0xC86040)); tree(W - 70, 8, 1.0, fruit: true)
+                R(36, 56, 4, 18, Color(hex: 0x5A4030)); R(30, 48, 18, 11, Color(hex: 0xD83838), 4)
+                for (x0, x1) in [(0.0, W / 2 - 24), (W / 2 + 24, W)] {
+                    R(x0, cy, x1 - x0, 32, Color(hex: 0xB88858))
+                    var i = x0 + 8; while i < x1 { R(i, cy + 6, 3, 22, Color(hex: 0x986838)); i += 20 }
+                    R(x0, cy + 26, x1 - x0, 6, Color(hex: 0x7A5028)); R(x0, cy - 6, x1 - x0, 8, grass); R(x0, cy - 6, x1 - x0, 2, .white.opacity(0.35))
+                }
+                R(W / 2 - 24, cy - 4, 48, 36, Color(hex: 0xD8C8A0))
+                var st = cy; while st < cy + 32 { R(W / 2 - 24, st, 48, 3, Color(hex: 0xB0A080)); st += 9 }
+                path(W / 2 - 20, cy + 32, 40, H); path(0, H * 0.64, W, 34)
+                rock(W * 0.16, H * 0.45); rock(W * 0.82, H * 0.48); flowers(W * 0.3, H * 0.86, 0xF8E060)
+                pond(10, H - 62, 76, 48); tree(W - 58, H - 80, 1.1)
+            case 3:   // 노란 문 골목: 담장 가운데 노란빛 문, 돌길, 양옆 덤불, 가로등
+                let fx = W * 0.18, fw = W * 0.64, wh = H * 0.2
+                R(fx, 0, fw, H, Color(hex: 0xB8B0A0))
+                var y = 0.0, row = 0
+                while y < H { var x = fx + (row % 2 == 0 ? 0 : 10); while x < fx + fw - 4 { R(x, y, 18, 18, Color(hex: 0xC8C0B0), 3); x += 20 }; y += 20; row += 1 }
+                R(0, 0, W, 8, Color(hex: 0xD8D0C0)); R(0, 8, W, wh, Color(hex: 0xA89880))
+                var by = 24.0; while by < wh + 8 { R(0, by, W, 2, Color(hex: 0x8A7A62)); by += 18 }
+                R(0, wh + 8, W, 8, .black.opacity(0.18))
+                O(W / 2 - 50, wh + 4, 100, 46, Color(hex: 0xFFE678).opacity(0.35))
+                R(W / 2 - 24, 14, 48, wh - 6, Color(hex: 0x8A6D3B), 3); R(W / 2 - 19, 19, 38, wh - 11, Color(hex: 0xF8E070))
+                R(W / 2 - 15, 23, 14, 30, Color(hex: 0xFFF6C0)); R(W / 2 + 11, 19 + wh * 0.45, 4, 4, Color(hex: 0x8A6D3B))
+                cat(W - 70, 3)
+                for hy in [0.32, 0.52, 0.72] { hedge(0, H * hy, fx); hedge(fx + fw, H * hy, W - fx - fw) }
+                let lx = fx + 4, ly = H * 0.3
+                O(lx - 26, ly + 52, 64, 28, Color(hex: 0xFFE678).opacity(0.25)); shadow(lx - 3, ly + 62, 20, 7)
+                R(lx + 5, ly + 8, 4, 58, Color(hex: 0x404850)); R(lx, ly, 14, 12, Color(hex: 0x303840), 4); R(lx + 3, ly + 3, 8, 7, Color(hex: 0xFFE890), 3)
+                rock(W * 0.66, H * 0.8); tree(-14, H - 70, 1.0); tree(W - 46, H - 66, 0.9)
+            default: break
+            }
+        }
     }
 }
