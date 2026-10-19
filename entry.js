@@ -49,6 +49,7 @@
     g += `<polyline class="mid" points="${pts(f.q50)}"/><text class="s" x="${SW - 2}" y="${y(f.q50[N]) - 5}" text-anchor="end">${SHORT[lens]}</text>`;
     const gy = y(GOAL);
     g += `<line class="goal" x1="${left}" y1="${gy}" x2="${SW}" y2="${gy}"/><text class="g" x="${left + 4}" y="${gy < 12 ? gy + 11 : gy - 5}">목표</text>`;
+    g += [0, 0.2].map((t) => `<circle class="pulse" cx="${x(0)}" cy="${y(V0)}" r="4" style="animation-delay:${t}s"/>`).join(""); // 현재 점 박동 (앱과 같은 규격)
     g += `<circle cx="${x(0)}" cy="${y(V0)}" r="4"/><text class="n" x="${x(0) + 6}" y="${y(V0) + 15}">지금 ${amt(V0)}</text>`;
     const ly = SH - 3;
     g += `<text x="${left}" y="${ly}">지금</text>`;
