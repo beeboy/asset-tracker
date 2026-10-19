@@ -156,7 +156,7 @@ struct AnalysisView: View {
         let head = r >= 1 ? "\(m.keyName) 도달" : (45...55).contains(pct) ? "\(m.keyName)까지 절반" : "\(m.keyName)까지 \(pct)%"
         let end = ForecastView.ym(m.forecastHorizon).short
         return VStack(spacing: 14) {
-            Text(head).appFont(24, .bold).foregroundStyle(.white).flip(head)
+            Text(head).appFont(24, .bold).foregroundStyle(.white).roll(head)
             VStack(spacing: 8) {
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
@@ -195,7 +195,7 @@ struct AnalysisView: View {
             .frame(width: 44, height: 44).background(bg, in: RoundedRectangle(cornerRadius: 14))
             Text(l.label).appFont(15).foregroundStyle(Theme.sub).lineLimit(1)
             Spacer(minLength: 6)
-            Text(l.value).appFont(18, .bold).foregroundStyle(color(l.valueTone ?? .info)).lineLimit(1).minimumScaleFactor(0.7).flip(l.value)
+            Text(l.value).appFont(18, .bold).foregroundStyle(color(l.valueTone ?? .info)).lineLimit(1).minimumScaleFactor(0.7).roll(l.value)
         }
         .padding(.leading, 14).padding(.trailing, 18).padding(.vertical, 14).frame(minHeight: 72)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
@@ -310,7 +310,7 @@ struct ForecastView: View {
                         Text("그럴듯한 금액 · 연 \(AppModel.sgn0(f.mu))").appFont(13).foregroundStyle(Theme.sub)
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(Self.amt(med)).font(.system(size: 28, weight: .bold)).foregroundStyle(Theme.ink)
-                                .lineLimit(1).minimumScaleFactor(0.7).flip(Self.amt(med))
+                                .lineLimit(1).minimumScaleFactor(0.7).roll(Self.amt(med))
                             Text(AppModel.sgn0(chg)).appFont(13, .bold).foregroundStyle(chg >= 0 ? Theme.green : Theme.up)
                         }
                         Text("10번 중 9번 \(Self.amt(lo)) ~ \(Self.amt(hi))").appFont(13).foregroundStyle(Theme.sub)

@@ -57,7 +57,7 @@ struct HomeView: View {
                 .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 // 금액은 길어도 꺾지 않고 한 줄로, 자리가 모자라면 글자를 줄인다
-                Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5).flip(now)
+                Text(AppModel.eok(now * 1e4)).appFont(32, .bold).tracking(-0.5).roll(now)
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
                 if value && m.cost > 0 {
                     Text(AppModel.sgn(m.ret)).appFont(14, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
@@ -102,7 +102,7 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("평가액 · 넣은 돈 \(AppModel.man(m.cost))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(AppModel.man(m.total)).appFont(32, .bold).tracking(-0.5).flip(m.total)
+                Text(AppModel.man(m.total)).appFont(32, .bold).tracking(-0.5).roll(m.total)
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
                 Text(AppModel.sgn(m.ret)).appFont(16, .bold).lineLimit(1).fixedSize()
                     .foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
@@ -239,7 +239,7 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("오늘의 움직임").appFont(15, .bold)
                 Spacer()
-                Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal).flip(AppModel.sgn(m.todayMove))
+                Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal).roll(AppModel.sgn(m.todayMove))
             }
             Text(m.rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + " · 원/달러 \(AppModel.sgn(Market.shared.fx.change))").appFont(13).foregroundStyle(Theme.sub)
         }

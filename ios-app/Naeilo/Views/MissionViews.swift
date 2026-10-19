@@ -64,7 +64,7 @@ private func horizonChips(_ sel: Binding<Int>) -> some View {
 private func statBox(_ k: String, _ v: String, _ c: Color = Theme.teal) -> some View {
     VStack(alignment: .leading, spacing: 4) {
         Text(k).appFont(13).foregroundStyle(Theme.sub)
-        Text(v).appFont(26, .bold).foregroundStyle(c).flip(v)
+        Text(v).appFont(26, .bold).foregroundStyle(c).roll(v)
     }
     .padding(14).frame(maxWidth: .infinity, alignment: .leading)
     .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
@@ -163,7 +163,7 @@ struct Mission1ResultView: View {
                     HStack { Text("지금 평가액"); Spacer(); Text("들어간 돈 \(AppModel.man(m.cost))") }
                         .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(AppModel.man(m.total)).appFont(30, .bold).flip(AppModel.man(m.total))
+                        Text(AppModel.man(m.total)).appFont(30, .bold).roll(AppModel.man(m.total))
                         Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(Color(hex: 0x8CC4F2))
                     }
                     ProgressBar(value: m.total / m.cost)
@@ -570,7 +570,7 @@ struct TaxResultView: View {
                 Text("내년 5월 세금").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(won0(m.taxBefore)).appFont(18).strikethrough().foregroundStyle(Color(hex: 0x8A949E))
-                    Text(won0(m.taxAfter)).appFont(30, .bold).flip(won0(m.taxAfter))
+                    Text(won0(m.taxAfter)).appFont(30, .bold).roll(won0(m.taxAfter))
                     Text("−\(won0(max(0, m.taxBefore - m.taxAfter)))").appFont(14, .bold).foregroundStyle(Theme.mint)
                 }
                 Text("1위 종목 \(AppModel.pct(m.focusWeight))→\(AppModel.pct(wAfter)) (계획 \(AppModel.pct(m.planWeight))) · 확정 손익 \(m.taxLossMan < 0 ? "−" + won0(-m.taxLossMan) : won0(m.taxLossMan))")
@@ -626,7 +626,7 @@ struct AppStartView: View {
                 }
                 tile(2, n) {
                     Text("본전까지").appFont(11, .bold)
-                    Text(AppModel.pct(min(1, m.total / max(1, m.cost)))).appFont(22, .bold).flip(AppModel.pct(min(1, m.total / max(1, m.cost))))
+                    Text(AppModel.pct(min(1, m.total / max(1, m.cost)))).appFont(22, .bold).roll(AppModel.pct(min(1, m.total / max(1, m.cost))))
                     ProgressBar(value: m.total / max(1, m.cost), height: 8, fill: Theme.teal, track: Theme.track)
                 }
                 tile(3, n) {
@@ -640,7 +640,7 @@ struct AppStartView: View {
                 }
                 tile(3, n) {
                     Text("오늘의 움직임").appFont(11, .bold)
-                    Text(AppModel.sgn(m.todayMove)).appFont(18, .bold).foregroundStyle(Theme.change(m.todayMove)).flip(AppModel.sgn(m.todayMove))
+                    Text(AppModel.sgn(m.todayMove)).appFont(18, .bold).foregroundStyle(Theme.change(m.todayMove)).roll(AppModel.sgn(m.todayMove))
                 }
             }
             ForEach(steps.indices, id: \.self) { i in

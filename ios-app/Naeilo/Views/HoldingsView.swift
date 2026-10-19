@@ -81,7 +81,7 @@ struct HoldingsView: View {
         let gain = m.total - m.cost
         return Card {
             Text("평가액").appFont(13, .semibold).foregroundStyle(Theme.sub)
-            Text(AppModel.man(m.total) + "원").appFont(28, .bold).monospacedDigit().flip(m.total)
+            Text(AppModel.man(m.total) + "원").appFont(28, .bold).monospacedDigit().roll(m.total)
             HStack(spacing: 6) {
                 Text("\(gain >= 0 ? "+" : "−")\(AppModel.man(abs(gain))) (\(AppModel.sgn(m.ret)))")
                     .appFont(14, .bold).foregroundStyle(Theme.change(gain))
@@ -157,7 +157,7 @@ struct HoldingsView: View {
                 Text("\(title) \(rs.count)").appFont(14, .bold)
                 Spacer()
                 Text(amountText(rs)).appFont(14, .semibold).foregroundStyle(Theme.sub).monospacedDigit()
-                    .flip(rs.reduce(0) { $0 + $1.value })
+                    .roll(rs.reduce(0) { $0 + $1.value })
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
             ForEach(rs) { r in
@@ -225,7 +225,7 @@ struct HoldingsView: View {
             }
         }
         let amount = VStack(alignment: .trailing, spacing: 2) {
-            Text(amountText([r])).appFont(15, .bold).monospacedDigit().lineLimit(1).fixedSize().flip(r.value)
+            Text(amountText([r])).appFont(15, .bold).monospacedDigit().lineLimit(1).fixedSize().roll(r.value)
             Text(AppModel.sgn(chg)).appFont(13, .bold).foregroundStyle(Theme.change(chg))
         }
         return Group {
@@ -271,7 +271,7 @@ struct HoldingDetailView: View {
                     Card {
                         Text("내 평가액").appFont(13).foregroundStyle(Theme.sub)
                         HStack(alignment: .firstTextBaseline) {
-                            Text(AppModel.man(val)).appFont(28, .bold).flip(val)
+                            Text(AppModel.man(val)).appFont(28, .bold).roll(val)
                             Text(AppModel.sgn(r)).appFont(15, .bold).foregroundStyle(Theme.change(r))
                         }
                         Text(summary(gain: gain, r: r, k: k)).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)

@@ -69,7 +69,7 @@ struct ParallelView: View {
         let mid = race.V0 * (1 + r[v.order[1]][t])
         return VStack(alignment: .leading, spacing: 8) {
             Text(first).appFont(13).foregroundStyle(Color.white.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
-            Text(head).appFont(22, .bold).foregroundStyle(.white).flip(head)
+            Text(head).appFont(22, .bold).foregroundStyle(.white).roll(head)
             Text("차이 **\(gap)** · 몇 달 더 지켜봐요")
                 .appFont(13).foregroundStyle(Color.white.opacity(0.85)).fixedSize(horizontal: false, vertical: true)
             if m.isGoal && goalPcts.count == 1, let p = goalPcts.first {
@@ -107,7 +107,7 @@ struct ParallelView: View {
             }
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 2) {
-                Text(AppModel.sgn(ret)).appFont(17, .bold).foregroundStyle(Theme.change(ret)).flip(AppModel.sgn(ret))
+                Text(AppModel.sgn(ret)).appFont(17, .bold).foregroundStyle(Theme.change(ret)).roll(AppModel.sgn(ret))
                 Text(AppModel.eok(amount)).appFont(12).foregroundStyle(Theme.sub)
             }
         }

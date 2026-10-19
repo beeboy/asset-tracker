@@ -119,14 +119,14 @@ struct PulseDot: View {
 
 // 금액이 바뀔 때 숫자가 한 자리씩 위아래로 넘어가며 바뀐다 (플립)
 extension View {
-    func flip(_ v: Double) -> some View {
+    func roll(_ v: Double) -> some View {
         contentTransition(.numericText(value: v)).animation(.snappy, value: v)
     }
 }
 
 extension View {
     /// 글로 된 숫자(분석 카드 값 등)가 바뀔 때 플립
-    func flip(_ s: String) -> some View {
+    func roll(_ s: String) -> some View {
         contentTransition(.numericText()).animation(.snappy, value: s)
     }
 }

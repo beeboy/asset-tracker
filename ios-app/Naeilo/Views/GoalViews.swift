@@ -376,7 +376,7 @@ struct GoalHoldResultView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack { Spacer(); Text("원금 \(noWon(AppModel.man(m.cost)))") }.appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(noWon(AppModel.man(m.total))).appFont(30, .bold).flip(noWon(AppModel.man(m.total)))
+                    Text(noWon(AppModel.man(m.total))).appFont(30, .bold).roll(noWon(AppModel.man(m.total)))
                     Text(AppModel.sgn(m.ret)).appFont(16, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
                 }
                 Text("\(m.focusName) 비중 \(AppModel.pct(m.focusWeight))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
@@ -504,7 +504,7 @@ struct GoalSetResultView: View {
         Page(kicker: "미션 \(m.goalNo("goal")) 완료 · 경로 열림", title: "\(m.gY)년 뒤 \(noWon(AppModel.wonK(m.gK)))까지") {
             VStack(alignment: .leading, spacing: 6) {
                 Text("보통의 경우 매달").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-                Text(need > 0 ? noWon(AppModel.wonK(need)) : "0 · 이미 충분").appFont(30, .bold).flip(need > 0 ? noWon(AppModel.wonK(need)) : "0 · 이미 충분")
+                Text(need > 0 ? noWon(AppModel.wonK(need)) : "0 · 이미 충분").appFont(30, .bold).roll(need > 0 ? noWon(AppModel.wonK(need)) : "0 · 이미 충분")
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
@@ -665,7 +665,7 @@ struct GoalTaxView: View {
                     Text("내년 5월 세금 · \(pick.1)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         if pick.0 != "one" { Text(noWon(AppModel.wonK(tOne))).appFont(18).strikethrough().foregroundStyle(Theme.muted) }
-                        Text(noWon(AppModel.wonK(pick.3))).appFont(30, .bold).flip(noWon(AppModel.wonK(pick.3)))
+                        Text(noWon(AppModel.wonK(pick.3))).appFont(30, .bold).roll(noWon(AppModel.wonK(pick.3)))
                         Text(pick.0 == "one" ? "가장 많음" : "−\(noWon(AppModel.wonK(max(0, tOne - pick.3))))").appFont(13, .bold).foregroundStyle(Theme.mint)
                     }
                     Text(pick.2).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))

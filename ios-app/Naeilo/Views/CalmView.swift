@@ -15,7 +15,7 @@ struct CalmCard: View {
                     Text("내 투자 습관").appFont(13, .bold).foregroundStyle(Theme.mint)
                     if let k { Text("· \(k.title)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)) }
                     Spacer()
-                    Text(s.n < Calm.minEvents ? "–" : "\(s.index)").appFont(28, .bold).tracking(-0.5).flip(s.n < Calm.minEvents ? "–" : "\(s.index)")
+                    Text(s.n < Calm.minEvents ? "–" : "\(s.index)").appFont(28, .bold).tracking(-0.5).roll(s.n < Calm.minEvents ? "–" : "\(s.index)")
                 }
                 Text(m.calm.say(s, who: m.voice(who))).appFont(14).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(Color(hex: 0xEEF0F3))
