@@ -318,6 +318,7 @@ struct HoldingDetailView: View {
             .screen().padding(.top, 8)
         }
         .scrollDismissesKeyboard(.immediately)
+        .refreshable { await Market.shared.pullRefresh(m) }
         .background(Theme.bg)
         .navigationTitle(sym.name).navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $editing) { HoldingEditView(sym: sym) }
