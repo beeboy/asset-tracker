@@ -60,8 +60,10 @@ struct HoldingsView: View {
             }
             .screen()
         }
+        .ignoresSafeArea(.keyboard, edges: page == 2 ? .bottom : [])   // 동네는 키보드에 안 들썩이게
         .scrollDismissesKeyboard(.immediately)
         .background(Theme.bg)
+        .safeAreaInset(edge: .bottom, spacing: 0) { if page == 2 { TownReplyBar() } }
         .refreshable { await Market.shared.pullRefresh(m) }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
@@ -911,7 +913,6 @@ struct TownView: View {
     @State private var talk: TownLook.Resident? = nil
     @State private var dress: TownLook.Resident? = nil
     @State private var us: TownLook.Resident? = nil
-    @State private var typing = false   // 답 칸을 쓰면 대사창이 키보드 바로 위에 오게 스크롤
     @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
@@ -924,7 +925,6 @@ struct TownView: View {
 
     var body: some View {
         let res = Array(TownLook.residents(m.rows).prefix(Self.maxRes))
-        ScrollViewReader { sv in
         GeometryReader { g in
             ZStack {
                 ground(g.size)
@@ -948,8 +948,7 @@ struct TownView: View {
                 if let r = talk {
                     VStack {
                         Spacer()
-                        TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), typing: $typing, dress: { dress = r }, us: { us = r }) { talk = nil; typing = false }
-                            .id("talk")
+                        TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), dress: { dress = r }, us: { us = r }) { talk = nil; TownTyping.shared.res = nil }
                     }
                     .padding(10)
                 }
@@ -957,13 +956,7 @@ struct TownView: View {
         }
         .frame(height: 440)
         .clipShape(RoundedRectangle(cornerRadius: 18))
-        .task(id: typing) {
-            // 키보드가 다 올라온 뒤 대사창 아래 끝을 키보드 바로 위에 맞춘다
-            guard typing else { return }
-            try? await Task.sleep(nanoseconds: 350_000_000)
-            withAnimation(.easeOut(duration: 0.2)) { sv.scrollTo("talk", anchor: .bottom) }
-        }
-        }
+
         .task(id: res.map(\.id).joined(separator: ",")) {
             // 처음 본 주민은 오늘을 이사 온 날로 적는다 (수첩이 비어 있던 첫 실행은 인사 없이)
             let first = book.isEmpty
@@ -1107,14 +1100,11 @@ struct TownTalk: View {
     let res: TownLook.Resident
     let note: TownBook.Note
     var hello = false
-    @Binding var typing: Bool
     let dress: () -> Void
     let us: () -> Void
     let close: () -> Void
     @State private var shown = 0
     @State private var say = ""
-    @State private var me = ""
-    @FocusState private var focus: Bool
     private var log: TownLog { TownLog.shared }
     private var full: String { (hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + say }
     var body: some View {
@@ -1155,24 +1145,25 @@ struct TownTalk: View {
                 .contentShape(Rectangle())
                 .onTapGesture { if shown < full.count { shown = full.count } else { close() } }
                 if !say.isEmpty && shown >= full.count {
-                    TextField("", text: $me, prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
-                        .appFont(14).foregroundStyle(.white).submitLabel(.done)
-                        .focused($focus)
-                        .onChange(of: focus) { _, v in typing = v }
-                        .onSubmit { log.answer(res.id, me, price: TownLook.price(res)) }
-                        .padding(.horizontal, 8).padding(.vertical, 6)
-                        .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                    // 누르면 쓰는 칸이 키보드 바로 위에 뜬다 (동네·대사창은 그대로)
+                    let mine = log.log(res.id).last.flatMap { $0.day == today ? $0.me : nil }
+                    Button { TownTyping.shared.text = mine ?? ""; TownTyping.shared.res = res } label: {
+                        Text(mine ?? "한 줄 답 (예측·마음)").appFont(14).foregroundStyle(.white.opacity(mine == nil ? 0.4 : 1))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 8).padding(.vertical, 6)
+                            .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
         .padding(12)
         .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
-        .onDisappear { if !say.isEmpty { log.answer(res.id, me, price: TownLook.price(res)) } }
         .task(id: res.id) {
             // 오늘 처음 말을 걸 때 한마디를 정해 기록에 남긴다 (하루 동안 같은 말)
             let e = log.today(res.id) { TownLook.daily(res, note) }
-            say = e.say; me = e.me ?? ""
+            say = e.say
             shown = 0
             let n = self.full.count
             while shown < n {
@@ -1444,5 +1435,37 @@ struct TownUs: View {
     private func row(_ k: String, _ v: String) -> some View {
         HStack { Text(k).appFont(14).foregroundStyle(.secondary); Spacer(); Text(v).appFont(14, .bold) }
             .padding(.horizontal, 14).padding(.vertical, 10)
+    }
+}
+
+/// 한 줄 답 쓰기: 동네와 대사창은 그대로 두고, 쓰는 칸만 키보드 바로 위에 띄운다
+@Observable final class TownTyping {
+    static let shared = TownTyping()
+    var res: TownLook.Resident? = nil
+    var text = ""
+}
+
+struct TownReplyBar: View {
+    @FocusState private var focus: Bool
+    private var t: TownTyping { TownTyping.shared }
+    var body: some View {
+        if let r = t.res {
+            HStack(spacing: 8) {
+                TextField("", text: Binding(get: { t.text }, set: { t.text = $0 }), prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
+                    .appFont(15).foregroundStyle(.white).submitLabel(.done)
+                    .focused($focus)
+                    .onSubmit { save(r) }
+                Button("그만") { t.res = nil }.appFont(14).foregroundStyle(.white.opacity(0.7))
+                Button("남기기") { save(r) }.appFont(14, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4))
+            }
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .background(Color(red: 0.10, green: 0.11, blue: 0.20))
+            .onAppear { focus = true }
+            .onChange(of: focus) { _, v in if !v { t.res = nil } }   // 키보드를 내리면 안 남기고 닫기
+        }
+    }
+    private func save(_ r: TownLook.Resident) {
+        TownLog.shared.answer(r.id, t.text, price: TownLook.price(r))
+        t.res = nil
     }
 }
