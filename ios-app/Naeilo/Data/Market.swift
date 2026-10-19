@@ -157,7 +157,15 @@ final class Market {
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
         let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
         let oldPrices = SitePrices.cached()   // 토스 값을 섞지 않은 사이트 값
-        // 사이트 시세: 4분 안에 받았으면 그대로 (사이트는 30분마다 새로 모은다)
+        // 지금 가격: 미국 종목·국내 개별 종목·원/달러를 Yahoo 에서 직접 (못 받은 것만 사이트). 4분 안에 받았으면 그대로
+        if !held.isEmpty {
+            let syms = held.compactMap { id -> String? in
+                guard id != "DRNK", id != KoreaEstimate.sumId, let s = Sample.symbol(id) else { return nil }
+                guard s.currency == .usd || KoreaEstimate.popular.contains(id) else { return nil }
+                return YahooSample.keyFor[id] ?? CustomSymbols.yahoo(for: s)
+            }
+            Store.quoteSyms = (Set(syms).union(["KRW=X"])).sorted()
+        }
         async let siteNew = QuoteFeed.fetch(minAge: force ? 0 : 240)
         async let marNew = MarFeed.fetch(minAge: force ? 0 : 1800)
         async let pricesNew = SitePrices.fetch(keys: keys.union(["KRW=X"]).union(Parallel.wantKeys), old: oldPrices, minAge: force ? 0 : 1800)
@@ -320,18 +328,55 @@ enum SitePrices {
         return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     }
 
-    /// keys = 사이트 티커. 받은 지 minAge 안이고 다 있으면 그대로. 사이트가 새로 모은 게 없으면(index.json updated 같음) 받은 것을 다시 쓴다
+    /// Yahoo 일봉 종가 (사이트 prices 의 close 와 같은 기준). 날짜는 그 거래소 날짜
+    static func daily(_ sym: String, range: String) async -> YahooSample.Hist? {
+        let enc = sym.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? sym
+        guard let o = try? await Relay.yahoo("/v8/finance/chart/\(enc)?range=\(range)&interval=1d", timeout: 10),
+              let r = ((o["chart"] as? [String: Any])?["result"] as? [[String: Any]])?.first,
+              let m = r["meta"] as? [String: Any], let ts = r["timestamp"] as? [Double],
+              let cl = ((((r["indicators"] as? [String: Any])?["quote"] as? [[String: Any]])?.first)?["close"] as? [Any]) else { return nil }
+        let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: (m["exchangeTimezoneName"] as? String) ?? "America/New_York") ?? .current; f.dateFormat = "yyyy-MM-dd"
+        var ds: [String] = [], cs: [Double] = []
+        for (t, c) in zip(ts, cl) {
+            guard let v = num(c), v > 0 else { continue }
+            let d = f.string(from: Date(timeIntervalSince1970: t))
+            if ds.last == d { cs[cs.count - 1] = v } else { ds.append(d); cs.append(v) }
+        }
+        return ds.isEmpty ? nil : .init(dates: ds, closes: cs)
+    }
+
+    /// 한 종목: 받아 둔 3년 종가가 있으면 최근 한 달만 받아 끝을 바꾸고, 없으면 3년을 받는다
+    private static func direct(_ k: String, _ had: YahooSample.Hist?) async -> YahooSample.Hist? {
+        if let h = had, let last = h.dates.last, h.dates.count > 200, Day.dday(last) >= -20,
+           let n = await daily(k, range: "1mo"), let first = n.dates.first {
+            let keep = h.dates.firstIndex { $0 >= first } ?? h.dates.count
+            let ds = Array(h.dates[..<keep]) + n.dates, cs = Array(h.closes[..<keep]) + n.closes
+            let cut = max(0, ds.count - 800)   // 3년 남짓만 둔다
+            return .init(dates: Array(ds[cut...]), closes: Array(cs[cut...]))
+        }
+        return await daily(k, range: "3y")
+    }
+
+    /// keys = 사이트 티커(= Yahoo 기호). Yahoo 에서 직접 받고, 못 받은 것만 사이트 파일로 채운다. 받은 지 minAge 안이고 다 있으면 그대로
     static func fetch(keys: Set<String>, old: File?, minAge: TimeInterval) async -> File? {
         let now = Date().timeIntervalSince1970
         if let o = old, now - o.got < minAge, keys.isSubset(of: Set(o.asked)) { return o }
-        guard let idx = await get("index.json"), let files = idx["prices"] as? [String: String] else { return old }
-        let updated = idx["updated"] as? String ?? ""
         var h: [String: YahooSample.Hist] = [:]
-        for k in keys {
-            if old?.updated == updated, let x = old?.h[k] { h[k] = x; continue }
-            guard let f = files[k] else { continue }
-            if let o = await get("prices/" + f), let x = hist(o) { h[k] = x } else if let x = old?.h[k] { h[k] = x }
+        await withTaskGroup(of: (String, YahooSample.Hist?).self) { g in
+            for k in keys { let had = old?.h[k]; g.addTask { (k, await direct(k, had)) } }
+            for await (k, v) in g { if let v { h[k] = v } }
         }
+        let miss = keys.filter { h[$0] == nil }
+        var updated = old?.updated ?? ""
+        if !miss.isEmpty, let idx = await get("index.json"), let files = idx["prices"] as? [String: String] {
+            updated = idx["updated"] as? String ?? ""
+            for k in miss {
+                guard let f = files[k] else { continue }
+                if let o = await get("prices/" + f), let x = hist(o) { h[k] = x }
+            }
+        }
+        for k in keys where h[k] == nil { if let x = old?.h[k] { h[k] = x } }
         let out = File(got: now, updated: updated, asked: keys.sorted(), h: h)
         Store.write(out, name)
         return out
@@ -440,7 +485,8 @@ enum MarFeed {
     static func fetch(minAge: TimeInterval = 0) async -> File? {
         let old = cached()
         // 오늘 고시가 아닌 값은 10분만 믿는다 (앱을 새로 깔거나 빌드한 직후 며칠 묵은 값을 30분 넘게 쓰지 않게)
-        if let o = old, Date().timeIntervalSince1970 - o.got < (o.date >= Day.today ? minAge : min(minAge, 600)) { return o }
+        // 단, 오전 9시 전인데 앞 고시가 없으면 기다리지 않고 바로 받는다 (앞 고시를 써야 하니까)
+        if let o = old, MarFeed.started(o.date) || o.prev != nil, Date().timeIntervalSince1970 - o.got < (o.date >= Day.today ? minAge : min(minAge, 600)) { return o }
         // 1순위: 서울외국환중개에서 직접 (최신 고시 + 앞 날짜 고시). 못 받을 때만 웹(data/mar.json → 중계 /mar)
         var best: File? = await smbs()
         if best == nil {
