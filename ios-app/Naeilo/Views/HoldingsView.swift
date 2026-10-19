@@ -1,4 +1,5 @@
 import SwiftUI
+import Observation
 
 // 종목 탭: 내 종목 | 소식판. 내 종목은 내 돈이 얼마 있고 얼마 벌었나. 맨 위 평가액 → 1년 전부터 가졌다면 그래프 → 미국/국내 묶음 목록
 struct HoldingsView: View {
@@ -10,6 +11,7 @@ struct HoldingsView: View {
     @AppStorage("holdUsd") private var inUsd = false // 목록 금액: 미국 종목을 달러로 볼지
     @Environment(\.dynamicTypeSize) private var dts
     @State private var page = 0                     // 0 내 종목, 1 소식판, 2 동네 (미션 탭처럼 위에서 고른다)
+    @AppStorage("town.arrive") private var arrive = "" // 방금 추가한 종목: 동네로 가서 그 주민 대사창부터
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
 
     var body: some View {
@@ -64,6 +66,8 @@ struct HoldingsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
         .navigationDestination(for: String.self) { _ in AddHoldingView() }
+        .onAppear { if !arrive.isEmpty { page = 2 } }
+        .onChange(of: arrive) { if !$1.isEmpty { page = 2 } }
         .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
@@ -450,6 +454,7 @@ struct KRPriceCard: View {
 struct AddHoldingView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("town.arrive") private var arrive = ""
     @State private var query = UserDefaults.standard.string(forKey: "searchTest") ?? ""
     @State private var remote: [StockHit] = []
     @State private var searching = false
@@ -596,19 +601,20 @@ struct AddHoldingView: View {
             if warn { Text(p.currency == .krw ? "지금 가격과 수량을 0보다 큰 숫자로 넣어 주세요." : "수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
             PrimaryButton(title: "추가하기") {
                 focus = nil
+                let fresh = !m.holdings.contains { $0.symbol == p.id }
                 if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
                     guard let v = Double(kp.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v > 0 else { warn = true; return }
                     CustomSymbols.shared.setPrice(p.id, v)
-                    if m.addHolding(p.id, qty, avg.trimmingCharacters(in: .whitespaces).isEmpty ? kp : avg) { added() } else { warn = true }
+                    if m.addHolding(p.id, qty, avg.trimmingCharacters(in: .whitespaces).isEmpty ? kp : avg) { added(fresh ? p.id : nil) } else { warn = true }
                     return
                 }
-                if m.addHolding(p.id, qty, avg) { added() } else { warn = true }
+                if m.addHolding(p.id, qty, avg) { added(fresh ? p.id : nil) } else { warn = true }
             }
         }
     }
 
-    private func added() {
-        if inline { picked = nil; query = ""; qty = ""; avg = ""; kp = "" } else { dismiss() }
+    private func added(_ new: String?) {
+        if inline { picked = nil; query = ""; qty = ""; avg = ""; kp = "" } else { if let new { arrive = new }; dismiss() }
     }
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {
@@ -901,7 +907,11 @@ private extension View {
 // 가볍게: 그림은 멈춰 있고(애니메이션 없음), 대사창이 열렸을 때만 글자를 찍는다. 새로 받는 것 없음 (이미 받은 시세만)
 struct TownView: View {
     @Environment(AppModel.self) private var m
+    @AppStorage("town.arrive") private var arrive = ""
     @State private var talk: TownLook.Resident? = nil
+    @State private var dress: TownLook.Resident? = nil
+    @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
+    private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
     // 주민 자리 (동네 판 안의 비율 좌표). 앞 번호부터 채운다
     private static let spots: [CGPoint] = [
@@ -918,23 +928,33 @@ struct TownView: View {
                 ForEach(Array(res.enumerated()), id: \.element.id) { i, r in
                     let p = Self.spots[i]
                     Button { talk = r } label: {
-                        MeAvatar(me: TownLook.char(r.id), width: 48, height: 68)
+                        TownFace(id: r.id, note: book.note(r.id), width: 48, height: 68)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(r.name)
+                    .accessibilityLabel(TownLook.shown(r, book.note(r.id)))
                     .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
                 }
                 if res.isEmpty {
                     Text("아직 이사 온 주민이 없어요").appFont(14).foregroundStyle(.white)
                 }
                 if let r = talk {
-                    VStack { Spacer(); TownTalk(res: r) { talk = nil } }
+                    VStack { Spacer(); TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), dress: { dress = r }) { talk = nil } }
                         .padding(10)
                 }
             }
         }
         .frame(height: 440)
         .clipShape(RoundedRectangle(cornerRadius: 18))
+        .task(id: res.map(\.id).joined(separator: ",")) {
+            // 처음 본 주민은 오늘을 이사 온 날로 적는다 (수첩이 비어 있던 첫 실행은 인사 없이)
+            let first = book.isEmpty
+            for r in res where book.welcome(r.id) && !first { fresh.insert(r.id) }
+            if !arrive.isEmpty {
+                if let r = res.first(where: { $0.rows.contains { $0.id == arrive } }) { fresh.insert(r.id); talk = r }
+                arrive = ""
+            }
+        }
+        .sheet(item: $dress) { TownDress(res: $0) }
     }
 
     // 바닥: 풀밭과 흙길 (그림 파일 없이 색만)
@@ -967,6 +987,14 @@ enum TownLook {
         }
         return keys.map { Resident(id: $0, rows: by[$0]!) }.sorted { $0.value > $1.value }
     }
+    /// 기본 별명: 회사 이름 앞 글자 + 꼬리 (같은 주민은 늘 같은 별명)
+    static func nick(_ res: Resident) -> String {
+        let base = (res.rows.first?.sym.name ?? res.id).replacingOccurrences(of: " ", with: "")
+        let ko = base.unicodeScalars.first.map { (0xAC00...0xD7A3).contains($0.value) } ?? false
+        let tails = ko ? ["돌이", "순이", "찡", "뽀", "군"] : ["y", "o", "ie", "ster"]
+        return String(base.prefix(ko ? 2 : 4)) + tails[Int(seed(res.id) % UInt64(tails.count))]
+    }
+    static func shown(_ res: Resident, _ n: TownBook.Note) -> String { n.name ?? nick(res) }
     /// 기기·실행마다 같은 값이 나오는 해시 (Swift hashValue 는 실행마다 바뀐다)
     static func seed(_ s: String) -> UInt64 {
         var h: UInt64 = 0xcbf29ce484222325
@@ -1006,17 +1034,27 @@ enum TownLook {
 /// 고전 RPG 대사창: 얼굴 · 이름 · 한 글자씩 찍히는 대사. 누르면 다 찍기 → 한 번 더 누르면 닫기
 struct TownTalk: View {
     let res: TownLook.Resident
+    let note: TownBook.Note
+    var hello = false
+    let dress: () -> Void
     let close: () -> Void
     @State private var shown = 0
     var body: some View {
-        let full = TownLook.line(res)
+        let full = (hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + TownLook.line(res)
         HStack(alignment: .top, spacing: 12) {
-            MeAvatar(me: TownLook.char(res.id), width: 56, height: 79)
+            TownFace(id: res.id, note: note, width: 56, height: 79)
                 .frame(width: 56, height: 46, alignment: .top).clipped()
                 .padding(4)
                 .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
             VStack(alignment: .leading, spacing: 6) {
-                Text(res.name).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(TownLook.shown(res, note)).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
+                    Text(res.name).appFont(11).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
+                    Spacer(minLength: 0)
+                    Button("꾸미기", action: dress).appFont(12, .bold).foregroundStyle(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
+                }
                 Text(String(full.prefix(shown))).appFont(15).foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
             }
@@ -1034,5 +1072,118 @@ struct TownTalk: View {
                 shown += 1
             }
         }
+    }
+}
+
+/// 주민 수첩: 별명 · 모자 · 모자 색 · 이사 온 날. 주민마다 몇 글자라 UserDefaults 한 칸에 JSON (떠나도 지우지 않는다: 옛 이웃)
+@Observable final class TownBook {
+    static let shared = TownBook()
+    struct Note: Codable, Equatable { var name: String? = nil; var hat = 0; var tint = 0; var moved = "" }
+    private(set) var notes: [String: Note]
+    private static let key = "town.book"
+    private init() {
+        notes = UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([String: Note].self, from: $0) } ?? [:]
+    }
+    var isEmpty: Bool { notes.isEmpty }
+    func note(_ id: String) -> Note { notes[id] ?? Note() }
+    func set(_ id: String, _ n: Note) {
+        notes[id] = n
+        if let d = try? JSONEncoder().encode(notes) { UserDefaults.standard.set(d, forKey: Self.key) }
+    }
+    /// 처음 본 주민이면 오늘을 이사 온 날로 적는다. 새로 왔으면 true
+    func welcome(_ id: String) -> Bool {
+        guard notes[id] == nil else { return false }
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        set(id, Note(moved: f.string(from: Date())))
+        return true
+    }
+}
+
+/// 주민 얼굴 + 모자. 모자는 그림 파일 없이 24×34 칸 위에 도트로 (테두리 한 칸 포함)
+struct TownFace: View {
+    let id: String
+    let note: TownBook.Note
+    var width: CGFloat
+    var height: CGFloat
+    static let hats = ["없음", "밀짚모자", "비니", "왕관", "야구모자", "꽃"]
+    static let tints: [UInt32] = [0xE8B04B, 0xD94F4F, 0x4F7FD9, 0x4FB06A, 0x8A5FD0, 0xF2F2F2]
+    var body: some View {
+        MeAvatar(me: TownLook.char(id), width: width, height: height)
+            .overlay {
+                if note.hat > 0 {
+                    Canvas { ctx, size in
+                        let u = size.width / CGFloat(MeArt.W)
+                        let c = Self.tints[min(note.tint, Self.tints.count - 1)]
+                        let px = Self.pixels(note.hat, c)
+                        func col(_ v: UInt32) -> Color { Color(red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255) }
+                        for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0 - 1) * u, y: CGFloat(r.1 - 1) * u, width: CGFloat(r.2 + 2) * u, height: CGFloat(r.3 + 2) * u)), with: .color(col(MeArt.outline))) }
+                        for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0) * u, y: CGFloat(r.1) * u, width: CGFloat(r.2) * u, height: CGFloat(r.3) * u)), with: .color(col(r.4))) }
+                    }
+                    .allowsHitTesting(false)
+                }
+            }
+    }
+    /// (x, y, 너비, 높이, 색). y 는 위에서부터
+    static func pixels(_ hat: Int, _ c: UInt32) -> [(Int, Int, Int, Int, UInt32)] {
+        let dark = ((c >> 16 & 0xFF) * 7 / 10) << 16 | ((c >> 8 & 0xFF) * 7 / 10) << 8 | (c & 0xFF) * 7 / 10
+        switch hat {
+        case 1: return [(3, 5, 18, 1, c), (7, 2, 10, 3, c), (7, 4, 10, 1, dark)]
+        case 2: return [(6, 2, 12, 4, c), (6, 5, 12, 1, dark), (11, 0, 2, 2, 0xFFFFFF)]
+        case 3: return [(7, 3, 10, 2, c), (7, 1, 2, 2, c), (11, 0, 2, 3, c), (15, 1, 2, 2, c), (11, 3, 2, 1, 0xD94F4F)]
+        case 4: return [(6, 2, 12, 3, c), (12, 5, 9, 1, dark)]
+        case 5: return [(15, 2, 3, 3, c), (16, 3, 1, 1, 0xFFD54A)]
+        default: return []
+        }
+    }
+}
+
+/// 꾸미기: 이름 · 모자 · 모자 색. 저장하면 수첩에 적는다
+struct TownDress: View {
+    let res: TownLook.Resident
+    @Environment(\.dismiss) private var dismiss
+    @State private var n: TownBook.Note
+    init(res: TownLook.Resident) { self.res = res; _n = State(initialValue: TownBook.shared.note(res.id)) }
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                TownFace(id: res.id, note: n, width: 96, height: 136)
+                TextField(TownLook.nick(res), text: Binding(get: { n.name ?? "" }, set: { n.name = $0.isEmpty ? nil : String($0.prefix(10)) }))
+                    .appFont(16).multilineTextAlignment(.center)
+                    .padding(10).background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(TownFace.hats.enumerated()), id: \.offset) { i, t in
+                            Button { n.hat = i } label: {
+                                Text(t).appFont(13, n.hat == i ? .bold : .regular)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(n.hat == i ? Theme.card : .clear, in: Capsule())
+                                    .overlay(Capsule().stroke(Theme.border))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                if n.hat > 0 {
+                    HStack(spacing: 12) {
+                        ForEach(Array(TownFace.tints.enumerated()), id: \.offset) { i, c in
+                            Button { n.tint = i } label: {
+                                Circle().fill(Color(red: Double(c >> 16 & 0xFF) / 255, green: Double(c >> 8 & 0xFF) / 255, blue: Double(c & 0xFF) / 255))
+                                    .frame(width: 28, height: 28)
+                                    .overlay(Circle().stroke(n.tint == i ? Color.primary : Theme.border, lineWidth: n.tint == i ? 2 : 1))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                Spacer()
+            }
+            .padding(20)
+            .navigationTitle(res.name).navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("저장") { TownBook.shared.set(res.id, n); dismiss() } }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
