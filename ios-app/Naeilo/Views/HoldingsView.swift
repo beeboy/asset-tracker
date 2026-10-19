@@ -920,7 +920,7 @@ struct TownView: View {
     @State private var tick = 0                     // 2초마다 한 칸: 살짝 걷기·잡담 (가볍게, 화면에 있을 때만)
     @State private var step: [String: CGFloat] = [:]   // 주민마다 옆으로 옮겨 선 만큼 (움직인 주민만 바뀜)
     @State private var hop: String? = nil              // 이번 칸에 폴짝 뛴 주민
-    @State private var order = Array(0..<10)           // 주민 → 자리 번호 (앱에 다시 들어올 때마다 섞는다)
+    @State private var order = Array(0..<13)           // 주민 → 자리 번호 (앱에 다시 들어올 때마다 섞는다)
     @Environment(\.scenePhase) private var phase
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
@@ -928,7 +928,8 @@ struct TownView: View {
     private static let spots: [CGPoint] = [
         .init(x: 0.28, y: 0.36), .init(x: 0.54, y: 0.32), .init(x: 0.76, y: 0.40), .init(x: 0.40, y: 0.54),
         .init(x: 0.66, y: 0.58), .init(x: 0.22, y: 0.66), .init(x: 0.50, y: 0.74), .init(x: 0.78, y: 0.72),
-        .init(x: 0.34, y: 0.82), .init(x: 0.64, y: 0.84),
+        .init(x: 0.34, y: 0.82), .init(x: 0.64, y: 0.84), .init(x: 0.84, y: 0.26), .init(x: 0.16, y: 0.30),
+        .init(x: 0.14, y: 0.48),
     ]
 
     private static let mayorSpot = CGPoint(x: 0.84, y: 0.26)      // 이장은 늘 오른쪽 위
@@ -953,9 +954,12 @@ struct TownView: View {
             }
         } ?? res.enumerated().map { ($1, Self.spots[order[$0]]) }
         // 워시는 FOMC 앞뒤 며칠 동안 동네에 머문다
-        let warsh = TownLook.fomc() != nil ? [(TownLook.Resident(id: TownLook.warshID, rows: []), Self.warshSpot)] : []
-        let folk: [(TownLook.Resident, CGPoint)] = place + [(mayor, Self.mayorSpot)] + warsh
-            + (guest.map { [($0, res.count < Self.maxRes ? Self.spots[order[res.count]] : Self.visitSpot)] } ?? [])
+        // 이장·워시·옛 이웃도 주민 다음 빈자리에 선다 (앱에 다시 들어오면 같이 섞임). 모임 날엔 가장자리 제자리
+        let extra = [(mayor, Self.mayorSpot)] + (TownLook.fomc() != nil ? [(TownLook.Resident(id: TownLook.warshID, rows: []), Self.warshSpot)] : [])
+            + (guest.map { [($0, Self.visitSpot)] } ?? [])
+        let folk: [(TownLook.Resident, CGPoint)] = place + extra.enumerated().map { k, e in
+            (e.0, host == nil && res.count + k < Self.spots.count ? Self.spots[order[res.count + k]] : e.1)
+        }
         GeometryReader { g in
             ZStack {
                 ground(g.size).clipShape(RoundedRectangle(cornerRadius: 18))
@@ -1040,7 +1044,7 @@ struct TownView: View {
                 // 10초(5칸)에 한 번: 아무도 안 움직이거나, 한 명만 옆으로 걷거나 폴짝
                 hop = nil
                 guard tick % 5 == 0 else { continue }
-                let ids = TownLook.residents(m.rows).prefix(Self.maxRes).map(\.id) + [TownLook.mayorID]
+                let ids = TownLook.residents(m.rows).prefix(Self.maxRes).map(\.id) + [TownLook.mayorID] + (TownLook.fomc() != nil ? [TownLook.warshID] : [])
                 let n = [0, 1, 1].randomElement()!
                 for id in ids.shuffled().prefix(n) {
                     if Bool.random() && hop == nil { hop = id }
