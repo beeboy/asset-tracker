@@ -1325,25 +1325,11 @@ struct TownTalk: View {
     private let gold = Color(red: 1, green: 0.85, blue: 0.4)
     var body: some View {
         let full = self.full
-        VStack(alignment: .leading, spacing: -14) {
-            // 초상화는 크게: 대사 박스 위에 서 있는 모습
-            HStack(alignment: .bottom) {
-                TownFace(id: res.id, note: note, width: 110, height: 155)
-                    .padding(.leading, 6)
-                Spacer(minLength: 0)
-                if res.id != TownLook.mayorID && res.id != TownLook.warshID {
-                    HStack(spacing: 6) {
-                        chip("우리 사이", us)
-                        chip("꾸미기", dress)
-                    }
-                    .padding(.bottom, 22)
-                }
-            }
-            .zIndex(0)
-            // 대사 박스는 작게: 이름표 + 지금 대사 + (누르면) 답장 한 줄
+        // 스크린샷처럼: 왼쪽에 큰 초상화가 박스 위로 솟고, 이름표는 초상화 아래, 대사는 오른쪽
+        ZStack(alignment: .bottomLeading) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(String(full.prefix(shown))).appFont(16).foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
                 if reply && !say.isEmpty {
                     HStack(spacing: 8) {
                         TextField("", text: $me, prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
@@ -1360,27 +1346,35 @@ struct TownTalk: View {
                     .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
                 }
             }
-            .padding(.horizontal, 12).padding(.top, 18).padding(.bottom, 10)
+            .padding(.leading, 128).padding(.trailing, 12).padding(.vertical, 12)
             .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
-            .overlay(alignment: .topLeading) {
-                // 이름표: 박스 윗변에 걸친다
-                HStack(spacing: 6) {
-                    Text(TownLook.shown(res, note)).appFont(13, .bold).foregroundStyle(gold).lineLimit(1)
-                    Text(res.name).appFont(11).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
-                }
-                .padding(.horizontal, 10).padding(.vertical, 4)
-                .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(.white, lineWidth: 2))
-                .offset(x: 12, y: -13)
-            }
             .contentShape(Rectangle())
             .onTapGesture {
                 // 글자가 다 안 나왔으면 다 보여 주고, 다 나왔으면 답장 칸을 연다
                 if shown < full.count { shown = full.count }
                 else if !say.isEmpty { reply = true; focus = true }
             }
-            .zIndex(1)
+            // 큰 초상화: 박스 왼쪽에서 위로 솟는다 (누르는 건 박스가 받는다)
+            VStack(spacing: -10) {
+                TownFace(id: res.id, note: note, width: 110, height: 155)
+                Text(TownLook.shown(res, note)).appFont(13, .bold).foregroundStyle(gold).lineLimit(1)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .frame(maxWidth: 116)
+                    .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(.white, lineWidth: 2))
+            }
+            .padding(.leading, 6).padding(.bottom, 6)
+            .allowsHitTesting(false)
+        }
+        .overlay(alignment: .topTrailing) {
+            if res.id != TownLook.mayorID && res.id != TownLook.warshID {
+                HStack(spacing: 6) {
+                    chip("우리 사이", us)
+                    chip("꾸미기", dress)
+                }
+                .offset(y: -34)
+            }
         }
         .onChange(of: focus) { _, v in
             typing = v
