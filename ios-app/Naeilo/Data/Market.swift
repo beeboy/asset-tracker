@@ -36,7 +36,13 @@ final class Market {
     /// 원화 평가에 쓰는 원/달러: 웹 fxBase 와 같게 매매기준율, 없거나 5일 넘게 묵었으면 지금 환율
     /// 평가 환율: 매매기준율 먼저 (토스 총자산이 이걸로 센다). 없으면 토스 원/달러, 그다음 지금 환율
     var valFx: Double { marRate ?? tossFx?.rate ?? fx.last }
-    var marRate: Double? { mar.flatMap { $0.rate > 0 && Day.dday($0.date) >= -5 ? $0.rate : nil } }
+    var marRate: Double? { marUse?.rate }
+    /// 지금 쓰는 매매기준율 (값, 고시 날짜). 토스처럼 새 날짜 고시는 그날 오전 9시(한국)부터, 그 전엔 앞 고시. 5일 넘게 묵었으면 nil
+    var marUse: (rate: Double, date: String)? {
+        guard let m = mar, m.rate > 0 else { return nil }
+        let u = MarFeed.started(m.date) ? (m.rate, m.date) : (m.prev.map { ($0.rate, $0.date) } ?? (m.rate, m.date))
+        return u.0 > 0 && Day.dday(u.1) >= -5 ? (u.0, u.1) : nil
+    }
     /// 종목별 전망 입력값 (사이트가 매일 만든다). 없으면 빌드 때 넣은 파일
     var stats: SiteStats.File? = SiteStats.load()
     /// 내 토스 키로 받은 지난 종가(일봉)·원/달러. 키를 넣은 기기만
@@ -419,8 +425,15 @@ enum TossHistory {
 
 /// 매매기준율: 사이트가 하루 한 번 저장하는 data/mar.json ({"USD": {"rate", "date"}}). 웹 평가액과 같은 값
 enum MarFeed {
-    struct File: Codable { var rate: Double; var date: String; var got: Double }
+    struct Prev: Codable { var rate: Double; var date: String }
+    /// prev = 바로 앞 날짜 고시 (새 고시는 전날 오후에 나오지만 토스는 그날 오전 9시부터 쓴다)
+    struct File: Codable { var rate: Double; var date: String; var got: Double; var prev: Prev? = nil }
     static let name = "site_mar.json"
+    /// 그 날짜 고시를 쓰기 시작했는지: 한국 시간 그날 오전 9시부터
+    static func started(_ date: String) -> Bool {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = TimeZone(identifier: "Asia/Seoul"); f.dateFormat = "yyyy-MM-dd HH:mm"
+        return f.string(from: Date()) >= date + " 09:00"
+    }
     static func cached() -> File? { Store.read(File.self, name) }
 
     /// 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 실패하면 저장해 둔 값
@@ -435,7 +448,9 @@ enum MarFeed {
         let have = max(best?.date ?? "", old?.date ?? "")
         if have < Day.today, let x = await get(URLRequest(url: Config.relay.appendingPathComponent("mar"), timeoutInterval: 10)), x.date > (best?.date ?? "") { best = x }
         guard var f = best else { return old }
-        if let o = old, o.date > f.date { f = File(rate: o.rate, date: o.date, got: f.got) }   // 중계에서 받아 둔 더 새 값은 지킨다
+        if let o = old, o.date > f.date { f = File(rate: o.rate, date: o.date, got: f.got, prev: o.prev) }   // 중계에서 받아 둔 더 새 값은 지킨다
+        else if let o = old, o.date < f.date, f.prev == nil { f.prev = Prev(rate: o.rate, date: o.date) }   // 날짜가 바뀌면 앞 고시를 남긴다
+        else if let o = old, f.prev == nil { f.prev = o.prev }
         Store.write(f, name)
         return f
     }
@@ -444,6 +459,8 @@ enum MarFeed {
               (resp as? HTTPURLResponse)?.statusCode == 200,
               let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let u = o["USD"] as? [String: Any], let rate = num(u["rate"]), rate > 0, let date = u["date"] as? String else { return nil }
-        return File(rate: rate, date: date, got: Date().timeIntervalSince1970)
+        // 사이트·중계가 앞 날짜 고시도 주면 같이 둔다 (앱을 처음 깔았거나 저녁에 새 고시만 받은 때도 오전 9시 전엔 앞 고시)
+        let pv = (o["USD_prev"] as? [String: Any]).flatMap { p in num(p["rate"]).flatMap { r in (p["date"] as? String).map { Prev(rate: r, date: $0) } } }
+        return File(rate: rate, date: date, got: Date().timeIntervalSince1970, prev: pv.flatMap { $0.rate > 0 && $0.date < date ? $0 : nil })
     }
 }

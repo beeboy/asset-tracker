@@ -2226,7 +2226,7 @@ struct FxImpactView: View {
         let won = { (v: Double) in "\(Int(v.rounded()).formatted())원" }
         let eff1y = c?.ret_1y.map { usdW * $0 }
         let baseDay: String = {
-            let s = Market.shared.marRate != nil ? (Market.shared.mar?.date ?? "") : ""
+            let s = Market.shared.marUse?.date ?? ""
             let p = s.split(separator: "-").compactMap { Int($0) }
             if p.count == 3 { return "\(p[1])/\(p[2])" }
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M/d"; return f.string(from: Date())

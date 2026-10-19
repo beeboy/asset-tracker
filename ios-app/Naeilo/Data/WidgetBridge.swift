@@ -8,7 +8,7 @@ enum WidgetBridge {
     /// 위젯 평가 환율: 앱 valFx 와 같게 매매기준율, 없으면 내 키 원/달러.
     /// 예전엔 늘 매매기준율이라 내 키를 쓰는 앱·증권사 화면과 위젯 금액이 달랐다
     @MainActor static func fxMar() -> WFeed.Mar? {
-        if Market.shared.marRate != nil, let m = Market.shared.mar { return WFeed.Mar(rate: m.rate, date: m.date) }
+        if let m = Market.shared.marUse { return WFeed.Mar(rate: m.rate, date: m.date) }
         if let t = Market.shared.tossFx { return WFeed.Mar(rate: t.rate, date: Day.str(Date(timeIntervalSince1970: t.got))) }
         return nil
     }
