@@ -20,23 +20,24 @@ struct ShareCardButton: View {
 }
 
 struct ShareCardSheet: View {
-    /// 위젯 8개: 고르기 칸 이름·아이콘, 카드 소개 한 줄, 인물 한마디
-    private struct W { let name: String; let icon: String; let intro: String; let say: String }
+    /// 위젯 8개: 고르기 칸 이름·아이콘, 인물 한마디
+    private struct W { let name: String; let icon: String; let say: String }
     private static let list: [W] = [
-        W(name: "언덕", icon: "chart.line.uptrend.xyaxis", intro: "최근 10일 자산이 픽셀 언덕이 돼요.", say: "언덕이 조금 높아졌네."),
-        W(name: "사다리", icon: "stairs", intro: "본전까지 사다리를 한 칸씩 올라요.", say: "한 칸 더 올라왔어."),
-        W(name: "블록 탑", icon: "square.stack.3d.up", intro: "100칸이 한 층, 10층 탑을 쌓아요.", say: "한 층씩 쌓고 있어."),
-        W(name: "전광판", icon: "tv", intro: "오늘 내 자산이 전광판에 떠요.", say: "오늘도 불 켜졌어."),
-        W(name: "키 재기", icon: "ruler", intro: "지난 날과 오늘, 키를 재 봐요.", say: "어제보다 조금 컸네."),
-        W(name: "퍼즐", icon: "puzzlepiece", intro: "20조각 퍼즐, 다 맞추면 깃발.", say: "조각 하나 더 맞췄어."),
-        W(name: "꽃밭", icon: "camera.macro", intro: "내 목표가 홈 화면에서 꽃으로 피어나요.", say: "다 피면 다음 밭이야."),
-        W(name: "줄다리기", icon: "arrow.left.and.right", intro: "오른 종목과 내린 종목이 줄을 당겨요.", say: "오늘은 우리 편이 당겼어."),
+        W(name: "언덕", icon: "chart.line.uptrend.xyaxis", say: "언덕이 조금 높아졌네."),
+        W(name: "사다리", icon: "stairs", say: "한 칸 더 올라왔어."),
+        W(name: "블록 탑", icon: "square.stack.3d.up", say: "한 층씩 쌓고 있어."),
+        W(name: "전광판", icon: "tv", say: "오늘도 불 켜졌어."),
+        W(name: "키 재기", icon: "ruler", say: "어제보다 조금 컸네."),
+        W(name: "퍼즐", icon: "puzzlepiece", say: "조각 하나 더 맞췄어."),
+        W(name: "꽃밭", icon: "camera.macro", say: "다 피면 다음 밭이야."),
+        W(name: "줄다리기", icon: "arrow.left.and.right", say: "오늘은 우리 편이 당겼어."),
     ]
     private static let modes = ["라이트", "다크", "투명", "틴트"]
 
     @State private var picked = 6          // 기본 꽃밭
     @State private var mode: Int?          // nil: 아이폰 설정 따라감
     @State private var showAmount = "hide"
+    @State private var shareURL: URL?      // 버튼 누를 때만 그린 이미지
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var m
@@ -76,19 +77,19 @@ struct ShareCardSheet: View {
                     card.frame(maxWidth: .infinity)
 
                     ChipRow(items: [("hide", "금액 숨기기"), ("show", "금액 보이기")], selection: $showAmount, fill: true)
-                    if let url = rendered {
-                        ShareLink(item: url, preview: SharePreview(url.deletingPathExtension().lastPathComponent, image: Image(uiImage: UIImage(contentsOfFile: url.path) ?? UIImage()))) {
+                    Button { shareURL = rendered } label: {
                             Label("이미지로 저장 · 공유", systemImage: "square.and.arrow.up").appFont(16, .bold)
                                 .frame(maxWidth: .infinity, minHeight: 50).foregroundStyle(.white)
                                 .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
-                        }
                     }
+                    .buttonStyle(.plain)
                 }
                 .padding(16)
             }
             .background(Theme.bg)
             .navigationTitle("미션 위젯 공유").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
+            .sheet(item: $shareURL) { ActivitySheet(url: $0).ignoresSafeArea() }
         }
     }
 
@@ -106,11 +107,7 @@ struct ShareCardSheet: View {
     // 공유 이미지 카드: 고른 위젯 모양에 맞춰 바탕색이 바뀐다
     private var card: some View {
         let w = Self.list[picked], f = m.homeFriendShown, l = look
-        return VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("귀여운 주식 위젯").font(.system(size: 24, weight: .bold))
-                Text(w.intro).font(.system(size: 13)).foregroundStyle(l.sub)
-            }
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 14) {
                 widget(f)
                 // 말풍선: 왼쪽 꼬리가 위젯 속 인물을 가리킨다
@@ -125,17 +122,12 @@ struct ShareCardSheet: View {
                     BubbleTail().fill(l.bubble).frame(width: 10, height: 16).offset(x: -9, y: -18)
                 }
             }
-            Spacer(minLength: 0)
-            HStack {
-                Text("매일 1분").foregroundStyle(l.sub)
-                Spacer()
-                Text("App Store에서 naeilo").fontWeight(.semibold)
-            }
-            .font(.system(size: 12))
+            Text("naeilo").font(.system(size: 12, weight: .semibold))
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .foregroundStyle(l.fg)
-        .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 20)
-        .frame(width: 340, height: 340)   // 정사각형 카드, 좌우 여백 같은 20
+        .padding(20)
+        .frame(width: 380)   // 와이드 카드, 사방 여백 20
         .background(LinearGradient(colors: l.bg.map { Color(hex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 28))
         .overlay(RoundedRectangle(cornerRadius: 28).stroke(l.stroke))
         .environment(\.colorScheme, .dark)
@@ -208,4 +200,13 @@ struct BubbleShape: Shape {
         p.closeSubpath()
         return p
     }
+}
+
+extension URL: @retroactive Identifiable { public var id: String { absoluteString } }
+
+/// 공유 시트: 버튼을 누른 뒤에만 뜬다
+struct ActivitySheet: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: [url], applicationActivities: nil) }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
