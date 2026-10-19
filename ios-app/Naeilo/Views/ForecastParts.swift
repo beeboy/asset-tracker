@@ -27,8 +27,19 @@ struct ScenarioChart: View {
         return e == e.rounded() ? "\(Int(e))억" : String(format: "%.1f억", e)
     }
 
+    /// 지금 점 자리 (박동 원을 그래프 위에 따로 얹는 데 쓴다). body 의 x·y 와 같은 셈
+    func nowPoint(_ size: CGSize) -> CGPoint? {
+        guard sel.q50.count > 1, let t0 = sel.tY.first else { return nil }
+        let sh = selShift
+        let top0 = max(goal, sel.q95.map { $0 + sh }.max() ?? 1, others.flatMap(\.med).max() ?? 0) * 1.05
+        let st = Self.step(top0), top = max(st, (top0 / st).rounded(.up) * st)
+        let left: CGFloat = 36, W = size.width - left, H = size.height - 20
+        let span = max(1e-9, sel.tY.last ?? 1), v = sel.q50[0] + sh
+        return CGPoint(x: left + CGFloat(t0 / span) * W, y: H - CGFloat(min(max(v, 0), top) / top) * H)
+    }
+
     var body: some View {
-        PulseClock { beat in Canvas { ctx, size in
+        Canvas { ctx, size in
             let n = sel.q50.count - 1
             guard n > 0 else { return }
             let sh = selShift
@@ -78,7 +89,6 @@ struct ScenarioChart: View {
             // 지금 점
             let p0 = CGPoint(x: x(0), y: y(q50[0]))
             ctx.fill(Path(ellipseIn: CGRect(x: p0.x - 4, y: p0.y - 4, width: 8, height: 8)), with: .color(Theme.ink))
-            ctx.pulse(p0, Theme.ink, dot: 8, t: beat)
             ctx.draw(Text("지금 \(ForecastView.amt(q50[0]))").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.ink),
                      at: CGPoint(x: p0.x + 6, y: p0.y + 12), anchor: .leading)
             // X축: 지금 / 1년 뒤 / 2년 뒤 / 끝날
@@ -90,8 +100,8 @@ struct ScenarioChart: View {
             }
             ctx.draw(Text(endLabel).font(.system(size: 10)).foregroundStyle(Theme.muted), at: CGPoint(x: size.width, y: ly), anchor: .trailing)
         }
-        }
         .accessibilityLabel("시나리오별 자산 범위 그래프")
+        .pulse(Theme.ink, dot: 8) { s in nowPoint(s) }
     }
 }
 

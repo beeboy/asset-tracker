@@ -354,7 +354,7 @@ struct MiniPath: View {
             m.tab = .analysis
             m.analysisPath = NavigationPath([AnalysisRoute.myPath])
         } label: {
-            PulseClock { beat in Canvas { ctx, size in
+            Canvas { ctx, size in
                 let pt = { (q: (Double, Double)) -> CGPoint in
                     CGPoint(x: CGFloat(q.0 / max(1e-6, x1)) * size.width, y: CGFloat((hi - q.1) / max(1, hi - lo)) * size.height)
                 }
@@ -368,11 +368,10 @@ struct MiniPath: View {
                 if let last = act.last {
                     let end = pt((p.start, last.1))
                     ctx.fill(Path(ellipseIn: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)), with: .color(Theme.mint))
-                    ctx.pulse(end, Theme.mint, dot: 6, t: beat)
                 }
             }
-            }
             .frame(width: 84, height: 40)
+            .pulse(Theme.mint, dot: 6) { s in act.last.map { CGPoint(x: CGFloat(p.start / max(1e-6, x1)) * s.width, y: CGFloat((hi - $0.1) / max(1, hi - lo)) * s.height) } }
             .overlay(alignment: .bottom) {
                 Text(gap >= 0 ? "계획대로" : "조금 늦어요").appFont(10, .bold)
                     .foregroundStyle(gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))

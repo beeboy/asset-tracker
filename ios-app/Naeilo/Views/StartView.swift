@@ -126,7 +126,8 @@ struct StartForecastCard: View {
 
     // 3년 부채꼴: 5~95 띠, 25~75 띠, 보통의 경우 선, 노란 점선(목표·본전·넣은 돈)
     private func fan(_ e: Ex) -> some View {
-        PulseClock { beat in Canvas { ctx, size in
+    
+        Canvas { ctx, size in
             let W = size.width, H = size.height
             let ts = stride(from: 0.0, through: 3, by: 0.1).map { $0 }
             let top = max(Self.value(e.v0, e.monthly, 3, 1.645), (e.line ?? 0)) * 1.05
@@ -154,9 +155,8 @@ struct StartForecastCard: View {
             }
             let o = CGPoint(x: X(0), y: Y(Self.value(e.v0, e.monthly, 0, 0)))
             ctx.fill(Path(ellipseIn: CGRect(x: o.x - 5, y: o.y - 5, width: 10, height: 10)), with: .color(.white))
-            ctx.pulse(o, .white, dot: 10, t: beat)
-        }
         }
         .accessibilityLabel("3년 예상 범위 부채꼴")
+        .pulse(.white, dot: 10) { s in Self.fanStart(e, s) }
     }
 }

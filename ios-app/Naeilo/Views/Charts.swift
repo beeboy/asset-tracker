@@ -69,51 +69,59 @@ struct LogoTile: View {
     }
 }
 
-// 현재 점 심장 박동: 점에서 점 색 동심원이 두 번(두근) 살짝 퍼지다 사라지고 잠깐 쉰다
+// 현재 점 심장 박동: 점에서 점 색 동심원이 두 번(두근) 살짝 퍼지다 사라지고 잠깐 쉰다.
+// 원만 따로 작은 층에 그려서, 움직이는 동안 그래프 자체는 다시 그리지 않는다
 enum Pulse {
     static let period = 1.6, spread = 0.9, gap = 0.2
 }
 
-/// 박동 시각을 넘겨 주는 틀. 동작 줄이기를 켜면 nil (원을 안 그림)
-struct PulseClock<Content: View>: View {
-    @ViewBuilder let content: (Double?) -> Content
+/// 퍼지는 원만 (가운데 = 점 자리). 동작 줄이기를 켜면 안 그린다
+struct PulseRing: View {
+    let color: Color
+    var dot: CGFloat = 7
     @Environment(\.accessibilityReduceMotion) private var still
     var body: some View {
-        if still { content(nil) } else {
-            TimelineView(.animation(minimumInterval: 1 / 30)) { tl in content(tl.date.timeIntervalSinceReferenceDate) }
+        if !still {
+            TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
+                Canvas { ctx, s in
+                    let c = CGPoint(x: s.width / 2, y: s.height / 2)
+                    let ph = tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: Pulse.period)
+                    for k in 0..<2 {
+                        let a = (ph - Double(k) * Pulse.gap) / Pulse.spread
+                        guard a > 0, a < 1 else { continue }
+                        let r = dot / 2 + CGFloat(a) * dot * 1.5
+                        ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
+                                   with: .color(color.opacity(0.6 * (1 - a))), lineWidth: 1.5)
+                    }
+                }
+            }
+            .frame(width: dot * 4.2, height: dot * 4.2)
+            .allowsHitTesting(false)
         }
     }
 }
 
-extension GraphicsContext {
-    /// 점(p, 지름 dot) 둘레에 퍼지는 원. t 가 nil 이면 아무것도 안 그린다
-    func pulse(_ p: CGPoint, _ color: Color, dot: CGFloat, t: Double?) {
-        guard let t else { return }
-        let ph = t.truncatingRemainder(dividingBy: Pulse.period)
-        for k in 0..<2 {
-            let a = (ph - Double(k) * Pulse.gap) / Pulse.spread
-            guard a > 0, a < 1 else { continue }
-            let r = dot / 2 + CGFloat(a) * dot * 1.5
-            stroke(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)),
-                   with: .color(color.opacity(0.6 * (1 - a))), lineWidth: 1.5)
-        }
-    }
-}
-
-/// SwiftUI 쪽에서 쓰는 박동 점 (가운데 = 점 자리)
+/// SwiftUI 쪽에서 쓰는 박동 점 (원 + 점)
 struct PulseDot: View {
     let color: Color
     var dot: CGFloat = 7
     var body: some View {
-        PulseClock { t in
-            Canvas { ctx, s in
-                let c = CGPoint(x: s.width / 2, y: s.height / 2)
-                ctx.pulse(c, color, dot: dot, t: t)
-                ctx.fill(Path(ellipseIn: CGRect(x: c.x - dot / 2, y: c.y - dot / 2, width: dot, height: dot)), with: .color(color))
-            }
+        ZStack {
+            PulseRing(color: color, dot: dot)
+            Circle().fill(color).frame(width: dot, height: dot)
         }
-        .frame(width: dot * 4.2, height: dot * 4.2)
-        .allowsHitTesting(false)
+    }
+}
+
+extension View {
+    /// 그래프(Canvas) 위에 박동 원만 얹는다. at: 그래프 크기 → 점 자리 (없으면 nil)
+    func pulse(_ color: Color, dot: CGFloat, at p: @escaping (CGSize) -> CGPoint?) -> some View {
+        overlay {
+            GeometryReader { g in
+                if let q = p(g.size) { PulseRing(color: color, dot: dot).position(q) }
+            }
+            .allowsHitTesting(false)
+        }
     }
 }
 
