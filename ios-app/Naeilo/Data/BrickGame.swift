@@ -793,6 +793,7 @@ final class BrickGame: Identifiable {
     }
 
     private func loseBall() {
+        combo = 0; comboSaid = 0   // 공을 잃으면 콤보도 끊긴다
         if skill == "seonbae" && !rewindUsed {
             rewindUsed = true
             balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 1.5)]
