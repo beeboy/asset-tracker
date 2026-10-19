@@ -960,6 +960,7 @@ struct TownView: View {
         let folk: [(TownLook.Resident, CGPoint)] = place + extra.enumerated().map { k, e in
             (e.0, host == nil && res.count + k < Self.spots.count ? Self.spots[order[res.count + k]] : e.1)
         }
+        VStack(spacing: 10) {
         GeometryReader { g in
             ZStack {
                 ground(g.size).clipShape(RoundedRectangle(cornerRadius: 18))
@@ -1027,6 +1028,9 @@ struct TownView: View {
             }
         }
         .frame(height: 440)
+        // 지난 대화(어제까지)는 대사창 아래 빈 공간에 목록으로. 대사창엔 오늘 한마디만
+        if let r = talk { TownPast(id: r.id) }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { n in
             if let f = n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect { kbTop = f.minY }
         }
@@ -1313,50 +1317,34 @@ struct TownTalk: View {
     let close: () -> Void
     @State private var shown = 0
     @State private var me = ""
+    @State private var reply = false          // 대사 박스를 누르면 답장 칸이 열린다
     @FocusState private var focus: Bool
     @State private var say = ""
     private var log: TownLog { TownLog.shared }
     private var full: String { (hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + say }
+    private let gold = Color(red: 1, green: 0.85, blue: 0.4)
     var body: some View {
         let full = self.full
-        let today = TownLog.day
-        let past = log.log(res.id).filter { $0.day != today }
-        HStack(alignment: .top, spacing: 12) {
-            TownFace(id: res.id, note: note, width: 56, height: 79)
-                .frame(width: 56, height: 46, alignment: .top).clipped()
-                .padding(4)
-                .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+        VStack(alignment: .leading, spacing: -14) {
+            // 초상화는 크게: 대사 박스 위에 서 있는 모습
+            HStack(alignment: .bottom) {
+                TownFace(id: res.id, note: note, width: 110, height: 155)
+                    .padding(.leading, 6)
+                Spacer(minLength: 0)
+                if res.id != TownLook.mayorID && res.id != TownLook.warshID {
+                    HStack(spacing: 6) {
+                        chip("우리 사이", us)
+                        chip("꾸미기", dress)
+                    }
+                    .padding(.bottom, 22)
+                }
+            }
+            .zIndex(0)
+            // 대사 박스는 작게: 이름표 + 지금 대사 + (누르면) 답장 한 줄
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text(TownLook.shown(res, note)).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
-                    Text(res.name).appFont(11).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
-                    Spacer(minLength: 0)
-                    if res.id != TownLook.mayorID && res.id != TownLook.warshID {
-                    Button("우리 사이", action: us).appFont(12, .bold).foregroundStyle(.white)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
-                    Button("꾸미기", action: dress).appFont(12, .bold).foregroundStyle(.white)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
-                    }
-                }
-                Group {
-                    if past.isEmpty {
-                        now(full)
-                    } else {
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 10) {
-                                ForEach(past, id: \.day) { pastRow($0) }
-                                now(full)
-                            }
-                        }
-                        .defaultScrollAnchor(.bottom)
-                        .frame(height: 120)
-                    }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { if shown < full.count { shown = full.count } else { close() } }
-                if !say.isEmpty && shown >= full.count {
+                Text(String(full.prefix(shown))).appFont(16).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+                if reply && !say.isEmpty {
                     HStack(spacing: 8) {
                         TextField("", text: $me, prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
                             .appFont(14).foregroundStyle(.white).submitLabel(.done)
@@ -1365,26 +1353,45 @@ struct TownTalk: View {
                         if focus {
                             Button("그만") { focus = false }.appFont(13).foregroundStyle(.white.opacity(0.7))
                             Button("남기기") { log.answer(res.id, me, price: TownLook.price(res)); focus = false }
-                                .appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4))
+                                .appFont(13, .bold).foregroundStyle(gold)
                         }
                     }
                     .padding(.horizontal, 8).padding(.vertical, 6)
                     .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
-                    .onChange(of: focus) { _, v in
-                        typing = v
-                        // 남기지 않고 닫으면 쓰던 글은 버리고 남겨 둔 답으로
-                        if !v { me = log.log(res.id).last.flatMap { $0.day == TownLog.day ? $0.me : nil } ?? "" }
-                    }
                 }
             }
+            .padding(.horizontal, 12).padding(.top, 18).padding(.bottom, 10)
+            .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
+            .overlay(alignment: .topLeading) {
+                // 이름표: 박스 윗변에 걸친다
+                HStack(spacing: 6) {
+                    Text(TownLook.shown(res, note)).appFont(13, .bold).foregroundStyle(gold).lineLimit(1)
+                    Text(res.name).appFont(11).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(.white, lineWidth: 2))
+                .offset(x: 12, y: -13)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // 글자가 다 안 나왔으면 다 보여 주고, 다 나왔으면 답장 칸을 연다
+                if shown < full.count { shown = full.count }
+                else if !say.isEmpty { reply = true; focus = true }
+            }
+            .zIndex(1)
         }
-        .padding(12)
-        .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
+        .onChange(of: focus) { _, v in
+            typing = v
+            // 남기지 않고 닫으면 쓰던 글은 버리고 남겨 둔 답으로
+            if !v { me = log.log(res.id).last.flatMap { $0.day == TownLog.day ? $0.me : nil } ?? "" }
+        }
         .task(id: res.id) {
             // 오늘 처음 말을 걸 때 한마디를 정해 기록에 남긴다 (하루 동안 같은 말)
             let e = log.today(res.id) { TownLook.daily(res, note) }
             say = e.say; me = e.me ?? ""
+            reply = !me.isEmpty      // 오늘 남긴 답이 있으면 칸을 열어 둔다
             shown = 0
             let n = self.full.count
             while shown < n {
@@ -1395,18 +1402,41 @@ struct TownTalk: View {
         }
     }
 
-    private func now(_ full: String) -> some View {
-        Text(String(full.prefix(shown))).appFont(17).foregroundStyle(.white)
-            .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+    private func chip(_ t: String, _ a: @escaping () -> Void) -> some View {
+        Button(t, action: a).appFont(12, .bold).foregroundStyle(.white)
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(Color(red: 0.10, green: 0.11, blue: 0.20).opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(.white.opacity(0.6)))
     }
-    // 지난 대사: 날짜 · 주민 말 · 내 답 (흐리게)
-    private func pastRow(_ e: TownLog.Entry) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(e.day.dropFirst(5).replacingOccurrences(of: "-", with: ".")).appFont(10).foregroundStyle(.white.opacity(0.4))
-            Text(e.say).appFont(14).foregroundStyle(.white.opacity(0.6))
-            if let a = e.me { Text("나: " + a).appFont(14).foregroundStyle(Color(red: 0.6, green: 0.85, blue: 1).opacity(0.75)) }
+}
+
+/// 지난 대화: 어제까지의 주민 말·내 답을 대사창 아래 빈 공간에 목록으로 (최근 것이 위)
+struct TownPast: View {
+    let id: String
+    private var log: TownLog { TownLog.shared }
+    var body: some View {
+        let today = TownLog.day
+        let past = log.log(id).filter { $0.day != today }.reversed()
+        if !past.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("지난 대화").appFont(13, .bold).foregroundStyle(Theme.sub)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        ForEach(Array(past), id: \.day) { e in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(e.day.dropFirst(5).replacingOccurrences(of: "-", with: ".")).appFont(11).foregroundStyle(Theme.sub2)
+                                Text(e.say).appFont(14)
+                                if let a = e.me { Text("나: " + a).appFont(14).foregroundStyle(Theme.teal) }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .padding(12)
+                }
+                .frame(maxHeight: 260)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
