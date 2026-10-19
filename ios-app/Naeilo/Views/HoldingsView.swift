@@ -911,6 +911,7 @@ struct TownView: View {
     @State private var talk: TownLook.Resident? = nil
     @State private var dress: TownLook.Resident? = nil
     @State private var us: TownLook.Resident? = nil
+    @State private var typing = false   // 답 칸을 쓰는 동안은 대사창을 위로 (키보드에 안 가리게)
     @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
@@ -944,8 +945,13 @@ struct TownView: View {
                     Text("아직 이사 온 주민이 없어요").appFont(14).foregroundStyle(.white)
                 }
                 if let r = talk {
-                    VStack { Spacer(); TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), dress: { dress = r }, us: { us = r }) { talk = nil } }
-                        .padding(10)
+                    VStack {
+                        if !typing { Spacer() }
+                        TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), typing: $typing, dress: { dress = r }, us: { us = r }) { talk = nil; typing = false }
+                        if typing { Spacer() }
+                    }
+                    .padding(10)
+                    .animation(.easeOut(duration: 0.2), value: typing)
                 }
             }
         }
@@ -1094,12 +1100,14 @@ struct TownTalk: View {
     let res: TownLook.Resident
     let note: TownBook.Note
     var hello = false
+    @Binding var typing: Bool
     let dress: () -> Void
     let us: () -> Void
     let close: () -> Void
     @State private var shown = 0
     @State private var say = ""
     @State private var me = ""
+    @FocusState private var focus: Bool
     private var log: TownLog { TownLog.shared }
     private var full: String { (hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + say }
     var body: some View {
@@ -1142,6 +1150,8 @@ struct TownTalk: View {
                 if !say.isEmpty && shown >= full.count {
                     TextField("", text: $me, prompt: Text("한 줄 답 (예측·마음)").foregroundStyle(.white.opacity(0.4)))
                         .appFont(14).foregroundStyle(.white).submitLabel(.done)
+                        .focused($focus)
+                        .onChange(of: focus) { _, v in typing = v }
                         .onSubmit { log.answer(res.id, me, price: TownLook.price(res)) }
                         .padding(.horizontal, 8).padding(.vertical, 6)
                         .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
