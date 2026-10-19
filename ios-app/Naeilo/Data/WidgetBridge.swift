@@ -5,11 +5,11 @@ import WidgetKit
 // summary.json(요약) · feed.json(지금 시세) · live.json(보유·목표)을 읽어 그린다.
 // 예전 위젯 앱은 사이트 동기화 비밀번호로 이 파일들을 받았지만, 한 앱으로 합치면서 앱이 직접 쓴다.
 enum WidgetBridge {
-    /// 위젯 평가 환율: 앱 valFx 와 같게 토스 원/달러, 없으면 매매기준율.
+    /// 위젯 평가 환율: 앱 valFx 와 같게 매매기준율, 없으면 내 키 원/달러.
     /// 예전엔 늘 매매기준율이라 내 키를 쓰는 앱·증권사 화면과 위젯 금액이 달랐다
     @MainActor static func fxMar() -> WFeed.Mar? {
-        if let t = Market.shared.tossFx { return WFeed.Mar(rate: t.rate, date: Day.str(Date(timeIntervalSince1970: t.got))) }
         if Market.shared.marRate != nil, let m = Market.shared.mar { return WFeed.Mar(rate: m.rate, date: m.date) }
+        if let t = Market.shared.tossFx { return WFeed.Mar(rate: t.rate, date: Day.str(Date(timeIntervalSince1970: t.got))) }
         return nil
     }
     @MainActor
