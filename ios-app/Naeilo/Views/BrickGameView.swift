@@ -609,45 +609,31 @@ struct BrickPlayView: View {
         }
     }
 
-    /// 시작 카드: 한 줄씩 짧게, "눌러서 시작"을 눌러야 시작한다 (글줄이기 2026-10-18)
+    /// 시작 카드: 방 이름·설명·방 특성만 여유 있게, "눌러서 시작"을 눌러야 시작한다 (2026-10-19)
     private func intro(_ g: BrickGame) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
                 CharPixel(id: g.player, width: 34, height: 48)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(g.stage.bg.volume) \(g.stage.bg.name)").appFont(28, .bold).lineLimit(1).minimumScaleFactor(0.6)
-                    Text(g.stage.scene).appFont(19).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.7)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(g.stage.bg.volume) \(g.stage.bg.name)").appFont(28, .bold).fixedSize(horizontal: false, vertical: true)
+                    Text(g.stage.scene).appFont(19).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Group {
+            VStack(alignment: .leading, spacing: 10) {
                 if g.chain > 0 { line("이어하기 · 점수 ×" + String(format: "%.1f", g.scoreMul) + " · 생명 \(g.lives)") }
                 if g.lifeBonus { line("연속 \(g.chain)단계 · 생명 +1").foregroundStyle(Theme.up).bold() }
                 line(g.stage.short)
-                line("▣ 두 번 맞아야 깨짐")
-                if !g.bigs.isEmpty { line("테트리스 · 모양 둘레까지") }
-                line("3번째 줄 아래 특수 블럭 \(GameStage.specials)개")
-                Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 6) {
-                    GridRow { legend(Theme.slate, "폭탄 둘레"); legend(Theme.orange, "주황 한 줄") }
-                    GridRow { legend(Theme.blue, "파랑 공 3개"); legend(Theme.yellow, "노랑 선물") }
-                }
-                line("벽돌 \(g.total)개")
             }
-            button("눌러서 시작", primary: true) { g.startPlay() }.padding(.top, 6)
+            button("눌러서 시작", primary: true) { g.startPlay() }.padding(.top, 8)
         }
-        .padding(18)
+        .padding(22)
         .frame(maxWidth: 400)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.ink, lineWidth: 2))
         .padding(16)
     }
     private func line(_ t: String) -> some View {
-        Text(t).appFont(21).lineLimit(1).minimumScaleFactor(0.6)
-    }
-    private func legend(_ c: Color, _ t: String) -> some View {
-        HStack(spacing: 6) {
-            RoundedRectangle(cornerRadius: 3).fill(c).frame(width: 18, height: 18)
-            Text(t).appFont(21).lineLimit(1).minimumScaleFactor(0.6)
-        }
+        Text(t).appFont(21).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
     }
 
     private func dim<C: View>(@ViewBuilder _ c: () -> C) -> some View {
