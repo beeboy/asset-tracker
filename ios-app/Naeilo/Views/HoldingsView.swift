@@ -9,7 +9,7 @@ struct HoldingsView: View {
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
     @AppStorage("holdUsd") private var inUsd = false // 목록 금액: 미국 종목을 달러로 볼지
     @Environment(\.dynamicTypeSize) private var dts
-    @State private var page = 0                     // 0 내 종목, 1 소식판 (미션 탭처럼 위에서 고른다)
+    @State private var page = 0                     // 0 내 종목, 1 소식판, 2 동네 (미션 탭처럼 위에서 고른다)
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
 
     var body: some View {
@@ -21,7 +21,7 @@ struct HoldingsView: View {
                 AppHeader(tab: "종목").padding(.horizontal, -16)
                 SampleNote()
                 HoldPagePicker(page: $page)
-                if page == 1 { HoldingsNews() } else {
+                if page == 1 { HoldingsNews() } else if page == 2 { TownView() } else {
                 totalCard(us: us.count, kr: kr.count)
                 totalChart(rows)
                 HStack(alignment: .firstTextBaseline) {
@@ -773,7 +773,7 @@ struct HoldPagePicker: View {
     @Binding var page: Int
     var body: some View {
         HStack(spacing: 4) {
-            ForEach([(0, "내 종목"), (1, "소식판")], id: \.0) { i, t in
+            ForEach([(0, "내 종목"), (1, "소식판"), (2, "동네")], id: \.0) { i, t in
                 let on = page == i
                 Button { page = i } label: {   // 애니메이션 없이: 내 종목 화면이 커서 바꿀 때 버벅인다
                     Text(t).appFont(14, .bold).foregroundStyle(on ? Theme.ink : Theme.sub)
@@ -894,5 +894,127 @@ private extension View {
         frame(maxWidth: .infinity, alignment: .leading).padding(16)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+    }
+}
+
+// 작은 세상 첫 조각: 보유 종목이 동네 주민으로 서 있고, 누르면 대사창에 오르내림 한 줄.
+// 가볍게: 그림은 멈춰 있고(애니메이션 없음), 대사창이 열렸을 때만 글자를 찍는다. 새로 받는 것 없음 (이미 받은 시세만)
+struct TownView: View {
+    @Environment(AppModel.self) private var m
+    @State private var talk: AppModel.Row? = nil
+    static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
+    // 주민 자리 (동네 판 안의 비율 좌표). 앞 번호부터 채운다
+    private static let spots: [CGPoint] = [
+        .init(x: 0.22, y: 0.30), .init(x: 0.55, y: 0.24), .init(x: 0.82, y: 0.34), .init(x: 0.38, y: 0.50),
+        .init(x: 0.70, y: 0.55), .init(x: 0.14, y: 0.66), .init(x: 0.50, y: 0.78), .init(x: 0.86, y: 0.76),
+        .init(x: 0.30, y: 0.86), .init(x: 0.66, y: 0.90),
+    ]
+
+    var body: some View {
+        let res = Array(m.rows.sorted { $0.value > $1.value }.prefix(Self.maxRes))
+        GeometryReader { g in
+            ZStack {
+                ground(g.size)
+                ForEach(Array(res.enumerated()), id: \.element.id) { i, r in
+                    let p = Self.spots[i]
+                    Button { talk = r } label: {
+                        MeAvatar(me: TownLook.char(r.id), width: 48, height: 68)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(r.sym.name)
+                    .position(x: p.x * g.size.width, y: p.y * g.size.height - 34)
+                }
+                if res.isEmpty {
+                    Text("아직 이사 온 주민이 없어요").appFont(14).foregroundStyle(.white)
+                }
+                if let r = talk {
+                    VStack { Spacer(); TownTalk(row: r) { talk = nil } }
+                        .padding(10)
+                }
+            }
+        }
+        .frame(height: 440)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    // 바닥: 풀밭과 흙길 (그림 파일 없이 색만)
+    private func ground(_ s: CGSize) -> some View {
+        ZStack {
+            Color(red: 0.47, green: 0.71, blue: 0.40)
+            Path { p in
+                p.move(to: .init(x: 0, y: s.height * 0.62))
+                p.addCurve(to: .init(x: s.width, y: s.height * 0.42),
+                           control1: .init(x: s.width * 0.35, y: s.height * 0.40), control2: .init(x: s.width * 0.65, y: s.height * 0.66))
+            }
+            .stroke(Color(red: 0.84, green: 0.74, blue: 0.53), lineWidth: 26)
+        }
+    }
+}
+
+/// 주민 얼굴: 종목 코드를 씨앗으로 캐릭터 생성 부품을 즉석 조합 (저장 없음, 같은 종목은 늘 같은 얼굴)
+enum TownLook {
+    /// 기기·실행마다 같은 값이 나오는 해시 (Swift hashValue 는 실행마다 바뀐다)
+    static func seed(_ s: String) -> UInt64 {
+        var h: UInt64 = 0xcbf29ce484222325
+        for b in s.utf8 { h = (h ^ UInt64(b)) &* 0x100000001b3 }
+        return h
+    }
+    static func char(_ id: String) -> MeChar {
+        var x = seed(id) | 1
+        func next(_ n: Int) -> Int {   // xorshift
+            x ^= x << 13; x ^= x >> 7; x ^= x << 17
+            return Int(x % UInt64(max(1, n)))
+        }
+        var c = MeChar(name: "", parts: [:], type: "seri")
+        for g in [MeGroup.hair, .face, .eyes, .mouth, .top, .bottom] { c.parts[g.rawValue] = 1 + next(g.count) }
+        c.parts[MeGroup.color.rawValue] = 1 + next(MeColor.hair.count)
+        c.parts["skin"] = 1 + next(MeColor.skin.count)
+        c.parts[MeGroup.glasses.rawValue] = next(4) == 0 ? 1 + next(MeGroup.glasses.count) : 0
+        c.parts[MeGroup.mask.rawValue] = 0
+        c.parts[MeGroup.prop.rawValue] = 0
+        return c
+    }
+    /// 오르내림 한 줄. 오늘 시세가 있으면 오늘, 없으면 산 가격 대비
+    static func line(_ r: AppModel.Row) -> String {
+        let live = r.sym.quote.live
+        let v = live ? r.sym.quote.change : (r.cost > 0 ? r.value / r.cost - 1 : 0)
+        let pct = String(format: "%.1f%%", abs(v) * 100)
+        let when = live ? "오늘" : "산 뒤로"
+        if abs(v) < 0.001 { return live ? "오늘은 그대로예요. 조용한 하루네요." : "산 뒤로 그대로예요." }
+        return v > 0 ? "\(when) \(pct) 올랐어요!" : "\(when) \(pct) 내렸어요…"
+    }
+}
+
+/// 고전 RPG 대사창: 얼굴 · 이름 · 한 글자씩 찍히는 대사. 누르면 다 찍기 → 한 번 더 누르면 닫기
+struct TownTalk: View {
+    let row: AppModel.Row
+    let close: () -> Void
+    @State private var shown = 0
+    var body: some View {
+        let full = TownLook.line(row)
+        HStack(alignment: .top, spacing: 12) {
+            MeAvatar(me: TownLook.char(row.id), width: 56, height: 79)
+                .frame(width: 56, height: 46, alignment: .top).clipped()
+                .padding(4)
+                .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+            VStack(alignment: .leading, spacing: 6) {
+                Text(row.sym.name).appFont(13, .bold).foregroundStyle(Color(red: 1, green: 0.85, blue: 0.4)).lineLimit(1)
+                Text(String(full.prefix(shown))).appFont(15).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+            }
+        }
+        .padding(12)
+        .background(Color(red: 0.10, green: 0.11, blue: 0.20), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
+        .contentShape(Rectangle())
+        .onTapGesture { if shown < full.count { shown = full.count } else { close() } }
+        .task(id: row.id) {
+            shown = 0
+            while shown < full.count {
+                try? await Task.sleep(nanoseconds: 45_000_000)
+                if Task.isCancelled { return }
+                shown += 1
+            }
+        }
     }
 }
