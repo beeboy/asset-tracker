@@ -911,7 +911,7 @@ struct TownView: View {
     @State private var talk: TownLook.Resident? = nil
     @State private var dress: TownLook.Resident? = nil
     @State private var us: TownLook.Resident? = nil
-    @State private var typing = false   // 답 칸을 쓰는 동안은 대사창을 위로 (키보드에 안 가리게)
+    @State private var typing = false   // 답 칸을 쓰면 대사창이 키보드 바로 위에 오게 스크롤
     @State private var fresh: Set<String> = []      // 오늘 이사 온 주민 (첫 대사가 인사)
     private var book: TownBook { TownBook.shared }
     static let maxRes = 10      // 손가락으로 셀 만큼 (평가액 큰 순)
@@ -924,6 +924,7 @@ struct TownView: View {
 
     var body: some View {
         let res = Array(TownLook.residents(m.rows).prefix(Self.maxRes))
+        ScrollViewReader { sv in
         GeometryReader { g in
             ZStack {
                 ground(g.size)
@@ -946,17 +947,23 @@ struct TownView: View {
                 }
                 if let r = talk {
                     VStack {
-                        if !typing { Spacer() }
+                        Spacer()
                         TownTalk(res: r, note: book.note(r.id), hello: fresh.contains(r.id), typing: $typing, dress: { dress = r }, us: { us = r }) { talk = nil; typing = false }
-                        if typing { Spacer() }
+                            .id("talk")
                     }
                     .padding(10)
-                    .animation(.easeOut(duration: 0.2), value: typing)
                 }
             }
         }
         .frame(height: 440)
         .clipShape(RoundedRectangle(cornerRadius: 18))
+        .task(id: typing) {
+            // 키보드가 다 올라온 뒤 대사창 아래 끝을 키보드 바로 위에 맞춘다
+            guard typing else { return }
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            withAnimation(.easeOut(duration: 0.2)) { sv.scrollTo("talk", anchor: .bottom) }
+        }
+        }
         .task(id: res.map(\.id).joined(separator: ",")) {
             // 처음 본 주민은 오늘을 이사 온 날로 적는다 (수첩이 비어 있던 첫 실행은 인사 없이)
             let first = book.isEmpty
