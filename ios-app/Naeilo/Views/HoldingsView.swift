@@ -1470,7 +1470,7 @@ struct TownPast: View {
 @Observable final class TownBook {
     static let shared = TownBook()
     struct Note: Codable, Equatable { var name: String? = nil; var hat = 0; var tint = 0; var moved = ""; var gifts: Int? = nil; var cheer: String? = nil
-        var co: String? = nil; var left: String? = nil }   // co: 회사 이름(떠나도 부르려고), left: 다 팔고 떠난 날
+        var co: String? = nil; var left: String? = nil; var prop: Int? = nil }   // co: 회사 이름(떠나도 부르려고), left: 다 팔고 떠난 날
     private(set) var notes: [String: Note]
     private static let key = "town.book"
     private init() {
@@ -1729,14 +1729,15 @@ struct TownFace: View {
         }
             .overlay {
                 let star = TownStar.find(id)?.px ?? []
-                if note.hat > 0 || !star.isEmpty {
+                let pr = note.prop ?? 0
+                if note.hat > 0 || pr > 0 || !star.isEmpty {
                     Canvas { ctx, size in
                         let u = size.width / CGFloat(MeArt.W)
                         let c = Self.tints[min(note.tint, Self.tints.count - 1)]
-                        let px = star + Self.pixels(note.hat, c)
+                        let px = star + Self.pixels(note.hat, c) + Self.props(pr)
                         func col(_ v: UInt32) -> Color { Color(red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255) }
                         for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0 - 1) * u, y: CGFloat(r.1 - 1) * u, width: CGFloat(r.2 + 2) * u, height: CGFloat(r.3 + 2) * u)), with: .color(col(MeArt.outline))) }
-                        for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0) * u, y: CGFloat(r.1) * u, width: CGFloat(r.2) * u, height: CGFloat(r.3) * u)), with: .color(col(r.4))) }
+                        for r in px + Self.thin(pr) { ctx.fill(Path(CGRect(x: CGFloat(r.0) * u, y: CGFloat(r.1) * u, width: CGFloat(r.2) * u, height: CGFloat(r.3) * u)), with: .color(col(r.4))) }
                     }
                     .offset(y: frame?.lift == true ? -height / CGFloat(MeArt.H) : 0)   // 숨·걸음에 머리가 1px 오르면 모자도 같이
                     .allowsHitTesting(false)
@@ -1752,6 +1753,25 @@ struct TownFace: View {
         case 3: return [(7, 3, 10, 2, c), (7, 1, 2, 2, c), (11, 0, 2, 3, c), (15, 1, 2, 2, c), (11, 3, 2, 1, 0xD94F4F)]
         case 4: return [(6, 2, 12, 3, c), (12, 5, 9, 1, dark)]
         case 5: return [(15, 2, 3, 3, c), (16, 3, 1, 1, 0xFFD54A)]
+        default: return []
+        }
+    }
+    static let propNames = ["없음", "안경", "목도리", "풍선"]
+    /// 소품 (모자처럼 테두리 한 칸). 1 안경은 테가 가늘어 thin 에만, 2 목도리, 3 풍선(손에 든 줄은 thin)
+    static func props(_ n: Int) -> [(Int, Int, Int, Int, UInt32)] {
+        switch n {
+        case 2: return [(7, 15, 10, 2, 0xD94F4F), (13, 17, 3, 4, 0xD94F4F), (13, 19, 3, 1, 0xA83A3A), (8, 15, 1, 2, 0xF2F2F2), (11, 15, 1, 2, 0xF2F2F2)]
+        case 3: return [(19, 1, 4, 7, 0xE85D75), (18, 2, 6, 5, 0xE85D75), (20, 8, 2, 1, 0xC94860), (19, 3, 1, 2, 0xFFFFFF)]
+        default: return []
+        }
+    }
+    /// 테두리 없이 그리는 가는 선 (안경테 · 풍선 줄)
+    static func thin(_ n: Int) -> [(Int, Int, Int, Int, UInt32)] {
+        switch n {
+        case 1:
+            let k: UInt32 = 0x2B2B33
+            return [7, 13].flatMap { x in [(x, 9, 4, 1, k), (x, 12, 4, 1, k), (x, 9, 1, 4, k), (x + 3, 9, 1, 4, k)] } + [(11, 10, 2, 1, k)]
+        case 3: return [(21, 9, 1, 12, 0x555555)]
         default: return []
         }
     }

@@ -287,13 +287,13 @@ private struct TownDressPanel: View {
         switch k {
         case 0: return TownFace.hats.enumerated().map { TownItem(kind: 0, i: $0, name: $1, price: Self.hatPrice[min($0, Self.hatPrice.count - 1)], lock: $1 == "왕관" && lv < TownBond.bestLv) }
         case 1: return TownFace.tints.indices.prefix(6).map { TownItem(kind: 1, i: $0, name: Self.colorNames[min($0, Self.colorNames.count - 1)], price: $0 < 3 ? 0 : 1, lock: false) }
-        case 2: return ["안경", "목도리", "풍선"].enumerated().map { TownItem(kind: 2, i: $0, name: $1, price: 0, lock: true) }
+        case 2: return TownFace.propNames.enumerated().map { TownItem(kind: 2, i: $0, name: $1, price: $0, lock: false) }   // 안경 1 · 목도리 2 · 풍선 3
         default: return TownGround.names.enumerated().map { TownItem(kind: 3, i: $0, name: $1, price: 0, lock: false) }
         }
     }
     private func has(_ it: TownItem) -> Bool { it.price == 0 || owned.contains(it.id) }
     private func on(_ it: TownItem, _ n: TownBook.Note) -> Bool {
-        switch it.kind { case 0: n.hat == it.i; case 1: n.hat > 0 && n.tint == it.i; case 3: bg == it.i; default: false }
+        switch it.kind { case 0: n.hat == it.i; case 1: n.hat > 0 && n.tint == it.i; case 2: (n.prop ?? 0) == it.i; case 3: bg == it.i; default: false }
     }
     private func cell(_ it: TownItem, _ n: TownBook.Note) -> some View {
         let wearing = on(it, n)
@@ -303,6 +303,12 @@ private struct TownDressPanel: View {
                     let c = TownFace.tints[it.i]
                     Circle().fill(Color(red: Double(c >> 16 & 0xFF) / 255, green: Double(c >> 8 & 0xFF) / 255, blue: Double(c & 0xFF) / 255))
                         .frame(width: 16, height: 16).overlay(Circle().stroke(Color.black.opacity(0.2)))
+                } else if (it.kind == 0 || it.kind == 2) && it.i > 0 {
+                    HStack(spacing: 4) {
+                        TownItemIcon(px: it.kind == 0 ? TownFace.pixels(it.i, TownFace.tints[0]) : TownFace.props(it.i) + TownFace.thin(it.i))
+                            .frame(width: 18, height: 18).opacity(it.lock ? 0.4 : 1)
+                        Text(it.name).appFont(13, .bold).foregroundStyle(it.lock ? Theme.brown.opacity(0.5) : Theme.inkFixed).lineLimit(1).minimumScaleFactor(0.7)
+                    }
                 } else {
                     Text(it.name).appFont(13, .bold).foregroundStyle(it.lock ? Theme.brown.opacity(0.5) : Theme.inkFixed).lineLimit(1).minimumScaleFactor(0.7)
                 }
@@ -317,15 +323,16 @@ private struct TownDressPanel: View {
         .buttonStyle(.plain)
     }
     private func pick(_ it: TownItem, _ n: TownBook.Note) {
-        if it.lock { line = it.kind == 2 ? "소품은 절친이 되면 같이 골라요!" : "\(it.name)은 절친이 되면 써 볼게요!"; return }
+        if it.lock { line = "\(it.name)은 절친이 되면 써 볼게요!"; return }
         var m = n
         switch it.kind {
         case 0: m.hat = it.i
         case 1: if m.hat == 0 { m.hat = 1 }; m.tint = it.i
+        case 2: m.prop = it.i == 0 ? nil : it.i
         default: if bg0 == nil { bg0 = bg }; bg = it.i
         }
         if it.kind != 3 { look = m }
-        line = it.i == 0 && it.kind == 0 ? "모자 없이도 괜찮죠?" : "\(it.name) 어때요? 잘 어울려요!"
+        line = it.i == 0 && it.kind == 0 ? "모자 없이도 괜찮죠?" : it.i == 0 && it.kind == 2 ? "소품 없이 가볍게!" : "\(it.name) 어때요? 잘 어울려요!"
     }
     private func revert() {
         look = nil
@@ -342,5 +349,24 @@ private struct TownDressPanel: View {
         book.set(res.id, n)
         look = nil; bg0 = nil
         line = cost > 0 ? "고마워요! 별사탕 \(cost)개로 샀어요. 마음에 들어요!" : "고마워요! 마음에 들어요!"
+    }
+}
+
+/// 꾸미기 칸의 작은 그림: 모자·소품 도트를 칸 크기에 맞춰 그린다 (그림 파일 없이)
+private struct TownItemIcon: View {
+    let px: [(Int, Int, Int, Int, UInt32)]
+    var body: some View {
+        Canvas { ctx, size in
+            guard !px.isEmpty else { return }
+            let x0 = px.map(\.0).min()!, y0 = px.map(\.1).min()!
+            let w = px.map { $0.0 + $0.2 }.max()! - x0, h = px.map { $0.1 + $0.3 }.max()! - y0
+            let u = min(size.width / CGFloat(w), size.height / CGFloat(h))
+            let ox = (size.width - CGFloat(w) * u) / 2, oy = (size.height - CGFloat(h) * u) / 2
+            for r in px {
+                let v = r.4
+                ctx.fill(Path(CGRect(x: ox + CGFloat(r.0 - x0) * u, y: oy + CGFloat(r.1 - y0) * u, width: CGFloat(r.2) * u, height: CGFloat(r.3) * u)),
+                         with: .color(Color(red: Double(v >> 16 & 0xFF) / 255, green: Double(v >> 8 & 0xFF) / 255, blue: Double(v & 0xFF) / 255)))
+            }
+        }
     }
 }
