@@ -308,7 +308,7 @@ fun Modifier.pulse(color: Color, dot: Dp, at: (Size) -> Offset?): Modifier {
         drawContent()
         val c = at(size) ?: return@drawWithContent   // ios: Views/Charts.swift:157
         ring(color, dot.toPx(), c, t.floatValue)
-    }.graphicsLayer {}
+    }.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }   // 안쪽 그래프는 한 번 그린 그림으로 두고 원만 매번 그린다
 }
 
 // 금액이 바뀔 때 숫자가 한 자리씩 위아래로 넘어가며 바뀐다 (플립). 글로 된 숫자(분석 카드 값 등)도 같다

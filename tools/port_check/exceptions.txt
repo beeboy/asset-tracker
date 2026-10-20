@@ -144,3 +144,5 @@ Views/AnalysisDetail.swift:1519 검사기 한계: 보간 속 따옴표 (옮김, 
 Views/AnalysisDetail.swift:1562-1563 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt Step 2·3)
 Views/AnalysisDetail.swift:1580 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt 작년 변화)
 Views/AnalysisDetail.swift:1745 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt RateWhyView 각주)
+# G2 뒤 성능: 경로를 묶음으로 나눠 돈다 (MonteCarlo.kt runPaths). 0..<P 의 0 은 부르는 곳 runPaths(0, P) 에 있다
+Data/MonteCarlo.swift:447 검사기 한계: 경로 범위 시작(0)이 묶음 함수 인자로 옮겨 감 (옮김, MonteCarlo.kt simulate runPaths)

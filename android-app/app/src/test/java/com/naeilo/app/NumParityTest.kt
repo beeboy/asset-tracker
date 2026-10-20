@@ -73,8 +73,10 @@ class NumParityTest {
                 val model = MC.build(holdings = hs, stats = stats, settings = settings, events = events, start = start, goal = goalDate)
                     ?: error("모형을 못 만듦: $name")
                 val mu = MC.scenarioMu(model, settings.scenario)
+                val t0 = System.nanoTime()
                 val ev = MC.simulate(model, holdings = hs, mu = mu, nPaths = nPaths, seed = settings.seedU32, goal = goal, monthly = monthly, withEvents = true, dof = settings.dof)
                 val no = MC.simulate(model, holdings = hs, mu = mu, nPaths = nPaths, seed = settings.seedU32, goal = goal, monthly = monthly, withEvents = false, dof = settings.dof)
+                val simMs = (System.nanoTime() - t0) / 1_000_000
                 val views = buildJsonObject {
                     for ((nm, s) in listOf("ev" to ev, "no" to no)) for (key in listOf("base", "smooth", trust.toInt().toString())) {
                         val m = MC.viewMu(model, A = hs.size, lens = key, trust = trust)
@@ -114,7 +116,7 @@ class NumParityTest {
                     })
                     put("sim", r(ev.summary)); put("simNo", r(no.summary)); put("views", views); put("bep", bep); put("paths", r(pr))
                 })
-                println("Kotlin $name: 경로 $nPaths · ${model.days.size}거래일 · 사건 ${model.eventCount}회")
+                println("Kotlin $name: 경로 $nPaths · ${model.days.size}거래일 · 사건 ${model.eventCount}회 · 시뮬레이션 2번 ${simMs}ms")
             }
         }
         val kr = inp["kr"]!!.jsonObject

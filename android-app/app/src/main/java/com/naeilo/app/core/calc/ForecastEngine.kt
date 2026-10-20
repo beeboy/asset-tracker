@@ -57,12 +57,16 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
     companion object {
         val shared = ForecastEngine()   // ios: Data/ForecastEngine.swift:25
         private const val file = "forecast_mc.plist"   // ios: Data/ForecastEngine.swift:59 (이름만 같고 속은 JSON)
+        /** 사건 없는 경로를 같이 도는 줄 */
+        private val side = worker("naeilo-forecast-no", Thread.NORM_PRIORITY)
 
         fun compute(j: Job, stop: (() -> Boolean)? = null): Run? {   // ios: Data/ForecastEngine.swift:92
             val model = MC.build(holdings = j.holdings, stats = j.stats, settings = j.settings, events = j.events, start = j.start, goal = j.horizon) ?: return null   // ios: Data/ForecastEngine.swift:93
             val t0 = System.nanoTime(); val s = j.settings; val mu = MC.scenarioMu(model, s.scenario)   // ios: Data/ForecastEngine.swift:94
             val sim = { ev: Boolean -> MC.simulate(model, holdings = j.holdings, mu = mu, nPaths = s.nPaths, seed = s.seedU32, goal = j.goal, monthly = j.monthly, withEvents = ev, dof = s.dof, stop = stop) }   // ios: Data/ForecastEngine.swift:95
-            val ev = sim(true); val no = if (model.eventCount > 0 && stop?.invoke() != true) sim(false) else null   // ios: Data/ForecastEngine.swift:96
+            // ios: Data/ForecastEngine.swift:96 안드로이드: 사건 없는 경로는 다른 줄에서 같이 돈다 (서로 다른 난수열이라 결과는 차례로 돈 것과 같다)
+            val noF = if (model.eventCount > 0) side.submit<MC.Sim?> { if (stop?.invoke() != true) sim(false) else null } else null
+            val ev = sim(true); val no = noF?.get()
             return Run(key = j.key, factors = model.factors, events = model.eventCount, ev = ev, no = no, ms = (System.nanoTime() - t0) / 1000000.0)   // ios: Data/ForecastEngine.swift:97
         }
 

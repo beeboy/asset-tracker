@@ -240,7 +240,36 @@ object MC {
             spare = r * sin(th); hasSpare = true   // ios: Data/MonteCarlo.swift:199
             return r * cos(th)   // ios: Data/MonteCarlo.swift:200
         }
+        // 안드로이드 전용 (경로를 여러 줄로 나눌 때): normal() 과 같은 수만큼 난수를 쓰되 셈(로그·삼각)은 건너뛴다.
+        // 남는 짝(spare)은 그 경로 묶음이 시작할 때만 실제 값으로 만든다 (normal() 과 같은 식이라 값이 같다)
+        private var su = 0u; private var sv = 0u
+        /** next() 와 같은 상태 변화, 실수로 바꾸지 않은 값 (u == 0.0 ⇔ r == 0) */
+        fun step(): UInt {
+            val r = rotl(b * 5.toUInt(), 7) * 9.toUInt(); val t = b shl 9
+            c = c xor a; d = d xor b; b = b xor c; a = a xor d; c = c xor t; d = rotl(d, 11)
+            return r
+        }
+        fun skipNormal() {
+            if (hasSpare) { hasSpare = false; return }
+            var u = 0u
+            while (u == 0u) u = step()
+            su = u; sv = step(); hasSpare = true
+        }
+        /** 지금 상태 그대로의 복사본 (남은 짝은 실제 값으로) */
+        fun snapshot(): Rng {
+            val o = Rng(0u); o.a = a; o.b = b; o.c = c; o.d = d; o.hasSpare = hasSpare
+            o.spare = if (hasSpare) { val u = su.toDouble() / 4294967296.0; val v = sv.toDouble() / 4294967296.0; val r = sqrt(-2 * ln(u)); val th = 2 * PI * v; r * sin(th) } else spare
+            return o
+        }
     }
+    /** 경로 묶음을 같이 돌 일꾼 (앱이 꺼지면 같이 끝나는 줄). 우선순위는 부른 줄을 따른다 (전망 = 보통, 내 길 경로 = 낮음: iOS userInitiated·utility) */
+    private val pool: java.util.concurrent.ExecutorService by lazy {
+        java.util.concurrent.Executors.newFixedThreadPool(threads) { r -> Thread(r, "naeilo-mc").apply { isDaemon = true } }
+    }
+    private fun <R> onPool(prio: Int, job: () -> R): java.util.concurrent.Future<R> =
+        pool.submit<R> { val me = Thread.currentThread(); if (me.priority != prio) me.priority = prio; job() }
+    /** 쓸 줄 수: 코어 수(최대 4). 1코어면 나누지 않는다 */
+    val threads: Int by lazy { Runtime.getRuntime().availableProcessors().coerceIn(1, 4) }
 
     fun cholesky(A: Array<DoubleArray>): Array<DoubleArray>? {   // ios: Data/MonteCarlo.swift:204
         val n = A.size   // ios: Data/MonteCarlo.swift:205
@@ -489,58 +518,81 @@ object MC {
         val port = DoubleArray(M * P) { 0.0 }   // ios: Data/MonteCarlo.swift:439
         val cg = List(A) { FloatArray(M * P) { 0f } }   // ios: Data/MonteCarlo.swift:440
         val firstHit = IntArray(P) { -1 }; val mddArr = DoubleArray(P) { 0.0 }   // ios: Data/MonteCarlo.swift:441
-        var touched = 0   // ios: Data/MonteCarlo.swift:442
-        val z = DoubleArray(F) { 0.0 }; val lg = DoubleArray(F) { 0.0 }; val lr = DoubleArray(F) { 0.0 }   // ios: Data/MonteCarlo.swift:443
-        val boostUntil = IntArray(F) { -1 }; val boostMult = DoubleArray(F) { 1.0 }   // ios: Data/MonteCarlo.swift:444
-        val h = DoubleArray(A) { 0.0 }; val G = DoubleArray(A) { 0.0 }   // ios: Data/MonteCarlo.swift:445
-
-        for (p in 0 until P) {   // ios: Data/MonteCarlo.swift:447
-            if (stop != null && (p and 31) == 0 && stop()) break   // ios: Data/MonteCarlo.swift:448
-            for (f in 0 until F) { lg[f] = 0.0; boostUntil[f] = -1; boostMult[f] = 1.0 }   // ios: Data/MonteCarlo.swift:449
-            for (a in 0 until A) { h[a] = v0[a]; G[a] = 1.0 }   // ios: Data/MonteCarlo.swift:450
-            var peak = V0; var mdd = 0.0; var hit = false   // ios: Data/MonteCarlo.swift:451
-            port[p] = V0   // ios: Data/MonteCarlo.swift:452
-            for (d in 0 until D) {   // ios: Data/MonteCarlo.swift:453
-                for (f in 0 until F) z[f] = rng.normal()   // ios: Data/MonteCarlo.swift:454
-                var chi = 0.0   // ios: Data/MonteCarlo.swift:455
-                for (i in 0 until nTrials) { val g = rng.normal(); chi += g * g }   // ios: Data/MonteCarlo.swift:456
-                val ts = tAdj / sqrt(chi / nu)   // ios: Data/MonteCarlo.swift:457
-                for (f in 0 until F) {   // ios: Data/MonteCarlo.swift:458
-                    var s = 0.0   // ios: Data/MonteCarlo.swift:459
-                    val row = f * F   // ios: Data/MonteCarlo.swift:460
-                    for (k in 0..f) s += Lf[row + k] * z[k]   // ios: Data/MonteCarlo.swift:461
-                    val sd = sig[f] * (if (d <= boostUntil[f]) boostMult[f] else 1.0)   // ios: Data/MonteCarlo.swift:462
-                    lr[f] = muD[f] - 0.5 * sd * sd + sd * s * ts   // ios: Data/MonteCarlo.swift:463
-                }
-                if (withEvents) {   // ios: Data/MonteCarlo.swift:465
-                    for (ev in evDay[d]) {   // ios: Data/MonteCarlo.swift:466
-                        val u = rng.next(); val zz = rng.normal()   // ios: Data/MonteCarlo.swift:467 걸러 낸 사건도 난수는 똑같이 쓴다
-                        if (u >= ev.prob) continue   // ios: Data/MonteCarlo.swift:468
-                        val j = ev.jm + ev.js * zz   // ios: Data/MonteCarlo.swift:469
-                        for (k in 0 until ev.targets.size) {   // ios: Data/MonteCarlo.swift:470
-                            val t = ev.targets[k]   // ios: Data/MonteCarlo.swift:471
-                            lr[t] += j * ev.scales[k]   // ios: Data/MonteCarlo.swift:472
-                            if (ev.vd > 0) { boostUntil[t] = d + ev.vd; boostMult[t] = ev.vm }   // ios: Data/MonteCarlo.swift:473
+        // 안드로이드: 경로 [from, to) 를 한 줄에서 돈다. 묶음마다 자기 칸(z·lr·h…)을 쓰고, 결과 배열은 경로 칸만 쓰니 겹치지 않는다
+        fun runPaths(from: Int, to: Int, rng: Rng): Int {
+            var touched = 0   // ios: Data/MonteCarlo.swift:442
+            val z = DoubleArray(F) { 0.0 }; val lg = DoubleArray(F) { 0.0 }; val lr = DoubleArray(F) { 0.0 }   // ios: Data/MonteCarlo.swift:443
+            val boostUntil = IntArray(F) { -1 }; val boostMult = DoubleArray(F) { 1.0 }   // ios: Data/MonteCarlo.swift:444
+            val h = DoubleArray(A) { 0.0 }; val G = DoubleArray(A) { 0.0 }   // ios: Data/MonteCarlo.swift:445
+            for (p in from until to) {   // Data/MonteCarlo.swift:447 (검사 예외: 0 은 runPaths(0, P))
+                if (stop != null && (p and 31) == 0 && stop()) break   // ios: Data/MonteCarlo.swift:448
+                for (f in 0 until F) { lg[f] = 0.0; boostUntil[f] = -1; boostMult[f] = 1.0 }   // ios: Data/MonteCarlo.swift:449
+                for (a in 0 until A) { h[a] = v0[a]; G[a] = 1.0 }   // ios: Data/MonteCarlo.swift:450
+                var peak = V0; var mdd = 0.0; var hit = false   // ios: Data/MonteCarlo.swift:451
+                port[p] = V0   // ios: Data/MonteCarlo.swift:452
+                for (d in 0 until D) {   // ios: Data/MonteCarlo.swift:453
+                    for (f in 0 until F) z[f] = rng.normal()   // ios: Data/MonteCarlo.swift:454
+                    var chi = 0.0   // ios: Data/MonteCarlo.swift:455
+                    for (i in 0 until nTrials) { val g = rng.normal(); chi += g * g }   // ios: Data/MonteCarlo.swift:456
+                    val ts = tAdj / sqrt(chi / nu)   // ios: Data/MonteCarlo.swift:457
+                    for (f in 0 until F) {   // ios: Data/MonteCarlo.swift:458
+                        var s = 0.0   // ios: Data/MonteCarlo.swift:459
+                        val row = f * F   // ios: Data/MonteCarlo.swift:460
+                        for (k in 0..f) s += Lf[row + k] * z[k]   // ios: Data/MonteCarlo.swift:461
+                        val sd = sig[f] * (if (d <= boostUntil[f]) boostMult[f] else 1.0)   // ios: Data/MonteCarlo.swift:462
+                        lr[f] = muD[f] - 0.5 * sd * sd + sd * s * ts   // ios: Data/MonteCarlo.swift:463
+                    }
+                    if (withEvents) {   // ios: Data/MonteCarlo.swift:465
+                        for (ev in evDay[d]) {   // ios: Data/MonteCarlo.swift:466
+                            val u = rng.next(); val zz = rng.normal()   // ios: Data/MonteCarlo.swift:467 걸러 낸 사건도 난수는 똑같이 쓴다
+                            if (u >= ev.prob) continue   // ios: Data/MonteCarlo.swift:468
+                            val j = ev.jm + ev.js * zz   // ios: Data/MonteCarlo.swift:469
+                            for (k in 0 until ev.targets.size) {   // ios: Data/MonteCarlo.swift:470
+                                val t = ev.targets[k]   // ios: Data/MonteCarlo.swift:471
+                                lr[t] += j * ev.scales[k]   // ios: Data/MonteCarlo.swift:472
+                                if (ev.vd > 0) { boostUntil[t] = d + ev.vd; boostMult[t] = ev.vm }   // ios: Data/MonteCarlo.swift:473
+                            }
                         }
                     }
+                    var V = 0.0   // ios: Data/MonteCarlo.swift:477
+                    for (a in 0 until A) {   // ios: Data/MonteCarlo.swift:478
+                        val g = lr[a] + (if (fxCol[a] >= 0) lr[fxCol[a]] else 0.0)   // ios: Data/MonteCarlo.swift:479
+                        val e = exp(g); h[a] *= e; G[a] *= e; V += h[a]   // ios: Data/MonteCarlo.swift:480
+                    }
+                    for (f in 0 until F) lg[f] += lr[f]   // ios: Data/MonteCarlo.swift:482
+                    val k = isMonth[d + 1]   // ios: Data/MonteCarlo.swift:483
+                    if (k > 0 && k < M - 1 && monthly > 0) { for (a in 0 until A) h[a] += monthly * w[a]; V += monthly }   // ios: Data/MonteCarlo.swift:484 월초 적립 (마지막 날 제외)
+                    if (V > peak) peak = V else mdd = mcMin(mdd, V / peak - 1)   // ios: Data/MonteCarlo.swift:485
+                    if (V >= goal) { hit = true; if (firstHit[p] < 0) firstHit[p] = d + 1 }   // ios: Data/MonteCarlo.swift:486
+                    if (k > 0) {   // ios: Data/MonteCarlo.swift:487
+                        port[k * P + p] = V   // ios: Data/MonteCarlo.swift:488
+                        for (a in 0 until A) cg[a][k * P + p] = (lg[a] + (if (fxCol[a] >= 0) lg[fxCol[a]] else 0.0)).toFloat()   // ios: Data/MonteCarlo.swift:489
+                    }
                 }
-                var V = 0.0   // ios: Data/MonteCarlo.swift:477
-                for (a in 0 until A) {   // ios: Data/MonteCarlo.swift:478
-                    val g = lr[a] + (if (fxCol[a] >= 0) lr[fxCol[a]] else 0.0)   // ios: Data/MonteCarlo.swift:479
-                    val e = exp(g); h[a] *= e; G[a] *= e; V += h[a]   // ios: Data/MonteCarlo.swift:480
-                }
-                for (f in 0 until F) lg[f] += lr[f]   // ios: Data/MonteCarlo.swift:482
-                val k = isMonth[d + 1]   // ios: Data/MonteCarlo.swift:483
-                if (k > 0 && k < M - 1 && monthly > 0) { for (a in 0 until A) h[a] += monthly * w[a]; V += monthly }   // ios: Data/MonteCarlo.swift:484 월초 적립 (마지막 날 제외)
-                if (V > peak) peak = V else mdd = mcMin(mdd, V / peak - 1)   // ios: Data/MonteCarlo.swift:485
-                if (V >= goal) { hit = true; if (firstHit[p] < 0) firstHit[p] = d + 1 }   // ios: Data/MonteCarlo.swift:486
-                if (k > 0) {   // ios: Data/MonteCarlo.swift:487
-                    port[k * P + p] = V   // ios: Data/MonteCarlo.swift:488
-                    for (a in 0 until A) cg[a][k * P + p] = (lg[a] + (if (fxCol[a] >= 0) lg[fxCol[a]] else 0.0)).toFloat()   // ios: Data/MonteCarlo.swift:489
-                }
+                mddArr[p] = mdd   // ios: Data/MonteCarlo.swift:492
+                if (hit) touched += 1   // ios: Data/MonteCarlo.swift:493
             }
-            mddArr[p] = mdd   // ios: Data/MonteCarlo.swift:492
-            if (hit) touched += 1   // ios: Data/MonteCarlo.swift:493
+            return touched
+        }
+        // 난수는 한 줄이라, 묶음 첫 경로의 난수 상태를 정수 연산만으로 앞서 짚는다 (경로가 쓰는 난수 수는 정해져 있다).
+        // 그래서 결과는 한 줄로 돈 것과 비트까지 같다 (숫자 맞추기 mc 로 확인)
+        val T = if (P >= 256) threads else 1
+        val cut = IntArray(T + 1) { it * P / T }
+        val touched = if (T == 1) runPaths(0, P, rng) else {
+            // 앞 묶음은 상태를 짚는 대로 바로 돌기 시작한다
+            val jobs = ArrayList<java.util.concurrent.Future<Int>>(T)
+            val prio = Thread.currentThread().priority
+            val r0 = rng.snapshot(); jobs.add(onPool(prio) { runPaths(cut[0], cut[1], r0) })
+            for (t in 1 until T) {
+                for (p in cut[t - 1] until cut[t]) for (d in 0 until D) {
+                    for (f in 0 until F) rng.skipNormal()
+                    for (i in 0 until nTrials) rng.skipNormal()
+                    if (withEvents) { val es = evDay[d]; for (i in es.indices) { rng.step(); rng.skipNormal() } }
+                }
+                val r = rng.snapshot(); val a = cut[t]; val b = cut[t + 1]
+                jobs.add(onPool(prio) { runPaths(a, b, r) })
+            }
+            jobs.sumOf { it.get() }
         }
 
         val bands = bandsOf(port, M = M, P = P)   // ios: Data/MonteCarlo.swift:496
