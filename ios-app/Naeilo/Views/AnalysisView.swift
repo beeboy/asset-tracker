@@ -219,8 +219,9 @@ struct AnalysisView: View {
         } else if m.isGoal {
             out.append(Line(icon: "flag", tone: .good, label: String(localized: "내 길"), value: fc.exact ? Self.freq(fc.pGoal) : String(localized: "계산 중"), valueTone: .good, route: .myPath))
         } else {
-            let gap = m.myPathGapToday
-            out.append(Line(icon: "flag", tone: .good, label: String(localized: "내 길"), value: String(format: "%.1f%% ", abs(gap) * 100) + (gap >= 0 ? String(localized: "앞섬") : String(localized: "뒤처짐")), valueTone: gap >= 0 ? .good : .warn, route: .myPath))
+            // 회복 루트도 내 길 판정 카드와 같은 값: 기간 안 본전 확률
+            let p = m.myPath
+            out.append(Line(icon: "flag", tone: .good, label: String(localized: "내 길"), value: fc.exact ? Self.freq(fc.prob(min(3, p.end - p.start))) : String(localized: "계산 중"), valueTone: .good, route: .myPath))
         }
         // 전망: 상세 첫 카드처럼 경로 값에 현금을 더한다
         let med = (fc.q50.last ?? 0) + (fc.exact ? m.cashKrw : 0)

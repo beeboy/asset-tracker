@@ -1034,6 +1034,7 @@
       }
     },
     "%@ %@칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3511,6 +3512,7 @@
       }
     },
     "%@칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3998,6 +4000,7 @@
       }
     },
     "/ 1,000칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4162,6 +4165,7 @@
       }
     },
     "1000칸 중 %lld칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4675,6 +4679,16 @@
         }
       }
     },
+    "1년 뒤까지" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To 1 year"
+          }
+        }
+      }
+    },
     "1년 목표" : {
       "localizations" : {
         "en" : {
@@ -4701,6 +4715,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1-yr range"
+          }
+        }
+      }
+    },
+    "1년 안" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Within 1 yr"
           }
         }
       }
@@ -5454,6 +5478,7 @@
       }
     },
     "4주 체크인 끝" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8118,6 +8143,7 @@
       }
     },
     "공유 카드" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -16793,6 +16819,7 @@
       }
     },
     "바닥 %@칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -16803,6 +16830,7 @@
       }
     },
     "바닥 / 회복" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18143,6 +18171,16 @@
         }
       }
     },
+    "본전 %@ · 1년 안 · %@ 남음" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Break-even %1$@ · within 1 yr · %2$@ left"
+          }
+        }
+      }
+    },
     "본전 %@ · 1년 안 · %@ 시작" : {
       "localizations" : {
         "en" : {
@@ -18306,6 +18344,7 @@
       }
     },
     "본전까지 1000칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -19710,16 +19749,16 @@
     },
     "서재, %@. %@" : {
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "서재, %1$@. %2$@"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Library, %1$@. %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "서재, %1$@. %2$@"
           }
         }
       }
@@ -22968,6 +23007,7 @@
       }
     },
     "어제보다 %@%@칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -22994,6 +23034,7 @@
       }
     },
     "어제와 같음" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -23859,6 +23900,7 @@
       }
     },
     "오늘 바뀐 칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -34054,6 +34096,7 @@
       }
     },
     "회복 %@칸" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
