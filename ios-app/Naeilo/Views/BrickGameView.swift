@@ -7,11 +7,12 @@ struct BrickGameButton: View {
     /// 그 카드의 칸 (회복 루트: 바닥/회복, 목표 루트: 내 돈/시장)
     let filled: Int, floor: Int, yesterday: Int
     var title = "벽돌깨기"
+    var icon = "gamecontroller"
     var plain = false   // 흰 바탕 · 회색 테두리 (미션 탭 보조 버튼)
     @State private var show = false
     var body: some View {
         Button { show = true } label: {
-            Label(title, systemImage: "gamecontroller")
+            Label(title, systemImage: icon)
                 .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(plain ? Theme.ink : .white)
                 .background(plain ? Theme.card : Theme.teal, in: RoundedRectangle(cornerRadius: 12))

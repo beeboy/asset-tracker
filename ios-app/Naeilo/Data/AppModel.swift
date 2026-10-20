@@ -318,7 +318,6 @@ final class AppModel {
     var taxSellQty = 0.0
     var nxStep = 1               // 앱 시작 3단계 중 끝낸 단계 수 (미션 4에 왔으면 1단계 종목 추가는 이미 한 것)
     var boardPath: [MissionRoute] = []
-    var boardPage = 0   // 미션 탭 페이지: 0 목표(본전) 진행, 1 파도 타기
     var analysisPath = NavigationPath()
     var homePath: [String] = []
     var tab: Tab = RootView.launchTab

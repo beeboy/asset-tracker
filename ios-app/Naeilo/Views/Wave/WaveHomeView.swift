@@ -264,3 +264,40 @@ private struct WaveBand: Shape {
         return p
     }
 }
+
+/// 미션 탭 [파도] 버튼: 블록 게임처럼 전체 화면으로 섬 지도를 연다 (미션 탭은 섬·코스 계산을 안 한다)
+struct WaveGameButton: View {
+    var plain = false   // 흰 바탕 · 회색 테두리 (미션 탭 보조 버튼)
+    @State private var show = false
+    var body: some View {
+        Button { show = true } label: {
+            Label("파도", systemImage: "water.waves")
+                .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(plain ? Theme.ink : .white)
+                .background(plain ? Theme.card : Theme.teal, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(plain ? Theme.border : .clear, lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
+        .fullScreenCover(isPresented: $show) { WaveHub() }
+    }
+}
+
+/// 섬 지도 전체 화면: 위에 닫기, 아래로 섬 지도
+struct WaveHub: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("파도 타기").appFont(20, .bold)
+                    Spacer()
+                    Button { dismiss() } label: { Image(systemName: "xmark").appFont(16, .bold).padding(8) }
+                        .buttonStyle(.plain).accessibilityLabel("닫기")
+                }
+                WaveHomeView()
+            }
+            .padding(16)
+        }
+        .background(Theme.bg)
+    }
+}

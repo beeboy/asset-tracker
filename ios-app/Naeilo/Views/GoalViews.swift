@@ -100,30 +100,24 @@ struct GoalBoardView: View {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: "미션").padding(.horizontal, -16)
                 SampleNote()
-                MissionPagePicker()
-                if m.boardPage == 1 {
-                    if m.playUnlocked { WaveHomeView() } else { lockedPlay }
-                } else {
-                    // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
-                    if let inter = steps.first(where: \.inter) { interCard(inter) }
-                    if !m.interDone && m.playOn { monthCheckIn }
-                    startList(steps.filter { !$0.inter }, done: done.filter { !$0.inter }.count)
-                    if m.goalReached {
-                        Card(padding: 18) {
-                            GuideBubble(pose: .cheer, text: "목표 \(AppModel.wonK(m.gK))에 닿았어요! 여기까지 온 길, 축하해요.")
-                            Text("지금 \(AppModel.wonK(m.trackValue / 1e4))에서 다음 목표 · 3년 확률 50% 근처").appFont(14).foregroundStyle(Theme.sub)
-                            PrimaryButton(title: "다음 목표 정하기") { m.suggestNextGoal(); m.boardPath.append(.g1) }
-                        }
+                // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
+                if let inter = steps.first(where: \.inter) { interCard(inter) }
+                if !m.interDone && m.playOn { monthCheckIn }
+                startList(steps.filter { !$0.inter }, done: done.filter { !$0.inter }.count)
+                if m.goalReached {
+                    Card(padding: 18) {
+                        GuideBubble(pose: .cheer, text: "목표 \(AppModel.wonK(m.gK))에 닿았어요! 여기까지 온 길, 축하해요.")
+                        Text("지금 \(AppModel.wonK(m.trackValue / 1e4))에서 다음 목표 · 3년 확률 50% 근처").appFont(14).foregroundStyle(Theme.sub)
+                        PrimaryButton(title: "다음 목표 정하기") { m.suggestNextGoal(); m.boardPath.append(.g1) }
                     }
-                    if let next = steps.first(where: { !m.gDone.contains($0.id) && m.goalAvailable($0) }), !next.inter {
-                        nextCard(next, steps: steps.filter { !$0.inter })
-                    }
-                    if m.playUnlocked { GoalCellsCard() } else { lockedPlay }
                 }
+                if let next = steps.first(where: { !m.gDone.contains($0.id) && m.goalAvailable($0) }), !next.inter {
+                    nextCard(next, steps: steps.filter { !$0.inter })
+                }
+                if m.playUnlocked { GoalCellsCard() } else { lockedPlay }
             }
             .screen()
         }
-        .modifier(MissionPageSwipe())
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: MissionRoute.self) { MissionScreen(route: $0) }
@@ -175,8 +169,8 @@ struct GoalBoardView: View {
 
     private var lockedPlay: some View {
         DashedCard {
-            Label(m.boardPage == 1 ? "파도 타기" : "목표 100칸", systemImage: "lock").appFont(15, .bold)
-            Text("시작 3단계 뒤 열림 · 칸 채우기·파도 타기").appFont(13)
+            Label("목표 100칸", systemImage: "lock").appFont(15, .bold)
+            Text("시작 3단계 뒤 열림 · 칸 채우기·블록·파도").appFont(13)
         }
     }
 
@@ -316,7 +310,8 @@ struct GoalCellsCard: View {
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
             HStack(spacing: 8) {
                 ShareCardButton(plain: true)
-                BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: "벽돌깨기", plain: true)
+                BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: "블록", icon: "square.grid.3x3.fill", plain: true)
+                WaveGameButton(plain: true)
             }
         }
     }
@@ -800,34 +795,3 @@ struct GoalIntermissionView: View {
     }
 }
 
-/// 미션 탭 두 페이지 전환: 목표(본전) 진행 | 파도 타기. 옆으로 밀어도 넘어간다
-struct MissionPagePicker: View {
-    @Environment(AppModel.self) private var m
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach([(0, m.isGoal ? "목표 진행" : "본전 진행"), (1, "파도 타기")], id: \.0) { i, t in
-                let on = m.boardPage == i
-                Button { withAnimation(.easeOut(duration: 0.2)) { m.boardPage = i } } label: {
-                    Text(t).appFont(14, .bold).foregroundStyle(on ? Theme.ink : Theme.sub)
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(on ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 10))
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? .isSelected : [])
-            }
-        }
-        .padding(4)
-        .background(Theme.track, in: RoundedRectangle(cornerRadius: 13))
-    }
-}
-
-/// 옆으로 밀어 미션 탭 페이지 넘기기
-struct MissionPageSwipe: ViewModifier {
-    @Environment(AppModel.self) private var m
-    func body(content: Content) -> some View {
-        content.simultaneousGesture(DragGesture(minimumDistance: 30).onEnded { g in
-            guard abs(g.translation.width) > abs(g.translation.height) * 2, abs(g.translation.width) > 60 else { return }
-            withAnimation(.easeOut(duration: 0.2)) { m.boardPage = g.translation.width < 0 ? 1 : 0 }
-        })
-    }
-}

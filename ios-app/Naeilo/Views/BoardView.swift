@@ -1,6 +1,6 @@
 import SwiftUI
 
-// 미션 판 (회복 루트): 플러스 루트와 같은 모양. 인터미션 카드, 접힌 시작 미션, 초록 다음 미션 카드, 1000칸, 파도 타기(섬 지도)
+// 미션 판 (회복 루트): 플러스 루트와 같은 모양. 인터미션 카드, 접힌 시작 미션, 초록 다음 미션 카드, 1000칸 (아래 블록·파도 게임 버튼)
 struct BoardView: View {
     @Environment(AppModel.self) private var m
     @State private var openDone = false
@@ -11,10 +11,6 @@ struct BoardView: View {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: "미션").padding(.horizontal, -16)
                 SampleNote()
-                MissionPagePicker()
-                if m.boardPage == 1 {
-                    if m.playUnlocked { WaveHomeView() } else { lockedPlay }
-                } else {
                 // 플러스 루트처럼: 맨 위 인터미션 카드, 접힌 시작 미션 목록, 초록 다음 미션 카드
                 if let inter = m.blocks.first(where: \.inter) { interCard(inter) }
                 if !m.interDone && m.playOn { checkIn }
@@ -24,7 +20,6 @@ struct BoardView: View {
                     nextCard(next, steps: starts)
                 }
                 if m.playUnlocked { cells } else { lockedPlay }
-                }
             }
             .screen()
         }
@@ -180,8 +175,8 @@ struct BoardView: View {
 
     private var lockedPlay: some View {
         DashedCard {
-            Label(m.boardPage == 1 ? "파도 타기" : "100칸 블록", systemImage: "lock").appFont(15, .bold)
-            Text("시작 3단계 뒤 열림 · 칸 채우기·파도 타기").appFont(13)
+            Label("100칸 블록", systemImage: "lock").appFont(15, .bold)
+            Text("시작 3단계 뒤 열림 · 칸 채우기·블록·파도").appFont(13)
         }
     }
 
@@ -213,10 +208,11 @@ struct BoardView: View {
                     legend(Theme.yellow, "마지막 칸 = 본전")
                 }
             }
-            // 공유 카드와 벽돌깨기를 한 줄에
+            // 공유 카드와 게임 둘(블록·파도)을 한 줄에
             HStack(spacing: 8) {
                 ShareCardButton(title: "공유 카드")
-                BrickGameButton(filled: n, floor: nFloor, yesterday: nY)
+                BrickGameButton(filled: n, floor: nFloor, yesterday: nY, title: "블록", icon: "square.grid.3x3.fill")
+                WaveGameButton()
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)

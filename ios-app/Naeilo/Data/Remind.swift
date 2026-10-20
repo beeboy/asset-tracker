@@ -614,8 +614,8 @@ extension AppModel {
         case .char(let id): tab = .home; homePath = ["shelter", "char:\(id)"]
         case .me: tab = .home; homePath = ["me"]
         case .reader(let i): tab = .home; homePath = ["shelter", "read:\(i)"]
-        case .board: tab = .board; boardPath = []; boardPage = 0
-        case .week: tab = .board; boardPath = []; boardPage = 1
+        case .board: tab = .board; boardPath = []
+        case .week: tab = .board; boardPath = []
         case .calm: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.calm])
         case .myPath: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.myPath])
         case .forecast: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.forecast])
