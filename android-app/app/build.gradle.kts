@@ -32,6 +32,7 @@ android {
     buildFeatures { compose = true; buildConfig = false }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("iosAssets"))
+    sourceSets["main"].res.srcDir(layout.buildDirectory.dir("iosRes"))
 }
 
 // iOS 원본 자료 중 앱이 읽는 것만 빌드 때 복사한다 (저장소에 같은 파일을 두 벌 두지 않는다)
@@ -43,7 +44,16 @@ val copyIosAssets by tasks.registering(Copy::class) {
     from("../../data/prices") { include("*.json"); into("prices") }
     into(layout.buildDirectory.dir("iosAssets"))
 }
-tasks.named("preBuild") { dependsOn(copyIosAssets) }
+// iOS 그림(xcassets) 중 화면이 쓰는 묶음만 drawable-nodpi 로 (이름 = imageset 이름). 도트 그림은 보간 없이 키운다 (Pixel)
+// 새 묶음이 필요하면 접두어를 더한다: spr_·sil_ 인물, mo_ 동작, iconprev_ 앱 아이콘 미리보기
+val iosImagePrefixes = listOf("spr_", "sil_", "mo_", "iconprev_")
+val copyIosImages by tasks.registering(Copy::class) {
+    from("../../ios-app/Naeilo/Assets.xcassets") { iosImagePrefixes.forEach { include("$it*.imageset/*.png") } }
+    eachFile { path = "drawable-nodpi/" + file.parentFile.name.removeSuffix(".imageset") + ".png" }
+    includeEmptyDirs = false
+    into(layout.buildDirectory.dir("iosRes"))
+}
+tasks.named("preBuild") { dependsOn(copyIosAssets, copyIosImages) }
 // JSON 서로 읽기 시험: Kotlin 이 다시 쓴 JSON 을 저장소 밖에 남긴다 (tools/json_parity/parity.py check 가 Swift 로 읽는다)
 tasks.withType<Test>().configureEach {
     systemProperty("parity.out", File(System.getProperty("user.home"), "Library/Caches/naeilo-android/json_parity").path)

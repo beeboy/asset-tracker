@@ -6,11 +6,9 @@ App.swift:8 알림 단계: 알림 누름 처리(NotificationDelegate)
 App.swift:9 위젯 단계: 토스 키를 위젯과 나누기 (TossKeys)
 App.swift:10 구독 단계: Play Billing 확인·거래 듣기 (Support)
 App.swift:39 미션 탭 단계: 목표 루트면 GoalBoardView, 아니면 BoardView (isGoal)
-App.swift:46-77 모델·위젯·동기화·알림 단계: 값이 바뀔 때 위젯 쓰기·동기화·알림 다시 예약, 앱이 앞으로 올 때 서버 시각·당겨 받기
 App.swift:78-88 알림 단계: 알림을 누르면 탭·화면 열기
 App.swift:89-100 위젯·딥링크 단계: naeilo:// 주소로 탭·화면 열기
-App.swift:101-123 시세 단계: 앞에 있는 동안만 1분마다 시세 받기·기록·위젯·알림 (WorkManager 와 함께)
-App.swift:155-169 인물 대사 단계: 탭·화면 이동 때 대사 차례 올리기 (LineTurns)
+App.swift:65 국내 합계 단계: KoreaSumHooks 붙이기 (아래 171-188 과 같이 종목 단계에서)
 App.swift:171-188 국내 합계 단계: 국내 종목 합계 시트·동기화 (KoreaSumHooks)
 
 # B 단계 (models)
@@ -79,3 +77,18 @@ Data/Sync.swift:490 키체인 접근성: KeyVault(Keystore) 키가 원래 이 �
 Data/Backup.swift:57 플랫폼: SwiftUI FileDocument 의 읽을 형식(.json). 안드로이드는 파일 고르기(SAF) 화면이 application/json 으로 연다 (설정 화면 단계)
 Data/Backup.swift:63-64 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안드로이드는 BackupFile.data·read 가 바이트를 주고받는다
 Data/Backup.swift:67-68 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다
+
+# E 단계 (홈·설정): Views/HomeView·SettingsView·SettingsDetail·StartView·Guide·MyRecordCard·ShareCard → ui/home·ui/settings·ui/start·ui/
+Views/HomeView.swift:118 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
+Views/HomeView.swift:212 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
+Views/HomeView.swift:388 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HomeView.kt MiniPath 읽어 주기 글)
+Views/SettingsView.swift:84 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
+Views/SettingsView.swift:308 검사기 한계: 보간 속 따옴표 String(describing:) (옮김, SettingsView.kt PriceBasisView 원/달러 줄)
+Views/SettingsView.swift:309 검사기 한계: 보간 속 따옴표 String(format: "%.2f") (옮김, SettingsView.kt PriceBasisView 평가 환율 줄)
+Views/SettingsDetail.swift:149-150 플랫폼 이름: '아이폰 알림·아이폰 설정' → '폰' (안드로이드에선 아이폰이 아님. SettingsDetail.kt AlertsView PermCard)
+Views/SettingsDetail.swift:152 플랫폼 이름: '아이폰 설정 열기' → '폰 설정 열기' (같은 버튼, 앱 알림 설정 화면을 연다)
+Views/SettingsDetail.swift:255 플랫폼 이름: '키체인' → '보관함' (Keystore 로 감싼 보관함. SettingsDetail.kt SyncView 개발자 칸)
+Views/SettingsDetail.swift:306 검사기 한계: 보간 속 따옴표 ?? "" (옮김, SettingsDetail.kt SyncView FileCard 불러오기 확인 글)
+Views/SettingsDetail.swift:394 플랫폼: 홈 화면 위젯 넣는 순서가 다르다 ('길게 누르기 → + →' → '길게 누르기 → 위젯 →'. SettingsDetail.kt WidgetPickView)
+Views/ShareCard.swift:75 플랫폼 이름: '아이폰 설정' → '폰 설정' (ShareCard.kt 위젯 모양 기본 글)
+Views/ShareCard.swift:232 플랫폼: sheet(item:) 에 쓰려고 URL 을 Identifiable 로. 안드로이드는 공유 고르기 Intent 라 필요 없음

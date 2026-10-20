@@ -21,6 +21,8 @@ TOL = 1e-12
 TOL_KEYS = {"bands", "terminal", "mdd_median", "blend", "fxAt", "factorMove", "replay"}
 # D 단계 augment: 아이폰은 날짜→수익률을 사전(순서 없음)에 담아 더하는 순서가 실행마다 달라 끝자리가 흔들린다. 같은 상대 1e-12
 TOL_KEYS |= {"augment"}
+# E 단계 첫 질문 예보 카드: value = exp(g·t + z·σ·√t) 금액, fanStart = 그 금액으로 정한 화면 자리. 같은 상대 1e-12
+TOL_KEYS |= {"value", "fanStart"}
 
 
 def run(*cmd, cwd=ROOT):
@@ -50,6 +52,11 @@ def gen():
     run("swiftc", "-O", "ios-app/Naeilo/Data/MonteCarlo.swift", str(d / "DSrc.swift"), "tools/num_parity/d/main.swift", "-o", str(bins / "d"))
     print(run(str(bins / "d"), str(d)).strip())
     print(run("node", "tools/num_parity/d/web.mjs", str(d)).strip())
+    # E 단계 (홈·설정): 첫 질문 예보 카드·인물 말투·세금 규칙·홈 글 (e/esrc.py 가 원본 줄을 꺼낸 main.swift)
+    e = WORK / "e"; e.mkdir(parents=True, exist_ok=True)
+    run("python3", "tools/num_parity/e/esrc.py", str(e))
+    run("swiftc", "-O", str(e / "main.swift"), "-o", str(bins / "e"))
+    print(run(str(bins / "e"), str(e)).strip())
     print(f"입력·Swift 결과: {WORK}")
 
 
@@ -79,7 +86,8 @@ def check():
              ("calc", "app.json", "kotlin.json", ("consts", "divs", "tax")),
              ("calc", "sc_app.json", "kotlin_sc.json", None),
              ("d", "app.json", "kotlin.json", None),
-             ("d", "web.json", "kotlin.json", ("derive", "aes"))]
+             ("d", "web.json", "kotlin.json", ("derive", "aes")),
+             ("e", "app.json", "kotlin.json", None)]
     total, bad = 0, []
     for d, sw, kt, keys in pairs:
         a_p, b_p = WORK / d / sw, WORK / d / kt

@@ -50,6 +50,38 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.naeilo.app.ui.AppHeader
+import com.naeilo.app.ui.NavStack
+import com.naeilo.app.ui.home.HomeView
+import com.naeilo.app.ui.home.homePage
+import com.naeilo.app.ui.settings.SettingsView
+import com.naeilo.app.ui.settings.settingsPage
+import com.naeilo.app.ui.start.StartView
+import com.naeilo.app.core.Day
+import com.naeilo.app.core.calc.Compute
+import com.naeilo.app.core.calc.calmOpen
+import com.naeilo.app.data.TrustedClock
+import com.naeilo.app.data.catchUpDay
+import com.naeilo.app.data.fixStarts
+import com.naeilo.app.data.progress
+import com.naeilo.app.data.recordDay
+import com.naeilo.app.data.saveProgress
+import com.naeilo.app.data.persists
+import com.naeilo.app.net.Market
+import com.naeilo.app.net.Sync
+import com.naeilo.app.pending.GamePause
+import com.naeilo.app.pending.LineClock
+import com.naeilo.app.pending.Notifier
+import com.naeilo.app.pending.Remind
+import com.naeilo.app.pending.Support
+import com.naeilo.app.pending.WidgetBridge
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
 import com.naeilo.app.ui.LocalPal
 import com.naeilo.app.ui.LocalReduceMotion
 import com.naeilo.app.ui.LocalTabActive
@@ -105,36 +137,111 @@ fun RootView(model: AppModel) {
         Column(Modifier.fillMaxSize()) {
             // ios: App.swift:31
             TabHost(model.tab, Modifier.weight(1f).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) { t ->
-                // 탭 안 화면은 다음 단계에서 채운다 (지금은 머리글만 있는 빈 자리)
+                // 종목·분석·미션 탭 안 화면은 다음 단계에서 채운다 (지금은 머리글만 있는 빈 자리)
                 when (t) {
-                    Tab.home -> TabScreen(t)       // ios: App.swift:32 (HomeView·homePath: 빈 자리)
+                    Tab.home -> NavStack(model.homePath, { model.homePath = it }, { HomeView(model) }) { homePage(it) }       // ios: App.swift:32 (HomeView·homePath)
                     Tab.hold -> TabScreen(t)       // ios: App.swift:34 (HoldingsView·holdPath: 빈 자리)
                     Tab.analysis -> TabScreen(t)   // ios: App.swift:36 (AnalysisView·analysisPath: 빈 자리)
                     Tab.board -> TabScreen(t)      // ios: App.swift:38 (boardPath: 빈 자리)
-                    Tab.settings -> TabScreen(t)   // ios: App.swift:42 (SettingsView·settingsPath: 빈 자리)
+                    Tab.settings -> NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model) }) { settingsPage(model, it) }   // ios: App.swift:42 (SettingsView·settingsPath)
                 }
             }
             TabBar(model.tab, tint = Theme.teal) { model.tab = it }   // ios: App.swift:45
         }
         // 처음 실행이면 첫 질문을 탭 화면 위에 덮는다
-        StartOverlay(showStart) { model.finishStart() }
+        StartOverlay(model, showStart)
+    }
+    AppHooks(model)
+}
+
+/**
+ * RootView 의 onChange·task 자리: 값이 바뀔 때 위젯·저장·동기화, 앱이 앞으로 올 때 서버 시각·당겨 받기, 앞에 있는 동안 1분마다 시세.
+ * 값은 snapshotFlow 로 지켜본다 (화면을 다시 그리지 않고, 처음 값은 건너뛰어 onChange 와 같게).
+ */
+@Composable
+private fun AppHooks(model: AppModel) {
+    val phase = model.active   // ios: App.swift:27 scenePhase (앞 = onStart, 뒤 = onStop)
+    // 보유·루트가 바뀌면 위젯도 바로. 홈 인물을 바꾸면 위젯 인물도 같이 ('홈 인물 따라가기' 위젯)
+    // ios: App.swift:47,48,49,51,52,53
+    LaunchedEffect(Unit) {
+        snapshotFlow { listOf<Any?>(model.holdings, model.route, model.nxStep, model.homeFriend, Sync.shared.isOn, Sync.shared.isDev) }.drop(1).collect { WidgetBridge.write(model) }
+    }
+    // 켜 둔 채 날이 바뀌었으면 오늘의 1분도 다음 날로.
+    // 전망 몬테카를로: 앱이 뒤로 가면 돌던 계산도 멈추고, 다시 앞으로 오면 이어 간다 (뒤에서 폰이 뜨거워지지 않게)
+    val first = remember { booleanArrayOf(true) }
+    // ios: App.swift:58,59,60
+    LaunchedEffect(phase) {
+        if (first[0]) { first[0] = false } else {
+            Compute.setActive(phase)
+            if (phase && model.persists) { model.catchUpDay(); model.calmOpen() }   // calmOpen 안에 recordDay
+        }
+    }
+    // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
+    // ios: App.swift:63
+    LaunchedEffect(Unit) {
+        snapshotFlow { model.progress }.drop(1).collect { model.saveProgress(); Remind.shared.refresh(model); if (model.persists) Sync.shared.changed(model) }
+    }
+    // ios: App.swift:64
+    LaunchedEffect(Unit) { snapshotFlow { model.holdings }.drop(1).collect { if (model.persists) Sync.shared.changed(model) } }
+    // 내 기록: 새 날 줄이 생기면 다른 기기로도 (같은 날 값 고침은 다음 변경 때 같이)
+    // ios: App.swift:67
+    LaunchedEffect(Unit) { snapshotFlow { model.myRecord.size }.drop(1).collect { if (model.persists) Sync.shared.changed(model) } }
+    // 앱을 열거나 앞으로 올 때 다른 기기 값 받기. 서버 시각도 같이 받는다 (인터미션 날짜·내 캐릭터 조건, Me)
+    // ios: App.swift:70,71,72,73
+    LaunchedEffect(phase) {
+        if (!phase) return@LaunchedEffect
+        launch { TrustedClock.shared.sync(); model.fixStarts(); Support.shared.tick() }   // 7일 무료·캐릭터 상품 열림 날짜도
+        if (model.persists) launch { Sync.shared.pull(model) }
+    }
+    // 알림: 설정이 바뀌면 다시 예약
+    // ios: App.swift:76,77
+    LaunchedEffect(Unit) { snapshotFlow { model.alerts to model.alertHr }.drop(1).collect { Notifier.reschedule(model) } }
+    // 지금 시세: 화면이 켜져 있는 동안만 1분마다 갱신 (뒤로 가면 멈춰 배터리·데이터를 아낀다)
+    // ios: App.swift:102,103
+    LaunchedEffect(phase) {
+        if (!phase) return@LaunchedEffect
+        var lastResched = Instant.EPOCH   // ios: App.swift:104
+        var lastKey = ""   // ios: App.swift:105 날짜·평가액이 그대로면 뒤 계산은 건너뛴다 (장 닫힌 동안 매분 화면이 멈칫하지 않게)
+        // ios: App.swift:106
+        while (isActive) {
+            // 미니 게임 중엔 갱신을 미뤄 화면이 멈칫하지 않게 (끝나면 곧 다시 받는다)
+            while (GamePause.on && isActive) delay(2000)   // ios: App.swift:108
+            Market.shared.refresh(held = model.holdings.map { it.symbol }.toSet())   // ios: App.swift:109
+            val key = "${Day.today}|${model.total}"   // ios: App.swift:110
+            // ios: App.swift:111
+            if (key != lastKey) {
+                lastKey = key   // ios: App.swift:112
+                if (model.persists) model.recordDay()   // ios: App.swift:113 내 기록: 시세를 받은 뒤 오늘 줄을 지금 값으로
+                Remind.shared.refresh(model)     // ios: App.swift:114 홈 리마인드 (위젯 말풍선·다음 일정도 여기서)
+                WidgetBridge.write(model)        // ios: App.swift:115 위젯에 지금 숫자를 넘긴다
+                Notifier.check(model)       // ios: App.swift:116 본전 도달 · 비중 이탈
+            }
+            // ios: App.swift:118,119 아침 한 줄은 10분마다 지금 숫자로 (매분 지우고 다시 넣지 않게)
+            if (Duration.between(lastResched, Instant.now()).seconds >= 600) {
+                lastResched = Instant.now(); Notifier.reschedule(model)
+            }
+            delay(60000)   // ios: App.swift:121
+        }
+    }
+    LineTurns(model, phase)   // ios: App.swift:55
+}
+
+/** 인물 대사 차례 올리기: 탭·화면 이동, 앱을 앞으로 가져올 때 (1분 자동 갱신으로는 안 바뀐다) */
+// ios: App.swift:156,157,158,159,160
+@Composable
+private fun LineTurns(model: AppModel, phase: Boolean) {
+    LaunchedEffect(phase) { if (phase) LineClock.shared.next() }   // ios: App.swift:161
+    // ios: App.swift:162,163,164,165,166,167 (탭·홈·미션·설정 경로, 분석·종목 경로 길이)
+    LaunchedEffect(Unit) {
+        snapshotFlow { listOf<Any>(model.tab, model.homePath, model.boardPath, model.settingsPath, model.analysisPath.size, model.holdPath.size) }.drop(1).collect { LineClock.shared.next() }
     }
 }
 
 // ios: App.swift:125,126 .transition(.opacity) + .animation(.default): iOS 17 기본 = 감쇠 1 · 0.55초 스프링
 @Composable
-private fun StartOverlay(show: Boolean, done: () -> Unit) {
+private fun StartOverlay(model: AppModel, show: Boolean) {
     val a = animateFloatAsState(if (show) 1f else 0f, spring(dampingRatio = 1f, stiffness = stiffness(response = 0.55f)), label = "start")
-    if (a.value > 0f) StartView(Modifier.graphicsLayer { alpha = a.value }, done)
-}
-
-/** 첫 질문 화면 자리 (StartView 이식 전: 아무 데나 누르면 탭으로) */
-@Composable
-private fun StartView(modifier: Modifier, done: () -> Unit) {
-    Box(
-        modifier.fillMaxSize().background(Theme.bg)
-            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = done),
-    )
+    if (a.value > 0f) StartView(model, Modifier.graphicsLayer { alpha = a.value }.windowInsetsPadding(WindowInsets.safeDrawing))
 }
 
 /** 탭 화면 자리 */
