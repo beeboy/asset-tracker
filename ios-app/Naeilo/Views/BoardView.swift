@@ -1,10 +1,9 @@
 import SwiftUI
 
-// 미션 판 (회복 루트): 플러스 루트와 같은 모양. 인터미션 카드, 접힌 시작 미션, 초록 다음 미션 카드, 1000칸 (아래 블록·파도 게임 버튼)
+// 미션 판 (회복 루트): 플러스 루트와 같은 모양. 인터미션 카드, 접힌 시작 미션, 초록 다음 미션 카드, 100칸 카드 (목표 루트와 같은 GoalCellsCard)
 struct BoardView: View {
     @Environment(AppModel.self) private var m
     @State private var openDone = false
-    @State private var cellMode = "mine"
 
     var body: some View {
         ScrollView {
@@ -19,7 +18,7 @@ struct BoardView: View {
                 if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter {
                     nextCard(next, steps: starts)
                 }
-                if m.playUnlocked { cells } else { lockedPlay }
+                if m.playUnlocked { GoalCellsCard() } else { lockedPlay }
             }
             .screen()
         }
@@ -60,10 +59,10 @@ struct BoardView: View {
                 if done { Text("완료 ✓").appFont(12, .bold).foregroundStyle(Theme.yellow) }
                 else if !avail { Image(systemName: "lock").appFont(12) }
             }
-            Text(done || n >= 4 ? String(localized: "4주 체크인 끝")
-                 : avail ? String(localized: "주 1회 비중 체크 · \(String(describing: n))/4주")
-                 : String(localized: "시작 미션 뒤 열림"))
-                .appFont(16, .bold).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+            if !(done || n >= 4) {
+                Text(avail ? String(localized: "주 1회 비중 체크 · \(String(describing: n))/4주") : String(localized: "시작 미션 뒤 열림"))
+                    .appFont(16, .bold).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+            }
             HStack(spacing: 6) {
                 ForEach(0..<4, id: \.self) { i in
                     let pick: WeekPick? = avail || done ? (i < n ? m.weeks[i] : nil) : nil
@@ -179,60 +178,6 @@ struct BoardView: View {
             Text("시작 3단계 뒤 열림 · 칸 채우기·블록·파도").appFont(13)
         }
     }
-
-    // 1000칸: 본전 = 1000칸. 진한 칸 = 시작 뒤 바닥에도 있던 칸, 연한 칸 = 바닥 뒤 회복한 칸
-    private var cells: some View {
-        let n = m.cellsNow, nFloor = min(n, m.cellsFloor), nY = m.cellsYesterday, chg = n - nY
-        let unit = AppModel.man(m.cellUnit)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("본전까지 1000칸").appFont(13, .bold).foregroundStyle(Theme.sub)
-                Spacer()
-                Text("1칸 = \(unit)").appFont(12).foregroundStyle(Theme.sub)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(n.formatted())칸").appFont(26, .bold).roll(String(localized: "\(String(describing: n.formatted()))칸"))
-                Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
-                Text(chg == 0 ? String(localized: "어제와 같음") : String(localized: "어제보다 \(String(describing: chg > 0 ? "+" : ""))\(String(describing: chg))칸")).appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
-            }
-            ChipRow(items: [("mine", String(localized: "바닥 / 회복")), ("stock", String(localized: "종목별")), ("chg", String(localized: "오늘 바뀐 칸"))], selection: $cellMode)
-            CellGrid(filled: n, floor: nFloor, yesterday: nY, mode: cellMode, parts: stockParts)
-                .aspectRatio(320.0 / 200.0, contentMode: .fit)
-                .accessibilityLabel("1000칸 중 \(n)칸")
-            FlowRow(spacing: 10) {
-                if cellMode == "stock" {
-                    ForEach(stockParts, id: \.0) { k, c, cnt in legend(c, String(localized: "\(String(describing: k)) \(String(describing: cnt))칸")) }
-                } else {
-                    legend(Theme.teal, String(localized: "바닥 \(String(describing: nFloor))칸"))
-                    legend(Color(hex: 0x7FD3C9, dark: 0x3C8F86), String(localized: "회복 \(String(describing: n - nFloor))칸"))
-                    legend(Theme.yellow, String(localized: "마지막 칸 = 본전"))
-                }
-            }
-            // 공유 카드와 게임 둘(블록·파도)을 한 줄에
-            HStack(spacing: 8) {
-                ShareCardButton(title: String(localized: "공유 카드"))
-                BrickGameButton(filled: n, floor: nFloor, yesterday: nY, title: String(localized: "블록"), icon: "square.grid.3x3.fill").labelStyle(TightLabel())
-                WaveGameButton().labelStyle(TightLabel())
-            }
-        }
-        .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.ink, lineWidth: 2))
-    }
-
-    private var stockParts: [(String, Color, Int)] {
-        var acc = 0.0
-        return m.rows.sorted { $0.value > $1.value }.map { r in
-            let a = m.cells(acc), b = m.cells(acc + r.value); acc += r.value
-            return (r.id, r.color, b - a)
-        }
-    }
-
-    private func legend(_ c: Color, _ t: String) -> some View {
-        HStack(spacing: 4) { RoundedRectangle(cornerRadius: 3).fill(c).frame(width: 12, height: 12); Text(t) }
-            .appFont(12).foregroundStyle(Theme.sub)
-    }
-
 }
 
 struct WeekForecastCard: View {
@@ -417,39 +362,6 @@ struct WeekForecastCard: View {
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(stroke ?? c, lineWidth: 2))
                 .frame(width: 14, height: 14)
             Text(t).appFont(12).foregroundStyle(Theme.sub)
-        }
-    }
-}
-
-// 40×25 칸, 왼쪽 아래부터 채운다. 마지막 칸(본전)은 별.
-struct CellGrid: View {
-    let filled: Int
-    let floor: Int
-    let yesterday: Int
-    let mode: String
-    let parts: [(String, Color, Int)]
-
-    var body: some View {
-        Canvas { ctx, size in
-            let s = size.width / 40
-            func rect(_ i: Int) -> CGRect {
-                CGRect(x: CGFloat(i % 40) * s + 0.5, y: CGFloat(24 - i / 40) * s + 0.5, width: s - 1, height: s - 1)
-            }
-            var stockColor: [Color] = []
-            if mode == "stock" { for (_, c, n) in parts { stockColor += Array(repeating: c, count: n) } }
-            for i in 0..<1000 {
-                let c: Color
-                if i >= filled { c = Theme.track }
-                else if mode == "stock" { c = i < stockColor.count ? stockColor[i] : Theme.muted }
-                else if i < floor { c = mode == "mkt" ? Color(hex: 0xB9C2CA, dark: 0x4A5560) : Theme.teal }
-                else { c = mode == "mine" ? Color(hex: 0x7FD3C9, dark: 0x3C8F86) : Theme.green }
-                ctx.fill(Path(rect(i)), with: .color(c))
-            }
-            if mode == "chg" || mode == "mine" {
-                let a = min(filled, yesterday), b = max(filled, yesterday)
-                for i in a..<b { ctx.stroke(Path(rect(i)), with: .color(filled >= yesterday ? Theme.up : Theme.down), lineWidth: 1.2) }
-            }
-            ctx.fill(Path(ellipseIn: rect(999).insetBy(dx: 0.5, dy: 0.5)), with: .color(Theme.yellow))
         }
     }
 }

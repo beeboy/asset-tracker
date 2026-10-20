@@ -4247,6 +4247,16 @@
         }
       }
     },
+    "100칸 중 %lld칸, 본전의 %lld%%" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of 100 cells, %2$lld%% of break-even"
+          }
+        }
+      }
+    },
     "10권" : {
       "localizations" : {
         "en" : {
@@ -16772,6 +16782,16 @@
         }
       }
     },
+    "바닥" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Floor"
+          }
+        }
+      }
+    },
     "바닥 %@칸" : {
       "localizations" : {
         "en" : {
@@ -18291,6 +18311,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1000 cells to break-even"
+          }
+        }
+      }
+    },
+    "본전까지 100칸" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "100 cells to break-even"
           }
         }
       }
@@ -34009,6 +34039,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bull horns"
+          }
+        }
+      }
+    },
+    "회복" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovered"
           }
         }
       }

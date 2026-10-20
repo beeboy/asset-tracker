@@ -270,23 +270,26 @@ struct GoalBoardView: View {
 }
 
 // 목표까지 100칸 (1칸 = 목표의 1/100): 진한 칸 = 내가 넣은 돈, 민트 = 투자로 불어난 돈, 주황 = 잠시 줄어든 돈
+// 회복 루트도 같은 카드: 본전까지 100칸, 진한 칸 = 시작 뒤 바닥에도 있던 칸, 민트 = 바닥 뒤 회복한 칸
 // 공유 카드·벽돌깨기는 1000칸 그대로 (값만 넘긴다)
 struct GoalCellsCard: View {
     @Environment(AppModel.self) private var m
     var body: some View {
-        let K = m.gK * 1e4, unit = K / 100
-        let tkV = m.trackValue
-        let tkP = m.route == .novice ? tkV / 1.02 : tkV * max(0.8, min(1.25, m.cost / max(1, m.total)))
+        let goal = m.isGoal
+        let K = goal ? m.gK * 1e4 : m.cost, unit = K / 100
+        let tkV = goal ? m.trackValue : m.total
+        let tkP = !goal ? tkV : m.route == .novice ? tkV / 1.02 : tkV * max(0.8, min(1.25, m.cost / max(1, m.total)))
+        let fl = goal ? 0 : m.cellsFloor   // 회복: 바닥 칸 (1000칸 기준)
         let fV = min(100, tkV / max(1, unit)), fP = min(100, tkP / max(1, unit))
-        let mine = min(fV, fP), lost = max(0, fP - fV), gain = max(0, tkV - tkP)
+        let mine = goal ? min(fV, fP) : min(fV, Double(fl) / 10), lost = max(0, fP - fV), gain = max(0, tkV - tkP)
         // 공유 카드·벽돌깨기용 1000칸
         let cl = { (v: Double) in max(0, min(1000, Int(floor(v / max(1, K / 1000))))) }
-        let nV = cl(tkV), nP = cl(tkP), nMine = min(nV, nP), nY = cl(tkV / (1 + m.todayMove))
-        let pct = Int(tkV / max(1, K) * 100), stone = [75, 50, 25].first { pct >= $0 }
+        let nV = cl(tkV), nP = cl(tkP), nMine = goal ? min(nV, nP) : min(nV, fl), nY = cl(tkV / (1 + m.todayMove))
+        let pct = Int(tkV / max(1, K) * 100)
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("\(AppModel.wonK(m.gK))까지 100칸").appFont(18, .bold)
+                    Text(goal ? String(localized: "\(String(describing: AppModel.wonK(m.gK)))까지 100칸") : String(localized: "본전까지 100칸")).appFont(18, .bold)
                     Spacer()
                     Text(fV >= 100 ? String(localized: "100칸 완성!") : String(localized: "1칸 = \(String(describing: AppModel.man(unit)))")).appFont(14).foregroundStyle(Theme.sub)
                 }
@@ -298,12 +301,19 @@ struct GoalCellsCard: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { if !playing && !party { startMini(fV, mine) } }   // 박스·패들을 눌러도 시작
-                    .accessibilityLabel("100칸 중 \(Int(fV))칸, 목표의 \(pct)%")
+                    .accessibilityLabel(goal ? String(localized: "100칸 중 \(Int(fV))칸, 목표의 \(pct)%") : String(localized: "100칸 중 \(Int(fV))칸, 본전의 \(pct)%"))
                     VStack(alignment: .leading, spacing: 10) {
-                        legend(Theme.teal, nil, String(localized: "넣은 돈"), AppModel.man(min(tkV, tkP)))
-                        if lost > 0 { legend(Self.lostC, nil, String(localized: "줄어든 돈"), "−" + AppModel.man(tkP - tkV)) }
-                        else { legend(Self.mintC, nil, String(localized: "불어난 돈"), "+" + AppModel.man(gain)) }
-                        legend(Theme.card, Theme.gold, String(localized: "마지막 칸 = 목표"), nil)
+                        if goal {
+                            legend(Theme.teal, nil, String(localized: "넣은 돈"), AppModel.man(min(tkV, tkP)))
+                            if lost > 0 { legend(Self.lostC, nil, String(localized: "줄어든 돈"), "−" + AppModel.man(tkP - tkV)) }
+                            else { legend(Self.mintC, nil, String(localized: "불어난 돈"), "+" + AppModel.man(gain)) }
+                            legend(Theme.card, Theme.gold, String(localized: "마지막 칸 = 목표"), nil)
+                        } else {
+                            let floorV = Double(min(nV, fl)) * m.cellUnit
+                            legend(Theme.teal, nil, String(localized: "바닥"), AppModel.man(floorV))
+                            legend(Self.mintC, nil, String(localized: "회복"), "+" + AppModel.man(max(0, tkV - floorV)))
+                            legend(Theme.card, Theme.gold, String(localized: "마지막 칸 = 본전"), nil)
+                        }
                         action(String(localized: "공유하기"), "square.and.arrow.up", fill: false) { showShare = true }
                         HStack(spacing: 6) {
                             action(String(localized: "블록"), "square.grid.3x3.fill", fill: true) { showGame = true }.labelStyle(TightLabel())
