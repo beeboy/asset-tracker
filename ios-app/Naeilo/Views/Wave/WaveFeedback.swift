@@ -50,6 +50,8 @@ final class WaveFeedback {
             buzz { light.impactOccurred(intensity: 0.7) }
         case .land, .item, .mission:
             buzz { note.notificationOccurred(.success) }; sound(.coin)
+        case .time:
+            break
         case .saved:
             buzz { rigid.impactOccurred() }
         case .end:

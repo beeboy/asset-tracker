@@ -31,9 +31,12 @@ struct WaveEngine {
     enum EndReason: Equatable { case time, hearts }
     /// 파도 위에 떠 있는 아이템 (한 판에 1~2개, 탄 채 지나가면 먹는다)
     enum Item: CaseIterable {
-        case lighthouse, turtle, vest, dolphin
+        case lighthouse, turtle, vest, dolphin, rocket, snail, clock
         var icon: String {
-            switch self { case .lighthouse: return "🗼"; case .turtle: return "🐢"; case .vest: return "🛟"; case .dolphin: return "🐬" }
+            switch self {
+            case .lighthouse: return "🗼"; case .turtle: return "🐢"; case .vest: return "🛟"; case .dolphin: return "🐬"
+            case .rocket: return "🚀"; case .snail: return "🐌"; case .clock: return "⏰"
+            }
         }
         var name: String {
             switch self {
@@ -41,6 +44,9 @@ struct WaveEngine {
             case .turtle: return "거북이! 느릿느릿"
             case .vest: return "구명조끼!"
             case .dolphin: return "돌고래! 다음 점프 2배"
+            case .rocket: return "로켓! 빨라지고 점수 1.5배"
+            case .snail: return "달팽이! 아주 느릿느릿"
+            case .clock: return "시계! +3초"
             }
         }
     }
@@ -78,6 +84,8 @@ struct WaveEngine {
         /// 공중제비 착지. combo = 연속으로 돈 점프 수
         case land(flips: Int, combo: Int, points: Int)
         case item(Item)
+        /// 남은 시간 늘어남 (초)
+        case time(Double)
         /// 구명조끼가 풍덩을 막음 (하트 그대로)
         case saved(day: Int)
         case mission(Mission)
@@ -95,14 +103,17 @@ struct WaveEngine {
         var count: Int { values.count }
     }
 
-    static let days = 40
-    static let secondsPerDay = 0.57   // 점점 빨라져 한 판 실제 약 20초
+    static let days = 100              // 30초 + 보너스 시간보다 넉넉하게
+    static let secondsPerDay = 0.42   // 점점 빨라져 30초 끝에 1.4배
+    static let timeLimit = 30.0        // 한 판 기본 30초. '딱'·아이템·미션·피버로 늘어난다
     static let maxHearts = 3
     static let perfectBonus = 50       // '딱' 보너스 점수
     static let streakBonus = 20        // 연속 성공 한 번 더할 때마다
     static let feverNeed = 3, feverTime = 6.0   // 바닥 3연속이면 6초간 점수 2배
     static let airTime = 0.6, flipBonus = 15    // 번 채로 내리면 0.6초 점프, 그동안 톡마다 한 바퀴
     static let missionBonus = 50
+    /// 아이템 뽑기 주머니: 시간·속도 아이템이 자주 나온다
+    static let itemBag: [Item] = [.clock, .clock, .clock, .rocket, .rocket, .turtle, .snail, .lighthouse, .vest, .dolphin]
 
     /// 3년 라인에서 무작위 시작 40거래일 코스. 라인이 짧거나 평평하면 nil
     static func course<G: RandomNumberGenerator>(from line: [(d: String, v: Double)], length: Int = days, using g: inout G) -> Course? {
@@ -148,7 +159,10 @@ struct WaveEngine {
 
     let course: Course
     private(set) var day = 0              // 지금 거래일 (0...count-1)
-    private(set) var elapsed = 0.0        // 지난 초
+    private(set) var elapsed = 0.0        // 코스 시간 (속도 반영, 거래일 = elapsed / secondsPerDay)
+    private(set) var clock = 0.0          // 실제 지난 초
+    private(set) var extra = 0.0          // 보너스로 늘어난 초
+    private(set) var boost = 0.0          // 로켓 남은 초
     private(set) var hearts = maxHearts
     private(set) var score = 0
     private(set) var boardedAt: Int?      // 탄 날 (안 타고 있으면 nil)
@@ -171,9 +185,9 @@ struct WaveEngine {
         splashDrop = max(0.015, 2 * Self.stdev(Self.rets(course.values)))
         var its: [Int: Item] = [:]
         if course.count >= 16 {
-            for _ in 0..<Int.random(in: 1...2, using: &g) {
+            for _ in 0..<max(1, course.count / 12) {
                 let d = Int.random(in: 6...(course.count - 6), using: &g)
-                if its.keys.allSatisfy({ abs($0 - d) >= 5 }) { its[d] = Item.allCases.randomElement(using: &g) }
+                if its.keys.allSatisfy({ abs($0 - d) >= 5 }) { its[d] = Self.itemBag.randomElement(using: &g) }
             }
         }
         items = its
@@ -184,8 +198,10 @@ struct WaveEngine {
         self.init(course: course, using: &g)
     }
 
-    var duration: Double { Double(course.count) * Self.secondsPerDay }
-    var timeLeft: Double { max(0, duration - elapsed) }
+    /// 한 판 제한 시간 (보너스 포함)
+    var duration: Double { Self.timeLimit + extra }
+    var timeLeft: Double { max(0, duration - clock) }
+    var courseTime: Double { Double(course.count - 1) * Self.secondsPerDay }
     var riding: Bool { boardedAt != nil }
     var isOver: Bool { ended != nil }
     var fever: Bool { feverLeft > 0 }
@@ -211,8 +227,9 @@ struct WaveEngine {
         var ev: [Event] = [.board(day: day, perfect: boardedPerfect)]
         if boardedPerfect {
             perfectCount += 1; perfectRun += 1
+            ev += addTime(1)
             if perfectRun >= Self.feverNeed {
-                if !fever { feverCount += 1; ev.append(.fever(true)) }
+                if !fever { feverCount += 1; ev.append(.fever(true)); ev += addTime(2) }
                 feverLeft = Self.feverTime; perfectRun = 0
             }
         } else { perfectRun = 0 }
@@ -240,6 +257,7 @@ struct WaveEngine {
         if gain > 0 {
             if dolphin { pts *= 2; dolphin = false }
             if fever { pts *= 2 }
+            if boost > 0 { pts = pts * 3 / 2 }
             air = Self.airTime; flips = 0
         }
         score += pts
@@ -251,9 +269,12 @@ struct WaveEngine {
     mutating func tick(_ dt: Double) -> [Event] {
         guard !isOver else { return [] }
         let real = max(0, dt)
-        let speed = 1 + 0.3 * min(1, elapsed / duration)       // 뒤로 갈수록 빨라져 끝에서 1.3배
-        elapsed += (slow > 0 ? real * 0.5 : real) * speed      // 거북이: 시간이 반 속도
-        slow = max(0, slow - real); beacon = max(0, beacon - real)
+        clock += real
+        var speed = 1 + 0.4 * min(1, clock / Self.timeLimit)    // 뒤로 갈수록 빨라져 30초에 1.4배
+        if boost > 0 { speed *= 1.6 }                           // 로켓
+        if slow > 0 { speed *= 0.5 }                            // 거북이·달팽이
+        elapsed += real * speed
+        slow = max(0, slow - real); beacon = max(0, beacon - real); boost = max(0, boost - real)
         var ev: [Event] = []
         if feverLeft > 0 { feverLeft -= real; if feverLeft <= 0 { feverLeft = 0; ev.append(.fever(false)) } }
         if air > 0 { air -= real; if air <= 0 { air = 0; ev += land() } }
@@ -277,7 +298,7 @@ struct WaveEngine {
             }
         }
         if !isOver { ev += checkMissions() }
-        if !isOver && elapsed >= duration { ev += finish(.time) }
+        if !isOver && (clock >= duration || elapsed >= courseTime) { ev += finish(.time) }
         return ev
     }
 
@@ -287,9 +308,18 @@ struct WaveEngine {
         case .turtle: slow = 3
         case .vest: vest = true
         case .dolphin: dolphin = true
+        case .rocket: boost = 3
+        case .snail: slow = 4
+        case .clock: break
         }
         got.append(it)
-        return [.item(it)]
+        return [.item(it)] + addTime(it == .clock ? 3 : 1)
+    }
+
+    /// 남은 시간 늘리기: '딱' 1초 · 아이템 1초(시계 3초) · 피버 2초 · 미션 3초
+    private mutating func addTime(_ s: Double) -> [Event] {
+        extra += s
+        return [.time(s)]
     }
 
     /// 점프 끝. 한 바퀴라도 돌았으면 바퀴 × 콤보 점수, 안 돌았으면 콤보가 끊긴다
@@ -317,6 +347,7 @@ struct WaveEngine {
         var ev: [Event] = []
         for m in missions where !missionsDone.contains(m) && met(m) {
             missionsDone.insert(m); score += Self.missionBonus; ev.append(.mission(m))
+            if !isOver { ev += addTime(3) }
         }
         return ev
     }

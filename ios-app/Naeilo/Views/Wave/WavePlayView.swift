@@ -64,13 +64,14 @@ struct WavePlayView: View {
         }
     }
     static let ruleLines = [
-        "🌊 파도는 내 자산이 지나온 40거래일이에요. 점점 빨라져요.",
+        "🌊 파도는 내 자산이 지나온 날들이에요. 30초, 점점 빨라져요.",
         "⬇️ 바닥에서 톡: 보드에 타요. 바닥 그날 타면 \"딱!\" +50",
         "⬆️ 꼭대기에서 톡: 내려요. 탄 뒤 오른 만큼 점수 (0.01% = 1점)",
         "💦 탄 채 크게 꺼지면 풍덩, 하트 하나 잃어요. 3번이면 끝",
         "🤸 벌고 내리면 점프! 공중에서 톡톡 하면 공중제비 점수",
         "🔥 바닥 \"딱!\" 3번 연속이면 피버: 6초간 점수 2배",
-        "🎁 탄 채 아이템을 지나면 먹어요: 🗼 바닥 표시 · 🐢 느리게 · 🛟 풍덩 1번 막기 · 🐬 다음 점프 2배",
+        "⏱️ \"딱!\"·아이템·피버·미션마다 시간이 늘어요",
+        "🎁 탄 채 아이템을 지나면 먹어요: ⏰ +3초 · 🚀 빨라지고 점수 1.5배 · 🐢🐌 느리게 · 🗼 바닥 표시 · 🛟 풍덩 1번 막기 · 🐬 다음 점프 2배",
     ]
 
     private func hud(_ e: WaveEngine) -> some View {
@@ -95,10 +96,13 @@ struct WavePlayView: View {
             HStack(spacing: 8) {
                 ProgressView(value: e.timeLeft, total: e.duration).tint(Theme.teal)
                 Text("\(Int(e.timeLeft.rounded(.up)))초").appFont(12, .bold).monospacedDigit()
+                if fx.timeFlash > 0 { Text("+\(Int(fx.timeGot))초").appFont(12, .heavy).foregroundStyle(Color(hex: 0x2F9E44)) }
                 if e.streak >= 2 { Text("\(e.streak)연속").appFont(12, .bold).foregroundStyle(Theme.orange) }
                 if e.fever { Text("피버 ×2").appFont(12, .heavy).foregroundStyle(Color(hex: 0xD9480F)) }
                 if e.dolphin { Text("🐬") }
                 if e.vest { Text("🛟") }
+                if e.boost > 0 { Text("🚀") }
+                if e.slow > 0 { Text("🐢") }
             }
             HStack(spacing: 6) {
                 ForEach(e.missions, id: \.self) { x in
@@ -165,7 +169,7 @@ struct WavePlayView: View {
                 rides.append(.init(from: boardDay, to: d, gain: v[d] / v[boardDay] - 1, splash: true))
             case .streak(let n): if n == 3 { WaveFeedback.shared.crown() }
             case .end(let why): finish(e, why)
-            case .calm, .fever, .flip, .land, .item, .saved, .mission: break
+            case .calm, .fever, .flip, .land, .item, .saved, .mission, .time: break
             }
             fx.react(x)
         }
@@ -232,6 +236,8 @@ struct WaveFX {
     var dots: [Dot] = []
     var pop: Pop?
     var flip = 0.0, dizzy = 0.0, boarded = 0.0, calm = 0.0
+    /// 시간 보너스: 타이머 옆 "+n초" (겹치면 더해 보여 준다)
+    var timeFlash = 0.0, timeGot = 0.0
     /// 공중제비 각도: turn(목표)을 빠르게 따라간다. 톡마다 한 바퀴씩 늘어난다
     var angle = 0.0, turn = 0.0
     var rising = false
@@ -245,6 +251,7 @@ struct WaveFX {
     }
 
     mutating func step(_ dt: Double, riding: Bool, rising: Bool) {
+        timeFlash = max(0, timeFlash - dt); if timeFlash == 0 { timeGot = 0 }
         flip = max(0, flip - dt); dizzy = max(0, dizzy - dt); boarded = max(0, boarded - dt); calm = max(0, calm - dt)
         self.rising = rising
         if flip > 0 { angle += (turn - angle) * min(1, dt * 14) } else { angle = 0; turn = 0 }
@@ -281,6 +288,7 @@ struct WaveFX {
             pop = Pop(text: (combo >= 2 ? "콤보\(combo) " : "\(n)바퀴 ") + "+\(pts)", life: 0.9, color: Color(hex: 0xE8862A))
             add(.spray, 6)
         case .item(let it): pop = Pop(text: it.icon + " " + it.name, life: 1.2, color: Color(hex: 0x0F7B8A)); add(.spark, 8)
+        case .time(let s): timeGot += s; timeFlash = 1.2
         case .saved: pop = Pop(text: "🛟 살았다!", life: 1.0, color: Color(hex: 0x0F7B8A))
         case .mission(let x): pop = Pop(text: "✓ " + x.title + " +50", life: 1.2, color: Color(hex: 0x2F9E44)); add(.coin, 4)
         case .end: break
