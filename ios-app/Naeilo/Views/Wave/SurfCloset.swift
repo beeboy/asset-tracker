@@ -1,0 +1,214 @@
+import SwiftUI
+
+/// 파도 타기 꾸미기: 보드·모자 (문자 격자 도트, 이미지 파일 없음). 뽑기 없음, 누적 점수·특별 조건으로 열린다.
+/// 시안 좌표(12칸 인물)를 2배로 키워 내 캐릭터 버퍼(MeArt 24×34)에 맞춘다: 모자는 머리 위(시안 y1 = 0줄), 보드는 발밑(시안 y11 = 34줄).
+enum SurfOpen: Equatable {
+    case free, score(Int), hardClear, fever(Int), splash(Int), snap(Int)
+}
+
+struct SurfItem: Identifiable {
+    let id: Int
+    let name: String
+    /// 모자: 왼쪽 위 (시안 좌표). 보드: 윗줄 x1 y11, 아랫줄 x2 y12 고정
+    let x: Int, y: Int
+    let rows: [String]
+    var deco: [(Int, Int, Character)] = []
+    let open: SurfOpen
+}
+
+enum SurfCloset {
+    static let palette: [Character: UInt32] = [
+        "c": 0xF06A4A, "C": 0xC2410C, "y": 0xFFD84D, "Y": 0xE0A800, "o": 0xF59E0B, "b": 0x8A5A2B,
+        "g": 0x3FAE5A, "G": 0x1E7A3A, "r": 0xE8505B, "k": 0x14304D, "w": 0xFFFFFF, "s": 0x9FD3F5,
+        "p": 0xF7A08A, "v": 0x8B6FD6, "B": 0x2F7FD8, "a": 0x8A9BB0, "A": 0x5C6B7D, "h": 0xE8D3A8, "q": 0xF2C14E,
+    ]
+
+    static let boards: [SurfItem] = [
+        SurfItem(id: 0, name: "코랄", x: 1, y: 11, rows: ["cccccccccc", ".CCCCCCCC"], open: .free),
+        SurfItem(id: 1, name: "바나나", x: 1, y: 11, rows: ["byyyyyyyyb", ".oooooooo"], open: .score(500)),
+        SurfItem(id: 2, name: "수박", x: 1, y: 11, rows: ["rrkrrrrkrr", ".GgGgGgGg"], open: .score(1200)),
+        SurfItem(id: 3, name: "구름", x: 1, y: 11, rows: ["wwwwwwwwww", ".ssssssss"],
+                 deco: [(1, 10, "w"), (2, 10, "w"), (10, 10, "w")], open: .score(2000)),
+        SurfItem(id: 4, name: "무지개", x: 1, y: 11, rows: ["rroyygBBvv", ".royygBBv"], open: .score(3200)),
+        SurfItem(id: 5, name: "상어", x: 1, y: 11, rows: ["aaaaaaaaka", ".wwwwwwww"],
+                 deco: [(2, 10, "a"), (1, 9, "a")], open: .score(5000)),
+        SurfItem(id: 6, name: "캔들", x: 1, y: 11, rows: ["ggrgggrrgg", ".kkkkkkkk"],
+                 deco: [(2, 10, "g"), (8, 10, "r")], open: .hardClear),
+        SurfItem(id: 7, name: "황금", x: 1, y: 11, rows: ["yyyyyyyyyy", ".YYYYYYYY"],
+                 deco: [(0, 9, "q"), (11, 10, "q"), (12, 8, "q")], open: .fever(10)),
+    ]
+
+    static let hats: [SurfItem] = [
+        SurfItem(id: 0, name: "없음", x: 0, y: 0, rows: [], open: .free),
+        SurfItem(id: 1, name: "밀짚", x: 1, y: -1, rows: ["..yyyyyy..", "..rrrrrr..", "oyyyyyyyyo"], open: .score(300)),
+        SurfItem(id: 2, name: "비니", x: 3, y: -3, rows: ["..ww..", ".BBBB.", "BBBBBB", "ssssss"], open: .score(800)),
+        SurfItem(id: 3, name: "꽃핀", x: 7, y: 0, rows: [".p.", "pyp", ".p."], open: .score(1500)),
+        SurfItem(id: 4, name: "고깔", x: 4, y: -3, rows: [".yy.", ".vv.", "vyyv", "vvvv"], open: .score(2500)),
+        SurfItem(id: 5, name: "개구리", x: 2, y: -2, rows: [".gg..gg.", "gwkggwkg", "gggggggg", ".gggggg."], open: .score(4000)),
+        SurfItem(id: 6, name: "곰 귀", x: 2, y: -1, rows: ["bb....bb", "bp....pb", ".bbbbbb."], open: .splash(20)),
+        SurfItem(id: 7, name: "황소 뿔", x: 0, y: -2, rows: ["h..........h", "h..........h", ".hh......hh.", "..A......A.."], open: .snap(10)),
+    ]
+
+    // MARK: 저장 (UserDefaults 정수 몇 개)
+    private static let d = UserDefaults.standard
+    static var total: Int { d.integer(forKey: "surf.total") }
+    static var fevers: Int { d.integer(forKey: "surf.fever") }
+    static var splashes: Int { d.integer(forKey: "surf.splash") }
+    static var snaps: Int { d.integer(forKey: "surf.snap") }
+    static var hardCleared: Bool { d.integer(forKey: "surf.hard") > 0 }
+    static var board: Int {
+        get { let v = d.integer(forKey: "surf.board"); return isOpen(boards[min(max(v, 0), boards.count - 1)]) ? v : 0 }
+        set { d.set(newValue, forKey: "surf.board") }
+    }
+    static var hat: Int {
+        get { let v = d.integer(forKey: "surf.hat"); return isOpen(hats[min(max(v, 0), hats.count - 1)]) ? v : 0 }
+        set { d.set(newValue, forKey: "surf.hat") }
+    }
+
+    static func isOpen(_ i: SurfItem) -> Bool {
+        switch i.open {
+        case .free: return true
+        case .score(let n): return total >= n
+        case .hardClear: return hardCleared
+        case .fever(let n): return fevers >= n
+        case .splash(let n): return splashes >= n
+        case .snap(let n): return snaps >= n
+        }
+    }
+
+    /// 열리는 조건 (잠긴 칸에 짧게)
+    static func need(_ i: SurfItem) -> String {
+        switch i.open {
+        case .free: return ""
+        case .score(let n): return "\(n)점"
+        case .hardClear: return "어려움 완주"
+        case .fever(let n): return "피버 \(min(fevers, n))/\(n)"
+        case .splash(let n): return "풍덩 \(min(splashes, n))/\(n)"
+        case .snap(let n): return "딱! \(min(snaps, n))/\(n)"
+        }
+    }
+
+    /// 한 판 결과를 쌓고 새로 열린 보드·모자를 돌려준다 (누적 점수는 줄지 않는다)
+    @discardableResult
+    static func add(score: Int, fever: Int = 0, splash: Int = 0, snap: Int = 0, hardClear: Bool = false) -> [SurfItem] {
+        let all = boards + hats
+        let before = all.map(isOpen)
+        d.set(total + max(score, 0), forKey: "surf.total")
+        d.set(fevers + max(fever, 0), forKey: "surf.fever")
+        d.set(splashes + max(splash, 0), forKey: "surf.splash")
+        d.set(snaps + max(snap, 0), forKey: "surf.snap")
+        if hardClear { d.set(1, forKey: "surf.hard") }
+        return zip(all, before).filter { !$1 && isOpen($0) }.map(\.0)
+    }
+
+    /// 다음 점수 선물: 이름·남은 점수·막대 비율 (모두 열렸으면 nil)
+    static func nextGift() -> (item: SurfItem, left: Int, ratio: Double)? {
+        let steps = (boards + hats).compactMap { i -> (SurfItem, Int)? in
+            if case .score(let n) = i.open { return (i, n) } else { return nil }
+        }.sorted { $0.1 < $1.1 }
+        guard let next = steps.first(where: { $0.1 > total }) else { return nil }
+        let prev = steps.last(where: { $0.1 <= total })?.1 ?? 0
+        return (next.0, next.1 - total, Double(total - prev) / Double(max(next.1 - prev, 1)))
+    }
+}
+
+/// 보드 위 내 캐릭터 + 모자. 도트 하나 = dot pt. hideHat: 피버 왕관이 뜰 때 모자 숨기기
+struct SurfRider: View {
+    var me: MeChar = MeChar.current ?? MeChar()
+    var board = SurfCloset.board
+    var hat = SurfCloset.hat
+    var hideHat = false
+    var dot: CGFloat = 3
+    // 캔버스: 버퍼 x -2...25, y -8...37
+    private static let ox = 2, oy = 8, cw = 28, ch = 46
+
+    var body: some View {
+        let img = MeMotion.image(me)
+        ZStack(alignment: .topLeading) {
+            if let img {
+                Image(uiImage: img).interpolation(.none).resizable()
+                    .frame(width: dot * img.size.width, height: dot * img.size.height)
+                    .offset(x: dot * CGFloat(Self.ox), y: dot * (CGFloat(Self.oy + MeArt.H) - img.size.height))
+            }
+            Canvas { ctx, _ in
+                let b = SurfCloset.boards[min(max(board, 0), SurfCloset.boards.count - 1)]
+                // 보드: 시안 y → 버퍼 34 + 2(y-11)
+                for (r, row) in b.rows.enumerated() { cells(ctx, row, b.x, 11 + r) { 2 * $0 } y: { MeArt.H + 2 * ($0 - 11) } }
+                for (x, y, c) in b.deco { cells(ctx, String(c), x, y) { 2 * $0 } y: { MeArt.H + 2 * ($0 - 11) } }
+                guard !hideHat else { return }
+                let h = SurfCloset.hats[min(max(hat, 0), SurfCloset.hats.count - 1)]
+                // 모자: 시안 y → 버퍼 2(y-1)
+                for (r, row) in h.rows.enumerated() { cells(ctx, row, h.x, h.y + r) { 2 * $0 } y: { 2 * ($0 - 1) } }
+            }
+        }
+        .frame(width: dot * CGFloat(Self.cw), height: dot * CGFloat(Self.ch), alignment: .topLeading)
+    }
+
+    /// 한 줄 문자를 시안 1칸 = 버퍼 2×2 칸으로 칠한다 ('.' 투명)
+    private func cells(_ ctx: GraphicsContext, _ row: String, _ x0: Int, _ y0: Int, x: (Int) -> Int, y: (Int) -> Int) {
+        for (i, ch) in row.enumerated() {
+            guard let hex = SurfCloset.palette[ch] else { continue }
+            let r = CGRect(x: dot * CGFloat(x(x0 + i) + Self.ox), y: dot * CGFloat(y(y0) + Self.oy), width: dot * 2, height: dot * 2)
+            ctx.fill(Path(r), with: .color(Color(hex: hex)))
+        }
+    }
+}
+
+/// 꾸미기 시트: 미리보기 + 보드·모자 칸(잠긴 칸은 흐리게, 조건 표시) + 다음 선물 막대
+struct SurfClosetSheet: View {
+    @State private var board = SurfCloset.board
+    @State private var hat = SurfCloset.hat
+    @Environment(\.dismiss) private var dismiss
+    private let cols = [GridItem(.adaptive(minimum: 76), spacing: 8)]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    SurfRider(board: board, hat: hat, dot: 5).padding(.top, 8)
+                    gift
+                    section("보드", SurfCloset.boards, board) { board = $0; SurfCloset.board = $0 }
+                    section("모자", SurfCloset.hats, hat) { hat = $0; SurfCloset.hat = $0 }
+                }
+                .padding(16)
+            }
+            .navigationTitle("꾸미기")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("닫기") { dismiss() } } }
+        }
+    }
+
+    @ViewBuilder private var gift: some View {
+        if let g = SurfCloset.nextGift() {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("다음 선물 \(g.item.name) · \(g.left)점 남음").font(.footnote.weight(.semibold))
+                ProgressView(value: g.ratio)
+            }
+        } else {
+            Text("점수 선물 다 받음").font(.footnote.weight(.semibold))
+        }
+    }
+
+    private func section(_ title: String, _ items: [SurfItem], _ sel: Int, _ pick: @escaping (Int) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.headline)
+            LazyVGrid(columns: cols, spacing: 8) {
+                ForEach(items) { i in
+                    let open = SurfCloset.isOpen(i)
+                    Button { if open { pick(i.id) } } label: {
+                        VStack(spacing: 4) {
+                            Text(i.name).font(.caption.weight(.semibold))
+                            Text(open ? " " : SurfCloset.need(i)).font(.caption2).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.secondary.opacity(0.12)))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(sel == i.id ? Color.accentColor : .clear, lineWidth: 2))
+                        .opacity(open ? 1 : 0.4)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!open)
+                }
+            }
+        }
+    }
+}
