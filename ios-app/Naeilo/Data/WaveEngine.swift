@@ -29,6 +29,36 @@ struct WaveEngine {
         var name: String { self == .easy ? "쉬움" : "어려움" }
     }
     enum EndReason: Equatable { case time, hearts }
+    /// 파도 위에 떠 있는 아이템 (한 판에 1~2개, 탄 채 지나가면 먹는다)
+    enum Item: CaseIterable {
+        case lighthouse, turtle, vest, dolphin
+        var icon: String {
+            switch self { case .lighthouse: return "🗼"; case .turtle: return "🐢"; case .vest: return "🛟"; case .dolphin: return "🐬" }
+        }
+        var name: String {
+            switch self {
+            case .lighthouse: return "등대! 안개 걷힘"
+            case .turtle: return "거북이! 느릿느릿"
+            case .vest: return "구명조끼!"
+            case .dolphin: return "돌고래! 다음 점프 2배"
+            }
+        }
+    }
+    /// 판 미션 (한 판에 3개, 하나 깰 때마다 +50)
+    enum Mission: CaseIterable {
+        case bottoms, streak3, flips3, dry, item, fever, score500
+        var title: String {
+            switch self {
+            case .bottoms: return "바닥 3번 잡기"
+            case .streak3: return "3번 연속 벌기"
+            case .flips3: return "공중제비 3번"
+            case .dry: return "풍덩 없이 끝내기"
+            case .item: return "아이템 먹기"
+            case .fever: return "피버 켜기"
+            case .score500: return "500점 넘기"
+            }
+        }
+    }
     /// 2·3·4번(화면·소리·말풍선)이 붙일 이벤트
     enum Event: Equatable {
         /// 탑승. perfect = 바닥 그날 탔다 ('딱')
@@ -41,6 +71,16 @@ struct WaveEngine {
         case calm(day: Int)
         /// 번 채로 내린 게 n 번 이어짐 (2번부터)
         case streak(Int)
+        /// 바닥 3번 연속 '딱' → 피버 켜짐(true) / 꺼짐(false)
+        case fever(Bool)
+        /// 공중에서 톡: n 바퀴째
+        case flip(Int)
+        /// 공중제비 착지. combo = 연속으로 돈 점프 수
+        case land(flips: Int, combo: Int, points: Int)
+        case item(Item)
+        /// 구명조끼가 풍덩을 막음 (하트 그대로)
+        case saved(day: Int)
+        case mission(Mission)
         case end(EndReason)
     }
 
@@ -60,6 +100,9 @@ struct WaveEngine {
     static let maxHearts = 3
     static let perfectBonus = 50       // '딱' 보너스 점수
     static let streakBonus = 20        // 연속 성공 한 번 더할 때마다
+    static let feverNeed = 3, feverTime = 6.0   // 바닥 3연속이면 6초간 점수 2배
+    static let airTime = 0.6, flipBonus = 15    // 번 채로 내리면 0.6초 점프, 그동안 톡마다 한 바퀴
+    static let missionBonus = 50
 
     /// 3년 라인에서 무작위 시작 40거래일 코스. 라인이 짧거나 평평하면 nil
     static func course<G: RandomNumberGenerator>(from line: [(d: String, v: Double)], length: Int = days, using g: inout G) -> Course? {
@@ -112,18 +155,41 @@ struct WaveEngine {
     private(set) var boardedPerfect = false
     private(set) var streak = 0
     private(set) var ended: EndReason?
+    private(set) var items: [Int: Item]   // 거래일 → 떠 있는 아이템
+    let missions: [Mission]
+    private(set) var missionsDone: Set<Mission> = []
+    private(set) var got: [Item] = []
+    private(set) var perfectRun = 0, perfectCount = 0, maxStreak = 0, flipCount = 0, splashCount = 0, feverCount = 0
+    private(set) var feverLeft = 0.0, fogClear = 0.0, slow = 0.0, air = 0.0
+    private(set) var vest = false, dolphin = false
+    private(set) var flips = 0, combo = 0
     /// 탄 채 하루 낙폭이 이보다 크면 풍덩 (코스 변동성 2배, 최소 1.5%)
     let splashDrop: Double
 
-    init(course: Course) {
+    init<G: RandomNumberGenerator>(course: Course, using g: inout G) {
         self.course = course
         splashDrop = max(0.015, 2 * Self.stdev(Self.rets(course.values)))
+        var its: [Int: Item] = [:]
+        if course.count >= 16 {
+            for _ in 0..<Int.random(in: 1...2, using: &g) {
+                let d = Int.random(in: 6...(course.count - 6), using: &g)
+                if its.keys.allSatisfy({ abs($0 - d) >= 5 }) { its[d] = Item.allCases.randomElement(using: &g) }
+            }
+        }
+        items = its
+        missions = Array(Mission.allCases.shuffled(using: &g).prefix(3))
+    }
+    init(course: Course) {
+        var g = SystemRandomNumberGenerator()
+        self.init(course: course, using: &g)
     }
 
     var duration: Double { Double(course.count) * Self.secondsPerDay }
     var timeLeft: Double { max(0, duration - elapsed) }
     var riding: Bool { boardedAt != nil }
     var isOver: Bool { ended != nil }
+    var fever: Bool { feverLeft > 0 }
+    var airborne: Bool { air > 0 }
     var date: String { course.dates[day] }
     var value: Double { course.values[day] }
     /// 탄 뒤 지금까지 수익률 (안 타면 0)
@@ -139,9 +205,25 @@ struct WaveEngine {
 
     mutating func board() -> [Event] {
         guard !isOver, !riding else { return [] }
+        if airborne { return flipTap() }
         boardedAt = day
         boardedPerfect = isBottom(day)
-        return [.board(day: day, perfect: boardedPerfect)]
+        var ev: [Event] = [.board(day: day, perfect: boardedPerfect)]
+        if boardedPerfect {
+            perfectCount += 1; perfectRun += 1
+            if perfectRun >= Self.feverNeed {
+                if !fever { feverCount += 1; ev.append(.fever(true)) }
+                feverLeft = Self.feverTime; perfectRun = 0
+            }
+        } else { perfectRun = 0 }
+        return ev + checkMissions()
+    }
+
+    /// 점프 중 톡: 한 바퀴 더 (점프 끝 0.15초 전까지, 최대 3바퀴)
+    mutating func flipTap() -> [Event] {
+        guard airborne, air > 0.15, flips < 3 else { return [] }
+        flips += 1; flipCount += 1
+        return [.flip(flips)] + checkMissions()
     }
 
     mutating func leave() -> [Event] {
@@ -154,40 +236,96 @@ struct WaveEngine {
             streak += 1
             if streak >= 2 { pts += Self.streakBonus * (streak - 1); ev.append(.streak(streak)) }
         } else { streak = 0 }
+        maxStreak = max(maxStreak, streak)
+        if gain > 0 {
+            if dolphin { pts *= 2; dolphin = false }
+            if fever { pts *= 2 }
+            air = Self.airTime; flips = 0
+        }
         score += pts
         boardedAt = nil; boardedPerfect = false
-        return [.leave(day: day, gain: gain, points: pts)] + ev
+        return [.leave(day: day, gain: gain, points: pts)] + ev + checkMissions()
     }
 
     /// 화면이 매 프레임 부른다. dt 초만큼 시간을 흘리고 넘어간 거래일마다 판정한다
     mutating func tick(_ dt: Double) -> [Event] {
         guard !isOver else { return [] }
-        elapsed += max(0, dt)
+        let real = max(0, dt)
+        elapsed += slow > 0 ? real * 0.5 : real      // 거북이: 시간이 반 속도
+        slow = max(0, slow - real); fogClear = max(0, fogClear - real)
         var ev: [Event] = []
+        if feverLeft > 0 { feverLeft -= real; if feverLeft <= 0 { feverLeft = 0; ev.append(.fever(false)) } }
+        if air > 0 { air -= real; if air <= 0 { air = 0; ev += land() } }
         let target = min(course.count - 1, Int(elapsed / Self.secondsPerDay))
         while day < target && !isOver {
             day += 1
             let r = course.values[day] / course.values[day - 1] - 1
+            if riding, let it = items[day] { items[day] = nil; ev += use(it) }
             if riding && r <= -splashDrop {
                 // 탄 채 휘말리면 그날 값으로 강제로 내려지고 하트 하나를 잃는다
                 let b = boardedAt!
                 score += Int(((value / course.values[b] - 1) * 10000).rounded())
-                boardedAt = nil; boardedPerfect = false; streak = 0
-                hearts -= 1
+                boardedAt = nil; boardedPerfect = false; streak = 0; perfectRun = 0
+                splashCount += 1
+                if !vest { hearts -= 1 }
                 ev.append(.splash(day: day, drop: r, hearts: hearts))
+                if vest { vest = false; ev.append(.saved(day: day)) }
                 if hearts <= 0 { ev += finish(.hearts) }
             } else if abs(r) < 0.0015 {
                 ev.append(.calm(day: day))
             }
         }
+        if !isOver { ev += checkMissions() }
         if !isOver && elapsed >= duration { ev += finish(.time) }
+        return ev
+    }
+
+    private mutating func use(_ it: Item) -> [Event] {
+        switch it {
+        case .lighthouse: fogClear = 5
+        case .turtle: slow = 3
+        case .vest: vest = true
+        case .dolphin: dolphin = true
+        }
+        got.append(it)
+        return [.item(it)]
+    }
+
+    /// 점프 끝. 한 바퀴라도 돌았으면 바퀴 × 콤보 점수, 안 돌았으면 콤보가 끊긴다
+    private mutating func land() -> [Event] {
+        guard flips > 0 else { combo = 0; return [] }
+        combo += 1
+        let pts = Self.flipBonus * flips * combo * (fever ? 2 : 1)
+        score += pts
+        return [.land(flips: flips, combo: combo, points: pts)]
+    }
+
+    func met(_ m: Mission) -> Bool {
+        switch m {
+        case .bottoms: return perfectCount >= 3
+        case .streak3: return maxStreak >= 3
+        case .flips3: return flipCount >= 3
+        case .dry: return ended == .time && splashCount == 0
+        case .item: return !got.isEmpty
+        case .fever: return feverCount > 0
+        case .score500: return score >= 500
+        }
+    }
+
+    private mutating func checkMissions() -> [Event] {
+        var ev: [Event] = []
+        for m in missions where !missionsDone.contains(m) && met(m) {
+            missionsDone.insert(m); score += Self.missionBonus; ev.append(.mission(m))
+        }
         return ev
     }
 
     private mutating func finish(_ why: EndReason) -> [Event] {
         var ev: [Event] = []
         if riding && why == .time { ev += leave() }   // 시간 끝: 타고 있던 건 그날 값으로 내린다
+        if air > 0 { air = 0; ev += land() }
         ended = why
+        ev += checkMissions()
         return ev + [.end(why)]
     }
 }

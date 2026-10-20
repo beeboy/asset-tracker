@@ -18,6 +18,8 @@ struct WavePlayView: View {
     @State private var run = 0
     @State private var board = SurfCloset.board
     @State private var hat = SurfCloset.hat
+    /// 3년 라인은 한 번만 만든다 (바로 다시 할 때 멈칫 없게)
+    @State private var line: [(d: String, v: Double)]?
 
     var body: some View {
         let me = m.me ?? MeChar.current ?? MeChar()
@@ -36,7 +38,7 @@ struct WavePlayView: View {
             }
             if let result { WaveResultPopup(result: result, again: again, close: { dismiss() }) }
         }
-        .background(WaveDraw.sky(g?.streak ?? 0).ignoresSafeArea())
+        .background(WaveDraw.sky(g?.fever ?? false).ignoresSafeArea())
         .onAppear { WaveFeedback.shared.prepare() }
         .task(id: run) { await loop() }
     }
@@ -64,7 +66,20 @@ struct WavePlayView: View {
                 ProgressView(value: e.timeLeft, total: e.duration).tint(Theme.teal)
                 Text("\(Int(e.timeLeft.rounded(.up)))초").appFont(12, .bold).monospacedDigit()
                 if e.streak >= 2 { Text("\(e.streak)연속").appFont(12, .bold).foregroundStyle(Theme.orange) }
+                if e.fever { Text("피버 ×2").appFont(12, .heavy).foregroundStyle(Color(hex: 0xD9480F)) }
+                if e.dolphin { Text("🐬") }
+                if e.vest { Text("🛟") }
             }
+            HStack(spacing: 6) {
+                ForEach(e.missions, id: \.self) { x in
+                    let done = e.missionsDone.contains(x)
+                    Text((done ? "✓ " : "") + x.title).appFont(11, .bold)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(.white.opacity(done ? 0.9 : 0.55), in: Capsule())
+                        .opacity(done ? 1 : 0.8)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             Spacer()
             if e.elapsed < 6 && !e.isOver {
                 Text(e.riding ? "꼭대기에서 톡! 내려요" : "바닥에서 톡! 타요").appFont(13, .bold)
@@ -81,7 +96,9 @@ struct WavePlayView: View {
 
     private func loop() async {
         if g == nil {
-            guard let c = course ?? m.waveCourse() else { return }
+            let l = line ?? m.waveLine
+            line = l
+            guard let c = course ?? WaveEngine.course(from: l) else { return }
             g = WaveEngine(course: c)
         }
         var last = Date()
@@ -116,21 +133,22 @@ struct WavePlayView: View {
                 rides.append(.init(from: boardDay, to: d, gain: v[d] / v[boardDay] - 1, splash: true))
             case .streak(let n): if n == 3 { WaveFeedback.shared.crown() }
             case .end(let why): finish(e, why)
-            case .calm: break
+            case .calm, .fever, .flip, .land, .item, .saved, .mission: break
             }
             fx.react(x)
         }
     }
 
     private func finish(_ e: WaveEngine, _ why: WaveEngine.EndReason) {
-        let r = WaveResult(course: e.course, score: e.score, hearts: e.hearts, rides: rides, why: why)
+        var r = WaveResult(course: e.course, score: e.score, hearts: e.hearts, rides: rides, why: why)
+        r.missions = e.missions.map { ($0.title, e.missionsDone.contains($0)) }
         result = r
         onFinish(r)
     }
 
     private func again() {
         result = nil; rides = []; fx = WaveFX()
-        if let c = m.waveCourse() ?? g?.course { g = WaveEngine(course: c) }
+        if let c = line.flatMap({ WaveEngine.course(from: $0) }) ?? g?.course { g = WaveEngine(course: c) }
         run += 1
     }
 }
@@ -144,6 +162,8 @@ struct WaveResult {
     let hearts: Int
     let rides: [Ride]
     let why: WaveEngine.EndReason
+    /// 판 미션 (이름, 깼나)
+    var missions: [(title: String, done: Bool)] = []
 
     /// 별: 점수 1점 이상 1개 · 300점 2개 · 600점 3개. 하트를 다 잃으면 1개까지
     var stars: Int {
@@ -174,6 +194,8 @@ struct WaveFX {
     var dots: [Dot] = []
     var pop: Pop?
     var flip = 0.0, dizzy = 0.0, boarded = 0.0, calm = 0.0
+    /// 공중제비 각도: turn(목표)을 빠르게 따라간다. 톡마다 한 바퀴씩 늘어난다
+    var angle = 0.0, turn = 0.0
     var rising = false
     private var sparkT = 0.0, sprayT = 0.0
 
@@ -187,6 +209,7 @@ struct WaveFX {
     mutating func step(_ dt: Double, riding: Bool, rising: Bool) {
         flip = max(0, flip - dt); dizzy = max(0, dizzy - dt); boarded = max(0, boarded - dt); calm = max(0, calm - dt)
         self.rising = rising
+        if flip > 0 { angle += (turn - angle) * min(1, dt * 14) } else { angle = 0; turn = 0 }
         if var p = pop { p.life -= dt; pop = p.life > 0 ? p : nil }
         for i in dots.indices {
             dots[i].x += dots[i].vx * dt; dots[i].y += dots[i].vy * dt
@@ -206,13 +229,22 @@ struct WaveFX {
             boarded = 0.35; add(.spray, 6)
             if perfect { pop = Pop(text: "딱!", life: 0.9, color: Color(hex: 0xF06A4A)) }
         case .leave(_, let gain, let pts):
-            if gain > 0 { flip = Self.flipTime; add(.coin, 5) }
+            if gain > 0 { flip = Self.flipTime; angle = 0; turn = 2 * .pi; add(.coin, 5) }
             pop = Pop(text: pts >= 0 ? "+\(pts)" : "\(pts)", life: 0.9, color: pts >= 0 ? Color(hex: 0xE0A800) : Color(hex: 0x1B5E96))
         case .splash:
             dizzy = Self.dizzyTime; add(.spray, 12)
             pop = Pop(text: "풍덩!", life: 0.9, color: Color(hex: 0x1B5E96))
         case .calm: calm = 1.5
         case .streak(let n): pop = Pop(text: "\(n)연속!", life: 0.9, color: Color(hex: 0xE8862A))
+        case .fever(let on):
+            if on { pop = Pop(text: "피버! ×2", life: 1.2, color: Color(hex: 0xD9480F)); add(.spark, 10) }
+        case .flip: turn += 2 * .pi; add(.spark, 3)
+        case .land(let n, let combo, let pts):
+            pop = Pop(text: (combo >= 2 ? "콤보\(combo) " : "\(n)바퀴 ") + "+\(pts)", life: 0.9, color: Color(hex: 0xE8862A))
+            add(.spray, 6)
+        case .item(let it): pop = Pop(text: it.icon + " " + it.name, life: 1.2, color: Color(hex: 0x0F7B8A)); add(.spark, 8)
+        case .saved: pop = Pop(text: "🛟 살았다!", life: 1.0, color: Color(hex: 0x0F7B8A))
+        case .mission(let x): pop = Pop(text: "✓ " + x.title + " +50", life: 1.2, color: Color(hex: 0x2F9E44)); add(.coin, 4)
         case .end: break
         }
     }
@@ -244,8 +276,8 @@ enum WaveDraw {
         func y(_ v: Double) -> CGFloat { bot - CGFloat((v - lo) / max(hi - lo, 1)) * (bot - top) }
     }
 
-    static func sky(_ streak: Int) -> LinearGradient {
-        LinearGradient(colors: streak >= 3 ? [Color(hex: 0xFFB37A), Color(hex: 0xFFE7C2)] : [Color(hex: 0xA9DDF3), Color(hex: 0xEAF7FB)],
+    static func sky(_ sunset: Bool) -> LinearGradient {
+        LinearGradient(colors: sunset ? [Color(hex: 0xFFB37A), Color(hex: 0xFFE7C2)] : [Color(hex: 0xA9DDF3), Color(hex: 0xEAF7FB)],
                        startPoint: .top, endPoint: .bottom)
     }
 
@@ -265,7 +297,7 @@ enum WaveDraw {
         let v = e.course.values, n = v.count
         let g = Geo(w: size.width, h: size.height, dx: size.width / 9, rx: size.width * 0.3,
                     top: size.height * 0.34, bot: size.height * 0.8, lo: v.min() ?? 0, hi: v.max() ?? 1, p: pos(e))
-        let sunset = e.streak >= 3
+        let sunset = e.fever
 
         // 파도: 보이는 거래일만
         let i0 = max(0, Int(g.p - Double(g.rx / g.dx)) - 1), i1 = min(n - 1, Int(g.p + Double((g.w - g.rx) / g.dx)) + 2)
@@ -295,8 +327,14 @@ enum WaveDraw {
             ctx.stroke(ride, with: .color(Color(hex: 0xFFD84D)), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
         }
 
-        // 안개: 쉬움은 5거래일, 어려움은 2.5거래일 앞까지 보인다
-        let fog = g.rx + CGFloat(e.course.level == .easy ? 5 : 2.5) * g.dx
+        // 아이템: 파도 위에 둥실 (안개 아래라 가까이 와야 보인다)
+        for (d, it) in e.items where d >= i0 && d <= i1 {
+            let c = CGPoint(x: g.x(Double(d)), y: g.y(v[d]) - 24 + CGFloat(sin(e.elapsed * 3 + Double(d))) * 3)
+            ctx.draw(Text(it.icon).font(.system(size: 24)), at: c)
+        }
+
+        // 안개: 쉬움은 5거래일, 어려움은 2.5거래일 앞까지 보인다. 등대를 먹으면 잠시 걷힌다
+        let fog = g.rx + CGFloat(e.fogClear > 0 ? 12 : e.course.level == .easy ? 5 : 2.5) * g.dx
         ctx.fill(Path(CGRect(x: fog - g.dx, y: 0, width: g.w - fog + g.dx + 10, height: g.h)),
                  with: .linearGradient(Gradient(colors: [.white.opacity(0), .white.opacity(0.95)]),
                                        startPoint: CGPoint(x: fog - g.dx, y: 0), endPoint: CGPoint(x: fog + g.dx * 0.3, y: 0)))
@@ -340,7 +378,7 @@ enum WaveDraw {
         if fx.flip > 0 {
             let k = 1 - fx.flip / WaveFX.flipTime
             c.translateBy(x: 0, y: -CGFloat(sin(k * .pi)) * 34 - 17 * dot)
-            c.rotate(by: .radians(k * 2 * .pi))
+            c.rotate(by: .radians(fx.angle))
             c.translateBy(x: 0, y: 17 * dot)
         } else {
             let y1 = g.y(value(e, g.p - 0.15)), y2 = g.y(value(e, g.p + 0.15))

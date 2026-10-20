@@ -31,6 +31,21 @@ struct WaveResultPopup: View {
                     Label("내린 곳", systemImage: "circle")
                 }
                 .appFont(11).foregroundStyle(Theme.muted)
+                if !result.missions.isEmpty {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(result.missions.indices, id: \.self) { i in
+                            let x = result.missions[i]
+                            HStack(spacing: 6) {
+                                Image(systemName: x.done ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(x.done ? Theme.teal : Theme.dash)
+                                Text(x.title).foregroundStyle(x.done ? Theme.ink : Theme.muted)
+                                Spacer()
+                                if x.done { Text("+50").foregroundStyle(Theme.teal).monospacedDigit() }
+                            }
+                            .appFont(12, .bold)
+                        }
+                    }
+                }
                 Text(result.dateLine).appFont(13, .bold).foregroundStyle(Theme.ink).multilineTextAlignment(.center)
                 HStack(spacing: 8) {
                     Button(action: close) {
@@ -39,7 +54,7 @@ struct WaveResultPopup: View {
                             .background(Theme.line, in: RoundedRectangle(cornerRadius: 12))
                     }
                     Button(action: again) {
-                        Text("한 판 더").appFont(15, .bold).foregroundStyle(.white)
+                        Text("바로 다시").appFont(15, .bold).foregroundStyle(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
                     }

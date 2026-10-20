@@ -33,8 +33,8 @@ final class WaveFeedback {
 
     func play(_ e: WaveEngine.Event) {
         switch e {
-        case .board:
-            buzz { light.impactOccurred() }; sound(.splash)
+        case .board(_, let perfect):
+            buzz { perfect ? rigid.impactOccurred() : light.impactOccurred() }; sound(.splash)
         case .leave(_, _, let points):
             buzz { rigid.impactOccurred() }
             if points > 0 { sound(.coin) }
@@ -44,6 +44,14 @@ final class WaveFeedback {
             sound(.yawn)
         case .streak:
             crown()
+        case .fever(let on):
+            if on { crown() }
+        case .flip:
+            buzz { light.impactOccurred(intensity: 0.7) }
+        case .land, .item, .mission:
+            buzz { note.notificationOccurred(.success) }; sound(.coin)
+        case .saved:
+            buzz { rigid.impactOccurred() }
         case .end:
             break
         }
