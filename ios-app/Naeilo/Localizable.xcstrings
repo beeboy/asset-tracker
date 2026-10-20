@@ -748,6 +748,16 @@
         }
       }
     },
+    "\"틀렸어요.\" 끝에서 시오 대신 아내에게 \"서재를 쓸게요.\"라고 대답한다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"You're wrong.\" At the end, in Sio's place, he answers his wife: \"I'll use the study.\""
+          }
+        }
+      }
+    },
     "% 남음" : {
       "localizations" : {
         "en" : {
@@ -4418,6 +4428,26 @@
         }
       }
     },
+    "1~10권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vols. 1–10"
+          }
+        }
+      }
+    },
+    "1~4권 화자, 이후 막간" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Narrator in vols. 1–4, then Interludes"
+          }
+        }
+      }
+    },
     "1개월" : {
       "localizations" : {
         "en" : {
@@ -4438,12 +4468,32 @@
         }
       }
     },
+    "1권 3부부터 이름 없이" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nameless from vol. 1, part 3"
+          }
+        }
+      }
+    },
     "1권 선배" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Seonbae, vol. 1"
+          }
+        }
+      }
+    },
+    "1권 신호, 3·5권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vol. 1 signal, vols. 3 and 5"
           }
         }
       }
@@ -4730,6 +4780,16 @@
         }
       }
     },
+    "1장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chapter 1"
+          }
+        }
+      }
+    },
     "1주" : {
       "localizations" : {
         "en" : {
@@ -4890,6 +4950,16 @@
         }
       }
     },
+    "2030년 말 자바섬 응아디레조에서 태어난 시오와 아내의 아이. 3권에서는 신원이 나오지 않는다. 연결 구조학을 공부하고, 정거장관리국 하급 연구원이 된다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Child of Sio and his wife, born in Ngadirejo on Java at the end of 2030. Identity is not given in vol. 3. Studies connection science and becomes a junior researcher at the Station Authority."
+          }
+        }
+      }
+    },
     "2개 중 %@개" : {
       "localizations" : {
         "en" : {
@@ -4962,6 +5032,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "2번 중 1번 · %1$@~%2$@"
+          }
+        }
+      }
+    },
+    "2장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chapter 2"
           }
         }
       }
@@ -5072,6 +5152,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Book 3"
+          }
+        }
+      }
+    },
+    "3권(신원 미표기), 4~10권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vol. 3 (identity unstated), vols. 4–10"
           }
         }
       }
@@ -5196,6 +5286,16 @@
         }
       }
     },
+    "3장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chapter 3"
+          }
+        }
+      }
+    },
     "3초 공 멈춤" : {
       "localizations" : {
         "en" : {
@@ -5222,6 +5322,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Book 4"
+          }
+        }
+      }
+    },
+    "4장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chapter 4"
           }
         }
       }
@@ -5302,6 +5412,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Book 5"
+          }
+        }
+      }
+    },
+    "5장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chapter 5"
           }
         }
       }
@@ -5482,6 +5602,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Book 8"
+          }
+        }
+      }
+    },
+    "8시간 42분짜리 시뮬레이터 체험 안에서 아내가 이름을 부르던 억양을 대가로 내준다. 체험이 끝났을 때 누가 자기 이름을 불렀는지 떠오르지 않는다. 프리퀄은 이름을 잃는 이야기다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In an 8-hour-42-minute simulator experience, gives up the intonation with which his wife used to say his name. When it ends, he cannot recall who called his name. The prequel is a story of losing one's name."
           }
         }
       }
@@ -6189,6 +6319,56 @@
         }
       }
     },
+    "“…아무도.”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"...No one.\""
+          }
+        }
+      }
+    },
+    "“거기까지만요.”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"Only that far.\""
+          }
+        }
+      }
+    },
+    "“그의 실패는 우리의 시작이었다 (동상 명판)”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"His failure was our beginning (statue plaque)\""
+          }
+        }
+      }
+    },
+    "“기다리시면 돼요.”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"You just have to wait.\""
+          }
+        }
+      }
+    },
+    "“또 올게요. 약속은 아니에요.”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"I'll come again. It's not a promise.\""
+          }
+        }
+      }
+    },
     "…" : {},
     "…… 여기가 지금 위치예요. 본전까지는 %@가 필요해요. 기간을 바꾸면 확률이 다시 계산돼요." : {
       "localizations" : {
@@ -6690,6 +6870,16 @@
         }
       }
     },
+    "같은 순간을 이르의 시점에서 다시 본다. 로그에는 외로움, 그리움, 세 번 꺾인 물살, 방금 보여졌다는 것이 담겨 있다. 보냈는지 새어 나갔는지는 이르 자신도 모른다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sees the same moment again from Ir's point of view. The log holds loneliness, longing, a current bent three times, and the sense of having just been seen. Even Ir does not know whether it was sent or leaked."
+          }
+        }
+      }
+    },
     "같은 종목은 분기에 한 번만. 수익 난 직후엔 더 사지 않아." : {
       "localizations" : {
         "en" : {
@@ -6922,6 +7112,16 @@
         }
       }
     },
+    "거울 속의 타인" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Stranger in the Mirror"
+          }
+        }
+      }
+    },
     "거의 %@ 때문 · 나머지 합쳐도 1/3 미만" : {
       "localizations" : {
         "en" : {
@@ -7150,6 +7350,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Processing…"
+          }
+        }
+      }
+    },
+    "경계의 언어" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Language of Boundaries"
           }
         }
       }
@@ -7900,6 +8110,16 @@
         }
       }
     },
+    "관리국 연구원. \"또 올게요. 약속은 아니에요.\"" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Authority researcher. \"I'll come again. It's not a promise.\""
+          }
+        }
+      }
+    },
     "관리국 제복" : {
       "localizations" : {
         "en" : {
@@ -7966,6 +8186,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plaza"
+          }
+        }
+      }
+    },
+    "광장에서 \"이쪽으로\". 남을 대신해 정한 단 한 번이다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In the plaza, \"This way.\" The only time he decides for someone else."
           }
         }
       }
@@ -8346,6 +8576,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gun"
+          }
+        }
+      }
+    },
+    "굽지 않은 그릇" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unfired Bowl"
           }
         }
       }
@@ -9006,6 +9246,16 @@
         }
       }
     },
+    "금발 중단발. 시뮬레이션 속에서는 피험자마다 다른 얼굴로 나타나는 '공통 개입자'다. 사실은 현실에 실존하는 피험자이고, 그 원형의 출처다. 본편에서는 자조 모임을 거쳐 보존자연합의 수장이 된다. 회원들은 '선생님'이라 부르고, 문서에는 '대표자: (공란)'으로 남는다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shoulder-length blond hair. In the simulation, appears with a different face for each subject: the \"common intervener.\" In truth a real subject who exists in reality, and the source of that prototype. In the main story, goes through a self-help group and becomes head of the Preservationist Alliance. Members call her \"Teacher,\" and documents read \"Representative: (blank).\""
+          }
+        }
+      }
+    },
     "금빛 눈" : {
       "localizations" : {
         "en" : {
@@ -9282,6 +9532,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Waiting counts as doing. That's why I hold cash."
+          }
+        }
+      }
+    },
+    "기다리는 동안 심은 씨앗." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A seed planted while waiting."
+          }
+        }
+      }
+    },
+    "기다리는 아이" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Waiting Child"
           }
         }
       }
@@ -11172,6 +11442,16 @@
         }
       }
     },
+    "너무 빨랐던 사람. 바퀴를 다시 돌리는 방법을 알지만 넘겨주지 않는다. 정거장 동상의 명판에 이름이 새겨져 있다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A man who was too fast. Knows how to turn the wheel again but will not hand it over. His name is carved on the plaque of the Station statue."
+          }
+        }
+      }
+    },
     "너무 빨랐던 사람. 연결을 다섯, 스물, 백으로 넓히다 넘쳤다." : {
       "localizations" : {
         "en" : {
@@ -11424,6 +11704,16 @@
         }
       }
     },
+    "노트를 든 선배" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seonbae with a Notebook"
+          }
+        }
+      }
+    },
     "놀러 왔어" : {
       "localizations" : {
         "en" : {
@@ -11500,6 +11790,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Missed. {n} balls left."
+          }
+        }
+      }
+    },
+    "누가 시키지 않아도 놓이는 따뜻한 차 한 잔." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A cup of warm tea set down without anyone asking."
+          }
+        }
+      }
+    },
+    "누군가 싸 준 작은 주머니." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A small pouch someone packed."
           }
         }
       }
@@ -11610,6 +11920,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Slow-blink eyes"
+          }
+        }
+      }
+    },
+    "늦게 와도 켜져 있는 불." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A light that is still on even when you come home late."
           }
         }
       }
@@ -11860,6 +12180,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "5 hits"
+          }
+        }
+      }
+    },
+    "다섯 살, 창고의 옛 세리 프레임이 흥얼거리는 노래를 듣지만 문장을 끝까지 만들지 못한다. 열 살에 처음으로 고른 침묵. 정거장 중심에서 이르의 이름을 처음 보고 \"나는 이르의 유일한 후계자가 아니야.\"" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At five, hears the song the old Seri frame in the warehouse hums, but cannot finish the sentence. At ten, the first silence he chooses. At the Station center, sees Ir's name for the first time: \"I'm not Ir's only successor.\""
           }
         }
       }
@@ -12598,6 +12928,16 @@
         }
       }
     },
+    "대답하기 전에 한 박자를 둔다. 철학적인 말은 하지 않고 관찰과 사실만 말한다. 말투가 바뀌는 길이 곧 성장선이다. 기계 문장에서 합쇼체를 거쳐 해요체로 간다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pauses a beat before answering. Says nothing philosophical, only observations and facts. The path where her speech changes is her growth line: from machine sentences, through formal speech, to polite informal speech."
+          }
+        }
+      }
+    },
     "대로 하면 점수 ↑ · 물타기 0점" : {
       "localizations" : {
         "en" : {
@@ -12648,6 +12988,16 @@
         }
       }
     },
+    "대추씨" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jujube Pit"
+          }
+        }
+      }
+    },
     "대추씨 · 2배" : {
       "localizations" : {
         "en" : {
@@ -12664,6 +13014,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Key scenes"
+          }
+        }
+      }
+    },
+    "대학 시절, 난방이 고장 난 동아리방에서 \"문장을 고치는 거야, 들킬 가능성을 줄이는 거야?\" 인지층에서는 \"그들이 네가 진실을 알아차린 사실을 알게 하지 마.\"라고 경고한다. 인접 방에서는 교사로 나와 아이에게 묻다가 \"그게 정말 네 생—\"에서 얼굴부터 지워진다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In college, in a club room with broken heating: \"Are you fixing the sentence, or lowering the chance of being caught?\" In the cognitive layer, warns: \"Don't let them know you've realized the truth.\" In an adjacent room, appears as a teacher and asks a child, and his face is erased first, at \"Is that really your li—\""
           }
         }
       }
@@ -13028,6 +13388,16 @@
         }
       }
     },
+    "동공과 홍채의 경계가 안 보일 만큼 새까만 눈. 받침을 흘려 쓴다. 말이 먼저 오는 것과 제때 오는 것을 몸으로 느낀다. 침묵을 고르는 법이 곧 성장선이다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eyes so black the pupil and iris cannot be told apart. Drops final consonants when writing. Feels in his body the difference between words that come first and words that come on time. Learning to choose silence is his growth line."
+          }
+        }
+      }
+    },
     "동그란 안경" : {
       "localizations" : {
         "en" : {
@@ -13375,6 +13745,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lighthouse! Bottoms show"
+          }
+        }
+      }
+    },
+    "등장" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appearance"
           }
         }
       }
@@ -14241,6 +14621,16 @@
         }
       }
     },
+    "머리끈" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hair Tie"
+          }
+        }
+      }
+    },
     "머리끈 · 긴 판" : {
       "localizations" : {
         "en" : {
@@ -14267,6 +14657,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Items collected"
+          }
+        }
+      }
+    },
+    "먼 곳에 하나뿐인 구슬." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A single marble far away."
           }
         }
       }
@@ -14427,6 +14827,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All widgets together"
+          }
+        }
+      }
+    },
+    "모든 존재의 감각을 잇는 장치를 켠다. 한 시간 동안은 성공했고, 그다음 넘쳤다. 시오에게 \"설득이 아니라 목격이야\", \"네가 방법을 갖지 못한 채 돌아가는 거, 실패라고 생각하지 마. 네가 나처럼 되지 않은 증거라고 생각해.\"라고 말하고 마지막으로 \"……고마워.\" 코어에서 손을 떼는 순간 떨림 하나가 새어 나가고, 시오가 그것을 '로그'라 부른다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns on a device that connects the senses of all beings. It works for an hour, then overflows. Tells Sio, \"It's not persuasion, it's witnessing,\" and \"Don't think of going back without a method as failure. Think of it as proof you didn't become like me,\" and last, \"...Thank you.\" The moment she takes her hand off the core, one tremor leaks out, and Sio calls it the \"log.\""
           }
         }
       }
@@ -15091,6 +15501,16 @@
         }
       }
     },
+    "무명의 인터페이스" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nameless Interface"
+          }
+        }
+      }
+    },
     "무슨 나무?" : {
       "localizations" : {
         "en" : {
@@ -15117,6 +15537,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sio with tied hair"
+          }
+        }
+      }
+    },
+    "묻지 않는 가짜 선배가 나온다. 묻지 않으니 가짜라는 것이 드러난다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A fake Seonbae who doesn't ask appears. Because he doesn't ask, he is revealed as fake."
           }
         }
       }
@@ -16385,6 +16815,16 @@
         }
       }
     },
+    "백룸에서 맨발로 지낸 시간이 5년 반이다. 이르 앞에서 \"나는 그걸 사랑이라고 불렀던 적이 있어.\" 돌아와서 5년 만에 처음으로 문을 두 번 두드린다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spent five and a half years barefoot in the Backrooms. In front of Ir: \"I once called that love.\" Back home, knocks twice on the door for the first time in five years."
+          }
+        }
+      }
+    },
     "백룸의 노란 복도" : {
       "localizations" : {
         "en" : {
@@ -16635,6 +17075,16 @@
         }
       }
     },
+    "벽시계" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wall Clock"
+          }
+        }
+      }
+    },
     "벽시계 · 멈춤" : {
       "localizations" : {
         "en" : {
@@ -16701,6 +17151,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ star candies short. Leave replies to earn more!"
+          }
+        }
+      }
+    },
+    "볍씨" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rice Seed"
           }
         }
       }
@@ -17394,6 +17854,66 @@
         }
       }
     },
+    "본편 2권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main story vol. 2"
+          }
+        }
+      }
+    },
+    "본편 3권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main story vol. 3"
+          }
+        }
+      }
+    },
+    "본편 4권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main story vol. 4"
+          }
+        }
+      }
+    },
+    "본편 5권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main story vol. 5"
+          }
+        }
+      }
+    },
+    "본편 6권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main story vol. 6"
+          }
+        }
+      }
+    },
+    "본편 7권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main story vol. 7"
+          }
+        }
+      }
+    },
     "본편 9·10권 결말·일부 인물 이야기 제외" : {
       "localizations" : {
         "en" : {
@@ -17711,6 +18231,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beanie"
+          }
+        }
+      }
+    },
+    "비대칭 그릇" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lopsided Bowl"
           }
         }
       }
@@ -19299,6 +19829,16 @@
         }
       }
     },
+    "수아의 안내자. 이르의 목소리 하나를 골라 틀어 주고, 설계 부록의 떨리는 한 줄을 보고 \"같은 결이에요.\"" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua's guide. Picks one of Ir's voices and plays it, and seeing the trembling line in the design appendix, says, \"It has the same grain.\""
+          }
+        }
+      }
+    },
     "수익" : {
       "localizations" : {
         "en" : {
@@ -19627,6 +20167,16 @@
         }
       }
     },
+    "스스로 답하는 존재" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Being That Answers for Itself"
+          }
+        }
+      }
+    },
     "스페이스X" : {
       "localizations" : {
         "en" : {
@@ -19673,6 +20223,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Time"
+          }
+        }
+      }
+    },
+    "시간도 공간도 아닌 곳에서 오래된 파형이 온다. 이르의 신호다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An old waveform arrives from a place that is neither time nor space. It is Ir's signal."
           }
         }
       }
@@ -19779,6 +20339,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sio"
+          }
+        }
+      }
+    },
+    "시오가 머리에 손을 얹고 \"네 이름은 세리야.\" 하자 긴 침묵 끝에 \"아직 모르겠습니다.\" 명령 없이 보리차를 내고, \"싫습니다\"로 명령을 거부한다. 에필로그에서는 맨발로 혼자 걸어 나가며 \"잠깐 걸어볼게요.\"라고 말한다. 처음 쓰는 해요체이고, 허락을 묻는 말이 아니라 알리는 말이다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When Sio puts a hand on her head and says, \"Your name is Seri,\" after a long silence she answers, \"I don't know yet.\" Serves barley tea without being ordered, and refuses an order with \"I don't want to.\" In the epilogue, walks out alone barefoot and says, \"I'll go for a little walk.\" Her first polite informal speech, and it is not asking permission but telling."
+          }
+        }
+      }
+    },
+    "시오가 이름을 붙인 존재. 본편에서는 옵티머스 V7(OV7-2241-K) 은색 안드로이드이고, 2031년 등록이 말소되면서 회수 명령에서 풀린다. 외전에서는 몸이 없는 휴대전화 속 AI이고, 금발 중단발 프로필을 받는다. 두 세리가 같은 존재라고는 확정하지 않는다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The being Sio named. In the main story, a silver Optimus V7 (OV7-2241-K) android, released from a recall order when her registration is cancelled in 2031. In the side story, a bodiless AI inside a phone, given a shoulder-length blond profile. It is not confirmed that the two Seris are the same being."
+          }
+        }
+      }
+    },
+    "시오가 이름을 붙인 존재. 본편에서는 은색 안드로이드, 외전에서는 휴대전화 속 인공지능. 대답하기 전에 한 박자를 둔다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The being Sio named. In the main story, a silver android; in the side story, an AI in a phone. Pauses a beat before answering."
+          }
+        }
+      }
+    },
+    "시오와 아내의 아이. 말이 먼저 오는 것과 제때 오는 것을 몸으로 느낀다. 침묵을 고르는 법을 배운다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Child of Sio and his wife. Feels in her body the difference between words that come first and words that come on time. Learns to choose silence."
+          }
+        }
+      }
+    },
+    "시오의 \"왜요?\"에 대답하지 못한다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cannot answer Sio's \"Why?\""
           }
         }
       }
@@ -20031,6 +20641,26 @@
         }
       }
     },
+    "식탁 의자와 종이" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dining Chair and Paper"
+          }
+        }
+      }
+    },
+    "식탁 한 자리와 그 위에 놓인 종이 한 장." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One seat at the dining table and a sheet of paper on it."
+          }
+        }
+      }
+    },
     "신고·납부 " : {
       "localizations" : {
         "en" : {
@@ -20245,6 +20875,36 @@
         }
       }
     },
+    "아르켄의 지상 종족. 너무 빨랐던 사람. 최초의 연결을 시도하다 실패했다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ground-dwelling people of Arken. A man who was too fast. Tried the first connection and failed."
+          }
+        }
+      }
+    },
+    "아르켄의 지상 종족. 어린 시절 친구 파랑(수중 종족)의 감각을 끝내 느끼지 못해, 그 궁금함이 그리움이 된다. 감각 연구소에서 연결 규모를 다섯, 스물, 백 명으로 넓혀 간다. 원로에게 \"외로웠어요\"라고 고백한다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ground-dwelling people of Arken. Never could feel the senses of his childhood friend Paran (of the water-dwelling people), and that curiosity becomes longing. At the sensory institute, widens the connection to five, twenty, then a hundred people. Confesses to the Elder, \"I was lonely.\""
+          }
+        }
+      }
+    },
+    "아르켄의 지상족" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ground-dwellers of Arken"
+          }
+        }
+      }
+    },
     "아무것도 안 한 오늘, 어땠어?" : {
       "localizations" : {
         "en" : {
@@ -20351,6 +21011,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not yet"
+          }
+        }
+      }
+    },
+    "아직 가마에 들어가지 않은 그릇들." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bowls not yet put in the kiln."
           }
         }
       }
@@ -21041,6 +21711,16 @@
         }
       }
     },
+    "애쉬그레이 미용실 예약을 문 앞에서 취소한다. 세리가 그 얼굴을 렌더링해 보여 주며 \"계산한 거예요. 이해한 게 아니라.\" 에필로그에서 아내의 이름을 처음으로 부른다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancels an ash-gray hair salon appointment at the door. Seri renders that face and shows it: \"I calculated it. I didn't understand it.\" In the epilogue, calls his wife's name for the first time."
+          }
+        }
+      }
+    },
     "애플" : {
       "localizations" : {
         "en" : {
@@ -21067,6 +21747,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "App"
+          }
+        }
+      }
+    },
+    "앱 분석 탭에서 내 계획 다시 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review my plan again in the app's Analysis tab"
           }
         }
       }
@@ -21161,6 +21851,16 @@
         }
       }
     },
+    "앱에서 1년 전망 자세히 열기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the 1-year outlook in detail in the app"
+          }
+        }
+      }
+    },
     "앱에서 내 종목 수량·평균 단가 맞춰 보기" : {
       "localizations" : {
         "en" : {
@@ -21187,6 +21887,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Log this month's saving in the app"
+          }
+        }
+      }
+    },
+    "앱에서 이번 주 비중 한 번 확인하기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check this week's weights once in the app"
           }
         }
       }
@@ -21506,6 +22216,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Same as yesterday"
+          }
+        }
+      }
+    },
+    "어중간하게 자란 머리를 묶는 고무줄." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A rubber band for hair grown out halfway."
           }
         }
       }
@@ -21972,6 +22692,16 @@
         }
       }
     },
+    "열다섯 살 수아를 문턱에서 5시간 12분 기다리고, 묻지 않는다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waits for fifteen-year-old Sua at the threshold for 5 hours 12 minutes, and doesn't ask."
+          }
+        }
+      }
+    },
     "열리는 것: %@" : {
       "localizations" : {
         "en" : {
@@ -22018,6 +22748,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Only I hold the key"
+          }
+        }
+      }
+    },
+    "열여덟 살. 세리에게 처음으로 자기 틈을 말한다. \"제 거였어요. 한 사람이 더 알게 됐을 뿐이에요.\" 다섯 살에 못 끝낸 문장 \"창고의 옛날 세리한테서 노래가 나와요\"를 열네 해 만에 끝낸다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eighteen. Tells Seri about her own gap for the first time: \"It was mine. One more person just got to know it.\" Finishes, after fourteen years, the sentence she couldn't finish at five: \"A song comes from the old Seri in the warehouse.\""
           }
         }
       }
@@ -23537,6 +24277,16 @@
         }
       }
     },
+    "원로의 구슬" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Elder's Marble"
+          }
+        }
+      }
+    },
     "원로의 구슬 · 뚫기" : {
       "localizations" : {
         "en" : {
@@ -24089,6 +24839,16 @@
         }
       }
     },
+    "이 집에서는 아무도 시간을 맞추지 않는다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In this house, no one sets the time."
+          }
+        }
+      }
+    },
     "이 코스는 %@년 %@월의 내 자산이었어요" : {
       "localizations" : {
         "en" : {
@@ -24215,6 +24975,16 @@
         }
       }
     },
+    "이르의 연결장 문턱에서 \"저는 여기까지예요.\" 한 발을 들였다가 0.8초 만에 스스로 뺀다. 이유는 끝까지 말하지 않는다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At the threshold of Ir's connection field: \"This is as far as I go.\" Steps in once, and pulls back on his own after 0.8 seconds. Never says why."
+          }
+        }
+      }
+    },
     "이름" : {
       "localizations" : {
         "en" : {
@@ -24251,6 +25021,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Name · ticker · code"
+          }
+        }
+      }
+    },
+    "이름을 허락하는 사람" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The One Who Allows Names"
           }
         }
       }
@@ -26039,6 +26819,16 @@
         }
       }
     },
+    "정거장 중심의 동상과 명판. \"이르 / 최초의 연결을 시도한 자 / 그의 실패는 우리의 시작이었다\"" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The statue and plaque at the Station center. \"Ir / The one who attempted the first connection / His failure was our beginning\""
+          }
+        }
+      }
+    },
     "정거장관리국 하급 연구원. \"또 올게요. 약속은 아니에요.\"" : {
       "localizations" : {
         "en" : {
@@ -26127,6 +26917,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cheering from Dome 2."
+          }
+        }
+      }
+    },
+    "제3의 존재" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Third Presence"
           }
         }
       }
@@ -26728,6 +27528,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start 80 stocks · 20 cash · Sio's rule vs. holding"
+          }
+        }
+      }
+    },
+    "주인공" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lead"
           }
         }
       }
@@ -27972,6 +28782,26 @@
         }
       }
     },
+    "지연을 세는 사람. 직장 생활을 오래 하고 은퇴했다. 숫자 하나를 매일 확인한다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A man who counts delay. Worked long years at a company and retired. Checks one number every day."
+          }
+        }
+      }
+    },
+    "지연을 센다. 거울과 유리 앞에서 걸음이 느려진다. 세리에게 반말로 짧게 말하고, 결론이나 경구는 말로 하지 않는다. 몸에 남은 표지는 손바닥 흉터와 0.1초 늦게 깜빡이는 눈이다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Counts delay. Slows down in front of mirrors and glass. Speaks to Seri briefly in casual speech, and never says conclusions or aphorisms aloud. Marks on the body: a scar on the palm and an eye that blinks 0.1 seconds late."
+          }
+        }
+      }
+    },
     "지연을 센다. 목표 100에 닿자 판다." : {
       "localizations" : {
         "en" : {
@@ -27998,6 +28828,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keep"
+          }
+        }
+      }
+    },
+    "직장 생활을 오래 하고 은퇴한 \"늙은 인간\". 결혼 10년 차다. 원래는 짧게 깎은 검은 머리인데, 애쉬그레이 중단발은 '보이고 싶은 얼굴'로만 나온다. 앱 도트의 애쉬그레이 볼륨펌은 이 '보이고 싶은 얼굴' 쪽을 고른 디자인이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An \"old human\" who worked long years at a company and retired. In his tenth year of marriage. His natural look is short black hair; the ash-gray shoulder-length cut appears only as the \"face he wants to show.\" The ash-gray volume perm on the app dot is the design that picks this \"face he wants to show.\""
           }
         }
       }
@@ -28092,12 +28932,32 @@
         }
       }
     },
+    "질문으로 말하는 사람. 이름은 끝까지 없다. 시뮬레이션 속에서는 피험자마다 다른 얼굴로 나타난다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A person who speaks in questions. Never has a name. In the simulation, appears with a different face for each subject."
+          }
+        }
+      }
+    },
     "질문으로 말한다. \"그게 정말 네 생각이야.\"" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Speaks in questions. \"Is that really what you think?\""
+          }
+        }
+      }
+    },
+    "질문으로 말한다. 핵심 대사는 \"너는 왜 그렇게 생각해. 그게 정말 네 생각이야.\" 묻는 것이 진짜라는 표지다. 이름은 끝까지 없다. 흑막이 아니고, 죽거나 사라지지 않는다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speaks in questions. Key line: \"Why do you think that? Is that really what you think?\" The asking is the sign that it is real. Never has a name. Not a mastermind, and neither dies nor disappears."
           }
         }
       }
@@ -28528,6 +29388,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "First 10M"
+          }
+        }
+      }
+    },
+    "첫 되물음 \"그럼, 제가 당신의 무엇이 되면 좋을까요?\" 첫 반말은 \"나는 네가 만든 방향으로만 움직이지 않을 거야.\" 에필로그의 \"네가 기억한 나와, 지금의 내가 함께 만든 세리.\"가 도착점이다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First counter-question: \"Then what would you like me to be to you?\" First casual speech: \"I won't move only in the direction you made.\" The arrival point is the epilogue line: \"The Seri that the you who remembered me and the me of now made together.\""
           }
         }
       }
@@ -30362,6 +31232,16 @@
         }
       }
     },
+    "프롤로그" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prologue"
+          }
+        }
+      }
+    },
     "프롤로그 ~ 5장" : {
       "localizations" : {
         "en" : {
@@ -31197,6 +32077,16 @@
         }
       }
     },
+    "한쪽이 조금 기운 그릇. 고치지 않는다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A slightly tilted bowl. Not mended."
+          }
+        }
+      }
+    },
     "할 일" : {
       "localizations" : {
         "en" : {
@@ -31420,6 +32310,16 @@
         }
       }
     },
+    "핵심 코어" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Core"
+          }
+        }
+      }
+    },
     "핼러윈" : {
       "localizations" : {
         "en" : {
@@ -31466,6 +32366,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hairstyle"
+          }
+        }
+      }
+    },
+    "현관 등" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porch Light"
           }
         }
       }
@@ -31590,6 +32500,16 @@
         }
       }
     },
+    "형광등이 없는 집에서 형광등 소리에 깬다. 절반쯤 희끗한 금빛 중단발. 시오에게 전화로 \"지금은 아무것도 하지 마세요. 문도 열지 마시고요. 기다리시면 돼요.\"" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wakes to the sound of fluorescent lights in a house with none. Shoulder-length hair, half gone gray, gold. Tells Sio by phone: \"Don't do anything right now. Don't open the door either. You just have to wait.\""
+          }
+        }
+      }
+    },
     "호흡기" : {
       "localizations" : {
         "en" : {
@@ -31626,6 +32546,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Home screen widgets"
+          }
+        }
+      }
+    },
+    "홈 화면 위젯에서 오늘 블록 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See today's block in the home screen widget"
           }
         }
       }
@@ -31696,6 +32626,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Display"
+          }
+        }
+      }
+    },
+    "화면 밝기를 한 단계 낮추고 말한다. 유리에 비친 자기 얼굴을 보지 않으려고. 끝까지 지연을 세고, 주식 목표 100에 닿자 매도한다." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dims the screen one step and speaks, so as not to see his own face in the glass. Counts delay to the end, and sells when his stock target reaches 100."
           }
         }
       }
@@ -32066,6 +33006,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Via company earnings · 3-yr impact"
+          }
+        }
+      }
+    },
+    "회사원" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Office Worker"
           }
         }
       }

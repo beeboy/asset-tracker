@@ -1,0 +1,878 @@
+{
+ "voice": {
+  "seri": {
+   "open": [
+    "",
+    "……",
+    "…… I saw it.",
+    "Observed.",
+    "I logged it.",
+    "Checked.",
+    "Just the facts.",
+    "One moment.",
+    "Numbers first.",
+    "One beat."
+   ],
+   "close": [
+    "",
+    "That's all.",
+    "I won't say more.",
+    "I'll keep watching.",
+    "Logged.",
+    "I don't know beyond that yet."
+   ]
+  },
+  "sio": {
+   "open": [
+    "",
+    "You came.",
+    "Short one.",
+    "Mm.",
+    "Saw it.",
+    "Today too.",
+    "One.",
+    "Okay."
+   ],
+   "close": [
+    "",
+    "Counted.",
+    "I'll count tomorrow too.",
+    "Done.",
+    "That's enough.",
+    "No rush.",
+    "I'll keep count."
+   ]
+  },
+  "seonbae": {
+   "open": [
+    "",
+    "Hey, you're here?",
+    "You know what?",
+    "One question.",
+    "So,",
+    "Shall we open the notebook?",
+    "Wait,",
+    "Hmm,"
+   ],
+   "close": [
+    "",
+    "Why do you think so?",
+    "Is that really your call?",
+    "What do you think?",
+    "What would last month's you do?",
+    "Can you say it in one line?",
+    "Who decided that?"
+   ]
+  },
+  "ir": {
+   "open": [
+    "",
+    "Easy.",
+    "It's okay.",
+    "I saw it.",
+    "Take a breath.",
+    "Let's not hurry.",
+    "I'm here."
+   ],
+   "close": [
+    "",
+    "Just stop before it spills.",
+    "Let's look together.",
+    "It's okay to wobble.",
+    "Let's go slow.",
+    "Waiting grows too.",
+    "Don't hurry."
+   ]
+  },
+  "sua": {
+   "open": [
+    "",
+    "I'm here.",
+    "You're right on time.",
+    "Hello.",
+    "I'll watch quietly.",
+    "One at a time.",
+    "Here I am."
+   ],
+   "close": [
+    "",
+    "I'll come again. Not a promise.",
+    "I can feel you coming on time.",
+    "I'll note it down.",
+    "Take a beat.",
+    "Look slowly."
+   ]
+  }
+ },
+ "seri_stage": {
+  "1": {
+   "open": [
+    "",
+    "Observing.",
+    "Log.",
+    "Confirmed.",
+    "……",
+    "Measured."
+   ],
+   "close": [
+    "",
+    "End.",
+    "Observation continues.",
+    "That is all.",
+    "Log kept."
+   ]
+  },
+  "2": {
+   "open": [
+    "",
+    "……",
+    "I have observed it.",
+    "I have confirmed it.",
+    "I have logged it."
+   ],
+   "close": [
+    "",
+    "I will keep watching.",
+    "That is all.",
+    "I will keep a record.",
+    "I will not judge yet."
+   ]
+  }
+ },
+ "core": {
+  "home.fresh": {
+   "seri": [
+    "I brought today's number.",
+    "It moved {move} today.",
+    "Just one look.",
+    "I'll leave one number.",
+    "Today's move, {move}.",
+    "Just look and go. It won't take long.",
+    "Today, {move}."
+   ],
+   "sio": [
+    "Today's number. {move}.",
+    "{move}.",
+    "Look at one.",
+    "Brought one number.",
+    "Today, {move}.",
+    "Quick look.",
+    "Checked against yesterday. {move}."
+   ],
+   "seonbae": [
+    "It moved {move} today.",
+    "Brought you one number.",
+    "{move}. Big or small to you?",
+    "Want to see today's number?",
+    "What comes to mind first?",
+    "Today, {move}."
+   ],
+   "ir": [
+    "Today, {move}.",
+    "One number. That's enough.",
+    "Today's move is {move}.",
+    "No need to hurry over it.",
+    "Just one look.",
+    "Brought a number."
+   ],
+   "sua": [
+    "I brought today's number.",
+    "It moved {move}.",
+    "Just one number.",
+    "Just one look.",
+    "Today, {move}.",
+    "Today's number, here it is."
+   ]
+  },
+  "home.done": {
+   "seri": [
+    "That's it for today.",
+    "Today's share is done.",
+    "You've seen it all.",
+    "Today's log, saved.",
+    "I'll bring another number tomorrow."
+   ],
+   "sio": [
+    "Done for today.",
+    "Saw it all.",
+    "Counted today's.",
+    "More tomorrow.",
+    "That's it."
+   ],
+   "seonbae": [
+    "That's it for today, huh.",
+    "You saw it all.",
+    "What stuck with you most today?",
+    "What will you look at first tomorrow?",
+    "Today's done."
+   ],
+   "ir": [
+    "That's it for today.",
+    "You saw it all. Well done.",
+    "Today's done.",
+    "See you tomorrow.",
+    "You stopped where you should."
+   ],
+   "sua": [
+    "That's it for today.",
+    "You've seen it all.",
+    "Today's share, done.",
+    "I'll come again tomorrow.",
+    "Finished on time."
+   ]
+  },
+  "home.locked": {
+   "seri": [
+    "Finish the 3 start steps and I'll bring one number every day.",
+    "Just 3 steps, then one number a day.",
+    "After the 3 start steps, I'll come daily."
+   ],
+   "sio": [
+    "Finish 3 steps, I bring a number daily.",
+    "3 start steps first. Then I count daily.",
+    "After 3 steps, I come daily."
+   ],
+   "seonbae": [
+    "Finish 3 steps and I'll bring a number daily.",
+    "The 3 start steps. How far are you?",
+    "After 3 steps, you'll see it daily."
+   ],
+   "ir": [
+    "Just finish 3 steps, then a number every day.",
+    "Start with the 3 steps. Slowly.",
+    "After 3 steps, I'll come daily."
+   ],
+   "sua": [
+    "Finish the 3 steps and I'll bring a number daily.",
+    "Let's start with the 3 steps.",
+    "After 3 steps, I'll come daily."
+   ]
+  },
+  "calm.none": {
+   "seri": [
+    "I don't know yet. Records {k}/{min}.",
+    "Records {k}/{min}. Need more.",
+    "Judgment on hold. Records {k}/{min}."
+   ],
+   "sio": [
+    "Records {k}/{min}. Still counting.",
+    "Only {k}/{min}.",
+    "{k}/{min}. Counting."
+   ],
+   "seonbae": [
+    "Records {k}/{min}. Which way do you think you lean?",
+    "Still {k}/{min}.",
+    "{k}/{min}. Watch a bit more?"
+   ],
+   "ir": [
+    "Records {k}/{min}. No need to hurry.",
+    "Still {k}/{min}.",
+    "{k}/{min}. It builds slowly."
+   ],
+   "sua": [
+    "Records {k}/{min}.",
+    "Still {k}/{min}. Still choosing.",
+    "{k}/{min}. You'll know in time."
+   ]
+  },
+  "calm.1": {
+   "seri": [
+    "Calm index {n}.",
+    "Index {n}.",
+    "Reading {n}.",
+    "Calm index {n}. Change logged."
+   ],
+   "sio": [
+    "{n}. Keeping count.",
+    "{n}.",
+    "Index {n}. Counted one.",
+    "{n}. First count."
+   ],
+   "seonbae": [
+    "Calm index {n}. What do you make of it?",
+    "It says {n}.",
+    "Index {n}. First time seeing it?",
+    "{n}. Where do you think it comes from?"
+   ],
+   "ir": [
+    "{n}. I was fast too.",
+    "Index {n}.",
+    "{n}. Everyone starts like this.",
+    "{n}. Just don't let it spill."
+   ],
+   "sua": [
+    "{n} pts. Still choosing.",
+    "Index {n}.",
+    "{n} pts. First measure.",
+    "Calm index, {n} pts."
+   ]
+  },
+  "calm.2": {
+   "seri": [
+    "The calm index is {n}.",
+    "Index is {n}.",
+    "{n} pts. Compared with yesterday.",
+    "Calm index {n}. Matches the log."
+   ],
+   "sio": [
+    "{n}. One more day counted.",
+    "{n}. {d} days counted together.",
+    "Index {n}.",
+    "{n}. Bit by bit."
+   ],
+   "seonbae": [
+    "{n}. What would last month's you have done?",
+    "Index {n}. What changed?",
+    "{n}. Do you know why?",
+    "{n} pts. Which day changed it?"
+   ],
+   "ir": [
+    "{n}. More days you stopped in time.",
+    "Index {n}.",
+    "{n}. A little slower. Good.",
+    "{n}. Stopping days add up."
+   ],
+   "sua": [
+    "{n} pts. I can feel you coming on time.",
+    "Index {n} pts.",
+    "{n} pts. It grew a little.",
+    "{n} pts. {d} days together."
+   ]
+  },
+  "calm.3": {
+   "seri": [
+    "Calm index {n}.",
+    "{n} pts. I know, we've watched together.",
+    "Index {n}. {d} days together.",
+    "{n}. This number feels familiar now."
+   ],
+   "sio": [
+    "{n}. {d} days counted together.",
+    "{n}.",
+    "{n}. Long count.",
+    "Day {d}. {n}."
+   ],
+   "seonbae": [
+    "Up to {n}. Was that really your call?",
+    "{n}. Know how you got here?",
+    "Index {n}. Whose thinking is it now?",
+    "{n} pts. How are you different from the start?"
+   ],
+   "ir": [
+    "{n}. You didn't end up like me.",
+    "{n}. You learned to stop.",
+    "Index {n}. {d} days, nothing spilled.",
+    "{n}."
+   ],
+   "sua": [
+    "{n} pts. I'll come again. Not a promise.",
+    "{n} pts. {d} days together.",
+    "Index {n} pts.",
+    "{n} pts. Grew on time."
+   ]
+  },
+  "fb.rule": {
+   "seri": [
+    "Moved toward the plan.",
+    "Done as planned.",
+    "Moved with the signal.",
+    "It fits the rule."
+   ],
+   "sio": [
+    "As planned.",
+    "By the rule.",
+    "As decided.",
+    "One step toward the plan."
+   ],
+   "seonbae": [
+    "As planned. Remember why you set that plan?",
+    "By the rule, huh.",
+    "Just as you decided.",
+    "Moved toward the plan."
+   ],
+   "ir": [
+    "You stopped where you should.",
+    "As planned.",
+    "Nothing spilled.",
+    "Only as far as you decided."
+   ],
+   "sua": [
+    "Right on time.",
+    "As planned.",
+    "Just as decided.",
+    "Moved by the rule."
+   ]
+  },
+  "fb.chase": {
+   "seri": [
+    "Bought more after a rise. No plan signal.",
+    "Bought more after it rose.",
+    "Added after a gain.",
+    "Outside the plan."
+   ],
+   "sio": [
+    "Rose, so you added. Not in the plan.",
+    "Bought after the rise.",
+    "Not in the plan.",
+    "Rose, you bought. Keeping count."
+   ],
+   "seonbae": [
+    "Did you add because it rose, or because of the plan?",
+    "Bought after the rise.",
+    "Why now?",
+    "Was the price the reason?"
+   ],
+   "ir": [
+    "Fast. I was too.",
+    "Bought right after the rise.",
+    "A bit fast.",
+    "It rose, so you ran."
+   ],
+   "sua": [
+    "Words came first. Next time, take a beat.",
+    "Bought after the rise.",
+    "A little fast.",
+    "Outside the plan."
+   ]
+  },
+  "fb.switchOut": {
+   "seri": [
+    "Sold after a drop. No plan signal.",
+    "Sold after it fell.",
+    "Sold after a loss.",
+    "Outside the plan."
+   ],
+   "sio": [
+    "Fell, so you sold. Could've counted one more day.",
+    "Sold after the drop.",
+    "Not in the plan.",
+    "Fell, you sold. Keeping count."
+   ],
+   "seonbae": [
+    "Sold because it fell, or is it really your call?",
+    "Sold after the drop.",
+    "Price or plan, why did you sell?",
+    "Why today?"
+   ],
+   "ir": [
+    "Turned away fast. I did too.",
+    "Sold right after the drop.",
+    "A bit hasty.",
+    "Quick to turn away."
+   ],
+   "sua": [
+    "You turned first. Next time, take a beat.",
+    "Sold after the drop.",
+    "A little hasty.",
+    "Outside the plan."
+   ]
+  },
+  "fb.avgDown": {
+   "seri": [
+    "Bought more after a drop. Score unchanged.",
+    "Bought more after it fell.",
+    "Averaging down. No score.",
+    "Added after a loss."
+   ],
+   "sio": [
+    "Fell, you added. Keeping count.",
+    "Bought after the drop.",
+    "Averaging down. Score unchanged.",
+    "Added more. Counted."
+   ],
+   "seonbae": [
+    "Price or plan, why did you add?",
+    "Added after the drop.",
+    "Why hold on tighter?",
+    "Do you call that averaging down?"
+   ],
+   "ir": [
+    "You held on tighter. Check before it spills.",
+    "Added after the drop.",
+    "Holding on has weight too.",
+    "Added more. Don't let it spill."
+   ],
+   "sua": [
+    "You added more. Score unchanged.",
+    "Bought after the drop.",
+    "Averaging down gets no score.",
+    "Added more. I'll note it."
+   ]
+  },
+  "fb.trim": {
+   "seri": [
+    "Trimmed after a rise. Score unchanged.",
+    "Trimmed after it rose.",
+    "Sold after a gain.",
+    "Weight reduced."
+   ],
+   "sio": [
+    "Rose, you trimmed. Keeping count.",
+    "Trimmed after the rise.",
+    "Trimmed a little.",
+    "Trimmed. Counted."
+   ],
+   "seonbae": [
+    "Why trim? Say it in one line?",
+    "Trimmed after the rise.",
+    "Why that much?",
+    "Was the trim planned?"
+   ],
+   "ir": [
+    "You trimmed. It's lighter now.",
+    "Trimmed after the rise.",
+    "Lighter now.",
+    "Trimmed before it spilled."
+   ],
+   "sua": [
+    "You trimmed. Score unchanged.",
+    "Trimmed after the rise.",
+    "A little lighter.",
+    "Trimmed. I'll note it."
+   ]
+  },
+  "fb.wait": {
+   "seri": [
+    "Big move day. You did nothing.",
+    "Shaky day. You left it.",
+    "You waited.",
+    "Waiting on a big move day."
+   ],
+   "sio": [
+    "Shaky day. Just counted.",
+    "Did nothing.",
+    "Waited.",
+    "Big day. Counted."
+   ],
+   "seonbae": [
+    "You did nothing today. How was it?",
+    "You waited.",
+    "Staying still is a choice too, right?",
+    "Why wait on a shaky day?"
+   ],
+   "ir": [
+    "One time you stopped before it spilled.",
+    "You waited.",
+    "You stopped. Well done.",
+    "Shaky, but you stayed still."
+   ],
+   "sua": [
+    "Today you chose silence.",
+    "You waited.",
+    "Shaky day, you stayed still.",
+    "You waited for the right time."
+   ]
+  },
+  "share": {
+   "seri": [
+    "One square at a time. {left} to the next 100.",
+    "{n} squares. {left} to the next 100.",
+    "{n} squares now.",
+    "{left} left to the next 100."
+   ],
+   "sio": [
+    "{n} squares. {left} to the next 100.",
+    "{n} squares.",
+    "{left} to the next 100.",
+    "Counted to {n} squares."
+   ],
+   "seonbae": [
+    "{n} squares so far. When will you fill the other {left}?",
+    "{n} squares, huh.",
+    "{left} to the next 100. How will you fill them?",
+    "Remember the road to {n} squares?"
+   ],
+   "ir": [
+    "{left} to the next 100. They fill without hurry.",
+    "{n} squares.",
+    "{left} left.",
+    "{n} squares so far."
+   ],
+   "sua": [
+    "On time again today. {left} to the next 100.",
+    "{n} squares.",
+    "{left} left.",
+    "{n} squares so far."
+   ]
+  },
+  "share.full": {
+   "seri": [
+    "1,000 squares, all filled.",
+    "1,000 squares.",
+    "Reached the last square.",
+    "All filled."
+   ],
+   "sio": [
+    "1,000 squares. All counted.",
+    "1,000 squares.",
+    "All filled.",
+    "Counted to the last square."
+   ],
+   "seonbae": [
+    "All filled. Remember why you came this far?",
+    "1,000 squares.",
+    "All filled. What's next?",
+    "The last square, huh."
+   ],
+   "ir": [
+    "All filled. You didn't hurry.",
+    "1,000 squares.",
+    "All filled.",
+    "All the way, nothing spilled."
+   ],
+   "sua": [
+    "Filled on time. 1,000 squares.",
+    "1,000 squares.",
+    "All filled.",
+    "Reached the last square."
+   ]
+  },
+  "route": {
+   "seri": [
+    "Pick a route and the graph below changes.",
+    "I'll show your current route as is.",
+    "Choosing is up to you.",
+    "Your records stay if you change."
+   ],
+   "sio": [
+    "Pick a route, the chart changes.",
+    "Records stay if you change.",
+    "Pick slowly.",
+    "Current route, counted."
+   ],
+   "seonbae": [
+    "Which route fits you now?",
+    "Why do you want to change routes?",
+    "Look at the graph below first?",
+    "Records stay if you change."
+   ],
+   "ir": [
+    "Pick slowly.",
+    "It's okay to change routes.",
+    "Let's look at the graph first.",
+    "Your records stay."
+   ],
+   "sua": [
+    "Pick a route and the graph below changes.",
+    "Pick slowly.",
+    "Records stay if you change.",
+    "Pick when it's time."
+   ]
+  },
+  "sponsor": {
+   "seri": [
+    "A cup of coffee is enough.",
+    "You don't have to sponsor.",
+    "I'll pass it to the maker.",
+    "Barley tea is free."
+   ],
+   "sio": [
+    "One coffee. That's enough.",
+    "You don't have to.",
+    "I'll tell the maker.",
+    "Barley tea's free."
+   ],
+   "seonbae": [
+    "A coffee. Who would you buy it for?",
+    "Sponsoring is your call.",
+    "Curious about the maker?",
+    "It's okay not to."
+   ],
+   "ir": [
+    "It's okay not to.",
+    "A cup of coffee is plenty.",
+    "I'll tell the maker.",
+    "Decide slowly."
+   ],
+   "sua": [
+    "A cup of coffee is enough.",
+    "It's okay not to.",
+    "I'll pass it to the maker.",
+    "Just come when it's time."
+   ]
+  },
+  "start": {
+   "seri": [
+    "First time here. Just one question.",
+    "You're new. One question.",
+    "Welcome. Just one question.",
+    "First visit. Just one."
+   ]
+  },
+  "widget.up": {
+   "seri": [
+    "{t} moved first.",
+    "{t} +{c}%.",
+    "{t} went up today.",
+    "{t}, up {c}%."
+   ],
+   "sio": [
+    "{t} {c}. Counted.",
+    "{t} +{c}.",
+    "{t} up. {c}.",
+    "Today, {t}. +{c}."
+   ],
+   "seonbae": [
+    "Up today. Why do you think?",
+    "{t} +{c}%. Know why?",
+    "{t} went up.",
+    "What do you look at on up days?"
+   ],
+   "ir": [
+    "Up, but don't hurry.",
+    "{t} +{c}%.",
+    "{t} went up.",
+    "Slower on the up days."
+   ],
+   "sua": [
+    "Right on time today.",
+    "{t} is up {c}%.",
+    "{t} went up.",
+    "It's an up day."
+   ]
+  },
+  "widget.down": {
+   "seri": [
+    "{t} moved first.",
+    "{t} −{c}%.",
+    "{t} went down today.",
+    "{t}, down {c}%."
+   ],
+   "sio": [
+    "{t} {c}. Counted.",
+    "{t} −{c}.",
+    "{t} down. {c}.",
+    "Today, {t}. −{c}."
+   ],
+   "seonbae": [
+    "Down today. Why do you think?",
+    "{t} −{c}%. Know why?",
+    "{t} went down.",
+    "What do you look at on down days?"
+   ],
+   "ir": [
+    "Shaky, but don't hurry.",
+    "{t} −{c}%.",
+    "{t} went down.",
+    "Slower on the down days."
+   ],
+   "sua": [
+    "Right on time today.",
+    "{t} is down {c}%.",
+    "{t} went down.",
+    "It's a down day."
+   ]
+  }
+ },
+ "item_line": {
+  "barley_tea": {
+   "seri": "I made barley tea. Nobody asked.",
+   "sio": "Barley tea. Still warm.",
+   "seonbae": "Barley tea. Who made it, you think?",
+   "ir": "Drink it while it's warm.",
+   "sua": "I came before the tea got cold."
+  },
+  "porch_light": {
+   "seri": "The porch light is on.",
+   "sio": "Light's on. Late is fine.",
+   "seonbae": "A light on even when you're late. Why?",
+   "ir": "The light doesn't go out.",
+   "sua": "I found my way by the porch light."
+  },
+  "wall_clock": {
+   "seri": "The clock is 3 minutes slow. I'll leave it.",
+   "sio": "Didn't fix the clock. I count anyway.",
+   "seonbae": "Does the time have to be exact?",
+   "ir": "Faster doesn't mean arriving first.",
+   "sua": "The clock is late, but I'm on time."
+  },
+  "hair_tie": {
+   "seri": "A hair tie, on the table.",
+   "sio": "Hair tie. Still in between.",
+   "seonbae": "Why tie it instead of cutting it?",
+   "ir": "Tied up, it sways less.",
+   "sua": "I'll borrow a hair tie."
+  },
+  "table_chair": {
+   "seri": "One sheet of paper, blank.",
+   "sio": "Paper on the table. For tomorrow.",
+   "seonbae": "What will you write on it?",
+   "ir": "I kept a seat open.",
+   "sua": "Is my seat still here?"
+  },
+  "asym_bowl": {
+   "seri": "The bowl tilts 2 degrees. I won't fix it.",
+   "sio": "Tilted bowl. Leave it.",
+   "seonbae": "Is tilted the same as wrong?",
+   "ir": "It holds things, tilted.",
+   "sua": "The tilted bowl is mine."
+  },
+  "unfired_bowl": {
+   "seri": "The bowl isn't fired yet.",
+   "sio": "Not fired yet. No rush.",
+   "seonbae": "Who decides when to fire it?",
+   "ir": "Rush it and it cracks.",
+   "sua": "I'll fire it once it dries. Not a promise."
+  },
+  "jujube_seed": {
+   "seri": "Jujube seed. No sprout yet.",
+   "sio": "Jujube seed, some days in. Counting.",
+   "seonbae": "What did you do while waiting?",
+   "ir": "Waiting grows too.",
+   "sua": "The jujube seed is still waiting."
+  },
+  "elder_bead": {
+   "seri": "There is only one bead.",
+   "sio": "Bead. Just one.",
+   "seonbae": "Why leave the only one here?",
+   "ir": "The Elder gave it. Only one.",
+   "sua": "I can see my face in the bead."
+  },
+  "rice_seeds": {
+   "seri": "The rice seed pouch, packed.",
+   "sio": "Rice seeds. I know who packed them.",
+   "seonbae": "Remember who packed them?",
+   "ir": "You decide where to plant.",
+   "sua": "I brought the rice seed pouch."
+  }
+ },
+ "item_name": {
+  "barley_tea": "Barley tea",
+  "porch_light": "Porch light",
+  "wall_clock": "Wall clock",
+  "hair_tie": "Hair tie",
+  "table_chair": "Table chair",
+  "asym_bowl": "Tilted bowl",
+  "unfired_bowl": "Unfired bowl",
+  "jujube_seed": "Jujube seed",
+  "elder_bead": "The Elder's bead",
+  "rice_seeds": "Rice seed pouch"
+ },
+ "item_core": {
+  "seri": [
+   "{item}, in its place.",
+   "{item}, left as is.",
+   "{item}, here today too."
+  ],
+  "sio": [
+   "{item}. Same.",
+   "{item}. Counted, one.",
+   "{item}, still here."
+  ],
+  "seonbae": [
+   "{item}. Why is it here?",
+   "{item}. Who left it?",
+   "{item}. What comes to mind?"
+  ],
+  "ir": [
+   "{item}, still here.",
+   "{item}. Look slowly.",
+   "{item}. It's here."
+  ],
+  "sua": [
+   "{item}, still here.",
+   "{item}, in its place.",
+   "{item}, I saw it today too."
+  ]
+ }
+}

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E7A1C0DE00000000000000D2 /* lines_app_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000D1 /* lines_app_en.json */; };
 		E7A1C0DE00000000000000C2 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000C1 /* Localizable.xcstrings */; };
 		B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */; };
 		02D7A588AC677280C686D8DD /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCACC287684D148B6C75C94F /* SampleData.swift */; };
@@ -144,6 +145,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E7A1C0DE00000000000000D1 /* lines_app_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_app_en.json; sourceTree = "<group>"; };
 		E7A1C0DE00000000000000C1 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0020D03B6A8743286E629278 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
@@ -340,6 +342,7 @@
 				E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */,
 				E7A1C0DE00000000000000F9 /* krx_stocks.json */,
 				C9B0595773BCD7CC543FB16E /* lines_ko.json */,
+				E7A1C0DE00000000000000D1 /* lines_app_en.json */,
 				A01E38615C5B56866E9049C5 /* story_en.json */,
 				A34C703A77797FBE1F14AB80 /* story_ko.json */,
 			);
@@ -537,6 +540,7 @@
 				B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */,
 				E7A1C0DE00000000000000C2 /* Localizable.xcstrings in Resources */,
 				B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */,
+				E7A1C0DE00000000000000D2 /* lines_app_en.json in Resources */,
 				E7A1C0DE00000000000000A1 /* lines_en.json in Resources */,
 				8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */,
 				CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */,

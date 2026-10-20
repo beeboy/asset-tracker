@@ -54,6 +54,12 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 영문 로컬리제이션 4단계: 인물 대사·인물 소개 (2026-10-20, 로컬 커밋)
+- 대사 원문(여는 말·상황 문장·맺는 말·물건 줄, 560개)의 영어는 `ios-app/tools/lines_en_data.json`. `python3 tools/lines.py`가 `Naeilo/Resources/lines_app_en.json`(146키·13,018줄)도 만든다. 위젯 말풍선(widget.*)은 EN_CORE 그대로.
+- 앱은 언어에 맞는 대사 파일 하나만 읽는다(`Lines.swift`: 영어면 lines_app_en, 아니면 lines_ko). 위젯은 그대로 WidgetShared/lines_en.json.
+- 인물 소개(SampleData `Shelter`)는 String(localized:)로 감싸고 영어 95줄 넣음. 서재는 원래 story_en이 있어 언어를 따른다. 종목 이름은 그대로.
+- 대사 원문을 고치면 lines_en_data.json도 같은 자리에 고쳐야 한다(길이·순서가 같아야 함).
+
 ## 영문 로컬리제이션 3단계: usage-app (2026-10-20, 로컬 커밋)
 - `usage-app/UsageShared/Localizable.xcstrings`(ko 원문 + en, 앱·위젯 둘 다 리소스), `tools/gen_pbxproj.py`에 넣고 다시 만듦. Info.plist 두 곳 ko·en.
 - 글 52줄 모두 영어. 주간 리셋 요일은 영어면 en_US. 영어·한국어 시뮬레이터로 확인(라벨 넘침은 5h·Week로 줄임).

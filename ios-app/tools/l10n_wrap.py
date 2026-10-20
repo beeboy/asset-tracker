@@ -3,7 +3,7 @@ import re, sys
 HAN = re.compile(r'[가-힣ㄱ-ㅎㅏ-ㅣ]')
 LSK = re.compile(r'(?:^|[^\w.])(?:Text|Button|Label|Toggle|Section|Picker|TextField|SecureField|NavigationLink|Menu|Link|Stepper|DisclosureGroup|LabeledContent|ContentUnavailableView)\s*\(\s*$'
                  r'|\.(?:navigationTitle|alert|confirmationDialog|help|accessibilityLabel|accessibilityHint|accessibilityValue)\s*\(\s*$')
-SKIP = re.compile(r'(?:verbatim:|forKey:|named:|forResource:|of:|with:|separator:|separatedBy:|prefix:|suffix:)\s*$'
+SKIP = re.compile(r'(?:localized:|verbatim:|forKey:|named:|forResource:|of:|with:|separator:|separatedBy:|prefix:|suffix:)\s*$'
                   r'|(?:print|debugPrint|fatalError|assert|assertionFailure|precondition|preconditionFailure|NSLog|Image|hasPrefix|hasSuffix|contains|custom|#Preview|\.info|\.debug|\.error|\.notice|\.warning|\.fault|\.log)\s*\(\s*$')
 
 def parse_string(s, i):
