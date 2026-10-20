@@ -56,8 +56,8 @@
 
 ## 파도 타기 4단계: 섬 지도 첫 화면 (2026-10-20, 로컬 커밋)
 - `Views/Wave/WaveHomeView.swift`: 보드 탄 내 캐릭터(SurfRider, 누르면 꾸미기), 섬 4개 지도(윤곽 = 내 자산 40거래일 코스, 점선 뱃길, 안 열린 섬은 안개), 지금 섬 카드·'타러 가기', 예보 한 줄.
-- 진행 저장 `WaveMap`(UserDefaults `wave.star.*`·`wave.best.*`): 앞 섬 별 1개면 다음 섬 열림. 플레이 화면은 판 끝에 `WaveMap.record(island, score:, finished:)`를 부른다.
-- '타러 가기'는 임시 `WavePlaySlot` → WavePlayView 생기면 바꾼다. 미션 탭 본전 루트만 교체, 목표 루트(GoalViews)와 탭 이름 '이번 주 예보'는 그대로(다른 작업이 GoalViews 수정 중). weekRange는 위젯·리마인드가 써서 남김.
+- 진행 저장 `WaveMap`(UserDefaults `wave.star.*`·`wave.best.*`): 앞 섬 별 1개면 다음 섬 열림. 판이 끝나면 `WaveMap.record(WaveResult)`로 별(결과 팝업과 같은 기준)·최고 점수 저장.
+- '타러 가기' → WavePlayView. 미션 탭 본전 루트만 교체, 목표 루트(GoalViews)와 탭 이름 '이번 주 예보'는 그대로(다른 작업이 GoalViews 수정 중). weekRange는 위젯·리마인드가 써서 남김.
 
 ## 동네 대사창 아래 칸 (2026-10-20, 로컬 커밋)
 - `Views/TownPanel.swift`: 기본(오늘의 한 줄=주민에게 한 줄 답, 할 말 고르기 표 `TownChat`) · 우리 사이(`TownBond` 단계는 함께한 날+대화+답×2로 그때 계산) · 꾸미기(별사탕으로 사기, 산 것은 `town.owned`).

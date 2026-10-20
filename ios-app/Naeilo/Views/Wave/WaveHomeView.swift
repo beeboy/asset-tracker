@@ -4,8 +4,6 @@ import SwiftUI
 /// 섬은 낮잠 해변 → 올라올라 언덕 → 롤러코스터 만 → 멀미 주의 바다 순서로, 앞 섬에서 별 1개를 받으면 다음 섬이 열린다.
 enum WaveMap {
     static let order: [WaveEngine.Island] = [.nap, .climb, .coaster, .choppy]
-    /// 별 기준: 끝까지 타면 1개, 200점(약 2%) 2개, 500점 3개
-    static let starScores = [200, 500]
     private static let d = UserDefaults.standard
 
     static func stars(_ i: WaveEngine.Island) -> Int { d.integer(forKey: "wave.star.\(i.rawValue)") }
@@ -14,11 +12,11 @@ enum WaveMap {
     static var opened: Int { min(order.count, 1 + (order.firstIndex { stars($0) == 0 } ?? order.count)) }
     static func isOpen(_ i: WaveEngine.Island) -> Bool { (order.firstIndex(of: i) ?? 0) < opened }
 
-    /// 한 판 결과 적기 (플레이 화면이 판이 끝날 때 부른다). 별·최고 점수는 줄지 않는다
-    static func record(_ i: WaveEngine.Island, score: Int, finished: Bool) {
-        let s = finished ? 1 + starScores.filter { score >= $0 }.count : 0
-        if s > stars(i) { d.set(s, forKey: "wave.star.\(i.rawValue)") }
-        if score > best(i) { d.set(score, forKey: "wave.best.\(i.rawValue)") }
+    /// 한 판 결과 적기 (판이 끝날 때). 별은 결과 팝업과 같은 WaveResult.stars. 별·최고 점수는 줄지 않는다
+    static func record(_ r: WaveResult) {
+        let i = r.course.island
+        if r.stars > stars(i) { d.set(r.stars, forKey: "wave.star.\(i.rawValue)") }
+        if r.score > best(i) { d.set(r.score, forKey: "wave.best.\(i.rawValue)") }
     }
 
     /// 3년 자산 라인을 40거래일씩 훑어 섬마다 들어갈 수 있는 시작 위치를 모은다 (3거래일 간격, 한 번만)
@@ -82,7 +80,7 @@ struct WaveHomeView: View {
             line = l; starts = WaveMap.starts(l); ready = true
         }
         .sheet(isPresented: $closet) { SurfClosetSheet() }
-        .fullScreenCover(item: $play, onDismiss: { tick += 1 }) { WavePlaySlot(course: $0) }
+        .fullScreenCover(item: $play, onDismiss: { tick += 1 }) { WavePlayView(course: $0, onFinish: WaveMap.record) }
     }
 
     // MARK: 위: 보드 타고 물살 가르는 내 캐릭터 (누르면 꾸미기)
@@ -249,21 +247,5 @@ private struct WaveBand: Shape {
         p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
         p.closeSubpath()
         return p
-    }
-}
-
-/// 플레이 화면 자리: 다른 작업이 WavePlayView를 만들면 이 본문을 WavePlayView(course:)로 바꾼다
-private struct WavePlaySlot: View {
-    let course: WaveEngine.Course
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        VStack(spacing: 16) {
-            Text(course.island.name).appFont(22, .bold)
-            Text("\(course.startDate)부터 \(course.count)거래일 · \(course.level.name)").appFont(14).foregroundStyle(Theme.sub)
-            Text("플레이 화면 준비 중").appFont(14).foregroundStyle(Theme.muted)
-            Button("닫기") { dismiss() }.appFont(16, .bold).frame(minHeight: 44)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.bg)
     }
 }
