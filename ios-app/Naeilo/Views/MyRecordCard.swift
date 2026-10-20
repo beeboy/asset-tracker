@@ -12,15 +12,15 @@ struct MyRecordCard: View {
             Card {
                 head(D)
                 HStack(alignment: .top, spacing: 8) {
-                    cell("평가액", AppModel.man(L.v), Theme.ink)
-                    cell("넣은 돈", AppModel.man(L.c), Theme.ink)
-                    cell("손익", gain.map(AppModel.sgn) ?? "-", gain.map(Theme.change) ?? Theme.ink)
+                    cell(String(localized: "평가액"), AppModel.man(L.v), Theme.ink)
+                    cell(String(localized: "넣은 돈"), AppModel.man(L.c), Theme.ink)
+                    cell(String(localized: "손익"), gain.map(AppModel.sgn) ?? "-", gain.map(Theme.change) ?? Theme.ink)
                 }
                 if D.count >= 2 {
                     RecordLines(v: D.map(\.v), c: D.map(\.c)).frame(height: 110)
                     HStack(spacing: 12) {
-                        legend("평가액", Theme.teal, dash: false)
-                        legend("넣은 돈", Theme.muted, dash: true)
+                        legend(String(localized: "평가액"), Theme.teal, dash: false)
+                        legend(String(localized: "넣은 돈"), Theme.muted, dash: true)
                     }
                 } else {
                     Text("내일 다시 열면 선이 그려져요").appFont(12).foregroundStyle(Theme.muted)
@@ -30,8 +30,8 @@ struct MyRecordCard: View {
             // 아직 한 줄도 없을 때도 카드 자리는 보인다 (어디에 쌓이는지 알 수 있게)
             Card {
                 Text("내 기록").appFont(15, .bold)
-                Text(m.isSample || m.holdings.isEmpty ? "내 종목 넣은 날부터 하루 한 줄 · 샘플은 안 남김"
-                     : "시세 받으면 첫 줄이 남아요 · 당겨서 새로 고침")
+                Text(m.isSample || m.holdings.isEmpty ? String(localized: "내 종목 넣은 날부터 하루 한 줄 · 샘플은 안 남김")
+                     : String(localized: "시세 받으면 첫 줄이 남아요 · 당겨서 새로 고침"))
                     .appFont(12).foregroundStyle(Theme.muted).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
             }
         }

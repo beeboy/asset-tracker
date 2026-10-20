@@ -8,8 +8,8 @@ TEAM = "252W43H2KE"
 APP, EXT = "ClaudeUsage", "ClaudeUsageWidgets"
 APP_SRC = ["UsageApp/App.swift", "UsageShared/Usage.swift", "UsageWidgets/Views.swift"]
 EXT_SRC = ["UsageWidgets/Widgets.swift", "UsageShared/Usage.swift", "UsageWidgets/Views.swift"]
-APP_RES = ["UsageApp/Assets.xcassets", "UsageWidgets/Assets.xcassets"]
-EXT_RES = ["UsageWidgets/Assets.xcassets"]
+APP_RES = ["UsageApp/Assets.xcassets", "UsageWidgets/Assets.xcassets", "UsageShared/Localizable.xcstrings"]
+EXT_RES = ["UsageWidgets/Assets.xcassets", "UsageShared/Localizable.xcstrings"]
 OTHER = ["UsageApp/Info.plist", "UsageApp/UsageApp.entitlements", "UsageWidgets/Info.plist", "UsageWidgets/UsageWidgets.entitlements"]
 
 
@@ -18,7 +18,7 @@ def i(*k):
 
 
 def ftype(p):
-    return {".swift": "sourcecode.swift", ".xcassets": "folder.assetcatalog", ".plist": "text.plist.xml", ".entitlements": "text.plist.entitlements"}[os.path.splitext(p)[1]]
+    return {".swift": "sourcecode.swift", ".xcassets": "folder.assetcatalog", ".plist": "text.plist.xml", ".entitlements": "text.plist.entitlements", ".xcstrings": "text.json.xcstrings"}[os.path.splitext(p)[1]]
 
 
 files = sorted(set(APP_SRC + EXT_SRC + APP_RES + EXT_RES + OTHER))
@@ -84,7 +84,7 @@ w("/* Begin PBXProject section */\n")
 w(f"\t\t{i('project')} /* Project object */ = {{\n\t\t\tisa = PBXProject;\n\t\t\tattributes = {{\n\t\t\t\tBuildIndependentTargetsInParallel = YES;\n\t\t\t\tLastUpgradeCheck = 2600;\n\t\t\t\tTargetAttributes = {{\n")
 for t in (APP, EXT):
     w(f"\t\t\t\t\t{i('target', t)} = {{\n\t\t\t\t\t\tDevelopmentTeam = {TEAM};\n\t\t\t\t\t\tProvisioningStyle = Automatic;\n\t\t\t\t\t}};\n")
-w(f"\t\t\t\t}};\n\t\t\t}};\n\t\t\tbuildConfigurationList = {i('cl', 'project')} /* Build configuration list for PBXProject \"{APP}\" */;\n\t\t\tdevelopmentRegion = ko;\n\t\t\thasScannedForEncodings = 0;\n\t\t\tknownRegions = (\n\t\t\t\tBase,\n\t\t\t\tko,\n\t\t\t);\n\t\t\tmainGroup = {i('main')};\n\t\t\tminimizedProjectReferenceProxies = 1;\n\t\t\tpreferredProjectObjectVersion = 77;\n\t\t\tproductRefGroup = {i('products')} /* Products */;\n\t\t\tprojectDirPath = \"\";\n\t\t\tprojectRoot = \"\";\n\t\t\ttargets = (\n\t\t\t\t{i('target', APP)} /* {APP} */,\n\t\t\t\t{i('target', EXT)} /* {EXT} */,\n\t\t\t);\n\t\t}};\n")
+w(f"\t\t\t\t}};\n\t\t\t}};\n\t\t\tbuildConfigurationList = {i('cl', 'project')} /* Build configuration list for PBXProject \"{APP}\" */;\n\t\t\tdevelopmentRegion = ko;\n\t\t\thasScannedForEncodings = 0;\n\t\t\tknownRegions = (\n\t\t\t\tBase,\n\t\t\t\ten,\n\t\t\t\tko,\n\t\t\t);\n\t\t\tmainGroup = {i('main')};\n\t\t\tminimizedProjectReferenceProxies = 1;\n\t\t\tpreferredProjectObjectVersion = 77;\n\t\t\tproductRefGroup = {i('products')} /* Products */;\n\t\t\tprojectDirPath = \"\";\n\t\t\tprojectRoot = \"\";\n\t\t\ttargets = (\n\t\t\t\t{i('target', APP)} /* {APP} */,\n\t\t\t\t{i('target', EXT)} /* {EXT} */,\n\t\t\t);\n\t\t}};\n")
 w("/* End PBXProject section */\n\n")
 
 for ph, lists in (("Resources", ((APP, APP_RES), (EXT, EXT_RES))), ("Sources", ((APP, APP_SRC), (EXT, EXT_SRC)))):
@@ -103,7 +103,7 @@ w("/* End PBXTargetDependency section */\n\n")
 COMMON = dict(ALWAYS_SEARCH_USER_PATHS="NO", CLANG_ENABLE_MODULES="YES", CLANG_ENABLE_OBJC_ARC="YES", CODE_SIGN_STYLE="Automatic",
               COPY_PHASE_STRIP="NO", CURRENT_PROJECT_VERSION="1", DEVELOPMENT_TEAM=TEAM, ENABLE_STRICT_OBJC_MSGSEND="YES",
               GCC_C_LANGUAGE_STANDARD="gnu11", IPHONEOS_DEPLOYMENT_TARGET="17.0", MARKETING_VERSION="1.0", PRODUCT_NAME='"$(TARGET_NAME)"',
-              SDKROOT="iphoneos", SWIFT_VERSION="5.0", TARGETED_DEVICE_FAMILY="1")
+              SDKROOT="iphoneos", SWIFT_EMIT_LOC_STRINGS="YES", LOCALIZATION_PREFERS_STRING_CATALOGS="YES", SWIFT_VERSION="5.0", TARGETED_DEVICE_FAMILY="1")
 CFG = {
     ("project", "Debug"): {**COMMON, "DEBUG_INFORMATION_FORMAT": "dwarf", "ENABLE_TESTABILITY": "YES", "GCC_OPTIMIZATION_LEVEL": "0", "ONLY_ACTIVE_ARCH": "YES",
                            "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG", "SWIFT_OPTIMIZATION_LEVEL": '"-Onone"'},

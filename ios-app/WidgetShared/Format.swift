@@ -4,7 +4,12 @@ import Foundation
 /// 한국어 기기이거나 표에 없으면 한국어 그대로. {n} 같은 자리는 vars 로 채운다 (예: WL.t("{n}번째 블록", ["n": "3"]))
 enum WL {
     /// 서재와 같은 규칙: 기기 첫 언어가 한국어가 아니면 영어
-    static let en = !(Locale.preferredLanguages.first ?? "ko").hasPrefix("ko")
+    /// 영어 여부. 앱은 자기 언어(iOS 앱별 언어 포함), 위젯은 앱이 App Group 에 적어 둔 언어를 따른다
+    /// (위젯 확장은 앱별 언어 설정을 못 봐서 폰 언어를 따르기 때문)
+    static let en: Bool = {
+        if Bundle.main.bundleURL.pathExtension == "appex", let l = Store.defaults.string(forKey: "appLang") { return l == "en" }
+        return Bundle.main.preferredLocalizations.first == "en"
+    }()
     private struct File: Decodable { let ui: [String: String] }
     private static let ui: [String: String] = {
         guard en, let url = Bundle.main.url(forResource: "lines_en", withExtension: "json"),
@@ -24,11 +29,19 @@ enum Fmt {
     /// 5.27억
     /// 1억이 안 되면 만원으로 (4,002만)
     static func eok(_ v: Double, _ digits: Int = 2) -> String {
-        abs(v) < 1e8 ? man(v) : (v < 0 ? "−" : "") + String(format: "%.\(digits)f억", abs(v) / 1e8)
+        if WL.en { return krwC(v) }
+        return abs(v) < 1e8 ? man(v) : (v < 0 ? "−" : "") + String(format: "%.\(digits)f억", abs(v) / 1e8)
+    }
+    /// 영어: 만·억 대신 ₩2.3M 꼴 (앱 AppModel.krwC 와 같은 규칙)
+    static func krwC(_ krw: Double) -> String {
+        let a = abs(krw), u: [(Double, String)] = [(1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")]
+        let s = u.first { a >= $0.0 }.map { (a / $0.0).formatted(.number.precision(.significantDigits(1...3))) + $0.1 } ?? Int(a.rounded()).formatted()
+        return (krw < 0 ? "−" : "") + "₩" + s
     }
     /// 499만
     static func man(_ v: Double) -> String {
-        (dec.string(from: NSNumber(value: Int((abs(v) / 1e4).rounded()))) ?? "0") + "만"
+        if WL.en { return krwC(abs(v)) }
+        return (dec.string(from: NSNumber(value: Int((abs(v) / 1e4).rounded()))) ?? "0") + "만"
     }
     // 서식기는 만들 때 비싸서 한 번만 만들어 둔다
     private static let dec: NumberFormatter = { let n = NumberFormatter(); n.numberStyle = .decimal; return n }()

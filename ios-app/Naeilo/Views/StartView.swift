@@ -11,8 +11,8 @@ struct StartView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text("naeilo").appFont(20, .bold).padding(.top, 24)
                 HStack(alignment: .bottom, spacing: 12) {
-                    Pixel(name: "spr_seri", width: 56, height: 80).accessibilityLabel("세리")
-                    Text(Lines.pick("start.seri") ?? "처음 오셨군요. …… 하나만 물어볼게요.").appFont(15)
+                    Pixel(name: "spr_seri", width: 56, height: 80).charIdle().accessibilityLabel("세리")
+                    Text(Lines.pick("start.seri") ?? String(localized: "처음 오셨군요. …… 하나만 물어볼게요.")).appFont(15)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 14).padding(.vertical, 10)
                         .background(Theme.card, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14))
@@ -21,12 +21,12 @@ struct StartView: View {
                 }
                 Text("지금 내 투자,\n플러스? 마이너스?").appFont(30, .bold).lineSpacing(4)
                 VStack(spacing: 10) {
-                    option("마이너스예요", "본전까지 가는 길을 같이 찾아요", .recover)
-                    option("플러스예요", "목표까지 가는 길", .plus)
-                    option("아직 시작 전이에요", "매달 얼마면 언제 얼마?", .novice)
+                    option(String(localized: "마이너스예요"), String(localized: "본전까지 가는 길을 같이 찾아요"), .recover)
+                    option(String(localized: "플러스예요"), String(localized: "목표까지 가는 길"), .plus)
+                    option(String(localized: "아직 시작 전이에요"), String(localized: "매달 얼마면 언제 얼마?"), .novice)
                 }
                 if let pick {
-                    PrimaryButton(title: "시작하기") { m.startRoute(pick) }
+                    PrimaryButton(title: String(localized: "시작하기")) { m.startRoute(pick) }
                 }
                 Text("잘 모르겠다면 \"마이너스\"로 시작하세요. 매수 단가를 넣으면 자동으로 알려드려요.").appFont(13).foregroundStyle(Theme.muted)
                 Button { restore = true } label: {
@@ -80,15 +80,15 @@ struct StartForecastCard: View {
         case .recover:
             // 4,350만원 → 본전 5,000만원: 보통의 경우(중앙값)가 본전에 닿는 때 = ln(본전/지금) / g
             let v0 = 4350.0, c = 5000.0, mo = log(c / v0) / g * 12
-            return Ex(v0: v0, monthly: 0, line: c, lineName: "본전", big: AppModel.eta(mo).replacingOccurrences(of: " 뒤", with: "").replacingOccurrences(of: "뒤", with: ""), sub: "본전까지 보통 걸리는 기간")
+            return Ex(v0: v0, monthly: 0, line: c, lineName: String(localized: "본전"), big: AppModel.eta(mo).replacingOccurrences(of: " 뒤", with: "").replacingOccurrences(of: "뒤", with: ""), sub: String(localized: "본전까지 보통 걸리는 기간"))
         case .novice:
             let m = 50.0, v = Self.value(0, m, 3, 0)
-            return Ex(v0: 0, monthly: m, line: m * 36, lineName: "넣은 돈", big: AppModel.wonK(v), sub: "월 50만 · 3년 뒤 보통")
+            return Ex(v0: 0, monthly: m, line: m * 36, lineName: String(localized: "넣은 돈"), big: AppModel.wonK(v), sub: String(localized: "월 50만 · 3년 뒤 보통"))
         default:
             // 5,000만원 → 목표 5,800만원, 3년 뒤 목표 이상일 확률
             let v0 = 5000.0, k = 5800.0
             let p = AppModel.normCDF((log(v0 / k) + g * 3) / (s * sqrt(3)))
-            return Ex(v0: v0, monthly: 0, line: k, lineName: "목표", big: AppModel.pct(p), sub: "3년 안 목표 확률")
+            return Ex(v0: v0, monthly: 0, line: k, lineName: String(localized: "목표"), big: AppModel.pct(p), sub: String(localized: "3년 안 목표 확률"))
         }
     }
 
@@ -108,7 +108,7 @@ struct StartForecastCard: View {
             .foregroundStyle(.white)
             fan(e).frame(height: 140)
             HStack {
-                ForEach(["지금", "1년", "2년", "3년"], id: \.self) { t in
+                ForEach([String(localized: "지금"), String(localized: "1년"), String(localized: "2년"), String(localized: "3년")], id: \.self) { t in
                     Text(t).appFont(12).foregroundStyle(Color(hex: 0x9AA5B8))
                     if t != "3년" { Spacer() }
                 }

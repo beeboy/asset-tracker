@@ -54,6 +54,51 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 영문 로컬리제이션 6단계: 위젯 언어·컷 그림·동네 한마디 (2026-10-20, 로컬 커밋)
+- 위젯: 위젯 확장은 iOS 앱별 언어를 못 봐서 폰 언어를 따랐다 → 앱이 App Group `appLang`에 적고 위젯 `WL.en`이 읽는다.
+- 규칙과 결과 컷 그림: 글자가 그림에 박혀 있어 영어판 5장 `event_<인물>_en` 새로 만듦(`ios-app/tools/event_en`). 원본은 그대로.
+- 동네 한마디: 하루 한 번 만들어 TownLog에 저장해서, 언어를 바꿔도 그날은 한국어였다 → Entry.lang을 두고 언어가 바뀐 날은 오늘 한마디만 다시 만든다(지난 기록은 그대로).
+
+## 영문 로컬리제이션 5단계: 남은 한글·위젯 (2026-10-20, 로컬 커밋)
+- 종목 자료 영어: `Naeilo/Resources/data_en.json`(`tools/data_en.py` + `tools/data_en_words.json`). 영어일 때만 `EnData`가 한 번 읽는다. Symbol 이름·시장은 만들 때 영어로, 업종은 비교에 쓰여 한국어로 두고 `sectorText`로 보인다. 기업 소개는 `Sample.profiles`(영어), 동네 얼굴 열쇠는 `profilesKo`.
+- 한국 종목 영어 이름은 StockCatalog에 있는 것만(약 120개). 나머지 KRX 종목은 한글 그대로.
+- 동네 대화·블록 인물 줄: 사전 열쇠도 String(localized:)로 (영어에서 다음 대화가 끊기던 것 고침). 장면 잠금·금리 늦게/빨리 비교도 번역 글로 비교.
+- 위젯: 번역 목록을 위젯 타깃에도 넣음(위젯 공용 코드 Models·Reward의 String(localized:)). 위젯 금액도 영어면 ₩ 줄임(Fmt.krwC).
+- 다른 세션이 커밋 안 한 TownPanel·BrickGame·HoldingsView는 내 바꾼 줄만 커밋하고 그 세션 변경은 그대로 둠.
+
+## 영문 로컬리제이션 4단계: 인물 대사·인물 소개 (2026-10-20, 로컬 커밋)
+- 대사 원문(여는 말·상황 문장·맺는 말·물건 줄, 560개)의 영어는 `ios-app/tools/lines_en_data.json`. `python3 tools/lines.py`가 `Naeilo/Resources/lines_app_en.json`(146키·13,018줄)도 만든다. 위젯 말풍선(widget.*)은 EN_CORE 그대로.
+- 앱은 언어에 맞는 대사 파일 하나만 읽는다(`Lines.swift`: 영어면 lines_app_en, 아니면 lines_ko). 위젯은 그대로 WidgetShared/lines_en.json.
+- 인물 소개(SampleData `Shelter`)는 String(localized:)로 감싸고 영어 95줄 넣음. 서재는 원래 story_en이 있어 언어를 따른다. 종목 이름은 그대로.
+- 대사 원문을 고치면 lines_en_data.json도 같은 자리에 고쳐야 한다(길이·순서가 같아야 함).
+
+## 영문 로컬리제이션 3단계: usage-app (2026-10-20, 로컬 커밋)
+- `usage-app/UsageShared/Localizable.xcstrings`(ko 원문 + en, 앱·위젯 둘 다 리소스), `tools/gen_pbxproj.py`에 넣고 다시 만듦. Info.plist 두 곳 ko·en.
+- 글 52줄 모두 영어. 주간 리셋 요일은 영어면 en_US. 영어·한국어 시뮬레이터로 확인(라벨 넘침은 5h·Week로 줄임).
+
+## 영문 로컬리제이션 2단계: 영어 번역 (2026-10-20, 로컬 커밋)
+- Localizable.xcstrings 한글 키 3,095줄 모두 en 채움(짧은 영어). 자리표(%@ 등) 개수 검사함.
+- 금액: 앱 언어가 영어면 `AppModel.en` → `krwC`(₩2.3M·₩24K)로 man·eok·won·wonK·aboutWon·won1·wonRead·BoardView.eok가 바로 돌려줌. 날짜는 `AppModel.dateLocale`(영어면 en_US).
+- 조사(josa)는 영어면 빈 글. 말투 바꾸기(Guide.swift Voice)는 한국어 문법용이라 번역 목록에서 뺌.
+- 영어 시뮬레이터로 홈·종목·분석·미션·설정 확인. 남은 한글: 인물 대사(lines_ko.json, 13,533줄), 인물 소개·서재(SampleData·story), 종목 이름 데이터, ShareCard 날짜(다른 세션 작업 중이라 손 안 댐).
+- 번역은 기계 초벌: 자리 순서가 한국어와 다른 문장은 일부만 고침(%1$@ 꼴). 화면 보며 더 다듬을 것.
+
+## 영문 로컬리제이션 1단계: 바탕 + 글 모으기 (2026-10-20, 로컬 커밋)
+- `ios-app/Naeilo/Localizable.xcstrings`(원문 ko, 약 3,100줄) + 영어(en) 추가. 개발 언어 ko, Info.plist `CFBundleLocalizations` ko·en. 영어 번역은 아직 없음(영어 기기도 한국어 그대로).
+- 코드 속 한글: `Text("…")`·`Button("…")` 등은 그대로(자동), 그 밖은 `String(localized:)`로 감쌈(`ios-app/tools/l10n_wrap.py`). 끼워 넣는 값은 `String(describing:)`로 감싸 지금 모양 그대로. 사전 열쇠("키": 값)는 찾기용이라 안 감쌈.
+- 목록 갱신: 빌드 후 `xcrun xcstringstool sync Naeilo/Localizable.xcstrings --stringsdata build/NaeiloApp.build/Debug-iphonesimulator/NaeiloApp.build/Objects-normal/arm64/*.stringsdata` (Xcode에서 빌드하면 자동).
+- 설정: "거주 국가"(처음은 기기 지역, 세금만 따름 · 한국 밖이면 세금 화면에 '준비 중' 안내), "언어 변경"(iOS 설정의 앱 화면 열기). 한국 밖이면 토스 오픈 API 카드는 아래로, 홍콩·중국·싱가포르 등은 Longbridge가 Alpaca 위로.
+- 2단계 전에 볼 것: 데이터 파일(StockCatalog·StockSearch·SampleData·Industries)과 `WidgetShared`(WL.t)는 안 감쌈. `== "한글"` 비교 쪽 글은 안 감쌌는데 같은 글을 다른 곳에선 감싼 데가 있음(예: StartView `"3년"`, SettingsView 오픈 API 오류 문구) → 번역 넣을 때 맞춰야 함. 미션·목표의 '한국 거주자' 세금 카드는 거주 국가를 아직 안 따름. Info.plist 권한 문구도 아직.
+
+## 파도 타기 4단계: 섬 지도 첫 화면 (2026-10-20, 로컬 커밋)
+- `Views/Wave/WaveHomeView.swift`: 보드 탄 내 캐릭터(SurfRider, 누르면 꾸미기), 섬 4개 지도(윤곽 = 내 자산 40거래일 코스, 점선 뱃길, 안 열린 섬은 안개), 지금 섬 카드·'타러 가기', 예보 한 줄.
+- 진행 저장 `WaveMap`(UserDefaults `wave.star.*`·`wave.best.*`): 앞 섬 별 1개면 다음 섬 열림. 판이 끝나면 `WaveMap.record(WaveResult)`로 별(결과 팝업과 같은 기준)·최고 점수 저장.
+- '타러 가기' → WavePlayView. 미션 탭 본전 루트만 교체, 목표 루트(GoalViews)와 탭 이름 '이번 주 예보'는 그대로(다른 작업이 GoalViews 수정 중). weekRange는 위젯·리마인드가 써서 남김.
+
+## 동네 대사창 아래 칸 (2026-10-20, 로컬 커밋)
+- `Views/TownPanel.swift`: 기본(오늘의 한 줄=주민에게 한 줄 답, 할 말 고르기 표 `TownChat`) · 우리 사이(`TownBond` 단계는 함께한 날+대화+답×2로 그때 계산) · 꾸미기(별사탕으로 사기, 산 것은 `town.owned`).
+- 남은 것: 소품 3개는 그림 없는 잠긴 자리표시, '옷' 대신 모자 색. 말 거는 동안 동네 높이 290.
+
 ## 토스 총자산과 평가액 맞추기 (2026-10-17)
 - 원인: 토요일에 토스는 미국 종목을 정규장 종가 × 매매기준율로 세는데, 앱·위젯·웹은 애프터마켓 가격(사이트 `last`, 토스·Alpaca 지금 가격)으로 셌다. 테슬라 0.6%, 엔비디아 0.2%만큼 낮게 나왔다. 환율(1,348.5)은 같았다.
 - 바꿈: 뉴욕 시각 평일 20시~다음 날 4시와 주말에는 사이트 `regular`(정규장 종가)로 센다. 앱 `Market.regClose`, 위젯 `Engine.build`, 웹 `curPrice`·`usClosed`. 공통 판단은 `USSession.closed`.

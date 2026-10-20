@@ -434,8 +434,40 @@ def main():
     out.write_text(json.dumps({"v": 1, "count": sum(len(v) for v in en.values()), "lines": en, "ui": WIDGET_UI},
                               ensure_ascii=False, separators=(",", ":"), sort_keys=True), encoding="utf-8")
     print(f"{len(en)} keys, {len(WIDGET_UI)} ui -> {out} ({out.stat().st_size // 1024} KB)")
+    app_en(lines)
     if not check(Path(__file__).resolve().parent.parent):
         sys.exit(1)
+
+
+# 앱 영어 대사 (Naeilo/Resources/lines_app_en.json): 원문(여는 말·상황 문장·맺는 말)의 영어는 tools/lines_en_data.json.
+# 위젯 말풍선(widget.*)은 위 EN_CORE 그대로. 영어가 길어서 길이 제한은 1.5배
+APP_EN_MAXLEN = {"widget": EN_MAXLEN, "share": 90}
+
+
+def app_en(ko_lines):
+    root = Path(__file__).resolve().parent.parent
+    d = json.loads((root / "tools/lines_en_data.json").read_text(encoding="utf-8"))
+    voice, stage, core = d["voice"], d["seri_stage"], d["core"]
+    out = {}
+    for key, per in CORE.items():
+        for who in per:
+            if key in EN_CORE and who in EN_CORE[key]:
+                v = EN_VOICE[who]
+                out[f"{key}.{who}"] = build(key, who, EN_CORE[key][who], v["open"], v["close"], maxlen=EN_MAXLEN)
+                continue
+            opens, closes = voice[who]["open"], voice[who]["close"]
+            if who == "seri" and key in ("calm.1", "calm.2"):
+                opens, closes = stage[key[-1]]["open"], stage[key[-1]]["close"]
+            out[f"{key}.{who}"] = build(key, who, core[key][who], opens, closes, maxlen=APP_EN_MAXLEN.get(key.split(".")[0], 130))
+    for item in ITEM_LINE:
+        for who in WHO:
+            cores = [d["item_line"][item][who]] + [c.replace("{item}", d["item_name"][item]) for c in d["item_core"][who]]
+            out[f"item.{item}.{who}"] = build(f"item.{item}", who, cores, voice[who]["open"], voice[who]["close"], maxlen=130)
+    miss = set(ko_lines) - set(out)
+    assert not miss, f"영어 없는 키: {sorted(miss)[:5]}"
+    p = root / "Naeilo/Resources/lines_app_en.json"
+    p.write_text(json.dumps({"v": 1, "count": sum(len(v) for v in out.values()), "lines": out}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print(f"{len(out)} keys -> {p} ({p.stat().st_size // 1024} KB)")
 
 
 if __name__ == "__main__":

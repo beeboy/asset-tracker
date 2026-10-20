@@ -10,7 +10,7 @@ struct SupportView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                FriendSay(key: "sponsor", fallback: "커피 한 잔이면 충분해요.")
+                FriendSay(key: "sponsor", fallback: String(localized: "커피 한 잔이면 충분해요."))
                 VStack(alignment: .leading, spacing: 6) {
                     Text("구독").appFont(22, .bold)
                     Text(lead).appFont(14).foregroundStyle(Theme.sub).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
@@ -32,8 +32,8 @@ struct SupportView: View {
                     Text(msg).appFont(14, .bold).foregroundStyle(Theme.teal)
                 }
                 HStack(spacing: 10) {
-                    outline(s.busy == "restore" ? "복원하는 중…" : "구매 복원") { Task { await s.restore() } }
-                    outline("구독 관리") { openURL(URL(string: "https://apps.apple.com/account/subscriptions")!) }
+                    outline(s.busy == "restore" ? String(localized: "복원하는 중…") : String(localized: "구매 복원")) { Task { await s.restore() } }
+                    outline(String(localized: "구독 관리")) { openURL(URL(string: "https://apps.apple.com/account/subscriptions")!) }
                 }
                 .disabled(s.busy != nil)
                 Text("Apple ID로 결제하는 자동 갱신 구독이에요. 기간이 끝나기 24시간 전까지 끄지 않으면 같은 값으로 다시 결제돼요. 끄기는 위 '구독 관리'(iPhone 설정 > Apple 계정 > 구독)에서 할 수 있어요. 구독을 멈춰도 이미 연 캐릭터 상품과 받은 이야기는 그대로예요.")
@@ -52,9 +52,9 @@ struct SupportView: View {
     }
 
     private var lead: String {
-        if s.plan != nil { return "구독 덕분에 naeilo를 계속 만들어요. 위젯, 목표와 확률 전망, 서재 외전이 모두 열려 있어요." }
-        if s.inTrial { return "처음 7일은 서재 빼고 모두 무료예요. 7일 뒤에도 위젯과 목표·확률 전망을 보려면 구독해 주세요." }
-        return "7일 무료가 끝났어요. 홈 숫자·분석·게임과 이미 연 캐릭터는 그대로 쓸 수 있고, 위젯과 목표·확률 전망은 구독하면 다시 열려요."
+        if s.plan != nil { return String(localized: "구독 덕분에 naeilo를 계속 만들어요. 위젯, 목표와 확률 전망, 서재 외전이 모두 열려 있어요.") }
+        if s.inTrial { return String(localized: "처음 7일은 서재 빼고 모두 무료예요. 7일 뒤에도 위젯과 목표·확률 전망을 보려면 구독해 주세요.") }
+        return String(localized: "7일 무료가 끝났어요. 홈 숫자·분석·게임과 이미 연 캐릭터는 그대로 쓸 수 있고, 위젯과 목표·확률 전망은 구독하면 다시 열려요.")
     }
 
     /// 구독하면 열리는 것
@@ -62,8 +62,8 @@ struct SupportView: View {
         Card {
             Text("구독하면").appFont(15, .bold)
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(["위젯 전부 (기본·인물·서재·잠금 화면)", "목표(내 길)와 확률 전망", "서재 외전 『이종 공명』 6장부터 끝까지 (앱 연재판)",
-                         "앱 연재판 1권: 연 구독, 또는 월 구독 \(Support.vol1Months)개월 이상"], id: \.self) { a in
+                ForEach([String(localized: "위젯 전부 (기본·인물·서재·잠금 화면)"), String(localized: "목표(내 길)와 확률 전망"), String(localized: "서재 외전 『이종 공명』 6장부터 끝까지 (앱 연재판)"),
+                         String(localized: "앱 연재판 1권: 연 구독, 또는 월 구독 \(String(describing: Support.vol1Months))개월 이상")], id: \.self) { a in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("·").appFont(14, .bold)
                         Text(a).appFont(14).fixedSize(horizontal: false, vertical: true)
@@ -82,12 +82,12 @@ struct SupportView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(plan.name).appFont(17, .bold)
                 Spacer()
-                Text(p.map { "\($0.displayPrice) / \(plan.unit)" } ?? (plan == .monthly ? "1,000원 / 한 달" : "9,000원 / 1년"))
+                Text(p.map { "\($0.displayPrice) / \(plan.unit)" } ?? (plan == .monthly ? String(localized: "1,000원 / 한 달") : String(localized: "9,000원 / 1년")))
                     .appFont(15, .bold).foregroundStyle(Theme.sub)
             }
             if plan == .yearly { Text("월 구독보다 25% 싸고, 1권이 바로 열려요.").appFont(13).foregroundStyle(Theme.sub) }
             Button { if let p { Task { await s.buy(p) } } } label: {
-                Text(on ? "구독 중이에요" : p == nil ? "지금은 구독할 수 없어요" : s.busy == p?.id ? "결제하는 중…" : "\(plan.name)하기")
+                Text(on ? String(localized: "구독 중이에요") : p == nil ? String(localized: "지금은 구독할 수 없어요") : s.busy == p?.id ? String(localized: "결제하는 중…") : String(localized: "\(String(describing: plan.name))하기"))
                     .appFont(15, .bold).foregroundStyle(on ? Theme.teal : .white)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(on ? Theme.mintBg : Theme.teal, in: RoundedRectangle(cornerRadius: 12))

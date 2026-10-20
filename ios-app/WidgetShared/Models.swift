@@ -194,18 +194,18 @@ enum TossFeed {
         req.setValue("naeilo-ios/0.1", forHTTPHeaderField: "User-Agent")
         let data: Data, resp: URLResponse
         do { (data, resp) = try await URLSession.shared.data(for: req) }
-        catch let e as URLError { return fail(e.code == .timedOut ? "3초 안에 응답 없음" : "연결 실패 (\(e.code.rawValue))") }
-        catch { return fail("연결 실패") }
+        catch let e as URLError { return fail(e.code == .timedOut ? String(localized: "3초 안에 응답 없음") : String(localized: "연결 실패 (\(String(describing: e.code.rawValue)))")) }
+        catch { return fail(String(localized: "연결 실패")) }
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
-        guard code == 200 else { return fail("서버 응답 \(code)") }
+        guard code == 200 else { return fail(String(localized: "서버 응답 \(String(describing: code))")) }
         guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let qs = o["quotes"] as? [String: Any] else { return fail("응답을 읽지 못함") }
+              let qs = o["quotes"] as? [String: Any] else { return fail(String(localized: "응답을 읽지 못함")) }
         var q: [String: QuoteFeed.Q] = [:]
         for (id, y) in want {
             guard let v = qs[y] as? [String: Any], let last = num(v["last"]), last > 0 else { continue }
             q[id] = .init(last: last, prev: 0, at: num(v["last_time"]) ?? Date().timeIntervalSince1970)
         }
-        guard !q.isEmpty else { return fail((o["error"] as? String).map { "서버: " + $0 } ?? "받은 종목 없음") }
+        guard !q.isEmpty else { return fail((o["error"] as? String).map { String(localized: "서버: ") + $0 } ?? String(localized: "받은 종목 없음")) }
         return save(q)
     }
 
@@ -239,23 +239,23 @@ enum TossFeed {
         do {
             let (d, resp) = try await URLSession.shared.data(for: r)
             return ((resp as? HTTPURLResponse)?.statusCode ?? 0, try? JSONSerialization.jsonObject(with: d) as? [String: Any], nil)
-        } catch let e as URLError { return (0, nil, e.code == .timedOut ? "3초 안에 응답 없음" : "중계에 닿지 못함") }
-        catch { return (0, nil, "중계에 닿지 못함") }
+        } catch let e as URLError { return (0, nil, e.code == .timedOut ? String(localized: "3초 안에 응답 없음") : String(localized: "중계에 닿지 못함")) }
+        catch { return (0, nil, String(localized: "중계에 닿지 못함")) }
     }
 
     /// 토스 오류를 쉬운 말로 (허용 IP 미등록이 가장 흔하다)
     static func why(_ code: Int, _ o: [String: Any]?) -> String {
         let c = ((o?["error"] as? [String: Any])?["code"] as? String) ?? (o?["error"] as? String) ?? ""
-        if code == 403 || c == "access_denied" { return "허용 IP에 중계 IP가 없어요" }
-        if c == "invalid_client" { return "키가 맞지 않아요" }
-        if code == 429 { return "잠시 뒤에 다시 받아요" }
-        return "오픈 API 응답 \(code)" + (c.isEmpty ? "" : " (\(c))")
+        if code == 403 || c == "access_denied" { return String(localized: "허용 IP에 중계 IP가 없어요") }
+        if c == "invalid_client" { return String(localized: "키가 맞지 않아요") }
+        if code == 429 { return String(localized: "잠시 뒤에 다시 받아요") }
+        return String(localized: "오픈 API 응답 \(String(describing: code))") + (c.isEmpty ? "" : " (\(c))")
     }
 
     /// 토큰: 키체인에 둔 것을 만료 1분 전까지 쓴다. 토스는 키당 토큰 1개라 새로 받으면 예전 것은 끊긴다
     static func token(renew: Bool = false) async -> (String?, String?) {
         if !renew, let t = TossKeys.token, t.exp - 60 > Date().timeIntervalSince1970 { return (t.value, nil) }
-        guard let k = TossKeys.load(), let url = URL(string: Config.tossRelay + "/api/toss/token") else { return (nil, "키 없음") }
+        guard let k = TossKeys.load(), let url = URL(string: Config.tossRelay + "/api/toss/token") else { return (nil, String(localized: "키 없음")) }
         var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
         r.httpMethod = "POST"
         r.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
@@ -270,7 +270,7 @@ enum TossFeed {
     }
 
     private static func prices(_ codes: [String], _ tok: String) async -> (Int, [String: Any]?, String?) {
-        guard let url = URL(string: Config.tossRelay + "/api/toss/v1/prices?symbols=" + codes.joined(separator: ",")) else { return (0, nil, "잘못된 종목") }
+        guard let url = URL(string: Config.tossRelay + "/api/toss/v1/prices?symbols=" + codes.joined(separator: ",")) else { return (0, nil, String(localized: "잘못된 종목")) }
         var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 3)
         r.setValue("Bearer " + tok, forHTTPHeaderField: "Authorization")
         return await relayCall(r)
@@ -278,17 +278,17 @@ enum TossFeed {
 
     /// 내 키로 중계 GET (일봉·환율). 토큰이 끊겼으면(401) 한 번만 새로 받는다. path 예: "/api/toss/v1/candles?symbol=AAPL&…"
     static func userGet(_ path: String, timeout: TimeInterval = 5) async -> (Int, [String: Any]?, String?) {
-        guard TossKeys.on, let url = URL(string: Config.tossRelay + path) else { return (0, nil, "키 없음") }
+        guard TossKeys.on, let url = URL(string: Config.tossRelay + path) else { return (0, nil, String(localized: "키 없음")) }
         var (tok, e) = await token()
         for renew in [false, true] {
             if renew { (tok, e) = await token(renew: true) }
-            guard let t = tok else { return (0, nil, e ?? "토큰 실패") }
+            guard let t = tok else { return (0, nil, e ?? String(localized: "토큰 실패")) }
             var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
             r.setValue("Bearer " + t, forHTTPHeaderField: "Authorization")
             let out = await relayCall(r)
             if out.0 != 401 { return out }
         }
-        return (401, nil, "토큰 실패")
+        return (401, nil, String(localized: "토큰 실패"))
     }
 
     /// 토스에 없는 종목 코드 → 다시 물어볼 시각 (하루 동안 안 묻는다, server.py 와 같다). 현재가에서 404 난 것만
@@ -316,9 +316,9 @@ enum TossFeed {
         // 내 종목이 모두 빠져 있으면 그래도 묻는다 (한 번 404 가 나면 다시 받기 전까지 하루 내내 실패로 남던 일)
         if !skip.isEmpty, want.values.compactMap(code).allSatisfy({ (skip[$0] ?? 0) >= now }) { skip = [:] }
         for (id, y) in want { if let c = code(y), (skip[c] ?? 0) < now { ids[c, default: []].append(id) } }
-        guard !ids.isEmpty else { return fail("오픈 API로 받을 종목 없음") }
+        guard !ids.isEmpty else { return fail(String(localized: "오픈 API로 받을 종목 없음")) }
         var (tok, e) = await token()
-        guard var t = tok else { return fail(e ?? "토큰 실패") }
+        guard var t = tok else { return fail(e ?? String(localized: "토큰 실패")) }
         var q: [String: QuoteFeed.Q] = [:]
         var got: Set<String> = []   // 받은 토스 코드 (빼 둔 목록에서 지운다)
         func take(_ o: [String: Any]?) {
@@ -335,7 +335,7 @@ enum TossFeed {
             var (code, o, err) = await prices(part, t)
             if code == 401 {   // 만료·다른 곳에서 새로 받아 끊김 → 한 번만 다시 받는다
                 (tok, e) = await token(renew: true)
-                guard let n = tok else { return fail(e ?? "토큰 실패") }
+                guard let n = tok else { return fail(e ?? String(localized: "토큰 실패")) }
                 t = n
                 (code, o, err) = await prices(part, t)
             }
@@ -356,7 +356,7 @@ enum TossFeed {
             take(o)
         }
         if !got.isEmpty, !Set(miss.keys).isDisjoint(with: got) { var m = miss; for c in got { m[c] = nil }; miss = m }
-        guard !q.isEmpty else { return fail("받은 종목 없음") }
+        guard !q.isEmpty else { return fail(String(localized: "받은 종목 없음")) }
         return save(q)
     }
 }
@@ -461,7 +461,7 @@ enum AlpacaFeed {
         for i in stride(from: 0, to: all.count, by: 100) {
             let part = all[i..<min(i + 100, all.count)].joined(separator: ",")
             guard let enc = part.addingPercentEncoding(withAllowedCharacters: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: ".,"))),
-                  let url = URL(string: base + "?symbols=" + enc + "&feed=iex") else { return fail("잘못된 종목") }
+                  let url = URL(string: base + "?symbols=" + enc + "&feed=iex") else { return fail(String(localized: "잘못된 종목")) }
             let (code, o, e) = await get(url, k)
             if let e { return fail(e) }
             guard code == 200, let o else { return fail(why(code)) }
@@ -472,7 +472,7 @@ enum AlpacaFeed {
                 for id in ids[c.uppercased()] ?? [] { q[id] = .init(last: last, prev: prev, at: at) }
             }
         }
-        guard !q.isEmpty else { return fail("받은 종목 없음") }
+        guard !q.isEmpty else { return fail(String(localized: "받은 종목 없음")) }
         let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
         Store.write(f, name)
         Store.defaults.set(f.got, forKey: "alpaca_ok_at")
@@ -487,19 +487,19 @@ enum AlpacaFeed {
         do {
             let (d, resp) = try await URLSession.shared.data(for: r)
             return ((resp as? HTTPURLResponse)?.statusCode ?? 0, try? JSONSerialization.jsonObject(with: d) as? [String: Any], nil)
-        } catch let e as URLError { return (0, nil, e.code == .timedOut ? "5초 안에 응답 없음" : "Alpaca에 닿지 못함") }
-        catch { return (0, nil, "Alpaca에 닿지 못함") }
+        } catch let e as URLError { return (0, nil, e.code == .timedOut ? String(localized: "5초 안에 응답 없음") : String(localized: "Alpaca에 닿지 못함")) }
+        catch { return (0, nil, String(localized: "Alpaca에 닿지 못함")) }
     }
 
     static func why(_ code: Int) -> String {
-        if code == 401 || code == 403 { return "키가 맞지 않아요" }
-        if code == 429 { return "잠시 뒤에 다시 받아요" }
-        return "Alpaca 응답 \(code)"
+        if code == 401 || code == 403 { return String(localized: "키가 맞지 않아요") }
+        if code == 429 { return String(localized: "잠시 뒤에 다시 받아요") }
+        return String(localized: "Alpaca 응답 \(String(describing: code))")
     }
 
     /// 키 확인: AAPL 하나를 물어 본다 (설정 화면 '연결하기')
     static func check() async -> String? {
-        guard let k = AlpacaKeys.load(), let url = URL(string: base + "?symbols=AAPL&feed=iex") else { return "키 없음" }
+        guard let k = AlpacaKeys.load(), let url = URL(string: base + "?symbols=AAPL&feed=iex") else { return String(localized: "키 없음") }
         let (code, _, e) = await get(url, k)
         return e ?? (code == 200 ? nil : why(code))
     }
@@ -650,7 +650,7 @@ enum LongbridgeFeed {
                 for id in ids[c] ?? [] { q[id] = .init(last: last, prev: num(v["prev_close"]) ?? 0, at: at) }
             }
         }
-        guard !q.isEmpty else { return fail("받은 종목 없음") }
+        guard !q.isEmpty else { return fail(String(localized: "받은 종목 없음")) }
         let f = QuoteFeed.File(got: Date().timeIntervalSince1970, q: q)
         Store.write(f, name)
         Store.defaults.set(f.got, forKey: "longbridge_ok_at")
@@ -660,7 +660,7 @@ enum LongbridgeFeed {
 
     /// 서명한 POST. 응답 {code, message, data} 에서 data 만 돌려준다
     private static func post(_ path: String, _ body: [String: Any], _ k: LongbridgeKeys.Keys) async -> ([String: Any]?, String?) {
-        guard let url = URL(string: base + path), let b = try? JSONSerialization.data(withJSONObject: body) else { return (nil, "잘못된 요청") }
+        guard let url = URL(string: base + path), let b = try? JSONSerialization.data(withJSONObject: body) else { return (nil, String(localized: "잘못된 요청")) }
         let token = k.token.hasPrefix("Bearer ") ? String(k.token.dropFirst(7)) : k.token
         let ts = String(Int64(Date().timeIntervalSince1970 * 1000))
         var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 5)
@@ -680,8 +680,8 @@ enum LongbridgeFeed {
             let code = o.flatMap { num($0["code"]) } ?? -1
             if http == 200 && code == 0 { return (o?["data"] as? [String: Any] ?? [:], nil) }
             return (nil, why(http, o?["message"] as? String))
-        } catch let e as URLError { return (nil, e.code == .timedOut ? "5초 안에 응답 없음" : "Longbridge에 닿지 못함") }
-        catch { return (nil, "Longbridge에 닿지 못함") }
+        } catch let e as URLError { return (nil, e.code == .timedOut ? String(localized: "5초 안에 응답 없음") : String(localized: "Longbridge에 닿지 못함")) }
+        catch { return (nil, String(localized: "Longbridge에 닿지 못함")) }
     }
 
     /// 공식 SDK 서명: "방법|경로|쿼리|서명할 헤더들\n|헤더 이름들|본문 SHA1" 의 SHA1 을 "HMAC-SHA256|…" 로 묶어 App Secret 으로 HMAC
@@ -698,18 +698,18 @@ enum LongbridgeFeed {
     private static func hex<S: Sequence>(_ d: S) -> String where S.Element == UInt8 { d.map { String(format: "%02x", $0) }.joined() }
 
     static func why(_ http: Int, _ message: String?) -> String {
-        if http == 401 || http == 403 { return "키가 맞지 않거나 토큰 기한이 지났어요" }
-        if http == 429 { return "잠시 뒤에 다시 받아요" }
+        if http == 401 || http == 403 { return String(localized: "키가 맞지 않거나 토큰 기한이 지났어요") }
+        if http == 429 { return String(localized: "잠시 뒤에 다시 받아요") }
         if let m = message, !m.isEmpty { return "Longbridge: " + String(m.prefix(60)) }
-        return "Longbridge 응답 \(http)"
+        return String(localized: "Longbridge 응답 \(String(describing: http))")
     }
 
     /// 키 확인: AAPL 하나를 물어 본다 (설정 화면 '연결하기')
     static func check() async -> String? {
-        guard let k = LongbridgeKeys.load() else { return "키 없음" }
+        guard let k = LongbridgeKeys.load() else { return String(localized: "키 없음") }
         let (o, e) = await post("/quote/quotes", ["symbol": ["AAPL.US"]], k)
         if let e { return e }
-        return (o?["secu_quote"] as? [Any])?.isEmpty == false ? nil : "시세 권한이 없어요"
+        return (o?["secu_quote"] as? [Any])?.isEmpty == false ? nil : String(localized: "시세 권한이 없어요")
     }
 
     /// 위젯: 앱이 feed.json 에 넘긴 내 종목을 위젯이 직접 Longbridge 에 묻는다

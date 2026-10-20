@@ -117,7 +117,7 @@ struct GoalFan: View {
     /// 0 · 2.5억 · 5천만
     static func lab(_ v: Double) -> String {
         if v <= 0 { return "0" }
-        if v < 1e8 { return Fmt.man(v) }
+        if WL.en || v < 1e8 { return Fmt.man(v) }
         return String(format: "%g억", (v / 1e8 * 10).rounded() / 10)
     }
 }

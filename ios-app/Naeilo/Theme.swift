@@ -173,6 +173,43 @@ struct Pixel: View {
     }
 }
 
+/// 서 있는 인물 숨쉬기: 발 기준으로 아주 살짝 커졌다 작아지고, 가끔 움찔한다.
+/// 화면에 있을 때만 돌고('동작 줄이기'면 끔), 걷기·숨 장면이 있는 인물(CharFigure·TownWalker)엔 붙이지 않는다
+struct CharIdle: ViewModifier {
+    var seed = 0
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    @State private var up = false
+    @State private var hop: CGFloat = 0
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(x: up ? 1.012 : 1, y: up ? 1.025 : 1, anchor: .bottom)
+            .offset(y: hop)
+            .task(id: reduce) {
+                guard !reduce else { still(); return }
+                try? await Task.sleep(for: .milliseconds(seed % 9 * 130))   // 인물마다 박자를 어긋나게
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { up = true }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(Double.random(in: 6...12)))
+                    guard !Task.isCancelled else { break }
+                    withAnimation(.easeOut(duration: 0.09)) { hop = -1.5 }
+                    try? await Task.sleep(for: .milliseconds(110))
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { hop = 0 }
+                }
+            }
+            .onDisappear(perform: still)
+    }
+    /// 화면 밖·동작 줄이기: 반복 애니메이션을 끊고 제자리
+    private func still() {
+        var t = Transaction(); t.disablesAnimations = true
+        withTransaction(t) { up = false; hop = 0 }
+    }
+}
+
+extension View {
+    func charIdle(_ seed: Int = 0) -> some View { modifier(CharIdle(seed: seed)) }
+}
+
 struct ProgressBar: View {
     let value: Double
     var height: CGFloat = 10

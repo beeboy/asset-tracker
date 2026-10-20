@@ -17,13 +17,13 @@ struct CalmEvent: Codable, Equatable {
 
     var label: String {
         switch act {
-        case .rule: "규칙대로"
-        case .chase: "수익 뒤 추가 매수"
-        case .switchOut: "손실 뒤 매도"
-        case .avgDown: "손실 뒤 추가 매수"
-        case .trim: "수익 뒤 덜어내기"
-        case .wait: "큰 변동일 기다림"
-        case .fresh: "새 종목 매수"
+        case .rule: String(localized: "규칙대로")
+        case .chase: String(localized: "수익 뒤 추가 매수")
+        case .switchOut: String(localized: "손실 뒤 매도")
+        case .avgDown: String(localized: "손실 뒤 추가 매수")
+        case .trim: String(localized: "수익 뒤 덜어내기")
+        case .wait: String(localized: "큰 변동일 기다림")
+        case .fresh: String(localized: "새 종목 매수")
         }
     }
 }
@@ -170,56 +170,56 @@ struct Calm: Codable, Equatable {
 
     struct Kind { let id: String; let title: String; let when: String; let like: String }
     static let kinds: [Kind] = [
-        .init(id: "ir", title: "앞서 달리는 형", when: "수익 뒤 추가 매수나 손실 뒤 매도가 60% 이상",
-              like: "너무 빨랐던 사람. 연결을 다섯, 스물, 백으로 넓히다 넘쳤다."),
-        .init(id: "sua", title: "자라는 형", when: "최근 30일 지수가 그 전보다 10 이상 올랐을 때",
-              like: "침묵을 고르는 법을 배운다. 제때 오는 것을 몸으로 느낀다."),
-        .init(id: "seonbae", title: "되묻는 형", when: "수익 뒤 덜어내기·규칙 안의 역방향 매매가 절반 이상, 지수 60 이상",
-              like: "질문으로 말한다. \"그게 정말 네 생각이야.\""),
-        .init(id: "sio", title: "기다리는 형", when: "한 달 매매 2번 이하, 큰 변동일에 기다린 비율 60% 이상",
-              like: "지연을 센다. 목표 100에 닿자 판다."),
-        .init(id: "seri", title: "원칙형", when: "지수 80 이상, 매매의 절반 이상이 규칙대로",
-              like: "한 박자 두고 관찰과 사실만 말한다."),
+        .init(id: "ir", title: String(localized: "앞서 달리는 형"), when: String(localized: "수익 뒤 추가 매수나 손실 뒤 매도가 60% 이상"),
+              like: String(localized: "너무 빨랐던 사람. 연결을 다섯, 스물, 백으로 넓히다 넘쳤다.")),
+        .init(id: "sua", title: String(localized: "자라는 형"), when: String(localized: "최근 30일 지수가 그 전보다 10 이상 올랐을 때"),
+              like: String(localized: "침묵을 고르는 법을 배운다. 제때 오는 것을 몸으로 느낀다.")),
+        .init(id: "seonbae", title: String(localized: "되묻는 형"), when: String(localized: "수익 뒤 덜어내기·규칙 안의 역방향 매매가 절반 이상, 지수 60 이상"),
+              like: String(localized: "질문으로 말한다. \"그게 정말 네 생각이야.\"")),
+        .init(id: "sio", title: String(localized: "기다리는 형"), when: String(localized: "한 달 매매 2번 이하, 큰 변동일에 기다린 비율 60% 이상"),
+              like: String(localized: "지연을 센다. 목표 100에 닿자 판다.")),
+        .init(id: "seri", title: String(localized: "원칙형"), when: String(localized: "지수 80 이상, 매매의 절반 이상이 규칙대로"),
+              like: String(localized: "한 박자 두고 관찰과 사실만 말한다.")),
     ]
     static func kind(_ id: String?) -> Kind? { kinds.first { $0.id == id } }
 
     /// 인물 행동 한 줄 (쉬운 말 요약. 정확한 기준은 kinds.when과 match)
     static let does: [String: String] = [
-        "seri": "대부분 정해 둔 규칙대로 사고판다",
-        "sio": "거의 안 사고팔고, 크게 흔들리면 기다린다",
-        "seonbae": "오르면 조금 덜어내며 거꾸로 생각한다",
-        "ir": "오르면 더 사고, 내리면 바로 판다",
-        "sua": "점수가 한 달 새 눈에 띄게 좋아지는 중",
+        "seri": String(localized: "대부분 정해 둔 규칙대로 사고판다"),
+        "sio": String(localized: "거의 안 사고팔고, 크게 흔들리면 기다린다"),
+        "seonbae": String(localized: "오르면 조금 덜어내며 거꾸로 생각한다"),
+        "ir": String(localized: "오르면 더 사고, 내리면 바로 판다"),
+        "sua": String(localized: "점수가 한 달 새 눈에 띄게 좋아지는 중"),
     ]
     /// 기록마다 왜 그 점수인지 한 줄 (점수표 points와 같은 뜻)
     static func reason(_ a: CalmEvent.Act) -> String {
         switch a {
-        case .rule: return "규칙대로"
-        case .wait: return "급변일 기다림"
+        case .rule: return String(localized: "규칙대로")
+        case .wait: return String(localized: "급변일 기다림")
         case .chase: return ""
-        case .switchOut: return "내린 뒤 매도"
-        case .avgDown, .trim: return "규칙 밖"
-        case .fresh: return "새 종목 · 기록만"
+        case .switchOut: return String(localized: "내린 뒤 매도")
+        case .avgDown, .trim: return String(localized: "규칙 밖")
+        case .fresh: return String(localized: "새 종목 · 기록만")
         }
     }
 
     /// 지수가 무슨 뜻인지 한 줄 (100 = 직전 수익·손실과 무관하게 매매)
     static func meaning(_ s: CalmStats) -> String {
-        guard s.n >= minEvents else { return "기록 \(minEvents)건이 모이면 지수가 나와요." }
+        guard s.n >= minEvents else { return String(localized: "기록 \(String(describing: minEvents))건이 모이면 지수가 나와요.") }
         let i = s.index
-        let t = i >= 80 ? "직전 수익·손실에 거의 끌리지 않아요" : i >= 60 ? "직전 결과에 조금 끌려요" : i >= 40 ? "직전 결과에 꽤 끌려요" : "직전 결과에 많이 끌려요"
-        return "\(t). 100이면 결과와 상관없이 매매해요. (매매 \(s.trades)건 기준)"
+        let t = i >= 80 ? String(localized: "직전 수익·손실에 거의 끌리지 않아요") : i >= 60 ? String(localized: "직전 결과에 조금 끌려요") : i >= 40 ? String(localized: "직전 결과에 꽤 끌려요") : String(localized: "직전 결과에 많이 끌려요")
+        return String(localized: "\(String(describing: t)). 100이면 결과와 상관없이 매매해요. (매매 \(String(describing: s.trades))건 기준)")
     }
 
     /// 왜 이 유형인지: 매칭에 쓴 숫자를 그대로 보여 준다
     static func why(_ id: String?, _ s: CalmStats) -> String? {
         let p = { (x: Double) in "\(Int((x * 100).rounded()))%" }
         switch id {
-        case "ir": return "수익 뒤 추가 매수 \(p(s.chase)), 손실 뒤 매도 \(p(s.switchR)). 어느 한쪽이 60%를 넘으면 이 유형이에요."
-        case "sua": return "최근 30일 지수가 그 전 30일보다 \(s.trend.map { ($0 >= 0 ? "+" : "") + "\($0)" } ?? "–") 움직였어요. 10 이상 오르면 이 유형이에요."
-        case "seonbae": return "매매의 \(p(s.contra))가 수익 뒤 덜어내기처럼 결과와 반대로 한 매매예요. 절반 이상이고 지수 60 이상이면 이 유형이에요."
-        case "sio": return "한 달 매매 \(String(format: "%.1f", s.perMonth))번, 큰 변동일에 기다린 비율 \(p(s.waitR)). 매매가 적고 잘 기다리면 이 유형이에요."
-        case "seri": return "매매의 \(p(s.ruleR))가 규칙대로예요. 지수가 높고 규칙대로가 많으면 이 유형이에요."
+        case "ir": return String(localized: "수익 뒤 추가 매수 \(String(describing: p(s.chase))), 손실 뒤 매도 \(String(describing: p(s.switchR))). 어느 한쪽이 60%를 넘으면 이 유형이에요.")
+        case "sua": return String(localized: "최근 30일 지수가 그 전 30일보다 \(String(describing: s.trend.map { ($0 >= 0 ? "+" : "") + "\($0)" } ?? "–")) 움직였어요. 10 이상 오르면 이 유형이에요.")
+        case "seonbae": return String(localized: "매매의 \(String(describing: p(s.contra)))가 수익 뒤 덜어내기처럼 결과와 반대로 한 매매예요. 절반 이상이고 지수 60 이상이면 이 유형이에요.")
+        case "sio": return String(localized: "한 달 매매 \(String(describing: String(format: "%.1f", s.perMonth)))번, 큰 변동일에 기다린 비율 \(String(describing: p(s.waitR))). 매매가 적고 잘 기다리면 이 유형이에요.")
+        case "seri": return String(localized: "매매의 \(String(describing: p(s.ruleR)))가 규칙대로예요. 지수가 높고 규칙대로가 많으면 이 유형이에요.")
         default: return nil
         }
     }
@@ -227,9 +227,9 @@ struct Calm: Codable, Equatable {
     /// 함께한 날과 말투 단계 (14일·60일에 말투가 가까워진다)
     var stageLine: String {
         let d = together.count
-        return d < 14 ? "함께한 날 \(d)일 · \(14 - d)일 더 함께하면 말투가 가까워져요"
-            : d < 60 ? "함께한 날 \(d)일 · \(60 - d)일 더 함께하면 말투가 한 번 더 가까워져요"
-            : "함께한 날 \(d)일 · 말투가 가장 가까워졌어요"
+        return d < 14 ? String(localized: "함께한 날 \(String(describing: d))일 · \(String(describing: 14 - d))일 더 함께하면 말투가 가까워져요")
+            : d < 60 ? String(localized: "함께한 날 \(String(describing: d))일 · \(String(describing: 60 - d))일 더 함께하면 말투가 한 번 더 가까워져요")
+            : String(localized: "함께한 날 \(String(describing: d))일 · 말투가 가장 가까워졌어요")
     }
 
     /// 홈 카드 한 줄: 인물 말투가 애착 단계를 따라 바뀐다 (세리는 기계 문장 → 합쇼체 → 해요체)
@@ -240,22 +240,22 @@ struct Calm: Codable, Equatable {
         if let t = type, let l = Lines.pick("calm.\(min(3, max(1, stage))).\(t)", vars) { return l }
         if type == nil, let l = Lines.pick("calm.none.\(who)", vars) { return l }
         switch (type ?? "", stage) {
-        case ("", _): return "아직 모르겠습니다. 기록 \(s.n)/\(Self.minEvents)."
-        case ("seri", 1): return "관찰 중. 평정 지수 \(n)."
-        case ("seri", 2): return "평정 지수는 \(n)입니다. 계속 보겠습니다."
-        case ("seri", _): return "평정 지수 \(n)이에요. 같이 봐 와서 알아요."
-        case ("sio", 1): return "\(n). 세어 둘게."
-        case ("sio", 2): return "\(n)이야. 어제보다 하루 더 셌어."
-        case ("sio", _): return "\(n). 같이 센 날이 \(d)일이야."
-        case ("seonbae", 1): return "평정 지수 \(n). 너는 이 숫자를 어떻게 생각해?"
-        case ("seonbae", 2): return "\(n)이네. 지난달의 너라면 뭘 했을까?"
-        case ("seonbae", _): return "\(n)까지 왔네. 그게 정말 네 생각이었지?"
-        case ("ir", 1): return "\(n). 나도 빨랐어."
-        case ("ir", 2): return "\(n). 넘치기 전에 멈춘 날이 늘고 있어."
-        case ("ir", _): return "\(n). 너는 나처럼 되지 않았어."
-        case ("sua", 1): return "\(n)이에요. 아직 고르는 중이에요."
-        case ("sua", 2): return "\(n)이에요. 제때 오는 게 느껴져요."
-        default: return "\(n)이에요. 또 올게요. 약속은 아니에요."
+        case ("", _): return String(localized: "아직 모르겠습니다. 기록 \(String(describing: s.n))/\(String(describing: Self.minEvents)).")
+        case ("seri", 1): return String(localized: "관찰 중. 평정 지수 \(String(describing: n)).")
+        case ("seri", 2): return String(localized: "평정 지수는 \(String(describing: n))입니다. 계속 보겠습니다.")
+        case ("seri", _): return String(localized: "평정 지수 \(String(describing: n))이에요. 같이 봐 와서 알아요.")
+        case ("sio", 1): return String(localized: "\(String(describing: n)). 세어 둘게.")
+        case ("sio", 2): return String(localized: "\(String(describing: n))이야. 어제보다 하루 더 셌어.")
+        case ("sio", _): return String(localized: "\(String(describing: n)). 같이 센 날이 \(String(describing: d))일이야.")
+        case ("seonbae", 1): return String(localized: "평정 지수 \(String(describing: n)). 너는 이 숫자를 어떻게 생각해?")
+        case ("seonbae", 2): return String(localized: "\(String(describing: n))이네. 지난달의 너라면 뭘 했을까?")
+        case ("seonbae", _): return String(localized: "\(String(describing: n))까지 왔네. 그게 정말 네 생각이었지?")
+        case ("ir", 1): return String(localized: "\(String(describing: n)). 나도 빨랐어.")
+        case ("ir", 2): return String(localized: "\(String(describing: n)). 넘치기 전에 멈춘 날이 늘고 있어.")
+        case ("ir", _): return String(localized: "\(String(describing: n)). 너는 나처럼 되지 않았어.")
+        case ("sua", 1): return String(localized: "\(String(describing: n))이에요. 아직 고르는 중이에요.")
+        case ("sua", 2): return String(localized: "\(String(describing: n))이에요. 제때 오는 게 느껴져요.")
+        default: return String(localized: "\(String(describing: n))이에요. 또 올게요. 약속은 아니에요.")
         }
     }
 
@@ -263,20 +263,20 @@ struct Calm: Codable, Equatable {
     static func feedback(_ who: String, _ a: CalmEvent.Act) -> String {
         if let l = Lines.pick("fb.\(a.rawValue).\(who)") { return l }
         let lines: [String: [CalmEvent.Act: String]] = [
-            "seri": [.rule: "계획 쪽으로 옮겼어요. 기록했어요.", .chase: "오른 종목을 더 샀어요. 계획 신호는 없었어요.",
-                     .switchOut: "내린 종목을 팔았어요. 계획 신호는 없었어요.", .avgDown: "내린 종목을 더 샀어요. 점수는 그대로예요.",
-                     .trim: "오른 종목을 덜었어요. 점수는 그대로예요.", .wait: "크게 움직인 날, 아무것도 안 했어요."],
-            "sio": [.rule: "계획대로. 됐어.", .chase: "올라서 더 샀네. 계획엔 없었어.", .switchOut: "내려서 팔았네. 하루만 더 셀 걸.",
-                    .avgDown: "내려서 더 샀네. 세어 둘게.", .trim: "올라서 덜었네. 세어 둘게.", .wait: "흔들린 날, 그냥 셌어. 그거면 돼."],
-            "seonbae": [.rule: "계획대로 했네. 그 계획, 왜 그렇게 정했는지 기억나?", .chase: "올라서 더 산 거야, 계획이라서 산 거야?",
-                        .switchOut: "내려서 판 거야, 아니면 정말 네 생각이야?", .avgDown: "더 산 이유가 가격이야, 계획이야?",
-                        .trim: "덜어낸 이유, 한 줄로 말할 수 있어?", .wait: "아무것도 안 한 오늘, 어땠어?"],
-            "ir": [.rule: "멈출 데서 멈췄어. 넘치지 않았어.", .chase: "빨랐어. 나도 그랬어.", .switchOut: "급하게 돌아섰네. 나도 그랬어.",
-                   .avgDown: "더 붙잡았구나. 넘치기 전에 봐.", .trim: "덜어냈구나. 무게가 가벼워졌어.", .wait: "넘치기 전에 멈춘 한 번이야."],
-            "sua": [.rule: "제때 했어요.", .chase: "말이 먼저 왔네요. 다음엔 한 박자 쉬어요.", .switchOut: "먼저 돌아섰네요. 다음엔 한 박자 쉬어요.",
-                    .avgDown: "더 샀네요. 점수는 그대로예요.", .trim: "덜었네요. 점수는 그대로예요.", .wait: "오늘은 침묵을 골랐어요."],
+            "seri": [.rule: String(localized: "계획 쪽으로 옮겼어요. 기록했어요."), .chase: String(localized: "오른 종목을 더 샀어요. 계획 신호는 없었어요."),
+                     .switchOut: String(localized: "내린 종목을 팔았어요. 계획 신호는 없었어요."), .avgDown: String(localized: "내린 종목을 더 샀어요. 점수는 그대로예요."),
+                     .trim: String(localized: "오른 종목을 덜었어요. 점수는 그대로예요."), .wait: String(localized: "크게 움직인 날, 아무것도 안 했어요.")],
+            "sio": [.rule: String(localized: "계획대로. 됐어."), .chase: String(localized: "올라서 더 샀네. 계획엔 없었어."), .switchOut: String(localized: "내려서 팔았네. 하루만 더 셀 걸."),
+                    .avgDown: String(localized: "내려서 더 샀네. 세어 둘게."), .trim: String(localized: "올라서 덜었네. 세어 둘게."), .wait: String(localized: "흔들린 날, 그냥 셌어. 그거면 돼.")],
+            "seonbae": [.rule: String(localized: "계획대로 했네. 그 계획, 왜 그렇게 정했는지 기억나?"), .chase: String(localized: "올라서 더 산 거야, 계획이라서 산 거야?"),
+                        .switchOut: String(localized: "내려서 판 거야, 아니면 정말 네 생각이야?"), .avgDown: String(localized: "더 산 이유가 가격이야, 계획이야?"),
+                        .trim: String(localized: "덜어낸 이유, 한 줄로 말할 수 있어?"), .wait: String(localized: "아무것도 안 한 오늘, 어땠어?")],
+            "ir": [.rule: String(localized: "멈출 데서 멈췄어. 넘치지 않았어."), .chase: String(localized: "빨랐어. 나도 그랬어."), .switchOut: String(localized: "급하게 돌아섰네. 나도 그랬어."),
+                   .avgDown: String(localized: "더 붙잡았구나. 넘치기 전에 봐."), .trim: String(localized: "덜어냈구나. 무게가 가벼워졌어."), .wait: String(localized: "넘치기 전에 멈춘 한 번이야.")],
+            "sua": [.rule: String(localized: "제때 했어요."), .chase: String(localized: "말이 먼저 왔네요. 다음엔 한 박자 쉬어요."), .switchOut: String(localized: "먼저 돌아섰네요. 다음엔 한 박자 쉬어요."),
+                    .avgDown: String(localized: "더 샀네요. 점수는 그대로예요."), .trim: String(localized: "덜었네요. 점수는 그대로예요."), .wait: String(localized: "오늘은 침묵을 골랐어요.")],
         ]
-        return lines[who]?[a] ?? lines["seri"]?[a] ?? "기록했어요."
+        return lines[who]?[a] ?? lines["seri"]?[a] ?? String(localized: "기록했어요.")
     }
 }
 
@@ -316,21 +316,21 @@ struct StepProgress { let cur: Int; let goal: Int; let text: String; var done: B
 extension Calm {
     struct Step { let name: String; let what: String }
     static let steps: [String: [Step]] = [
-        "ir": [.init(name: "넘치기 전 멈춤", what: "큰 변동일(±5%)에 매매 없이 지나간 날 3번"),
-               .init(name: "쫓기 줄이기", what: "수익 뒤 추가 매수·손실 뒤 매도가 매매의 40% 미만, 또는 30일 동안 0번"),
-               .init(name: "지수 +10", what: "최근 30일 지수가 그 전 30일보다 10 이상")],
-        "sua": [.init(name: "오른 지수 지키기", what: "30일 동안 수익 뒤 추가 매수·손실 뒤 매도 0번"),
-                .init(name: "규칙대로 3번", what: "규칙 신호(비중 이탈·그달 첫 적립)에 맞춘 매매 3번"),
-                .init(name: "지수 70 두 달", what: "평정 지수 70 이상을 60일 지키기")],
-        "seonbae": [.init(name: "역발상을 규칙 안에서", what: "덜어내기·물타기 같은 역방향 매매 중 절반 이상을 규칙 신호에 맞추기 (2건 이상)"),
-                    .init(name: "물타기 쉬기", what: "30일 동안 규칙 밖 물타기 0번"),
-                    .init(name: "규칙대로 절반", what: "걸음 시작 뒤 매매 절반 이상이 규칙대로, 지수 80 이상")],
-        "sio": [.init(name: "흔들림 지키기", what: "30일 동안 큰 변동일에 기다린 비율 60% 이상"),
-                .init(name: "기다리다 놓치지 않기", what: "규칙 신호가 왔을 때 규칙대로 1번 실행"),
-                .init(name: "규칙대로 절반", what: "걸음 시작 뒤 매매 절반 이상이 규칙대로, 지수 80 이상")],
-        "seri": [.init(name: "한 달 유지", what: "평정 지수 80 이상을 30일"),
-                 .init(name: "석 달 유지", what: "평정 지수 80 이상을 90일"),
-                 .init(name: "여섯 달 유지", what: "평정 지수 80 이상을 180일")],
+        "ir": [.init(name: String(localized: "넘치기 전 멈춤"), what: String(localized: "큰 변동일(±5%)에 매매 없이 지나간 날 3번")),
+               .init(name: String(localized: "쫓기 줄이기"), what: String(localized: "수익 뒤 추가 매수·손실 뒤 매도가 매매의 40% 미만, 또는 30일 동안 0번")),
+               .init(name: String(localized: "지수 +10"), what: String(localized: "최근 30일 지수가 그 전 30일보다 10 이상"))],
+        "sua": [.init(name: String(localized: "오른 지수 지키기"), what: String(localized: "30일 동안 수익 뒤 추가 매수·손실 뒤 매도 0번")),
+                .init(name: String(localized: "규칙대로 3번"), what: String(localized: "규칙 신호(비중 이탈·그달 첫 적립)에 맞춘 매매 3번")),
+                .init(name: String(localized: "지수 70 두 달"), what: String(localized: "평정 지수 70 이상을 60일 지키기"))],
+        "seonbae": [.init(name: String(localized: "역발상을 규칙 안에서"), what: String(localized: "덜어내기·물타기 같은 역방향 매매 중 절반 이상을 규칙 신호에 맞추기 (2건 이상)")),
+                    .init(name: String(localized: "물타기 쉬기"), what: String(localized: "30일 동안 규칙 밖 물타기 0번")),
+                    .init(name: String(localized: "규칙대로 절반"), what: String(localized: "걸음 시작 뒤 매매 절반 이상이 규칙대로, 지수 80 이상"))],
+        "sio": [.init(name: String(localized: "흔들림 지키기"), what: String(localized: "30일 동안 큰 변동일에 기다린 비율 60% 이상")),
+                .init(name: String(localized: "기다리다 놓치지 않기"), what: String(localized: "규칙 신호가 왔을 때 규칙대로 1번 실행")),
+                .init(name: String(localized: "규칙대로 절반"), what: String(localized: "걸음 시작 뒤 매매 절반 이상이 규칙대로, 지수 80 이상"))],
+        "seri": [.init(name: String(localized: "한 달 유지"), what: String(localized: "평정 지수 80 이상을 30일")),
+                 .init(name: String(localized: "석 달 유지"), what: String(localized: "평정 지수 80 이상을 90일")),
+                 .init(name: String(localized: "여섯 달 유지"), what: String(localized: "평정 지수 80 이상을 180일"))],
     ]
 
     /// 지수 기준 칸 (소식의 위·아래 판단용. 화면에 순위로 쓰지 않는다)
@@ -354,50 +354,50 @@ extension Calm {
         let half = { () -> StepProgress in
             let r = t.isEmpty ? 0 : Double(t.filter { $0.act == .rule }.count) / Double(t.count)
             let ok = t.count >= 2 && r >= 0.5 && s.index >= 80
-            return .init(cur: ok ? 1 : 0, goal: 1, text: "규칙대로 \(Self.pct(r)) · 지수 \(s.index)")
+            return .init(cur: ok ? 1 : 0, goal: 1, text: String(localized: "규칙대로 \(String(describing: Self.pct(r))) · 지수 \(String(describing: s.index))"))
         }
         switch (l.type, l.step) {
         case ("ir", 1):
             let n = ev.filter { $0.act == .wait }.count
-            return .init(cur: n, goal: 3, text: "멈춤 \(min(n, 3))/3")
+            return .init(cur: n, goal: 3, text: String(localized: "멈춤 \(String(describing: min(n, 3)))/3"))
         case ("ir", 2):
             if t.count >= 3 {
                 let r = Double(bad.count) / Double(t.count)
-                return .init(cur: r < 0.4 ? 1 : 0, goal: 1, text: "쫓은 매매 \(Self.pct(r)) (40% 미만이면 완료)")
+                return .init(cur: r < 0.4 ? 1 : 0, goal: 1, text: String(localized: "쫓은 매매 \(String(describing: Self.pct(r))) (40% 미만이면 완료)"))
             }
             let d = bad.isEmpty ? Self.days(l.since, today) : 0
-            return .init(cur: d, goal: 30, text: "쫓지 않은 날 \(min(d, 30))/30")
+            return .init(cur: d, goal: 30, text: String(localized: "쫓지 않은 날 \(String(describing: min(d, 30)))/30"))
         case ("ir", 3):
             let tr = s.trend ?? 0
-            return .init(cur: max(0, tr), goal: 10, text: s.trend == nil ? "30일씩 매매 5건이 모이면 재요" : "지난 30일보다 \(tr >= 0 ? "+" : "")\(tr) (목표 +10)")
+            return .init(cur: max(0, tr), goal: 10, text: s.trend == nil ? String(localized: "30일씩 매매 5건이 모이면 재요") : String(localized: "지난 30일보다 \(String(describing: tr >= 0 ? "+" : ""))\(String(describing: tr)) (목표 +10)"))
         case ("sua", 1):
             let d = streak(bad)
-            return .init(cur: d, goal: 30, text: "쫓지 않은 날 \(min(d, 30))/30")
+            return .init(cur: d, goal: 30, text: String(localized: "쫓지 않은 날 \(String(describing: min(d, 30)))/30"))
         case ("sua", 2):
             let n = t.filter { $0.act == .rule }.count
-            return .init(cur: n, goal: 3, text: "규칙대로 \(min(n, 3))/3")
+            return .init(cur: n, goal: 3, text: String(localized: "규칙대로 \(String(describing: min(n, 3)))/3"))
         case ("sua", 3):
-            return .init(cur: held, goal: 60, text: "지수 70 이상 \(min(held, 60))/60일")
+            return .init(cur: held, goal: 60, text: String(localized: "지수 70 이상 \(String(describing: min(held, 60)))/60일"))
         case ("seonbae", 1):
             let c = t.filter { $0.act == .trim || $0.act == .avgDown || ($0.act == .rule && $0.buy != $0.win) }
             let r = c.isEmpty ? 0 : Double(c.filter { $0.act == .rule }.count) / Double(c.count)
-            return .init(cur: c.count >= 2 && r >= 0.5 ? 1 : 0, goal: 1, text: "역방향 매매 \(c.count)건 중 규칙대로 \(Self.pct(r))")
+            return .init(cur: c.count >= 2 && r >= 0.5 ? 1 : 0, goal: 1, text: String(localized: "역방향 매매 \(String(describing: c.count))건 중 규칙대로 \(String(describing: Self.pct(r)))"))
         case ("seonbae", 2):
             let d = streak(t.filter { $0.act == .avgDown })
-            return .init(cur: d, goal: 30, text: "물타기 없이 \(min(d, 30))/30일")
+            return .init(cur: d, goal: 30, text: String(localized: "물타기 없이 \(String(describing: min(d, 30)))/30일"))
         case ("sio", 1):
             let w = ev.filter { $0.act == .wait }.count, b = t.filter(\.big).count
             let r = w + b == 0 ? 1 : Double(w) / Double(w + b)
             let d = r >= 0.6 ? Self.days(l.since, today) : 0
-            return .init(cur: d, goal: 30, text: "기다림 \(Self.pct(r)) · \(min(d, 30))/30일")
+            return .init(cur: d, goal: 30, text: String(localized: "기다림 \(String(describing: Self.pct(r))) · \(String(describing: min(d, 30)))/30일"))
         case ("sio", 2):
             let n = t.filter { $0.act == .rule }.count
-            return .init(cur: n, goal: 1, text: n > 0 ? "규칙대로 1번 했어요" : "규칙 신호가 오면 그때 한 번")
+            return .init(cur: n, goal: 1, text: n > 0 ? String(localized: "규칙대로 1번 했어요") : String(localized: "규칙 신호가 오면 그때 한 번"))
         case ("seonbae", 3), ("sio", 3):
             return half()
         case ("seri", let k):
             let g = [30, 90, 180][k - 1]
-            return .init(cur: held, goal: g, text: "지수 80 이상 \(min(held, g))/\(g)일")
+            return .init(cur: held, goal: g, text: String(localized: "지수 80 이상 \(String(describing: min(held, g)))/\(String(describing: g))일"))
         default: return nil
         }
     }
@@ -443,7 +443,7 @@ extension Calm {
     /// 걸음 완료 한 줄 (인물 말투, 대사 데이터 ladder.<유형>.<걸음> 이 있으면 그것)
     static func stepLine(_ type: String, _ step: Int, who: String) -> String {
         if let l = Lines.pick("ladder.\(type).\(step).\(who)") ?? Lines.pick("ladder.\(type).\(step)") { return l }
-        return "걸음 \(step)/3 ‘\(steps[type]?[step - 1].name ?? "")’ 완료!"
+        return String(localized: "걸음 \(String(describing: step))/3 ‘\(String(describing: steps[type]?[step - 1].name ?? ""))’ 완료!")
     }
 }
 

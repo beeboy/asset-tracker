@@ -57,10 +57,10 @@ struct RootView: View {
         // 전망 몬테카를로: 앱이 뒤로 가면 돌던 계산도 멈추고, 다시 앞으로 오면 이어 간다 (뒤에서 폰이 뜨거워지지 않게)
         .onChange(of: phase) { _, p in
             Compute.setActive(p != .background)
-            if p == .active && model.persists { model.catchUpDay(); model.recordDay() }
+            if p == .active && model.persists { model.catchUpDay(); model.calmOpen() }   // calmOpen 안에 recordDay
         }
         // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
-        .onChange(of: model.progress) { _, _ in model.saveProgress(); if model.persists { Sync.shared.changed(model) } }
+        .onChange(of: model.progress) { _, _ in model.saveProgress(); Remind.shared.refresh(model); if model.persists { Sync.shared.changed(model) } }
         .onChange(of: model.holdings) { _, _ in if model.persists { Sync.shared.changed(model) } }
         .modifier(KoreaSumHooks(model: model))
         // 내 기록: 새 날 줄이 생기면 다른 기기로도 (같은 날 값 고침은 다음 변경 때 같이)
@@ -102,12 +102,17 @@ struct RootView: View {
         .task(id: phase) {
             guard phase == .active else { return }
             var lastResched = Date.distantPast
+            var lastKey = ""   // 날짜·평가액이 그대로면 뒤 계산은 건너뛴다 (장 닫힌 동안 매분 화면이 멈칫하지 않게)
             while !Task.isCancelled {
                 await Market.shared.refresh(held: Set(model.holdings.map(\.symbol)))
-                if model.persists { model.recordDay() }   // 내 기록: 시세를 받은 뒤 오늘 줄을 지금 값으로
-                Remind.shared.refresh(model)     // 홈 리마인드 (위젯 말풍선·다음 일정도 여기서)
-                WidgetBridge.write(model)        // 위젯에 지금 숫자를 넘긴다
-                await Notifier.check(model)       // 본전 도달 · 비중 이탈
+                let key = "\(Day.today)|\(model.total)"
+                if key != lastKey {
+                    lastKey = key
+                    if model.persists { model.recordDay() }   // 내 기록: 시세를 받은 뒤 오늘 줄을 지금 값으로
+                    Remind.shared.refresh(model)     // 홈 리마인드 (위젯 말풍선·다음 일정도 여기서)
+                    WidgetBridge.write(model)        // 위젯에 지금 숫자를 넘긴다
+                    await Notifier.check(model)       // 본전 도달 · 비중 이탈
+                }
                 if Date().timeIntervalSince(lastResched) >= 600 {   // 아침 한 줄은 10분마다 지금 숫자로 (매분 지우고 다시 넣지 않게)
                     lastResched = Date(); await Notifier.reschedule(model)
                 }

@@ -77,50 +77,8 @@ enum MeArt {
         return k
     }
 
-    private static var cache: [MeChar: UIImage] = [:]
-    /// 1배로 겹친 뒤 '투명 칸 중 상하좌우에 칠한 칸이 있으면 테두리색' 한 번 (부품에는 테두리가 없다)
-    static func image(_ me: MeChar) -> UIImage? {
-        if let c = cache[me] { return c }
-        let hair = MeColor.hair[MeColor.idx(me)], skin = MeColor.skin[MeColor.skinIdx(me)]
-        let w = W, h = H, line = outline
-        var px = [UInt8](repeating: 0, count: w * h * 4)
-        let cg: CGImage? = px.withUnsafeMutableBytes { buf -> CGImage? in
-            guard let ctx = CGContext(data: buf.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
-                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-            ctx.interpolationQuality = .none
-            for layer in MeGroup.layers {
-                let n = option(me, layer)
-                guard n > 0 else { continue }
-                if let img = UIImage(named: asset(layer, n, me))?.cgImage {
-                    ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
-                } else {
-                    // 그림이 오기 전: 자리표시 도트 (위에서부터 센 y 를 CG 좌표로)
-                    MePlaceholder.draw(layer, n, hair, skin) { x, y, pw, ph, c in
-                        ctx.setFillColor(red: CGFloat((c >> 16) & 0xFF) / 255, green: CGFloat((c >> 8) & 0xFF) / 255, blue: CGFloat(c & 0xFF) / 255, alpha: 1)
-                        ctx.fill(CGRect(x: x, y: h - y - ph, width: pw, height: ph))
-                    }
-                }
-            }
-            // 바깥 테두리 (버퍼는 위 줄부터)
-            let p = buf.bindMemory(to: UInt8.self)
-            let alpha: [UInt8] = (0..<(w * h)).map { p[$0 * 4 + 3] }
-            for y in 0..<h {
-                for x in 0..<w where alpha[y * w + x] == 0 {
-                    let left = x > 0 && alpha[y * w + x - 1] > 0, right = x < w - 1 && alpha[y * w + x + 1] > 0
-                    let up = y > 0 && alpha[(y - 1) * w + x] > 0, down = y < h - 1 && alpha[(y + 1) * w + x] > 0
-                    guard left || right || up || down else { continue }
-                    let i = (y * w + x) * 4
-                    p[i] = UInt8((line >> 16) & 0xFF); p[i + 1] = UInt8((line >> 8) & 0xFF); p[i + 2] = UInt8(line & 0xFF); p[i + 3] = 255
-                }
-            }
-            return ctx.makeImage()
-        }
-        guard let cg else { return nil }
-        let img = UIImage(cgImage: cg)
-        if cache.count > 80 { cache.removeAll() }
-        cache[me] = img
-        return img
-    }
+    /// 정면 서 있는 그림 (부품 겹치기·음영·테두리는 MeMotion. 방향·걷기 장면도 거기서 만든다)
+    static func image(_ me: MeChar) -> UIImage? { MeMotion.image(me) }
 
     /// 위젯이 읽는 내 캐릭터 (me.json · me.png). 바뀐 때만 다시 쓴다
     private static var lastKey = ""
@@ -284,7 +242,7 @@ struct MeEditView: View {
                 draft = MeChar(); sample = nil; note = nil
             }
         } message: {
-            Text(m.me != nil ? "저장한 내 캐릭터도 지워져요." : "고른 부품과 이름이 지워져요.")
+            Text(m.me != nil ? String(localized: "저장한 내 캐릭터도 지워져요.") : String(localized: "고른 부품과 이름이 지워져요."))
         }
     }
 
@@ -428,7 +386,7 @@ struct MeEditView: View {
                         .padding(.top, 14)
                         let applied = draft.parts == x.parts
                         Button { draft.parts = x.parts } label: {
-                            Text(applied ? "적용했어요" : "적용 ↓").appFont(15, .bold).foregroundStyle(.white)
+                            Text(applied ? String(localized: "적용했어요") : String(localized: "적용 ↓")).appFont(15, .bold).foregroundStyle(.white)
                                 .frame(width: boxW(s), height: 42)
                                 .background(applied ? Theme.muted : Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                         }
@@ -480,9 +438,9 @@ struct MeEditView: View {
             .frame(width: boxW(s), height: CGFloat(MeArt.H * s) + 20)
     }
 
-    /// 고른 샘플·내 캐릭터 같은 크기 (24×34 의 s배)
+    /// 고른 샘플·내 캐릭터 같은 크기 (24×34 의 s배). 돌리기·걷기 버튼, 서 있을 땐 숨쉬기
     private func big(_ c: MeChar, _ s: Int) -> some View {
-        MeAvatar(me: c, width: CGFloat(MeArt.W * s), height: CGFloat(MeArt.H * s))
+        MeTurntable(me: c, scale: s)
         .padding(10)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
         .accessibilityLabel(c.shownName)
@@ -494,7 +452,7 @@ struct MeEditView: View {
         return MeGroup.allCases.compactMap { g -> String? in
             let o = g == .color ? c.part(.color) : c.part(g)
             if g.optional && o == 0 { return nil }
-            return g == .color ? "\(g.name(o)) 머리 · \(MeColor.skinNames[MeColor.skinIdx(c)])" : g.name(o)
+            return g == .color ? String(localized: "\(String(describing: g.name(o))) 머리 · \(String(describing: MeColor.skinNames[MeColor.skinIdx(c)]))") : g.name(o)
         }.joined(separator: " · ")
     }
 
@@ -553,17 +511,17 @@ struct ShelterBGBox: View {
                         .rotationEffect(.degrees(open ? 90 : 0))
                     Text("쉼터 배경").appFont(14, .bold)
                     Spacer(minLength: 0)
-                    Text(Shelter.background(m.roomBG)?.name ?? "기본 쉼터").appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
+                    Text(Shelter.background(m.roomBG)?.name ?? String(localized: "기본 쉼터")).appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 .foregroundStyle(Theme.ink)
                 .padding(.horizontal, 14).frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("쉼터 배경, \(open ? "펼침" : "접힘")")
+            .accessibilityLabel("쉼터 배경, \(open ? String(localized: "펼침") : String(localized: "접힘"))")
             if open {
                 Divider().overlay(Theme.line)
-                row(nil, "기본 쉼터", "처음 방")
+                row(nil, String(localized: "기본 쉼터"), String(localized: "처음 방"))
                 ForEach(Shelter.backgrounds) { b in
                     Divider().overlay(Theme.line)
                     row(b.id, b.name, b.short, b.volume)
@@ -587,7 +545,7 @@ struct ShelterBGBox: View {
                         Text(name).appFont(14, .bold)
                         if let volume { Text(volume).appFont(11).foregroundStyle(Theme.muted) }
                     }
-                    Text(locked ? "\(id.map(m.bgDay) ?? 1)일째 열림" : intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
+                    Text(locked ? String(localized: "\(String(describing: id.map(m.bgDay) ?? 1))일째 열림") : intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
                 }
                 Spacer(minLength: 0)
                 if on { Image(systemName: "checkmark").font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.teal) }
@@ -598,7 +556,7 @@ struct ShelterBGBox: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel((volume.map { $0 + " " } ?? "") + name + (on ? ", 지금 배경" : locked ? ", 잠김" : ""))
+        .accessibilityLabel((volume.map { $0 + " " } ?? "") + name + (on ? String(localized: ", 지금 배경") : locked ? String(localized: ", 잠김") : ""))
     }
 }
 
@@ -749,6 +707,8 @@ enum MePose {
             }
         }
         if p.prop != 2, let b = layers.first(where: { $0.0 == "prop" })?.1 { put(b, flip: p.prop == 1) }
+        // 앱 안 그림과 같은 음영 (위에서 오는 빛)
+        PixBuf.shade(&cv, cw, h, head: 16 + p.dy, legTop: MeMotion.legTop + p.dy)
         // 바깥 테두리 (MeArt.image 와 같은 규칙)
         let filled = cv.map { $0 >> 24 != 0 }
         for y in 0..<h {

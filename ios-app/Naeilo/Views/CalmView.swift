@@ -9,7 +9,7 @@ struct CalmCard: View {
     var body: some View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
         HStack(alignment: .center, spacing: 12) {
-            CharPixel(id: who, width: 42, height: 60)
+            CharPixel(id: who, width: 42, height: 60).charIdle()
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("내 투자 습관").appFont(13, .bold).foregroundStyle(Theme.mint)
@@ -50,7 +50,7 @@ struct CalmView: View {
                 // 상태 카드 하나 (진한 바탕): 모으는 중이면 진행, 정해졌으면 내 인물
                 Card(dark: true) {
                     HStack(alignment: .bottom, spacing: 12) {
-                        CharPixel(id: who, width: 56, height: 80)
+                        CharPixel(id: who, width: 56, height: 80).charIdle(3)
                         VStack(alignment: .leading, spacing: 4) {
                             if let k, let f = Shelter.friends.first(where: { $0.id == m.calm.type }) {
                                 NavigationLink { CharacterDetailView(friend: f, invest: true) } label: {
@@ -101,11 +101,11 @@ struct CalmView: View {
                         Spacer()
                         if !ready { Text("\(Calm.minEvents)건부터").appFont(12).foregroundStyle(Theme.muted) }
                     }
-                    row("오른 뒤 추가 매수", AppModel.dash(AppModel.pct(s.chase), ready: ready))
-                    row("내린 뒤 매도", AppModel.dash(AppModel.pct(s.switchR), ready: ready))
-                    row("급변일 기다림", AppModel.dash(AppModel.pct(s.waitR), ready: ready))
-                    row("규칙대로 매매", AppModel.dash(AppModel.pct(s.ruleR), ready: ready))
-                    if ready, let t = s.trend { row("최근 30일 변화", (t >= 0 ? "+" : "") + "\(t)") }
+                    row(String(localized: "오른 뒤 추가 매수"), AppModel.dash(AppModel.pct(s.chase), ready: ready))
+                    row(String(localized: "내린 뒤 매도"), AppModel.dash(AppModel.pct(s.switchR), ready: ready))
+                    row(String(localized: "급변일 기다림"), AppModel.dash(AppModel.pct(s.waitR), ready: ready))
+                    row(String(localized: "규칙대로 매매"), AppModel.dash(AppModel.pct(s.ruleR), ready: ready))
+                    if ready, let t = s.trend { row(String(localized: "최근 30일 변화"), (t >= 0 ? "+" : "") + "\(t)") }
                 }
 
                 // 최근 기록
@@ -177,7 +177,7 @@ struct CalmView: View {
         }
         .background(Theme.bg)
         .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
-        .modifier(DetailTitle(title: "내 투자 습관")).navigationBarTitleDisplayMode(.inline)
+        .modifier(DetailTitle(title: String(localized: "내 투자 습관"))).navigationBarTitleDisplayMode(.inline)
     }
 
     /// 지금 유형의 걸음 3개: 완료한 날, 지금 걸음 진행. 인물 순위는 보여 주지 않는다
@@ -187,7 +187,7 @@ struct CalmView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("다음 걸음").appFont(15, .bold)
                 Spacer()
-                Text(l.step > 3 ? "다 올랐어요" : "\(l.step)/3").appFont(13, .semibold).foregroundStyle(Theme.teal)
+                Text(l.step > 3 ? String(localized: "다 올랐어요") : "\(l.step)/3").appFont(13, .semibold).foregroundStyle(Theme.teal)
             }
             ForEach(Array(steps.enumerated()), id: \.offset) { i, st in
                 let n = i + 1, on = n == l.step, did = n < l.step
@@ -210,7 +210,7 @@ struct CalmView: View {
                 }
             }
             if l.step > 3 {
-                Text(l.type == "seri" ? "지금처럼 지켜요. 여섯 달마다 기록해 둘게요." : "유형은 한 달에 한 번 다시 봐요. 그때 새 걸음이 열려요.")
+                Text(l.type == "seri" ? String(localized: "지금처럼 지켜요. 여섯 달마다 기록해 둘게요.") : String(localized: "유형은 한 달에 한 번 다시 봐요. 그때 새 걸음이 열려요."))
                     .appFont(12).foregroundStyle(Theme.muted)
             }
         }

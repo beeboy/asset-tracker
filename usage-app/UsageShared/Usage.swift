@@ -57,10 +57,10 @@ struct Usage: Codable, Equatable {
     static func fetch() async -> Result<Usage, FetchError> {
         var req = URLRequest(url: CU.feed, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 12)
         req.setValue("naeilo-usage", forHTTPHeaderField: "User-Agent")
-        guard let (d, _) = try? await URLSession.shared.data(for: req) else { return .failure(.init(msg: "중계에 닿지 못했어요")) }
+        guard let (d, _) = try? await URLSession.shared.data(for: req) else { return .failure(.init(msg: String(localized: "중계에 닿지 못했어요"))) }
         if let u = try? JSONDecoder.cu.decode(Usage.self, from: d) { u.save(); return .success(u) }
         let e = (try? JSONDecoder().decode([String: String].self, from: d))?["error"]
-        return .failure(.init(msg: e ?? "사용량을 읽지 못했어요"))
+        return .failure(.init(msg: e ?? String(localized: "사용량을 읽지 못했어요")))
     }
     struct FetchError: Error { let msg: String }
 }
@@ -81,7 +81,7 @@ enum CUTime {
     }
     static func weekday(_ r: Date?) -> String {
         guard let r else { return "–" }
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "E HH:mm"
+        let f = DateFormatter(); f.locale = Locale(identifier: Bundle.main.preferredLocalizations.first == "en" ? "en_US" : "ko_KR"); f.dateFormat = "E HH:mm"
         return f.string(from: r)
     }
 }
@@ -93,11 +93,11 @@ struct UChar: Identifiable, Equatable {
     var voice: String
 
     static let all: [UChar] = [
-        .init(id: "seri", name: "세리", accent: 0x5ab8ff, g0: 0x16203f, g1: 0x2c3e8a, voice: "seri"),
-        .init(id: "sio", name: "시오", accent: 0x7fd6ff, g0: 0x122838, g1: 0x265c76, voice: "sio"),
-        .init(id: "seonbae", name: "선배", accent: 0xe0b25a, g0: 0x301e2c, g1: 0x744658, voice: "seonbae"),
-        .init(id: "ir", name: "이르", accent: 0xffd36b, g0: 0x1a1830, g1: 0x4a3f72, voice: "ir"),
-        .init(id: "sua", name: "수아", accent: 0xf2a070, g0: 0x3a2228, g1: 0xb06448, voice: "sua"),
+        .init(id: "seri", name: String(localized: "세리"), accent: 0x5ab8ff, g0: 0x16203f, g1: 0x2c3e8a, voice: "seri"),
+        .init(id: "sio", name: String(localized: "시오"), accent: 0x7fd6ff, g0: 0x122838, g1: 0x265c76, voice: "sio"),
+        .init(id: "seonbae", name: String(localized: "선배"), accent: 0xe0b25a, g0: 0x301e2c, g1: 0x744658, voice: "seonbae"),
+        .init(id: "ir", name: String(localized: "이르"), accent: 0xffd36b, g0: 0x1a1830, g1: 0x4a3f72, voice: "ir"),
+        .init(id: "sua", name: String(localized: "수아"), accent: 0xf2a070, g0: 0x3a2228, g1: 0xb06448, voice: "sua"),
     ]
     /// naeilo 의 내 캐릭터 (만들었을 때만)
     static var me: UChar? {
@@ -114,11 +114,11 @@ struct UChar: Identifiable, Equatable {
 
     /// 단계별 대사 (숫자는 블록이 보여 주니 말하지 않는다)
     static let lines: [String: [String: String]] = [
-        "seri": ["ok": "오늘은 마음껏 물어봐요.", "mid": "중요한 것부터 해요.", "hi": "큰 건 리셋 뒤로 미뤄요.", "full": "잠깐 산책 다녀와요.", "wfull": "이번 주는 여기까지예요."],
-        "sio": ["ok": "써도 돼.", "mid": "하나씩.", "hi": "짧게 물어.", "full": "쉬어.", "wfull": "이번 주 끝."],
-        "seonbae": ["ok": "오늘 뭘 만들고 싶어?", "mid": "지금 이게 제일 중요해?", "hi": "남은 건 어디에 쓸래?", "full": "커피 한 잔 하고 와.", "wfull": "이번 주는 푹 쉬자."],
-        "ir": ["ok": "그거면 돼.", "mid": "나도 빨랐어.", "hi": "천천히.", "full": "멈출 때야.", "wfull": "다음 주에 봐."],
-        "sua": ["ok": "뭐부터 해 볼까요?", "mid": "아직 고르는 중이에요.", "hi": "조금 아껴 볼까요?", "full": "기다리는 것도 괜찮아요.", "wfull": "이번 주는 쉬어 가요."],
+        "seri": ["ok": String(localized: "오늘은 마음껏 물어봐요."), "mid": String(localized: "중요한 것부터 해요."), "hi": String(localized: "큰 건 리셋 뒤로 미뤄요."), "full": String(localized: "잠깐 산책 다녀와요."), "wfull": String(localized: "이번 주는 여기까지예요.")],
+        "sio": ["ok": String(localized: "써도 돼."), "mid": String(localized: "하나씩."), "hi": String(localized: "짧게 물어."), "full": String(localized: "쉬어."), "wfull": String(localized: "이번 주 끝.")],
+        "seonbae": ["ok": String(localized: "오늘 뭘 만들고 싶어?"), "mid": String(localized: "지금 이게 제일 중요해?"), "hi": String(localized: "남은 건 어디에 쓸래?"), "full": String(localized: "커피 한 잔 하고 와."), "wfull": String(localized: "이번 주는 푹 쉬자.")],
+        "ir": ["ok": String(localized: "그거면 돼."), "mid": String(localized: "나도 빨랐어."), "hi": String(localized: "천천히."), "full": String(localized: "멈출 때야."), "wfull": String(localized: "다음 주에 봐.")],
+        "sua": ["ok": String(localized: "뭐부터 해 볼까요?"), "mid": String(localized: "아직 고르는 중이에요."), "hi": String(localized: "조금 아껴 볼까요?"), "full": String(localized: "기다리는 것도 괜찮아요."), "wfull": String(localized: "이번 주는 쉬어 가요.")],
     ]
     func line(_ u: Usage) -> String { Self.lines[voice]?[u.level] ?? Self.lines["seri"]![u.level]! }
 }

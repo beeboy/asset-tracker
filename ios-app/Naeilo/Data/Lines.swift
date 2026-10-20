@@ -1,16 +1,14 @@
 import Foundation
 import Observation
 
-// 인물 대사 데이터: Resources/lines_ko.json (tools/lines.py 가 만든다, 146개 상황 × 인물별 최대 100줄). 영어 기기는 WidgetShared/lines_en.json 이 있는 키만 영어.
+// 인물 대사 데이터: Resources/lines_ko.json · lines_app_en.json (tools/lines.py 가 만든다, 146개 상황 × 인물별 최대 100줄). 앱 언어가 영어면 영어 파일만 읽는다.
 // 키는 "상황.인물" (예: "calm.2.sio", "fb.chase.ir", "item.barley_tea.sua"). 줄 안의 {n} 같은 자리는 값으로 채운다.
 // 볼 때마다(화면을 열거나 앱을 앞으로 가져오거나 당겨서 갱신) 같은 상황에서 다음 줄을 고른다. 파일에 없는 키는 nil 이라 부르는 쪽이 원래 문장을 쓴다.
 enum Lines {
     private struct File: Decodable { let lines: [String: [String]] }
     private static let all: [String: [String]] = {
-        var a = load("lines_ko")
-        // 영어 기기: 영어 줄이 있는 키만 영어로 (지금은 위젯 말풍선 widget.*, 나머지는 영어판 인물 대사 단계에서)
-        if WL.en { a.merge(load("lines_en")) { _, en in en } }
-        return a
+        // 앱 언어에 맞는 파일 하나만 읽는다 (영어: lines_app_en.json, 그 밖: lines_ko.json)
+        AppModel.en ? load("lines_app_en") : load("lines_ko")
     }()
     private static func load(_ name: String) -> [String: [String]] {
         guard let url = Bundle.main.url(forResource: name, withExtension: "json"),

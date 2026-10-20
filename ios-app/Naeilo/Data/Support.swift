@@ -19,8 +19,8 @@ enum SubPlan: String, CaseIterable {
         guard let p = Self.allCases.first(where: { $0.productID == productID }) else { return nil }
         self = p
     }
-    var name: String { self == .monthly ? "월 구독" : "연 구독" }
-    var unit: String { self == .monthly ? "한 달" : "1년" }
+    var name: String { self == .monthly ? String(localized: "월 구독") : String(localized: "연 구독") }
+    var unit: String { self == .monthly ? String(localized: "한 달") : String(localized: "1년") }
 }
 
 // 상태 값은 어디서든 읽을 수 있게 클래스는 메인 액터에 묶지 않고 (AppModel.devAll 이 읽는다), 바꾸는 함수만 메인 액터에서
@@ -149,13 +149,13 @@ final class Support {
             switch try await p.purchase() {
             case .success(let r):
                 await handle(r)
-                message = "\(SubPlan(productID: p.id)?.name ?? "구독") 고마워요. 바로 열렸어요."
-            case .pending: message = "승인을 기다리고 있어요. 승인되면 자동으로 열려요."
+                message = String(localized: "\(String(describing: SubPlan(productID: p.id)?.name ?? String(localized: "구독"))) 고마워요. 바로 열렸어요.")
+            case .pending: message = String(localized: "승인을 기다리고 있어요. 승인되면 자동으로 열려요.")
             case .userCancelled: break
             @unknown default: break
             }
         } catch {
-            message = "구독하지 못했어요. 잠시 뒤 다시 해 주세요."
+            message = String(localized: "구독하지 못했어요. 잠시 뒤 다시 해 주세요.")
         }
     }
 
@@ -164,7 +164,7 @@ final class Support {
         busy = "restore"; defer { busy = nil }
         try? await AppStore.sync()
         await refresh()
-        message = plan.map { "\($0.name)을 복원했어요." } ?? "복원할 구독이 없어요."
+        message = plan.map { String(localized: "\(String(describing: $0.name))을 복원했어요.") } ?? String(localized: "복원할 구독이 없어요.")
     }
 
     @MainActor private func handle(_ r: VerificationResult<Transaction>) async {

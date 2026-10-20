@@ -56,11 +56,11 @@ struct HomeScreen: View {
 
     private var status: some View {
         VStack(alignment: .leading, spacing: 6) {
-            row("5시간", shown.p5, shown.weekFull ? "주간 리셋 뒤 열려요" : "리셋까지 " + CUTime.left(shown.five.reset, Date()))
-            row("주간", shown.pw, "리셋 " + CUTime.weekday(shown.week.reset))
+            row(String(localized: "5시간"), shown.p5, shown.weekFull ? String(localized: "주간 리셋 뒤 열려요") : String(localized: "리셋까지 ") + CUTime.left(shown.five.reset, Date()))
+            row(String(localized: "주간"), shown.pw, String(localized: "리셋 ") + CUTime.weekday(shown.week.reset))
             HStack {
                 if let err { Text(err).foregroundStyle(.orange) }
-                else if let u { Text("받은 시각 " + u.at.formatted(date: .omitted, time: .shortened)) }
+                else if let u { Text(String(localized: "받은 시각 ") + u.at.formatted(date: .omitted, time: .shortened)) }
                 else { Text("예시 숫자예요") }
                 Spacer()
                 Button { Task { await load() } } label: { busy ? AnyView(ProgressView()) : AnyView(Image(systemName: "arrow.clockwise")) }

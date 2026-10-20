@@ -6,12 +6,12 @@ enum MissionRoute: Hashable { case m1, m1r, m2, m2r, m3, m3r, m4, m4r, nx, gp1r,
 
 enum Basket: String, CaseIterable {
     case G, V, B, C
-    var name: String { switch self { case .G: "성장 지속"; case .V: "저평가 회복"; case .B: "버팀목"; case .C: "현금" } }
+    var name: String { switch self { case .G: String(localized: "성장 지속"); case .V: String(localized: "저평가 회복"); case .B: String(localized: "버팀목"); case .C: String(localized: "현금") } }
     var rule: String {
         switch self {
-        case .G: "PER이 평균보다 15%↑, 이익 성장으로 설명됨"
-        case .V: "PER이 평균보다 10%↓, 이익 성장 5%↑"
-        case .B: "PER이 평균 ±15% 안, 이익 성장 3%↑"
+        case .G: String(localized: "PER이 평균보다 15%↑, 이익 성장으로 설명됨")
+        case .V: String(localized: "PER이 평균보다 10%↓, 이익 성장 5%↑")
+        case .B: String(localized: "PER이 평균 ±15% 안, 이익 성장 3%↑")
         case .C: ""
         }
     }
@@ -41,7 +41,7 @@ struct Plan: Identifiable {
     let mix: [Basket: Double]
     let mixText: String
     let V: Double
-    var focus = "몰린 종목"     // 몰린 종목 이름 (설명용)
+    var focus = String(localized: "몰린 종목")     // 몰린 종목 이름 (설명용)
     /// 전망과 같은 몬테카를로 경로 (웹 본전 카드와 같은 셈). 계산이 끝나기 전에는 nil → 닫힌 식
     var paths: PathSet? = nil
 
@@ -82,7 +82,7 @@ struct Plan: Identifiable {
         return (sd, MC.quantileSorted(r, 0.5), mean)
     }
     var desc: String {
-        id == "keep" ? "지금 그대로 (\(focus) \(AppModel.pct(wt)))" : "\(focus) \(AppModel.pct(wt))로 · 줄인 돈은 \(mixText)"
+        id == "keep" ? String(localized: "지금 그대로 (\(String(describing: focus)) \(String(describing: AppModel.pct(wt))))") : String(localized: "\(String(describing: focus)) \(String(describing: AppModel.pct(wt)))로 · 줄인 돈은 \(String(describing: mixText))")
     }
 }
 
@@ -91,11 +91,11 @@ extension AppModel {
     /// (시안은 DRNK·QQQ 두 종목이었고, 내 종목이 그 둘이면 결과는 시안과 같다)
     var focusRow: Row? { rows.max { $0.value < $1.value } }
     var restRows: [Row] { rows.filter { $0.id != focusRow?.id } }
-    var focusName: String { focusRow?.sym.short ?? "몰린 종목" }
+    var focusName: String { focusRow?.sym.short ?? String(localized: "몰린 종목") }
     /// 나머지 이름: 하나면 그 종목, 여럿이면 "나머지 n종목"
     var restName: String {
         let r = restRows
-        return r.count == 1 ? r[0].sym.short : r.isEmpty ? "나머지" : "나머지 \(r.count)종목"
+        return r.count == 1 ? r[0].sym.short : r.isEmpty ? String(localized: "나머지") : String(localized: "나머지 \(String(describing: r.count))종목")
     }
     /// 나머지 묶음 수익률 (들어간 돈 대비)
     var restRet: Double {
@@ -235,15 +235,15 @@ extension AppModel {
             return p
         }
         return [
-            mk("keep", "유지", "지금 그대로", 1, [.C: 1], ""),
-            mk("push", "도전", "빠른 회복 우선", 0.45, [.G: 0.7, .V: 0.3], "성장 지속 7 : 저평가 회복 3"),
-            mk("balance", "균형", "회복과 방어 반반", 0.35, [.G: 1.0 / 3, .V: 1.0 / 3, .B: 1.0 / 3], "세 묶음에 고르게"),
-            mk("guard", "방어", "덜 잃기 우선", 0.25, [.V: 0.2, .B: 0.6, .C: 0.2], "버팀목 6 : 저평가 회복 2 : 현금 2"),
+            mk("keep", String(localized: "유지"), String(localized: "지금 그대로"), 1, [.C: 1], ""),
+            mk("push", String(localized: "도전"), String(localized: "빠른 회복 우선"), 0.45, [.G: 0.7, .V: 0.3], String(localized: "성장 지속 7 : 저평가 회복 3")),
+            mk("balance", String(localized: "균형"), String(localized: "회복과 방어 반반"), 0.35, [.G: 1.0 / 3, .V: 1.0 / 3, .B: 1.0 / 3], String(localized: "세 묶음에 고르게")),
+            mk("guard", String(localized: "방어"), String(localized: "덜 잃기 우선"), 0.25, [.V: 0.2, .B: 0.6, .C: 0.2], String(localized: "버팀목 6 : 저평가 회복 2 : 현금 2")),
         ]
     }
     var keepPlan: Plan { plans[0] }
     var selectedPlan: Plan { plans.first { $0.id == planKey } ?? plans[2] }
-    var horizonLabel: String { horizon == 12 ? "1년" : "\(horizon)개월" }
+    var horizonLabel: String { horizon == 12 ? String(localized: "1년") : String(localized: "\(String(describing: horizon))개월") }
 
     // 미션 2: 손실이 어디서 왔나
     var lossShareFocus: Double {

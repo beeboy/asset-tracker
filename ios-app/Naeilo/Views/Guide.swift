@@ -53,7 +53,7 @@ struct GuideBubble: View {
         let f = m.guideFriend, name = m.friendName(f)
         let text = Voice.say(self.text, m.voice(f), pose)
         HStack(alignment: .center, spacing: 10) {
-            MotionSprite(friend: f, pose: pose).frame(width: 66)
+            MotionSprite(friend: f, pose: pose).charIdle().frame(width: 66)
             VStack(alignment: .leading, spacing: 4) {
                 Text(name + (note.map { " · " + $0 } ?? "")).appFont(12, .semibold).foregroundStyle(Theme.blue)
                 Text(text).appFont(14).foregroundStyle(Theme.ink).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
@@ -79,13 +79,13 @@ enum Voice {
     ]
     private static let ending = try! NSRegularExpression(pattern: "(어|아|해|여|와|워|꿔|춰|써|봐|돼|줘|져|려|내|가|서)요([.?!,]|$)")
     private static let pre: [String: [Pose: String]] = [
-        "sio": [.wave: "왔네. ", .point: "짧게. ", .spread: "셌어. "],
-        "seonbae": [.wave: "왔어? "],
-        "ir": [.think: "서두르지 마. ", .spread: "흔들려도 괜찮아. ", .wave: "천천히 하자. ", .side: "천천히 골라. "],
-        "sua": [.wave: "제때 오셨어요. ", .point: "순서대로 볼게요. "],
+        "sio": [.wave: String(localized: "왔네. "), .point: String(localized: "짧게. "), .spread: String(localized: "셌어. ")],
+        "seonbae": [.wave: String(localized: "왔어? ")],
+        "ir": [.think: String(localized: "서두르지 마. "), .spread: String(localized: "흔들려도 괜찮아. "), .wave: String(localized: "천천히 하자. "), .side: String(localized: "천천히 골라. ")],
+        "sua": [.wave: String(localized: "제때 오셨어요. "), .point: String(localized: "순서대로 볼게요. ")],
     ]
     private static let suf: [String: [Pose: String]] = [
-        "seonbae": [.think: " 너라면 뭘 고를 것 같아?", .spread: " 왜 여기까지 왔다고 생각해?", .back: " 어디가 제일 눈에 띄어?", .side: " 어느 쪽이 마음 편해?"],
+        "seonbae": [.think: String(localized: " 너라면 뭘 고를 것 같아?"), .spread: String(localized: " 왜 여기까지 왔다고 생각해?"), .back: String(localized: " 어디가 제일 눈에 띄어?"), .side: String(localized: " 어느 쪽이 마음 편해?")],
     ]
     static func say(_ t: String, _ f: String, _ pose: Pose) -> String {
         guard f != "seri" else { return t }
@@ -99,10 +99,10 @@ enum Voice {
         // 계획을 정한 뒤: 선배는 이유를 적게 하고, 이르는 흔들려도 서두르지 말라고, 수아는 기록한다고
         if decided {
             switch f {
-            case "seonbae": tail = " 왜 그렇게 정했는지 한 줄 적어 둬."
-            case "ir": tail = " 이제 흔들려도 서두르지 마."
-            case "sua": head = "좋아요, 기록해 둘게요. "
-            case "sio": head = "됐어. "
+            case "seonbae": tail = String(localized: " 왜 그렇게 정했는지 한 줄 적어 둬.")
+            case "ir": tail = String(localized: " 이제 흔들려도 서두르지 마.")
+            case "sua": head = String(localized: "좋아요, 기록해 둘게요. ")
+            case "sio": head = String(localized: "됐어. ")
             default: break
             }
         }
@@ -119,7 +119,7 @@ struct GuidePickRow: View {
             + (m.meUnlocked ? [("me", m.friendName("me"))] : [])
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                MotionSprite(friend: m.guideFriend, pose: .wave, height: 48)
+                MotionSprite(friend: m.guideFriend, pose: .wave, height: 48).charIdle(2)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.friendName(m.guideFriend)).appFont(15, .bold)
                     Text("홈·미션에서 말 걸어요").appFont(12).foregroundStyle(Theme.sub)

@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E7A1C0DE00000000000000C3 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000C1 /* Localizable.xcstrings */; };
+		E7A1C0DE00000000000000D4 /* data_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000D3 /* data_en.json */; };
+		E7A1C0DE00000000000000D2 /* lines_app_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000D1 /* lines_app_en.json */; };
+		E7A1C0DE00000000000000C2 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000C1 /* Localizable.xcstrings */; };
 		B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */; };
 		02D7A588AC677280C686D8DD /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCACC287684D148B6C75C94F /* SampleData.swift */; };
 		08C597E8BE414747DD18FC1F /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113FC119D1DE4AE5F19B494E /* Engine.swift */; };
@@ -22,6 +26,7 @@
 		3067211DBEEE37981705C1E7 /* Me.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF24101939FAE2699976EF9A /* Me.swift */; };
 		5A1E0C7D2B9F4E6A8C3D1B01 /* Remind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1E0C7D2B9F4E6A8C3D1B02 /* Remind.swift */; };
 		D2E26393C5FC2C263794331C /* Calm.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C8BDB35CC0EADAEFBC826C /* Calm.swift */; };
+		A1B2C3D4E5F60718293A4B01 /* WaveEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B02 /* WaveEngine.swift */; };
 		9D0C8DCF6E59E311B4506B5B /* BrickGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2905AA73F54471654DDD97 /* BrickGame.swift */; };
 		39FFBAF05DA8DDC0379F1167 /* Lines.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50761DC24E0F1E341B2A8C09 /* Lines.swift */; };
 		B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */ = {isa = PBXBuildFile; fileRef = C9B0595773BCD7CC543FB16E /* lines_ko.json */; };
@@ -94,7 +99,14 @@
 		CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */ = {isa = PBXBuildFile; fileRef = CA972EE98F92EF464180B15F /* quotes.json */; };
 		81A915C15DB304AE45CD6B4A /* stats.json in Resources */ = {isa = PBXBuildFile; fileRef = EE06E92AB3F3E0602FB28BB1 /* stats.json */; };
 		76175DF9F7E9BADC8A2992F0 /* calc.json in Resources */ = {isa = PBXBuildFile; fileRef = F509A415790715D23F1E6D7B /* calc.json */; };
+		E1F2A3B4C5D6E7F8091A2B01 /* TownPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F2A3B4C5D6E7F8091A2B02 /* TownPanel.swift */; };
 		CD0713B84C32526597218283 /* HoldingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B93F44AA00A552A3868A92 /* HoldingsView.swift */; };
+		5C10E7A1B2C3D4E5F6A7B801 /* SurfCloset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C10E7A1B2C3D4E5F6A7B802 /* SurfCloset.swift */; };
+		7D20A1B2C3D4E5F6A7B8C9A1 /* WavePlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D20A1B2C3D4E5F6A7B8C9A2 /* WavePlayView.swift */; };
+		7D20A1B2C3D4E5F6A7B8C9B1 /* WaveResultPopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D20A1B2C3D4E5F6A7B8C9B2 /* WaveResultPopup.swift */; };
+		5C10E7A1B2C3D4E5F6A7C901 /* WaveHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C10E7A1B2C3D4E5F6A7C902 /* WaveHomeView.swift */; };
+		5C10E7A1B2C3D4E5F6A7B9F1 /* WaveFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C10E7A1B2C3D4E5F6A7B9F2 /* WaveFeedback.swift */; };
+		A7C3D2E1F0B9A8C7D6E5F401 /* CharMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C3D2E1F0B9A8C7D6E5F402 /* CharMotion.swift */; };
 		CD1B58E37A334086753B306E /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F5CFD9372155F687DC62A14 /* Support.swift */; };
 		CDC9A9B0B5F97C64D91F58A7 /* Industries.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D0C4109B5070AD88349788 /* Industries.swift */; };
 		DC15E84938D3B3EDB0FB4481 /* ShelterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9051E09656ED51EFBF91911 /* ShelterView.swift */; };
@@ -135,6 +147,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E7A1C0DE00000000000000D3 /* data_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = data_en.json; sourceTree = "<group>"; };
+		E7A1C0DE00000000000000D1 /* lines_app_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_app_en.json; sourceTree = "<group>"; };
+		E7A1C0DE00000000000000C1 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0020D03B6A8743286E629278 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		012F5C5676B198E5CF433509 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
@@ -202,6 +217,13 @@
 		BE16646A583833EE1115FA08 /* prices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = prices; path = ../data/prices; sourceTree = SOURCE_ROOT; };
 		BE199ACA459A1DB92E4427A3 /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
 		BF7DFE9A58B7B9416B105E91 /* HomeWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgets.swift; sourceTree = "<group>"; };
+		5C10E7A1B2C3D4E5F6A7B802 /* SurfCloset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/SurfCloset.swift; sourceTree = "<group>"; };
+		7D20A1B2C3D4E5F6A7B8C9A2 /* WavePlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/WavePlayView.swift; sourceTree = "<group>"; };
+		7D20A1B2C3D4E5F6A7B8C9B2 /* WaveResultPopup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/WaveResultPopup.swift; sourceTree = "<group>"; };
+		5C10E7A1B2C3D4E5F6A7C902 /* WaveHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/WaveHomeView.swift; sourceTree = "<group>"; };
+		5C10E7A1B2C3D4E5F6A7B9F2 /* WaveFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/WaveFeedback.swift; sourceTree = "<group>"; };
+		A7C3D2E1F0B9A8C7D6E5F402 /* CharMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharMotion.swift; sourceTree = "<group>"; };
+		E1F2A3B4C5D6E7F8091A2B02 /* TownPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TownPanel.swift; sourceTree = "<group>"; };
 		C1B93F44AA00A552A3868A92 /* HoldingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldingsView.swift; sourceTree = "<group>"; };
 		CA972EE98F92EF464180B15F /* quotes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = quotes.json; sourceTree = "<group>"; };
 		EE06E92AB3F3E0602FB28BB1 /* stats.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = stats.json; sourceTree = "<group>"; };
@@ -214,6 +236,7 @@
 		FF24101939FAE2699976EF9A /* Me.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Me.swift; sourceTree = "<group>"; };
 		5A1E0C7D2B9F4E6A8C3D1B02 /* Remind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Remind.swift; sourceTree = "<group>"; };
 		A0C8BDB35CC0EADAEFBC826C /* Calm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Calm.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B02 /* WaveEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveEngine.swift; sourceTree = "<group>"; };
 		5F2905AA73F54471654DDD97 /* BrickGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrickGame.swift; sourceTree = "<group>"; };
 		50761DC24E0F1E341B2A8C09 /* Lines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lines.swift; sourceTree = "<group>"; };
 		C9B0595773BCD7CC543FB16E /* lines_ko.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_ko.json; sourceTree = "<group>"; };
@@ -288,6 +311,7 @@
 				D8E2F947F1E8A2B5EF85B381 /* StockSearch.swift */,
 				A0C8BDB35CC0EADAEFBC826C /* Calm.swift */,
 				5F2905AA73F54471654DDD97 /* BrickGame.swift */,
+				A1B2C3D4E5F60718293A4B02 /* WaveEngine.swift */,
 				FF24101939FAE2699976EF9A /* Me.swift */,
 				5A1E0C7D2B9F4E6A8C3D1B02 /* Remind.swift */,
 				50761DC24E0F1E341B2A8C09 /* Lines.swift */,
@@ -321,6 +345,8 @@
 				E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */,
 				E7A1C0DE00000000000000F9 /* krx_stocks.json */,
 				C9B0595773BCD7CC543FB16E /* lines_ko.json */,
+				E7A1C0DE00000000000000D3 /* data_en.json */,
+				E7A1C0DE00000000000000D1 /* lines_app_en.json */,
 				A01E38615C5B56866E9049C5 /* story_en.json */,
 				A34C703A77797FBE1F14AB80 /* story_ko.json */,
 			);
@@ -336,7 +362,14 @@
 				7C59880D308D978CDFD58A8E /* Charts.swift */,
 				68521199848D8FCA256D8B7B /* GoalViews.swift */,
 				FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */,
+				A7C3D2E1F0B9A8C7D6E5F402 /* CharMotion.swift */,
+				5C10E7A1B2C3D4E5F6A7B802 /* SurfCloset.swift */,
+				7D20A1B2C3D4E5F6A7B8C9A2 /* WavePlayView.swift */,
+				7D20A1B2C3D4E5F6A7B8C9B2 /* WaveResultPopup.swift */,
+				5C10E7A1B2C3D4E5F6A7C902 /* WaveHomeView.swift */,
+				5C10E7A1B2C3D4E5F6A7B9F2 /* WaveFeedback.swift */,
 				C1B93F44AA00A552A3868A92 /* HoldingsView.swift */,
+				E1F2A3B4C5D6E7F8091A2B02 /* TownPanel.swift */,
 				19A659ACA7844B039CC6E3E3 /* HomeView.swift */,
 				8B0231D9975040C795003779 /* MissionViews.swift */,
 				A122F1E67A8269B4AF802387 /* SettingsDetail.swift */,
@@ -387,6 +420,7 @@
 				AF1B4BB6CF97D8922C1704B6 /* Assets.xcassets */,
 				8380C2A50584D047AFCD6E3D /* Info.plist */,
 				A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */,
+				E7A1C0DE00000000000000C1 /* Localizable.xcstrings */,
 				96EDF9F440F10C712447019C /* Theme.swift */,
 				75F568A375635F9FEAD2A9A2 /* Data */,
 				85AFDE161B334BAE630AF09D /* Resources */,
@@ -478,11 +512,12 @@
 				};
 			};
 			buildConfigurationList = E046FACFCFD622A30E0F9F11 /* Build configuration list for PBXProject "NaeiloApp" */;
-			developmentRegion = en;
+			developmentRegion = ko;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
 				en,
+				ko,
 			);
 			mainGroup = EB02D6C12BCD6A12E1702B9D;
 			minimizedProjectReferenceProxies = 1;
@@ -507,7 +542,10 @@
 				694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */,
 				E7A1C0DE00000000000000B9 /* krx_stocks.json in Resources */,
 				B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */,
+				E7A1C0DE00000000000000C2 /* Localizable.xcstrings in Resources */,
 				B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */,
+				E7A1C0DE00000000000000D4 /* data_en.json in Resources */,
+				E7A1C0DE00000000000000D2 /* lines_app_en.json in Resources */,
 				E7A1C0DE00000000000000A1 /* lines_en.json in Resources */,
 				8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */,
 				CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */,
@@ -524,6 +562,7 @@
 			files = (
 				DC6166C3D3B536F49DEE74F6 /* Assets.xcassets in Resources */,
 				17F4BF227BB8ABA88817F833 /* PrivacyInfo.xcprivacy in Resources */,
+				E7A1C0DE00000000000000C3 /* Localizable.xcstrings in Resources */,
 				E7A1C0DE00000000000000B1 /* lines_en.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -619,7 +658,14 @@
 				531CD3A158BBA2E981252BBE /* GoalRoute.swift in Sources */,
 				7F4FF7AD5F5051BB7F274A1A /* GoalViews.swift in Sources */,
 				BA2E9CDCDF9F7655E0E98F6A /* Guide.swift in Sources */,
+				A7C3D2E1F0B9A8C7D6E5F401 /* CharMotion.swift in Sources */,
+				5C10E7A1B2C3D4E5F6A7B801 /* SurfCloset.swift in Sources */,
+				7D20A1B2C3D4E5F6A7B8C9A1 /* WavePlayView.swift in Sources */,
+				7D20A1B2C3D4E5F6A7B8C9B1 /* WaveResultPopup.swift in Sources */,
+				5C10E7A1B2C3D4E5F6A7C901 /* WaveHomeView.swift in Sources */,
+				5C10E7A1B2C3D4E5F6A7B9F1 /* WaveFeedback.swift in Sources */,
 				CD0713B84C32526597218283 /* HoldingsView.swift in Sources */,
+				E1F2A3B4C5D6E7F8091A2B01 /* TownPanel.swift in Sources */,
 				0AB939B5C4907CBD8CD2BCE5 /* HomeView.swift in Sources */,
 				CDC9A9B0B5F97C64D91F58A7 /* Industries.swift in Sources */,
 				29D8FC2E54DCCBA3B0E34992 /* Market.swift in Sources */,
@@ -658,6 +704,7 @@
 				1A944CD8310789082F51DDA9 /* StockSearch.swift in Sources */,
 				D2E26393C5FC2C263794331C /* Calm.swift in Sources */,
 				9D0C8DCF6E59E311B4506B5B /* BrickGame.swift in Sources */,
+				A1B2C3D4E5F60718293A4B01 /* WaveEngine.swift in Sources */,
 				3067211DBEEE37981705C1E7 /* Me.swift in Sources */,
 				5A1E0C7D2B9F4E6A8C3D1B01 /* Remind.swift in Sources */,
 				39FFBAF05DA8DDC0379F1167 /* Lines.swift in Sources */,
@@ -692,6 +739,8 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Naeilo/Info.plist;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -708,6 +757,7 @@
 				CODE_SIGN_ENTITLEMENTS = Widgets/Widgets.entitlements;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Widgets/Info.plist;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -729,6 +779,8 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Naeilo/Info.plist;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -806,6 +858,7 @@
 				CODE_SIGN_ENTITLEMENTS = Widgets/Widgets.entitlements;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Widgets/Info.plist;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

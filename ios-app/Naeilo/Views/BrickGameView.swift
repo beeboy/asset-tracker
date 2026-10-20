@@ -6,12 +6,13 @@ import SwiftUI
 struct BrickGameButton: View {
     /// 그 카드의 칸 (회복 루트: 바닥/회복, 목표 루트: 내 돈/시장)
     let filled: Int, floor: Int, yesterday: Int
-    var title = "벽돌깨기"
+    var title = String(localized: "벽돌깨기")
+    var icon = "gamecontroller"
     var plain = false   // 흰 바탕 · 회색 테두리 (미션 탭 보조 버튼)
     @State private var show = false
     var body: some View {
         Button { show = true } label: {
-            Label(title, systemImage: "gamecontroller")
+            Label(title, systemImage: icon)
                 .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(plain ? Theme.ink : .white)
                 .background(plain ? Theme.card : Theme.teal, in: RoundedRectangle(cornerRadius: 12))
@@ -41,13 +42,14 @@ struct BrickGameHub: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    GameHeader(title: String(localized: "내 자산으로 하는 벽돌깨기"))
                     // 이름 옆에 버튼을 한 줄로
                     VStack(alignment: .leading, spacing: 6) {
-                        inline("난이도") { ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true) }
+                        inline(String(localized: "난이도")) { ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true) }
                         Text(rec.level.note).appFont(12).foregroundStyle(Theme.sub)
                     }
-                    inline("조작") { ChipRow(items: [(true, "기울이기"), (false, "끌기")], selection: $rec.tilt, fill: true) }
-                    section("선수") {
+                    inline(String(localized: "조작")) { ChipRow(items: [(true, String(localized: "기울이기")), (false, String(localized: "끌기"))], selection: $rec.tilt, fill: true) }
+                    section(String(localized: "선수")) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) { ForEach(players, id: \.self) { playerCard($0) } }.padding(.vertical, 2)
                         }
@@ -61,7 +63,7 @@ struct BrickGameHub: View {
                     // 처음엔 세 단계만, 나머지는 접어 둔다
                     ForEach(GameStage.all.prefix(allStages ? GameStage.all.count : 3)) { stageRow($0) }
                     Button { withAnimation { allStages.toggle() } } label: {
-                        Text(allStages ? "접기 ▴" : "나머지 \(GameStage.all.count - 3)단계 펼치기 ▾")
+                        Text(allStages ? String(localized: "접기 ▴") : String(localized: "나머지 \(String(describing: GameStage.all.count - 3))단계 펼치기 ▾"))
                             .appFont(14, .semibold).foregroundStyle(Theme.tealDark).frame(maxWidth: .infinity, minHeight: 44)
                             .background(Theme.tealBg, in: RoundedRectangle(cornerRadius: 12))
                     }
@@ -71,7 +73,7 @@ struct BrickGameHub: View {
                         HStack {
                             Text("물건 아이템 \(items.count)개").appFont(13, .bold).foregroundStyle(Theme.sub)
                             Spacer()
-                            Text(showItems ? "접기 ▴" : "펼치기 ▾").appFont(13, .semibold).foregroundStyle(Theme.tealDark)
+                            Text(showItems ? String(localized: "접기 ▴") : String(localized: "펼치기 ▾")).appFont(13, .semibold).foregroundStyle(Theme.tealDark)
                         }
                         .frame(minHeight: 44).contentShape(Rectangle())
                     }
@@ -91,7 +93,7 @@ struct BrickGameHub: View {
                             }
                         }
                     }
-                    section("내 기록") {
+                    section(String(localized: "내 기록")) {
                         Text("기록과 순위는 이 폰 안에만 남아요. 아무 데도 보내지 않아요.")
                             .appFont(12).foregroundStyle(Theme.sub)
                     }
@@ -99,9 +101,7 @@ struct BrickGameHub: View {
                 .screen()
             }
             .background(Theme.bg)
-            .navigationTitle("내 1000칸으로 하는 벽돌깨기")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
+            .toolbar(.hidden, for: .navigationBar)   // 맨 위는 파도 타기와 같은 GameHeader
         }
         .onAppear { if !players.contains(rec.player) { rec.player = players.first ?? "seri" } }
         .onChange(of: rec) { _, v in v.save() }
@@ -143,7 +143,7 @@ struct BrickGameHub: View {
 
     private func playerCard(_ id: String) -> some View {
         let on = rec.player == id
-        let name = id == "me" ? ((m.me?.name).flatMap { $0.isEmpty ? nil : $0 } ?? "나") : (Shelter.friends.first { $0.id == id }?.name ?? id)
+        let name = id == "me" ? ((m.me?.name).flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "나")) : (Shelter.friends.first { $0.id == id }?.name ?? id)
         return Button { rec.player = id } label: {
             VStack(spacing: 4) {
                 CharPixel(id: id, width: 36, height: 51)
@@ -184,7 +184,7 @@ struct BrickGameHub: View {
                         Text(s.bg.name).appFont(14, .bold).lineLimit(1)
                         if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.teal).appFont(13) }
                     }
-                    Text(open ? s.rule + " 벽돌 \(s.bricks(rec.level))개" + (s.tetrisCount(rec.level) == 0 ? "." : ", 숨은 테트리스 블럭 \(s.tetrisCount(rec.level))개.") : "앞 단계를 깨면 열려요").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    Text(open ? s.rule + String(localized: " 벽돌 \(String(describing: s.bricks(rec.level)))개") + (s.tetrisCount(rec.level) == 0 ? "." : String(localized: ", 숨은 테트리스 블럭 \(String(describing: s.tetrisCount(rec.level)))개.")) : String(localized: "앞 단계를 깨면 열려요")).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     if let b = rec.bestOf(s.n, rec.level) { Text("최고 \(b.formatted())점").appFont(12, .bold).foregroundStyle(Theme.sub) }
                 }
                 Spacer(minLength: 0)
@@ -262,7 +262,7 @@ struct BrickPlayView: View {
                 .position(x: geo.size.width / 2, y: geo.size.height / 2)
                 .accessibilityLabel("판 깨기 게임. 깬 칸 \(g.broken), 기준 \(g.target)")
             }
-            Text(g.tilt ? "기울여 이동 · 눌러서 발사" : "끌어서 이동 · 떼면 발사")
+            Text(g.tilt ? String(localized: "기울여 이동 · 눌러서 발사") : String(localized: "끌어서 이동 · 떼면 발사"))
                 .appFont(12).foregroundStyle(Theme.sub)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
@@ -367,10 +367,10 @@ struct BrickPlayView: View {
                 Text("\(g.broken)/\(g.target)칸").appFont(11, .bold).foregroundStyle(Theme.sub).monospacedDigit()
             }
             HStack(spacing: 6) {
-                if g.chain > 0 { tag("이어하기 · 점수 ×" + String(format: "%.1f", g.scoreMul)) }
-                if g.net > 0 { tag("안전망 \(g.net)", yellow: true) }
-                if g.shield { tag("보호막") }
-                if g.assist { tag("도움 켜짐 · 공 느리게") }
+                if g.chain > 0 { tag(String(localized: "이어하기 · 점수 ×") + String(format: "%.1f", g.scoreMul)) }
+                if g.net > 0 { tag(String(localized: "안전망 \(String(describing: g.net))"), yellow: true) }
+                if g.shield { tag(String(localized: "보호막")) }
+                if g.assist { tag(String(localized: "도움 켜짐 · 공 느리게")) }
                 ForEach(g.activeEffects, id: \.self) { e in if let n = effectName(e) { tag(n) } }
                 Spacer(minLength: 0)
             }
@@ -404,14 +404,14 @@ struct BrickPlayView: View {
 
     private func effectName(_ e: String) -> String? {
         switch e {
-        case "slow": "보리차 · 느리게"
-        case "light": "현관 등 · 길 보임"
-        case "clock": "벽시계 · 멈춤"
-        case "wide": "머리끈 · 긴 판"
-        case "aim": "비대칭 그릇 · 꺾기"
-        case "double": "대추씨 · 2배"
-        case "pierce": "원로의 구슬 · 뚫기"
-        case "fast": "오늘 칸 · 빠르게"
+        case "slow": String(localized: "보리차 · 느리게")
+        case "light": String(localized: "현관 등 · 길 보임")
+        case "clock": String(localized: "벽시계 · 멈춤")
+        case "wide": String(localized: "머리끈 · 긴 판")
+        case "aim": String(localized: "비대칭 그릇 · 꺾기")
+        case "double": String(localized: "대추씨 · 2배")
+        case "pierce": String(localized: "원로의 구슬 · 뚫기")
+        case "fast": String(localized: "오늘 칸 · 빠르게")
         default: nil
         }
     }
@@ -583,9 +583,9 @@ struct BrickPlayView: View {
             }
         case .paused:
             dim {
-                bubble(g, "잠깐 쉬어요.", sub: nil) {
-                    button("계속", primary: true) { g.resume() }
-                    button("그만하기") { g.end(); onClose(nil) }
+                bubble(g, String(localized: "잠깐 쉬어요."), sub: nil) {
+                    button(String(localized: "계속"), primary: true) { g.resume() }
+                    button(String(localized: "그만하기")) { g.end(); onClose(nil) }
                 }
             }
         case .cleared, .over:
@@ -594,15 +594,15 @@ struct BrickPlayView: View {
             let lose = record.lossCount(g.stage.n, g.level)
             dim {
                 if won, next != nil {
-                    bubble(g, g.speech, sub: "\(g.score.formatted())점 · 다음 단계로 이어가요") { EmptyView() }
+                    bubble(g, g.speech, sub: String(localized: "\(String(describing: g.score.formatted()))점 · 다음 단계로 이어가요")) { EmptyView() }
                 } else {
                 bubble(g, g.speech,
-                       sub: "\(won ? "깼어요" : "끝났어요") · \(g.score.formatted())점\(g.newBest ? " · 새 최고 기록" : "")\(g.picked.isEmpty ? "" : " · 먹은 물건 \(g.picked.values.reduce(0, +))개")") {
-                    button("다시 하기", primary: true) { onClose((g.stage, g.level, false)) }
+                       sub: String(localized: "\(String(describing: won ? String(localized: "깼어요") : String(localized: "끝났어요"))) · \(String(describing: g.score.formatted()))점\(String(describing: g.newBest ? String(localized: " · 새 최고 기록") : ""))\(String(describing: g.picked.isEmpty ? "" : String(localized: " · 먹은 물건 \(String(describing: g.picked.values.reduce(0, +)))개")))")) {
+                    button(String(localized: "다시 하기"), primary: true) { onClose((g.stage, g.level, false)) }
                     if !won, lose >= 3, let easy = g.level.easier {
-                        button("쉬운 판으로 갈까요? · \(easy.title)") { onClose((g.stage, easy, false)) }
+                        button(String(localized: "쉬운 판으로 갈까요? · \(String(describing: easy.title))")) { onClose((g.stage, easy, false)) }
                     }
-                    button("단계 고르기") { onClose(nil) }
+                    button(String(localized: "단계 고르기")) { onClose(nil) }
                 }
                 }
             }
@@ -620,11 +620,11 @@ struct BrickPlayView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 10) {
-                if g.chain > 0 { line("이어하기 · 점수 ×" + String(format: "%.1f", g.scoreMul) + " · 생명 \(g.lives)") }
-                if g.lifeBonus { line("연속 \(g.chain)단계 · 생명 +1").foregroundStyle(Theme.up).bold() }
+                if g.chain > 0 { line(String(localized: "이어하기 · 점수 ×") + String(format: "%.1f", g.scoreMul) + String(localized: " · 생명 \(String(describing: g.lives))")) }
+                if g.lifeBonus { line(String(localized: "연속 \(String(describing: g.chain))단계 · 생명 +1")).foregroundStyle(Theme.up).bold() }
                 line(g.stage.short)
             }
-            button("눌러서 시작", primary: true) { g.startPlay() }.padding(.top, 8)
+            button(String(localized: "눌러서 시작"), primary: true) { g.startPlay() }.padding(.top, 8)
         }
         .padding(22)
         .frame(maxWidth: 400)

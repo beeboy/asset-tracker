@@ -1,0 +1,508 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "%% · 주간 %lld%%" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%% · week %lld%%"
+          }
+        }
+      }
+    },
+    "%lld" : {},
+    "%lld%%" : {},
+    "5시간" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5h"
+          }
+        }
+      }
+    },
+    "5시간 사용량은 칸, 주간 사용량은 탑으로 보여요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5-hour use as cells, weekly use as a tower."
+          }
+        }
+      }
+    },
+    "Claude 사용량" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude usage"
+          }
+        }
+      }
+    },
+    "Claude 사용량 링" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude usage ring"
+          }
+        }
+      }
+    },
+    "그거면 돼." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That's enough."
+          }
+        }
+      }
+    },
+    "기다리는 것도 괜찮아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting is fine too."
+          }
+        }
+      }
+    },
+    "나도 빨랐어." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I was fast too."
+          }
+        }
+      }
+    },
+    "남은 건 어디에 쓸래?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where will you spend the rest?"
+          }
+        }
+      }
+    },
+    "내 캐릭터" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My character"
+          }
+        }
+      }
+    },
+    "다음 주에 봐." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See you next week."
+          }
+        }
+      }
+    },
+    "리셋 " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resets "
+          }
+        }
+      }
+    },
+    "리셋까지 " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resets in "
+          }
+        }
+      }
+    },
+    "멈출 때야." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time to stop."
+          }
+        }
+      }
+    },
+    "뭐부터 해 볼까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What shall we try first?"
+          }
+        }
+      }
+    },
+    "바깥 링은 5시간, 안쪽 링은 주간 사용량이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outer ring is 5 hours, inner ring is weekly use."
+          }
+        }
+      }
+    },
+    "받은 시각 " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updated "
+          }
+        }
+      }
+    },
+    "사용량을 읽지 못했어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read usage"
+          }
+        }
+      }
+    },
+    "선배" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seonbae"
+          }
+        }
+      }
+    },
+    "세리" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seri"
+          }
+        }
+      }
+    },
+    "수아" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua"
+          }
+        }
+      }
+    },
+    "쉬어." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest."
+          }
+        }
+      }
+    },
+    "시오" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sio"
+          }
+        }
+      }
+    },
+    "써도 돼." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go ahead."
+          }
+        }
+      }
+    },
+    "아직 고르는 중이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still choosing."
+          }
+        }
+      }
+    },
+    "앱에서 고른 캐릭터" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Character set in app"
+          }
+        }
+      }
+    },
+    "예시 숫자예요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sample numbers"
+          }
+        }
+      }
+    },
+    "오늘 뭘 만들고 싶어?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What do you want to make today?"
+          }
+        }
+      }
+    },
+    "오늘은 마음껏 물어봐요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask all you like today."
+          }
+        }
+      }
+    },
+    "위젯에 나올 캐릭터를 골라요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick the character for the widget."
+          }
+        }
+      }
+    },
+    "위젯을 길게 눌러 '위젯 편집'에서 위젯마다 다른 캐릭터를 고를 수도 있어요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long-press a widget and tap 'Edit Widget' to pick a character for each one."
+          }
+        }
+      }
+    },
+    "이르" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ir"
+          }
+        }
+      }
+    },
+    "이번 주 끝." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done for the week."
+          }
+        }
+      }
+    },
+    "이번 주는 쉬어 가요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Let's rest this week."
+          }
+        }
+      }
+    },
+    "이번 주는 여기까지예요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That's it for this week."
+          }
+        }
+      }
+    },
+    "이번 주는 푹 쉬자." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Let's rest well this week."
+          }
+        }
+      }
+    },
+    "잠깐 산책 다녀와요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go for a short walk."
+          }
+        }
+      }
+    },
+    "조금 아껴 볼까요?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shall we save a little?"
+          }
+        }
+      }
+    },
+    "주간" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week"
+          }
+        }
+      }
+    },
+    "주간 리셋 뒤 열려요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens after weekly reset"
+          }
+        }
+      }
+    },
+    "중계에 닿지 못했어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't reach the relay"
+          }
+        }
+      }
+    },
+    "중요한 것부터 해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start with what matters."
+          }
+        }
+      }
+    },
+    "지금 이게 제일 중요해?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Is this the most important now?"
+          }
+        }
+      }
+    },
+    "짧게 물어." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep it short."
+          }
+        }
+      }
+    },
+    "천천히." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slowly."
+          }
+        }
+      }
+    },
+    "캐릭터" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Character"
+          }
+        }
+      }
+    },
+    "캐릭터 고르기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick character"
+          }
+        }
+      }
+    },
+    "커피 한 잔 하고 와." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go grab a coffee."
+          }
+        }
+      }
+    },
+    "큰 건 리셋 뒤로 미뤄요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save big tasks for after the reset."
+          }
+        }
+      }
+    },
+    "하나씩." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One at a time."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

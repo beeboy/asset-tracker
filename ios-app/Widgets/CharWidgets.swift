@@ -186,8 +186,27 @@ struct CharSprite: View {
     var shake = true
     @Environment(\.widgetRenderingMode) private var mode
     var body: some View {
-        // 포즈 그림이 없어 기본 그림으로 떨어진 인물은 동작이 안 바뀌니, 갱신 때 흔들어 움직임을 보인다
-        if shake || !name.contains("_pose_") { sprite.charShake() } else { sprite }
+        let busy = Store.isReloading
+        // 한 도트 크기: 포즈 그림은 64/34 배율로 그린다
+        let dot = name.contains("_pose_") ? 64.0 / 34 : height / 34
+        Group {
+            // 포즈 그림이 없어 기본 그림으로 떨어진 인물은 동작이 안 바뀌니, 갱신 때 흔들어 움직임을 보인다
+            if shake || !name.contains("_pose_") { sprite.charShake() } else { sprite }
+        }
+        // 갱신 순간 한 번: 폴짝 늘어났다가 스프링으로 내려앉으며 살짝 찌그러진다 (1초 안쪽)
+        .scaleEffect(x: busy ? 0.94 : 1, y: busy ? 1.08 : 1, anchor: .bottom)
+        .offset(y: busy ? -3 : 0)
+        .animation(.interpolatingSpring(stiffness: 220, damping: 9), value: busy)
+        .background(alignment: .bottom) {
+            // 발밑 그림자 (뛰면 작아졌다 커진다). 잠김·틴트 화면은 한 색 덩어리가 되니 뺀다
+            if !locked && mode != .accented {
+                Ellipse().fill(Color.black.opacity(0.22))
+                    .frame(width: dot * 16, height: dot * 5)
+                    .scaleEffect(busy ? 0.7 : 1)
+                    .animation(.interpolatingSpring(stiffness: 220, damping: 9), value: busy)
+                    .offset(y: dot * 2)
+            }
+        }
     }
     private var sprite: some View {
         Group {
@@ -227,6 +246,7 @@ private func lockLine(_ c: WChar) -> String { WL.t("인터미션 {w}주차에 �
 
 /// 1억 2,340만
 private func eokMan(_ v: Double) -> String {
+    if WL.en { return Fmt.krwC(abs(v)) }
     let man = Int((abs(v) / 1e4).rounded()), eok = man / 10000, rest = man % 10000
     if eok == 0 { return Fmt.comma(man) + "만" }
     return "\(eok)억" + (rest > 0 ? " \(Fmt.comma(rest))만" : "")

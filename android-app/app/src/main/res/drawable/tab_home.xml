@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 탭 아이콘: iOS SF Symbol 자리 (탭 막대는 채운 모양을 쓴다) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <!-- house.fill -->
+    <path android:fillColor="#FF000000" android:pathData="M12,2.6L1.6,11.3l1.1,1.3L4.6,11V19.6C4.6,20.4 5.2,21 6,21H9.8V15.2H14.2V21H18C18.8,21 19.4,20.4 19.4,19.6V11l1.9,1.6 1.1,-1.3z"/>
+</vector>
