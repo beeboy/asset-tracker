@@ -18424,6 +18424,16 @@
         }
       }
     },
+    "본전에 닿았어요! 여기까지 온 길, 축하해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're back to break-even! Congrats on getting here."
+          }
+        }
+      }
+    },
     "본전에 도착했어요! 평가액이 들어간 돈 %@을 넘었어요." : {
       "localizations" : {
         "en" : {

@@ -15,6 +15,13 @@ struct BoardView: View {
                 if !m.interDone && m.playOn { checkIn }
                 let starts = m.blocks.filter { !$0.inter }
                 startList(starts)
+                // 목표 루트의 '목표 도달' 카드와 같은 자리: 본전을 넘으면 목표 루트로 (홈 요약 버튼과 같은 동작)
+                if m.cost > 0, m.total >= m.cost {
+                    Card(padding: 18) {
+                        GuideBubble(pose: .cheer, text: String(localized: "본전에 닿았어요! 여기까지 온 길, 축하해요."))
+                        PrimaryButton(title: String(localized: "목표 루트로")) { m.graduateToGoal() }
+                    }
+                }
                 if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter {
                     nextCard(next, steps: starts)
                 }
