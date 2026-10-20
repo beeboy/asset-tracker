@@ -54,6 +54,10 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 영문 로컬리제이션 3단계: usage-app (2026-10-20, 로컬 커밋)
+- `usage-app/UsageShared/Localizable.xcstrings`(ko 원문 + en, 앱·위젯 둘 다 리소스), `tools/gen_pbxproj.py`에 넣고 다시 만듦. Info.plist 두 곳 ko·en.
+- 글 52줄 모두 영어. 주간 리셋 요일은 영어면 en_US. 영어·한국어 시뮬레이터로 확인(라벨 넘침은 5h·Week로 줄임).
+
 ## 영문 로컬리제이션 2단계: 영어 번역 (2026-10-20, 로컬 커밋)
 - Localizable.xcstrings 한글 키 3,095줄 모두 en 채움(짧은 영어). 자리표(%@ 등) 개수 검사함.
 - 금액: 앱 언어가 영어면 `AppModel.en` → `krwC`(₩2.3M·₩24K)로 man·eok·won·wonK·aboutWon·won1·wonRead·BoardView.eok가 바로 돌려줌. 날짜는 `AppModel.dateLocale`(영어면 en_US).
