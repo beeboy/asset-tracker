@@ -21,6 +21,7 @@ struct RemindSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    GameHeader(title: "소식")   // 게임·동네 창과 같은 맨 위 줄: 왼쪽 제목, 오른쪽 X
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
                             chip(.all, "전체")
@@ -56,9 +57,7 @@ struct RemindSheet: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.bg)
-            .navigationTitle("소식")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() }.frame(minWidth: 44, minHeight: 44) } }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .presentationDetents([.large])
     }
