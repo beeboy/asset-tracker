@@ -135,6 +135,7 @@ struct SettingsView: View {
                 ChipRow(items: [("system", "기기 설정대로"), ("light", "밝게"), ("dark", "어둡게")],
                         selection: Binding(get: { m.appearance }, set: { m.appearance = $0; UserDefaults.standard.set($0, forKey: "appearance") }), fill: true)
                 group(nil, [("앱 아이콘", AppIconPicker.currentName, .icon)])
+                WaveFeedbackToggles()
                 group("숫자를 계산하는 기준", refRows)
                 group("도움과 기타", helpRows)
                 // 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
