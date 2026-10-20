@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import java.time.Instant
 
 /** 아이폰 JSONEncoder/Decoder 와 서로 읽히게 맞춘 설정 하나만 쓴다 (모르는 키 무시, 없는 키는 기본값, null 은 안 씀) */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 val NJson = Json { ignoreUnknownKeys = true; explicitNulls = false; encodeDefaults = true; coerceInputValues = true }
 
 /** Swift Date 기본 형식: 2001-01-01 기준 초 (Double) */

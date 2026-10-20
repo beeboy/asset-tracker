@@ -44,3 +44,24 @@ Data/AppModel.swift:14 언어: Kotlin enum 은 경우 이름 name 을 못 써 by
 Data/Lots.swift:54-61 YahooSample 단계: YahooSample.Hist 확장(on) 은 YahooSample 을 옮길 때 그 타입에 같이 둔다
 Data/Me.swift:171-175 플랫폼: iOS sysctl kern.bootsessionuuid → 안드로이드 Settings.Global.BOOT_COUNT (Me.kt TrustedClock.bootID)
 Data/Me.swift:204 플랫폼: en_US_POSIX 는 자바에 없는 이름, 같은 뜻 Locale.US + ZoneId GMT (Me.kt httpDate)
+
+
+# C 단계 (mc: MonteCarlo·ForecastEngine)
+Data/ForecastEngine.swift:116 검사기 한계: 부호 없는 64비트 상수 uL (옮김, ForecastEngine.kt fnv)
+
+# C 단계 (goal): Recovery.swift → core/calc/Recovery.kt, GoalRoute.swift → core/calc/GoalRoute.kt
+Data/Recovery.swift:176 검사기 한계: 보간 속 따옴표 String(format: "%.4f") (옮김, Recovery.kt paths key)
+Data/GoalRoute.swift:311 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: "원") (옮김, GoalRoute.kt goalPresets meaning)
+Data/GoalRoute.swift:319 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalRoute.kt goalPresets need)
+Data/GoalRoute.swift:366-367 검사기 한계: 보간 속 따옴표 (옮김, GoalRoute.kt shift own line·note)
+Data/GoalRoute.swift:389 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: " 뒤") (옮김, GoalRoute.kt shift note)
+
+# C 단계 (par): Data/Parallel.swift → core/calc/Parallel.kt
+Data/Parallel.swift:611 보간 안에 따옴표("")가 겹쳐 검사기가 조각(")")을 문구로 읽음. Parallel.kt parallelRun 의 key 줄에 같은 동작으로 옮김
+Data/Parallel.swift:678 보간 안에 따옴표("%.1f")가 겹쳐 검사기가 조각(", need * 100)))%")을 문구로 읽음. Parallel.kt parallelDistance 에 같은 동작으로 옮김
+
+# C 단계 (calm) Data/Calm.swift → core/calc/Calm.kt
+Data/Calm.swift:219 문자열 보간 안에 따옴표("+"·"–")가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt why() 의 "sua" 줄에 같은 문구로 옮김
+Data/Calm.swift:221 보간 안의 String(format: "%.1f") 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt why() 의 "sio" 줄에 같은 문구로 옮김
+Data/Calm.swift:372 보간 안에 따옴표("+"·"")가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt progress() 의 ir 3 걸음 줄에 같은 문구로 옮김
+Data/Calm.swift:446 보간 안의 ?? "" 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt stepLine() 에 같은 문구로 옮김
