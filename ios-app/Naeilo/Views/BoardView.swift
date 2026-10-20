@@ -211,8 +211,8 @@ struct BoardView: View {
             // 공유 카드와 게임 둘(블록·파도)을 한 줄에
             HStack(spacing: 8) {
                 ShareCardButton(title: "공유 카드")
-                BrickGameButton(filled: n, floor: nFloor, yesterday: nY, title: "블록", icon: "square.grid.3x3.fill").labelStyle(.iconOnly)
-                WaveGameButton().labelStyle(.iconOnly)   // 글자 없이 아이콘만 (화면 읽기는 제목)
+                BrickGameButton(filled: n, floor: nFloor, yesterday: nY, title: "블록", icon: "square.grid.3x3.fill")
+                WaveGameButton()
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
