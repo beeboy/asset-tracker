@@ -13,6 +13,16 @@ IOS = ROOT / "ios-app"
 DATA = IOS / "Naeilo" / "Data"
 
 
+def span(rel, first, last, nth=1, k=1):
+    """원본 줄을 번호 대신 내용으로 찾는다 (아이폰 코드가 위아래로 밀려도 같은 덩어리): first 줄부터 그 뒤 처음 나오는 last 줄까지"""
+    t = (DATA / rel).read_text().split("\n")
+    hits = [k for k, l in enumerate(t) if l == first]
+    if len(hits) < nth: raise SystemExit(f"{rel}: 시작 줄을 못 찾음: {first!r}")
+    i = hits[nth - 1]
+    j = [x for x in range(i, len(t)) if t[x] == last][k - 1]
+    return t[i:j + 1]
+
+
 def strip_strings(line):
     """중괄호 세기용: 문자열·주석을 지운다 (보간 속 따옴표는 짝이 맞으면 그대로 넘어간다)"""
     out, i, q = [], 0, False
@@ -78,7 +88,7 @@ def swift_src():
     p.append("enum YahooSample { " + line("Market.swift", 268).strip() + " }")
     p.append("final class Market { static let shared = Market(); var stats: MC.Stats? = nil; var prices: SitePrices.File? = nil }")
     p.append("enum SitePrices {\n    struct File { var h: [String: YahooSample.Hist] }\n" + j(block("Market.swift", r"static func hist\(_ o")) + "\n}")
-    p.append("enum SiteStats {\n" + j(lines("SiteStats.swift", 7, 10)) + "\n"
+    p.append("enum SiteStats {\n" + j(span("SiteStats.swift", "    typealias T = MC.Stats.Ticker", "    typealias File = MC.Stats")) + "\n"
              "    static func key(_ id: String) -> String { id }\n    static func mcKey(_ id: String) -> String { id }\n"
              + j(block("SiteStats.swift", r"static func params\(")) + "\n" + j(block("SiteStats.swift", r"static func fx\("))
              + "\n" + j(block("SiteStats.swift", r"static func corr\(")) + "\n}")
@@ -89,12 +99,12 @@ def swift_src():
     i = next(k for k, l in enumerate(num) if l.startswith("func num(_ v: Any?)"))
     p.append("\n".join(num[i:i + 7]))
     # 차트 파싱: CustomSymbols.chart 의 응답 읽는 줄 (424~450) 그대로. 오늘 날짜만 받은 시각으로
-    chart = j(lines("StockSearch.swift", 424, 450)).replace("f.string(from: Date())", "f.string(from: now)")
+    chart = j(span("StockSearch.swift", "        guard let r = ((o[\"chart\"] as? [String: Any])?[\"result\"] as? [[String: Any]])?.first,", "        return ((price, prevClose), Hist(dates: dates, closes: cl))")).replace("f.string(from: Date())", "f.string(from: now)")
     p.append("extension CustomSymbols {\n    static func chartParse(_ o: [String: Any], keepToday: Bool, now: Date) throws -> ((last: Double, prev: Double), CustomSymbols.Hist) {\n"
              + chart + "\n    }\n}")
     # 매매기준율 표 파싱: MarFeed.smbs 의 정규식(532줄 글자)과 533~544줄 그대로. 받은 시각만 인자로
     pat = re.search(r'NSRegularExpression\(pattern: ("(?:[^"\\]|\\.)*")\)', line("Market.swift", 532)).group(1)
-    sm = j(lines("Market.swift", 533, 544)).replace("Date().timeIntervalSince1970", "got")
+    sm = j(span("Market.swift", "        var days: [Prev] = []", "        return File(rate: last.rate, date: last.date, got: Date().timeIntervalSince1970, prev: pv)")).replace("Date().timeIntervalSince1970", "got")
     p.append("enum MarFeed {\n" + line("Market.swift", 488) + "\n" + line("Market.swift", 490) + "\n"
              "    static func smbsParse(_ t: String, got: Double) -> File? {\n"
              f"        guard let re = try? NSRegularExpression(pattern: {pat}) else {{ return nil }}\n" + sm + "\n    }\n}")

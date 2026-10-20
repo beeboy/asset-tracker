@@ -11,6 +11,16 @@ from pathlib import Path
 V = Path(__file__).resolve().parents[3] / "ios-app" / "Naeilo"
 
 
+def span(rel, first, last, nth=1, k=1):
+    """원본 줄을 번호 대신 내용으로 찾는다 (아이폰 코드가 위아래로 밀려도 같은 덩어리): first 줄부터 그 뒤 처음 나오는 last 줄까지"""
+    t = (V / rel).read_text().split("\n")
+    hits = [k for k, l in enumerate(t) if l == first]
+    if len(hits) < nth: raise SystemExit(f"{rel}: 시작 줄을 못 찾음: {first!r}")
+    i = hits[nth - 1]
+    j = [x for x in range(i, len(t)) if t[x] == last][k - 1]
+    return "\n".join(t[i:j + 1])
+
+
 def lines(rel, a, b):
     return "\n".join((V / rel).read_text().split("\n")[a - 1:b])
 
@@ -35,7 +45,7 @@ final class AppModel {{
 {find("Data/AppModel.swift", "static func man(_ krw: Double)", 8)}
 {find("Data/AppModel.swift", "static func price(_ s: Symbol", 3)}
 }}
-{lines("Views/HoldingsView.swift", 728, 755)}
+{span("Views/HoldingsView.swift", "enum HoldingEdit {", "    }", 1, 2)}
 }}
 
 let dir = URL(fileURLWithPath: CommandLine.arguments[1])
@@ -58,11 +68,11 @@ out["fmt"] = xs.map {{ [$0.formatted(), $0.formatted(.number.grouping(.never)), 
 func kvStub(_ k: String, _ v: String) -> [String] {{ [k, v] }}
 out["breakEven"] = (inp["needs"] as! [Double]).map {{ need -> [String] in
     let kv = kvStub
-{lines("Views/HoldingsView.swift", 318, 319).replace("kv(", "return kv(")}
+{span("Views/HoldingsView.swift", "                        kv(need > 0.0005 ? String(localized: \"본전까지\") : String(localized: \"본전 대비\"), need > 0.0005 ? String(localized: \"주가가 \") + String(format: \"%.1f\", need * 100) + String(localized: \"% 오르면 본전\")", "                           : need > -0.0005 ? String(localized: \"본전과 같아요\") : String(localized: \"본전보다 \") + String(format: \"%.1f\", -need * 100) + String(localized: \"% 위\"))").replace("kv(", "return kv(")}
 }}
 out["needText"] = (inp["needs"] as! [Double]).map {{ x -> String in
     let px = 100.0
-{lines("Views/HoldingsView.swift", 650, 650)}
+{span("Views/HoldingsView.swift", "        let need = { (avg: Double) in avg / px - 1 > 0.0005 ? \"+\" + String(format: \"%.1f\", (avg / px - 1) * 100) + String(localized: \"% 남음\") : String(localized: \"본전 넘음\") }", "        let need = { (avg: Double) in avg / px - 1 > 0.0005 ? \"+\" + String(format: \"%.1f\", (avg / px - 1) * 100) + String(localized: \"% 남음\") : String(localized: \"본전 넘음\") }")}
     return need(px * (1 + x))
 }}
 let d = try! JSONSerialization.data(withJSONObject: out, options: [.sortedKeys])

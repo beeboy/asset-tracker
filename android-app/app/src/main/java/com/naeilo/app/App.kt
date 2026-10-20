@@ -2,8 +2,6 @@ package com.naeilo.app
 
 import com.naeilo.app.ui.board.BoardView
 import com.naeilo.app.ui.board.boardPage
-import com.naeilo.app.ui.goal.GoalBoardView
-import com.naeilo.app.ui.goal.goalBoardPage
 import com.naeilo.app.core.calc.isGoal
 import android.view.Window
 import androidx.compose.animation.core.animateFloatAsState
@@ -175,8 +173,8 @@ fun RootView(model: AppModel) {
                             else -> NavPage { GoalSetPage(model) }   // 전망의 '목표 고치기'
                         }
                     }
-                    // ios: App.swift:38,39 (목표 루트면 목표 미션 판)
-                    Tab.board -> NavStack(model.boardPath, { model.boardPath = it }, { if (model.isGoal) GoalBoardView(model) else BoardView(model) }) { r -> if (model.isGoal) goalBoardPage(model, r) else boardPage(model, r) }
+                    // ios: App.swift:38,39 (목표·회복 루트 같은 미션 판)
+                    Tab.board -> NavStack(model.boardPath, { model.boardPath = it }, { BoardView(model) }) { r -> boardPage(model, r) }
                     Tab.settings -> NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model) }) { settingsPage(model, it) }   // ios: App.swift:42 (SettingsView·settingsPath)
                 }
             }

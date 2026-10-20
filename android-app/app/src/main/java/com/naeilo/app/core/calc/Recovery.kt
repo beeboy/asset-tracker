@@ -342,58 +342,59 @@ fun AppModel.deposit(p: Plan, monthly: Int, months: Int): Deposit {   // ios: Da
 
 // 절세 (대한민국 거주자: 해외주식 이익-손실 합계에서 250만원 공제 뒤 22%)
 val AppModel.taxLossMan: Double get() {   // ios: Data/Recovery.swift:296
-    val d = focusRow ?: return 0.0   // ios: Data/Recovery.swift:297
-    return krw(d.sym, taxSellQty * (d.sym.last - d.h.avg)) / 1e4   // ios: Data/Recovery.swift:298
+    // 양도세는 해외(미국) 주식만 (목표 루트와 같은 규칙). 가장 큰 종목이 국내 주식이면 0
+    val d = focusRow?.takeIf { it.sym.currency == Currency.usd } ?: return 0.0   // ios: Data/Recovery.swift:298
+    return krw(d.sym, taxSellQty * (d.sym.last - d.h.avg)) / 1e4   // ios: Data/Recovery.swift:299
 }
-val AppModel.taxBefore: Double get() = max(0.0, taxGain - 250) * 0.22   // ios: Data/Recovery.swift:300
-val AppModel.taxAfter: Double get() = max(0.0, taxGain + taxLossMan - 250) * 0.22   // ios: Data/Recovery.swift:301
+val AppModel.taxBefore: Double get() = max(0.0, taxGain - 250) * 0.22   // ios: Data/Recovery.swift:301
+val AppModel.taxAfter: Double get() = max(0.0, taxGain + taxLossMan - 250) * 0.22   // ios: Data/Recovery.swift:302
 
 /** PathChart 한 줄: (계획, 색, 점선 여부) */
 data class ChartPlan(val plan: Plan, val color: Color, val dashed: Boolean)
 
 // 1년 범위 그래프: 띠 = 100번 중 90번, 선 = 보통의 경우, 빨간 점선 = 본전, 회색 점선 = 손실 절반
-// ios: Data/Recovery.swift:305 struct PathChart
+// ios: Data/Recovery.swift:306 struct PathChart
 @Composable
 fun PathChart(
-    plans: List<ChartPlan>,   // ios: Data/Recovery.swift:306 (계획, 색, 점선 여부) 뒤에 올수록 위에 그림
-    V: Double,   // ios: Data/Recovery.swift:307
-    C: Double,   // ios: Data/Recovery.swift:308
-    half: Double? = null,   // ios: Data/Recovery.swift:309 nil
-    marker: Int? = null,             // ios: Data/Recovery.swift:310 nil 기간 칩 위치 (개월)
+    plans: List<ChartPlan>,   // ios: Data/Recovery.swift:307 (계획, 색, 점선 여부) 뒤에 올수록 위에 그림
+    V: Double,   // ios: Data/Recovery.swift:308
+    C: Double,   // ios: Data/Recovery.swift:309
+    half: Double? = null,   // ios: Data/Recovery.swift:310 nil
+    marker: Int? = null,             // ios: Data/Recovery.swift:311 nil 기간 칩 위치 (개월)
     modifier: Modifier = Modifier,
-) {   // ios: Data/Recovery.swift:312 body
+) {   // ios: Data/Recovery.swift:313 body
     val border = Theme.border; val muted = Theme.muted; val ink = Theme.ink
-    val ts = remember { (0..(12 * 2)).map { it * 0.5 } }   // ios: Data/Recovery.swift:321 stride(from: 0.0, through: 12, by: 0.5)
+    val ts = remember { (0..(12 * 2)).map { it * 0.5 } }   // ios: Data/Recovery.swift:322 stride(from: 0.0, through: 12, by: 0.5)
     // 경로 값은 그릴 때마다 다시 세지 않게 계획이 바뀔 때만 (val(p, t, k) = p.level(t, k): 1 좋은 경우, -1 나쁜 경우, 0 보통)
-    val lines = remember(plans) { plans.map { cp -> listOf(1, -1, 0).associateWith { k -> ts.map { cp.plan.level(it, k.toDouble()) } } } }   // ios: Data/Recovery.swift:317
-    Canvas(modifier.semantics { contentDescription = "1년 평가액 범위와 본전선" }) {   // ios: Data/Recovery.swift:313,345
-        val W = size.width.toDouble(); val H = size.height.toDouble(); val ymax = max(C * 1.2, V * 1.9)   // ios: Data/Recovery.swift:314
-        val X = { t: Double -> (t / 12 * W).toFloat() }   // ios: Data/Recovery.swift:315
-        val Y = { v: Double -> (H - min(v, ymax) / ymax * H).toFloat() }   // ios: Data/Recovery.swift:316
-        for (x in listOf(3.0, 6.0)) {   // ios: Data/Recovery.swift:318
-            drawLine(border, Offset(X(x), 0f), Offset(X(x), H.toFloat()), strokeWidth = 1.dp.toPx())   // ios: Data/Recovery.swift:319
+    val lines = remember(plans) { plans.map { cp -> listOf(1, -1, 0).associateWith { k -> ts.map { cp.plan.level(it, k.toDouble()) } } } }   // ios: Data/Recovery.swift:318
+    Canvas(modifier.semantics { contentDescription = "1년 평가액 범위와 본전선" }) {   // ios: Data/Recovery.swift:314,346
+        val W = size.width.toDouble(); val H = size.height.toDouble(); val ymax = max(C * 1.2, V * 1.9)   // ios: Data/Recovery.swift:315
+        val X = { t: Double -> (t / 12 * W).toFloat() }   // ios: Data/Recovery.swift:316
+        val Y = { v: Double -> (H - min(v, ymax) / ymax * H).toFloat() }   // ios: Data/Recovery.swift:317
+        for (x in listOf(3.0, 6.0)) {   // ios: Data/Recovery.swift:319
+            drawLine(border, Offset(X(x), 0f), Offset(X(x), H.toFloat()), strokeWidth = 1.dp.toPx())   // ios: Data/Recovery.swift:320
         }
-        for ((n, cp) in plans.withIndex()) {   // ios: Data/Recovery.swift:322
-            val band = Path()   // ios: Data/Recovery.swift:323
-            for ((i, t) in ts.withIndex()) { val x = X(t); val y = Y(lines[n].getValue(1)[i]); if (i == 0) band.moveTo(x, y) else band.lineTo(x, y) }   // ios: Data/Recovery.swift:324
-            for (i in ts.indices.reversed()) band.lineTo(X(ts[i]), Y(lines[n].getValue(-1)[i]))   // ios: Data/Recovery.swift:325
-            band.close()   // ios: Data/Recovery.swift:326
-            drawPath(band, cp.color.copy(alpha = cp.color.alpha * (if (cp.dashed) 0.12f else 0.18f)))   // ios: Data/Recovery.swift:327
+        for ((n, cp) in plans.withIndex()) {   // ios: Data/Recovery.swift:323
+            val band = Path()   // ios: Data/Recovery.swift:324
+            for ((i, t) in ts.withIndex()) { val x = X(t); val y = Y(lines[n].getValue(1)[i]); if (i == 0) band.moveTo(x, y) else band.lineTo(x, y) }   // ios: Data/Recovery.swift:325
+            for (i in ts.indices.reversed()) band.lineTo(X(ts[i]), Y(lines[n].getValue(-1)[i]))   // ios: Data/Recovery.swift:326
+            band.close()   // ios: Data/Recovery.swift:327
+            drawPath(band, cp.color.copy(alpha = cp.color.alpha * (if (cp.dashed) 0.12f else 0.18f)))   // ios: Data/Recovery.swift:328
         }
-        drawLine(start = Offset(0f, Y(C)), end = Offset(W.toFloat(), Y(C)),   // ios: Data/Recovery.swift:329
-                 color = hex(0xC8352E), strokeWidth = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx())))   // ios: Data/Recovery.swift:330
-        if (half != null) {   // ios: Data/Recovery.swift:331
-            drawLine(muted, Offset(0f, Y(half)), Offset(W.toFloat(), Y(half)),   // ios: Data/Recovery.swift:332
-                     strokeWidth = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx())))   // ios: Data/Recovery.swift:333
+        drawLine(start = Offset(0f, Y(C)), end = Offset(W.toFloat(), Y(C)),   // ios: Data/Recovery.swift:330
+                 color = hex(0xC8352E), strokeWidth = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx())))   // ios: Data/Recovery.swift:331
+        if (half != null) {   // ios: Data/Recovery.swift:332
+            drawLine(muted, Offset(0f, Y(half)), Offset(W.toFloat(), Y(half)),   // ios: Data/Recovery.swift:333
+                     strokeWidth = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx())))   // ios: Data/Recovery.swift:334
         }
-        if (marker != null) {   // ios: Data/Recovery.swift:335
-            drawLine(ink, Offset(X(marker.toDouble()), 0f), Offset(X(marker.toDouble()), H.toFloat()),   // ios: Data/Recovery.swift:336
-                     strokeWidth = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 3.dp.toPx())))   // ios: Data/Recovery.swift:337
+        if (marker != null) {   // ios: Data/Recovery.swift:336
+            drawLine(ink, Offset(X(marker.toDouble()), 0f), Offset(X(marker.toDouble()), H.toFloat()),   // ios: Data/Recovery.swift:337
+                     strokeWidth = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 3.dp.toPx())))   // ios: Data/Recovery.swift:338
         }
-        for ((n, cp) in plans.withIndex()) {   // ios: Data/Recovery.swift:339
-            val med = Path()   // ios: Data/Recovery.swift:340
-            for ((i, t) in ts.withIndex()) { val x = X(t); val y = Y(lines[n].getValue(0)[i]); if (i == 0) med.moveTo(x, y) else med.lineTo(x, y) }   // ios: Data/Recovery.swift:341
-            drawPath(med, cp.color, style = Stroke(width = (if (cp.dashed) 2.0 else 2.5).toFloat().dp.toPx(), pathEffect = if (cp.dashed) PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())) else null))   // ios: Data/Recovery.swift:342
+        for ((n, cp) in plans.withIndex()) {   // ios: Data/Recovery.swift:340
+            val med = Path()   // ios: Data/Recovery.swift:341
+            for ((i, t) in ts.withIndex()) { val x = X(t); val y = Y(lines[n].getValue(0)[i]); if (i == 0) med.moveTo(x, y) else med.lineTo(x, y) }   // ios: Data/Recovery.swift:342
+            drawPath(med, cp.color, style = Stroke(width = (if (cp.dashed) 2.0 else 2.5).toFloat().dp.toPx(), pathEffect = if (cp.dashed) PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())) else null))   // ios: Data/Recovery.swift:343
         }
     }
 }

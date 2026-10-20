@@ -11,6 +11,16 @@ from pathlib import Path
 V = Path(__file__).resolve().parents[3] / "ios-app" / "Naeilo"
 
 
+def span(rel, first, last, nth=1, k=1):
+    """원본 줄을 번호 대신 내용으로 찾는다 (아이폰 코드가 위아래로 밀려도 같은 덩어리): first 줄부터 그 뒤 처음 나오는 last 줄까지"""
+    t = (V / rel).read_text().split("\n")
+    hits = [k for k, l in enumerate(t) if l == first]
+    if len(hits) < nth: raise SystemExit(f"{rel}: 시작 줄을 못 찾음: {first!r}")
+    i = hits[nth - 1]
+    j = [x for x in range(i, len(t)) if t[x] == last][k - 1]
+    return "\n".join(t[i:j + 1])
+
+
 def lines(rel, a, b):
     return "\n".join((V / rel).read_text().split("\n")[a - 1:b])
 
@@ -23,7 +33,7 @@ def find(rel, start, n):
 
 def mp_src():
     """내 길 셈 원본 (고치지 않고 꺼낸다). AppModel 대신 같은 이름 값을 가진 구조체 PM 에 넣는다"""
-    day = lines("../WidgetShared/Engine.swift", 76, 78)
+    day = span("../WidgetShared/Engine.swift", "    static let fmt: DateFormatter = { let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: \"en_US_POSIX\"); f.timeZone = TimeZone(identifier: \"Asia/Seoul\"); f.dateFormat = \"yyyy-MM-dd\"; return f }()", "    static func str(_ d: Date) -> String { fmt.string(from: d) }")
     return f'''enum Route: String {{ case recover, plus, novice }}
 enum Day {{
 {day}
@@ -40,8 +50,8 @@ struct PM {{
     var S: [(d: String, v: Double)] = [], tot: [Double] = []
     func pathSeries(from start: String) -> [(d: String, v: Double)] {{ S }}
     func totalAt(_ x: Double) -> Double {{ tot[max(0, min(tot.count - 1, Int((x * Double(tot.count - 1) + 0.5).rounded(.down))))] }}
-{lines("Views/AnalysisDetail.swift", 21, 29)}
-{lines("Views/AnalysisDetail.swift", 50, 86)}
+{span("Views/AnalysisDetail.swift", "    struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let pts: [(Double, Double)]; let act: (Double) -> Double; let need: (Double) -> Double", "    }", 1, 2)}
+{span("Views/AnalysisDetail.swift", "    var myPath: MyPath {", "    var myPathGapToday: Double { let p = myPath; let n = p.need(p.start); return n > 0 ? p.act(p.start) / n - 1 : 0 }")}
 }}
 func runPath(_ c: [String: Any]) -> [String: Any] {{
     var m = PM()
@@ -82,14 +92,14 @@ final class SiteCalc {{
     func beta(_ f: String, _ id: String) -> Double? {{ betas[f]?[id] }}
     func betaStat(_ f: String, _ id: String) -> MC.BetaStat? {{ stat[f]?[id] }}
     func factorMonth(_ f: String) -> MC.FactorMove? {{ factors[f] }}
-{lines("Data/SiteCalc.swift", 94, 96)}
+{span("Data/SiteCalc.swift", "    static func factorMove(_ factor: String, beta b: Double, shock: Double) -> Double {", "    }")}
 }}
 struct XRow {{ let id: String; let sym: Symbol; let value: Double }}
 struct XM {{ var rows: [XRow] = []; var total: Double {{ rows.reduce(0) {{ $0 + $1.value }} }} }}
 
 struct ExternalView {{
     var m = XM()
-{lines(A, 786, 879)}
+{span(A, "    /// 시장 민감도(베타): 사이트가 웹과 같은 식(factorBetas)으로 매일 낸 값. 사이트 자료가 없는 종목(직접 추가한 종목)은", "    }", 1, 7)}
 }}
 extension ExternalView {{
     func t_ranks() -> [[Any]] {{ ranks.map {{ [$0.k, $0.amt, $0.gross, $0.weak, desc($0)] }} }}
@@ -99,8 +109,8 @@ extension ExternalView {{
 struct FactorDetailView {{
     let factor: String
     var shock: Double? = nil
-{lines(A, 1124, 1159)}
-{lines(A, 1289, 1296)}
+{span(A, "    static let names: [String: String] = [\"mkt\": String(localized: \"미국 시장\"), \"rate\": String(localized: \"미국 금리\"), \"fx\": String(localized: \"원/달러\"), \"oil\": String(localized: \"유가\"), \"gold\": String(localized: \"금값\")]", "    }", 1, 4)}
+{span(A, "    private func label(_ dv: Double, _ weak: Bool, _ known: Bool) -> String {", "    private var shockSign: Double { (shock ?? presets[1].1) >= 0 ? 1 : -1 }")}
 }}
 extension FactorDetailView {{
     func t_presets() -> [[Any]] {{ presets.map {{ [$0.0, $0.1] }} }}
@@ -109,22 +119,22 @@ extension FactorDetailView {{
     func t_huge(_ v: Double) -> Bool {{ huge(v) }}
     func t_label(_ dv: Double, _ weak: Bool, _ known: Bool) -> String {{ label(dv, weak, known) }}
     func t_rows(_ m: XM, _ v: Double, _ total: Double) -> [[Any]] {{
-{lines(A, 1166, 1172)}
+{span(A, "        let rows = m.rows.map { r -> (id: String, label: String, dv: Double, agree: Double?, weak: Bool, known: Bool) in", "        }.sorted { abs($0.dv) > abs($1.dv) }")}
         return rows.map {{ [$0.id, $0.label, $0.dv, N($0.agree), $0.weak, $0.known] }}
     }}
 }}
 final class MacroData {{
     static let shared = MacroData()
-{lines(A, 1335, 1342)}
+{span(A, "    struct File: Decodable {", "    var file: File?")}
     private var memo: [String: RateScen] = [:]
-{lines(A, 1378, 1391)}
+{span(A, "    /// 슬라이드 값 (dr %p, m 연) 에서의 계산. 같은 값이면 저장해 둔 결과", "    var defaultDr: Double { ((change1y ?? 0) * 10).rounded() / 10 }")}
 }}
-{lines(A, 1394, 1439)}
+{span(A, "/// 식단 j, y년째 S&P 실질 EPS 변화(로그 %) = a + b·Δ금리 + c·지금 EPS 증가율. 무작위 경로 없이 식단마다 답 하나", "}")}
 struct RateScenarioView {{
-{lines(A, 1479, 1480)}
-{lines(A, 1484, 1503)}
-{lines(A, 1666, 1674)}
-{lines(A, 1704, 1713)}
+{span(A, "    /// 닫힌 식에 드는 값. 평가액·원금은 종목 목록을 매번 다시 만드니 한 번만 읽는다 (식단 1000벌 × 2번 부르면 넘길 때 멈칫)", "    private struct Closed { let T, sg, mu, V0, K, M: Double }")}
+{span(A, "    /// 연 기대를 shift 만큼 옮겼을 때 목표 확률. 웹처럼 전망(몬테카를로) 목표 확률에 닫힌 식의 차이만 더한다", "    }", 1, 3)}
+{span(A, "    private static func timing(_ a: Int?, _ b: Int?) -> String {", "    }")}
+{span(A, "    /// \"2029-10-01\" → \"2029.10\"", "    }", 1, 2)}
 }}
 extension RateScenarioView {{
     private static func t_closed(_ c: [Double]) -> Closed {{ Closed(T: c[0], sg: c[1], mu: c[2], V0: c[3], K: c[4], M: c[5]) }}
@@ -136,23 +146,23 @@ extension RateScenarioView {{
     static func t_timing(_ a: Int?, _ b: Int?) -> String {{ timing(a, b) }}
 }}
 struct RateWhyView {{
-{lines(A, 1754, 1760)}
+{span(A, "    /// \"2026-06\" → \"2026.6\"", "    private func lv(_ v: Double) -> String { String(format: \"%.0f\", 100 * exp(v / 100)) }")}
 }}
 extension RateWhyView {{ func t_lv(_ v: Double) -> String {{ lv(v) }} }}
 struct DividendView {{
-{lines(A, 1829, 1830)}
-{lines(A, 2162, 2165)}
+{span(A, "    /// 종목 하나의 앞으로 1년 배당 (화면용)", "    struct Paid { let id: String; let name: String; let out: SiteCalc.DivOut; let tax: Double; let krw: Bool; let payMonths: [Int] }")}
+{span(A, "    /// \"2026-11\" → \"2026.11\"", "    static func short(_ v: Double) -> String { v >= 1e4 ? String(format: String(localized: \"%.1f만\"), v / 1e4) : String(localized: \"\\(String(describing: Int((v / 1e3).rounded())))천\") }")}
 }}
 extension DividendView {{
     func t_month(months: [String], byMonth: [Double], paid: [Paid]) -> [Any] {{
-{lines(A, 1952, 1981)}
+{span(A, "        let mMax = max(1, byMonth.max() ?? 1)", "        if !parts.isEmpty { notes.append(parts.joined(separator: \" · \")) }")}
         let label = {acc}
         return [mMax, hi.sorted(), years.map {{ [$0.y, $0.n] as [Any] }}, notes, label]
     }}
 }}
-{lines(A, 2398, 2419)}
+{span(A, "/// 깔끔한 y축 눈금: 20·50·100·200원 단위 중 눈금 3~5개가 되는 것", "private func volWord(_ v: Double) -> String { v < 0.07 ? String(localized: \"낮음\") : v <= 0.12 ? String(localized: \"보통\") : String(localized: \"큼\") }")}
 struct GlanceView {{
-{lines(A, 2431, 2433)}
+{span(A, "    /// 출렁임 단계: 연 변동성 20% 미만 작은 편 / 40% 미만 보통 / 그 위 큰 편 (2026-10-14 결정)", "    static let swingName = [String(localized: \"작음\"), String(localized: \"보통\"), String(localized: \"큼\")]")}
 }}
 
 func N<T>(_ x: T?) -> Any {{ x.map {{ $0 as Any }} ?? NSNull() }}
@@ -417,19 +427,19 @@ enum AppModel {{
     static let en = false
     static func krwC(_ x: Double) -> String {{ "" }}
 {find("Data/AppModel.swift", "static func man(_ krw: Double)", 8)}
-{lines("Views/AnalysisDetail.swift", 88, 98)}
+{span("Views/AnalysisDetail.swift", "    static func manS(_ krw: Double) -> String { (krw >= 0 ? \"+\" : \"−\") + man(abs(krw)) }", "    }")}
 {find("Data/AppModel.swift", "static func pct(_ p: Double)", 1)}
 {find("Data/AppModel.swift", "static func normCDF(_ x: Double)", 5)}
     struct Forecast {{ var pGoal: Double }}
 }}
 enum ForecastView {{
-{lines("Views/AnalysisView.swift", 507, 519)}
+{span("Views/AnalysisView.swift", "    static func amt(_ v: Double) -> String {", "    }", 1, 2)}
 }}
 enum AnalysisView {{
-{lines("Views/AnalysisView.swift", 99, 103)}
+{span("Views/AnalysisView.swift", "    static func freq(_ p: Double) -> String {", "    }")}
 }}
 enum ScenarioChart {{
-{lines("Views/ForecastParts.swift", 17, 28)}
+{span("Views/ForecastParts.swift", "    static func step(_ top: Double) -> Double {", "    }", 1, 2)}
 }}
 
 let dir = URL(fileURLWithPath: CommandLine.arguments[1])

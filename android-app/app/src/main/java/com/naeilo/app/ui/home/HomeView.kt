@@ -192,7 +192,7 @@ fun homePage(m: AppModel, route: String): NavPage = when (route) {
 // ios: Views/HomeView.swift:50,51
 @Composable
 private fun Summary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
-    if (m.isGoal) GoalSummary(m, hideAmt, toggleHide) else RecoverSummary(m)
+    if (m.isGoal) GoalSummary(m, hideAmt, toggleHide) else RecoverSummary(m, hideAmt, toggleHide)
 }
 
 private val C9 = hex(0xC9D0D6)
@@ -253,10 +253,10 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
 
 // ios: Views/HomeView.swift:97
 @Composable
-private fun RecoverSummary(m: AppModel) {
+private fun RecoverSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
     val need = m.cost / max(1.0, m.total) - 1   // ios: Views/HomeView.swift:98
     val needY = m.cost / (m.total / (1 + m.todayMove)) - 1   // ios: Views/HomeView.swift:99
-    // ios: Views/HomeView.swift:100,123,124,125,126
+    // ios: Views/HomeView.swift:100,124,125,126,127
     Fg(Color.White) {
         Column(
             Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(20.dp)).padding(18.dp),
@@ -265,81 +265,81 @@ private fun RecoverSummary(m: AppModel) {
             T("평가액 · 넣은 돈 ${AppModel.man(m.cost)}", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:101
             // ios: Views/HomeView.swift:102
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                // ios: Views/HomeView.swift:103,104
-                FitText(AppModel.man(m.total), appFont(32f, FontWeight.Bold).copy(letterSpacing = (-0.5).sp), 0.4f, Modifier.weight(1f, fill = false).alignByBaseline(), maxLines = 1, color = Color.White, roll = m.total)
-                // ios: Views/HomeView.swift:105,106
+                // ios: Views/HomeView.swift:103,104,105 (금액을 누르면 가린다)
+                FitText(if (hideAmt) "••••••" else AppModel.man(m.total), appFont(32f, FontWeight.Bold).copy(letterSpacing = (-0.5).sp), 0.4f, Modifier.weight(1f, fill = false).alignByBaseline().plainClickable { toggleHide() }, maxLines = 1, color = Color.White, roll = m.total)
+                // ios: Views/HomeView.swift:106,107
                 T(AppModel.sgn(m.ret), Modifier.alignByBaseline(), style = appFont(16f, FontWeight.Bold), maxLines = 1, color = if (m.ret >= 0) hex(0xFF8A80) else hex(0x8CC4F2))
             }
-            if (m.total > 0) TodayLine(m)   // ios: Views/HomeView.swift:108
-            // ios: Views/HomeView.swift:109
+            if (m.total > 0) TodayLine(m)   // ios: Views/HomeView.swift:109
+            // ios: Views/HomeView.swift:110
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T("본전까지", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:110,111,115
-                // ios: Views/HomeView.swift:112,113
+                T("본전까지", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:111,112,116
+                // ios: Views/HomeView.swift:113,114
                 T(if (need > 0) "+" + cformat("%.1f", need * 100) + "% 남음" else "본전 도달", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)
             }
-            ProgressBar(value = m.total / max(1.0, m.cost))   // ios: Views/HomeView.swift:116
-            // ios: Views/HomeView.swift:117,119,120 (118 은 검사 예외: 같은 줄에 옮김)
+            ProgressBar(value = m.total / max(1.0, m.cost))   // ios: Views/HomeView.swift:117
+            // ios: Views/HomeView.swift:118,120,121 (118 은 검사 예외: 같은 줄에 옮김)
             T(if (need > 0) "어제 ${cformat("%.1f", needY * 100)}% → 오늘 ${cformat("%.1f", need * 100)}%"
               else "본전 넘음 · 종목·친구 그대로", style = appFont(13f), color = hex(0xC9D0D6))
-            if (need <= 0) DarkButton("목표 루트로") { m.graduateToGoal(); m.tab = Tab.board }   // ios: Views/HomeView.swift:121
+            if (need <= 0) DarkButton("목표 루트로") { m.graduateToGoal(); m.tab = Tab.board }   // ios: Views/HomeView.swift:122
         }
     }
 }
 
 // 오늘 등락: 부호는 한 번만 (▲/▼ 뒤 퍼센트·금액은 부호 없이). 목표·회복 카드 공통
-// ios: Views/HomeView.swift:130
+// ios: Views/HomeView.swift:131
 @Composable
 private fun TodayLine(m: AppModel) {
-    val mv = m.todayMove; val diff = m.stockTotal - m.stockTotal / (1 + mv)   // ios: Views/HomeView.swift:131
-    // ios: Views/HomeView.swift:132,133
+    val mv = m.todayMove; val diff = m.stockTotal - m.stockTotal / (1 + mv)   // ios: Views/HomeView.swift:132
+    // ios: Views/HomeView.swift:133,134
     T("오늘 " + (if (mv >= 0) "▲ " else "▼ ") + cformat("%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)),
       style = appFont(13f), color = if (mv >= 0) hex(0xFF8A80) else hex(0x8CC4F2))
 }
 
 // 어두운 요약 카드 안의 노란 버튼 (목표 루트로 · 다음 목표)
-// ios: Views/HomeView.swift:137,138,142
+// ios: Views/HomeView.swift:138,139,143
 @Composable
 private fun DarkButton(t: String, act: () -> Unit) {
-    // ios: Views/HomeView.swift:139,140,141
+    // ios: Views/HomeView.swift:140,141,142
     Box(Modifier.fillMaxWidth().plainClickable(onClick = act).defaultMinSize(minHeight = 44.dp).background(Theme.yellow, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
         T(t + " ›", style = appFont(15f, FontWeight.Bold), color = Theme.inkFixed)
     }
 }
 
 // 쉼터 박스: 홈에 둔 친구 + 말풍선 (리마인드 소식이 있으면 그 소식) + 새 소식 + 다른 친구 칸
-// ios: Views/HomeView.swift:146
+// ios: Views/HomeView.swift:147
 @Composable
 private fun ShelterBox(m: AppModel, openInbox: () -> Unit) {
-    val on = (0 until 5).count { m.friendOn(it) }   // ios: Views/HomeView.swift:147
-    val next = (0 until 5).firstOrNull { !m.friendOn(it) }   // ios: Views/HomeView.swift:148
-    val r = Remind.shared; val b = r.bubble; val n = r.fresh.size   // ios: Views/HomeView.swift:149
-    val line: String = b?.let { it.text + (if (it.go != RemindGo.nowhere) " ›" else "") } ?: m.homeSay   // ios: Views/HomeView.swift:150
+    val on = (0 until 5).count { m.friendOn(it) }   // ios: Views/HomeView.swift:148
+    val next = (0 until 5).firstOrNull { !m.friendOn(it) }   // ios: Views/HomeView.swift:149
+    val r = Remind.shared; val b = r.bubble; val n = r.fresh.size   // ios: Views/HomeView.swift:150
+    val line: String = b?.let { it.text + (if (it.go != RemindGo.nowhere) " ›" else "") } ?: m.homeSay   // ios: Views/HomeView.swift:151
     // 정보 문장(오늘 움직인 종목)을 먼저, 대사는 그 아래
-    val say = m.todayMoversText?.let { it + "\n" + m.friendName(m.homeFriendShown) + ": “" + line + "”" } ?: line   // ios: Views/HomeView.swift:152
-    val tint: Color = b?.let { it.cat.color.copy(alpha = 0.14f) } ?: Theme.mintBg   // ios: Views/HomeView.swift:153
-    // ios: Views/HomeView.swift:154,203,204,205
+    val say = m.todayMoversText?.let { it + "\n" + m.friendName(m.homeFriendShown) + ": “" + line + "”" } ?: line   // ios: Views/HomeView.swift:153
+    val tint: Color = b?.let { it.cat.color.copy(alpha = 0.14f) } ?: Theme.mintBg   // ios: Views/HomeView.swift:154
+    // ios: Views/HomeView.swift:155,204,205,206
     Column(
         Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // ios: Views/HomeView.swift:155,156,157,169,171,172
+        // ios: Views/HomeView.swift:156,157,158,170,172,173
         Row(
             Modifier.fillMaxWidth()
                 .plainClickable { if (b != null && b.go != RemindGo.nowhere) m.go(b.go) else m.homePath = m.homePath + "shelter" }
                 .semantics(mergeDescendants = true) { contentDescription = b?.let { "${it.cat.label} 소식: ${it.text}" } ?: "쉼터 보기" },
-            verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp),   // ios: Views/HomeView.swift:158
+            verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp),   // ios: Views/HomeView.swift:159
         ) {
-            CharPixel(id = m.homeFriendShown, width = 56.dp, height = 80.dp, modifier = Modifier.charIdle())   // ios: Views/HomeView.swift:159,160
-            // ios: Views/HomeView.swift:161,162,163,164,165,166,167
+            CharPixel(id = m.homeFriendShown, width = 56.dp, height = 80.dp, modifier = Modifier.charIdle())   // ios: Views/HomeView.swift:160,161
+            // ios: Views/HomeView.swift:162,163,164,165,166,167,168
             T(say, Modifier.weight(1f).background(tint, RoundedCornerShape(topStart = 14.dp, bottomStart = 4.dp, bottomEnd = 14.dp, topEnd = 14.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
               style = appFont(14f).ls(3f).copy(textAlign = TextAlign.Start))
         }
-        // ios: Views/HomeView.swift:173
+        // ios: Views/HomeView.swift:174
         if (r.items.isNotEmpty()) {
-            // ios: Views/HomeView.swift:174,175,186
+            // ios: Views/HomeView.swift:175,176,187
             Row(Modifier.fillMaxWidth().offset(y = (-4).dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                // ios: Views/HomeView.swift:176,177,178,179,180,181,183,184
+                // ios: Views/HomeView.swift:177,178,179,180,181,182,184,185
                 Box(Modifier.defaultMinSize(minHeight = 32.dp).plainClickable(openInbox)
                     .semantics { contentDescription = if (n > 0) "새 소식 ${n}개 보기" else "소식함 보기" }, contentAlignment = Alignment.Center) {
                     T(if (n > 0) "새 소식 $n ›" else "소식함 ›", Modifier.background(if (n > 0) Theme.yellow else Theme.line, CapsuleShape).padding(horizontal = 10.dp, vertical = 4.dp),
@@ -347,18 +347,18 @@ private fun ShelterBox(m: AppModel, openInbox: () -> Unit) {
                 }
             }
         }
-        HDivider(Theme.line)   // ios: Views/HomeView.swift:188
-        // ios: Views/HomeView.swift:189,198,200,201
+        HDivider(Theme.line)   // ios: Views/HomeView.swift:189
+        // ios: Views/HomeView.swift:190,199,201,202
         Row(
             Modifier.fillMaxWidth().plainClickable { m.homePath = m.homePath + "shelter" }.semantics(mergeDescendants = true) { contentDescription = "쉼터 보기" },
-            verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp),   // ios: Views/HomeView.swift:190
+            verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp),   // ios: Views/HomeView.swift:191
         ) {
-            // ios: Views/HomeView.swift:191,192
+            // ios: Views/HomeView.swift:192,193
             Shelter.friends.withIndex().filter { it.value.id != m.homeFriendShown }.forEach { (i, f) ->
                 PixelN((if (m.friendOn(i)) "spr_" else "sil_") + f.id, width = 20.dp, height = 28.dp, alpha = if (m.friendOn(i)) 1f else 0.5f)
             }
-            Spacer(Modifier.weight(1f))   // ios: Views/HomeView.swift:194
-            // ios: Views/HomeView.swift:195,196
+            Spacer(Modifier.weight(1f))   // ios: Views/HomeView.swift:195
+            // ios: Views/HomeView.swift:196,197
             FitTwoLines("친구 $on/5" + (next?.let { " · 다음 ${Shelter.friends[it].name} ${m.friendWhen(it)}" } ?: " · 외전 5장") + " ›", appFont(12f), 0.8f, Theme.sub, lines = 2)
         }
     }
@@ -378,81 +378,81 @@ private fun FitTwoLines(text: String, style: androidx.compose.ui.text.TextStyle,
 }
 
 /** 노란 띠: 3일 안의 일정 (내 종목 먼저). 없으면 인터미션 이번 할 일. 누르면 소식함 */
-// ios: Views/HomeView.swift:209
+// ios: Views/HomeView.swift:210
 @Composable
 private fun Reminder(openInbox: () -> Unit) {
-    val r = Remind.shared   // ios: Views/HomeView.swift:210
+    val r = Remind.shared   // ios: Views/HomeView.swift:211
     val e = r.strip
-    // ios: Views/HomeView.swift:211 (212 는 검사 예외: 같은 줄에 옮김)
+    // ios: Views/HomeView.swift:212 (212 는 검사 예외: 같은 줄에 옮김)
     if (e != null) StripRow(tag = "일정", text = "${MarketEvents.`when`(e.day ?: "")} ${e.text} · ${e.sub ?: ""}", openInbox)
-    // ios: Views/HomeView.swift:213,214
+    // ios: Views/HomeView.swift:214,215
     else if (r.isOn(RemindCat.doing)) r.doing.firstOrNull { it.id == "do.inter" }?.let { d -> StripRow(tag = "리마인드", text = d.text, openInbox) }
 }
 
-// ios: Views/HomeView.swift:217
+// ios: Views/HomeView.swift:218
 @Composable
 private fun StripRow(tag: String, text: String, openInbox: () -> Unit) {
-    // ios: Views/HomeView.swift:218,219,226,227,228,230,231
+    // ios: Views/HomeView.swift:219,220,227,228,229,231,232
     Row(
         Modifier.fillMaxWidth().plainClickable(openInbox).semantics(mergeDescendants = true) { contentDescription = "$tag: $text. 소식함 열기" }
             .defaultMinSize(minHeight = 44.dp).background(Theme.cream, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // ios: Views/HomeView.swift:220,221
+        // ios: Views/HomeView.swift:221,222
         T(tag, Modifier.background(Theme.yellow, CapsuleShape).padding(horizontal = 8.dp, vertical = 2.dp), style = appFont(11f, FontWeight.Bold), color = Theme.inkFixed)
-        T(text, Modifier.weight(1f).padding(end = 0.dp), style = appFont(13f), maxLines = 2)   // ios: Views/HomeView.swift:222,223 (Spacer minLength 0)
-        Sym("chevron.right", 11f, Theme.muted)   // ios: Views/HomeView.swift:224
+        T(text, Modifier.weight(1f).padding(end = 0.dp), style = appFont(13f), maxLines = 2)   // ios: Views/HomeView.swift:223,224 (Spacer minLength 0)
+        Sym("chevron.right", 11f, Theme.muted)   // ios: Views/HomeView.swift:225
     }
 }
 
-// ios: Views/HomeView.swift:234,235
+// ios: Views/HomeView.swift:235,236
 @Composable
 private fun LockedRoutine() {
     DashedCard {
-        // ios: Views/HomeView.swift:236 Label(systemImage: "lock")
+        // ios: Views/HomeView.swift:237 Label(systemImage: "lock")
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { Sym("lock", 15f, Theme.sub); T("오늘의 1분", style = appFont(15f, FontWeight.Bold)) }
-        T("시작 3단계 뒤 열림 · 숫자 하나, 질문 하나", style = appFont(13f))   // ios: Views/HomeView.swift:237
+        T("시작 3단계 뒤 열림 · 숫자 하나, 질문 하나", style = appFont(13f))   // ios: Views/HomeView.swift:238
     }
 }
 
-// ios: Views/HomeView.swift:241,242
+// ios: Views/HomeView.swift:242,243
 @Composable
 private fun YesterdayCard(m: AppModel) {
     Card {
-        // ios: Views/HomeView.swift:243,245
+        // ios: Views/HomeView.swift:244,246
         Row(Modifier.fillMaxWidth()) {
-            T("오늘의 움직임", Modifier.weight(1f).alignByBaseline(), style = appFont(15f, FontWeight.Bold))   // ios: Views/HomeView.swift:244
-            T(AppModel.sgn(m.todayMove), Modifier.alignByBaseline(), style = appFont(20f, FontWeight.Bold), color = Theme.teal, roll = AppModel.sgn(m.todayMove))   // ios: Views/HomeView.swift:246
+            T("오늘의 움직임", Modifier.weight(1f).alignByBaseline(), style = appFont(15f, FontWeight.Bold))   // ios: Views/HomeView.swift:245
+            T(AppModel.sgn(m.todayMove), Modifier.alignByBaseline(), style = appFont(20f, FontWeight.Bold), color = Theme.teal, roll = AppModel.sgn(m.todayMove))   // ios: Views/HomeView.swift:247
         }
-        // ios: Views/HomeView.swift:248
+        // ios: Views/HomeView.swift:249
         T(m.rows.joinToString(" · ") { "${it.sym.short} ${AppModel.sgn(it.sym.quote.change)}" } + " · 원/달러 ${AppModel.sgn(Market.shared.fx.change)}", style = appFont(13f), color = Theme.sub)
     }
 }
 
 // 오늘의 1분: 내 종목 오늘 숫자 확인 + 날마다 바뀌는 질문 하나 (지난 7일과 안 겹치게). 설명은 계산값으로.
-// ios: Views/HomeView.swift:254,255,262
+// ios: Views/HomeView.swift:255,256,263
 @Composable
 fun RoutineCard(m: AppModel) {
-    val days = listOf("월", "화", "수", "목", "금", "토", "일")   // ios: Views/HomeView.swift:256
+    val days = listOf("월", "화", "수", "목", "금", "토", "일")   // ios: Views/HomeView.swift:257
     /** 이번 주 칸 중 채운 날 수 (요일 7칸과 같은 기준) */
-    // ios: Views/HomeView.swift:258,259
+    // ios: Views/HomeView.swift:259,260
     val weekDone = (0 until 7).count { i -> val d = m.day - m.day % 7 + i; m.dayLog[d]?.let { it.answer != null } ?: (d < 5 && d < m.day) }
-    val t = m.today; val q = m.question   // ios: Views/HomeView.swift:263
+    val t = m.today; val q = m.question   // ios: Views/HomeView.swift:264
     Fg(Color.White) {
-        // ios: Views/HomeView.swift:264,284,297,325,329,330,331 withAnimation: 확인·답·날 넘기기로 바뀌는 칸은 기본 스프링으로 자란다
+        // ios: Views/HomeView.swift:265,285,298,326,330,331,332 withAnimation: 확인·답·날 넘기기로 바뀌는 칸은 기본 스프링으로 자란다
         Column(Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(20.dp)).animateContentSize(spring(dampingRatio = 1f, stiffness = stiffness(0.55f))).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // ios: Views/HomeView.swift:265,267
+            // ios: Views/HomeView.swift:266,268
             Row(Modifier.fillMaxWidth()) {
-                T("오늘의 1분", Modifier.weight(1f).alignByBaseline(), style = appFont(13f, FontWeight.Bold).copy(letterSpacing = 1.sp), color = Theme.mint)   // ios: Views/HomeView.swift:266
-                T("이번 주 ${weekDone}일", Modifier.alignByBaseline(), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:268
+                T("오늘의 1분", Modifier.weight(1f).alignByBaseline(), style = appFont(13f, FontWeight.Bold).copy(letterSpacing = 1.sp), color = Theme.mint)   // ios: Views/HomeView.swift:267
+                T("이번 주 ${weekDone}일", Modifier.alignByBaseline(), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:269
             }
-            // ios: Views/HomeView.swift:270
+            // ios: Views/HomeView.swift:271
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                // ios: Views/HomeView.swift:271
+                // ios: Views/HomeView.swift:272
                 for (i in 0 until 7) {
-                    val d = m.day - m.day % 7 + i   // ios: Views/HomeView.swift:272
-                    val ok = m.dayLog[d]?.let { it.answer != null } ?: (d < 5 && d < m.day)   // ios: Views/HomeView.swift:273
-                    // ios: Views/HomeView.swift:274,275,276,277,278
+                    val d = m.day - m.day % 7 + i   // ios: Views/HomeView.swift:273
+                    val ok = m.dayLog[d]?.let { it.answer != null } ?: (d < 5 && d < m.day)   // ios: Views/HomeView.swift:274
+                    // ios: Views/HomeView.swift:275,276,277,278,279
                     Box(
                         Modifier.weight(1f).defaultMinSize(minHeight = 28.dp)
                             .background(if (ok) Theme.mint else if (d == m.day) Color.Transparent else Theme.slate, RoundedCornerShape(8.dp))
@@ -461,26 +461,26 @@ fun RoutineCard(m: AppModel) {
                     ) { T(days[i], style = appFont(12f, FontWeight.Bold), color = if (ok) Theme.inkFixed else if (d == m.day) Theme.yellow else Theme.muted) }
                 }
             }
-            // ios: Views/HomeView.swift:281
+            // ios: Views/HomeView.swift:282
             Step(tag = "1 · 오늘 숫자") {
-                TA(md(m.routineFact), style = appFont(15f).ls(3f))   // ios: Views/HomeView.swift:282
-                // ios: Views/HomeView.swift:283
+                TA(md(m.routineFact), style = appFont(15f).ls(3f))   // ios: Views/HomeView.swift:283
+                // ios: Views/HomeView.swift:284
                 if (!t.seen) {
-                    // ios: Views/HomeView.swift:284,285,286,287
+                    // ios: Views/HomeView.swift:285,286,287,288
                     Box(Modifier.plainClickable { m.markSeen() }.defaultMinSize(minHeight = 40.dp).background(Theme.teal, RoundedCornerShape(10.dp)).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
                         T("확인했어요", style = appFont(14f, FontWeight.Bold), color = Color.White)
                     }
                 }
             }
-            // ios: Views/HomeView.swift:290,291
+            // ios: Views/HomeView.swift:291,292
             if (t.seen) Step(tag = "2 · ${q.tag}") {
-                T(q.q, style = appFont(15f, FontWeight.SemiBold).ls(3f))   // ios: Views/HomeView.swift:292
-                // ios: Views/HomeView.swift:293,294
+                T(q.q, style = appFont(15f, FontWeight.SemiBold).ls(3f))   // ios: Views/HomeView.swift:293
+                // ios: Views/HomeView.swift:294,295
                 FlowRow(spacing = 6.dp) {
                     q.opts.indices.forEach { i ->
-                        val ans = t.answer   // ios: Views/HomeView.swift:295
-                        val right = q.right >= 0 && i == q.right   // ios: Views/HomeView.swift:296
-                        // ios: Views/HomeView.swift:297,298,299,300,301,302,303
+                        val ans = t.answer   // ios: Views/HomeView.swift:296
+                        val right = q.right >= 0 && i == q.right   // ios: Views/HomeView.swift:297
+                        // ios: Views/HomeView.swift:298,299,300,301,302,303,304
                         Box(
                             Modifier.then(if (ans == null) Modifier.plainClickable { m.answer(i) } else Modifier.semantics { disabled() })
                                 .defaultMinSize(minHeight = 40.dp)
@@ -491,24 +491,24 @@ fun RoutineCard(m: AppModel) {
                         ) { T(q.opts[i], style = appFont(14f, FontWeight.Bold), color = if (ans == null) Theme.ink else if (right) Theme.tealDark else if (i == ans) Color.White else Theme.muted) }
                     }
                 }
-                // ios: Views/HomeView.swift:306
+                // ios: Views/HomeView.swift:307
                 t.answer?.let { a ->
-                    // ios: Views/HomeView.swift:307,308,309,310,311
+                    // ios: Views/HomeView.swift:308,309,310,311,312
                     T((t.ok?.let { if (it) "맞아요! " else "아쉬워요. " } ?: "") + q.fb(a),
                       Modifier.fillMaxWidth().background(Theme.mintBg, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp), style = appFont(13f).ls(3f))
                 }
             }
-            // ios: Views/HomeView.swift:315
+            // ios: Views/HomeView.swift:316
             if (t.answer != null) {
-                val sc = m.quizScore   // ios: Views/HomeView.swift:316
-                // ios: Views/HomeView.swift:317,319
+                val sc = m.quizScore   // ios: Views/HomeView.swift:317
+                // ios: Views/HomeView.swift:318,320
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    T(m.routineDoneText, Modifier.weight(1f).alignByBaseline(), style = appFont(14f, FontWeight.SemiBold), color = Theme.yellow)   // ios: Views/HomeView.swift:318
-                    if (sc.all > 0) T("퀴즈 ${sc.right}/${sc.all}", Modifier.alignByBaseline(), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:320
+                    T(m.routineDoneText, Modifier.weight(1f).alignByBaseline(), style = appFont(14f, FontWeight.SemiBold), color = Theme.yellow)   // ios: Views/HomeView.swift:319
+                    if (sc.all > 0) T("퀴즈 ${sc.right}/${sc.all}", Modifier.alignByBaseline(), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:321
                 }
             }
             // 날짜 넘기기는 개발자 확인용 (일반 사용자 화면에는 안 보인다)
-            // ios: Views/HomeView.swift:324,325,326
+            // ios: Views/HomeView.swift:325,326,327
             if (m.devAll) Box(Modifier.defaultMinSize(minHeight = 40.dp).plainClickable { m.day += 1 }, contentAlignment = Alignment.Center) {
                 T("다음 날로 넘기기 (개발자)", style = appFont(13f).copy(textDecoration = TextDecoration.Underline), color = Theme.muted)
             }
@@ -529,93 +529,93 @@ private fun md(s: String): AnnotatedString = buildAnnotatedString {
     }
 }
 
-// ios: Views/HomeView.swift:334,335,339,340,341,342
+// ios: Views/HomeView.swift:335,336,340,341,342,343
 @Composable
 private fun Step(tag: String, c: @Composable () -> Unit) {
     Fg(Theme.ink) {
         Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            T(tag, style = appFont(12f, FontWeight.Bold), color = Theme.teal)   // ios: Views/HomeView.swift:336
-            c()   // ios: Views/HomeView.swift:337
+            T(tag, style = appFont(12f, FontWeight.Bold), color = Theme.teal)   // ios: Views/HomeView.swift:337
+            c()   // ios: Views/HomeView.swift:338
         }
     }
 }
 
 // 지금 평가액 카드 오른쪽 작은 그래프: 내 길 '시작부터' (실제 = 민트 선, 내 길 = 보라 점선). 누르면 분석 > 내 길
-// ios: Views/HomeView.swift:347,348,349
+// ios: Views/HomeView.swift:348,349,350
 @Composable
 fun MiniPath(m: AppModel) {
     // 분석 > 내 길 '지금까지' 그래프와 같은 점·같은 세로 범위 (목표 금액 포함), 눈금·범위 띠만 뺀다
-    val p = m.myPath; val x1 = p.start + 1.0 / 12; val gap = m.myPathGapToday; val K = m.gK * 1e4   // ios: Views/HomeView.swift:351
-    val act = p.pts   // ios: Views/HomeView.swift:352
-    val need: List<Pair<Double, Double>> = (0..30).map { i -> val t = x1 * i.toDouble() / 30; Pair(t, p.need(t)) }   // ios: Views/HomeView.swift:353
-    val needAll = (0..30).map { i -> p.need(p.end * i.toDouble() / 30) }   // ios: Views/HomeView.swift:354
-    val vals = act.map { it.second } + needAll + listOf(K)   // ios: Views/HomeView.swift:355
-    val hi = (vals.maxOrNull() ?: 1.0) * 1.05; val lo = (vals.filter { it > 0 }.minOrNull() ?: 0.0) * 0.9   // ios: Views/HomeView.swift:356
+    val p = m.myPath; val x1 = p.start + 1.0 / 12; val gap = m.myPathGapToday; val K = m.gK * 1e4   // ios: Views/HomeView.swift:352
+    val act = p.pts   // ios: Views/HomeView.swift:353
+    val need: List<Pair<Double, Double>> = (0..30).map { i -> val t = x1 * i.toDouble() / 30; Pair(t, p.need(t)) }   // ios: Views/HomeView.swift:354
+    val needAll = (0..30).map { i -> p.need(p.end * i.toDouble() / 30) }   // ios: Views/HomeView.swift:355
+    val vals = act.map { it.second } + needAll + listOf(K)   // ios: Views/HomeView.swift:356
+    val hi = (vals.maxOrNull() ?: 1.0) * 1.05; val lo = (vals.filter { it > 0 }.minOrNull() ?: 0.0) * 0.9   // ios: Views/HomeView.swift:357
     val mint = Theme.mint
-    // ios: Views/HomeView.swift:357,358,359,360,385,387 (388 은 검사 예외: 같은 줄에 옮김)
+    // ios: Views/HomeView.swift:358,359,360,361,386,388 (388 은 검사 예외: 같은 줄에 옮김)
     Box(
         Modifier.plainClickable {
             m.tab = Tab.analysis
             m.analysisPath = listOf(AnalysisRoute.myPath)
         }.semantics(mergeDescendants = true) { contentDescription = "내 길 그래프, ${if (gap >= 0) "계획대로" else "계획보다 조금 늦어요"}, 눌러서 분석의 내 길 보기" }
-            .padding(bottom = 15.dp),   // ios: Views/HomeView.swift:384
+            .padding(bottom = 15.dp),   // ios: Views/HomeView.swift:385
     ) {
-        // ios: Views/HomeView.swift:361,377,378
+        // ios: Views/HomeView.swift:362,378,379
         Canvas(Modifier.size(84.dp, 40.dp).pulse(Theme.mint, dot = 6.dp) { s -> act.lastOrNull()?.let { Offset((p.start / max(1e-6, x1)).toFloat() * s.width, ((hi - it.second) / max(1.0, hi - lo)).toFloat() * s.height) } }) {
-            // ios: Views/HomeView.swift:362,363
+            // ios: Views/HomeView.swift:363,364
             fun pt(q: Pair<Double, Double>) = Offset((q.first / max(1e-6, x1)).toFloat() * size.width, ((hi - q.second) / max(1.0, hi - lo)).toFloat() * size.height)
-            // ios: Views/HomeView.swift:365,366,367,368
+            // ios: Views/HomeView.swift:366,367,368,369
             fun line(qs: List<Pair<Double, Double>>): Path {
                 val path = Path()
                 qs.forEachIndexed { i, q -> val o = pt(q); if (i == 0) path.moveTo(o.x, o.y) else path.lineTo(o.x, o.y) }
                 return path
             }
-            drawPath(line(need), hex(0xB79CF0), style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))   // ios: Views/HomeView.swift:370
-            drawPath(line(act), mint, style = Stroke(2.dp.toPx(), join = StrokeJoin.Round))   // ios: Views/HomeView.swift:371
-            // ios: Views/HomeView.swift:372
+            drawPath(line(need), hex(0xB79CF0), style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))   // ios: Views/HomeView.swift:371
+            drawPath(line(act), mint, style = Stroke(2.dp.toPx(), join = StrokeJoin.Round))   // ios: Views/HomeView.swift:372
+            // ios: Views/HomeView.swift:373
             act.lastOrNull()?.let { last ->
-                val end = pt(Pair(p.start, last.second))   // ios: Views/HomeView.swift:373
-                drawOval(mint, topLeft = Offset(end.x - 3.dp.toPx(), end.y - 3.dp.toPx()), size = Size(6.dp.toPx(), 6.dp.toPx()))   // ios: Views/HomeView.swift:374
+                val end = pt(Pair(p.start, last.second))   // ios: Views/HomeView.swift:374
+                drawOval(mint, topLeft = Offset(end.x - 3.dp.toPx(), end.y - 3.dp.toPx()), size = Size(6.dp.toPx(), 6.dp.toPx()))   // ios: Views/HomeView.swift:375
             }
         }
-        // ios: Views/HomeView.swift:379,380,381,382
+        // ios: Views/HomeView.swift:380,381,382,383
         T(if (gap >= 0) "계획대로" else "조금 늦어요", Modifier.align(Alignment.BottomCenter).offset(y = 16.dp), style = appFont(10f, FontWeight.Bold), color = if (gap >= 0) Theme.teal else hexD(0xB5651D, 0xE8A060), maxLines = 1)
     }
 }
 
 // 줄바꿈되는 가로 배치
 @Composable
-// ios: Views/HomeView.swift:393,394,395,405
+// ios: Views/HomeView.swift:394,395,396,406
 fun FlowRow(spacing: Dp = 6.dp, content: @Composable () -> Unit) {
     Layout(content) { ms, c ->
         val sp = spacing.roundToPx()
-        val w = if (c.hasBoundedWidth) c.maxWidth else Int.MAX_VALUE   // ios: Views/HomeView.swift:396
-        val ps = ms.map { it.measure(Constraints()) }   // ios: Views/HomeView.swift:399,408 (.unspecified)
-        var x = 0; var y = 0; var rowH = 0; var maxX = 0   // ios: Views/HomeView.swift:397,406
-        val at = ps.map { s ->   // ios: Views/HomeView.swift:398,407
-            if (x > 0 && x + s.width > w) { x = 0; y += rowH + sp; rowH = 0 }   // ios: Views/HomeView.swift:400,409
-            val o = Pair(x, y)   // ios: Views/HomeView.swift:410
-            x += s.width + sp; rowH = max(rowH, s.height); maxX = max(maxX, x - sp)   // ios: Views/HomeView.swift:401,411
+        val w = if (c.hasBoundedWidth) c.maxWidth else Int.MAX_VALUE   // ios: Views/HomeView.swift:397
+        val ps = ms.map { it.measure(Constraints()) }   // ios: Views/HomeView.swift:400,409 (.unspecified)
+        var x = 0; var y = 0; var rowH = 0; var maxX = 0   // ios: Views/HomeView.swift:398,407
+        val at = ps.map { s ->   // ios: Views/HomeView.swift:399,408
+            if (x > 0 && x + s.width > w) { x = 0; y += rowH + sp; rowH = 0 }   // ios: Views/HomeView.swift:401,410
+            val o = Pair(x, y)   // ios: Views/HomeView.swift:411
+            x += s.width + sp; rowH = max(rowH, s.height); maxX = max(maxX, x - sp)   // ios: Views/HomeView.swift:402,412
             o
         }
-        layout(min(w, maxX), y + rowH) { ps.forEachIndexed { i, p -> p.place(at[i].first, at[i].second) } }   // ios: Views/HomeView.swift:403
+        layout(min(w, maxX), y + rowH) { ps.forEachIndexed { i, p -> p.place(at[i].first, at[i].second) } }   // ios: Views/HomeView.swift:404
     }
 }
 
 /** 샘플 종목 안내: 새 사용자는 가상 종목 DRNK·QQQ 샘플로 시작한다. 내 종목을 넣기 전까지 탭마다 보인다 */
-// ios: Views/HomeView.swift:417,418,419
+// ios: Views/HomeView.swift:418,419,420
 @Composable
 fun SampleNote(m: AppModel) {
-    // ios: Views/HomeView.swift:420
+    // ios: Views/HomeView.swift:421
     if (m.isSample) {
-        // ios: Views/HomeView.swift:421,427,428,429
+        // ios: Views/HomeView.swift:422,428,429,430
         Row(
             Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.orange.copy(alpha = 0.6f), RoundedCornerShape(14.dp)).padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // ios: Views/HomeView.swift:422,423
+            // ios: Views/HomeView.swift:423,424
             T("샘플", Modifier.alignByBaseline().background(Theme.orange, CapsuleShape).padding(horizontal = 8.dp, vertical = 2.dp), style = appFont(12f, FontWeight.Bold), color = Color.White)
-            // ios: Views/HomeView.swift:424,425
+            // ios: Views/HomeView.swift:425,426
             T("지금 숫자는 샘플(가상 종목 DRNK·QQQ)이에요. 종목 탭에서 내 종목을 넣으면 바뀌어요.", Modifier.alignByBaseline(), style = appFont(13f), color = Theme.sub)
         }
     }

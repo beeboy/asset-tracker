@@ -14,6 +14,16 @@ ROOT = Path(__file__).resolve().parents[3]
 V = ROOT / "ios-app" / "Naeilo"
 
 
+def span(rel, first, last, nth=1, k=1):
+    """원본 줄을 번호 대신 내용으로 찾는다 (아이폰 코드가 위아래로 밀려도 같은 덩어리): first 줄부터 그 뒤 처음 나오는 last 줄까지"""
+    t = (V / rel).read_text().split("\n")
+    hits = [k for k, l in enumerate(t) if l == first]
+    if len(hits) < nth: raise SystemExit(f"{rel}: 시작 줄을 못 찾음: {first!r}")
+    i = hits[nth - 1]
+    j = [x for x in range(i, len(t)) if t[x] == last][k - 1]
+    return "\n".join(t[i:j + 1])
+
+
 def lines(rel, a, b):
     return "\n".join((V / rel).read_text().split("\n")[a - 1:b])
 
@@ -37,12 +47,12 @@ enum AppModel {{
 {find("Data/GoalRoute.swift", "static func wonK", 6)}
 {find("Data/GoalRoute.swift", "static func eta", 6)}
 }}
-{lines("Views/Guide.swift", 7, 7)}
-{lines("Views/Guide.swift", 74, 111)}
+{span("Views/Guide.swift", "enum Pose: String { case stand, spread, point, wave, think, cheer, side, back, sideL = \"side_l\" }", "enum Pose: String { case stand, spread, point, wave, think, cheer, side, back, sideL = \"side_l\" }")}
+{span("Views/Guide.swift", "enum Voice {", "}")}
 struct SFC {{
     let route: Route?
-{lines("Views/StartView.swift", 72, 98)}
-{lines("Views/StartView.swift", 129, 134)}
+{span("Views/StartView.swift", "    // 예시 가정: 연 기대 8%, 흔들림 12% (주식과 채권을 섞은 예시 보유)", "    }", 1, 2)}
+{span("Views/StartView.swift", "    private static func fanStart(_ e: Ex, _ s: CGSize) -> CGPoint {", "    }")}
     func dump(_ sizes: [CGSize]) -> [String: Any] {{
         let e = ex
         return ["v0": e.v0, "monthly": e.monthly, "line": e.line as Any? ?? NSNull(), "lineName": e.lineName, "big": e.big, "sub": e.sub,
@@ -66,7 +76,7 @@ out["ex"] = [nil, Route.recover, .plus, .novice].map {{ SFC(route: $0).dump(size
 let poses: [Pose] = [.stand, .spread, .point, .wave, .think, .cheer, .side, .back, .sideL]
 out["voice"] = (inp["says"] as! [String]).map {{ t in (inp["friends"] as! [String]).map {{ f in poses.map {{ Voice.say(t, f, $0) }} }} }}
 out["tax"] = (inp["gains"] as! [Double]).map {{ G0 -> [String: Any] in
-{lines("Views/SettingsDetail.swift", 542, 543).replace("m.taxGain", "G0")}
+{span("Views/SettingsDetail.swift", "        let G = m.taxGain, tax = max(0, G - 250) * 0.22", "        let won0 = { (x: Double) in Int(x.rounded()).formatted() + String(localized: \"만원\") }").replace("m.taxGain", "G0")}
     return ["tax": tax, "won0": won0(tax), "G": won0(G)]
 }}
 out["need"] = (inp["fracs"] as! [Double]).map {{ x in ["+" + String(format: "%.1f", x * 100), String(format: "%.1f%%", abs(x) * 100)] }}

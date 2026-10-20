@@ -12,6 +12,16 @@ from pathlib import Path
 V = Path(__file__).resolve().parents[3] / "ios-app" / "Naeilo"
 
 
+def span(rel, first, last, nth=1, k=1):
+    """원본 줄을 번호 대신 내용으로 찾는다 (아이폰 코드가 위아래로 밀려도 같은 덩어리): first 줄부터 그 뒤 처음 나오는 last 줄까지"""
+    t = (V / rel).read_text().split("\n")
+    hits = [k for k, l in enumerate(t) if l == first]
+    if len(hits) < nth: raise SystemExit(f"{rel}: 시작 줄을 못 찾음: {first!r}")
+    i = hits[nth - 1]
+    j = [x for x in range(i, len(t)) if t[x] == last][k - 1]
+    return "\n".join(t[i:j + 1])
+
+
 def lines(rel, a, b):
     return "\n".join((V / rel).read_text().split("\n")[a - 1:b])
 
@@ -21,19 +31,19 @@ def main(out):
     src = f'''import Foundation
 // 꺼낸 원본 (tools/num_parity/h/hsrc.py 가 만든다. 고치지 말 것)
 enum Day {{
-{lines("../WidgetShared/Engine.swift", 76, 78)}
+{span("../WidgetShared/Engine.swift", "    static let fmt: DateFormatter = { let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: \"en_US_POSIX\"); f.timeZone = TimeZone(identifier: \"Asia/Seoul\"); f.dateFormat = \"yyyy-MM-dd\"; return f }()", "    static func str(_ d: Date) -> String { fmt.string(from: d) }")}
 }}
 enum RemindLog {{
-{lines("Data/Remind.swift", 71, 77)}
+{span("Data/Remind.swift", "    struct Wk: Codable {", "    }")}
 }}
 enum Remind {{
-{lines("Data/Remind.swift", 311, 314)}
-{lines("Data/Remind.swift", 504, 507)}
+{span("Data/Remind.swift", "    static func endedWeeks(_ w: [String: RemindLog.Wk], now: Date = Date()) -> [String] {", "    }")}
+{span("Data/Remind.swift", "    static func week(_ d: Date) -> String {", "    }")}
 }}
 enum MarketEvents {{
-{lines("Data/Remind.swift", 514, 559)}
+{span("Data/Remind.swift", "    struct Rule { let id: String; let target: String; let kind: String; let date: String; let rep: String }", "    }", 1, 2)}
 }}
-{lines("Data/Remind.swift", 81, 96)}
+{span("Data/Remind.swift", "struct BlogFile: Codable {", "}")}
 
 let dir = URL(fileURLWithPath: CommandLine.arguments[1])
 let inp = try! JSONSerialization.jsonObject(with: Data(contentsOf: dir.appendingPathComponent("input.json"))) as! [String: Any]

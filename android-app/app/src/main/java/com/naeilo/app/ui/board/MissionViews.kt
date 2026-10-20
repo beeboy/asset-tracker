@@ -210,7 +210,7 @@ fun MissionScreen(m: AppModel, route: MissionRoute) {
 // 공통 틀
 // ios: Views/MissionViews.swift:30,34
 @Composable
-private fun MissionPage(
+fun MissionPage(
     kicker: String,   // ios: Views/MissionViews.swift:31
     title: String,   // ios: Views/MissionViews.swift:32
     content: @Composable ColumnScope.() -> Unit,   // ios: Views/MissionViews.swift:33
@@ -231,7 +231,7 @@ private fun MissionPage(
 
 // ios: Views/MissionViews.swift:47,48,51
 @Composable
-private fun BoardButtons(m: AppModel,
+fun BoardButtons(m: AppModel,
     next: String?,   // ios: Views/MissionViews.swift:49
     to: MissionRoute?,   // ios: Views/MissionViews.swift:50
 ) {
@@ -879,111 +879,103 @@ fun TaxInputView(m: AppModel) {
     // ios: Views/MissionViews.swift:540
     MissionPage(kicker = "절세 · 한국 거주자", title = "올해 판 해외주식 이익은?") {
         GuideBubble(m, pose = Pose.stand, text = "한국에서는 해외주식 한 해 이익과 손실을 합쳐 250만 원을 넘는 부분에만 22%가 붙어요. 올해 판 게 없으면 0을 넣으세요.")   // ios: Views/MissionViews.swift:541
-        T("한국 거주자 기준", style = appFont(13f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/MissionViews.swift:542
-        // ios: Views/MissionViews.swift:543
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            T("올해 실현 이익 (만원)", style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/MissionViews.swift:544
-            // ios: Views/MissionViews.swift:547
-            Box(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(10.dp))
-                // ios: Views/MissionViews.swift:548
-                .border(2.dp, Theme.border, RoundedCornerShape(10.dp))
-                // ios: Views/MissionViews.swift:546
-                .padding(horizontal = 12.dp).defaultMinSize(minHeight = 48.dp)
-                // ios: Views/MissionViews.swift:549
-                .semantics { contentDescription = "올해 실현 이익 (만원)" }, contentAlignment = Alignment.CenterStart) {
-                // ios: Views/MissionViews.swift:545
-                BasicTextField(gain, { gain = it }, Modifier.fillMaxWidth(), textStyle = appFont(18f, FontWeight.SemiBold).copy(color = Theme.ink), singleLine = true, cursorBrush = SolidColor(Theme.teal), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-            }
-        }
-        // ios: Views/MissionViews.swift:551
+        T("한국 거주자 · 미국 주식만", style = appFont(13f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/MissionViews.swift:542
+        com.naeilo.app.ui.goal.inputField("올해 실현 이익 (만원)", gain) { gain = it }   // ios: Views/MissionViews.swift:543
+        // ios: Views/MissionViews.swift:544
         PrimaryButton(title = "세금 보기") {
-            m.taxGain = max(0.0, gain.toDoubleOrNull() ?: 0.0); m.done = m.done + 4; m.boardPath = m.boardPath + MissionRoute.m4r   // ios: Views/MissionViews.swift:552
+            m.taxGain = max(0.0, gain.toDoubleOrNull() ?: 0.0); m.done = m.done + 4; m.boardPath = m.boardPath + MissionRoute.m4r   // ios: Views/MissionViews.swift:545
         }
     }
-    LaunchedEffect(Unit) { gain = m.taxGain.toInt().toString() }   // ios: Views/MissionViews.swift:555
+    LaunchedEffect(Unit) { gain = m.taxGain.toInt().toString() }   // ios: Views/MissionViews.swift:548
 }
 
-// ios: Views/MissionViews.swift:559,560,561
+// ios: Views/MissionViews.swift:552,553,554
 @Composable
 fun TaxResultView(m: AppModel) {
-    // ios: Views/MissionViews.swift:562 (@Bindable: 슬라이더는 m.taxSellQty 를 바로 바꾼다)
-    val won0 = { x: Double -> cformat("%,d", x.swRound().toInt()) + "만" }   // ios: Views/MissionViews.swift:563
-    val maxQ = m.focusRow?.h?.qty ?: 0.0   // ios: Views/MissionViews.swift:564
-    val wAfter = m.focusRow?.let { max(0.0, it.value - m.krw(it.sym, m.taxSellQty * it.sym.last)) / m.total } ?: 0.0   // ios: Views/MissionViews.swift:565
-    val over = m.taxSellQty > 0 && m.taxBefore > 0 && m.taxGain + m.taxLossMan < 249   // ios: Views/MissionViews.swift:566
-    // ios: Views/MissionViews.swift:567
+    // ios: Views/MissionViews.swift:555 (@Bindable: 슬라이더는 m.taxSellQty 를 바로 바꾼다)
+    val won0 = { x: Double -> cformat("%,d", x.swRound().toInt()) + "만" }   // ios: Views/MissionViews.swift:556
+    val maxQ = m.focusRow?.h?.qty ?: 0.0   // ios: Views/MissionViews.swift:557
+    val wAfter = m.focusRow?.let { max(0.0, it.value - m.krw(it.sym, m.taxSellQty * it.sym.last)) / m.total } ?: 0.0   // ios: Views/MissionViews.swift:558
+    val over = m.taxSellQty > 0 && m.taxBefore > 0 && m.taxGain + m.taxLossMan < 249   // ios: Views/MissionViews.swift:559
+    // ios: Views/MissionViews.swift:560
     MissionPage(kicker = "절세 열림", title = "올해 해외주식 세금") {
-        GuideBubble(m, pose = Pose.point, text = "아래 슬라이더를 움직이면 위 숫자가 바로 바뀌어요. 계산 예시이고, 세무 상담은 아니에요.")   // ios: Views/MissionViews.swift:568
-        // ios: Views/MissionViews.swift:569,579,580
+        GuideBubble(m, pose = Pose.point, text = "아래 슬라이더를 움직이면 위 숫자가 바로 바뀌어요. 계산 예시이고, 세무 상담은 아니에요.")   // ios: Views/MissionViews.swift:561
+        // ios: Views/MissionViews.swift:562,572,573
         Fg(Color.White) { Column(Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(20.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            T("내년 5월 세금", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/MissionViews.swift:570
-            // ios: Views/MissionViews.swift:571
+            T("내년 5월 세금", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/MissionViews.swift:563
+            // ios: Views/MissionViews.swift:564
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                T(won0(m.taxBefore), Modifier.alignByBaseline(), style = appFont(18f).copy(textDecoration = TextDecoration.LineThrough), color = hex(0x8A949E))   // ios: Views/MissionViews.swift:572
-                T(won0(m.taxAfter), Modifier.alignByBaseline(), style = appFont(30f, FontWeight.Bold), roll = won0(m.taxAfter))   // ios: Views/MissionViews.swift:573
-                T("−${won0(max(0.0, m.taxBefore - m.taxAfter))}", Modifier.alignByBaseline(), style = appFont(14f, FontWeight.Bold), color = Theme.mint)   // ios: Views/MissionViews.swift:574
+                T(won0(m.taxBefore), Modifier.alignByBaseline(), style = appFont(18f).copy(textDecoration = TextDecoration.LineThrough), color = hex(0x8A949E))   // ios: Views/MissionViews.swift:565
+                T(won0(m.taxAfter), Modifier.alignByBaseline(), style = appFont(30f, FontWeight.Bold), roll = won0(m.taxAfter))   // ios: Views/MissionViews.swift:566
+                T("−${won0(max(0.0, m.taxBefore - m.taxAfter))}", Modifier.alignByBaseline(), style = appFont(14f, FontWeight.Bold), color = Theme.mint)   // ios: Views/MissionViews.swift:567
             }
 
             // Views/MissionViews.swift:576 (검사 예외: 보간 속 따옴표 · 같은 글)
             val lossTxt = if (m.taxLossMan < 0) "−" + won0(-m.taxLossMan) else won0(m.taxLossMan)
             T("1위 종목 ${AppModel.pct(m.focusWeight)}→${AppModel.pct(wAfter)} (계획 ${AppModel.pct(m.planWeight)}) · 확정 손익 $lossTxt",
-              // ios: Views/MissionViews.swift:577
+              // ios: Views/MissionViews.swift:570
               style = appFont(13f), color = hex(0xC9D0D6))
         } }
-        // ios: Views/MissionViews.swift:581
-        Card {
-            T("1위 종목 줄이면 (예시)", style = appFont(15f, FontWeight.Bold))   // ios: Views/MissionViews.swift:582
-            T("보유의 ${AppModel.pct(m.taxSellQty / max(1.0, maxQ))} 줄임", style = appFont(13f), color = Theme.sub)   // ios: Views/MissionViews.swift:583
-            // ios: Views/MissionViews.swift:584
-            IosSlider(value = m.taxSellQty, onChange = { m.taxSellQty = it }, range = 0.0..max(1.0, maxQ), step = 1.0, tint = Theme.teal,
-                modifier = Modifier.semantics { contentDescription = "줄이는 비율" })   // ios: Views/MissionViews.swift:585
-            // ios: Views/MissionViews.swift:586
-            T("이익 ${won0(m.taxGain)} − 공제 250만 = 과세 ${won0(max(0.0, m.taxGain - 250))}",
-              style = appFont(13f).ls(2f), color = Theme.sub)   // ios: Views/MissionViews.swift:587
-            // ios: Views/MissionViews.swift:588
-            if (over) {
-                // ios: Views/MissionViews.swift:589
-                T("이미 세금 0 · 더 줄여도 그대로", Modifier.fillMaxWidth()
-                    // ios: Views/MissionViews.swift:592
-                    .background(hexD(0xFDF0E1, 0x3A2A17), RoundedCornerShape(10.dp))
-                    // ios: Views/MissionViews.swift:591
-                    .padding(10.dp),
-                    // ios: Views/MissionViews.swift:590
-                    style = appFont(13f, FontWeight.SemiBold), color = hexD(0x8A4B00, 0xF0B070))
-            }
-        }
-        // ios: Views/MissionViews.swift:595
+        // ios: Views/MissionViews.swift:574
+        if (m.focusRow?.sym?.currency != Currency.usd) {
+            T("가장 큰 종목이 국내 주식 · 양도세 계산 제외", Modifier.fillMaxWidth()   // ios: Views/MissionViews.swift:575
+                .background(Theme.card, RoundedCornerShape(14.dp))   // ios: Views/MissionViews.swift:577
+                .border(1.dp, Theme.border, RoundedCornerShape(14.dp))   // ios: Views/MissionViews.swift:578
+                .padding(14.dp),   // ios: Views/MissionViews.swift:576
+                style = appFont(15f))
+        } else { Card {   // ios: Views/MissionViews.swift:579
+                T("1위 종목 줄이면 (예시)", style = appFont(15f, FontWeight.Bold))   // ios: Views/MissionViews.swift:580
+                T("보유의 ${AppModel.pct(m.taxSellQty / max(1.0, maxQ))} 줄임", style = appFont(13f), color = Theme.sub)   // ios: Views/MissionViews.swift:581
+                // ios: Views/MissionViews.swift:582
+                IosSlider(value = m.taxSellQty, onChange = { m.taxSellQty = it }, range = 0.0..max(1.0, maxQ), step = 1.0, tint = Theme.teal,
+                    modifier = Modifier.semantics { contentDescription = "줄이는 비율" })   // ios: Views/MissionViews.swift:583
+                // ios: Views/MissionViews.swift:584
+                T("이익 ${won0(m.taxGain)} − 공제 250만 = 과세 ${won0(max(0.0, m.taxGain - 250))}",
+                  style = appFont(13f).ls(2f), color = Theme.sub)   // ios: Views/MissionViews.swift:585
+                // ios: Views/MissionViews.swift:586
+                if (over) {
+                    // ios: Views/MissionViews.swift:587
+                    T("이미 세금 0 · 더 줄여도 그대로", Modifier.fillMaxWidth()
+                        // ios: Views/MissionViews.swift:590
+                        .background(hexD(0xFDF0E1, 0x3A2A17), RoundedCornerShape(10.dp))
+                        // ios: Views/MissionViews.swift:589
+                        .padding(10.dp),
+                        // ios: Views/MissionViews.swift:588
+                        style = appFont(13f, FontWeight.SemiBold), color = hexD(0x8A4B00, 0xF0B070))
+                }
+        } }
+        // ios: Views/MissionViews.swift:593
         T("계산 예시 · 세무 상담·매매 권유 아님 · 결제일 연도 기준",
-          style = appFont(12f).ls(2f), color = Theme.muted)   // ios: Views/MissionViews.swift:596
-        BoardButtons(m, next = "다음: 앱 시작 3단계", to = MissionRoute.nx)   // ios: Views/MissionViews.swift:597
+          style = appFont(12f).ls(2f), color = Theme.muted)   // ios: Views/MissionViews.swift:594
+        BoardButtons(m, next = "다음: 앱 시작 3단계", to = MissionRoute.nx)   // ios: Views/MissionViews.swift:595
     }
 }
 
 // MARK: 앱 시작 3단계 — 한 단계마다 위젯 하나
 /** 내 종목 전체 평가액 3개월 흐름 (원화) */
-// ios: Views/MissionViews.swift:612
+// ios: Views/MissionViews.swift:610
 private fun totalSeries(m: AppModel): List<Double> {
-    val s = m.rows.map { r -> m.prices.series(r.sym, Period.m3).map { m.krw(r.sym, it * r.h.qty) } }   // ios: Views/MissionViews.swift:613
-    val n = s.minOfOrNull { it.size } ?: 0   // ios: Views/MissionViews.swift:614
-    return (0 until n).map { i -> s.fold(0.0) { a, x -> a + x[i] } }   // ios: Views/MissionViews.swift:615
+    val s = m.rows.map { r -> m.prices.series(r.sym, Period.m3).map { m.krw(r.sym, it * r.h.qty) } }   // ios: Views/MissionViews.swift:611
+    val n = s.minOfOrNull { it.size } ?: 0   // ios: Views/MissionViews.swift:612
+    return (0 until n).map { i -> s.fold(0.0) { a, x -> a + x[i] } }   // ios: Views/MissionViews.swift:613
 }
 
-// ios: Views/MissionViews.swift:603,604,617
+// ios: Views/MissionViews.swift:601,602,615
 @Composable
 fun AppStartView(m: AppModel) {
-    var denied by remember { mutableStateOf(false) }   // ios: Views/MissionViews.swift:605
+    var denied by remember { mutableStateOf(false) }   // ios: Views/MissionViews.swift:603
     var meOpen by remember { mutableStateOf(false) }   // NavigationLink { MeEditView() } 자리: 이 화면 위에 한 겹 더 민다
-    // ios: Views/MissionViews.swift:606
+    // ios: Views/MissionViews.swift:604
     val steps = listOf(
-        Triple("종목 하나 이상 추가", "넣었으면 확인만", "자산 추이 위젯"),   // ios: Views/MissionViews.swift:607
-        Triple("알림 하나 켜기", "본전 도달·비중 이탈 중 하나", "본전 진행 위젯"),   // ios: Views/MissionViews.swift:608
-        Triple("오픈 API 연결", "안 하면 가상 주식 샘플만", "블록·오늘의 움직임 위젯"),   // ios: Views/MissionViews.swift:609
+        Triple("종목 하나 이상 추가", "넣었으면 확인만", "자산 추이 위젯"),   // ios: Views/MissionViews.swift:605
+        Triple("알림 하나 켜기", "본전 도달·비중 이탈 중 하나", "본전 진행 위젯"),   // ios: Views/MissionViews.swift:606
+        Triple("오픈 API 연결", "안 하면 가상 주식 샘플만", "블록·오늘의 움직임 위젯"),   // ios: Views/MissionViews.swift:607
     )
     val scope = rememberCoroutineScope(); val ctx = LocalContext.current
     // 3개월 흐름은 종목이 바뀔 때만 뒤에서 다시 센다 (시세 읽기를 그리기 밖에서)
     var series by remember { mutableStateOf(emptyList<Double>()) }
     LaunchedEffect(m.rows) { series = withContext(Dispatchers.Default) { totalSeries(m) } }
-    val n = max(1, m.nxStep)   // ios: Views/MissionViews.swift:618 미션 4에 왔으면 1단계(종목 추가)는 이미 한 것
+    val n = max(1, m.nxStep)   // ios: Views/MissionViews.swift:616 미션 4에 왔으면 1단계(종목 추가)는 이미 한 것
     // withAnimation { m.nxStep += 1 } 자리: 단계 카드의 색(animateColorAsState)·높이(animateContentSize)가 기본 스프링으로 번진다
     fun animateStep(by: Int) { m.nxStep += by }
     val nb = LocalNavBack.current
@@ -992,149 +984,149 @@ fun AppStartView(m: AppModel) {
         Column(Modifier.fillMaxSize().background(Theme.bg)) {
             NavBar(null, back = nb?.back) { nb?.pop?.invoke() }
             Box(Modifier.weight(1f)) {
-            // ios: Views/MissionViews.swift:619
+            // ios: Views/MissionViews.swift:617
             MissionPage(kicker = "미션 4 / 4", title = "세 가지 하면 위젯 하나씩") {
-                GuideBubble(m, pose = Pose.wave, text = "마지막이에요. 위젯은 미리 드리지 않아요. 한 단계마다 하나씩, 세 단계를 다 하면 나머지 위젯도 모두 열려요.")   // ios: Views/MissionViews.swift:620
-                // ios: Views/MissionViews.swift:621
+                GuideBubble(m, pose = Pose.wave, text = "마지막이에요. 위젯은 미리 드리지 않아요. 한 단계마다 하나씩, 세 단계를 다 하면 나머지 위젯도 모두 열려요.")   // ios: Views/MissionViews.swift:618
+                // ios: Views/MissionViews.swift:619
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    // ios: Views/MissionViews.swift:622
+                    // ios: Views/MissionViews.swift:620
                     tile(1, n, Modifier.weight(1f)) {
-                        T("자산 추이", style = appFont(11f, FontWeight.Bold))   // ios: Views/MissionViews.swift:623
-                        Sparkline(points = series, modifier = Modifier.fillMaxWidth().height(34.dp))   // ios: Views/MissionViews.swift:624
-                        T(AppModel.man(m.total), style = appFont(12f, FontWeight.Bold))   // ios: Views/MissionViews.swift:625
+                        T("자산 추이", style = appFont(11f, FontWeight.Bold))   // ios: Views/MissionViews.swift:621
+                        Sparkline(points = series, modifier = Modifier.fillMaxWidth().height(34.dp))   // ios: Views/MissionViews.swift:622
+                        T(AppModel.man(m.total), style = appFont(12f, FontWeight.Bold))   // ios: Views/MissionViews.swift:623
                     }
-                    // ios: Views/MissionViews.swift:627
+                    // ios: Views/MissionViews.swift:625
                     tile(2, n, Modifier.weight(1f)) {
-                        T("본전까지", style = appFont(11f, FontWeight.Bold))   // ios: Views/MissionViews.swift:628
-                        T(AppModel.pct(min(1.0, m.total / max(1.0, m.cost))), style = appFont(22f, FontWeight.Bold), roll = AppModel.pct(min(1.0, m.total / max(1.0, m.cost))))   // ios: Views/MissionViews.swift:629
-                        ProgressBar(value = m.total / max(1.0, m.cost), height = 8.dp, fill = Theme.teal, track = Theme.track)   // ios: Views/MissionViews.swift:630
+                        T("본전까지", style = appFont(11f, FontWeight.Bold))   // ios: Views/MissionViews.swift:626
+                        T(AppModel.pct(min(1.0, m.total / max(1.0, m.cost))), style = appFont(22f, FontWeight.Bold), roll = AppModel.pct(min(1.0, m.total / max(1.0, m.cost))))   // ios: Views/MissionViews.swift:627
+                        ProgressBar(value = m.total / max(1.0, m.cost), height = 8.dp, fill = Theme.teal, track = Theme.track)   // ios: Views/MissionViews.swift:628
                     }
-                    // ios: Views/MissionViews.swift:632
+                    // ios: Views/MissionViews.swift:630
                     tile(3, n, Modifier.weight(1f)) {
-                        T("블록", style = appFont(11f, FontWeight.Bold))   // ios: Views/MissionViews.swift:633
-                        val cells = m.blocks.filter { !it.inter }   // ios: Views/MissionViews.swift:635
-                        // ios: Views/MissionViews.swift:634 (LazyVGrid 3칸)
+                        T("블록", style = appFont(11f, FontWeight.Bold))   // ios: Views/MissionViews.swift:631
+                        val cells = m.blocks.filter { !it.inter }   // ios: Views/MissionViews.swift:633
+                        // ios: Views/MissionViews.swift:632 (LazyVGrid 3칸)
                         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             cells.chunked(3).forEach { row ->
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    // ios: Views/MissionViews.swift:636
+                                    // ios: Views/MissionViews.swift:634
                                     row.forEach { b -> Box(Modifier.weight(1f).height(14.dp).background(if (m.done.contains(b.id)) Theme.teal else Theme.track, RoundedCornerShape(4.dp))) }
                                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                                 }
                             }
                         }
-                        T("미션 진행", style = appFont(11f), color = Theme.sub)   // ios: Views/MissionViews.swift:639
+                        T("미션 진행", style = appFont(11f), color = Theme.sub)   // ios: Views/MissionViews.swift:637
                     }
-                    // ios: Views/MissionViews.swift:641
+                    // ios: Views/MissionViews.swift:639
                     tile(3, n, Modifier.weight(1f)) {
-                        T("오늘의 움직임", style = appFont(11f, FontWeight.Bold))   // ios: Views/MissionViews.swift:642
-                        T(AppModel.sgn(m.todayMove), style = appFont(18f, FontWeight.Bold), color = Theme.change(m.todayMove), roll = AppModel.sgn(m.todayMove))   // ios: Views/MissionViews.swift:643
+                        T("오늘의 움직임", style = appFont(11f, FontWeight.Bold))   // ios: Views/MissionViews.swift:640
+                        T(AppModel.sgn(m.todayMove), style = appFont(18f, FontWeight.Bold), color = Theme.change(m.todayMove), roll = AppModel.sgn(m.todayMove))   // ios: Views/MissionViews.swift:641
                     }
                 }
-                // ios: Views/MissionViews.swift:646
+                // ios: Views/MissionViews.swift:644
                 steps.indices.forEach { i ->
-                    val done = i < n; val cur = i == n   // ios: Views/MissionViews.swift:647
-                    // ios: Views/MissionViews.swift:696
+                    val done = i < n; val cur = i == n   // ios: Views/MissionViews.swift:645
+                    // ios: Views/MissionViews.swift:694
                     Box(Modifier.fillMaxWidth().padding(top = if (done || cur) 24.dp else 0.dp)) {   // 높이 움직임(animateContentSize)은 안쪽 카드에: 바깥에 두면 위로 올라선 인물이 잘린다
-                        // ios: Views/MissionViews.swift:689
+                        // ios: Views/MissionViews.swift:687
                         Fg(if (done || cur) Theme.ink else Theme.muted) {
-                            // ios: Views/MissionViews.swift:648,688
+                            // ios: Views/MissionViews.swift:646,686
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().animateContentSize()
-                                // ios: Views/MissionViews.swift:690
+                                // ios: Views/MissionViews.swift:688
                                 .background(animateColorAsState(if (done) Theme.tealBg else if (cur) Theme.card else hexD(0xF4F6F8, 0x1D252E), label = "stepBg").value, RoundedCornerShape(14.dp))
-                                // ios: Views/MissionViews.swift:691
+                                // ios: Views/MissionViews.swift:689
                                 .border(if (cur) 2.dp else 1.dp, animateColorAsState(if (done) hexD(0xB9DCD7, 0x2E5A55) else if (cur) Theme.teal else Theme.track, label = "stepLine").value, RoundedCornerShape(14.dp))
-                                // ios: Views/MissionViews.swift:687
+                                // ios: Views/MissionViews.swift:685
                                 .padding(horizontal = 14.dp, vertical = 12.dp)) {
-                                // ios: Views/MissionViews.swift:649
+                                // ios: Views/MissionViews.swift:647
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    // ios: Views/MissionViews.swift:650,651
+                                    // ios: Views/MissionViews.swift:648,649
                                     T("${i + 1}", Modifier.size(24.dp, 24.dp).background(if (done || cur) Theme.teal else Theme.muted, CircleShape).wrapContentSize(), style = appFont(13f, FontWeight.Bold), color = Color.White)
-                                    T(steps[i].first, style = appFont(15f, FontWeight.Bold))   // ios: Views/MissionViews.swift:652
+                                    T(steps[i].first, style = appFont(15f, FontWeight.Bold))   // ios: Views/MissionViews.swift:650
                                 }
-                                // ios: Views/MissionViews.swift:654
+                                // ios: Views/MissionViews.swift:652
                                 TA(buildAnnotatedString { append("${steps[i].second} · 받는 것: "); withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(steps[i].third) } }, style = appFont(13f), color = Theme.sub)
-                                // ios: Views/MissionViews.swift:655
+                                // ios: Views/MissionViews.swift:653
                                 if (cur && i == 1) {
                                     // 2단계는 실제로: 폰 알림 허용을 받고 본전 도달 알림을 켠다
-                                    // ios: Views/MissionViews.swift:658
+                                    // ios: Views/MissionViews.swift:656
                                     val askNotify: () -> Unit = { scope.launch {
-                                        // ios: Views/MissionViews.swift:659 (openNotificationSettingsURLString 자리: 이 앱의 알림 설정 화면)
+                                        // ios: Views/MissionViews.swift:657 (openNotificationSettingsURLString 자리: 이 앱의 알림 설정 화면)
                                         if (denied) { runCatching { ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; return@launch }
-                                        // ios: Views/MissionViews.swift:660
+                                        // ios: Views/MissionViews.swift:658
                                         if (notifierRequest()) {
-                                            m.alerts = m.alerts + ((if (m.isGoal) "morn" else "be") to true)   // ios: Views/MissionViews.swift:661
-                                            animateStep(1)   // ios: Views/MissionViews.swift:662
-                                        } else { denied = true }   // ios: Views/MissionViews.swift:663
+                                            m.alerts = m.alerts + ((if (m.isGoal) "morn" else "be") to true)   // ios: Views/MissionViews.swift:659
+                                            animateStep(1)   // ios: Views/MissionViews.swift:660
+                                        } else { denied = true }   // ios: Views/MissionViews.swift:661
                                     } }
-                                    // ios: Views/MissionViews.swift:657,666,667
+                                    // ios: Views/MissionViews.swift:655,664,665
                                     Box(Modifier.plainClickable(onClick = askNotify).background(Theme.teal, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp).defaultMinSize(minHeight = 44.dp), contentAlignment = Alignment.Center) { T(if (denied) "설정에서 알림 허용" else "알림 켜기", style = appFont(14f, FontWeight.Bold), color = Color.White) }
-                                    if (denied) T("알림 꺼짐 · 설정 > 알림 > naeilo에서 허용 후 다시", style = appFont(12f), color = Theme.sub)   // ios: Views/MissionViews.swift:668
-                                } else if (cur && i == 2) {   // ios: Views/MissionViews.swift:669
+                                    if (denied) T("알림 꺼짐 · 설정 > 알림 > naeilo에서 허용 후 다시", style = appFont(12f), color = Theme.sub)   // ios: Views/MissionViews.swift:666
+                                } else if (cur && i == 2) {   // ios: Views/MissionViews.swift:667
                                     // 3단계: 키를 넣었으면 확인만, 아니면 설정의 오픈 API 화면으로. 키 없이도 샘플로 계속할 수 있다
-                                    val tossTap: () -> Unit = { if (TossKeys.on) animateStep(1) else { m.tab = Tab.settings; m.settingsPath = listOf(SettingsRoute.toss) } }   // ios: Views/MissionViews.swift:672
-                                    // ios: Views/MissionViews.swift:671,674,675
+                                    val tossTap: () -> Unit = { if (TossKeys.on) animateStep(1) else { m.tab = Tab.settings; m.settingsPath = listOf(SettingsRoute.toss) } }   // ios: Views/MissionViews.swift:670
+                                    // ios: Views/MissionViews.swift:669,672,673
                                     Box(Modifier.plainClickable(onClick = tossTap).background(Theme.teal, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp).defaultMinSize(minHeight = 44.dp), contentAlignment = Alignment.Center) { T(if (TossKeys.on) "연결했어요" else "오픈 API 연결", style = appFont(14f, FontWeight.Bold), color = Color.White) }
-                                    // ios: Views/MissionViews.swift:676
+                                    // ios: Views/MissionViews.swift:674
                                     if (!TossKeys.on) {
-                                        // ios: Views/MissionViews.swift:677,678
+                                        // ios: Views/MissionViews.swift:675,676
                                         Box(Modifier.plainClickable { animateStep(1) }.defaultMinSize(minHeight = 44.dp), contentAlignment = Alignment.CenterStart) { T("샘플로 계속", style = appFont(13f, FontWeight.SemiBold), color = Theme.teal) }
                                     }
-                                } else if (cur) {   // ios: Views/MissionViews.swift:680
-                                    // ios: Views/MissionViews.swift:681,682,683
+                                } else if (cur) {   // ios: Views/MissionViews.swift:678
+                                    // ios: Views/MissionViews.swift:679,680,681
                                     Box(Modifier.plainClickable { animateStep(1) }.background(Theme.teal, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp).defaultMinSize(minHeight = 44.dp), contentAlignment = Alignment.Center) { T("했어요", style = appFont(14f, FontWeight.Bold), color = Color.White) }
                                 }
-                                if (done) T("완료 · 위젯 열림", style = appFont(13f, FontWeight.Bold), color = Theme.teal)   // ios: Views/MissionViews.swift:685
+                                if (done) T("완료 · 위젯 열림", style = appFont(13f, FontWeight.Bold), color = Theme.teal)   // ios: Views/MissionViews.swift:683
                             }
                         }
                         // 끝낸 단계엔 만세, 지금 단계엔 옆으로 걸어오는 인물 (카드 오른쪽 위에 올라선다)
-                        // ios: Views/MissionViews.swift:693 (.overlay(alignment: .topTrailing))
-                        // ios: Views/MissionViews.swift:694
+                        // ios: Views/MissionViews.swift:691 (.overlay(alignment: .topTrailing))
+                        // ios: Views/MissionViews.swift:692
                         if (done || cur) MotionSprite(friend = m.guideFriend, pose = if (done) Pose.cheer else Pose.side, height = 44.dp, modifier = Modifier.align(Alignment.TopEnd).offset(x = (-14).dp, y = (-38).dp).charIdle(4), model = m)
                     }
                 }
                 // 내 캐릭터는 여기서부터 만들어 보고 저장할 수 있다 (홈·위젯에 나온다)
-                // ios: Views/MissionViews.swift:710
+                // ios: Views/MissionViews.swift:708
                 Fg(Theme.ink) {
-                    // ios: Views/MissionViews.swift:699,715 (NavigationLink { MeEditView() }: 이 화면 위에 내 캐릭터 화면을 민다)
+                    // ios: Views/MissionViews.swift:697,713 (NavigationLink { MeEditView() }: 이 화면 위에 내 캐릭터 화면을 민다)
                     Row(Modifier.fillMaxWidth().plainClickable { meOpen = true }
-                        // ios: Views/MissionViews.swift:712
+                        // ios: Views/MissionViews.swift:710
                         .background(Theme.card, RoundedCornerShape(14.dp))
-                        // ios: Views/MissionViews.swift:713
-                        .border(1.dp, Theme.border, RoundedCornerShape(14.dp))
                         // ios: Views/MissionViews.swift:711
+                        .border(1.dp, Theme.border, RoundedCornerShape(14.dp))
+                        // ios: Views/MissionViews.swift:709
                         .padding(horizontal = 14.dp, vertical = 12.dp),
-                        // ios: Views/MissionViews.swift:700
+                        // ios: Views/MissionViews.swift:698
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        CharPixel(id = "me", width = 30.dp, height = 42.dp, modifier = Modifier.charIdle(5))   // ios: Views/MissionViews.swift:701
-                        // ios: Views/MissionViews.swift:702
+                        CharPixel(id = "me", width = 30.dp, height = 42.dp, modifier = Modifier.charIdle(5))   // ios: Views/MissionViews.swift:699
+                        // ios: Views/MissionViews.swift:700
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            T(if (m.me == null) "내 캐릭터 만들어 보기" else "내 캐릭터 고치기", style = appFont(15f, FontWeight.Bold))   // ios: Views/MissionViews.swift:703
-                            // ios: Views/MissionViews.swift:704,705
+                            T(if (m.me == null) "내 캐릭터 만들어 보기" else "내 캐릭터 고치기", style = appFont(15f, FontWeight.Bold))   // ios: Views/MissionViews.swift:701
+                            // ios: Views/MissionViews.swift:702,703
                             T("쉼터 '본인' 칸 · 홈·위젯에 나옴", style = appFont(12f), color = Theme.sub)
                         }
-                        Spacer(Modifier.widthIn(min = 0.dp))   // ios: Views/MissionViews.swift:707 (남는 폭은 앞 글 칸 weight 가 채운다)
-                        T("›", style = appFont(17f, FontWeight.Bold), color = Theme.muted)   // ios: Views/MissionViews.swift:708
+                        Spacer(Modifier.widthIn(min = 0.dp))   // ios: Views/MissionViews.swift:705 (남는 폭은 앞 글 칸 weight 가 채운다)
+                        T("›", style = appFont(17f, FontWeight.Bold), color = Theme.muted)   // ios: Views/MissionViews.swift:706
                     }
                 }
-                // ios: Views/MissionViews.swift:716
+                // ios: Views/MissionViews.swift:714
                 if (n >= 3) {
-                    // ios: Views/MissionViews.swift:717,727,728
+                    // ios: Views/MissionViews.swift:715,725,726
                     Fg(Color.White) { Column(Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(18.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        T("특별 선물", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)   // ios: Views/MissionViews.swift:718
-                        T("나머지 위젯 모두 열림", style = appFont(17f, FontWeight.Bold))   // ios: Views/MissionViews.swift:719
-                        // ios: Views/MissionViews.swift:720
+                        T("특별 선물", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)   // ios: Views/MissionViews.swift:716
+                        T("나머지 위젯 모두 열림", style = appFont(17f, FontWeight.Bold))   // ios: Views/MissionViews.swift:717
+                        // ios: Views/MissionViews.swift:718
                         FlowRow(spacing = 6.dp) {
-                            // ios: Views/MissionViews.swift:721
+                            // ios: Views/MissionViews.swift:719
                             listOf("비중", "배당 달력", "환율", "본전 진행 (큰)").forEach {
-                                // ios: Views/MissionViews.swift:722,723
+                                // ios: Views/MissionViews.swift:720,721
                                 T(it, Modifier.background(Theme.slate, CapsuleShape).padding(horizontal = 10.dp, vertical = 4.dp), style = appFont(12f, FontWeight.SemiBold))
                             }
                         }
                     } }
-                    PrimaryButton(title = if (m.playOn) "미션 판으로" else "인터미션 시작") { m.finishAppStart() }   // ios: Views/MissionViews.swift:729
-                } else {   // ios: Views/MissionViews.swift:730
-                    BoardButtons(m, next = null, to = null)   // ios: Views/MissionViews.swift:731
+                    PrimaryButton(title = if (m.playOn) "미션 판으로" else "인터미션 시작") { m.finishAppStart() }   // ios: Views/MissionViews.swift:727
+                } else {   // ios: Views/MissionViews.swift:728
+                    BoardButtons(m, next = null, to = null)   // ios: Views/MissionViews.swift:729
                 }
             }
             }
@@ -1142,24 +1134,24 @@ fun AppStartView(m: AppModel) {
     }) { _ -> NavPage("내 캐릭터") { MeEditView(m) } }
 }
 
-// ios: Views/MissionViews.swift:736
+// ios: Views/MissionViews.swift:734
 @Composable
 private fun tile(i: Int, n: Int, modifier: Modifier, c: @Composable ColumnScope.() -> Unit) {
-    // ios: Views/MissionViews.swift:737 (Group)
-    // ios: Views/MissionViews.swift:738
+    // ios: Views/MissionViews.swift:735 (Group)
+    // ios: Views/MissionViews.swift:736
     if (n >= i) {
-        // ios: Views/MissionViews.swift:739,740,741,742
+        // ios: Views/MissionViews.swift:737,738,739,740
         Column(modifier.fillMaxWidth().defaultMinSize(minHeight = 108.dp).background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { c() }
-    } else {   // ios: Views/MissionViews.swift:743
+    } else {   // ios: Views/MissionViews.swift:741
         val dash = Theme.dash
-        // ios: Views/MissionViews.swift:745
+        // ios: Views/MissionViews.swift:743
         Box(modifier.fillMaxWidth().defaultMinSize(minHeight = 108.dp)
-            // ios: Views/MissionViews.swift:746
+            // ios: Views/MissionViews.swift:744
             .background(Theme.track, RoundedCornerShape(18.dp))
-            // ios: Views/MissionViews.swift:747
+            // ios: Views/MissionViews.swift:745
             .drawBehind { drawRoundRect(dash, cornerRadius = CornerRadius(18.dp.toPx()), style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())))) },
             contentAlignment = Alignment.Center) {
-            // ios: Views/MissionViews.swift:744
+            // ios: Views/MissionViews.swift:742
             T("${i}단계 하면 열림", style = appFont(12f).copy(textAlign = TextAlign.Center), color = Theme.sub2)
         }
     }
