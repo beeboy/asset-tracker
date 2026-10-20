@@ -55,7 +55,7 @@ enum WaveMap {
     }
 }
 
-/// 미션 탭 '파도 타기' 첫 화면: 위에 보드 탄 내 캐릭터, 아래로 섬 지도(섬 윤곽 = 내 자산 코스 모양), 지금 섬 카드, 예보 한 줄
+/// 미션 탭 '파도 타기' 첫 화면: 위에 보드 탄 내 캐릭터, 아래로 섬 지도(섬 윤곽 = 내 자산 코스 모양), 지금 섬 카드
 struct WaveHomeView: View {
     @Environment(AppModel.self) private var m
     @Environment(\.accessibilityReduceMotion) private var still
@@ -88,7 +88,6 @@ struct WaveHomeView: View {
                 islands
                 islandCard(current)
             }
-            forecastLine
         }
         .id(tick)
         .task {
@@ -201,18 +200,6 @@ struct WaveHomeView: View {
         }
     }
 
-    // MARK: 예보 한 줄
-
-    @ViewBuilder private var forecastLine: some View {
-        if !m.rows.isEmpty {
-            let r = m.weekRange
-            let d = WeekForecastCard.eok(r.lo, 1) == WeekForecastCard.eok(r.hi, 1) ? 2 : 1
-            Label("이번 주 예보 \(WeekForecastCard.eok(r.lo, d)) ~ \(WeekForecastCard.eok(r.hi, d))", systemImage: "sun.max.fill")
-                .appFont(13, .semibold).foregroundStyle(Theme.forecast)
-                .padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
-                .background(Theme.forecastBg, in: RoundedRectangle(cornerRadius: 12))
-        }
-    }
 }
 
 extension WaveEngine.Course: Identifiable { var id: String { "\(island.rawValue)\(startDate)" } }
