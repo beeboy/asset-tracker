@@ -24,8 +24,8 @@ struct HomeView: View {
         }
         .background(Theme.bg)
         .refreshable { await Market.shared.pullRefresh(m) }
-        // 탭을 바꾼 화면이 먼저 그려지게, 기록·소식 계산은 다음 차례로 미룬다
-        .onAppear { DispatchQueue.main.async { m.calmOpen(); Remind.shared.refresh(m); Remind.shared.nextBubble() } }
+        // 기록·소식 계산은 앱을 열 때와 1분 시세 갱신 때 한다 (App.swift). 탭 이동 땐 말풍선만
+        .onAppear { Remind.shared.nextBubble() }
         .sheet(isPresented: $inbox, onDismiss: { Remind.shared.markAllSeen() }) { RemindSheet().environment(m) }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { route in
