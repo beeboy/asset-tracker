@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -147,7 +148,7 @@ val SF: Map<String, Int> = mapOf(
     "arrow.triangle.2.circlepath" to R.drawable.ms_sync, "square.and.arrow.up" to R.drawable.ms_ios_share, "stairs" to R.drawable.ms_stairs,
     "square.stack.3d.up" to R.drawable.ms_stacks, "tv" to R.drawable.ms_tv, "ruler" to R.drawable.ms_straighten, "puzzlepiece" to R.drawable.ms_extension,
     "camera.macro" to R.drawable.ms_local_florist, "arrow.left.and.right" to R.drawable.ms_arrow_range, "person.3.fill" to R.drawable.ms_groups_fill,
-    "plus" to R.drawable.ms_add, "chevron.down" to R.drawable.ms_expand_more, "trash" to R.drawable.ms_delete,
+    "plus" to R.drawable.ms_add, "chevron.down" to R.drawable.ms_expand_more, "trash" to R.drawable.ms_delete, "pencil" to R.drawable.ms_edit,
 )
 
 /** Image(systemName:) 자리. size = 글자 크기(pt), 기호 칸은 글자 크기의 1.25배. scaled = 큰 글자 설정을 따를지 (.font(.system(size:)) 도 따른다) */
@@ -345,7 +346,7 @@ fun DropMenu(items: List<MenuItem>, label: @Composable () -> Unit) {
 
 /** iOS 이동 막대 (inline): 왼쪽 '‹ 뒤로', 가운데 제목. 높이 44 */
 @Composable
-fun NavBar(title: String?, onBack: () -> Unit) {
+fun NavBar(title: String?, back: String? = null, onBack: () -> Unit) {
     // 이동 막대 글자도 큰 글자 설정을 조금 따른다 (iOS 처럼 커지되 막대 높이는 그대로)
     val k = minOf(LocalTextScale.current.ratio, 1.35f)
     val tint = Theme.teal   // 탭 tint
@@ -360,7 +361,7 @@ fun NavBar(title: String?, onBack: () -> Unit) {
                 drawLine(tint, Offset(size.width - w, w), Offset(w, size.height / 2), w, StrokeCap.Round)
                 drawLine(tint, Offset(w, size.height / 2), Offset(size.width - w, size.height - w), w, StrokeCap.Round)
             }
-            T("뒤로", Modifier.padding(start = 6.dp), style = TextStyle(fontSize = (17 * k).sp), color = tint)
+            T(back?.takeIf { it.length <= 12 } ?: "뒤로", Modifier.padding(start = 6.dp), style = TextStyle(fontSize = (17 * k).sp), color = tint, maxLines = 1)
         }
         if (title != null) T(title, Modifier.align(Alignment.Center), style = TextStyle(fontSize = (17 * k).sp, fontWeight = FontWeight.SemiBold), maxLines = 1)
     }
@@ -388,7 +389,7 @@ fun <T> NavStack(path: List<T>, onPath: (List<T>) -> Unit, root: @Composable () 
                 val p = page(top)
                 Column(Modifier.fillMaxSize().graphicsLayer { translationX = x.value * size.width }.background(Theme.bg)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {}) {
-                    NavBar(p.title) { onPath(path.dropLast(1)) }
+                    NavBar(p.title, back = if (path.size >= 2) page(path[path.size - 2]).title else null) { onPath(path.dropLast(1)) }   // 뒤로 글자 = 앞 화면 제목 (없으면 뒤로)
                     Box(Modifier.weight(1f)) { p.content() }
                 }
             }
@@ -593,6 +594,23 @@ fun ContextMenu(show: Boolean, items: List<MenuItem>, onDismiss: () -> Unit) {
                     it0.icon?.let { Sym(it, 17f, if (it0.destructive) Sys.red else Theme.ink, scaled = false) }
                 }
             }
+        }
+    }
+}
+
+/** ProgressView(): 작게 도는 표시 (20) */
+@Composable
+fun Spinner(size: Dp = 20.dp) {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "spin")
+    val a by t.animateFloat(0f, 8f, androidx.compose.animation.core.infiniteRepeatable(tween(800, easing = LinearEasing)), label = "a")
+    val gray = Sys.gray
+    Canvas(Modifier.size(size)) {
+        val r = this.size.minDimension / 2; val c = center; val step = a.toInt()
+        for (i in 0 until 8) {
+            val ang = Math.toRadians((i * 45 - 90).toDouble())
+            val al = 0.25f + 0.75f * (((i - step) % 8 + 8) % 8) / 8f
+            drawLine(gray.copy(alpha = al), Offset(c.x + r * 0.45f * Math.cos(ang).toFloat(), c.y + r * 0.45f * Math.sin(ang).toFloat()),
+                Offset(c.x + r * Math.cos(ang).toFloat(), c.y + r * Math.sin(ang).toFloat()), 2.dp.toPx(), StrokeCap.Round)
         }
     }
 }

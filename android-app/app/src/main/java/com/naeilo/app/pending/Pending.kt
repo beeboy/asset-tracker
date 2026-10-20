@@ -176,9 +176,5 @@ object WidgetCenter { fun reloadAllTimelines() {} }
 val LocalCharDark = androidx.compose.runtime.compositionLocalOf { false }
 // TODO(CharWidgets)
 val LocalCharHide = androidx.compose.runtime.compositionLocalOf { false }
-// TODO(HoldingDetailView 종목 상세 F2)
-@Composable fun HoldingDetailView(sym: com.naeilo.app.data.Symbol, period: com.naeilo.app.data.Period) {}
-// TODO(AddHoldingView 종목 추가 F2)
-@Composable fun AddHoldingView() {}
 // TODO(TownView 동네 I): 소식판의 [동네] 버튼과 전체 화면
 @Composable fun TownButton() {}

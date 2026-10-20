@@ -22,3 +22,7 @@ fun Double.swFmtNoGroup(): String = fmt("0.######").format(decimal())
 fun Double.swFmtFrac(n: Int): String = fmt("#,##0" + (if (n > 0) "." + "0".repeat(n) else "")).format(decimal())
 /** x.formatted(.number.precision(.fractionLength(a...b))): 소수 a~b 자리 */
 fun Double.swFmtFrac(a: Int, b: Int): String = fmt("#,##0" + (if (b > 0) "." + "0".repeat(a) + "#".repeat(b - a) else "")).format(decimal())
+
+/** String(format: "%.1f", x) 자리: 무한·숫자 아님은 C 처럼 inf·-inf·nan 으로 (Java 는 Infinity·NaN) */
+fun cfmt(pattern: String, x: Double): String =
+    if (x.isNaN()) "nan" else if (x.isInfinite()) (if (x > 0) "inf" else "-inf") else String.format(Locale.US, pattern, x)

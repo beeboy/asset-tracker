@@ -60,8 +60,6 @@ import com.naeilo.app.net.PriceHistory
 import com.naeilo.app.net.Sync
 import com.naeilo.app.net.last
 import com.naeilo.app.net.quote
-import com.naeilo.app.pending.AddHoldingView
-import com.naeilo.app.pending.HoldingDetailView
 import com.naeilo.app.pending.TownButton
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.Card
@@ -184,7 +182,9 @@ fun HoldingsView(m: AppModel) {
         }
     }) { r ->
         // ios: Views/HoldingsView.swift:69,70
-        if (r is Symbol) NavPage { HoldingDetailView(sym = r, period = period) } else NavPage { AddHoldingView() }
+        if (r is Symbol) NavPage(r.name) { HoldingDetailView(m, sym = r, period0 = period) }
+        else if (r is EditRoute) NavPage(r.sym.name) { HoldingEditView(m, sym = r.sym) { m.holdPath = m.holdPath.dropLast(1) } }   // 고치기 (상세의 NavigationLink)
+        else NavPage { AddHoldingView(m) { m.holdPath = m.holdPath.dropLast(1) } }
     }
     // ios: Views/HoldingsView.swift:73,74,75
     IosAlert(said != null, "내 투자 습관", said, listOf(DialogAction("확인", onClick = {}))) { said = null }

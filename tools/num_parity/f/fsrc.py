@@ -54,6 +54,17 @@ let xs = inp["nums"] as! [Double]
 out["man"] = xs.map {{ AppModel.man($0) }}
 out["price"] = syms.flatMap {{ s in xs.map {{ AppModel.price(s, $0) }} }}
 out["fmt"] = xs.map {{ [$0.formatted(), $0.formatted(.number.grouping(.never)), "$" + $0.formatted(.number.precision(.fractionLength(2)))] }}
+// 종목 상세 '본전까지' 줄 (318-319) · 고치기 '본전까지' 칸 (650): 원본 줄을 그대로 감싼다
+func kvStub(_ k: String, _ v: String) -> [String] {{ [k, v] }}
+out["breakEven"] = (inp["needs"] as! [Double]).map {{ need -> [String] in
+    let kv = kvStub
+{lines("Views/HoldingsView.swift", 318, 319).replace("kv(", "return kv(")}
+}}
+out["needText"] = (inp["needs"] as! [Double]).map {{ x -> String in
+    let px = 100.0
+{lines("Views/HoldingsView.swift", 650, 650)}
+    return need(px * (1 + x))
+}}
 let d = try! JSONSerialization.data(withJSONObject: out, options: [.sortedKeys])
 try! d.write(to: dir.appendingPathComponent("app.json"))
 print("num_parity f: 고치기 \\(ed.count) · 숫자 \\(xs.count)")
@@ -64,6 +75,7 @@ print("num_parity f: 고치기 \\(ed.count) · 숫자 \\(xs.count)")
                   for q, p in [("3", "190.5"), ("0", "100"), ("10", "150"), ("2.5", "71400"), ("abc", "1"), ("1", "-3"), ("12", "70100"), ("", "")]
                   for q0, p0 in [(10, 182.33), (5, 72000), (0, 0)]],
         "holds": [[10, 182.333], [1234.5, 71400], [0.125, 0.5], [3, 1e6]],
+        "needs": [0, 0.0005, 0.00051, -0.0005, -0.00051, 0.123456, -0.5, 2.5, 0.04999, -0.04999],
         "nums": [0, 0.5, 1, 1.005, 2.675, 12.3456, 187.255, 999.995, 1234.5678, 71400, 99995, 1e4, 12345678, 1.23456789e8, 9.9999e8, 1.5e9, -5e7, -0.5, 0.123456789, 3.333333333],
     }
     (out / "input.json").write_text(json.dumps(inp, ensure_ascii=False))

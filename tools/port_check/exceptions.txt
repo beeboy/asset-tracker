@@ -8,8 +8,6 @@ App.swift:10 구독 단계: Play Billing 확인·거래 듣기 (Support)
 App.swift:39 미션 탭 단계: 목표 루트면 GoalBoardView, 아니면 BoardView (isGoal)
 App.swift:78-88 알림 단계: 알림을 누르면 탭·화면 열기
 App.swift:89-100 위젯·딥링크 단계: naeilo:// 주소로 탭·화면 열기
-App.swift:65 국내 합계 단계: KoreaSumHooks 붙이기 (아래 171-188 과 같이 종목 단계에서)
-App.swift:171-188 국내 합계 단계: 국내 종목 합계 시트·동기화 (KoreaSumHooks)
 
 # B 단계 (models)
 # models 그룹: WidgetShared/Models.swift → core/Models.kt + core/Feeds.kt
@@ -105,3 +103,13 @@ Views/HoldingsView.swift:841 검사기 한계: 보간 속 따옴표 String(forma
 Views/HoldingsView.swift:879 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 고점까지 글)
 Views/HoldingsView.swift:882 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 저점 위 글)
 Views/HoldingsView.swift:135 검사기 한계: 보간 속 따옴표 separator: ", " (옮김, HoldingsView.kt TotalChart 과거 시세 없음 글)
+
+# F2 단계 (종목 상세·추가): Views/HoldingsView@262-726 → ui/hold/HoldingDetail.kt
+Views/HoldingsView.swift:298 검사기 한계: 보간 속 따옴표 String(localized: "오늘") (옮김, HoldingDetail.kt 주가 기간 글)
+Views/HoldingsView.swift:345 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt summary 산 가격 글)
+Views/HoldingsView.swift:362 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt NoProfile 시장·업종 글)
+Views/HoldingsView.swift:411 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt KoreaSumCard 안내 글)
+Views/HoldingsView.swift:603 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt AddHoldingView 평균 단가 칸 이름)
+Views/HoldingsView.swift:428 플랫폼: 숫자 자판에 닫기 키가 없어 iOS 는 자판 위 '완료' 막대를 둔다. 안드로이드 숫자 자판은 완료 키가 있어 그 키로 닫는다 (InputField onSubmit → clearFocus)
+Views/HoldingsView.swift:453 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
+Views/HoldingsView.swift:484 플랫폼: 자판 위 '완료' 막대 (428 과 같음)

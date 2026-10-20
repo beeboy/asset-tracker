@@ -53,6 +53,9 @@ import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.NavStack
 import com.naeilo.app.ui.home.HomeView
 import com.naeilo.app.ui.hold.HoldingsView
+import com.naeilo.app.ui.hold.KoreaSumCard
+import com.naeilo.app.ui.Sheet
+import com.naeilo.app.net.CustomSymbols
 import com.naeilo.app.ui.home.homePage
 import com.naeilo.app.ui.settings.SettingsView
 import com.naeilo.app.ui.settings.settingsPage
@@ -225,6 +228,22 @@ private fun AppHooks(model: AppModel) {
         }
     }
     LineTurns(model, phase)   // ios: App.swift:55
+    KoreaSumHooks(model)   // ios: App.swift:65
+}
+
+/** 한국 종목 가격·국내 주식 합계를 고치면 다른 기기로도 보내고, 리마인드 '오늘 국내 주식 합계'를 누르면 입력 칸을 한 번 띄운다 */
+// ios: App.swift:173,174,175,176
+@Composable
+private fun KoreaSumHooks(model: AppModel) {
+    // ios: App.swift:177
+    LaunchedEffect(Unit) { snapshotFlow { CustomSymbols.shared.krStamp }.drop(1).collect { if (model.persists) Sync.shared.changed(model) } }
+    // 키보드 '완료'는 자판의 완료 키로 (NavigationStack 은 필요 없다)
+    // ios: App.swift:178,180,181,182,183,185 (화면 절반 높이 시트)
+    Sheet(model.krSumAsk, onDismiss = { model.krSumAsk = false }, medium = true) {
+        Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp)) {
+            KoreaSumCard(model, done = { model.krSumAsk = false })
+        }
+    }
 }
 
 /** 인물 대사 차례 올리기: 탭·화면 이동, 앱을 앞으로 가져올 때 (1분 자동 갱신으로는 안 바뀐다) */
