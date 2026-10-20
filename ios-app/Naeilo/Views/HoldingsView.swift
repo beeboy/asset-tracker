@@ -1734,10 +1734,11 @@ struct TownFace: View {
                     Canvas { ctx, size in
                         let u = size.width / CGFloat(MeArt.W)
                         let c = Self.tints[min(note.tint, Self.tints.count - 1)]
-                        let px = star + Self.pixels(note.hat, c) + Self.props(pr)
+                        let d = frame?.dir
+                        let px = Self.turn(star, d, hair: true) + Self.turn(Self.pixels(note.hat, c) + Self.props(pr), d)
                         func col(_ v: UInt32) -> Color { Color(red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255) }
                         for r in px { ctx.fill(Path(CGRect(x: CGFloat(r.0 - 1) * u, y: CGFloat(r.1 - 1) * u, width: CGFloat(r.2 + 2) * u, height: CGFloat(r.3 + 2) * u)), with: .color(col(MeArt.outline))) }
-                        for r in px + Self.thin(pr) { ctx.fill(Path(CGRect(x: CGFloat(r.0) * u, y: CGFloat(r.1) * u, width: CGFloat(r.2) * u, height: CGFloat(r.3) * u)), with: .color(col(r.4))) }
+                        for r in px + Self.turn(Self.thin(pr), d) { ctx.fill(Path(CGRect(x: CGFloat(r.0) * u, y: CGFloat(r.1) * u, width: CGFloat(r.2) * u, height: CGFloat(r.3) * u)), with: .color(col(r.4))) }
                     }
                     .offset(y: frame?.lift == true ? -height / CGFloat(MeArt.H) : 0)   // 숨·걸음에 머리가 1px 오르면 모자도 같이
                     .allowsHitTesting(false)
@@ -1817,6 +1818,18 @@ enum TownStar {
 }
 
 /// 꾸미기: 이름 · 모자 · 모자 색. 저장하면 수첩에 적는다
+    /// 옆으로 걸을 때 덧그림도 옆모습으로: 한 칸 앞으로 (옆모습 얼굴과 같이). 유명인 머리는 앞쪽 옆머리를 빼고 뒤쪽 옆머리로 뒤통수를 덮는다. 왼쪽은 뒤집는다
+    static func turn(_ px: [(Int, Int, Int, Int, UInt32)], _ d: CharDir?, hair: Bool = false) -> [(Int, Int, Int, Int, UInt32)] {
+        guard d == .left || d == .right else { return px }
+        return px.compactMap { r in
+            var (x, y, w, h, c) = r
+            if hair && y >= 5 && x >= 14 { return nil }
+            if hair && y >= 5 && x + w <= 7 { w = 11 - x }
+            x += 1
+            if d == .left { x = MeArt.W - x - w }
+            return (x, y, w, h, c)
+        }
+    }
 struct TownDress: View {
     let res: TownLook.Resident
     @Environment(\.dismiss) private var dismiss
