@@ -42,6 +42,7 @@ def decide(code, i, end):
     if st.startswith('@') or st.startswith('#'): return False
     if re.match(r'case\b', st) and ':' not in st[4:]: return False
     if SKIP.search(pre): return False
+    if code[end:end+1] == ':': return False   # 사전 열쇠("키": 값)는 찾기용이라 그대로
     if re.search(r'[=!]=\s*$', pre) or re.match(r'\s*[=!]=', code[end:end+5]): return False
     if LSK.search(pre):
         rest = code[end:end+40].lstrip()

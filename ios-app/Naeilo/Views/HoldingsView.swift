@@ -1810,10 +1810,10 @@ enum TownStar {
     }()
     /// 주민 id → 얼굴 열쇠 (대표 이름이나 종목 코드로 찾는다)
     static let keys: [String: String] = [
-        String(localized: "ceo:일론 머스크"): "musk", "TSLA": "musk", String(localized: "ceo:젠슨 황"): "jensen", "NVDA": "jensen", String(localized: "ceo:사티아 나델라"): "nadella", "MSFT": "nadella",
-        String(localized: "ceo:마크 저커버그"): "zuck", "META": "zuck", String(localized: "ceo:순다르 피차이"): "pichai", "GOOGL": "pichai", "GOOG": "pichai",
-        String(localized: "ceo:앤디 재시"): "jassy", "AMZN": "jassy", String(localized: "ceo:존 터너스"): "ternus", String(localized: "ceo:팀 쿡"): "ternus", "AAPL": "ternus",
-        String(localized: "ceo:샘 올트먼"): "altman", String(localized: "ceo:다리오 아모데이"): "amodei", String(localized: "ceo:데미스 허사비스"): "hassabis",
+        "ceo:일론 머스크": "musk", "TSLA": "musk", "ceo:젠슨 황": "jensen", "NVDA": "jensen", "ceo:사티아 나델라": "nadella", "MSFT": "nadella",
+        "ceo:마크 저커버그": "zuck", "META": "zuck", "ceo:순다르 피차이": "pichai", "GOOGL": "pichai", "GOOG": "pichai",
+        "ceo:앤디 재시": "jassy", "AMZN": "jassy", "ceo:존 터너스": "ternus", "ceo:팀 쿡": "ternus", "AAPL": "ternus",
+        "ceo:샘 올트먼": "altman", "ceo:다리오 아모데이": "amodei", "ceo:데미스 허사비스": "hassabis",
         TownLook.warshID: "warsh", TownLook.mayorID: "trump",
     ]
     static func find(_ id: String) -> Look? { keys[id].flatMap { looks[$0] } }
