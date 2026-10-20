@@ -102,7 +102,7 @@ struct GoalBoardView: View {
                 SampleNote()
                 MissionPagePicker()
                 if m.boardPage == 1 {
-                    if m.playUnlocked { WeekForecastCard() } else { lockedPlay }
+                    if m.playUnlocked { WaveHomeView() } else { lockedPlay }
                 } else {
                     // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
                     if let inter = steps.first(where: \.inter) { interCard(inter) }
@@ -175,8 +175,8 @@ struct GoalBoardView: View {
 
     private var lockedPlay: some View {
         DashedCard {
-            Label(m.boardPage == 1 ? "이번 주 예보" : "목표 100칸", systemImage: "lock").appFont(15, .bold)
-            Text("시작 3단계 뒤 열림 · 칸 채우기·주간 예보").appFont(13)
+            Label(m.boardPage == 1 ? "파도 타기" : "목표 100칸", systemImage: "lock").appFont(15, .bold)
+            Text("시작 3단계 뒤 열림 · 칸 채우기·파도 타기").appFont(13)
         }
     }
 
@@ -800,12 +800,12 @@ struct GoalIntermissionView: View {
     }
 }
 
-/// 미션 탭 두 페이지 전환: 목표(본전) 진행 | 이번 주 예보. 옆으로 밀어도 넘어간다
+/// 미션 탭 두 페이지 전환: 목표(본전) 진행 | 파도 타기. 옆으로 밀어도 넘어간다
 struct MissionPagePicker: View {
     @Environment(AppModel.self) private var m
     var body: some View {
         HStack(spacing: 4) {
-            ForEach([(0, m.isGoal ? "목표 진행" : "본전 진행"), (1, "이번 주 예보")], id: \.0) { i, t in
+            ForEach([(0, m.isGoal ? "목표 진행" : "본전 진행"), (1, "파도 타기")], id: \.0) { i, t in
                 let on = m.boardPage == i
                 Button { withAnimation(.easeOut(duration: 0.2)) { m.boardPage = i } } label: {
                     Text(t).appFont(14, .bold).foregroundStyle(on ? Theme.ink : Theme.sub)

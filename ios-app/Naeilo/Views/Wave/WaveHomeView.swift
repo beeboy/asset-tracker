@@ -3,6 +3,7 @@ import SwiftUI
 /// 파도 타기 섬 진행 저장: 섬마다 최고 점수·별 (UserDefaults 정수 몇 개)
 /// 섬은 낮잠 해변 → 올라올라 언덕 → 롤러코스터 만 → 멀미 주의 바다 순서로, 앞 섬에서 별 1개를 받으면 다음 섬이 열린다.
 enum WaveMap {
+    static let minDays = 10   // 이보다 짧으면 섬을 못 만든다
     static let order: [WaveEngine.Island] = [.nap, .climb, .coaster, .choppy]
     private static let d = UserDefaults.standard
 
@@ -19,22 +20,38 @@ enum WaveMap {
         if r.score > best(i) { d.set(r.score, forKey: "wave.best.\(i.rawValue)") }
     }
 
-    /// 3년 자산 라인을 40거래일씩 훑어 섬마다 들어갈 수 있는 시작 위치를 모은다 (3거래일 간격, 한 번만)
+    /// 3년 자산 라인을 40거래일씩 훑어 섬마다 들어갈 수 있는 시작 위치를 모은다 (3거래일 간격, 한 번만).
+    /// 딱 맞는 구간이 없는 섬(예: 주식 위주라 잔잔한 40일이 없으면 낮잠 해변)은 그 섬에 가장 가까운 구간 5개를 쓴다
     static func starts(_ line: [(d: String, v: Double)]) -> [WaveEngine.Island: [Int]] {
-        let n = WaveEngine.days
-        guard line.count >= n else { return [:] }
+        let n = min(WaveEngine.days, line.count)   // 시세가 40거래일보다 짧으면 가진 만큼만
+        guard n >= minDays else { return [:] }
         let vs = line.map(\.v)
         var out: [WaveEngine.Island: [Int]] = [:]
+        var fit: [(s: Int, sd: Double, dd: Double, total: Double)] = []
         for s in stride(from: 0, through: vs.count - n, by: 3) {
-            out[WaveEngine.classify(Array(vs[s..<(s + n)])).0, default: []].append(s)
+            let v = Array(vs[s..<(s + n)])
+            out[WaveEngine.classify(v).0, default: []].append(s)
+            var peak = v[0], dd = 0.0
+            for x in v { peak = max(peak, x); dd = max(dd, 1 - x / peak) }
+            fit.append((s, WaveEngine.stdev(WaveEngine.rets(v)), dd, v.last! / v.first! - 1))
+        }
+        for i in order where out[i] == nil {
+            let ranked: [Int]
+            switch i {
+            case .nap: ranked = fit.sorted { $0.sd < $1.sd }.map(\.s)
+            case .climb: ranked = fit.sorted { $0.total - $0.dd > $1.total - $1.dd }.map(\.s)
+            case .coaster: ranked = fit.sorted { $0.dd > $1.dd }.map(\.s)
+            case .choppy: ranked = fit.sorted { $0.sd > $1.sd }.map(\.s)
+            }
+            out[i] = Array(ranked.prefix(5))
         }
         return out
     }
 
-    static func course(_ line: [(d: String, v: Double)], at s: Int) -> WaveEngine.Course {
-        let part = line[s..<(s + WaveEngine.days)], vs = part.map(\.v)
-        let (i, lv) = WaveEngine.classify(vs)
-        return .init(dates: part.map(\.d), values: vs, island: i, level: lv)
+    /// 그 섬 이름으로 코스 만들기 (난이도는 구간 모양으로)
+    static func course(_ line: [(d: String, v: Double)], at s: Int, as i: WaveEngine.Island) -> WaveEngine.Course {
+        let part = line[s..<(s + min(WaveEngine.days, line.count))], vs = part.map(\.v)
+        return .init(dates: part.map(\.d), values: vs, island: i, level: WaveEngine.classify(vs).1)
     }
 }
 
@@ -62,7 +79,7 @@ struct WaveHomeView: View {
             rider
             if !ready {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-            } else if line.count < WaveEngine.days {
+            } else if line.count < WaveMap.minDays {
                 DashedCard {
                     Label("섬이 아직 없어요", systemImage: "water.waves").appFont(15, .bold)
                     Text("종목을 넣으면 내 자산 길로 섬이 생겨요").appFont(13)
@@ -131,7 +148,7 @@ struct WaveHomeView: View {
 
     private func islandTile(_ i: WaveEngine.Island) -> some View {
         let open = WaveMap.isOpen(i), on = i == current, st = WaveMap.stars(i)
-        let vs = starts[i]?.first.map { WaveMap.course(line, at: $0).values } ?? []
+        let vs = starts[i]?.first.map { WaveMap.course(line, at: $0, as: i).values } ?? []
         return Button { if open { withAnimation(.easeOut(duration: 0.2)) { sel = i } } } label: {
             VStack(spacing: 4) {
                 IslandShape(values: vs)
@@ -167,7 +184,7 @@ struct WaveHomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
             if best > 0 { Text("최고 \(best)점").appFont(12).foregroundStyle(Theme.muted) }
             Button {
-                if let s = starts[i]?.randomElement() { play = WaveMap.course(line, at: s) }
+                if let s = starts[i]?.randomElement() { play = WaveMap.course(line, at: s, as: i) }
             } label: {
                 Text("타러 가기").appFont(16, .bold).foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 48)
