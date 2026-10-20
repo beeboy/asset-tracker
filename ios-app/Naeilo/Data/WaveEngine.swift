@@ -37,7 +37,7 @@ struct WaveEngine {
         }
         var name: String {
             switch self {
-            case .lighthouse: return "등대! 안개 걷힘"
+            case .lighthouse: return "등대! 바닥이 보여요"
             case .turtle: return "거북이! 느릿느릿"
             case .vest: return "구명조끼!"
             case .dolphin: return "돌고래! 다음 점프 2배"
@@ -96,7 +96,7 @@ struct WaveEngine {
     }
 
     static let days = 40
-    static let secondsPerDay = 0.5
+    static let secondsPerDay = 0.57   // 점점 빨라져 한 판 실제 약 20초
     static let maxHearts = 3
     static let perfectBonus = 50       // '딱' 보너스 점수
     static let streakBonus = 20        // 연속 성공 한 번 더할 때마다
@@ -160,7 +160,7 @@ struct WaveEngine {
     private(set) var missionsDone: Set<Mission> = []
     private(set) var got: [Item] = []
     private(set) var perfectRun = 0, perfectCount = 0, maxStreak = 0, flipCount = 0, splashCount = 0, feverCount = 0
-    private(set) var feverLeft = 0.0, fogClear = 0.0, slow = 0.0, air = 0.0
+    private(set) var feverLeft = 0.0, beacon = 0.0, slow = 0.0, air = 0.0
     private(set) var vest = false, dolphin = false
     private(set) var flips = 0, combo = 0
     /// 탄 채 하루 낙폭이 이보다 크면 풍덩 (코스 변동성 2배, 최소 1.5%)
@@ -251,8 +251,9 @@ struct WaveEngine {
     mutating func tick(_ dt: Double) -> [Event] {
         guard !isOver else { return [] }
         let real = max(0, dt)
-        elapsed += slow > 0 ? real * 0.5 : real      // 거북이: 시간이 반 속도
-        slow = max(0, slow - real); fogClear = max(0, fogClear - real)
+        let speed = 1 + 0.3 * min(1, elapsed / duration)       // 뒤로 갈수록 빨라져 끝에서 1.3배
+        elapsed += (slow > 0 ? real * 0.5 : real) * speed      // 거북이: 시간이 반 속도
+        slow = max(0, slow - real); beacon = max(0, beacon - real)
         var ev: [Event] = []
         if feverLeft > 0 { feverLeft -= real; if feverLeft <= 0 { feverLeft = 0; ev.append(.fever(false)) } }
         if air > 0 { air -= real; if air <= 0 { air = 0; ev += land() } }
@@ -282,7 +283,7 @@ struct WaveEngine {
 
     private mutating func use(_ it: Item) -> [Event] {
         switch it {
-        case .lighthouse: fogClear = 5
+        case .lighthouse: beacon = 5
         case .turtle: slow = 3
         case .vest: vest = true
         case .dolphin: dolphin = true

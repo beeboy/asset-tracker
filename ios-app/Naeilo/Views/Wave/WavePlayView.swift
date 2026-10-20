@@ -1,6 +1,6 @@
 import SwiftUI
 
-// 파도 타기 한 판 (2번: 플레이 화면). 파도·안개·인물·점 효과를 Canvas 하나에 그리고 30fps 루프로 엔진을 굴린다.
+// 파도 타기 한 판 (2번: 플레이 화면). 파도·인물·점 효과를 Canvas 하나에 그리고 30fps 루프로 엔진을 굴린다.
 // 끝나면 같은 창 위에 WaveResultPopup. 진행·별 저장(4번)은 onFinish 에 붙인다.
 
 struct WavePlayView: View {
@@ -20,6 +20,8 @@ struct WavePlayView: View {
     @State private var hat = SurfCloset.hat
     /// 3년 라인은 한 번만 만든다 (바로 다시 할 때 멈칫 없게)
     @State private var line: [(d: String, v: Double)]?
+    /// 규칙 카드를 닫아야 파도가 움직인다 (바로 다시 할 땐 다시 안 뜸)
+    @State private var started = false
 
     var body: some View {
         let me = m.me ?? MeChar.current ?? MeChar()
@@ -36,12 +38,40 @@ struct WavePlayView: View {
                     Button("닫기") { dismiss() }.appFont(14, .bold)
                 }
             }
+            if g != nil && !started { rules.onTapGesture { started = true } }
             if let result { WaveResultPopup(result: result, again: again, close: { dismiss() }) }
         }
         .background(WaveDraw.sky(g?.fever ?? false).ignoresSafeArea())
         .onAppear { WaveFeedback.shared.prepare() }
         .task(id: run) { await loop() }
     }
+
+    /// 규칙: 처음 한 번 보여 주고 톡 하면 시작
+    private var rules: some View {
+        ZStack {
+            Color.black.opacity(0.3).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 8) {
+                Text("이렇게 타요").appFont(18, .heavy)
+                ForEach(Self.ruleLines, id: \.self) { Text($0).appFont(13) }
+                Text("톡 하면 시작!").appFont(15, .bold).foregroundStyle(Theme.teal)
+                    .frame(maxWidth: .infinity).padding(.top, 6)
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(20)
+            .frame(maxWidth: 320)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
+            .padding(.horizontal, 24)
+        }
+    }
+    static let ruleLines = [
+        "🌊 파도는 내 자산이 지나온 40거래일이에요. 점점 빨라져요.",
+        "⬇️ 바닥에서 톡: 보드에 타요. 바닥 그날 타면 \"딱!\" +50",
+        "⬆️ 꼭대기에서 톡: 내려요. 탄 뒤 오른 만큼 점수 (0.01% = 1점)",
+        "💦 탄 채 크게 꺼지면 풍덩, 하트 하나 잃어요. 3번이면 끝",
+        "🤸 벌고 내리면 점프! 공중에서 톡톡 하면 공중제비 점수",
+        "🔥 바닥 \"딱!\" 3번 연속이면 피버: 6초간 점수 2배",
+        "🎁 탄 채 아이템을 지나면 먹어요: 🗼 바닥 표시 · 🐢 느리게 · 🛟 풍덩 1번 막기 · 🐬 다음 점프 2배",
+    ]
 
     private func hud(_ e: WaveEngine) -> some View {
         VStack(spacing: 6) {
@@ -81,7 +111,7 @@ struct WavePlayView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Spacer()
-            if e.elapsed < 6 && !e.isOver {
+            if started && e.elapsed < 6 && !e.isOver {
                 Text(e.riding ? "꼭대기에서 톡! 내려요" : "바닥에서 톡! 타요").appFont(13, .bold)
                     .padding(.horizontal, 12).padding(.vertical, 6)
                     .background(.white.opacity(0.75), in: Capsule())
@@ -107,6 +137,7 @@ struct WavePlayView: View {
             guard var e = g, !e.isOver else { break }
             let now = Date(), dt = min(0.1, now.timeIntervalSince(last))
             last = now
+            guard started else { continue }
             let ev = e.tick(dt)
             g = e
             fx.step(dt, riding: e.riding, rising: WaveDraw.rising(e))
@@ -115,6 +146,7 @@ struct WavePlayView: View {
     }
 
     private func tap() {
+        guard started else { started = true; return }
         guard var e = g, !e.isOver else { return }
         let ev = e.riding ? e.leave() : e.board()
         g = e
@@ -327,17 +359,22 @@ enum WaveDraw {
             ctx.stroke(ride, with: .color(Color(hex: 0xFFD84D)), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
         }
 
-        // 아이템: 파도 위에 둥실 (안개 아래라 가까이 와야 보인다)
+        // 아이템: 파도 위에 둥실
         for (d, it) in e.items where d >= i0 && d <= i1 {
             let c = CGPoint(x: g.x(Double(d)), y: g.y(v[d]) - 24 + CGFloat(sin(e.elapsed * 3 + Double(d))) * 3)
             ctx.draw(Text(it.icon).font(.system(size: 24)), at: c)
         }
 
-        // 안개: 쉬움은 5거래일, 어려움은 2.5거래일 앞까지 보인다. 등대를 먹으면 잠시 걷힌다
-        let fog = g.rx + CGFloat(e.fogClear > 0 ? 12 : e.course.level == .easy ? 5 : 2.5) * g.dx
-        ctx.fill(Path(CGRect(x: fog - g.dx, y: 0, width: g.w - fog + g.dx + 10, height: g.h)),
-                 with: .linearGradient(Gradient(colors: [.white.opacity(0), .white.opacity(0.95)]),
-                                       startPoint: CGPoint(x: fog - g.dx, y: 0), endPoint: CGPoint(x: fog + g.dx * 0.3, y: 0)))
+        // 등대: 앞으로 올 바닥에 작은 노란 깃발
+        if e.beacon > 0 {
+            for i in (e.day + 1)..<max(e.day + 1, i1 + 1) where e.isBottom(i) {
+                let p = pt(i)
+                var f = Path()
+                f.move(to: CGPoint(x: p.x, y: p.y + 4)); f.addLine(to: CGPoint(x: p.x - 6, y: p.y + 14))
+                f.addLine(to: CGPoint(x: p.x + 6, y: p.y + 14)); f.closeSubpath()
+                ctx.fill(f, with: .color(Color(hex: 0xFFD84D)))
+            }
+        }
 
         // 인물
         var foot = CGPoint(x: g.rx, y: g.y(value(e, g.p)) - 6)
