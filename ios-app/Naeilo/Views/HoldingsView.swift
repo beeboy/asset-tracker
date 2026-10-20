@@ -1139,10 +1139,11 @@ struct TownView: View {
                         : CGSize(width: CGFloat([-1, 1].randomElement()! * Int.random(in: 6...12)), height: CGFloat(Int.random(in: -2...2)))   // 주로 옆으로 걷는다
                     go(id, to)
                 case 7..<9:   // 수다: 120pt 안의 가장 가까운 이웃 옆으로 걸어가 선다
-                    guard let pa = seats[id], let here = at(id),
-                          let near = (ids + [TownLook.meID]).filter({ $0 != id && !moving.contains($0) }).compactMap({ k in at(k).map { (k, $0) } })
-                            .min(by: { hypot($0.1.x - here.x, $0.1.y - here.y) < hypot($1.1.x - here.x, $1.1.y - here.y) }),
-                          hypot(near.1.x - here.x, near.1.y - here.y) < 120 else { continue }
+                    guard let pa = seats[id], let here = at(id) else { continue }
+                    let dist: (CGPoint) -> CGFloat = { hypot($0.x - here.x, $0.y - here.y) }
+                    let others: [String] = (ids + [TownLook.meID]).filter { $0 != id && !moving.contains($0) }
+                    let cands: [(String, CGPoint)] = others.compactMap { k in at(k).map { (k, $0) } }
+                    guard let near = cands.min(by: { dist($0.1) < dist($1.1) }), dist(near.1) < 120 else { continue }
                     let (b, pb) = near
                     let side: CGFloat = here.x < pb.x ? -1 : 1
                     let to = CGSize(width: pb.x + side * 30 - pa.x, height: pb.y + 2 - pa.y)
