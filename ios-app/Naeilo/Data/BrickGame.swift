@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import CoreMotion
+import Security
 import AVFoundation
 
 // 판 깨기: 1000칸으로 하는 거꾸로 벽돌깨기. 채운 칸이 벽돌이고, 판(패들)은 위에, 공은 아래 벽돌로 떨어진다.
@@ -255,10 +256,25 @@ struct GameRecord: Codable, Equatable {
     struct Play: Codable, Equatable, Hashable { let score: Int; let p: String; let at: Date }
 
     private static let key = "game.v1"
+    /// 앱을 지웠다 깔아도 남도록 키체인에도 한 벌 둔다 (UserDefaults 는 앱과 같이 지워진다)
+    private static let kc: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.game", kSecAttrAccount as String: key]
     static func load() -> GameRecord {
-        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(GameRecord.self, from: $0) } ?? GameRecord()
+        if let d = UserDefaults.standard.data(forKey: key), let r = try? JSONDecoder().decode(GameRecord.self, from: d) { return r }
+        var q = kc; q[kSecReturnData as String] = true
+        var out: AnyObject?
+        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data,
+              let r = try? JSONDecoder().decode(GameRecord.self, from: d) else { return GameRecord() }
+        UserDefaults.standard.set(d, forKey: key)
+        return r
     }
-    func save() { if let d = try? JSONEncoder().encode(self) { UserDefaults.standard.set(d, forKey: Self.key) } }
+    func save() {
+        guard let d = try? JSONEncoder().encode(self) else { return }
+        UserDefaults.standard.set(d, forKey: Self.key)
+        let set: [String: Any] = [kSecValueData as String: d, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock]
+        if SecItemUpdate(Self.kc as CFDictionary, set as CFDictionary) == errSecItemNotFound {
+            SecItemAdd(Self.kc.merging(set) { $1 } as CFDictionary, nil)
+        }
+    }
 
     func open(_ n: Int, _ lv: GameLevel) -> Bool { n == 0 || cleared[lv.rawValue, default: []].contains(n - 1) }
     func bestOf(_ n: Int, _ lv: GameLevel) -> Int? { best["\(lv.rawValue).\(n)"] }

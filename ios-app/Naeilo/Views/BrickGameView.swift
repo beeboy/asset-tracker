@@ -146,7 +146,7 @@ struct BrickGameHub: View {
         let name = id == "me" ? ((m.me?.name).flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "나")) : (Shelter.friends.first { $0.id == id }?.name ?? id)
         return Button { rec.player = id } label: {
             VStack(spacing: 4) {
-                CharPixel(id: id, width: 36, height: 51)
+                CharPixel(id: id, width: 36, height: 51).charIdle(id.count)
                 Text(name).appFont(12, .bold).lineLimit(1)
             }
             .frame(width: 72, height: 84)
@@ -206,6 +206,9 @@ struct BrickPlayView: View {
     let onClose: ((GameStage, GameLevel, Bool)?) -> Void
     @Environment(\.scenePhase) private var scenePhase
     @State private var saved = false
+    @State private var pace = PaddleStride()
+    @Environment(AppModel.self) private var m
+    @Environment(\.displayScale) private var px
 
     private let brickDark = Theme.teal
     private let brickLight = Color(hex: 0x7FD3C9, dark: 0x3C8F86)
@@ -223,6 +226,7 @@ struct BrickPlayView: View {
             let _ = g.tick(tl.date)
             screen(g, tl.date)
         }
+        .pausesRefresh()
         .contentShape(Rectangle())
         .onTapGesture { g.launch() }
         .onAppear { g.begin() }
@@ -335,9 +339,9 @@ struct BrickPlayView: View {
     /// 끼어든 인물 그림: 기본 인물은 도트 그림, 보조 인물은 마네킹 샘플 조합
     @ViewBuilder private func guestFigure(_ id: String) -> some View {
         if id.hasPrefix("s:"), let sm = MeSample.all.first(where: { $0.name == String(id.dropFirst(2)) }) {
-            MeAvatar(me: MeChar(name: sm.name, parts: sm.parts), width: 30, height: 42)
+            MeAvatar(me: MeChar(name: sm.name, parts: sm.parts), width: 30, height: 42).charIdle(sm.name.count)
         } else {
-            Pixel(name: "spr_\(id)", width: 30, height: 42)
+            Pixel(name: "spr_\(id)", width: 30, height: 42).charIdle(id.count)
         }
     }
     private func guestName(_ id: String) -> String {
@@ -499,7 +503,10 @@ struct BrickPlayView: View {
             let pw = g.paddleW
             ctx.fill(Path(roundedRect: r(g.paddleX - pw / 2, BrickGame.PY, pw, BrickGame.PH), cornerRadius: 0.4 * s), with: .color(Theme.ink))
             if let sp = ctx.resolveSymbol(id: "player") {
-                ctx.draw(sp, at: CGPoint(x: g.paddleX * s, y: (BrickGame.PY - 1.8 + sin(now.timeIntervalSinceReferenceDate * 3) * 0.12) * s))
+                // 도트가 화면 픽셀에 딱 맞게 (어긋나면 머리 줄이 뭉개진다), 발끝 줄을 판 윗면에 붙인다
+                func snap(_ v: Double) -> Double { (v * px).rounded() / px }
+                let foot = sp.size.height * pace.foot
+                ctx.draw(sp, at: CGPoint(x: snap(g.paddleX * s - sp.size.width / 2), y: snap(BrickGame.PY * s - foot)), anchor: .topLeading)
             }
             // 떨어지는 물건 (위로 올라온다)
             for d in g.drops {
@@ -532,10 +539,30 @@ struct BrickPlayView: View {
                 ctx.fill(Path(r(BrickGame.W - 0.25, BrickGame.PY + 2, 0.25, BrickGame.H - BrickGame.PY - 2)), with: .color(Theme.yellow.opacity(0.6)))
             }
         } symbols: {
-            CharPixel(id: g.player, width: 3.6 * s * 24 / 34, height: 3.6 * s).tag("player")
+            runner(g, s, now).tag("player")
             ForEach(g.items, id: \.self) { id in Pixel(name: "art_" + id, width: 2.2 * s, height: 2.2 * s).tag(id) }
         }
     }
+
+    /// 판 위 선수: 판이 움직이는 쪽으로 걷고, 멈추면 앞을 보고 숨쉰다 (동네·쉼터와 같은 3/4 그림)
+    @ViewBuilder private func runner(_ g: BrickGame, _ s: Double, _ now: Date) -> some View {
+        let t = now.timeIntervalSinceReferenceDate
+        let st = pace.step(g.paddleX, t)
+        // 걸을 땐 윗몸도 들썩인다 (머리 위 여유 줄이 있어 안 잘린다). 서 있을 땐 숨은 그리는 쪽 들썩임으로
+        let k = Int(t / 0.15), f = CharScene(dir: st.dir, leg: st.walking ? [0, 1, 0, 2][k % 4] : 0, lift: st.walking && k % 2 == 1, room: true)
+        let me = g.player == "me" ? m.me : nil
+        let img = me.flatMap { MeMotion.image($0, f) } ?? (FriendMotion.has(g.player) ? FriendMotion.image(g.player, f) : nil)
+        if let img = pace.measure(img) {
+            let h = me != nil ? MeArt.H : FriendMotion.H, w = me != nil ? MeArt.W : FriendMotion.W
+            let d = dot(s, h)
+            SceneSprite(img: img, width: d * Double(w), height: d * Double(h), rows: h)
+        } else {
+            CharPixel(id: g.player, width: dot(s, 34) * 24, height: dot(s, 34) * 34)
+        }
+    }
+
+    /// 선수 한 도트 크기: 화면 픽셀 정수배로 내림
+    private func dot(_ s: Double, _ h: Int = FriendMotion.H) -> Double { max(1, (3.6 * s / Double(h) * px).rounded(.down)) / px }
 
     /// 특수 블럭 한 칸 (폭탄은 반짝인다)
     private func special(_ ctx: inout GraphicsContext, _ sp: BrickGame.Special, _ rc: CGRect, _ now: Date) {
@@ -613,7 +640,7 @@ struct BrickPlayView: View {
     private func intro(_ g: BrickGame) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                CharPixel(id: g.player, width: 34, height: 48)
+                CharPixel(id: g.player, width: 34, height: 48).charIdle()
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(g.stage.bg.volume) \(g.stage.bg.name)").appFont(28, .bold).fixedSize(horizontal: false, vertical: true)
                     Text(g.stage.scene).appFont(19).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
@@ -643,7 +670,7 @@ struct BrickPlayView: View {
     private func bubble<C: View>(_ g: BrickGame, _ line: String, sub: String?, @ViewBuilder buttons: () -> C) -> some View {
         VStack(spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
-                CharPixel(id: g.player, width: 34, height: 48)
+                CharPixel(id: g.player, width: 34, height: 48).charIdle()
                 VStack(alignment: .leading, spacing: 4) {
                     Text(line).appFont(21, .bold).fixedSize(horizontal: false, vertical: true)
                     if let sub { Text(sub).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
@@ -718,4 +745,69 @@ private struct Alive: ViewModifier {
             .rotationEffect(.degrees(sin((t + seed) * 1.3) * 1.5), anchor: .bottom)
             .scaleEffect(x: 1, y: 1 + sin((t + seed) * 2.4 + 1) * 0.012, anchor: .bottom)
     }
+}
+
+/// 판 걸음 기억: 직전 판 위치로 걷는 방향을 정한다 (그리기 중에 바꿔도 화면을 다시 부르지 않게 관찰 안 함)
+private final class PaddleStride {
+    private var lastX = BrickGame.W / 2, movedAt = 0.0, dir = CharDir.down
+    /// 그림 높이 중 발끝(마지막 칠한 줄)까지의 비율. 그림마다 아래 빈 줄 수가 달라 한 번씩 재 둔다
+    var foot = 1.0
+    private var feet: [ObjectIdentifier: (src: UIImage, out: UIImage, foot: Double)] = [:]
+    /// 그림 위에 빈 줄 한 줄을 덧대 돌려주고 발끝을 잰다 (그림이 없으면 판 바로 위).
+    /// 시오처럼 머리가 그림 맨 윗줄에 닿으면 가장자리라 윗줄이 반쯤 지워져 보여서 덧댄다
+    func measure(_ img: UIImage?) -> UIImage? {
+        guard let img else { foot = 1; return nil }
+        let k = ObjectIdentifier(img)
+        if let c = feet[k], c.src === img { foot = c.foot; return c.out }
+        guard let cg = img.cgImage else { foot = 1; return img }
+        let w = cg.width, h = cg.height + 1
+        var p = [UInt32](repeating: 0, count: w * h)
+        let out: CGImage? = p.withUnsafeMutableBytes { b in
+            guard let ctx = CGContext(data: b.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            ctx.interpolationQuality = .none
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h - 1))   // 아래 붙여 그려 맨 윗줄이 빈다
+            return ctx.makeImage()
+        }
+        guard let out else { foot = 1; return img }
+        let last = (0..<h).last { y in (0..<w).contains { p[y * w + $0] >> 24 != 0 } } ?? h - 1
+        if feet.count > 64 { feet.removeAll() }
+        let ui = UIImage(cgImage: out)
+        foot = Double(last + 1) / Double(h)
+        feet[k] = (img, ui, foot)
+        return ui
+    }
+    func step(_ x: Double, _ t: Double) -> (dir: CharDir, walking: Bool) {
+        let dx = x - lastX
+        if abs(dx) > 0.02 { dir = dx > 0 ? .right : .left; movedAt = t }
+        lastX = x
+        let walking = t - movedAt < 0.2
+        return (walking ? dir : .down, walking)
+    }
+}
+
+/// 미니 게임이 켜져 있는 동안 시세·위젯 갱신을 미룬다 (App 의 1분 갱신이 본다)
+@MainActor enum GamePause {
+    static var count = 0
+    static var on: Bool { count > 0 }
+}
+
+private struct RefreshPause: ViewModifier {
+    var active: Bool
+    @State private var held = false
+    func body(content: Content) -> some View {
+        content
+            .onAppear { hold(active) }
+            .onChange(of: active) { _, v in hold(v) }
+            .onDisappear { hold(false) }
+    }
+    private func hold(_ v: Bool) {
+        guard v != held else { return }
+        held = v
+        GamePause.count += v ? 1 : -1
+    }
+}
+
+extension View {
+    func pausesRefresh(_ active: Bool = true) -> some View { modifier(RefreshPause(active: active)) }
 }

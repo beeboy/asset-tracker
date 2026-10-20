@@ -173,7 +173,8 @@ struct Pixel: View {
     }
 }
 
-/// 서 있는 인물 숨쉬기: 발 기준으로 아주 살짝 커졌다 작아지고, 가끔 움찔한다.
+/// 서 있는 인물 숨쉬기: 1pt 들썩였다 내려오고, 가끔 움찔한다. 늘리지 않아 픽셀이 뭉개지지 않는다.
+/// 인물마다 박자·시작이 달라 다 같이 숨쉬지 않는다.
 /// 화면에 있을 때만 돌고('동작 줄이기'면 끔), 걷기·숨 장면이 있는 인물(CharFigure·TownWalker)엔 붙이지 않는다
 struct CharIdle: ViewModifier {
     var seed = 0
@@ -182,16 +183,16 @@ struct CharIdle: ViewModifier {
     @State private var hop: CGFloat = 0
     func body(content: Content) -> some View {
         content
-            .scaleEffect(x: up ? 1.012 : 1, y: up ? 1.025 : 1, anchor: .bottom)
-            .offset(y: hop)
+            .offset(y: (up ? -1 : 0) + hop)
             .task(id: reduce) {
                 guard !reduce else { still(); return }
-                try? await Task.sleep(for: .milliseconds(seed % 9 * 130))   // 인물마다 박자를 어긋나게
-                guard !Task.isCancelled else { return }
-                withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { up = true }
+                let beat = Double.random(in: 1.2...2.0)
+                try? await Task.sleep(for: .seconds(Double.random(in: 0...beat)))
                 while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(Double.random(in: 6...12)))
+                    try? await Task.sleep(for: .seconds(beat * Double.random(in: 0.8...1.25)))
                     guard !Task.isCancelled else { break }
+                    up.toggle()
+                    guard !up, Int.random(in: 0..<5) == 0 else { continue }
                     withAnimation(.easeOut(duration: 0.09)) { hop = -1.5 }
                     try? await Task.sleep(for: .milliseconds(110))
                     withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { hop = 0 }
