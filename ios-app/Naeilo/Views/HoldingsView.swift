@@ -12,6 +12,7 @@ struct HoldingsView: View {
     @AppStorage("holdUsd") private var inUsd = false // 목록 금액: 미국 종목을 달러로 볼지
     @Environment(\.dynamicTypeSize) private var dts
     @State private var page = 0                     // 0 내 종목, 1 소식판, 2 동네 (미션 탭처럼 위에서 고른다)
+    @AppStorage("town.arrive") private var arrive = ""
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
 
     var body: some View {
@@ -25,7 +26,6 @@ struct HoldingsView: View {
                 HoldPagePicker(page: $page)
                 if page == 1 { HoldingsNews() } else {
                 totalCard(us: us.count, kr: kr.count)
-                TownButton { _ in TownView() }   // 수익 박스 바로 아래 [동네]: 전체 화면으로
                 totalChart(rows)
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -67,6 +67,8 @@ struct HoldingsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
         .navigationDestination(for: String.self) { _ in AddHoldingView() }
+        .onAppear { if !arrive.isEmpty { page = 1 } }   // 방금 더한 종목: 소식판의 [동네]가 바로 연다
+        .onChange(of: arrive) { if !$1.isEmpty { page = 1 } }
         .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
@@ -805,6 +807,7 @@ struct HoldingsNews: View {
         let ks = rows.filter { m.prices.hasHistory($0.sym) }.map { ($0, m.metrics($0)) }
         VStack(alignment: .leading, spacing: 12) {
             if let c = compare(ks) { compareCard(c) }
+            TownButton { _ in TownView() }   // 시장과 비교 밑 [동네]: 전체 화면으로
             moversCard(rows)
             nearCard(ks)
         }

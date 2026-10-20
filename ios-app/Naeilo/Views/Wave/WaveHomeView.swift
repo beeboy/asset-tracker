@@ -311,7 +311,7 @@ struct GameHeader: View {
     }
 }
 
-/// 종목 탭 수익 박스 아래 [동네] 한 줄: 파도처럼 전체 화면으로 동네를 연다 (종목 탭은 동네를 안 그린다).
+/// 종목 탭 소식판 시장과 비교 밑 [동네] 한 줄: 파도처럼 전체 화면으로 동네를 연다 (종목 탭은 동네를 안 그린다).
 /// 방금 종목을 더했으면(town.arrive) 바로 연다. 동네 본문은 부르는 쪽이 준다
 struct TownButton<Town: View>: View {
     @ViewBuilder var town: (ScrollViewProxy) -> Town
