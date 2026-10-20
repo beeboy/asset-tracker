@@ -292,13 +292,13 @@ struct ParallelView: View {
 
     static func md(_ d: String) -> String {
         guard let x = Day.date(d) else { return d }
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy.M.d"
+        let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yy.M.d"
         return f.string(from: x)
     }
     /// 그래프 축: "9.11"
     static func mdShort(_ d: String) -> String {
         guard let x = Day.date(d) else { return d }
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M.d"
+        let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "M.d"
         return f.string(from: x)
     }
     /// "**굵게**" 표시가 든 문구

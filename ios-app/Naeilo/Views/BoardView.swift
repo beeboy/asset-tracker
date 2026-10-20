@@ -243,7 +243,8 @@ struct WeekForecastCard: View {
 
     /// 범위 숫자: 억 단위 소수 한 자리 (lo·hi가 같게 반올림되면 두 자리), 1억 아래는 만원 단위
     static func eok(_ v: Double, _ d: Int) -> String {
-        v < 1e8 ? AppModel.man((v / 1e5).rounded() * 1e5) : String(format: String(localized: "%.\(String(describing: d))f억"), v / 1e8)
+        if AppModel.en { return AppModel.krwC(v) }
+        return v < 1e8 ? AppModel.man((v / 1e5).rounded() * 1e5) : String(format: "%.\(d)f억", v / 1e8)
     }
 
     // 이번 주 예보: 그 주 처음 연 날에 금요일 평가액 범위를 적어 두고, 금요일 종가로 판정한다.

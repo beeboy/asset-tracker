@@ -15,7 +15,7 @@ extension AppModel {
         let d = [rs, rec].compactMap { $0 }.min()
         return min(Date(), d ?? Date())
     }
-    var pathStartText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = String(localized: "M월 d일"); return f.string(from: pathStartDate) }
+    var pathStartText: String { let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = String(localized: "M월 d일"); return f.string(from: pathStartDate) }
     var pathStartMonth: String { String(localized: "\(String(describing: Calendar.current.component(.month, from: pathStartDate)))월") }
     /// pts = 실제 평가액 (시작부터 년, 원). 거래일마다 하나, 끝은 오늘 지금 평가액
     struct MyPath { let start: Double; let end: Double; let key: Double; let monthly: Double; let pts: [(Double, Double)]; let act: (Double) -> Double; let need: (Double) -> Double
@@ -86,9 +86,10 @@ extension AppModel {
     var myPathGapToday: Double { let p = myPath; let n = p.need(p.start); return n > 0 ? p.act(p.start) / n - 1 : 0 }
 
     static func manS(_ krw: Double) -> String { (krw >= 0 ? "+" : "−") + man(abs(krw)) }
-    static func won1(_ krw: Double) -> String { krw > 0 && krw < 1e4 ? Int(krw.rounded()).formatted() + String(localized: "원") : man(krw) }
+    static func won1(_ krw: Double) -> String { en ? krwC(krw) : krw > 0 && krw < 1e4 ? Int(krw.rounded()).formatted() + String(localized: "원") : man(krw) }
     /// 읽기 쉬운 금액: 4만 6천원 · 9천원 (천원 단위 반올림, 1천만원 넘으면 man)
     static func wonRead(_ krw: Double) -> String {
+        if en { return krwC(krw) }
         let k = Int((krw / 1e3).rounded())
         if k <= 0 { return won1(krw) }
         if k >= 10_000 { return man(krw) }
@@ -2221,7 +2222,7 @@ struct FxImpactView: View {
         let r = what ?? BASE, dv = valAt(r) - m.total
         let per10 = usdV * 10 / BASE
         let T = max(0.01, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400))
-        let goalD = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.M"; return f.string(from: m.goalToDate) }()
+        let goalD = { let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yyyy.M"; return f.string(from: m.goalToDate) }()
         let at = { (z: Double) in Int(SiteCalc.fxAt(now: FX, t: T, z: z, mu: mu, vol: vol).rounded()).formatted() }
         let won = { (v: Double) in String(localized: "\(String(describing: Int(v.rounded()).formatted()))원") }
         let eff1y = c?.ret_1y.map { usdW * $0 }
@@ -2229,7 +2230,7 @@ struct FxImpactView: View {
             let s = Market.shared.marUse?.date ?? ""
             let p = s.split(separator: "-").compactMap { Int($0) }
             if p.count == 3 { return "\(p[1])/\(p[2])" }
-            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M/d"; return f.string(from: Date())
+            let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "M/d"; return f.string(from: Date())
         }()
         let why = usdW >= 0.995 ? String(localized: "주식 100% 달러") : String(localized: "달러 \(String(describing: AppModel.pct(usdW)))")
         let lo1 = c?.lo1, hi1 = c?.hi1

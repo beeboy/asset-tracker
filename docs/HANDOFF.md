@@ -54,6 +54,13 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 영문 로컬리제이션 2단계: 영어 번역 (2026-10-20, 로컬 커밋)
+- Localizable.xcstrings 한글 키 3,095줄 모두 en 채움(짧은 영어). 자리표(%@ 등) 개수 검사함.
+- 금액: 앱 언어가 영어면 `AppModel.en` → `krwC`(₩2.3M·₩24K)로 man·eok·won·wonK·aboutWon·won1·wonRead·BoardView.eok가 바로 돌려줌. 날짜는 `AppModel.dateLocale`(영어면 en_US).
+- 조사(josa)는 영어면 빈 글. 말투 바꾸기(Guide.swift Voice)는 한국어 문법용이라 번역 목록에서 뺌.
+- 영어 시뮬레이터로 홈·종목·분석·미션·설정 확인. 남은 한글: 인물 대사(lines_ko.json, 13,533줄), 인물 소개·서재(SampleData·story), 종목 이름 데이터, ShareCard 날짜(다른 세션 작업 중이라 손 안 댐).
+- 번역은 기계 초벌: 자리 순서가 한국어와 다른 문장은 일부만 고침(%1$@ 꼴). 화면 보며 더 다듬을 것.
+
 ## 영문 로컬리제이션 1단계: 바탕 + 글 모으기 (2026-10-20, 로컬 커밋)
 - `ios-app/Naeilo/Localizable.xcstrings`(원문 ko, 약 3,100줄) + 영어(en) 추가. 개발 언어 ko, Info.plist `CFBundleLocalizations` ko·en. 영어 번역은 아직 없음(영어 기기도 한국어 그대로).
 - 코드 속 한글: `Text("…")`·`Button("…")` 등은 그대로(자동), 그 밖은 `String(localized:)`로 감쌈(`ios-app/tools/l10n_wrap.py`). 끼워 넣는 값은 `String(describing:)`로 감싸 지금 모양 그대로. 사전 열쇠("키": 값)는 찾기용이라 안 감쌈.

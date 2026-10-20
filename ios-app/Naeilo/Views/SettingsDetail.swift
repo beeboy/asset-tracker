@@ -180,7 +180,7 @@ struct SyncView: View {
         var s = String(localized: "오픈 API: ")
         guard TossFeed.base != nil else { return s + String(localized: "주소 없음") }
         if t > 0 {
-            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+            let f = DateFormatter(); f.locale = AppModel.dateLocale
             let d = Date(timeIntervalSince1970: t)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : String(localized: "M월 d일 a h:mm")
             s += String(localized: "마지막 성공 \(String(describing: f.string(from: d)))")
@@ -302,7 +302,7 @@ struct SyncView: View {
             }
         } message: {
             let f = DateFormatter(), b = pending
-            let _ = { f.locale = Locale(identifier: "ko_KR"); f.dateFormat = String(localized: "M월 d일 a h:mm") }()
+            let _ = { f.locale = AppModel.dateLocale; f.dateFormat = String(localized: "M월 d일 a h:mm") }()
             Text(String(localized: "\(String(describing: b.map { f.string(from: $0.at) } ?? ""))에 저장한 파일 (종목 \(String(describing: b?.holdings.count ?? 0))개). 지금 이 폰의 종목과 미션 진행은 이 파일 값으로 바뀌어요.") + (sync.isOn ? String(localized: " 동기화가 켜져 있어서 다른 기기에도 보내져요.") : ""))
         }
     }
@@ -313,14 +313,14 @@ struct SyncView: View {
         case .idle: return sync.isDev ? String(localized: "같은 GitHub 계정의 개발자 기기끼리 맞춰져요") : String(localized: "같은 비밀번호를 넣은 기기끼리 맞춰져요")
         case .working: return String(localized: "맞추는 중…")
         case .ok(let d):
-            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "a h:mm"
+            let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "a h:mm"
             return String(localized: "마지막으로 맞춘 때: \(String(describing: f.string(from: d)))")
         case .failed(let e): return String(localized: "맞추지 못했어요: \(String(describing: e))")
         }
     }
 
     private func conflictCard(_ c: Sync.Remote) -> some View {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = String(localized: "M월 d일 a h:mm")
+        let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = String(localized: "M월 d일 a h:mm")
         let n = (c.state["holdings"]?.value as? [[String: Any]])?.count ?? 0
         return Card {
             Text("다른 기기에 저장된 값이 있어요").appFont(15, .bold)

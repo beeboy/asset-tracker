@@ -136,7 +136,7 @@ final class Market {
     }
 
     var asOfText: String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+        let f = DateFormatter(); f.locale = AppModel.dateLocale
         if let s = site, let t = s.q.values.map(\.at).max(), t > 0 {
             let d = Date(timeIntervalSince1970: t)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm" : String(localized: "M월 d일 a h:mm")

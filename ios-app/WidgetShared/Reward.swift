@@ -81,6 +81,7 @@ struct WChar: Identifiable {
     }
     /// 이/가: 한글은 받침, 영문 티커는 읽는 소리 (L·M·N·R 로 끝나면 받침)
     static func josa(_ s: String) -> String {
+        if WL.en { return "" }   // 영어엔 조사가 없다
         guard let ch = s.unicodeScalars.last else { return "가" }
         if (0xAC00...0xD7A3).contains(ch.value) { return (ch.value - 0xAC00) % 28 == 0 ? "가" : "이" }
         return "LMNR".unicodeScalars.contains(ch) ? "이" : "가"

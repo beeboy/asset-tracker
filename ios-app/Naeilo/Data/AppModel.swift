@@ -167,7 +167,7 @@ final class AppModel {
         var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
         let now = Date(), wd = c.component(.weekday, from: now)
         let fri = c.date(byAdding: .day, value: wd == 1 ? -2 : 6 - wd, to: now) ?? now
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.timeZone = c.timeZone; f.dateFormat = "M/d"
+        let f = DateFormatter(); f.locale = AppModel.dateLocale; f.timeZone = c.timeZone; f.dateFormat = "M/d"
         return f.string(from: fri)
     }
 
@@ -180,8 +180,18 @@ final class AppModel {
     var monthly = 0.0
 
     // MARK: 형식
+    /// 앱 언어가 영어면 금액은 만·억 대신 기기 서식으로 (₩2.3M). 한 번만 읽는다
+    static let en = Bundle.main.preferredLocalizations.first == "en"
+    /// 날짜 글자(오전·오후, 달 이름)도 앱 언어를 따른다
+    static let dateLocale = Locale(identifier: en ? "en_US" : "ko_KR")
+    static func krwC(_ krw: Double) -> String {
+        let a = abs(krw), u: [(Double, String)] = [(1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")]
+        let s = u.first { a >= $0.0 }.map { (a / $0.0).formatted(.number.precision(.significantDigits(1...3))) + $0.1 } ?? Int(a.rounded()).formatted()
+        return (krw < 0 ? "−" : "") + "₩" + s
+    }
     /// 1억 이상은 "5억 2,528만"처럼 억과 만을 나눠 쓴다 (만 단위에 다섯 자리 숫자는 읽기 어렵다). 만·억 뒤 "원"은 뺀다 (글줄이기)
     static func man(_ krw: Double) -> String {
+        if en { return krwC(krw) }
         let n = Int((krw / 1e4).rounded())
         let a = abs(n), sign = n < 0 ? "−" : ""
         guard a >= 10_000 else { return sign + a.formatted(.number.grouping(.automatic)) + String(localized: "만") }
@@ -190,6 +200,7 @@ final class AppModel {
     }
     /// 웹 krw()와 같은 표시: 1억 넘으면 소수 둘째 자리 억 (5.25억), 1만 넘으면 만 (826만). 내 길·전망·홈 평가액
     static func eok(_ krw: Double) -> String {
+        if en { return krwC(krw) }
         let a = abs(krw), s = krw < 0 ? "−" : ""
         if a >= 1e8 { return s + String(format: a >= 1e10 ? String(localized: "%.0f억") : String(localized: "%.2f억"), a / 1e8) }
         if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + String(localized: "만") }
@@ -212,6 +223,7 @@ final class AppModel {
     /// 금액 어림: 만원 반올림, 1억 이상은 "1.2억원" (부호 없음)
     static func aboutWon(_ krw: Double) -> String {
         let a = abs(krw)
+        if en { return krwC(a) }
         return a >= 1e8 ? String(format: String(localized: "%.1f억"), a / 1e8) : Int((a / 1e4).rounded()).formatted() + String(localized: "만")
     }
     /// 아직 값이 없으면 0 대신 "—"
@@ -432,7 +444,7 @@ final class AppModel {
     /// 다음 물건까지 남은 날
 
     // 오늘 숫자와 질문은 내 종목의 실제 시세로 만든다 (Market: 전일 종가 → 지금, 종목 통화 기준)
-    static func won(_ krw: Double) -> String { abs(krw) < 1e4 ? Int(abs(krw).rounded()).formatted() + String(localized: "원") : wonK(abs(krw) / 1e4) }
+    static func won(_ krw: Double) -> String { en ? krwC(abs(krw)) : abs(krw) < 1e4 ? Int(abs(krw).rounded()).formatted() + String(localized: "원") : wonK(abs(krw) / 1e4) }
     /// 오늘 많이 움직인 순서
     var movers: [Row] { rows.sorted { abs($0.sym.quote.change) > abs($1.sym.quote.change) } }
     /// 홈 말풍선 정보 문장: 오늘 평가액 움직임(원화)에 크게 기여한 종목 1~2개. 전체 움직임의 30% 이상일 때만 이름을 쓴다

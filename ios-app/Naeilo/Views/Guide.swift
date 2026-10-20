@@ -73,11 +73,11 @@ struct GuideBubble: View {
 /// 이르: 차분한 반말, 서두르지 말라고 · 수아: 공손한 해요체, 제때
 enum Voice {
     private static let banmal: [(String, String)] = [
-        (String(localized: "하시는군요."), String(localized: "하는구나.")), (String(localized: "드리지 않아요"), String(localized: "주지 않아")), (String(localized: "하셔야 해요"), String(localized: "해야 해")), (String(localized: "같이 봐요."), String(localized: "같이 보자.")),
-        (String(localized: "정해요."), String(localized: "정하자.")), (String(localized: "싶나요?"), String(localized: "싶어?")), (String(localized: "아니에요"), String(localized: "아니야")), (String(localized: "이에요"), String(localized: "이야")), (String(localized: "예요"), String(localized: "야")),
-        (String(localized: "보세요"), String(localized: "봐")), (String(localized: "넣으세요"), String(localized: "넣어")), (String(localized: "주세요"), String(localized: "줘")),
+        ("하시는군요.", "하는구나."), ("드리지 않아요", "주지 않아"), ("하셔야 해요", "해야 해"), ("같이 봐요.", "같이 보자."),
+        ("정해요.", "정하자."), ("싶나요?", "싶어?"), ("아니에요", "아니야"), ("이에요", "이야"), ("예요", "야"),
+        ("보세요", "봐"), ("넣으세요", "넣어"), ("주세요", "줘"),
     ]
-    private static let ending = try! NSRegularExpression(pattern: String(localized: "(어|아|해|여|와|워|꿔|춰|써|봐|돼|줘|져|려|내|가|서)요([.?!,]|$)"))
+    private static let ending = try! NSRegularExpression(pattern: "(어|아|해|여|와|워|꿔|춰|써|봐|돼|줘|져|려|내|가|서)요([.?!,]|$)")
     private static let pre: [String: [Pose: String]] = [
         "sio": [.wave: String(localized: "왔네. "), .point: String(localized: "짧게. "), .spread: String(localized: "셌어. ")],
         "seonbae": [.wave: String(localized: "왔어? ")],

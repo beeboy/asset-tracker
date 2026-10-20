@@ -176,7 +176,7 @@ struct InvestBranch: View {
     /// 출발일 "2026-09-11" → "26.9.11~"
     static func since(_ d: String) -> String {
         guard let x = Day.date(d) else { return d }
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy.M.d"
+        let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yy.M.d"
         return f.string(from: x) + "~"
     }
 }

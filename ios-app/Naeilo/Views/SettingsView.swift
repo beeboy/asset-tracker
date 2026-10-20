@@ -343,7 +343,7 @@ struct TossKeyView: View {
         let t = TossFeed.okAt
         var s = ""
         if t > 0 {
-            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+            let f = DateFormatter(); f.locale = AppModel.dateLocale
             let d = Date(timeIntervalSince1970: t)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : String(localized: "M월 d일 a h:mm")
             s = String(localized: "마지막으로 받은 때 \(String(describing: f.string(from: d)))")
@@ -455,7 +455,7 @@ struct AlpacaKeyView: View {
         let t = AlpacaFeed.okAt
         var s = ""
         if t > 0 {
-            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+            let f = DateFormatter(); f.locale = AppModel.dateLocale
             let d = Date(timeIntervalSince1970: t)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : String(localized: "M월 d일 a h:mm")
             s = String(localized: "마지막으로 받은 때 \(String(describing: f.string(from: d)))")
@@ -539,7 +539,7 @@ struct LongbridgeKeyView: View {
         let t = LongbridgeFeed.okAt
         var s = ""
         if t > 0 {
-            let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
+            let f = DateFormatter(); f.locale = AppModel.dateLocale
             let d = Date(timeIntervalSince1970: t)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : String(localized: "M월 d일 a h:mm")
             s = String(localized: "마지막으로 받은 때 \(String(describing: f.string(from: d)))")

@@ -74,7 +74,7 @@ struct Sparkline: View {
 struct Scrub {
     let date: (Double) -> Date
     let value: (Double) -> String
-    static let fmt: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.MM.dd HH:mm"; return f }()
+    static let fmt: DateFormatter = { let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yyyy.MM.dd HH:mm"; return f }()
     /// 기간 그래프: 왼쪽 끝 = 기간 전, 오른쪽 끝 = 지금
     static func period(_ p: Period, _ value: @escaping (Double) -> String) -> Scrub {
         let days: Double = p == .d1 ? 1 : p == .w1 ? 7 : p.span * 1095

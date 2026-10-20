@@ -36,6 +36,7 @@ struct GoalSim {
 
 extension AppModel {
     static func wonK(_ m: Double) -> String {
+        if en { return krwC(m < 0.5 ? 0 : m * 1e4) }
         if m < 0.5 { return String(localized: "0원") }
         if m >= 10000 { return ((m / 1000).rounded() / 10).formatted() + String(localized: "억") }
         return Int(m.rounded()).formatted() + String(localized: "만")
@@ -65,7 +66,7 @@ extension AppModel {
     var goalToDate: Date { gTo.flatMap(Day.date) ?? Calendar.current.date(byAdding: .year, value: gY, to: goalFromDate)! }
     /// 목표 시작일부터 목표일까지 (년)
     var goalSpan: Double { max(1.0 / 12, goalToDate.timeIntervalSince(goalFromDate) / (365.25 * 86400)) }
-    var goalToText: String { let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.M.d"; return f.string(from: goalToDate) }
+    var goalToText: String { let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yyyy.M.d"; return f.string(from: goalToDate) }
 
     /// 사이트 목표(goal)를 그대로 받는다: 금액·목표일·시작일·매달 넣는 돈 (원 → 만원)
     func takeSiteGoal(_ g: [String: Any]) {
