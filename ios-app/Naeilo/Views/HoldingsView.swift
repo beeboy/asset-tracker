@@ -1754,6 +1754,18 @@ struct TownFace: View {
                 }
             }
     }
+    /// 옆으로 걸을 때 덧그림도 옆모습으로: 한 칸 앞으로 (옆모습 얼굴과 같이). 유명인 머리는 앞쪽 옆머리를 빼고 뒤쪽 옆머리로 뒤통수를 덮는다. 왼쪽은 뒤집는다
+    static func turn(_ px: [(Int, Int, Int, Int, UInt32)], _ d: CharDir?, hair: Bool = false) -> [(Int, Int, Int, Int, UInt32)] {
+        guard d == .left || d == .right else { return px }
+        return px.compactMap { r in
+            var (x, y, w, h, c) = r
+            if hair && y >= 5 && x >= 14 { return nil }
+            if hair && y >= 5 && x + w <= 7 { w = 11 - x }
+            x += 1
+            if d == .left { x = MeArt.W - x - w }
+            return (x, y, w, h, c)
+        }
+    }
     /// (x, y, 너비, 높이, 색). y 는 위에서부터
     static func pixels(_ hat: Int, _ c: UInt32) -> [(Int, Int, Int, Int, UInt32)] {
         let dark = ((c >> 16 & 0xFF) * 7 / 10) << 16 | ((c >> 8 & 0xFF) * 7 / 10) << 8 | (c & 0xFF) * 7 / 10
@@ -1827,18 +1839,6 @@ enum TownStar {
 }
 
 /// 꾸미기: 이름 · 모자 · 모자 색. 저장하면 수첩에 적는다
-    /// 옆으로 걸을 때 덧그림도 옆모습으로: 한 칸 앞으로 (옆모습 얼굴과 같이). 유명인 머리는 앞쪽 옆머리를 빼고 뒤쪽 옆머리로 뒤통수를 덮는다. 왼쪽은 뒤집는다
-    static func turn(_ px: [(Int, Int, Int, Int, UInt32)], _ d: CharDir?, hair: Bool = false) -> [(Int, Int, Int, Int, UInt32)] {
-        guard d == .left || d == .right else { return px }
-        return px.compactMap { r in
-            var (x, y, w, h, c) = r
-            if hair && y >= 5 && x >= 14 { return nil }
-            if hair && y >= 5 && x + w <= 7 { w = 11 - x }
-            x += 1
-            if d == .left { x = MeArt.W - x - w }
-            return (x, y, w, h, c)
-        }
-    }
 struct TownDress: View {
     let res: TownLook.Resident
     @Environment(\.dismiss) private var dismiss
