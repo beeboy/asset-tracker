@@ -13,11 +13,30 @@ struct Symbol: Identifiable, Hashable {
     let currency: Currency
     let sector: String
     let search: String      // 영문 검색어
+
+    /// 앱 언어가 영어면 이름·시장은 영어로 (data_en.json). 업종(sector)은 비교에 쓰여 한국어로 두고, 보일 때 sectorText
+    init(id: String, name: String, market: String, close: Double, currency: Currency, sector: String, search: String) {
+        self.id = id; self.name = EnData.name(id, name); self.market = EnData.word(market)
+        self.close = close; self.currency = currency; self.sector = sector; self.search = search
+    }
+}
+
+/// 영어 화면용 종목 자료 (Resources/data_en.json, tools/data_en.py 가 만든다). 앱 언어가 영어일 때만 한 번 읽는다
+enum EnData {
+    private struct File: Decodable { let names: [String: String]; let words: [String: String] }
+    private static let file: File? = {
+        guard AppModel.en, let u = Bundle.main.url(forResource: "data_en", withExtension: "json"),
+              let d = try? Data(contentsOf: u) else { return nil }
+        return try? JSONDecoder().decode(File.self, from: d)
+    }()
+    static func name(_ id: String, _ ko: String) -> String { file?.names[id] ?? ko }
+    static func word(_ ko: String) -> String { file?.words[ko] ?? ko }
 }
 
 extension Symbol {
     /// 짧은 이름: 미국 종목은 티커, 한국 종목은 이름
     var short: String { currency == .usd ? id : name }
+    var sectorText: String { EnData.word(sector) }
 }
 
 struct Profile {
@@ -34,6 +53,13 @@ struct Profile {
     var what: String
     var vision: String
     var extra: (String, String)? = nil
+
+    var en: Profile {
+        var p = self, w = EnData.word
+        p.ceo = (w(ceo.0), w(ceo.1)); p.hqKey = hqKey.map(w); p.hq = w(hq); p.since = w(since)
+        p.what = w(what); p.vision = w(vision); p.extra = extra.map { (w($0.0), w($0.1)) }
+        return p
+    }
 }
 
 struct Holding: Identifiable, Hashable, Codable {
@@ -71,7 +97,9 @@ enum Sample {
     }
 
     // 종목 소개 (시안 예시. 실제 앱은 공시와 데이터 제공처 값으로 바꾼다). 로고는 상표 대신 글자 마크.
-    static let profiles: [String: Profile] = [
+    /// 영어면 소개 글을 영어로 (data_en.json). 동네 얼굴 열쇠는 한국어 이름을 쓰므로 profilesKo
+    static let profiles: [String: Profile] = AppModel.en ? profilesKo.mapValues(\.en) : profilesKo
+    static let profilesKo: [String: Profile] = [
         "DRNK": Profile(mono: "", color: 0x0F1424, logoImage: "drnk_logo", virtual: true,
                         ceo: ("대표", "드링커 (창업자, 본명 비공개)"), hqKey: "대표 작품", hq: "궤도 정거장 (2031년 개통)", since: "2030년",
                         what: "하늘의 깜빡이지 않는 별, 궤도 정거장을 설계하고 지었어요. 이종 연결 프로토콜 연결망과 가구 통신 계정을 깔고, 정거장을 고치고 늘려요.",
@@ -148,23 +176,23 @@ struct Friend: Identifiable {
     let scenes: [(String, String)]
 
     var appearsText: String {
-        [main.map { "본편 " + $0 }, side.map { "외전 " + $0 }, prequel.map { "프리퀄 " + $0 }].compactMap { $0 }.joined(separator: " · ")
+        [main.map { String(localized: "본편 ") + $0 }, side.map { String(localized: "외전 ") + $0 }, prequel.map { String(localized: "프리퀄 ") + $0 }].compactMap { $0 }.joined(separator: " · ")
     }
     var inSideStory: Bool { side != nil }
     /// 쉬운 말 문구: 행동 한 줄, 규칙 세 줄 명사형 (굵게는 **, 닫는 ** 뒤에 글자가 바로 붙으면 별표가 그대로 보이니 띄우거나 글자로 끝낸다)
     var does: String { Friend.copy[id]?.does ?? "" }
     var ruleSteps: [String] { Friend.copy[id]?.steps ?? [] }
     static let copy: [String: (does: String, steps: [String])] = [
-        "seri": ("1년에 한 번만 비율을 되돌린다",
-                 ["처음 비율로 나눠 담기", "1년간 **그대로**", "1년에 한 번 **처음 비율로**"]),
-        "sio": ("현금 들고 기다리다, 크게 떨어지면 산다",
-                ["현금 **20%** 남기기", "고점보다 **20%** 떨어지면", "현금 **절반** 투자"]),
-        "seonbae": ("너무 커진 종목을 덜어 낸다",
-                    ["처음 비율로 시작", "한 종목이 **10%p 넘게** 커지면", "커진 만큼 덜어 **나머지에**"]),
-        "ir": ("오르는 흐름에만 올라탄다",
-               ["종목마다 **200일 평균**", "평균 위 종목만 보유", "아래로 가면 그 몫 **현금**(단기 국채)"]),
-        "sua": ("매달 꾸준히 넣는다",
-                ["매달 **같은 금액**", "시장이 떨어진 달엔", "**1.5배** 넣기"]),
+        "seri": (String(localized: "1년에 한 번만 비율을 되돌린다"),
+                 [String(localized: "처음 비율로 나눠 담기"), String(localized: "1년간 **그대로**"), String(localized: "1년에 한 번 **처음 비율로**")]),
+        "sio": (String(localized: "현금 들고 기다리다, 크게 떨어지면 산다"),
+                [String(localized: "현금 **20%** 남기기"), String(localized: "고점보다 **20%** 떨어지면"), String(localized: "현금 **절반** 투자")]),
+        "seonbae": (String(localized: "너무 커진 종목을 덜어 낸다"),
+                    [String(localized: "처음 비율로 시작"), String(localized: "한 종목이 **10%p 넘게** 커지면"), String(localized: "커진 만큼 덜어 **나머지에**")]),
+        "ir": (String(localized: "오르는 흐름에만 올라탄다"),
+               [String(localized: "종목마다 **200일 평균**"), String(localized: "평균 위 종목만 보유"), String(localized: "아래로 가면 그 몫 **현금**(단기 국채)")]),
+        "sua": (String(localized: "매달 꾸준히 넣는다"),
+                [String(localized: "매달 **같은 금액**"), String(localized: "시장이 떨어진 달엔"), String(localized: "**1.5배** 넣기")]),
     ]
 }
 

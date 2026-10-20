@@ -755,7 +755,7 @@ struct MyPathCompareView: View {
     private func row(_ id: String, color: Color) -> some View {
         let r = m.rows.first { $0.id == id }
         let name = r?.sym.name ?? Parallel.universe.first { $0.id == id }?.name ?? ExtraStats.shared.name(id) ?? id
-        let kind = r?.sym.sector ?? String(localized: "새로 담음")
+        let kind = r?.sym.sectorText ?? String(localized: "새로 담음")
         let d = (w[id] ?? 0) - (w0[id] ?? 0)
         return HStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 12, height: 12)

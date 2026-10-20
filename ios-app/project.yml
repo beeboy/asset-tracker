@@ -115,6 +115,9 @@ targets:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $V" "$TARGET_BUILD_DIR/$INFOPLIST_PATH"
     sources:
       - path: Widgets
+      # 앱과 같은 번역 목록 (위젯 공용 코드의 String(localized:))
+      - path: Naeilo/Localizable.xcstrings
+        buildPhase: resources
         excludes: ["* 2.*", "**/* 2.*"]   # Finder 복사본(파일명 끝 " 2")은 빌드에서 뺀다
       - path: WidgetShared
         excludes: ["* 2.*", "**/* 2.*"]   # Finder 복사본(파일명 끝 " 2")은 빌드에서 뺀다

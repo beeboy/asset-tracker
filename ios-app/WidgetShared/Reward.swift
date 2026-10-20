@@ -26,9 +26,9 @@ struct WReward: Codable {
     var newsToday: String? { newsDay == Day.today ? news : nil }
     var badgeToday: String? { newsDay == Day.today ? badge : nil }
 
-    static let sample = WReward(keyName: "본전", pct: 0.87, pctYesterday: 0.862, remain: 1.52e7, cells: 264, cellsYesterday: 261,
+    static let sample = WReward(keyName: String(localized: "본전"), pct: 0.87, pctYesterday: 0.862, remain: 1.52e7, cells: 264, cellsYesterday: 261,
                                 total: 1.234e8, dayChg: 0.008, tiles: [.init(t: "DRNK", w: 0.62, c: 0.019), .init(t: "QQQ", w: 0.38, c: -0.004)],
-                                next: "DRNK 실적 D-12 (10/22)", friendsOn: WChar.all.map(\.id),
+                                next: String(localized: "DRNK 실적 D-12 (10/22)"), friendsOn: WChar.all.map(\.id),
                                 spark: [11980, 12050, 12010, 12120, 12200, 12150, 12260, 12310, 12240, 12340],
                                 items: ["barley_tea", "porch_light"])
 }
@@ -39,11 +39,11 @@ struct WChar: Identifiable {
     let accent: UInt32, g0: UInt32, g1: UInt32
     var voice: String? = nil     // 말투 인물 (내 캐릭터는 투자 유형 인물)
     static let all: [WChar] = [
-        .init(id: "seri", name: "세리", week: 0, accent: 0x5ab8ff, g0: 0x16203f, g1: 0x2c3e8a),
-        .init(id: "sio", name: "시오", week: 1, accent: 0x7fd6ff, g0: 0x122838, g1: 0x265c76),
-        .init(id: "seonbae", name: "선배", week: 2, accent: 0xe0b25a, g0: 0x301e2c, g1: 0x744658),
-        .init(id: "ir", name: "이르", week: 3, accent: 0xffd36b, g0: 0x1a1830, g1: 0x4a3f72),
-        .init(id: "sua", name: "수아", week: 4, accent: 0xf2a070, g0: 0x3a2228, g1: 0xb06448),
+        .init(id: "seri", name: String(localized: "세리"), week: 0, accent: 0x5ab8ff, g0: 0x16203f, g1: 0x2c3e8a),
+        .init(id: "sio", name: String(localized: "시오"), week: 1, accent: 0x7fd6ff, g0: 0x122838, g1: 0x265c76),
+        .init(id: "seonbae", name: String(localized: "선배"), week: 2, accent: 0xe0b25a, g0: 0x301e2c, g1: 0x744658),
+        .init(id: "ir", name: String(localized: "이르"), week: 3, accent: 0xffd36b, g0: 0x1a1830, g1: 0x4a3f72),
+        .init(id: "sua", name: String(localized: "수아"), week: 4, accent: 0xf2a070, g0: 0x3a2228, g1: 0xb06448),
     ]
     /// 위젯에 쓰는 이름 (영어 기기면 Seri 처럼, 내 캐릭터는 지은 이름 그대로)
     var title: String { WL.t(name) }
@@ -72,19 +72,19 @@ struct WChar: Identifiable {
             }
         }
         switch v {
-        case "seri": return "……\(t)\(Self.josa(t)) 먼저 움직였어요."
-        case "sio": return "\(t) \(String(format: "%.1f", abs(c) * 100)). 셌어."
-        case "seonbae": return r.dayChg >= 0 ? "올랐네. 왜 올랐다고 생각해?" : "내렸네. 왜 내렸다고 생각해?"
-        case "ir": return "흔들려도 서두르지 마."
-        default: return "오늘은 제때 왔어요."
+        case "seri": return String(localized: "……\(String(describing: t))\(String(describing: Self.josa(t))) 먼저 움직였어요.")
+        case "sio": return String(localized: "\(String(describing: t)) \(String(describing: String(format: "%.1f", abs(c) * 100))). 셌어.")
+        case "seonbae": return r.dayChg >= 0 ? String(localized: "올랐네. 왜 올랐다고 생각해?") : String(localized: "내렸네. 왜 내렸다고 생각해?")
+        case "ir": return String(localized: "흔들려도 서두르지 마.")
+        default: return String(localized: "오늘은 제때 왔어요.")
         }
     }
     /// 이/가: 한글은 받침, 영문 티커는 읽는 소리 (L·M·N·R 로 끝나면 받침)
     static func josa(_ s: String) -> String {
         if WL.en { return "" }   // 영어엔 조사가 없다
-        guard let ch = s.unicodeScalars.last else { return "가" }
-        if (0xAC00...0xD7A3).contains(ch.value) { return (ch.value - 0xAC00) % 28 == 0 ? "가" : "이" }
-        return "LMNR".unicodeScalars.contains(ch) ? "이" : "가"
+        guard let ch = s.unicodeScalars.last else { return String(localized: "가") }
+        if (0xAC00...0xD7A3).contains(ch.value) { return (ch.value - 0xAC00) % 28 == 0 ? String(localized: "가") : String(localized: "이") }
+        return "LMNR".unicodeScalars.contains(ch) ? String(localized: "이") : String(localized: "가")
     }
 }
 
@@ -105,16 +105,16 @@ struct WMe: Codable {
 enum WItem {
     /// 물건마다 인물 말투 (세리 관찰·해요체, 시오 짧은 반말, 선배 질문, 이르 조용한 반말, 수아 해요체)
     static let lines: [String: [String: String]] = [
-        "barley_tea": ["seri": "보리차 내 뒀어요. 시키지 않았어요.", "sio": "보리차. 아직 따뜻해.", "seonbae": "보리차, 누가 내 놨을까?", "ir": "따뜻할 때 마셔.", "sua": "보리차 식기 전에 왔어요."],
-        "porch_light": ["seri": "현관 등, 켜져 있어요.", "sio": "등은 켜 뒀어. 늦어도 돼.", "seonbae": "늦게 와도 켜져 있는 불, 왜일까?", "ir": "불은 꺼지지 않아.", "sua": "현관 등 보고 찾아왔어요."],
-        "wall_clock": ["seri": "시계가 3분 늦어요. 그대로 둘게요.", "sio": "시계는 안 맞췄어. 셀 거라서.", "seonbae": "시간을 꼭 맞춰야 할까?", "ir": "빠르다고 먼저 닿는 건 아니야.", "sua": "시계는 늦어도 저는 제때예요."],
-        "hair_tie": ["seri": "머리끈, 식탁 위에 있어요.", "sio": "머리끈. 아직 어중간해.", "seonbae": "자르지 않고 묶은 이유가 뭐야?", "ir": "묶어 두면 덜 흔들려.", "sua": "머리끈 하나 빌려 갈게요."],
-        "table_chair": ["seri": "종이 한 장, 비어 있어요.", "sio": "식탁에 종이. 내일 쓸 거야.", "seonbae": "그 종이에 뭐라고 쓸 거야?", "ir": "자리 하나 비워 뒀어.", "sua": "제 자리 아직 있어요?"],
-        "asym_bowl": ["seri": "그릇이 2도 기울었어요. 고치지 않을게요.", "sio": "기운 그릇. 그대로 둬.", "seonbae": "기울면 틀린 걸까?", "ir": "기운 채로도 담겨.", "sua": "기운 그릇이 제 거예요."],
-        "unfired_bowl": ["seri": "그릇은 아직 안 구웠어요.", "sio": "아직 안 구웠어. 급할 거 없어.", "seonbae": "언제 구울지는 누가 정해?", "ir": "서두르면 금이 가.", "sua": "다 마르면 구울게요. 약속은 아니에요."],
-        "jujube_seed": ["seri": "대추씨, 싹은 아직이에요.", "sio": "대추씨 심은 지 며칠. 세고 있어.", "seonbae": "기다리는 동안 뭘 했어?", "ir": "기다림도 자라.", "sua": "대추씨 아직 기다리는 중이에요."],
-        "elder_bead": ["seri": "구슬은 하나뿐이에요.", "sio": "구슬. 하나야.", "seonbae": "하나뿐인 걸 왜 여기 뒀을까?", "ir": "원로가 준 거야. 하나뿐이야.", "sua": "구슬에 제 얼굴이 비쳐요."],
-        "rice_seeds": ["seri": "볍씨 주머니, 챙겨 뒀어요.", "sio": "볍씨. 누가 싸 줬는지 알아.", "seonbae": "누가 싸 줬는지 기억나?", "ir": "심을 곳은 네가 정해.", "sua": "볍씨 주머니 들고 왔어요."],
+        "barley_tea": ["seri": String(localized: "보리차 내 뒀어요. 시키지 않았어요."), "sio": String(localized: "보리차. 아직 따뜻해."), "seonbae": String(localized: "보리차, 누가 내 놨을까?"), "ir": String(localized: "따뜻할 때 마셔."), "sua": String(localized: "보리차 식기 전에 왔어요.")],
+        "porch_light": ["seri": String(localized: "현관 등, 켜져 있어요."), "sio": String(localized: "등은 켜 뒀어. 늦어도 돼."), "seonbae": String(localized: "늦게 와도 켜져 있는 불, 왜일까?"), "ir": String(localized: "불은 꺼지지 않아."), "sua": String(localized: "현관 등 보고 찾아왔어요.")],
+        "wall_clock": ["seri": String(localized: "시계가 3분 늦어요. 그대로 둘게요."), "sio": String(localized: "시계는 안 맞췄어. 셀 거라서."), "seonbae": String(localized: "시간을 꼭 맞춰야 할까?"), "ir": String(localized: "빠르다고 먼저 닿는 건 아니야."), "sua": String(localized: "시계는 늦어도 저는 제때예요.")],
+        "hair_tie": ["seri": String(localized: "머리끈, 식탁 위에 있어요."), "sio": String(localized: "머리끈. 아직 어중간해."), "seonbae": String(localized: "자르지 않고 묶은 이유가 뭐야?"), "ir": String(localized: "묶어 두면 덜 흔들려."), "sua": String(localized: "머리끈 하나 빌려 갈게요.")],
+        "table_chair": ["seri": String(localized: "종이 한 장, 비어 있어요."), "sio": String(localized: "식탁에 종이. 내일 쓸 거야."), "seonbae": String(localized: "그 종이에 뭐라고 쓸 거야?"), "ir": String(localized: "자리 하나 비워 뒀어."), "sua": String(localized: "제 자리 아직 있어요?")],
+        "asym_bowl": ["seri": String(localized: "그릇이 2도 기울었어요. 고치지 않을게요."), "sio": String(localized: "기운 그릇. 그대로 둬."), "seonbae": String(localized: "기울면 틀린 걸까?"), "ir": String(localized: "기운 채로도 담겨."), "sua": String(localized: "기운 그릇이 제 거예요.")],
+        "unfired_bowl": ["seri": String(localized: "그릇은 아직 안 구웠어요."), "sio": String(localized: "아직 안 구웠어. 급할 거 없어."), "seonbae": String(localized: "언제 구울지는 누가 정해?"), "ir": String(localized: "서두르면 금이 가."), "sua": String(localized: "다 마르면 구울게요. 약속은 아니에요.")],
+        "jujube_seed": ["seri": String(localized: "대추씨, 싹은 아직이에요."), "sio": String(localized: "대추씨 심은 지 며칠. 세고 있어."), "seonbae": String(localized: "기다리는 동안 뭘 했어?"), "ir": String(localized: "기다림도 자라."), "sua": String(localized: "대추씨 아직 기다리는 중이에요.")],
+        "elder_bead": ["seri": String(localized: "구슬은 하나뿐이에요."), "sio": String(localized: "구슬. 하나야."), "seonbae": String(localized: "하나뿐인 걸 왜 여기 뒀을까?"), "ir": String(localized: "원로가 준 거야. 하나뿐이야."), "sua": String(localized: "구슬에 제 얼굴이 비쳐요.")],
+        "rice_seeds": ["seri": String(localized: "볍씨 주머니, 챙겨 뒀어요."), "sio": String(localized: "볍씨. 누가 싸 줬는지 알아."), "seonbae": String(localized: "누가 싸 줬는지 기억나?"), "ir": String(localized: "심을 곳은 네가 정해."), "sua": String(localized: "볍씨 주머니 들고 왔어요.")],
     ]
     static func say(_ item: String, _ who: String) -> String? { lines[item]?[who] ?? lines[item]?["seri"] }
     /// 오늘 말풍선에 나오는 물건: 사흘에 한 번, 돌아온 물건을 차례로. 나머지 날은 nil

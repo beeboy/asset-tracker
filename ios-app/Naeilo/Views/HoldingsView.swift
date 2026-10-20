@@ -277,7 +277,7 @@ struct HoldingDetailView: View {
                 // 이름은 위 제목줄에 있으니 여기선 로고와 시장·업종만
                 HStack(spacing: 10) {
                     LogoTile(symbol: sym.id, size: 36)
-                    Text(([sym.id, sym.market] + (sym.sector.isEmpty ? [] : [sym.sector])).joined(separator: " · ")).appFont(13).foregroundStyle(Theme.sub)
+                    Text(([sym.id, sym.market] + (sym.sector.isEmpty ? [] : [sym.sectorText])).joined(separator: " · ")).appFont(13).foregroundStyle(Theme.sub)
                 }
                 if h.qty > 0 {
                     Card {
@@ -357,7 +357,7 @@ struct HoldingDetailView: View {
     private var noProfile: some View {
         Card {
             Text("이 종목은").appFont(15, .bold)
-            Text(sym.currency == .krw ? String(localized: "한국 시장 \(String(describing: sym.sector.isEmpty ? String(localized: "종목") : sym.sector + String(localized: " 종목")))이에요.") : String(localized: "\(String(describing: sym.market)) \(String(describing: sym.sector.isEmpty ? String(localized: "종목") : sym.sector + String(localized: " 종목")))이에요."))
+            Text(sym.currency == .krw ? String(localized: "한국 시장 \(String(describing: sym.sector.isEmpty ? String(localized: "종목") : sym.sectorText + String(localized: " 종목")))이에요.") : String(localized: "\(String(describing: sym.market)) \(String(describing: sym.sector.isEmpty ? String(localized: "종목") : sym.sectorText + String(localized: " 종목")))이에요."))
                 .appFont(14)
         }
     }
@@ -1142,7 +1142,7 @@ enum TownLook {
     static func residents(_ rows: [AppModel.Row]) -> [Resident] {
         var keys: [String] = [], by: [String: [AppModel.Row]] = [:]
         for r in rows.sorted(by: { $0.value > $1.value }) {
-            let k = Sample.profiles[r.id].map { "ceo:" + $0.ceo.1 } ?? r.id
+            let k = Sample.profilesKo[r.id].map { "ceo:" + $0.ceo.1 } ?? r.id
             if by[k] == nil { keys.append(k) }
             by[k, default: []].append(r)
         }

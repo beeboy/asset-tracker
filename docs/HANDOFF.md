@@ -54,6 +54,13 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 영문 로컬리제이션 5단계: 남은 한글·위젯 (2026-10-20, 로컬 커밋)
+- 종목 자료 영어: `Naeilo/Resources/data_en.json`(`tools/data_en.py` + `tools/data_en_words.json`). 영어일 때만 `EnData`가 한 번 읽는다. Symbol 이름·시장은 만들 때 영어로, 업종은 비교에 쓰여 한국어로 두고 `sectorText`로 보인다. 기업 소개는 `Sample.profiles`(영어), 동네 얼굴 열쇠는 `profilesKo`.
+- 한국 종목 영어 이름은 StockCatalog에 있는 것만(약 120개). 나머지 KRX 종목은 한글 그대로.
+- 동네 대화·블록 인물 줄: 사전 열쇠도 String(localized:)로 (영어에서 다음 대화가 끊기던 것 고침). 장면 잠금·금리 늦게/빨리 비교도 번역 글로 비교.
+- 위젯: 번역 목록을 위젯 타깃에도 넣음(위젯 공용 코드 Models·Reward의 String(localized:)). 위젯 금액도 영어면 ₩ 줄임(Fmt.krwC).
+- 다른 세션이 커밋 안 한 TownPanel·BrickGame·HoldingsView는 내 바꾼 줄만 커밋하고 그 세션 변경은 그대로 둠.
+
 ## 영문 로컬리제이션 4단계: 인물 대사·인물 소개 (2026-10-20, 로컬 커밋)
 - 대사 원문(여는 말·상황 문장·맺는 말·물건 줄, 560개)의 영어는 `ios-app/tools/lines_en_data.json`. `python3 tools/lines.py`가 `Naeilo/Resources/lines_app_en.json`(146키·13,018줄)도 만든다. 위젯 말풍선(widget.*)은 EN_CORE 그대로.
 - 앱은 언어에 맞는 대사 파일 하나만 읽는다(`Lines.swift`: 영어면 lines_app_en, 아니면 lines_ko). 위젯은 그대로 WidgetShared/lines_en.json.

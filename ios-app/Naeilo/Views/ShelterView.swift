@@ -893,8 +893,8 @@ struct CharacterDetailView: View {
     /// 앱에 없는 책(본편 2권~, 프리퀄)의 장면은 잠긴 채로 둔다
     static func sceneOpen(_ label: String, _ s: Story) -> Bool {
         switch label {
-        case "외전": return s.isDone(.side, StoryBook.side.bundled - 1)
-        case "본편 1권": return s.isDone(.vol1, 1)
+        case String(localized: "외전"): return s.isDone(.side, StoryBook.side.bundled - 1)
+        case String(localized: "본편 1권"): return s.isDone(.vol1, 1)
         default: return false
         }
     }
@@ -902,7 +902,7 @@ struct CharacterDetailView: View {
     static func lockedText(_ labels: [String]) -> String {
         var vols: [String] = [], other: [String] = []
         for l in labels {
-            if l.hasPrefix("본편 "), l.hasSuffix("권") { let v = String(l.dropFirst(3).dropLast()); if !vols.contains(v) { vols.append(v) } }
+            if !AppModel.en, l.hasPrefix("본편 "), l.hasSuffix("권") { let v = String(l.dropFirst(3).dropLast()); if !vols.contains(v) { vols.append(v) } }
             else if !other.contains(l) { other.append(l) }
         }
         let parts = (vols.isEmpty ? [] : [String(localized: "본편 ") + vols.joined(separator: "·") + String(localized: "권")]) + other

@@ -458,7 +458,7 @@ final class AppModel {
         let mv = todayMove, up = mv >= 0
         let top = c.filter { ($0.1 >= 0) == up }.sorted { abs($0.1) > abs($1.1) }.prefix(2).filter { abs($0.1) >= all * 0.3 }
         if top.isEmpty { return String(localized: "오늘은 여러 종목이 고르게 움직였어요.") }
-        let names = top.map { "\($0.0.sym.short)(\(Self.sgn($0.0.sym.quote.change)))" }.joined(separator: "와 ")
+        let names = top.map { "\($0.0.sym.short)(\(Self.sgn($0.0.sym.quote.change)))" }.joined(separator: String(localized: "와 "))
         return String(localized: "오늘 \(String(describing: up ? String(localized: "상승") : String(localized: "하락")))은 주로 \(String(describing: names)) 때문이에요.")
     }
     var routineFact: String {

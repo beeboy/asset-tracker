@@ -24,11 +24,19 @@ enum Fmt {
     /// 5.27억
     /// 1억이 안 되면 만원으로 (4,002만)
     static func eok(_ v: Double, _ digits: Int = 2) -> String {
-        abs(v) < 1e8 ? man(v) : (v < 0 ? "−" : "") + String(format: "%.\(digits)f억", abs(v) / 1e8)
+        if WL.en { return krwC(v) }
+        return abs(v) < 1e8 ? man(v) : (v < 0 ? "−" : "") + String(format: "%.\(digits)f억", abs(v) / 1e8)
+    }
+    /// 영어: 만·억 대신 ₩2.3M 꼴 (앱 AppModel.krwC 와 같은 규칙)
+    static func krwC(_ krw: Double) -> String {
+        let a = abs(krw), u: [(Double, String)] = [(1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")]
+        let s = u.first { a >= $0.0 }.map { (a / $0.0).formatted(.number.precision(.significantDigits(1...3))) + $0.1 } ?? Int(a.rounded()).formatted()
+        return (krw < 0 ? "−" : "") + "₩" + s
     }
     /// 499만
     static func man(_ v: Double) -> String {
-        (dec.string(from: NSNumber(value: Int((abs(v) / 1e4).rounded()))) ?? "0") + "만"
+        if WL.en { return krwC(abs(v)) }
+        return (dec.string(from: NSNumber(value: Int((abs(v) / 1e4).rounded()))) ?? "0") + "만"
     }
     // 서식기는 만들 때 비싸서 한 번만 만들어 둔다
     private static let dec: NumberFormatter = { let n = NumberFormatter(); n.numberStyle = .decimal; return n }()

@@ -228,9 +228,9 @@ struct AnalysisView: View {
                         value: pro ? AppModel.eok(med) : String(localized: "구독 시 열림"), route: .forecast))
         // 금리 충격: 기본 프리셋("작년만큼 또 오른다")의 도착 시점 변화
         let t = RateScenarioView.hubTiming(m)
-        let late = t?.hasSuffix("늦게") == true, early = t?.hasSuffix("빨리") == true
+        let late = t?.hasSuffix(String(localized: "늦게")) == true, early = t?.hasSuffix(String(localized: "빨리")) == true
         out.append(Line(icon: "chart.line.uptrend.xyaxis", tone: .warn, label: String(localized: "금리 오르면"),
-                        value: t.map { $0.replacingOccurrences(of: "약 ", with: "") } ?? (MacroData.shared.failed ? String(localized: "자료 없음") : String(localized: "계산 중")),
+                        value: t.map { $0.replacingOccurrences(of: String(localized: "약 "), with: "") } ?? (MacroData.shared.failed ? String(localized: "자료 없음") : String(localized: "계산 중")),
                         valueTone: late ? .warn : early ? .good : .info, route: .rateScen))
         // 외부 요인: 가장 가까운 발표 일정 (없으면 시장 −10% 일 때)
         if let e = ExternalView.hubNext(m) {

@@ -429,7 +429,7 @@ struct TossKeyView: View {
         // 토큰은 만료 전이면 그대로 쓴다 (새로 받으면 받는 중인 다른 요청의 토큰이 끊긴다). 처음 연결이면 키를 넣을 때 토큰을 지워 새로 받는다
         let (t, e) = await TossFeed.token()
         if t == nil {
-            msg = (e ?? String(localized: "연결 실패")) + (e == "허용 IP에 중계 IP가 없어요" ? String(localized: ". 오픈 API 허용 IP에 위 IP를 넣고 다시 눌러 주세요.") : "")
+            msg = (e ?? String(localized: "연결 실패")) + (e == String(localized: "허용 IP에 중계 IP가 없어요") ? String(localized: ". 오픈 API 허용 IP에 위 IP를 넣고 다시 눌러 주세요.") : "")
             if !on { TossKeys.clear() }     // 처음 연결이 실패하면 키를 남기지 않는다
         } else {
             on = true

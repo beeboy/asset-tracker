@@ -206,18 +206,18 @@ enum GameLines {
         6: [String(localized: "온유")], 7: [String(localized: "활동가")], 8: [String(localized: "담당관")], 9: [String(localized: "아내"), String(localized: "루")], 10: [String(localized: "아내"), String(localized: "루")], 11: [String(localized: "외전 세리")],
     ]
     private static let sampleLines: [String: [String]] = [
-        "미용사": [String(localized: "선택하지 않은 벽돌은 모두 잘라낼게요."), String(localized: "가위 소리처럼, 사각. 잠시 멈춤. 사각."), String(localized: "거울 셋 중 어느 쪽 공이 진짜일까요?")],
-        "현실의 시오": [String(localized: "복도 끝에 출구가 있어. 노란 줄 하나."), String(localized: "여기선 오래 버티는 게 이기는 거야."), String(localized: "맨발로도 걸었어. 공 하나쯤이야.")],
-        "1권 선배": [String(localized: "그 방향, 정말 네가 고른 거야?"), String(localized: "출구는 늘 마지막에 보이지."), String(localized: "질문 하나. 왜 거기서 받았어?")],
-        "니아": [String(localized: "지구에 보낼 녹음에 이것도 넣을게요."), String(localized: "여기선 공도 천천히 떨어져요."), String(localized: "제2돔에서 응원하고 있어요.")],
-        "묶은 머리 시오": [String(localized: "고무줄 세 번. 다시 묶고 가자."), String(localized: "0.1초 늦어도 괜찮아.")],
-        "관리국의 수아": [String(localized: "또 올게요. 약속은 아니에요."), String(localized: "입구는 둘이에요. 공은 어느 쪽으로 나올까요?"), String(localized: "기록해 둘게요. 하급 연구원이라서요.")],
-        "온유": [String(localized: "창문은 손가락 몇 개만큼만요."), String(localized: "좁아도 바람은 들어와요."), String(localized: "천천히 해도 돼요. 여긴 그런 곳이에요.")],
-        "활동가": [String(localized: "잘린 문장도 끝내 붙일 수 있어요."), String(localized: "줄표 하나는 남겨 둬요. 그건 깨지지 않아요."), String(localized: "멀리서도 보여요. 계속해요.")],
-        "담당관": [String(localized: "솔직히 저도 당혹스럽습니다."), String(localized: "충전할 곳은 없습니다. 있는 걸로 가시죠."), String(localized: "보고서에는 잘했다고 쓰겠습니다.")],
-        "아내": [String(localized: "밥 먹고 해요."), String(localized: "안 구운 그릇은 두 번 만져야 해요."), String(localized: "묻지 않을게요. 계속해요.")],
-        "루": [String(localized: "꾸러미 배달 왔어요. 이건 응원."), String(localized: "배송 유닛 XX-2214, 지켜보는 중."), String(localized: "열여섯 살쯤인데, 저도 해 보고 싶어요.")],
-        "외전 세리": [String(localized: "화면 속에서 보고 있어요."), String(localized: "프로필 사진처럼, 그대로 있어요."), String(localized: "거기까지만요. 아니, 조금 더요.")],
+        String(localized: "미용사"): [String(localized: "선택하지 않은 벽돌은 모두 잘라낼게요."), String(localized: "가위 소리처럼, 사각. 잠시 멈춤. 사각."), String(localized: "거울 셋 중 어느 쪽 공이 진짜일까요?")],
+        String(localized: "현실의 시오"): [String(localized: "복도 끝에 출구가 있어. 노란 줄 하나."), String(localized: "여기선 오래 버티는 게 이기는 거야."), String(localized: "맨발로도 걸었어. 공 하나쯤이야.")],
+        String(localized: "1권 선배"): [String(localized: "그 방향, 정말 네가 고른 거야?"), String(localized: "출구는 늘 마지막에 보이지."), String(localized: "질문 하나. 왜 거기서 받았어?")],
+        String(localized: "니아"): [String(localized: "지구에 보낼 녹음에 이것도 넣을게요."), String(localized: "여기선 공도 천천히 떨어져요."), String(localized: "제2돔에서 응원하고 있어요.")],
+        String(localized: "묶은 머리 시오"): [String(localized: "고무줄 세 번. 다시 묶고 가자."), String(localized: "0.1초 늦어도 괜찮아.")],
+        String(localized: "관리국의 수아"): [String(localized: "또 올게요. 약속은 아니에요."), String(localized: "입구는 둘이에요. 공은 어느 쪽으로 나올까요?"), String(localized: "기록해 둘게요. 하급 연구원이라서요.")],
+        String(localized: "온유"): [String(localized: "창문은 손가락 몇 개만큼만요."), String(localized: "좁아도 바람은 들어와요."), String(localized: "천천히 해도 돼요. 여긴 그런 곳이에요.")],
+        String(localized: "활동가"): [String(localized: "잘린 문장도 끝내 붙일 수 있어요."), String(localized: "줄표 하나는 남겨 둬요. 그건 깨지지 않아요."), String(localized: "멀리서도 보여요. 계속해요.")],
+        String(localized: "담당관"): [String(localized: "솔직히 저도 당혹스럽습니다."), String(localized: "충전할 곳은 없습니다. 있는 걸로 가시죠."), String(localized: "보고서에는 잘했다고 쓰겠습니다.")],
+        String(localized: "아내"): [String(localized: "밥 먹고 해요."), String(localized: "안 구운 그릇은 두 번 만져야 해요."), String(localized: "묻지 않을게요. 계속해요.")],
+        String(localized: "루"): [String(localized: "꾸러미 배달 왔어요. 이건 응원."), String(localized: "배송 유닛 XX-2214, 지켜보는 중."), String(localized: "열여섯 살쯤인데, 저도 해 보고 싶어요.")],
+        String(localized: "외전 세리"): [String(localized: "화면 속에서 보고 있어요."), String(localized: "프로필 사진처럼, 그대로 있어요."), String(localized: "거기까지만요. 아니, 조금 더요.")],
     ]
 
     private static var bag: [String: [Int]] = [:]

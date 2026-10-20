@@ -373,7 +373,7 @@ struct Mission3View: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(m.focusName) \(AppModel.pct(m.focusWeight))").appFont(15, .bold)
-                    Text(d.map { String(localized: "\(String(describing: $0.ko)) · PER 평균의 \(String(describing: ratio))배 · 성장 \(String(describing: Int($0.growth.rounded())))%") } ?? (sector.isEmpty || sector == "지수" ? String(localized: "업종 자료 없음") : sector))
+                    Text(d.map { String(localized: "\(String(describing: EnData.word($0.ko))) · PER 평균의 \(String(describing: ratio))배 · 성장 \(String(describing: Int($0.growth.rounded())))%") } ?? (sector.isEmpty || sector == "지수" ? String(localized: "업종 자료 없음") : sector))
                         .appFont(13).foregroundStyle(Theme.sub)
                 }
                 Spacer()
@@ -425,7 +425,7 @@ struct BasketList: View {
                     HStack(spacing: 8) {
                         RoundedRectangle(cornerRadius: 3).fill(b.color).frame(width: 12, height: 12)
                         Text("\(b.name) \(list.count)").appFont(14, .bold)
-                        Text(list.prefix(3).map(\.ko).joined(separator: " · ")).appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
+                        Text(list.prefix(3).map { EnData.word($0.ko) }.joined(separator: " · ")).appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
                         Spacer(minLength: 4)
                         Text(isOpen ? "⌃" : "⌄").appFont(12).foregroundStyle(Theme.teal)
                     }
@@ -437,7 +437,7 @@ struct BasketList: View {
                     Text(b.rule).appFont(12).foregroundStyle(Theme.sub)
                     ForEach(list, id: \.key) { r in
                         HStack {
-                            Text(r.ko).appFont(13)
+                            Text(EnData.word(r.ko)).appFont(13)
                             Spacer()
                             Text(String(format: "%.1f / %.1f", r.pe, r.pe10)).appFont(12).foregroundStyle(Theme.sub).monospacedDigit()
                             Text("+\(Int(r.growth.rounded()))%").appFont(12, .semibold).frame(minWidth: 44, alignment: .trailing)
