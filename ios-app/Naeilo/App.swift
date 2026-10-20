@@ -104,6 +104,8 @@ struct RootView: View {
             var lastResched = Date.distantPast
             var lastKey = ""   // 날짜·평가액이 그대로면 뒤 계산은 건너뛴다 (장 닫힌 동안 매분 화면이 멈칫하지 않게)
             while !Task.isCancelled {
+                // 미니 게임 중엔 갱신을 미뤄 화면이 멈칫하지 않게 (끝나면 곧 다시 받는다)
+                while GamePause.on && !Task.isCancelled { try? await Task.sleep(for: .seconds(2)) }
                 await Market.shared.refresh(held: Set(model.holdings.map(\.symbol)))
                 let key = "\(Day.today)|\(model.total)"
                 if key != lastKey {

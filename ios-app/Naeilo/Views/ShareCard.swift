@@ -20,6 +20,7 @@ struct ShareCardButton: View {
 }
 
 struct ShareCardSheet: View {
+    var party = false   // 100칸 벽돌을 다 깬 뒤: '다 같이'(여섯 모두)가 보이고 기본으로 골라진다
     /// 위젯 8개: 고르기 칸 이름·아이콘, 인물 한마디
     private struct W { let name: String; let icon: String; let say: String }
     private static let list: [W] = [
@@ -31,6 +32,7 @@ struct ShareCardSheet: View {
         W(name: String(localized: "퍼즐"), icon: "puzzlepiece", say: String(localized: "조각 하나 더 맞췄어.")),
         W(name: String(localized: "꽃밭"), icon: "camera.macro", say: String(localized: "다 피면 다음 밭이야.")),
         W(name: String(localized: "줄다리기"), icon: "arrow.left.and.right", say: String(localized: "오늘은 우리 편이 당겼어.")),
+        W(name: String(localized: "다 같이"), icon: "person.3.fill", say: String(localized: "우리 다 같이 축하해! 목표 칸을 다 깼어.")),   // 8: 100칸 벽돌을 다 깬 날만
     ]
     private static let modes = [String(localized: "라이트"), String(localized: "다크"), String(localized: "투명"), String(localized: "틴트")]
 
@@ -51,7 +53,7 @@ struct ShareCardSheet: View {
                 VStack(alignment: .leading, spacing: 18) {
                     Text("보낼 위젯 고르기").appFont(13).foregroundStyle(Theme.sub)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-                        ForEach(Self.list.indices, id: \.self) { i in
+                        ForEach(Self.list.indices.filter { party || $0 < 8 }, id: \.self) { i in
                             let on = i == picked
                             Button { picked = i } label: {
                                 VStack(spacing: 4) {
@@ -96,6 +98,7 @@ struct ShareCardSheet: View {
             .background(Theme.bg)
             .navigationTitle("미션 위젯 공유").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
+            .onAppear { if party { picked = 8 } }
             .sheet(item: $shareURL) { ActivitySheet(url: $0).ignoresSafeArea() }
         }
     }
@@ -115,6 +118,7 @@ struct ShareCardSheet: View {
     private var card: some View {
         let w = Self.list[picked], f = m.homeFriendShown, l = look
         return VStack(alignment: .leading, spacing: 12) {
+            if picked == 8 { allFriends(w, l) } else {
             HStack(alignment: .center, spacing: 14) {
                 widget(f)
                 // 말풍선: 왼쪽 꼬리가 위젯 속 인물을 가리킨다
@@ -128,6 +132,7 @@ struct ShareCardSheet: View {
                 .overlay(alignment: .bottomLeading) {
                     BubbleTail().fill(l.bubble).frame(width: 10, height: 16).offset(x: -9, y: -18)
                 }
+            }
             }
             Text("naeilo").font(.system(size: 12, weight: .semibold))
                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -171,6 +176,21 @@ struct ShareCardSheet: View {
         .frame(width: 158, height: 158)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(curMode == 2 ? Color.white.opacity(0.25) : .clear))
+    }
+
+    /// 스페셜: 친구 다섯 + 나, 여섯이 한 줄로 서고 아래 말풍선
+    private func allFriends(_ w: W, _ l: Look) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .bottom, spacing: 4) {
+                ForEach(Shelter.friends.map(\.id) + ["me"], id: \.self) { CharPixel(id: $0, width: 48, height: 69) }
+            }
+            .frame(maxWidth: .infinity)
+            Text(myMsg.trimmingCharacters(in: .whitespaces).isEmpty ? w.say : myMsg).font(.system(size: 14))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14).padding(.vertical, 12)
+                .background(l.bubble, in: RoundedRectangle(cornerRadius: 16))
+        }
     }
 
     /// 저장 파일 이름: 날짜-위젯명-naeilo.png ('PNG 이미지' 대신)

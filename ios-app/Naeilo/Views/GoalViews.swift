@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreMotion
 
 // 목표 달성 루트 화면 (시안 g1·g1r·g3·g3r·gt·gi·gp1r, 목표 미션 판). 설명은 계산값, 종목 추천 문구 없음.
 
@@ -278,7 +279,6 @@ struct GoalCellsCard: View {
         let tkP = m.route == .novice ? tkV / 1.02 : tkV * max(0.8, min(1.25, m.cost / max(1, m.total)))
         let fV = min(100, tkV / max(1, unit)), fP = min(100, tkP / max(1, unit))
         let mine = min(fV, fP), lost = max(0, fP - fV), gain = max(0, tkV - tkP)
-        let diff = tkV - tkV / (1 + m.todayMove)
         // 공유 카드·벽돌깨기용 1000칸
         let cl = { (v: Double) in max(0, min(1000, Int(floor(v / max(1, K / 1000))))) }
         let nV = cl(tkV), nP = cl(tkP), nMine = min(nV, nP), nY = cl(tkV / (1 + m.todayMove))
@@ -290,44 +290,257 @@ struct GoalCellsCard: View {
                     Spacer()
                     Text(fV >= 100 ? String(localized: "100칸 완성!") : String(localized: "1칸 = \(String(describing: AppModel.man(unit)))")).appFont(14).foregroundStyle(Theme.sub)
                 }
-                GoalCellGrid(mine: mine, filled: fV, lost: lost)
-                    .aspectRatio(1, contentMode: .fit)
+                // 박스는 60% 폭, 정보는 오른쪽
+                SplitRow(ratio: 0.6, spacing: 14) {
+                    // 100칸이 곧 벽돌. 아래 빈 곳을 누르면 공 발사, 끌면 패들
+                    BrickBox(mine: mine, filled: fV, lost: lost, g: game, on: $playing) { clear in
+                        if clear { party = true } else { showGame = true }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { if !playing && !party { startMini(fV, mine) } }   // 박스·패들을 눌러도 시작
                     .accessibilityLabel("100칸 중 \(Int(fV))칸, 목표의 \(pct)%")
-                VStack(spacing: 10) {
-                    legend(Theme.teal, nil, String(localized: "넣은 돈"), AppModel.man(min(tkV, tkP)))
-                    if lost > 0 { legend(Self.lostC, nil, String(localized: "줄어든 돈"), "−" + AppModel.man(tkP - tkV)) }
-                    else { legend(Self.mintC, nil, String(localized: "불어난 돈"), "+" + AppModel.man(gain)) }
-                    legend(Theme.card, Theme.gold, String(localized: "마지막 칸 = 목표"), nil)
+                    VStack(alignment: .leading, spacing: 10) {
+                        legend(Theme.teal, nil, String(localized: "넣은 돈"), AppModel.man(min(tkV, tkP)))
+                        if lost > 0 { legend(Self.lostC, nil, String(localized: "줄어든 돈"), "−" + AppModel.man(tkP - tkV)) }
+                        else { legend(Self.mintC, nil, String(localized: "불어난 돈"), "+" + AppModel.man(gain)) }
+                        legend(Theme.card, Theme.gold, String(localized: "마지막 칸 = 목표"), nil)
+                        action(String(localized: "공유하기"), "square.and.arrow.up", fill: false) { showShare = true }
+                        HStack(spacing: 6) {
+                            action(String(localized: "블록"), "square.grid.3x3.fill", fill: true) { showGame = true }.labelStyle(TightLabel())
+                            action(String(localized: "파도"), "water.waves", fill: true) { showWave = true }.labelStyle(TightLabel())
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Divider()
-                HStack(alignment: .firstTextBaseline) {
-                    Text(abs(diff) < 5e3 ? String(localized: "어제와 같음") : String(localized: "어제보다 \(String(describing: diff > 0 ? "+" : "−"))\(String(describing: AppModel.man(abs(diff))))")).appFont(15, .bold)
-                    Spacer()
-                    Text("하루 오르내림은 흔해요").appFont(13).foregroundStyle(Theme.sub)
+                // 패들 조작 칸: 손가락이 패들을 가리지 않게 박스 아래 빈 곳에서 끈다
+                GeometryReader { pg in
+                    // 평소엔 톡 눌러 시작(위아래 스크롤은 그대로), 게임 중에만 끌어서 패들
+                    Color.clear.contentShape(Rectangle())
+                        .onTapGesture { p in
+                            game.px = max(0, min(1, p.x / max(1, pg.size.width)))
+                            if !playing && !party { startMini(fV, mine) }
+                        }
+                        .gesture(playing ? DragGesture(minimumDistance: 0).onChanged { v in
+                            game.px = max(0, min(1, v.location.x / max(1, pg.size.width)))
+                        } : nil)
+                }
+                .frame(height: 44)
+                // 캐릭터가 자랑하자고 권한다 (누르는 곳 아님, 공유는 오른쪽 버튼). 다 깨면 친구들이 이 자리를 채운다
+                if party { MiniParty().frame(maxWidth: .infinity) } else {
+                HStack(alignment: .bottom, spacing: 10) {
+                        CharPixel(id: m.homeFriendShown, width: 42, height: 60).charIdle().accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(m.friendName(m.homeFriendShown)).appFont(12, .semibold).foregroundStyle(Theme.blue)
+                            Text(Self.boast(pct, Int(fV))).appFont(14).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.mintBg, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14))
+                    }
                 }
             }
             .padding(18)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
-            HStack(spacing: 8) {
-                ShareCardButton(plain: true)
-                BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: String(localized: "블록"), icon: "square.grid.3x3.fill", plain: true).labelStyle(TightLabel())
-                WaveGameButton(plain: true).labelStyle(TightLabel())
-            }
+        }
+        .onChange(of: scenePhase) { if scenePhase == .background { party = false } }   // 다른 앱으로 가면 친구들 퇴장
+        .sheet(isPresented: $showShare) { ShareCardSheet(party: party) }
+        .fullScreenCover(isPresented: $showGame) { BrickGameHub(filled: nV, floor: nMine, yesterday: nY) }
+        .fullScreenCover(isPresented: $showWave) { WaveHub() }
+    }
+    @State private var showGame = false
+    @State private var showWave = false
+    @State private var showShare = false
+    @State private var game = MiniBreakout()
+    @State private var playing = false
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var party = false   // 안 죽고 다 깨면 친구들이 올라와 축하 (숨은 재미)
+
+    private func startMini(_ fV: Double, _ mine: Double) {
+        let n = Int(ceil(fV))
+        if n == 0 { showGame = true; return }
+        game.setup(n: n, mine: mine)
+        playing = true
+    }
+
+    /// 진행만큼 자랑하자는 한마디
+    static func boast(_ pct: Int, _ n: Int) -> String {
+        switch pct {
+        case 100...: return String(localized: "100칸 완성! 이건 무조건 자랑이야.")
+        case 75...: return String(localized: "거의 다 왔어. 지금 자랑할 때야!")
+        case 50...: return String(localized: "반 넘었어! 보여 주면 다들 놀랄걸.")
+        case 25...: return String(localized: "\(String(describing: pct))%나 왔어. 이건 자랑해야지.")
+        default: return n > 0 ? String(localized: "벌써 \(String(describing: n))칸 채웠어. 시작한 것도 자랑이야!") : String(localized: "첫 칸 채우면 바로 자랑하자!")
         }
     }
 
-    static let mintC = Color(hex: 0x8FCFC3, dark: 0x3C8F86)
+    private func action(_ t: String, _ icon: String, fill: Bool, _ go: @escaping () -> Void) -> some View {
+        Button(action: go) {
+            Label(t, systemImage: icon).appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 40)
+                .foregroundStyle(fill ? .white : Theme.teal)
+                .background(fill ? Theme.teal : .clear, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.teal, lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
+    }
+
+    static let mintC = Color(hex: 0x8FCFC3, dark: 0xA8E6DC)   // 다크: 넣은 돈(진한 청록)과 구분되게 밝게
     static let lostC = Color(hex: 0xFBE3CF, dark: 0x4A3020)
 
+    // 좁은 오른쪽 칸: 색 + 이름, 값은 아래 줄
     private func legend(_ c: Color, _ stroke: Color?, _ t: String, _ v: String?) -> some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 4).fill(c)
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(stroke ?? c, lineWidth: 1.5))
-                .frame(width: 14, height: 14)
-            Text(t).appFont(14).foregroundStyle(Theme.sub)
-            Spacer()
-            if let v { Text(v).appFont(14, .bold) }
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 3).fill(c)
+                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(stroke ?? c, lineWidth: 1.5))
+                    .frame(width: 12, height: 12)
+                Text(t).appFont(13).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            if let v { Text(v).appFont(15, .bold).lineLimit(1).minimumScaleFactor(0.7).padding(.leading, 18) }
         }
+    }
+}
+
+/// 100칸 박스가 곧 미니 벽돌깨기. 패들은 카드 아래 빈 곳에서 조작. 끝나면 end(다 깼나)
+/// 게임 중에만 화면을 매 프레임 그린다
+struct BrickBox: View {
+    let mine: Double, filled: Double, lost: Double
+    let g: MiniBreakout
+    @Binding var on: Bool
+    let end: (Bool) -> Void
+    var body: some View {
+        ZStack(alignment: .top) {
+            if !on { GoalCellGrid(mine: mine, filled: filled, lost: lost).aspectRatio(1, contentMode: .fit) }
+            TimelineView(.animation(paused: !on)) { tl in
+                Canvas { ctx, size in
+                    if on {
+                        let r = g.step(tl.date, size)
+                        if r != 0 { DispatchQueue.main.async { on = false; end(r == 1) } }
+                    }
+                    g.draw(&ctx, size, cells: on)
+                }
+            }
+        }
+        .aspectRatio(0.9, contentMode: .fit)
+        .pausesRefresh(on)
+    }
+}
+
+/// 다 깨면 캐릭터와 친구들이 아래에서 차례로 튀어 올라 축하
+struct MiniParty: View {
+    @State private var up = false
+    var body: some View {
+        let ids = Shelter.friends.map(\.id) + ["me"]   // 친구 다섯 + 나, 전부 여섯
+        // 원래 캐릭터 줄 높이(60)를 넘지 않게: 축하 글은 위 빈 칸에 띄운다 (글자 키워도 탭과 안 겹치게)
+        HStack(alignment: .bottom, spacing: 4) {
+            ForEach(Array(ids.enumerated()), id: \.offset) { i, id in
+                CharPixel(id: id, width: 42, height: 60).charIdle(i)
+                    .offset(y: up ? 0 : 160)
+                    .animation(.spring(response: 0.45, dampingFraction: 0.55).delay(Double(i) * 0.08), value: up)
+            }
+        }
+        .frame(height: 60)
+        .overlay(alignment: .top) {
+            Text("다 깼다! 대단해!").appFont(14, .bold).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.6)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Theme.teal, in: Capsule())
+                .fixedSize(horizontal: false, vertical: true)
+                .alignmentGuide(.top) { $0[.bottom] + 6 }
+                .opacity(up ? 1 : 0)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .onAppear { withAnimation(.easeOut(duration: 0.3)) { up = true } }
+    }
+}
+
+final class MiniBreakout {
+    var alive = [Bool](repeating: false, count: 100)
+    var bomb = [Bool](repeating: false, count: 100)   // 맞으면 둘레 8칸까지 함께 터진다 (찬 칸의 약 12%)
+    var mineN = 0, left = 0
+    var bx: CGFloat = 0, by: CGFloat = 0, vx: CGFloat = 0, vy: CGFloat = 0
+    var px: CGFloat = 0.5         // 패들 가운데 (폭 비율)
+    var held = true
+    var last: Date?
+    private let motion = CMMotionManager()   // 기울여서 패들 (본 게임과 같은 감도)
+
+    func setup(n: Int, mine: Double) {
+        for i in 0..<100 { alive[i] = i < n; bomb[i] = i < n && Double.random(in: 0..<1) < 0.12 }
+        left = n; mineN = Int(mine); held = true; last = nil
+        if motion.isDeviceMotionAvailable { motion.deviceMotionUpdateInterval = 1.0 / 60; motion.startDeviceMotionUpdates() }
+    }
+    deinit { motion.stopDeviceMotionUpdates() }
+
+    /// 한 프레임 진행. 0 계속, 1 다 깸, 2 놓침
+    func step(_ now: Date, _ size: CGSize) -> Int {
+        let w = size.width, gap: CGFloat = 4, c = (w - gap * 9) / 10 + gap
+        let py = size.height - 6, pw = w * 0.28
+        let dt = CGFloat(min(1.0 / 30, last.map { now.timeIntervalSince($0) } ?? 0)); last = now
+        // 좌우로 약 24도 기울이면 끝까지. 센서가 없으면 손가락으로
+        if let g = motion.deviceMotion?.gravity {
+            let goal = 0.5 + max(-1, min(1, CGFloat(g.x) / 0.4)) * 0.5
+            px += (goal - px) * min(1, dt * 14)
+        }
+        let x = max(pw / 2, min(w - pw / 2, px * w))
+        if held {
+            held = false; bx = x; by = py - 7
+            vx = w * 0.38 * (Bool.random() ? 1 : -1); vy = -w * 0.92
+            return 0
+        }
+        var nx = bx + vx * dt, ny = by + vy * dt
+        if nx < 4 || nx > w - 4 { vx = -vx; nx = max(4, min(w - 4, nx)) }
+        if ny < 4 { vy = abs(vy); ny = 4 }
+        let col = Int(nx / c), row = Int(ny / c)
+        if ny < w, (0..<10).contains(col), (0..<10).contains(row), alive[row * 10 + col] {
+            let hit = row * 10 + col
+            alive[hit] = false; left -= 1
+            if bomb[hit] {
+                for r in max(0, row - 1)...min(9, row + 1) { for c2 in max(0, col - 1)...min(9, col + 1) where alive[r * 10 + c2] { alive[r * 10 + c2] = false; left -= 1 } }
+            }
+            if Int(bx / c) != col { vx = -vx } else { vy = -vy }
+            if left == 0 { motion.stopDeviceMotionUpdates(); return 1 }
+            return 0
+        }
+        if vy > 0, by < py - 4, ny >= py - 4, abs(nx - x) < pw / 2 + 4 {
+            let sp = hypot(vx, vy), o = max(-1, min(1, (nx - x) / (pw / 2)))
+            vx = sp * 0.75 * o; vy = -sqrt(sp * sp - vx * vx); ny = py - 4
+        }
+        if ny > size.height + 8 { motion.stopDeviceMotionUpdates(); return 2 }
+        bx = nx; by = ny
+        return 0
+    }
+
+    func draw(_ ctx: inout GraphicsContext, _ size: CGSize, cells: Bool) {
+        let w = size.width, gap: CGFloat = 4, s = (w - gap * 9) / 10, pw = w * 0.28
+        if cells {
+            for i in 0..<100 {
+                let r = CGRect(x: CGFloat(i % 10) * (s + gap), y: CGFloat(i / 10) * (s + gap), width: s, height: s)
+                let path = Path(roundedRect: r, cornerRadius: 5)
+                ctx.fill(path, with: .color(alive[i] ? (i < mineN ? Theme.teal : GoalCellsCard.mintC) : Theme.track))
+                if alive[i] && bomb[i] { ctx.fill(Path(ellipseIn: r.insetBy(dx: s * 0.32, dy: s * 0.32)), with: .color(Theme.gold)) }
+                if i == 99 && !alive[i] { ctx.stroke(Path(roundedRect: r.insetBy(dx: 1, dy: 1), cornerRadius: 4), with: .color(Theme.gold), lineWidth: 2) }
+            }
+        }
+        let x = max(pw / 2, min(w - pw / 2, px * w)), py = size.height - 6
+        ctx.fill(Path(roundedRect: CGRect(x: x - pw / 2, y: py - 2.5, width: pw, height: 5), cornerRadius: 2.5), with: .color(Theme.teal))
+        let (ballX, ballY) = cells && !held ? (bx, by) : (x, py - 7)
+        ctx.fill(Path(ellipseIn: CGRect(x: ballX - 4, y: ballY - 4, width: 8, height: 8)), with: .color(Theme.gold))
+    }
+}
+
+/// 왼쪽 칸은 폭의 ratio만큼 정사각형, 오른쪽은 남은 폭에 세로 가운데
+struct SplitRow: Layout {
+    let ratio: CGFloat, spacing: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let w = proposal.width ?? 320, side = w * ratio
+        let lh = subviews.first?.sizeThatFits(.init(width: side, height: nil)).height ?? 0
+        let h = subviews.count > 1 ? subviews[1].sizeThatFits(.init(width: w - side - spacing, height: nil)).height : 0
+        return CGSize(width: w, height: max(lh, h))
+    }
+    func placeSubviews(in b: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let side = b.width * ratio, rw = b.width - side - spacing
+        subviews.first?.place(at: CGPoint(x: b.minX, y: b.midY), anchor: .leading, proposal: .init(width: side, height: nil))
+        if subviews.count > 1 { subviews[1].place(at: CGPoint(x: b.minX + side + spacing, y: b.midY), anchor: .leading, proposal: .init(width: rw, height: nil)) }
     }
 }
 

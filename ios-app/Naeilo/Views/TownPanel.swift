@@ -9,6 +9,7 @@ struct TownPanel: View {
     @Binding var look: TownBook.Note?     // 꾸미기 미리 보기
     @Binding var ask: Int                 // 늘면 대사창 답장 칸을 연다
     static let height: CGFloat = 196
+    var height: CGFloat = TownPanel.height     // 우리 사이·꾸미기는 남는 높이까지 늘려 받는다
     var body: some View {
         let special = res.id == TownLook.mayorID || res.id == TownLook.warshID
         Group {
@@ -18,7 +19,7 @@ struct TownPanel: View {
         }
         .id(res.id)      // 다른 주민에게 말 걸면 고를 말·꾸미기 칸을 처음부터
         .padding(10)
-        .frame(maxWidth: .infinity, minHeight: Self.height, maxHeight: Self.height, alignment: .top)
+        .frame(maxWidth: .infinity, minHeight: height, maxHeight: height, alignment: .top)
         .background(Theme.cream, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.brown, lineWidth: 2))
     }
@@ -40,7 +41,7 @@ private struct TownHomePanel: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Text("오늘의 한 줄").appFont(12, .bold).foregroundStyle(Theme.brown)
-                        Text(done ? String(localized: "한 줄 답 남겼어요 ✓") : String(localized: "대사에 한 줄 답 남기기 ›")).appFont(14, .bold).foregroundStyle(Theme.inkFixed).lineLimit(1)
+                        Text(done ? String(localized: "한 줄 답 남겼어요 ✓") : String(localized: "대사에 한 줄 답 남기기 ›")).appFont(14, .bold).foregroundStyle(Theme.ink).lineLimit(1)
                         Spacer(minLength: 0)
                         Text(done ? "1/1" : "0/1").appFont(13, .bold).foregroundStyle(Theme.brown)
                     }
@@ -53,7 +54,7 @@ private struct TownHomePanel: View {
                     .frame(height: 6)
                 }
                 .padding(10)
-                .background(Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+                .background(Theme.card.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.brown.opacity(0.5)))
             }
             .buttonStyle(.plain)
@@ -153,10 +154,10 @@ private struct TownUsPanel: View {
         let p = TownBond.points(res.id)
         let lv = TownBond.level(p)
         let lo = TownBond.need[lv - 1], hi = lv < TownBond.need.count ? TownBond.need[lv] : nil
-        let past = log.last { $0.day != TownLog.day }
+        let past = log.last { $0.me != nil }   // 내가 답한 대화만
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(TownBond.names[lv - 1]) Lv.\(lv)").appFont(16, .bold).foregroundStyle(Theme.inkFixed)
+                Text("\(TownBond.names[lv - 1]) Lv.\(lv)").appFont(16, .bold).foregroundStyle(Theme.ink)
                 Spacer()
                 Text(hi.map { String(localized: "\(String(describing: TownBond.names[lv]))까지 \(String(describing: $0 - p))점") } ?? String(localized: "최고 단계예요")).appFont(12).foregroundStyle(Theme.brown)
             }
@@ -176,9 +177,9 @@ private struct TownUsPanel: View {
                 HStack(spacing: 6) {
                     Text("기억해요").appFont(11, .bold).foregroundStyle(Theme.brown)
                     ForEach(memo(n, log), id: \.self) { t in
-                        Text(t).appFont(12).foregroundStyle(Theme.inkFixed).lineLimit(1)
+                        Text(t).appFont(12).foregroundStyle(Theme.ink).lineLimit(1)
                             .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(Color.white.opacity(0.7), in: Capsule())
+                            .background(Theme.card.opacity(0.7), in: Capsule())
                             .overlay(Capsule().stroke(Theme.brown.opacity(0.5)))
                     }
                 }
@@ -186,8 +187,8 @@ private struct TownUsPanel: View {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("최근 대화").appFont(11, .bold).foregroundStyle(Theme.brown)
-                    Text(past.map { $0.me.map { String(localized: "나: ") + $0 } ?? $0.say } ?? String(localized: "아직 지난 대화가 없어요"))
-                        .appFont(13).foregroundStyle(Theme.inkFixed).lineLimit(1)
+                    Text(past.map { String(localized: "나: ") + ($0.me ?? "") } ?? String(localized: "아직 지난 대화가 없어요"))
+                        .appFont(13).foregroundStyle(Theme.ink).lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 Button("전체 보기") { all = true }.appFont(13, .bold).foregroundStyle(Theme.brown)
@@ -204,11 +205,11 @@ private struct TownUsPanel: View {
     }
     private func cell(_ k: String, _ v: String) -> some View {
         VStack(spacing: 2) {
-            Text(v).appFont(15, .bold).foregroundStyle(Theme.inkFixed)
+            Text(v).appFont(15, .bold).foregroundStyle(Theme.ink)
             Text(k).appFont(11).foregroundStyle(Theme.brown)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 4)
-        .background(Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.card.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
     }
     /// 기억 칩: 별명 · 최근 내 답 둘 · 받은 별사탕 · 이사 온 날 (있는 것만)
     private func memo(_ n: TownBook.Note, _ log: [TownLog.Entry]) -> [String] {
@@ -223,7 +224,7 @@ private struct TownUsPanel: View {
 
 // MARK: - 꾸미기
 
-/// 꾸밀 거리: 모자 · 모자 색 · 소품(아직 준비 중) · 동네 배경. 가격은 별사탕, 산 것은 모든 주민이 같이 쓴다
+/// 꾸밀 거리: 모습(부품 조합, 공짜) · 모자 · 모자 색 · 소품 · 동네 배경. 가격은 별사탕, 산 것은 모든 주민이 같이 쓴다
 private struct TownItem: Identifiable {
     let kind: Int, i: Int, name: String, price: Int, lock: Bool
     var id: String { "\(kind).\(i)" }
@@ -235,10 +236,11 @@ private struct TownDressPanel: View {
     @Binding var look: TownBook.Note?
     @AppStorage("town.bg") private var bg = 0
     @AppStorage("town.owned") private var ownedRaw = ""
-    @State private var kind = 0
+    @State private var kind = 4          // 4 모습 (맨 앞에 보인다)
     @State private var bg0: Int? = nil       // 고르기 전 배경 (되돌리기)
     @State private var name = false
-    private static let kinds = [String(localized: "모자"), String(localized: "색"), String(localized: "소품"), String(localized: "동네")]
+    private static let kinds = [String(localized: "모자"), String(localized: "색"), String(localized: "소품"), String(localized: "동네"), String(localized: "모습")]
+    private static let tabs = [4, 0, 1, 2, 3]
     private static let hatPrice = [0, 0, 0, 3, 1, 2]
     private static let colorNames = [String(localized: "노랑"), String(localized: "빨강"), String(localized: "파랑"), String(localized: "초록"), String(localized: "보라"), String(localized: "하양"), String(localized: "검정")]
     private var book: TownBook { TownBook.shared }
@@ -247,7 +249,7 @@ private struct TownDressPanel: View {
         let lv = TownBond.level(TownBond.points(res.id))
         VStack(spacing: 6) {
             HStack(spacing: 4) {
-                ForEach(0..<Self.kinds.count, id: \.self) { k in
+                ForEach(Self.tabs, id: \.self) { k in
                     Button { kind = k } label: {
                         Text(Self.kinds[k]).appFont(13, .bold).foregroundStyle(kind == k ? .white : Theme.brown)
                             .padding(.horizontal, 10).frame(minHeight: 30)
@@ -257,10 +259,13 @@ private struct TownDressPanel: View {
                 }
                 Spacer(minLength: 0)
                 Button("이름") { name = true }.appFont(12, .bold).foregroundStyle(Theme.brown).frame(minHeight: 32)
-                Text("⭐ \(book.candy)").appFont(13, .bold).foregroundStyle(Theme.inkFixed)
+                Text("⭐ \(book.candy)").appFont(13, .bold).foregroundStyle(Theme.ink)
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
-                ForEach(items(kind, lv)) { it in cell(it, n) }
+            if kind == 4 { ScrollView(showsIndicators: false) { parts(n) } }   // 작은 화면에선 칸 안에서 밀어 본다
+            else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
+                    ForEach(items(kind, lv)) { it in cell(it, n) }
+                }
             }
             Spacer(minLength: 0)
             HStack(spacing: 8) {
@@ -280,6 +285,47 @@ private struct TownDressPanel: View {
         }
         .onDisappear { revert() }      // 입지 않고 나가면 미리 보기는 버린다
         .sheet(isPresented: $name) { TownDress(res: res) }
+    }
+
+    /// 모습: 머리 모양 · 머리색 · 피부 · 윗옷 · 아래옷을 ◀ ▶ 로 넘겨 고른다 (유명인은 머리를 따로 그려 피부·옷만)
+    private static let partRows: [(key: String, label: String)] = [("hair", String(localized: "머리 모양")), ("color", String(localized: "머리색")), ("skin", String(localized: "피부")), ("top", String(localized: "윗옷")), ("bottom", String(localized: "아래옷"))]
+    private func parts(_ n: TownBook.Note) -> some View {
+        let star = TownStar.find(res.id) != nil
+        let me = TownLook.char(res.id, n)
+        // 두 줄로: 다섯 칸 + 처음 모습으로
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 2), spacing: 8) {
+            ForEach(Self.partRows.filter { !star || ($0.key != "hair" && $0.key != "color") }, id: \.key) { r in
+                let cnt = r.key == "skin" ? MeColor.skin.count : MeGroup(rawValue: r.key)?.count ?? 1
+                let cur = me.parts[r.key] ?? 1
+                let nm = r.key == "skin" ? MeColor.skinNames[max(0, min(cur, cnt) - 1)] : MeGroup(rawValue: r.key)?.name(cur) ?? ""
+                HStack(spacing: 0) {
+                    Button { step(r.key, cur, cnt, -1, n) } label: { Text("◀").appFont(12, .bold).frame(width: 36, height: 40) }
+                        .buttonStyle(.plain).foregroundStyle(Theme.brown).accessibilityLabel("\(r.label) 앞으로")
+                    VStack(spacing: 0) {
+                        Text(r.label).appFont(10, .bold).foregroundStyle(Theme.brown)
+                        Text(nm).appFont(12, .bold).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.7)
+                    }
+                    .frame(maxWidth: .infinity)
+                    Button { step(r.key, cur, cnt, 1, n) } label: { Text("▶").appFont(12, .bold).frame(width: 36, height: 40) }
+                        .buttonStyle(.plain).foregroundStyle(Theme.brown).accessibilityLabel("\(r.label) 다음")
+                }
+                .frame(height: 40)
+                .background(Theme.card.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+            }
+            Button { var m = n; m.parts = nil; look = m; line = String(localized: "처음 모습이에요.") } label: {
+                Text("처음 모습으로").appFont(12, .bold).foregroundStyle(Theme.brown.opacity(n.parts == nil ? 0.4 : 1))
+                    .frame(maxWidth: .infinity, minHeight: 40)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.brown.opacity(0.5), lineWidth: 1))
+            }
+            .buttonStyle(.plain).disabled(n.parts == nil)
+        }
+    }
+    private func step(_ key: String, _ cur: Int, _ cnt: Int, _ d: Int, _ n: TownBook.Note) {
+        guard cnt > 0 else { return }
+        var m = n, p = n.parts ?? [:]
+        p[key] = (cur - 1 + d + cnt) % cnt + 1
+        m.parts = p; look = m
+        line = String(localized: "이런 모습 어때요?")
     }
 
     private var owned: Set<String> { Set(ownedRaw.split(separator: ",").map(String.init)) }
@@ -307,16 +353,16 @@ private struct TownDressPanel: View {
                     HStack(spacing: 4) {
                         TownItemIcon(px: it.kind == 0 ? TownFace.pixels(it.i, TownFace.tints[0]) : TownFace.props(it.i) + TownFace.thin(it.i))
                             .frame(width: 18, height: 18).opacity(it.lock ? 0.4 : 1)
-                        Text(it.name).appFont(13, .bold).foregroundStyle(it.lock ? Theme.brown.opacity(0.5) : Theme.inkFixed).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(it.name).appFont(13, .bold).foregroundStyle(it.lock ? Theme.brown.opacity(0.5) : Theme.ink).lineLimit(1).minimumScaleFactor(0.7)
                     }
                 } else {
-                    Text(it.name).appFont(13, .bold).foregroundStyle(it.lock ? Theme.brown.opacity(0.5) : Theme.inkFixed).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(it.name).appFont(13, .bold).foregroundStyle(it.lock ? Theme.brown.opacity(0.5) : Theme.ink).lineLimit(1).minimumScaleFactor(0.7)
                 }
                 Text(it.lock ? String(localized: "절친 때 열림") : wearing ? String(localized: "입는 중") : has(it) ? (it.kind == 1 ? it.name : String(localized: "보유")) : "⭐ \(it.price)")
                     .appFont(10, .bold).foregroundStyle(wearing ? Theme.teal : Theme.brown.opacity(it.lock ? 0.5 : 0.9))
             }
             .frame(maxWidth: .infinity, minHeight: 40)
-            .background(it.lock ? Color.clear : Color.white.opacity(wearing ? 0.95 : 0.6), in: RoundedRectangle(cornerRadius: 8))
+            .background(it.lock ? Color.clear : Theme.card.opacity(wearing ? 0.95 : 0.6), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8)
                 .stroke(wearing ? Theme.teal : Theme.brown.opacity(0.5), style: StrokeStyle(lineWidth: wearing ? 2 : 1, dash: it.lock ? [4, 3] : [])))
         }
