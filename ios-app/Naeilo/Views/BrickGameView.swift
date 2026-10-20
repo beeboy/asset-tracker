@@ -42,6 +42,7 @@ struct BrickGameHub: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    GameHeader(title: "내 자산으로 하는 벽돌깨기")
                     // 이름 옆에 버튼을 한 줄로
                     VStack(alignment: .leading, spacing: 6) {
                         inline("난이도") { ChipRow(items: GameLevel.allCases.map { ($0, $0.title) }, selection: $rec.level, fill: true) }
@@ -100,9 +101,7 @@ struct BrickGameHub: View {
                 .screen()
             }
             .background(Theme.bg)
-            .navigationTitle("내 1000칸으로 하는 벽돌깨기")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
+            .toolbar(.hidden, for: .navigationBar)   // 맨 위는 파도 타기와 같은 GameHeader
         }
         .onAppear { if !players.contains(rec.player) { rec.player = players.first ?? "seri" } }
         .onChange(of: rec) { _, v in v.save() }

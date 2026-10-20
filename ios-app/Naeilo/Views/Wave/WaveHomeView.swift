@@ -284,20 +284,29 @@ struct WaveGameButton: View {
 
 /// 섬 지도 전체 화면: 위에 닫기, 아래로 섬 지도
 struct WaveHub: View {
-    @Environment(\.dismiss) private var dismiss
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("파도 타기").appFont(20, .bold)
-                    Spacer()
-                    Button { dismiss() } label: { Image(systemName: "xmark").appFont(16, .bold).padding(8) }
-                        .buttonStyle(.plain).accessibilityLabel("닫기")
-                }
+            VStack(alignment: .leading, spacing: 16) {
+                GameHeader(title: "내 자산으로 하는 파도타기")
                 WaveHomeView()
             }
-            .padding(16)
+            .screen()   // 벽돌깨기와 같은 여백
         }
         .background(Theme.bg)
+    }
+}
+
+/// 게임 화면 맨 위 줄 (벽돌깨기·파도 타기 공용): 왼쪽 굵은 제목, 오른쪽 X 닫기
+struct GameHeader: View {
+    let title: String
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        HStack {
+            Text(title).appFont(20, .bold).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer()
+            Button { dismiss() } label: { Image(systemName: "xmark").appFont(16, .bold).padding(8) }
+                .buttonStyle(.plain).accessibilityLabel("닫기")
+        }
+        .padding(.top, 8)
     }
 }
