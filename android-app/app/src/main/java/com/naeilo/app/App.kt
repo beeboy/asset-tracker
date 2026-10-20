@@ -53,6 +53,14 @@ import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.NavStack
 import com.naeilo.app.ui.home.HomeView
 import com.naeilo.app.ui.hold.HoldingsView
+import com.naeilo.app.ui.hold.HoldingDetailView
+import com.naeilo.app.ui.analysis.AnalysisView
+import com.naeilo.app.ui.analysis.AnalysisPager
+import com.naeilo.app.ui.analysis.AnalysisRoute
+import com.naeilo.app.ui.analysis.GoalSetPage
+import com.naeilo.app.ui.NavPage
+import com.naeilo.app.data.Symbol
+import com.naeilo.app.data.Period
 import com.naeilo.app.ui.hold.KoreaSumCard
 import com.naeilo.app.ui.Sheet
 import com.naeilo.app.net.CustomSymbols
@@ -145,7 +153,13 @@ fun RootView(model: AppModel) {
                 when (t) {
                     Tab.home -> NavStack(model.homePath, { model.homePath = it }, { HomeView(model) }) { homePage(it) }       // ios: App.swift:32 (HomeView·homePath)
                     Tab.hold -> HoldingsView(model)       // ios: App.swift:34 (HoldingsView·holdPath)
-                    Tab.analysis -> TabScreen(t)   // ios: App.swift:36 (AnalysisView·analysisPath: 빈 자리)
+                    Tab.analysis -> NavStack(model.analysisPath, { model.analysisPath = it }, { AnalysisView(model) }) { r ->   // ios: App.swift:36 (AnalysisView·analysisPath)
+                        when (r) {
+                            is AnalysisRoute -> NavPage(bar = false) { AnalysisPager(model, start = r) }   // ios: Views/AnalysisView.swift:128 (넘기기 화면은 막대를 스스로 그린다)
+                            is Symbol -> NavPage(r.name) { HoldingDetailView(model, sym = r, period0 = Period.y1) }   // ios: Views/AnalysisView.swift:83
+                            else -> NavPage { GoalSetPage() }   // 전망의 '목표 고치기'
+                        }
+                    }
                     Tab.board -> TabScreen(t)      // ios: App.swift:38 (boardPath: 빈 자리)
                     Tab.settings -> NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model) }) { settingsPage(model, it) }   // ios: App.swift:42 (SettingsView·settingsPath)
                 }

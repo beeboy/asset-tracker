@@ -1,6 +1,7 @@
 package com.naeilo.app
 
 import com.naeilo.app.pending.*
+import com.naeilo.app.ui.analysis.AnalysisRoute
 import com.naeilo.app.ui.settings.SettingsRoute
 import com.naeilo.app.core.swFmtFrac
 import com.naeilo.app.net.*

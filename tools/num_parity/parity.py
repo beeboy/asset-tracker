@@ -62,6 +62,11 @@ def gen():
     run("python3", "tools/num_parity/f/fsrc.py", str(f))
     run("swiftc", "-O", str(f / "main.swift"), "-o", str(bins / "f"))
     print(run(str(bins / "f"), str(f)).strip())
+    # G 단계 (분석): 전망 금액 글·햇달·빈도·눈금, 읽기 쉬운 금액 (g/gsrc.py)
+    g = WORK / "g"; g.mkdir(parents=True, exist_ok=True)
+    run("python3", "tools/num_parity/g/gsrc.py", str(g))
+    run("swiftc", "-O", str(g / "main.swift"), "-o", str(bins / "g"))
+    print(run(str(bins / "g"), str(g)).strip())
     print(f"입력·Swift 결과: {WORK}")
 
 
@@ -93,7 +98,8 @@ def check():
              ("d", "app.json", "kotlin.json", None),
              ("d", "web.json", "kotlin.json", ("derive", "aes")),
              ("e", "app.json", "kotlin.json", None),
-             ("f", "app.json", "kotlin.json", None)]
+             ("f", "app.json", "kotlin.json", None),
+             ("g", "app.json", "kotlin.json", None)]
     total, bad = 0, []
     for d, sw, kt, keys in pairs:
         a_p, b_p = WORK / d / sw, WORK / d / kt

@@ -18,8 +18,6 @@ import com.naeilo.app.ui.Theme
 // 아직 옮기지 않은 단계(B·C·D 밖) 이름의 자리. 컴파일될 만큼만 빈 값·기본값을 둔다.
 // 진짜 이식이 오면 그 단계에서 이 파일의 해당 줄을 지운다. Route·GoalWeek 는 저장(Progress) JSON 에 들어가므로 경우 이름은 iOS 와 같게 둔다.
 
-// TODO(AnalysisView): 진짜 이식 때 지움
-enum class AnalysisRoute { forecast, myPath, rateScen, external, dividend, fx, glance, calm }
 
 // TODO(Mission3ResultView): 진짜 이식 때 지움
 object Mission3ResultView { fun pp(d: Double): String = "" }
@@ -28,6 +26,7 @@ enum class SubPlan { monthly, yearly; val nameText: String get() = if (this == m
 class Support {
     val dayN: Int = 1; val testBuild: Boolean = false; val jws: String? = null
     val plan: SubPlan? = null; val inTrial: Boolean get() = dayN <= 7; val trialLeft: Int get() = maxOf(0, 7 - dayN + 1)
+    val pro: Boolean get() = plan != null || inTrial
     fun start() {}; fun tick() {}
     companion object { val shared = Support() }
 }
@@ -78,7 +77,12 @@ class TownLog { fun reload() {}; companion object { val shared = TownLog() } }
 // TODO(Remind): 소식을 누르면 그 화면으로 (Data/Remind.swift AppModel.go)
 fun AppModel.go(g: RemindGo) {}
 // TODO(Remind): "내일", "10/22 (D-11)"
-object MarketEvents { fun `when`(day: String): String = day }
+object MarketEvents {
+    fun `when`(day: String): String = day
+    class Hit(val id: String, val target: String, val day: String, val kind: String, val sub: String, val held: Boolean)
+    fun upcoming(held: List<String>, days: Int): List<Hit> = emptyList()
+    fun isRate(id: String): Boolean = id == "x_fomc" || id == "x_bok"
+}
 // TODO(RemindViews): 소식함 시트·리마인드 설정
 @Composable fun RemindSheet() {}
 // TODO(RemindViews)
@@ -112,12 +116,6 @@ object MarketEvents { fun `when`(day: String): String = day }
 // TODO(SupportView 구독 단계)
 @Composable fun SupportView() {}
 
-// TODO(AnalysisDetail): 내 길 (홈 MiniPath 가 읽는다)
-class MyPath(val start: Double, val end: Double, val key: Double, val monthly: Double, val pts: List<Pair<Double, Double>>, val act: (Double) -> Double, val need: (Double) -> Double)
-// TODO(AnalysisDetail)
-val AppModel.myPath: MyPath get() = MyPath(1.0 / 365.25, 1.0, gK * 1e4, 0.0, emptyList(), { total }, { total })
-// TODO(AnalysisDetail)
-val AppModel.myPathGapToday: Double get() { val p = myPath; val n = p.need(p.start); return if (n > 0) p.act(p.start) / n - 1 else 0.0 }
 
 
 // TODO(Notifier 알림 단계)
@@ -178,3 +176,29 @@ val LocalCharDark = androidx.compose.runtime.compositionLocalOf { false }
 val LocalCharHide = androidx.compose.runtime.compositionLocalOf { false }
 // TODO(TownView 동네 I): 소식판의 [동네] 버튼과 전체 화면
 @Composable fun TownButton() {}
+// TODO(AnalysisDetail G2): 분석 상세 화면과 허브가 읽는 한 줄 값
+@Composable fun MyPathView() {}
+// TODO(AnalysisDetail G2)
+object RateScenarioView { fun hubTiming(m: AppModel): String? = null }
+// TODO(AnalysisDetail G2)
+@Composable fun RateScenarioScreen() {}
+// TODO(AnalysisDetail G2)
+object ExternalView { class Next(val day: String, val kind: String, val amt: Double); fun hubNext(m: AppModel): Next? = null; fun mktBeta(id: String): Double? = null }
+// TODO(AnalysisDetail G2)
+@Composable fun ExternalScreen() {}
+// TODO(AnalysisDetail G2)
+object DividendView { fun hubMonthly(m: AppModel): Double = 0.0; fun hubTax(m: AppModel): Double = 0.0 }
+// TODO(AnalysisDetail G2)
+@Composable fun DividendScreen() {}
+// TODO(AnalysisDetail G2)
+@Composable fun FxImpactView() {}
+// TODO(AnalysisDetail G2)
+@Composable fun GlanceView() {}
+// TODO(AnalysisDetail G2): 금리 자료
+class MacroData { val failed: Boolean = false; suspend fun load() {}; companion object { val shared = MacroData() } }
+// TODO(CalmView 습관 H)
+@Composable fun CalmView() {}
+// TODO(MeViews 인물 I): 인물 얼굴 동그라미
+@Composable fun CharHead(id: String, size: Dp) { Box(Modifier.size(size)) }
+// TODO(SupportView 구독): 구독하면 열리는 화면
+@Composable fun SubLocked(what: String) {}

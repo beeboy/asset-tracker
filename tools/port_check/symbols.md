@@ -33,5 +33,13 @@ SF 의 `.fill` 은 채움(FILL 1) 모양으로. 코드에서는 `Sym(R.drawable.
 | `chevron.down` | `expand_more` | - | 종목 정렬 메뉴 |
 | `trash` | `delete` | - | 종목 밀어 지우기 |
 | `pencil` | `edit` | - | 수량·평균 단가 고치기 |
+| `flag` | `flag` | - | 분석 허브 내 길 |
+| `calendar` | `calendar_month` | - | 분석 허브 전망 |
+| `building.columns` | `account_balance` | - | 분석 허브 외부 요인 |
+| `arrow.left.arrow.right` | `swap_horiz` | - | 분석 허브 환율 |
+| `chart.pie` | `pie_chart` | - | 분석 허브 종목 한눈에 |
+| `arrow.down.to.line` | `download` | - | 분석 허브 배당 |
+| `arrow.up.to.line` | `upload` | - | 분석 허브 세금 |
+| `chevron.up` | `expand_less` | - | 전망 자세히 접기 |
 
 탭 막대 아이콘(house·chart.bar·chart.line.uptrend.xyaxis·square.grid.2x2·gearshape)은 iOS 탭 막대처럼 채운 모양을 따로 그린 `tab_*.xml` 을 쓴다 (A 단계).

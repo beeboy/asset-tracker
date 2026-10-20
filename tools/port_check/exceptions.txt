@@ -113,3 +113,13 @@ Views/HoldingsView.swift:603 검사기 한계: 보간 속 따옴표 String(local
 Views/HoldingsView.swift:428 플랫폼: 숫자 자판에 닫기 키가 없어 iOS 는 자판 위 '완료' 막대를 둔다. 안드로이드 숫자 자판은 완료 키가 있어 그 키로 닫는다 (InputField onSubmit → clearFocus)
 Views/HoldingsView.swift:453 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
 Views/HoldingsView.swift:484 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
+
+# G1 단계 (분석 목록·전망): Views/AnalysisView·ForecastParts·AnalysisDetail@1-196 → ui/analysis
+Views/AnalysisView.swift:162 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt Summary 결론 글)
+Views/AnalysisView.swift:227 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt lines 전망 줄)
+Views/AnalysisView.swift:266-288 플랫폼: iOS 26 화면 아무 데서나 밀어 뒤로 가기를 넘기기 화면에서 끄는 UIKit 자리 (ContentPopBlock). 안드로이드 뒤로 가기는 가장자리 제스처라 넘기기와 겹치지 않는다
+Views/AnalysisView.swift:309 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt ForecastView 물음 글)
+Views/AnalysisView.swift:411-413 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt Table msg)
+Views/AnalysisView.swift:518 검사기 한계: 보간 속 따옴표 String(format: "%d.%02d") (옮김, AnalysisView.kt ForecastView.ym)
+Views/ForecastParts.swift:27 검사기 한계: 보간 속 따옴표 String(format: "%.1f억") (옮김, ForecastParts.kt ScenarioChart.axis)
+Views/AnalysisDetail.swift:97 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisCommon.kt wonRead)

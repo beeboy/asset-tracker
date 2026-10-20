@@ -17,6 +17,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -67,6 +69,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
@@ -94,6 +97,7 @@ import androidx.compose.ui.window.PopupProperties
 import com.naeilo.app.R
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.math.max
 
 // iOS 기본 부품(Toggle·Picker 분할·SecureField·confirmationDialog·sheet·Menu·NavigationStack·refreshable·Divider)의 안드로이드 자리.
 // SwiftUI 에 원래 있는 부품이라 iOS 원본 줄이 없다 (port_check 대상 아님). 모양·크기는 iOS 17 기본값을 따른다.
@@ -149,6 +153,9 @@ val SF: Map<String, Int> = mapOf(
     "square.stack.3d.up" to R.drawable.ms_stacks, "tv" to R.drawable.ms_tv, "ruler" to R.drawable.ms_straighten, "puzzlepiece" to R.drawable.ms_extension,
     "camera.macro" to R.drawable.ms_local_florist, "arrow.left.and.right" to R.drawable.ms_arrow_range, "person.3.fill" to R.drawable.ms_groups_fill,
     "plus" to R.drawable.ms_add, "chevron.down" to R.drawable.ms_expand_more, "trash" to R.drawable.ms_delete, "pencil" to R.drawable.ms_edit,
+    "flag" to R.drawable.ms_flag, "calendar" to R.drawable.ms_calendar_month, "building.columns" to R.drawable.ms_account_balance,
+    "arrow.left.arrow.right" to R.drawable.ms_swap_horiz, "chart.pie" to R.drawable.ms_pie_chart, "arrow.down.to.line" to R.drawable.ms_download,
+    "arrow.up.to.line" to R.drawable.ms_upload, "chevron.up" to R.drawable.ms_expand_less,
 )
 
 /** Image(systemName:) 자리. size = 글자 크기(pt), 기호 칸은 글자 크기의 1.25배. scaled = 큰 글자 설정을 따를지 (.font(.system(size:)) 도 따른다) */
@@ -346,7 +353,7 @@ fun DropMenu(items: List<MenuItem>, label: @Composable () -> Unit) {
 
 /** iOS 이동 막대 (inline): 왼쪽 '‹ 뒤로', 가운데 제목. 높이 44 */
 @Composable
-fun NavBar(title: String?, back: String? = null, onBack: () -> Unit) {
+fun NavBar(title: String?, back: String? = null, center: (@Composable () -> Unit)? = null, onBack: () -> Unit) {
     // 이동 막대 글자도 큰 글자 설정을 조금 따른다 (iOS 처럼 커지되 막대 높이는 그대로)
     val k = minOf(LocalTextScale.current.ratio, 1.35f)
     val tint = Theme.teal   // 탭 tint
@@ -363,13 +370,18 @@ fun NavBar(title: String?, back: String? = null, onBack: () -> Unit) {
             }
             T(back?.takeIf { it.length <= 12 } ?: "뒤로", Modifier.padding(start = 6.dp), style = TextStyle(fontSize = (17 * k).sp), color = tint, maxLines = 1)
         }
-        if (title != null) T(title, Modifier.align(Alignment.Center), style = TextStyle(fontSize = (17 * k).sp, fontWeight = FontWeight.SemiBold), maxLines = 1)
+        if (center != null) Box(Modifier.align(Alignment.Center)) { center() }
+        else if (title != null) T(title, Modifier.align(Alignment.Center), style = TextStyle(fontSize = (17 * k).sp, fontWeight = FontWeight.SemiBold), maxLines = 1)
     }
 }
 
 
 /** 쌓인 화면 하나의 이동 막대 제목 (navigationTitle). null 이면 제목 없음 */
-class NavPage(val title: String? = null, val content: @Composable () -> Unit)
+class NavPage(val title: String? = null, val bar: Boolean = true, val content: @Composable () -> Unit)
+
+/** 쌓인 화면이 이동 막대를 스스로 그릴 때(bar = false) 쓰는 뒤로 가기·뒤로 글자 */
+class NavBack(val back: String?, val pop: () -> Unit)
+val LocalNavBack = androidx.compose.runtime.staticCompositionLocalOf<NavBack?> { null }
 
 /**
  * NavigationStack(path:) 자리. 첫 화면은 늘 그려 둔 채(스크롤 자리 유지) 위에 맨 위 화면만 덮는다.
@@ -389,8 +401,9 @@ fun <T> NavStack(path: List<T>, onPath: (List<T>) -> Unit, root: @Composable () 
                 val p = page(top)
                 Column(Modifier.fillMaxSize().graphicsLayer { translationX = x.value * size.width }.background(Theme.bg)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {}) {
-                    NavBar(p.title, back = if (path.size >= 2) page(path[path.size - 2]).title else null) { onPath(path.dropLast(1)) }   // 뒤로 글자 = 앞 화면 제목 (없으면 뒤로)
-                    Box(Modifier.weight(1f)) { p.content() }
+                    val back = if (path.size >= 2) page(path[path.size - 2]).title else null   // 뒤로 글자 = 앞 화면 제목 (없으면 뒤로)
+                    if (p.bar) NavBar(p.title, back = back) { onPath(path.dropLast(1)) }
+                    Box(Modifier.weight(1f)) { androidx.compose.runtime.CompositionLocalProvider(LocalNavBack provides NavBack(back) { onPath(path.dropLast(1)) }) { p.content() } }
                 }
             }
         }
@@ -487,10 +500,14 @@ fun TA(text: androidx.compose.ui.text.AnnotatedString, modifier: Modifier = Modi
 @Composable
 fun FitText(text: String, style: TextStyle, minScale: Float, modifier: Modifier = Modifier, @Suppress("UNUSED_PARAMETER") maxLines: Int = 1, color: Color = LocalFg.current(LocalPal.current), roll: Any? = null) {
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
-    androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+    // 폭을 재서 글자 크기를 정하고, 첫 줄 기준선(FirstBaseline)을 밖으로 넘겨 옆 글자와 기준선을 맞출 수 있게 한다
+    androidx.compose.ui.layout.SubcomposeLayout(modifier) { c ->
         val w = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width
-        val k = if (constraints.hasBoundedWidth && w > constraints.maxWidth) maxOf(minScale, constraints.maxWidth.toFloat() / w) else 1f
-        T(text, style = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = style.letterSpacing * k) else style, color = color, maxLines = 1, roll = roll)
+        val k = if (c.hasBoundedWidth && w > c.maxWidth) maxOf(minScale, c.maxWidth.toFloat() / w) else 1f
+        val st = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = style.letterSpacing * k) else style
+        val p = subcompose(k) { T(text, style = st, color = color, maxLines = 1, roll = roll) }.first().measure(c.copy(minWidth = 0))
+        val b = p[androidx.compose.ui.layout.FirstBaseline]
+        layout(p.width, p.height, if (b != androidx.compose.ui.layout.AlignmentLine.Unspecified) mapOf(androidx.compose.ui.layout.FirstBaseline to b) else emptyMap()) { p.place(0, 0) }
     }
 }
 
@@ -611,6 +628,35 @@ fun Spinner(size: Dp = 20.dp) {
             val al = 0.25f + 0.75f * (((i - step) % 8 + 8) % 8) / 8f
             drawLine(gray.copy(alpha = al), Offset(c.x + r * 0.45f * Math.cos(ang).toFloat(), c.y + r * 0.45f * Math.sin(ang).toFloat()),
                 Offset(c.x + r * Math.cos(ang).toFloat(), c.y + r * Math.sin(ang).toFloat()), 2.dp.toPx(), StrokeCap.Round)
+        }
+    }
+}
+
+/** Slider(value:in:step:): 막대 4, 손잡이 28 (흰 동그라미). 끄는 동안 step 단위로 바꾼다 */
+@Composable
+fun IosSlider(value: Double, onChange: (Double) -> Unit, range: ClosedFloatingPointRange<Double>, step: Double, modifier: Modifier = Modifier, tint: Color = Theme.teal) {
+    val dark = LocalPal.current.isDark
+    val track = if (dark) Color(0xFF3A3A3C) else Color(0xFFE5E5EA)
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(36.dp)) {
+        val w = constraints.maxWidth.toFloat(); val thumb = with(LocalDensity.current) { 28.dp.toPx() }
+        val f = ((value - range.start) / (range.endInclusive - range.start)).toFloat().coerceIn(0f, 1f)
+        fun pick(x: Float) {
+            val t = ((x - thumb / 2) / max(1f, w - thumb)).coerceIn(0f, 1f)
+            val v = range.start + (Math.round(t * (range.endInclusive - range.start) / step) * step)
+            if (v != value) onChange(v.coerceIn(range.start, range.endInclusive))
+        }
+        Box(Modifier.fillMaxSize().pointerInput(w) {
+            awaitEachGesture {
+                val d = awaitFirstDown(); pick(d.position.x); d.consume()
+                while (true) { val e = awaitPointerEvent(); val c = e.changes.firstOrNull() ?: break; if (!c.pressed) break; pick(c.position.x); c.consume() }
+            }
+        }) {
+            Canvas(Modifier.fillMaxSize()) {
+                val y = size.height / 2; val x = thumb / 2 + f * (size.width - thumb)
+                drawLine(track, Offset(thumb / 2, y), Offset(size.width - thumb / 2, y), 4.dp.toPx(), StrokeCap.Round)
+                drawLine(tint, Offset(thumb / 2, y), Offset(x, y), 4.dp.toPx(), StrokeCap.Round)
+            }
+            Box(Modifier.offset { IntOffset((f * (w - thumb)).roundToInt(), 0) }.align(Alignment.CenterStart).size(28.dp).shadow(3.dp, CircleShape).background(Color.White, CircleShape))
         }
     }
 }

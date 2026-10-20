@@ -69,7 +69,7 @@ import com.naeilo.app.data.friendName
 import com.naeilo.app.data.short
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.quote
-import com.naeilo.app.pending.AnalysisRoute
+import com.naeilo.app.ui.analysis.AnalysisRoute
 import com.naeilo.app.pending.CharPixel
 import com.naeilo.app.pending.CharacterDetailView
 import com.naeilo.app.pending.DepositLeverCard
@@ -88,8 +88,8 @@ import com.naeilo.app.pending.ShelterView
 import com.naeilo.app.pending.StoryBook
 import com.naeilo.app.pending.color
 import com.naeilo.app.pending.go
-import com.naeilo.app.pending.myPath
-import com.naeilo.app.pending.myPathGapToday
+import com.naeilo.app.ui.analysis.myPath
+import com.naeilo.app.ui.analysis.myPathGapToday
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card
