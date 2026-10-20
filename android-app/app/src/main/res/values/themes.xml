@@ -1,8 +1,0 @@
-<resources>
-    <!-- 첫 화면이 하얗게 번쩍이지 않게 창 바탕을 Theme.bg 로 (ios: Theme.swift:22) -->
-    <style name="Theme.Naeilo" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/bg</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
-</resources>
