@@ -5,7 +5,7 @@ import SwiftUI
 enum WaveMap {
     static let minDays = 10   // 이보다 짧으면 섬을 못 만든다
     static let order: [WaveEngine.Island] = [.nap, .climb, .coaster, .choppy]
-    private static let d = UserDefaults.standard
+    private static var d: UserDefaults { SurfCloset.store }   // 처음 읽을 때 키체인에서 되살린다
 
     static func stars(_ i: WaveEngine.Island) -> Int { d.integer(forKey: "wave.star.\(i.rawValue)") }
     static func best(_ i: WaveEngine.Island) -> Int { d.integer(forKey: "wave.best.\(i.rawValue)") }
@@ -18,6 +18,7 @@ enum WaveMap {
         let i = r.course.island
         if r.stars > stars(i) { d.set(r.stars, forKey: "wave.star.\(i.rawValue)") }
         if r.score > best(i) { d.set(r.score, forKey: "wave.best.\(i.rawValue)") }
+        SurfCloset.keep()
     }
 
     /// 3년 자산 라인을 40거래일씩 훑어 섬마다 들어갈 수 있는 시작 위치를 모은다 (3거래일 간격, 한 번만).
@@ -65,6 +66,9 @@ struct WaveHomeView: View {
     @State private var sel: WaveEngine.Island?
     @State private var bob = false
     @State private var closet = false
+    // 꾸미기 시트에서 고르면 바로 바뀌게 (SurfCloset.board·hat 이 같은 키에 쓴다)
+    @AppStorage("surf.board") private var board = 0
+    @AppStorage("surf.hat") private var hat = 0
     @State private var play: WaveEngine.Course?
     @State private var tick = 0   // 판이 끝나고 돌아오면 별을 다시 읽는다
 
@@ -108,7 +112,7 @@ struct WaveHomeView: View {
             WaveBand(phase: bob ? 1 : 0).fill(Color.white.opacity(0.35)).frame(height: 54)
             WaveBand(phase: bob ? 0 : 1).fill(Color(hex: 0x2F8FD8, dark: 0x2A6F99)).frame(height: 34)
             // 움직이는 그림은 누르는 자리가 애니메이션 끝 위치라 빗나가니, 탭은 바깥 칸 전체로 받는다
-            SurfRider(dot: 2.6)
+            SurfRider(board: board, hat: hat, dot: 2.6)
                 .rotationEffect(.degrees(bob ? -5 : 3), anchor: .bottom)
                 .offset(x: bob ? 6 : -6, y: bob ? -26 : -18)
                 .allowsHitTesting(false)

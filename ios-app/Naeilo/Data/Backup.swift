@@ -22,7 +22,8 @@ struct Backup: Codable {
         custom = CustomSymbols.shared.items; hist = CustomSymbols.shared.hist; daily = m.myRecord
         var t: [String: Data] = [:]
         for k in Self.townKeys { if let d = UserDefaults.standard.data(forKey: k) { t[k] = d } }
-        t["town.candy"] = Data(String(UserDefaults.standard.integer(forKey: "town.candy")).utf8)
+        // 정수 값: 별사탕 + 파도 타기(꾸미기·섬 별·최고 점수)
+        for k in ["town.candy"] + SurfCloset.keys { t[k] = Data(String(UserDefaults.standard.integer(forKey: k)).utf8) }
         town = t
     }
 
@@ -35,7 +36,10 @@ struct Backup: Codable {
         if let daily { m.myRecord = MyRecord.merge(m.myRecord, daily) }
         if let town {
             for k in Self.townKeys { if let d = town[k] { UserDefaults.standard.set(d, forKey: k) } }
-            if let c = town["town.candy"].flatMap({ Int(String(decoding: $0, as: UTF8.self)) }) { UserDefaults.standard.set(c, forKey: "town.candy") }
+            for k in ["town.candy"] + SurfCloset.keys {
+                if let c = town[k].flatMap({ Int(String(decoding: $0, as: UTF8.self)) }) { UserDefaults.standard.set(c, forKey: k) }
+            }
+            SurfCloset.keep()
             TownBook.shared.reload(); TownLog.shared.reload()
         }
         m.holdings = holdings

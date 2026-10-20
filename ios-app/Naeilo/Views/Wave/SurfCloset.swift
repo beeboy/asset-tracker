@@ -50,7 +50,7 @@ enum SurfCloset {
     ]
 
     // MARK: 저장 (UserDefaults 정수 몇 개)
-    private static let d = UserDefaults.standard
+    private static var d: UserDefaults { store }
     static var total: Int { d.integer(forKey: "surf.total") }
     static var fevers: Int { d.integer(forKey: "surf.fever") }
     static var splashes: Int { d.integer(forKey: "surf.splash") }
@@ -58,11 +58,37 @@ enum SurfCloset {
     static var hardCleared: Bool { d.integer(forKey: "surf.hard") > 0 }
     static var board: Int {
         get { let v = d.integer(forKey: "surf.board"); return isOpen(boards[min(max(v, 0), boards.count - 1)]) ? v : 0 }
-        set { d.set(newValue, forKey: "surf.board") }
+        set { d.set(newValue, forKey: "surf.board"); keep() }
     }
     static var hat: Int {
         get { let v = d.integer(forKey: "surf.hat"); return isOpen(hats[min(max(v, 0), hats.count - 1)]) ? v : 0 }
-        set { d.set(newValue, forKey: "surf.hat") }
+        set { d.set(newValue, forKey: "surf.hat"); keep() }
+    }
+
+    // MARK: 앱을 지웠다 깔아도 남게: 벽돌 게임 기록(GameRecord)처럼 키체인에도 한 벌 (UserDefaults 는 앱과 같이 지워진다)
+    /// 파도 타기 정수 키 전부: 꾸미기 + 섬 별·최고 점수 (Backup 파일에도 같이 넣는다)
+    static let keys = ["surf.total", "surf.fever", "surf.splash", "surf.snap", "surf.hard", "surf.board", "surf.hat"]
+        + WaveMap.order.flatMap { ["wave.star.\($0.rawValue)", "wave.best.\($0.rawValue)"] }
+    private static let kc: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "com.naeilo.game", kSecAttrAccount as String: "wave.v1"]
+    /// 처음 읽을 때 한 번: 이 폰 UserDefaults 가 비어 있으면 키체인에서 되살린다
+    static let store: UserDefaults = {
+        let u = UserDefaults.standard
+        guard keys.allSatisfy({ u.object(forKey: $0) == nil }) else { return u }
+        var q = kc; q[kSecReturnData as String] = true
+        var out: AnyObject?
+        if SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data,
+           let m = try? JSONDecoder().decode([String: Int].self, from: data) {
+            for (k, v) in m where keys.contains(k) { u.set(v, forKey: k) }
+        }
+        return u
+    }()
+    static func keep() {
+        let m = Dictionary(uniqueKeysWithValues: keys.map { ($0, d.integer(forKey: $0)) })
+        guard let data = try? JSONEncoder().encode(m) else { return }
+        let set: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock]
+        if SecItemUpdate(kc as CFDictionary, set as CFDictionary) == errSecItemNotFound {
+            SecItemAdd(kc.merging(set) { $1 } as CFDictionary, nil)
+        }
     }
 
     static func isOpen(_ i: SurfItem) -> Bool {
@@ -98,6 +124,7 @@ enum SurfCloset {
         d.set(splashes + max(splash, 0), forKey: "surf.splash")
         d.set(snaps + max(snap, 0), forKey: "surf.snap")
         if hardClear { d.set(1, forKey: "surf.hard") }
+        keep()
         return zip(all, before).filter { !$1 && isOpen($0) }.map(\.0)
     }
 
