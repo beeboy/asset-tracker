@@ -464,13 +464,19 @@ final class AppModel {
         return head + "본전까지 \(String(format: "%.1f", distY * 100))% → \(String(format: "%.1f", distNow * 100))%" + (distNow < distY ? ", 가까워졌어요." : ", 조금 멀어졌어요.")
     }
 
-    struct Question { let id: String; let tag: String; let q: String; let opts: [String]; let right: Int; let fb: (Int) -> String }
-    /// 세 칸 보기: 실제 값에 가장 가까운 칸이 정답 (step 간격, lo~hi 안)
-    private static func near3(_ x: Double, step: Double, lo: Double, hi: Double) -> (opts: [Double], right: Int) {
-        let c = min(hi - step, max(lo + step, (x / step).rounded() * step))
-        let o = [c - step, c, c + step]
+    struct Question {
+        let id: String; let tag: String; let q: String; let opts: [String]; let right: Int; let fb: (Int) -> String
+        /// 보기 글자가 겹치거나 0원·NaN 같은 이상한 값이면 안 낸다
+        var fair: Bool { Set(opts).count == opts.count && !opts.contains { $0.hasPrefix("0원") || $0.contains("nan") || $0.contains("inf") } }
+    }
+    /// 세 칸 보기: 실제 값에 가장 가까운 칸이 정답 (step 간격, lo~hi 안). 정답 칸은 날마다·질문마다 옮겨 '가운데만 고르기'로 안 맞게
+    private static func near3(_ x: Double, step: Double, lo: Double, hi: Double, salt: Int = 0) -> (opts: [Double], right: Int) {
+        let c = (x / step).rounded() * step, k = (quizDay + salt) % 3
+        let s = min(hi - 2 * step, max(lo, c - Double(k) * step))
+        let o = [s, s + step, s + 2 * step]
         return (o, o.indices.min { abs(o[$0] - x) < abs(o[$1] - x) } ?? 1)
     }
+    private static var quizDay: Int { Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0 }
 
     /// 오늘 낼 수 있는 질문 전부. 내 종목·계산값으로 만들고, 조건이 안 맞는 질문은 빠진다
     var questionPool: [Question] {
@@ -494,7 +500,7 @@ final class AppModel {
             qs.append(.init(id: "weight", tag: "비중 퀴즈", q: "가장 큰 종목은?", opts: c.map(\.sym.short),
                             right: wt.indices.max { wt[$0] < wt[$1] } ?? 0,
                             fb: { _ in wtList }))
-            let top = byW[0], w = top.value / tot, n = Self.near3(w, step: 0.2, lo: 0, hi: 1)
+            let top = byW[0], w = top.value / tot, n = Self.near3(w, step: 0.2, lo: 0.2, hi: 1, salt: 1)
             qs.append(.init(id: "topshare", tag: "비중 퀴즈", q: "\(top.sym.short)는 내 평가액의 몇 %쯤일까요?", opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
                             fb: { _ in "\(top.sym.short) \(Self.won(top.value)) ÷ 전체 \(Self.won(tot)) = \(Self.pct(w))." }))
         }
@@ -507,20 +513,20 @@ final class AppModel {
                             fb: { _ in "달러 비중 × 환율 변화 ≈ \(Self.sgn(eff)). 환율이 오르면 달러 종목의 원화 값도 같이 올라요." }))
         }
         if cost > 0 && !rs.isEmpty {
-            let r = ret, n = Self.near3(r, step: 0.1, lo: -1, hi: 10)
+            let r = ret, n = Self.near3(r, step: 0.1, lo: -1, hi: 10, salt: 2)
             let c = cost, t = total
             qs.append(.init(id: "ret", tag: "수익률 퀴즈", q: "산 값과 비교한 지금 내 수익률은 어느 쪽에 가까울까요?", opts: n.opts.map { "약 " + Self.sgn0($0) }, right: n.right,
                             fb: { _ in "지금 \(Self.sgn(r)). 들어간 돈 \(Self.won(c)), 지금 \(Self.won(t))." }))
         }
         if route == .recover {
             if cost > 0 && !rs.isEmpty {
-                let p12 = planBreakEven(years: 1), p6 = planBreakEven(years: 0.5), n = Self.near3(p12, step: 0.2, lo: 0.1, hi: 0.9)
+                let p12 = planBreakEven(years: 1), p6 = planBreakEven(years: 0.5), n = Self.near3(p12, step: 0.2, lo: 0.1, hi: 0.9, salt: 3)
                 qs.append(.init(id: "be1y", tag: "확률 퀴즈", q: "지금 계획(\(selectedPlan.name))으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?",
                                 opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
                                 fb: { _ in "모형 계산으로 약 \(Self.pct(p12))예요. 6개월 안이면 \(Self.pct(p6)). 기간이 길수록 높아져요." }))
             }
             if total > 0 && cost > total {
-                let d = cost / total - 1, loss = 1 - total / cost, n = Self.near3(d, step: 0.1, lo: 0, hi: 10)
+                let d = cost / total - 1, loss = 1 - total / cost, n = Self.near3(d, step: 0.1, lo: 0, hi: 10, salt: 4)
                 qs.append(.init(id: "dist", tag: "본전 퀴즈", q: "들어간 돈보다 \(Self.pct(loss)) 내려 있어요. 본전까지는 몇 % 올라야 할까요?",
                                 opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
                                 fb: { _ in "\(String(format: "%.1f", d * 100))% 올라야 해요. 내린 만큼보다 더 올라야 하는 건, 줄어든 돈에서 다시 오르기 때문이에요." }))
@@ -545,26 +551,29 @@ final class AppModel {
             }
             qs.append(.init(id: "mind", tag: "오늘 마음", q: "오늘 내 투자, 어떻게 느껴져요?", opts: ["불안해요", "괜찮아요", "기대돼요"], right: -1,
                             fb: { $0 == 0 ? "불안한 날엔 하루 숫자 말고 종목 상세의 1년 칩을 보세요. 길이 더 잘 보여요." : "좋아요. 내일도 1분이면 돼요." }))
-            return qs
+            return qs.filter(\.fair)
         }
         // 목표 루트
         let principal = gM * 12 * Double(gY), m = gM, y = gY
-        qs.append(.init(id: "principal", tag: "계산 퀴즈", q: "매달 \(Self.wonK(m))씩 \(y)년 넣으면 넣은 원금만 얼마일까요?",
-                        opts: [Self.wonK(principal * 0.5), Self.wonK(principal), Self.wonK(principal * 1.5)], right: 1,
-                        fb: { _ in "\(Self.wonK(m)) × 12달 × \(y)년 = \(Self.wonK(principal)). 그 위에 수익이 더해져 목표로 가요." }))
-        qs.append(.init(id: "deposit", tag: "이번 달 적립", q: "이번 달 \(Self.wonK(m)), 넣었나요?", opts: ["넣었어요", "아직이요"], right: -1,
-                        fb: { $0 == 0 ? "좋아요. 3개월 블록에 반영해 둘게요." : "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요." }))
+        if m >= 1 && y > 0 {     // 매달 금액·기간이 없으면 계산 퀴즈·적립 질문은 안 낸다. 보기는 1년치 간격
+            let n = Self.near3(principal, step: m * 12, lo: m * 12, hi: .infinity, salt: 9)
+            qs.append(.init(id: "principal", tag: "계산 퀴즈", q: "매달 \(Self.wonK(m))씩 \(y)년 넣으면 넣은 원금만 얼마일까요?",
+                            opts: n.opts.map(Self.wonK), right: n.right,
+                            fb: { _ in "\(Self.wonK(m)) × 12달 × \(y)년 = \(Self.wonK(principal)). 그 위에 수익이 더해져 목표로 가요." }))
+            qs.append(.init(id: "deposit", tag: "이번 달 적립", q: "이번 달 \(Self.wonK(m)), 넣었나요?", opts: ["넣었어요", "아직이요"], right: -1,
+                            fb: { $0 == 0 ? "좋아요. 3개월 블록에 반영해 둘게요." : "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요." }))
+        }
         if keyValue > 0 {
-            let p = trackValue / keyValue, n = Self.near3(p, step: 0.1, lo: 0, hi: 1.5), v = trackValue, k = keyValue
+            let p = trackValue / keyValue, n = Self.near3(p, step: 0.1, lo: 0, hi: 1.5, salt: 5), v = trackValue, k = keyValue
             qs.append(.init(id: "progress", tag: "목표 퀴즈", q: "지금 모은 돈은 목표의 몇 %쯤일까요?", opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
                             fb: { _ in "\(Self.won(v)) ÷ 목표 \(Self.won(k)) = \(Self.pct(p))." }))
-            let pg = forecast.prob(Double(y)), g = Self.near3(pg, step: 0.2, lo: 0, hi: 1)
+            let pg = forecast.prob(Double(y)), g = Self.near3(pg, step: 0.2, lo: 0, hi: 1, salt: 6)
             qs.append(.init(id: "goalprob", tag: "확률 퀴즈", q: "지금 그대로 \(y)년 가면 목표에 닿을 확률은 어느 쪽에 가까울까요?", opts: g.opts.map { "약 \(Self.pct($0))" }, right: g.right,
                             fb: { _ in "모형 계산으로 약 \(Self.pct(pg))예요. 매달 넣는 돈을 늘리면 이 숫자가 올라가요." }))
         }
         qs.append(.init(id: "mind", tag: "오늘 마음", q: "오늘 목표까지의 길, 어떻게 느껴져요?", opts: ["멀어요", "보통이에요", "가까워요"], right: -1,
                         fb: { $0 == 0 ? "먼 길은 매달 넣는 돈이 끌고 가요. 1년 뒤 그래프를 한 번 보세요." : "그 느낌 그대로 가요. 내일도 1분이면 돼요." }))
-        return qs
+        return qs.filter(\.fair)
     }
 
     /// 오늘 질문: 이미 본 날은 그 질문 그대로. 아니면 지난 7일에 안 나온 것 중 날짜로 정한 무작위 (하루 동안은 같은 질문)
