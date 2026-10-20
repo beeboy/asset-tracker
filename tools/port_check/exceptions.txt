@@ -1,0 +1,46 @@
+# port_check 예외: 아직 옮기지 않는 줄과 그 이유 (해당 단계에서 옮기면 여기서 지운다)
+# 형식: 파일:줄 또는 파일:시작-끝  이유
+
+# App.swift — 뼈대(A) 밖: 모델·서비스가 아직 없다
+App.swift:8 알림 단계: 알림 누름 처리(NotificationDelegate)
+App.swift:9 위젯 단계: 토스 키를 위젯과 나누기 (TossKeys)
+App.swift:10 구독 단계: Play Billing 확인·거래 듣기 (Support)
+App.swift:39 미션 탭 단계: 목표 루트면 GoalBoardView, 아니면 BoardView (isGoal)
+App.swift:46-77 모델·위젯·동기화·알림 단계: 값이 바뀔 때 위젯 쓰기·동기화·알림 다시 예약, 앱이 앞으로 올 때 서버 시각·당겨 받기
+App.swift:78-88 알림 단계: 알림을 누르면 탭·화면 열기
+App.swift:89-100 위젯·딥링크 단계: naeilo:// 주소로 탭·화면 열기
+App.swift:101-123 시세 단계: 앞에 있는 동안만 1분마다 시세 받기·기록·위젯·알림 (WorkManager 와 함께)
+App.swift:155-169 인물 대사 단계: 탭·화면 이동 때 대사 차례 올리기 (LineTurns)
+App.swift:171-188 국내 합계 단계: 국내 종목 합계 시트·동기화 (KoreaSumHooks)
+
+# B 단계 (models)
+# models 그룹: WidgetShared/Models.swift → core/Models.kt + core/Feeds.kt
+WidgetShared/Models.swift:377 키체인 접근 그룹: 안드로이드는 위젯이 같은 앱이라 Keystore 키를 같이 쓴다 (플랫폼에 없음)
+WidgetShared/Models.swift:379 kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly: Keystore 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
+WidgetShared/Models.swift:525 키체인 접근 그룹 (377 과 같음)
+WidgetShared/Models.swift:527 키체인 접근성 (379 와 같음)
+WidgetShared/Models.swift:733 키체인 접근 그룹 (377 과 같음)
+WidgetShared/Models.swift:735 키체인 접근성 (379 와 같음)
+
+# B 단계 (engine)
+# engine 그룹 (Engine·Format·Flip·Reward·Config·StoryWidgetData)
+WidgetShared/Format.swift:10 위젯 확장(appex) 구분: 안드로이드 위젯은 앱과 같은 프로세스라 구분 없음. appLang 읽기는 Format.kt WL.en 에 옮김
+WidgetShared/Reward.swift:76 문자열 보간 안에 따옴표가 겹쳐 검사기가 조각(", abs(c) * 100))). 셌어.")을 문구로 읽음. Reward.kt line() 의 "sio" 줄에 같은 동작으로 옮김
+WidgetShared/Config.swift:28 App Group 이 없을 때 쓰는 대체 폴더: 안드로이드는 filesDir 하나라 대체가 없음
+
+# B 단계 (appmodel)
+# appmodel (Data/AppModel.swift → AppModel.kt)
+# 검사기 한계: Swift 보간 속 따옴표(String(localized:) 안의 String(localized:))를 문자열 조각으로 잘못 읽는다. 줄은 옮겼고 Kotlin 주석에 줄 번호를 남겼다
+Data/AppModel.swift:466 검사기 한계: 보간 속 따옴표 (옮김, AppModel.kt todayMoversText)
+Data/AppModel.swift:484 검사기 한계: 보간 속 따옴표 (옮김, AppModel.kt routineFact)
+Data/AppModel.swift:508 검사기 한계: 보간 속 따옴표 (옮김, AppModel.kt questionPool updown)
+Data/AppModel.swift:552 검사기 한계: 보간 속 따옴표 (옮김, AppModel.kt questionPool dist)
+# 검사기 한계: 64비트 부호 없는 16진수는 Kotlin 에서 uL 을 붙여야 해 숫자로 못 읽는다 (옮김, AppModel.kt question)
+Data/AppModel.swift:606-608 검사기 한계: 부호 없는 64비트 상수 uL (옮김, AppModel.kt question)
+Data/AppModel.swift:14 언어: Kotlin enum 은 경우 이름 name 을 못 써 byName, 저장 값 raw "name" 은 같다 (AppModel.kt HoldSort)
+
+# B 단계 (data)
+# data 그룹 예외
+Data/Lots.swift:54-61 YahooSample 단계: YahooSample.Hist 확장(on) 은 YahooSample 을 옮길 때 그 타입에 같이 둔다
+Data/Me.swift:171-175 플랫폼: iOS sysctl kern.bootsessionuuid → 안드로이드 Settings.Global.BOOT_COUNT (Me.kt TrustedClock.bootID)
+Data/Me.swift:204 플랫폼: en_US_POSIX 는 자바에 없는 이름, 같은 뜻 Locale.US + ZoneId GMT (Me.kt httpDate)

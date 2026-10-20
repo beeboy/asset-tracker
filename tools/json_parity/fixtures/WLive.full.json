@@ -1,0 +1,21 @@
+{
+  "cashKrw" : 9.25,
+  "cashUsd" : 10.25,
+  "goalAmount" : 11.25,
+  "goalDate" : "s12",
+  "goalStart" : "s13",
+  "hold" : [
+    {
+      "price" : 4.25,
+      "sh" : 3.25,
+      "t" : "s2"
+    },
+    {
+      "price" : 8.25,
+      "sh" : 7.25,
+      "t" : "s6"
+    }
+  ],
+  "manualPrice" : true,
+  "stateAt" : 15.25
+}
