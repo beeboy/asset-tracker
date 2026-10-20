@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.analysis
 
+import com.naeilo.app.core.cformat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
@@ -67,18 +68,8 @@ import com.naeilo.app.data.Currency
 import com.naeilo.app.net.Market
 import com.naeilo.app.pending.CalmView
 import com.naeilo.app.pending.CharHead
-import com.naeilo.app.pending.DividendScreen
-import com.naeilo.app.pending.DividendView
-import com.naeilo.app.pending.ExternalScreen
-import com.naeilo.app.pending.ExternalView
-import com.naeilo.app.pending.FxImpactView
-import com.naeilo.app.pending.GlanceView
 import com.naeilo.app.pending.GoalSetView
-import com.naeilo.app.pending.MacroData
 import com.naeilo.app.pending.MarketEvents
-import com.naeilo.app.pending.MyPathView
-import com.naeilo.app.pending.RateScenarioScreen
-import com.naeilo.app.pending.RateScenarioView
 import com.naeilo.app.pending.SubLocked
 import com.naeilo.app.pending.Support
 import com.naeilo.app.ui.AppHeader
@@ -139,12 +130,12 @@ fun AnalysisPager(m: AppModel, start: AnalysisRoute) {
     fun Page(r: AnalysisRoute) = when (r) {
         // 7일 무료 뒤 구독하지 않으면 목표(내 길)·확률 전망만 잠근다 (Support.pro)
         AnalysisRoute.forecast -> if (Support.shared.pro) ForecastView(m) else SubLocked(what = "확률 전망")   // ios: Views/AnalysisView.swift:46
-        AnalysisRoute.myPath -> if (Support.shared.pro) MyPathView() else SubLocked(what = "내 길(목표까지 확률)")   // ios: Views/AnalysisView.swift:47
-        AnalysisRoute.rateScen -> RateScenarioScreen()   // ios: Views/AnalysisView.swift:48
-        AnalysisRoute.external -> ExternalScreen()   // ios: Views/AnalysisView.swift:49
-        AnalysisRoute.dividend -> DividendScreen()   // ios: Views/AnalysisView.swift:50
-        AnalysisRoute.fx -> FxImpactView()   // ios: Views/AnalysisView.swift:51
-        AnalysisRoute.glance -> GlanceView()   // ios: Views/AnalysisView.swift:52
+        AnalysisRoute.myPath -> if (Support.shared.pro) MyPathView(m) else SubLocked(what = "내 길(목표까지 확률)")   // ios: Views/AnalysisView.swift:47
+        AnalysisRoute.rateScen -> RateScenarioScreen(m)   // ios: Views/AnalysisView.swift:48
+        AnalysisRoute.external -> ExternalScreen(m)   // ios: Views/AnalysisView.swift:49
+        AnalysisRoute.dividend -> DividendScreen(m)   // ios: Views/AnalysisView.swift:50
+        AnalysisRoute.fx -> FxImpactView(m)   // ios: Views/AnalysisView.swift:51
+        AnalysisRoute.glance -> GlanceView(m)   // ios: Views/AnalysisView.swift:52
         AnalysisRoute.calm -> CalmView()   // ios: Views/AnalysisView.swift:53
     }
 
@@ -332,7 +323,7 @@ private fun lines(m: AppModel): List<AnalysisHub.Line> {
         out.add(AnalysisHub.Line(icon = "flag", tone = G, label = "내 길", value = if (fc.exact) AnalysisHub.freq(fc.pGoal) else "계산 중", valueTone = G, route = AnalysisRoute.myPath))   // ios: Views/AnalysisView.swift:220
     } else {   // ios: Views/AnalysisView.swift:221
         val gap = m.myPathGapToday   // ios: Views/AnalysisView.swift:222
-        out.add(AnalysisHub.Line(icon = "flag", tone = G, label = "내 길", value = String.format(Locale.US, "%.1f%% ", abs(gap) * 100) + (if (gap >= 0) "앞섬" else "뒤처짐"), valueTone = if (gap >= 0) G else W, route = AnalysisRoute.myPath))   // ios: Views/AnalysisView.swift:223
+        out.add(AnalysisHub.Line(icon = "flag", tone = G, label = "내 길", value = cformat("%.1f%% ", abs(gap) * 100) + (if (gap >= 0) "앞섬" else "뒤처짐"), valueTone = if (gap >= 0) G else W, route = AnalysisRoute.myPath))   // ios: Views/AnalysisView.swift:223
     }
     // 전망: 상세 첫 카드처럼 경로 값에 현금을 더한다
     val med = (fc.q50.lastOrNull() ?: 0.0) + (if (fc.exact) m.cashKrw else 0.0)   // ios: Views/AnalysisView.swift:226
@@ -623,9 +614,9 @@ object ForecastView {
     // ios: Views/AnalysisView.swift:507
     fun amt(v: Double): String {
         val a = abs(v); val s = if (v < 0) "−" else ""   // ios: Views/AnalysisView.swift:508
-        if (a >= 1e9) return s + String.format(Locale.US, "%.1f억", a / 1e8)   // ios: Views/AnalysisView.swift:509
-        if (a >= 1e8) return s + String.format(Locale.US, "%.2f억", a / 1e8)   // ios: Views/AnalysisView.swift:510
-        return s + "%,d".format(Locale.ROOT, (a / 1e4).swRound().toLong()) + "만"   // ios: Views/AnalysisView.swift:511
+        if (a >= 1e9) return s + cformat("%.1f억", a / 1e8)   // ios: Views/AnalysisView.swift:509
+        if (a >= 1e8) return s + cformat("%.2f억", a / 1e8)   // ios: Views/AnalysisView.swift:510
+        return s + cformat("%,d", (a / 1e4).swRound().toLong()) + "만"   // ios: Views/AnalysisView.swift:511
     }
     // ios: Views/AnalysisView.swift:513
     fun short(l: Lens): String = if (l == Lens.base) "신중" else if (l == Lens.smooth) "3년처럼" else "내 설정"
@@ -634,7 +625,7 @@ object ForecastView {
     fun ym(d: String): Pair<String, String> {
         val p = d.split("-")   // ios: Views/AnalysisView.swift:516
         val y = p.getOrNull(0)?.toIntOrNull(); val mo = p.getOrNull(1)?.toIntOrNull(); if (p.size < 2 || y == null || mo == null) return Pair(d, d)   // ios: Views/AnalysisView.swift:517
-        return Pair("${y}년 ${mo}월", String.format(Locale.US, "%d.%02d", y, mo))   // Views/AnalysisView.swift:518 (검사 예외: 같은 글)
+        return Pair("${y}년 ${mo}월", cformat("%d.%02d", y, mo))   // Views/AnalysisView.swift:518 (검사 예외: 같은 글)
     }
 }
 

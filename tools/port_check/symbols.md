@@ -43,3 +43,8 @@ SF 의 `.fill` 은 채움(FILL 1) 모양으로. 코드에서는 `Sym(R.drawable.
 | `chevron.up` | `expand_less` | - | 전망 자세히 접기 |
 
 탭 막대 아이콘(house·chart.bar·chart.line.uptrend.xyaxis·square.grid.2x2·gearshape)은 iOS 탭 막대처럼 채운 모양을 따로 그린 `tab_*.xml` 을 쓴다 (A 단계).
+| `minus` | `remove` | - | 내 길 비교·모의 바구니 비중 − |
+| `xmark` | `close` | - | 모의 바구니 종목 빼기 |
+| `info.circle` | `info` | - | 종목 한눈에 안내 |
+| `bell` | `notifications` | - | 외부 요인 결과 알림 |
+| `bell.fill` | `notifications` | 채움 | 외부 요인 결과 알림 켬 |

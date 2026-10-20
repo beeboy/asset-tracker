@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.settings
 
+import com.naeilo.app.core.cformat
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -472,9 +473,9 @@ fun PriceBasisView(m: AppModel) {
                 PRow("한국 종목", if (mk.toss != null) "토스 지금 가격" else "사이트가 모은 가격. 미국 지수를 따르는 국내 ETF는 그 미국 ETF × 원/달러로 추정해요")   // ios: Views/SettingsView.swift:306
                 PRow("장 마감 뒤", "미국 장이 끝나면 정규장 종가로 세요 (토스 총자산과 같은 기준)")   // ios: Views/SettingsView.swift:307
                 // Views/SettingsView.swift:308 (검사 예외: 같은 줄에 옮김)
-                PRow("원/달러", "${"%,d".format(Locale.ROOT, fx.last.roundToLong())}원 · 오늘 ${AppModel.sgn(fx.change)}")
+                PRow("원/달러", "${cformat("%,d", fx.last.roundToLong())}원 · 오늘 ${AppModel.sgn(fx.change)}")
                 // Views/SettingsView.swift:309 (검사 예외: 같은 줄에 옮김)
-                PRow("평가 환율", if (mk.marRate != null) "매매기준율 ${String.format(Locale.US, "%.2f", mk.valFx)}원 · 웹 평가액과 같아요" else "매매기준율을 아직 못 받아 지금 환율")
+                PRow("평가 환율", if (mk.marRate != null) "매매기준율 ${cformat("%.2f", mk.valFx)}원 · 웹 평가액과 같아요" else "매매기준율을 아직 못 받아 지금 환율")
                 PRow("오늘의 움직임", "전일 종가 대비 지금 평가액")   // ios: Views/SettingsView.swift:310
             }
             // ios: Views/SettingsView.swift:312,313

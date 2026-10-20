@@ -97,12 +97,6 @@ object MarketEvents {
 
 // TODO(홈에서 여는 다른 단계 화면): 쉼터·평행세계·목표 정하기·서재·내 캐릭터·인물 상세
 @Composable fun ShelterView(onlyLibrary: Boolean = false) {}
-// TODO(ParallelView)
-@Composable fun ParallelView() {}
-// TODO(ParallelView)
-@Composable fun ParallelBasketView() {}
-// TODO(ParallelView): 홈 평행세계 카드
-@Composable fun ParallelHomeCard() {}
 // TODO(GoalViews)
 @Composable fun GoalSetView(fromSettings: Boolean = false) {}
 // TODO(Reader)
@@ -176,29 +170,36 @@ val LocalCharDark = androidx.compose.runtime.compositionLocalOf { false }
 val LocalCharHide = androidx.compose.runtime.compositionLocalOf { false }
 // TODO(TownView 동네 I): 소식판의 [동네] 버튼과 전체 화면
 @Composable fun TownButton() {}
-// TODO(AnalysisDetail G2): 분석 상세 화면과 허브가 읽는 한 줄 값
-@Composable fun MyPathView() {}
-// TODO(AnalysisDetail G2)
-object RateScenarioView { fun hubTiming(m: AppModel): String? = null }
-// TODO(AnalysisDetail G2)
-@Composable fun RateScenarioScreen() {}
-// TODO(AnalysisDetail G2)
-object ExternalView { class Next(val day: String, val kind: String, val amt: Double); fun hubNext(m: AppModel): Next? = null; fun mktBeta(id: String): Double? = null }
-// TODO(AnalysisDetail G2)
-@Composable fun ExternalScreen() {}
-// TODO(AnalysisDetail G2)
-object DividendView { fun hubMonthly(m: AppModel): Double = 0.0; fun hubTax(m: AppModel): Double = 0.0 }
-// TODO(AnalysisDetail G2)
-@Composable fun DividendScreen() {}
-// TODO(AnalysisDetail G2)
-@Composable fun FxImpactView() {}
-// TODO(AnalysisDetail G2)
-@Composable fun GlanceView() {}
-// TODO(AnalysisDetail G2): 금리 자료
-class MacroData { val failed: Boolean = false; suspend fun load() {}; companion object { val shared = MacroData() } }
 // TODO(CalmView 습관 H)
 @Composable fun CalmView() {}
 // TODO(MeViews 인물 I): 인물 얼굴 동그라미
 @Composable fun CharHead(id: String, size: Dp) { Box(Modifier.size(size)) }
 // TODO(SupportView 구독): 구독하면 열리는 화면
 @Composable fun SubLocked(what: String) {}
+
+// TODO(I 쉼터): 인물 그림 뒤 바탕색 (Shelter.swift spriteBacking)
+@Composable fun com.naeilo.app.data.Shelter.spriteBacking(@Suppress("UNUSED_PARAMETER") id: String): androidx.compose.ui.graphics.Color = com.naeilo.app.ui.Theme.line
+// TODO(I 쉼터): 내 캐릭터·사건 컷 그림이 있는지 (MeViews MeArt.has)
+object MeArt { fun has(@Suppress("UNUSED_PARAMETER") name: String): Boolean = false }
+
+
+
+// G2b(외부 요인·금리 시나리오) 화면이 부르는데 아직 옮기지 않은 이름의 자리. 진짜 이식이 오면 이 파일의 해당 줄을 지운다.
+
+// TODO(Data/Notifier.swift EventRetro): 일정 전후 평가액 기록·결과 알림
+object EventRetro {
+    /** 일정 하나의 미리 본 범위(amt)와 일정 전 평가액(base), 다음에 연 때 평가액(after) */
+    class Snap(val kind: String, val day: String, val amt: Double, val base: Double, val after: Double?)
+    /** record 에 넘기는 일정 한 줄 (Swift (id:kind:day:amt:) 튜플 자리) */
+    class Rec(val id: String, val kind: String, val day: String, val amt: Double)
+    fun record(evs: List<Rec>, total: Double) {}
+    val latest: Snap? get() = null
+    fun isAsked(id: String, day: String): Boolean = false
+    suspend fun ask(id: String, kind: String, day: String, on: Boolean) {}
+}
+
+// TODO(Data/Remind.swift MarketEvents.rateUpcoming): 오늘부터 days 일 안의 금리 결정 일정 (FOMC·한국은행), 날짜순
+fun MarketEvents.rateUpcoming(days: Int): List<MarketEvents.Hit> = emptyList()
+
+// TODO(Data/Notifier.swift Notifier.request): 알림 허락 결과 (Swift 는 Bool 을 돌려준다. Pending.kt 의 Notifier.request 는 아직 Unit)
+suspend fun notifierRequest(): Boolean { Notifier.request(); return false }

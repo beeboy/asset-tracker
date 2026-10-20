@@ -322,14 +322,22 @@ fun RollText(text: String, value: Any, modifier: Modifier = Modifier, style: Tex
     // .animation(.snappy): 0.5초, 튐 0.15 스프링
     val spec = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.85f, stiffness = stiffness(0.5f))
     // 글자 칸마다 넘기는 동안에도 첫 줄 기준선을 밖으로 넘긴다 (옆 글자와 기준선 맞추기)
-    val base = androidx.compose.ui.text.rememberTextMeasurer().measure(text, style, maxLines = 1).firstBaseline
+    val full = androidx.compose.ui.text.rememberTextMeasurer().measure(text, style, maxLines = 1)
+    val base = full.firstBaseline; val fullH = full.size.height
     androidx.compose.ui.layout.Layout(content = {
         Row(Modifier.clipToBounds()) {
             text.forEachIndexed { i, ch ->
                 androidx.compose.runtime.key(text.length - i) {
                     AnimatedContent(ch, transitionSpec = {
                         (slideInVertically(spec) { h -> if (upward) h else -h }) togetherWith (slideOutVertically(spec) { h -> if (upward) -h else h })
-                    }, label = "roll") { c -> BasicText(c.toString(), style = style) }
+                    }, label = "roll") { c ->
+                        // 글자마다 글꼴이 달라도(숫자·한글) 같은 기준선에 서게 둔다
+                        androidx.compose.ui.layout.Layout({ BasicText(c.toString(), style = style) }) { ms, cs ->
+                            val p = ms[0].measure(cs); val b = p[androidx.compose.ui.layout.FirstBaseline]
+                            val dy = if (b == androidx.compose.ui.layout.AlignmentLine.Unspecified) 0 else base.roundToInt() - b
+                            layout(p.width, maxOf(fullH, p.height + dy)) { p.place(0, dy) }
+                        }
+                    }
                 }
             }
         }

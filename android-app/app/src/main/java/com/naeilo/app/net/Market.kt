@@ -1,5 +1,6 @@
 package com.naeilo.app.net
 
+import com.naeilo.app.core.cformat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -58,7 +59,7 @@ private fun nowSec(): Double = System.currentTimeMillis() / 1000.0
 /** Date.distantPast 자리 (0001-01-01) */
 internal val distantPast: Instant = Instant.ofEpochSecond(-62_135_769_600L)
 /** String(format:) 은 소수점이 늘 . 이다 */
-private fun fmt(f: String, vararg a: Any): String = String.format(Locale.US, f, *a)
+private fun fmt(f: String, vararg a: Any): String = cformat(f, *a)
 /** Locale(identifier:) 자리 ("en_US_POSIX" → en-US-POSIX) */
 internal fun posix(id: String): Locale = Locale.forLanguageTag(id.replace('_', '-'))
 /** TimeZone(identifier:) ?? .current */

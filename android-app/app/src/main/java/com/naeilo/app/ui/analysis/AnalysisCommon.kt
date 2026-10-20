@@ -107,9 +107,17 @@ fun AppModel.pathSeries(start: String): List<Pair<String, Double>> {
     }
 }
 // ios: Views/AnalysisDetail.swift:50
-val AppModel.myPath: MyPath get() {
+val AppModel.myPath: MyPath get() = myPathOf(
+    isGoal = isGoal, goalSpan = goalSpan, pathStartDate = pathStartDate, today = Day.today, gM = gM, keyValue = keyValue, trackValue = trackValue,
+    route = route, isSample = isSample, krSum = krSum,
+    KL = CustomSymbols.shared.krLog,   // ios: Views/AnalysisDetail.swift:80
+    pathSeries = { pathSeries(start = it) }, totalAt = { totalAt(it) })
+
+/** 내 길 몸통: AppModel 값만 받아 셈한다 (같은 입력 숫자 맞추기 tools/num_parity g 가 직접 부른다) */
+fun myPathOf(isGoal: Boolean, goalSpan: Double, pathStartDate: Instant, today: String, gM: Double, keyValue: Double, trackValue: Double,
+             route: Route, isSample: Boolean, krSum: Double, KL: List<MC.KrDay>, pathSeries: (String) -> List<Pair<String, Double>>, totalAt: (Double) -> Double): MyPath {
     val mEnd = if (isGoal) goalSpan else 1.0     // ios: Views/AnalysisDetail.swift:51 목표: 시작일부터 목표일까지 (사이트와 같은 날짜)
-    val sD = Day.str(pathStartDate); val today = Day.today   // ios: Views/AnalysisDetail.swift:52
+    val sD = Day.str(pathStartDate)   // ios: Views/AnalysisDetail.swift:52 (today 는 받는다)
     // 시작한 날부터 오늘까지 (년). 오늘 시작이면 하루로 둔다
     val mS = min(mEnd * 0.95, max(1.0 / 365.25, yrs(sD, today))); val mM = if (isGoal) gM * 1e4 else 0.0; val K = keyValue   // ios: Views/AnalysisDetail.swift:54
     val now = trackValue   // ios: Views/AnalysisDetail.swift:55
@@ -122,7 +130,7 @@ val AppModel.myPath: MyPath get() {
         pts = (0..30).map { i -> val t = mS * i.toDouble() / 30; Pair(t, if (i == 30) now else totalAt(1 - (mS - t) / 3)) }.toMutableList()   // ios: Views/AnalysisDetail.swift:61
     } else {   // ios: Views/AnalysisDetail.swift:62
         // 웹처럼 시작일 또는 그 뒤 첫 거래일 값에서 출발 (시작일 뒤 거래일이 아직 없으면 그 전 마지막 거래일)
-        val S = pathSeries(start = sD)   // ios: Views/AnalysisDetail.swift:64
+        val S = pathSeries(sD)   // ios: Views/AnalysisDetail.swift:64
         val i0 = S.indexOfFirst { it.first >= sD }.let { if (it < 0) max(0, S.size - 1) else it }   // ios: Views/AnalysisDetail.swift:65
         pts = mutableListOf()   // ios: Views/AnalysisDetail.swift:66
         // ios: Views/AnalysisDetail.swift:67
@@ -140,7 +148,6 @@ val AppModel.myPath: MyPath get() {
     }
     val vS = P.firstOrNull()?.second ?: now; val kAdj = K - mM * 12 * mEnd   // ios: Views/AnalysisDetail.swift:78
     // 시작일 뒤에 처음 넣은 국내 주식 합계는 들어온 돈: 그날부터 길에도 그 금액을 더한다 (앞선 것으로 보이지 않게. 웹 goalPath 와 같다)
-    val KL = CustomSymbols.shared.krLog   // ios: Views/AnalysisDetail.swift:80
     val kin = if (krSum > 0 && route != Route.novice && !isSample && MC.krAt(KL, sD) == 0.0) KL.firstOrNull { it.d > sD && it.v > 0 } else null   // ios: Views/AnalysisDetail.swift:81
     val tIn = kin?.let { yrs(sD, it.d) } ?: Double.POSITIVE_INFINITY; val vIn = kin?.v ?: 0.0   // ios: Views/AnalysisDetail.swift:82
     val need: (Double) -> Double = { t -> mM * 12 * t + (if (kAdj > 0 && vS > 0) vS * (kAdj / vS).pow(t / mEnd) else vS + (K - vS) * t / mEnd) + (if (t >= tIn) vIn else 0.0) }   // ios: Views/AnalysisDetail.swift:83

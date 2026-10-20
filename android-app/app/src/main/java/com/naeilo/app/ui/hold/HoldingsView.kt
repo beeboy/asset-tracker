@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.hold
 
+import com.naeilo.app.core.cformat
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -217,7 +218,7 @@ private fun TotalCard(m: AppModel, us: Int, kr: Int) {
         // ios: Views/HoldingsView.swift:100,101
         T("원금 ${AppModel.man(m.cost)} → 평가 ${AppModel.man(m.total)}", style = appFont(14f).tnum(), color = Theme.sub)
         // ios: Views/HoldingsView.swift:103 (102 는 검사 예외: 같은 글)
-        T("${us + kr}종목" + (if (us > 0) " · $1 = ${"%,d".format(Locale.ROOT, Market.shared.valFx.swRound().roundToLong())}원" else ""), style = appFont(12f), color = Theme.muted)
+        T("${us + kr}종목" + (if (us > 0) " · $1 = ${cformat("%,d", Market.shared.valFx.swRound().roundToLong())}원" else ""), style = appFont(12f), color = Theme.muted)
     }
 }
 
@@ -392,7 +393,7 @@ private fun HoldRow(r: AppModel.Row, inUsd: Boolean, big: Boolean) {
             // ios: Views/HoldingsView.swift:234
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 T("${AppModel.price(r.sym, r.sym.last)} ·", style = appFont(12f).tnum(), color = Theme.sub, maxLines = 1)   // ios: Views/HoldingsView.swift:235,238
-                T((if (day >= 0) "+" else "−") + String.format(Locale.US, "%.2f%%", abs(day) * 100), style = appFont(12f).tnum(), color = Theme.change(day), maxLines = 1)   // ios: Views/HoldingsView.swift:236
+                T((if (day >= 0) "+" else "−") + cformat("%.2f%%", abs(day) * 100), style = appFont(12f).tnum(), color = Theme.change(day), maxLines = 1)   // ios: Views/HoldingsView.swift:236
             }
         }
     }
@@ -551,7 +552,7 @@ private fun CompareCard(c: Cmp) {
             Cell(c.name, c.mkt)   // ios: Views/HoldingsView.swift:839
         }
         // Views/HoldingsView.swift:841 (검사 예외: 같은 글로 옮김)
-        val pct = String.format(Locale.US, "%.1f", abs(gap) * 100); val dir = if (gap > 0) "높아요" else "낮아요"
+        val pct = cformat("%.1f", abs(gap) * 100); val dir = if (gap > 0) "높아요" else "낮아요"
         T(if (abs(gap) < 0.001) "시장과 거의 같게 움직였어요" else "시장보다 $pct% $dir",
           style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:842
     }
@@ -579,7 +580,7 @@ private fun MoversCard(m: AppModel, rows: List<AppModel.Row>) {
         // ios: Views/HoldingsView.swift:863
         top.forEach { r ->
             val d = r.sym.quote.change   // ios: Views/HoldingsView.swift:864
-            Line(m, r, (if (d >= 0) "+" else "−") + String.format(Locale.US, "%.2f%%", abs(d) * 100), Theme.change(d))   // ios: Views/HoldingsView.swift:865
+            Line(m, r, (if (d >= 0) "+" else "−") + cformat("%.2f%%", abs(d) * 100), Theme.change(d))   // ios: Views/HoldingsView.swift:865
         }
     }
 }
@@ -597,13 +598,13 @@ private fun NearCard(m: AppModel, ks: List<Pair<AppModel.Row, AppModel.HoldMetri
         // ios: Views/HoldingsView.swift:878
         hi.forEach { (r, k) ->
             // Views/HoldingsView.swift:879 (검사 예외: 같은 글로 옮김)
-            val p = String.format(Locale.US, "%.0f", abs(k.dd) * 100)
+            val p = cformat("%.0f", abs(k.dd) * 100)
             Line(m, r, if (k.dd > -0.005) "1년 고점" else "고점까지 $p%", Theme.up)
         }
         // ios: Views/HoldingsView.swift:881
         lo.forEach { (r, k) ->
             // Views/HoldingsView.swift:882 (검사 예외: 같은 글로 옮김)
-            val p = String.format(Locale.US, "%.0f", (r.sym.last / max(1e-9, k.lo) - 1) * 100)
+            val p = cformat("%.0f", (r.sym.last / max(1e-9, k.lo) - 1) * 100)
             Line(m, r, "저점 위 $p%", Theme.down)
         }
     }

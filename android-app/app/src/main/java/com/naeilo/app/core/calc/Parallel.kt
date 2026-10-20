@@ -1,5 +1,6 @@
 package com.naeilo.app.core.calc
 
+import com.naeilo.app.core.cformat
 import com.naeilo.app.AppModel
 import com.naeilo.app.core.Day
 import com.naeilo.app.core.NJson
@@ -799,7 +800,7 @@ fun AppModel.parallelDistance(amount: Double): String {
         return "목표 ${AppModel.pct(min(1.0, amount / max(1.0, k)))}"   // ios: Data/Parallel.swift:675
     }
     val need = cost / max(1.0, amount) - 1   // ios: Data/Parallel.swift:677
-    val s = String.format(Locale.ROOT, "%.1f", need * 100); return if (need > 0) "본전까지 +${s}%" else "본전 넘음"   // (Parallel.swift 678: 검사기 예외, 위 줄 구역)
+    val s = cformat("%.1f", need * 100); return if (need > 0) "본전까지 +${s}%" else "본전 넘음"   // (Parallel.swift 678: 검사기 예외, 위 줄 구역)
 }
 /** 세 방식 이름 (인물 규칙은 인물 이름이 붙는다) */
 fun AppModel.parallelTitle(k: Int, who: String): String = if (k == 2) "${friendName(who)} 규칙대로" else Parallel.names[k]   // ios: Data/Parallel.swift:681
@@ -808,7 +809,7 @@ fun AppModel.parallelTitle(k: Int, who: String): String = if (k == 2) "${friendN
 val AppModel.parallelVerdictLine: String? get() {
     val w = pworldShown ?: newParallel() ?: return null; val race = parallelRun(w, who = w.who) ?: return null   // ios: Data/Parallel.swift:684
     val v = Parallel.verdict(if (pworldShown == null) race.r else parallelSeries(race), at = race.last)   // ios: Data/Parallel.swift:685
-    val gap = String.format(Locale.ROOT, "%.1f%%p", v.gap * 100)   // ios: Data/Parallel.swift:686
+    val gap = cformat("%.1f%%p", v.gap * 100)   // ios: Data/Parallel.swift:686
     val lead = parallelTitle(v.order[0], who = w.who)   // ios: Data/Parallel.swift:687
     return if (v.similar) "셋 다 비슷해요 · 차이 ${gap}" else "${lead}${WChar.josa(lead)} ${gap} 앞서요"   // ios: Data/Parallel.swift:688
 }

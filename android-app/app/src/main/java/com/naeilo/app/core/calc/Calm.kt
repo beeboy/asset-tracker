@@ -1,5 +1,6 @@
 package com.naeilo.app.core.calc
 
+import com.naeilo.app.core.cformat
 import com.naeilo.app.pending.*
 import com.naeilo.app.net.*
 import com.naeilo.app.AppModel
@@ -189,7 +190,7 @@ data class Calm(
                 "ir" -> "수익 뒤 추가 매수 ${p(s.chase)}, 손실 뒤 매도 ${p(s.switchR)}. 어느 한쪽이 60%를 넘으면 이 유형이에요."  // ios: Data/Calm.swift:218
                 "sua" -> { val tr = s.trend?.let { (if (it >= 0) "+" else "") + "$it" } ?: "–"; "최근 30일 지수가 그 전 30일보다 ${tr} 움직였어요. 10 이상 오르면 이 유형이에요." }  // iOS Calm.swift 219줄 (port_check 예외: 따옴표 겹침)
                 "seonbae" -> "매매의 ${p(s.contra)}가 수익 뒤 덜어내기처럼 결과와 반대로 한 매매예요. 절반 이상이고 지수 60 이상이면 이 유형이에요."  // ios: Data/Calm.swift:220
-                "sio" -> { val pm = String.format(Locale.ROOT, "%.1f", s.perMonth); "한 달 매매 ${pm}번, 큰 변동일에 기다린 비율 ${p(s.waitR)}. 매매가 적고 잘 기다리면 이 유형이에요." }  // iOS Calm.swift 221줄 (port_check 예외: 따옴표 겹침)
+                "sio" -> { val pm = cformat("%.1f", s.perMonth); "한 달 매매 ${pm}번, 큰 변동일에 기다린 비율 ${p(s.waitR)}. 매매가 적고 잘 기다리면 이 유형이에요." }  // iOS Calm.swift 221줄 (port_check 예외: 따옴표 겹침)
                 "seri" -> "매매의 ${p(s.ruleR)}가 규칙대로예요. 지수가 높고 규칙대로가 많으면 이 유형이에요."  // ios: Data/Calm.swift:222
                 else -> null  // ios: Data/Calm.swift:223
             }

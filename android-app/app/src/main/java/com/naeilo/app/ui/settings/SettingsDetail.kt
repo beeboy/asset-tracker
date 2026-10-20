@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.settings
 
+import com.naeilo.app.core.cformat
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -703,7 +704,7 @@ fun WidgetPickView(m: AppModel) {
 /** 세금 규칙 화면의 셈 (숫자 맞추기 E 가 같이 쓴다) */
 object TaxCalc {
     fun tax(G: Double): Double = max(0.0, G - 250) * 0.22   // ios: Views/SettingsDetail.swift:542
-    fun won0(x: Double): String = "%,d".format(Locale.ROOT, x.roundToLong()) + "만원"   // ios: Views/SettingsDetail.swift:543
+    fun won0(x: Double): String = cformat("%,d", x.roundToLong()) + "만원"   // ios: Views/SettingsDetail.swift:543
 }
 
 // ios: Views/SettingsDetail.swift:537,538,541

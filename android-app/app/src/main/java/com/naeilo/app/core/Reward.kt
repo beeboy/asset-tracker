@@ -100,7 +100,7 @@ data class WChar(
         val t = top?.t ?: WL.t("오늘"); val c = top?.c ?: 0.0
         // ios: WidgetShared/Reward.swift:64,65,66,67,68,69,70,71
         if (WL.en) {
-            val n = String.format(Locale.ROOT, "%.1f", abs(c) * 100)
+            val n = cformat("%.1f", abs(c) * 100)
             return when (v) {
                 "seri" -> "…… $t moved first."
                 "sio" -> "$t $n. Counted."
@@ -112,7 +112,7 @@ data class WChar(
         // ios: WidgetShared/Reward.swift:74,75,77,78,79
         return when (v) {
             "seri" -> "……$t${josa(t)} 먼저 움직였어요."
-            "sio" -> "$t ${String.format(Locale.ROOT, "%.1f", abs(c) * 100)}. 셌어."
+            "sio" -> "$t ${cformat("%.1f", abs(c) * 100)}. 셌어."
             "seonbae" -> if (r.dayChg >= 0) WL.t("올랐네. 왜 올랐다고 생각해?") else WL.t("내렸네. 왜 내렸다고 생각해?")
             "ir" -> WL.t("흔들려도 서두르지 마.")
             else -> WL.t("오늘은 제때 왔어요.")

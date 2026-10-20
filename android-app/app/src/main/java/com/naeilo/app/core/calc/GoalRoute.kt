@@ -1,5 +1,6 @@
 package com.naeilo.app.core.calc
 
+import com.naeilo.app.core.cformat
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.naeilo.app.AppModel
@@ -41,7 +42,7 @@ import kotlin.math.sqrt
 /** Swift .rounded() (반올림, .5 는 0에서 먼 쪽) */
 private fun Double.swRound(): Double = if (this < 0) -floor(-this + 0.5) else floor(this + 0.5)
 /** Swift Int.formatted() (천 단위 쉼표) */
-private fun Int.fmtInt(): String = "%,d".format(Locale.ROOT, this)
+private fun Int.fmtInt(): String = cformat("%,d", this)
 /** Swift Double.formatted() (천 단위 쉼표, 필요한 소수만) */
 private fun Double.fmtDbl(): String = DecimalFormat("#,##0.######", DecimalFormatSymbols(Locale.ROOT)).format(this)
 /** b.timeIntervalSince(a) (초) */
@@ -373,7 +374,7 @@ val AppModel.goalPresets: List<GoalPreset> get() {   // ios: Data/GoalRoute.swif
             val k = autoGoal(years = y)   // ios: Data/GoalRoute.swift:316
             GoalPreset(k = k, y = y, name = AppModel.wonK(k).replace("원", ""),   // ios: Data/GoalRoute.swift:317
                        mean = "",   // ios: Data/GoalRoute.swift:318 '적립 없이 확률 50%' 는 카드 위에 한 번만
-                       need = if (A > 0) "×" + "%.1f".format(Locale.ROOT, k / A) else "")   // Data/GoalRoute.swift:319 (검사 예외: 보간 속 따옴표)
+                       need = if (A > 0) "×" + cformat("%.1f", k / A) else "")   // Data/GoalRoute.swift:319 (검사 예외: 보간 속 따옴표)
         }
     }
     val raw: List<PresetRaw> = listOf(PresetRaw(1000.0, 3, "첫 1,000만", null), PresetRaw(10000.0, 5, "1억", null), PresetRaw(30000.0, 10, "3억", null), PresetRaw(100000.0, 20, "10억", null))   // ios: Data/GoalRoute.swift:322

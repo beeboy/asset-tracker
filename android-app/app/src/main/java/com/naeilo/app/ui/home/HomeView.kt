@@ -1,5 +1,11 @@
 package com.naeilo.app.ui.home
 
+import com.naeilo.app.core.cformat
+import com.naeilo.app.ui.analysis.ParallelBasketView
+import com.naeilo.app.ui.analysis.ParallelHomeCard
+import com.naeilo.app.ui.analysis.ParallelTitles
+import com.naeilo.app.ui.analysis.ParallelView
+import com.naeilo.app.ui.LocalNavBack
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -76,9 +82,6 @@ import com.naeilo.app.pending.DepositLeverCard
 import com.naeilo.app.pending.GoalSetView
 import com.naeilo.app.pending.MarketEvents
 import com.naeilo.app.pending.MeEditView
-import com.naeilo.app.pending.ParallelBasketView
-import com.naeilo.app.pending.ParallelHomeCard
-import com.naeilo.app.pending.ParallelView
 import com.naeilo.app.pending.ReaderView
 import com.naeilo.app.pending.Remind
 import com.naeilo.app.pending.RemindCat
@@ -146,7 +149,7 @@ fun HomeView(m: AppModel) {
                     // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
                     if (!m.isGoal && m.done.contains(3) && m.cost > m.total && m.rows.isNotEmpty()) DepositLeverCard(plan = m.keepPlan)   // ios: Views/HomeView.swift:15
                     ShelterBox(m) { inbox = true }   // ios: Views/HomeView.swift:16
-                    ParallelHomeCard()   // ios: Views/HomeView.swift:17
+                    ParallelHomeCard(m)   // ios: Views/HomeView.swift:17
                     Reminder { inbox = true }   // ios: Views/HomeView.swift:18
                     if (m.playUnlocked) RoutineCard(m) else LockedRoutine()   // ios: Views/HomeView.swift:19
                     if (!m.playUnlocked && m.rows.isNotEmpty()) YesterdayCard(m)   // ios: Views/HomeView.swift:20
@@ -162,12 +165,13 @@ fun HomeView(m: AppModel) {
 
 /** 홈에서 여는 화면 (navigationDestination for: String) */
 // ios: Views/HomeView.swift:31
-fun homePage(route: String): NavPage = NavPage {
-    when {
+fun homePage(m: AppModel, route: String): NavPage = when (route) {
+    // 이동 막대 제목은 화면이 정한다 (navigationTitle)
+    "parallel" -> NavPage(ParallelTitles.main) { ParallelView(m) }   // ios: Views/HomeView.swift:34
+    "parallel:basket" -> NavPage(ParallelTitles.basket) { val nb = LocalNavBack.current; ParallelBasketView(m) { nb?.pop?.invoke() } }   // ios: Views/HomeView.swift:35
+    else -> NavPage { when {
         route == "shelter" -> ShelterView()   // ios: Views/HomeView.swift:32
         route == "library" -> ShelterView(onlyLibrary = true)   // ios: Views/HomeView.swift:33
-        route == "parallel" -> ParallelView()   // ios: Views/HomeView.swift:34
-        route == "parallel:basket" -> ParallelBasketView()   // ios: Views/HomeView.swift:35
         route == "goal" -> GoalSetView(fromSettings = true)   // ios: Views/HomeView.swift:36
         route.startsWith("read:") && route.drop(5).toIntOrNull() != null -> ReaderView(index = route.drop(5).toInt())   // ios: Views/HomeView.swift:37
         route.startsWith("vol1:") && route.drop(5).toIntOrNull() != null -> ReaderView(index = route.drop(5).toInt(), book = StoryBook.vol1)   // ios: Views/HomeView.swift:38
@@ -181,6 +185,7 @@ fun homePage(route: String): NavPage = NavPage {
                                 focus = parts.lastOrNull()?.let { if (it.startsWith("h")) it.drop(1).toIntOrNull() else null })   // ios: Views/HomeView.swift:44
         }
     }
+}
 }
 
 // 어제 종가 기준 평가액 + 본전 진행 막대
@@ -270,11 +275,11 @@ private fun RecoverSummary(m: AppModel) {
             Row(Modifier.fillMaxWidth()) {
                 T("본전까지", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:110,111,115
                 // ios: Views/HomeView.swift:112,113
-                T(if (need > 0) "+" + String.format(java.util.Locale.US, "%.1f", need * 100) + "% 남음" else "본전 도달", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)
+                T(if (need > 0) "+" + cformat("%.1f", need * 100) + "% 남음" else "본전 도달", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)
             }
             ProgressBar(value = m.total / max(1.0, m.cost))   // ios: Views/HomeView.swift:116
             // ios: Views/HomeView.swift:117,119,120 (118 은 검사 예외: 같은 줄에 옮김)
-            T(if (need > 0) "어제 ${String.format(java.util.Locale.US, "%.1f", needY * 100)}% → 오늘 ${String.format(java.util.Locale.US, "%.1f", need * 100)}%"
+            T(if (need > 0) "어제 ${cformat("%.1f", needY * 100)}% → 오늘 ${cformat("%.1f", need * 100)}%"
               else "본전 넘음 · 종목·친구 그대로", style = appFont(13f), color = hex(0xC9D0D6))
             if (need <= 0) DarkButton("목표 루트로") { m.graduateToGoal(); m.tab = Tab.board }   // ios: Views/HomeView.swift:121
         }
@@ -287,7 +292,7 @@ private fun RecoverSummary(m: AppModel) {
 private fun TodayLine(m: AppModel) {
     val mv = m.todayMove; val diff = m.stockTotal - m.stockTotal / (1 + mv)   // ios: Views/HomeView.swift:131
     // ios: Views/HomeView.swift:132,133
-    T("오늘 " + (if (mv >= 0) "▲ " else "▼ ") + String.format(java.util.Locale.US, "%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)),
+    T("오늘 " + (if (mv >= 0) "▲ " else "▼ ") + cformat("%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)),
       style = appFont(13f), color = if (mv >= 0) hex(0xFF8A80) else hex(0x8CC4F2))
 }
 

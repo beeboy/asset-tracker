@@ -95,8 +95,9 @@ data class Progress(
 /** 캡처·확인용 실행 인자가 있으면 저장된 진행을 읽지도 쓰지도 않는다 */
 // ios: Data/Progress.swift:64,66,67,68
 val AppModel.persists: Boolean get() {
+    // iOS 실행 인자는 UserDefaults 에 들어온다. 안드로이드 실행 인자는 intent extra 라 arg() 로 함께 본다 (안 보면 캡처 실행이 저장된 진행을 읽고 쓴다)
     val d = Defaults.prefs
-    return !listOf("demo", "goal", "route", "tab", "home", "hold", "set", "an", "addTest", "searchTest").any { d.contains(it) }
+    return !listOf("demo", "goal", "route", "tab", "home", "hold", "set", "an", "addTest", "searchTest").any { d.contains(it) || arg(it) != null }
 }
 
 // ios: Data/Progress.swift:71,72,73,74,75,76,77,78,79

@@ -1,5 +1,6 @@
 package com.naeilo.app.core.calc
 
+import com.naeilo.app.core.cformat
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
@@ -136,7 +137,7 @@ class SiteCalc {
             val utc = ZoneId.of("UTC")
             val last = runCatching { LocalDate.of(y, mo, 1).atStartOfDay(utc).toLocalDate().lengthOfMonth() }.getOrNull() ?: 28
             // ios: Data/SiteCalc.swift:67
-            return String.format(Locale.ROOT, "%04d-%02d-%02d", y, mo, minOf(p[2], last))
+            return cformat("%04d-%02d-%02d", y, mo, minOf(p[2], last))
         }
         // ios: Data/SiteCalc.swift:69,70
         fun today(d: Instant = Instant.now()): String =

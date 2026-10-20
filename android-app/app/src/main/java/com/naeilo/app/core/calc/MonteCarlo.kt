@@ -1,5 +1,6 @@
 package com.naeilo.app.core.calc
 
+import com.naeilo.app.core.cformat
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -190,7 +191,7 @@ object MC {
     }
     fun dayStr(z: Int): String {   // ios: Data/MonteCarlo.swift:151
         val (y, m, d) = civil(z)   // ios: Data/MonteCarlo.swift:152
-        return String.format(Locale.ROOT, "%04d-%02d-%02d", y, m, d)   // ios: Data/MonteCarlo.swift:153
+        return cformat("%04d-%02d-%02d", y, m, d)   // ios: Data/MonteCarlo.swift:153
     }
     /** 웹 addMonths: 같은 날짜, 그 달에 없으면 말일 */
     fun addMonths(s: String, n: Int): String {   // ios: Data/MonteCarlo.swift:156

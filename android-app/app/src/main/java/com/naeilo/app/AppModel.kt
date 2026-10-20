@@ -1,5 +1,6 @@
 package com.naeilo.app
 
+import com.naeilo.app.core.cformat
 import com.naeilo.app.pending.*
 import com.naeilo.app.ui.analysis.AnalysisRoute
 import com.naeilo.app.ui.settings.SettingsRoute
@@ -103,9 +104,9 @@ private fun <T> observed(init: T, didSet: (old: T) -> Unit): ReadWriteProperty<A
 /** Swift .rounded() (반올림, .5 는 0에서 먼 쪽) */
 private fun Double.rnd(): Double = if (this < 0) -floor(-this + 0.5) else floor(this + 0.5)
 /** Swift Int.formatted() (천 단위 쉼표) */
-private fun Int.fmt(): String = "%,d".format(Locale.ROOT, this)
+private fun Int.fmt(): String = cformat("%,d", this)
 /** String(format:) 은 소수점이 늘 . 이다 */
-private fun fmtF(f: String, x: Double): String = f.format(Locale.ROOT, x)
+private fun fmtF(f: String, x: Double): String = cformat(f, x)
 /** .number.precision(.significantDigits(lo...hi)): 유효 숫자 hi 자리로 반올림, 끝 0 은 뺀다 */
 private fun sig(x: Double, digits: IntRange): String =
     BigDecimal(x).round(MathContext(digits.last, RoundingMode.HALF_EVEN)).stripTrailingZeros().toPlainString()

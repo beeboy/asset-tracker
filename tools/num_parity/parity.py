@@ -23,6 +23,10 @@ TOL_KEYS = {"bands", "terminal", "mdd_median", "blend", "fxAt", "factorMove", "r
 TOL_KEYS |= {"augment"}
 # E 단계 첫 질문 예보 카드: value = exp(g·t + z·σ·√t) 금액, fanStart = 그 금액으로 정한 화면 자리. 같은 상대 1e-12
 TOL_KEYS |= {"value", "fanStart"}
+# G2 내 길: 목표 길(need)은 pow 를 거친다 (Darwin libm 과 Java pow 끝자리)
+TOL_KEYS |= {"need"}
+# G2 외부 요인·금리: 지난 종가 회귀(log)·요인 변화 exp(β·log(1+x))−1·한 달 변화 exp(sd)−1, 닫힌 식 log·exp·normCDF, 식단 시장 수익 exp. 같은 상대 1e-12
+TOL_KEYS |= {"extBeta", "extMove", "extShock", "extRanks", "extRows", "rateClosed", "rateProb", "rateMkt"}
 
 
 def run(*cmd, cwd=ROOT):

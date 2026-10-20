@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.hold
 
+import com.naeilo.app.core.cformat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -96,7 +97,7 @@ import kotlin.math.roundToLong
 data class EditRoute(val sym: Symbol)
 
 private fun Double.swRound(): Double = if (this < 0) -floor(-this + 0.5) else floor(this + 0.5)
-private fun won(x: Double): String = "%,d".format(Locale.ROOT, x.swRound().roundToLong())
+private fun won(x: Double): String = cformat("%,d", x.swRound().roundToLong())
 
 // ios: Views/HoldingsView.swift:262,263,269
 @Composable
@@ -225,7 +226,7 @@ private fun summary(m: AppModel, sym: Symbol, gain: Double, r: Double, k: AppMod
     val dir = if (gain >= 0) "벌었어요" else "줄었어요"
     val g = if (abs(r) < 0.0005) "산 가격과 같아요" else "산 가격보다 ${AppModel.won(gain)} $dir"   // Views/HoldingsView.swift:345 (검사 예외: 같은 글)
     if (k == null || !m.prices.hasHistory(sym)) return g   // ios: Views/HoldingsView.swift:346
-    return g + " · 1년 고점보다 " + String.format(Locale.US, "%.0f", abs(k.dd) * 100) + "% " + (if (k.dd > -0.005) "가까이" else "아래")   // ios: Views/HoldingsView.swift:347
+    return g + " · 1년 고점보다 " + cformat("%.0f", abs(k.dd) * 100) + "% " + (if (k.dd > -0.005) "가까이" else "아래")   // ios: Views/HoldingsView.swift:347
 }
 
 /** 소개를 아직 안 쓴 종목: 아는 것만 (이름·시장·업종) 보여 주고 비었다고 말한다 */
@@ -387,7 +388,7 @@ fun AddHoldingView(m: AppModel,
     // ios: Views/HoldingsView.swift:582
     fun open(s: Symbol) {
         picked = s; qty = ""; warn = false   // ios: Views/HoldingsView.swift:583
-        avg = if (s.currency == Currency.usd) String.format(Locale.US, "%.2f", s.last) else ""   // ios: Views/HoldingsView.swift:584
+        avg = if (s.currency == Currency.usd) cformat("%.2f", s.last) else ""   // ios: Views/HoldingsView.swift:584
         kp = if (s.currency == Currency.krw && s.last > 0) s.last.swRound().roundToLong().toString() else ""   // ios: Views/HoldingsView.swift:585
     }
     // ios: Views/HoldingsView.swift:570

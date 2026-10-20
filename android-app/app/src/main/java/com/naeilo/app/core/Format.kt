@@ -51,7 +51,7 @@ object Fmt {
     // ios: WidgetShared/Format.swift:31,32,33
     fun eok(v: Double, digits: Int = 2): String {
         if (WL.en) return krwC(v)
-        return if (abs(v) < 1e8) man(v) else (if (v < 0) "−" else "") + String.format(Locale.ROOT, "%.${digits}f억", abs(v) / 1e8)
+        return if (abs(v) < 1e8) man(v) else (if (v < 0) "−" else "") + cformat("%.${digits}f억", abs(v) / 1e8)
     }
     /** 영어: 만·억 대신 ₩2.3M 꼴 (앱 AppModel.krwC 와 같은 규칙) */
     // ios: WidgetShared/Format.swift:36,37,38,39
@@ -83,7 +83,7 @@ object Fmt {
     private val mdhm: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d HH:mm", Locale.forLanguageTag("ko_KR".replace('_', '-')))
     /** +1.8% */
     // ios: WidgetShared/Format.swift:51
-    fun pct(x: Double, d: Int = 1): String = (if (x > 0) "+" else if (x < 0) "−" else "") + String.format(Locale.ROOT, "%.${d}f%%", abs(x) * 100)
+    fun pct(x: Double, d: Int = 1): String = (if (x > 0) "+" else if (x < 0) "−" else "") + cformat("%.${d}f%%", abs(x) * 100)
     // ios: WidgetShared/Format.swift:52
     fun arrow(x: Double): String = if (x >= 0) "▲" else "▼"
     // ios: WidgetShared/Format.swift:53

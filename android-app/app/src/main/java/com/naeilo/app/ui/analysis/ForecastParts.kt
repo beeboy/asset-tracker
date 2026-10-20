@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.analysis
 
+import com.naeilo.app.core.cformat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -56,7 +57,7 @@ object ScenarioChart {
     fun axis(v: Double): String {
         if (v <= 0) return "0"   // ios: Views/ForecastParts.swift:25
         val e = v / 1e8   // ios: Views/ForecastParts.swift:26
-        return if (e == kotlin.math.round(e)) "${e.toInt()}억" else String.format(Locale.US, "%.1f억", e)   // Views/ForecastParts.swift:27 (검사 예외: 같은 글)
+        return if (e == kotlin.math.round(e)) "${e.toInt()}억" else cformat("%.1f억", e)   // Views/ForecastParts.swift:27 (검사 예외: 같은 글)
     }
 }
 

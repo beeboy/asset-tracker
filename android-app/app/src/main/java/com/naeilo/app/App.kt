@@ -65,6 +65,13 @@ import com.naeilo.app.ui.hold.KoreaSumCard
 import com.naeilo.app.ui.Sheet
 import com.naeilo.app.net.CustomSymbols
 import com.naeilo.app.ui.home.homePage
+import com.naeilo.app.ui.analysis.MyPathCompareRoute
+import com.naeilo.app.ui.analysis.MyPathCompareView
+import com.naeilo.app.ui.analysis.FactorDetailRoute
+import com.naeilo.app.ui.analysis.FactorDetailView
+import com.naeilo.app.ui.analysis.FactorDetailScreen
+import com.naeilo.app.ui.analysis.RateWhyRoute
+import com.naeilo.app.ui.analysis.RateWhyView
 import com.naeilo.app.ui.settings.SettingsView
 import com.naeilo.app.ui.settings.settingsPage
 import com.naeilo.app.ui.start.StartView
@@ -151,12 +158,15 @@ fun RootView(model: AppModel) {
             TabHost(model.tab, Modifier.weight(1f).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) { t ->
                 // 종목·분석·미션 탭 안 화면은 다음 단계에서 채운다 (지금은 머리글만 있는 빈 자리)
                 when (t) {
-                    Tab.home -> NavStack(model.homePath, { model.homePath = it }, { HomeView(model) }) { homePage(it) }       // ios: App.swift:32 (HomeView·homePath)
+                    Tab.home -> NavStack(model.homePath, { model.homePath = it }, { HomeView(model) }) { homePage(model, it) }       // ios: App.swift:32 (HomeView·homePath)
                     Tab.hold -> HoldingsView(model)       // ios: App.swift:34 (HoldingsView·holdPath)
                     Tab.analysis -> NavStack(model.analysisPath, { model.analysisPath = it }, { AnalysisView(model) }) { r ->   // ios: App.swift:36 (AnalysisView·analysisPath)
                         when (r) {
                             is AnalysisRoute -> NavPage(bar = false) { AnalysisPager(model, start = r) }   // ios: Views/AnalysisView.swift:128 (넘기기 화면은 막대를 스스로 그린다)
                             is Symbol -> NavPage(r.name) { HoldingDetailView(model, sym = r, period0 = Period.y1) }   // ios: Views/AnalysisView.swift:83
+                            MyPathCompareRoute -> NavPage(MyPathCompareRoute.title) { MyPathCompareView(model) }   // 내 길 '내 구성으로 비교'
+                            is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailScreen(model, r.factor, r.start) }   // 외부 요인 상세
+                            is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }   // 금리 시나리오 근거
                             else -> NavPage { GoalSetPage() }   // 전망의 '목표 고치기'
                         }
                     }

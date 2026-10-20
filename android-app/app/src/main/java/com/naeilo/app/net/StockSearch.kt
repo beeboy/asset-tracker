@@ -1,5 +1,6 @@
 package com.naeilo.app.net
 
+import com.naeilo.app.core.cformat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -123,7 +124,7 @@ object KoreaEstimate {   // ios: Data/StockSearch.swift:23
         val i = info(id = s.id, name = s.name); val at = s.kd ?: ""   // ios: Data/StockSearch.swift:81
         if (CustomSymbols.shared.isLive(s.id)) return if (KoreaEstimate.popular.contains(s.id)) "사이트가 매일 모으는 가격이에요. 1년 기록은 모으기 시작한 날부터 쌓여요." else "시세를 갱신할 때 같이 갱신해요."   // ios: Data/StockSearch.swift:82
         val p = s.kp ?: return "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 계산해요."   // ios: Data/StockSearch.swift:83
-        val won = "%,d".format(Locale.ROOT, swRound(p).toInt()) + "원"   // ios: Data/StockSearch.swift:84
+        val won = cformat("%,d", swRound(p).toInt()) + "원"   // ios: Data/StockSearch.swift:84
         if (s.id == sumId) return "${at}에 넣은 ${won} · 전망은 EWY×원/달러"   // ios: Data/StockSearch.swift:85
         return if (i.proxy != null) "${at}에 넣은 ${won}에서 ${i.base}${if (i.hedged) "" else " × 원/달러"} 움직임으로 추정한 값이에요."   // Data/StockSearch.swift:86 (검사 예외: 옮김)
             else "${at}에 넣은 ${won} 그대로예요. 움직임 예측은 한국 시장 평균(${i.base} × 원/달러)으로 해요."   // ios: Data/StockSearch.swift:87

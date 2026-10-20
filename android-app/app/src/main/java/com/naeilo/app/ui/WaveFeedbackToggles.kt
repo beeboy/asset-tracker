@@ -28,7 +28,7 @@ fun WaveFeedbackToggles() {
     var sound by rememberPrefBool(WaveFeedbackKeys.soundKey, true)   // ios: Views/Wave/WaveFeedback.swift:130
     var haptic by rememberPrefBool(WaveFeedbackKeys.hapticKey, true)   // ios: Views/Wave/WaveFeedback.swift:131
 
-    // ios: Views/Wave/WaveFeedback.swift:143,144,145,146,147,148,151,152
+    // ios: Views/Wave/WaveFeedback.swift:143,144,145,146,147,150,151
     @Composable
     fun Row(t: String, s: String, on: Boolean, set: (Boolean) -> Unit) {
         ToggleRow(on, set, Modifier.defaultMinSize(minHeight = 60.dp).padding(horizontal = 16.dp), tint = Theme.teal) {

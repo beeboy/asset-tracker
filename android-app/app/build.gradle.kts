@@ -60,6 +60,9 @@ tasks.withType<Test>().configureEach {
     // 실제 시세 받기 시험은 -PnaeiloLive=1 일 때만 (LiveFeedTest)
     systemProperty("naeilo.live", providers.gradleProperty("naeiloLive").getOrElse(""))
     inputs.dir("../../tools/json_parity/fixtures")
+    // 숫자 맞추기 입력(parity.py gen 이 저장소 밖에 쓴다)이 바뀌면 다시 돌게
+    val np = File(System.getProperty("user.home"), "Library/Caches/naeilo-android/num_parity")
+    if (np.isDirectory) inputs.files(fileTree(np) { include("*/input.json") })
 }
 
 dependencies {

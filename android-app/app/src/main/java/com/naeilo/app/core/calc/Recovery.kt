@@ -1,5 +1,6 @@
 package com.naeilo.app.core.calc
 
+import com.naeilo.app.core.cformat
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -215,7 +216,7 @@ fun AppModel.paths(parts0: List<Part>, horizon: String): PathSet? {   // ios: Da
         pathSetCache[pk] = ps   // ios: Data/Recovery.swift:173
         return ps   // ios: Data/Recovery.swift:174
     }
-    val key = listOf(today, H, inp.sig, parts.joinToString(",") { it.key + ":" + it.ccy + ":" + "%.4f".format(Locale.ROOT, it.w) }).joinToString("|")   // Data/Recovery.swift:176 (검사 예외: 보간 속 따옴표)
+    val key = listOf(today, H, inp.sig, parts.joinToString(",") { it.key + ":" + it.ccy + ":" + cformat("%.4f", it.w) }).joinToString("|")   // Data/Recovery.swift:176 (검사 예외: 보간 속 따옴표)
     val hs = parts.map { MC.Holding(key = it.key, ccy = it.ccy, valueKrw = it.w * 1e6, price0 = 1.0) }   // ios: Data/Recovery.swift:177
     val group = listOf(today, H, inp.sig, parts.joinToString(",") { "${it.key}:${it.ccy}" }).joinToString("|")   // ios: Data/Recovery.swift:178
     val job = ForecastEngine.Job(key = key, holdings = hs, stats = ExtraStats.shared.augment(inp.st, keys = parts.map { it.key }), settings = inp.settings, events = inp.events, start = today, horizon = H,   // ios: Data/Recovery.swift:179

@@ -180,7 +180,7 @@ object TossDaily {   // ios: WidgetShared/Models.swift:557
     private fun day(t: Double, kr: Boolean): Pair<String, Int> {   // ios: WidgetShared/Models.swift:562
         val z = Instant.ofEpochMilli((t * 1000).toLong())   // ios: WidgetShared/Models.swift:563,564,565
             .atZone(ZoneId.of(if (kr) "Asia/Seoul" else "America/New_York"))
-        return String.format(Locale.US, "%04d-%02d-%02d", z.year, z.monthValue, z.dayOfMonth) to z.hour   // ios: WidgetShared/Models.swift:566
+        return cformat("%04d-%02d-%02d", z.year, z.monthValue, z.dayOfMonth) to z.hour   // ios: WidgetShared/Models.swift:566
     }
     /** 토스 주간거래 시간(미국 동부 20시~4시)에 체결된 값인가 */
     fun daytime(at: Double): Boolean { val h = day(at, kr = false).second; return h >= 20 || h < 4 }   // ios: WidgetShared/Models.swift:569
