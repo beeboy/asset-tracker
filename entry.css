@@ -79,7 +79,16 @@ img.px, .bye img { image-rendering: pixelated; }
 .stage { display: flex; align-items: flex-start; }
 /* 높이를 정해 두고 아래부터 쌓아, 대사 길이가 달라도 인물 자리는 그대로 (말풍선만 위로 자란다) */
 .pal { margin: 0; height: 252px; width: 128px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; flex: 0 0 auto; }
-.pal img { height: 112px; flex: 0 0 auto; image-rendering: pixelated; }
+.pal { position: relative; }
+.pal img { height: 112px; flex: 0 0 auto; image-rendering: pixelated; position: relative; }
+/* 발밑 그림자 (앱 위젯처럼 도트 16×5, 발보다 2도트 아래) */
+.pal::after { content: ""; position: absolute; bottom: -9px; left: 50%; width: 53px; height: 16px; margin-left: -26px; border-radius: 50%; background: rgba(0, 0, 0, 0.22); }
+/* 숨쉬기: 발 기준으로 아주 살짝 커졌다 작아지고, 가끔 움찔 (앱 charIdle 과 같은 크기) */
+.pal img, .bye img, .breathe { transform-box: fill-box; transform-origin: 50% 100%; animation: charBreath 1.6s ease-in-out infinite alternate, charHop 9s linear infinite; }
+.pal.sio img { animation-delay: -0.5s, -4s; }
+.wspr-b2 { animation-delay: -1s, -6s; }
+@keyframes charBreath { to { scale: 1.012 1.025; } }
+@keyframes charHop { 0%, 96%, 100% { translate: 0 0; } 97% { translate: 0 -1.5px; } 98.5% { translate: 0 0.4px; } }
 .pal.sua { margin-right: -6px; }
 .pal.sio { margin-left: -6px; }
 .say { position: relative; margin: 0 0 10px; padding: 8px 10px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--text); font-size: 12.5px; line-height: 1.4; font-weight: 600; width: 100%; min-height: 3.6em; }
@@ -141,7 +150,7 @@ figcaption { font-size: 0.875rem; color: var(--muted); margin-top: 10px; }
 /* 현재 점 박동: 같은 색 동심원 2개, 1.6초 주기·0.2초 간격, 0.9초 동안 지름의 1.5배만큼 커지며 0.6→0 */
 .fc-chart circle.pulse { fill: none; stroke: var(--a-text); stroke-width: 1.5; vector-effect: non-scaling-stroke; transform-box: fill-box; transform-origin: center; opacity: 0; animation: fcPulse 1.6s ease-out infinite; pointer-events: none; }
 @keyframes fcPulse { 0% { transform: scale(1); opacity: .6; } 56.25%, 100% { transform: scale(4); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .fc-chart circle.pulse { animation: none; display: none; } }
+@media (prefers-reduced-motion: reduce) { .fc-chart circle.pulse { animation: none; display: none; } .pal img, .bye img, .breathe { animation: none; } }
 .fc-leg { display: flex; gap: 12px; font-size: 10.5px; color: var(--a-sub); white-space: nowrap; }
 .fc-leg i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
 .fc-leg .b5 { background: rgba(var(--teal-rgb), 0.35); }
