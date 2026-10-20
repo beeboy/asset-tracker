@@ -1636,7 +1636,7 @@ struct TownWeather: View {
 /// 대화 기록(일기장): 주민마다 날짜 · 하루 한마디 · 내 답 한 줄. 몇 글자라 UserDefaults 한 칸에 JSON, 주민마다 최근 400일만
 @Observable final class TownLog {
     static let shared = TownLog()
-    struct Entry: Codable, Equatable { var day: String; var say: String; var me: String? = nil; var p: Double? = nil; var back: Bool? = nil }   // p: 답할 때 가격, back: 꺼내 봤음
+    struct Entry: Codable, Equatable { var day: String; var say: String; var me: String? = nil; var p: Double? = nil; var back: Bool? = nil; var lang: String? = nil }   // lang: 한마디를 만든 앱 언어 (없으면 ko)   // p: 답할 때 가격, back: 꺼내 봤음
     private(set) var logs: [String: [Entry]]
     private static let key = "town.log"
     private static let keep = 400
@@ -1651,8 +1651,15 @@ struct TownWeather: View {
     /// 오늘 한마디. 오늘 처음이면 make 로 정해 적는다
     func today(_ id: String, _ make: () -> String) -> Entry {
         let d = Self.day
-        if let e = logs[id]?.last, e.day == d { return e }
-        let e = Entry(day: d, say: make())
+        let lang = AppModel.en ? "en" : "ko"
+        if var e = logs[id]?.last, e.day == d {
+            // 언어를 바꾼 날: 오늘 한마디만 새 언어로 다시 (내 답·가격은 그대로)
+            guard (e.lang ?? "ko") != lang else { return e }
+            e.say = make(); e.lang = lang
+            logs[id]![logs[id]!.count - 1] = e; save()
+            return e
+        }
+        let e = Entry(day: d, say: make(), lang: lang)
         var l = logs[id] ?? []
         l.append(e)
         if l.count > Self.keep { l.removeFirst(l.count - Self.keep) }

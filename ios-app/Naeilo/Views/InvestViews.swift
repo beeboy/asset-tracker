@@ -117,8 +117,10 @@ struct InvestBranch: View {
                         Text(f.line).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                if MeArt.has("event_" + id) {
-                    Image("event_" + id).interpolation(.none).resizable().aspectRatio(contentMode: .fit)
+                // 컷 글자가 그림에 박혀 있어 영어는 따로 그린 event_<인물>_en (tools/event_en)
+                let art = "event_" + id + (AppModel.en ? "_en" : "")
+                if MeArt.has(art) {
+                    Image(art).interpolation(.none).resizable().aspectRatio(contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .accessibilityLabel("\(f.name)의 \(f.model) 컷과 같은 날의 \(name)")
                 }
