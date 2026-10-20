@@ -12,7 +12,6 @@ struct HoldingsView: View {
     @AppStorage("holdUsd") private var inUsd = false // 목록 금액: 미국 종목을 달러로 볼지
     @Environment(\.dynamicTypeSize) private var dts
     @State private var page = 0                     // 0 내 종목, 1 소식판, 2 동네 (미션 탭처럼 위에서 고른다)
-    @AppStorage("town.arrive") private var arrive = "" // 방금 추가한 종목: 동네로 가서 그 주민 대사창부터
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
 
     var body: some View {
@@ -24,8 +23,9 @@ struct HoldingsView: View {
                 AppHeader(tab: "종목").padding(.horizontal, -16)
                 SampleNote()
                 HoldPagePicker(page: $page)
-                if page == 1 { HoldingsNews() } else if page == 2 { TownView() } else {
+                if page == 1 { HoldingsNews() } else {
                 totalCard(us: us.count, kr: kr.count)
+                TownButton { _ in TownView() }   // 수익 박스 바로 아래 [동네]: 전체 화면으로
                 totalChart(rows)
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -61,15 +61,12 @@ struct HoldingsView: View {
             }
             .screen()
         }
-        .ignoresSafeArea(.keyboard, edges: page == 2 ? .bottom : [])   // 동네는 키보드에 안 들썩이게
         .scrollDismissesKeyboard(.immediately)
         .background(Theme.bg)
         .refreshable { await Market.shared.pullRefresh(m) }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
         .navigationDestination(for: String.self) { _ in AddHoldingView() }
-        .onAppear { if !arrive.isEmpty { page = 2 } }
-        .onChange(of: arrive) { if !$1.isEmpty { page = 2 } }
         .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
@@ -781,7 +778,7 @@ struct HoldPagePicker: View {
     @Binding var page: Int
     var body: some View {
         HStack(spacing: 4) {
-            ForEach([(0, "내 종목"), (1, "소식판"), (2, "동네")], id: \.0) { i, t in
+            ForEach([(0, "내 종목"), (1, "소식판")], id: \.0) { i, t in
                 let on = page == i
                 Button { page = i } label: {   // 애니메이션 없이: 내 종목 화면이 커서 바꿀 때 버벅인다
                     Text(t).appFont(14, .bold).foregroundStyle(on ? Theme.ink : Theme.sub)

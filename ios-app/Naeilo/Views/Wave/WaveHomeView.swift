@@ -310,3 +310,37 @@ struct GameHeader: View {
         .padding(.top, 8)
     }
 }
+
+/// 종목 탭 수익 박스 아래 [동네] 한 줄: 파도처럼 전체 화면으로 동네를 연다 (종목 탭은 동네를 안 그린다).
+/// 방금 종목을 더했으면(town.arrive) 바로 연다. 동네 본문은 부르는 쪽이 준다
+struct TownButton<Town: View>: View {
+    @ViewBuilder var town: (ScrollViewProxy) -> Town
+    @AppStorage("town.arrive") private var arrive = ""
+    @State private var show = false
+    var body: some View {
+        Button { show = true } label: {
+            Label("동네", systemImage: "house.fill")
+                .appFont(14, .bold).lineLimit(1).frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(Theme.ink)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
+        .onAppear { if !arrive.isEmpty { show = true } }
+        .onChange(of: arrive) { if !$1.isEmpty { show = true } }
+        .fullScreenCover(isPresented: $show) {
+            ScrollViewReader { sp in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        GameHeader(title: "내 자산으로 꾸미는 동네")
+                        town(sp)
+                    }
+                    .screen()
+                }
+                .ignoresSafeArea(.keyboard, edges: .bottom)   // 동네는 키보드에 안 들썩이게
+                .scrollDismissesKeyboard(.immediately)
+                .background(Theme.bg)
+            }
+        }
+    }
+}
