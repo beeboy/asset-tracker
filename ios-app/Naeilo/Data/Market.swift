@@ -52,7 +52,7 @@ final class Market {
     /// 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만.
     /// 내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged)
     var prices: SitePrices.File? = TossHistory.merged(SitePrices.cached(), TossHistory.cached())
-    var source: String { site != nil ? "naeilo 사이트" : YahooSample.quotes.isEmpty ? "예시 값" : "Yahoo 중계 (테스트)" }
+    var source: String { site != nil ? String(localized: "naeilo 사이트") : YahooSample.quotes.isEmpty ? String(localized: "예시 값") : String(localized: "Yahoo 중계 (테스트)") }
 
     // 샘플 종목 DRNK 의 하루 움직임 (샘플 기록의 마지막 날). 다른 종목은 받은 시세가 없으면 움직임을 만들지 않는다
     static let todayMove: [String: Double] = ["DRNK": -0.0221]
@@ -139,16 +139,16 @@ final class Market {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
         if let s = site, let t = s.q.values.map(\.at).max(), t > 0 {
             let d = Date(timeIntervalSince1970: t)
-            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm" : "M월 d일 a h:mm"
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm" : String(localized: "M월 d일 a h:mm")
             let ago = Int(Date().timeIntervalSince1970 - s.got) / 60
-            return "\(f.string(from: d)) 시세 · \(ago < 1 ? "방금" : "\(ago)분 전") 받음"
+            return String(localized: "\(String(describing: f.string(from: d))) 시세 · \(String(describing: ago < 1 ? String(localized: "방금") : String(localized: "\(String(describing: ago))분 전"))) 받음")
         }
         if let t = YahooSample.asOf {
-            f.dateFormat = "M월 d일 a h:mm"
-            return "\(f.string(from: t)) 시세 (테스트 자료)"
+            f.dateFormat = String(localized: "M월 d일 a h:mm")
+            return String(localized: "\(String(describing: f.string(from: t))) 시세 (테스트 자료)")
         }
         f.dateFormat = "a h:mm"
-        return "지금 시세 · \(f.string(from: updatedAt)) 갱신"
+        return String(localized: "지금 시세 · \(String(describing: f.string(from: updatedAt))) 갱신")
     }
 
     /// force: 아래로 당겨 갱신할 때. 받은 지 얼마 안 됐어도 다시 받는다

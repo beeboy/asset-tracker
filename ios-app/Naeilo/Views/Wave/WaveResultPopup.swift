@@ -47,7 +47,7 @@ struct WaveResultPopup: View {
                     }
                 }
                 if !result.unlocked.isEmpty {
-                    Text("새로 열렸어요! " + result.unlocked.joined(separator: " · "))
+                    Text(String(localized: "새로 열렸어요! ") + result.unlocked.joined(separator: " · "))
                         .appFont(13, .heavy).foregroundStyle(Color(hex: 0xD9480F)).multilineTextAlignment(.center)
                 }
                 Text(result.dateLine).appFont(13, .bold).foregroundStyle(Theme.ink).multilineTextAlignment(.center)

@@ -22,14 +22,14 @@ struct NotifyListView: View {
                         .textContentType(nil).autocorrectionDisabled().textInputAutocapitalization(.never)
                         .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
                         .onSubmit { Task { await load() } }
-                    PrimaryButton(title: busy ? "받는 중…" : "새로고침") { Task { await load() } }
+                    PrimaryButton(title: busy ? String(localized: "받는 중…") : String(localized: "새로고침")) { Task { await load() } }
                     if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
                 }
                 if !rows.isEmpty {
                     HStack {
                         Text("\(rows.count)명").appFont(17, .bold)
                         Spacer()
-                        Button(copied ? "복사됨" : "주소 전부 복사") {
+                        Button(copied ? String(localized: "복사됨") : String(localized: "주소 전부 복사")) {
                             UIPasteboard.general.string = rows.map(\.email).joined(separator: ", "); copied = true
                         }.appFont(15, .semibold)
                     }
@@ -53,7 +53,7 @@ struct NotifyListView: View {
     }
 
     private func load() async {
-        guard !token.isEmpty else { msg = "관리자 키를 넣어 주세요"; return }
+        guard !token.isEmpty else { msg = String(localized: "관리자 키를 넣어 주세요"); return }
         busy = true; msg = nil; copied = false
         defer { busy = false }
         var req = URLRequest(url: URL(string: "https://asset-ai.drinker.workers.dev/notify/list")!)
@@ -63,13 +63,13 @@ struct NotifyListView: View {
             let (d, res) = try await URLSession.shared.data(for: req)
             let r = try? JSONDecoder().decode(Resp.self, from: d)
             let code = (res as? HTTPURLResponse)?.statusCode ?? 0
-            if code == 403 { msg = "키가 맞지 않아요"; return }
-            guard code == 200, let list = r?.rows else { msg = r?.error ?? "목록을 못 받았어요 (\(code))"; return }
+            if code == 403 { msg = String(localized: "키가 맞지 않아요"); return }
+            guard code == 200, let list = r?.rows else { msg = r?.error ?? String(localized: "목록을 못 받았어요 (\(String(describing: code)))"); return }
             if !key.isEmpty { AdminKey.save(key) }
             rows = list.sorted { $0.at > $1.at }
-            if rows.isEmpty { msg = "아직 신청한 사람이 없어요" }
+            if rows.isEmpty { msg = String(localized: "아직 신청한 사람이 없어요") }
         } catch {
-            msg = "인터넷 연결을 확인해 주세요"
+            msg = String(localized: "인터넷 연결을 확인해 주세요")
         }
     }
 }
@@ -94,7 +94,7 @@ enum AdminKey {
     }
 }
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, longbridge, howto, route, goal, charPreview, support, icon, notifyList }
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, longbridge, howto, route, goal, charPreview, support, icon, notifyList, residence }
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
@@ -102,52 +102,73 @@ struct SettingsView: View {
     var body: some View {
         let onN = m.alerts.values.filter { $0 }.count
         // 위에서 아래로: 오픈 API 카드 → 내 목표 → 알림과 위젯 → 함께할 인물 → 화면 → 계산 기준 → 도움과 기타
-        let routeLine = m.route == .recover ? "본전부터 되찾는 중이에요" : m.route == .plus ? "목표를 향해 가는 중이에요" : "아직 첫 단계예요"
+        let routeLine = m.route == .recover ? String(localized: "본전부터 되찾는 중이에요") : m.route == .plus ? String(localized: "목표를 향해 가는 중이에요") : String(localized: "아직 첫 단계예요")
         let goalRows: [(String, String, SettingsRoute)] = [
-            ("목표 고치기", m.isGoal ? "\(m.goalToText)까지 \(AppModel.wonK(m.gK))" : "아직 목표가 없어요", .goal),
-            ("루트 바꾸기", routeLine, .route),
+            (String(localized: "목표 고치기"), m.isGoal ? String(localized: "\(String(describing: m.goalToText))까지 \(String(describing: AppModel.wonK(m.gK)))") : String(localized: "아직 목표가 없어요"), .goal),
+            (String(localized: "루트 바꾸기"), routeLine, .route),
         ]
         let oftenRows: [(String, String, SettingsRoute)] = [
-            ("알림", onN > 0 ? "\(onN)개 켜짐" : "모두 꺼짐", .alerts),
-            ("홈 화면 위젯", "\(m.baseWidgets.count + Shelter.friends.count)가지 · 미리보기", .widgets),
+            (String(localized: "알림"), onN > 0 ? String(localized: "\(String(describing: onN))개 켜짐") : String(localized: "모두 꺼짐"), .alerts),
+            (String(localized: "홈 화면 위젯"), String(localized: "\(String(describing: m.baseWidgets.count + Shelter.friends.count))가지 · 미리보기"), .widgets),
+        ]
+        // 증권사는 나라와 상관없이 누구나 연결: 거주 국가에 맞는 것만 위로 올린다
+        let kr = m.residence == "KR"
+        let lbFirst = ["HK", "CN", "SG", "MO", "TW", "MY"].contains(m.residence)
+        let brokerRows: [(String, String, SettingsRoute)] = [
+            (String(localized: "내 Alpaca 키"), AlpacaKeys.on ? String(localized: "미국 종목을 Alpaca(IEX) 시세로 받는 중") : String(localized: "넣지 않음 · 미국 종목 실시간 시세"), .alpaca),
+            (String(localized: "내 Longbridge 키"), LongbridgeKeys.on ? String(localized: "미국 종목을 Longbridge 시세로 받는 중") : String(localized: "넣지 않음 · 미국·홍콩·중국 실시간 시세"), .longbridge),
         ]
         let refRows: [(String, String, SettingsRoute)] = [
-            ("시세 기준", "종목·환율 시세를 어디서 받는지", .price),
-            ("세금", "한국 거주자 기준으로 계산해요", .tax),
-            ("내 Alpaca 키", AlpacaKeys.on ? "미국 종목을 Alpaca(IEX) 시세로 받는 중" : "넣지 않음 · 미국 종목 실시간 시세", .alpaca),
-            ("내 Longbridge 키", LongbridgeKeys.on ? "미국 종목을 Longbridge 시세로 받는 중" : "넣지 않음 · 미국·홍콩·중국 실시간 시세", .longbridge),
-        ]
+            (String(localized: "시세 기준"), String(localized: "종목·환율 시세를 어디서 받는지"), .price),
+            (String(localized: "거주 국가"), String(localized: "\(m.residenceName) · 세금 계산만 이 나라를 따라요"), .residence),
+            (String(localized: "세금"), kr ? String(localized: "한국 거주자 기준으로 계산해요") : String(localized: "이 나라 규칙은 준비 중 · 지금은 한국 기준"), .tax),
+        ] + (lbFirst ? brokerRows.reversed() : brokerRows)
         // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
         let helpRows: [(String, String, SettingsRoute)] = [
-            ("처음 쓰는 법", "매일 1분 · 목표 칸 · 주간 예보", .howto),
-            ("구독", Support.shared.plan.map { "\($0.name) 중 · 고마워요" } ?? (Support.shared.inTrial ? "7일 무료 · \(Support.shared.trialLeft)일 남음" : "월 1,000원 · 연 9,000원"), .support),
+            (String(localized: "처음 쓰는 법"), String(localized: "매일 1분 · 목표 칸 · 주간 예보"), .howto),
+            (String(localized: "구독"), Support.shared.plan.map { String(localized: "\(String(describing: $0.name)) 중 · 고마워요") } ?? (Support.shared.inTrial ? String(localized: "7일 무료 · \(String(describing: Support.shared.trialLeft))일 남음") : String(localized: "월 1,000원 · 연 9,000원")), .support),
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                AppHeader(tab: "설정").padding(.horizontal, -16)
-                apiCard
-                group("내 목표", goalRows)
-                group("알림과 위젯", oftenRows)
-                head("함께할 인물")
+                AppHeader(tab: String(localized: "설정")).padding(.horizontal, -16)
+                if kr { apiCard }
+                group(String(localized: "내 목표"), goalRows)
+                group(String(localized: "알림과 위젯"), oftenRows)
+                head(String(localized: "함께할 인물"))
                 GuidePickRow()
-                head("화면")
+                head(String(localized: "화면"))
                 Text("밝기 모드").appFont(13, .bold).foregroundStyle(Theme.sub)
-                ChipRow(items: [("system", "기기 설정대로"), ("light", "밝게"), ("dark", "어둡게")],
+                ChipRow(items: [("system", String(localized: "기기 설정대로")), ("light", String(localized: "밝게")), ("dark", String(localized: "어둡게"))],
                         selection: Binding(get: { m.appearance }, set: { m.appearance = $0; UserDefaults.standard.set($0, forKey: "appearance") }), fill: true)
-                group(nil, [("앱 아이콘", AppIconPicker.currentName, .icon)])
+                group(nil, [(String(localized: "앱 아이콘"), AppIconPicker.currentName, .icon)])
+                // 앱 언어는 iOS 설정의 앱 화면에서 바꾼다 (누르면 그 화면이 열린다)
+                Button {
+                    if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+                } label: {
+                    HStack {
+                        Text("언어 변경").appFont(15, .bold)
+                        Spacer()
+                        Image(systemName: "arrow.up.right").appFont(13).foregroundStyle(Theme.muted)
+                    }
+                    .padding(.horizontal, 16).frame(minHeight: 52).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
                 WaveFeedbackToggles()
-                group("숫자를 계산하는 기준", refRows)
-                group("도움과 기타", helpRows)
+                group(String(localized: "숫자를 계산하는 기준"), refRows)
+                if !kr { apiCard }
+                group(String(localized: "도움과 기타"), helpRows)
                 // 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
                 if m.devAll {
                     Text("시연 상태 (개발자)").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
                     HStack(spacing: 8) {
-                        demoButton("첫 질문부터") { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
-                        demoButton("미션 1부터") { m.resetDemo(.fresh) }
-                        demoButton("인터미션 1주차로") { m.resetDemo(.week1) }
-                        demoButton("모든 화면 열기") { m.resetDemo(.all) }
+                        demoButton(String(localized: "첫 질문부터")) { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
+                        demoButton(String(localized: "미션 1부터")) { m.resetDemo(.fresh) }
+                        demoButton(String(localized: "인터미션 1주차로")) { m.resetDemo(.week1) }
+                        demoButton(String(localized: "모든 화면 열기")) { m.resetDemo(.all) }
                     }
-                    group(nil, [("출시 알림 신청 목록", "naeilo.com 앱 받기 신청", .notifyList)])
+                    group(nil, [(String(localized: "출시 알림 신청 목록"), String(localized: "naeilo.com 앱 받기 신청"), .notifyList)])
                 }
                 Text("시세: \(Market.shared.source) · \(Config.channel.rawValue)").appFont(12).foregroundStyle(Theme.muted)
                 Text("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)").appFont(12).foregroundStyle(Theme.muted)
@@ -172,6 +193,7 @@ struct SettingsView: View {
             case .support: SupportView()
             case .icon: AppIconScreen()
             case .notifyList: NotifyListView()
+            case .residence: ResidenceView()
             case .charPreview: WidgetPickView()     // 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
             }
         }
@@ -184,7 +206,7 @@ struct SettingsView: View {
         return NavigationLink(value: SettingsRoute.toss) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 4) {
-                    Text(on ? "내 오픈 API 키로 시세 받는 중" : "내 오픈 API 키 연결 안 됨").appFont(15, .semibold)
+                    Text(on ? String(localized: "내 오픈 API 키로 시세 받는 중") : String(localized: "내 오픈 API 키 연결 안 됨")).appFont(15, .semibold)
                     if on { Image(systemName: "chevron.right").appFont(12) }
                 }
                 HStack(spacing: 5) {
@@ -192,8 +214,8 @@ struct SettingsView: View {
                     miniNode("server.rack", on); miniLine(on)
                     miniNode("chart.line.uptrend.xyaxis", on)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(on ? "이어져 있어요" : "키는 이 폰에만 있어요").appFont(13, .bold)
-                        Text(on ? "현재가·일봉·환율만 받아 왔어요" : "서버는 지나가기만 해요 · 현재가·일봉·환율만")
+                        Text(on ? String(localized: "이어져 있어요") : String(localized: "키는 이 폰에만 있어요")).appFont(13, .bold)
+                        Text(on ? String(localized: "현재가·일봉·환율만 받아 왔어요") : String(localized: "서버는 지나가기만 해요 · 현재가·일봉·환율만"))
                             .appFont(11).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
                     }.padding(.leading, 5)
                     Spacer(minLength: 0)
@@ -270,7 +292,7 @@ struct PriceBasisView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text("시세 기준").appFont(22, .bold)
-                let main = mk.toss != nil ? "토스 오픈 API" : mk.alpaca != nil ? "Alpaca 시세" : mk.longbridge != nil ? "Longbridge 시세" : mk.site != nil ? "naeilo 사이트 시세" : "예시 값"
+                let main = mk.toss != nil ? String(localized: "토스 오픈 API") : mk.alpaca != nil ? String(localized: "Alpaca 시세") : mk.longbridge != nil ? String(localized: "Longbridge 시세") : mk.site != nil ? String(localized: "naeilo 사이트 시세") : String(localized: "예시 값")
                 VStack(alignment: .leading, spacing: 6) {
                     Text("지금 보는 숫자").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                     Text(main).appFont(28, .bold)
@@ -279,13 +301,13 @@ struct PriceBasisView: View {
                 .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 Card {
-                    row("받는 순서", "내 토스 키 → 내 Alpaca·Longbridge 키 → naeilo 사이트. 앞에서 받은 값을 먼저 써요")
-                    row("미국 종목", mk.toss != nil ? "토스 지금 가격" : mk.alpaca != nil ? "Alpaca(IEX) 지금 가격" : mk.longbridge != nil ? "Longbridge 지금 가격" : "사이트가 평일 30분마다 모은 가격")
-                    row("한국 종목", mk.toss != nil ? "토스 지금 가격" : "사이트가 모은 가격. 미국 지수를 따르는 국내 ETF는 그 미국 ETF × 원/달러로 추정해요")
-                    row("장 마감 뒤", "미국 장이 끝나면 정규장 종가로 세요 (토스 총자산과 같은 기준)")
-                    row("원/달러", "\(Int(fx.last.rounded()).formatted())원 · 오늘 \(AppModel.sgn(fx.change))")
-                    row("평가 환율", mk.marRate != nil ? "매매기준율 \(String(format: "%.2f", mk.valFx))원 · 웹 평가액과 같아요" : "매매기준율을 아직 못 받아 지금 환율")
-                    row("오늘의 움직임", "전일 종가 대비 지금 평가액")
+                    row(String(localized: "받는 순서"), String(localized: "내 토스 키 → 내 Alpaca·Longbridge 키 → naeilo 사이트. 앞에서 받은 값을 먼저 써요"))
+                    row(String(localized: "미국 종목"), mk.toss != nil ? String(localized: "토스 지금 가격") : mk.alpaca != nil ? String(localized: "Alpaca(IEX) 지금 가격") : mk.longbridge != nil ? String(localized: "Longbridge 지금 가격") : String(localized: "사이트가 평일 30분마다 모은 가격"))
+                    row(String(localized: "한국 종목"), mk.toss != nil ? String(localized: "토스 지금 가격") : String(localized: "사이트가 모은 가격. 미국 지수를 따르는 국내 ETF는 그 미국 ETF × 원/달러로 추정해요"))
+                    row(String(localized: "장 마감 뒤"), String(localized: "미국 장이 끝나면 정규장 종가로 세요 (토스 총자산과 같은 기준)"))
+                    row(String(localized: "원/달러"), String(localized: "\(String(describing: Int(fx.last.rounded()).formatted()))원 · 오늘 \(String(describing: AppModel.sgn(fx.change)))"))
+                    row(String(localized: "평가 환율"), mk.marRate != nil ? String(localized: "매매기준율 \(String(describing: String(format: "%.2f", mk.valFx)))원 · 웹 평가액과 같아요") : String(localized: "매매기준율을 아직 못 받아 지금 환율"))
+                    row(String(localized: "오늘의 움직임"), String(localized: "전일 종가 대비 지금 평가액"))
                 }
                 Text("그래프와 미션은 종가로 계산해요. 아래로 당기면 바로 다시 받아요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
@@ -323,10 +345,10 @@ struct TossKeyView: View {
         if t > 0 {
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
             let d = Date(timeIntervalSince1970: t)
-            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : "M월 d일 a h:mm"
-            s = "마지막으로 받은 때 \(f.string(from: d))"
-        } else { s = "아직 받은 적 없어요" }
-        if let e = TossFeed.lastError { s += " · 실패: \(e)" }
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : String(localized: "M월 d일 a h:mm")
+            s = String(localized: "마지막으로 받은 때 \(String(describing: f.string(from: d)))")
+        } else { s = String(localized: "아직 받은 적 없어요") }
+        if let e = TossFeed.lastError { s += String(localized: " · 실패: \(String(describing: e))") }
         return s
     }
 
@@ -349,7 +371,7 @@ struct TossKeyView: View {
             Text("내 키로 받는 중").appFont(15, .bold)
             Text(status).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             if let ip { ipRow(ip) }
-            PrimaryButton(title: busy ? "받는 중…" : "지금 다시 받기") { Task { await check() } }
+            PrimaryButton(title: busy ? String(localized: "받는 중…") : String(localized: "지금 다시 받기")) { Task { await check() } }
             if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
             Button("키 지우기") { askOff = true }
                 .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
@@ -373,7 +395,7 @@ struct TossKeyView: View {
             field("client_id", $id, secure: true)
             field("client_secret", $secret, secure: true)
             let ok = !id.trimmingCharacters(in: .whitespaces).isEmpty && !secret.trimmingCharacters(in: .whitespaces).isEmpty
-            PrimaryButton(title: busy ? "확인 중…" : "연결하기", color: ok ? Theme.teal : Theme.muted) {
+            PrimaryButton(title: busy ? String(localized: "확인 중…") : String(localized: "연결하기"), color: ok ? Theme.teal : Theme.muted) {
                 guard ok, !busy else { return }
                 TossKeys.save(.init(id: id.trimmingCharacters(in: .whitespaces), secret: secret.trimmingCharacters(in: .whitespaces)))
                 secret = ""
@@ -387,7 +409,7 @@ struct TossKeyView: View {
         HStack {
             Text(ip).appFont(17, .bold).textSelection(.enabled)
             Spacer()
-            Button(copied ? "복사됨" : "복사") { UIPasteboard.general.string = ip; copied = true }
+            Button(copied ? String(localized: "복사됨") : String(localized: "복사")) { UIPasteboard.general.string = ip; copied = true }
                 .appFont(14, .semibold).foregroundStyle(Theme.teal).frame(minHeight: 44)
         }
         .padding(.horizontal, 12).background(Theme.track, in: RoundedRectangle(cornerRadius: 12))
@@ -407,7 +429,7 @@ struct TossKeyView: View {
         // 토큰은 만료 전이면 그대로 쓴다 (새로 받으면 받는 중인 다른 요청의 토큰이 끊긴다). 처음 연결이면 키를 넣을 때 토큰을 지워 새로 받는다
         let (t, e) = await TossFeed.token()
         if t == nil {
-            msg = (e ?? "연결 실패") + (e == "허용 IP에 중계 IP가 없어요" ? ". 오픈 API 허용 IP에 위 IP를 넣고 다시 눌러 주세요." : "")
+            msg = (e ?? String(localized: "연결 실패")) + (e == "허용 IP에 중계 IP가 없어요" ? String(localized: ". 오픈 API 허용 IP에 위 IP를 넣고 다시 눌러 주세요.") : "")
             if !on { TossKeys.clear() }     // 처음 연결이 실패하면 키를 남기지 않는다
         } else {
             on = true
@@ -435,10 +457,10 @@ struct AlpacaKeyView: View {
         if t > 0 {
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
             let d = Date(timeIntervalSince1970: t)
-            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : "M월 d일 a h:mm"
-            s = "마지막으로 받은 때 \(f.string(from: d))"
-        } else { s = "아직 받은 적 없어요" }
-        if let e = AlpacaFeed.lastError { s += " · 실패: \(e)" }
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : String(localized: "M월 d일 a h:mm")
+            s = String(localized: "마지막으로 받은 때 \(String(describing: f.string(from: d)))")
+        } else { s = String(localized: "아직 받은 적 없어요") }
+        if let e = AlpacaFeed.lastError { s += String(localized: " · 실패: \(String(describing: e))") }
         return s
     }
 
@@ -450,7 +472,7 @@ struct AlpacaKeyView: View {
                     if on {
                         Text("내 키로 받는 중").appFont(15, .bold)
                         Text(status).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                        PrimaryButton(title: busy ? "받는 중…" : "지금 다시 받기") { Task { await check() } }
+                        PrimaryButton(title: busy ? String(localized: "받는 중…") : String(localized: "지금 다시 받기")) { Task { await check() } }
                         if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
                         Button("키 지우기") { askOff = true }
                             .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
@@ -464,7 +486,7 @@ struct AlpacaKeyView: View {
                         field("API Key ID", $id)
                         field("Secret Key", $secret)
                         let ok = !id.trimmingCharacters(in: .whitespaces).isEmpty && !secret.trimmingCharacters(in: .whitespaces).isEmpty
-                        PrimaryButton(title: busy ? "확인 중…" : "연결하기", color: ok ? Theme.teal : Theme.muted) {
+                        PrimaryButton(title: busy ? String(localized: "확인 중…") : String(localized: "연결하기"), color: ok ? Theme.teal : Theme.muted) {
                             guard ok, !busy else { return }
                             AlpacaKeys.save(.init(id: id.trimmingCharacters(in: .whitespaces), secret: secret.trimmingCharacters(in: .whitespaces)))
                             secret = ""
@@ -519,10 +541,10 @@ struct LongbridgeKeyView: View {
         if t > 0 {
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
             let d = Date(timeIntervalSince1970: t)
-            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : "M월 d일 a h:mm"
-            s = "마지막으로 받은 때 \(f.string(from: d))"
-        } else { s = "아직 받은 적 없어요" }
-        if let e = LongbridgeFeed.lastError { s += " · 실패: \(e)" }
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : String(localized: "M월 d일 a h:mm")
+            s = String(localized: "마지막으로 받은 때 \(String(describing: f.string(from: d)))")
+        } else { s = String(localized: "아직 받은 적 없어요") }
+        if let e = LongbridgeFeed.lastError { s += String(localized: " · 실패: \(String(describing: e))") }
         return s
     }
 
@@ -534,7 +556,7 @@ struct LongbridgeKeyView: View {
                     if on {
                         Text("내 키로 받는 중").appFont(15, .bold)
                         Text(status).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                        PrimaryButton(title: busy ? "받는 중…" : "지금 다시 받기") { Task { await check() } }
+                        PrimaryButton(title: busy ? String(localized: "받는 중…") : String(localized: "지금 다시 받기")) { Task { await check() } }
                         if let msg { Text(msg).appFont(13).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
                         Button("키 지우기") { askOff = true }
                             .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
@@ -550,7 +572,7 @@ struct LongbridgeKeyView: View {
                         field("Access Token", $token)
                         let t = { (v: String) in v.trimmingCharacters(in: .whitespacesAndNewlines) }
                         let ok = !t(key).isEmpty && !t(secret).isEmpty && !t(token).isEmpty
-                        PrimaryButton(title: busy ? "확인 중…" : "연결하기", color: ok ? Theme.teal : Theme.muted) {
+                        PrimaryButton(title: busy ? String(localized: "확인 중…") : String(localized: "연결하기"), color: ok ? Theme.teal : Theme.muted) {
                             guard ok, !busy else { return }
                             LongbridgeKeys.save(.init(key: t(key), secret: t(secret), token: t(token)))
                             secret = ""; token = ""
@@ -594,20 +616,20 @@ struct TossLinkMap: View {
     var body: some View {
         Card {
             HStack(alignment: .top, spacing: 0) {
-                node("iphone", "내 폰", "열쇠는 나만", lock: true)
+                node("iphone", String(localized: "내 폰"), String(localized: "열쇠는 나만"), lock: true)
                 TossLinkLine(on: on)
-                node("server.rack", "naeilo 서버", "통로만 해요", lock: false)
+                node("server.rack", String(localized: "naeilo 서버"), String(localized: "통로만 해요"), lock: false)
                 TossLinkLine(on: on)
-                node("chart.line.uptrend.xyaxis", "증권사 시세", " ", lock: false)
+                node("chart.line.uptrend.xyaxis", String(localized: "증권사 시세"), " ", lock: false)
             }
-            Text(on ? "이어졌어요" : "키를 넣으면 이어져요").appFont(13, .semibold)
+            Text(on ? String(localized: "이어졌어요") : String(localized: "키를 넣으면 이어져요")).appFont(13, .semibold)
                 .foregroundStyle(on ? Theme.teal : Theme.muted).frame(maxWidth: .infinity)
-            Text(on ? "지금 이어져 있어요." : "어디에도 남지 않아요.").appFont(17, .heavy).padding(.top, 4)
-            Text(on ? "그만두려면 아래 키 지우기를 누르면 돼요." : "키는 암호화되어 지나가기만 해요.")
+            Text(on ? String(localized: "지금 이어져 있어요.") : String(localized: "어디에도 남지 않아요.")).appFont(17, .heavy).padding(.top, 4)
+            Text(on ? String(localized: "그만두려면 아래 키 지우기를 누르면 돼요.") : String(localized: "키는 암호화되어 지나가기만 해요."))
                 .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Image(systemName: on ? "chart.line.uptrend.xyaxis" : "key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.teal)
-                Text(on ? "현재가·일봉·환율 정보만 받아 왔어요." : "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요.")
+                Text(on ? String(localized: "현재가·일봉·환율 정보만 받아 왔어요.") : String(localized: "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요."))
                     .appFont(13).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
@@ -669,11 +691,11 @@ private struct TossLinkLine: View {
 struct AppIconPicker: View {
     @Environment(AppModel.self) private var m
     static let icons: [(id: String?, name: String, prev: String, friend: Int?)] = [
-        (nil, "내일의 별", "iconprev_star", nil), ("AppIcon-seri", "세리", "iconprev_seri", 0), ("AppIcon-sio", "시오", "iconprev_sio", 1),
-        ("AppIcon-seonbae", "선배", "iconprev_seonbae", 2), ("AppIcon-ir", "이르", "iconprev_ir", 3), ("AppIcon-sua", "수아", "iconprev_sua", 4),
+        (nil, String(localized: "내일의 별"), "iconprev_star", nil), ("AppIcon-seri", String(localized: "세리"), "iconprev_seri", 0), ("AppIcon-sio", String(localized: "시오"), "iconprev_sio", 1),
+        ("AppIcon-seonbae", String(localized: "선배"), "iconprev_seonbae", 2), ("AppIcon-ir", String(localized: "이르"), "iconprev_ir", 3), ("AppIcon-sua", String(localized: "수아"), "iconprev_sua", 4),
     ]
     @State private var current: String? = UIApplication.shared.alternateIconName
-    static var currentName: String { icons.first { $0.id == UIApplication.shared.alternateIconName }?.name ?? "내일의 별" }
+    static var currentName: String { icons.first { $0.id == UIApplication.shared.alternateIconName }?.name ?? String(localized: "내일의 별") }
 
     private func open(_ f: Int?) -> Bool { f.map { m.friendOn($0) } ?? true }
     private func set(_ id: String?) {
@@ -693,14 +715,14 @@ struct AppIconPicker: View {
                             .overlay { if !ok { Image(systemName: "lock.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(.white) } }
                             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                             .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 3 : 1))
-                        Text(ok ? ic.name : "인터미션 \(ic.friend ?? 0)주차").appFont(ok ? 13 : 11, on ? .bold : .regular)
+                        Text(ok ? ic.name : String(localized: "인터미션 \(String(describing: ic.friend ?? 0))주차")).appFont(ok ? 13 : 11, on ? .bold : .regular)
                             .foregroundStyle(on ? Theme.ink : ok ? Theme.sub : Theme.muted).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 8).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!ok)
-                .accessibilityLabel(ok ? "\(ic.name) 아이콘" : "\(ic.name) 아이콘, 인터미션 \(ic.friend ?? 0)주차에 열려요")
+                .accessibilityLabel(ok ? String(localized: "\(String(describing: ic.name)) 아이콘") : String(localized: "\(String(describing: ic.name)) 아이콘, 인터미션 \(String(describing: ic.friend ?? 0))주차에 열려요"))
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }

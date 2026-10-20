@@ -24,29 +24,29 @@ enum SurfCloset {
     ]
 
     static let boards: [SurfItem] = [
-        SurfItem(id: 0, name: "코랄", x: 1, y: 11, rows: ["cccccccccc", ".CCCCCCCC"], open: .free),
-        SurfItem(id: 1, name: "바나나", x: 1, y: 11, rows: ["byyyyyyyyb", ".oooooooo"], open: .score(500)),
-        SurfItem(id: 2, name: "수박", x: 1, y: 11, rows: ["rrkrrrrkrr", ".GgGgGgGg"], open: .score(1200)),
-        SurfItem(id: 3, name: "구름", x: 1, y: 11, rows: ["wwwwwwwwww", ".ssssssss"],
+        SurfItem(id: 0, name: String(localized: "코랄"), x: 1, y: 11, rows: ["cccccccccc", ".CCCCCCCC"], open: .free),
+        SurfItem(id: 1, name: String(localized: "바나나"), x: 1, y: 11, rows: ["byyyyyyyyb", ".oooooooo"], open: .score(500)),
+        SurfItem(id: 2, name: String(localized: "수박"), x: 1, y: 11, rows: ["rrkrrrrkrr", ".GgGgGgGg"], open: .score(1200)),
+        SurfItem(id: 3, name: String(localized: "구름"), x: 1, y: 11, rows: ["wwwwwwwwww", ".ssssssss"],
                  deco: [(1, 10, "w"), (2, 10, "w"), (10, 10, "w")], open: .score(2000)),
-        SurfItem(id: 4, name: "무지개", x: 1, y: 11, rows: ["rroyygBBvv", ".royygBBv"], open: .score(3200)),
-        SurfItem(id: 5, name: "상어", x: 1, y: 11, rows: ["aaaaaaaaka", ".wwwwwwww"],
+        SurfItem(id: 4, name: String(localized: "무지개"), x: 1, y: 11, rows: ["rroyygBBvv", ".royygBBv"], open: .score(3200)),
+        SurfItem(id: 5, name: String(localized: "상어"), x: 1, y: 11, rows: ["aaaaaaaaka", ".wwwwwwww"],
                  deco: [(2, 10, "a"), (1, 9, "a")], open: .score(5000)),
-        SurfItem(id: 6, name: "캔들", x: 1, y: 11, rows: ["ggrgggrrgg", ".kkkkkkkk"],
+        SurfItem(id: 6, name: String(localized: "캔들"), x: 1, y: 11, rows: ["ggrgggrrgg", ".kkkkkkkk"],
                  deco: [(2, 10, "g"), (8, 10, "r")], open: .hardClear),
-        SurfItem(id: 7, name: "황금", x: 1, y: 11, rows: ["yyyyyyyyyy", ".YYYYYYYY"],
+        SurfItem(id: 7, name: String(localized: "황금"), x: 1, y: 11, rows: ["yyyyyyyyyy", ".YYYYYYYY"],
                  deco: [(0, 9, "q"), (11, 10, "q"), (12, 8, "q")], open: .fever(10)),
     ]
 
     static let hats: [SurfItem] = [
-        SurfItem(id: 0, name: "없음", x: 0, y: 0, rows: [], open: .free),
-        SurfItem(id: 1, name: "밀짚", x: 1, y: -1, rows: ["..yyyyyy..", "..rrrrrr..", "oyyyyyyyyo"], open: .score(300)),
-        SurfItem(id: 2, name: "비니", x: 3, y: -3, rows: ["..ww..", ".BBBB.", "BBBBBB", "ssssss"], open: .score(800)),
-        SurfItem(id: 3, name: "꽃핀", x: 7, y: 0, rows: [".p.", "pyp", ".p."], open: .score(1500)),
-        SurfItem(id: 4, name: "고깔", x: 4, y: -3, rows: [".yy.", ".vv.", "vyyv", "vvvv"], open: .score(2500)),
-        SurfItem(id: 5, name: "개구리", x: 2, y: -2, rows: [".gg..gg.", "gwkggwkg", "gggggggg", ".gggggg."], open: .score(4000)),
-        SurfItem(id: 6, name: "곰 귀", x: 2, y: -1, rows: ["bb....bb", "bp....pb", ".bbbbbb."], open: .splash(20)),
-        SurfItem(id: 7, name: "황소 뿔", x: 0, y: -2, rows: ["h..........h", "h..........h", ".hh......hh.", "..A......A.."], open: .snap(10)),
+        SurfItem(id: 0, name: String(localized: "없음"), x: 0, y: 0, rows: [], open: .free),
+        SurfItem(id: 1, name: String(localized: "밀짚"), x: 1, y: -1, rows: ["..yyyyyy..", "..rrrrrr..", "oyyyyyyyyo"], open: .score(300)),
+        SurfItem(id: 2, name: String(localized: "비니"), x: 3, y: -3, rows: ["..ww..", ".BBBB.", "BBBBBB", "ssssss"], open: .score(800)),
+        SurfItem(id: 3, name: String(localized: "꽃핀"), x: 7, y: 0, rows: [".p.", "pyp", ".p."], open: .score(1500)),
+        SurfItem(id: 4, name: String(localized: "고깔"), x: 4, y: -3, rows: [".yy.", ".vv.", "vyyv", "vvvv"], open: .score(2500)),
+        SurfItem(id: 5, name: String(localized: "개구리"), x: 2, y: -2, rows: [".gg..gg.", "gwkggwkg", "gggggggg", ".gggggg."], open: .score(4000)),
+        SurfItem(id: 6, name: String(localized: "곰 귀"), x: 2, y: -1, rows: ["bb....bb", "bp....pb", ".bbbbbb."], open: .splash(20)),
+        SurfItem(id: 7, name: String(localized: "황소 뿔"), x: 0, y: -2, rows: ["h..........h", "h..........h", ".hh......hh.", "..A......A.."], open: .snap(10)),
     ]
 
     // MARK: 저장 (UserDefaults 정수 몇 개)
@@ -106,11 +106,11 @@ enum SurfCloset {
     static func need(_ i: SurfItem) -> String {
         switch i.open {
         case .free: return ""
-        case .score(let n): return "\(n)점"
-        case .hardClear: return "어려움 완주"
-        case .fever(let n): return "피버 \(min(fevers, n))/\(n)"
-        case .splash(let n): return "풍덩 \(min(splashes, n))/\(n)"
-        case .snap(let n): return "딱! \(min(snaps, n))/\(n)"
+        case .score(let n): return String(localized: "\(String(describing: n))점")
+        case .hardClear: return String(localized: "어려움 완주")
+        case .fever(let n): return String(localized: "피버 \(String(describing: min(fevers, n)))/\(String(describing: n))")
+        case .splash(let n): return String(localized: "풍덩 \(String(describing: min(splashes, n)))/\(String(describing: n))")
+        case .snap(let n): return String(localized: "딱! \(String(describing: min(snaps, n)))/\(String(describing: n))")
         }
     }
 
@@ -189,8 +189,8 @@ struct SurfClosetSheet: View {
     // 열 때 한 번만 읽는다 (그릴 때마다 UserDefaults 를 읽지 않게)
     private let total = SurfCloset.total
     private let next = SurfCloset.nextGift()
-    private let opened = Set(SurfCloset.boards.filter(SurfCloset.isOpen).map { "보드\($0.id)" }
-                             + SurfCloset.hats.filter(SurfCloset.isOpen).map { "모자\($0.id)" })
+    private let opened = Set(SurfCloset.boards.filter(SurfCloset.isOpen).map { String(localized: "보드\(String(describing: $0.id))") }
+                             + SurfCloset.hats.filter(SurfCloset.isOpen).map { String(localized: "모자\(String(describing: $0.id))") })
     @Environment(\.dismiss) private var dismiss
     private let cols = [GridItem(.adaptive(minimum: 76), spacing: 8)]
 
@@ -200,8 +200,8 @@ struct SurfClosetSheet: View {
                 VStack(spacing: 16) {
                     SurfRider(board: board, hat: hat, dot: 5).padding(.top, 8)
                     gift
-                    section("보드", SurfCloset.boards, board) { board = $0; SurfCloset.board = $0 }
-                    section("모자", SurfCloset.hats, hat) { hat = $0; SurfCloset.hat = $0 }
+                    section(String(localized: "보드"), SurfCloset.boards, board) { board = $0; SurfCloset.board = $0 }
+                    section(String(localized: "모자"), SurfCloset.hats, hat) { hat = $0; SurfCloset.hat = $0 }
                 }
                 .padding(16)
             }
@@ -232,11 +232,11 @@ struct SurfClosetSheet: View {
     private static func hint(_ i: SurfItem) -> String {
         switch i.open {
         case .free: return ""
-        case .score(let n): return "\(i.name): 누적 \(n)점이면 열려요"
-        case .hardClear: return "\(i.name): 어려움 코스를 끝까지 타면 열려요"
-        case .fever(let n): return "\(i.name): 피버 \(n)번이면 열려요 (\(SurfCloset.need(i)))"
-        case .splash(let n): return "\(i.name): 풍덩 \(n)번이면 열려요 (\(SurfCloset.need(i)))"
-        case .snap(let n): return "\(i.name): 딱! \(n)번이면 열려요 (\(SurfCloset.need(i)))"
+        case .score(let n): return String(localized: "\(String(describing: i.name)): 누적 \(String(describing: n))점이면 열려요")
+        case .hardClear: return String(localized: "\(String(describing: i.name)): 어려움 코스를 끝까지 타면 열려요")
+        case .fever(let n): return String(localized: "\(String(describing: i.name)): 피버 \(String(describing: n))번이면 열려요 (\(String(describing: SurfCloset.need(i))))")
+        case .splash(let n): return String(localized: "\(String(describing: i.name)): 풍덩 \(String(describing: n))번이면 열려요 (\(String(describing: SurfCloset.need(i))))")
+        case .snap(let n): return String(localized: "\(String(describing: i.name)): 딱! \(String(describing: n))번이면 열려요 (\(String(describing: SurfCloset.need(i))))")
         }
     }
 

@@ -4,19 +4,19 @@ import Observation
 // 앱 상태 + 계산. 설명 문구는 모두 계산값으로 만든다 (종목 추천 문구 없음).
 
 enum WeekPick: String, CaseIterable, Codable { case kept, changed, raised
-    var label: String { switch self { case .kept: "지킴"; case .changed: "바꿈"; case .raised: "높임" } }
-    var sub: String { switch self { case .kept: "계획한 비중 그대로"; case .changed: "계획 자체를 바꿈"; case .raised: "몰린 종목을 다시 늘림" } }
+    var label: String { switch self { case .kept: String(localized: "지킴"); case .changed: String(localized: "바꿈"); case .raised: String(localized: "높임") } }
+    var sub: String { switch self { case .kept: String(localized: "계획한 비중 그대로"); case .changed: String(localized: "계획 자체를 바꿈"); case .raised: String(localized: "몰린 종목을 다시 늘림") } }
     var color: Color { switch self { case .kept: Theme.green; case .changed: Theme.orange; case .raised: Color(hex: 0xC8352E) } }
 }
 
 struct DayLog: Codable, Equatable { var seen = false; var answer: Int? = nil; var q: String? = nil; var ok: Bool? = nil }   // q = 그날 낸 질문, ok = 퀴즈를 맞혔는지
 
 enum HoldSort: String, CaseIterable { case added, value, name, ret, today
-    var label: String { switch self { case .added: "넣은 순"; case .value: "평가액 큰 순"; case .name: "이름 순"; case .ret: "수익률 순"; case .today: "오늘 등락 순" } }
+    var label: String { switch self { case .added: String(localized: "넣은 순"); case .value: String(localized: "평가액 큰 순"); case .name: String(localized: "이름 순"); case .ret: String(localized: "수익률 순"); case .today: String(localized: "오늘 등락 순") } }
 }
 
 enum Lens: String, CaseIterable, Codable { case base, mine, smooth
-    var label: String { switch self { case .base: "신중하게"; case .mine: "내 설정"; case .smooth: "지난 3년처럼" } }
+    var label: String { switch self { case .base: String(localized: "신중하게"); case .mine: String(localized: "내 설정"); case .smooth: String(localized: "지난 3년처럼") } }
 }
 
 @Observable
@@ -184,35 +184,35 @@ final class AppModel {
     static func man(_ krw: Double) -> String {
         let n = Int((krw / 1e4).rounded())
         let a = abs(n), sign = n < 0 ? "−" : ""
-        guard a >= 10_000 else { return sign + a.formatted(.number.grouping(.automatic)) + "만" }
+        guard a >= 10_000 else { return sign + a.formatted(.number.grouping(.automatic)) + String(localized: "만") }
         let eok = a / 10_000, rest = a % 10_000
-        return sign + "\(eok.formatted())억" + (rest > 0 ? " \(rest.formatted())만" : "")
+        return sign + String(localized: "\(String(describing: eok.formatted()))억") + (rest > 0 ? String(localized: " \(String(describing: rest.formatted()))만") : "")
     }
     /// 웹 krw()와 같은 표시: 1억 넘으면 소수 둘째 자리 억 (5.25억), 1만 넘으면 만 (826만). 내 길·전망·홈 평가액
     static func eok(_ krw: Double) -> String {
         let a = abs(krw), s = krw < 0 ? "−" : ""
-        if a >= 1e8 { return s + String(format: a >= 1e10 ? "%.0f억" : "%.2f억", a / 1e8) }
-        if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + "만" }
-        return s + Int(a.rounded()).formatted() + "원"
+        if a >= 1e8 { return s + String(format: a >= 1e10 ? String(localized: "%.0f억") : String(localized: "%.2f억"), a / 1e8) }
+        if a >= 1e4 { return s + Int((a / 1e4).rounded()).formatted() + String(localized: "만") }
+        return s + Int(a.rounded()).formatted() + String(localized: "원")
     }
     /// 부호 붙인 금액 (+826만, −826만)
     static func eokS(_ krw: Double) -> String { (krw >= 0 ? "+" : "−") + eok(abs(krw)) }
     /// 남은 기간 (웹 목표 진행과 같은 표시): 1년 넘으면 소수 한 자리 년, 안 되면 개월·일
     static func leftText(_ y: Double) -> String {
-        guard y > 0 else { return "지남" }
-        if y >= 1 { return String(format: "%.1f년", y) }
-        if y * 12 >= 1 { return "\(Int(y * 12))개월" }
-        return "\(Int((y * 365.25).rounded(.up)))일"
+        guard y > 0 else { return String(localized: "지남") }
+        if y >= 1 { return String(format: String(localized: "%.1f년"), y) }
+        if y * 12 >= 1 { return String(localized: "\(String(describing: Int(y * 12)))개월") }
+        return String(localized: "\(String(describing: Int((y * 365.25).rounded(.up))))일")
     }
     /// 퍼센트와 금액을 함께: "−2.1% · 약 1,060만원". 금액 = base × rate, 만원 반올림, 1억 이상은 "약 1.2억원"
     static func pctWon(_ rate: Double, base: Double) -> String {
         let p = (rate >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(rate) * 100)
-        return p + " · 약 " + aboutWon(base * rate)
+        return p + String(localized: " · 약 ") + aboutWon(base * rate)
     }
     /// 금액 어림: 만원 반올림, 1억 이상은 "1.2억원" (부호 없음)
     static func aboutWon(_ krw: Double) -> String {
         let a = abs(krw)
-        return a >= 1e8 ? String(format: "%.1f억", a / 1e8) : Int((a / 1e4).rounded()).formatted() + "만"
+        return a >= 1e8 ? String(format: String(localized: "%.1f억"), a / 1e8) : Int((a / 1e4).rounded()).formatted() + String(localized: "만")
     }
     /// 아직 값이 없으면 0 대신 "—"
     static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }
@@ -220,7 +220,7 @@ final class AppModel {
     static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(p) * 100) }
     static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "−") + "\(Int((abs(p) * 100).rounded()))%" }
     static func price(_ s: Symbol, _ x: Double) -> String {
-        s.currency == .usd ? "$" + x.formatted(.number.precision(.fractionLength(0...2))) : Int(x.rounded()).formatted() + "원"
+        s.currency == .usd ? "$" + x.formatted(.number.precision(.fractionLength(0...2))) : Int(x.rounded()).formatted() + String(localized: "원")
     }
 
     // MARK: 보유 계산 (원화)
@@ -325,6 +325,11 @@ final class AppModel {
     var onboarded = UserDefaults.standard.bool(forKey: "onboarded") || UserDefaults.standard.string(forKey: "tab") != nil
         || UserDefaults.standard.string(forKey: "goal") != nil || UserDefaults.standard.string(forKey: "demo") != nil
     var appearance = UserDefaults.standard.string(forKey: "appearance") ?? "system"   // system · light · dark
+    /// 거주 국가(ISO 코드). 세금 기능만 이 값을 따른다. 처음엔 기기 지역, 없으면 한국
+    var residence = UserDefaults.standard.string(forKey: "residence") ?? Locale.current.region?.identifier ?? "KR" {
+        didSet { UserDefaults.standard.set(residence, forKey: "residence") }
+    }
+    var residenceName: String { Locale.current.localizedString(forRegionCode: residence) ?? residence }
     // 종목 탭은 종목(Symbol)과 '종목 추가'(String)를, 분석 탭은 분석 화면과 종목을 같이 쌓으므로 NavigationPath
     var holdPath = NavigationPath()
     /// 내 기록 카드에서 '국내 주식 합계' 그래프를 보고 있는지 (합계 입력 칸의 안내 줄에서 바로 연다)
@@ -351,11 +356,11 @@ final class AppModel {
     // MARK: 미션 판
     struct Block: Identifiable { let id: Int; let num: String; let title: String; let reward: String; let inter: Bool }
     let blocks: [Block] = [
-        .init(id: 1, num: "1", title: "종목·단가 넣기", reward: "회복 확률", inter: false),
-        .init(id: 2, num: "2", title: "원인 진단", reward: "회복 경로", inter: false),
-        .init(id: 3, num: "3", title: "내 계획 정하기", reward: "비중 비교", inter: false),
-        .init(id: 5, num: "4", title: "앱 시작 3단계", reward: "위젯 전부", inter: false),
-        .init(id: 6, num: "인터미션", title: "처음 4주 체크인", reward: "캐릭터 위젯 4개, 1년 전망", inter: true),
+        .init(id: 1, num: "1", title: String(localized: "종목·단가 넣기"), reward: String(localized: "회복 확률"), inter: false),
+        .init(id: 2, num: "2", title: String(localized: "원인 진단"), reward: String(localized: "회복 경로"), inter: false),
+        .init(id: 3, num: "3", title: String(localized: "내 계획 정하기"), reward: String(localized: "비중 비교"), inter: false),
+        .init(id: 5, num: "4", title: String(localized: "앱 시작 3단계"), reward: String(localized: "위젯 전부"), inter: false),
+        .init(id: 6, num: String(localized: "인터미션"), title: String(localized: "처음 4주 체크인"), reward: String(localized: "캐릭터 위젯 4개, 1년 전망"), inter: true),
     ]
     func available(_ b: Block) -> Bool {
         guard let i = blocks.firstIndex(where: { $0.id == b.id }) else { return false }
@@ -405,7 +410,7 @@ final class AppModel {
     @MainActor func chapterOn(_ i: Int) -> Bool {
         devAll || i == 0 || Story.shared.isDone(.side, i - 1)
     }
-    func friendWhen(_ i: Int) -> String { i == 0 ? "처음부터 · 홈" : "\(i + 1)일째" }
+    func friendWhen(_ i: Int) -> String { i == 0 ? String(localized: "처음부터 · 홈") : String(localized: "\(String(describing: i + 1))일째") }
 
     // MARK: 오늘의 1분
     var today: DayLog { dayLog[day] ?? DayLog() }
@@ -427,7 +432,7 @@ final class AppModel {
     /// 다음 물건까지 남은 날
 
     // 오늘 숫자와 질문은 내 종목의 실제 시세로 만든다 (Market: 전일 종가 → 지금, 종목 통화 기준)
-    static func won(_ krw: Double) -> String { abs(krw) < 1e4 ? Int(abs(krw).rounded()).formatted() + "원" : wonK(abs(krw) / 1e4) }
+    static func won(_ krw: Double) -> String { abs(krw) < 1e4 ? Int(abs(krw).rounded()).formatted() + String(localized: "원") : wonK(abs(krw) / 1e4) }
     /// 오늘 많이 움직인 순서
     var movers: [Row] { rows.sorted { abs($0.sym.quote.change) > abs($1.sym.quote.change) } }
     /// 홈 말풍선 정보 문장: 오늘 평가액 움직임(원화)에 크게 기여한 종목 1~2개. 전체 움직임의 30% 이상일 때만 이름을 쓴다
@@ -440,27 +445,27 @@ final class AppModel {
         guard all > 0 else { return nil }
         let mv = todayMove, up = mv >= 0
         let top = c.filter { ($0.1 >= 0) == up }.sorted { abs($0.1) > abs($1.1) }.prefix(2).filter { abs($0.1) >= all * 0.3 }
-        if top.isEmpty { return "오늘은 여러 종목이 고르게 움직였어요." }
+        if top.isEmpty { return String(localized: "오늘은 여러 종목이 고르게 움직였어요.") }
         let names = top.map { "\($0.0.sym.short)(\(Self.sgn($0.0.sym.quote.change)))" }.joined(separator: "와 ")
-        return "오늘 \(up ? "상승" : "하락")은 주로 \(names) 때문이에요."
+        return String(localized: "오늘 \(String(describing: up ? String(localized: "상승") : String(localized: "하락")))은 주로 \(String(describing: names)) 때문이에요.")
     }
     var routineFact: String {
         let tot = todayMove
         let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
         let head = rows.isEmpty ? "" : "**\(Self.sgn(tot))**" + (mv.isEmpty ? "" : " · \(mv)") + "\n"     // 오늘 움직임은 진하게 (마크다운)
         if route == .novice {
-            return head + (noviceOwn ? "평가액은" : "모은 돈은") + " 목표의 \(AppModel.pct(goalSaved / max(1, gK)))예요. 다음 적립일에 \(AppModel.wonK(gM))이 더해져요."
+            return head + (noviceOwn ? String(localized: "평가액은") : String(localized: "모은 돈은")) + String(localized: " 목표의 \(String(describing: AppModel.pct(goalSaved / max(1, gK))))예요. 다음 적립일에 \(String(describing: AppModel.wonK(gM)))이 더해져요.")
         }
-        guard total > 0 else { return "아직 넣은 종목이 없어요. 종목 탭에서 수량을 넣으면 내일부터 내 숫자를 가져올게요." }
+        guard total > 0 else { return String(localized: "아직 넣은 종목이 없어요. 종목 탭에서 수량을 넣으면 내일부터 내 숫자를 가져올게요.") }
         let vY = total / (1 + tot)
         if route == .plus {
             let k = gK * 1e4
             let a = Self.pct(vY / k), b = Self.pct(total / k)
-            return head + (a == b ? "목표 **\(b)** 그대로" : "목표 **\(a) → \(b)**")
+            return head + (a == b ? String(localized: "목표 **\(String(describing: b))** 그대로") : String(localized: "목표 **\(String(describing: a)) → \(String(describing: b))**"))
         }
         let distNow = cost / total - 1, distY = cost / vY - 1
-        if distNow <= 0 { return head + "본전보다 \(Self.sgn(ret)) 위에 있어요." }
-        return head + "본전까지 \(String(format: "%.1f", distY * 100))% → \(String(format: "%.1f", distNow * 100))%" + (distNow < distY ? ", 가까워졌어요." : ", 조금 멀어졌어요.")
+        if distNow <= 0 { return head + String(localized: "본전보다 \(String(describing: Self.sgn(ret))) 위에 있어요.") }
+        return head + String(localized: "본전까지 \(String(describing: String(format: "%.1f", distY * 100)))% → \(String(describing: String(format: "%.1f", distNow * 100)))%") + (distNow < distY ? String(localized: ", 가까워졌어요.") : String(localized: ", 조금 멀어졌어요."))
     }
 
     struct Question {
@@ -483,8 +488,8 @@ final class AppModel {
         let rs = rows, tot = max(1, total), mv = todayMove
         if !rs.isEmpty {
             let diff = stockTotal - stockTotal / (1 + mv)     // 오늘 움직임은 종목만 (국내 주식 합계 빼고)
-            qs.append(.init(id: "updown", tag: "오늘 움직임", q: "어제 종가와 비교해, 오늘 내 평가액은?", opts: ["올랐어요", "내렸어요"], right: mv >= 0 ? 0 : 1,
-                            fb: { _ in "오늘 \(Self.sgn(mv)), 원화로 \(Self.won(diff)) \(diff >= 0 ? "늘었어요" : "줄었어요")." }))
+            qs.append(.init(id: "updown", tag: String(localized: "오늘 움직임"), q: String(localized: "어제 종가와 비교해, 오늘 내 평가액은?"), opts: [String(localized: "올랐어요"), String(localized: "내렸어요")], right: mv >= 0 ? 0 : 1,
+                            fb: { _ in String(localized: "오늘 \(String(describing: Self.sgn(mv))), 원화로 \(String(describing: Self.won(diff))) \(String(describing: diff >= 0 ? String(localized: "늘었어요") : String(localized: "줄었어요"))).") }))
         }
         // 종목이 둘 이상: 많이 움직인 종목·비중 1위 (보기는 이름순이라 순서로 답이 새지 않게)
         let byW = rs.sorted { $0.value > $1.value }
@@ -493,85 +498,85 @@ final class AppModel {
             let chg = c.map { abs($0.sym.quote.change) }, wt = c.map { $0.value / tot }
             let mvList = c.map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
             let wtList = c.sorted { $0.value > $1.value }.map { "\($0.sym.short) \(Self.pct($0.value / tot))" }.joined(separator: " · ")
-            qs.append(.init(id: "mover", tag: "오늘 움직임", q: "오늘 가장 크게 움직인 종목은?", opts: c.map(\.sym.short),
+            qs.append(.init(id: "mover", tag: String(localized: "오늘 움직임"), q: String(localized: "오늘 가장 크게 움직인 종목은?"), opts: c.map(\.sym.short),
                             right: chg.indices.max { chg[$0] < chg[$1] } ?? 0,
-                            fb: { _ in "\(mvList). 크게 움직인 종목일수록 내 평가액도 많이 흔들어요." }))
-            qs.append(.init(id: "weight", tag: "비중 퀴즈", q: "가장 큰 종목은?", opts: c.map(\.sym.short),
+                            fb: { _ in String(localized: "\(String(describing: mvList)). 크게 움직인 종목일수록 내 평가액도 많이 흔들어요.") }))
+            qs.append(.init(id: "weight", tag: String(localized: "비중 퀴즈"), q: String(localized: "가장 큰 종목은?"), opts: c.map(\.sym.short),
                             right: wt.indices.max { wt[$0] < wt[$1] } ?? 0,
                             fb: { _ in wtList }))
             let top = byW[0], w = top.value / tot, n = Self.near3(w, step: 0.2, lo: 0.2, hi: 1, salt: 1)
-            qs.append(.init(id: "topshare", tag: "비중 퀴즈", q: "\(top.sym.short)는 내 평가액의 몇 %쯤일까요?", opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
-                            fb: { _ in "\(top.sym.short) \(Self.won(top.value)) ÷ 전체 \(Self.won(tot)) = \(Self.pct(w))." }))
+            qs.append(.init(id: "topshare", tag: String(localized: "비중 퀴즈"), q: String(localized: "\(String(describing: top.sym.short))는 내 평가액의 몇 %쯤일까요?"), opts: n.opts.map { String(localized: "약 \(String(describing: Self.pct($0)))") }, right: n.right,
+                            fb: { _ in String(localized: "\(String(describing: top.sym.short)) \(String(describing: Self.won(top.value))) ÷ 전체 \(String(describing: Self.won(tot))) = \(String(describing: Self.pct(w))).") }))
         }
         // 환율: 달러 종목이 있을 때
         let usd = rs.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / tot, fxc = Market.shared.fx.change
         if usd > 0 {
             let eff = usd * fxc
-            qs.append(.init(id: "fx", tag: "환율 퀴즈", q: "오늘 원/달러가 \(Self.sgn(fxc)) 움직였어요. 달러 종목이 \(Self.pct(usd))인 내 평가액에는?",
-                            opts: ["올려 줬어요", "내렸어요", "거의 그대로예요"], right: abs(eff) < 0.0005 ? 2 : eff > 0 ? 0 : 1,
-                            fb: { _ in "달러 비중 × 환율 변화 ≈ \(Self.sgn(eff)). 환율이 오르면 달러 종목의 원화 값도 같이 올라요." }))
+            qs.append(.init(id: "fx", tag: String(localized: "환율 퀴즈"), q: String(localized: "오늘 원/달러가 \(String(describing: Self.sgn(fxc))) 움직였어요. 달러 종목이 \(String(describing: Self.pct(usd)))인 내 평가액에는?"),
+                            opts: [String(localized: "올려 줬어요"), String(localized: "내렸어요"), String(localized: "거의 그대로예요")], right: abs(eff) < 0.0005 ? 2 : eff > 0 ? 0 : 1,
+                            fb: { _ in String(localized: "달러 비중 × 환율 변화 ≈ \(String(describing: Self.sgn(eff))). 환율이 오르면 달러 종목의 원화 값도 같이 올라요.") }))
         }
         if cost > 0 && !rs.isEmpty {
             let r = ret, n = Self.near3(r, step: 0.1, lo: -1, hi: 10, salt: 2)
             let c = cost, t = total
-            qs.append(.init(id: "ret", tag: "수익률 퀴즈", q: "산 값과 비교한 지금 내 수익률은 어느 쪽에 가까울까요?", opts: n.opts.map { "약 " + Self.sgn0($0) }, right: n.right,
-                            fb: { _ in "지금 \(Self.sgn(r)). 들어간 돈 \(Self.won(c)), 지금 \(Self.won(t))." }))
+            qs.append(.init(id: "ret", tag: String(localized: "수익률 퀴즈"), q: String(localized: "산 값과 비교한 지금 내 수익률은 어느 쪽에 가까울까요?"), opts: n.opts.map { String(localized: "약 ") + Self.sgn0($0) }, right: n.right,
+                            fb: { _ in String(localized: "지금 \(String(describing: Self.sgn(r))). 들어간 돈 \(String(describing: Self.won(c))), 지금 \(String(describing: Self.won(t))).") }))
         }
         if route == .recover {
             if cost > 0 && !rs.isEmpty {
                 let p12 = planBreakEven(years: 1), p6 = planBreakEven(years: 0.5), n = Self.near3(p12, step: 0.2, lo: 0.1, hi: 0.9, salt: 3)
-                qs.append(.init(id: "be1y", tag: "확률 퀴즈", q: "지금 계획(\(selectedPlan.name))으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?",
-                                opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
-                                fb: { _ in "모형 계산으로 약 \(Self.pct(p12))예요. 6개월 안이면 \(Self.pct(p6)). 기간이 길수록 높아져요." }))
+                qs.append(.init(id: "be1y", tag: String(localized: "확률 퀴즈"), q: String(localized: "지금 계획(\(String(describing: selectedPlan.name)))으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?"),
+                                opts: n.opts.map { String(localized: "약 \(String(describing: Self.pct($0)))") }, right: n.right,
+                                fb: { _ in String(localized: "모형 계산으로 약 \(String(describing: Self.pct(p12)))예요. 6개월 안이면 \(String(describing: Self.pct(p6))). 기간이 길수록 높아져요.") }))
             }
             if total > 0 && cost > total {
                 let d = cost / total - 1, loss = 1 - total / cost, n = Self.near3(d, step: 0.1, lo: 0, hi: 10, salt: 4)
-                qs.append(.init(id: "dist", tag: "본전 퀴즈", q: "들어간 돈보다 \(Self.pct(loss)) 내려 있어요. 본전까지는 몇 % 올라야 할까요?",
-                                opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
-                                fb: { _ in "\(String(format: "%.1f", d * 100))% 올라야 해요. 내린 만큼보다 더 올라야 하는 건, 줄어든 돈에서 다시 오르기 때문이에요." }))
+                qs.append(.init(id: "dist", tag: String(localized: "본전 퀴즈"), q: String(localized: "들어간 돈보다 \(String(describing: Self.pct(loss))) 내려 있어요. 본전까지는 몇 % 올라야 할까요?"),
+                                opts: n.opts.map { String(localized: "약 \(String(describing: Self.pct($0)))") }, right: n.right,
+                                fb: { _ in String(localized: "\(String(describing: String(format: "%.1f", d * 100)))% 올라야 해요. 내린 만큼보다 더 올라야 하는 건, 줄어든 돈에서 다시 오르기 때문이에요.") }))
             }
             if !rs.isEmpty {
                 let y = cellsYesterday, now = cellsNow, unit = cellUnit
-                qs.append(.init(id: "cells", tag: "1000칸", q: "어제 \(y)칸이었어요. 오늘 1000칸은?", opts: ["늘었어요", "그대로예요", "줄었어요"],
+                qs.append(.init(id: "cells", tag: String(localized: "1000칸"), q: String(localized: "어제 \(String(describing: y))칸이었어요. 오늘 1000칸은?"), opts: [String(localized: "늘었어요"), String(localized: "그대로예요"), String(localized: "줄었어요")],
                                 right: now > y ? 0 : now == y ? 1 : 2,
-                                fb: { _ in "어제 \(y)칸 → 오늘 \(now)칸. 1칸은 \(Self.won(unit))이에요." }))
+                                fb: { _ in String(localized: "어제 \(String(describing: y))칸 → 오늘 \(String(describing: now))칸. 1칸은 \(String(describing: Self.won(unit)))이에요.") }))
                 let wr = weekRange, v = trackValue
-                qs.append(.init(id: "week", tag: "주간 예보", q: "이번 주 예보 범위는 \(Self.won(wr.lo))~\(Self.won(wr.hi))예요. 지금 평가액은 그 안일까요?",
-                                opts: ["안이에요", "밖이에요"], right: v >= wr.lo && v <= wr.hi ? 0 : 1,
-                                fb: { _ in "지금 \(Self.won(v)). 예보 범위는 절반쯤 맞도록 잡은 폭이라, 밖으로 나가는 날도 자주 있어요." }))
+                qs.append(.init(id: "week", tag: String(localized: "주간 예보"), q: String(localized: "이번 주 예보 범위는 \(String(describing: Self.won(wr.lo)))~\(String(describing: Self.won(wr.hi)))예요. 지금 평가액은 그 안일까요?"),
+                                opts: [String(localized: "안이에요"), String(localized: "밖이에요")], right: v >= wr.lo && v <= wr.hi ? 0 : 1,
+                                fb: { _ in String(localized: "지금 \(String(describing: Self.won(v))). 예보 범위는 절반쯤 맞도록 잡은 폭이라, 밖으로 나가는 날도 자주 있어요.") }))
             }
             // 계획 비중 확인: 비중 1위 종목 기준 (종목이 둘 이상일 때)
             if rs.count >= 2 {
                 let w = Self.pct(focusWeight), pw = Self.pct(planWeight), T = Double(horizon) / 12
                 let p0 = keepPlan.prob(cost, T), p1 = selectedPlan.prob(cost, T)
-                qs.append(.init(id: "plan", tag: "비중 확인", q: "가장 큰 종목 비중 \(w), 계획은 \(pw)예요. 계획 비중이면 \(horizonLabel) 안 본전 확률은?", opts: ["올라요", "비슷해요", "내려요"],
+                qs.append(.init(id: "plan", tag: String(localized: "비중 확인"), q: String(localized: "가장 큰 종목 비중 \(String(describing: w)), 계획은 \(String(describing: pw))예요. 계획 비중이면 \(String(describing: horizonLabel)) 안 본전 확률은?"), opts: [String(localized: "올라요"), String(localized: "비슷해요"), String(localized: "내려요")],
                                 right: abs(p1 - p0) < 0.02 ? 1 : p1 > p0 ? 0 : 2,
-                                fb: { _ in "지금 비중 \(Self.pct(p0)), 계획 비중 \(Self.pct(p1)). 계산 예시이고, 매매 판단은 직접 하세요." }))
+                                fb: { _ in String(localized: "지금 비중 \(String(describing: Self.pct(p0))), 계획 비중 \(String(describing: Self.pct(p1))). 계산 예시이고, 매매 판단은 직접 하세요.") }))
             }
-            qs.append(.init(id: "mind", tag: "오늘 마음", q: "오늘 내 투자, 어떻게 느껴져요?", opts: ["불안해요", "괜찮아요", "기대돼요"], right: -1,
-                            fb: { $0 == 0 ? "불안한 날엔 하루 숫자 말고 종목 상세의 1년 칩을 보세요. 길이 더 잘 보여요." : "좋아요. 내일도 1분이면 돼요." }))
+            qs.append(.init(id: "mind", tag: String(localized: "오늘 마음"), q: String(localized: "오늘 내 투자, 어떻게 느껴져요?"), opts: [String(localized: "불안해요"), String(localized: "괜찮아요"), String(localized: "기대돼요")], right: -1,
+                            fb: { $0 == 0 ? String(localized: "불안한 날엔 하루 숫자 말고 종목 상세의 1년 칩을 보세요. 길이 더 잘 보여요.") : String(localized: "좋아요. 내일도 1분이면 돼요.") }))
             return qs.filter(\.fair)
         }
         // 목표 루트
         let principal = gM * 12 * Double(gY), m = gM, y = gY
         if m >= 1 && y > 0 {     // 매달 금액·기간이 없으면 계산 퀴즈·적립 질문은 안 낸다. 보기는 1년치 간격
             let n = Self.near3(principal, step: m * 12, lo: m * 12, hi: .infinity, salt: 9)
-            qs.append(.init(id: "principal", tag: "계산 퀴즈", q: "매달 \(Self.wonK(m))씩 \(y)년 넣으면 넣은 원금만 얼마일까요?",
+            qs.append(.init(id: "principal", tag: String(localized: "계산 퀴즈"), q: String(localized: "매달 \(String(describing: Self.wonK(m)))씩 \(String(describing: y))년 넣으면 넣은 원금만 얼마일까요?"),
                             opts: n.opts.map(Self.wonK), right: n.right,
-                            fb: { _ in "\(Self.wonK(m)) × 12달 × \(y)년 = \(Self.wonK(principal)). 그 위에 수익이 더해져 목표로 가요." }))
-            qs.append(.init(id: "deposit", tag: "이번 달 적립", q: "이번 달 \(Self.wonK(m)), 넣었나요?", opts: ["넣었어요", "아직이요"], right: -1,
-                            fb: { $0 == 0 ? "좋아요. 3개월 블록에 반영해 둘게요." : "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요." }))
+                            fb: { _ in String(localized: "\(String(describing: Self.wonK(m))) × 12달 × \(String(describing: y))년 = \(String(describing: Self.wonK(principal))). 그 위에 수익이 더해져 목표로 가요.") }))
+            qs.append(.init(id: "deposit", tag: String(localized: "이번 달 적립"), q: String(localized: "이번 달 \(String(describing: Self.wonK(m))), 넣었나요?"), opts: [String(localized: "넣었어요"), String(localized: "아직이요")], right: -1,
+                            fb: { $0 == 0 ? String(localized: "좋아요. 3개월 블록에 반영해 둘게요.") : String(localized: "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요.") }))
         }
         if keyValue > 0 {
             let p = trackValue / keyValue, n = Self.near3(p, step: 0.1, lo: 0, hi: 1.5, salt: 5), v = trackValue, k = keyValue
-            qs.append(.init(id: "progress", tag: "목표 퀴즈", q: "지금 모은 돈은 목표의 몇 %쯤일까요?", opts: n.opts.map { "약 \(Self.pct($0))" }, right: n.right,
-                            fb: { _ in "\(Self.won(v)) ÷ 목표 \(Self.won(k)) = \(Self.pct(p))." }))
+            qs.append(.init(id: "progress", tag: String(localized: "목표 퀴즈"), q: String(localized: "지금 모은 돈은 목표의 몇 %쯤일까요?"), opts: n.opts.map { String(localized: "약 \(String(describing: Self.pct($0)))") }, right: n.right,
+                            fb: { _ in String(localized: "\(String(describing: Self.won(v))) ÷ 목표 \(String(describing: Self.won(k))) = \(String(describing: Self.pct(p))).") }))
             let pg = forecast.prob(Double(y)), g = Self.near3(pg, step: 0.2, lo: 0, hi: 1, salt: 6)
-            qs.append(.init(id: "goalprob", tag: "확률 퀴즈", q: "지금 그대로 \(y)년 가면 목표에 닿을 확률은 어느 쪽에 가까울까요?", opts: g.opts.map { "약 \(Self.pct($0))" }, right: g.right,
-                            fb: { _ in "모형 계산으로 약 \(Self.pct(pg))예요. 매달 넣는 돈을 늘리면 이 숫자가 올라가요." }))
+            qs.append(.init(id: "goalprob", tag: String(localized: "확률 퀴즈"), q: String(localized: "지금 그대로 \(String(describing: y))년 가면 목표에 닿을 확률은 어느 쪽에 가까울까요?"), opts: g.opts.map { String(localized: "약 \(String(describing: Self.pct($0)))") }, right: g.right,
+                            fb: { _ in String(localized: "모형 계산으로 약 \(String(describing: Self.pct(pg)))예요. 매달 넣는 돈을 늘리면 이 숫자가 올라가요.") }))
         }
-        qs.append(.init(id: "mind", tag: "오늘 마음", q: "오늘 목표까지의 길, 어떻게 느껴져요?", opts: ["멀어요", "보통이에요", "가까워요"], right: -1,
-                        fb: { $0 == 0 ? "먼 길은 매달 넣는 돈이 끌고 가요. 1년 뒤 그래프를 한 번 보세요." : "그 느낌 그대로 가요. 내일도 1분이면 돼요." }))
+        qs.append(.init(id: "mind", tag: String(localized: "오늘 마음"), q: String(localized: "오늘 목표까지의 길, 어떻게 느껴져요?"), opts: [String(localized: "멀어요"), String(localized: "보통이에요"), String(localized: "가까워요")], right: -1,
+                        fb: { $0 == 0 ? String(localized: "먼 길은 매달 넣는 돈이 끌고 가요. 1년 뒤 그래프를 한 번 보세요.") : String(localized: "그 느낌 그대로 가요. 내일도 1분이면 돼요.") }))
         return qs.filter(\.fair)
     }
 
@@ -603,21 +608,21 @@ final class AppModel {
     }
     var routineDoneText: String {
         let n = itemsOn
-        if itemsBackDay == day && n > 0 { let x = Shelter.items[n - 1].name; return "루틴 끝! \(x)\(WChar.josa(x)) 돌아왔어요" }
-        if n < 10 { let x = Shelter.items[n].name; return "루틴 끝! 내일 하면 \(x)\(WChar.josa(x)) 돌아와요" }
-        return "루틴 끝! 물건이 다 돌아왔어요"
+        if itemsBackDay == day && n > 0 { let x = Shelter.items[n - 1].name; return String(localized: "루틴 끝! \(String(describing: x))\(String(describing: WChar.josa(x))) 돌아왔어요") }
+        if n < 10 { let x = Shelter.items[n].name; return String(localized: "루틴 끝! 내일 하면 \(String(describing: x))\(String(describing: WChar.josa(x))) 돌아와요") }
+        return String(localized: "루틴 끝! 물건이 다 돌아왔어요")
     }
     var homeSay: String {
         let who = voice(homeFriendShown)
         if !playUnlocked {
-            return Lines.pick("home.locked.\(who)") ?? ("앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (who == "seri" ? " 거기까지만요." : ""))
+            return Lines.pick("home.locked.\(who)") ?? (String(localized: "앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요.") + (who == "seri" ? String(localized: " 거기까지만요.") : ""))
         }
         if today.answer != nil {
             let n = itemsOn
-            let info = n < 10 ? "내일 또 오면 쉼터에 물건(\(Shelter.items[n].name))이 돌아와요." : ""
-            return [Lines.pick("home.done.\(who)") ?? "오늘은 여기까지예요.", info].filter { !$0.isEmpty }.joined(separator: " ")
+            let info = n < 10 ? String(localized: "내일 또 오면 쉼터에 물건(\(String(describing: Shelter.items[n].name)))이 돌아와요.") : ""
+            return [Lines.pick("home.done.\(who)") ?? String(localized: "오늘은 여기까지예요."), info].filter { !$0.isEmpty }.joined(separator: " ")
         }
-        return Lines.pick("home.fresh.\(who)", ["move": Self.sgn(todayMove)]) ?? "오늘 숫자 가져왔어요. 한 번만 보고 가요."
+        return Lines.pick("home.fresh.\(who)", ["move": Self.sgn(todayMove)]) ?? String(localized: "오늘 숫자 가져왔어요. 한 번만 보고 가요.")
     }
 
     // MARK: 전망 (웹과 같은 몬테카를로, 목표일까지. 회복 루트는 3년)
@@ -642,7 +647,7 @@ final class AppModel {
             return k
         }
     }
-    var forecastTitle: String { isGoal ? "목표일 전망" : "3년 전망" }
+    var forecastTitle: String { isGoal ? String(localized: "목표일 전망") : String(localized: "3년 전망") }
     /// 몬테카를로에 넣는 목표: 웹처럼 현금은 그대로 있다고 보고 목표에서 뺀다 (전망 경로는 종목만)
     var mcGoal: Double { isGoal ? max(1, keyValue - cashKrw) : keyValue }
     /// 전망 끝날: 목표 루트는 목표일, 회복 루트는 3년 뒤 (웹: 목표일)

@@ -11,7 +11,7 @@ import AVFoundation
 enum GameLevel: String, CaseIterable, Codable, Identifiable {
     case easy, normal, hard
     var id: String { rawValue }
-    var title: String { switch self { case .easy: "하수"; case .normal: "중수"; case .hard: "고수" } }
+    var title: String { switch self { case .easy: String(localized: "하수"); case .normal: String(localized: "중수"); case .hard: String(localized: "고수") } }
     var speed: Double { switch self { case .easy: 21; case .normal: 24; case .hard: 27 } }      // 칸/초
     var paddle: Double { switch self { case .easy: 9; case .normal: 8; case .hard: 7 } }     // 판 길이 (칸)
     var lives: Int { switch self { case .easy: 5; case .normal: 4; case .hard: 3 } }
@@ -19,9 +19,9 @@ enum GameLevel: String, CaseIterable, Codable, Identifiable {
     var clear: Double { switch self { case .easy: 0.6; case .normal: 0.75; case .hard: 0.9 } }
     var note: String {
         switch self {
-        case .easy: "벽돌 750개 · 60% 깨면 다음 단계"
-        case .normal: "벽돌 800개 · 75% 깨면 다음 단계"
-        case .hard: "벽돌 850개 · 90% 깨면 다음 단계"
+        case .easy: String(localized: "벽돌 750개 · 60% 깨면 다음 단계")
+        case .normal: String(localized: "벽돌 800개 · 75% 깨면 다음 단계")
+        case .hard: String(localized: "벽돌 850개 · 90% 깨면 다음 단계")
         }
     }
     /// 한 번 맞히면 같이 깨지는 칸 (가운데 기준 (가로, 세로))
@@ -67,18 +67,18 @@ struct GameStage: Identifiable {
     var bg: ShelterBG { Shelter.backgrounds[n] }
 
     static let all: [GameStage] = [
-        GameStage(n: 0, rule: "연습판. 거울 셋에 공이 비쳐 보여요. 공이 느리고 목숨이 둘 더 있어요.", scene: "거울 셋, 조금씩 다른 얼굴", short: "연습판 · 공 느림 · 목숨 +2", speedMul: 0.85, extraLives: 2, mirror: true),
-        GameStage(n: 1, rule: "형광등이 가끔 깜빡여 벽돌이 안 보여요. 노랗게 빛나는 출구 칸은 보너스.", scene: "떨리는 형광등, 끝없는 복도", short: "형광등 깜빡임 · 노란 출구 칸 +100", flicker: true),
-        GameStage(n: 2, rule: "중력이 약해요. 공이 느리고 벽돌 쪽으로 천천히 휘어요.", scene: "붉은 평원이 보이는 창", short: "약한 중력 · 공 느림 · 벽돌 쪽으로 휨", speedMul: 0.85, gravity: 7),
-        GameStage(n: 3, rule: "가운데 원형 구조물이 지나가는 공을 끌어당겨요.", scene: "물 위 첨탑과 원형 구조물", short: "가운데 구조물이 공을 끌어당김", well: true),
-        GameStage(n: 4, rule: "양쪽 벽이 입구예요. 공이 반대편 입구로 나와요.", scene: "두 입구 사이의 틈", short: "양쪽 벽이 입구 · 반대편으로 나옴", portal: true),
-        GameStage(n: 5, rule: "벽돌 줄이 운하 물결처럼 천천히 흔들려요.", scene: "운하 건너 백 명의 마을", short: "벽돌 줄이 물결처럼 흔들림", sway: true),
-        GameStage(n: 6, rule: "창이 좁아 판이 짧아요. 대신 공이 느려요.", scene: "손가락 몇 개만큼 연 창", short: "판 짧음 · 공 느림", speedMul: 0.8, paddleMul: 0.75),
-        GameStage(n: 7, rule: "가운데 줄표(—)는 깨지지 않는 벽이에요.", scene: "빈 현수막과 줄표 하나", short: "줄표(—)는 안 깨지는 벽", dash: true),
-        GameStage(n: 8, rule: "충전할 곳이 없어요. 물건이 떨어지지 않아요.", scene: "붉은 노을, 충전할 곳 없음", short: "물건 안 떨어짐", items: false),
-        GameStage(n: 9, rule: "화산 연기가 공을 판 쪽으로 밀어 올려요.", scene: "계단식 논과 연기 오르는 화산", short: "연기가 공을 판 쪽으로 밂", gravity: -6),
-        GameStage(n: 10, rule: "안 구운 그릇 벽돌은 세 번 쳐야 깨져요.", scene: "물레와 안 구운 그릇", short: "안 구운 그릇 · 세 번 쳐야 깨짐", hard2: 0.3),
-        GameStage(n: 11, rule: "모든 규칙이 조금씩 섞인 자유판.", scene: "도시 불빛이 보이는 방", short: "모든 규칙 조금씩 섞임", flicker: true, portal: true, sway: true, hard2: 0.15),
+        GameStage(n: 0, rule: String(localized: "연습판. 거울 셋에 공이 비쳐 보여요. 공이 느리고 목숨이 둘 더 있어요."), scene: String(localized: "거울 셋, 조금씩 다른 얼굴"), short: String(localized: "연습판 · 공 느림 · 목숨 +2"), speedMul: 0.85, extraLives: 2, mirror: true),
+        GameStage(n: 1, rule: String(localized: "형광등이 가끔 깜빡여 벽돌이 안 보여요. 노랗게 빛나는 출구 칸은 보너스."), scene: String(localized: "떨리는 형광등, 끝없는 복도"), short: String(localized: "형광등 깜빡임 · 노란 출구 칸 +100"), flicker: true),
+        GameStage(n: 2, rule: String(localized: "중력이 약해요. 공이 느리고 벽돌 쪽으로 천천히 휘어요."), scene: String(localized: "붉은 평원이 보이는 창"), short: String(localized: "약한 중력 · 공 느림 · 벽돌 쪽으로 휨"), speedMul: 0.85, gravity: 7),
+        GameStage(n: 3, rule: String(localized: "가운데 원형 구조물이 지나가는 공을 끌어당겨요."), scene: String(localized: "물 위 첨탑과 원형 구조물"), short: String(localized: "가운데 구조물이 공을 끌어당김"), well: true),
+        GameStage(n: 4, rule: String(localized: "양쪽 벽이 입구예요. 공이 반대편 입구로 나와요."), scene: String(localized: "두 입구 사이의 틈"), short: String(localized: "양쪽 벽이 입구 · 반대편으로 나옴"), portal: true),
+        GameStage(n: 5, rule: String(localized: "벽돌 줄이 운하 물결처럼 천천히 흔들려요."), scene: String(localized: "운하 건너 백 명의 마을"), short: String(localized: "벽돌 줄이 물결처럼 흔들림"), sway: true),
+        GameStage(n: 6, rule: String(localized: "창이 좁아 판이 짧아요. 대신 공이 느려요."), scene: String(localized: "손가락 몇 개만큼 연 창"), short: String(localized: "판 짧음 · 공 느림"), speedMul: 0.8, paddleMul: 0.75),
+        GameStage(n: 7, rule: String(localized: "가운데 줄표(—)는 깨지지 않는 벽이에요."), scene: String(localized: "빈 현수막과 줄표 하나"), short: String(localized: "줄표(—)는 안 깨지는 벽"), dash: true),
+        GameStage(n: 8, rule: String(localized: "충전할 곳이 없어요. 물건이 떨어지지 않아요."), scene: String(localized: "붉은 노을, 충전할 곳 없음"), short: String(localized: "물건 안 떨어짐"), items: false),
+        GameStage(n: 9, rule: String(localized: "화산 연기가 공을 판 쪽으로 밀어 올려요."), scene: String(localized: "계단식 논과 연기 오르는 화산"), short: String(localized: "연기가 공을 판 쪽으로 밂"), gravity: -6),
+        GameStage(n: 10, rule: String(localized: "안 구운 그릇 벽돌은 세 번 쳐야 깨져요."), scene: String(localized: "물레와 안 구운 그릇"), short: String(localized: "안 구운 그릇 · 세 번 쳐야 깨짐"), hard2: 0.3),
+        GameStage(n: 11, rule: String(localized: "모든 규칙이 조금씩 섞인 자유판."), scene: String(localized: "도시 불빛이 보이는 방"), short: String(localized: "모든 규칙 조금씩 섞임"), flicker: true, portal: true, sway: true, hard2: 0.15),
     ]
 }
 
@@ -86,42 +86,42 @@ struct GameStage: Identifiable {
 enum GamePlayer {
     static func skill(_ id: String) -> String {
         switch id {
-        case "sio": "안전망 · 판 뒤 노란 줄이 공을 한 번 받아 줘요"
-        case "seonbae": "되묻기 · 놓친 공을 판마다 한 번 되감아요"
-        case "ir": "앞서 달림 · 공이 빠르고 점수 1.5배"
-        case "sua": "자라기 · 깰수록 판이 조금씩 길어져요"
-        default: "원칙 · 판이 길고 공 속도가 늘 같아요"
+        case "sio": String(localized: "안전망 · 판 뒤 노란 줄이 공을 한 번 받아 줘요")
+        case "seonbae": String(localized: "되묻기 · 놓친 공을 판마다 한 번 되감아요")
+        case "ir": String(localized: "앞서 달림 · 공이 빠르고 점수 1.5배")
+        case "sua": String(localized: "자라기 · 깰수록 판이 조금씩 길어져요")
+        default: String(localized: "원칙 · 판이 길고 공 속도가 늘 같아요")
         }
     }
     /// 물건을 먹었을 때 뜨는 짧은 말 (예: 현관 등 · 10초 공 길 보임)
     static func itemShort(_ id: String) -> String {
         switch id {
-        case "barley_tea": "10초 공 느림"
-        case "porch_light": "10초 공 길 보임"
-        case "wall_clock": "3초 공 멈춤"
-        case "hair_tie": "15초 판 길게"
-        case "table_chair": "공 하나 더"
-        case "asym_bowl": "10초 벽돌 많은 쪽으로"
-        case "unfired_bowl": "보호막 1번"
-        case "jujube_seed": "10초 점수 2배"
-        case "elder_bead": "5초 벽돌 뚫기"
-        case "rice_seeds": "공 셋으로"
+        case "barley_tea": String(localized: "10초 공 느림")
+        case "porch_light": String(localized: "10초 공 길 보임")
+        case "wall_clock": String(localized: "3초 공 멈춤")
+        case "hair_tie": String(localized: "15초 판 길게")
+        case "table_chair": String(localized: "공 하나 더")
+        case "asym_bowl": String(localized: "10초 벽돌 많은 쪽으로")
+        case "unfired_bowl": String(localized: "보호막 1번")
+        case "jujube_seed": String(localized: "10초 점수 2배")
+        case "elder_bead": String(localized: "5초 벽돌 뚫기")
+        case "rice_seeds": String(localized: "공 셋으로")
         default: item(id)
         }
     }
     /// 쉼터 물건이 아이템일 때 하는 일
     static func item(_ id: String) -> String {
         switch id {
-        case "barley_tea": "공이 10초 느려져요"
-        case "porch_light": "10초 동안 공이 갈 길이 보여요"
-        case "wall_clock": "공이 3초 멈춰요"
-        case "hair_tie": "판이 15초 길어져요"
-        case "table_chair": "공이 하나 더"
-        case "asym_bowl": "10초 동안 판에 맞은 공이 벽돌이 많은 쪽으로 꺾여요"
-        case "unfired_bowl": "위쪽에 한 번 막아 주는 보호막"
-        case "jujube_seed": "10초 동안 점수 2배"
-        case "elder_bead": "5초 동안 공이 벽돌을 뚫고 지나가요"
-        case "rice_seeds": "공이 셋으로 갈라져요"
+        case "barley_tea": String(localized: "공이 10초 느려져요")
+        case "porch_light": String(localized: "10초 동안 공이 갈 길이 보여요")
+        case "wall_clock": String(localized: "공이 3초 멈춰요")
+        case "hair_tie": String(localized: "판이 15초 길어져요")
+        case "table_chair": String(localized: "공이 하나 더")
+        case "asym_bowl": String(localized: "10초 동안 판에 맞은 공이 벽돌이 많은 쪽으로 꺾여요")
+        case "unfired_bowl": String(localized: "위쪽에 한 번 막아 주는 보호막")
+        case "jujube_seed": String(localized: "10초 동안 점수 2배")
+        case "elder_bead": String(localized: "5초 동안 공이 벽돌을 뚫고 지나가요")
+        case "rice_seeds": String(localized: "공이 셋으로 갈라져요")
         default: ""
         }
     }
@@ -134,66 +134,66 @@ enum GameLines {
 
     private static let pool: [String: [String: [String]]] = [
         "seri": [
-            "start": ["관찰을 시작합니다.", "{stage}. 기록을 켭니다.", "준비됐어요. 공은 아래로 가요.", "한 박자 두고, 시작해요.", "벽돌 {left}칸. 확인했어요."],
-            "lose": ["공 하나를 놓쳤어요. 남은 공 {n}개.", "기록했어요. 다음 공이 있어요.", "거기까지만요. 다시 받으면 돼요.", "위치가 조금 빨랐어요."],
-            "clear": ["기준 칸에 닿았어요.", "{stage}, 통과로 기록할게요.", "{score}점. 사실 그대로예요.", "다음 방이 열렸어요."],
-            "over": ["여기까지예요. 다시 하면 돼요.", "공이 다 떨어졌어요. 기록은 남았어요.", "오늘은 {broken}칸까지였어요."],
-            "half": ["절반을 넘었어요.", "기준의 반쯤 왔어요."],
-            "rewind": ["한 번은 되돌려요."],
+            "start": [String(localized: "관찰을 시작합니다."), String(localized: "{stage}. 기록을 켭니다."), String(localized: "준비됐어요. 공은 아래로 가요."), String(localized: "한 박자 두고, 시작해요."), String(localized: "벽돌 {left}칸. 확인했어요.")],
+            "lose": [String(localized: "공 하나를 놓쳤어요. 남은 공 {n}개."), String(localized: "기록했어요. 다음 공이 있어요."), String(localized: "거기까지만요. 다시 받으면 돼요."), String(localized: "위치가 조금 빨랐어요.")],
+            "clear": [String(localized: "기준 칸에 닿았어요."), String(localized: "{stage}, 통과로 기록할게요."), String(localized: "{score}점. 사실 그대로예요."), String(localized: "다음 방이 열렸어요.")],
+            "over": [String(localized: "여기까지예요. 다시 하면 돼요."), String(localized: "공이 다 떨어졌어요. 기록은 남았어요."), String(localized: "오늘은 {broken}칸까지였어요.")],
+            "half": [String(localized: "절반을 넘었어요."), String(localized: "기준의 반쯤 왔어요.")],
+            "rewind": [String(localized: "한 번은 되돌려요.")],
         ],
         "sio": [
-            "start": ["서두르지 않아도 돼.", "놓쳐도 괜찮아, 한 번은 받아 줄게.", "{stage}이야. 천천히 가 보자.", "기다리는 것도 실력이야.", "준비되면 눌러."],
-            "lose": ["괜찮아. 한 박자 쉬고 다시.", "놓쳐도 돼. 공은 {n}개 더 있어.", "조금 기다렸다 받아 봐.", "급했지? 숨 한 번."],
-            "clear": ["기다린 만큼 깼네.", "{stage}, 지나왔다.", "{score}점. 좋은 기다림이었어.", "다음 방으로 가자."],
-            "over": ["오늘은 여기까지. 내일 또 하자.", "괜찮아, 다시 기다리면 돼.", "{broken}칸이나 깼어."],
-            "half": ["반 왔어. 그대로.", "절반이야. 서두르지 마."],
-            "rewind": ["한 번 더 기다려 줄게."],
+            "start": [String(localized: "서두르지 않아도 돼."), String(localized: "놓쳐도 괜찮아, 한 번은 받아 줄게."), String(localized: "{stage}이야. 천천히 가 보자."), String(localized: "기다리는 것도 실력이야."), String(localized: "준비되면 눌러.")],
+            "lose": [String(localized: "괜찮아. 한 박자 쉬고 다시."), String(localized: "놓쳐도 돼. 공은 {n}개 더 있어."), String(localized: "조금 기다렸다 받아 봐."), String(localized: "급했지? 숨 한 번.")],
+            "clear": [String(localized: "기다린 만큼 깼네."), String(localized: "{stage}, 지나왔다."), String(localized: "{score}점. 좋은 기다림이었어."), String(localized: "다음 방으로 가자.")],
+            "over": [String(localized: "오늘은 여기까지. 내일 또 하자."), String(localized: "괜찮아, 다시 기다리면 돼."), String(localized: "{broken}칸이나 깼어.")],
+            "half": [String(localized: "반 왔어. 그대로."), String(localized: "절반이야. 서두르지 마.")],
+            "rewind": [String(localized: "한 번 더 기다려 줄게.")],
         ],
         "seonbae": [
-            "start": ["어디로 보낼 건데?", "{stage}. 이 방, 어떻게 깰 생각이야?", "한 번은 되돌릴 수 있어. 알지?", "그게 정말 네 계획이야?", "시작해 봐. 질문은 나중에."],
-            "lose": ["왜 놓쳤는지 알겠어?", "방금 그건 판 탓이야, 네 탓이야?", "남은 공 {n}개. 다음엔 어디서 받을래?", "너무 끝으로 갔지?"],
-            "clear": ["그게 정말 네 실력이야? 맞네.", "{stage} 통과. 다음 질문으로 가자.", "{score}점이면 됐어. 다음은?", "어떻게 깼는지 말할 수 있어?"],
-            "over": ["다시 하면 뭘 바꿀 거야?", "끝났네. 그래서 배운 건?", "{broken}칸. 나쁘지 않은데, 다음은?"],
-            "half": ["반 왔어. 여기서 뭘 바꿀래?", "절반. 계속 이대로?"],
-            "rewind": ["한 번 되돌려 줄게. 이번엔 어디로?"],
+            "start": [String(localized: "어디로 보낼 건데?"), String(localized: "{stage}. 이 방, 어떻게 깰 생각이야?"), String(localized: "한 번은 되돌릴 수 있어. 알지?"), String(localized: "그게 정말 네 계획이야?"), String(localized: "시작해 봐. 질문은 나중에.")],
+            "lose": [String(localized: "왜 놓쳤는지 알겠어?"), String(localized: "방금 그건 판 탓이야, 네 탓이야?"), String(localized: "남은 공 {n}개. 다음엔 어디서 받을래?"), String(localized: "너무 끝으로 갔지?")],
+            "clear": [String(localized: "그게 정말 네 실력이야? 맞네."), String(localized: "{stage} 통과. 다음 질문으로 가자."), String(localized: "{score}점이면 됐어. 다음은?"), String(localized: "어떻게 깼는지 말할 수 있어?")],
+            "over": [String(localized: "다시 하면 뭘 바꿀 거야?"), String(localized: "끝났네. 그래서 배운 건?"), String(localized: "{broken}칸. 나쁘지 않은데, 다음은?")],
+            "half": [String(localized: "반 왔어. 여기서 뭘 바꿀래?"), String(localized: "절반. 계속 이대로?")],
+            "rewind": [String(localized: "한 번 되돌려 줄게. 이번엔 어디로?")],
         ],
         "ir": [
-            "start": ["빨리 가자!", "{stage}! 바로 시작!", "점수는 더 줄게. 달려!", "벽돌 {left}칸, 다 깨 버리자!", "준비됐지? 간다!"],
-            "lose": ["앗, 너무 빨랐나!", "괜찮아, 공 {n}개 남았어!", "다시! 바로 다시!", "아깝다! 한 번 더!"],
-            "clear": ["벌써 끝! 다음 판!", "{stage} 통과! 빠르다!", "{score}점! 더 갈 수 있어!", "다음 방 열렸어, 가자!"],
-            "over": ["너무 달렸나. 한 번 더!", "끝! 근데 다시 하고 싶다!", "{broken}칸! 다음엔 더!"],
-            "half": ["반 왔어! 속도 올려!", "절반! 계속 계속!"],
-            "rewind": ["한 번 더 달려!"],
+            "start": [String(localized: "빨리 가자!"), String(localized: "{stage}! 바로 시작!"), String(localized: "점수는 더 줄게. 달려!"), String(localized: "벽돌 {left}칸, 다 깨 버리자!"), String(localized: "준비됐지? 간다!")],
+            "lose": [String(localized: "앗, 너무 빨랐나!"), String(localized: "괜찮아, 공 {n}개 남았어!"), String(localized: "다시! 바로 다시!"), String(localized: "아깝다! 한 번 더!")],
+            "clear": [String(localized: "벌써 끝! 다음 판!"), String(localized: "{stage} 통과! 빠르다!"), String(localized: "{score}점! 더 갈 수 있어!"), String(localized: "다음 방 열렸어, 가자!")],
+            "over": [String(localized: "너무 달렸나. 한 번 더!"), String(localized: "끝! 근데 다시 하고 싶다!"), String(localized: "{broken}칸! 다음엔 더!")],
+            "half": [String(localized: "반 왔어! 속도 올려!"), String(localized: "절반! 계속 계속!")],
+            "rewind": [String(localized: "한 번 더 달려!")],
         ],
         "sua": [
-            "start": ["깰수록 판이 자라요. 천천히요.", "{stage}이에요. 같이 가요.", "조금씩 하면 돼요.", "오늘은 어디까지 자랄까요?", "준비되면 눌러 주세요."],
-            "lose": ["괜찮아요. 다시 자라면 돼요.", "공이 {n}개 남았어요.", "조금 아쉬웠어요. 다음엔 더 잘될 거예요.", "천천히, 판을 가운데로요."],
-            "clear": ["조금씩 자라서 여기까지 왔어요.", "{stage}, 지나왔어요.", "{score}점이에요. 많이 컸어요.", "다음 방이 열렸어요."],
-            "over": ["다음엔 판이 더 일찍 자랄 거예요.", "오늘은 {broken}칸 자랐어요.", "쉬었다가 다시 해요."],
-            "half": ["절반 왔어요. 판도 자랐어요.", "반쯤 왔어요. 잘하고 있어요."],
-            "rewind": ["한 번 더 해 봐요."],
+            "start": [String(localized: "깰수록 판이 자라요. 천천히요."), String(localized: "{stage}이에요. 같이 가요."), String(localized: "조금씩 하면 돼요."), String(localized: "오늘은 어디까지 자랄까요?"), String(localized: "준비되면 눌러 주세요.")],
+            "lose": [String(localized: "괜찮아요. 다시 자라면 돼요."), String(localized: "공이 {n}개 남았어요."), String(localized: "조금 아쉬웠어요. 다음엔 더 잘될 거예요."), String(localized: "천천히, 판을 가운데로요.")],
+            "clear": [String(localized: "조금씩 자라서 여기까지 왔어요."), String(localized: "{stage}, 지나왔어요."), String(localized: "{score}점이에요. 많이 컸어요."), String(localized: "다음 방이 열렸어요.")],
+            "over": [String(localized: "다음엔 판이 더 일찍 자랄 거예요."), String(localized: "오늘은 {broken}칸 자랐어요."), String(localized: "쉬었다가 다시 해요.")],
+            "half": [String(localized: "절반 왔어요. 판도 자랐어요."), String(localized: "반쯤 왔어요. 잘하고 있어요.")],
+            "rewind": [String(localized: "한 번 더 해 봐요.")],
         ],
         "me": [
-            "start": ["내 판이야. 가 보자.", "{stage}. 시작!", "벽돌 {left}칸, 해 보자.", "준비됐다."],
-            "lose": ["놓쳤다. 공 {n}개 남았어.", "다시 받자.", "아깝다."],
-            "clear": ["해냈다.", "{stage} 통과!", "{score}점!"],
-            "over": ["다시 해 보자.", "{broken}칸까지 왔어."],
-            "half": ["반 왔다."],
-            "rewind": ["한 번 더."],
+            "start": [String(localized: "내 판이야. 가 보자."), String(localized: "{stage}. 시작!"), String(localized: "벽돌 {left}칸, 해 보자."), String(localized: "준비됐다.")],
+            "lose": [String(localized: "놓쳤다. 공 {n}개 남았어."), String(localized: "다시 받자."), String(localized: "아깝다.")],
+            "clear": [String(localized: "해냈다."), String(localized: "{stage} 통과!"), String(localized: "{score}점!")],
+            "over": [String(localized: "다시 해 보자."), String(localized: "{broken}칸까지 왔어.")],
+            "half": [String(localized: "반 왔다.")],
+            "rewind": [String(localized: "한 번 더.")],
         ],
     ]
     /// 옆에서 끼어드는 다른 인물의 한마디 (상황별)
     private static let guest: [String: [String: [String]]] = [
-        "seri": ["last": ["마지막 공이에요. 가운데를 지켜요.", "남은 공 하나. 관찰하고 받아요."], "half": ["절반 지났어요. 기록 중이에요."],
-                 "clear": ["통과 확인했어요.", "저도 봤어요. 깔끔했어요."], "over": ["기록은 남았어요. 다음에 이어 가요."], "item": ["그 물건, 쉼터에서 본 거예요."]],
-        "sio": ["last": ["마지막이야. 서두르지 말고.", "하나 남았어. 기다렸다 받아."], "half": ["반 왔네. 잘하고 있어."],
-                "clear": ["봤어? 기다린 보람 있지.", "멋졌어."], "over": ["괜찮아. 다음엔 내가 옆에 있을게."], "item": ["오, 그거 쓸모 있지."]],
-        "seonbae": ["last": ["마지막 공이야. 어디서 받을 거야?", "하나 남았는데, 계획 있어?"], "half": ["반이야. 이대로 갈 거야?"],
-                    "clear": ["깼네. 다음 방은 쉬울 것 같아?", "나쁘지 않았어."], "over": ["뭘 바꾸면 될지 알겠지?"], "item": ["그거 언제 쓸지 생각했어?"]],
-        "ir": ["last": ["마지막! 할 수 있어!", "하나 남았어, 집중!"], "half": ["반 왔다! 더 빨리!"],
-               "clear": ["와, 빨랐다!", "최고! 다음 판 가자!"], "over": ["한 번 더 하자, 한 번만!"], "item": ["좋은 거 먹었다!"]],
-        "sua": ["last": ["마지막 공이에요. 천천히요.", "하나 남았어요. 응원할게요."], "half": ["절반이에요. 많이 자랐어요."],
-                "clear": ["축하해요!", "같이 와서 좋았어요."], "over": ["쉬었다가 같이 다시 해요."], "item": ["그 물건, 반가워요."]],
+        "seri": ["last": [String(localized: "마지막 공이에요. 가운데를 지켜요."), String(localized: "남은 공 하나. 관찰하고 받아요.")], "half": [String(localized: "절반 지났어요. 기록 중이에요.")],
+                 "clear": [String(localized: "통과 확인했어요."), String(localized: "저도 봤어요. 깔끔했어요.")], "over": [String(localized: "기록은 남았어요. 다음에 이어 가요.")], "item": [String(localized: "그 물건, 쉼터에서 본 거예요.")]],
+        "sio": ["last": [String(localized: "마지막이야. 서두르지 말고."), String(localized: "하나 남았어. 기다렸다 받아.")], "half": [String(localized: "반 왔네. 잘하고 있어.")],
+                "clear": [String(localized: "봤어? 기다린 보람 있지."), String(localized: "멋졌어.")], "over": [String(localized: "괜찮아. 다음엔 내가 옆에 있을게.")], "item": [String(localized: "오, 그거 쓸모 있지.")]],
+        "seonbae": ["last": [String(localized: "마지막 공이야. 어디서 받을 거야?"), String(localized: "하나 남았는데, 계획 있어?")], "half": [String(localized: "반이야. 이대로 갈 거야?")],
+                    "clear": [String(localized: "깼네. 다음 방은 쉬울 것 같아?"), String(localized: "나쁘지 않았어.")], "over": [String(localized: "뭘 바꾸면 될지 알겠지?")], "item": [String(localized: "그거 언제 쓸지 생각했어?")]],
+        "ir": ["last": [String(localized: "마지막! 할 수 있어!"), String(localized: "하나 남았어, 집중!")], "half": [String(localized: "반 왔다! 더 빨리!")],
+               "clear": [String(localized: "와, 빨랐다!"), String(localized: "최고! 다음 판 가자!")], "over": [String(localized: "한 번 더 하자, 한 번만!")], "item": [String(localized: "좋은 거 먹었다!")]],
+        "sua": ["last": [String(localized: "마지막 공이에요. 천천히요."), String(localized: "하나 남았어요. 응원할게요.")], "half": [String(localized: "절반이에요. 많이 자랐어요.")],
+                "clear": [String(localized: "축하해요!"), String(localized: "같이 와서 좋았어요.")], "over": [String(localized: "쉬었다가 같이 다시 해요.")], "item": [String(localized: "그 물건, 반가워요.")]],
     ]
     static func guestLine(_ e: Event, _ who: String) -> String? {
         if who.hasPrefix("s:") { return sampleLines[String(who.dropFirst(2))]?.randomElement() }
@@ -202,22 +202,22 @@ enum GameLines {
 
     /// 마네킹 샘플(『중첩된 현실』 보조 인물)이 그 권의 방에서 끼어든다: 단계 → 인물 이름 (MeSample.all)
     static let stageSamples: [Int: [String]] = [
-        0: ["미용사"], 1: ["현실의 시오", "1권 선배"], 2: ["니아", "묶은 머리 시오"], 4: ["관리국의 수아"],
-        6: ["온유"], 7: ["활동가"], 8: ["담당관"], 9: ["아내", "루"], 10: ["아내", "루"], 11: ["외전 세리"],
+        0: [String(localized: "미용사")], 1: [String(localized: "현실의 시오"), String(localized: "1권 선배")], 2: [String(localized: "니아"), String(localized: "묶은 머리 시오")], 4: [String(localized: "관리국의 수아")],
+        6: [String(localized: "온유")], 7: [String(localized: "활동가")], 8: [String(localized: "담당관")], 9: [String(localized: "아내"), String(localized: "루")], 10: [String(localized: "아내"), String(localized: "루")], 11: [String(localized: "외전 세리")],
     ]
     private static let sampleLines: [String: [String]] = [
-        "미용사": ["선택하지 않은 벽돌은 모두 잘라낼게요.", "가위 소리처럼, 사각. 잠시 멈춤. 사각.", "거울 셋 중 어느 쪽 공이 진짜일까요?"],
-        "현실의 시오": ["복도 끝에 출구가 있어. 노란 줄 하나.", "여기선 오래 버티는 게 이기는 거야.", "맨발로도 걸었어. 공 하나쯤이야."],
-        "1권 선배": ["그 방향, 정말 네가 고른 거야?", "출구는 늘 마지막에 보이지.", "질문 하나. 왜 거기서 받았어?"],
-        "니아": ["지구에 보낼 녹음에 이것도 넣을게요.", "여기선 공도 천천히 떨어져요.", "제2돔에서 응원하고 있어요."],
-        "묶은 머리 시오": ["고무줄 세 번. 다시 묶고 가자.", "0.1초 늦어도 괜찮아."],
-        "관리국의 수아": ["또 올게요. 약속은 아니에요.", "입구는 둘이에요. 공은 어느 쪽으로 나올까요?", "기록해 둘게요. 하급 연구원이라서요."],
-        "온유": ["창문은 손가락 몇 개만큼만요.", "좁아도 바람은 들어와요.", "천천히 해도 돼요. 여긴 그런 곳이에요."],
-        "활동가": ["잘린 문장도 끝내 붙일 수 있어요.", "줄표 하나는 남겨 둬요. 그건 깨지지 않아요.", "멀리서도 보여요. 계속해요."],
-        "담당관": ["솔직히 저도 당혹스럽습니다.", "충전할 곳은 없습니다. 있는 걸로 가시죠.", "보고서에는 잘했다고 쓰겠습니다."],
-        "아내": ["밥 먹고 해요.", "안 구운 그릇은 두 번 만져야 해요.", "묻지 않을게요. 계속해요."],
-        "루": ["꾸러미 배달 왔어요. 이건 응원.", "배송 유닛 XX-2214, 지켜보는 중.", "열여섯 살쯤인데, 저도 해 보고 싶어요."],
-        "외전 세리": ["화면 속에서 보고 있어요.", "프로필 사진처럼, 그대로 있어요.", "거기까지만요. 아니, 조금 더요."],
+        String(localized: "미용사"): [String(localized: "선택하지 않은 벽돌은 모두 잘라낼게요."), String(localized: "가위 소리처럼, 사각. 잠시 멈춤. 사각."), String(localized: "거울 셋 중 어느 쪽 공이 진짜일까요?")],
+        String(localized: "현실의 시오"): [String(localized: "복도 끝에 출구가 있어. 노란 줄 하나."), String(localized: "여기선 오래 버티는 게 이기는 거야."), String(localized: "맨발로도 걸었어. 공 하나쯤이야.")],
+        String(localized: "1권 선배"): [String(localized: "그 방향, 정말 네가 고른 거야?"), String(localized: "출구는 늘 마지막에 보이지."), String(localized: "질문 하나. 왜 거기서 받았어?")],
+        String(localized: "니아"): [String(localized: "지구에 보낼 녹음에 이것도 넣을게요."), String(localized: "여기선 공도 천천히 떨어져요."), String(localized: "제2돔에서 응원하고 있어요.")],
+        String(localized: "묶은 머리 시오"): [String(localized: "고무줄 세 번. 다시 묶고 가자."), String(localized: "0.1초 늦어도 괜찮아.")],
+        String(localized: "관리국의 수아"): [String(localized: "또 올게요. 약속은 아니에요."), String(localized: "입구는 둘이에요. 공은 어느 쪽으로 나올까요?"), String(localized: "기록해 둘게요. 하급 연구원이라서요.")],
+        String(localized: "온유"): [String(localized: "창문은 손가락 몇 개만큼만요."), String(localized: "좁아도 바람은 들어와요."), String(localized: "천천히 해도 돼요. 여긴 그런 곳이에요.")],
+        String(localized: "활동가"): [String(localized: "잘린 문장도 끝내 붙일 수 있어요."), String(localized: "줄표 하나는 남겨 둬요. 그건 깨지지 않아요."), String(localized: "멀리서도 보여요. 계속해요.")],
+        String(localized: "담당관"): [String(localized: "솔직히 저도 당혹스럽습니다."), String(localized: "충전할 곳은 없습니다. 있는 걸로 가시죠."), String(localized: "보고서에는 잘했다고 쓰겠습니다.")],
+        String(localized: "아내"): [String(localized: "밥 먹고 해요."), String(localized: "안 구운 그릇은 두 번 만져야 해요."), String(localized: "묻지 않을게요. 계속해요.")],
+        String(localized: "루"): [String(localized: "꾸러미 배달 왔어요. 이건 응원."), String(localized: "배송 유닛 XX-2214, 지켜보는 중."), String(localized: "열여섯 살쯤인데, 저도 해 보고 싶어요.")],
+        String(localized: "외전 세리"): [String(localized: "화면 속에서 보고 있어요."), String(localized: "프로필 사진처럼, 그대로 있어요."), String(localized: "거기까지만요. 아니, 조금 더요.")],
     ]
 
     private static var bag: [String: [Int]] = [:]
@@ -448,7 +448,7 @@ final class BrickGame: Identifiable {
         guard phase == .ready else { return }
         phase = .playing
         GameSound.shared.play(lifeBonus ? .item : .start)
-        if lifeBonus { say("생명 +1 · 연속 \(chain)단계") }
+        if lifeBonus { say(String(localized: "생명 +1 · 연속 \(String(describing: chain))단계")) }
         launch()
     }
     /// 화면을 누르면 붙은 공을 보낸다 (시작은 시작 카드 버튼으로만)
@@ -617,10 +617,10 @@ final class BrickGame: Identifiable {
         // 시오 안전망: 판을 지나 위로 간 공을 한 번 받아 준다
         if net > 0, b.vy < 0, b.y >= Self.netY, ny < Self.netY {
             net -= 1; ny = Self.netY; b.vy = abs(b.vy)
-            GameSound.shared.play(.paddle); say("안전망이 받았어요")
+            GameSound.shared.play(.paddle); say(String(localized: "안전망이 받았어요"))
         }
         b.y = ny
-        if b.y < Self.r && shield { shield = false; b.y = Self.r; b.vy = abs(b.vy); say("보호막이 막았어요") }
+        if b.y < Self.r && shield { shield = false; b.y = Self.r; b.vy = abs(b.vy); say(String(localized: "보호막이 막았어요")) }
         return b.y > -Self.r
     }
 
@@ -659,7 +659,7 @@ final class BrickGame: Identifiable {
         if broken > before, !items.isEmpty, Double.random(in: 0..<1) < 0.14, let it = items.randomElement() {
             drops.append(Drop(id: it, x: Double(col) + 0.5, y: rect(i).midY))
         }
-        if combo / 15 > comboSaid { comboSaid = combo / 15; say("콤보 \(combo)!") }
+        if combo / 15 > comboSaid { comboSaid = combo / 15; say(String(localized: "콤보 \(String(describing: combo))!")) }
     }
 
     /// 한 칸 깎기. 깨지면 점수, 특수 블럭이면 터질 차례에 넣는다
@@ -676,7 +676,7 @@ final class BrickGame: Identifiable {
         mul *= scoreMul
         let p: Double = switch kind[j] { case 2: 2; case 3: 3; default: 1 }
         score += Int((p * mul).rounded())
-        if j == exitCell { score += 100; say("출구 칸 +100") }
+        if j == exitCell { score += 100; say(String(localized: "출구 칸 +100")) }
         if special[j] != nil { queue.append(j) }
     }
 
@@ -690,7 +690,7 @@ final class BrickGame: Identifiable {
             bigs[g].revealed = true
             for c in bigs[g].cells { hp[c] = 1 }
             touched.insert(g)
-            say("테트리스 블럭! \(bigs[g].hp)번 더")
+            say(String(localized: "테트리스 블럭! \(String(describing: bigs[g].hp))번 더"))
             GameSound.shared.play(.tetris(bigs[g].shape)); return
         }
         guard !touched.contains(g) else { return }
@@ -713,7 +713,7 @@ final class BrickGame: Identifiable {
         let xs = b.cells.map { rect($0).midX }, ys = b.cells.map { rect($0).midY }
         blasts.append(Blast(x: xs.reduce(0, +) / Double(xs.count), y: ys.reduce(0, +) / Double(ys.count), kind: .bomb, t0: t))
         GameSound.shared.play(.tetris(b.shape))
-        say("테트리스 블럭 +\(bonus)")
+        say(String(localized: "테트리스 블럭 +\(String(describing: bonus))"))
     }
 
     private func trigger(_ j: Int, _ queue: inout [Int]) {
@@ -742,11 +742,11 @@ final class BrickGame: Identifiable {
             for a in [-0.6, 0.0, 0.6] where balls.count < 12 {
                 balls.append(Ball(x: c.midX, y: c.minY - Self.r - 0.05, vx: v * sin(a), vy: -v * cos(a), stuck: false, spawned: true))
             }
-            say("공 셋!")
+            say(String(localized: "공 셋!"))
         case .gift:
             GameSound.shared.play(.gift)
             if let it = items.randomElement() { drops.append(Drop(id: it, x: c.midX, y: c.midY)) }
-            else { let p = Int((50 * scoreMul).rounded()); score += p; say("선물 +\(p)") }
+            else { let p = Int((50 * scoreMul).rounded()); score += p; say(String(localized: "선물 +\(String(describing: p))")) }
         }
     }
 
@@ -797,7 +797,7 @@ final class BrickGame: Identifiable {
         if skill == "seonbae" && !rewindUsed {
             rewindUsed = true
             balls = [Ball(x: paddleX, y: Self.PY + Self.PH + Self.r, vx: 0, vy: 0, stuck: true, off: 0, until: t + 1.5)]
-            say("되감기 · 한 번 돌려받았어요"); talk(.rewind); return
+            say(String(localized: "되감기 · 한 번 돌려받았어요")); talk(.rewind); return
         }
         lives -= 1
         GameSound.shared.play(.lose)

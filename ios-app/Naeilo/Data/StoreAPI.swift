@@ -11,8 +11,8 @@ enum StoreAPI {
         case tier, missing, server(String)
         var errorDescription: String? {
             switch self {
-            case .tier: "구독하면 열려요."
-            case .missing: "원고가 아직 올라오지 않았어요. 준비되면 여기서 바로 받을 수 있어요."
+            case .tier: String(localized: "구독하면 열려요.")
+            case .missing: String(localized: "원고가 아직 올라오지 않았어요. 준비되면 여기서 바로 받을 수 있어요.")
             case .server(let s): s
             }
         }
@@ -38,7 +38,7 @@ enum StoreAPI {
         if code == 403 { throw Fail.tier }
         if code == 404 { throw Fail.missing }
         guard (200..<300).contains(code) else {
-            throw Fail.server((try? JSONDecoder().decode(ErrorReply.self, from: d))?.error ?? "서버에 닿지 못했어요 (\(code)).")
+            throw Fail.server((try? JSONDecoder().decode(ErrorReply.self, from: d))?.error ?? String(localized: "서버에 닿지 못했어요 (\(String(describing: code)))."))
         }
         return try JSONDecoder().decode(T.self, from: d)
     }

@@ -21,29 +21,29 @@ struct RemindSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    GameHeader(title: "소식")   // 게임·동네 창과 같은 맨 위 줄: 왼쪽 제목, 오른쪽 X
+                    GameHeader(title: String(localized: "소식"))   // 게임·동네 창과 같은 맨 위 줄: 왼쪽 제목, 오른쪽 X
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
-                            chip(.all, "전체")
-                            chip(.todo, todo.isEmpty ? "할 일" : "할 일 \(todo.count)")
-                            chip(.event, "일정")
-                            chip(.market, "증시 요약")
-                            chip(.past, "지난 소식")
+                            chip(.all, String(localized: "전체"))
+                            chip(.todo, todo.isEmpty ? String(localized: "할 일") : String(localized: "할 일 \(String(describing: todo.count))"))
+                            chip(.event, String(localized: "일정"))
+                            chip(.market, String(localized: "증시 요약"))
+                            chip(.past, String(localized: "지난 소식"))
                         }
                     }
                     if showTodo, let t = top { actionCard(t) }
                     if showTodo && !doing.isEmpty {
-                        section("진행 중") { ForEach(doing) { i in i.checks == nil ? AnyView(row(i)) : AnyView(checkCard(i)) } }
+                        section(String(localized: "진행 중")) { ForEach(doing) { i in i.checks == nil ? AnyView(row(i)) : AnyView(checkCard(i)) } }
                     }
                     if showEv && !events.isEmpty {
-                        section("다가오는 일정") { ForEach(events) { eventRow($0) } }
+                        section(String(localized: "다가오는 일정")) { ForEach(events) { eventRow($0) } }
                         Text("날짜는 하루 이틀 바뀔 수 있어요.").appFont(12).foregroundStyle(Theme.muted)
                     }
                     if showMk && !market.isEmpty {
-                        section("증시 요약") { ForEach(market) { pastRow($0) } }
+                        section(String(localized: "증시 요약")) { ForEach(market) { pastRow($0) } }
                     }
                     if showPast && !past.isEmpty {
-                        section("지난 30일") { ForEach(past) { pastRow($0) } }
+                        section(String(localized: "지난 30일")) { ForEach(past) { pastRow($0) } }
                     }
                     if (showTodo ? todo.count : 0) + (showEv ? events.count : 0) + (showMk ? market.count : 0) + (showPast ? past.count : 0) == 0 {
                         Text("아직 소식이 없어요.").appFont(14).foregroundStyle(Theme.sub).padding(.vertical, 20)
@@ -95,7 +95,7 @@ struct RemindSheet: View {
             Text(i.text).appFont(16, .bold).foregroundStyle(Theme.ink)
             if let w = i.why { Text(w).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
             Button { open(i) } label: {
-                Text(i.action ?? "열기").appFont(15, .bold).foregroundStyle(.white)
+                Text(i.action ?? String(localized: "열기")).appFont(15, .bold).foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(Theme.green, in: RoundedRectangle(cornerRadius: 12))
             }
@@ -139,7 +139,7 @@ struct RemindSheet: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(spacing: 0) {
                     Text(Day.md(d)).appFont(13, .bold).foregroundStyle(Theme.orange)
-                    Text(n == 0 ? "오늘" : "D-\(n)").appFont(11).foregroundStyle(Theme.sub)
+                    Text(n == 0 ? String(localized: "오늘") : "D-\(n)").appFont(11).foregroundStyle(Theme.sub)
                 }
                 .frame(width: 52, height: 48)
                 .background(Theme.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
@@ -209,7 +209,7 @@ struct RemindSheet: View {
 
     static func ago(_ t: Double) -> String {
         let d = Day.str(Date(timeIntervalSince1970: t)), n = -Day.dday(d)
-        return n <= 0 ? "오늘" : n == 1 ? "어제" : "\(Day.md(d))"
+        return n <= 0 ? String(localized: "오늘") : n == 1 ? String(localized: "어제") : "\(Day.md(d))"
     }
 }
 

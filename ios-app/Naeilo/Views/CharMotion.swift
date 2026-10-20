@@ -391,9 +391,9 @@ struct MeTurntable: View {
         CharFigure(me: me, dot: CGFloat(scale), dir: dir, walking: walking, tapToTurn: false)
             .overlay(alignment: .bottom) {
                 HStack(spacing: 6) {
-                    pill("↺", "왼쪽으로 돌리기") { dir = dir.turned(-1) }
-                    pill(walking ? "멈춤" : "걷기", walking ? "걷기 멈추기" : "걷기") { walking.toggle() }
-                    pill("↻", "오른쪽으로 돌리기") { dir = dir.turned(1) }
+                    pill("↺", String(localized: "왼쪽으로 돌리기")) { dir = dir.turned(-1) }
+                    pill(walking ? String(localized: "멈춤") : String(localized: "걷기"), walking ? String(localized: "걷기 멈추기") : String(localized: "걷기")) { walking.toggle() }
+                    pill("↻", String(localized: "오른쪽으로 돌리기")) { dir = dir.turned(1) }
                 }
                 .offset(y: 26)
             }

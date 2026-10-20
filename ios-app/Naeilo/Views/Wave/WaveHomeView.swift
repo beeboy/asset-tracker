@@ -168,7 +168,7 @@ struct WaveHomeView: View {
                     .background(alignment: .bottom) { Capsule().fill(Color(hex: 0xBFE6F7, dark: 0x1C4D66)).frame(width: 112, height: 12).offset(y: 4) }
                     .blur(radius: open ? 0 : 3).opacity(open ? 1 : 0.45)
                     .overlay { if !open { Image(systemName: "cloud.fill").appFont(26).foregroundStyle(Theme.muted.opacity(0.8)) } }
-                Text(open ? i.name : "안개 속").appFont(11, .bold).foregroundStyle(open ? Theme.ink : Theme.muted).lineLimit(1)
+                Text(open ? i.name : String(localized: "안개 속")).appFont(11, .bold).foregroundStyle(open ? Theme.ink : Theme.muted).lineLimit(1)
                 Stars(n: st, size: 9).opacity(open ? 1 : 0)
             }
             .padding(6)
@@ -177,7 +177,7 @@ struct WaveHomeView: View {
         }
         .buttonStyle(.plain)
         .disabled(!open)
-        .accessibilityLabel(open ? "\(i.name), 별 \(st)개" : "안개 속 섬, 아직 안 열림")
+        .accessibilityLabel(open ? String(localized: "\(String(describing: i.name)), 별 \(String(describing: st))개") : String(localized: "안개 속 섬, 아직 안 열림"))
     }
 
     // MARK: 지금 섬 카드
@@ -190,7 +190,7 @@ struct WaveHomeView: View {
                 Spacer()
                 Stars(n: WaveMap.stars(i), size: 16)
             }
-            Text(has ? i.line : "내 자산 길엔 아직 이런 물결이 없어요").appFont(14).foregroundStyle(Theme.sub)
+            Text(has ? i.line : String(localized: "내 자산 길엔 아직 이런 물결이 없어요")).appFont(14).foregroundStyle(Theme.sub)
                 .fixedSize(horizontal: false, vertical: true)
             if best > 0 { Text("최고 \(best)점").appFont(12).foregroundStyle(Theme.muted) }
             Button {
@@ -287,7 +287,7 @@ struct WaveHub: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                GameHeader(title: "내 자산으로 하는 파도타기")
+                GameHeader(title: String(localized: "내 자산으로 하는 파도타기"))
                 WaveHomeView()
             }
             .screen()   // 벽돌깨기와 같은 여백
@@ -340,7 +340,7 @@ struct TownButton<Town: View>: View {
             ScrollViewReader { sp in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        GameHeader(title: "우리 동네 주민들")
+                        GameHeader(title: String(localized: "우리 동네 주민들"))
                         town(sp)
                     }
                     .screen()

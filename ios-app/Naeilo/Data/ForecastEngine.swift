@@ -130,7 +130,7 @@ extension MC.Sim: Codable {
                   muD: try c.decode([Double].self, forKey: .muD), monthIdx: try c.decode([Int].self, forKey: .monthIdx),
                   monthDates: try c.decode([String].self, forKey: .monthDates), v0: try c.decode([Double].self, forKey: .v0),
                   start: try c.decode(String.self, forKey: .start), summary: try c.decode(MC.Result.self, forKey: .summary))
-        guard cg.count == A, cg.allSatisfy({ $0.count == M * P }) else { throw DecodingError.dataCorruptedError(forKey: .cg, in: c, debugDescription: "크기") }
+        guard cg.count == A, cg.allSatisfy({ $0.count == M * P }) else { throw DecodingError.dataCorruptedError(forKey: .cg, in: c, debugDescription: String(localized: "크기")) }
     }
     func encode(to e: Encoder) throws {
         var c = e.container(keyedBy: CodingKeys.self)

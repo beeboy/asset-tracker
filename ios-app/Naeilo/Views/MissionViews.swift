@@ -58,7 +58,7 @@ private struct BoardButtons: View {
 }
 
 private func horizonChips(_ sel: Binding<Int>) -> some View {
-    ChipRow(items: [(3, "3개월"), (6, "6개월"), (12, "1년")], selection: sel, fill: true)
+    ChipRow(items: [(3, String(localized: "3개월")), (6, String(localized: "6개월")), (12, String(localized: "1년"))], selection: sel, fill: true)
 }
 
 private func statBox(_ k: String, _ v: String, _ c: Color = Theme.teal) -> some View {
@@ -83,14 +83,14 @@ struct Mission1View: View {
 
     var body: some View {
         let ok = ids.contains { num(q[$0]) > 0 && num(p[$0]) > 0 }
-        MissionPage(kicker: "미션 1 / 4", title: "종목과 산 가격은?") {
-            GuideBubble(pose: .point, text: "매수 단가가 있어야 \"본전\"을 계산할 수 있어요. " + (m.syncOn ? "동기화가 켜져 있어서, 이 폰에서 암호화한 값만 같은 비밀번호의 기기로 가요." : "넣은 숫자는 기기 밖으로 나가지 않아요."))
+        MissionPage(kicker: String(localized: "미션 1 / 4"), title: String(localized: "종목과 산 가격은?")) {
+            GuideBubble(pose: .point, text: String(localized: "매수 단가가 있어야 \"본전\"을 계산할 수 있어요. ") + (m.syncOn ? String(localized: "동기화가 켜져 있어서, 이 폰에서 암호화한 값만 같은 비밀번호의 기기로 가요.") : String(localized: "넣은 숫자는 기기 밖으로 나가지 않아요.")))
             ForEach(ids, id: \.self) { id in
                 if let s = Sample.symbol(id) { entry(s) }
             }
             // '+종목 추가' 버튼 대신 그 자리에 바로 종목 추가 상자
             AddHoldingView(inline: true)
-            PrimaryButton(title: ok ? (m.route == .recover ? "회복 확률 보기" : "평가액 보기") : "수량·단가 넣기", color: ok ? Theme.teal : Theme.muted) {
+            PrimaryButton(title: ok ? (m.route == .recover ? String(localized: "회복 확률 보기") : String(localized: "평가액 보기")) : String(localized: "수량·단가 넣기"), color: ok ? Theme.teal : Theme.muted) {
                 guard ok else { return }
                 for id in ids {
                     let qn = num(q[id]), pn = num(p[id])
@@ -118,17 +118,17 @@ struct Mission1View: View {
 
     /// 지금 가격 (시세 기준과 같음). DRNK 는 가상 종목
     private func now(_ s: Symbol) -> String {
-        (s.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(s, s.last) + (s.id == "DRNK" ? " (가상)" : "")
+        (s.quote.live ? String(localized: "지금 ") : String(localized: "전일 종가 ")) + AppModel.price(s, s.last) + (s.id == "DRNK" ? String(localized: " (가상)") : "")
     }
 
     private func entry(_ s: Symbol) -> some View {
-        let unit = s.currency == .usd ? "$" : "원"
+        let unit = s.currency == .usd ? "$" : String(localized: "원")
         let qb = Binding(get: { q[s.id] ?? "" }, set: { q[s.id] = $0 }), pb = Binding(get: { p[s.id] ?? "" }, set: { p[s.id] = $0 })
         return Card {
             HStack { LogoTile(symbol: s.id, size: 28); Text(s.short).appFont(17, .bold); Spacer(); Text(now(s)).appFont(13).foregroundStyle(Theme.sub) }
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) { field("수량(주)", qb); field("평균 단가(\(unit))", pb) }
-                VStack(spacing: 10) { field("수량(주)", qb); field("평균 단가(\(unit))", pb) }
+                HStack(spacing: 10) { field(String(localized: "수량(주)"), qb); field(String(localized: "평균 단가(\(String(describing: unit)))"), pb) }
+                VStack(spacing: 10) { field(String(localized: "수량(주)"), qb); field(String(localized: "평균 단가(\(String(describing: unit)))"), pb) }
             }
         }
     }
@@ -150,15 +150,15 @@ struct Mission1ResultView: View {
     var body: some View {
         @Bindable var m = m
         let keep = m.keepPlan, T = Double(m.horizon) / 12
-        MissionPage(kicker: "미션 1 완료 · 회복 확률 열림", title: "지금 평가액과 본전") {
+        MissionPage(kicker: String(localized: "미션 1 완료 · 회복 확률 열림"), title: String(localized: "지금 평가액과 본전")) {
             if m.ret >= 0 {
                 Card {
                     Text("이미 본전 위 (\(AppModel.sgn(m.ret)))").appFont(17, .bold)
                     Text("목표 루트가 맞아요 · 종목·위젯·친구 그대로").appFont(14).foregroundStyle(Theme.sub)
-                    PrimaryButton(title: "목표 루트로") { m.graduateToGoal() }
+                    PrimaryButton(title: String(localized: "목표 루트로")) { m.graduateToGoal() }
                 }
             } else {
-                GuideBubble(pose: .spread, text: "…… 여기가 지금 위치예요. 본전까지는 \(AppModel.sgn(m.cost / max(1, m.total) - 1))가 필요해요. 기간을 바꾸면 확률이 다시 계산돼요.")
+                GuideBubble(pose: .spread, text: String(localized: "…… 여기가 지금 위치예요. 본전까지는 \(String(describing: AppModel.sgn(m.cost / max(1, m.total) - 1)))가 필요해요. 기간을 바꾸면 확률이 다시 계산돼요."))
                 VStack(alignment: .leading, spacing: 8) {
                     HStack { Text("지금 평가액"); Spacer(); Text("들어간 돈 \(AppModel.man(m.cost))") }
                         .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
@@ -179,19 +179,19 @@ struct Mission1ResultView: View {
                 }
                 Card {
                     Text("\(m.horizonLabel) 뒤 내 손익").appFont(14, .bold)
-                    outcomeRow("나쁜 경우", keep.outcome(m.cost, T, -1))
-                    outcomeRow("보통", keep.outcome(m.cost, T, 0))
-                    outcomeRow("좋은 경우", keep.outcome(m.cost, T, 1))
+                    outcomeRow(String(localized: "나쁜 경우"), keep.outcome(m.cost, T, -1))
+                    outcomeRow(String(localized: "보통"), keep.outcome(m.cost, T, 0))
+                    outcomeRow(String(localized: "좋은 경우"), keep.outcome(m.cost, T, 1))
                     Text("10번 중 9번 이 사이 · 지금 \(AppModel.sgn(m.ret))").appFont(12).foregroundStyle(Theme.muted)
                 }
             }
             // 본전 위면 원인 진단은 건너뛴다 (목표 루트로만)
-            BoardButtons(next: m.ret >= 0 ? nil : "다음: 원인 진단", to: m.ret >= 0 ? nil : .m2)
+            BoardButtons(next: m.ret >= 0 ? nil : String(localized: "다음: 원인 진단"), to: m.ret >= 0 ? nil : .m2)
         }
     }
     @ViewBuilder private func probBoxes(_ keep: Plan, _ T: Double) -> some View {
-        statBox("\(m.horizonLabel) 안 절반 회복", AppModel.pct(keep.prob(m.halfway, T)))
-        statBox("\(m.horizonLabel) 안 본전", AppModel.pct(keep.prob(m.cost, T)))
+        statBox(String(localized: "\(String(describing: m.horizonLabel)) 안 절반 회복"), AppModel.pct(keep.prob(m.halfway, T)))
+        statBox(String(localized: "\(String(describing: m.horizonLabel)) 안 본전"), AppModel.pct(keep.prob(m.cost, T)))
     }
     private func outcomeRow(_ k: String, _ v: Double) -> some View {
         HStack { Text(k).foregroundStyle(Theme.sub); Spacer(); Text(AppModel.sgn0(v)).fontWeight(.bold).foregroundStyle(Theme.change(v)) }
@@ -232,7 +232,7 @@ struct DepositLeverCard: View {
     }
     /// 칩: 지금 평가액의 5·10·20·50% (만원 단위로 반올림, 최소 1만원). 작은 계좌에서도 말이 되는 크기
     private var chips: [(Int, String)] {
-        var out: [(Int, String)] = [(0, "안 넣음")]
+        var out: [(Int, String)] = [(0, String(localized: "안 넣음"))]
         for r in [5, 10, 20, 50] {
             let v = max(1, Int((m.total * Double(r) / 100 / 1e4).rounded()))
             if !out.contains(where: { $0.0 == v }) { out.append((v, "\(r)%")) }
@@ -240,7 +240,7 @@ struct DepositLeverCard: View {
         return out
     }
     private func eta(_ d: AppModel.Deposit) -> String {
-        d.eta == 0 ? "지금" : d.eta.isFinite ? AppModel.eta(d.eta).replacingOccurrences(of: " 뒤", with: "") : "3년 넘게"
+        d.eta == 0 ? String(localized: "지금") : d.eta.isFinite ? AppModel.eta(d.eta).replacingOccurrences(of: " 뒤", with: "") : String(localized: "3년 넘게")
     }
 }
 
@@ -248,11 +248,11 @@ struct DepositLeverCard: View {
 struct Mission2View: View {
     @Environment(AppModel.self) private var m
     var body: some View {
-        let opts = [("conc", "한 종목에 몰려서"), ("mkt", "시장 전체 하락"), ("fx", "환율")]
+        let opts = [("conc", String(localized: "한 종목에 몰려서")), ("mkt", String(localized: "시장 전체 하락")), ("fx", String(localized: "환율"))]
         let right = m.quizRight, ans = m.quizAnswer
-        MissionPage(kicker: "미션 2 / 4", title: "손실 가장 큰 원인은?") {
+        MissionPage(kicker: String(localized: "미션 2 / 4"), title: String(localized: "손실 가장 큰 원인은?")) {
             GuideBubble(pose: ans == nil ? .think : ans == right ? .cheer : .point,
-                        text: ans == nil ? "감으로 하나 골라 보세요. 정답은 숫자로 확인해요." : ans == right ? "맞아요. 아래 숫자로 확인해 봐요." : "숫자로 보면 조금 달라요. 아래를 같이 봐요.")
+                        text: ans == nil ? String(localized: "감으로 하나 골라 보세요. 정답은 숫자로 확인해요.") : ans == right ? String(localized: "맞아요. 아래 숫자로 확인해 봐요.") : String(localized: "숫자로 보면 조금 달라요. 아래를 같이 봐요."))
             ForEach(opts, id: \.0) { k, label in
                 let isRight = k == right, picked = ans == k
                 Button { withAnimation { m.quizAnswer = k } } label: {
@@ -266,14 +266,14 @@ struct Mission2View: View {
             if ans != nil {
                 let qRet = m.restRet
                 Card {
-                    Text(ans == right ? "맞아요" : "숫자로는 달라요").appFont(17, .bold)
-                    Text((m.cost > m.total ? "손실 \(AppModel.man(m.cost - m.total)) 중 \(AppModel.pct(m.lossShareFocus))가 \(m.focusName)에서"
-                          : "들어간 돈보다 \(AppModel.sgn(m.ret))")
-                         + (m.restRows.isEmpty ? "" : " · 같은 기간 \(m.restName) \(AppModel.sgn(qRet))"))
+                    Text(ans == right ? String(localized: "맞아요") : String(localized: "숫자로는 달라요")).appFont(17, .bold)
+                    Text((m.cost > m.total ? String(localized: "손실 \(String(describing: AppModel.man(m.cost - m.total))) 중 \(String(describing: AppModel.pct(m.lossShareFocus)))가 \(String(describing: m.focusName))에서")
+                          : String(localized: "들어간 돈보다 \(String(describing: AppModel.sgn(m.ret)))"))
+                         + (m.restRows.isEmpty ? "" : String(localized: " · 같은 기간 \(String(describing: m.restName)) \(String(describing: AppModel.sgn(qRet)))")))
                         .appFont(15).lineSpacing(3)
                     HStack { Text("\(m.focusName) 비중"); Spacer(); Text(AppModel.pct(m.focusWeight)).fontWeight(.bold) }.appFont(14)
                     ProgressBar(value: m.focusWeight, height: 10, fill: Theme.purple, track: Theme.track)
-                    PrimaryButton(title: "하나 더 보기") { m.done.insert(2); m.boardPath.append(.m2r) }
+                    PrimaryButton(title: String(localized: "하나 더 보기")) { m.done.insert(2); m.boardPath.append(.m2r) }
                 }
             }
         }
@@ -285,8 +285,8 @@ struct Mission2ResultView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
         let keep = m.keepPlan
-        MissionPage(kicker: "미션 2 완료 · 회복 경로 열림", title: "흔들리면 보통 결과가 깎여요") {
-            GuideBubble(pose: .back, text: "같이 봐요. 한 종목에 몰려 흔들림이 크면, 평균이 같아도 보통의 경우는 낮아져요. -50% 뒤에는 +100%가 있어야 본전이에요.", note: "그래프 쪽을 돌아봄")
+        MissionPage(kicker: String(localized: "미션 2 완료 · 회복 경로 열림"), title: String(localized: "흔들리면 보통 결과가 깎여요")) {
+            GuideBubble(pose: .back, text: String(localized: "같이 봐요. 한 종목에 몰려 흔들림이 크면, 평균이 같아도 보통의 경우는 낮아져요. -50% 뒤에는 +100%가 있어야 본전이에요."), note: String(localized: "그래프 쪽을 돌아봄"))
             Card {
                 let yr = keep.year
                 HStack { Text("한 해 흔들림"); Spacer(); Text("±\(AppModel.pct(yr.sigma))").fontWeight(.bold) }.appFont(15)
@@ -298,11 +298,11 @@ struct Mission2ResultView: View {
                 PathChart(plans: [(keep, Color(hex: 0x2450C8, dark: 0x7FA2F0), false)], V: m.total, C: m.cost, half: m.halfway).frame(height: 150)
                 HStack { Text("지금"); Spacer(); Text("3개월"); Spacer(); Text("6개월"); Spacer(); Spacer(); Text("1년") }.appFont(11).foregroundStyle(Theme.muted)
                 FlowRow(spacing: 10) {
-                    legend(Color(hex: 0x2450C8, dark: 0x7FA2F0), "보통"); legend(Color(hex: 0x2450C8, dark: 0x7FA2F0).opacity(0.2), "10번 중 9번")
-                    legend(Color(hex: 0xC8352E), "본전"); legend(Theme.muted, "손실 절반")
+                    legend(Color(hex: 0x2450C8, dark: 0x7FA2F0), String(localized: "보통")); legend(Color(hex: 0x2450C8, dark: 0x7FA2F0).opacity(0.2), String(localized: "10번 중 9번"))
+                    legend(Color(hex: 0xC8352E), String(localized: "본전")); legend(Theme.muted, String(localized: "손실 절반"))
                 }
             }
-            BoardButtons(next: "다음: 내 계획", to: .m3)
+            BoardButtons(next: String(localized: "다음: 내 계획"), to: .m3)
         }
     }
 }
@@ -332,9 +332,9 @@ struct Mission3View: View {
                 PathChart(plans: [(m.keepPlan, Theme.muted, true), (sel, Theme.teal, false)], V: m.total, C: m.cost, marker: m.horizon).frame(height: 110)
                 Text("점선 = 유지 · 빨간 선 = 본전").appFont(11).foregroundStyle(Theme.muted)
                 HStack(spacing: 6) {
-                    pill("절반 회복", AppModel.pct(sel.prob(m.halfway, T)))
-                    pill("본전", AppModel.pct(sel.prob(m.cost, T)))
-                    pill("나쁜 경우", AppModel.sgn0(sel.outcome(m.cost, T, -1)))
+                    pill(String(localized: "절반 회복"), AppModel.pct(sel.prob(m.halfway, T)))
+                    pill(String(localized: "본전"), AppModel.pct(sel.prob(m.cost, T)))
+                    pill(String(localized: "나쁜 경우"), AppModel.sgn0(sel.outcome(m.cost, T, -1)))
                 }
                 ChipRow(items: m.plans.map { ($0.id, $0.name) }, selection: $m.planKey, fill: true)
                     // 모의 바구니는 고른 계획대로 바꾼 내 종목 비중을 따른다
@@ -344,11 +344,11 @@ struct Mission3View: View {
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
                 VStack(alignment: .leading, spacing: 14) {
-                    GuideBubble(pose: .side, text: "갈 길을 하나 골라 보세요. 칩을 누르면 위 그래프가 바로 바뀌어요. 흔들림을 줄이면 빠른 본전 확률도, 더 잃을 확률도 함께 줄어요.")
+                    GuideBubble(pose: .side, text: String(localized: "갈 길을 하나 골라 보세요. 칩을 누르면 위 그래프가 바로 바뀌어요. 흔들림을 줄이면 빠른 본전 확률도, 더 잃을 확률도 함께 줄어요."))
                     Text(sel.desc).appFont(15).lineSpacing(3)
                     holdingsCard
                     basketsCard(Basket.allCases.filter { $0 != .C })
-                    PrimaryButton(title: "\"\(sel.name)\"으로 정하기") { m.done.insert(3); m.boardPath.append(.m3r) }
+                    PrimaryButton(title: String(localized: "\"\(String(describing: sel.name))\"으로 정하기")) { m.done.insert(3); m.boardPath.append(.m3r) }
                 }
                 .padding(16)
         }
@@ -367,17 +367,17 @@ struct Mission3View: View {
         let d = m.focusIndustry, sector = m.focusRow?.sym.sector ?? ""
         let b = d.map { Basket.of(pe: $0.pe, pe10: $0.pe10, growth: $0.growth) } ?? "?"
         let ratio = d.map { String(format: "%.1f", $0.pe / $0.pe10) } ?? ""
-        let restSub = m.restRows.allSatisfy { $0.sym.sector == "지수" } ? "지수 · 분산" : m.restRows.map(\.sym.short).joined(separator: " · ")
+        let restSub = m.restRows.allSatisfy { $0.sym.sector == "지수" } ? String(localized: "지수 · 분산") : m.restRows.map(\.sym.short).joined(separator: " · ")
         return Card {
             Text("내 종목 업종").appFont(15, .bold)
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(m.focusName) \(AppModel.pct(m.focusWeight))").appFont(15, .bold)
-                    Text(d.map { "\($0.ko) · PER 평균의 \(ratio)배 · 성장 \(Int($0.growth.rounded()))%" } ?? (sector.isEmpty || sector == "지수" ? "업종 자료 없음" : sector))
+                    Text(d.map { String(localized: "\(String(describing: $0.ko)) · PER 평균의 \(String(describing: ratio))배 · 성장 \(String(describing: Int($0.growth.rounded())))%") } ?? (sector.isEmpty || sector == "지수" ? String(localized: "업종 자료 없음") : sector))
                         .appFont(13).foregroundStyle(Theme.sub)
                 }
                 Spacer()
-                tag(b == "H" ? "과열" : b == "?" ? (sector == "지수" ? "지수" : "업종 모름") : Basket(rawValue: b)?.name ?? "세 묶음 밖", hot: b == "H", neutral: b == "?")
+                tag(b == "H" ? String(localized: "과열") : b == "?" ? (sector == "지수" ? String(localized: "지수") : String(localized: "업종 모름")) : Basket(rawValue: b)?.name ?? String(localized: "세 묶음 밖"), hot: b == "H", neutral: b == "?")
             }
             if let d, b == "H" {
                 Text("PER 10년 평균의 \(ratio)배 · 이익 성장 \(Int(d.growth.rounded()))% · 과열이라 세 묶음 밖")
@@ -391,7 +391,7 @@ struct Mission3View: View {
                         Text(restSub).appFont(13).foregroundStyle(Theme.sub)
                     }
                     Spacer()
-                    tag("\(m.restRows.count)종목", hot: false, neutral: true)
+                    tag(String(localized: "\(String(describing: m.restRows.count))종목"), hot: false, neutral: true)
                 }
             }
         }
@@ -411,7 +411,7 @@ struct Mission3View: View {
 struct BasketList: View {
     let baskets: [Basket]
     @Binding var open: Set<Basket>
-    var title = "업종 묶음"
+    var title = String(localized: "업종 묶음")
     var body: some View {
         Card(padding: 14) {
             HStack(alignment: .firstTextBaseline) {
@@ -480,17 +480,17 @@ struct Mission3ResultView: View {
     var body: some View {
         let sel = m.selectedPlan, keep = m.keepPlan, T = Double(m.horizon) / 12, freed = m.freedAmount
         let baskets = Basket.allCases.filter { $0 != .C && (sel.mix[$0] ?? 0) > 0 }
-        MissionPage(kicker: "미션 3 완료 · 비중 비교 열림", title: "내 계획: \(sel.name)") {
-            GuideBubble(pose: .cheer, text: "정했어요. 이 계획은 기록만 해요. 실제 매매 판단은 직접 하셔야 해요.")
+        MissionPage(kicker: String(localized: "미션 3 완료 · 비중 비교 열림"), title: String(localized: "내 계획: \(String(describing: sel.name))")) {
+            GuideBubble(pose: .cheer, text: String(localized: "정했어요. 이 계획은 기록만 해요. 실제 매매 판단은 직접 하셔야 해요."))
             Card {
                 Text("\(m.horizonLabel) 안 절반 회복 \(AppModel.pct(sel.prob(m.halfway, T))) · 본전 \(AppModel.pct(sel.prob(m.cost, T))) · 나쁜 경우 \(AppModel.sgn0(sel.outcome(m.cost, T, -1)))")
                     .appFont(15, .semibold).lineSpacing(3)
             }
             Card {
                 Text("비중이 바뀌면").appFont(15, .bold)
-                moveRow("가장 큰 종목", freed > 0 ? "\(Int((m.focusWeight * 100).rounded()))→\(AppModel.pct(sel.wt))" : AppModel.pct(m.focusWeight),
-                        freed > 0 ? Self.pp(sel.wt - m.focusWeight) : "그대로", up: false)
-                if !m.restRows.isEmpty { moveRow("나머지", AppModel.pct(1 - m.focusWeight), "그대로", up: true) }
+                moveRow(String(localized: "가장 큰 종목"), freed > 0 ? "\(Int((m.focusWeight * 100).rounded()))→\(AppModel.pct(sel.wt))" : AppModel.pct(m.focusWeight),
+                        freed > 0 ? Self.pp(sel.wt - m.focusWeight) : String(localized: "그대로"), up: false)
+                if !m.restRows.isEmpty { moveRow(String(localized: "나머지"), AppModel.pct(1 - m.focusWeight), String(localized: "그대로"), up: true) }
                 ForEach(Basket.allCases.filter { (sel.mix[$0] ?? 0) > 0 && sel.id != "keep" }, id: \.self) { b in
                     let r = freed * (sel.mix[b] ?? 0) / max(1, m.total)
                     moveRow(b.name, "0→\(AppModel.pct(r))", Self.pp(r), up: true)
@@ -499,14 +499,14 @@ struct Mission3ResultView: View {
                     Text("\(m.horizonLabel) 안 본전 \(AppModel.pct(keep.prob(m.cost, T)))→\(AppModel.pct(sel.prob(m.cost, T))) · 나쁜 경우 \(AppModel.sgn0(keep.outcome(m.cost, T, -1)))→\(AppModel.sgn0(sel.outcome(m.cost, T, -1)))")
                         .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
                 }
-                Text(sel.id == "keep" ? "지금 구성 그대로" : "적립·매도 중 맞추는 방법 따라 세금 다름 · 절세 화면")
+                Text(sel.id == "keep" ? String(localized: "지금 구성 그대로") : String(localized: "적립·매도 중 맞추는 방법 따라 세금 다름 · 절세 화면"))
                     .appFont(12).foregroundStyle(Theme.muted)
             }
-            if !baskets.isEmpty && sel.id != "keep" { BasketList(baskets: baskets, open: $open, title: "담을 업종") }
+            if !baskets.isEmpty && sel.id != "keep" { BasketList(baskets: baskets, open: $open, title: String(localized: "담을 업종")) }
             // 원인 진단·계획을 마친 뒤에 '매달 더 넣으면?' (2026-10-11 결정: 미션 3 뒤)
             if m.cost > m.total { DepositLeverCard(plan: keep) }
             Text("계산 예시 · 매매 추천 아님").appFont(14).foregroundStyle(Theme.sub)
-            PrimaryButton(title: "다음: 앱 시작 3단계") { m.boardPath.append(.nx) }
+            PrimaryButton(title: String(localized: "다음: 앱 시작 3단계")) { m.boardPath.append(.nx) }
             Button { m.boardPath.append(.m4) } label: {
                 Text("해외주식 이익 있으면: 손실로 절세").appFont(15, .semibold).multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, minHeight: 50).padding(.horizontal, 10)
@@ -528,7 +528,7 @@ struct Mission3ResultView: View {
     /// 비중 차이 %p (+10%p, -21%p)
     static func pp(_ d: Double) -> String {
         let v = Int((d * 100).rounded())
-        return v == 0 ? "그대로" : (v > 0 ? "+" : "") + "\(v)%p"
+        return v == 0 ? String(localized: "그대로") : (v > 0 ? "+" : "") + "\(v)%p"
     }
 }
 
@@ -537,8 +537,8 @@ struct TaxInputView: View {
     @Environment(AppModel.self) private var m
     @State private var gain = ""
     var body: some View {
-        MissionPage(kicker: "절세 · 한국 거주자", title: "올해 판 해외주식 이익은?") {
-            GuideBubble(pose: .stand, text: "한국에서는 해외주식 한 해 이익과 손실을 합쳐 250만 원을 넘는 부분에만 22%가 붙어요. 올해 판 게 없으면 0을 넣으세요.")
+        MissionPage(kicker: String(localized: "절세 · 한국 거주자"), title: String(localized: "올해 판 해외주식 이익은?")) {
+            GuideBubble(pose: .stand, text: String(localized: "한국에서는 해외주식 한 해 이익과 손실을 합쳐 250만 원을 넘는 부분에만 22%가 붙어요. 올해 판 게 없으면 0을 넣으세요."))
             Text("한국 거주자 기준").appFont(13, .semibold).foregroundStyle(Theme.teal)
             VStack(alignment: .leading, spacing: 4) {
                 Text("올해 실현 이익 (만원)").appFont(13, .semibold).foregroundStyle(Theme.sub)
@@ -548,7 +548,7 @@ struct TaxInputView: View {
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
                     .accessibilityLabel("올해 실현 이익 (만원)")
             }
-            PrimaryButton(title: "세금 보기") {
+            PrimaryButton(title: String(localized: "세금 보기")) {
                 m.taxGain = max(0, Double(gain) ?? 0); m.done.insert(4); m.boardPath.append(.m4r)
             }
         }
@@ -560,12 +560,12 @@ struct TaxResultView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
         @Bindable var m = m
-        let won0 = { (x: Double) in Int(x.rounded()).formatted() + "만" }
+        let won0 = { (x: Double) in Int(x.rounded()).formatted() + String(localized: "만") }
         let maxQ = m.focusRow?.h.qty ?? 0
         let wAfter = m.focusRow.map { max(0, $0.value - m.krw($0.sym, m.taxSellQty * $0.sym.last)) / m.total } ?? 0
         let over = m.taxSellQty > 0 && m.taxBefore > 0 && m.taxGain + m.taxLossMan < 249
-        MissionPage(kicker: "절세 열림", title: "올해 해외주식 세금") {
-            GuideBubble(pose: .point, text: "아래 슬라이더를 움직이면 위 숫자가 바로 바뀌어요. 계산 예시이고, 세무 상담은 아니에요.")
+        MissionPage(kicker: String(localized: "절세 열림"), title: String(localized: "올해 해외주식 세금")) {
+            GuideBubble(pose: .point, text: String(localized: "아래 슬라이더를 움직이면 위 숫자가 바로 바뀌어요. 계산 예시이고, 세무 상담은 아니에요."))
             VStack(alignment: .leading, spacing: 8) {
                 Text("내년 5월 세금").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -594,7 +594,7 @@ struct TaxResultView: View {
             }
             Text("계산 예시 · 세무 상담·매매 권유 아님 · 결제일 연도 기준")
                 .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
-            BoardButtons(next: "다음: 앱 시작 3단계", to: .nx)
+            BoardButtons(next: String(localized: "다음: 앱 시작 3단계"), to: .nx)
         }
     }
 }
@@ -604,9 +604,9 @@ struct AppStartView: View {
     @Environment(AppModel.self) private var m
     @State private var denied = false
     private let steps = [
-        ("종목 하나 이상 추가", "넣었으면 확인만", "자산 추이 위젯"),
-        ("알림 하나 켜기", "본전 도달·비중 이탈 중 하나", "본전 진행 위젯"),
-        ("오픈 API 연결", "안 하면 가상 주식 샘플만", "블록·오늘의 움직임 위젯"),
+        (String(localized: "종목 하나 이상 추가"), String(localized: "넣었으면 확인만"), String(localized: "자산 추이 위젯")),
+        (String(localized: "알림 하나 켜기"), String(localized: "본전 도달·비중 이탈 중 하나"), String(localized: "본전 진행 위젯")),
+        (String(localized: "오픈 API 연결"), String(localized: "안 하면 가상 주식 샘플만"), String(localized: "블록·오늘의 움직임 위젯")),
     ]
     /// 내 종목 전체 평가액 3개월 흐름 (원화)
     private var totalSeries: [Double] {
@@ -616,8 +616,8 @@ struct AppStartView: View {
     }
     var body: some View {
         let n = max(1, m.nxStep)   // 미션 4에 왔으면 1단계(종목 추가)는 이미 한 것
-        MissionPage(kicker: "미션 4 / 4", title: "세 가지 하면 위젯 하나씩") {
-            GuideBubble(pose: .wave, text: "마지막이에요. 위젯은 미리 드리지 않아요. 한 단계마다 하나씩, 세 단계를 다 하면 나머지 위젯도 모두 열려요.")
+        MissionPage(kicker: String(localized: "미션 4 / 4"), title: String(localized: "세 가지 하면 위젯 하나씩")) {
+            GuideBubble(pose: .wave, text: String(localized: "마지막이에요. 위젯은 미리 드리지 않아요. 한 단계마다 하나씩, 세 단계를 다 하면 나머지 위젯도 모두 열려요."))
             HStack(spacing: 8) {
                 tile(1, n) {
                     Text("자산 추이").appFont(11, .bold)
@@ -654,7 +654,7 @@ struct AppStartView: View {
                     (Text("\(steps[i].1) · 받는 것: ") + Text(steps[i].2).bold()).appFont(13).foregroundStyle(Theme.sub)
                     if cur && i == 1 {
                         // 2단계는 실제로: 아이폰 알림 허용을 받고 본전 도달 알림을 켠다
-                        Button(denied ? "설정에서 알림 허용" : "알림 켜기") {
+                        Button(denied ? String(localized: "설정에서 알림 허용") : String(localized: "알림 켜기")) {
                             Task {
                                 if denied, let u = URL(string: UIApplication.openNotificationSettingsURLString) { await UIApplication.shared.open(u); return }
                                 if await Notifier.request() {
@@ -668,7 +668,7 @@ struct AppStartView: View {
                         if denied { Text("알림 꺼짐 · 설정 > 알림 > naeilo에서 허용 후 다시").appFont(12).foregroundStyle(Theme.sub) }
                     } else if cur && i == 2 {
                         // 3단계: 키를 넣었으면 확인만, 아니면 설정의 오픈 API 화면으로. 키 없이도 샘플로 계속할 수 있다
-                        Button(TossKeys.on ? "연결했어요" : "오픈 API 연결") {
+                        Button(TossKeys.on ? String(localized: "연결했어요") : String(localized: "오픈 API 연결")) {
                             if TossKeys.on { withAnimation { m.nxStep += 1 } } else { m.tab = .settings; m.settingsPath = [.toss] }
                         }
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
@@ -700,7 +700,7 @@ struct AppStartView: View {
                 HStack(spacing: 12) {
                     CharPixel(id: "me", width: 30, height: 42).charIdle(5)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(m.me == nil ? "내 캐릭터 만들어 보기" : "내 캐릭터 고치기").appFont(15, .bold)
+                        Text(m.me == nil ? String(localized: "내 캐릭터 만들어 보기") : String(localized: "내 캐릭터 고치기")).appFont(15, .bold)
                         Text("쉼터 '본인' 칸 · 홈·위젯에 나옴").appFont(12).foregroundStyle(Theme.sub)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -718,7 +718,7 @@ struct AppStartView: View {
                     Text("특별 선물").appFont(13, .bold).foregroundStyle(Theme.yellow)
                     Text("나머지 위젯 모두 열림").appFont(17, .bold)
                     FlowRow(spacing: 6) {
-                        ForEach(["비중", "배당 달력", "환율", "본전 진행 (큰)"], id: \.self) {
+                        ForEach([String(localized: "비중"), String(localized: "배당 달력"), String(localized: "환율"), String(localized: "본전 진행 (큰)")], id: \.self) {
                             Text($0).appFont(12, .semibold).padding(.horizontal, 10).padding(.vertical, 4)
                                 .background(Theme.slate, in: Capsule())
                         }
@@ -726,7 +726,7 @@ struct AppStartView: View {
                 }
                 .foregroundStyle(.white).padding(16).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 18))
-                PrimaryButton(title: m.playOn ? "미션 판으로" : "인터미션 시작") { m.finishAppStart() }
+                PrimaryButton(title: m.playOn ? String(localized: "미션 판으로") : String(localized: "인터미션 시작")) { m.finishAppStart() }
             } else {
                 BoardButtons(next: nil, to: nil)
             }

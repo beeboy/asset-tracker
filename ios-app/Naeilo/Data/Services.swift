@@ -16,7 +16,7 @@ protocol PriceProvider {
 enum Period: String, CaseIterable, Hashable {
     case d1, w1, m1, m3, m6, y1, y3
     var label: String {
-        switch self { case .d1: "1일"; case .w1: "1주"; case .m1: "1개월"; case .m3: "3개월"; case .m6: "6개월"; case .y1: "1년"; case .y3: "3년" }
+        switch self { case .d1: String(localized: "1일"); case .w1: String(localized: "1주"); case .m1: String(localized: "1개월"); case .m3: String(localized: "3개월"); case .m6: String(localized: "6개월"); case .y1: String(localized: "1년"); case .y3: String(localized: "3년") }
     }
     /// 3년(1095일)에 대한 비율
     var span: Double {

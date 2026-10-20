@@ -3,7 +3,7 @@ import SwiftUI
 // 미션 위젯 공유 (확정 시안): 인물 위젯 8개 중 하나와 위젯 모양(라이트·다크·투명·틴트)을 골라 이미지로 보낸다.
 // 기본은 꽃밭, 모양은 아이폰 라이트/다크 설정, 금액은 숨김. 종목 이름은 위젯에 원래 없다.
 struct ShareCardButton: View {
-    var title = "미션 위젯 공유"
+    var title = String(localized: "미션 위젯 공유")
     var plain = false   // 흰 바탕 · 회색 테두리 (미션 탭 보조 버튼)
     @State private var show = false
     var body: some View {
@@ -23,16 +23,16 @@ struct ShareCardSheet: View {
     /// 위젯 8개: 고르기 칸 이름·아이콘, 인물 한마디
     private struct W { let name: String; let icon: String; let say: String }
     private static let list: [W] = [
-        W(name: "언덕", icon: "chart.line.uptrend.xyaxis", say: "언덕이 조금 높아졌네."),
-        W(name: "사다리", icon: "stairs", say: "한 칸 더 올라왔어."),
-        W(name: "블록 탑", icon: "square.stack.3d.up", say: "한 층씩 쌓고 있어."),
-        W(name: "전광판", icon: "tv", say: "오늘도 불 켜졌어."),
-        W(name: "키 재기", icon: "ruler", say: "어제보다 조금 컸네."),
-        W(name: "퍼즐", icon: "puzzlepiece", say: "조각 하나 더 맞췄어."),
-        W(name: "꽃밭", icon: "camera.macro", say: "다 피면 다음 밭이야."),
-        W(name: "줄다리기", icon: "arrow.left.and.right", say: "오늘은 우리 편이 당겼어."),
+        W(name: String(localized: "언덕"), icon: "chart.line.uptrend.xyaxis", say: String(localized: "언덕이 조금 높아졌네.")),
+        W(name: String(localized: "사다리"), icon: "stairs", say: String(localized: "한 칸 더 올라왔어.")),
+        W(name: String(localized: "블록 탑"), icon: "square.stack.3d.up", say: String(localized: "한 층씩 쌓고 있어.")),
+        W(name: String(localized: "전광판"), icon: "tv", say: String(localized: "오늘도 불 켜졌어.")),
+        W(name: String(localized: "키 재기"), icon: "ruler", say: String(localized: "어제보다 조금 컸네.")),
+        W(name: String(localized: "퍼즐"), icon: "puzzlepiece", say: String(localized: "조각 하나 더 맞췄어.")),
+        W(name: String(localized: "꽃밭"), icon: "camera.macro", say: String(localized: "다 피면 다음 밭이야.")),
+        W(name: String(localized: "줄다리기"), icon: "arrow.left.and.right", say: String(localized: "오늘은 우리 편이 당겼어.")),
     ]
-    private static let modes = ["라이트", "다크", "투명", "틴트"]
+    private static let modes = [String(localized: "라이트"), String(localized: "다크"), String(localized: "투명"), String(localized: "틴트")]
 
     @State private var picked = 6          // 기본 꽃밭
     @State private var mode: Int?          // nil: 아이폰 설정 따라감
@@ -83,7 +83,7 @@ struct ShareCardSheet: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
                         .onChange(of: myMsg) { if myMsg.count > 40 { myMsg = String(myMsg.prefix(40)) } }
 
-                    ChipRow(items: [("hide", "금액 숨기기"), ("show", "금액 보이기")], selection: $showAmount, fill: true)
+                    ChipRow(items: [("hide", String(localized: "금액 숨기기")), ("show", String(localized: "금액 보이기"))], selection: $showAmount, fill: true)
                     Button { shareURL = rendered } label: {
                             Label("이미지로 저장 · 공유", systemImage: "square.and.arrow.up").appFont(16, .bold)
                                 .frame(maxWidth: .infinity, minHeight: 50).foregroundStyle(.white)

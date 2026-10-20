@@ -24,7 +24,7 @@ struct ScenarioChart: View {
     static func axis(_ v: Double) -> String {
         if v <= 0 { return "0" }
         let e = v / 1e8
-        return e == e.rounded() ? "\(Int(e))억" : String(format: "%.1f억", e)
+        return e == e.rounded() ? String(localized: "\(String(describing: Int(e)))억") : String(format: String(localized: "%.1f억"), e)
     }
 
     /// 지금 점 자리 (박동 원을 그래프 위에 따로 얹는 데 쓴다). body 의 x·y 와 같은 셈

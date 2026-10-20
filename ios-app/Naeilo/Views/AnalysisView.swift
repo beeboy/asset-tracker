@@ -29,22 +29,22 @@ struct AnalysisPager: View {
 
     private func title(_ r: AnalysisRoute) -> String {
         switch r {
-        case .calm: return "내 투자 습관"
-        case .myPath: return "내 길"
+        case .calm: return String(localized: "내 투자 습관")
+        case .myPath: return String(localized: "내 길")
         case .forecast: return m.forecastTitle
-        case .rateScen: return "금리 충격 테스트"
-        case .external: return "외부 요인"
-        case .dividend: return "배당·세금"
-        case .fx: return "환율 영향"
-        case .glance: return "종목 한눈에"
+        case .rateScen: return String(localized: "금리 충격 테스트")
+        case .external: return String(localized: "외부 요인")
+        case .dividend: return String(localized: "배당·세금")
+        case .fx: return String(localized: "환율 영향")
+        case .glance: return String(localized: "종목 한눈에")
         }
     }
 
     @ViewBuilder private func page(_ r: AnalysisRoute) -> some View {
         switch r {
         // 7일 무료 뒤 구독하지 않으면 목표(내 길)·확률 전망만 잠근다 (Support.pro)
-        case .forecast: if Support.shared.pro { ForecastView() } else { SubLocked(what: "확률 전망") }
-        case .myPath: if Support.shared.pro { MyPathView() } else { SubLocked(what: "내 길(목표까지 확률)") }
+        case .forecast: if Support.shared.pro { ForecastView() } else { SubLocked(what: String(localized: "확률 전망")) }
+        case .myPath: if Support.shared.pro { MyPathView() } else { SubLocked(what: String(localized: "내 길(목표까지 확률)")) }
         case .rateScen: RateScenarioView()
         case .external: ExternalView()
         case .dividend: DividendView()
@@ -97,9 +97,9 @@ struct AnalysisView: View {
 
     /// 확률을 빈도로: 3번 중 1번처럼
     static func freq(_ p: Double) -> String {
-        for (a, b) in [(1, 2), (1, 3), (2, 3), (1, 4), (3, 4)] where abs(p - Double(a) / Double(b)) < 0.03 { return "\(b)번 중 \(a)번" }
+        for (a, b) in [(1, 2), (1, 3), (2, 3), (1, 4), (3, 4)] where abs(p - Double(a) / Double(b)) < 0.03 { return String(localized: "\(String(describing: b))번 중 \(String(describing: a))번") }
         let n = Int((p * 10).rounded())
-        return n <= 0 ? "10번 중 1번 미만" : n >= 10 ? "10번 중 거의 10번" : "10번 중 \(n)번"
+        return n <= 0 ? String(localized: "10번 중 1번 미만") : n >= 10 ? String(localized: "10번 중 거의 10번") : String(localized: "10번 중 \(String(describing: n))번")
     }
 
     private func name(_ r: AppModel.Row) -> String { r.sym.name.isEmpty ? r.id : r.sym.name }
@@ -107,7 +107,7 @@ struct AnalysisView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                AppHeader(tab: "분석").padding(.horizontal, -16)
+                AppHeader(tab: String(localized: "분석")).padding(.horizontal, -16)
                 SampleNote()
                 habitBand
                 summary.padding(.top, 6)
@@ -137,7 +137,7 @@ struct AnalysisView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("투자 습관").appFont(14, .bold).foregroundStyle(Theme.mint)
                     Spacer()
-                    Text(done ? "지수 \(s.index)" : "\(s.n)/\(Calm.minEvents)").appFont(13).foregroundStyle(Color(hex: 0xC3C8D0))
+                    Text(done ? String(localized: "지수 \(String(describing: s.index))") : "\(s.n)/\(Calm.minEvents)").appFont(13).foregroundStyle(Color(hex: 0xC3C8D0))
                 }
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
@@ -152,14 +152,14 @@ struct AnalysisView: View {
         .background(Theme.night, in: RoundedRectangle(cornerRadius: 16))
         .modifier(OpenOnTap(route: .calm))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(done ? "내 투자 습관, 지수 \(s.index)" : "내 투자 습관, 기록 \(s.n) / \(Calm.minEvents)")
+        .accessibilityLabel(done ? String(localized: "내 투자 습관, 지수 \(String(describing: s.index))") : String(localized: "내 투자 습관, 기록 \(String(describing: s.n)) / \(String(describing: Calm.minEvents))"))
         .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
     }
 
     // MARK: 결론 카드
     private var summary: some View {
         let K = m.keyValue, now = m.trackValue, r = K > 0 ? now / K : 0, pct = Int((r * 100).rounded())
-        let head = r >= 1 ? "\(m.keyName) 도달" : (45...55).contains(pct) ? "\(m.keyName)까지 절반" : "\(m.keyName)까지 \(pct)%"
+        let head = r >= 1 ? String(localized: "\(String(describing: m.keyName)) 도달") : (45...55).contains(pct) ? String(localized: "\(String(describing: m.keyName))까지 절반") : String(localized: "\(String(describing: m.keyName))까지 \(String(describing: pct))%")
         let end = ForecastView.ym(m.forecastHorizon).short
         return VStack(spacing: 14) {
             Text(head).appFont(24, .bold).foregroundStyle(.white).roll(head)
@@ -215,43 +215,43 @@ struct AnalysisView: View {
         // 내 길: 목표일에 목표 이상일 확률을 빈도로 (7일 무료 뒤 구독하지 않으면 잠금)
         let pro = Support.shared.pro
         if !pro {
-            out.append(Line(icon: "lock.fill", tone: .info, label: "내 길", value: "구독 시 열림", route: .myPath))
+            out.append(Line(icon: "lock.fill", tone: .info, label: String(localized: "내 길"), value: String(localized: "구독 시 열림"), route: .myPath))
         } else if m.isGoal {
-            out.append(Line(icon: "flag", tone: .good, label: "내 길", value: fc.exact ? Self.freq(fc.pGoal) : "계산 중", valueTone: .good, route: .myPath))
+            out.append(Line(icon: "flag", tone: .good, label: String(localized: "내 길"), value: fc.exact ? Self.freq(fc.pGoal) : String(localized: "계산 중"), valueTone: .good, route: .myPath))
         } else {
             let gap = m.myPathGapToday
-            out.append(Line(icon: "flag", tone: .good, label: "내 길", value: String(format: "%.1f%% ", abs(gap) * 100) + (gap >= 0 ? "앞섬" : "뒤처짐"), valueTone: gap >= 0 ? .good : .warn, route: .myPath))
+            out.append(Line(icon: "flag", tone: .good, label: String(localized: "내 길"), value: String(format: "%.1f%% ", abs(gap) * 100) + (gap >= 0 ? String(localized: "앞섬") : String(localized: "뒤처짐")), valueTone: gap >= 0 ? .good : .warn, route: .myPath))
         }
         // 전망: 상세 첫 카드처럼 경로 값에 현금을 더한다
         let med = (fc.q50.last ?? 0) + (fc.exact ? m.cashKrw : 0)
-        out.append(Line(icon: pro ? "calendar" : "lock.fill", tone: pro ? .good : .info, label: m.isGoal ? "\(ForecastView.ym(m.forecastHorizon).short) 전망" : "3년 뒤 전망",
-                        value: pro ? AppModel.eok(med) : "구독 시 열림", route: .forecast))
+        out.append(Line(icon: pro ? "calendar" : "lock.fill", tone: pro ? .good : .info, label: m.isGoal ? String(localized: "\(String(describing: ForecastView.ym(m.forecastHorizon).short)) 전망") : String(localized: "3년 뒤 전망"),
+                        value: pro ? AppModel.eok(med) : String(localized: "구독 시 열림"), route: .forecast))
         // 금리 충격: 기본 프리셋("작년만큼 또 오른다")의 도착 시점 변화
         let t = RateScenarioView.hubTiming(m)
         let late = t?.hasSuffix("늦게") == true, early = t?.hasSuffix("빨리") == true
-        out.append(Line(icon: "chart.line.uptrend.xyaxis", tone: .warn, label: "금리 오르면",
-                        value: t.map { $0.replacingOccurrences(of: "약 ", with: "") } ?? (MacroData.shared.failed ? "자료 없음" : "계산 중"),
+        out.append(Line(icon: "chart.line.uptrend.xyaxis", tone: .warn, label: String(localized: "금리 오르면"),
+                        value: t.map { $0.replacingOccurrences(of: "약 ", with: "") } ?? (MacroData.shared.failed ? String(localized: "자료 없음") : String(localized: "계산 중")),
                         valueTone: late ? .warn : early ? .good : .info, route: .rateScen))
         // 외부 요인: 가장 가까운 발표 일정 (없으면 시장 −10% 일 때)
         if let e = ExternalView.hubNext(m) {
             let n = Day.dday(e.day)
-            out.append(Line(icon: "building.columns", tone: .info, label: e.kind.replacingOccurrences(of: " 결정", with: "") + " " + (n == 0 ? "오늘" : "D-\(n)"), value: "±" + AppModel.man(e.amt), route: .external))
+            out.append(Line(icon: "building.columns", tone: .info, label: e.kind.replacingOccurrences(of: " 결정", with: "") + " " + (n == 0 ? String(localized: "오늘") : "D-\(n)"), value: "±" + AppModel.man(e.amt), route: .external))
         } else {
             let mkt10 = m.rows.reduce(0.0) { a, r in a + r.value * (ExternalView.mktBeta(r.id).map { SiteCalc.factorMove("mkt", beta: $0, shock: -10) } ?? 0) }
-            out.append(Line(icon: "building.columns", tone: .info, label: "시장 −10%면", value: AppModel.man(mkt10), valueTone: .warn, route: .external))
+            out.append(Line(icon: "building.columns", tone: .info, label: String(localized: "시장 −10%면"), value: AppModel.man(mkt10), valueTone: .warn, route: .external))
         }
         // 환율: 상세 첫 문장과 같은 per10 = 달러 평가액 × 10 / 기준 환율
         let usdV = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value }
-        out.append(Line(icon: "arrow.left.arrow.right", tone: .info, label: "환율 +10원",
-                        value: usdV > 0 ? "+" + AppModel.man(usdV * 10 / max(1, Market.shared.valFx)) : "그대로", route: .fx))
+        out.append(Line(icon: "arrow.left.arrow.right", tone: .info, label: String(localized: "환율 +10원"),
+                        value: usdV > 0 ? "+" + AppModel.man(usdV * 10 / max(1, Market.shared.valFx)) : String(localized: "그대로"), route: .fx))
         // 종목 한눈에: 비중 1위
         let top = m.rows.max { $0.value < $1.value }
-        out.append(Line(icon: "chart.pie", tone: .info, label: "종목 한눈에", value: top.map { "\(name($0)) \(AppModel.pct($0.value / tot))" } ?? "종목 없음",
+        out.append(Line(icon: "chart.pie", tone: .info, label: String(localized: "종목 한눈에"), value: top.map { "\(name($0)) \(AppModel.pct($0.value / tot))" } ?? String(localized: "종목 없음"),
                         donut: top.map { $0.value / tot }, route: .glance))
         // 배당·세금: 두 줄로 따로, 한 숫자로 합치지 않는다
         let mo = DividendView.hubMonthly(m), tax = DividendView.hubTax(m)
-        out.append(Line(icon: "arrow.down.to.line", tone: .good, label: "배당 · 월", value: mo > 0 ? "+" + AppModel.wonRead(mo) : "없음", valueTone: mo > 0 ? .good : .info, route: .dividend))
-        out.append(Line(icon: "arrow.up.to.line", tone: .warn, label: "세금 · 내년 5월", value: tax > 0 ? "−" + AppModel.man(tax) : "없음", valueTone: tax > 0 ? .warn : .info, route: .dividend))
+        out.append(Line(icon: "arrow.down.to.line", tone: .good, label: String(localized: "배당 · 월"), value: mo > 0 ? "+" + AppModel.wonRead(mo) : String(localized: "없음"), valueTone: mo > 0 ? .good : .info, route: .dividend))
+        out.append(Line(icon: "arrow.up.to.line", tone: .warn, label: String(localized: "세금 · 내년 5월"), value: tax > 0 ? "−" + AppModel.man(tax) : String(localized: "없음"), valueTone: tax > 0 ? .warn : .info, route: .dividend))
         return out
     }
 }
@@ -305,8 +305,8 @@ struct ForecastView: View {
         let others: [(label: String, med: [Double])] = Self.others(fs, sel: sel, add: add)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                DetailHead(title: m.forecastTitle, sub: f.exact ? "" : "계산 중 (어림값)")
-                Text(m.isGoal ? "\(end.short) 내 자산은?" : "3년 뒤 내 자산은?")
+                DetailHead(title: m.forecastTitle, sub: f.exact ? "" : String(localized: "계산 중 (어림값)"))
+                Text(m.isGoal ? String(localized: "\(String(describing: end.short)) 내 자산은?") : String(localized: "3년 뒤 내 자산은?"))
                     .appFont(20, .bold).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
 
                 Card {
@@ -322,7 +322,7 @@ struct ForecastView: View {
                         Text("10번 중 9번 \(Self.amt(lo)) ~ \(Self.amt(hi))").appFont(13).foregroundStyle(Theme.sub)
                     }
                     ScenarioChart(sel: f, selShift: add(f), selLabel: Self.short(sel), others: others,
-                                  goal: m.keyValue, goalLabel: m.keyName, endLabel: m.isGoal ? end.short : "3년 뒤")
+                                  goal: m.keyValue, goalLabel: m.keyName, endLabel: m.isGoal ? end.short : String(localized: "3년 뒤"))
                         .frame(height: 190)
                     legend
                     if f.mu > 0.30 {
@@ -389,8 +389,8 @@ struct ForecastView: View {
 
     private var legend: some View {
         HStack(spacing: 12) {
-            sw(Theme.teal.opacity(0.35), "10번 중 5번")
-            sw(Theme.teal.opacity(0.14), "10번 중 9번")
+            sw(Theme.teal.opacity(0.35), String(localized: "10번 중 5번"))
+            sw(Theme.teal.opacity(0.14), String(localized: "10번 중 9번"))
             HStack(spacing: 4) {
                 Path { $0.move(to: .init(x: 0, y: 5)); $0.addLine(to: .init(x: 14, y: 5)) }
                     .stroke(Theme.muted, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])).frame(width: 14, height: 10)
@@ -405,12 +405,12 @@ struct ForecastView: View {
 
     // MARK: 세 가지 미래 한눈에
     private func table(_ fs: [Lens: AppModel.Forecast], now: Double, add: @escaping (AppModel.Forecast) -> Double) -> some View {
-        let lineName = m.isGoal ? Self.amt(m.keyValue) : "본전"
+        let lineName = m.isGoal ? Self.amt(m.keyValue) : String(localized: "본전")
         let bads = Lens.allCases.map { l in fs[l].map { ($0.q5.last ?? 0) + add($0) } ?? now }
         let below = bads.filter { $0 < now }.count
-        let msg = below == bads.count ? "운 나쁘면 지금(\(Self.amt(now)))보다 줄 수도"
-            : below > 0 ? "신중하게 보면 지금(\(Self.amt(now)))보다 줄 수도"
-            : "운 나빠도 지금(\(Self.amt(now)))보다 많을 가능성 큼"
+        let msg = below == bads.count ? String(localized: "운 나쁘면 지금(\(String(describing: Self.amt(now))))보다 줄 수도")
+            : below > 0 ? String(localized: "신중하게 보면 지금(\(String(describing: Self.amt(now))))보다 줄 수도")
+            : String(localized: "운 나빠도 지금(\(String(describing: Self.amt(now))))보다 많을 가능성 큼")
         return Card {
             Text("세 가지 미래").appFont(15, .bold)
             HStack {
@@ -460,7 +460,7 @@ struct ForecastView: View {
 
     // MARK: 자세히 보기 (기본 접힘)
     private func details(_ f: AppModel.Forecast) -> some View {
-        let what = m.isGoal ? Self.amt(m.keyValue) : "본전"
+        let what = m.isGoal ? Self.amt(m.keyValue) : String(localized: "본전")
         return VStack(alignment: .leading, spacing: 10) {
             Button { withAnimation { open.toggle() } } label: {
                 HStack {
@@ -506,15 +506,15 @@ struct ForecastView: View {
     /// 3.30억 · 11.5억 · 826만 (목업 표기)
     static func amt(_ v: Double) -> String {
         let a = abs(v), s = v < 0 ? "−" : ""
-        if a >= 1e9 { return s + String(format: "%.1f억", a / 1e8) }
-        if a >= 1e8 { return s + String(format: "%.2f억", a / 1e8) }
-        return s + Int((a / 1e4).rounded()).formatted() + "만"
+        if a >= 1e9 { return s + String(format: String(localized: "%.1f억"), a / 1e8) }
+        if a >= 1e8 { return s + String(format: String(localized: "%.2f억"), a / 1e8) }
+        return s + Int((a / 1e4).rounded()).formatted() + String(localized: "만")
     }
-    static func short(_ l: Lens) -> String { l == .base ? "신중" : l == .smooth ? "3년처럼" : "내 설정" }
+    static func short(_ l: Lens) -> String { l == .base ? String(localized: "신중") : l == .smooth ? String(localized: "3년처럼") : String(localized: "내 설정") }
     /// "2029-10-14" → ("2029년 10월", "2029.10")
     static func ym(_ d: String) -> (long: String, short: String) {
         let p = d.split(separator: "-")
         guard p.count >= 2, let y = Int(p[0]), let mo = Int(p[1]) else { return (d, d) }
-        return ("\(y)년 \(mo)월", String(format: "%d.%02d", y, mo))
+        return (String(localized: "\(String(describing: y))년 \(String(describing: mo))월"), String(format: "%d.%02d", y, mo))
     }
 }

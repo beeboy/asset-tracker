@@ -21,7 +21,7 @@ struct HoldingsView: View {
         let kr = m.sortedRows.filter { $0.sym.currency != .usd }
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                AppHeader(tab: "종목").padding(.horizontal, -16)
+                AppHeader(tab: String(localized: "종목")).padding(.horizontal, -16)
                 SampleNote()
                 HoldPagePicker(page: $page)
                 if page == 1 { HoldingsNews() } else {
@@ -46,8 +46,8 @@ struct HoldingsView: View {
                     }
                     .accessibilityLabel("정렬: \(m.holdSort.label)")
                 }
-                if !us.isEmpty { group("미국", us) }
-                if !kr.isEmpty { group("국내", kr) }
+                if !us.isEmpty { group(String(localized: "미국"), us) }
+                if !kr.isEmpty { group(String(localized: "국내"), kr) }
                 NavigationLink(value: "add") {
                     Label("종목 추가", systemImage: "plus").appFont(15, .bold)
                         .frame(maxWidth: .infinity, minHeight: 48)
@@ -97,7 +97,7 @@ struct HoldingsView: View {
             }
             Text("원금 \(AppModel.man(m.cost)) → 평가 \(AppModel.man(m.total))")
                 .appFont(14).monospacedDigit().foregroundStyle(Theme.sub)
-            Text("\(us + kr)종목" + (us > 0 ? " · $1 = \(Int(Market.shared.valFx.rounded()).formatted())원" : ""))
+            Text(String(localized: "\(String(describing: us + kr))종목") + (us > 0 ? String(localized: " · $1 = \(String(describing: Int(Market.shared.valFx.rounded()).formatted()))원") : ""))
                 .appFont(12).foregroundStyle(Theme.muted)
         }
     }
@@ -120,9 +120,9 @@ struct HoldingsView: View {
             }
             // 점선 = 시작 금액
             Sparkline(points: tot, avg: first, lineWidth: 2.2, showEndDot: true,
-                      scrub: .period(period) { AppModel.man($0) + "원" }).frame(height: 120)
+                      scrub: .period(period) { AppModel.man($0) + String(localized: "원") }).frame(height: 120)
             HStack {
-                Text(period.span < 1 ? "\(Calendar.current.component(.month, from: start))월" : "\(Calendar.current.component(.year, from: start).formatted(.number.grouping(.never))).\(Calendar.current.component(.month, from: start))")
+                Text(period.span < 1 ? String(localized: "\(String(describing: Calendar.current.component(.month, from: start)))월") : "\(Calendar.current.component(.year, from: start).formatted(.number.grouping(.never))).\(Calendar.current.component(.month, from: start))")
                 Spacer()
                 Text("오늘")
             }
@@ -142,7 +142,7 @@ struct HoldingsView: View {
         HStack(spacing: 0) {
             ForEach([true, false], id: \.self) { u in
                 Button { inUsd = u } label: {
-                    Text(u ? "$" : "원").appFont(13, .bold)
+                    Text(u ? "$" : String(localized: "원")).appFont(13, .bold)
                         .foregroundStyle(inUsd == u ? .white : Theme.sub)
                         .frame(width: 32, height: 28)
                         .background(inUsd == u ? Theme.teal : .clear, in: Capsule())
@@ -151,7 +151,7 @@ struct HoldingsView: View {
         }
         .padding(2).overlay(Capsule().stroke(Theme.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("금액 단위: \(inUsd ? "달러" : "원")")
+        .accessibilityLabel("금액 단위: \(inUsd ? String(localized: "달러") : String(localized: "원"))")
         .accessibilityAction { inUsd.toggle() }
     }
 
@@ -293,7 +293,7 @@ struct HoldingDetailView: View {
                     HStack {
                         Text("주가").appFont(15, .bold)
                         Spacer()
-                        Text("\(period == .d1 ? "오늘" : period.label) \(AppModel.sgn(chg))")
+                        Text("\(period == .d1 ? String(localized: "오늘") : period.label) \(AppModel.sgn(chg))")
                             .appFont(13, .bold).foregroundStyle(Theme.change(chg))
                     }
                     if period != .d1 && !m.prices.hasHistory(sym) {
@@ -301,21 +301,21 @@ struct HoldingDetailView: View {
                             .frame(maxWidth: .infinity, minHeight: 140)
                     } else {
                         Sparkline(points: pts, avg: h.qty > 0 ? h.avg : nil, lineWidth: 2.2, showEndDot: true,
-                                  avgLabel: h.qty > 0 ? "평균 단가 \(AppModel.price(sym, h.avg))" : nil, avgAlways: true,
+                                  avgLabel: h.qty > 0 ? String(localized: "평균 단가 \(String(describing: AppModel.price(sym, h.avg)))") : nil, avgAlways: true,
                                   scrub: .period(period) { AppModel.price(sym, $0) }).frame(height: 140)
                     }
                     ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true)
                 }
                 Card(padding: 0) {
                     VStack(spacing: 0) {
-                        kv("보유 수량", h.qty.formatted() + "주")
-                        kv("평균 단가", AppModel.price(sym, h.avg))
-                        kv(Market.shared.isToss(sym) ? "오픈 API 시세" : Market.shared.isAlpaca(sym) ? "Alpaca(IEX) 시세" : Market.shared.isLongbridge(sym) ? "Longbridge 시세" : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? "전일 종가 (테스트)" : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? "추정 가격" : "넣은 가격") : sym.quote.live ? "지금 가격" : "전일 종가", AppModel.price(sym, sym.last))
-                        if sym.quote.live { kv("오늘 등락", AppModel.sgn(sym.quote.change)) }
-                        if sym.currency == .usd { kv("환율", "1달러 " + Int(Market.shared.valFx.rounded()).formatted() + "원") }
-                        kv(need > 0.0005 ? "본전까지" : "본전 대비", need > 0.0005 ? "주가가 " + String(format: "%.1f", need * 100) + "% 오르면 본전"
-                           : need > -0.0005 ? "본전과 같아요" : "본전보다 " + String(format: "%.1f", -need * 100) + "% 위")
-                        kv("비중", k.map { AppModel.pct($0.w) } ?? "-", last: true)
+                        kv(String(localized: "보유 수량"), h.qty.formatted() + String(localized: "주"))
+                        kv(String(localized: "평균 단가"), AppModel.price(sym, h.avg))
+                        kv(Market.shared.isToss(sym) ? String(localized: "오픈 API 시세") : Market.shared.isAlpaca(sym) ? String(localized: "Alpaca(IEX) 시세") : Market.shared.isLongbridge(sym) ? String(localized: "Longbridge 시세") : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? String(localized: "전일 종가 (테스트)") : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? String(localized: "추정 가격") : String(localized: "넣은 가격")) : sym.quote.live ? String(localized: "지금 가격") : String(localized: "전일 종가"), AppModel.price(sym, sym.last))
+                        if sym.quote.live { kv(String(localized: "오늘 등락"), AppModel.sgn(sym.quote.change)) }
+                        if sym.currency == .usd { kv(String(localized: "환율"), String(localized: "1달러 ") + Int(Market.shared.valFx.rounded()).formatted() + String(localized: "원")) }
+                        kv(need > 0.0005 ? String(localized: "본전까지") : String(localized: "본전 대비"), need > 0.0005 ? String(localized: "주가가 ") + String(format: "%.1f", need * 100) + String(localized: "% 오르면 본전")
+                           : need > -0.0005 ? String(localized: "본전과 같아요") : String(localized: "본전보다 ") + String(format: "%.1f", -need * 100) + String(localized: "% 위"))
+                        kv(String(localized: "비중"), k.map { AppModel.pct($0.w) } ?? "-", last: true)
                     }
                 }
                 if sym.currency == .krw, let c = CustomSymbols.shared.saved(sym.id), !CustomSymbols.shared.isLive(sym.id) { KRPriceCard(saved: c) }
@@ -340,9 +340,9 @@ struct HoldingDetailView: View {
 
     /// 평가액 아래 한 줄: 원화로 얼마 벌었/잃었는지 + 1년 고점 대비 (환율은 지금 기준)
     private func summary(gain: Double, r: Double, k: AppModel.HoldMetrics?) -> String {
-        let g = abs(r) < 0.0005 ? "산 가격과 같아요" : "산 가격보다 \(AppModel.won(gain)) \(gain >= 0 ? "벌었어요" : "줄었어요")"
+        let g = abs(r) < 0.0005 ? String(localized: "산 가격과 같아요") : String(localized: "산 가격보다 \(String(describing: AppModel.won(gain))) \(String(describing: gain >= 0 ? String(localized: "벌었어요") : String(localized: "줄었어요")))")
         guard let k, m.prices.hasHistory(sym) else { return g }
-        return g + " · 1년 고점보다 " + String(format: "%.0f", abs(k.dd) * 100) + "% " + (k.dd > -0.005 ? "가까이" : "아래")
+        return g + String(localized: " · 1년 고점보다 ") + String(format: "%.0f", abs(k.dd) * 100) + "% " + (k.dd > -0.005 ? String(localized: "가까이") : String(localized: "아래"))
     }
 
     private func kv(_ k: String, _ v: String, last: Bool = false) -> some View {
@@ -357,7 +357,7 @@ struct HoldingDetailView: View {
     private var noProfile: some View {
         Card {
             Text("이 종목은").appFont(15, .bold)
-            Text(sym.currency == .krw ? "한국 시장 \(sym.sector.isEmpty ? "종목" : sym.sector + " 종목")이에요." : "\(sym.market) \(sym.sector.isEmpty ? "종목" : sym.sector + " 종목")이에요.")
+            Text(sym.currency == .krw ? String(localized: "한국 시장 \(String(describing: sym.sector.isEmpty ? String(localized: "종목") : sym.sector + String(localized: " 종목")))이에요.") : String(localized: "\(String(describing: sym.market)) \(String(describing: sym.sector.isEmpty ? String(localized: "종목") : sym.sector + String(localized: " 종목")))이에요."))
                 .appFont(14)
         }
     }
@@ -365,7 +365,7 @@ struct HoldingDetailView: View {
     private func profile(_ p: Profile) -> some View {
         Card {
             HStack {
-                Text(p.etf ? "이 ETF는" : "이 회사는").appFont(15, .bold)
+                Text(p.etf ? String(localized: "이 ETF는") : String(localized: "이 회사는")).appFont(15, .bold)
                 Spacer()
                 if p.virtual {
                     Text("가상 종목").appFont(11, .bold).foregroundStyle(Color(hex: 0x5A3E00, dark: 0xF0D28A))
@@ -374,18 +374,18 @@ struct HoldingDetailView: View {
             }
             Text(p.what).appFont(14).lineSpacing(3)
             VStack(alignment: .leading, spacing: 2) {
-                Text(p.etf ? "따라가는 지수" : "비전").appFont(12, .bold).foregroundStyle(Theme.teal)
+                Text(p.etf ? String(localized: "따라가는 지수") : String(localized: "비전")).appFont(12, .bold).foregroundStyle(Theme.teal)
                 Text(p.vision).appFont(14, .semibold)
             }
             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
-            let rows: [(String, String)] = [p.ceo, (p.hqKey ?? (p.etf ? "시장" : "본사"), p.hq), (p.etf ? "상장" : "설립", p.since)] + (p.extra.map { [$0] } ?? [])
+            let rows: [(String, String)] = [p.ceo, (p.hqKey ?? (p.etf ? String(localized: "시장") : String(localized: "본사")), p.hq), (p.etf ? String(localized: "상장") : String(localized: "설립"), p.since)] + (p.extra.map { [$0] } ?? [])
             ForEach(rows, id: \.0) { k, v in
                 HStack(alignment: .top) { Text(k).foregroundStyle(Theme.sub).frame(width: 72, alignment: .leading); Text(v) }
                     .appFont(13)
             }
-            Text(p.virtual ? "드링커는 『중첩된 현실』 속 회사를 바탕으로 한 가상 종목이에요. 가격 흐름은 내 지난 자산 기록을 비율로 바꾼 값이고, 투자 권유가 아니에요."
-                 : "공개 정보 기준(2026년 10월)이에요. 종목 추천이 아니에요.")
+            Text(p.virtual ? String(localized: "드링커는 『중첩된 현실』 속 회사를 바탕으로 한 가상 종목이에요. 가격 흐름은 내 지난 자산 기록을 비율로 바꾼 값이고, 투자 권유가 아니에요.")
+                 : String(localized: "공개 정보 기준(2026년 10월)이에요. 종목 추천이 아니에요."))
                 .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
         }
     }
@@ -396,7 +396,7 @@ struct HoldingDetailView: View {
 /// 국내 주식 합계 (숨긴 선택 항목): 증권사 앱의 국내 주식 평가액 합계를 한 줄로. 0 이면 지운다 (웹 보유 종목 아래 칸과 같다)
 struct KoreaSumCard: View {
     @Environment(AppModel.self) private var m
-    var title = "국내 주식 합계"
+    var title = String(localized: "국내 주식 합계")
     var done: (() -> Void)? = nil
     @State private var t = ""
     @FocusState private var focus: Bool
@@ -406,10 +406,10 @@ struct KoreaSumCard: View {
         let ago = lastD.flatMap(Day.date).map { Int((Date().timeIntervalSince($0) / 86400).rounded(.down)) } ?? 0
         Card {
             Text(title).appFont(15, .bold)
-            Text("증권사 앱 합계 그대로 (0이면 지움)" + (held && ago > 0 ? " · \(ago)일 전 금액" : "") + " · 전망은 EWY×원/달러")
+            Text(String(localized: "증권사 앱 합계 그대로 (0이면 지움)") + (held && ago > 0 ? String(localized: " · \(String(describing: ago))일 전 금액") : "") + String(localized: " · 전망은 EWY×원/달러"))
                 .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                TextField(cur.map { Int($0.rounded()).formatted() + "원" } ?? "금액 (원)", text: $t).keyboardType(.decimalPad).focused($focus)
+                TextField(cur.map { Int($0.rounded()).formatted() + String(localized: "원") } ?? String(localized: "금액 (원)"), text: $t).keyboardType(.decimalPad).focused($focus)
                     .padding(.horizontal, 12).frame(minHeight: 44)
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
                 Button("저장") {
@@ -434,10 +434,10 @@ struct KRPriceCard: View {
     @FocusState private var focus: Bool
     var body: some View {
         Card {
-            Text(saved.id == KoreaEstimate.sumId ? "국내 주식 합계" : "한국 종목 가격").appFont(15, .bold)
+            Text(saved.id == KoreaEstimate.sumId ? String(localized: "국내 주식 합계") : String(localized: "한국 종목 가격")).appFont(15, .bold)
             Text(KoreaEstimate.note(saved)).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                TextField(saved.id == KoreaEstimate.sumId ? "합계 금액 (원)" : "지금 가격 (원)", text: $t).keyboardType(.decimalPad).focused($focus)
+                TextField(saved.id == KoreaEstimate.sumId ? String(localized: "합계 금액 (원)") : String(localized: "지금 가격 (원)"), text: $t).keyboardType(.decimalPad).focused($focus)
                     .padding(.horizontal, 12).frame(minHeight: 44)
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
                 Button("저장") {
@@ -574,7 +574,7 @@ struct AddHoldingView: View {
         catch {
             // 예시 종목은 시세를 못 받아도 예시 값으로 넣을 수 있다
             if let s = Sample.symbols.first(where: { $0.id == h.id }) { open(s); failed = nil }
-            else { failed = "\(h.name) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요." }
+            else { failed = String(localized: "\(String(describing: h.name)) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.") }
         }
     }
     private func open(_ s: Symbol) {
@@ -590,17 +590,17 @@ struct AddHoldingView: View {
             }
             if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
                 let pk = KoreaEstimate.info(id: p.id, name: p.name).proxy != nil
-                Text(pk ? "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 그 뒤로는 같은 미국 ETF × 원/달러 움직임으로 추정해요."
-                        : "한국 시세는 받지 않아요. 넣은 가격 그대로 계산하고, 움직임 예측은 한국 시장 평균(EWY × 원/달러)으로 해요.")
+                Text(pk ? String(localized: "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 그 뒤로는 같은 미국 ETF × 원/달러 움직임으로 추정해요.")
+                        : String(localized: "한국 시세는 받지 않아요. 넣은 가격 그대로 계산하고, 움직임 예측은 한국 시장 평균(EWY × 원/달러)으로 해요."))
                     .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                field("지금 가격 (원)", $kp).focused($focus, equals: 3)
+                field(String(localized: "지금 가격 (원)"), $kp).focused($focus, equals: 3)
             } else {
-                Text((p.quote.live ? "지금 " : "전일 종가 ") + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
+                Text((p.quote.live ? String(localized: "지금 ") : String(localized: "전일 종가 ")) + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
             }
-            field("수량 (주)", $qty).focused($focus, equals: 1)
-            field("평균 단가 (\(p.currency == .usd ? "달러" : "원, 비우면 지금 가격"))", $avg).focused($focus, equals: 2)
-            if warn { Text(p.currency == .krw ? "지금 가격과 수량을 0보다 큰 숫자로 넣어 주세요." : "수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
-            PrimaryButton(title: "추가하기") {
+            field(String(localized: "수량 (주)"), $qty).focused($focus, equals: 1)
+            field(String(localized: "평균 단가 (\(String(describing: p.currency == .usd ? String(localized: "달러") : String(localized: "원, 비우면 지금 가격"))))"), $avg).focused($focus, equals: 2)
+            if warn { Text(p.currency == .krw ? String(localized: "지금 가격과 수량을 0보다 큰 숫자로 넣어 주세요.") : String(localized: "수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.")).appFont(13).foregroundStyle(Theme.up) }
+            PrimaryButton(title: String(localized: "추가하기")) {
                 focus = nil
                 let fresh = !m.holdings.contains { $0.symbol == p.id }
                 if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
@@ -645,12 +645,12 @@ struct HoldingEditView: View {
         let r = HoldingEdit.compute(m, sym, mode, q, p, q0, p0)
         let (q1, p1, bad, note) = (r.q1, r.p1, r.bad, r.note)
         let v0 = m.krw(sym, q0 * px), v1 = m.krw(sym, (bad ? q0 : q1) * px)
-        let need = { (avg: Double) in avg / px - 1 > 0.0005 ? "+" + String(format: "%.1f", (avg / px - 1) * 100) + "% 남음" : "본전 넘음" }
+        let need = { (avg: Double) in avg / px - 1 > 0.0005 ? "+" + String(format: "%.1f", (avg / px - 1) * 100) + String(localized: "% 남음") : String(localized: "본전 넘음") }
         let rows: [(String, String, String)] = [
-            ("수량", "\(q0.formatted())주", "\((bad ? q0 : q1).formatted())주"),
-            ("평균 단가", AppModel.price(sym, p0), AppModel.price(sym, bad ? p0 : p1)),
-            ("평가액", AppModel.man(v0), AppModel.man(v1)),
-            ("본전까지", need(p0), need(bad ? p0 : p1)),
+            (String(localized: "수량"), String(localized: "\(String(describing: q0.formatted()))주"), String(localized: "\(String(describing: (bad ? q0 : q1).formatted()))주")),
+            (String(localized: "평균 단가"), AppModel.price(sym, p0), AppModel.price(sym, bad ? p0 : p1)),
+            (String(localized: "평가액"), AppModel.man(v0), AppModel.man(v1)),
+            (String(localized: "본전까지"), need(p0), need(bad ? p0 : p1)),
         ]
         PinnedLayout {
             VStack(alignment: .leading, spacing: 8) {
@@ -667,18 +667,18 @@ struct HoldingEditView: View {
                         Text(b).appFont(16, .bold).foregroundStyle(a == b ? Theme.ink : Theme.teal)
                     }
                 }
-                ChipRow(items: [("fix", "직접 고치기"), ("buy", "더 샀어요"), ("sell", "팔았어요")], selection: $mode, fill: true)
+                ChipRow(items: [("fix", String(localized: "직접 고치기")), ("buy", String(localized: "더 샀어요")), ("sell", String(localized: "팔았어요"))], selection: $mode, fill: true)
             }
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
-                field(mode == "fix" ? "수량 (주)" : mode == "buy" ? "더 산 수량 (주)" : "판 수량 (주)", $q)
-                field(mode == "fix" ? "평균 단가" : mode == "buy" ? "산 가격" : "판 가격", $p)
+                field(mode == "fix" ? String(localized: "수량 (주)") : mode == "buy" ? String(localized: "더 산 수량 (주)") : String(localized: "판 수량 (주)"), $q)
+                field(mode == "fix" ? String(localized: "평균 단가") : mode == "buy" ? String(localized: "산 가격") : String(localized: "판 가격"), $p)
                 if !note.isEmpty {
                     Text(note).appFont(13).padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 10))
                 }
-                PrimaryButton(title: "저장", color: bad ? Theme.muted : Theme.teal) {
+                PrimaryButton(title: String(localized: "저장"), color: bad ? Theme.muted : Theme.teal) {
                     guard !bad else { return }
                     if let s = HoldingEdit.commit(m, sym, mode, r, p0) { said = s } else { dismiss() }
                 }
@@ -712,7 +712,7 @@ struct HoldingEditView: View {
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label + (label.contains("주") ? "" : sym.currency == .usd ? " (달러)" : " (원)")).appFont(13, .semibold).foregroundStyle(Theme.sub)
+            Text(label + (label.contains("주") ? "" : sym.currency == .usd ? String(localized: " (달러)") : String(localized: " (원)"))).appFont(13, .semibold).foregroundStyle(Theme.sub)
             TextField("", text: b).keyboardType(.decimalPad).appFont(18, .semibold)
                 .padding(.horizontal, 12).frame(minHeight: 48)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
@@ -734,14 +734,14 @@ enum HoldingEdit {
             bad = !(qi >= 0 && pi > 0); if !bad { q1 = qi; p1 = pi }
         case "buy":
             bad = !(qi > 0 && pi > 0)
-            if !bad { q1 = q0 + qi; p1 = (q0 * p0 + qi * pi) / q1; note = "\(AppModel.price(sym, pi))에 \(qi.formatted())주 더 사서 평균 단가가 \(AppModel.price(sym, p1))가 돼요." }
+            if !bad { q1 = q0 + qi; p1 = (q0 * p0 + qi * pi) / q1; note = String(localized: "\(String(describing: AppModel.price(sym, pi)))에 \(String(describing: qi.formatted()))주 더 사서 평균 단가가 \(String(describing: AppModel.price(sym, p1)))가 돼요.") }
         default:
             bad = !(qi > 0 && qi <= q0 && pi > 0)
             if !bad {
                 q1 = q0 - qi
                 let g = m.krw(sym, qi * (pi - p0))
-                note = "판 부분의 \(g >= 0 ? "이익" : "손실")은 \(AppModel.man(abs(g)))이에요." + (sym.currency == .usd ? " 저장하면 올해 해외주식 실현 이익에 더해져 세금 계산에 반영돼요." : " 국내 상장주식은 대주주가 아니면 양도세가 없어요.")
-            } else if qi > q0 { note = "가진 수량(\(q0.formatted())주)보다 많이 팔 수는 없어요." }
+                note = String(localized: "판 부분의 \(String(describing: g >= 0 ? String(localized: "이익") : String(localized: "손실")))은 \(String(describing: AppModel.man(abs(g))))이에요.") + (sym.currency == .usd ? String(localized: " 저장하면 올해 해외주식 실현 이익에 더해져 세금 계산에 반영돼요.") : String(localized: " 국내 상장주식은 대주주가 아니면 양도세가 없어요."))
+            } else if qi > q0 { note = String(localized: "가진 수량(\(String(describing: q0.formatted()))주)보다 많이 팔 수는 없어요.") }
         }
         return Result(qi: qi, pi: pi, q1: q1, p1: p1, bad: bad, note: note)
     }
@@ -771,7 +771,7 @@ enum HoldingEdit {
         guard let before, let buy = buy ?? (qty == before.qty ? nil : qty > before.qty) else { return nil }
         let act = m.calmTrade(sym, buy: buy, avgBefore: before.avg, driftBefore: drift0)
         let pts = m.calm.events.last?.pts ?? 0, who = m.calmSpeaker
-        return "\(m.friendName(who)): \(Calm.feedback(m.voice(who), act))" + (pts != 0 ? " (\(pts > 0 ? "+" : "")\(pts)점)" : "")
+        return "\(m.friendName(who)): \(Calm.feedback(m.voice(who), act))" + (pts != 0 ? String(localized: " (\(String(describing: pts > 0 ? "+" : ""))\(String(describing: pts))점)") : "")
     }
 }
 
@@ -780,7 +780,7 @@ struct HoldPagePicker: View {
     @Binding var page: Int
     var body: some View {
         HStack(spacing: 4) {
-            ForEach([(0, "내 종목"), (1, "소식판")], id: \.0) { i, t in
+            ForEach([(0, String(localized: "내 종목")), (1, String(localized: "소식판"))], id: \.0) { i, t in
                 let on = page == i
                 Button { page = i } label: {   // 애니메이션 없이: 내 종목 화면이 커서 바꿀 때 버벅인다
                     Text(t).appFont(14, .bold).foregroundStyle(on ? Theme.ink : Theme.sub)
@@ -821,7 +821,7 @@ struct HoldingsNews: View {
         // 지금 비중으로 4주 전부터 가졌다면 (yr: 1년을 52주로 나눈 가격)
         let mine = ks.reduce(0.0) { a, k in let y = k.1.yr; return a + k.1.w / w * (y[52] / max(1e-9, y[48]) - 1) }
         let usd = m.rows.filter { $0.sym.currency == .usd }.reduce(0.0) { $0 + $1.value } / max(1, m.rows.reduce(0.0) { $0 + $1.value })
-        for (id, name) in usd >= 0.5 ? [("SPY", "S&P500 ETF")] : [("VT", "전 세계 ETF"), ("SPY", "S&P500 ETF")] {
+        for (id, name) in usd >= 0.5 ? [("SPY", "S&P500 ETF")] : [("VT", String(localized: "전 세계 ETF")), ("SPY", "S&P500 ETF")] {
             guard let c = PriceHistory.of(id)?.closes, c.count > 21 else { continue }
             return Cmp(mine: mine, mkt: c[c.count - 1] / c[c.count - 21] - 1, name: name)
         }
@@ -833,10 +833,10 @@ struct HoldingsNews: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("최근 1달, 시장과 비교").appFont(15, .bold)
             HStack(spacing: 10) {
-                cell("내 종목", c.mine)
+                cell(String(localized: "내 종목"), c.mine)
                 cell(c.name, c.mkt)
             }
-            Text(abs(gap) < 0.001 ? "시장과 거의 같게 움직였어요" : "시장보다 \(String(format: "%.1f", abs(gap) * 100))% \(gap > 0 ? "높아요" : "낮아요")")
+            Text(abs(gap) < 0.001 ? String(localized: "시장과 거의 같게 움직였어요") : String(localized: "시장보다 \(String(describing: String(format: "%.1f", abs(gap) * 100)))% \(String(describing: gap > 0 ? String(localized: "높아요") : String(localized: "낮아요")))"))
                 .appFont(13).foregroundStyle(Theme.sub)
         }
         .card()
@@ -874,7 +874,7 @@ struct HoldingsNews: View {
             Text("1년 고점·저점 가까이").appFont(15, .bold).padding(.bottom, 6)
             if hi.isEmpty && lo.isEmpty { Text("고점·저점 5% 안에 있는 종목은 없어요").appFont(13).foregroundStyle(Theme.sub) }
             ForEach(hi, id: \.0.id) { r, k in
-                line(r, Text(k.dd > -0.005 ? "1년 고점" : "고점까지 \(String(format: "%.0f", abs(k.dd) * 100))%").foregroundColor(Theme.up))
+                line(r, Text(k.dd > -0.005 ? String(localized: "1년 고점") : String(localized: "고점까지 \(String(describing: String(format: "%.0f", abs(k.dd) * 100)))%")).foregroundColor(Theme.up))
             }
             ForEach(lo, id: \.0.id) { r, k in
                 line(r, Text("저점 위 \(String(format: "%.0f", (r.sym.last / max(1e-9, k.lo) - 1) * 100))%").foregroundColor(Theme.down))
@@ -1024,7 +1024,7 @@ struct TownView: View {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).padding(.leading, 8)
                 // 행사 띠: 어닝콜 모임 · 세계 기념일 (그날만)
-                if let t = host.flatMap({ TownLook.earnDay($0) }).map({ "\($0) 발표 날 · 다 같이 듣는 중" }) ?? TownLook.holiday().map({ "오늘은 " + $0 }) {
+                if let t = host.flatMap({ TownLook.earnDay($0) }).map({ String(localized: "\(String(describing: $0)) 발표 날 · 다 같이 듣는 중") }) ?? TownLook.holiday().map({ String(localized: "오늘은 ") + $0 }) {
                     Text(t).appFont(12, .bold).foregroundStyle(.white)
                         .padding(.horizontal, 10).padding(.vertical, 4)
                         .background(Color.black.opacity(0.35), in: Capsule())
@@ -1136,7 +1136,7 @@ struct TownView: View {
 enum TownLook {
     /// 주민 = 사람. 대표가 같은 종목(테슬라·스페이스X → 머스크)은 한 주민이 같이 맡는다. 대표 정보가 없으면 종목마다 한 명
     struct Resident: Identifiable { let id: String; let rows: [AppModel.Row]; var old: String? = nil   // old: 옛 이웃이면 그때 회사 이름
-        var name: String { id == TownLook.mayorID ? "트럼프" : id == TownLook.warshID ? "연준 의장 워시" : old ?? rows.map(\.sym.name).joined(separator: " · ") }
+        var name: String { id == TownLook.mayorID ? String(localized: "트럼프") : id == TownLook.warshID ? String(localized: "연준 의장 워시") : old ?? rows.map(\.sym.name).joined(separator: " · ") }
         var value: Double { rows.reduce(0) { $0 + $1.value } }
     }
     static func residents(_ rows: [AppModel.Row]) -> [Resident] {
@@ -1150,11 +1150,11 @@ enum TownLook {
     }
     /// 기본 별명: 회사 이름 앞 글자 + 꼬리 (같은 주민은 늘 같은 별명)
     static func nick(_ res: Resident) -> String {
-        if res.id == mayorID { return "이장님" }
-        if res.id == warshID { return "워시" }
+        if res.id == mayorID { return String(localized: "이장님") }
+        if res.id == warshID { return String(localized: "워시") }
         let base = (res.rows.first?.sym.name ?? res.old ?? res.id).replacingOccurrences(of: " ", with: "")
         let ko = base.unicodeScalars.first.map { (0xAC00...0xD7A3).contains($0.value) } ?? false
-        let tails = ko ? ["돌이", "순이", "찡", "뽀", "군"] : ["y", "o", "ie", "ster"]
+        let tails = ko ? [String(localized: "돌이"), String(localized: "순이"), String(localized: "찡"), String(localized: "뽀"), String(localized: "군")] : ["y", "o", "ie", "ster"]
         return String(base.prefix(ko ? 2 : 4)) + tails[Int(seed(res.id) % UInt64(tails.count))]
     }
     static func shown(_ res: Resident, _ n: TownBook.Note) -> String { n.name ?? nick(res) }
@@ -1189,16 +1189,16 @@ enum TownLook {
     /// 하루 한마디: 언어별 문장 틀 + 빈칸({move} 오르내림 · {season} 계절 · {days} 함께한 날).
     /// 틀은 주민·날짜 씨앗으로 골라 날마다 바뀐다. 외부 생성·번역 없음 (옛 내비처럼 앱 안에서 조합)
     static let frames: [String: [String]] = ["ko": [
-        "{season}이네요. {move}",
-        "같이 지낸 지 {days}일째예요. {move}",
-        "{move}\n오늘 마음은 어때요?",
-        "{move}\n내일은 어떨 것 같아요?",
-        "{season} 바람이 좋네요. {move}",
-        "벌써 {days}일이나 함께했네요. {move}",
-        "안녕하세요! {move}",
-        "{move}\n한 줄 남겨 줄래요?",
-        "왔어요? {move}",
-        "{move}\n오늘은 어떤 하루였어요?",
+        String(localized: "{season}이네요. {move}"),
+        String(localized: "같이 지낸 지 {days}일째예요. {move}"),
+        String(localized: "{move}\n오늘 마음은 어때요?"),
+        String(localized: "{move}\n내일은 어떨 것 같아요?"),
+        String(localized: "{season} 바람이 좋네요. {move}"),
+        String(localized: "벌써 {days}일이나 함께했네요. {move}"),
+        String(localized: "안녕하세요! {move}"),
+        String(localized: "{move}\n한 줄 남겨 줄래요?"),
+        String(localized: "왔어요? {move}"),
+        String(localized: "{move}\n오늘은 어떤 하루였어요?"),
         "{weather} {move}",
         "{weather}\n{move}",
     ]]
@@ -1213,23 +1213,23 @@ enum TownLook {
     }
     static func warshLine() -> String {
         let n = fomc() ?? 0
-        if n > 1 { return "FOMC까지 \(n)일 남았어요. 금리 얘기하러 미리 왔어요." }
-        if n == 1 { return "내일이 FOMC예요. 다들 긴장되죠?" }
-        if n == 0 { return "오늘 FOMC예요. 결과가 나오면 알려 줄게요." }
-        return "FOMC 끝났어요. 며칠 더 머물다 갈게요."
+        if n > 1 { return String(localized: "FOMC까지 \(String(describing: n))일 남았어요. 금리 얘기하러 미리 왔어요.") }
+        if n == 1 { return String(localized: "내일이 FOMC예요. 다들 긴장되죠?") }
+        if n == 0 { return String(localized: "오늘 FOMC예요. 결과가 나오면 알려 줄게요.") }
+        return String(localized: "FOMC 끝났어요. 며칠 더 머물다 갈게요.")
     }
-    static let mayorFrames = ["동네는 오늘도 평화로워요. {fx}", "{weather} {fx}", "{fx}\n다들 잘 지내죠?", "이장이에요. {fx}", "{fx}\n바다 건너 소식도 챙겨요."]
+    static let mayorFrames = [String(localized: "동네는 오늘도 평화로워요. {fx}"), "{weather} {fx}", String(localized: "{fx}\n다들 잘 지내죠?"), String(localized: "이장이에요. {fx}"), String(localized: "{fx}\n바다 건너 소식도 챙겨요.")]
     /// 옛 이웃: 다 팔아 떠난 주민이 가끔 놀러 와 함께한 시간을 얘기한다
-    static let oldFrames = ["오랜만이에요! 놀러 왔어요.\n{days}일 함께했던 거 기억나요?", "지나가다 들렀어요. 다들 잘 지내죠?", "{weather} 옛날 생각나서 왔어요.",
-                            "여기 그대로네요. 반가워요!", "함께한 {days}일, 가끔 생각나요."]
+    static let oldFrames = [String(localized: "오랜만이에요! 놀러 왔어요.\n{days}일 함께했던 거 기억나요?"), String(localized: "지나가다 들렀어요. 다들 잘 지내죠?"), String(localized: "{weather} 옛날 생각나서 왔어요."),
+                            String(localized: "여기 그대로네요. 반가워요!"), String(localized: "함께한 {days}일, 가끔 생각나요.")]
     /// 잡담 말풍선: 짧은 혼잣말 (기분·자리로 고름)
     static func chat(_ res: Resident, _ k: Int) -> String {
         let pool: [String]
-        if res.id == mayorID { pool = ["환율 좀 봐!", "동네 최고!", "다들 잘하고 있어", "아주 훌륭해"] }
-        else if res.id == warshID { pool = ["금리는…", "데이터를 봐야죠", "음, 물가가…", "곧 FOMC"] }
-        else if res.old != nil { pool = ["그대로네", "반가워!", "놀러 왔어"] }
-        else if mood(res) < 0 { pool = ["흑…", "괜찮아질 거야", "오늘은 쉬자", "…"] }
-        else { pool = ["♪", "날씨 좋다", "차트 봤어?", "음냐", "산책 중", "기분 좋아!", "하암…"] }
+        if res.id == mayorID { pool = [String(localized: "환율 좀 봐!"), String(localized: "동네 최고!"), String(localized: "다들 잘하고 있어"), String(localized: "아주 훌륭해")] }
+        else if res.id == warshID { pool = [String(localized: "금리는…"), String(localized: "데이터를 봐야죠"), String(localized: "음, 물가가…"), String(localized: "곧 FOMC")] }
+        else if res.old != nil { pool = [String(localized: "그대로네"), String(localized: "반가워!"), String(localized: "놀러 왔어")] }
+        else if mood(res) < 0 { pool = [String(localized: "흑…"), String(localized: "괜찮아질 거야"), String(localized: "오늘은 쉬자"), "…"] }
+        else { pool = ["♪", String(localized: "날씨 좋다"), String(localized: "차트 봤어?"), String(localized: "음냐"), String(localized: "산책 중"), String(localized: "기분 좋아!"), String(localized: "하암…")] }
         return pool[Int(seed(res.id + "\(k)") % UInt64(pool.count))]
     }
     /// 계절: 0 봄 · 1 여름 · 2 가을 · 3 겨울 (실제 달력)
@@ -1239,10 +1239,10 @@ enum TownLook {
     }
     static func fxLine() -> String {
         let q = Market.shared.fx
-        guard q.last > 0 else { return "오늘 환율은 아직 못 봤어요." }
+        guard q.last > 0 else { return String(localized: "오늘 환율은 아직 못 봤어요.") }
         let w = String(format: "%.0f", q.last), d = q.last - q.prevClose
-        if !q.live || abs(d) < 0.5 { return "원·달러는 \(w)원이에요." }
-        return String(format: "원·달러는 \(w)원, 어제보다 %.0f원 ", abs(d)) + (d > 0 ? "올랐어요. 달러가 힘이 세졌네요." : "내렸어요. 원화가 힘을 냈네요.")
+        if !q.live || abs(d) < 0.5 { return String(localized: "원·달러는 \(String(describing: w))원이에요.") }
+        return String(format: String(localized: "원·달러는 \(String(describing: w))원, 어제보다 %.0f원 "), abs(d)) + (d > 0 ? String(localized: "올랐어요. 달러가 힘이 세졌네요.") : String(localized: "내렸어요. 원화가 힘을 냈네요."))
     }
     static func daily(_ res: Resident, _ n: TownBook.Note, lang: String = "ko") -> String {
         let wx = TownSky.shared.phrase
@@ -1250,17 +1250,17 @@ enum TownLook {
             let pool = a.filter { wx != nil || !$0.contains("{weather}") }
             return pool[Int(seed(res.id + TownLog.day) % UInt64(pool.count))].replacingOccurrences(of: "{weather}", with: wx ?? "")
         }
-        let h = holiday().map { "오늘은 " + $0 + (batchim($0) ? "이에요!\n" : "예요!\n") } ?? ""
+        let h = holiday().map { String(localized: "오늘은 ") + $0 + (batchim($0) ? String(localized: "이에요!\n") : String(localized: "예요!\n")) } ?? ""
         if res.id == warshID { return h + warshLine() + "\n" + fxLine() }
         if res.id == mayorID { return h + pick(mayorFrames).replacingOccurrences(of: "{fx}", with: fxLine()) }
         // 행사: 어닝콜 날은 모두 모여 그 주민의 한 줄을 듣는다. 전날엔 예측 한 줄을 부탁한다
         if res.old == nil, earnDay(res) != nil {
             let y = Day.str(Date().addingTimeInterval(-86400))
             let mine = TownLog.shared.log(res.id).last { $0.day == y }?.me
-            return "오늘은 제 실적 발표 날이에요! 다들 들으러 모였네요.\n" + (mine.map { "어제 남긴 예측: “\($0)”\n" } ?? "") + line(res)
+            return String(localized: "오늘은 제 실적 발표 날이에요! 다들 들으러 모였네요.\n") + (mine.map { String(localized: "어제 남긴 예측: “\(String(describing: $0))”\n") } ?? "") + line(res)
         }
-        if res.old == nil, earnDay(res, 1) != nil { return "내일은 제 실적 발표 날이에요.\n어떨 것 같아요? 예측 한 줄 남겨 줄래요?" }
-        if res.old == nil, let ho = host, ho.id != res.id { return h + "오늘은 \(ho.name) 실적 날이라 다 같이 듣고 있어요.\n" + line(res) }
+        if res.old == nil, earnDay(res, 1) != nil { return String(localized: "내일은 제 실적 발표 날이에요.\n어떨 것 같아요? 예측 한 줄 남겨 줄래요?") }
+        if res.old == nil, let ho = host, ho.id != res.id { return h + String(localized: "오늘은 \(String(describing: ho.name)) 실적 날이라 다 같이 듣고 있어요.\n") + line(res) }
         // 몇 달 전 내 답이 있으면 그날은 그걸 꺼내 얘기한다
         if let back = TownLog.shared.recall(res.id, price(res)) { return res.old != nil ? back : back + "\n" + line(res) }
         if res.old != nil {
@@ -1270,7 +1270,7 @@ enum TownLook {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         let days = f.date(from: n.moved).map { (Calendar.current.dateComponents([.day], from: $0, to: Date()).day ?? 0) + 1 } ?? 0
         let mo = Calendar.current.component(.month, from: Date())
-        let season = (3...5).contains(mo) ? "봄" : (6...8).contains(mo) ? "여름" : (9...11).contains(mo) ? "가을" : "겨울"
+        let season = (3...5).contains(mo) ? String(localized: "봄") : (6...8).contains(mo) ? String(localized: "여름") : (9...11).contains(mo) ? String(localized: "가을") : String(localized: "겨울")
         let all = frames[lang] ?? frames["ko"]!
         // 계절은 석 달 내내 같아서 매일 말하면 지겹다. 계절이 바뀐 첫 주에만 꺼낸다
         let fresh = [3, 6, 9, 12].contains(mo) && Calendar.current.component(.day, from: Date()) <= 7
@@ -1289,9 +1289,9 @@ enum TownLook {
     static var host: (id: String, name: String)? = nil
     /// 세계 기념일 (달력 고정 날만, 앱 안 표)
     static let holidays: [String: String] = [
-        "01-01": "새해 첫날", "02-14": "밸런타인데이", "03-08": "세계 여성의 날", "03-20": "국제 행복의 날",
-        "04-22": "지구의 날", "05-01": "노동절", "06-05": "세계 환경의 날", "09-21": "세계 평화의 날",
-        "10-24": "유엔의 날", "10-31": "핼러윈", "12-25": "크리스마스", "12-31": "한 해 마지막 날",
+        "01-01": String(localized: "새해 첫날"), "02-14": String(localized: "밸런타인데이"), "03-08": String(localized: "세계 여성의 날"), "03-20": String(localized: "국제 행복의 날"),
+        "04-22": String(localized: "지구의 날"), "05-01": String(localized: "노동절"), "06-05": String(localized: "세계 환경의 날"), "09-21": String(localized: "세계 평화의 날"),
+        "10-24": String(localized: "유엔의 날"), "10-31": String(localized: "핼러윈"), "12-25": String(localized: "크리스마스"), "12-31": String(localized: "한 해 마지막 날"),
     ]
     static func holiday(_ d: Date = Date()) -> String? {
         let f = DateFormatter(); f.dateFormat = "MM-dd"
@@ -1310,9 +1310,9 @@ enum TownLook {
         let live = r.sym.quote.live
         let v = move(r)
         let pct = String(format: "%.1f%%", abs(v) * 100)
-        let when = live ? "오늘" : "산 뒤로"
-        if abs(v) < 0.001 { return live ? "오늘은 그대로예요. 조용한 하루네요." : "산 뒤로 그대로예요." }
-        return v > 0 ? "\(when) \(pct) 올랐어요!" : "\(when) \(pct) 내렸어요…"
+        let when = live ? String(localized: "오늘") : String(localized: "산 뒤로")
+        if abs(v) < 0.001 { return live ? String(localized: "오늘은 그대로예요. 조용한 하루네요.") : String(localized: "산 뒤로 그대로예요.") }
+        return v > 0 ? String(localized: "\(String(describing: when)) \(String(describing: pct)) 올랐어요!") : String(localized: "\(String(describing: when)) \(String(describing: pct)) 내렸어요…")
     }
     static func move(_ r: AppModel.Row) -> Double {
         r.sym.quote.live ? r.sym.quote.change : (r.cost > 0 ? r.value / r.cost - 1 : 0)
@@ -1329,8 +1329,8 @@ enum TownLook {
     }
     /// 내 답에서 방향 읽기: 오른다 +1, 내린다 -1, 모르겠으면 0
     static func guess(_ s: String) -> Int {
-        let up = ["오를", "오르", "올라", "오른", "상승", "반등", "떡상", "↑"]
-        let dn = ["내릴", "내려", "내린", "떨어", "하락", "빠질", "빠져", "떡락", "↓"]
+        let up = [String(localized: "오를"), String(localized: "오르"), String(localized: "올라"), String(localized: "오른"), String(localized: "상승"), String(localized: "반등"), String(localized: "떡상"), "↑"]
+        let dn = [String(localized: "내릴"), String(localized: "내려"), String(localized: "내린"), String(localized: "떨어"), String(localized: "하락"), String(localized: "빠질"), String(localized: "빠져"), String(localized: "떡락"), "↓"]
         let u = up.contains { s.contains($0) }, d = dn.contains { s.contains($0) }
         return u == d ? 0 : (u ? 1 : -1)
     }
@@ -1355,7 +1355,7 @@ struct TownTalk: View {
     @FocusState private var focus: Bool
     @State private var say = ""
     private var log: TownLog { TownLog.shared }
-    private var full: String { line ?? ((hello ? "\(TownLook.shown(res, note))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n" : "") + say) }
+    private var full: String { line ?? ((hello ? String(localized: "\(String(describing: TownLook.shown(res, note)))예요. 오늘 이사 왔어요! 이름이랑 모자 골라 줄래요?\n") : "") + say) }
     private let gold = Color(red: 1, green: 0.85, blue: 0.4)
     var body: some View {
         let full = self.full
@@ -1383,8 +1383,8 @@ struct TownTalk: View {
                 if res.id != TownLook.mayorID && res.id != TownLook.warshID {
                     HStack(spacing: 6) {
                         Spacer(minLength: 0)
-                        chip("우리 사이", tab == 1, us)
-                        chip("꾸미기", tab == 2, dress)
+                        chip(String(localized: "우리 사이"), tab == 1, us)
+                        chip(String(localized: "꾸미기"), tab == 2, dress)
                     }
                 }
             }
@@ -1454,7 +1454,7 @@ struct TownPast: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(e.day.dropFirst(5).replacingOccurrences(of: "-", with: ".")).appFont(11).foregroundStyle(Theme.sub2)
                                 Text(e.say).appFont(14)
-                                if let a = e.me { Text("나: " + a).appFont(14).foregroundStyle(Theme.teal) }
+                                if let a = e.me { Text(String(localized: "나: ") + a).appFont(14).foregroundStyle(Theme.teal) }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -1551,12 +1551,12 @@ struct TownPast: View {
     }
     var phrase: String? {
         switch kind {
-        case .clear: return "오늘은 맑네요."
-        case .cloud: return "구름이 꼈네요."
-        case .fog: return "안개가 자욱해요."
-        case .rain: return "비가 오네요."
-        case .snow: return "눈이 와요!"
-        case .storm: return "천둥이 쳐요!"
+        case .clear: return String(localized: "오늘은 맑네요.")
+        case .cloud: return String(localized: "구름이 꼈네요.")
+        case .fog: return String(localized: "안개가 자욱해요.")
+        case .rain: return String(localized: "비가 오네요.")
+        case .snow: return String(localized: "눈이 와요!")
+        case .storm: return String(localized: "천둥이 쳐요!")
         case nil: return nil
         }
     }
@@ -1684,12 +1684,12 @@ struct TownWeather: View {
         l[i].back = true
         logs[id] = l
         save()
-        var s = "\(max(3, Self.age(l[i].day) / 30))달 전에 \"\(me)\"라고 했죠."
+        var s = String(localized: "\(String(describing: max(3, Self.age(l[i].day) / 30)))달 전에 \"\(String(describing: me))\"라고 했죠.")
         if let p = l[i].p, let now = price, p > 0 {
             let v = now / p - 1
-            s += String(format: " 그때보다 %.1f%% ", abs(v) * 100) + (v >= 0 ? "올랐어요." : "내렸어요.")
+            s += String(format: String(localized: " 그때보다 %.1f%% "), abs(v) * 100) + (v >= 0 ? String(localized: "올랐어요.") : String(localized: "내렸어요."))
             let g = TownLook.guess(me)
-            if g != 0 { s += (g > 0) == (v >= 0) ? " 맞혔네요!" : " 빗나갔네요." }
+            if g != 0 { s += (g > 0) == (v >= 0) ? String(localized: " 맞혔네요!") : String(localized: " 빗나갔네요.") }
         }
         return s
     }
@@ -1721,7 +1721,7 @@ struct TownFace: View {
     var height: CGFloat
     /// 동네에서 걷는 장면 (없으면 정면 서 있는 그림)
     var frame: CharScene? = nil
-    static let hats = ["없음", "밀짚모자", "비니", "왕관", "야구모자", "꽃"]
+    static let hats = [String(localized: "없음"), String(localized: "밀짚모자"), String(localized: "비니"), String(localized: "왕관"), String(localized: "야구모자"), String(localized: "꽃")]
     static let tints: [UInt32] = [0xE8B04B, 0xD94F4F, 0x4F7FD9, 0x4FB06A, 0x8A5FD0, 0xF2F2F2, 0x303030]
     var body: some View {
         Group {
@@ -1759,7 +1759,7 @@ struct TownFace: View {
         default: return []
         }
     }
-    static let propNames = ["없음", "안경", "목도리", "풍선"]
+    static let propNames = [String(localized: "없음"), String(localized: "안경"), String(localized: "목도리"), String(localized: "풍선")]
     /// 소품 (모자처럼 테두리 한 칸). 1 안경은 테가 가늘어 thin 에만, 2 목도리, 3 풍선(손에 든 줄은 thin)
     static func props(_ n: Int) -> [(Int, Int, Int, Int, UInt32)] {
         switch n {
@@ -1810,10 +1810,10 @@ enum TownStar {
     }()
     /// 주민 id → 얼굴 열쇠 (대표 이름이나 종목 코드로 찾는다)
     static let keys: [String: String] = [
-        "ceo:일론 머스크": "musk", "TSLA": "musk", "ceo:젠슨 황": "jensen", "NVDA": "jensen", "ceo:사티아 나델라": "nadella", "MSFT": "nadella",
-        "ceo:마크 저커버그": "zuck", "META": "zuck", "ceo:순다르 피차이": "pichai", "GOOGL": "pichai", "GOOG": "pichai",
-        "ceo:앤디 재시": "jassy", "AMZN": "jassy", "ceo:존 터너스": "ternus", "ceo:팀 쿡": "ternus", "AAPL": "ternus",
-        "ceo:샘 올트먼": "altman", "ceo:다리오 아모데이": "amodei", "ceo:데미스 허사비스": "hassabis",
+        String(localized: "ceo:일론 머스크"): "musk", "TSLA": "musk", String(localized: "ceo:젠슨 황"): "jensen", "NVDA": "jensen", String(localized: "ceo:사티아 나델라"): "nadella", "MSFT": "nadella",
+        String(localized: "ceo:마크 저커버그"): "zuck", "META": "zuck", String(localized: "ceo:순다르 피차이"): "pichai", "GOOGL": "pichai", "GOOG": "pichai",
+        String(localized: "ceo:앤디 재시"): "jassy", "AMZN": "jassy", String(localized: "ceo:존 터너스"): "ternus", String(localized: "ceo:팀 쿡"): "ternus", "AAPL": "ternus",
+        String(localized: "ceo:샘 올트먼"): "altman", String(localized: "ceo:다리오 아모데이"): "amodei", String(localized: "ceo:데미스 허사비스"): "hassabis",
         TownLook.warshID: "warsh", TownLook.mayorID: "trump",
     ]
     static func find(_ id: String) -> Look? { keys[id].flatMap { looks[$0] } }
@@ -1897,16 +1897,16 @@ struct TownUs: View {
             VStack(spacing: 14) {
                 TownFace(id: res.id, note: n, width: 72, height: 102)
                 VStack(spacing: 0) {
-                    row("이사 온 날", n.moved.replacingOccurrences(of: "-", with: "."))
-                    row("함께한 날", "\(days)일")
-                    if let l = n.left { row("떠난 날", l.replacingOccurrences(of: "-", with: ".")) }
-                    row("남긴 답", "\(s.said)줄")
-                    row("예측 적중", s.judged == 0 ? "석 달 뒤부터" : "\(s.hit) / \(s.judged)")
-                    row("받은 별사탕", "\(n.gifts ?? 0)개")
+                    row(String(localized: "이사 온 날"), n.moved.replacingOccurrences(of: "-", with: "."))
+                    row(String(localized: "함께한 날"), String(localized: "\(String(describing: days))일"))
+                    if let l = n.left { row(String(localized: "떠난 날"), l.replacingOccurrences(of: "-", with: ".")) }
+                    row(String(localized: "남긴 답"), String(localized: "\(String(describing: s.said))줄"))
+                    row(String(localized: "예측 적중"), s.judged == 0 ? String(localized: "석 달 뒤부터") : "\(s.hit) / \(s.judged)")
+                    row(String(localized: "받은 별사탕"), String(localized: "\(String(describing: n.gifts ?? 0))개"))
                 }
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
                 Button { book.give(res.id) } label: {
-                    Text(cheer ? "기운 났어요! ♥" : sad ? "별사탕 주기 (\(book.candy)개)" : "지금은 기운이 넘쳐요")
+                    Text(cheer ? String(localized: "기운 났어요! ♥") : sad ? String(localized: "별사탕 주기 (\(String(describing: book.candy))개)") : String(localized: "지금은 기운이 넘쳐요"))
                         .appFont(15, .bold).frame(maxWidth: .infinity).padding(12)
                         .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
                 }
@@ -1931,7 +1931,7 @@ struct TownUs: View {
 /// Canvas 하나로 한 번 그리고, 입력(kind·season)이 같으면 다시 그리지 않는다.
 struct TownGround: View, Equatable {
     let kind: Int, season: Int
-    static let names = ["들판", "광장", "언덕 위 집", "노란 문 골목"]
+    static let names = [String(localized: "들판"), String(localized: "광장"), String(localized: "언덕 위 집"), String(localized: "노란 문 골목")]
 
     var body: some View {
         Canvas { ctx, s in

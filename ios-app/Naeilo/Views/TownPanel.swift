@@ -40,7 +40,7 @@ private struct TownHomePanel: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Text("오늘의 한 줄").appFont(12, .bold).foregroundStyle(Theme.brown)
-                        Text(done ? "한 줄 답 남겼어요 ✓" : "대사에 한 줄 답 남기기 ›").appFont(14, .bold).foregroundStyle(Theme.inkFixed).lineLimit(1)
+                        Text(done ? String(localized: "한 줄 답 남겼어요 ✓") : String(localized: "대사에 한 줄 답 남기기 ›")).appFont(14, .bold).foregroundStyle(Theme.inkFixed).lineLimit(1)
                         Spacer(minLength: 0)
                         Text(done ? "1/1" : "0/1").appFont(13, .bold).foregroundStyle(Theme.brown)
                     }
@@ -81,41 +81,41 @@ private struct TownHomePanel: View {
     private func pick(_ o: String) {
         if o == TownChat.doneKey { saidDone = true }
         let n = TownChat.tree[o]
-        line = n?.say ?? "그렇군요!"
+        line = n?.say ?? String(localized: "그렇군요!")
         opts = n?.next ?? TownChat.start()
     }
 }
 
 /// 내가 할 말 → 주민 대답 · 다음 후보. 미리 써 둔 작은 표 (시장 이야기 없음)
 enum TownChat {
-    static let doneKey = "다 했어!"
-    static let praise = "한 줄 남겨 줘서 고마워요! 오늘 할 일 끝, 대단해요!"
-    private static let bye = "또 올게"
+    static let doneKey = String(localized: "다 했어!")
+    static let praise = String(localized: "한 줄 남겨 줘서 고마워요! 오늘 할 일 끝, 대단해요!")
+    private static let bye = String(localized: "또 올게")
     static func start(_ d: Date = Date()) -> [String] {
-        Calendar.current.component(.hour, from: d) < 15 ? ["좋은 아침!", "잘 잤어?", "오늘 뭐 해?"] : ["오늘 어땠어?", "저녁 먹었어?", "잘 자!"]
+        Calendar.current.component(.hour, from: d) < 15 ? [String(localized: "좋은 아침!"), String(localized: "잘 잤어?"), String(localized: "오늘 뭐 해?")] : [String(localized: "오늘 어땠어?"), String(localized: "저녁 먹었어?"), String(localized: "잘 자!")]
     }
     static let tree: [String: (say: String, next: [String])] = [
-        "좋은 아침!": ("좋은 아침이에요! 오늘도 천천히 가요.", ["기분은 어때?", "날씨 좋다", bye]),
-        "잘 잤어?": ("푹 잤어요. 꿈에 큰 나무가 나왔어요!", ["무슨 나무?", "좋은 꿈이네", bye]),
-        "오늘 뭐 해?": ("동네 한 바퀴 걸을 거예요. 같이 갈래요?", ["좋아!", "다음에", bye]),
-        "오늘 어땠어?": ("조용한 하루였어요. 그런 날도 좋죠.", ["나도 그래", "기분은 어때?", "잘 자!"]),
-        "저녁 먹었어?": ("방금 먹었어요. 배불러요!", ["뭐 먹었어?", "부럽다", "잘 자!"]),
-        "잘 자!": ("잘 자요. 내일 또 봐요!", ["내일 봐", "기분은 어때?", bye]),
-        "기분은 어때?": ("음… 맑음이에요. 당신은요?", ["나도 맑음", "조금 흐림", bye]),
-        "날씨 좋다": ("그쵸? 이런 날엔 산책이 최고예요.", ["좋아!", "기분은 어때?", bye]),
-        "무슨 나무?": ("열매가 반짝이는 나무요. 천천히 자라더라고요.", ["좋은 꿈이네", "기분은 어때?", bye]),
-        "좋은 꿈이네": ("그쵸? 오늘은 좋은 일이 있을 것 같아요.", ["기분은 어때?", "날씨 좋다", bye]),
-        "좋아!": ("신난다! 천천히 걸어요.", ["기분은 어때?", "날씨 좋다", bye]),
-        "다음에": ("괜찮아요. 언제든 불러요!", ["기분은 어때?", "날씨 좋다", bye]),
-        "나도 그래": ("우리 잘 맞네요!", ["기분은 어때?", "잘 자!", bye]),
-        "뭐 먹었어?": ("따끈한 국밥이요. 최고였어요!", ["부럽다", "잘 자!", bye]),
-        "부럽다": ("다음엔 같이 먹어요!", ["좋아!", "잘 자!", bye]),
-        "내일 봐": ("꼭이에요! 기다릴게요.", ["기분은 어때?", "날씨 좋다", bye]),
-        "나도 맑음": ("좋다! 맑은 날끼리 하이파이브!", ["날씨 좋다", "오늘 뭐 해?", bye]),
-        "조금 흐림": ("그럴 때도 있죠. 여기서 좀 쉬다 가요.", ["고마워", "날씨 좋다", bye]),
-        "고마워": ("천만에요. 언제든 와요!", ["기분은 어때?", "날씨 좋다", bye]),
-        bye: ("네, 언제든 와요!", []),
-        doneKey: ("벌써요? 대단해요! 오늘 한 줄 끝!", ["고마워", "기분은 어때?", bye]),
+        String(localized: "좋은 아침!"): (String(localized: "좋은 아침이에요! 오늘도 천천히 가요."), [String(localized: "기분은 어때?"), String(localized: "날씨 좋다"), bye]),
+        String(localized: "잘 잤어?"): (String(localized: "푹 잤어요. 꿈에 큰 나무가 나왔어요!"), [String(localized: "무슨 나무?"), String(localized: "좋은 꿈이네"), bye]),
+        String(localized: "오늘 뭐 해?"): (String(localized: "동네 한 바퀴 걸을 거예요. 같이 갈래요?"), [String(localized: "좋아!"), String(localized: "다음에"), bye]),
+        String(localized: "오늘 어땠어?"): (String(localized: "조용한 하루였어요. 그런 날도 좋죠."), [String(localized: "나도 그래"), String(localized: "기분은 어때?"), String(localized: "잘 자!")]),
+        String(localized: "저녁 먹었어?"): (String(localized: "방금 먹었어요. 배불러요!"), [String(localized: "뭐 먹었어?"), String(localized: "부럽다"), String(localized: "잘 자!")]),
+        String(localized: "잘 자!"): (String(localized: "잘 자요. 내일 또 봐요!"), [String(localized: "내일 봐"), String(localized: "기분은 어때?"), bye]),
+        String(localized: "기분은 어때?"): (String(localized: "음… 맑음이에요. 당신은요?"), [String(localized: "나도 맑음"), String(localized: "조금 흐림"), bye]),
+        String(localized: "날씨 좋다"): (String(localized: "그쵸? 이런 날엔 산책이 최고예요."), [String(localized: "좋아!"), String(localized: "기분은 어때?"), bye]),
+        String(localized: "무슨 나무?"): (String(localized: "열매가 반짝이는 나무요. 천천히 자라더라고요."), [String(localized: "좋은 꿈이네"), String(localized: "기분은 어때?"), bye]),
+        String(localized: "좋은 꿈이네"): (String(localized: "그쵸? 오늘은 좋은 일이 있을 것 같아요."), [String(localized: "기분은 어때?"), String(localized: "날씨 좋다"), bye]),
+        String(localized: "좋아!"): (String(localized: "신난다! 천천히 걸어요."), [String(localized: "기분은 어때?"), String(localized: "날씨 좋다"), bye]),
+        String(localized: "다음에"): (String(localized: "괜찮아요. 언제든 불러요!"), [String(localized: "기분은 어때?"), String(localized: "날씨 좋다"), bye]),
+        String(localized: "나도 그래"): (String(localized: "우리 잘 맞네요!"), [String(localized: "기분은 어때?"), String(localized: "잘 자!"), bye]),
+        String(localized: "뭐 먹었어?"): (String(localized: "따끈한 국밥이요. 최고였어요!"), [String(localized: "부럽다"), String(localized: "잘 자!"), bye]),
+        String(localized: "부럽다"): (String(localized: "다음엔 같이 먹어요!"), [String(localized: "좋아!"), String(localized: "잘 자!"), bye]),
+        String(localized: "내일 봐"): (String(localized: "꼭이에요! 기다릴게요."), [String(localized: "기분은 어때?"), String(localized: "날씨 좋다"), bye]),
+        String(localized: "나도 맑음"): (String(localized: "좋다! 맑은 날끼리 하이파이브!"), [String(localized: "날씨 좋다"), String(localized: "오늘 뭐 해?"), bye]),
+        String(localized: "조금 흐림"): (String(localized: "그럴 때도 있죠. 여기서 좀 쉬다 가요."), [String(localized: "고마워"), String(localized: "날씨 좋다"), bye]),
+        String(localized: "고마워"): (String(localized: "천만에요. 언제든 와요!"), [String(localized: "기분은 어때?"), String(localized: "날씨 좋다"), bye]),
+        bye: (String(localized: "네, 언제든 와요!"), []),
+        doneKey: (String(localized: "벌써요? 대단해요! 오늘 한 줄 끝!"), [String(localized: "고마워"), String(localized: "기분은 어때?"), bye]),
     ]
 }
 
@@ -123,7 +123,7 @@ enum TownChat {
 
 /// 사이 단계: 함께한 날 + 나눈 대화 + 남긴 답×2 로 점수 (저장 없이 그때그때 계산)
 enum TownBond {
-    static let names = ["이웃", "친구", "단짝", "절친", "찐친"]
+    static let names = [String(localized: "이웃"), String(localized: "친구"), String(localized: "단짝"), String(localized: "절친"), String(localized: "찐친")]
     static let need = [0, 10, 30, 60, 100]
     static let bestLv = 4       // 절친 (꾸미기 잠긴 칸이 열림)
     static func days(_ n: TownBook.Note) -> Int {
@@ -158,7 +158,7 @@ private struct TownUsPanel: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("\(TownBond.names[lv - 1]) Lv.\(lv)").appFont(16, .bold).foregroundStyle(Theme.inkFixed)
                 Spacer()
-                Text(hi.map { "\(TownBond.names[lv])까지 \($0 - p)점" } ?? "최고 단계예요").appFont(12).foregroundStyle(Theme.brown)
+                Text(hi.map { String(localized: "\(String(describing: TownBond.names[lv]))까지 \(String(describing: $0 - p))점") } ?? String(localized: "최고 단계예요")).appFont(12).foregroundStyle(Theme.brown)
             }
             GeometryReader { g in
                 ZStack(alignment: .leading) {
@@ -168,9 +168,9 @@ private struct TownUsPanel: View {
             }
             .frame(height: 8)
             HStack(spacing: 6) {
-                cell("함께한 날", "\(TownBond.days(n))일")
-                cell("나눈 대화", "\(log.count)번")
-                cell("연속 방문", "\(TownBond.streak(res.id))일")
+                cell(String(localized: "함께한 날"), String(localized: "\(String(describing: TownBond.days(n)))일"))
+                cell(String(localized: "나눈 대화"), String(localized: "\(String(describing: log.count))번"))
+                cell(String(localized: "연속 방문"), String(localized: "\(String(describing: TownBond.streak(res.id)))일"))
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
@@ -186,7 +186,7 @@ private struct TownUsPanel: View {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("최근 대화").appFont(11, .bold).foregroundStyle(Theme.brown)
-                    Text(past.map { $0.me.map { "나: " + $0 } ?? $0.say } ?? "아직 지난 대화가 없어요")
+                    Text(past.map { $0.me.map { String(localized: "나: ") + $0 } ?? $0.say } ?? String(localized: "아직 지난 대화가 없어요"))
                         .appFont(13).foregroundStyle(Theme.inkFixed).lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -213,11 +213,11 @@ private struct TownUsPanel: View {
     /// 기억 칩: 별명 · 최근 내 답 둘 · 받은 별사탕 · 이사 온 날 (있는 것만)
     private func memo(_ n: TownBook.Note, _ log: [TownLog.Entry]) -> [String] {
         var m: [String] = []
-        if let s = n.name { m.append("별명 \(s)") }
+        if let s = n.name { m.append(String(localized: "별명 \(String(describing: s))")) }
         m += log.compactMap(\.me).suffix(2).reversed().map { "“\($0.prefix(12))”" }
-        if let g = n.gifts, g > 0 { m.append("별사탕 \(g)개 받음") }
-        if !n.moved.isEmpty { m.append(n.moved.dropFirst(5).replacingOccurrences(of: "-", with: ".") + " 이사") }
-        return m.isEmpty ? ["말을 걸면 하나씩 기억해요"] : m
+        if let g = n.gifts, g > 0 { m.append(String(localized: "별사탕 \(String(describing: g))개 받음")) }
+        if !n.moved.isEmpty { m.append(n.moved.dropFirst(5).replacingOccurrences(of: "-", with: ".") + String(localized: " 이사")) }
+        return m.isEmpty ? [String(localized: "말을 걸면 하나씩 기억해요")] : m
     }
 }
 
@@ -238,9 +238,9 @@ private struct TownDressPanel: View {
     @State private var kind = 0
     @State private var bg0: Int? = nil       // 고르기 전 배경 (되돌리기)
     @State private var name = false
-    private static let kinds = ["모자", "색", "소품", "동네"]
+    private static let kinds = [String(localized: "모자"), String(localized: "색"), String(localized: "소품"), String(localized: "동네")]
     private static let hatPrice = [0, 0, 0, 3, 1, 2]
-    private static let colorNames = ["노랑", "빨강", "파랑", "초록", "보라", "하양", "검정"]
+    private static let colorNames = [String(localized: "노랑"), String(localized: "빨강"), String(localized: "파랑"), String(localized: "초록"), String(localized: "보라"), String(localized: "하양"), String(localized: "검정")]
     private var book: TownBook { TownBook.shared }
     var body: some View {
         let n = look ?? book.note(res.id)
@@ -264,7 +264,7 @@ private struct TownDressPanel: View {
             }
             Spacer(minLength: 0)
             HStack(spacing: 8) {
-                Button { revert(); line = "원래대로 돌아왔어요." } label: {
+                Button { revert(); line = String(localized: "원래대로 돌아왔어요.") } label: {
                     Text("되돌리기").appFont(14, .bold).foregroundStyle(Theme.brown)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.brown, lineWidth: 2))
@@ -312,7 +312,7 @@ private struct TownDressPanel: View {
                 } else {
                     Text(it.name).appFont(13, .bold).foregroundStyle(it.lock ? Theme.brown.opacity(0.5) : Theme.inkFixed).lineLimit(1).minimumScaleFactor(0.7)
                 }
-                Text(it.lock ? "절친 때 열림" : wearing ? "입는 중" : has(it) ? (it.kind == 1 ? it.name : "보유") : "⭐ \(it.price)")
+                Text(it.lock ? String(localized: "절친 때 열림") : wearing ? String(localized: "입는 중") : has(it) ? (it.kind == 1 ? it.name : String(localized: "보유")) : "⭐ \(it.price)")
                     .appFont(10, .bold).foregroundStyle(wearing ? Theme.teal : Theme.brown.opacity(it.lock ? 0.5 : 0.9))
             }
             .frame(maxWidth: .infinity, minHeight: 40)
@@ -323,7 +323,7 @@ private struct TownDressPanel: View {
         .buttonStyle(.plain)
     }
     private func pick(_ it: TownItem, _ n: TownBook.Note) {
-        if it.lock { line = "\(it.name)은 절친이 되면 써 볼게요!"; return }
+        if it.lock { line = String(localized: "\(String(describing: it.name))은 절친이 되면 써 볼게요!"); return }
         var m = n
         switch it.kind {
         case 0: m.hat = it.i
@@ -332,7 +332,7 @@ private struct TownDressPanel: View {
         default: if bg0 == nil { bg0 = bg }; bg = it.i
         }
         if it.kind != 3 { look = m }
-        line = it.i == 0 && it.kind == 0 ? "모자 없이도 괜찮죠?" : it.i == 0 && it.kind == 2 ? "소품 없이 가볍게!" : "\(it.name) 어때요? 잘 어울려요!"
+        line = it.i == 0 && it.kind == 0 ? String(localized: "모자 없이도 괜찮죠?") : it.i == 0 && it.kind == 2 ? String(localized: "소품 없이 가볍게!") : String(localized: "\(String(describing: it.name)) 어때요? 잘 어울려요!")
     }
     private func revert() {
         look = nil
@@ -344,11 +344,11 @@ private struct TownDressPanel: View {
         let all = (0..<4).flatMap { items($0, lv) }
         let need = all.filter { on($0, n) && !has($0) && !$0.lock }
         let cost = need.reduce(0) { $0 + $1.price }
-        guard cost == 0 || book.spend(cost) else { line = "별사탕이 \(cost - book.candy)개 모자라요. 답을 남기면 생겨요!"; return }
+        guard cost == 0 || book.spend(cost) else { line = String(localized: "별사탕이 \(String(describing: cost - book.candy))개 모자라요. 답을 남기면 생겨요!"); return }
         if !need.isEmpty { ownedRaw = (owned.union(need.map(\.id))).sorted().joined(separator: ",") }
         book.set(res.id, n)
         look = nil; bg0 = nil
-        line = cost > 0 ? "고마워요! 별사탕 \(cost)개로 샀어요. 마음에 들어요!" : "고마워요! 마음에 들어요!"
+        line = cost > 0 ? String(localized: "고마워요! 별사탕 \(String(describing: cost))개로 샀어요. 마음에 들어요!") : String(localized: "고마워요! 마음에 들어요!")
     }
 }
 

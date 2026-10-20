@@ -10,23 +10,23 @@ struct WaveEngine {
         case nap, climb, coaster, choppy
         var name: String {
             switch self {
-            case .nap: return "낮잠 해변"
-            case .climb: return "올라올라 언덕"
-            case .coaster: return "롤러코스터 만"
-            case .choppy: return "멀미 주의 바다"
+            case .nap: return String(localized: "낮잠 해변")
+            case .climb: return String(localized: "올라올라 언덕")
+            case .coaster: return String(localized: "롤러코스터 만")
+            case .choppy: return String(localized: "멀미 주의 바다")
             }
         }
         var line: String {
             switch self {
-            case .nap: return "파도가 순해요. 보드 위에서 졸지만 마세요."
-            case .climb: return "계속 오르막이에요. 너무 일찍 내리면 아까워요."
-            case .coaster: return "한 번 크게 꺼져요. 바닥을 잘 노려 보세요."
-            case .choppy: return "작은 파도가 쉴 새 없이 와요."
+            case .nap: return String(localized: "파도가 순해요. 보드 위에서 졸지만 마세요.")
+            case .climb: return String(localized: "계속 오르막이에요. 너무 일찍 내리면 아까워요.")
+            case .coaster: return String(localized: "한 번 크게 꺼져요. 바닥을 잘 노려 보세요.")
+            case .choppy: return String(localized: "작은 파도가 쉴 새 없이 와요.")
             }
         }
     }
     enum Level: String { case easy, hard
-        var name: String { self == .easy ? "쉬움" : "어려움" }
+        var name: String { self == .easy ? String(localized: "쉬움") : String(localized: "어려움") }
     }
     enum EndReason: Equatable { case time, hearts }
     /// 파도 위에 떠 있는 아이템 (한 판에 1~2개, 탄 채 지나가면 먹는다)
@@ -40,13 +40,13 @@ struct WaveEngine {
         }
         var name: String {
             switch self {
-            case .lighthouse: return "등대! 바닥이 보여요"
-            case .turtle: return "거북이! 느릿느릿"
-            case .vest: return "구명조끼!"
-            case .dolphin: return "돌고래! 다음 점프 2배"
-            case .rocket: return "로켓! 빨라지고 점수 1.5배"
-            case .snail: return "달팽이! 아주 느릿느릿"
-            case .clock: return "시계! +3초"
+            case .lighthouse: return String(localized: "등대! 바닥이 보여요")
+            case .turtle: return String(localized: "거북이! 느릿느릿")
+            case .vest: return String(localized: "구명조끼!")
+            case .dolphin: return String(localized: "돌고래! 다음 점프 2배")
+            case .rocket: return String(localized: "로켓! 빨라지고 점수 1.5배")
+            case .snail: return String(localized: "달팽이! 아주 느릿느릿")
+            case .clock: return String(localized: "시계! +3초")
             }
         }
     }
@@ -55,13 +55,13 @@ struct WaveEngine {
         case bottoms, streak3, flips3, dry, item, fever, score500
         var title: String {
             switch self {
-            case .bottoms: return "바닥 3번 잡기"
-            case .streak3: return "3번 연속 벌기"
-            case .flips3: return "공중제비 3번"
-            case .dry: return "풍덩 없이 끝내기"
-            case .item: return "아이템 먹기"
-            case .fever: return "피버 켜기"
-            case .score500: return "500점 넘기"
+            case .bottoms: return String(localized: "바닥 3번 잡기")
+            case .streak3: return String(localized: "3번 연속 벌기")
+            case .flips3: return String(localized: "공중제비 3번")
+            case .dry: return String(localized: "풍덩 없이 끝내기")
+            case .item: return String(localized: "아이템 먹기")
+            case .fever: return String(localized: "피버 켜기")
+            case .score500: return String(localized: "500점 넘기")
             }
         }
     }

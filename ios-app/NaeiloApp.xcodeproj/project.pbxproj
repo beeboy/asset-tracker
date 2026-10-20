@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E7A1C0DE00000000000000C2 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000C1 /* Localizable.xcstrings */; };
 		B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */; };
 		02D7A588AC677280C686D8DD /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCACC287684D148B6C75C94F /* SampleData.swift */; };
 		08C597E8BE414747DD18FC1F /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113FC119D1DE4AE5F19B494E /* Engine.swift */; };
@@ -143,6 +144,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E7A1C0DE00000000000000C1 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0020D03B6A8743286E629278 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		012F5C5676B198E5CF433509 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
@@ -411,6 +413,7 @@
 				AF1B4BB6CF97D8922C1704B6 /* Assets.xcassets */,
 				8380C2A50584D047AFCD6E3D /* Info.plist */,
 				A7C3E2F15B9D4E6A8C0B1D2E /* PrivacyInfo.xcprivacy */,
+				E7A1C0DE00000000000000C1 /* Localizable.xcstrings */,
 				96EDF9F440F10C712447019C /* Theme.swift */,
 				75F568A375635F9FEAD2A9A2 /* Data */,
 				85AFDE161B334BAE630AF09D /* Resources */,
@@ -502,11 +505,12 @@
 				};
 			};
 			buildConfigurationList = E046FACFCFD622A30E0F9F11 /* Build configuration list for PBXProject "NaeiloApp" */;
-			developmentRegion = en;
+			developmentRegion = ko;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
 				en,
+				ko,
 			);
 			mainGroup = EB02D6C12BCD6A12E1702B9D;
 			minimizedProjectReferenceProxies = 1;
@@ -531,6 +535,7 @@
 				694758E07AFA7863C830EB9C /* drnk_ratio.json in Resources */,
 				E7A1C0DE00000000000000B9 /* krx_stocks.json in Resources */,
 				B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */,
+				E7A1C0DE00000000000000C2 /* Localizable.xcstrings in Resources */,
 				B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */,
 				E7A1C0DE00000000000000A1 /* lines_en.json in Resources */,
 				8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */,
@@ -724,6 +729,8 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Naeilo/Info.plist;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -761,6 +768,8 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Naeilo/Info.plist;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

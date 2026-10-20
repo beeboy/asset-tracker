@@ -7,7 +7,7 @@ import SwiftUI
 enum Route: String, Codable { case recover, plus, novice }
 
 enum GoalWeek: String, CaseIterable, Codable { case inPlan, less, more
-    var label: String { switch self { case .inPlan: "계획대로"; case .less: "덜 넣음"; case .more: "더 넣음" } }
+    var label: String { switch self { case .inPlan: String(localized: "계획대로"); case .less: String(localized: "덜 넣음"); case .more: String(localized: "더 넣음") } }
     var factor: Double { switch self { case .inPlan: 1; case .less: 0.5; case .more: 1.5 } }
     var color: Color { switch self { case .inPlan: Theme.green; case .less: Theme.orange; case .more: Theme.blue } }
 }
@@ -36,16 +36,16 @@ struct GoalSim {
 
 extension AppModel {
     static func wonK(_ m: Double) -> String {
-        if m < 0.5 { return "0원" }
-        if m >= 10000 { return ((m / 1000).rounded() / 10).formatted() + "억" }
-        return Int(m.rounded()).formatted() + "만"
+        if m < 0.5 { return String(localized: "0원") }
+        if m >= 10000 { return ((m / 1000).rounded() / 10).formatted() + String(localized: "억") }
+        return Int(m.rounded()).formatted() + String(localized: "만")
     }
     /// cap: 경로 기간 (햇수). 그 안에 닿지 않으면 "N년 넘게"
     static func eta(_ mo: Double, cap: Int = 40) -> String {
-        guard mo.isFinite else { return "\(cap)년 넘게" }
-        if mo <= 0 { return "지금" }
+        guard mo.isFinite else { return String(localized: "\(String(describing: cap))년 넘게") }
+        if mo <= 0 { return String(localized: "지금") }
         let m = Int(mo), y = m / 12, r = m % 12
-        return (y > 0 ? "\(y)년 " : "") + (r > 0 ? "\(r)개월 뒤" : "뒤")
+        return (y > 0 ? String(localized: "\(String(describing: y))년 ") : "") + (r > 0 ? String(localized: "\(String(describing: r))개월 뒤") : String(localized: "뒤"))
     }
 
     var isGoal: Bool { route != .recover }
@@ -56,7 +56,7 @@ extension AppModel {
     /// 1000칸·주간 예보에서 쓰는 지금 금액 (원)
     /// 분석 화면의 기준선 (원): 회복 = 들어간 돈(본전), 목표 = 목표 금액
     var keyValue: Double { isGoal ? gK * 1e4 : cost }
-    var keyName: String { isGoal ? "목표" : "본전" }
+    var keyName: String { isGoal ? String(localized: "목표") : String(localized: "본전") }
     /// 시작 전: 모아 둔 돈 + 인터미션에 넣은 돈. 목표 루트는 웹 총자산처럼 현금도 더한다
     var trackValue: Double { route == .novice ? goalSaved * 1e4 : total + cashKrw }
 
@@ -90,12 +90,12 @@ extension AppModel {
     }
 
     static let mixes: [GoalMix] = [
-        .init(id: "index", name: "지수 중심", tag: "단순하게", desc: "미국 지수 80 · 현금 20", comp: ["I": 0.8, "C": 0.2], basket: nil),
-        .init(id: "grow", name: "성장 더하기", tag: "더 빨리, 더 흔들림", desc: "지수 60 · 성장 업종 30 · 현금 10", comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
-        .init(id: "steady", name: "버팀목 더하기", tag: "덜 흔들림", desc: "지수 50 · 버팀목 업종 30 · 채권·현금 20", comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
+        .init(id: "index", name: String(localized: "지수 중심"), tag: String(localized: "단순하게"), desc: String(localized: "미국 지수 80 · 현금 20"), comp: ["I": 0.8, "C": 0.2], basket: nil),
+        .init(id: "grow", name: String(localized: "성장 더하기"), tag: String(localized: "더 빨리, 더 흔들림"), desc: String(localized: "지수 60 · 성장 업종 30 · 현금 10"), comp: ["I": 0.6, "G": 0.3, "C": 0.1], basket: .G),
+        .init(id: "steady", name: String(localized: "버팀목 더하기"), tag: String(localized: "덜 흔들림"), desc: String(localized: "지수 50 · 버팀목 업종 30 · 채권·현금 20"), comp: ["I": 0.5, "B": 0.3, "C": 0.2], basket: .B),
     ]
     var mineMix: GoalMix {
-        .init(id: "mine", name: "지금 내 구성", tag: "그대로", desc: "\(focusName) \(Int((focusWeight * 100).rounded()))" + (restRows.isEmpty ? "" : " · \(restName) \(Int(((1 - focusWeight) * 100).rounded()))"),
+        .init(id: "mine", name: String(localized: "지금 내 구성"), tag: String(localized: "그대로"), desc: "\(focusName) \(Int((focusWeight * 100).rounded()))" + (restRows.isEmpty ? "" : " · \(restName) \(Int(((1 - focusWeight) * 100).rounded()))"),
               comp: [:], basket: nil, own: true)
     }
     /// 내 길의 '지금 구성': 시작 전 루트는 지수 중심 (neededMonthly 와 같다)
@@ -103,7 +103,7 @@ extension AppModel {
     /// 처음 닿는 때를 셀 긴 기간 (햇수): 목표일 뒤에 닿는 경우도 보이게
     var etaYears: Int { max(10, gY * 2) }
     /// 목표 확률을 쉬운 말로
-    static func verdict(_ p: Double) -> String { p >= 0.6 ? "높음" : p >= 0.4 ? "반반" : "낮음" }   // 반반은 40~60% (30%를 반반이라 부르지 않게)
+    static func verdict(_ p: Double) -> String { p >= 0.6 ? String(localized: "높음") : p >= 0.4 ? String(localized: "반반") : String(localized: "낮음") }   // 반반은 40~60% (30%를 반반이라 부르지 않게)
     /// 오늘부터 mo 개월 뒤를 연도 소수로 (2031.25 = 2031년 4월 무렵)
     static func yearAt(_ mo: Double) -> Double {
         let c = Calendar.current.dateComponents([.year, .month], from: Date())
@@ -111,8 +111,8 @@ extension AppModel {
     }
     /// 오늘부터 mo 개월 뒤 "2031.4" (기간 안에 없으면 "N년 넘게")
     static func whenText(_ mo: Double, cap: Int) -> String {
-        guard mo.isFinite else { return "\(cap)년 넘게" }
-        guard mo > 0 else { return "지금" }
+        guard mo.isFinite else { return String(localized: "\(String(describing: cap))년 넘게") }
+        guard mo > 0 else { return String(localized: "지금") }
         let d = Calendar.current.date(byAdding: .month, value: Int(mo.rounded()), to: Date()) ?? Date()
         let c = Calendar.current.dateComponents([.year, .month], from: d)
         return "\(c.year ?? 0).\(c.month ?? 0)"
@@ -244,10 +244,10 @@ extension AppModel {
     /// 홈 카드 페이스 문장
     static func paceText(_ p: GoalPace) -> String {
         switch p {
-        case .onTrack: return "계획대로"
-        case .ahead(let n): return n > 6 ? "많이 빨라요" : "조금 빨라요"
-        case .behind(let n): return n > 6 ? "많이 늦어요" : "조금 늦어요"
-        case .unreachable: return "지금 속도론 어려워요"
+        case .onTrack: return String(localized: "계획대로")
+        case .ahead(let n): return n > 6 ? String(localized: "많이 빨라요") : String(localized: "조금 빨라요")
+        case .behind(let n): return n > 6 ? String(localized: "많이 늦어요") : String(localized: "조금 늦어요")
+        case .unreachable: return String(localized: "지금 속도론 어려워요")
         }
     }
 
@@ -307,7 +307,7 @@ extension AppModel {
     var goalPresets: [GoalPreset] {
         let A = goalStart
         func meaning(_ k: Double) -> String {
-            k <= 1000 ? "첫 목표 · 적립 습관" : k <= 10000 ? "연 7%면 해마다 +\(Self.wonK(k * 0.07).replacingOccurrences(of: "원", with: ""))" : "연 4% 꺼내면 월 \(Self.wonK(k * 0.04 / 12).replacingOccurrences(of: "원", with: ""))"
+            k <= 1000 ? String(localized: "첫 목표 · 적립 습관") : k <= 10000 ? String(localized: "연 7%면 해마다 +\(String(describing: Self.wonK(k * 0.07).replacingOccurrences(of: "원", with: "")))") : String(localized: "연 4% 꺼내면 월 \(String(describing: Self.wonK(k * 0.04 / 12).replacingOccurrences(of: "원", with: "")))")
         }
         // 플러스: 기간마다 '매달 넣는 돈으로 닿을 확률 50% 근처' 금액 (배수 프리셋 대신, 2026-10-11 결정)
         if route != .novice {
@@ -318,12 +318,12 @@ extension AppModel {
                                   need: A > 0 ? "×\(String(format: "%.1f", k / A))" : "")
             }
         }
-        let raw: [(Double, Int, String, Int?)] = [(1000, 3, "첫 1,000만", nil), (10000, 5, "1억", nil), (30000, 10, "3억", nil), (100000, 20, "10억", nil)]
+        let raw: [(Double, Int, String, Int?)] = [(1000, 3, String(localized: "첫 1,000만"), nil), (10000, 5, String(localized: "1억"), nil), (30000, 10, String(localized: "3억"), nil), (100000, 20, String(localized: "10억"), nil)]
         return raw.map { k, y, name, x in
             let nm = neededMonthly(k: k, years: y), cagr = A > 0 ? pow(k / A, 1 / Double(y)) - 1 : 0
-            return GoalPreset(k: k, y: y, name: x.map { "\(name) (\($0)배)" } ?? name,
-                              mean: x != nil ? "적립 없이 연 +\(Int((cagr * 100).rounded()))%" : meaning(k),
-                              need: nm > 0 ? "월 " + Self.wonK(nm).replacingOccurrences(of: "원", with: "") : "이미 충분")
+            return GoalPreset(k: k, y: y, name: x.map { String(localized: "\(String(describing: name)) (\(String(describing: $0))배)") } ?? name,
+                              mean: x != nil ? String(localized: "적립 없이 연 +\(String(describing: Int((cagr * 100).rounded())))%") : meaning(k),
+                              need: nm > 0 ? String(localized: "월 ") + Self.wonK(nm).replacingOccurrences(of: "원", with: "") : String(localized: "이미 충분"))
         }
     }
 
@@ -331,14 +331,14 @@ extension AppModel {
     struct GoalStep: Identifiable { let id: String; let num: String; let title: String; let reward: String; let to: MissionRoute; let inter: Bool }
     var goalSteps: [GoalStep] {
         let list: [(String, String, String, MissionRoute, Bool)] = route == .novice ? [
-            ("goal", "목표 정하기", "목표까지 경로", .g1, false), ("mix", "투자 구성 고르기", "구성 비교", .g3, false),
-            ("link", "앱 시작 3단계", "위젯 전부", .nx, false), ("inter", "처음 석 달 체크인", "캐릭터 위젯 3개", .gi, true),
+            ("goal", String(localized: "목표 정하기"), String(localized: "목표까지 경로"), .g1, false), ("mix", String(localized: "투자 구성 고르기"), String(localized: "구성 비교"), .g3, false),
+            ("link", String(localized: "앱 시작 3단계"), String(localized: "위젯 전부"), .nx, false), ("inter", String(localized: "처음 석 달 체크인"), String(localized: "캐릭터 위젯 3개"), .gi, true),
         ] : [
-            ("hold", "종목과 산 가격 넣기", "평가액·수익률", .m1, false), ("goal", "목표 정하기", "목표까지 경로", .g1, false),
-            ("mix", "다른 방식과 비교", "구성 비교", .g3, false), ("tax", "세금 알아보기", "절세 순서", .gt, false),
-            ("link", "앱 시작 3단계", "위젯 전부", .nx, false), ("inter", "처음 석 달 체크인", "캐릭터 위젯 3개", .gi, true),
+            ("hold", String(localized: "종목과 산 가격 넣기"), String(localized: "평가액·수익률"), .m1, false), ("goal", String(localized: "목표 정하기"), String(localized: "목표까지 경로"), .g1, false),
+            ("mix", String(localized: "다른 방식과 비교"), String(localized: "구성 비교"), .g3, false), ("tax", String(localized: "세금 알아보기"), String(localized: "절세 순서"), .gt, false),
+            ("link", String(localized: "앱 시작 3단계"), String(localized: "위젯 전부"), .nx, false), ("inter", String(localized: "처음 석 달 체크인"), String(localized: "캐릭터 위젯 3개"), .gi, true),
         ]
-        return list.enumerated().map { i, x in GoalStep(id: x.0, num: x.4 ? "인터미션" : "\(i + 1)", title: x.1, reward: x.2, to: x.3, inter: x.4) }
+        return list.enumerated().map { i, x in GoalStep(id: x.0, num: x.4 ? String(localized: "인터미션") : "\(i + 1)", title: x.1, reward: x.2, to: x.3, inter: x.4) }
     }
     var goalTotal: Int { goalSteps.filter { !$0.inter }.count }
     func goalNo(_ id: String) -> String { goalSteps.first { $0.id == id }?.num ?? "" }
@@ -355,20 +355,20 @@ extension AppModel {
     func shift(_ mx: GoalMix) -> Shift {
         let w = focusWeight, fn = focusName, rn = restName
         let restIndex = restRows.allSatisfy { $0.sym.sector == "지수" }
-        let label = ["T": fn, "I": restIndex || w >= 1 ? "지수" : "\(rn)→지수", "G": "성장 지속", "B": "버팀목", "C": mx.id == "steady" ? "채권·현금" : "현금"]
+        let label = ["T": fn, "I": restIndex || w >= 1 ? String(localized: "지수") : String(localized: "\(String(describing: rn))→지수"), "G": String(localized: "성장 지속"), "B": String(localized: "버팀목"), "C": mx.id == "steady" ? String(localized: "채권·현금") : String(localized: "현금")]
         let ind = focusIndustry, hot = ind.map { Basket.of(pe: $0.pe, pe10: $0.pe10, growth: $0.growth) == "H" } ?? false
         if mx.own {
-            let sec = ind.map { $0.ko + (hot ? "·과열" : "") } ?? ""
-            var rs: [(String, String, String, Bool)] = [(fn, AppModel.pct(w), "그대로", true)]
-            if !restRows.isEmpty { rs.append((rn, AppModel.pct(1 - w), "그대로", true)) }
+            let sec = ind.map { $0.ko + (hot ? String(localized: "·과열") : "") } ?? ""
+            var rs: [(String, String, String, Bool)] = [(fn, AppModel.pct(w), String(localized: "그대로"), true)]
+            if !restRows.isEmpty { rs.append((rn, AppModel.pct(1 - w), String(localized: "그대로"), true)) }
             return Shift(rows: rs,
                          line: "\(fn) \(sec.isEmpty ? "" : sec + " ")\(AppModel.pct(w))" + (restRows.isEmpty ? "" : " · \(rn) \(AppModel.pct(1 - w))"),
-                         note: (hot ? "\(fn) 업종(\(ind?.ko ?? "")) 과열 · " : "") + "바꿀 비중은 다른 구성에서", weights: ["T": w, "I": 1 - w])
+                         note: (hot ? String(localized: "\(String(describing: fn)) 업종(\(String(describing: ind?.ko ?? ""))) 과열 · ") : "") + String(localized: "바꿀 비중은 다른 구성에서"), weights: ["T": w, "I": 1 - w])
         }
         let keys = ["T", "I", "G", "B", "C"]
         if route == .novice {
-            return Shift(rows: keys.compactMap { k in mx.comp[k].map { (label[k]!, "적립의", AppModel.pct($0), true) } },
-                         line: mx.basket.map { b in "\(b.name): " + b.industries.prefix(3).map(\.ko).joined(separator: " · ") + " 외 \(b.industries.count - 3)개" } ?? "",
+            return Shift(rows: keys.compactMap { k in mx.comp[k].map { (label[k]!, String(localized: "적립의"), AppModel.pct($0), true) } },
+                         line: mx.basket.map { b in "\(b.name): " + b.industries.prefix(3).map(\.ko).joined(separator: " · ") + String(localized: " 외 \(String(describing: b.industries.count - 3))개") } ?? "",
                          weights: mx.comp)
         }
         // 한 종목은 세 묶음에 들지 않아 10%까지만 둔다 (시안 T_CAP)
@@ -380,19 +380,19 @@ extension AppModel {
             let a = tgt[k] ?? 0, b = now[k] ?? 0
             return (label[k]!, "\(Int((b * 100).rounded()))→\(AppModel.pct(a))", Mission3ResultView.pp(a - b), a >= b)
         }
-        let short = ["T": fn, "I": label["I"]!, "G": "성장", "B": "버팀목", "C": "현금"]
+        let short = ["T": fn, "I": label["I"]!, "G": String(localized: "성장"), "B": String(localized: "버팀목"), "C": String(localized: "현금")]
         let line = used.map { k in short[k]! + " " + ((now[k] ?? 0) > 0 ? "\(Int(((now[k] ?? 0) * 100).rounded()))→\(AppModel.pct(tgt[k] ?? 0))" : "+" + AppModel.pct(tgt[k] ?? 0)) }.joined(separator: " · ")
-        var note = hot ? "과열 업종 한 종목 최대 10%" : "한 종목 최대 10%"
+        var note = hot ? String(localized: "과열 업종 한 종목 최대 10%") : String(localized: "한 종목 최대 10%")
         if tT < w && gM > 0 && tot > 0 {
             let mo = ceil((w * tot / tT - tot) / gM)
-            note += " · 적립만으로 약 \(Self.eta(mo).replacingOccurrences(of: " 뒤", with: "")) · 팔면 세금 (세금 화면)"
+            note += String(localized: " · 적립만으로 약 \(String(describing: Self.eta(mo).replacingOccurrences(of: " 뒤", with: ""))) · 팔면 세금 (세금 화면)")
         }
         return Shift(rows: rows, line: line, note: note, weights: tgt, sell: max(0, w - tT))
     }
 
     // 3개월 인터미션
     static let goalMonthSteps: [(task: String, whereText: String, reward: String)] = [
-        ("앱에서 이번 달 적립 기록하기", "앱", "세리"), ("앱에서 내 종목 수량·평균 단가 맞춰 보기", "앱", "시오"), ("앱에서 배당·세금 요약 보기", "앱", "모두"),
+        (String(localized: "앱에서 이번 달 적립 기록하기"), String(localized: "앱"), String(localized: "세리")), (String(localized: "앱에서 내 종목 수량·평균 단가 맞춰 보기"), String(localized: "앱"), String(localized: "시오")), (String(localized: "앱에서 배당·세금 요약 보기"), String(localized: "앱"), String(localized: "모두")),
     ]
     /// 체크인: 시작한 날부터 30일마다 한 달씩 (서버 시각, Me.swift monthGate). 회복 루트 주차와 같은 방식
     func confirmGoalMonth() {

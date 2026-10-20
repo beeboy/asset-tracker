@@ -54,6 +54,13 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 영문 로컬리제이션 1단계: 바탕 + 글 모으기 (2026-10-20, 로컬 커밋)
+- `ios-app/Naeilo/Localizable.xcstrings`(원문 ko, 3,156줄) + 영어(en) 추가. 개발 언어 ko, Info.plist `CFBundleLocalizations` ko·en. 영어 번역은 아직 없음(영어 기기도 한국어 그대로).
+- 코드 속 한글: `Text("…")`·`Button("…")` 등은 그대로(자동), 그 밖은 `String(localized:)`로 감쌈(`ios-app/tools/l10n_wrap.py`). 끼워 넣는 값은 `String(describing:)`로 감싸 지금 모양 그대로.
+- 목록 갱신: 빌드 후 `xcrun xcstringstool sync Naeilo/Localizable.xcstrings --stringsdata build/NaeiloApp.build/Debug-iphonesimulator/NaeiloApp.build/Objects-normal/arm64/*.stringsdata` (Xcode에서 빌드하면 자동).
+- 설정: "거주 국가"(처음은 기기 지역, 세금만 따름 · 한국 밖이면 세금 화면에 '준비 중' 안내), "언어 변경"(iOS 설정의 앱 화면 열기). 한국 밖이면 토스 오픈 API 카드는 아래로, 홍콩·중국·싱가포르 등은 Longbridge가 Alpaca 위로.
+- 2단계 전에 볼 것: 데이터 파일(StockCatalog·StockSearch·SampleData·Industries)과 `WidgetShared`(WL.t)는 안 감쌈. `== "한글"` 비교 쪽 글은 안 감쌌는데 같은 글을 다른 곳에선 감싼 데가 있음(예: StartView `"3년"`, SettingsView 오픈 API 오류 문구) → 번역 넣을 때 맞춰야 함. 미션·목표의 '한국 거주자' 세금 카드는 거주 국가를 아직 안 따름. Info.plist 권한 문구도 아직.
+
 ## 파도 타기 4단계: 섬 지도 첫 화면 (2026-10-20, 로컬 커밋)
 - `Views/Wave/WaveHomeView.swift`: 보드 탄 내 캐릭터(SurfRider, 누르면 꾸미기), 섬 4개 지도(윤곽 = 내 자산 40거래일 코스, 점선 뱃길, 안 열린 섬은 안개), 지금 섬 카드·'타러 가기', 예보 한 줄.
 - 진행 저장 `WaveMap`(UserDefaults `wave.star.*`·`wave.best.*`): 앞 섬 별 1개면 다음 섬 열림. 판이 끝나면 `WaveMap.record(WaveResult)`로 별(결과 팝업과 같은 기준)·최고 점수 저장.

@@ -20,7 +20,7 @@ struct StoryChapter: Codable {
 private struct StoryFile: Codable { var lang: String; var from: Int?; let chapters: [StoryChapter] }
 
 enum StoryLang: String, CaseIterable { case ko, en
-    var label: String { self == .ko ? "한" : "EN" }
+    var label: String { self == .ko ? String(localized: "한") : "EN" }
 }
 
 /// 외전(side) 또는 본편 1권(vol1)
@@ -152,8 +152,8 @@ final class Story {
     /// 머리글 "외전 『이종 공명』 · 1장" / "Resonance Across Kinds · Chapter 1" / "『중첩된 현실』 1권 · 1부 제1장" / "Nested Reality, Vol. 1 · Part 1, Chapter 1"
     func heading(_ i: Int, _ b: StoryBook = .side) -> String {
         let t = chapter(i, b)?.title ?? (b == .side && i < 6 ? Shelter.chapters[i].title : "")
-        if b == .vol1 { return chapter(i, b)?.title.hasPrefix("Part") == true ? "Nested Reality, Vol. 1 · \(t)" : "『중첩된 현실』 1권 · \(t)" }
-        return lang == .ko ? "외전 『이종 공명』 · \(t)" : "Resonance Across Kinds · \(t)"
+        if b == .vol1 { return chapter(i, b)?.title.hasPrefix("Part") == true ? "Nested Reality, Vol. 1 · \(t)" : String(localized: "『중첩된 현실』 1권 · \(String(describing: t))") }
+        return lang == .ko ? String(localized: "외전 『이종 공명』 · \(String(describing: t))") : "Resonance Across Kinds · \(t)"
     }
 
     /// 위젯에 넘길 값: 마지막으로 연 장의 읽던 자리 (앱에 든 외전 프롤로그~5장)
@@ -165,7 +165,7 @@ final class Story {
         let text = blocks.indices.dropFirst(at).first { ["p", "q"].contains(blocks[$0].k) }.map { blocks[$0].t } ?? ""
         return WStory(open: open, chapter: i,
                       label: (ch?.title ?? Shelter.chapters[i].title) + " · " + (ch?.name ?? Shelter.chapters[i].name),
-                      line: open ? Self.plain(text) : "앱 시작 3단계를 마치면 서재가 열려요.",
+                      line: open ? Self.plain(text) : String(localized: "앱 시작 3단계를 마치면 서재가 열려요."),
                       friend: Shelter.chapters[i].friend,
                       progress: blocks.isEmpty ? 0 : Double(at) / Double(blocks.count),
                       lang: lang.rawValue)

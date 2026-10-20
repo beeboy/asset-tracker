@@ -132,9 +132,9 @@ struct WaveFeedbackToggles: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            row("게임 소리", "파도 타기 효과음 · 무음 모드면 안 나요", $sound)
+            row(String(localized: "게임 소리"), String(localized: "파도 타기 효과음 · 무음 모드면 안 나요"), $sound)
             Divider().overlay(Theme.line)
-            row("게임 진동", "탈 때 톡, 내릴 때 탁", $haptic)
+            row(String(localized: "게임 진동"), String(localized: "탈 때 톡, 내릴 때 탁"), $haptic)
         }
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))

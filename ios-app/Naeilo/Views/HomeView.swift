@@ -8,7 +8,7 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                AppHeader(tab: "홈").padding(.horizontal, -16)
+                AppHeader(tab: String(localized: "홈")).padding(.horizontal, -16)
                 SampleNote()
                 summary
                 // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
@@ -55,12 +55,12 @@ struct HomeView: View {
     private var goalSummary: some View {
         let now = m.route == .novice ? m.goalSaved : m.total / 1e4, value = m.route == .plus || m.noviceOwn, prog = min(1, now / max(1, m.gK))
         return VStack(alignment: .leading, spacing: 10) {
-            Text(value ? "평가액" : "모은 돈").foregroundStyle(Color(hex: 0xC9D0D6))
+            Text(value ? String(localized: "평가액") : String(localized: "모은 돈")).foregroundStyle(Color(hex: 0xC9D0D6))
                 .appFont(13)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 // 금액은 길어도 꺾지 않고 한 줄로, 자리가 모자라면 글자를 줄인다
                 // 누르면 금액 가리기(다시 누르면 보이기)
-                Text(hideAmt ? "••••••" : AppModel.man(now * 1e4) + "원").appFont(32, .bold).tracking(-0.5).roll(now)
+                Text(hideAmt ? "••••••" : AppModel.man(now * 1e4) + String(localized: "원")).appFont(32, .bold).tracking(-0.5).roll(now)
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
                     .contentShape(Rectangle()).onTapGesture { hideAmt.toggle() }
                 if value && m.cost > 0 {
@@ -76,9 +76,9 @@ struct HomeView: View {
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: prog)
             HStack {
-                Text(m.goalReached ? "목표 \(AppModel.wonK(m.gK)) 도달!"
-                     : m.route == .novice ? "매달 \(AppModel.wonK(m.gM)) 적립 · 다음 적립일 +\(AppModel.wonK(m.gM))"
-                     : AppModel.paceText(m.goalPace()) + (m.gM > 0 ? " · 다음달 \(AppModel.wonK(m.gM)) 적립" : " · 추가 적립 미정"))
+                Text(m.goalReached ? String(localized: "목표 \(String(describing: AppModel.wonK(m.gK))) 도달!")
+                     : m.route == .novice ? String(localized: "매달 \(String(describing: AppModel.wonK(m.gM))) 적립 · 다음 적립일 +\(String(describing: AppModel.wonK(m.gM)))")
+                     : AppModel.paceText(m.goalPace()) + (m.gM > 0 ? String(localized: " · 다음달 \(String(describing: AppModel.wonK(m.gM))) 적립") : String(localized: " · 추가 적립 미정")))
                     .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
                 if !m.goalReached && m.route != .novice && m.gM <= 0 {
                     Spacer(minLength: 8)
@@ -86,7 +86,7 @@ struct HomeView: View {
                         .buttonStyle(.plain).accessibilityLabel("다음달 적립 정하기")
                 }
             }
-            if m.goalReached { darkButton("다음 목표 정하기") { m.suggestNextGoal(); m.homePath.append("goal") } }
+            if m.goalReached { darkButton(String(localized: "다음 목표 정하기")) { m.suggestNextGoal(); m.homePath.append("goal") } }
         }
         .foregroundStyle(.white)
         .padding(18)
@@ -109,16 +109,16 @@ struct HomeView: View {
             HStack {
                 Text("본전까지")
                 Spacer()
-                Text(need > 0 ? "+" + String(format: "%.1f", need * 100) + "% 남음" : "본전 도달")
+                Text(need > 0 ? "+" + String(format: "%.1f", need * 100) + String(localized: "% 남음") : String(localized: "본전 도달"))
                     .fontWeight(.bold).foregroundStyle(Theme.yellow)
             }
             .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             ProgressBar(value: m.total / max(1, m.cost))
             Text(need > 0
-                 ? "어제 \(String(format: "%.1f", needY * 100))% → 오늘 \(String(format: "%.1f", need * 100))%"
-                 : "본전 넘음 · 종목·친구 그대로")
+                 ? String(localized: "어제 \(String(describing: String(format: "%.1f", needY * 100)))% → 오늘 \(String(describing: String(format: "%.1f", need * 100)))%")
+                 : String(localized: "본전 넘음 · 종목·친구 그대로"))
                 .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
-            if need <= 0 { darkButton("목표 루트로") { m.graduateToGoal(); m.tab = .board } }
+            if need <= 0 { darkButton(String(localized: "목표 루트로")) { m.graduateToGoal(); m.tab = .board } }
         }
         .foregroundStyle(.white)
         .padding(18)
@@ -129,7 +129,7 @@ struct HomeView: View {
     // 오늘 등락: 부호는 한 번만 (▲/▼ 뒤 퍼센트·금액은 부호 없이). 목표·회복 카드 공통
     private var todayLine: some View {
         let mv = m.todayMove, diff = m.stockTotal - m.stockTotal / (1 + mv)
-        return Text("오늘 " + (mv >= 0 ? "▲ " : "▼ ") + String(format: "%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)))
+        return Text(String(localized: "오늘 ") + (mv >= 0 ? "▲ " : "▼ ") + String(format: "%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)))
             .appFont(13).foregroundStyle(mv >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
     }
 
@@ -169,19 +169,19 @@ struct HomeView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(b.map { "\($0.cat.label) 소식: \($0.text)" } ?? "쉼터 보기")
+            .accessibilityLabel(b.map { String(localized: "\(String(describing: $0.cat.label)) 소식: \(String(describing: $0.text))") } ?? String(localized: "쉼터 보기"))
             if !r.items.isEmpty {
                 HStack {
                     Spacer()
                     Button { inbox = true } label: {
-                        Text(n > 0 ? "새 소식 \(n) ›" : "소식함 ›").appFont(12, .bold)
+                        Text(n > 0 ? String(localized: "새 소식 \(String(describing: n)) ›") : String(localized: "소식함 ›")).appFont(12, .bold)
                             .foregroundStyle(n > 0 ? Theme.inkFixed : Theme.sub)
                             .padding(.horizontal, 10).padding(.vertical, 4)
                             .background(n > 0 ? Theme.yellow : Theme.line, in: Capsule())
                             .frame(minHeight: 32)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(n > 0 ? "새 소식 \(n)개 보기" : "소식함 보기")
+                    .accessibilityLabel(n > 0 ? String(localized: "새 소식 \(String(describing: n))개 보기") : String(localized: "소식함 보기"))
                 }
                 .padding(.top, -4)
             }
@@ -192,7 +192,7 @@ struct HomeView: View {
                         Pixel(name: (m.friendOn(i) ? "spr_" : "sil_") + f.id, width: 20, height: 28).opacity(m.friendOn(i) ? 1 : 0.5)
                     }
                     Spacer()
-                    Text("친구 \(on)/5" + (next.map { " · 다음 \(Shelter.friends[$0].name) \(m.friendWhen($0))" } ?? " · 외전 5장") + " ›")
+                    Text(String(localized: "친구 \(String(describing: on))/5") + (next.map { String(localized: " · 다음 \(String(describing: Shelter.friends[$0].name)) \(String(describing: m.friendWhen($0)))") } ?? String(localized: " · 외전 5장")) + " ›")
                         .appFont(12).foregroundStyle(Theme.sub).lineLimit(2).minimumScaleFactor(0.8).multilineTextAlignment(.trailing)
                 }
                 .contentShape(Rectangle())
@@ -209,9 +209,9 @@ struct HomeView: View {
     @ViewBuilder private var reminder: some View {
         let r = Remind.shared
         if let e = r.strip {
-            stripRow(tag: "일정", text: "\(MarketEvents.when(e.day ?? "")) \(e.text) · \(e.sub ?? "")")
+            stripRow(tag: String(localized: "일정"), text: "\(MarketEvents.when(e.day ?? "")) \(e.text) · \(e.sub ?? "")")
         } else if r.isOn(.doing), let d = r.doing.first(where: { $0.id == "do.inter" }) {
-            stripRow(tag: "리마인드", text: d.text)
+            stripRow(tag: String(localized: "리마인드"), text: d.text)
         }
     }
     private func stripRow(tag: String, text: String) -> some View {
@@ -245,7 +245,7 @@ struct HomeView: View {
                 Spacer()
                 Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal).roll(AppModel.sgn(m.todayMove))
             }
-            Text(m.rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + " · 원/달러 \(AppModel.sgn(Market.shared.fx.change))").appFont(13).foregroundStyle(Theme.sub)
+            Text(m.rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + String(localized: " · 원/달러 \(String(describing: AppModel.sgn(Market.shared.fx.change)))")).appFont(13).foregroundStyle(Theme.sub)
         }
     }
 }
@@ -253,7 +253,7 @@ struct HomeView: View {
 // 오늘의 1분: 내 종목 오늘 숫자 확인 + 날마다 바뀌는 질문 하나 (지난 7일과 안 겹치게). 설명은 계산값으로.
 struct RoutineCard: View {
     @Environment(AppModel.self) private var m
-    private let days = ["월", "화", "수", "목", "금", "토", "일"]
+    private let days = [String(localized: "월"), String(localized: "화"), String(localized: "수"), String(localized: "목"), String(localized: "금"), String(localized: "토"), String(localized: "일")]
     /// 이번 주 칸 중 채운 날 수 (요일 7칸과 같은 기준)
     private var weekDone: Int {
         (0..<7).filter { i in let d = m.day - m.day % 7 + i; return m.dayLog[d].map { $0.answer != nil } ?? (d < 5 && d < m.day) }.count
@@ -278,7 +278,7 @@ struct RoutineCard: View {
                         .overlay { if d == m.day && !ok { RoundedRectangle(cornerRadius: 8).stroke(Theme.yellow, lineWidth: 2) } }
                 }
             }
-            step(tag: "1 · 오늘 숫자") {
+            step(tag: String(localized: "1 · 오늘 숫자")) {
                 Text((try? AttributedString(markdown: m.routineFact, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(m.routineFact)).appFont(15).lineSpacing(3)
                 if !t.seen {
                     Button("확인했어요") { withAnimation { m.markSeen() } }
@@ -304,7 +304,7 @@ struct RoutineCard: View {
                         }
                     }
                     if let a = t.answer {
-                        Text((t.ok.map { $0 ? "맞아요! " : "아쉬워요. " } ?? "") + q.fb(a))
+                        Text((t.ok.map { $0 ? String(localized: "맞아요! ") : String(localized: "아쉬워요. ") } ?? "") + q.fb(a))
                             .appFont(13).lineSpacing(3)
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -377,7 +377,7 @@ struct MiniPath: View {
             .frame(width: 84, height: 40)
             .pulse(Theme.mint, dot: 6) { s in act.last.map { CGPoint(x: CGFloat(p.start / max(1e-6, x1)) * s.width, y: CGFloat((hi - $0.1) / max(1, hi - lo)) * s.height) } }
             .overlay(alignment: .bottom) {
-                Text(gap >= 0 ? "계획대로" : "조금 늦어요").appFont(10, .bold)
+                Text(gap >= 0 ? String(localized: "계획대로") : String(localized: "조금 늦어요")).appFont(10, .bold)
                     .foregroundStyle(gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
                     .fixedSize().offset(y: 16)
             }
@@ -385,7 +385,7 @@ struct MiniPath: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("내 길 그래프, \(gap >= 0 ? "계획대로" : "계획보다 조금 늦어요"), 눌러서 분석의 내 길 보기")
+        .accessibilityLabel("내 길 그래프, \(gap >= 0 ? String(localized: "계획대로") : String(localized: "계획보다 조금 늦어요")), 눌러서 분석의 내 길 보기")
     }
 }
 

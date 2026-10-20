@@ -9,7 +9,7 @@ struct BoardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AppHeader(tab: "미션").padding(.horizontal, -16)
+                AppHeader(tab: String(localized: "미션")).padding(.horizontal, -16)
                 SampleNote()
                 // 플러스 루트처럼: 맨 위 인터미션 카드, 접힌 시작 미션 목록, 초록 다음 미션 카드
                 if let inter = m.blocks.first(where: \.inter) { interCard(inter) }
@@ -60,9 +60,9 @@ struct BoardView: View {
                 if done { Text("완료 ✓").appFont(12, .bold).foregroundStyle(Theme.yellow) }
                 else if !avail { Image(systemName: "lock").appFont(12) }
             }
-            Text(done || n >= 4 ? "4주 체크인 끝"
-                 : avail ? "주 1회 비중 체크 · \(n)/4주"
-                 : "시작 미션 뒤 열림")
+            Text(done || n >= 4 ? String(localized: "4주 체크인 끝")
+                 : avail ? String(localized: "주 1회 비중 체크 · \(String(describing: n))/4주")
+                 : String(localized: "시작 미션 뒤 열림"))
                 .appFont(16, .bold).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 6) {
                 ForEach(0..<4, id: \.self) { i in
@@ -70,7 +70,7 @@ struct BoardView: View {
                     let cur = avail && !done && i == n
                     VStack(spacing: 2) {
                         Text("\(i + 1)주째").appFont(11)
-                        Text(pick?.label ?? (cur ? "이번 주" : "–")).appFont(13, .bold)
+                        Text(pick?.label ?? (cur ? String(localized: "이번 주") : "–")).appFont(13, .bold)
                     }
                     .frame(maxWidth: .infinity, minHeight: 60)
                     .foregroundStyle(pick != nil ? .white : cur ? Theme.yellow : Theme.muted)
@@ -93,7 +93,7 @@ struct BoardView: View {
         return VStack(alignment: .leading, spacing: 0) {
             Button { withAnimation { openDone.toggle() } } label: {
                 HStack(spacing: 8) {
-                    Text(all ? "✓ 시작 미션 \(done)/\(list.count)" : "시작 미션 \(done)/\(list.count)").fontWeight(.bold)
+                    Text(all ? String(localized: "✓ 시작 미션 \(String(describing: done))/\(String(describing: list.count))") : String(localized: "시작 미션 \(String(describing: done))/\(String(describing: list.count))")).fontWeight(.bold)
                     Spacer(minLength: 0)
                     Image(systemName: openDone ? "chevron.up" : "chevron.down")
                 }
@@ -116,7 +116,7 @@ struct BoardView: View {
                         .appFont(13, .bold).padding(.horizontal, 14).frame(minHeight: 44)
                     }
                     .buttonStyle(.plain).disabled(r == nil || !(ok || avail))
-                    .accessibilityLabel("시작 미션 \(b.num): \(b.title)" + (ok ? ", 끝냄" : ""))
+                    .accessibilityLabel(String(localized: "시작 미션 \(String(describing: b.num)): \(String(describing: b.title))") + (ok ? String(localized: ", 끝냄") : ""))
                 }
             }
         }
@@ -191,27 +191,27 @@ struct BoardView: View {
                 Text("1칸 = \(unit)").appFont(12).foregroundStyle(Theme.sub)
             }
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(n.formatted())칸").appFont(26, .bold).roll("\(n.formatted())칸")
+                Text("\(n.formatted())칸").appFont(26, .bold).roll(String(localized: "\(String(describing: n.formatted()))칸"))
                 Text("/ 1,000칸").appFont(14).foregroundStyle(Theme.sub)
-                Text(chg == 0 ? "어제와 같음" : "어제보다 \(chg > 0 ? "+" : "")\(chg)칸").appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
+                Text(chg == 0 ? String(localized: "어제와 같음") : String(localized: "어제보다 \(String(describing: chg > 0 ? "+" : ""))\(String(describing: chg))칸")).appFont(14, .bold).foregroundStyle(chg == 0 ? Theme.sub : Theme.change(Double(chg)))
             }
-            ChipRow(items: [("mine", "바닥 / 회복"), ("stock", "종목별"), ("chg", "오늘 바뀐 칸")], selection: $cellMode)
+            ChipRow(items: [("mine", String(localized: "바닥 / 회복")), ("stock", String(localized: "종목별")), ("chg", String(localized: "오늘 바뀐 칸"))], selection: $cellMode)
             CellGrid(filled: n, floor: nFloor, yesterday: nY, mode: cellMode, parts: stockParts)
                 .aspectRatio(320.0 / 200.0, contentMode: .fit)
                 .accessibilityLabel("1000칸 중 \(n)칸")
             FlowRow(spacing: 10) {
                 if cellMode == "stock" {
-                    ForEach(stockParts, id: \.0) { k, c, cnt in legend(c, "\(k) \(cnt)칸") }
+                    ForEach(stockParts, id: \.0) { k, c, cnt in legend(c, String(localized: "\(String(describing: k)) \(String(describing: cnt))칸")) }
                 } else {
-                    legend(Theme.teal, "바닥 \(nFloor)칸")
-                    legend(Color(hex: 0x7FD3C9, dark: 0x3C8F86), "회복 \(n - nFloor)칸")
-                    legend(Theme.yellow, "마지막 칸 = 본전")
+                    legend(Theme.teal, String(localized: "바닥 \(String(describing: nFloor))칸"))
+                    legend(Color(hex: 0x7FD3C9, dark: 0x3C8F86), String(localized: "회복 \(String(describing: n - nFloor))칸"))
+                    legend(Theme.yellow, String(localized: "마지막 칸 = 본전"))
                 }
             }
             // 공유 카드와 게임 둘(블록·파도)을 한 줄에
             HStack(spacing: 8) {
-                ShareCardButton(title: "공유 카드")
-                BrickGameButton(filled: n, floor: nFloor, yesterday: nY, title: "블록", icon: "square.grid.3x3.fill").labelStyle(TightLabel())
+                ShareCardButton(title: String(localized: "공유 카드"))
+                BrickGameButton(filled: n, floor: nFloor, yesterday: nY, title: String(localized: "블록"), icon: "square.grid.3x3.fill").labelStyle(TightLabel())
                 WaveGameButton().labelStyle(TightLabel())
             }
         }
@@ -239,11 +239,11 @@ struct WeekForecastCard: View {
     @Environment(AppModel.self) private var m
     @State private var whyOpen = false
 
-    static let names = ["lo": "더 낮게", "in": "예보대로", "hi": "더 높게"]
+    static let names = ["lo": String(localized: "더 낮게"), "in": String(localized: "예보대로"), "hi": String(localized: "더 높게")]
 
     /// 범위 숫자: 억 단위 소수 한 자리 (lo·hi가 같게 반올림되면 두 자리), 1억 아래는 만원 단위
     static func eok(_ v: Double, _ d: Int) -> String {
-        v < 1e8 ? AppModel.man((v / 1e5).rounded() * 1e5) : String(format: "%.\(d)f억", v / 1e8)
+        v < 1e8 ? AppModel.man((v / 1e5).rounded() * 1e5) : String(format: String(localized: "%.\(String(describing: d))f억"), v / 1e8)
     }
 
     // 이번 주 예보: 그 주 처음 연 날에 금요일 평가액 범위를 적어 두고, 금요일 종가로 판정한다.
@@ -284,7 +284,7 @@ struct WeekForecastCard: View {
                 .frame(height: 26)
                 HStack {
                     Text(lo); Spacer()
-                    Text((m.weekFriday ? "금 " : "지금 ") + Self.eok(r.actual, 2)).fontWeight(.bold); Spacer()
+                    Text((m.weekFriday ? String(localized: "금 ") : String(localized: "지금 ")) + Self.eok(r.actual, 2)).fontWeight(.bold); Spacer()
                     Text(hi)
                 }
                 .appFont(12).foregroundStyle(Theme.sub)
@@ -306,7 +306,7 @@ struct WeekForecastCard: View {
                 }
                 Text("금요일엔?").appFont(17, .bold)
                 HStack(spacing: 8) {
-                    ForEach([("lo", "\(lo) ↓"), ("in", "범위 안"), ("hi", "\(hi) ↑")], id: \.0) { o in
+                    ForEach([("lo", "\(lo) ↓"), ("in", String(localized: "범위 안")), ("hi", "\(hi) ↑")], id: \.0) { o in
                         let on = m.weekGuess == o.0
                         Button { m.weekGuess = o.0; Remind.shared.recordWeek(m) } label: {
                             VStack(spacing: 2) {
@@ -324,8 +324,8 @@ struct WeekForecastCard: View {
                     }
                 }
                 if m.weekFriday {
-                    let out = pos == "in" ? "범위 안" : "범위보다 \(pos == "hi" ? "높게" : "낮게")"
-                    Text((m.weekGuess.map { $0 == pos ? "맞혔어요! " : "아쉬워요. 고른 답 ‘\(Self.names[$0] ?? "")’ · " } ?? "") + out)
+                    let out = pos == "in" ? String(localized: "범위 안") : String(localized: "범위보다 \(String(describing: pos == "hi" ? String(localized: "높게") : String(localized: "낮게")))")
+                    Text((m.weekGuess.map { $0 == pos ? String(localized: "맞혔어요! ") : String(localized: "아쉬워요. 고른 답 ‘\(String(describing: Self.names[$0] ?? ""))’ · ") } ?? "") + out)
                         .appFont(14, .semibold)
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(inside ? Color(hex: 0xE3F4EC, dark: 0x163226) : Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
@@ -343,7 +343,7 @@ struct WeekForecastCard: View {
     private func recordCard(_ stamps: [Int]) -> some View {
             Card {
                 HStack {
-                    Text(stamps.isEmpty ? "예보 성적" : "지난 \(stamps.count)주").appFont(15, .bold)
+                    Text(stamps.isEmpty ? String(localized: "예보 성적") : String(localized: "지난 \(String(describing: stamps.count))주")).appFont(15, .bold)
                     Spacer()
                     if !stamps.isEmpty { Text("\(stamps.reduce(0, +))/\(stamps.count) 범위 안").appFont(13).foregroundStyle(Theme.sub) }
                 }
@@ -358,7 +358,7 @@ struct WeekForecastCard: View {
                                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(stamps[i] == 1 ? Theme.forecast : Theme.dash, lineWidth: 2))
                                     .overlay { if stamps[i] == 1 { Image(systemName: "checkmark").appFont(13, .bold).foregroundStyle(.white) } }
                                     .frame(height: 32)
-                                Text(i == stamps.count - 1 ? "지난주" : "\(stamps.count - i)주 전").appFont(10).foregroundStyle(Theme.muted)
+                                Text(i == stamps.count - 1 ? String(localized: "지난주") : String(localized: "\(String(describing: stamps.count - i))주 전")).appFont(10).foregroundStyle(Theme.muted)
                                     .lineLimit(1).minimumScaleFactor(0.7)
                             }
                             .frame(maxWidth: .infinity)
@@ -367,8 +367,8 @@ struct WeekForecastCard: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("\(stamps.count)주 중 \(stamps.reduce(0, +))주 범위 안")
                     HStack(spacing: 14) {
-                        legend(Theme.forecast, nil, "범위 안")
-                        legend(Theme.card, Theme.dash, "범위 밖")
+                        legend(Theme.forecast, nil, String(localized: "범위 안"))
+                        legend(Theme.card, Theme.dash, String(localized: "범위 밖"))
                     }
                 }
                 Divider()
@@ -385,11 +385,11 @@ struct WeekForecastCard: View {
                                 .foregroundStyle(got ? Theme.inkFixed : Theme.muted)
                                 .frame(width: 40, height: 40)
                                 .background(got ? Theme.gold : Theme.track, in: Circle())
-                            Text(b.n >= 20 ? "달인" : "\(b.n)회").appFont(10).foregroundStyle(got ? Theme.ink : Theme.muted).lineLimit(1).minimumScaleFactor(0.7)
+                            Text(b.n >= 20 ? String(localized: "달인") : String(localized: "\(String(describing: b.n))회")).appFont(10).foregroundStyle(got ? Theme.ink : Theme.muted).lineLimit(1).minimumScaleFactor(0.7)
                         }
                         .frame(maxWidth: .infinity)
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(b.name) 배지, \(got ? "받음" : "\(b.n)번 맞히면 받아요")")
+                        .accessibilityLabel("\(b.name) 배지, \(got ? String(localized: "받음") : String(localized: "\(String(describing: b.n))번 맞히면 받아요"))")
                     }
                 }
                 Button { withAnimation { whyOpen.toggle() } } label: {

@@ -66,14 +66,14 @@ struct PRace {
 }
 
 enum Parallel {
-    static let names = ["내 실제 투자", "모의 바구니", "인물 규칙대로"]
+    static let names = [String(localized: "내 실제 투자"), String(localized: "모의 바구니"), String(localized: "인물 규칙대로")]
 
     /// v1에 담을 수 있는 종목: 사이트가 지난 종가를 모으는 종목 + 견본 ETF (VTV·USMV)
     struct Item { let id: String; let name: String }
     static let universe: [Item] = [
-        .init(id: "SPY", name: "S&P500 ETF"), .init(id: "QQQ", name: "나스닥100 ETF"), .init(id: "VTV", name: "가치주 ETF"), .init(id: "USMV", name: "저변동 ETF"), .init(id: "SCHD", name: "배당 ETF"),
-        .init(id: "SGOV", name: "단기 국채 ETF"), .init(id: "GLD", name: "금 ETF"), .init(id: "EWY", name: "한국 ETF"), .init(id: "SMH", name: "반도체 ETF"), .init(id: "SOXX", name: "반도체 ETF (SOXX)"),
-        .init(id: "TSLA", name: "테슬라"), .init(id: "NVDA", name: "엔비디아"), .init(id: "AAPL", name: "애플"), .init(id: "SPCX", name: "스페이스X"), .init(id: "MANA", name: "MANA"),
+        .init(id: "SPY", name: "S&P500 ETF"), .init(id: "QQQ", name: String(localized: "나스닥100 ETF")), .init(id: "VTV", name: String(localized: "가치주 ETF")), .init(id: "USMV", name: String(localized: "저변동 ETF")), .init(id: "SCHD", name: String(localized: "배당 ETF")),
+        .init(id: "SGOV", name: String(localized: "단기 국채 ETF")), .init(id: "GLD", name: String(localized: "금 ETF")), .init(id: "EWY", name: String(localized: "한국 ETF")), .init(id: "SMH", name: String(localized: "반도체 ETF")), .init(id: "SOXX", name: String(localized: "반도체 ETF (SOXX)")),
+        .init(id: "TSLA", name: String(localized: "테슬라")), .init(id: "NVDA", name: String(localized: "엔비디아")), .init(id: "AAPL", name: String(localized: "애플")), .init(id: "SPCX", name: String(localized: "스페이스X")), .init(id: "MANA", name: "MANA"),
     ]
     /// 바구니 한 칸을 글로 (계산 기억 키·지난 바구니 표시)
     static func segText(_ g: PBasketSeg) -> String {
@@ -87,12 +87,12 @@ enum Parallel {
     /// 견본: 회복 루트 계획 고르기와 목표 루트 구성 비교의 묶음을 대표 ETF로 (종목 추천이 아니라 지수 묶음)
     struct Template { let id: String; let name: String; let w: [String: Double] }
     static let templates: [Template] = [
-        .init(id: "push", name: "도전", w: ["QQQ": 0.7, "VTV": 0.3]),
-        .init(id: "balance", name: "균형", w: ["QQQ": 1.0 / 3, "VTV": 1.0 / 3, "USMV": 1.0 / 3]),
-        .init(id: "guard", name: "방어", w: ["VTV": 0.2, "USMV": 0.6, "SGOV": 0.2]),
-        .init(id: "index", name: "지수 중심", w: ["SPY": 0.8, "SGOV": 0.2]),
-        .init(id: "grow", name: "성장 더하기", w: ["SPY": 0.6, "QQQ": 0.3, "SGOV": 0.1]),
-        .init(id: "steady", name: "버팀목 더하기", w: ["SPY": 0.5, "USMV": 0.3, "SGOV": 0.2]),
+        .init(id: "push", name: String(localized: "도전"), w: ["QQQ": 0.7, "VTV": 0.3]),
+        .init(id: "balance", name: String(localized: "균형"), w: ["QQQ": 1.0 / 3, "VTV": 1.0 / 3, "USMV": 1.0 / 3]),
+        .init(id: "guard", name: String(localized: "방어"), w: ["VTV": 0.2, "USMV": 0.6, "SGOV": 0.2]),
+        .init(id: "index", name: String(localized: "지수 중심"), w: ["SPY": 0.8, "SGOV": 0.2]),
+        .init(id: "grow", name: String(localized: "성장 더하기"), w: ["SPY": 0.6, "QQQ": 0.3, "SGOV": 0.1]),
+        .init(id: "steady", name: String(localized: "버팀목 더하기"), w: ["SPY": 0.5, "USMV": 0.3, "SGOV": 0.2]),
     ]
     /// 견본 ETF 시세가 아직 없으면 미국 전체 지수로 (AppModel.proxyKeys 와 같은 생각)
     static func resolve(_ w: [String: Double]) -> [String: Double] {
@@ -124,11 +124,11 @@ enum Parallel {
     /// 인물 규칙 판: 1 = 대표 규칙만, 2 = 세부 규칙까지 (인물 자세히 보기와 같은 규칙). 바뀐 날부터 새 규칙으로 이어 간다
     static let rulesVersion = 2
     static let rules: [String: String] = [
-        "seri": "1년에 한 번 처음 비율로",
-        "sio": "현금 20% · 고점 −20%면 절반 투입",
-        "seonbae": "한 종목 +10%p 넘으면 덜어서 나눔",
-        "ir": "200일선 위만 보유 · 아래면 현금",
-        "sua": "매달 같은 금액 · 떨어진 달 1.5배",
+        "seri": String(localized: "1년에 한 번 처음 비율로"),
+        "sio": String(localized: "현금 20% · 고점 −20%면 절반 투입"),
+        "seonbae": String(localized: "한 종목 +10%p 넘으면 덜어서 나눔"),
+        "ir": String(localized: "200일선 위만 보유 · 아래면 현금"),
+        "sua": String(localized: "매달 같은 금액 · 떨어진 달 1.5배"),
     ]
 
     /// 매칭: 평정 사다리에서 내 다음 칸 인물 (이르 → 수아 → 선배·시오 → 세리). 맨 위(세리)면 결이 다른 시오.
@@ -292,8 +292,8 @@ enum Parallel {
             return (c / V, (u.filter { $0.key != cashId }.map { $0.value * p($0.key, t) }.max() ?? 0) / V)
         }
         func note(_ t: Int, _ rule: Int, _ text: String, cash: (Double, Double)? = nil, top: (Double, Double)? = nil) {
-            if let c = cash { log.append(PLog(t: t, rule: rule, text: text, metric: "현금 비중", a: c.0, b: c.1)) }
-            else if let x = top { log.append(PLog(t: t, rule: rule, text: text, metric: "가장 큰 종목 비중", a: x.0, b: x.1)) }
+            if let c = cash { log.append(PLog(t: t, rule: rule, text: text, metric: String(localized: "현금 비중"), a: c.0, b: c.1)) }
+            else if let x = top { log.append(PLog(t: t, rule: rule, text: text, metric: String(localized: "가장 큰 종목 비중"), a: x.0, b: x.1)) }
             else { log.append(PLog(t: t, rule: rule, text: text)) }
         }
         var capNoted: Substring = ""                // 같은 달 "한도 다 씀"은 한 번만 적는다
@@ -335,9 +335,9 @@ enum Parallel {
                         cashU = V * cashT / max(1e-9, p(cashId, t))
                         let q1 = ratios(t)
                         let capped = w0.values.contains { $0 > 0.40 + 1e-9 }
-                        note(t, capped ? 2 : 0, capped ? "기념일, 한 종목 40% 상한에 맞춰 되돌리기" : "기념일, 처음 비율로 되돌리기", top: (q0.top, q1.top))
+                        note(t, capped ? 2 : 0, capped ? String(localized: "기념일, 한 종목 40% 상한에 맞춰 되돌리기") : String(localized: "기념일, 처음 비율로 되돌리기"), top: (q0.top, q1.top))
                     } else if V > 0 {
-                        note(t, 1, "기념일 점검, ±5%p 안이라 그해는 그대로")
+                        note(t, 1, String(localized: "기념일 점검, ±5%p 안이라 그해는 그대로"))
                     }
                 }
             case "seonbae":
@@ -377,10 +377,10 @@ enum Parallel {
                     trade(k, got, t)
                 }
                 let q1 = ratios(t)
-                if pool > 0 { note(t, 1, "분기 점검, 10%p 넘게 커진 몫을 덜어 절반은 현금으로", top: (q0.top, q1.top)) }
-                if filled { note(t, 2, "분기 점검, 10%p 넘게 작아진 몫을 다시 채우기", cash: (q0.cash, q1.cash)) }
-                if held { note(t, 4, "작아졌지만 막 오른 참이라 이번엔 채우지 않음") }
-                if pool == 0 && !filled && !held { note(t, 0, "분기 점검, 모두 ±10%p 안이라 그대로") }
+                if pool > 0 { note(t, 1, String(localized: "분기 점검, 10%p 넘게 커진 몫을 덜어 절반은 현금으로"), top: (q0.top, q1.top)) }
+                if filled { note(t, 2, String(localized: "분기 점검, 10%p 넘게 작아진 몫을 다시 채우기"), cash: (q0.cash, q1.cash)) }
+                if held { note(t, 4, String(localized: "작아졌지만 막 오른 참이라 이번엔 채우지 않음")) }
+                if pool == 0 && !filled && !held { note(t, 0, String(localized: "분기 점검, 모두 ±10%p 안이라 그대로")) }
             case "sio":
                 // 주식 쪽 고점 대비 −20%에 현금 절반, −30%에 나머지. 넣은 뒤 고점을 다시 넘으면 현금 20%로 다시 채운다.
                 // 지수가 하루 ±3% 넘게 움직인 날에는 매매하지 않고 다음 날 판단, 한 달에 2번까지
@@ -388,9 +388,9 @@ enum Parallel {
                 let dd = sIdx / sPeak - 1
                 let due = (stage == 0 && dd <= -0.20) || (stage == 1 && dd <= -0.30)
                 if refill || (due && cashU > 0) {
-                    if bigDay(t) { note(t, 3, "하루에 3% 넘게 움직인 날이라 하루 기다리기"); break }
+                    if bigDay(t) { note(t, 3, String(localized: "하루에 3% 넘게 움직인 날이라 하루 기다리기")); break }
                     if trades[mk, default: 0] >= 2 {
-                        if capNoted != mk { capNoted = mk; note(t, 2, "이번 달 매매 두 번을 다 써서 다음 달로") }
+                        if capNoted != mk { capNoted = mk; note(t, 2, String(localized: "이번 달 매매 두 번을 다 써서 다음 달로")) }
                         break
                     }
                 }
@@ -402,7 +402,7 @@ enum Parallel {
                         let need = V * 0.2 - c, sv = value(u, t)
                         if sv > 0 { for (k, x) in u { trade(k, -need * x * p(k, t) / sv, t) }; toCash(need, t) }
                         trades[mk, default: 0] += 1
-                        note(t, 1, "고점을 다시 넘어 현금을 20%까지 다시 채우기", cash: (q0.cash, ratios(t).cash))
+                        note(t, 1, String(localized: "고점을 다시 넘어 현금을 20%까지 다시 채우기"), cash: (q0.cash, ratios(t).cash))
                     }
                 } else if due, cashU > 0 {
                     let first = stage == 0
@@ -410,7 +410,7 @@ enum Parallel {
                     cashU -= put / max(1e-9, p(cashId, t))
                     for (k, x) in alloc(w0, put, t) { u[k, default: 0] += x }
                     stage += 1; trades[mk, default: 0] += 1
-                    note(t, 0, first ? "고점 −20%, 현금 절반 넣기" : "고점 −30%, 남은 현금 넣기", cash: (q0.cash, ratios(t).cash))
+                    note(t, 0, first ? String(localized: "고점 −20%, 현금 절반 넣기") : String(localized: "고점 −30%, 남은 현금 넣기"), cash: (q0.cash, ratios(t).cash))
                 }
             case "ir":
                 // 200일선보다 3% 넘게 내려가거나 5거래일 연속 아래면 판다. 3% 넘게 올라오면 다시 산다. 오르는 종목은 덜지 않는다. 한 달 4번까지
@@ -435,11 +435,11 @@ enum Parallel {
                     let q1 = ratios(t)
                     if outBy3 || outBy5 {
                         let all = q1.cash > 0.995
-                        note(t, all ? 4 : 0, all ? "모두 200일선 아래, 전부 현금으로" : outBy3 ? "200일선보다 3% 넘게 내려가 현금으로 옮기기" : "5거래일 내내 200일선 아래라 현금으로 옮기기", cash: (q0.cash, q1.cash))
+                        note(t, all ? 4 : 0, all ? String(localized: "모두 200일선 아래, 전부 현금으로") : outBy3 ? String(localized: "200일선보다 3% 넘게 내려가 현금으로 옮기기") : String(localized: "5거래일 내내 200일선 아래라 현금으로 옮기기"), cash: (q0.cash, q1.cash))
                     }
-                    if back { note(t, 1, "200일선보다 3% 넘게 올라와 다시 들어가기", cash: (q0.cash, q1.cash)) }
+                    if back { note(t, 1, String(localized: "200일선보다 3% 넘게 올라와 다시 들어가기"), cash: (q0.cash, q1.cash)) }
                 }
-                if capped && capNoted != mk { capNoted = mk; note(t, 3, "이번 달 매매 네 번을 다 써서 다음 달로") }
+                if capped && capNoted != mk { capNoted = mk; note(t, 3, String(localized: "이번 달 매매 네 번을 다 써서 다음 달로")) }
             case "sua":
                 // 매달 같은 금액. 지난달 바구니가 −5% 넘게 빠졌으면 1.5배, −15% 넘게 2배, +10% 넘게 올랐으면 0.7배.
                 // 지금 바구니 비율대로 나눠 넣고(한 종목에 몰지 않음), 팔지 않고, 못 넣은 달을 몰아 넣지 않는다
@@ -449,10 +449,10 @@ enum Parallel {
                     for (k, x) in alloc(weights(t), c, t) { u[k, default: 0] += x }
                     let pct = "\(Int((m * 100).rounded()))%"
                     switch times {
-                    case 2: note(t, 1, "지난달 바구니 \(pct), 2배 넣기")
-                    case 1.5: note(t, 0, "지난달 바구니 \(pct), 1.5배 넣기")
-                    case 0.7: note(t, 2, "지난달 바구니 +\(pct), 0.7배만 넣기")
-                    default: note(t, 3, "보통 달, 같은 금액을 지금 비율대로 넣기")
+                    case 2: note(t, 1, String(localized: "지난달 바구니 \(String(describing: pct)), 2배 넣기"))
+                    case 1.5: note(t, 0, String(localized: "지난달 바구니 \(String(describing: pct)), 1.5배 넣기"))
+                    case 0.7: note(t, 2, String(localized: "지난달 바구니 +\(String(describing: pct)), 0.7배만 넣기"))
+                    default: note(t, 3, String(localized: "보통 달, 같은 금액을 지금 비율대로 넣기"))
                     }
                     invested += c; contrib += c
                     monthStartV = charV(t)
@@ -524,15 +524,15 @@ enum Parallel {
 
     // MARK: 인물 말풍선 (위로만. 갈아타라·따라 하라는 말은 하지 않는다)
     static func line(_ who: String, place: Int, day: String) -> String {
-        let lead = ["오늘은 이쪽이 앞섰네. 내일은 또 몰라.", "앞선 날도 있는 거지. 너는 너대로 가.", "숫자는 바뀌어. 같이 가는 건 그대로야."]
-        let mid = ["다른 세계의 너도 버티고 있어.", "가운데쯤이야. 서두를 것 없어.", "세 명 다 너야. 오늘은 숨 한 번 쉬고 가."]
-        let back = ["오늘은 저쪽이 앞섰네, 너는 너대로 가.", "뒤에 있는 날도 기록이야. 꾸며낼 수 없는 기록.", "괜찮아. 이 경주는 지는 쪽이 없어."]
+        let lead = [String(localized: "오늘은 이쪽이 앞섰네. 내일은 또 몰라."), String(localized: "앞선 날도 있는 거지. 너는 너대로 가."), String(localized: "숫자는 바뀌어. 같이 가는 건 그대로야.")]
+        let mid = [String(localized: "다른 세계의 너도 버티고 있어."), String(localized: "가운데쯤이야. 서두를 것 없어."), String(localized: "세 명 다 너야. 오늘은 숨 한 번 쉬고 가.")]
+        let back = [String(localized: "오늘은 저쪽이 앞섰네, 너는 너대로 가."), String(localized: "뒤에 있는 날도 기록이야. 꾸며낼 수 없는 기록."), String(localized: "괜찮아. 이 경주는 지는 쪽이 없어.")]
         let own: [String: String] = [
-            "seri": "저는 일 년에 한 번만 움직여요. 거기까지만요.",
-            "sio": "기다리는 것도 하는 거야. 현금은 그래서 들고 있어.",
-            "seonbae": "그게 정말 네 생각이야? 나는 커진 만큼만 덜어.",
-            "ir": "나는 빨리 움직여. 그게 늘 맞는 건 아니고.",
-            "sua": "매달 조금씩. 떨어진 달엔 조금 더.",
+            "seri": String(localized: "저는 일 년에 한 번만 움직여요. 거기까지만요."),
+            "sio": String(localized: "기다리는 것도 하는 거야. 현금은 그래서 들고 있어."),
+            "seonbae": String(localized: "그게 정말 네 생각이야? 나는 커진 만큼만 덜어."),
+            "ir": String(localized: "나는 빨리 움직여. 그게 늘 맞는 건 아니고."),
+            "sua": String(localized: "매달 조금씩. 떨어진 달엔 조금 더."),
         ]
         let pool = (place == 1 ? lead : place == 3 ? back : mid) + [own[who] ?? ""].filter { !$0.isEmpty }
         let h = day.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
@@ -672,20 +672,20 @@ extension AppModel {
     func parallelDistance(_ amount: Double) -> String {
         if isGoal {
             let k = gK * 1e4
-            return "목표 \(AppModel.pct(min(1, amount / max(1, k))))"
+            return String(localized: "목표 \(String(describing: AppModel.pct(min(1, amount / max(1, k)))))")
         }
         let need = cost / max(1, amount) - 1
-        return need > 0 ? "본전까지 +\(String(format: "%.1f", need * 100))%" : "본전 넘음"
+        return need > 0 ? String(localized: "본전까지 +\(String(describing: String(format: "%.1f", need * 100)))%") : String(localized: "본전 넘음")
     }
     /// 세 방식 이름 (인물 규칙은 인물 이름이 붙는다)
-    func parallelTitle(_ k: Int, who: String) -> String { k == 2 ? "\(friendName(who)) 규칙대로" : Parallel.names[k] }
+    func parallelTitle(_ k: Int, who: String) -> String { k == 2 ? String(localized: "\(String(describing: friendName(who))) 규칙대로") : Parallel.names[k] }
     /// 홈 비교 카드: 지금 결론 한 줄. 아직 열지 않았으면 처음 열 때 정할 세계로 미리 계산
     var parallelVerdictLine: String? {
         guard let w = pworldShown ?? newParallel(), let race = parallelRun(w, who: w.who) else { return nil }
         let v = Parallel.verdict(pworldShown == nil ? race.r : parallelSeries(race), at: race.last)
         let gap = String(format: "%.1f%%p", v.gap * 100)
         let lead = parallelTitle(v.order[0], who: w.who)
-        return v.similar ? "셋 다 비슷해요 · 차이 \(gap)" : "\(lead)\(WChar.josa(lead)) \(gap) 앞서요"
+        return v.similar ? String(localized: "셋 다 비슷해요 · 차이 \(String(describing: gap))") : String(localized: "\(String(describing: lead))\(String(describing: WChar.josa(lead))) \(String(describing: gap)) 앞서요")
     }
 }
 

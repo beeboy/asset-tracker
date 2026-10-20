@@ -8,7 +8,7 @@ import Observation
 enum RemindCat: String, CaseIterable, Codable {
     case done, doing, event, market, analysis, news
     var label: String {
-        switch self { case .done: "달성"; case .doing: "진행 중"; case .event: "일정"; case .market: "증시 요약"; case .analysis: "분석"; case .news: "설정·새 소식" }
+        switch self { case .done: String(localized: "달성"); case .doing: String(localized: "진행 중"); case .event: String(localized: "일정"); case .market: String(localized: "증시 요약"); case .analysis: String(localized: "분석"); case .news: String(localized: "설정·새 소식") }
     }
     var color: Color {
         switch self { case .done: Theme.green; case .doing: Theme.purple; case .event: Theme.orange; case .market: Theme.blue; case .analysis: Theme.blue; case .news: Theme.teal }
@@ -103,9 +103,9 @@ struct RemindNews: Codable {
     var go: String? = nil
 
     static let app: [RemindNews] = [
-        .init(id: "n1011.remind", date: "2026-10-11", text: "홈에 리마인드가 생겼어요. 소식은 친구가 전하고, 지난 소식은 ‘새 소식’에 모여요."),
-        .init(id: "n1011.edit", date: "2026-10-11", text: "종목 목록에서 연필을 누르면 바로 수량·단가를 고칠 수 있어요.", go: "hold:"),
-        .init(id: "n1011.items", date: "2026-10-11", text: "쉼터 물건을 누르면 배치에서 빼고 다시 놓을 수 있어요.", go: "shelter"),
+        .init(id: "n1011.remind", date: "2026-10-11", text: String(localized: "홈에 리마인드가 생겼어요. 소식은 친구가 전하고, 지난 소식은 ‘새 소식’에 모여요.")),
+        .init(id: "n1011.edit", date: "2026-10-11", text: String(localized: "종목 목록에서 연필을 누르면 바로 수량·단가를 고칠 수 있어요."), go: "hold:"),
+        .init(id: "n1011.items", date: "2026-10-11", text: String(localized: "쉼터 물건을 누르면 배치에서 빼고 다시 놓을 수 있어요."), go: "shelter"),
     ]
 }
 
@@ -122,7 +122,7 @@ final class Remind {
     private(set) var site: [RemindNews] = []
     private(set) var blog = BlogFile()
     /// 소식함에 올리는 미래 설계 카테고리와 앱에 남기는 날 수
-    static let blogCat = "2026 지구"
+    static let blogCat = String(localized: "2026 지구")
     private static let blogDays = 10.0
     @ObservationIgnored private var siteAt = Date.distantPast
 
@@ -187,7 +187,7 @@ final class Remind {
     var widgetBadge: String? {
         let today = Day.today
         guard let i = items.first(where: { $0.id.hasPrefix("cells.m") }), let t = log.first[i.id], Day.str(Date(timeIntervalSince1970: t)) == today else { return nil }
-        return "★ \(i.id.dropFirst(7))칸 돌파"
+        return String(localized: "★ \(String(describing: i.id.dropFirst(7)))칸 돌파")
     }
 
     // MARK: 만들기
@@ -221,45 +221,45 @@ final class Remind {
     /// 앱 단계·달성 (같은 종류는 가장 최근 단계 하나만)
     @MainActor private func achievements(_ m: AppModel) -> [RemindItem] {
         var a: [RemindItem] = []
-        if m.playOn { a.append(.init(id: "start", cat: .done, text: "앱 시작 3단계를 마쳤어요. 오늘의 1분이 열렸어요. 매일 1분이면 돼요.")) }
+        if m.playOn { a.append(.init(id: "start", cat: .done, text: String(localized: "앱 시작 3단계를 마쳤어요. 오늘의 1분이 열렸어요. 매일 1분이면 돼요."))) }
         // 인터미션
         if m.interDone {
-            a.append(.init(id: "inter.done.\(m.route.rawValue)", cat: .done, text: "인터미션을 다 마쳤어요. 친구가 모두 모였어요.", go: .shelter))
+            a.append(.init(id: "inter.done.\(m.route.rawValue)", cat: .done, text: String(localized: "인터미션을 다 마쳤어요. 친구가 모두 모였어요."), go: .shelter))
         } else if m.route == .recover, (1...3).contains(m.weeks.count) {
             let n = m.weeks.count
-            a.append(.init(id: "inter.r.\(n)", cat: .done, text: "인터미션 \(n)/4주 끝! 다음 주는 ‘\(Shelter.weekSteps[n].task)’예요.", go: .board))
+            a.append(.init(id: "inter.r.\(n)", cat: .done, text: String(localized: "인터미션 \(String(describing: n))/4주 끝! 다음 주는 ‘\(String(describing: Shelter.weekSteps[n].task))’예요."), go: .board))
         } else if m.isGoal, (1...2).contains(m.gWeeks.count) {
             let n = m.gWeeks.count
-            a.append(.init(id: "inter.g.\(n)", cat: .done, text: "인터미션 \(n)/3달 끝! 다음 달은 ‘\(AppModel.goalMonthSteps[n].task)’예요.", go: .board))
+            a.append(.init(id: "inter.g.\(n)", cat: .done, text: String(localized: "인터미션 \(String(describing: n))/3달 끝! 다음 달은 ‘\(String(describing: AppModel.goalMonthSteps[n].task))’예요."), go: .board))
         }
         // 새 친구와 그 인물 위젯
         let k = m.friendsOpen
         if k >= 1 && !m.devAll {
             let f = Shelter.friends[min(k, Shelter.friends.count - 1)]
-            a.append(.init(id: "friend.\(k)", cat: .done, text: "\(f.name)가 쉼터에 왔어요. 인사해 볼래요?", go: .char(f.id), big: true))
-            a.append(.init(id: "widget.\(k)", cat: .done, text: "\(f.name) 인물 위젯을 홈 화면에 둘 수 있어요.", go: .widgets))
+            a.append(.init(id: "friend.\(k)", cat: .done, text: String(localized: "\(String(describing: f.name))가 쉼터에 왔어요. 인사해 볼래요?"), go: .char(f.id), big: true))
+            a.append(.init(id: "widget.\(k)", cat: .done, text: String(localized: "\(String(describing: f.name)) 인물 위젯을 홈 화면에 둘 수 있어요."), go: .widgets))
         }
         // 돌아온 물건
         let n = m.itemsOn
         if n >= 1 && !m.devAll {
-            a.append(.init(id: "items.\(n)", cat: .done, text: "물건이 하나 돌아왔어요: \(Shelter.items[n - 1].name) (\(n)/10).", go: .shelter))
+            a.append(.init(id: "items.\(n)", cat: .done, text: String(localized: "물건이 하나 돌아왔어요: \(String(describing: Shelter.items[n - 1].name)) (\(String(describing: n))/10)."), go: .shelter))
         }
         // 평정 지수
         let c = m.calm
         if c.events.count >= Calm.minEvents {
-            a.append(.init(id: "calm.first", cat: .done, text: "기록 \(Calm.minEvents)건을 채워 평정 지수가 처음 나왔어요: \(c.stats().index)점.", go: .calm))
+            a.append(.init(id: "calm.first", cat: .done, text: String(localized: "기록 \(String(describing: Calm.minEvents))건을 채워 평정 지수가 처음 나왔어요: \(String(describing: c.stats().index))점."), go: .calm))
         }
         if let t = c.type, let kd = Calm.kind(t) {
             let who = m.friendName(t)
-            let text = c.prevType == nil ? "투자 유형이 정해졌어요: ‘\(kd.title)’. \(who)와 닮았어요." : "이번 달은 ‘\(kd.title)’에 더 가까워요. \(who)와 함께해요."
+            let text = c.prevType == nil ? String(localized: "투자 유형이 정해졌어요: ‘\(String(describing: kd.title))’. \(String(describing: who))와 닮았어요.") : String(localized: "이번 달은 ‘\(String(describing: kd.title))’에 더 가까워요. \(String(describing: who))와 함께해요.")
             a.append(.init(id: "calm.type.\(t).\(c.typeMonth ?? "")", cat: .done, text: text, go: .calm))
             if c.stage >= 2 {
                 let d = c.stage == 2 ? 14 : 60
-                a.append(.init(id: "calm.stage.\(t).\(c.stage)", cat: .done, text: "\(who)와 함께한 지 \(d)일. 말투가 조금 바뀔 거예요.", go: .char(t + ":invest")))
+                a.append(.init(id: "calm.stage.\(t).\(c.stage)", cat: .done, text: String(localized: "\(String(describing: who))와 함께한 지 \(String(describing: d))일. 말투가 조금 바뀔 거예요."), go: .char(t + ":invest")))
             }
         }
         if let ch = calmChange(c) {
-            a.append(.init(id: "calm.chg.\(ch.month)", cat: .done, text: "평정 지수가 지난달 \(ch.a)점에서 \(ch.b)점으로 \(ch.b > ch.a ? "올랐어요" : "내렸어요").", go: .calm))
+            a.append(.init(id: "calm.chg.\(ch.month)", cat: .done, text: String(localized: "평정 지수가 지난달 \(String(describing: ch.a))점에서 \(String(describing: ch.b))점으로 \(String(describing: ch.b > ch.a ? String(localized: "올랐어요") : String(localized: "내렸어요")))."), go: .calm))
         }
         // 다음 걸음: 습관 사다리에서 마친 걸음 (최근 3개), 세리가 지킨 반년
         if let l = c.ladder {
@@ -267,17 +267,17 @@ final class Remind {
             for d in l.done.suffix(3) {
                 var text = Calm.stepLine(d.type, d.step, who: who)
                 if d == l.done.last, d.type == l.type, (1...3).contains(l.step), let nx = Calm.steps[l.type]?[l.step - 1] {
-                    text += " 다음 걸음은 ‘\(nx.name)’."
+                    text += String(localized: " 다음 걸음은 ‘\(String(describing: nx.name))’.")
                 }
                 a.append(.init(id: "calm.step.\(d.type).\(d.step).\(d.day)", cat: .done, text: text, go: .calm))
             }
             if l.keeps > 0 {
-                a.append(.init(id: "calm.keep.\(l.keeps)", cat: .done, text: "평정 지수 80 이상을 \(6 * (l.keeps + 1))달 지켰어요.", go: .calm))
+                a.append(.init(id: "calm.keep.\(l.keeps)", cat: .done, text: String(localized: "평정 지수 80 이상을 \(String(describing: 6 * (l.keeps + 1)))달 지켰어요."), go: .calm))
             }
         }
         // 쉼터 배경: 하루 2곳씩 열린다 (2026-10-16 결정)
         let bg = m.bgOpen
-        if bg > 0 { a.append(.init(id: "bg.open.\(bg)", cat: .done, text: "쉼터 배경 \(bg)곳이 열렸어요 (\(bg)/\(Shelter.backgrounds.count)). 골라 봐요.", go: .shelter)) }
+        if bg > 0 { a.append(.init(id: "bg.open.\(bg)", cat: .done, text: String(localized: "쉼터 배경 \(String(describing: bg))곳이 열렸어요 (\(String(describing: bg))/\(String(describing: Shelter.backgrounds.count))). 골라 봐요."), go: .shelter)) }
         a += cells(m)
         a += week(m)
         return a
@@ -292,19 +292,19 @@ final class Remind {
         if c > log.cellsMax { log.cellsMax = c }
         var a: [RemindItem] = []
         if let ms = [1000, 750, 500, 250, 100].first(where: { log.cellsMax >= $0 }) {
-            let text = ms == 1000 ? "1000칸을 다 채웠어요!" : "1000칸 중 \(ms)칸을 넘었어요." + (ms == 250 ? " 4분의 1이에요!" : ms == 500 ? " 절반이에요!" : "")
+            let text = ms == 1000 ? String(localized: "1000칸을 다 채웠어요!") : String(localized: "1000칸 중 \(String(describing: ms))칸을 넘었어요.") + (ms == 250 ? String(localized: " 4분의 1이에요!") : ms == 500 ? String(localized: " 절반이에요!") : "")
             a.append(.init(id: "cells.m\(ms)", cat: .done, text: text, go: .board, big: true))
         }
         if log.cellsWeekMax > 0, log.cellsMax > log.cellsWeekMax {
-            a.append(.init(id: "cells.best.\(wk)", cat: .done, text: "1000칸 최고 기록 \(log.cellsMax)칸을 새로 썼어요.", go: .board))
+            a.append(.init(id: "cells.best.\(wk)", cat: .done, text: String(localized: "1000칸 최고 기록 \(String(describing: log.cellsMax))칸을 새로 썼어요."), go: .board))
         }
         return a
     }
 
     /// 맞혀보기 배지: 맞힌 횟수가 이만큼 되면 받는다
     static let badges: [(n: Int, name: String, icon: String)] = [
-        (1, "첫 적중", "star.fill"), (3, "세 번 적중", "sparkles"), (5, "다섯 번 적중", "medal.fill"),
-        (10, "열 번 적중", "trophy.fill"), (20, "예보 달인", "crown.fill"),
+        (1, String(localized: "첫 적중"), "star.fill"), (3, String(localized: "세 번 적중"), "sparkles"), (5, String(localized: "다섯 번 적중"), "medal.fill"),
+        (10, String(localized: "열 번 적중"), "trophy.fill"), (20, String(localized: "예보 달인"), "crown.fill"),
     ]
 
     /// 끝난 주: 지난주들, 또는 토·일요일의 이번 주 (오래된 순)
@@ -346,14 +346,14 @@ final class Remind {
         let w = log.weeks, ended = Self.endedWeeks(w)
         var a: [RemindItem] = []
         if let b = Self.badges.last(where: { $0.n <= (log.guessHits ?? 0) }) {
-            a.append(.init(id: "badge.\(b.n)", cat: .done, text: "맞혀보기 배지 ‘\(b.name)’를 받았어요. 예보를 \(b.n)번 맞혔어요.", go: .week))
+            a.append(.init(id: "badge.\(b.n)", cat: .done, text: String(localized: "맞혀보기 배지 ‘\(String(describing: b.name))’를 받았어요. 예보를 \(String(describing: b.n))번 맞혔어요."), go: .week))
         }
         guard let last = ended.last, let r = w[last] else { return a }
         let inside = r.last >= r.lo && r.last <= r.hi
         var run = 0
         for k in ended.reversed() { guard let x = w[k], x.last >= x.lo && x.last <= x.hi else { break }; run += 1 }
-        let text = inside ? "이번 주 예보 적중! 범위 안에서 마쳤어요." + (run >= 2 ? " \(run)주 연속이에요." : "")
-            : "이번 주는 예보 범위 \(r.last > r.hi ? "위" : "아래")로 나갔어요. 이런 주도 절반쯤 있어요."
+        let text = inside ? String(localized: "이번 주 예보 적중! 범위 안에서 마쳤어요.") + (run >= 2 ? String(localized: " \(String(describing: run))주 연속이에요.") : "")
+            : String(localized: "이번 주는 예보 범위 \(String(describing: r.last > r.hi ? String(localized: "위") : String(localized: "아래")))로 나갔어요. 이런 주도 절반쯤 있어요.")
         return a + [.init(id: "wk.\(last)", cat: .done, text: text, go: .week)]
     }
 
@@ -371,33 +371,33 @@ final class Remind {
         var a: [RemindItem] = []
         if m.playOn && !m.interDone {
             var t = m.isGoal
-                ? "인터미션 \(m.gWeeks.count)/3달 · 이번 달: \(AppModel.goalMonthSteps[min(m.gWeeks.count, 2)].task)"
-                : "인터미션 \(m.weeks.count)/4주 · 이번 주: \(Shelter.weekSteps[min(m.weeks.count, 3)].task)"
-            if !m.isGoal, case .wait(let d) = m.weekGate { t += " · \(m.weeks.count + 1)주차는 \(d)일 뒤 열려요" }
+                ? String(localized: "인터미션 \(String(describing: m.gWeeks.count))/3달 · 이번 달: \(String(describing: AppModel.goalMonthSteps[min(m.gWeeks.count, 2)].task))")
+                : String(localized: "인터미션 \(String(describing: m.weeks.count))/4주 · 이번 주: \(String(describing: Shelter.weekSteps[min(m.weeks.count, 3)].task))")
+            if !m.isGoal, case .wait(let d) = m.weekGate { t += String(localized: " · \(String(describing: m.weeks.count + 1))주차는 \(String(describing: d))일 뒤 열려요") }
             a.append(.init(id: "do.inter", cat: .doing, text: t, go: .board, once: false))
         }
         let n = m.calm.events.count
         let calmLeft = (1..<Calm.minEvents).contains(n) ? Calm.minEvents - n : nil
         if let l = m.calm.ladder, (1...3).contains(l.step), let st = Calm.steps[l.type]?[l.step - 1], let p = m.calm.progress() {
-            a.append(.init(id: "do.ladder", cat: .doing, text: "다음 걸음 \(l.step)/3 ‘\(st.name)’ · \(p.text)", go: .calm, once: false))
+            a.append(.init(id: "do.ladder", cat: .doing, text: String(localized: "다음 걸음 \(String(describing: l.step))/3 ‘\(String(describing: st.name))’ · \(String(describing: p.text))"), go: .calm, once: false))
         }
         if let c = calmLeft {
-            a.append(.init(id: "do.calm", cat: .doing, text: "내 투자 습관까지 매매 기록 \(c)건 남았어요.", go: .calm, once: false))
+            a.append(.init(id: "do.calm", cat: .doing, text: String(localized: "내 투자 습관까지 매매 기록 \(String(describing: c))건 남았어요."), go: .calm, once: false))
         }
         if let i = (0..<Shelter.friends.count).first(where: { !m.friendOn($0) }) {
-            a.append(.init(id: "do.friend", cat: .doing, text: "다음 친구 \(Shelter.friends[i].name)는 \(m.friendWhen(i))에 와요.", go: .shelter, once: false))
+            a.append(.init(id: "do.friend", cat: .doing, text: String(localized: "다음 친구 \(String(describing: Shelter.friends[i].name))는 \(String(describing: m.friendWhen(i)))에 와요."), go: .shelter, once: false))
         }
         if m.playOn, m.itemsOn < 10 {
-            a.append(.init(id: "do.items", cat: .doing, text: "오늘의 1분을 하면 물건(\(Shelter.items[m.itemsOn].name))이 돌아와요.", go: .shelter, once: false))
+            a.append(.init(id: "do.items", cat: .doing, text: String(localized: "오늘의 1분을 하면 물건(\(String(describing: Shelter.items[m.itemsOn].name)))이 돌아와요."), go: .shelter, once: false))
         }
         if m.playUnlocked && m.weekGuess == nil {
-            a.append(.init(id: "do.week", cat: .doing, text: "이번 주 금요일 평가액은 어디쯤일까요? 예보를 골라 봐요.", go: .week, once: false))
+            a.append(.init(id: "do.week", cat: .doing, text: String(localized: "이번 주 금요일 평가액은 어디쯤일까요? 예보를 골라 봐요."), go: .week, once: false))
         }
         // 서재: 열렸지만 다 안 읽은 장 하나
         let story = Story.shared
         if let i = (0..<Shelter.chapters.count).first(where: { m.chapterOn($0) && !story.isDone(.side, $0) }) {
             let ch = Shelter.chapters[i], started = m.readPos.contains(i)
-            a.append(.init(id: "read.\(i)", cat: .doing, text: "서재에 외전 \(ch.title) ‘\(ch.name)’이 기다리고 있어요." + (started ? " 이어 읽을래요?" : ""),
+            a.append(.init(id: "read.\(i)", cat: .doing, text: String(localized: "서재에 외전 \(String(describing: ch.title)) ‘\(String(describing: ch.name))’이 기다리고 있어요.") + (started ? String(localized: " 이어 읽을래요?") : ""),
                            go: .reader(i), once: false))
         }
         return a
@@ -413,26 +413,26 @@ final class Remind {
         if snap[wk] == nil { snap[wk] = [prob, gap] }
         if snap.count > 10 { for k in snap.keys.sorted().prefix(snap.count - 10) { snap.removeValue(forKey: k) } }
         if snap.count != log.snap.count { log.snap = snap }
-        let tail = " 종목 추천이 아닙니다."
+        let tail = String(localized: " 종목 추천이 아닙니다.")
         var cand: [RemindItem] = []
         if let pk = snap.keys.filter({ $0 < wk }).max(), let p = snap[pk], p.count == 2 {
             if abs(prob - p[0]) >= 0.05 {
-                let what = m.isGoal ? "목표에 닿을 가능성" : "1년 안 본전 가능성"
-                cand.append(.init(id: "an.prob.\(wk)", cat: .analysis, text: "\(what)이 \(AppModel.pct(p[0]))에서 \(AppModel.pct(prob))로 \(prob > p[0] ? "올랐어요" : "내렸어요")." + tail, go: m.isGoal ? .forecast : .myPath))
+                let what = m.isGoal ? String(localized: "목표에 닿을 가능성") : String(localized: "1년 안 본전 가능성")
+                cand.append(.init(id: "an.prob.\(wk)", cat: .analysis, text: String(localized: "\(String(describing: what))이 \(String(describing: AppModel.pct(p[0])))에서 \(String(describing: AppModel.pct(prob)))로 \(String(describing: prob > p[0] ? String(localized: "올랐어요") : String(localized: "내렸어요"))).") + tail, go: m.isGoal ? .forecast : .myPath))
             }
             if (p[1] >= 0) != (gap >= 0) {
-                cand.append(.init(id: "an.gap.\(wk)", cat: .analysis, text: "내 길: 기준선보다 \(String(format: "%.1f", abs(gap) * 100))% \(gap >= 0 ? "앞서" : "뒤처져") 있어요. 지난주와 반대쪽이에요." + tail, go: .myPath))
+                cand.append(.init(id: "an.gap.\(wk)", cat: .analysis, text: String(localized: "내 길: 기준선보다 \(String(describing: String(format: "%.1f", abs(gap) * 100)))% \(String(describing: gap >= 0 ? String(localized: "앞서") : String(localized: "뒤처져"))) 있어요. 지난주와 반대쪽이에요.") + tail, go: .myPath))
             }
         }
         let tot = max(1, m.total)
         if m.rows.count >= 2, let top = m.rows.max(by: { $0.value < $1.value }), top.value / tot >= 0.5 {
             cand.append(.init(id: "an.conc.\(top.id).\(Day.today.prefix(7))", cat: .analysis,
-                              text: "\(top.sym.short) 비중이 \(AppModel.pct(top.value / tot))예요. 한쪽으로 기울었어요." + tail, go: .forecast))
+                              text: String(localized: "\(String(describing: top.sym.short)) 비중이 \(String(describing: AppModel.pct(top.value / tot)))예요. 한쪽으로 기울었어요.") + tail, go: .forecast))
         }
         if let n = MacroData.shared.file?.now, let d = n.date, let ch = n.change_1y, abs(ch) >= 0.5 {
             let s = (ch > 0 ? "+" : "") + String(format: "%.1f", ch)
             cand.append(.init(id: "an.rate.\(d.prefix(7))", cat: .analysis,
-                              text: "미국 10년 금리가 1년 새 \(s)%p 움직였어요. 지난 자료로는 2년 뒤 이익에 \(ch > 0 ? "부담" : "도움") 쪽이 많았어요." + tail, go: .rateScen))
+                              text: String(localized: "미국 10년 금리가 1년 새 \(String(describing: s))%p 움직였어요. 지난 자료로는 2년 뒤 이익에 \(String(describing: ch > 0 ? String(localized: "부담") : String(localized: "도움"))) 쪽이 많았어요.") + tail, go: .rateScen))
         }
         // 이미 뜬 것은 그대로 두고, 새 것은 이번 주에 아직 안 떴을 때 하나만
         var out = cand.filter { log.first[$0.id] != nil }
@@ -447,12 +447,12 @@ final class Remind {
         var a: [RemindItem] = []
         let sub = Support.shared
         if let p = sub.plan {
-            a.append(.init(id: "sub.\(p.rawValue)", cat: .news, text: "\(p.name) 고마워요! 위젯, 목표·확률 전망, 서재 외전이 열려 있어요.", go: .support))
+            a.append(.init(id: "sub.\(p.rawValue)", cat: .news, text: String(localized: "\(String(describing: p.name)) 고마워요! 위젯, 목표·확률 전망, 서재 외전이 열려 있어요."), go: .support))
         } else if sub.trialLeft == 1 && !sub.dev {
-            a.append(.init(id: "trial.last", cat: .news, text: "7일 무료가 오늘 끝나요. 내일부터 위젯과 목표·확률 전망은 구독하면 볼 수 있어요.", go: .support))
+            a.append(.init(id: "trial.last", cat: .news, text: String(localized: "7일 무료가 오늘 끝나요. 내일부터 위젯과 목표·확률 전망은 구독하면 볼 수 있어요."), go: .support))
         }
         if case .failed = Sync.shared.state {
-            a.append(.init(id: "sync.fail", cat: .news, text: "기기 동기화가 멈췄어요. 한번 확인해 볼래요?", go: .sync, once: false))
+            a.append(.init(id: "sync.fail", cat: .news, text: String(localized: "기기 동기화가 멈췄어요. 한번 확인해 볼래요?"), go: .sync, once: false))
         }
         // 기록을 시작하기 사흘 전부터의 개발자 소식만 (처음 깐 사람에게 지난 소식을 쏟지 않게)
         let from = Day.str(Date(timeIntervalSince1970: log.since - 3 * 86400))
@@ -513,20 +513,20 @@ final class Remind {
 enum MarketEvents {
     struct Rule { let id: String; let target: String; let kind: String; let date: String; let rep: String }
     static let rules: [Rule] = [
-        .init(id: "x_fomc", target: "ALL", kind: "미국 FOMC", date: "2026-10-28", rep: "6w"),
-        .init(id: "x_cpi", target: "ALL", kind: "미국 CPI", date: "2026-10-14", rep: "monthly"),
-        .init(id: "x_jobs", target: "ALL", kind: "미국 고용", date: "2026-11-06", rep: "monthly"),
-        .init(id: "x_bok", target: "FX", kind: "한은 금리 결정", date: "2026-10-22", rep: "6w"),
-        .init(id: "x_dlv", target: "TSLA", kind: "테슬라 인도량", date: "2027-01-04", rep: "quarterly"),
-        .init(id: "x_gtc", target: "NVDA", kind: "엔비디아 GTC", date: "2027-03-16", rep: "yearly"),
+        .init(id: "x_fomc", target: "ALL", kind: String(localized: "미국 FOMC"), date: "2026-10-28", rep: "6w"),
+        .init(id: "x_cpi", target: "ALL", kind: String(localized: "미국 CPI"), date: "2026-10-14", rep: "monthly"),
+        .init(id: "x_jobs", target: "ALL", kind: String(localized: "미국 고용"), date: "2026-11-06", rep: "monthly"),
+        .init(id: "x_bok", target: "FX", kind: String(localized: "한은 금리 결정"), date: "2026-10-22", rep: "6w"),
+        .init(id: "x_dlv", target: "TSLA", kind: String(localized: "테슬라 인도량"), date: "2027-01-04", rep: "quarterly"),
+        .init(id: "x_gtc", target: "NVDA", kind: String(localized: "엔비디아 GTC"), date: "2027-03-16", rep: "yearly"),
         .init(id: "x_opec", target: "ALL", kind: "OPEC+", date: "2026-11-30", rep: "semi"),
-        .init(id: "x_mid", target: "ALL", kind: "미국 중간선거", date: "2026-11-04", rep: "none"),
-        .init(id: "x_witch", target: "ALL", kind: "선물·옵션 만기", date: "2026-12-18", rep: "quarterly"),
+        .init(id: "x_mid", target: "ALL", kind: String(localized: "미국 중간선거"), date: "2026-11-04", rep: "none"),
+        .init(id: "x_witch", target: "ALL", kind: String(localized: "선물·옵션 만기"), date: "2026-12-18", rep: "quarterly"),
         // 보유 종목 실적 (위젯 '다음' 줄이 쓰던 값)
-        .init(id: "e_drnk", target: "DRNK", kind: "드링커 실적", date: "2026-10-22", rep: "none"),
-        .init(id: "e_005930", target: "005930", kind: "삼성전자 실적", date: "2026-10-29", rep: "none"),
-        .init(id: "e_aapl", target: "AAPL", kind: "애플 실적", date: "2026-10-30", rep: "none"),
-        .init(id: "e_nvda", target: "NVDA", kind: "엔비디아 실적", date: "2026-11-19", rep: "none"),
+        .init(id: "e_drnk", target: "DRNK", kind: String(localized: "드링커 실적"), date: "2026-10-22", rep: "none"),
+        .init(id: "e_005930", target: "005930", kind: String(localized: "삼성전자 실적"), date: "2026-10-29", rep: "none"),
+        .init(id: "e_aapl", target: "AAPL", kind: String(localized: "애플 실적"), date: "2026-10-30", rep: "none"),
+        .init(id: "e_nvda", target: "NVDA", kind: String(localized: "엔비디아 실적"), date: "2026-11-19", rep: "none"),
     ]
     struct Hit { let id: String; let target: String; let day: String; let kind: String; let sub: String; let held: Bool }
 
@@ -566,7 +566,7 @@ enum MarketEvents {
         for r in rules {
             let mine = held.contains(r.target) || (r.target == "FX" && usd)
             guard r.target == "ALL" || r.target == "FX" || mine else { continue }
-            let sub = r.target == "ALL" ? "전 종목" : r.target == "FX" ? "환율" : (Sample.symbol(r.target)?.short ?? r.target)
+            let sub = r.target == "ALL" ? String(localized: "전 종목") : r.target == "FX" ? String(localized: "환율") : (Sample.symbol(r.target)?.short ?? r.target)
             for d in dates(r, from: from, until: until) { out.append(.init(id: r.id, target: r.target, day: d, kind: r.kind, sub: sub, held: held.contains(r.target))) }
         }
         return out.sorted { ($0.held ? 0 : 1, $0.day) < ($1.held ? 0 : 1, $1.day) }
@@ -578,29 +578,29 @@ enum MarketEvents {
     static func rateUpcoming(days: Int) -> [Hit] {
         let from = Day.today, until = Day.str(Date().addingTimeInterval(Double(days) * 86400))
         return rules.filter { isRate($0.id) }.flatMap { r in
-            dates(r, from: from, until: until).map { Hit(id: r.id, target: r.target, day: $0, kind: r.kind, sub: r.target == "FX" ? "환율" : "전 종목", held: false) }
+            dates(r, from: from, until: until).map { Hit(id: r.id, target: r.target, day: $0, kind: r.kind, sub: r.target == "FX" ? String(localized: "환율") : String(localized: "전 종목"), held: false) }
         }.sorted { $0.day < $1.day }
     }
 
     /// 일정이 내게 왜 중요한지 한 줄 (금리·물가·고용·실적 4종)
     static func why(_ id: String) -> String? {
         switch id {
-        case "x_fomc", "x_bok": "금리가 바뀌면 환율이 움직이고, 미국 주식의 원화 평가액이 달라질 수 있어요."
-        case "x_cpi": "물가가 예상과 다르면 금리 전망이 바뀌어 주가가 크게 흔들릴 수 있어요."
-        case "x_jobs": "일자리 숫자는 금리 전망에 영향을 줘서 주가와 환율이 함께 움직일 수 있어요."
-        default: id.hasPrefix("e_") ? "실적이 기대와 다르면 그 종목 값이 하루에 크게 움직일 수 있어요." : nil
+        case "x_fomc", "x_bok": String(localized: "금리가 바뀌면 환율이 움직이고, 미국 주식의 원화 평가액이 달라질 수 있어요.")
+        case "x_cpi": String(localized: "물가가 예상과 다르면 금리 전망이 바뀌어 주가가 크게 흔들릴 수 있어요.")
+        case "x_jobs": String(localized: "일자리 숫자는 금리 전망에 영향을 줘서 주가와 환율이 함께 움직일 수 있어요.")
+        default: id.hasPrefix("e_") ? String(localized: "실적이 기대와 다르면 그 종목 값이 하루에 크게 움직일 수 있어요.") : nil
         }
     }
     /// "내일", "10/22 (D-11)" 처럼
     static func when(_ day: String) -> String {
         let n = Day.dday(day)
-        return n == 0 ? "오늘" : n == 1 ? "내일" : "\(Day.md(day)) D-\(n)"
+        return n == 0 ? String(localized: "오늘") : n == 1 ? String(localized: "내일") : "\(Day.md(day)) D-\(n)"
     }
     /// 위젯 '다음' 줄: 30일 안의 첫 일정 (내 종목 먼저)
     static func widgetNext(held: [String]) -> String? {
         guard let h = upcoming(held: held, days: 30).first else { return nil }
         let n = Day.dday(h.day)
-        return "\(h.kind) " + (n == 0 ? "오늘" : "D-\(n)") + " (\(Day.md(h.day)))"
+        return "\(h.kind) " + (n == 0 ? String(localized: "오늘") : "D-\(n)") + " (\(Day.md(h.day)))"
     }
 }
 

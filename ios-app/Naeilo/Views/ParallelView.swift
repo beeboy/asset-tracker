@@ -6,7 +6,7 @@ import SwiftUI
 
 enum ParallelUI {
     static let colors: [Color] = [Theme.myReal, Theme.basket, Theme.rule]
-    static let short = ["실제", "모의"]
+    static let short = [String(localized: "실제"), String(localized: "모의")]
 }
 
 struct ParallelView: View {
@@ -30,7 +30,7 @@ struct ParallelView: View {
                     basis()
                 } else {
                     Card {
-                        Text(m.parallelBase.isEmpty ? "종목 탭에서 수량을 넣으면 비교 시작" : "지난 종가 받는 중 · 잠시 뒤 다시")
+                        Text(m.parallelBase.isEmpty ? String(localized: "종목 탭에서 수량을 넣으면 비교 시작") : String(localized: "지난 종가 받는 중 · 잠시 뒤 다시"))
                             .appFont(14).foregroundStyle(Theme.sub)
                     }
                     if m.isSample { Text("샘플 종목 · 내 종목 넣으면 그날부터 비교").appFont(12).foregroundStyle(Theme.sub) }
@@ -61,9 +61,9 @@ struct ParallelView: View {
     private func verdict(_ race: PRace, _ r: [[Double]], _ v: PVerdict, _ w: PWorld) -> some View {
         let t = race.last
         let start = Self.md(race.dates.first ?? "")
-        let first = (m.isGoal ? "" : "최저점 ") + "\(start) · 같은 \(AppModel.eok(race.V0))으로 출발"
+        let first = (m.isGoal ? "" : String(localized: "최저점 ")) + String(localized: "\(String(describing: start)) · 같은 \(String(describing: AppModel.eok(race.V0)))으로 출발")
         let lead = title(v.order[0], w)
-        let head = v.similar ? "셋 다 비슷해요" : "\(lead)\(WChar.josa(lead)) 앞서요"
+        let head = v.similar ? String(localized: "셋 다 비슷해요") : String(localized: "\(String(describing: lead))\(String(describing: WChar.josa(lead))) 앞서요")
         let gap = String(format: "%.1f%%p", v.gap * 100) + " · " + AppModel.aboutWon(race.V0 * v.gap)
         let goalPcts = Set((0..<3).map { AppModel.pct(min(1, race.V0 * (1 + r[$0][t]) / max(1, m.gK * 1e4))) })
         let mid = race.V0 * (1 + r[v.order[1]][t])
@@ -118,7 +118,7 @@ struct ParallelView: View {
     }
     private func desc(_ k: Int, _ w: PWorld) -> String {
         switch k {
-        case 0: return "지금 종목 그대로"
+        case 0: return String(localized: "지금 종목 그대로")
         case 1:
             let parts = (w.segs.last?.w ?? [:]).sorted { $0.value > $1.value }.map { "\($0.key) \(Int(($0.value * 100).rounded()))" }
             return parts.joined(separator: " · ")
@@ -220,12 +220,12 @@ struct ParallelView: View {
     @ViewBuilder private func buttons(_ w: PWorld) -> some View {
         if m.pworld != nil {
             HStack(spacing: 8) {
-                NavigationLink(value: "parallel:basket") { pill("바구니 바꾸기") }.buttonStyle(.plain)
+                NavigationLink(value: "parallel:basket") { pill(String(localized: "바구니 바꾸기")) }.buttonStyle(.plain)
                 Menu {
                     ForEach(Shelter.friends.filter { $0.id != w.who && $0.id != m.calm.type }, id: \.id) { f in
                         Button(f.name + " · " + f.does) { m.pickWho(f.id) }
                     }
-                } label: { pill("다른 인물 비교") }
+                } label: { pill(String(localized: "다른 인물 비교")) }
             }
         }
     }
@@ -254,7 +254,7 @@ struct ParallelView: View {
                     let parts: [String] = g.w.sorted { $0.value > $1.value }.map { "\($0.key) \(AppModel.pct($0.value))" }
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
-                            Text((i == 0 ? "출발" : Self.md(g.from)) + " ~ " + Self.md(end)).appFont(13, .bold)
+                            Text((i == 0 ? String(localized: "출발") : Self.md(g.from)) + " ~ " + Self.md(end)).appFont(13, .bold)
                             Spacer()
                             Text(AppModel.sgn(ret)).appFont(13, .bold).foregroundStyle(ret >= 0 ? Theme.up : Theme.down)
                         }
@@ -354,7 +354,7 @@ struct ParallelBasketView: View {
                     if w.isEmpty { Text("담은 종목 없음").appFont(13).foregroundStyle(Theme.sub) }
                     Menu {
                         ForEach(Parallel.universe.filter { w[$0.id] == nil }, id: \.id) { u in
-                            Button(u.id + " · " + u.name + (Parallel.has(u.id) ? "" : " (시세 준비 중)")) { w[u.id] = 10 }
+                            Button(u.id + " · " + u.name + (Parallel.has(u.id) ? "" : String(localized: " (시세 준비 중)"))) { w[u.id] = 10 }
                                 .disabled(!Parallel.has(u.id))
                         }
                     } label: {

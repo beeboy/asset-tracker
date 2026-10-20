@@ -58,8 +58,8 @@ enum Notifier {
                 guard let d = Day.date(e.day), let prev = cal.date(byAdding: .day, value: -1, to: d),
                       let at = cal.date(bySettingHour: 9, minute: 0, second: 0, of: prev), at > Date() else { continue }
                 let c = UNMutableNotificationContent()
-                c.title = "내일 \(e.kind)"
-                c.body = "금리가 움직이면 내 목표는 어떻게 될까요? 금리 충격 테스트를 다시 보세요."
+                c.title = String(localized: "내일 \(String(describing: e.kind))")
+                c.body = String(localized: "금리가 움직이면 내 목표는 어떻게 될까요? 금리 충격 테스트를 다시 보세요.")
                 c.sound = .default
                 c.userInfo = ["open": "rate"]
                 let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
@@ -70,8 +70,8 @@ enum Notifier {
 
         if m.alerts["dep"] == true {
             let c = UNMutableNotificationContent()
-            c.title = "연말 세금 정리"
-            c.body = "올해가 한 달 남았어요. 올해 해외주식 손익과 내년 5월 세금 예시를 앱에서 확인해 보세요."
+            c.title = String(localized: "연말 세금 정리")
+            c.body = String(localized: "올해가 한 달 남았어요. 올해 해외주식 손익과 내년 5월 세금 예시를 앱에서 확인해 보세요.")
             c.sound = .default
             c.userInfo = ["open": "tax"]
             let t = UNCalendarNotificationTrigger(dateMatching: DateComponents(month: 12, day: 1, hour: 9), repeats: true)
@@ -90,8 +90,8 @@ enum Notifier {
                 let wd = cal.component(.weekday, from: day)
                 if wd != 1 && wd != 7, let at = cal.date(bySettingHour: m.alertHr, minute: 0, second: 0, of: day) {
                     let c = UNMutableNotificationContent()
-                    c.title = "아침 한 줄"
-                    c.body = n == 0 ? morningLine(m) : "오늘의 움직임과 \(m.keyName)까지 남은 거리를 확인해 보세요."
+                    c.title = String(localized: "아침 한 줄")
+                    c.body = n == 0 ? morningLine(m) : String(localized: "오늘의 움직임과 \(String(describing: m.keyName))까지 남은 거리를 확인해 보세요.")
                     c.sound = .default
                     c.userInfo = ["open": "home"]
                     let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
@@ -109,8 +109,8 @@ enum Notifier {
     static func morningLine(_ m: AppModel) -> String {
         // 남은 거리 = 지금에서 몇 % 더 올라야 본전(목표)인지 (시안 알림 미리보기와 같은 식)
         let need = m.keyValue / max(1, m.trackValue) - 1
-        let move = "어제 하루 \(AppModel.sgn(m.todayMove))."
-        return need <= 0 ? "\(move) \(m.keyName)을 넘었어요." : "\(move) \(m.keyName)까지 \(String(format: "%.1f", need * 100))% 남았어요."
+        let move = String(localized: "어제 하루 \(String(describing: AppModel.sgn(m.todayMove))).")
+        return need <= 0 ? String(localized: "\(String(describing: move)) \(String(describing: m.keyName))을 넘었어요.") : String(localized: "\(String(describing: move)) \(String(describing: m.keyName))까지 \(String(describing: String(format: "%.1f", need * 100)))% 남았어요.")
     }
 
     // MARK: 조건 알림 (시세를 갱신할 때마다)
@@ -124,7 +124,7 @@ enum Notifier {
             let above = m.total >= m.cost
             // 처음 보는 날은 지금 상태만 적는다 (이미 본전 위에서 시작했으면 보내지 않는다)
             if m.alerts["be"] == true, above, d.object(forKey: "nt.beAbove") != nil, !d.bool(forKey: "nt.beAbove") {
-                lines.append(("본전 도달", "본전에 도착했어요! 평가액이 들어간 돈 \(AppModel.man(m.cost))을 넘었어요."))
+                lines.append((String(localized: "본전 도달"), String(localized: "본전에 도착했어요! 평가액이 들어간 돈 \(String(describing: AppModel.man(m.cost)))을 넘었어요.")))
             }
             d.set(above, forKey: "nt.beAbove")
         }
@@ -132,7 +132,7 @@ enum Notifier {
         if m.alerts["drift"] == true, !m.isGoal {
             let gap = abs(m.focusWeight - m.planWeight)
             if gap * 100 > Double(m.alertTh) {
-                lines.append(("비중 이탈", "\(m.focusName) 비중이 \(AppModel.pct(m.focusWeight))예요. 계획(\(AppModel.pct(m.planWeight)))보다 \(Int((gap * 100).rounded()))%p 벗어났어요."))
+                lines.append((String(localized: "비중 이탈"), String(localized: "\(String(describing: m.focusName)) 비중이 \(String(describing: AppModel.pct(m.focusWeight)))예요. 계획(\(String(describing: AppModel.pct(m.planWeight))))보다 \(String(describing: Int((gap * 100).rounded())))%p 벗어났어요.")))
             }
         }
         guard !lines.isEmpty else { return }
@@ -153,8 +153,8 @@ enum Notifier {
     static func test(_ m: AppModel) async {
         guard await request() else { return }
         let c = UNMutableNotificationContent()
-        c.title = "naeilo 알림 시험"
-        c.body = m.alerts["morn"] == true ? morningLine(m) : "알림이 이렇게 와요. 켠 알림은 조건이 되면 이 모양으로 와요."
+        c.title = String(localized: "naeilo 알림 시험")
+        c.body = m.alerts["morn"] == true ? morningLine(m) : String(localized: "알림이 이렇게 와요. 켠 알림은 조건이 되면 이 모양으로 와요.")
         c.sound = .default
         try? await center.add(UNNotificationRequest(identifier: "test", content: withIcon(c),
                                                     trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)))
@@ -201,8 +201,8 @@ enum EventRetro {
             guard let dd = Day.date(day), let next = cal.date(byAdding: .day, value: 1, to: dd),
                   let at = cal.date(bySettingHour: 9, minute: 0, second: 0, of: next), at > Date() else { return }
             let c = UNMutableNotificationContent()
-            c.title = "어제 \(kind) 결과"
-            c.body = "내 자산이 미리 본 범위 안에서 움직였는지 '지난 일 돌아보기'에서 확인해 보세요."
+            c.title = String(localized: "어제 \(String(describing: kind)) 결과")
+            c.body = String(localized: "내 자산이 미리 본 범위 안에서 움직였는지 '지난 일 돌아보기'에서 확인해 보세요.")
             c.sound = .default
             c.userInfo = ["open": "ext"]
             let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)

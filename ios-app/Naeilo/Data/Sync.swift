@@ -112,7 +112,7 @@ final class Sync {
     func turnOnDev(token: String, model: AppModel) async {
         let t = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, t.unicodeScalars.allSatisfy({ $0.value > 0x20 && $0.value < 0x7f }) else {
-            state = .failed("토큰에 다른 글자가 섞여 있어요. 다시 붙여넣어 주세요"); return
+            state = .failed(String(localized: "토큰에 다른 글자가 섞여 있어요. 다시 붙여넣어 주세요")); return
         }
         state = .working
         creds = Creds(token: t)
@@ -162,8 +162,8 @@ final class Sync {
         case off, wrongPassword, server(String)
         var errorDescription: String? {
             switch self {
-            case .off: "동기화가 꺼져 있어요"
-            case .wrongPassword: "풀 수 없어요 (다른 기기와 같은 비밀번호인지 확인해 주세요)"
+            case .off: String(localized: "동기화가 꺼져 있어요")
+            case .wrongPassword: String(localized: "풀 수 없어요 (다른 기기와 같은 비밀번호인지 확인해 주세요)")
             case .server(let s): s
             }
         }
@@ -194,7 +194,7 @@ final class Sync {
         }
         let (data, resp) = try await URLSession.shared.data(for: req)
         let j = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw SyncError.server((j["error"] as? String) ?? "중계 응답 \((resp as? HTTPURLResponse)?.statusCode ?? 0)") }
+        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw SyncError.server((j["error"] as? String) ?? String(localized: "중계 응답 \(String(describing: (resp as? HTTPURLResponse)?.statusCode ?? 0))")) }
         let at = (j["at"] as? Double) ?? 0
         if c.token != nil, var st = j["state"] as? [String: Any] {
             st.removeValue(forKey: "_w")
@@ -392,7 +392,7 @@ final class Sync {
             if CustomSymbols.shared.symbol(id) == nil && YahooSample.quotes[id] == nil {
                 let ko = StockCatalog.all.first { $0.id == id }
                 unknown.append(StockHit(id: id, yahoo: kr ? t.uppercased() : id, name: ko?.name ?? Sample.symbols.first { $0.id == id }?.name ?? (h["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? id,
-                                        market: ko?.market ?? (kr ? (t.uppercased().hasSuffix(".KQ") ? "코스닥" : "코스피") : "미국 주식"),
+                                        market: ko?.market ?? (kr ? (t.uppercased().hasSuffix(".KQ") ? String(localized: "코스닥") : String(localized: "코스피")) : String(localized: "미국 주식")),
                                         currency: kr ? .krw : .usd))
             }
             // 평균 단가가 없으면(사이트는 선택 항목) 지금 가격으로 둔다
@@ -458,7 +458,7 @@ final class Sync {
         siteState = st
         localAt = at
         lastSig = signature(m)
-        if !skipped.isEmpty { state = .failed("시세를 못 받은 종목 \(skipped.joined(separator: ", "))는 사이트에만 있어요") }
+        if !skipped.isEmpty { state = .failed(String(localized: "시세를 못 받은 종목 \(String(describing: skipped.joined(separator: ", ")))는 사이트에만 있어요")) }
     }
 
     /// 동기화할 값이 바뀌었는지 (종목 + 진행 + 내 기록 날짜 수. 날짜 칸은 빼고)

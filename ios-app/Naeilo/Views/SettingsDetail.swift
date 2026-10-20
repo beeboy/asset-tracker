@@ -70,11 +70,11 @@ struct AlertsView: View {
 
     var body: some View {
         let list: [(k: String, t: String, sub: String, prev: String)] = [
-            ("be", "본전 도달", "평가액이 들어간 돈을 넘으면 한 번", "본전에 도착했어요! 평가액이 들어간 돈 \(AppModel.man(m.cost))을 넘었어요."),
-            ("drift", "비중 이탈", "비중 1위 종목 비중이 계획에서 \(m.alertTh)%p 넘게 벗어나면",
-             "\(m.focusName) 비중이 \(AppModel.pct(m.focusWeight))예요. 계획(\(AppModel.pct(m.planWeight)))보다 \(Int((abs(m.focusWeight - m.planWeight) * 100).rounded()))%p 벗어났어요."),
-            ("dep", "연말 세금 정리", "12월 1일, 올해 손익과 세금 예시 보기", "올해가 한 달 남았어요. 올해 해외주식 손익과 내년 5월 세금 예시를 앱에서 확인해 보세요."),
-            ("morn", "아침 한 줄", "평일 \(m.alertHr)시, 어제의 움직임 한 줄", Notifier.morningLine(m)),
+            ("be", String(localized: "본전 도달"), String(localized: "평가액이 들어간 돈을 넘으면 한 번"), String(localized: "본전에 도착했어요! 평가액이 들어간 돈 \(String(describing: AppModel.man(m.cost)))을 넘었어요.")),
+            ("drift", String(localized: "비중 이탈"), String(localized: "비중 1위 종목 비중이 계획에서 \(String(describing: m.alertTh))%p 넘게 벗어나면"),
+             String(localized: "\(String(describing: m.focusName)) 비중이 \(String(describing: AppModel.pct(m.focusWeight)))예요. 계획(\(String(describing: AppModel.pct(m.planWeight))))보다 \(String(describing: Int((abs(m.focusWeight - m.planWeight) * 100).rounded())))%p 벗어났어요.")),
+            ("dep", String(localized: "연말 세금 정리"), String(localized: "12월 1일, 올해 손익과 세금 예시 보기"), String(localized: "올해가 한 달 남았어요. 올해 해외주식 손익과 내년 5월 세금 예시를 앱에서 확인해 보세요.")),
+            ("morn", String(localized: "아침 한 줄"), String(localized: "평일 \(String(describing: m.alertHr))시, 어제의 움직임 한 줄"), Notifier.morningLine(m)),
         ]
         let on = list.filter { m.alerts[$0.k] == true }
         let prev = on.first { $0.k == m.alertLast } ?? on.first
@@ -86,7 +86,7 @@ struct AlertsView: View {
                 HStack {
                     Text("알림 미리보기").appFont(13, .bold).foregroundStyle(Theme.sub)
                     Spacer()
-                    Text("켠 알림 \(on.count)개" + (perMonth > 0 ? " · 한 달 약 \(perMonth)번" : "")).appFont(12).foregroundStyle(Theme.sub)
+                    Text(String(localized: "켠 알림 \(String(describing: on.count))개") + (perMonth > 0 ? String(localized: " · 한 달 약 \(String(describing: perMonth))번") : "")).appFont(12).foregroundStyle(Theme.sub)
                 }
                 HStack(alignment: .top, spacing: 10) {
                     // 설정에서 고른 앱 아이콘 (알림에도 같은 그림이 붙는다)
@@ -95,11 +95,11 @@ struct AlertsView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
-                            Text(prev?.t ?? "알림 꺼짐").appFont(14, .bold)
+                            Text(prev?.t ?? String(localized: "알림 꺼짐")).appFont(14, .bold)
                             Spacer()
-                            Text(prev == nil ? "" : prev!.k == "morn" ? "오전 \(m.alertHr):00" : "지금").appFont(12).foregroundStyle(Theme.muted)
+                            Text(prev == nil ? "" : prev!.k == "morn" ? String(localized: "오전 \(String(describing: m.alertHr)):00") : String(localized: "지금")).appFont(12).foregroundStyle(Theme.muted)
                         }
-                        Text(prev?.prev ?? "켠 알림이 없어요. 아래에서 하나 이상 켜 보세요.").appFont(13).fixedSize(horizontal: false, vertical: true)
+                        Text(prev?.prev ?? String(localized: "켠 알림이 없어요. 아래에서 하나 이상 켜 보세요.")).appFont(13).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(12)
@@ -119,18 +119,18 @@ struct AlertsView: View {
                             }
                         }
                         .tint(Theme.teal)
-                        if isOn && a.k == "drift" { optionChips("기준", [3, 5, 10], "%p", m.alertTh) { m.alertTh = $0 } }
-                        if isOn && a.k == "morn" { optionChips("시간", [7, 8, 9], "시", m.alertHr) { m.alertHr = $0 } }
+                        if isOn && a.k == "drift" { optionChips(String(localized: "기준"), [3, 5, 10], "%p", m.alertTh) { m.alertTh = $0 } }
+                        if isOn && a.k == "morn" { optionChips(String(localized: "시간"), [7, 8, 9], String(localized: "시"), m.alertHr) { m.alertHr = $0 } }
                     }
                 }
                 if perm == .allowed && !on.isEmpty {
                     Button { Task { await Notifier.test(m); sent = true } } label: {
-                        Text(sent ? "5초 뒤에 시험 알림이 와요" : "시험 알림 받아 보기").appFont(14, .semibold)
+                        Text(sent ? String(localized: "5초 뒤에 시험 알림이 와요") : String(localized: "시험 알림 받아 보기")).appFont(14, .semibold)
                             .frame(maxWidth: .infinity, minHeight: 44).foregroundStyle(Theme.teal)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 1.5))
                     }.buttonStyle(.plain)
                 }
-                note("알림은 하루 한 번까지 와요. 아침 한 줄은 앱을 마지막으로 연 때의 숫자예요.")
+                note(String(localized: "알림은 하루 한 번까지 와요. 아침 한 줄은 앱을 마지막으로 연 때의 숫자예요."))
                 Card(padding: 14) { RemindOptions() }
             }
             .padding(16)
@@ -146,10 +146,10 @@ struct AlertsView: View {
 
     private var permCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(perm == .denied ? "아이폰 알림이 꺼져 있어요" : "아이폰 알림 허용이 필요해요").appFont(15, .bold)
-            Text(perm == .denied ? "아이폰 설정 > 알림 > naeilo에서 허용해 주세요." : "허용해야 알림이 와요.")
+            Text(perm == .denied ? String(localized: "아이폰 알림이 꺼져 있어요") : String(localized: "아이폰 알림 허용이 필요해요")).appFont(15, .bold)
+            Text(perm == .denied ? String(localized: "아이폰 설정 > 알림 > naeilo에서 허용해 주세요.") : String(localized: "허용해야 알림이 와요."))
                 .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-            PrimaryButton(title: perm == .denied ? "아이폰 설정 열기" : "알림 허용하기") {
+            PrimaryButton(title: perm == .denied ? String(localized: "아이폰 설정 열기") : String(localized: "알림 허용하기")) {
                 if perm == .denied { if let u = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(u) } }
                 else { Task { await Notifier.request(); perm = await Notifier.status(); await Notifier.reschedule(m) } }
             }
@@ -177,22 +177,22 @@ struct SyncView: View {
     private var tossStatus: String {
         _ = Market.shared.updatedAt     // 시세를 새로 받으면 다시 그린다
         let t = TossFeed.okAt
-        var s = "오픈 API: "
-        guard TossFeed.base != nil else { return s + "주소 없음" }
+        var s = String(localized: "오픈 API: ")
+        guard TossFeed.base != nil else { return s + String(localized: "주소 없음") }
         if t > 0 {
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR")
             let d = Date(timeIntervalSince1970: t)
-            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : "M월 d일 a h:mm"
-            s += "마지막 성공 \(f.string(from: d))"
-        } else { s += "아직 성공 없음" }
-        if let e = TossFeed.lastError { s += " · 실패: \(e)" }
+            f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm:ss" : String(localized: "M월 d일 a h:mm")
+            s += String(localized: "마지막 성공 \(String(describing: f.string(from: d)))")
+        } else { s += String(localized: "아직 성공 없음") }
+        if let e = TossFeed.lastError { s += String(localized: " · 실패: \(String(describing: e))") }
         return s
     }
     private var sync: Sync { .shared }
 
     var body: some View {
         let on = sync.isOn
-        SettingsPage(title: "기기 동기화") {
+        SettingsPage(title: String(localized: "기기 동기화")) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
                     Image(systemName: "iphone").font(.system(size: 26))
@@ -200,7 +200,7 @@ struct SyncView: View {
                         .mask { if on { Rectangle() } else { HStack(spacing: 4) { ForEach(0..<8, id: \.self) { _ in Rectangle() } } } }
                     Image(systemName: "desktopcomputer").font(.system(size: 26))
                 }
-                Text(on ? (sync.isDev ? "개발자 동기화 켜짐" : "자동 동기화 켜짐") : "아직 켜지 않음").appFont(20, .bold)
+                Text(on ? (sync.isDev ? String(localized: "개발자 동기화 켜짐") : String(localized: "자동 동기화 켜짐")) : String(localized: "아직 켜지 않음")).appFont(20, .bold)
                 Text(statusText).appFont(13).fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(on ? .white : Theme.ink)
@@ -212,17 +212,17 @@ struct SyncView: View {
             if on {
                 Card {
                     Text("함께 맞춰지는 것").appFont(15, .bold)
-                    ForEach([("종목·수량·평균 단가", true), ("미션 진행·오늘의 1분·쉼터", true), ("목표·사건·모형 설정 (사이트)", true), ("알림·화면 모드", false)], id: \.0) { k, y in
-                        HStack { Text(k).appFont(14); Spacer(); Text(y ? "함께" : "기기마다 따로").appFont(13, .semibold).foregroundStyle(y ? Theme.teal : Theme.muted) }
+                    ForEach([(String(localized: "종목·수량·평균 단가"), true), (String(localized: "미션 진행·오늘의 1분·쉼터"), true), (String(localized: "목표·사건·모형 설정 (사이트)"), true), (String(localized: "알림·화면 모드"), false)], id: \.0) { k, y in
+                        HStack { Text(k).appFont(14); Spacer(); Text(y ? String(localized: "함께") : String(localized: "기기마다 따로")).appFont(13, .semibold).foregroundStyle(y ? Theme.teal : Theme.muted) }
                     }
                 }
-                PrimaryButton(title: sync.state == .working ? "맞추는 중…" : "지금 맞추기") { Task { await sync.pull(m) } }
+                PrimaryButton(title: sync.state == .working ? String(localized: "맞추는 중…") : String(localized: "지금 맞추기")) { Task { await sync.pull(m) } }
                 Button("이 기기 동기화 끄기") { askOff = true }
                     .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
                     .confirmationDialog("이 기기 동기화를 끌까요?", isPresented: $askOff, titleVisibility: .visible) {
                         Button("끄기", role: .destructive) { sync.turnOff() }
-                    } message: { Text(sync.isDev ? "이 폰에 있는 값은 그대로 남고, 토큰은 이 폰에서 지워요." : "이 폰에 있는 값은 그대로 남고, 다른 기기와 더 맞추지 않아요. 다시 켜려면 같은 비밀번호가 필요해요.") }
+                    } message: { Text(sync.isDev ? String(localized: "이 폰에 있는 값은 그대로 남고, 토큰은 이 폰에서 지워요.") : String(localized: "이 폰에 있는 값은 그대로 남고, 다른 기기와 더 맞추지 않아요. 다시 켜려면 같은 비밀번호가 필요해요.")) }
             } else {
                 let ok = pw.count >= 10 && pw == pw2
                 Card {
@@ -235,7 +235,7 @@ struct SyncView: View {
                         .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
                     if !pw.isEmpty && pw.count < 10 { Text("10자 이상으로 정해 주세요.").appFont(12).foregroundStyle(Theme.up) }
                     else if !pw2.isEmpty && pw != pw2 { Text("두 번 넣은 비밀번호가 달라요.").appFont(12).foregroundStyle(Theme.up) }
-                    PrimaryButton(title: sync.state == .working ? "준비 중…" : "켜기", color: ok ? Theme.teal : Theme.muted) {
+                    PrimaryButton(title: sync.state == .working ? String(localized: "준비 중…") : String(localized: "켜기"), color: ok ? Theme.teal : Theme.muted) {
                         guard ok, sync.state != .working else { return }
                         let p = pw; pw = ""; pw2 = ""
                         Task { await sync.turnOn(password: p, model: m) }
@@ -247,7 +247,7 @@ struct SyncView: View {
                             .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                         SecureField("GitHub 토큰", text: $token).textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
                             .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
-                        PrimaryButton(title: sync.state == .working ? "확인 중…" : "토큰으로 연결", color: token.isEmpty ? Theme.muted : Theme.teal) {
+                        PrimaryButton(title: sync.state == .working ? String(localized: "확인 중…") : String(localized: "토큰으로 연결"), color: token.isEmpty ? Theme.muted : Theme.teal) {
                             guard !token.isEmpty, sync.state != .working else { return }
                             let t = token; token = ""
                             Task { await sync.turnOnDev(token: t, model: m) }
@@ -262,7 +262,7 @@ struct SyncView: View {
             // 토스 상태는 동기화 켜짐·꺼짐과 상관없이 늘 보인다
             Text(tossStatus).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             fileCard
-            note("서버에는 암호화한 값만 둬요. 비밀번호는 저장하지 않아서 잊으면 새로 켜야 해요.")
+            note(String(localized: "서버에는 암호화한 값만 둬요. 비밀번호는 저장하지 않아서 잊으면 새로 켜야 해요."))
         }
     }
 
@@ -272,7 +272,7 @@ struct SyncView: View {
             Text("내 폰에 저장하기 · 불러오기").appFont(15, .bold)
             Text("종목과 미션 진행을 파일 하나로 저장해요. 새 폰에서 불러오면 이어져요.")
                 .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-            PrimaryButton(title: "내 폰에 저장하기") { exportDoc = BackupFile(Backup(m)); exporting = true }
+            PrimaryButton(title: String(localized: "내 폰에 저장하기")) { exportDoc = BackupFile(Backup(m)); exporting = true }
             Button("저장한 파일 불러오기") { importing = true }
                 .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 48)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
@@ -282,51 +282,51 @@ struct SyncView: View {
         }
         .fileExporter(isPresented: $exporting, document: exportDoc, contentType: .json, defaultFilename: Backup.fileName()) { r in
             switch r {
-            case .success: fileMsg = "저장했어요. 종목 \(m.holdings.count)개와 미션 진행이 들어 있어요."
-            case .failure(let e): fileMsg = "저장하지 못했어요: \(e.localizedDescription)"
+            case .success: fileMsg = String(localized: "저장했어요. 종목 \(String(describing: m.holdings.count))개와 미션 진행이 들어 있어요.")
+            case .failure(let e): fileMsg = String(localized: "저장하지 못했어요: \(String(describing: e.localizedDescription))")
             }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { r in
             switch r {
             case .success(let url):
-                do { pending = try BackupFile.read(url) } catch { fileMsg = "naeilo에서 저장한 파일이 아니에요." }
-            case .failure(let e): fileMsg = "열지 못했어요: \(e.localizedDescription)"
+                do { pending = try BackupFile.read(url) } catch { fileMsg = String(localized: "naeilo에서 저장한 파일이 아니에요.") }
+            case .failure(let e): fileMsg = String(localized: "열지 못했어요: \(String(describing: e.localizedDescription))")
             }
         }
         .confirmationDialog("이 파일로 이 폰을 맞출까요?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
             Button("불러오기") {
                 guard let b = pending else { return }
                 b.restore(to: m)
-                fileMsg = "불러왔어요. 종목 \(b.holdings.count)개와 미션 진행을 이 폰에 넣었어요."
+                fileMsg = String(localized: "불러왔어요. 종목 \(String(describing: b.holdings.count))개와 미션 진행을 이 폰에 넣었어요.")
                 pending = nil
             }
         } message: {
             let f = DateFormatter(), b = pending
-            let _ = { f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일 a h:mm" }()
-            Text("\(b.map { f.string(from: $0.at) } ?? "")에 저장한 파일 (종목 \(b?.holdings.count ?? 0)개). 지금 이 폰의 종목과 미션 진행은 이 파일 값으로 바뀌어요." + (sync.isOn ? " 동기화가 켜져 있어서 다른 기기에도 보내져요." : ""))
+            let _ = { f.locale = Locale(identifier: "ko_KR"); f.dateFormat = String(localized: "M월 d일 a h:mm") }()
+            Text(String(localized: "\(String(describing: b.map { f.string(from: $0.at) } ?? ""))에 저장한 파일 (종목 \(String(describing: b?.holdings.count ?? 0))개). 지금 이 폰의 종목과 미션 진행은 이 파일 값으로 바뀌어요.") + (sync.isOn ? String(localized: " 동기화가 켜져 있어서 다른 기기에도 보내져요.") : ""))
         }
     }
 
     private var statusText: String {
         switch sync.state {
-        case .off: return "폰을 바꿔도 같은 숫자를 보려면 켜요"
-        case .idle: return sync.isDev ? "같은 GitHub 계정의 개발자 기기끼리 맞춰져요" : "같은 비밀번호를 넣은 기기끼리 맞춰져요"
-        case .working: return "맞추는 중…"
+        case .off: return String(localized: "폰을 바꿔도 같은 숫자를 보려면 켜요")
+        case .idle: return sync.isDev ? String(localized: "같은 GitHub 계정의 개발자 기기끼리 맞춰져요") : String(localized: "같은 비밀번호를 넣은 기기끼리 맞춰져요")
+        case .working: return String(localized: "맞추는 중…")
         case .ok(let d):
             let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "a h:mm"
-            return "마지막으로 맞춘 때: \(f.string(from: d))"
-        case .failed(let e): return "맞추지 못했어요: \(e)"
+            return String(localized: "마지막으로 맞춘 때: \(String(describing: f.string(from: d)))")
+        case .failed(let e): return String(localized: "맞추지 못했어요: \(String(describing: e))")
         }
     }
 
     private func conflictCard(_ c: Sync.Remote) -> some View {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일 a h:mm"
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = String(localized: "M월 d일 a h:mm")
         let n = (c.state["holdings"]?.value as? [[String: Any]])?.count ?? 0
         return Card {
             Text("다른 기기에 저장된 값이 있어요").appFont(15, .bold)
             Text("\(f.string(from: Date(timeIntervalSince1970: c.at / 1000)))에 저장된 값 (종목 \(n)개)이 있어요. 어느 쪽에 맞출까요?")
                 .appFont(14).fixedSize(horizontal: false, vertical: true)
-            PrimaryButton(title: "다른 기기 값으로 이 폰을 맞추기") { Task { await sync.resolve(useRemote: true, m) } }
+            PrimaryButton(title: String(localized: "다른 기기 값으로 이 폰을 맞추기")) { Task { await sync.resolve(useRemote: true, m) } }
             Button("이 폰 값을 다른 기기로 보내기") { Task { await sync.resolve(useRemote: false, m) } }
                 .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 48)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
@@ -394,8 +394,8 @@ struct WidgetPickView: View {
                 Text("미션을 마치면 열려요. 홈 화면 길게 누르기 → + → naeilo")
                     .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
-                    stat("기본 위젯", "\(base.filter(\.ok).count)/\(base.count)")
-                    stat("인물", "\(friendsOn)/\(Shelter.friends.count)")
+                    stat(String(localized: "기본 위젯"), "\(base.filter(\.ok).count)/\(base.count)")
+                    stat(String(localized: "인물"), "\(friendsOn)/\(Shelter.friends.count)")
                 }
 
                 // 인물 위젯: 만난 인물을 고르면 여덟 가지 모양을 바로 본다 (못 만난 친구는 목록에 없다)
@@ -408,14 +408,14 @@ struct WidgetPickView: View {
                                 VStack(spacing: 2) {
                                     Pixel(name: (ok ? "spr_" : "sil_") + f.id, width: 30, height: 42)
                                     Text(ok ? f.name : "???").appFont(12, .bold)
-                                    Text(ok ? (f.id == m.homeFriendShown ? "홈에 있음" : "만남") : "인터미션 \(i)주차").appFont(10).foregroundStyle(Theme.sub)
+                                    Text(ok ? (f.id == m.homeFriendShown ? String(localized: "홈에 있음") : String(localized: "만남")) : String(localized: "인터미션 \(String(describing: i))주차")).appFont(10).foregroundStyle(Theme.sub)
                                 }
                                 .frame(width: 72, height: 86)
                                 .background(cur ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 12))
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(cur ? Theme.teal : Theme.border, lineWidth: 2))
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel(ok ? f.name : "잠긴 인물, 인터미션 \(i)주차")
+                            .accessibilityLabel(ok ? f.name : String(localized: "잠긴 인물, 인터미션 \(String(describing: i))주차"))
                         }
                         // 내 캐릭터: 열렸을 때만
                         if m.meUnlocked {
@@ -423,7 +423,7 @@ struct WidgetPickView: View {
                                 VStack(spacing: 2) {
                                     CharPixel(id: "me", width: 30, height: 42)
                                     Text(m.friendName("me")).appFont(12, .bold).lineLimit(1)
-                                    Text(m.homeFriendShown == "me" ? "홈에 있음" : "내 캐릭터").appFont(10).foregroundStyle(Theme.sub)
+                                    Text(m.homeFriendShown == "me" ? String(localized: "홈에 있음") : String(localized: "내 캐릭터")).appFont(10).foregroundStyle(Theme.sub)
                                 }
                                 .frame(width: 72, height: 86)
                                 .background(sel == "me" ? Theme.mintBg : Theme.card, in: RoundedRectangle(cornerRadius: 12))
@@ -439,25 +439,25 @@ struct WidgetPickView: View {
                     let w = (g.size.width - 12) / 2
                     VStack(spacing: 12) {
                         HStack(spacing: 12) {
-                            caption("자산 언덕") { tile(e, w: w, h: w) { HillCharView(e: e) } }
-                            caption("본전 사다리") { tile(e, w: w, h: w) { LadderCharView(e: e) } }
+                            caption(String(localized: "자산 언덕")) { tile(e, w: w, h: w) { HillCharView(e: e) } }
+                            caption(String(localized: "본전 사다리")) { tile(e, w: w, h: w) { LadderCharView(e: e) } }
                         }
                         HStack(spacing: 12) {
-                            caption("블록 탑") { tile(e, w: w, h: w) { TowerCharView(e: e) } }
-                            caption("전광판") { tile(e, w: w, h: w) { BoardCharView(e: e) } }
+                            caption(String(localized: "블록 탑")) { tile(e, w: w, h: w) { TowerCharView(e: e) } }
+                            caption(String(localized: "전광판")) { tile(e, w: w, h: w) { BoardCharView(e: e) } }
                         }
                         HStack(spacing: 12) {
-                            caption("키 재기") { tile(e, w: w, h: w) { HeightCharView(e: e) } }
-                            caption("퍼즐 맞추기") { tile(e, w: w, h: w) { PuzzleCharView(e: e) } }
+                            caption(String(localized: "키 재기")) { tile(e, w: w, h: w) { HeightCharView(e: e) } }
+                            caption(String(localized: "퍼즐 맞추기")) { tile(e, w: w, h: w) { PuzzleCharView(e: e) } }
                         }
                         HStack(spacing: 12) {
-                            caption("꽃밭") { tile(e, w: w, h: w) { GardenCharView(e: e) } }
-                            caption("줄다리기") { tile(e, w: w, h: w) { TugCharView(e: e) } }
+                            caption(String(localized: "꽃밭")) { tile(e, w: w, h: w) { GardenCharView(e: e) } }
+                            caption(String(localized: "줄다리기")) { tile(e, w: w, h: w) { TugCharView(e: e) } }
                         }
                     }
                 }
                 .aspectRatio(1 / 2.3, contentMode: .fit)
-                note("인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요.")
+                note(String(localized: "인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요."))
 
                 // 기본 위젯: 앱 시작 단계로 열림
                 Text("기본 위젯").appFont(17, .bold).padding(.top, 6)
@@ -480,12 +480,12 @@ struct WidgetPickView: View {
                 }
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
-                note("못 받은 위젯은 잠긴 모습으로 보여요.")
+                note(String(localized: "못 받은 위젯은 잠긴 모습으로 보여요."))
 
                 // 금액 가리기: 위젯에서 금액을 누르면 •••• 로 가려진다. 함께/따로는 Store.hideEach
                 Text("금액 가리기").appFont(17, .bold).padding(.top, 6)
                 AmountHideCard()
-                note("금액을 누르면 가려지고, 다시 누르면 보여요. 잠금화면 위젯은 폰이 잠겨 있는 동안 금액을 가리고, 얼굴이나 지문으로 풀면 보여요.")
+                note(String(localized: "금액을 누르면 가려지고, 다시 누르면 보여요. 잠금화면 위젯은 폰이 잠겨 있는 동안 금액을 가리고, 얼굴이나 지문으로 풀면 보여요."))
             }
             .screen()
         }
@@ -496,7 +496,7 @@ struct WidgetPickView: View {
     private func stat(_ k: String, _ v: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(k).appFont(12).foregroundStyle(Theme.sub)
-            Text(v + " 열림").appFont(17, .bold)
+            Text(v + String(localized: " 열림")).appFont(17, .bold)
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
@@ -540,20 +540,24 @@ struct TaxRulesView: View {
 
     var body: some View {
         let G = m.taxGain, tax = max(0, G - 250) * 0.22
-        let won0 = { (x: Double) in Int(x.rounded()).formatted() + "만원" }
-        SettingsPage(title: "세금 규칙") {
-            FlowRow(spacing: 6) {
-                ForEach(["대한민국 거주자", "미국 거주자 (준비 중)", "일본 거주자 (준비 중)"], id: \.self) { t in
-                    let on = t == "대한민국 거주자"
-                    Text(t).appFont(14, .bold).padding(.horizontal, 14).frame(minHeight: 40)
-                        .foregroundStyle(on ? .white : Theme.muted)
-                        .background(on ? Theme.teal : Theme.line, in: Capsule())
+        let won0 = { (x: Double) in Int(x.rounded()).formatted() + String(localized: "만원") }
+        SettingsPage(title: String(localized: "세금 규칙")) {
+            // 세금 규칙은 아직 대한민국 거주자만: 다른 나라에 살면 준비 중이라고 알리고 한국 기준을 보여 준다
+            NavigationLink(value: SettingsRoute.residence) {
+                HStack(spacing: 6) {
+                    Text("\(m.residenceName) 거주자").appFont(14, .bold)
+                    Image(systemName: "chevron.right").appFont(12)
                 }
+                .padding(.horizontal, 14).frame(minHeight: 40)
+                .foregroundStyle(.white).background(Theme.teal, in: Capsule())
+            }.buttonStyle(.plain)
+            if m.residence != "KR" {
+                Text("\(m.residenceName) 세금 규칙은 준비 중이에요. 아래는 대한민국 기준이에요.").appFont(13).foregroundStyle(Theme.sub)
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("내년 5월에 낼 해외주식 세금 (예상)").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 Text(won0(tax)).appFont(30, .bold).roll(won0(tax))
-                Text(G > 250 ? "(\(won0(G)) − 기본공제 250만원) × 22%" : "이익이 250만원 이하라 낼 세금이 없어요").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                Text(G > 250 ? String(localized: "(\(String(describing: won0(G))) − 기본공제 250만원) × 22%") : String(localized: "이익이 250만원 이하라 낼 세금이 없어요")).appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
@@ -567,10 +571,10 @@ struct TaxRulesView: View {
                     .accessibilityLabel("올해 해외주식 실현 이익 (만원)")
             }
             Card {
-                ForEach([("해외주식 양도소득세", "한 해 손익 합계에서 250만원 넘는 부분에 22%. 다음 해 5월 신고."),
-                         ("국내 상장주식", "대주주가 아니면 양도세 없음. 증권거래세만."),
-                         ("배당", "국내 15.4%, 미국 15% (현지 원천징수)."),
-                         ("손실 상계", "같은 해 이익과 손실을 합쳐서 계산해요.")], id: \.0) { t, v in
+                ForEach([(String(localized: "해외주식 양도소득세"), String(localized: "한 해 손익 합계에서 250만원 넘는 부분에 22%. 다음 해 5월 신고.")),
+                         (String(localized: "국내 상장주식"), String(localized: "대주주가 아니면 양도세 없음. 증권거래세만.")),
+                         (String(localized: "배당"), String(localized: "국내 15.4%, 미국 15% (현지 원천징수).")),
+                         (String(localized: "손실 상계"), String(localized: "같은 해 이익과 손실을 합쳐서 계산해요."))], id: \.0) { t, v in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(t).appFont(14, .bold)
                         Text(v).appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
@@ -578,7 +582,7 @@ struct TaxRulesView: View {
                     .padding(.vertical, 2)
                 }
             }
-            note("계산 예시이며 세무 상담이 아닙니다.")
+            note(String(localized: "계산 예시이며 세무 상담이 아닙니다."))
         }
         .onAppear { gain = String(Int(m.taxGain)) }
     }
@@ -588,13 +592,13 @@ struct TaxRulesView: View {
 
 struct HowToView: View {
     var body: some View {
-        SettingsPage(title: "사용 방법") {
-            ForEach([("위젯", "위젯", "아침에 위젯 속 친구가 알려 주는 본전까지 남은 % 보기"),
-                     ("앱", "오늘의 1분", "오늘 숫자 하나와 질문 하나. 할 때마다 쉼터에 물건이 하나씩 돌아와요."),
-                     ("홈", "리마인드", "달성·새 소식은 친구 말풍선으로, 3일 안의 일정은 노란 띠로 떠요. 지난 소식은 ‘새 소식’에 30일 남아요."),
-                     ("알림", "알림", "비중이 계획에서 5%p 넘게 벗어난 날만 울려요."),
-                     ("미션", "1000칸", "본전을 1000칸으로 나눠 채워요."),
-                     ("미션", "주간 예보", "월요일에 금요일 범위를 적고, 금요일 종가로 도장을 찍어요.")], id: \.1) { w, t, v in
+        SettingsPage(title: String(localized: "사용 방법")) {
+            ForEach([(String(localized: "위젯"), String(localized: "위젯"), String(localized: "아침에 위젯 속 친구가 알려 주는 본전까지 남은 % 보기")),
+                     (String(localized: "앱"), String(localized: "오늘의 1분"), String(localized: "오늘 숫자 하나와 질문 하나. 할 때마다 쉼터에 물건이 하나씩 돌아와요.")),
+                     (String(localized: "홈"), String(localized: "리마인드"), String(localized: "달성·새 소식은 친구 말풍선으로, 3일 안의 일정은 노란 띠로 떠요. 지난 소식은 ‘새 소식’에 30일 남아요.")),
+                     (String(localized: "알림"), String(localized: "알림"), String(localized: "비중이 계획에서 5%p 넘게 벗어난 날만 울려요.")),
+                     (String(localized: "미션"), String(localized: "1000칸"), String(localized: "본전을 1000칸으로 나눠 채워요.")),
+                     (String(localized: "미션"), String(localized: "주간 예보"), String(localized: "월요일에 금요일 범위를 적고, 금요일 종가로 도장을 찍어요."))], id: \.1) { w, t, v in
                 HStack(alignment: .top, spacing: 10) {
                     Text(w).appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 3)
                         .background(Theme.mint, in: Capsule())
@@ -619,13 +623,13 @@ struct RouteView: View {
     @State private var pick = ""
 
     var body: some View {
-        let cards = [("minus", "회복 루트", "마이너스", "본전까지 · 원인 진단 · 계획 4안 · 절세 · 4주 인터미션"),
-                     ("plus", "목표 루트 · 플러스", "플러스", "지금 → 목표 금액 · 구성 비교 · 비중 세금 · 3개월 인터미션"),
-                     ("none", "목표 루트 · 시작 전", "시작 전", "매달 적립으로 첫 목표 · 구성 고르기 · 3개월 인터미션")]
+        let cards = [("minus", String(localized: "회복 루트"), String(localized: "마이너스"), String(localized: "본전까지 · 원인 진단 · 계획 4안 · 절세 · 4주 인터미션")),
+                     ("plus", String(localized: "목표 루트 · 플러스"), String(localized: "플러스"), String(localized: "지금 → 목표 금액 · 구성 비교 · 비중 세금 · 3개월 인터미션")),
+                     ("none", String(localized: "목표 루트 · 시작 전"), String(localized: "시작 전"), String(localized: "매달 적립으로 첫 목표 · 구성 고르기 · 3개월 인터미션"))]
         let cur = m.route == .recover ? "minus" : m.route == .plus ? "plus" : "none"
         let sel = pick.isEmpty ? cur : pick
-        SettingsPage(title: "루트 바꾸기") {
-            FriendSay(key: "route", fallback: "길을 고르면 아래 그래프가 바뀌어요.")
+        SettingsPage(title: String(localized: "루트 바꾸기")) {
+            FriendSay(key: "route", fallback: String(localized: "길을 고르면 아래 그래프가 바뀌어요."))
             if m.route == .recover && m.total >= m.cost {
                 Text("본전 넘음 · 목표 루트 · 플러스로 바꿀 수 있어요").appFont(14, .semibold).foregroundStyle(Color(hex: 0x0B5E40, dark: 0x7FD8B0))
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -638,7 +642,7 @@ struct RouteView: View {
                         HStack {
                             Text(name).appFont(17, .bold)
                             Spacer()
-                            Text(k == cur ? "지금 루트" : tag).appFont(12, .bold).foregroundStyle(k == cur ? Theme.teal : Theme.sub)
+                            Text(k == cur ? String(localized: "지금 루트") : tag).appFont(12, .bold).foregroundStyle(k == cur ? Theme.teal : Theme.sub)
                         }
                         Text(sub).appFont(14).foregroundStyle(Theme.sub).multilineTextAlignment(.leading)
                     }
@@ -648,14 +652,43 @@ struct RouteView: View {
                 }
                 .buttonStyle(.plain)
             }
-            PrimaryButton(title: sel == cur ? "지금 루트" : "이 루트로", color: sel == cur ? Theme.muted : Theme.teal) {
+            PrimaryButton(title: sel == cur ? String(localized: "지금 루트") : String(localized: "이 루트로"), color: sel == cur ? Theme.muted : Theme.teal) {
                 guard sel != cur else { return }
                 m.switchRoute(sel == "minus" ? .recover : sel == "plus" ? .plus : .novice)
                 pick = ""; m.settingsPath = []
             }
-            note("바꿔도 받은 것은 그대로")
+            note(String(localized: "바꿔도 받은 것은 그대로"))
             // 첫 질문 화면처럼: 고른 루트에 따라 바뀌는 예시 3년 그래프
             StartForecastCard(route: sel == "minus" ? Route.recover : sel == "plus" ? Route.plus : Route.novice)
         }
+    }
+}
+
+/// 거주 국가 고르기: 세금 기능만 이 값을 따른다 (증권사 연결은 나라와 상관없이 누구나)
+struct ResidenceView: View {
+    @Environment(AppModel.self) private var m
+    @Environment(\.dismiss) private var dismiss
+    @State private var q = ""
+    private static let all: [(code: String, name: String)] = Locale.Region.isoRegions
+        .filter { $0.subRegions.isEmpty }
+        .map { ($0.identifier, Locale.current.localizedString(forRegionCode: $0.identifier) ?? $0.identifier) }
+        .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+
+    var body: some View {
+        // 검색 전엔 지금 고른 나라를 맨 위에
+        let rows = q.isEmpty ? Self.all.filter { $0.code == m.residence } + Self.all.filter { $0.code != m.residence } : Self.all.filter { $0.name.localizedCaseInsensitiveContains(q) || $0.code.localizedCaseInsensitiveContains(q) }
+        List(rows, id: \.code) { r in
+            Button {
+                m.residence = r.code; dismiss()
+            } label: {
+                HStack {
+                    Text(r.name).foregroundStyle(Theme.ink)
+                    Spacer()
+                    if r.code == m.residence { Image(systemName: "checkmark").foregroundStyle(Theme.teal) }
+                }
+            }
+        }
+        .searchable(text: $q, placement: .navigationBarDrawer(displayMode: .always))
+        .navigationTitle("거주 국가")
     }
 }

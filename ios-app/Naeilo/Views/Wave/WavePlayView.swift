@@ -64,14 +64,14 @@ struct WavePlayView: View {
         }
     }
     static let ruleLines = [
-        "🌊 파도는 내 자산이 지나온 날들이에요. 30초, 점점 빨라져요.",
-        "⬇️ 바닥에서 톡: 보드에 타요. 바닥 그날 타면 \"딱!\" +50",
-        "⬆️ 꼭대기에서 톡: 내려요. 탄 뒤 오른 만큼 점수 (0.01% = 1점)",
-        "💦 탄 채 크게 꺼지면 풍덩, 하트 하나 잃어요. 3번이면 끝",
-        "🤸 벌고 내리면 점프! 공중에서 톡톡 하면 공중제비 점수",
-        "🔥 바닥 \"딱!\" 3번 연속이면 피버: 6초간 점수 2배",
-        "⏱️ \"딱!\"·아이템·피버·미션마다 시간이 늘어요",
-        "🎁 탄 채 아이템을 지나면 먹어요: ⏰ +3초 · 🚀 빨라지고 점수 1.5배 · 🐢🐌 느리게 · 🗼 바닥 표시 · 🛟 풍덩 1번 막기 · 🐬 다음 점프 2배",
+        String(localized: "🌊 파도는 내 자산이 지나온 날들이에요. 30초, 점점 빨라져요."),
+        String(localized: "⬇️ 바닥에서 톡: 보드에 타요. 바닥 그날 타면 \"딱!\" +50"),
+        String(localized: "⬆️ 꼭대기에서 톡: 내려요. 탄 뒤 오른 만큼 점수 (0.01% = 1점)"),
+        String(localized: "💦 탄 채 크게 꺼지면 풍덩, 하트 하나 잃어요. 3번이면 끝"),
+        String(localized: "🤸 벌고 내리면 점프! 공중에서 톡톡 하면 공중제비 점수"),
+        String(localized: "🔥 바닥 \"딱!\" 3번 연속이면 피버: 6초간 점수 2배"),
+        String(localized: "⏱️ \"딱!\"·아이템·피버·미션마다 시간이 늘어요"),
+        String(localized: "🎁 탄 채 아이템을 지나면 먹어요: ⏰ +3초 · 🚀 빨라지고 점수 1.5배 · 🐢🐌 느리게 · 🗼 바닥 표시 · 🛟 풍덩 1번 막기 · 🐬 다음 점프 2배"),
     ]
 
     private func hud(_ e: WaveEngine) -> some View {
@@ -116,7 +116,7 @@ struct WavePlayView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             Spacer()
             if started && e.elapsed < 6 && !e.isOver {
-                Text(e.riding ? "꼭대기에서 톡! 내려요" : "바닥에서 톡! 타요").appFont(13, .bold)
+                Text(e.riding ? String(localized: "꼭대기에서 톡! 내려요") : String(localized: "바닥에서 톡! 타요")).appFont(13, .bold)
                     .padding(.horizontal, 12).padding(.vertical, 6)
                     .background(.white.opacity(0.75), in: Capsule())
                     .allowsHitTesting(false)
@@ -213,15 +213,15 @@ struct WaveResult {
         return why == .hearts ? min(s, 1) : s
     }
     var headline: String {
-        guard !rides.isEmpty else { return "한 번도 안 탔어요. 바닥에서 톡!" }
+        guard !rides.isEmpty else { return String(localized: "한 번도 안 탔어요. 바닥에서 톡!") }
         let win = rides.filter { $0.gain > 0 }.count, sp = rides.filter(\.splash).count
-        return "\(rides.count)번 타서 \(win)번 벌었어요" + (sp > 0 ? " · 풍덩 \(sp)번" : "")
+        return String(localized: "\(String(describing: rides.count))번 타서 \(String(describing: win))번 벌었어요") + (sp > 0 ? String(localized: " · 풍덩 \(String(describing: sp))번") : "")
     }
     /// "이 코스는 2024년 8월의 내 자산이었어요"
     var dateLine: String {
         let p = course.startDate.split(separator: "-")
         guard p.count >= 2, let mo = Int(p[1]) else { return "" }
-        return "이 코스는 \(p[0])년 \(mo)월의 내 자산이었어요"
+        return String(localized: "이 코스는 \(String(describing: p[0]))년 \(String(describing: mo))월의 내 자산이었어요")
     }
 }
 
@@ -272,24 +272,24 @@ struct WaveFX {
         switch e {
         case .board(_, let perfect):
             boarded = 0.35; add(.spray, 6)
-            if perfect { pop = Pop(text: "딱!", life: 0.9, color: Color(hex: 0xF06A4A)) }
+            if perfect { pop = Pop(text: String(localized: "딱!"), life: 0.9, color: Color(hex: 0xF06A4A)) }
         case .leave(_, let gain, let pts):
             if gain > 0 { flip = Self.flipTime; angle = 0; turn = 2 * .pi; add(.coin, 5) }
             pop = Pop(text: pts >= 0 ? "+\(pts)" : "\(pts)", life: 0.9, color: pts >= 0 ? Color(hex: 0xE0A800) : Color(hex: 0x1B5E96))
         case .splash:
             dizzy = Self.dizzyTime; add(.spray, 12)
-            pop = Pop(text: "풍덩!", life: 0.9, color: Color(hex: 0x1B5E96))
+            pop = Pop(text: String(localized: "풍덩!"), life: 0.9, color: Color(hex: 0x1B5E96))
         case .calm: calm = 1.5
-        case .streak(let n): pop = Pop(text: "\(n)연속!", life: 0.9, color: Color(hex: 0xE8862A))
+        case .streak(let n): pop = Pop(text: String(localized: "\(String(describing: n))연속!"), life: 0.9, color: Color(hex: 0xE8862A))
         case .fever(let on):
-            if on { pop = Pop(text: "피버! ×2", life: 1.2, color: Color(hex: 0xD9480F)); add(.spark, 10) }
+            if on { pop = Pop(text: String(localized: "피버! ×2"), life: 1.2, color: Color(hex: 0xD9480F)); add(.spark, 10) }
         case .flip: turn += 2 * .pi; add(.spark, 3)
         case .land(let n, let combo, let pts):
-            pop = Pop(text: (combo >= 2 ? "콤보\(combo) " : "\(n)바퀴 ") + "+\(pts)", life: 0.9, color: Color(hex: 0xE8862A))
+            pop = Pop(text: (combo >= 2 ? String(localized: "콤보\(String(describing: combo)) ") : String(localized: "\(String(describing: n))바퀴 ")) + "+\(pts)", life: 0.9, color: Color(hex: 0xE8862A))
             add(.spray, 6)
         case .item(let it): pop = Pop(text: it.icon + " " + it.name, life: 1.2, color: Color(hex: 0x0F7B8A)); add(.spark, 8)
         case .time(let s): timeGot += s; timeFlash = 1.2
-        case .saved: pop = Pop(text: "🛟 살았다!", life: 1.0, color: Color(hex: 0x0F7B8A))
+        case .saved: pop = Pop(text: String(localized: "🛟 살았다!"), life: 1.0, color: Color(hex: 0x0F7B8A))
         case .mission(let x): pop = Pop(text: "✓ " + x.title + " +50", life: 1.2, color: Color(hex: 0x2F9E44)); add(.coin, 4)
         case .end: break
         }

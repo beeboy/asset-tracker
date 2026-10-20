@@ -242,7 +242,7 @@ struct MeEditView: View {
                 draft = MeChar(); sample = nil; note = nil
             }
         } message: {
-            Text(m.me != nil ? "저장한 내 캐릭터도 지워져요." : "고른 부품과 이름이 지워져요.")
+            Text(m.me != nil ? String(localized: "저장한 내 캐릭터도 지워져요.") : String(localized: "고른 부품과 이름이 지워져요."))
         }
     }
 
@@ -386,7 +386,7 @@ struct MeEditView: View {
                         .padding(.top, 14)
                         let applied = draft.parts == x.parts
                         Button { draft.parts = x.parts } label: {
-                            Text(applied ? "적용했어요" : "적용 ↓").appFont(15, .bold).foregroundStyle(.white)
+                            Text(applied ? String(localized: "적용했어요") : String(localized: "적용 ↓")).appFont(15, .bold).foregroundStyle(.white)
                                 .frame(width: boxW(s), height: 42)
                                 .background(applied ? Theme.muted : Theme.teal, in: RoundedRectangle(cornerRadius: 10))
                         }
@@ -452,7 +452,7 @@ struct MeEditView: View {
         return MeGroup.allCases.compactMap { g -> String? in
             let o = g == .color ? c.part(.color) : c.part(g)
             if g.optional && o == 0 { return nil }
-            return g == .color ? "\(g.name(o)) 머리 · \(MeColor.skinNames[MeColor.skinIdx(c)])" : g.name(o)
+            return g == .color ? String(localized: "\(String(describing: g.name(o))) 머리 · \(String(describing: MeColor.skinNames[MeColor.skinIdx(c)]))") : g.name(o)
         }.joined(separator: " · ")
     }
 
@@ -511,17 +511,17 @@ struct ShelterBGBox: View {
                         .rotationEffect(.degrees(open ? 90 : 0))
                     Text("쉼터 배경").appFont(14, .bold)
                     Spacer(minLength: 0)
-                    Text(Shelter.background(m.roomBG)?.name ?? "기본 쉼터").appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
+                    Text(Shelter.background(m.roomBG)?.name ?? String(localized: "기본 쉼터")).appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 .foregroundStyle(Theme.ink)
                 .padding(.horizontal, 14).frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("쉼터 배경, \(open ? "펼침" : "접힘")")
+            .accessibilityLabel("쉼터 배경, \(open ? String(localized: "펼침") : String(localized: "접힘"))")
             if open {
                 Divider().overlay(Theme.line)
-                row(nil, "기본 쉼터", "처음 방")
+                row(nil, String(localized: "기본 쉼터"), String(localized: "처음 방"))
                 ForEach(Shelter.backgrounds) { b in
                     Divider().overlay(Theme.line)
                     row(b.id, b.name, b.short, b.volume)
@@ -545,7 +545,7 @@ struct ShelterBGBox: View {
                         Text(name).appFont(14, .bold)
                         if let volume { Text(volume).appFont(11).foregroundStyle(Theme.muted) }
                     }
-                    Text(locked ? "\(id.map(m.bgDay) ?? 1)일째 열림" : intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
+                    Text(locked ? String(localized: "\(String(describing: id.map(m.bgDay) ?? 1))일째 열림") : intro).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
                 }
                 Spacer(minLength: 0)
                 if on { Image(systemName: "checkmark").font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.teal) }
@@ -556,7 +556,7 @@ struct ShelterBGBox: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel((volume.map { $0 + " " } ?? "") + name + (on ? ", 지금 배경" : locked ? ", 잠김" : ""))
+        .accessibilityLabel((volume.map { $0 + " " } ?? "") + name + (on ? String(localized: ", 지금 배경") : locked ? String(localized: ", 잠김") : ""))
     }
 }
 
