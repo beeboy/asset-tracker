@@ -18197,6 +18197,16 @@
         }
       }
     },
+    "본전 100칸" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Break-even 100 cells"
+          }
+        }
+      }
+    },
     "본전 넘음" : {
       "localizations" : {
         "en" : {

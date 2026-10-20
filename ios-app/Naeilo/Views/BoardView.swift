@@ -1,28 +1,24 @@
 import SwiftUI
 
-// 미션 판 (회복 루트): 플러스 루트와 같은 모양. 인터미션 카드, 접힌 시작 미션, 초록 다음 미션 카드, 100칸 카드 (목표 루트와 같은 GoalCellsCard)
+// 미션 판: 목표·회복 루트가 같은 화면 하나를 쓴다 (한쪽만 고쳐지는 일이 없게).
+// 인터미션 카드, 체크인, 접힌 시작 미션, 도달 카드, 초록 다음 미션 카드, 100칸 카드(GoalCellsCard)
+// 루트마다 다른 것은 값뿐: 목표 = 석 달 체크인(달), 회복 = 처음 4주 체크인(주)
 struct BoardView: View {
     @Environment(AppModel.self) private var m
     @State private var openDone = false
 
     var body: some View {
+        let steps = m.boardSteps, starts = steps.filter { !$0.inter }
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: String(localized: "미션")).padding(.horizontal, -16)
                 SampleNote()
-                // 플러스 루트처럼: 맨 위 인터미션 카드, 접힌 시작 미션 목록, 초록 다음 미션 카드
-                if let inter = m.blocks.first(where: \.inter) { interCard(inter) }
+                // 맨 위는 인터미션 카드 (목표 카드·제목은 뺌)
+                if let inter = steps.first(where: \.inter) { interCard(inter) }
                 if !m.interDone && m.playOn { checkIn }
-                let starts = m.blocks.filter { !$0.inter }
                 startList(starts)
-                // 목표 루트의 '목표 도달' 카드와 같은 자리: 본전을 넘으면 목표 루트로 (홈 요약 버튼과 같은 동작)
-                if m.cost > 0, m.total >= m.cost {
-                    Card(padding: 18) {
-                        GuideBubble(pose: .cheer, text: String(localized: "본전에 닿았어요! 여기까지 온 길, 축하해요."))
-                        PrimaryButton(title: String(localized: "목표 루트로")) { m.graduateToGoal() }
-                    }
-                }
-                if let next = m.blocks.first(where: { !m.done.contains($0.id) && m.available($0) }), !next.inter {
+                reachedCard
+                if let next = steps.first(where: { !$0.ok && $0.avail }), !next.inter {
                     nextCard(next, steps: starts)
                 }
                 if m.playUnlocked { GoalCellsCard() } else { lockedPlay }
@@ -34,18 +30,37 @@ struct BoardView: View {
         .navigationDestination(for: MissionRoute.self) { MissionScreen(route: $0) }
     }
 
-    private func route(_ b: AppModel.Block) -> MissionRoute? {
-        switch b.id { case 1: .m1; case 2: .m2; case 3: .m3; case 5: .nx; default: nil }
+    /// 목표 도달 / 본전 도달
+    @ViewBuilder private var reachedCard: some View {
+        if m.isGoal, m.goalReached {
+            Card(padding: 18) {
+                GuideBubble(pose: .cheer, text: String(localized: "목표 \(String(describing: AppModel.wonK(m.gK)))에 닿았어요! 여기까지 온 길, 축하해요."))
+                Text("지금 \(AppModel.wonK(m.trackValue / 1e4))에서 다음 목표 · 3년 확률 50% 근처").appFont(14).foregroundStyle(Theme.sub)
+                PrimaryButton(title: String(localized: "다음 목표 정하기")) { m.suggestNextGoal(); m.boardPath.append(.g1) }
+            }
+        } else if !m.isGoal, m.cost > 0, m.total >= m.cost {
+            Card(padding: 18) {
+                GuideBubble(pose: .cheer, text: String(localized: "본전에 닿았어요! 여기까지 온 길, 축하해요."))
+                PrimaryButton(title: String(localized: "목표 루트로")) { m.graduateToGoal() }
+            }
+        }
     }
 
-    /// 다음 미션: 진한 초록 블록 (플러스 루트와 같은 모양)
-    private func nextCard(_ b: AppModel.Block, steps: [AppModel.Block]) -> some View {
-        let idx = (steps.firstIndex { $0.id == b.id } ?? 0) + 1
+    private var lockedPlay: some View {
+        DashedCard {
+            Label(m.isGoal ? String(localized: "목표 100칸") : String(localized: "본전 100칸"), systemImage: "lock").appFont(15, .bold)
+            Text("시작 3단계 뒤 열림 · 칸 채우기·블록·파도").appFont(13)
+        }
+    }
+
+    /// 다음 미션: 진한 초록 블록
+    private func nextCard(_ next: AppModel.BoardStep, steps: [AppModel.BoardStep]) -> some View {
+        let idx = (steps.firstIndex { $0.key == next.key } ?? 0) + 1
         return VStack(alignment: .leading, spacing: 10) {
             Text("다음 미션 · \(idx)/\(steps.count)").appFont(13, .semibold).foregroundStyle(.white.opacity(0.8))
-            Text(b.title).appFont(20, .bold)
-            Text("열리는 것: \(b.reward)").appFont(14).foregroundStyle(.white.opacity(0.85))
-            Button { if let r = route(b) { m.boardPath.append(r) } } label: {
+            Text(next.title).appFont(20, .bold)
+            Text("열리는 것: \(next.reward)").appFont(14).foregroundStyle(.white.opacity(0.85))
+            Button { if let to = next.to { m.boardPath.append(to) } } label: {
                 Text("시작").appFont(16, .bold).foregroundStyle(Theme.missionGreen)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .background(.white, in: RoundedRectangle(cornerRadius: 14))
@@ -56,46 +71,52 @@ struct BoardView: View {
         .background(Theme.missionGreen, in: RoundedRectangle(cornerRadius: 20))
     }
 
-    /// 처음 4주 체크인 카드: 주마다 비중을 지켰는지와 만난 친구
-    private func interCard(_ b: AppModel.Block) -> some View {
-        let done = m.done.contains(b.id), avail = m.available(b), n = m.weeks.count
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("처음 4주 체크인").appFont(12, .bold).foregroundStyle(Theme.mint)
-                Spacer()
-                if done { Text("완료 ✓").appFont(12, .bold).foregroundStyle(Theme.yellow) }
-                else if !avail { Image(systemName: "lock").appFont(12) }
-            }
-            if !(done || n >= 4) {
-                Text(avail ? String(localized: "주 1회 비중 체크 · \(String(describing: n))/4주") : String(localized: "시작 미션 뒤 열림"))
-                    .appFont(16, .bold).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-            }
-            HStack(spacing: 6) {
-                ForEach(0..<4, id: \.self) { i in
-                    let pick: WeekPick? = avail || done ? (i < n ? m.weeks[i] : nil) : nil
-                    let cur = avail && !done && i == n
-                    VStack(spacing: 2) {
-                        Text("\(i + 1)주째").appFont(11)
-                        Text(pick?.label ?? (cur ? String(localized: "이번 주") : "–")).appFont(13, .bold)
+    /// 인터미션 카드: 목표 = 달마다 계획대로 넣었나(3달), 회복 = 주마다 비중을 지켰나(4주)
+    private func interCard(_ b: AppModel.BoardStep) -> some View {
+        let goal = m.isGoal, done = b.ok, avail = b.avail
+        let n = goal ? m.gWeeks.count : m.weeks.count, total = goal ? 3 : 4
+        let picks: [(String, Color)] = goal ? m.gWeeks.map { ($0.label, $0.color) } : m.weeks.map { ($0.label, $0.color) }
+        let tap = done || avail ? b.to : nil
+        return Button { if let tap { m.boardPath.append(tap) } } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(goal ? String(localized: "석 달 체크인") : String(localized: "처음 4주 체크인")).appFont(12, .bold).foregroundStyle(Theme.mint)
+                    Spacer()
+                    if done { Text("완료 ✓").appFont(12, .bold).foregroundStyle(Theme.yellow) }
+                    else if !avail { Image(systemName: "lock").appFont(12) }
+                }
+                if !(done || n >= total) {
+                    Text(!avail ? String(localized: "시작 미션 뒤 열림")
+                         : goal ? String(localized: "월 1회 계획대로 체크 · \(String(describing: n))/3달")
+                         : String(localized: "주 1회 비중 체크 · \(String(describing: n))/4주"))
+                        .appFont(16, .bold).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                }
+                HStack(spacing: 6) {
+                    ForEach(0..<total, id: \.self) { i in
+                        let pick = i < picks.count ? picks[i] : nil, cur = avail && !done && i == n
+                        VStack(spacing: 2) {
+                            Text(goal ? String(localized: "\(String(describing: i + 1))달") : String(localized: "\(i + 1)주째")).appFont(11)
+                            Text(pick?.0 ?? (cur ? (goal ? String(localized: "이번 달") : String(localized: "이번 주")) : "–")).appFont(13, .bold)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                        .foregroundStyle(pick != nil ? .white : cur ? Theme.yellow : Theme.muted)
+                        .background(pick?.1 ?? .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(pick?.1 ?? (cur ? Theme.yellow : Theme.slate),
+                                                                          style: StrokeStyle(lineWidth: 2, dash: pick == nil ? [5, 4] : [])))
                     }
-                    .frame(maxWidth: .infinity, minHeight: 60)
-                    .foregroundStyle(pick != nil ? .white : cur ? Theme.yellow : Theme.muted)
-                    .background(pick?.color ?? .clear, in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(pick?.color ?? (cur ? Theme.yellow : Theme.slate),
-                                                                      style: StrokeStyle(lineWidth: 2, dash: pick == nil ? [5, 4] : [])))
                 }
             }
+            .foregroundStyle(done || avail ? .white : Theme.sub2)
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+            .background(done || avail ? Theme.night : Theme.track, in: RoundedRectangle(cornerRadius: 18))
         }
-        .foregroundStyle(done || avail ? .white : Theme.sub2)
-        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(done || avail ? Theme.night : Theme.track, in: RoundedRectangle(cornerRadius: 18))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("처음 4주 체크인, \(n)/4주")
+        .buttonStyle(.plain).disabled(tap == nil)
+        .accessibilityLabel(goal ? String(localized: "처음 석 달 체크인, \(n)/3달") : String(localized: "처음 4주 체크인, \(n)/4주"))
     }
 
     /// 시작 미션: 접힌 한 줄, 펼치면 번호 목록. 끝냈거나 열린 미션은 눌러서 들어간다
-    private func startList(_ list: [AppModel.Block]) -> some View {
-        let done = list.filter { m.done.contains($0.id) }.count, all = done == list.count
+    private func startList(_ list: [AppModel.BoardStep]) -> some View {
+        let done = list.filter(\.ok).count, all = done == list.count
         return VStack(alignment: .leading, spacing: 0) {
             Button { withAnimation { openDone.toggle() } } label: {
                 HStack(spacing: 8) {
@@ -107,12 +128,12 @@ struct BoardView: View {
                 .padding(.horizontal, 14).frame(minHeight: 48)
             }.buttonStyle(.plain)
             if openDone {
-                ForEach(list) { b in
-                    let ok = m.done.contains(b.id), avail = m.available(b), r = route(b)
+                ForEach(Array(list.enumerated()), id: \.element.key) { i, b in
+                    let ok = b.ok, avail = b.avail
                     Divider().overlay(Theme.border)
-                    Button { if let r, ok || avail { m.boardPath.append(r) } } label: {
+                    Button { if let to = b.to, ok || avail { m.boardPath.append(to) } } label: {
                         HStack(spacing: 10) {
-                            Text(b.num).appFont(13, .bold).foregroundStyle(Theme.sub).frame(width: 18)
+                            Text("\(i + 1)").appFont(13, .bold).foregroundStyle(Theme.sub).frame(width: 18)
                             Text(b.title).appFont(14).foregroundStyle(ok || avail ? Theme.ink : Theme.sub2)
                             Spacer(minLength: 0)
                             if ok { Image(systemName: "checkmark").foregroundStyle(Theme.teal) }
@@ -121,8 +142,8 @@ struct BoardView: View {
                         }
                         .appFont(13, .bold).padding(.horizontal, 14).frame(minHeight: 44)
                     }
-                    .buttonStyle(.plain).disabled(r == nil || !(ok || avail))
-                    .accessibilityLabel(String(localized: "시작 미션 \(String(describing: b.num)): \(String(describing: b.title))") + (ok ? String(localized: ", 끝냄") : ""))
+                    .buttonStyle(.plain).disabled(b.to == nil || !(ok || avail))
+                    .accessibilityLabel(String(localized: "시작 미션 \(String(describing: i + 1)): \(String(describing: b.title))") + (ok ? String(localized: ", 끝냄") : ""))
                 }
             }
         }
@@ -130,43 +151,46 @@ struct BoardView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
     }
 
-    // 인터미션 체크인: 이번 주 비중을 지켰는지 고르면 블록이 채워지고 친구가 하나 온다
+    // 인터미션 체크인 (색 없는 박스): 고르면 칸이 채워지고 위젯·친구가 하나 열린다.
+    // 다음 달(주차)이 열리기 전에는 방금 한 것을 다시 고를 수 있다
     private var checkIn: some View {
-        @Bindable var m = m
-        // 다음 주차가 열리기 전에는 방금 한 주차를 다시 고를 수 있다
-        let edit = m.weekEditable, i = edit ? m.weeks.count - 1 : m.weeks.count, step = Shelter.weekSteps[min(i, 3)]
+        let goal = m.isGoal
+        let edit = goal ? m.monthEditable : m.weekEditable
+        let k = goal ? (edit ? m.gWeeks.count - 1 : m.gWeeks.count) : (edit ? m.weeks.count - 1 : m.weeks.count)
+        let step = stepText(k)
+        let opts = options(edit: edit, k: k)
+        let wait = goal ? m.monthGateText : m.weekGateText
+        let picked = goal ? m.gWeekCur != nil : m.weekCur != nil
         return VStack(alignment: .leading, spacing: 10) {
-            Text("\(i + 1)주차 체크인").appFont(13, .bold).foregroundStyle(Theme.teal)
+            Text(goal ? String(localized: "\(k + 1)달째 체크인") : String(localized: "\(k + 1)주차 체크인")).appFont(13, .bold).foregroundStyle(Theme.teal)
             HStack(spacing: 8) {
                 Text(step.whereText).appFont(11, .bold).foregroundStyle(Theme.inkFixed)
                     .padding(.horizontal, 8).padding(.vertical, 2).background(Theme.mint, in: Capsule())
                 Text(step.task).appFont(14, .semibold).foregroundStyle(Theme.ink)
             }
-            Text("이번 주 \(m.focusName) 비중은?").appFont(14).foregroundStyle(Theme.ink)
+            Text(goal ? String(localized: "이번 달 계획대로?") : String(localized: "이번 주 \(String(describing: m.focusName)) 비중은?")).appFont(14).foregroundStyle(Theme.ink)
             HStack(spacing: 6) {
-                ForEach(WeekPick.allCases, id: \.self) { p in
-                    let on = edit ? m.weeks[i] == p : m.weekCur == p
-                    Button { if edit { m.editLastWeek(p) } else { m.weekCur = p } } label: {
+                ForEach(opts.indices, id: \.self) { i in
+                    let o = opts[i]
+                    Button(action: o.pick) {
                         VStack(spacing: 2) {
-                            Text(p.label).appFont(15, .bold)
-                            Text(p.sub).appFont(11).foregroundStyle(Theme.sub)
+                            Text(o.label).appFont(15, .bold)
+                            Text(o.sub).appFont(11).foregroundStyle(Theme.sub)
                         }
-                        .foregroundStyle(Theme.ink)
-                        .padding(.vertical, 8)
+                        .foregroundStyle(Theme.ink).padding(.vertical, 8)
                         .frame(maxWidth: .infinity, minHeight: 64)
-                        .background(on ? p.color.opacity(0.15) : Theme.card, in: RoundedRectangle(cornerRadius: 12))
+                        .background(o.on ? o.color.opacity(0.15) : Theme.card, in: RoundedRectangle(cornerRadius: 12))
                         .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(p.color, lineWidth: on ? 3 : 2))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(o.color, lineWidth: o.on ? 3 : 2))
                     }.buttonStyle(.plain)
                 }
             }
-            // 주차는 시작한 날부터 7일마다 열린다 (서버 시각). 열리기 전에는 남은 날을 보여 준다
-            if edit { Text("다음 주차 열리기 전까지 수정 가능").appFont(12).foregroundStyle(Theme.muted) }
-            if let wait = m.weekGateText {
+            if edit { Text(goal ? String(localized: "다음 달 열리기 전까지 수정 가능") : String(localized: "다음 주차 열리기 전까지 수정 가능")).appFont(12).foregroundStyle(Theme.muted) }
+            if let wait {
                 Label(wait, systemImage: "clock").appFont(13).foregroundStyle(Theme.sub)
                     .fixedSize(horizontal: false, vertical: true)
-            } else if m.weekCur != nil {
-                Button { withAnimation { m.confirmWeek() } } label: {
+            } else if picked {
+                Button { withAnimation { if goal { m.confirmGoalMonth() } else { m.confirmWeek() } } } label: {
                     Text("체크인").appFont(14, .semibold)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .foregroundStyle(.white)
@@ -178,12 +202,43 @@ struct BoardView: View {
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
+}
 
-    private var lockedPlay: some View {
-        DashedCard {
-            Label("100칸 블록", systemImage: "lock").appFont(15, .bold)
-            Text("시작 3단계 뒤 열림 · 칸 채우기·블록·파도").appFont(13)
+extension BoardView {
+    struct Opt { let label: String; let sub: String; let color: Color; let on: Bool; let pick: () -> Void }
+
+    /// 이번 체크인 할 일 (목표 = 달, 회복 = 주)
+    func stepText(_ k: Int) -> (task: String, whereText: String) {
+        if m.isGoal { let s = AppModel.goalMonthSteps[min(k, 2)]; return (s.task, s.whereText) }
+        return Shelter.weekSteps[min(k, 3)]
+    }
+
+    /// 체크인 고르기 칸 (목표 = 계획대로·덜·더, 회복 = 지킴·바꿈·높임)
+    func options(edit: Bool, k: Int) -> [Opt] {
+        let m = m
+        if m.isGoal {
+            return GoalWeek.allCases.map { p in
+                Opt(label: p.label, sub: String(localized: "월 ") + AppModel.wonK(m.gM * p.factor), color: p.color,
+                    on: edit ? m.gWeeks[k] == p : m.gWeekCur == p, pick: { if edit { m.editLastMonth(p) } else { m.gWeekCur = p } })
+            }
         }
+        return WeekPick.allCases.map { p in
+            Opt(label: p.label, sub: p.sub, color: p.color,
+                on: edit ? m.weeks[k] == p : m.weekCur == p, pick: { if edit { m.editLastWeek(p) } else { m.weekCur = p } })
+        }
+    }
+}
+
+extension AppModel {
+    /// 미션 판 한 칸 (두 루트 공통 모양)
+    struct BoardStep { let key: String; let title: String; let reward: String; let to: MissionRoute?; let inter: Bool; let ok: Bool; let avail: Bool }
+
+    var boardSteps: [BoardStep] {
+        if isGoal {
+            return goalSteps.map { BoardStep(key: $0.id, title: $0.title, reward: $0.reward, to: $0.to, inter: $0.inter, ok: gDone.contains($0.id), avail: goalAvailable($0)) }
+        }
+        let to: [Int: MissionRoute] = [1: .m1, 2: .m2, 3: .m3, 5: .nx]   // 회복 인터미션은 판 위 체크인에서 바로
+        return blocks.map { BoardStep(key: String($0.id), title: $0.title, reward: $0.reward, to: to[$0.id], inter: $0.inter, ok: done.contains($0.id), avail: available($0)) }
     }
 }
 

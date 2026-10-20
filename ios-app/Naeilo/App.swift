@@ -36,7 +36,7 @@ struct RootView: View {
             NavigationStack(path: $model.analysisPath) { AnalysisView() }
                 .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
             NavigationStack(path: $model.boardPath) {
-                if model.isGoal { GoalBoardView() } else { BoardView() }
+                BoardView()   // 목표·회복 루트 같은 미션 판
             }
                 .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)
             NavigationStack(path: $model.settingsPath) { SettingsView() }
