@@ -27,7 +27,7 @@ struct MissionScreen: View {
 }
 
 // 공통 틀
-private struct MissionPage<Content: View>: View {
+struct MissionPage<Content: View>: View {
     let kicker: String
     let title: String
     @ViewBuilder var content: Content
@@ -44,7 +44,7 @@ private struct MissionPage<Content: View>: View {
     }
 }
 
-private struct BoardButtons: View {
+struct BoardButtons: View {
     @Environment(AppModel.self) private var m
     let next: String?
     let to: MissionRoute?
@@ -539,15 +539,8 @@ struct TaxInputView: View {
     var body: some View {
         MissionPage(kicker: String(localized: "절세 · 한국 거주자"), title: String(localized: "올해 판 해외주식 이익은?")) {
             GuideBubble(pose: .stand, text: String(localized: "한국에서는 해외주식 한 해 이익과 손실을 합쳐 250만 원을 넘는 부분에만 22%가 붙어요. 올해 판 게 없으면 0을 넣으세요."))
-            Text("한국 거주자 기준").appFont(13, .semibold).foregroundStyle(Theme.teal)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("올해 실현 이익 (만원)").appFont(13, .semibold).foregroundStyle(Theme.sub)
-                TextField("", text: $gain).keyboardType(.numberPad).appFont(18, .semibold)
-                    .padding(.horizontal, 12).frame(minHeight: 48)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
-                    .accessibilityLabel("올해 실현 이익 (만원)")
-            }
+            Text("한국 거주자 · 미국 주식만").appFont(13, .semibold).foregroundStyle(Theme.teal)
+            inputField(String(localized: "올해 실현 이익 (만원)"), $gain)
             PrimaryButton(title: String(localized: "세금 보기")) {
                 m.taxGain = max(0, Double(gain) ?? 0); m.done.insert(4); m.boardPath.append(.m4r)
             }
@@ -578,7 +571,12 @@ struct TaxResultView: View {
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
-            Card {
+            if m.focusRow?.sym.currency != .usd {
+                Text(String(localized: "가장 큰 종목이 국내 주식 · 양도세 계산 제외"))
+                    .appFont(15).padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+            } else { Card {
                 Text("1위 종목 줄이면 (예시)").appFont(15, .bold)
                 Text("보유의 \(AppModel.pct(m.taxSellQty / max(1, maxQ))) 줄임").appFont(13).foregroundStyle(Theme.sub)
                 Slider(value: $m.taxSellQty, in: 0...max(1, maxQ), step: 1).tint(Theme.teal)
@@ -591,7 +589,7 @@ struct TaxResultView: View {
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 10))
                 }
-            }
+            } }
             Text("계산 예시 · 세무 상담·매매 권유 아님 · 결제일 연도 기준")
                 .appFont(12).foregroundStyle(Theme.muted).lineSpacing(2)
             BoardButtons(next: String(localized: "다음: 앱 시작 3단계"), to: .nx)

@@ -40,37 +40,7 @@ private func legend(_ c: Color, _ t: String) -> some View {
         .appFont(12).foregroundStyle(Theme.sub)
 }
 
-private struct Page<Content: View>: View {
-    let kicker: String
-    let title: String
-    @ViewBuilder var content: Content
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                ScreenTitle(kicker: kicker, title: title)
-                content
-            }
-            .screen().padding(.top, 8)
-        }
-        .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-private struct BoardLinks: View {
-    @Environment(AppModel.self) private var m
-    let next: String?
-    let to: MissionRoute?
-    var body: some View {
-        VStack(spacing: 8) {
-            if let next, let to { PrimaryButton(title: next) { m.boardPath.append(to) } }
-            Button("미션 판으로") { m.boardPath = [] }
-                .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 44)
-        }
-    }
-}
-
-private func inputField(_ label: String, _ text: Binding<String>) -> some View {
+func inputField(_ label: String, _ text: Binding<String>) -> some View {
     VStack(alignment: .leading, spacing: 4) {
         Text(label).appFont(13, .semibold).foregroundStyle(Theme.sub)
         TextField("", text: text).keyboardType(.numberPad).appFont(18, .semibold)
@@ -409,7 +379,7 @@ struct GoalCellGrid: View {
 struct GoalHoldResultView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
-        Page(kicker: String(localized: "미션 1 완료 · 평가액·수익률 열림"), title: String(localized: "지금 내 평가액")) {
+        MissionPage(kicker: String(localized: "미션 1 완료 · 평가액·수익률 열림"), title: String(localized: "지금 내 평가액")) {
             if m.ret >= 0 { GuideBubble(pose: .spread, text: String(localized: "지금 평가액이에요. 들어간 돈보다 \(String(describing: AppModel.sgn(m.ret))) 위에 있어요. 여기서 출발해 목표 금액까지 가는 길을 그려요.")) }
             VStack(alignment: .leading, spacing: 8) {
                 HStack { Spacer(); Text("원금 \(noWon(AppModel.man(m.cost)))") }.appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
@@ -422,13 +392,13 @@ struct GoalHoldResultView: View {
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
             if m.ret >= 0 {
-                BoardLinks(next: String(localized: "다음: 목표 정하기"), to: .g1)
+                BoardButtons(next: String(localized: "다음: 목표 정하기"), to: .g1)
             } else {
                 Text("지금 마이너스 · 회복 루트가 더 맞아요 · 종목은 그대로")
                     .appFont(15).padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(hex: 0xFDF0E1, dark: 0x3A2A17), in: RoundedRectangle(cornerRadius: 12))
                 PrimaryButton(title: String(localized: "회복 루트로")) { m.switchRoute(.recover) }
-                BoardLinks(next: nil, to: nil)
+                BoardButtons(next: nil, to: nil)
                 Button("목표 루트로 계속") { m.boardPath.append(.g1) }
                     .appFont(15, .semibold).foregroundStyle(Theme.sub).frame(maxWidth: .infinity, minHeight: 44)
             }
@@ -539,7 +509,7 @@ struct GoalSetResultView: View {
     var body: some View {
         let need = m.neededMonthly(), base = m.route == .novice ? AppModel.mixes[0] : m.mineMix
         let path = m.simulate(base, monthly: need)
-        Page(kicker: String(localized: "미션 \(String(describing: m.goalNo("goal"))) 완료 · 경로 열림"), title: String(localized: "\(String(describing: m.gY))년 뒤 \(String(describing: noWon(AppModel.wonK(m.gK))))까지")) {
+        MissionPage(kicker: String(localized: "미션 \(String(describing: m.goalNo("goal"))) 완료 · 경로 열림"), title: String(localized: "\(String(describing: m.gY))년 뒤 \(String(describing: noWon(AppModel.wonK(m.gK))))까지")) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("보통의 경우 매달").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
                 Text(need > 0 ? noWon(AppModel.wonK(need)) : String(localized: "0 · 이미 충분")).appFont(30, .bold).roll(need > 0 ? noWon(AppModel.wonK(need)) : String(localized: "0 · 이미 충분"))
@@ -559,7 +529,7 @@ struct GoalSetResultView: View {
                 }
                 (Text("목표일 달성 ") + Text(AppModel.pct(path.prob)).bold() + Text(" · 보통 \(path.etaText)")).appFont(14)
             }
-            BoardLinks(next: String(localized: "다음: 구성 고르기"), to: .g3)
+            BoardButtons(next: String(localized: "다음: 구성 고르기"), to: .g3)
         }
     }
 }
@@ -647,7 +617,7 @@ struct GoalMixResultView: View {
     var body: some View {
         let sel = m.simulate(m.selectedMix), sh = m.shift(m.selectedMix)
         let next = m.goalSteps.first { !m.gDone.contains($0.id) && m.goalAvailable($0) }
-        Page(kicker: String(localized: "미션 \(String(describing: m.goalNo("mix"))) 완료 · 구성 비교 열림"), title: String(localized: "내 계획: \(String(describing: sel.mix.name))")) {
+        MissionPage(kicker: String(localized: "미션 \(String(describing: m.goalNo("mix"))) 완료 · 구성 비교 열림"), title: String(localized: "내 계획: \(String(describing: sel.mix.name))")) {
             GuideBubble(pose: .cheer, text: m.route == .novice ? String(localized: "정했어요. 매달 적립을 나누는 비율이에요. 실제 매매 판단은 직접 하셔야 해요.") : String(localized: "정했어요. 계획만 기록해요. 실제 매매 판단은 직접 하셔야 해요."))
             Text(sel.mix.desc).appFont(15).foregroundStyle(Theme.sub)
             Card {
@@ -670,7 +640,7 @@ struct GoalMixResultView: View {
             }
             if let b = sel.mix.basket { BasketList(baskets: [b], open: $open, title: String(localized: "담을 업종")) }
             Text("계획만 기록 · 매매는 직접").appFont(14).foregroundStyle(Theme.sub)
-            BoardLinks(next: next.map { String(localized: "다음: \(String(describing: $0.title))") }, to: next?.to)
+            BoardButtons(next: next.map { String(localized: "다음: \(String(describing: $0.title))") }, to: next?.to)
         }
     }
 }
@@ -694,7 +664,7 @@ struct GoalTaxView: View {
             ("none", String(localized: "적립만"), String(localized: "오래 걸림"), tNo),
         ]
         let pick = rows.first { $0.0 == m.goalTaxPick } ?? rows[1]
-        Page(kicker: String(localized: "미션 \(String(describing: m.goalNo("tax"))) / \(String(describing: m.goalTotal))"), title: String(localized: "비중 맞추려 팔면 세금은?")) {
+        MissionPage(kicker: String(localized: "미션 \(String(describing: m.goalNo("tax"))) / \(String(describing: m.goalTotal))"), title: String(localized: "비중 맞추려 팔면 세금은?")) {
             GuideBubble(pose: .point, text: String(localized: "비중을 매도로 맞추면 이익에 세금이 붙어요. 공제는 해마다 있어서, 나누는 방식에 따라 세금이 달라져요. 계산 예시예요."))
             Text("한국 거주자 · 미국 주식만").appFont(13, .semibold).foregroundStyle(Theme.teal)
             inputField(String(localized: "올해 해외주식 이익 (만원)"), $gain).onChange(of: gain) { _, v in m.taxGain = max(0, Double(v) ?? 0) }

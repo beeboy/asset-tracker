@@ -294,7 +294,8 @@ extension AppModel {
 
     // 절세 (대한민국 거주자: 해외주식 이익-손실 합계에서 250만원 공제 뒤 22%)
     var taxLossMan: Double {
-        guard let d = focusRow else { return 0 }
+        // 양도세는 해외(미국) 주식만 (목표 루트와 같은 규칙). 가장 큰 종목이 국내 주식이면 0
+        guard let d = focusRow, d.sym.currency == .usd else { return 0 }
         return krw(d.sym, taxSellQty * (d.sym.last - d.h.avg)) / 1e4
     }
     var taxBefore: Double { max(0, taxGain - 250) * 0.22 }
