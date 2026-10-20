@@ -174,6 +174,10 @@ struct WavePlayView: View {
     private func finish(_ e: WaveEngine, _ why: WaveEngine.EndReason) {
         var r = WaveResult(course: e.course, score: e.score, hearts: e.hearts, rides: rides, why: why)
         r.missions = e.missions.map { ($0.title, e.missionsDone.contains($0)) }
+        // 꾸미기: 판 결과를 쌓고 새로 열린 보드·모자를 팝업에 (어려움 완주 = 어려움 코스를 시간 끝까지)
+        r.unlocked = SurfCloset.add(score: e.score, fever: e.feverCount, splash: e.splashCount, snap: e.perfectCount,
+                                    hardClear: e.course.level == .hard && why == .time).map(\.name)
+        if !r.unlocked.isEmpty { WaveFeedback.shared.crown() }   // 톡 톡 + 짤랑
         result = r
         onFinish(r)
     }
@@ -196,6 +200,8 @@ struct WaveResult {
     let why: WaveEngine.EndReason
     /// 판 미션 (이름, 깼나)
     var missions: [(title: String, done: Bool)] = []
+    /// 이번 판에 새로 열린 보드·모자 이름
+    var unlocked: [String] = []
 
     /// 별: 점수 1점 이상 1개 · 300점 2개 · 600점 3개. 하트를 다 잃으면 1개까지
     var stars: Int {

@@ -108,23 +108,30 @@ struct WaveHomeView: View {
                            startPoint: .top, endPoint: .bottom)
             WaveBand(phase: bob ? 1 : 0).fill(Color.white.opacity(0.35)).frame(height: 54)
             WaveBand(phase: bob ? 0 : 1).fill(Color(hex: 0x2F8FD8, dark: 0x2A6F99)).frame(height: 34)
-            Button { closet = true } label: {
-                SurfRider(dot: 2.6)
-                    .rotationEffect(.degrees(bob ? -5 : 3), anchor: .bottom)
-                    .offset(x: bob ? 6 : -6, y: bob ? -26 : -18)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("보드 탄 내 캐릭터, 눌러서 꾸미기")
+            // 움직이는 그림은 누르는 자리가 애니메이션 끝 위치라 빗나가니, 탭은 바깥 칸 전체로 받는다
+            SurfRider(dot: 2.6)
+                .rotationEffect(.degrees(bob ? -5 : 3), anchor: .bottom)
+                .offset(x: bob ? 6 : -6, y: bob ? -26 : -18)
+                .allowsHitTesting(false)
             // 물보라
             HStack(spacing: 5) { ForEach(0..<3, id: \.self) { i in Circle().fill(.white.opacity(0.85)).frame(width: CGFloat(7 - i * 2)) } }
                 .offset(x: -48, y: bob ? -24 : -16)
+                .allowsHitTesting(false)
         }
         .frame(height: 170)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+        .contentShape(RoundedRectangle(cornerRadius: 20))
+        .onTapGesture { closet = true }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("보드 탄 내 캐릭터, 눌러서 꾸미기")
+        .accessibilityAddTraits(.isButton)
         .overlay(alignment: .topTrailing) {
-            Text("꾸미기").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
-                .padding(.horizontal, 10).padding(.vertical, 4).background(.white.opacity(0.8), in: Capsule()).padding(10)
-                .allowsHitTesting(false)
+            Button { closet = true } label: {
+                Text("꾸미기").appFont(12, .bold).foregroundStyle(Theme.inkFixed)
+                    .padding(.horizontal, 10).padding(.vertical, 4).background(.white.opacity(0.8), in: Capsule())
+                    .padding(10).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
         .onAppear {
             guard !still else { return }

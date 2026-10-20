@@ -158,6 +158,12 @@ struct SurfRider: View {
 struct SurfClosetSheet: View {
     @State private var board = SurfCloset.board
     @State private var hat = SurfCloset.hat
+    @State private var hint: String?
+    // 열 때 한 번만 읽는다 (그릴 때마다 UserDefaults 를 읽지 않게)
+    private let total = SurfCloset.total
+    private let next = SurfCloset.nextGift()
+    private let opened = Set(SurfCloset.boards.filter(SurfCloset.isOpen).map { "보드\($0.id)" }
+                             + SurfCloset.hats.filter(SurfCloset.isOpen).map { "모자\($0.id)" })
     @Environment(\.dismiss) private var dismiss
     private let cols = [GridItem(.adaptive(minimum: 76), spacing: 8)]
 
@@ -178,14 +184,32 @@ struct SurfClosetSheet: View {
         }
     }
 
+    /// 맨 위: 지금 누적 점수 / 다음 선물까지 남은 점수 (크게). 잠긴 칸을 누르면 그 조건을 한 줄로
     @ViewBuilder private var gift: some View {
-        if let g = SurfCloset.nextGift() {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("다음 선물 \(g.item.name) · \(g.left)점 남음").font(.footnote.weight(.semibold))
-                ProgressView(value: g.ratio)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("누적 \(total)점").font(.title2.weight(.heavy)).monospacedDigit()
+                Spacer()
+                if let g = next { Text("다음까지 \(g.left)점").font(.headline).monospacedDigit() }
             }
-        } else {
-            Text("점수 선물 다 받음").font(.footnote.weight(.semibold))
+            if let g = next {
+                ProgressView(value: g.ratio)
+                Text("다음 선물: \(g.item.name) · 파도 타기 점수가 쌓이면 저절로 열려요").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Text("점수 선물 다 받음").font(.caption).foregroundStyle(.secondary)
+            }
+            if let hint { Text(hint).font(.footnote.weight(.semibold)).foregroundStyle(Color(hex: 0xD9480F)) }
+        }
+    }
+
+    private static func hint(_ i: SurfItem) -> String {
+        switch i.open {
+        case .free: return ""
+        case .score(let n): return "\(i.name): 누적 \(n)점이면 열려요"
+        case .hardClear: return "\(i.name): 어려움 코스를 끝까지 타면 열려요"
+        case .fever(let n): return "\(i.name): 피버 \(n)번이면 열려요 (\(SurfCloset.need(i)))"
+        case .splash(let n): return "\(i.name): 풍덩 \(n)번이면 열려요 (\(SurfCloset.need(i)))"
+        case .snap(let n): return "\(i.name): 딱! \(n)번이면 열려요 (\(SurfCloset.need(i)))"
         }
     }
 
@@ -194,8 +218,8 @@ struct SurfClosetSheet: View {
             Text(title).font(.headline)
             LazyVGrid(columns: cols, spacing: 8) {
                 ForEach(items) { i in
-                    let open = SurfCloset.isOpen(i)
-                    Button { if open { pick(i.id) } } label: {
+                    let open = opened.contains("\(title)\(i.id)")
+                    Button { if open { pick(i.id); hint = nil } else { hint = Self.hint(i) } } label: {
                         VStack(spacing: 4) {
                             Text(i.name).font(.caption.weight(.semibold))
                             Text(open ? " " : SurfCloset.need(i)).font(.caption2).foregroundStyle(.secondary)
@@ -206,7 +230,6 @@ struct SurfClosetSheet: View {
                         .opacity(open ? 1 : 0.4)
                     }
                     .buttonStyle(.plain)
-                    .disabled(!open)
                 }
             }
         }
