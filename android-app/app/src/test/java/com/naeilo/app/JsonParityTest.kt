@@ -18,7 +18,20 @@ import com.naeilo.app.data.Holding
 import com.naeilo.app.data.Lot
 import com.naeilo.app.data.MeChar
 import com.naeilo.app.data.Progress
+import com.naeilo.app.net.Backup
+import com.naeilo.app.net.BackupFile
+import com.naeilo.app.net.BackupJson
+import com.naeilo.app.net.CsJson
+import com.naeilo.app.net.CustomSymbols
+import com.naeilo.app.net.ExtraStats
+import com.naeilo.app.net.KrDaily
+import com.naeilo.app.net.MarFeed
+import com.naeilo.app.net.SitePrices
+import com.naeilo.app.net.Sync
+import com.naeilo.app.net.TossHistory
+import com.naeilo.app.net.YahooSample
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -41,7 +54,14 @@ class JsonParityTest {
         "WReward" to WReward.serializer(), "WMe" to WMe.serializer(), "WSmall" to WSmall.serializer(), "WStory" to WStory.serializer(),
         "Progress" to Progress.serializer(), "DayLog" to DayLog.serializer(), "Holding" to Holding.serializer(),
         "Lot" to Lot.serializer(), "DayRec" to DayRec.serializer(), "MeChar" to MeChar.serializer(),
+        // D 단계 (시세·동기화)
+        "YahooSample.Hist" to YahooSample.Hist.serializer(), "SitePrices.File" to SitePrices.File.serializer(),
+        "TossHistory.File" to TossHistory.File.serializer(), "MarFeed.File" to MarFeed.File.serializer(),
+        "KrDaily.File" to KrDaily.File.serializer(), "CustomSymbols.Saved" to CustomSymbols.Saved.serializer(),
+        "ExtraStats.Item" to ExtraStats.Item.serializer(), "Sync.Creds" to Sync.Creds.serializer(), "Backup" to Backup.serializer(),
     )
+    /** 형마다 아이폰과 같은 날짜 형식: 추가한 종목 파일은 2001 기준 초(CsJson), 백업 파일은 iso8601(BackupJson), 나머지는 NJson */
+    private fun json(type: String): Json = when (type) { "Backup" -> BackupJson; "CustomSymbols.Saved" -> CsJson; else -> NJson }
 
     /** 숫자는 실수로 비교 (Swift 는 2, Kotlin 은 2.0 으로 쓴다) */
     private fun same(a: JsonElement, b: JsonElement): Boolean = when {
@@ -61,11 +81,12 @@ class JsonParityTest {
         assertTrue(files.size == types.size * 2, "fixtures ${files.size}개 (형 ${types.size} × 2 이어야 함). parity.py gen 을 먼저")
         val bad = mutableListOf<String>()
         for (f in files) {
-            val ser = types[f.name.substringBeforeLast(".").substringBeforeLast(".")] as KSerializer<Any?>?
+            val tn = f.name.substringBeforeLast(".").substringBeforeLast("."); val J = json(tn)
+            val ser = types[tn] as KSerializer<Any?>?
             if (ser == null) { bad += "${f.name}: 형 없음"; continue }
             val text = f.readText()
-            val v = try { NJson.decodeFromString(ser, text) } catch (e: Exception) { bad += "${f.name}: 못 읽음 ${e.message?.lineSequence()?.first()}"; continue }
-            val back = NJson.encodeToString(ser, v)
+            val v = try { J.decodeFromString(ser, text) } catch (e: Exception) { bad += "${f.name}: 못 읽음 ${e.message?.lineSequence()?.first()}"; continue }
+            val back = if (tn == "Backup") BackupFile.data(v as Backup).decodeToString() else J.encodeToString(ser, v)
             out.resolve(f.name).writeText(back)
             val a = NJson.parseToJsonElement(text); val b = NJson.parseToJsonElement(back)
             if (!same(a, b)) {

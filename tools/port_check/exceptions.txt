@@ -41,7 +41,6 @@ Data/AppModel.swift:14 언어: Kotlin enum 은 경우 이름 name 을 못 써 by
 
 # B 단계 (data)
 # data 그룹 예외
-Data/Lots.swift:54-61 YahooSample 단계: YahooSample.Hist 확장(on) 은 YahooSample 을 옮길 때 그 타입에 같이 둔다
 Data/Me.swift:171-175 플랫폼: iOS sysctl kern.bootsessionuuid → 안드로이드 Settings.Global.BOOT_COUNT (Me.kt TrustedClock.bootID)
 Data/Me.swift:204 플랫폼: en_US_POSIX 는 자바에 없는 이름, 같은 뜻 Locale.US + ZoneId GMT (Me.kt httpDate)
 
@@ -65,3 +64,18 @@ Data/Calm.swift:219 문자열 보간 안에 따옴표("+"·"–")가 겹쳐 검�
 Data/Calm.swift:221 보간 안의 String(format: "%.1f") 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt why() 의 "sio" 줄에 같은 문구로 옮김
 Data/Calm.swift:372 보간 안에 따옴표("+"·"")가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt progress() 의 ir 3 걸음 줄에 같은 문구로 옮김
 Data/Calm.swift:446 보간 안의 ?? "" 따옴표가 겹쳐 검사기가 조각을 문구로 읽음. Calm.kt stepLine() 에 같은 문구로 옮김
+
+# D 단계 (시세·동기화): Data/Market·StockSearch·StockCatalog·SiteStats·Sync·Backup·StoreAPI → net/
+Data/Market.swift:144 검사기 한계: 보간 속 따옴표 String(localized:) 겹침 (옮김, Market.kt asOfText)
+Data/StockSearch.swift:26 검사기 한계: 정규식 글자 \\( 를 보간 \( 으로 읽음 (옮김, StockSearch.kt KoreaEstimate.hedged 같은 글자)
+Data/StockSearch.swift:86 검사기 한계: 보간 속 따옴표 (옮김, StockSearch.kt KoreaEstimate.note)
+Data/StockSearch.swift:210 플랫폼: applicationSupportDirectory 대신 앱 내부 폴더 filesDir (StockSearch.kt CustomSymbols.file)
+Data/StockSearch.swift:372 검사기 한계: 보간 속 따옴표 ?? "" (옮김, StockSearch.kt krStamp)
+Data/SiteStats.swift:7-10 플랫폼: Kotlin 은 object 안에 typealias 를 둘 수 없다. MC.Stats.Ticker·Defaults·Corr·MC.Stats 를 그대로 쓴다
+Data/Sync.swift:207 플랫폼: CryptoKit SealedBox 는 암호문·태그(16바이트)를 나눠 받고, javax.crypto GCM 은 붙인 채로 받는다 (Sync.kt open)
+Data/Sync.swift:461 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, Sync.kt apply skipped)
+Data/Sync.swift:468-469 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt signature)
+Data/Sync.swift:490 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
+Data/Backup.swift:57 플랫폼: SwiftUI FileDocument 의 읽을 형식(.json). 안드로이드는 파일 고르기(SAF) 화면이 application/json 으로 연다 (설정 화면 단계)
+Data/Backup.swift:63-64 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안드로이드는 BackupFile.data·read 가 바이트를 주고받는다
+Data/Backup.swift:67-68 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다

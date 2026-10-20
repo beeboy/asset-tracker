@@ -8,7 +8,7 @@
 Swift 쪽은 앱 파일을 통째로 컴파일하지 않고, 형 선언에서 저장 속성·경우(case)만 뽑아 작은 프로그램을 만든다
 (합성된 Codable 은 저장 속성만 보므로 JSON 모양은 같다). 맥의 swiftc 가 있어야 한다.
 """
-import json, os, re, subprocess, sys
+import base64, json, os, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -26,10 +26,18 @@ TYPES = {
     "WStory": "WidgetShared/StoryWidgetData.swift",
     "Progress": "Naeilo/Data/Progress.swift", "DayLog": "Naeilo/Data/AppModel.swift", "Holding": "Naeilo/Data/SampleData.swift",
     "Lot": "Naeilo/Data/Lots.swift", "DayRec": "Naeilo/Data/MyRecord.swift", "MeChar": "Naeilo/Data/Me.swift",
+    # D 단계 (시세·동기화)
+    "YahooSample.Hist": "Naeilo/Data/Market.swift", "SitePrices.File": "Naeilo/Data/Market.swift",
+    "TossHistory.File": "Naeilo/Data/Market.swift", "MarFeed.File": "Naeilo/Data/Market.swift",
+    "KrDaily.File": "Naeilo/Data/StockSearch.swift", "CustomSymbols.Saved": "Naeilo/Data/StockSearch.swift",
+    "ExtraStats.Item": "Naeilo/Data/SiteStats.swift", "Sync.Creds": "Naeilo/Data/Sync.swift",
+    "Backup": "Naeilo/Data/Backup.swift",
 }
+# 날짜를 iso8601 로 쓰는 형 (BackupFile: dateEncodingStrategy = .iso8601, sortedKeys). 나머지는 JSONEncoder 기본 (2001 기준 초)
+ISO = {"Backup"}
 DEPS = {"WeekPick": "Naeilo/Data/AppModel.swift", "Lens": "Naeilo/Data/AppModel.swift",
         "Route": "Naeilo/Data/GoalRoute.swift", "GoalWeek": "Naeilo/Data/GoalRoute.swift"}
-PRIM = {"String", "Int", "Double", "Bool", "UInt32", "Int64", "Float"}
+PRIM = {"String", "Int", "Double", "Bool", "UInt32", "Int64", "Float", "Date", "Data"}
 
 
 # ---- Swift 선언 읽기 ----
@@ -111,7 +119,9 @@ def parse_type(head, body):
             if "=" in nm and not rest:                                # var v = 1 (형 추론)
                 nm, dv = [x.strip() for x in nm.split("=", 1)]
                 ty = "Bool" if dv in ("true", "false") else "String" if dv.startswith('"') else "Double" if re.match(r"^-?\d+\.\d", dv) else "Int" if re.match(r"^-?\d+$", dv) else None
-                if ty is None: raise ValueError(f"{name}.{nm}: 형을 알 수 없음 ({dv})")
+                if ty is None:
+                    if not any(c in ("Codable", "Decodable", "Encodable") for c in conf): continue   # Codable 아닌 바깥 형(CustomSymbols 등)의 속성은 안 본다
+                    raise ValueError(f"{name}.{nm}: 형을 알 수 없음 ({dv})")
                 t["fields"].append({"name": nm, "type": ty, "decl": m2.group(1), "default": dv}); continue
             ty, _, dv = rest.partition("=")
             t["fields"].append({"name": nm, "type": ty.strip(), "decl": m2.group(1), "default": dv.strip() or None})
@@ -163,6 +173,7 @@ def ptype(s):
 
 class Schema:
     def __init__(self):
+        self.iso = False
         self.top = {}
         for q, p in list(TYPES.items()) + list(DEPS.items()):
             top = q.split(".")[0]                                     # TossKeys.Keys 는 바깥 TossKeys 를 통째로 (옆 형 Q 등도 쓰므로)
@@ -175,6 +186,10 @@ class Schema:
             for p in path[1:]: cur = cur["nested"].get(p) if cur else None
             if cur and name in cur["nested"]: return path + [name], cur["nested"][name]
         if name in self.top: return [name], self.top[name]
+        if "." in name:                                               # CustomSymbols.Saved 처럼 바깥 형을 붙여 쓴 이름
+            parts = name.split("."); cur = self.top.get(parts[0])
+            for p in parts[1:]: cur = cur["nested"].get(p) if cur else None
+            if cur: return parts, cur
         raise KeyError(f"형 {name} 을 못 찾음 (scope {'.'.join(scope)})")
 
     # 예시 값: full = 선택 값도 모두 채움, min = 선택 값은 뺌
@@ -203,6 +218,8 @@ class Schema:
         if name == "UInt32": return 0xC8352E + c
         if name in ("Double", "Float"): return c + 0.25
         if name == "Bool": return c % 2 == 0
+        if name == "Date": return f"2026-10-{c % 28 + 1:02d}T01:02:03Z" if self.iso else 700_000_000.0 + c
+        if name == "Data": return base64.b64encode(f"d{c}?>".encode()).decode()   # / 와 + 가 섞이게
         path, t = self.resolve(name, scope)
         if t["kind"] == "enum" and t["cases"]: return t["cases"][c % len(t["cases"])]
         return self.obj(t, path, full, ctr)
@@ -238,9 +255,10 @@ class Schema:
 
 SWIFT_MAIN = """
 import Foundation
-func rt<T: Codable>(_ t: T.Type, _ inp: URL, _ out: URL) throws {
-    let v = try JSONDecoder().decode(T.self, from: Data(contentsOf: inp))
-    let e = JSONEncoder(); e.outputFormatting = [.sortedKeys, .prettyPrinted]
+func rt<T: Codable>(_ t: T.Type, _ inp: URL, _ out: URL, iso: Bool = false) throws {
+    let d = JSONDecoder(); if iso { d.dateDecodingStrategy = .iso8601 }
+    let v = try d.decode(T.self, from: Data(contentsOf: inp))
+    let e = JSONEncoder(); e.outputFormatting = [.sortedKeys, .prettyPrinted]; if iso { e.dateEncodingStrategy = .iso8601 }
     try e.encode(v).write(to: out)
 }
 let a = CommandLine.arguments
@@ -263,7 +281,7 @@ def build(sc):
         if top in done: continue
         done.add(top); src += emit(sc.top[top])
     (WORK / "Types.swift").write_text(src)
-    cases = "\n".join(f'    case "{q}": try rt({q}.self, URL(fileURLWithPath: a[2]), URL(fileURLWithPath: a[3]))' for q in TYPES)
+    cases = "\n".join(f'    case "{q}": try rt({q}.self, URL(fileURLWithPath: a[2]), URL(fileURLWithPath: a[3]){", iso: true" if q in ISO else ""})' for q in TYPES)
     (WORK / "main.swift").write_text(SWIFT_MAIN.replace("%CASES%", cases))
     exe = WORK / "rt"
     r = subprocess.run(["swiftc", "-O", "-o", str(exe), str(WORK / "Types.swift"), str(WORK / "main.swift")], capture_output=True, text=True)
@@ -283,6 +301,7 @@ def gen():
     for old in FIX.glob("*.json"): old.unlink()
     for q in TYPES:
         path, t = sc.resolve(q.split(".")[-1], scope_of(q))
+        sc.iso = q in ISO
         for var in ("full", "min"):
             inp = WORK / f"in_{q}.{var}.json"
             inp.write_text(json.dumps(sc.obj(t, path, var == "full", [0]), ensure_ascii=False, indent=1))

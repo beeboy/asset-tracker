@@ -36,14 +36,19 @@ android {
 
 // iOS 원본 자료 중 앱이 읽는 것만 빌드 때 복사한다 (저장소에 같은 파일을 두 벌 두지 않는다)
 val copyIosAssets by tasks.registering(Copy::class) {
-    from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json") }
+    from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json") }
     from("../../ios-app/WidgetShared") { include("lines_en.json") }
+    // 아이폰 번들과 같은 시세 자료 (project.yml: data/quotes.json·stats.json·prices). 앱이 아직 받지 못했을 때만 쓴다
+    from("../../data") { include("quotes.json", "stats.json") }
+    from("../../data/prices") { include("*.json"); into("prices") }
     into(layout.buildDirectory.dir("iosAssets"))
 }
 tasks.named("preBuild") { dependsOn(copyIosAssets) }
 // JSON 서로 읽기 시험: Kotlin 이 다시 쓴 JSON 을 저장소 밖에 남긴다 (tools/json_parity/parity.py check 가 Swift 로 읽는다)
 tasks.withType<Test>().configureEach {
     systemProperty("parity.out", File(System.getProperty("user.home"), "Library/Caches/naeilo-android/json_parity").path)
+    // 실제 시세 받기 시험은 -PnaeiloLive=1 일 때만 (LiveFeedTest)
+    systemProperty("naeilo.live", providers.gradleProperty("naeiloLive").getOrElse(""))
     inputs.dir("../../tools/json_parity/fixtures")
 }
 

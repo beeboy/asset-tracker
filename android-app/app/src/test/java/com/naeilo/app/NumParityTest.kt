@@ -5,6 +5,7 @@ import com.naeilo.app.core.calc.MC
 import com.naeilo.app.core.calc.PathSet
 import com.naeilo.app.core.calc.SiteCalc
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -19,6 +20,21 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.io.File
+import com.naeilo.app.data.Currency
+import com.naeilo.app.net.CustomSymbols
+import com.naeilo.app.net.ExtraStats
+import com.naeilo.app.net.KoreaEstimate
+import com.naeilo.app.net.KrxList
+import com.naeilo.app.net.MarFeed
+import com.naeilo.app.net.SitePrices
+import com.naeilo.app.net.SiteStats
+import com.naeilo.app.net.StockCatalog
+import com.naeilo.app.net.StockHit
+import com.naeilo.app.net.StockSearch
+import com.naeilo.app.net.Sync
+import com.naeilo.app.net.YahooSample
+import com.naeilo.app.net.jsonToPlain
+import com.naeilo.app.net.plainToJson
 import kotlin.test.Test
 
 // 숫자 맞추기 (Kotlin 쪽): tools/num_parity/parity.py gen 이 만든 입력으로 계산 엔진을 돌려 kotlin.json 들을 쓴다.
@@ -164,5 +180,75 @@ class NumParityTest {
             put("fxAt", nums(listOf(0.0, 0.25, 1.0, 3.5).flatMap { t -> listOf(-1.645, -0.674, 0.0, 0.674, 1.645).map { z -> SiteCalc.fxAt(now = 1391.5, t = t, z = z, mu = 0.012, vol = 0.093) } }))
         }
         dir.resolve("kotlin_sc.json").writeText(sc.toString())
+    }
+
+    // D 단계 (시세·동기화): tools/num_parity/d/main.swift 와 같은 순서·같은 식으로 d/kotlin.json 을 쓴다
+    @Suppress("UNCHECKED_CAST")
+    @Test fun dStage() {
+        val dir = work.resolve("d"); val inF = dir.resolve("input.json"); val appF = dir.resolve("app.json")
+        if (!inF.exists() || !appF.exists()) { println("num_parity d: 입력 없음 (parity.py gen 먼저)"); return }
+        val inp = jsonToPlain(NJson.parseToJsonElement(inF.readText())) as Map<String, Any?>
+        val app = jsonToPlain(NJson.parseToJsonElement(appF.readText())) as Map<String, Any?>
+        val out = LinkedHashMap<String, Any?>()
+        fun strs(v: Any?) = (v as List<*>).map { it as String }
+        fun hist(v: Any?): YahooSample.Hist = NJson.decodeFromJsonElement(YahooSample.Hist.serializer(), plainToJson(v))
+
+        // 1. 비밀번호 → 저장 위치·키, AES-GCM (같은 키·iv). back = 아이폰이 만든 암호문을 Kotlin 이 푼 글자
+        out["derive"] = strs(inp["pws"]).map { pw -> val c = Sync.derive(pw); mapOf("id" to c.id, "k" to c.k) }
+        val key = java.util.Base64.getDecoder().decode(Sync.derive(inp["aesPw"] as String).k)
+        val iv = (inp["aesIv"] as List<*>).map { (it as Double).toInt().toByte() }.toByteArray()
+        val swiftAes = app["aes"] as List<Map<String, Any?>>
+        out["aes"] = strs(inp["plains"]).mapIndexed { i, p ->
+            val (v, ct) = Sync.seal(p.encodeToByteArray(), key, iv)
+            val b = java.util.Base64.getEncoder()
+            val parts = (swiftAes[i]["c"] as String).split(".")
+            val back = Sync.open(java.util.Base64.getDecoder().decode(parts[0]), java.util.Base64.getDecoder().decode(parts[1]), key).decodeToString()
+            mapOf("c" to b.encodeToString(v) + "." + b.encodeToString(ct), "back" to back)
+        }
+
+        // 2. 전망 입력값
+        val stats = NJson.decodeFromJsonElement(MC.Stats.serializer(), plainToJson(inp["stats"]))
+        val id = { x: String -> x }
+        out["params"] = strs(inp["ids"]).map { i -> val a = SiteStats.params(i, stats, id); val b = SiteStats.params(i, null, id); listOf(a.first, a.second, a.third, b.first, b.second, b.third) }
+        out["fx"] = listOf(SiteStats.fx(stats).first, SiteStats.fx(stats).second, SiteStats.fx(null).first, SiteStats.fx(null).second)
+        out["corr"] = (inp["pairs"] as List<*>).map { p -> val q = strs(p); listOf(SiteStats.corr(q[0], q[1], stats, id), SiteStats.corr(q[0], q[1], null, id)) }
+
+        // 3. 표 밖 종목 계산
+        val sp = (inp["sitePrices"] as Map<String, Any?>).mapValues { hist(it.value) }
+        val items = NJson.decodeFromJsonElement(kotlinx.serialization.builtins.MapSerializer(String.serializer(), ExtraStats.Item.serializer()), plainToJson(inp["items"]))
+        val aug = ExtraStats(items).augment(stats, strs(inp["augKeys"]), sp)
+        val n0 = stats.corr.keys.size; val n1 = aug.corr.keys.size
+        out["augment"] = mapOf(
+            "tickers" to aug.tickers.filterKeys { stats.tickers[it] == null }.mapValues { (_, t) -> mapOf("mu" to t.mu, "trend" to t.trend, "gs" to t.gs, "vol" to t.vol, "n" to t.n, "cash" to t.cash) },
+            "keys" to aug.corr.keys, "m" to aug.corr.m.takeLast(n1 - n0), "same" to aug.corr.m.take(n0).map { it.takeLast(n1 - n0) })
+
+        // 4. 한국 종목
+        fun infoJ(i: KoreaEstimate.Info): MutableMap<String, Any?> = mutableMapOf("proxy" to i.proxy, "hedged" to i.hedged, "base" to i.base)
+        out["info"] = (inp["names"] as List<*>).map { infoJ(KoreaEstimate.info(strs(it))) }
+        out["infoId"] = (inp["idsInfo"] as List<*>).map { a -> val x = strs(a); infoJ(KoreaEstimate.info(id = x[0], name = x[1], en = x[2])).also { it["liveOK"] = KoreaEstimate.liveOK(x[0], name = x[1]) } }
+        out["synth"] = (inp["synth"] as List<*>).map { a0 -> val a = a0 as List<*>
+            KoreaEstimate.synth(price = a[0] as Double, date = a[1] as String, info = KoreaEstimate.Info(proxy = a[2] as String?, hedged = a[3] as Boolean), P = sp)?.let { mapOf("dates" to it.dates, "closes" to it.closes) } }
+
+        // 5. 종목 찾기: 아이폰과 같은 예시 종목·전체 상장 목록
+        val krx = NJson.decodeFromString<List<List<String>>>(java.io.File(inp["krx"] as String).readText()).mapNotNull { KrxList.parse(it) }
+        val krxById = LinkedHashMap<String, StockHit>().also { m -> krx.forEach { m.putIfAbsent(it.hit.id, it.hit) } }
+        val syms = (inp["syms"] as List<*>).map { r -> val x = strs(r); val cur = if (x[3] == "usd") Currency.usd else Currency.krw
+            // CustomSymbols.yahoo(for:) 와 같은 차례 (추가한 종목 없음)
+            val y = StockCatalog.all.firstOrNull { it.id == x[0] }?.yahoo ?: krxById[x[0]]?.yahoo ?: if (cur == Currency.krw) x[0] + ".KS" else x[0]
+            "${x[0]}${x[1]}${x[4]}" to StockHit(id = x[0], yahoo = y, name = x[1], market = x[2], currency = cur) }
+        out["symYahoo"] = syms.map { it.second.yahoo }
+        out["local"] = strs(inp["queries"]).map { q -> StockSearch.local(q, syms, emptySet(), krx).map { "${it.id}|${it.yahoo}|${it.name}|${it.market}" } }
+        out["krxCount"] = krx.size
+
+        // 6. 매매기준율 표, 사이트 지난 종가, Yahoo 차트
+        out["smbs"] = strs(inp["smbs"]).map { t -> MarFeed.smbsParse(t, got = inp["smbsGot"] as Double)?.let { f -> mapOf("rate" to f.rate, "date" to f.date, "got" to f.got, "prev" to f.prev?.let { mapOf("rate" to it.rate, "date" to it.date) }) } }
+        out["hist"] = (inp["hists"] as List<*>).map { o -> SitePrices.hist(o as Map<String, Any?>)?.let { mapOf("dates" to it.dates, "closes" to it.closes) } }
+        val now = java.time.Instant.ofEpochMilli(((inp["now"] as Double) * 1000).toLong())
+        out["chart"] = (inp["charts"] as List<*>).map { a0 -> val a = a0 as List<*>
+            try { val (q, h) = CustomSymbols.chartParse(a[0] as Map<String, Any?>, a[1] as Boolean, now); mapOf("last" to q.last, "prev" to q.prev, "dates" to h.dates, "closes" to h.closes) }
+            catch (e: java.io.IOException) { mapOf("err" to true) } }
+
+        dir.resolve("kotlin.json").writeText(plainToJson(out).toString())
+        println("num_parity d: 비밀번호 ${(out["derive"] as List<*>).size} · 찾기 ${(out["local"] as List<*>).size} · 상장 ${krx.size}")
     }
 }

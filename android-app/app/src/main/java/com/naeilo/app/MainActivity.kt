@@ -6,6 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.naeilo.app.core.Store
 import com.naeilo.app.data.Defaults
+import com.naeilo.app.data.Sample
+import com.naeilo.app.net.CustomSymbols
+import com.naeilo.app.net.Market
 
 // ios: App.swift:4 (@main → 런처 액티비티)
 class MainActivity : ComponentActivity() {
@@ -18,6 +21,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // ios: App.swift:12,13
         setContent { NaeiloApp(model, window) }
+        // 시세·추가한 종목 저장 파일과 번들 자료는 첫 화면을 그린 뒤 딴 줄에서 미리 읽는다
+        // (앱 시작과 겹치면 시작이 느려지고, 안 읽어 두면 탭을 처음 열 때 파일을 기다린다)
+        window.decorView.post { Thread { runCatching { Market.shared; CustomSymbols.shared; Sample.symbols } }.start() }
     }
 
     override fun onStart() { super.onStart(); model.onForeground(true) }

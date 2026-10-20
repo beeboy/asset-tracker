@@ -1,6 +1,7 @@
 package com.naeilo.app
 
 import com.naeilo.app.pending.*
+import com.naeilo.app.net.*
 import com.naeilo.app.core.calc.*
 import android.content.Context
 import android.content.Intent

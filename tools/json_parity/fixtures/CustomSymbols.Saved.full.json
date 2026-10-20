@@ -1,0 +1,13 @@
+{
+  "at" : 700000008,
+  "id" : "s1",
+  "kd" : "s10",
+  "kp" : 9.25,
+  "last" : 7.25,
+  "lv" : false,
+  "market" : "s4",
+  "name" : "s3",
+  "prev" : 6.25,
+  "usd" : false,
+  "yahoo" : "s2"
+}
