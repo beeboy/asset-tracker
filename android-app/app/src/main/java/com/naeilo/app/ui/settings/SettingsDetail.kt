@@ -729,7 +729,7 @@ fun TaxRulesView(m: AppModel) {
         Fg(Color.White) {
             Column(Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(20.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 T("내년 5월에 낼 해외주식 세금 (예상)", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/SettingsDetail.swift:558
-                T(won0(tax), style = appFont(30f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:559
+                T(won0(tax), style = appFont(30f, FontWeight.Bold), roll = won0(tax))   // ios: Views/SettingsDetail.swift:559
                 T(if (G > 250) "(${won0(G)} − 기본공제 250만원) × 22%" else "이익이 250만원 이하라 낼 세금이 없어요", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/SettingsDetail.swift:560
             }
         }

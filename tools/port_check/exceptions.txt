@@ -92,3 +92,16 @@ Views/SettingsDetail.swift:306 검사기 한계: 보간 속 따옴표 ?? "" (옮
 Views/SettingsDetail.swift:394 플랫폼: 홈 화면 위젯 넣는 순서가 다르다 ('길게 누르기 → + →' → '길게 누르기 → 위젯 →'. SettingsDetail.kt WidgetPickView)
 Views/ShareCard.swift:75 플랫폼 이름: '아이폰 설정' → '폰 설정' (ShareCard.kt 위젯 모양 기본 글)
 Views/ShareCard.swift:232 플랫폼: sheet(item:) 에 쓰려고 URL 을 Identifiable 로. 안드로이드는 공유 고르기 Intent 라 필요 없음
+
+# F1 단계 (종목 목록·그래프): Views/HoldingsView 목록 쪽 · Views/Charts → ui/hold · ui/Charts
+Views/Charts.swift:121 검사기 한계: TimelineView(.animation(minimumInterval: 1 / 30)) 는 프레임 시계 withFrameNanos 를 1/30초마다 받는 것으로 옮김 (애니메이션 낱말이 없음. Charts.kt pulseClock)
+Views/HoldingsView.swift:76 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HoldingsView.kt 지우기 확인 제목)
+Views/HoldingsView.swift:96 검사기 한계: 보간 속 따옴표 "+" : "−" (옮김, HoldingsView.kt TotalCard 수익 금액)
+Views/HoldingsView.swift:102 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt TotalCard 종목 수·환율 줄)
+Views/HoldingsView.swift:156 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt UnitToggle 읽어 주기 글)
+Views/HoldingsView.swift:745 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt HoldingEdit.compute 판 부분 글)
+Views/HoldingsView.swift:776 검사기 한계: 보간 속 따옴표 (옮김, HoldingsView.kt HoldingEdit.save 인물 한 줄)
+Views/HoldingsView.swift:841 검사기 한계: 보간 속 따옴표 String(format:) (옮김, HoldingsView.kt CompareCard 시장보다 글)
+Views/HoldingsView.swift:879 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 고점까지 글)
+Views/HoldingsView.swift:882 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 저점 위 글)
+Views/HoldingsView.swift:135 검사기 한계: 보간 속 따옴표 separator: ", " (옮김, HoldingsView.kt TotalChart 과거 시세 없음 글)

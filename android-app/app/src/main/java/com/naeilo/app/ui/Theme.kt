@@ -428,8 +428,11 @@ fun T(
     style: TextStyle = appFont(17f),
     color: Color = LocalFg.current(LocalPal.current),
     maxLines: Int = Int.MAX_VALUE,
+    /** .roll(값): 값이 바뀌면 글자가 한 자리씩 위아래로 넘어간다 (Charts.kt RollText). null 이면 그냥 글자 */
+    roll: Any? = null,
 ) {
-    BasicText(text, modifier, style.copy(color = color), maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+    if (roll != null) RollText(text, roll, modifier, style.copy(color = color))
+    else BasicText(text, modifier, style.copy(color = color), maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
 
 // 위 그래프를 고정하고 아래만 스크롤. 손쉬운 사용의 아주 큰 글자에서는 고정 영역이 화면을 다 차지하므로 함께 스크롤한다.

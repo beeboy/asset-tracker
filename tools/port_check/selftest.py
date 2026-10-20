@@ -45,9 +45,18 @@ for dp, dn, fn in os.walk(kdir):
             if not m:
                 continue
             refs = {(r.group(1), int(n)) for r in pc.ONE_REF_RE.finditer(m.group(1)) for n in r.group(2).split(',')}
-            refs = {r for r in refs if r[0] in a.files}
+            files = {pc.split_range(f)[0]: pc.split_range(f)[1] for f in a.files}
+            refs = {r for r in refs if r[0] in files and (files[r[0]] is None or r[1] in files[r[0]])}
             if refs:
                 cands.append((dst, i, refs))
+
+_sw = {}
+def swift_of(rel):
+    """그 파일의 Swift 항목 (줄 범위 없이, 한 번만 읽는다)"""
+    if rel not in _sw:
+        _sw[rel] = pc.swift_items(rel)[0]
+    return _sw[rel]
+
 
 random.seed(a.seed)
 picked = random.sample(cands, a.n)
@@ -62,7 +71,17 @@ for dst, items in by_file.items():
         code = pc.strip_comment(lines[i])
         how = '줄 지움'
         if k % 2 == 1:
-            m = pc.STR_RE.search(code) or pc.KNUM_RE.search(pc.STR_RE.sub('""', code))
+            # 바꿀 것은 원본 Swift 줄에 있는 문구·숫자 중 하나 (Swift 에 없는 Kotlin 값, 예: weight(1f), 을 바꾸면 검사 대상이 아니라 시험이 아니다)
+            sw = [it for r in refs for it in swift_of(r[0]) if it[0] == r[1]]
+            sw_str = {it[2][0] for it in sw if it[1] == 'string'}
+            sw_num = {}
+            for it in sw:
+                if it[1] == 'number': sw_num[it[2][0]] = max(sw_num.get(it[2][0], 0), it[2][1])
+            nums = list(pc.KNUM_RE.finditer(pc.STR_RE.sub(lambda q: '"' + ' ' * (len(q.group(0)) - 2) + '"', code)))
+            def same(x, v): return abs(pc.num_val(x.group(1)) - v) < 1e-9 or abs(pc.num_val(x.group(1)) - v * 1000) < 1e-6
+            # 그 값이 이 줄에 Swift 가 요구하는 개수만큼만 있을 때 고른다 (더 있으면 하나 바꿔도 남아 있어 못 잡는 게 맞다)
+            m = next((x for x in pc.STR_RE.finditer(code) if x.group(1) in sw_str), None) or \
+                next((x for x in nums for v, c in sw_num.items() if same(x, v) and sum(same(y, v) for y in nums) <= c), None)
             if m and m.re is pc.STR_RE:
                 # 맨 앞에 넣는다 (끝에 붙이면 "$http" 가 "$httpX" 처럼 변수 이름이 바뀌어 글자 변화가 아니게 된다)
                 lines[i] = lines[i][:m.start()] + '"X' + m.group(1) + '"' + lines[i][m.end():]

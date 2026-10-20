@@ -13,6 +13,7 @@ Kotlin 의 `// ios: 파일:줄` 주석과 짝을 맞춰 짝 없는 항목을 출
 - 예외 목록 파일: `App.swift:8 이유` 또는 `App.swift:47-53 이유` (# 로 시작하면 주석).
 
 쓰는 법: python3 tools/port_check/port_check.py [--kotlin android-app] [--exceptions tools/port_check/exceptions.txt] App.swift Theme.swift
+한 파일을 단계마다 나눠 옮기면 줄 범위를 붙인다: Views/HoldingsView.swift@1-260,728-908
 """
 import argparse
 import os
@@ -53,7 +54,20 @@ def num_val(tok):
     return float(int(tok, 16)) if tok.lower().startswith('0x') else float(tok)
 
 
-def swift_items(rel):
+def split_range(spec):
+    """'Views/HoldingsView.swift@1-260,728-908' → (파일, {줄…}) . 범위가 없으면 (파일, None): 한 파일을 단계마다 나눠 옮길 때 쓴다"""
+    if '@' not in spec:
+        return spec, None
+    rel, rng = spec.split('@', 1)
+    keep = set()
+    for part in rng.split(','):
+        a, _, b = part.partition('-')
+        keep.update(range(int(a), int(b or a) + 1))
+    return rel, keep
+
+
+def swift_items(spec):
+    rel, keep = split_range(spec)
     path = os.path.join(SWIFT_BASE, rel)
     if not os.path.exists(path):   # WidgetShared/… 는 ios-app 바로 아래
         path = os.path.join(ROOT, 'ios-app', rel)
@@ -61,6 +75,8 @@ def swift_items(rel):
     with open(path, encoding='utf-8') as f:
         lines = f.read().split('\n')
     for n, raw in enumerate(lines, 1):
+        if keep is not None and n not in keep:
+            continue
         code = strip_comment(raw).strip()
         if not code or code.startswith('import ') or re.fullmatch(r'[\}\)\]\s,]+', code):
             continue
@@ -194,8 +210,9 @@ def check(files, kdir, expath, quiet=False):
     blocks, refs = kotlin_blocks(kdir)
     ex = load_exceptions(expath)
     missing, total, excepted = [], 0, 0
-    for rel in files:
-        items, lines = swift_items(rel)
+    for spec in files:
+        rel = split_range(spec)[0]
+        items, lines = swift_items(spec)
         for n, kind, val, src in items:
             total += 1
             key = (rel, n)
@@ -205,10 +222,14 @@ def check(files, kdir, expath, quiet=False):
                 missing.append((rel, n, kind, val, src))
         # 잘못된 참조: 코드 아닌 줄·예외 줄을 가리키면 알린다
     code_lines = {}
-    for rel in files:
-        items, _ = swift_items(rel)
-        code_lines[rel] = {n for n, k, *_ in items if k == 'line'}
-    bad = [(k, f, l) for k, f, l in refs if k[0] in code_lines and (k[1] not in code_lines[k[0]] or k in ex)]
+    for spec in files:
+        rel, keep = split_range(spec)
+        items, _ = swift_items(spec)
+        code_lines.setdefault(rel, set()).update(n for n, k, *_ in items if k == 'line')
+        if keep is not None:   # 범위 밖 줄을 가리키는 참조는 다른 단계 몫이라 따지지 않는다
+            code_lines.setdefault(('범위', rel), set()).update(keep)
+    bad = [(k, f, l) for k, f, l in refs if k[0] in code_lines and (k[1] not in code_lines[k[0]] or k in ex)
+           and (('범위', k[0]) not in code_lines or k[1] in code_lines[('범위', k[0])])]
     if not quiet:
         for rel, n, kind, val, src in missing:
             v = '' if val is None else f' {val[0]!r}×{val[1]}' if isinstance(val, tuple) else f' {val!r}'

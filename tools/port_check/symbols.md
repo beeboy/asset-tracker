@@ -29,6 +29,8 @@ SF 의 `.fill` 은 채움(FILL 1) 모양으로. 코드에서는 `Sym(R.drawable.
 | `camera.macro` | `local_florist` | - | 공유 '꽃밭' |
 | `arrow.left.and.right` | `arrow_range` | - | 공유 '줄다리기' |
 | `person.3.fill` | `groups` | 채움 | 공유 '다 같이' |
-| `plus` | `add` | - | 내 캐릭터 빈 칸 |
+| `plus` | `add` | - | 내 캐릭터 빈 칸 · 종목 추가 |
+| `chevron.down` | `expand_more` | - | 종목 정렬 메뉴 |
+| `trash` | `delete` | - | 종목 밀어 지우기 |
 
 탭 막대 아이콘(house·chart.bar·chart.line.uptrend.xyaxis·square.grid.2x2·gearshape)은 iOS 탭 막대처럼 채운 모양을 따로 그린 `tab_*.xml` 을 쓴다 (A 단계).

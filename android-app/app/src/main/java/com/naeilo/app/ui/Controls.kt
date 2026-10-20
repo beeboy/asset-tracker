@@ -15,7 +15,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -145,7 +147,7 @@ val SF: Map<String, Int> = mapOf(
     "arrow.triangle.2.circlepath" to R.drawable.ms_sync, "square.and.arrow.up" to R.drawable.ms_ios_share, "stairs" to R.drawable.ms_stairs,
     "square.stack.3d.up" to R.drawable.ms_stacks, "tv" to R.drawable.ms_tv, "ruler" to R.drawable.ms_straighten, "puzzlepiece" to R.drawable.ms_extension,
     "camera.macro" to R.drawable.ms_local_florist, "arrow.left.and.right" to R.drawable.ms_arrow_range, "person.3.fill" to R.drawable.ms_groups_fill,
-    "plus" to R.drawable.ms_add,
+    "plus" to R.drawable.ms_add, "chevron.down" to R.drawable.ms_expand_more, "trash" to R.drawable.ms_delete,
 )
 
 /** Image(systemName:) 자리. size = 글자 크기(pt), 기호 칸은 글자 크기의 1.25배. scaled = 큰 글자 설정을 따를지 (.font(.system(size:)) 도 따른다) */
@@ -256,10 +258,10 @@ class DialogAction(val title: String, val destructive: Boolean = false, val onCl
 
 /** confirmationDialog(titleVisibility: .visible): 아래에서 올라오는 고르기 판 + 따로 떨어진 '취소' */
 @Composable
-fun ConfirmSheet(show: Boolean, title: String, message: String?, actions: List<DialogAction>, onDismiss: () -> Unit) {
+fun ConfirmSheet(show: Boolean, title: String, message: String?, actions: List<DialogAction>, cancel: String = "취소", onDismiss: () -> Unit) {
     if (!show) return
     val dark = LocalPal.current.isDark
-    Dialog(onDismiss, DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismiss, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, indication = null, onClick = onDismiss), contentAlignment = Alignment.BottomCenter) {
             Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(8.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.fillMaxWidth().background(Sys.actionBg(dark), RoundedCornerShape(14.dp))) {
@@ -275,7 +277,7 @@ fun ConfirmSheet(show: Boolean, title: String, message: String?, actions: List<D
                     }
                 }
                 Box(Modifier.fillMaxWidth().height(57.dp).background(if (dark) Color(0xFF2C2C2E) else Color.White, RoundedCornerShape(14.dp)).clickable(onClick = onDismiss), contentAlignment = Alignment.Center) {
-                    T("취소", style = appFont(20f, FontWeight.SemiBold), color = Sys.blue)
+                    T(cancel, style = appFont(20f, FontWeight.SemiBold), color = Sys.blue)
                 }
             }
         }
@@ -316,7 +318,7 @@ fun SheetBar(title: String?, trailing: String? = null, onClick: () -> Unit = {})
 // ── 메뉴 ──
 
 /** 메뉴 한 줄 (Menu 안의 Button) */
-class MenuItem(val title: String, val onClick: () -> Unit)
+class MenuItem(val title: String, val icon: String? = null, val destructive: Boolean = false, val onClick: () -> Unit)
 
 /** Menu { Button… } label: 누르면 이름표 옆에 목록이 뜬다 */
 @Composable
@@ -329,8 +331,9 @@ fun DropMenu(items: List<MenuItem>, label: @Composable () -> Unit) {
             Column(Modifier.width(250.dp).shadow(16.dp, RoundedCornerShape(13.dp)).background(Sys.actionBg(dark), RoundedCornerShape(13.dp))) {
                 items.forEachIndexed { i, it0 -> val t = it0.title; val a = it0.onClick
                     if (i > 0) HDivider(Sys.actionSep(dark))
-                    Box(Modifier.fillMaxWidth().height(44.dp).clickable { open = false; a() }.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
-                        T(t, style = TextStyle(fontSize = 17.sp), color = Theme.ink, maxLines = 1)
+                    Row(Modifier.fillMaxWidth().height(44.dp).clickable { open = false; a() }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.width(24.dp)) { it0.icon?.let { Sym(it, 15f, if (it0.destructive) Sys.red else Theme.ink, scaled = false) } }
+                        T(t, style = TextStyle(fontSize = 17.sp), color = if (it0.destructive) Sys.red else Theme.ink, maxLines = 1)
                     }
                 }
             }
@@ -481,12 +484,12 @@ fun TA(text: androidx.compose.ui.text.AnnotatedString, modifier: Modifier = Modi
 
 /** .lineLimit(1).minimumScaleFactor(k): 한 줄로, 자리가 모자라면 글자를 k 배까지 줄인다 */
 @Composable
-fun FitText(text: String, style: TextStyle, minScale: Float, modifier: Modifier = Modifier, @Suppress("UNUSED_PARAMETER") maxLines: Int = 1, color: Color = LocalFg.current(LocalPal.current)) {
+fun FitText(text: String, style: TextStyle, minScale: Float, modifier: Modifier = Modifier, @Suppress("UNUSED_PARAMETER") maxLines: Int = 1, color: Color = LocalFg.current(LocalPal.current), roll: Any? = null) {
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
         val w = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width
         val k = if (constraints.hasBoundedWidth && w > constraints.maxWidth) maxOf(minScale, constraints.maxWidth.toFloat() / w) else 1f
-        T(text, style = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = style.letterSpacing * k) else style, color = color, maxLines = 1)
+        T(text, style = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = style.letterSpacing * k) else style, color = color, maxLines = 1, roll = roll)
     }
 }
 
@@ -507,6 +510,89 @@ fun rememberPrefBool(key: String, default: Boolean): androidx.compose.runtime.Mu
             override var value: Boolean
                 get() = s.value
                 set(v) { s.value = v; prefs.edit().putBoolean(key, v).apply() }
+        }
+    }
+}
+
+
+// ── 알림 창 (.alert) ──
+
+/** .alert(제목, message:) { 버튼 }: 가운데 뜨는 작은 창 */
+@Composable
+fun IosAlert(show: Boolean, title: String, message: String?, buttons: List<DialogAction>, onDismiss: () -> Unit) {
+    if (!show) return
+    val dark = LocalPal.current.isDark
+    Dialog(onDismiss) {
+        Column(Modifier.width(270.dp).background(Sys.actionBg(dark), RoundedCornerShape(14.dp))) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                T(title, style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center), color = Theme.ink)
+                if (message != null) T(message, style = TextStyle(fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center), color = Theme.ink)
+            }
+            buttons.forEach { b ->
+                HDivider(Sys.actionSep(dark))
+                Box(Modifier.fillMaxWidth().height(44.dp).clickable { onDismiss(); b.onClick() }, contentAlignment = Alignment.Center) {
+                    T(b.title, style = TextStyle(fontSize = 17.sp), color = if (b.destructive) Sys.red else Sys.blue)
+                }
+            }
+        }
+    }
+}
+
+// ── 길게 누르기 ──
+
+/** 누르면 onClick, 길게 누르면 onLongClick (물결 없이, 누르는 동안 흐리게) */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun Modifier.plainCombinedClickable(onLongClick: () -> Unit, onClick: () -> Unit): Modifier {
+    val src = remember { MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    return this.graphicsLayer { alpha = if (pressed) 0.6f else 1f }.combinedClickable(src, indication = null, onLongClick = onLongClick, onClick = onClick)
+}
+
+/** @AppStorage("키") String 자리 */
+@Composable
+fun rememberPrefString(key: String, default: String): androidx.compose.runtime.MutableState<String> {
+    val prefs = com.naeilo.app.data.Defaults.prefs
+    val s = remember(key) { mutableStateOf(prefs.getString(key, null) ?: default) }
+    return remember(key) {
+        object : androidx.compose.runtime.MutableState<String> by s {
+            override var value: String
+                get() = s.value
+                set(v) { s.value = v; prefs.edit().putString(key, v).apply() }
+        }
+    }
+}
+
+/** ViewThatFits(in: .horizontal): 가로로 다 들어가면 first, 아니면 second */
+@Composable
+fun FitsOr(modifier: Modifier = Modifier, first: @Composable () -> Unit, second: @Composable () -> Unit) {
+    androidx.compose.ui.layout.SubcomposeLayout(modifier) { c ->
+        val a = subcompose("a", first).map { it.measure(androidx.compose.ui.unit.Constraints()) }
+        val w = a.maxOfOrNull { it.width } ?: 0
+        if (!c.hasBoundedWidth || w <= c.maxWidth) {
+            val h = a.maxOfOrNull { it.height } ?: 0
+            layout(w, h) { a.forEach { it.place(0, 0) } }
+        } else {
+            val b = subcompose("b", second).map { it.measure(c.copy(minWidth = 0)) }
+            layout(b.maxOfOrNull { it.width } ?: 0, b.maxOfOrNull { it.height } ?: 0) { b.forEach { it.place(0, 0) } }
+        }
+    }
+}
+
+/** .contextMenu: 길게 누르면 그 자리에 뜨는 메뉴 */
+@Composable
+fun ContextMenu(show: Boolean, items: List<MenuItem>, onDismiss: () -> Unit) {
+    if (!show) return
+    val dark = LocalPal.current.isDark
+    Popup(alignment = Alignment.Center, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
+        Column(Modifier.width(250.dp).shadow(16.dp, RoundedCornerShape(13.dp)).background(Sys.actionBg(dark), RoundedCornerShape(13.dp))) {
+            items.forEachIndexed { i, it0 ->
+                if (i > 0) HDivider(Sys.actionSep(dark))
+                Row(Modifier.fillMaxWidth().height(44.dp).clickable { onDismiss(); it0.onClick() }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    T(it0.title, Modifier.weight(1f), style = TextStyle(fontSize = 17.sp), color = if (it0.destructive) Sys.red else Theme.ink, maxLines = 1)
+                    it0.icon?.let { Sym(it, 17f, if (it0.destructive) Sys.red else Theme.ink, scaled = false) }
+                }
+            }
         }
     }
 }

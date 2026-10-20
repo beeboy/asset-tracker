@@ -90,7 +90,6 @@ import com.naeilo.app.pending.color
 import com.naeilo.app.pending.go
 import com.naeilo.app.pending.myPath
 import com.naeilo.app.pending.myPathGapToday
-import com.naeilo.app.pending.roll
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card
@@ -213,7 +212,7 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
                 // 누르면 금액 가리기(다시 누르면 보이기)
                 // ios: Views/HomeView.swift:63,64,65
                 FitText(if (hideAmt) "••••••" else AppModel.man(now * 1e4) + "원", appFont(32f, FontWeight.Bold).copy(letterSpacing = (-0.5).sp), 0.4f,
-                    Modifier.weight(1f, fill = false).alignByBaseline().roll(now).plainClickable(toggleHide), maxLines = 1)
+                    Modifier.weight(1f, fill = false).alignByBaseline().plainClickable(toggleHide), maxLines = 1, roll = now)
                 // ios: Views/HomeView.swift:66
                 if (value && m.cost > 0) {
                     // ios: Views/HomeView.swift:67,68
@@ -262,7 +261,7 @@ private fun RecoverSummary(m: AppModel) {
             // ios: Views/HomeView.swift:102
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 // ios: Views/HomeView.swift:103,104
-                FitText(AppModel.man(m.total), appFont(32f, FontWeight.Bold).copy(letterSpacing = (-0.5).sp), 0.4f, Modifier.weight(1f, fill = false).alignByBaseline().roll(m.total), maxLines = 1, color = Color.White)
+                FitText(AppModel.man(m.total), appFont(32f, FontWeight.Bold).copy(letterSpacing = (-0.5).sp), 0.4f, Modifier.weight(1f, fill = false).alignByBaseline(), maxLines = 1, color = Color.White, roll = m.total)
                 // ios: Views/HomeView.swift:105,106
                 T(AppModel.sgn(m.ret), Modifier.alignByBaseline(), style = appFont(16f, FontWeight.Bold), maxLines = 1, color = if (m.ret >= 0) hex(0xFF8A80) else hex(0x8CC4F2))
             }
@@ -418,7 +417,7 @@ private fun YesterdayCard(m: AppModel) {
         // ios: Views/HomeView.swift:243,245
         Row(Modifier.fillMaxWidth()) {
             T("오늘의 움직임", Modifier.weight(1f).alignByBaseline(), style = appFont(15f, FontWeight.Bold))   // ios: Views/HomeView.swift:244
-            T(AppModel.sgn(m.todayMove), Modifier.alignByBaseline().roll(AppModel.sgn(m.todayMove)), style = appFont(20f, FontWeight.Bold), color = Theme.teal)   // ios: Views/HomeView.swift:246
+            T(AppModel.sgn(m.todayMove), Modifier.alignByBaseline(), style = appFont(20f, FontWeight.Bold), color = Theme.teal, roll = AppModel.sgn(m.todayMove))   // ios: Views/HomeView.swift:246
         }
         // ios: Views/HomeView.swift:248
         T(m.rows.joinToString(" · ") { "${it.sym.short} ${AppModel.sgn(it.sym.quote.change)}" } + " · 원/달러 ${AppModel.sgn(Market.shared.fx.change)}", style = appFont(13f), color = Theme.sub)

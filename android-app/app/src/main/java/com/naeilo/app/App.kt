@@ -52,6 +52,7 @@ import androidx.core.view.WindowCompat
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.NavStack
 import com.naeilo.app.ui.home.HomeView
+import com.naeilo.app.ui.hold.HoldingsView
 import com.naeilo.app.ui.home.homePage
 import com.naeilo.app.ui.settings.SettingsView
 import com.naeilo.app.ui.settings.settingsPage
@@ -140,7 +141,7 @@ fun RootView(model: AppModel) {
                 // 종목·분석·미션 탭 안 화면은 다음 단계에서 채운다 (지금은 머리글만 있는 빈 자리)
                 when (t) {
                     Tab.home -> NavStack(model.homePath, { model.homePath = it }, { HomeView(model) }) { homePage(it) }       // ios: App.swift:32 (HomeView·homePath)
-                    Tab.hold -> TabScreen(t)       // ios: App.swift:34 (HoldingsView·holdPath: 빈 자리)
+                    Tab.hold -> HoldingsView(model)       // ios: App.swift:34 (HoldingsView·holdPath)
                     Tab.analysis -> TabScreen(t)   // ios: App.swift:36 (AnalysisView·analysisPath: 빈 자리)
                     Tab.board -> TabScreen(t)      // ios: App.swift:38 (boardPath: 빈 자리)
                     Tab.settings -> NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model) }) { settingsPage(model, it) }   // ios: App.swift:42 (SettingsView·settingsPath)

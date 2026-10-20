@@ -45,8 +45,8 @@ val copyIosAssets by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("iosAssets"))
 }
 // iOS 그림(xcassets) 중 화면이 쓰는 묶음만 drawable-nodpi 로 (이름 = imageset 이름). 도트 그림은 보간 없이 키운다 (Pixel)
-// 새 묶음이 필요하면 접두어를 더한다: spr_·sil_ 인물, mo_ 동작, iconprev_ 앱 아이콘 미리보기
-val iosImagePrefixes = listOf("spr_", "sil_", "mo_", "iconprev_")
+// 새 묶음이 필요하면 접두어를 더한다: spr_·sil_ 인물, mo_ 동작, iconprev_ 앱 아이콘 미리보기, drnk_ 샘플 종목 로고
+val iosImagePrefixes = listOf("spr_", "sil_", "mo_", "iconprev_", "drnk_")
 val copyIosImages by tasks.registering(Copy::class) {
     from("../../ios-app/Naeilo/Assets.xcassets") { iosImagePrefixes.forEach { include("$it*.imageset/*.png") } }
     eachFile { path = "drawable-nodpi/" + file.parentFile.name.removeSuffix(".imageset") + ".png" }
