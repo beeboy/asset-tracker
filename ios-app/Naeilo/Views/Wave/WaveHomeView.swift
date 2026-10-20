@@ -319,7 +319,7 @@ struct TownButton<Town: View>: View {
     @State private var show = false
     var body: some View {
         Button { show = true } label: {
-            Label("동네", systemImage: "house.fill")
+            Label("동네 한 바퀴", systemImage: "house.fill")
                 .appFont(14, .bold).lineLimit(1).frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(Theme.ink)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
@@ -332,7 +332,7 @@ struct TownButton<Town: View>: View {
             ScrollViewReader { sp in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        GameHeader(title: "내 자산으로 꾸미는 동네")
+                        GameHeader(title: "우리 동네 주민들")
                         town(sp)
                     }
                     .screen()
