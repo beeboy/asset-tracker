@@ -1,6 +1,6 @@
 import SwiftUI
 
-// 미션 판 (회복 루트): 플러스 루트와 같은 모양. 인터미션 카드, 접힌 시작 미션, 초록 다음 미션 카드, 1000칸, 이번 주 예보
+// 미션 판 (회복 루트): 플러스 루트와 같은 모양. 인터미션 카드, 접힌 시작 미션, 초록 다음 미션 카드, 1000칸, 파도 타기(섬 지도)
 struct BoardView: View {
     @Environment(AppModel.self) private var m
     @State private var openDone = false
@@ -13,7 +13,7 @@ struct BoardView: View {
                 SampleNote()
                 MissionPagePicker()
                 if m.boardPage == 1 {
-                    if m.playUnlocked { WeekForecastCard() } else { lockedPlay }
+                    if m.playUnlocked { WaveHomeView() } else { lockedPlay }
                 } else {
                 // 플러스 루트처럼: 맨 위 인터미션 카드, 접힌 시작 미션 목록, 초록 다음 미션 카드
                 if let inter = m.blocks.first(where: \.inter) { interCard(inter) }
@@ -180,8 +180,8 @@ struct BoardView: View {
 
     private var lockedPlay: some View {
         DashedCard {
-            Label(m.boardPage == 1 ? "이번 주 예보" : "100칸 블록", systemImage: "lock").appFont(15, .bold)
-            Text("시작 3단계 뒤 열림 · 칸 채우기·주간 예보").appFont(13)
+            Label(m.boardPage == 1 ? "파도 타기" : "100칸 블록", systemImage: "lock").appFont(15, .bold)
+            Text("시작 3단계 뒤 열림 · 칸 채우기·파도 타기").appFont(13)
         }
     }
 

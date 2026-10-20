@@ -54,6 +54,11 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
+## 파도 타기 4단계: 섬 지도 첫 화면 (2026-10-20, 로컬 커밋)
+- `Views/Wave/WaveHomeView.swift`: 보드 탄 내 캐릭터(SurfRider, 누르면 꾸미기), 섬 4개 지도(윤곽 = 내 자산 40거래일 코스, 점선 뱃길, 안 열린 섬은 안개), 지금 섬 카드·'타러 가기', 예보 한 줄.
+- 진행 저장 `WaveMap`(UserDefaults `wave.star.*`·`wave.best.*`): 앞 섬 별 1개면 다음 섬 열림. 플레이 화면은 판 끝에 `WaveMap.record(island, score:, finished:)`를 부른다.
+- '타러 가기'는 임시 `WavePlaySlot` → WavePlayView 생기면 바꾼다. 미션 탭 본전 루트만 교체, 목표 루트(GoalViews)와 탭 이름 '이번 주 예보'는 그대로(다른 작업이 GoalViews 수정 중). weekRange는 위젯·리마인드가 써서 남김.
+
 ## 동네 대사창 아래 칸 (2026-10-20, 로컬 커밋)
 - `Views/TownPanel.swift`: 기본(오늘의 한 줄=주민에게 한 줄 답, 할 말 고르기 표 `TownChat`) · 우리 사이(`TownBond` 단계는 함께한 날+대화+답×2로 그때 계산) · 꾸미기(별사탕으로 사기, 산 것은 `town.owned`).
 - 남은 것: 소품 3개는 그림 없는 잠긴 자리표시, '옷' 대신 모자 색. 말 거는 동안 동네 높이 290.
