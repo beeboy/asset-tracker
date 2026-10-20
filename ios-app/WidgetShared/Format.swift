@@ -4,7 +4,12 @@ import Foundation
 /// 한국어 기기이거나 표에 없으면 한국어 그대로. {n} 같은 자리는 vars 로 채운다 (예: WL.t("{n}번째 블록", ["n": "3"]))
 enum WL {
     /// 서재와 같은 규칙: 기기 첫 언어가 한국어가 아니면 영어
-    static let en = !(Locale.preferredLanguages.first ?? "ko").hasPrefix("ko")
+    /// 영어 여부. 앱은 자기 언어(iOS 앱별 언어 포함), 위젯은 앱이 App Group 에 적어 둔 언어를 따른다
+    /// (위젯 확장은 앱별 언어 설정을 못 봐서 폰 언어를 따르기 때문)
+    static let en: Bool = {
+        if Bundle.main.bundleURL.pathExtension == "appex", let l = Store.defaults.string(forKey: "appLang") { return l == "en" }
+        return Bundle.main.preferredLocalizations.first == "en"
+    }()
     private struct File: Decodable { let ui: [String: String] }
     private static let ui: [String: String] = {
         guard en, let url = Bundle.main.url(forResource: "lines_en", withExtension: "json"),

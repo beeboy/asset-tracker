@@ -2,6 +2,16 @@
   "sourceLanguage" : "ko",
   "strings" : {
     "" : {},
+    "  %@~%@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "  %1$@~%2$@"
+          }
+        }
+      }
+    },
     " %@만" : {
       "localizations" : {
         "en" : {
@@ -929,16 +939,16 @@
     },
     "%@ %@. 셌어." : {
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ %2$@. 셌어."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ %2$@. Counted."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@. 셌어."
           }
         }
       }
@@ -2042,6 +2052,16 @@
         }
       }
     },
+    "%@%@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@"
+          }
+        }
+      }
+    },
     "%@%@ %@ 앞서요" : {
       "localizations" : {
         "en" : {
@@ -2086,6 +2106,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@%2$@ 앞서요"
+          }
+        }
+      }
+    },
+    "%@%@%%" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@%%"
           }
         }
       }
@@ -3522,6 +3552,16 @@
         }
       }
     },
+    "%lld/%lld" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
     "%lld/%lld · %@" : {
       "localizations" : {
         "ko" : {
@@ -3967,6 +4007,7 @@
         }
       }
     },
+    "/100" : {},
     "0" : {},
     "0 · 이미 충분" : {
       "localizations" : {
@@ -5832,6 +5873,19 @@
         }
       }
     },
+    "Library" : {},
+    "Library locked. %@" : {},
+    "Library, %@. %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Library, %1$@. %2$@"
+          }
+        }
+      }
+    },
+    "Locked" : {},
     "Longbridge 시세" : {
       "localizations" : {
         "en" : {
@@ -6445,6 +6499,7 @@
         }
       }
     },
+    "“%@”" : {},
     "“…아무도.”" : {
       "localizations" : {
         "en" : {
@@ -6508,16 +6563,16 @@
     },
     "……%@%@ 먼저 움직였어요." : {
       "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "……%1$@%2$@ 먼저 움직였어요."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "…… %1$@%2$@ moved first."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "……%1$@%2$@ 먼저 움직였어요."
           }
         }
       }
@@ -19583,6 +19638,16 @@
         }
       }
     },
+    "서재 다시 그리기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redraw library"
+          }
+        }
+      }
+    },
     "서재 외전 『이종 공명』 6장부터 끝까지 (앱 연재판)" : {
       "localizations" : {
         "en" : {
@@ -19593,12 +19658,38 @@
         }
       }
     },
+    "서재 잠김. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Library locked. %@"
+          }
+        }
+      }
+    },
     "서재 전체" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Whole library"
+          }
+        }
+      }
+    },
+    "서재, %@. %@" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "서재, %1$@. %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Library, %1$@. %2$@"
           }
         }
       }

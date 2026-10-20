@@ -246,6 +246,7 @@ private func lockLine(_ c: WChar) -> String { WL.t("인터미션 {w}주차에 �
 
 /// 1억 2,340만
 private func eokMan(_ v: Double) -> String {
+    if WL.en { return Fmt.krwC(abs(v)) }
     let man = Int((abs(v) / 1e4).rounded()), eok = man / 10000, rest = man % 10000
     if eok == 0 { return Fmt.comma(man) + "만" }
     return "\(eok)억" + (rest > 0 ? " \(Fmt.comma(rest))만" : "")

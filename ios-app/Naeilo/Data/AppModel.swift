@@ -181,7 +181,11 @@ final class AppModel {
 
     // MARK: 형식
     /// 앱 언어가 영어면 금액은 만·억 대신 기기 서식으로 (₩2.3M). 한 번만 읽는다
-    static let en = Bundle.main.preferredLocalizations.first == "en"
+    static let en: Bool = {
+        let v = Bundle.main.preferredLocalizations.first == "en"
+        Store.defaults.set(v ? "en" : "ko", forKey: "appLang")   // 위젯이 같은 언어로 보이게
+        return v
+    }()
     /// 날짜 글자(오전·오후, 달 이름)도 앱 언어를 따른다
     static let dateLocale = Locale(identifier: en ? "en_US" : "ko_KR")
     static func krwC(_ krw: Double) -> String {
