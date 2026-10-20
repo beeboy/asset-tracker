@@ -25,10 +25,12 @@ struct CharScene: Hashable {
     var dir: CharDir = .down
     var leg = 0
     var lift = false
+    /// 머리 위 빈 2줄: 들썩여도 머리 윗줄·테두리가 잘리지 않게 (SceneSprite 로 그리면 틀 위로 넘친다)
+    var room = false
     /// k 번째 칸: 걸을 땐 서기·왼발·서기·오른발, 서 있을 땐 숨 두 장
     static func at(_ k: Int, dir: CharDir, walking: Bool) -> CharScene {
-        walking ? CharScene(dir: dir, leg: [0, 1, 0, 2][k % 4], lift: k % 2 == 1)
-                : CharScene(dir: dir, leg: 0, lift: k % 2 == 1)
+        walking ? CharScene(dir: dir, leg: [0, 1, 0, 2][k % 4], lift: k % 2 == 1, room: true)
+                : CharScene(dir: dir, leg: 0, lift: k % 2 == 1, room: true)
     }
 }
 
@@ -81,6 +83,8 @@ enum PixBuf {
             p[(h - 1) * w + x] = 0
         }
     }
+    /// 맨 위에 빈 줄 n개를 붙인다
+    static func pad(_ p: inout [UInt32], _ w: Int, top n: Int) { p.insert(contentsOf: repeatElement(0, count: n * w), at: 0) }
     /// 윗몸(허리 위)을 1px 올린다. 허리 줄은 한 줄 늘어난다
     static func lift(_ p: inout [UInt32], _ w: Int, until waist: Int) {
         for y in 0..<(waist - 1) { for x in 0..<w { p[y * w + x] = p[(y + 1) * w + x] } }
@@ -123,7 +127,7 @@ enum PixBuf {
 enum MeMotion {
     private struct Key: Hashable { let me: MeChar; let f: CharScene }
     private static var cache: [Key: UIImage] = [:]
-    /// 얼굴 부품: 뒷모습에선 빼고, 옆모습에선 보는 쪽으로 1px 옮긴다
+    /// 얼굴 부품: 뒷모습에선 뺀다. 옆모습은 부품마다 옆모습 그림(_side, tools/gen_me_side.py)을 쓴다 (없으면 보는 쪽으로 1px)
     private static let facial: Set<String> = ["eyes", "mouth", "mask", "glasses"]
     static let legTop = 28
 
@@ -141,8 +145,9 @@ enum MeMotion {
             for layer in MeGroup.layers {
                 let n = MeArt.option(me, layer)
                 guard n > 0, !(f.dir == .up && facial.contains(layer)) else { continue }
-                let dx = side && facial.contains(layer) ? 1 : 0
-                if let img = UIImage(named: MeArt.asset(layer, n, me))?.cgImage {
+                let name = MeArt.asset(layer, n, me), sideArt = side && MeArt.has(name + "_side")
+                let dx = side && !sideArt && facial.contains(layer) ? 1 : 0
+                if let img = UIImage(named: sideArt ? name + "_side" : name)?.cgImage {
                     ctx.draw(img, in: CGRect(x: dx, y: 0, width: w, height: h))
                 } else {
                     MePlaceholder.draw(layer, n, hair, skin) { x, y, pw, ph, c in
@@ -153,16 +158,23 @@ enum MeMotion {
             }
         }
         if f.dir == .up {
-            // 뒷모습: 머리 칸을 머리색으로 (머리 부품이 없는 유명인은 피부를 살짝 어둡게), 목덜미 쪽은 한 단 어둡게
-            let back = me.part(.hair) > 0 ? hair : skin
-            for y in 0..<16 { for x in 0..<w where PixBuf.on(p[y * w + x]) {
-                let c = PixBuf.rgb(back)
-                p[y * w + x] = y >= 12 ? PixBuf.dark(c, 0.85) : c
+            // 뒷모습: 머리(0~13줄)만 머리색으로 (머리 부품이 없는 유명인은 피부를 살짝 어둡게). 목(14줄)·윗옷(15줄~)은 그대로
+            let back = me.part(.hair) > 0 ? hair : skin, c = PixBuf.rgb(back)
+            // 긴 머리는 등 뒤로 내려오니 그 줄의 머리 사이(윗옷 위)도 머리색으로 메운다
+            for y in 14..<min(h, 24) {
+                let xs = (0..<w).filter { PixBuf.near(p[y * w + $0], hair) }
+                guard me.part(.hair) > 0, let a = xs.first, let b = xs.last, b - a > 3 else { continue }
+                for x in a...b where PixBuf.on(p[y * w + x]) { p[y * w + x] = c }
+            }
+            for y in 0...13 { for x in 0..<w where PixBuf.on(p[y * w + x]) {
+                p[y * w + x] = y >= 12 ? PixBuf.dark(c, 0.85) : c    // 목덜미 쪽 두 줄은 한 단 어둡게
             } }
+            // 귀 살짝 (머리 양옆 9~10줄), 정수리 밝은 점 몇 개
+            for y in 9...10 { for x in [5, 18] where PixBuf.on(p[y * w + x]) { p[y * w + x] = PixBuf.dark(PixBuf.rgb(skin), 0.9) } }
+            for (x, y) in [(8, 3), (9, 3), (10, 3), (8, 5)] where PixBuf.on(p[y * w + x]) { p[y * w + x] = PixBuf.mix(c, 0xFFFFFF, 0.3) }
         } else {
-            let dx = side ? 1 : 0
-            // 볼 분홍 1px
-            for x in [8 + dx, 15 + dx] where PixBuf.near(p[12 * w + x], skin) { p[12 * w + x] = PixBuf.mix(p[12 * w + x], 0xF08C8C, 0.5) }
+            // 볼 분홍 1px (옆모습은 앞쪽 볼 하나)
+            for x in side ? [16] : [8, 15] where PixBuf.near(p[12 * w + x], skin) { p[12 * w + x] = PixBuf.mix(p[12 * w + x], 0xF08C8C, 0.5) }
             // 눈 흰 반짝 1px: 눈동자가 3칸 이상이고 아직 흰 점이 없을 때 왼쪽 위 칸
             for xs in [6..<12, 12..<19] {
                 var dots: [Int] = [], white = false
@@ -176,10 +188,12 @@ enum MeMotion {
         }
         PixBuf.shade(&p, w, h, legTop: legTop)
         PixBuf.legs(&p, w, h, f.leg, top: legTop, split: w / 2)
-        if f.lift { PixBuf.lift(&p, w, until: legTop) }
-        if f.dir == .left { PixBuf.mirror(&p, w, h) }
-        PixBuf.outline(&p, w, h)
-        let img = PixBuf.image(p, w, h)
+        let top = f.room ? 2 : 0
+        PixBuf.pad(&p, w, top: top)
+        if f.lift { PixBuf.lift(&p, w, until: legTop + top) }
+        if f.dir == .left { PixBuf.mirror(&p, w, h + top) }
+        PixBuf.outline(&p, w, h + top)
+        let img = PixBuf.image(p, w, h + top)
         if cache.count > 400 { cache.removeAll() }
         cache[key] = img
         return img
@@ -200,15 +214,30 @@ enum FriendMotion {
         var p = PixBuf.read(cg, W, H)
         // 테두리까지 그려진 그림이라 다리·윗몸만 옮긴다
         PixBuf.legs(&p, W, H, f.leg, top: legTop, split: W / 2)
-        if f.lift { PixBuf.lift(&p, W, until: legTop) }
-        let img = PixBuf.image(p, W, H)
+        let top = f.room ? 2 : 0
+        PixBuf.pad(&p, W, top: top)
+        if f.lift { PixBuf.lift(&p, W, until: legTop + top) }
+        let img = PixBuf.image(p, W, H + top)
         if cache.count > 200 { cache.removeAll() }
         cache[key] = img
         return img
     }
 }
 
-/// 장면 시계: 걸을 땐 0.15초, 서 있을 땐 0.7초마다 한 칸 (화면에 있을 때만 돈다)
+/// 장면 그림을 틀(원래 칸수 기준 width×height)에 그린다. 머리 위 여유 줄은 틀 위로 넘친다
+struct SceneSprite: View {
+    let img: UIImage
+    var width: CGFloat
+    var height: CGFloat
+    var rows: Int
+    var body: some View {
+        Image(uiImage: img).interpolation(.none).resizable()
+            .frame(width: width, height: height * img.size.height / CGFloat(rows))
+            .frame(width: width, height: height, alignment: .bottom)
+    }
+}
+
+/// 장면 시계: 걸을 땐 0.15초, 서 있을 땐 인물마다 다른 박자(0.55~0.95초)로 한 칸 (화면에 있을 때만 돈다)
 struct CharClock<Content: View>: View {
     var walking: Bool
     var breathe = true
@@ -219,9 +248,11 @@ struct CharClock<Content: View>: View {
         content(k)
             .task(id: walking ? 1 : breathe ? 2 : 0) {
                 guard walking || breathe else { k = 0; return }
-                if !walking { try? await Task.sleep(nanoseconds: UInt64(seed % 7) * 100_000_000) }   // 숨은 인물마다 박자를 어긋나게
+                // 숨은 인물마다 빠르기·시작을 다르게, 숨마다 조금씩 흔들어 다 같이 들썩이지 않게
+                let beat = Double.random(in: 0.55...0.95)
+                if !walking { try? await Task.sleep(for: .seconds(Double.random(in: 0...beat))) }
                 while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: walking ? 150_000_000 : 700_000_000)
+                    try? await Task.sleep(for: .seconds(walking ? 0.15 : beat * Double.random(in: 0.8...1.25)))
                     k &+= 1
                 }
             }
@@ -276,7 +307,7 @@ struct CharFigure: View {
         CharClock(walking: walk, seed: (friend ?? "me").count) { k in
             let f = CharScene.at(k, dir: d, walking: walk)
             let img = me.flatMap { MeMotion.image($0, f) } ?? friend.flatMap { FriendMotion.image($0, f) }
-            if let img { Image(uiImage: img).interpolation(.none).resizable().frame(width: dot * CGFloat(w), height: dot * CGFloat(h)) }
+            if let img { SceneSprite(img: img, width: dot * CGFloat(w), height: dot * CGFloat(h), rows: h) }
             else { Color.clear.frame(width: dot * CGFloat(w), height: dot * CGFloat(h)) }
         }
         .background(alignment: .bottom) { CharShadow(dot: dot) }
