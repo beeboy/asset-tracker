@@ -176,7 +176,7 @@ fun FxImpactView(m: AppModel) {
                         // ios: Views/AnalysisDetail.swift:2252,2253
                         T(why, style = appFont(13f).ls(2f), color = Theme.sub)
                         // ios: Views/AnalysisDetail.swift:2254
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Pill(trendWord(c?.trend))   // ios: Views/AnalysisDetail.swift:2255
                             c?.ret_1y?.let { y -> Pill("1년 ${AppModel.sgn(y)}") }   // ios: Views/AnalysisDetail.swift:2256
                         }
@@ -211,7 +211,7 @@ fun FxImpactView(m: AppModel) {
                         FxChart(past, end, ticks, FX, q, X, Y)
                     }
                     // ios: Views/AnalysisDetail.swift:2309,2310
-                    Row(Modifier.fillMaxWidth().padding(start = 40.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(start = 40.dp), verticalAlignment = Alignment.CenterVertically) {
                         val st = appFont(11f); val mc = Theme.muted
                         T("$label 전", style = st, color = mc); Spacer(Modifier.weight(1f)); T("오늘", style = st, color = mc); Spacer(Modifier.widthIn(max = 60.dp).fillMaxWidth()); T("1년 뒤", style = st, color = mc)
                     }
@@ -245,7 +245,7 @@ fun FxImpactView(m: AppModel) {
                         }
                         IosSlider(value = r, onChange = { what = it }, range = sMin..sMax, step = 1.0, tint = Theme.blue, modifier = Modifier.semantics { contentDescription = "환율" })   // ios: Views/AnalysisDetail.swift:2335
                         // ios: Views/AnalysisDetail.swift:2336
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             // ios: Views/AnalysisDetail.swift:2337
                             listOf(1250.0, 1300.0, 0.0, 1450.0, 1500.0).forEach { v ->
                                 val on = if (v == 0.0) what == null || what == BASE else what == v   // ios: Views/AnalysisDetail.swift:2338
@@ -495,20 +495,20 @@ private fun GlanceCard(m: AppModel, d: GlanceView.Item, onTip: (GlanceTip) -> Un
             // ios: Views/AnalysisDetail.swift:2509,2521
             Column(Modifier.fillMaxWidth().background(Theme.bg, RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // ios: Views/AnalysisDetail.swift:2510
-                Row(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     T(AppModel.price(s, s.last), style = appFont(13f, FontWeight.SemiBold))   // ios: Views/AnalysisDetail.swift:2511
                     Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:2512
                 }
                 RangeBar(lo = d.k.lo, hi = d.k.hi, now = s.last)   // ios: Views/AnalysisDetail.swift:2514
                 // ios: Views/AnalysisDetail.swift:2515
-                Row(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     T(AppModel.price(s, d.k.lo), style = appFont(11f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:2516
                     Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:2517
                     T(AppModel.price(s, d.k.hi), style = appFont(11f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:2518
                 }
             }
             // ios: Views/AnalysisDetail.swift:2522
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Chip("1년 ${AppModel.sgn(d.k.r1)}", "r1", d, onTip)   // ios: Views/AnalysisDetail.swift:2523
                 Chip("출렁임 ${GlanceView.swingName[GlanceView.swing(d.vol)]}", "vol", d, onTip)   // ios: Views/AnalysisDetail.swift:2524
             }
@@ -643,7 +643,7 @@ private fun GlanceSheet(
                     Head("가격 출렁임", "지난 1년 동안 가격이 하루하루 얼마나 크게 오르내렸는지예요. 크면 크게 오를 수도, 크게 내릴 수도 있어요.")   // ios: Views/AnalysisDetail.swift:2639
                     val lv = GlanceView.swing(d?.vol ?: 0.0)   // ios: Views/AnalysisDetail.swift:2640
                     // ios: Views/AnalysisDetail.swift:2641
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         // ios: Views/AnalysisDetail.swift:2642
                         (0 until 3).forEach { i ->
                             // ios: Views/AnalysisDetail.swift:2643

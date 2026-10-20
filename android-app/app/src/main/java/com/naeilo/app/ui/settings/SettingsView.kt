@@ -84,7 +84,7 @@ import com.naeilo.app.data.Defaults
 import com.naeilo.app.data.Shelter
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.Sync
-import com.naeilo.app.pending.GoalSetView
+import com.naeilo.app.ui.goal.GoalSetView
 import com.naeilo.app.pending.Support
 import com.naeilo.app.pending.SupportView
 import com.naeilo.app.ui.CapsuleShape
@@ -191,7 +191,7 @@ fun NotifyListView() {
                 rows.forEachIndexed { i, r ->
                     if (i > 0) HDivider(Theme.line)   // ios: Views/SettingsView.swift:38
                     // ios: Views/SettingsView.swift:39,41
-                    Row(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         T(r.email, Modifier.weight(1f), style = appFont(14f), maxLines = 1)   // ios: Views/SettingsView.swift:40
                         T(r.at, style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:42
                     }
@@ -297,7 +297,7 @@ fun SettingsView(m: AppModel) {
                 if (m.devAll) {
                     T("시연 상태 (개발자)", Modifier.padding(top = 8.dp), style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/SettingsView.swift:164
                     // ios: Views/SettingsView.swift:165
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         DemoButton("첫 질문부터") { m.onboarded = false; Defaults.prefs.edit().putBoolean("onboarded", false).apply() }   // ios: Views/SettingsView.swift:166
                         DemoButton("미션 1부터") { m.resetDemo(AppModel.Demo.fresh) }   // ios: Views/SettingsView.swift:167
                         DemoButton("인터미션 1주차로") { m.resetDemo(AppModel.Demo.week1) }   // ios: Views/SettingsView.swift:168
@@ -325,7 +325,7 @@ fun settingsPage(m: AppModel, r: SettingsRoute): NavPage = when (r) {
     SettingsRoute.longbridge -> NavPage { LongbridgeKeyView(m) }   // ios: Views/SettingsView.swift:189
     SettingsRoute.howto -> NavPage { HowToView() }   // ios: Views/SettingsView.swift:190
     SettingsRoute.route -> NavPage { RouteView(m) }   // ios: Views/SettingsView.swift:191
-    SettingsRoute.goal -> NavPage { GoalSetView(fromSettings = true) }   // ios: Views/SettingsView.swift:192
+    SettingsRoute.goal -> NavPage { GoalSetView(m, fromSettings = true) }   // ios: Views/SettingsView.swift:192
     SettingsRoute.support -> NavPage { SupportView() }   // ios: Views/SettingsView.swift:193
     SettingsRoute.icon -> NavPage { AppIconScreen(m) }   // ios: Views/SettingsView.swift:194
     SettingsRoute.notifyList -> NavPage { NotifyListView() }   // ios: Views/SettingsView.swift:195

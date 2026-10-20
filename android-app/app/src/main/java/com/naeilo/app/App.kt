@@ -1,5 +1,10 @@
 package com.naeilo.app
 
+import com.naeilo.app.ui.board.BoardView
+import com.naeilo.app.ui.board.boardPage
+import com.naeilo.app.ui.goal.GoalBoardView
+import com.naeilo.app.ui.goal.goalBoardPage
+import com.naeilo.app.core.calc.isGoal
 import android.view.Window
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -90,7 +95,7 @@ import com.naeilo.app.net.Sync
 import com.naeilo.app.pending.GamePause
 import com.naeilo.app.pending.LineClock
 import com.naeilo.app.pending.Notifier
-import com.naeilo.app.pending.Remind
+import com.naeilo.app.data.Remind
 import com.naeilo.app.pending.Support
 import com.naeilo.app.pending.WidgetBridge
 import androidx.compose.runtime.LaunchedEffect
@@ -167,10 +172,11 @@ fun RootView(model: AppModel) {
                             MyPathCompareRoute -> NavPage(MyPathCompareRoute.title) { MyPathCompareView(model) }   // 내 길 '내 구성으로 비교'
                             is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailScreen(model, r.factor, r.start) }   // 외부 요인 상세
                             is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }   // 금리 시나리오 근거
-                            else -> NavPage { GoalSetPage() }   // 전망의 '목표 고치기'
+                            else -> NavPage { GoalSetPage(model) }   // 전망의 '목표 고치기'
                         }
                     }
-                    Tab.board -> TabScreen(t)      // ios: App.swift:38 (boardPath: 빈 자리)
+                    // ios: App.swift:38,39 (목표 루트면 목표 미션 판)
+                    Tab.board -> NavStack(model.boardPath, { model.boardPath = it }, { if (model.isGoal) GoalBoardView(model) else BoardView(model) }) { r -> if (model.isGoal) goalBoardPage(model, r) else boardPage(model, r) }
                     Tab.settings -> NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model) }) { settingsPage(model, it) }   // ios: App.swift:42 (SettingsView·settingsPath)
                 }
             }

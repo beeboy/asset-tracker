@@ -418,7 +418,14 @@ val LocalTextScale = staticCompositionLocalOf { TextScale(3) }
 // ios: Theme.swift:254,255,256,257,259,262,266,267,268 (글자 단계 계산은 TextScale.from)
 @Composable
 fun appFont(size: Float, weight: FontWeight = FontWeight.Normal): TextStyle =
-    TextStyle(fontSize = (size * LocalTextScale.current.ratio).sp, fontWeight = weight)
+    TextStyle(fontSize = (size * LocalTextScale.current.ratio).sp, fontWeight = weight, lineBreak = KoLineBreak)
+
+/** 한국어 줄바꿈을 iOS 처럼 띄어쓰기 단위로 (안드로이드 기본은 글자 단위라 "계\n산할"처럼 끊는다. API 33+ 에서 적용, 그 아래는 기본) */
+val KoLineBreak = androidx.compose.ui.text.style.LineBreak(
+    strategy = androidx.compose.ui.text.style.LineBreak.Strategy.Simple,
+    strictness = androidx.compose.ui.text.style.LineBreak.Strictness.Normal,
+    wordBreak = androidx.compose.ui.text.style.LineBreak.WordBreak.Phrase,
+)
 
 /** 글자 한 줄: Text 자리. 색을 안 주면 foregroundStyle(LocalFg) 를 지금 색 벌로 고른다 */
 @Composable

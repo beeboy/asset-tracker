@@ -1,5 +1,6 @@
 package com.naeilo.app.core.calc
 
+import com.naeilo.app.ui.board.Mission3ResultView
 import com.naeilo.app.core.cformat
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color

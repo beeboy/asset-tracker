@@ -76,21 +76,21 @@ import com.naeilo.app.data.short
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.quote
 import com.naeilo.app.ui.analysis.AnalysisRoute
-import com.naeilo.app.pending.CharPixel
+import com.naeilo.app.ui.me.CharPixel
 import com.naeilo.app.pending.CharacterDetailView
-import com.naeilo.app.pending.DepositLeverCard
-import com.naeilo.app.pending.GoalSetView
-import com.naeilo.app.pending.MarketEvents
-import com.naeilo.app.pending.MeEditView
+import com.naeilo.app.ui.board.DepositLeverCard
+import com.naeilo.app.ui.goal.GoalSetView
+import com.naeilo.app.data.MarketEvents
+import com.naeilo.app.ui.me.meEditPage
 import com.naeilo.app.pending.ReaderView
-import com.naeilo.app.pending.Remind
-import com.naeilo.app.pending.RemindCat
-import com.naeilo.app.pending.RemindGo
-import com.naeilo.app.pending.RemindSheet
+import com.naeilo.app.data.Remind
+import com.naeilo.app.data.RemindCat
+import com.naeilo.app.data.RemindGo
+import com.naeilo.app.ui.remind.RemindSheet
 import com.naeilo.app.pending.ShelterView
 import com.naeilo.app.pending.StoryBook
-import com.naeilo.app.pending.color
-import com.naeilo.app.pending.go
+import com.naeilo.app.data.color
+import com.naeilo.app.data.go
 import com.naeilo.app.ui.analysis.myPath
 import com.naeilo.app.ui.analysis.myPathGapToday
 import com.naeilo.app.ui.AppHeader
@@ -147,7 +147,7 @@ fun HomeView(m: AppModel) {
                     SampleNote(m)   // ios: Views/HomeView.swift:12
                     Summary(m, hideAmt) { hideAmt = !hideAmt }   // ios: Views/HomeView.swift:13
                     // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
-                    if (!m.isGoal && m.done.contains(3) && m.cost > m.total && m.rows.isNotEmpty()) DepositLeverCard(plan = m.keepPlan)   // ios: Views/HomeView.swift:15
+                    if (!m.isGoal && m.done.contains(3) && m.cost > m.total && m.rows.isNotEmpty()) DepositLeverCard(m, plan = m.keepPlan)   // ios: Views/HomeView.swift:15
                     ShelterBox(m) { inbox = true }   // ios: Views/HomeView.swift:16
                     ParallelHomeCard(m)   // ios: Views/HomeView.swift:17
                     Reminder { inbox = true }   // ios: Views/HomeView.swift:18
@@ -159,7 +159,7 @@ fun HomeView(m: AppModel) {
         }
     }
     // ios: Views/HomeView.swift:29
-    Sheet(inbox, onDismiss = { inbox = false; Remind.shared.markAllSeen() }) { RemindSheet() }
+    Sheet(inbox, onDismiss = { inbox = false; Remind.shared.markAllSeen() }) { RemindSheet(m) { inbox = false; Remind.shared.markAllSeen() } }
     // ios: Views/HomeView.swift:30 이동 막대 숨김: 첫 화면엔 막대가 없다 (NavStack 은 쌓인 화면에만 막대를 그린다)
 }
 
@@ -168,14 +168,14 @@ fun HomeView(m: AppModel) {
 fun homePage(m: AppModel, route: String): NavPage = when (route) {
     // 이동 막대 제목은 화면이 정한다 (navigationTitle)
     "parallel" -> NavPage(ParallelTitles.main) { ParallelView(m) }   // ios: Views/HomeView.swift:34
+    "me" -> meEditPage(m)   // ios: Views/HomeView.swift:39 (제목은 화면이 정한다)
     "parallel:basket" -> NavPage(ParallelTitles.basket) { val nb = LocalNavBack.current; ParallelBasketView(m) { nb?.pop?.invoke() } }   // ios: Views/HomeView.swift:35
     else -> NavPage { when {
         route == "shelter" -> ShelterView()   // ios: Views/HomeView.swift:32
         route == "library" -> ShelterView(onlyLibrary = true)   // ios: Views/HomeView.swift:33
-        route == "goal" -> GoalSetView(fromSettings = true)   // ios: Views/HomeView.swift:36
+        route == "goal" -> GoalSetView(m, fromSettings = true)   // ios: Views/HomeView.swift:36
         route.startsWith("read:") && route.drop(5).toIntOrNull() != null -> ReaderView(index = route.drop(5).toInt())   // ios: Views/HomeView.swift:37
         route.startsWith("vol1:") && route.drop(5).toIntOrNull() != null -> ReaderView(index = route.drop(5).toInt(), book = StoryBook.vol1)   // ios: Views/HomeView.swift:38
-        route == "me" -> MeEditView()   // ios: Views/HomeView.swift:39
         // ios: Views/HomeView.swift:40
         route.startsWith("char:") && Shelter.friends.any { it.id == route.drop(5).split(":").firstOrNull() } -> {
             val f = Shelter.friends.first { it.id == route.drop(5).split(":").firstOrNull() }
@@ -226,7 +226,7 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
             }
             if (value && m.route == Route.plus && m.total > 0) TodayLine(m)   // ios: Views/HomeView.swift:71
             // ios: Views/HomeView.swift:72
-            Row(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T("목표 ${AppModel.wonK(m.gK)} · ${m.gY}년", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:73,76
                 T(AppModel.pct(prog), style = appFont(13f, FontWeight.Bold), color = Theme.yellow)   // ios: Views/HomeView.swift:74
             }
@@ -272,7 +272,7 @@ private fun RecoverSummary(m: AppModel) {
             }
             if (m.total > 0) TodayLine(m)   // ios: Views/HomeView.swift:108
             // ios: Views/HomeView.swift:109
-            Row(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T("본전까지", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:110,111,115
                 // ios: Views/HomeView.swift:112,113
                 T(if (need > 0) "+" + cformat("%.1f", need * 100) + "% 남음" else "본전 도달", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)
@@ -338,7 +338,7 @@ private fun ShelterBox(m: AppModel, openInbox: () -> Unit) {
         // ios: Views/HomeView.swift:173
         if (r.items.isNotEmpty()) {
             // ios: Views/HomeView.swift:174,175,186
-            Row(Modifier.fillMaxWidth().offset(y = (-4).dp), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth().offset(y = (-4).dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 // ios: Views/HomeView.swift:176,177,178,179,180,181,183,184
                 Box(Modifier.defaultMinSize(minHeight = 32.dp).plainClickable(openInbox)
                     .semantics { contentDescription = if (n > 0) "새 소식 ${n}개 보기" else "소식함 보기" }, contentAlignment = Alignment.Center) {
@@ -447,7 +447,7 @@ fun RoutineCard(m: AppModel) {
                 T("이번 주 ${weekDone}일", Modifier.alignByBaseline(), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:268
             }
             // ios: Views/HomeView.swift:270
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 // ios: Views/HomeView.swift:271
                 for (i in 0 until 7) {
                     val d = m.day - m.day % 7 + i   // ios: Views/HomeView.swift:272

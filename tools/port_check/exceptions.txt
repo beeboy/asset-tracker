@@ -5,7 +5,6 @@
 App.swift:8 알림 단계: 알림 누름 처리(NotificationDelegate)
 App.swift:9 위젯 단계: 토스 키를 위젯과 나누기 (TossKeys)
 App.swift:10 구독 단계: Play Billing 확인·거래 듣기 (Support)
-App.swift:39 미션 탭 단계: 목표 루트면 GoalBoardView, 아니면 BoardView (isGoal)
 App.swift:78-88 알림 단계: 알림을 누르면 탭·화면 열기
 App.swift:89-100 위젯·딥링크 단계: naeilo:// 주소로 탭·화면 열기
 
@@ -146,3 +145,49 @@ Views/AnalysisDetail.swift:1580 검사기 한계: 보간 속 따옴표 (옮김, 
 Views/AnalysisDetail.swift:1745 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt RateWhyView 각주)
 # G2 뒤 성능: 경로를 묶음으로 나눠 돈다 (MonteCarlo.kt runPaths). 0..<P 의 0 은 부르는 곳 runPaths(0, P) 에 있다
 Data/MonteCarlo.swift:447 검사기 한계: 경로 범위 시작(0)이 묶음 함수 인자로 옮겨 감 (옮김, MonteCarlo.kt simulate runPaths)
+# H 미션·목표: Data/Remind.swift (data/Remind.kt). 모두 옮겼고 Kotlin 주석에 줄 번호를 남겼다
+Data/Remind.swift:230 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt achievements 인터미션 주)
+Data/Remind.swift:233 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt achievements 인터미션 달)
+Data/Remind.swift:239-240 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 새 친구·인물 위젯)
+Data/Remind.swift:245 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 돌아온 물건)
+Data/Remind.swift:250 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 평정 지수 처음)
+Data/Remind.swift:254-255 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 투자 유형)
+Data/Remind.swift:258 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 함께한 날)
+Data/Remind.swift:262 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 평정 지수 달 변화)
+Data/Remind.swift:270 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 다음 걸음)
+Data/Remind.swift:275 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 80 이상 지킴)
+Data/Remind.swift:280 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 쉼터 배경)
+Data/Remind.swift:295 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 1000칸 이정표)
+Data/Remind.swift:299 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 최고 기록)
+Data/Remind.swift:349 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 맞혀보기 배지)
+Data/Remind.swift:355-356 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 주간 예보 결과)
+Data/Remind.swift:374-376 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 인터미션 진행)
+Data/Remind.swift:385 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 매매 기록 남음)
+Data/Remind.swift:388 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 다음 친구)
+Data/Remind.swift:391 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 물건 돌아옴)
+Data/Remind.swift:400 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 서재 외전)
+Data/Remind.swift:421 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 가능성 변화)
+Data/Remind.swift:424 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 내 길 앞섬 변화)
+Data/Remind.swift:435 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 금리 변화)
+Data/Remind.swift:450 검사기 한계: 보간 속 따옴표 (옮김, Remind.kt 구독 고마움)
+# H2 (미션 판·소식함): Views/BoardView·RemindViews → ui/board/BoardView.kt·ui/remind/RemindViews.kt
+Views/BoardView.swift:196 검사기 한계: 보간 속 따옴표 "+" : "" (옮김, BoardView.kt Cells 어제보다 줄)
+Views/BoardView.swift:328-329 검사기 한계: 보간 속 따옴표 (옮김, BoardView.kt GuessCard 판정 글)
+Views/BoardView.swift:334 검사기 한계: 보간 속 따옴표 Self.names[g] ?? "" (옮김, BoardView.kt GuessCard 고른 답 줄)
+Views/BoardView.swift:393 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, BoardView.kt RecordCard 배지 읽어 주기 글)
+Views/RemindViews.swift:190 검사기 한계: 보간 속 따옴표 i.sub ?? "" (옮김, RemindViews.kt RemindRow 일정 날짜 줄)
+# H4 (내 캐릭터): Views/MeViews.swift → ui/me/MeViews.kt
+Views/MeViews.swift:521 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, MeViews.kt ShelterBGBox 접기 줄 semantics)
+Views/MeViews.swift:638 플랫폼: CGContext 비트 수·한 줄 바이트(ARGB_8888 에 정해짐) (옮김, MeViews.kt MePose.image pixels)
+Views/MeViews.swift:725 플랫폼: CGContext 비트 수·한 줄 바이트(ARGB_8888 에 정해짐) (옮김, MeViews.kt MePose.image 끝 Bitmap 만들기)
+# H1 (미션): Views/MissionViews.swift → ui/board/MissionViews.kt
+Views/MissionViews.swift:576 검사기 한계: 보간 속 따옴표 (옮김, MissionViews.kt TaxResultView 1위 종목 줄)
+# H3 (목표): Views/GoalViews.swift → ui/goal/GoalViews.kt
+Views/GoalViews.swift:630 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetView 머리 미션 번호)
+Views/GoalViews.swift:643 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalViews.kt GoalSetView sub)
+Views/GoalViews.swift:712 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetResultView Page)
+Views/GoalViews.swift:725 검사기 한계: 보간 속 따옴표 String(format: "%g") (옮김, GoalViews.kt GoalSetResultView 눈금 줄)
+Views/GoalViews.swift:765 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixView 머리 미션 번호)
+Views/GoalViews.swift:820 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixResultView Page)
+Views/GoalViews.swift:867 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView Page)
+Views/GoalViews.swift:889 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView 팔 게 없음 줄)

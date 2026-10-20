@@ -49,8 +49,8 @@ import com.naeilo.app.core.calc.parallelSeries
 import com.naeilo.app.data.MeChar
 import com.naeilo.app.data.MeSample
 import com.naeilo.app.data.Shelter
-import com.naeilo.app.pending.MeArt
-import com.naeilo.app.pending.MeAvatar
+import com.naeilo.app.ui.me.MeArt
+import com.naeilo.app.ui.me.MeAvatar
 import com.naeilo.app.pending.spriteBacking
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card
@@ -218,7 +218,7 @@ object InvestBranch0 {
             val ret = (if (id == w.who) s[2] else race.r[2])[race.last]; val real = s[0][race.last]   // ios: Views/InvestViews.swift:141
             T(since(race.dates.firstOrNull() ?: ""), style = appFont(13f), color = Theme.sub)   // ios: Views/InvestViews.swift:142
             // ios: Views/InvestViews.swift:143
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Cell("$name 규칙", ret, Theme.rule, Modifier.weight(1f))   // ios: Views/InvestViews.swift:144
                 Cell("내 실제", real, Theme.myReal, Modifier.weight(1f))   // ios: Views/InvestViews.swift:145
             }

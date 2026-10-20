@@ -30,7 +30,7 @@ import com.naeilo.app.data.Shelter
 import com.naeilo.app.data.friendName
 import com.naeilo.app.data.meUnlocked
 import com.naeilo.app.data.voice
-import com.naeilo.app.pending.MeAvatar
+import com.naeilo.app.ui.me.MeAvatar
 
 // 미션 안내 인물 (캐릭터 설정 스레드 시안 mission-flow-seri*): 미션 제목 아래 회색 안내 문구를 인물 말풍선으로.
 // 화면 종류마다 동작이 다르다 — 안내: point, 결과 공개: spread, 퀴즈·결정: think → 맞으면 cheer 틀리면 point,

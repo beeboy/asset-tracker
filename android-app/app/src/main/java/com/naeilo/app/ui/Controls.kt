@@ -159,6 +159,11 @@ val SF: Map<String, Int> = mapOf(
     "arrow.up.to.line" to R.drawable.ms_upload, "chevron.up" to R.drawable.ms_expand_less,
     "minus" to R.drawable.ms_remove, "xmark" to R.drawable.ms_close, "info.circle" to R.drawable.ms_info,
     "bell" to R.drawable.ms_notifications, "bell.fill" to R.drawable.ms_notifications_fill,
+    "clock" to R.drawable.ms_schedule, "sun.max.fill" to R.drawable.ms_sunny_fill, "circle" to R.drawable.ms_radio_button_unchecked,
+    "sparkles" to R.drawable.ms_auto_awesome, "hourglass" to R.drawable.ms_hourglass_empty, "newspaper" to R.drawable.ms_newspaper, "gift" to R.drawable.ms_redeem,
+    "star.fill" to R.drawable.ms_star_fill, "medal.fill" to R.drawable.ms_military_tech_fill, "trophy.fill" to R.drawable.ms_trophy_fill, "crown.fill" to R.drawable.ms_workspace_premium_fill,
+    "square.grid.3x3.fill" to R.drawable.ms_grid_on, "water.waves" to R.drawable.ms_waves, "gamecontroller" to R.drawable.ms_sports_esports,
+    "nosign" to R.drawable.ms_block, "arrow.counterclockwise" to R.drawable.ms_replay,
 )
 
 /** Image(systemName:) 자리. size = 글자 크기(pt), 기호 칸은 글자 크기의 1.25배. scaled = 큰 글자 설정을 따를지 (.font(.system(size:)) 도 따른다) */
@@ -510,7 +515,8 @@ fun FitText(text: String, style: TextStyle, minScale: Float, modifier: Modifier 
         val st = if (k < 1f) style.copy(fontSize = style.fontSize * k, letterSpacing = if (style.letterSpacing.isSpecified) style.letterSpacing * k else style.letterSpacing) else style   // 정해지지 않은 자간은 곱하면 죽는다
         val p = subcompose(k) { T(text, style = st, color = color, maxLines = 1, roll = roll) }.first().measure(c.copy(minWidth = 0))
         val b = p[androidx.compose.ui.layout.FirstBaseline]
-        layout(p.width, p.height, if (b != androidx.compose.ui.layout.AlignmentLine.Unspecified) mapOf(androidx.compose.ui.layout.FirstBaseline to b) else emptyMap()) { p.place(0, 0) }
+        // 칸이 더 넓으면(가득 채우기) 글은 앞(왼쪽)에 둔다. 제 폭만 알리면 바깥이 가운데에 놓는다
+        layout(maxOf(p.width, c.minWidth), maxOf(p.height, c.minHeight), if (b != androidx.compose.ui.layout.AlignmentLine.Unspecified) mapOf(androidx.compose.ui.layout.FirstBaseline to b) else emptyMap()) { p.place(0, 0) }
     }
 }
 

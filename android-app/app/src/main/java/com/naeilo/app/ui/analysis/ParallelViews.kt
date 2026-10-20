@@ -291,7 +291,7 @@ private fun Chart(m: AppModel, race: PRace, r: List<DoubleArray>, w: PWorld, pro
             }
         }
         // ios: Views/ParallelView.swift:172,174,176
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             T(ParallelView0.mdShort(race.dates.firstOrNull() ?: ""), style = appFont(11f), color = Theme.muted)   // ios: Views/ParallelView.swift:173
             Spacer(Modifier.weight(1f))
             T("0% = 출발", style = appFont(11f), color = Theme.muted)   // ios: Views/ParallelView.swift:175
@@ -343,7 +343,7 @@ private fun Buttons(m: AppModel, w: PWorld) {
     // ios: Views/ParallelView.swift:221
     if (m.pworld != null) {
         // ios: Views/ParallelView.swift:222
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f).plainClickable { m.homePath = m.homePath + "parallel:basket" }) { Pill("바구니 바꾸기") }   // ios: Views/ParallelView.swift:223
             // ios: Views/ParallelView.swift:224,225,226,228
             Box(Modifier.weight(1f)) {
@@ -381,7 +381,7 @@ private fun PastBaskets(race: PRace, w: PWorld) {
                 // ios: Views/ParallelView.swift:255
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     // ios: Views/ParallelView.swift:256,258
-                    Row(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         T((if (i == 0) "출발" else ParallelView0.md(g.from)) + " ~ " + ParallelView0.md(end), Modifier.weight(1f), style = appFont(13f, FontWeight.Bold))   // ios: Views/ParallelView.swift:257
                         T(AppModel.sgn(ret), style = appFont(13f, FontWeight.Bold), color = if (ret >= 0) Theme.up else Theme.down)   // ios: Views/ParallelView.swift:259
                     }
@@ -515,7 +515,7 @@ fun ParallelBasketView(m: AppModel, dismiss: () -> Unit) {
                 T("고치면 오늘부터 새 기록 · 이전 기록은 보관", style = appFont(13f), color = Theme.sub)   // ios: Views/ParallelView.swift:339,340
                 T("견본", style = appFont(15f, FontWeight.Bold))   // ios: Views/ParallelView.swift:341
                 // ios: Views/ParallelView.swift:342,343,344
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Parallel.templates.forEach { tpl ->
                         // ios: Views/ParallelView.swift:345,346,347,348
                         T(tpl.name, Modifier.plainClickable { apply(tpl.w) }.defaultMinSize(minHeight = 40.dp).background(Theme.card, CircleShape).border(2.dp, Theme.border, CircleShape).padding(horizontal = 14.dp, vertical = 10.dp),
@@ -533,7 +533,7 @@ fun ParallelBasketView(m: AppModel, dismiss: () -> Unit) {
                     T("종가 있는 종목·견본 ETF만", style = appFont(12f), color = Theme.muted)   // ios: Views/ParallelView.swift:363
                 }
                 // ios: Views/ParallelView.swift:365
-                Row(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     T("합계", Modifier.weight(1f), style = appFont(14f, FontWeight.Bold))   // ios: Views/ParallelView.swift:366
                     T("$sum%", style = appFont(14f, FontWeight.Bold), color = if (sum == 100) Theme.green else Theme.orange)   // ios: Views/ParallelView.swift:367
                 }

@@ -75,7 +75,7 @@ import com.naeilo.app.pending.BoardCharView
 import com.naeilo.app.pending.Catalog
 import com.naeilo.app.pending.CharBG
 import com.naeilo.app.pending.CharEntry
-import com.naeilo.app.pending.CharPixel
+import com.naeilo.app.ui.me.CharPixel
 import com.naeilo.app.pending.LocalCharDark
 import com.naeilo.app.pending.GardenCharView
 import com.naeilo.app.pending.HeightCharView
@@ -84,7 +84,7 @@ import com.naeilo.app.pending.LadderCharView
 import com.naeilo.app.pending.Lines
 import com.naeilo.app.pending.Notifier
 import com.naeilo.app.pending.PuzzleCharView
-import com.naeilo.app.pending.RemindOptions
+import com.naeilo.app.ui.remind.RemindOptions
 import com.naeilo.app.pending.TowerCharView
 import com.naeilo.app.pending.TugCharView
 import com.naeilo.app.pending.WidgetCenter
@@ -239,7 +239,7 @@ fun AlertsView(m: AppModel) {
         Column(Modifier.fillMaxWidth().background(Theme.card).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             T("알림", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:85
             // ios: Views/SettingsDetail.swift:86,88
-            Row(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T("알림 미리보기", Modifier.weight(1f), style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/SettingsDetail.swift:87
                 T("켠 알림 ${on.size}개" + (if (perMonth > 0) " · 한 달 약 ${perMonth}번" else ""), style = appFont(12f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:89
             }
@@ -252,7 +252,7 @@ fun AlertsView(m: AppModel) {
                 // ios: Views/SettingsDetail.swift:96
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     // ios: Views/SettingsDetail.swift:97,99
-                    Row(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         T(prev?.t ?: "알림 꺼짐", Modifier.weight(1f), style = appFont(14f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:98
                         T(if (prev == null) "" else if (prev.k == "morn") "오전 ${m.alertHr}:00" else "지금", style = appFont(12f), color = Theme.muted)   // ios: Views/SettingsDetail.swift:100
                     }
@@ -410,7 +410,7 @@ fun SyncView(m: AppModel) {
                     Sym("iphone", 26f, fg, scaled = false)   // ios: Views/SettingsDetail.swift:198
                     // ios: Views/SettingsDetail.swift:199,200
                     if (on) Box(Modifier.size(60.dp, 3.dp).background(Theme.yellow))
-                    else Row(Modifier.size(60.dp, 3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) { (0 until 8).forEach { _ -> Box(Modifier.weight(1f).height(3.dp).background(Theme.muted)) } }
+                    else Row(Modifier.size(60.dp, 3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) { (0 until 8).forEach { _ -> Box(Modifier.weight(1f).height(3.dp).background(Theme.muted)) } }
                     Sym("desktopcomputer", 26f, fg, scaled = false)   // ios: Views/SettingsDetail.swift:201
                 }
                 T(if (on) (if (sync.isDev) "개발자 동기화 켜짐" else "자동 동기화 켜짐") else "아직 켜지 않음", style = appFont(20f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:203
@@ -427,7 +427,7 @@ fun SyncView(m: AppModel) {
                 T("함께 맞춰지는 것", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:214
                 // ios: Views/SettingsDetail.swift:215,216
                 listOf("종목·수량·평균 단가" to true, "미션 진행·오늘의 1분·쉼터" to true, "목표·사건·모형 설정 (사이트)" to true, "알림·화면 모드" to false).forEach { (k, y) ->
-                    Row(Modifier.fillMaxWidth()) { T(k, Modifier.weight(1f), style = appFont(14f)); T(if (y) "함께" else "기기마다 따로", style = appFont(13f, FontWeight.SemiBold), color = if (y) Theme.teal else Theme.muted) }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T(k, Modifier.weight(1f), style = appFont(14f)); T(if (y) "함께" else "기기마다 따로", style = appFont(13f, FontWeight.SemiBold), color = if (y) Theme.teal else Theme.muted) }
                 }
             }
             PrimaryButton(title = if (sync.state == Sync.State.working) "맞추는 중…" else "지금 맞추기") { scope.launch { sync.pull(m) } }   // ios: Views/SettingsDetail.swift:219
@@ -593,7 +593,7 @@ fun WidgetPickView(m: AppModel) {
                 // ios: Views/SettingsDetail.swift:395 (394 '홈 화면 길게 누르기 → +' 는 안드로이드 위젯 추가 순서로: 예외)
                 T("미션을 마치면 열려요. 홈 화면 길게 누르기 → 위젯 → naeilo", style = appFont(14f), color = Theme.sub)
                 // ios: Views/SettingsDetail.swift:396
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Stat("기본 위젯", "${base.count { it.ok }}/${base.size}")   // ios: Views/SettingsDetail.swift:397
                     Stat("인물", "$friendsOn/${Shelter.friends.size}")   // ios: Views/SettingsDetail.swift:398
                 }
@@ -601,7 +601,7 @@ fun WidgetPickView(m: AppModel) {
                 // 인물 위젯: 만난 인물을 고르면 여덟 가지 모양을 바로 본다 (못 만난 친구는 목록에 없다)
                 T("인물 위젯", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:402
                 // ios: Views/SettingsDetail.swift:403,404
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     // ios: Views/SettingsDetail.swift:405
                     Shelter.friends.withIndex().filter { m.friendOn(it.index) }.forEach { (i, f) ->
                         val ok = m.friendOn(i); val cur = f.id == sel   // ios: Views/SettingsDetail.swift:406
@@ -645,22 +645,22 @@ fun WidgetPickView(m: AppModel) {
                     // ios: Views/SettingsDetail.swift:440
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         // ios: Views/SettingsDetail.swift:441
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Caption("자산 언덕") { Tile(e, w = w, h = w) { HillCharView(e = e) } }   // ios: Views/SettingsDetail.swift:442
                             Caption("본전 사다리") { Tile(e, w = w, h = w) { LadderCharView(e = e) } }   // ios: Views/SettingsDetail.swift:443
                         }
                         // ios: Views/SettingsDetail.swift:445
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Caption("블록 탑") { Tile(e, w = w, h = w) { TowerCharView(e = e) } }   // ios: Views/SettingsDetail.swift:446
                             Caption("전광판") { Tile(e, w = w, h = w) { BoardCharView(e = e) } }   // ios: Views/SettingsDetail.swift:447
                         }
                         // ios: Views/SettingsDetail.swift:449
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Caption("키 재기") { Tile(e, w = w, h = w) { HeightCharView(e = e) } }   // ios: Views/SettingsDetail.swift:450
                             Caption("퍼즐 맞추기") { Tile(e, w = w, h = w) { PuzzleCharView(e = e) } }   // ios: Views/SettingsDetail.swift:451
                         }
                         // ios: Views/SettingsDetail.swift:453
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Caption("꽃밭") { Tile(e, w = w, h = w) { GardenCharView(e = e) } }   // ios: Views/SettingsDetail.swift:454
                             Caption("줄다리기") { Tile(e, w = w, h = w) { TugCharView(e = e) } }   // ios: Views/SettingsDetail.swift:455
                         }
@@ -822,7 +822,7 @@ fun RouteView(m: AppModel) {
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 // ios: Views/SettingsDetail.swift:642,644
-                Row(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     T(name, Modifier.weight(1f), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:643
                     T(if (k == cur) "지금 루트" else tag, style = appFont(12f, FontWeight.Bold), color = if (k == cur) Theme.teal else Theme.sub)   // ios: Views/SettingsDetail.swift:645
                 }

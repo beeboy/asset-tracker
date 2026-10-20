@@ -257,7 +257,7 @@ private fun TotalChart(m: AppModel, rows: List<AppModel.Row>, period: Period, se
         Sparkline(points = t.tot, modifier = Modifier.fillMaxWidth().height(120.dp), avg = t.first, lineWidth = 2.2.dp, showEndDot = true,
                   scrub = Scrub.period(period) { AppModel.man(it) + "원" })
         // ios: Views/HoldingsView.swift:126
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             // ios: Views/HoldingsView.swift:127,131
             T(if (period.span < 1) "${start.monthValue}월" else "${start.year}.${start.monthValue}", Modifier.weight(1f), style = appFont(11f), color = Theme.muted)
             T("오늘", style = appFont(11f), color = Theme.muted)   // ios: Views/HoldingsView.swift:128,129
@@ -308,7 +308,7 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boo
     // ios: Views/HoldingsView.swift:169,209,210,211
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         // ios: Views/HoldingsView.swift:170,172,176
-        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             T("$title ${rs.size}", Modifier.weight(1f), style = appFont(14f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:171
             // ios: Views/HoldingsView.swift:173,174
             T(amountText(inUsd, rs), style = appFont(14f, FontWeight.SemiBold).tnum(), color = Theme.sub, roll = rs.fold(0.0) { a, r -> a + r.value })
@@ -391,7 +391,7 @@ private fun HoldRow(r: AppModel.Row, inUsd: Boolean, big: Boolean) {
                 }
             })
             // ios: Views/HoldingsView.swift:234
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 T("${AppModel.price(r.sym, r.sym.last)} ·", style = appFont(12f).tnum(), color = Theme.sub, maxLines = 1)   // ios: Views/HoldingsView.swift:235,238
                 T((if (day >= 0) "+" else "−") + cformat("%.2f%%", abs(day) * 100), style = appFont(12f).tnum(), color = Theme.change(day), maxLines = 1)   // ios: Views/HoldingsView.swift:236
             }
@@ -490,7 +490,7 @@ object HoldingEdit {
 @Composable
 fun HoldPagePicker(page: Int, set: (Int) -> Unit) {
     // ios: Views/HoldingsView.swift:784,797,798
-    Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(13.dp)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(13.dp)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         // ios: Views/HoldingsView.swift:785
         listOf(0 to "내 종목", 1 to "소식판").forEach { (i, t) ->
             val on = page == i   // ios: Views/HoldingsView.swift:786
@@ -547,7 +547,7 @@ private fun CompareCard(c: Cmp) {
     Column(Modifier.newsCard(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         T("최근 1달, 시장과 비교", style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:836
         // ios: Views/HoldingsView.swift:837
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Cell("내 종목", c.mine)   // ios: Views/HoldingsView.swift:838
             Cell(c.name, c.mkt)   // ios: Views/HoldingsView.swift:839
         }

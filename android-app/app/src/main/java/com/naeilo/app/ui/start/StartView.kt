@@ -211,7 +211,7 @@ fun StartForecastCard(route: Route?, modifier: Modifier = Modifier) {
             }
             Fan(e)   // ios: Views/StartView.swift:109 (높이 140)
             // ios: Views/StartView.swift:110,111
-            Row(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 listOf("지금", "1년", "2년", "3년").forEach { t ->
                     T(t, style = appFont(12f), color = hex(0x9AA5B8))   // ios: Views/StartView.swift:112
                     if (t != "3년") Spacer(Modifier.weight(1f))   // ios: Views/StartView.swift:113

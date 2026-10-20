@@ -57,7 +57,7 @@ import com.naeilo.app.data.short
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.PriceHistory
 import com.naeilo.app.pending.EventRetro
-import com.naeilo.app.pending.MarketEvents
+import com.naeilo.app.data.MarketEvents
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Fg
@@ -264,7 +264,7 @@ private fun ReplayCard(m: AppModel) {
                     Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:900
                     T((if (tot > 0) "+" else if (tot < 0) "−" else "") + AppModel.man(abs(tot)), style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:901
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:903
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:903
                     chips.forEach { c ->   // ios: Views/AnalysisDetail.swift:904
                         T(c, Modifier.background(Theme.border, CapsuleShape).padding(horizontal = 8.dp, vertical = 3.dp), style = appFont(11f))   // ios: Views/AnalysisDetail.swift:905
                     }
@@ -289,7 +289,7 @@ private fun TodayCard(m: AppModel, x: ExternalView.Ev?, asked: Set<String>, setA
             val bs = cformat("%.1f", b); val base0 = ExternalView.evBase[x.k] ?: ""; val sd = cfmt("%g", x.sd)   // Views/AnalysisDetail.swift:941 (검사 예외: 같은 글)
             T("${base0} ±${sd}% 가정" + (if (x.k == "mkt") " · 시장의 ${bs}배" else ""),
               style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:942
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/AnalysisDetail.swift:943
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:943
                 T(text = "미리 보기", style = appFont(13f, FontWeight.SemiBold), color = Color.White,   // ios: Views/AnalysisDetail.swift:945
                   modifier = Modifier.plainClickable { m.analysisPath = m.analysisPath + FactorDetailRoute(factor = x.k, start = x.v) }   // ios: Views/AnalysisDetail.swift:944,948
                       .background(Theme.teal, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp))   // ios: Views/AnalysisDetail.swift:946
@@ -321,7 +321,7 @@ private fun RetroCard(retro: EventRetro.Snap?) {
         T("지난 일 돌아보기", style = appFont(16f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:973
         val mo = r.day.drop(5).take(2).toIntOrNull() ?: 0; val dd = r.day.takeLast(2).toIntOrNull() ?: 0   // ios: Views/AnalysisDetail.swift:974
         T("${mo}/${dd} · ${r.kind}", style = appFont(12f), color = Theme.sub)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/AnalysisDetail.swift:975
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:975
             Column(verticalArrangement = Arrangement.spacedBy(4.dp),   // ios: Views/AnalysisDetail.swift:976
                 modifier = Modifier.weight(1f).background(Theme.border.copy(alpha = 0.5f), RoundedCornerShape(12.dp)).padding(12.dp)) {   // ios: Views/AnalysisDetail.swift:980
                 T("미리 본 범위", style = appFont(12f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:977
@@ -398,7 +398,7 @@ fun ExternalScreen(m: AppModel) {
                                   color = if (no == "1") Color.White else Theme.ink)   // ios: Views/AnalysisDetail.swift:1028
                             }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {   // ios: Views/AnalysisDetail.swift:1030
-                                Row(Modifier.fillMaxWidth()) {   // ios: Views/AnalysisDetail.swift:1031
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:1031
                                     T(FactorDetailView.names[x.k] ?: x.k, style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:1032
                                     Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:1033
                                     T(if (x.weak) "관계 없음" else "±" + AppModel.man(x.amt), style = appFont(14f, if (x.weak) FontWeight.Normal else FontWeight.Bold),   // ios: Views/AnalysisDetail.swift:1034
@@ -612,7 +612,7 @@ fun FactorDetailScreen(m: AppModel, factor: String, start: Double? = null) {
                     (if (weak.size > 3) strong else rows).forEach { x -> key(x.id) {   // ios: Views/AnalysisDetail.swift:1227
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp),   // ios: Views/AnalysisDetail.swift:1228
                             modifier = Modifier.alpha(if (x.weak) 0.55f else 1f)) {   // ios: Views/AnalysisDetail.swift:1238
-                            Row(Modifier.fillMaxWidth()) {   // ios: Views/AnalysisDetail.swift:1229
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:1229
                                 T(x.label, style = appFont(14f, FontWeight.SemiBold))   // ios: Views/AnalysisDetail.swift:1230
                                 Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:1231
                                 T(if (x.weak) "뚜렷한 관계 없음" else AppModel.manS(x.dv), style = appFont(14f, FontWeight.SemiBold), color = if (x.weak) Theme.muted else Theme.change(x.dv))   // ios: Views/AnalysisDetail.swift:1232
@@ -659,7 +659,7 @@ fun FactorDetailScreen(m: AppModel, factor: String, start: Double? = null) {
                     }
                     AnimatedVisibility(custom, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                         Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:1269,1275
-                            Row(Modifier.fillMaxWidth()) { T("값", style = appFont(13f), color = Theme.sub); Spacer(Modifier.weight(1f)); T(factorText(factor, v), style = appFont(14f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1270
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("값", style = appFont(13f), color = Theme.sub); Spacer(Modifier.weight(1f)); T(factorText(factor, v), style = appFont(14f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1270
                             IosSlider(value = min(max(v, rng.start), rng.endInclusive), onChange = { shock = it },   // ios: Views/AnalysisDetail.swift:1271
                                 range = rng, step = if (factor == "rate") 0.25 else if (factor == "fx") 20.0 else 5.0, tint = Theme.teal,   // ios: Views/AnalysisDetail.swift:1272
                                 modifier = Modifier.semantics { contentDescription = "${name} 변화 직접 정하기" })   // ios: Views/AnalysisDetail.swift:1273

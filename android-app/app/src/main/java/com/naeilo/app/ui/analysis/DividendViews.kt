@@ -318,7 +318,7 @@ private fun MonthChart(months: List<String>, byMonth: List<Double>, paid: List<D
             val cell = (maxWidth - 44.dp) / 12   // ios: Views/AnalysisDetail.swift:2002
             val bc = Theme.border
             // ios: Views/AnalysisDetail.swift:2003
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 // ios: Views/AnalysisDetail.swift:2004
                 years.indices.forEach { k ->
                     // ios: Views/AnalysisDetail.swift:2005,2006,2007 (위 선은 칸 맨 위에 1 높이)
@@ -398,13 +398,13 @@ private fun CapTax(G: Double, usU: Double, usIds: List<String>, extra: Double, s
             // ios: Views/AnalysisDetail.swift:2066,2067,2070,2071
             BoxWithConstraints(Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(4.dp))) {
                 val bw = maxWidth
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.fillMaxHeight().width(bw * min(1.0, ded / G).toFloat()).background(Theme.green.copy(alpha = 0.25f)))   // ios: Views/AnalysisDetail.swift:2068
                     if (G > ded) Box(Modifier.fillMaxHeight().weight(1f).background(Theme.orange.copy(alpha = 0.3f)))   // ios: Views/AnalysisDetail.swift:2069
                 }
             }
             // ios: Views/AnalysisDetail.swift:2072
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Legend(Theme.green.copy(alpha = 0.25f), "${AppModel.man(ded)} 공제")   // ios: Views/AnalysisDetail.swift:2073
                 if (G > ded) Legend(Theme.orange.copy(alpha = 0.3f), "나머지 22%")   // ios: Views/AnalysisDetail.swift:2074
             }
@@ -433,7 +433,7 @@ private fun CapTax(G: Double, usU: Double, usIds: List<String>, extra: Double, s
         } else {   // ios: Views/AnalysisDetail.swift:2095
             val x = min(extra, usU); val after = SiteCalc.capGainTax(G + x)   // ios: Views/AnalysisDetail.swift:2096
             // ios: Views/AnalysisDetail.swift:2097
-            Row(Modifier.fillMaxWidth()) { T("안 판 이익", style = appFont(13f), color = Theme.sub); Spacer(Modifier.weight(1f)); T(AppModel.man(usU), style = appFont(13f, FontWeight.Bold)) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("안 판 이익", style = appFont(13f), color = Theme.sub); Spacer(Modifier.weight(1f)); T(AppModel.man(usU), style = appFont(13f, FontWeight.Bold)) }
             // ios: Views/AnalysisDetail.swift:2098
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T("추가로 팔 이익", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:2099
@@ -445,7 +445,7 @@ private fun CapTax(G: Double, usU: Double, usIds: List<String>, extra: Double, s
                 // ios: Views/AnalysisDetail.swift:2104,2105
                 modifier = Modifier.semantics { contentDescription = "추가로 팔 이익"; stateDescription = if (x <= 0) "0원" else AppModel.man(x) })
             // ios: Views/AnalysisDetail.swift:2106
-            Row(Modifier.fillMaxWidth()) { T("0", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("전부", style = appFont(11f), color = Theme.muted) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("0", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("전부", style = appFont(11f), color = Theme.muted) }
             // ios: Views/AnalysisDetail.swift:2107,2115
             Column(Modifier.fillMaxWidth().background(Theme.line.copy(alpha = 0.6f), RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 // ios: Views/AnalysisDetail.swift:2108
@@ -530,7 +530,7 @@ private fun SegTabs(
     small: Boolean = false,   // ios: Views/AnalysisDetail.swift:2172
 ) {
     // ios: Views/AnalysisDetail.swift:2174,2187,2188
-    Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(10.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(10.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
         // ios: Views/AnalysisDetail.swift:2175
         items.forEach { it ->
             val on = it.first == selection   // ios: Views/AnalysisDetail.swift:2176

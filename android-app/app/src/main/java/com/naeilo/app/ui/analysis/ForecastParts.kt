@@ -27,7 +27,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.naeilo.app.AppModel
-import com.naeilo.app.pending.MarketEvents
+import com.naeilo.app.data.MarketEvents
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.T
 import com.naeilo.app.ui.Theme

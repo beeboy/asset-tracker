@@ -67,9 +67,9 @@ import com.naeilo.app.core.calc.trackValue
 import com.naeilo.app.data.Currency
 import com.naeilo.app.net.Market
 import com.naeilo.app.pending.CalmView
-import com.naeilo.app.pending.CharHead
-import com.naeilo.app.pending.GoalSetView
-import com.naeilo.app.pending.MarketEvents
+import com.naeilo.app.ui.me.CharHead
+import com.naeilo.app.ui.goal.GoalSetView
+import com.naeilo.app.data.MarketEvents
 import com.naeilo.app.pending.SubLocked
 import com.naeilo.app.pending.Support
 import com.naeilo.app.ui.AppHeader
@@ -151,7 +151,7 @@ fun AnalysisPager(m: AppModel, start: AnalysisRoute) {
                     T(t, style = appFont(16f, FontWeight.Bold), maxLines = 1)   // ios: Views/AnalysisView.swift:71
                 }
                 // ios: Views/AnalysisView.swift:72,73,74
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     order.forEach { r -> Box(Modifier.size(5.dp, 5.dp).background(if (r == sel) Theme.teal else Theme.border, CircleShape)) }
                 }
             }
@@ -266,7 +266,7 @@ private fun Summary(m: AppModel) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(min(1.0, max(0.0, r)).toFloat()).background(hex(0xA9D6CB), CircleShape))
             }
             // ios: Views/AnalysisView.swift:174,175
-            Row(Modifier.fillMaxWidth()) { T(AppModel.eok(now), Modifier.weight(1f), style = appFont(14f), color = hex(0xDCEDE9)); T("${AppModel.eok(K)} · $end", style = appFont(14f), color = hex(0xDCEDE9)) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T(AppModel.eok(now), Modifier.weight(1f), style = appFont(14f), color = hex(0xDCEDE9)); T("${AppModel.eok(K)} · $end", style = appFont(14f), color = hex(0xDCEDE9)) }
         }
     }
 }
@@ -436,14 +436,14 @@ fun ForecastView(m: AppModel) {
 /** 전망에서 여는 목표 고치기 (NavigationLink { GoalSetView(fromSettings: true) }) */
 object GoalRoute0
 @Composable
-fun GoalSetPage() = GoalSetView(fromSettings = true)
+fun GoalSetPage(m: AppModel) = GoalSetView(m, fromSettings = true)
 
 // MARK: 시나리오 버튼 3개 + 추세 슬라이더 (같은 축: 신중하게 = 0%, 지난 3년처럼 = 100%)
 // ios: Views/AnalysisView.swift:354
 @Composable
 private fun Segments(m: AppModel) {
     // ios: Views/AnalysisView.swift:355,367,368
-    Row(Modifier.fillMaxWidth().background(Theme.bg, RoundedCornerShape(12.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.fillMaxWidth().background(Theme.bg, RoundedCornerShape(12.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         // ios: Views/AnalysisView.swift:356
         Lens.entries.forEach { l ->
             val on = m.lens == l   // ios: Views/AnalysisView.swift:357
@@ -468,14 +468,14 @@ private fun TrustSlider(m: AppModel) {
     // ios: Views/AnalysisView.swift:378
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         // ios: Views/AnalysisView.swift:379,381
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             T("지난 3년 추세 반영", Modifier.weight(1f), style = appFont(13f, FontWeight.Bold))   // ios: Views/AnalysisView.swift:380
             T("${m.shownTrust.toInt()}%", style = appFont(13f, FontWeight.Bold), color = Theme.teal)   // ios: Views/AnalysisView.swift:382
         }
         // ios: Views/AnalysisView.swift:384 (0~100, 5씩)
         IosSlider(m.shownTrust, set, 0.0..100.0, step = 5.0, modifier = Modifier.semantics { contentDescription = "지난 3년 추세를 얼마나 믿나요" }, tint = Theme.teal)
         // ios: Views/AnalysisView.swift:385,386
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             T("신중", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("반반", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("3년처럼", style = appFont(11f), color = Theme.muted)
         }
     }
@@ -519,7 +519,7 @@ private fun Table(m: AppModel, fs: Map<Lens, AppModel.Forecast>, now: Double, ad
     Card {
         T("세 가지 미래", style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisView.swift:415
         // ios: Views/AnalysisView.swift:416,417,418,419,420,422
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             T("", Modifier.weight(1f), style = appFont(11f), color = Theme.muted)
             T("보통", Modifier.width(70.dp), style = appFont(11f).copy(textAlign = TextAlign.End), color = Theme.muted)
             T("나쁘면", Modifier.width(58.dp), style = appFont(11f).copy(textAlign = TextAlign.End), color = Theme.muted)

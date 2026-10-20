@@ -58,9 +58,8 @@ import com.naeilo.app.core.calc.keyName
 import com.naeilo.app.core.calc.keyValue
 import com.naeilo.app.core.calc.trackValue
 import com.naeilo.app.net.Market
-import com.naeilo.app.pending.MarketEvents
+import com.naeilo.app.data.MarketEvents
 import com.naeilo.app.pending.notifierRequest
-import com.naeilo.app.pending.rateUpcoming
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.FitText
@@ -430,7 +429,7 @@ private fun RateMain(m: AppModel, file: MacroData.File, M: MacroData.File.Meals,
                     T("직접 정하기", Modifier.weight(1f), style = appFont(15f, FontWeight.Bold), color = Theme.ink); Sym(if (open) "chevron.up" else "chevron.down", 17f, Theme.ink)   // ios: Views/AnalysisDetail.swift:1572
                 }
                 if (open) {   // ios: Views/AnalysisDetail.swift:1575
-                    Row(Modifier.fillMaxWidth()) { T("1년 뒤 10년물", Modifier.weight(1f), style = appFont(14f)); T(RateScenarioView.signed(d, "%p", 1), style = appFont(15f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1576
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("1년 뒤 10년물", Modifier.weight(1f), style = appFont(14f)); T(RateScenarioView.signed(d, "%p", 1), style = appFont(15f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1576
                     IosSlider(value = d, onChange = { setCustom(it); setPick(-1) }, range = -2.0..3.0, step = 0.1,   // ios: Views/AnalysisDetail.swift:1577
                         tint = Theme.orange, modifier = Modifier.semantics { contentDescription = "앞으로 1년 10년물 금리 변화" })   // ios: Views/AnalysisDetail.swift:1578
                     val c = macro.change1y; if (c != null) {   // ios: Views/AnalysisDetail.swift:1579
@@ -483,7 +482,7 @@ private fun WeakCard(m: AppModel, list: List<WeakItem>) {
                 val tier = if (list.size < 2) 1 else (if (t < 1.0 / 3) 0 else if (t > 2.0 / 3) 2 else 1)   // ios: Views/AnalysisDetail.swift:1624
                 val col = if (tier == 0) Theme.orange else if (tier == 1) Theme.muted else Theme.teal   // ios: Views/AnalysisDetail.swift:1625
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/AnalysisDetail.swift:1626
-                    Row(Modifier.fillMaxWidth()) {   // ios: Views/AnalysisDetail.swift:1627
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:1627
                         T(e.r.sym.name, Modifier.weight(1f), style = appFont(14f, FontWeight.Bold), maxLines = 1)   // ios: Views/AnalysisDetail.swift:1628
                         Spacer(Modifier.width(8.dp))   // ios: Views/AnalysisDetail.swift:1629
                         T(listOf("크게", "보통", "덜")[tier], style = appFont(12f, FontWeight.Bold), color = col)   // ios: Views/AnalysisDetail.swift:1630
@@ -521,7 +520,7 @@ private fun Bar(k: String, p: Double, c: Color) {
 // ios: Views/AnalysisDetail.swift:1689
 @Composable
 private fun InfoRow(k: String, v: String) {
-    Row(Modifier.fillMaxWidth()) { T(k, Modifier.weight(1f), style = appFont(13f), color = Theme.sub); T(v, style = appFont(14f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1690
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T(k, Modifier.weight(1f), style = appFont(13f), color = Theme.sub); T(v, style = appFont(14f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1690
 }
 
 // ios: Views/AnalysisDetail.swift:1693
@@ -586,7 +585,7 @@ internal fun lv(v: Double): String = cformat("%.0f", 100 * exp(v / 100))   // io
 private fun TableRow(k: String, a: String, b: String, c: String, e: String, head: Boolean = false) {
     val st = appFont(12f, if (head) FontWeight.Normal else FontWeight.SemiBold).copy(fontFeatureSettings = "tnum"); val col = if (head) Theme.sub else Theme.ink   // ios: Views/AnalysisDetail.swift:1770
     @Composable fun Cell(t: String, md: Modifier, s: TextStyle = st) = FitText(t, s, 0.7f, md, maxLines = 1, color = col)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {   // ios: Views/AnalysisDetail.swift:1763
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/AnalysisDetail.swift:1763
         Cell(k, Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:1764
         Box(Modifier.width(58.dp), contentAlignment = Alignment.CenterEnd) { Cell(a, Modifier) }   // ios: Views/AnalysisDetail.swift:1765
         Box(Modifier.width(58.dp), contentAlignment = Alignment.CenterEnd) { Cell(b, Modifier, st.copy(fontWeight = if (head) FontWeight.Normal else FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1766

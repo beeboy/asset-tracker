@@ -48,3 +48,19 @@ SF 의 `.fill` 은 채움(FILL 1) 모양으로. 코드에서는 `Sym(R.drawable.
 | `info.circle` | `info` | - | 종목 한눈에 안내 |
 | `bell` | `notifications` | - | 외부 요인 결과 알림 |
 | `bell.fill` | `notifications` | 채움 | 외부 요인 결과 알림 켬 |
+| `clock` | `schedule` | - | 미션 판 예보 마감 |
+| `sun.max.fill` | `sunny` | 채움 | 미션 판 주간 예보 |
+| `circle` | `radio_button_unchecked` | - | 미션 판 할 일 |
+| `sparkles` | `auto_awesome` | - | 소식 분류 달성·배지 |
+| `hourglass` | `hourglass_empty` | - | 소식 분류 진행 중 |
+| `newspaper` | `newspaper` | - | 소식 분류 증시 요약 |
+| `gift` | `redeem` | - | 소식 분류 새 소식 |
+| `star.fill` | `star` | 채움 | 맞혀보기 배지 |
+| `medal.fill` | `military_tech` | 채움 | 맞혀보기 배지 |
+| `trophy.fill` | `trophy` | 채움 | 맞혀보기 배지 |
+| `crown.fill` | `workspace_premium` | 채움 | 맞혀보기 배지 |
+| `square.grid.3x3.fill` | `grid_on` | - | 블록 게임 단추 |
+| `water.waves` | `waves` | - | 파도 게임 단추 |
+| `gamecontroller` | `sports_esports` | - | 게임 단추 |
+| `nosign` | `block` | - | 내 캐릭터 부품 없음 |
+| `arrow.counterclockwise` | `replay` | - | 내 캐릭터 처음으로 |

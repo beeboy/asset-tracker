@@ -19,12 +19,11 @@ import com.naeilo.app.ui.Theme
 // 진짜 이식이 오면 그 단계에서 이 파일의 해당 줄을 지운다. Route·GoalWeek 는 저장(Progress) JSON 에 들어가므로 경우 이름은 iOS 와 같게 둔다.
 
 
-// TODO(Mission3ResultView): 진짜 이식 때 지움
-object Mission3ResultView { fun pp(d: Double): String = "" }
 // TODO(Support): 진짜 이식 때 지움 (구독 단계)
 enum class SubPlan { monthly, yearly; val nameText: String get() = if (this == monthly) "월 구독" else "연 구독" }
 class Support {
     val dayN: Int = 1; val testBuild: Boolean = false; val jws: String? = null
+    val dev: Boolean = false   // TODO(Support): 개발자 빌드
     val plan: SubPlan? = null; val inTrial: Boolean get() = dayN <= 7; val trialLeft: Int get() = maxOf(0, 7 - dayN + 1)
     val pro: Boolean get() = plan != null || inTrial
     fun start() {}; fun tick() {}
@@ -34,29 +33,6 @@ class Support {
 class Story { enum class Kind { side }; fun isDone(k: Kind, i: Int): Boolean = false; companion object { val shared = Story() } }
 // TODO(Lines): 진짜 이식 때 지움
 object Lines { fun pick(key: String, vars: Map<String, String> = emptyMap()): String? = null }
-// TODO(Remind): 진짜 이식 때 지움 (홈 리마인드 Data/Remind.swift·Views/RemindViews.swift: 단계 미정)
-enum class RemindCat(val label: String) { done("달성"), doing("진행 중"), event("일정"), market("증시 요약"), analysis("분석"), news("설정·새 소식") }
-// TODO(Remind)
-val RemindCat.color: Color @Composable get() = when (this) { RemindCat.done -> Theme.green; RemindCat.doing -> Theme.purple; RemindCat.event -> Theme.orange; RemindCat.market, RemindCat.analysis -> Theme.blue; RemindCat.news -> Theme.teal }
-// TODO(Remind)
-sealed class RemindGo { object nowhere : RemindGo() }
-// TODO(Remind)
-class RemindItem(val id: String, val cat: RemindCat, val text: String, val go: RemindGo = RemindGo.nowhere, val day: String? = null, val sub: String? = null)
-// TODO(Remind)
-class Remind {
-    class Week(val lo: Double, val hi: Double, val pos: String?)
-    class Log(val weeks: Map<String, Week>, val guessHits: Int?)
-    val log = Log(emptyMap(), null)
-    val items: List<RemindItem> = emptyList(); val fresh: List<RemindItem> = emptyList(); val doing: List<RemindItem> = emptyList()
-    val strip: RemindItem? = null; val bubble: RemindItem? = null
-    fun isOn(c: RemindCat): Boolean = true
-    fun nextBubble() {}; fun markAllSeen() {}; fun refresh(m: AppModel) {}
-    companion object {
-        val shared = Remind()
-        fun week(at: Instant): String = ""
-        fun endedWeeks(w: Map<String, Week>): List<String> = emptyList()
-    }
-}
 // TODO(Story): 진짜 이식 때 지움. 원고 장은 받은 JSON 그대로 둔다 (StoreAPI.Book)
 typealias StoryChapter = JsonElement
 // TODO(Story): 진짜 이식 때 지움. 경우 이름 = iOS rawValue
@@ -74,39 +50,14 @@ class TownBook { fun reload() {}; companion object { val shared = TownBook() } }
 // TODO(TownLog): 진짜 이식 때 지움
 class TownLog { fun reload() {}; companion object { val shared = TownLog() } }
 
-// TODO(Remind): 소식을 누르면 그 화면으로 (Data/Remind.swift AppModel.go)
-fun AppModel.go(g: RemindGo) {}
-// TODO(Remind): "내일", "10/22 (D-11)"
-object MarketEvents {
-    fun `when`(day: String): String = day
-    class Hit(val id: String, val target: String, val day: String, val kind: String, val sub: String, val held: Boolean)
-    fun upcoming(held: List<String>, days: Int): List<Hit> = emptyList()
-    fun isRate(id: String): Boolean = id == "x_fomc" || id == "x_bok"
-}
-// TODO(RemindViews): 소식함 시트·리마인드 설정
-@Composable fun RemindSheet() {}
-// TODO(RemindViews)
-@Composable fun RemindOptions() {}
 
-// TODO(MeViews 인물 단계): 기본 인물은 spr_/sil_ 그림 (진짜와 같음), 내 캐릭터는 아직 빈 칸
-@Composable fun CharPixel(id: String, width: Dp, height: Dp, modifier: Modifier = Modifier, sil: Boolean = false) {
-    if (id == "me") Box(modifier.size(width, height)) else PixelN((if (sil) "sil_" else "spr_") + id, width, height, modifier)
-}
-// TODO(MeViews 인물 단계)
-@Composable fun MeAvatar(me: MeChar, width: Dp, height: Dp, modifier: Modifier = Modifier) { Box(modifier.size(width, height)) }
 
 // TODO(홈에서 여는 다른 단계 화면): 쉼터·평행세계·목표 정하기·서재·내 캐릭터·인물 상세
 @Composable fun ShelterView(onlyLibrary: Boolean = false) {}
-// TODO(GoalViews)
-@Composable fun GoalSetView(fromSettings: Boolean = false) {}
 // TODO(Reader)
 @Composable fun ReaderView(index: Int, book: StoryBook = StoryBook.side) {}
-// TODO(MeViews)
-@Composable fun MeEditView() {}
 // TODO(CharacterDetail)
 @Composable fun CharacterDetailView(friend: Friend, invest: Boolean, focus: Int?) {}
-// TODO(MissionViews): 회복 루트 매달 더 넣기 카드
-@Composable fun DepositLeverCard(plan: Any?) {}
 // TODO(SupportView 구독 단계)
 @Composable fun SupportView() {}
 
@@ -172,15 +123,12 @@ val LocalCharHide = androidx.compose.runtime.compositionLocalOf { false }
 @Composable fun TownButton() {}
 // TODO(CalmView 습관 H)
 @Composable fun CalmView() {}
-// TODO(MeViews 인물 I): 인물 얼굴 동그라미
-@Composable fun CharHead(id: String, size: Dp) { Box(Modifier.size(size)) }
 // TODO(SupportView 구독): 구독하면 열리는 화면
 @Composable fun SubLocked(what: String) {}
 
 // TODO(I 쉼터): 인물 그림 뒤 바탕색 (Shelter.swift spriteBacking)
 @Composable fun com.naeilo.app.data.Shelter.spriteBacking(@Suppress("UNUSED_PARAMETER") id: String): androidx.compose.ui.graphics.Color = com.naeilo.app.ui.Theme.line
-// TODO(I 쉼터): 내 캐릭터·사건 컷 그림이 있는지 (MeViews MeArt.has)
-object MeArt { fun has(@Suppress("UNUSED_PARAMETER") name: String): Boolean = false }
+
 
 
 
@@ -198,8 +146,6 @@ object EventRetro {
     suspend fun ask(id: String, kind: String, day: String, on: Boolean) {}
 }
 
-// TODO(Data/Remind.swift MarketEvents.rateUpcoming): 오늘부터 days 일 안의 금리 결정 일정 (FOMC·한국은행), 날짜순
-fun MarketEvents.rateUpcoming(days: Int): List<MarketEvents.Hit> = emptyList()
 
 // TODO(Data/Notifier.swift Notifier.request): 알림 허락 결과 (Swift 는 Bool 을 돌려준다. Pending.kt 의 Notifier.request 는 아직 Unit)
 suspend fun notifierRequest(): Boolean { Notifier.request(); return false }

@@ -62,7 +62,7 @@ import com.naeilo.app.data.friendName
 import com.naeilo.app.pending.BoardCharView
 import com.naeilo.app.pending.CharBG
 import com.naeilo.app.pending.CharEntry
-import com.naeilo.app.pending.CharPixel
+import com.naeilo.app.ui.me.CharPixel
 import com.naeilo.app.pending.LocalCharDark
 import com.naeilo.app.pending.LocalCharHide
 import com.naeilo.app.pending.GardenCharView

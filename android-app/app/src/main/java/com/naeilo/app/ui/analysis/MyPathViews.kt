@@ -258,7 +258,7 @@ fun MyPathClassicView(m: AppModel) {
                     }
                 }
                 // ios: Views/AnalysisDetail.swift:304
-                Row(Modifier.fillMaxWidth()) { val st = appFont(11f); T("시작 ${m.pathStartMonth}", Modifier.weight(1f), style = st, color = Theme.muted); T(if (view == "past") "다음 달" else if (m.isGoal) "목표일 ${m.goalToText}" else "1년 뒤", style = st, color = Theme.muted) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { val st = appFont(11f); T("시작 ${m.pathStartMonth}", Modifier.weight(1f), style = st, color = Theme.muted); T(if (view == "past") "다음 달" else if (m.isGoal) "목표일 ${m.goalToText}" else "1년 뒤", style = st, color = Theme.muted) }
                 ChipRow(listOf("past" to "시작부터", "all" to "목표일까지", "band" to "보통 범위 겹치기"), selection = view, onSelect = { picked = it }, fill = true)   // ios: Views/AnalysisDetail.swift:305
             }
         }) {   // ios: Views/AnalysisDetail.swift:307
@@ -422,7 +422,7 @@ fun MyPathGoalView(m: AppModel) {
                 }
                 val st12 = appFont(12f, FontWeight.SemiBold); val fg85 = Color.White.copy(alpha = 0.85f)   // ios: Views/AnalysisDetail.swift:451
                 // ios: Views/AnalysisDetail.swift:448,449
-                Row(Modifier.fillMaxWidth()) { T(AppModel.eok(now), Modifier.weight(1f), style = st12, color = fg85); T(AppModel.eok(K), style = st12, color = fg85) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T(AppModel.eok(now), Modifier.weight(1f), style = st12, color = fg85); T(AppModel.eok(K), style = st12, color = fg85) }
                 // ios: Views/AnalysisDetail.swift:452
                 Row(Modifier.fillMaxWidth()) {
                     T("지금대로면 ${AppModel.whenText(mine.etaMonths, cap = mine.capYears)} 도달", Modifier.weight(1f).padding(end = 8.dp).alignByBaseline(), style = appFont(13f), color = Color.White.copy(alpha = 0.9f))   // ios: Views/AnalysisDetail.swift:453,454,455
@@ -488,12 +488,12 @@ fun MyPathGoalView(m: AppModel) {
                 }
                 val st11 = appFont(11f)   // ios: Views/AnalysisDetail.swift:517
                 // ios: Views/AnalysisDetail.swift:513
-                Row(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     T(m.pathStartMonth, Modifier.weight(1f), style = st11, color = Theme.muted)   // ios: Views/AnalysisDetail.swift:514
                     T(if (toGoal) "${gc.year}.${gc.monthValue}" else "다음 달", style = st11, color = Theme.muted)   // ios: Views/AnalysisDetail.swift:515
                 }
                 // ios: Views/AnalysisDetail.swift:518
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     legend(teal, "실제"); legend(purple, "계획")   // ios: Views/AnalysisDetail.swift:519
                     if (toGoal) legend(teal.copy(alpha = 0.3f), "보통 범위")   // ios: Views/AnalysisDetail.swift:520
                 }
@@ -753,7 +753,7 @@ fun MyPathCompareView(m: AppModel) {
                 BoxWithConstraints(Modifier.fillMaxWidth().height(12.dp).clip(CapsuleShape)) {
                     val bw = maxWidth
                     // ios: Views/AnalysisDetail.swift:690,695
-                    Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(0.dp), verticalAlignment = Alignment.CenterVertically) {
                         // ios: Views/AnalysisDetail.swift:691
                         order.indices.forEach { i ->
                             key(order[i]) {

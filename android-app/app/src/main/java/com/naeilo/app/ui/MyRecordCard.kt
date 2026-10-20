@@ -48,7 +48,7 @@ fun MyRecordCard(m: AppModel) {
             if (D.size >= 2) {
                 RecordLines(v = D.map { it.v }, c = D.map { it.c }, Modifier.fillMaxWidth().height(110.dp))   // ios: Views/MyRecordCard.swift:20
                 // ios: Views/MyRecordCard.swift:21
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Legend("평가액", Theme.teal, dash = false)   // ios: Views/MyRecordCard.swift:22
                     Legend("넣은 돈", Theme.muted, dash = true)   // ios: Views/MyRecordCard.swift:23
                 }

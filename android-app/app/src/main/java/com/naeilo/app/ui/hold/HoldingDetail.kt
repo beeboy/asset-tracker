@@ -576,7 +576,7 @@ fun HoldingEditView(m: AppModel,
         // ios: Views/HoldingsView.swift:658,674
         Column(Modifier.fillMaxWidth().background(Theme.card).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // ios: Views/HoldingsView.swift:659,661
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {   // Spacer() 의 최소 간격 8
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {   // Spacer() 의 최소 간격 8
                 T("저장하면 이렇게 바뀌어요", Modifier.weight(1f), style = appFont(14f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:660
                 T("${sym.id} · 지금 ${AppModel.price(sym, px)}", style = appFont(12f), color = Theme.sub)   // ios: Views/HoldingsView.swift:662
             }
