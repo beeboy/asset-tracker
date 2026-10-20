@@ -318,14 +318,22 @@ struct TownButton<Town: View>: View {
     @AppStorage("town.arrive") private var arrive = ""
     @State private var show = false
     var body: some View {
+        // 홈 리마인드 노란 띠(HomeView.stripRow)와 같은 모양: 노란 꼬리표 + 한 줄 + ›
         Button { show = true } label: {
-            Label("동네 한 바퀴", systemImage: "house.fill")
-                .appFont(14, .bold).lineLimit(1).frame(maxWidth: .infinity, minHeight: 44)
-                .foregroundStyle(Theme.ink)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1.5))
+            HStack(spacing: 8) {
+                Text("동네 한 바퀴").appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(Theme.yellow, in: Capsule())
+                Text("내 종목 CEO가 한 자리에").appFont(13).lineLimit(2).multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").appFont(11).foregroundStyle(Theme.muted)
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 12).frame(minHeight: 44)
+            .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("동네 한 바퀴: 내 종목 CEO가 한 자리에")
         .onAppear { if !arrive.isEmpty { show = true } }
         .onChange(of: arrive) { if !$1.isEmpty { show = true } }
         .fullScreenCover(isPresented: $show) {
