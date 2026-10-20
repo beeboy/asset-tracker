@@ -310,8 +310,8 @@ struct GoalCellsCard: View {
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
             HStack(spacing: 8) {
                 ShareCardButton(plain: true)
-                BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: "블록", icon: "square.grid.3x3.fill", plain: true)
-                WaveGameButton(plain: true)
+                BrickGameButton(filled: nV, floor: nMine, yesterday: nY, title: "블록", icon: "square.grid.3x3.fill", plain: true).labelStyle(TightLabel())
+                WaveGameButton(plain: true).labelStyle(TightLabel())
             }
         }
     }

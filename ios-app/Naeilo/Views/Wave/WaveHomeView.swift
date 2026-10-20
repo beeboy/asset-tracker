@@ -344,3 +344,10 @@ struct TownButton<Town: View>: View {
         }
     }
 }
+
+/// 아이콘과 글자를 기본보다 붙인 라벨 (미션 탭 [블록][파도])
+struct TightLabel: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 3) { configuration.icon; configuration.title }
+    }
+}
