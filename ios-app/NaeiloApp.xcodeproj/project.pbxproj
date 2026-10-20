@@ -98,6 +98,8 @@
 		E1F2A3B4C5D6E7F8091A2B01 /* TownPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F2A3B4C5D6E7F8091A2B02 /* TownPanel.swift */; };
 		CD0713B84C32526597218283 /* HoldingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B93F44AA00A552A3868A92 /* HoldingsView.swift */; };
 		5C10E7A1B2C3D4E5F6A7B801 /* SurfCloset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C10E7A1B2C3D4E5F6A7B802 /* SurfCloset.swift */; };
+		7D20A1B2C3D4E5F6A7B8C9A1 /* WavePlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D20A1B2C3D4E5F6A7B8C9A2 /* WavePlayView.swift */; };
+		7D20A1B2C3D4E5F6A7B8C9B1 /* WaveResultPopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D20A1B2C3D4E5F6A7B8C9B2 /* WaveResultPopup.swift */; };
 		5C10E7A1B2C3D4E5F6A7C901 /* WaveHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C10E7A1B2C3D4E5F6A7C902 /* WaveHomeView.swift */; };
 		5C10E7A1B2C3D4E5F6A7B9F1 /* WaveFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C10E7A1B2C3D4E5F6A7B9F2 /* WaveFeedback.swift */; };
 		A7C3D2E1F0B9A8C7D6E5F401 /* CharMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C3D2E1F0B9A8C7D6E5F402 /* CharMotion.swift */; };
@@ -209,6 +211,8 @@
 		BE199ACA459A1DB92E4427A3 /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
 		BF7DFE9A58B7B9416B105E91 /* HomeWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgets.swift; sourceTree = "<group>"; };
 		5C10E7A1B2C3D4E5F6A7B802 /* SurfCloset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/SurfCloset.swift; sourceTree = "<group>"; };
+		7D20A1B2C3D4E5F6A7B8C9A2 /* WavePlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/WavePlayView.swift; sourceTree = "<group>"; };
+		7D20A1B2C3D4E5F6A7B8C9B2 /* WaveResultPopup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/WaveResultPopup.swift; sourceTree = "<group>"; };
 		5C10E7A1B2C3D4E5F6A7C902 /* WaveHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/WaveHomeView.swift; sourceTree = "<group>"; };
 		5C10E7A1B2C3D4E5F6A7B9F2 /* WaveFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wave/WaveFeedback.swift; sourceTree = "<group>"; };
 		A7C3D2E1F0B9A8C7D6E5F402 /* CharMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharMotion.swift; sourceTree = "<group>"; };
@@ -351,6 +355,8 @@
 				FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */,
 				A7C3D2E1F0B9A8C7D6E5F402 /* CharMotion.swift */,
 				5C10E7A1B2C3D4E5F6A7B802 /* SurfCloset.swift */,
+				7D20A1B2C3D4E5F6A7B8C9A2 /* WavePlayView.swift */,
+				7D20A1B2C3D4E5F6A7B8C9B2 /* WaveResultPopup.swift */,
 				5C10E7A1B2C3D4E5F6A7C902 /* WaveHomeView.swift */,
 				5C10E7A1B2C3D4E5F6A7B9F2 /* WaveFeedback.swift */,
 				C1B93F44AA00A552A3868A92 /* HoldingsView.swift */,
@@ -639,6 +645,8 @@
 				BA2E9CDCDF9F7655E0E98F6A /* Guide.swift in Sources */,
 				A7C3D2E1F0B9A8C7D6E5F401 /* CharMotion.swift in Sources */,
 				5C10E7A1B2C3D4E5F6A7B801 /* SurfCloset.swift in Sources */,
+				7D20A1B2C3D4E5F6A7B8C9A1 /* WavePlayView.swift in Sources */,
+				7D20A1B2C3D4E5F6A7B8C9B1 /* WaveResultPopup.swift in Sources */,
 				5C10E7A1B2C3D4E5F6A7C901 /* WaveHomeView.swift in Sources */,
 				5C10E7A1B2C3D4E5F6A7B9F1 /* WaveFeedback.swift in Sources */,
 				CD0713B84C32526597218283 /* HoldingsView.swift in Sources */,

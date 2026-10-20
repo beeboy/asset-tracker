@@ -27,10 +27,63 @@ struct CharScene: Hashable {
     var lift = false
     /// 머리 위 빈 2줄: 들썩여도 머리 윗줄·테두리가 잘리지 않게 (SceneSprite 로 그리면 틀 위로 넘친다)
     var room = false
+    /// 파도 타기 포즈 (기본은 그대로)
+    var pose: CharPose = .none
     /// k 번째 칸: 걸을 땐 서기·왼발·서기·오른발, 서 있을 땐 숨 두 장
     static func at(_ k: Int, dir: CharDir, walking: Bool) -> CharScene {
         walking ? CharScene(dir: dir, leg: [0, 1, 0, 2][k % 4], lift: k % 2 == 1, room: true)
                 : CharScene(dir: dir, leg: 0, lift: k % 2 == 1, room: true)
+    }
+}
+
+/// 파도 타기 포즈: 정면 버퍼(테두리 전)에서 눈·팔·다리만 몇 칸 바꾼다. 새 그림 없음
+enum CharPose: Int, Hashable {
+    /// crouch 무릎 굽힘 · cheer 팔 벌리고 ^^ · dizzy 눈 ×× · yawn 보드에 앉아 하품
+    case none, crouch, cheer, dizzy, yawn
+    /// 다리를 접은 줄 수 (모자·왕관을 같이 내린다)
+    var sink: Int { self == .crouch ? 2 : self == .yawn ? 4 : 0 }
+
+    static func apply(_ pose: CharPose, _ p: inout [UInt32], _ w: Int, _ h: Int, skin: UInt32, legTop: Int) {
+        let ink = PixBuf.rgb(MeArt.outline), sk = PixBuf.rgb(skin)
+        func put(_ x: Int, _ y: Int, _ c: UInt32) { if x >= 0, x < w, y >= 0, y < h { p[y * w + x] = c } }
+        /// 눈 두 개를 피부로 지우고 가운데 자리를 돌려준다 (새 눈은 거기 그린다)
+        func eyes() -> [(Int, Int)] {
+            var cs: [(Int, Int)] = []
+            for xs in [6..<12, 12..<19] {
+                var pts: [(Int, Int)] = []
+                for y in 8...12 { for x in xs where PixBuf.on(p[y * w + x]) && PixBuf.luma(p[y * w + x]) < 70 { pts.append((x, y)) } }
+                guard !pts.isEmpty else { continue }
+                let x0 = pts.map(\.0).min()!, x1 = pts.map(\.0).max()!, y0 = pts.map(\.1).min()!, y1 = pts.map(\.1).max()!
+                for y in y0...y1 { for x in x0...x1 where PixBuf.on(p[y * w + x]) { p[y * w + x] = sk } }
+                cs.append(((x0 + x1) / 2, (y0 + y1 + 1) / 2))
+            }
+            return cs
+        }
+        /// 다리 n줄을 접어 몸을 n줄 내린다
+        func fold(_ n: Int) {
+            let r = legTop + 1
+            for y in stride(from: r + n - 1, through: n, by: -1) { for x in 0..<w { p[y * w + x] = p[(y - n) * w + x] } }
+            for i in 0..<(n * w) { p[i] = 0 }
+        }
+        switch pose {
+        case .none: return
+        case .crouch: fold(2)
+        case .cheer:
+            for (x, y) in eyes() { put(x - 1, y, ink); put(x, y - 1, ink); put(x + 1, y, ink) }
+            // 팔: 어깨에서 바깥 위로 세 칸 + 손
+            let y = 17, xs = (0..<w).filter { PixBuf.on(p[y * w + $0]) }
+            if let l = xs.first, let r = xs.last {
+                let shirt = p[y * w + l]
+                for k in 1...3 { put(l - k, y - k, k < 3 ? shirt : sk); put(r + k, y - k, k < 3 ? shirt : sk) }
+                put(l - 3, y - 4, sk); put(r + 3, y - 4, sk)
+            }
+        case .dizzy:
+            for (x, y) in eyes() { for d in -1...1 { put(x + d, y + d, ink); put(x + d, y - d, ink) } }
+        case .yawn:
+            for (x, y) in eyes() { for d in -1...1 { put(x + d, y, ink) } }
+            for x in 11...12 where PixBuf.on(p[13 * w + x]) { p[13 * w + x] = PixBuf.rgb(0x9A3B3B) }
+            fold(4)
+        }
     }
 }
 
@@ -186,6 +239,7 @@ enum MeMotion {
                 if dots.count >= 3 && !white, let i = dots.first { p[i] = PixBuf.rgb(0xF8F9FA) }
             }
         }
+        if f.pose != .none { CharPose.apply(f.pose, &p, w, h, skin: skin, legTop: legTop) }
         PixBuf.shade(&p, w, h, legTop: legTop)
         PixBuf.legs(&p, w, h, f.leg, top: legTop, split: w / 2)
         let top = f.room ? 2 : 0
