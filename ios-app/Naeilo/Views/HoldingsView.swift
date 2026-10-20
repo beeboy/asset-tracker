@@ -910,6 +910,7 @@ private extension View {
 struct TownView: View {
     @Environment(AppModel.self) private var m
     @AppStorage("town.bg") private var bg = 0          // 동네 배경 (TownGround.names)
+    @Environment(\.colorScheme) private var scheme
     @AppStorage("town.arrive") private var arrive = ""
     @State private var talk: TownLook.Resident? = nil
     @State private var dress: TownLook.Resident? = nil
@@ -973,6 +974,7 @@ struct TownView: View {
             ZStack {
                 Group {
                     if bg == 0 { ground(g.size) } else { TownGround(kind: bg, season: TownLook.season()) }
+                    if scheme == .dark { Color.black.opacity(0.35) }   // 다크 모드: 배경만 어둡게 (주민은 그 위)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 18))
                     // 배경을 누르면 키보드를 내리고 대사창도 닫는다 (쓰던 답은 '그만'처럼)
