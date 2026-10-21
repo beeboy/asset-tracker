@@ -8,6 +8,8 @@ plugins {
 // 위젯 + 앱·위젯 공용 (아이폰 WidgetShared·Widgets 자리). 앱 모듈이 이 모듈을 쓴다
 // 공용 모델·저장·시세(core/)는 위젯도 읽어야 해서 이 모듈에 둔다 (패키지는 com.naeilo.app.core 그대로)
 android {
+    // 출시판 빌드마다 도는 lint 검사(빌드 시간의 대부분)를 끈다. 필요하면 ./gradlew lint 로 따로 돌린다
+    lint { checkReleaseBuilds = false }
     namespace = "com.naeilo.widget"
     compileSdk = 35
     defaultConfig { minSdk = 26 }
