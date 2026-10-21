@@ -506,7 +506,7 @@ internal fun okAtText(t: Double, todayFmt: String, otherFmt: String): String {
 fun TossKeyView(m: AppModel) {
     var id by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:333
     var secret by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:334
-    var ip by remember { mutableStateOf<String?>(null) }   // ios: Views/SettingsView.swift:335
+    var ip by remember { mutableStateOf<String?>(Config.tossRelayIP) }   // ios: Views/SettingsView.swift:335 (고정 IP 를 바로 보여 준다: 받기 실패해도 빈칸 없음)
     var busy by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:336
     var msg by remember { mutableStateOf<String?>(null) }   // ios: Views/SettingsView.swift:337
     var on by remember { mutableStateOf(TossKeys.on) }   // ios: Views/SettingsView.swift:338
@@ -566,7 +566,7 @@ fun TossKeyView(m: AppModel) {
     }
 
     // ios: Views/SettingsView.swift:367
-    LaunchedEffect(Unit) { ip = TossKeys.relayIP() }
+    LaunchedEffect(Unit) { TossKeys.relayIP()?.let { ip = it } }
     // ios: Views/SettingsView.swift:357,363,365,366,358
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         T("오픈 API", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:359

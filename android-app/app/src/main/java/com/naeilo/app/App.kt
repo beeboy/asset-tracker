@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -159,7 +161,9 @@ fun RootView(model: AppModel) {
     Box(Modifier.fillMaxSize().background(Theme.bg)) {
         Column(Modifier.fillMaxSize()) {
             // ios: App.swift:31
-            TabHost(model.tab, Modifier.weight(1f).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) { t ->
+            // 키보드가 뜨면 탭 막대(49)·내비게이션 막대 위로 넘친 만큼만 화면을 줄인다 (입력칸이 키보드에 가리지 않게. 배치 단계에서만 읽어 다시 그리지 않음)
+            TabHost(model.tab, Modifier.weight(1f).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars).exclude(WindowInsets(bottom = 49.dp)).only(WindowInsetsSides.Bottom))) { t ->
                 // 종목·분석·미션 탭 안 화면은 다음 단계에서 채운다 (지금은 머리글만 있는 빈 자리)
                 when (t) {
                     Tab.home -> NavStack(model.homePath, { model.homePath = it }, { HomeView(model) }) { homePage(model, it) }       // ios: App.swift:32 (HomeView·homePath)

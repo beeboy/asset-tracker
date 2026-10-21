@@ -24,6 +24,8 @@ object Config {
     /** 토스증권 공용 중계 (고정 IP 서버, proxy/toss_relay.py). 사용자는 이 서버 IP 를 토스 허용 IP 로 등록한다 */
     // ios: WidgetShared/Config.swift:9
     const val tossRelay = "https://toss.naeilo.com"
+    /** 공용 중계 서버의 고정 IP (Lightsail 고정 IPv4). 화면에 바로 보이고, /api/toss/ip 로 받은 값이 다르면 그 값으로 바꾼다 */
+    const val tossRelayIP = "3.36.161.165"
 
     /** 배포 단계. 내부 베타까지만 사이트가 Yahoo 에서 모은 시세·종가·환율·계산 자료를 쓴다 (2026-10-15 결정).
      *  공개 베타·출시 빌드는 이 값을 바꾸고, 사용자 본인 키로 받은 시세와 가상 샘플만 쓴다 (아직 구현 안 함) */

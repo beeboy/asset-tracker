@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -312,7 +313,8 @@ fun Sheet(show: Boolean, onDismiss: () -> Unit, medium: Boolean = false, content
     Dialog(onDismiss, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val y = remember { Animatable(1f) }
         LaunchedEffect(Unit) { y.animateTo(0f, spring(dampingRatio = 1f, stiffness = stiffness(0.5f))) }
-        Box(Modifier.fillMaxSize().background(Color(0x66000000)).clickable(remember { MutableInteractionSource() }, indication = null, onClick = onDismiss), contentAlignment = Alignment.BottomCenter) {
+        // 키보드가 뜨면 판을 키보드 위로 올린다 (어두운 바탕은 그대로 전체, ime 를 먼저 써서 안쪽 safeDrawing 과 겹치지 않음)
+        Box(Modifier.fillMaxSize().background(Color(0x66000000)).clickable(remember { MutableInteractionSource() }, indication = null, onClick = onDismiss).windowInsetsPadding(WindowInsets.ime), contentAlignment = Alignment.BottomCenter) {
             Column(
                 Modifier.fillMaxWidth()
                     .then(if (medium) Modifier.fillMaxSize(0.5f) else Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(top = 10.dp).fillMaxSize())
