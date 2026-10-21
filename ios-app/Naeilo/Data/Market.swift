@@ -458,7 +458,8 @@ enum TossHistory {
                 // 404 가 중계 쪽(없는 경로)이면 종목 탓이 아니다: 막지 않고 이번엔 그만 (중계를 고치면 다음 갱신에 받는다)
                 if code == 404, ((o?["error"] as? [String: Any])?["code"] as? String) == "relay" { stop = true; break }
                 if code == 404 { miss[c] = now + 86400; break }
-                guard code == 200, let r = o?["result"] as? [String: Any] else { if e != nil || code == 429 || code == 401 || code == 403 { stop = true }; ok = false; break }
+                // 뒤쪽 쪽이 실패해도 앞에서 받은 날은 남긴다 (첫 쪽 실패만 못 받은 것)
+                guard code == 200, let r = o?["result"] as? [String: Any] else { if e != nil || code == 429 || code == 401 || code == 403 { stop = true }; if before == nil { ok = false }; break }
                 ok = true
                 var oldest = "9999"
                 for v in r["candles"] as? [[String: Any]] ?? [] {
@@ -468,7 +469,8 @@ enum TossHistory {
                         rows[d] = .init(o: o, h: max(h, o, cl), l: min(l, o, cl), c: cl, v: num(v["volume"]) ?? 0)
                     }
                 }
-                before = r["nextBefore"] as? String
+                // 토스는 1000분의 1초를 붙여 준다(…00.000+09:00). 중계는 초까지만 받으니 떼어 낸다
+                before = (r["nextBefore"] as? String)?.replacingOccurrences(of: #"\.\d+(?=Z|[+-]\d{2}:\d{2}$)"#, with: "", options: .regularExpression)
                 if before == nil || oldest <= from { break }
             }
             guard ok, !bars.isEmpty else { continue }
