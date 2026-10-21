@@ -54,9 +54,10 @@ struct FlowSeries {
         pivots = pivotSets[0]
         trends = zz.map { FlowCalc.trends($0, c.count) }
         levels = FlowCalc.levels(pivots, last: c.last ?? 0)
-        let pts = FlowCalc.patterns(candles, pivots), n = candles.count
+        var out = FlowCalc.patterns(candles, pivots)
         // 장중 오늘 캔들에 닿은 패턴은 아직 바뀔 수 있어 확정이 아니다 (마감 뒤 일봉으로 다시 정한다)
-        patterns = live ? pts.map { $0.to < n - 1 ? $0 : FlowPattern(id: $0.id, kind: $0.kind, from: $0.from, to: $0.to, price: $0.price, below: $0.below, strong: false) } : pts
+        if live { for j in out.indices where out[j].to >= candles.count - 1 { let p = out[j]; out[j] = FlowPattern(id: p.id, kind: p.kind, from: p.from, to: p.to, price: p.price, below: p.below, strong: false) } }
+        patterns = out
     }
 }
 
