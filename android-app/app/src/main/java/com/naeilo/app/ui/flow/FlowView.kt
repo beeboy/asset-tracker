@@ -135,7 +135,7 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                 }
                 LayerRow(layers) { layers = it }   // ios: Views/FlowView.swift:42
                 // ios: Views/FlowView.swift:43,62,63
-                Box(Modifier.fillMaxWidth().height(380.dp).background(Theme.card, RoundedCornerShape(16.dp))) {
+                Box(Modifier.fillMaxWidth().height(420.dp).background(Theme.card, RoundedCornerShape(16.dp))) {
                     val s = cur?.let { store.peek(it) }
                     if (cur != null && s != null) {   // ios: Views/FlowView.swift:44
                         // ios: Views/FlowView.swift:45,46 (.id(sel): 종목이 바뀌면 확대·밀기 상태를 새로)
@@ -332,7 +332,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
     var end by remember { mutableStateOf<Int?>(null) }      // 맨 오른쪽 날 (null = 마지막 날)   // ios: Views/FlowView.swift:252
     var pinchBase by remember { mutableStateOf<Int?>(null) }   // ios: Views/FlowView.swift:253
     var dragBase by remember { mutableStateOf<Int?>(null) }   // ios: Views/FlowView.swift:254
-    val axisW = 46f; val bandH = 27f; val topH = 56f; val botH = 20f   // ios: Views/FlowView.swift:256
+    val axisW = 46f; val bandH = 36f; val topH = 68f; val botH = 20f   // ios: Views/FlowView.swift:256
     val haptic = LocalHapticFeedback.current
     val dens = LocalDensity.current.density
     // 겹 투명도: 켜고 끌 때 0.2초에 걸쳐 (자리는 그대로)
@@ -348,7 +348,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
         val cnt = max(20, min(n, count))   // ios: Views/FlowView.swift:261
         val hi = max(cnt - 1, min(n - 1, end ?: (n - 1))); val lo = hi - cnt + 1   // ios: Views/FlowView.swift:262
         val step = if (cnt <= 200) 1 else if (cnt <= 600) 5 else 21   // ios: Views/FlowView.swift:263
-        val fullH = maxHeight.value; val W = maxWidth.value - axisW; val top = topH + bandH + 6; val H = fullH - top - botH   // ios: Views/FlowView.swift:264
+        val fullH = maxHeight.value; val W = maxWidth.value - axisW; val top = topH + bandH + 12; val H = fullH - top - botH   // ios: Views/FlowView.swift:264
         var pMin = Double.MAX_VALUE; var pMax = -Double.MAX_VALUE; for (i in lo..hi) { pMin = min(pMin, k[i].l); pMax = max(pMax, k[i].h) }   // ios: Views/FlowView.swift:265
         if (pMin > pMax) { pMin = 0.0; pMax = 1.0 }   // ios: Views/FlowView.swift:266
         val pad = (pMax - pMin) * 0.08   // ios: Views/FlowView.swift:267

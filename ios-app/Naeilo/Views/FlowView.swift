@@ -59,7 +59,7 @@ struct FlowView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                .frame(height: 380)
+                .frame(height: 420)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
                 Text("두 손가락으로 벌리면 가까이, 오므리면 주봉·월봉으로 접혀요 · 옆으로 밀면 지난 날")
                     .appFont(12).foregroundStyle(Theme.muted).lineLimit(2).frame(height: 32, alignment: .topLeading)
@@ -253,7 +253,7 @@ struct FlowChart: View {
     @State private var pinchBase: Int? = nil
     @State private var dragBase: Int? = nil
 
-    private let axisW: CGFloat = 46, bandH: CGFloat = 27, topH: CGFloat = 56, botH: CGFloat = 20
+    private let axisW: CGFloat = 46, bandH: CGFloat = 36, topH: CGFloat = 68, botH: CGFloat = 20
 
     var body: some View {
         GeometryReader { g in
@@ -261,7 +261,7 @@ struct FlowChart: View {
             let cnt = max(20, min(n, count))
             let hi = max(cnt - 1, min(n - 1, end ?? n - 1)), lo = hi - cnt + 1
             let step = cnt <= 200 ? 1 : cnt <= 600 ? 5 : 21
-            let W = g.size.width - axisW, top = topH + bandH + 6, H = g.size.height - top - botH
+            let W = g.size.width - axisW, top = topH + bandH + 12, H = g.size.height - top - botH
             let slice = k[lo...hi]
             let pMin = slice.map(\.l).min() ?? 0, pMax = slice.map(\.h).max() ?? 1
             let pad = (pMax - pMin) * 0.08
