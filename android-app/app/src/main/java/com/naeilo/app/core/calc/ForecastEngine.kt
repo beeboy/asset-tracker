@@ -200,9 +200,9 @@ object SimSerializer : KSerializer<MC.Sim> {   // ios: Data/ForecastEngine.swift
     override val descriptor: SerialDescriptor = CodingKeys.serializer().descriptor
     override fun deserialize(decoder: Decoder): MC.Sim {   // ios: Data/ForecastEngine.swift:125
         val c = decoder.decodeSerializableValue(CodingKeys.serializer())   // ios: Data/ForecastEngine.swift:126
-        val blobs = c.cg.map { Base64.getDecoder().decode(it) }   // ios: Data/ForecastEngine.swift:127
+        val blobs = c.cg.asSequence().map { Base64.getDecoder().decode(it) }   // 하나씩 풀어 바로 Float 로 (바이트를 다 들고 있지 않는다)   // ios: Data/ForecastEngine.swift:127
         val s = MC.Sim(A = c.A, M = c.M, P = c.P,   // ios: Data/ForecastEngine.swift:128
-            cg = blobs.map { b -> val a = FloatArray(b.size / 4) { 0f }; ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(a); a },   // ios: Data/ForecastEngine.swift:129
+            cg = blobs.map { b -> val a = FloatArray(b.size / 4) { 0f }; ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(a); a }.toList(),   // ios: Data/ForecastEngine.swift:129
             muD = c.muD, monthIdx = c.monthIdx,   // ios: Data/ForecastEngine.swift:130
             monthDates = c.monthDates, v0 = c.v0,   // ios: Data/ForecastEngine.swift:131
             start = c.start, summary = c.summary)   // ios: Data/ForecastEngine.swift:132
@@ -263,7 +263,9 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
     init {   // ios: Data/ForecastEngine.swift:168
         // 파일 읽기·풀기는 계산 스레드에서 (계산보다 먼저 줄 선다). 그새 계산해 둔 것이 있으면 그쪽이 이긴다
         exec.execute {
-            val r = readJson(file, runsSer)   // ios: Data/ForecastEngine.swift:169
+            // 오늘 쓴 파일이 아니면 오늘 키(날짜로 시작)가 있을 수 없다: 다 풀고 버리지 않게 읽지 않는다 (결과는 같다)
+            val fresh = Store.url(file).let { f -> f.exists() && Day.str(java.time.Instant.ofEpochMilli(f.lastModified())) >= Day.today }
+            val r = if (fresh) readJson(file, runsSer) else null   // ios: Data/ForecastEngine.swift:169
             if (r != null) mainH.post {
                 val today = Day.today   // ios: Data/ForecastEngine.swift:170
                 runs = r.filter { it.key.startsWith(today) } + runs   // ios: Data/ForecastEngine.swift:171
