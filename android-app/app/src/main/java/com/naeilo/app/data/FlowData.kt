@@ -86,10 +86,10 @@ class FlowSeries(   // ios: Data/FlowData.swift:34
         pivots = pivotSets[0]   // ios: Data/FlowData.swift:54
         trends = zz.map { FlowCalc.trends(it, c.size) }   // ios: Data/FlowData.swift:55
         levels = FlowCalc.levels(pivots, last = c.lastOrNull() ?: 0.0)   // ios: Data/FlowData.swift:56
-        val out = FlowCalc.patterns(candles, pivots).toMutableList()   // ios: Data/FlowData.swift:57
+        val pts = FlowCalc.patterns(candles, pivots)   // ios: Data/FlowData.swift:57
         // 장중 오늘 캔들에 닿은 패턴은 아직 바뀔 수 있어 확정이 아니다 (마감 뒤 일봉으로 다시 정한다)
-        if (live) { for (j in out.indices) if (out[j].to >= candles.size - 1) out[j] = out[j].copy(strong = false) }   // ios: Data/FlowData.swift:59
-        patterns = out   // ios: Data/FlowData.swift:60
+        patterns = if (!live) pts else pts.map { if (it.to >= candles.size - 1) it.copy(strong = false) else it }   // ios: Data/FlowData.swift:59
+        // ios: Data/FlowData.swift:60
     }
 }
 
