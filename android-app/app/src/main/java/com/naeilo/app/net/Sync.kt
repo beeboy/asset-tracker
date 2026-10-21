@@ -50,7 +50,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
+import com.naeilo.app.core.fastDouble
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.text.Normalizer
@@ -91,7 +91,7 @@ internal fun jsonToPlain(e: JsonElement?): Any? = when (e) {
     null, is JsonNull -> null
     is JsonObject -> e.mapValues { jsonToPlain(it.value) }
     is JsonArray -> e.map { jsonToPlain(it) }
-    is JsonPrimitive -> if (e.isString) e.content else e.booleanOrNull ?: e.doubleOrNull
+    is JsonPrimitive -> if (e.isString) e.content else e.booleanOrNull ?: e.content.fastDouble()
 }
 private fun jsonBytes(v: Any?): ByteArray = plainToJson(v).toString().encodeToByteArray()
 

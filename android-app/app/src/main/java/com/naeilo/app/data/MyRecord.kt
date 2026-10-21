@@ -1,6 +1,5 @@
 package com.naeilo.app.data
 
-import com.naeilo.app.pending.*
 import com.naeilo.app.net.*
 import com.naeilo.app.core.calc.*
 import com.naeilo.app.AppModel

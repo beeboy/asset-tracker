@@ -19,7 +19,6 @@ import com.naeilo.app.core.Day
 import com.naeilo.app.core.NJson
 import com.naeilo.app.data.Currency
 import com.naeilo.app.data.short
-import com.naeilo.app.pending.*
 import com.naeilo.app.net.*
 import com.naeilo.app.ui.Theme
 import com.naeilo.app.ui.hex
@@ -185,9 +184,12 @@ fun AppModel.mcInputs(full: Boolean): McInputs? {   // ios: Data/Recovery.swift:
     if (settings.nPaths > cap) settings = settings.copy(n_paths = cap.toDouble())   // ios: Data/Recovery.swift:143
     val events = site.events ?: st.events ?: emptyList()   // ios: Data/Recovery.swift:144
     // ios: Data/Recovery.swift:145 JSONEncoder sortedKeys 자리: 사인(캐시 키)만 만들므로 kotlinx 순서로 충분
-    val evSig = ForecastEngine.fnv(NJson.encodeToString(kotlinx.serialization.builtins.ListSerializer(MC.Event.serializer()), events))   // ios: Data/Recovery.swift:146
+    // 같은 사건 목록이면 사인을 다시 만들지 않는다 (화면을 그릴 때마다 불려, 매번 JSON 으로 바꾸면 숫자마다 정규식이 돌아 메모리가 튄다)
+    val evSig = evSigMemo?.takeIf { it.first === events }?.second
+        ?: ForecastEngine.fnv(NJson.encodeToString(kotlinx.serialization.builtins.ListSerializer(MC.Event.serializer()), events)).also { evSigMemo = events to it }   // ios: Data/Recovery.swift:146
     return McInputs(st, settings, events, listOf(st.date, evSig, "${settings.nPaths}|${settings.seedU32}|${settings.dof}|${settings.earnings_adjust ?: true}").joinToString("|"))   // ios: Data/Recovery.swift:147
 }
+@Volatile private var evSigMemo: Pair<List<MC.Event>, String>? = null
 /** 웹 '경로' 선택지의 최대 */
 val AppModel.Companion.webPathMax: Int get() = 10_000   // ios: Data/Recovery.swift:150
 /** 다른 구성 비교가 도는 경로 수 상한 = 사이트 기본 설정의 경로 수 (없으면 3,000) */

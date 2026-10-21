@@ -1,6 +1,7 @@
 package com.naeilo.app.core.calc
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.fastDouble
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -52,7 +53,7 @@ private fun swiftDouble(t: String): Double? {
     if (body == "nan") return Double.NaN
     if (body.isEmpty() || (body.last() in "df" && !body.startsWith("0x"))) return null
     if (body.contains("inf") || body.contains("nan")) return null
-    return t.toDoubleOrNull()
+    return t.fastDouble()
 }
 
 /** Swift String(Double) 표기 (5.0 · 0.0001 · 1e-05 · 1e+16) */
@@ -822,7 +823,7 @@ class PathSet(   // ios: Data/MonteCarlo.swift:625
 // 숫자, 숫자 문자열, 참·거짓
 private fun mcNum(o: JsonObject, k: String): Double? {   // ios: Data/MonteCarlo.swift:717
     val e = o[k] as? JsonPrimitive ?: return null
-    if (e !is JsonNull && !e.isString) e.content.toDoubleOrNull()?.let { return it }   // ios: Data/MonteCarlo.swift:718
+    if (e !is JsonNull && !e.isString) e.content.fastDouble()?.let { return it }   // ios: Data/MonteCarlo.swift:718
     if (e.isString) return MC.jsNumber(e.content)   // ios: Data/MonteCarlo.swift:719
     if (e !is JsonNull && (e.content == "true" || e.content == "false")) return if (e.content == "true") 1.0 else 0.0   // ios: Data/MonteCarlo.swift:720
     return null   // ios: Data/MonteCarlo.swift:721
@@ -830,7 +831,7 @@ private fun mcNum(o: JsonObject, k: String): Double? {   // ios: Data/MonteCarlo
 private fun mcStr(o: JsonObject, k: String): String? {   // ios: Data/MonteCarlo.swift:723
     val e = o[k] as? JsonPrimitive ?: return null
     if (e.isString) return e.content   // ios: Data/MonteCarlo.swift:724
-    if (e !is JsonNull) e.content.toDoubleOrNull()?.let { return swiftDesc(it) }   // ios: Data/MonteCarlo.swift:725
+    if (e !is JsonNull) e.content.fastDouble()?.let { return swiftDesc(it) }   // ios: Data/MonteCarlo.swift:725
     return null   // ios: Data/MonteCarlo.swift:726
 }
 
@@ -868,7 +869,7 @@ object McEventSerializer : KSerializer<MC.Event> {
         e.id = mcStr(c, CodingKeys.id); e.date = mcStr(c, CodingKeys.date); e.target = mcStr(c, CodingKeys.target); e.factor = mcStr(c, CodingKeys.factor); e.cat = mcStr(c, CodingKeys.cat); e.rep = mcStr(c, CodingKeys.rep)   // ios: Data/MonteCarlo.swift:101
         val on = (c[CodingKeys.on] as? JsonPrimitive)?.takeIf { it !is JsonNull && !it.isString }
         e.on = if (on != null && (on.content == "true" || on.content == "false")) on.content == "true"   // ios: Data/MonteCarlo.swift:102
-            else if (on != null && on.content.toDoubleOrNull() != null) on.content.toDouble().let { x -> x != 0.0 && !x.isNaN() }   // ios: Data/MonteCarlo.swift:103
+            else if (on != null && on.content.fastDouble() != null) on.content.toDouble().let { x -> x != 0.0 && !x.isNaN() }   // ios: Data/MonteCarlo.swift:103
             else !(mcStr(c, CodingKeys.on) ?: "").isEmpty()   // ios: Data/MonteCarlo.swift:104
         // Number(e.prob): 없음·빈 문자열·숫자 아님 → 100, null → 0
         val pr = c[CodingKeys.prob]

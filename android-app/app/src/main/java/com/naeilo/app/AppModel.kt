@@ -1,7 +1,6 @@
 package com.naeilo.app
 
 import com.naeilo.app.core.cformat
-import com.naeilo.app.pending.*
 import com.naeilo.app.data.Support
 import com.naeilo.app.data.Story
 import com.naeilo.app.data.StoryBook

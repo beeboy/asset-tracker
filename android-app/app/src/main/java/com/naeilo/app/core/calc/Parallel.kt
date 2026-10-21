@@ -11,7 +11,6 @@ import com.naeilo.app.data.Lots
 import com.naeilo.app.data.Sample
 import com.naeilo.app.data.friendName
 import com.naeilo.app.data.persists
-import com.naeilo.app.pending.*
 import com.naeilo.app.net.*
 import kotlinx.serialization.Serializable
 import java.time.Instant

@@ -14,7 +14,6 @@ import com.naeilo.app.core.getDouble
 import com.naeilo.app.core.putDouble
 import com.naeilo.app.data.Defaults
 import com.naeilo.app.data.Sample
-import com.naeilo.app.pending.*
 import com.naeilo.app.net.*
 import kotlinx.serialization.Serializable
 import java.net.URL

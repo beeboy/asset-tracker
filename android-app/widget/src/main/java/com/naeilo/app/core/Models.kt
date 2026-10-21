@@ -12,7 +12,6 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
@@ -296,6 +295,9 @@ class FeedReq(val url: String, val timeout: Double) {
     }
 }
 
+/** String.toDoubleOrNull() 과 같은 값. 코틀린 것은 숫자마다 정규식(안드로이드는 ICU 네이티브)을 돌려 시세 JSON 을 읽을 때 네이티브 메모리가 수백 MB 튄다. 정규식 없이 바로 바꾼다 */
+fun String.fastDouble(): Double? = try { java.lang.Double.parseDouble(this) } catch (_: NumberFormatException) { null }
+
 /** JSON 본문 → Map<String, Any?> / List<Any?> / String / Double / Boolean / null (JSONSerialization 과 같은 꼴, 숫자는 모두 Double) */
 fun feedJson(b: ByteArray): Any? = runCatching { plainJson(NJson.parseToJsonElement(b.decodeToString())) }.getOrNull()
 
@@ -303,7 +305,7 @@ private fun plainJson(e: JsonElement): Any? = when (e) {
     is JsonObject -> e.mapValues { plainJson(it.value) }
     is JsonArray -> e.map { plainJson(it) }
     is JsonNull -> null
-    is JsonPrimitive -> if (e.isString) e.content else e.booleanOrNull ?: e.doubleOrNull
+    is JsonPrimitive -> if (e.isString) e.content else e.booleanOrNull ?: e.content.fastDouble()
 }
 
 /** `as? [String: Any]` */
