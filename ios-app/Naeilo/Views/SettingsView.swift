@@ -126,6 +126,7 @@ struct SettingsView: View {
         // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
         let helpRows: [(String, String, SettingsRoute)] = [
             (String(localized: "처음 쓰는 법"), String(localized: "매일 1분 · 목표 칸 · 주간 예보"), .howto),
+            (String(localized: "기기 옮기기"), Sync.shared.isOn ? String(localized: "파일 · 동기화 켜짐") : String(localized: "파일로 새 폰에"), .sync),
             (String(localized: "구독"), Support.shared.plan.map { String(localized: "\(String(describing: $0.name)) 중 · 고마워요") } ?? (Support.shared.inTrial ? String(localized: "7일 무료 · \(String(describing: Support.shared.trialLeft))일 남음") : String(localized: "월 1,000원 · 연 9,000원")), .support),
         ]
         ScrollView {

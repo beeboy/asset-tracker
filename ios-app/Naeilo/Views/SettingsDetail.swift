@@ -159,7 +159,7 @@ struct AlertsView: View {
     }
 }
 
-// MARK: 기기 동기화 — 같은 비밀번호의 기기끼리 (설정 목록에는 이미 켠 사람에게만 보인다)
+// MARK: 기기 옮기기 — 기본은 파일 하나로, 기기 동기화는 켠 사람만 (같은 비밀번호의 폰끼리)
 
 struct SyncView: View {
     @Environment(AppModel.self) private var m
@@ -192,130 +192,115 @@ struct SyncView: View {
 
     var body: some View {
         let on = sync.isOn
-        SettingsPage(title: String(localized: "기기 동기화")) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    Image(systemName: "iphone").font(.system(size: 26))
-                    Rectangle().fill(on ? Theme.yellow : Theme.muted).frame(width: 60, height: 3)
-                        .mask { if on { Rectangle() } else { HStack(spacing: 4) { ForEach(0..<8, id: \.self) { _ in Rectangle() } } } }
-                    Image(systemName: "desktopcomputer").font(.system(size: 26))
-                }
-                Text(on ? (sync.isDev ? String(localized: "개발자 동기화 켜짐") : String(localized: "자동 동기화 켜짐")) : String(localized: "아직 켜지 않음")).appFont(20, .bold)
-                Text(statusText).appFont(13).fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(on ? .white : Theme.ink)
-            .padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(on ? Theme.teal : Theme.track, in: RoundedRectangle(cornerRadius: 20))
-
+        SettingsPage(title: String(localized: "기기 옮기기")) {
+            // 기본은 파일 하나로 옮기기. 동기화는 켠 사람만 쓰고, 올리기는 앱을 닫을 때 한 번 (App.swift)
+            fileCard
             if let c = sync.conflict { conflictCard(c) }
-
-            if on {
-                Card {
-                    Text("함께 맞춰지는 것").appFont(15, .bold)
-                    ForEach([(String(localized: "종목·수량·평균 단가"), true), (String(localized: "미션 진행·오늘의 1분·쉼터"), true), (String(localized: "목표·사건·모형 설정 (사이트)"), true), (String(localized: "알림·화면 모드"), false)], id: \.0) { k, y in
-                        HStack { Text(k).appFont(14); Spacer(); Text(y ? String(localized: "함께") : String(localized: "기기마다 따로")).appFont(13, .semibold).foregroundStyle(y ? Theme.teal : Theme.muted) }
-                    }
+            Card {
+                HStack {
+                    Text("기기 동기화").appFont(15, .bold)
+                    Spacer()
+                    Text(on ? String(localized: "켜짐") : String(localized: "꺼짐")).appFont(13, .semibold).foregroundStyle(on ? Theme.teal : Theme.muted)
                 }
-                PrimaryButton(title: sync.state == .working ? String(localized: "맞추는 중…") : String(localized: "지금 맞추기")) { Task { await sync.pull(m) } }
-                Button("이 기기 동기화 끄기") { askOff = true }
-                    .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
-                    .confirmationDialog("이 기기 동기화를 끌까요?", isPresented: $askOff, titleVisibility: .visible) {
-                        Button("끄기", role: .destructive) { sync.turnOff() }
-                    } message: { Text(sync.isDev ? String(localized: "이 폰에 있는 값은 그대로 남고, 토큰은 이 폰에서 지워요.") : String(localized: "이 폰에 있는 값은 그대로 남고, 다른 기기와 더 맞추지 않아요. 다시 켜려면 같은 비밀번호가 필요해요.")) }
-            } else {
-                let ok = pw.count >= 10 && pw == pw2
-                Card {
-                    Text("동기화 켜기").appFont(15, .bold)
-                    Text("기기마다 같은 비밀번호를 넣으면 자동으로 맞춰져요.")
-                        .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-                    SecureField("동기화 비밀번호 (10자 이상)", text: $pw).textContentType(.newPassword)
+                Text(statusText).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                if on {
+                    PrimaryButton(title: sync.state == .working ? String(localized: "맞추는 중…") : String(localized: "지금 맞추기")) { Task { await sync.pull(m) } }
+                    Button("동기화 끄기") { askOff = true }
+                        .appFont(15, .semibold).foregroundStyle(Theme.up).frame(maxWidth: .infinity, minHeight: 48)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                        .confirmationDialog("이 폰 동기화를 끌까요?", isPresented: $askOff, titleVisibility: .visible) {
+                            Button("끄기", role: .destructive) { sync.turnOff() }
+                        } message: { Text(sync.isDev ? String(localized: "이 폰 값은 그대로 · 토큰은 지워요") : String(localized: "이 폰 값은 그대로 · 다시 켜려면 같은 비밀번호")) }
+                } else {
+                    let ok = pw.count >= 10 && pw == pw2
+                    SecureField("비밀번호 (10자 이상)", text: $pw).textContentType(.newPassword)
                         .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
                     SecureField("한 번 더", text: $pw2).textContentType(.newPassword)
                         .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
-                    if !pw.isEmpty && pw.count < 10 { Text("10자 이상으로 정해 주세요.").appFont(12).foregroundStyle(Theme.up) }
-                    else if !pw2.isEmpty && pw != pw2 { Text("두 번 넣은 비밀번호가 달라요.").appFont(12).foregroundStyle(Theme.up) }
+                    if !pw.isEmpty && pw.count < 10 { Text("10자 이상").appFont(12).foregroundStyle(Theme.up) }
+                    else if !pw2.isEmpty && pw != pw2 { Text("비밀번호가 달라요").appFont(12).foregroundStyle(Theme.up) }
                     PrimaryButton(title: sync.state == .working ? String(localized: "준비 중…") : String(localized: "켜기"), color: ok ? Theme.teal : Theme.muted) {
                         guard ok, sync.state != .working else { return }
                         let p = pw; pw = ""; pw2 = ""
                         Task { await sync.turnOn(password: p, model: m) }
                     }
                 }
-                DisclosureGroup(isExpanded: $devOpen) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("GitHub 토큰을 넣은 기기끼리 비밀번호 대신 토큰으로 맞춰요.")
-                            .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                        SecureField("GitHub 토큰", text: $token).textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
-                            .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
-                        PrimaryButton(title: sync.state == .working ? String(localized: "확인 중…") : String(localized: "토큰으로 연결"), color: token.isEmpty ? Theme.muted : Theme.teal) {
-                            guard !token.isEmpty, sync.state != .working else { return }
-                            let t = token; token = ""
-                            Task { await sync.turnOnDev(token: t, model: m) }
-                        }
-                        Text("토큰은 이 폰 키체인에만 둬요. 개발자 칸은 암호화하지 않아요.")
-                            .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+            }
+            if !on {
+            DisclosureGroup(isExpanded: $devOpen) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("GitHub 토큰을 넣은 기기끼리 비밀번호 대신 토큰으로 맞춰요.")
+                        .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                    SecureField("GitHub 토큰", text: $token).textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
+                        .padding(.horizontal, 12).frame(minHeight: 48).overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 2))
+                    PrimaryButton(title: sync.state == .working ? String(localized: "확인 중…") : String(localized: "토큰으로 연결"), color: token.isEmpty ? Theme.muted : Theme.teal) {
+                        guard !token.isEmpty, sync.state != .working else { return }
+                        let t = token; token = ""
+                        Task { await sync.turnOnDev(token: t, model: m) }
                     }
-                    .padding(.top, 8)
-                } label: { Text("개발자용").appFont(14, .semibold).foregroundStyle(Theme.sub) }
-                .tint(Theme.sub)
+                    Text("토큰은 이 폰 키체인에만 둬요. 개발자 칸은 암호화하지 않아요.")
+                        .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, 8)
+            } label: { Text("개발자용").appFont(14, .semibold).foregroundStyle(Theme.sub) }
+            .tint(Theme.sub)
             }
             // 토스 상태는 동기화 켜짐·꺼짐과 상관없이 늘 보인다
             Text(tossStatus).appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-            fileCard
-            note(String(localized: "서버에는 암호화한 값만 둬요. 비밀번호는 저장하지 않아서 잊으면 새로 켜야 해요."))
+            note(String(localized: "서버엔 암호화한 값만 · 비밀번호는 저장 안 함"))
         }
     }
 
-    /// 내 폰에 저장하기·불러오기 (동기화 없이 파일 하나로)
+    /// 파일 하나로 옮기기 (동기화 없이): 저장하기·불러오기
     private var fileCard: some View {
         Card {
-            Text("내 폰에 저장하기 · 불러오기").appFont(15, .bold)
-            Text("종목과 미션 진행을 파일 하나로 저장해요. 새 폰에서 불러오면 이어져요.")
+            Text("파일로 옮기기").appFont(15, .bold)
+            Text("종목·미션 진행을 파일 하나로 · 새 폰에서 불러오기")
                 .appFont(14).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-            PrimaryButton(title: String(localized: "내 폰에 저장하기")) { exportDoc = BackupFile(Backup(m)); exporting = true }
-            Button("저장한 파일 불러오기") { importing = true }
+            PrimaryButton(title: String(localized: "파일로 저장")) { exportDoc = BackupFile(Backup(m)); exporting = true }
+            Button("파일 불러오기") { importing = true }
                 .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 48)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
             if let fileMsg { Text(fileMsg).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true) }
-            Text("암호화하지 않은 파일이라 남에게 보내지 마세요.")
+            Text("암호화 안 됨 · 남에게 보내지 마세요")
                 .appFont(12).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
         }
         .fileExporter(isPresented: $exporting, document: exportDoc, contentType: .json, defaultFilename: Backup.fileName()) { r in
             switch r {
-            case .success: fileMsg = String(localized: "저장했어요. 종목 \(String(describing: m.holdings.count))개와 미션 진행이 들어 있어요.")
-            case .failure(let e): fileMsg = String(localized: "저장하지 못했어요: \(String(describing: e.localizedDescription))")
+            case .success: fileMsg = String(localized: "저장함 · 종목 \(String(describing: m.holdings.count))개")
+            case .failure(let e): fileMsg = String(localized: "저장 실패: \(String(describing: e.localizedDescription))")
             }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { r in
             switch r {
             case .success(let url):
-                do { pending = try BackupFile.read(url) } catch { fileMsg = String(localized: "naeilo에서 저장한 파일이 아니에요.") }
-            case .failure(let e): fileMsg = String(localized: "열지 못했어요: \(String(describing: e.localizedDescription))")
+                do { pending = try BackupFile.read(url) } catch { fileMsg = String(localized: "naeilo 파일이 아니에요") }
+            case .failure(let e): fileMsg = String(localized: "열기 실패: \(String(describing: e.localizedDescription))")
             }
         }
-        .confirmationDialog("이 파일로 이 폰을 맞출까요?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
+        .confirmationDialog("이 파일로 바꿀까요?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
             Button("불러오기") {
                 guard let b = pending else { return }
                 b.restore(to: m)
-                fileMsg = String(localized: "불러왔어요. 종목 \(String(describing: b.holdings.count))개와 미션 진행을 이 폰에 넣었어요.")
+                fileMsg = String(localized: "불러옴 · 종목 \(String(describing: b.holdings.count))개")
                 pending = nil
             }
         } message: {
             let f = DateFormatter(), b = pending
             let _ = { f.locale = AppModel.dateLocale; f.dateFormat = String(localized: "M월 d일 a h:mm") }()
-            Text(String(localized: "\(String(describing: b.map { f.string(from: $0.at) } ?? ""))에 저장한 파일 (종목 \(String(describing: b?.holdings.count ?? 0))개). 지금 이 폰의 종목과 미션 진행은 이 파일 값으로 바뀌어요.") + (sync.isOn ? String(localized: " 동기화가 켜져 있어서 다른 기기에도 보내져요.") : ""))
+            Text(String(localized: "\(String(describing: b.map { f.string(from: $0.at) } ?? "")) 저장 · 종목 \(String(describing: b?.holdings.count ?? 0))개 · 이 폰 종목·미션 진행이 바뀌어요") + (sync.isOn ? String(localized: " · 동기화로 다른 폰에도") : ""))
         }
     }
 
     private var statusText: String {
         switch sync.state {
-        case .off: return String(localized: "폰을 바꿔도 같은 숫자를 보려면 켜요")
-        case .idle: return sync.isDev ? String(localized: "같은 GitHub 계정의 개발자 기기끼리 맞춰져요") : String(localized: "같은 비밀번호를 넣은 기기끼리 맞춰져요")
+        case .off: return String(localized: "같은 비밀번호 폰끼리 · 앱 닫을 때 올림")
+        case .idle: return sync.isDev ? String(localized: "같은 GitHub 계정 기기끼리") : String(localized: "같은 비밀번호 폰끼리 · 앱 닫을 때 올림")
         case .working: return String(localized: "맞추는 중…")
         case .ok(let d):
             let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "a h:mm"
-            return String(localized: "마지막으로 맞춘 때: \(String(describing: f.string(from: d)))")
-        case .failed(let e): return String(localized: "맞추지 못했어요: \(String(describing: e))")
+            return String(localized: "마지막: \(String(describing: f.string(from: d)))")
+        case .failed(let e): return String(localized: "실패: \(String(describing: e))")
         }
     }
 
@@ -323,11 +308,11 @@ struct SyncView: View {
         let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = String(localized: "M월 d일 a h:mm")
         let n = (c.state["holdings"]?.value as? [[String: Any]])?.count ?? 0
         return Card {
-            Text("다른 기기에 저장된 값이 있어요").appFont(15, .bold)
-            Text("\(f.string(from: Date(timeIntervalSince1970: c.at / 1000)))에 저장된 값 (종목 \(n)개)이 있어요. 어느 쪽에 맞출까요?")
+            Text("다른 폰 값이 있어요").appFont(15, .bold)
+            Text("\(f.string(from: Date(timeIntervalSince1970: c.at / 1000))) 저장 · 종목 \(n)개 · 어느 쪽으로?")
                 .appFont(14).fixedSize(horizontal: false, vertical: true)
-            PrimaryButton(title: String(localized: "다른 기기 값으로 이 폰을 맞추기")) { Task { await sync.resolve(useRemote: true, m) } }
-            Button("이 폰 값을 다른 기기로 보내기") { Task { await sync.resolve(useRemote: false, m) } }
+            PrimaryButton(title: String(localized: "다른 폰 값으로")) { Task { await sync.resolve(useRemote: true, m) } }
+            Button("이 폰 값 보내기") { Task { await sync.resolve(useRemote: false, m) } }
                 .appFont(15, .semibold).foregroundStyle(Theme.teal).frame(maxWidth: .infinity, minHeight: 48)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
         }

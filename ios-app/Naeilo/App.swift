@@ -57,6 +57,7 @@ struct RootView: View {
         // 전망 몬테카를로: 앱이 뒤로 가면 돌던 계산도 멈추고, 다시 앞으로 오면 이어 간다 (뒤에서 폰이 뜨거워지지 않게)
         .onChange(of: phase) { _, p in
             Compute.setActive(p != .background)
+            if p == .background && model.persists { Sync.shared.flush(model) }   // 동기화 올리기는 앱을 닫을 때 한 번
             if p == .active && model.persists { model.catchUpDay(); model.calmOpen() }   // calmOpen 안에 recordDay
         }
         // 미션 진행: 바뀔 때마다 저장, 동기화가 켜져 있으면 다른 기기로도
