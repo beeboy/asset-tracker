@@ -622,30 +622,30 @@ fun WidgetPickView(m: AppModel) {
                 // ios: Views/SettingsDetail.swift:421
                 Segmented(listOf(false to "기본", true to "다크"), dark, { dark = it; prefs.edit().putBoolean("cpDark", it).apply() })
                 val c = WChar.of(if (on) sel else "seri"); val e = CharEntry(r = reward, c = c, locked = false)   // ios: Views/SettingsDetail.swift:422
-                // ios: Views/SettingsDetail.swift:423,444 (폭 : 높이 = 1 : 2.3)
-                BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1 / 2.3f)) {
+                // ios: Views/SettingsDetail.swift:423,444 (폭 : 높이 = 1 : 2.7, 안드로이드는 칸이 세로로 길다)
+                BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1 / 2.7f)) {
                     val w = (maxWidth - 12.dp) / 2   // ios: Views/SettingsDetail.swift:424
                     // ios: Views/SettingsDetail.swift:425
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         // ios: Views/SettingsDetail.swift:426
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Caption("자산 언덕") { Tile(e, w = w, h = w) { HillCharView(e = e) } }   // ios: Views/SettingsDetail.swift:427
-                            Caption("본전 사다리") { Tile(e, w = w, h = w) { LadderCharView(e = e) } }   // ios: Views/SettingsDetail.swift:428
+                            Caption("자산 언덕") { Tile(e, w = w, h = w * com.naeilo.widget.tileRatio) { HillCharView(e = e) } }   // ios: Views/SettingsDetail.swift:427
+                            Caption("본전 사다리") { Tile(e, w = w, h = w * com.naeilo.widget.tileRatio) { LadderCharView(e = e) } }   // ios: Views/SettingsDetail.swift:428
                         }
                         // ios: Views/SettingsDetail.swift:430
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Caption("블록 탑") { Tile(e, w = w, h = w) { TowerCharView(e = e) } }   // ios: Views/SettingsDetail.swift:431
-                            Caption("전광판") { Tile(e, w = w, h = w) { BoardCharView(e = e) } }   // ios: Views/SettingsDetail.swift:432
+                            Caption("블록 탑") { Tile(e, w = w, h = w * com.naeilo.widget.tileRatio) { TowerCharView(e = e) } }   // ios: Views/SettingsDetail.swift:431
+                            Caption("전광판") { Tile(e, w = w, h = w * com.naeilo.widget.tileRatio) { BoardCharView(e = e) } }   // ios: Views/SettingsDetail.swift:432
                         }
                         // ios: Views/SettingsDetail.swift:434
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Caption("키 재기") { Tile(e, w = w, h = w) { HeightCharView(e = e) } }   // ios: Views/SettingsDetail.swift:435
-                            Caption("퍼즐 맞추기") { Tile(e, w = w, h = w) { PuzzleCharView(e = e) } }   // ios: Views/SettingsDetail.swift:436
+                            Caption("키 재기") { Tile(e, w = w, h = w * com.naeilo.widget.tileRatio) { HeightCharView(e = e) } }   // ios: Views/SettingsDetail.swift:435
+                            Caption("퍼즐 맞추기") { Tile(e, w = w, h = w * com.naeilo.widget.tileRatio) { PuzzleCharView(e = e) } }   // ios: Views/SettingsDetail.swift:436
                         }
                         // ios: Views/SettingsDetail.swift:438
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Caption("꽃밭") { Tile(e, w = w, h = w) { GardenCharView(e = e) } }   // ios: Views/SettingsDetail.swift:439
-                            Caption("줄다리기") { Tile(e, w = w, h = w) { TugCharView(e = e) } }   // ios: Views/SettingsDetail.swift:440
+                            Caption("꽃밭") { Tile(e, w = w, h = w * com.naeilo.widget.tileRatio) { GardenCharView(e = e) } }   // ios: Views/SettingsDetail.swift:439
+                            Caption("줄다리기") { Tile(e, w = w, h = w * com.naeilo.widget.tileRatio) { TugCharView(e = e) } }   // ios: Views/SettingsDetail.swift:440
                         }
                     }
                 }
