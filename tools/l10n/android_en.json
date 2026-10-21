@@ -48,5 +48,7 @@
   "비밀번호 (10자 이상)": "Password (10+ characters)",
   "10자 이상": "10+ characters",
   "비밀번호가 달라요": "Passwords don't match",
-  "서버엔 암호화한 값만 · 비밀번호는 저장 안 함": "Only encrypted data on the server · Password isn't stored"
+  "서버엔 암호화한 값만 · 비밀번호는 저장 안 함": "Only encrypted data on the server · Password isn't stored",
+  "출시": "Release",
+  "앱 시작 %@단계를 하면 열려요": "Opens at app start step %@"
 }
