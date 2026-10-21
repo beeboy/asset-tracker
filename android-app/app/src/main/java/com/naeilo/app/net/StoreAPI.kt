@@ -6,7 +6,7 @@ import com.naeilo.app.core.NJson
 import com.naeilo.app.data.StoryBook
 import com.naeilo.app.data.StoryChapter
 import com.naeilo.app.data.StoryLang
-import com.naeilo.app.pending.Support
+import com.naeilo.app.data.Support
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer

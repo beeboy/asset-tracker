@@ -70,8 +70,8 @@ import com.naeilo.app.ui.calm.CalmView
 import com.naeilo.app.ui.me.CharHead
 import com.naeilo.app.ui.goal.GoalSetView
 import com.naeilo.app.data.MarketEvents
-import com.naeilo.app.pending.SubLocked
-import com.naeilo.app.pending.Support
+import com.naeilo.app.ui.support.SubLocked
+import com.naeilo.app.data.Support
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.Fg
@@ -129,8 +129,8 @@ fun AnalysisPager(m: AppModel, start: AnalysisRoute) {
     @Composable
     fun Page(r: AnalysisRoute) = when (r) {
         // 7일 무료 뒤 구독하지 않으면 목표(내 길)·확률 전망만 잠근다 (Support.pro)
-        AnalysisRoute.forecast -> if (Support.shared.pro) ForecastView(m) else SubLocked(what = "확률 전망")   // ios: Views/AnalysisView.swift:46
-        AnalysisRoute.myPath -> if (Support.shared.pro) MyPathView(m) else SubLocked(what = "내 길(목표까지 확률)")   // ios: Views/AnalysisView.swift:47
+        AnalysisRoute.forecast -> if (Support.shared.pro) ForecastView(m) else SubLocked(m, what = "확률 전망")   // ios: Views/AnalysisView.swift:46
+        AnalysisRoute.myPath -> if (Support.shared.pro) MyPathView(m) else SubLocked(m, what = "내 길(목표까지 확률)")   // ios: Views/AnalysisView.swift:47
         AnalysisRoute.rateScen -> RateScenarioScreen(m)   // ios: Views/AnalysisView.swift:48
         AnalysisRoute.external -> ExternalScreen(m)   // ios: Views/AnalysisView.swift:49
         AnalysisRoute.dividend -> DividendScreen(m)   // ios: Views/AnalysisView.swift:50

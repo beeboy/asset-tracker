@@ -56,7 +56,7 @@ import com.naeilo.app.data.Symbol
 import com.naeilo.app.data.short
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.PriceHistory
-import com.naeilo.app.pending.EventRetro
+import com.naeilo.app.data.EventRetro
 import com.naeilo.app.data.MarketEvents
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.CapsuleShape

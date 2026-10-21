@@ -85,8 +85,8 @@ import com.naeilo.app.data.Shelter
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.Sync
 import com.naeilo.app.ui.goal.GoalSetView
-import com.naeilo.app.pending.Support
-import com.naeilo.app.pending.SupportView
+import com.naeilo.app.data.Support
+import com.naeilo.app.ui.support.SupportView
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.ChipRow
@@ -326,7 +326,7 @@ fun settingsPage(m: AppModel, r: SettingsRoute): NavPage = when (r) {
     SettingsRoute.howto -> NavPage { HowToView() }   // ios: Views/SettingsView.swift:190
     SettingsRoute.route -> NavPage { RouteView(m) }   // ios: Views/SettingsView.swift:191
     SettingsRoute.goal -> NavPage { GoalSetView(m, fromSettings = true) }   // ios: Views/SettingsView.swift:192
-    SettingsRoute.support -> NavPage { SupportView() }   // ios: Views/SettingsView.swift:193
+    SettingsRoute.support -> NavPage { SupportView(m) }   // ios: Views/SettingsView.swift:193
     SettingsRoute.icon -> NavPage { AppIconScreen(m) }   // ios: Views/SettingsView.swift:194
     SettingsRoute.notifyList -> NavPage { NotifyListView() }   // ios: Views/SettingsView.swift:195
     SettingsRoute.residence -> NavPage("거주 국가") { ResidenceView(m) }   // ios: Views/SettingsView.swift:196 (제목은 ResidenceView 의 navigationTitle)

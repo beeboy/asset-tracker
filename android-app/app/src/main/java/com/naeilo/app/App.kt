@@ -93,9 +93,9 @@ import com.naeilo.app.net.Market
 import com.naeilo.app.net.Sync
 import com.naeilo.app.ui.game.GamePause
 import com.naeilo.app.data.LineClock
-import com.naeilo.app.pending.Notifier
+import com.naeilo.app.data.Notifier
 import com.naeilo.app.data.Remind
-import com.naeilo.app.pending.Support
+import com.naeilo.app.data.Support
 import com.naeilo.app.pending.WidgetBridge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow

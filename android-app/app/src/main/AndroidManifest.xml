@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- 미니 게임 부딪힘·벽돌 깸 진동 (iOS UIFeedbackGenerator 자리) -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 아침 한 줄·본전 도달 등 기기 안 알림 (안드로이드 13+ 는 허락을 묻는다) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 기기를 다시 켜면 예약한 알림을 다시 건다 (안드로이드 알람은 재부팅하면 사라진다) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher_star"
@@ -49,5 +53,12 @@
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.files" android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+        <!-- 예약 알림이 울릴 때·기기를 다시 켤 때·앱을 새로 깔았을 때 -->
+        <receiver android:name=".data.NotifyReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

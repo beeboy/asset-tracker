@@ -59,7 +59,7 @@ import com.naeilo.app.core.calc.keyValue
 import com.naeilo.app.core.calc.trackValue
 import com.naeilo.app.net.Market
 import com.naeilo.app.data.MarketEvents
-import com.naeilo.app.pending.notifierRequest
+import com.naeilo.app.data.Notifier
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.FitText
@@ -460,7 +460,7 @@ private fun RateEventsCard(m: AppModel) {
         if (events.isEmpty()) T("60일 안 금리 일정 없음", style = appFont(13f), color = Theme.sub)   // ios: Views/AnalysisDetail.swift:1492
         // ios: Views/AnalysisDetail.swift:1493
         ToggleRow(checked = m.alerts["rate"] == true, onChange = { on ->
-            if (on) scope.launch { if (notifierRequest()) m.alerts = m.alerts + ("rate" to true) }; if (!on) m.alerts = m.alerts + ("rate" to false)   // ios: Views/AnalysisDetail.swift:1494
+            if (on) scope.launch { if (Notifier.request()) m.alerts = m.alerts + ("rate" to true) }; if (!on) m.alerts = m.alerts + ("rate" to false)   // ios: Views/AnalysisDetail.swift:1494
         }, tint = Theme.purple) { T("전날 다시 보기", style = appFont(14f)) }   // ios: Views/AnalysisDetail.swift:1495
         T("날짜는 추정 · ±1~2일", style = appFont(12f), color = Theme.muted)   // ios: Views/AnalysisDetail.swift:1496
     }

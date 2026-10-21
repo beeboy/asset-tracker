@@ -2,9 +2,7 @@
 # 형식: 파일:줄 또는 파일:시작-끝  이유
 
 # App.swift — 뼈대(A) 밖: 모델·서비스가 아직 없다
-App.swift:8 알림 단계: 알림 누름 처리(NotificationDelegate)
 App.swift:9 위젯 단계: 토스 키를 위젯과 나누기 (TossKeys)
-App.swift:10 구독 단계: Play Billing 확인·거래 듣기 (Support)
 
 # B 단계 (models)
 # models 그룹: WidgetShared/Models.swift → core/Models.kt + core/Feeds.kt
@@ -214,3 +212,14 @@ Data/BrickGame.swift:263-268 플랫폼: 키체인에서 기록 되살리기 (위
 Data/BrickGame.swift:273-275 플랫폼: 키체인에 기록 쓰기 (위와 같은 이유, BrickGame.kt GameRecord.save 는 prefs 만)
 Views/BrickGameView.swift:627 검사기 한계: 보간 속 따옴표 String(localized:) 겹침 (옮김, BrickGameView.kt 결과 줄 sub)
 Views/BrickGameView.swift:766-767 플랫폼: CGContext 비트맵 문맥. 안드로이드는 ARGB_8888 Bitmap 이 같은 일 (BrickGameView.kt 캐릭터 그림)
+
+# K 단계 (기기 기능: 알림·구독)
+Data/Notifier.swift:41-43 플랫폼 차이: 알림 오른쪽 그림을 임시 파일 첨부 대신 보낼 때 Bitmap(setLargeIcon)으로 붙임 (옮김, data/Notifier.kt withIcon·post)
+Data/Notifier.swift:113 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, data/Notifier.kt morningLine)
+Data/Notifier.swift:225 플랫폼 차이: userInfo["open"] 자리가 Intent 추가값 NOTIFY_OPEN("naeilo.open") (옮김, data/Notifier.kt NotificationDelegate.didReceive)
+Data/Support.swift:152 검사기 한계: 보간 속 따옴표 (옮김, data/Support.kt buy)
+Data/Support.swift:184 플랫폼에 없음: 키체인 접근성 (못 옮김, data/Support.kt TrialKey.save)
+Views/SupportView.swift:28 플랫폼 차이: 'App Store' → 'Google Play' 문구 (옮김, ui/support/SupportView.kt 상품 못 불러옴)
+Views/SupportView.swift:36 플랫폼 차이: Apple 구독 관리 주소 → Google Play 구독 관리 주소 (옮김, ui/support/SupportView.kt manageUrl)
+Views/SupportView.swift:39 플랫폼 차이: Apple ID·iPhone 설정 안내 → Google 계정·Play 스토어 안내 문구 (옮김, ui/support/SupportView.kt 자동 갱신 안내)
+Views/SupportView.swift:41 플랫폼 차이: Apple 표준 EULA → Google Play 이용약관 링크 (옮김, ui/support/SupportView.kt 약관 링크)

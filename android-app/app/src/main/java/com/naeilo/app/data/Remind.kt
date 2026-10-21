@@ -22,7 +22,6 @@ import com.naeilo.app.core.calc.keyValue
 import com.naeilo.app.core.calc.trackValue
 import com.naeilo.app.core.cformat
 import com.naeilo.app.net.Sync
-import com.naeilo.app.pending.Support
 import com.naeilo.app.ui.settings.SettingsRoute
 import com.naeilo.app.ui.Theme
 import com.naeilo.app.ui.analysis.AnalysisRoute

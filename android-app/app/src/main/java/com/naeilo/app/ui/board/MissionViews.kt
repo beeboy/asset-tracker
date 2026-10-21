@@ -115,7 +115,7 @@ import com.naeilo.app.data.short
 import com.naeilo.app.net.KoreaEstimate
 import com.naeilo.app.net.last
 import com.naeilo.app.net.quote
-import com.naeilo.app.pending.notifierRequest
+import com.naeilo.app.data.Notifier
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.ChipRow
@@ -1054,7 +1054,7 @@ fun AppStartView(m: AppModel) {
                                         // ios: Views/MissionViews.swift:657 (openNotificationSettingsURLString 자리: 이 앱의 알림 설정 화면)
                                         if (denied) { runCatching { ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; return@launch }
                                         // ios: Views/MissionViews.swift:658
-                                        if (notifierRequest()) {
+                                        if (Notifier.request()) {
                                             m.alerts = m.alerts + ((if (m.isGoal) "morn" else "be") to true)   // ios: Views/MissionViews.swift:659
                                             animateStep(1)   // ios: Views/MissionViews.swift:660
                                         } else { denied = true }   // ios: Views/MissionViews.swift:661

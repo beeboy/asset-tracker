@@ -72,5 +72,6 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.activity.compose)
     implementation(libs.serialization.json)
+    implementation(libs.billing)
     testImplementation(kotlin("test"))
 }

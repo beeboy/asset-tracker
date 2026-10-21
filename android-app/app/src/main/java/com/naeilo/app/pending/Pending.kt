@@ -19,36 +19,10 @@ import com.naeilo.app.ui.Theme
 // 진짜 이식이 오면 그 단계에서 이 파일의 해당 줄을 지운다. Route·GoalWeek 는 저장(Progress) JSON 에 들어가므로 경우 이름은 iOS 와 같게 둔다.
 
 
-// TODO(Support): 진짜 이식 때 지움 (구독 단계)
-enum class SubPlan { monthly, yearly; val nameText: String get() = if (this == monthly) "월 구독" else "연 구독" }
-class Support {
-    val dayN: Int = 1; val testBuild: Boolean = false; val jws: String? = null
-    val dev: Boolean = false   // TODO(Support): 개발자 빌드
-    val plan: SubPlan? = null; val inTrial: Boolean get() = dayN <= 7; val trialLeft: Int get() = maxOf(0, 7 - dayN + 1)
-    val pro: Boolean get() = plan != null || inTrial
-    fun start() {}; fun tick() {}
-    companion object { val shared = Support() }
-}
 // TODO(WidgetBridge): 진짜 이식 때 지움
 object WidgetBridge { fun write(m: AppModel) {} }
 
 
-
-// TODO(SupportView 구독 단계)
-@Composable fun SupportView() {}
-
-
-
-// TODO(Notifier 알림 단계)
-object Notifier {
-    enum class Status { allowed, denied, unknown }
-    suspend fun status(): Status = Status.unknown
-    suspend fun request() {}
-    suspend fun test(m: AppModel) {}
-    suspend fun reschedule(m: AppModel) {}
-    suspend fun check(m: AppModel) {}
-    fun morningLine(m: AppModel): String = ""
-}
 
 // TODO(Catalog 위젯 단계): 기본 위젯 이름표 (Widgets/Views/Catalog.swift 와 같은 값)
 object Catalog {
@@ -93,29 +67,3 @@ object WidgetCenter { fun reloadAllTimelines() {} }
 val LocalCharDark = androidx.compose.runtime.compositionLocalOf { false }
 // TODO(CharWidgets)
 val LocalCharHide = androidx.compose.runtime.compositionLocalOf { false }
-// TODO(TownView 동네 I): 소식판의 [동네] 버튼과 전체 화면
-@Composable fun TownButton() {}
-// TODO(SupportView 구독): 구독하면 열리는 화면
-@Composable fun SubLocked(what: String) {}
-
-
-
-
-
-// G2b(외부 요인·금리 시나리오) 화면이 부르는데 아직 옮기지 않은 이름의 자리. 진짜 이식이 오면 이 파일의 해당 줄을 지운다.
-
-// TODO(Data/Notifier.swift EventRetro): 일정 전후 평가액 기록·결과 알림
-object EventRetro {
-    /** 일정 하나의 미리 본 범위(amt)와 일정 전 평가액(base), 다음에 연 때 평가액(after) */
-    class Snap(val kind: String, val day: String, val amt: Double, val base: Double, val after: Double?)
-    /** record 에 넘기는 일정 한 줄 (Swift (id:kind:day:amt:) 튜플 자리) */
-    class Rec(val id: String, val kind: String, val day: String, val amt: Double)
-    fun record(evs: List<Rec>, total: Double) {}
-    val latest: Snap? get() = null
-    fun isAsked(id: String, day: String): Boolean = false
-    suspend fun ask(id: String, kind: String, day: String, on: Boolean) {}
-}
-
-
-// TODO(Data/Notifier.swift Notifier.request): 알림 허락 결과 (Swift 는 Bool 을 돌려준다. Pending.kt 의 Notifier.request 는 아직 Unit)
-suspend fun notifierRequest(): Boolean { Notifier.request(); return false }
