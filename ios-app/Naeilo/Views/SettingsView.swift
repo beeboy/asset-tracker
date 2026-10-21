@@ -332,7 +332,7 @@ struct TossKeyView: View {
     @Environment(AppModel.self) private var m
     @State private var id = ""
     @State private var secret = ""
-    @State private var ip: String? = nil
+    @State private var ip: String? = Config.tossRelayIP   // 고정 IP 를 바로 보여 준다: 받기 실패해도 빈칸 없음
     @State private var busy = false
     @State private var msg: String? = nil
     @State private var on = TossKeys.on
@@ -364,7 +364,7 @@ struct TossKeyView: View {
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
-        .task { ip = await TossKeys.relayIP() }
+        .task { if let v = await TossKeys.relayIP() { ip = v } }
     }
 
     private var onCard: some View {

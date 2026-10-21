@@ -166,7 +166,9 @@ final class PathRuns {
     private static let file = "paths_mc.plist"
 
     private init() {
-        if let d = Store.readData(Self.file), let r = try? PropertyListDecoder().decode([String: Run].self, from: d) {
+        // 오늘 쓴 파일이 아니면 오늘 키(날짜로 시작)가 있을 수 없다: 다 풀고 버리지 않게 읽지 않는다 (결과는 같다)
+        let mod = (try? Store.url(Self.file).resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+        if let mod, Day.str(mod) >= Day.today, let d = Store.readData(Self.file), let r = try? PropertyListDecoder().decode([String: Run].self, from: d) {
             let today = Day.today
             runs = r.filter { $0.key.hasPrefix(today) }
         }
