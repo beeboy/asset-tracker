@@ -16,7 +16,6 @@ struct HomeView: View {
                 shelterBox
                 ParallelHomeCard()
                 reminder
-                if !m.playUnlocked, !m.rows.isEmpty { yesterdayCard }
                 // 아래: 예전 종목 탭 소식판에서 옮긴 둘 (2026-10-21), 그 밑에 위젯·설정 팝업
                 HoldingsNews(moversOnly: true)
                 TownButton { TownView(scroll: $0) }
@@ -246,17 +245,6 @@ struct HomeView: View {
                 .foregroundStyle(.white).background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
-    }
-
-    private var yesterdayCard: some View {
-        Card {
-            HStack(alignment: .firstTextBaseline) {
-                Text("오늘의 움직임").appFont(15, .bold)
-                Spacer()
-                Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal).roll(AppModel.sgn(m.todayMove))
-            }
-            Text(m.rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + String(localized: " · 원/달러 \(String(describing: AppModel.sgn(Market.shared.fx.change)))")).appFont(13).foregroundStyle(Theme.sub)
-        }
     }
 }
 

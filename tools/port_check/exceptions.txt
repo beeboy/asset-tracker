@@ -72,9 +72,9 @@ Data/Backup.swift:63-64 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안�
 Data/Backup.swift:67-68 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다
 
 # E 단계 (홈·설정): Views/HomeView·SettingsView·SettingsDetail·StartView·Guide·MyRecordCard·ShareCard → ui/home·ui/settings·ui/start·ui/
-Views/HomeView.swift:125 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
-Views/HomeView.swift:219 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
-Views/HomeView.swift:398 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HomeView.kt MiniPath 읽어 주기 글)
+Views/HomeView.swift:124 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
+Views/HomeView.swift:218 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
+Views/HomeView.swift:386 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HomeView.kt MiniPath 읽어 주기 글)
 Views/SettingsView.swift:84 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
 Views/SettingsView.swift:310 검사기 한계: 보간 속 따옴표 String(describing:) (옮김, SettingsView.kt PriceBasisView 원/달러 줄)
 Views/SettingsView.swift:311 검사기 한계: 보간 속 따옴표 String(format: "%.2f") (옮김, SettingsView.kt PriceBasisView 평가 환율 줄)
