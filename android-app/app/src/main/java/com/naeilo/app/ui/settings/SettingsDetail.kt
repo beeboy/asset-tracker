@@ -558,12 +558,12 @@ fun WidgetPickView(m: AppModel) {
     // ios: Views/SettingsDetail.swift:508
     @Composable
     fun Tile(e: CharEntry, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp, v: @Composable () -> Unit) {
-        val k = min(1f, h.value / 158)   // ios: Views/SettingsDetail.swift:509
+        val k = min(1f, w.value / 158)   // ios: Views/SettingsDetail.swift:509 (안드로이드는 칸이 세로로 길어 폭 기준)
         // ios: Views/SettingsDetail.swift:510,515,516
         Box(Modifier.size(w, h).clip(RoundedCornerShape((22 * k).dp)), contentAlignment = Alignment.Center) {
             CharBG(c = e.c, locked = e.locked, dark = dark)   // ios: Views/SettingsDetail.swift:511
             // ios: Views/SettingsDetail.swift:512,513
-            Box(Modifier.requiredSize((w.value / k).dp, 158.dp).graphicsLayer { scaleX = k; scaleY = k }.padding(16.dp)) { CompositionLocalProvider(LocalCharDark provides dark) { Fg(Color.White) { v() } } }
+            Box(Modifier.requiredSize(158.dp, (h.value / k).dp).graphicsLayer { scaleX = k; scaleY = k }.padding(16.dp)) { CompositionLocalProvider(LocalCharDark provides dark) { Fg(Color.White) { v() } } }
         }
     }
 

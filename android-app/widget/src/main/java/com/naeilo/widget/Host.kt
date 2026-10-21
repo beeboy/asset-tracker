@@ -40,8 +40,8 @@ val LocalCharHide = compositionLocalOf<Boolean?> { null }
 
 /** 위젯 안쪽 여백 (아이폰 작은 위젯 콘텐츠 여백 16pt) */
 const val pad = 16f
-/** 위젯 그림의 기준 높이 (아이폰 작은 위젯 158pt): 앱 안내 그림·홈 위젯이 같은 배치가 되게 */
-const val designH = 158f
+/** 위젯 그림의 기준 폭 (아이폰 작은 위젯 158pt): 앱 안내 그림·홈 위젯이 같은 배치가 되게 */
+const val designW = 158f
 /** 홈 2×2 칸의 세로/가로 비 (삼성 기본 위젯 기준) */
 const val tileRatio = 1.2f
 
@@ -65,7 +65,7 @@ fun textMeasurer(ctx: Context): TextMeasurer =
 class Rendered(val bitmap: Bitmap, val hits: List<Hit>)
 
 /** 위젯 한 장 (wDp × hDp) 을 비트맵으로. 모서리는 둥글게 자른다 */
-fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designH: Float = 0f, setup: Pen.() -> Unit = {}, draw: Pen.() -> Unit): Rendered {
+fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designW: Float = 0f, setup: Pen.() -> Unit = {}, draw: Pen.() -> Unit): Rendered {
     Store.init(ctx)
     val dm = ctx.resources.displayMetrics
     // 비트맵이 너무 크면 위젯에 못 넘긴다 (RemoteViews 비트맵 한도): 큰 위젯도 밀도를 줄여 600px 안쪽으로
@@ -78,8 +78,8 @@ fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designH: Float =
     CanvasDrawScope().draw(Density(density), LayoutDirection.Ltr, canvas, Size(bmp.width.toFloat(), bmp.height.toFloat())) {
         scale(density, Offset.Zero) {
             clipPath(Path().apply { addRoundRect(RoundRect(0f, 0f, wDp, hDp, CornerRadius(r, r))) }) {
-                // designH 가 있으면 앱 안내 그림(Tile)처럼 높이 designH 로 그린 뒤 칸 크기로 키운다
-                val k = if (designH > 0f) hDp / designH else 1f
+                // designW 가 있으면 앱 안내 그림(Tile)처럼 폭 designW 로 그린 뒤 칸 크기로 키운다 (폭 기준이라 인물·글자가 안 겹친다)
+                val k = if (designW > 0f) wDp / designW else 1f
                 scale(k, Offset.Zero) {
                     val p = Pen(this, tm, ctx, dark, wDp / k, hDp / k)
                     p.setup()
