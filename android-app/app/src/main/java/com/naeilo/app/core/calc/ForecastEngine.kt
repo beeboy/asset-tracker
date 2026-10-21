@@ -1,5 +1,8 @@
 package com.naeilo.app.core.calc
 
+import kotlinx.serialization.json.encodeToStream
+import kotlinx.serialization.json.decodeFromStream
+import kotlinx.serialization.ExperimentalSerializationApi
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.getValue
@@ -46,6 +49,20 @@ object Compute {   // ios: Data/ForecastEngine.swift:5
     class Halt {   // ios: Data/ForecastEngine.swift:14
         @Volatile var hit = false   // ios: Data/ForecastEngine.swift:15
         val check: () -> Boolean = { if (!Compute.active) hit = true; hit }   // ios: Data/ForecastEngine.swift:16
+    }
+}
+
+// 경로 캐시 파일(수 MB~20MB)은 파일에서 바로 풀고 바로 쓴다. 통째 바이트·글자를 한 번 더 만들지 않아 시작 때 메모리가 덜 튄다 (형식은 그대로)
+@OptIn(ExperimentalSerializationApi::class)
+private fun <T> readJson(name: String, ser: KSerializer<T>): T? =
+    runCatching { Store.url(name).takeIf { it.exists() }?.inputStream()?.buffered()?.use { NJson.decodeFromStream(ser, it) } }.getOrNull()
+/** Store.writeData 와 같이 옆 파일에 다 쓴 뒤 바꿔 넣는다 */
+@OptIn(ExperimentalSerializationApi::class)
+private fun <T> writeJson(name: String, ser: KSerializer<T>, v: T) {
+    runCatching {
+        val tmp = java.io.File(Store.dir, "$name.tmp")
+        tmp.outputStream().buffered().use { NJson.encodeToStream(ser, v, it) }
+        if (!tmp.renameTo(Store.url(name))) { tmp.copyTo(Store.url(name), overwrite = true); tmp.delete() }
     }
 }
 
@@ -121,7 +138,7 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
     init {   // ios: Data/ForecastEngine.swift:61
         // 어제 계산한 것이라도 불러 둔다 (키가 다르면 쓰지 않고 새로 계산). 읽기·풀기는 계산 스레드에서 (계산보다 먼저 줄 선다)
         exec.execute {
-            val r = Store.readData(file)?.let { d -> runCatching { NJson.decodeFromString(Run.serializer(), d.decodeToString()) }.getOrNull() }   // ios: Data/ForecastEngine.swift:63
+            val r = readJson(file, Run.serializer())   // ios: Data/ForecastEngine.swift:63
             if (r != null) mainH.post { if (run == null) run = r }
         }
     }
@@ -142,7 +159,7 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
                 if (r != null && !halted) {   // ios: Data/ForecastEngine.swift:78
                     views.clear(); lastView = null   // ios: Data/ForecastEngine.swift:79
                     run = r   // ios: Data/ForecastEngine.swift:80
-                    writer.execute { runCatching { Store.writeData(NJson.encodeToString(Run.serializer(), r).encodeToByteArray(), file) } }   // ios: Data/ForecastEngine.swift:81
+                    writer.execute { writeJson(file, Run.serializer(), r) }   // ios: Data/ForecastEngine.swift:81
                 } else if (halted) {   // ios: Data/ForecastEngine.swift:82
                     if (waiting == null) waiting = job   // ios: Data/ForecastEngine.swift:83 다시 켜지면 처음부터
                 } else failed.add(job.key)   // ios: Data/ForecastEngine.swift:84
@@ -246,7 +263,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
     init {   // ios: Data/ForecastEngine.swift:168
         // 파일 읽기·풀기는 계산 스레드에서 (계산보다 먼저 줄 선다). 그새 계산해 둔 것이 있으면 그쪽이 이긴다
         exec.execute {
-            val r = Store.readData(file)?.let { d -> runCatching { NJson.decodeFromString(runsSer, d.decodeToString()) }.getOrNull() }   // ios: Data/ForecastEngine.swift:169
+            val r = readJson(file, runsSer)   // ios: Data/ForecastEngine.swift:169
             if (r != null) mainH.post {
                 val today = Day.today   // ios: Data/ForecastEngine.swift:170
                 runs = r.filter { it.key.startsWith(today) } + runs   // ios: Data/ForecastEngine.swift:171
@@ -292,7 +309,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
                     while (all.size >= 16) { val k = all.entries.minWithOrNull(Comparator { x, y -> (x.value.at ?: 0.0).compareTo(y.value.at ?: 0.0) })?.key ?: break; all.remove(k) }   // ios: Data/ForecastEngine.swift:223
                     all[r.key] = r   // ios: Data/ForecastEngine.swift:224
                     runs = all   // ios: Data/ForecastEngine.swift:225
-                    writer.execute { runCatching { Store.writeData(NJson.encodeToString(runsSer, all).encodeToByteArray(), file) } }   // ios: Data/ForecastEngine.swift:226
+                    writer.execute { writeJson(file, runsSer, all) }   // ios: Data/ForecastEngine.swift:226
                     onRun?.invoke()   // ios: Data/ForecastEngine.swift:227
                 } else failed.add(job.key)   // ios: Data/ForecastEngine.swift:228
                 next()   // ios: Data/ForecastEngine.swift:229
