@@ -40,3 +40,9 @@ file:ui/analysis/FxGlanceViews.kt:381
 
 ## 코드용(저장 키·정규식 등)
 file:core/L10n.kt
+
+## 개발자 로그 (logcat naeilo.flow, 화면에 안 나옴)
+re:^토스 일봉
+re:^토스 캔들 저장
+re:^일봉 없음
+%@(%@) 토스 %@ 알파카 %@

@@ -155,8 +155,7 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                         }
                     }
                 }
-                // ios: Views/FlowView.swift:64,65
-                T("두 손가락으로 벌리면 가까이, 오므리면 주봉·월봉으로 접혀요 · 옆으로 밀면 지난 날", Modifier.heightIn(min = 32.dp), style = appFont(12f), color = Theme.muted, maxLines = 2)
+                T("옆으로 밀면 지난 날 · 두 손가락으로 확대", style = appFont(12f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:64,65
                 Explain(term)   // ios: Views/FlowView.swift:66
             }
         }
@@ -316,7 +315,7 @@ val FlowPattern.Kind.body: String get() = when (this) {
 }
 
 /** 이름표 자리 잡기에 넘기는 것 */
-class TagWant(val key: String, val layer: FlowLayer, val strong: Boolean, val w: Float, val cands: List<Offset>)   // ios: Views/FlowView.swift:485
+class TagWant(val key: String, val layer: FlowLayer, val strong: Boolean, val w: Float, val cands: List<Offset>)   // ios: Views/FlowView.swift:496
 
 /** .position(x:y:): 가운데를 (x, y) dp 에 둔다 (부모 Box 왼쪽 위 기준) */
 private fun Modifier.centerAt(x: Float, y: Float): Modifier = this.layout { m, c ->
@@ -335,13 +334,13 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
     val haptic = LocalHapticFeedback.current
     val dens = LocalDensity.current.density
     // 겹 투명도: 켜고 끌 때 0.2초에 걸쳐 (자리는 그대로)
-    val aTrend by animateFloatAsState(if (FlowLayer.trend in layers) 1f else 0f, tween(200), label = "trend")   // ios: Views/FlowView.swift:383
-    val aLevels by animateFloatAsState(if (FlowLayer.levels in layers) 1f else 0f, tween(200), label = "levels")   // ios: Views/FlowView.swift:406
-    val aBig by animateFloatAsState(if (FlowLayer.big in layers) 1f else 0f, tween(200), label = "big")   // ios: Views/FlowView.swift:425
-    val aCandle by animateFloatAsState(if (FlowLayer.candle in layers) 1f else 0f, tween(200), label = "candle")   // ios: Views/FlowView.swift:436
+    val aTrend by animateFloatAsState(if (FlowLayer.trend in layers) 1f else 0f, tween(200), label = "trend")   // ios: Views/FlowView.swift:394
+    val aLevels by animateFloatAsState(if (FlowLayer.levels in layers) 1f else 0f, tween(200), label = "levels")   // ios: Views/FlowView.swift:417
+    val aBig by animateFloatAsState(if (FlowLayer.big in layers) 1f else 0f, tween(200), label = "big")   // ios: Views/FlowView.swift:436
+    val aCandle by animateFloatAsState(if (FlowLayer.candle in layers) 1f else 0f, tween(200), label = "candle")   // ios: Views/FlowView.swift:447
     val up = Theme.up; val down = Theme.down; val dash = Theme.dash; val teal = Theme.teal; val card = Theme.card; val line = Theme.line; val purple = Theme.purple
 
-    // ios: Views/FlowView.swift:258,259,475,476
+    // ios: Views/FlowView.swift:258,259,486,487
     BoxWithConstraints(Modifier.fillMaxSize().padding(vertical = 4.dp)) {
         val k = series.candles; val n = k.size   // ios: Views/FlowView.swift:260
         val cnt = max(20, min(n, count))   // ios: Views/FlowView.swift:261
@@ -385,24 +384,24 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
             TagWant("C${pt.id}", FlowLayer.candle, pt.strong, w, listOf(Offset(cx, yy + 14 * d), Offset(cx, yy + 34 * d), Offset(cx, other), Offset(cx, yy + 54 * d)))
         }, on = layers, bounds = Rect(0f, top - 6, W, top - 6 + H + 14))   // ios: Views/FlowView.swift:299
 
-        LaunchedEffect(step) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }   // ios: Views/FlowView.swift:473
+        LaunchedEffect(step) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }   // ios: Views/FlowView.swift:484
 
-        // ios: Views/FlowView.swift:301,444
+        // ios: Views/FlowView.swift:301,455
         Box(
             Modifier.fillMaxSize()
                 // 점·선 근처를 누르면 그 뜻. 이름표는 누를 수 있는 칸이라 먼저 받는다
-                .pointerInput(lo, hi, layers, W, H) {   // ios: Views/FlowView.swift:446
+                .pointerInput(lo, hi, layers, W, H) {   // ios: Views/FlowView.swift:457
                     detectTapGestures { o ->
                         val lx = o.x / dens; val ly = o.y / dens
-                        // ios: Views/FlowView.swift:447,448,449
+                        // ios: Views/FlowView.swift:458,459,460
                         val lv = if (FlowLayer.levels in layers) lvls.minByOrNull { abs(y(it.price) - ly) } else null
                         if (lv != null && abs(y(lv.price) - ly) < 10) { onTerm(if (lv.support) FlowTerm.support else FlowTerm.resistance); return@detectTapGestures }
-                        // ios: Views/FlowView.swift:451,452
+                        // ios: Views/FlowView.swift:462,463
                         if (FlowLayer.trend in layers && piv.any { it.i in lo..hi && hypot(x(it.i.toDouble()) - lx, y(it.price) - ly) < 22 }) onTerm(FlowTerm.dots)
                     }
                 }
                 // 이름표 위에서 시작해도 밀기·핀치가 먹게: 두 손가락은 확대, 한 손가락은 옆으로 밀 때만 (세로는 화면 스크롤에 넘긴다)
-                .pointerInput(n, W) {   // ios: Views/FlowView.swift:456,457,465
+                .pointerInput(n, W) {   // ios: Views/FlowView.swift:467,468,476
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
                         var side: Boolean? = null; var acc = Offset.Zero; var mag = 1f; var tx = 0f
@@ -411,30 +410,30 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
                             val down = ev.changes.count { it.pressed }
                             if (down >= 2) {
                                 mag *= ev.calculateZoom()
-                                val base = pinchBase ?: count   // ios: Views/FlowView.swift:467
-                                if (pinchBase == null) pinchBase = count   // ios: Views/FlowView.swift:468
-                                count = max(20, min(n, (base / max(0.05f, mag)).toInt()))   // ios: Views/FlowView.swift:466,469
+                                val base = pinchBase ?: count   // ios: Views/FlowView.swift:478
+                                if (pinchBase == null) pinchBase = count   // ios: Views/FlowView.swift:479
+                                count = max(20, min(n, (base / max(0.05f, mag)).toInt()))   // ios: Views/FlowView.swift:477,480
                                 ev.changes.forEach { it.consume() }
                             } else if (down == 1) {
                                 val d = ev.calculatePan()
-                                if (side == null) { acc += d; if (acc.getDistance() > 8 * dens) side = abs(acc.x) > abs(acc.y) }   // ios: Views/FlowView.swift:457 (minimumDistance 8. 세로면 화면 스크롤에 넘긴다)
+                                if (side == null) { acc += d; if (acc.getDistance() > 8 * dens) side = abs(acc.x) > abs(acc.y) }   // ios: Views/FlowView.swift:468 (minimumDistance 8. 세로면 화면 스크롤에 넘긴다)
                                 if (side == true) {
                                     tx += d.x / dens
                                     val c0 = max(20, min(n, count)); val h0 = max(c0 - 1, min(n - 1, end ?: (n - 1)))
-                                    val base = dragBase ?: h0   // ios: Views/FlowView.swift:458,459
-                                    if (dragBase == null) dragBase = h0   // ios: Views/FlowView.swift:460
-                                    val shift = (tx / max(1f, W) * c0).roundToInt()   // ios: Views/FlowView.swift:461
-                                    end = max(c0 - 1, min(n - 1, base - shift))   // ios: Views/FlowView.swift:462
+                                    val base = dragBase ?: h0   // ios: Views/FlowView.swift:469,470
+                                    if (dragBase == null) dragBase = h0   // ios: Views/FlowView.swift:471
+                                    val shift = (tx / max(1f, W) * c0).roundToInt()   // ios: Views/FlowView.swift:472
+                                    end = max(c0 - 1, min(n - 1, base - shift))   // ios: Views/FlowView.swift:473
                                     ev.changes.forEach { it.consume() }
                                 }
                             }
                         } while (ev.changes.any { it.pressed })
-                        dragBase = null; pinchBase = null   // ios: Views/FlowView.swift:464,471
+                        dragBase = null; pinchBase = null   // ios: Views/FlowView.swift:475,482
                     }
                 },
         ) {
             // 머리: 종목·마지막 값 (시작 대비) + 지금 단위
-            // ios: Views/FlowView.swift:303,316
+            // ios: Views/FlowView.swift:303,327
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 8.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {   // ios: Views/FlowView.swift:304
                     T(title, style = appFont(12f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:305
@@ -445,82 +444,90 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
                     }
                 }
                 Spacer(Modifier.weight(1f))   // ios: Views/FlowView.swift:312
-                // ios: Views/FlowView.swift:313,314
-                T(if (step == 1) "일봉" else if (step == 5) "주봉" else "월봉", Modifier.background(Theme.line, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp), style = appFont(12f, FontWeight.SemiBold), color = Theme.sub)
+                // 일·주·월 고르기: 고르면 보이는 날 수를 그 단위로, 핀치로 바뀌면 고른 칸도 따라 바뀐다
+                Row(Modifier.background(Theme.line, RoundedCornerShape(50)).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/FlowView.swift:314,325
+                    listOf(Triple(1, "일봉", 160), Triple(5, "주봉", 520), Triple(21, "월봉", n)).forEach { (u, t, c) ->   // ios: Views/FlowView.swift:315
+                        val ok = u == 1 || (if (u == 5) n > 200 else n > 600); val on = step == u   // ios: Views/FlowView.swift:316
+                        // ios: Views/FlowView.swift:317,318,319,320,322
+                        T(t, Modifier.graphicsLayer { alpha = if (ok) 1f else 0.35f }.background(if (on) Theme.teal else Color.Transparent, RoundedCornerShape(50))
+                            .then(if (ok) Modifier.plainClickable { count = c } else Modifier).padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = appFont(12f, FontWeight.SemiBold), color = if (on) Color.White else Theme.sub, maxLines = 1)
+                    }
+                }
             }
 
             // 오른쪽 눈금 (+x% 시작 대비)
-            val ticks = (0 until 4).map { t -> yMin + (yMax - yMin) * (0.1 + 0.8 * t / 3.0) }   // ios: Views/FlowView.swift:319,320
-            Canvas(Modifier.fillMaxSize()) { ticks.forEach { v -> drawLine(line, Offset(0f, y(v) * dens), Offset(W * dens, y(v) * dens), 1.dp.toPx()) } }   // ios: Views/FlowView.swift:321,322
+            val ticks = (0 until 4).map { t -> yMin + (yMax - yMin) * (0.1 + 0.8 * t / 3.0) }   // ios: Views/FlowView.swift:330,331
+            Canvas(Modifier.fillMaxSize()) { ticks.forEach { v -> drawLine(line, Offset(0f, y(v) * dens), Offset(W * dens, y(v) * dens), 1.dp.toPx()) } }   // ios: Views/FlowView.swift:332,333
             ticks.forEach { v ->
-                // ios: Views/FlowView.swift:323,324,325
+                // ios: Views/FlowView.swift:334,335,336
                 T(cformat("%+.0f%%", series.pct(v)), Modifier.width((axisW - 4).dp).centerAt(W + axisW / 2 + 2, y(v)), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
             }
 
             // 캔들 (늘 보임)
-            Canvas(Modifier.width(W.dp).fillMaxSize().clipToBounds()) {   // ios: Views/FlowView.swift:329,346
-                var g0 = lo / step   // ios: Views/FlowView.swift:330
-                while (g0 * step <= hi) {   // ios: Views/FlowView.swift:331
-                    val a = max(lo, g0 * step); val b = min(hi, g0 * step + step - 1)   // ios: Views/FlowView.swift:332
-                    val o = k[a].o; val c = k[b].c   // ios: Views/FlowView.swift:333
-                    var h = -Double.MAX_VALUE; var l = Double.MAX_VALUE   // ios: Views/FlowView.swift:334
-                    for (i in a..b) { h = max(h, k[i].h); l = min(l, k[i].l) }   // ios: Views/FlowView.swift:335
-                    val cx = x((a + b) / 2.0)   // ios: Views/FlowView.swift:336
-                    val bw = max(1f, (b - a + 1).toFloat() / cnt * W * 0.68f)   // ios: Views/FlowView.swift:337
-                    val col = if (c >= o) up else down   // ios: Views/FlowView.swift:338
-                    drawLine(col, Offset(cx * dens, y(h) * dens), Offset(cx * dens, y(l) * dens), 1.dp.toPx())   // ios: Views/FlowView.swift:339,340
-                    drawRect(col, Offset((cx - bw / 2) * dens, y(max(o, c)) * dens), Size(bw * dens, max(1f, abs(y(o) - y(c))) * dens))   // ios: Views/FlowView.swift:341,342
-                    g0 += 1   // ios: Views/FlowView.swift:343
+            Canvas(Modifier.width(W.dp).fillMaxSize().clipToBounds()) {   // ios: Views/FlowView.swift:340,357
+                var g0 = lo / step   // ios: Views/FlowView.swift:341
+                while (g0 * step <= hi) {   // ios: Views/FlowView.swift:342
+                    val a = max(lo, g0 * step); val b = min(hi, g0 * step + step - 1)   // ios: Views/FlowView.swift:343
+                    val o = k[a].o; val c = k[b].c   // ios: Views/FlowView.swift:344
+                    var h = -Double.MAX_VALUE; var l = Double.MAX_VALUE   // ios: Views/FlowView.swift:345
+                    for (i in a..b) { h = max(h, k[i].h); l = min(l, k[i].l) }   // ios: Views/FlowView.swift:346
+                    val cx = x((a + b) / 2.0)   // ios: Views/FlowView.swift:347
+                    val bw = max(1f, (b - a + 1).toFloat() / cnt * W * 0.68f)   // ios: Views/FlowView.swift:348
+                    val col = if (c >= o) up else down   // ios: Views/FlowView.swift:349
+                    drawLine(col, Offset(cx * dens, y(h) * dens), Offset(cx * dens, y(l) * dens), 1.dp.toPx())   // ios: Views/FlowView.swift:350,351
+                    drawRect(col, Offset((cx - bw / 2) * dens, y(max(o, c)) * dens), Size(bw * dens, max(1f, abs(y(o) - y(c))) * dens))   // ios: Views/FlowView.swift:352,353
+                    g0 += 1   // ios: Views/FlowView.swift:354
                 }
             }
 
             // 겹 1: 추세 띠 + 추세 점
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = aTrend }) {   // ios: Views/FlowView.swift:349,383
-                Canvas(Modifier.width(W.dp).fillMaxSize().clipToBounds()) {   // ios: Views/FlowView.swift:350,372
-                    for ((row, ts) in series.trends.reversed().withIndex()) {   // ios: Views/FlowView.swift:351
-                        for (t in ts) { if (!(t.to >= lo && t.from <= hi)) continue   // ios: Views/FlowView.swift:352
-                            val a = x(max(lo, t.from) - 0.5); val b = x(min(hi, t.to) + 0.5)   // ios: Views/FlowView.swift:353
-                            // ios: Views/FlowView.swift:354,355
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = aTrend }) {   // ios: Views/FlowView.swift:360,394
+                Canvas(Modifier.width(W.dp).fillMaxSize().clipToBounds()) {   // ios: Views/FlowView.swift:361,383
+                    for ((row, ts) in series.trends.reversed().withIndex()) {   // ios: Views/FlowView.swift:362
+                        for (t in ts) { if (!(t.to >= lo && t.from <= hi)) continue   // ios: Views/FlowView.swift:363
+                            val a = x(max(lo, t.from) - 0.5); val b = x(min(hi, t.to) + 0.5)   // ios: Views/FlowView.swift:364
+                            // ios: Views/FlowView.swift:365,366
                             drawRect(if (t.dir > 0) up else if (t.dir < 0) down else dash, Offset(a * dens, (topH + row * (bandH / 3) + 1.5f) * dens), Size(max(1f, b - a) * dens, (bandH / 3 - 3) * dens))
                         }
                     }
-                    val vis = piv.filter { it.i >= lo - 40 && it.i <= hi + 40 }   // ios: Views/FlowView.swift:358
-                    val path = Path()   // ios: Views/FlowView.swift:359
-                    vis.forEachIndexed { j, p ->   // ios: Views/FlowView.swift:360
-                        val px = x(p.i.toDouble()) * dens; val py = (y(p.price) + if (p.high) -5 else 5) * dens   // ios: Views/FlowView.swift:361
-                        if (j == 0) path.moveTo(px, py) else path.lineTo(px, py)   // ios: Views/FlowView.swift:362
+                    val vis = piv.filter { it.i >= lo - 40 && it.i <= hi + 40 }   // ios: Views/FlowView.swift:369
+                    val path = Path()   // ios: Views/FlowView.swift:370
+                    vis.forEachIndexed { j, p ->   // ios: Views/FlowView.swift:371
+                        val px = x(p.i.toDouble()) * dens; val py = (y(p.price) + if (p.high) -5 else 5) * dens   // ios: Views/FlowView.swift:372
+                        if (j == 0) path.moveTo(px, py) else path.lineTo(px, py)   // ios: Views/FlowView.swift:373
                     }
-                    drawPath(path, teal.copy(alpha = 0.55f), style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))))   // ios: Views/FlowView.swift:364
-                    for (p in vis) { if (!(p.i >= lo && p.i <= hi)) continue   // ios: Views/FlowView.swift:365
-                        val c = Offset(x(p.i.toDouble()) * dens, (y(p.price) + if (p.high) -5 else 5) * dens)   // ios: Views/FlowView.swift:366
-                        val r = Rect(Offset(c.x - 3.5f * dens, c.y - 3.5f * dens), Size(7f * dens, 7f * dens))   // ios: Views/FlowView.swift:367
-                        drawOval(teal, r.topLeft, r.size)   // ios: Views/FlowView.swift:368
-                        drawOval(card, r.topLeft, r.size, style = Stroke(1.2.dp.toPx()))   // ios: Views/FlowView.swift:369
+                    drawPath(path, teal.copy(alpha = 0.55f), style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))))   // ios: Views/FlowView.swift:375
+                    for (p in vis) { if (!(p.i >= lo && p.i <= hi)) continue   // ios: Views/FlowView.swift:376
+                        val c = Offset(x(p.i.toDouble()) * dens, (y(p.price) + if (p.high) -5 else 5) * dens)   // ios: Views/FlowView.swift:377
+                        val r = Rect(Offset(c.x - 3.5f * dens, c.y - 3.5f * dens), Size(7f * dens, 7f * dens))   // ios: Views/FlowView.swift:378
+                        drawOval(teal, r.topLeft, r.size)   // ios: Views/FlowView.swift:379
+                        drawOval(card, r.topLeft, r.size, style = Stroke(1.2.dp.toPx()))   // ios: Views/FlowView.swift:380
                     }
                 }
                 // 띠 이름: 오른쪽 눈금 칸에 아주 작게 (차트 폭은 그대로)
-                listOf("큰", "중간", "작은").forEachIndexed { row, t ->   // ios: Views/FlowView.swift:374
-                    T(t, Modifier.centerAt(W + 4 + 12, topH + row * (bandH / 3) + bandH / 6), style = appFont(8f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:375,376
+                listOf("큰", "중간", "작은").forEachIndexed { row, t ->   // ios: Views/FlowView.swift:385
+                    T(t, Modifier.centerAt(W + 4 + 12, topH + row * (bandH / 3) + bandH / 6), style = appFont(8f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:386,387
                 }
                 // 띠를 누르면 띠 설명
-                // ios: Views/FlowView.swift:379,380,381,384
+                // ios: Views/FlowView.swift:390,391,392,395
                 if (FlowLayer.trend in layers) Box(Modifier.width(W.dp).height((bandH + 6).dp).layout { m, c -> val p = m.measure(c); layout(p.width, p.height) { p.place(0, (topH - 3).dp.roundToPx()) } }.plainClickable { onTerm(FlowTerm.band) })
             }
 
             // 겹 2: 지지·저항 가로선
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = aLevels }) {   // ios: Views/FlowView.swift:387,406
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = aLevels }) {   // ios: Views/FlowView.swift:398,417
                 Canvas(Modifier.fillMaxSize()) {
-                    for (lv in lvls) {   // ios: Views/FlowView.swift:388
-                        val a = max(0f, x(max(lo, lv.from) - 0.5)); val yy = y(lv.price)   // ios: Views/FlowView.swift:389
-                        val col = if (lv.support) up else down   // ios: Views/FlowView.swift:390
-                        val op = min(1.0, 0.25 + 0.2 * lv.touches).toFloat()   // ios: Views/FlowView.swift:391
-                        drawLine(col.copy(alpha = op), Offset(a * dens, yy * dens), Offset(W * dens, yy * dens), (if (lv.touches >= 4) 2f else 1.2f).dp.toPx())   // ios: Views/FlowView.swift:392,393
+                    for (lv in lvls) {   // ios: Views/FlowView.swift:399
+                        val a = max(0f, x(max(lo, lv.from) - 0.5)); val yy = y(lv.price)   // ios: Views/FlowView.swift:400
+                        val col = if (lv.support) up else down   // ios: Views/FlowView.swift:401
+                        val op = min(1.0, 0.25 + 0.2 * lv.touches).toFloat()   // ios: Views/FlowView.swift:402
+                        drawLine(col.copy(alpha = op), Offset(a * dens, yy * dens), Offset(W * dens, yy * dens), (if (lv.touches >= 4) 2f else 1.2f).dp.toPx())   // ios: Views/FlowView.swift:403,404
                     }
                 }
                 for (lv in lvls) {
-                    val sp = spots["L${lv.id}"] ?: continue   // ios: Views/FlowView.swift:394
+                    val sp = spots["L${lv.id}"] ?: continue   // ios: Views/FlowView.swift:405
                     val col = if (lv.support) up else down; val op = min(1.0, 0.25 + 0.2 * lv.touches).toFloat()
-                    // ios: Views/FlowView.swift:395,396,397,398,399,401,402,407
+                    // ios: Views/FlowView.swift:406,407,408,409,410,412,413,418
                     T(levelText(lv), Modifier.centerAt(sp.x, sp.y).heightIn(min = 24.dp).then(if (FlowLayer.levels in layers) Modifier.plainClickable { onTerm(if (lv.support) FlowTerm.support else FlowTerm.resistance) } else Modifier)
                         .padding(vertical = 4.dp).background(card.copy(alpha = 0.9f), RoundedCornerShape(50)).padding(horizontal = 4.dp),
                         style = appFont(10f, FontWeight.SemiBold), color = col.copy(alpha = max(0.7f, op)), maxLines = 1)
@@ -528,84 +535,84 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
             }
 
             // 겹 3: 큰 패턴 (구간을 묶는 틀 + 이름표)
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = aBig }) {   // ios: Views/FlowView.swift:410,425
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = aBig }) {   // ios: Views/FlowView.swift:421,436
                 Canvas(Modifier.fillMaxSize()) {
-                    for (pt in bigs) {   // ios: Views/FlowView.swift:411
-                        val (a, b, t, bt) = box(pt)   // ios: Views/FlowView.swift:412
-                        val col = purple   // ios: Views/FlowView.swift:413
-                        val sz = Size(max(4f, b - a) * dens, max(4f, bt - t) * dens); val r = CornerRadius(6.dp.toPx())   // ios: Views/FlowView.swift:414,417
-                        val ctr = Offset((a + b) / 2 * dens, (t + bt) / 2 * dens); val tl = Offset(ctr.x - sz.width / 2, ctr.y - sz.height / 2)   // ios: Views/FlowView.swift:418
-                        drawRoundRect(col.copy(alpha = if (pt.strong) 0.07f else 0.03f), tl, sz, CornerRadius(6.dp.toPx()))   // ios: Views/FlowView.swift:416
-                        // ios: Views/FlowView.swift:415,419
+                    for (pt in bigs) {   // ios: Views/FlowView.swift:422
+                        val (a, b, t, bt) = box(pt)   // ios: Views/FlowView.swift:423
+                        val col = purple   // ios: Views/FlowView.swift:424
+                        val sz = Size(max(4f, b - a) * dens, max(4f, bt - t) * dens); val r = CornerRadius(6.dp.toPx())   // ios: Views/FlowView.swift:425,428
+                        val ctr = Offset((a + b) / 2 * dens, (t + bt) / 2 * dens); val tl = Offset(ctr.x - sz.width / 2, ctr.y - sz.height / 2)   // ios: Views/FlowView.swift:429
+                        drawRoundRect(col.copy(alpha = if (pt.strong) 0.07f else 0.03f), tl, sz, CornerRadius(6.dp.toPx()))   // ios: Views/FlowView.swift:427
+                        // ios: Views/FlowView.swift:426,430
                         drawRoundRect(col.copy(alpha = if (pt.strong) 0.9f else 0.45f), tl, sz, r, style = Stroke((if (pt.strong) 1.5f else 1f).dp.toPx(), pathEffect = if (pt.strong) null else PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
                     }
                 }
                 for (pt in bigs) {
-                    val sp = spots["B${pt.id}"] ?: continue   // ios: Views/FlowView.swift:420
-                    Tag(pt.kind.title, purple, pt.strong, Modifier.centerAt(sp.x, sp.y), FlowLayer.big in layers) { onTerm(FlowTerm.pattern(pt.kind)) }   // ios: Views/FlowView.swift:421,426
+                    val sp = spots["B${pt.id}"] ?: continue   // ios: Views/FlowView.swift:431
+                    Tag(pt.kind.title, purple, pt.strong, Modifier.centerAt(sp.x, sp.y), FlowLayer.big in layers) { onTerm(FlowTerm.pattern(pt.kind)) }   // ios: Views/FlowView.swift:432,437
                 }
             }
 
             // 겹 4: 캔들 패턴 (일봉으로 볼 때만. 주봉·월봉에선 캔들 하나가 하루가 아니라 뜻이 달라진다)
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = aCandle }) {   // ios: Views/FlowView.swift:429,436
-                for (pt in smalls) {   // ios: Views/FlowView.swift:430
-                    val sp = spots["C${pt.id}"] ?: continue   // ios: Views/FlowView.swift:431
-                    Tag(pt.kind.title, Theme.orange, pt.strong, Modifier.centerAt(sp.x, sp.y), FlowLayer.candle in layers) { onTerm(FlowTerm.pattern(pt.kind)) }   // ios: Views/FlowView.swift:432,437
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = aCandle }) {   // ios: Views/FlowView.swift:440,447
+                for (pt in smalls) {   // ios: Views/FlowView.swift:441
+                    val sp = spots["C${pt.id}"] ?: continue   // ios: Views/FlowView.swift:442
+                    Tag(pt.kind.title, Theme.orange, pt.strong, Modifier.centerAt(sp.x, sp.y), FlowLayer.candle in layers) { onTerm(FlowTerm.pattern(pt.kind)) }   // ios: Views/FlowView.swift:443,448
                 }
             }
 
             // 아래: 보이는 기간
-            // ios: Views/FlowView.swift:440,441,442
+            // ios: Views/FlowView.swift:451,452,453
             T(date(series, lo) + " – " + date(series, hi), Modifier.centerAt(W / 2, fullH - botH / 2), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
         }
     }
 }
 
-private fun levelText(lv: FlowLevel): String =   // ios: Views/FlowView.swift:479
-    (if (lv.support) "지지" else "저항") + " ×${lv.touches}"   // ios: Views/FlowView.swift:480
+private fun levelText(lv: FlowLevel): String =   // ios: Views/FlowView.swift:490
+    (if (lv.support) "지지" else "저항") + " ×${lv.touches}"   // ios: Views/FlowView.swift:491
 /** 10pt 굵은 글자 이름표 폭 어림 (한글 10.5, 영문 6.2 + 여백) */
-private fun tagW(t0: String): Float { val t = com.naeilo.app.core.tr(t0); return t.fold(14f) { a, ch -> a + if (ch.code < 128) 6.2f else 10.5f } }   // ios: Views/FlowView.swift:483
+private fun tagW(t0: String): Float { val t = com.naeilo.app.core.tr(t0); return t.fold(14f) { a, ch -> a + if (ch.code < 128) 6.2f else 10.5f } }   // ios: Views/FlowView.swift:494
 
 /** 이름표 자리 잡기: 지지·저항 → 큰 패턴 → 캔들 패턴 순서로, 켜진 앞 겹 이름표와 이미 놓인 것을 피해
  *  후보 자리를 차례로 본다. 진한 것부터 놓으니 끝내 겹치면 약한 쪽이 숨는다.
  *  뒤 겹을 켜고 꺼도 앞 겹 이름표는 움직이지 않는다 */
-fun placeTags(levels: List<TagWant>, big: List<TagWant>, candle: List<TagWant>, on: Set<FlowLayer>, bounds: Rect): Map<String, Offset> {   // ios: Views/FlowView.swift:490
-    val out = HashMap<String, Offset>(); val taken = ArrayList<Rect>()   // ios: Views/FlowView.swift:491
-    for (group in listOf(levels, big, candle)) {   // ios: Views/FlowView.swift:492
-        val mine = ArrayList<Rect>()   // ios: Views/FlowView.swift:493
-        for (t in group.sortedBy { if (it.strong) 0 else 1 }) {   // ios: Views/FlowView.swift:494
-            for (c in t.cands) {   // ios: Views/FlowView.swift:495
-                val cx = min(max(c.x, bounds.left + t.w / 2), bounds.right - t.w / 2)   // ios: Views/FlowView.swift:496
-                val cy = min(max(c.y, bounds.top + 9), bounds.bottom - 9)   // ios: Views/FlowView.swift:497
-                val r = Rect(cx - t.w / 2, cy - 9, cx + t.w / 2, cy - 9 + 18)   // ios: Views/FlowView.swift:498
-                if ((taken + mine).none { it.overlaps(r) }) {   // ios: Views/FlowView.swift:499
-                    out[t.key] = Offset(cx, cy); mine.add(r); break   // ios: Views/FlowView.swift:500
+fun placeTags(levels: List<TagWant>, big: List<TagWant>, candle: List<TagWant>, on: Set<FlowLayer>, bounds: Rect): Map<String, Offset> {   // ios: Views/FlowView.swift:501
+    val out = HashMap<String, Offset>(); val taken = ArrayList<Rect>()   // ios: Views/FlowView.swift:502
+    for (group in listOf(levels, big, candle)) {   // ios: Views/FlowView.swift:503
+        val mine = ArrayList<Rect>()   // ios: Views/FlowView.swift:504
+        for (t in group.sortedBy { if (it.strong) 0 else 1 }) {   // ios: Views/FlowView.swift:505
+            for (c in t.cands) {   // ios: Views/FlowView.swift:506
+                val cx = min(max(c.x, bounds.left + t.w / 2), bounds.right - t.w / 2)   // ios: Views/FlowView.swift:507
+                val cy = min(max(c.y, bounds.top + 9), bounds.bottom - 9)   // ios: Views/FlowView.swift:508
+                val r = Rect(cx - t.w / 2, cy - 9, cx + t.w / 2, cy - 9 + 18)   // ios: Views/FlowView.swift:509
+                if ((taken + mine).none { it.overlaps(r) }) {   // ios: Views/FlowView.swift:510
+                    out[t.key] = Offset(cx, cy); mine.add(r); break   // ios: Views/FlowView.swift:511
                 }
             }
         }
         // 이 겹이 켜져 있을 때만 뒤 겹이 피한다
-        val l = group.firstOrNull()?.layer; if (l != null && l in on) taken += mine   // ios: Views/FlowView.swift:505
+        val l = group.firstOrNull()?.layer; if (l != null && l in on) taken += mine   // ios: Views/FlowView.swift:516
     }
-    return out   // ios: Views/FlowView.swift:507
+    return out   // ios: Views/FlowView.swift:518
 }
 
 /** 이름표: 확정은 진하게, 약한 것은 흐린 점선 테두리 */
 @Composable
-private fun Tag(t: String, col: Color, strong: Boolean, modifier: Modifier, enabled: Boolean, tap: () -> Unit) {   // ios: Views/FlowView.swift:511
+private fun Tag(t: String, col: Color, strong: Boolean, modifier: Modifier, enabled: Boolean, tap: () -> Unit) {   // ios: Views/FlowView.swift:522
     val card = Theme.card
-    // ios: Views/FlowView.swift:512,515,516,517,518,519,521
+    // ios: Views/FlowView.swift:523,526,527,528,529,530,532
     Box(modifier.heightIn(min = 24.dp).then(if (enabled) Modifier.plainClickable(tap) else Modifier), contentAlignment = Alignment.Center) {
         T(t, Modifier.graphicsLayer { alpha = if (strong) 1f else 0.75f }
             .background(if (strong) col else card.copy(alpha = 0.85f), RoundedCornerShape(50))
             .drawBehind { drawRoundRect(col.copy(alpha = if (strong) 0f else 0.6f), cornerRadius = CornerRadius(size.height / 2), style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx())))) }
             .padding(horizontal = 6.dp, vertical = 2.dp),
-            style = appFont(10f, FontWeight.Bold), color = if (strong) Color.White else col.copy(alpha = 0.8f), maxLines = 1)   // ios: Views/FlowView.swift:513,514
+            style = appFont(10f, FontWeight.Bold), color = if (strong) Color.White else col.copy(alpha = 0.8f), maxLines = 1)   // ios: Views/FlowView.swift:524,525
     }
 }
 
 /** 실데이터는 거래일, DRNK 기록은 어제가 마지막 날로 하루에 한 칸 */
-private fun date(series: FlowSeries, i: Int): String {   // ios: Views/FlowView.swift:525
-    series.dates?.let { d -> if (i < d.size) return d[i].replace("-", ".") }   // ios: Views/FlowView.swift:526
-    return fmt.format(Instant.ofEpochSecond(Instant.now().epochSecond - (series.candles.size - i) * 86400L))   // ios: Views/FlowView.swift:527
+private fun date(series: FlowSeries, i: Int): String {   // ios: Views/FlowView.swift:536
+    series.dates?.let { d -> if (i < d.size) return d[i].replace("-", ".") }   // ios: Views/FlowView.swift:537
+    return fmt.format(Instant.ofEpochSecond(Instant.now().epochSecond - (series.candles.size - i) * 86400L))   // ios: Views/FlowView.swift:538
 }
-private val fmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.US).withZone(ZoneId.systemDefault())   // ios: Views/FlowView.swift:529
+private val fmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.US).withZone(ZoneId.systemDefault())   // ios: Views/FlowView.swift:540

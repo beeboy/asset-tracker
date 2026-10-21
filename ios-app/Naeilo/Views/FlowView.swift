@@ -61,8 +61,8 @@ struct FlowView: View {
                 }
                 .frame(height: 420)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-                Text("두 손가락으로 벌리면 가까이, 오므리면 주봉·월봉으로 접혀요 · 옆으로 밀면 지난 날")
-                    .appFont(12).foregroundStyle(Theme.muted).lineLimit(2).frame(height: 32, alignment: .topLeading)
+                Text("옆으로 밀면 지난 날 · 두 손가락으로 확대")
+                    .appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
                 explain
             }
             .screen()
@@ -310,8 +310,19 @@ struct FlowChart: View {
                         }
                     }
                     Spacer()
-                    Text(step == 1 ? "일봉" : step == 5 ? "주봉" : "월봉").appFont(12, .semibold).foregroundStyle(Theme.sub)
-                        .padding(.horizontal, 8).padding(.vertical, 3).background(Theme.line, in: Capsule())
+                    // 일·주·월 고르기: 고르면 보이는 날 수를 그 단위로, 핀치로 바뀌면 고른 칸도 따라 바뀐다
+                    HStack(spacing: 2) {
+                        ForEach([(1, "일봉", 160), (5, "주봉", 520), (21, "월봉", n)], id: \.0) { u, t, c in
+                            let ok = u == 1 || (u == 5 ? n > 200 : n > 600), on = step == u
+                            Button { count = c } label: {
+                                Text(LocalizedStringKey(t)).appFont(12, .semibold).foregroundStyle(on ? .white : Theme.sub)
+                                    .padding(.horizontal, 8).padding(.vertical, 4)
+                                    .background(on ? Theme.teal : .clear, in: Capsule())
+                            }
+                            .buttonStyle(.plain).disabled(!ok).opacity(ok ? 1 : 0.35)
+                        }
+                    }
+                    .padding(2).background(Theme.line, in: Capsule())
                 }
                 .padding(.horizontal, 12).padding(.top, 8)
 

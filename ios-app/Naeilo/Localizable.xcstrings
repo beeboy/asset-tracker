@@ -27396,6 +27396,16 @@
         }
       }
     },
+    "옆으로 밀면 지난 날 · 두 손가락으로 확대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe for earlier days · pinch to zoom"
+          }
+        }
+      }
+    },
     "일봉을 못 받았어요" : {
       "localizations" : {
         "en" : {
