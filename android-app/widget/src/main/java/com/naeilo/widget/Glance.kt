@@ -44,6 +44,10 @@ private val tick = intPreferencesKey("tick")
 /** 인물 위젯이 고른 인물 (WhoEnum raw), 전광판 포즈 차례 */
 val whoKey = androidx.datastore.preferences.core.stringPreferencesKey("who")
 
+/** 칸 안쪽 여백 (dp) */
+private const val padX = 6f
+private const val padY = 12f
+
 abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
     override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
@@ -63,9 +67,10 @@ abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
         val state = currentState<Preferences>()
         val size = LocalSize.current
         val f = face(ctx, state)
-        val r = render(ctx, size.width.value, size.height.value, isDark(ctx), draw = f.draw)
+        // 삼성 기본 위젯처럼 칸 안쪽으로 들여 그린다 (칸을 꽉 채우면 더 크고 길어 보인다)
+        val r = render(ctx, size.width.value - padX * 2, size.height.value - padY * 2, isDark(ctx), draw = f.draw)
         val open = actionStartActivity(Intent(Intent.ACTION_VIEW, Uri.parse(f.url)).setPackage(ctx.packageName))
-        Box(GlanceModifier.fillMaxSize().clickable(open)) {
+        Box(GlanceModifier.fillMaxSize().padding(horizontal = padX.dp, vertical = padY.dp).clickable(open)) {
             Image(ImageProvider(r.bitmap), contentDescription = f.speech, modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
             for (h in r.hits.take(8)) {   // Glance 한 칸에 10개까지
                 val act = when (val a = h.act) {
