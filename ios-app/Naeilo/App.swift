@@ -141,41 +141,28 @@ struct RootView: View {
 
 // 탭 화면 머리글: 'naeilo' 로고 뒤에 탭 이름 ("naeilo 홈")
 struct AppHeader: View {
-    @Environment(AppModel.self) private var m
     var tab: String = ""
-    var links = false   // 홈: 오른쪽에 위젯·설정 팝업 단추
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("naeilo").appFont(20, .bold).tracking(-0.3)
-                if !tab.isEmpty { Text(tab).appFont(20, .regular).foregroundStyle(Theme.sub) }
-            }
-            .accessibilityElement(children: .combine)
+            Text("naeilo").appFont(20, .bold).tracking(-0.3)
+            if !tab.isEmpty { Text(tab).appFont(20, .regular).foregroundStyle(Theme.sub) }
             Spacer()
-            if links {
-                Button { m.widgetsOpen = true } label: { Image(systemName: "rectangle.3.group").frame(width: 40, height: 32) }
-                    .accessibilityLabel("홈 화면 위젯")
-                Button { m.openSettings() } label: { Image(systemName: "gearshape").frame(width: 40, height: 32) }
-                    .accessibilityLabel("설정")
-            }
         }
-        .appFont(17).foregroundStyle(Theme.ink)
+        .accessibilityElement(children: .combine)
         .padding(.horizontal, 20).padding(.top, 6).padding(.bottom, 4)
     }
 }
 
-/// 설정·위젯 팝업: 어느 탭에서든 뜬다 (RootView 수식어가 길어 따로 뺐다)
+/// 설정·위젯 팝업: 블록·파도처럼 전체 화면, 맨 위 X로 닫는다. 어느 탭에서든 뜬다 (RootView 수식어가 길어 따로 뺐다)
 private struct HomeSheets: ViewModifier {
     @Bindable var model: AppModel
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: $model.settingsOpen, onDismiss: { model.settingsPath = [] }) {
-                NavigationStack(path: $model.settingsPath) { SettingsView() }
-                    .environment(model).presentationDragIndicator(.visible)
+            .fullScreenCover(isPresented: $model.settingsOpen, onDismiss: { model.settingsPath = [] }) {
+                NavigationStack(path: $model.settingsPath) { SettingsView(cover: true) }.environment(model)
             }
-            .sheet(isPresented: $model.widgetsOpen) {
-                NavigationStack { WidgetPickView() }
-                    .environment(model).presentationDragIndicator(.visible)
+            .fullScreenCover(isPresented: $model.widgetsOpen) {
+                NavigationStack { WidgetPickView(cover: true) }.environment(model)
             }
     }
 }

@@ -98,6 +98,7 @@ enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alp
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
+    var cover = false   // 홈 [설정] 전체 화면 팝업: 맨 위 줄을 블록·파도처럼 제목 + X로
 
     var body: some View {
         let onN = m.alerts.values.filter { $0 }.count
@@ -125,13 +126,13 @@ struct SettingsView: View {
         ] + (lbFirst ? brokerRows.reversed() : brokerRows)
         // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
         let helpRows: [(String, String, SettingsRoute)] = [
-            (String(localized: "처음 쓰는 법"), String(localized: "매일 1분 · 목표 칸 · 주간 예보"), .howto),
+            (String(localized: "처음 쓰는 법"), String(localized: "목표 칸 · 주간 예보"), .howto),
             (String(localized: "기기 옮기기"), Sync.shared.isOn ? String(localized: "파일 · 동기화 켜짐") : String(localized: "파일로 새 폰에"), .sync),
             (String(localized: "구독"), Support.shared.plan.map { String(localized: "\(String(describing: $0.name)) 중 · 고마워요") } ?? (Support.shared.inTrial ? String(localized: "7일 무료 · \(String(describing: Support.shared.trialLeft))일 남음") : String(localized: "월 1,000원 · 연 9,000원")), .support),
         ]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                AppHeader(tab: String(localized: "설정")).padding(.horizontal, -16)
+                if cover { GameHeader(title: String(localized: "설정")) } else { AppHeader(tab: String(localized: "설정")).padding(.horizontal, -16) }
                 if kr { apiCard }
                 group(String(localized: "내 목표"), goalRows)
                 group(String(localized: "알림과 위젯"), oftenRows)

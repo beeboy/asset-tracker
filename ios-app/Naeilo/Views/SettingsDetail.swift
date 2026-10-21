@@ -364,6 +364,7 @@ struct AmountHideCard: View {
 
 struct WidgetPickView: View {
     @Environment(AppModel.self) private var m
+    var cover = false   // 홈 [위젯] 전체 화면 팝업: 제목 줄에 X
     @State private var dark = UserDefaults.standard.bool(forKey: "cpDark")
     @State private var who: String? = UserDefaults.standard.string(forKey: "cpWho")
 
@@ -375,7 +376,7 @@ struct WidgetPickView: View {
         let fi = Shelter.friends.firstIndex { $0.id == sel } ?? 0, on = sel == "me" ? m.meUnlocked : m.friendOn(fi)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("위젯").appFont(22, .bold)
+                if cover { GameHeader(title: String(localized: "위젯")).toolbar(.hidden, for: .navigationBar) } else { Text("위젯").appFont(22, .bold) }
                 Text("미션을 마치면 열려요. 홈 화면 길게 누르기 → + → naeilo")
                     .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
@@ -580,7 +581,6 @@ struct HowToView: View {
     var body: some View {
         SettingsPage(title: String(localized: "사용 방법")) {
             ForEach([(String(localized: "위젯"), String(localized: "위젯"), String(localized: "아침에 위젯 속 친구가 알려 주는 본전까지 남은 % 보기")),
-                     (String(localized: "앱"), String(localized: "오늘의 1분"), String(localized: "오늘 숫자 하나와 질문 하나. 할 때마다 쉼터에 물건이 하나씩 돌아와요.")),
                      (String(localized: "홈"), String(localized: "리마인드"), String(localized: "달성·새 소식은 친구 말풍선으로, 3일 안의 일정은 노란 띠로 떠요. 지난 소식은 ‘새 소식’에 30일 남아요.")),
                      (String(localized: "알림"), String(localized: "알림"), String(localized: "비중이 계획에서 5%p 넘게 벗어난 날만 울려요.")),
                      (String(localized: "미션"), String(localized: "1000칸"), String(localized: "본전을 1000칸으로 나눠 채워요.")),

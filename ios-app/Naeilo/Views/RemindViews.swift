@@ -27,7 +27,6 @@ struct RemindSheet: View {
                             chip(.all, String(localized: "전체"))
                             chip(.todo, todo.isEmpty ? String(localized: "할 일") : String(localized: "할 일 \(String(describing: todo.count))"))
                             chip(.event, String(localized: "일정"))
-                            chip(.market, String(localized: "증시 요약"))
                             chip(.past, String(localized: "지난 소식"))
                         }
                     }

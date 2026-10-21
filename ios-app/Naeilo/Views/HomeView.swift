@@ -8,7 +8,7 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                AppHeader(tab: String(localized: "홈"), links: true).padding(.horizontal, -16)
+                AppHeader(tab: String(localized: "홈")).padding(.horizontal, -16)
                 SampleNote()
                 summary
                 // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
@@ -17,6 +17,13 @@ struct HomeView: View {
                 ParallelHomeCard()
                 reminder
                 if !m.playUnlocked, !m.rows.isEmpty { yesterdayCard }
+                // 아래: 예전 종목 탭 소식판에서 옮긴 둘 (2026-10-21), 그 밑에 위젯·설정 팝업
+                HoldingsNews(moversOnly: true)
+                TownButton { TownView(scroll: $0) }
+                HStack(spacing: 6) {
+                    coverButton(String(localized: "위젯"), "rectangle.3.group") { m.widgetsOpen = true }
+                    coverButton(String(localized: "설정"), "gearshape") { m.openSettings() }
+                }
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
             .screen()
@@ -229,6 +236,16 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(tag): \(text). 소식함 열기")
+    }
+
+    /// 미션 탭 [블록]·[파도]와 같은 모양 (WaveGameButton)
+    private func coverButton(_ t: String, _ icon: String, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Label(t, systemImage: icon)
+                .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(.white).background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
     }
 
     private var yesterdayCard: some View {
