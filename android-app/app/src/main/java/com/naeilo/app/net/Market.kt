@@ -29,6 +29,7 @@ import com.naeilo.app.core.num
 import com.naeilo.app.core.pctEncode
 import com.naeilo.app.data.Currency
 import com.naeilo.app.data.Defaults
+import com.naeilo.app.data.FlowBars
 import com.naeilo.app.data.Sample
 import com.naeilo.app.data.Symbol
 import com.naeilo.app.data.persists
@@ -286,51 +287,52 @@ class Market {   // ios: Data/Market.swift:13,14
                 tossHist = h   // ios: Data/Market.swift:217
                 prices = TossHistory.merged(SitePrices.cached(), h)   // ios: Data/Market.swift:218
             }
-            tossDone = Instant.now()   // ios: Data/Market.swift:220
+            com.naeilo.app.data.FlowStore.reload()   // ios: Data/Market.swift:220
+            tossDone = Instant.now()   // ios: Data/Market.swift:221
         }
-        synchronized(this) { tossTask = t }   // ios: Data/Market.swift:222
-        t.await()   // ios: Data/Market.swift:223
-        synchronized(this) { if (tossTask === t) tossTask = null }   // ios: Data/Market.swift:224
+        synchronized(this) { tossTask = t }   // ios: Data/Market.swift:223
+        t.await()   // ios: Data/Market.swift:224
+        synchronized(this) { if (tossTask === t) tossTask = null }   // ios: Data/Market.swift:225
     }
 
     /** Alpaca 지금 가격을 받는다 (1분 안에 받았으면 그대로, 당겨 갱신은 바로) */
-    suspend fun refreshAlpaca(held: Set<String>, force: Boolean) {   // ios: Data/Market.swift:228,229
-        if (!AlpacaKeys.on) { if (alpaca != null) alpaca = null; return }   // ios: Data/Market.swift:230
-        val ty = mutableMapOf<String, String>()   // ios: Data/Market.swift:231
-        for (id in held) { if (id == "DRNK") continue; Sample.symbol(id)?.takeIf { it.currency == Currency.usd }?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:232
-        if (ty.isEmpty()) return   // ios: Data/Market.swift:233
-        alpaca = AlpacaFeed.fetch(ty, minAge = if (force) 0.0 else 60.0)   // ios: Data/Market.swift:234
-        alpacaDone = Instant.now()   // ios: Data/Market.swift:235
+    suspend fun refreshAlpaca(held: Set<String>, force: Boolean) {   // ios: Data/Market.swift:229,230
+        if (!AlpacaKeys.on) { if (alpaca != null) alpaca = null; return }   // ios: Data/Market.swift:231
+        val ty = mutableMapOf<String, String>()   // ios: Data/Market.swift:232
+        for (id in held) { if (id == "DRNK") continue; Sample.symbol(id)?.takeIf { it.currency == Currency.usd }?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:233
+        if (ty.isEmpty()) return   // ios: Data/Market.swift:234
+        alpaca = AlpacaFeed.fetch(ty, minAge = if (force) 0.0 else 60.0)   // ios: Data/Market.swift:235
+        alpacaDone = Instant.now()   // ios: Data/Market.swift:236
     }
 
     /** Longbridge 지금 가격을 받는다 (1분 안에 받았으면 그대로, 당겨 갱신은 바로) */
-    suspend fun refreshLongbridge(held: Set<String>, force: Boolean) {   // ios: Data/Market.swift:239,240
-        if (!LongbridgeKeys.on) { if (longbridge != null) longbridge = null; return }   // ios: Data/Market.swift:241
-        val ty = mutableMapOf<String, String>()   // ios: Data/Market.swift:242
-        for (id in held) { if (id == "DRNK") continue; Sample.symbol(id)?.takeIf { it.currency == Currency.usd }?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:243
-        if (ty.isEmpty()) return   // ios: Data/Market.swift:244
-        longbridge = LongbridgeFeed.fetch(ty, minAge = if (force) 0.0 else 60.0)   // ios: Data/Market.swift:245
-        longbridgeDone = Instant.now()   // ios: Data/Market.swift:246
+    suspend fun refreshLongbridge(held: Set<String>, force: Boolean) {   // ios: Data/Market.swift:240,241
+        if (!LongbridgeKeys.on) { if (longbridge != null) longbridge = null; return }   // ios: Data/Market.swift:242
+        val ty = mutableMapOf<String, String>()   // ios: Data/Market.swift:243
+        for (id in held) { if (id == "DRNK") continue; Sample.symbol(id)?.takeIf { it.currency == Currency.usd }?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:244
+        if (ty.isEmpty()) return   // ios: Data/Market.swift:245
+        longbridge = LongbridgeFeed.fetch(ty, minAge = if (force) 0.0 else 60.0)   // ios: Data/Market.swift:246
+        longbridgeDone = Instant.now()   // ios: Data/Market.swift:247
     }
 
     /** 아래로 당겨 갱신: 내 종목을 바로 받고 위젯에도 넘긴다 */
-    suspend fun pullRefresh(m: AppModel) {   // ios: Data/Market.swift:250,251
-        refresh(held = m.holdings.map { it.symbol }.toSet(), force = true)   // ios: Data/Market.swift:252
-        if (m.persists) m.recordDay()     // 내 기록: 새로 받은 시세로 오늘 줄   // ios: Data/Market.swift:253
-        LineClock.shared.next()     // 당기면 인물 대사도 다음 줄로   // ios: Data/Market.swift:254
-        WidgetBridge.write(m)   // ios: Data/Market.swift:255
+    suspend fun pullRefresh(m: AppModel) {   // ios: Data/Market.swift:251,252
+        refresh(held = m.holdings.map { it.symbol }.toSet(), force = true)   // ios: Data/Market.swift:253
+        if (m.persists) m.recordDay()     // 내 기록: 새로 받은 시세로 오늘 줄   // ios: Data/Market.swift:254
+        LineClock.shared.next()     // 당기면 인물 대사도 다음 줄로   // ios: Data/Market.swift:255
+        WidgetBridge.write(m)   // ios: Data/Market.swift:256
     }
 }
 
-val Symbol.quote: Quote get() = Market.shared.quote(this)   // ios: Data/Market.swift:259,260
+val Symbol.quote: Quote get() = Market.shared.quote(this)   // ios: Data/Market.swift:260,261
 /** 지금 가격 */
-val Symbol.last: Double get() = quote.last   // ios: Data/Market.swift:262
+val Symbol.last: Double get() = quote.last   // ios: Data/Market.swift:263
 
 // 테스트 시세: 사이트가 모으는 Yahoo 중계 자료 (data/prices 의 종목별 json 3년 종가, data/quotes.json 전일 종가·현재가).
 // DRNK 는 가상 종목이라 시안 값, 한국 종목과 MSFT 는 자료가 없어 시안 값을 쓴다.
 // 빌드 때 넣은 파일(assets)은 처음 쓸 때 한 번만 읽는다 (lazy)
-object YahooSample {   // ios: Data/Market.swift:267
-    @Serializable data class Hist(val dates: List<String>, val closes: List<Double>) {   // ios: Data/Market.swift:268, Data/Lots.swift:54
+object YahooSample {   // ios: Data/Market.swift:268
+    @Serializable data class Hist(val dates: List<String>, val closes: List<Double>) {   // ios: Data/Market.swift:269, Data/Lots.swift:54
         /** 날짜 d 의 종가 (그날이 없으면 그 전 마지막 거래일). d 가 첫날보다 앞이면 null */
         fun on(d: String): Double? {   // ios: Data/Lots.swift:56
             var lo = 0; var hi = dates.size - 1; var k = -1   // ios: Data/Lots.swift:57
@@ -338,301 +340,310 @@ object YahooSample {   // ios: Data/Market.swift:267
             return if (k >= 0 && k < closes.size) closes[k] else null   // ios: Data/Lots.swift:59
         }
     }
-    data class Q(val prevClose: Double, val last: Double, val time: Instant)   // ios: Data/Market.swift:269
+    data class Q(val prevClose: Double, val last: Double, val time: Instant)   // ios: Data/Market.swift:270
 
-    val keyFor: Map<String, String> = mapOf("QQQ" to "QQQ", "AAPL" to "AAPL", "NVDA" to "NVDA", "SPY" to "SPY", "FX" to "KRW=X")   // ios: Data/Market.swift:271
-    private fun file(k: String): String = k.replace("=", "_").replace("^", "_")   // ios: Data/Market.swift:272
+    val keyFor: Map<String, String> = mapOf("QQQ" to "QQQ", "AAPL" to "AAPL", "NVDA" to "NVDA", "SPY" to "SPY", "FX" to "KRW=X")   // ios: Data/Market.swift:272
+    private fun file(k: String): String = k.replace("=", "_").replace("^", "_")   // ios: Data/Market.swift:273
     /** Bundle.main.url(forResource:withExtension:subdirectory:) 자리: assets 파일 (없으면 null) */
     private fun asset(name: String, ext: String, dir: String? = null): ByteArray? =
         runCatching { Defaults.ctx.assets.open((dir?.let { "$it/" } ?: "") + "$name.$ext").use { it.readBytes() } }.getOrNull()
 
-    val quotes: Map<String, Q> by lazy {   // ios: Data/Market.swift:274
-        val d = asset("quotes", "json"); val o = d?.let { feedJson(it) }?.let { jObj(it) }   // ios: Data/Market.swift:275,276
-        if (o == null || o.values.any { jObj(it) == null }) return@lazy emptyMap()   // ios: Data/Market.swift:277
-        val out = mutableMapOf<String, Q>()   // ios: Data/Market.swift:278
-        for ((id, k) in keyFor) {   // ios: Data/Market.swift:279
-            val v = jObj(o[k]) ?: continue; val prev = v["prev_close"] as? Double ?: continue; val last = (v["last"] ?: v["regular"]) as? Double ?: continue   // ios: Data/Market.swift:280
-            out[id] = Q(prevClose = prev, last = last, time = Instant.ofEpochMilli((((v["last_time"] as? Double) ?: 0.0) * 1000).toLong()))   // ios: Data/Market.swift:281
+    val quotes: Map<String, Q> by lazy {   // ios: Data/Market.swift:275
+        val d = asset("quotes", "json"); val o = d?.let { feedJson(it) }?.let { jObj(it) }   // ios: Data/Market.swift:276,277
+        if (o == null || o.values.any { jObj(it) == null }) return@lazy emptyMap()   // ios: Data/Market.swift:278
+        val out = mutableMapOf<String, Q>()   // ios: Data/Market.swift:279
+        for ((id, k) in keyFor) {   // ios: Data/Market.swift:280
+            val v = jObj(o[k]) ?: continue; val prev = v["prev_close"] as? Double ?: continue; val last = (v["last"] ?: v["regular"]) as? Double ?: continue   // ios: Data/Market.swift:281
+            out[id] = Q(prevClose = prev, last = last, time = Instant.ofEpochMilli((((v["last_time"] as? Double) ?: 0.0) * 1000).toLong()))   // ios: Data/Market.swift:282
         }
-        out   // ios: Data/Market.swift:283
-    }   // ios: Data/Market.swift:284
+        out   // ios: Data/Market.swift:284
+    }   // ios: Data/Market.swift:285
 
-    val history: Map<String, Hist> by lazy {   // ios: Data/Market.swift:286
-        val out = mutableMapOf<String, Hist>()   // ios: Data/Market.swift:287
-        for ((id, k) in keyFor) {   // ios: Data/Market.swift:288
-            val d = asset(file(k), "json", "prices") ?: continue   // ios: Data/Market.swift:289,290
-            val o = jObj(feedJson(d)) ?: continue   // ios: Data/Market.swift:291
-            val dates = jArr(o["dates"])?.let { l -> l.map { it as? String ?: return@let null } } ?: continue; val c = jArr(o["close"]) ?: continue   // ios: Data/Market.swift:292
-            val closes = c.map { (it as? Double) ?: Double.NaN }   // ios: Data/Market.swift:293
+    val history: Map<String, Hist> by lazy {   // ios: Data/Market.swift:287
+        val out = mutableMapOf<String, Hist>()   // ios: Data/Market.swift:288
+        for ((id, k) in keyFor) {   // ios: Data/Market.swift:289
+            val d = asset(file(k), "json", "prices") ?: continue   // ios: Data/Market.swift:290,291
+            val o = jObj(feedJson(d)) ?: continue   // ios: Data/Market.swift:292
+            val dates = jArr(o["dates"])?.let { l -> l.map { it as? String ?: return@let null } } ?: continue; val c = jArr(o["close"]) ?: continue   // ios: Data/Market.swift:293
+            val closes = c.map { (it as? Double) ?: Double.NaN }   // ios: Data/Market.swift:294
             // 빈 값은 앞 값으로 메운다
-            val filled = ArrayList<Double>(closes.size); var prev = closes.firstOrNull { !it.isNaN() } ?: 1.0   // ios: Data/Market.swift:295
-            for (v in closes) { if (!v.isNaN()) prev = v; filled.add(prev) }   // ios: Data/Market.swift:296
-            out[id] = Hist(dates = dates, closes = filled)   // ios: Data/Market.swift:297
+            val filled = ArrayList<Double>(closes.size); var prev = closes.firstOrNull { !it.isNaN() } ?: 1.0   // ios: Data/Market.swift:296
+            for (v in closes) { if (!v.isNaN()) prev = v; filled.add(prev) }   // ios: Data/Market.swift:297
+            out[id] = Hist(dates = dates, closes = filled)   // ios: Data/Market.swift:298
         }
-        out   // ios: Data/Market.swift:299
-    }   // ios: Data/Market.swift:300
+        out   // ios: Data/Market.swift:300
+    }   // ios: Data/Market.swift:301
 
     /** 자료가 언제 값인지 (현재가 시각) */
-    val asOf: Instant? get() = quotes.values.map { it.time }.maxOrNull()   // ios: Data/Market.swift:303
+    val asOf: Instant? get() = quotes.values.map { it.time }.maxOrNull()   // ios: Data/Market.swift:304
 
     /** 빌드 때 넣은 지난 종가 전부 (사이트 티커 → 종가). 사이트에서 아직 못 받았을 때만 쓴다 */
-    val bundled: Map<String, Hist> by lazy {   // ios: Data/Market.swift:306
-        val out = mutableMapOf<String, Hist>()   // ios: Data/Market.swift:307
-        for (f in runCatching { Defaults.ctx.assets.list("prices") }.getOrNull()?.filter { it.endsWith("." + "json") } ?: emptyList()) {   // ios: Data/Market.swift:308
-            val o = asset(f.removeSuffix(".json"), "json", "prices")?.let { jObj(feedJson(it)) } ?: continue   // ios: Data/Market.swift:309
-            val k = o["symbol"] as? String ?: continue; val h = SitePrices.hist(o) ?: continue   // ios: Data/Market.swift:310
-            out[k] = h   // ios: Data/Market.swift:311
+    val bundled: Map<String, Hist> by lazy {   // ios: Data/Market.swift:307
+        val out = mutableMapOf<String, Hist>()   // ios: Data/Market.swift:308
+        for (f in runCatching { Defaults.ctx.assets.list("prices") }.getOrNull()?.filter { it.endsWith("." + "json") } ?: emptyList()) {   // ios: Data/Market.swift:309
+            val o = asset(f.removeSuffix(".json"), "json", "prices")?.let { jObj(feedJson(it)) } ?: continue   // ios: Data/Market.swift:310
+            val k = o["symbol"] as? String ?: continue; val h = SitePrices.hist(o) ?: continue   // ios: Data/Market.swift:311
+            out[k] = h   // ios: Data/Market.swift:312
         }
-        out   // ios: Data/Market.swift:313
-    }   // ios: Data/Market.swift:314
+        out   // ios: Data/Market.swift:314
+    }   // ios: Data/Market.swift:315
 }
 
 /** 사이트 지난 종가 (data/prices 의 종목별 json): 웹이 자산 추이·목표 진행(내 길)에 쓰는 것과 같은 파일.
  *  빌드 때 넣은 파일은 맥에서 받은 날에 멈춰 있어서, 앱은 내 종목과 원/달러만 사이트에서 다시 받아 둔다 */
-object SitePrices {   // ios: Data/Market.swift:319
+object SitePrices {   // ios: Data/Market.swift:320
     /** h 키 = 사이트 티커 (KRW=X 등). asked = 그때 받으려던 티커 (사이트에 없는 종목은 h 에 없다) */
-    @Serializable data class File(var got: Double, var updated: String, var asked: List<String>, var h: Map<String, YahooSample.Hist>)   // ios: Data/Market.swift:321
-    const val name = "site_prices.json"   // ios: Data/Market.swift:322
-    fun cached(): File? = Store.read(File.serializer(), name)   // ios: Data/Market.swift:323
+    @Serializable data class File(var got: Double, var updated: String, var asked: List<String>, var h: Map<String, YahooSample.Hist>)   // ios: Data/Market.swift:322
+    const val name = "site_prices.json"   // ios: Data/Market.swift:323
+    fun cached(): File? = Store.read(File.serializer(), name)   // ios: Data/Market.swift:324
 
     /** 빈 값은 앞 값으로 메운다 (웹 history 와 같다) */
-    fun hist(o: Map<String, Any?>): YahooSample.Hist? {   // ios: Data/Market.swift:326
-        val ds = jArr(o["dates"])?.map { it as? String ?: return null } ?: return null; val c = jArr(o["close"]) ?: return null; if (ds.size != c.size || ds.isEmpty()) return null   // ios: Data/Market.swift:327
-        val raw: List<Double> = c.map { (it as? Double) ?: Double.NaN }   // ios: Data/Market.swift:328
-        var prev: Double = raw.firstOrNull { !it.isNaN() } ?: 1.0   // ios: Data/Market.swift:329
-        val out = ArrayList<Double>(raw.size)   // ios: Data/Market.swift:330
-        for (v in raw) { if (!v.isNaN()) prev = v; out.add(prev) }   // ios: Data/Market.swift:331
-        return YahooSample.Hist(dates = ds, closes = out)   // ios: Data/Market.swift:332
+    fun hist(o: Map<String, Any?>): YahooSample.Hist? {   // ios: Data/Market.swift:327
+        val ds = jArr(o["dates"])?.map { it as? String ?: return null } ?: return null; val c = jArr(o["close"]) ?: return null; if (ds.size != c.size || ds.isEmpty()) return null   // ios: Data/Market.swift:328
+        val raw: List<Double> = c.map { (it as? Double) ?: Double.NaN }   // ios: Data/Market.swift:329
+        var prev: Double = raw.firstOrNull { !it.isNaN() } ?: 1.0   // ios: Data/Market.swift:330
+        val out = ArrayList<Double>(raw.size)   // ios: Data/Market.swift:331
+        for (v in raw) { if (!v.isNaN()) prev = v; out.add(prev) }   // ios: Data/Market.swift:332
+        return YahooSample.Hist(dates = ds, closes = out)   // ios: Data/Market.swift:333
     }
 
-    internal suspend fun get(path: String): Map<String, Any?>? {   // ios: Data/Market.swift:335
-        val c = URL(Config.data, path).toString()   // ios: Data/Market.swift:336
-        val queryItems = listOf("t" to (nowSec() / 600).toLong().toString()); val url = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // ios: Data/Market.swift:337
-        val req = FeedReq(url, timeout = 15.0)   // ios: Data/Market.swift:338
-        req.setValue("naeilo-ios/0.1", "User-Agent")   // ios: Data/Market.swift:339
-        val (code, data) = runCatching { req.send() }.getOrNull() ?: return null; if (code != 200) return null   // ios: Data/Market.swift:340
-        return jObj(feedJson(data))   // ios: Data/Market.swift:341
+    internal suspend fun get(path: String): Map<String, Any?>? {   // ios: Data/Market.swift:336
+        val c = URL(Config.data, path).toString()   // ios: Data/Market.swift:337
+        val queryItems = listOf("t" to (nowSec() / 600).toLong().toString()); val url = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // ios: Data/Market.swift:338
+        val req = FeedReq(url, timeout = 15.0)   // ios: Data/Market.swift:339
+        req.setValue("naeilo-ios/0.1", "User-Agent")   // ios: Data/Market.swift:340
+        val (code, data) = runCatching { req.send() }.getOrNull() ?: return null; if (code != 200) return null   // ios: Data/Market.swift:341
+        return jObj(feedJson(data))   // ios: Data/Market.swift:342
     }
 
     /** Yahoo 일봉 종가 (사이트 prices 의 close 와 같은 기준). 날짜는 그 거래소 날짜 */
-    suspend fun daily(sym: String, range: String): YahooSample.Hist? {   // ios: Data/Market.swift:345
-        val enc = pctEncode(sym)   // ios: Data/Market.swift:346
-        val o = runCatching { Relay.yahoo("/v8/finance/chart/$enc?range=$range&interval=1d", timeout = 10.0) }.getOrNull() ?: return null   // ios: Data/Market.swift:347
-        val r = jObjs(jObj(o["chart"])?.get("result"))?.firstOrNull() ?: return null   // ios: Data/Market.swift:348
-        val m = jObj(r["meta"]) ?: return null; val ts = jDbls(r["timestamp"]) ?: return null   // ios: Data/Market.swift:349
-        val cl = jArr(jObjs(jObj(r["indicators"])?.get("quote"))?.firstOrNull()?.get("close")) ?: return null   // ios: Data/Market.swift:350
-        val f = DateTimeFormatter.ofPattern("yyyy-MM-dd", posix("en_US_POSIX"))   // ios: Data/Market.swift:351,352
+    suspend fun daily(sym: String, range: String): YahooSample.Hist? {   // ios: Data/Market.swift:346
+        val enc = pctEncode(sym)   // ios: Data/Market.swift:347
+        val o = runCatching { Relay.yahoo("/v8/finance/chart/$enc?range=$range&interval=1d", timeout = 10.0) }.getOrNull() ?: return null   // ios: Data/Market.swift:348
+        val r = jObjs(jObj(o["chart"])?.get("result"))?.firstOrNull() ?: return null   // ios: Data/Market.swift:349
+        val m = jObj(r["meta"]) ?: return null; val ts = jDbls(r["timestamp"]) ?: return null   // ios: Data/Market.swift:350
+        val cl = jArr(jObjs(jObj(r["indicators"])?.get("quote"))?.firstOrNull()?.get("close")) ?: return null   // ios: Data/Market.swift:351
+        val f = DateTimeFormatter.ofPattern("yyyy-MM-dd", posix("en_US_POSIX"))   // ios: Data/Market.swift:352,353
             .withZone(zoneOr((m["exchangeTimezoneName"] as? String) ?: "America/New_York"))
-        val ds = ArrayList<String>(); val cs = ArrayList<Double>()   // ios: Data/Market.swift:353
-        for ((t, c) in ts.zip(cl)) {   // ios: Data/Market.swift:354
-            val v = num(c)?.takeIf { it > 0 } ?: continue   // ios: Data/Market.swift:355
-            val d = f.format(Instant.ofEpochMilli((t * 1000).toLong()))   // ios: Data/Market.swift:356
-            if (ds.lastOrNull() == d) cs[cs.size - 1] = v else { ds.add(d); cs.add(v) }   // ios: Data/Market.swift:357
+        val ds = ArrayList<String>(); val cs = ArrayList<Double>()   // ios: Data/Market.swift:354
+        for ((t, c) in ts.zip(cl)) {   // ios: Data/Market.swift:355
+            val v = num(c)?.takeIf { it > 0 } ?: continue   // ios: Data/Market.swift:356
+            val d = f.format(Instant.ofEpochMilli((t * 1000).toLong()))   // ios: Data/Market.swift:357
+            if (ds.lastOrNull() == d) cs[cs.size - 1] = v else { ds.add(d); cs.add(v) }   // ios: Data/Market.swift:358
         }
-        return if (ds.isEmpty()) null else YahooSample.Hist(dates = ds, closes = cs)   // ios: Data/Market.swift:359
+        return if (ds.isEmpty()) null else YahooSample.Hist(dates = ds, closes = cs)   // ios: Data/Market.swift:360
     }
 
     /** 한 종목: 받아 둔 3년 종가가 있으면 최근 한 달만 받아 끝을 바꾸고, 없으면 3년을 받는다 */
-    private suspend fun direct(k: String, had: YahooSample.Hist?): YahooSample.Hist? {   // ios: Data/Market.swift:363
-        val last = had?.dates?.lastOrNull()   // ios: Data/Market.swift:364
+    private suspend fun direct(k: String, had: YahooSample.Hist?): YahooSample.Hist? {   // ios: Data/Market.swift:364
+        val last = had?.dates?.lastOrNull()   // ios: Data/Market.swift:365
         if (had != null && last != null && had.dates.size > 200 && Day.dday(last) >= -20) {
-            val n = daily(k, range = "1mo"); val first = n?.dates?.firstOrNull()   // ios: Data/Market.swift:365
+            val n = daily(k, range = "1mo"); val first = n?.dates?.firstOrNull()   // ios: Data/Market.swift:366
             if (n != null && first != null) {
-                val keep = had.dates.indexOfFirst { it >= first }.takeIf { it >= 0 } ?: had.dates.size   // ios: Data/Market.swift:366
-                val ds = had.dates.subList(0, keep) + n.dates; val cs = had.closes.subList(0, keep) + n.closes   // ios: Data/Market.swift:367
-                val cut = maxOf(0, ds.size - 800)   // 3년 남짓만 둔다   // ios: Data/Market.swift:368
-                return YahooSample.Hist(dates = ds.drop(cut), closes = cs.drop(cut))   // ios: Data/Market.swift:369
+                val keep = had.dates.indexOfFirst { it >= first }.takeIf { it >= 0 } ?: had.dates.size   // ios: Data/Market.swift:367
+                val ds = had.dates.subList(0, keep) + n.dates; val cs = had.closes.subList(0, keep) + n.closes   // ios: Data/Market.swift:368
+                val cut = maxOf(0, ds.size - 800)   // 3년 남짓만 둔다   // ios: Data/Market.swift:369
+                return YahooSample.Hist(dates = ds.drop(cut), closes = cs.drop(cut))   // ios: Data/Market.swift:370
             }
         }
-        return daily(k, range = "3y")   // ios: Data/Market.swift:371
+        return daily(k, range = "3y")   // ios: Data/Market.swift:372
     }
 
     /** keys = 사이트 티커(= Yahoo 기호). Yahoo 에서 직접 받고, 못 받은 것만 사이트 파일로 채운다. 받은 지 minAge 안이고 다 있으면 그대로 */
-    suspend fun fetch(keys: Set<String>, old: File?, minAge: Double): File? = withContext(Dispatchers.IO) {   // ios: Data/Market.swift:375
-        val now = nowSec()   // ios: Data/Market.swift:376
-        if (old != null && now - old.got < minAge && old.asked.toSet().containsAll(keys)) return@withContext old   // ios: Data/Market.swift:377
-        val h = mutableMapOf<String, YahooSample.Hist>()   // ios: Data/Market.swift:378
-        coroutineScope {   // ios: Data/Market.swift:379
-            val g = keys.map { k -> val had = old?.h?.get(k); async { k to direct(k, had) } }   // ios: Data/Market.swift:380
-            for ((k, v) in g.awaitAll()) { if (v != null) h[k] = v }   // ios: Data/Market.swift:381
+    suspend fun fetch(keys: Set<String>, old: File?, minAge: Double): File? = withContext(Dispatchers.IO) {   // ios: Data/Market.swift:376
+        val now = nowSec()   // ios: Data/Market.swift:377
+        if (old != null && now - old.got < minAge && old.asked.toSet().containsAll(keys)) return@withContext old   // ios: Data/Market.swift:378
+        val h = mutableMapOf<String, YahooSample.Hist>()   // ios: Data/Market.swift:379
+        coroutineScope {   // ios: Data/Market.swift:380
+            val g = keys.map { k -> val had = old?.h?.get(k); async { k to direct(k, had) } }   // ios: Data/Market.swift:381
+            for ((k, v) in g.awaitAll()) { if (v != null) h[k] = v }   // ios: Data/Market.swift:382
         }
-        val miss = keys.filter { h[it] == null }   // ios: Data/Market.swift:383
-        var updated = old?.updated ?: ""   // ios: Data/Market.swift:384
-        val idx = if (miss.isNotEmpty()) get("index.json") else null; val files = jObj(idx?.get("prices"))   // ios: Data/Market.swift:385
+        val miss = keys.filter { h[it] == null }   // ios: Data/Market.swift:384
+        var updated = old?.updated ?: ""   // ios: Data/Market.swift:385
+        val idx = if (miss.isNotEmpty()) get("index.json") else null; val files = jObj(idx?.get("prices"))   // ios: Data/Market.swift:386
         if (idx != null && files != null) {
-            updated = idx["updated"] as? String ?: ""   // ios: Data/Market.swift:386
-            for (k in miss) {   // ios: Data/Market.swift:387
-                val f = files[k] as? String ?: continue   // ios: Data/Market.swift:388
-                get("prices/" + f)?.let { o -> hist(o)?.let { x -> h[k] = x } }   // ios: Data/Market.swift:389
+            updated = idx["updated"] as? String ?: ""   // ios: Data/Market.swift:387
+            for (k in miss) {   // ios: Data/Market.swift:388
+                val f = files[k] as? String ?: continue   // ios: Data/Market.swift:389
+                get("prices/" + f)?.let { o -> hist(o)?.let { x -> h[k] = x } }   // ios: Data/Market.swift:390
             }
         }
-        for (k in keys) { if (h[k] == null) old?.h?.get(k)?.let { x -> h[k] = x } }   // ios: Data/Market.swift:392
-        val out = File(got = now, updated = updated, asked = keys.sorted(), h = h)   // ios: Data/Market.swift:393
-        Store.write(File.serializer(), out, name)   // ios: Data/Market.swift:394
-        out   // ios: Data/Market.swift:395
+        for (k in keys) { if (h[k] == null) old?.h?.get(k)?.let { x -> h[k] = x } }   // ios: Data/Market.swift:393
+        val out = File(got = now, updated = updated, asked = keys.sorted(), h = h)   // ios: Data/Market.swift:394
+        Store.write(File.serializer(), out, name)   // ios: Data/Market.swift:395
+        out   // ios: Data/Market.swift:396
     }
 }
 
 /** 내 토스 키로 받는 지난 종가(일봉)와 원/달러. 키를 넣은 기기만 (공개 버전은 사용자 키로만 시세를 보여 준다).
  *  일봉은 수정 안 한 종가(adjusted=false): 사이트 data/prices 의 close 와 같은 기준. 받은 종목은 사이트 값 대신 쓰고, 못 받은 종목은 사이트 값 그대로.
  *  원/달러 지난 흐름(KRW=X)은 토스에 일봉이 없어 아직 사이트 값이다. */
-object TossHistory {   // ios: Data/Market.swift:402
-    @Serializable data class FX(var rate: Double, var prev: Double, var got: Double)   // 지금, 24시간 전, 받은 시각(초)   // ios: Data/Market.swift:403
+object TossHistory {   // ios: Data/Market.swift:403
+    @Serializable data class FX(var rate: Double, var prev: Double, var got: Double)   // 지금, 24시간 전, 받은 시각(초)   // ios: Data/Market.swift:404
     /** h 키 = 사이트 티커, day = 그 종목을 마지막으로 받은 날 */
-    @Serializable data class File(var h: Map<String, YahooSample.Hist>, var day: Map<String, String>, var fx: FX? = null)   // ios: Data/Market.swift:405
-    const val name = "toss_history.json"   // ios: Data/Market.swift:406
-    fun cached(): File? = if (TossKeys.on) Store.read(File.serializer(), name) else null   // ios: Data/Market.swift:407
+    @Serializable data class File(var h: Map<String, YahooSample.Hist>, var day: Map<String, String>, var fx: FX? = null)   // ios: Data/Market.swift:406
+    const val name = "toss_history.json"   // ios: Data/Market.swift:407
+    fun cached(): File? = if (TossKeys.on) Store.read(File.serializer(), name) else null   // ios: Data/Market.swift:408
 
-    fun merged(p: SitePrices.File?, t: File?): SitePrices.File? {   // ios: Data/Market.swift:409
-        if (t == null || !TossKeys.on || t.h.isEmpty()) return p   // ios: Data/Market.swift:410
-        val out = p?.copy() ?: SitePrices.File(got = 0.0, updated = "", asked = emptyList(), h = emptyMap())   // ios: Data/Market.swift:411
-        out.h = out.h + t.h   // ios: Data/Market.swift:412
-        return out   // ios: Data/Market.swift:413
+    fun merged(p: SitePrices.File?, t: File?): SitePrices.File? {   // ios: Data/Market.swift:410
+        if (t == null || !TossKeys.on || t.h.isEmpty()) return p   // ios: Data/Market.swift:411
+        val out = p?.copy() ?: SitePrices.File(got = 0.0, updated = "", asked = emptyList(), h = emptyMap())   // ios: Data/Market.swift:412
+        out.h = out.h + t.h   // ios: Data/Market.swift:413
+        return out   // ios: Data/Market.swift:414
     }
 
-    private fun enc(v: String): String =   // ios: Data/Market.swift:416
-        pctEncode(v, "-._~")   // ios: Data/Market.swift:417
+    private fun enc(v: String): String =   // ios: Data/Market.swift:417
+        pctEncode(v, "-._~")   // ios: Data/Market.swift:418
     /** 그 시장의 오늘 날짜와, 오늘 장이 끝났는지 (끝나기 전 오늘 일봉은 종가가 아니라 뺀다) */
-    private fun marketDay(kr: Boolean): Pair<String, Boolean> {   // ios: Data/Market.swift:420
-        val c = Instant.now().atZone(ZoneId.of(if (kr) "Asia/Seoul" else "America/New_York"))   // ios: Data/Market.swift:421,422,423
-        val d = fmt("%04d-%02d-%02d", c.year, c.monthValue, c.dayOfMonth)   // ios: Data/Market.swift:424
-        val m = c.hour * 60 + c.minute   // ios: Data/Market.swift:425
-        return d to (m >= (if (kr) 15 * 60 + 40 else 16 * 60 + 10))   // ios: Data/Market.swift:426
+    private fun marketDay(kr: Boolean): Pair<String, Boolean> {   // ios: Data/Market.swift:421
+        val c = Instant.now().atZone(ZoneId.of(if (kr) "Asia/Seoul" else "America/New_York"))   // ios: Data/Market.swift:422,423,424
+        val d = fmt("%04d-%02d-%02d", c.year, c.monthValue, c.dayOfMonth)   // ios: Data/Market.swift:425
+        val m = c.hour * 60 + c.minute   // ios: Data/Market.swift:426
+        return d to (m >= (if (kr) 15 * 60 + 40 else 16 * 60 + 10))   // ios: Data/Market.swift:427
     }
 
     /** keys: 사이트 티커 → Yahoo 기호. 종목마다 하루 한 번: 처음엔 3년치(200개씩), 그다음엔 최근 30개만 받아 잇는다.
      *  너무 많이 부르면(429)·중계에 못 닿으면 거기서 멈추고 다음 갱신 때 이어 받는다 */
-    suspend fun fetch(keys: Map<String, String>, force: Boolean): File? = withContext(Dispatchers.IO) {   // ios: Data/Market.swift:431
-        if (!TossKeys.on) return@withContext null   // ios: Data/Market.swift:432
-        val f = Store.read(File.serializer(), name) ?: File(h = emptyMap(), day = emptyMap(), fx = null)   // ios: Data/Market.swift:433
+    suspend fun fetch(keys: Map<String, String>, force: Boolean): File? = withContext(Dispatchers.IO) {   // ios: Data/Market.swift:432
+        if (!TossKeys.on) return@withContext null   // ios: Data/Market.swift:433
+        val f = Store.read(File.serializer(), name) ?: File(h = emptyMap(), day = emptyMap(), fx = null)   // ios: Data/Market.swift:434
         val fh = f.h.toMutableMap(); val fday = f.day.toMutableMap()
-        val now = nowSec(); val today = Day.today   // ios: Data/Market.swift:434
-        val from = Day.str(Instant.now().minusSeconds((3 * 365 + 15) * 86400L))   // 사이트 파일과 같은 3년 남짓   // ios: Data/Market.swift:435
-        val miss = TossFeed.histMiss.toMutableMap()   // ios: Data/Market.swift:436
-        var stop = false   // ios: Data/Market.swift:437
-        for ((k, y) in keys.entries.sortedBy { it.key }) {   // ios: Data/Market.swift:438
+        val now = nowSec(); val today = Day.today   // ios: Data/Market.swift:435
+        val from = Day.str(Instant.now().minusSeconds((3 * 365 + 15) * 86400L))   // 사이트 파일과 같은 3년 남짓   // ios: Data/Market.swift:436
+        val miss = TossFeed.histMiss.toMutableMap()   // ios: Data/Market.swift:437
+        var stop = false   // ios: Data/Market.swift:438
+        val ohlc = FlowBars.read(FlowBars.tossName); var ohlcDirty = false   // 차트 탭 캔들: 같은 응답에서 시가·고가·저가·거래량도 남긴다   // ios: Data/Market.swift:439
+        for ((k, y) in keys.entries.sortedBy { it.key }) {   // ios: Data/Market.swift:440
             if (stop) break
             // 하루 한 번, 장이 끝난 뒤 한 번 더 (그날 종가가 정규장 종가·다음 날 전일 종가가 된다)
-            val (md, closed) = marketDay(kr = y.endsWith(".KS") || y.endsWith(".KQ"))   // ios: Data/Market.swift:440
-            val stamp = if (closed) today + "c" else today   // ios: Data/Market.swift:441
-            val c = TossFeed.code(y) ?: continue; if (!((miss[c] ?: 0.0) < now && (fday[k] != stamp || fh[k] == null))) continue   // ios: Data/Market.swift:442
-            val have = fh[k]   // ios: Data/Market.swift:443
-            val full = (have?.dates?.firstOrNull() ?: "9999") > Day.str(Instant.now().minusSeconds((3 * 365 - 15) * 86400L))   // ios: Data/Market.swift:444
-            val bars = mutableMapOf<String, Double>(); var before: String? = null; var ok = false   // ios: Data/Market.swift:445
-            repeat(if (full) 5 else 1) {   // ios: Data/Market.swift:446
+            val (md, closed) = marketDay(kr = y.endsWith(".KS") || y.endsWith(".KQ"))   // ios: Data/Market.swift:442
+            val stamp = if (closed) today + "c" else today   // ios: Data/Market.swift:443
+            val c = TossFeed.code(y) ?: continue; if (!((miss[c] ?: 0.0) < now && (fday[k] != stamp || fh[k] == null || ohlc.b[k] == null))) continue   // ios: Data/Market.swift:444
+            val have = fh[k]   // ios: Data/Market.swift:445
+            // 캔들을 아직 안 받은 종목도 한 번은 3년치를 받는다 (예전 판은 종가만 남겼다)
+            val full = (have?.dates?.firstOrNull() ?: "9999") > Day.str(Instant.now().minusSeconds((3 * 365 - 15) * 86400L)) || ohlc.b[k] == null   // ios: Data/Market.swift:447
+            val bars = mutableMapOf<String, Double>(); var before: String? = null; var ok = false   // ios: Data/Market.swift:448
+            val rows = mutableMapOf<String, FlowBars.Row>()   // ios: Data/Market.swift:449
+            repeat(if (full) 5 else 1) {   // ios: Data/Market.swift:450
                 if (it > 0 && (before == null || !ok)) return@repeat
-                var path = "/api/toss/v1/candles?symbol=${enc(c)}&interval=1d&adjusted=false&count=${if (full) 200 else 30}"   // ios: Data/Market.swift:447
-                before?.let { b -> path += "&before=" + enc(b) }   // ios: Data/Market.swift:448
-                val (code, o, e) = TossFeed.userGet(path)   // ios: Data/Market.swift:449
-                if (code == 404) { miss[c] = now + 86400; before = null; return@repeat }   // ios: Data/Market.swift:450
-                val r = jObj(o?.get("result")); if (code != 200 || r == null) { if (e != null || code == 429 || code == 401 || code == 403) stop = true; ok = false; before = null; return@repeat }   // ios: Data/Market.swift:451
-                ok = true   // ios: Data/Market.swift:452
-                var oldest = "9999"   // ios: Data/Market.swift:453
-                for (v in jObjs(r["candles"]) ?: emptyList()) {   // ios: Data/Market.swift:454
-                    val t = (v["timestamp"] as? String)?.takeIf { s -> s.length >= 10 } ?: continue; val cl = num(v["closePrice"])?.takeIf { x -> x > 0 } ?: continue   // ios: Data/Market.swift:455
-                    val d = t.take(10); bars[d] = cl; oldest = minOf(oldest, d)   // ios: Data/Market.swift:456
+                var path = "/api/toss/v1/candles?symbol=${enc(c)}&interval=1d&adjusted=false&count=${if (full) 200 else 30}"   // ios: Data/Market.swift:451
+                before?.let { b -> path += "&before=" + enc(b) }   // ios: Data/Market.swift:452
+                val (code, o, e) = TossFeed.userGet(path)   // ios: Data/Market.swift:453
+                if (code == 404) { miss[c] = now + 86400; before = null; return@repeat }   // ios: Data/Market.swift:454
+                val r = jObj(o?.get("result")); if (code != 200 || r == null) { if (e != null || code == 429 || code == 401 || code == 403) stop = true; ok = false; before = null; return@repeat }   // ios: Data/Market.swift:455
+                ok = true   // ios: Data/Market.swift:456
+                var oldest = "9999"   // ios: Data/Market.swift:457
+                for (v in jObjs(r["candles"]) ?: emptyList()) {   // ios: Data/Market.swift:458
+                    val t = (v["timestamp"] as? String)?.takeIf { s -> s.length >= 10 } ?: continue; val cl = num(v["closePrice"])?.takeIf { x -> x > 0 } ?: continue   // ios: Data/Market.swift:459
+                    val d = t.take(10); bars[d] = cl; oldest = minOf(oldest, d)   // ios: Data/Market.swift:460
+                    val op = num(v["openPrice"]); val hp = num(v["highPrice"]); val lp = num(v["lowPrice"]); if (op != null && hp != null && lp != null && op > 0 && hp > 0 && lp > 0) {   // ios: Data/Market.swift:461
+                        rows[d] = FlowBars.Row(o = op, h = maxOf(hp, op, cl), l = minOf(lp, op, cl), c = cl, v = num(v["volume"]) ?: 0.0)   // ios: Data/Market.swift:462
+                    }
                 }
-                before = r["nextBefore"] as? String   // ios: Data/Market.swift:458
-                if (before == null || oldest <= from) before = null   // ios: Data/Market.swift:459
+                before = r["nextBefore"] as? String   // ios: Data/Market.swift:465
+                if (before == null || oldest <= from) before = null   // ios: Data/Market.swift:466
             }
-            if (!ok || bars.isEmpty()) continue   // ios: Data/Market.swift:461
-            val all: MutableMap<String, Double> = if (full) mutableMapOf() else have!!.dates.zip(have.closes).toMap().toMutableMap()   // ios: Data/Market.swift:462
-            for ((d, v) in bars) all[d] = v   // ios: Data/Market.swift:463
-            val ds = all.keys.filter { it >= from && (it < md || (it == md && closed)) }.sorted()   // ios: Data/Market.swift:464
-            if (ds.isEmpty()) continue   // ios: Data/Market.swift:465
-            fh[k] = YahooSample.Hist(dates = ds, closes = ds.map { all[it]!! })   // ios: Data/Market.swift:466
-            fday[k] = stamp   // ios: Data/Market.swift:467
+            if (!ok || bars.isEmpty()) continue   // ios: Data/Market.swift:468
+            val all: MutableMap<String, Double> = if (full) mutableMapOf() else have!!.dates.zip(have.closes).toMap().toMutableMap()   // ios: Data/Market.swift:469
+            for ((d, v) in bars) all[d] = v   // ios: Data/Market.swift:470
+            val ds = all.keys.filter { it >= from && (it < md || (it == md && closed)) }.sorted()   // ios: Data/Market.swift:471
+            if (ds.isEmpty()) continue   // ios: Data/Market.swift:472
+            fh[k] = YahooSample.Hist(dates = ds, closes = ds.map { all[it]!! })   // ios: Data/Market.swift:473
+            fday[k] = stamp   // ios: Data/Market.swift:474
+            if (full && rows.isEmpty() && ohlc.b[k] == null) { ohlc.b = ohlc.b + (k to FlowBars.Series()); ohlcDirty = true }   // 시가 등이 없는 응답이면 다시 3년치를 묻지 않게   // ios: Data/Market.swift:475
+            if (rows.isNotEmpty()) { ohlc.merge(k, rows, full = full, keep = { it >= from && (it < md || (it == md && closed)) }); ohlcDirty = true }   // ios: Data/Market.swift:476
         }
-        TossFeed.histMiss = miss   // ios: Data/Market.swift:469
+        TossFeed.histMiss = miss   // ios: Data/Market.swift:478
+        if (ohlcDirty) FlowBars.write(ohlc, FlowBars.tossName)   // ios: Data/Market.swift:479
         f.h = fh; f.day = fday
         // 원/달러: 10분에 한 번 (당겨 갱신하면 바로). 전일 값은 24시간 전 시각의 값
         // 일봉 받기가 막혀도(429 등) 환율은 따로 묻는다. 안 그러면 하루 묵은 환율로 평가액이 토스와 달라진다
-        if (force || now - (f.fx?.got ?: 0.0) > 600) {   // ios: Data/Market.swift:472
-            val (code, o, _) = TossFeed.userGet("/api/toss/v1/exchange-rate")   // ios: Data/Market.swift:473
-            val rate = if (code == 200) num(jObj(o?.get("result"))?.get("rate")) else null   // ios: Data/Market.swift:474
+        if (force || now - (f.fx?.got ?: 0.0) > 600) {   // ios: Data/Market.swift:482
+            val (code, o, _) = TossFeed.userGet("/api/toss/v1/exchange-rate")   // ios: Data/Market.swift:483
+            val rate = if (code == 200) num(jObj(o?.get("result"))?.get("rate")) else null   // ios: Data/Market.swift:484
             if (rate != null && rate > 0) {
-                val iso = DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(ZoneId.of("Asia/Seoul"))   // ios: Data/Market.swift:475
-                val (c2, o2, _) = TossFeed.userGet("/api/toss/v1/exchange-rate?dateTime=" + enc(iso.format(Instant.ofEpochSecond(Instant.now().epochSecond - 86400))))   // ios: Data/Market.swift:476
-                val prev = if (c2 == 200) num(jObj(o2?.get("result"))?.get("rate")) else null   // ios: Data/Market.swift:477
-                f.fx = FX(rate = rate, prev = if ((prev ?: 0.0) > 0) prev!! else (f.fx?.prev ?: rate), got = now)   // ios: Data/Market.swift:478
+                val iso = DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(ZoneId.of("Asia/Seoul"))   // ios: Data/Market.swift:485
+                val (c2, o2, _) = TossFeed.userGet("/api/toss/v1/exchange-rate?dateTime=" + enc(iso.format(Instant.ofEpochSecond(Instant.now().epochSecond - 86400))))   // ios: Data/Market.swift:486
+                val prev = if (c2 == 200) num(jObj(o2?.get("result"))?.get("rate")) else null   // ios: Data/Market.swift:487
+                f.fx = FX(rate = rate, prev = if ((prev ?: 0.0) > 0) prev!! else (f.fx?.prev ?: rate), got = now)   // ios: Data/Market.swift:488
             }
         }
-        Store.write(File.serializer(), f, name)   // ios: Data/Market.swift:481
-        f   // ios: Data/Market.swift:482
+        Store.write(File.serializer(), f, name)   // ios: Data/Market.swift:491
+        f   // ios: Data/Market.swift:492
     }
 }
 
 /** 매매기준율: 사이트가 하루 한 번 저장하는 data/mar.json ({"USD": {"rate", "date"}}). 웹 평가액과 같은 값 */
-object MarFeed {   // ios: Data/Market.swift:487
-    @Serializable data class Prev(var rate: Double, var date: String)   // ios: Data/Market.swift:488
+object MarFeed {   // ios: Data/Market.swift:497
+    @Serializable data class Prev(var rate: Double, var date: String)   // ios: Data/Market.swift:498
     /** prev = 바로 앞 날짜 고시 (새 고시는 전날 오후에 나오지만 토스는 그날 오전 8시 59분부터 쓴다) */
-    @Serializable data class File(var rate: Double, var date: String, var got: Double, var prev: Prev? = null)   // ios: Data/Market.swift:490
-    const val name = "site_mar.json"   // ios: Data/Market.swift:491
+    @Serializable data class File(var rate: Double, var date: String, var got: Double, var prev: Prev? = null)   // ios: Data/Market.swift:500
+    const val name = "site_mar.json"   // ios: Data/Market.swift:501
     /** 그 날짜 고시를 쓰기 시작했는지: 한국 시간 그날 오전 8시 59분부터 */
-    fun started(date: String): Boolean {   // ios: Data/Market.swift:493
-        val f = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", posix("en_US_POSIX")).withZone(ZoneId.of("Asia/Seoul"))   // ios: Data/Market.swift:494
-        return f.format(Instant.now()) >= date + " 08:59"   // ios: Data/Market.swift:495
+    fun started(date: String): Boolean {   // ios: Data/Market.swift:503
+        val f = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", posix("en_US_POSIX")).withZone(ZoneId.of("Asia/Seoul"))   // ios: Data/Market.swift:504
+        return f.format(Instant.now()) >= date + " 08:59"   // ios: Data/Market.swift:505
     }
-    fun cached(): File? = Store.read(File.serializer(), name)   // ios: Data/Market.swift:497
+    fun cached(): File? = Store.read(File.serializer(), name)   // ios: Data/Market.swift:507
 
     /** 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 실패하면 저장해 둔 값 */
-    suspend fun fetch(minAge: Double = 0.0): File? = withContext(Dispatchers.IO) {   // ios: Data/Market.swift:500
-        val old = cached()   // ios: Data/Market.swift:501
+    suspend fun fetch(minAge: Double = 0.0): File? = withContext(Dispatchers.IO) {   // ios: Data/Market.swift:510
+        val old = cached()   // ios: Data/Market.swift:511
         // 오늘 고시가 아닌 값은 10분만 믿는다 (앱을 새로 깔거나 빌드한 직후 며칠 묵은 값을 30분 넘게 쓰지 않게)
         // 단, 오전 8시 59분 전인데 앞 고시가 없으면 기다리지 않고 바로 받는다 (앞 고시를 써야 하니까)
-        if (old != null && (started(old.date) || old.prev != null) && nowSec() - old.got < (if (old.date >= Day.today) minAge else minOf(minAge, 600.0))) return@withContext old   // ios: Data/Market.swift:504
+        if (old != null && (started(old.date) || old.prev != null) && nowSec() - old.got < (if (old.date >= Day.today) minAge else minOf(minAge, 600.0))) return@withContext old   // ios: Data/Market.swift:514
         // 1순위: 서울외국환중개에서 직접 (최신 고시 + 앞 날짜 고시). 못 받을 때만 웹(data/mar.json → 중계 /mar)
-        var best: File? = smbs()   // ios: Data/Market.swift:506
-        if (best == null) {   // ios: Data/Market.swift:507
-            val c = URL(Config.data, "mar.json").toString()   // ios: Data/Market.swift:508
-            val queryItems = listOf("t" to (nowSec() / 600).toLong().toString()); val u = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // ios: Data/Market.swift:509
-            best = get(FeedReq(u, timeout = 10.0))   // ios: Data/Market.swift:510
+        var best: File? = smbs()   // ios: Data/Market.swift:516
+        if (best == null) {   // ios: Data/Market.swift:517
+            val c = URL(Config.data, "mar.json").toString()   // ios: Data/Market.swift:518
+            val queryItems = listOf("t" to (nowSec() / 600).toLong().toString()); val u = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // ios: Data/Market.swift:519
+            best = get(FeedReq(u, timeout = 10.0))   // ios: Data/Market.swift:520
             // 웹 marFetch 와 같게: 저장소 값이 오늘 고시가 아니면 중계(/mar)에서 한 번 더 (더 새 날짜일 때만 바꾼다)
-            val have = maxOf(best?.date ?: "", old?.date ?: "")   // ios: Data/Market.swift:512
-            if (have < Day.today) { val x = get(FeedReq(URL(Config.relay, "mar").toString(), timeout = 10.0)); if (x != null && x.date > (best?.date ?: "")) best = x }   // ios: Data/Market.swift:513
+            val have = maxOf(best?.date ?: "", old?.date ?: "")   // ios: Data/Market.swift:522
+            if (have < Day.today) { val x = get(FeedReq(URL(Config.relay, "mar").toString(), timeout = 10.0)); if (x != null && x.date > (best?.date ?: "")) best = x }   // ios: Data/Market.swift:523
         }
-        val f = best ?: return@withContext old   // ios: Data/Market.swift:515
+        val f = best ?: return@withContext old   // ios: Data/Market.swift:525
         var out = f
-        if (old != null && old.date > f.date) out = File(rate = old.rate, date = old.date, got = f.got, prev = old.prev)   // 중계에서 받아 둔 더 새 값은 지킨다   // ios: Data/Market.swift:516
-        else if (old != null && old.date < f.date && f.prev == null) f.prev = Prev(rate = old.rate, date = old.date)   // 날짜가 바뀌면 앞 고시를 남긴다   // ios: Data/Market.swift:517
-        else if (old != null && f.prev == null) f.prev = old.prev   // ios: Data/Market.swift:518
-        Store.write(File.serializer(), out, name)   // ios: Data/Market.swift:519
-        out   // ios: Data/Market.swift:520
+        if (old != null && old.date > f.date) out = File(rate = old.rate, date = old.date, got = f.got, prev = old.prev)   // 중계에서 받아 둔 더 새 값은 지킨다   // ios: Data/Market.swift:526
+        else if (old != null && old.date < f.date && f.prev == null) f.prev = Prev(rate = old.rate, date = old.date)   // 날짜가 바뀌면 앞 고시를 남긴다   // ios: Data/Market.swift:527
+        else if (old != null && f.prev == null) f.prev = old.prev   // ios: Data/Market.swift:528
+        Store.write(File.serializer(), out, name)   // ios: Data/Market.swift:529
+        out   // ios: Data/Market.swift:530
     }
     /** 서울외국환중개 매매기준율 표 (최근 2주): 마지막 = 최신 고시, 그 앞 = prev. 중계 worker·server.py 와 같은 파싱 */
-    internal suspend fun smbs(): File? {   // ios: Data/Market.swift:523
-        val f = DateTimeFormatter.ofPattern("yyyy-MM-dd", posix("en_US_POSIX")).withZone(ZoneId.of("Asia/Seoul"))   // ios: Data/Market.swift:524
-        val st = f.format(Instant.now().minusSeconds(14 * 86400L)); val end = f.format(Instant.now())   // ios: Data/Market.swift:525
-        val url = "http://www.smbs.biz/ExRate/StdExRate_xml.jsp?arr_value=USD_${st}_${end}"   // ios: Data/Market.swift:526
-        val req = FeedReq(url, timeout = 8.0)   // ios: Data/Market.swift:527
-        req.setValue("Mozilla/5.0", "User-Agent")   // ios: Data/Market.swift:528
-        req.setValue("http://www.smbs.biz/ExRate/StdExRate.jsp", "Referer")   // ios: Data/Market.swift:529
-        val (code, data) = runCatching { req.send() }.getOrNull() ?: return null; if (code != 200) return null   // ios: Data/Market.swift:530
-        return smbsParse(String(data, Charsets.ISO_8859_1))   // ios: Data/Market.swift:531
+    internal suspend fun smbs(): File? {   // ios: Data/Market.swift:533
+        val f = DateTimeFormatter.ofPattern("yyyy-MM-dd", posix("en_US_POSIX")).withZone(ZoneId.of("Asia/Seoul"))   // ios: Data/Market.swift:534
+        val st = f.format(Instant.now().minusSeconds(14 * 86400L)); val end = f.format(Instant.now())   // ios: Data/Market.swift:535
+        val url = "http://www.smbs.biz/ExRate/StdExRate_xml.jsp?arr_value=USD_${st}_${end}"   // ios: Data/Market.swift:536
+        val req = FeedReq(url, timeout = 8.0)   // ios: Data/Market.swift:537
+        req.setValue("Mozilla/5.0", "User-Agent")   // ios: Data/Market.swift:538
+        req.setValue("http://www.smbs.biz/ExRate/StdExRate.jsp", "Referer")   // ios: Data/Market.swift:539
+        val (code, data) = runCatching { req.send() }.getOrNull() ?: return null; if (code != 200) return null   // ios: Data/Market.swift:540
+        return smbsParse(String(data, Charsets.ISO_8859_1))   // ios: Data/Market.swift:541
     }
     /** smbs 응답 글자 → File (서버 없이 시험할 수 있게 따로 둔다) */
     internal fun smbsParse(t: String, got: Double = nowSec()): File? {
-        val re = Regex("label=['\"]([^'\"]+)['\"][^>]*?value=['\"]([\\d,.]+)['\"]")   // ios: Data/Market.swift:532
-        val days = ArrayList<Prev>()   // ios: Data/Market.swift:533
-        for (m in re.findAll(t)) {   // ios: Data/Market.swift:534
-            val lr = m.groupValues[1]; val vr = m.groupValues[2]   // ios: Data/Market.swift:535
-            val rate = vr.replace(",", "").toDoubleOrNull()?.takeIf { it > 500 && it < 5000 } ?: continue   // ios: Data/Market.swift:536
-            val n = lr.split(Regex("[^0-9]+")).filter { it.isNotEmpty() }.mapNotNull { it.toIntOrNull() }   // ios: Data/Market.swift:537
-            if (n.size < 3) continue   // ios: Data/Market.swift:538
-            days.add(Prev(rate = rate, date = fmt("%04d-%02d-%02d", if (n[0] < 100) 2000 + n[0] else n[0], n[1], n[2])))   // ios: Data/Market.swift:539
+        val re = Regex("label=['\"]([^'\"]+)['\"][^>]*?value=['\"]([\\d,.]+)['\"]")   // ios: Data/Market.swift:542
+        val days = ArrayList<Prev>()   // ios: Data/Market.swift:543
+        for (m in re.findAll(t)) {   // ios: Data/Market.swift:544
+            val lr = m.groupValues[1]; val vr = m.groupValues[2]   // ios: Data/Market.swift:545
+            val rate = vr.replace(",", "").toDoubleOrNull()?.takeIf { it > 500 && it < 5000 } ?: continue   // ios: Data/Market.swift:546
+            val n = lr.split(Regex("[^0-9]+")).filter { it.isNotEmpty() }.mapNotNull { it.toIntOrNull() }   // ios: Data/Market.swift:547
+            if (n.size < 3) continue   // ios: Data/Market.swift:548
+            days.add(Prev(rate = rate, date = fmt("%04d-%02d-%02d", if (n[0] < 100) 2000 + n[0] else n[0], n[1], n[2])))   // ios: Data/Market.swift:549
         }
-        days.sortBy { it.date }   // ios: Data/Market.swift:541
-        val last = days.lastOrNull() ?: return null   // ios: Data/Market.swift:542
-        val pv = days.dropLast(1).lastOrNull()   // ios: Data/Market.swift:543
-        return File(rate = last.rate, date = last.date, got = got, prev = pv)   // ios: Data/Market.swift:544
+        days.sortBy { it.date }   // ios: Data/Market.swift:551
+        val last = days.lastOrNull() ?: return null   // ios: Data/Market.swift:552
+        val pv = days.dropLast(1).lastOrNull()   // ios: Data/Market.swift:553
+        return File(rate = last.rate, date = last.date, got = got, prev = pv)   // ios: Data/Market.swift:554
     }
-    internal suspend fun get(req: FeedReq): File? {   // ios: Data/Market.swift:546
-        val (code, data) = runCatching { req.send() }.getOrNull() ?: return null   // ios: Data/Market.swift:547
-        if (code != 200) return null   // ios: Data/Market.swift:548
-        val o = jObj(feedJson(data)) ?: return null   // ios: Data/Market.swift:549
-        val u = jObj(o["USD"]) ?: return null; val rate = num(u["rate"])?.takeIf { it > 0 } ?: return null; val date = u["date"] as? String ?: return null   // ios: Data/Market.swift:550
+    internal suspend fun get(req: FeedReq): File? {   // ios: Data/Market.swift:556
+        val (code, data) = runCatching { req.send() }.getOrNull() ?: return null   // ios: Data/Market.swift:557
+        if (code != 200) return null   // ios: Data/Market.swift:558
+        val o = jObj(feedJson(data)) ?: return null   // ios: Data/Market.swift:559
+        val u = jObj(o["USD"]) ?: return null; val rate = num(u["rate"])?.takeIf { it > 0 } ?: return null; val date = u["date"] as? String ?: return null   // ios: Data/Market.swift:560
         // 사이트·중계가 앞 날짜 고시도 주면 같이 둔다 (앱을 처음 깔았거나 저녁에 새 고시만 받은 때도 오전 8시 59분 전엔 앞 고시)
-        val pv = jObj(o["USD_prev"])?.let { p -> num(p["rate"])?.let { r -> (p["date"] as? String)?.let { Prev(rate = r, date = it) } } }   // ios: Data/Market.swift:552
-        return File(rate = rate, date = date, got = nowSec(), prev = pv?.let { if (it.rate > 0 && it.date < date) it else null })   // ios: Data/Market.swift:553
+        val pv = jObj(o["USD_prev"])?.let { p -> num(p["rate"])?.let { r -> (p["date"] as? String)?.let { Prev(rate = r, date = it) } } }   // ios: Data/Market.swift:562
+        return File(rate = rate, date = date, got = nowSec(), prev = pv?.let { if (it.rate > 0 && it.date < date) it else null })   // ios: Data/Market.swift:563
     }
 }

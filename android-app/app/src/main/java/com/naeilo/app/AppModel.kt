@@ -871,13 +871,13 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
 
     companion object {
         // 에뮬레이터 캡처용: adb shell am start -n com.naeilo.app/.MainActivity --es tab hold 처럼 시작 탭을 고를 수 있다
-        // ios: App.swift:131,132
+        // ios: App.swift:133,134
         fun launchTab(intent: Intent?): Tab = when (intent?.getStringExtra("tab")) {
-            "hold" -> Tab.hold            // ios: App.swift:133
-            "analysis" -> Tab.analysis    // ios: App.swift:134
-            "board" -> Tab.board          // ios: App.swift:135
-            "settings" -> Tab.settings    // ios: App.swift:136
-            else -> Tab.home              // ios: App.swift:137
+            "hold" -> Tab.hold            // ios: App.swift:135
+            "analysis" -> Tab.analysis    // ios: App.swift:136
+            "board" -> Tab.board          // ios: App.swift:137
+            "settings" -> Tab.settings    // ios: App.swift:138
+            else -> Tab.home              // ios: App.swift:139
         }
 
         /** 둘러보기 샘플 수량: DRNK 4주 (가장 큰 종목이 DRNK가 되게), QQQ 1주 */

@@ -56,6 +56,6 @@ class MainActivity : ComponentActivity() {
     override fun onStart() { super.onStart(); model.onForeground(true) }
     override fun onStop() {
         super.onStop(); model.onForeground(false)
-        if (model.persists) com.naeilo.app.net.Sync.shared.flush(model)   // ios: App.swift:60 동기화 올리기는 앱을 닫을 때 한 번
+        if (model.persists) com.naeilo.app.net.Sync.shared.flush(model)   // ios: App.swift:62 동기화 올리기는 앱을 닫을 때 한 번
     }
 }

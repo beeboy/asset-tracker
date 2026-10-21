@@ -29,6 +29,9 @@ TOL_KEYS |= {"need"}
 TOL_KEYS |= {"extBeta", "extMove", "extShock", "extRanks", "extRows", "rateClosed", "rateProb", "rateMkt"}
 # J 판 깨기: 공·판·물건 위치는 sin·cos 를 거친다 (Darwin libm 과 JVM 끝자리, 최대 상대 3.5e-16). 칸·점수·소리·물건은 차이 0 그대로
 TOL_KEYS |= {"ballXY", "padX", "dropXY"}
+# 흐름 탭 DRNK 샘플 캔들: 시드 난수를 log·sqrt·cos·exp 로 정규분포로 바꾼다 (Darwin libm 과 JVM 끝자리). 추세 점·지지저항 가격은 그 캔들 값. 같은 상대 1e-12
+# (패턴 종류·구간·진하게·추세 띠는 차이 0 그대로)
+TOL_KEYS |= {"candles", "pivots", "levels", "price"}
 
 
 def run(*cmd, cwd=ROOT):
@@ -93,6 +96,11 @@ def gen():
     run("python3", "tools/num_parity/w/wsrc.py", str(w))
     run("swiftc", "-O", str(w / "main.swift"), "-o", str(bins / "w"))
     print(run(str(bins / "w"), str(w)).strip())
+    # 흐름 탭: DRNK 샘플 캔들·추세·지지저항·패턴 (flow/flowsrc.py)
+    fl = WORK / "flow"; fl.mkdir(parents=True, exist_ok=True)
+    run("python3", "tools/num_parity/flow/flowsrc.py", str(fl))
+    run("swiftc", "-O", str(fl / "main.swift"), "-o", str(bins / "flow"))
+    print(run(str(bins / "flow"), str(fl)).strip())
     print(f"입력·Swift 결과: {WORK}")
 
 
@@ -129,7 +137,8 @@ def check():
              ("h", "app.json", "kotlin.json", None),
              ("i", "app.json", "kotlin.json", None),
              ("j", "app.json", "kotlin.json", None),
-             ("w", "app.json", "kotlin.json", None)]
+             ("w", "app.json", "kotlin.json", None),
+             ("flow", "app.json", "kotlin.json", None)]
     total, bad = 0, []
     for d, sw, kt, keys in pairs:
         a_p, b_p = WORK / d / sw, WORK / d / kt
