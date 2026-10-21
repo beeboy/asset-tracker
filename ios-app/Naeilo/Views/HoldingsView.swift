@@ -11,7 +11,6 @@ struct HoldingsView: View {
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
     @AppStorage("holdUsd") private var inUsd = false // 목록 금액: 미국 종목을 달러로 볼지
     @Environment(\.dynamicTypeSize) private var dts
-    @State private var page = 0                     // 0 내 종목, 1 소식판, 2 동네 (미션 탭처럼 위에서 고른다)
     @AppStorage("town.arrive") private var arrive = ""
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
 
@@ -24,8 +23,7 @@ struct HoldingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     AppHeader(tab: String(localized: "종목")).padding(.horizontal, -16)
                     SampleNote()
-                    HoldPagePicker(page: $page)
-                    if page == 1 { HoldingsNews() } else {
+                    Group {   // 소식판은 뺐다 (많이 움직인 종목·동네는 홈 아래로, 2026-10-21)
                     totalCard(us: us.count, kr: kr.count)
                     totalChart(rows)
                     HStack(alignment: .firstTextBaseline) {
@@ -55,7 +53,6 @@ struct HoldingsView: View {
                             .foregroundStyle(Theme.teal)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                     }.buttonStyle(.plain)
-                    MyRecordCard()
                     }
                     Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                     Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
@@ -68,8 +65,8 @@ struct HoldingsView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
             .navigationDestination(for: String.self) { _ in AddHoldingView() }
-            .onAppear { if !arrive.isEmpty { page = 1 } }   // 방금 더한 종목: 소식판의 [동네]가 바로 연다
-            .onChange(of: arrive) { if !$1.isEmpty { page = 1 } }
+            .onAppear { if !arrive.isEmpty { m.tab = .home } }   // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
+            .onChange(of: arrive) { if !$1.isEmpty { m.tab = .home } }
             .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
                 Button("확인") {}
             } message: { Text(said ?? "") }
@@ -694,6 +691,7 @@ struct HoldingEditView: View {
         }
         .background(Theme.bg)
         .navigationTitle(sym.name).navigationBarTitleDisplayMode(.inline)
+        .doneKey()
         .onAppear {
             reset(h)
             // 캡처용: -editMode buy -editQ 5 처럼 입력을 채워 둔다
@@ -721,6 +719,13 @@ struct HoldingEditView: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
                 .accessibilityLabel(label)
         }
+    }
+}
+
+extension View {
+    /// 숫자 자판에는 닫기 키가 없어서 자판 위에 '완료'를 둔다 (어느 칸이 열려 있든 내린다)
+    func doneKey() -> some View {
+        toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } } }
     }
 }
 
@@ -803,9 +808,14 @@ struct HoldPagePicker: View {
 // 시장과 비교 → 오늘 많이 움직인 종목 → 1년 고점·저점 가까운 종목
 struct HoldingsNews: View {
     @Environment(AppModel.self) private var m
+    var moversOnly = false   // 홈 아래: 오늘 많이 움직인 종목만
 
     var body: some View {
         let rows = m.rows
+        if moversOnly { moversCard(rows) } else { all(rows) }
+    }
+
+    @ViewBuilder private func all(_ rows: [AppModel.Row]) -> some View {
         let ks = rows.filter { m.prices.hasHistory($0.sym) }.map { ($0, m.metrics($0)) }
         VStack(alignment: .leading, spacing: 12) {
             if let c = compare(ks) { compareCard(c) }

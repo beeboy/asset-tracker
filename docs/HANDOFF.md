@@ -54,241 +54,30 @@
 - 시세 출처: 웹은 Yahoo(사이트 `data/`) 시세만 씀(2026-10-15, 앱·웹 동기화 없음 → 웹 토스 경로 `tossQuotes`·`?toss=` 뺌). 앱은 내 키 토스 시세·일봉·환율을 먼저 쓰고 없으면 Yahoo.
 - 아래 "3. 알려진 버그·불일치" 5~8번 그대로.
 
-## 영문 로컬리제이션 6단계: 위젯 언어·컷 그림·동네 한마디 (2026-10-20, 로컬 커밋)
-- 위젯: 위젯 확장은 iOS 앱별 언어를 못 봐서 폰 언어를 따랐다 → 앱이 App Group `appLang`에 적고 위젯 `WL.en`이 읽는다.
-- 규칙과 결과 컷 그림: 글자가 그림에 박혀 있어 영어판 5장 `event_<인물>_en` 새로 만듦(`ios-app/tools/event_en`). 원본은 그대로.
-- 동네 한마디: 하루 한 번 만들어 TownLog에 저장해서, 언어를 바꿔도 그날은 한국어였다 → Entry.lang을 두고 언어가 바뀐 날은 오늘 한마디만 다시 만든다(지난 기록은 그대로).
+## 아이폰 기기 옮기기 되살림 (2026-10-21, 로컬 커밋)
+- 설정 '도움과 기타'에 "기기 옮기기" 줄(route .sync → SyncView). 화면 순서: 파일로 옮기기 카드 → (충돌 카드) → 기기 동기화 카드 → 개발자용. 웹·사이트 문구는 뺐다(폰끼리만).
+- 파일 형식(Backup.swift, JSON, 암호화 없음, 이름 `naeilo-yyyy-MM-dd.json`, 날짜 ISO8601, 키 정렬): `v`(1), `at`, `holdings`, `progress`, `homeFriend?`, `custom`(추가 종목), `hist`(추가 종목 시세), `daily?`(내 기록), `town?`(town.book·town.log Data, town.candy·SurfCloset 키는 정수 문자열). 불러오기: 추가 종목 → 진행 → 내 기록 병합 → 동네 → 종목 순.
+- 기기 동기화(/esync 워커, 같은 비밀번호)는 켠 사람만. 값이 바뀌면 `Sync.changed`는 표시(dirty)만, 앱이 백그라운드로 갈 때 `Sync.flush`가 한 번 올린다(beginBackgroundTask). 앱을 열 때 받기(pull)는 그대로, 실패하면 다음 열 때 이 폰이 더 새면 올린다.
+- 안드로이드도 같게 맞춤(2026-10-21, 로컬 커밋): 설정 '도움과 기타' "기기 옮기기" 줄, SyncView 같은 순서·문구, `Sync.changed`는 dirty만, `MainActivity.onStop`에서 `Sync.flush` 한 번(MainScope). 파일 형식은 json_parity(Backup 56/56), 동기화 암호는 num_parity d(다름 0)로 아이폰과 서로 읽힘 확인.
+- 새 문구 영어는 안드로이드만 `tools/l10n/android_en.json`에 넣음(33개). 아이폰 Localizable.xcstrings는 다른 작업이 고치는 중이라 아직 — 그 작업이 끝나면 같은 영어를 xcstrings에도 옮길 것.
+- port_check: 아이폰 커밋으로 밀린 `// ios:` 줄 번호(SettingsDetail·SettingsView·App·Sync.swift)와 exceptions.txt를 함께 고침 (짝 없음 0).
 
-## 영문 로컬리제이션 5단계: 남은 한글·위젯 (2026-10-20, 로컬 커밋)
-- 종목 자료 영어: `Naeilo/Resources/data_en.json`(`tools/data_en.py` + `tools/data_en_words.json`). 영어일 때만 `EnData`가 한 번 읽는다. Symbol 이름·시장은 만들 때 영어로, 업종은 비교에 쓰여 한국어로 두고 `sectorText`로 보인다. 기업 소개는 `Sample.profiles`(영어), 동네 얼굴 열쇠는 `profilesKo`.
-- 한국 종목 영어 이름은 StockCatalog에 있는 것만(약 120개). 나머지 KRX 종목은 한글 그대로.
-- 동네 대화·블록 인물 줄: 사전 열쇠도 String(localized:)로 (영어에서 다음 대화가 끊기던 것 고침). 장면 잠금·금리 늦게/빨리 비교도 번역 글로 비교.
-- 위젯: 번역 목록을 위젯 타깃에도 넣음(위젯 공용 코드 Models·Reward의 String(localized:)). 위젯 금액도 영어면 ₩ 줄임(Fmt.krwC).
-- 다른 세션이 커밋 안 한 TownPanel·BrickGame·HoldingsView는 내 바꾼 줄만 커밋하고 그 세션 변경은 그대로 둠.
+## 안드로이드 키보드 가림·중계 IP (2026-10-21, 로컬 커밋)
+- 키보드가 입력칸을 가리던 것: edge-to-edge 라 adjustResize 가 안 먹음 → 공통 두 곳만 고침. `RootView` TabHost 에 ime 인셋(내비 막대·탭 막대 49 뺀 만큼, 배치 단계에서만 읽음), `Sheet` 바깥 상자에 ime 인셋. FullCover·StartView 는 원래 safeDrawing(ime 포함)이라 그대로. 동네 말 걸기(kbTop)는 창 좌표라 겹치지 않음.
+- 에뮬레이터 확인: 개발자 토큰 칸·오픈 API client_secret 칸이 키보드 위에 보이고 스크롤됨. 숫자 칸은 에뮬레이터 Gboard 가 떠 있는(floating) 키패드라 인셋 0 — 붙은 키보드에서 다시 볼 것.
+- 오픈 API 중계 IP: `Config.tossRelayIP` 고정값을 바로 보여 주고 `/api/toss/ip` 로 받은 값이 오면 바꾼다(받기 실패해도 빈칸 없음). 아이폰은 아직 받기만 함.
 
-## 영문 로컬리제이션 4단계: 인물 대사·인물 소개 (2026-10-20, 로컬 커밋)
-- 대사 원문(여는 말·상황 문장·맺는 말·물건 줄, 560개)의 영어는 `ios-app/tools/lines_en_data.json`. `python3 tools/lines.py`가 `Naeilo/Resources/lines_app_en.json`(146키·13,018줄)도 만든다. 위젯 말풍선(widget.*)은 EN_CORE 그대로.
-- 앱은 언어에 맞는 대사 파일 하나만 읽는다(`Lines.swift`: 영어면 lines_app_en, 아니면 lines_ko). 위젯은 그대로 WidgetShared/lines_en.json.
-- 인물 소개(SampleData `Shelter`)는 String(localized:)로 감싸고 영어 95줄 넣음. 서재는 원래 story_en이 있어 언어를 따른다. 종목 이름은 그대로.
-- 대사 원문을 고치면 lines_en_data.json도 같은 자리에 고쳐야 한다(길이·순서가 같아야 함).
+## 안드로이드 최종 점검 남은 일 (2026-10-21)
+- 숫자 입력칸: 키보드가 0.몇 초 떴다가 바로 사라짐 (flip4, 원인 아직 안 봄).
+- 위젯 인물 고르기·정기 갱신은 이미 들어가 있음(정기 갱신이 위젯을 나중에 놓을 때 끊기던 빈틈은 Refresh.ensure로 고침). CharItem·CharTop은 아이폰에서도 안 쓰는 코드라 안 옮김. 남은 것: 접근성 설명(contentDescription) 영어.
+- 잠금화면 위젯 4개는 보류 (decisions.md).
+- 기기 동기화는 실기기 두 대로 사용자 확인 끝.
 
-## 영문 로컬리제이션 3단계: usage-app (2026-10-20, 로컬 커밋)
-- `usage-app/UsageShared/Localizable.xcstrings`(ko 원문 + en, 앱·위젯 둘 다 리소스), `tools/gen_pbxproj.py`에 넣고 다시 만듦. Info.plist 두 곳 ko·en.
-- 글 52줄 모두 영어. 주간 리셋 요일은 영어면 en_US. 영어·한국어 시뮬레이터로 확인(라벨 넘침은 5h·Week로 줄임).
-
-## 영문 로컬리제이션 2단계: 영어 번역 (2026-10-20, 로컬 커밋)
-- Localizable.xcstrings 한글 키 3,095줄 모두 en 채움(짧은 영어). 자리표(%@ 등) 개수 검사함.
-- 금액: 앱 언어가 영어면 `AppModel.en` → `krwC`(₩2.3M·₩24K)로 man·eok·won·wonK·aboutWon·won1·wonRead·BoardView.eok가 바로 돌려줌. 날짜는 `AppModel.dateLocale`(영어면 en_US).
-- 조사(josa)는 영어면 빈 글. 말투 바꾸기(Guide.swift Voice)는 한국어 문법용이라 번역 목록에서 뺌.
-- 영어 시뮬레이터로 홈·종목·분석·미션·설정 확인. 남은 한글: 인물 대사(lines_ko.json, 13,533줄), 인물 소개·서재(SampleData·story), 종목 이름 데이터, ShareCard 날짜(다른 세션 작업 중이라 손 안 댐).
-- 번역은 기계 초벌: 자리 순서가 한국어와 다른 문장은 일부만 고침(%1$@ 꼴). 화면 보며 더 다듬을 것.
-
-## 영문 로컬리제이션 1단계: 바탕 + 글 모으기 (2026-10-20, 로컬 커밋)
-- `ios-app/Naeilo/Localizable.xcstrings`(원문 ko, 약 3,100줄) + 영어(en) 추가. 개발 언어 ko, Info.plist `CFBundleLocalizations` ko·en. 영어 번역은 아직 없음(영어 기기도 한국어 그대로).
-- 코드 속 한글: `Text("…")`·`Button("…")` 등은 그대로(자동), 그 밖은 `String(localized:)`로 감쌈(`ios-app/tools/l10n_wrap.py`). 끼워 넣는 값은 `String(describing:)`로 감싸 지금 모양 그대로. 사전 열쇠("키": 값)는 찾기용이라 안 감쌈.
-- 목록 갱신: 빌드 후 `xcrun xcstringstool sync Naeilo/Localizable.xcstrings --stringsdata build/NaeiloApp.build/Debug-iphonesimulator/NaeiloApp.build/Objects-normal/arm64/*.stringsdata` (Xcode에서 빌드하면 자동).
-- 설정: "거주 국가"(처음은 기기 지역, 세금만 따름 · 한국 밖이면 세금 화면에 '준비 중' 안내), "언어 변경"(iOS 설정의 앱 화면 열기). 한국 밖이면 토스 오픈 API 카드는 아래로, 홍콩·중국·싱가포르 등은 Longbridge가 Alpaca 위로.
-- 2단계 전에 볼 것: 데이터 파일(StockCatalog·StockSearch·SampleData·Industries)과 `WidgetShared`(WL.t)는 안 감쌈. `== "한글"` 비교 쪽 글은 안 감쌌는데 같은 글을 다른 곳에선 감싼 데가 있음(예: StartView `"3년"`, SettingsView 오픈 API 오류 문구) → 번역 넣을 때 맞춰야 함. 미션·목표의 '한국 거주자' 세금 카드는 거주 국가를 아직 안 따름. Info.plist 권한 문구도 아직.
-
-## 파도 타기 4단계: 섬 지도 첫 화면 (2026-10-20, 로컬 커밋)
-- `Views/Wave/WaveHomeView.swift`: 보드 탄 내 캐릭터(SurfRider, 누르면 꾸미기), 섬 4개 지도(윤곽 = 내 자산 40거래일 코스, 점선 뱃길, 안 열린 섬은 안개), 지금 섬 카드·'타러 가기', 예보 한 줄.
-- 진행 저장 `WaveMap`(UserDefaults `wave.star.*`·`wave.best.*`): 앞 섬 별 1개면 다음 섬 열림. 판이 끝나면 `WaveMap.record(WaveResult)`로 별(결과 팝업과 같은 기준)·최고 점수 저장.
-- '타러 가기' → WavePlayView. 미션 탭 본전 루트만 교체, 목표 루트(GoalViews)와 탭 이름 '이번 주 예보'는 그대로(다른 작업이 GoalViews 수정 중). weekRange는 위젯·리마인드가 써서 남김.
-
-## 동네 대사창 아래 칸 (2026-10-20, 로컬 커밋)
-- `Views/TownPanel.swift`: 기본(오늘의 한 줄=주민에게 한 줄 답, 할 말 고르기 표 `TownChat`) · 우리 사이(`TownBond` 단계는 함께한 날+대화+답×2로 그때 계산) · 꾸미기(별사탕으로 사기, 산 것은 `town.owned`).
-- 남은 것: 소품 3개는 그림 없는 잠긴 자리표시, '옷' 대신 모자 색. 말 거는 동안 동네 높이 290.
-
-## 토스 총자산과 평가액 맞추기 (2026-10-17)
-- 원인: 토요일에 토스는 미국 종목을 정규장 종가 × 매매기준율로 세는데, 앱·위젯·웹은 애프터마켓 가격(사이트 `last`, 토스·Alpaca 지금 가격)으로 셌다. 테슬라 0.6%, 엔비디아 0.2%만큼 낮게 나왔다. 환율(1,348.5)은 같았다.
-- 바꿈: 뉴욕 시각 평일 20시~다음 날 4시와 주말에는 사이트 `regular`(정규장 종가)로 센다. 앱 `Market.regClose`, 위젯 `Engine.build`, 웹 `curPrice`·`usClosed`. 공통 판단은 `USSession.closed`.
-- 토스 일봉 받기가 막혀도(429 등) 원/달러는 따로 받는다 (`TossHistory.fetch`).
-- 남은 것: 평일 애프터마켓 중(16~20시)에는 그대로 애프터마켓 가격을 쓴다. 토스가 그 시간에 어떻게 세는지는 아직 맞춰 보지 않았다.
-- 2026-10-19 (월 오전) 고침: 앱 4억 8,780만 vs 토스 4억 9,364만. ① 평가 환율이 토스 원/달러(1,342)를 매매기준율(1,348.5)보다 먼저 썼다 → `Market.valFx`·`WidgetBridge.fxMar` 매매기준율 먼저. ② 장 닫힌 시간에도 토스 값이 애프터마켓 뒤 체결(토스 주간거래)이면 정규장 종가 대신 토스 값 (`Market.tossLast`, `Engine.build`, 사이트 `last_time`+60초보다 나중이면).
-## 내 Longbridge 키 (2026-10-17, PR 올림)
-- 설정 '숫자를 계산하는 기준'에 '내 Longbridge 키' 줄 추가 → `LongbridgeKeyView` (App Key·App Secret·Access Token).
-- `LongbridgeKeys`·`LongbridgeFeed`(`WidgetShared/Models.swift`): 공식 Go SDK 의 HTTP 방식 `POST /quote/quotes` + HMAC-SHA256 서명(`x-api-signature`, 밀리초 `x-timestamp`, `us_` 키는 `x-dc-region: us`). 웹소켓·protobuf 없음.
-- 우선순위: 토스 > Alpaca > Longbridge > 사이트. 전일 종가는 사이트 값 먼저. 위젯도 같은 키로 직접. 종목 화면 출처 "Longbridge 시세".
-- 기호 변환은 홍콩(0700.HK→700.HK)·상하이(.SS→.SH)·선전(.SZ)도 되지만, 앱이 원화·달러 종목만 다뤄 지금은 미국 종목만 받는다.
-- 남은 것: 실제 키로 받아 보기 확인 필요(서명·HTTP 시세 경로). Access Token 기한이 지나면 사용자가 새로 넣어야 함(자동 갱신 `/v1/token/refresh` 없음). 홍콩·중국 종목을 넣으려면 홍콩달러·위안 환율과 종목을 앱·웹에 같이 넣어야 함.
-
-## 위젯 갱신 바로잡기 (2026-10-17, PR #292)
-- 위젯 정기 갱신 받기를 `WidgetRefresh.fetch()`(`WidgetShared/Format.swift`)로 모아 기본·잠금·인물 위젯이 같이 씀. 인물 위젯도 이제 정기 갱신 때 시세를 직접 받고(전엔 받지 않아 인물 위젯만 두면 금액이 멈춤), 국내 종목이 있으면 한국 장중에도 갱신.
-- 다음 갱신 시각을 7일 무료 끝(`Store.trialEnd`)까지로 잘라 모든 위젯이 그때 바로 잠김. 서재 ↻는 `StoryReloadIntent`로 시세 없이 서재 위젯만 다시 그림.
-- 실기기 확인 필요: 인물 위젯만 둔 홈에서 금액이 갱신되는지, 7일 무료 끝 시각에 잠기는지. 분석 문서: https://claude.ai/code/artifact/b2ee909c-be79-4114-bd74-e8400e1e94fa (다음: B 잠금·이름표 정리, C 영어·접근성, D 새 경험)
-
-## 위젯 새 경험 (2026-10-17, D단계)
-- 위젯 아래 줄이 '3분 전 · 토스'처럼 지금 값의 시세를 받은 때와 출처를 보여 줌(`Snapshot.pricedAt`·`feed`, `Engine.build`에서 평가액이 가장 큰 출처). ↻에서 시세를 하나도 새로 못 받으면 앞에 '받기 실패'(`Store.fetchFailed`). '몇 분 전'이 바뀌게 같은 값을 여러 장 그려 둠(`Fresh.dates`).
-- 잠금화면: 직사각형 3개에 ↻(`LockReload`)와 '몇 분 전'. 금액은 폰이 잠긴 동안 시스템이 가림(`privacySensitive`, `Store.lockPrivate` 기본 켬, 설정 > 위젯 > 금액 가리기에서 끔).
-- 제어 센터 ↻ `ReloadControl`(iOS 18부터, `LockWidgets.swift`). 인물 큰 위젯 `char.large` '하루 한눈에'(`LargeCharView`, 앱 위젯 탭에도 미리보기).
-- 실기기 확인 필요: 잠긴 폰에서 잠금화면 금액이 가려지는지, 제어 센터 버튼이 보이고 눌리는지, 큰 위젯 배치.
-
-## 위젯 영어·VoiceOver (2026-10-17, C단계)
-- 위젯 문구는 `WL.t("한국어")`(`WidgetShared/Format.swift`)로 부른다. 기기 첫 언어가 한국어가 아니면 `WidgetShared/lines_en.json`의 `ui` 표(한국어 → 영어)에서 찾고, 없으면 한국어 그대로. 한국어 기기의 글자는 바뀌지 않음. 서재 `Story.deviceLang`도 같은 `WL.en`을 봄.
-- `lines_en.json`은 `tools/lines.py`가 만든다: `lines`에 인물 위젯 말풍선(widget.up/down, 인물별 영어 말투 첫 안, 40자까지), `ui`에 위젯 문구 113개. 앱 `Lines`는 영어 기기면 영어가 있는 키만 영어로 덮음. 물건 대사(item.*)는 아직 한국어만이라 영어 기기에서는 말풍선에 물건 얘기를 넣지 않음.
-- `python3 ios-app/tools/lines.py --check`가 위젯 코드의 `WL.t` 문구와 Catalog 이름·설명이 영어 표에 다 있는지 본다(ios CI 첫 단계).
-- VoiceOver: 기본 7·잠금화면 4·인물 4·잠긴 위젯이 한 문장으로 읽힘(`Speech.of`, `HomeWidgets.swift`; 인물은 `CharWidgets.swift`). ↻와 금액 숨기기는 `.speak(...)`가 동작(Actions)으로 남김 (iOS 18부터, 17은 문장만).
-- 아직 한국어인 곳: 금액 단위(억·만, 영어판 1단계 `Fmt` 나누기), 앱이 넘기는 문장(오늘 소식·블록 이정표·다음 일정 `next`), App Intent 이름(인물 고르기·다시 받기 등, 컴파일 때 정해지는 값이라 String Catalog 단계에서). 영어 말풍선은 사용자 검토 전 첫 안. 실기기(영어 기기·VoiceOver) 확인 필요.
-
-## 위젯 잠금·이름표 정리 (2026-10-17, B단계)
-- 위젯 이름·설명·크기를 `Catalog.base`(기본 7 + 잠금화면 4)·`Catalog.more`(인물 4 + 서재) 한 표로 모음(`Widgets/Views/Catalog.swift`, 앱에도 들어감). 위젯 추가 화면(`.catalog(kind)`), 잠긴 위젯 제목, 앱 '위젯' 탭(`baseWidgets`), 금액 가리기 목록이 모두 이 표를 읽음. 예전 Locked.swift 사전·StoryWidget·CharWidgets 안의 이름은 뺌.
-- 잠금은 `Gate` 하나(Catalog.swift)로: 기본·잠금화면·서재는 `LockedWidget`, 인물 위젯은 인물 바탕의 잠긴 모습을 `locked:`로 넘김. 문구는 `WidgetUnlock.how`·`cta`로 같게. 갤러리 미리보기는 인물·서재 위젯도 잠그지 않음(전에는 7일 무료 뒤 갤러리에서도 잠겨 보였음).
-- 기본·잠금화면 위젯 정의는 `homeWidget`·`lockWidget` 한 줄씩. 새 위젯은 Catalog 한 줄, 정의 한 줄, `NaeiloWidgets` 묶음 한 줄. 예전 `WidgetUnlock.step`(앱 시작 단계별 열림)은 쓰지 않아 뺌.
-
-## 내 Alpaca 키 (2026-10-17, PR 올림)
-- 설정 '숫자를 계산하는 기준'에 '내 Alpaca 키' 줄 하나 추가 → `AlpacaKeyView`. 키를 넣지 않으면 다른 화면은 그대로.
-- `AlpacaKeys`·`AlpacaFeed`(`WidgetShared/Models.swift`): 키는 키체인(위젯과 같은 그룹), 미국 종목만 `v2/stocks/snapshots?feed=iex`. 지금 가격 = latestTrade.p, 전일 종가는 사이트 값 먼저(없으면 prevDailyBar.c). 15분 넘은 값은 안 씀.
-- 우선순위: 토스 키 > Alpaca 키 > 사이트 시세 > 예시 값. 위젯(Provider·↻)도 같은 키로 직접 받음. 종목 화면 출처 "Alpaca(IEX) 시세".
-- 남은 것: 일봉(지난 종가)은 Alpaca 로 덮어쓰지 않았다 (IEX 일봉 종가는 공식 종가와 달라서). 실제 키로 받아 보기 확인 필요.
-
-## 미래 설계 새 글 → 앱 소식 (2026-10-17, PR 올림)
-- 앱 `Remind.swift`가 6시간에 한 번 `data/blog.json`을 받아 '2026 지구' 글 중 10일 안의 것을 소식(설정·새 소식)으로 올린다. 소식 아래 'naeilo.com에서 읽기' 링크.
-- 웹 `app.js` `postCheck`: `/web/#post=글id`로 열면 그 글을 바로 연다. 카테고리 이름으로 찾으니 이름을 바꾸면 `Remind.blogCat`도 바꾼다.
-
-## App Store 첫 제출 준비 상태 (2026-10-16, 제출 안 함)
-- 끝남: 유료 앱 계약 활성(기한 2026-11-21, 멤버십 갱신 필요). 구독 그룹 'naeilo 구독'(한국어 현지화) · Sub Yearly(등급1, 9,000원, 1년) · Sub Monthly(등급2, 1,000원, 1개월), 한국어 이름·설명·심사 스크린샷·심사 메모, 사용 가능 국가 대한민국만. 개인정보처리방침 URL `https://naeilo.com/web/privacy.html`, 앱 개인정보 "데이터 수집 안 함" 게시. 7일 무료는 앱 자체 계산(애플 무료 체험 없음).
-- 제출 초안: 구독(Sub Yearly 등)이 담겨 있고 버전 1.0에 지금 빌드가 붙어 있음. **제출하지 않음**: 이 빌드는 키 없는 사람에게도 Yahoo 중계 시세를 보여 줘서 공개판이 아님(남은 일 6번).
-- 버전 1.0 '심사에 추가'를 막는 빈 칸: 설명·키워드·지원 URL·저작권(한국어), 앱 정보의 연령 등급·콘텐츠 권한·기본 카테고리, 가격(무료), 13인치 iPad 스크린샷. 초안 값: 지원 URL `https://naeilo.com/`, 저작권 `2026 naeilo`, 카테고리 금융, 연령 등급 전부 없음(4+), 가격 무료·대한민국. 콘텐츠 권한은 공개판 기준 "제3자 콘텐츠 없음"(시세는 사용자 본인 키).
-- 다음: (1) 남은 일 6번(키 등록 전 화면 가상 샘플 등)으로 공개판 만들기 (2) iPhone 전용으로 바꾸기 추천(`project.pbxproj` 앱 타깃 `TARGETED_DEVICE_FAMILY = "1,2"` → `1`, 아니면 iPad 스크린샷 필요) (3) 새 빌드 올려 버전 1.0 빌드 교체 → 빈 칸 채우기 → 버전 '심사에 추가' → 초안에 버전+구독 2개 확인 후 제출.
-
-## 배포 단계 구분 (2026-10-15, 내부 베타 준비만)
-- 앱 `Config.channel`(`ios-app/WidgetShared/Config.swift`) = `.internalBeta`. 설정 맨 아래 "시세: … · 내부 베타"로 보인다. `Config.usesCollectedData`는 내부 베타에서만 참(아직 아무 코드도 이 값으로 막지 않음).
-- 내부 베타: 지금처럼 사이트가 Yahoo로 모은 자료를 쓰고, 테스터는 설정 > 토스증권 시세에서 본인 키 등록도 시험한다.
-- **공개 베타·출시 때 할 일(아직 안 함)**: `channel`을 바꾸고, 아래 Yahoo 수집 자료를 받는 곳을 `usesCollectedData`로 막고, 본인 키 시세(토스 현재가·일봉·환율)와 가상 샘플로 바꾼다.
-  - 사이트 시세 `QuoteFeed`(`Models.swift`, data/quotes.json), 지난 종가 `SitePrices`(`Market.swift`, data/prices), 매매기준율 `MarFeed`(data/mar.json)
-  - 전망 입력 `SiteStats`(stats.json), 계산 자료 `SiteCalc`(calc.json), 종목 검색·국내 종가 `StockSearch`(Yahoo 중계·kr_daily), 추가 종목 `CustomSymbols`
-  - 빌드에 넣는 자료 `project.yml` resources(quotes.json·stats.json·calc.json·prices/), `YahooSample`
-  - 사이트 자료 중 Yahoo로 만든 계산값(stats·calc)을 공개 버전에서 뺄지는 6번 결정(공개 버전에서 뺄 듯)
-
-## 다른 증권사 오픈 API (2026-10-16, PR 올림)
-- 검토 표와 키움 중계 사용법: `docs/broker-apis.md`.
-- 키움 중계 `proxy/kiwoom_relay.py`는 있지만 **일시 보류** (국내 주식만이라서, Drinker 결정 2026-10-16). 서버에 안 올림, 앱 화면 없음.
-- 다음 후보: LS 검토. 한국투자도 보류(2026-10-16, `docs/broker-apis.md`).
-
-## 토스 시세: 일반 사용자 내 키 (2026-10-15, PR 올림)
-- 앱 설정 맨 위 오픈 API 카드 › 토스증권 오픈 API(2026-10-16 '도움과 기타'에서 맨 위로 옮김, 안내는 세 줄만): 사용자가 client_id·secret 을 넣으면 키체인에 두고 공용 중계 `https://toss.naeilo.com`(`proxy/toss_relay.py`)로 토큰·현재가를 받는다. 사용자는 중계 IP 를 토스 허용 IP 에 등록. 자세한 흐름·서버 올리기는 `docs/toss-relay.md`.
-- 내 토스 키 화면 맨 위 연결 그림(`TossLinkMap`, 2026-10-15): 키 넣기 전에는 내 폰·naeilo 서버·토스 시세가 끊겨 있고 넣으면 이어진다. "어디에도 남지 않아요 / 키는 암호화되어 지나가기만 해요", 키 넣기 전 그림 아래 줄은 "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요."(2026-10-16), 연결 뒤에는 "지금 이어져 있어요 / 현재가·일봉·환율 정보만 받아 왔어요."(2026-10-16). client_id 도 처음부터 가린다.
-- **2026-10-15 서버에 올림**: `https://toss.naeilo.com/api/toss/ip` 가 고정 IP 를 돌려줌. Caddy 는 개발자용 Tailscale 이 443 을 쓰고 있어 서버 내부 IP 에만 `bind` (문서 참고).
-- 약관(제3자 중계 허용 여부)은 공개 출시 전에 토스에 문의. 웹(`web/`)에는 없음(앱만).
-- 2026-10-15 지난 종가·환율도 내 키로: 앱 `TossHistory`(Market.swift)가 토스 일봉(`/api/v1/candles`, 1d, adjusted=false = 사이트 close 기준) 3년치를 종목마다 하루 한 번 받아(처음 200개씩 최대 5번, 다음부터 30개) 사이트 지난 종가 대신 쓰고, 원/달러는 `/api/v1/exchange-rate`(지금 + 24시간 전)로 10분마다 받아 화면 환율·평가 환율(`valFx`)에 먼저 쓴다. 키 없거나 못 받으면 지금처럼 사이트(Yahoo) 값. 중계에 candles·exchange-rate 경로 추가(일봉·USD/KRW만). 서버에 중계 새 판 올려야 동작.
-- 2026-10-15 '지금 다시 받기' 고침: 버튼·당겨 갱신(force)은 토스 현재가·일봉까지 기다리고, 받는 중이면 끝난 뒤 한 번 더 받는다(예전엔 받는 중이면 건너뜀). 상태 줄은 토스 받기를 마칠 때(`Market.tossDone`) 다시 그린다. 버튼이 누를 때마다 토큰을 새로 받아 받는 중인 요청을 끊던 것도 뺌. 실기기(내 키) 확인 필요.
-- 2026-10-16 위젯도 내 키로: 키·토큰을 앱 그룹 키체인(`group.com.naeilo.widget`)에 둬 위젯이 읽고, 위젯 갱신·↻가 토스 지금 가격을 직접 받는다(종목 목록은 앱이 `feed.json` `ty`로 넘김). 예전엔 위젯이 사이트(Yahoo) 값만 받아 앱과 가격이 달랐다. 404로 내 종목이 모두 하루 빠지면 평소 받기가 계속 실패하던 것도 고침. 실기기 확인 필요(앱을 한 번 열어야 키가 옮겨짐).
-- 2026-10-16 '지금 다시 받기'·홈 당겨 갱신이 그대로이던 원인: 일봉(candles)에서 404 난 종목을 현재가와 같은 `toss_miss`에 하루 넣어, 그 종목 현재가도 하루 안 물었다(받은 시각·평가액이 안 바뀌고 실패 표시도 없음). 일봉은 `toss_hist_miss`로 따로 두고, 다시 받기·당겨 갱신은 빼 둔 종목도 다시 묻는다. 실기기 확인 필요.
-- 2026-10-16 위젯 원/달러를 앱과 같게: 앱 평가 환율(`valFx`)은 내 키 원/달러를 먼저 쓰는데 위젯(`feed.json` `mar`)은 늘 매매기준율이라, 미국 종목이 있으면 앱·증권사 화면과 위젯 금액이 달랐다. `WidgetBridge.fxMar()`가 내 키 원/달러가 있으면 그 값을 넘긴다. 남는 차이: 위젯 총자산은 현금을 포함하고 수량은 naeilo에 넣은 값이라, 증권사 '내 투자'(주식 평가액)와는 그만큼 다를 수 있다. 실기기 확인 필요.
-
-## 토스 시세 중계 서버 (개발자 전용)
-- 개발자 본인만 쓴다. 토스 API는 개인용이라 다른 사용자에게 열거나 앱 기본값으로 넣지 않는다.
-- AWS Lightsail 서울 Ubuntu($5) + 고정 IPv4(토스 허용 IP). `server.py --no-browser`를 systemd `naeilo-toss`로 상시 실행(127.0.0.1:8765), 키는 서버 `toss_keys.json`(chmod 600).
-- 접속은 Tailscale만(`tailscale serve --bg 8765`, `https://<기기>.<tailnet>.ts.net`). 기기 등록: 앱 `naeilo://toss?u=<주소>` (웹 `?toss=`는 2026-10-15 뺌). 실제 주소는 저장소에 쓰지 않는다.
-- `server.py`를 고치면 서버에서: `cd ~/asset-tracker && git pull && sudo systemctl restart naeilo-toss`
-
-## 2026-10-14~15 앱 작업 요약
-- 앱 분석 허브 시안 B(아이콘+한 줄 결과 8개, 습관 띠·결론 카드, 색 3개, 탭 지연 수정), 투자 습관 머리 아이콘.
-- 앱 전망에 매달 적립 반영(웹과 같게), 외부 요인 단기 흔들림 문구. calc_parity 배당 환율은 `DividendView.hubMonthly`에서 꺼냄.
-- 미션 탭 두 페이지(목표 진행·이번 주 예보), 목표 카드·초록 다음 미션·100칸.
-- 종목 탭 그래프 기본 1개월, 내 기록 카드의 국내 합계 보기 삭제.
-
-## 0. 2026-10-14 이전 기록
-- 쉬운 말 ⑧ 인터미션(PR 대기): 목표 루트 미션 판의 블록 격자를 "처음 석 달 체크인" 카드 + 접는 시작 미션 번호 목록으로 바꿈. 인터미션 상세의 영어 라벨·목표 바 삭제. 회복 루트 이름은 "처음 4주 체크인". iOS 빌드는 CI로 확인
-| PR | 내용 |
-|---|---|
-| #167 | CLAUDE.md와 docs/ 지식 문서 추가 |
-| #168 | 앱 일간 변화에서 환율 변화 빼기 (같은 매매기준율), 볼트 백업이 올린 " 2" 사본 삭제 |
-| #169 | 앱 배당·세금·환율 영향을 매매기준율 기준으로 |
-| #170 | 위젯 계산을 앱과 맞춤 (현금 포함, 스파크라인·시작 금액은 그날 수량×그날 환율, 회복 루트 페이스) |
-| #171, #172 | 옵시디안 설정·맥/Xcode 개인 파일 정리, `.gitignore` 정리 |
-| #173 | 웹·앱 화면 계산 parity 검사 (`tools/calc_parity.mjs`, `ios-app/tools/calc_parity/`) |
-| #174 | 앱 목표 루트 전망 설명 '3년 전망' → '목표일 전망' (회복 루트 제목은 그대로) |
-| #175, #176 | 토스증권 시세: `server.py /api/toss/prices`, 웹·iOS에서 국내·미국 종목 모두 토스 먼저 사용 (개발자 전용) |
-| #177 | 규칙: 코드 수정은 스레드당 한 번 (CLAUDE.md) |
-| #178 | iOS 토스 시세를 다른 시세와 같이 받기, 8초 대기, 실패해도 15분 안 값 유지 |
-| #179 | 설정 > 동기화 화면에 토스 상태 줄을 늘 표시, 주소 없으면 "주소 없음" |
-| (이번) | 토스 "8초 안에 응답 없음": server.py 가 묶음 404 뒤 종목을 하나씩 차례로 물어 8초를 넘김 → 동시에 묻고 4초에서 끊음, 토큰 대기 4초. 앱은 서버가 준 실패 이유를 "서버: …"로 표시 |
-| (이번 PR) | 앱 분석 › 배당·세금 화면 개편: "받는 배당 / 낼 양도세" 두 화면으로 나눔, 요약 문장·영수증·2,000만원 막대·양도세 슬라이더. 계산식은 그대로(웹과 같음). 웹 배당·세금 화면은 그대로(별도 작업) |
-
-열린 일 (승인·확인 대기):
-- **앱 시작이 느림** 수정 PR 올림(`Market.refresh()`: 토스는 기다리지 않고 도착 시 반영, minAge 60초·타임아웃 3초, 나머지 시세 `async let` 병렬). 기기에서 체감 확인 필요.
-- ~~iOS 앱이 실제로 토스 시세를 보여 주는지~~ 2026-10-15 웹·앱 모두 확인됨.
-- 종목 탭 개편 ④: 국내 개별 종목(앱 한글 목록의 국내 주식 67개)을 사이트가 매일 모음(`data/kr_daily.json`, 지금 가격은 quotes.json). 앱 KOREA 합계 줄·설정 스위치·합계 알림 삭제, 테스트 시세 5종목 제한 없앰. 웹도 2026-10-15 국내 개별 종목으로 바꿈(합계 칸·설정·내 기록 합계 보기·엑셀 입출력 삭제, 사이트 시세 quotes.json, 목록 밖은 Yahoo 중계 `krQuote`, 못 받으면 넣은 가격. 예전 KOREA.KS 줄은 계산·지우기만 남김. 웹은 아직 `kr_daily.json` 지난 종가를 안 쓰고 EWY×원/달러로 그림), "기록 모으는 중" 화면 표시는 ②③에서 `CustomSymbols.collectingDays` 사용. 목록 밖 국내 종목은 추가 즉시 Yahoo 중계로 지금 가격·1년 종가, 실패하면 넣은 가격
-
-- 앱 분석 탭 "환율 영향"(FxImpactView) 개편: 한 줄 요약 → 환율 차트(y눈금·띠 끝 값) → 환율별 내 자산(슬라이더·칩) → 자세히 보기. 화면의 지금 환율은 매매기준율 하나로 통일, 범례 취소선 버그 수정. 계산식 변화 없음. 웹 전망 탭 환율 영향은 아직 옛 구성(별도 스레드 예정). Mac에서 화면 확인 필요.
-- 쉬운 말 ⑥ 소식(앱): 소식함 칩 4개(전체·할 일·일정·지난 소식), 맨 위 '지금 해 주면 좋아요'(국내 합계 넣기), 내 투자 캐릭터 찾기 체크리스트, 일정마다 왜 중요한지 한 줄. 웹은 안 바꿈.
-- 쉬운 말 개편 ①(PR 올림): 평정 지수 화면을 "내 투자 습관"으로 재배치, 진행 바 버그(기록 수 대신 지수를 그림) 고침, 10건 전 "—", 기록마다 점수 이유. 공용 `Theme.myReal·basket·rule·hold·favor·against`, `AppModel.pctWon`·`dash`. 다음은 ②평행 세계(계획 plans/plain-language-plan.md 5절)
-- 쉬운 말 개편 ②(PR 올림): 평행 세계 화면을 "다른 방식이었다면?"으로 — 결론 카드(차이 1.0%p 미만이면 "셋 다 비슷해요"), 순위 배지·규칙 일지·비율 보기 삭제, 인물 규칙 세 줄 카드, 과거는 흐리게+"이 앱을 연 날". 홈 "오늘 앞선 나" 줄과 쉼터 문 대신 홈 비교 카드(처음 진입도 여기). `Friend.does·ruleSteps` 추가. 다음은 ③인물 상세
-- 쉬운 말 개편 ③(PR 올림): 인물 상세를 "규칙과 결과 | ○○ 이야기" 두 갈래로. 맨 위 한 줄 결론, 규칙 세 줄+"더 자세한 규칙" 접기, 과거 사례 세로 목록(최신순, 유리/불리는 끝값 비교), 못 막는 하락 카드, 내 종목은 두 칸+금액 문장(최대 낙폭·목표 거리 삭제). 대표 장면은 읽은 장만 보이고 나머지는 잠금 안내. 결론 문구 다섯 개는 작가 확인 전 초안
-
-## 1. 완성된 기능
-- 웹(naeilo.com): 내 길, 목표일 전망(몬테카를로), 렌즈·추세 신뢰·만약에, 외부 요인, 금리 시나리오, 환율 영향, 본전 카드, 배당·세금, 비중안·연구 비교, 패턴 예측·적중 기록판, 1000칸·공유 이미지, 종목 찾기·편집, 국내 ETF 추정·국내 주식 합계, 엑셀 입출력, 첫 방문 샘플, 암호화 기기 동기화, 웹 푸시, PWA·다크 모드. 공개 전 점검 P0~P2 완료(PR #97~#105).
-- iOS 앱(TestFlight 내부 테스트): 3루트(회복·목표·시작 전), 홈, 종목, 분석(내 길·전망·금리·외부 요인·배당·환율), 미션 판·인터미션, 오늘의 1분, 인물 5명·쉼터·서재(한/EN), 내 캐릭터, 판 깨기, 평정 지수·습관 사다리, 평행 세계 v1, 위젯(홈·잠금·인물·서재), 구독(7일 무료·월·연), 웹 동기화.
-- 데이터 파이프라인: collect·stats·macro·sample 워크플로, 워커(프록시·동기화·푸시·상점·순위·cron).
-- 웹·앱 숫자 맞추기: 몬테카를로 이식 + CI parity, stats.json·calc.json, 입력값 차이 수정(PR #121~#131).
-
-## 2. 진행 중·미완성
-- 분석 탭 허브 개편(인계 docs/handoff/analysis-hub, 사용자 기기에만 있음): 시안 B(아이콘+한 줄 결과): 습관 띠·결론 카드·결과 행 8개, 색 3개, PC 문구 삭제, 상세 순서=허브 순서(배당·세금 맨 뒤), 외부 요인 점 추가, 탭 지연(버튼+끌기 겹침) 수정. 남은 일: 전망 적립 반영·단기 흔들림 문구 완료. 남은 차이: 내 길 '처음 닿는 때' vs 목표일 확률, 내 길 상세 '반반이에요' 문구.
-- 분석 탭 "내 길" 개편 (B안·B-2안, 목업은 handoff/naeil-path 브랜치 docs/handoff/): 1~4단계 PR #183. 앱 `MyPathGoalView`(목표 루트)·`MyPathCompareView`(비중 비교, 저장=모의 바구니), 회복 루트는 `MyPathClassicView` 그대로(용어만 계획선). 웹 `renderEta`(#etaCard)·`Model.etaPlans`. 알려진 차이: 성장·안정 줄은 앱(지수·업종 묶음 구성)과 웹(비중안 비교 공격적·보수적 규칙) 정의가 달라 숫자가 다름. 웹 비중 비교는 저장 없음(앱만). 앱 빌드는 CI로만 확인
-- 금리 충격 테스트 (계획: claude/rate-shock-handoff 브랜치 docs/handoff/rate-shock-test/). ① 앱 메인 완료(프리셋 4개·결과 카드·3단계·직접 정하기, 근거 화면은 기존 표·그래프 이동). ② 근거 화면 완료(해마다 누적 수준·감소 확률 표, 그래프 y축·오늘선). ③ 금리에 약한 종목 카드 완료(coef 정렬·크게/보통/덜 흔들려요). "구성 바꿔서 다시 테스트" 버튼은 `compareLink`에 자리만 있고 숨김: 내 길 개편의 MyPathCompareView가 들어오면 그 NavigationLink로 바꾼다. ④ 진입점·알림 완료(목표일 전망에 '외부 요인 넣기' 켜면 일정 목록, 금리 행에만 미리 보기 버튼. 금리 화면 '다가오는 금리 일정' + 결정 전날 오전 9시 로컬 알림, alerts["rate"]). ⑤ 웹 같은 화면 완료(#sec-rs: 프리셋·결과 카드·3단계·근거 접기·약한 종목·금리 일정, 알림 토글은 앱만) + calc_parity에 닫힌 식(목표 가능성·도달 개월) 추가. 5단계 모두 끝.
-- 종목 탭·종목 한눈에 개편 (docs/handoff/holdings/ 시안, 4단위): ① 종목 목록 앱 완료(평가액 카드, "1년 전부터 가졌다면" 그래프·기간 5개, 미국/국내 묶음, 행 %는 산 가격 대비, 스파크라인·연필·목록 펼침 편집 제거, 기본 정렬 평가액 큰 순). ② 종목 상세 앱 완료(제목줄에 이름, 평가액 카드+한 줄 요약, 평균 단가 점선 늘 보임, 오늘 등락·환율·본전 문구·비중 표, 소개 밝은 카드, 공통 계산 AppModel.metrics). ③ 종목 한눈에 앱 완료(한 줄 요약, 자기 정렬 3개, 카드+1년 범위 막대, 국내 한 카드, 기록 없음 점선, 거의 안 움직이는 자산은 "그 외"·현금처럼 배지, 숫자 풀이 대신 ⓘ 설명 시트, 출렁임 20%·40% 단계). ④ 국내 개별 종목 수집·합계 줄 삭제 완료(#200). 웹 종목 표는 앱 끝난 뒤 따로.
-- 미션 탭 개편 (인계: `docs/handoff/mission-board/`, `claude/mission-board-handoff` 브랜치). ① 이번 주 예보 3카드(예보·맞혀보기·예보 성적) + 주간 범위 저장 + 맞혀보기 배지: PR 올림, 실기기 확인 필요. ② 목표 카드·다음 미션 카드·100칸(회복 루트 `CellGrid` 포함, 공유·벽돌깨기는 1000칸 값 따로 계산): 새 스레드에서. 결정은 decisions.md 2026-10-14
-- 쉼터 개편(쉬운 말 ⑤): 부제·만난 친구 5칸+"나" 한 줄·이어서 읽기 카드·서재 전체 화면(route "library")·돌아온 물건(빼 둔 것 점선)·열림 표. 머지 대기, ② PR 위에 쌓임.
-| 항목 | 상태 |
-|---|---|
-| 외부 요인 화면 개편 | 2026-10-14 1단계(데이터) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. 다음: ② 요인 상세(앱) ③ 메인 순위(앱) ④ 웹 같은 화면 ⑤ 과거 재생(고정 표) ⑥ 일정 미리 보기(`EXT_EVENTS.sd`) ⑦ 회고·알림(나중). 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
-| iOS 목표일 전망 화면 개편 | 2026-10-14 PR 올림(브랜치 claude/project-thread-u2k6oi). 버튼 3개=추세 슬라이더 한 축, 선형 축 차트, 세 시나리오 표, 일정 카드, 월 적립 0. 웹도 같은 구성으로 따라감(웹 쉬운 화면 3단계, 브랜치 claude/project-thread-fuubi8) |
-| 외부 요인 화면 개편 | 2026-10-14 1단계(데이터)·2단계(요인 상세, 앱 `FactorDetailView`: 프리셋 2×2·판정·상쇄·종목별 신뢰도·큰 변화 경고·비교·관련 일정·직접 정하기. 메인 순위에서 들어감)·3단계(메인: 스크롤·질문형 제목·요인 순위 `ExternalView.ranks`·자동 요약·점 표시 없앰, 슬라이더는 요인 상세 "직접 정하기"로만)·4단계(웹 `renderSens`를 같은 순위·요인 상세로 교체, `xfRanks`·`xfDetail`, 웹은 `Model.factorMoves`를 직접 계산)·5단계(과거 재생: `Model.REPLAYS`·`replayMove` 고정 표 3기간, 앱 `SiteCalc.replays`, 웹 `xfReplays`·앱 `ExternalView.replayCard`)·6단계(오늘의 이벤트 카드 + 다가오는 일 미리 겪어보기: 시장 전체 확정 일정 7개의 `EXT_EVENTS.sd` × 내 종목 민감도, [미리 보기]는 요인 상세를 나쁜 쪽 값으로 열기. 웹 `xfEvents`·`xfToday`·`xfUpcoming`, 앱 `SiteCalc.eventMoves`·`ExternalView.todayCard`, `FactorDetailView(factor:start:)`) 완료: stats.json `factors`(요인 보통 한 달 변화 sd·max), `betaStat`(corr·같은 방향 비율 agree·n), 앱 `SiteCalc.betaStat`·`factorMonth`. ·7단계(지난 일 돌아보기 + 다음 날 결과 알림, 앱만: `EventRetro`(Notifier.swift)가 일정 전날·당일 미리 본 ±금액과 평가액을 기기에 적고 다음에 열 때 실제 변화와 비교, 오늘의 이벤트 카드 [다음 날 결과 알림]은 다음 날 오전 9시 로컬 알림 id `xf.*`, 누르면 외부 요인 화면) 완료. 웹 회고·알림은 없음. 인계 문서는 `handoff/naeil-path` 브랜치 `docs/handoff/external-factors/` |
-| 쉬운 말 ⑦ 설정 (iOS) | 목표 카드에 루트 한 줄, 함께할 인물 한 줄+자동 토글, 앱 아이콘은 고르는 화면으로, 용어 바꿈. PR 머지 대기 |
-| 15분 collect cron | PR #166으로 `*/15` 단일 cron. 실제로 도는지 collect 작업 로그로 확인 필요. 워커 머리 주석(`*/30 13-22`)은 낡음 |
-| 워커 재배포 | 2026-10-14 재배포함. 1권 영문판 원고, 댓글은 마무리 안 한 것으로 보임 → 보류 |
-| Claude 사용량 위젯 | 워커 `/cu`가 401 (`CLAUDE_TOKEN`). PR #156 이후 확인 안 됨 |
-| 토스증권 국내·미국 시세 (개발자 전용) | 2026-10-14 `server.py /api/toss/prices` (`toss_code`: 005930.KS→005930, AAPL→AAPL, BRK-B→BRK.B 추정, 지수·환율·코인·기타 시장은 안 물음, 404 종목은 하루 제외) + ~~웹 `tossQuotes`~~(2026-10-15 뺌, 웹은 Yahoo만) + iOS `TossFeed`(`naeilo://toss?u=https://…ts.net` 로 주소 저장, 기다리지 않고 따로 받아 도착 시 반영, 1분 안 값은 재사용, 3초, 실패해도 15분 안 값은 유지, 설정 > 동기화 화면에 늘 마지막 성공 시각·실패 이유(주소 없으면 "주소 없음"), 종목 화면 "토스 시세", 위젯은 앱이 받은 값). 키는 `toss_keys.json`(gitignore). 2026-10-15 AWS 중계로 웹·앱 실제 확인됨. "토스 시세" 표시는 목록엔 없고 웹은 미국 종목 줄을 펼쳤을 때(국내 종목은 표시 없음), 앱은 종목 상세에서만 보임. BRK.B 표기 확인 필요 |
-| 국내 실시간 시세 스위치 | 내부 테스트 전용(`KoreaEstimate.live`, 5종목). 공개 출시 전에 끄거나 제거 |
-| 무료/프리미엄 분리 | 웹 현금 기능 `premium()`이 항상 true ("나중에 무료·유료를 나눌 때 여기 한 곳만", `web/app.js` 설정 섹션) |
-| 웹-앱 차이 ② | 평정 지수 웹 보기(사건 표·추이 그래프) 미착수 |
-| 평행 세계 데이터 | EWY·SCHD·SOXX·VTV·USMV 시세 파일 없음 → "시세 준비 중", SPY로 대체 (2026-10-12 기준, 지금은 TODO(확인 필요)) |
-| 홈 리마인드 | iOS 일정이 하드코딩된 샘플 실적 |
-| TestFlight | 첫 빌드가 "Internal Only"라 외부 테스트 불가. 다시 아카이브 필요. 구독 상품 2개 App Store Connect 등록 필요 |
-| 공개 전 재점검 | Mac 재빌드 후 항목 7·9·10·16·17·18 재확인 기록 없음 |
-| Google 색인 | 재크롤 대기 |
-| 출시 | 미국·한국 대상, 시점 보류. 내부 테스트 기간 무료 |
-| 경주(평행 세계) 위젯 | 만들지 결정 보류 |
-| 인사이트 뉴스·`/ai` 중계 | 내부 테스트 기간 유지, 상용 전 재검토 |
-| 후원 | 없음 (2026-10-16 구독으로 바꿈). 나중에 다시 검토 |
-| 앙상블·강건 제어기 연구 | 브랜치에만 있음. 다음은 세금 고려 제어기 |
-| Obsidian 볼트 백업 | 2026-10-14 볼트 백업 커밋이 " 2"·" 3" 사본 31개를 main에 올려 iOS 빌드가 깨짐 → PR #168에서 사본 삭제, 볼트 연결은 사용자가 끊음. `.obsidian/`·`.DS_Store`는 PR #171에서 정리 |
-
-코드 안의 임시 처리 (TODO/FIXME 표시는 없음):
-- `web/app.js` 만약에 `WI` (저장하지 않는 임시 가정), 블로그 글 묶음 임시 보관.
-- `ios-app/Naeilo/Data/Services.swift` `StubPriceProvider`가 아직 `AppModel.prices`로 쓰임(`totalAt`, 위젯 스파크라인).
-- `AppModel` 개발자 모드에서 가짜 적중 기록 `[1,0,1,1,0,1,0,1]`.
-- `SettingsDetail.swift` 머리 주석 "실제 알림 예약·동기화 서버 연결은 아직 없고"는 낡은 것으로 보임.
-- README.md·사용법.txt는 예전 내용(AI 분석, PC 서버 중심).
-
-## 3. 알려진 버그·불일치
-상세는 `docs/architecture.md` 6절. 사용자 눈에 보일 수 있는 것:
-1. ~~일간 변화: 앱·인물 위젯이 환율 변화를 넣고 있음~~ → `AppModel.todayMove`를 같은 환율(매매기준율)로 고침(PR #168). 실기기 화면 확인 필요.
-2. ~~위젯 총액 현금 누락~~, ~~위젯 스파크라인·목표 시작값·회복 루트 목표일~~ → 위젯 계산 PR #170(2026-10-14)로 앱과 맞춤. 실기기 위젯 확인 필요.
-3. 위젯 "목표 확률"은 회복 루트에서 본전 확률인데 이름이 "목표". 이름만 다름(미정).
-4. ~~배당·세금·환율 영향 환율 기준~~ → 앱도 매매기준율로 맞춤(2026-10-14, PR #169).
-5. 세금 "지금 모두 판다면": 실현 이익 포함 여부와 대상 통화가 웹·앱 다름.
-6. 금리 시나리오: 앱은 3년 고정·현금 미차감.
-7. 앱은 웹 시나리오 conservative/history/trend와 `rebalance_yearly` 등을 지원 안 함 → 해당 설정 사용 시 확률 다름.
-8. 앱 국내 ETF 규칙이 하드코딩이라 `data/kr_proxy.json`이 바뀌면 어긋남.
-9. ~~CI parity가 입력을 검사하지 않고, 데이터 커밋에서는 돌지 않음~~ → `tools/calc_parity.mjs`로 환율 고르기·평가액·배당·세금·금리·위젯 필요 경로를 비교, stats·macro 작업 뒤에도 돎(2026-10-14, PR #173). 남은 검사 밖: 세금 실현 이익·미국 밖 외화(5번 미정), 환율 영향 화면, 설정 매핑(7번), 국내 ETF 규칙(8번).
-10. 메모 어긋남: 웹-앱 차이 ④는 PR #96으로 끝났지만 메모에는 "미착수".
-11. 토스 내 키 지난 종가·환율은 앱만(웹은 개발자용이라 키 입력 없음). 원/달러 지난 흐름(KRW=X)과 전망 입력값(stats.json)·위젯 환율은 아직 사이트(Yahoo) 값. 미국 일봉 timestamp 날짜를 그대로 날짜로 씀(실기기 확인 필요).
-
-## 4. 다음 작업 우선순위 제안
-0. **앱 시작 속도** 기기 체감 확인(PR 올림). ~~토스 시세 기기 확인~~(2026-10-15 끝).
-1. **정해진 계산 기준 적용**(2026-10-14 결정): ~~앱 `todayMove`·인물 위젯에서 환율 변화 빼기~~(PR #168), ~~앱 배당·세금·환율 영향을 매매기준율로~~(PR #169), ~~위젯 현금·스파크라인을 앱과 맞춤~~(PR #170).
-2. ~~**parity 검사 넓히기**~~(PR #173, `calc_parity`). 금리 시나리오 3년 고정(6번)을 고치면 `calc_parity.mjs`의 `KNOWN`에서 지운다.
-3. **출시 차단 항목 정리**: 국내 실시간 스위치 끄기, `StubPriceProvider` 대체, TestFlight 외부 테스트용 재업로드, IAP 등록, 공개 전 재점검.
-5. **운영 확인**: 15분 cron 실제 실행, `/cu` 401.
-6. **상용 전 정리**(출시 시점 정해지면): 인사이트 뉴스 라이선스·`/ai` 중계 잠금, README·사용법 갱신.
-7. 그다음 기능: 평정 지수 웹 보기, 무료/프리미엄 분리, 평행 세계 확장.
-
-## 쉬운 말 ④ 홈 카드 (2026-10-14, PR 대기)
-- 평가액 카드: 산 가격보다 수익률, 오늘 움직임 금액, 목표 바 문구, 페이스 문장(goalPace), 적립 0원이면 정하기
-- 말풍선: todayMoversText 정보 문장 + 대사, 오늘의 1분: 이번 주 N일·정수 
-## 쉬운 말 ④ 홈 카드 (2026-10-14, PR 대기)
-- 평가액 카드: 산 가격보다 수익률, 오늘 움직임 금액, 목표 바 문구, 페이스 문장(goalPace, 1개월 기준), 적립 0원이면 정하기
-- 말풍선: todayMoversText 정보 문장 + 대사. 오늘의 1분: 이번 주 N일, 정수 %, 확인했어요
-- 미션 탭 페이스 줄도 goalPace를 쓰도록 남음
+## 차트 탭 '흐름' (2026-10-21, 로컬 커밋)
+- `Views/FlowView.swift`(화면·차트·이름표 자리), `Data/FlowData.swift`(DRNK 샘플·추세·지지저항·패턴·실데이터 캐시·알파카). 탭 이름은 `FlowTab.name` 한 곳, 탭 자리는 '종목' 옆(드링커님 결정, 아이폰은 미션·설정이 '더 보기'로).
+- 실데이터: 토스 키 → `TossHistory.fetch`가 같은 일봉 응답에서 시가·고가·저가·거래량도 `flow_toss.json`에 남김(처음 한 번 3년치). 미국은 토스 캔들이 없을 때만 알파카 `/v2/stocks/bars` feed=sip, adjustment=raw → `flow_alpaca.json`, 하루 한 번·호출 사이 0.35초. 담은 종목만, Yahoo 안 씀.
+- 확인 못 한 것(키가 아이폰에만 있음): 토스 캔들의 `openPrice·highPrice·lowPrice·volume` 이름과 값, 알파카 무료 키로 feed=sip 일봉이 막히지 않는지(끝 시각을 20분 전으로 둠), 실데이터 패턴이 너무 많거나 적은지.
+- 패턴: 더블바텀·더블탑·헤드앤숄더·상승/하락삼각형·플래그(종가로 견주고 확정된 것부터 겹치지 않게), 캔들 5종은 일봉에서만, 월봉은 패턴 없음. DRNK 샘플엔 하락삼각형이 안 나옴.
+- 남은 일: 안드로이드 옮기기(이번엔 안 함), 이름표 영어 폭은 짧은 말로 맞춤(Levels·Patterns·Candles).
+- 안드로이드(2026-10-21): `data/FlowData.kt`, `ui/flow/FlowView.kt`, `net/Market.kt` 토스 캔들, `App.kt` Tab.flow(종목 옆, 순서는 Tab enum 한 곳), `res/drawable/tab_flow.xml`. port_check 짝 없음 0·selftest 20/20(씨앗 5), 숫자 비교 `tools/num_parity` flow 단계(DRNK·거꾸로 판 11,964칸 차이 0, 끝자리 1e-12 허용 194). 아이폰과 다른 점: 탭 6개가 다 보임(아이폰은 '더 보기'), 한 손가락 세로 끌기는 화면 스크롤로 넘김, 추세·패턴 계산은 화면 밖(Default)에서 미리.
+- 안드로이드 확인 못 한 것: 에뮬레이터 핀치(adb 로 두 손가락을 못 줌), 키 있음 화면(출시판이라 키 표시를 못 켬), 실데이터.

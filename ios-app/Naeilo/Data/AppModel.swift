@@ -365,6 +365,13 @@ final class AppModel {
     var syncOn: Bool { Sync.shared.isOn }
     var widgetSel: [String]? = nil
     var settingsPath: [SettingsRoute] = []
+    var settingsOpen = false   // 설정 팝업 (탭에서 뺐다, 2026-10-21)
+    var widgetsOpen = false    // 홈 화면 위젯 팝업
+    /// 설정 팝업을 r 화면까지 열어 둔다. 소식함 같은 다른 팝업이 닫히는 중일 수 있어 잠깐 뒤에 띄운다
+    func openSettings(_ r: SettingsRoute? = nil) {
+        settingsPath = r.map { [$0] } ?? []
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in self?.settingsOpen = true }
+    }
 
     var planWeight: Double { selectedPlan.wt }
     func planBreakEven(years T: Double) -> Double { selectedPlan.prob(cost, T) }

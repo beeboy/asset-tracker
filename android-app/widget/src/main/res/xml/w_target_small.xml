@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 이번 주 과녁: 작은 위젯 하나 (2×2). 갱신은 앱·WorkManager 가 해서 updatePeriodMillis 는 0 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp" android:minHeight="110dp"
+    android:targetCellWidth="2" android:targetCellHeight="2"
+    android:resizeMode="none" android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewImage="@drawable/w_target_small_preview"
+    android:description="@string/w_target_small_desc" />

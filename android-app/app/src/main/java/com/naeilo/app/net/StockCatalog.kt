@@ -1,0 +1,135 @@
+package com.naeilo.app.net
+
+import com.naeilo.app.data.Currency
+
+// 한글로 찾기용 종목 목록. Yahoo 검색은 한글 이름을 못 찾아서, 자주 찾는 한국·미국 종목의 한글 이름을 앱에 넣어 둔다.
+// 2026년 10월 10일에 종목 코드와 영문 이름을 Yahoo 중계로 하나씩 확인했다. 목록에 없는 종목은 영문 이름·티커·종목 코드로 Yahoo 에서 찾는다.
+object StockCatalog {   // ios: Data/StockCatalog.swift:5
+    val all: List<StockHit> by lazy { listOf(   // ios: Data/StockCatalog.swift:6
+        StockHit(id = "005930", yahoo = "005930.KS", name = "삼성전자", alias = "삼성전자", en = "Samsung Electronics Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:7
+        StockHit(id = "000660", yahoo = "000660.KS", name = "SK하이닉스", alias = "SK하이닉스", en = "SK hynix Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:8
+        StockHit(id = "373220", yahoo = "373220.KS", name = "LG에너지솔루션", alias = "LG에너지솔루션", en = "LG Energy Solution, Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:9
+        StockHit(id = "207940", yahoo = "207940.KS", name = "삼성바이오로직스", alias = "삼성바이오로직스", en = "Samsung Biologics Co.,Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:10
+        StockHit(id = "005380", yahoo = "005380.KS", name = "현대차", alias = "현대차", en = "Hyundai Motor Company", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:11
+        StockHit(id = "000270", yahoo = "000270.KS", name = "기아", alias = "기아", en = "Kia Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:12
+        StockHit(id = "068270", yahoo = "068270.KS", name = "셀트리온", alias = "셀트리온", en = "Celltrion, Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:13
+        StockHit(id = "005490", yahoo = "005490.KS", name = "POSCO홀딩스", alias = "POSCO홀딩스", en = "POSCO Holdings Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:14
+        StockHit(id = "035420", yahoo = "035420.KS", name = "NAVER", alias = "NAVER", en = "NAVER Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:15
+        StockHit(id = "035720", yahoo = "035720.KS", name = "카카오", alias = "카카오", en = "Kakao Corp.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:16
+        StockHit(id = "051910", yahoo = "051910.KS", name = "LG화학", alias = "LG화학", en = "LG Chem, Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:17
+        StockHit(id = "006400", yahoo = "006400.KS", name = "삼성SDI", alias = "삼성SDI", en = "Samsung SDI Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:18
+        StockHit(id = "105560", yahoo = "105560.KS", name = "KB금융", alias = "KB금융", en = "KB Financial Group Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:19
+        StockHit(id = "055550", yahoo = "055550.KS", name = "신한지주", alias = "신한지주", en = "Shinhan Financial Group Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:20
+        StockHit(id = "086790", yahoo = "086790.KS", name = "하나금융지주", alias = "하나금융지주", en = "Hana Financial Group Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:21
+        StockHit(id = "316140", yahoo = "316140.KS", name = "우리금융지주", alias = "우리금융지주", en = "Woori Financial Group Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:22
+        StockHit(id = "024110", yahoo = "024110.KS", name = "기업은행", alias = "기업은행", en = "Industrial Bank of Korea", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:23
+        StockHit(id = "012330", yahoo = "012330.KS", name = "현대모비스", alias = "현대모비스", en = "Hyundai Mobis Co.,Ltd", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:24
+        StockHit(id = "028260", yahoo = "028260.KS", name = "삼성물산", alias = "삼성물산", en = "Samsung C&T Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:25
+        StockHit(id = "066570", yahoo = "066570.KS", name = "LG전자", alias = "LG전자", en = "LG Electronics Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:26
+        StockHit(id = "003550", yahoo = "003550.KS", name = "LG", alias = "LG", en = "LG Corp.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:27
+        StockHit(id = "032830", yahoo = "032830.KS", name = "삼성생명", alias = "삼성생명", en = "Samsung Life Insurance Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:28
+        StockHit(id = "000810", yahoo = "000810.KS", name = "삼성화재", alias = "삼성화재", en = "Samsung Fire & Marine Insurance Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:29
+        StockHit(id = "015760", yahoo = "015760.KS", name = "한국전력", alias = "한국전력", en = "Korea Electric Power Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:30
+        StockHit(id = "017670", yahoo = "017670.KS", name = "SK텔레콤", alias = "SK텔레콤", en = "SK Telecom Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:31
+        StockHit(id = "030200", yahoo = "030200.KS", name = "KT", alias = "KT", en = "KT Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:32
+        StockHit(id = "034730", yahoo = "034730.KS", name = "SK", alias = "SK", en = "SK Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:33
+        StockHit(id = "096770", yahoo = "096770.KS", name = "SK이노베이션", alias = "SK이노베이션", en = "SK Innovation Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:34
+        StockHit(id = "009150", yahoo = "009150.KS", name = "삼성전기", alias = "삼성전기", en = "Samsung Electro-Mechanics Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:35
+        StockHit(id = "018260", yahoo = "018260.KS", name = "삼성에스디에스", alias = "삼성에스디에스", en = "Samsung SDS Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:36
+        StockHit(id = "012450", yahoo = "012450.KS", name = "한화에어로스페이스", alias = "한화에어로스페이스", en = "Hanwha Aerospace Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:37
+        StockHit(id = "329180", yahoo = "329180.KS", name = "HD현대중공업", alias = "HD현대중공업", en = "HD Hyundai Heavy Industries Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:38
+        StockHit(id = "009540", yahoo = "009540.KS", name = "HD한국조선해양", alias = "HD한국조선해양", en = "HD Korea Shipbuilding & Offshore Engineering Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:39
+        StockHit(id = "011200", yahoo = "011200.KS", name = "HMM", alias = "HMM", en = "HMM Co.,Ltd", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:40
+        StockHit(id = "003670", yahoo = "003670.KS", name = "포스코퓨처엠", alias = "포스코퓨처엠", en = "Posco Future M Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:41
+        StockHit(id = "247540", yahoo = "247540.KS", name = "에코프로비엠", alias = "에코프로비엠", en = "Ecopro BM Co Ltd", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:42
+        StockHit(id = "086520", yahoo = "086520.KQ", name = "에코프로", alias = "에코프로", en = "Ecopro Co., Ltd.", market = "코스닥", currency = Currency.krw),   // ios: Data/StockCatalog.swift:43
+        StockHit(id = "042700", yahoo = "042700.KS", name = "한미반도체", alias = "한미반도체", en = "HANMI Semiconductor Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:44
+        StockHit(id = "259960", yahoo = "259960.KS", name = "크래프톤", alias = "크래프톤", en = "KRAFTON, Inc.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:45
+        StockHit(id = "036570", yahoo = "036570.KS", name = "엔씨소프트", alias = "엔씨소프트", en = "NC Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:46
+        StockHit(id = "251270", yahoo = "251270.KS", name = "넷마블", alias = "넷마블", en = "Netmarble Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:47
+        StockHit(id = "352820", yahoo = "352820.KS", name = "하이브", alias = "하이브", en = "HYBE Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:48
+        StockHit(id = "090430", yahoo = "090430.KS", name = "아모레퍼시픽", alias = "아모레퍼시픽", en = "Amorepacific Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:49
+        StockHit(id = "097950", yahoo = "097950.KS", name = "CJ제일제당", alias = "CJ제일제당", en = "CJ Cheiljedang Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:50
+        StockHit(id = "010130", yahoo = "010130.KS", name = "고려아연", alias = "고려아연", en = "Korea Zinc Company, Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:51
+        StockHit(id = "011170", yahoo = "011170.KS", name = "롯데케미칼", alias = "롯데케미칼", en = "Lotte Chemical Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:52
+        StockHit(id = "010950", yahoo = "010950.KS", name = "S-Oil", alias = "S-Oil", en = "S-Oil Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:53
+        StockHit(id = "034020", yahoo = "034020.KS", name = "두산에너빌리티", alias = "두산에너빌리티", en = "Doosan Enerbility Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:54
+        StockHit(id = "064350", yahoo = "064350.KS", name = "현대로템", alias = "현대로템", en = "Hyundai Rotem Company", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:55
+        StockHit(id = "047810", yahoo = "047810.KS", name = "한국항공우주", alias = "한국항공우주", en = "Korea Aerospace Industries, Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:56
+        StockHit(id = "033780", yahoo = "033780.KS", name = "KT&G", alias = "KT&G", en = "KT&G Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:57
+        StockHit(id = "323410", yahoo = "323410.KS", name = "카카오뱅크", alias = "카카오뱅크", en = "KakaoBank Corp.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:58
+        StockHit(id = "377300", yahoo = "377300.KS", name = "카카오페이", alias = "카카오페이", en = "Kakao Pay Corp.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:59
+        StockHit(id = "302440", yahoo = "302440.KS", name = "SK바이오사이언스", alias = "SK바이오사이언스", en = "SK bioscience Co.,Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:60
+        StockHit(id = "196170", yahoo = "196170.KQ", name = "알테오젠", alias = "알테오젠", en = "ALTEOGEN Inc.", market = "코스닥", currency = Currency.krw),   // ios: Data/StockCatalog.swift:61
+        StockHit(id = "028300", yahoo = "028300.KQ", name = "HLB", alias = "HLB", en = "HLB Co., Ltd.", market = "코스닥", currency = Currency.krw),   // ios: Data/StockCatalog.swift:62
+        StockHit(id = "005935", yahoo = "005935.KS", name = "삼성전자우", alias = "삼성전자우", en = "Samsung Electronics Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:63
+        StockHit(id = "000100", yahoo = "000100.KS", name = "유한양행", alias = "유한양행", en = "Yuhan Corporation", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:64
+        StockHit(id = "128940", yahoo = "128940.KS", name = "한미약품", alias = "한미약품", en = "Hanmi Pharm. Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:65
+        StockHit(id = "042660", yahoo = "042660.KS", name = "한화오션", alias = "한화오션", en = "Hanwha Ocean Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:66
+        StockHit(id = "267260", yahoo = "267260.KS", name = "HD현대일렉트릭", alias = "HD현대일렉트릭", en = "HD Hyundai Electric Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:67
+        StockHit(id = "010140", yahoo = "010140.KS", name = "삼성중공업", alias = "삼성중공업", en = "Samsung Heavy Industries Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:68
+        StockHit(id = "069500", yahoo = "069500.KS", name = "KODEX 200", alias = "KODEX 200", en = "KODEX 200", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:69
+        StockHit(id = "360750", yahoo = "360750.KS", name = "TIGER 미국S&P500", alias = "TIGER 미국S&P500", en = "Mirae Asset Maps Management - Mirae Asset Tiger S&P500 ETF", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:70
+        StockHit(id = "133690", yahoo = "133690.KS", name = "TIGER 미국나스닥100", alias = "TIGER 미국나스닥100", en = "Mirae Asset TIGER USA NASDAQ 100 ETF", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:71
+        StockHit(id = "379800", yahoo = "379800.KS", name = "KODEX 미국S&P500TR", alias = "KODEX 미국S&P500TR", en = "Samsung KODEX S&P500 ETF", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:72
+        StockHit(id = "122630", yahoo = "122630.KS", name = "KODEX 레버리지", alias = "KODEX 레버리지", en = "Kodex Leverage", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:73
+        StockHit(id = "114800", yahoo = "114800.KS", name = "KODEX 인버스", alias = "KODEX 인버스", en = "Samsung Kodex Inverse ETF - Equity-Derivatives", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:74
+        StockHit(id = "252670", yahoo = "252670.KS", name = "KODEX 200선물인버스2X", alias = "KODEX 200선물인버스2X", en = "Samsung Kodex F Kospi 200 Inverse2x ETF", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:75
+        StockHit(id = "305720", yahoo = "305720.KS", name = "KODEX 2차전지산업", alias = "KODEX 2차전지산업", en = "Samsung Kodex Secondary Battery Industry ETF", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:76
+        StockHit(id = "381170", yahoo = "381170.KS", name = "TIGER 미국테크TOP10 INDXX", alias = "TIGER 미국테크TOP10 INDXX", en = "Mirae Asset Maps Management - Tiger US Tech Top 10 Index ETF", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:77
+        StockHit(id = "458730", yahoo = "458730.KS", name = "TIGER 미국배당다우존스", alias = "TIGER 미국배당다우존스", en = "Mirae Asset Tiger U.S. Dividend Equity Etf", market = "코스피 ETF", currency = Currency.krw),   // ios: Data/StockCatalog.swift:78
+        StockHit(id = "TSLA", yahoo = "TSLA", name = "테슬라", alias = "테슬라", en = "Tesla, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:79
+        StockHit(id = "AAPL", yahoo = "AAPL", name = "애플", alias = "애플", en = "Apple Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:80
+        StockHit(id = "NVDA", yahoo = "NVDA", name = "엔비디아", alias = "엔비디아", en = "NVIDIA Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:81
+        StockHit(id = "MSFT", yahoo = "MSFT", name = "마이크로소프트", alias = "마이크로소프트", en = "Microsoft Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:82
+        StockHit(id = "AMZN", yahoo = "AMZN", name = "아마존", alias = "아마존", en = "Amazon.com, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:83
+        StockHit(id = "GOOGL", yahoo = "GOOGL", name = "알파벳", alias = "알파벳 구글", en = "Alphabet Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:84
+        StockHit(id = "META", yahoo = "META", name = "메타", alias = "메타 페이스북", en = "Meta Platforms, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:85
+        StockHit(id = "NFLX", yahoo = "NFLX", name = "넷플릭스", alias = "넷플릭스", en = "Netflix, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:86
+        StockHit(id = "AVGO", yahoo = "AVGO", name = "브로드컴", alias = "브로드컴", en = "Broadcom Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:87
+        StockHit(id = "AMD", yahoo = "AMD", name = "AMD", alias = "AMD 에이엠디", en = "Advanced Micro Devices, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:88
+        StockHit(id = "INTC", yahoo = "INTC", name = "인텔", alias = "인텔", en = "Intel Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:89
+        StockHit(id = "PLTR", yahoo = "PLTR", name = "팔란티어", alias = "팔란티어", en = "Palantir Technologies Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:90
+        StockHit(id = "KO", yahoo = "KO", name = "코카콜라", alias = "코카콜라", en = "The Coca-Cola Company", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:91
+        StockHit(id = "MCD", yahoo = "MCD", name = "맥도날드", alias = "맥도날드", en = "McDonald's Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:92
+        StockHit(id = "SBUX", yahoo = "SBUX", name = "스타벅스", alias = "스타벅스", en = "Starbucks Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:93
+        StockHit(id = "DIS", yahoo = "DIS", name = "디즈니", alias = "디즈니", en = "The Walt Disney Company", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:94
+        StockHit(id = "NKE", yahoo = "NKE", name = "나이키", alias = "나이키", en = "NIKE, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:95
+        StockHit(id = "BRK-B", yahoo = "BRK-B", name = "버크셔해서웨이", alias = "버크셔해서웨이", en = "Berkshire Hathaway Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:96
+        StockHit(id = "JPM", yahoo = "JPM", name = "JP모건", alias = "JP모건", en = "JPMorgan Chase & Co.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:97
+        StockHit(id = "V", yahoo = "V", name = "비자", alias = "비자", en = "Visa Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:98
+        StockHit(id = "MA", yahoo = "MA", name = "마스터카드", alias = "마스터카드", en = "Mastercard Incorporated", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:99
+        StockHit(id = "JNJ", yahoo = "JNJ", name = "존슨앤드존슨", alias = "존슨앤드존슨", en = "Johnson & Johnson", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:100
+        StockHit(id = "PFE", yahoo = "PFE", name = "화이자", alias = "화이자", en = "Pfizer Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:101
+        StockHit(id = "LLY", yahoo = "LLY", name = "일라이릴리", alias = "일라이릴리", en = "Eli Lilly and Company", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:102
+        StockHit(id = "ORCL", yahoo = "ORCL", name = "오라클", alias = "오라클", en = "Oracle Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:103
+        StockHit(id = "QCOM", yahoo = "QCOM", name = "퀄컴", alias = "퀄컴", en = "QUALCOMM Incorporated", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:104
+        StockHit(id = "TSM", yahoo = "TSM", name = "TSMC", alias = "TSMC 대만반도체", en = "Taiwan Semiconductor Manufacturing Company Limited", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:105
+        StockHit(id = "IONQ", yahoo = "IONQ", name = "아이온큐", alias = "아이온큐", en = "IonQ, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:106
+        StockHit(id = "COIN", yahoo = "COIN", name = "코인베이스", alias = "코인베이스", en = "Coinbase Global, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:107
+        StockHit(id = "O", yahoo = "O", name = "리얼티인컴", alias = "리얼티인컴", en = "Realty Income Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:108
+        StockHit(id = "MSTR", yahoo = "MSTR", name = "마이크로스트래티지", alias = "마이크로스트래티지 스트래티지", en = "Strategy Inc", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:109
+        StockHit(id = "UBER", yahoo = "UBER", name = "우버", alias = "우버", en = "Uber Technologies, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:110
+        StockHit(id = "CPNG", yahoo = "CPNG", name = "쿠팡", alias = "쿠팡", en = "Coupang, Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:111
+        StockHit(id = "WMT", yahoo = "WMT", name = "월마트", alias = "월마트", en = "Walmart Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:112
+        StockHit(id = "COST", yahoo = "COST", name = "코스트코", alias = "코스트코", en = "Costco Wholesale Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:113
+        StockHit(id = "XOM", yahoo = "XOM", name = "엑슨모빌", alias = "엑슨모빌", en = "ExxonMobil Holdings Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:114
+        StockHit(id = "CVX", yahoo = "CVX", name = "셰브론", alias = "셰브론", en = "Chevron Corporation", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:115
+        StockHit(id = "BA", yahoo = "BA", name = "보잉", alias = "보잉", en = "The Boeing Company", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:116
+        StockHit(id = "SCHD", yahoo = "SCHD", name = "SCHD", alias = "SCHD 슈왑 미국배당", en = "Schwab U.S. Dividend Equity ETF", market = "미국 ETF", currency = Currency.usd),   // ios: Data/StockCatalog.swift:117
+        StockHit(id = "VOO", yahoo = "VOO", name = "VOO", alias = "VOO 뱅가드 S&P500", en = "Vanguard S&P 500 ETF", market = "미국 ETF", currency = Currency.usd),   // ios: Data/StockCatalog.swift:118
+        StockHit(id = "SPY", yahoo = "SPY", name = "S&P500 ETF", alias = "S&P500 ETF", en = "State Street SPDR S&P 500 ETF Trust", market = "미국 ETF", currency = Currency.usd),   // ios: Data/StockCatalog.swift:119
+        StockHit(id = "QQQ", yahoo = "QQQ", name = "나스닥100 ETF", alias = "나스닥100 ETF", en = "Invesco QQQ Trust", market = "미국 ETF", currency = Currency.usd),   // ios: Data/StockCatalog.swift:120
+        StockHit(id = "TQQQ", yahoo = "TQQQ", name = "TQQQ", alias = "TQQQ 나스닥 3배", en = "ProShares UltraPro QQQ", market = "미국 ETF", currency = Currency.usd),   // ios: Data/StockCatalog.swift:121
+        StockHit(id = "SOXL", yahoo = "SOXL", name = "SOXL", alias = "SOXL 반도체 3배", en = "Direxion Daily Semiconductor Bull 3X Shares", market = "미국 ETF", currency = Currency.usd),   // ios: Data/StockCatalog.swift:122
+        StockHit(id = "SOXX", yahoo = "SOXX", name = "SOXX", alias = "SOXX 반도체 ETF", en = "iShares Semiconductor ETF", market = "미국 ETF", currency = Currency.usd),   // ios: Data/StockCatalog.swift:123
+        StockHit(id = "JEPI", yahoo = "JEPI", name = "JEPI", alias = "JEPI 커버드콜", en = "JPMorgan Equity Premium Income ETF", market = "미국 ETF", currency = Currency.usd),   // ios: Data/StockCatalog.swift:124
+        StockHit(id = "GPCR", yahoo = "GPCR", name = "스트럭쳐 테라퓨틱스", alias = "스트럭처 테라퓨틱스 ADR", en = "Structure Therapeutics Inc.", market = "미국 주식", currency = Currency.usd),   // ios: Data/StockCatalog.swift:125
+        // 국내 개별 종목 (사이트가 매일 모은다, KoreaEstimate.popular)
+        StockHit(id = "010170", yahoo = "010170.KQ", name = "대한광통신", alias = "대한광통신", en = "Taihan Fiberoptics Co., Ltd.", market = "코스닥", currency = Currency.krw),   // ios: Data/StockCatalog.swift:127
+        StockHit(id = "073490", yahoo = "073490.KQ", name = "LIG아큐버", alias = "LIG아큐버 이노와이어리스", en = "LIG Accuver Co., Ltd.", market = "코스닥", currency = Currency.krw),   // ios: Data/StockCatalog.swift:128
+        StockHit(id = "081180", yahoo = "081180.KQ", name = "쎄크", alias = "쎄크 SEC", en = "SEC Co., Ltd.", market = "코스닥", currency = Currency.krw),   // ios: Data/StockCatalog.swift:129
+        StockHit(id = "001440", yahoo = "001440.KS", name = "대한전선", alias = "대한전선", en = "Taihan Cable & Solution Co., Ltd.", market = "코스피", currency = Currency.krw),   // ios: Data/StockCatalog.swift:130
+        StockHit(id = "298380", yahoo = "298380.KQ", name = "에이비엘바이오", alias = "에이비엘바이오 ABL", en = "ABL Bio Inc.", market = "코스닥", currency = Currency.krw),   // ios: Data/StockCatalog.swift:131
+    ) }
+}

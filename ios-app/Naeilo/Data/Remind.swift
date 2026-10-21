@@ -221,7 +221,7 @@ final class Remind {
     /// 앱 단계·달성 (같은 종류는 가장 최근 단계 하나만)
     @MainActor private func achievements(_ m: AppModel) -> [RemindItem] {
         var a: [RemindItem] = []
-        if m.playOn { a.append(.init(id: "start", cat: .done, text: String(localized: "앱 시작 3단계를 마쳤어요. 오늘의 1분이 열렸어요. 매일 1분이면 돼요."))) }
+        if m.playOn { a.append(.init(id: "start", cat: .done, text: String(localized: "앱 시작 3단계를 마쳤어요."))) }
         // 인터미션
         if m.interDone {
             a.append(.init(id: "inter.done.\(m.route.rawValue)", cat: .done, text: String(localized: "인터미션을 다 마쳤어요. 친구가 모두 모였어요."), go: .shelter))
@@ -387,9 +387,6 @@ final class Remind {
         if let i = (0..<Shelter.friends.count).first(where: { !m.friendOn($0) }) {
             a.append(.init(id: "do.friend", cat: .doing, text: String(localized: "다음 친구 \(String(describing: Shelter.friends[i].name))는 \(String(describing: m.friendWhen(i)))에 와요."), go: .shelter, once: false))
         }
-        if m.playOn, m.itemsOn < 10 {
-            a.append(.init(id: "do.items", cat: .doing, text: String(localized: "오늘의 1분을 하면 물건(\(String(describing: Shelter.items[m.itemsOn].name)))이 돌아와요."), go: .shelter, once: false))
-        }
         if m.playUnlocked && m.weekGuess == nil {
             a.append(.init(id: "do.week", cat: .doing, text: String(localized: "이번 주 금요일 평가액은 어디쯤일까요? 예보를 골라 봐요."), go: .week, once: false))
         }
@@ -460,7 +457,7 @@ final class Remind {
         for n in RemindNews.app + site where n.date >= from && n.date <= Day.today && ids.insert(n.id).inserted {
             a.append(.init(id: "news.\(n.id)", cat: .news, text: n.text, go: RemindGo(n.go)))
         }
-        a += blogNews()
+        // 증시 요약(블로그 새 글)은 뺐다 (2026-10-21)
         return a
     }
 
@@ -624,10 +621,10 @@ extension AppModel {
         case .hold(let s):
             tab = .hold
             holdPath = Sample.symbol(s).map { NavigationPath([$0]) } ?? NavigationPath()
-        case .support: tab = .settings; settingsPath = [.support]
-        case .widgets: tab = .settings; settingsPath = [.widgets]
-        case .sync: tab = .settings; settingsPath = [.sync]
-        case .alerts: tab = .settings; settingsPath = [.alerts]
+        case .support: openSettings(.support)
+        case .widgets: DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in self?.widgetsOpen = true }
+        case .sync: openSettings(.sync)
+        case .alerts: openSettings(.alerts)
         case .krSum: krSumAsk = true
         }
     }

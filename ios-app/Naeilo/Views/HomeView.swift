@@ -16,8 +16,13 @@ struct HomeView: View {
                 shelterBox
                 ParallelHomeCard()
                 reminder
-                if m.playUnlocked { RoutineCard() } else { lockedRoutine }
-                if !m.playUnlocked, !m.rows.isEmpty { yesterdayCard }
+                // 아래: 예전 종목 탭 소식판에서 옮긴 둘 (2026-10-21), 그 밑에 위젯·설정 팝업
+                HoldingsNews(moversOnly: true)
+                TownButton { TownView(scroll: $0) }
+                HStack(spacing: 6) {
+                    coverButton(String(localized: "위젯"), "rectangle.3.group") { m.widgetsOpen = true }
+                    coverButton(String(localized: "설정"), "gearshape") { m.openSettings() }
+                }
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
             .screen()
@@ -100,8 +105,9 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("평가액 · 넣은 돈 \(AppModel.man(m.cost))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(AppModel.man(m.total)).appFont(32, .bold).tracking(-0.5).roll(m.total)
+                Text(hideAmt ? "••••••" : AppModel.man(m.total)).appFont(32, .bold).tracking(-0.5).roll(m.total)
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
+                    .contentShape(Rectangle()).onTapGesture { hideAmt.toggle() }
                 Text(AppModel.sgn(m.ret)).appFont(16, .bold).lineLimit(1).fixedSize()
                     .foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
             }
@@ -231,22 +237,14 @@ struct HomeView: View {
         .accessibilityLabel("\(tag): \(text). 소식함 열기")
     }
 
-    private var lockedRoutine: some View {
-        DashedCard {
-            Label("오늘의 1분", systemImage: "lock").appFont(15, .bold)
-            Text("시작 3단계 뒤 열림 · 숫자 하나, 질문 하나").appFont(13)
+    /// 미션 탭 [블록]·[파도]와 같은 모양 (WaveGameButton)
+    private func coverButton(_ t: String, _ icon: String, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Label(t, systemImage: icon)
+                .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(.white).background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
         }
-    }
-
-    private var yesterdayCard: some View {
-        Card {
-            HStack(alignment: .firstTextBaseline) {
-                Text("오늘의 움직임").appFont(15, .bold)
-                Spacer()
-                Text(AppModel.sgn(m.todayMove)).appFont(20, .bold).foregroundStyle(Theme.teal).roll(AppModel.sgn(m.todayMove))
-            }
-            Text(m.rows.map { "\($0.sym.short) \(AppModel.sgn($0.sym.quote.change))" }.joined(separator: " · ") + String(localized: " · 원/달러 \(String(describing: AppModel.sgn(Market.shared.fx.change)))")).appFont(13).foregroundStyle(Theme.sub)
-        }
+        .buttonStyle(.plain)
     }
 }
 

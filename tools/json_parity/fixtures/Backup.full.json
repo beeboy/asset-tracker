@@ -1,0 +1,211 @@
+{
+  "at" : "2026-10-03T01:02:03Z",
+  "custom" : [
+    {
+      "at" : "2026-10-07T01:02:03Z",
+      "id" : "s83",
+      "kd" : "s92",
+      "kp" : 91.25,
+      "last" : 89.25,
+      "lv" : false,
+      "market" : "s86",
+      "name" : "s85",
+      "prev" : 88.25,
+      "usd" : false,
+      "yahoo" : "s84"
+    },
+    {
+      "at" : "2026-10-19T01:02:03Z",
+      "id" : "s95",
+      "kd" : "s104",
+      "kp" : 103.25,
+      "last" : 101.25,
+      "lv" : false,
+      "market" : "s98",
+      "name" : "s97",
+      "prev" : 100.25,
+      "usd" : false,
+      "yahoo" : "s96"
+    }
+  ],
+  "daily" : [
+    {
+      "c" : 121.25,
+      "d" : "s119",
+      "f" : {
+        "s128" : [
+          129.25,
+          130.25
+        ],
+        "s131" : [
+          132.25,
+          133.25
+        ]
+      },
+      "q" : {
+        "s122" : [
+          123.25,
+          124.25
+        ],
+        "s125" : [
+          126.25,
+          127.25
+        ]
+      },
+      "v" : 120.25
+    },
+    {
+      "c" : 137.25,
+      "d" : "s135",
+      "f" : {
+        "s144" : [
+          145.25,
+          146.25
+        ],
+        "s147" : [
+          148.25,
+          149.25
+        ]
+      },
+      "q" : {
+        "s138" : [
+          139.25,
+          140.25
+        ],
+        "s141" : [
+          142.25,
+          143.25
+        ]
+      },
+      "v" : 136.25
+    }
+  ],
+  "hist" : {
+    "s106" : {
+      "closes" : [
+        110.25,
+        111.25
+      ],
+      "dates" : [
+        "s108",
+        "s109"
+      ]
+    },
+    "s112" : {
+      "closes" : [
+        116.25,
+        117.25
+      ],
+      "dates" : [
+        "s114",
+        "s115"
+      ]
+    }
+  },
+  "holdings" : [
+    {
+      "avg" : 6.25,
+      "qty" : 5.25,
+      "symbol" : "s4"
+    },
+    {
+      "avg" : 10.25,
+      "qty" : 9.25,
+      "symbol" : "s8"
+    }
+  ],
+  "homeFriend" : "s81",
+  "progress" : {
+    "day" : 36,
+    "dayLog" : {
+      "37" : {
+        "answer" : 40,
+        "ok" : true,
+        "q" : "s41",
+        "seen" : false
+      },
+      "43" : {
+        "answer" : 46,
+        "ok" : true,
+        "q" : "s47",
+        "seen" : false
+      }
+    },
+    "done" : [
+      14,
+      13
+    ],
+    "gA" : 27.25,
+    "gDone" : [
+      "s31",
+      "s30"
+    ],
+    "gFrom" : "s80",
+    "gInterStartAt" : 77.25,
+    "gK" : 25.25,
+    "gM" : 28.25,
+    "gMix" : "s29",
+    "gTo" : "s79",
+    "gWeekCur" : "less",
+    "gWeeks" : [
+      "more",
+      "inPlan"
+    ],
+    "gY" : 26,
+    "goalStartAt" : 73.25,
+    "goalTaxPick" : "s35",
+    "homeFriend" : "s53",
+    "horizon" : 19,
+    "interStartAt" : 72.25,
+    "itemsBack" : 51,
+    "itemsBackDay" : 52,
+    "itemsOff" : [
+      "s76",
+      "s75"
+    ],
+    "lastOpen" : "s49",
+    "lens" : "base",
+    "me" : {
+      "name" : "s65",
+      "parts" : {
+        "s66" : 67,
+        "s68" : 69
+      },
+      "type" : "s70"
+    },
+    "meBg" : "s71",
+    "meGate1At" : 74.25,
+    "monthly" : 60.25,
+    "nxStep" : 23,
+    "planKey" : "s18",
+    "quizAnswer" : "s20",
+    "readLast" : 56,
+    "readPos" : [
+      54,
+      55
+    ],
+    "recM" : 78,
+    "route" : "recover",
+    "shock" : false,
+    "syncOn" : false,
+    "taxGain" : 21.25,
+    "taxSellQty" : 22.25,
+    "trust" : 58.25,
+    "v" : 12,
+    "weekCur" : "raised",
+    "weekGuess" : "s50",
+    "weeks" : [
+      "kept",
+      "changed"
+    ],
+    "widgetSel" : [
+      "s62",
+      "s63"
+    ]
+  },
+  "town" : {
+    "s150" : "ZDE1MT8+",
+    "s152" : "ZDE1Mz8+"
+  },
+  "v" : 1
+}

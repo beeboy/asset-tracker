@@ -1,0 +1,88 @@
+{
+  "day" : 25,
+  "dayLog" : {
+    "26" : {
+      "answer" : 29,
+      "ok" : false,
+      "q" : "s30",
+      "seen" : true
+    },
+    "32" : {
+      "answer" : 35,
+      "ok" : false,
+      "q" : "s36",
+      "seen" : true
+    }
+  },
+  "done" : [
+    2,
+    3
+  ],
+  "gA" : 16.25,
+  "gDone" : [
+    "s19",
+    "s20"
+  ],
+  "gFrom" : "s69",
+  "gInterStartAt" : 66.25,
+  "gK" : 14.25,
+  "gM" : 17.25,
+  "gMix" : "s18",
+  "gTo" : "s68",
+  "gWeekCur" : "more",
+  "gWeeks" : [
+    "inPlan",
+    "less"
+  ],
+  "gY" : 15,
+  "goalStartAt" : 62.25,
+  "goalTaxPick" : "s24",
+  "homeFriend" : "s42",
+  "horizon" : 8,
+  "interStartAt" : 61.25,
+  "itemsBack" : 40,
+  "itemsBackDay" : 41,
+  "itemsOff" : [
+    "s65",
+    "s64"
+  ],
+  "lastOpen" : "s38",
+  "lens" : "mine",
+  "me" : {
+    "name" : "s54",
+    "parts" : {
+      "s55" : 56,
+      "s57" : 58
+    },
+    "type" : "s59"
+  },
+  "meBg" : "s60",
+  "meGate1At" : 63.25,
+  "monthly" : 49.25,
+  "nxStep" : 12,
+  "planKey" : "s7",
+  "quizAnswer" : "s9",
+  "readLast" : 45,
+  "readPos" : [
+    43,
+    44
+  ],
+  "recM" : 67,
+  "route" : "plus",
+  "shock" : true,
+  "syncOn" : true,
+  "taxGain" : 10.25,
+  "taxSellQty" : 11.25,
+  "trust" : 47.25,
+  "v" : 1,
+  "weekCur" : "kept",
+  "weekGuess" : "s39",
+  "weeks" : [
+    "changed",
+    "raised"
+  ],
+  "widgetSel" : [
+    "s51",
+    "s52"
+  ]
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 아이콘 바탕 (미리보기 그림 왼쪽 위 색) -->
+<resources>
+    <color name="icon_bg_star">#111B42</color>
+    <color name="icon_bg_seri">#161E40</color>
+    <color name="icon_bg_sio">#12283A</color>
+    <color name="icon_bg_seonbae">#301E2C</color>
+    <color name="icon_bg_ir">#0E0C16</color>
+    <color name="icon_bg_sua">#3A2228</color>
+</resources>

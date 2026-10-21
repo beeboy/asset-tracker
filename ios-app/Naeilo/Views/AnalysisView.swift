@@ -109,9 +109,9 @@ struct AnalysisView: View {
             VStack(alignment: .leading, spacing: 10) {
                 AppHeader(tab: String(localized: "분석")).padding(.horizontal, -16)
                 SampleNote()
-                habitBand
                 summary.padding(.top, 6)
                 ForEach(lines.indices, id: \.self) { i in row(lines[i]) }
+                habitBand.padding(.top, 6)   // 맨 아래로 (2026-10-21)
             }
             .screen()
         }
@@ -128,28 +128,21 @@ struct AnalysisView: View {
         .navigationDestination(for: AnalysisRoute.self) { AnalysisPager(start: $0) }
     }
 
-    // MARK: 내 투자 습관 띠 (위젯처럼 성격이 다른 영역, 대사는 상세에만)
+    // MARK: 내 투자 습관 띠: 홈 리마인드 노란 띠와 같은 모양 (노란 꼬리표 + 한 줄 + ›), 대사는 상세에만
     private var habitBand: some View {
         let s = m.calm.stats(), done = s.n >= Calm.minEvents
-        return HStack(spacing: 12) {
-            CharHead(id: m.calmSpeaker, size: 32)
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("투자 습관").appFont(14, .bold).foregroundStyle(Theme.mint)
-                    Spacer()
-                    Text(done ? String(localized: "지수 \(String(describing: s.index))") : "\(s.n)/\(Calm.minEvents)").appFont(13).foregroundStyle(Color(hex: 0xC3C8D0))
-                }
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color(hex: 0x343A47))
-                        Capsule().fill(Theme.mint).frame(width: g.size.width * min(1, Double(s.n) / Double(Calm.minEvents)))
-                    }
-                }
-                .frame(height: 4)
-            }
+        return HStack(spacing: 8) {
+            Text("투자 습관").appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 2)
+                .background(Theme.yellow, in: Capsule())
+            Text(done ? String(localized: "지수 \(String(describing: s.index))") : String(localized: "기록 \(String(describing: s.n))/\(String(describing: Calm.minEvents))건 · 다 차면 지수가 나와요"))
+                .appFont(13).lineLimit(2)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").appFont(11).foregroundStyle(Theme.muted)
         }
-        .padding(.horizontal, 14).padding(.vertical, 10).frame(minHeight: 44)
-        .background(Theme.night, in: RoundedRectangle(cornerRadius: 16))
+        .foregroundStyle(Theme.ink)
+        .padding(.horizontal, 12).frame(minHeight: 44)
+        .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
+        .contentShape(Rectangle())
         .modifier(OpenOnTap(route: .calm))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(done ? String(localized: "내 투자 습관, 지수 \(String(describing: s.index))") : String(localized: "내 투자 습관, 기록 \(String(describing: s.n)) / \(String(describing: Calm.minEvents))"))
@@ -219,8 +212,9 @@ struct AnalysisView: View {
         } else if m.isGoal {
             out.append(Line(icon: "flag", tone: .good, label: String(localized: "내 길"), value: fc.exact ? Self.freq(fc.pGoal) : String(localized: "계산 중"), valueTone: .good, route: .myPath))
         } else {
-            let gap = m.myPathGapToday
-            out.append(Line(icon: "flag", tone: .good, label: String(localized: "내 길"), value: String(format: "%.1f%% ", abs(gap) * 100) + (gap >= 0 ? String(localized: "앞섬") : String(localized: "뒤처짐")), valueTone: gap >= 0 ? .good : .warn, route: .myPath))
+            // 회복 루트도 내 길 판정 카드와 같은 값: 기간 안 본전 확률
+            let p = m.myPath
+            out.append(Line(icon: "flag", tone: .good, label: String(localized: "내 길"), value: fc.exact ? Self.freq(fc.prob(min(3, p.end - p.start))) : String(localized: "계산 중"), valueTone: .good, route: .myPath))
         }
         // 전망: 상세 첫 카드처럼 경로 값에 현금을 더한다
         let med = (fc.q50.last ?? 0) + (fc.exact ? m.cashKrw : 0)

@@ -199,138 +199,11 @@ private func linePath(_ pts: [(Double, Double)], in size: CGSize) -> Path {
 struct MyPathView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
-        if m.isGoal { MyPathGoalView() } else { MyPathClassicView() }
+        MyPathGoalView()
     }
 }
 
-struct MyPathClassicView: View {
-    @Environment(AppModel.self) private var m
-    // 고르기 전에는 시작한 지 석 달이 안 됐으면 '시작부터' (목표일까지 보면 실제 선이 점처럼 짧다)
-    @State private var picked: String? = nil
-
-    var body: some View {
-        let p = m.myPath, mS = p.start, mEnd = p.end, K = p.key, act = p.act, need = p.need
-        let view = picked ?? (mS < 0.25 ? "past" : "all")
-        let gap = p.need(mS) > 0 ? p.act(mS) / p.need(mS) - 1 : 0
-        let f = m.forecast
-        let x1 = view == "past" ? mS + 1.0 / 12 : mEnd
-        let actPts = p.pts
-        let needPts = (0...60).map { i -> (Double, Double) in let t = x1 * Double(i) / 60; return (t, need(t)) }
-        let bandPts: [(Double, Double, Double)] = view == "band"
-            // 전망(오늘부터 목표일까지 월 경계마다)을 그래프 끝까지 겹친다
-            // 전망 경로는 종목만이라 현금을 더해 내 길(현금 포함)과 같은 기준으로
-            ? (0...max(min(1, f.tY.count - 1), f.idx(years: x1 - mS))).map { i in (mS + f.tY[i], f.q75[i] + m.cashKrw, f.q25[i] + m.cashKrw) } : []
-        let vals = actPts.map(\.1) + needPts.map(\.1) + bandPts.flatMap { [$0.1, $0.2] }
-        let hi = (vals.max() ?? 1) * 1.03, lo = (vals.min() ?? 0) * 0.97
-        let X = { (t: Double) in t / x1 }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
-        let yrsLeft = mEnd - mS
-        // 남은 기간: 웹 목표 진행과 같은 표시 (3.0년, 1년 안 되면 개월)
-        let leftText = AppModel.leftText(m.isGoal ? AppModel.yrs(Day.today, Day.str(m.goalToDate)) : yrsLeft)
-        // 지난 달마다: 시작한 날부터 꽉 채운 달만 (최근 6달), 끝은 오늘
-        let months = Calendar.current.dateComponents([.month], from: m.pathStartDate, to: Date()).month ?? 0
-        let monthRows: [(String, Double)] = (max(1, months - 5)...max(1, months)).compactMap { k -> (String, Double)? in
-            guard k <= months, let d = Calendar.current.date(byAdding: .month, value: k, to: m.pathStartDate) else { return nil }
-            return (String(localized: "\(String(describing: k))달째"), d.timeIntervalSince(m.pathStartDate) / (365.25 * 86400))
-        } + [(String(localized: "오늘"), mS)]
-        let now = m.trackValue, mM = p.monthly
-        let needCagr = now > 0 && yrsLeft > 0 ? pow(max(1, K - mM * 12 * yrsLeft) / now, 1 / yrsLeft) - 1 : 0
-        let pPlan = m.isGoal ? f.pGoal : f.prob(min(3, yrsLeft))   // 목표 루트: 목표일에 목표 이상일 확률 (웹 목표 확률)
-        let lead = gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060)
-
-        PinnedLayout {
-            pinnedBox {
-                DetailHead(title: String(localized: "내 길"), sub: m.isGoal ? String(localized: "목표 \(String(describing: AppModel.wonK(m.gK))) · \(String(describing: m.goalToText)) · 월 \(String(describing: AppModel.wonK(m.gM))) · \(String(describing: m.pathStartText)) 시작") : String(localized: "본전 \(String(describing: AppModel.eok(K))) · 1년 안 · \(String(describing: m.pathStartText)) 시작"))
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(gap >= 0 ? String(localized: "앞섬") : String(localized: "뒤처짐")) \(String(format: "%.1f", abs(gap) * 100))%").appFont(22, .bold).foregroundStyle(lead).roll("\(gap >= 0 ? String(localized: "앞섬") : String(localized: "뒤처짐")) \(String(format: "%.1f", abs(gap) * 100))%")
-                    Spacer()
-                    // 웹 목표 진행처럼 금액 차이 (금액은 이 요약과 아래 달마다 막대에만)
-                    Text("계획보다 \(AppModel.eokS(act(mS) - need(mS)))").appFont(13, .semibold).foregroundStyle(lead)
-                }
-                // 웹 목표 진행의 '시작 대비'와 같은 줄: 시작일 평가액 → 지금 평가액 (웹과 숫자를 나란히 맞춰 볼 수 있게)
-                if let v0 = p.pts.first?.1, v0 > 0 {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("시작보다 \(AppModel.sgn((act(mS) - p.krIn) / v0 - 1))").appFont(13).foregroundStyle(Theme.sub)
-                        Spacer()
-                        Text("\(AppModel.eok(v0)) → \(AppModel.eok(act(mS)))").appFont(13).foregroundStyle(Theme.sub)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-                // 웹 목표 진행 요약과 같은 목표 달성 확률 (전망 계산이 끝나기 전에는 '계산 중')
-                HStack(alignment: .firstTextBaseline) {
-                    Text(m.isGoal ? String(localized: "달성 확률") : String(localized: "\(String(describing: m.keyName)) 확률")).appFont(13).foregroundStyle(Theme.sub)
-                    Spacer()
-                    Text(f.exact ? AppModel.pct(pPlan) : String(localized: "계산 중")).appFont(f.exact ? 17 : 13, .bold).foregroundStyle(f.exact ? Theme.teal : Theme.muted)
-                }
-                .accessibilityElement(children: .combine)
-                Canvas { ctx, size in
-                    if !bandPts.isEmpty {
-                        var band = linePath(bandPts.map { (X($0.0), Y($0.1)) }, in: size)
-                        for q in bandPts.reversed() { band.addLine(to: CGPoint(x: X(q.0) * size.width, y: Y(q.2) * size.height)) }
-                        band.closeSubpath()
-                        ctx.fill(band, with: .color(Theme.teal.opacity(0.14)))
-                    }
-                    let tx = X(mS) * size.width
-                    ctx.stroke(Path { $0.move(to: CGPoint(x: tx, y: 0)); $0.addLine(to: CGPoint(x: tx, y: size.height)) },
-                               with: .color(Theme.ink), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    ctx.stroke(linePath(needPts.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.purple), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
-                    ctx.stroke(linePath(actPts.map { (X($0.0), Y($0.1)) }, in: size), with: .color(Theme.teal), style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
-                    // 거래일이 적을 때는 날마다 작은 점도 찍는다
-                    if actPts.count <= 40 {
-                        for q in actPts.dropLast() {
-                            ctx.fill(Path(ellipseIn: CGRect(x: X(q.0) * size.width - 2, y: Y(q.1) * size.height - 2, width: 4, height: 4)), with: .color(Theme.teal))
-                        }
-                    }
-                    let ty = Y(actPts.last?.1 ?? 0) * size.height
-                    ctx.fill(Path(ellipseIn: CGRect(x: tx - 4, y: ty - 4, width: 8, height: 8)), with: .color(Theme.teal))
-                }
-                .frame(height: 140)
-                .pulse(Theme.teal, dot: 8) { s in CGPoint(x: X(mS) * s.width, y: Y(actPts.last?.1 ?? 0) * s.height) }
-                // 범례와 예보 겹치기 확률은 그래프 안에 작게
-                .overlay(alignment: .topLeading) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        legend(Theme.teal, String(localized: "실제")); legend(Theme.purple, String(localized: "계획선"))
-                        if view == "band" { legend(Theme.teal.opacity(0.3), String(localized: "보통 범위")) }
-                    }
-                    .padding(6).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
-                }
-                .overlay(alignment: .bottomTrailing) {
-                    if view == "band" && f.exact {
-                        Text("넘을 확률 \(AppModel.pct(pPlan))").appFont(12, .bold).foregroundStyle(Theme.purple)
-                            .padding(.horizontal, 8).padding(.vertical, 4).background(Theme.card.opacity(0.85), in: Capsule())
-                            .padding(.bottom, 4)
-                    }
-                }
-                .accessibilityLabel("계획선과 실제 평가액 그래프")
-                HStack { Text("시작 \(m.pathStartMonth)"); Spacer(); Text(view == "past" ? String(localized: "다음 달") : m.isGoal ? String(localized: "목표일 \(String(describing: m.goalToText))") : String(localized: "1년 뒤")) }.appFont(11).foregroundStyle(Theme.muted)
-                ChipRow(items: [("past", String(localized: "시작부터")), ("all", String(localized: "목표일까지")), ("band", String(localized: "보통 범위 겹치기"))], selection: Binding(get: { view }, set: { picked = $0 }), fill: true)
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 14) {
-                Card {
-                    Text("달마다 계획과 차이").appFont(15, .bold)
-                    ForEach(monthRows.indices, id: \.self) { i in
-                        let t = monthRows[i].1, g = need(t) > 0 ? act(t) / need(t) - 1 : 0
-                        SignedBar(label: monthRows[i].0, value: AppModel.eokS(act(t) - need(t)), g: g, scale: 0.2, pos: Theme.green, neg: Theme.orange,
-                                  valueColor: g >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
-                    }
-                    if months < 1 { Text("한 달 지나면 쌓여요").appFont(12).foregroundStyle(Theme.muted) }
-                }
-                kpiGrid([
-                    Kpi(k: String(localized: "남은 기간"), v: leftText, sub: m.isGoal ? m.goalToText : String(localized: "1년 목표")),
-                    Kpi(k: String(localized: "필요 연수익"), v: AppModel.sgn(needCagr), sub: m.isGoal ? (mM > 0 ? String(localized: "적립 포함") : String(localized: "추가 납입 없이")) : String(localized: "본전까지")),
-                    Kpi(k: String(localized: "이번 달 납입"), v: m.isGoal ? AppModel.wonK(m.gM) : String(localized: "없음"), sub: m.isGoal ? String(localized: "계획에 포함") : String(localized: "적립 없음")),
-                ], dark: true)
-                footnote(m.isGoal ? String(localized: "기준선 · 실제 = 그날 수량×종가×환율\(String(describing: m.cashKrw > 0 ? String(localized: " + 현금") : ""))")
-                         : String(localized: "기준선 · 본전 기준"))
-            }
-            .padding(16)
-        }
-        .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-// MARK: 내 길 (목표 루트) — 판정 카드 · 구성에 따라 언제 닿을까 · 계획선 그래프 · 숫자 자세히
+// MARK: 내 길 — 판정 카드 · 구성에 따라 언제 닿을까(목표 루트만) · 계획선 그래프 · 숫자 자세히. 회복 루트도 같은 화면 (기준 = 본전, 1년 안)
 
 /// 도달 시점 한 줄: 점 = 보통(가운데) 닿는 때, 막대 = 10번 중 8번(10~90%) 범위, 세로 점선 = 목표일. 위치는 연도 축 a0~a1
 struct EtaRow: View {
@@ -404,15 +277,22 @@ struct MyPathGoalView: View {
 
     var body: some View {
         let p = m.myPath, mS = p.start, mEnd = p.end, act = p.act, need = p.need
-        let f = m.forecast, K = m.gK * 1e4, now = m.trackValue
-        let yrsE = m.etaYears
-        let sims: [(String, String, GoalSim)] = [(String(localized: "지금 구성"), m.nowMix.desc, m.simulate(m.nowMix, years: yrsE))]
+        let goal = m.isGoal, f = m.forecast, K = goal ? m.gK * 1e4 : p.key, now = m.trackValue
+        // 도달 시점 비교는 목표 금액 기준이라 목표 루트만 (회복 루트는 계산하지 않는다)
+        let yrsE = goal ? m.etaYears : 0
+        let sims: [(String, String, GoalSim)] = !goal ? [] : [(String(localized: "지금 구성"), m.nowMix.desc, m.simulate(m.nowMix, years: yrsE))]
             + [AppModel.mixes[1], AppModel.mixes[2]].map { ($0.name, $0.desc, m.simulate($0, years: yrsE)) }
-        let mine = sims[0].2
         let goalMo = max(0, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400) * 12)
         let goalYear = AppModel.yearAt(goalMo)
         let ax = EtaRow.axis(sims.map(\.2), goalYear: goalYear), a0 = ax.0, a1 = ax.1
-        let leftText = AppModel.leftText(AppModel.yrs(Day.today, Day.str(m.goalToDate)))
+        let leftText = AppModel.leftText(goal ? AppModel.yrs(Day.today, Day.str(m.goalToDate)) : mEnd - mS)
+        // 확률: 목표 = 목표일에 목표 이상, 회복 = 기간 안 본전 (예전 회복 내 길과 같은 값)
+        let pPlan = goal ? f.pGoal : f.prob(min(3, mEnd - mS))
+        let need0 = K / max(1, now) - 1
+        // 타입 검사가 길어지지 않게 글은 미리 만든다
+        let leftLine: String = need0 > 0 ? String(localized: "본전까지") + " +" + String(format: "%.1f", need0 * 100) + String(localized: "% 남음") : String(localized: "본전 도달")
+        let probLine: String = goal ? String(localized: "목표일 달성 확률 \(String(describing: AppModel.pct(pPlan)))") : String(localized: "\(String(describing: m.keyName)) 확률") + " " + AppModel.pct(pPlan)
+        let markLine: String = m.keyName + " " + AppModel.eok(K)
         let gc = Calendar.current.dateComponents([.year, .month], from: m.goalToDate)
         // 그래프: 세로 눈금은 기간을 바꿔도 같게 (목표일까지 전체 값으로 정한다)
         let x1 = toGoal ? mEnd : mS + 1.0 / 12
@@ -435,9 +315,10 @@ struct MyPathGoalView: View {
             VStack(alignment: .leading, spacing: 14) {
                 // 1. 판정 카드
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("\(AppModel.wonK(m.gK)) · \(m.goalToText) · \(leftText) 남음").appFont(13).foregroundStyle(.white.opacity(0.85))
-                    Text(f.exact ? String(localized: "가능성 \(String(describing: AppModel.verdict(f.pGoal))) · \(String(describing: AppModel.pct(f.pGoal)))") : String(localized: "가능성 계산 중"))
-                        .appFont(22, .bold).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true).roll(f.exact ? String(localized: "가능성 \(String(describing: AppModel.verdict(f.pGoal))) · \(String(describing: AppModel.pct(f.pGoal)))") : String(localized: "가능성 계산 중"))
+                    Text(goal ? String(localized: "\(String(describing: AppModel.wonK(m.gK))) · \(String(describing: m.goalToText)) · \(String(describing: leftText)) 남음")
+                         : String(localized: "본전 \(String(describing: AppModel.eok(K))) · 1년 안 · \(String(describing: leftText)) 남음")).appFont(13).foregroundStyle(.white.opacity(0.85))
+                    Text(f.exact ? String(localized: "가능성 \(String(describing: AppModel.verdict(pPlan))) · \(String(describing: AppModel.pct(pPlan)))") : String(localized: "가능성 계산 중"))
+                        .appFont(22, .bold).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true).roll(f.exact ? String(localized: "가능성 \(String(describing: AppModel.verdict(pPlan))) · \(String(describing: AppModel.pct(pPlan)))") : String(localized: "가능성 계산 중"))
                     GeometryReader { g in
                         ZStack(alignment: .leading) {
                             Capsule().fill(.white.opacity(0.18))
@@ -450,18 +331,23 @@ struct MyPathGoalView: View {
                     }
                     .appFont(12, .semibold).foregroundStyle(.white.opacity(0.85))
                     HStack(alignment: .firstTextBaseline) {
-                        Text("지금대로면 \(AppModel.whenText(mine.etaMonths, cap: mine.capYears)) 도달")
-                            .appFont(13).foregroundStyle(.white.opacity(0.9))
+                        if let mine = sims.first?.2 {
+                            Text("지금대로면 \(AppModel.whenText(mine.etaMonths, cap: mine.capYears)) 도달")
+                                .appFont(13).foregroundStyle(.white.opacity(0.9))
+                        } else {
+                            Text(leftLine)
+                                .appFont(13).foregroundStyle(.white.opacity(0.9))
+                        }
                         Spacer(minLength: 8)
-                        if f.exact { Text("목표일 달성 확률 \(AppModel.pct(f.pGoal))").appFont(11).foregroundStyle(.white.opacity(0.6)) }
+                        if f.exact { Text(probLine).appFont(11).foregroundStyle(.white.opacity(0.6)) }
                     }
                 }
                 .padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(dark, in: RoundedRectangle(cornerRadius: 18))
                 .accessibilityElement(children: .combine)
 
-                // 2. 구성에 따라 언제 닿을까?
-                Card {
+                // 2. 구성에 따라 언제 닿을까? (목표 루트만)
+                if goal { Card {
                     HStack(alignment: .firstTextBaseline) {
                         Text("언제 닿을까?").appFont(15, .bold)
                         Spacer()
@@ -479,11 +365,11 @@ struct MyPathGoalView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                }
+                } }
 
                 // 3. 계획선 그래프
                 Card {
-                    Text(toGoal ? String(localized: "목표일까지") : String(localized: "시작부터 지금까지")).appFont(15, .bold)
+                    Text(toGoal ? (goal ? String(localized: "목표일까지") : String(localized: "1년 뒤까지")) : String(localized: "시작부터 지금까지")).appFont(15, .bold)
                     Canvas { ctx, size in
                         if !bandPts.isEmpty {
                             var band = linePath(bandPts.map { (X($0.0), Y($0.1)) }, in: size)
@@ -505,21 +391,21 @@ struct MyPathGoalView: View {
                     .frame(height: 160)
                     .pulse(Theme.teal, dot: 8) { s in CGPoint(x: X(mS) * s.width, y: Y(actPts.last?.1 ?? now) * s.height) }
                     .overlay(alignment: .topTrailing) {
-                        Text("목표 \(AppModel.eok(K))").appFont(11, .bold).foregroundStyle(Theme.ink)
+                        Text(markLine).appFont(11, .bold).foregroundStyle(Theme.ink)
                             .padding(.horizontal, 6).padding(.vertical, 2).background(Theme.card.opacity(0.85), in: Capsule())
                             .offset(y: max(0, Y(K) * 160 - 18))
                     }
-                    .accessibilityLabel("계획선과 실제 평가액 그래프, 목표 \(AppModel.eok(K)), 오늘 \(AppModel.eok(now))")
+                    .accessibilityLabel(String(localized: "계획선과 실제 평가액 그래프") + ", " + markLine)
                     HStack {
                         Text(m.pathStartMonth); Spacer()
-                        Text(toGoal ? "\(String(gc.year ?? 0)).\(gc.month ?? 0)" : String(localized: "다음 달"))
+                        Text(toGoal ? (goal ? "\(String(gc.year ?? 0)).\(gc.month ?? 0)" : String(localized: "1년 뒤")) : String(localized: "다음 달"))
                     }
                     .appFont(11).foregroundStyle(Theme.muted)
                     HStack(spacing: 12) {
                         legend(Theme.teal, String(localized: "실제")); legend(Theme.purple, String(localized: "계획"))
                         if toGoal { legend(Theme.teal.opacity(0.3), String(localized: "보통 범위")) }
                     }
-                    ChipRow(items: [(true, String(localized: "목표일까지")), (false, String(localized: "지금까지"))], selection: $toGoal, fill: true)
+                    ChipRow(items: [(true, goal ? String(localized: "목표일까지") : String(localized: "1년 뒤까지")), (false, String(localized: "지금까지"))], selection: $toGoal, fill: true)
                 }
 
                 // 4. 숫자 자세히 보기
@@ -545,11 +431,15 @@ struct MyPathGoalView: View {
                                           valueColor: g >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
                             }
                         }
-                        kpiGrid([
+                        kpiGrid(goal ? [
                             Kpi(k: String(localized: "남은 기간"), v: leftText, sub: m.goalToText),
                             Kpi(k: String(localized: "필요 연수익"), v: AppModel.sgn(needCagr), sub: mM > 0 ? String(localized: "적립 포함") : String(localized: "추가 납입 없이")),
                             Kpi(k: String(localized: "이번 달 납입"), v: AppModel.wonK(m.gM), sub: String(localized: "계획에 포함")),
-                            Kpi(k: String(localized: "달성 확률"), v: f.exact ? AppModel.pct(f.pGoal) : String(localized: "계산 중"), sub: String(localized: "목표일 기준")),
+                            Kpi(k: String(localized: "달성 확률"), v: f.exact ? AppModel.pct(pPlan) : String(localized: "계산 중"), sub: String(localized: "목표일 기준")),
+                        ] : [
+                            Kpi(k: String(localized: "남은 기간"), v: leftText, sub: String(localized: "1년 목표")),
+                            Kpi(k: String(localized: "필요 연수익"), v: AppModel.sgn(needCagr), sub: String(localized: "본전까지")),
+                            Kpi(k: String(localized: "\(String(describing: m.keyName)) 확률"), v: f.exact ? AppModel.pct(pPlan) : String(localized: "계산 중"), sub: String(localized: "1년 안")),
                         ], dark: true)
                     }
                     .padding(.top, 8)

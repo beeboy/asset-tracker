@@ -2,6 +2,7 @@ import Foundation
 import CryptoKit
 import CommonCrypto
 import Observation
+import UIKit
 import Security
 
 // 기기 자동 동기화: 사이트(naeilo.com 설정 > 기기 자동 동기화)와 같은 방식이다 (web/app.js esDerive·syncCall).
@@ -133,7 +134,7 @@ final class Sync {
         creds = nil
         conflict = nil
         pulledOnce = false
-        pushTask?.cancel()
+        dirty = false
         state = .off
         localAt = 0
         lastSig = nil
@@ -265,8 +266,8 @@ final class Sync {
         } catch { state = .failed(error.localizedDescription) }
     }
 
-    /// 이 기기 값이 바뀌었을 때 (4초 모아서)
-    private var pushTask: Task<Void, Never>?
+    /// 이 기기 값이 바뀌었을 때: 표시만 해 두고 올리기는 앱을 닫을 때 한 번 (flush)
+    private var dirty = false
     private var pulledOnce = false
     @MainActor
     func changed(_ m: AppModel) {
@@ -275,11 +276,19 @@ final class Sync {
         let sig = signature(m)
         guard sig != lastSig else { return }
         localAt = Date().timeIntervalSince1970 * 1000
-        pushTask?.cancel()
-        pushTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(4))
-            guard !Task.isCancelled else { return }
-            do { try await push(m) } catch { state = .failed(error.localizedDescription) }
+        dirty = true
+    }
+
+    /// 앱이 백그라운드로 갈 때 (App.swift): 바뀐 값이 있으면 한 번만 올린다. iOS가 끝낼 시간을 조금 준다
+    @MainActor
+    func flush(_ m: AppModel) {
+        guard dirty, isOn, conflict == nil, pulledOnce else { return }
+        dirty = false
+        var bg = UIBackgroundTaskIdentifier.invalid
+        bg = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(bg) }
+        Task { @MainActor in
+            do { try await push(m) } catch { dirty = true; state = .failed(error.localizedDescription) }
+            UIApplication.shared.endBackgroundTask(bg)
         }
     }
 

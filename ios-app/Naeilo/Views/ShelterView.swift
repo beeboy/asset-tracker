@@ -509,7 +509,7 @@ struct ShelterView: View {
             Pixel(name: "art_" + (cur?.id ?? "barley_tea") + (cur == nil ? "_l" : ""), width: 32, height: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(cur?.name ?? String(localized: "아직 돌아오지 않았어요")).appFont(14, .bold)
-                Text(cur?.line ?? String(localized: "오늘의 1분을 하면 첫 물건이 돌아와요.")).appFont(13).foregroundStyle(Theme.sub)
+                Text(cur?.line ?? String(localized: "물건은 하루 두 개씩 돌아와요.")).appFont(13).foregroundStyle(Theme.sub)
                 if let c = cur, let say = Lines.pick("item.\(c.id).\(m.voice(m.homeFriendShown))") ?? WItem.say(c.id, m.voice(m.homeFriendShown)) {
                     let who = m.friendName(m.homeFriendShown)
                     Text("\(who) “\(say)”").appFont(13, .bold).foregroundStyle(Theme.teal)
