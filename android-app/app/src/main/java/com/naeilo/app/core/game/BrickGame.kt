@@ -1188,7 +1188,7 @@ class GameSound {   // ios: Data/BrickGame.swift:865
             lastHit = now   // ios: Data/BrickGame.swift:918
         }
         val p = players[next]; next = (next + 1) % players.size   // ios: Data/BrickGame.swift:921
-        runCatching { p.pause(); p.flush(); p.write(b, 0, b.size, AudioTrack.WRITE_NON_BLOCKING); p.play() }   // ios: Data/BrickGame.swift:920,922 (멈추고 비운 뒤 새 소리를 넣고 재생)
+        runCatching { p.pause(); p.flush(); p.write(b, 0, b.size, AudioTrack.WRITE_NON_BLOCKING); p.play(); p.stop() }   // ios: Data/BrickGame.swift:920,922 (멈추고 비운 뒤 새 소리를 넣고 재생. 스트림 트랙은 버퍼가 다 차야 소리가 나므로 stop 으로 넣은 만큼 끝까지 내보낸다)
     }
 
     private fun tone(notes: List<Pair<Double, Double>>, sr: Double): FloatArray {   // ios: Data/BrickGame.swift:925
