@@ -34884,6 +34884,546 @@
           }
         }
       }
+    },
+    "흐름" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flow"
+          }
+        }
+      }
+    },
+    "DRNK · 샘플" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DRNK · Sample"
+          }
+        }
+      }
+    },
+    "시작 대비" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "from start"
+          }
+        }
+      }
+    },
+    "일봉" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily"
+          }
+        }
+      }
+    },
+    "주봉" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekly"
+          }
+        }
+      }
+    },
+    "월봉" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monthly"
+          }
+        }
+      }
+    },
+    "추세" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trend"
+          }
+        }
+      }
+    },
+    "지지·저항" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Levels"
+          }
+        }
+      }
+    },
+    "큰 패턴" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Patterns"
+          }
+        }
+      }
+    },
+    "캔들 패턴" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Candles"
+          }
+        }
+      }
+    },
+    "모두 켜기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show all"
+          }
+        }
+      }
+    },
+    "추세만" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trend only"
+          }
+        }
+      }
+    },
+    "키 필요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key needed"
+          }
+        }
+      }
+    },
+    "전체 종목" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All holdings"
+          }
+        }
+      }
+    },
+    "설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a key in Settings > Open API to chart your holdings"
+          }
+        }
+      }
+    },
+    "키를 넣으면 이 종목 차트가 그려져요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a key to chart this holding"
+          }
+        }
+      }
+    },
+    "일봉을 받는 중이에요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading daily candles"
+          }
+        }
+      }
+    },
+    "아직 받은 일봉이 없어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No daily candles yet"
+          }
+        }
+      }
+    },
+    "두 손가락으로 벌리면 가까이, 오므리면 주봉·월봉으로 접혀요 · 옆으로 밀면 지난 날" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spread two fingers to zoom in, pinch to fold into weekly·monthly · swipe sideways for earlier days"
+          }
+        }
+      }
+    },
+    "이름표나 선을 눌러 보세요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap a label or a line"
+          }
+        }
+      }
+    },
+    "누른 것의 뜻만 여기에 떠요. 흐린 점선 이름표는 확정 전이거나 거래량이 적었던 것이에요. 정보 제공용이며 매매 권유가 아니에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Its meaning shows here. Faint dashed labels are unconfirmed or had low volume. For information only, not a recommendation to buy or sell."
+          }
+        }
+      }
+    },
+    "지지" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support"
+          }
+        }
+      }
+    },
+    "저항" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resistance"
+          }
+        }
+      }
+    },
+    "지지선" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support line"
+          }
+        }
+      }
+    },
+    "저항선" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resistance line"
+          }
+        }
+      }
+    },
+    "추세 점" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trend dots"
+          }
+        }
+      }
+    },
+    "추세 띠" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trend band"
+          }
+        }
+      }
+    },
+    "고점·저점마다 찍은 점이에요. 점이 계단처럼 올라가면 상승, 내려가면 하락, 같은 높이를 오가면 횡보예요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A dot at each swing high and low. Dots stepping up mean an uptrend, stepping down a downtrend, and the same height a sideways market."
+          }
+        }
+      }
+    },
+    "위에서부터 월·주·일 흐름이에요. 빨강은 상승, 파랑은 하락, 회색은 횡보예요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From the top: monthly, weekly and daily trend. Red is up, blue is down, gray is sideways."
+          }
+        }
+      }
+    },
+    "주가가 여러 번 내려와 받친 가격이에요. 여러 번 닿을수록 선이 진해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A price the stock fell to and held several times. The more touches, the darker the line."
+          }
+        }
+      }
+    },
+    "주가가 여러 번 올라와 튕겨 나간 가격이에요. 여러 번 닿을수록 선이 진해요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A price the stock rose to and bounced off several times. The more touches, the darker the line."
+          }
+        }
+      }
+    },
+    "더블바텀" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double bottom"
+          }
+        }
+      }
+    },
+    "더블탑" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double top"
+          }
+        }
+      }
+    },
+    "헤드앤숄더" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Head and shoulders"
+          }
+        }
+      }
+    },
+    "상승삼각형" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ascending triangle"
+          }
+        }
+      }
+    },
+    "하락삼각형" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descending triangle"
+          }
+        }
+      }
+    },
+    "플래그" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flag"
+          }
+        }
+      }
+    },
+    "해머" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hammer"
+          }
+        }
+      }
+    },
+    "유성" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shooting star"
+          }
+        }
+      }
+    },
+    "강세 포위형" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bullish engulfing"
+          }
+        }
+      }
+    },
+    "약세 포위형" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bearish engulfing"
+          }
+        }
+      }
+    },
+    "인사이드바" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inside bar"
+          }
+        }
+      }
+    },
+    "비슷한 높이의 바닥이 두 번 생긴 모양(W)이에요. 두 바닥 사이 고점을 종가가 넘으면 확정이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Two bottoms at a similar level (W). Confirmed when a close rises above the peak between them."
+          }
+        }
+      }
+    },
+    "비슷한 높이의 꼭대기가 두 번 생긴 모양(M)이에요. 두 꼭대기 사이 저점 아래로 종가가 내려가면 확정이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Two tops at a similar level (M). Confirmed when a close falls below the low between them."
+          }
+        }
+      }
+    },
+    "가운데 꼭대기가 양옆보다 높은 세 봉우리예요. 두 골짜기를 이은 선 아래로 내려가면 확정이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Three peaks with the middle one highest. Confirmed when price falls below the line joining the two troughs."
+          }
+        }
+      }
+    },
+    "꼭대기는 같은 높이인데 바닥이 점점 높아지는 모양이에요. 그 꼭대기를 종가가 넘으면 확정이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tops at the same level while bottoms rise. Confirmed when a close breaks above that level."
+          }
+        }
+      }
+    },
+    "바닥은 같은 높이인데 꼭대기가 점점 낮아지는 모양이에요. 그 바닥 아래로 종가가 내려가면 확정이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bottoms at the same level while tops fall. Confirmed when a close breaks below that level."
+          }
+        }
+      }
+    },
+    "짧게 크게 오른 뒤(깃대) 잠시 쉬는 모양이에요. 쉬던 자리를 위로 벗어나면 확정이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A short, sharp rise (the pole) followed by a pause. Confirmed when price breaks above the pause."
+          }
+        }
+      }
+    },
+    "짧게 크게 내린 뒤(깃대) 잠시 쉬는 모양이에요. 쉬던 자리를 아래로 벗어나면 확정이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A short, sharp drop (the pole) followed by a pause. Confirmed when price breaks below the pause."
+          }
+        }
+      }
+    },
+    "아래꼬리가 몸통보다 훨씬 긴 캔들이에요. 내려갔다가 다시 끌어올린 날이라는 뜻이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A candle whose lower wick is much longer than its body: price fell, then was pushed back up."
+          }
+        }
+      }
+    },
+    "위꼬리가 몸통보다 훨씬 긴 캔들이에요. 올라갔다가 다시 밀려 내려온 날이라는 뜻이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A candle whose upper wick is much longer than its body: price rose, then was pushed back down."
+          }
+        }
+      }
+    },
+    "전날 음봉 몸통을 다음 날 양봉 몸통이 다 덮은 모양이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An up candle whose body fully covers the previous day's down body."
+          }
+        }
+      }
+    },
+    "전날 양봉 몸통을 다음 날 음봉 몸통이 다 덮은 모양이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A down candle whose body fully covers the previous day's up body."
+          }
+        }
+      }
+    },
+    "전날 고가·저가 안에서만 움직인 날이에요. 힘이 잠시 멈춘 자리예요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A day that stayed inside the previous day's high and low: momentum paused."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

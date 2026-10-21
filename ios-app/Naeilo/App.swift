@@ -34,7 +34,7 @@ struct RootView: View {
             NavigationStack(path: $model.holdPath) { HoldingsView() }
                 .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
             NavigationStack { FlowView() }   // 차트 탭 (이름은 FlowTab 한 곳에서)
-                .tabItem { Label(FlowTab.name, systemImage: FlowTab.icon) }.tag(Tab.flow)
+                .tabItem { Label(LocalizedStringKey(FlowTab.name), systemImage: FlowTab.icon) }.tag(Tab.flow)
             NavigationStack(path: $model.analysisPath) { AnalysisView() }
                 .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
             NavigationStack(path: $model.boardPath) {

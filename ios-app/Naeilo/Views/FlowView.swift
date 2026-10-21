@@ -62,7 +62,7 @@ struct FlowView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
-        .navigationTitle(FlowTab.name)
+        .navigationTitle(LocalizedStringKey(FlowTab.name))
         .sheet(isPresented: $showAll) { allSheet }
         // 열 때 담은 종목 일봉을 받는다 (하루 한 번만 실제로 부른다)
         .task(id: hasKey) { await store.ensure(ids) }
