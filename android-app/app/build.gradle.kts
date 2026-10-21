@@ -37,7 +37,7 @@ android {
 
 // iOS 원본 자료 중 앱이 읽는 것만 빌드 때 복사한다 (저장소에 같은 파일을 두 벌 두지 않는다)
 val copyIosAssets by tasks.registering(Copy::class) {
-    from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json") }
+    from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json", "lines_ko.json", "lines_app_en.json", "story_ko.json", "story_en.json") }
     from("../../ios-app/WidgetShared") { include("lines_en.json") }
     // 아이폰 번들과 같은 시세 자료 (project.yml: data/quotes.json·stats.json·prices). 앱이 아직 받지 못했을 때만 쓴다
     from("../../data") { include("quotes.json", "stats.json") }
@@ -45,8 +45,8 @@ val copyIosAssets by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("iosAssets"))
 }
 // iOS 그림(xcassets) 중 화면이 쓰는 묶음만 drawable-nodpi 로 (이름 = imageset 이름). 도트 그림은 보간 없이 키운다 (Pixel)
-// 새 묶음이 필요하면 접두어를 더한다: spr_·sil_ 인물, mo_ 동작, iconprev_ 앱 아이콘 미리보기, drnk_ 샘플 종목 로고, me_ 내 캐릭터 부품, bg_·art_room 쉼터 방
-val iosImagePrefixes = listOf("spr_", "sil_", "mo_", "iconprev_", "drnk_", "me_", "bg_", "art_room")
+// 새 묶음이 필요하면 접두어를 더한다: spr_·sil_ 인물, mo_ 동작, iconprev_ 앱 아이콘 미리보기, drnk_ 샘플 종목 로고, me_ 내 캐릭터 부품, bg_ 쉼터 방, art_ 방·물건·서재 장 그림
+val iosImagePrefixes = listOf("spr_", "sil_", "mo_", "iconprev_", "drnk_", "me_", "bg_", "art_")
 val copyIosImages by tasks.registering(Copy::class) {
     from("../../ios-app/Naeilo/Assets.xcassets") { iosImagePrefixes.forEach { include("$it*.imageset/*.png") } }
     // 다크 그림(<이름>_dark.png)은 제 이름 그대로 둔다 (묶음 이름으로 바꾸면 밝은 그림과 겹친다)

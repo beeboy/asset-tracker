@@ -22,7 +22,6 @@ import com.naeilo.app.core.calc.keyValue
 import com.naeilo.app.core.calc.trackValue
 import com.naeilo.app.core.cformat
 import com.naeilo.app.net.Sync
-import com.naeilo.app.pending.Story
 import com.naeilo.app.pending.Support
 import com.naeilo.app.ui.settings.SettingsRoute
 import com.naeilo.app.ui.Theme
@@ -539,7 +538,7 @@ class Remind private constructor() {
         // 서재: 열렸지만 다 안 읽은 장 하나
         val story = Story.shared   // ios: Data/Remind.swift:397
         // ios: Data/Remind.swift:398
-        (0 until Shelter.chapters.size).firstOrNull { m.chapterOn(it) && !story.isDone(Story.Kind.side, it) }?.let { i ->
+        (0 until Shelter.chapters.size).firstOrNull { m.chapterOn(it) && !story.isDone(StoryBook.side, it) }?.let { i ->
             val ch = Shelter.chapters[i]; val started = m.readPos.contains(i)   // ios: Data/Remind.swift:399
             // Data/Remind.swift:400 (검사 예외: 같은 글)
             a.add(RemindItem(id = "read.$i", cat = RemindCat.doing, text = "서재에 외전 ${ch.title} ‘${ch.name}’이 기다리고 있어요." + (if (started) " 이어 읽을래요?" else ""),

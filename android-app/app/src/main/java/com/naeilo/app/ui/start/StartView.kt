@@ -48,7 +48,7 @@ import com.naeilo.app.AppModel
 import com.naeilo.app.core.calc.Route
 import com.naeilo.app.core.calc.eta
 import com.naeilo.app.core.calc.wonK
-import com.naeilo.app.pending.Lines
+import com.naeilo.app.data.Lines
 import com.naeilo.app.ui.PixelN
 import com.naeilo.app.ui.PrimaryButton
 import com.naeilo.app.ui.Sheet

@@ -1,5 +1,6 @@
 package com.naeilo.app
 
+import com.naeilo.app.data.go
 import com.naeilo.app.ui.board.BoardView
 import com.naeilo.app.ui.board.boardPage
 import com.naeilo.app.core.calc.isGoal
@@ -91,7 +92,7 @@ import com.naeilo.app.data.persists
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.Sync
 import com.naeilo.app.pending.GamePause
-import com.naeilo.app.pending.LineClock
+import com.naeilo.app.data.LineClock
 import com.naeilo.app.pending.Notifier
 import com.naeilo.app.data.Remind
 import com.naeilo.app.pending.Support
@@ -170,6 +171,7 @@ fun RootView(model: AppModel) {
                             MyPathCompareRoute -> NavPage(MyPathCompareRoute.title) { MyPathCompareView(model) }   // 내 길 '내 구성으로 비교'
                             is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailScreen(model, r.factor, r.start) }   // 외부 요인 상세
                             is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }   // 금리 시나리오 근거
+                            is com.naeilo.app.ui.calm.CalmFriendRoute -> com.naeilo.app.ui.shelter.characterPage(model, r.friend, invest = true)   // 내 투자 습관 → 인물 투자 갈래
                             else -> NavPage { GoalSetPage(model) }   // 전망의 '목표 고치기'
                         }
                     }
@@ -344,3 +346,44 @@ private fun TabBar(selected: Tab, tint: androidx.compose.ui.graphics.Color, onSe
     }
 }
 
+
+// ── 밖에서 여는 길: 알림을 누름 (iOS NotificationDelegate.open) · naeilo:// 주소 (iOS onOpenURL) ──
+
+/** 알림이 실어 온 열 곳 (Notifier 가 PendingIntent 에 넣는 글자. iOS 와 같은 값) */
+const val NOTIFY_OPEN = "naeilo.open"
+
+/** 액티비티로 들어온 것: 알림이면 그 화면, naeilo:// 주소면 그 화면 */
+fun openIntent(model: AppModel, intent: android.content.Intent?) {
+    intent ?: return
+    intent.getStringExtra(NOTIFY_OPEN)?.let { o -> intent.removeExtra(NOTIFY_OPEN); openNotification(model, o); return }
+    val u = intent.data ?: return
+    if (u.scheme == "naeilo") { intent.data = null; openUrl(model, u) }
+}
+
+// ios: App.swift:78,79,80
+fun openNotification(model: AppModel, o: String) {
+    when (o) {
+        "home" -> model.tab = Tab.home   // ios: App.swift:81
+        "tax" -> { model.tab = Tab.settings; model.settingsPath = listOf(com.naeilo.app.ui.settings.SettingsRoute.tax) }   // ios: App.swift:82
+        "rate" -> model.go(com.naeilo.app.data.RemindGo.rateScen)   // ios: App.swift:83
+        "ext" -> model.go(com.naeilo.app.data.RemindGo.external)   // ios: App.swift:84
+        else -> model.tab = Tab.board   // ios: App.swift:85
+    }
+}
+
+// 잠긴 위젯을 누르면 앱 시작 3단계로
+// ios: App.swift:90
+fun openUrl(model: AppModel, url: android.net.Uri) {
+    // ios: App.swift:91 개발자: 토스 시세 주소
+    if (url.host == "toss") { com.naeilo.app.core.TossFeed.setBase(from = url); kotlinx.coroutines.MainScope().launch { com.naeilo.app.net.Market.shared.refresh(held = model.holdings.map { it.symbol }.toSet(), force = true) }; return }
+    if (url.host == "shelter") { model.tab = Tab.home; model.homePath = listOf("shelter"); return }   // ios: App.swift:92 인물 위젯 (못 만난 인물)
+    val i = url.lastPathSegment?.toIntOrNull()
+    // ios: App.swift:93 서재 위젯
+    if (url.host == "read" && i != null && i in 0 until 6 && model.chapterOn(i)) {
+        model.tab = Tab.home; model.homePath = listOf("shelter", "read:$i"); return   // ios: App.swift:94
+    }
+    if (url.host == "subscribe") { model.tab = Tab.settings; model.settingsPath = listOf(com.naeilo.app.ui.settings.SettingsRoute.support); return }   // ios: App.swift:96 7일 무료가 끝나 잠긴 위젯
+    if (url.host != "unlock") return   // ios: App.swift:97
+    model.tab = Tab.board   // ios: App.swift:98
+    model.boardPath = if (model.playOn) emptyList() else listOf(com.naeilo.app.core.calc.MissionRoute.nx)   // ios: App.swift:99
+}

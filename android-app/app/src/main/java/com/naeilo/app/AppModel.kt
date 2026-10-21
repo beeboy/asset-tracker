@@ -2,6 +2,9 @@ package com.naeilo.app
 
 import com.naeilo.app.core.cformat
 import com.naeilo.app.pending.*
+import com.naeilo.app.data.Story
+import com.naeilo.app.data.StoryBook
+import com.naeilo.app.data.Lines
 import com.naeilo.app.data.Remind
 import com.naeilo.app.ui.analysis.AnalysisRoute
 import com.naeilo.app.ui.settings.SettingsRoute
@@ -423,7 +426,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     fun friendOn(i: Int): Boolean = i == 0 || i <= friendsOpen   // ios: Data/AppModel.swift:424
     /** 외전 프롤로그~5장: 처음부터 프롤로그, 앞 장을 끝까지 읽으면 다음 장 (2026-10-16 결정) */
     fun chapterOn(i: Int): Boolean =   // ios: Data/AppModel.swift:426
-        devAll || i == 0 || Story.shared.isDone(Story.Kind.side, i - 1)   // ios: Data/AppModel.swift:427
+        devAll || i == 0 || Story.shared.isDone(StoryBook.side, i - 1)   // ios: Data/AppModel.swift:427
     fun friendWhen(i: Int): String = if (i == 0) "처음부터 · 홈" else "${i + 1}일째"   // ios: Data/AppModel.swift:429
 
     // 오늘의 1분

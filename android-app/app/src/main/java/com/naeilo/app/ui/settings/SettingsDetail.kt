@@ -81,7 +81,7 @@ import com.naeilo.app.pending.GardenCharView
 import com.naeilo.app.pending.HeightCharView
 import com.naeilo.app.pending.HillCharView
 import com.naeilo.app.pending.LadderCharView
-import com.naeilo.app.pending.Lines
+import com.naeilo.app.data.Lines
 import com.naeilo.app.pending.Notifier
 import com.naeilo.app.pending.PuzzleCharView
 import com.naeilo.app.ui.remind.RemindOptions

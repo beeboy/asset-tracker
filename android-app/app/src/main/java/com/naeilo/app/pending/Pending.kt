@@ -29,35 +29,13 @@ class Support {
     fun start() {}; fun tick() {}
     companion object { val shared = Support() }
 }
-// TODO(Story): 진짜 이식 때 지움
-class Story { enum class Kind { side }; fun isDone(k: Kind, i: Int): Boolean = false; companion object { val shared = Story() } }
-// TODO(Lines): 진짜 이식 때 지움
-object Lines { fun pick(key: String, vars: Map<String, String> = emptyMap()): String? = null }
-// TODO(Story): 진짜 이식 때 지움. 원고 장은 받은 JSON 그대로 둔다 (StoreAPI.Book)
-typealias StoryChapter = JsonElement
-// TODO(Story): 진짜 이식 때 지움. 경우 이름 = iOS rawValue
-enum class StoryLang { ko, en }
-// TODO(Story): 진짜 이식 때 지움. 경우 이름 = iOS rawValue
-enum class StoryBook { side, vol1 }
-// TODO(LineClock): 진짜 이식 때 지움
-class LineClock { fun next() {}; companion object { val shared = LineClock() } }
 // TODO(WidgetBridge): 진짜 이식 때 지움
 object WidgetBridge { fun write(m: AppModel) {} }
 // TODO(SurfCloset): 진짜 이식 때 지움. 저장 키는 iOS 와 같다 (백업 파일에 들어간다)
 object SurfCloset { val keys = listOf("surf.total", "surf.fever", "surf.splash", "surf.snap", "surf.hard", "surf.board", "surf.hat"); fun keep() {} }
-// TODO(TownBook): 진짜 이식 때 지움
-class TownBook { fun reload() {}; companion object { val shared = TownBook() } }
-// TODO(TownLog): 진짜 이식 때 지움
-class TownLog { fun reload() {}; companion object { val shared = TownLog() } }
 
 
 
-// TODO(홈에서 여는 다른 단계 화면): 쉼터·평행세계·목표 정하기·서재·내 캐릭터·인물 상세
-@Composable fun ShelterView(onlyLibrary: Boolean = false) {}
-// TODO(Reader)
-@Composable fun ReaderView(index: Int, book: StoryBook = StoryBook.side) {}
-// TODO(CharacterDetail)
-@Composable fun CharacterDetailView(friend: Friend, invest: Boolean, focus: Int?) {}
 // TODO(SupportView 구독 단계)
 @Composable fun SupportView() {}
 
@@ -121,13 +99,9 @@ val LocalCharDark = androidx.compose.runtime.compositionLocalOf { false }
 val LocalCharHide = androidx.compose.runtime.compositionLocalOf { false }
 // TODO(TownView 동네 I): 소식판의 [동네] 버튼과 전체 화면
 @Composable fun TownButton() {}
-// TODO(CalmView 습관 H)
-@Composable fun CalmView() {}
 // TODO(SupportView 구독): 구독하면 열리는 화면
 @Composable fun SubLocked(what: String) {}
 
-// TODO(I 쉼터): 인물 그림 뒤 바탕색 (Shelter.swift spriteBacking)
-@Composable fun com.naeilo.app.data.Shelter.spriteBacking(@Suppress("UNUSED_PARAMETER") id: String): androidx.compose.ui.graphics.Color = com.naeilo.app.ui.Theme.line
 
 
 

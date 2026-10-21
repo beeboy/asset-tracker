@@ -1,5 +1,8 @@
 package com.naeilo.app.ui.home
 
+import com.naeilo.app.ui.shelter.shelterPage
+import com.naeilo.app.ui.shelter.readerPage
+import com.naeilo.app.ui.shelter.characterPage
 import com.naeilo.app.core.cformat
 import com.naeilo.app.ui.analysis.ParallelBasketView
 import com.naeilo.app.ui.analysis.ParallelHomeCard
@@ -77,18 +80,15 @@ import com.naeilo.app.net.Market
 import com.naeilo.app.net.quote
 import com.naeilo.app.ui.analysis.AnalysisRoute
 import com.naeilo.app.ui.me.CharPixel
-import com.naeilo.app.pending.CharacterDetailView
 import com.naeilo.app.ui.board.DepositLeverCard
 import com.naeilo.app.ui.goal.GoalSetView
 import com.naeilo.app.data.MarketEvents
 import com.naeilo.app.ui.me.meEditPage
-import com.naeilo.app.pending.ReaderView
 import com.naeilo.app.data.Remind
 import com.naeilo.app.data.RemindCat
 import com.naeilo.app.data.RemindGo
 import com.naeilo.app.ui.remind.RemindSheet
-import com.naeilo.app.pending.ShelterView
-import com.naeilo.app.pending.StoryBook
+import com.naeilo.app.data.StoryBook
 import com.naeilo.app.data.color
 import com.naeilo.app.data.go
 import com.naeilo.app.ui.analysis.myPath
@@ -165,27 +165,23 @@ fun HomeView(m: AppModel) {
 
 /** 홈에서 여는 화면 (navigationDestination for: String) */
 // ios: Views/HomeView.swift:31
-fun homePage(m: AppModel, route: String): NavPage = when (route) {
-    // 이동 막대 제목은 화면이 정한다 (navigationTitle)
-    "parallel" -> NavPage(ParallelTitles.main) { ParallelView(m) }   // ios: Views/HomeView.swift:34
-    "me" -> meEditPage(m)   // ios: Views/HomeView.swift:39 (제목은 화면이 정한다)
-    "parallel:basket" -> NavPage(ParallelTitles.basket) { val nb = LocalNavBack.current; ParallelBasketView(m) { nb?.pop?.invoke() } }   // ios: Views/HomeView.swift:35
-    else -> NavPage { when {
-        route == "shelter" -> ShelterView()   // ios: Views/HomeView.swift:32
-        route == "library" -> ShelterView(onlyLibrary = true)   // ios: Views/HomeView.swift:33
-        route == "goal" -> GoalSetView(m, fromSettings = true)   // ios: Views/HomeView.swift:36
-        route.startsWith("read:") && route.drop(5).toIntOrNull() != null -> ReaderView(index = route.drop(5).toInt())   // ios: Views/HomeView.swift:37
-        route.startsWith("vol1:") && route.drop(5).toIntOrNull() != null -> ReaderView(index = route.drop(5).toInt(), book = StoryBook.vol1)   // ios: Views/HomeView.swift:38
-        // ios: Views/HomeView.swift:40
-        route.startsWith("char:") && Shelter.friends.any { it.id == route.drop(5).split(":").firstOrNull() } -> {
-            val f = Shelter.friends.first { it.id == route.drop(5).split(":").firstOrNull() }
-            // char:<인물> = 소설 속 갈래로, char:<인물>:invest = 투자하는 갈래로, …:invest:h<번호> = 그 버릇을 펴서
-            val parts = route.split(":")   // ios: Views/HomeView.swift:42
-            CharacterDetailView(friend = f, invest = parts.contains("invest"),   // ios: Views/HomeView.swift:43
-                                focus = parts.lastOrNull()?.let { if (it.startsWith("h")) it.drop(1).toIntOrNull() else null })   // ios: Views/HomeView.swift:44
-        }
+fun homePage(m: AppModel, route: String): NavPage {
+    // 이동 막대 제목은 화면이 정한다 (navigationTitle). 읽기·인물 상세는 막대를 스스로 그린다
+    val parts = route.split(":")   // ios: Views/HomeView.swift:42 char:<인물> = 소설 속 갈래로, char:<인물>:invest = 투자하는 갈래로, …:invest:h<번호> = 그 버릇을 펴서
+    return when {
+        route == "shelter" -> shelterPage(m)   // ios: Views/HomeView.swift:32
+        route == "library" -> shelterPage(m, onlyLibrary = true)   // ios: Views/HomeView.swift:33
+        route == "parallel" -> NavPage(ParallelTitles.main) { ParallelView(m) }   // ios: Views/HomeView.swift:34
+        route == "parallel:basket" -> NavPage(ParallelTitles.basket) { val nb = LocalNavBack.current; ParallelBasketView(m) { nb?.pop?.invoke() } }   // ios: Views/HomeView.swift:35
+        route == "goal" -> NavPage { GoalSetView(m, fromSettings = true) }   // ios: Views/HomeView.swift:36
+        route.startsWith("read:") && route.drop(5).toIntOrNull() != null -> readerPage(m, index = route.drop(5).toInt())   // ios: Views/HomeView.swift:37
+        route.startsWith("vol1:") && route.drop(5).toIntOrNull() != null -> readerPage(m, index = route.drop(5).toInt(), book = StoryBook.vol1)   // ios: Views/HomeView.swift:38
+        route == "me" -> meEditPage(m)   // ios: Views/HomeView.swift:39 (제목은 화면이 정한다)
+        // ios: Views/HomeView.swift:40,43,44
+        route.startsWith("char:") && Shelter.friends.any { it.id == route.drop(5).split(":").firstOrNull() } ->
+            characterPage(m, Shelter.friends.first { it.id == route.drop(5).split(":").firstOrNull() }, invest = parts.contains("invest"), focus = parts.lastOrNull()?.let { if (it.startsWith("h")) it.drop(1).toIntOrNull() else null })
+        else -> NavPage {}
     }
-}
 }
 
 // 어제 종가 기준 평가액 + 본전 진행 막대

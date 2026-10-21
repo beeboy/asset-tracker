@@ -97,9 +97,9 @@ import com.naeilo.app.data.friendName
 import com.naeilo.app.data.meUnlocked
 import com.naeilo.app.data.meVoice
 import com.naeilo.app.data.roomBG
-import com.naeilo.app.pending.MeMotion
-import com.naeilo.app.pending.MeTurntable
-import com.naeilo.app.pending.PixBuf
+import com.naeilo.app.ui.MeMotion
+import com.naeilo.app.ui.MeTurntable
+import com.naeilo.app.ui.PixBuf
 import com.naeilo.app.pending.WidgetBridge
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.ConfirmSheet

@@ -3,9 +3,9 @@ package com.naeilo.app.net
 import com.naeilo.app.core.Config
 import com.naeilo.app.core.FeedReq
 import com.naeilo.app.core.NJson
-import com.naeilo.app.pending.StoryBook
-import com.naeilo.app.pending.StoryChapter
-import com.naeilo.app.pending.StoryLang
+import com.naeilo.app.data.StoryBook
+import com.naeilo.app.data.StoryChapter
+import com.naeilo.app.data.StoryLang
 import com.naeilo.app.pending.Support
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

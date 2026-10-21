@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 시세·동기화·검색을 받는다 (아이폰은 따로 허락이 필요 없다) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 동네 날씨: 대략 위치만 (거절해도 서울 날씨로 동작) -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher_star"
@@ -12,7 +14,16 @@
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|density|uiMode|fontScale"
-            android:windowSoftInputMode="adjustResize" />
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <!-- 위젯·알림 밖에서 여는 주소 naeilo://unlock·shelter·read/3·subscribe (iOS onOpenURL) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="naeilo" />
+            </intent-filter>
+        </activity>
         <!-- 앱 아이콘 바꾸기 (설정 > 앱 아이콘): 런처 별칭 하나만 켠다. 기본은 내일의 별 -->
         <activity-alias android:name=".IconDefault" android:targetActivity=".MainActivity" android:exported="true" android:enabled="true" android:icon="@drawable/ic_launcher_star">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>

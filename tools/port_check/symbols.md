@@ -64,3 +64,13 @@ SF 의 `.fill` 은 채움(FILL 1) 모양으로. 코드에서는 `Sym(R.drawable.
 | `gamecontroller` | `sports_esports` | - | 게임 단추 |
 | `nosign` | `block` | - | 내 캐릭터 부품 없음 |
 | `arrow.counterclockwise` | `replay` | - | 내 캐릭터 처음으로 |
+| `circle.dotted` | `radio_button_partial` | - | 내 투자 습관 다음 걸음 |
+| `play.fill` | `play_arrow` | 채움 | 서재 이어서 읽기·게임 |
+| `photo` | `image` | - | 동네 꾸미기 |
+| `pause.fill` | `pause` | 채움 | 게임 멈춤 |
+| `trophy` | `trophy` | - | 게임 기록 |
+| `star` | `star` | - | 파도 별 |
+| `heart` | `favorite` | - | 파도 하트 |
+| `heart.fill` | `favorite` | 채움 | 파도 하트 |
+| `cloud.fill` | `cloud` | 채움 | 파도 하늘 |
+| `circle.fill` | `circle` | 채움 | 파도 점 |

@@ -12,8 +12,8 @@ import com.naeilo.app.data.apply
 import com.naeilo.app.data.progress
 import com.naeilo.app.data.saveProgress
 import com.naeilo.app.pending.SurfCloset
-import com.naeilo.app.pending.TownBook
-import com.naeilo.app.pending.TownLog
+import com.naeilo.app.ui.town.TownBook
+import com.naeilo.app.ui.town.TownLog
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind

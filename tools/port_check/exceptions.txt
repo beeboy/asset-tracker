@@ -5,8 +5,6 @@
 App.swift:8 알림 단계: 알림 누름 처리(NotificationDelegate)
 App.swift:9 위젯 단계: 토스 키를 위젯과 나누기 (TossKeys)
 App.swift:10 구독 단계: Play Billing 확인·거래 듣기 (Support)
-App.swift:78-88 알림 단계: 알림을 누르면 탭·화면 열기
-App.swift:89-100 위젯·딥링크 단계: naeilo:// 주소로 탭·화면 열기
 
 # B 단계 (models)
 # models 그룹: WidgetShared/Models.swift → core/Models.kt + core/Feeds.kt
@@ -180,11 +178,32 @@ Views/MeViews.swift:725 플랫폼: CGContext 비트 수·한 줄 바이트(ARGB_
 # H1 (미션): Views/MissionViews.swift → ui/board/MissionViews.kt
 Views/MissionViews.swift:569 검사기 한계: 보간 속 따옴표 (옮김, MissionViews.kt TaxResultView 1위 종목 줄)
 # H3 (목표): Views/GoalViews.swift → ui/goal/GoalViews.kt
-Views/GoalViews.swift:630 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetView 머리 미션 번호)
-Views/GoalViews.swift:643 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalViews.kt GoalSetView sub)
-Views/GoalViews.swift:712 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetResultView Page)
-Views/GoalViews.swift:725 검사기 한계: 보간 속 따옴표 String(format: "%g") (옮김, GoalViews.kt GoalSetResultView 눈금 줄)
-Views/GoalViews.swift:765 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixView 머리 미션 번호)
-Views/GoalViews.swift:820 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixResultView Page)
-Views/GoalViews.swift:867 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView Page)
-Views/GoalViews.swift:889 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView 팔 게 없음 줄)
+Views/GoalViews.swift:430 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetView 머리 미션 번호)
+Views/GoalViews.swift:443 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalViews.kt GoalSetView sub)
+Views/GoalViews.swift:512 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetResultView MissionPage)
+Views/GoalViews.swift:525 검사기 한계: 보간 속 따옴표 String(format: "%g") (옮김, GoalViews.kt GoalSetResultView 눈금 줄)
+Views/GoalViews.swift:565 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixView 머리 미션 번호)
+Views/GoalViews.swift:620 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixResultView MissionPage)
+Views/GoalViews.swift:667 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView MissionPage)
+Views/GoalViews.swift:689 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView 팔 게 없음 줄)
+# I 쉼터·동네·인물: ShelterView·HoldingsView@912-2153·TownPanel·CharMotion·CalmView·Story·Lines
+Views/ShelterView.swift:84 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt ContinueCard)
+Views/ShelterView.swift:228 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt MeTileLabel)
+Views/ShelterView.swift:243 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt MeHero)
+Views/ShelterView.swift:286 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt Gate)
+Views/ShelterView.swift:380 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt FoldRow)
+Views/ShelterView.swift:784 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt ReaderNext)
+Views/HoldingsView.swift:1016 검사기 한계: .animation(nil) 은 애니메이션 끄기라 Compose 에선 할 일 없음 (옮김, ui/town/TownViews.kt TownView 주민 그리기)
+Views/HoldingsView.swift:1230 검사기 한계: Long 범위를 넘는 16진 리터럴은 Kotlin 에서 uL 접미사 (옮김, ui/town/TownViews.kt TownLook.seed)
+Views/CharMotion.swift:162 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt PixBuf.read)
+Views/CharMotion.swift:172 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt PixBuf.image)
+Views/CharMotion.swift:195 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt MeMotion.image)
+Views/CalmView.swift:94 검사기 한계: 보간 속 따옴표 (옮김, ui/calm/CalmView.kt 평정 지수란 카드)
+# 아이폰 b6dfcbac 따라잡기 (회복 루트도 100칸 카드)
+Views/GoalViews.swift:82 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalCellsCard 머리 목표/본전까지 100칸)
+Views/GoalViews.swift:94 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalCellsCard 읽어 주기 글)
+# 아이폰 ac191bad 따라잡기 (내 길: 회복 루트도 같은 화면)
+Views/AnalysisDetail.swift:294 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt probLine)
+Views/AnalysisDetail.swift:318-321 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt 판정 카드 첫 줄·가능성)
+Views/AnalysisDetail.swift:442 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt 회복 KPI 본전 확률)
+

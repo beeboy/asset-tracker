@@ -2,6 +2,7 @@ package com.naeilo.app.core.calc
 
 import com.naeilo.app.core.cformat
 import com.naeilo.app.pending.*
+import com.naeilo.app.data.Lines
 import com.naeilo.app.net.*
 import com.naeilo.app.AppModel
 import com.naeilo.app.core.Day

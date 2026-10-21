@@ -1,5 +1,6 @@
 package com.naeilo.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,10 +22,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // ios: App.swift:12,13
         setContent { NaeiloApp(model, window) }
+        openIntent(model, intent)   // 앱을 처음 여는 주소·알림
         // 시세·추가한 종목 저장 파일과 번들 자료는 첫 화면을 그린 뒤 딴 줄에서 미리 읽는다
         // (앱 시작과 겹치면 시작이 느려지고, 안 읽어 두면 탭을 처음 열 때 파일을 기다린다)
         window.decorView.post { Thread { runCatching { Market.shared; CustomSymbols.shared; Sample.symbols } }.start() }
     }
+
+    /** 이미 떠 있는 앱으로 온 주소·알림 (singleTop) */
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); openIntent(model, intent) }
 
     override fun onStart() { super.onStart(); model.onForeground(true) }
     override fun onStop() { super.onStop(); model.onForeground(false) }

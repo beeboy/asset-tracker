@@ -164,6 +164,9 @@ val SF: Map<String, Int> = mapOf(
     "star.fill" to R.drawable.ms_star_fill, "medal.fill" to R.drawable.ms_military_tech_fill, "trophy.fill" to R.drawable.ms_trophy_fill, "crown.fill" to R.drawable.ms_workspace_premium_fill,
     "square.grid.3x3.fill" to R.drawable.ms_grid_on, "water.waves" to R.drawable.ms_waves, "gamecontroller" to R.drawable.ms_sports_esports,
     "nosign" to R.drawable.ms_block, "arrow.counterclockwise" to R.drawable.ms_replay,
+    "circle.dotted" to R.drawable.ms_radio_button_partial, "play.fill" to R.drawable.ms_play_arrow_fill, "photo" to R.drawable.ms_image,
+    "pause.fill" to R.drawable.ms_pause_fill, "trophy" to R.drawable.ms_trophy, "star" to R.drawable.ms_star, "heart" to R.drawable.ms_favorite,
+    "heart.fill" to R.drawable.ms_favorite_fill, "cloud.fill" to R.drawable.ms_cloud_fill, "circle.fill" to R.drawable.ms_circle_fill,
 )
 
 /** Image(systemName:) 자리. size = 글자 크기(pt), 기호 칸은 글자 크기의 1.25배. scaled = 큰 글자 설정을 따를지 (.font(.system(size:)) 도 따른다) */

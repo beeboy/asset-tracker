@@ -66,7 +66,7 @@ import com.naeilo.app.core.calc.keyValue
 import com.naeilo.app.core.calc.trackValue
 import com.naeilo.app.data.Currency
 import com.naeilo.app.net.Market
-import com.naeilo.app.pending.CalmView
+import com.naeilo.app.ui.calm.CalmView
 import com.naeilo.app.ui.me.CharHead
 import com.naeilo.app.ui.goal.GoalSetView
 import com.naeilo.app.data.MarketEvents
@@ -136,7 +136,7 @@ fun AnalysisPager(m: AppModel, start: AnalysisRoute) {
         AnalysisRoute.dividend -> DividendScreen(m)   // ios: Views/AnalysisView.swift:50
         AnalysisRoute.fx -> FxImpactView(m)   // ios: Views/AnalysisView.swift:51
         AnalysisRoute.glance -> GlanceView(m)   // ios: Views/AnalysisView.swift:52
-        AnalysisRoute.calm -> CalmView()   // ios: Views/AnalysisView.swift:53
+        AnalysisRoute.calm -> CalmView(m)   // ios: Views/AnalysisView.swift:53
     }
 
     // ios: Views/AnalysisView.swift:64

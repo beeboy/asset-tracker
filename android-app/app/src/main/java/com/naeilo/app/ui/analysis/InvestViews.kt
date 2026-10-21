@@ -51,7 +51,7 @@ import com.naeilo.app.data.MeSample
 import com.naeilo.app.data.Shelter
 import com.naeilo.app.ui.me.MeArt
 import com.naeilo.app.ui.me.MeAvatar
-import com.naeilo.app.pending.spriteBacking
+import com.naeilo.app.ui.shelter.spriteBacking
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.FitText

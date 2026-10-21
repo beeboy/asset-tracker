@@ -33,7 +33,7 @@ import com.naeilo.app.data.Sample
 import com.naeilo.app.data.Symbol
 import com.naeilo.app.data.persists
 import com.naeilo.app.data.recordDay
-import com.naeilo.app.pending.LineClock
+import com.naeilo.app.data.LineClock
 import com.naeilo.app.pending.WidgetBridge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
