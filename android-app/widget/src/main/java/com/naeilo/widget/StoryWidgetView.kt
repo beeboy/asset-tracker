@@ -41,7 +41,7 @@ object StoryWidgetView {
     // ios: Widgets/StoryWidget.swift:44,41
     fun body(p: Pen, s: WStory, date: Instant) = with(p) {
         // ios: Widgets/StoryWidget.swift:90,91,92
-        rect(0f, 0f, w, h, Brush.linearGradient(listOf(Color(red = 0x1E / 255f, green = 0x24 / 255f, blue = 0x36 / 255f), Color(red = 0x2A / 255f, green = 0x33 / 255f, blue = 0x50 / 255f)), start = Offset(0f, 0f), end = Offset(w, h)))
+        rect(-bx, -by, w + bx * 2, h + by * 2, Brush.linearGradient(listOf(Color(red = 0x1E / 255f, green = 0x24 / 255f, blue = 0x36 / 255f), Color(red = 0x2A / 255f, green = 0x33 / 255f, blue = 0x50 / 255f)), start = Offset(-bx, -by), end = Offset(w + bx, h + by)))
         // ios: Widgets/StoryWidget.swift:88,89
         ink = Color.White
         // ios: Widgets/StoryWidget.swift:45

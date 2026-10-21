@@ -40,8 +40,10 @@ val LocalCharHide = compositionLocalOf<Boolean?> { null }
 
 /** 위젯 안쪽 여백 (아이폰 작은 위젯 콘텐츠 여백 16pt) */
 const val pad = 16f
-/** 위젯 그림의 기준 폭 (아이폰 작은 위젯 158pt): 앱 안내 그림·홈 위젯이 같은 배치가 되게 */
-const val designW = 158f
+/** 위젯 그림의 기준 높이 (아이폰 작은 위젯 158pt): 설정 안내 그림(Tile)과 같다 */
+const val designH = 158f
+/** 설정 안내 그림의 폭 = 화면 폭에서 좌우 여백 16 둘·사이 12 를 빼고 반 (Tile 은 158 보다 넓으면 줄이지 않는다) */
+fun guideW(ctx: Context): Float = maxOf(158f, (ctx.resources.configuration.screenWidthDp - 44) / 2f)
 /** 홈 2×2 칸의 세로/가로 비 (삼성 기본 위젯 기준) */
 const val tileRatio = 1.2f
 
@@ -67,20 +69,6 @@ class Rendered(val bitmap: Bitmap, val hits: List<Hit>)
 /** 위젯 한 장 (wDp × hDp) 을 비트맵으로. 모서리는 둥글게 자른다 */
 fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designW: Float = 0f, clip: Boolean = true, setup: Pen.() -> Unit = {}, draw: Pen.() -> Unit): Rendered {
     Store.init(ctx)
-    if (designW > 0f && kotlin.math.abs(hDp - wDp) > 0.5f) {
-        // 칸이 정사각형이 아니면: 설정 안내 그림과 똑같은 정사각형으로 그려 가운데 두고, 남는 곳은 바탕 끝줄을 늘려 채운다 (CLAMP)
-        val side = min(wDp, hDp)
-        val sq = render(ctx, side, side, dark, designW, clip = false, setup = setup, draw = draw)
-        val px = sq.bitmap.width / side   // 1dp 당 픽셀
-        val w = ceil(wDp * px).toInt(); val h = ceil(hDp * px).toInt()
-        val dx = (wDp - side) / 2; val dy = (hDp - side) / 2
-        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val sh = android.graphics.BitmapShader(sq.bitmap, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
-            .apply { setLocalMatrix(android.graphics.Matrix().apply { setTranslate(dx * px, dy * px) }) }
-        val rp = cornerDp(ctx) * px
-        android.graphics.Canvas(out).drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), rp, rp, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { shader = sh })
-        return Rendered(out, sq.hits.map { Hit(it.r.translate(dx, dy), it.act) })
-    }
     val dm = ctx.resources.displayMetrics
     // 비트맵이 너무 크면 위젯에 못 넘긴다 (RemoteViews 비트맵 한도): 큰 위젯도 밀도를 줄여 600px 안쪽으로
     val density = min(dm.density, 600f / maxOf(wDp, hDp, 1f))
@@ -91,14 +79,20 @@ fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designW: Float =
     val r = cornerDp(ctx)
     CanvasDrawScope().draw(Density(density), LayoutDirection.Ltr, canvas, Size(bmp.width.toFloat(), bmp.height.toFloat())) {
         scale(density, Offset.Zero) {
-            // designW 가 있으면 앱 안내 그림(Tile)처럼 폭 designW 로 그린 뒤 칸 크기로 키운다
-            val k = if (designW > 0f) wDp / designW else 1f
+            // designW 가 있으면 설정 안내 그림(Tile)과 같은 자리(designW × designH)에 그려 칸 가운데에 맞추고, 바탕만 칸 끝까지 칠한다
+            val gw = if (designW > 0f) designW else wDp
+            val gh = if (designW > 0f) designH else hDp
+            val k = min(wDp / gw, hDp / gh)
+            val ox = (wDp / k - gw) / 2; val oy = (hDp / k - gh) / 2
             val body: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = {
                 scale(k, Offset.Zero) {
-                    val p = Pen(this, tm, ctx, dark, wDp / k, hDp / k)
-                    p.setup()
-                    p.draw()
-                    hits = p.hits.map { Hit(androidx.compose.ui.geometry.Rect(it.r.left * k, it.r.top * k, it.r.right * k, it.r.bottom * k), it.act) }
+                    translate(ox, oy) {
+                        val p = Pen(this, tm, ctx, dark, gw, gh)
+                        p.bx = ox; p.by = oy
+                        p.setup()
+                        p.draw()
+                        hits = p.hits.map { Hit(androidx.compose.ui.geometry.Rect((it.r.left + ox) * k, (it.r.top + oy) * k, (it.r.right + ox) * k, (it.r.bottom + oy) * k), it.act) }
+                    }
                 }
             }
             if (clip) clipPath(Path().apply { addRoundRect(RoundRect(0f, 0f, wDp, hDp, CornerRadius(r, r))) }) { body() } else body()

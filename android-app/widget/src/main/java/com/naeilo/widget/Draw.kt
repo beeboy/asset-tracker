@@ -87,6 +87,9 @@ class Pen(val d: DrawScope, val tm: TextMeasurer, val ctx: Context, val dark: Bo
     var now: java.time.Instant = java.time.Instant.now()
     /** 앱 미리보기면 true: 버튼 자리(hit)를 만들지 않는다 (아이폰 #if WIDGET_EXT 의 앱 쪽) */
     var inApp: Boolean = false
+    /** 바탕만 칸 끝까지 더 칠할 폭 (그림 자리 밖, 좌우 bx · 위아래 by) */
+    var bx: Float = 0f
+    var by: Float = 0f
 
     fun hit(x: Float, y: Float, ww: Float, hh: Float, act: Act) { if (!inApp) hits.add(Hit(Rect(x, y, x + ww, y + hh), act)) }
 

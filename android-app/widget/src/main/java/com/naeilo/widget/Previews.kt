@@ -27,7 +27,7 @@ object Previews {
                 for (w in Widgets.all) {
                     val cls = Widgets.receiverOf[w.javaClass] ?: continue
                     val f = w.face(app, emptyPreferences())
-                    val r = render(app, designW, designW * tileRatio, isDark(app), designW = designW, draw = f.draw)
+                    val r = render(app, guideW(app), guideW(app) * tileRatio, isDark(app), designW = guideW(app), draw = f.draw)
                     val rv = RemoteViews(app.packageName, R.layout.w_preview).apply { setImageViewBitmap(R.id.w_preview_img, r.bitmap) }
                     mgr.setWidgetPreview(ComponentName(app, cls), AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN, rv)
                 }

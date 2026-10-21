@@ -122,16 +122,16 @@ private fun Pen.charOpen(e: CharEntry, kind: String, open: Pen.() -> Unit) {
 fun Pen.charBG(c: WChar, locked: Boolean, dark: Boolean) {
     if (dark) {
         // ios: Widgets/CharWidgets.swift:168,169
-        rect(0f, 0f, w, h, Color(red = 0x1c / 255f, green = 0x1c / 255f, blue = 0x1f / 255f))
+        rect(-bx, -by, w + bx * 2, h + by * 2, Color(red = 0x1c / 255f, green = 0x1c / 255f, blue = 0x1f / 255f))
         // ios: Widgets/CharWidgets.swift:170
         val g = (if (locked) Color(0xFF8E8E93) else rgb(c.accent)).copy(alpha = 0.22f)
-        rect(0f, 0f, w, h, Brush.radialGradient(listOf(g, Color.Transparent), center = Offset(0f, h), radius = 220f))
+        rect(-bx, -by, w + bx * 2, h + by * 2, Brush.radialGradient(listOf(g, Color.Transparent), center = Offset(-bx, h + by), radius = 220f))
     // ios: Widgets/CharWidgets.swift:172,173
     } else if (locked) {
-        rect(0f, 0f, w, h, Brush.linearGradient(listOf(white(0.16f), white(0.30f)), start = Offset(0f, 0f), end = Offset(w, h)))
+        rect(-bx, -by, w + bx * 2, h + by * 2, Brush.linearGradient(listOf(white(0.16f), white(0.30f)), start = Offset(-bx, -by), end = Offset(w + bx, h + by)))
     // ios: Widgets/CharWidgets.swift:174,175
     } else {
-        rect(0f, 0f, w, h, Brush.linearGradient(listOf(rgb(c.g0), rgb(c.g1)), start = Offset(0f, 0f), end = Offset(w, h)))
+        rect(-bx, -by, w + bx * 2, h + by * 2, Brush.linearGradient(listOf(rgb(c.g0), rgb(c.g1)), start = Offset(-bx, -by), end = Offset(w + bx, h + by)))
     }
 }
 

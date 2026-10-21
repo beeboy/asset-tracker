@@ -67,7 +67,7 @@ val Pen.pal: Palette get() = Palette.of(dark)
 
 /** 위젯 바탕 (밝은·다크 화면 따라감) */
 // ios: Widgets/Views/Theme.swift:38,39
-object WidgetBG { fun body(p: Pen) = p.rect(0f, 0f, p.w, p.h, Brush.linearGradient(listOf(p.pal.bgTop, p.pal.bgBottom), start = Offset(0f, 0f), end = Offset(p.w, p.h))) }
+object WidgetBG { fun body(p: Pen) = p.rect(-p.bx, -p.by, p.w + p.bx * 2, p.h + p.by * 2, Brush.linearGradient(listOf(p.pal.bgTop, p.pal.bgBottom), start = Offset(-p.bx, -p.by), end = Offset(p.w + p.bx, p.h + p.by))) }
 
 /** 투명·틴트에서는 시스템이 단색으로 칠하므로 글자를 늘 밝게(다크 기준) 둔다. 안드로이드는 늘 fullColor 라 바꿀 것이 없다 */
 // ios: Widgets/Views/Theme.swift:43,44,45,46
