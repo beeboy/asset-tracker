@@ -6,4 +6,5 @@
     android:resizeMode="none" android:widgetCategory="home_screen"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewImage="@drawable/w_future_small_preview"
     android:description="@string/w_future_small_desc" />

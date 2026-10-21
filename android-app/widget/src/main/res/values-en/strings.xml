@@ -1,36 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="w_char_hill_name">Character · Asset hill</string>
+    <string name="w_char_hill_name">01 Character · Asset hill</string>
     <string name="w_char_hill_desc" formatted="false">Your last 10 days as a pixel hill</string>
-    <string name="w_char_ladder_name">Character · Break-even ladder</string>
+    <string name="w_char_ladder_name">02 Character · Break-even ladder</string>
     <string name="w_char_ladder_desc" formatted="false">Your character climbs the ladder to break-even (or goal)</string>
-    <string name="w_char_tower_name">Character · Block tower</string>
+    <string name="w_char_tower_name">03 Character · Block tower</string>
     <string name="w_char_tower_desc" formatted="false">100 cells make a floor; build a 10-floor tower</string>
-    <string name="w_char_board_name">Character · Ticker board</string>
+    <string name="w_char_board_name">04 Character · Ticker board</string>
     <string name="w_char_board_desc" formatted="false">Total, today\'s change and top 2 holdings on a board</string>
-    <string name="w_char_height_name">Character · Height chart</string>
+    <string name="w_char_height_name">05 Character · Height chart</string>
     <string name="w_char_height_desc" formatted="false">Past days marked on a door frame, today at your character\'s head</string>
-    <string name="w_char_puzzle_name">Character · Puzzle</string>
+    <string name="w_char_puzzle_name">06 Character · Puzzle</string>
     <string name="w_char_puzzle_desc" formatted="false">A 20-piece puzzle to break-even (or goal); finish it to see the flag</string>
-    <string name="w_char_garden_name">Character · Flower bed</string>
+    <string name="w_char_garden_name">07 Character · Flower bed</string>
     <string name="w_char_garden_desc" formatted="false">Each block is a flower; 100 flowers start the next bed</string>
-    <string name="w_char_tug_name">Character · Tug of war</string>
+    <string name="w_char_tug_name">08 Character · Tug of war</string>
     <string name="w_char_tug_desc" formatted="false">Today\'s risers and fallers in a tug of war</string>
-    <string name="w_asset_small_name">Asset trend</string>
+    <string name="w_asset_small_name">09 Asset trend</string>
     <string name="w_asset_small_desc" formatted="false">Total, today\'s change, last 10 days</string>
-    <string name="w_path_small_name">My path</string>
+    <string name="w_path_small_name">10 My path</string>
     <string name="w_path_small_desc" formatted="false">Ahead of plan or not, and goal odds</string>
-    <string name="w_future_small_name">Goal date outlook</string>
+    <string name="w_future_small_name">11 Goal date outlook</string>
     <string name="w_future_small_desc" formatted="false">Expected goal date and % vs now</string>
-    <string name="w_block_small_name">Current block</string>
+    <string name="w_block_small_name">12 Current block</string>
     <string name="w_block_small_desc" formatted="false">Your goal in 1,000 cells: the 100 you\'re filling now</string>
-    <string name="w_pace_small_name">Goal pace</string>
+    <string name="w_pace_small_name">13 Goal pace</string>
     <string name="w_pace_small_desc" formatted="false">You vs your mock basket: who\'s faster</string>
-    <string name="w_target_small_name">This week\'s target</string>
+    <string name="w_target_small_name">14 This week\'s target</string>
     <string name="w_target_small_desc" formatted="false">Friday close forecast and where you are</string>
-    <string name="w_moves_small_name">Today\'s moves</string>
+    <string name="w_moves_small_name">15 Today\'s moves</string>
     <string name="w_moves_small_desc" formatted="false">Today\'s heatmap of your biggest holdings</string>
-    <string name="w_story_name">Library · Keep reading</string>
+    <string name="w_story_name">16 Library · Keep reading</string>
     <string name="w_story_desc" formatted="false">A paragraph from where you left off in Resonance Across Kinds. Tap to open the chapter.</string>
     <string name="w_reload">Refresh naeilo</string>
     <string name="w_who">Choose character</string>

@@ -6,6 +6,7 @@
     android:resizeMode="none" android:widgetCategory="home_screen"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewImage="@drawable/w_char_tower_preview"
     android:description="@string/w_char_tower_desc"
     android:configure="com.naeilo.widget.WhoIntent"
     android:widgetFeatures="reconfigurable|configuration_optional" />
