@@ -66,3 +66,9 @@
 - 키보드가 입력칸을 가리던 것: edge-to-edge 라 adjustResize 가 안 먹음 → 공통 두 곳만 고침. `RootView` TabHost 에 ime 인셋(내비 막대·탭 막대 49 뺀 만큼, 배치 단계에서만 읽음), `Sheet` 바깥 상자에 ime 인셋. FullCover·StartView 는 원래 safeDrawing(ime 포함)이라 그대로. 동네 말 걸기(kbTop)는 창 좌표라 겹치지 않음.
 - 에뮬레이터 확인: 개발자 토큰 칸·오픈 API client_secret 칸이 키보드 위에 보이고 스크롤됨. 숫자 칸은 에뮬레이터 Gboard 가 떠 있는(floating) 키패드라 인셋 0 — 붙은 키보드에서 다시 볼 것.
 - 오픈 API 중계 IP: `Config.tossRelayIP` 고정값을 바로 보여 주고 `/api/toss/ip` 로 받은 값이 오면 바꾼다(받기 실패해도 빈칸 없음). 아이폰은 아직 받기만 함.
+
+## 안드로이드 최종 점검 남은 일 (2026-10-21)
+- 숫자 입력칸: 키보드가 0.몇 초 떴다가 바로 사라짐 (flip4, 원인 아직 안 봄).
+- 별도 스레드로: 위젯 인물 고르기·정기 갱신(WorkManager)·CharItem·CharTop, 접근성 설명(contentDescription) 영어.
+- 잠금화면 위젯 4개는 보류 (decisions.md).
+- 기기 동기화는 실기기 두 대로 사용자 확인 끝.
