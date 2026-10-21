@@ -3,7 +3,7 @@ import Foundation
 /// 차트 탭 이름·아이콘. 이름이 아직 확정 전이라 여기 한 곳만 바꾸면 된다
 enum FlowTab {
     static let name = "흐름"
-    static let icon = "chart.xyaxis.line"
+    static let icon = "point.bottomleft.forward.to.point.topright.scurvepath"   // 축 없는 곡선 (2026-10-21)
 }
 
 /// 일봉 하나 (시가·고가·저가·종가·거래량)

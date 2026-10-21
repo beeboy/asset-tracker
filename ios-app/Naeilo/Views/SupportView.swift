@@ -116,7 +116,7 @@ struct SubLocked: View {
             Text("7일 무료가 끝났어요").appFont(20, .bold)
             Text("\(what)은 구독하면 다시 볼 수 있어요.\n월 1,000원 · 연 9,000원")
                 .appFont(14).foregroundStyle(Theme.sub).multilineTextAlignment(.center).lineSpacing(3)
-            Button { m.tab = .settings; m.settingsPath = [.support] } label: {
+            Button { m.openSettings(.support) } label: {
                 Text("구독 보기").appFont(15, .bold).foregroundStyle(.white)
                     .frame(maxWidth: 240, minHeight: 44)
                     .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))

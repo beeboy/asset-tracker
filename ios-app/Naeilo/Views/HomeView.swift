@@ -8,7 +8,7 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                AppHeader(tab: String(localized: "홈")).padding(.horizontal, -16)
+                AppHeader(tab: String(localized: "홈"), links: true).padding(.horizontal, -16)
                 SampleNote()
                 summary
                 // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
@@ -16,7 +16,6 @@ struct HomeView: View {
                 shelterBox
                 ParallelHomeCard()
                 reminder
-                if m.playUnlocked { RoutineCard() } else { lockedRoutine }
                 if !m.playUnlocked, !m.rows.isEmpty { yesterdayCard }
                 Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
             }
@@ -230,13 +229,6 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(tag): \(text). 소식함 열기")
-    }
-
-    private var lockedRoutine: some View {
-        DashedCard {
-            Label("오늘의 1분", systemImage: "lock").appFont(15, .bold)
-            Text("시작 3단계 뒤 열림 · 숫자 하나, 질문 하나").appFont(13)
-        }
     }
 
     private var yesterdayCard: some View {

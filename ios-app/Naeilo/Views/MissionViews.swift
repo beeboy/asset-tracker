@@ -668,7 +668,7 @@ struct AppStartView: View {
                     } else if cur && i == 2 {
                         // 3단계: 키를 넣었으면 확인만, 아니면 설정의 오픈 API 화면으로. 키 없이도 샘플로 계속할 수 있다
                         Button(TossKeys.on ? String(localized: "연결했어요") : String(localized: "오픈 API 연결")) {
-                            if TossKeys.on { withAnimation { m.nxStep += 1 } } else { m.tab = .settings; m.settingsPath = [.toss] }
+                            if TossKeys.on { withAnimation { m.nxStep += 1 } } else { m.openSettings(.toss) }
                         }
                             .appFont(14, .bold).foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 44)
                             .background(Theme.teal, in: RoundedRectangle(cornerRadius: 10))

@@ -624,10 +624,10 @@ extension AppModel {
         case .hold(let s):
             tab = .hold
             holdPath = Sample.symbol(s).map { NavigationPath([$0]) } ?? NavigationPath()
-        case .support: tab = .settings; settingsPath = [.support]
-        case .widgets: tab = .settings; settingsPath = [.widgets]
-        case .sync: tab = .settings; settingsPath = [.sync]
-        case .alerts: tab = .settings; settingsPath = [.alerts]
+        case .support: openSettings(.support)
+        case .widgets: DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in self?.widgetsOpen = true }
+        case .sync: openSettings(.sync)
+        case .alerts: openSettings(.alerts)
         case .krSum: krSumAsk = true
         }
     }

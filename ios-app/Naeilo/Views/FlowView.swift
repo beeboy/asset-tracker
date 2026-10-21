@@ -33,7 +33,7 @@ struct FlowView: View {
                 AppHeader(tab: String(localized: String.LocalizationValue(FlowTab.name))).padding(.horizontal, -16)
                 if !ids.isEmpty { chips }
                 if needKey {
-                    Button { model.tab = .settings; model.settingsPath = [.toss] } label: {
+                    Button { model.openSettings(.toss) } label: {
                         Text("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요").appFont(13).underline()
                             .foregroundStyle(Theme.teal).multilineTextAlignment(.leading)
                     }

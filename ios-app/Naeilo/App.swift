@@ -20,7 +20,7 @@ struct NaeiloApp: App {
     }
 }
 
-enum Tab: Hashable { case home, hold, flow, analysis, board, settings }
+enum Tab: Hashable { case home, hold, flow, analysis, board }   // 설정은 탭이 아니라 홈 위 팝업 (2026-10-21)
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
@@ -41,10 +41,9 @@ struct RootView: View {
                 BoardView()   // 목표·회복 루트 같은 미션 판
             }
                 .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)
-            NavigationStack(path: $model.settingsPath) { SettingsView() }
-                .tabItem { Label("설정", systemImage: "gearshape") }.tag(Tab.settings)
         }
         .tint(Theme.teal)
+        .modifier(HomeSheets(model: model))
         // 보유·루트가 바뀌면 위젯도 바로
         .onChange(of: model.holdings) { _, _ in WidgetBridge.write(model) }
         .onChange(of: model.route) { _, _ in WidgetBridge.write(model) }
@@ -82,7 +81,7 @@ struct RootView: View {
             NotificationDelegate.shared.open = { o in
                 switch o {
                 case "home": model.tab = .home
-                case "tax": model.tab = .settings; model.settingsPath = [.tax]
+                case "tax": model.openSettings(.tax)
                 case "rate": model.go(.rateScen)
                 case "ext": model.go(.external)
                 default: model.tab = .board
@@ -96,7 +95,7 @@ struct RootView: View {
             if url.host == "read", let i = Int(url.lastPathComponent), (0..<6).contains(i), model.chapterOn(i) {   // 서재 위젯
                 model.tab = .home; model.homePath = ["shelter", "read:\(i)"]; return
             }
-            if url.host == "subscribe" { model.tab = .settings; model.settingsPath = [.support]; return }   // 7일 무료가 끝나 잠긴 위젯
+            if url.host == "subscribe" { model.openSettings(.support); return }   // 7일 무료가 끝나 잠긴 위젯
             guard url.host == "unlock" else { return }
             model.tab = .board
             model.boardPath = model.playOn ? [] : [.nx]
@@ -135,7 +134,6 @@ struct RootView: View {
         case "hold": .hold
         case "analysis": .analysis
         case "board": .board
-        case "settings": .settings
         default: .home
         }
     }
@@ -143,15 +141,42 @@ struct RootView: View {
 
 // 탭 화면 머리글: 'naeilo' 로고 뒤에 탭 이름 ("naeilo 홈")
 struct AppHeader: View {
+    @Environment(AppModel.self) private var m
     var tab: String = ""
+    var links = false   // 홈: 오른쪽에 위젯·설정 팝업 단추
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text("naeilo").appFont(20, .bold).tracking(-0.3)
-            if !tab.isEmpty { Text(tab).appFont(20, .regular).foregroundStyle(Theme.sub) }
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("naeilo").appFont(20, .bold).tracking(-0.3)
+                if !tab.isEmpty { Text(tab).appFont(20, .regular).foregroundStyle(Theme.sub) }
+            }
+            .accessibilityElement(children: .combine)
             Spacer()
+            if links {
+                Button { m.widgetsOpen = true } label: { Image(systemName: "rectangle.3.group").frame(width: 40, height: 32) }
+                    .accessibilityLabel("홈 화면 위젯")
+                Button { m.openSettings() } label: { Image(systemName: "gearshape").frame(width: 40, height: 32) }
+                    .accessibilityLabel("설정")
+            }
         }
-        .accessibilityElement(children: .combine)
+        .appFont(17).foregroundStyle(Theme.ink)
         .padding(.horizontal, 20).padding(.top, 6).padding(.bottom, 4)
+    }
+}
+
+/// 설정·위젯 팝업: 어느 탭에서든 뜬다 (RootView 수식어가 길어 따로 뺐다)
+private struct HomeSheets: ViewModifier {
+    @Bindable var model: AppModel
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $model.settingsOpen, onDismiss: { model.settingsPath = [] }) {
+                NavigationStack(path: $model.settingsPath) { SettingsView() }
+                    .environment(model).presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $model.widgetsOpen) {
+                NavigationStack { WidgetPickView() }
+                    .environment(model).presentationDragIndicator(.visible)
+            }
     }
 }
 
