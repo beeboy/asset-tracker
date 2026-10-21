@@ -208,6 +208,9 @@ extension FlowPattern.Kind {
         case .doubleBottom: String(localized: "더블바텀")
         case .doubleTop: String(localized: "더블탑")
         case .headShoulders: String(localized: "헤드앤숄더")
+        case .ascTriangle: String(localized: "상승삼각형")
+        case .descTriangle: String(localized: "하락삼각형")
+        case .bullFlag, .bearFlag: String(localized: "플래그")
         case .hammer: String(localized: "해머")
         case .shootingStar: String(localized: "유성")
         case .bullEngulf: String(localized: "강세 포위형")
@@ -220,6 +223,10 @@ extension FlowPattern.Kind {
         case .doubleBottom: String(localized: "비슷한 높이의 바닥이 두 번 생긴 모양(W)이에요. 두 바닥 사이 고점을 종가가 넘으면 확정이에요.")
         case .doubleTop: String(localized: "비슷한 높이의 꼭대기가 두 번 생긴 모양(M)이에요. 두 꼭대기 사이 저점 아래로 종가가 내려가면 확정이에요.")
         case .headShoulders: String(localized: "가운데 꼭대기가 양옆보다 높은 세 봉우리예요. 두 골짜기를 이은 선 아래로 내려가면 확정이에요.")
+        case .ascTriangle: String(localized: "꼭대기는 같은 높이인데 바닥이 점점 높아지는 모양이에요. 그 꼭대기를 종가가 넘으면 확정이에요.")
+        case .descTriangle: String(localized: "바닥은 같은 높이인데 꼭대기가 점점 낮아지는 모양이에요. 그 바닥 아래로 종가가 내려가면 확정이에요.")
+        case .bullFlag: String(localized: "짧게 크게 오른 뒤(깃대) 잠시 쉬는 모양이에요. 쉬던 자리를 위로 벗어나면 확정이에요.")
+        case .bearFlag: String(localized: "짧게 크게 내린 뒤(깃대) 잠시 쉬는 모양이에요. 쉬던 자리를 아래로 벗어나면 확정이에요.")
         case .hammer: String(localized: "아래꼬리가 몸통보다 훨씬 긴 캔들이에요. 내려갔다가 다시 끌어올린 날이라는 뜻이에요.")
         case .shootingStar: String(localized: "위꼬리가 몸통보다 훨씬 긴 캔들이에요. 올라갔다가 다시 밀려 내려온 날이라는 뜻이에요.")
         case .bullEngulf: String(localized: "전날 음봉 몸통을 다음 날 양봉 몸통이 다 덮은 모양이에요.")
@@ -259,7 +266,8 @@ struct FlowChart: View {
             let piv = series.pivotSets[step == 1 ? 0 : step == 5 ? 1 : 2]
             // 지지·저항: 보이는 것 중 많이 닿은 4개. 이름표는 위아래로 붙으면 뒤의 것을 뺀다
             let lvls = Array(series.levels.filter { $0.price >= yMin && $0.price <= yMax && $0.from <= hi }.prefix(4))
-            let bigs = series.patterns.filter { $0.big && $0.to >= lo && $0.from <= hi }
+            // 월봉으로 볼 땐 패턴 없이 추세·지지/저항만 (한 칸이 한 달이라 몇 주짜리 모양은 뜻이 없다)
+            let bigs = step == 21 ? [] : series.patterns.filter { $0.big && $0.to >= lo && $0.from <= hi }
             let smalls = step == 1 ? series.patterns.filter { !$0.big && $0.to >= lo && $0.to <= hi } : []
             // 큰 패턴 틀: 구간 안 최고가·최저가
             let box = { (pt: FlowPattern) -> (CGFloat, CGFloat, CGFloat, CGFloat) in

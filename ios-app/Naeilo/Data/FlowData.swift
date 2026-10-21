@@ -20,14 +20,14 @@ struct FlowLevel: Identifiable { let id: Int; let price: Double; let from: Int; 
 
 /// 패턴 이름표. strong = 확정되고 거래량이 받쳐 준 것(진하게), 아니면 흐린 점선
 struct FlowPattern: Identifiable {
-    enum Kind: String { case doubleBottom, doubleTop, headShoulders, hammer, shootingStar, bullEngulf, bearEngulf, insideBar }
+    enum Kind: String { case doubleBottom, doubleTop, headShoulders, ascTriangle, descTriangle, bullFlag, bearFlag, hammer, shootingStar, bullEngulf, bearEngulf, insideBar }
     let id: Int
     let kind: Kind
     let from: Int, to: Int
     let price: Double       // 이름표를 붙일 가격 (아래쪽 패턴은 저가, 위쪽은 고가)
     let below: Bool         // 이름표를 캔들 아래에
     let strong: Bool
-    var big: Bool { [.doubleBottom, .doubleTop, .headShoulders].contains(kind) }
+    var big: Bool { [.doubleBottom, .doubleTop, .headShoulders, .ascTriangle, .descTriangle, .bullFlag, .bearFlag].contains(kind) }
 }
 
 /// 차트 한 종목의 미리 계산해 둔 그림 재료
@@ -118,8 +118,11 @@ enum FlowCalc {
     /// 패턴 찾기. 캔들 패턴은 고점·저점 근처(±1일)에서만 본다 (아무 데나 붙이면 헛짚는 일이 많다)
     static func patterns(_ k: [Candle], _ p: [FlowPivot]) -> [FlowPattern] {
         var out: [FlowPattern] = []
-        func add(_ kind: FlowPattern.Kind, _ a: Int, _ b: Int, _ price: Double, _ below: Bool, _ strong: Bool) {
-            out.append(.init(id: out.count, kind: kind, from: a, to: b, price: price, below: below, strong: strong))
+        // 큰 패턴은 후보로 모았다가 확정된 것부터 구간이 겹치지 않게 고른다
+        var cands: [(FlowPattern, Bool)] = []
+        func add(_ kind: FlowPattern.Kind, _ a: Int, _ b: Int, _ price: Double, _ below: Bool, _ strong: Bool, conf: Bool = true) {
+            let pt = FlowPattern(id: 0, kind: kind, from: a, to: b, price: price, below: below, strong: strong)
+            if pt.big { cands.append((pt, conf)) } else { out.append(.init(id: out.count, kind: kind, from: a, to: b, price: price, below: below, strong: strong)) }
         }
         // 거래량이 직전 20일 평균의 1.2배 이상이면 받쳐 준 것
         func volOK(_ i: Int) -> Bool {
@@ -152,42 +155,90 @@ enum FlowCalc {
                 }
             }
         }
-        // 큰 패턴: 고점·저점 배치로. 확정(목선 돌파) 전이면 흐리게
+        // 큰 패턴: 고점·저점 배치로. 확정(목선 돌파) 전이면 흐리게. 꼬리 끝이 아니라 종가로 견준다
         let c = k.map(\.c)
+        let p = p.map { FlowPivot(i: $0.i, price: c[$0.i], high: $0.high) }
         func firstClose(after a: Int, within w: Int, _ f: (Double) -> Bool) -> Int? {
             guard a + 1 < n else { return nil }
             return (a + 1...min(n - 1, a + w)).first { f(c[$0]) }
         }
-        var bigEnd = -1
         for j in p.indices.dropFirst(2) {
             let a = p[j - 2], m = p[j - 1], b = p[j]
-            guard a.high == b.high, a.high != m.high, a.i > bigEnd else { continue }
+            guard a.high == b.high, a.high != m.high else { continue }
             let gap = b.i - a.i
             guard gap >= 10 && gap <= 150, abs(b.price / a.price - 1) <= 0.03 else { continue }
             if !a.high {
                 let hit = firstClose(after: b.i, within: 60) { $0 > m.price }
                 guard hit != nil || b.i > n - 60 else { continue }   // 확정 안 된 지난 것은 버린다
+                // 확정 전에 두 바닥 아래로 내려갔으면 깨진 모양
+                if hit == nil, firstClose(after: b.i, within: n) { $0 < min(a.price, b.price) * 0.99 } != nil { continue }
                 let to = hit ?? n - 1
-                add(.doubleBottom, a.i, to, min(a.price, b.price), true, hit != nil && volOK(hit!))
-                bigEnd = to
+                add(.doubleBottom, a.i, to, min(a.price, b.price), true, hit != nil && volOK(hit!), conf: hit != nil)
             } else {
                 let hit = firstClose(after: b.i, within: 60) { $0 < m.price }
                 guard hit != nil || b.i > n - 60 else { continue }
+                if hit == nil, firstClose(after: b.i, within: n) { $0 > max(a.price, b.price) * 1.01 } != nil { continue }
                 let to = hit ?? n - 1
-                add(.doubleTop, a.i, to, max(a.price, b.price), false, hit != nil && volOK(hit!))
-                bigEnd = to
+                add(.doubleTop, a.i, to, max(a.price, b.price), false, hit != nil && volOK(hit!), conf: hit != nil)
             }
         }
         for j in p.indices.dropFirst(4) {
             let h1 = p[j - 4], l1 = p[j - 3], h2 = p[j - 2], l2 = p[j - 1], h3 = p[j]
-            guard h1.high, h2.high, h3.high, h1.i > bigEnd else { continue }
+            guard h1.high, h2.high, h3.high else { continue }
             guard h2.price > max(h1.price, h3.price) * 1.03, abs(h3.price / h1.price - 1) <= 0.05, h3.i - h1.i <= 220 else { continue }
             let neck = min(l1.price, l2.price)
             let hit = firstClose(after: h3.i, within: 60) { $0 < neck }
             guard hit != nil || h3.i > n - 60 else { continue }
+            if hit == nil, firstClose(after: h3.i, within: n) { $0 > h2.price } != nil { continue }
             let to = hit ?? n - 1
-            add(.headShoulders, h1.i, to, h2.price, false, hit != nil && volOK(hit!))
-            bigEnd = to
+            add(.headShoulders, h1.i, to, h2.price, false, hit != nil && volOK(hit!), conf: hit != nil)
+        }
+        // 삼각형: 고점 둘이 같은 높이(1.5% 안)인데 저점이 높아지면 상승삼각형, 반대면 하락삼각형. 평평한 쪽을 종가가 뚫으면 확정
+        for j in p.indices.dropFirst(3) {
+            let w = p[(j - 3)...j], hs = w.filter(\.high), ls = w.filter { !$0.high }
+            guard hs.count == 2, ls.count == 2, w.last!.i - w.first!.i >= 15, w.last!.i - w.first!.i <= 150 else { continue }
+            let (h1, h2, l1, l2) = (hs[0].price, hs[1].price, ls[0].price, ls[1].price)
+            if abs(h2 / h1 - 1) <= 0.015 && l2 > l1 * 1.02 {
+                let top = max(h1, h2), hit = firstClose(after: p[j].i, within: 40) { $0 > top * 1.005 }
+                guard hit != nil || p[j].i > n - 40 else { continue }
+                let to = hit ?? n - 1
+                add(.ascTriangle, w.first!.i, to, top, false, hit != nil && volOK(hit!), conf: hit != nil)
+            } else if abs(l2 / l1 - 1) <= 0.015 && h2 < h1 * 0.98 {
+                let bot = min(l1, l2), hit = firstClose(after: p[j].i, within: 40) { $0 < bot * 0.995 }
+                guard hit != nil || p[j].i > n - 40 else { continue }
+                let to = hit ?? n - 1
+                add(.descTriangle, w.first!.i, to, bot, true, hit != nil && volOK(hit!), conf: hit != nil)
+            }
+        }
+        // 플래그: 짧게 12% 넘게 오른(내린) 깃대 뒤, 그 절반 안에서 쉬다가 깃대 끝을 다시 넘으면 확정
+        var i = 12
+        while i < n - 5 {
+            defer { i += 1 }
+            for up in [true, false] {
+                guard let m = (3...12).first(where: { up ? c[i] / c[i - $0] >= 1.12 : c[i] / c[i - $0] <= 0.88 }) else { continue }
+                let poleTop = c[i], half = abs(c[i] - c[i - m]) / 2
+                // 깃대 끝이 그 뒤 5일 안 최고(최저)여야 한다
+                guard (i + 1...min(n - 1, i + 5)).allSatisfy({ up ? c[$0] <= poleTop * 1.005 : c[$0] >= poleTop * 0.995 }) else { continue }
+                var t = i + 1, broke: Int? = nil
+                while t < min(n, i + 26) {
+                    if up ? c[t] > poleTop * 1.005 : c[t] < poleTop * 0.995 { broke = t; break }
+                    if up ? c[t] < poleTop - half : c[t] > poleTop + half { break }
+                    t += 1
+                }
+                let rest = (broke ?? t) - i
+                guard rest >= 5 else { continue }
+                if broke == nil && !(t >= n - 1 && i > n - 26) { continue }   // 깨졌거나 시간이 다 된 건 버리고, 지금 쉬는 중이면 흐리게
+                let to = broke ?? n - 1
+                add(up ? .bullFlag : .bearFlag, i - m, to, poleTop, !up, broke != nil && volOK(broke!), conf: broke != nil)
+                i = to
+                break
+            }
+        }
+        var spans: [ClosedRange<Int>] = []
+        for (pt, _) in cands.enumerated().sorted(by: { ($0.element.1 ? 0 : 1, $0.offset) < ($1.element.1 ? 0 : 1, $1.offset) }).map({ $0.element })
+        where !spans.contains(where: { $0.overlaps(pt.from...pt.to) }) {
+            spans.append(pt.from...pt.to)
+            out.append(.init(id: out.count, kind: pt.kind, from: pt.from, to: pt.to, price: pt.price, below: pt.below, strong: pt.strong))
         }
         return out
     }
