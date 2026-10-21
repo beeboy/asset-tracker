@@ -15,13 +15,14 @@ import kotlinx.coroutines.launch
 // 안드로이드가 올리는 횟수를 제한하므로 설치(업데이트) 시각이 바뀔 때만 다시 올린다
 object Previews {
     fun publish(ctx: Context) {
-        if (Build.VERSION.SDK_INT < 35) return
         val app = ctx.applicationContext
         CoroutineScope(Dispatchers.Default).launch {
             runCatching {
                 val prefs = app.getSharedPreferences("w_preview", Context.MODE_PRIVATE)
                 val stamp = app.packageManager.getPackageInfo(app.packageName, 0).lastUpdateTime
                 if (prefs.getLong("stamp", 0L) == stamp) return@launch
+                Widgets.reloadAllTimelines(app)   // 새로 깐 뒤 홈에 둔 위젯도 새 그림으로
+                if (Build.VERSION.SDK_INT < 35) { prefs.edit().putLong("stamp", stamp).apply(); return@launch }
                 val mgr = AppWidgetManager.getInstance(app)
                 for (w in Widgets.all) {
                     val cls = Widgets.receiverOf[w.javaClass] ?: continue

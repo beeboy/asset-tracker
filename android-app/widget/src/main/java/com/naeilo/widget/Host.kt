@@ -67,17 +67,19 @@ class Rendered(val bitmap: Bitmap, val hits: List<Hit>)
 /** 위젯 한 장 (wDp × hDp) 을 비트맵으로. 모서리는 둥글게 자른다 */
 fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designW: Float = 0f, clip: Boolean = true, setup: Pen.() -> Unit = {}, draw: Pen.() -> Unit): Rendered {
     Store.init(ctx)
-    if (designW > 0f && hDp > wDp + 0.5f) {
-        // 칸이 세로로 길면: 안내 그림처럼 정사각형으로 그려 가운데 두고, 위아래는 바탕 끝줄을 늘려 채운다 (CLAMP). 그래야 인물·글자가 안 겹친다
-        val sq = render(ctx, wDp, wDp, dark, designW, clip = false, setup = setup, draw = draw)
-        val w = sq.bitmap.width; val h = ceil(w * hDp / wDp).toInt(); val top = (h - w) / 2f
+    if (designW > 0f && kotlin.math.abs(hDp - wDp) > 0.5f) {
+        // 칸이 정사각형이 아니면: 설정 안내 그림과 똑같은 정사각형으로 그려 가운데 두고, 남는 곳은 바탕 끝줄을 늘려 채운다 (CLAMP)
+        val side = min(wDp, hDp)
+        val sq = render(ctx, side, side, dark, designW, clip = false, setup = setup, draw = draw)
+        val px = sq.bitmap.width / side   // 1dp 당 픽셀
+        val w = ceil(wDp * px).toInt(); val h = ceil(hDp * px).toInt()
+        val dx = (wDp - side) / 2; val dy = (hDp - side) / 2
         val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val sh = android.graphics.BitmapShader(sq.bitmap, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
-            .apply { setLocalMatrix(android.graphics.Matrix().apply { setTranslate(0f, top) }) }
-        val rp = cornerDp(ctx) * w / wDp
+            .apply { setLocalMatrix(android.graphics.Matrix().apply { setTranslate(dx * px, dy * px) }) }
+        val rp = cornerDp(ctx) * px
         android.graphics.Canvas(out).drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), rp, rp, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { shader = sh })
-        val dy = top * wDp / w
-        return Rendered(out, sq.hits.map { Hit(it.r.translate(0f, dy), it.act) })
+        return Rendered(out, sq.hits.map { Hit(it.r.translate(dx, dy), it.act) })
     }
     val dm = ctx.resources.displayMetrics
     // 비트맵이 너무 크면 위젯에 못 넘긴다 (RemoteViews 비트맵 한도): 큰 위젯도 밀도를 줄여 600px 안쪽으로
