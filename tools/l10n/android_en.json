@@ -10,5 +10,9 @@
   "폰 설정 열기": "Open phone settings",
   "토큰은 이 폰 보관함에만 둬요. 개발자 칸은 암호화하지 않아요.": "The token stays in this phone's keystore. The developer section isn't encrypted.",
   "미션을 마치면 열려요. 홈 화면 길게 누르기 → 위젯 → naeilo": "Opens after a mission. Long-press Home Screen → Widgets → naeilo",
-  "한은 금리": "BOK rate decision"
+  "한은 금리": "BOK rate decision",
+  "상품을 불러오지 못했어요. Google Play 연결을 확인하거나 잠시 뒤 다시 열어 주세요.": "Couldn't load products. Check your Google Play connection or reopen later.",
+  "Google 계정으로 결제하는 자동 갱신 구독이에요. 기간이 끝나기 전에 끄지 않으면 같은 값으로 다시 결제돼요. 끄기는 위 '구독 관리'(Play 스토어 > 프로필 > 결제 및 정기 결제 > 정기 결제)에서 할 수 있어요. 구독을 멈춰도 이미 연 캐릭터 상품과 받은 이야기는 그대로예요.": "An auto-renewing subscription paid with your Google account. Unless turned off before the period ends, it renews at the same price. Turn it off in 'Manage subscription' above (Play Store > Profile > Payments & subscriptions > Subscriptions). If you stop, unlocked characters and stories you've received stay.",
+  "이용약관 (Google Play 이용약관)": "Terms of Use (Google Play Terms of Service)",
+  "아침 한 줄 · 본전 도달 · 비중 이탈 · 세금 · 일정 알림": "Morning line · break-even · weight drift · tax · schedule alerts"
 }

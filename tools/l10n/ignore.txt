@@ -7,11 +7,23 @@ file:data/SampleData.kt
 file:core/calc/Industries.kt
 file:core/StoryWidgetData.kt
 
+## 코드용 (화면에 안 나옴): 주민 얼굴 열쇠(ceo:이름), @Deprecated 문구
+file:ui/town/TownViews.kt:1125
+file:ui/town/TownViews.kt:1413
+file:ui/town/TownViews.kt:1414
+file:ui/town/TownViews.kt:1415
+file:ui/town/TownViews.kt:1416
+
 ## 코드가 이미 영어를 고름 (WL.t·WL.en 갈래)
+file:widget/StoryWidgetView.kt:90
 file:core/Config.kt:225
 file:core/Engine.kt:94
 
 ## 아이폰도 한국어 그대로 (번역 안 하는 자리: 내부 값·검색어·개발자 칸)
+# 위젯 크기 칸(작은·잠금 화면): 아이폰 설정 위젯 목록도 Text(w.size) 라 한국어 그대로
+file:widget/Catalog.kt
+# 서재 위젯: story.json 이 없을 때의 기본값 (lang ko, 아이폰도 같은 한국어)
+file:widget/StoryWidget.kt:37
 file:net/StockSearch.kt
 file:core/Config.kt:40
 file:core/Config.kt:42

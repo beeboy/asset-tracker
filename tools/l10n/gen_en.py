@@ -14,6 +14,9 @@ android-app/app/src/main/assets/l10n_en.json 으로 쓴다. 런타임(core/L10n.
   진행 중   — I/J/K/L 단계 파일의 같은 글자 수 (나중에 다시)
   제외      — 로그·저장 키·정규식·개발자용 등 (ignore.txt 와 규칙)
 
+  위젯      — 위젯 모듈 WL.t 문구 중 WIDGET_UI 에도 xcstrings 에도 영어가 없는 것(빠진 키),
+              아이폰 위젯 코드가 쓰는 WIDGET_UI 키 중 안드로이드 위젯이 안 쓰는 것(안 쓰는 키)
+
 쓰기: python3 tools/l10n/gen_en.py [-v]   (-v: 빠진 키·진행 중 목록을 모두 찍는다)
 """
 import json
@@ -24,14 +27,18 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 XC = os.path.join(ROOT, "ios-app/Naeilo/Localizable.xcstrings")
 SRC = os.path.join(ROOT, "android-app/app/src/main/java/com/naeilo/app")
+# 위젯 모듈: 공용 core(com/naeilo/app/core → "core/…")와 위젯 화면(com/naeilo/widget → "widget/…")
+WSRC = [(os.path.join(ROOT, "android-app/widget/src/main/java/com/naeilo/app"), ""),
+        (os.path.join(ROOT, "android-app/widget/src/main/java/com/naeilo/widget"), "widget/")]
+# 위젯 문구 표(WIDGET_UI): ios-app/tools/lines.py 가 만든 lines_en.json 의 ui. 위젯 WL.t 는 여기서 먼저 찾고 없으면 l10n_en.json
+WUI = os.path.join(ROOT, "ios-app/WidgetShared/lines_en.json")
 OUT = os.path.join(ROOT, "android-app/app/src/main/assets/l10n_en.json")
 IGNORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore.txt")
 # 아이폰에 같은 키가 없는 안드로이드 전용 문구(아이폰 → 폰 등)의 영어. xcstrings 보다 뒤 순위
 EXTRA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "android_en.json")
 
 # 아직 진행 중인 단계(I/J/K/L) 파일 — 빠진 키로 세지 않고 따로 센다
-IN_PROGRESS = ("ui/shelter/", "ui/town/", "ui/calm/", "ui/CharMotion.kt", "data/Story.kt", "data/Lines.kt",
-               "ui/game/", "core/game/", "ui/wave/", "data/Notifier.kt", "data/Support.kt", "ui/support/", "pending/")
+IN_PROGRESS = ()   # I~N 단계 다 끝남 (2026-10-21)
 
 HANGUL = re.compile(r"[가-힣ㄱ-ㅎㅏ-ㅣ]")
 SLOT = "\x00"
@@ -249,6 +256,14 @@ def main():
             if f.endswith(".kt"):
                 p = os.path.join(dp, f)
                 lits += scan(p, os.path.relpath(p, SRC))
+    for root, pre in WSRC:
+        for dp, _, fs in os.walk(root):
+            for f in sorted(fs):
+                if f.endswith(".kt"):
+                    p = os.path.join(dp, f)
+                    lits += scan(p, pre + os.path.relpath(p, root))
+    wui = json.load(open(WUI, encoding="utf-8"))["ui"]
+    wused = set()      # 안드로이드가 쓰는 WIDGET_UI 키
 
     used = {}          # 키 틀 → 들어 있는 항목
     frags = set()      # 이어 붙인 조각
@@ -259,7 +274,10 @@ def main():
             continue
         t = lit_template(raw)
         inprog = L.file.startswith(IN_PROGRESS)
-        cat = ("위젯 문구(WL.t, lines_en.json)" if re.search(r"WL\.t\(\s*$", L.before) else
+        if raw in wui:
+            wused.add(raw)
+        # WIDGET_UI 에 있으면 위젯 표(WL.t·Catalog 이름표). 없으면 아래 xcstrings 표(l10n_en.json)로 — WL.t 도 거기서 찾는다 (아이폰 String(localized:) 자리)
+        cat = ("위젯 문구(WL.t, lines_en.json)" if raw in wui else
                "코드용(저장 키·정규식 등)" if NON_UI_BEFORE.search(L.before) else None)
         if cat:
             excluded.setdefault(cat, []).append(L)
@@ -334,6 +352,26 @@ def main():
                 print(f"      {L.file}:{L.line}  {L.template().replace(SLOT, '%@')!r}")
     show(missing, "빠진 키 (A~H)")
     show(progress, "진행 중 단계(I/J/K/L) 글자")
+    # 아이폰 위젯 코드가 실제로 쓰는 WIDGET_UI 키 (WL.t 줄·Catalog 이름표의 한국어 글자) 중 안드로이드가 안 쓰는 것
+    ios = set()
+    lit = re.compile(r'"((?:[^"\\]|\\.)*)"')
+    ios_dirs = [os.path.join(ROOT, "ios-app", d) for d in ("Widgets", "WidgetShared")]
+    ios_skip = ("LockViews.swift",)   # 잠금화면 위젯 화면: 안드로이드에 없음 (port_check exceptions 와 같음)
+    for d in ios_dirs:
+        for dp, _, fs in os.walk(d):
+            for f in fs:
+                if f.endswith(".swift") and f not in ios_skip:
+                    for ln in open(os.path.join(dp, f), encoding="utf-8"):
+                        if ln.lstrip().startswith("//"):
+                            continue
+                        for m in lit.finditer(ln.split(" // ")[0]):
+                            t = m.group(1).replace("\\n", "\n").replace('\\"', '"')
+                            if t in wui:
+                                ios.add(t)
+    unused = sorted(ios - wused)
+    print(f"위젯 표(WIDGET_UI): 아이폰이 쓰는 {len(ios)} · 안드로이드가 쓰는 {len(wused)} · 안드로이드가 안 쓰는 키 {len(unused)}")
+    for t in unused:
+        print(f"  {t!r}")
 
 
 if __name__ == "__main__":

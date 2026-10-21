@@ -17,6 +17,7 @@ import kotlin.math.abs
 import kotlin.math.roundToLong
 
 /** 위젯 문구의 영어. 기기 언어가 한국어가 아니면 lines_en.json(assets) 의 ui 표(한국어 문구 → 영어)에서 찾는다 (tools/lines.py 가 만든다).
+ *  ui 표에 없으면 앱 표 l10n_en.json 의 x(아이폰 String(localized:) 자리, tools/l10n/gen_en.py 가 위젯 모듈 글자도 넣는다)에서 찾는다.
  *  한국어 기기이거나 표에 없으면 한국어 그대로. {n} 같은 자리는 vars 로 채운다 (예: WL.t("{n}번째 블록", mapOf("n" to "3"))) */
 // ios: WidgetShared/Format.swift:5
 object WL {
@@ -34,9 +35,15 @@ object WL {
         val f = try { Store.ctx.assets.open(listOf("lines_en", "json").joinToString(".")).use { NJson.decodeFromString(File.serializer(), it.readBytes().decodeToString()) } } catch (_: Exception) { null }
         f?.ui ?: emptyMap()
     }
+    /** 아이폰 String(localized:) 를 옮긴 WL.t 글자의 영어: 앱 표 l10n_en.json 의 그대로 찾기(x) */
+    @Serializable private class XFile(val x: Map<String, String>)
+    private val xc: Map<String, String> by lazy {
+        if (!en) return@lazy emptyMap()
+        try { Store.ctx.assets.open("l10n_en.json").use { NJson.decodeFromString(XFile.serializer(), it.readBytes().decodeToString()).x } } catch (_: Exception) { emptyMap() }
+    }
     // ios: WidgetShared/Format.swift:19,20,21,22
     fun t(ko: String, vars: Map<String, String> = emptyMap()): String {
-        var s = if (en) (ui[ko] ?: ko) else ko
+        var s = if (en) (ui[ko] ?: xc[ko] ?: ko) else ko
         for ((k, v) in vars) s = s.replace("{$k}", v)
         return s
     }

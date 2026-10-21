@@ -337,8 +337,8 @@ object Notifier {
     fun ensureChannel(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
         if (nm.getNotificationChannel(CHANNEL) != null) return
-        nm.createNotificationChannel(NotificationChannel(CHANNEL, "알림", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "아침 한 줄 · 본전 도달 · 비중 이탈 · 세금 · 일정 알림"
+        nm.createNotificationChannel(NotificationChannel(CHANNEL, com.naeilo.app.core.tr("알림"), NotificationManager.IMPORTANCE_HIGH).apply {
+            description = com.naeilo.app.core.tr("아침 한 줄 · 본전 도달 · 비중 이탈 · 세금 · 일정 알림")
         })
     }
 
@@ -365,7 +365,7 @@ object Notifier {
 /** 알람이 울릴 때·기기를 다시 켤 때 (AndroidManifest 에 receiver 로 넣는다) */
 class NotifyReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
-        Defaults.init(ctx)
+        Defaults.init(ctx); com.naeilo.app.core.Store.init(ctx)   // 알림 채널 이름이 앱 언어(AppModel.en)를 읽는다
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> Notifier.rearm(ctx)
             else -> intent.data?.schemeSpecificPart?.let { Notifier.fire(ctx, it) }
