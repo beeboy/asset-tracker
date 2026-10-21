@@ -563,7 +563,7 @@ fun WidgetPickView(m: AppModel) {
         Box(Modifier.size(w, h).clip(RoundedCornerShape((22 * k).dp)), contentAlignment = Alignment.Center) {
             CharBG(c = e.c, locked = e.locked, dark = dark)   // ios: Views/SettingsDetail.swift:511
             // ios: Views/SettingsDetail.swift:512,513
-            Box(Modifier.requiredSize(158.dp, (h.value / k).dp).graphicsLayer { scaleX = k; scaleY = k }.padding(16.dp)) { CompositionLocalProvider(LocalCharDark provides dark) { Fg(Color.White) { v() } } }
+            Box(Modifier.requiredSize(158.dp, 158.dp).graphicsLayer { scaleX = k; scaleY = k }.padding(16.dp)) { CompositionLocalProvider(LocalCharDark provides dark) { Fg(Color.White) { v() } } }
         }
     }
 

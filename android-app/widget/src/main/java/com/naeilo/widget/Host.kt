@@ -65,8 +65,20 @@ fun textMeasurer(ctx: Context): TextMeasurer =
 class Rendered(val bitmap: Bitmap, val hits: List<Hit>)
 
 /** 위젯 한 장 (wDp × hDp) 을 비트맵으로. 모서리는 둥글게 자른다 */
-fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designW: Float = 0f, setup: Pen.() -> Unit = {}, draw: Pen.() -> Unit): Rendered {
+fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designW: Float = 0f, clip: Boolean = true, setup: Pen.() -> Unit = {}, draw: Pen.() -> Unit): Rendered {
     Store.init(ctx)
+    if (designW > 0f && hDp > wDp + 0.5f) {
+        // 칸이 세로로 길면: 안내 그림처럼 정사각형으로 그려 가운데 두고, 위아래는 바탕 끝줄을 늘려 채운다 (CLAMP). 그래야 인물·글자가 안 겹친다
+        val sq = render(ctx, wDp, wDp, dark, designW, clip = false, setup = setup, draw = draw)
+        val w = sq.bitmap.width; val h = ceil(w * hDp / wDp).toInt(); val top = (h - w) / 2f
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val sh = android.graphics.BitmapShader(sq.bitmap, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
+            .apply { setLocalMatrix(android.graphics.Matrix().apply { setTranslate(0f, top) }) }
+        val rp = cornerDp(ctx) * w / wDp
+        android.graphics.Canvas(out).drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), rp, rp, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { shader = sh })
+        val dy = top * wDp / w
+        return Rendered(out, sq.hits.map { Hit(it.r.translate(0f, dy), it.act) })
+    }
     val dm = ctx.resources.displayMetrics
     // 비트맵이 너무 크면 위젯에 못 넘긴다 (RemoteViews 비트맵 한도): 큰 위젯도 밀도를 줄여 600px 안쪽으로
     val density = min(dm.density, 600f / maxOf(wDp, hDp, 1f))
@@ -77,9 +89,9 @@ fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designW: Float =
     val r = cornerDp(ctx)
     CanvasDrawScope().draw(Density(density), LayoutDirection.Ltr, canvas, Size(bmp.width.toFloat(), bmp.height.toFloat())) {
         scale(density, Offset.Zero) {
-            clipPath(Path().apply { addRoundRect(RoundRect(0f, 0f, wDp, hDp, CornerRadius(r, r))) }) {
-                // designW 가 있으면 앱 안내 그림(Tile)처럼 폭 designW 로 그린 뒤 칸 크기로 키운다 (폭 기준이라 인물·글자가 안 겹친다)
-                val k = if (designW > 0f) wDp / designW else 1f
+            // designW 가 있으면 앱 안내 그림(Tile)처럼 폭 designW 로 그린 뒤 칸 크기로 키운다
+            val k = if (designW > 0f) wDp / designW else 1f
+            val body: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = {
                 scale(k, Offset.Zero) {
                     val p = Pen(this, tm, ctx, dark, wDp / k, hDp / k)
                     p.setup()
@@ -87,6 +99,7 @@ fun render(ctx: Context, wDp: Float, hDp: Float, dark: Boolean, designW: Float =
                     hits = p.hits.map { Hit(androidx.compose.ui.geometry.Rect(it.r.left * k, it.r.top * k, it.r.right * k, it.r.bottom * k), it.act) }
                 }
             }
+            if (clip) clipPath(Path().apply { addRoundRect(RoundRect(0f, 0f, wDp, hDp, CornerRadius(r, r))) }) { body() } else body()
         }
     }
     return Rendered(bmp, hits)
