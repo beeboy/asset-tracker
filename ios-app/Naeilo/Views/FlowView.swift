@@ -250,10 +250,30 @@ struct FlowChart: View {
             let piv = series.pivotSets[step == 1 ? 0 : step == 5 ? 1 : 2]
             // 지지·저항: 보이는 것 중 많이 닿은 4개. 이름표는 위아래로 붙으면 뒤의 것을 뺀다
             let lvls = Array(series.levels.filter { $0.price >= yMin && $0.price <= yMax && $0.from <= hi }.prefix(4))
-            let lvlTags: Set<Int> = lvls.reduce(into: (Set<Int>(), [CGFloat]())) { acc, lv in
-                let yy = y(lv.price)
-                if !acc.1.contains(where: { abs($0 - yy) < 18 }) { acc.0.insert(lv.id); acc.1.append(yy) }
-            }.0
+            let bigs = series.patterns.filter { $0.big && $0.to >= lo && $0.from <= hi }
+            let smalls = step == 1 ? series.patterns.filter { !$0.big && $0.to >= lo && $0.to <= hi } : []
+            // 큰 패턴 틀: 구간 안 최고가·최저가
+            let box = { (pt: FlowPattern) -> (CGFloat, CGFloat, CGFloat, CGFloat) in
+                let a = x(Double(max(lo, pt.from)) - 0.5), b = x(Double(min(hi, pt.to)) + 0.5)
+                let seg = k[max(lo, pt.from)...min(hi, pt.to)]
+                return (a, b, y(seg.map(\.h).max() ?? pt.price) - 4, y(seg.map(\.l).min() ?? pt.price) + 4)
+            }
+            let spots = placeTags(levels: lvls.map { lv in
+                let w = tagW(levelText(lv)), yy = y(lv.price), cx = W - w / 2 - 2
+                return TagWant(key: "L\(lv.id)", layer: .levels, strong: true, w: w, cands: [CGPoint(x: cx, y: yy), CGPoint(x: cx, y: yy - 12), CGPoint(x: cx, y: yy + 12)])
+            }, big: bigs.map { pt in
+                let (a, b, t, bt) = box(pt), w = tagW(pt.kind.title), cx = (a + b) / 2
+                let up = t - 13, dn = bt + 13
+                let pref = pt.below ? [dn, bt - 13, up] : [up, t + 13, dn]
+                return TagWant(key: "B\(pt.id)", layer: .big, strong: pt.strong, w: w,
+                               cands: pref.map { CGPoint(x: cx, y: $0) } + [CGPoint(x: cx - w, y: pref[0]), CGPoint(x: cx + w, y: pref[0])])
+            }, candle: smalls.map { pt in
+                let w = tagW(pt.kind.title), cx = x(Double(pt.from + pt.to) / 2), yy = y(pt.price)
+                let other = pt.below ? y(k[pt.to].h) - 14 : y(k[pt.to].l) + 14
+                let d: CGFloat = pt.below ? 1 : -1
+                return TagWant(key: "C\(pt.id)", layer: .candle, strong: pt.strong, w: w,
+                               cands: [CGPoint(x: cx, y: yy + 14 * d), CGPoint(x: cx, y: yy + 34 * d), CGPoint(x: cx, y: other), CGPoint(x: cx, y: yy + 54 * d)])
+            }, on: layers, bounds: CGRect(x: 0, y: top - 6, width: W, height: H + 14))
 
             ZStack(alignment: .topLeading) {
                 // 머리: 종목·마지막 값 (시작 대비) + 지금 단위
@@ -343,16 +363,16 @@ struct FlowChart: View {
                         let op = min(1, 0.25 + 0.2 * Double(lv.touches))
                         Path { p in p.move(to: CGPoint(x: a, y: yy)); p.addLine(to: CGPoint(x: W, y: yy)) }
                             .stroke(col.opacity(op), lineWidth: lv.touches >= 4 ? 2 : 1.2)
-                        Button { term = lv.support ? .support : .resistance } label: {
-                            Text((lv.support ? String(localized: "지지") : String(localized: "저항")) + " ×\(lv.touches)")
-                                .appFont(10, .semibold).foregroundStyle(col.opacity(max(0.7, op)))
-                                .padding(.horizontal, 4).background(Theme.card.opacity(0.9), in: Capsule())
-                                .frame(minWidth: 44, minHeight: 24)
-                                .contentShape(Rectangle())
+                        if let sp = spots["L\(lv.id)"] {
+                            Button { term = lv.support ? .support : .resistance } label: {
+                                Text(levelText(lv))
+                                    .appFont(10, .semibold).foregroundStyle(col.opacity(max(0.7, op))).fixedSize()
+                                    .padding(.horizontal, 4).background(Theme.card.opacity(0.9), in: Capsule())
+                                    .frame(minHeight: 24).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .position(sp)
                         }
-                        .buttonStyle(.plain)
-                        .opacity(lvlTags.contains(lv.id) ? 1 : 0)
-                        .position(x: W - 28, y: yy)
                     }
                 }
                 .opacity(layers.contains(.levels) ? 1 : 0)
@@ -360,10 +380,8 @@ struct FlowChart: View {
 
                 // 겹 3: 큰 패턴 (구간을 묶는 틀 + 이름표)
                 ZStack(alignment: .topLeading) {
-                    ForEach(series.patterns.filter { $0.big && $0.to >= lo && $0.from <= hi }) { pt in
-                        let a = x(Double(max(lo, pt.from)) - 0.5), b = x(Double(min(hi, pt.to)) + 0.5)
-                        let seg = k[max(lo, pt.from)...min(hi, pt.to)]
-                        let t = y(seg.map(\.h).max() ?? pt.price) - 4, bt = y(seg.map(\.l).min() ?? pt.price) + 4
+                    ForEach(bigs) { pt in
+                        let (a, b, t, bt) = box(pt)
                         let col = Theme.purple
                         RoundedRectangle(cornerRadius: 6)
                             .stroke(col.opacity(pt.strong ? 0.9 : 0.45), style: StrokeStyle(lineWidth: pt.strong ? 1.5 : 1, dash: pt.strong ? [] : [4, 3]))
@@ -371,8 +389,9 @@ struct FlowChart: View {
                             .frame(width: max(4, b - a), height: max(4, bt - t))
                             .position(x: (a + b) / 2, y: (t + bt) / 2)
                             .allowsHitTesting(false)
-                        tag(pt.kind.title, col, pt.strong) { term = .pattern(pt.kind) }
-                            .position(x: min(max((a + b) / 2, 34), W - 34), y: pt.below ? (bt + 13 > top + H ? bt - 13 : bt + 13) : (t - 13 < top ? t + 13 : t - 13))
+                        if let sp = spots["B\(pt.id)"] {
+                            tag(pt.kind.title, col, pt.strong) { term = .pattern(pt.kind) }.position(sp)
+                        }
                     }
                 }
                 .opacity(layers.contains(.big) ? 1 : 0)
@@ -380,11 +399,9 @@ struct FlowChart: View {
 
                 // 겹 4: 캔들 패턴 (일봉으로 볼 때만. 주봉·월봉에선 캔들 하나가 하루가 아니라 뜻이 달라진다)
                 ZStack(alignment: .topLeading) {
-                    if step == 1 {
-                        ForEach(series.patterns.filter { !$0.big && $0.to >= lo && $0.to <= hi }) { pt in
-                            let cx = x(Double(pt.from + pt.to) / 2), yy = y(pt.price)
-                            tag(pt.kind.title, Theme.orange, pt.strong) { term = .pattern(pt.kind) }
-                                .position(x: min(max(cx, 30), W - 30), y: pt.below ? min(yy + 14, top + H + 6) : max(yy - 14, top + 4))
+                    ForEach(smalls) { pt in
+                        if let sp = spots["C\(pt.id)"] {
+                            tag(pt.kind.title, Theme.orange, pt.strong) { term = .pattern(pt.kind) }.position(sp)
                         }
                     }
                 }
@@ -429,6 +446,37 @@ struct FlowChart: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
+    }
+
+    private func levelText(_ lv: FlowLevel) -> String {
+        (lv.support ? String(localized: "지지") : String(localized: "저항")) + " ×\(lv.touches)"
+    }
+    /// 10pt 굵은 글자 이름표 폭 어림 (한글 10.5, 영문 6.2 + 여백)
+    private func tagW(_ t: String) -> CGFloat { t.reduce(CGFloat(14)) { $0 + ($1.isASCII ? 6.2 : 10.5) } }
+
+    struct TagWant { let key: String; let layer: FlowLayer; let strong: Bool; let w: CGFloat; let cands: [CGPoint] }
+
+    /// 이름표 자리 잡기: 지지·저항 → 큰 패턴 → 캔들 패턴 순서로, 켜진 앞 겹 이름표와 이미 놓인 것을 피해
+    /// 후보 자리를 차례로 본다. 진한 것부터 놓으니 끝내 겹치면 약한 쪽이 숨는다.
+    /// 뒤 겹을 켜고 꺼도 앞 겹 이름표는 움직이지 않는다
+    private func placeTags(levels: [TagWant], big: [TagWant], candle: [TagWant], on: Set<FlowLayer>, bounds: CGRect) -> [String: CGPoint] {
+        var out: [String: CGPoint] = [:], taken: [CGRect] = []
+        for group in [levels, big, candle] {
+            var mine: [CGRect] = []
+            for t in group.sorted(by: { $0.strong && !$1.strong }) {
+                for c in t.cands {
+                    let cx = min(max(c.x, bounds.minX + t.w / 2), bounds.maxX - t.w / 2)
+                    let cy = min(max(c.y, bounds.minY + 9), bounds.maxY - 9)
+                    let r = CGRect(x: cx - t.w / 2, y: cy - 9, width: t.w, height: 18)
+                    if !(taken + mine).contains(where: { $0.intersects(r) }) {
+                        out[t.key] = CGPoint(x: cx, y: cy); mine.append(r); break
+                    }
+                }
+            }
+            // 이 겹이 켜져 있을 때만 뒤 겹이 피한다
+            if let l = group.first?.layer, on.contains(l) { taken += mine }
+        }
+        return out
     }
 
     /// 이름표: 확정은 진하게, 약한 것은 흐린 점선 테두리
