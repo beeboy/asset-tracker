@@ -504,13 +504,14 @@ fun Fg(color: Color, content: @Composable () -> Unit) =
 /** 꾸민 글 한 줄 (굵게 등) */
 @Composable
 fun TA(text: androidx.compose.ui.text.AnnotatedString, modifier: Modifier = Modifier, style: TextStyle = appFont(17f), color: Color = LocalFg.current(LocalPal.current), maxLines: Int = Int.MAX_VALUE) {
-    androidx.compose.foundation.text.BasicText(text, modifier, style.copy(color = color), maxLines = maxLines, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    androidx.compose.foundation.text.BasicText(com.naeilo.app.core.tr(text), modifier, style.copy(color = color), maxLines = maxLines, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
 }
 
 /** .lineLimit(1).minimumScaleFactor(k): 한 줄로, 자리가 모자라면 글자를 k 배까지 줄인다 */
 @Composable
 fun FitText(text: String, style: TextStyle, minScale: Float, modifier: Modifier = Modifier, @Suppress("UNUSED_PARAMETER") maxLines: Int = 1, color: Color = LocalFg.current(LocalPal.current), roll: Any? = null) {
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val text = com.naeilo.app.core.tr(text)   // 잴 때도 영어로
     // 폭을 재서 글자 크기를 정하고, 첫 줄 기준선(FirstBaseline)을 밖으로 넘겨 옆 글자와 기준선을 맞출 수 있게 한다
     androidx.compose.ui.layout.SubcomposeLayout(modifier) { c ->
         val w = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width

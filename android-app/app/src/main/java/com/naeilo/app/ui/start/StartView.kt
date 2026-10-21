@@ -229,7 +229,7 @@ fun StartForecastCard(route: Route?, modifier: Modifier = Modifier) {
 private fun Fan(e: StartForecast.Ex) {
     val yellow = Theme.yellow
     val tm = rememberTextMeasurer()
-    val label = tm.measure(e.lineName, TextStyle(fontSize = 12.sp, color = yellow))   // ios: Views/StartView.swift:161 .font(.system(size: 12)): 큰 글자 설정을 따르지 않는다
+    val label = tm.measure(com.naeilo.app.core.tr(e.lineName), TextStyle(fontSize = 12.sp, color = yellow))   // ios: Views/StartView.swift:161 .font(.system(size: 12)): 큰 글자 설정을 따르지 않는다
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     // ios: Views/StartView.swift:137,166,167,109
     Canvas(Modifier.fillMaxWidth().height(140.dp).semantics { contentDescription = "3년 예상 범위 부채꼴" }

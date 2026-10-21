@@ -1,0 +1,30 @@
+# 빠진 키로 세지 않는 한국어 글자. '## 분류' 아래 줄마다 하나.
+# file:경로(app 기준, / 로 끝나면 폴더, 경로:줄)  re:정규식  그 밖엔 글자 그대로(%@ = 자리)
+
+## 자료에 영어가 따로 있음 (en 칸·data_en.json·story_en.json)
+file:net/StockCatalog.kt
+file:data/SampleData.kt
+file:core/calc/Industries.kt
+file:core/StoryWidgetData.kt
+
+## 코드가 이미 영어를 고름 (WL.t·WL.en 갈래)
+file:core/Config.kt:225
+file:core/Engine.kt:94
+
+## 아이폰도 한국어 그대로 (번역 안 하는 자리: 내부 값·검색어·개발자 칸)
+file:net/StockSearch.kt
+file:core/Config.kt:40
+file:core/Config.kt:42
+file:core/Config.kt:44
+file:core/Engine.kt:252
+file:core/Engine.kt:254
+file:core/Engine.kt:255
+file:core/Engine.kt:256
+file:core/Engine.kt:336
+
+## 비교용 값 (화면에 안 나옴)
+file:ui/analysis/FxGlanceViews.kt:379
+file:ui/analysis/FxGlanceViews.kt:380
+
+## 코드용(저장 키·정규식 등)
+file:core/L10n.kt

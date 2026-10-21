@@ -257,7 +257,7 @@ fun <K> ChipRow(
         val measurer = rememberTextMeasurer()
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val need = with(androidx.compose.ui.platform.LocalDensity.current) {
-                items.sumOf { measurer.measure(it.second, style, maxLines = 1).size.width + (8.dp * 2).roundToPx() } +
+                items.sumOf { measurer.measure(com.naeilo.app.core.tr(it.second), style, maxLines = 1).size.width + (8.dp * 2).roundToPx() } +
                     (gap * (items.size - 1)).roundToPx()
             }
             if (need <= constraints.maxWidth) {
@@ -438,6 +438,7 @@ fun T(
     /** .roll(값): 값이 바뀌면 글자가 한 자리씩 위아래로 넘어간다 (Charts.kt RollText). null 이면 그냥 글자 */
     roll: Any? = null,
 ) {
+    val text = com.naeilo.app.core.tr(text)   // 영어 기기면 영어로 (core/L10n.kt)
     if (roll != null) RollText(text, roll, modifier, style.copy(color = color))
     else BasicText(text, modifier, style.copy(color = color), maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }

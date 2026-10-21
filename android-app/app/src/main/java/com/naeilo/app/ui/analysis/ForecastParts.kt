@@ -124,14 +124,14 @@ fun ScenarioChart(
             var v = 0.0   // ios: Views/ForecastParts.swift:65
             // ios: Views/ForecastParts.swift:66,67,69,70
             if (n > 0) while (v <= top + 1) { ticks.add(Pair(y(v), tm.measure(ScenarioChart.axis(v), TextStyle(fontSize = 10.sp, color = muted)))); v += st }
-            val oth = others.filter { it.second.size > n }.map { o -> Triple(line(o.second), y(o.second[n]), tm.measure(o.first, TextStyle(fontSize = 10.sp, color = muted))) }   // ios: Views/ForecastParts.swift:75,77
-            val selT = tm.measure(selLabel, TextStyle(fontSize = 10.sp, color = tealDark, fontWeight = FontWeight.Bold))   // ios: Views/ForecastParts.swift:81
-            val goalT = tm.measure(goalLabel, TextStyle(fontSize = 10.sp, color = orange, fontWeight = FontWeight.SemiBold))   // ios: Views/ForecastParts.swift:87
-            val nowT = tm.measure("지금 $now0", TextStyle(fontSize = 10.sp, color = ink, fontWeight = FontWeight.SemiBold))   // ios: Views/ForecastParts.swift:92
-            val nowAx = tm.measure("지금", TextStyle(fontSize = 10.sp, color = muted))   // ios: Views/ForecastParts.swift:96
+            val oth = others.filter { it.second.size > n }.map { o -> Triple(line(o.second), y(o.second[n]), tm.measure(com.naeilo.app.core.tr(o.first), TextStyle(fontSize = 10.sp, color = muted))) }   // ios: Views/ForecastParts.swift:75,77
+            val selT = tm.measure(com.naeilo.app.core.tr(selLabel), TextStyle(fontSize = 10.sp, color = tealDark, fontWeight = FontWeight.Bold))   // ios: Views/ForecastParts.swift:81
+            val goalT = tm.measure(com.naeilo.app.core.tr(goalLabel), TextStyle(fontSize = 10.sp, color = orange, fontWeight = FontWeight.SemiBold))   // ios: Views/ForecastParts.swift:87
+            val nowT = tm.measure(com.naeilo.app.core.tr("지금 $now0"), TextStyle(fontSize = 10.sp, color = ink, fontWeight = FontWeight.SemiBold))   // ios: Views/ForecastParts.swift:92
+            val nowAx = tm.measure(com.naeilo.app.core.tr("지금"), TextStyle(fontSize = 10.sp, color = muted))   // ios: Views/ForecastParts.swift:96
             // X축: 지금 / 1년 뒤 / 2년 뒤 / 끝날
-            val yrsT = (1..max(1, span.toInt())).filter { it.toDouble() < span - 0.4 && it <= 4 }.map { yr -> Pair(left + (yr / span).toFloat() * W, tm.measure("${yr}년 뒤", TextStyle(fontSize = 10.sp, color = muted))) }   // ios: Views/ForecastParts.swift:97,98,99
-            val endT = tm.measure(endLabel, TextStyle(fontSize = 10.sp, color = muted))   // ios: Views/ForecastParts.swift:101
+            val yrsT = (1..max(1, span.toInt())).filter { it.toDouble() < span - 0.4 && it <= 4 }.map { yr -> Pair(left + (yr / span).toFloat() * W, tm.measure(com.naeilo.app.core.tr("${yr}년 뒤"), TextStyle(fontSize = 10.sp, color = muted))) }   // ios: Views/ForecastParts.swift:97,98,99
+            val endT = tm.measure(com.naeilo.app.core.tr(endLabel), TextStyle(fontSize = 10.sp, color = muted))   // ios: Views/ForecastParts.swift:101
             val outer = if (n > 0) band(q95, q5) else null; val inner = if (n > 0) band(q75, q25) else null; val med = if (n > 0) line(q50) else null
             onDrawBehind {
                 if (n <= 0) return@onDrawBehind   // ios: Views/ForecastParts.swift:44

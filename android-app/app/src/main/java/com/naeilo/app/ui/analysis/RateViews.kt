@@ -627,13 +627,13 @@ fun RateBandChart(cum: List<List<Double>>, modifier: Modifier = Modifier) {
             val base = Path().apply { moveTo(x0, y(100.0)); lineTo(size.width, y(100.0)) }   // ios: Views/AnalysisDetail.swift:1690
             // 오늘 세로선
             val today = Path().apply { moveTo(x(0), 0f); lineTo(x(0), size.height - 14.dp.toPx()) }   // ios: Views/AnalysisDetail.swift:1693
-            val todayL = tm.measure("오늘", TextStyle(fontSize = 10.sp, color = muted)); val todayAt = Offset(x(0), size.height - 6.dp.toPx() - todayL.size.height / 2f)   // ios: Views/AnalysisDetail.swift:1695
+            val todayL = tm.measure(com.naeilo.app.core.tr("오늘"), TextStyle(fontSize = 10.sp, color = muted)); val todayAt = Offset(x(0), size.height - 6.dp.toPx() - todayL.size.height / 2f)   // ios: Views/AnalysisDetail.swift:1695
             val dashes = listOf(0, 2).map { k ->   // ios: Views/AnalysisDetail.swift:1696
                 Path().apply { for (i in 0 until n) { val pt = Offset(x(i), y(lv[k][i])); if (i == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y) } }   // ios: Views/AnalysisDetail.swift:1697
             }
             val midP = Path().apply { for (i in 0 until n) { val pt = Offset(x(i), y(lv[1][i])); if (i == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y) } }   // ios: Views/AnalysisDetail.swift:1700
             val years = (1 until max(2, n)).filter { it < n }.map { i ->   // ios: Views/AnalysisDetail.swift:1702
-                val l = tm.measure("${i}년", TextStyle(fontSize = 10.sp, color = muted)); Offset(x(i) - 12.dp.toPx() - l.size.width / 2f, size.height - 6.dp.toPx() - l.size.height / 2f) to l   // ios: Views/AnalysisDetail.swift:1703
+                val l = tm.measure(com.naeilo.app.core.tr("${i}년"), TextStyle(fontSize = 10.sp, color = muted)); Offset(x(i) - 12.dp.toPx() - l.size.width / 2f, size.height - 6.dp.toPx() - l.size.height / 2f) to l   // ios: Views/AnalysisDetail.swift:1703
             }
             onDrawBehind {
                 drawPath(area, teal.copy(alpha = 0.16f))   // ios: Views/AnalysisDetail.swift:1681

@@ -1,0 +1,14 @@
+{
+  "켬": "On",
+  "끔": "Off",
+  "뒤로": "Back",
+  "검색": "Search",
+  "기본: 폰 설정 (%@)": "Default: phone setting (%@)",
+  "폰 알림이 꺼져 있어요": "Phone alerts are off",
+  "폰 알림 허용이 필요해요": "Phone alerts must be allowed",
+  "폰 설정 > 알림 > naeilo에서 허용해 주세요.": "Allow them in phone Settings > Notifications > naeilo.",
+  "폰 설정 열기": "Open phone settings",
+  "토큰은 이 폰 보관함에만 둬요. 개발자 칸은 암호화하지 않아요.": "The token stays in this phone's keystore. The developer section isn't encrypted.",
+  "미션을 마치면 열려요. 홈 화면 길게 누르기 → 위젯 → naeilo": "Opens after a mission. Long-press Home Screen → Widgets → naeilo",
+  "한은 금리": "BOK rate decision"
+}

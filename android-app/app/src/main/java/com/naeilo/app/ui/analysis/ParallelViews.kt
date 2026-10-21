@@ -443,7 +443,8 @@ object ParallelView0 {
 }
 
 /** **굵게** 만 읽는 짧은 마크다운 */
-internal fun mdBold(s: String): AnnotatedString = buildAnnotatedString {
+internal fun mdBold(s0: String): AnnotatedString = buildAnnotatedString {
+    val s = com.naeilo.app.core.tr(s0)   // ** 표시째 영어로 (키에 ** 가 들어 있다)
     var i = 0
     while (i < s.length) {
         val a = s.indexOf("**", i); val b = if (a >= 0) s.indexOf("**", a + 2) else -1

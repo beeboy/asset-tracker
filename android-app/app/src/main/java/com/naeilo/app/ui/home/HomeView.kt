@@ -367,7 +367,7 @@ private fun FitTwoLines(text: String, style: androidx.compose.ui.text.TextStyle,
     androidx.compose.foundation.layout.BoxWithConstraints {
         var k = 1f
         if (constraints.hasBoundedWidth) {
-            while (k > minScale && measurer.measure(text, style.copy(fontSize = style.fontSize * k), maxLines = lines, constraints = Constraints(maxWidth = constraints.maxWidth)).hasVisualOverflow) k -= 0.05f
+            while (k > minScale && measurer.measure(com.naeilo.app.core.tr(text), style.copy(fontSize = style.fontSize * k), maxLines = lines, constraints = Constraints(maxWidth = constraints.maxWidth)).hasVisualOverflow) k -= 0.05f
         }
         T(text, style = style.copy(fontSize = style.fontSize * maxOf(k, minScale), textAlign = TextAlign.End), color = color, maxLines = lines)
     }

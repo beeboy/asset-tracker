@@ -997,6 +997,7 @@ private fun PixelFit(name: String, modifier: Modifier) {
 @Composable
 private fun FitLines(text: String, style: TextStyle, maxLines: Int, minScale: Float, modifier: Modifier = Modifier, color: Color = LocalFg.current(LocalPal.current)) {
     val measurer = rememberTextMeasurer()
+    val text = com.naeilo.app.core.tr(text)
     SubcomposeLayout(modifier) { c ->
         var k = 1f
         while (k > minScale) {
