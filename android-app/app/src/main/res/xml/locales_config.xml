@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱별 언어(안드로이드 13+ 설정 > 앱 > 언어)에 나올 언어: 아이폰 xcstrings 와 같은 두 가지 -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="ko" />
+    <locale android:name="en" />
+</locale-config>

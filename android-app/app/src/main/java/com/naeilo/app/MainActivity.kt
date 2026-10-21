@@ -21,6 +21,8 @@ class MainActivity : ComponentActivity() {
     // ios: App.swift:7
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 앱 언어가 바뀌면(설정 > 앱 > 언어) 아이폰처럼 앱을 새로 띄운다: 언어는 시작할 때 한 번만 읽는다 (AppModel.en)
+        if (relaunchIfLanguageChanged()) return
         enableEdgeToEdge()
         // ios: App.swift:8 알림 허락 창을 띄울 화면·알림 채널 (누름 처리는 App.kt openIntent → openNotification)
         model.let { Notifier.attach(this) }
@@ -32,6 +34,17 @@ class MainActivity : ComponentActivity() {
         window.decorView.post { Thread { runCatching { Market.shared; CustomSymbols.shared; Sample.symbols } }.start() }
         // ios: App.swift:10 구독: 지금 구독 확인, 거래 듣기 (Play 결제 연결도 첫 화면 뒤로 미룬다)
         window.decorView.post { Support.shared.start() }
+    }
+
+    /** 지금 화면 언어와 시작할 때 읽은 언어가 다르면 프로세스를 새로 시작한다 */
+    private fun relaunchIfLanguageChanged(): Boolean {
+        Store.init(applicationContext); Defaults.init(applicationContext)   // AppModel.en 이 저장소에 언어를 적는다
+        val now = java.util.Locale.getDefault().language == "en"   // AppModel.en 과 같은 곳에서 읽는다 (다르게 읽으면 다시 띄우기가 멈추지 않을 수 있다)
+        if (now == AppModel.en) return false
+        startActivity(Intent(this, RestartActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        finish()
+        android.os.Process.killProcess(android.os.Process.myPid())
+        return true
     }
 
     /** 이미 떠 있는 앱으로 온 주소·알림 (singleTop) */

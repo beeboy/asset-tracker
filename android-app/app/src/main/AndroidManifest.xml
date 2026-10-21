@@ -11,6 +11,7 @@
     <!-- 기기를 다시 켜면 예약한 알림을 다시 건다 (안드로이드 알람은 재부팅하면 사라진다) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <application
+        android:localeConfig="@xml/locales_config"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher_star"
         android:label="@string/app_name"
@@ -60,5 +61,12 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+            <!-- 앱 언어가 바뀌면 앱을 새로 띄우는 잠깐 화면 (따로 된 프로세스) -->
+        <activity
+            android:name=".RestartActivity"
+            android:process=":restart"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     </application>
 </manifest>
