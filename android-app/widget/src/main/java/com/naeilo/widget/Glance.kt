@@ -102,8 +102,11 @@ object Widgets {
         reloadTimelines(ctx, "char.board")
     }
     private suspend fun bump(ctx: Context, w: FaceWidget) {
+        // 받는 쪽(Receiver) 칸 번호로 직접 찾는다: getGlanceIds(종류)가 다른 종류 칸을 돌려주면 그 칸이 다른 위젯(자산 언덕 등)으로 바뀌어 그려질 수 있다
         val m = GlanceAppWidgetManager(ctx)
-        for (id in m.getGlanceIds(w.javaClass)) {
+        val rc = receiverOf[w.javaClass] ?: return
+        val ids = android.appwidget.AppWidgetManager.getInstance(ctx).getAppWidgetIds(android.content.ComponentName(ctx, rc))
+        for (id in ids.map { m.getGlanceIdBy(it) }) {
             updateAppWidgetState(ctx, id) { it[tick] = (it[tick] ?: 0) + 1 }
             w.update(ctx, id)
         }
@@ -116,6 +119,17 @@ object Widgets {
     /** 위젯 추가 화면 순서 (아이폰 NaeiloWidgets 묶음 순서). 잠금화면 묶음(LockWidgets)은 안드로이드에 없다 */
     // ios: Widgets/LockWidgets.swift:9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28
     val naeiloWidgets: List<FaceWidget> get() = all
+    /** 위젯 종류 → 받는 쪽 (칸 번호를 찾을 때·미리보기를 올릴 때) */
+    val receiverOf: Map<Class<*>, Class<*>> by lazy { mapOf(
+        CharHill::class.java to CharHillReceiver::class.java, CharLadder::class.java to CharLadderReceiver::class.java,
+        CharTower::class.java to CharTowerReceiver::class.java, CharBoard::class.java to CharBoardReceiver::class.java,
+        CharHeight::class.java to CharHeightReceiver::class.java, CharPuzzle::class.java to CharPuzzleReceiver::class.java,
+        CharGarden::class.java to CharGardenReceiver::class.java, CharTug::class.java to CharTugReceiver::class.java,
+        AssetSmall::class.java to AssetSmallReceiver::class.java, PathSmall::class.java to PathSmallReceiver::class.java,
+        FutureSmall::class.java to FutureSmallReceiver::class.java, BlockSmall::class.java to BlockSmallReceiver::class.java,
+        PaceSmall::class.java to PaceSmallReceiver::class.java, TargetSmall::class.java to TargetSmallReceiver::class.java,
+        MovesSmall::class.java to MovesSmallReceiver::class.java, StoryWidget::class.java to StoryWidgetReceiver::class.java,
+    ) }
     val all: List<FaceWidget> by lazy { listOf(
         CharHill(), CharLadder(), CharTower(), CharBoard(), CharHeight(), CharPuzzle(), CharGarden(), CharTug(),
         AssetSmall(), PathSmall(), FutureSmall(), BlockSmall(), PaceSmall(), TargetSmall(), MovesSmall(), StoryWidget(),
