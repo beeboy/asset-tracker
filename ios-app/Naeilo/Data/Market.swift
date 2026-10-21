@@ -435,6 +435,8 @@ enum TossHistory {
         let now = Date().timeIntervalSince1970, today = Day.today
         let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))   // 사이트 파일과 같은 3년 남짓
         var miss = TossFeed.histMiss
+        // 한 번만: 중계에 일봉 경로가 없던 때(404) 모든 종목에 하루 막음이 걸린 기기가 있다. 이 판에서 한 번 푼다
+        if !Store.defaults.bool(forKey: "toss_hist_miss_reset_relay") { miss = [:]; Store.defaults.set(true, forKey: "toss_hist_miss_reset_relay") }
         var stop = false
         var ohlc = FlowBars.read(FlowBars.tossName), ohlcDirty = false   // 차트 탭 캔들: 같은 응답에서 시가·고가·저가·거래량도 남긴다
         for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop {
@@ -453,6 +455,8 @@ enum TossHistory {
                 var path = "/api/toss/v1/candles?symbol=\(enc(c))&interval=1d&adjusted=false&count=\(full ? 200 : 30)"
                 if let b = before { path += "&before=" + enc(b) }
                 let (code, o, e) = await TossFeed.userGet(path)
+                // 404 가 중계 쪽(없는 경로)이면 종목 탓이 아니다: 막지 않고 이번엔 그만 (중계를 고치면 다음 갱신에 받는다)
+                if code == 404, ((o?["error"] as? [String: Any])?["code"] as? String) == "relay" { stop = true; break }
                 if code == 404 { miss[c] = now + 86400; break }
                 guard code == 200, let r = o?["result"] as? [String: Any] else { if e != nil || code == 429 || code == 401 || code == 403 { stop = true }; ok = false; break }
                 ok = true
