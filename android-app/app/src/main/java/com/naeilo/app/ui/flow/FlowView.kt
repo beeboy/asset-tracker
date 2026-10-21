@@ -58,7 +58,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.naeilo.app.AppModel
-import com.naeilo.app.Tab
 import com.naeilo.app.core.AlpacaKeys
 import com.naeilo.app.core.TossKeys
 import com.naeilo.app.core.cformat
@@ -130,7 +129,7 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                 if (ids.isNotEmpty()) Chips(ids, cur, ::name, onAll = { showAll = true }) { sel = it; term = null }   // ios: Views/FlowView.swift:34
                 if (needKey) {   // ios: Views/FlowView.swift:35
                     // ios: Views/FlowView.swift:36,37,38,40
-                    T("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요", Modifier.plainClickable { model.tab = Tab.settings; model.settingsPath = listOf(SettingsRoute.toss) },
+                    T("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요", Modifier.plainClickable { model.openSettings(SettingsRoute.toss) },
                         style = appFont(13f).copy(textDecoration = TextDecoration.Underline), color = Theme.teal)
                 }
                 LayerRow(layers) { layers = it }   // ios: Views/FlowView.swift:42
