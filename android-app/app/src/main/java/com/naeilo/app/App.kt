@@ -96,7 +96,7 @@ import com.naeilo.app.data.LineClock
 import com.naeilo.app.data.Notifier
 import com.naeilo.app.data.Remind
 import com.naeilo.app.data.Support
-import com.naeilo.app.pending.WidgetBridge
+import com.naeilo.app.data.WidgetBridge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.delay

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 위젯 이름·설명 (Catalog.kt 와 같은 글, 영어는 values-en). 위젯 추가 화면이 읽는다 -->
+<resources>
+    <string name="w_char_hill_name">인물 · 자산 언덕</string>
+    <string name="w_char_hill_desc" formatted="false">최근 10일 총자산을 픽셀 언덕으로</string>
+    <string name="w_char_ladder_name">인물 · 본전 사다리</string>
+    <string name="w_char_ladder_desc" formatted="false">본전(목표)까지 사다리를 오르는 인물</string>
+    <string name="w_char_tower_name">인물 · 블록 탑</string>
+    <string name="w_char_tower_desc" formatted="false">100칸이 한 층, 10층 탑을 쌓아요</string>
+    <string name="w_char_board_name">인물 · 전광판</string>
+    <string name="w_char_board_desc" formatted="false">총자산·오늘 등락·큰 종목 2개를 전광판으로</string>
+    <string name="w_char_height_name">인물 · 키 재기</string>
+    <string name="w_char_height_desc" formatted="false">문틀 기둥에 지난 날 자산을 금으로, 오늘은 인물 머리 높이</string>
+    <string name="w_char_puzzle_name">인물 · 퍼즐 맞추기</string>
+    <string name="w_char_puzzle_desc" formatted="false">본전(목표)까지 20조각 퍼즐, 다 맞추면 깃발</string>
+    <string name="w_char_garden_name">인물 · 꽃밭</string>
+    <string name="w_char_garden_desc" formatted="false">블록 1개가 꽃 1송이, 100송이면 다음 밭</string>
+    <string name="w_char_tug_name">인물 · 줄다리기</string>
+    <string name="w_char_tug_desc" formatted="false">오른 종목과 내린 종목이 당기는 오늘의 줄다리기</string>
+    <string name="w_asset_small_name">자산 추이</string>
+    <string name="w_asset_small_desc" formatted="false">총자산·오늘 등락·최근 10일 흐름</string>
+    <string name="w_path_small_name">내 길</string>
+    <string name="w_path_small_desc" formatted="false">계획선보다 앞섰는지와 달성 확률</string>
+    <string name="w_future_small_name">목표일 전망</string>
+    <string name="w_future_small_desc" formatted="false">목표일 예상과 지금보다 몇 %</string>
+    <string name="w_block_small_name">지금 채우는 블록</string>
+    <string name="w_block_small_desc" formatted="false">목표를 1000칸으로 나눠 지금 채우는 100칸</string>
+    <string name="w_pace_small_name">목표 페이스</string>
+    <string name="w_pace_small_desc" formatted="false">나와 모의 바구니, 누가 빠른지</string>
+    <string name="w_target_small_name">이번 주 과녁</string>
+    <string name="w_target_small_desc" formatted="false">금요일 마감 예측과 지금 위치</string>
+    <string name="w_moves_small_name">오늘의 움직임</string>
+    <string name="w_moves_small_desc" formatted="false">비중 큰 종목의 오늘 등락 히트맵</string>
+    <string name="w_story_name">서재 · 이어 읽기</string>
+    <string name="w_story_desc" formatted="false">외전 『이종 공명』에서 읽던 자리의 한 문단. 누르면 그 장으로 가요</string>
+    <string name="w_reload">naeilo 다시 받기</string>
+    <string name="w_who">인물 고르기</string>
+</resources>

@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 이름으로 찾는 위젯 도트 그림은 줄이기(shrinkResources)에서 지우지 않는다 -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@drawable/w_*" />

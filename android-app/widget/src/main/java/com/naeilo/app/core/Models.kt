@@ -272,7 +272,7 @@ private fun nowSec(): Double = System.currentTimeMillis() / 1000.0
 
 /** URLRequest 자리: 주소·기다릴 초·방법·헤더·본문. send() 는 Dispatchers.IO 에서 보내고 (응답 코드, 본문) 을 준다.
  *  닿지 못하면 IOException (시간 초과는 SocketTimeoutException). 캐시는 쓰지 않는다 (.reloadIgnoringLocalCacheData) */
-internal class FeedReq(val url: String, val timeout: Double) {
+class FeedReq(val url: String, val timeout: Double) {
     var httpMethod = "GET"
     var httpBody: ByteArray? = null
     val headers = mutableMapOf<String, String>()
@@ -297,7 +297,7 @@ internal class FeedReq(val url: String, val timeout: Double) {
 }
 
 /** JSON 본문 → Map<String, Any?> / List<Any?> / String / Double / Boolean / null (JSONSerialization 과 같은 꼴, 숫자는 모두 Double) */
-internal fun feedJson(b: ByteArray): Any? = runCatching { plainJson(NJson.parseToJsonElement(b.decodeToString())) }.getOrNull()
+fun feedJson(b: ByteArray): Any? = runCatching { plainJson(NJson.parseToJsonElement(b.decodeToString())) }.getOrNull()
 
 private fun plainJson(e: JsonElement): Any? = when (e) {
     is JsonObject -> e.mapValues { plainJson(it.value) }
@@ -308,19 +308,19 @@ private fun plainJson(e: JsonElement): Any? = when (e) {
 
 /** `as? [String: Any]` */
 @Suppress("UNCHECKED_CAST")
-internal fun jObj(v: Any?): Map<String, Any?>? = v as? Map<String, Any?>
+fun jObj(v: Any?): Map<String, Any?>? = v as? Map<String, Any?>
 
 /** `as? [Any]` */
-internal fun jArr(v: Any?): List<Any?>? = v as? List<Any?>
+fun jArr(v: Any?): List<Any?>? = v as? List<Any?>
 
 /** `as? [[String: Any]]` (하나라도 사전이 아니면 null) */
-internal fun jObjs(v: Any?): List<Map<String, Any?>>? = jArr(v)?.let { l -> l.map { jObj(it) ?: return null } }
+fun jObjs(v: Any?): List<Map<String, Any?>>? = jArr(v)?.let { l -> l.map { jObj(it) ?: return null } }
 
 /** `as? [Double]` (하나라도 숫자가 아니면 null) */
-internal fun jDbls(v: Any?): List<Double>? = jArr(v)?.let { l -> l.map { it as? Double ?: return null } }
+fun jDbls(v: Any?): List<Double>? = jArr(v)?.let { l -> l.map { it as? Double ?: return null } }
 
 /** addingPercentEncoding(withAllowedCharacters: .alphanumerics + keep) */
-internal fun pctEncode(s: String, keep: String = ""): String {
+fun pctEncode(s: String, keep: String = ""): String {
     val sb = StringBuilder()
     for (b in s.toByteArray(Charsets.UTF_8)) {
         val ch = (b.toInt() and 0xFF).toChar()
@@ -331,7 +331,7 @@ internal fun pctEncode(s: String, keep: String = ""): String {
 }
 
 /** URL(string:) 이 받는 주소면 그대로, 아니면 null */
-internal fun uriOrNull(s: String): String? = runCatching { URI(s); s }.getOrNull()
+fun uriOrNull(s: String): String? = runCatching { URI(s); s }.getOrNull()
 
 /** Date(_, strategy: .iso8601) → 1970 기준 초 */
-internal fun isoSec(s: String): Double? = runCatching { OffsetDateTime.parse(s).toInstant().toEpochMilli() / 1000.0 }.getOrNull()
+fun isoSec(s: String): Double? = runCatching { OffsetDateTime.parse(s).toInstant().toEpochMilli() / 1000.0 }.getOrNull()

@@ -23,7 +23,7 @@ import com.android.billingclient.api.queryPurchasesAsync
 import com.naeilo.app.core.Store
 import com.naeilo.app.core.epochSec
 import com.naeilo.app.net.Sync
-import com.naeilo.app.pending.WidgetCenter
+import com.naeilo.widget.WidgetCenter
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch

@@ -579,7 +579,7 @@ private fun nowSec(): Double = System.currentTimeMillis() / 1000.0
 
 /** 키체인 대신: Android Keystore 의 AES 키(이 기기에서만, 내보낼 수 없음)로 값을 AES/GCM 으로 감싸 SharedPreferences 에 둔다.
  *  백업으로 다른 기기에 옮겨져도 풀 키가 없으니 못 읽는다 (아이폰 ThisDeviceOnly 와 같은 뜻). 위젯은 같은 앱이라 같이 읽는다 */
-internal object KeyVault {
+object KeyVault {
     private const val ALIAS = "naeilo_keychain"
     private const val GCM = "AES/GCM/NoPadding"
     private const val IV = 12

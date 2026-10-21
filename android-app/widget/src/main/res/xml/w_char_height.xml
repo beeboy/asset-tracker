@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 인물 · 키 재기: 작은 위젯 하나 (2×2). 갱신은 앱·WorkManager 가 해서 updatePeriodMillis 는 0 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp" android:minHeight="110dp"
+    android:targetCellWidth="2" android:targetCellHeight="2"
+    android:resizeMode="none" android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:description="@string/w_char_height_desc"
+    android:configure="com.naeilo.widget.WhoIntent"
+    android:widgetFeatures="reconfigurable|configuration_optional" />

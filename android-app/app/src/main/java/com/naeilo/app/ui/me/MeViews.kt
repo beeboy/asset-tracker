@@ -100,7 +100,7 @@ import com.naeilo.app.data.roomBG
 import com.naeilo.app.ui.MeMotion
 import com.naeilo.app.ui.MeTurntable
 import com.naeilo.app.ui.PixBuf
-import com.naeilo.app.pending.WidgetBridge
+import com.naeilo.app.data.WidgetBridge
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.ConfirmSheet
 import com.naeilo.app.ui.DialogAction

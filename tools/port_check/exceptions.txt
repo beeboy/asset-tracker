@@ -223,3 +223,32 @@ Views/SupportView.swift:28 플랫폼 차이: 'App Store' → 'Google Play' 문�
 Views/SupportView.swift:36 플랫폼 차이: Apple 구독 관리 주소 → Google Play 구독 관리 주소 (옮김, ui/support/SupportView.kt manageUrl)
 Views/SupportView.swift:39 플랫폼 차이: Apple ID·iPhone 설정 안내 → Google 계정·Play 스토어 안내 문구 (옮김, ui/support/SupportView.kt 자동 갱신 안내)
 Views/SupportView.swift:41 플랫폼 차이: Apple 표준 EULA → Google Play 이용약관 링크 (옮김, ui/support/SupportView.kt 약관 링크)
+
+# L 단계 (위젯): 잠금화면 위젯·아이폰에서 안 쓰는 CharItem·CharTop, 위젯 애니메이션, #if WIDGET_EXT, 갤러리 추천
+Widgets/CharWidgets.swift:234-243 아이폰에서 안 쓰는 View라 옮기지 않음 (L 브리프) — CharItem
+Widgets/CharWidgets.swift:300-311 아이폰에서 안 쓰는 View라 옮기지 않음 (L 브리프) — CharTop
+Widgets/CharWidgets.swift:199 애니메이션(interpolatingSpring): 위젯은 움직이지 못해 받는 중 끝 모습만 그린다
+Widgets/CharWidgets.swift:206 애니메이션(interpolatingSpring): 그림자 작아짐은 끝 모습(0.7)만 그린다
+Widgets/CharWidgets.swift:282 애니메이션(interpolatingSpring): charHop 의 offset 은 280-281 구역에서 그린다
+Widgets/CharWidgets.swift:413 애니메이션(interpolatingSpring): offset(x: 1) 은 414 구역 pinSprite(dx) 로 그린다
+# L 단계 홈 위젯 (HomeViews·Charts·StoryWidgetView·Locked)
+Widgets/Views/HomeViews.swift:139 검사기 한계: 보간 속 따옴표("+" : "")를 ' : ' 문구로 읽음 (옮김, HomeViews.kt blockSmallView dTxt)
+Widgets/Views/HomeViews.swift:287 검사기 한계: 보간 속 따옴표(String(format: "%.1f"))를 문구 조각으로 읽음 (옮김, HomeViews.kt tile pct)
+Widgets/StoryWidget.swift:110 투명·틴트(iOS 18 accented) 전용 그림 칠하기: 안드로이드 위젯은 늘 fullColor (WidgetRenderingMode)
+# L 단계 위젯 묶음: 안드로이드에 없는 줄
+Widgets/HomeWidgets.swift:21-39 잠금화면 위젯은 안드로이드에 없음 (lockWidget·LockSpeak)
+Widgets/LockWidgets.swift:4-7 잠금화면 위젯 4개는 안드로이드에 없음
+Widgets/LockWidgets.swift:29 iOS 18 제어 센터 등록: 안드로이드 빠른 설정 타일(ReloadControl)은 매니페스트에 등록
+Widgets/LockWidgets.swift:34 iOS 18 버전 표시: 빠른 설정 타일은 안드로이드 7부터라 버전 확인이 없음
+Widgets/LockWidgets.swift:47-53 잠금화면 위젯 묶음은 안드로이드에 없음
+Widgets/Views/LockViews.swift:1-123 잠금화면 위젯 화면은 안드로이드에 없음
+Widgets/CharWidgets.swift:71-72 위젯 갤러리 추천(AppIntentRecommendation): 안드로이드 위젯 갤러리에 추천 없음. 놓을 때 인물 고르기 화면이 뜬다
+Widgets/Intent.swift:58-59 AppIntent 만들기(init): 안드로이드는 ActionParameters 로 값을 넘겨 만들기가 없음
+Widgets/Views/Theme.swift:107 #if WIDGET_EXT 전처리: 안드로이드는 Pen.inApp 으로 가른다
+Widgets/Views/Theme.swift:109 #else 전처리 (107 과 같음)
+Widgets/Views/Theme.swift:111 #endif 전처리 (107 과 같음)
+Widgets/Views/Theme.swift:145 잠금화면 위젯 금액 가리기(privacySensitive): 안드로이드엔 잠금화면 위젯이 없음
+Widgets/Views/Theme.swift:146 #if WIDGET_EXT 전처리 (107 과 같음)
+Widgets/Views/Theme.swift:148 #else 전처리 (107 과 같음)
+Widgets/Views/Theme.swift:150 #endif 전처리 (107 과 같음)
+Data/WidgetBridge.swift:125 검사기 한계: 보간 속 따옴표 ("up" : "down") 를 문구 조각으로 읽음 (옮김, WidgetBridge.kt widgetLines key)

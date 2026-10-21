@@ -10,8 +10,7 @@ import com.naeilo.app.core.Store
 import com.naeilo.app.core.WL
 import com.naeilo.app.core.WStory
 import com.naeilo.app.net.StoreAPI
-import com.naeilo.app.pending.WidgetCenter
-import com.naeilo.app.pending.reloadTimelines
+import com.naeilo.widget.WidgetCenter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

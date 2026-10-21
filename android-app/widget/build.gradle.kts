@@ -2,8 +2,11 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
+// 위젯 + 앱·위젯 공용 (아이폰 WidgetShared·Widgets 자리). 앱 모듈이 이 모듈을 쓴다
+// 공용 모델·저장·시세(core/)는 위젯도 읽어야 해서 이 모듈에 둔다 (패키지는 com.naeilo.app.core 그대로)
 android {
     namespace = "com.naeilo.widget"
     compileSdk = 35
@@ -14,8 +17,23 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = false }
+    sourceSets["main"].res.srcDir(layout.buildDirectory.dir("iosRes"))
 }
 
+// 아이폰 위젯 그림 중 쓰는 것만 drawable-nodpi 로: 인물 기본·포즈·raise·spread, 쉼터 고양이 (투명·틴트용 _tint 와 CharItem 물건 그림은 안 쓴다)
+val copyWidgetImages by tasks.registering(Copy::class) {
+    from("../../ios-app/Widgets/Assets.xcassets") { include("w_*.imageset/*.png"); exclude("w_*_tint.imageset/**", "w_item_*.imageset/**") }
+    eachFile { path = "drawable-nodpi/" + file.parentFile.name.removeSuffix(".imageset") + ".png" }
+    includeEmptyDirs = false
+    into(layout.buildDirectory.dir("iosRes"))
+}
+tasks.named("preBuild") { dependsOn(copyWidgetImages) }
+
 dependencies {
+    api(platform(libs.compose.bom))
+    api(libs.compose.foundation)
+    api(libs.serialization.json)
     implementation(libs.glance.appwidget)
+    implementation(libs.work.runtime)
+    implementation(libs.activity.compose)
 }
