@@ -20,7 +20,7 @@ struct NaeiloApp: App {
     }
 }
 
-enum Tab: Hashable { case home, hold, analysis, board, settings }
+enum Tab: Hashable { case home, hold, flow, analysis, board, settings }
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
@@ -33,6 +33,8 @@ struct RootView: View {
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
             NavigationStack(path: $model.holdPath) { HoldingsView() }
                 .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
+            NavigationStack { FlowView() }   // 차트 탭 (이름은 FlowTab 한 곳에서)
+                .tabItem { Label(FlowTab.name, systemImage: FlowTab.icon) }.tag(Tab.flow)
             NavigationStack(path: $model.analysisPath) { AnalysisView() }
                 .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
             NavigationStack(path: $model.boardPath) {

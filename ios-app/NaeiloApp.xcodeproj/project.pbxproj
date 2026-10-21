@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7BC78A9100EBAC0B7C495D27 /* FlowData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C21B67D9AE5BC01B8DD3CFB5 /* FlowData.swift */; };
+		DE3D07429852D8222CFC6E1A /* FlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1958813E4968988054782185 /* FlowView.swift */; };
 		E7A1C0DE00000000000000C3 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000C1 /* Localizable.xcstrings */; };
 		E7A1C0DE00000000000000D4 /* data_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000D3 /* data_en.json */; };
 		E7A1C0DE00000000000000D2 /* lines_app_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000D1 /* lines_app_en.json */; };
@@ -147,6 +149,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C21B67D9AE5BC01B8DD3CFB5 /* FlowData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowData.swift; sourceTree = "<group>"; };
+		1958813E4968988054782185 /* FlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowView.swift; sourceTree = "<group>"; };
 		E7A1C0DE00000000000000D3 /* data_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = data_en.json; sourceTree = "<group>"; };
 		E7A1C0DE00000000000000D1 /* lines_app_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_app_en.json; sourceTree = "<group>"; };
 		E7A1C0DE00000000000000C1 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -307,6 +311,7 @@
 				D1E2F3A4B5C6D7E8F9A0B1C3 /* Invest.swift */,
 				CCACC287684D148B6C75C94F /* SampleData.swift */,
 				4439B2462725991C102336E8 /* Services.swift */,
+				C21B67D9AE5BC01B8DD3CFB5 /* FlowData.swift */,
 				7C0F24B12A0E97C97C96F8E2 /* StockCatalog.swift */,
 				D8E2F947F1E8A2B5EF85B381 /* StockSearch.swift */,
 				A0C8BDB35CC0EADAEFBC826C /* Calm.swift */,
@@ -359,6 +364,7 @@
 				F4C4668A7B9FECB1D2C27F7F /* AnalysisDetail.swift */,
 				0020D03B6A8743286E629278 /* AnalysisView.swift */,
 				FFF12A424D20E007AF664931 /* BoardView.swift */,
+				1958813E4968988054782185 /* FlowView.swift */,
 				7C59880D308D978CDFD58A8E /* Charts.swift */,
 				68521199848D8FCA256D8B7B /* GoalViews.swift */,
 				FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */,
@@ -649,6 +655,8 @@
 				10C6615D5203C5E06D9C2CF9 /* AppModel.swift in Sources */,
 				144B366D5A4CB36879DFA9FE /* Backup.swift in Sources */,
 				FFBF09FFE7A73E919A8C69C3 /* BoardView.swift in Sources */,
+				7BC78A9100EBAC0B7C495D27 /* FlowData.swift in Sources */,
+				DE3D07429852D8222CFC6E1A /* FlowView.swift in Sources */,
 				9AAFE0E39C67C3A8F01170F4 /* Catalog.swift in Sources */,
 				7AE72E73708FC421D35A432B /* CharWidgets.swift in Sources */,
 				EB12D002A2D45EFB5B3CB73D /* Charts.swift in Sources */,
