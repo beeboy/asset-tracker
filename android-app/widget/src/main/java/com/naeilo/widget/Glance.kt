@@ -45,8 +45,8 @@ private val tick = intPreferencesKey("tick")
 val whoKey = androidx.datastore.preferences.core.stringPreferencesKey("who")
 
 /** 칸 안쪽 여백 (dp) */
-private const val padX = 6f
-private const val padY = 12f
+private const val padX = 7.5f
+private const val padY = 14.5f
 
 abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
