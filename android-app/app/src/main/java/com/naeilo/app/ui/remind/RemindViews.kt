@@ -43,7 +43,7 @@ import com.naeilo.app.data.RemindGo
 import com.naeilo.app.data.RemindItem
 import com.naeilo.app.data.color
 import com.naeilo.app.data.go
-import com.naeilo.app.pending.GameHeader
+import com.naeilo.app.ui.wave.GameHeader
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.ProgressBar
 import com.naeilo.app.ui.Sym

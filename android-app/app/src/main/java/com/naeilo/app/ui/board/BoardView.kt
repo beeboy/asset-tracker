@@ -75,9 +75,9 @@ import com.naeilo.app.core.cformat
 import com.naeilo.app.data.Remind
 import com.naeilo.app.data.Shelter
 import com.naeilo.app.data.weekGateText
-import com.naeilo.app.pending.BrickGameButton
-import com.naeilo.app.pending.TightLabel
-import com.naeilo.app.pending.WaveGameButton
+import com.naeilo.app.ui.game.BrickGameButton
+import com.naeilo.app.ui.wave.TightLabel
+import com.naeilo.app.ui.wave.WaveGameButton
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card

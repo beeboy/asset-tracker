@@ -61,7 +61,8 @@ import com.naeilo.app.net.PriceHistory
 import com.naeilo.app.net.Sync
 import com.naeilo.app.net.last
 import com.naeilo.app.net.quote
-import com.naeilo.app.pending.TownButton
+import com.naeilo.app.ui.town.TownView
+import com.naeilo.app.ui.wave.TownButton
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.ChipRow
@@ -515,7 +516,7 @@ fun HoldingsNews(m: AppModel) {
     // ios: Views/HoldingsView.swift:810
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         compare(m, ks)?.let { CompareCard(it) }   // ios: Views/HoldingsView.swift:811
-        TownButton()   // ios: Views/HoldingsView.swift:812 시장과 비교 밑 [동네]: 전체 화면으로 (동네 단계)
+        TownButton { TownView(m, it) }   // ios: Views/HoldingsView.swift:812 시장과 비교 밑 [동네]: 전체 화면으로
         MoversCard(m, rows)   // ios: Views/HoldingsView.swift:813
         NearCard(m, ks)   // ios: Views/HoldingsView.swift:814
     }

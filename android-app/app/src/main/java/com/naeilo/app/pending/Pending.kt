@@ -31,8 +31,6 @@ class Support {
 }
 // TODO(WidgetBridge): 진짜 이식 때 지움
 object WidgetBridge { fun write(m: AppModel) {} }
-// TODO(SurfCloset): 진짜 이식 때 지움. 저장 키는 iOS 와 같다 (백업 파일에 들어간다)
-object SurfCloset { val keys = listOf("surf.total", "surf.fever", "surf.splash", "surf.snap", "surf.hard", "surf.board", "surf.hat"); fun keep() {} }
 
 
 
@@ -89,8 +87,6 @@ class CharEntry(val r: WReward, val c: com.naeilo.app.core.WChar, val locked: Bo
 @Composable fun GardenCharView(e: CharEntry) {}
 // TODO(CharWidgets)
 @Composable fun TugCharView(e: CharEntry) {}
-// TODO(BrickGameView 게임 단계): 미니 게임 중엔 1분 시세 갱신을 미룬다
-object GamePause { @Volatile var on: Boolean = false }
 // TODO(WidgetBridge 위젯 단계): 위젯 다시 그리기
 object WidgetCenter { fun reloadAllTimelines() {} }
 // TODO(CharWidgets 위젯 단계): 인물 위젯 다크 모양·금액 가리기 (charDark·charHide 환경값)

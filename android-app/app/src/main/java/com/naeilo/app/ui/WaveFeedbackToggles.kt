@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-// Views/Wave/WaveFeedback.swift 중 설정 화면이 쓰는 스위치 두 줄 (소리·진동을 내는 쪽은 게임 단계에서 옮긴다)
+// Views/Wave/WaveFeedback.swift 중 설정 화면이 쓰는 스위치 두 줄 (소리·진동을 내는 쪽은 ui/wave/WaveFeedback.kt)
 
 /** 파도 타기 효과음·진동 켜기 (게임이 읽는 저장 이름) */
 // ios: Views/Wave/WaveFeedback.swift:10

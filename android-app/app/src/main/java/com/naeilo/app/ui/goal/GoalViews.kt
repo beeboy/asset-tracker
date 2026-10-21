@@ -145,9 +145,9 @@ import com.naeilo.app.data.Shelter
 import com.naeilo.app.data.friendName
 import com.naeilo.app.data.monthGateText
 import com.naeilo.app.net.last
-import com.naeilo.app.pending.BrickGameHub
-import com.naeilo.app.pending.GamePause
-import com.naeilo.app.pending.WaveHub
+import com.naeilo.app.ui.game.BrickGameHub
+import com.naeilo.app.ui.game.RefreshPause
+import com.naeilo.app.ui.wave.WaveHub
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card
@@ -540,7 +540,7 @@ fun BrickBox(
         contentAlignment = Alignment.TopCenter) {
         if (!on) GoalCellGrid(mine = mine, filled = filled, lost = lost, modifier = Modifier.fillMaxWidth().aspectRatio(1f))   // ios: Views/GoalViews.swift:213
     }
-    DisposableEffect(on) { if (on) GamePause.on = true; onDispose { if (on) GamePause.on = false } }   // ios: Views/GoalViews.swift:225 게임 중엔 1분 시세 갱신을 미룬다
+    RefreshPause(on)   // ios: Views/GoalViews.swift:225 게임 중엔 1분 시세 갱신을 미룬다
 }
 
 /** 다 깨면 캐릭터와 친구들이 아래에서 차례로 튀어 올라 축하 */

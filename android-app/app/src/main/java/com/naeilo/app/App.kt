@@ -91,7 +91,7 @@ import com.naeilo.app.data.saveProgress
 import com.naeilo.app.data.persists
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.Sync
-import com.naeilo.app.pending.GamePause
+import com.naeilo.app.ui.game.GamePause
 import com.naeilo.app.data.LineClock
 import com.naeilo.app.pending.Notifier
 import com.naeilo.app.data.Remind

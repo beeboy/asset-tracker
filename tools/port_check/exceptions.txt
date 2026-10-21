@@ -207,3 +207,10 @@ Views/AnalysisDetail.swift:294 검사기 한계: 보간 속 따옴표 (옮김, M
 Views/AnalysisDetail.swift:318-321 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt 판정 카드 첫 줄·가능성)
 Views/AnalysisDetail.swift:442 검사기 한계: 보간 속 따옴표 (옮김, MyPathViews.kt 회복 KPI 본전 확률)
 
+# J 단계 (미니 게임: 벽돌깨기·파도)
+Data/BrickGame.swift:231 검사기 한계: 보간 속 따옴표 who == "me" ? "seri" : who (옮김, BrickGame.kt 아이템 대사 Lines.pick)
+Data/BrickGame.swift:260 플랫폼: 키체인 한 벌(앱 지워도 남김). 안드로이드는 allowBackup 자동 백업이 prefs 를 되살린다
+Data/BrickGame.swift:263-268 플랫폼: 키체인에서 기록 되살리기 (위와 같은 이유, BrickGame.kt GameRecord.load 는 prefs 만)
+Data/BrickGame.swift:273-275 플랫폼: 키체인에 기록 쓰기 (위와 같은 이유, BrickGame.kt GameRecord.save 는 prefs 만)
+Views/BrickGameView.swift:627 검사기 한계: 보간 속 따옴표 String(localized:) 겹침 (옮김, BrickGameView.kt 결과 줄 sub)
+Views/BrickGameView.swift:766-767 플랫폼: CGContext 비트맵 문맥. 안드로이드는 ARGB_8888 Bitmap 이 같은 일 (BrickGameView.kt 캐릭터 그림)

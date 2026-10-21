@@ -27,6 +27,8 @@ TOL_KEYS |= {"value", "fanStart"}
 TOL_KEYS |= {"need"}
 # G2 외부 요인·금리: 지난 종가 회귀(log)·요인 변화 exp(β·log(1+x))−1·한 달 변화 exp(sd)−1, 닫힌 식 log·exp·normCDF, 식단 시장 수익 exp. 같은 상대 1e-12
 TOL_KEYS |= {"extBeta", "extMove", "extShock", "extRanks", "extRows", "rateClosed", "rateProb", "rateMkt"}
+# J 판 깨기: 공·판·물건 위치는 sin·cos 를 거친다 (Darwin libm 과 JVM 끝자리, 최대 상대 3.5e-16). 칸·점수·소리·물건은 차이 0 그대로
+TOL_KEYS |= {"ballXY", "padX", "dropXY"}
 
 
 def run(*cmd, cwd=ROOT):
@@ -81,6 +83,16 @@ def gen():
     run("python3", "tools/num_parity/i/isrc.py", str(i))
     run("swiftc", "-O", str(i / "main.swift"), "-o", str(bins / "i"))
     print(run(str(bins / "i"), str(i)).strip())
+    # J 단계 (판 깨기 게임 엔진): 같은 시드·대본으로 한 판씩 (j/jsrc.py)
+    j = WORK / "j"; j.mkdir(parents=True, exist_ok=True)
+    run("python3", "tools/num_parity/j/jsrc.py", str(j))
+    run("swiftc", "-O", str(j / "main.swift"), "-o", str(bins / "j"))
+    print(run(str(bins / "j"), str(j)).strip())
+    # J 단계 (파도 타기 한 판 다시 돌리기): w/wsrc.py
+    w = WORK / "w"; w.mkdir(parents=True, exist_ok=True)
+    run("python3", "tools/num_parity/w/wsrc.py", str(w))
+    run("swiftc", "-O", str(w / "main.swift"), "-o", str(bins / "w"))
+    print(run(str(bins / "w"), str(w)).strip())
     print(f"입력·Swift 결과: {WORK}")
 
 
@@ -115,7 +127,9 @@ def check():
              ("f", "app.json", "kotlin.json", None),
              ("g", "app.json", "kotlin.json", None),
              ("h", "app.json", "kotlin.json", None),
-             ("i", "app.json", "kotlin.json", None)]
+             ("i", "app.json", "kotlin.json", None),
+             ("j", "app.json", "kotlin.json", None),
+             ("w", "app.json", "kotlin.json", None)]
     total, bad = 0, []
     for d, sw, kt, keys in pairs:
         a_p, b_p = WORK / d / sw, WORK / d / kt

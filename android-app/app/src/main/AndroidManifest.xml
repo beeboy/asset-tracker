@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 동네 날씨: 대략 위치만 (거절해도 서울 날씨로 동작) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 미니 게임 부딪힘·벽돌 깸 진동 (iOS UIFeedbackGenerator 자리) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher_star"

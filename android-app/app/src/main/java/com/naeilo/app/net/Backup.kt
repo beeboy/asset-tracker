@@ -11,7 +11,7 @@ import com.naeilo.app.data.Progress
 import com.naeilo.app.data.apply
 import com.naeilo.app.data.progress
 import com.naeilo.app.data.saveProgress
-import com.naeilo.app.pending.SurfCloset
+import com.naeilo.app.ui.wave.SurfCloset
 import com.naeilo.app.ui.town.TownBook
 import com.naeilo.app.ui.town.TownLog
 import kotlinx.serialization.KSerializer
