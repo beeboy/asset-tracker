@@ -367,459 +367,467 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     val syncOn: Boolean get() = Sync.shared.isOn   // ios: Data/AppModel.swift:365
     var widgetSel by mutableStateOf<List<String>?>(null)   // ios: Data/AppModel.swift:366
     var settingsPath by mutableStateOf(listOf<SettingsRoute>())   // ios: Data/AppModel.swift:367
+    var settingsOpen by mutableStateOf(false)   // ios: Data/AppModel.swift:368 설정 팝업 (탭에서 뺐다, 2026-10-21)
+    var widgetsOpen by mutableStateOf(false)    // ios: Data/AppModel.swift:369 홈 화면 위젯 팝업
+    /** 설정 팝업을 r 화면까지 열어 둔다. 소식함 같은 다른 팝업이 닫히는 중일 수 있어 잠깐 뒤에 띄운다 */
+    // ios: Data/AppModel.swift:371,372,373 (0.35초)
+    fun openSettings(r: SettingsRoute? = null) {
+        settingsPath = r?.let { listOf(it) } ?: emptyList()
+        MainScope().launch { kotlinx.coroutines.delay(350); settingsOpen = true }
+    }
 
-    val planWeight: Double get() = selectedPlan.wt   // ios: Data/AppModel.swift:369
-    fun planBreakEven(T: Double): Double = selectedPlan.prob(cost, T)   // ios: Data/AppModel.swift:370 years
+    val planWeight: Double get() = selectedPlan.wt   // ios: Data/AppModel.swift:376
+    fun planBreakEven(T: Double): Double = selectedPlan.prob(cost, T)   // ios: Data/AppModel.swift:377 years
 
     // 미션 판
-    data class Block(val id: Int, val num: String, val title: String, val reward: String, val inter: Boolean)   // ios: Data/AppModel.swift:373
-    val blocks: List<Block> = listOf(   // ios: Data/AppModel.swift:374
-        Block(id = 1, num = "1", title = "종목·단가 넣기", reward = "회복 확률", inter = false),   // ios: Data/AppModel.swift:375
-        Block(id = 2, num = "2", title = "원인 진단", reward = "회복 경로", inter = false),   // ios: Data/AppModel.swift:376
-        Block(id = 3, num = "3", title = "내 계획 정하기", reward = "비중 비교", inter = false),   // ios: Data/AppModel.swift:377
-        Block(id = 5, num = "4", title = "앱 시작 3단계", reward = "위젯 전부", inter = false),   // ios: Data/AppModel.swift:378
-        Block(id = 6, num = "인터미션", title = "처음 4주 체크인", reward = "캐릭터 위젯 4개, 1년 전망", inter = true),   // ios: Data/AppModel.swift:379
+    data class Block(val id: Int, val num: String, val title: String, val reward: String, val inter: Boolean)   // ios: Data/AppModel.swift:380
+    val blocks: List<Block> = listOf(   // ios: Data/AppModel.swift:381
+        Block(id = 1, num = "1", title = "종목·단가 넣기", reward = "회복 확률", inter = false),   // ios: Data/AppModel.swift:382
+        Block(id = 2, num = "2", title = "원인 진단", reward = "회복 경로", inter = false),   // ios: Data/AppModel.swift:383
+        Block(id = 3, num = "3", title = "내 계획 정하기", reward = "비중 비교", inter = false),   // ios: Data/AppModel.swift:384
+        Block(id = 5, num = "4", title = "앱 시작 3단계", reward = "위젯 전부", inter = false),   // ios: Data/AppModel.swift:385
+        Block(id = 6, num = "인터미션", title = "처음 4주 체크인", reward = "캐릭터 위젯 4개, 1년 전망", inter = true),   // ios: Data/AppModel.swift:386
     )
-    fun available(b: Block): Boolean {   // ios: Data/AppModel.swift:381
-        val i = blocks.indexOfFirst { it.id == b.id }; if (i < 0) return false   // ios: Data/AppModel.swift:382
-        return i == 0 || done.contains(blocks[i - 1].id)   // ios: Data/AppModel.swift:383
+    fun available(b: Block): Boolean {   // ios: Data/AppModel.swift:388
+        val i = blocks.indexOfFirst { it.id == b.id }; if (i < 0) return false   // ios: Data/AppModel.swift:389
+        return i == 0 || done.contains(blocks[i - 1].id)   // ios: Data/AppModel.swift:390
     }
-    val playOn: Boolean get() = if (route == Route.recover) done.contains(5) else gDone.contains("link")   // ios: Data/AppModel.swift:385
-    val interDone: Boolean get() = if (route == Route.recover) done.contains(6) else gDone.contains("inter")   // ios: Data/AppModel.swift:386
-    fun finishAppStart() {   // ios: Data/AppModel.swift:387
-        if (route == Route.recover) done = done + 5 else gDone = gDone + "link"   // ios: Data/AppModel.swift:388
-        boardPath = emptyList()   // ios: Data/AppModel.swift:389
-        fixStarts()   // ios: Data/AppModel.swift:390
+    val playOn: Boolean get() = if (route == Route.recover) done.contains(5) else gDone.contains("link")   // ios: Data/AppModel.swift:392
+    val interDone: Boolean get() = if (route == Route.recover) done.contains(6) else gDone.contains("inter")   // ios: Data/AppModel.swift:393
+    fun finishAppStart() {   // ios: Data/AppModel.swift:394
+        if (route == Route.recover) done = done + 5 else gDone = gDone + "link"   // ios: Data/AppModel.swift:395
+        boardPath = emptyList()   // ios: Data/AppModel.swift:396
+        fixStarts()   // ios: Data/AppModel.swift:397
     }
 
     /** 체크인: 시작한 날부터 7일마다 한 주씩만 (서버 시각, Me weekGate). 폰 시간을 바꿔 앞당길 수 없다 */
-    fun confirmWeek() {   // ios: Data/AppModel.swift:394
-        val c = weekCur; if (c == null || weeks.size >= 4 || weekGate != WeekGate.open) return   // ios: Data/AppModel.swift:395
-        weeks = weeks + c; weekCur = null   // ios: Data/AppModel.swift:396
-        if (weeks.size == 4) done = done + 6   // ios: Data/AppModel.swift:397
+    fun confirmWeek() {   // ios: Data/AppModel.swift:401
+        val c = weekCur; if (c == null || weeks.size >= 4 || weekGate != WeekGate.open) return   // ios: Data/AppModel.swift:402
+        weeks = weeks + c; weekCur = null   // ios: Data/AppModel.swift:403
+        if (weeks.size == 4) done = done + 6   // ios: Data/AppModel.swift:404
     }
     /** 지난 주차 체크인은 다음 주차가 열리기 전까지 바꿀 수 있다 */
-    val weekEditable: Boolean get() = weeks.isNotEmpty() && weeks.size < 4 && weekGate != WeekGate.open   // ios: Data/AppModel.swift:400
-    fun editLastWeek(p: WeekPick) { if (weekEditable) weeks = weeks.dropLast(1) + p }   // ios: Data/AppModel.swift:401
+    val weekEditable: Boolean get() = weeks.isNotEmpty() && weeks.size < 4 && weekGate != WeekGate.open   // ios: Data/AppModel.swift:407
+    fun editLastWeek(p: WeekPick) { if (weekEditable) weeks = weeks.dropLast(1) + p }   // ios: Data/AppModel.swift:408
 
     // 친구·장
     // 세리 외에 열린 친구 수. 처음 연 날부터 이틀째에 한 명씩 하루 1명 (2026-10-16 결정, Support.dayN).
     // 미션으로 먼저 만난 친구도 그대로 (목표 루트는 첫 달 1~4주차, 회복 루트는 인터미션 주마다)
     /** 개발자 계정(개발자 동기화로 연결한 기기)은 모든 보상이 열린다. 미션 진행 자체는 그대로 둔다.
      *  내부 테스트 빌드에서만: 스토어 빌드에서 자체 방식으로 여는 건 결제 정책 위반이라 끈다 (구독은 인앱 구매로) */
-    val devAll: Boolean get() {   // ios: Data/AppModel.swift:408
-        if (debug) {   // ios: Data/AppModel.swift:409
-            if (arg("devAllTest") == "YES") return true   // ios: Data/AppModel.swift:410 확인용: --es devAllTest YES
-        }   // ios: Data/AppModel.swift:411
-        return Support.shared.testBuild && Sync.shared.isDev   // ios: Data/AppModel.swift:412
+    val devAll: Boolean get() {   // ios: Data/AppModel.swift:415
+        if (debug) {   // ios: Data/AppModel.swift:416
+            if (arg("devAllTest") == "YES") return true   // ios: Data/AppModel.swift:417 확인용: --es devAllTest YES
+        }   // ios: Data/AppModel.swift:418
+        return Support.shared.testBuild && Sync.shared.isDev   // ios: Data/AppModel.swift:419
     }
     /** 앱 시작 3단계 보상(오늘의 1분·1000칸·주간 예보)이 열렸는지 */
-    val playUnlocked: Boolean get() = playOn || devAll   // ios: Data/AppModel.swift:415
-    val friendsOpen: Int get() {   // ios: Data/AppModel.swift:416
-        if (devAll) return 4   // ios: Data/AppModel.swift:417
-        val byDay = min(4, Support.shared.dayN - 1)   // ios: Data/AppModel.swift:418
+    val playUnlocked: Boolean get() = playOn || devAll   // ios: Data/AppModel.swift:422
+    val friendsOpen: Int get() {   // ios: Data/AppModel.swift:423
+        if (devAll) return 4   // ios: Data/AppModel.swift:424
+        val byDay = min(4, Support.shared.dayN - 1)   // ios: Data/AppModel.swift:425
         // 루트를 바꿔도 이미 만난 친구는 그대로 (회복 → 목표로 넘어간 뒤에도)
-        if (done.contains(6) || gDone.contains("inter")) return 4   // ios: Data/AppModel.swift:420
-        if (route == Route.recover) return max(byDay, weeks.size)   // ios: Data/AppModel.swift:421
-        return maxOf(byDay, weeks.size, if (gWeeks.isNotEmpty()) 4 else if (playOn) min(4, day / 7) else 0)   // ios: Data/AppModel.swift:422
+        if (done.contains(6) || gDone.contains("inter")) return 4   // ios: Data/AppModel.swift:427
+        if (route == Route.recover) return max(byDay, weeks.size)   // ios: Data/AppModel.swift:428
+        return maxOf(byDay, weeks.size, if (gWeeks.isNotEmpty()) 4 else if (playOn) min(4, day / 7) else 0)   // ios: Data/AppModel.swift:429
     }
-    fun friendOn(i: Int): Boolean = i == 0 || i <= friendsOpen   // ios: Data/AppModel.swift:424
+    fun friendOn(i: Int): Boolean = i == 0 || i <= friendsOpen   // ios: Data/AppModel.swift:431
     /** 외전 프롤로그~5장: 처음부터 프롤로그, 앞 장을 끝까지 읽으면 다음 장 (2026-10-16 결정) */
-    fun chapterOn(i: Int): Boolean =   // ios: Data/AppModel.swift:426
-        devAll || i == 0 || Story.shared.isDone(StoryBook.side, i - 1)   // ios: Data/AppModel.swift:427
-    fun friendWhen(i: Int): String = if (i == 0) "처음부터 · 홈" else "${i + 1}일째"   // ios: Data/AppModel.swift:429
+    fun chapterOn(i: Int): Boolean =   // ios: Data/AppModel.swift:433
+        devAll || i == 0 || Story.shared.isDone(StoryBook.side, i - 1)   // ios: Data/AppModel.swift:434
+    fun friendWhen(i: Int): String = if (i == 0) "처음부터 · 홈" else "${i + 1}일째"   // ios: Data/AppModel.swift:436
 
     // 오늘의 1분
-    val today: DayLog get() = dayLog[day] ?: DayLog()   // ios: Data/AppModel.swift:432
-    val streak: Int get() {   // ios: Data/AppModel.swift:433
-        var k = 0; var d = day - (if (today.answer != null) 0 else 1)   // ios: Data/AppModel.swift:434
-        while (d >= 0) {   // ios: Data/AppModel.swift:435
-            val ok = dayLog[d]?.let { it.answer != null } ?: (d < 5)   // ios: Data/AppModel.swift:436
-            if (!ok) break   // ios: Data/AppModel.swift:437
-            k += 1; d -= 1   // ios: Data/AppModel.swift:438
+    val today: DayLog get() = dayLog[day] ?: DayLog()   // ios: Data/AppModel.swift:439
+    val streak: Int get() {   // ios: Data/AppModel.swift:440
+        var k = 0; var d = day - (if (today.answer != null) 0 else 1)   // ios: Data/AppModel.swift:441
+        while (d >= 0) {   // ios: Data/AppModel.swift:442
+            val ok = dayLog[d]?.let { it.answer != null } ?: (d < 5)   // ios: Data/AppModel.swift:443
+            if (!ok) break   // ios: Data/AppModel.swift:444
+            k += 1; d -= 1   // ios: Data/AppModel.swift:445
         }
-        return k   // ios: Data/AppModel.swift:440
+        return k   // ios: Data/AppModel.swift:447
     }
     /** 돌아온 물건: 연속 7일을 채울 때마다 하나씩 늘고, 연속이 끊겨도 줄지 않는다 */
-    var itemsBack by mutableStateOf(0)   // ios: Data/AppModel.swift:443
-    var itemsBackDay by mutableStateOf<Int?>(null)   // ios: Data/AppModel.swift:444 마지막으로 물건이 돌아온 날 (같은 날 답을 바꿔도 두 번 세지 않게)
-    var itemsOff by mutableStateOf(setOf<String>())   // ios: Data/AppModel.swift:445 쉼터 방 배치에서 뺀 물건
+    var itemsBack by mutableStateOf(0)   // ios: Data/AppModel.swift:450
+    var itemsBackDay by mutableStateOf<Int?>(null)   // ios: Data/AppModel.swift:451 마지막으로 물건이 돌아온 날 (같은 날 답을 바꿔도 두 번 세지 않게)
+    var itemsOff by mutableStateOf(setOf<String>())   // ios: Data/AppModel.swift:452 쉼터 방 배치에서 뺀 물건
     /** 열린 물건: 처음 연 날부터 하루 2개 (2026-10-16 결정). 오늘의 1분으로 먼저 돌아온 것도 그대로. 개발자 권한은 물건 모두 */
-    val itemsOn: Int get() = if (devAll) 10 else min(10, max(if (playOn) itemsBack else 0, 2 * Support.shared.dayN))   // ios: Data/AppModel.swift:447
+    val itemsOn: Int get() = if (devAll) 10 else min(10, max(if (playOn) itemsBack else 0, 2 * Support.shared.dayN))   // ios: Data/AppModel.swift:454
 
     // 오늘 숫자와 질문은 내 종목의 실제 시세로 만든다 (Market: 전일 종가 → 지금, 종목 통화 기준)
     /** 오늘 많이 움직인 순서 */
-    val movers: List<Row> get() = rows.sortedByDescending { abs(it.sym.quote.change) }   // ios: Data/AppModel.swift:453
+    val movers: List<Row> get() = rows.sortedByDescending { abs(it.sym.quote.change) }   // ios: Data/AppModel.swift:460
     /** 홈 말풍선 정보 문장: 오늘 평가액 움직임(원화)에 크게 기여한 종목 1~2개. 전체 움직임의 30% 이상일 때만 이름을 쓴다 */
-    val todayMoversText: String? get() {   // ios: Data/AppModel.swift:455
-        val fx = Market.shared.valFx   // ios: Data/AppModel.swift:456
-        val rs = rows.filter { it.id != KoreaEstimate.sumId }   // ios: Data/AppModel.swift:457
-        if (rs.isEmpty()) return null   // ios: Data/AppModel.swift:458
-        val c = rs.map { r -> Pair(r, r.h.qty * r.sym.quote.prevClose * (if (r.sym.currency == Currency.usd) fx else 1.0) * r.sym.quote.change) }   // ios: Data/AppModel.swift:459
-        val all = c.fold(0.0) { a, x -> a + abs(x.second) }   // ios: Data/AppModel.swift:460
-        if (all <= 0) return null   // ios: Data/AppModel.swift:461
-        val mv = todayMove; val up = mv >= 0   // ios: Data/AppModel.swift:462
-        val top = c.filter { (it.second >= 0) == up }.sortedByDescending { abs(it.second) }.take(2).filter { abs(it.second) >= all * 0.3 }   // ios: Data/AppModel.swift:463
-        if (top.isEmpty()) return "오늘은 여러 종목이 고르게 움직였어요."   // ios: Data/AppModel.swift:464
-        val names = top.joinToString("와 ") { "${it.first.sym.short}(${sgn(it.first.sym.quote.change)})" }   // ios: Data/AppModel.swift:465
+    val todayMoversText: String? get() {   // ios: Data/AppModel.swift:462
+        val fx = Market.shared.valFx   // ios: Data/AppModel.swift:463
+        val rs = rows.filter { it.id != KoreaEstimate.sumId }   // ios: Data/AppModel.swift:464
+        if (rs.isEmpty()) return null   // ios: Data/AppModel.swift:465
+        val c = rs.map { r -> Pair(r, r.h.qty * r.sym.quote.prevClose * (if (r.sym.currency == Currency.usd) fx else 1.0) * r.sym.quote.change) }   // ios: Data/AppModel.swift:466
+        val all = c.fold(0.0) { a, x -> a + abs(x.second) }   // ios: Data/AppModel.swift:467
+        if (all <= 0) return null   // ios: Data/AppModel.swift:468
+        val mv = todayMove; val up = mv >= 0   // ios: Data/AppModel.swift:469
+        val top = c.filter { (it.second >= 0) == up }.sortedByDescending { abs(it.second) }.take(2).filter { abs(it.second) >= all * 0.3 }   // ios: Data/AppModel.swift:470
+        if (top.isEmpty()) return "오늘은 여러 종목이 고르게 움직였어요."   // ios: Data/AppModel.swift:471
+        val names = top.joinToString("와 ") { "${it.first.sym.short}(${sgn(it.first.sym.quote.change)})" }   // ios: Data/AppModel.swift:472
         return "오늘 ${if (up) "상승" else "하락"}은 주로 ${names} 때문이에요."   // Data/AppModel.swift:466 (검사 예외: 보간 속 따옴표)
     }
-    val routineFact: String get() {   // ios: Data/AppModel.swift:468
-        val tot = todayMove   // ios: Data/AppModel.swift:469
-        val mv = movers.take(2).joinToString(" · ") { "${it.sym.short} ${sgn(it.sym.quote.change)}" }   // ios: Data/AppModel.swift:470
-        val head = if (rows.isEmpty()) "" else "**${sgn(tot)}**" + (if (mv.isEmpty()) "" else " · $mv") + "\n"     // ios: Data/AppModel.swift:471 오늘 움직임은 진하게 (마크다운)
-        if (route == Route.novice) {   // ios: Data/AppModel.swift:472
-            return head + (if (noviceOwn) "평가액은" else "모은 돈은") + " 목표의 ${pct(goalSaved / max(1.0, gK))}예요. 다음 적립일에 ${wonK(gM)}이 더해져요."   // ios: Data/AppModel.swift:473
+    val routineFact: String get() {   // ios: Data/AppModel.swift:475
+        val tot = todayMove   // ios: Data/AppModel.swift:476
+        val mv = movers.take(2).joinToString(" · ") { "${it.sym.short} ${sgn(it.sym.quote.change)}" }   // ios: Data/AppModel.swift:477
+        val head = if (rows.isEmpty()) "" else "**${sgn(tot)}**" + (if (mv.isEmpty()) "" else " · $mv") + "\n"     // ios: Data/AppModel.swift:478 오늘 움직임은 진하게 (마크다운)
+        if (route == Route.novice) {   // ios: Data/AppModel.swift:479
+            return head + (if (noviceOwn) "평가액은" else "모은 돈은") + " 목표의 ${pct(goalSaved / max(1.0, gK))}예요. 다음 적립일에 ${wonK(gM)}이 더해져요."   // ios: Data/AppModel.swift:480
         }
-        if (total <= 0) return "아직 넣은 종목이 없어요. 종목 탭에서 수량을 넣으면 내일부터 내 숫자를 가져올게요."   // ios: Data/AppModel.swift:475
-        val vY = total / (1 + tot)   // ios: Data/AppModel.swift:476
-        if (route == Route.plus) {   // ios: Data/AppModel.swift:477
-            val k = gK * 1e4   // ios: Data/AppModel.swift:478
-            val a = pct(vY / k); val b = pct(total / k)   // ios: Data/AppModel.swift:479
-            return head + (if (a == b) "목표 **${b}** 그대로" else "목표 **${a} → ${b}**")   // ios: Data/AppModel.swift:480
+        if (total <= 0) return "아직 넣은 종목이 없어요. 종목 탭에서 수량을 넣으면 내일부터 내 숫자를 가져올게요."   // ios: Data/AppModel.swift:482
+        val vY = total / (1 + tot)   // ios: Data/AppModel.swift:483
+        if (route == Route.plus) {   // ios: Data/AppModel.swift:484
+            val k = gK * 1e4   // ios: Data/AppModel.swift:485
+            val a = pct(vY / k); val b = pct(total / k)   // ios: Data/AppModel.swift:486
+            return head + (if (a == b) "목표 **${b}** 그대로" else "목표 **${a} → ${b}**")   // ios: Data/AppModel.swift:487
         }
-        val distNow = cost / total - 1; val distY = cost / vY - 1   // ios: Data/AppModel.swift:482
-        if (distNow <= 0) return head + "본전보다 ${sgn(ret)} 위에 있어요."   // ios: Data/AppModel.swift:483
+        val distNow = cost / total - 1; val distY = cost / vY - 1   // ios: Data/AppModel.swift:489
+        if (distNow <= 0) return head + "본전보다 ${sgn(ret)} 위에 있어요."   // ios: Data/AppModel.swift:490
         return head + "본전까지 ${fmtF("%.1f", distY * 100)}% → ${fmtF("%.1f", distNow * 100)}%" + (if (distNow < distY) ", 가까워졌어요." else ", 조금 멀어졌어요.")   // Data/AppModel.swift:484 (검사 예외: 보간 속 따옴표)
     }
 
-    class Question(   // ios: Data/AppModel.swift:487
-        val id: String, val tag: String, val q: String, val opts: List<String>, val right: Int, val fb: (Int) -> String   // ios: Data/AppModel.swift:488
+    class Question(   // ios: Data/AppModel.swift:494
+        val id: String, val tag: String, val q: String, val opts: List<String>, val right: Int, val fb: (Int) -> String   // ios: Data/AppModel.swift:495
     ) {
         /** 보기 글자가 겹치거나 0원·NaN 같은 이상한 값이면 안 낸다 (Kotlin 은 NaN·Infinity 로 써서 대소문자 무시) */
-        val fair: Boolean get() = opts.toSet().size == opts.size && !opts.any { it.startsWith("0원") || it.contains("nan", ignoreCase = true) || it.contains("inf", ignoreCase = true) }   // ios: Data/AppModel.swift:490
+        val fair: Boolean get() = opts.toSet().size == opts.size && !opts.any { it.startsWith("0원") || it.contains("nan", ignoreCase = true) || it.contains("inf", ignoreCase = true) }   // ios: Data/AppModel.swift:497
     }
 
     /** 오늘 낼 수 있는 질문 전부. 내 종목·계산값으로 만들고, 조건이 안 맞는 질문은 빠진다 */
-    val questionPool: List<Question> get() {   // ios: Data/AppModel.swift:502
-        val qs = mutableListOf<Question>()   // ios: Data/AppModel.swift:503
-        val rs = rows; val tot = max(1.0, total); val mv = todayMove   // ios: Data/AppModel.swift:504
-        if (rs.isNotEmpty()) {   // ios: Data/AppModel.swift:505
-            val diff = stockTotal - stockTotal / (1 + mv)     // ios: Data/AppModel.swift:506 오늘 움직임은 종목만 (국내 주식 합계 빼고)
-            qs.add(Question(id = "updown", tag = "오늘 움직임", q = "어제 종가와 비교해, 오늘 내 평가액은?", opts = listOf("올랐어요", "내렸어요"), right = if (mv >= 0) 0 else 1,   // ios: Data/AppModel.swift:507
+    val questionPool: List<Question> get() {   // ios: Data/AppModel.swift:509
+        val qs = mutableListOf<Question>()   // ios: Data/AppModel.swift:510
+        val rs = rows; val tot = max(1.0, total); val mv = todayMove   // ios: Data/AppModel.swift:511
+        if (rs.isNotEmpty()) {   // ios: Data/AppModel.swift:512
+            val diff = stockTotal - stockTotal / (1 + mv)     // ios: Data/AppModel.swift:513 오늘 움직임은 종목만 (국내 주식 합계 빼고)
+            qs.add(Question(id = "updown", tag = "오늘 움직임", q = "어제 종가와 비교해, 오늘 내 평가액은?", opts = listOf("올랐어요", "내렸어요"), right = if (mv >= 0) 0 else 1,   // ios: Data/AppModel.swift:514
                             fb = { "오늘 ${sgn(mv)}, 원화로 ${won(diff)} ${if (diff >= 0) "늘었어요" else "줄었어요"}." }))   // Data/AppModel.swift:508 (검사 예외: 보간 속 따옴표)
         }
         // 종목이 둘 이상: 많이 움직인 종목·비중 1위 (보기는 이름순이라 순서로 답이 새지 않게)
-        val byW = rs.sortedByDescending { it.value }   // ios: Data/AppModel.swift:511
-        if (byW.size >= 2) {   // ios: Data/AppModel.swift:512
-            val c = byW.take(3).sortedBy { it.sym.short }   // ios: Data/AppModel.swift:513
-            val chg = c.map { abs(it.sym.quote.change) }; val wt = c.map { it.value / tot }   // ios: Data/AppModel.swift:514
-            val mvList = c.joinToString(" · ") { "${it.sym.short} ${sgn(it.sym.quote.change)}" }   // ios: Data/AppModel.swift:515
-            val wtList = c.sortedByDescending { it.value }.joinToString(" · ") { "${it.sym.short} ${pct(it.value / tot)}" }   // ios: Data/AppModel.swift:516
-            qs.add(Question(id = "mover", tag = "오늘 움직임", q = "오늘 가장 크게 움직인 종목은?", opts = c.map { it.sym.short },   // ios: Data/AppModel.swift:517
-                            right = chg.indices.maxByOrNull { chg[it] } ?: 0,   // ios: Data/AppModel.swift:518
-                            fb = { "${mvList}. 크게 움직인 종목일수록 내 평가액도 많이 흔들어요." }))   // ios: Data/AppModel.swift:519
-            qs.add(Question(id = "weight", tag = "비중 퀴즈", q = "가장 큰 종목은?", opts = c.map { it.sym.short },   // ios: Data/AppModel.swift:520
-                            right = wt.indices.maxByOrNull { wt[it] } ?: 0,   // ios: Data/AppModel.swift:521
-                            fb = { wtList }))   // ios: Data/AppModel.swift:522
-            val top = byW[0]; val w = top.value / tot; val n = near3(w, step = 0.2, lo = 0.2, hi = 1.0, salt = 1)   // ios: Data/AppModel.swift:523
-            qs.add(Question(id = "topshare", tag = "비중 퀴즈", q = "${top.sym.short}는 내 평가액의 몇 %쯤일까요?", opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:524
-                            fb = { "${top.sym.short} ${won(top.value)} ÷ 전체 ${won(tot)} = ${pct(w)}." }))   // ios: Data/AppModel.swift:525
+        val byW = rs.sortedByDescending { it.value }   // ios: Data/AppModel.swift:518
+        if (byW.size >= 2) {   // ios: Data/AppModel.swift:519
+            val c = byW.take(3).sortedBy { it.sym.short }   // ios: Data/AppModel.swift:520
+            val chg = c.map { abs(it.sym.quote.change) }; val wt = c.map { it.value / tot }   // ios: Data/AppModel.swift:521
+            val mvList = c.joinToString(" · ") { "${it.sym.short} ${sgn(it.sym.quote.change)}" }   // ios: Data/AppModel.swift:522
+            val wtList = c.sortedByDescending { it.value }.joinToString(" · ") { "${it.sym.short} ${pct(it.value / tot)}" }   // ios: Data/AppModel.swift:523
+            qs.add(Question(id = "mover", tag = "오늘 움직임", q = "오늘 가장 크게 움직인 종목은?", opts = c.map { it.sym.short },   // ios: Data/AppModel.swift:524
+                            right = chg.indices.maxByOrNull { chg[it] } ?: 0,   // ios: Data/AppModel.swift:525
+                            fb = { "${mvList}. 크게 움직인 종목일수록 내 평가액도 많이 흔들어요." }))   // ios: Data/AppModel.swift:526
+            qs.add(Question(id = "weight", tag = "비중 퀴즈", q = "가장 큰 종목은?", opts = c.map { it.sym.short },   // ios: Data/AppModel.swift:527
+                            right = wt.indices.maxByOrNull { wt[it] } ?: 0,   // ios: Data/AppModel.swift:528
+                            fb = { wtList }))   // ios: Data/AppModel.swift:529
+            val top = byW[0]; val w = top.value / tot; val n = near3(w, step = 0.2, lo = 0.2, hi = 1.0, salt = 1)   // ios: Data/AppModel.swift:530
+            qs.add(Question(id = "topshare", tag = "비중 퀴즈", q = "${top.sym.short}는 내 평가액의 몇 %쯤일까요?", opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:531
+                            fb = { "${top.sym.short} ${won(top.value)} ÷ 전체 ${won(tot)} = ${pct(w)}." }))   // ios: Data/AppModel.swift:532
         }
         // 환율: 달러 종목이 있을 때
-        val usd = rs.filter { it.sym.currency == Currency.usd }.fold(0.0) { a, r -> a + r.value } / tot; val fxc = Market.shared.fx.change   // ios: Data/AppModel.swift:528
-        if (usd > 0) {   // ios: Data/AppModel.swift:529
-            val eff = usd * fxc   // ios: Data/AppModel.swift:530
-            qs.add(Question(id = "fx", tag = "환율 퀴즈", q = "오늘 원/달러가 ${sgn(fxc)} 움직였어요. 달러 종목이 ${pct(usd)}인 내 평가액에는?",   // ios: Data/AppModel.swift:531
-                            opts = listOf("올려 줬어요", "내렸어요", "거의 그대로예요"), right = if (abs(eff) < 0.0005) 2 else if (eff > 0) 0 else 1,   // ios: Data/AppModel.swift:532
-                            fb = { "달러 비중 × 환율 변화 ≈ ${sgn(eff)}. 환율이 오르면 달러 종목의 원화 값도 같이 올라요." }))   // ios: Data/AppModel.swift:533
+        val usd = rs.filter { it.sym.currency == Currency.usd }.fold(0.0) { a, r -> a + r.value } / tot; val fxc = Market.shared.fx.change   // ios: Data/AppModel.swift:535
+        if (usd > 0) {   // ios: Data/AppModel.swift:536
+            val eff = usd * fxc   // ios: Data/AppModel.swift:537
+            qs.add(Question(id = "fx", tag = "환율 퀴즈", q = "오늘 원/달러가 ${sgn(fxc)} 움직였어요. 달러 종목이 ${pct(usd)}인 내 평가액에는?",   // ios: Data/AppModel.swift:538
+                            opts = listOf("올려 줬어요", "내렸어요", "거의 그대로예요"), right = if (abs(eff) < 0.0005) 2 else if (eff > 0) 0 else 1,   // ios: Data/AppModel.swift:539
+                            fb = { "달러 비중 × 환율 변화 ≈ ${sgn(eff)}. 환율이 오르면 달러 종목의 원화 값도 같이 올라요." }))   // ios: Data/AppModel.swift:540
         }
-        if (cost > 0 && rs.isNotEmpty()) {   // ios: Data/AppModel.swift:535
-            val r = ret; val n = near3(r, step = 0.1, lo = -1.0, hi = 10.0, salt = 2)   // ios: Data/AppModel.swift:536
-            val c = cost; val t = total   // ios: Data/AppModel.swift:537
-            qs.add(Question(id = "ret", tag = "수익률 퀴즈", q = "산 값과 비교한 지금 내 수익률은 어느 쪽에 가까울까요?", opts = n.opts.map { "약 " + sgn0(it) }, right = n.right,   // ios: Data/AppModel.swift:538
-                            fb = { "지금 ${sgn(r)}. 들어간 돈 ${won(c)}, 지금 ${won(t)}." }))   // ios: Data/AppModel.swift:539
+        if (cost > 0 && rs.isNotEmpty()) {   // ios: Data/AppModel.swift:542
+            val r = ret; val n = near3(r, step = 0.1, lo = -1.0, hi = 10.0, salt = 2)   // ios: Data/AppModel.swift:543
+            val c = cost; val t = total   // ios: Data/AppModel.swift:544
+            qs.add(Question(id = "ret", tag = "수익률 퀴즈", q = "산 값과 비교한 지금 내 수익률은 어느 쪽에 가까울까요?", opts = n.opts.map { "약 " + sgn0(it) }, right = n.right,   // ios: Data/AppModel.swift:545
+                            fb = { "지금 ${sgn(r)}. 들어간 돈 ${won(c)}, 지금 ${won(t)}." }))   // ios: Data/AppModel.swift:546
         }
-        if (route == Route.recover) {   // ios: Data/AppModel.swift:541
-            if (cost > 0 && rs.isNotEmpty()) {   // ios: Data/AppModel.swift:542
-                val p12 = planBreakEven(1.0); val p6 = planBreakEven(0.5); val n = near3(p12, step = 0.2, lo = 0.1, hi = 0.9, salt = 3)   // ios: Data/AppModel.swift:543
-                qs.add(Question(id = "be1y", tag = "확률 퀴즈", q = "지금 계획(${selectedPlan.name})으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?",   // ios: Data/AppModel.swift:544
-                                opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:545
-                                fb = { "모형 계산으로 약 ${pct(p12)}예요. 6개월 안이면 ${pct(p6)}. 기간이 길수록 높아져요." }))   // ios: Data/AppModel.swift:546
+        if (route == Route.recover) {   // ios: Data/AppModel.swift:548
+            if (cost > 0 && rs.isNotEmpty()) {   // ios: Data/AppModel.swift:549
+                val p12 = planBreakEven(1.0); val p6 = planBreakEven(0.5); val n = near3(p12, step = 0.2, lo = 0.1, hi = 0.9, salt = 3)   // ios: Data/AppModel.swift:550
+                qs.add(Question(id = "be1y", tag = "확률 퀴즈", q = "지금 계획(${selectedPlan.name})으로 1년 안에 본전에 닿을 확률은 어느 쪽에 가까울까요?",   // ios: Data/AppModel.swift:551
+                                opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:552
+                                fb = { "모형 계산으로 약 ${pct(p12)}예요. 6개월 안이면 ${pct(p6)}. 기간이 길수록 높아져요." }))   // ios: Data/AppModel.swift:553
             }
-            if (total > 0 && cost > total) {   // ios: Data/AppModel.swift:548
-                val d = cost / total - 1; val loss = 1 - total / cost; val n = near3(d, step = 0.1, lo = 0.0, hi = 10.0, salt = 4)   // ios: Data/AppModel.swift:549
-                qs.add(Question(id = "dist", tag = "본전 퀴즈", q = "들어간 돈보다 ${pct(loss)} 내려 있어요. 본전까지는 몇 % 올라야 할까요?",   // ios: Data/AppModel.swift:550
-                                opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:551
+            if (total > 0 && cost > total) {   // ios: Data/AppModel.swift:555
+                val d = cost / total - 1; val loss = 1 - total / cost; val n = near3(d, step = 0.1, lo = 0.0, hi = 10.0, salt = 4)   // ios: Data/AppModel.swift:556
+                qs.add(Question(id = "dist", tag = "본전 퀴즈", q = "들어간 돈보다 ${pct(loss)} 내려 있어요. 본전까지는 몇 % 올라야 할까요?",   // ios: Data/AppModel.swift:557
+                                opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:558
                                 fb = { "${fmtF("%.1f", d * 100)}% 올라야 해요. 내린 만큼보다 더 올라야 하는 건, 줄어든 돈에서 다시 오르기 때문이에요." }))   // Data/AppModel.swift:552 (검사 예외: 보간 속 따옴표)
             }
-            if (rs.isNotEmpty()) {   // ios: Data/AppModel.swift:554
-                val y = cellsYesterday; val now = cellsNow; val unit = cellUnit   // ios: Data/AppModel.swift:555
-                qs.add(Question(id = "cells", tag = "1000칸", q = "어제 ${y}칸이었어요. 오늘 1000칸은?", opts = listOf("늘었어요", "그대로예요", "줄었어요"),   // ios: Data/AppModel.swift:556
-                                right = if (now > y) 0 else if (now == y) 1 else 2,   // ios: Data/AppModel.swift:557
-                                fb = { "어제 ${y}칸 → 오늘 ${now}칸. 1칸은 ${won(unit)}이에요." }))   // ios: Data/AppModel.swift:558
-                val wr = weekRange; val v = trackValue   // ios: Data/AppModel.swift:559
-                qs.add(Question(id = "week", tag = "주간 예보", q = "이번 주 예보 범위는 ${won(wr.lo)}~${won(wr.hi)}예요. 지금 평가액은 그 안일까요?",   // ios: Data/AppModel.swift:560
-                                opts = listOf("안이에요", "밖이에요"), right = if (v >= wr.lo && v <= wr.hi) 0 else 1,   // ios: Data/AppModel.swift:561
-                                fb = { "지금 ${won(v)}. 예보 범위는 절반쯤 맞도록 잡은 폭이라, 밖으로 나가는 날도 자주 있어요." }))   // ios: Data/AppModel.swift:562
+            if (rs.isNotEmpty()) {   // ios: Data/AppModel.swift:561
+                val y = cellsYesterday; val now = cellsNow; val unit = cellUnit   // ios: Data/AppModel.swift:562
+                qs.add(Question(id = "cells", tag = "1000칸", q = "어제 ${y}칸이었어요. 오늘 1000칸은?", opts = listOf("늘었어요", "그대로예요", "줄었어요"),   // ios: Data/AppModel.swift:563
+                                right = if (now > y) 0 else if (now == y) 1 else 2,   // ios: Data/AppModel.swift:564
+                                fb = { "어제 ${y}칸 → 오늘 ${now}칸. 1칸은 ${won(unit)}이에요." }))   // ios: Data/AppModel.swift:565
+                val wr = weekRange; val v = trackValue   // ios: Data/AppModel.swift:566
+                qs.add(Question(id = "week", tag = "주간 예보", q = "이번 주 예보 범위는 ${won(wr.lo)}~${won(wr.hi)}예요. 지금 평가액은 그 안일까요?",   // ios: Data/AppModel.swift:567
+                                opts = listOf("안이에요", "밖이에요"), right = if (v >= wr.lo && v <= wr.hi) 0 else 1,   // ios: Data/AppModel.swift:568
+                                fb = { "지금 ${won(v)}. 예보 범위는 절반쯤 맞도록 잡은 폭이라, 밖으로 나가는 날도 자주 있어요." }))   // ios: Data/AppModel.swift:569
             }
             // 계획 비중 확인: 비중 1위 종목 기준 (종목이 둘 이상일 때)
-            if (rs.size >= 2) {   // ios: Data/AppModel.swift:565
-                val w = pct(focusWeight); val pw = pct(planWeight); val T = horizon.toDouble() / 12   // ios: Data/AppModel.swift:566
-                val p0 = keepPlan.prob(cost, T); val p1 = selectedPlan.prob(cost, T)   // ios: Data/AppModel.swift:567
-                qs.add(Question(id = "plan", tag = "비중 확인", q = "가장 큰 종목 비중 ${w}, 계획은 ${pw}예요. 계획 비중이면 ${horizonLabel} 안 본전 확률은?", opts = listOf("올라요", "비슷해요", "내려요"),   // ios: Data/AppModel.swift:568
-                                right = if (abs(p1 - p0) < 0.02) 1 else if (p1 > p0) 0 else 2,   // ios: Data/AppModel.swift:569
-                                fb = { "지금 비중 ${pct(p0)}, 계획 비중 ${pct(p1)}. 계산 예시이고, 매매 판단은 직접 하세요." }))   // ios: Data/AppModel.swift:570
+            if (rs.size >= 2) {   // ios: Data/AppModel.swift:572
+                val w = pct(focusWeight); val pw = pct(planWeight); val T = horizon.toDouble() / 12   // ios: Data/AppModel.swift:573
+                val p0 = keepPlan.prob(cost, T); val p1 = selectedPlan.prob(cost, T)   // ios: Data/AppModel.swift:574
+                qs.add(Question(id = "plan", tag = "비중 확인", q = "가장 큰 종목 비중 ${w}, 계획은 ${pw}예요. 계획 비중이면 ${horizonLabel} 안 본전 확률은?", opts = listOf("올라요", "비슷해요", "내려요"),   // ios: Data/AppModel.swift:575
+                                right = if (abs(p1 - p0) < 0.02) 1 else if (p1 > p0) 0 else 2,   // ios: Data/AppModel.swift:576
+                                fb = { "지금 비중 ${pct(p0)}, 계획 비중 ${pct(p1)}. 계산 예시이고, 매매 판단은 직접 하세요." }))   // ios: Data/AppModel.swift:577
             }
-            qs.add(Question(id = "mind", tag = "오늘 마음", q = "오늘 내 투자, 어떻게 느껴져요?", opts = listOf("불안해요", "괜찮아요", "기대돼요"), right = -1,   // ios: Data/AppModel.swift:572
-                            fb = { if (it == 0) "불안한 날엔 하루 숫자 말고 종목 상세의 1년 칩을 보세요. 길이 더 잘 보여요." else "좋아요. 내일도 1분이면 돼요." }))   // ios: Data/AppModel.swift:573
-            return qs.filter { it.fair }   // ios: Data/AppModel.swift:574
+            qs.add(Question(id = "mind", tag = "오늘 마음", q = "오늘 내 투자, 어떻게 느껴져요?", opts = listOf("불안해요", "괜찮아요", "기대돼요"), right = -1,   // ios: Data/AppModel.swift:579
+                            fb = { if (it == 0) "불안한 날엔 하루 숫자 말고 종목 상세의 1년 칩을 보세요. 길이 더 잘 보여요." else "좋아요. 내일도 1분이면 돼요." }))   // ios: Data/AppModel.swift:580
+            return qs.filter { it.fair }   // ios: Data/AppModel.swift:581
         }
         // 목표 루트
-        val principal = gM * 12 * gY.toDouble(); val m = gM; val y = gY   // ios: Data/AppModel.swift:577
-        if (m >= 1 && y > 0) {     // ios: Data/AppModel.swift:578 매달 금액·기간이 없으면 계산 퀴즈·적립 질문은 안 낸다. 보기는 1년치 간격
-            val n = near3(principal, step = m * 12, lo = m * 12, hi = Double.POSITIVE_INFINITY, salt = 9)   // ios: Data/AppModel.swift:579
-            qs.add(Question(id = "principal", tag = "계산 퀴즈", q = "매달 ${wonK(m)}씩 ${y}년 넣으면 넣은 원금만 얼마일까요?",   // ios: Data/AppModel.swift:580
-                            opts = n.opts.map { wonK(it) }, right = n.right,   // ios: Data/AppModel.swift:581
-                            fb = { "${wonK(m)} × 12달 × ${y}년 = ${wonK(principal)}. 그 위에 수익이 더해져 목표로 가요." }))   // ios: Data/AppModel.swift:582
-            qs.add(Question(id = "deposit", tag = "이번 달 적립", q = "이번 달 ${wonK(m)}, 넣었나요?", opts = listOf("넣었어요", "아직이요"), right = -1,   // ios: Data/AppModel.swift:583
-                            fb = { if (it == 0) "좋아요. 3개월 블록에 반영해 둘게요." else "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요." }))   // ios: Data/AppModel.swift:584
+        val principal = gM * 12 * gY.toDouble(); val m = gM; val y = gY   // ios: Data/AppModel.swift:584
+        if (m >= 1 && y > 0) {     // ios: Data/AppModel.swift:585 매달 금액·기간이 없으면 계산 퀴즈·적립 질문은 안 낸다. 보기는 1년치 간격
+            val n = near3(principal, step = m * 12, lo = m * 12, hi = Double.POSITIVE_INFINITY, salt = 9)   // ios: Data/AppModel.swift:586
+            qs.add(Question(id = "principal", tag = "계산 퀴즈", q = "매달 ${wonK(m)}씩 ${y}년 넣으면 넣은 원금만 얼마일까요?",   // ios: Data/AppModel.swift:587
+                            opts = n.opts.map { wonK(it) }, right = n.right,   // ios: Data/AppModel.swift:588
+                            fb = { "${wonK(m)} × 12달 × ${y}년 = ${wonK(principal)}. 그 위에 수익이 더해져 목표로 가요." }))   // ios: Data/AppModel.swift:589
+            qs.add(Question(id = "deposit", tag = "이번 달 적립", q = "이번 달 ${wonK(m)}, 넣었나요?", opts = listOf("넣었어요", "아직이요"), right = -1,   // ios: Data/AppModel.swift:590
+                            fb = { if (it == 0) "좋아요. 3개월 블록에 반영해 둘게요." else "괜찮아요. 적립일 알림이 한 번 더 알려 드릴게요." }))   // ios: Data/AppModel.swift:591
         }
-        if (keyValue > 0) {   // ios: Data/AppModel.swift:586
-            val p = trackValue / keyValue; val n = near3(p, step = 0.1, lo = 0.0, hi = 1.5, salt = 5); val v = trackValue; val k = keyValue   // ios: Data/AppModel.swift:587
-            qs.add(Question(id = "progress", tag = "목표 퀴즈", q = "지금 모은 돈은 목표의 몇 %쯤일까요?", opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:588
-                            fb = { "${won(v)} ÷ 목표 ${won(k)} = ${pct(p)}." }))   // ios: Data/AppModel.swift:589
-            val pg = forecast.prob(y.toDouble()); val g = near3(pg, step = 0.2, lo = 0.0, hi = 1.0, salt = 6)   // ios: Data/AppModel.swift:590
-            qs.add(Question(id = "goalprob", tag = "확률 퀴즈", q = "지금 그대로 ${y}년 가면 목표에 닿을 확률은 어느 쪽에 가까울까요?", opts = g.opts.map { "약 ${pct(it)}" }, right = g.right,   // ios: Data/AppModel.swift:591
-                            fb = { "모형 계산으로 약 ${pct(pg)}예요. 매달 넣는 돈을 늘리면 이 숫자가 올라가요." }))   // ios: Data/AppModel.swift:592
+        if (keyValue > 0) {   // ios: Data/AppModel.swift:593
+            val p = trackValue / keyValue; val n = near3(p, step = 0.1, lo = 0.0, hi = 1.5, salt = 5); val v = trackValue; val k = keyValue   // ios: Data/AppModel.swift:594
+            qs.add(Question(id = "progress", tag = "목표 퀴즈", q = "지금 모은 돈은 목표의 몇 %쯤일까요?", opts = n.opts.map { "약 ${pct(it)}" }, right = n.right,   // ios: Data/AppModel.swift:595
+                            fb = { "${won(v)} ÷ 목표 ${won(k)} = ${pct(p)}." }))   // ios: Data/AppModel.swift:596
+            val pg = forecast.prob(y.toDouble()); val g = near3(pg, step = 0.2, lo = 0.0, hi = 1.0, salt = 6)   // ios: Data/AppModel.swift:597
+            qs.add(Question(id = "goalprob", tag = "확률 퀴즈", q = "지금 그대로 ${y}년 가면 목표에 닿을 확률은 어느 쪽에 가까울까요?", opts = g.opts.map { "약 ${pct(it)}" }, right = g.right,   // ios: Data/AppModel.swift:598
+                            fb = { "모형 계산으로 약 ${pct(pg)}예요. 매달 넣는 돈을 늘리면 이 숫자가 올라가요." }))   // ios: Data/AppModel.swift:599
         }
-        qs.add(Question(id = "mind", tag = "오늘 마음", q = "오늘 목표까지의 길, 어떻게 느껴져요?", opts = listOf("멀어요", "보통이에요", "가까워요"), right = -1,   // ios: Data/AppModel.swift:594
-                        fb = { if (it == 0) "먼 길은 매달 넣는 돈이 끌고 가요. 1년 뒤 그래프를 한 번 보세요." else "그 느낌 그대로 가요. 내일도 1분이면 돼요." }))   // ios: Data/AppModel.swift:595
-        return qs.filter { it.fair }   // ios: Data/AppModel.swift:596
+        qs.add(Question(id = "mind", tag = "오늘 마음", q = "오늘 목표까지의 길, 어떻게 느껴져요?", opts = listOf("멀어요", "보통이에요", "가까워요"), right = -1,   // ios: Data/AppModel.swift:601
+                        fb = { if (it == 0) "먼 길은 매달 넣는 돈이 끌고 가요. 1년 뒤 그래프를 한 번 보세요." else "그 느낌 그대로 가요. 내일도 1분이면 돼요." }))   // ios: Data/AppModel.swift:602
+        return qs.filter { it.fair }   // ios: Data/AppModel.swift:603
     }
 
     /** 오늘 질문: 이미 본 날은 그 질문 그대로. 아니면 지난 7일에 안 나온 것 중 날짜로 정한 무작위 (하루 동안은 같은 질문) */
-    val question: Question get() {   // ios: Data/AppModel.swift:600
-        val pool = questionPool   // ios: Data/AppModel.swift:601
-        dayLog[day]?.q?.let { id -> pool.firstOrNull { it.id == id }?.let { return it } }   // ios: Data/AppModel.swift:602
-        val recent = (max(0, day - 7) until max(0, day)).mapNotNull { dayLog[it]?.q }.toSet()   // ios: Data/AppModel.swift:603
-        val fresh = pool.filter { !recent.contains(it.id) }   // ios: Data/AppModel.swift:604
-        val c = if (fresh.isEmpty()) pool else fresh   // ios: Data/AppModel.swift:605
+    val question: Question get() {   // ios: Data/AppModel.swift:607
+        val pool = questionPool   // ios: Data/AppModel.swift:608
+        dayLog[day]?.q?.let { id -> pool.firstOrNull { it.id == id }?.let { return it } }   // ios: Data/AppModel.swift:609
+        val recent = (max(0, day - 7) until max(0, day)).mapNotNull { dayLog[it]?.q }.toSet()   // ios: Data/AppModel.swift:610
+        val fresh = pool.filter { !recent.contains(it.id) }   // ios: Data/AppModel.swift:611
+        val c = if (fresh.isEmpty()) pool else fresh   // ios: Data/AppModel.swift:612
         var x = day.toLong().toULong() + 0x9E3779B97F4A7C15uL   // Data/AppModel.swift:606 (검사 예외: 부호 없는 64비트 글자)
         x = (x xor (x shr 30)) * 0xBF58476D1CE4E5B9uL   // Data/AppModel.swift:607 (검사 예외)
         x = (x xor (x shr 27)) * 0x94D049BB133111EBuL   // Data/AppModel.swift:608 (검사 예외)
-        x = x xor (x shr 31)   // ios: Data/AppModel.swift:609
-        return c[(x % c.size.toULong()).toInt()]   // ios: Data/AppModel.swift:610
+        x = x xor (x shr 31)   // ios: Data/AppModel.swift:616
+        return c[(x % c.size.toULong()).toInt()]   // ios: Data/AppModel.swift:617
     }
     /** 퀴즈 정답 기록 (맞힌 수, 푼 수) */
     data class QuizScore(val right: Int, val all: Int)
-    val quizScore: QuizScore get() {   // ios: Data/AppModel.swift:613
-        val r = dayLog.values.mapNotNull { it.ok }   // ios: Data/AppModel.swift:614
-        return QuizScore(r.count { it }, r.size)   // ios: Data/AppModel.swift:615
+    val quizScore: QuizScore get() {   // ios: Data/AppModel.swift:620
+        val r = dayLog.values.mapNotNull { it.ok }   // ios: Data/AppModel.swift:621
+        return QuizScore(r.count { it }, r.size)   // ios: Data/AppModel.swift:622
     }
-    fun markSeen() { val t = today.copy(); t.seen = true; t.q = t.q ?: question.id; dayLog = dayLog + (day to t) }   // ios: Data/AppModel.swift:617
-    fun answer(i: Int) {   // ios: Data/AppModel.swift:618
-        val q = question   // ios: Data/AppModel.swift:619
-        val t = today.copy(); t.seen = true; t.answer = i; t.q = q.id   // ios: Data/AppModel.swift:620
-        if (q.right >= 0) t.ok = i == q.right   // ios: Data/AppModel.swift:621
-        dayLog = dayLog + (day to t)   // ios: Data/AppModel.swift:622
-        if (playOn && itemsBackDay != day && itemsBack < 10) { itemsBack += 1; itemsBackDay = day }   // ios: Data/AppModel.swift:623
+    fun markSeen() { val t = today.copy(); t.seen = true; t.q = t.q ?: question.id; dayLog = dayLog + (day to t) }   // ios: Data/AppModel.swift:624
+    fun answer(i: Int) {   // ios: Data/AppModel.swift:625
+        val q = question   // ios: Data/AppModel.swift:626
+        val t = today.copy(); t.seen = true; t.answer = i; t.q = q.id   // ios: Data/AppModel.swift:627
+        if (q.right >= 0) t.ok = i == q.right   // ios: Data/AppModel.swift:628
+        dayLog = dayLog + (day to t)   // ios: Data/AppModel.swift:629
+        if (playOn && itemsBackDay != day && itemsBack < 10) { itemsBack += 1; itemsBackDay = day }   // ios: Data/AppModel.swift:630
     }
-    val routineDoneText: String get() {   // ios: Data/AppModel.swift:625
-        val n = itemsOn   // ios: Data/AppModel.swift:626
-        if (itemsBackDay == day && n > 0) { val x = Shelter.items[n - 1].name; return "루틴 끝! ${x}${WChar.josa(x)} 돌아왔어요" }   // ios: Data/AppModel.swift:627
-        if (n < 10) { val x = Shelter.items[n].name; return "루틴 끝! 내일 하면 ${x}${WChar.josa(x)} 돌아와요" }   // ios: Data/AppModel.swift:628
-        return "루틴 끝! 물건이 다 돌아왔어요"   // ios: Data/AppModel.swift:629
+    val routineDoneText: String get() {   // ios: Data/AppModel.swift:632
+        val n = itemsOn   // ios: Data/AppModel.swift:633
+        if (itemsBackDay == day && n > 0) { val x = Shelter.items[n - 1].name; return "루틴 끝! ${x}${WChar.josa(x)} 돌아왔어요" }   // ios: Data/AppModel.swift:634
+        if (n < 10) { val x = Shelter.items[n].name; return "루틴 끝! 내일 하면 ${x}${WChar.josa(x)} 돌아와요" }   // ios: Data/AppModel.swift:635
+        return "루틴 끝! 물건이 다 돌아왔어요"   // ios: Data/AppModel.swift:636
     }
-    val homeSay: String get() {   // ios: Data/AppModel.swift:631
-        val who = voice(homeFriendShown)   // ios: Data/AppModel.swift:632
-        if (!playUnlocked) {   // ios: Data/AppModel.swift:633
-            return Lines.pick("home.locked.$who") ?: ("앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (if (who == "seri") " 거기까지만요." else ""))   // ios: Data/AppModel.swift:634
+    val homeSay: String get() {   // ios: Data/AppModel.swift:638
+        val who = voice(homeFriendShown)   // ios: Data/AppModel.swift:639
+        if (!playUnlocked) {   // ios: Data/AppModel.swift:640
+            return Lines.pick("home.locked.$who") ?: ("앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요." + (if (who == "seri") " 거기까지만요." else ""))   // ios: Data/AppModel.swift:641
         }
-        if (today.answer != null) {   // ios: Data/AppModel.swift:636
-            val n = itemsOn   // ios: Data/AppModel.swift:637
-            val info = if (n < 10) "내일 또 오면 쉼터에 물건(${Shelter.items[n].name})이 돌아와요." else ""   // ios: Data/AppModel.swift:638
-            return listOf(Lines.pick("home.done.$who") ?: "오늘은 여기까지예요.", info).filter { it.isNotEmpty() }.joinToString(" ")   // ios: Data/AppModel.swift:639
+        if (today.answer != null) {   // ios: Data/AppModel.swift:643
+            val n = itemsOn   // ios: Data/AppModel.swift:644
+            val info = if (n < 10) "내일 또 오면 쉼터에 물건(${Shelter.items[n].name})이 돌아와요." else ""   // ios: Data/AppModel.swift:645
+            return listOf(Lines.pick("home.done.$who") ?: "오늘은 여기까지예요.", info).filter { it.isNotEmpty() }.joinToString(" ")   // ios: Data/AppModel.swift:646
         }
-        return Lines.pick("home.fresh.$who", mapOf("move" to sgn(todayMove))) ?: "오늘 숫자 가져왔어요. 한 번만 보고 가요."   // ios: Data/AppModel.swift:641
+        return Lines.pick("home.fresh.$who", mapOf("move" to sgn(todayMove))) ?: "오늘 숫자 가져왔어요. 한 번만 보고 가요."   // ios: Data/AppModel.swift:648
     }
 
     // 전망 (웹과 같은 몬테카를로, 목표일까지. 회복 루트는 3년)
     data class YearP(val year: Int, val p: Double)
-    class Forecast(   // ios: Data/AppModel.swift:645
+    class Forecast(   // ios: Data/AppModel.swift:652
         /** 월 경계마다 평가액 백분위 (원). 첫 칸 = 오늘 */
-        val q5: List<Double>, val q25: List<Double>, val q50: List<Double>, val q75: List<Double>, val q95: List<Double>,   // ios: Data/AppModel.swift:647
+        val q5: List<Double>, val q25: List<Double>, val q50: List<Double>, val q75: List<Double>, val q95: List<Double>,   // ios: Data/AppModel.swift:654
         /** 각 칸의 날짜 (yyyy-MM-dd)와 오늘부터 햇수 */
-        val dates: List<String>,   // ios: Data/AppModel.swift:649
-        val tY: List<Double>,   // ios: Data/AppModel.swift:650
+        val dates: List<String>,   // ios: Data/AppModel.swift:656
+        val tY: List<Double>,   // ios: Data/AppModel.swift:657
         /** T년 안에 기준선(목표·본전)에 한 번이라도 닿을 확률 (웹 '연도별 도달 확률'과 같은 셈, 월말 기준) */
-        val prob: (Double) -> Double,   // ios: Data/AppModel.swift:652
+        val prob: (Double) -> Double,   // ios: Data/AppModel.swift:659
         /** 마지막 날(목표일) 기준선 이상일 확률 (웹 '목표 확률') */
-        val pGoal: Double,   // ios: Data/AppModel.swift:654
-        val byYear: List<YearP>,   // ios: Data/AppModel.swift:655
-        val mu: Double, val sigma: Double, val muBase: Double, val muTrend: Double,   // ios: Data/AppModel.swift:656
+        val pGoal: Double,   // ios: Data/AppModel.swift:661
+        val byYear: List<YearP>,   // ios: Data/AppModel.swift:662
+        val mu: Double, val sigma: Double, val muBase: Double, val muTrend: Double,   // ios: Data/AppModel.swift:663
         /** 몬테카를로 결과면 true. 계산이 끝나기 전 닫힌 식 값이면 false */
-        val exact: Boolean,   // ios: Data/AppModel.swift:658
+        val exact: Boolean,   // ios: Data/AppModel.swift:665
     ) {
         /** 이 햇수에 가장 가까운 칸 (그래프·3년 값) */
-        fun idx(years: Double): Int {   // ios: Data/AppModel.swift:660
-            var k = 0   // ios: Data/AppModel.swift:661
-            while (k + 1 < tY.size && tY[k + 1] <= years + 1.0 / 48) k += 1   // ios: Data/AppModel.swift:662
-            return k   // ios: Data/AppModel.swift:663
+        fun idx(years: Double): Int {   // ios: Data/AppModel.swift:667
+            var k = 0   // ios: Data/AppModel.swift:668
+            while (k + 1 < tY.size && tY[k + 1] <= years + 1.0 / 48) k += 1   // ios: Data/AppModel.swift:669
+            return k   // ios: Data/AppModel.swift:670
         }
     }
-    val forecastTitle: String get() = if (isGoal) "목표일 전망" else "3년 전망"   // ios: Data/AppModel.swift:666
+    val forecastTitle: String get() = if (isGoal) "목표일 전망" else "3년 전망"   // ios: Data/AppModel.swift:673
     /** 몬테카를로에 넣는 목표: 웹처럼 현금은 그대로 있다고 보고 목표에서 뺀다 (전망 경로는 종목만) */
-    val mcGoal: Double get() = if (isGoal) max(1.0, keyValue - cashKrw) else keyValue   // ios: Data/AppModel.swift:668
+    val mcGoal: Double get() = if (isGoal) max(1.0, keyValue - cashKrw) else keyValue   // ios: Data/AppModel.swift:675
     /** 전망 끝날: 목표 루트는 목표일, 회복 루트는 3년 뒤 (웹: 목표일) */
-    val forecastHorizon: String get() = if (isGoal) Day.str(goalToDate) else MC.addMonths(Day.today, 36)   // ios: Data/AppModel.swift:670
+    val forecastHorizon: String get() = if (isGoal) Day.str(goalToDate) else MC.addMonths(Day.today, 36)   // ios: Data/AppModel.swift:677
 
     /** 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 null (닫힌 식만) */
-    val forecastJob: ForecastEngine.Job? get() {   // ios: Data/AppModel.swift:673
-        val rs = rows; val today = Day.today; val H = forecastHorizon   // ios: Data/AppModel.swift:674
-        val inp = mcInputs(true); if (route == Route.novice || rs.isEmpty() || H <= today || inp == null) return null   // ios: Data/AppModel.swift:675 full
+    val forecastJob: ForecastEngine.Job? get() {   // ios: Data/AppModel.swift:680
+        val rs = rows; val today = Day.today; val H = forecastHorizon   // ios: Data/AppModel.swift:681
+        val inp = mcInputs(true); if (route == Route.novice || rs.isEmpty() || H <= today || inp == null) return null   // ios: Data/AppModel.swift:682 full
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
-        val px = rs.map { r ->   // ios: Data/AppModel.swift:679
-            val c = if (r.id != "DRNK") Market.shared.prices?.h?.get(SiteStats.key(r.id))?.closes?.lastOrNull() else null   // ios: Data/AppModel.swift:680
+        val px = rs.map { r ->   // ios: Data/AppModel.swift:686
+            val c = if (r.id != "DRNK") Market.shared.prices?.h?.get(SiteStats.key(r.id))?.closes?.lastOrNull() else null   // ios: Data/AppModel.swift:687
             if (c != null && c > 0) return@map c
-            val q = r.sym.quote   // ios: Data/AppModel.swift:681
-            if (q.prevClose > 0) q.prevClose else q.last   // ios: Data/AppModel.swift:682
+            val q = r.sym.quote   // ios: Data/AppModel.swift:688
+            if (q.prevClose > 0) q.prevClose else q.last   // ios: Data/AppModel.swift:689
         }
-        val fx0 = Market.shared.marRate ?: Market.shared.fx.prevClose   // ios: Data/AppModel.swift:684
-        val hs = rs.zip(px).map { (r, p) -> MC.Holding(key = SiteStats.mcKey(r.id), ccy = if (r.sym.currency == Currency.usd) "USD" else "KRW", valueKrw = r.h.qty * p * (if (r.sym.currency == Currency.usd) fx0 else 1.0), price0 = p) }   // ios: Data/AppModel.swift:685
-        val st = inp.st; val settings = inp.settings; val events = inp.events   // ios: Data/AppModel.swift:686
-        val snap = rs.zip(px).joinToString(",") { (r, p) -> "${SiteStats.mcKey(r.id)}:${r.h.qty}:${p}" }   // ios: Data/AppModel.swift:687
-        val key = listOf(today, H, snap, fx0.toString(), inp.sig).joinToString("|")   // ios: Data/AppModel.swift:688
-        return ForecastEngine.Job(key = key, holdings = hs, stats = st, settings = settings, events = events, start = today, horizon = H, goal = mcGoal, monthly = fcMonthly)   // ios: Data/AppModel.swift:689
+        val fx0 = Market.shared.marRate ?: Market.shared.fx.prevClose   // ios: Data/AppModel.swift:691
+        val hs = rs.zip(px).map { (r, p) -> MC.Holding(key = SiteStats.mcKey(r.id), ccy = if (r.sym.currency == Currency.usd) "USD" else "KRW", valueKrw = r.h.qty * p * (if (r.sym.currency == Currency.usd) fx0 else 1.0), price0 = p) }   // ios: Data/AppModel.swift:692
+        val st = inp.st; val settings = inp.settings; val events = inp.events   // ios: Data/AppModel.swift:693
+        val snap = rs.zip(px).joinToString(",") { (r, p) -> "${SiteStats.mcKey(r.id)}:${r.h.qty}:${p}" }   // ios: Data/AppModel.swift:694
+        val key = listOf(today, H, snap, fx0.toString(), inp.sig).joinToString("|")   // ios: Data/AppModel.swift:695
+        return ForecastEngine.Job(key = key, holdings = hs, stats = st, settings = settings, events = events, start = today, horizon = H, goal = mcGoal, monthly = fcMonthly)   // ios: Data/AppModel.swift:696
     }
 
     /** 전망의 월 적립 (원): 웹처럼 목표의 매달 넣는 돈(monthly_contribution)을 넣는다. 목표 루트가 아니면 0. monthly 는 동기화 호환으로만 남긴다 */
-    val fcMonthly: Double get() = if (isGoal) gM * 1e4 else 0.0   // ios: Data/AppModel.swift:693
-    val forecast: Forecast get() = forecast(lens)   // ios: Data/AppModel.swift:694
+    val fcMonthly: Double get() = if (isGoal) gM * 1e4 else 0.0   // ios: Data/AppModel.swift:700
+    val forecast: Forecast get() = forecast(lens)   // ios: Data/AppModel.swift:701
     /** 시나리오 하나의 전망. 같은 경로를 μ만 바꿔 다시 무게를 달아서(reweight) 셋을 같이 불러도 싸다 */
-    fun forecast(lens: Lens): Forecast {   // ios: Data/AppModel.swift:696
-        val cf = closedForecast(lens)   // ios: Data/AppModel.swift:697
-        val job = forecastJob ?: return cf   // ios: Data/AppModel.swift:698
-        val eng = ForecastEngine.shared   // ios: Data/AppModel.swift:699
-        eng.ensure(job)   // ios: Data/AppModel.swift:700
-        val lensKey = if (lens == Lens.base) "base" else if (lens == Lens.smooth) "smooth" else "mine"   // ios: Data/AppModel.swift:701
-        val run = eng.run; if (run == null || run.key != job.key) return cf   // ios: Data/AppModel.swift:702
-        val r = eng.view(job.key, lensKey, trust, mcGoal, fcMonthly, shock) ?: return cf   // ios: Data/AppModel.swift:703 key · lens · trust · goal · monthly · withEvents
-        val sim = run.ev; val s0 = MC.dayNum(sim.start)   // ios: Data/AppModel.swift:704
-        val tY = sim.monthDates.map { (MC.dayNum(it) - s0).toDouble() / 365.25 }   // ios: Data/AppModel.swift:705
-        val dates = sim.monthDates; val cum = r.cumHit; val V0 = r.V0; val K = mcGoal   // ios: Data/AppModel.swift:706
+    fun forecast(lens: Lens): Forecast {   // ios: Data/AppModel.swift:703
+        val cf = closedForecast(lens)   // ios: Data/AppModel.swift:704
+        val job = forecastJob ?: return cf   // ios: Data/AppModel.swift:705
+        val eng = ForecastEngine.shared   // ios: Data/AppModel.swift:706
+        eng.ensure(job)   // ios: Data/AppModel.swift:707
+        val lensKey = if (lens == Lens.base) "base" else if (lens == Lens.smooth) "smooth" else "mine"   // ios: Data/AppModel.swift:708
+        val run = eng.run; if (run == null || run.key != job.key) return cf   // ios: Data/AppModel.swift:709
+        val r = eng.view(job.key, lensKey, trust, mcGoal, fcMonthly, shock) ?: return cf   // ios: Data/AppModel.swift:710 key · lens · trust · goal · monthly · withEvents
+        val sim = run.ev; val s0 = MC.dayNum(sim.start)   // ios: Data/AppModel.swift:711
+        val tY = sim.monthDates.map { (MC.dayNum(it) - s0).toDouble() / 365.25 }   // ios: Data/AppModel.swift:712
+        val dates = sim.monthDates; val cum = r.cumHit; val V0 = r.V0; val K = mcGoal   // ios: Data/AppModel.swift:713
         // 연 기대 (웹 portMu): 계산 때 평가액 비중으로 종목 기대수익을 더한다
-        val fs = run.factors.take(sim.A); val w = sim.v0.map { it / max(1.0, V0) }   // ios: Data/AppModel.swift:708
-        fun wsum(f: (MC.Factor) -> Double): Double = fs.zip(w).fold(0.0) { a, x -> a + x.second * f(x.first) }   // ios: Data/AppModel.swift:709
-        val mB = wsum { it.base }; val mS = wsum { it.smooth }; val mM = wsum { MC.blendMu(it.base, it.smooth, trust / 100) }   // ios: Data/AppModel.swift:710
-        val prob = { T: Double ->   // ios: Data/AppModel.swift:711
-            if (T <= 0) { if (V0 >= K) 1.0 else 0.0 } else {   // ios: Data/AppModel.swift:712
-                val target = MC.addMonths(sim.start, (T * 12).rnd().toInt())   // ios: Data/AppModel.swift:713
-                var k = 0; while (k + 1 < dates.size && dates[k + 1] <= target) k += 1   // ios: Data/AppModel.swift:714
-                cum[k]   // ios: Data/AppModel.swift:715
+        val fs = run.factors.take(sim.A); val w = sim.v0.map { it / max(1.0, V0) }   // ios: Data/AppModel.swift:715
+        fun wsum(f: (MC.Factor) -> Double): Double = fs.zip(w).fold(0.0) { a, x -> a + x.second * f(x.first) }   // ios: Data/AppModel.swift:716
+        val mB = wsum { it.base }; val mS = wsum { it.smooth }; val mM = wsum { MC.blendMu(it.base, it.smooth, trust / 100) }   // ios: Data/AppModel.swift:717
+        val prob = { T: Double ->   // ios: Data/AppModel.swift:718
+            if (T <= 0) { if (V0 >= K) 1.0 else 0.0 } else {   // ios: Data/AppModel.swift:719
+                val target = MC.addMonths(sim.start, (T * 12).rnd().toInt())   // ios: Data/AppModel.swift:720
+                var k = 0; while (k + 1 < dates.size && dates[k + 1] <= target) k += 1   // ios: Data/AppModel.swift:721
+                cum[k]   // ios: Data/AppModel.swift:722
             }
         }
-        return Forecast(q5 = r.bands[0], q25 = r.bands[1], q50 = r.bands[2], q75 = r.bands[3], q95 = r.bands[4], dates = dates, tY = tY, prob = prob,   // ios: Data/AppModel.swift:717
-                        pGoal = r.pGoal, byYear = r.byYear.map { YearP(year = it.year, p = it.p) },   // ios: Data/AppModel.swift:718
-                        mu = if (lens == Lens.base) mB else if (lens == Lens.smooth) mS else mM, sigma = cf.sigma, muBase = mB, muTrend = mS, exact = true)   // ios: Data/AppModel.swift:719
+        return Forecast(q5 = r.bands[0], q25 = r.bands[1], q50 = r.bands[2], q75 = r.bands[3], q95 = r.bands[4], dates = dates, tY = tY, prob = prob,   // ios: Data/AppModel.swift:724
+                        pGoal = r.pGoal, byYear = r.byYear.map { YearP(year = it.year, p = it.p) },   // ios: Data/AppModel.swift:725
+                        mu = if (lens == Lens.base) mB else if (lens == Lens.smooth) mS else mM, sigma = cf.sigma, muBase = mB, muTrend = mS, exact = true)   // ios: Data/AppModel.swift:726
     }
 
     private data class Part(val w: Double, val id: String, val p: Triple<Double, Double, Double>)
     /** 닫힌 식 (로그정규 근사): 몬테카를로가 끝나기 전 잠깐, 시작 전 루트, 주간 예보 폭(sigma) */
-    fun closedForecast(lens: Lens): Forecast {   // ios: Data/AppModel.swift:723
-        val rs = rows; val tot = max(1.0, total)   // ios: Data/AppModel.swift:724
+    fun closedForecast(lens: Lens): Forecast {   // ios: Data/AppModel.swift:730
+        val rs = rows; val tot = max(1.0, total)   // ios: Data/AppModel.swift:731
         // 종목 값은 사이트가 매일 만드는 stats.json (웹 전망과 같은 μ·σ·상관). 달러 종목은 원/달러 흔들림도 더한다
-        val st = Market.shared.stats; val t = trust / 100   // ios: Data/AppModel.swift:726
-        val parts: MutableList<Part> = if (rs.isEmpty() || route == Route.novice) mutableListOf(Part(1.0, "", Triple(0.07, 0.11, 0.16)))   // ios: Data/AppModel.swift:727
-            else rs.map { r -> SiteStats.params(r.id, st).let { (a, b, c) -> Part(r.value / tot, r.id, Triple(a, b, c)) } }.toMutableList()   // ios: Data/AppModel.swift:728
-        val usdW = if (rs.isEmpty() || route == Route.novice) 0.0 else rs.filter { it.sym.currency == Currency.usd }.fold(0.0) { a, r -> a + r.value } / tot   // ios: Data/AppModel.swift:729
-        if (usdW > 0) { val (f0, f1) = SiteStats.fx(st); parts.add(Part(usdW, "KRW=X", Triple(f0, f0, f1))) }   // ios: Data/AppModel.swift:730
-        var muB = 0.0; var muS = 0.0; var muM = 0.0   // ios: Data/AppModel.swift:731
-        for (x in parts) {   // ios: Data/AppModel.swift:732
-            muB += x.w * x.p.first; muS += x.w * x.p.second   // ios: Data/AppModel.swift:733
+        val st = Market.shared.stats; val t = trust / 100   // ios: Data/AppModel.swift:733
+        val parts: MutableList<Part> = if (rs.isEmpty() || route == Route.novice) mutableListOf(Part(1.0, "", Triple(0.07, 0.11, 0.16)))   // ios: Data/AppModel.swift:734
+            else rs.map { r -> SiteStats.params(r.id, st).let { (a, b, c) -> Part(r.value / tot, r.id, Triple(a, b, c)) } }.toMutableList()   // ios: Data/AppModel.swift:735
+        val usdW = if (rs.isEmpty() || route == Route.novice) 0.0 else rs.filter { it.sym.currency == Currency.usd }.fold(0.0) { a, r -> a + r.value } / tot   // ios: Data/AppModel.swift:736
+        if (usdW > 0) { val (f0, f1) = SiteStats.fx(st); parts.add(Part(usdW, "KRW=X", Triple(f0, f0, f1))) }   // ios: Data/AppModel.swift:737
+        var muB = 0.0; var muS = 0.0; var muM = 0.0   // ios: Data/AppModel.swift:738
+        for (x in parts) {   // ios: Data/AppModel.swift:739
+            muB += x.w * x.p.first; muS += x.w * x.p.second   // ios: Data/AppModel.swift:740
             // 내 관점: 웹처럼 종목마다 현재 정세와 과거 추세를 로그 공간에서 섞는다
-            val lb: Double = (1 - t) * ln(1 + x.p.first) + t * ln(1 + max(-0.99, x.p.second))   // ios: Data/AppModel.swift:735
-            muM += x.w * (exp(lb) - 1)   // ios: Data/AppModel.swift:736
+            val lb: Double = (1 - t) * ln(1 + x.p.first) + t * ln(1 + max(-0.99, x.p.second))   // ios: Data/AppModel.swift:742
+            muM += x.w * (exp(lb) - 1)   // ios: Data/AppModel.swift:743
         }
-        var v = 0.0   // ios: Data/AppModel.swift:738
-        for (a in parts.indices) { for (b in parts.indices) {   // ios: Data/AppModel.swift:739
-            val r: Double = if (a == b) 1.0 else if (parts[a].id.isEmpty()) 0.5 else SiteStats.corr(parts[a].id, parts[b].id, st)   // ios: Data/AppModel.swift:740
-            v += parts[a].w * parts[b].w * parts[a].p.third * parts[b].p.third * r   // ios: Data/AppModel.swift:741
+        var v = 0.0   // ios: Data/AppModel.swift:745
+        for (a in parts.indices) { for (b in parts.indices) {   // ios: Data/AppModel.swift:746
+            val r: Double = if (a == b) 1.0 else if (parts[a].id.isEmpty()) 0.5 else SiteStats.corr(parts[a].id, parts[b].id, st)   // ios: Data/AppModel.swift:747
+            v += parts[a].w * parts[b].w * parts[a].p.third * parts[b].p.third * r   // ios: Data/AppModel.swift:748
         } }
-        val sg = sqrt(max(0.0, v))   // ios: Data/AppModel.swift:743
-        val mu = if (lens == Lens.base) muB else if (lens == Lens.smooth) muS else muM   // ios: Data/AppModel.swift:744
-        val g = mu - sg * sg / 2; val V0 = trackValue; val K = keyValue; val M = fcMonthly   // ios: Data/AppModel.swift:745
-        val qAt = { T: Double, z: Double ->   // ios: Data/AppModel.swift:746
-            val shockT: Double = z * sg * sqrt(T)   // ios: Data/AppModel.swift:747
-            val lump: Double = V0 * exp(g * T + shockT)   // ios: Data/AppModel.swift:748
-            val flow: Double = M * 12 * T * exp(g * T / 2 + shockT / 2)   // ios: Data/AppModel.swift:749
-            lump + flow   // ios: Data/AppModel.swift:750
+        val sg = sqrt(max(0.0, v))   // ios: Data/AppModel.swift:750
+        val mu = if (lens == Lens.base) muB else if (lens == Lens.smooth) muS else muM   // ios: Data/AppModel.swift:751
+        val g = mu - sg * sg / 2; val V0 = trackValue; val K = keyValue; val M = fcMonthly   // ios: Data/AppModel.swift:752
+        val qAt = { T: Double, z: Double ->   // ios: Data/AppModel.swift:753
+            val shockT: Double = z * sg * sqrt(T)   // ios: Data/AppModel.swift:754
+            val lump: Double = V0 * exp(g * T + shockT)   // ios: Data/AppModel.swift:755
+            val flow: Double = M * 12 * T * exp(g * T / 2 + shockT / 2)   // ios: Data/AppModel.swift:756
+            lump + flow   // ios: Data/AppModel.swift:757
         }
-        val pAt = fun(T: Double): Double {   // ios: Data/AppModel.swift:752
-            if (T <= 0) return if (V0 >= K) 1.0 else 0.0   // ios: Data/AppModel.swift:753
-            val eff: Double = V0 + M * 12 * T * exp(-g * T / 2)   // ios: Data/AppModel.swift:754
-            if (eff <= 0) return 0.0   // ios: Data/AppModel.swift:755
-            val num: Double = ln(eff / K) + g * T   // ios: Data/AppModel.swift:756
-            return normCDF(num / (sg * sqrt(T)))   // ios: Data/AppModel.swift:757
+        val pAt = fun(T: Double): Double {   // ios: Data/AppModel.swift:759
+            if (T <= 0) return if (V0 >= K) 1.0 else 0.0   // ios: Data/AppModel.swift:760
+            val eff: Double = V0 + M * 12 * T * exp(-g * T / 2)   // ios: Data/AppModel.swift:761
+            if (eff <= 0) return 0.0   // ios: Data/AppModel.swift:762
+            val num: Double = ln(eff / K) + g * T   // ios: Data/AppModel.swift:763
+            return normCDF(num / (sg * sqrt(T)))   // ios: Data/AppModel.swift:764
         }
-        val today = Day.today; val H = max(1.0 / 12, (MC.dayNum(forecastHorizon) - MC.dayNum(today)).toDouble() / 365.25)   // ios: Data/AppModel.swift:759
-        val n = max(1, (H * 12).rnd().toInt())   // ios: Data/AppModel.swift:760
-        val q = { z: Double -> (0..n).map { i -> if (i == 0) V0 else qAt(i.toDouble() / 12, z) } }   // ios: Data/AppModel.swift:761
-        return Forecast(q5 = q(-1.645), q25 = q(-0.674), q50 = q(0.0), q75 = q(0.674), q95 = q(1.645),   // ios: Data/AppModel.swift:762
-                        dates = (0..n).map { MC.addMonths(today, it) }, tY = (0..n).map { it.toDouble() / 12 }, prob = pAt,   // ios: Data/AppModel.swift:763
-                        pGoal = pAt(H), byYear = (1..max(1, (H + 1.0 / 48).toInt())).map { YearP(year = it, p = pAt(min(H, it.toDouble()))) },   // ios: Data/AppModel.swift:764
-                        mu = mu, sigma = sg, muBase = muB, muTrend = muS, exact = false)   // ios: Data/AppModel.swift:765
+        val today = Day.today; val H = max(1.0 / 12, (MC.dayNum(forecastHorizon) - MC.dayNum(today)).toDouble() / 365.25)   // ios: Data/AppModel.swift:766
+        val n = max(1, (H * 12).rnd().toInt())   // ios: Data/AppModel.swift:767
+        val q = { z: Double -> (0..n).map { i -> if (i == 0) V0 else qAt(i.toDouble() / 12, z) } }   // ios: Data/AppModel.swift:768
+        return Forecast(q5 = q(-1.645), q25 = q(-0.674), q50 = q(0.0), q75 = q(0.674), q95 = q(1.645),   // ios: Data/AppModel.swift:769
+                        dates = (0..n).map { MC.addMonths(today, it) }, tY = (0..n).map { it.toDouble() / 12 }, prob = pAt,   // ios: Data/AppModel.swift:770
+                        pGoal = pAt(H), byYear = (1..max(1, (H + 1.0 / 48).toInt())).map { YearP(year = it, p = pAt(min(H, it.toDouble()))) },   // ios: Data/AppModel.swift:771
+                        mu = mu, sigma = sg, muBase = muB, muTrend = muS, exact = false)   // ios: Data/AppModel.swift:772
     }
 
     // 1000칸 (회복: 본전 = 1000칸)
-    val cellUnit: Double get() = cost / 1000   // ios: Data/AppModel.swift:769
-    fun cells(v: Double): Int = max(0, min(1000, floor(v / max(1.0, cellUnit)).toInt()))   // ios: Data/AppModel.swift:770
-    val cellsNow: Int get() = cells(total)   // ios: Data/AppModel.swift:771
+    val cellUnit: Double get() = cost / 1000   // ios: Data/AppModel.swift:776
+    fun cells(v: Double): Int = max(0, min(1000, floor(v / max(1.0, cellUnit)).toInt()))   // ios: Data/AppModel.swift:777
+    val cellsNow: Int get() = cells(total)   // ios: Data/AppModel.swift:778
     /** 시작(3개월 전) 뒤 가장 낮았던 날: 지금 수량에 지난 3개월 종가를 대입해 찾는다 (과거 시세가 없으면 지금 가격) */
-    val cellsFloor: Int get() = cells(min(total, (0..30).map { totalAt(1 - it.toDouble() / 360) }.minOrNull() ?: total))   // ios: Data/AppModel.swift:773
-    val cellsYesterday: Int get() = cells(total / (1 + todayMove))   // ios: Data/AppModel.swift:774
+    val cellsFloor: Int get() = cells(min(total, (0..30).map { totalAt(1 - it.toDouble() / 360) }.minOrNull() ?: total))   // ios: Data/AppModel.swift:780
+    val cellsYesterday: Int get() = cells(total / (1 + todayMove))   // ios: Data/AppModel.swift:781
 
     // 주간 예보 (월요일에 적은 금요일 평가액 50% 범위)
     data class WeekRange(val lo: Double, val hi: Double, val actual: Double)
     /** 이번 주에 적어 둔 범위가 있으면 그 값 (주중에 평가액이 움직여도 범위는 그대로), 없으면 지금 값으로 계산 */
-    val weekRange: WeekRange get() {   // ios: Data/AppModel.swift:778
-        val now = trackValue   // ios: Data/AppModel.swift:779
-        Remind.shared.log.weeks[Remind.week(Instant.now())]?.let { w -> return WeekRange(w.lo, w.hi, now) }   // ios: Data/AppModel.swift:780
-        val wSg = forecast.sigma / sqrt(52.0); val base = now / 1.004   // ios: Data/AppModel.swift:781
-        return WeekRange(base * exp(-0.674 * wSg), base * exp(0.674 * wSg), now)   // ios: Data/AppModel.swift:782
+    val weekRange: WeekRange get() {   // ios: Data/AppModel.swift:785
+        val now = trackValue   // ios: Data/AppModel.swift:786
+        Remind.shared.log.weeks[Remind.week(Instant.now())]?.let { w -> return WeekRange(w.lo, w.hi, now) }   // ios: Data/AppModel.swift:787
+        val wSg = forecast.sigma / sqrt(52.0); val base = now / 1.004   // ios: Data/AppModel.swift:788
+        return WeekRange(base * exp(-0.674 * wSg), base * exp(0.674 * wSg), now)   // ios: Data/AppModel.swift:789
     }
     /** 지난 주간 예보 성적 (1 = 범위 안, 오래된 순, 최근 8주). 기록이 없으면 비어 있다. 개발자 기기에서는 시연 값 */
-    val pastWeeks: List<Int> get() {   // ios: Data/AppModel.swift:785
-        val w = Remind.shared.log.weeks   // ios: Data/AppModel.swift:786
-        val r = Remind.endedWeeks(w).takeLast(8).mapNotNull { k -> w[k]?.let { if (it.pos == "in") 1 else 0 } }   // ios: Data/AppModel.swift:787
-        return if (r.isEmpty() && devAll) listOf(1, 0, 1, 1, 0, 1, 0, 1) else r   // ios: Data/AppModel.swift:788
+    val pastWeeks: List<Int> get() {   // ios: Data/AppModel.swift:792
+        val w = Remind.shared.log.weeks   // ios: Data/AppModel.swift:793
+        val r = Remind.endedWeeks(w).takeLast(8).mapNotNull { k -> w[k]?.let { if (it.pos == "in") 1 else 0 } }   // ios: Data/AppModel.swift:794
+        return if (r.isEmpty() && devAll) listOf(1, 0, 1, 1, 0, 1, 0, 1) else r   // ios: Data/AppModel.swift:795
     }
     /** 맞혀보기를 맞힌 횟수 (배지) */
-    val guessHits: Int get() = Remind.shared.log.guessHits ?: 0   // ios: Data/AppModel.swift:791
+    val guessHits: Int get() = Remind.shared.log.guessHits ?: 0   // ios: Data/AppModel.swift:798
 
     // 시안 조작
-    enum class Demo { fresh, week1, all }   // ios: Data/AppModel.swift:794
+    enum class Demo { fresh, week1, all }   // ios: Data/AppModel.swift:801
     /** 첫 질문 답: 마이너스 = 회복 루트 미션 1부터, 플러스 = 목표 루트(샘플은 이익 난 단가), 시작 전 = 목표 루트 적립 */
-    fun startRoute(r: Route) {   // ios: Data/AppModel.swift:796
+    fun startRoute(r: Route) {   // ios: Data/AppModel.swift:803
         // 사용자가 넣은 종목이 있으면 루트를 다시 골라도 그대로 불러온다 (예시 종목은 처음일 때만)
-        val mine: List<Holding>? = if (holdings.isEmpty() || isSample) null else holdings   // ios: Data/AppModel.swift:798
-        resetDemo(Demo.fresh)   // ios: Data/AppModel.swift:799
-        if (mine != null) holdings = mine   // ios: Data/AppModel.swift:800
-        else if (r == Route.plus) holdings = listOf(Holding(symbol = "DRNK", qty = 4.0, avg = 180.0), Holding(symbol = "QQQ", qty = 1.0, avg = 400.0))   // ios: Data/AppModel.swift:801
-        if (r == Route.plus) taxGain = 0.0   // ios: Data/AppModel.swift:802
-        if (r != Route.recover) { switchRoute(r); gDone = emptySet() }   // ios: Data/AppModel.swift:803
-        day = 0                  // ios: Data/AppModel.swift:804 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
-        finishStart()   // ios: Data/AppModel.swift:805
-        tab = Tab.board   // ios: Data/AppModel.swift:806
+        val mine: List<Holding>? = if (holdings.isEmpty() || isSample) null else holdings   // ios: Data/AppModel.swift:805
+        resetDemo(Demo.fresh)   // ios: Data/AppModel.swift:806
+        if (mine != null) holdings = mine   // ios: Data/AppModel.swift:807
+        else if (r == Route.plus) holdings = listOf(Holding(symbol = "DRNK", qty = 4.0, avg = 180.0), Holding(symbol = "QQQ", qty = 1.0, avg = 400.0))   // ios: Data/AppModel.swift:808
+        if (r == Route.plus) taxGain = 0.0   // ios: Data/AppModel.swift:809
+        if (r != Route.recover) { switchRoute(r); gDone = emptySet() }   // ios: Data/AppModel.swift:810
+        day = 0                  // ios: Data/AppModel.swift:811 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
+        finishStart()   // ios: Data/AppModel.swift:812
+        tab = Tab.board   // ios: Data/AppModel.swift:813
     }
 
-    fun finishStart() {   // ios: Data/AppModel.swift:805
+    fun finishStart() {   // ios: Data/AppModel.swift:812
         onboarded = true; prefs.edit().putBoolean("onboarded", true).apply()
     }
 
-    fun resetDemo(d: Demo) {   // ios: Data/AppModel.swift:809
-        holdings = Sample.startHoldings   // ios: Data/AppModel.swift:810
-        when (d) {   // ios: Data/AppModel.swift:811
-            Demo.fresh -> { done = emptySet(); weeks = emptyList(); nxStep = 1 }   // ios: Data/AppModel.swift:812
-            Demo.week1 -> { done = setOf(1, 2, 3, 5); weeks = listOf(WeekPick.kept); nxStep = 3 }   // ios: Data/AppModel.swift:813
-            Demo.all -> { done = setOf(1, 2, 3, 5, 6); weeks = listOf(WeekPick.kept, WeekPick.kept, WeekPick.changed, WeekPick.kept); nxStep = 3 }   // ios: Data/AppModel.swift:814
+    fun resetDemo(d: Demo) {   // ios: Data/AppModel.swift:816
+        holdings = Sample.startHoldings   // ios: Data/AppModel.swift:817
+        when (d) {   // ios: Data/AppModel.swift:818
+            Demo.fresh -> { done = emptySet(); weeks = emptyList(); nxStep = 1 }   // ios: Data/AppModel.swift:819
+            Demo.week1 -> { done = setOf(1, 2, 3, 5); weeks = listOf(WeekPick.kept); nxStep = 3 }   // ios: Data/AppModel.swift:820
+            Demo.all -> { done = setOf(1, 2, 3, 5, 6); weeks = listOf(WeekPick.kept, WeekPick.kept, WeekPick.changed, WeekPick.kept); nxStep = 3 }   // ios: Data/AppModel.swift:821
         }
-        route = Route.recover; gDone = emptySet(); gWeeks = emptyList(); gWeekCur = null   // ios: Data/AppModel.swift:816
-        weekCur = null; day = 5; dayLog = emptyMap(); itemsBack = 0; itemsBackDay = null; itemsOff = emptySet(); homeFriend = "seri"; readPos = emptySet(); readLast = null   // ios: Data/AppModel.swift:817
-        interStartAt = null; goalStartAt = null; gInterStartAt = null; recM = 0   // ios: Data/AppModel.swift:818
-        weekGuess = null; weekFridaySkip = false; planKey = "balance"; horizon = 3; quizAnswer = null   // ios: Data/AppModel.swift:819
-        taxGain = 0.0; taxSellQty = 0.0; boardPath = emptyList()   // ios: Data/AppModel.swift:820
+        route = Route.recover; gDone = emptySet(); gWeeks = emptyList(); gWeekCur = null   // ios: Data/AppModel.swift:823
+        weekCur = null; day = 5; dayLog = emptyMap(); itemsBack = 0; itemsBackDay = null; itemsOff = emptySet(); homeFriend = "seri"; readPos = emptySet(); readLast = null   // ios: Data/AppModel.swift:824
+        interStartAt = null; goalStartAt = null; gInterStartAt = null; recM = 0   // ios: Data/AppModel.swift:825
+        weekGuess = null; weekFridaySkip = false; planKey = "balance"; horizon = 3; quizAnswer = null   // ios: Data/AppModel.swift:826
+        taxGain = 0.0; taxSellQty = 0.0; boardPath = emptyList()   // ios: Data/AppModel.swift:827
     }
 
     // 만들 때: 모든 저장 속성이 정해진 뒤 (Swift init 은 기본값 다음에 돈다). init 안에서 바로 넣는 값은 didSet 이 안 불린다
@@ -871,13 +879,12 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
 
     companion object {
         // 에뮬레이터 캡처용: adb shell am start -n com.naeilo.app/.MainActivity --es tab hold 처럼 시작 탭을 고를 수 있다
-        // ios: App.swift:133,134
+        // ios: App.swift:132,133
         fun launchTab(intent: Intent?): Tab = when (intent?.getStringExtra("tab")) {
-            "hold" -> Tab.hold            // ios: App.swift:135
-            "analysis" -> Tab.analysis    // ios: App.swift:136
-            "board" -> Tab.board          // ios: App.swift:137
-            "settings" -> Tab.settings    // ios: App.swift:138
-            else -> Tab.home              // ios: App.swift:139
+            "hold" -> Tab.hold            // ios: App.swift:134
+            "analysis" -> Tab.analysis    // ios: App.swift:135
+            "board" -> Tab.board          // ios: App.swift:136
+            else -> Tab.home              // ios: App.swift:137
         }
 
         /** 둘러보기 샘플 수량: DRNK 4주 (가장 큰 종목이 DRNK가 되게), QQQ 1주 */
@@ -951,17 +958,17 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
             return if (x > 0) 1 - p else p   // ios: Data/AppModel.swift:314
         }
 
-        fun won(krw: Double): String = if (en) krwC(abs(krw)) else if (abs(krw) < 1e4) abs(krw).rnd().toInt().fmt() + "원" else wonK(abs(krw) / 1e4)   // ios: Data/AppModel.swift:451
+        fun won(krw: Double): String = if (en) krwC(abs(krw)) else if (abs(krw) < 1e4) abs(krw).rnd().toInt().fmt() + "원" else wonK(abs(krw) / 1e4)   // ios: Data/AppModel.swift:458
 
         /** 세 칸 보기: 실제 값에 가장 가까운 칸이 정답 (step 간격, lo~hi 안). 정답 칸은 날마다·질문마다 옮겨 '가운데만 고르기'로 안 맞게 */
         data class Near3(val opts: List<Double>, val right: Int)
-        private fun near3(x: Double, step: Double, lo: Double, hi: Double, salt: Int = 0): Near3 {   // ios: Data/AppModel.swift:493
-            val c = (x / step).rnd() * step; val k = (quizDay + salt) % 3   // ios: Data/AppModel.swift:494
-            val s = min(hi - 2 * step, max(lo, c - k.toDouble() * step))   // ios: Data/AppModel.swift:495
-            val o = listOf(s, s + step, s + 2 * step)   // ios: Data/AppModel.swift:496
-            return Near3(o, o.indices.minByOrNull { abs(o[it] - x) } ?: 1)   // ios: Data/AppModel.swift:497
+        private fun near3(x: Double, step: Double, lo: Double, hi: Double, salt: Int = 0): Near3 {   // ios: Data/AppModel.swift:500
+            val c = (x / step).rnd() * step; val k = (quizDay + salt) % 3   // ios: Data/AppModel.swift:501
+            val s = min(hi - 2 * step, max(lo, c - k.toDouble() * step))   // ios: Data/AppModel.swift:502
+            val o = listOf(s, s + step, s + 2 * step)   // ios: Data/AppModel.swift:503
+            return Near3(o, o.indices.minByOrNull { abs(o[it] - x) } ?: 1)   // ios: Data/AppModel.swift:504
         }
         /** 서기 1년 1월 1일부터 셈한 오늘 (Calendar.ordinality(of: .day, in: .era)) */
-        private val quizDay: Int get() = (LocalDate.now().toEpochDay() + 719_163).toInt().takeIf { it > 0 } ?: 0   // ios: Data/AppModel.swift:499
+        private val quizDay: Int get() = (LocalDate.now().toEpochDay() + 719_163).toInt().takeIf { it > 0 } ?: 0   // ios: Data/AppModel.swift:506
     }
 }

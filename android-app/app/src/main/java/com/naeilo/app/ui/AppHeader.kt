@@ -13,14 +13,14 @@ import androidx.compose.ui.unit.sp
 
 // 탭 화면 머리글: 'naeilo' 로고 뒤에 탭 이름 ("naeilo 홈")
 @Composable
-fun AppHeader(tab: String = "") {   // ios: App.swift:145,146,147
+fun AppHeader(tab: String = "") {   // ios: App.swift:143,144,145
     Row(
         Modifier.fillMaxWidth()
-            .semantics(mergeDescendants = true) {}   // ios: App.swift:153
-            .padding(horizontal = 20.dp).padding(top = 6.dp, bottom = 4.dp),   // ios: App.swift:154
-        horizontalArrangement = Arrangement.spacedBy(6.dp),   // ios: App.swift:148,151 (firstTextBaseline·남는 폭은 오른쪽 Spacer 자리)
+            .semantics(mergeDescendants = true) {}   // ios: App.swift:151
+            .padding(horizontal = 20.dp).padding(top = 6.dp, bottom = 4.dp),   // ios: App.swift:152
+        horizontalArrangement = Arrangement.spacedBy(6.dp),   // ios: App.swift:146,149 (firstTextBaseline·남는 폭은 오른쪽 Spacer 자리)
     ) {
-        T("naeilo", Modifier.alignByBaseline(), style = appFont(20f, FontWeight.Bold).copy(letterSpacing = (-0.3).sp))   // ios: App.swift:149
-        if (tab.isNotEmpty()) T(tab, Modifier.alignByBaseline(), style = appFont(20f, FontWeight.Normal), color = Theme.sub)   // ios: App.swift:150
+        T("naeilo", Modifier.alignByBaseline(), style = appFont(20f, FontWeight.Bold).copy(letterSpacing = (-0.3).sp))   // ios: App.swift:147
+        if (tab.isNotEmpty()) T(tab, Modifier.alignByBaseline(), style = appFont(20f, FontWeight.Normal), color = Theme.sub)   // ios: App.swift:148
     }
 }

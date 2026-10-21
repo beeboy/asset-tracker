@@ -771,7 +771,7 @@ private fun ItemNote(m: AppModel, s: ShelterState) {
         PixelN("art_" + (cur?.id ?: "barley_tea") + (if (cur == null) "_l" else ""), 32.dp, 32.dp)   // ios: Views/ShelterView.swift:509
         Column(Modifier.weight(1f).widthIn(min = 0.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:510,518 (남은 폭)
             T(cur?.name ?: "아직 돌아오지 않았어요", style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:511
-            T(cur?.line ?: "오늘의 1분을 하면 첫 물건이 돌아와요.", style = appFont(13f), color = Theme.sub)   // ios: Views/ShelterView.swift:512
+            T(cur?.line ?: "물건은 하루 두 개씩 돌아와요.", style = appFont(13f), color = Theme.sub)   // ios: Views/ShelterView.swift:512
             val voice = m.voice(m.homeFriendShown)
             // ios: Views/ShelterView.swift:513
             val say = cur?.let { c -> Lines.pick("item.${c.id}.$voice") ?: WItem.say(c.id, m.voice(m.homeFriendShown)) }; if (cur != null && say != null) {

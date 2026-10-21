@@ -1065,7 +1065,7 @@ fun AppStartView(m: AppModel) {
                                     if (denied) T("알림 꺼짐 · 설정 > 알림 > naeilo에서 허용 후 다시", style = appFont(12f), color = Theme.sub)   // ios: Views/MissionViews.swift:666
                                 } else if (cur && i == 2) {   // ios: Views/MissionViews.swift:667
                                     // 3단계: 키를 넣었으면 확인만, 아니면 설정의 오픈 API 화면으로. 키 없이도 샘플로 계속할 수 있다
-                                    val tossTap: () -> Unit = { if (TossKeys.on) animateStep(1) else { m.tab = Tab.settings; m.settingsPath = listOf(SettingsRoute.toss) } }   // ios: Views/MissionViews.swift:670
+                                    val tossTap: () -> Unit = { if (TossKeys.on) animateStep(1) else { m.openSettings(SettingsRoute.toss) } }   // ios: Views/MissionViews.swift:670,671
                                     // ios: Views/MissionViews.swift:669,672,673
                                     Box(Modifier.plainClickable(onClick = tossTap).background(Theme.teal, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp).defaultMinSize(minHeight = 44.dp), contentAlignment = Alignment.Center) { T(if (TossKeys.on) "연결했어요" else "오픈 API 연결", style = appFont(14f, FontWeight.Bold), color = Color.White) }
                                     // ios: Views/MissionViews.swift:674

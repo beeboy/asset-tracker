@@ -158,7 +158,7 @@ val SF: Map<String, Int> = mapOf(
     "plus" to R.drawable.ms_add, "chevron.down" to R.drawable.ms_expand_more, "trash" to R.drawable.ms_delete, "pencil" to R.drawable.ms_edit,
     "flag" to R.drawable.ms_flag, "calendar" to R.drawable.ms_calendar_month, "building.columns" to R.drawable.ms_account_balance,
     "arrow.left.arrow.right" to R.drawable.ms_swap_horiz, "chart.pie" to R.drawable.ms_pie_chart, "arrow.down.to.line" to R.drawable.ms_download,
-    "arrow.up.to.line" to R.drawable.ms_upload, "chevron.up" to R.drawable.ms_expand_less,
+    "arrow.up.to.line" to R.drawable.ms_upload, "chevron.up" to R.drawable.ms_expand_less, "rectangle.3.group" to R.drawable.ms_rect3_group, "gearshape" to R.drawable.tab_settings,
     "minus" to R.drawable.ms_remove, "xmark" to R.drawable.ms_close, "info.circle" to R.drawable.ms_info,
     "bell" to R.drawable.ms_notifications, "bell.fill" to R.drawable.ms_notifications_fill,
     "clock" to R.drawable.ms_schedule, "sun.max.fill" to R.drawable.ms_sunny_fill, "circle" to R.drawable.ms_radio_button_unchecked,

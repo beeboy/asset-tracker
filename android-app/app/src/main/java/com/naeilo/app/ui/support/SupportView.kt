@@ -32,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.naeilo.app.AppModel
-import com.naeilo.app.Tab
 import com.naeilo.app.data.SubPlan
 import com.naeilo.app.data.Support
 import com.naeilo.app.data.displayPrice
@@ -200,7 +199,7 @@ fun SubLocked(m: AppModel, what: String) {   // ios: Views/SupportView.swift:110
         T("${what}은 구독하면 다시 볼 수 있어요.\n월 1,000원 · 연 9,000원", style = appFont(14f).ls(3f).copy(textAlign = TextAlign.Center), color = Theme.sub)
         // ios: Views/SupportView.swift:119,120,121,122,124
         Box(Modifier.widthIn(max = 240.dp).fillMaxWidth().defaultMinSize(minHeight = 44.dp).background(Theme.teal, RoundedCornerShape(12.dp))
-            .plainClickable { m.tab = Tab.settings; m.settingsPath = listOf(SettingsRoute.support) }, contentAlignment = Alignment.Center) {
+            .plainClickable { m.openSettings(SettingsRoute.support) }, contentAlignment = Alignment.Center) {
             T("구독 보기", style = appFont(15f, FontWeight.Bold), color = Color.White)
         }
     }
