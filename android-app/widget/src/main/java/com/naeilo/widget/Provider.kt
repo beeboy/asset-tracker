@@ -45,7 +45,12 @@ object Refresh {
     private const val name = "naeilo.widget.refresh"
 
     /** 다음 깨울 때 예약: '몇 분 전' 다시 그리기와 다음 받기 중 이른 쪽 */
-    fun plan(ctx: Context, next: Instant? = null) {
+    fun plan(ctx: Context, next: Instant? = null) = plan(ctx, next, ExistingWorkPolicy.REPLACE)
+
+    /** 위젯을 그릴 때 예약이 없으면 하나 건다 (둔 위젯이 없어 끊긴 뒤 앱을 안 열고 위젯을 놓아도 정기 갱신이 돈다). 있으면 그대로 둔다 */
+    fun ensure(ctx: Context) = plan(ctx, null, ExistingWorkPolicy.KEEP)
+
+    private fun plan(ctx: Context, next: Instant?, policy: ExistingWorkPolicy) {
         Store.init(ctx)
         val d = Store.defaults
         next?.let { d.edit().putLong("widgetNext", it.toEpochMilli()).putLong("widgetDrawn", Instant.now().toEpochMilli()).apply() }
@@ -56,7 +61,7 @@ object Refresh {
         // ios: Widgets/Provider.swift:29,30
         val at = (Fresh.dates(drawn, until = due).filter { it > now } + due).minOrNull() ?: now
         val delay = maxOf(0L, at.toEpochMilli() - now.toEpochMilli())
-        WorkManager.getInstance(ctx).enqueueUniqueWork(name, ExistingWorkPolicy.REPLACE,
+        WorkManager.getInstance(ctx).enqueueUniqueWork(name, policy,
             OneTimeWorkRequestBuilder<RefreshWork>().setInitialDelay(delay, TimeUnit.MILLISECONDS).build())
     }
 

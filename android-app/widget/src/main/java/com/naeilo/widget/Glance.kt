@@ -53,6 +53,7 @@ abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         Store.init(context)
+        Refresh.ensure(context)
         provideContent { Content() }
     }
 

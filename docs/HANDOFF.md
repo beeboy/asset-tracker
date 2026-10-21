@@ -69,6 +69,6 @@
 
 ## 안드로이드 최종 점검 남은 일 (2026-10-21)
 - 숫자 입력칸: 키보드가 0.몇 초 떴다가 바로 사라짐 (flip4, 원인 아직 안 봄).
-- 별도 스레드로: 위젯 인물 고르기·정기 갱신(WorkManager)·CharItem·CharTop, 접근성 설명(contentDescription) 영어.
+- 위젯 인물 고르기·정기 갱신은 이미 들어가 있음(정기 갱신이 위젯을 나중에 놓을 때 끊기던 빈틈은 Refresh.ensure로 고침). CharItem·CharTop은 아이폰에서도 안 쓰는 코드라 안 옮김. 남은 것: 접근성 설명(contentDescription) 영어.
 - 잠금화면 위젯 4개는 보류 (decisions.md).
 - 기기 동기화는 실기기 두 대로 사용자 확인 끝.
