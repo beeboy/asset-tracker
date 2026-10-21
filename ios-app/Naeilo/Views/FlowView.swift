@@ -194,7 +194,7 @@ enum FlowTerm: Equatable {
     var body: String {
         switch self {
         case .dots: String(localized: "고점·저점마다 찍은 점이에요. 점이 계단처럼 올라가면 상승, 내려가면 하락, 같은 높이를 오가면 횡보예요.")
-        case .band: String(localized: "위에서부터 월·주·일 흐름이에요. 빨강은 상승, 파랑은 하락, 회색은 횡보예요.")
+        case .band: String(localized: "위에서부터 큰·중간·작은 흐름이에요. 빨강은 상승, 파랑은 하락, 회색은 횡보예요.")
         case .support: String(localized: "주가가 여러 번 내려와 받친 가격이에요. 여러 번 닿을수록 선이 진해요.")
         case .resistance: String(localized: "주가가 여러 번 올라와 튕겨 나간 가격이에요. 여러 번 닿을수록 선이 진해요.")
         case .pattern(let k): k.body
@@ -247,7 +247,7 @@ struct FlowChart: View {
     @State private var pinchBase: Int? = nil
     @State private var dragBase: Int? = nil
 
-    private let axisW: CGFloat = 46, bandH: CGFloat = 16, topH: CGFloat = 56, botH: CGFloat = 20
+    private let axisW: CGFloat = 46, bandH: CGFloat = 27, topH: CGFloat = 56, botH: CGFloat = 20
 
     var body: some View {
         GeometryReader { g in
@@ -345,7 +345,7 @@ struct FlowChart: View {
                         for (row, ts) in series.trends.reversed().enumerated() {
                             for t in ts where t.to >= lo && t.from <= hi {
                                 let a = x(Double(max(lo, t.from)) - 0.5), b = x(Double(min(hi, t.to)) + 0.5)
-                                let r = CGRect(x: a, y: topH + CGFloat(row) * (bandH / 3), width: max(1, b - a), height: bandH / 3 - 1)
+                                let r = CGRect(x: a, y: topH + CGFloat(row) * (bandH / 3) + 1.5, width: max(1, b - a), height: bandH / 3 - 3)
                                 ctx.fill(Path(r), with: .color(t.dir > 0 ? Theme.up : t.dir < 0 ? Theme.down : Theme.dash))
                             }
                         }
@@ -364,6 +364,11 @@ struct FlowChart: View {
                         }
                     }
                     .frame(width: W)
+                    // 띠 이름: 오른쪽 눈금 칸에 아주 작게 (차트 폭은 그대로)
+                    ForEach(Array(["큰", "중간", "작은"].enumerated()), id: \.offset) { row, t in
+                        Text(LocalizedStringKey(t)).appFont(8).foregroundStyle(Theme.muted).lineLimit(1).fixedSize()
+                            .position(x: W + 4 + 12, y: topH + CGFloat(row) * (bandH / 3) + bandH / 6)
+                    }
                     // 띠를 누르면 띠 설명
                     Color.clear.contentShape(Rectangle()).frame(width: W, height: bandH + 6)
                         .offset(y: topH - 3)
