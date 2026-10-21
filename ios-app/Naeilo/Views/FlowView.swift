@@ -348,7 +348,8 @@ struct FlowChart: View {
                         for i in a...b { h = max(h, k[i].h); l = min(l, k[i].l) }
                         let cx = x(Double(a + b) / 2)
                         let bw = max(1, CGFloat(b - a + 1) / CGFloat(cnt) * W * 0.68)
-                        let col = c >= o ? Theme.up : Theme.down
+                        // 장중 오늘 캔들은 흐리게 (아직 끝나지 않은 날)
+                        let col = (c >= o ? Theme.up : Theme.down).opacity(series.live && b == n - 1 ? 0.4 : 1)
                         var wick = Path(); wick.move(to: CGPoint(x: cx, y: y(h))); wick.addLine(to: CGPoint(x: cx, y: y(l)))
                         ctx.stroke(wick, with: .color(col), lineWidth: 1)
                         let r = CGRect(x: cx - bw / 2, y: y(max(o, c)), width: bw, height: max(1, abs(y(o) - y(c))))
