@@ -2,6 +2,8 @@
 <!-- 탭 아이콘: iOS SF Symbol 자리 (탭 막대는 채운 모양을 쓴다) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <!-- chart.xyaxis.line: 축 두 개 + 꺾은선 -->
-    <path android:strokeColor="#FF000000" android:strokeWidth="1.8" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" android:pathData="M3,3V21H21M6.5,15.5L10,10.5L13.5,13.5L19.5,7"/>
+    <!-- point.bottomleft.forward.to.point.topright.scurvepath: 왼쪽 아래 점 → S자 곡선 → 오른쪽 위 점 (축 없음) -->
+    <path android:strokeColor="#FF000000" android:strokeWidth="1.8" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M5,19C11,19 8,12 12,12C16,12 13,5 19,5"/>
+    <path android:fillColor="#FF000000" android:pathData="M5,19m-2.2,0a2.2,2.2 0,1 1,4.4 0a2.2,2.2 0,1 1,-4.4 0"/>
+    <path android:fillColor="#FF000000" android:pathData="M19,5m-2.2,0a2.2,2.2 0,1 1,4.4 0a2.2,2.2 0,1 1,-4.4 0"/>
 </vector>

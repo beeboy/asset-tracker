@@ -407,6 +407,7 @@ final class FlowStore {
     private(set) var toss = FlowBars.read(FlowBars.tossName)
     private(set) var alpaca = FlowBars.read(FlowBars.alpacaName)
     private(set) var loading: Set<String> = []
+    private(set) var failed: Set<String> = []    // 받아 보았는데 일봉이 없는 종목 (빈 칸 대신 '못 받았어요')
     @ObservationIgnored private var memo: [String: (String, FlowSeries)] = [:]
 
     func reload() {
@@ -444,7 +445,8 @@ final class FlowStore {
         guard !want.isEmpty else { return }
         if TossKeys.on, want.contains(where: { bars($0) == nil }) {
             loading.formUnion(want.filter { bars($0) == nil })
-            await Market.shared.refreshToss(held: Set(ids), force: false)   // 지금 값도 같이 받으니 담은 종목 전부로
+            // 지금 값도 같이 받으니 담은 종목 전부로. 이미 받는 중이면 끝나길 기다렸다가 한 번 더 (그냥 건너뛰면 탭을 열어도 안 받는다)
+            await Market.shared.refreshToss(held: Set(ids), force: true)
         }
         if AlpacaKeys.on {
             var keys: [String: String] = [:]
@@ -457,5 +459,6 @@ final class FlowStore {
             }
         }
         loading = []
+        failed = Set(want.filter { bars($0) == nil })
     }
 }

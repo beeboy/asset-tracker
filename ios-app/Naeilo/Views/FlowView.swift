@@ -52,6 +52,7 @@ struct FlowView: View {
                             Text(name(sel)).appFont(15, .bold).foregroundStyle(Theme.ink)
                             Text(!FlowStore.canFetch(sel) ? String(localized: "키를 넣으면 이 종목 차트가 그려져요")
                                  : store.loading.contains(sel) ? String(localized: "일봉을 받는 중이에요")
+                                 : store.failed.contains(sel) ? String(localized: "일봉을 못 받았어요")
                                  : String(localized: "아직 받은 일봉이 없어요"))
                                 .appFont(13).foregroundStyle(Theme.sub)
                         }

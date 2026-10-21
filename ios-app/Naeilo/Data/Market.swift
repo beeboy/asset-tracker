@@ -441,10 +441,12 @@ enum TossHistory {
             // 하루 한 번, 장이 끝난 뒤 한 번 더 (그날 종가가 정규장 종가·다음 날 전일 종가가 된다)
             let (md, closed) = marketDay(kr: y.hasSuffix(".KS") || y.hasSuffix(".KQ"))
             let stamp = closed ? today + "c" : today
-            guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != stamp || f.h[k] == nil || ohlc.b[k] == nil else { continue }
+            // 캔들이 30일이 안 되면 그날 한 번(장 끝난 뒤 한 번 더) 다시 3년치를 묻는다 (한 번 비면 영영 비는 일이 없게)
+            let short = (ohlc.b[k]?.d.count ?? 0) < 30
+            guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != stamp || f.h[k] == nil || (short && ohlc.day[k] != stamp) else { continue }
             let have = f.h[k]
             // 캔들을 아직 안 받은 종목도 한 번은 3년치를 받는다 (예전 판은 종가만 남겼다)
-            let full = (have?.dates.first ?? "9999") > Day.str(Date().addingTimeInterval(-(3 * 365 - 15) * 86400)) || ohlc.b[k] == nil
+            let full = (have?.dates.first ?? "9999") > Day.str(Date().addingTimeInterval(-(3 * 365 - 15) * 86400)) || short
             var bars: [String: Double] = [:], before: String? = nil, ok = false
             var rows: [String: FlowBars.Row] = [:]
             for _ in 0..<(full ? 5 : 1) {
@@ -472,7 +474,7 @@ enum TossHistory {
             guard !ds.isEmpty else { continue }
             f.h[k] = .init(dates: ds, closes: ds.map { all[$0]! })
             f.day[k] = stamp
-            if full && rows.isEmpty && ohlc.b[k] == nil { ohlc.b[k] = .init(); ohlcDirty = true }   // 시가 등이 없는 응답이면 다시 3년치를 묻지 않게
+            ohlc.day[k] = stamp; ohlcDirty = true   // 캔들을 물어본 날 (짧아도 그날은 다시 안 묻는다)
             if !rows.isEmpty { ohlc.merge(k, rows, full: full, keep: { $0 >= from && ($0 < md || ($0 == md && closed)) }); ohlcDirty = true }
         }
         TossFeed.histMiss = miss

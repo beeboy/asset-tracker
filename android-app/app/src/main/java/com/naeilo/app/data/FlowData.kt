@@ -36,7 +36,7 @@ import kotlin.math.sqrt
 /** 차트 탭 이름·아이콘. 이름이 아직 확정 전이라 여기 한 곳만 바꾸면 된다 */
 object FlowTab {   // ios: Data/FlowData.swift:4
     const val name = "흐름"   // ios: Data/FlowData.swift:5
-    const val icon = "chart.xyaxis.line"   // ios: Data/FlowData.swift:6 (안드로이드는 R.drawable.tab_flow)
+    const val icon = "point.bottomleft.forward.to.point.topright.scurvepath"   // ios: Data/FlowData.swift:6 (안드로이드는 R.drawable.tab_flow)
 }
 
 /** 일봉 하나 (시가·고가·저가·종가·거래량) */
@@ -451,42 +451,44 @@ object FlowStore {   // ios: Data/FlowData.swift:404,405,406
         private set
     var loading by mutableStateOf(setOf<String>())   // ios: Data/FlowData.swift:409
         private set
-    private val memo = HashMap<String, Pair<String, FlowSeries>>()   // ios: Data/FlowData.swift:410
+    var failed by mutableStateOf(setOf<String>())    // 받아 보았는데 일봉이 없는 종목 (빈 칸 대신 '못 받았어요')   // ios: Data/FlowData.swift:410
+        private set
+    private val memo = HashMap<String, Pair<String, FlowSeries>>()   // ios: Data/FlowData.swift:411
     /** 계산해 둔 것이 늘면 화면이 다시 꺼내 보게 */
     private var ver by mutableStateOf(0)
     @Volatile private var loaded = false
 
-    fun reload() {   // ios: Data/FlowData.swift:412
-        toss = if (TossKeys.on) FlowBars.read(FlowBars.tossName) else FlowBars()   // ios: Data/FlowData.swift:413
-        alpaca = if (AlpacaKeys.on) FlowBars.read(FlowBars.alpacaName) else FlowBars()   // ios: Data/FlowData.swift:414
+    fun reload() {   // ios: Data/FlowData.swift:413
+        toss = if (TossKeys.on) FlowBars.read(FlowBars.tossName) else FlowBars()   // ios: Data/FlowData.swift:414
+        alpaca = if (AlpacaKeys.on) FlowBars.read(FlowBars.alpacaName) else FlowBars()   // ios: Data/FlowData.swift:415
         loaded = true
     }
     /** 처음 한 번 파일 읽기 (iOS 는 만들 때 읽는다. 화면 그리는 중 파일을 읽지 않게 ensure 에서 부른다) */
     suspend fun load() { if (!loaded) withContext(Dispatchers.IO) { reload() } }
 
-    fun isKR(id: String): Boolean = Sample.symbol(id)?.currency == Currency.krw   // ios: Data/FlowData.swift:417
+    fun isKR(id: String): Boolean = Sample.symbol(id)?.currency == Currency.krw   // ios: Data/FlowData.swift:418
     /** 이 종목을 받을 키가 있는지: 한국은 토스, 미국은 토스나 알파카 */
-    fun canFetch(id: String): Boolean {   // ios: Data/FlowData.swift:419
-        if (id == "DRNK" || id == KoreaEstimate.sumId) return false   // ios: Data/FlowData.swift:420
-        return TossKeys.on || (!isKR(id) && AlpacaKeys.on)   // ios: Data/FlowData.swift:421
+    fun canFetch(id: String): Boolean {   // ios: Data/FlowData.swift:420
+        if (id == "DRNK" || id == KoreaEstimate.sumId) return false   // ios: Data/FlowData.swift:421
+        return TossKeys.on || (!isKR(id) && AlpacaKeys.on)   // ios: Data/FlowData.swift:422
     }
 
-    fun bars(id: String): FlowBars.Series? {   // ios: Data/FlowData.swift:424
-        val k = SiteStats.key(id)   // ios: Data/FlowData.swift:425
-        if (TossKeys.on) toss.b[k]?.takeIf { it.d.size >= 30 }?.let { return it }   // ios: Data/FlowData.swift:426
-        if (AlpacaKeys.on && !isKR(id)) alpaca.b[k]?.takeIf { it.d.size >= 30 }?.let { return it }   // ios: Data/FlowData.swift:427
-        return null   // ios: Data/FlowData.swift:428
+    fun bars(id: String): FlowBars.Series? {   // ios: Data/FlowData.swift:425
+        val k = SiteStats.key(id)   // ios: Data/FlowData.swift:426
+        if (TossKeys.on) toss.b[k]?.takeIf { it.d.size >= 30 }?.let { return it }   // ios: Data/FlowData.swift:427
+        if (AlpacaKeys.on && !isKR(id)) alpaca.b[k]?.takeIf { it.d.size >= 30 }?.let { return it }   // ios: Data/FlowData.swift:428
+        return null   // ios: Data/FlowData.swift:429
     }
 
-    private fun stamp(b: FlowBars.Series) = "${b.d.size}" + (b.d.lastOrNull() ?: "")   // ios: Data/FlowData.swift:434
-    fun series(id: String): FlowSeries? {   // ios: Data/FlowData.swift:431
-        if (id == "DRNK") return DrnkSample.series   // ios: Data/FlowData.swift:432
-        val b = bars(id) ?: return null   // ios: Data/FlowData.swift:433
+    private fun stamp(b: FlowBars.Series) = "${b.d.size}" + (b.d.lastOrNull() ?: "")   // ios: Data/FlowData.swift:435
+    fun series(id: String): FlowSeries? {   // ios: Data/FlowData.swift:432
+        if (id == "DRNK") return DrnkSample.series   // ios: Data/FlowData.swift:433
+        val b = bars(id) ?: return null   // ios: Data/FlowData.swift:434
         val stamp = stamp(b)
-        synchronized(memo) { memo[id]?.takeIf { it.first == stamp }?.let { return it.second } }   // ios: Data/FlowData.swift:435
-        val s = FlowSeries(candles = b.candles, dates = b.d)   // ios: Data/FlowData.swift:436
-        synchronized(memo) { memo[id] = stamp to s }   // ios: Data/FlowData.swift:437
-        return s   // ios: Data/FlowData.swift:438
+        synchronized(memo) { memo[id]?.takeIf { it.first == stamp }?.let { return it.second } }   // ios: Data/FlowData.swift:436
+        val s = FlowSeries(candles = b.candles, dates = b.d)   // ios: Data/FlowData.swift:437
+        synchronized(memo) { memo[id] = stamp to s }   // ios: Data/FlowData.swift:438
+        return s   // ios: Data/FlowData.swift:439
     }
 
     /** 화면용: 계산해 둔 것만 (없으면 null, warm 이 끝나면 다시 그린다). DRNK 는 처음 계산이 끝났을 때부터 */
@@ -506,24 +508,27 @@ object FlowStore {   // ios: Data/FlowData.swift:404,405,406
     }
 
     /** 차트 탭을 열 때: 아직 없는 담은 종목을 받는다. 토스는 기존 시세 갱신 흐름으로, 알파카는 여기서 한 번에 */
-    suspend fun ensure(ids: List<String>) {   // ios: Data/FlowData.swift:442
+    suspend fun ensure(ids: List<String>) {   // ios: Data/FlowData.swift:443
         load()
-        val want = ids.filter { canFetch(it) }   // ios: Data/FlowData.swift:443
-        if (want.isEmpty()) return   // ios: Data/FlowData.swift:444
-        if (TossKeys.on && want.any { bars(it) == null }) {   // ios: Data/FlowData.swift:445
-            loading = loading + want.filter { bars(it) == null }   // ios: Data/FlowData.swift:446
-            Market.shared.refreshToss(held = ids.toSet(), force = false)   // 지금 값도 같이 받으니 담은 종목 전부로   // ios: Data/FlowData.swift:447
+        val want = ids.filter { canFetch(it) }   // ios: Data/FlowData.swift:444
+        if (want.isEmpty()) return   // ios: Data/FlowData.swift:445
+        if (TossKeys.on && want.any { bars(it) == null }) {   // ios: Data/FlowData.swift:446
+            loading = loading + want.filter { bars(it) == null }   // ios: Data/FlowData.swift:447
+            // 지금 값도 같이 받으니 담은 종목 전부로. 이미 받는 중이면 끝나길 기다렸다가 한 번 더 (그냥 건너뛰면 탭을 열어도 안 받는다)
+            Market.shared.refreshToss(held = ids.toSet(), force = true)   // ios: Data/FlowData.swift:449
         }
-        if (AlpacaKeys.on) {   // ios: Data/FlowData.swift:449
-            val keys = HashMap<String, String>()   // ios: Data/FlowData.swift:450
-            for (id in want) { if (!(!isKR(id) && (!TossKeys.on || (toss.b[SiteStats.key(id)]?.let { it.d.size < 30 } ?: true)))) continue   // ios: Data/FlowData.swift:451
-                val s = Sample.symbol(id) ?: continue; val c = AlpacaFeed.code(CustomSymbols.yahoo(s)) ?: continue; keys[SiteStats.key(id)] = c   // ios: Data/FlowData.swift:452
+        if (AlpacaKeys.on) {   // ios: Data/FlowData.swift:451
+            val keys = HashMap<String, String>()   // ios: Data/FlowData.swift:452
+            for (id in want) { if (!(!isKR(id) && (!TossKeys.on || (toss.b[SiteStats.key(id)]?.let { it.d.size < 30 } ?: true)))) continue   // ios: Data/FlowData.swift:453
+                val s = Sample.symbol(id) ?: continue; val c = AlpacaFeed.code(CustomSymbols.yahoo(s)) ?: continue; keys[SiteStats.key(id)] = c   // ios: Data/FlowData.swift:454
             }
-            if (keys.isNotEmpty()) {   // ios: Data/FlowData.swift:454
-                loading = loading + want.filter { bars(it) == null }   // ios: Data/FlowData.swift:455
-                if (FlowAlpaca.fetch(keys)) withContext(Dispatchers.IO) { reload() }   // ios: Data/FlowData.swift:456
+            if (keys.isNotEmpty()) {   // ios: Data/FlowData.swift:456
+                loading = loading + want.filter { bars(it) == null }   // ios: Data/FlowData.swift:457
+                if (FlowAlpaca.fetch(keys)) withContext(Dispatchers.IO) { reload() }   // ios: Data/FlowData.swift:458
             }
         }
-        loading = emptySet()   // ios: Data/FlowData.swift:459
+        loading = emptySet()   // ios: Data/FlowData.swift:461
+        failed = want.filter { bars(it) == null }.toSet()   // ios: Data/FlowData.swift:462
+        if (failed.isNotEmpty()) android.util.Log.i("naeilo.flow", "일봉 없음: " + failed.joinToString { "$it(${SiteStats.key(it)}) 토스 ${toss.b[SiteStats.key(it)]?.d?.size ?: -1} 알파카 ${alpaca.b[SiteStats.key(it)]?.d?.size ?: -1}" })
     }
 }
