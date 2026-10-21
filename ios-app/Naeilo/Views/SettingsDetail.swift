@@ -569,6 +569,7 @@ struct TaxRulesView: View {
             }
             note(String(localized: "계산 예시이며 세무 상담이 아닙니다."))
         }
+        .doneKey()
         .onAppear { gain = String(Int(m.taxGain)) }
     }
 }

@@ -102,6 +102,7 @@ struct Mission1View: View {
                 else { m.gDone.insert("hold"); m.boardPath.append(.gp1r) }
             }
         }
+        .doneKey()
         // 종목 추가에서 돌아오면 새 종목도 칸에 넣는다
         .onAppear { load() }
         .onChange(of: m.holdings) { _, _ in load() }

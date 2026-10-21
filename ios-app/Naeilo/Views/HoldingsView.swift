@@ -694,6 +694,7 @@ struct HoldingEditView: View {
         }
         .background(Theme.bg)
         .navigationTitle(sym.name).navigationBarTitleDisplayMode(.inline)
+        .doneKey()
         .onAppear {
             reset(h)
             // 캡처용: -editMode buy -editQ 5 처럼 입력을 채워 둔다
@@ -721,6 +722,13 @@ struct HoldingEditView: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 2))
                 .accessibilityLabel(label)
         }
+    }
+}
+
+extension View {
+    /// 숫자 자판에는 닫기 키가 없어서 자판 위에 '완료'를 둔다 (어느 칸이 열려 있든 내린다)
+    func doneKey() -> some View {
+        toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } } }
     }
 }
 
