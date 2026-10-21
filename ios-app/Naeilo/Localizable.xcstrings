@@ -27396,6 +27396,16 @@
         }
       }
     },
+    "일봉을 못 받았어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't get daily candles"
+          }
+        }
+      }
+    },
     "일봉을 받는 중이에요" : {
       "localizations" : {
         "en" : {

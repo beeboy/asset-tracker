@@ -53,7 +53,6 @@ struct HoldingsView: View {
                             .foregroundStyle(Theme.teal)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.teal, lineWidth: 2))
                     }.buttonStyle(.plain)
-                    MyRecordCard()
                     }
                     Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                     Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게

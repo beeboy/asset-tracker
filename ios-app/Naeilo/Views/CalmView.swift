@@ -40,6 +40,7 @@ struct CalmCard: View {
 struct CalmView: View {
     @Environment(AppModel.self) private var m
     @State private var shown = 10   // 최근 기록을 몇 건까지 펼쳤는지
+    @State private var recentOpen = false   // 최근 기록은 접어 둔다 (2026-10-21)
 
     var body: some View {
         let s = m.calm.stats(), who = m.calmSpeaker, k = Calm.kind(m.calm.type)
@@ -108,13 +109,21 @@ struct CalmView: View {
                     if ready, let t = s.trend { row(String(localized: "최근 30일 변화"), (t >= 0 ? "+" : "") + "\(t)") }
                 }
 
-                // 최근 기록
+                MyRecordCard()   // 종목 탭 맨 아래에서 옮겼다 (2026-10-21)
+
+                // 최근 기록: 머리를 누르면 펼친다
                 Card {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("최근 기록").appFont(15, .bold)
-                        Spacer()
-                        Text("\(m.calm.events.count)건").appFont(12).foregroundStyle(Theme.muted)
+                    Button { recentOpen.toggle() } label: {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("최근 기록").appFont(15, .bold)
+                            Spacer()
+                            Text("\(m.calm.events.count)건").appFont(12).foregroundStyle(Theme.muted)
+                            Image(systemName: recentOpen ? "chevron.up" : "chevron.down").appFont(11).foregroundStyle(Theme.muted)
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain).foregroundStyle(Theme.ink)
+                    if recentOpen {
                     ForEach(Array(m.calm.events.suffix(shown).reversed().enumerated()), id: \.offset) { _, e in
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 2) {
@@ -133,6 +142,7 @@ struct CalmView: View {
                     }
                     // 손으로 남기는 기록은 없다: 수량 고치기(더 샀어요·팔았어요)와 크게 움직인 날 앱 열기로 생긴다
                     Text("수량 바꾸면 기록").appFont(12).foregroundStyle(Theme.muted)
+                    }
                 }
 
                 // 다섯 인물 (행동으로 설명)
