@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 위젯 고르기 화면 미리보기: Previews.kt 가 그린 그림 한 장 -->
-<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/w_preview_img" android:layout_width="match_parent" android:layout_height="match_parent"
-    android:scaleType="fitCenter" android:importantForAccessibility="no" />

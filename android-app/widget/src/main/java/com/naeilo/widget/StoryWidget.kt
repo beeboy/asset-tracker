@@ -42,7 +42,7 @@ object StoryProvider {
 // ios: Widgets/StoryWidget.swift:29,30,31,32,33
 class StoryWidget : FaceWidget("story") {
     override fun face(ctx: Context, state: Preferences): Face {
-        val e = StoryProvider.getTimeline()
+        val e = if (Previews.sample) StoryEntry(java.time.Instant.now(), WStory.sample, preview = true) else StoryProvider.getTimeline()
         val g = Gate(kind = "story", preview = e.preview, content = { kind = "story"; now = e.date; storyWidget(e.s) }, locked = { kind = "story"; lockedWidget("story") })
         val url = if (g.open) storyURL(e.s) else if (Store.widgetsOpen) Catalog.openURL else Catalog.subscribeURL
         return Face(url = url, speech = if (g.open) storySpeech(e.s) else lockedSpeech("story")) { g.body(this) }

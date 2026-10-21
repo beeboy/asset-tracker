@@ -185,7 +185,7 @@ object CharProvider {
 // ios: Widgets/CharWidgets.swift:93,94,95,97,98
 open class CharWidget(kind: String, val view: Pen.(CharEntry) -> Unit) : FaceWidget(kind) {
     override fun face(ctx: Context, state: Preferences): Face {
-        val e = CharProvider.timeline(WhoEnum.of(state[whoKey]))
+        val e = if (Previews.sample) CharProvider.placeholder().also { it.preview = true } else CharProvider.timeline(WhoEnum.of(state[whoKey]))
         val k = kind
         val g = Gate(kind = k, preview = e.preview, content = { this.kind = k; now = e.date; view(e) }, locked = { this.kind = k; now = e.date; charFrame(e, k) {} })
         val speech = if (g.open) charSpeech(k, e) else lockedSpeech(k)

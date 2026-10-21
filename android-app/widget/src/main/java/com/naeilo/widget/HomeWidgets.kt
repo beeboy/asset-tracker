@@ -44,7 +44,7 @@ class MovesSmallReceiver : GlanceAppWidgetReceiver() { override val glanceAppWid
 open class HomeWidget(kind: String, val view: Pen.(Snapshot) -> Unit) : FaceWidget(kind) {
     // ios: Widgets/HomeWidgets.swift:16
     override fun face(ctx: Context, state: Preferences): Face {
-        val e = Provider.getSnapshot()
+        val e = if (Previews.sample) Provider.placeholder().let { Entry(it.date, it.snap, preview = true) } else Provider.getSnapshot()
         val g = Gate(kind = kind, preview = e.preview, content = {
             this.kind = this@HomeWidget.kind; isSample = e.snap.placeholder; now = e.date
             widgetBG(); view(e.snap)
