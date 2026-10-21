@@ -217,6 +217,7 @@ final class Market {
                 self.tossHist = h
                 self.prices = TossHistory.merged(SitePrices.cached(), h)
             }
+            FlowStore.shared.reload()
             self.tossDone = Date()
         }
         tossTask = t
@@ -435,14 +436,17 @@ enum TossHistory {
         let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))   // 사이트 파일과 같은 3년 남짓
         var miss = TossFeed.histMiss
         var stop = false
+        var ohlc = FlowBars.read(FlowBars.tossName), ohlcDirty = false   // 차트 탭 캔들: 같은 응답에서 시가·고가·저가·거래량도 남긴다
         for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop {
             // 하루 한 번, 장이 끝난 뒤 한 번 더 (그날 종가가 정규장 종가·다음 날 전일 종가가 된다)
             let (md, closed) = marketDay(kr: y.hasSuffix(".KS") || y.hasSuffix(".KQ"))
             let stamp = closed ? today + "c" : today
-            guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != stamp || f.h[k] == nil else { continue }
+            guard let c = TossFeed.code(y), (miss[c] ?? 0) < now, f.day[k] != stamp || f.h[k] == nil || ohlc.b[k] == nil else { continue }
             let have = f.h[k]
-            let full = (have?.dates.first ?? "9999") > Day.str(Date().addingTimeInterval(-(3 * 365 - 15) * 86400))
+            // 캔들을 아직 안 받은 종목도 한 번은 3년치를 받는다 (예전 판은 종가만 남겼다)
+            let full = (have?.dates.first ?? "9999") > Day.str(Date().addingTimeInterval(-(3 * 365 - 15) * 86400)) || ohlc.b[k] == nil
             var bars: [String: Double] = [:], before: String? = nil, ok = false
+            var rows: [String: FlowBars.Row] = [:]
             for _ in 0..<(full ? 5 : 1) {
                 var path = "/api/toss/v1/candles?symbol=\(enc(c))&interval=1d&adjusted=false&count=\(full ? 200 : 30)"
                 if let b = before { path += "&before=" + enc(b) }
@@ -454,6 +458,9 @@ enum TossHistory {
                 for v in r["candles"] as? [[String: Any]] ?? [] {
                     guard let t = v["timestamp"] as? String, t.count >= 10, let cl = num(v["closePrice"]), cl > 0 else { continue }
                     let d = String(t.prefix(10)); bars[d] = cl; oldest = min(oldest, d)
+                    if let o = num(v["openPrice"]), let h = num(v["highPrice"]), let l = num(v["lowPrice"]), o > 0, h > 0, l > 0 {
+                        rows[d] = .init(o: o, h: max(h, o, cl), l: min(l, o, cl), c: cl, v: num(v["volume"]) ?? 0)
+                    }
                 }
                 before = r["nextBefore"] as? String
                 if before == nil || oldest <= from { break }
@@ -465,8 +472,11 @@ enum TossHistory {
             guard !ds.isEmpty else { continue }
             f.h[k] = .init(dates: ds, closes: ds.map { all[$0]! })
             f.day[k] = stamp
+            if full && rows.isEmpty && ohlc.b[k] == nil { ohlc.b[k] = .init(); ohlcDirty = true }   // 시가 등이 없는 응답이면 다시 3년치를 묻지 않게
+            if !rows.isEmpty { ohlc.merge(k, rows, full: full, keep: { $0 >= from && ($0 < md || ($0 == md && closed)) }); ohlcDirty = true }
         }
         TossFeed.histMiss = miss
+        if ohlcDirty { FlowBars.write(ohlc, FlowBars.tossName) }
         // 원/달러: 10분에 한 번 (당겨 갱신하면 바로). 전일 값은 24시간 전 시각의 값
         // 일봉 받기가 막혀도(429 등) 환율은 따로 묻는다. 안 그러면 하루 묵은 환율로 평가액이 토스와 달라진다
         if force || now - (f.fx?.got ?? 0) > 600 {

@@ -16,16 +16,19 @@ struct FlowView: View {
     /// 칩 줄: DRNK 를 맨 앞에, 그다음 내 종목
     private var ids: [String] {
         var out = ["DRNK"]
-        for h in model.holdings where !out.contains(h.symbol) { out.append(h.symbol) }
+        for h in model.holdings where !out.contains(h.symbol) && h.symbol != KoreaEstimate.sumId { out.append(h.symbol) }
         return out
     }
     private func name(_ id: String) -> String { Sample.symbol(id)?.name ?? id }
+    private var store: FlowStore { FlowStore.shared }
+    /// 키가 없어 못 그리는 종목이 있으면 설정 링크를 보인다
+    private var needKey: Bool { _ = hasKey; return ids.contains { $0 != "DRNK" && !FlowStore.canFetch($0) } }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 chips
-                if !hasKey {
+                if needKey {
                     Button { model.tab = .settings; model.settingsPath = [.toss] } label: {
                         Text("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요").appFont(13).underline()
                             .foregroundStyle(Theme.teal).multilineTextAlignment(.leading)
@@ -34,12 +37,15 @@ struct FlowView: View {
                 }
                 layerRow
                 Group {
-                    if sel == "DRNK" {
-                        FlowChart(series: DrnkSample.series, layers: layers, term: $term)
+                    if let s = store.series(sel) {
+                        FlowChart(series: s, title: sel == "DRNK" ? String(localized: "DRNK · 샘플") : name(sel), layers: layers, term: $term)
+                            .id(sel)
                     } else {
                         VStack(spacing: 6) {
                             Text(name(sel)).appFont(15, .bold).foregroundStyle(Theme.ink)
-                            Text(hasKey ? String(localized: "이 종목 차트는 다음 업데이트에서 그려져요") : String(localized: "키를 넣으면 이 종목 차트가 그려져요"))
+                            Text(!FlowStore.canFetch(sel) ? String(localized: "키를 넣으면 이 종목 차트가 그려져요")
+                                 : store.loading.contains(sel) ? String(localized: "일봉을 받는 중이에요")
+                                 : String(localized: "아직 받은 일봉이 없어요"))
                                 .appFont(13).foregroundStyle(Theme.sub)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -58,6 +64,8 @@ struct FlowView: View {
         .background(Theme.bg)
         .navigationTitle(FlowTab.name)
         .sheet(isPresented: $showAll) { allSheet }
+        // 열 때 담은 종목 일봉을 받는다 (하루 한 번만 실제로 부른다)
+        .task(id: hasKey) { await store.ensure(ids) }
     }
 
     // 맨 위 내 종목 칩 줄 + '전체'
@@ -72,7 +80,7 @@ struct FlowView: View {
     }
 
     private func chip(_ id: String) -> some View {
-        let on = sel == id, locked = id != "DRNK" && !hasKey
+        let on = sel == id, locked = id != "DRNK" && !FlowStore.canFetch(id)
         return Button { sel = id; term = nil } label: {
             HStack(spacing: 4) {
                 Text(id == "DRNK" ? "DRNK" : name(id)).appFont(13, on ? .bold : .regular).lineLimit(1)
@@ -95,7 +103,7 @@ struct FlowView: View {
                         Text(id == "DRNK" ? "DRNK · " + name(id) : name(id)).foregroundStyle(Theme.ink)
                         Spacer()
                         if id == "DRNK" { Text("샘플").appFont(12).foregroundStyle(Theme.muted) }
-                        else if !hasKey { Text("키 필요").appFont(12).foregroundStyle(Theme.muted) }
+                        else if !FlowStore.canFetch(id) { Text("키 필요").appFont(12).foregroundStyle(Theme.muted) }
                         if sel == id { Image(systemName: "checkmark").foregroundStyle(Theme.teal) }
                     }
                 }
@@ -224,6 +232,7 @@ extension FlowPattern.Kind {
 /// 캔들 차트. 보이는 구간의 캔들만 그리고, 넓게 보면 5일·21일씩 묶어 주봉·월봉으로 접는다
 struct FlowChart: View {
     let series: FlowSeries
+    let title: String
     let layers: Set<FlowLayer>
     @Binding var term: FlowTerm?
     @State private var count = 160          // 보이는 날 수
@@ -279,7 +288,7 @@ struct FlowChart: View {
                 // 머리: 종목·마지막 값 (시작 대비) + 지금 단위
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("DRNK · 샘플").appFont(12).foregroundStyle(Theme.muted)
+                        Text(title).appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text(String(format: "%+.0f%%", series.pct(last.c))).appFont(20, .bold).monospacedDigit()
                                 .foregroundStyle(Theme.change(series.pct(last.c)))
@@ -409,7 +418,7 @@ struct FlowChart: View {
                 .allowsHitTesting(layers.contains(.candle))
 
                 // 아래: 보이는 기간
-                Text(Self.fmt.string(from: date(lo)) + " – " + Self.fmt.string(from: date(hi)))
+                Text(date(lo) + " – " + date(hi))
                     .appFont(10).monospacedDigit().foregroundStyle(Theme.muted)
                     .position(x: W / 2, y: g.size.height - botH / 2)
             }
@@ -493,9 +502,10 @@ struct FlowChart: View {
         .buttonStyle(.plain)
     }
 
-    /// DRNK 기록은 어제가 마지막 날, 하루에 한 칸
-    private func date(_ i: Int) -> Date {
-        Date().addingTimeInterval(-Double(series.candles.count - i) * 86400)
+    /// 실데이터는 거래일, DRNK 기록은 어제가 마지막 날로 하루에 한 칸
+    private func date(_ i: Int) -> String {
+        if let d = series.dates, i < d.count { return d[i].replacingOccurrences(of: "-", with: ".") }
+        return Self.fmt.string(from: Date().addingTimeInterval(-Double(series.candles.count - i) * 86400))
     }
     static let fmt: DateFormatter = { let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yyyy.MM.dd"; return f }()
 }

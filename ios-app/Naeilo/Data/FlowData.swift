@@ -33,6 +33,7 @@ struct FlowPattern: Identifiable {
 /// 차트 한 종목의 미리 계산해 둔 그림 재료
 struct FlowSeries {
     let candles: [Candle]
+    let dates: [String]?           // 실데이터는 거래일 (DRNK 샘플은 없음: 어제까지 하루 한 칸)
     let pivots: [FlowPivot]
     let pivotSets: [[FlowPivot]]   // 추세 점: 일봉·주봉·월봉으로 볼 때 (작은 흔들림은 넓게 볼수록 뺀다)
     let trends: [[FlowTrend]]      // 0 = 일(작은 흐름), 1 = 주, 2 = 월(큰 흐름)
@@ -42,8 +43,9 @@ struct FlowSeries {
     /// '+x% 시작 대비'
     func pct(_ v: Double) -> Double { (v / base - 1) * 100 }
 
-    init(candles: [Candle]) {
+    init(candles: [Candle], dates: [String]? = nil) {
         self.candles = candles
+        self.dates = dates
         let c = candles.map(\.c)
         let zz = [0.06, 0.12, 0.22].map { FlowCalc.zigzag(c, $0) }
         pivotSets = zz.map { $0.map { FlowPivot(i: $0.i, price: $0.high ? candles[$0.i].h : candles[$0.i].l, high: $0.high) } }
@@ -251,5 +253,158 @@ enum DrnkSample {
             k[d].v *= weak ? 0.5 : 2.2
         }
         return k
+    }
+}
+
+/// 차트 탭 실데이터 캔들 저장: 종목(사이트 티커) → 거래일별 시가·고가·저가·종가·거래량.
+/// 토스는 TossHistory.fetch 가 같은 응답에서 같이 남기고, 알파카는 FlowAlpaca 가 받는다. 위젯이 읽는 toss_history.json 과는 따로 둔다
+struct FlowBars: Codable {
+    struct Row { var o, h, l, c, v: Double }
+    struct Series: Codable {
+        var d: [String] = [], o: [Double] = [], h: [Double] = [], l: [Double] = [], c: [Double] = [], v: [Double] = []
+        var candles: [Candle] { d.indices.map { Candle(o: o[$0], h: h[$0], l: l[$0], c: c[$0], v: v[$0]) } }
+    }
+    var b: [String: Series] = [:]
+    var day: [String: String] = [:]     // 마지막으로 받은 날 표시 (알파카: 하루 한 번)
+
+    static let tossName = "flow_toss.json", alpacaName = "flow_alpaca.json"
+    static func read(_ name: String) -> FlowBars { Store.read(FlowBars.self, name) ?? FlowBars() }
+    static func write(_ f: FlowBars, _ name: String) { Store.write(f, name) }
+
+    /// 새로 받은 줄을 잇는다. full 이면 갈아 끼우고, keep 에 맞는 날만 남긴다 (끝나기 전 오늘 일봉·3년 넘은 날 빼기)
+    mutating func merge(_ k: String, _ rows: [String: Row], full: Bool, keep: (String) -> Bool) {
+        var all: [String: Row] = [:]
+        if !full, let s = b[k] { for i in s.d.indices { all[s.d[i]] = Row(o: s.o[i], h: s.h[i], l: s.l[i], c: s.c[i], v: s.v[i]) } }
+        for (d, r) in rows { all[d] = r }
+        let ds = all.keys.filter(keep).sorted()
+        var s = Series()
+        for d in ds { let r = all[d]!; s.d.append(d); s.o.append(r.o); s.h.append(r.h); s.l.append(r.l); s.c.append(r.c); s.v.append(r.v) }
+        b[k] = s
+    }
+}
+
+/// 알파카 일봉 (미국 종목, 사용자 본인 키). /v2/stocks/bars 한 번에 여러 종목, feed=sip (거래량이 전체 시장 기준. IEX 는 일부라 안 씀).
+/// 종목마다 하루 한 번(장 끝난 뒤 한 번 더), 처음엔 3년치, 그다음엔 최근 10일만. 부르는 사이를 0.35초 넘게 띄워 분당 200회 한도 아래로
+enum FlowAlpaca {
+    static let base = "https://data.alpaca.markets/v2/stocks/bars"
+    @MainActor private static var last = Date.distantPast
+
+    /// 뉴욕 오늘 날짜와 장 마감(16:10) 지났는지
+    static func nyDay() -> (String, Bool) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/New_York")!
+        let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: Date())
+        return (String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!), c.hour! * 60 + c.minute! >= 16 * 60 + 10)
+    }
+
+    /// keys: 사이트 티커 → 알파카 기호. 받은 게 있으면 true
+    @MainActor
+    static func fetch(_ keys: [String: String]) async -> Bool {
+        guard let k = AlpacaKeys.load(), !keys.isEmpty else { return false }
+        var f = FlowBars.read(FlowBars.alpacaName)
+        let (md, closed) = nyDay(), stamp = closed ? Day.today + "c" : Day.today
+        let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))
+        let need = keys.filter { f.day[$0.key] != stamp || f.b[$0.key] == nil }
+        guard !need.isEmpty else { return false }
+        // 처음 받는 종목이 하나라도 있으면 3년치, 아니면 마지막 날 10일 전부터
+        let fresh = need.keys.contains { (f.b[$0]?.d.count ?? 0) < 30 }
+        let start = fresh ? from : Day.str(Date().addingTimeInterval(-14 * 86400))
+        // 무료 키는 최근 15분 SIP 를 못 묻는다: 끝은 20분 전
+        let end = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-20 * 60))
+        var bySym: [String: String] = [:]   // 알파카 기호 → 사이트 티커
+        for (key, sym) in need { bySym[sym.uppercased()] = key }
+        var rows: [String: [String: FlowBars.Row]] = [:], token: String? = nil, got = false
+        for _ in 0..<20 {
+            var c = URLComponents(string: base)!
+            c.queryItems = [.init(name: "symbols", value: bySym.keys.sorted().joined(separator: ",")),
+                            .init(name: "timeframe", value: "1Day"), .init(name: "start", value: start), .init(name: "end", value: end),
+                            .init(name: "adjustment", value: "raw"), .init(name: "feed", value: "sip"), .init(name: "limit", value: "10000")]
+            if let t = token { c.queryItems!.append(.init(name: "page_token", value: t)) }
+            let wait = 0.35 - Date().timeIntervalSince(last)
+            if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1e9)) }
+            last = Date()
+            var r = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+            r.setValue(k.id, forHTTPHeaderField: "APCA-API-KEY-ID")
+            r.setValue(k.secret, forHTTPHeaderField: "APCA-API-SECRET-KEY")
+            guard let (d, resp) = try? await URLSession.shared.data(for: r), (resp as? HTTPURLResponse)?.statusCode == 200,
+                  let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { break }
+            got = true
+            for (sym, arr) in o["bars"] as? [String: Any] ?? [:] {
+                guard let key = bySym[sym.uppercased()] else { continue }
+                for v in arr as? [[String: Any]] ?? [] {
+                    guard let t = v["t"] as? String, t.count >= 10, let cl = num(v["c"]), let op = num(v["o"]), let h = num(v["h"]), let l = num(v["l"]), cl > 0, op > 0 else { continue }
+                    rows[key, default: [:]][String(t.prefix(10))] = .init(o: op, h: max(h, op, cl), l: min(l, op, cl), c: cl, v: num(v["v"]) ?? 0)
+                }
+            }
+            token = o["next_page_token"] as? String
+            if token == nil { break }
+        }
+        guard got else { return false }
+        for key in need.keys {
+            f.merge(key, rows[key] ?? [:], full: fresh && (f.b[key]?.d.count ?? 0) < 30, keep: { $0 >= from && ($0 < md || ($0 == md && closed)) })
+            f.day[key] = stamp
+        }
+        FlowBars.write(f, FlowBars.alpacaName)
+        return true
+    }
+}
+
+/// 차트 탭이 보는 실데이터: 토스 캔들을 먼저, 없으면 알파카. 종목마다 분석(추세·패턴)은 한 번만 하고 마지막 날이 바뀔 때만 다시
+@MainActor @Observable
+final class FlowStore {
+    static let shared = FlowStore()
+    private(set) var toss = FlowBars.read(FlowBars.tossName)
+    private(set) var alpaca = FlowBars.read(FlowBars.alpacaName)
+    private(set) var loading: Set<String> = []
+    @ObservationIgnored private var memo: [String: (String, FlowSeries)] = [:]
+
+    func reload() {
+        toss = TossKeys.on ? FlowBars.read(FlowBars.tossName) : FlowBars()
+        alpaca = AlpacaKeys.on ? FlowBars.read(FlowBars.alpacaName) : FlowBars()
+    }
+
+    static func isKR(_ id: String) -> Bool { Sample.symbol(id)?.currency == .krw }
+    /// 이 종목을 받을 키가 있는지: 한국은 토스, 미국은 토스나 알파카
+    static func canFetch(_ id: String) -> Bool {
+        guard id != "DRNK", id != KoreaEstimate.sumId else { return false }
+        return TossKeys.on || (!isKR(id) && AlpacaKeys.on)
+    }
+
+    func bars(_ id: String) -> FlowBars.Series? {
+        let k = SiteStats.key(id)
+        if TossKeys.on, let s = toss.b[k], s.d.count >= 30 { return s }
+        if AlpacaKeys.on, !Self.isKR(id), let s = alpaca.b[k], s.d.count >= 30 { return s }
+        return nil
+    }
+
+    func series(_ id: String) -> FlowSeries? {
+        if id == "DRNK" { return DrnkSample.series }
+        guard let b = bars(id) else { return nil }
+        let stamp = "\(b.d.count)" + (b.d.last ?? "")
+        if let m = memo[id], m.0 == stamp { return m.1 }
+        let s = FlowSeries(candles: b.candles, dates: b.d)
+        memo[id] = (stamp, s)
+        return s
+    }
+
+    /// 차트 탭을 열 때: 아직 없는 담은 종목을 받는다. 토스는 기존 시세 갱신 흐름으로, 알파카는 여기서 한 번에
+    func ensure(_ ids: [String]) async {
+        let want = ids.filter { Self.canFetch($0) }
+        guard !want.isEmpty else { return }
+        if TossKeys.on, want.contains(where: { bars($0) == nil }) {
+            loading.formUnion(want.filter { bars($0) == nil })
+            await Market.shared.refreshToss(held: Set(ids), force: false)   // 지금 값도 같이 받으니 담은 종목 전부로
+        }
+        if AlpacaKeys.on {
+            var keys: [String: String] = [:]
+            for id in want where !Self.isKR(id) && (!TossKeys.on || toss.b[SiteStats.key(id)].map { $0.d.count < 30 } ?? true) {
+                if let s = Sample.symbol(id), let c = AlpacaFeed.code(CustomSymbols.yahoo(for: s)) { keys[SiteStats.key(id)] = c }
+            }
+            if !keys.isEmpty {
+                loading.formUnion(want.filter { bars($0) == nil })
+                if await FlowAlpaca.fetch(keys) { reload() }
+            }
+        }
+        loading = []
     }
 }
