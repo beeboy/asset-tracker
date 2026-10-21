@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.shelter
 
 import com.naeilo.app.data.Support
+import com.naeilo.app.core.tr
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.animation.core.animateFloatAsState
@@ -354,7 +355,7 @@ private fun ContinueCard(m: AppModel, s: ShelterState) {
         val nm = if (on) ch.name else ""
         // ios: Views/ShelterView.swift:70,71,81,83
         Fg(Theme.ink) { Row(Modifier.fillMaxWidth().then(if (on) Modifier.plainClickable { m.push("read:$i") } else Modifier)
-            .semantics(mergeDescendants = true) { contentDescription = "이어 읽기, ${ch.title} $nm" },   // Views/ShelterView.swift:84 (검사 예외: 보간 속 따옴표)
+            .semantics(mergeDescendants = true) { contentDescription = tr("이어 읽기, ${ch.title} $nm") },   // Views/ShelterView.swift:84 (검사 예외: 보간 속 따옴표)
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             ChapterCover(index = i, on = on, modifier = Modifier.size(72.dp, 46.dp))   // ios: Views/ShelterView.swift:72
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {   // ios: Views/ShelterView.swift:73
@@ -468,7 +469,7 @@ private fun FriendTile(m: AppModel, s: ShelterState, i: Int, f: Friend) {
         // ios: Views/ShelterView.swift:189
         .background(if (cur) Theme.mintBg else if (on) (if (f.id == "ir" || f.id == "sua") hexD(0xFFFFFF, 0x2C3846) else Theme.card) else hexD(0xF6F7F8, 0x1D252E), RoundedCornerShape(12.dp))
         .border(2.dp, if (cur) Theme.teal else if (on) Theme.border else Theme.track, RoundedCornerShape(12.dp))   // ios: Views/ShelterView.swift:190
-        .semantics(mergeDescendants = true) { contentDescription = if (on) f.name else "잠긴 친구" }),   // ios: Views/ShelterView.swift:182,193
+        .semantics(mergeDescendants = true) { contentDescription = tr(if (on) f.name else "잠긴 친구") }),   // ios: Views/ShelterView.swift:182,193
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
         PixelN((if (on) "spr_" else "sil_") + f.id, 34.dp, 48.dp)   // ios: Views/ShelterView.swift:183
         FitText(if (on) f.name else "???", appFont(12f, FontWeight.Bold), 0.8f, maxLines = 1)   // ios: Views/ShelterView.swift:184
@@ -498,7 +499,7 @@ private fun MeTileLabel(m: AppModel, s: ShelterState, click: Modifier) {
     Fg(Theme.ink) { Column(click.fillMaxWidth().defaultMinSize(minHeight = 56.dp)
         .background(if (cur) Theme.mintBg else if (made) Theme.card else Color.Transparent, RoundedCornerShape(12.dp))
         .dashBorder(if (cur) Theme.teal else if (made) Theme.border else Theme.dash, 12.dp, 2.dp, if (made) null else floatArrayOf(4f, 3f))
-        .semantics(mergeDescendants = true) { contentDescription = if (made) "나, $nm, $st" else "나, 내 캐릭터 만들기" }   // Views/ShelterView.swift:228 (검사 예외: 보간 속 따옴표)
+        .semantics(mergeDescendants = true) { contentDescription = tr(if (made) "나, $nm, $st" else "나, 내 캐릭터 만들기") }   // Views/ShelterView.swift:228 (검사 예외: 보간 속 따옴표)
         .padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/ShelterView.swift:209
             // 잠겼을 땐 그림자
@@ -572,7 +573,7 @@ private fun Gate(ok: Boolean, @Suppress("UNUSED_PARAMETER") n: String, t: String
     val st = if (ok) "채움" else "아직"
     // Views/ShelterView.swift:286 (검사 예외: 보간 속 따옴표)
     // ios: Views/ShelterView.swift:279,285 (firstTextBaseline: 기호는 첫 줄 높이에 맞춘다)
-    Row(Modifier.semantics(mergeDescendants = true) { contentDescription = "$t, $st" }, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+    Row(Modifier.semantics(mergeDescendants = true) { contentDescription = tr("$t, $st") }, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
         // ios: Views/ShelterView.swift:280,281
         Sym(if (ok) "checkmark.circle.fill" else "circle", 13f, if (ok) Theme.mint else hex(0x8A93AD), Modifier.padding(top = 1.dp))
         // ios: Views/ShelterView.swift:282,283
@@ -647,7 +648,7 @@ private fun FoldRow(s: ShelterState, id: String, title: String, right: String, c
     val rot by animateFloatAsState(if (open) 90f else 0f, tween(200, easing = EaseOut), label = "fold"); val click = Modifier.plainClickable { s.fold[id] = !open }
     // Views/ShelterView.swift:380 (검사 예외: 보간 속 따옴표)
     // ios: Views/ShelterView.swift:368,375,376,377,379
-    Fg(Theme.ink) { Row(click.fillMaxWidth().defaultMinSize(minHeight = 44.dp).semantics(mergeDescendants = true) { contentDescription = "$title, $right, $st" }.padding(horizontal = 14.dp),
+    Fg(Theme.ink) { Row(click.fillMaxWidth().defaultMinSize(minHeight = 44.dp).semantics(mergeDescendants = true) { contentDescription = tr("$title, $right, $st") }.padding(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Sym("chevron.right", 12f, Theme.teal, Modifier.rotate(rot))   // ios: Views/ShelterView.swift:369
         T(title, style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:371
@@ -726,7 +727,7 @@ private fun ItemTile(m: AppModel, s: ShelterState, i: Int, itm: com.naeilo.app.d
         // ios: Views/ShelterView.swift:470
         .dashBorder(if (on) (if (s.item == itm.id) Theme.teal else if (off) Theme.dash else Theme.border) else Theme.dash, 12.dp, 2.dp, if (on && !off) null else floatArrayOf(4f, 3f))
         // ios: Views/ShelterView.swift:462,473
-        .semantics(mergeDescendants = true) { contentDescription = if (on) itm.name + (if (off) ", 방에서 빼 둠" else "") else if (i == m.itemsOn) "다음에 돌아오는 물건" else "${i + 1}번째로 돌아오는 물건" },
+        .semantics(mergeDescendants = true) { contentDescription = tr(if (on) itm.name + (if (off) ", 방에서 빼 둠" else "") else if (i == m.itemsOn) "다음에 돌아오는 물건" else "${i + 1}번째로 돌아오는 물건") },
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
         PixelN("art_" + itm.id + (if (on) "" else "_l"), 32.dp, 32.dp, alpha = if (off) 0.4f else 1f)   // ios: Views/ShelterView.swift:463
         T(if (on) itm.name else "???", style = appFont(11f, FontWeight.Bold).copy(textAlign = TextAlign.Center), maxLines = 2)   // ios: Views/ShelterView.swift:464
@@ -740,7 +741,7 @@ private fun ItemTile(m: AppModel, s: ShelterState, i: Int, itm: com.naeilo.app.d
 @Composable
 private fun Room(m: AppModel, s: ShelterState) {
     // ios: Views/ShelterView.swift:478,500,501,502,503
-    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(16.dp)).semantics { contentDescription = "쉼터 방, 돌아온 물건 ${m.itemsOn}개" }) {
+    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(16.dp)).semantics { contentDescription = tr("쉼터 방, 돌아온 물건 ${m.itemsOn}개") }) {
         val u = maxWidth / 128   // ios: Views/ShelterView.swift:479
         Box(Modifier.fillMaxSize()) {   // ios: Views/ShelterView.swift:480
             RoomImage(m.roomBG, Modifier.fillMaxSize())   // ios: Views/ShelterView.swift:481
@@ -748,7 +749,7 @@ private fun Room(m: AppModel, s: ShelterState) {
                 val p = Shelter.slots[itm.id]; if (p != null && i < m.itemsOn && !m.itemsOff.contains(itm.id)) {   // ios: Views/ShelterView.swift:483
                     val on = i < m.itemsOn   // ios: Views/ShelterView.swift:484
                     // ios: Views/ShelterView.swift:485,489,490,491,492
-                    Box(Modifier.offset(x = u * p.x, y = u * p.y).semantics { contentDescription = if (on) itm.name else "아직 안 돌아온 물건 미리 보기" }
+                    Box(Modifier.offset(x = u * p.x, y = u * p.y).semantics { contentDescription = tr(if (on) itm.name else "아직 안 돌아온 물건 미리 보기") }
                         .clickable(remember { MutableInteractionSource() }, indication = null, enabled = on, onClickLabel = if (on) "누르면 방에서 빼요" else "") { if (on) { s.item = itm.id; m.itemsOff = m.itemsOff + itm.id } }) {
                         PixelN("art_" + itm.id, u * 16, u * 16, alpha = if (on) 1f else 0.35f)   // ios: Views/ShelterView.swift:486,487
                     }
@@ -781,7 +782,7 @@ private fun ItemNote(m: AppModel, s: ShelterState) {
         val c = cur; if (c != null) {   // ios: Views/ShelterView.swift:519
             val off = m.itemsOff.contains(c.id)   // ios: Views/ShelterView.swift:520
             // ios: Views/ShelterView.swift:521,523,524,526,527
-            Box(Modifier.semantics(mergeDescendants = true) { contentDescription = if (off) "${c.name} 방에 다시 놓기" else "${c.name} 방에서 빼기" }
+            Box(Modifier.semantics(mergeDescendants = true) { contentDescription = tr(if (off) "${c.name} 방에 다시 놓기" else "${c.name} 방에서 빼기") }
                 .plainClickable { s.item = c.id; togglePlace(m, c.id) }
                 .defaultMinSize(minHeight = 36.dp).background(if (off) Theme.teal else Theme.mintBg, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
                 T(if (off) "다시 놓기" else "빼기", style = appFont(13f, FontWeight.Bold), color = if (off) Color.White else Theme.teal)   // ios: Views/ShelterView.swift:522
@@ -989,7 +990,7 @@ private fun ReaderControls(story: Story, book: StoryBook, dark: Boolean, size: D
                     val on = story.lang == l
                     // ios: Views/ShelterView.swift:697,698,699,700,701,702
                     Box(Modifier.defaultMinSize(38.dp, 32.dp).background(if (story.lang == l) accent else Color.Transparent, CapsuleShape)
-                        .semantics { contentDescription = if (l == StoryLang.ko) "한글 원고" else "영문 번역본"; selected = on }
+                        .semantics { contentDescription = tr(if (l == StoryLang.ko) "한글 원고" else "영문 번역본"); selected = on }
                         .plainClickable { story.pick(l) }, contentAlignment = Alignment.Center) {
                         T(l.label, style = appFont(13f, FontWeight.Bold), color = if (story.lang == l) (if (dark) hex(0x141824) else Color.White) else ink)
                     }
@@ -1001,7 +1002,7 @@ private fun ReaderControls(story: Story, book: StoryBook, dark: Boolean, size: D
         listOf(Triple(15.0, 12.0, "작은 글자"), Triple(17.0, 15.0, "보통 글자"), Triple(20.0, 18.0, "큰 글자")).forEach { (s, f, label) ->
             // ios: Views/ShelterView.swift:709,710,711,712,713,714,715 (.font(.system(size:)): 큰 글자 설정을 따르지 않는다)
             Box(Modifier.defaultMinSize(36.dp, 36.dp).background(if (size == s) accent else Color.Transparent, CapsuleShape).border(2.dp, if (size == s) accent else edge, CapsuleShape)
-                .semantics { contentDescription = label }.plainClickable { setSize(s) }, contentAlignment = Alignment.Center) {
+                .semantics { contentDescription = tr(label) }.plainClickable { setSize(s) }, contentAlignment = Alignment.Center) {
                 T("가", style = TextStyle(fontSize = with(density) { f.toFloat().dp.toSp() }, fontWeight = FontWeight.Bold), color = if (size == s) (if (dark) hex(0x141824) else Color.White) else ink)
             }
         }
@@ -1162,7 +1163,7 @@ fun CharacterDetailView(m: AppModel, friend: Friend, invest: Boolean = false, fo
                 }
                 if (k != null) {   // ios: Views/ShelterView.swift:842
                     // ios: Views/ShelterView.swift:843,844,845,847
-                    Segmented(listOf(true to "규칙과 결과", false to "${f.name} 이야기"), investOn, { investOn = it }, Modifier.semantics { contentDescription = "갈래" })
+                    Segmented(listOf(true to "규칙과 결과", false to "${f.name} 이야기"), investOn, { investOn = it }, Modifier.semantics { contentDescription = tr("갈래") })
                 }
                 if (investOn) InvestBranch(m, f.id, focus) { investOn = false } else Novel(f, story)   // ios: Views/ShelterView.swift:849
             }

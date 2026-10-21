@@ -1,6 +1,7 @@
 package com.naeilo.app.ui
 
 import androidx.compose.foundation.background
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,7 +84,7 @@ fun GuideBubble(m: AppModel, pose: Pose, text: String,
     val f = m.guideFriend; val name = m.friendName(f)   // ios: Views/Guide.swift:53
     val said = Voice.say(text, m.voice(f), pose)   // ios: Views/Guide.swift:54
     // ios: Views/Guide.swift:55,66,67
-    Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "$name: $said" }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = tr("$name: $said") }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(Modifier.width(66.dp), contentAlignment = Alignment.Center) { MotionSprite(friend = f, pose = pose, modifier = Modifier.charIdle(), model = m) }   // ios: Views/Guide.swift:56
         // ios: Views/Guide.swift:57,61,62,63,64
         Column(

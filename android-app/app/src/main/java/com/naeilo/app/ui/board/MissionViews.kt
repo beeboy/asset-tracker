@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.board
 
 import android.content.Intent
+import com.naeilo.app.core.tr
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -371,7 +372,7 @@ private fun field(label: String, value: String, onChange: (String) -> Unit, modi
             // ios: Views/MissionViews.swift:140
             .padding(horizontal = 12.dp).defaultMinSize(minHeight = 48.dp)
             // ios: Views/MissionViews.swift:142
-            .semantics { contentDescription = label }, contentAlignment = Alignment.CenterStart) {
+            .semantics { contentDescription = tr(label) }, contentAlignment = Alignment.CenterStart) {
             // ios: Views/MissionViews.swift:139
             BasicTextField(value, onChange, Modifier.fillMaxWidth(), textStyle = appFont(18f, FontWeight.SemiBold).copy(color = Theme.ink), singleLine = true, cursorBrush = SolidColor(Theme.teal), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
         }
@@ -770,7 +771,7 @@ private fun mixBar(p: Plan) {
     val card = Theme.card; val track = Theme.track
     val label = "${p.focus} ${AppModel.pct(p.wt)}" + Basket.entries.mapNotNull { b -> p.mix[b]?.let { ", ${b.title} ${AppModel.pct(rest * it)}" } }.joinToString("")   // ios: Views/MissionViews.swift:473
     // ios: Views/MissionViews.swift:457,472
-    Column(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = label }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = tr(label) }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // ios: Views/MissionViews.swift:458,466
         Box(Modifier.fillMaxWidth().height(10.dp).clip(CapsuleShape).background(track, CapsuleShape).drawWithCache {
             var x = 0f   // ios: Views/MissionViews.swift:459 (HStack(spacing: 0): 칸을 틈 없이 이어 붙인다)
@@ -928,7 +929,7 @@ fun TaxResultView(m: AppModel) {
                 T("보유의 ${AppModel.pct(m.taxSellQty / max(1.0, maxQ))} 줄임", style = appFont(13f), color = Theme.sub)   // ios: Views/MissionViews.swift:581
                 // ios: Views/MissionViews.swift:582
                 IosSlider(value = m.taxSellQty, onChange = { m.taxSellQty = it }, range = 0.0..max(1.0, maxQ), step = 1.0, tint = Theme.teal,
-                    modifier = Modifier.semantics { contentDescription = "줄이는 비율" })   // ios: Views/MissionViews.swift:583
+                    modifier = Modifier.semantics { contentDescription = tr("줄이는 비율") })   // ios: Views/MissionViews.swift:583
                 // ios: Views/MissionViews.swift:584
                 T("이익 ${won0(m.taxGain)} − 공제 250만 = 과세 ${won0(max(0.0, m.taxGain - 250))}",
                   style = appFont(13f).ls(2f), color = Theme.sub)   // ios: Views/MissionViews.swift:585

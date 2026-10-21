@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.hold
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -157,7 +158,7 @@ fun HoldingsView(m: AppModel) {
                                 // ios: Views/HoldingsView.swift:38,39,40,41,44
                                 DropMenu(HoldSort.entries.map { c -> MenuItem(c.label, icon = if (c == m.holdSort) "checkmark" else null, onClick = { m.holdSort = c }) }) {
                                     // ios: Views/HoldingsView.swift:45,46,48 (Label + systemImage "chevron.down")
-                                    Row(Modifier.defaultMinSize(minHeight = 32.dp).semantics(mergeDescendants = true) { contentDescription = "정렬: ${m.holdSort.label}" },
+                                    Row(Modifier.defaultMinSize(minHeight = 32.dp).semantics(mergeDescendants = true) { contentDescription = tr("정렬: ${m.holdSort.label}") },
                                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Sym("chevron.down", 13f, Theme.teal)
                                         T(m.holdSort.label, style = appFont(13f, FontWeight.Bold), color = Theme.teal)
@@ -279,7 +280,7 @@ private fun UnitToggle(inUsd: Boolean, set: (Boolean) -> Unit) {
     // ios: Views/HoldingsView.swift:144,154,155,157 (156 은 검사 예외: 같은 글)
     Row(
         Modifier.border(1.dp, Theme.border, androidx.compose.foundation.shape.CircleShape).padding(2.dp)
-            .semantics(mergeDescendants = true) { contentDescription = "금액 단위: ${if (inUsd) "달러" else "원"}"; customActions = listOf(CustomAccessibilityAction("바꾸기") { set(!inUsd); true }) },
+            .semantics(mergeDescendants = true) { contentDescription = tr("금액 단위: ${if (inUsd) "달러" else "원"}"); customActions = listOf(CustomAccessibilityAction(tr("바꾸기")) { set(!inUsd); true }) },
         horizontalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         // ios: Views/HoldingsView.swift:145
@@ -327,7 +328,7 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boo
                 if (swiped == r.id) Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
                     Column(
                         Modifier.width(84.dp).fillMaxHeight()
-                            .background(Theme.up).plainClickable { askDel(r.sym) }.semantics(mergeDescendants = true) { contentDescription = "${r.sym.name} 지우기" },
+                            .background(Theme.up).plainClickable { askDel(r.sym) }.semantics(mergeDescendants = true) { contentDescription = tr("${r.sym.name} 지우기") },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                     ) {
                         Sym("trash", 18f, Color.White, scaled = false)   // ios: Views/HoldingsView.swift:187
@@ -353,7 +354,7 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boo
                             }
                         }
                         .plainCombinedClickable(onLongClick = { menu = true }) { if (swiped != null) setSwiped(null) else m.holdPath = m.holdPath + r.sym }
-                        .semantics { customActions = listOf(CustomAccessibilityAction("지우기") { askDel(r.sym); true }) },
+                        .semantics { customActions = listOf(CustomAccessibilityAction(tr("지우기")) { askDel(r.sym); true }) },
                 ) { HoldRow(r, inUsd, big) }
                 // ios: Views/HoldingsView.swift:203,204 (길게 누르면 메뉴)
                 ContextMenu(menu, listOf(MenuItem("이 종목 지우기", icon = "trash", destructive = true, onClick = { askDel(r.sym) }))) { menu = false }

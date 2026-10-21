@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -499,12 +500,12 @@ fun ParallelBasketView(m: AppModel, dismiss: () -> Unit) {
                 T(Parallel.name(k), style = appFont(11f), color = Theme.sub)   // ios: Views/ParallelView.swift:404
             }
             // ios: Views/ParallelView.swift:407,408
-            Box(Modifier.size(36.dp, 36.dp).plainClickable { w = w + (k to max(0, v - 5)) }.semantics { contentDescription = "$k 5%p 줄이기" }, contentAlignment = Alignment.Center) { Sym("minus", 17f, Theme.teal) }
+            Box(Modifier.size(36.dp, 36.dp).plainClickable { w = w + (k to max(0, v - 5)) }.semantics { contentDescription = tr("$k 5%p 줄이기") }, contentAlignment = Alignment.Center) { Sym("minus", 17f, Theme.teal) }
             T("$v%", Modifier.widthIn(min = 48.dp), style = appFont(15f, FontWeight.Bold).copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center))   // ios: Views/ParallelView.swift:409
             // ios: Views/ParallelView.swift:410,411
-            Box(Modifier.size(36.dp, 36.dp).plainClickable { w = w + (k to min(100, v + 5)) }.semantics { contentDescription = "$k 5%p 늘리기" }, contentAlignment = Alignment.Center) { Sym("plus", 17f, Theme.teal) }
+            Box(Modifier.size(36.dp, 36.dp).plainClickable { w = w + (k to min(100, v + 5)) }.semantics { contentDescription = tr("$k 5%p 늘리기") }, contentAlignment = Alignment.Center) { Sym("plus", 17f, Theme.teal) }
             // ios: Views/ParallelView.swift:412,413
-            Box(Modifier.size(32.dp, 36.dp).plainClickable { w = w - k }.semantics { contentDescription = "$k 빼기" }, contentAlignment = Alignment.Center) { Sym("xmark", 17f, Theme.muted) }
+            Box(Modifier.size(32.dp, 36.dp).plainClickable { w = w - k }.semantics { contentDescription = tr("$k 빼기") }, contentAlignment = Alignment.Center) { Sym("xmark", 17f, Theme.muted) }
         }
     }
 

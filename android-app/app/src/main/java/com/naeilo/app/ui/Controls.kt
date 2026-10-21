@@ -1,6 +1,7 @@
 package com.naeilo.app.ui
 
 import androidx.compose.ui.unit.isSpecified
+import com.naeilo.app.core.tr
 import android.annotation.SuppressLint
 import android.content.Context
 import androidx.activity.compose.BackHandler
@@ -208,7 +209,7 @@ fun ToggleRow(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier 
     Row(
         modifier.fillMaxWidth()
             .clickable(remember { MutableInteractionSource() }, indication = null) { onChange(!checked) }
-            .semantics(mergeDescendants = true) { role = Role.Switch; stateDescription = if (checked) "켬" else "끔" },
+            .semantics(mergeDescendants = true) { role = Role.Switch; stateDescription = tr(if (checked) "켬" else "끔") },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) { label() }
@@ -425,6 +426,22 @@ fun <T> NavStack(path: List<T>, onPath: (List<T>) -> Unit, root: @Composable () 
         layout(c.maxWidth, c.maxHeight) {
             // 덮인 첫 화면은 들어오는 동안만 보인다 (다 덮으면 그리지 않아도 되지만 자리는 남겨 스크롤을 지킨다)
             ps.forEach { it.place(0, 0) }
+        }
+    }
+}
+
+// ── 끌면 자판 내리기 (.scrollDismissesKeyboard) ──
+
+/** 손가락으로 위아래로 끌 때만 자판을 내린다. 자판이 뜰 때 입력칸을 보이게 올리는 자동 스크롤에는 반응하지 않는다 (숫자칸이 열리자마자 닫히던 것) */
+fun Modifier.hideKeyboardOnDrag(focus: androidx.compose.ui.focus.FocusManager): Modifier = this.pointerInput(focus) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+        val slop = viewConfiguration.touchSlop
+        while (true) {
+            val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+            val c = e.changes.firstOrNull { it.id == down.id } ?: break
+            if (!c.pressed) break
+            if (kotlin.math.abs(c.position.y - down.position.y) > slop) { focus.clearFocus(); break }
         }
     }
 }

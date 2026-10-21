@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import com.naeilo.app.core.cfmt
+import com.naeilo.app.core.tr
 import com.naeilo.app.core.cformat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -390,7 +391,7 @@ fun ExternalScreen(m: AppModel) {
                         val no = nos[x.k] ?: "–"   // ios: Views/AnalysisDetail.swift:914
                         val nm = FactorDetailView.names[x.k] ?: ""; val rel = if (x.weak) "뚜렷한 관계 없음" else "보통 한 달 ±" + AppModel.man(x.amt); val a11y = "${nm}, ${rel}. 자세히 보기"   // Views/AnalysisDetail.swift:1054 (검사 예외: 같은 글)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top,   // ios: Views/AnalysisDetail.swift:916
-                            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = a11y }
+                            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = tr(a11y) }
                                 .plainClickable { m.analysisPath = m.analysisPath + FactorDetailRoute(factor = x.k) }   // ios: Views/AnalysisDetail.swift:915,943
                                 .padding(vertical = 6.dp)) {   // ios: Views/AnalysisDetail.swift:941
                             Box(Modifier.background(if (no == "1") Theme.ink else Theme.border, CircleShape), contentAlignment = Alignment.Center) {   // ios: Views/AnalysisDetail.swift:919
@@ -662,7 +663,7 @@ fun FactorDetailScreen(m: AppModel, factor: String, start: Double? = null) {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("값", style = appFont(13f), color = Theme.sub); Spacer(Modifier.weight(1f)); T(factorText(factor, v), style = appFont(14f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1160
                             IosSlider(value = min(max(v, rng.start), rng.endInclusive), onChange = { shock = it },   // ios: Views/AnalysisDetail.swift:1161
                                 range = rng, step = if (factor == "rate") 0.25 else if (factor == "fx") 20.0 else 5.0, tint = Theme.teal,   // ios: Views/AnalysisDetail.swift:1162
-                                modifier = Modifier.semantics { contentDescription = "${name} 변화 직접 정하기" })   // ios: Views/AnalysisDetail.swift:1163
+                                modifier = Modifier.semantics { contentDescription = tr("${name} 변화 직접 정하기") })   // ios: Views/AnalysisDetail.swift:1163
                         }
                     }
                 }

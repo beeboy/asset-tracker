@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.game
 
 import android.content.Context
+import com.naeilo.app.core.tr
 import android.graphics.Bitmap
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -332,7 +333,7 @@ fun BrickGameHub(m: AppModel, filled: Int, floor: Int, yesterday: Int) {
             if (open) {   // ios: Views/BrickGameView.swift:165
                 // ios: Views/BrickGameView.swift:166,168,170
                 Box(Modifier.size(44.dp, 44.dp).background(Theme.tealBg, RoundedCornerShape(12.dp)).plainClickable { board = s }
-                    .semantics(mergeDescendants = true) { contentDescription = "${s.bg.volume} 내 기록 순위" }, contentAlignment = Alignment.Center) {
+                    .semantics(mergeDescendants = true) { contentDescription = tr("${s.bg.volume} 내 기록 순위") }, contentAlignment = Alignment.Center) {
                     Glyph("trophy", 16f, Theme.tealDark)   // ios: Views/BrickGameView.swift:167
                 }
             }
@@ -573,7 +574,7 @@ fun BrickPlayView(
                                 g.launch()
                             }
                         }
-                        .semantics { contentDescription = "판 깨기 게임. 깬 칸 ${hud.broken}, 기준 ${hud.target}" }   // ios: Views/BrickGameView.swift:267
+                        .semantics { contentDescription = tr("판 깨기 게임. 깬 칸 ${hud.broken}, 기준 ${hud.target}") }   // ios: Views/BrickGameView.swift:267
                         // ios: Views/BrickGameView.swift:253,254,255,256,257
                         .drawWithCache {
                             val bgSrc = bgBmp?.let { cropSrc(IntSize(it.width, it.height), size) }
@@ -693,7 +694,7 @@ private fun HudBar(g: BrickGame, hud: Hud, act: (() -> Unit) -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/BrickGameView.swift:353
             // ios: Views/BrickGameView.swift:354,355,356,358
             Box(Modifier.size(40.dp, 40.dp).background(Theme.card, CircleShape).border(1.5.dp, Theme.border, CircleShape).plainClickable { act { g.pause() } }
-                .semantics(mergeDescendants = true) { contentDescription = "멈춤" }, contentAlignment = Alignment.Center) {
+                .semantics(mergeDescendants = true) { contentDescription = tr("멈춤") }, contentAlignment = Alignment.Center) {
                 Glyph("pause.fill", 16f, Theme.ink)
             }
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {   // ios: Views/BrickGameView.swift:359

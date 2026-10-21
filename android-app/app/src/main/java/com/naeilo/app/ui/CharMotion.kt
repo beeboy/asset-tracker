@@ -1,6 +1,7 @@
 package com.naeilo.app.ui
 
 import android.graphics.Bitmap
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -562,7 +563,7 @@ fun MeTurntable(
 private fun Pill(t: String, label: String, a: () -> Unit) {
     val card = Theme.card; val border = Theme.border
     Box(Modifier
-        .clearAndSetSemantics { contentDescription = label; role = Role.Button; onClick { a(); true } }   // ios: Views/CharMotion.swift:408 accessibilityLabel(label)
+        .clearAndSetSemantics { contentDescription = tr(label); role = Role.Button; onClick { a(); true } }   // ios: Views/CharMotion.swift:408 accessibilityLabel(label)
         .then(Modifier.plainClickable(a))   // ios: Views/CharMotion.swift:403,407 Button(action: a) · buttonStyle(.plain)
         .background(card, CapsuleShape)   // ios: Views/CharMotion.swift:405 background(Theme.card, in: Capsule()) · overlay(Capsule().stroke(Theme.border))
         .drawWithStroke(border)

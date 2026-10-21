@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
@@ -144,7 +145,7 @@ fun AnalysisPager(m: AppModel, start: AnalysisRoute) {
         // 제목 밑 점: 지금 몇 번째 분석인지, 좌우로 넘길 수 있다는 표시
         // ios: Views/AnalysisView.swift:65,66,67,69,70,78,79
         NavBar(title(sel), back = nav?.back, center = {
-            Column(Modifier.semantics(mergeDescendants = true) { contentDescription = "${title(sel)}, ${order.indexOf(sel) + 1} / ${order.size}, 좌우로 넘기면 다른 분석" },
+            Column(Modifier.semantics(mergeDescendants = true) { contentDescription = tr("${title(sel)}, ${order.indexOf(sel) + 1} / ${order.size}, 좌우로 넘기면 다른 분석") },
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 // ios: Views/AnalysisView.swift:82 .animation(.easeInOut(duration: 0.2), value: sel)
                 AnimatedContent(title(sel), transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) }, label = "t") { t ->
@@ -225,7 +226,7 @@ private fun HabitBand(m: AppModel) {
     // ios: Views/AnalysisView.swift:134,151,152,153,154,155
     Row(
         Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(16.dp)).openOnTap(m, AnalysisRoute.calm)
-            .semantics(mergeDescendants = true) { contentDescription = if (done) "내 투자 습관, 지수 ${s.index}" else "내 투자 습관, 기록 ${s.n} / ${Calm.minEvents}" }
+            .semantics(mergeDescendants = true) { contentDescription = tr(if (done) "내 투자 습관, 지수 ${s.index}" else "내 투자 습관, 기록 ${s.n} / ${Calm.minEvents}") }
             .defaultMinSize(minHeight = 44.dp).padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -474,7 +475,7 @@ private fun TrustSlider(m: AppModel) {
             T("${m.shownTrust.toInt()}%", style = appFont(13f, FontWeight.Bold), color = Theme.teal)   // ios: Views/AnalysisView.swift:383
         }
         // ios: Views/AnalysisView.swift:385 (0~100, 5씩)
-        IosSlider(m.shownTrust, set, 0.0..100.0, step = 5.0, modifier = Modifier.semantics { contentDescription = "지난 3년 추세를 얼마나 믿나요" }, tint = Theme.teal)
+        IosSlider(m.shownTrust, set, 0.0..100.0, step = 5.0, modifier = Modifier.semantics { contentDescription = tr("지난 3년 추세를 얼마나 믿나요") }, tint = Theme.teal)
         // ios: Views/AnalysisView.swift:386,387
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             T("신중", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("반반", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("3년처럼", style = appFont(11f), color = Theme.muted)

@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.wave
 
 import android.content.SharedPreferences
+import com.naeilo.app.core.tr
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInOut
@@ -62,9 +63,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -82,6 +80,7 @@ import com.naeilo.app.core.calc.WaveEngine
 import com.naeilo.app.core.calc.waveLine
 import com.naeilo.app.data.Defaults
 import com.naeilo.app.ui.Card
+import com.naeilo.app.ui.hideKeyboardOnDrag
 import com.naeilo.app.ui.DashedCard
 import com.naeilo.app.ui.FitText
 import com.naeilo.app.ui.LocalNavBack
@@ -249,7 +248,7 @@ private fun WaveRider(board: Int, hat: Int, bob: Animatable<Float, *>, openClose
         // ios: Views/Wave/WaveHomeView.swift:109,124,125,126,127,128,129,130
         Box(
             Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(20.dp)).plainClickable(openCloset)
-                .clearAndSetSemantics { contentDescription = "보드 탄 내 캐릭터, 눌러서 꾸미기"; role = Role.Button },
+                .clearAndSetSemantics { contentDescription = tr("보드 탄 내 캐릭터, 눌러서 꾸미기"); role = Role.Button },
             contentAlignment = Alignment.BottomCenter,
         ) {
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(sky)))   // ios: Views/Wave/WaveHomeView.swift:111
@@ -303,7 +302,7 @@ private fun IslandTile(i: Island, line: List<WaveEngine.Pt>, starts: Map<Island,
     val bg by animateColorAsState(if (on) Theme.forecastBg else Color.Transparent, tween(200, easing = EaseOut), label = "tileBg")
     val edge by animateColorAsState(if (on) Theme.forecast else Color.Transparent, tween(200, easing = EaseOut), label = "tileEdge")
     Column(
-        Modifier.then(if (open) Modifier.plainClickable { pick(i) } else Modifier).semantics { contentDescription = a11y }
+        Modifier.then(if (open) Modifier.plainClickable { pick(i) } else Modifier).semantics { contentDescription = tr(a11y) }
             .background(bg, RoundedCornerShape(14.dp)).border(2.dp, edge, RoundedCornerShape(14.dp)).padding(6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -467,7 +466,7 @@ fun GameHeader(
         FitText(title, appFont(20f, FontWeight.Bold), 0.8f, Modifier.weight(1f))   // ios: Views/Wave/WaveHomeView.swift:305
         Spacer(Modifier.size(0.dp))   // ios: Views/Wave/WaveHomeView.swift:306
         // ios: Views/Wave/WaveHomeView.swift:307,308
-        Box(Modifier.plainClickable(close).padding(8.dp).semantics { contentDescription = "닫기" }) { SymOr("xmark", 16f, Theme.ink) }
+        Box(Modifier.plainClickable(close).padding(8.dp).semantics { contentDescription = tr("닫기") }) { SymOr("xmark", 16f, Theme.ink) }
     }
 }
 
@@ -485,7 +484,7 @@ fun TownButton(
     // ios: Views/Wave/WaveHomeView.swift:322,323,330,331,332,333,335,336
     Row(
         Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp).plainClickable { show = true }
-            .clearAndSetSemantics { contentDescription = "동네 한 바퀴: 내 종목 CEO가 한 자리에"; role = Role.Button }
+            .clearAndSetSemantics { contentDescription = tr("동네 한 바퀴: 내 종목 CEO가 한 자리에"); role = Role.Button }
             .background(Theme.cream, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -507,9 +506,8 @@ fun TownButton(
     WaveCover(show, onDismiss = { show = false }) {
         val sp = rememberScrollState()
         val focus = LocalFocusManager.current
-        val dismissKb = remember(focus) { HideKeyboardOnScroll(focus) }
         // ios: Views/Wave/WaveHomeView.swift:341,348,349,350 (키보드에 안 들썩이게: 창이 키보드만큼 줄지 않는다 · 스크롤하면 키보드를 내린다)
-        Column(Modifier.fillMaxSize().background(Theme.bg).nestedScroll(dismissKb).verticalScroll(sp)) {
+        Column(Modifier.fillMaxSize().background(Theme.bg).hideKeyboardOnDrag(focus).verticalScroll(sp)) {
             // ios: Views/Wave/WaveHomeView.swift:346
             Screen {
                 // ios: Views/Wave/WaveHomeView.swift:342
@@ -520,11 +518,6 @@ fun TownButton(
             }
         }
     }
-}
-
-/** .scrollDismissesKeyboard(.immediately) */
-private class HideKeyboardOnScroll(private val focus: FocusManager) : NestedScrollConnection {
-    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset { if (available.y != 0f) focus.clearFocus(); return Offset.Zero }
 }
 
 /** 아이콘과 글자를 기본보다 붙인 라벨 (미션 탭 [블록][파도]): 간격 3 (보통 Label 은 6) */

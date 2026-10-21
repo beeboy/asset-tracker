@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.hold
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -567,7 +568,7 @@ fun HoldingEditView(m: AppModel,
             T(label + (if (label.contains("주")) "" else if (sym.currency == Currency.usd) " (달러)" else " (원)"), style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/HoldingsView.swift:717
             // ios: Views/HoldingsView.swift:718,719,720,721,722
             InputField(v, set, "", Modifier.background(Theme.card, RoundedCornerShape(10.dp)).border(2.dp, Theme.border, RoundedCornerShape(10.dp)).defaultMinSize(minHeight = 48.dp).padding(horizontal = 12.dp)
-                .semantics { contentDescription = label }, number = true, style = appFont(18f, FontWeight.SemiBold))
+                .semantics { contentDescription = tr(label) }, number = true, style = appFont(18f, FontWeight.SemiBold))
         }
     }
 

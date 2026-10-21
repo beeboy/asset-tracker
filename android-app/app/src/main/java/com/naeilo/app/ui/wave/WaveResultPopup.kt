@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.wave
 
 import androidx.compose.animation.core.Animatable
+import com.naeilo.app.core.tr
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -67,7 +68,7 @@ fun WaveResultPopup(
         ) {
             T(result.course.island.label, style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/Wave/WaveResultPopup.swift:14
             // ios: Views/Wave/WaveResultPopup.swift:15,24,25
-            Row(Modifier.clearAndSetSemantics { contentDescription = "별 ${result.stars}개" }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.clearAndSetSemantics { contentDescription = tr("별 ${result.stars}개") }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 // ios: Views/Wave/WaveResultPopup.swift:16
                 for (i in 0 until 3) {
                     // ios: Views/Wave/WaveResultPopup.swift:20,21
@@ -132,7 +133,7 @@ fun WaveResultPopup(
 fun WaveRideChart(result: WaveResult, modifier: Modifier = Modifier) {
     val dash = Theme.dash; val up = Theme.up; val down = Theme.down; val card = Theme.card
     // ios: Views/Wave/WaveResultPopup.swift:84,106
-    Canvas(modifier.semantics { contentDescription = result.headline }) {
+    Canvas(modifier.semantics { contentDescription = tr(result.headline) }) {
         val k = density   // 아래 수는 pt
         val v = result.course.values; val n = v.size   // ios: Views/Wave/WaveResultPopup.swift:85
         if (!(n > 1)) return@Canvas; val lo = v.min(); val hi = v.max()   // ios: Views/Wave/WaveResultPopup.swift:86

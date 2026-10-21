@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.home
 
 import com.naeilo.app.ui.shelter.shelterPage
+import com.naeilo.app.core.tr
 import com.naeilo.app.ui.shelter.readerPage
 import com.naeilo.app.ui.shelter.characterPage
 import com.naeilo.app.core.cformat
@@ -237,7 +238,7 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
                 if (!m.goalReached && m.route != Route.novice && m.gM <= 0) {
                     Spacer(Modifier.width(8.dp))   // ios: Views/HomeView.swift:84
                     // ios: Views/HomeView.swift:85,86
-                    Box(Modifier.defaultMinSize(minHeight = 32.dp).plainClickable { m.homePath = m.homePath + "goal" }.semantics { contentDescription = "다음달 적립 정하기" }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.defaultMinSize(minHeight = 32.dp).plainClickable { m.homePath = m.homePath + "goal" }.semantics { contentDescription = tr("다음달 적립 정하기") }, contentAlignment = Alignment.Center) {
                         T("정하기 ›", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)
                     }
                 }
@@ -323,7 +324,7 @@ private fun ShelterBox(m: AppModel, openInbox: () -> Unit) {
         Row(
             Modifier.fillMaxWidth()
                 .plainClickable { if (b != null && b.go != RemindGo.nowhere) m.go(b.go) else m.homePath = m.homePath + "shelter" }
-                .semantics(mergeDescendants = true) { contentDescription = b?.let { "${it.cat.label} 소식: ${it.text}" } ?: "쉼터 보기" },
+                .semantics(mergeDescendants = true) { contentDescription = tr(b?.let { "${it.cat.label} 소식: ${it.text}" } ?: "쉼터 보기") },
             verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp),   // ios: Views/HomeView.swift:159
         ) {
             CharPixel(id = m.homeFriendShown, width = 56.dp, height = 80.dp, modifier = Modifier.charIdle())   // ios: Views/HomeView.swift:160,161
@@ -337,7 +338,7 @@ private fun ShelterBox(m: AppModel, openInbox: () -> Unit) {
             Row(Modifier.fillMaxWidth().offset(y = (-4).dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 // ios: Views/HomeView.swift:177,178,179,180,181,182,184,185
                 Box(Modifier.defaultMinSize(minHeight = 32.dp).plainClickable(openInbox)
-                    .semantics { contentDescription = if (n > 0) "새 소식 ${n}개 보기" else "소식함 보기" }, contentAlignment = Alignment.Center) {
+                    .semantics { contentDescription = tr(if (n > 0) "새 소식 ${n}개 보기" else "소식함 보기") }, contentAlignment = Alignment.Center) {
                     T(if (n > 0) "새 소식 $n ›" else "소식함 ›", Modifier.background(if (n > 0) Theme.yellow else Theme.line, CapsuleShape).padding(horizontal = 10.dp, vertical = 4.dp),
                       style = appFont(12f, FontWeight.Bold), color = if (n > 0) Theme.inkFixed else Theme.sub)
                 }
@@ -346,7 +347,7 @@ private fun ShelterBox(m: AppModel, openInbox: () -> Unit) {
         HDivider(Theme.line)   // ios: Views/HomeView.swift:189
         // ios: Views/HomeView.swift:190,199,201,202
         Row(
-            Modifier.fillMaxWidth().plainClickable { m.homePath = m.homePath + "shelter" }.semantics(mergeDescendants = true) { contentDescription = "쉼터 보기" },
+            Modifier.fillMaxWidth().plainClickable { m.homePath = m.homePath + "shelter" }.semantics(mergeDescendants = true) { contentDescription = tr("쉼터 보기") },
             verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp),   // ios: Views/HomeView.swift:191
         ) {
             // ios: Views/HomeView.swift:192,193
@@ -390,7 +391,7 @@ private fun Reminder(openInbox: () -> Unit) {
 private fun StripRow(tag: String, text: String, openInbox: () -> Unit) {
     // ios: Views/HomeView.swift:219,220,227,228,229,231,232
     Row(
-        Modifier.fillMaxWidth().plainClickable(openInbox).semantics(mergeDescendants = true) { contentDescription = "$tag: $text. 소식함 열기" }
+        Modifier.fillMaxWidth().plainClickable(openInbox).semantics(mergeDescendants = true) { contentDescription = tr("$tag: $text. 소식함 열기") }
             .defaultMinSize(minHeight = 44.dp).background(Theme.cream, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -553,7 +554,7 @@ fun MiniPath(m: AppModel) {
         Modifier.plainClickable {
             m.tab = Tab.analysis
             m.analysisPath = listOf(AnalysisRoute.myPath)
-        }.semantics(mergeDescendants = true) { contentDescription = "내 길 그래프, ${if (gap >= 0) "계획대로" else "계획보다 조금 늦어요"}, 눌러서 분석의 내 길 보기" }
+        }.semantics(mergeDescendants = true) { contentDescription = tr("내 길 그래프, ${if (gap >= 0) "계획대로" else "계획보다 조금 늦어요"}, 눌러서 분석의 내 길 보기") }
             .padding(bottom = 15.dp),   // ios: Views/HomeView.swift:385
     ) {
         // ios: Views/HomeView.swift:362,378,379

@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.settings
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -504,7 +505,7 @@ fun AmountHideCard() {
     Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         T("금액을 누르면", style = appFont(14f, FontWeight.SemiBold))   // ios: Views/SettingsDetail.swift:340
         // ios: Views/SettingsDetail.swift:341,342,343,345 (분할, 이름 "금액을 누르면")
-        Segmented(listOf(false to "모든 위젯 함께", true to "누른 위젯만"), each, ::setEach, Modifier.semantics { contentDescription = "금액을 누르면" })
+        Segmented(listOf(false to "모든 위젯 함께", true to "누른 위젯만"), each, ::setEach, Modifier.semantics { contentDescription = tr("금액을 누르면") })
         // ios: Views/SettingsDetail.swift:346
         ToggleRow(lockPrivate, ::setLock, Modifier.padding(top = 4.dp), tint = Theme.teal) { T("잠긴 동안 잠금화면 금액 가리기", style = appFont(14f)) }
     }
@@ -590,7 +591,7 @@ fun WidgetPickView(m: AppModel) {
                         // ios: Views/SettingsDetail.swift:392,398,399,400,402,403
                         Column(
                             Modifier.plainClickable { who = f.id; prefs.edit().putString("cpWho", f.id).apply() }
-                                .semantics(mergeDescendants = true) { contentDescription = if (ok) f.name else "잠긴 인물, 인터미션 ${i}주차" }
+                                .semantics(mergeDescendants = true) { contentDescription = tr(if (ok) f.name else "잠긴 인물, 인터미션 ${i}주차") }
                                 .size(72.dp, 86.dp)
                                 .background(if (cur) Theme.mintBg else Theme.card, RoundedCornerShape(12.dp))
                                 .border(2.dp, if (cur) Theme.teal else Theme.border, RoundedCornerShape(12.dp)),
@@ -722,7 +723,7 @@ fun TaxRulesView(m: AppModel) {
             // ios: Views/SettingsDetail.swift:551,552,553,554,555,556
             InputField(gain, { v -> gain = v; m.taxGain = max(0.0, v.toDoubleOrNull() ?: 0.0) }, "",
                 Modifier.background(Theme.card, RoundedCornerShape(10.dp)).border(2.dp, Theme.border, RoundedCornerShape(10.dp)).defaultMinSize(minHeight = 48.dp).padding(horizontal = 12.dp)
-                    .semantics { contentDescription = "올해 해외주식 실현 이익 (만원)" },
+                    .semantics { contentDescription = tr("올해 해외주식 실현 이익 (만원)") },
                 number = true, style = appFont(18f, FontWeight.SemiBold))
         }
         // ios: Views/SettingsDetail.swift:558
@@ -837,7 +838,7 @@ fun ResidenceView(m: AppModel) {
     // ios: Views/SettingsDetail.swift:664
     val rows = if (q.isEmpty()) all.filter { it.first == m.residence } + all.filter { it.first != m.residence } else all.filter { it.second.contains(q, ignoreCase = true) || it.first.contains(q, ignoreCase = true) }
     // ios: Views/SettingsDetail.swift:677 navigationTitle: 이동 막대 제목과 같은 화면 이름
-    Column(Modifier.fillMaxSize().background(Theme.bg).semantics { paneTitle = "거주 국가" }) {
+    Column(Modifier.fillMaxSize().background(Theme.bg).semantics { paneTitle = tr("거주 국가") }) {
         // ios: Views/SettingsDetail.swift:676 (검색 칸: 이동 막대 아래 늘 보임)
         InputField(q, { q = it }, "검색", Modifier.padding(horizontal = 16.dp, vertical = 8.dp).background(Theme.track, RoundedCornerShape(10.dp)).defaultMinSize(minHeight = 36.dp).padding(horizontal = 10.dp))
         // ios: Views/SettingsDetail.swift:665

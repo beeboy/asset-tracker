@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.me
 
 import android.annotation.SuppressLint
+import com.naeilo.app.core.tr
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas as BmpCanvas
@@ -157,7 +158,7 @@ fun MeEmpty(width: Dp, height: Dp, modifier: Modifier = Modifier) {
     Box(
         modifier
             .size(width, height)   // ios: Views/MeViews.swift:31
-            .semantics { contentDescription = "내 캐릭터 만들기" }   // ios: Views/MeViews.swift:32
+            .semantics { contentDescription = tr("내 캐릭터 만들기") }   // ios: Views/MeViews.swift:32
             .drawBehind { drawRoundRect(dash, cornerRadius = CornerRadius(6.dp.toPx()),   // ios: Views/MeViews.swift:28
                 style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))) },   // ios: Views/MeViews.swift:29
         contentAlignment = Alignment.Center,
@@ -173,7 +174,7 @@ fun MeAvatar(me: MeChar, width: Dp = 24.dp, height: Dp = 34.dp, modifier: Modifi
     val img = remember(me) { MeArt.image(me)?.asImageBitmap() }   // ios: Views/MeViews.swift:43 (합성은 me 가 바뀔 때 한 번)
     Box(modifier   // ios: Views/MeViews.swift:42
         .size(width, height)   // ios: Views/MeViews.swift:45
-        .semantics { contentDescription = me.shownName }) {   // ios: Views/MeViews.swift:46
+        .semantics { contentDescription = tr(me.shownName) }) {   // ios: Views/MeViews.swift:46
         if (img != null) Image(img, null, Modifier.matchParentSize(), contentScale = ContentScale.FillBounds, filterQuality = FilterQuality.None)
     }
 }
@@ -415,7 +416,7 @@ private fun MeEditState.Left(m: AppModel, modifier: Modifier) {
                     .background(if (samples) Theme.teal else Theme.mintBg, RoundedCornerShape(10.dp))   // ios: Views/MeViews.swift:257
                     .border(1.dp, if (samples) Theme.teal else Theme.border, RoundedCornerShape(10.dp))   // ios: Views/MeViews.swift:258
                     .plainClickable { samples = true }   // ios: Views/MeViews.swift:253,260
-                    .semantics(mergeDescendants = true) { contentDescription = "샘플, 소설 속 인물 조합"; selected = samples },   // ios: Views/MeViews.swift:261,262
+                    .semantics(mergeDescendants = true) { contentDescription = tr("샘플, 소설 속 인물 조합"); selected = samples },   // ios: Views/MeViews.swift:261,262
                 contentAlignment = Alignment.Center,
             ) {
                 T("샘플", style = appFont(13f, if (samples) FontWeight.Bold else FontWeight.Normal),   // ios: Views/MeViews.swift:254
@@ -456,7 +457,7 @@ private fun MeEditState.Types(m: AppModel, modifier: Modifier) {
                     .background(if (on) Theme.purple else Theme.purple.copy(alpha = 0.12f), CapsuleShape)   // ios: Views/MeViews.swift:294
                     .border(1.dp, Theme.purple.copy(alpha = if (on) 1f else 0.4f), CapsuleShape)   // ios: Views/MeViews.swift:295
                     .then(if (matched == null) Modifier.plainClickable { draft = draft.copy(type = k.id) } else Modifier)   // ios: Views/MeViews.swift:289,297,298
-                    .semantics(mergeDescendants = true) { contentDescription = "${k.title}, ${m.friendName(k.id)} 말투"; selected = on }   // ios: Views/MeViews.swift:300,301
+                    .semantics(mergeDescendants = true) { contentDescription = tr("${k.title}, ${m.friendName(k.id)} 말투"); selected = on }   // ios: Views/MeViews.swift:300,301
                     .padding(horizontal = 4.dp).heightIn(min = 34.dp),   // ios: Views/MeViews.swift:293
                 contentAlignment = Alignment.Center,
             ) {
@@ -481,7 +482,7 @@ private fun MeEditState.SampleList(modifier: Modifier) {
                         .background(if (on) Theme.tealBg else Theme.card, RoundedCornerShape(10.dp))   // ios: Views/MeViews.swift:319
                         .border(if (on) 2.5.dp else 1.dp, if (on) Theme.teal else Theme.border, RoundedCornerShape(10.dp))   // ios: Views/MeViews.swift:320
                         .plainClickable { sample = x }   // ios: Views/MeViews.swift:312,322
-                        .semantics(mergeDescendants = true) { contentDescription = x.name; selected = on }   // ios: Views/MeViews.swift:323,324
+                        .semantics(mergeDescendants = true) { contentDescription = tr(x.name); selected = on }   // ios: Views/MeViews.swift:323,324
                         .padding(horizontal = 2.dp).heightIn(min = 80.dp),   // ios: Views/MeViews.swift:318
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),   // ios: Views/MeViews.swift:313
                 ) {
@@ -513,7 +514,7 @@ private fun MeEditState.PartList(modifier: Modifier) {
                         .background(if (on) Theme.tealBg else Theme.card, RoundedCornerShape(10.dp))   // ios: Views/MeViews.swift:360
                         .border(if (on) 2.5.dp else 1.dp, if (on) Theme.teal else Theme.border, RoundedCornerShape(10.dp))   // ios: Views/MeViews.swift:361
                         .plainClickable { draft = draft.with(group, o) }   // ios: Views/MeViews.swift:339,363
-                        .semantics(mergeDescendants = true) { contentDescription = if (group == MeGroup.color || o == 0) group.name(o) else "${group.label} ${group.name(o)}"; selected = on }   // ios: Views/MeViews.swift:364,365
+                        .semantics(mergeDescendants = true) { contentDescription = tr(if (group == MeGroup.color || o == 0) group.name(o) else "${group.label} ${group.name(o)}"); selected = on }   // ios: Views/MeViews.swift:364,365
                         .padding(horizontal = 2.dp).heightIn(min = 72.dp),   // ios: Views/MeViews.swift:359
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),   // ios: Views/MeViews.swift:340
                 ) {
@@ -629,7 +630,7 @@ private fun Empty(s: Int, modifier: Modifier = Modifier) {
 @Composable
 private fun Big(c: MeChar, s: Int, modifier: Modifier = Modifier) {
     Box(modifier
-        .semantics(mergeDescendants = true) { contentDescription = c.shownName }   // ios: Views/MeViews.swift:446
+        .semantics(mergeDescendants = true) { contentDescription = tr(c.shownName) }   // ios: Views/MeViews.swift:446
         .border(1.dp, Theme.border, RoundedCornerShape(14.dp))   // ios: Views/MeViews.swift:445
         .padding(10.dp)) {   // ios: Views/MeViews.swift:444
         MeTurntable(me = c, scale = s)   // ios: Views/MeViews.swift:443
@@ -714,7 +715,7 @@ fun ShelterBGBox(m: AppModel, @Suppress("UNUSED_PARAMETER") support: Boolean = f
         val ease = tween<Float>(200, easing = LinearOutSlowInEasing); val onClick = { open = !open }
         Row(
             Modifier.fillMaxWidth().plainClickable(onClick)   // ios: Views/MeViews.swift:518,520
-                .semantics(mergeDescendants = true) { contentDescription = "쉼터 배경, ${if (open) "펼침" else "접힘"}" }   // Views/MeViews.swift:521 (검사 예외: 보간 안 따옴표)
+                .semantics(mergeDescendants = true) { contentDescription = tr("쉼터 배경, ${if (open) "펼침" else "접힘"}") }   // Views/MeViews.swift:521 (검사 예외: 보간 안 따옴표)
                 .padding(horizontal = 14.dp).heightIn(min = 44.dp),   // ios: Views/MeViews.swift:517
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,   // ios: Views/MeViews.swift:509
         ) {
@@ -747,7 +748,7 @@ private fun BGRow(m: AppModel, id: String?, name: String, intro: String, volume:
     Row(
         Modifier.fillMaxWidth()   // ios: Views/MeViews.swift:556
             .plainClickable { if (!locked) m.meBg = id }   // ios: Views/MeViews.swift:539,558
-            .semantics(mergeDescendants = true) { contentDescription = (volume?.let { it + " " } ?: "") + name + (if (on) ", 지금 배경" else if (locked) ", 잠김" else "") }   // ios: Views/MeViews.swift:559
+            .semantics(mergeDescendants = true) { contentDescription = tr((volume?.let { it + " " } ?: "") + name + (if (on) ", 지금 배경" else if (locked) ", 잠김" else "")) }   // ios: Views/MeViews.swift:559
             .padding(horizontal = 14.dp).heightIn(min = 56.dp),   // ios: Views/MeViews.swift:555
         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically,   // ios: Views/MeViews.swift:540
     ) {

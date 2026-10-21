@@ -8,11 +8,11 @@ file:core/calc/Industries.kt
 file:core/StoryWidgetData.kt
 
 ## 코드용 (화면에 안 나옴): 주민 얼굴 열쇠(ceo:이름), @Deprecated 문구
-file:ui/town/TownViews.kt:1125
-file:ui/town/TownViews.kt:1413
+file:ui/town/TownViews.kt:1126
 file:ui/town/TownViews.kt:1414
 file:ui/town/TownViews.kt:1415
 file:ui/town/TownViews.kt:1416
+file:ui/town/TownViews.kt:1417
 
 ## 코드가 이미 영어를 고름 (WL.t·WL.en 갈래)
 file:widget/StoryWidgetView.kt:90
@@ -35,8 +35,8 @@ file:core/Engine.kt:256
 file:core/Engine.kt:336
 
 ## 비교용 값 (화면에 안 나옴)
-file:ui/analysis/FxGlanceViews.kt:379
 file:ui/analysis/FxGlanceViews.kt:380
+file:ui/analysis/FxGlanceViews.kt:381
 
 ## 코드용(저장 키·정규식 등)
 file:core/L10n.kt

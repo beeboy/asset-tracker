@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.town
 
 import android.Manifest
+import com.naeilo.app.core.tr
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.location.Location
@@ -365,7 +366,7 @@ fun TownView(m: AppModel, scroll: ScrollState? = null) {
                         .offset { IntOffset(0, hopY.value.dp.roundToPx()) }) {
                         // 나는 눌러도 대사창 없이 폴짝
                         Box(Modifier
-                            .semantics { contentDescription = TownLook.shown(r, book.note(r.id)) }   // ios: Views/HoldingsView.swift:1025
+                            .semantics { contentDescription = tr(TownLook.shown(r, book.note(r.id))) }   // ios: Views/HoldingsView.swift:1025
                             .plainClickable { if (r.id == TownLook.meID) hop = r.id else talk = r }) {   // ios: Views/HoldingsView.swift:1014,1024
                             TownWalker(id = r.id, note = book.note(r.id), dir = face[r.id] ?: CharDir.down, walking = moving.contains(r.id))   // ios: Views/HoldingsView.swift:1015
                             // 기분: 별사탕 받은 날은 하트, 자기 종목이 내리면 시무룩

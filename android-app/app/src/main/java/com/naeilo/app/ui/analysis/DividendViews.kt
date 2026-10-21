@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -298,7 +299,7 @@ private fun MonthChart(months: List<String>, byMonth: List<Double>, paid: List<D
     // ios: Views/AnalysisDetail.swift:1873
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // ios: Views/AnalysisDetail.swift:1874,1887,1888
-        Row(Modifier.fillMaxWidth().height(118.dp).clearAndSetSemantics { contentDescription = info.label }, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.fillMaxWidth().height(118.dp).clearAndSetSemantics { contentDescription = tr(info.label) }, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
             // ios: Views/AnalysisDetail.swift:1875
             months.indices.forEach { i ->
                 // ios: Views/AnalysisDetail.swift:1876,1884
@@ -443,7 +444,7 @@ private fun CapTax(G: Double, usU: Double, usIds: List<String>, extra: Double, s
             // ios: Views/AnalysisDetail.swift:1993
             IosSlider(value = extra, onChange = setExtra, range = 0.0..usU, step = max(1e4, (usU / 200 / 1e4).swRound() * 1e4), tint = Theme.orange,
                 // ios: Views/AnalysisDetail.swift:1994,1995
-                modifier = Modifier.semantics { contentDescription = "추가로 팔 이익"; stateDescription = if (x <= 0) "0원" else AppModel.man(x) })
+                modifier = Modifier.semantics { contentDescription = tr("추가로 팔 이익"); stateDescription = tr(if (x <= 0) "0원" else AppModel.man(x)) })
             // ios: Views/AnalysisDetail.swift:1996
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("0", style = appFont(11f), color = Theme.muted); Spacer(Modifier.weight(1f)); T("전부", style = appFont(11f), color = Theme.muted) }
             // ios: Views/AnalysisDetail.swift:1997,2005

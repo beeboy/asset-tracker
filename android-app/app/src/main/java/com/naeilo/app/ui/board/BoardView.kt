@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.board
 
 import com.naeilo.app.core.calc.graduateToGoal
+import com.naeilo.app.core.tr
 import com.naeilo.app.core.calc.isGoal
 import com.naeilo.app.core.calc.goalReached
 import com.naeilo.app.core.calc.trackValue
@@ -236,7 +237,7 @@ private fun InterCard(m: AppModel, b: BoardStep) {
                 .then(if (tap != null) Modifier.plainClickable { m.boardPath = m.boardPath + tap } else Modifier)
                 .semantics(mergeDescendants = true) { if (tap == null) disabled() }
                 .alpha(if (tap == null) 0.5f else 1f)   // SwiftUI 가 눌리지 않는 버튼을 반투명(0.5)으로 그린다 (시뮬레이터에서 잰 값)
-                .semantics { contentDescription = if (goal) "처음 석 달 체크인, $n/3달" else "처음 4주 체크인, $n/4주" }   // ios: Views/BoardView.swift:114
+                .semantics { contentDescription = tr(if (goal) "처음 석 달 체크인, $n/3달" else "처음 4주 체크인, $n/4주") }   // ios: Views/BoardView.swift:114
                 .background(if (lit) Theme.night else Theme.track, RoundedCornerShape(18.dp))   // ios: Views/BoardView.swift:111
                 .padding(16.dp),   // ios: Views/BoardView.swift:110
         ) {
@@ -312,7 +313,7 @@ private fun StartList(m: AppModel, list: List<BoardStep>, openDone: Boolean, tog
                     Modifier.fillMaxWidth().then(b.to?.takeIf { tap }?.let { to -> Modifier.plainClickable { m.boardPath = m.boardPath + to } } ?: Modifier)
                         .defaultMinSize(minHeight = 44.dp).padding(horizontal = 14.dp)   // ios: Views/BoardView.swift:143
                         .semantics(mergeDescendants = true) { if (!tap) disabled() }   // ios: Views/BoardView.swift:145
-                        .semantics { contentDescription = "시작 미션 ${i + 1}: ${b.title}" + (if (ok) ", 끝냄" else "") },   // ios: Views/BoardView.swift:146
+                        .semantics { contentDescription = tr("시작 미션 ${i + 1}: ${b.title}" + (if (ok) ", 끝냄" else "")) },   // ios: Views/BoardView.swift:146
                     horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically,   // ios: Views/BoardView.swift:135
                 ) {
                     T("${i + 1}", Modifier.width(18.dp), style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/BoardView.swift:136
@@ -611,7 +612,7 @@ private fun RecordCard(m: AppModel, stamps: List<Int>, whyOpen: Boolean, toggleW
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxWidth()
-                    .semantics(mergeDescendants = true) { contentDescription = "${stamps.size}주 중 ${stamps.sum()}주 범위 안" },   // ios: Views/BoardView.swift:375,376
+                    .semantics(mergeDescendants = true) { contentDescription = tr("${stamps.size}주 중 ${stamps.sum()}주 범위 안") },   // ios: Views/BoardView.swift:375,376
             ) {
                 // ios: Views/BoardView.swift:362
                 stamps.indices.forEach { i ->
@@ -655,7 +656,7 @@ private fun RecordCard(m: AppModel, stamps: List<Int>, whyOpen: Boolean, toggleW
                     modifier = Modifier.weight(1f)   // ios: Views/BoardView.swift:398
                         .semantics(mergeDescendants = true) {}   // ios: Views/BoardView.swift:399
 
-                        .semantics { contentDescription = "${b.name} 배지, ${if (got) "받음" else "${b.n}번 맞히면 받아요"}" },   // Views/BoardView.swift:393 (검사 예외: 같은 글)
+                        .semantics { contentDescription = tr("${b.name} 배지, ${if (got) "받음" else "${b.n}번 맞히면 받아요"}") },   // Views/BoardView.swift:393 (검사 예외: 같은 글)
                 ) {
                     Box(
                         Modifier.size(40.dp, 40.dp)   // ios: Views/BoardView.swift:394

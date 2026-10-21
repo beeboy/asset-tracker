@@ -1,6 +1,7 @@
 package com.naeilo.app.core.calc
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -369,7 +370,7 @@ fun PathChart(
     val ts = remember { (0..(12 * 2)).map { it * 0.5 } }   // ios: Data/Recovery.swift:322 stride(from: 0.0, through: 12, by: 0.5)
     // 경로 값은 그릴 때마다 다시 세지 않게 계획이 바뀔 때만 (val(p, t, k) = p.level(t, k): 1 좋은 경우, -1 나쁜 경우, 0 보통)
     val lines = remember(plans) { plans.map { cp -> listOf(1, -1, 0).associateWith { k -> ts.map { cp.plan.level(it, k.toDouble()) } } } }   // ios: Data/Recovery.swift:318
-    Canvas(modifier.semantics { contentDescription = "1년 평가액 범위와 본전선" }) {   // ios: Data/Recovery.swift:314,346
+    Canvas(modifier.semantics { contentDescription = tr("1년 평가액 범위와 본전선") }) {   // ios: Data/Recovery.swift:314,346
         val W = size.width.toDouble(); val H = size.height.toDouble(); val ymax = max(C * 1.2, V * 1.9)   // ios: Data/Recovery.swift:315
         val X = { t: Double -> (t / 12 * W).toFloat() }   // ios: Data/Recovery.swift:316
         val Y = { v: Double -> (H - min(v, ymax) / ymax * H).toFloat() }   // ios: Data/Recovery.swift:317

@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -431,7 +432,7 @@ private fun RateMain(m: AppModel, file: MacroData.File, M: MacroData.File.Meals,
                 if (open) {   // ios: Views/AnalysisDetail.swift:1465
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("1년 뒤 10년물", Modifier.weight(1f), style = appFont(14f)); T(RateScenarioView.signed(d, "%p", 1), style = appFont(15f, FontWeight.Bold)) }   // ios: Views/AnalysisDetail.swift:1466
                     IosSlider(value = d, onChange = { setCustom(it); setPick(-1) }, range = -2.0..3.0, step = 0.1,   // ios: Views/AnalysisDetail.swift:1467
-                        tint = Theme.orange, modifier = Modifier.semantics { contentDescription = "앞으로 1년 10년물 금리 변화" })   // ios: Views/AnalysisDetail.swift:1468
+                        tint = Theme.orange, modifier = Modifier.semantics { contentDescription = tr("앞으로 1년 10년물 금리 변화") })   // ios: Views/AnalysisDetail.swift:1468
                     val c = macro.change1y; if (c != null) {   // ios: Views/AnalysisDetail.swift:1469
                         val cs = RateScenarioView.signed(c, "%p", 2); T("작년 ${cs}", style = appFont(12f), color = Theme.muted)   // Views/AnalysisDetail.swift:1580 (검사 예외: 같은 글)
                     }
@@ -600,7 +601,7 @@ private fun TableRow(k: String, a: String, b: String, c: String, e: String, head
 fun RateBandChart(cum: List<List<Double>>, modifier: Modifier = Modifier) {
     val teal = Theme.teal; val muted = Theme.muted; val ink = Theme.ink
     val tm = rememberTextMeasurer()
-    Box(modifier.semantics { contentDescription = "S&P500 이익 띠 그래프" }   // ios: Views/AnalysisDetail.swift:1706
+    Box(modifier.semantics { contentDescription = tr("S&P500 이익 띠 그래프") }   // ios: Views/AnalysisDetail.swift:1706
         .drawWithCache {   // ios: Views/AnalysisDetail.swift:1668
             val lv: List<List<Double>> = (0 until 3).map { k -> listOf(100.0) + cum.map { 100 * exp(it[k] / 100) } }   // ios: Views/AnalysisDetail.swift:1669
             val n = lv[1].size   // ios: Views/AnalysisDetail.swift:1670

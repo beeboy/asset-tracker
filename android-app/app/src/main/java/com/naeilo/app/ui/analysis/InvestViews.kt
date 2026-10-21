@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import androidx.compose.animation.AnimatedVisibility
+import com.naeilo.app.core.tr
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -117,7 +118,7 @@ object InvestBranch0 {
             // ios: Views/InvestViews.swift:48,49,51,54,56,57 (펴고 접기는 easeInOut 0.2초)
             val fade = tween<Float>(200, easing = FastOutSlowInEasing)
             Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 36.dp).plainClickable { toggle() }
-                .semantics { contentDescription = if (habitsOpen) "자세한 규칙 접기" else "자세한 규칙 펴기" }, verticalAlignment = Alignment.CenterVertically) {
+                .semantics { contentDescription = tr(if (habitsOpen) "자세한 규칙 접기" else "자세한 규칙 펴기") }, verticalAlignment = Alignment.CenterVertically) {
                 T("자세히 ${more.size}가지", style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/InvestViews.swift:50
                 Spacer(Modifier.weight(1f))
                 Sym(if (habitsOpen) "chevron.up" else "chevron.down", 17f, Theme.muted)   // ios: Views/InvestViews.swift:52
@@ -195,7 +196,7 @@ object InvestBranch0 {
             // 컷 글자가 그림에 박혀 있어 영어는 따로 그린 event_<인물>_en (tools/event_en)
             val art = "event_" + id + (if (AppModel.en) "_en" else "")   // ios: Views/InvestViews.swift:121
             // ios: Views/InvestViews.swift:122,123,124,125
-            if (MeArt.has(art)) BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).semantics { contentDescription = "${f.name}의 ${f.model} 컷과 같은 날의 $name" }) {
+            if (MeArt.has(art)) BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).semantics { contentDescription = tr("${f.name}의 ${f.model} 컷과 같은 날의 $name") }) {
                 PixelN(art, maxWidth, maxWidth)
             }
             // ios: Views/InvestViews.swift:127,128,130

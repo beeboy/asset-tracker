@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.calm
 
 import androidx.compose.foundation.background
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -87,7 +88,7 @@ fun CalmCard(m: AppModel) {
     Fg(Color.White) {   // ios: Views/CalmView.swift:30
         Row(
             Modifier
-                .semantics(mergeDescendants = true) { contentDescription = "내 투자 습관 보기" }   // ios: Views/CalmView.swift:35
+                .semantics(mergeDescendants = true) { contentDescription = tr("내 투자 습관 보기") }   // ios: Views/CalmView.swift:35
                 .openOnTap(m, AnalysisRoute.calm)   // ios: Views/CalmView.swift:34
                 .fillMaxWidth()   // ios: Views/CalmView.swift:32
                 .background(Theme.night, RoundedCornerShape(20.dp))   // ios: Views/CalmView.swift:33

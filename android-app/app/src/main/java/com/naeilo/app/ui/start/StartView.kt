@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.start
 
 import androidx.compose.animation.AnimatedContent
+import com.naeilo.app.core.tr
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -105,7 +106,7 @@ fun StartView(m: AppModel, modifier: Modifier = Modifier) {
             T("naeilo", Modifier.padding(top = 24.dp), style = appFont(20f, FontWeight.Bold))   // ios: Views/StartView.swift:12
             // ios: Views/StartView.swift:13
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PixelN("spr_seri", width = 56.dp, height = 80.dp, modifier = Modifier.charIdle().semantics { contentDescription = "세리" })   // ios: Views/StartView.swift:14
+                PixelN("spr_seri", width = 56.dp, height = 80.dp, modifier = Modifier.charIdle().semantics { contentDescription = tr("세리") })   // ios: Views/StartView.swift:14
                 // ios: Views/StartView.swift:15,16,17,18,19,20
                 T(Lines.pick("start.seri") ?: "처음 오셨군요. …… 하나만 물어볼게요.",
                   Modifier.padding(bottom = 14.dp)
@@ -232,7 +233,7 @@ private fun Fan(e: StartForecast.Ex) {
     val label = tm.measure(com.naeilo.app.core.tr(e.lineName), TextStyle(fontSize = 12.sp, color = yellow))   // ios: Views/StartView.swift:161 .font(.system(size: 12)): 큰 글자 설정을 따르지 않는다
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     // ios: Views/StartView.swift:137,166,167,109
-    Canvas(Modifier.fillMaxWidth().height(140.dp).semantics { contentDescription = "3년 예상 범위 부채꼴" }
+    Canvas(Modifier.fillMaxWidth().height(140.dp).semantics { contentDescription = tr("3년 예상 범위 부채꼴") }
         .pulse(Color.White, dot = 10.dp) { s -> StartForecast.fanStart(e, s, density) }) {
         val W = size.width; val H = size.height   // ios: Views/StartView.swift:138
         val ts = (0..30).map { if (it == 30) 3.0 else it * 0.1 }   // ios: Views/StartView.swift:139 (stride through 는 끝값 3 을 그대로 넣는다)

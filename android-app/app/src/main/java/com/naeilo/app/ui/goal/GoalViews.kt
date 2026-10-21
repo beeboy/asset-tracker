@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.goal
 
 import com.naeilo.app.core.calc.isGoal
+import com.naeilo.app.core.tr
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -77,9 +78,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
@@ -151,6 +149,7 @@ import com.naeilo.app.ui.wave.WaveHub
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.CapsuleShape
 import com.naeilo.app.ui.Card
+import com.naeilo.app.ui.hideKeyboardOnDrag
 import com.naeilo.app.ui.ChipRow
 import com.naeilo.app.ui.DashedCard
 import com.naeilo.app.ui.EaseOut
@@ -273,7 +272,7 @@ fun GoalPathChart(
     // ios: Views/GoalViews.swift:16
     val teal = Theme.teal; val muted = Theme.muted
     // ios: Views/GoalViews.swift:17,34
-    Spacer(modifier.semantics { contentDescription = "목표까지 평가액이 지날 길" }.drawWithCache {
+    Spacer(modifier.semantics { contentDescription = tr("목표까지 평가액이 지날 길") }.drawWithCache {
         // ios: Views/GoalViews.swift:18
         val main = sims.firstOrNull { it.third }?.first ?: sims.firstOrNull()?.first ?: return@drawWithCache onDrawBehind {}
         val n = main.med.size - 1; val ymax = max(goal * 1.3, (sims.maxOfOrNull { it.first.med.lastOrNull() ?: 0.0 } ?: 0.0) * 1.25)   // ios: Views/GoalViews.swift:19
@@ -313,7 +312,7 @@ fun inputField(label: String, text: String, onText: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {   // ios: Views/GoalViews.swift:44
         T(label, style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/GoalViews.swift:45
         // ios: Views/GoalViews.swift:47,48,49,50
-        Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).background(Theme.card, RoundedCornerShape(10.dp)).strokeR(Theme.border, 10f, 2f).padding(horizontal = 12.dp).semantics { contentDescription = label }, contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).background(Theme.card, RoundedCornerShape(10.dp)).strokeR(Theme.border, 10f, 2f).padding(horizontal = 12.dp).semantics { contentDescription = tr(label) }, contentAlignment = Alignment.CenterStart) {
             InputField(text, onText, placeholder = "", number = true, style = appFont(18f, FontWeight.SemiBold))   // ios: Views/GoalViews.swift:46
         }
     }
@@ -402,7 +401,7 @@ fun GoalCellsCard(m: AppModel) {
                 // ios: Views/GoalViews.swift:89,90
                 BrickBox(mine = mine, filled = fV, lost = lost, g = game, on = playing, setOn = { playing = it }, end = { clear -> if (clear) party = true else showGame = true },
                     modifier = Modifier.pointerInput(Unit) { detectTapGestures { tapStart.value() } }   // ios: Views/GoalViews.swift:92,93
-                        .semantics { contentDescription = if (goal) "100칸 중 ${fV.toInt()}칸, 목표의 ${pct}%" else "100칸 중 ${fV.toInt()}칸, 본전의 ${pct}%" })   // Views/GoalViews.swift:304 (검사 예외: 같은 글)
+                        .semantics { contentDescription = tr(if (goal) "100칸 중 ${fV.toInt()}칸, 목표의 ${pct}%" else "100칸 중 ${fV.toInt()}칸, 본전의 ${pct}%") })   // Views/GoalViews.swift:304 (검사 예외: 같은 글)
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:95,113
                     // ios: Views/GoalViews.swift:96
                     if (goal) {
@@ -762,8 +761,7 @@ fun GoalSetView(m: AppModel, fromSettings: Boolean = false) {
     val ok = m.gK > 0 && m.gY >= 1   // ios: Views/GoalViews.swift:427
     val teal = Theme.teal; val line = Theme.line
     // 위로 끌면 자판을 내린다 (scrollDismissesKeyboard(.interactively))
-    val dismissKb = remember(focus) { object : NestedScrollConnection { override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset { if (available.y != 0f) focus.clearFocus(); return Offset.Zero } } }   // ios: Views/GoalViews.swift:502
-    Box(Modifier.fillMaxSize().background(Theme.bg).nestedScroll(dismissKb)) {   // ios: Views/GoalViews.swift:499,500 (inline 제목 막대는 NavStack 몫)
+    Box(Modifier.fillMaxSize().background(Theme.bg).hideKeyboardOnDrag(focus)) {   // ios: Views/GoalViews.swift:499,500 (inline 제목 막대는 NavStack 몫)
         PinnedLayout(header = {   // ios: Views/GoalViews.swift:428
             // ios: Views/GoalViews.swift:429,448
             Column(Modifier.fillMaxWidth().background(Theme.card).bottomLine(line).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -890,7 +888,7 @@ private fun compositionBar(weights: Map<String, Double>) {
     val keys = listOf("T", "I", "G", "B", "C").filter { (weights[it] ?: 0.0) > 0.001 }   // ios: Views/GoalViews.swift:540
     val cc = compColor; val cols = keys.map { cc[it]!! }; val card = Theme.card; val track = Theme.track
     // ios: Views/GoalViews.swift:541,549,550,551
-    Canvas(Modifier.fillMaxWidth().height(10.dp).clip(CapsuleShape).background(track, CapsuleShape).clearAndSetSemantics { contentDescription = keys.joinToString(", ") { "${compName[it]} ${AppModel.pct(weights[it] ?: 0.0)}" } }) {
+    Canvas(Modifier.fillMaxWidth().height(10.dp).clip(CapsuleShape).background(track, CapsuleShape).clearAndSetSemantics { contentDescription = tr(keys.joinToString(", ") { "${compName[it]} ${AppModel.pct(weights[it] ?: 0.0)}" }) }) {
         var x = 0f   // ios: Views/GoalViews.swift:542
         keys.forEachIndexed { i, k ->   // ios: Views/GoalViews.swift:543
             val w = size.width * (weights[k] ?: 0.0).toFloat(); drawRect(cols[i], Offset(x, 0f), Size(w, size.height))   // ios: Views/GoalViews.swift:544

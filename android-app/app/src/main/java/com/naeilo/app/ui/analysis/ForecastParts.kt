@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -97,7 +98,7 @@ fun ScenarioChart(
     // .font(.system(size: 10)): 큰 글자 설정을 따르지 않는다
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     // ios: Views/ForecastParts.swift:42,103,104
-    Canvas(modifier.fillMaxWidth().semantics { contentDescription = "시나리오별 자산 범위 그래프" }
+    Canvas(modifier.fillMaxWidth().semantics { contentDescription = tr("시나리오별 자산 범위 그래프") }
         .pulse(ink, dot = 8.dp) { s -> nowPoint(s, density) }
         .drawWithCache {
             // 크기·값이 바뀔 때만 길·글자를 만든다 (그리는 중엔 계산 없음)

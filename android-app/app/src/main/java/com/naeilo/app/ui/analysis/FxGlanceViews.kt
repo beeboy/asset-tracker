@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import androidx.compose.foundation.layout.requiredSize
+import com.naeilo.app.core.tr
 import com.naeilo.app.core.cformat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -243,7 +244,7 @@ fun FxImpactView(m: AppModel) {
                             T(if (abs(dv) < 0.5) "지금과 같음" else (if (dv > 0) "+" else "−") + AppModel.man(abs(dv)),
                                 style = appFont(13f, FontWeight.Bold), color = if (abs(dv) < 0.5) Theme.muted else Theme.change(dv))
                         }
-                        IosSlider(value = r, onChange = { what = it }, range = sMin..sMax, step = 1.0, tint = Theme.blue, modifier = Modifier.semantics { contentDescription = "환율" })   // ios: Views/AnalysisDetail.swift:2225
+                        IosSlider(value = r, onChange = { what = it }, range = sMin..sMax, step = 1.0, tint = Theme.blue, modifier = Modifier.semantics { contentDescription = tr("환율") })   // ios: Views/AnalysisDetail.swift:2225
                         // ios: Views/AnalysisDetail.swift:2226
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             // ios: Views/AnalysisDetail.swift:2227
@@ -303,7 +304,7 @@ private fun androidx.compose.foundation.layout.RowScope.FxChart(past: List<Pair<
     // ios: Views/AnalysisDetail.swift:2170,2195,2196,2197
     Box(Modifier.weight(1f).height(160.dp)
         .pulse(blueC, 8.dp) { s -> Offset((X(0.0) * s.width).toFloat(), (Y(FX) * s.height).toFloat()) }
-        .semantics { contentDescription = "원/달러 지난 흐름과 앞으로 1년 범위" }
+        .semantics { contentDescription = tr("원/달러 지난 흐름과 앞으로 1년 범위") }
         .drawWithCache {
             // ios: Views/AnalysisDetail.swift:2171
             fun band(a: List<Pair<Double, Double>>, b: List<Pair<Double, Double>>): Path {

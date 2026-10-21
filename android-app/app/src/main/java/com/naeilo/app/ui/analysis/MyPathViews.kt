@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.CubicBezierEasing
@@ -170,7 +171,7 @@ fun EtaRow(
     val tm = AppModel.whenText(sim.etaMonths, cap = sim.capYears); val tLo = AppModel.whenText(sim.etaLo, cap = sim.capYears); val tHi = AppModel.whenText(sim.etaHi, cap = sim.capYears)
     val label = "$name, 보통 $tm, 10번 중 8번은 ${tLo}에서 $tHi 사이"   // ios: Views/AnalysisDetail.swift:242
     // ios: Views/AnalysisDetail.swift:221,241
-    Column(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = label }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = tr(label) }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         // ios: Views/AnalysisDetail.swift:222,224
         Row(Modifier.fillMaxWidth()) {
             T(name, Modifier.weight(1f).alignByBaseline(), style = appFont(14f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:223
@@ -327,7 +328,7 @@ fun MyPathGoalView(m: AppModel) {
             // ios: Views/AnalysisDetail.swift:371
             Card {
                 T(if (toGoal) (if (goal) "목표일까지" else "1년 뒤까지") else "시작부터 지금까지", style = appFont(15f, FontWeight.Bold))   // ios: Views/AnalysisDetail.swift:372
-                Box(Modifier.fillMaxWidth().height(160.dp).semantics { contentDescription = "계획선과 실제 평가액 그래프" + ", " + markLine }) {   // ios: Views/AnalysisDetail.swift:391,398
+                Box(Modifier.fillMaxWidth().height(160.dp).semantics { contentDescription = tr("계획선과 실제 평가액 그래프" + ", " + markLine) }) {   // ios: Views/AnalysisDetail.swift:391,398
                     // ios: Views/AnalysisDetail.swift:373,392
                     Box(Modifier.matchParentSize().pulse(teal, dot = 8.dp) { s -> Offset((X(mS) * s.width).toFloat(), (Y(actPts.lastOrNull()?.second ?: now) * s.height).toFloat()) }.drawWithCache {
                         val w = size.width; val h = size.height
@@ -593,12 +594,12 @@ fun MyPathCompareView(m: AppModel) {
                 T("$kind · $dTxt", style = appFont(11f), color = Theme.muted, maxLines = 1)   // Views/AnalysisDetail.swift:764 (검사 예외: 같은 글)
             }
             // ios: Views/AnalysisDetail.swift:657,658
-            Box(Modifier.size(36.dp, 36.dp).background(bordered, RoundedCornerShape(8.dp)).plainClickable { w = w + (id to max(0, (w[id] ?: 0) - 5)) }.semantics { contentDescription = "$name 비중 5% 줄이기" }, contentAlignment = Alignment.Center) {
+            Box(Modifier.size(36.dp, 36.dp).background(bordered, RoundedCornerShape(8.dp)).plainClickable { w = w + (id to max(0, (w[id] ?: 0) - 5)) }.semantics { contentDescription = tr("$name 비중 5% 줄이기") }, contentAlignment = Alignment.Center) {
                 val s = "minus"; if (SF.containsKey(s)) Sym(s, 17f, Theme.teal) else Box(Modifier.size(14.dp, 2.dp).background(Theme.teal, CapsuleShape))   // SF 표에 아직 없으면 막대로
             }
             T("${w[id] ?: 0}%", Modifier.width(44.dp), style = appFont(14f, FontWeight.Bold).copy(textAlign = TextAlign.Center))   // ios: Views/AnalysisDetail.swift:659
             // ios: Views/AnalysisDetail.swift:660,661
-            Box(Modifier.size(36.dp, 36.dp).background(bordered, RoundedCornerShape(8.dp)).plainClickable { w = w + (id to min(100, (w[id] ?: 0) + 5)) }.semantics { contentDescription = "$name 비중 5% 늘리기" }, contentAlignment = Alignment.Center) {
+            Box(Modifier.size(36.dp, 36.dp).background(bordered, RoundedCornerShape(8.dp)).plainClickable { w = w + (id to min(100, (w[id] ?: 0) + 5)) }.semantics { contentDescription = tr("$name 비중 5% 늘리기") }, contentAlignment = Alignment.Center) {
                 Sym("plus", 17f, Theme.teal)
             }
         }

@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.settings
 
 import com.naeilo.app.core.cformat
+import com.naeilo.app.core.tr
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -894,7 +895,7 @@ fun AppIconPicker(m: AppModel) {
                     // ios: Views/SettingsView.swift:711,722,724,725,726,727
                     Column(
                         Modifier.weight(1f).then(if (ok) Modifier.plainClickable { set(ic.id) } else Modifier.semantics { disabled() })
-                            .semantics(mergeDescendants = true) { contentDescription = if (ok) "${ic.name} 아이콘" else "${ic.name} 아이콘, 인터미션 ${ic.friend ?: 0}주차에 열려요"; selected = on }
+                            .semantics(mergeDescendants = true) { contentDescription = tr(if (ok) "${ic.name} 아이콘" else "${ic.name} 아이콘, 인터미션 ${ic.friend ?: 0}주차에 열려요"); selected = on }
                             .padding(vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),   // ios: Views/SettingsView.swift:712
                     ) {

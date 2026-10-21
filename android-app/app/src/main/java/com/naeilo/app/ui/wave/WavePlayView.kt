@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.wave
 
 import android.graphics.Bitmap
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -307,7 +308,7 @@ private fun WaveHud(e: WaveEngine, h: Hud, fx: WaveFX, frame: MutableLongState, 
             // ios: Views/Wave/WavePlayView.swift:79
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 // ios: Views/Wave/WavePlayView.swift:80,81
-                Box(Modifier.plainClickable(dismiss).padding(6.dp).semantics { contentDescription = "그만하기" }) { SymOr("xmark", 15f, ink) }
+                Box(Modifier.plainClickable(dismiss).padding(6.dp).semantics { contentDescription = tr("그만하기") }) { SymOr("xmark", 15f, ink) }
                 // ios: Views/Wave/WavePlayView.swift:82
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     T(e.course.island.label, style = appFont(13f, FontWeight.Bold))   // ios: Views/Wave/WavePlayView.swift:83
@@ -317,7 +318,7 @@ private fun WaveHud(e: WaveEngine, h: Hud, fx: WaveFX, frame: MutableLongState, 
                 T("${h.score}점", style = appFont(20f, FontWeight.ExtraBold).copy(fontFeatureSettings = tnum))   // ios: Views/Wave/WavePlayView.swift:87
                 Spacer(Modifier.weight(1f))   // ios: Views/Wave/WavePlayView.swift:88
                 // ios: Views/Wave/WavePlayView.swift:89,94
-                Row(Modifier.semantics { contentDescription = "하트 ${h.hearts}개" }, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(Modifier.semantics { contentDescription = tr("하트 ${h.hearts}개") }, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     // ios: Views/Wave/WavePlayView.swift:90
                     for (i in 0 until WaveEngine.maxHearts) {
                         SymOr(if (i < h.hearts) "heart.fill" else "heart", 17f, Theme.up)   // ios: Views/Wave/WavePlayView.swift:91

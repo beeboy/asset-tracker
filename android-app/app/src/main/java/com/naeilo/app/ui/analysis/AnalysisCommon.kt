@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.analysis
 
 import androidx.compose.foundation.background
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -202,7 +203,7 @@ internal fun SignedBar(
     valueColor: Color? = null,   // ios: Views/AnalysisDetail.swift:127
 ) {
     // ios: Views/AnalysisDetail.swift:129,144,145
-    Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "$label $value" }, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = tr("$label $value") }, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         T(label, Modifier.widthIn(min = 52.dp), style = appFont(13f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/AnalysisDetail.swift:130
         // ios: Views/AnalysisDetail.swift:131,132,133,138,140
         BoxWithConstraints(Modifier.weight(1f).height(16.dp)) {
@@ -270,5 +271,5 @@ internal fun linePath(pts: List<Pair<Double, Double>>, size: Size): Path = Path(
 @Composable
 fun Modifier.detailTitle(title: String): Modifier {
     val inPager = LocalDetailInPager.current
-    return if (inPager) this else this.semantics { paneTitle = title }
+    return if (inPager) this else this.semantics { paneTitle = tr(title) }
 }

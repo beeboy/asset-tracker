@@ -1,6 +1,7 @@
 package com.naeilo.app.ui.town
 
 import androidx.compose.foundation.Canvas
+import com.naeilo.app.core.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -414,14 +415,14 @@ private fun TownDressPanel(
                 val cur = me.parts[r.key] ?: 1   // ios: Views/TownPanel.swift:299
                 val nm = if (r.key == "skin") MeColor.skinNames[max(0, min(cur, cnt) - 1)] else MeGroup.entries.firstOrNull { it.raw == r.key }?.name(cur) ?: ""   // ios: Views/TownPanel.swift:300
                 Row(mod.height(40.dp).background(card.copy(alpha = 0.6f), RoundedCornerShape(8.dp)), horizontalArrangement = Arrangement.spacedBy(0.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/TownPanel.swift:301,312,313
-                    Box(Modifier.size(36.dp, 40.dp).semantics { contentDescription = "${r.label} 앞으로"; role = Role.Button }.plainClickable { step(r.key, cur, cnt, -1, n) }, contentAlignment = Alignment.Center) {   // ios: Views/TownPanel.swift:302,303
+                    Box(Modifier.size(36.dp, 40.dp).semantics { contentDescription = tr("${r.label} 앞으로"); role = Role.Button }.plainClickable { step(r.key, cur, cnt, -1, n) }, contentAlignment = Alignment.Center) {   // ios: Views/TownPanel.swift:302,303
                         T("◀", style = appFont(12f, FontWeight.Bold), color = brown)
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp), horizontalAlignment = Alignment.CenterHorizontally) {   // ios: Views/TownPanel.swift:304,308
                         T(r.label, style = appFont(10f, FontWeight.Bold), color = brown)   // ios: Views/TownPanel.swift:305
                         FitText(nm, style = appFont(12f, FontWeight.Bold), minScale = 0.7f, maxLines = 1, color = ink)   // ios: Views/TownPanel.swift:306
                     }
-                    Box(Modifier.size(36.dp, 40.dp).semantics { contentDescription = "${r.label} 다음"; role = Role.Button }.plainClickable { step(r.key, cur, cnt, 1, n) }, contentAlignment = Alignment.Center) {   // ios: Views/TownPanel.swift:309,310
+                    Box(Modifier.size(36.dp, 40.dp).semantics { contentDescription = tr("${r.label} 다음"); role = Role.Button }.plainClickable { step(r.key, cur, cnt, 1, n) }, contentAlignment = Alignment.Center) {   // ios: Views/TownPanel.swift:309,310
                         T("▶", style = appFont(12f, FontWeight.Bold), color = brown)
                     }
                 }
