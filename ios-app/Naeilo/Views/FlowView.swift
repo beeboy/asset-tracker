@@ -72,6 +72,8 @@ struct FlowView: View {
         .sheet(isPresented: $showAll) { allSheet }
         // 열 때 담은 종목 일봉을 받는다 (하루 한 번만 실제로 부른다)
         .task(id: hasKey) { await store.ensure(ids) }
+        // 당기면 다른 탭처럼 시세를 받고, 일봉도 다시 묻는다 (장이 끝나 새 날이 생겼을 때만 실제로 받는다)
+        .refreshable { await Market.shared.pullRefresh(model); await store.ensure(ids) }
     }
 
     // 맨 위 내 종목 칩 줄 + '전체'
