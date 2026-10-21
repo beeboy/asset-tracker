@@ -63,10 +63,10 @@ Data/StockSearch.swift:86 검사기 한계: 보간 속 따옴표 (옮김, StockS
 Data/StockSearch.swift:210 플랫폼: applicationSupportDirectory 대신 앱 내부 폴더 filesDir (StockSearch.kt CustomSymbols.file)
 Data/StockSearch.swift:372 검사기 한계: 보간 속 따옴표 ?? "" (옮김, StockSearch.kt krStamp)
 Data/SiteStats.swift:7-10 플랫폼: Kotlin 은 object 안에 typealias 를 둘 수 없다. MC.Stats.Ticker·Defaults·Corr·MC.Stats 를 그대로 쓴다
-Data/Sync.swift:207 플랫폼: CryptoKit SealedBox 는 암호문·태그(16바이트)를 나눠 받고, javax.crypto GCM 은 붙인 채로 받는다 (Sync.kt open)
-Data/Sync.swift:461 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, Sync.kt apply skipped)
-Data/Sync.swift:468-469 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt signature)
-Data/Sync.swift:490 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
+Data/Sync.swift:208 플랫폼: CryptoKit SealedBox 는 암호문·태그(16바이트)를 나눠 받고, javax.crypto GCM 은 붙인 채로 받는다 (Sync.kt open)
+Data/Sync.swift:470 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, Sync.kt apply skipped)
+Data/Sync.swift:477-478 검사기 한계: 보간 속 따옴표 ?? "" (옮김, Sync.kt signature)
+Data/Sync.swift:499 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
 Data/Backup.swift:57 플랫폼: SwiftUI FileDocument 의 읽을 형식(.json). 안드로이드는 파일 고르기(SAF) 화면이 application/json 으로 연다 (설정 화면 단계)
 Data/Backup.swift:63-64 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안드로이드는 BackupFile.data·read 가 바이트를 주고받는다
 Data/Backup.swift:67-68 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다
@@ -76,13 +76,13 @@ Views/HomeView.swift:119 검사기 한계: 보간 속 따옴표 String(format: "
 Views/HomeView.swift:213 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
 Views/HomeView.swift:389 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HomeView.kt MiniPath 읽어 주기 글)
 Views/SettingsView.swift:84 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
-Views/SettingsView.swift:308 검사기 한계: 보간 속 따옴표 String(describing:) (옮김, SettingsView.kt PriceBasisView 원/달러 줄)
-Views/SettingsView.swift:309 검사기 한계: 보간 속 따옴표 String(format: "%.2f") (옮김, SettingsView.kt PriceBasisView 평가 환율 줄)
+Views/SettingsView.swift:309 검사기 한계: 보간 속 따옴표 String(describing:) (옮김, SettingsView.kt PriceBasisView 원/달러 줄)
+Views/SettingsView.swift:310 검사기 한계: 보간 속 따옴표 String(format: "%.2f") (옮김, SettingsView.kt PriceBasisView 평가 환율 줄)
 Views/SettingsDetail.swift:149-150 플랫폼 이름: '아이폰 알림·아이폰 설정' → '폰' (안드로이드에선 아이폰이 아님. SettingsDetail.kt AlertsView PermCard)
 Views/SettingsDetail.swift:152 플랫폼 이름: '아이폰 설정 열기' → '폰 설정 열기' (같은 버튼, 앱 알림 설정 화면을 연다)
-Views/SettingsDetail.swift:255 플랫폼 이름: '키체인' → '보관함' (Keystore 로 감싼 보관함. SettingsDetail.kt SyncView 개발자 칸)
-Views/SettingsDetail.swift:306 검사기 한계: 보간 속 따옴표 ?? "" (옮김, SettingsDetail.kt SyncView FileCard 불러오기 확인 글)
-Views/SettingsDetail.swift:394 플랫폼: 홈 화면 위젯 넣는 순서가 다르다 ('길게 누르기 → + →' → '길게 누르기 → 위젯 →'. SettingsDetail.kt WidgetPickView)
+Views/SettingsDetail.swift:241 플랫폼 이름: '키체인' → '보관함' (Keystore 로 감싼 보관함. SettingsDetail.kt SyncView 개발자 칸)
+Views/SettingsDetail.swift:291 검사기 한계: 보간 속 따옴표 ?? "" (옮김, SettingsDetail.kt SyncView FileCard 불러오기 확인 글)
+Views/SettingsDetail.swift:379 플랫폼: 홈 화면 위젯 넣는 순서가 다르다 ('길게 누르기 → + →' → '길게 누르기 → 위젯 →'. SettingsDetail.kt WidgetPickView)
 Views/ShareCard.swift:75 플랫폼 이름: '아이폰 설정' → '폰 설정' (ShareCard.kt 위젯 모양 기본 글)
 Views/ShareCard.swift:232 플랫폼: sheet(item:) 에 쓰려고 URL 을 Identifiable 로. 안드로이드는 공유 고르기 Intent 라 필요 없음
 

@@ -58,7 +58,9 @@
 - 설정 '도움과 기타'에 "기기 옮기기" 줄(route .sync → SyncView). 화면 순서: 파일로 옮기기 카드 → (충돌 카드) → 기기 동기화 카드 → 개발자용. 웹·사이트 문구는 뺐다(폰끼리만).
 - 파일 형식(Backup.swift, JSON, 암호화 없음, 이름 `naeilo-yyyy-MM-dd.json`, 날짜 ISO8601, 키 정렬): `v`(1), `at`, `holdings`, `progress`, `homeFriend?`, `custom`(추가 종목), `hist`(추가 종목 시세), `daily?`(내 기록), `town?`(town.book·town.log Data, town.candy·SurfCloset 키는 정수 문자열). 불러오기: 추가 종목 → 진행 → 내 기록 병합 → 동네 → 종목 순.
 - 기기 동기화(/esync 워커, 같은 비밀번호)는 켠 사람만. 값이 바뀌면 `Sync.changed`는 표시(dirty)만, 앱이 백그라운드로 갈 때 `Sync.flush`가 한 번 올린다(beginBackgroundTask). 앱을 열 때 받기(pull)는 그대로, 실패하면 다음 열 때 이 폰이 더 새면 올린다.
-- 안드로이드도 같은 동작·같은 파일 형식으로 맞출 것. 새 문구 영어 번역은 아직(Localizable.xcstrings는 다른 작업이 고치는 중이라 안 건드림).
+- 안드로이드도 같게 맞춤(2026-10-21, 로컬 커밋): 설정 '도움과 기타' "기기 옮기기" 줄, SyncView 같은 순서·문구, `Sync.changed`는 dirty만, `MainActivity.onStop`에서 `Sync.flush` 한 번(MainScope). 파일 형식은 json_parity(Backup 56/56), 동기화 암호는 num_parity d(다름 0)로 아이폰과 서로 읽힘 확인.
+- 새 문구 영어는 안드로이드만 `tools/l10n/android_en.json`에 넣음(33개). 아이폰 Localizable.xcstrings는 다른 작업이 고치는 중이라 아직 — 그 작업이 끝나면 같은 영어를 xcstrings에도 옮길 것.
+- port_check: 아이폰 커밋으로 밀린 `// ios:` 줄 번호(SettingsDetail·SettingsView·App·Sync.swift)와 exceptions.txt를 함께 고침 (짝 없음 0).
 
 ## 영문 로컬리제이션 6단계: 위젯 언어·컷 그림·동네 한마디 (2026-10-20, 로컬 커밋)
 - 위젯: 위젯 확장은 iOS 앱별 언어를 못 봐서 폰 언어를 따랐다 → 앱이 App Group `appLang`에 적고 위젯 `WL.en`이 읽는다.

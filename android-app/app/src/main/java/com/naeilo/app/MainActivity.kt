@@ -1,5 +1,6 @@
 package com.naeilo.app
 
+import com.naeilo.app.data.persists
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -51,5 +52,8 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); openIntent(model, intent) }
 
     override fun onStart() { super.onStart(); model.onForeground(true) }
-    override fun onStop() { super.onStop(); model.onForeground(false) }
+    override fun onStop() {
+        super.onStop(); model.onForeground(false)
+        if (model.persists) com.naeilo.app.net.Sync.shared.flush(model)   // ios: App.swift:60 동기화 올리기는 앱을 닫을 때 한 번
+    }
 }
