@@ -1,0 +1,39 @@
+{
+ "symbol": "SPCX",
+ "name": "SPACE EXPLORATION TECHNOLOGIES CORP",
+ "cik": 1181412,
+ "currency": "USD",
+ "pending": {
+  "announced": "2026-10-20"
+ },
+ "quarters": [
+  {
+   "start": "2025-04-01",
+   "end": "2025-06-30",
+   "months": "4~6",
+   "label": "25.4~6",
+   "filed": "2026-08-04",
+   "announced": "2026-08-04",
+   "shares": 2929000000,
+   "revenue": 4071000000,
+   "cogs": 2282000000,
+   "rnd": 1958000000,
+   "sga": 606000000,
+   "net": -1008000000
+  },
+  {
+   "start": "2026-04-01",
+   "end": "2026-06-30",
+   "months": "4~6",
+   "label": "26.4~6",
+   "filed": "2026-08-04",
+   "announced": "2026-08-04",
+   "shares": 5864000000,
+   "revenue": 7814000000,
+   "cogs": 3495000000,
+   "rnd": 3548000000,
+   "sga": 912000000,
+   "net": -541000000
+  }
+ ]
+}
