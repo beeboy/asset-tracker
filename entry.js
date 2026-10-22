@@ -414,3 +414,25 @@
   } else seen = true;
   fxReady.then(load);
 })();
+
+// 해 보기 탭: 목표일 전망 · 내 몫 실적 (화살표 키로도 옮김)
+(() => {
+  const tabs = [...document.querySelectorAll(".try-tabs [role=tab]")];
+  if (!tabs.length) return;
+  const pick = (t, focus) => {
+    tabs.forEach((b) => {
+      const on = b === t;
+      b.setAttribute("aria-selected", on);
+      b.tabIndex = on ? 0 : -1;
+      document.getElementById(b.getAttribute("aria-controls")).hidden = !on;
+    });
+    if (focus) t.focus();
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener("click", () => pick(t));
+    t.addEventListener("keydown", (e) => {
+      const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (d) { e.preventDefault(); pick(tabs[(i + d + tabs.length) % tabs.length], true); }
+    });
+  });
+})();
