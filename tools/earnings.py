@@ -9,8 +9,10 @@
 - 분기는 신고서의 시작·끝 날짜로 고른다(80~100일). 4분기 = 연간 − 1~3분기.
 - 매출·원가·연구비·판관비·순이익은 아래 태그 순서표에서 처음 있는 것을 쓴다. 분기마다 따로 고른다(회사가 태그를 바꿔도 이어진다).
 - 주식 수 = 그 분기를 처음 실은 신고서 첫 장의 발행 주식 수(dei:EntityCommonStockSharesOutstanding). 없으면 그 분기 가중평균 희석 주식 수.
-- 발표일 = 그 분기 끝 뒤, 신고일까지 사이의 첫 8-K 2.02 공시일. 없으면 신고일.
+- 발표일 = 그 분기 끝 뒤, 신고일까지 사이의 마지막 8-K 2.02 공시일. 없으면 신고일 (테슬라처럼 인도량도 2.02 로 내는 회사가 있어 마지막을 쓴다).
+- 상품 신탁(업종 6221, 예: GLD)은 회사 실적이 아니라서 ETF 처럼 건너뛴다.
 - 새 8-K 2.02 가 있는데 숫자가 아직 없으면 pending 에 그 날을 적는다 (앱은 금색 점만 띄우고 강을 '차오르는 중'으로 둔다).
+  다음 분기 끝(마지막 분기 끝 + 91일) 뒤 10일 안의 2.02 는 인도량 공시라 보고 뺀다 (91일 어림 오차로 3일 앞까지 같이 뺀다).
 - 국내(DART)는 아직 없다 (docs/HANDOFF.md).
 """
 import json, os, sys, time, urllib.request
@@ -85,9 +87,10 @@ def quarters(dur):
 
 def build(sym, cik, name):
     cikp = f"{int(cik):010d}"
-    facts = get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cikp}.json").get("facts", {})
-    time.sleep(0.15)
     subs = get(f"https://data.sec.gov/submissions/CIK{cikp}.json")
+    if subs.get("sic") == "6221": return "신탁"   # 금·원자재 신탁: 순이익이 평가손익이라 줄표
+    time.sleep(0.15)
+    facts = get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cikp}.json").get("facts", {})
     gaap = facts.get("us-gaap", {})
     if not gaap: return None   # 해외 기업(IFRS)·자료 없음: 1차에선 줄표
 
@@ -118,13 +121,14 @@ def build(sym, cik, name):
         s, e = k
         _, filed, accn = base[k]
         sh = sum(cover[accn]) if accn in cover else (wavg.get(k) or (None,))[0]
-        a = next((x for x in ann if e < x <= filed), filed)
+        a = next((x for x in reversed(ann) if e < x <= filed), filed)
         m, label = months(s, e)
         row = {"start": s, "end": e, "months": m, "label": label, "filed": filed, "announced": a, "shares": sh}
         for key in TAGS: row[key] = per[key].get(k, (None,))[0]
         rows.append(row)
     last = rows[-1]
-    newer = [x for x in ann if x > last["filed"]]
+    nxt = d(last["end"]) + timedelta(days=91)   # 다음 분기 끝 어림
+    newer = [x for x in ann if x > last["filed"] and not -3 <= (d(x) - nxt).days <= 10]
     return {"symbol": sym, "name": name, "cik": int(cik), "currency": currency or "USD",
             "pending": {"announced": newer[-1]} if newer else None, "quarters": rows}
 
@@ -162,6 +166,8 @@ def main(argv):
             if getattr(e, "code", None) == 404:
                 print(f"{sym}: SEC 회사 자료 없음 (ETF 등) 건너뜀"); continue
             problems.append(f"{sym}: 받기 실패 {e}"); continue
+        if j == "신탁":
+            print(f"{sym}: 상품 신탁 (ETF 처럼) 건너뜀"); continue
         if not j:
             print(f"{sym}: us-gaap 분기 자료 없음 건너뜀"); continue
         last = j["quarters"][-1]
