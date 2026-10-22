@@ -33,8 +33,8 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = false }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("iosAssets"))
-    sourceSets["main"].res.srcDir(layout.buildDirectory.dir("iosRes"))
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("iosAssets").get().asFile)
+    sourceSets["main"].res.srcDir(layout.buildDirectory.dir("iosRes").get().asFile)
 }
 
 // iOS 원본 자료 중 앱이 읽는 것만 빌드 때 복사한다 (저장소에 같은 파일을 두 벌 두지 않는다)
