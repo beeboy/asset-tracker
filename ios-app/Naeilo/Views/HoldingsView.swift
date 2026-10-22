@@ -269,10 +269,6 @@ struct HoldingsView: View {
                         HStack(spacing: 0) { name; Spacer(minLength: 4) }.frame(minHeight: 64).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                     earn
-                    NavigationLink(value: r.sym) {
-                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
-                            .frame(minWidth: 20, minHeight: 64).contentShape(Rectangle())
-                    }.buttonStyle(.plain).accessibilityHidden(true)
                 }
             }
         }
