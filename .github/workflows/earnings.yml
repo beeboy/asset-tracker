@@ -1,0 +1,45 @@
+name: earnings
+# 내 몫 실적: SEC EDGAR 분기 실적을 하루 한 번 받아 data/earnings/{종목}.json 에 커밋한다 (tools/earnings.py).
+# 앱·웹 입구 해 보기가 이 파일로 강 팝업을 그린다. PR 에선 받아 보고 검사만 한다 (커밋 없음)
+on:
+  schedule:
+    - cron: "10 1 * * *"   # UTC 1시 10분 = 한국 10시 10분 (미국 저녁 신고가 다 들어온 뒤)
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "tools/earnings.py"
+      - "tools/earn_*"
+      - ".github/workflows/earnings.yml"
+permissions:
+  contents: write
+concurrency:
+  group: earnings-${{ github.event_name }}
+  cancel-in-progress: false
+jobs:
+  earnings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SEC_UA: ${{ secrets.SEC_UA }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 계산 기준 검사
+        run: node tools/earn_check.mjs
+      - name: 실적 받기
+        run: python tools/earnings.py --check
+      - name: 커밋
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/earnings/
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "실적 $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && exit 0; sleep 5; done
+          exit 1

@@ -81,3 +81,12 @@
 - 남은 일: 안드로이드 옮기기(이번엔 안 함), 이름표 영어 폭은 짧은 말로 맞춤(Levels·Patterns·Candles).
 - 안드로이드(2026-10-21): `data/FlowData.kt`, `ui/flow/FlowView.kt`, `net/Market.kt` 토스 캔들, `App.kt` Tab.flow(종목 옆, 순서는 Tab enum 한 곳), `res/drawable/tab_flow.xml`. port_check 짝 없음 0·selftest 20/20(씨앗 5), 숫자 비교 `tools/num_parity` flow 단계(DRNK·거꾸로 판 11,964칸 차이 0, 끝자리 1e-12 허용 194). 아이폰과 다른 점: 탭 6개가 다 보임(아이폰은 '더 보기'), 한 손가락 세로 끌기는 화면 스크롤로 넘김, 추세·패턴 계산은 화면 밖(Default)에서 미리.
 - 안드로이드 확인 못 한 것: 에뮬레이터 핀치(adb 로 두 손가락을 못 줌), 키 있음 화면(출시판이라 키 표시를 못 켬), 실데이터.
+
+## 내 몫 실적 1단계: 데이터 봇 (2026-10-22)
+- 계획: /mnt/project-files/planning/my-share-earnings-plan.md (프로젝트 폴더). 결정은 decisions.md 2026-10-22 줄들.
+- `tools/earnings.py`: SEC companyfacts·submissions → `data/earnings/{종목}.json`·`index.json`. 대상은 data/tickers.json 중 CIK 있는 회사(ETF 건너뜀). `--check` 는 PR 검사.
+- `tools/earn_calc.mjs`: 웹·앱 공통 계산 기준. `tools/earn_check.mjs` + `earn_fixtures.json` 이 기대값 검사(아이폰·안드로이드도 같은 픽스처로 맞춘다).
+- `.github/workflows/earnings.yml`: 하루 한 번(UTC 1:10) 받아 커밋, PR 에선 검사만.
+- `data/earnings/DRNK.json`: 손으로 쓴 견본(가상 종목).
+- 남은 일: 국내 DART(키는 Actions 시크릿)는 아직 없음. 해외 기업(20-F, IFRS)은 줄표. SEC 는 연락처 있는 User-Agent 를 바라므로 Actions 시크릿 `SEC_UA`("이름 이메일")를 넣으면 좋다.
+- 맥 검사(2026-10-22): earn_check 3/3, `earnings.py --check` 통과. 고친 것: SEC 가 이메일 없는 User-Agent 를 403 으로 막아 기본값에 연락처를 넣음, companyfacts 404(SPY·MANA)는 건너뜀, 가중평균 희석 주식 수 대체가 늘 비던 버그(SPCX). 알려진 점: 테슬라는 인도량 8-K 도 2.02 라 7~9월 전 분기 발표일이 7-02 로 잡힘(실제 실적 7-22), GLD 는 CIK 가 있는 신탁이라 줄표 대신 1갈래로 나옴 — 규칙 판단 필요.
