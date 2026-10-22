@@ -527,6 +527,22 @@ enum MarketEvents {
     ]
     struct Hit { let id: String; let target: String; let day: String; let kind: String; let sub: String; let held: Bool }
 
+    /// 손 날짜에 실적 자료를 덮은 일정. 미국 종목 e_ 만 (DRNK·국내는 손 값 그대로)
+    static var live: [Rule] { rules.map(earnRule) }
+    /// 실적 자료(받은 것·앱 안 견본)가 있으면: 기다리는 중이면 그 날, 오늘 발표면 오늘,
+    /// 아니면 다음 분기 = 작년 같은 분기 발표일 + 364일 (같은 요일), 문구에 '무렵'
+    static func earnRule(_ r: Rule) -> Rule {
+        guard r.id.hasPrefix("e_"), r.target != "DRNK", let sym = Sample.symbol(r.target), sym.currency == .usd,
+              let k = EarningsFeed.key(sym), let f = EarningsFeed.shared.file(k), let last = f.quarters.last else { return r }
+        if let p = f.pending?.announced { return Rule(id: r.id, target: r.target, kind: r.kind, date: p, rep: "none") }
+        if last.announced >= Day.today { return Rule(id: r.id, target: r.target, kind: r.kind, date: last.announced, rep: "none") }
+        // 다음 분기의 작년 짝: 끝 날짜가 (마지막 분기 끝 + 약 91일) 보다 365±25일 앞
+        let nextEnd = Earnings.dayNum(last.end) + 91
+        guard let ly = f.quarters.first(where: { abs(nextEnd - Earnings.dayNum($0.end) - 365) <= 25 }),
+              let d = Day.date(ly.announced) else { return r }
+        return Rule(id: r.id, target: r.target, kind: String(localized: "\(r.kind) 무렵"), date: Day.str(d.addingTimeInterval(364 * 86400)), rep: "none")
+    }
+
     /// from 날짜부터 days 일 안의 날짜 (from 포함)
     static func dates(_ r: Rule, from: String, until: String) -> [String] {
         let step: Int? = ["monthly": 1, "quarterly": 3, "semi": 6, "yearly": 12][r.rep]
@@ -560,7 +576,7 @@ enum MarketEvents {
         let from = Day.today, until = Day.str(Date().addingTimeInterval(Double(days) * 86400))
         let usd = held.contains { Sample.symbol($0)?.currency == .usd }
         var out: [Hit] = []
-        for r in rules {
+        for r in live {
             let mine = held.contains(r.target) || (r.target == "FX" && usd)
             guard r.target == "ALL" || r.target == "FX" || mine else { continue }
             let sub = r.target == "ALL" ? String(localized: "전 종목") : r.target == "FX" ? String(localized: "환율") : (Sample.symbol(r.target)?.short ?? r.target)

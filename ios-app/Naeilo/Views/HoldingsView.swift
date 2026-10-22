@@ -1391,7 +1391,7 @@ enum TownLook {
     static func earnDay(_ res: Resident, _ ahead: Int = 0) -> String? {
         guard res.id != mayorID, res.id != warshID, res.old == nil else { return nil }
         let d = Day.str(Date().addingTimeInterval(Double(ahead) * 86400))
-        return MarketEvents.rules.first { r in r.id.hasPrefix("e_") && res.rows.contains { $0.id == r.target } && !MarketEvents.dates(r, from: d, until: d).isEmpty }?.kind
+        return MarketEvents.live.first { r in r.id.hasPrefix("e_") && res.rows.contains { $0.id == r.target } && !MarketEvents.dates(r, from: d, until: d).isEmpty }?.kind
     }
     /// 오늘 모임의 주인공 (동네가 정해 둔다)
     static var host: (id: String, name: String)? = nil
