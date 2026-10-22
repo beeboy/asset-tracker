@@ -172,8 +172,8 @@ struct EarningsRiver: View {
     private static let end: Double = 2.9   // 마지막 동작(떡잎)이 끝나는 초
 
     var body: some View {
-        // 기다리는 중이면 물이 계속 차오른다 (실 없음). 아니면 한 번 흐르고 멈춘다
-        let paused = still || (done && s.pending == nil)
+        // 한 번 흐르고(기다리는 중이면 물만 차오르고) 멈춘다
+        let paused = still || done
         TimelineView(.animation(paused: paused)) { tl in
             let el = tl.date.timeIntervalSince(start)
             Canvas { ctx, size in
@@ -242,30 +242,18 @@ struct EarningsRiver: View {
 
         // 물높이 lv(v) = 270 − (v−min)/(max−min)×210 (지난 4분기 + 지금, 회사 매출)
         let co = s.coRevenue ?? 0
-        let vals = s.gauge.map { $0.co ?? 0 } + (s.pending == nil ? [co] : [])
+        let vals = s.gauge.map { $0.co ?? 0 } + [co]
         let lo = vals.min() ?? 0, hi = vals.max() ?? 1
         let lv = { (v: Double) -> CGFloat in hi > lo ? 270 - CGFloat((v - lo) / (hi - lo)) * 210 : 165 }
         let S = lv(co)
 
-        // 기다리는 중: 물이 차오르는 중, 실 없음
-        if let p = s.pending {
-            text(&ctx, String(localized: "지금 \(qty.formatted())주 기준"), 13, .regular, EarnColor.muted, CGPoint(x: 24, y: 66), .leading)
-            let rise = still ? 0.6 : (el.truncatingRemainder(dividingBy: 4)) / 4
-            let lvl = Self.bed - CGFloat(rise) * (Self.bed - Self.top) * 0.9
-            water(&ctx, top: lvl, phase: el)
-            gauge(&ctx, lv: lv, S: nil, t: t)
-            let md = p.split(separator: "-").compactMap { Int($0) }
-            let day = md.count == 3 ? String(localized: "\(md[1])월 \(md[2])일") : p
-            text(&ctx, String(localized: "실적이 나왔어요 · \(day)"), 15, .bold, EarnColor.gold, CGPoint(x: 24, y: 350), .leading)
-            text(&ctx, String(localized: "숫자가 들어오면 강이 차요"), 13, .regular, EarnColor.muted, CGPoint(x: 24, y: 374), .leading)
-            return
-        }
-
-        // 물: rect 0,S~300 + 물결. 위→아래로 채워진다 (.6초)
-        let fill = CGFloat(ease(seg(t, 0, 0.6)))
+        // 물: rect 0,S~300 + 물결. 위→아래로 채워진다 (.6초). 기다리는 중이면 강바닥에서 지난 분기 높이까지 2초 차오른다
+        let wet = s.pending == nil
+        let top = wet ? S : Self.bed - (Self.bed - S) * CGFloat(ease(seg(t, 0, 2)))
+        let fill = wet ? CGFloat(ease(seg(t, 0, 0.6))) : 1
         ctx.drawLayer { l in
-            l.clip(to: Path(CGRect(x: 0, y: S, width: Self.W, height: (Self.bed - S) * fill)))
-            l.fill(Path(CGRect(x: 0, y: S, width: Self.W, height: Self.bed - S)), with: .color(EarnColor.water))
+            l.clip(to: Path(CGRect(x: 0, y: top, width: Self.W, height: (Self.bed - top) * fill)))
+            l.fill(Path(CGRect(x: 0, y: top, width: Self.W, height: Self.bed - top)), with: .color(EarnColor.water))
             var w = Path()
             w.move(to: CGPoint(x: 0, y: 230))
             w.addCurve(to: CGPoint(x: 360, y: 225), control1: CGPoint(x: 90, y: 210), control2: CGPoint(x: 200, y: 250))
@@ -275,6 +263,14 @@ struct EarningsRiver: View {
         // 강 위 글: 물이 낮아 글이 물 밖이면 진한 글자로
         let base = min(S, 200)
         let c1 = base + 40 - 8 > S ? EarnColor.onwater : EarnColor.fg, c2 = base + 70 - 12 > S ? EarnColor.onwater : EarnColor.fg
+        if let p = s.pending {
+            let md = p.split(separator: "-").compactMap { Int($0) }
+            let day = md.count == 3 ? String(localized: "\(md[1])월 \(md[2])일") : p
+            text(&ctx, String(localized: "실적이 나왔어요 · \(day)"), 12, .regular, c1, CGPoint(x: 24, y: base + 40), .leading, 0.85 * fade(t, 1.8))
+            text(&ctx, String(localized: "숫자가 들어오면 강이 차요"), 20, .bold, c2, CGPoint(x: 24, y: base + 70), .leading, fade(t, 1.8), serif: true)
+            gauge(&ctx, lv: lv, S: nil, t: t)
+            return
+        }
         text(&ctx, String(localized: "\(name) · 이번 분기"), 12, .regular, c1, CGPoint(x: 24, y: base + 40), .leading, 0.85 * fade(t, 0.3))
         let unit = s.currency == "USD" ? String(localized: " 달러") : " " + s.currency
         text(&ctx, String(localized: "매출 \(eok(co))\(unit)"), 20, .bold, c2, CGPoint(x: 24, y: base + 70), .leading, fade(t, 0.3), serif: true)
@@ -373,7 +369,7 @@ struct EarningsRiver: View {
         var others: [(y: CGFloat, s: String)] = []
         for g in s.gauge {
             let y = lv(g.co ?? 0)
-            let strong = g.lastYear && S != nil   // 기다리는 중이면 '작년 같은 분기'가 다음 분기 기준이라 진하게 하지 않는다
+            let strong = g.lastYear
             tick(&ctx, y, strong)
             let v = g.co.map(eok) ?? "–"
             if strong { text(&ctx, String(localized: "작년 \(v)"), 11, .regular, EarnColor.muted, CGPoint(x: 284, y: y - 5), .leading) }
@@ -400,25 +396,6 @@ struct EarningsRiver: View {
             Gradient(colors: [EarnColor.strand, end == .clear ? EarnColor.strand.opacity(0) : end]),
             startPoint: CGPoint(x: sx, y: Self.bed), endPoint: fadeTo)
         ctx.stroke(tp, with: sh, style: StrokeStyle(lineWidth: w, lineCap: .butt))
-    }
-
-    /// 물: 위 rect + 물결 (기다리는 중이면 물결이 움직인다)
-    private func water(_ ctx: inout GraphicsContext, top: CGFloat, phase: Double) {
-        let l = Self.left, r = Self.right, b = Self.bed
-        var wave = Path()
-        wave.move(to: CGPoint(x: l, y: b))
-        wave.addLine(to: CGPoint(x: l, y: top))
-        var xx = l
-        while xx <= r {
-            let y = top + 3 * CGFloat(sin(Double(xx - l) / 18 + phase * 1.6))
-            wave.addLine(to: CGPoint(x: xx, y: y)); xx += 4
-        }
-        wave.addLine(to: CGPoint(x: r, y: b))
-        wave.closeSubpath()
-        ctx.fill(wave, with: .linearGradient(Gradient(colors: [EarnColor.water2, EarnColor.water]),
-                                             startPoint: CGPoint(x: 0, y: top), endPoint: CGPoint(x: 0, y: b)))
-        // 강바닥 줄
-        ctx.fill(Path(CGRect(x: l, y: b - 1, width: r - l, height: 2)), with: .color(EarnColor.water))
     }
 
     /// 실 하나. hollow > 0 이면 그만큼(모자란 몫)은 속 빈 테두리로 옆에 붙인다
