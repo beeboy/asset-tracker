@@ -142,3 +142,232 @@
   $("#notify").addEventListener("submit", (e) => { e.preventDefault(); notify(false); });
   $("#unsub").addEventListener("click", () => notify(true));
 })();
+
+// 내 몫 실적 강 (#tryEarn): 앱 EarningsRiver.swift(시안 판16)와 같은 좌표·색·동작을 SVG 로.
+// 계산은 tools/earn_calc.mjs 의 view 를 그대로 가져다 쓴다(앱 Earnings.swift 와 같은 답). 자료는 data/earnings/{종목}.json,
+// 원화 어림은 data/prices/KRW_X.json 마지막 값. 회사 매출(물높이·수위표 글)은 파일의 분기 매출 그대로.
+(function () {
+  "use strict";
+  const svg = document.getElementById("earnRiver");
+  if (!svg) return;
+  const $ = (s) => document.querySelector(s);
+  const W = 360, BED = 300, TOTAL = 50, MID = 175, END = 2.9;
+  const still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const files = {};
+  let calc = null, fx = null, cur = null, raf = 0, seen = false, tmr = 0;
+
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const seg = (t, a, b) => Math.max(0, Math.min(1, (t - a) / (b - a)));
+  const ease = (x) => { // cubic-bezier(.4,0,.2,1)
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    const bz = (u, p1, p2) => 3 * (1 - u) * (1 - u) * u * p1 + 3 * (1 - u) * u * u * p2 + u * u * u;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 20; i++) { const m = (lo + hi) / 2; if (bz(m, 0.4, 0.2) < x) lo = m; else hi = m; }
+    return bz((lo + hi) / 2, 0, 1);
+  };
+  const pop = (x) => { const c = 1.70158; return x <= 0 ? 0 : 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  const fade = (t, at) => seg(t, at, at + 0.4);
+  const batchim = (s) => { const c = s.charCodeAt(s.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; };
+  const eok = (v) => { const e = v / 1e8; return (e >= 10 ? Math.round(e).toLocaleString("en-US") : e.toFixed(1)) + "억"; };
+  const T = (s, size, w, c, x, y, a, op = 1, serif = false) => op <= 0 ? "" :
+    `<text x="${x}" y="${y}" font-size="${size}" font-weight="${w}" text-anchor="${a === "r" ? "end" : a === "c" ? "middle" : "start"}"${serif ? ' class="sf"' : ""} style="fill:var(--e-${c})${op < 1 ? ";opacity:" + op : ""}">${esc(s)}</text>`;
+  // 잘린 선: pathLength 1 기준 dash 로 0~g 만 보이게
+  const trim = (g) => (g >= 1 ? "" : ` pathLength="1" stroke-dasharray="${g} 2"`);
+
+  function draw(m, t) {
+    const v = m.v, qs = m.j.quarters, name = m.name, fmt = (x) => calc.money(x, v.currency);
+    let o = "", defs = "";
+    o += T(`${name}${batchim(name) ? "이" : "가"} 번 돈 중 내 몫`, 20, 700, "fg", 24, 42, "l", 1, true);
+    // 물높이 lv(v) = 270 − (v−min)/(max−min)×210 (지난 4분기 + 지금, 회사 매출)
+    const co = qs[qs.length - 1].revenue || 0, gco = qs.slice(-5, -1).map((x) => x.revenue || 0);
+    const vals = gco.concat([co]), lo = Math.min(...vals), hi = Math.max(...vals);
+    const lv = (x) => (hi > lo ? 270 - ((x - lo) / (hi - lo)) * 210 : 165), S = lv(co);
+    // 물: 위→아래로 .6초. 기다리는 중이면 강바닥에서 지난 분기 높이까지 2초 차오른다
+    const wet = v.pending == null;
+    const top = wet ? S : BED - (BED - S) * ease(seg(t, 0, 2)), fill = wet ? ease(seg(t, 0, 0.6)) : 1;
+    defs += `<clipPath id="eW"><rect x="0" y="${top}" width="${W}" height="${(BED - top) * fill}"/></clipPath>`;
+    o += `<g clip-path="url(#eW)"><rect x="0" y="${top}" width="${W}" height="${BED - top}" style="fill:var(--e-water)"/><path d="M0 230C90 210 200 250 360 225L360 300L0 300Z" style="fill:var(--e-water2)"/></g>`;
+    // 강 위 글: 물이 낮아 글이 물 밖이면 진한 글자로
+    const base = Math.min(S, 200), c1 = base + 32 > S ? "onwater" : "fg", c2 = base + 58 > S ? "onwater" : "fg";
+    if (v.pending) {
+      const md = v.pending.split("-").map(Number), day = md.length === 3 ? `${md[1]}월 ${md[2]}일` : v.pending;
+      o += T(`실적이 나왔어요 · ${day}`, 12, 400, c1, 24, base + 40, "l", 0.85 * fade(t, 1.8));
+      o += T("숫자가 들어오면 강이 차요", 20, 700, c2, 24, base + 70, "l", fade(t, 1.8), true);
+      o += gauge(v, gco, co, lv, null, t);
+      return `<defs>${defs}</defs>` + o;
+    }
+    o += T(`${name} · 이번 분기`, 12, 400, c1, 24, base + 40, "l", 0.85 * fade(t, 0.3));
+    o += T(`매출 ${eok(co)}${v.currency === "USD" ? " 달러" : " " + v.currency}`, 20, 700, c2, 24, base + 70, "l", fade(t, 0.3), true);
+    o += gauge(v, gco, co, lv, S, t);
+    // 물안개: 남는 돈(이자·세금·기타). 피었다가 실 끝 전에 걷힌다
+    if (v.mist > 0 && v.revenue > 0) {
+      const mm = Math.sin(Math.PI * seg(t, 0.6, 1.7)) * (still ? 0 : 1);
+      if (mm > 0) {
+        const r = 14 + 40 * Math.min(1, (v.mist / v.revenue) * 4);
+        defs += `<filter id="eB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>`;
+        o += `<g filter="url(#eB)" style="opacity:${0.55 * mm}">` + [[-50, 0], [0, -8], [52, 2]].map(([dx, dy]) =>
+          `<ellipse cx="${MID + dx}" cy="${S - 16 + dy}" rx="${r}" ry="${r * 0.35}" style="fill:var(--e-water2)"/>`).join("") + "</g>";
+      }
+    }
+    // 내 몫 (강바닥 아래)
+    o += T(`내 몫 ${fmt(v.revenue || 0)}`, 12, 600, "fg", 216, 326, "l", fade(t, 0.4));
+    o += T(`${m.qty.toLocaleString("ko-KR", { maximumFractionDigits: 6 })}주만큼 · 확대`, 11, 400, "muted", 216, 343, "l", fade(t, 0.4));
+    // 실: 왼→오 원가·판관비·이익·연구비. 굵기 = 내 몫 매출 안 비율 × 50, 이익 실은 최소 3
+    const sc = TOTAL / Math.max(v.revenue || 0, 1e-12), byK = {};
+    v.branches.forEach((b) => { byK[b.k] = b.v; });
+    const ss = [];
+    if (byK.cogs != null) ss.push(["cogs", byK.cogs * sc]);
+    if (byK.spent != null) ss.push(["spent", byK.spent * sc]);
+    if (byK.sga != null) ss.push(["sga", byK.sga * sc]);
+    if (!v.loss) ss.push(["net", Math.max(3, (v.net || 0) * sc)]);
+    if (byK.rnd != null) ss.push(["rnd", byK.rnd * sc]);
+    let x = MID - ss.reduce((a, s) => a + s[1], 0) / 2, goldX = MID;
+    const hollow = v.loss ? v.short * sc : 0;
+    let gi = 0;
+    // 흐르는 실: strand → 끝 색(옅어짐 또는 떡잎색). 적자 마지막 실은 hollow 만큼 속 빈 테두리
+    const flow = (d, w, sx, ex, ey, endC, g, h) => {
+      if (g <= 0) return "";
+      const tr = trim(g);
+      if (h > 0) {
+        const c = endC || "strand", solid = Math.max(0, w - h), id = "eH" + gi++;
+        let s = "";
+        if (solid > 0) s += `<path d="${d}"${tr} transform="translate(${-h / 2} 0)" style="fill:none;stroke:var(--e-${c});stroke-width:${solid}"/>`;
+        defs += `<mask id="${id}" maskUnits="userSpaceOnUse" x="-20" y="0" width="400" height="680"><rect x="-20" y="0" width="400" height="680" fill="#fff"/><path d="${d}"${tr} style="fill:none;stroke:#000;stroke-width:${Math.max(0, h - 3)}"/></mask>`;
+        return s + `<g transform="translate(${solid / 2} 0)"><path d="${d}"${tr} mask="url(#${id})" style="fill:none;stroke:var(--e-${c});stroke-width:${h}"/></g>`;
+      }
+      const id = "eG" + gi++;
+      defs += `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${sx}" y1="${BED}" x2="${ex}" y2="${ey}"><stop offset="0" style="stop-color:var(--e-strand)"/><stop offset="1" style="stop-color:var(--e-${endC || "strand"});stop-opacity:${endC ? 1 : 0}"/></linearGradient>`;
+      return `<path d="${d}"${tr} style="fill:none;stroke:url(#${id});stroke-width:${w}"/>`;
+    };
+    ss.forEach(([k, w], i) => {
+      const sx = x + w / 2; x += w;
+      const h = i === ss.length - 1 ? hollow : 0;
+      if (k === "cogs" || k === "spent") {
+        o += flow(`M${sx} ${BED}L${sx} 350C${sx} 400 70 392 40 440`, w, sx, 40, 440, null, ease(seg(t, 0, 1)), h);
+        o += T(k === "cogs" ? `원가 ${fmt(byK.cogs)}` : `쓴 돈 ${fmt(byK.spent)}`, 12, 400, "muted", 24, 466, "l", fade(t, 0.7));
+      } else if (k === "sga") {
+        o += flow(`M${sx} ${BED}L${sx} 470C${sx} 508 100 506 70 540`, w, sx, 70, 540, null, ease(seg(t, 0.4, 1.7)), h);
+        o += T(`판매·관리비 ${fmt(byK.sga)}`, 12, 400, "muted", 24, 564, "l", fade(t, 1.4));
+      } else if (k === "rnd") {
+        o += flow(`M${sx} ${BED}L${sx} 410C${sx} 450 290 448 320 488`, w, sx, 320, 488, "sprout", ease(seg(t, 0.2, 1.4)), h);
+        o += sprout(pop(seg(t, 2.2, 2.8)));
+        o += T(`연구비 ${fmt(byK.rnd)}`, 12, 400, "muted", 336, 512, "r", fade(t, 1.1));
+      } else { // net: 금색 실이 곧게 내려간다
+        goldX = sx;
+        const ly = v.lastYearNet, n = v.net;
+        if (ly > 0 && n > 0) {
+          const g = ease(seg(t, 1.5, 2.1));
+          if (g > 0) o += `<path d="M${sx + 14} 520L${sx + 14} 600"${trim(g)} style="fill:none;stroke:var(--e-ghost);stroke-opacity:.6;stroke-width:${w * ly / n}"/>`;
+          o += T(`작년 ${fmt(ly)}`, 11, 400, "muted", sx + 20, 560, "l", fade(t, 2));
+        }
+        const g = ease(seg(t, 0, 2));
+        if (g > 0) o += `<path d="M${sx} ${BED}L${sx} 600"${trim(g)} style="fill:none;stroke:var(--e-gold);stroke-width:${w}"/>`;
+      }
+    });
+    // 금색 끝: 큰 금액(+원화) · 설명. 적자면 옅은 손실
+    if (v.loss) {
+      o += T(fmt(-v.short), 30, 700, "muted", MID, 636, "c", fade(t, 1.9), true);
+      o += T("이번 분기 내 몫 손실", 12, 400, "muted", MID, 660, "c", fade(t, 2.1));
+    } else {
+      const op = fade(t, 1.9);
+      if (op > 0) o += `<text x="${goldX}" y="636" text-anchor="middle" style="opacity:${op}"><tspan class="sf" font-size="30" font-weight="700" style="fill:var(--e-gold)">${esc(v.netText)}</tspan>` +
+        (v.netKrw ? `<tspan font-size="13" font-weight="600" dx="8" style="fill:var(--e-muted)">${esc(v.netKrw)}</tspan>` : "") + "</text>";
+      o += T("회사가 이번 분기 내 몫으로 번 순이익", 12, 400, "muted", goldX, 660, "c", fade(t, 2.1));
+    }
+    return `<defs>${defs}</defs>` + o;
+  }
+
+  // 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 null)
+  function gauge(v, gco, co, lv, S, t) {
+    let o = `<rect x="268" y="62" width="4" height="238" style="fill:var(--e-muted);opacity:.55"/>`;
+    const tick = (y, strong) => `<rect x="261" y="${y - (strong ? 1 : 0.75)}" width="18" height="${strong ? 2 : 1.5}" style="fill:var(--e-${strong ? "fg" : "onwater"})${strong ? "" : ";opacity:.6"}"/>`;
+    const others = [];
+    v.gauge.forEach((g, i) => {
+      const y = lv(gco[i]), val = gco[i] ? eok(gco[i]) : "–";
+      o += tick(y, g.lastYear);
+      if (g.lastYear) o += T(`작년 ${val}`, 11, 400, "muted", 284, y - 5, "l");
+      else others.push([y + 4, val]);
+    });
+    others.sort((a, b) => a[0] - b[0]);
+    let last = -100;
+    others.forEach((a) => { if (a[0] - last < 13) a[0] = last + 13; last = a[0]; }); // 겹치면 앞보다 13 아래로
+    others.forEach(([y, s]) => { o += T(s, 11, 400, "onwater", 284, y, "l", 0.75); });
+    if (S != null) {
+      const op = fade(t, 0.3);
+      o += tick(S, false) + T(`지금 ${eok(co)}`, 11, 600, "onwater", 284, S + 17, "l", op);
+      if (v.revYoY) o += T(v.revYoY, 11, 600, "onwater", 284, S + 31, "l", op);
+    }
+    return o;
+  }
+
+  // 떡잎 (331,490): 줄기 0,0→0,−11, 잎 (±5,−13) rx5.5 ry2.6 ∓28도
+  function sprout(s) {
+    if (s <= 0) return "";
+    return `<g transform="translate(331 490) scale(${s})" style="fill:var(--e-sprout)"><path d="M0 0L0 -11" style="fill:none;stroke:var(--e-sprout);stroke-width:1.5"/>` +
+      [-1, 1].map((d) => `<ellipse transform="translate(${5 * d} -13) rotate(${-28 * d})" rx="5.5" ry="2.6"/>`).join("") + "</g>";
+  }
+
+  // 자료 없음(ETF 등): 강 없이 짧은 안내
+  function none(sym) {
+    cancelAnimationFrame(raf);
+    svg.innerHTML = `<text x="180" y="320" text-anchor="middle" font-size="16" font-weight="700" style="fill:var(--e-fg)">${esc(sym)} 실적 자료가 없어요</text>` +
+      `<text x="180" y="346" text-anchor="middle" font-size="12" class="earn-none">ETF 는 회사 실적이 없어요 · 앱에선 줄표</text>`;
+    svg.setAttribute("aria-label", `${sym} 실적 자료가 없어요`);
+  }
+
+  // 한 번 흐르고(기다리는 중이면 물만 차오르고) 멈춘다. 동작 줄이기면 다 흐른 정지 화면
+  function play() {
+    cancelAnimationFrame(raf);
+    if (!cur) return;
+    const m = cur, v = m.v;
+    svg.setAttribute("aria-label", v.pending ? `${m.name}. ${v.pending} 실적 발표, 숫자를 기다리는 중`
+      : `${m.name} ${v.months}월. 내 몫 매출 ${calc.money(v.revenue || 0, v.currency)}${v.revYoY ? ", 작년보다 " + v.revYoY : ""}` +
+        (v.loss ? `. 이번 분기 내 몫 손실 ${calc.money(v.short, v.currency)}` : `. 내 몫 순이익 ${v.netText}${v.netKrw ? ", " + v.netKrw : ""}`));
+    if (still || !seen) { svg.innerHTML = draw(m, still ? 99 : 0); return; }
+    const t0 = performance.now();
+    const step = (now) => {
+      const el = (now - t0) / 1000;
+      if (cur !== m) return;
+      svg.innerHTML = draw(m, el >= END + 0.1 ? 99 : el);
+      if (el < END + 0.1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  async function load() {
+    const sym = $("#earnSym").value.trim().toUpperCase(), qty = Number($("#earnQty").value);
+    const msg = $("#earnMsg");
+    if (!/^[A-Z0-9][A-Z0-9.\-]{0,11}$/.test(sym)) { cur = null; none(sym || "종목"); msg.textContent = "종목 기호를 넣어 주세요. 예: DRNK"; return; }
+    if (!(qty > 0)) { msg.textContent = "수량을 넣어 주세요."; return; }
+    try {
+      if (!calc) calc = await import("./tools/earn_calc.mjs");
+      if (!(sym in files)) {
+        const r = await fetch(`data/earnings/${encodeURIComponent(sym)}.json`, { cache: "no-cache" });
+        files[sym] = r.ok ? await r.json() : null;
+      }
+    } catch (_) { files[sym] = files[sym] || null; }
+    if (sym !== $("#earnSym").value.trim().toUpperCase()) return; // 그사이 바뀜
+    const j = files[sym], v = calc && j ? calc.view(j, qty, fx) : null;
+    if (!v) { cur = null; none(sym); msg.textContent = "실적 자료가 있는 미국 종목만 강이 흘러요."; return; }
+    cur = { j, v, qty, name: String(j.name || sym).replace(/\s*\(.*\)\s*$/, "") || sym };
+    msg.textContent = j.virtual ? "DRNK 는 가상 종목 견본이에요. 미국 종목은 신고서 숫자로." : `${v.label} 신고서 숫자 · 주당 값 × 내 수량`;
+    play();
+  }
+  const later = () => { clearTimeout(tmr); tmr = setTimeout(load, 300); };
+
+  $("#earnSym").addEventListener("input", later);
+  $("#earnQty").addEventListener("input", later);
+  $("#earnForm").addEventListener("submit", (e) => { e.preventDefault(); load(); });
+  fetch("data/earnings/index.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).then((ix) => {
+    if (ix && ix.symbols) $("#earnSyms").innerHTML = Object.keys(ix.symbols).sort().map((s) => `<option value="${esc(s)}">`).join("");
+  }).catch(() => {});
+  // 원화 어림: 오늘 원/달러 (없으면 원화 글 없이)
+  const fxReady = fetch("data/prices/KRW_X.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null))
+    .then((p) => { const c = p && p.close; fx = c && c.length ? c[c.length - 1] : null; }).catch(() => {});
+  // 화면에 들어올 때 한 번 흐른다
+  if ("IntersectionObserver" in window && !still) {
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { seen = true; io.disconnect(); play(); } }, { threshold: 0.35 });
+    io.observe(svg);
+  } else seen = true;
+  fxReady.then(load);
+})();

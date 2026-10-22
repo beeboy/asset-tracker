@@ -214,3 +214,15 @@ footer a { color: var(--muted); }
   .home, .iphone { width: 100%; }
   .pal { width: 130px; }
 }
+
+/* ---------------------------------------------------------------- 3-2. 내 몫 실적 강 (EarningsRiver.swift EarnColor: 다크 기본, 밝은 모드) */
+.earn-in { display: flex; gap: 10px; margin: 12px 0 8px; max-width: 420px; }
+.earn-in label { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; }
+.earn-in label:last-of-type { flex: 0 0 110px; }
+.earn-in input { text-transform: uppercase; }
+.earn-scr { --e-water: #3F6F80; --e-water2: #2C5160; --e-strand: #4A5A60; --e-ghost: #5D6965; --e-sprout: #8CC477; --e-gold: #E0B04A; --e-fg: #E4EBE8; --e-muted: #8C9893; --e-screen: #1A2220; --e-onwater: #E4F0F3; background: var(--e-screen); justify-content: center; }
+@media (prefers-color-scheme: light) { .earn-scr { --e-water: #7FA9B8; --e-water2: #A9C7D2; --e-strand: #B9C6CB; --e-ghost: #A9B3B0; --e-sprout: #6FA85A; --e-gold: #C8962E; --e-fg: #1D2624; --e-muted: #6B7773; --e-screen: #FFFFFF; --e-onwater: #F4FAFB; } }
+.earn-river { display: block; width: 100%; height: auto; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+.earn-river .sf { font-family: ui-serif, "AppleMyungjo", "Nanum Myeongjo", "Noto Serif KR", Georgia, serif; }
+.earn-river text { dominant-baseline: central; }
+.earn-none { fill: var(--e-muted); }

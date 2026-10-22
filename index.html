@@ -28,7 +28,7 @@
 <meta name="twitter:description" content="수량만 넣으면, 내 자산의 내일이 보여요. 평가액, 본전·목표까지의 길과 확률을 보여 주는 아이폰 앱.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"MobileApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/","description":"보유 주식 수량만 넣으면 원화 평가액, 본전·목표까지의 길, 그 길에 닿을 확률을 보여 주는 자산 관찰 앱. 종목 추천·투자 자문이 아닙니다.","applicationCategory":"FinanceApplication","operatingSystem":"iOS","inLanguage":"ko"}</script>
-<link rel="stylesheet" href="entry.css?v=20261020a">
+<link rel="stylesheet" href="entry.css?v=20261022a">
 </head>
 <body>
 <header class="top wrap">
@@ -141,6 +141,25 @@
     </div>
   </section>
 
+  <!-- 3-2. 직접 해보기: 내 몫 실적 강 (앱 EarningsRiver.swift 와 같은 그림, 계산은 tools/earn_calc.mjs) -->
+  <section class="wrap try" id="tryEarn">
+    <div class="try-text">
+      <h2>내 몫 실적</h2>
+      <p class="muted">종목과 수량을 넣으면, 회사가 이번 분기 번 돈 중 내 몫이 강으로 흘러요.</p>
+      <form class="earn-in" id="earnForm" autocomplete="off">
+        <label><span class="small muted">종목</span><input id="earnSym" list="earnSyms" value="DRNK" aria-label="종목 기호" spellcheck="false"></label>
+        <label><span class="small muted">수량</span><input id="earnQty" type="number" inputmode="decimal" min="0" step="any" value="3" aria-label="보유 수량"></label>
+        <datalist id="earnSyms"></datalist>
+      </form>
+      <p class="small muted" id="earnMsg">DRNK 는 가상 종목 견본이에요. 미국 종목은 신고서 숫자로.</p>
+    </div>
+    <div class="iphone">
+      <div class="scr earn-scr">
+        <svg class="earn-river" id="earnRiver" viewBox="0 0 360 680" role="img" aria-label="내 몫 실적 강 그림"></svg>
+      </div>
+    </div>
+  </section>
+
   <section class="wrap price" id="price">
     <h2>처음 7일 전부 무료</h2>
     <p class="muted">그 뒤 구독은 선택 · 안 해도 계속 써요</p>
@@ -182,6 +201,6 @@
   <span>© naeilo</span>
 </footer>
 
-<script src="entry.js?v=20261019a"></script>
+<script src="entry.js?v=20261022a"></script>
 </body>
 </html>

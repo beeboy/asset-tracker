@@ -96,3 +96,4 @@
 - `Views/EarningsRiver.swift`: EarningsFeed(Market.refresh 에서 같이 받음), 목록 막대 EarnBars, 첫 안내 EarnTip(AppStorage earn.tipClosed), 강 팝업 EarningsRiverSheet.
 - HoldingsView 행: 왼쪽 로고·이름·화살표 = 상세, 가운데 평가액·막대 = 강 팝업. 밀어 지우기·contextMenu 는 행 전체에 그대로.
 - 확인한 것: 명령줄 빌드 성공, 강 그림(흑자·적자·대기, 밝게·어둡게)을 ImageRenderer 로 뽑아 봄. 못 한 것: 시뮬레이터에서 목록 누르기·밀어 지우기 손 검사(패널 권한 대기), 시안 판16 원본과 좌표 대조(맥에 파일 없음), 새 문구 영어 번역(Localizable 추출 안 함), 안드로이드.
+- 웹 입구 `#tryEarn`(index.html·entry.js·entry.css, 2026-10-22): 종목+수량 → 강 SVG(EarningsRiver.swift 판16 좌표·색·동작). 계산은 `tools/earn_calc.mjs` 를 동적 import(같은 함수), 원화는 `data/prices/KRW_X.json` 끝값, 자료 없으면 강 없이 안내. 정한 것: 전망 해보기 아래 별도 구역으로 둠, 화면에 들어올 때 한 번 흐름. server.py 는 web/ 만 내보내서 확인은 루트 `python3 -m http.server` 로 함. 남은 차이: 세리프 한글 글꼴은 브라우저 대체(AppleMyungjo 등), 물안개 흐림 정도 근사.
