@@ -1,4 +1,5 @@
 # 허용 라이브러리: Compose, Glance, kotlinx.serialization, Play Billing, WorkManager (그 밖은 넣지 않는다)
+# 시험 전용(앱에 안 들어감): Roborazzi·Robolectric — 에뮬레이터 없이 화면 그림을 찍는다
 [versions]
 agp = "9.4.1"
 kotlin = "2.2.10"
@@ -8,6 +9,8 @@ serialization = "1.6.3"
 glance = "1.1.1"
 billing = "7.1.1"
 work = "2.10.0"
+roborazzi = "1.77.0"
+robolectric = "4.17"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -18,6 +21,10 @@ serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serializ
 glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -25,3 +32,4 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }

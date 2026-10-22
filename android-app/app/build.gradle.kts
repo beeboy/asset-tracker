@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -31,6 +32,8 @@ android {
     }
     kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
     buildFeatures { compose = true; buildConfig = false }
+    // 화면 그림 시험(Roborazzi)이 앱 자원을 읽게
+    testOptions { unitTests.isIncludeAndroidResources = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 // AGP 9 새 DSL 로 자료 폴더를 넘긴다 (옛 sourceSets 접근자는 형 변환에서 깨진다)
@@ -77,5 +80,11 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.serialization.json)
     implementation(libs.billing)
-    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit"))   // JUnit4 (Robolectric 과 같은 틀)
+    // 화면 그림 시험: ./gradlew recordRoborazziDebug 로 찍고 verifyRoborazziDebug 로 견준다
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.robolectric)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
