@@ -4,7 +4,7 @@ import androidx.compose.ui.unit.isSpecified
 import com.naeilo.app.core.tr
 import android.annotation.SuppressLint
 import android.content.Context
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -50,6 +50,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -99,6 +103,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.naeilo.app.R
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 import kotlin.math.max
 
@@ -314,12 +319,14 @@ fun Sheet(show: Boolean, onDismiss: () -> Unit, medium: Boolean = false, content
     Dialog(onDismiss, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val y = remember { Animatable(1f) }
         LaunchedEffect(Unit) { y.animateTo(0f, spring(dampingRatio = 1f, stiffness = stiffness(0.5f))) }
+        // 뒤로 쓸기·바깥 누르기: 판이 손가락을 따라 아래로 내려가고 다 내려가면 닫힌다 (ios: .sheet 끌어내리기)
+        val swipe = rememberBackSwipe(true, onDismiss)
         // 키보드가 뜨면 판을 키보드 위로 올린다 (어두운 바탕은 그대로 전체, ime 를 먼저 써서 안쪽 safeDrawing 과 겹치지 않음)
-        Box(Modifier.fillMaxSize().background(Color(0x66000000)).clickable(remember { MutableInteractionSource() }, indication = null, onClick = onDismiss).windowInsetsPadding(WindowInsets.ime), contentAlignment = Alignment.BottomCenter) {
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - swipe.p.value }.background(Color(0x66000000)).clickable(remember { MutableInteractionSource() }, indication = null, onClick = swipe.pop).windowInsetsPadding(WindowInsets.ime), contentAlignment = Alignment.BottomCenter) {
             Column(
                 Modifier.fillMaxWidth()
                     .then(if (medium) Modifier.fillMaxSize(0.5f) else Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(top = 10.dp).fillMaxSize())
-                    .graphicsLayer { translationY = y.value * size.height }
+                    .graphicsLayer { translationY = maxOf(y.value, swipe.p.value) * size.height }
                     .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
                     .background(Theme.bg)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {},
@@ -398,26 +405,61 @@ class NavBack(val back: String?, val pop: () -> Unit)
 val LocalNavBack = androidx.compose.runtime.staticCompositionLocalOf<NavBack?> { null }
 
 /**
+ * 뒤로 쓸기 (예측 뒤로 가기). p = 0 제자리 … 1 다 빠짐. 쓰는 동안 손가락을 따라가고, 놓으면 끝까지 간 뒤 onBack, 되돌리면 제자리.
+ * pop = 버튼으로 뒤로 갈 때도 같은 움직임으로 빠진다. ios: NavigationStack 가장자리 스와이프 백 · .sheet 끌어내리기
+ */
+class BackSwipe(val p: Animatable<Float, *>, val pop: () -> Unit)
+
+@Composable
+fun rememberBackSwipe(enabled: Boolean, onBack: () -> Unit): BackSwipe {
+    val reduce by rememberUpdatedState(LocalReduceMotion.current)
+    val back by rememberUpdatedState(onBack)
+    val p = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val busy = remember { booleanArrayOf(false) }   // 빠지는 중에 한 번 더 눌러도 두 칸 뒤로 가지 않게
+    suspend fun finish() {
+        if (busy[0]) return
+        busy[0] = true
+        try { if (!reduce) p.animateTo(1f, tween(220)); back(); p.snapTo(0f) } finally { busy[0] = false }
+    }
+    PredictiveBackHandler(enabled) { events ->
+        try { events.collect { if (!busy[0]) p.snapTo(it.progress) }; finish() }
+        catch (e: CancellationException) { scope.launch { p.animateTo(0f, tween(200)) }; throw e }
+    }
+    return remember { BackSwipe(p) { scope.launch { finish() } } }
+}
+
+/**
  * NavigationStack(path:) 자리. 첫 화면은 늘 그려 둔 채(스크롤 자리 유지) 위에 맨 위 화면만 덮는다.
- * 새 화면은 오른쪽에서 밀려 들어온다 (0.35초). 뒤로 가기(제스처·버튼)는 맨 위 하나를 뺀다.
+ * 새 화면은 오른쪽에서 밀려 들어온다 (0.35초). 뒤로 가기(제스처·버튼)는 맨 위 하나를 뺀다:
+ * 아이폰처럼 맨 위 화면이 오른쪽으로 밀려나고 아래 화면이 왼쪽에서 조금 따라 들어오며 드러난다.
  */
 @Composable
 fun <T> NavStack(path: List<T>, onPath: (List<T>) -> Unit, root: @Composable () -> Unit, page: @Composable (T) -> NavPage) {
     val reduce = LocalReduceMotion.current
-    BackHandler(enabled = path.isNotEmpty()) { onPath(path.dropLast(1)) }
+    val swipe = rememberBackSwipe(path.isNotEmpty()) { onPath(path.dropLast(1)) }
+    val sliding by remember { derivedStateOf { swipe.p.value > 0f } }   // 쓰는 동안만 아래 화면을 그린다
+    var seen by remember { mutableIntStateOf(path.size) }   // 직전 쌓임 수: 늘었을 때만 새 화면이 밀려 들어온다 (뒤로 가서 드러난 화면은 그대로)
+    val pushed = path.size > seen
+    SideEffect { seen = path.size }
+    val under = -0.3f   // 아래 화면이 숨어 있는 자리 (화면 폭 비율, ios 와 같은 시차)
     Layout(content = {
-        Box(Modifier.fillMaxSize()) { root() }
-        if (path.isNotEmpty()) {
-            val top = path.last()
-            key(path.size, top) {
-                val x = remember { Animatable(if (reduce) 0f else 1f) }
-                LaunchedEffect(Unit) { x.animateTo(0f, tween(350, easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.9f, 0.3f, 1f))) }
-                val p = page(top)
-                Column(Modifier.fillMaxSize().graphicsLayer { translationX = x.value * size.width }.background(Theme.bg)
+        Box(Modifier.fillMaxSize().graphicsLayer { if (path.size == 1) translationX = under * (1f - swipe.p.value) * size.width }) { root() }
+        val from = if (sliding && path.size >= 2) path.size - 2 else path.size - 1
+        for (i in maxOf(from, 0) until path.size) {
+            val item = path[i]
+            val isTop = i == path.size - 1
+            key(i, item) {
+                val x = remember { Animatable(if (!reduce && isTop && pushed) 1f else 0f) }
+                LaunchedEffect(Unit) { if (x.value > 0f) x.animateTo(0f, tween(350, easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.9f, 0.3f, 1f))) }
+                val p = page(item)
+                Column(Modifier.fillMaxSize().graphicsLayer {
+                    translationX = if (isTop) maxOf(x.value, swipe.p.value) * size.width else under * (1f - swipe.p.value) * size.width
+                }.background(Theme.bg)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {}) {
-                    val back = if (path.size >= 2) page(path[path.size - 2]).title else null   // 뒤로 글자 = 앞 화면 제목 (없으면 뒤로)
-                    if (p.bar) NavBar(p.title, back = back) { onPath(path.dropLast(1)) }
-                    Box(Modifier.weight(1f)) { androidx.compose.runtime.CompositionLocalProvider(LocalNavBack provides NavBack(back) { onPath(path.dropLast(1)) }) { p.content() } }
+                    val back = if (i >= 1) page(path[i - 1]).title else null   // 뒤로 글자 = 앞 화면 제목 (없으면 뒤로)
+                    if (p.bar) NavBar(p.title, back = back, onBack = swipe.pop)
+                    Box(Modifier.weight(1f)) { androidx.compose.runtime.CompositionLocalProvider(LocalNavBack provides NavBack(back, swipe.pop)) { p.content() } }
                 }
             }
         }

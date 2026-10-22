@@ -122,6 +122,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `navigationTitle + ToolbarItem(.topBarTrailing)` | `SheetBar` | 시트 맨 위 줄 |
 | `.fullScreenCover` | `WaveCover` |  |
 | `NavigationStack 이동 막대(inline)` | `NavBar` |  |
+| `NavigationStack 스와이프 백 · .sheet 끌어내리기` | `rememberBackSwipe` | NavStack·Sheet 가 쓴다 |
 | `.refreshable` | `Refreshable` |  |
 | `.contentTransition(.numericText) (Charts.swift rollText)` | `RollText` |  |
 | `Theme.swift 화면 바탕(242)` | `Screen` |  |
