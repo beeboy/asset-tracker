@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.shape.CircleShape
+import com.naeilo.app.data.EarningsFeed
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -119,6 +121,7 @@ fun HoldingsView(m: AppModel) {
     var said by remember { mutableStateOf<String?>(null) }          // ios: Views/HoldingsView.swift:9 지운 뒤 인물의 한 줄 (평정 지수)
     var swiped by remember { mutableStateOf<String?>(null) }        // ios: Views/HoldingsView.swift:10 왼쪽으로 밀어 지우기 버튼이 보이는 종목
     var askDel by remember { mutableStateOf<Symbol?>(null) }        // ios: Views/HoldingsView.swift:11 지울지 한 번 묻는 종목
+    var river by remember { mutableStateOf<EarnTarget?>(null) }     // ios: Views/HoldingsView.swift:12 내 몫 실적 강 팝업 (목록 오른쪽 막대를 누르면)
     var inUsd by rememberPrefBool("holdUsd", false)   // ios: Views/HoldingsView.swift:12 목록 금액: 미국 종목을 달러로 볼지
     val dts = LocalTextScale.current   // ios: Views/HoldingsView.swift:13
     val arrive by rememberPrefString("town.arrive", "")   // ios: Views/HoldingsView.swift:14
@@ -163,9 +166,9 @@ fun HoldingsView(m: AppModel) {
                                 }
                             }
                             // ios: Views/HoldingsView.swift:48
-                            if (us.isNotEmpty()) Group(m, "미국", us, inUsd, dts.isAccessibilitySize, swiped, { swiped = it }) { askDel = it }
+                            if (us.isNotEmpty()) { EarnTip(); Group(m, "미국", us, inUsd, dts.isAccessibilitySize, swiped, { swiped = it }, { river = it }) { askDel = it } }   // ios: Views/HoldingsView.swift:49
                             // ios: Views/HoldingsView.swift:49
-                            if (kr.isNotEmpty()) Group(m, "국내", kr, inUsd, dts.isAccessibilitySize, swiped, { swiped = it }) { askDel = it }
+                            if (kr.isNotEmpty()) Group(m, "국내", kr, inUsd, dts.isAccessibilitySize, swiped, { swiped = it }, { river = it }) { askDel = it }
                             // ios: Views/HoldingsView.swift:50,51,52,53,54,55
                             Row(Modifier.fillMaxWidth().plainClickable { m.holdPath = m.holdPath + "add" }.defaultMinSize(minHeight = 48.dp)
                                 .border(2.dp, Theme.teal, RoundedCornerShape(12.dp)), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
@@ -188,6 +191,7 @@ fun HoldingsView(m: AppModel) {
     // ios: Views/HoldingsView.swift:70,71,72
     IosAlert(said != null, "내 투자 습관", said, listOf(DialogAction("확인", onClick = {}))) { said = null }
     // ios: Views/HoldingsView.swift:74,75,76,77,79,80,82,83 (76 은 검사 예외: 같은 제목)
+    EarningsRiverSheet(river) { river = null }   // ios: Views/HoldingsView.swift:68
     ConfirmSheet(askDel != null, "${askDel?.name ?: ""} 종목을 지울까요?", "목록과 평가액에서 빠져요. 다시 넣으려면 종목 추가에서 넣으면 돼요.",
         listOf(DialogAction("지우기", destructive = true, onClick = {
             val sym = askDel ?: return@DialogAction
@@ -302,7 +306,7 @@ private fun amountText(inUsd: Boolean, rs: List<AppModel.Row>): String {
 
 // ios: Views/HoldingsView.swift:165
 @Composable
-private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boolean, big: Boolean, swiped: String?, setSwiped: (String?) -> Unit, askDel: (Symbol) -> Unit) {
+private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boolean, big: Boolean, swiped: String?, setSwiped: (String?) -> Unit, openRiver: (EarnTarget) -> Unit, askDel: (Symbol) -> Unit) {
     // ios: Views/HoldingsView.swift:166,206,207,208
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         // ios: Views/HoldingsView.swift:167,169,173
@@ -351,7 +355,7 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boo
                         }
                         .plainCombinedClickable(onLongClick = { menu = true }) { if (swiped != null) setSwiped(null) else m.holdPath = m.holdPath + r.sym }
                         .semantics { customActions = listOf(CustomAccessibilityAction(tr("지우기")) { askDel(r.sym); true }) },
-                ) { HoldRow(r, inUsd, big) }
+                ) { HoldRow(m, r, inUsd, big, openRiver) }
                 // ios: Views/HoldingsView.swift:200,201 (길게 누르면 메뉴)
                 ContextMenu(menu, listOf(MenuItem("이 종목 지우기", icon = "trash", destructive = true, onClick = { askDel(r.sym) }))) { menu = false }
             }
@@ -360,11 +364,15 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boo
 }
 
 
-// 행: 로고 · "이름 수량" · "지금 가격 · 오늘 %" / 평가액 · 산 가격 대비 %
-// ios: Views/HoldingsView.swift:212
+// 행: 로고 · "이름 수량" · "지금 가격 · 오늘 %" / 평가액 · 산 가격 대비 % · 내 몫 실적 막대 두 개
+// 왼쪽(로고·이름)은 상세로, 오른쪽(평가액·막대)은 내 몫 실적 강 팝업으로 (자료가 없으면 상세로)
+// ios: Views/HoldingsView.swift:215
 @Composable
-private fun HoldRow(r: AppModel.Row, inUsd: Boolean, big: Boolean) {
-    val chg = if (r.cost > 0) r.value / r.cost - 1 else 0.0   // ios: Views/HoldingsView.swift:213
+private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, big: Boolean, openRiver: (EarnTarget) -> Unit) {
+    val chg = if (r.cost > 0) r.value / r.cost - 1 else 0.0   // ios: Views/HoldingsView.swift:216
+    val es = EarningsFeed.shared.summary(r.sym, r.h.qty)   // ios: Views/HoldingsView.swift:217
+    // ios: Views/HoldingsView.swift:218,219 이름 옆 금색 점 (오늘 실적)
+    @Composable fun Dot() { if (es?.fresh == true) Box(Modifier.size(6.dp).background(EarnColor.gold, CircleShape).semantics { contentDescription = tr("오늘 실적") }) }
     val day = r.sym.quote.change   // ios: Views/HoldingsView.swift:214
     // ios: Views/HoldingsView.swift:215
     @Composable fun Name(mod: Modifier) = Row(mod, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -379,12 +387,13 @@ private fun HoldRow(r: AppModel.Row, inUsd: Boolean, big: Boolean) {
                 // ios: Views/HoldingsView.swift:222,223,224
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     T(r.sym.name, Modifier.alignByBaseline(), style = appFont(15f, FontWeight.Bold), maxLines = 1)
+                    if (es?.fresh == true) Box(Modifier.align(Alignment.CenterVertically)) { Dot() }
                     Box(Modifier.alignByBaseline()) { Qty() }
                 }
             }, second = {
                 // ios: Views/HoldingsView.swift:226,227,228
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    T(r.sym.name, style = appFont(15f, FontWeight.Bold), maxLines = 1)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) { T(r.sym.name, style = appFont(15f, FontWeight.Bold), maxLines = 1); Dot() }
                     Qty()
                 }
             })
@@ -400,16 +409,22 @@ private fun HoldRow(r: AppModel.Row, inUsd: Boolean, big: Boolean) {
         T(amountText(inUsd, listOf(r)), style = appFont(15f, FontWeight.Bold).tnum(), maxLines = 1, roll = r.value)   // ios: Views/HoldingsView.swift:239
         T(AppModel.sgn(chg), style = appFont(13f, FontWeight.Bold), color = Theme.change(chg))   // ios: Views/HoldingsView.swift:240
     }
+    // 실적 자료가 있으면 강 팝업, 없으면(ETF·국내·못 받음) 줄표만 두고 줄 전체처럼 상세로
+    // ios: Views/HoldingsView.swift:250,251,252,253,254
+    @Composable fun Earn(mod: Modifier) = Row(
+        mod.defaultMinSize(minHeight = 44.dp).then(if (es != null) Modifier.plainClickable { openRiver(EarnTarget(r.sym, r.h.qty)) } else Modifier),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+    ) { Amount(Modifier.widthIn(min = 72.dp)); EarnBars(es) }
     // ios: Views/HoldingsView.swift:242,254,255
     Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
         // ios: Views/HoldingsView.swift:243,244
         if (big) {
-            Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Name(Modifier); Amount(Modifier) }
+            Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Name(Modifier); Earn(Modifier) }
         } else {   // ios: Views/HoldingsView.swift:245
             // ios: Views/HoldingsView.swift:246,247,248
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Name(Modifier.weight(1f, fill = true).padding(end = 4.dp))
-                Amount(Modifier.widthIn(min = 72.dp))   // ios: Views/HoldingsView.swift:249
+                Earn(Modifier)   // ios: Views/HoldingsView.swift:250
                 Sym("chevron.right", 13f, Theme.muted, scaled = false)   // ios: Views/HoldingsView.swift:250
             }
         }

@@ -690,6 +690,26 @@ object MarketEvents {
     )
     class Hit(val id: String, val target: String, val day: String, val kind: String, val sub: String, val held: Boolean)   // ios: Data/Remind.swift:528
 
+    /** 손 날짜에 실적 자료를 덮은 일정. 미국 종목 e_ 만 (DRNK·국내는 손 값 그대로) */
+    val live: List<Rule> get() = rules.map(::earnRule)   // ios: Data/Remind.swift:531
+    /** 실적 자료(받은 것·앱 안 견본)가 있으면: 기다리는 중이면 그 날, 오늘 발표면 오늘,
+     *  아니면 다음 분기 = 작년 같은 분기 발표일 + 364일 (같은 요일), 문구에 '무렵' */
+    // ios: Data/Remind.swift:534
+    fun earnRule(r: Rule): Rule {
+        if (!r.id.startsWith("e_") || r.target == "DRNK") return r
+        val sym = Sample.symbol(r.target)?.takeIf { it.currency == Currency.usd } ?: return r
+        val k = EarningsFeed.key(sym) ?: return r
+        val f = EarningsFeed.shared.file(k) ?: return r
+        val last = f.quarters.lastOrNull() ?: return r
+        f.pending?.announced?.let { return Rule(r.id, r.target, r.kind, it, "none") }
+        if (last.announced >= Day.today) return Rule(r.id, r.target, r.kind, last.announced, "none")
+        // 다음 분기의 작년 짝: 끝 날짜가 (마지막 분기 끝 + 약 91일) 보다 365±25일 앞
+        val nextEnd = Earnings.dayNum(last.end) + 91
+        val ly = f.quarters.firstOrNull { kotlin.math.abs(nextEnd - Earnings.dayNum(it.end) - 365) <= 25 } ?: return r
+        val d = Day.date(ly.announced) ?: return r
+        return Rule(r.id, r.target, "${r.kind} 무렵", Day.str(d.plusSeconds(364L * 86400)), "none")
+    }
+
     /** from 날짜부터 days 일 안의 날짜 (from 포함) */
     // ios: Data/Remind.swift:531
     fun dates(r: Rule, from: String, until: String): List<String> {
@@ -725,7 +745,7 @@ object MarketEvents {
         val usd = held.any { Sample.symbol(it)?.currency == Currency.usd }   // ios: Data/Remind.swift:561
         val out = ArrayList<Hit>()   // ios: Data/Remind.swift:562
         // ios: Data/Remind.swift:563
-        for (r in rules) {
+        for (r in live) {
             val mine = held.contains(r.target) || (r.target == "FX" && usd)   // ios: Data/Remind.swift:564
             if (!(r.target == "ALL" || r.target == "FX" || mine)) continue   // ios: Data/Remind.swift:565
             val sub = if (r.target == "ALL") "전 종목" else if (r.target == "FX") "환율" else (Sample.symbol(r.target)?.short ?: r.target)   // ios: Data/Remind.swift:566

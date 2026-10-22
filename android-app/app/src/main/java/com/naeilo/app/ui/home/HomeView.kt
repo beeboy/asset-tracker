@@ -155,6 +155,7 @@ fun HomeView(m: AppModel) {
                     ShelterBox(m) { inbox = true }   // ios: Views/HomeView.swift:16
                     ParallelHomeCard(m)   // ios: Views/HomeView.swift:17
                     Reminder { inbox = true }   // ios: Views/HomeView.swift:18
+                    EarnHomeCard(m)   // ios: Views/HomeView.swift:19
                     // 아래: 예전 종목 탭 소식판에서 옮긴 둘 (2026-10-21), 그 밑에 위젯·설정 팝업
                     HoldingsNews(m, moversOnly = true)   // ios: Views/HomeView.swift:20
                     TownButton { TownView(m, scroll = it) }   // ios: Views/HomeView.swift:21
@@ -381,6 +382,35 @@ private fun FitTwoLines(text: String, style: androidx.compose.ui.text.TextStyle,
         }
         T(text, style = style.copy(fontSize = style.fontSize * maxOf(k, minScale), textAlign = TextAlign.End), color = color, maxLines = lines)
     }
+}
+
+/** 실적 나온 날 (숫자 기다리는 중이거나 오늘 발표): 보유 종목마다 "{회사} 7~9월 실적" + 작은 막대 둘 + 작년 대비 %.
+ *  금액·평가하는 말 없음. 누르면 강 팝업. 나온 종목이 없으면 안 보인다 */
+// ios: Views/HomeView.swift:254
+@Composable
+private fun EarnHomeCard(m: AppModel) {
+    var river by remember { mutableStateOf<com.naeilo.app.ui.hold.EarnTarget?>(null) }   // ios: Views/HomeView.swift:256
+    // ios: Views/HomeView.swift:259,260,261,262
+    val items = m.rows.mapNotNull { r -> com.naeilo.app.data.EarningsFeed.shared.summary(r.sym, r.h.qty)?.takeIf { it.fresh }?.let { r to it } }
+    if (items.isEmpty()) return
+    // ios: Views/HomeView.swift:264,284,285
+    Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp))) {
+        items.forEachIndexed { i, (r, s) ->
+            // ios: Views/HomeView.swift:266,267,276
+            Row(
+                Modifier.fillMaxWidth().plainClickable { river = com.naeilo.app.ui.hold.EarnTarget(r.sym, r.h.qty) }
+                    .defaultMinSize(minHeight = 48.dp).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                T("${r.sym.name} ${s.months}월 실적", Modifier.weight(1f), style = appFont(14f, FontWeight.Bold), maxLines = 1)   // ios: Views/HomeView.swift:268,269
+                // ios: Views/HomeView.swift:270,271,272
+                s.netYoY?.let { y -> T(if (y.startsWith("+") || y.startsWith("−")) "작년보다 $y" else y, style = appFont(13f).copy(fontFeatureSettings = "tnum"), color = Theme.sub, maxLines = 1) }
+                com.naeilo.app.ui.hold.EarnBars(s)   // ios: Views/HomeView.swift:274
+            }
+            if (i < items.size - 1) HDivider(Theme.line, Modifier.padding(start = 14.dp))   // ios: Views/HomeView.swift:281
+        }
+    }
+    com.naeilo.app.ui.hold.EarningsRiverSheet(river) { river = null }   // ios: Views/HomeView.swift:286
 }
 
 /** 노란 띠: 3일 안의 일정 (내 종목 먼저). 없으면 인터미션 이번 할 일. 누르면 소식함 */

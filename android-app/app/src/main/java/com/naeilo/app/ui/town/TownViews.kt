@@ -740,7 +740,7 @@ object TownLook {
     fun earnDay(res: Resident, ahead: Int = 0): String? {
         if (res.id == mayorID || res.id == warshID || res.old != null) return null   // ios: Views/HoldingsView.swift:1359
         val d = Day.str(Instant.now().plusSeconds(ahead.toLong() * 86400))   // ios: Views/HoldingsView.swift:1360
-        return MarketEvents.rules.firstOrNull { r -> r.id.startsWith("e_") && res.rows.any { it.id == r.target } && MarketEvents.dates(r, from = d, until = d).isNotEmpty() }?.kind   // ios: Views/HoldingsView.swift:1361
+        return MarketEvents.live.firstOrNull { r -> r.id.startsWith("e_") && res.rows.any { it.id == r.target } && MarketEvents.dates(r, from = d, until = d).isNotEmpty() }?.kind   // ios: Views/HoldingsView.swift:1361
     }
     /** 오늘 모임의 주인공 (동네가 정해 둔다) */
     data class Host(val id: String, val name: String)

@@ -259,12 +259,14 @@ class Market {   // ios: Data/Market.swift:13,14
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
         val customDone = async { CustomSymbols.shared.refresh(held = held, force = force) }   // ios: Data/Market.swift:188
         val extraDone = async { ExtraStats.shared.refresh(Parallel.wantKeys) }   // ios: Data/Market.swift:189
+        val earnDone = async { com.naeilo.app.data.EarningsFeed.shared.refresh(held = held, force = force) }   // ios: Data/Market.swift:191 내 몫 실적 (보유 미국 종목, 하루 한 번)
         siteNew.await()?.let { site = it }   // ios: Data/Market.swift:190
         marNew.await()?.let { mar = it }   // ios: Data/Market.swift:191
         pricesNew.await()?.let { p -> prices = TossHistory.merged(p, tossHist) }   // ios: Data/Market.swift:192
         statsNew.await()?.let { stats = it }   // ios: Data/Market.swift:193
         customDone.await()   // ios: Data/Market.swift:194
         extraDone.await()   // ios: Data/Market.swift:195
+        earnDone.await()
         tossWait.await()   // ios: Data/Market.swift:196
         alpacaWait.await()   // ios: Data/Market.swift:197
         lbWait.await()   // ios: Data/Market.swift:198

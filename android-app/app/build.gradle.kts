@@ -39,7 +39,7 @@ android {
 
 // iOS 원본 자료 중 앱이 읽는 것만 빌드 때 복사한다 (저장소에 같은 파일을 두 벌 두지 않는다)
 val copyIosAssets by tasks.registering(Copy::class) {
-    from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json", "lines_ko.json", "lines_app_en.json", "story_ko.json", "story_en.json") }
+    from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json", "lines_ko.json", "lines_app_en.json", "story_ko.json", "story_en.json", "earnings_seed.json") }
     from("../../ios-app/WidgetShared") { include("lines_en.json") }
     // 아이폰 번들과 같은 시세 자료 (project.yml: data/quotes.json·stats.json·prices). 앱이 아직 받지 못했을 때만 쓴다
     from("../../data") { include("quotes.json", "stats.json") }
