@@ -33,4 +33,11 @@ class EarningsRiverShot {
         rule.setContent { Box(Modifier.background(Color.White)) { EarningsRiver("DRNK", 10.0, s, frozen = true) } }
         rule.onRoot().captureRoboImage()
     }
+
+    // roborazzi-compose: 규칙 없이 그릴 것만 넘겨 찍는다
+    @Test fun drnkCompose() {
+        ApplicationProvider.getApplicationContext<android.content.Context>().let { Store.init(it); Defaults.init(it) }
+        val s = Earnings.summary(Earnings.drnk, 10.0, 1400.0)!!
+        captureRoboImage { Box(Modifier.background(Color.White)) { EarningsRiver("DRNK", 10.0, s, frozen = true) } }
+    }
 }

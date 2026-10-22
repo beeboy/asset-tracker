@@ -52,7 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.imageResource
-import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -100,7 +100,7 @@ fun Sparkline(
     val up = (points.lastOrNull() ?: 0.0) >= (points.firstOrNull() ?: 0.0)   // ios: Views/Charts.swift:24
     val c = Theme.change(if (up) 1.0 else -1.0)   // ios: Views/Charts.swift:42,44,48 (오르면 빨강 1, 내리면 파랑 -1)
     // ios: Views/Charts.swift:15,69
-    BoxWithConstraints(modifier.semantics { invisibleToUser() }) {
+    BoxWithConstraints(modifier.semantics { hideFromAccessibility() }) {
         val W = with(density) { maxWidth.toPx() }; val H = with(density) { maxHeight.toPx() }
         val x = { i: Int -> i.toFloat() / n * W }   // ios: Views/Charts.swift:20
         val y = { v: Double -> (1 - ((v - lo) / max(1e-9, hi - lo)).toFloat()) * (H - with(density) { 2.dp.toPx() } - bot) + with(density) { 2.dp.toPx() } }   // ios: Views/Charts.swift:23
@@ -220,7 +220,7 @@ fun LogoTile(
     val p = Sample.profiles[symbol]   // ios: Views/Charts.swift:91
     val ctx = LocalContext.current
     // ios: Views/Charts.swift:92,93,103,104
-    Box(Modifier.size(size).background(hex(p?.color ?: 0x5B6670), RoundedCornerShape(size * 0.28f)).semantics { invisibleToUser() }, contentAlignment = Alignment.Center) {
+    Box(Modifier.size(size).background(hex(p?.color ?: 0x5B6670), RoundedCornerShape(size * 0.28f)).semantics { hideFromAccessibility() }, contentAlignment = Alignment.Center) {
         val img = p?.logoImage
         // ios: Views/Charts.swift:94,95
         if (img != null) {

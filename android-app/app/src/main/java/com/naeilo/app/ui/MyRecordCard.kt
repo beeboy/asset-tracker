@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -108,7 +108,7 @@ private fun Legend(t: String, c: Color, dash: Boolean) {
 private fun RecordLines(v: List<Double>, c: List<Double>, modifier: Modifier) {
     val muted = Theme.muted; val teal = Theme.teal
     // ios: Views/MyRecordCard.swift:67,79
-    Canvas(modifier.semantics { invisibleToUser() }) {
+    Canvas(modifier.semantics { hideFromAccessibility() }) {
         val all = v + c; val lo = all.minOrNull() ?: 0.0; val hi = all.maxOrNull() ?: 1.0   // ios: Views/MyRecordCard.swift:68
         val n = max(1, v.size - 1).toFloat()   // ios: Views/MyRecordCard.swift:69
         // ios: Views/MyRecordCard.swift:70,71

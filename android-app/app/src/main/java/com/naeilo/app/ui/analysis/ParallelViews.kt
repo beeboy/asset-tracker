@@ -47,7 +47,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -197,7 +197,7 @@ private fun Verdict(m: AppModel, race: PRace, r: List<DoubleArray>, v: PVerdict,
         if (m.isGoal && goalPcts.size == 1 && p != null) {
             T("셋 다 목표 $p", style = appFont(13f, FontWeight.Bold), color = Color.White)   // ios: Views/ParallelView.swift:76
             // ios: Views/ParallelView.swift:77,78,79,80,83
-            Box(Modifier.fillMaxWidth().height(6.dp).semantics { invisibleToUser() }.background(Color.White.copy(alpha = 0.2f), CircleShape)) {
+            Box(Modifier.fillMaxWidth().height(6.dp).semantics { hideFromAccessibility() }.background(Color.White.copy(alpha = 0.2f), CircleShape)) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(min(1.0, mid / max(1.0, m.gK * 1e4)).toFloat()).background(Color.White, CircleShape))
             }
         }
@@ -268,7 +268,7 @@ private fun Chart(m: AppModel, race: PRace, r: List<DoubleArray>, w: PWorld, pro
         // ios: Views/ParallelView.swift:145
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             // ios: Views/ParallelView.swift:146,147,163,164
-            BoxWithConstraints(Modifier.weight(1f).height(160.dp).semantics { invisibleToUser() }) {
+            BoxWithConstraints(Modifier.weight(1f).height(160.dp).semantics { hideFromAccessibility() }) {
                 val W = constraints.maxWidth.toFloat()
                 // 진행(prog)이 매 프레임 바뀌므로 길은 그릴 때 만든다 (점 수백 개, 가볍다)
                 Canvas(Modifier.fillMaxSize()) {
