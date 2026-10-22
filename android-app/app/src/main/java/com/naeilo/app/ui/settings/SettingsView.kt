@@ -59,7 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -389,7 +389,7 @@ private fun ApiCard(m: AppModel) {
 // ios: Views/SettingsView.swift:240,241,242,243,244
 @Composable
 private fun MiniNode(icon: String, on: Boolean) {
-    Box(Modifier.size(30.dp, 30.dp).background(if (on) Theme.teal else Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).semantics { invisibleToUser() }, contentAlignment = Alignment.Center) {
+    Box(Modifier.size(30.dp, 30.dp).background(if (on) Theme.teal else Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).semantics { hideFromAccessibility() }, contentAlignment = Alignment.Center) {
         Sym(icon, 13f, if (on) Color.White else hex(0xC9D0D6), scaled = false)   // .font(.system(size: 13, weight: .semibold))
     }
 }
@@ -399,7 +399,7 @@ private fun MiniNode(icon: String, on: Boolean) {
 @Composable
 private fun MiniLine(on: Boolean) {
     val c = if (on) Theme.teal else Theme.muted
-    Canvas(Modifier.size(12.dp, 2.dp).semantics { invisibleToUser() }) {
+    Canvas(Modifier.size(12.dp, 2.dp).semantics { hideFromAccessibility() }) {
         drawLine(c, Offset(0f, 1.dp.toPx()), Offset(12.dp.toPx(), 1.dp.toPx()), 2.dp.toPx(),
             pathEffect = if (on) null else PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx())))
     }
@@ -850,7 +850,7 @@ private fun TossLinkLine(on: Boolean) {
     // ios: Views/SettingsView.swift:667,674,675,676 시세가 토스에서 내 폰 쪽으로 온다: 1.4초에 22 → 0 을 되풀이
     val flow = if (on && !still) rememberInfiniteTransition(label = "flow").animateFloat(22f, 0f, infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart), label = "x").value else 11f
     // ios: Views/SettingsView.swift:670,682,683
-    Canvas(Modifier.size(30.dp, 52.dp).semantics { invisibleToUser() }) {
+    Canvas(Modifier.size(30.dp, 52.dp).semantics { hideFromAccessibility() }) {
         val mid = size.height / 2
         // ios: Views/SettingsView.swift:671
         if (on) {

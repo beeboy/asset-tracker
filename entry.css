@@ -231,7 +231,8 @@ footer a { color: var(--muted); }
 .earn-scr { --e-water: #3F6F80; --e-water2: #2C5160; --e-strand: #4A5A60; --e-ghost: #5D6965; --e-sprout: #8CC477; --e-gold: #E0B04A; --e-fg: #E4EBE8; --e-muted: #8C9893; --e-screen: #1A2220; --e-onwater: #E4F0F3; background: var(--e-screen); justify-content: center; }
 @media (prefers-color-scheme: light) { .earn-scr { --e-water: #7FA9B8; --e-water2: #A9C7D2; --e-strand: #B9C6CB; --e-ghost: #A9B3B0; --e-sprout: #6FA85A; --e-gold: #C8962E; --e-fg: #1D2624; --e-muted: #6B7773; --e-screen: #FFFFFF; --e-onwater: #F4FAFB; } }
 .earn-river { display: block; width: 100%; height: auto; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
-.earn-river .sf { font-family: ui-serif, "AppleMyungjo", "Nanum Myeongjo", "Noto Serif KR", Georgia, serif; }
+/* 앱처럼 숫자·영문만 세리프, 한글은 본문 고딕 (아이폰 .serif 에 한글 글꼴이 없어 고딕으로 떨어진다) */
+.earn-river .sf { font-family: ui-serif, "New York", Georgia, "Times New Roman", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
 .earn-river text { dominant-baseline: central; }
 .earn-river { touch-action: pan-y; cursor: grab; transition: transform .2s; user-select: none; -webkit-user-select: none; }
 .earn-river:focus-visible { outline: 2px solid var(--e-gold); outline-offset: -2px; }

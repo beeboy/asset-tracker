@@ -19,7 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -63,7 +63,7 @@ fun MotionSprite(friend: String, pose: Pose, height: Dp = 76.dp, modifier: Modif
     if (friend == "me" && me != null) {
         // 내 캐릭터는 동작 그림이 없어 선 모습 하나 (옆을 보는 동작만 뒤집는다)
         // ios: Views/Guide.swift:32,33,34
-        Box(modifier.size(height * 240 / 280, height).semantics { invisibleToUser() }, contentAlignment = Alignment.Center) {
+        Box(modifier.size(height * 240 / 280, height).semantics { hideFromAccessibility() }, contentAlignment = Alignment.Center) {
             MeAvatar(me = me, width = height * 24 / 35, height = height * 34 / 35, modifier = Modifier.graphicsLayer { scaleX = if (pose == Pose.sideL) -1f else 1f; scaleY = 1f })
         }
     } else {   // ios: Views/Guide.swift:35
@@ -73,7 +73,7 @@ fun MotionSprite(friend: String, pose: Pose, height: Dp = 76.dp, modifier: Modif
 // ios: Views/Guide.swift:39,40,41
 @Composable
 private fun Sprite(friend: String, pose: Pose, height: Dp, modifier: Modifier) =
-    PixelN("mo_${friend}_${pose.raw}", width = height * (240.0f / 280.0f), height = height, modifier = modifier.semantics { invisibleToUser() })
+    PixelN("mo_${friend}_${pose.raw}", width = height * (240.0f / 280.0f), height = height, modifier = modifier.semantics { hideFromAccessibility() })
 
 /** 미션 말풍선: 인물 + 이름(+ 동작 설명) + 말 */
 // ios: Views/Guide.swift:46,47,48,49,51

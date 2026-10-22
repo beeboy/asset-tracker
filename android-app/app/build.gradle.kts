@@ -9,11 +9,11 @@ android {
     // 출시판 빌드마다 도는 lint 검사(빌드 시간의 대부분)를 끈다. 필요하면 ./gradlew lint 로 따로 돌린다
     lint { checkReleaseBuilds = false }
     namespace = "com.naeilo.app"
-    compileSdk = 35
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.naeilo.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 1
         versionName = "0.1"
     }
@@ -85,6 +85,7 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
     testImplementation(libs.robolectric)
     debugImplementation(libs.compose.ui.test.manifest)
 }

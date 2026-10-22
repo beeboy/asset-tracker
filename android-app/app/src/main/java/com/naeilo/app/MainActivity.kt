@@ -4,6 +4,7 @@ import com.naeilo.app.data.persists
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import com.naeilo.app.data.Notifier
 import com.naeilo.app.data.Support
@@ -25,6 +26,9 @@ class MainActivity : ComponentActivity() {
         // 앱 언어가 바뀌면(설정 > 앱 > 언어) 아이폰처럼 앱을 새로 띄운다: 언어는 시작할 때 한 번만 읽는다 (AppModel.en)
         if (relaunchIfLanguageChanged()) return
         enableEdgeToEdge()
+        // 첫 화면에서 뒤로 가기: 앱을 끝내지 않고 뒤로 보낸다 (아이폰처럼 다시 열면 보던 화면 그대로, 하얀 시작 화면 없이).
+        // 런처 표시가 별칭(.IconDefault)에 있어 시스템이 이 액티비티를 끝내 버린다. 화면 안 뒤로 가기(NavStack·Sheet)가 나중에 걸려 먼저 받는다
+        onBackPressedDispatcher.addCallback(this) { moveTaskToBack(true) }
         // ios: App.swift:8 알림 허락 창을 띄울 화면·알림 채널 (누름 처리는 App.kt openIntent → openNotification)
         model.let { Notifier.attach(this) }
         // ios: App.swift:12,13
