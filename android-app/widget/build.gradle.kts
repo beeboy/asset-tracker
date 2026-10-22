@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -17,10 +16,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
     buildFeatures { compose = true; buildConfig = false }
-    sourceSets["main"].res.srcDir(layout.buildDirectory.dir("iosRes"))
 }
+// AGP 9 새 DSL 로 자료 폴더를 넘긴다 (옛 sourceSets 접근자는 형 변환에서 깨진다)
+extensions.getByType<com.android.build.api.dsl.LibraryExtension>().sourceSets.getByName("main").res
+    .directories.add(layout.buildDirectory.dir("iosRes").get().asFile.path)
 
 // 아이폰 위젯 그림 중 쓰는 것만 drawable-nodpi 로: 인물 기본·포즈·raise·spread, 쉼터 고양이 (투명·틴트용 _tint 와 CharItem 물건 그림은 안 쓴다)
 val copyWidgetImages by tasks.registering(Copy::class) {

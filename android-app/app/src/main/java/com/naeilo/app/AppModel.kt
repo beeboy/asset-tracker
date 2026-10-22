@@ -24,6 +24,7 @@ import com.naeilo.app.core.Day
 import com.naeilo.app.core.NJson
 import com.naeilo.app.core.Store
 import com.naeilo.app.core.WChar
+import com.naeilo.app.core.tr
 import com.naeilo.app.ui.Palette
 import com.naeilo.app.data.Currency
 import com.naeilo.app.data.DayRec
@@ -469,7 +470,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         val mv = todayMove; val up = mv >= 0   // ios: Data/AppModel.swift:469
         val top = c.filter { (it.second >= 0) == up }.sortedByDescending { abs(it.second) }.take(2).filter { abs(it.second) >= all * 0.3 }   // ios: Data/AppModel.swift:470
         if (top.isEmpty()) return "오늘은 여러 종목이 고르게 움직였어요."   // ios: Data/AppModel.swift:471
-        val names = top.joinToString("와 ") { "${it.first.sym.short}(${sgn(it.first.sym.quote.change)})" }   // ios: Data/AppModel.swift:472
+        val names = top.joinToString(tr("와 ")) { "${it.first.sym.short}(${sgn(it.first.sym.quote.change)})" }   // ios: Data/AppModel.swift:472
         return "오늘 ${if (up) "상승" else "하락"}은 주로 ${names} 때문이에요."   // Data/AppModel.swift:466 (검사 예외: 보간 속 따옴표)
     }
     val routineFact: String get() {   // ios: Data/AppModel.swift:475

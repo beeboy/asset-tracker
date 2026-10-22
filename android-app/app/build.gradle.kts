@@ -1,8 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -30,16 +30,21 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
     buildFeatures { compose = true; buildConfig = false }
+    // 화면 그림 시험(Roborazzi)이 앱 자원을 읽게
+    testOptions { unitTests.isIncludeAndroidResources = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("iosAssets"))
-    sourceSets["main"].res.srcDir(layout.buildDirectory.dir("iosRes"))
+}
+// AGP 9 새 DSL 로 자료 폴더를 넘긴다 (옛 sourceSets 접근자는 형 변환에서 깨진다)
+extensions.getByType<com.android.build.api.dsl.ApplicationExtension>().sourceSets.getByName("main").apply {
+    assets.directories.add(layout.buildDirectory.dir("iosAssets").get().asFile.path)
+    res.directories.add(layout.buildDirectory.dir("iosRes").get().asFile.path)
 }
 
 // iOS 원본 자료 중 앱이 읽는 것만 빌드 때 복사한다 (저장소에 같은 파일을 두 벌 두지 않는다)
 val copyIosAssets by tasks.registering(Copy::class) {
-    from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json", "lines_ko.json", "lines_app_en.json", "story_ko.json", "story_en.json") }
+    from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json", "lines_ko.json", "lines_app_en.json", "story_ko.json", "story_en.json", "earnings_seed.json") }
     from("../../ios-app/WidgetShared") { include("lines_en.json") }
     // 아이폰 번들과 같은 시세 자료 (project.yml: data/quotes.json·stats.json·prices). 앱이 아직 받지 못했을 때만 쓴다
     from("../../data") { include("quotes.json", "stats.json") }
@@ -75,5 +80,11 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.serialization.json)
     implementation(libs.billing)
-    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit"))   // JUnit4 (Robolectric 과 같은 틀)
+    // 화면 그림 시험: ./gradlew recordRoborazziDebug 로 찍고 verifyRoborazziDebug 로 견준다
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.robolectric)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

@@ -187,12 +187,15 @@ final class Market {
         // 추가한 종목: 내 종목에 있는 것만 5분에 한 번 (당겨 갱신하면 바로)
         async let customDone: Void = CustomSymbols.shared.refresh(held: held, force: force)
         async let extraDone: Void = ExtraStats.shared.refresh(Parallel.wantKeys)
+        // 내 몫 실적: 보유 미국 종목만 하루 한 번 (당겨 갱신하면 바로)
+        async let earnDone: Void = EarningsFeed.shared.refresh(held: held, force: force)
         if let f = await siteNew { site = f }
         if let r = await marNew { mar = r }
         if let p = await pricesNew { prices = TossHistory.merged(p, tossHist) }
         if let s = await statsNew { stats = s }
         await customDone
         await extraDone
+        await earnDone
         await tossWait
         await alpacaWait
         await lbWait

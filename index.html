@@ -28,7 +28,7 @@
 <meta name="twitter:description" content="수량만 넣으면, 내 자산의 내일이 보여요. 평가액, 본전·목표까지의 길과 확률을 보여 주는 아이폰 앱.">
 <meta name="twitter:image" content="https://naeilo.com/og.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"MobileApplication","name":"naeilo","alternateName":"내일로","url":"https://naeilo.com/","description":"보유 주식 수량만 넣으면 원화 평가액, 본전·목표까지의 길, 그 길에 닿을 확률을 보여 주는 자산 관찰 앱. 종목 추천·투자 자문이 아닙니다.","applicationCategory":"FinanceApplication","operatingSystem":"iOS","inLanguage":"ko"}</script>
-<link rel="stylesheet" href="entry.css?v=20261020a">
+<link rel="stylesheet" href="entry.css?v=20261022c">
 </head>
 <body>
 <header class="top wrap">
@@ -97,17 +97,23 @@
     <h2>앱을 열면, 인물이 먼저 말을 걸어요</h2>
     <p class="muted">세리·시오·선배·이르·수아가 오늘 숫자를 전해요 · 매매 추천 아님</p>
     <div class="rail">
-      <figure><div class="phone"><picture><source srcset="img/app-home-dark.png?v=1" media="(prefers-color-scheme: dark)"><img src="img/app-home.png?v=4" alt="naeilo 앱 홈 화면. 평가액 228만과 수아의 한마디" loading="lazy"></picture></div><figcaption>홈: 오늘 숫자와 한마디</figcaption></figure>
-      <figure><div class="phone"><picture><source srcset="img/app-mypath-dark.png?v=1" media="(prefers-color-scheme: dark)"><img src="img/app-mypath.png?v=2" alt="내 길 화면. 목표 2,100만, 가능성 반반 50%" loading="lazy"></picture></div><figcaption>내 길: 목표까지 어디쯤</figcaption></figure>
-      <figure><div class="phone"><picture><source srcset="img/app-settings-dark.png?v=1" media="(prefers-color-scheme: dark)"><img src="img/app-settings.png?v=3" alt="설정 화면. 내 오픈 API 키로 시세 받는 중" loading="lazy"></picture></div><figcaption>설정: 내 오픈 API 키로 시세</figcaption></figure>
+      <figure><div class="phone"><picture><source srcset="img/app-home-dark.png?v=2" media="(prefers-color-scheme: dark)"><img src="img/app-home.png?v=5" alt="naeilo 앱 홈 화면. 평가액 226만, 목표까지 49%와 세리의 한마디" loading="lazy"></picture></div><figcaption>홈: 오늘 숫자와 한마디</figcaption></figure>
+      <figure><div class="phone"><picture><source srcset="img/app-flow-dark.png?v=1" media="(prefers-color-scheme: dark)"><img src="img/app-flow.png?v=1" alt="흐름 화면. DRNK 일봉 그래프 위에 추세 이름표와 크고 작은 흐름 띠" loading="lazy"></picture></div><figcaption>흐름: 추세·패턴을 그래프로</figcaption></figure>
+      <figure><div class="phone"><picture><source srcset="img/app-settings-dark.png?v=2" media="(prefers-color-scheme: dark)"><img src="img/app-settings.png?v=4" alt="설정 화면. 내 오픈 API 키 연결, 내 목표, 알림과 위젯" loading="lazy"></picture></div><figcaption>설정: 내 오픈 API 키는 이 폰에만</figcaption></figure>
     </div>
     <p class="note">샘플 금액 · 가상 종목 DRNK·QQQ</p>
   </section>
 
-  <!-- 3. 직접 해보기: 아이폰 틀 안의 목표일 전망 -->
-  <section class="wrap try" id="try">
+  <!-- 3. 직접 해보기: 탭 두 개 (목표일 전망 · 내 몫 실적 강) -->
+  <section class="wrap" id="try">
+    <h2>직접 해보기</h2>
+    <div class="try-tabs" role="tablist" aria-label="해 볼 화면">
+      <button type="button" role="tab" id="tabFc" aria-controls="tryFc" aria-selected="true">목표일 전망</button>
+      <button type="button" role="tab" id="tabEarn" aria-controls="tryEarn" aria-selected="false" tabindex="-1">내 몫 실적</button>
+    </div>
+  <!-- 3-1. 목표일 전망: 아이폰 틀 안 -->
+  <div class="try" id="tryFc" role="tabpanel" aria-labelledby="tabFc">
     <div class="try-text">
-      <h2>직접 해보기</h2>
       <p class="muted">앱의 목표일 전망이에요. 막대를 밀면 그래프가 바뀌어요.</p>
       <p class="small muted">예시 자산 1억 · 목표 1.5억 · 3년 · 연 7~11%, 흔들림 16% 가정. 앱은 내 종목으로.</p>
     </div>
@@ -136,9 +142,30 @@
             <p class="fc-msg" id="fcMsg"></p>
           </div>
         </div>
-        <div class="tabs" aria-hidden="true"><span>홈</span><span>종목</span><span class="on">분석</span><span>미션</span><span>설정</span></div>
+        <!-- 앱 아래 탭 (App.swift: 홈·종목·흐름·분석·미션, 떠 있는 둥근 막대) -->
+        <div class="tabs" aria-hidden="true"><span><svg viewBox="0 0 24 24"><path d="M12 2.6 1.8 11.4h2.9V21h5.6v-6h3.4v6h5.6v-9.6h2.9z"/></svg>홈</span><span><svg viewBox="0 0 24 24"><rect x="2.5" y="11" width="5.4" height="10" rx="1.6"/><rect x="9.3" y="7" width="5.4" height="14" rx="1.6"/><rect x="16.1" y="3" width="5.4" height="18" rx="1.6"/></svg>종목</span><span><svg viewBox="0 0 24 24"><path d="M17 5H9.3a3.5 3.5 0 0 0 0 7h5.4a3.5 3.5 0 0 1 0 7H7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="18" cy="5" r="2.8"/><circle cx="6" cy="19" r="2.8"/></svg>흐름</span><span class="on"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M6.5 16l4-5 3 3 6-7M15.5 7h4v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>분석</span><span><svg viewBox="0 0 24 24"><rect x="2.5" y="2.5" width="8.6" height="8.6" rx="2.2"/><rect x="12.9" y="2.5" width="8.6" height="8.6" rx="2.2"/><rect x="2.5" y="12.9" width="8.6" height="8.6" rx="2.2"/><rect x="12.9" y="12.9" width="8.6" height="8.6" rx="2.2"/></svg>미션</span></div>
       </div>
     </div>
+  </div>
+
+  <!-- 3-2. 내 몫 실적 강 (앱 EarningsRiver.swift 와 같은 그림, 계산은 tools/earn_calc.mjs) -->
+  <div class="try" id="tryEarn" role="tabpanel" aria-labelledby="tabEarn" hidden>
+    <div class="try-text">
+      <p class="muted">종목과 수량을 넣으면, 회사가 이번 분기 번 돈 중 내 몫이 강으로 흘러요.</p>
+      <form class="earn-in" id="earnForm" autocomplete="off">
+        <label><span class="small muted">종목</span><input id="earnSym" list="earnSyms" value="DRNK" aria-label="종목 기호" spellcheck="false"></label>
+        <label><span class="small muted">수량</span><input id="earnQty" type="number" inputmode="decimal" min="0" step="any" value="3" aria-label="보유 수량"></label>
+        <datalist id="earnSyms"></datalist>
+      </form>
+      <p class="small muted" id="earnMsg">DRNK 는 가상 종목 견본이에요. 미국 종목은 신고서 숫자로.</p>
+    </div>
+    <div class="iphone">
+      <div class="scr earn-scr">
+        <svg class="earn-river" id="earnRiver" viewBox="0 0 360 680" role="img" tabindex="0" aria-label="내 몫 실적 강 그림"></svg>
+        <div class="earn-dots" id="earnDots" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
   </section>
 
   <section class="wrap price" id="price">
@@ -182,6 +209,6 @@
   <span>© naeilo</span>
 </footer>
 
-<script src="entry.js?v=20261019a"></script>
+<script src="entry.js?v=20261022c"></script>
 </body>
 </html>

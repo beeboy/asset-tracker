@@ -90,3 +90,45 @@
 - `data/earnings/DRNK.json`: 손으로 쓴 견본(가상 종목).
 - 남은 일: 국내 DART(키는 Actions 시크릿)는 아직 없음. 해외 기업(20-F, IFRS)은 줄표. SEC 는 연락처 있는 User-Agent 를 바라므로 Actions 시크릿 `SEC_UA`("이름 이메일")를 넣으면 좋다.
 - 맥 검사(2026-10-22): earn_check 3/3, `earnings.py --check` 통과. 고친 것: SEC 가 이메일 없는 User-Agent 를 403 으로 막아 기본값에 연락처를 넣음, companyfacts 404(SPY·MANA)는 건너뜀, 가중평균 희석 주식 수 대체가 늘 비던 버그(SPCX). 알려진 점: 테슬라는 인도량 8-K 도 2.02 라 7~9월 전 분기 발표일이 7-02 로 잡힘(실제 실적 7-22), GLD 는 1갈래로 나옴. → 둘 다 decisions 10-22 로 고침(마지막 2.02, 신탁 6221 건너뜀).
+
+## 내 몫 실적 2단계: 아이폰 강 팝업·목록 막대 (2026-10-22)
+- `Data/Earnings.swift`: earn_calc.mjs 와 같은 계산 + 받기·캐시(`earn_{종목}.json`, 20시간에 한 번, 404 는 자료 없음) + DRNK 견본(앱 안). 검사 `ios-app/tools/earn_parity`(픽스처 3건 + DRNK 견본 = data 파일).
+- `Views/EarningsRiver.swift`: EarningsFeed(Market.refresh 에서 같이 받음), 목록 막대 EarnBars, 첫 안내 EarnTip(AppStorage earn.tipClosed), 강 팝업 EarningsRiverSheet.
+- HoldingsView 행: 왼쪽 로고·이름·화살표 = 상세, 가운데 평가액·막대 = 강 팝업. 밀어 지우기·contextMenu 는 행 전체에 그대로.
+- 확인한 것: 명령줄 빌드 성공, 강 그림(흑자·적자·대기, 밝게·어둡게)을 ImageRenderer 로 뽑아 봄. 못 한 것: 시뮬레이터에서 목록 누르기·밀어 지우기 손 검사(패널 권한 대기), 시안 판16 원본과 좌표 대조(맥에 파일 없음), 새 문구 영어 번역(Localizable 추출 안 함), 안드로이드.
+- 웹 입구 `#tryEarn`(index.html·entry.js·entry.css, 2026-10-22): 종목+수량 → 강 SVG(EarningsRiver.swift 판16 좌표·색·동작). 계산은 `tools/earn_calc.mjs` 를 동적 import(같은 함수), 원화는 `data/prices/KRW_X.json` 끝값, 자료 없으면 강 없이 안내. 정한 것: 전망 해보기 아래 별도 구역으로 둠, 화면에 들어올 때 한 번 흐름. server.py 는 web/ 만 내보내서 확인은 루트 `python3 -m http.server` 로 함. 남은 차이: 세리프 한글 글꼴은 브라우저 대체(AppleMyungjo 등), 물안개 흐림 정도 근사.
+
+## 내 몫 실적 3단계: 손실 막대·홈 카드·실적 일정·안드로이드 (2026-10-22, earnings-bot 로컬 커밋)
+- 손실 막대: 목록·홈 작은 막대에서 순이익<0 분기는 절댓값 높이 규칙 그대로 속 빈 테두리(같은 색 1.2). 작년 쪽 손실도 같음.
+- 홈 카드 `EarnHomeCard`(HomeView, 노란 띠 바로 아래): fresh(pending 또는 오늘 발표) 보유 종목마다 "{이름} {months}월 실적" + 막대 둘 + "작년보다 −43%"(netYoY 가 "작년과 같음"이면 그 글 그대로, 없으면 막대만). 누르면 강 팝업. 나온 종목 없으면 카드 없음.
+- 실적 일정 `MarketEvents.live`/`earnRule`: 미국 종목 e_ 는 실적 자료(받은 것→앱 안 견본) 우선 — pending 날, 마지막 발표가 오늘 이후면 그 날, 아니면 다음 분기의 작년 짝(끝 날짜 = 마지막 끝 + 91일 − 365±25) 발표일 + 364일에 "{종목} 실적 무렵". DRNK·국내·자료 없음은 손 값. 동네 행사(earnDay)도 live 를 씀. 견본 기준 애플 10-29 무렵, 엔비디아 11-18 무렵.
+- 안드로이드: `data/Earnings.kt`(계산·받기·캐시·DRNK·견본, EarningsFeed 는 Market.refresh 에서 같이), `ui/hold/EarningsRiver.kt`(EarnBars·EarnTip·EarningsRiverSheet·강 Canvas 시안 판16 좌표·색·동작), 목록 행 오른쪽(평가액·막대) = 강 팝업·이름 옆 금색 점, 홈 카드, Remind live. 견본 earnings_seed.json 은 빌드 때 아이폰 Resources 에서 복사. 검사 `EarnParityTest` 픽스처 3건 + DRNK 통과, assembleDebug 성공.
+- 정한 것/남은 차이: 안드로이드 물안개 흐림(blur 10)은 가장자리로 옅어지는 둥근 무늬로 근사(BlurMaskFilter 하드웨어 가속 문제 피함). 화면 손 검사(에뮬레이터·폰 캡처 나란히 비교)는 아직.
+
+## 내 몫 실적 이식 점검·영어·화면 확인 (2026-10-22 14시 무렵 KST, earnings-bot 로컬 커밋 bbc278b5·45bcbceb)
+- port_check 짝 없음 0·참조 이상 0: Data/Earnings.swift, Views/EarningsRiver.swift, Data/Remind.swift, Views/HomeView.swift, Views/HoldingsView.swift@1-286. selftest 씨앗 1~5 모두 20/20·헛경보 0. 이름표는 원본 줄 단위로 다시 달았다(도구: 줄 맞춤은 difflib 로 옛 Swift→지금 Swift 줄 번호 옮김).
+- 바로잡은 밀림: Remind.swift(+16, 실적 일정 earnRule 끼임), HomeView.swift(홈 카드 +39), HoldingsView.swift 1~286(449dcd98 목록 막대 이후 밀림). HoldingsView.kt 지우기 확인 구역에 EarningsRiverSheet 줄이 끼어 짝이 깨졌던 것도 옮김.
+- 예외 더함(정말 필요한 것만): Earnings.swift:159-168 DRNK 견본 여러 줄 raw 문자열(검사기 따옴표 한계, 글자 그대로 같고 EarnParityTest 가 DRNK.json 과 비교), EarningsRiver.swift:63(오늘 날짜는 Day.today), 214·326·332·338(보간 속 따옴표), 236·363(Compose 는 되돌릴 불투명도 상태 없음), 444-445(#Preview).
+- 빠졌던 것 채움(안드로이드): 첫 안내 닫기 애니메이션, 홈 카드·목록 막대 읽어 주기 '내 몫 실적 보기', 금색 점 바탕선 1 위 맞춤, 화살표 칸 20×64.
+- 글꼴: 아이폰 시뮬레이터로 보니 .serif 는 숫자만 New York, 한글은 본문 고딕. 안드로이드 Theme.kt 에는 따로 둔 앱 세리프 글꼴이 없어(본문도 기기 기본), `Theme.serifDigits` 로 한글·빈칸은 앱 본문 글꼴, 숫자·라틴만 기기 세리프로 그린다(FontFamily.Serif 통째로 써 한글이 명조로 나오던 것 고침). 크기는 아이폰과 같은 viewBox 기준 고정.
+- 영어: 새 문구 22줄을 아이폰 Localizable.xcstrings 에 더했다. 이 파일엔 다른 세션의 커밋 안 된 변경이 있어 커밋하지 않았다(그 세션이 함께 커밋할 것). 안드로이드는 tools/l10n/gen_en.py 로 l10n_en.json 을 다시 만들어 커밋. 위젯 문구는 없음. 남은 것: Earnings.money/krw 의 '달러'·'천'·'만'·'작년과 같음', 강 읽어 주기 글(a11y)은 아이폰도 String(localized:) 밖이라 영어 화면에서도 한국어.
+- 화면(아이폰 naeilo-I): 목록 막대(작년 손실=속 빈 테두리, 이번=금색), 강 팝업(DRNK 3주), 홈 카드(오늘 발표 견본 2026-10-22 그대로라 견본 안 바꿈) 모두 EarningsRiver.swift 판16 좌표·색과 다른 곳 못 찾음 → 고친 것 없음.
+- 안드로이드 스튜디오 실행 화살표: 스튜디오 2026.2 가 연 뒤 AGP 8.7.3→8.13.2·Gradle 8.13 로 올리고(gradle.properties·libs.versions.toml·gradle-wrapper.properties, 커밋 안 됨 — 드링커님 쪽 변경이라 그대로 둠) 동기화가 끝나기 전엔 실행 구성(app·naeilo.app)이 비활성. 13:39 동기화 뒤 13:43 폰(SM-F721N)에 설치·실행됨. 다시 막히면 File > Sync Project with Gradle Files.
+- HoldingsView.swift 의 다른 범위(287-751 짝 없음 13, 937-2178 짝 없음 1630)는 이번 일 전부터 있던 것(449dcd98 이전과 같은 수). 다음 이식 점검 때.
+
+## 내 몫 실적: 영어 커밋·기다리는 중 '지난 분기' 눈금 (2026-10-22 14시 무렵 KST, earnings-bot 로컬 커밋)
+- xcstrings: 내 몫 실적 영어 22줄 + '지난 %@'(Last %@)만 HEAD 판에 넣어 인덱스로 커밋. 작업본에 남은 차이는 다른 세션의 항목 순서 바뀜뿐(값 차이 0) — 그 세션 몫.
+- 기다리는 중 강: 수위표에 지난 분기(coRevenue) 높이 눈금(x261~279, onwater 1.5 .6)과 '지난 N억'(x284, S+17, 11 semibold), 물이 다 찬 뒤 1.8초에 페이드. 아이폰 gauge(last:)·안드로이드 gauge(last=) 같게, port_check 짝 0(예외 400 = 불투명도 되돌림), l10n_en.json 다시 만듦.
+- 남은 일: 안드로이드 실기기(SM-F721N)에서 기다리는 중 강·눈금 눈으로 확인. 
+- AGP 9.4.1·Gradle 9.6.0·Kotlin 2.2.10(AGP 내장 Kotlin)으로 올림(2026-10-22). 자료 폴더는 새 DSL `directories` 로 넘긴다. 힙 3GB·2GB.
+- 확인(2026-10-22 14시 KST): 안드로이드 gauge 의 `last` 매개변수가 안쪽 `var last`(라벨 겹침용)에 가려져 '지난' 눈금이 엉뚱한 자리(-100 등)에 그려지던 것 → `lastS` 로 바꿈. 폰(SM-F721N)에 깔아 SPCX 기다리는 중 강에서 '지난 78억' 눈금·'작년 41억' 눈으로 확인. 아이폰·안드로이드 빌드 성공, port_check 짝 없음 0.
+
+## 내 몫 실적: 강을 밀어 지난 분기 보기 (2026-10-22 15시 무렵 KST, earnings-bot 로컬 커밋)
+- 결정: decisions.md 2026-10-22 '지난 분기 보기'. 강 팝업을 옆으로 밀면 지난 분기, 맨 오른쪽이 이번 분기. 자료에 있는 분기 전부(봇 KEEP=8). 기다리는 중 종목은 첫 장이 기다리는 강, 밀면 마지막 발표 분기부터 다 찬 강.
+- 계산: earn_calc.mjs `view(j, qty, fx, at)` · Earnings.swift/kt `summary(..., at)`. at 없으면 예전과 같음(마지막 분기 + pending). at 이 있으면 그 분기, pending 없음, 수위표는 그 앞 4분기(옛 분기는 있는 만큼), 작년 짝 없는 옛 4분기는 작년 대비 없음. 검사 earn_fixtures 사례 5개 더함 → 웹 8/8, 아이폰 earn_parity 9/9, 안드로이드 EarnParityTest 통과.
+- 화면: 아이폰 TabView(.page)+점, 보이스오버 위·아래 쓸기. 안드로이드 HorizontalPager+점. 웹 입구 #tryEarn 끌기(가로 40px)·화살표 키·점(entry.* 판 20261022b). 지난 분기 장 글: '{이름} · 25.7~9', 수위표 '이때 N억', '그 분기 내 몫 손실', '회사가 그 분기 내 몫으로 번 순이익'. 장에 들어올 때마다 다시 흐름.
+- 영어 3줄(Then %@ 등)은 xcstrings HEAD 판에 넣어 커밋, l10n_en.json 다시 만듦. port_check 짝 없음 0·selftest 20/20(씨앗 1~3), 예외 1줄(176-180 보이스오버 넘기기 = Pager 기본).
+- 알려진 점: 안드로이드 단위 검사는 지금 빌드 설정(kotlin("test")만)으로 Test 를 못 찾아 컴파일이 안 됨 → 임시 init 스크립트(kotlin-test-junit)로 돌려 통과 확인. 빌드 도구는 다른 스레드 몫이라 손대지 않음. 화면 손 검사(시뮬레이터·폰에서 밀어 보기)는 아직.
+- 고침(2026-10-22 15시 KST, 안드로이드만): 강 장이 세로 가운데로 내려가던 것 → HorizontalPager verticalAlignment Top. 분기 점이 시트 아래(내비 막대 밑, 다이얼로그 안에선 safeDrawing 아래 여백이 안 먹음)로 밀려 안 보이던 것 → 점을 강 바로 아래에 겹쳐 둠(BoxWithConstraints, 강 높이 = (폭−16)×680/360). 목록 줄 오른쪽 여백(14dp, › 지운 자리)을 누르면 상세로 가던 것 → 막대 칸 클릭 영역을 줄 오른쪽 끝까지(Earn endPad). 에뮬레이터에서 강 위 붙음·점 8개·밀기·오른쪽 끝 누르면 강 열림 확인.
+- 알려진 점(예전부터): 영어 화면에서 강 제목 'My share of what Drinker가 earned' 가 한국어 조사 '가'를 달고 오른쪽으로 넘친다.
+- 영어 강 화면(2026-10-22 15시 반 KST, 아이폰·안드로이드): 보이는 글만 EarnText 로 바꿈 — 금액 $77·$6.0, 회사 매출 9.6B(수위표·'Revenue $9.6B'), 원화 ≈₩8K, '작년과 같음'→Same as last year. 계산 기준 money·krw·netText 는 한국어 그대로(웹·검사와 같은 값). 왼쪽 맞춤 글이 오른쪽 끝을 넘으면 왼쪽으로 당기고, 그래도 넓으면 글자를 줄임. 안드로이드 제목은 영어일 때 조사 없이 '%@ 번 돈 중 내 몫'(android_en.json)으로. 에뮬레이터(영어)에서 확인, 아이폰은 빌드만. 강 읽어 주기(a11y) 글은 아직 한국어.

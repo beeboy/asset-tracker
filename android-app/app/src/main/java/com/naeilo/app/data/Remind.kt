@@ -615,7 +615,7 @@ class Remind private constructor() {
         for (n in RemindNews.app + site) { if (!(n.date >= from && n.date <= Day.today && ids.add(n.id))) continue
             a.add(RemindItem(id = "news.${n.id}", cat = RemindCat.news, text = n.text, go = RemindGo.of(n.go)))   // ios: Data/Remind.swift:458
         }
-        // ios: Data/Remind.swift:460 증시 요약(블로그 새 글)은 뺐다 (2026-10-21)
+        // 증시 요약(블로그 새 글)은 뺐다 (2026-10-21)
         return a   // ios: Data/Remind.swift:461
     }
 
@@ -690,26 +690,47 @@ object MarketEvents {
     )
     class Hit(val id: String, val target: String, val day: String, val kind: String, val sub: String, val held: Boolean)   // ios: Data/Remind.swift:528
 
+    /** 손 날짜에 실적 자료를 덮은 일정. 미국 종목 e_ 만 (DRNK·국내는 손 값 그대로) */
+    val live: List<Rule> get() = rules.map(::earnRule)   // ios: Data/Remind.swift:531
+    /** 실적 자료(받은 것·앱 안 견본)가 있으면: 기다리는 중이면 그 날, 오늘 발표면 오늘,
+     *  아니면 다음 분기 = 작년 같은 분기 발표일 + 364일 (같은 요일), 문구에 '무렵' */
+    // ios: Data/Remind.swift:534
+    fun earnRule(r: Rule): Rule {
+        if (!r.id.startsWith("e_") || r.target == "DRNK") return r   // ios: Data/Remind.swift:535
+        val sym = Sample.symbol(r.target)?.takeIf { it.currency == Currency.usd } ?: return r   // ios: Data/Remind.swift:535
+        // ios: Data/Remind.swift:536
+        val k = EarningsFeed.key(sym) ?: return r
+        val f = EarningsFeed.shared.file(k) ?: return r
+        val last = f.quarters.lastOrNull() ?: return r
+        f.pending?.announced?.let { return Rule(r.id, r.target, r.kind, it, "none") }   // ios: Data/Remind.swift:537
+        if (last.announced >= Day.today) return Rule(r.id, r.target, r.kind, last.announced, "none")   // ios: Data/Remind.swift:538
+        // 다음 분기의 작년 짝: 끝 날짜가 (마지막 분기 끝 + 약 91일) 보다 365±25일 앞
+        val nextEnd = Earnings.dayNum(last.end) + 91   // ios: Data/Remind.swift:540
+        val ly = f.quarters.firstOrNull { kotlin.math.abs(nextEnd - Earnings.dayNum(it.end) - 365) <= 25 } ?: return r   // ios: Data/Remind.swift:541
+        val d = Day.date(ly.announced) ?: return r   // ios: Data/Remind.swift:542
+        return Rule(r.id, r.target, "${r.kind} 무렵", Day.str(d.plusSeconds(364L * 86400)), "none")   // ios: Data/Remind.swift:543
+    }
+
     /** from 날짜부터 days 일 안의 날짜 (from 포함) */
-    // ios: Data/Remind.swift:531
+    // ios: Data/Remind.swift:547
     fun dates(r: Rule, from: String, until: String): List<String> {
-        val step: Int? = mapOf("monthly" to 1, "quarterly" to 3, "semi" to 6, "yearly" to 12)[r.rep]   // ios: Data/Remind.swift:532
-        val out = ArrayList<String>()   // ios: Data/Remind.swift:533
-        val start = Day.date(r.date) ?: return emptyList()   // ios: Data/Remind.swift:534
-        // ios: Data/Remind.swift:535
+        val step: Int? = mapOf("monthly" to 1, "quarterly" to 3, "semi" to 6, "yearly" to 12)[r.rep]   // ios: Data/Remind.swift:548
+        val out = ArrayList<String>()   // ios: Data/Remind.swift:549
+        val start = Day.date(r.date) ?: return emptyList()   // ios: Data/Remind.swift:550
+        // ios: Data/Remind.swift:551
         for (k in 0 until 600) {
-            // ios: Data/Remind.swift:536,537,538
+            // ios: Data/Remind.swift:552,553,554
             val d: Instant? = if (r.rep == "6w") start.plusSeconds(42L * k * 86400) else addMonths(r.date, k * (step ?: 0))
-            val dd = d ?: break   // ios: Data/Remind.swift:539
-            val s = Day.str(dd)   // ios: Data/Remind.swift:540
-            if (s > until) break   // ios: Data/Remind.swift:541
-            if (s >= from) out.add(s)   // ios: Data/Remind.swift:542
-            if (r.rep == "none" || (r.rep != "6w" && step == null)) break   // ios: Data/Remind.swift:543
+            val dd = d ?: break   // ios: Data/Remind.swift:555
+            val s = Day.str(dd)   // ios: Data/Remind.swift:556
+            if (s > until) break   // ios: Data/Remind.swift:557
+            if (s >= from) out.add(s)   // ios: Data/Remind.swift:558
+            if (r.rep == "none" || (r.rep != "6w" && step == null)) break   // ios: Data/Remind.swift:559
         }
-        return out   // ios: Data/Remind.swift:545
+        return out   // ios: Data/Remind.swift:561
     }
     /** 월 더하기: 말일을 넘으면 그 달 말일 (web addMonths 와 같다) */
-    // ios: Data/Remind.swift:548,549,550,551,552,553,554,555
+    // ios: Data/Remind.swift:564,565,566,567,568,569,570,571
     private fun addMonths(s: String, n: Int): Instant? {
         if (Day.date(s) == null) return null
         val zone = ZoneId.of("Asia/Seoul")   // Day.fmt 의 시간대
@@ -719,84 +740,84 @@ object MarketEvents {
     }
 
     /** 오늘부터 days 일 안의 일정. 내 종목(환율은 달러 종목) 관련이 먼저, 그다음 날짜순 */
-    // ios: Data/Remind.swift:559
+    // ios: Data/Remind.swift:575
     fun upcoming(held: List<String>, days: Int): List<Hit> {
-        val from = Day.today; val until = Day.str(Instant.now().plusSeconds(days.toLong() * 86400))   // ios: Data/Remind.swift:560
-        val usd = held.any { Sample.symbol(it)?.currency == Currency.usd }   // ios: Data/Remind.swift:561
-        val out = ArrayList<Hit>()   // ios: Data/Remind.swift:562
-        // ios: Data/Remind.swift:563
-        for (r in rules) {
-            val mine = held.contains(r.target) || (r.target == "FX" && usd)   // ios: Data/Remind.swift:564
-            if (!(r.target == "ALL" || r.target == "FX" || mine)) continue   // ios: Data/Remind.swift:565
-            val sub = if (r.target == "ALL") "전 종목" else if (r.target == "FX") "환율" else (Sample.symbol(r.target)?.short ?: r.target)   // ios: Data/Remind.swift:566
-            for (d in dates(r, from = from, until = until)) out.add(Hit(id = r.id, target = r.target, day = d, kind = r.kind, sub = sub, held = held.contains(r.target)))   // ios: Data/Remind.swift:567
+        val from = Day.today; val until = Day.str(Instant.now().plusSeconds(days.toLong() * 86400))   // ios: Data/Remind.swift:576
+        val usd = held.any { Sample.symbol(it)?.currency == Currency.usd }   // ios: Data/Remind.swift:577
+        val out = ArrayList<Hit>()   // ios: Data/Remind.swift:578
+        // ios: Data/Remind.swift:579
+        for (r in live) {
+            val mine = held.contains(r.target) || (r.target == "FX" && usd)   // ios: Data/Remind.swift:580
+            if (!(r.target == "ALL" || r.target == "FX" || mine)) continue   // ios: Data/Remind.swift:581
+            val sub = if (r.target == "ALL") "전 종목" else if (r.target == "FX") "환율" else (Sample.symbol(r.target)?.short ?: r.target)   // ios: Data/Remind.swift:582
+            for (d in dates(r, from = from, until = until)) out.add(Hit(id = r.id, target = r.target, day = d, kind = r.kind, sub = sub, held = held.contains(r.target)))   // ios: Data/Remind.swift:583
         }
-        return out.sortedWith { a, b -> val ka = if (a.held) 0 else 1; val kb = if (b.held) 0 else 1; if (ka != kb) ka - kb else a.day.compareTo(b.day) }   // ios: Data/Remind.swift:569
+        return out.sortedWith { a, b -> val ka = if (a.held) 0 else 1; val kb = if (b.held) 0 else 1; if (ka != kb) ka - kb else a.day.compareTo(b.day) }   // ios: Data/Remind.swift:585
     }
 
     /** 금리 결정 일정 (FOMC·한국은행)인지 */
-    fun isRate(id: String): Boolean = id == "x_fomc" || id == "x_bok"   // ios: Data/Remind.swift:573
+    fun isRate(id: String): Boolean = id == "x_fomc" || id == "x_bok"   // ios: Data/Remind.swift:589
     /** 오늘부터 days 일 안의 금리 결정 일정, 날짜순 (보유 종목과 상관없이) */
-    // ios: Data/Remind.swift:575
+    // ios: Data/Remind.swift:591
     fun rateUpcoming(days: Int): List<Hit> {
-        val from = Day.today; val until = Day.str(Instant.now().plusSeconds(days.toLong() * 86400))   // ios: Data/Remind.swift:576
-        // ios: Data/Remind.swift:577,578,579
+        val from = Day.today; val until = Day.str(Instant.now().plusSeconds(days.toLong() * 86400))   // ios: Data/Remind.swift:592
+        // ios: Data/Remind.swift:593,594,595
         return rules.filter { isRate(it.id) }.flatMap { r ->
             dates(r, from = from, until = until).map { Hit(id = r.id, target = r.target, day = it, kind = r.kind, sub = if (r.target == "FX") "환율" else "전 종목", held = false) }
         }.sortedBy { it.day }
     }
 
     /** 일정이 내게 왜 중요한지 한 줄 (금리·물가·고용·실적 4종) */
-    // ios: Data/Remind.swift:583,584
+    // ios: Data/Remind.swift:599,600
     fun why(id: String): String? = when (id) {
-        "x_fomc", "x_bok" -> "금리가 바뀌면 환율이 움직이고, 미국 주식의 원화 평가액이 달라질 수 있어요."   // ios: Data/Remind.swift:585
-        "x_cpi" -> "물가가 예상과 다르면 금리 전망이 바뀌어 주가가 크게 흔들릴 수 있어요."   // ios: Data/Remind.swift:586
-        "x_jobs" -> "일자리 숫자는 금리 전망에 영향을 줘서 주가와 환율이 함께 움직일 수 있어요."   // ios: Data/Remind.swift:587
-        else -> if (id.startsWith("e_")) "실적이 기대와 다르면 그 종목 값이 하루에 크게 움직일 수 있어요." else null   // ios: Data/Remind.swift:588
+        "x_fomc", "x_bok" -> "금리가 바뀌면 환율이 움직이고, 미국 주식의 원화 평가액이 달라질 수 있어요."   // ios: Data/Remind.swift:601
+        "x_cpi" -> "물가가 예상과 다르면 금리 전망이 바뀌어 주가가 크게 흔들릴 수 있어요."   // ios: Data/Remind.swift:602
+        "x_jobs" -> "일자리 숫자는 금리 전망에 영향을 줘서 주가와 환율이 함께 움직일 수 있어요."   // ios: Data/Remind.swift:603
+        else -> if (id.startsWith("e_")) "실적이 기대와 다르면 그 종목 값이 하루에 크게 움직일 수 있어요." else null   // ios: Data/Remind.swift:604
     }
     /** "내일", "10/22 (D-11)" 처럼 */
-    // ios: Data/Remind.swift:592
+    // ios: Data/Remind.swift:608
     fun `when`(day: String): String {
-        val n = Day.dday(day)   // ios: Data/Remind.swift:593
-        return if (n == 0) "오늘" else if (n == 1) "내일" else "${Day.md(day)} D-$n"   // ios: Data/Remind.swift:594
+        val n = Day.dday(day)   // ios: Data/Remind.swift:609
+        return if (n == 0) "오늘" else if (n == 1) "내일" else "${Day.md(day)} D-$n"   // ios: Data/Remind.swift:610
     }
     /** 위젯 '다음' 줄: 30일 안의 첫 일정 (내 종목 먼저) */
-    // ios: Data/Remind.swift:597
+    // ios: Data/Remind.swift:613
     fun widgetNext(held: List<String>): String? {
-        val h = upcoming(held = held, days = 30).firstOrNull() ?: return null   // ios: Data/Remind.swift:598
-        val n = Day.dday(h.day)   // ios: Data/Remind.swift:599
-        return "${h.kind} " + (if (n == 0) "오늘" else "D-$n") + " (${Day.md(h.day)})"   // ios: Data/Remind.swift:600
+        val h = upcoming(held = held, days = 30).firstOrNull() ?: return null   // ios: Data/Remind.swift:614
+        val n = Day.dday(h.day)   // ios: Data/Remind.swift:615
+        return "${h.kind} " + (if (n == 0) "오늘" else "D-$n") + " (${Day.md(h.day)})"   // ios: Data/Remind.swift:616
     }
 }
 
 /** 소식을 눌렀을 때 그 화면으로 */
-// ios: Data/Remind.swift:604,606,607
+// ios: Data/Remind.swift:620,622,623
 fun AppModel.go(g: RemindGo) {
     when (g) {
-        RemindGo.nowhere -> return   // ios: Data/Remind.swift:608
-        // ios: Data/Remind.swift:609 (UIApplication.shared.open: 브라우저로)
+        RemindGo.nowhere -> return   // ios: Data/Remind.swift:624
+        // ios: Data/Remind.swift:625 (UIApplication.shared.open: 브라우저로)
         is RemindGo.web -> runCatching { Defaults.ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(g.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-        RemindGo.shelter -> { tab = Tab.home; homePath = listOf("shelter") }   // ios: Data/Remind.swift:610
-        is RemindGo.char -> { tab = Tab.home; homePath = listOf("shelter", "char:${g.id}") }   // ios: Data/Remind.swift:611
-        RemindGo.me -> { tab = Tab.home; homePath = listOf("me") }   // ios: Data/Remind.swift:612
-        is RemindGo.reader -> { tab = Tab.home; homePath = listOf("shelter", "read:${g.i}") }   // ios: Data/Remind.swift:613
-        RemindGo.board -> { tab = Tab.board; boardPath = emptyList() }   // ios: Data/Remind.swift:614
-        RemindGo.week -> { tab = Tab.board; boardPath = emptyList() }   // ios: Data/Remind.swift:615
-        RemindGo.calm -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.calm) }   // ios: Data/Remind.swift:616
-        RemindGo.myPath -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.myPath) }   // ios: Data/Remind.swift:617
-        RemindGo.forecast -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.forecast) }   // ios: Data/Remind.swift:618
-        RemindGo.rateScen -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.rateScen) }   // ios: Data/Remind.swift:619
-        RemindGo.external -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.external) }   // ios: Data/Remind.swift:620
-        // ios: Data/Remind.swift:621
+        RemindGo.shelter -> { tab = Tab.home; homePath = listOf("shelter") }   // ios: Data/Remind.swift:626
+        is RemindGo.char -> { tab = Tab.home; homePath = listOf("shelter", "char:${g.id}") }   // ios: Data/Remind.swift:627
+        RemindGo.me -> { tab = Tab.home; homePath = listOf("me") }   // ios: Data/Remind.swift:628
+        is RemindGo.reader -> { tab = Tab.home; homePath = listOf("shelter", "read:${g.i}") }   // ios: Data/Remind.swift:629
+        RemindGo.board -> { tab = Tab.board; boardPath = emptyList() }   // ios: Data/Remind.swift:630
+        RemindGo.week -> { tab = Tab.board; boardPath = emptyList() }   // ios: Data/Remind.swift:631
+        RemindGo.calm -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.calm) }   // ios: Data/Remind.swift:632
+        RemindGo.myPath -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.myPath) }   // ios: Data/Remind.swift:633
+        RemindGo.forecast -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.forecast) }   // ios: Data/Remind.swift:634
+        RemindGo.rateScen -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.rateScen) }   // ios: Data/Remind.swift:635
+        RemindGo.external -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.external) }   // ios: Data/Remind.swift:636
+        // ios: Data/Remind.swift:637
         is RemindGo.hold -> {
-            tab = Tab.hold   // ios: Data/Remind.swift:622
-            holdPath = Sample.symbol(g.s)?.let { listOf(it) } ?: emptyList()   // ios: Data/Remind.swift:623
+            tab = Tab.hold   // ios: Data/Remind.swift:638
+            holdPath = Sample.symbol(g.s)?.let { listOf(it) } ?: emptyList()   // ios: Data/Remind.swift:639
         }
-        RemindGo.support -> openSettings(SettingsRoute.support)   // ios: Data/Remind.swift:624
-        RemindGo.widgets -> kotlinx.coroutines.MainScope().launch { kotlinx.coroutines.delay(350); widgetsOpen = true }   // ios: Data/Remind.swift:625 (0.35초)
-        RemindGo.sync -> openSettings(SettingsRoute.sync)   // ios: Data/Remind.swift:626
-        RemindGo.alerts -> openSettings(SettingsRoute.alerts)   // ios: Data/Remind.swift:627
-        RemindGo.krSum -> krSumAsk = true   // ios: Data/Remind.swift:628
+        RemindGo.support -> openSettings(SettingsRoute.support)   // ios: Data/Remind.swift:640
+        RemindGo.widgets -> kotlinx.coroutines.MainScope().launch { kotlinx.coroutines.delay(350); widgetsOpen = true }   // ios: Data/Remind.swift:641 (0.35초)
+        RemindGo.sync -> openSettings(SettingsRoute.sync)   // ios: Data/Remind.swift:642
+        RemindGo.alerts -> openSettings(SettingsRoute.alerts)   // ios: Data/Remind.swift:643
+        RemindGo.krSum -> krSumAsk = true   // ios: Data/Remind.swift:644
     }
 }
 

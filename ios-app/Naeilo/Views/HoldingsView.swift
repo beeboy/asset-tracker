@@ -9,6 +9,7 @@ struct HoldingsView: View {
     @State private var said: String? = nil          // 지운 뒤 인물의 한 줄 (평정 지수)
     @State private var swiped: String? = nil        // 왼쪽으로 밀어 지우기 버튼이 보이는 종목
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
+    @State private var river: EarnTarget? = nil     // 내 몫 실적 강 팝업 (목록 오른쪽 막대를 누르면)
     @AppStorage("holdUsd") private var inUsd = false // 목록 금액: 미국 종목을 달러로 볼지
     @Environment(\.dynamicTypeSize) private var dts
     @AppStorage("town.arrive") private var arrive = ""
@@ -45,7 +46,7 @@ struct HoldingsView: View {
                         }
                         .accessibilityLabel("정렬: \(m.holdSort.label)")
                     }
-                    if !us.isEmpty { group(String(localized: "미국"), us) }
+                    if !us.isEmpty { EarnTip(); group(String(localized: "미국"), us) }
                     if !kr.isEmpty { group(String(localized: "국내"), kr) }
                     NavigationLink(value: "add") {
                         Label("종목 추가", systemImage: "plus").appFont(15, .bold)
@@ -64,6 +65,7 @@ struct HoldingsView: View {
             .refreshable { await Market.shared.pullRefresh(m) }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
+            .sheet(item: $river) { EarningsRiverSheet(target: $0) }
             .navigationDestination(for: String.self) { _ in AddHoldingView() }
             .onAppear { if !arrive.isEmpty { m.tab = .home } }   // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
             .onChange(of: arrive) { if !$1.isEmpty { m.tab = .home } }
@@ -173,7 +175,7 @@ struct HoldingsView: View {
             .padding(.horizontal, 14).padding(.vertical, 10)
             ForEach(rs) { r in
                 Divider().overlay(Theme.line)
-                NavigationLink(value: r.sym) { row(r) }.buttonStyle(.plain)
+                row(r)
                     .background(Theme.card)
                     .offset(x: swiped == r.id ? -84 : 0)
                     // 왼쪽으로 밀면 뒤에 숨은 지우기 버튼이 보인다
@@ -208,9 +210,13 @@ struct HoldingsView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
-    // 행: 로고 · "이름 수량" · "지금 가격 · 오늘 %" / 평가액 · 산 가격 대비 %
+    // 행: 로고 · "이름 수량" · "지금 가격 · 오늘 %" / 평가액 · 산 가격 대비 % · 내 몫 실적 막대 두 개
+    // 왼쪽(로고·이름)은 상세로, 오른쪽(평가액·막대)은 내 몫 실적 강 팝업으로
     private func row(_ r: AppModel.Row) -> some View {
         let chg = r.cost > 0 ? r.value / r.cost - 1 : 0
+        let es = EarningsFeed.shared.summary(r.sym, qty: r.h.qty)
+        let dot = Circle().fill(EarnColor.gold).frame(width: 6, height: 6).opacity(es?.fresh == true ? 1 : 0)
+            .accessibilityHidden(es?.fresh != true).accessibilityLabel("오늘 실적")
         let day = r.sym.quote.change
         let name = HStack(spacing: 10) {
             LogoTile(symbol: r.id, size: 36)
@@ -221,10 +227,11 @@ struct HoldingsView: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(r.sym.name).appFont(15, .bold).lineLimit(1).fixedSize()
+                        if es?.fresh == true { dot.alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 } }
                         qty.fixedSize()
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(r.sym.name).appFont(15, .bold).lineLimit(1)
+                        HStack(spacing: 6) { Text(r.sym.name).appFont(15, .bold).lineLimit(1); if es?.fresh == true { dot } }
                         qty
                     }
                 }
@@ -239,15 +246,29 @@ struct HoldingsView: View {
             Text(amountText([r])).appFont(15, .bold).monospacedDigit().lineLimit(1).fixedSize().roll(r.value)
             Text(AppModel.sgn(chg)).appFont(13, .bold).foregroundStyle(Theme.change(chg))
         }
+        // 실적 자료가 있으면 강 팝업, 없으면(ETF·국내·못 받음) 줄표만 두고 왼쪽처럼 상세로
+        let earnLabel = HStack(spacing: 8) { amount.frame(minWidth: 72, alignment: .trailing); EarnBars(s: es) }
+            .frame(minHeight: 44).contentShape(Rectangle())
+        let earn = Group {
+            if es != nil {
+                Button { river = EarnTarget(sym: r.sym, qty: r.h.qty) } label: { earnLabel }
+                    .buttonStyle(.plain).accessibilityHint(String(localized: "내 몫 실적 보기"))
+            } else {
+                NavigationLink(value: r.sym) { earnLabel }.buttonStyle(.plain)
+            }
+        }
         return Group {
             if dts.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 6) { name; amount }.padding(.vertical, 10)
+                VStack(alignment: .leading, spacing: 6) {
+                    NavigationLink(value: r.sym) { name.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }.buttonStyle(.plain)
+                    earn
+                }.padding(.vertical, 10)
             } else {
                 HStack(spacing: 10) {
-                    name
-                    Spacer(minLength: 4)
-                    amount.frame(minWidth: 72, alignment: .trailing)
-                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
+                    NavigationLink(value: r.sym) {
+                        HStack(spacing: 0) { name; Spacer(minLength: 4) }.frame(minHeight: 64).contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                    earn
                 }
             }
         }
@@ -1366,7 +1387,7 @@ enum TownLook {
     static func earnDay(_ res: Resident, _ ahead: Int = 0) -> String? {
         guard res.id != mayorID, res.id != warshID, res.old == nil else { return nil }
         let d = Day.str(Date().addingTimeInterval(Double(ahead) * 86400))
-        return MarketEvents.rules.first { r in r.id.hasPrefix("e_") && res.rows.contains { $0.id == r.target } && !MarketEvents.dates(r, from: d, until: d).isEmpty }?.kind
+        return MarketEvents.live.first { r in r.id.hasPrefix("e_") && res.rows.contains { $0.id == r.target } && !MarketEvents.dates(r, from: d, until: d).isEmpty }?.kind
     }
     /// 오늘 모임의 주인공 (동네가 정해 둔다)
     static var host: (id: String, name: String)? = nil

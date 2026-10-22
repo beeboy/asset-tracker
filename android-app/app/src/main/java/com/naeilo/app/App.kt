@@ -75,7 +75,6 @@ import com.naeilo.app.ui.analysis.MyPathCompareRoute
 import com.naeilo.app.ui.analysis.MyPathCompareView
 import com.naeilo.app.ui.analysis.FactorDetailRoute
 import com.naeilo.app.ui.analysis.FactorDetailView
-import com.naeilo.app.ui.analysis.FactorDetailScreen
 import com.naeilo.app.ui.analysis.RateWhyRoute
 import com.naeilo.app.ui.analysis.RateWhyView
 import com.naeilo.app.ui.settings.SettingsView
@@ -176,7 +175,7 @@ fun RootView(model: AppModel) {
                             is AnalysisRoute -> NavPage(bar = false) { AnalysisPager(model, start = r) }   // ios: Views/AnalysisView.swift:128 (넘기기 화면은 막대를 스스로 그린다)
                             is Symbol -> NavPage(r.name) { HoldingDetailView(model, sym = r, period0 = Period.y1) }   // ios: Views/AnalysisView.swift:83
                             MyPathCompareRoute -> NavPage(MyPathCompareRoute.title) { MyPathCompareView(model) }   // 내 길 '내 구성으로 비교'
-                            is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailScreen(model, r.factor, r.start) }   // 외부 요인 상세
+                            is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailView(model, r.factor, r.start) }   // 외부 요인 상세
                             is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }   // 금리 시나리오 근거
                             is com.naeilo.app.ui.calm.CalmFriendRoute -> com.naeilo.app.ui.shelter.characterPage(model, r.friend, invest = true)   // 내 투자 습관 → 인물 투자 갈래
                             else -> NavPage { GoalSetPage(model) }   // 전망의 '목표 고치기'

@@ -277,7 +277,9 @@ def main():
         if raw in wui:
             wused.add(raw)
         # WIDGET_UI 에 있으면 위젯 표(WL.t·Catalog 이름표). 없으면 아래 xcstrings 표(l10n_en.json)로 — WL.t 도 거기서 찾는다 (아이폰 String(localized:) 자리)
-        cat = ("위젯 문구(WL.t, lines_en.json)" if raw in wui else
+        # 위젯 표에도 있는 낱말이라도 앱 화면 글(tr)에 끼면 xcstrings 키를 함께 쓴다 ("오늘 하락은 …" 의 '하락')
+        cat = ("위젯 문구(WL.t, lines_en.json)" if raw in wui and not L.before.rstrip().endswith("WL.t(") and (keys.get(t) or keys.get(raw)) is None else
+               "위젯 문구(WL.t, lines_en.json)" if raw in wui and L.before.rstrip().endswith("WL.t(") else
                "코드용(저장 키·정규식 등)" if NON_UI_BEFORE.search(L.before) else None)
         if cat:
             excluded.setdefault(cat, []).append(L)

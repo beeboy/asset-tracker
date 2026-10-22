@@ -420,6 +420,20 @@ val LocalTextScale = staticCompositionLocalOf { TextScale(3) }
 fun appFont(size: Float, weight: FontWeight = FontWeight.Normal): TextStyle =
     TextStyle(fontSize = (size * LocalTextScale.current.ratio).sp, fontWeight = weight, lineBreak = KoLineBreak)
 
+/** 아이폰 .system(design: .serif) 의 짝 (내 몫 강 제목·큰 금액). 아이폰 세리프(New York)에는 한글이 없어 한글은 본문 고딕으로 그려지므로,
+ *  안드로이드도 한글·빈칸은 앱 본문 글꼴 그대로 두고 숫자·라틴 글자만 세리프로 그린다 (한글 명조로 바뀌지 않게) */
+fun serifDigits(s: String): androidx.compose.ui.text.AnnotatedString = androidx.compose.ui.text.buildAnnotatedString {
+    fun ko(c: Char) = c in '\uAC00'..'\uD7A3' || c in '\u1100'..'\u11FF' || c in '\u3130'..'\u318F' || c.isWhitespace()
+    var i = 0
+    while (i < s.length) {
+        val k = ko(s[i]); var j = i
+        while (j < s.length && ko(s[j]) == k) j++
+        if (k) append(s.substring(i, j))
+        else { pushStyle(androidx.compose.ui.text.SpanStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Serif)); append(s.substring(i, j)); pop() }
+        i = j
+    }
+}
+
 /** 한국어 줄바꿈을 iOS 처럼 띄어쓰기 단위로 (안드로이드 기본은 글자 단위라 "계\n산할"처럼 끊는다. API 33+ 에서 적용, 그 아래는 기본) */
 val KoLineBreak = androidx.compose.ui.text.style.LineBreak(
     strategy = androidx.compose.ui.text.style.LineBreak.Strategy.Simple,

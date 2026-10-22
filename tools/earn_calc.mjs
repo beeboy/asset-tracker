@@ -41,10 +41,12 @@ export function krw(v) {
   return "약 " + s + Math.round(a / 10) * 10 + "원";
 }
 
-/** 강 팝업·목록 막대·홈 카드가 쓰는 값 한 벌 */
-export function view(j, qty, fx) {
+/** 강 팝업·목록 막대·홈 카드가 쓰는 값 한 벌. at = 몇 번째 분기(0 = 가장 옛 분기). at 이 없으면 마지막 분기 + 기다리는 중, 있으면 그 분기를 다 찬 강으로(지난 분기 넘기기) */
+export function view(j, qty, fx, at) {
   if (!j || !j.quarters || !j.quarters.length) return null;
-  const qs = j.quarters, q = qs[qs.length - 1], ly = sameLastYear(qs, q);
+  const qs = j.quarters, last = qs.length - 1;
+  const i = at == null ? last : Math.max(0, Math.min(last, at));
+  const q = qs[i], ly = sameLastYear(qs, q);
   const me = mine(q, qty), lm = ly ? mine(ly, qty) : null;
   const three = q.cogs != null && q.rnd != null && q.sga != null;
   const branches = three
@@ -55,10 +57,10 @@ export function view(j, qty, fx) {
   return {
     symbol: j.symbol, currency: j.currency, months: q.months, label: q.label,
     lastYearMonths: ly ? "작년 " + ly.months : null,
-    pending: j.pending ? j.pending.announced : null,
+    pending: j.pending && at == null ? j.pending.announced : null,
     revenue: me.revenue, net: me.net, branches, mist, loss, short: loss ? -me.net : 0,
-    // 수위표: 지난 4분기 내 몫 매출 (작년 같은 분기는 진하게)
-    gauge: qs.slice(-5, -1).map((x) => ({ label: x.label, value: mine(x, qty).revenue, lastYear: x === ly })),
+    // 수위표: 그 분기 앞 4분기 내 몫 매출 (작년 같은 분기는 진하게). 옛 분기는 앞에 있는 만큼만
+    gauge: qs.slice(Math.max(0, i - 4), i).map((x) => ({ label: x.label, value: mine(x, qty).revenue, lastYear: x === ly })),
     revYoY: yoyText(me.revenue, lm && lm.revenue),
     // 홈 카드·작은 막대: 내 몫 순이익 작년 대비
     netYoY: yoyText(me.net, lm && lm.net),

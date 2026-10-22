@@ -322,7 +322,7 @@ private class RateOut(val r: RateScen, val pb: List<Double>, val mid: Double, va
 /** 금리 충격 테스트 화면 (분석 넘기기 안). 근거 화면은 RateWhyRoute 로 쌓는다 */
 // ios: Views/AnalysisDetail.swift:1333,1339
 @Composable
-fun RateScenarioScreen(m: AppModel) {
+fun RateScenarioView(m: AppModel) {
     var pick by remember { mutableIntStateOf(2) }   // ios: Views/AnalysisDetail.swift:1334 프리셋 번호. 기본 "작년만큼 또 오른다". -1 이면 직접 정한 값
     var custom by remember { mutableDoubleStateOf(0.0) }   // ios: Views/AnalysisDetail.swift:1335
     var open by remember { mutableStateOf(false) }   // ios: Views/AnalysisDetail.swift:1336
