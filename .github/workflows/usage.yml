@@ -1,10 +1,7 @@
 name: usage
 # Claude 사용량 위젯 앱(usage-app/, 본인용)이 컴파일되는지 확인한다. 맥과 같이 커밋된 ClaudeUsage.xcodeproj 를 그대로 빌드한다 (xcodegen 없음)
 on:
-  push:
-    paths: ["usage-app/**", ".github/workflows/usage.yml"]
-  pull_request:
-    paths: ["usage-app/**", ".github/workflows/usage.yml"]
+  # 맥에서 빌드·확인하므로 push·PR(백업)에는 돌지 않는다. 필요할 때 Actions 에서 손으로 돌린다 (맥 러너 비용)
   workflow_dispatch:
 concurrency:
   group: usage-${{ github.ref }}
