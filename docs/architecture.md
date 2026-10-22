@@ -38,6 +38,10 @@
 - `WidgetShared/`: `Config.swift`(URL, App Group 저장), `Models.swift`(위젯 데이터 형식), `Engine.swift`(위젯이 총액·일간 변화 재계산).
 - 위젯 데이터: 앱의 `WidgetBridge.write`가 `summary.json`, `feed.json`, `live.json`, `reward.json`, `story.json`, `me.png`를 App Group에 쓰고 타임라인을 새로 고침. 위젯은 `data/quotes.json`을 스스로 받아 `Engine.build`로 총액을 다시 계산.
 
+## 3-1. 안드로이드 앱 (`android-app/`)
+- iOS가 원본이고, 안드로이드는 사용자를 위한 복제(Kotlin·Compose). 모듈 `:app`, `:widget`.
+- Swift↔Kotlin 짝은 `docs/android-map.md`, 빠뜨림 검사는 `tools/port_check/`.
+
 ## 4. 데이터 흐름
 
 ### 수집 (GitHub Actions)
@@ -48,7 +52,7 @@
 | `macro.yml` | `40 3 5 * *` | `macro.py` → `data/macro/rates_earnings.json`, `sp_monthly.json` |
 | `sample.yml` | `10 0 * * *` | 가상 DRNK 시세 생성 + Playwright로 `sample_calc.json` |
 | `worker.yml` | 수동 | wrangler로 워커 배포 |
-| `ios.yml` / `usage.yml` | push 경로 필터 | iOS 빌드, 웹↔Swift 몬테카를로 parity |
+| `ios.yml` / `usage.yml` | 수동 (맥 러너 비용, 앱 빌드·검사는 맥에서) | iOS 빌드, 웹↔Swift 몬테카를로 parity |
 
 ### 외부 API
 - Yahoo Finance(시세, 검색): 수집기·브라우저·워커 `?url=` 프록시·앱 테스트 전용 국내 시세.
