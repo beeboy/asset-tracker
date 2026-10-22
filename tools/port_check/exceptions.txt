@@ -132,7 +132,7 @@ Views/AnalysisDetail.swift:785 검사기 한계: 보간 속 따옴표 (옮김, E
 Views/AnalysisDetail.swift:831 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt TodayCard)
 Views/AnalysisDetail.swift:944 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt 요인 줄 읽어 주기)
 Views/AnalysisDetail.swift:962 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt 다가오는 일)
-Views/AnalysisDetail.swift:1077 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt FactorDetailScreen 제목)
+Views/AnalysisDetail.swift:1077 검사기 한계: 보간 속 따옴표 (옮김, ExternalViews.kt FactorDetailView 제목)
 Views/AnalysisDetail.swift:1409 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt RateMain whenS)
 Views/AnalysisDetail.swift:1452-1453 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt Step 2·3)
 Views/AnalysisDetail.swift:1470 검사기 한계: 보간 속 따옴표 (옮김, RateViews.kt 작년 변화)

@@ -109,7 +109,7 @@ private class DivData(val months: List<String>, val byMonth: List<Double>, val p
 
 // ios: Views/AnalysisDetail.swift:1713,1733
 @Composable
-fun DividendScreen(m: AppModel) {
+fun DividendView(m: AppModel) {
     var tab by remember { mutableStateOf("div") }   // ios: Views/AnalysisDetail.swift:1714
     var mode by remember { mutableStateOf("month") }   // ios: Views/AnalysisDetail.swift:1715
     var extra by remember { mutableStateOf(0.0) }   // ios: Views/AnalysisDetail.swift:1716

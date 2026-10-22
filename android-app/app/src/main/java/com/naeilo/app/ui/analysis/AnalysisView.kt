@@ -132,9 +132,9 @@ fun AnalysisPager(m: AppModel, start: AnalysisRoute) {
         // 7일 무료 뒤 구독하지 않으면 목표(내 길)·확률 전망만 잠근다 (Support.pro)
         AnalysisRoute.forecast -> if (Support.shared.pro) ForecastView(m) else SubLocked(m, what = "확률 전망")   // ios: Views/AnalysisView.swift:46
         AnalysisRoute.myPath -> if (Support.shared.pro) MyPathView(m) else SubLocked(m, what = "내 길(목표까지 확률)")   // ios: Views/AnalysisView.swift:47
-        AnalysisRoute.rateScen -> RateScenarioScreen(m)   // ios: Views/AnalysisView.swift:48
-        AnalysisRoute.external -> ExternalScreen(m)   // ios: Views/AnalysisView.swift:49
-        AnalysisRoute.dividend -> DividendScreen(m)   // ios: Views/AnalysisView.swift:50
+        AnalysisRoute.rateScen -> RateScenarioView(m)   // ios: Views/AnalysisView.swift:48
+        AnalysisRoute.external -> ExternalView(m)   // ios: Views/AnalysisView.swift:49
+        AnalysisRoute.dividend -> DividendView(m)   // ios: Views/AnalysisView.swift:50
         AnalysisRoute.fx -> FxImpactView(m)   // ios: Views/AnalysisView.swift:51
         AnalysisRoute.glance -> GlanceView(m)   // ios: Views/AnalysisView.swift:52
         AnalysisRoute.calm -> CalmView(m)   // ios: Views/AnalysisView.swift:53

@@ -345,7 +345,7 @@ private fun RetroCard(retro: EventRetro.Snap?) {
 /** 외부 요인 화면 (분석 넘기기 안). 요인 상세는 FactorDetailRoute 로 쌓는다 */
 // ios: Views/AnalysisDetail.swift:674,886
 @Composable
-fun ExternalScreen(m: AppModel) {
+fun ExternalView(m: AppModel) {
     var asked by remember { mutableStateOf(setOf<String>()) }   // ios: Views/AnalysisDetail.swift:854
     var retro by remember { mutableStateOf<EventRetro.Snap?>(null) }   // ios: Views/AnalysisDetail.swift:855
     var data by remember { mutableStateOf<ExtData?>(null) }
@@ -539,7 +539,7 @@ internal fun factorLabel(factor: String, dv: Double, weak: Boolean, known: Boole
 /** 요인 상세 화면 (분석 탭에 FactorDetailRoute 로 쌓인다. 제목은 FactorDetailView.navTitle) */
 // ios: Views/AnalysisDetail.swift:1002,1003,1008,1009,1051
 @Composable
-fun FactorDetailScreen(m: AppModel, factor: String, start: Double? = null) {
+fun FactorDetailView(m: AppModel, factor: String, start: Double? = null) {
     var shock by remember(factor) { mutableStateOf(start) }   // ios: Views/AnalysisDetail.swift:1004,1010
     var custom by remember(factor) { mutableStateOf(start != null) }   // ios: Views/AnalysisDetail.swift:1005,1011
     val name = FactorDetailView.names[factor] ?: factor   // ios: Views/AnalysisDetail.swift:1052

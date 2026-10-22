@@ -128,7 +128,7 @@ class GParityTest {
             r["summary"] = ExternalView.summary(rs)
             r["fd"] = facs.mapIndexed { i, f ->
                 val vs = DS(shocks[f] ?: shocks["etc"]) + DS(X["texts"])
-                fun sign(shock: Double?) = if ((shock ?: factorPresets(f)[1].second) >= 0) 1.0 else -1.0   // FactorDetailScreen 의 shockSign 과 같은 식
+                fun sign(shock: Double?) = if ((shock ?: factorPresets(f)[1].second) >= 0) 1.0 else -1.0   // FactorDetailView 의 shockSign 과 같은 식
                 val s1 = sign(if (i % 2 == 0) null else vs[0]); val s2 = sign(vs[2])
                 val rg = factorRange(f)
                 mapOf("range" to listOf(rg.start, rg.endInclusive), "text" to vs.map { factorText(f, it) }, "huge" to vs.map { factorHuge(f, it) },
