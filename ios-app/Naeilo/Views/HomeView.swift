@@ -16,6 +16,7 @@ struct HomeView: View {
                 shelterBox
                 ParallelHomeCard()
                 reminder
+                EarnHomeCard()
                 // 아래: 예전 종목 탭 소식판에서 옮긴 둘 (2026-10-21), 그 밑에 위젯·설정 팝업
                 HoldingsNews(moversOnly: true)
                 TownButton { TownView(scroll: $0) }
@@ -245,6 +246,44 @@ struct HomeView: View {
                 .foregroundStyle(.white).background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// 실적 나온 날 (숫자 기다리는 중이거나 오늘 발표): 보유 종목마다 "{회사} 7~9월 실적" + 작은 막대 둘 + 작년 대비 %.
+/// 금액·평가하는 말 없음. 누르면 강 팝업. 나온 종목이 없으면 안 보인다
+struct EarnHomeCard: View {
+    @Environment(AppModel.self) private var m
+    @State private var river: EarnTarget? = nil
+
+    var body: some View {
+        let items = m.rows.compactMap { r -> (AppModel.Row, Earnings.Summary)? in
+            guard let s = EarningsFeed.shared.summary(r.sym, qty: r.h.qty), s.fresh else { return nil }
+            return (r, s)
+        }
+        if !items.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(items, id: \.0.id) { r, s in
+                    Button { river = EarnTarget(sym: r.sym, qty: r.h.qty) } label: {
+                        HStack(spacing: 10) {
+                            Text("\(r.sym.name) \(s.months)월 실적").appFont(14, .bold).lineLimit(1)
+                            Spacer(minLength: 4)
+                            if let y = s.netYoY {
+                                Text(y.hasPrefix("+") || y.hasPrefix("−") ? String(localized: "작년보다 \(y)") : y)
+                                    .appFont(13).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
+                            }
+                            EarnBars(s: s)
+                        }
+                        .padding(.horizontal, 14).frame(minHeight: 48).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(String(localized: "내 몫 실적 보기"))
+                    if r.id != items.last?.0.id { Divider().padding(.leading, 14) }
+                }
+            }
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+            .sheet(item: $river) { EarningsRiverSheet(target: $0) }
+        }
     }
 }
 
