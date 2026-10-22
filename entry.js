@@ -169,8 +169,10 @@
   const fade = (t, at) => seg(t, at, at + 0.4);
   const batchim = (s) => { const c = s.charCodeAt(s.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; };
   const eok = (v) => { const e = v / 1e8; return (e >= 10 ? Math.round(e).toLocaleString("en-US") : e.toFixed(1)) + "억"; };
+  // 세리프 글 속 한글 묶음은 고딕 tspan 으로: 사파리는 세리프 글꼴에 한글이 없으면 명조로 떨어진다 (앱 .serif 는 한글 고딕)
+  const ko = (s) => esc(s).replace(/[\u1100-\u11ff\u3130-\u318f\uac00-\ud7a3]+(?:\s+[\u1100-\u11ff\u3130-\u318f\uac00-\ud7a3]+)*/g, (m) => `<tspan class="ko">${m}</tspan>`);
   const T = (s, size, w, c, x, y, a, op = 1, serif = false) => op <= 0 ? "" :
-    `<text x="${x}" y="${y}" font-size="${size}" font-weight="${w}" text-anchor="${a === "r" ? "end" : a === "c" ? "middle" : "start"}"${serif ? ' class="sf"' : ""} style="fill:var(--e-${c})${op < 1 ? ";opacity:" + op : ""}">${esc(s)}</text>`;
+    `<text x="${x}" y="${y}" font-size="${size}" font-weight="${w}" text-anchor="${a === "r" ? "end" : a === "c" ? "middle" : "start"}"${serif ? ' class="sf"' : ""} style="fill:var(--e-${c})${op < 1 ? ";opacity:" + op : ""}">${serif ? ko(s) : esc(s)}</text>`;
   // 잘린 선: pathLength 1 기준 dash 로 0~g 만 보이게
   const trim = (g) => (g >= 1 ? "" : ` pathLength="1" stroke-dasharray="${g} 2"`);
 
@@ -271,7 +273,7 @@
       o += T(m.at == null ? "이번 분기 내 몫 손실" : "그 분기 내 몫 손실", 12, 400, "muted", MID, 660, "c", fade(t, 2.1));
     } else {
       const op = fade(t, 1.9);
-      if (op > 0) o += `<text x="${goldX}" y="636" text-anchor="middle" style="opacity:${op}"><tspan class="sf" font-size="30" font-weight="700" style="fill:var(--e-gold)">${esc(v.netText)}</tspan>` +
+      if (op > 0) o += `<text x="${goldX}" y="636" text-anchor="middle" style="opacity:${op}"><tspan class="sf" font-size="30" font-weight="700" style="fill:var(--e-gold)">${ko(v.netText)}</tspan>` +
         (v.netKrw ? `<tspan font-size="13" font-weight="600" dx="8" style="fill:var(--e-muted)">${esc(v.netKrw)}</tspan>` : "") + "</text>";
       o += T(m.at == null ? "회사가 이번 분기 내 몫으로 번 순이익" : "회사가 그 분기 내 몫으로 번 순이익", 12, 400, "muted", goldX, 660, "c", fade(t, 2.1));
     }
