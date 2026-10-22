@@ -97,3 +97,10 @@
 - HoldingsView 행: 왼쪽 로고·이름·화살표 = 상세, 가운데 평가액·막대 = 강 팝업. 밀어 지우기·contextMenu 는 행 전체에 그대로.
 - 확인한 것: 명령줄 빌드 성공, 강 그림(흑자·적자·대기, 밝게·어둡게)을 ImageRenderer 로 뽑아 봄. 못 한 것: 시뮬레이터에서 목록 누르기·밀어 지우기 손 검사(패널 권한 대기), 시안 판16 원본과 좌표 대조(맥에 파일 없음), 새 문구 영어 번역(Localizable 추출 안 함), 안드로이드.
 - 웹 입구 `#tryEarn`(index.html·entry.js·entry.css, 2026-10-22): 종목+수량 → 강 SVG(EarningsRiver.swift 판16 좌표·색·동작). 계산은 `tools/earn_calc.mjs` 를 동적 import(같은 함수), 원화는 `data/prices/KRW_X.json` 끝값, 자료 없으면 강 없이 안내. 정한 것: 전망 해보기 아래 별도 구역으로 둠, 화면에 들어올 때 한 번 흐름. server.py 는 web/ 만 내보내서 확인은 루트 `python3 -m http.server` 로 함. 남은 차이: 세리프 한글 글꼴은 브라우저 대체(AppleMyungjo 등), 물안개 흐림 정도 근사.
+
+## 내 몫 실적 3단계: 손실 막대·홈 카드·실적 일정·안드로이드 (2026-10-22, earnings-bot 로컬 커밋)
+- 손실 막대: 목록·홈 작은 막대에서 순이익<0 분기는 절댓값 높이 규칙 그대로 속 빈 테두리(같은 색 1.2). 작년 쪽 손실도 같음.
+- 홈 카드 `EarnHomeCard`(HomeView, 노란 띠 바로 아래): fresh(pending 또는 오늘 발표) 보유 종목마다 "{이름} {months}월 실적" + 막대 둘 + "작년보다 −43%"(netYoY 가 "작년과 같음"이면 그 글 그대로, 없으면 막대만). 누르면 강 팝업. 나온 종목 없으면 카드 없음.
+- 실적 일정 `MarketEvents.live`/`earnRule`: 미국 종목 e_ 는 실적 자료(받은 것→앱 안 견본) 우선 — pending 날, 마지막 발표가 오늘 이후면 그 날, 아니면 다음 분기의 작년 짝(끝 날짜 = 마지막 끝 + 91일 − 365±25) 발표일 + 364일에 "{종목} 실적 무렵". DRNK·국내·자료 없음은 손 값. 동네 행사(earnDay)도 live 를 씀. 견본 기준 애플 10-29 무렵, 엔비디아 11-18 무렵.
+- 안드로이드: `data/Earnings.kt`(계산·받기·캐시·DRNK·견본, EarningsFeed 는 Market.refresh 에서 같이), `ui/hold/EarningsRiver.kt`(EarnBars·EarnTip·EarningsRiverSheet·강 Canvas 시안 판16 좌표·색·동작), 목록 행 오른쪽(평가액·막대) = 강 팝업·이름 옆 금색 점, 홈 카드, Remind live. 견본 earnings_seed.json 은 빌드 때 아이폰 Resources 에서 복사. 검사 `EarnParityTest` 픽스처 3건 + DRNK 통과, assembleDebug 성공.
+- 정한 것/남은 차이: 안드로이드 물안개 흐림(blur 10)은 가장자리로 옅어지는 둥근 무늬로 근사(BlurMaskFilter 하드웨어 가속 문제 피함). 세리프는 FontFamily.Serif. port_check 줄 이름표는 새 파일에 함수 단위로만 달아 `port_check.py Naeilo/Views/EarningsRiver.swift` 는 아직 짝 없음 다수(줄 단위 이름표는 다음 이식 점검 때). 아이폰 쪽 Remind 줄이 17줄 밀려 기존 안드로이드 `// ios: Data/Remind.swift:5xx` 이름표도 어긋남. 화면 손 검사(에뮬레이터·시뮬레이터 캡처 비교)·새 문구 영어 번역 안 함.
