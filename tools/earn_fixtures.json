@@ -1,0 +1,207 @@
+{
+ "note": "내 몫 실적 계산 검사 (tools/earn_calc.mjs). 아이폰·안드로이드 계산도 같은 입력에 같은 답을 내야 한다",
+ "cases": [
+  {
+   "name": "3갈래 흑자, 물안개, 작년 대비",
+   "qty": 2,
+   "fx": 1400,
+   "input": {
+    "symbol": "T3",
+    "currency": "USD",
+    "pending": null,
+    "quarters": [
+     {
+      "start": "2025-07-01",
+      "end": "2025-09-30",
+      "months": "7~9",
+      "label": "25.7~9",
+      "filed": "2025-09-30",
+      "announced": "2025-09-30",
+      "shares": 10,
+      "revenue": 970,
+      "cogs": 400,
+      "rnd": 150,
+      "sga": 100,
+      "net": 300
+     },
+     {
+      "start": "2025-10-01",
+      "end": "2025-12-31",
+      "months": "10~12",
+      "label": "25.10~12",
+      "filed": "2025-12-31",
+      "announced": "2025-12-31",
+      "shares": 10,
+      "revenue": 980,
+      "cogs": 400,
+      "rnd": 150,
+      "sga": 100,
+      "net": 200
+     },
+     {
+      "start": "2026-01-01",
+      "end": "2026-03-31",
+      "months": "1~3",
+      "label": "26.1~3",
+      "filed": "2026-03-31",
+      "announced": "2026-03-31",
+      "shares": 10,
+      "revenue": 990,
+      "cogs": 400,
+      "rnd": 150,
+      "sga": 100,
+      "net": 200
+     },
+     {
+      "start": "2026-04-01",
+      "end": "2026-06-30",
+      "months": "4~6",
+      "label": "26.4~6",
+      "filed": "2026-06-30",
+      "announced": "2026-06-30",
+      "shares": 10,
+      "revenue": 995,
+      "cogs": 400,
+      "rnd": 150,
+      "sga": 100,
+      "net": 200
+     },
+     {
+      "start": "2026-07-01",
+      "end": "2026-09-30",
+      "months": "7~9",
+      "label": "26.7~9",
+      "filed": "2026-09-30",
+      "announced": "2026-09-30",
+      "shares": 10,
+      "revenue": 1000,
+      "cogs": 400,
+      "rnd": 200,
+      "sga": 100,
+      "net": 150
+     }
+    ]
+   },
+   "expect": {
+    "months": "7~9",
+    "lastYearMonths": "작년 7~9",
+    "revenue": 200,
+    "net": 30,
+    "mist": 30,
+    "loss": false,
+    "short": 0,
+    "branches": [
+     {
+      "k": "cogs",
+      "v": 80
+     },
+     {
+      "k": "sga",
+      "v": 20
+     },
+     {
+      "k": "rnd",
+      "v": 40
+     }
+    ],
+    "gauge": [
+     {
+      "label": "25.7~9",
+      "value": 194,
+      "lastYear": true
+     },
+     {
+      "label": "25.10~12",
+      "value": 196,
+      "lastYear": false
+     },
+     {
+      "label": "26.1~3",
+      "value": 198,
+      "lastYear": false
+     },
+     {
+      "label": "26.4~6",
+      "value": 199,
+      "lastYear": false
+     }
+    ],
+    "revYoY": "+3%",
+    "netYoY": "−50%",
+    "lastYearNet": 60,
+    "netText": "30달러",
+    "netKrw": "약 4만"
+   }
+  },
+  {
+   "name": "1갈래 적자, 결산 밀린 회사(8~10월), 매출 같음",
+   "qty": 2,
+   "fx": 1400,
+   "input": {
+    "symbol": "T1",
+    "currency": "USD",
+    "pending": {
+     "announced": "2026-11-19"
+    },
+    "quarters": [
+     {
+      "start": "2025-07-28",
+      "end": "2025-10-26",
+      "months": "8~10",
+      "label": "25.8~10",
+      "filed": "2025-10-26",
+      "announced": "2025-10-26",
+      "shares": 10,
+      "revenue": 500,
+      "cogs": null,
+      "rnd": null,
+      "sga": null,
+      "net": 50
+     },
+     {
+      "start": "2026-07-27",
+      "end": "2026-10-25",
+      "months": "8~10",
+      "label": "26.8~10",
+      "filed": "2026-10-25",
+      "announced": "2026-10-25",
+      "shares": 10,
+      "revenue": 500,
+      "cogs": null,
+      "rnd": null,
+      "sga": null,
+      "net": -400
+     }
+    ]
+   },
+   "expect": {
+    "months": "8~10",
+    "lastYearMonths": "작년 8~10",
+    "pending": "2026-11-19",
+    "revenue": 100,
+    "net": -80,
+    "mist": 0,
+    "loss": true,
+    "short": 80,
+    "branches": [
+     {
+      "k": "spent",
+      "v": 180
+     }
+    ],
+    "revYoY": "작년과 같음",
+    "netYoY": null,
+    "lastYearNet": 10,
+    "netText": "−80달러",
+    "netKrw": null
+   }
+  },
+  {
+   "name": "ETF (자료 없음)",
+   "qty": 3,
+   "fx": 1400,
+   "input": null,
+   "expect": null
+  }
+ ]
+}
