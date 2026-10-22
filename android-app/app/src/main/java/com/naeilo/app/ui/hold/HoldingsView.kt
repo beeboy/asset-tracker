@@ -49,6 +49,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.naeilo.app.AppModel
 import com.naeilo.app.HoldSort
@@ -417,13 +418,14 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, big: Boolean, 
     }
     // 실적 자료가 있으면 강 팝업, 없으면(ETF·국내·못 받음) 줄표만 두고 줄 전체처럼 상세로
     // ios: Views/HoldingsView.swift:250,251,252,253,254,255,256,257
-    @Composable fun Earn(mod: Modifier) = Row(
+    // endPad: 줄 오른쪽 여백까지 강 팝업 자리로 (여백을 누르면 상세로 가던 것)
+    @Composable fun Earn(mod: Modifier, endPad: Dp = 0.dp) = Row(
         mod.defaultMinSize(minHeight = 44.dp).then(if (es != null) Modifier.plainClickable { openRiver(EarnTarget(r.sym, r.h.qty)) }
-            .semantics { onClick(label = tr("내 몫 실적 보기")) { openRiver(EarnTarget(r.sym, r.h.qty)); true } } else Modifier),
+            .semantics { onClick(label = tr("내 몫 실적 보기")) { openRiver(EarnTarget(r.sym, r.h.qty)); true } } else Modifier).padding(end = endPad),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
     ) { Amount(Modifier.widthIn(min = 72.dp)); EarnBars(es) }
     // ios: Views/HoldingsView.swift:260,275,276
-    Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
+    Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).padding(start = 14.dp, end = if (big) 14.dp else 0.dp), contentAlignment = Alignment.CenterStart) {
         // ios: Views/HoldingsView.swift:261,262,263,264,265
         if (big) {
             Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Name(Modifier); Earn(Modifier) }
@@ -434,7 +436,7 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, big: Boolean, 
                 Row(Modifier.weight(1f).defaultMinSize(minHeight = 64.dp), horizontalArrangement = Arrangement.spacedBy(0.dp), verticalAlignment = Alignment.CenterVertically) {
                     Name(Modifier.weight(1f, fill = true).padding(end = 4.dp))
                 }
-                Earn(Modifier)   // ios: Views/HoldingsView.swift:271
+                Earn(Modifier, endPad = 14.dp)   // ios: Views/HoldingsView.swift:271
             }
         }
     }

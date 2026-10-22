@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -193,21 +195,25 @@ fun EarningsRiverSheet(target: EarnTarget?, onDismiss: () -> Unit) {   // ios: V
                 // 옆으로 밀면 지난 분기 (맨 오른쪽이 이번 분기). 장에 들어올 때마다 그 분기 강이 다시 흐른다
                 val pages = feed.pages(t.sym)   // ios: Views/EarningsRiver.swift:152
                 val page = rememberPagerState(initialPage = pages.size - 1) { pages.size }   // 처음은 이번 분기(맨 오른쪽, tag -1)   // ios: Views/EarningsRiver.swift:147,190
-                HorizontalPager(page, Modifier.widthIn(max = Theme.maxWidth).weight(1f), key = { pages[it] ?: -1 }) { i ->   // TabView .page = HorizontalPager   // ios: Views/EarningsRiver.swift:164,165,172,175,188
-                    val at = pages[i]
-                    feed.summary(t.sym, t.qty, at)?.let { q ->   // ios: Views/EarningsRiver.swift:166,167
-                        EarningsRiver(t.sym.name, t.qty, q, Modifier.padding(start = 8.dp, end = 8.dp), now = at == null)   // ios: Views/EarningsRiver.swift:168,171
-                    }
-                }
-                if (pages.size > 1) {   // ios: Views/EarningsRiver.swift:182
-                    // 장 표시 점: 이번 분기(맨 오른쪽)는 금색
-                    Row(Modifier.padding(bottom = 10.dp).height(20.dp).clearAndSetSemantics {}, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/EarningsRiver.swift:196,198,199,205,206
-                        pages.indices.forEach { i ->   // ios: Views/EarningsRiver.swift:200
-                            val on = (pages[i] ?: -1) == (pages.getOrNull(page.currentPage) ?: -1)   // ios: Views/EarningsRiver.swift:201
-                            Box(Modifier.size(if (on) 7.dp else 5.dp, if (on) 7.dp else 5.dp).background(if (on) EarnColor.gold else EarnColor.muted.copy(alpha = 0.35f), CircleShape))   // ios: Views/EarningsRiver.swift:202
+                // 점은 강 바로 아래에 겹쳐 둔다 (시트 아래쪽은 내비 막대 밑으로 들어가 가려진다)
+                BoxWithConstraints(Modifier.widthIn(max = Theme.maxWidth).weight(1f)) {
+                    val riverH = (maxWidth - 16.dp) * (H / W)
+                    HorizontalPager(page, Modifier.fillMaxSize(), key = { pages[it] ?: -1 }, verticalAlignment = Alignment.Top) { i ->   // TabView .page = HorizontalPager   // ios: Views/EarningsRiver.swift:164,165,172,175,188
+                        val at = pages[i]
+                        feed.summary(t.sym, t.qty, at)?.let { q ->   // ios: Views/EarningsRiver.swift:166,167
+                            EarningsRiver(t.sym.name, t.qty, q, Modifier.padding(start = 8.dp, end = 8.dp), now = at == null)   // ios: Views/EarningsRiver.swift:168,171
                         }
                     }
-                } else Spacer(Modifier.height(12.dp))
+                    if (pages.size > 1) {   // ios: Views/EarningsRiver.swift:182
+                        // 장 표시 점: 이번 분기(맨 오른쪽)는 금색
+                        Row(Modifier.align(Alignment.TopCenter).offset(y = minOf(riverH, maxHeight - 30.dp)).padding(bottom = 10.dp).height(20.dp).clearAndSetSemantics {}, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/EarningsRiver.swift:196,198,199,205,206
+                            pages.indices.forEach { i ->   // ios: Views/EarningsRiver.swift:200
+                                val on = (pages[i] ?: -1) == (pages.getOrNull(page.currentPage) ?: -1)   // ios: Views/EarningsRiver.swift:201
+                                Box(Modifier.size(if (on) 7.dp else 5.dp, if (on) 7.dp else 5.dp).background(if (on) EarnColor.gold else EarnColor.muted.copy(alpha = 0.35f), CircleShape))   // ios: Views/EarningsRiver.swift:202
+                            }
+                        }
+                    }
+                }
             } else {   // ios: Views/EarningsRiver.swift:183
                 // 자료가 없으면 팝업을 열지 않는다 (목록이 상세로 보냄). 그사이 자료가 사라졌으면 바로 닫는다
                 LaunchedEffect(Unit) { onDismiss() }   // ios: Views/EarningsRiver.swift:185
