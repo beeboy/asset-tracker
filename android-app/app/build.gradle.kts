@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -30,11 +29,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
     buildFeatures { compose = true; buildConfig = false }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("iosAssets").get().asFile)
-    sourceSets["main"].res.srcDir(layout.buildDirectory.dir("iosRes").get().asFile)
+}
+// AGP 9 새 DSL 로 자료 폴더를 넘긴다 (옛 sourceSets 접근자는 형 변환에서 깨진다)
+extensions.getByType<com.android.build.api.dsl.ApplicationExtension>().sourceSets.getByName("main").apply {
+    assets.directories.add(layout.buildDirectory.dir("iosAssets").get().asFile.path)
+    res.directories.add(layout.buildDirectory.dir("iosRes").get().asFile.path)
 }
 
 // iOS 원본 자료 중 앱이 읽는 것만 빌드 때 복사한다 (저장소에 같은 파일을 두 벌 두지 않는다)

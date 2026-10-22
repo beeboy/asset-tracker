@@ -1,7 +1,7 @@
 # 허용 라이브러리: Compose, Glance, kotlinx.serialization, Play Billing, WorkManager (그 밖은 넣지 않는다)
 [versions]
-agp = "8.13.2"
-kotlin = "2.0.21"
+agp = "9.4.1"
+kotlin = "2.2.10"
 composeBom = "2024.12.01"
 activityCompose = "1.9.3"
 serialization = "1.6.3"
