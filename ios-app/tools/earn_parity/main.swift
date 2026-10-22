@@ -33,7 +33,7 @@ var bad = 0
 for c in F["cases"] as! [[String: Any]] {
     let name = c["name"] as! String
     let input = c["input"].flatMap { $0 is NSNull ? nil : try? JSONDecoder().decode(Earnings.File.self, from: JSONSerialization.data(withJSONObject: $0)) }
-    let got = Earnings.summary(input, qty: c["qty"] as! Double, fx: c["fx"] as? Double)
+    let got = Earnings.summary(input, qty: c["qty"] as! Double, fx: c["fx"] as? Double, at: c["at"] as? Int)
     var miss: [String] = []
     if let exp = c["expect"] as? [String: Any] {
         if let got {

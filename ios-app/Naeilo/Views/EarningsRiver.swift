@@ -20,9 +20,16 @@ final class EarningsFeed {
     /// 받은 자료 → 앱 안 견본 순
     func file(_ k: String) -> Earnings.File? { k == "DRNK" ? Earnings.drnk : files[k] ?? Earnings.seed?.files[k] }
 
-    func summary(_ sym: Symbol, qty: Double) -> Earnings.Summary? {
+    func summary(_ sym: Symbol, qty: Double, at: Int? = nil) -> Earnings.Summary? {
         guard let k = Self.key(sym) else { return nil }
-        return Earnings.summary(file(k), qty: qty, fx: Market.shared.fx.last)
+        return Earnings.summary(file(k), qty: qty, fx: Market.shared.fx.last, at: at)
+    }
+
+    /// 강 팝업 장: 옛 분기 → 이번(nil). 기다리는 중이면 마지막 발표 분기도 다 찬 강으로 한 장 더 (밀어야 보인다)
+    func pages(_ sym: Symbol) -> [Int?] {
+        guard let k = Self.key(sym), let f = file(k), !f.quarters.isEmpty else { return [nil] }
+        let n = f.quarters.count
+        return Array(0..<(f.pending == nil ? n - 1 : n)).map { Optional($0) } + [nil]
     }
 
     /// 받은 지 20시간이 안 됐으면 받지 않는다 (봇이 하루 한 번 만든다). force(당겨 갱신)면 바로
@@ -137,8 +144,12 @@ struct EarningsRiverSheet: View {
     let target: EarnTarget
     @Environment(\.dismiss) private var dismiss
 
+    @State private var page: Int = -1   // -1 = 이번(at nil), 그 밖은 분기 번호
+
     var body: some View {
-        let s = EarningsFeed.shared.summary(target.sym, qty: target.qty)
+        let feed = EarningsFeed.shared
+        let s = feed.summary(target.sym, qty: target.qty)
+        let pages = feed.pages(target.sym)
         VStack(spacing: 0) {
             HStack {
                 Spacer()
@@ -148,9 +159,27 @@ struct EarningsRiverSheet: View {
                 }
                 .buttonStyle(.plain).accessibilityLabel("닫기")
             }
-            if let s {
-                EarningsRiver(name: target.sym.name, qty: target.qty, s: s)
-                    .padding(.horizontal, 8).padding(.bottom, 12)
+            if s != nil {
+                // 옆으로 밀면 지난 분기 (맨 오른쪽이 이번 분기). 장에 들어올 때마다 그 분기 강이 다시 흐른다
+                TabView(selection: $page) {
+                    ForEach(pages, id: \.self) { at in
+                        Group {
+                            if let q = feed.summary(target.sym, qty: target.qty, at: at) {
+                                EarningsRiver(name: target.sym.name, qty: target.qty, s: q, now: at == nil)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .tag(at ?? -1)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .accessibilityAdjustableAction { d in   // 보이스오버: 위·아래로 쓸어 분기 넘기기
+                    let tags = pages.map { $0 ?? -1 }
+                    guard let i = tags.firstIndex(of: page) else { return }
+                    let j = d == .increment ? i + 1 : d == .decrement ? i - 1 : i
+                    if tags.indices.contains(j) { page = tags[j] }
+                }
+                if pages.count > 1 { dots(pages) }
             } else {
                 // 자료가 없으면 팝업을 열지 않는다 (목록이 상세로 보냄). 그사이 자료가 사라졌으면 바로 닫는다
                 Color.clear.onAppear { dismiss() }
@@ -158,8 +187,23 @@ struct EarningsRiverSheet: View {
         }
         .frame(maxWidth: Theme.maxWidth)
         .background(EarnColor.screen)
+        .onAppear { page = -1 }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+extension EarningsRiverSheet {
+    /// 장 표시 점: 이번 분기(맨 오른쪽)는 금색
+    fileprivate func dots(_ pages: [Int?]) -> some View {
+        HStack(spacing: 6) {
+            ForEach(pages, id: \.self) { at in
+                let on = (at ?? -1) == page
+                Circle().fill(on ? EarnColor.gold : EarnColor.muted.opacity(0.35)).frame(width: on ? 7 : 5, height: on ? 7 : 5)
+            }
+        }
+        .frame(height: 20).padding(.bottom, 10)
+        .accessibilityHidden(true)
     }
 }
 
@@ -168,6 +212,7 @@ struct EarningsRiver: View {
     let name: String
     let qty: Double
     let s: Earnings.Summary
+    var now = true       // 이번 분기 장. 지난 분기 장은 분기 이름(25.7~9)을 쓴다
     var frozen = false   // 미리보기·그림 뽑기: 다 흐른 정지 화면
     @Environment(\.accessibilityReduceMotion) private var reduce
     private var still: Bool { reduce || frozen }
@@ -193,8 +238,9 @@ struct EarningsRiver: View {
         .aspectRatio(Self.W / Self.H, contentMode: .fit)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
-            start = Date(); done = false
-            Task { try? await Task.sleep(for: .seconds(Self.end + 0.1)); done = true }
+            let st = Date()
+            start = st; done = false
+            Task { try? await Task.sleep(for: .seconds(Self.end + 0.1)); if start == st { done = true } }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(a11y)
@@ -202,10 +248,10 @@ struct EarningsRiver: View {
 
     private var a11y: String {
         if let p = s.pending { return "\(title). \(p) 실적 발표, 숫자를 기다리는 중" }
-        var t = "\(title) \(s.months)월. "
+        var t = now ? "\(title) \(s.months)월. " : "\(title) \(s.label). "
         t += "내 몫 매출 \(Earnings.money(s.revenue ?? 0, s.currency))"
         if let y = s.revYoY { t += ", 작년보다 \(y)" }
-        t += s.loss ? ". 이번 분기 내 몫 손실 \(Earnings.money(s.short, s.currency))" : ". 내 몫 순이익 \(s.netText)"
+        t += s.loss ? (now ? ". 이번 분기" : ". 그 분기") + " 내 몫 손실 \(Earnings.money(s.short, s.currency))" : ". 내 몫 순이익 \(s.netText)"
         if let w = s.netKrw { t += ", \(w)" }
         return t
     }
@@ -278,7 +324,7 @@ struct EarningsRiver: View {
             gauge(&ctx, lv: lv, S: nil, last: S, t: t)
             return
         }
-        text(&ctx, String(localized: "\(name) · 이번 분기"), 12, .regular, c1, CGPoint(x: 24, y: base + 40), .leading, 0.85 * fade(t, 0.3))
+        text(&ctx, now ? String(localized: "\(name) · 이번 분기") : "\(name) · \(s.label)", 12, .regular, c1, CGPoint(x: 24, y: base + 40), .leading, 0.85 * fade(t, 0.3))
         let unit = s.currency == "USD" ? String(localized: " 달러") : " " + s.currency
         text(&ctx, String(localized: "매출 \(eok(co))\(unit)"), 20, .bold, c2, CGPoint(x: 24, y: base + 70), .leading, fade(t, 0.3), serif: true)
         gauge(&ctx, lv: lv, S: S, t: t)
@@ -352,7 +398,7 @@ struct EarningsRiver: View {
         // 금색 끝: 큰 금액(+원화) · 설명. 적자면 옅은 손실
         if s.loss {
             text(&ctx, fmt(-s.short), 30, .bold, EarnColor.muted, CGPoint(x: Self.mid, y: 636), .center, fade(t, 1.9), serif: true)
-            text(&ctx, String(localized: "이번 분기 내 몫 손실"), 12, .regular, EarnColor.muted, CGPoint(x: Self.mid, y: 660), .center, fade(t, 2.1))
+            text(&ctx, now ? String(localized: "이번 분기 내 몫 손실") : String(localized: "그 분기 내 몫 손실"), 12, .regular, EarnColor.muted, CGPoint(x: Self.mid, y: 660), .center, fade(t, 2.1))
         } else {
             let op = fade(t, 1.9)
             if op > 0 {
@@ -362,7 +408,7 @@ struct EarningsRiver: View {
                 ctx.draw(big, at: CGPoint(x: goldX, y: 636), anchor: .center)
                 ctx.opacity = 1
             }
-            text(&ctx, String(localized: "회사가 이번 분기 내 몫으로 번 순이익"), 12, .regular, EarnColor.muted, CGPoint(x: goldX, y: 660), .center, fade(t, 2.1))
+            text(&ctx, now ? String(localized: "회사가 이번 분기 내 몫으로 번 순이익") : String(localized: "회사가 그 분기 내 몫으로 번 순이익"), 12, .regular, EarnColor.muted, CGPoint(x: goldX, y: 660), .center, fade(t, 2.1))
         }
     }
 
@@ -389,7 +435,7 @@ struct EarningsRiver: View {
         if let S {
             tick(&ctx, S, false)
             let op = fade(t, 0.3)
-            text(&ctx, String(localized: "지금 \(eok(s.coRevenue ?? 0))"), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 17), .leading, op)
+            text(&ctx, now ? String(localized: "지금 \(eok(s.coRevenue ?? 0))") : String(localized: "이때 \(eok(s.coRevenue ?? 0))"), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 17), .leading, op)
             if let y = s.revYoY { text(&ctx, y, 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 31), .leading, op) }
         }
         // 기다리는 중: 지난 분기 높이 눈금. 물이 다 차오른 뒤(1.8초) 나타난다

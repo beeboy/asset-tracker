@@ -65,7 +65,7 @@ object Earnings {
         val coRevenue: Double? = null,
     ) {
         /** 실적 나온 날: 숫자를 기다리는 중이거나 오늘 발표 (이름 옆 금색 점·홈 카드) */
-        // ios: Views/EarningsRiver.swift:59,61,62,64
+        // ios: Views/EarningsRiver.swift:66,68,69,71
         val fresh: Boolean get() = pending != null || announced == Day.today
     }
 
@@ -130,11 +130,12 @@ object Earnings {
         return (if (n < 0) "-" else "") + s + out
     }
 
-    // ios: Data/Earnings.swift:101,102,103,104,105,106,107,108,109,110,111,112,113,114,116,117,118,119,120,121,122,123,124,125,126,127
-    fun summary(j: File?, qty: Double, fx: Double?): Summary? {
-        if (j == null) return null
-        val q = j.quarters.lastOrNull() ?: return null
-        val qs = j.quarters; val lyIndex = sameLastYear(qs, q); val ly = lyIndex?.let { qs[it] }
+    // ios: Data/Earnings.swift:102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,118,119,120,121,122,123,124,125,126,127,128,129
+    /** at = 몇 번째 분기(0 = 가장 옛 분기). null 이면 마지막 분기 + 기다리는 중, 있으면 그 분기를 다 찬 강으로(지난 분기 넘기기) */
+    fun summary(j: File?, qty: Double, fx: Double?, at: Int? = null): Summary? {
+        if (j == null || j.quarters.isEmpty()) return null
+        val qs = j.quarters; val i = (at ?: (qs.size - 1)).coerceIn(0, qs.size - 1); val q = qs[i]
+        val lyIndex = sameLastYear(qs, q); val ly = lyIndex?.let { qs[it] }
         val me = mine(q, qty); val lm = ly?.let { mine(it, qty) }
         val rev = me.revenue ?: 0.0; val net = me.net ?: 0.0   // JS 에서 null 은 빼기·곱하기에서 0
         val three = q.cogs != null && q.rnd != null && q.sga != null
@@ -142,13 +143,13 @@ object Earnings {
             else listOf(Branch("spent", rev - net))
         val mist = if (three) rev - (me.cogs ?: 0.0) - (me.rnd ?: 0.0) - (me.sga ?: 0.0) - net else 0.0
         val loss = net < 0
-        val gauge = qs.indices.toList().dropLast(1).takeLast(4).map { i ->
-            Gauge(qs[i].label, mine(qs[i], qty).revenue, i == lyIndex, qs[i].revenue)
+        val gauge = qs.indices.toList().take(i).takeLast(4).map { g ->
+            Gauge(qs[g].label, mine(qs[g], qty).revenue, g == lyIndex, qs[g].revenue)
         }
         return Summary(
             symbol = j.symbol, currency = j.currency, months = q.months, label = q.label,
             lastYearMonths = ly?.let { "작년 " + it.months },
-            pending = j.pending?.announced, announced = q.announced,
+            pending = if (at == null) j.pending?.announced else null, announced = q.announced,
             revenue = me.revenue, net = me.net, branches = branches, mist = mist, loss = loss, short = if (loss) -net else 0.0,
             gauge = gauge,
             revYoY = yoyText(me.revenue, lm?.revenue),
@@ -162,18 +163,18 @@ object Earnings {
 
     // ── 자료 받기·캐시 ──
 
-    fun cacheName(sym: String) = "earn_$sym.json"   // ios: Data/Earnings.swift:132
-    fun decode(d: String?): File? = d?.let { runCatching { NJson.decodeFromString(File.serializer(), it) }.getOrNull() }   // ios: Data/Earnings.swift:133
-    fun cached(sym: String): File? = if (sym == "DRNK") drnk else decode(Store.readData(cacheName(sym))?.decodeToString())   // ios: Data/Earnings.swift:134
+    fun cacheName(sym: String) = "earn_$sym.json"   // ios: Data/Earnings.swift:134
+    fun decode(d: String?): File? = d?.let { runCatching { NJson.decodeFromString(File.serializer(), it) }.getOrNull() }   // ios: Data/Earnings.swift:135
+    fun cached(sym: String): File? = if (sym == "DRNK") drnk else decode(Store.readData(cacheName(sym))?.decodeToString())   // ios: Data/Earnings.swift:136
 
     /** 앱 안 견본 (아이폰 Resources/earnings_seed.json 을 빌드 때 복사). none = 회사 실적이 없는 종목 */
-    // ios: Data/Earnings.swift:138,139,140
+    // ios: Data/Earnings.swift:140,141,142
     @Serializable data class Seed(val files: Map<String, File>, val none: List<String>)
     val seed: Seed? by lazy { Defaults.asset("earnings_seed", "json")?.let { runCatching { NJson.decodeFromString(Seed.serializer(), it) }.getOrNull() } }
 
-    sealed class Got { class Ok(val f: File) : Got(); object None : Got(); object Failed : Got() }   // ios: Data/Earnings.swift:142
+    sealed class Got { class Ok(val f: File) : Got(); object None : Got(); object Failed : Got() }   // ios: Data/Earnings.swift:144
     /** naeilo.com/data/earnings/{종목}.json. 404 는 자료 없음(ETF·국내) */
-    // ios: Data/Earnings.swift:144,145,146,147,148,149,150,151,152,153
+    // ios: Data/Earnings.swift:146,147,148,149,150,151,152,153,154,155
     suspend fun fetch(sym: String): Got = withContext(Dispatchers.IO) {
         val (qn, qv) = "t" to (System.currentTimeMillis() / 1000 / 3600).toString()
         val url = URL(Config.data, "earnings/$sym.json").toString() + "?$qn=$qv"
@@ -188,7 +189,7 @@ object Earnings {
     }
 
     /** DRNK 견본: data/earnings/DRNK.json 과 같은 내용 (가상 종목이라 받지 않는다) */
-    // ios: Data/Earnings.swift:157,158,169
+    // ios: Data/Earnings.swift:159,160,171
     val drnk: File? by lazy { decode(drnkJSON) }
     const val drnkJSON = """
 {"symbol":"DRNK","name":"드링커 (가상 종목)","currency":"USD","pending":null,"quarters":[
@@ -223,13 +224,22 @@ class EarningsFeed {
     fun file(k: String): Earnings.File? = if (k == "DRNK") Earnings.drnk else files[k] ?: Earnings.seed?.files?.get(k)   // ios: Views/EarningsRiver.swift:21
 
     // ios: Views/EarningsRiver.swift:23,24,25
-    fun summary(sym: Symbol, qty: Double): Earnings.Summary? {
+    fun summary(sym: Symbol, qty: Double, at: Int? = null): Earnings.Summary? {
         val k = key(sym) ?: return null
-        return Earnings.summary(file(k), qty, Market.shared.fx.last)
+        return Earnings.summary(file(k), qty, Market.shared.fx.last, at)
+    }
+
+    /** 강 팝업 장: 옛 분기 → 이번(null). 기다리는 중이면 마지막 발표 분기도 다 찬 강으로 한 장 더 (밀어야 보인다) */
+    // ios: Views/EarningsRiver.swift:29,30,31,32
+    fun pages(sym: Symbol): List<Int?> {
+        val f = key(sym)?.let(::file)
+        if (f == null || f.quarters.isEmpty()) return listOf(null)
+        val n = f.quarters.size
+        return (0 until (if (f.pending == null) n - 1 else n)).map<Int, Int?> { it } + listOf(null)
     }
 
     /** 받은 지 20시간이 안 됐으면 받지 않는다 (봇이 하루 한 번 만든다). force(당겨 갱신)면 바로 */
-    // ios: Views/EarningsRiver.swift:29,30,31,32,33,34,35,36,37,38,39,40
+    // ios: Views/EarningsRiver.swift:36,37,38,39,40,41,42,43,44,45,46,47
     suspend fun refresh(held: Set<String>, force: Boolean) {
         val keys = held.mapNotNull { id -> Sample.symbol(id)?.let(::key) }.toSet() - "DRNK"
         val c = withContext(Dispatchers.IO) { keys.filter { files[it] == null }.mapNotNull { k -> Earnings.cached(k)?.let { k to it } } }

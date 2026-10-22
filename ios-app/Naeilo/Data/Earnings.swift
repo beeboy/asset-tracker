@@ -98,9 +98,11 @@ enum Earnings {
         return (n < 0 ? "-" : "") + s + out
     }
 
-    static func summary(_ j: File?, qty: Double, fx: Double?) -> Summary? {
-        guard let j, let q = j.quarters.last else { return nil }
-        let qs = j.quarters, ly = sameLastYear(qs, q).map { qs[$0] }
+    /// at = 몇 번째 분기(0 = 가장 옛 분기). nil 이면 마지막 분기 + 기다리는 중, 있으면 그 분기를 다 찬 강으로(지난 분기 넘기기)
+    static func summary(_ j: File?, qty: Double, fx: Double?, at: Int? = nil) -> Summary? {
+        guard let j, !j.quarters.isEmpty else { return nil }
+        let qs = j.quarters, i = max(0, min(qs.count - 1, at ?? qs.count - 1)), q = qs[i]
+        let ly = sameLastYear(qs, q).map { qs[$0] }
         let me = mine(q, qty), lm = ly.map { mine($0, qty) }
         let rev = me.revenue ?? 0, net = me.net ?? 0   // JS 에서 null 은 빼기·곱하기에서 0
         let three = q.cogs != nil && q.rnd != nil && q.sga != nil
@@ -110,13 +112,13 @@ enum Earnings {
         let mist = three ? rev - (me.cogs ?? 0) - (me.rnd ?? 0) - (me.sga ?? 0) - net : 0
         let loss = net < 0
         let lyIndex = sameLastYear(qs, q)
-        let gauge = qs.indices.dropLast().suffix(4).map { i in
-            Gauge(label: qs[i].label, value: mine(qs[i], qty).revenue, lastYear: i == lyIndex, co: qs[i].revenue)
+        let gauge = qs.indices.prefix(i).suffix(4).map { g in
+            Gauge(label: qs[g].label, value: mine(qs[g], qty).revenue, lastYear: g == lyIndex, co: qs[g].revenue)
         }
         return Summary(
             symbol: j.symbol, currency: j.currency, months: q.months, label: q.label,
             lastYearMonths: ly.map { "작년 " + $0.months },
-            pending: j.pending?.announced, announced: q.announced,
+            pending: at == nil ? j.pending?.announced : nil, announced: q.announced,
             revenue: me.revenue, net: me.net, branches: branches, mist: mist, loss: loss, short: loss ? -net : 0,
             gauge: gauge,
             revYoY: yoyText(me.revenue, lm?.revenue),

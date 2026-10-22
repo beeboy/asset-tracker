@@ -30061,6 +30061,36 @@
         }
       }
     },
+    "이때 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Then %@"
+          }
+        }
+      }
+    },
+    "그 분기 내 몫 손실" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My share of that quarter's loss"
+          }
+        }
+      }
+    },
+    "회사가 그 분기 내 몫으로 번 순이익" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Net income the company earned for my share that quarter"
+          }
+        }
+      }
+    },
     "지금 %@" : {
       "localizations" : {
         "en" : {

@@ -11,7 +11,7 @@ const same = (a, b) =>
   : a === b;
 let bad = 0;
 for (const c of F.cases) {
-  const got = view(c.input, c.qty, c.fx);
+  const got = view(c.input, c.qty, c.fx, c.at);
   const miss = c.expect === null ? (got === null ? [] : ["null 이어야 함"]) : Object.keys(c.expect).filter((k) => !same(got && got[k], c.expect[k]));
   if (miss.length) { bad++; console.log(`실패 ${c.name}: ` + miss.map((k) => `${k} 기대 ${JSON.stringify(c.expect?.[k])} 받음 ${JSON.stringify(got?.[k])}`).join(" / ")); }
   else console.log(`통과 ${c.name}`);

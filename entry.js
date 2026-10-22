@@ -178,8 +178,9 @@
     const v = m.v, qs = m.j.quarters, name = m.name, fmt = (x) => calc.money(x, v.currency);
     let o = "", defs = "";
     o += T(`${name}${batchim(name) ? "이" : "가"} 번 돈 중 내 몫`, 20, 700, "fg", 24, 42, "l", 1, true);
-    // 물높이 lv(v) = 270 − (v−min)/(max−min)×210 (지난 4분기 + 지금, 회사 매출)
-    const co = qs[qs.length - 1].revenue || 0, gco = qs.slice(-5, -1).map((x) => x.revenue || 0);
+    // 물높이 lv(v) = 270 − (v−min)/(max−min)×210 (그 분기 앞 4분기 + 그 분기, 회사 매출)
+    const i = m.at == null ? qs.length - 1 : m.at;
+    const co = qs[i].revenue || 0, gco = qs.slice(Math.max(0, i - 4), i).map((x) => x.revenue || 0);
     const vals = gco.concat([co]), lo = Math.min(...vals), hi = Math.max(...vals);
     const lv = (x) => (hi > lo ? 270 - ((x - lo) / (hi - lo)) * 210 : 165), S = lv(co);
     // 물: 위→아래로 .6초. 기다리는 중이면 강바닥에서 지난 분기 높이까지 2초 차오른다
@@ -196,9 +197,9 @@
       o += gauge(v, gco, co, lv, null, t);
       return `<defs>${defs}</defs>` + o;
     }
-    o += T(`${name} · 이번 분기`, 12, 400, c1, 24, base + 40, "l", 0.85 * fade(t, 0.3));
+    o += T(m.at == null ? `${name} · 이번 분기` : `${name} · ${v.label}`, 12, 400, c1, 24, base + 40, "l", 0.85 * fade(t, 0.3));
     o += T(`매출 ${eok(co)}${v.currency === "USD" ? " 달러" : " " + v.currency}`, 20, 700, c2, 24, base + 70, "l", fade(t, 0.3), true);
-    o += gauge(v, gco, co, lv, S, t);
+    o += gauge(v, gco, co, lv, S, t, m.at == null);
     // 물안개: 남는 돈(이자·세금·기타). 피었다가 실 끝 전에 걷힌다
     if (v.mist > 0 && v.revenue > 0) {
       const mm = Math.sin(Math.PI * seg(t, 0.6, 1.7)) * (still ? 0 : 1);
@@ -267,18 +268,18 @@
     // 금색 끝: 큰 금액(+원화) · 설명. 적자면 옅은 손실
     if (v.loss) {
       o += T(fmt(-v.short), 30, 700, "muted", MID, 636, "c", fade(t, 1.9), true);
-      o += T("이번 분기 내 몫 손실", 12, 400, "muted", MID, 660, "c", fade(t, 2.1));
+      o += T(m.at == null ? "이번 분기 내 몫 손실" : "그 분기 내 몫 손실", 12, 400, "muted", MID, 660, "c", fade(t, 2.1));
     } else {
       const op = fade(t, 1.9);
       if (op > 0) o += `<text x="${goldX}" y="636" text-anchor="middle" style="opacity:${op}"><tspan class="sf" font-size="30" font-weight="700" style="fill:var(--e-gold)">${esc(v.netText)}</tspan>` +
         (v.netKrw ? `<tspan font-size="13" font-weight="600" dx="8" style="fill:var(--e-muted)">${esc(v.netKrw)}</tspan>` : "") + "</text>";
-      o += T("회사가 이번 분기 내 몫으로 번 순이익", 12, 400, "muted", goldX, 660, "c", fade(t, 2.1));
+      o += T(m.at == null ? "회사가 이번 분기 내 몫으로 번 순이익" : "회사가 그 분기 내 몫으로 번 순이익", 12, 400, "muted", goldX, 660, "c", fade(t, 2.1));
     }
     return `<defs>${defs}</defs>` + o;
   }
 
   // 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 null)
-  function gauge(v, gco, co, lv, S, t) {
+  function gauge(v, gco, co, lv, S, t, now = true) {
     let o = `<rect x="268" y="62" width="4" height="238" style="fill:var(--e-muted);opacity:.55"/>`;
     const tick = (y, strong) => `<rect x="261" y="${y - (strong ? 1 : 0.75)}" width="18" height="${strong ? 2 : 1.5}" style="fill:var(--e-${strong ? "fg" : "onwater"})${strong ? "" : ";opacity:.6"}"/>`;
     const others = [];
@@ -294,7 +295,7 @@
     others.forEach(([y, s]) => { o += T(s, 11, 400, "onwater", 284, y, "l", 0.75); });
     if (S != null) {
       const op = fade(t, 0.3);
-      o += tick(S, false) + T(`지금 ${eok(co)}`, 11, 600, "onwater", 284, S + 17, "l", op);
+      o += tick(S, false) + T(`${now ? "지금" : "이때"} ${eok(co)}`, 11, 600, "onwater", 284, S + 17, "l", op);
       if (v.revYoY) o += T(v.revYoY, 11, 600, "onwater", 284, S + 31, "l", op);
     }
     return o;
@@ -321,8 +322,8 @@
     if (!cur) return;
     const m = cur, v = m.v;
     svg.setAttribute("aria-label", v.pending ? `${m.name}. ${v.pending} 실적 발표, 숫자를 기다리는 중`
-      : `${m.name} ${v.months}월. 내 몫 매출 ${calc.money(v.revenue || 0, v.currency)}${v.revYoY ? ", 작년보다 " + v.revYoY : ""}` +
-        (v.loss ? `. 이번 분기 내 몫 손실 ${calc.money(v.short, v.currency)}` : `. 내 몫 순이익 ${v.netText}${v.netKrw ? ", " + v.netKrw : ""}`));
+      : `${m.name} ${m.at == null ? v.months + "월" : v.label}. 내 몫 매출 ${calc.money(v.revenue || 0, v.currency)}${v.revYoY ? ", 작년보다 " + v.revYoY : ""}` +
+        (v.loss ? `. ${m.at == null ? "이번" : "그"} 분기 내 몫 손실 ${calc.money(v.short, v.currency)}` : `. 내 몫 순이익 ${v.netText}${v.netKrw ? ", " + v.netKrw : ""}`));
     if (still || !seen) { svg.innerHTML = draw(m, still ? 99 : 0); return; }
     const t0 = performance.now();
     const step = (now) => {
@@ -348,11 +349,53 @@
     } catch (_) { files[sym] = files[sym] || null; }
     if (sym !== $("#earnSym").value.trim().toUpperCase()) return; // 그사이 바뀜
     const j = files[sym], v = calc && j ? calc.view(j, qty, fx) : null;
-    if (!v) { cur = null; none(sym); msg.textContent = "실적 자료가 있는 미국 종목만 강이 흘러요."; return; }
-    cur = { j, v, qty, name: String(j.name || sym).replace(/\s*\(.*\)\s*$/, "") || sym };
-    msg.textContent = j.virtual ? "DRNK 는 가상 종목 견본이에요. 미국 종목은 신고서 숫자로." : `${v.label} 신고서 숫자 · 주당 값 × 내 수량`;
+    if (!v) { cur = null; none(sym); dots(); msg.textContent = "실적 자료가 있는 미국 종목만 강이 흘러요."; return; }
+    // 장: 옛 분기 → 이번(null). 기다리는 중이면 마지막 발표 분기도 다 찬 강으로 한 장 더 (밀어야 보인다)
+    const n = j.quarters.length, pages = [...Array(j.pending ? n : n - 1).keys(), null];
+    cur = { j, v, qty, at: null, pages, pi: pages.length - 1, name: String(j.name || sym).replace(/\s*\(.*\)\s*$/, "") || sym };
+    show();
+  }
+
+  // 장 넘기기: 옆으로 밀면 지난 분기 (맨 오른쪽이 이번 분기). 장에 들어올 때마다 그 분기 강이 다시 흐른다
+  function go(d) {
+    if (!cur) return;
+    const pi = cur.pi + d;
+    if (pi < 0 || pi >= cur.pages.length) return;
+    const at = cur.pages[pi];
+    cur = { ...cur, pi, at, v: calc.view(cur.j, cur.qty, fx, at == null ? undefined : at) };
+    show();
+  }
+  function show() {
+    const m = cur, msg = $("#earnMsg");
+    msg.textContent = m.j.virtual ? "DRNK 는 가상 종목 견본이에요. 미국 종목은 신고서 숫자로." : `${m.v.label} 신고서 숫자 · 주당 값 × 내 수량`;
+    dots();
     play();
   }
+  function dots() {
+    const el = $("#earnDots");
+    if (!el) return;
+    el.innerHTML = cur && cur.pages.length > 1 ? cur.pages.map((_, i) => `<i${i === cur.pi ? ' class="on"' : ""}></i>`).join("") : "";
+  }
+  // 손가락·마우스 끌기 (가로 40 넘게), 화살표 키
+  let x0 = null, y0 = 0;
+  svg.addEventListener("pointerdown", (e) => { x0 = e.clientX; y0 = e.clientY; });
+  svg.addEventListener("pointermove", (e) => {
+    if (x0 == null || !cur) return;
+    const dx = e.clientX - x0;
+    if (Math.abs(dx) > Math.abs(e.clientY - y0)) svg.style.transform = `translateX(${Math.max(-60, Math.min(60, dx / 3))}px)`;
+  });
+  const up = (e) => {
+    if (x0 == null) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0;
+    x0 = null; svg.style.transform = "";
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) go(dx > 0 ? -1 : 1);
+  };
+  svg.addEventListener("pointerup", up);
+  svg.addEventListener("pointercancel", () => { x0 = null; svg.style.transform = ""; });
+  svg.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+  });
   const later = () => { clearTimeout(tmr); tmr = setTimeout(load, 300); };
 
   $("#earnSym").addEventListener("input", later);

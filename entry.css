@@ -225,4 +225,9 @@ footer a { color: var(--muted); }
 .earn-river { display: block; width: 100%; height: auto; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
 .earn-river .sf { font-family: ui-serif, "AppleMyungjo", "Nanum Myeongjo", "Noto Serif KR", Georgia, serif; }
 .earn-river text { dominant-baseline: central; }
+.earn-river { touch-action: pan-y; cursor: grab; transition: transform .2s; user-select: none; -webkit-user-select: none; }
+.earn-river:focus-visible { outline: 2px solid var(--e-gold); outline-offset: -2px; }
+.earn-dots { display: flex; gap: 6px; justify-content: center; align-items: center; height: 20px; margin-bottom: 10px; }
+.earn-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--e-muted); opacity: .35; }
+.earn-dots i.on { width: 7px; height: 7px; background: var(--e-gold); opacity: 1; }
 .earn-none { fill: var(--e-muted); }

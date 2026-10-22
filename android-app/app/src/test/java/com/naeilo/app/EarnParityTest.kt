@@ -40,7 +40,7 @@ class EarnParityTest {
             c as JsonObject
             val name = (jsonToPlain(c["name"]) as String)
             val inp = c["input"]?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.let { NJson.decodeFromJsonElement(Earnings.File.serializer(), it) }
-            val got = Earnings.summary(inp, (jsonToPlain(c["qty"]) as Number).toDouble(), (jsonToPlain(c["fx"]) as? Number)?.toDouble())
+            val got = Earnings.summary(inp, (jsonToPlain(c["qty"]) as Number).toDouble(), (jsonToPlain(c["fx"]) as? Number)?.toDouble(), (jsonToPlain(c["at"]) as? Number)?.toInt())
             val exp = jsonToPlain(c["expect"]) as? Map<*, *>
             val miss = mutableListOf<String>()
             if (exp != null) {
