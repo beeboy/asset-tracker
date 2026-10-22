@@ -120,4 +120,5 @@
 - xcstrings: 내 몫 실적 영어 22줄 + '지난 %@'(Last %@)만 HEAD 판에 넣어 인덱스로 커밋. 작업본에 남은 차이는 다른 세션의 항목 순서 바뀜뿐(값 차이 0) — 그 세션 몫.
 - 기다리는 중 강: 수위표에 지난 분기(coRevenue) 높이 눈금(x261~279, onwater 1.5 .6)과 '지난 N억'(x284, S+17, 11 semibold), 물이 다 찬 뒤 1.8초에 페이드. 아이폰 gauge(last:)·안드로이드 gauge(last=) 같게, port_check 짝 0(예외 400 = 불투명도 되돌림), l10n_en.json 다시 만듦.
 - 남은 일: 안드로이드 실기기(SM-F721N)에서 기다리는 중 강·눈금 눈으로 확인. 스튜디오 '업그레이드 도우미'로 AGP 9 로 올리지 말 것(9.4.1 이 동기화를 깸, 8.13.2·Gradle 8.13 고정 8ef68227).
+- AGP 9.4.1 올릴 때 고칠 것(2026-10-22 확인): ① `widget/build.gradle.kts` 자료 폴더에 Provider 대신 File ② kotlin-android 플러그인 빼고 AGP 내장 Kotlin, Kotlin 2.2.10, `kotlinOptions`→`kotlin { compilerOptions }` ③ 두 모듈 `sourceSets["main"]` 을 새 DSL `directories` 로 ④ Gradle 9.6.0(맥에 있음). 고칠 파일: libs.versions.toml, gradle-wrapper.properties, 루트·app·widget build.gradle.kts. 힙은 3GB·2GB(70b02f9e).
 - 확인(2026-10-22 14시 KST): 안드로이드 gauge 의 `last` 매개변수가 안쪽 `var last`(라벨 겹침용)에 가려져 '지난' 눈금이 엉뚱한 자리(-100 등)에 그려지던 것 → `lastS` 로 바꿈. 폰(SM-F721N)에 깔아 SPCX 기다리는 중 강에서 '지난 78억' 눈금·'작년 41억' 눈으로 확인. 아이폰·안드로이드 빌드 성공, port_check 짝 없음 0.
