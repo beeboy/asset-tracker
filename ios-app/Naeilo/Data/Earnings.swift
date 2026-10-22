@@ -25,7 +25,7 @@ enum Earnings {
 
     struct Mine { var revenue: Double?, cogs: Double?, rnd: Double?, sga: Double?, net: Double? }
     struct Branch: Equatable { var k: String; var v: Double }
-    struct Gauge: Equatable { var label: String; var value: Double?; var lastYear: Bool }
+    struct Gauge: Equatable { var label: String; var value: Double?; var lastYear: Bool; var co: Double? = nil }   // co = 회사 전체 매출 (강 수위표)
     /// 강 팝업·목록 막대·홈 카드가 쓰는 값 한 벌 (earn_calc.mjs view)
     struct Summary {
         var symbol: String, currency: String, months: String, label: String
@@ -43,6 +43,7 @@ enum Earnings {
         var lastYearNet: Double?
         var netText: String
         var netKrw: String?
+        var coRevenue: Double? = nil   // 회사 전체 매출 (강 물높이·글)
     }
 
     static func mine(_ q: Quarter, _ qty: Double) -> Mine {
@@ -110,7 +111,7 @@ enum Earnings {
         let loss = net < 0
         let lyIndex = sameLastYear(qs, q)
         let gauge = qs.indices.dropLast().suffix(4).map { i in
-            Gauge(label: qs[i].label, value: mine(qs[i], qty).revenue, lastYear: i == lyIndex)
+            Gauge(label: qs[i].label, value: mine(qs[i], qty).revenue, lastYear: i == lyIndex, co: qs[i].revenue)
         }
         return Summary(
             symbol: j.symbol, currency: j.currency, months: q.months, label: q.label,
@@ -122,7 +123,8 @@ enum Earnings {
             netYoY: yoyText(me.net, lm?.net),
             lastYearNet: lm?.net,
             netText: money(net, j.currency),
-            netKrw: !loss && j.currency == "USD" && (fx ?? 0) > 0 ? krw(net * fx!) : nil)
+            netKrw: !loss && j.currency == "USD" && (fx ?? 0) > 0 ? krw(net * fx!) : nil,
+            coRevenue: q.revenue)
     }
 
     // MARK: 자료 받기·캐시

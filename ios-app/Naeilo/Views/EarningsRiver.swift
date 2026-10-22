@@ -50,6 +50,10 @@ enum EarnColor {
     static let ghost = Color(hex: 0xA9B3B0, dark: 0x5D6965)
     static let sprout = Color(hex: 0x6FA85A, dark: 0x8CC477)
     static let gold = Color(hex: 0xC8962E, dark: 0xE0B04A)
+    static let fg = Color(hex: 0x1D2624, dark: 0xE4EBE8)
+    static let muted = Color(hex: 0x6B7773, dark: 0x8C9893)
+    static let screen = Color(hex: 0xFFFFFF, dark: 0x1A2220)
+    static let onwater = Color(hex: 0xF4FAFB, dark: 0xE4F0F3)
 }
 
 extension Earnings.Summary {
@@ -146,13 +150,13 @@ struct EarningsRiverSheet: View {
             }
         }
         .frame(maxWidth: Theme.maxWidth)
-        .background(Theme.card)
+        .background(EarnColor.screen)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 }
 
-/// 강 그림. 위→아래로 한 번 흐른다(약 2초, 팝업이 열린 동안만). 동작 줄이기면 다 흐른 정지 화면
+/// 강 그림 (시안 판16). 물이 차고 실이 흐른 뒤 떡잎이 핀다(약 3초, 팝업이 열린 동안만). 동작 줄이기면 다 흐른 정지 화면
 struct EarningsRiver: View {
     let name: String
     let qty: Double
@@ -164,10 +168,11 @@ struct EarningsRiver: View {
     @State private var done = false
 
     private static let W: CGFloat = 360, H: CGFloat = 680, bed: CGFloat = 300, top: CGFloat = 110
-    private static let left: CGFloat = 24, right: CGFloat = 250, total: CGFloat = 50
+    private static let left: CGFloat = 24, right: CGFloat = 250, total: CGFloat = 50, mid: CGFloat = 175
+    private static let end: Double = 2.9   // 마지막 동작(떡잎)이 끝나는 초
 
     var body: some View {
-        // 기다리는 중이면 물이 계속 차오른다 (실 없음). 아니면 2초 흐르고 멈춘다
+        // 기다리는 중이면 물이 계속 차오른다 (실 없음). 아니면 한 번 흐르고 멈춘다
         let paused = still || (done && s.pending == nil)
         TimelineView(.animation(paused: paused)) { tl in
             let el = tl.date.timeIntervalSince(start)
@@ -175,14 +180,14 @@ struct EarningsRiver: View {
                 let k = min(size.width / Self.W, size.height / Self.H)
                 ctx.translateBy(x: (size.width - Self.W * k) / 2, y: 0)
                 ctx.scaleBy(x: k, y: k)
-                draw(&ctx, t: still ? 1 : min(1, el / 2), el: still ? 0 : el)
+                draw(&ctx, t: still ? 99 : el, el: still ? 0 : el)
             }
         }
         .aspectRatio(Self.W / Self.H, contentMode: .fit)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             start = Date(); done = false
-            Task { try? await Task.sleep(for: .seconds(2.1)); done = true }
+            Task { try? await Task.sleep(for: .seconds(Self.end + 0.1)); done = true }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(a11y)
@@ -204,154 +209,197 @@ struct EarningsRiver: View {
 
     // 0~1 구간 안에서 0~1 로 (밖은 0 또는 1)
     private func seg(_ t: Double, _ a: Double, _ b: Double) -> Double { max(0, min(1, (t - a) / (b - a))) }
-    private func ease(_ x: Double) -> Double { x < 0.5 ? 2 * x * x : 1 - pow(-2 * x + 2, 2) / 2 }
+    /// cubic-bezier(.4,0,.2,1)
+    private func ease(_ x: Double) -> Double {
+        if x <= 0 { return 0 }; if x >= 1 { return 1 }
+        func bz(_ u: Double, _ p1: Double, _ p2: Double) -> Double { 3 * (1 - u) * (1 - u) * u * p1 + 3 * (1 - u) * u * u * p2 + u * u * u }
+        var lo = 0.0, hi = 1.0
+        for _ in 0..<20 { let m = (lo + hi) / 2; if bz(m, 0.4, 0.2) < x { lo = m } else { hi = m } }
+        return bz((lo + hi) / 2, 0, 1)
+    }
+    /// 튀듯 커짐 (back-out)
+    private func pop(_ x: Double) -> Double { let c = 1.70158; return x <= 0 ? 0 : 1 + (c + 1) * pow(x - 1, 3) + c * pow(x - 1, 2) }
+    /// 글자: at 초부터 .4초 페이드
+    private func fade(_ t: Double, _ at: Double) -> Double { seg(t, at, at + 0.4) }
 
-    private func text(_ ctx: inout GraphicsContext, _ s: String, _ size: CGFloat, _ w: Font.Weight, _ c: Color, _ p: CGPoint, _ a: UnitPoint, _ op: Double = 1) {
+    private func text(_ ctx: inout GraphicsContext, _ s: String, _ size: CGFloat, _ w: Font.Weight, _ c: Color, _ p: CGPoint, _ a: UnitPoint, _ op: Double = 1, serif: Bool = false) {
         guard op > 0 else { return }
         ctx.opacity = op
-        ctx.draw(Text(s).font(.system(size: size, weight: w)).foregroundStyle(c), at: p, anchor: a)
+        ctx.draw(Text(s).font(.system(size: size, weight: w, design: serif ? .serif : .default)).foregroundStyle(c), at: p, anchor: a)
         ctx.opacity = 1
+    }
+
+    /// 회사 매출 "570억" (억 단위)
+    private func eok(_ v: Double) -> String {
+        let e = v / 1e8
+        return (e >= 10 ? Earnings.grouped(Int(e.rounded())) : String(format: "%.1f", e)) + "억"
     }
 
     private func draw(_ ctx: inout GraphicsContext, t: Double, el: Double) {
         let fmt = { (v: Double) in Earnings.money(v, s.currency) }
         // 제목
-        text(&ctx, title, 19, .bold, Theme.ink, CGPoint(x: 24, y: 42), .leading)
-        let sub = s.pending == nil ? String(localized: "지금 \(qty.formatted())주 기준 · \(s.months)월") : String(localized: "지금 \(qty.formatted())주 기준")
-        text(&ctx, sub, 13, .regular, Theme.sub, CGPoint(x: 24, y: 66), .leading)
+        text(&ctx, title, 20, .bold, EarnColor.fg, CGPoint(x: 24, y: 42), .leading, serif: true)
 
-        // 물높이: 지난 4분기와 이번 분기 중 가장 큰 것이 맨 위(y 110)
-        let vals = s.gauge.compactMap(\.value) + [s.revenue ?? 0]
-        let maxV = max(vals.max() ?? 1, 1e-12)
-        let yOf = { (v: Double) -> CGFloat in Self.bed - CGFloat(max(0, v) / maxV) * (Self.bed - Self.top) }
-
-        // 수위표 막대 x268 (폭 4)
-        ctx.fill(Path(roundedRect: CGRect(x: 268, y: Self.top - 6, width: 4, height: Self.bed - Self.top + 6), cornerRadius: 2), with: .color(EarnColor.strand))
-        var marks: [(y: CGFloat, label: String, value: Double?, strong: Bool)] = s.gauge.map { (yOf($0.value ?? 0), $0.label, $0.value, $0.lastYear) }
-        marks.sort { $0.y < $1.y }
-        var last: CGFloat = -100
-        for i in marks.indices { if marks[i].y - last < 13 { marks[i].y = last + 13 }; last = marks[i].y }   // 겹치면 아래로 13씩
-        for (i, g) in s.gauge.enumerated() {
-            let y0 = yOf(g.value ?? 0), m = marks.first { $0.label == g.label } ?? marks[i]
-            let strong = g.lastYear && s.pending == nil   // 기다리는 중이면 '작년 같은 분기'가 다음 분기 기준이라 진하게 하지 않는다
-            let c = strong ? Theme.sub : EarnColor.ghost
-            ctx.fill(Path(CGRect(x: 264, y: y0 - 0.75, width: 12, height: 1.5)), with: .color(c))
-            let w: Font.Weight = strong ? .bold : .regular
-            text(&ctx, g.label + "  " + (g.value.map(fmt) ?? "–"), 9, w, c, CGPoint(x: 282, y: m.y), .leading)
-        }
+        // 물높이 lv(v) = 270 − (v−min)/(max−min)×210 (지난 4분기 + 지금, 회사 매출)
+        let co = s.coRevenue ?? 0
+        let vals = s.gauge.map { $0.co ?? 0 } + (s.pending == nil ? [co] : [])
+        let lo = vals.min() ?? 0, hi = vals.max() ?? 1
+        let lv = { (v: Double) -> CGFloat in hi > lo ? 270 - CGFloat((v - lo) / (hi - lo)) * 210 : 165 }
+        let S = lv(co)
 
         // 기다리는 중: 물이 차오르는 중, 실 없음
         if let p = s.pending {
+            text(&ctx, String(localized: "지금 \(qty.formatted())주 기준"), 13, .regular, EarnColor.muted, CGPoint(x: 24, y: 66), .leading)
             let rise = still ? 0.6 : (el.truncatingRemainder(dividingBy: 4)) / 4
             let lvl = Self.bed - CGFloat(rise) * (Self.bed - Self.top) * 0.9
             water(&ctx, top: lvl, phase: el)
+            gauge(&ctx, lv: lv, S: nil, t: t)
             let md = p.split(separator: "-").compactMap { Int($0) }
             let day = md.count == 3 ? String(localized: "\(md[1])월 \(md[2])일") : p
             text(&ctx, String(localized: "실적이 나왔어요 · \(day)"), 15, .bold, EarnColor.gold, CGPoint(x: 24, y: 350), .leading)
-            text(&ctx, String(localized: "숫자가 들어오면 강이 차요"), 13, .regular, Theme.sub, CGPoint(x: 24, y: 374), .leading)
+            text(&ctx, String(localized: "숫자가 들어오면 강이 차요"), 13, .regular, EarnColor.muted, CGPoint(x: 24, y: 374), .leading)
             return
         }
 
-        // 물: 위→아래로 채워진다 (0~0.3)
-        let wt = yOf(s.revenue ?? 0)
-        let fill = ease(seg(t, 0, 0.3))
+        // 물: rect 0,S~300 + 물결. 위→아래로 채워진다 (.6초)
+        let fill = CGFloat(ease(seg(t, 0, 0.6)))
         ctx.drawLayer { l in
-            l.clip(to: Path(CGRect(x: 0, y: 0, width: Self.W, height: wt + (Self.bed - wt) * CGFloat(fill) + 6)))
-            water(&l, top: wt, phase: el)
+            l.clip(to: Path(CGRect(x: 0, y: S, width: Self.W, height: (Self.bed - S) * fill)))
+            l.fill(Path(CGRect(x: 0, y: S, width: Self.W, height: Self.bed - S)), with: .color(EarnColor.water))
+            var w = Path()
+            w.move(to: CGPoint(x: 0, y: 230))
+            w.addCurve(to: CGPoint(x: 360, y: 225), control1: CGPoint(x: 90, y: 210), control2: CGPoint(x: 200, y: 250))
+            w.addLine(to: CGPoint(x: 360, y: 300)); w.addLine(to: CGPoint(x: 0, y: 300)); w.closeSubpath()
+            l.fill(w, with: .color(EarnColor.water2))
         }
-        // 지금 값 (수위표 옆): 내 몫 매출 + 작년 대비
-        let op = seg(t, 0.2, 0.4)
-        ctx.fill(Path(CGRect(x: 262, y: wt - 1, width: 16, height: 2)), with: .color(Theme.ink.opacity(op)))
-        text(&ctx, fmt(s.revenue ?? 0), 12, .bold, Theme.ink, CGPoint(x: 256, y: wt - 12), .trailing, op)
-        if let y = s.revYoY { text(&ctx, y, 10, .semibold, Theme.sub, CGPoint(x: 256, y: wt + 4), .trailing, op) }
-        text(&ctx, String(localized: "내 몫 매출"), 10, .regular, Theme.sub, CGPoint(x: Self.left + 8, y: wt + 16), .leading, op)
+        // 강 위 글: 물이 낮아 글이 물 밖이면 진한 글자로
+        let base = min(S, 200)
+        let c1 = base + 40 - 8 > S ? EarnColor.onwater : EarnColor.fg, c2 = base + 70 - 12 > S ? EarnColor.onwater : EarnColor.fg
+        text(&ctx, String(localized: "\(name) · 이번 분기"), 12, .regular, c1, CGPoint(x: 24, y: base + 40), .leading, 0.85 * fade(t, 0.3))
+        let unit = s.currency == "USD" ? String(localized: " 달러") : " " + s.currency
+        text(&ctx, String(localized: "매출 \(eok(co))\(unit)"), 20, .bold, c2, CGPoint(x: 24, y: base + 70), .leading, fade(t, 0.3), serif: true)
+        gauge(&ctx, lv: lv, S: S, t: t)
 
         // 물안개: 남는 돈(이자·세금·기타). 피었다가 실 끝 전에 걷힌다 (글자 없음)
         if s.mist > 0, let rev = s.revenue, rev > 0 {
-            let m = sin(.pi * seg(t, 0.3, 0.85)) * (still ? 0 : 1)
+            let m = sin(.pi * seg(t, 0.6, 1.7)) * (still ? 0 : 1)
             if m > 0 {
                 let r = 14 + 40 * CGFloat(min(1, s.mist / rev * 4))
                 ctx.drawLayer { l in
                     l.addFilter(.blur(radius: 10))
                     l.opacity = 0.55 * m
                     for (dx, dy) in [(-50.0, 0.0), (0, -8), (52, 2)] as [(CGFloat, CGFloat)] {
-                        l.fill(Path(ellipseIn: CGRect(x: 137 + dx - r, y: wt - 16 + dy - r * 0.35, width: r * 2, height: r * 0.7)), with: .color(EarnColor.water2))
+                        l.fill(Path(ellipseIn: CGRect(x: Self.mid + dx - r, y: S - 16 + dy - r * 0.35, width: r * 2, height: r * 0.7)), with: .color(EarnColor.water2))
                     }
                 }
             }
         }
 
-        // 실: 왼→오 원가·판관비·이익·연구비. 굵기 = 내 몫 매출 안 비율 × 50, 이익 실은 최소 3
+        // 내 몫 (강바닥 아래)
+        text(&ctx, String(localized: "내 몫 \(fmt(s.revenue ?? 0))"), 12, .semibold, EarnColor.fg, CGPoint(x: 216, y: 326), .leading, fade(t, 0.4))
+        text(&ctx, String(localized: "\(qty.formatted())주만큼 · 확대"), 11, .regular, EarnColor.muted, CGPoint(x: 216, y: 343), .leading, fade(t, 0.4))
+
+        // 실: 왼→오 원가·판관비·이익·연구비. 굵기 = 내 몫 매출 안 비율 × 50, 이익 실은 최소 3. 가운데 175 에 나란히
         let rev = max(s.revenue ?? 0, 1e-12), sc = Self.total / CGFloat(rev)
-        struct Strand { var k: String; var w: CGFloat; var end: CGPoint }
-        var ss: [Strand] = []
         let byK = Dictionary(uniqueKeysWithValues: s.branches.map { ($0.k, $0.v) })
-        let lossCut: CGFloat = s.loss ? 0.78 : 1   // 적자면 바닥까지 못 간다
-        let endY = { (y: CGFloat) in Self.bed + (y - Self.bed) * lossCut }
-        if let v = byK["cogs"] { ss.append(Strand(k: "cogs", w: CGFloat(v) * sc, end: CGPoint(x: 54, y: endY(470)))) }
-        if let v = byK["spent"] { ss.append(Strand(k: "spent", w: CGFloat(v) * sc, end: CGPoint(x: 70, y: endY(490)))) }
-        if let v = byK["sga"] { ss.append(Strand(k: "sga", w: CGFloat(v) * sc, end: CGPoint(x: 104, y: endY(500)))) }
-        if !s.loss { ss.append(Strand(k: "net", w: max(3, CGFloat(s.net ?? 0) * sc), end: CGPoint(x: 160, y: 560))) }
-        if let v = byK["rnd"] { ss.append(Strand(k: "rnd", w: CGFloat(v) * sc, end: CGPoint(x: 236, y: endY(520)))) }
-        // 강바닥에서 나란히 붙어 나온다 (가운데 137)
-        let sumW = ss.reduce(0) { $0 + $1.w }
-        var x = 137 - sumW / 2
-        let grow = ease(seg(t, 0.3, 0.85))
+        var ss: [(k: String, w: CGFloat)] = []
+        if let v = byK["cogs"] { ss.append(("cogs", CGFloat(v) * sc)) }
+        if let v = byK["spent"] { ss.append(("spent", CGFloat(v) * sc)) }
+        if let v = byK["sga"] { ss.append(("sga", CGFloat(v) * sc)) }
+        if !s.loss { ss.append(("net", max(3, CGFloat(s.net ?? 0) * sc))) }
+        if let v = byK["rnd"] { ss.append(("rnd", CGFloat(v) * sc)) }
+        var x = Self.mid - ss.reduce(0) { $0 + $1.w } / 2
+        let hollow = s.loss ? CGFloat(s.short) * sc : 0   // 적자: 마지막 실 속 빈 테두리
+        var goldX = Self.mid
         for (i, st) in ss.enumerated() {
             let sx = x + st.w / 2; x += st.w
-            let mid = Self.bed + (st.end.y - Self.bed) * 0.5
-            var p = Path()
-            p.move(to: CGPoint(x: sx, y: Self.bed))
-            p.addCurve(to: st.end, control1: CGPoint(x: sx, y: mid), control2: CGPoint(x: st.end.x, y: mid))
-            let tp = p.trimmedPath(from: 0, to: grow)
-            let isLast = i == ss.count - 1
+            let h = i == ss.count - 1 ? hollow : 0
+            var p = Path(); p.move(to: CGPoint(x: sx, y: Self.bed))
             switch st.k {
-            case "net":
-                // 작년 실: 마지막 구간에만 흐리게
-                if let ly = s.lastYearNet, ly > 0, grow > 0.6 {
-                    let gw = max(2, CGFloat(ly) * sc)
-                    var g = Path()
-                    g.move(to: CGPoint(x: sx - st.w / 2 - gw / 2 - 3, y: Self.bed))
-                    g.addCurve(to: CGPoint(x: st.end.x - st.w / 2 - gw / 2 - 3, y: st.end.y),
-                               control1: CGPoint(x: sx - st.w / 2 - gw / 2 - 3, y: mid), control2: CGPoint(x: st.end.x - st.w / 2 - gw / 2 - 3, y: mid))
-                    ctx.stroke(g.trimmedPath(from: 0.6, to: grow), with: .color(EarnColor.ghost.opacity(0.7)), style: StrokeStyle(lineWidth: gw, lineCap: .round))
-                }
-                ctx.stroke(tp, with: .color(EarnColor.gold), style: StrokeStyle(lineWidth: st.w, lineCap: .round))
+            case "cogs", "spent":
+                p.addLine(to: CGPoint(x: sx, y: 350))
+                p.addCurve(to: CGPoint(x: 40, y: 440), control1: CGPoint(x: sx, y: 400), control2: CGPoint(x: 70, y: 392))
+                flow(&ctx, p, st.w, fadeTo: CGPoint(x: 40, y: 440), from: sx, to: .clear, grow: ease(seg(t, 0, 1)), hollow: h)
+                let label = st.k == "cogs" ? String(localized: "원가 \(fmt(byK["cogs"] ?? 0))") : String(localized: "쓴 돈 \(fmt(byK["spent"] ?? 0))")
+                text(&ctx, label, 12, .regular, EarnColor.muted, CGPoint(x: 24, y: 466), .leading, fade(t, 0.7))
+            case "sga":
+                p.addLine(to: CGPoint(x: sx, y: 470))
+                p.addCurve(to: CGPoint(x: 70, y: 540), control1: CGPoint(x: sx, y: 508), control2: CGPoint(x: 100, y: 506))
+                flow(&ctx, p, st.w, fadeTo: CGPoint(x: 70, y: 540), from: sx, to: .clear, grow: ease(seg(t, 0.4, 1.7)), hollow: h)
+                text(&ctx, String(localized: "판매·관리비 \(fmt(byK["sga"] ?? 0))"), 12, .regular, EarnColor.muted, CGPoint(x: 24, y: 564), .leading, fade(t, 1.4))
             case "rnd":
-                strand(&ctx, tp, st.w, EarnColor.sprout, hollow: isLast && s.loss ? CGFloat(s.short) * sc : 0)
-                if grow > 0.98 { sprout(&ctx, at: st.end, size: max(7, st.w * 0.9)) }   // 끝에 떡잎 (글자 없음)
-            default:
-                // 원가·판관비·쓴 돈: 끝으로 옅어지며 사라진다
-                let fade = GraphicsContext.Shading.linearGradient(
-                    Gradient(colors: [EarnColor.strand, EarnColor.strand.opacity(0)]),
-                    startPoint: CGPoint(x: sx, y: Self.bed), endPoint: st.end)
-                if isLast && s.loss {
-                    strand(&ctx, tp, st.w, EarnColor.strand, hollow: CGFloat(s.short) * sc)
-                } else {
-                    ctx.stroke(tp, with: fade, style: StrokeStyle(lineWidth: st.w, lineCap: .butt))
+                p.addLine(to: CGPoint(x: sx, y: 410))
+                p.addCurve(to: CGPoint(x: 320, y: 488), control1: CGPoint(x: sx, y: 450), control2: CGPoint(x: 290, y: 448))
+                flow(&ctx, p, st.w, fadeTo: CGPoint(x: 320, y: 488), from: sx, to: EarnColor.sprout, grow: ease(seg(t, 0.2, 1.4)), hollow: h)
+                sprout(&ctx, scale: pop(seg(t, 2.2, 2.8)))
+                text(&ctx, String(localized: "연구비 \(fmt(byK["rnd"] ?? 0))"), 12, .regular, EarnColor.muted, CGPoint(x: 336, y: 512), .trailing, fade(t, 1.1))
+            default:   // net: 금색 실이 곧게 내려간다
+                goldX = sx
+                if let ly = s.lastYearNet, ly > 0, let n = s.net, n > 0 {
+                    var g = Path(); g.move(to: CGPoint(x: sx + 14, y: 520)); g.addLine(to: CGPoint(x: sx + 14, y: 600))
+                    ctx.stroke(g.trimmedPath(from: 0, to: ease(seg(t, 1.5, 2.1))), with: .color(EarnColor.ghost.opacity(0.6)),
+                               style: StrokeStyle(lineWidth: st.w * CGFloat(ly / n), lineCap: .butt))
+                    text(&ctx, String(localized: "작년 \(fmt(ly))"), 11, .regular, EarnColor.muted, CGPoint(x: sx + 20, y: 560), .leading, fade(t, 2))
                 }
+                p.addLine(to: CGPoint(x: sx, y: 600))
+                ctx.stroke(p.trimmedPath(from: 0, to: ease(seg(t, 0, 2))), with: .color(EarnColor.gold), style: StrokeStyle(lineWidth: st.w, lineCap: .butt))
             }
         }
 
-        // 실 끝 글: 금색 큰 글씨(내 몫 순이익) 또는 옅은 손실
-        let to = seg(t, 0.8, 1)
+        // 금색 끝: 큰 금액(+원화) · 설명. 적자면 옅은 손실
         if s.loss {
-            text(&ctx, fmt(-s.short), 26, .bold, Theme.muted, CGPoint(x: 24, y: 580), .leading, to)
-            text(&ctx, String(localized: "이번 분기 내 몫 손실"), 13, .regular, Theme.muted, CGPoint(x: 24, y: 610), .leading, to)
+            text(&ctx, fmt(-s.short), 30, .bold, EarnColor.muted, CGPoint(x: Self.mid, y: 636), .center, fade(t, 1.9), serif: true)
+            text(&ctx, String(localized: "이번 분기 내 몫 손실"), 12, .regular, EarnColor.muted, CGPoint(x: Self.mid, y: 660), .center, fade(t, 2.1))
         } else {
-            if to > 0 {
-                // 큰 금색 금액 + 옆에 원화 어림 (한 줄)
-                var big = Text(s.netText).font(.system(size: 32, weight: .heavy)).foregroundStyle(EarnColor.gold)
-                if let w = s.netKrw { big = big + Text("  " + w).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.sub) }
-                ctx.opacity = to
-                ctx.draw(big, at: CGPoint(x: 24, y: 604), anchor: .leading)
+            let op = fade(t, 1.9)
+            if op > 0 {
+                var big = Text(s.netText).font(.system(size: 30, weight: .bold, design: .serif)).foregroundStyle(EarnColor.gold)
+                if let w = s.netKrw { big = big + Text("  " + w).font(.system(size: 13, weight: .semibold)).foregroundStyle(EarnColor.muted) }
+                ctx.opacity = op
+                ctx.draw(big, at: CGPoint(x: goldX, y: 636), anchor: .center)
                 ctx.opacity = 1
             }
-            text(&ctx, String(localized: "회사가 이번 분기 내 몫으로 번 순이익"), 13, .regular, Theme.sub, CGPoint(x: 24, y: 636), .leading, to)
+            text(&ctx, String(localized: "회사가 이번 분기 내 몫으로 번 순이익"), 12, .regular, EarnColor.muted, CGPoint(x: goldX, y: 660), .center, fade(t, 2.1))
         }
-        if let ly = s.lastYearMonths, (s.lastYearNet ?? 0) > 0, !s.loss {
-            text(&ctx, String(localized: "흐린 실: \(ly)월"), 11, .regular, EarnColor.ghost, CGPoint(x: 24, y: 660), .leading, to)
+    }
+
+    /// 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 nil)
+    private func gauge(_ ctx: inout GraphicsContext, lv: (Double) -> CGFloat, S: CGFloat?, t: Double) {
+        ctx.fill(Path(CGRect(x: 268, y: 62, width: 4, height: 238)), with: .color(EarnColor.muted.opacity(0.55)))
+        let tick = { (ctx: inout GraphicsContext, y: CGFloat, strong: Bool) in
+            ctx.fill(Path(CGRect(x: 261, y: y - (strong ? 1 : 0.75), width: 18, height: strong ? 2 : 1.5)),
+                     with: .color(strong ? EarnColor.fg : EarnColor.onwater.opacity(0.6)))
         }
+        var others: [(y: CGFloat, s: String)] = []
+        for g in s.gauge {
+            let y = lv(g.co ?? 0)
+            let strong = g.lastYear && S != nil   // 기다리는 중이면 '작년 같은 분기'가 다음 분기 기준이라 진하게 하지 않는다
+            tick(&ctx, y, strong)
+            let v = g.co.map(eok) ?? "–"
+            if strong { text(&ctx, String(localized: "작년 \(v)"), 11, .regular, EarnColor.muted, CGPoint(x: 284, y: y - 5), .leading) }
+            else { others.append((y + 4, v)) }
+        }
+        others.sort { $0.y < $1.y }
+        var last: CGFloat = -100
+        for i in others.indices { if others[i].y - last < 13 { others[i].y = last + 13 }; last = others[i].y }   // 겹치면 앞보다 13 아래로
+        for o in others { text(&ctx, o.s, 11, .regular, EarnColor.onwater, CGPoint(x: 284, y: o.y), .leading, 0.75) }
+        if let S {
+            tick(&ctx, S, false)
+            let op = fade(t, 0.3)
+            text(&ctx, String(localized: "지금 \(eok(s.coRevenue ?? 0))"), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 17), .leading, op)
+            if let y = s.revYoY { text(&ctx, y, 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 31), .leading, op) }
+        }
+    }
+
+    /// 흐르는 실: 시작 색 strand → 끝 색(옅어짐 또는 떡잎색). 적자 마지막 실은 hollow 만큼 속 빈 테두리
+    private func flow(_ ctx: inout GraphicsContext, _ p: Path, _ w: CGFloat, fadeTo: CGPoint, from sx: CGFloat, to end: Color, grow: Double, hollow: CGFloat) {
+        guard grow > 0 else { return }
+        let tp = p.trimmedPath(from: 0, to: grow)
+        if hollow > 0 { strand(&ctx, tp, w, end == .clear ? EarnColor.strand : end, hollow: hollow); return }
+        let sh = GraphicsContext.Shading.linearGradient(
+            Gradient(colors: [EarnColor.strand, end == .clear ? EarnColor.strand.opacity(0) : end]),
+            startPoint: CGPoint(x: sx, y: Self.bed), endPoint: fadeTo)
+        ctx.stroke(tp, with: sh, style: StrokeStyle(lineWidth: w, lineCap: .butt))
     }
 
     /// 물: 위 rect + 물결 (기다리는 중이면 물결이 움직인다)
@@ -392,13 +440,19 @@ struct EarningsRiver: View {
         }
     }
 
-    /// 떡잎 두 장
-    private func sprout(_ ctx: inout GraphicsContext, at p: CGPoint, size: CGFloat) {
-        for a in [-0.6, 0.6] {
-            var l = ctx
-            l.translateBy(x: p.x, y: p.y)
-            l.rotate(by: .radians(a))
-            l.fill(Path(ellipseIn: CGRect(x: a < 0 ? -size * 1.4 : 0, y: -size * 0.35, width: size * 1.4, height: size * 0.7)), with: .color(EarnColor.sprout))
+    /// 떡잎 (331,490): 줄기 0,0→0,−11, 잎 (±5,−13) rx5.5 ry2.6 ∓28도
+    private func sprout(_ ctx: inout GraphicsContext, scale: Double) {
+        guard scale > 0 else { return }
+        var g = ctx
+        g.translateBy(x: 331, y: 490)
+        g.scaleBy(x: scale, y: scale)
+        var stem = Path(); stem.move(to: .zero); stem.addLine(to: CGPoint(x: 0, y: -11))
+        g.stroke(stem, with: .color(EarnColor.sprout), lineWidth: 1.5)
+        for side in [-1.0, 1.0] {
+            var l = g
+            l.translateBy(x: 5 * side, y: -13)
+            l.rotate(by: .degrees(-28 * side))
+            l.fill(Path(ellipseIn: CGRect(x: -5.5, y: -2.6, width: 11, height: 5.2)), with: .color(EarnColor.sprout))
         }
     }
 }
