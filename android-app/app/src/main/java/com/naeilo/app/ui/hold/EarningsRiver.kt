@@ -303,7 +303,7 @@ private class RiverDraw(
             val day = if (md.size == 3) "${md[1]}월 ${md[2]}일" else p   // ios: Views/EarningsRiver.swift:275
             text(tr("실적이 나왔어요 · $day"), 12f, FontWeight.Normal, c1, 24f, base + 40, 0f, 0.85 * fade(t, 1.8))   // ios: Views/EarningsRiver.swift:276
             text(tr("숫자가 들어오면 강이 차요"), 20f, FontWeight.Bold, c2, 24f, base + 70, 0f, fade(t, 1.8), serif = true)   // ios: Views/EarningsRiver.swift:277
-            gauge(lv, null, t)   // ios: Views/EarningsRiver.swift:278
+            gauge(lv, null, t, last = S)   // ios: Views/EarningsRiver.swift:278
             return@with   // ios: Views/EarningsRiver.swift:279
         }
         text(tr("$name · 이번 분기"), 12f, FontWeight.Normal, c1, 24f, base + 40, 0f, 0.85 * fade(t, 0.3))   // ios: Views/EarningsRiver.swift:281
@@ -399,9 +399,9 @@ private class RiverDraw(
         }
     }
 
-    /** 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 null) */
+    /** 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 null), last = 기다리는 중 지난 분기 높이 */
     // ios: Views/EarningsRiver.swift:370
-    fun gauge(lv: (Double) -> Float, S: Float?, t: Double) = with(ds) {
+    fun gauge(lv: (Double) -> Float, S: Float?, t: Double, last: Float? = null) = with(ds) {
         drawRect(ec.muted.copy(alpha = 0.55f), Offset(268f, 62f), Size(4f, 238f))   // ios: Views/EarningsRiver.swift:371
         val tick = { y: Float, strong: Boolean ->   // ios: Views/EarningsRiver.swift:372
             drawRect(if (strong) ec.fg else ec.onwater.copy(alpha = 0.6f), Offset(261f, y - (if (strong) 1f else 0.75f)), Size(18f, if (strong) 2f else 1.5f))   // ios: Views/EarningsRiver.swift:373,374
@@ -425,6 +425,13 @@ private class RiverDraw(
             text(tr("지금 ${eok(s.coRevenue ?: 0.0)}"), 11f, FontWeight.SemiBold, ec.onwater, 284f, S + 17, 0f, op)   // ios: Views/EarningsRiver.swift:392
             s.revYoY?.let { text(it, 11f, FontWeight.SemiBold, ec.onwater, 284f, S + 31, 0f, op) }   // ios: Views/EarningsRiver.swift:393
         }
+        // 기다리는 중: 지난 분기 높이 눈금. 물이 다 차오른 뒤(1.8초) 나타난다
+        val L = last   // ios: Views/EarningsRiver.swift:396
+        if (L != null) {
+            val op = fade(t, 1.8)   // ios: Views/EarningsRiver.swift:397
+            drawRect(ec.onwater.copy(alpha = 0.6f * op.toFloat()), Offset(261f, L - 0.75f), Size(18f, 1.5f))   // ios: Views/EarningsRiver.swift:398,399
+            text(tr("지난 ${eok(s.coRevenue ?: 0.0)}"), 11f, FontWeight.SemiBold, ec.onwater, 284f, L + 17, 0f, op)   // ios: Views/EarningsRiver.swift:401
+        }
     }
 
     fun trim(p: Path, from: Double, to: Double): Path {
@@ -434,40 +441,40 @@ private class RiverDraw(
     }
 
     /** 흐르는 실: 시작 색 strand → 끝 색(옅어짐(null) 또는 떡잎색). 적자 마지막 실은 hollow 만큼 속 빈 테두리 */
-    // ios: Views/EarningsRiver.swift:398
+    // ios: Views/EarningsRiver.swift:406
     fun flow(p: Path, w: Float, fadeTo: Offset, sx: Float, end: Color?, grow: Double, hollow: Float) = with(ds) {
-        if (grow <= 0) return@with   // ios: Views/EarningsRiver.swift:399
-        val tp = trim(p, 0.0, grow)   // ios: Views/EarningsRiver.swift:400
-        if (hollow > 0) { strand(tp, w, end ?: ec.strand, hollow); return@with }   // ios: Views/EarningsRiver.swift:401
-        val sh = Brush.linearGradient(listOf(ec.strand, end ?: ec.strand.copy(alpha = 0f)), start = Offset(sx, BED), end = fadeTo)   // ios: Views/EarningsRiver.swift:402,403,404
-        drawPath(tp, sh, style = Stroke(w, cap = StrokeCap.Butt))   // ios: Views/EarningsRiver.swift:405
+        if (grow <= 0) return@with   // ios: Views/EarningsRiver.swift:407
+        val tp = trim(p, 0.0, grow)   // ios: Views/EarningsRiver.swift:408
+        if (hollow > 0) { strand(tp, w, end ?: ec.strand, hollow); return@with }   // ios: Views/EarningsRiver.swift:409
+        val sh = Brush.linearGradient(listOf(ec.strand, end ?: ec.strand.copy(alpha = 0f)), start = Offset(sx, BED), end = fadeTo)   // ios: Views/EarningsRiver.swift:410,411,412
+        drawPath(tp, sh, style = Stroke(w, cap = StrokeCap.Butt))   // ios: Views/EarningsRiver.swift:413
     }
 
     /** 실 하나. hollow > 0 이면 그만큼(모자란 몫)은 속 빈 테두리로 옆에 붙인다 */
-    // ios: Views/EarningsRiver.swift:409
+    // ios: Views/EarningsRiver.swift:417
     fun strand(p: Path, w: Float, c: Color, hollow: Float) = with(ds) {
-        val solid = max(0f, w - hollow)   // ios: Views/EarningsRiver.swift:410
-        if (solid > 0) translate(left = -hollow / 2) { drawPath(p, c, style = Stroke(solid, cap = StrokeCap.Butt)) }   // ios: Views/EarningsRiver.swift:411,412,413,414
-        if (hollow > 0) {   // ios: Views/EarningsRiver.swift:417
+        val solid = max(0f, w - hollow)   // ios: Views/EarningsRiver.swift:418
+        if (solid > 0) translate(left = -hollow / 2) { drawPath(p, c, style = Stroke(solid, cap = StrokeCap.Butt)) }   // ios: Views/EarningsRiver.swift:419,420,421,422
+        if (hollow > 0) {   // ios: Views/EarningsRiver.swift:425
             val cv = drawContext.canvas
-            cv.saveLayer(Rect(0f, 0f, W, H), Paint())   // ios: Views/EarningsRiver.swift:418
-            translate(left = solid / 2, top = 0f) {   // ios: Views/EarningsRiver.swift:419
-                drawPath(p, c, style = Stroke(hollow, cap = StrokeCap.Butt))   // ios: Views/EarningsRiver.swift:420
-                drawPath(p, Color.Black, style = Stroke(max(0f, hollow - 3), cap = StrokeCap.Butt), blendMode = BlendMode.DstOut)   // ios: Views/EarningsRiver.swift:421,422
+            cv.saveLayer(Rect(0f, 0f, W, H), Paint())   // ios: Views/EarningsRiver.swift:426
+            translate(left = solid / 2, top = 0f) {   // ios: Views/EarningsRiver.swift:427
+                drawPath(p, c, style = Stroke(hollow, cap = StrokeCap.Butt))   // ios: Views/EarningsRiver.swift:428
+                drawPath(p, Color.Black, style = Stroke(max(0f, hollow - 3), cap = StrokeCap.Butt), blendMode = BlendMode.DstOut)   // ios: Views/EarningsRiver.swift:429,430
             }
             cv.restore()
         }
     }
 
     /** 떡잎 (331,490): 줄기 0,0→0,−11, 잎 (±5,−13) rx5.5 ry2.6 ∓28도 */
-    // ios: Views/EarningsRiver.swift:428
+    // ios: Views/EarningsRiver.swift:436
     fun sprout(scale: Double) = with(ds) {
-        if (scale <= 0) return@with   // ios: Views/EarningsRiver.swift:429
-        withTransform({ translate(331f, 490f); scale(scale.toFloat(), scale.toFloat(), pivot = Offset.Zero) }) {   // ios: Views/EarningsRiver.swift:430,431,432
-            drawLine(ec.sprout, Offset.Zero, Offset(0f, -11f), strokeWidth = 1.5f)   // ios: Views/EarningsRiver.swift:433,434
-            for (side in listOf(-1f, 1f)) {   // ios: Views/EarningsRiver.swift:435
-                withTransform({ translate(5f * side, -13f); rotate(-28f * side, pivot = Offset.Zero) }) {   // ios: Views/EarningsRiver.swift:436,437,438
-                    drawOval(ec.sprout, Offset(-5.5f, -2.6f), Size(11f, 5.2f))   // ios: Views/EarningsRiver.swift:439
+        if (scale <= 0) return@with   // ios: Views/EarningsRiver.swift:437
+        withTransform({ translate(331f, 490f); scale(scale.toFloat(), scale.toFloat(), pivot = Offset.Zero) }) {   // ios: Views/EarningsRiver.swift:438,439,440
+            drawLine(ec.sprout, Offset.Zero, Offset(0f, -11f), strokeWidth = 1.5f)   // ios: Views/EarningsRiver.swift:441,442
+            for (side in listOf(-1f, 1f)) {   // ios: Views/EarningsRiver.swift:443
+                withTransform({ translate(5f * side, -13f); rotate(-28f * side, pivot = Offset.Zero) }) {   // ios: Views/EarningsRiver.swift:444,445,446
+                    drawOval(ec.sprout, Offset(-5.5f, -2.6f), Size(11f, 5.2f))   // ios: Views/EarningsRiver.swift:447
                 }
             }
         }

@@ -266,4 +266,5 @@ Views/EarningsRiver.swift:326 검사기 한계: 보간 속 따옴표 byK["cogs"]
 Views/EarningsRiver.swift:332 검사기 한계: 보간 속 따옴표 byK["sga"] (옮김, EarningsRiver.kt 판매·관리비 글)
 Views/EarningsRiver.swift:338 검사기 한계: 보간 속 따옴표 byK["rnd"] (옮김, EarningsRiver.kt 연구비 글)
 Views/EarningsRiver.swift:363 플랫폼: 236 과 같음 (큰 금액 drawText alpha)
-Views/EarningsRiver.swift:444-445 플랫폼: Xcode #Preview (안드로이드는 미리보기 없음)
+Views/EarningsRiver.swift:400 플랫폼: 236 과 같음 (지난 분기 눈금 불투명도 되돌림, Compose 는 색 alpha 로 그 눈금에만)
+Views/EarningsRiver.swift:452-453 플랫폼: Xcode #Preview (안드로이드는 미리보기 없음)

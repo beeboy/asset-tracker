@@ -275,7 +275,7 @@ struct EarningsRiver: View {
             let day = md.count == 3 ? String(localized: "\(md[1])월 \(md[2])일") : p
             text(&ctx, String(localized: "실적이 나왔어요 · \(day)"), 12, .regular, c1, CGPoint(x: 24, y: base + 40), .leading, 0.85 * fade(t, 1.8))
             text(&ctx, String(localized: "숫자가 들어오면 강이 차요"), 20, .bold, c2, CGPoint(x: 24, y: base + 70), .leading, fade(t, 1.8), serif: true)
-            gauge(&ctx, lv: lv, S: nil, t: t)
+            gauge(&ctx, lv: lv, S: nil, last: S, t: t)
             return
         }
         text(&ctx, String(localized: "\(name) · 이번 분기"), 12, .regular, c1, CGPoint(x: 24, y: base + 40), .leading, 0.85 * fade(t, 0.3))
@@ -366,8 +366,8 @@ struct EarningsRiver: View {
         }
     }
 
-    /// 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 nil)
-    private func gauge(_ ctx: inout GraphicsContext, lv: (Double) -> CGFloat, S: CGFloat?, t: Double) {
+    /// 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 nil), last = 기다리는 중 지난 분기 높이
+    private func gauge(_ ctx: inout GraphicsContext, lv: (Double) -> CGFloat, S: CGFloat?, last lastS: CGFloat? = nil, t: Double) {
         ctx.fill(Path(CGRect(x: 268, y: 62, width: 4, height: 238)), with: .color(EarnColor.muted.opacity(0.55)))
         let tick = { (ctx: inout GraphicsContext, y: CGFloat, strong: Bool) in
             ctx.fill(Path(CGRect(x: 261, y: y - (strong ? 1 : 0.75), width: 18, height: strong ? 2 : 1.5)),
@@ -391,6 +391,14 @@ struct EarningsRiver: View {
             let op = fade(t, 0.3)
             text(&ctx, String(localized: "지금 \(eok(s.coRevenue ?? 0))"), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 17), .leading, op)
             if let y = s.revYoY { text(&ctx, y, 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 31), .leading, op) }
+        }
+        // 기다리는 중: 지난 분기 높이 눈금. 물이 다 차오른 뒤(1.8초) 나타난다
+        if let L = lastS {
+            let op = fade(t, 1.8)
+            ctx.opacity = op
+            tick(&ctx, L, false)
+            ctx.opacity = 1
+            text(&ctx, String(localized: "지난 \(eok(s.coRevenue ?? 0))"), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: L + 17), .leading, op)
         }
     }
 

@@ -30565,6 +30565,16 @@
         }
       }
     },
+    "지난 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last %@"
+          }
+        }
+      }
+    },
     "지난 %@주" : {
       "localizations" : {
         "en" : {
