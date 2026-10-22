@@ -270,12 +270,12 @@ struct EarningsRiver: View {
     }
 
     private var a11y: String {
-        if let p = s.pending { return "\(title). \(p) 실적 발표, 숫자를 기다리는 중" }
-        var t = now ? "\(title) \(s.months)월. " : "\(title) \(s.label). "
-        t += "내 몫 매출 \(Earnings.money(s.revenue ?? 0, s.currency))"
-        if let y = s.revYoY { t += ", 작년보다 \(y)" }
-        t += s.loss ? (now ? ". 이번 분기" : ". 그 분기") + " 내 몫 손실 \(Earnings.money(s.short, s.currency))" : ". 내 몫 순이익 \(s.netText)"
-        if let w = s.netKrw { t += ", \(w)" }
+        if let p = s.pending { return "\(title). " + String(localized: "\(p) 실적 발표, 숫자를 기다리는 중") }
+        var t = "\(title) " + (now ? String(localized: "\(s.months)월") : s.label) + ". "
+        t += String(localized: "내 몫 매출 \(EarnText.money(s.revenue ?? 0, s.currency))")
+        if let y = s.revYoY { t += ", " + (y == "작년과 같음" ? EarnText.yoy(y) : String(localized: "작년보다 \(y)")) }
+        t += ". " + (s.loss ? (now ? String(localized: "이번 분기 내 몫 손실") : String(localized: "그 분기 내 몫 손실")) + " " + EarnText.money(s.short, s.currency) : String(localized: "내 몫 순이익 \(EarnText.money(s.net ?? 0, s.currency))"))
+        if let w = EarnText.krw(s) { t += ", \(w)" }
         return t
     }
 

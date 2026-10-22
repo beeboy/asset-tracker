@@ -284,12 +284,12 @@ fun EarningsRiver(name: String, qty: Double, s: Earnings.Summary, modifier: Modi
 
 // ios: Views/EarningsRiver.swift:272
 private fun a11y(s: Earnings.Summary, title: String, now: Boolean): String {
-    s.pending?.let { return "$title. $it 실적 발표, 숫자를 기다리는 중" }   // ios: Views/EarningsRiver.swift:273
-    var t = if (now) "$title ${s.months}월. " else "$title ${s.label}. "   // ios: Views/EarningsRiver.swift:274
-    t += "내 몫 매출 ${Earnings.money(s.revenue ?: 0.0, s.currency)}"   // ios: Views/EarningsRiver.swift:275
-    s.revYoY?.let { t += ", 작년보다 $it" }   // ios: Views/EarningsRiver.swift:276
-    t += if (s.loss) (if (now) ". 이번 분기" else ". 그 분기") + " 내 몫 손실 ${Earnings.money(s.short, s.currency)}" else ". 내 몫 순이익 ${s.netText}"   // ios: Views/EarningsRiver.swift:277
-    s.netKrw?.let { t += ", $it" }   // ios: Views/EarningsRiver.swift:278
+    s.pending?.let { return "$title. " + tr("$it 실적 발표, 숫자를 기다리는 중") }   // ios: Views/EarningsRiver.swift:273
+    var t = "$title " + (if (now) tr("${s.months}월") else s.label) + ". "   // ios: Views/EarningsRiver.swift:274
+    t += tr("내 몫 매출 ${EarnText.money(s.revenue ?: 0.0, s.currency)}")   // ios: Views/EarningsRiver.swift:275
+    s.revYoY?.let { t += ", " + if (it == "작년과 같음") EarnText.yoy(it) else tr("작년보다 $it") }   // ios: Views/EarningsRiver.swift:276
+    t += ". " + if (s.loss) tr(if (now) "이번 분기 내 몫 손실" else "그 분기 내 몫 손실") + " " + EarnText.money(s.short, s.currency) else tr("내 몫 순이익 ${EarnText.money(s.net ?: 0.0, s.currency)}")   // ios: Views/EarningsRiver.swift:277
+    EarnText.krw(s)?.let { t += ", $it" }   // ios: Views/EarningsRiver.swift:278
     return t   // ios: Views/EarningsRiver.swift:279
 }
 
