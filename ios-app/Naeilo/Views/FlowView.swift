@@ -72,6 +72,8 @@ struct FlowView: View {
         .sheet(isPresented: $showAll) { allSheet }
         // 열 때 담은 종목 일봉을 받는다 (하루 한 번만 실제로 부른다)
         .task(id: hasKey) { await store.ensure(ids) }
+        // 당기면 다른 탭처럼 시세를 받고, 일봉도 다시 묻는다 (장이 끝나 새 날이 생겼을 때만 실제로 받는다)
+        .refreshable { await Market.shared.pullRefresh(model); await store.ensure(ids) }
     }
 
     // 맨 위 내 종목 칩 줄 + '전체'
@@ -346,7 +348,8 @@ struct FlowChart: View {
                         for i in a...b { h = max(h, k[i].h); l = min(l, k[i].l) }
                         let cx = x(Double(a + b) / 2)
                         let bw = max(1, CGFloat(b - a + 1) / CGFloat(cnt) * W * 0.68)
-                        let col = c >= o ? Theme.up : Theme.down
+                        // 장중 오늘 캔들은 흐리게 (아직 끝나지 않은 날)
+                        let col = (c >= o ? Theme.up : Theme.down).opacity(series.live && b == n - 1 ? 0.4 : 1)
                         var wick = Path(); wick.move(to: CGPoint(x: cx, y: y(h))); wick.addLine(to: CGPoint(x: cx, y: y(l)))
                         ctx.stroke(wick, with: .color(col), lineWidth: 1)
                         let r = CGRect(x: cx - bw / 2, y: y(max(o, c)), width: bw, height: max(1, abs(y(o) - y(c))))

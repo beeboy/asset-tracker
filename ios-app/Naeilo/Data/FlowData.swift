@@ -39,20 +39,25 @@ struct FlowSeries {
     let trends: [[FlowTrend]]      // 0 = 일(작은 흐름), 1 = 주, 2 = 월(큰 흐름)
     let levels: [FlowLevel]
     let patterns: [FlowPattern]
+    let live: Bool                 // 마지막 칸이 장중 오늘 캔들 (흐리게 그리고, 거기 닿은 패턴은 흐린 점선)
     var base: Double { candles.first?.c ?? 1 }
     /// '+x% 시작 대비'
     func pct(_ v: Double) -> Double { (v / base - 1) * 100 }
 
-    init(candles: [Candle], dates: [String]? = nil) {
+    init(candles: [Candle], dates: [String]? = nil, live: Bool = false) {
         self.candles = candles
         self.dates = dates
+        self.live = live
         let c = candles.map(\.c)
         let zz = [0.06, 0.12, 0.22].map { FlowCalc.zigzag(c, $0) }
         pivotSets = zz.map { $0.map { FlowPivot(i: $0.i, price: $0.high ? candles[$0.i].h : candles[$0.i].l, high: $0.high) } }
         pivots = pivotSets[0]
         trends = zz.map { FlowCalc.trends($0, c.count) }
         levels = FlowCalc.levels(pivots, last: c.last ?? 0)
-        patterns = FlowCalc.patterns(candles, pivots)
+        var out = FlowCalc.patterns(candles, pivots)
+        // 장중 오늘 캔들에 닿은 패턴은 아직 바뀔 수 있어 확정이 아니다 (마감 뒤 일봉으로 다시 정한다)
+        if live { for j in out.indices where out[j].to >= candles.count - 1 { let p = out[j]; out[j] = FlowPattern(id: p.id, kind: p.kind, from: p.from, to: p.to, price: p.price, below: p.below, strong: false) } }
+        patterns = out
     }
 }
 
@@ -409,6 +414,7 @@ final class FlowStore {
     private(set) var loading: Set<String> = []
     private(set) var failed: Set<String> = []    // 받아 보았는데 일봉이 없는 종목 (빈 칸 대신 '못 받았어요')
     @ObservationIgnored private var memo: [String: (String, FlowSeries)] = [:]
+    @ObservationIgnored private var today: [String: (String, Candle)] = [:]   // 장중 오늘 캔들: 시가는 전일 종가, 고가·저가는 앱이 본 지금 가격으로 넓힌다
 
     func reload() {
         toss = TossKeys.on ? FlowBars.read(FlowBars.tossName) : FlowBars()
@@ -432,11 +438,33 @@ final class FlowStore {
     func series(_ id: String) -> FlowSeries? {
         if id == "DRNK" { return DrnkSample.series }
         guard let b = bars(id) else { return nil }
-        let stamp = "\(b.d.count)" + (b.d.last ?? "")
+        let lv = live(id, b)
+        let stamp = "\(b.d.count)" + (b.d.last ?? "") + (lv.map { "L\($0.1.c),\($0.1.h),\($0.1.l)" } ?? "")
         if let m = memo[id], m.0 == stamp { return m.1 }
-        let s = FlowSeries(candles: b.candles, dates: b.d)
+        let s = lv.map { FlowSeries(candles: b.candles + [$0.1], dates: b.d + [$0.0], live: true) } ?? FlowSeries(candles: b.candles, dates: b.d)
         memo[id] = (stamp, s)
         return s
+    }
+
+    /// 그 시장의 오늘 날짜와, 장이 열린 평일인지 (한국 9:00, 미국 9:30 부터. 마감 뒤에도 일봉을 받기 전까지는 연 것으로)
+    static func marketNow(kr: Bool) -> (String, Bool) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: kr ? "Asia/Seoul" : "America/New_York")!
+        let c = cal.dateComponents([.year, .month, .day, .hour, .minute, .weekday], from: Date())
+        let d = String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)
+        return (d, (2...6).contains(c.weekday!) && c.hour! * 60 + c.minute! >= (kr ? 9 * 60 : 9 * 60 + 30))
+    }
+
+    /// 장중 오늘 캔들 (날짜, 캔들). 지금 가격이 없거나, 일봉에 오늘이 이미 있거나, 전일 종가 그대로면(휴장) 없음
+    private func live(_ id: String, _ b: FlowBars.Series) -> (String, Candle)? {
+        guard let s = Sample.symbol(id), let prev = b.c.last, let last = b.d.last else { return nil }
+        let q = Market.shared.quote(s)
+        let (md, open) = Self.marketNow(kr: Self.isKR(id))
+        guard q.live, q.last > 0, open, last < md, abs(q.last - prev) > 1e-9 else { return nil }
+        var k = today[id].flatMap { $0.0 == md ? $0.1 : nil } ?? Candle(o: prev, h: max(prev, q.last), l: min(prev, q.last), c: q.last, v: 0)
+        k.c = q.last; k.h = max(k.h, q.last); k.l = min(k.l, q.last)
+        today[id] = (md, k)
+        return (md, k)
     }
 
     /// 차트 탭을 열 때: 아직 없는 담은 종목을 받는다. 토스는 기존 시세 갱신 흐름으로, 알파카는 여기서 한 번에
