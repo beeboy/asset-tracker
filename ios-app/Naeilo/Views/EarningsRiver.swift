@@ -76,10 +76,11 @@ struct EarnBars: View {
     var body: some View {
         Group {
             if let s {
-                let a = max(0, s.lastYearNet ?? 0), b = max(0, s.net ?? 0), top = max(a, b)
+                // 높이는 크기(절댓값) 비율. 손실(순이익<0)은 같은 높이 규칙으로 속 빈 테두리
+                let a = s.lastYearNet ?? 0, b = s.net ?? 0, top = max(abs(a), abs(b))
                 HStack(alignment: .bottom, spacing: 2) {
-                    bar(top > 0 ? a / top : 0, EarnColor.ghost)
-                    bar(top > 0 ? b / top : 0, EarnColor.gold)
+                    bar(top > 0 ? abs(a) / top : 0, EarnColor.ghost, hollow: a < 0)
+                    bar(top > 0 ? abs(b) / top : 0, EarnColor.gold, hollow: b < 0)
                 }
                 .scaleEffect(x: 1, y: grow, anchor: .bottom)
                 .onAppear {
@@ -94,9 +95,15 @@ struct EarnBars: View {
         .frame(width: 14, height: 26, alignment: .bottom)
     }
 
-    private func bar(_ h: Double, _ c: Color) -> some View {
-        // 0(손실·자료 없음)도 바닥 2pt 는 보이게
-        RoundedRectangle(cornerRadius: 1.5).fill(c).frame(width: 6, height: max(2, 26 * h))
+    @ViewBuilder
+    private func bar(_ h: Double, _ c: Color, hollow: Bool) -> some View {
+        // 0(자료 없음)도 바닥 2pt 는 보이게. 손실은 채움 없이 같은 색 테두리
+        let r = RoundedRectangle(cornerRadius: 1.5)
+        if hollow {
+            r.strokeBorder(c, lineWidth: 1.2).frame(width: 6, height: max(3, 26 * h))
+        } else {
+            r.fill(c).frame(width: 6, height: max(2, 26 * h))
+        }
     }
 }
 
