@@ -90,3 +90,9 @@
 - `data/earnings/DRNK.json`: 손으로 쓴 견본(가상 종목).
 - 남은 일: 국내 DART(키는 Actions 시크릿)는 아직 없음. 해외 기업(20-F, IFRS)은 줄표. SEC 는 연락처 있는 User-Agent 를 바라므로 Actions 시크릿 `SEC_UA`("이름 이메일")를 넣으면 좋다.
 - 맥 검사(2026-10-22): earn_check 3/3, `earnings.py --check` 통과. 고친 것: SEC 가 이메일 없는 User-Agent 를 403 으로 막아 기본값에 연락처를 넣음, companyfacts 404(SPY·MANA)는 건너뜀, 가중평균 희석 주식 수 대체가 늘 비던 버그(SPCX). 알려진 점: 테슬라는 인도량 8-K 도 2.02 라 7~9월 전 분기 발표일이 7-02 로 잡힘(실제 실적 7-22), GLD 는 1갈래로 나옴. → 둘 다 decisions 10-22 로 고침(마지막 2.02, 신탁 6221 건너뜀).
+
+## 내 몫 실적 2단계: 아이폰 강 팝업·목록 막대 (2026-10-22)
+- `Data/Earnings.swift`: earn_calc.mjs 와 같은 계산 + 받기·캐시(`earn_{종목}.json`, 20시간에 한 번, 404 는 자료 없음) + DRNK 견본(앱 안). 검사 `ios-app/tools/earn_parity`(픽스처 3건 + DRNK 견본 = data 파일).
+- `Views/EarningsRiver.swift`: EarningsFeed(Market.refresh 에서 같이 받음), 목록 막대 EarnBars, 첫 안내 EarnTip(AppStorage earn.tipClosed), 강 팝업 EarningsRiverSheet.
+- HoldingsView 행: 왼쪽 로고·이름·화살표 = 상세, 가운데 평가액·막대 = 강 팝업. 밀어 지우기·contextMenu 는 행 전체에 그대로.
+- 확인한 것: 명령줄 빌드 성공, 강 그림(흑자·적자·대기, 밝게·어둡게)을 ImageRenderer 로 뽑아 봄. 못 한 것: 시뮬레이터에서 목록 누르기·밀어 지우기 손 검사(패널 권한 대기), 시안 판16 원본과 좌표 대조(맥에 파일 없음), 새 문구 영어 번역(Localizable 추출 안 함), 안드로이드.
