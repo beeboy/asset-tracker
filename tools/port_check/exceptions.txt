@@ -72,9 +72,9 @@ Data/Backup.swift:63-64 플랫폼: SwiftUI FileDocument 읽기·쓰기 틀. 안�
 Data/Backup.swift:67-68 플랫폼: iOS 보안 범위 파일 접근. 안드로이드 SAF 는 받은 Uri 로 바로 읽는다
 
 # E 단계 (홈·설정): Views/HomeView·SettingsView·SettingsDetail·StartView·Guide·MyRecordCard·ShareCard → ui/home·ui/settings·ui/start·ui/
-Views/HomeView.swift:124 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
-Views/HomeView.swift:218 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
-Views/HomeView.swift:386 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HomeView.kt MiniPath 읽어 주기 글)
+Views/HomeView.swift:125 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, HomeView.kt RecoverSummary 어제→오늘 줄)
+Views/HomeView.swift:219 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HomeView.kt Reminder 일정 띠)
+Views/HomeView.swift:425 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HomeView.kt MiniPath 읽어 주기 글)
 Views/SettingsView.swift:84 키체인 접근성: KeyVault(Keystore) 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
 Views/SettingsView.swift:310 검사기 한계: 보간 속 따옴표 String(describing:) (옮김, SettingsView.kt PriceBasisView 원/달러 줄)
 Views/SettingsView.swift:311 검사기 한계: 보간 속 따옴표 String(format: "%.2f") (옮김, SettingsView.kt PriceBasisView 평가 환율 줄)
@@ -88,26 +88,26 @@ Views/ShareCard.swift:232 플랫폼: sheet(item:) 에 쓰려고 URL 을 Identifi
 
 # F1 단계 (종목 목록·그래프): Views/HoldingsView 목록 쪽 · Views/Charts → ui/hold · ui/Charts
 Views/Charts.swift:121 검사기 한계: TimelineView(.animation(minimumInterval: 1 / 30)) 는 프레임 시계 withFrameNanos 를 1/30초마다 받는 것으로 옮김 (애니메이션 낱말이 없음. Charts.kt pulseClock)
-Views/HoldingsView.swift:73 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HoldingsView.kt 지우기 확인 제목)
-Views/HoldingsView.swift:93 검사기 한계: 보간 속 따옴표 "+" : "−" (옮김, HoldingsView.kt TotalCard 수익 금액)
-Views/HoldingsView.swift:99 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt TotalCard 종목 수·환율 줄)
-Views/HoldingsView.swift:153 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt UnitToggle 읽어 주기 글)
-Views/HoldingsView.swift:742 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt HoldingEdit.compute 판 부분 글)
-Views/HoldingsView.swift:773 검사기 한계: 보간 속 따옴표 (옮김, HoldingsView.kt HoldingEdit.save 인물 한 줄)
-Views/HoldingsView.swift:843 검사기 한계: 보간 속 따옴표 String(format:) (옮김, HoldingsView.kt CompareCard 시장보다 글)
-Views/HoldingsView.swift:881 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 고점까지 글)
-Views/HoldingsView.swift:884 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 저점 위 글)
-Views/HoldingsView.swift:132 검사기 한계: 보간 속 따옴표 separator: ", " (옮김, HoldingsView.kt TotalChart 과거 시세 없음 글)
+Views/HoldingsView.swift:75 검사기 한계: 보간 속 따옴표 ?? "" (옮김, HoldingsView.kt 지우기 확인 제목)
+Views/HoldingsView.swift:95 검사기 한계: 보간 속 따옴표 "+" : "−" (옮김, HoldingsView.kt TotalCard 수익 금액)
+Views/HoldingsView.swift:101 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt TotalCard 종목 수·환율 줄)
+Views/HoldingsView.swift:155 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt UnitToggle 읽어 주기 글)
+Views/HoldingsView.swift:767 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingsView.kt HoldingEdit.compute 판 부분 글)
+Views/HoldingsView.swift:798 검사기 한계: 보간 속 따옴표 (옮김, HoldingsView.kt HoldingEdit.save 인물 한 줄)
+Views/HoldingsView.swift:868 검사기 한계: 보간 속 따옴표 String(format:) (옮김, HoldingsView.kt CompareCard 시장보다 글)
+Views/HoldingsView.swift:906 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 고점까지 글)
+Views/HoldingsView.swift:909 검사기 한계: 보간 속 따옴표 String(format: "%.0f") (옮김, HoldingsView.kt NearCard 저점 위 글)
+Views/HoldingsView.swift:134 검사기 한계: 보간 속 따옴표 separator: ", " (옮김, HoldingsView.kt TotalChart 과거 시세 없음 글)
 
 # F2 단계 (종목 상세·추가): Views/HoldingsView@262-726 → ui/hold/HoldingDetail.kt
-Views/HoldingsView.swift:295 검사기 한계: 보간 속 따옴표 String(localized: "오늘") (옮김, HoldingDetail.kt 주가 기간 글)
-Views/HoldingsView.swift:342 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt summary 산 가격 글)
-Views/HoldingsView.swift:359 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt NoProfile 시장·업종 글)
-Views/HoldingsView.swift:408 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt KoreaSumCard 안내 글)
-Views/HoldingsView.swift:600 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt AddHoldingView 평균 단가 칸 이름)
-Views/HoldingsView.swift:425 플랫폼: 숫자 자판에 닫기 키가 없어 iOS 는 자판 위 '완료' 막대를 둔다. 안드로이드 숫자 자판은 완료 키가 있어 그 키로 닫는다 (InputField onSubmit → clearFocus)
-Views/HoldingsView.swift:450 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
-Views/HoldingsView.swift:481 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
+Views/HoldingsView.swift:320 검사기 한계: 보간 속 따옴표 String(localized: "오늘") (옮김, HoldingDetail.kt 주가 기간 글)
+Views/HoldingsView.swift:367 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt summary 산 가격 글)
+Views/HoldingsView.swift:384 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt NoProfile 시장·업종 글)
+Views/HoldingsView.swift:433 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt KoreaSumCard 안내 글)
+Views/HoldingsView.swift:625 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, HoldingDetail.kt AddHoldingView 평균 단가 칸 이름)
+Views/HoldingsView.swift:450 플랫폼: 숫자 자판에 닫기 키가 없어 iOS 는 자판 위 '완료' 막대를 둔다. 안드로이드 숫자 자판은 완료 키가 있어 그 키로 닫는다 (InputField onSubmit → clearFocus)
+Views/HoldingsView.swift:475 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
+Views/HoldingsView.swift:506 플랫폼: 자판 위 '완료' 막대 (428 과 같음)
 
 # G1 단계 (분석 목록·전망): Views/AnalysisView·ForecastParts·AnalysisDetail@1-196 → ui/analysis
 Views/AnalysisView.swift:155 검사기 한계: 보간 속 따옴표 String(localized:) (옮김, AnalysisView.kt Summary 결론 글)
@@ -190,8 +190,8 @@ Views/ShelterView.swift:243 검사기 한계: 보간 속 따옴표 (옮김, ui/s
 Views/ShelterView.swift:286 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt Gate)
 Views/ShelterView.swift:380 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt FoldRow)
 Views/ShelterView.swift:784 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt ReaderNext)
-Views/HoldingsView.swift:1018 검사기 한계: .animation(nil) 은 애니메이션 끄기라 Compose 에선 할 일 없음 (옮김, ui/town/TownViews.kt TownView 주민 그리기)
-Views/HoldingsView.swift:1232 검사기 한계: Long 범위를 넘는 16진 리터럴은 Kotlin 에서 uL 접미사 (옮김, ui/town/TownViews.kt TownLook.seed)
+Views/HoldingsView.swift:1043 검사기 한계: .animation(nil) 은 애니메이션 끄기라 Compose 에선 할 일 없음 (옮김, ui/town/TownViews.kt TownView 주민 그리기)
+Views/HoldingsView.swift:1257 검사기 한계: Long 범위를 넘는 16진 리터럴은 Kotlin 에서 uL 접미사 (옮김, ui/town/TownViews.kt TownLook.seed)
 Views/CharMotion.swift:162 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt PixBuf.read)
 Views/CharMotion.swift:172 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt PixBuf.image)
 Views/CharMotion.swift:195 플랫폼: CGContext 비트 수·한 줄 바이트 = ARGB_8888 에 정해짐 (옮김, ui/CharMotion.kt MeMotion.image)
@@ -256,3 +256,14 @@ Data/WidgetBridge.swift:125 검사기 한계: 보간 속 따옴표 ("up" : "down
 Data/FlowData.swift:260 검사기 한계: 부호 없는 64비트 상수 uL (옮김, FlowData.kt DrnkSample.RNG)
 Data/FlowData.swift:262 검사기 한계: 부호 없는 64비트 상수 uL (옮김, FlowData.kt DrnkSample.RNG)
 Data/FlowData.swift:263 검사기 한계: 부호 없는 64비트 상수 uL (옮김, FlowData.kt DrnkSample.RNG)
+
+# 내 몫 실적: Data/Earnings.swift · Views/EarningsRiver.swift → data/Earnings.kt · ui/hold/EarningsRiver.kt
+Data/Earnings.swift:159-168 검사기 한계: 여러 줄 raw 문자열(""" 따옴표 짝이 줄마다 어긋남). 옮김, Earnings.kt drnkJSON 은 글자 그대로 같고 EarnParityTest 가 data/earnings/DRNK.json 과 같은지 본다
+Views/EarningsRiver.swift:63 플랫폼: 오늘 날짜 글은 안드로이드 Day.today (같은 yyyy-MM-dd, 기기 시간대) 를 쓴다 (Earnings.kt Summary.fresh)
+Views/EarningsRiver.swift:214 검사기 한계: 보간 속 따옴표 "이" : "가" (옮김, EarningsRiver.kt EarningsRiver title)
+Views/EarningsRiver.swift:236 플랫폼: Compose drawText 는 alpha 를 그 글에만 써서 되돌릴 불투명도 상태가 없다 (RiverDraw.text)
+Views/EarningsRiver.swift:326 검사기 한계: 보간 속 따옴표 byK["cogs"] (옮김, EarningsRiver.kt 원가·쓴 돈 글)
+Views/EarningsRiver.swift:332 검사기 한계: 보간 속 따옴표 byK["sga"] (옮김, EarningsRiver.kt 판매·관리비 글)
+Views/EarningsRiver.swift:338 검사기 한계: 보간 속 따옴표 byK["rnd"] (옮김, EarningsRiver.kt 연구비 글)
+Views/EarningsRiver.swift:363 플랫폼: 236 과 같음 (큰 금액 drawText alpha)
+Views/EarningsRiver.swift:444-445 플랫폼: Xcode #Preview (안드로이드는 미리보기 없음)

@@ -29,23 +29,23 @@ import kotlin.math.floor
 // - 작년 같은 분기 = 끝 날짜가 365±25일 앞인 분기
 // ios: Data/Earnings.swift:11
 object Earnings {
-    // ios: Data/Earnings.swift:12
     @Serializable
+    // ios: Data/Earnings.swift:12,13,14,15
     data class Quarter(
         val start: String, val end: String, val months: String, val label: String, val filed: String, val announced: String,
         val shares: Double? = null,
         val revenue: Double? = null, val cogs: Double? = null, val rnd: Double? = null, val sga: Double? = null, val net: Double? = null,
     )
     @Serializable data class Pending(val announced: String)   // ios: Data/Earnings.swift:17
-    // ios: Data/Earnings.swift:18
     @Serializable
+    // ios: Data/Earnings.swift:18,19,20,21,22,23
     data class File(val symbol: String, val name: String? = null, val currency: String, val pending: Pending? = null, val quarters: List<Quarter>)
 
     class Mine(val revenue: Double?, val cogs: Double?, val rnd: Double?, val sga: Double?, val net: Double?)   // ios: Data/Earnings.swift:26
     data class Branch(val k: String, val v: Double)   // ios: Data/Earnings.swift:27
-    data class Gauge(val label: String, val value: Double?, val lastYear: Boolean, val co: Double? = null)   // ios: Data/Earnings.swift:28 co = 회사 전체 매출
+    data class Gauge(val label: String, val value: Double?, val lastYear: Boolean, val co: Double? = null)   // co = 회사 전체 매출   // ios: Data/Earnings.swift:28
     /** 강 팝업·목록 막대·홈 카드가 쓰는 값 한 벌 (earn_calc.mjs view) */
-    // ios: Data/Earnings.swift:30
+    // ios: Data/Earnings.swift:30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46
     data class Summary(
         val symbol: String, val currency: String, val months: String, val label: String,
         val lastYearMonths: String?,
@@ -65,11 +65,11 @@ object Earnings {
         val coRevenue: Double? = null,
     ) {
         /** 실적 나온 날: 숫자를 기다리는 중이거나 오늘 발표 (이름 옆 금색 점·홈 카드) */
-        // ios: Views/EarningsRiver.swift:61
+        // ios: Views/EarningsRiver.swift:59,61,62,64
         val fresh: Boolean get() = pending != null || announced == Day.today
     }
 
-    // ios: Data/Earnings.swift:51
+    // ios: Data/Earnings.swift:49,50,51,52
     fun mine(q: Quarter, qty: Double): Mine {
         val k = qty / (q.shares ?: 0.0)
         fun m(v: Double?) = v?.let { it * k }
@@ -77,7 +77,7 @@ object Earnings {
     }
 
     /** "2025-09-30" → 1970-01-01 부터 날 수 (Howard Hinnant days_from_civil) */
-    // ios: Data/Earnings.swift:58
+    // ios: Data/Earnings.swift:56,57,58,60,61,62,63,64
     fun dayNum(s: String): Int {
         val p = s.split("-").mapNotNull { it.toIntOrNull() }
         if (p.size != 3) return 0
@@ -88,7 +88,7 @@ object Earnings {
         return era * 146097 + doe - 719468
     }
 
-    // ios: Data/Earnings.swift:69
+    // ios: Data/Earnings.swift:67,68,69
     fun sameLastYear(qs: List<Quarter>, q: Quarter): Int? {
         val e = dayNum(q.end)
         return qs.indexOfFirst { abs(e - dayNum(it.end) - 365) <= 25 }.takeIf { it >= 0 }
@@ -98,7 +98,7 @@ object Earnings {
     private fun rnd(x: Double): Double = if (x >= 0) floor(x + 0.5) else -floor(-x + 0.5)
 
     /** 작년 대비 비율 글: "+3%" / "−43%" / "작년과 같음". 작년이나 올해가 손실이면 null */
-    // ios: Data/Earnings.swift:75
+    // ios: Data/Earnings.swift:73,74,75,76,77
     fun yoyText(now: Double?, before: Double?): String? {
         if (now == null || before == null || before <= 0 || now < 0) return null
         val r = now / before - 1
@@ -107,15 +107,15 @@ object Earnings {
     }
 
     /** 돈 글: 10 이상 정수, 1 이상 소수 한 자리, 그 아래 두 자리. 음수는 "−" */
-    // ios: Data/Earnings.swift:83
+    // ios: Data/Earnings.swift:81,82,83,84
     fun money(v: Double, currency: String): String {
         val a = abs(v)
         val n = if (a >= 10) cformat("%.0f", rnd(a)) else if (a >= 1) cformat("%.1f", a) else cformat("%.2f", a)
-        return (if (v < 0) "−" else "") + n + (if (currency == "USD") "달러" else " $currency")
+        return (if (v < 0) "−" else "") + n + (if (currency == "USD") "달러" else " " + currency)
     }
 
     /** 원화 어림: "약 21만" / "약 8천" / "약 300원" */
-    // ios: Data/Earnings.swift:90
+    // ios: Data/Earnings.swift:88,89,90,91,92
     fun krw(v: Double): String {
         val a = abs(v); val s = if (v < 0) "−" else ""
         if (a >= 10000) return "약 " + s + grouped(rnd(a / 10000).toLong()) + "만"
@@ -123,14 +123,14 @@ object Earnings {
         return "약 " + s + (rnd(a / 10).toLong() * 10) + "원"
     }
     /** 1234567 → "1,234,567" */
-    // ios: Data/Earnings.swift:97
+    // ios: Data/Earnings.swift:95,96,97,98
     fun grouped(n: Long): String {
         var s = abs(n).toString(); var out = ""
         while (s.length > 3) { out = "," + s.takeLast(3) + out; s = s.dropLast(3) }
         return (if (n < 0) "-" else "") + s + out
     }
 
-    // ios: Data/Earnings.swift:103
+    // ios: Data/Earnings.swift:101,102,103,104,105,106,107,108,109,110,111,112,113,114,116,117,118,119,120,121,122,123,124,125,126,127
     fun summary(j: File?, qty: Double, fx: Double?): Summary? {
         if (j == null) return null
         val q = j.quarters.lastOrNull() ?: return null
@@ -167,15 +167,16 @@ object Earnings {
     fun cached(sym: String): File? = if (sym == "DRNK") drnk else decode(Store.readData(cacheName(sym))?.decodeToString())   // ios: Data/Earnings.swift:134
 
     /** 앱 안 견본 (아이폰 Resources/earnings_seed.json 을 빌드 때 복사). none = 회사 실적이 없는 종목 */
-    // ios: Data/Earnings.swift:138
+    // ios: Data/Earnings.swift:138,139,140
     @Serializable data class Seed(val files: Map<String, File>, val none: List<String>)
     val seed: Seed? by lazy { Defaults.asset("earnings_seed", "json")?.let { runCatching { NJson.decodeFromString(Seed.serializer(), it) }.getOrNull() } }
 
     sealed class Got { class Ok(val f: File) : Got(); object None : Got(); object Failed : Got() }   // ios: Data/Earnings.swift:142
     /** naeilo.com/data/earnings/{종목}.json. 404 는 자료 없음(ETF·국내) */
-    // ios: Data/Earnings.swift:144
+    // ios: Data/Earnings.swift:144,145,146,147,148,149,150,151,152,153
     suspend fun fetch(sym: String): Got = withContext(Dispatchers.IO) {
-        val url = URL(Config.data, "earnings/$sym.json").toString() + "?t=" + (System.currentTimeMillis() / 1000 / 3600)
+        val (qn, qv) = "t" to (System.currentTimeMillis() / 1000 / 3600).toString()
+        val url = URL(Config.data, "earnings/$sym.json").toString() + "?$qn=$qv"
         val req = FeedReq(url, timeout = 10.0)
         req.setValue("naeilo-ios/0.1", "User-Agent")
         val (code, data) = runCatching { req.send() }.getOrNull() ?: return@withContext Got.Failed
@@ -187,7 +188,7 @@ object Earnings {
     }
 
     /** DRNK 견본: data/earnings/DRNK.json 과 같은 내용 (가상 종목이라 받지 않는다) */
-    // ios: Data/Earnings.swift:157
+    // ios: Data/Earnings.swift:157,158,169
     val drnk: File? by lazy { decode(drnkJSON) }
     const val drnkJSON = """
 {"symbol":"DRNK","name":"드링커 (가상 종목)","currency":"USD","pending":null,"quarters":[
@@ -204,12 +205,12 @@ object Earnings {
 }
 
 /** 보유 종목 실적 파일 (키 = 사이트 티커). 받은 것은 기기에 두고 다음에 먼저 쓴다 */
-// ios: Views/EarningsRiver.swift:8,9,10
+// ios: Views/EarningsRiver.swift:9,10,11
 class EarningsFeed {
     companion object {
         val shared = EarningsFeed()
         /** 실적을 볼 수 있는 종목의 사이트 티커. 미국 종목만, DRNK 는 앱 안 견본 */
-        // ios: Views/EarningsRiver.swift:15
+        // ios: Views/EarningsRiver.swift:15,16,17
         fun key(sym: Symbol): String? {
             if (sym.id == "DRNK") return "DRNK"
             return if (sym.currency == Currency.usd) SiteStats.key(sym.id) else null
@@ -221,14 +222,14 @@ class EarningsFeed {
     /** 받은 자료 → 앱 안 견본 순 */
     fun file(k: String): Earnings.File? = if (k == "DRNK") Earnings.drnk else files[k] ?: Earnings.seed?.files?.get(k)   // ios: Views/EarningsRiver.swift:21
 
-    // ios: Views/EarningsRiver.swift:23
+    // ios: Views/EarningsRiver.swift:23,24,25
     fun summary(sym: Symbol, qty: Double): Earnings.Summary? {
         val k = key(sym) ?: return null
         return Earnings.summary(file(k), qty, Market.shared.fx.last)
     }
 
     /** 받은 지 20시간이 안 됐으면 받지 않는다 (봇이 하루 한 번 만든다). force(당겨 갱신)면 바로 */
-    // ios: Views/EarningsRiver.swift:30
+    // ios: Views/EarningsRiver.swift:29,30,31,32,33,34,35,36,37,38,39,40
     suspend fun refresh(held: Set<String>, force: Boolean) {
         val keys = held.mapNotNull { id -> Sample.symbol(id)?.let(::key) }.toSet() - "DRNK"
         val c = withContext(Dispatchers.IO) { keys.filter { files[it] == null }.mapNotNull { k -> Earnings.cached(k)?.let { k to it } } }
