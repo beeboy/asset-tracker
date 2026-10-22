@@ -246,12 +246,17 @@ struct HoldingsView: View {
             Text(amountText([r])).appFont(15, .bold).monospacedDigit().lineLimit(1).fixedSize().roll(r.value)
             Text(AppModel.sgn(chg)).appFont(13, .bold).foregroundStyle(Theme.change(chg))
         }
-        let earn = Button { river = EarnTarget(sym: r.sym, qty: r.h.qty) } label: {
-            HStack(spacing: 8) { amount.frame(minWidth: 72, alignment: .trailing); EarnBars(s: es) }
-                .frame(minHeight: 44).contentShape(Rectangle())
+        // 실적 자료가 있으면 강 팝업, 없으면(ETF·국내·못 받음) 줄표만 두고 왼쪽처럼 상세로
+        let earnLabel = HStack(spacing: 8) { amount.frame(minWidth: 72, alignment: .trailing); EarnBars(s: es) }
+            .frame(minHeight: 44).contentShape(Rectangle())
+        let earn = Group {
+            if es != nil {
+                Button { river = EarnTarget(sym: r.sym, qty: r.h.qty) } label: { earnLabel }
+                    .buttonStyle(.plain).accessibilityHint(String(localized: "내 몫 실적 보기"))
+            } else {
+                NavigationLink(value: r.sym) { earnLabel }.buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityHint(es == nil ? "" : String(localized: "내 몫 실적 보기"))
         return Group {
             if dts.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 6) {

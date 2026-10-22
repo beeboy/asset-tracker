@@ -17,9 +17,12 @@ final class EarningsFeed {
         return sym.currency == .usd ? SiteStats.key(sym.id) : nil
     }
 
+    /// 받은 자료 → 앱 안 견본 순
+    func file(_ k: String) -> Earnings.File? { k == "DRNK" ? Earnings.drnk : files[k] ?? Earnings.seed?.files[k] }
+
     func summary(_ sym: Symbol, qty: Double) -> Earnings.Summary? {
         guard let k = Self.key(sym) else { return nil }
-        return Earnings.summary(k == "DRNK" ? Earnings.drnk : files[k], qty: qty, fx: Market.shared.fx.last)
+        return Earnings.summary(file(k), qty: qty, fx: Market.shared.fx.last)
     }
 
     /// 받은 지 20시간이 안 됐으면 받지 않는다 (봇이 하루 한 번 만든다). force(당겨 갱신)면 바로
@@ -138,9 +141,8 @@ struct EarningsRiverSheet: View {
                 EarningsRiver(name: target.sym.name, qty: target.qty, s: s)
                     .padding(.horizontal, 8).padding(.bottom, 12)
             } else {
-                Spacer()
-                Text("이 종목은 실적 자료가 없어요").appFont(15).foregroundStyle(Theme.sub)
-                Spacer()
+                // 자료가 없으면 팝업을 열지 않는다 (목록이 상세로 보냄). 그사이 자료가 사라졌으면 바로 닫는다
+                Color.clear.onAppear { dismiss() }
             }
         }
         .frame(maxWidth: Theme.maxWidth)

@@ -34,6 +34,7 @@
 		9D0C8DCF6E59E311B4506B5B /* BrickGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2905AA73F54471654DDD97 /* BrickGame.swift */; };
 		39FFBAF05DA8DDC0379F1167 /* Lines.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50761DC24E0F1E341B2A8C09 /* Lines.swift */; };
 		B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */ = {isa = PBXBuildFile; fileRef = C9B0595773BCD7CC543FB16E /* lines_ko.json */; };
+		6C9D1F140CD85EDFEC2071E0 /* earnings_seed.json in Resources */ = {isa = PBXBuildFile; fileRef = 0A564AA0AC3E636A11DD0F48 /* earnings_seed.json */; };
 		E7A1C0DE00000000000000A1 /* lines_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000F1 /* lines_en.json */; };
 		E7A1C0DE00000000000000B1 /* lines_en.json in Resources */ = {isa = PBXBuildFile; fileRef = E7A1C0DE00000000000000F1 /* lines_en.json */; };
 		1DFBD64F26F68ABE1A9B5193 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0020D03B6A8743286E629278 /* AnalysisView.swift */; };
@@ -248,6 +249,7 @@
 		5F2905AA73F54471654DDD97 /* BrickGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrickGame.swift; sourceTree = "<group>"; };
 		50761DC24E0F1E341B2A8C09 /* Lines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lines.swift; sourceTree = "<group>"; };
 		C9B0595773BCD7CC543FB16E /* lines_ko.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_ko.json; sourceTree = "<group>"; };
+		0A564AA0AC3E636A11DD0F48 /* earnings_seed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = earnings_seed.json; sourceTree = "<group>"; };
 		E7A1C0DE00000000000000F1 /* lines_en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lines_en.json; sourceTree = "<group>"; };
 		D9CB3081436E1A6F74D763B5 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		E7A1C0DE00000000000000F9 /* krx_stocks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = krx_stocks.json; sourceTree = "<group>"; };
@@ -355,6 +357,7 @@
 				E65B4DB38E46B4BA75E84041 /* drnk_ratio.json */,
 				E7A1C0DE00000000000000F9 /* krx_stocks.json */,
 				C9B0595773BCD7CC543FB16E /* lines_ko.json */,
+				0A564AA0AC3E636A11DD0F48 /* earnings_seed.json */,
 				E7A1C0DE00000000000000D3 /* data_en.json */,
 				E7A1C0DE00000000000000D1 /* lines_app_en.json */,
 				A01E38615C5B56866E9049C5 /* story_en.json */,
@@ -556,6 +559,7 @@
 				B8D4F3A26CAE5F7B9D1C2E3F /* PrivacyInfo.xcprivacy in Resources */,
 				E7A1C0DE00000000000000C2 /* Localizable.xcstrings in Resources */,
 				B0B4ECE25E732570255D1BE4 /* lines_ko.json in Resources */,
+				6C9D1F140CD85EDFEC2071E0 /* earnings_seed.json in Resources */,
 				E7A1C0DE00000000000000D4 /* data_en.json in Resources */,
 				E7A1C0DE00000000000000D2 /* lines_app_en.json in Resources */,
 				E7A1C0DE00000000000000A1 /* lines_en.json in Resources */,
