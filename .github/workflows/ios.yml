@@ -19,7 +19,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    if: github.event_name != 'workflow_run'
+    # 맥에서 빌드하므로 push·PR 에서는 돌지 않는다. 필요할 때 Actions 에서 손으로 돌린다
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 30
     steps:
