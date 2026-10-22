@@ -207,6 +207,29 @@ extension EarningsRiverSheet {
     }
 }
 
+/// 강 화면 글: 영어면 $·B·K. 계산 기준(Earnings.money·krw, 웹·검사와 같은 값)은 한국어 그대로 두고 보일 때만 바꾼다
+enum EarnText {
+    static func money(_ v: Double, _ currency: String) -> String {
+        guard AppModel.en else { return Earnings.money(v, currency) }
+        let a = abs(v)
+        let n = a >= 10 ? String(format: "%.0f", a.rounded()) : a >= 1 ? String(format: "%.1f", a) : String(format: "%.2f", a)
+        return (v < 0 ? "−" : "") + (currency == "USD" ? "$" + n : n + " " + currency)
+    }
+    /// 회사 매출: 9.6B · 850M
+    static func big(_ v: Double) -> String {
+        let b = v / 1e9
+        return b >= 10 ? Earnings.grouped(Int(b.rounded())) + "B" : b >= 1 ? String(format: "%.1fB", b) : String(format: "%.0fM", v / 1e6)
+    }
+    /// 원화 어림: 영어면 ≈₩8K · ≈₩1.2M
+    static func krw(_ s: Earnings.Summary) -> String? {
+        guard let k = s.netKrw else { return nil }
+        guard AppModel.en, let n = s.net else { return k }
+        let v = abs(n * Market.shared.fx.last)
+        return "≈₩" + (v >= 1e6 ? String(format: "%.1fM", v / 1e6) : v >= 1e3 ? String(format: "%.0fK", v / 1e3) : String(format: "%.0f", v))
+    }
+    static func yoy(_ y: String) -> String { y == "작년과 같음" ? String(localized: "작년과 같음") : y }
+}
+
 /// 강 그림 (시안 판16). 물이 차고 실이 흐른 뒤 떡잎이 핀다(약 3초, 팝업이 열린 동안만). 동작 줄이기면 다 흐른 정지 화면
 struct EarningsRiver: View {
     let name: String
@@ -277,6 +300,13 @@ struct EarningsRiver: View {
 
     private func text(_ ctx: inout GraphicsContext, _ s: String, _ size: CGFloat, _ w: Font.Weight, _ c: Color, _ p: CGPoint, _ a: UnitPoint, _ op: Double = 1, serif: Bool = false) {
         guard op > 0 else { return }
+        // 왼쪽 맞춤 글이 오른쪽 끝(6)을 넘으면 왼쪽으로 당기고, 그래도 넓으면 글자를 줄인다 (영어 글이 길다)
+        var size = size, p = p
+        if a == .leading {
+            let room = Self.W - 12
+            let wd = ctx.resolve(Text(s).font(.system(size: size, weight: w, design: serif ? .serif : .default))).measure(in: CGSize(width: CGFloat.infinity, height: .infinity)).width
+            if wd > room { size *= room / wd; p.x = 6 } else if p.x + wd > Self.W - 6 { p.x = Self.W - 6 - wd }
+        }
         ctx.opacity = op
         ctx.draw(Text(s).font(.system(size: size, weight: w, design: serif ? .serif : .default)).foregroundStyle(c), at: p, anchor: a)
         ctx.opacity = 1
@@ -284,12 +314,13 @@ struct EarningsRiver: View {
 
     /// 회사 매출 "570억" (억 단위)
     private func eok(_ v: Double) -> String {
+        if AppModel.en { return EarnText.big(v) }
         let e = v / 1e8
         return (e >= 10 ? Earnings.grouped(Int(e.rounded())) : String(format: "%.1f", e)) + "억"
     }
 
     private func draw(_ ctx: inout GraphicsContext, t: Double, el: Double) {
-        let fmt = { (v: Double) in Earnings.money(v, s.currency) }
+        let fmt = { (v: Double) in EarnText.money(v, s.currency) }
         // 제목
         text(&ctx, title, 20, .bold, EarnColor.fg, CGPoint(x: 24, y: 42), .leading, serif: true)
 
@@ -325,8 +356,10 @@ struct EarningsRiver: View {
             return
         }
         text(&ctx, now ? String(localized: "\(name) · 이번 분기") : "\(name) · \(s.label)", 12, .regular, c1, CGPoint(x: 24, y: base + 40), .leading, 0.85 * fade(t, 0.3))
-        let unit = s.currency == "USD" ? String(localized: " 달러") : " " + s.currency
-        text(&ctx, String(localized: "매출 \(eok(co))\(unit)"), 20, .bold, c2, CGPoint(x: 24, y: base + 70), .leading, fade(t, 0.3), serif: true)
+        let usd = s.currency == "USD"
+        let unit = AppModel.en && usd ? "" : usd ? String(localized: " 달러") : " " + s.currency
+        let rv = AppModel.en && usd ? "$" + eok(co) : eok(co)   // 영어는 $9.6B
+        text(&ctx, String(localized: "매출 \(rv)\(unit)"), 20, .bold, c2, CGPoint(x: 24, y: base + 70), .leading, fade(t, 0.3), serif: true)
         gauge(&ctx, lv: lv, S: S, t: t)
 
         // 물안개: 남는 돈(이자·세금·기타). 피었다가 실 끝 전에 걷힌다 (글자 없음)
@@ -402,8 +435,8 @@ struct EarningsRiver: View {
         } else {
             let op = fade(t, 1.9)
             if op > 0 {
-                var big = Text(s.netText).font(.system(size: 30, weight: .bold, design: .serif)).foregroundStyle(EarnColor.gold)
-                if let w = s.netKrw { big = big + Text("  " + w).font(.system(size: 13, weight: .semibold)).foregroundStyle(EarnColor.muted) }
+                var big = Text(fmt(s.net ?? 0)).font(.system(size: 30, weight: .bold, design: .serif)).foregroundStyle(EarnColor.gold)
+                if let w = EarnText.krw(s) { big = big + Text("  " + w).font(.system(size: 13, weight: .semibold)).foregroundStyle(EarnColor.muted) }
                 ctx.opacity = op
                 ctx.draw(big, at: CGPoint(x: goldX, y: 636), anchor: .center)
                 ctx.opacity = 1
@@ -436,7 +469,7 @@ struct EarningsRiver: View {
             tick(&ctx, S, false)
             let op = fade(t, 0.3)
             text(&ctx, now ? String(localized: "지금 \(eok(s.coRevenue ?? 0))") : String(localized: "이때 \(eok(s.coRevenue ?? 0))"), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 17), .leading, op)
-            if let y = s.revYoY { text(&ctx, y, 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 31), .leading, op) }
+            if let y = s.revYoY { text(&ctx, EarnText.yoy(y), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 31), .leading, op) }
         }
         // 기다리는 중: 지난 분기 높이 눈금. 물이 다 차오른 뒤(1.8초) 나타난다
         if let L = lastS {

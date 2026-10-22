@@ -30091,6 +30091,16 @@
         }
       }
     },
+    "작년과 같음" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same as last year"
+          }
+        }
+      }
+    },
     "지금 %@" : {
       "localizations" : {
         "en" : {
