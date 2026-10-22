@@ -2,21 +2,13 @@ name: ios
 # 아이폰 앱(ios-app/, 위젯 확장 포함)이 컴파일되는지 확인한다 (서명 없이 시뮬레이터용). 실제 설치는 맥의 Xcode 에서
 # 맥에서 쓰는 Xcode 26 과 맞춘다 (Xcode 16 은 일부 긴 식의 타입 추론이 시간 초과로 실패)
 on:
-  # 맥에서 빌드·확인하므로 push·PR(백업)에서는 돌지 않는다. 데이터 작업 뒤 parity 와 손으로 돌리기만 남긴다
-  # 봇이 올린 데이터 커밋(stats.json·calc.json·금리 식단)은 push 로 이 작업을 깨우지 못한다 (GITHUB_TOKEN 커밋).
-  # 그래서 stats·macro 작업이 끝나면 main 최신으로 parity 만 다시 돈다
-  workflow_run:
-    workflows: [stats, macro]
-    types: [completed]
-    branches: [main]
+  # 맥에서 빌드·확인하므로 push·PR(백업)·데이터 작업 뒤에는 돌지 않는다. 필요할 때 Actions 에서 손으로 돌린다 (맥 러너 비용)
   workflow_dispatch:
 concurrency:
   group: ios-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
-    # 맥에서 빌드하므로 push·PR 에서는 돌지 않는다. 필요할 때 Actions 에서 손으로 돌린다
-    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -33,7 +25,6 @@ jobs:
   # 전망 몬테카를로: 같은 입력에 웹(web/model.js)과 앱(MonteCarlo.swift)이 같은 결과를 내는지 (tools/mc_parity.mjs)
   # 화면 계산: 평가액·배당·세금·금리 시나리오와 고르는 환율이 웹(web/app.js)과 앱이 같은지 (tools/calc_parity.mjs)
   parity:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: macos-26
     timeout-minutes: 30
     steps:

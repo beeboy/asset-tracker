@@ -11,7 +11,7 @@
 - iOS: `cd ios-app && xcodebuild -project NaeiloApp.xcodeproj -target NaeiloApp -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error|FAIL" | head -50`
 - 웹 로컬: `python3 server.py --no-browser` (8765). 계산 검사: `node tools/site_calc.mjs && node tools/check_calc.mjs`
 - 웹↔앱 계산 비교: `tools/mc_parity.mjs`, `tools/calc_parity.mjs` (`.github/workflows/ios.yml` 참고)
-- 앱 빌드·검사는 맥에서 끝낸다. `ios.yml`(맥 러너, 분당 비용 10배)은 push·PR(백업)에서 돌지 않는다. 매일 stats 작업 뒤 parity 와 손으로 돌리기만 남긴다. 시동을 다시 넣지 않는다.
+- 앱 빌드·검사는 맥에서 끝낸다. `ios.yml`(맥 러너, 분당 비용 10배)은 손으로 돌릴 때만 돈다. 시동을 다시 넣지 않는다.
 
 ## 작업 규칙
 - 큰 파일은 통째로 읽지 말고 필요한 줄만 grep한다. 읽지 말 것: `data/` 아래 시세·통계·calc·macro JSON, `web/stocks.js`, `Resources/*.json`, `*.xcassets`, 이미지, `*.pbxproj` 전체, `build/`·`DerivedData/`·`node_modules/`.
