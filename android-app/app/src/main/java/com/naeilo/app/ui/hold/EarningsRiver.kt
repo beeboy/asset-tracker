@@ -303,7 +303,7 @@ private class RiverDraw(
             val day = if (md.size == 3) "${md[1]}월 ${md[2]}일" else p   // ios: Views/EarningsRiver.swift:275
             text(tr("실적이 나왔어요 · $day"), 12f, FontWeight.Normal, c1, 24f, base + 40, 0f, 0.85 * fade(t, 1.8))   // ios: Views/EarningsRiver.swift:276
             text(tr("숫자가 들어오면 강이 차요"), 20f, FontWeight.Bold, c2, 24f, base + 70, 0f, fade(t, 1.8), serif = true)   // ios: Views/EarningsRiver.swift:277
-            gauge(lv, null, t, last = S)   // ios: Views/EarningsRiver.swift:278
+            gauge(lv, null, t, lastS = S)   // ios: Views/EarningsRiver.swift:278
             return@with   // ios: Views/EarningsRiver.swift:279
         }
         text(tr("$name · 이번 분기"), 12f, FontWeight.Normal, c1, 24f, base + 40, 0f, 0.85 * fade(t, 0.3))   // ios: Views/EarningsRiver.swift:281
@@ -399,9 +399,9 @@ private class RiverDraw(
         }
     }
 
-    /** 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 null), last = 기다리는 중 지난 분기 높이 */
+    /** 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 null), lastS = 기다리는 중 지난 분기 높이 */
     // ios: Views/EarningsRiver.swift:370
-    fun gauge(lv: (Double) -> Float, S: Float?, t: Double, last: Float? = null) = with(ds) {
+    fun gauge(lv: (Double) -> Float, S: Float?, t: Double, lastS: Float? = null) = with(ds) {
         drawRect(ec.muted.copy(alpha = 0.55f), Offset(268f, 62f), Size(4f, 238f))   // ios: Views/EarningsRiver.swift:371
         val tick = { y: Float, strong: Boolean ->   // ios: Views/EarningsRiver.swift:372
             drawRect(if (strong) ec.fg else ec.onwater.copy(alpha = 0.6f), Offset(261f, y - (if (strong) 1f else 0.75f)), Size(18f, if (strong) 2f else 1.5f))   // ios: Views/EarningsRiver.swift:373,374
@@ -426,7 +426,7 @@ private class RiverDraw(
             s.revYoY?.let { text(it, 11f, FontWeight.SemiBold, ec.onwater, 284f, S + 31, 0f, op) }   // ios: Views/EarningsRiver.swift:393
         }
         // 기다리는 중: 지난 분기 높이 눈금. 물이 다 차오른 뒤(1.8초) 나타난다
-        val L = last   // ios: Views/EarningsRiver.swift:396
+        val L = lastS   // ios: Views/EarningsRiver.swift:396
         if (L != null) {
             val op = fade(t, 1.8)   // ios: Views/EarningsRiver.swift:397
             drawRect(ec.onwater.copy(alpha = 0.6f * op.toFloat()), Offset(261f, L - 0.75f), Size(18f, 1.5f))   // ios: Views/EarningsRiver.swift:398,399
