@@ -510,6 +510,16 @@
         }
       }
     },
+    " 달러" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " USD"
+          }
+        }
+      }
+    },
     " 동기화가 켜져 있어서 다른 기기에도 보내져요." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1631,6 +1641,16 @@
         }
       }
     },
+    "%@ · 이번 분기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · this quarter"
+          }
+        }
+      }
+    },
     "%@ · 지금 %@" : {
       "localizations" : {
         "en" : {
@@ -1795,6 +1815,22 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ %2$@로 · 줄인 돈은 %3$@"
+          }
+        }
+      }
+    },
+    "%@ %@월 실적" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ earnings, months %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@월 실적"
           }
         }
       }
@@ -2190,6 +2226,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ 머리 · %2$@"
+          }
+        }
+      }
+    },
+    "%@ 무렵" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (approx.)"
           }
         }
       }
@@ -3159,6 +3205,22 @@
         }
       }
     },
+    "%@%@ 번 돈 중 내 몫" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My share of what %1$@ earned"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@ 번 돈 중 내 몫"
+          }
+        }
+      }
+    },
     "%@%@ 앞서요" : {
       "localizations" : {
         "en" : {
@@ -4118,6 +4180,16 @@
         }
       }
     },
+    "%@주만큼 · 확대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For %@ shares · scaled up"
+          }
+        }
+      }
+    },
     "%@주차 체크인은 %@일 뒤에 열려요." : {
       "localizations" : {
         "en" : {
@@ -4419,6 +4491,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld in a row"
+          }
+        }
+      }
+    },
+    "%lld월 %lld일" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld/%2$lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld월 %2$lld일"
           }
         }
       }
@@ -9842,6 +9930,16 @@
         }
       }
     },
+    "금색 막대 누르면 내 몫 이익" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the gold bar for my share of profit"
+          }
+        }
+      }
+    },
     "금액 (원)" : {
       "localizations" : {
         "en" : {
@@ -11386,6 +11484,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "My goal"
+          }
+        }
+      }
+    },
+    "내 몫 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My share %@"
+          }
+        }
+      }
+    },
+    "내 몫 실적 보기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View my share of earnings"
           }
         }
       }
@@ -15481,6 +15599,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Daily minute · Goal slot · Weekly forecast"
+          }
+        }
+      }
+    },
+    "매출 %@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revenue %1$@%2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "매출 %1$@%2$@"
           }
         }
       }
@@ -21232,6 +21366,16 @@
         }
       }
     },
+    "숫자가 들어오면 강이 차요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The river fills when the numbers arrive"
+          }
+        }
+      }
+    },
     "숫자는 바뀌어. 같이 가는 건 그대로야." : {
       "localizations" : {
         "en" : {
@@ -22071,6 +22215,16 @@
         }
       }
     },
+    "실적이 나왔어요 · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Earnings are out · %@"
+          }
+        }
+      }
+    },
     "실제" : {
       "localizations" : {
         "en" : {
@@ -22139,6 +22293,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Strong when a crowded bubble pops,\nearns less on stocks that keep rising"
+          }
+        }
+      }
+    },
+    "쓴 돈 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spent %@"
           }
         }
       }
@@ -22778,6 +22942,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Glasses"
+          }
+        }
+      }
+    },
+    "안내 닫기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close tip"
           }
         }
       }
@@ -24052,6 +24226,16 @@
         }
       }
     },
+    "연구비 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "R&D %@"
+          }
+        }
+      }
+    },
     "연기가 공을 판 쪽으로 밂" : {
       "localizations" : {
         "en" : {
@@ -24564,6 +24748,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "One number and one question a day. Each time, an item returns to the shelter."
+          }
+        }
+      }
+    },
+    "오늘 실적" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Earnings today"
           }
         }
       }
@@ -25746,6 +25940,16 @@
         }
       }
     },
+    "원가 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cost of sales %@"
+          }
+        }
+      }
+    },
     "원고가 아직 올라오지 않았어요. 준비되면 여기서 바로 받을 수 있어요." : {
       "localizations" : {
         "en" : {
@@ -26883,6 +27087,16 @@
         }
       }
     },
+    "이번 분기 내 몫 손실" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My share of this quarter's loss"
+          }
+        }
+      }
+    },
     "이번 주" : {
       "localizations" : {
         "en" : {
@@ -27753,6 +27967,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "If it rises like last year"
+          }
+        }
+      }
+    },
+    "작년보다 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ vs last year"
           }
         }
       }
@@ -32886,6 +33110,16 @@
         }
       }
     },
+    "판매·관리비 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SG&A %@"
+          }
+        }
+      }
+    },
     "판이 15초 길어져요" : {
       "localizations" : {
         "en" : {
@@ -35396,6 +35630,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Via company earnings · 3-yr impact"
+          }
+        }
+      }
+    },
+    "회사가 이번 분기 내 몫으로 번 순이익" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Net income the company earned for my share this quarter"
           }
         }
       }
