@@ -103,4 +103,15 @@
 - 홈 카드 `EarnHomeCard`(HomeView, 노란 띠 바로 아래): fresh(pending 또는 오늘 발표) 보유 종목마다 "{이름} {months}월 실적" + 막대 둘 + "작년보다 −43%"(netYoY 가 "작년과 같음"이면 그 글 그대로, 없으면 막대만). 누르면 강 팝업. 나온 종목 없으면 카드 없음.
 - 실적 일정 `MarketEvents.live`/`earnRule`: 미국 종목 e_ 는 실적 자료(받은 것→앱 안 견본) 우선 — pending 날, 마지막 발표가 오늘 이후면 그 날, 아니면 다음 분기의 작년 짝(끝 날짜 = 마지막 끝 + 91일 − 365±25) 발표일 + 364일에 "{종목} 실적 무렵". DRNK·국내·자료 없음은 손 값. 동네 행사(earnDay)도 live 를 씀. 견본 기준 애플 10-29 무렵, 엔비디아 11-18 무렵.
 - 안드로이드: `data/Earnings.kt`(계산·받기·캐시·DRNK·견본, EarningsFeed 는 Market.refresh 에서 같이), `ui/hold/EarningsRiver.kt`(EarnBars·EarnTip·EarningsRiverSheet·강 Canvas 시안 판16 좌표·색·동작), 목록 행 오른쪽(평가액·막대) = 강 팝업·이름 옆 금색 점, 홈 카드, Remind live. 견본 earnings_seed.json 은 빌드 때 아이폰 Resources 에서 복사. 검사 `EarnParityTest` 픽스처 3건 + DRNK 통과, assembleDebug 성공.
-- 정한 것/남은 차이: 안드로이드 물안개 흐림(blur 10)은 가장자리로 옅어지는 둥근 무늬로 근사(BlurMaskFilter 하드웨어 가속 문제 피함). 세리프는 FontFamily.Serif. port_check 줄 이름표는 새 파일에 함수 단위로만 달아 `port_check.py Naeilo/Views/EarningsRiver.swift` 는 아직 짝 없음 다수(줄 단위 이름표는 다음 이식 점검 때). 아이폰 쪽 Remind 줄이 17줄 밀려 기존 안드로이드 `// ios: Data/Remind.swift:5xx` 이름표도 어긋남. 화면 손 검사(에뮬레이터·시뮬레이터 캡처 비교)·새 문구 영어 번역 안 함.
+- 정한 것/남은 차이: 안드로이드 물안개 흐림(blur 10)은 가장자리로 옅어지는 둥근 무늬로 근사(BlurMaskFilter 하드웨어 가속 문제 피함). 화면 손 검사(에뮬레이터·폰 캡처 나란히 비교)는 아직.
+
+## 내 몫 실적 이식 점검·영어·화면 확인 (2026-10-22 14시 무렵 KST, earnings-bot 로컬 커밋 bbc278b5·45bcbceb)
+- port_check 짝 없음 0·참조 이상 0: Data/Earnings.swift, Views/EarningsRiver.swift, Data/Remind.swift, Views/HomeView.swift, Views/HoldingsView.swift@1-286. selftest 씨앗 1~5 모두 20/20·헛경보 0. 이름표는 원본 줄 단위로 다시 달았다(도구: 줄 맞춤은 difflib 로 옛 Swift→지금 Swift 줄 번호 옮김).
+- 바로잡은 밀림: Remind.swift(+16, 실적 일정 earnRule 끼임), HomeView.swift(홈 카드 +39), HoldingsView.swift 1~286(449dcd98 목록 막대 이후 밀림). HoldingsView.kt 지우기 확인 구역에 EarningsRiverSheet 줄이 끼어 짝이 깨졌던 것도 옮김.
+- 예외 더함(정말 필요한 것만): Earnings.swift:159-168 DRNK 견본 여러 줄 raw 문자열(검사기 따옴표 한계, 글자 그대로 같고 EarnParityTest 가 DRNK.json 과 비교), EarningsRiver.swift:63(오늘 날짜는 Day.today), 214·326·332·338(보간 속 따옴표), 236·363(Compose 는 되돌릴 불투명도 상태 없음), 444-445(#Preview).
+- 빠졌던 것 채움(안드로이드): 첫 안내 닫기 애니메이션, 홈 카드·목록 막대 읽어 주기 '내 몫 실적 보기', 금색 점 바탕선 1 위 맞춤, 화살표 칸 20×64.
+- 글꼴: 아이폰 시뮬레이터로 보니 .serif 는 숫자만 New York, 한글은 본문 고딕. 안드로이드 Theme.kt 에는 따로 둔 앱 세리프 글꼴이 없어(본문도 기기 기본), `Theme.serifDigits` 로 한글·빈칸은 앱 본문 글꼴, 숫자·라틴만 기기 세리프로 그린다(FontFamily.Serif 통째로 써 한글이 명조로 나오던 것 고침). 크기는 아이폰과 같은 viewBox 기준 고정.
+- 영어: 새 문구 22줄을 아이폰 Localizable.xcstrings 에 더했다. 이 파일엔 다른 세션의 커밋 안 된 변경이 있어 커밋하지 않았다(그 세션이 함께 커밋할 것). 안드로이드는 tools/l10n/gen_en.py 로 l10n_en.json 을 다시 만들어 커밋. 위젯 문구는 없음. 남은 것: Earnings.money/krw 의 '달러'·'천'·'만'·'작년과 같음', 강 읽어 주기 글(a11y)은 아이폰도 String(localized:) 밖이라 영어 화면에서도 한국어.
+- 화면(아이폰 naeilo-I): 목록 막대(작년 손실=속 빈 테두리, 이번=금색), 강 팝업(DRNK 3주), 홈 카드(오늘 발표 견본 2026-10-22 그대로라 견본 안 바꿈) 모두 EarningsRiver.swift 판16 좌표·색과 다른 곳 못 찾음 → 고친 것 없음.
+- 안드로이드 스튜디오 실행 화살표: 스튜디오 2026.2 가 연 뒤 AGP 8.7.3→8.13.2·Gradle 8.13 로 올리고(gradle.properties·libs.versions.toml·gradle-wrapper.properties, 커밋 안 됨 — 드링커님 쪽 변경이라 그대로 둠) 동기화가 끝나기 전엔 실행 구성(app·naeilo.app)이 비활성. 13:39 동기화 뒤 13:43 폰(SM-F721N)에 설치·실행됨. 다시 막히면 File > Sync Project with Gradle Files.
+- HoldingsView.swift 의 다른 범위(287-751 짝 없음 13, 937-2178 짝 없음 1630)는 이번 일 전부터 있던 것(449dcd98 이전과 같은 수). 다음 이식 점검 때.
