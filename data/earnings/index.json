@@ -1,10 +1,40 @@
 {
  "symbols": {
+  "AAPL": {
+   "announced": "2026-07-30",
+   "end": "2026-06-27",
+   "label": "26.4~6",
+   "pending": null
+  },
   "DRNK": {
    "announced": "2026-10-22",
    "end": "2026-09-30",
    "label": "26.7~9",
    "pending": null
+  },
+  "GPCR": {
+   "announced": "2026-08-06",
+   "end": "2026-06-30",
+   "label": "26.4~6",
+   "pending": null
+  },
+  "NVDA": {
+   "announced": "2026-08-26",
+   "end": "2026-07-26",
+   "label": "26.5~7",
+   "pending": null
+  },
+  "SPCX": {
+   "announced": "2026-08-04",
+   "end": "2026-06-30",
+   "label": "26.4~6",
+   "pending": "2026-10-20"
+  },
+  "TSLA": {
+   "announced": "2026-07-22",
+   "end": "2026-06-30",
+   "label": "26.4~6",
+   "pending": "2026-10-21"
   }
  }
 }
