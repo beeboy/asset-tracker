@@ -4835,12 +4835,82 @@
     "⭐ %lld" : {
 
     },
+    "강한 상승" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strong up"
+          }
+        }
+      }
+    },
+    "강한 하락" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strong down"
+          }
+        }
+      }
+    },
+    "공포로 급락한 다음 날 · 하락을 다 되돌림" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The day after a fear-driven drop · wins it all back"
+          }
+        }
+      }
+    },
+    "금리 결정·실적·물가 발표 하루 전" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The day before a rate decision, earnings or inflation data"
+          }
+        }
+      }
+    },
     "금액" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Amount"
+          }
+        }
+      }
+    },
+    "기대로 급등한 다음 날 · 실적 실망에 다 내줌" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The day after a hype-driven jump · gives it all back on weak earnings"
+          }
+        }
+      }
+    },
+    "긴 상승 끝물 · 호재에 마지막 신고가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Late in a long rally · one last high on good news"
+          }
+        }
+      }
+    },
+    "내 종목 · 큰 흐름" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My holdings · Big trend"
           }
         }
       }
@@ -4885,6 +4955,36 @@
         }
       }
     },
+    "며칠 상승 뒤 · 아침 호재에 치솟다 차익 매물에 밀림" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After days of rising · spikes on morning news, then profit-taking pushes it back"
+          }
+        }
+      }
+    },
+    "며칠 하락 뒤 · 아침 악재에 빠졌다 오후에 회복" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After days of falling · sinks on morning news, recovers by afternoon"
+          }
+        }
+      }
+    },
+    "받치는 가격 하나 · 파는 쪽이 점점 낮게 내놓음" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buyers hold one price · sellers offer lower each time"
+          }
+        }
+      }
+    },
     "보기: %@" : {
       "localizations" : {
         "en" : {
@@ -4925,12 +5025,72 @@
         }
       }
     },
+    "신고가 뒤 차익 매물 · 같은 가격에서 또 막힘" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profit-taking after a new high · stalls at the same price again"
+          }
+        }
+      }
+    },
+    "실적 깜짝·큰 계약에 급등 뒤 쉬어 가기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A pause after a jump on an earnings beat or big deal"
+          }
+        }
+      }
+    },
+    "실적 쇼크 급락 뒤 · 첫 바닥 근처에서 또 사들임" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After an earnings-shock drop · buyers return near the first low"
+          }
+        }
+      }
+    },
+    "악재 급락 뒤 · 힘 약한 저가 매수 반등" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After a drop on bad news · a weak dip-buying bounce"
+          }
+        }
+      }
+    },
     "약 %@주" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "About %@ shares"
+          }
+        }
+      }
+    },
+    "약한 상승" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weak up"
+          }
+        }
+      }
+    },
+    "약한 하락" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weak down"
           }
         }
       }
@@ -4951,6 +5111,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "My share of this quarter's loss"
+          }
+        }
+      }
+    },
+    "이럴 때" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seen when"
           }
         }
       }
@@ -4995,6 +5165,16 @@
         }
       }
     },
+    "한 가격에 매물 · 사는 쪽이 점점 높게 받침" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sellers stacked at one price · buyers step in higher each time"
+          }
+        }
+      }
+    },
     "현재가" : {
       "localizations" : {
         "en" : {
@@ -5011,6 +5191,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Net income the company earned for my share this quarter"
+          }
+        }
+      }
+    },
+    "횡보" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sideways"
           }
         }
       }

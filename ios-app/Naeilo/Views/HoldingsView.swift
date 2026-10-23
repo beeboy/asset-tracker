@@ -367,7 +367,6 @@ struct TodayBox: View {
     let parts: [Double]                // 등락 띠: 오른 · 그대로 · 내린 종목 평가액
     let gain: Double, ret: Double      // 산 가격 대비 (원, 비율)
     static let upC = Color(hex: 0xFF8A80), downC = Color(hex: 0x8CC4F2), flatC = Color(hex: 0x4A5672), dim = Color(hex: 0x8A93A6)
-    private var colors: [Color] { [Self.upC, Self.flatC, Self.downC] }
     /// 띠 몫 (0~1, 합 1). 종목이 없으면 모두 0
     private var shares: [Double] {
         let s = parts.reduce(0, +)
@@ -385,25 +384,13 @@ struct TodayBox: View {
                     .lineLimit(1).minimumScaleFactor(0.5).layoutPriority(1)
                 Text(AppModel.sgn(pct)).font(.system(size: 16, weight: .semibold)).foregroundStyle(c).lineLimit(1).fixedSize()
             }
-            switch look {
-            case .jump:
-                foot
-                lane
-            case .horizon:
-                wave.frame(height: 12)
-                foot
-            case .tub:
-                band(height: 8, radius: 4)
-                    .padding(4).background(Color(hex: 0xEEF2F8), in: RoundedRectangle(cornerRadius: 8))
-                foot
-            case .bar:
-                band(height: 10, radius: 5).background(Color(hex: 0x2E3542), in: Capsule()).clipShape(Capsule())
-                foot
-            }
+            // 점프 직전: 도로는 박스 맨 아래에 붙인다
+            if look == .jump { foot; MoodBand(look: look, shares: shares) }
+            else { MoodBand(look: look, shares: shares); foot }
         }
         .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, look == .jump ? 0 : 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { backdrop }
+        .background { MoodBackdrop(look: look) }
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("오늘 \(move >= 0 ? "+" : "−")\(Self.won(abs(move))), \(AppModel.sgn(pct)). 산 가격 대비 \(AppModel.sgn(ret))")
@@ -418,6 +405,26 @@ struct TodayBox: View {
         (Text("산 가격 대비 ").foregroundColor(Self.dim)
          + Text("\(gain >= 0 ? "+" : "−")\(HoldFmt.won(abs(gain))) · \(AppModel.sgn(ret))").fontWeight(.semibold).foregroundColor(gain >= 0 ? Self.upC : Self.downC))
             .font(.system(size: 13)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+    }
+}
+
+/// 몫 띠: 홈에서 고른 박스 모양대로 그린다 (종목 오늘 박스·흐름 큰 흐름 박스가 같이 쓴다). 몫은 위·그대로·아래 순서, 합 1
+struct MoodBand: View {
+    let look: BoxLook
+    let shares: [Double]
+    var road: CGFloat = 18        // 점프 직전 도로 위아래 여백 (흐름 박스는 버튼이 아래에 붙어 좁게)
+    private var colors: [Color] { [TodayBox.upC, TodayBox.flatC, TodayBox.downC] }
+
+    var body: some View {
+        switch look {
+        case .jump: lane
+        case .horizon: wave.frame(height: 12)
+        case .tub:
+            band(height: 8, radius: 4)
+                .padding(4).background(Color(hex: 0xEEF2F8), in: RoundedRectangle(cornerRadius: 8))
+        case .bar:
+            band(height: 10, radius: 5).background(Color(hex: 0x2E3542), in: Capsule()).clipShape(Capsule())
+        }
     }
 
     /// 띠 한 줄 (욕조·진행 막대): 몫만큼 나란히, 사이 2pt
@@ -453,7 +460,7 @@ struct TodayBox: View {
             }
         }
         .frame(height: 2.5)
-        .padding(.horizontal, 18).padding(.vertical, 18)
+        .padding(.horizontal, 18).padding(.vertical, road)
         .background(Color(hex: 0x151925))
         .overlay(alignment: .top) { Rectangle().fill(Color(hex: 0x232A3E)).frame(height: 1) }
         .padding(.horizontal, -18)
@@ -482,8 +489,12 @@ struct TodayBox: View {
             }
         }
     }
+}
 
-    @ViewBuilder private var backdrop: some View {
+/// 박스 바탕: 홈에서 고른 박스 모양의 장면 (늘 어둡다)
+struct MoodBackdrop: View {
+    let look: BoxLook
+    var body: some View {
         switch look {
         case .jump:
             LinearGradient(colors: [Color(hex: 0x0B1022), Color(hex: 0x232A52)], startPoint: .top, endPoint: .bottom)
