@@ -191,3 +191,8 @@
 - 덤: HoldingsView(동네 +8·고치기·소식판)·MissionViews 이름표 밀림 바로잡음 → 두 파일 전체 짝 없음 0. num_parity f 의 상세 '본전까지'는 아이폰에서 빠져 뺌. widget compileSdk 35→37(assembleRelease 가 10-22 부터 실패하던 것, Studio Sync 필요). 출시판 APK 5,290,254 바이트.
 - 정한 것(플랫폼): 숫자 자판 위 '완료' 막대는 안드로이드 숫자 자판 완료 키로 대신, 띠 빛 번짐은 흐림 필터 없이 옅은 두 겹, 위젯 넣는 단계 2·4·5 글은 안드로이드 런처 순서("위젯" 누르기·"추가"·길게 눌러 "설정").
 - 남은 것: 출시판 경고 8(예전부터: 위젯 gradle 스크립트 3, Locale 생성자 2, LocalClipboardManager 2, App.kt 주석 대상 1). 예전부터 밀린 이름표 Market.swift(282)·SettingsDetail.swift(66 무렵). 아이폰 시뮬레이터와 나란히 화면 비교는 아직(Roborazzi 만).
+
+## 분석 탭 = 내 길 메인 (2026-10-23 밤 KST, 로컬 커밋, 아이폰만)
+- `AnalysisView.swift`: ChanceBox(네 박스 모양)·줄다리기·흔들릴까·올릴까, 재료는 `AnalysisSheet`(NavigationStack 시트, X 는 시트 위에 얹음). 금리 칸 확률은 `RateScenarioView.hubProb`.
+- 홈·알림에서 `analysisPath` 로 들어오는 상세는 예전처럼 넘기기 화면(AnalysisPager)으로 쌓인다.
+- 남은 일: 안드로이드 옮김, 새 문구 영어(xcstrings), 세부 분석 페이지 손질(나중).

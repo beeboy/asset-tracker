@@ -1552,6 +1552,17 @@ struct RateScenarioView: View {
         let mid = RateScen.band(r.slope.map { b in kb * (b * d / 3 / 100) })[1]
         return timing(months(ci, 0), months(ci, mid))
     }
+    /// 분석 탭 줄다리기: 같은 기본 프리셋일 때 목표 확률 (화면 첫 막대와 같은 식)
+    static func hubProb(_ m: AppModel) -> Double? {
+        let macro = MacroData.shared
+        guard m.forecast.exact, let file = macro.file, let M = file.meals else { return nil }
+        let d = macro.defaultDr
+        let r = macro.scen(dr: d, m: 0) ?? RateScen(coef: M.coef, g0: M.g_now, dr: d, m: 0)
+        let f = m.forecast, tot = max(1, m.total)
+        let kb = m.rows.reduce(0) { $0 + $1.value / tot * ExternalView.coef($1.sym).0 }
+        let ci = Closed(T: max(1.0 / 12, f.tY.last ?? 3), sg: max(0.01, f.sigma), mu: f.mu, V0: m.trackValue, K: m.keyValue, M: m.fcMonthly)
+        return prob(f, ci, RateScen.band(r.slope.map { b in kb * (b * d / 3 / 100) })[1])
+    }
 
     private static func timing(_ a: Int?, _ b: Int?) -> String {
         guard let a, let b else { return b == nil && a != nil ? String(localized: "50년 안엔 어려움") : String(localized: "계산 불가") }
