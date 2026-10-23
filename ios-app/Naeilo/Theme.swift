@@ -123,6 +123,7 @@ struct ChipRow<T: Hashable>: View {
     @Binding var selection: T
     var accent: Color = Theme.teal
     var fill = false
+    var pad: CGFloat? = nil          // 칩 안 가로 여백 (칸이 많은 줄은 좁게)
     var body: some View {
         let row = HStack(spacing: 6) {
             ForEach(items, id: \.0) { item in
@@ -131,7 +132,8 @@ struct ChipRow<T: Hashable>: View {
                     Text(item.1)
                         .appFont(13, .bold)
                         .lineLimit(1)
-                        .padding(.horizontal, fill ? 8 : 14)
+                        .fixedSize()   // 글자를 자르지 않는다: 큰 글자로 안 맞으면 아래 ViewThatFits 가 가로 밀기로 바꾼다
+                        .padding(.horizontal, pad ?? (fill ? 8 : 14))
                         .frame(maxWidth: fill ? .infinity : nil, minHeight: 40)
                         .foregroundStyle(on ? .white : Theme.ink)
                         .background(on ? accent : Theme.card, in: Capsule())

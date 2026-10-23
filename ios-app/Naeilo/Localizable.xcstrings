@@ -4808,6 +4808,186 @@
     "⭐ %lld" : {
 
     },
+    "금액" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amount"
+          }
+        }
+      }
+    },
+    "내린 순 ⇅" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Losers ⇅"
+          }
+        }
+      }
+    },
+    "누르면 내 몫" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap for my share"
+          }
+        }
+      }
+    },
+    "더 살 금액 (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amount to buy (%@)"
+          }
+        }
+      }
+    },
+    "더 살 수량 (주)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shares to buy"
+          }
+        }
+      }
+    },
+    "보기: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View: %@"
+          }
+        }
+      }
+    },
+    "산 가격 대비" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vs. cost"
+          }
+        }
+      }
+    },
+    "산 가격 대비 " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vs. cost "
+          }
+        }
+      }
+    },
+    "살 가격 (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy price (%@)"
+          }
+        }
+      }
+    },
+    "약 %@주" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About %@ shares"
+          }
+        }
+      }
+    },
+    "오른 순 ⇅" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gainers ⇅"
+          }
+        }
+      }
+    },
+    "이 분기 내 몫 손실" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My share of this quarter's loss"
+          }
+        }
+      }
+    },
+    "종목 고치기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit stock"
+          }
+        }
+      }
+    },
+    "총 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total %@"
+          }
+        }
+      }
+    },
+    "평가금" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Value"
+          }
+        }
+      }
+    },
+    "평단 계산기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Average cost calculator"
+          }
+        }
+      }
+    },
+    "현재가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Price"
+          }
+        }
+      }
+    },
+    "회사가 이 분기 내 몫으로 번 순이익" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Net income the company earned for my share this quarter"
+          }
+        }
+      }
+    },
     "🌊 파도는 내 자산이 지나온 날들이에요. 30초, 점점 빨라져요." : {
       "localizations" : {
         "en" : {

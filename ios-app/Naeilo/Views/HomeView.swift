@@ -670,7 +670,7 @@ struct SceneBox: View {
 }
 
 /// 욕조 뒤 남색 타일 벽 (cell = 타일 한 칸 크기)
-private struct TileWall: View {
+struct TileWall: View {
     let cell: CGFloat
     var body: some View {
         Canvas { ctx, size in
