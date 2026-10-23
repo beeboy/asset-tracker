@@ -445,7 +445,17 @@ struct AnalysisView: View {
     private var raise: some View {
         let yrsE = m.etaYears
         let mixes = [(String(localized: "지금 구성"), m.nowMix), (String(localized: "성장 구성"), AppModel.mixes[1]), (String(localized: "방패 구성"), AppModel.mixes[2])]
-        let sims = mixes.map { m.simulate($0.1, years: yrsE) }
+        // 직접 구성: 평행 세계에 저장한 모의 바구니 (없으면 줄을 숨긴다)
+        let mine = m.pworld?.segs.last?.w.filter { $0.value > 0 } ?? [:]
+        let customSim: GoalSim? = mine.isEmpty ? nil : m.simulate(m.nowMix, years: yrsE, parts: mine.map { id, x in
+            let usd = m.rows.first { $0.id == id }.map { $0.sym.currency == .usd } ?? ExtraStats.shared.usd(id) ?? true
+            return (key: SiteStats.mcKey(id), ccy: usd ? "USD" : "KRW", w: x)
+        })
+        let customDesc = mine.sorted { $0.value > $1.value }.prefix(3).map { id, x in
+            let name = m.rows.first { $0.id == id }?.sym.name ?? Parallel.universe.first { $0.id == id }?.name ?? ExtraStats.shared.name(id) ?? id
+            return "\(name) \(Int((x * 100).rounded()))"
+        }.joined(separator: " · ") + (mine.count > 3 ? " …" : "")
+        let sims = mixes.map { m.simulate($0.1, years: yrsE) } + (customSim.map { [$0] } ?? [])
         let goalMo = max(0, m.goalToDate.timeIntervalSince(Date()) / (365.25 * 86400) * 12)
         let ax = EtaRow.axis(sims, goalYear: AppModel.yearAt(goalMo)), a0 = ax.0, a1 = ax.1
         let x = { (y: Double) in min(1, max(0, (y - a0) / max(0.5, a1 - a0))) }
@@ -464,8 +474,11 @@ struct AnalysisView: View {
                 Color.clear.frame(width: 52, height: 1)
             }
             .accessibilityHidden(true)
-            ForEach(sims.indices, id: \.self) { i in
+            ForEach(mixes.indices, id: \.self) { i in
                 etaLine(mixes[i].0, mixes[i].1.desc, sims[i], x: x, gx: x(AppModel.yearAt(goalMo)), mine: i == 0)
+            }
+            if let customSim {
+                etaLine(String(localized: "직접 구성"), customDesc, customSim, x: x, gx: x(AppModel.yearAt(goalMo)), mine: false)
             }
             HStack(spacing: 8) {
                 Text("● 보통 · ─ 10번 중 8번 · ┊ 목표일").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)

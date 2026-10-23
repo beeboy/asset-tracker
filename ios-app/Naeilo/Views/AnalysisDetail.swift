@@ -362,7 +362,7 @@ struct MyPathGoalView: View {
                     Text("┆ 목표일 \(String(gc.year ?? 0)).\(gc.month ?? 0)").appFont(11).foregroundStyle(Theme.muted)
                     if m.route != .novice && !m.rows.isEmpty {
                         Button { comparing = true } label: {
-                            Text("내 구성으로 비교").appFont(15, .bold).foregroundStyle(.white)
+                            Text("직접 구성하기").appFont(15, .bold).foregroundStyle(.white)
                                 .frame(maxWidth: .infinity, minHeight: 48).background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
                         }
                         .buttonStyle(.plain)
@@ -557,15 +557,29 @@ struct MyPathCompareView: View {
         let ax = EtaRow.axis([nowSim, newSim], goalYear: goalYear), a0 = ax.0, a1 = ax.1
         let gc = Calendar.current.dateComponents([.year, .month], from: m.goalToDate)
         let canSave = sum == 100 && m.pworld != nil && w.filter { $0.value > 0 }.keys.allSatisfy { Parallel.has($0) }
+        // 결과 문구: 얼마나 달라졌는지를 숫자로 (지금 비중 · 목표일과 비교)
+        let cap = newSim.capYears, eN = newSim.etaMonths, e0 = nowSim.etaMonths
+        let when = AppModel.whenText(eN, cap: cap)
         let headline: String = {
-            if newSim.etaMonths <= goalMo { return String(localized: "보통 목표일 안") }
-            if newSim.etaMonths < nowSim.etaMonths - 0.5 { return String(localized: "빨라짐 · 보통 목표일 넘김") }
-            if newSim.etaMonths > nowSim.etaMonths + 0.5 { return String(localized: "늦어짐 · 보통 목표일 넘김") }
-            return String(localized: "비슷 · 보통 목표일 넘김")
+            guard eN.isFinite else { return String(localized: "\(String(describing: cap))년 안에 닿기 어려워요") }
+            guard e0.isFinite else { return String(localized: "지금보다 빨라요 · \(when)쯤") }
+            let d = Int((eN - e0).rounded())
+            if d == 0 { return String(localized: "지금과 거의 같아요 · \(when)쯤") }
+            return d < 0 ? String(localized: "지금보다 \(Self.span(-d)) 빨라요 · \(when)쯤")
+                : String(localized: "지금보다 \(Self.span(d)) 늦어요 · \(when)쯤")
         }()
-        let width = newSim.etaHi.isFinite ? newSim.etaHi - newSim.etaLo : .infinity
-        let spread = width > 48 ? String(localized: "편차 큼 · 아주 빠를 수도, 한참 늦을 수도")
-            : width > 24 ? String(localized: "편차 보통") : String(localized: "편차 작음")
+        let goalLine: String? = {
+            guard eN.isFinite else { return nil }
+            let d = Int((eN - goalMo).rounded())
+            if d == 0 { return String(localized: "목표일 즈음이에요") }
+            return d < 0 ? String(localized: "목표일보다 \(Self.span(-d)) 앞서요") : String(localized: "목표일보다 \(Self.span(d)) 늦어요")
+        }()
+        let sprN = newSim.etaHi - newSim.etaLo, spr0 = nowSim.etaHi - nowSim.etaLo   // 무한대 = 기간 안에 못 닿는 경우가 섞임
+        let spread: String = {
+            let how = sprN.isFinite && spr0.isFinite && abs(sprN - spr0) < 6 || !sprN.isFinite && !spr0.isFinite ? String(localized: "흔들림은 지금과 비슷해요")
+                : !sprN.isFinite || (spr0.isFinite && sprN > spr0) ? String(localized: "흔들림이 커져요") : String(localized: "흔들림이 줄어요")
+            return how + " · " + String(localized: "빠르면 \(AppModel.whenText(newSim.etaLo, cap: cap)), 늦으면 \(AppModel.whenText(newSim.etaHi, cap: cap))")
+        }()
 
         VStack(spacing: 0) {
         SheetTitleBar(title: "직접 구성") { dismiss() }
@@ -610,6 +624,7 @@ struct MyPathCompareView: View {
 
                 Card {
                     Text(headline).appFont(16, .bold)
+                    if let goalLine { Text(goalLine).appFont(13).foregroundStyle(Theme.sub) }
                     Text(spread).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -641,6 +656,13 @@ struct MyPathCompareView: View {
             order = m.rows.map(\.id).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
             w0 = x; w = x
         }
+    }
+
+    /// 개월 수를 "8개월" · "1년 3개월"로
+    static func span(_ mo: Int) -> String {
+        mo < 12 ? String(localized: "\(String(describing: mo))개월")
+            : mo % 12 == 0 ? String(localized: "\(String(describing: mo / 12))년")
+            : String(localized: "\(String(describing: mo / 12))년 \(String(describing: mo % 12))개월")
     }
 
     private func row(_ id: String, color: Color) -> some View {
