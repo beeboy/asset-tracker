@@ -44,6 +44,12 @@ enum class Period(val raw: String) {
     // ios: Data/Services.swift:24,25
     val span: Double get() =
         when (this) { d1, w1 -> 0.0; m1 -> 1.0 / 36; m3 -> 1.0 / 12; m6 -> 1.0 / 6; y1 -> 1.0 / 3; y3 -> 1.0 }
+    /** 그래프가 덮는 날 수 (오늘에서 거꾸로) */
+    // ios: Data/Services.swift:28,29
+    val days: Int get() =
+        when (this) { d1 -> 1; w1 -> 7; m1 -> 30; m3 -> 91; m6 -> 182; y1 -> 365; y3 -> 1095 }
+    /** 6개월부터는 주봉 (1·3개월은 일봉) */
+    val weekly: Boolean get() = this == m6 || this == y1 || this == y3   // ios: Data/Services.swift:32
 }
 
 // ios: Data/Services.swift:35
@@ -103,24 +109,66 @@ class StubPriceProvider : PriceProvider {
         return List(n + 1) { s.close }
     }
 
-    // ios: Data/Services.swift:79,80,81,82,83,84
+    // ios: Data/Services.swift:79,80,81,82,83
     override fun series(symbol: Symbol, period: Period): List<Double> {
         val s = symbol
         val q = Market.shared.quote(s)
         return when (period) {
             Period.d1 -> listOf(q.prevClose, q.last)
             Period.w1 -> dayCloses(s, 5).drop(1) + q.last
-            else -> {
-                // ios: Data/Services.swift:107
-                if (PriceHistory.of(s.id) != null) {
-                    // 테스트 자료: 마지막 날이 이미 오늘 값이라 그대로 쓰고 끝만 지금 가격으로 맞춘다
-                    val sp = period.span
-                    return (0..60).map { i -> if (i == 60) q.last else exp(logPrice(s, 1 - sp + sp * i.toDouble() / 60)) }
+            else -> {   // ios: Data/Services.swift:84
+                val h = PriceHistory.of(s.id)
+                // ios: Data/Services.swift:85
+                if (s.id != KoreaEstimate.sumId && h != null && h.closes.size > 1 && h.dates.size == h.closes.size) {
+                    // 날짜로 자른 일봉 그대로 (6개월부터는 주마다 마지막 종가). 끝은 지금 가격으로 맞춘다
+                    return cut(h.dates, h.closes, period, q.last, java.time.LocalDate.now())   // ios: Data/Services.swift:87
                 }
-                // ios: Data/Services.swift:84,85
-                val sp = period.span; val k = q.last / max(1e-9, s.close)
-                (0..60).map { i -> s.close * exp(logPrice(s, 1 - sp + sp * i.toDouble() / 60) - logPrice(s, 1.0)) * (if (i == 60) k else 1.0) }
+                // 과거 시세가 없으면: 같은 기간 일봉·주봉 개수만큼 (합계 그래프가 끝을 맞춰 더한다)
+                val sp = period.span; val k = q.last / max(1e-9, s.close)   // ios: Data/Services.swift:104
+                val L = max(2, if (period.weekly) period.days / 7 else period.days * 5 / 7)   // ios: Data/Services.swift:105
+                // 국내 주식 합계: 그날까지 넣은 금액 그대로
+                // ios: Data/Services.swift:107,108
+                if (h != null) {
+                    return (0..L).map { i -> if (i == L) q.last else exp(logPrice(s, 1 - sp + sp * i.toDouble() / L.toDouble())) }
+                }
+                (0..L).map { i -> s.close * exp(logPrice(s, 1 - sp + sp * i.toDouble() / L.toDouble()) - logPrice(s, 1.0)) * (if (i == L) k else 1.0) }   // ios: Data/Services.swift:110
             }
+        }
+    }
+
+    companion object {
+        /** 날짜로 자른 일봉 (6개월부터는 주마다 마지막 종가), 끝은 지금 가격 (오늘 c 를 받아 숫자 맞추기가 같이 쓴다) */
+        fun cut(dates: List<String>, closes: List<Double>, period: Period, last: Double, c: java.time.LocalDate): List<Double> {
+            val from = dayNum(c.year, c.monthValue, c.dayOfMonth) - period.days   // Data/Services.swift:88 (검사 예외: 기본값 없음)
+            val pts = ArrayList<Double>(); var wk = Int.MIN_VALUE   // ios: Data/Services.swift:89
+            // ios: Data/Services.swift:90
+            for ((d, v) in dates.zip(closes)) {
+                val n = dayNum(d)?.takeIf { it >= from } ?: continue   // ios: Data/Services.swift:91
+                // ios: Data/Services.swift:92
+                if (period.weekly) {
+                    val w = (n + 3) / 7   // ios: Data/Services.swift:93 월요일에 시작하는 주 (1970-01-01 = 목)
+                    if (w == wk) { pts[pts.size - 1] = v; continue }   // ios: Data/Services.swift:94
+                    wk = w   // ios: Data/Services.swift:95
+                }
+                pts.add(v)   // ios: Data/Services.swift:97
+            }
+            if (pts.isEmpty()) pts.add(closes[closes.size - 1])   // ios: Data/Services.swift:99
+            if (pts.size == 1) pts.add(last) else pts[pts.size - 1] = last   // ios: Data/Services.swift:100
+            return pts   // ios: Data/Services.swift:101
+        }
+        /** "yyyy-MM-dd" → 1970-01-01부터 날 수 */
+        // ios: Data/Services.swift:115
+        fun dayNum(s: String): Int? {
+            val p = s.take(10).split("-")   // ios: Data/Services.swift:116
+            if (p.size != 3) return null; val y = p[0].toIntOrNull(); val m = p[1].toIntOrNull(); val d = p[2].toIntOrNull()   // ios: Data/Services.swift:117
+            if (y == null || m == null || d == null) return null
+            return dayNum(y, m, d)   // ios: Data/Services.swift:118
+        }
+        // ios: Data/Services.swift:120
+        fun dayNum(y0: Int, m: Int, d: Int): Int {
+            val y = if (m <= 2) y0 - 1 else y0; val era = (if (y >= 0) y else y - 399) / 400; val yoe = y - era * 400   // ios: Data/Services.swift:121
+            val doy = (153 * (m + (if (m > 2) -3 else 9)) + 2) / 5 + d - 1   // ios: Data/Services.swift:122
+            return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468   // ios: Data/Services.swift:123
         }
     }
 }

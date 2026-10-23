@@ -944,7 +944,7 @@ private fun SubLine(s: BoxScene, size: Float, modifier: Modifier = Modifier) {
 
 /** 욕조 뒤 남색 타일 벽 (cell = 타일 한 칸 크기) */
 // ios: Views/HomeView.swift:673,674,675,676
-private fun DrawScope.tileWall(cell: Float) {
+internal fun DrawScope.tileWall(cell: Float) {
     drawRect(hex(0x1B2744), Offset.Zero, size)   // ios: Views/HomeView.swift:677
     if (cell <= 1) return   // ios: Views/HomeView.swift:678
     val grid = Path(); var x = 0f; var y = 0f   // ios: Views/HomeView.swift:679

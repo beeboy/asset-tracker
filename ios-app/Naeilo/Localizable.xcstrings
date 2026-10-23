@@ -24912,6 +24912,22 @@
         }
       }
     },
+    "오늘 %@%@, %@. 산 가격 대비 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today %1$@%2$@, %3$@. vs. cost %4$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "오늘 %1$@%2$@, %3$@. 산 가격 대비 %4$@"
+          }
+        }
+      }
+    },
     "오늘 %@은 주로 %@ 때문이에요." : {
       "localizations" : {
         "en" : {

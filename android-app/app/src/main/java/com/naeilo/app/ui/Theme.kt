@@ -220,7 +220,9 @@ fun <K> ChipRow(
     onSelect: (K) -> Unit,
     accent: Color = Theme.teal,     // ios: Theme.swift:124
     fill: Boolean = false,          // ios: Theme.swift:125
+    pad: Dp? = null,                // ios: Theme.swift:126 칩 안 가로 여백 (칸이 많은 줄은 좁게)
 ) {
+    val padX = pad ?: (if (fill) 8.dp else 14.dp)   // ios: Theme.swift:136 pad ?? (fill ? 8 : 14)
     // ios: Theme.swift:127
     val style = appFont(13f, FontWeight.Bold)   // ios: Theme.swift:133
     @Composable fun chip(item: Pair<K, String>, mod: Modifier) {   // ios: Theme.swift:129
@@ -233,13 +235,13 @@ fun <K> ChipRow(
                 .background(if (on) accent else Theme.card, CapsuleShape)   // ios: Theme.swift:139
                 .border(2.dp, if (on) accent else Theme.border, CapsuleShape)   // ios: Theme.swift:140
                 .semantics { selected = on }   // ios: Theme.swift:143
-                .padding(horizontal = if (fill) 8.dp else 14.dp),   // ios: Theme.swift:134
+                .padding(horizontal = padX),
             contentAlignment = Alignment.Center,
         ) {
             T(
                 item.second,   // ios: Theme.swift:132
                 style = style,
-                maxLines = 1,   // ios: Theme.swift:134
+                maxLines = 1,   // ios: Theme.swift:134,135 (글자를 자르지 않는다: 안 맞으면 아래에서 가로 밀기로 바꾼다)
                 color = if (on) Color.White else Theme.ink,   // ios: Theme.swift:138
             )
         }
@@ -257,7 +259,7 @@ fun <K> ChipRow(
         val measurer = rememberTextMeasurer()
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val need = with(androidx.compose.ui.platform.LocalDensity.current) {
-                items.sumOf { measurer.measure(com.naeilo.app.core.tr(it.second), style, maxLines = 1).size.width + (8.dp * 2).roundToPx() } +
+                items.sumOf { measurer.measure(com.naeilo.app.core.tr(it.second), style, maxLines = 1).size.width + (padX * 2).roundToPx() } +
                     (gap * (items.size - 1)).roundToPx()
             }
             if (need <= constraints.maxWidth) {

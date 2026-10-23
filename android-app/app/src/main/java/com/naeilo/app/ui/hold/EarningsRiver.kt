@@ -1,5 +1,7 @@
 package com.naeilo.app.ui.hold
 
+import com.naeilo.app.ui.hex
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeOut
@@ -182,13 +184,17 @@ fun EarnTip() {
 
 @Composable
 fun EarningsRiverSheet(target: EarnTarget?, onDismiss: () -> Unit) {   // ios: Views/EarningsRiver.swift:143,144,145,149
-    Sheet(target != null, onDismiss) {   // ios: Views/EarningsRiver.swift:149,195
+    Sheet(target != null, onDismiss) {   // ios: Views/EarningsRiver.swift:149,195,196 (끌기 막대 없음)
         val t = target ?: return@Sheet
         val feed = EarningsFeed.shared   // ios: Views/EarningsRiver.swift:150
         val s = feed.summary(t.sym, t.qty)   // ios: Views/EarningsRiver.swift:151
         Column(Modifier.fillMaxSize().background(EarnColor.screen), verticalArrangement = Arrangement.spacedBy(0.dp), horizontalAlignment = Alignment.CenterHorizontally) {   // ios: Views/EarningsRiver.swift:153,193
-            Row(Modifier.fillMaxWidth()) {   // ios: Views/EarningsRiver.swift:154
-                Spacer(Modifier.weight(1f))   // ios: Views/EarningsRiver.swift:155
+            // 제목과 ✕ 한 줄 (위 빈 바 없음, 제목 왼쪽 정렬. 시안 v40)
+            // ios: Views/EarningsRiver.swift:155,165
+            Row(Modifier.fillMaxWidth().padding(start = 24.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                // ios: Views/EarningsRiver.swift:156,157 (세리프는 숫자·라틴만, 한글은 앱 글꼴)
+                FitAnnotated(serifDigits(EarningsRiver.title(t.sym.name)), TextStyle(fontSize = (20f / LocalDensity.current.fontScale).sp, fontWeight = FontWeight.Bold), 0.6f, EarnColor.fg, Modifier.weight(1f, fill = false), maxLines = 1)
+                Spacer(Modifier.weight(1f).widthIn(min = 8.dp))   // ios: Views/EarningsRiver.swift:158
                 Box(Modifier.size(44.dp, 44.dp).plainClickable(onDismiss).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {   // ios: Views/EarningsRiver.swift:159,161,163
                     Sym("xmark", 15f, Theme.sub, scaled = false)   // ios: Views/EarningsRiver.swift:160
                 }
@@ -197,6 +203,7 @@ fun EarningsRiverSheet(target: EarnTarget?, onDismiss: () -> Unit) {   // ios: V
                 // 옆으로 밀면 지난 분기 (맨 오른쪽이 이번 분기). 장에 들어올 때마다 그 분기 강이 다시 흐른다
                 val pages = feed.pages(t.sym)   // ios: Views/EarningsRiver.swift:152
                 val page = rememberPagerState(initialPage = pages.size - 1) { pages.size }   // 처음은 이번 분기(맨 오른쪽, tag -1)   // ios: Views/EarningsRiver.swift:147,194
+
                 // 점은 강 바로 아래에 겹쳐 둔다 (시트 아래쪽은 내비 막대 밑으로 들어가 가려진다)
                 BoxWithConstraints(Modifier.widthIn(max = Theme.maxWidth).weight(1f)) {
                     val riverH = (maxWidth - 16.dp) * (H / W)
@@ -224,8 +231,9 @@ fun EarningsRiverSheet(target: EarnTarget?, onDismiss: () -> Unit) {   // ios: V
     }
 }
 
-private const val W = 360f; private const val H = 680f; private const val BED = 300f   // ios: Views/EarningsRiver.swift:245
-private const val TOP = 110f   // 아이폰에도 있는 자리 값 (지금은 안 씀)   // ios: Views/EarningsRiver.swift:245
+/** 판 위 CUT 만큼은 그리지 않는다 (제목은 팝업 머리줄로 옮겼다) */
+private const val CUT = 44f; private const val W = 360f; private const val H = 680f - CUT; private const val BED = 300f   // ios: Views/EarningsRiver.swift:250
+private const val TOP = 110f   // 아이폰에도 있는 자리 값 (지금은 안 씀)   // ios: Views/EarningsRiver.swift:250
 private const val LEFT = 24f; private const val RIGHT = 250f; private const val TOTAL = 50f; private const val MID = 175f   // ios: Views/EarningsRiver.swift:251
 private const val END = 2.9   // 마지막 동작(떡잎)이 끝나는 초   // ios: Views/EarningsRiver.swift:252
 
@@ -271,15 +279,22 @@ fun EarningsRiver(name: String, qty: Double, s: Earnings.Summary, modifier: Modi
     val ec = EarnColor
     val tm = rememberTextMeasurer()
     val dens = LocalDensity.current
-    // 영어는 조사 없이 (자리 둘이 붙으면 표가 이름·조사를 못 나눈다)
-    val title = if (AppModel.en) tr("$name 번 돈 중 내 몫") else tr("$name${if (TownLook.batchim(name)) "이" else "가"} 번 돈 중 내 몫")   // ios: Views/EarningsRiver.swift:282
+    val title = EarningsRiver.title(name)   // ios: Views/EarningsRiver.swift:288
     Canvas(modifier.fillMaxWidth().aspectRatio(W / H).semantics { contentDescription = a11y(s, title, now) }) {   // ios: Views/EarningsRiver.swift:254,259,267,268,274,275
         val k = min(size.width / W, size.height / H)   // ios: Views/EarningsRiver.swift:260
-        withTransform({ translate(left = (size.width - W * k) / 2, top = 0f); scale(k, k, pivot = Offset.Zero) }) {   // ios: Views/EarningsRiver.swift:261,262
+        withTransform({ translate(left = (size.width - W * k) / 2, top = 0f); scale(k, k, pivot = Offset.Zero); translate(top = -CUT) }) {   // ios: Views/EarningsRiver.swift:261,262,263
             val d = RiverDraw(this, tm, dens.density * dens.fontScale, ec, s, name, qty, title, still, now)
             d.draw(if (still) 99.0 else el.toDouble())   // ios: Views/EarningsRiver.swift:264
         }
     }
+}
+
+// ios: Views/EarningsRiver.swift:238 (struct EarningsRiver 의 static)
+object EarningsRiver {
+    /** 강 제목. 영어는 조사 없이 (자리 둘이 붙으면 표가 이름·조사를 못 나눈다) */
+    // ios: Views/EarningsRiver.swift:289
+    fun title(name: String): String = if (AppModel.en) tr("$name 번 돈 중 내 몫") else tr("$name${if (TownLook.batchim(name)) "이" else "가"} 번 돈 중 내 몫")
+    val gray = hex(0x8A949E); val coral = hex(0xFF8A80); val sky = hex(0x8CC4F2)   // ios: Views/EarningsRiver.swift:482
 }
 
 // ios: Views/EarningsRiver.swift:278
@@ -288,7 +303,7 @@ private fun a11y(s: Earnings.Summary, title: String, now: Boolean): String {
     var t = "$title " + (if (now) tr("${s.months}월") else s.label) + ". "   // ios: Views/EarningsRiver.swift:280
     t += tr("내 몫 매출 ${EarnText.money(s.revenue ?: 0.0, s.currency)}")   // ios: Views/EarningsRiver.swift:281
     s.revYoY?.let { t += ", " + if (it == "작년과 같음") EarnText.yoy(it) else tr("작년보다 $it") }   // ios: Views/EarningsRiver.swift:282
-    t += ". " + if (s.loss) tr(if (now) "이번 분기 내 몫 손실" else "그 분기 내 몫 손실") + " " + EarnText.money(s.short, s.currency) else tr("내 몫 순이익 ${EarnText.money(s.net ?: 0.0, s.currency)}")   // ios: Views/EarningsRiver.swift:277
+    t += ". " + if (s.loss) tr(if (now) "이번 분기 내 몫 손실" else "이 분기 내 몫 손실") + " " + EarnText.money(s.short, s.currency) else tr("내 몫 순이익 ${EarnText.money(s.net ?: 0.0, s.currency)}")   // ios: Views/EarningsRiver.swift:283
     EarnText.krw(s)?.let { t += ", $it" }   // ios: Views/EarningsRiver.swift:284
     return t   // ios: Views/EarningsRiver.swift:285
 }
@@ -339,8 +354,6 @@ private class RiverDraw(
 
     fun draw(t: Double) = with(ds) {   // ios: Views/EarningsRiver.swift:329
         val fmt = { v: Double -> EarnText.money(v, s.currency) }   // ios: Views/EarningsRiver.swift:330
-        // 제목
-        text(title, 20f, FontWeight.Bold, ec.fg, 24f, 42f, 0f, serif = true)   // ios: Views/EarningsRiver.swift:325
 
         // 물높이 lv(v) = 270 − (v−min)/(max−min)×210 (지난 4분기 + 지금, 회사 매출)
         val co = s.coRevenue ?: 0.0   // ios: Views/EarningsRiver.swift:332
@@ -452,7 +465,7 @@ private class RiverDraw(
         // 금색 끝: 큰 금액(+원화) · 설명. 적자면 옅은 손실
         if (s.loss) {   // ios: Views/EarningsRiver.swift:436
             text(fmt(-s.short), 30f, FontWeight.Bold, ec.muted, MID, 636f, 0.5f, fade(t, 1.9), serif = true)   // ios: Views/EarningsRiver.swift:437
-            text(if (now) tr("이번 분기 내 몫 손실") else tr("그 분기 내 몫 손실"), 12f, FontWeight.Normal, ec.muted, MID, 660f, 0.5f, fade(t, 2.1))   // ios: Views/EarningsRiver.swift:434
+            text(if (now) tr("이번 분기 내 몫 손실") else tr("이 분기 내 몫 손실"), 12f, FontWeight.Normal, ec.muted, MID, 660f, 0.5f, fade(t, 2.1))   // ios: Views/EarningsRiver.swift:438
         } else {   // ios: Views/EarningsRiver.swift:439
             val op = fade(t, 1.9)   // ios: Views/EarningsRiver.swift:440
             if (op > 0) {   // ios: Views/EarningsRiver.swift:441
@@ -463,42 +476,41 @@ private class RiverDraw(
                 val lay = tm.measure(big, TextStyle.Default, softWrap = false)
                 drawText(lay, topLeft = Offset(goldX - lay.size.width / 2f, 636f - lay.size.height / 2f), alpha = op.toFloat())   // ios: Views/EarningsRiver.swift:444,445
             }
-            text(if (now) tr("회사가 이번 분기 내 몫으로 번 순이익") else tr("회사가 그 분기 내 몫으로 번 순이익"), 12f, FontWeight.Normal, ec.muted, goldX, 660f, 0.5f, fade(t, 2.1))   // ios: Views/EarningsRiver.swift:444
+            text(if (now) tr("회사가 이번 분기 내 몫으로 번 순이익") else tr("회사가 이 분기 내 몫으로 번 순이익"), 12f, FontWeight.Normal, ec.muted, goldX, 660f, 0.5f, fade(t, 2.1))   // ios: Views/EarningsRiver.swift:448
         }
     }
 
-    /** 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 null), lastS = 기다리는 중 지난 분기 높이 */
+    /** 수위표 (시안 v40): 막대 x268, 눈금 글자·가로 눈금 없이 꼬리표 두 개만. 작년 같은 분기 = 회색, 지금(이때) = 산호(작년보다 줄면 하늘), 글씨 검정.
+     *  S = 지금 물높이 (기다리는 중이면 null), lastS = 기다리는 중 지난 분기 높이 */
     // ios: Views/EarningsRiver.swift:454
     fun gauge(lv: (Double) -> Float, S: Float?, t: Double, lastS: Float? = null) = with(ds) {
         drawRect(ec.muted.copy(alpha = 0.55f), Offset(268f, 62f), Size(4f, 238f))   // ios: Views/EarningsRiver.swift:455
-        val tick = { y: Float, strong: Boolean ->   // ios: Views/EarningsRiver.swift:451
-            drawRect(if (strong) ec.fg else ec.onwater.copy(alpha = 0.6f), Offset(261f, y - (if (strong) 1f else 0.75f)), Size(18f, if (strong) 2f else 1.5f))   // ios: Views/EarningsRiver.swift:452,453
+        class Tag(val y: Float, val s: String, val bg: Color, val op: Double)
+        val tags = ArrayList<Tag>()   // ios: Views/EarningsRiver.swift:456
+        // ios: Views/EarningsRiver.swift:457
+        s.gauge.firstOrNull { it.lastYear }?.let { g -> tags.add(Tag(lv(g.co ?: 0.0), tr("작년 ${g.co?.let(::eok) ?: "–"}"), EarningsRiver.gray, 1.0)) }
+        // ios: Views/EarningsRiver.swift:460
+        if (S != null) {
+            val y = s.revYoY?.let { " " + EarnText.yoy(it) } ?: ""   // ios: Views/EarningsRiver.swift:461
+            val down = s.revYoY?.let { it.startsWith("−") || it.startsWith("-") } ?: false   // ios: Views/EarningsRiver.swift:462
+            tags.add(Tag(S, (if (now) tr("지금 ${eok(s.coRevenue ?: 0.0)}") else tr("이때 ${eok(s.coRevenue ?: 0.0)}")) + y, if (down) EarningsRiver.sky else EarningsRiver.coral, fade(t, 0.3)))   // ios: Views/EarningsRiver.swift:463
         }
-        val others = ArrayList<Pair<Float, String>>()   // ios: Views/EarningsRiver.swift:455
-        for (g in s.gauge) {   // ios: Views/EarningsRiver.swift:456
-            val y = lv(g.co ?: 0.0)   // ios: Views/EarningsRiver.swift:457
-            val strong = g.lastYear   // ios: Views/EarningsRiver.swift:458
-            tick(y, strong)   // ios: Views/EarningsRiver.swift:459
-            val v = g.co?.let(::eok) ?: "–"   // ios: Views/EarningsRiver.swift:460
-            if (strong) text(tr("작년 $v"), 11f, FontWeight.Normal, ec.muted, 284f, y - 5, 0f)   // ios: Views/EarningsRiver.swift:461
-            else others += (y + 4) to v   // ios: Views/EarningsRiver.swift:462
-        }
-        others.sortBy { it.first }   // ios: Views/EarningsRiver.swift:464
-        var last = -100f   // ios: Views/EarningsRiver.swift:465
-        for (i in others.indices) { if (others[i].first - last < 13) others[i] = (last + 13) to others[i].second; last = others[i].first }   // 겹치면 앞보다 13 아래로   // ios: Views/EarningsRiver.swift:466
-        for (o in others) text(o.second, 11f, FontWeight.Normal, ec.onwater, 284f, o.first, 0f, 0.75)   // ios: Views/EarningsRiver.swift:467
-        if (S != null) {   // ios: Views/EarningsRiver.swift:468
-            tick(S, false)   // ios: Views/EarningsRiver.swift:469
-            val op = fade(t, 0.3)   // ios: Views/EarningsRiver.swift:470
-            text(if (now) tr("지금 ${eok(s.coRevenue ?: 0.0)}") else tr("이때 ${eok(s.coRevenue ?: 0.0)}"), 11f, FontWeight.SemiBold, ec.onwater, 284f, S + 17, 0f, op)   // ios: Views/EarningsRiver.swift:471
-            s.revYoY?.let { text(EarnText.yoy(it), 11f, FontWeight.SemiBold, ec.onwater, 284f, S + 31, 0f, op) }   // ios: Views/EarningsRiver.swift:472
-        }
-        // 기다리는 중: 지난 분기 높이 눈금. 물이 다 차오른 뒤(1.8초) 나타난다
-        val L = lastS   // ios: Views/EarningsRiver.swift:475
-        if (L != null) {
-            val op = fade(t, 1.8)   // ios: Views/EarningsRiver.swift:476
-            drawRect(ec.onwater.copy(alpha = 0.6f * op.toFloat()), Offset(261f, L - 0.75f), Size(18f, 1.5f))   // ios: Views/EarningsRiver.swift:477,478
-            text(tr("지난 ${eok(s.coRevenue ?: 0.0)}"), 11f, FontWeight.SemiBold, ec.onwater, 284f, L + 17, 0f, op)   // ios: Views/EarningsRiver.swift:480
+        // 기다리는 중: 지난 분기 높이. 물이 다 차오른 뒤(1.8초) 나타난다
+        lastS?.let { L -> tags.add(Tag(L, tr("지난 ${eok(s.coRevenue ?: 0.0)}"), EarningsRiver.gray, fade(t, 1.8))) }   // ios: Views/EarningsRiver.swift:466
+        // 꼬리표 높이: 가까우면 20씩 벌린다 (눈금 자리는 그대로)
+        val ys = tags.map { it.y }.toMutableList()   // ios: Views/EarningsRiver.swift:468
+        val order = ys.indices.sortedBy { ys[it] }   // ios: Views/EarningsRiver.swift:469
+        for ((i, j) in order.zip(order.drop(1))) if (ys[j] - ys[i] < 20) ys[j] = ys[i] + 20   // ios: Views/EarningsRiver.swift:470
+        // ios: Views/EarningsRiver.swift:471
+        for ((i, g) in tags.withIndex()) {
+            if (g.op <= 0) continue
+            val a = g.op.toFloat()   // ios: Views/EarningsRiver.swift:472
+            drawRect(Color.White, Offset(261f, g.y - 1), Size(18f, 2f), alpha = a)   // ios: Views/EarningsRiver.swift:473
+            val lay = tm.measure(AnnotatedString(g.s), TextStyle(fontSize = (11f / spPx).sp, fontWeight = FontWeight.Bold, color = Color.Black), softWrap = false)   // ios: Views/EarningsRiver.swift:474
+            val w = lay.size.width + 12f   // ios: Views/EarningsRiver.swift:475
+            val x = min(282f, W - 4 - w)   // ios: Views/EarningsRiver.swift:476
+            drawRoundRect(g.bg, Offset(x, ys[i] - 9), Size(w, 18f), CornerRadius(5f, 5f), alpha = a)   // ios: Views/EarningsRiver.swift:477
+            drawText(lay, topLeft = Offset(x + 6, ys[i] - lay.size.height / 2f), alpha = a)   // ios: Views/EarningsRiver.swift:478
         }
     }
 

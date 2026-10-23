@@ -64,12 +64,7 @@ let xs = inp["nums"] as! [Double]
 out["man"] = xs.map {{ AppModel.man($0) }}
 out["price"] = syms.flatMap {{ s in xs.map {{ AppModel.price(s, $0) }} }}
 out["fmt"] = xs.map {{ [$0.formatted(), $0.formatted(.number.grouping(.never)), "$" + $0.formatted(.number.precision(.fractionLength(2)))] }}
-// 종목 상세 '본전까지' 줄 (318-319) · 고치기 '본전까지' 칸 (650): 원본 줄을 그대로 감싼다
-func kvStub(_ k: String, _ v: String) -> [String] {{ [k, v] }}
-out["breakEven"] = (inp["needs"] as! [Double]).map {{ need -> [String] in
-    let kv = kvStub
-{span("Views/HoldingsView.swift", "                        kv(need > 0.0005 ? String(localized: \"본전까지\") : String(localized: \"본전 대비\"), need > 0.0005 ? String(localized: \"주가가 \") + String(format: \"%.1f\", need * 100) + String(localized: \"% 오르면 본전\")", "                           : need > -0.0005 ? String(localized: \"본전과 같아요\") : String(localized: \"본전보다 \") + String(format: \"%.1f\", -need * 100) + String(localized: \"% 위\"))").replace("kv(", "return kv(")}
-}}
+// 고치기 '본전까지' 칸: 원본 줄을 그대로 감싼다 (종목 상세 '본전까지' 줄은 2026-10-23 세부 v38 에서 빠짐)
 out["needText"] = (inp["needs"] as! [Double]).map {{ x -> String in
     let px = 100.0
 {span("Views/HoldingsView.swift", "        let need = { (avg: Double) in avg / px - 1 > 0.0005 ? \"+\" + String(format: \"%.1f\", (avg / px - 1) * 100) + String(localized: \"% 남음\") : String(localized: \"본전 넘음\") }", "        let need = { (avg: Double) in avg / px - 1 > 0.0005 ? \"+\" + String(format: \"%.1f\", (avg / px - 1) * 100) + String(localized: \"% 남음\") : String(localized: \"본전 넘음\") }")}
