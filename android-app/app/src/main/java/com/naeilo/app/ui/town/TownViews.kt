@@ -843,7 +843,7 @@ fun TownTalk(
             }
             .padding(start = 128.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),   // ios: Views/HoldingsView.swift:1856
             verticalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/HoldingsView.swift:1829
-            T(full.take(shown), Modifier.fillMaxWidth().heightIn(min = 58.dp), style = appFont(16f), color = Color.White)   // ios: Views/HoldingsView.swift:1830,1831
+            T(full.take(shown), Modifier.fillMaxWidth().heightIn(min = 58.dp), style = appFont(15f), color = Color.White)   // ios: Views/HoldingsView.swift:1830,1831
             if (reply && say.isNotEmpty()) {   // ios: Views/HoldingsView.swift:1832
                 Row(Modifier.fillMaxWidth()
                     .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(4.dp))   // ios: Views/HoldingsView.swift:1845
