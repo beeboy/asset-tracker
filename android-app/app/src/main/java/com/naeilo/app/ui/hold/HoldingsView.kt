@@ -164,9 +164,10 @@ fun HoldingsView(m: AppModel) {
     var river by remember { mutableStateOf<EarnTarget?>(null) }     // ios: Views/HoldingsView.swift:13 내 몫 실적 강 팝업 (금색 알약을 누르면)
     var editSym by remember { mutableStateOf<Symbol?>(null) }       // ios: Views/HoldingsView.swift:14 길게 누르기 '종목 고치기'
     var adding by remember { mutableStateOf(false) }                // ios: Views/HoldingsView.swift:15 '+ 종목 추가' 팝업
-    val colW = remember { HoldColW() }                              // ios: Views/HoldingsView.swift:16,68 목록 칸 폭: 같은 칸은 묶음을 넘어 줄마다 같은 폭
     var inUsd by rememberPrefBool("holdUsd", false)   // ios: Views/HoldingsView.swift:17 미국 종목을 달러로 볼지
     var valueMode by rememberPrefBool("holdValue", false)   // ios: Views/HoldingsView.swift:18 보기: 현재가 | 평가금
+    // 보기·통화가 바뀌면 칸 폭을 새로 잰다 (넓어지기만 해서 평가금 폭이 현재가에 남던 것)
+    val colW = remember(valueMode, inUsd) { HoldColW() }                              // ios: Views/HoldingsView.swift:16,68 목록 칸 폭: 같은 칸은 묶음을 넘어 줄마다 같은 폭
     var downFirst by rememberPrefBool("holdDown", false)    // ios: Views/HoldingsView.swift:19 정렬: 오른 순(기본) ↔ 내린 순
     val lookRaw = BoxLook.raw   // ios: Views/HoldingsView.swift:20
     val dts = LocalTextScale.current   // ios: Views/HoldingsView.swift:21
