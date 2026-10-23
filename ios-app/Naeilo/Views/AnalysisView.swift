@@ -383,7 +383,7 @@ struct AnalysisView: View {
                         .buttonStyle(.plain)
                         .offset(x: min(max(0, x - 4), max(0, w - 110)), y: y)
                     }
-                    // 오른쪽: 목표선 이름은 선 바로 위에, 안개(목표일 보통 값) 알약은 그래프 오른쪽 아래(목표일 날짜 바로 위) → 전망 시트
+                    // 오른쪽: 목표선 이름은 선 바로 위에, 안개(목표일 보통 값) 알약은 선 아래 여유를 두고 → 전망 시트
                     let gy = topH + Y(K) * chartH
                     Text("\(m.keyName) \(goal ? AppModel.wonK(m.gK) : AppModel.eok(K))").appFont(11, .bold).foregroundStyle(Theme.ink)
                         .padding(.horizontal, 4).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
@@ -397,7 +397,7 @@ struct AnalysisView: View {
                     }
                     .buttonStyle(.plain)
                     .frame(width: w, alignment: .trailing)
-                    .offset(y: topH + chartH - 40)
+                    .offset(y: min(topH + chartH - 44, gy + 4))
                 }
             }
             .frame(height: topH + chartH)
