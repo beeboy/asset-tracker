@@ -484,7 +484,8 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
             Row(horizontalArrangement = Arrangement.spacedBy(if (v) 5.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 // ios: Views/HoldingsView.swift:277,278,282,283
                 Row(Modifier.weight(1f).defaultMinSize(minHeight = 52.dp).plainClickable(onOpen), horizontalArrangement = Arrangement.spacedBy(if (v) 4.dp else 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(0.dp)) { Name(Modifier.weight(1f, fill = false)); Spacer(Modifier.weight(1f).widthIn(min = 4.dp)) }   // ios: Views/HoldingsView.swift:279
+                    // 이름이 남은 폭을 다 먼저 쓴다 (Spacer 에 weight 를 주면 이름이 반으로 잘린다)
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(0.dp)) { Name(Modifier.weight(1f, fill = false)); Spacer(Modifier.width(4.dp)) }   // ios: Views/HoldingsView.swift:279
                     Mid(Modifier.holdCol(0, colW))   // ios: Views/HoldingsView.swift:280
                     Right()   // ios: Views/HoldingsView.swift:281
                 }
