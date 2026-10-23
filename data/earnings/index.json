@@ -25,16 +25,16 @@
    "pending": null
   },
   "SPCX": {
-   "announced": "2026-08-04",
-   "end": "2026-06-30",
-   "label": "26.4~6",
-   "pending": "2026-10-20"
+   "announced": "2026-10-20",
+   "end": "2026-09-30",
+   "label": "26.7~9",
+   "pending": null
   },
   "TSLA": {
-   "announced": "2026-07-22",
-   "end": "2026-06-30",
-   "label": "26.4~6",
-   "pending": "2026-10-21"
+   "announced": "2026-10-21",
+   "end": "2026-09-30",
+   "label": "26.7~9",
+   "pending": null
   }
  }
 }
