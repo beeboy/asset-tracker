@@ -84,7 +84,7 @@ struct GoalCellsCard: View {
                     Text(fV >= 100 ? String(localized: "100칸 완성!") : String(localized: "1칸 = \(String(describing: AppModel.man(unit)))")).appFont(14).foregroundStyle(Theme.sub)
                 }
                 // 박스는 60% 폭, 정보는 오른쪽
-                SplitRow(ratio: 0.6, spacing: 14) {
+                SplitRow(ratio: 0.6, spacing: 14, rightFill: 0.9) {
                     // 100칸이 곧 벽돌. 아래 빈 곳을 누르면 공 발사, 끌면 패들
                     BrickBox(mine: mine, filled: fV, lost: lost, g: game, on: $playing) { clear in
                         if clear { party = true } else { showGame = true }
@@ -338,6 +338,7 @@ final class MiniBreakout {
 /// 왼쪽 칸은 폭의 ratio만큼 정사각형, 오른쪽은 남은 폭에 세로 가운데
 struct SplitRow: Layout {
     let ratio: CGFloat, spacing: CGFloat
+    var rightFill: CGFloat = 1   // 오른쪽 칸 높이 = 왼쪽 높이 × 이 값 (100칸 카드: 0.9 = 패들 칸을 뺀 칸 그림 끝 줄)
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let w = proposal.width ?? 320, side = w * ratio
         let lh = subviews.first?.sizeThatFits(.init(width: side, height: nil)).height ?? 0
@@ -347,8 +348,11 @@ struct SplitRow: Layout {
     func placeSubviews(in b: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let side = b.width * ratio, rw = b.width - side - spacing
         subviews.first?.place(at: CGPoint(x: b.minX, y: b.midY), anchor: .leading, proposal: .init(width: side, height: nil))
-        // 오른쪽 칸은 박스 높이를 다 받는다 (안의 Spacer로 아래 버튼을 박스 끝 줄에 맞출 수 있게)
-        if subviews.count > 1 { subviews[1].place(at: CGPoint(x: b.minX + side + spacing, y: b.minY), anchor: .topLeading, proposal: .init(width: rw, height: b.height)) }
+        // 오른쪽 칸은 왼쪽 높이(× rightFill)를 받는다 (안의 Spacer로 아래 버튼을 칸 그림 끝 줄에 맞출 수 있게)
+        guard subviews.count > 1 else { return }
+        let lh = subviews[0].sizeThatFits(.init(width: side, height: nil)).height
+        let rh = subviews[1].sizeThatFits(.init(width: rw, height: nil)).height
+        subviews[1].place(at: CGPoint(x: b.minX + side + spacing, y: b.minY), anchor: .topLeading, proposal: .init(width: rw, height: max(rh, lh * rightFill)))
     }
 }
 

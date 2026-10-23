@@ -568,14 +568,9 @@ struct MyPathCompareView: View {
             : width > 24 ? String(localized: "편차 보통") : String(localized: "편차 작음")
 
         VStack(spacing: 0) {
-        SheetTitleBar(title: "내 구성 비교") { dismiss() }
+        SheetTitleBar(title: "직접 구성") { dismiss() }
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("비중 바꾸면 언제 닿을까?").appFont(20, .bold).fixedSize(horizontal: false, vertical: true)
-                    Text("목표 \(AppModel.wonK(m.gK)) · \(m.goalToText)까지").appFont(13).foregroundStyle(Theme.sub)
-                }
-
                 Card {
                     HStack {
                         Text("비중").appFont(15, .bold); Spacer()
@@ -627,8 +622,9 @@ struct MyPathCompareView: View {
                         .background(canSave ? Theme.teal : Theme.border, in: RoundedRectangle(cornerRadius: 14))
                 }
                 .buttonStyle(.plain).disabled(!canSave)
-                Text(m.pworld == nil ? String(localized: "평행 세계를 열면 저장 가능") : String(localized: "모의 바구니로 저장 · 실제 수량 그대로"))
-                    .appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                if m.pworld == nil {
+                    Text("평행 세계를 열면 저장 가능").appFont(12).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                }
                 Text("과거 수익률 기준 · 투자 권유 아님").appFont(12).foregroundStyle(Theme.muted)
             }
             .padding(16)
@@ -654,15 +650,17 @@ struct MyPathCompareView: View {
         let d = (w[id] ?? 0) - (w0[id] ?? 0)
         return HStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 12, height: 12)
-            VStack(alignment: .leading, spacing: 2) {
+            // 종목 이름 옆에 분류·변화 (한 줄이라 줄 높이가 낮다)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(name).appFont(14, .bold).lineLimit(1)
                 Text("\(kind) · \(d == 0 ? String(localized: "그대로") : d > 0 ? "+\(d)%p" : "\(d)%p")").appFont(11).foregroundStyle(Theme.muted).lineLimit(1)
+                    .layoutPriority(-1)
             }
-            Spacer()
-            Button { w[id] = max(0, (w[id] ?? 0) - 5) } label: { Image(systemName: "minus").frame(width: 36, height: 36) }
+            Spacer(minLength: 4)
+            Button { w[id] = max(0, (w[id] ?? 0) - 5) } label: { Image(systemName: "minus").frame(width: 30, height: 24) }
                 .buttonStyle(.bordered).accessibilityLabel("\(name) 비중 5% 줄이기")
             Text("\(w[id] ?? 0)%").appFont(14, .bold).frame(width: 44)
-            Button { w[id] = min(100, (w[id] ?? 0) + 5) } label: { Image(systemName: "plus").frame(width: 36, height: 36) }
+            Button { w[id] = min(100, (w[id] ?? 0) + 5) } label: { Image(systemName: "plus").frame(width: 30, height: 24) }
                 .buttonStyle(.bordered).accessibilityLabel("\(name) 비중 5% 늘리기")
         }
     }

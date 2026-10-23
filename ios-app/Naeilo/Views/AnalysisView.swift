@@ -472,7 +472,7 @@ struct AnalysisView: View {
                 Spacer(minLength: 4)
                 if m.route != .novice && !m.rows.isEmpty {
                     Button { comparing = true } label: {
-                        Text("내 구성 비교").appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
+                        Text("직접 구성하기").appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
                             .padding(.horizontal, 12).frame(minHeight: 30).background(Theme.teal, in: Capsule())
                     }
                     .buttonStyle(.plain)
