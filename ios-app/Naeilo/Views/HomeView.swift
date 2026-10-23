@@ -603,6 +603,16 @@ struct SceneBox: View {
     private static let upC = Color(hex: 0xFF8A80), downC = Color(hex: 0x8CC4F2)
 
     var body: some View {
+        VStack(spacing: 0) {
+            scene
+            // 욕조: 수익률·계획 줄은 장면 아래 따로 (박스 끝에 붙지 않게)
+            if look == .tub { subLine(13).padding(.top, 2).padding(.bottom, 12) }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(s.label) \(amountText), \(s.target)까지 \(AppModel.pct(s.f)), \(s.status)")
+    }
+
+    private var scene: some View {
         GeometryReader { g in
             let k = g.size.width / 300
             ZStack(alignment: .topLeading) {
@@ -617,12 +627,9 @@ struct SceneBox: View {
                 .scaleEffect(k, anchor: .topLeading)
                 .allowsHitTesting(false)
                 if look == .tub {
-                    // 욕조: 금액은 욕조 앞면, 그 아래 수익률·계획
-                    VStack(spacing: 2 * k) {
-                        amountView(20 * k, color: Color(hex: 0x16203A))
-                        subLine(9.5 * k)
-                    }
-                    .frame(width: 220 * k).position(x: 150 * k, y: 150 * k)
+                    // 욕조: 금액은 욕조 앞면 (바닥 테두리 위)
+                    amountView(20 * k, color: Color(hex: 0x16203A))
+                        .frame(width: 200 * k).position(x: 150 * k, y: 130 * k)
                     head.padding(.horizontal, 18).padding(.top, 12)
                 } else {
                     VStack(alignment: .leading, spacing: 2) {
@@ -635,8 +642,6 @@ struct SceneBox: View {
             }
         }
         .aspectRatio(300 / 170, contentMode: .fit)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(s.label) \(amountText), \(s.target)까지 \(AppModel.pct(s.f)), \(s.status)")
     }
 
     private var head: some View {
@@ -782,21 +787,10 @@ private struct TubScene: View {
                 for i in 0...14 { let x = CGFloat(i) * 22; grid.move(to: CGPoint(x: x, y: 0)); grid.addLine(to: CGPoint(x: x, y: 170)) }
                 for j in 0...8 { let y = CGFloat(j) * 22; grid.move(to: CGPoint(x: 0, y: y)); grid.addLine(to: CGPoint(x: 300, y: y)) }
                 ctx.stroke(grid, with: .color(Color(hex: 0x2A3A60)), lineWidth: 1.5)
-                // 욕조 안쪽과 눈금
+                // 욕조 안쪽 (눈금은 물 위에 따로 그린다)
                 var inner = ctx
                 inner.clip(to: Self.tub)
                 inner.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .color(Color(hex: 0xEEF2F8)))
-                inner.stroke(Sk.line(CGPoint(x: 240, y: 70), CGPoint(x: 254, y: 70)), with: .color(Color(hex: 0x7D889E)), lineWidth: 1.6)
-                Sk.text(inner, s.target, 237, 70, Color(hex: 0x7D889E), size: 8.5, bold: true, anchor: .trailing)
-                for (t, y) in [("75%", 90.0), ("25%", 130.0)] as [(String, CGFloat)] {
-                    inner.stroke(Sk.line(CGPoint(x: 246, y: y), CGPoint(x: 254, y: y)), with: .color(Color(hex: 0x9AA6BD)), lineWidth: 1.2)
-                    Sk.text(inner, t, 243, y, Color(hex: 0x9AA6BD), size: 8, anchor: .trailing)
-                }
-                if let p = s.plan {
-                    let y = Self.level(p)
-                    inner.stroke(Sk.line(CGPoint(x: 236, y: y), CGPoint(x: 254, y: y)), with: .color(Color(hex: 0xC98A00)), lineWidth: 2.2)
-                    Sk.text(inner, String(localized: "계획"), 233, y - 4, Color(hex: 0xC98A00), size: 8.5, bold: true, anchor: .trailing)
-                }
             }
             // 물: 욕조 안에서 출렁인다
             Loop(duration: 3, reverse: false, curve: .linear(duration: 3)) { on in
@@ -807,6 +801,21 @@ private struct TubScene: View {
             .frame(width: 300, height: 170, alignment: .topLeading)
             .clipShape(Self.tub)
             Canvas { ctx, _ in
+                // 눈금·계획 줄: 물 위에. 물에 잠긴 눈금은 흰색으로
+                var inner = ctx
+                inner.clip(to: Self.tub)
+                let mark = { (y: CGFloat, dry: Color) in y > w ? Color.white.opacity(0.9) : dry }
+                inner.stroke(Sk.line(CGPoint(x: 240, y: 70), CGPoint(x: 254, y: 70)), with: .color(mark(70, Color(hex: 0x7D889E))), lineWidth: 1.6)
+                Sk.text(inner, s.target, 237, 70, mark(70, Color(hex: 0x7D889E)), size: 8.5, bold: true, anchor: .trailing)
+                for (t, y) in [("75%", 90.0), ("25%", 130.0)] as [(String, CGFloat)] {
+                    inner.stroke(Sk.line(CGPoint(x: 246, y: y), CGPoint(x: 254, y: y)), with: .color(mark(y, Color(hex: 0x9AA6BD))), lineWidth: 1.2)
+                    Sk.text(inner, t, 243, y, mark(y, Color(hex: 0x9AA6BD)), size: 8, anchor: .trailing)
+                }
+                if let p = s.plan {
+                    let y = Self.level(p)
+                    inner.stroke(Sk.line(CGPoint(x: 236, y: y), CGPoint(x: 254, y: y)), with: .color(Color(hex: 0xC98A00)), lineWidth: 2.2)
+                    Sk.text(inner, String(localized: "계획"), 233, y - 4, y - 4 > w ? Color(hex: 0xFFE08A) : Color(hex: 0xC98A00), size: 8.5, bold: true, anchor: .trailing)
+                }
                 ctx.stroke(Self.tub, with: .color(.white), lineWidth: 3)
                 ctx.fill(Path(roundedRect: CGRect(x: 32, y: 46, width: 236, height: 8), cornerRadius: 4), with: .color(.white))
             }
