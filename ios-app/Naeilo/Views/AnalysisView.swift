@@ -383,21 +383,18 @@ struct AnalysisView: View {
                         .buttonStyle(.plain)
                         .offset(x: min(max(0, x - 4), max(0, w - 110)), y: y)
                     }
-                    // 오른쪽: 목표선 이름은 선 바로 위에, 안개(목표일 보통 값) 알약은 선 아래 여유를 두고 → 전망 시트
-                    let gy = topH + Y(K) * chartH
-                    Text("\(m.keyName) \(goal ? AppModel.wonK(m.gK) : AppModel.eok(K))").appFont(11, .bold).foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 4).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
-                        .frame(width: w, alignment: .trailing)
-                        .offset(y: max(0, gy - 18))
+                    // 오른쪽: 목표선 이름 + 안개(목표일 보통 값) → 전망 시트
                     Button { sheet = .forecast } label: {
-                        Text(pro && f.exact && fog > 0 ? String(localized: "안개 \(String(describing: AppModel.eok(fog)))쯤 ›") : String(localized: "목표일 전망 ›"))
-                            .appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
-                            .padding(.horizontal, 10).frame(height: 28).background(Theme.teal, in: Capsule())
-                            .frame(minHeight: 44).contentShape(Rectangle())
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text("\(m.keyName) \(goal ? AppModel.wonK(m.gK) : AppModel.eok(K))")
+                            if pro && f.exact && fog > 0 { Text("안개: \(AppModel.eok(fog))쯤 ›") } else { Text("전망 ›") }
+                        }
+                        .appFont(11, .bold).foregroundStyle(Theme.teal).multilineTextAlignment(.trailing)
+                        .padding(.horizontal, 4).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
                     .frame(width: w, alignment: .trailing)
-                    .offset(y: min(topH + chartH - 44, gy + 4))
+                    .offset(y: max(0, topH + Y(K) * chartH - 34))
                 }
             }
             .frame(height: topH + chartH)
