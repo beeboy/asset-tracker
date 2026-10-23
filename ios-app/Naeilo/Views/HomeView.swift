@@ -473,52 +473,6 @@ struct RoutineCard: View {
     }
 }
 
-// 지금 평가액 카드 오른쪽 작은 그래프: 내 길 '시작부터' (실제 = 민트 선, 내 길 = 보라 점선). 누르면 분석 > 내 길
-struct MiniPath: View {
-    @Environment(AppModel.self) private var m
-    var body: some View {
-        // 분석 > 내 길 '지금까지' 그래프와 같은 점·같은 세로 범위 (목표 금액 포함), 눈금·범위 띠만 뺀다
-        let p = m.myPath, x1 = p.start + 1.0 / 12, gap = m.myPathGapToday, K = m.gK * 1e4
-        let act = p.pts
-        let need: [(Double, Double)] = (0...30).map { i in let t = x1 * Double(i) / 30; return (t, p.need(t)) }
-        let needAll = (0...30).map { i in p.need(p.end * Double(i) / 30) }
-        let vals = act.map(\.1) + needAll + [K]
-        let hi = (vals.max() ?? 1) * 1.05, lo = (vals.filter { $0 > 0 }.min() ?? 0) * 0.9
-        Button {
-            m.tab = .analysis
-            m.analysisPath = NavigationPath([AnalysisRoute.myPath])
-        } label: {
-            Canvas { ctx, size in
-                let pt = { (q: (Double, Double)) -> CGPoint in
-                    CGPoint(x: CGFloat(q.0 / max(1e-6, x1)) * size.width, y: CGFloat((hi - q.1) / max(1, hi - lo)) * size.height)
-                }
-                func line(_ qs: [(Double, Double)]) -> Path {
-                    var path = Path()
-                    for (i, q) in qs.enumerated() { i == 0 ? path.move(to: pt(q)) : path.addLine(to: pt(q)) }
-                    return path
-                }
-                ctx.stroke(line(need), with: .color(Color(hex: 0xB79CF0)), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                ctx.stroke(line(act), with: .color(Theme.mint), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
-                if let last = act.last {
-                    let end = pt((p.start, last.1))
-                    ctx.fill(Path(ellipseIn: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)), with: .color(Theme.mint))
-                }
-            }
-            .frame(width: 84, height: 40)
-            .pulse(Theme.mint, dot: 6) { s in act.last.map { CGPoint(x: CGFloat(p.start / max(1e-6, x1)) * s.width, y: CGFloat((hi - $0.1) / max(1, hi - lo)) * s.height) } }
-            .overlay(alignment: .bottom) {
-                Text(gap >= 0 ? String(localized: "계획대로") : String(localized: "조금 늦어요")).appFont(10, .bold)
-                    .foregroundStyle(gap >= 0 ? Theme.teal : Color(hex: 0xB5651D, dark: 0xE8A060))
-                    .fixedSize().offset(y: 16)
-            }
-            .padding(.bottom, 15)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("내 길 그래프, \(gap >= 0 ? String(localized: "계획대로") : String(localized: "계획보다 조금 늦어요")), 눌러서 분석의 내 길 보기")
-    }
-}
-
 // 줄바꿈되는 가로 배치
 struct FlowRow: Layout {
     var spacing: CGFloat = 6

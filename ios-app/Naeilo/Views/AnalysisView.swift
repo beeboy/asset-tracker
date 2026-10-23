@@ -1,13 +1,12 @@
 import SwiftUI
 
 enum AnalysisRoute: Hashable, Identifiable {
-    case forecast, myPath, rateScen, external, dividend, tax, fx, glance, calm, goal
+    case forecast, rateScen, external, dividend, tax, fx, glance, calm, goal
     var id: Self { self }
 
     func title(_ m: AppModel) -> String {
         switch self {
         case .calm: return String(localized: "내 투자 습관")
-        case .myPath: return String(localized: "내 길")
         case .forecast: return m.forecastTitle
         case .rateScen: return String(localized: "금리 충격 테스트")
         case .external: return String(localized: "외부 요인")
@@ -45,7 +44,6 @@ struct AnalysisPage: View {
         switch route {
         // 7일 무료 뒤 구독하지 않으면 목표(내 길)·확률 전망만 잠근다 (Support.pro)
         case .forecast: if Support.shared.pro { ForecastView() } else { SubLocked(what: String(localized: "확률 전망")) }
-        case .myPath: if Support.shared.pro { MyPathView() } else { SubLocked(what: String(localized: "내 길(목표까지 확률)")) }
         case .rateScen: RateScenarioView()
         case .external: ExternalView()
         case .dividend: DividendView(only: "div")
@@ -62,7 +60,7 @@ struct AnalysisPage: View {
 struct AnalysisPager: View {
     @Environment(AppModel.self) private var m
     @State private var sel: AnalysisRoute
-    static let order: [AnalysisRoute] = [.calm, .myPath, .forecast, .rateScen, .external, .fx, .glance, .dividend, .tax]
+    static let order: [AnalysisRoute] = [.calm, .forecast, .rateScen, .external, .fx, .glance, .dividend, .tax]
 
     init(start: AnalysisRoute) { _sel = State(initialValue: start) }
 
@@ -445,7 +443,7 @@ struct AnalysisView: View {
     private var raise: some View {
         let yrsE = m.etaYears
         let mixes = [(String(localized: "지금 구성"), m.nowMix), (String(localized: "성장 구성"), AppModel.mixes[1]), (String(localized: "방패 구성"), AppModel.mixes[2])]
-        // 직접 구성: 평행 세계에 저장한 모의 바구니 (없으면 줄을 숨긴다)
+        // 모의바구니: 평행 세계에 저장한 모의 바구니 (없으면 줄을 숨긴다)
         let mine = m.pworld?.segs.last?.w.filter { $0.value > 0 } ?? [:]
         let customSim: GoalSim? = mine.isEmpty ? nil : m.simulate(m.nowMix, years: yrsE, parts: mine.map { id, x in
             let usd = m.rows.first { $0.id == id }.map { $0.sym.currency == .usd } ?? ExtraStats.shared.usd(id) ?? true
@@ -478,14 +476,14 @@ struct AnalysisView: View {
                 etaLine(mixes[i].0, mixes[i].1.desc, sims[i], x: x, gx: x(AppModel.yearAt(goalMo)), mine: i == 0)
             }
             if let customSim {
-                etaLine(String(localized: "직접 구성"), customDesc, customSim, x: x, gx: x(AppModel.yearAt(goalMo)), mine: false)
+                etaLine(String(localized: "모의바구니"), customDesc, customSim, x: x, gx: x(AppModel.yearAt(goalMo)), mine: false)
             }
             HStack(spacing: 8) {
                 Text("● 보통 · ─ 10번 중 8번 · ┊ 목표일").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
                 if m.route != .novice && !m.rows.isEmpty {
                     Button { comparing = true } label: {
-                        Text("직접 구성하기").appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
+                        Text("구성 변경").appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
                             .padding(.horizontal, 12).frame(minHeight: 30).background(Theme.teal, in: Capsule())
                     }
                     .buttonStyle(.plain)
