@@ -36184,6 +36184,216 @@
           }
         }
       }
+    },
+    "고점·저점 표시 · 계단 위로 상승 · 아래로 하락 · 같은 높이 횡보" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Highs & lows · stepping up = rising · down = falling · level = sideways"
+          }
+        }
+      }
+    },
+    "큰 흐름 · 22% 넘는 출렁임만 셈\n중간 흐름 · 12% 넘는 출렁임\n작은 흐름 · 6% 넘는 출렁임\n빨강 상승 · 파랑 하락 · 회색 횡보" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Big trend · counts only swings over 22%\nMedium trend · swings over 12%\nSmall trend · swings over 6%\nRed up · blue down · gray sideways"
+          }
+        }
+      }
+    },
+    "여러 번 내려와 받친 가격 · 많이 닿을수록 진하게" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Price that held several dips · darker with more touches"
+          }
+        }
+      }
+    },
+    "여러 번 올라와 막힌 가격 · 많이 닿을수록 진하게" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Price that capped several rallies · darker with more touches"
+          }
+        }
+      }
+    },
+    "비슷한 바닥 두 번 (W) · 사이 고점 넘는 종가에 확정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Two similar bottoms (W) · confirmed by a close above the middle high"
+          }
+        }
+      }
+    },
+    "비슷한 꼭대기 두 번 (M) · 사이 저점 깨는 종가에 확정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Two similar tops (M) · confirmed by a close below the middle low"
+          }
+        }
+      }
+    },
+    "가운데가 가장 높은 세 봉우리 · 두 골짜기 선 깨면 확정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Three peaks, middle highest · confirmed below the neckline"
+          }
+        }
+      }
+    },
+    "꼭대기 같고 바닥은 높아짐 · 꼭대기 넘는 종가에 확정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flat tops, rising bottoms · confirmed by a close above the tops"
+          }
+        }
+      }
+    },
+    "바닥 같고 꼭대기는 낮아짐 · 바닥 깨는 종가에 확정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flat bottoms, falling tops · confirmed by a close below the bottoms"
+          }
+        }
+      }
+    },
+    "급등(깃대) 뒤 쉬어 가기 · 위로 벗어나면 확정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause after a sharp rise (pole) · confirmed on an upside break"
+          }
+        }
+      }
+    },
+    "급락(깃대) 뒤 쉬어 가기 · 아래로 벗어나면 확정" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause after a sharp drop (pole) · confirmed on a downside break"
+          }
+        }
+      }
+    },
+    "아래꼬리가 긴 캔들 · 밀렸다 끌어올린 날" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long lower wick · pushed down, then pulled back up"
+          }
+        }
+      }
+    },
+    "위꼬리가 긴 캔들 · 올랐다 밀려난 날" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long upper wick · rose, then pushed back down"
+          }
+        }
+      }
+    },
+    "전날 음봉을 양봉이 다 덮음" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up candle fully covers the prior down candle"
+          }
+        }
+      }
+    },
+    "전날 양봉을 음봉이 다 덮음" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Down candle fully covers the prior up candle"
+          }
+        }
+      }
+    },
+    "전날 범위 안에서만 움직인 날 · 잠시 멈춤" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stayed inside the prior day's range · a pause"
+          }
+        }
+      }
+    },
+    "흐린 점선 = 확정 전·거래량 적음 · 투자 권유 아님" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faded dashed = unconfirmed or low volume · not investment advice"
+          }
+        }
+      }
+    },
+    "누른 것의 뜻이 여기 떠요. 흐린 점선 이름표는 확정 전이거나 거래량이 적었던 것이에요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Its meaning shows here. Faded dashed labels are unconfirmed or had low volume."
+          }
+        }
+      }
+    },
+    "밀기 · 두 손가락 확대" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe · pinch to zoom"
+          }
+        }
+      }
+    },
+    "정보 제공용 · 매매 권유 아님" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For information · not trading advice"
+          }
+        }
+      }
+    },
+    "흐름 읽는 법" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How to read Flow"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
