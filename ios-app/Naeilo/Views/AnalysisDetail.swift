@@ -568,7 +568,7 @@ struct MyPathCompareView: View {
             : width > 24 ? String(localized: "편차 보통") : String(localized: "편차 작음")
 
         VStack(spacing: 0) {
-        SheetTitleBar(title: "비중 바꿔 비교") { dismiss() }
+        SheetTitleBar(title: "내 구성 비교") { dismiss() }
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
