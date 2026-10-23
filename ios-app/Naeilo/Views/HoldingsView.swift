@@ -225,7 +225,7 @@ struct HoldingsView: View {
     }
 
     // 행 (시안 v33): 로고(실적 금색 점은 오른쪽 위) · 이름 · 평단가(평가금 보기는 수량) · 오늘 %(평가금 보기는 산 가격 대비 %와 금액) · 현재가(평가금)
-    // 로고·이름은 세부로, 오른쪽 %·금색 알약은 내 몫 실적 강 팝업으로 (실적이 없으면 알약 없이 세부로)
+    // 로고·이름·평단가·%는 세부로, 금색 알약만 내 몫 실적 강 팝업으로 (실적이 없으면 알약 없이 세부로)
     private func row(_ r: AppModel.Row, _ mx: Double) -> some View {
         let es = EarningsFeed.shared.summary(r.sym, qty: r.h.qty)
         let day = r.sym.quote.change
@@ -246,36 +246,41 @@ struct HoldingsView: View {
         let chg = v ? (Text(AppModel.sgn(bp)) + Text("(" + amt(r, krw: r.value - r.cost, native: r.h.qty * (r.sym.last - r.h.avg)) + ")").font(.system(size: 10.5, weight: .semibold)))
                     : Text(AppModel.sgn2(day))
         let pctC = v ? (bp > 0 ? Theme.up : bp < 0 ? Theme.down : Theme.sub) : (day > 0 ? Theme.up : day < 0 ? Theme.down : Theme.sub)
-        let right = HStack(spacing: v ? 5 : 8) {
-            chg.appFont(v ? 12.5 : 14, .bold).foregroundStyle(pctC).monospacedDigit().lineLimit(1).holdCol(1, colW)
-            Text(v ? amt(r, krw: r.value, native: r.h.qty * r.sym.last) : px(r, r.sym.last))
-                .appFont(small, .bold).monospacedDigit().lineLimit(1)
-                .foregroundStyle(es != nil ? Color.black : Theme.ink)
-                .padding(.horizontal, v ? 6 : 7).padding(.vertical, 2)
-                .background(es != nil ? Self.gold : .clear, in: Capsule())
-                .holdCol(2, colW)
-        }
-        .frame(minHeight: 44).contentShape(Rectangle())
+        let pct = chg.appFont(v ? 12.5 : 14, .bold).foregroundStyle(pctC).monospacedDigit().lineLimit(1).holdCol(1, colW)
+        let pill = Text(v ? amt(r, krw: r.value, native: r.h.qty * r.sym.last) : px(r, r.sym.last))
+            .appFont(small, .bold).monospacedDigit().lineLimit(1)
+            .foregroundStyle(es != nil ? Color.black : Theme.ink)
+            .padding(.horizontal, v ? 6 : 7).padding(.vertical, 2)
+            .background(es != nil ? Self.gold : .clear, in: Capsule())
+            .holdCol(2, colW)
+        // 실적이 있으면 알약만 따로 누른다 (없으면 알약도 세부 링크 안)
+        let right = HStack(spacing: v ? 5 : 8) { pct; if es == nil { pill } }
         let earn = Group {
             if es != nil {
-                Button { river = EarnTarget(sym: r.sym, qty: r.h.qty) } label: { right }
+                Button { river = EarnTarget(sym: r.sym, qty: r.h.qty) } label: { pill.frame(minHeight: 44).contentShape(Rectangle()) }
                     .buttonStyle(.plain).accessibilityHint(String(localized: "내 몫 실적 보기"))
-            } else {
-                NavigationLink(value: r.sym) { right }.buttonStyle(.plain)
             }
         }
         return Group {
             if dts.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 6) {
                     NavigationLink(value: r.sym) { name.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }.buttonStyle(.plain)
-                    HStack { mid; Spacer(); earn }
+                    HStack(spacing: v ? 5 : 8) {
+                        NavigationLink(value: r.sym) {
+                            HStack { mid; Spacer(); right }.frame(minHeight: 44).contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                        earn
+                    }
                 }.padding(.vertical, 10)
             } else {
-                HStack(spacing: v ? 4 : 6) {
+                HStack(spacing: v ? 5 : 8) {
                     NavigationLink(value: r.sym) {
-                        HStack(spacing: 0) { name; Spacer(minLength: 4) }.frame(minHeight: 52).contentShape(Rectangle())
+                        HStack(spacing: v ? 4 : 6) {
+                            HStack(spacing: 0) { name; Spacer(minLength: 4) }
+                            mid.holdCol(0, colW)
+                            right
+                        }.frame(minHeight: 52).contentShape(Rectangle())
                     }.buttonStyle(.plain)
-                    mid.holdCol(0, colW)
                     earn
                 }
             }
