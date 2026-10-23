@@ -16,6 +16,8 @@ struct NaeiloApp: App {
                 .preferredColorScheme(model.appearance == "light" ? .light : model.appearance == "dark" ? .dark : nil)
                 // 아주 큰 손쉬운 사용 크기에서도 화면이 무너지지 않게 상한을 둔다
                 .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+                // 넘길 때 옆에 뜨는 스크롤 막대는 앱 전체에서 끈다 (2026-10-23)
+                .scrollIndicators(.hidden)
         }
     }
 }
