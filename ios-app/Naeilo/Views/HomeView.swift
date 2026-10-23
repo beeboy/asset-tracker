@@ -550,13 +550,13 @@ struct SampleNote: View {
     }
 }
 
-// MARK: 평가액 박스 모양 (2026-10-23). 사용자가 고른다 (기본 점프 직전): 지평선 → 점프 직전 → 욕조와 오리 → 진행 막대(예전 모습)
+// MARK: 평가액 박스 모양 (2026-10-23). 사용자가 고른다 점프 직전(기본) → 지평선 → 욕조와 오리 → 진행 막대(예전 모습)
 // 장면은 300×170 판에 그리고 박스 폭에 맞춰 늘린다. 글자는 장면 왼쪽 위에 겹친다.
 // 가로 위치·물높이 = 지금 값 ÷ 목표(목표 루트) 또는 넣은 돈(회복 루트). 계획 자리 = 내 길 계획선(적립 포함, myPath.need)의 오늘 값.
 // 움직임은 작은 조각만 반복 애니메이션 (장면 그림은 값이 바뀔 때만 다시 그린다). 동작 줄이기면 멈춘다
 
 enum BoxLook: String, CaseIterable, Identifiable {
-    case horizon, jump, tub, bar
+    case jump, horizon, tub, bar
     var id: String { rawValue }
     var name: String {
         switch self {

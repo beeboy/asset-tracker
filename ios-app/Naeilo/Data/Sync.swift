@@ -284,11 +284,12 @@ final class Sync {
     func flush(_ m: AppModel) {
         guard dirty, isOn, conflict == nil, pulledOnce else { return }
         dirty = false
-        nonisolated(unsafe) var bg = UIBackgroundTaskIdentifier.invalid   // 끝날 때 자기 번호로 닫는다 (메인에서만 바뀜)
-        bg = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(bg) }
+        // 끝날 때 자기 번호로 닫는다. 번호는 상자에 담아 넘긴다 (잡은 뒤 바꾼 변수 경고를 피하려고)
+        let bg = BGTaskBox()
+        bg.id = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(bg.id) }
         Task { @MainActor in
             do { try await push(m) } catch { dirty = true; state = .failed(error.localizedDescription) }
-            UIApplication.shared.endBackgroundTask(bg)
+            UIApplication.shared.endBackgroundTask(bg.id)
         }
     }
 
@@ -509,3 +510,6 @@ enum Keychain {
     }
     static func delete() { SecItemDelete(q as CFDictionary) }
 }
+
+/// 백그라운드 작업 번호 상자 (Sync.flush). 메인에서만 읽고 쓴다
+final class BGTaskBox: @unchecked Sendable { var id = UIBackgroundTaskIdentifier.invalid }
