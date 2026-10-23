@@ -957,8 +957,8 @@ fun TaxResultView(m: AppModel) {
 // ios: Views/MissionViews.swift:611
 private fun totalSeries(m: AppModel): List<Double> {
     val s = m.rows.map { r -> m.prices.series(r.sym, Period.m3).map { m.krw(r.sym, it * r.h.qty) } }   // ios: Views/MissionViews.swift:612
-    val n = s.minOfOrNull { it.size } ?: 0   // ios: Views/MissionViews.swift:613
-    return (0 until n).map { i -> s.fold(0.0) { a, x -> a + x[x.size - n + i] } }   // ios: Views/MissionViews.swift:614 끝(오늘)을 맞춰 더한다
+    val n = s.maxOfOrNull { it.size } ?: 0   // ios: Views/MissionViews.swift:613 짧은 종목은 첫 값으로 평평하게
+    return (0 until n).map { i -> s.fold(0.0) { a, x -> if (x.isEmpty()) a else a + x[maxOf(0, x.size - n + i)] } }   // ios: Views/MissionViews.swift:614 끝(오늘)을 맞춰 더한다
 }
 
 // ios: Views/MissionViews.swift:602,603,616

@@ -287,8 +287,8 @@ private fun TotalChart(m: AppModel, rows: List<AppModel.Row>, period: Period, se
     val stamp = Market.shared.updatedAt
     val t = remember(period, rows, stamp) {
         val series = rows.map { r -> m.prices.series(r.sym, period).map { m.krw(r.sym, it * r.h.qty) } }   // ios: Views/HoldingsView.swift:113
-        val n = series.minOfOrNull { it.size } ?: 0   // ios: Views/HoldingsView.swift:114
-        val tot = (0 until n).map { i -> series.fold(0.0) { a, s -> a + s[s.size - n + i] } }   // ios: Views/HoldingsView.swift:115 끝(오늘)을 맞춰 더한다
+        val n = series.maxOfOrNull { it.size } ?: 0   // ios: Views/HoldingsView.swift:114 짧으면 첫 값으로 평평하게
+        val tot = (0 until n).map { i -> series.fold(0.0) { a, s -> if (s.isEmpty()) a else a + s[maxOf(0, s.size - n + i)] } }   // ios: Views/HoldingsView.swift:115 끝(오늘)을 맞춰 더한다
         val noHist = rows.filter { !m.prices.hasHistory(it.sym) }.map { it.sym.name }   // ios: Views/HoldingsView.swift:125
         Total(tot, tot.firstOrNull() ?: 0.0, tot.lastOrNull() ?: 0.0, noHist)
     }

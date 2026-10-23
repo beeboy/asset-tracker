@@ -111,8 +111,8 @@ struct HoldingsView: View {
     // 지금 비중을 기간 전부터 가졌다면: 백테스트 평가액. 축에는 시작 금액·달라진 금액 꼬리표만 (시안 v22)
     private func totalChart(_ rows: [AppModel.Row]) -> some View {
         let series = rows.map { r in m.prices.series(r.sym, period: period).map { m.krw(r.sym, $0 * r.h.qty) } }
-        let n = series.map(\.count).min() ?? 0
-        let tot = (0..<n).map { i in series.reduce(0) { $0 + $1[$1.count - n + i] } }   // 끝(오늘)을 맞춰 더한다
+        let n = series.map(\.count).max() ?? 0   // 가장 긴 종목 기준. 짧으면(상장 뒤 첫날 전) 첫 값으로 평평하게
+        let tot = (0..<n).map { i in series.reduce(0) { $1.isEmpty ? $0 : $0 + $1[max(0, $1.count - n + i)] } }   // 끝(오늘)을 맞춰 더한다
         let first = tot.first ?? 0, last = tot.last ?? 0, up = last >= first
         let start = Calendar.current.date(byAdding: .day, value: -Int(period.span * 1095), to: Date()) ?? Date()
         let d0 = period.span < 1 ? String(localized: "\(String(describing: Calendar.current.component(.month, from: start)))월") : "\(Calendar.current.component(.year, from: start).formatted(.number.grouping(.never))).\(Calendar.current.component(.month, from: start))"

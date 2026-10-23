@@ -87,7 +87,7 @@ final class Market {
         }
         return b.prevClose > 0 ? b.prevClose : nil
     }
-    /// 토스 값을 쓰는 종목 (종목 화면에 "토스 시세" 표시)
+    /// 토스 값을 쓰는 종목 (지금 화면 표시는 없음)
     func isToss(_ s: Symbol) -> Bool { tossLast(s) != nil }
     private func tossLast(_ s: Symbol) -> Double? {
         guard s.id != "DRNK", let t = toss?.q[s.id], t.last > 0 else { return nil }
@@ -436,7 +436,7 @@ enum TossHistory {
     static func merged(_ p: SitePrices.File?, _ t: File?) -> SitePrices.File? {
         guard let t, TossKeys.on, !t.h.isEmpty else { return p }
         var out = p ?? SitePrices.File(got: 0, updated: "", asked: [], h: [:])
-        for (k, v) in t.h { out.h[k] = v }
+        for (k, v) in t.h { out.h[k] = TossSplit.fit(v, p?.h[k]) }   // 수정 안 한 종가라 분할 전 날은 사이트(분할 반영) 기준으로 맞춘다
         return out
     }
 
@@ -595,5 +595,21 @@ enum MarFeed {
         // 사이트·중계가 앞 날짜 고시도 주면 같이 둔다 (앱을 처음 깔았거나 저녁에 새 고시만 받은 때도 오전 8시 59분 전엔 앞 고시)
         let pv = (o["USD_prev"] as? [String: Any]).flatMap { p in num(p["rate"]).flatMap { r in (p["date"] as? String).map { Prev(rate: r, date: $0) } } }
         return File(rate: rate, date: date, got: Date().timeIntervalSince1970, prev: pv.flatMap { $0.rate > 0 && $0.date < date ? $0 : nil })
+    }
+}
+
+/// 토스 일봉(adjusted=false)은 주식 분할 전 날이 분할 전 가격이다 (엔비디아 2024-06-10 1→10: 분할 전 약 1,200달러).
+/// 사이트 종가는 분할을 반영하므로, 같은 날 둘의 비가 30% 넘게 어긋나는 곳부터 그 앞은 사이트 비로 맞춘다. 사이트에 없는 종목은 그대로
+enum TossSplit {
+    static func fit(_ t: YahooSample.Hist, _ site: YahooSample.Hist?) -> YahooSample.Hist {
+        guard let site, !site.dates.isEmpty else { return t }
+        let ref = Dictionary(zip(site.dates, site.closes), uniquingKeysWith: { _, b in b })
+        var f = 1.0, out = t.closes
+        for i in out.indices.reversed() {
+            let c = out[i]
+            if c > 0, let s = ref[t.dates[i]], s > 0, abs(s / c / f - 1) > 0.3 { f = s / c }
+            out[i] = c * f
+        }
+        return .init(dates: t.dates, closes: out)
     }
 }

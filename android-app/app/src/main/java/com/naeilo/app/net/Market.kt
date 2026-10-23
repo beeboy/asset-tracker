@@ -519,7 +519,7 @@ object TossHistory {   // ios: Data/Market.swift:426
     fun merged(p: SitePrices.File?, t: File?): SitePrices.File? {   // ios: Data/Market.swift:433
         if (t == null || !TossKeys.on || t.h.isEmpty()) return p   // ios: Data/Market.swift:434
         val out = p?.copy() ?: SitePrices.File(got = 0.0, updated = "", asked = emptyList(), h = emptyMap())   // ios: Data/Market.swift:435
-        out.h = out.h + t.h   // ios: Data/Market.swift:436
+        out.h = out.h + t.h.mapValues { (k, v) -> TossSplit.fit(v, p?.h?.get(k)) }   // ios: Data/Market.swift:436 분할 전 날은 사이트 기준으로 맞춘다
         return out   // ios: Data/Market.swift:437
     }
 
@@ -687,5 +687,22 @@ object MarFeed {   // ios: Data/Market.swift:528
         // 사이트·중계가 앞 날짜 고시도 주면 같이 둔다 (앱을 처음 깔았거나 저녁에 새 고시만 받은 때도 오전 8시 59분 전엔 앞 고시)
         val pv = jObj(o["USD_prev"])?.let { p -> num(p["rate"])?.let { r -> (p["date"] as? String)?.let { Prev(rate = r, date = it) } } }   // ios: Data/Market.swift:593
         return File(rate = rate, date = date, got = nowSec(), prev = pv?.let { if (it.rate > 0 && it.date < date) it else null })   // ios: Data/Market.swift:594
+    }
+}
+
+/** 토스 일봉(adjusted=false)의 분할 전 날을 사이트(분할 반영) 비로 맞춘다. ios: Data/Market.swift TossSplit */
+object TossSplit {
+    fun fit(t: YahooSample.Hist, site: YahooSample.Hist?): YahooSample.Hist {
+        if (site == null || site.dates.isEmpty()) return t
+        val ref = site.dates.zip(site.closes).toMap()
+        var f = 1.0
+        val out = t.closes.toMutableList()
+        for (i in out.indices.reversed()) {
+            val c = out[i]
+            val s = ref[t.dates[i]]
+            if (c > 0 && s != null && s > 0 && kotlin.math.abs(s / c / f - 1) > 0.3) f = s / c
+            out[i] = c * f
+        }
+        return YahooSample.Hist(t.dates, out)
     }
 }
