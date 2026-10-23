@@ -11,6 +11,7 @@ import Security
 // - 중계(/esync?id=)에는 기기에서 암호화한 값 {c: "iv.암호문", at}만 둔다. 중계는 내용을 읽을 수 없다.
 // - 나중에 고친 쪽이 이긴다 (at). 처음 켤 때 양쪽 다 값이 있으면 어느 쪽에 맞출지 묻는다.
 // - 맞추는 것: 종목·수량·평균 단가(사이트 holdings 형식), 앱의 미션 진행(app 칸, 사이트는 건드리지 않고 그대로 둔다).
+//   동네(주민 수첩·대화 기록·배경·산 물건·별사탕)도 app 칸에 (app.town).
 //   목표(금액·목표일·시작일·매달 넣는 돈)는 양쪽이 같은 값을 쓴다 (나중에 고친 쪽이 이긴다. 회복 루트에서는 받기만 한다).
 //   사이트에만 있는 칸(사건·모형 설정)과 앱이 못 다루는 종목(미국·한국 밖)은 받은 그대로 다시 올린다.
 @Observable
@@ -282,6 +283,7 @@ final class Sync {
     /// 앱이 백그라운드로 갈 때 (App.swift): 바뀐 값이 있으면 한 번만 올린다. iOS가 끝낼 시간을 조금 준다
     @MainActor
     func flush(_ m: AppModel) {
+        changed(m)      // 동네는 진행·종목 밖이라 닫을 때 한 번 더 본다
         guard dirty, isOn, conflict == nil, pulledOnce else { return }
         dirty = false
         // 끝날 때 자기 번호로 닫는다. 번호는 상자에 담아 넘긴다 (잡은 뒤 바꾼 변수 경고를 피하려고)
@@ -359,6 +361,8 @@ final class Sync {
         var app: [String: Any] = ["v": 1]
         if let p = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(m.progress)) { app["progress"] = p }
         app["virtual"] = m.holdings.filter { $0.symbol == "DRNK" }.map { ["t": $0.symbol, "q": $0.qty, "a": $0.avg] }
+        // 동네: 주민 수첩(이름·모자·모습)·대화 기록(한 줄 답)·배경·산 물건·별사탕 (앱만 쓴다)
+        if let t = Self.townOut((st["app"] as? [String: Any])?["town"]) { app["town"] = t }
         // 평행 세계의 나: 연 날·바구니·인물·본선 기록 (앱만 쓴다)
         if let w = m.pworld, let d = try? JSONEncoder().encode(w), let j = try? JSONSerialization.jsonObject(with: d) { app["parallel"] = j }
         st["app"] = app
@@ -438,6 +442,7 @@ final class Sync {
             for v in (app["virtual"] as? [[String: Any]]) ?? [] {
                 if let t = v["t"] as? String, let q = v["q"] as? Double, let a = v["a"] as? Double { hs.insert(Holding(symbol: t, qty: q, avg: a), at: 0) }
             }
+            Self.townIn(app["town"])
             if let p = app["parallel"], let data = try? JSONSerialization.data(withJSONObject: p),
                let w = try? JSONDecoder().decode(PWorld.self, from: data) {
                 m.pworld = PWorld.merge(m.pworld, w)
@@ -471,12 +476,42 @@ final class Sync {
         if !skipped.isEmpty { state = .failed(String(localized: "시세를 못 받은 종목 \(String(describing: skipped.joined(separator: ", ")))는 사이트에만 있어요")) }
     }
 
+    // MARK: 동네 (app.town)
+    private static let townData = [("town.book", "book"), ("town.log", "log")]
+
+    /// 이 기기 동네 값. 하나도 없으면 받은 값(old)을 그대로 다시 올린다 (새 폰이 빈 동네로 덮지 않게)
+    static func townOut(_ old: Any?) -> Any? {
+        let d = UserDefaults.standard
+        var t: [String: Any] = [:]
+        for (k, n) in townData { if let x = d.data(forKey: k), let j = try? JSONSerialization.jsonObject(with: x) { t[n] = j } }
+        let bg = d.integer(forKey: "town.bg"), owned = d.string(forKey: "town.owned") ?? "", candy = d.integer(forKey: "town.candy")
+        if t.isEmpty && bg == 0 && owned.isEmpty && candy == 0 { return old }
+        t["bg"] = bg; t["owned"] = owned; t["candy"] = candy
+        return t
+    }
+    /// 받은 동네 값을 이 기기에 (나중에 고친 쪽이 이긴다)
+    @MainActor static func townIn(_ v: Any?) {
+        guard let t = v as? [String: Any] else { return }
+        let d = UserDefaults.standard
+        for (k, n) in townData { if let j = t[n], let x = try? JSONSerialization.data(withJSONObject: j) { d.set(x, forKey: k) } }
+        if t["bg"] != nil { d.set(Int(num(t["bg"])), forKey: "town.bg") }
+        if let o = t["owned"] as? String { d.set(o, forKey: "town.owned") }
+        if t["candy"] != nil { d.set(Int(num(t["candy"])), forKey: "town.candy") }
+        TownBook.shared.reload(); TownLog.shared.reload()
+    }
+    /// 바뀜 감지용 동네 값 (수첩·기록 원문 + 배경·물건·별사탕)
+    static func townStamp() -> Data {
+        let d = UserDefaults.standard
+        return townData.reduce(Data()) { $0 + (d.data(forKey: $1.0) ?? Data()) }
+            + Data("|\(d.integer(forKey: "town.bg"))|\(d.string(forKey: "town.owned") ?? "")|\(d.integer(forKey: "town.candy"))".utf8)
+    }
+
     /// 동기화할 값이 바뀌었는지 (종목 + 진행 + 내 기록 날짜 수. 날짜 칸은 빼고)
     func signature(_ m: AppModel) -> String {
         var p = m.progress; p.lastOpen = ""
         let a = (try? JSONEncoder().encode(p)) ?? Data(), b = (try? JSONEncoder().encode(m.holdings)) ?? Data()
         let pw = m.pworld.map { "\($0.days.count)|\($0.segs.count)|\($0.segs.last?.from ?? "")|\($0.who)|\($0.opened)" } ?? "-"
-        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)|\(pw)".utf8)   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
+        let c = Data("\(m.myRecord.count)|\(m.myRecord.last?.d ?? "")|\(CustomSymbols.shared.krStamp)|\(pw)".utf8) + Self.townStamp()   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)
         return SHA256.hash(data: a + b + c).map { String(format: "%02x", $0) }.joined()
     }
 }
