@@ -381,7 +381,7 @@ struct ParallelBasketView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("모의 바구니 고치기").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("모의바구니 고치기").navigationBarTitleDisplayMode(.inline)
         .onAppear {
             guard !loaded else { return }
             loaded = true

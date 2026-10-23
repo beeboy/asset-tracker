@@ -56,7 +56,7 @@ enum Theme {
 
     // 쉬운 말 개편 색 규칙: 화면 사이에서 같은 뜻엔 같은 색 (유리/불리는 색맹을 고려해 파랑/주황)
     static let myReal = Color(hex: 0x2E6B63, dark: 0x5FB3A6)     // 내 실제 투자
-    static let basket = Color(hex: 0xD9873A, dark: 0xE9A564)     // 모의 바구니
+    static let basket = Color(hex: 0xD9873A, dark: 0xE9A564)     // 모의바구니
     static let rule = Color(hex: 0x6847B8, dark: 0x9B78E0)       // 인물 규칙 (점선과 함께)
     static let hold = Color(hex: 0x9AA1AC, dark: 0x7F8792)       // 그냥 둠
     static let favor = Color(hex: 0x2F6FB8, dark: 0x6FA6E6)      // 유리

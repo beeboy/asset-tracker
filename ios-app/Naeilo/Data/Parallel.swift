@@ -66,7 +66,7 @@ struct PRace {
 }
 
 enum Parallel {
-    static let names = [String(localized: "내 실제 투자"), String(localized: "모의 바구니"), String(localized: "인물 규칙대로")]
+    static let names = [String(localized: "내 실제 투자"), String(localized: "모의바구니"), String(localized: "인물 규칙대로")]
 
     /// v1에 담을 수 있는 종목: 사이트가 지난 종가를 모으는 종목 + 견본 ETF (VTV·USMV)
     struct Item { let id: String; let name: String }
