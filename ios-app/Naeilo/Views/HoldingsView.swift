@@ -1838,7 +1838,7 @@ struct TownTalk: View {
         // 스크린샷처럼: 왼쪽에 큰 초상화가 박스 위로 솟고, 이름표는 초상화 아래, 대사는 오른쪽
         ZStack(alignment: .bottomLeading) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(String(full.prefix(shown))).appFont(16).foregroundStyle(.white)
+                Text(String(full.prefix(shown))).appFont(15).foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
                 if reply && !say.isEmpty {
                     HStack(spacing: 8) {
