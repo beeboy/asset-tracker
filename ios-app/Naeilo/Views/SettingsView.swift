@@ -99,7 +99,7 @@ enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alp
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
     var cover = false   // 홈 [설정] 전체 화면 팝업: 맨 위 줄을 블록·파도처럼 제목 + X로
-    @AppStorage(BoxLook.key) private var boxLook = BoxLook.horizon.rawValue
+    @AppStorage(BoxLook.key) private var boxLook = BoxLook.jump.rawValue
 
     var body: some View {
         let onN = m.alerts.values.filter { $0 }.count

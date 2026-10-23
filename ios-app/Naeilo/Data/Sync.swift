@@ -284,7 +284,7 @@ final class Sync {
     func flush(_ m: AppModel) {
         guard dirty, isOn, conflict == nil, pulledOnce else { return }
         dirty = false
-        var bg = UIBackgroundTaskIdentifier.invalid
+        nonisolated(unsafe) var bg = UIBackgroundTaskIdentifier.invalid   // 끝날 때 자기 번호로 닫는다 (메인에서만 바뀜)
         bg = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(bg) }
         Task { @MainActor in
             do { try await push(m) } catch { dirty = true; state = .failed(error.localizedDescription) }

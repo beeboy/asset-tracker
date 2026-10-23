@@ -1142,7 +1142,7 @@ struct TownView: View {
                 tick += 1
                 hop = nil
                 // 걷기: 초당 16pt로 아주 천천히. 도착하면 그 주민만 멈춰 숨쉬기로
-                func go(_ k: String, _ to: CGSize) {
+                @MainActor func go(_ k: String, _ to: CGSize) {
                     let w = walk[k] ?? .zero, d = max(0.6, hypot(to.width - w.width, to.height - w.height) / 16)
                     // 동네에선 뒷모습 없이 옆모습으로만 걷는다 (위아래로 가도 가는 쪽 옆을 본다)
                     if to.width != w.width { face[k] = to.width < w.width ? .left : .right }
@@ -1150,7 +1150,7 @@ struct TownView: View {
                     withAnimation(.linear(duration: d)) { walk[k] = to }   // 걸어가는 동안 위치를 고르게 보간
                     Task { try? await Task.sleep(nanoseconds: UInt64(d * 1e9)); moving.remove(k) }
                 }
-                func at(_ k: String) -> CGPoint? { seats[k].map { CGPoint(x: $0.x + (walk[k]?.width ?? 0), y: $0.y + (walk[k]?.height ?? 0)) } }
+                @MainActor func at(_ k: String) -> CGPoint? { seats[k].map { CGPoint(x: $0.x + (walk[k]?.width ?? 0), y: $0.y + (walk[k]?.height ?? 0)) } }
                 // 수다: 도착하면 서로 마주 보고, 3칸 뒤 찾아간 주민이 원래 자리로 돌아간다. 그동안 다른 일은 쉰다
                 if let mt = meet {
                     if moving.contains(mt.a) { continue }    // 아직 걷는 중

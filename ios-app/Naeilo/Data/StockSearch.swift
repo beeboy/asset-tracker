@@ -255,9 +255,10 @@ final class CustomSymbols {
             let pc = hs.closes.count > 1 ? hs.closes[hs.closes.count - 2] : q.prev
             var s = Saved(id: h.id, yahoo: h.yahoo, name: h.name, market: h.market, usd: false, prev: pc, last: q.last, at: Date())
             s.kp = q.last; s.kd = hs.dates.last; s.lv = true
+            let done = s
             await MainActor.run {
                 items.removeAll { $0.id == h.id }
-                items.append(s)
+                items.append(done)
                 hist[h.id] = hs
                 save()
             }

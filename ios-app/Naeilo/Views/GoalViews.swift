@@ -704,7 +704,7 @@ struct GoalIntermissionView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
         @Bindable var m = m
-        let fixed = m.gWeeks, i = min(fixed.count, 2), step = AppModel.goalMonthSteps[i]
+        let fixed = m.gWeeks
         let now = m.goalSaved, eta = m.monthsTo(from: now, monthly: m.gM), plan = Double(m.gY * 12 - fixed.count - (m.gWeekCur == nil ? 0 : 1))
         let last = m.gWeekCur ?? fixed.last
         ScrollView {

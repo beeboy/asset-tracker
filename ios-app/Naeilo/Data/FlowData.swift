@@ -176,13 +176,13 @@ enum FlowCalc {
                 let hit = firstClose(after: b.i, within: 60) { $0 > m.price }
                 guard hit != nil || b.i > n - 60 else { continue }   // 확정 안 된 지난 것은 버린다
                 // 확정 전에 두 바닥 아래로 내려갔으면 깨진 모양
-                if hit == nil, firstClose(after: b.i, within: n) { $0 < min(a.price, b.price) * 0.99 } != nil { continue }
+                if hit == nil, firstClose(after: b.i, within: n, { $0 < min(a.price, b.price) * 0.99 }) != nil { continue }
                 let to = hit ?? n - 1
                 add(.doubleBottom, a.i, to, min(a.price, b.price), true, hit != nil && volOK(hit!), conf: hit != nil)
             } else {
                 let hit = firstClose(after: b.i, within: 60) { $0 < m.price }
                 guard hit != nil || b.i > n - 60 else { continue }
-                if hit == nil, firstClose(after: b.i, within: n) { $0 > max(a.price, b.price) * 1.01 } != nil { continue }
+                if hit == nil, firstClose(after: b.i, within: n, { $0 > max(a.price, b.price) * 1.01 }) != nil { continue }
                 let to = hit ?? n - 1
                 add(.doubleTop, a.i, to, max(a.price, b.price), false, hit != nil && volOK(hit!), conf: hit != nil)
             }
@@ -194,7 +194,7 @@ enum FlowCalc {
             let neck = min(l1.price, l2.price)
             let hit = firstClose(after: h3.i, within: 60) { $0 < neck }
             guard hit != nil || h3.i > n - 60 else { continue }
-            if hit == nil, firstClose(after: h3.i, within: n) { $0 > h2.price } != nil { continue }
+            if hit == nil, firstClose(after: h3.i, within: n, { $0 > h2.price }) != nil { continue }
             let to = hit ?? n - 1
             add(.headShoulders, h1.i, to, h2.price, false, hit != nil && volOK(hit!), conf: hit != nil)
         }

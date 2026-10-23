@@ -4,7 +4,7 @@ struct HomeView: View {
     @Environment(AppModel.self) private var m
     @State private var inbox = false
     @AppStorage("hideAmt") private var hideAmt = false
-    @AppStorage(BoxLook.key) private var lookRaw = BoxLook.horizon.rawValue
+    @AppStorage(BoxLook.key) private var lookRaw = BoxLook.jump.rawValue
 
     var body: some View {
         ScrollView {
@@ -54,7 +54,7 @@ struct HomeView: View {
 
     // 평가액 박스: 고른 모양 (기본 지평선). 길게 누르면 모양 고르기 (설정 > 홈 화면에도 있다)
     private var summary: some View {
-        let look = BoxLook(rawValue: lookRaw) ?? .horizon
+        let look = BoxLook(rawValue: lookRaw) ?? .jump
         return Group {
             if look == .bar {
                 if m.isGoal { goalSummary } else { recoverSummary }
@@ -550,7 +550,7 @@ struct SampleNote: View {
     }
 }
 
-// MARK: 평가액 박스 모양 (2026-10-23). 사용자가 고른다: 기본 지평선 → 점프 직전 → 욕조와 오리 → 진행 막대(예전 모습)
+// MARK: 평가액 박스 모양 (2026-10-23). 사용자가 고른다 (기본 점프 직전): 지평선 → 점프 직전 → 욕조와 오리 → 진행 막대(예전 모습)
 // 장면은 300×170 판에 그리고 박스 폭에 맞춰 늘린다. 글자는 장면 왼쪽 위에 겹친다.
 // 가로 위치·물높이 = 지금 값 ÷ 목표(목표 루트) 또는 넣은 돈(회복 루트). 계획 자리 = 내 길 계획선(적립 포함, myPath.need)의 오늘 값.
 // 움직임은 작은 조각만 반복 애니메이션 (장면 그림은 값이 바뀔 때만 다시 그린다). 동작 줄이기면 멈춘다
