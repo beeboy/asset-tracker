@@ -286,3 +286,21 @@ struct PinnedLayout<Header: View, Content: View>: View {
         }
     }
 }
+
+/// 팝업 머리: 제목은 왼쪽, 닫기(X)는 오른쪽 (흐름 읽는 법과 같은 모양)
+struct SheetTitleBar: View {
+    let title: LocalizedStringKey
+    let close: () -> Void
+    var body: some View {
+        HStack(alignment: .center) {
+            Text(title).appFont(22, .bold).foregroundStyle(Theme.ink)
+            Spacer(minLength: 8)
+            Button(action: close) {
+                Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.sub)
+                    .frame(width: 44, height: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).accessibilityLabel("닫기")
+        }
+        .padding(.leading, 20).padding(.trailing, 8).padding(.top, 10)
+    }
+}

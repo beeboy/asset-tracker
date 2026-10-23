@@ -48,7 +48,8 @@ struct ShareCardSheet: View {
     private var curMode: Int { mode ?? (scheme == .dark ? 1 : 0) }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            SheetTitleBar(title: "미션 위젯 공유") { dismiss() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Text("보낼 위젯 고르기").appFont(13).foregroundStyle(Theme.sub)
@@ -96,11 +97,10 @@ struct ShareCardSheet: View {
                 .padding(16)
             }
             .background(Theme.bg)
-            .navigationTitle("미션 위젯 공유").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
             .onAppear { if party { picked = 8 } }
             .sheet(item: $shareURL) { ActivitySheet(url: $0).ignoresSafeArea() }
         }
+        .background(Theme.bg)
     }
 
     /// 카드 색: 라이트는 흰 카드, 다크는 어두운 카드, 투명은 배경화면 같은 하늘색 그라데이션(유리 위젯이 비쳐 보이게), 틴트는 깊은 청록 그라데이션

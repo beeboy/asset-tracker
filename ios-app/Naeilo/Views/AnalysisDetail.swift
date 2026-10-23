@@ -274,6 +274,7 @@ struct MyPathGoalView: View {
     @Environment(AppModel.self) private var m
     @State private var toGoal = true
     @State private var more = false
+    @State private var comparing = false
 
     var body: some View {
         let p = m.myPath, mS = p.start, mEnd = p.end, act = p.act, need = p.need
@@ -304,7 +305,8 @@ struct MyPathGoalView: View {
         let bandPts = toGoal ? bandAll : []
         let vals = actPts.map(\.1) + needAll.map(\.1) + bandAll.flatMap { [$0.1, $0.2] } + [K]
         let hi = (vals.max() ?? 1) * 1.05, lo = (vals.filter { $0 > 0 }.min() ?? 0) * 0.9
-        let X = { (t: Double) in t / max(1e-6, x1) }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
+        // 왼쪽 2% 비움: 시작점 동그라미가 그래프 왼쪽 끝에서 반쯤 잘리지 않게
+        let X = { (t: Double) in 0.02 + 0.98 * t / max(1e-6, x1) }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
         let months = Calendar.current.dateComponents([.month], from: m.pathStartDate, to: Date()).month ?? 0
         let gap = need(mS) > 0 ? act(mS) / need(mS) - 1 : 0
         let yrsLeft = mEnd - mS, mM = p.monthly
@@ -359,11 +361,12 @@ struct MyPathGoalView: View {
                     }
                     Text("┆ 목표일 \(String(gc.year ?? 0)).\(gc.month ?? 0)").appFont(11).foregroundStyle(Theme.muted)
                     if m.route != .novice && !m.rows.isEmpty {
-                        NavigationLink { MyPathCompareView() } label: {
+                        Button { comparing = true } label: {
                             Text("내 구성으로 비교").appFont(15, .bold).foregroundStyle(.white)
                                 .frame(maxWidth: .infinity, minHeight: 48).background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
                         }
                         .buttonStyle(.plain)
+                        .sheet(isPresented: $comparing) { MyPathCompareView() }
                     }
                 } }
 
@@ -564,6 +567,8 @@ struct MyPathCompareView: View {
         let spread = width > 48 ? String(localized: "편차 큼 · 아주 빠를 수도, 한참 늦을 수도")
             : width > 24 ? String(localized: "편차 보통") : String(localized: "편차 작음")
 
+        VStack(spacing: 0) {
+        SheetTitleBar(title: "비중 바꿔 비교") { dismiss() }
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -628,8 +633,8 @@ struct MyPathCompareView: View {
             }
             .padding(16)
         }
+        }
         .background(Theme.bg)
-        .navigationTitle("비중 바꿔 비교").navigationBarTitleDisplayMode(.inline)
         .onAppear {
             guard !loaded else { return }
             loaded = true

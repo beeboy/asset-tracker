@@ -137,6 +137,7 @@ struct AnalysisView: View {
     @AppStorage(BoxLook.key) private var lookRaw = BoxLook.jump.rawValue
     @State private var sheet: AnalysisRoute?
     @State private var toGoal = true
+    @State private var comparing = false
     /// 색은 의미 3개만: 초록 들어오는 돈·좋아짐 / 주황 나가는 돈·늦어짐 / 회색 정보
     static let good = Color(hex: 0x2C5A54, dark: 0x8FD0C4)
     static let warn = Color(hex: 0xA8521A, dark: 0xE8A060)
@@ -311,8 +312,8 @@ struct AnalysisView: View {
     // MARK: 언제 흔들릴까? 내 길 계획선 그래프 + 앞으로 올 일정 깃발 (앱 일정표 MarketEvents · 세금은 내년 5월)
     private struct Flag { let t: Double; let text: String; let warn: Bool; let route: AnalysisRoute }
 
-    private func flags(_ p: AppModel.MyPath) -> [Flag] {
-        let days = Int(max(0, (p.end - p.start) * 365.25))
+    private func flags(_ p: AppModel.MyPath, until: Double) -> [Flag] {
+        let days = Int(max(0, (until - p.start) * 365.25))
         let hits = MarketEvents.upcoming(held: m.rows.map(\.id), days: min(days, 400))
         let dday = { (d: String) -> String in let n = Day.dday(d); return n == 0 ? String(localized: "오늘") : "D-\(n)" }
         var out: [Flag] = []
@@ -325,9 +326,9 @@ struct AnalysisView: View {
         if DividendView.hubTax(m) > 0 {
             let y = Calendar.current.component(.year, from: Date()) + 1
             let t = p.start + AppModel.yrs(Day.today, "\(y)-05-31")
-            if t <= p.end { out.append(Flag(t: t, text: String(localized: "\(String(y)).5 세금"), warn: true, route: .tax)) }
+            if t <= until { out.append(Flag(t: t, text: String(localized: "\(String(y)).5 세금"), warn: true, route: .tax)) }
         }
-        return out.sorted { $0.t < $1.t }
+        return out.filter { $0.t <= until }.sorted { $0.t < $1.t }
     }
 
     private func shake(_ p: AppModel.MyPath, _ f: AppModel.Forecast, pro: Bool) -> some View {
@@ -343,8 +344,9 @@ struct AnalysisView: View {
         let bandPts = toGoal ? bandAll : []
         let vals = actPts.map(\.1) + needAll.map(\.1) + bandAll.flatMap { [$0.1, $0.2] } + [K]
         let hi = (vals.max() ?? 1) * 1.05, lo = (vals.filter { $0 > 0 }.min() ?? 0) * 0.9
-        let X = { (t: Double) in t / max(1e-6, x1) }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
-        let fl = toGoal ? flags(p) : []
+        // 왼쪽 2% 비움: 시작점 동그라미가 그래프 왼쪽 끝에서 반쯤 잘리지 않게
+        let X = { (t: Double) in 0.02 + 0.98 * t / max(1e-6, x1) }, Y = { (v: Double) in (hi - v) / max(1, hi - lo) }
+        let fl = flags(p, until: x1)   // 지금까지 보기는 다음 달까지 일정만
         let fog = iE < f.q50.count ? f.q50[iE] + (f.exact ? m.cashKrw : 0) : 0
         let gc = Calendar.current.dateComponents([.year, .month], from: m.goalToDate)
         let chartH: CGFloat = 150, topH: CGFloat = 30
@@ -469,11 +471,12 @@ struct AnalysisView: View {
                 Text("● 보통 · ─ 10번 중 8번 · ┊ 목표일").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
                 if m.route != .novice && !m.rows.isEmpty {
-                    NavigationLink { MyPathCompareView() } label: {
+                    Button { comparing = true } label: {
                         Text("내 구성 비교").appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
                             .padding(.horizontal, 12).frame(minHeight: 30).background(Theme.teal, in: Capsule())
                     }
                     .buttonStyle(.plain)
+                    .sheet(isPresented: $comparing) { MyPathCompareView() }
                 }
             }
         }
