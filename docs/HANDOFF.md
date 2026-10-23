@@ -196,3 +196,7 @@
 - `AnalysisView.swift`: ChanceBox(네 박스 모양)·줄다리기·흔들릴까·올릴까, 재료는 `AnalysisSheet`(NavigationStack 시트, X 는 시트 위에 얹음). 금리 칸 확률은 `RateScenarioView.hubProb`.
 - 홈·알림에서 `analysisPath` 로 들어오는 상세는 예전처럼 넘기기 화면(AnalysisPager)으로 쌓인다.
 - 남은 일: 안드로이드 옮김, 새 문구 영어(xcstrings), 세부 분석 페이지 손질(나중).
+
+## 안드로이드 흐름·홈·분석 옮김 (2026-10-24 새벽 KST, 로컬 커밋 1de178fc·ab79973a·33b38826)
+- 흐름(큰 흐름 박스·말풍선·이럴 때), 홈(설정·위젯 시트, 작은 알약), 분석(내 길 메인, 안개는 c09c7cd7 글자 모양)을 옮김. 빌드·시험 통과, 화면은 `TabsShot` 으로 찍음.
+- 알려진 불일치: 분석 새 문구 약 35개는 xcstrings 영어가 없어 안드로이드 영어 화면에 한국어로 나옴. xcstrings 에 영어를 넣고 `gen_en.py` 다시.
