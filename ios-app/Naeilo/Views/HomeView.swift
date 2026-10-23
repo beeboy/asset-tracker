@@ -21,10 +21,11 @@ struct HomeView: View {
                 reminder
                 EarnHomeCard()
                 TownButton { TownView(scroll: $0) }
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     coverButton(String(localized: "위젯"), "rectangle.3.group") { m.widgetsOpen = true }
                     coverButton(String(localized: "설정"), "gearshape") { m.openSettings() }
                 }
+                .frame(maxWidth: .infinity)
             }
             .screen()
         }
@@ -314,12 +315,14 @@ struct HomeView: View {
         .accessibilityLabel("\(tag): \(text). 소식함 열기")
     }
 
-    /// 미션 탭 [블록]·[파도]와 같은 모양 (WaveGameButton)
+    /// 작은 알약 두 개를 가운데에 (꽉 찬 버튼은 거슬려 줄였다, 2026-10-23). 누르는 자리는 44 높이 그대로
     private func coverButton(_ t: String, _ icon: String, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
             Label(t, systemImage: icon)
-                .appFont(14, .bold).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, minHeight: 44)
-                .foregroundStyle(.white).background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
+                .appFont(13, .bold).lineLimit(1).fixedSize()
+                .padding(.horizontal, 16).frame(height: 34)
+                .foregroundStyle(.white).background(Theme.teal, in: Capsule())
+                .frame(minHeight: 44).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
