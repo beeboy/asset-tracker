@@ -77,3 +77,8 @@ SF 의 `.fill` 은 채움(FILL 1) 모양으로. 코드에서는 `Sym(R.drawable.
 | `circle.fill` | `circle` | 채움 | 파도 점 |
 | `arrow.clockwise` | `refresh` | 기본 | 위젯 ↻ 다시 받기 (위젯은 Icon.refresh 경로, 빠른 설정 타일 w_ic_refresh) |
 | `ellipsis` | `more_horiz` | 기본 | 위젯 ↻ 받는 중 (Icon.more 경로) |
+| `hand.tap` | `touch_app` | - | 위젯 넣는 단계 1 |
+| `plus.square` | `add_box` | - | 위젯 넣는 단계 2 |
+| `magnifyingglass` | `search` | - | 위젯 넣는 단계 3 |
+| `square.grid.2x2` | `grid_view` | - | 위젯 넣는 단계 4 |
+| `person.crop.square` | `account_box` | - | 위젯 넣는 단계 5 |

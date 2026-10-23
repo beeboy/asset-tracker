@@ -254,40 +254,40 @@ class CustomSymbols {   // ios: Data/StockSearch.swift:189,190
 
         /** Yahoo 일별 차트: (지금 가격·전일 종가, 날짜별 종가)
          *  today: 한국 종목도 오늘 장중 값(Yahoo 지연 시세)을 쓴다 (내부 테스트 시세) */
-        suspend fun chart(yahoo: String, range: String, today: Boolean = false): Pair<LastPrev, Hist> = withContext(Dispatchers.IO) {   // ios: Data/StockSearch.swift:421
-            val sym = pctEncode(yahoo)   // ios: Data/StockSearch.swift:422
-            val o = Relay.yahoo("/v8/finance/chart/$sym?range=$range&interval=1d")   // ios: Data/StockSearch.swift:423
+        suspend fun chart(yahoo: String, range: String, today: Boolean = false): Pair<LastPrev, Hist> = withContext(Dispatchers.IO) {   // ios: Data/StockSearch.swift:422
+            val sym = pctEncode(yahoo)   // ios: Data/StockSearch.swift:423
+            val o = Relay.yahoo("/v8/finance/chart/$sym?range=$range&interval=1d")   // ios: Data/StockSearch.swift:424
             chartParse(o, today, Instant.now())
         }
         /** 차트 응답 → 값 (Yahoo 없이 시험할 수 있게 따로 둔다). 못 읽으면 IOException (URLError.cannotParseResponse) */
         internal fun chartParse(o: Map<String, Any?>, keepToday: Boolean, now: Instant): Pair<LastPrev, Hist> {
-            val r = jObjs(jObj(o["chart"])?.get("result"))?.firstOrNull()   // ios: Data/StockSearch.swift:424
-            val meta = jObj(r?.get("meta"))   // ios: Data/StockSearch.swift:425
-            val ts = jDbls(r?.get("timestamp"))   // ios: Data/StockSearch.swift:426
-            val closes = jArr(jObjs(jObj(r?.get("indicators"))?.get("quote"))?.firstOrNull()?.get("close"))   // ios: Data/StockSearch.swift:427
-            if (meta == null || ts == null || closes == null) throw IOException("cannotParseResponse")   // ios: Data/StockSearch.swift:428
-            val cur = meta["currency"] as? String ?: ""   // ios: Data/StockSearch.swift:429
-            if (!(cur == "USD" || cur == "KRW")) throw IOException("cannotParseResponse")   // ios: Data/StockSearch.swift:430
-            val tz = zoneOr((meta["exchangeTimezoneName"] as? String) ?: "America/New_York")   // ios: Data/StockSearch.swift:431
-            val f = DateTimeFormatter.ofPattern("yyyy-MM-dd", posix("en_US_POSIX")).withZone(tz)   // ios: Data/StockSearch.swift:432
-            val dates = ArrayList<String>(); val cl = ArrayList<Double>()   // ios: Data/StockSearch.swift:433
-            for ((t, c) in ts.zip(closes)) {   // ios: Data/StockSearch.swift:434
-                val v = (c as? Double)?.takeIf { it > 0 } ?: continue   // ios: Data/StockSearch.swift:435
-                dates.add(f.format(Instant.ofEpochMilli((t * 1000).toLong()))); cl.add(v)   // ios: Data/StockSearch.swift:436
+            val r = jObjs(jObj(o["chart"])?.get("result"))?.firstOrNull()   // ios: Data/StockSearch.swift:425
+            val meta = jObj(r?.get("meta"))   // ios: Data/StockSearch.swift:426
+            val ts = jDbls(r?.get("timestamp"))   // ios: Data/StockSearch.swift:427
+            val closes = jArr(jObjs(jObj(r?.get("indicators"))?.get("quote"))?.firstOrNull()?.get("close"))   // ios: Data/StockSearch.swift:428
+            if (meta == null || ts == null || closes == null) throw IOException("cannotParseResponse")   // ios: Data/StockSearch.swift:429
+            val cur = meta["currency"] as? String ?: ""   // ios: Data/StockSearch.swift:430
+            if (!(cur == "USD" || cur == "KRW")) throw IOException("cannotParseResponse")   // ios: Data/StockSearch.swift:431
+            val tz = zoneOr((meta["exchangeTimezoneName"] as? String) ?: "America/New_York")   // ios: Data/StockSearch.swift:432
+            val f = DateTimeFormatter.ofPattern("yyyy-MM-dd", posix("en_US_POSIX")).withZone(tz)   // ios: Data/StockSearch.swift:433
+            val dates = ArrayList<String>(); val cl = ArrayList<Double>()   // ios: Data/StockSearch.swift:434
+            for ((t, c) in ts.zip(closes)) {   // ios: Data/StockSearch.swift:435
+                val v = (c as? Double)?.takeIf { it > 0 } ?: continue   // ios: Data/StockSearch.swift:436
+                dates.add(f.format(Instant.ofEpochMilli((t * 1000).toLong()))); cl.add(v)   // ios: Data/StockSearch.swift:437
             }
-            val lastClose = cl.lastOrNull() ?: throw IOException("cannotParseResponse")   // ios: Data/StockSearch.swift:438
-            val price = meta["regularMarketPrice"] as? Double ?: lastClose   // ios: Data/StockSearch.swift:439
-            val today = f.format(now)   // ios: Data/StockSearch.swift:440
+            val lastClose = cl.lastOrNull() ?: throw IOException("cannotParseResponse")   // ios: Data/StockSearch.swift:439
+            val price = meta["regularMarketPrice"] as? Double ?: lastClose   // ios: Data/StockSearch.swift:440
+            val today = f.format(now)   // ios: Data/StockSearch.swift:441
             // 마지막 막대가 오늘이면 그 전날이 전일 종가
-            val prevClose = if (dates.lastOrNull() == today && cl.size > 1) cl[cl.size - 2] else lastClose   // ios: Data/StockSearch.swift:442
-            if (cur == "KRW" && !keepToday) {   // ios: Data/StockSearch.swift:443
+            val prevClose = if (dates.lastOrNull() == today && cl.size > 1) cl[cl.size - 2] else lastClose   // ios: Data/StockSearch.swift:443
+            if (cur == "KRW" && !keepToday) {   // ios: Data/StockSearch.swift:444
                 // 한국 종목은 전일 종가 기준 (오늘 장중 값은 쓰지 않는다)
-                val done = if (dates.lastOrNull() == today && cl.size > 1) cl.dropLast(1) else cl   // ios: Data/StockSearch.swift:445
-                val dd = if (dates.lastOrNull() == today && cl.size > 1) dates.dropLast(1) else dates   // ios: Data/StockSearch.swift:446
-                val p = done.lastOrNull() ?: lastClose   // ios: Data/StockSearch.swift:447
-                return LastPrev(p, p) to Hist(dates = dd, closes = done)   // ios: Data/StockSearch.swift:448
+                val done = if (dates.lastOrNull() == today && cl.size > 1) cl.dropLast(1) else cl   // ios: Data/StockSearch.swift:446
+                val dd = if (dates.lastOrNull() == today && cl.size > 1) dates.dropLast(1) else dates   // ios: Data/StockSearch.swift:447
+                val p = done.lastOrNull() ?: lastClose   // ios: Data/StockSearch.swift:448
+                return LastPrev(p, p) to Hist(dates = dd, closes = done)   // ios: Data/StockSearch.swift:449
             }
-            return LastPrev(price, prevClose) to Hist(dates = dates, closes = cl)   // ios: Data/StockSearch.swift:450
+            return LastPrev(price, prevClose) to Hist(dates = dates, closes = cl)   // ios: Data/StockSearch.swift:451
         }
     }
     /** Swift 튜플 (last, prev) */
@@ -357,166 +357,167 @@ class CustomSymbols {   // ios: Data/StockSearch.swift:189,190
             val pc = if (hs.closes.size > 1) hs.closes[hs.closes.size - 2] else q.prev   // ios: Data/StockSearch.swift:255
             val s = Saved(id = h.id, yahoo = h.yahoo, name = h.name, market = h.market, usd = false, prev = pc, last = q.last, at = Instant.now())   // ios: Data/StockSearch.swift:256
             s.kp = q.last; s.kd = hs.dates.lastOrNull(); s.lv = true   // ios: Data/StockSearch.swift:257
-            synchronized(this) {   // ios: Data/StockSearch.swift:258
-                items = items.filter { it.id != h.id }   // ios: Data/StockSearch.swift:259
-                items = items + s   // ios: Data/StockSearch.swift:260
-                hist = hist + (h.id to hs)   // ios: Data/StockSearch.swift:261
-                save()   // ios: Data/StockSearch.swift:262
+            val done = s   // ios: Data/StockSearch.swift:258
+            synchronized(this) {   // ios: Data/StockSearch.swift:259
+                items = items.filter { it.id != h.id }   // ios: Data/StockSearch.swift:260
+                items = items + done   // ios: Data/StockSearch.swift:261
+                hist = hist + (h.id to hs)   // ios: Data/StockSearch.swift:262
+                save()   // ios: Data/StockSearch.swift:263
             }
-            return symbol(s)   // ios: Data/StockSearch.swift:264
+            return symbol(s)   // ios: Data/StockSearch.swift:265
         }
-        if (h.currency == Currency.krw && KoreaEstimate.popular.contains(h.id)) {   // ios: Data/StockSearch.swift:266
+        if (h.currency == Currency.krw && KoreaEstimate.popular.contains(h.id)) {   // ios: Data/StockSearch.swift:267
             // 국내 개별 종목인데 Yahoo 를 못 받았을 때만: 사이트가 모은 지금 가격(quotes.json)과 날짜별 종가(kr_daily.json)
-            val k = KrDaily.fetch(minAge = 1800.0)   // ios: Data/StockSearch.swift:268
-            synchronized(this) {   // ios: Data/StockSearch.swift:269
-                val s = Saved(id = h.id, yahoo = h.yahoo, name = h.name, market = h.market, usd = false, prev = 0.0, last = 0.0, at = distantPast)   // ios: Data/StockSearch.swift:270
-                s.lv = true   // ios: Data/StockSearch.swift:271
-                items = items.filter { it.id != h.id }   // ios: Data/StockSearch.swift:272
-                items = items + s   // ios: Data/StockSearch.swift:273
-                applyKr(k, only = setOf(h.id))   // ios: Data/StockSearch.swift:274
-                save()   // ios: Data/StockSearch.swift:275
-                return symbol(items.firstOrNull { it.id == h.id } ?: s)   // ios: Data/StockSearch.swift:276
+            val k = KrDaily.fetch(minAge = 1800.0)   // ios: Data/StockSearch.swift:269
+            synchronized(this) {   // ios: Data/StockSearch.swift:270
+                val s = Saved(id = h.id, yahoo = h.yahoo, name = h.name, market = h.market, usd = false, prev = 0.0, last = 0.0, at = distantPast)   // ios: Data/StockSearch.swift:271
+                s.lv = true   // ios: Data/StockSearch.swift:272
+                items = items.filter { it.id != h.id }   // ios: Data/StockSearch.swift:273
+                items = items + s   // ios: Data/StockSearch.swift:274
+                applyKr(k, only = setOf(h.id))   // ios: Data/StockSearch.swift:275
+                save()   // ios: Data/StockSearch.swift:276
+                return symbol(items.firstOrNull { it.id == h.id } ?: s)   // ios: Data/StockSearch.swift:277
             }
         }
-        if (h.currency == Currency.krw) {   // ios: Data/StockSearch.swift:279
+        if (h.currency == Currency.krw) {   // ios: Data/StockSearch.swift:280
             // 한국 종목 (중계 실패 또는 미국 지수 국내 ETF): 받지 않는다. 넣은 가격이 있으면 그 값으로 계산
-            synchronized(this) {   // ios: Data/StockSearch.swift:281
-                val old = items.firstOrNull { it.id == h.id }   // ios: Data/StockSearch.swift:282
-                val s = Saved(id = h.id, yahoo = h.yahoo, name = h.name, market = h.market, usd = false, prev = 0.0, last = 0.0, at = Instant.now())   // ios: Data/StockSearch.swift:283
-                s.kp = old?.kp; s.kd = old?.kd   // ios: Data/StockSearch.swift:284
-                items = items.filter { it.id != h.id }   // ios: Data/StockSearch.swift:285
-                items = items + s   // ios: Data/StockSearch.swift:286
-                rebuildKR(); save()   // ios: Data/StockSearch.swift:287
-                return symbol(items.firstOrNull { it.id == h.id } ?: s)   // ios: Data/StockSearch.swift:288
+            synchronized(this) {   // ios: Data/StockSearch.swift:282
+                val old = items.firstOrNull { it.id == h.id }   // ios: Data/StockSearch.swift:283
+                val s = Saved(id = h.id, yahoo = h.yahoo, name = h.name, market = h.market, usd = false, prev = 0.0, last = 0.0, at = Instant.now())   // ios: Data/StockSearch.swift:284
+                s.kp = old?.kp; s.kd = old?.kd   // ios: Data/StockSearch.swift:285
+                items = items.filter { it.id != h.id }   // ios: Data/StockSearch.swift:286
+                items = items + s   // ios: Data/StockSearch.swift:287
+                rebuildKR(); save()   // ios: Data/StockSearch.swift:288
+                return symbol(items.firstOrNull { it.id == h.id } ?: s)   // ios: Data/StockSearch.swift:289
             }
         }
-        val (q, hs) = chart(h.yahoo, range = "3y")   // ios: Data/StockSearch.swift:291
-        val s = Saved(id = h.id, yahoo = h.yahoo, name = h.name, market = h.market, usd = h.currency == Currency.usd, prev = q.prev, last = q.last, at = Instant.now())   // ios: Data/StockSearch.swift:292
-        synchronized(this) {   // ios: Data/StockSearch.swift:293
-            items = items.filter { it.id != h.id }   // ios: Data/StockSearch.swift:294
-            items = items + s   // ios: Data/StockSearch.swift:295
-            hist = hist + (h.id to hs)   // ios: Data/StockSearch.swift:296
-            save()   // ios: Data/StockSearch.swift:297
+        val (q, hs) = chart(h.yahoo, range = "3y")   // ios: Data/StockSearch.swift:292
+        val s = Saved(id = h.id, yahoo = h.yahoo, name = h.name, market = h.market, usd = h.currency == Currency.usd, prev = q.prev, last = q.last, at = Instant.now())   // ios: Data/StockSearch.swift:293
+        synchronized(this) {   // ios: Data/StockSearch.swift:294
+            items = items.filter { it.id != h.id }   // ios: Data/StockSearch.swift:295
+            items = items + s   // ios: Data/StockSearch.swift:296
+            hist = hist + (h.id to hs)   // ios: Data/StockSearch.swift:297
+            save()   // ios: Data/StockSearch.swift:298
         }
-        return symbol(s)   // ios: Data/StockSearch.swift:299
+        return symbol(s)   // ios: Data/StockSearch.swift:300
     }
 
     /** 앱이 시세를 갱신할 때 (5분에 한 번까지): 추가한 종목의 지금 가격·전일 종가 */
-    suspend fun refresh(held: Set<String>, force: Boolean = false) {   // ios: Data/StockSearch.swift:303
-        if (!(force || Instant.now().epochSecond - refreshedAt.epochSecond > 300)) return   // ios: Data/StockSearch.swift:304
-        refreshedAt = Instant.now()   // ios: Data/StockSearch.swift:305
-        for (s in items.filter { s -> held.contains(s.id) && !s.usd && KoreaEstimate.liveOK(s.id, name = s.name)   // ios: Data/StockSearch.swift:306
-            && (s.lv != true || (KoreaEstimate.popular.contains(s.id) && (hist[s.id]?.dates?.size ?: 0) < 200 && !Market.shared.tossCovers(s.id))) }) {   // ios: Data/StockSearch.swift:307
+    suspend fun refresh(held: Set<String>, force: Boolean = false) {   // ios: Data/StockSearch.swift:304
+        if (!(force || Instant.now().epochSecond - refreshedAt.epochSecond > 300)) return   // ios: Data/StockSearch.swift:305
+        refreshedAt = Instant.now()   // ios: Data/StockSearch.swift:306
+        for (s in items.filter { s -> held.contains(s.id) && !s.usd && KoreaEstimate.liveOK(s.id, name = s.name)   // ios: Data/StockSearch.swift:307
+            && (s.lv != true || (KoreaEstimate.popular.contains(s.id) && (hist[s.id]?.dates?.size ?: 0) < 200 && !Market.shared.tossCovers(s.id))) }) {   // ios: Data/StockSearch.swift:308
             // 스위치를 켜기 전에 넣은 국내 종목, 사이트 기록(kr_daily)만 있던 국내 개별 종목: 1년 종가를 Yahoo 에서 처음 받는다
-            runCatching { fetch(StockHit(id = s.id, yahoo = s.yahoo, name = s.name, market = s.market, currency = Currency.krw)) }   // ios: Data/StockSearch.swift:309
+            runCatching { fetch(StockHit(id = s.id, yahoo = s.yahoo, name = s.name, market = s.market, currency = Currency.krw)) }   // ios: Data/StockSearch.swift:310
         }
-        val missKr = HashSet<String>()   // ios: Data/StockSearch.swift:311
+        val missKr = HashSet<String>()   // ios: Data/StockSearch.swift:312
         // 토스가 지금 가격·일봉을 다 주는 종목은 Yahoo 를 부르지 않는다 (토스가 안 될 때만 Yahoo)
-        for (s in items.filter { s -> held.contains(s.id) && (s.usd || isLive(s.id)) && !Market.shared.tossCovers(s.id) }) {   // ios: Data/StockSearch.swift:313
-            val got = runCatching { chart(s.yahoo, range = "5d", today = !s.usd) }.getOrNull()   // ios: Data/StockSearch.swift:314
+        for (s in items.filter { s -> held.contains(s.id) && (s.usd || isLive(s.id)) && !Market.shared.tossCovers(s.id) }) {   // ios: Data/StockSearch.swift:314
+            val got = runCatching { chart(s.yahoo, range = "5d", today = !s.usd) }.getOrNull()   // ios: Data/StockSearch.swift:315
             if (got == null) {
-                if (!s.usd && KoreaEstimate.popular.contains(s.id)) missKr.add(s.id)   // ios: Data/StockSearch.swift:315
-                continue   // ios: Data/StockSearch.swift:316
+                if (!s.usd && KoreaEstimate.popular.contains(s.id)) missKr.add(s.id)   // ios: Data/StockSearch.swift:316
+                continue   // ios: Data/StockSearch.swift:317
             }
             val (q, recent) = got
-            synchronized(this) {   // ios: Data/StockSearch.swift:318
-                if (items.none { it.id == s.id }) return@synchronized   // ios: Data/StockSearch.swift:319
-                update(s.id) { it.prev = q.prev; it.last = q.last; it.at = Instant.now(); it }   // ios: Data/StockSearch.swift:320
-                if (!s.usd) update(s.id) { it.kp = q.last; it.kd = recent.dates.lastOrNull() ?: it.kd; it }   // ios: Data/StockSearch.swift:321
+            synchronized(this) {   // ios: Data/StockSearch.swift:319
+                if (items.none { it.id == s.id }) return@synchronized   // ios: Data/StockSearch.swift:320
+                update(s.id) { it.prev = q.prev; it.last = q.last; it.at = Instant.now(); it }   // ios: Data/StockSearch.swift:321
+                if (!s.usd) update(s.id) { it.kp = q.last; it.kd = recent.dates.lastOrNull() ?: it.kd; it }   // ios: Data/StockSearch.swift:322
                 // 3년 종가 끝에 새 날을 이어 붙인다
-                val h = hist[s.id]; val lastDay = h?.dates?.lastOrNull()   // ios: Data/StockSearch.swift:323
+                val h = hist[s.id]; val lastDay = h?.dates?.lastOrNull()   // ios: Data/StockSearch.swift:324
                 if (h != null && lastDay != null) {
-                    val d = h.dates.toMutableList(); val c = h.closes.toMutableList()   // ios: Data/StockSearch.swift:324
-                    for ((day, v) in recent.dates.zip(recent.closes)) if (day > lastDay) { d.add(day); c.add(v) }   // ios: Data/StockSearch.swift:325
-                    val ld = recent.dates.lastOrNull(); val lv = recent.closes.lastOrNull(); if (ld != null && ld == lastDay && lv != null) c[c.size - 1] = lv   // ios: Data/StockSearch.swift:326
-                    hist = hist + (s.id to Hist(dates = d, closes = c))   // ios: Data/StockSearch.swift:327
+                    val d = h.dates.toMutableList(); val c = h.closes.toMutableList()   // ios: Data/StockSearch.swift:325
+                    for ((day, v) in recent.dates.zip(recent.closes)) if (day > lastDay) { d.add(day); c.add(v) }   // ios: Data/StockSearch.swift:326
+                    val ld = recent.dates.lastOrNull(); val lv = recent.closes.lastOrNull(); if (ld != null && ld == lastDay && lv != null) c[c.size - 1] = lv   // ios: Data/StockSearch.swift:327
+                    hist = hist + (s.id to Hist(dates = d, closes = c))   // ios: Data/StockSearch.swift:328
                 }
-                val c = hist[s.id]?.closes; if (!s.usd && c != null && c.size > 1) update(s.id) { it.prev = c[c.size - 2]; it }   // ios: Data/StockSearch.swift:329
+                val c = hist[s.id]?.closes; if (!s.usd && c != null && c.size > 1) update(s.id) { it.prev = c[c.size - 2]; it }   // ios: Data/StockSearch.swift:330
             }
         }
         // Yahoo 를 못 받은 국내 개별 종목만 사이트 기록(kr_daily.json)으로
-        if (missKr.isNotEmpty()) {   // ios: Data/StockSearch.swift:333
-            val k = KrDaily.fetch(minAge = if (force) 0.0 else 1800.0); val miss = missKr   // ios: Data/StockSearch.swift:334
-            synchronized(this) { applyKr(k, only = miss) }   // ios: Data/StockSearch.swift:335
+        if (missKr.isNotEmpty()) {   // ios: Data/StockSearch.swift:334
+            val k = KrDaily.fetch(minAge = if (force) 0.0 else 1800.0); val miss = missKr   // ios: Data/StockSearch.swift:335
+            synchronized(this) { applyKr(k, only = miss) }   // ios: Data/StockSearch.swift:336
         }
-        synchronized(this) { rebuildKR(); save() }   // 종목마다 전체를 다시 쓰지 않고 끝에 한 번만 저장   // ios: Data/StockSearch.swift:337
+        synchronized(this) { rebuildKR(); save() }   // 종목마다 전체를 다시 쓰지 않고 끝에 한 번만 저장   // ios: Data/StockSearch.swift:338
     }
 
     /** 한국 종목 가격 넣기 (date 없으면 오늘) */
-    fun setPrice(id: String, price: Double, date: String? = null) {   // ios: Data/StockSearch.swift:341,342
-        if (!(price > 0) || items.none { it.id == id } || isLive(id)) return   // ios: Data/StockSearch.swift:343
-        if (id == KoreaEstimate.sumId) { setKoreaSum(price, date = date ?: Day.today); return }   // ios: Data/StockSearch.swift:344
-        update(id) { it.kp = price; it.kd = date ?: Day.today; it }   // ios: Data/StockSearch.swift:345
-        rebuildKR(); save()   // ios: Data/StockSearch.swift:346
+    fun setPrice(id: String, price: Double, date: String? = null) {   // ios: Data/StockSearch.swift:342,343
+        if (!(price > 0) || items.none { it.id == id } || isLive(id)) return   // ios: Data/StockSearch.swift:344
+        if (id == KoreaEstimate.sumId) { setKoreaSum(price, date = date ?: Day.today); return }   // ios: Data/StockSearch.swift:345
+        update(id) { it.kp = price; it.kd = date ?: Day.today; it }   // ios: Data/StockSearch.swift:346
+        rebuildKR(); save()   // ios: Data/StockSearch.swift:347
     }
-    fun saved(id: String): Saved? = items.firstOrNull { it.id == id }   // ios: Data/StockSearch.swift:348
+    fun saved(id: String): Saved? = items.firstOrNull { it.id == id }   // ios: Data/StockSearch.swift:349
     /** 국내 개별 종목에 사이트 값을 넣는다: 지금 가격·전일 종가는 quotes.json, 날짜별 종가는 kr_daily.json
      *  (at 은 그대로 두어 Market 이 늘 사이트 시세를 먼저 쓴다) */
-    private fun applyKr(k: KrDaily.File?, only: Set<String>? = null) {   // ios: Data/StockSearch.swift:351,352
-        for (s in items.filter { KoreaEstimate.popular.contains(it.id) && isLive(it.id) && only?.contains(it.id) != false }) {   // ios: Data/StockSearch.swift:353,354
-            val r = k?.s?.get(s.id); if (r != null && r.d.isNotEmpty()) { hist = hist + (s.id to Hist(dates = r.d, closes = r.c)); update(s.id) { it.kd = r.d.lastOrNull(); it } }   // ios: Data/StockSearch.swift:355
-            val q = Market.shared.site?.q?.get(s.yahoo.uppercase())?.takeIf { it.last > 0 }   // ios: Data/StockSearch.swift:356
+    private fun applyKr(k: KrDaily.File?, only: Set<String>? = null) {   // ios: Data/StockSearch.swift:352,353
+        for (s in items.filter { KoreaEstimate.popular.contains(it.id) && isLive(it.id) && only?.contains(it.id) != false }) {   // ios: Data/StockSearch.swift:354,355
+            val r = k?.s?.get(s.id); if (r != null && r.d.isNotEmpty()) { hist = hist + (s.id to Hist(dates = r.d, closes = r.c)); update(s.id) { it.kd = r.d.lastOrNull(); it } }   // ios: Data/StockSearch.swift:356
+            val q = Market.shared.site?.q?.get(s.yahoo.uppercase())?.takeIf { it.last > 0 }   // ios: Data/StockSearch.swift:357
             val c = hist[s.id]?.closes; val l = c?.lastOrNull()
             if (q != null) {
-                update(s.id) { it.last = q.last; it.prev = if (q.prev > 0) q.prev else q.last; it.kp = q.last; it }   // ios: Data/StockSearch.swift:357
-            } else if (c != null && l != null) {   // ios: Data/StockSearch.swift:358
-                update(s.id) { it.last = l; it.prev = if (c.size > 1) c[c.size - 2] else l; it.kp = l; it }   // ios: Data/StockSearch.swift:359
+                update(s.id) { it.last = q.last; it.prev = if (q.prev > 0) q.prev else q.last; it.kp = q.last; it }   // ios: Data/StockSearch.swift:358
+            } else if (c != null && l != null) {   // ios: Data/StockSearch.swift:359
+                update(s.id) { it.last = l; it.prev = if (c.size > 1) c[c.size - 2] else l; it.kp = l; it }   // ios: Data/StockSearch.swift:360
             }
         }
     }
     /** 1년 기록을 모으는 중인 국내 종목이면 쌓인 날 수 (차트·1년 범위·출렁임 대신 "기록 모으는 중"). 충분하면 null */
-    fun collectingDays(id: String): Int? {   // ios: Data/StockSearch.swift:364
-        if (!KoreaEstimate.popular.contains(id) || !isLive(id)) return null   // ios: Data/StockSearch.swift:365
-        val n = hist[id]?.dates?.size ?: 0   // ios: Data/StockSearch.swift:366
-        return if (n < KrDaily.enough) n else null   // ios: Data/StockSearch.swift:367
+    fun collectingDays(id: String): Int? {   // ios: Data/StockSearch.swift:365
+        if (!KoreaEstimate.popular.contains(id) || !isLive(id)) return null   // ios: Data/StockSearch.swift:366
+        val n = hist[id]?.dates?.size ?: 0   // ios: Data/StockSearch.swift:367
+        return if (n < KrDaily.enough) n else null   // ios: Data/StockSearch.swift:368
     }
     /** 테스트 시세를 받는 국내 종목인가 (스위치를 끄면 다시 넣은 가격 방식) */
-    fun isLive(id: String): Boolean { val s = saved(id) ?: return false; return s.lv == true && KoreaEstimate.liveOK(id, name = s.name) }   // ios: Data/StockSearch.swift:370
+    fun isLive(id: String): Boolean { val s = saved(id) ?: return false; return s.lv == true && KoreaEstimate.liveOK(id, name = s.name) }   // ios: Data/StockSearch.swift:371
     /** 한국 종목에 넣은 가격이 바뀌면 바뀌는 값 (기기 동기화가 이것도 보낸다. 이 기기 안에서만 비교한다) */
     val krStamp: String get() = items.filter { !it.usd }.joinToString(",") { "${it.id}=${it.kp ?: 0.0}@${it.kd ?: ""}" } + "|kr${krLog.size}=${krLog.lastOrNull()?.v ?: 0.0}@${krLog.lastOrNull()?.d ?: ""}"   // Data/StockSearch.swift:372 (검사 예외: 옮김)
     /** 국내 주식 합계 금액 넣기 (날짜별 기록에 남긴다. 0 = 다 팔았어요, 지난 기록은 그대로) */
-    fun setKoreaSum(won: Double, date: String = Day.today) {   // ios: Data/StockSearch.swift:374,375
-        val id = KoreaEstimate.sumId   // ios: Data/StockSearch.swift:376
-        krLog = MC.krNorm(krLog + MC.KrDay(d = date, v = maxOf(0.0, won)))   // ios: Data/StockSearch.swift:377
-        if (won > 0 && items.none { it.id == id }) {   // ios: Data/StockSearch.swift:378
-            items = items + Saved(id = id, yahoo = id + ".KS", name = "국내 주식 합계", market = "국내 주식", usd = false, prev = 0.0, last = 0.0, at = Instant.now())   // ios: Data/StockSearch.swift:379
+    fun setKoreaSum(won: Double, date: String = Day.today) {   // ios: Data/StockSearch.swift:375,376
+        val id = KoreaEstimate.sumId   // ios: Data/StockSearch.swift:377
+        krLog = MC.krNorm(krLog + MC.KrDay(d = date, v = maxOf(0.0, won)))   // ios: Data/StockSearch.swift:378
+        if (won > 0 && items.none { it.id == id }) {   // ios: Data/StockSearch.swift:379
+            items = items + Saved(id = id, yahoo = id + ".KS", name = "국내 주식 합계", market = "국내 주식", usd = false, prev = 0.0, last = 0.0, at = Instant.now())   // ios: Data/StockSearch.swift:380
         }
-        val l = krLog.lastOrNull(); if (items.any { it.id == id } && l != null) update(id) { it.kp = if (l.v > 0) l.v else it.kp; it.kd = l.d; it }   // ios: Data/StockSearch.swift:381
-        rebuildKR(); save()   // ios: Data/StockSearch.swift:382
+        val l = krLog.lastOrNull(); if (items.any { it.id == id } && l != null) update(id) { it.kp = if (l.v > 0) l.v else it.kp; it.kd = l.d; it }   // ios: Data/StockSearch.swift:382
+        rebuildKR(); save()   // ios: Data/StockSearch.swift:383
     }
     /** 동기화: 날짜별로 합친다 (같은 날은 받은 쪽) */
-    fun mergeKr(remote: List<MC.KrDay>) {   // ios: Data/StockSearch.swift:385,386
-        if (remote.isEmpty()) return   // ios: Data/StockSearch.swift:387
-        val L = MC.krNorm(krLog + remote)   // ios: Data/StockSearch.swift:388
-        if (L == krLog) return   // ios: Data/StockSearch.swift:389
-        krLog = L   // ios: Data/StockSearch.swift:390
-        val l = L.lastOrNull(); if (items.any { it.id == KoreaEstimate.sumId } && l != null && l.v > 0) update(KoreaEstimate.sumId) { it.kp = l.v; it.kd = l.d; it }   // ios: Data/StockSearch.swift:391
-        rebuildKR(); save()   // ios: Data/StockSearch.swift:392
+    fun mergeKr(remote: List<MC.KrDay>) {   // ios: Data/StockSearch.swift:386,387
+        if (remote.isEmpty()) return   // ios: Data/StockSearch.swift:388
+        val L = MC.krNorm(krLog + remote)   // ios: Data/StockSearch.swift:389
+        if (L == krLog) return   // ios: Data/StockSearch.swift:390
+        krLog = L   // ios: Data/StockSearch.swift:391
+        val l = L.lastOrNull(); if (items.any { it.id == KoreaEstimate.sumId } && l != null && l.v > 0) update(KoreaEstimate.sumId) { it.kp = l.v; it.kd = l.d; it }   // ios: Data/StockSearch.swift:392
+        rebuildKR(); save()   // ios: Data/StockSearch.swift:393
     }
     /** 지금 국내 주식 합계 (기록의 오늘 값) */
-    val krNow: Double get() = MC.krAt(krLog, Day.today)   // ios: Data/StockSearch.swift:395
+    val krNow: Double get() = MC.krAt(krLog, Day.today)   // ios: Data/StockSearch.swift:396
     /** 한국 종목의 날짜별 가격·지금 값을 넣은 가격과 사이트 미국 종가로 다시 만든다 */
-    fun rebuildKR() {   // ios: Data/StockSearch.swift:397
+    fun rebuildKR() {   // ios: Data/StockSearch.swift:398
         val h = hist.toMutableMap()
-        items = items.map { s0 ->   // ios: Data/StockSearch.swift:398
-            if (s0.usd) return@map s0; val s = s0.copy()   // ios: Data/StockSearch.swift:399
-            if (s.lv == true && KoreaEstimate.liveOK(s.id, name = s.name)) return@map s   // 테스트 시세: 받은 종가 그대로   // ios: Data/StockSearch.swift:400
-            if (s.id == KoreaEstimate.sumId) {   // ios: Data/StockSearch.swift:401
+        items = items.map { s0 ->   // ios: Data/StockSearch.swift:399
+            if (s0.usd) return@map s0; val s = s0.copy()   // ios: Data/StockSearch.swift:400
+            if (s.lv == true && KoreaEstimate.liveOK(s.id, name = s.name)) return@map s   // 테스트 시세: 받은 종가 그대로   // ios: Data/StockSearch.swift:401
+            if (s.id == KoreaEstimate.sumId) {   // ios: Data/StockSearch.swift:402
                 // 국내 주식 합계: 첫 기록 날부터 원/달러 거래일마다 그날까지 마지막 금액 (웹 krSynth 와 같다). 지금 값은 기록의 오늘 값
-                val L = krLog; val fx = Market.shared.prices?.h?.get("KRW=X")?.dates ?: emptyList()   // ios: Data/StockSearch.swift:403
-                val d0 = L.firstOrNull()?.d   // ios: Data/StockSearch.swift:404
+                val L = krLog; val fx = Market.shared.prices?.h?.get("KRW=X")?.dates ?: emptyList()   // ios: Data/StockSearch.swift:404
+                val d0 = L.firstOrNull()?.d   // ios: Data/StockSearch.swift:405
                 if (d0 != null) {
-                    val ds = if (fx.isEmpty()) L.map { it.d } else fx.filter { it >= d0 }   // ios: Data/StockSearch.swift:405
-                    if (ds.isEmpty()) h.remove(s.id) else h[s.id] = Hist(dates = ds, closes = ds.map { MC.krAt(L, it) })   // ios: Data/StockSearch.swift:406
-                } else { h.remove(s.id) }   // ios: Data/StockSearch.swift:407
-                s.last = if (L.isEmpty()) (s.kp ?: 0.0) else MC.krAt(L, Day.today); s.prev = s.last   // ios: Data/StockSearch.swift:408
-                return@map s   // ios: Data/StockSearch.swift:409
+                    val ds = if (fx.isEmpty()) L.map { it.d } else fx.filter { it >= d0 }   // ios: Data/StockSearch.swift:406
+                    if (ds.isEmpty()) h.remove(s.id) else h[s.id] = Hist(dates = ds, closes = ds.map { MC.krAt(L, it) })   // ios: Data/StockSearch.swift:407
+                } else { h.remove(s.id) }   // ios: Data/StockSearch.swift:408
+                s.last = if (L.isEmpty()) (s.kp ?: 0.0) else MC.krAt(L, Day.today); s.prev = s.last   // ios: Data/StockSearch.swift:409
+                return@map s   // ios: Data/StockSearch.swift:410
             }
-            val p = s.kp; val sh = p?.let { KoreaEstimate.synth(price = it, date = s.kd ?: Day.today, info = KoreaEstimate.info(id = s.id, name = s.name)) }   // ios: Data/StockSearch.swift:411
+            val p = s.kp; val sh = p?.let { KoreaEstimate.synth(price = it, date = s.kd ?: Day.today, info = KoreaEstimate.info(id = s.id, name = s.name)) }   // ios: Data/StockSearch.swift:412
             if (p != null && sh != null) {
-                h[s.id] = sh; s.last = sh.closes.lastOrNull() ?: p; s.prev = s.last   // 전일 대비는 없음 (웹과 같다)   // ios: Data/StockSearch.swift:412
-            } else {   // ios: Data/StockSearch.swift:413
-                h.remove(s.id); s.last = s.kp ?: 0.0; s.prev = s.last   // ios: Data/StockSearch.swift:414
+                h[s.id] = sh; s.last = sh.closes.lastOrNull() ?: p; s.prev = s.last   // 전일 대비는 없음 (웹과 같다)   // ios: Data/StockSearch.swift:413
+            } else {   // ios: Data/StockSearch.swift:414
+                h.remove(s.id); s.last = s.kp ?: 0.0; s.prev = s.last   // ios: Data/StockSearch.swift:415
             }
             s
         }
@@ -525,25 +526,25 @@ class CustomSymbols {   // ios: Data/StockSearch.swift:189,190
 }
 
 /** 가격 흐름: 앱에 넣은 테스트 자료가 먼저, 없으면 추가한 종목의 저장값 */
-object PriceHistory {   // ios: Data/StockSearch.swift:455
+object PriceHistory {   // ios: Data/StockSearch.swift:456
     /** 지난 종가: 사이트 파일(웹과 같은 자료). 이 기기가 직접 받은 값은 사이트보다 늦은 날만 덧붙인다.
      *  둘 다 없으면 빌드 때 넣은 파일. 가상 종목 DRNK 는 샘플 흐름을 따로 쓴다 */
-    fun of(id: String): YahooSample.Hist? {   // ios: Data/StockSearch.swift:458
-        val key = SiteStats.key(id)   // ios: Data/StockSearch.swift:459
-        val site = if (id == "DRNK") null else Market.shared.prices?.h?.get(key)   // ios: Data/StockSearch.swift:460
+    fun of(id: String): YahooSample.Hist? {   // ios: Data/StockSearch.swift:459
+        val key = SiteStats.key(id)   // ios: Data/StockSearch.swift:460
+        val site = if (id == "DRNK") null else Market.shared.prices?.h?.get(key)   // ios: Data/StockSearch.swift:461
         // 국내 주식 합계는 넣은 기록만 (하루치여도. 첫 기록 전은 없음 = 0)
-        if (id == KoreaEstimate.sumId) return CustomSymbols.shared.hist[id]?.let { YahooSample.Hist(dates = it.dates, closes = it.closes) }   // ios: Data/StockSearch.swift:462
-        val mine = CustomSymbols.shared.hist[id]?.let { if (it.closes.size > 1) YahooSample.Hist(dates = it.dates, closes = it.closes) else null }   // ios: Data/StockSearch.swift:463
+        if (id == KoreaEstimate.sumId) return CustomSymbols.shared.hist[id]?.let { YahooSample.Hist(dates = it.dates, closes = it.closes) }   // ios: Data/StockSearch.swift:463
+        val mine = CustomSymbols.shared.hist[id]?.let { if (it.closes.size > 1) YahooSample.Hist(dates = it.dates, closes = it.closes) else null }   // ios: Data/StockSearch.swift:464
         // 둘 다 있으면 사이트 값을 쓰고, 이 기기가 받은 값은 사이트 마지막 날 뒤의 날만 잇는다
         // (겹치는 날을 기기 값으로 쓰면 수정주가·출처 차이로 웹과 지난 종가가 갈린다: 내 길 시작값 차이)
-        if (site != null && mine != null) {   // ios: Data/StockSearch.swift:466
-            val sl = site.dates.lastOrNull() ?: ""   // ios: Data/StockSearch.swift:467
-            val i = mine.dates.indexOfFirst { it > sl }.takeIf { it >= 0 } ?: return site   // ios: Data/StockSearch.swift:468
-            return YahooSample.Hist(dates = site.dates + mine.dates.drop(i), closes = site.closes + mine.closes.drop(i))   // ios: Data/StockSearch.swift:469
+        if (site != null && mine != null) {   // ios: Data/StockSearch.swift:467
+            val sl = site.dates.lastOrNull() ?: ""   // ios: Data/StockSearch.swift:468
+            val i = mine.dates.indexOfFirst { it > sl }.takeIf { it >= 0 } ?: return site   // ios: Data/StockSearch.swift:469
+            return YahooSample.Hist(dates = site.dates + mine.dates.drop(i), closes = site.closes + mine.closes.drop(i))   // ios: Data/StockSearch.swift:470
         }
-        (site ?: mine)?.let { return it }   // ios: Data/StockSearch.swift:471
+        (site ?: mine)?.let { return it }   // ios: Data/StockSearch.swift:472
         // 비중 바꿔 비교에서 담은 종목 (모의 바구니)
-        ExtraStats.shared.items[id]?.hist?.let { return it }   // ios: Data/StockSearch.swift:473
-        return YahooSample.history[id] ?: (if (id == "DRNK") null else YahooSample.bundled[key])   // ios: Data/StockSearch.swift:474
+        ExtraStats.shared.items[id]?.hist?.let { return it }   // ios: Data/StockSearch.swift:474
+        return YahooSample.history[id] ?: (if (id == "DRNK") null else YahooSample.bundled[key])   // ios: Data/StockSearch.swift:475
     }
 }

@@ -119,17 +119,17 @@ private val snappy = spring<androidx.compose.ui.unit.Dp>(dampingRatio = 0.85f, s
 private fun Double.swRound(): Double = if (this < 0) -floor(-this + 0.5) else floor(this + 0.5)
 
 // 종목 탭: 내 종목 | 소식판. 내 종목은 내 돈이 얼마 있고 얼마 벌었나. 맨 위 평가액 → 1년 전부터 가졌다면 그래프 → 미국/국내 묶음 목록
-// ios: Views/HoldingsView.swift:6,7,18
+// ios: Views/HoldingsView.swift:7,8,27
 @Composable
 fun HoldingsView(m: AppModel) {
     var period by remember { mutableStateOf(Period.m1) }        // ios: Views/HoldingsView.swift:8 위 그래프에만 걸린다 (목록 %는 늘 산 가격 대비)
-    var said by remember { mutableStateOf<String?>(null) }          // ios: Views/HoldingsView.swift:9 지운 뒤 인물의 한 줄 (평정 지수)
-    var swiped by remember { mutableStateOf<String?>(null) }        // ios: Views/HoldingsView.swift:10 왼쪽으로 밀어 지우기 버튼이 보이는 종목
-    var askDel by remember { mutableStateOf<Symbol?>(null) }        // ios: Views/HoldingsView.swift:11 지울지 한 번 묻는 종목
+    var said by remember { mutableStateOf<String?>(null) }          // ios: Views/HoldingsView.swift:10 지운 뒤 인물의 한 줄 (평정 지수)
+    var swiped by remember { mutableStateOf<String?>(null) }        // ios: Views/HoldingsView.swift:11 왼쪽으로 밀어 지우기 버튼이 보이는 종목
+    var askDel by remember { mutableStateOf<Symbol?>(null) }        // ios: Views/HoldingsView.swift:12 지울지 한 번 묻는 종목
     var river by remember { mutableStateOf<EarnTarget?>(null) }     // ios: Views/HoldingsView.swift:12 내 몫 실적 강 팝업 (목록 오른쪽 막대를 누르면)
     var inUsd by rememberPrefBool("holdUsd", false)   // ios: Views/HoldingsView.swift:13 목록 금액: 미국 종목을 달러로 볼지
-    val dts = LocalTextScale.current   // ios: Views/HoldingsView.swift:14
-    val arrive by rememberPrefString("town.arrive", "")   // ios: Views/HoldingsView.swift:15
+    val dts = LocalTextScale.current   // ios: Views/HoldingsView.swift:21
+    val arrive by rememberPrefString("town.arrive", "")   // ios: Views/HoldingsView.swift:23
 
     // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
     // ios: Views/HoldingsView.swift:70,71
@@ -141,7 +141,7 @@ fun HoldingsView(m: AppModel) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 // ios: Views/HoldingsView.swift:61
                 Screen {
-                    val rows = m.rows   // ios: Views/HoldingsView.swift:19
+                    val rows = m.rows   // ios: Views/HoldingsView.swift:28
                     val us = m.sortedRows.filter { it.sym.currency == Currency.usd }   // ios: Views/HoldingsView.swift:20
                     val kr = m.sortedRows.filter { it.sym.currency != Currency.usd }   // ios: Views/HoldingsView.swift:21
                     // ios: Views/HoldingsView.swift:24
@@ -154,7 +154,7 @@ fun HoldingsView(m: AppModel) {
                             TotalChart(m, rows, period) { period = it }   // ios: Views/HoldingsView.swift:29
                             // ios: Views/HoldingsView.swift:30
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                // ios: Views/HoldingsView.swift:31,35
+                                // ios: Views/HoldingsView.swift:47
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     T("종목 ${rows.size}", style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:32
                                     T("%는 산 가격 대비", style = appFont(12f), color = Theme.sub)   // ios: Views/HoldingsView.swift:33
@@ -236,21 +236,21 @@ private fun androidx.compose.ui.text.TextStyle.tnum() = copy(fontFeatureSettings
 private class Total(val tot: List<Double>, val first: Double, val last: Double, val chg: Double, val noHist: List<String>)
 
 // 지금 비중을 1년(기간) 전부터 가졌다면: 백테스트 평가액
-// ios: Views/HoldingsView.swift:107
+// ios: Views/HoldingsView.swift:112
 @Composable
 private fun TotalChart(m: AppModel, rows: List<AppModel.Row>, period: Period, setPeriod: (Period) -> Unit) {
     val stamp = Market.shared.updatedAt
     val t = remember(period, rows, stamp) {
-        val series = rows.map { r -> m.prices.series(r.sym, period).map { m.krw(r.sym, it * r.h.qty) } }   // ios: Views/HoldingsView.swift:108
-        val n = series.minOfOrNull { it.size } ?: 0   // ios: Views/HoldingsView.swift:109
+        val series = rows.map { r -> m.prices.series(r.sym, period).map { m.krw(r.sym, it * r.h.qty) } }   // ios: Views/HoldingsView.swift:113
+        val n = series.minOfOrNull { it.size } ?: 0   // ios: Views/HoldingsView.swift:114
         val tot = (0 until n).map { i -> series.fold(0.0) { a, s -> a + s[i] } }   // ios: Views/HoldingsView.swift:110
         val first = tot.firstOrNull() ?: 0.0; val last = tot.lastOrNull() ?: 0.0   // ios: Views/HoldingsView.swift:111
         val chg = last / max(1.0, first) - 1   // ios: Views/HoldingsView.swift:112
-        val noHist = rows.filter { !m.prices.hasHistory(it.sym) }.map { it.sym.name }   // ios: Views/HoldingsView.swift:132
+        val noHist = rows.filter { !m.prices.hasHistory(it.sym) }.map { it.sym.name }   // ios: Views/HoldingsView.swift:125
         Total(tot, first, last, chg, noHist)
     }
-    val start = LocalDate.now().minusDays((period.span * 1095).toLong())   // ios: Views/HoldingsView.swift:113
-    // ios: Views/HoldingsView.swift:114
+    val start = LocalDate.now().minusDays((period.span * 1095).toLong())   // ios: Views/HoldingsView.swift:117
+    // ios: Views/HoldingsView.swift:119
     Card {
         T("지금 구성, ${period.label} 전부터라면", style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:115
         // ios: Views/HoldingsView.swift:116,119
@@ -269,13 +269,13 @@ private fun TotalChart(m: AppModel, rows: List<AppModel.Row>, period: Period, se
             T(if (period.span < 1) "${start.monthValue}월" else "${start.year}.${start.monthValue}", Modifier.weight(1f), style = appFont(11f), color = Theme.muted)
             T("오늘", style = appFont(11f), color = Theme.muted)   // ios: Views/HoldingsView.swift:127,128
         }
-        ChipRow(items = periods.map { it to it.label }, selection = period, onSelect = setPeriod, fill = true)   // ios: Views/HoldingsView.swift:131
-        // ios: Views/HoldingsView.swift:133,135 (135 는 검사 예외: 같은 글)
+        ChipRow(items = periods.map { it to it.label }, selection = period, onSelect = setPeriod, fill = true)   // ios: Views/HoldingsView.swift:124
+        // ios: Views/HoldingsView.swift:126,128 (135 는 검사 예외: 같은 글)
         val names = t.noHist.joinToString(", ")
         if (t.noHist.isNotEmpty()) T("과거 시세 없음: $names · 평평하게 그림", style = appFont(12f), color = Theme.muted)
     }
 }
-private val periods: List<Period> = listOf(Period.m1, Period.m3, Period.m6, Period.y1, Period.y3)   // ios: Views/HoldingsView.swift:16
+private val periods: List<Period> = listOf(Period.m1, Period.m3, Period.m6, Period.y1, Period.y3)   // ios: Views/HoldingsView.swift:24
 
 // 미국 주식 / 국내 주식 묶음 카드
 // 목록 금액 단위: $ / 원 (미국 종목만 바뀐다)
@@ -298,7 +298,7 @@ private fun UnitToggle(inUsd: Boolean, set: (Boolean) -> Unit) {
     }
 }
 
-// ios: Views/HoldingsView.swift:159
+// ios: Views/HoldingsView.swift:149
 private fun usd(inUsd: Boolean, r: AppModel.Row): Boolean = inUsd && r.sym.currency == Currency.usd
 // ios: Views/HoldingsView.swift:160
 private fun amountText(inUsd: Boolean, rs: List<AppModel.Row>): String {
@@ -312,38 +312,38 @@ private fun amountText(inUsd: Boolean, rs: List<AppModel.Row>): String {
 // ios: Views/HoldingsView.swift:167
 @Composable
 private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boolean, big: Boolean, swiped: String?, setSwiped: (String?) -> Unit, openRiver: (EarnTarget) -> Unit, askDel: (Symbol) -> Unit) {
-    // ios: Views/HoldingsView.swift:168,208,209,210
+    // ios: Views/HoldingsView.swift:211,212,213
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        // ios: Views/HoldingsView.swift:169,171,175
+        // ios: Views/HoldingsView.swift:165,167,173
         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            T("$title ${rs.size}", Modifier.weight(1f), style = appFont(14f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:170
+            T("$title ${rs.size}", Modifier.weight(1f), style = appFont(14f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:166
             // ios: Views/HoldingsView.swift:172,173
             T(amountText(inUsd, rs), style = appFont(14f, FontWeight.SemiBold).tnum(), color = Theme.sub, roll = rs.fold(0.0) { a, r -> a + r.value })
         }
         // ios: Views/HoldingsView.swift:176
         rs.forEach { r ->
-            HDivider(Theme.line)   // ios: Views/HoldingsView.swift:177
-            // ios: Views/HoldingsView.swift:79,180,200 밀린 줄은 snappy 스프링으로 움직인다 (지운 뒤 돌아갈 때도)
+            HDivider(Theme.line)   // ios: Views/HoldingsView.swift:176
+            // ios: Views/HoldingsView.swift:181,201 밀린 줄은 snappy 스프링으로 움직인다 (지운 뒤 돌아갈 때도)
             val x by animateDpAsState(if (swiped == r.id) (-84).dp else 0.dp, snappy, label = "swipe")
             var menu by remember { mutableStateOf(false) }
-            // ios: Views/HoldingsView.swift:182,196
+            // ios: Views/HoldingsView.swift:183,197
             Box(Modifier.fillMaxWidth().clip(androidx.compose.ui.graphics.RectangleShape)) {
                 // 왼쪽으로 밀면 뒤에 숨은 지우기 버튼이 보인다
-                // ios: Views/HoldingsView.swift:183,184,185,189,190,192,193
+                // ios: Views/HoldingsView.swift:184,185,186,190,191,193,194
                 if (swiped == r.id) Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
                     Column(
                         Modifier.width(84.dp).fillMaxHeight()
                             .background(Theme.up).plainClickable { askDel(r.sym) }.semantics(mergeDescendants = true) { contentDescription = tr("${r.sym.name} 지우기") },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                     ) {
-                        Sym("trash", 18f, Color.White, scaled = false)   // ios: Views/HoldingsView.swift:186
-                        T("지우기", style = appFont(12f, FontWeight.Bold), color = Color.White)   // ios: Views/HoldingsView.swift:187
+                        Sym("trash", 18f, Color.White, scaled = false)   // ios: Views/HoldingsView.swift:187
+                        T("지우기", style = appFont(12f, FontWeight.Bold), color = Color.White)   // ios: Views/HoldingsView.swift:188
                     }
                 }
-                // ios: Views/HoldingsView.swift:178,179
+                // ios: Views/HoldingsView.swift:179
                 Box(
                     Modifier.offset(x = x).background(Theme.card)
-                        // ios: Views/HoldingsView.swift:197,198,199,200,205 (24 넘게 끌고, 가로가 세로의 1.5배 넘을 때만. 40 넘게 왼쪽이면 버튼, 아니면 닫기. 움직임은 위 animateDpAsState 의 snappy)
+                        // ios: Views/HoldingsView.swift:198,199,200,201,208 (24 넘게 끌고, 가로가 세로의 1.5배 넘을 때만. 40 넘게 왼쪽이면 버튼, 아니면 닫기. 움직임은 위 animateDpAsState 의 snappy)
                         .pointerInput(r.id) {
                             awaitEachGesture {
                                 val d = awaitFirstDown(requireUnconsumed = false)
@@ -361,7 +361,7 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boo
                         .plainCombinedClickable(onLongClick = { menu = true }) { if (swiped != null) setSwiped(null) else m.holdPath = m.holdPath + r.sym }
                         .semantics { customActions = listOf(CustomAccessibilityAction(tr("지우기")) { askDel(r.sym); true }) },
                 ) { HoldRow(m, r, inUsd, big, openRiver) }
-                // ios: Views/HoldingsView.swift:202,203 (길게 누르면 메뉴)
+                // ios: Views/HoldingsView.swift:203,205 (길게 누르면 메뉴)
                 ContextMenu(menu, listOf(MenuItem("이 종목 지우기", icon = "trash", destructive = true, onClick = { askDel(r.sym) }))) { menu = false }
             }
         }
@@ -375,12 +375,12 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, inUsd: Boo
 @Composable
 private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, big: Boolean, openRiver: (EarnTarget) -> Unit) {
     val chg = if (r.cost > 0) r.value / r.cost - 1 else 0.0   // ios: Views/HoldingsView.swift:216
-    val es = EarningsFeed.shared.summary(r.sym, r.h.qty)   // ios: Views/HoldingsView.swift:217
+    val es = EarningsFeed.shared.summary(r.sym, r.h.qty)   // ios: Views/HoldingsView.swift:230
     // ios: Views/HoldingsView.swift:218,219 이름 옆 금색 점 (오늘 실적)
     @Composable fun Dot() = Box(Modifier.size(6.dp, 6.dp).alpha(if (es?.fresh == true) 1f else 0f).background(EarnColor.gold, CircleShape)
         .then(if (es?.fresh == true) Modifier.semantics { contentDescription = tr("오늘 실적") } else Modifier.clearAndSetSemantics {}))
     val onePx = with(LocalDensity.current) { 1.dp.roundToPx() }   // ios: Views/HoldingsView.swift:230
-    val day = r.sym.quote.change   // ios: Views/HoldingsView.swift:220
+    val day = r.sym.quote.change   // ios: Views/HoldingsView.swift:231
     // ios: Views/HoldingsView.swift:221
     @Composable fun Name(mod: Modifier) = Row(mod, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
         LogoTile(symbol = r.id, size = 36.dp)   // ios: Views/HoldingsView.swift:222
@@ -417,109 +417,109 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, big: Boolean, 
         T(AppModel.sgn(chg), style = appFont(13f, FontWeight.Bold), color = Theme.change(chg))   // ios: Views/HoldingsView.swift:247
     }
     // 실적 자료가 있으면 강 팝업, 없으면(ETF·국내·못 받음) 줄표만 두고 줄 전체처럼 상세로
-    // ios: Views/HoldingsView.swift:250,251,252,253,254,255,256,257
+    // ios: Views/HoldingsView.swift:258,259,261
     // endPad: 줄 오른쪽 여백까지 강 팝업 자리로 (여백을 누르면 상세로 가던 것)
     @Composable fun Earn(mod: Modifier, endPad: Dp = 0.dp) = Row(
         mod.defaultMinSize(minHeight = 44.dp).then(if (es != null) Modifier.plainClickable { openRiver(EarnTarget(r.sym, r.h.qty)) }
             .semantics { onClick(label = tr("내 몫 실적 보기")) { openRiver(EarnTarget(r.sym, r.h.qty)); true } } else Modifier).padding(end = endPad),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
     ) { Amount(Modifier.widthIn(min = 72.dp)); EarnBars(es) }
-    // ios: Views/HoldingsView.swift:260,275,276
+    // ios: Views/HoldingsView.swift:264,289
     Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).padding(start = 14.dp, end = if (big) 14.dp else 0.dp), contentAlignment = Alignment.CenterStart) {
-        // ios: Views/HoldingsView.swift:261,262,263,264,265
+        // ios: Views/HoldingsView.swift:265,266,267,274
         if (big) {
             Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Name(Modifier); Earn(Modifier) }
-        } else {   // ios: Views/HoldingsView.swift:266
+        } else {   // ios: Views/HoldingsView.swift:275
             // ios: Views/HoldingsView.swift:267
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                // ios: Views/HoldingsView.swift:268,269,270
+                // ios: Views/HoldingsView.swift:277,283
                 Row(Modifier.weight(1f).defaultMinSize(minHeight = 64.dp), horizontalArrangement = Arrangement.spacedBy(0.dp), verticalAlignment = Alignment.CenterVertically) {
                     Name(Modifier.weight(1f, fill = true).padding(end = 4.dp))
                 }
-                Earn(Modifier, endPad = 14.dp)   // ios: Views/HoldingsView.swift:271
+                Earn(Modifier, endPad = 14.dp)   // ios: Views/HoldingsView.swift:284
             }
         }
     }
 }
 
 /** 매매·직접 고치기 셈과 저장 (종목 목록 지우기·종목 상세 고치기가 같이 쓴다) */
-// ios: Views/HoldingsView.swift:746
+// ios: Views/HoldingsView.swift:1104
 object HoldingEdit {
-    // ios: Views/HoldingsView.swift:747
+    // ios: Views/HoldingsView.swift:1105
     data class Result(val qi: Double, val pi: Double, val q1: Double, val p1: Double, val bad: Boolean, val note: String)
 
     fun compute(m: AppModel, sym: Symbol, mode: String, q: String, p: String, q0: Double, p0: Double): Result = compute({ s, x -> m.krw(s, x) }, sym, mode, q, p, q0, p0)
     /** 원화 바꾸기(m.krw)만 받는 셈 (숫자 맞추기 F 가 같이 쓴다) */
-    // ios: Views/HoldingsView.swift:749
+    // ios: Views/HoldingsView.swift:1107
     fun compute(krw: (Symbol, Double) -> Double, sym: Symbol, mode: String, q: String, p: String, q0: Double, p0: Double): Result {
-        val qi = q.toDoubleOrNull() ?: -1.0; val pi = p.toDoubleOrNull() ?: -1.0   // ios: Views/HoldingsView.swift:750
-        var q1 = q0; var p1 = p0; var bad = false; var note = ""   // ios: Views/HoldingsView.swift:751
-        // ios: Views/HoldingsView.swift:752
+        val qi = q.toDoubleOrNull() ?: -1.0; val pi = p.toDoubleOrNull() ?: -1.0   // ios: Views/HoldingsView.swift:1108
+        var q1 = q0; var p1 = p0; var bad = false; var note = ""   // ios: Views/HoldingsView.swift:1109
+        // ios: Views/HoldingsView.swift:1110
         when (mode) {
-            // ios: Views/HoldingsView.swift:753,754
+            // ios: Views/HoldingsView.swift:1111,1112
             "fix" -> { bad = !(qi >= 0 && pi > 0); if (!bad) { q1 = qi; p1 = pi } }
-            // ios: Views/HoldingsView.swift:755
+            // ios: Views/HoldingsView.swift:1113
             "buy" -> {
-                bad = !(qi > 0 && pi > 0)   // ios: Views/HoldingsView.swift:756
-                // ios: Views/HoldingsView.swift:757
+                bad = !(qi > 0 && pi > 0)   // ios: Views/HoldingsView.swift:1114
+                // ios: Views/HoldingsView.swift:1115
                 if (!bad) { q1 = q0 + qi; p1 = (q0 * p0 + qi * pi) / q1; note = "${AppModel.price(sym, pi)}에 ${qi.swFmt()}주 더 사서 평균 단가가 ${AppModel.price(sym, p1)}가 돼요." }
             }
-            // ios: Views/HoldingsView.swift:758
+            // ios: Views/HoldingsView.swift:1116
             else -> {
-                bad = !(qi > 0 && qi <= q0 && pi > 0)   // ios: Views/HoldingsView.swift:759
-                // ios: Views/HoldingsView.swift:760
+                bad = !(qi > 0 && qi <= q0 && pi > 0)   // ios: Views/HoldingsView.swift:1117
+                // ios: Views/HoldingsView.swift:1118
                 if (!bad) {
-                    q1 = q0 - qi   // ios: Views/HoldingsView.swift:761
-                    val g = krw(sym, qi * (pi - p0))   // ios: Views/HoldingsView.swift:762
+                    q1 = q0 - qi   // ios: Views/HoldingsView.swift:1119
+                    val g = krw(sym, qi * (pi - p0))   // ios: Views/HoldingsView.swift:1120
                     // Views/HoldingsView.swift:741 (검사 예외: 같은 글)
                     note = "판 부분의 ${if (g >= 0) "이익" else "손실"}은 ${AppModel.man(abs(g))}이에요." + (if (sym.currency == Currency.usd) " 저장하면 올해 해외주식 실현 이익에 더해져 세금 계산에 반영돼요." else " 국내 상장주식은 대주주가 아니면 양도세가 없어요.")
-                } else if (qi > q0) note = "가진 수량(${q0.swFmt()}주)보다 많이 팔 수는 없어요."   // ios: Views/HoldingsView.swift:764
+                } else if (qi > q0) note = "가진 수량(${q0.swFmt()}주)보다 많이 팔 수는 없어요."   // ios: Views/HoldingsView.swift:1122
             }
         }
-        return Result(qi = qi, pi = pi, q1 = q1, p1 = p1, bad = bad, note = note)   // ios: Views/HoldingsView.swift:766
+        return Result(qi = qi, pi = pi, q1 = q1, p1 = p1, bad = bad, note = note)   // ios: Views/HoldingsView.swift:1124
     }
 
     /** 모드를 바꿀 때 입력칸 처음 값: 직접 고치기는 지금 값, 매매는 수량 비우고 가격은 종가 */
-    // ios: Views/HoldingsView.swift:770,771,772
+    // ios: Views/HoldingsView.swift:1128,1129,1130
     fun initial(mode: String, h: Holding, sym: Symbol): Pair<String, String> =
         if (mode == "fix") Pair(h.qty.swFmtNoGroup(), h.avg.swFmtNoGroup()) else Pair("", sym.close.swFmtNoGroup())
 
     /** 저장 버튼: 판 해외주식은 실현 이익에 더하고 저장. 매매면 인물의 한 줄을 돌려준다 */
-    // ios: Views/HoldingsView.swift:776
+    // ios: Views/HoldingsView.swift:1134
     fun commit(m: AppModel, sym: Symbol, mode: String, r: Result, p0: Double): String? {
-        if (mode == "sell" && sym.currency == Currency.usd) m.taxGain += (m.krw(sym, r.qi * (r.pi - p0)) / 1e4).swRound()   // ios: Views/HoldingsView.swift:777
-        val said = save(m, sym, r.q1, r.p1, buy = if (mode == "fix") null else mode == "buy")   // ios: Views/HoldingsView.swift:778
+        if (mode == "sell" && sym.currency == Currency.usd) m.taxGain += (m.krw(sym, r.qi * (r.pi - p0)) / 1e4).swRound()   // ios: Views/HoldingsView.swift:1135
+        val said = save(m, sym, r.q1, r.p1, buy = if (mode == "fix") null else mode == "buy")   // ios: Views/HoldingsView.swift:1136
         // 내 기록의 넣은 돈: 산 것·판 것은 그때 가격으로 (직접 고치기는 그날 가격으로 자동 계산)
-        if (mode != "fix") { val dq = if (mode == "buy") r.qi else -r.qi; m.recordDay(trade = Triple(Sync.siteTicker(sym.id), dq, m.krw(sym, dq * r.pi))) }   // ios: Views/HoldingsView.swift:780
-        return said   // ios: Views/HoldingsView.swift:781
+        if (mode != "fix") { val dq = if (mode == "buy") r.qi else -r.qi; m.recordDay(trade = Triple(Sync.siteTicker(sym.id), dq, m.krw(sym, dq * r.pi))) }   // ios: Views/HoldingsView.swift:1138
+        return said   // ios: Views/HoldingsView.swift:1139
     }
 
     /** trade: 산 것(true)·판 것(false)이면 평정 지수에 기록하고 인물의 한 줄을 돌려준다. 직접 고치기(null)는 수량이 바뀌었을 때만 늘면 산 것, 줄면 판 것으로 기록 */
-    // ios: Views/HoldingsView.swift:785,786
+    // ios: Views/HoldingsView.swift:1143,1144
     fun save(m: AppModel, sym: Symbol, qty: Double, avg: Double, buy: Boolean? = null): String? {
-        val before = m.holdings.firstOrNull { it.symbol == sym.id && it.qty > 0 }; val drift0 = m.calmDrift()   // ios: Views/HoldingsView.swift:787
-        // ios: Views/HoldingsView.swift:788,789
+        val before = m.holdings.firstOrNull { it.symbol == sym.id && it.qty > 0 }; val drift0 = m.calmDrift()   // ios: Views/HoldingsView.swift:1145
+        // ios: Views/HoldingsView.swift:1146,1147
         val i = m.holdings.indexOfFirst { it.symbol == sym.id }
         if (i >= 0) m.holdings = if (qty > 0) m.holdings.toMutableList().also { it[i] = Holding(symbol = sym.id, qty = qty, avg = (avg * 100).swRound() / 100) } else m.holdings.filterIndexed { k, _ -> k != i }
-        if (before == null) return null   // ios: Views/HoldingsView.swift:791
+        if (before == null) return null   // ios: Views/HoldingsView.swift:1149
         val b = buy ?: (if (qty == before.qty) null else qty > before.qty) ?: return null
-        val act = m.calmTrade(sym, buy = b, avgBefore = before.avg, driftBefore = drift0)   // ios: Views/HoldingsView.swift:792
-        val pts = m.calm.events.lastOrNull()?.pts ?: 0; val who = m.calmSpeaker   // ios: Views/HoldingsView.swift:793
+        val act = m.calmTrade(sym, buy = b, avgBefore = before.avg, driftBefore = drift0)   // ios: Views/HoldingsView.swift:1150
+        val pts = m.calm.events.lastOrNull()?.pts ?: 0; val who = m.calmSpeaker   // ios: Views/HoldingsView.swift:1151
         return "${m.friendName(who)}: ${Calm.feedback(m.voice(who), act)}" + (if (pts != 0) " (${if (pts > 0) "+" else ""}${pts}점)" else "")   // Views/HoldingsView.swift:772 (검사 예외: 같은 글)
     }
 }
 
 /** 종목 탭 위 페이지 고르기 (미션 탭 MissionPagePicker와 같은 모양) */
-// ios: Views/HoldingsView.swift:807,808,809
+// ios: Views/HoldingsView.swift:1165,1166,1167
 @Composable
 fun HoldPagePicker(page: Int, set: (Int) -> Unit) {
-    // ios: Views/HoldingsView.swift:810,823,824
+    // ios: Views/HoldingsView.swift:1168,1181,1182
     Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(13.dp)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        // ios: Views/HoldingsView.swift:811
+        // ios: Views/HoldingsView.swift:1169
         listOf(0 to "내 종목", 1 to "소식판").forEach { (i, t) ->
-            val on = page == i   // ios: Views/HoldingsView.swift:812
+            val on = page == i   // ios: Views/HoldingsView.swift:1170
             // 애니메이션 없이: 내 종목 화면이 커서 바꿀 때 버벅인다
-            // ios: Views/HoldingsView.swift:813,814,815,816,817,819,820
+            // ios: Views/HoldingsView.swift:1171,1172,1173,1174,1175,1177,1178
             Box(Modifier.weight(1f).plainClickable { set(i) }.semantics { selected = on }.defaultMinSize(minHeight = 40.dp)
                 .background(if (on) Theme.card else Color.Transparent, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
                 T(t, style = appFont(14f, FontWeight.Bold), color = if (on) Theme.ink else Theme.sub)
@@ -531,79 +531,79 @@ fun HoldPagePicker(page: Int, set: (Int) -> Unit) {
 // 소식판 (시안): 나라와 상관없이 내 종목에서 바로 나오는 것만. 새로 받는 시세 없음 (이미 받은 시세·지난 종가로 계산)
 // 시장과 비교 → 오늘 많이 움직인 종목 → 1년 고점·저점 가까운 종목
 @Composable
-fun HoldingsNews(m: AppModel, moversOnly: Boolean = false) {   // ios: Views/HoldingsView.swift:830,831,832,834 홈 아래: 오늘 많이 움직인 종목만
-    val rows = m.rows   // ios: Views/HoldingsView.swift:835
-    if (moversOnly) { MoversCard(m, rows); return }   // ios: Views/HoldingsView.swift:836
+fun HoldingsNews(m: AppModel, moversOnly: Boolean = false) {   // ios: Views/HoldingsView.swift:1188,1189,1190,1192 홈 아래: 오늘 많이 움직인 종목만
+    val rows = m.rows   // ios: Views/HoldingsView.swift:1193
+    if (moversOnly) { MoversCard(m, rows); return }   // ios: Views/HoldingsView.swift:1194
     val stamp = Market.shared.updatedAt
-    val ks = remember(rows, stamp) { rows.filter { m.prices.hasHistory(it.sym) }.map { Pair(it, m.metrics(it)) } }   // ios: Views/HoldingsView.swift:839,840
-    // ios: Views/HoldingsView.swift:841
+    val ks = remember(rows, stamp) { rows.filter { m.prices.hasHistory(it.sym) }.map { Pair(it, m.metrics(it)) } }   // ios: Views/HoldingsView.swift:1197,1198
+    // ios: Views/HoldingsView.swift:1199
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        compare(m, ks)?.let { CompareCard(it) }   // ios: Views/HoldingsView.swift:842
-        TownButton { TownView(m, it) }   // ios: Views/HoldingsView.swift:843 시장과 비교 밑 [동네]: 전체 화면으로
-        MoversCard(m, rows)   // ios: Views/HoldingsView.swift:844
-        NearCard(m, ks)   // ios: Views/HoldingsView.swift:845
+        compare(m, ks)?.let { CompareCard(it) }   // ios: Views/HoldingsView.swift:1200
+        TownButton { TownView(m, it) }   // ios: Views/HoldingsView.swift:1201 시장과 비교 밑 [동네]: 전체 화면으로
+        MoversCard(m, rows)   // ios: Views/HoldingsView.swift:1202
+        NearCard(m, ks)   // ios: Views/HoldingsView.swift:1203
     }
 }
 
 // MARK: 시장과 비교 (최근 1달). 시장 = 대표 ETF: 미국 종목이 절반 넘으면 S&P500(SPY), 아니면 전 세계(VT). 기록이 없으면 안 보인다
-// ios: Views/HoldingsView.swift:842
+// ios: Views/HoldingsView.swift:1200
 private class Cmp(val mine: Double, val mkt: Double, val name: String)
-// ios: Views/HoldingsView.swift:843
+// ios: Views/HoldingsView.swift:1201
 private fun compare(m: AppModel, ks: List<Pair<AppModel.Row, AppModel.HoldMetrics>>): Cmp? {
-    val w = ks.fold(0.0) { a, k -> a + k.second.w }   // ios: Views/HoldingsView.swift:844
-    if (w <= 0) return null   // ios: Views/HoldingsView.swift:845
+    val w = ks.fold(0.0) { a, k -> a + k.second.w }   // ios: Views/HoldingsView.swift:1202
+    if (w <= 0) return null   // ios: Views/HoldingsView.swift:1203
     // 지금 비중으로 4주 전부터 가졌다면 (yr: 1년을 52주로 나눈 가격)
-    val mine = ks.fold(0.0) { a, k -> val y = k.second.yr; a + k.second.w / w * (y[52] / max(1e-9, y[48]) - 1) }   // ios: Views/HoldingsView.swift:847
-    val usd = m.rows.filter { it.sym.currency == Currency.usd }.fold(0.0) { a, r -> a + r.value } / max(1.0, m.rows.fold(0.0) { a, r -> a + r.value })   // ios: Views/HoldingsView.swift:848
-    // ios: Views/HoldingsView.swift:849
+    val mine = ks.fold(0.0) { a, k -> val y = k.second.yr; a + k.second.w / w * (y[52] / max(1e-9, y[48]) - 1) }   // ios: Views/HoldingsView.swift:1205
+    val usd = m.rows.filter { it.sym.currency == Currency.usd }.fold(0.0) { a, r -> a + r.value } / max(1.0, m.rows.fold(0.0) { a, r -> a + r.value })   // ios: Views/HoldingsView.swift:1206
+    // ios: Views/HoldingsView.swift:1207
     for ((id, name) in if (usd >= 0.5) listOf("SPY" to "S&P500 ETF") else listOf("VT" to "전 세계 ETF", "SPY" to "S&P500 ETF")) {
-        val c = PriceHistory.of(id)?.closes; if (c == null || c.size <= 21) continue   // ios: Views/HoldingsView.swift:850
-        return Cmp(mine = mine, mkt = c[c.size - 1] / c[c.size - 21] - 1, name = name)   // ios: Views/HoldingsView.swift:851
+        val c = PriceHistory.of(id)?.closes; if (c == null || c.size <= 21) continue   // ios: Views/HoldingsView.swift:1208
+        return Cmp(mine = mine, mkt = c[c.size - 1] / c[c.size - 21] - 1, name = name)   // ios: Views/HoldingsView.swift:1209
     }
-    return null   // ios: Views/HoldingsView.swift:853
+    return null   // ios: Views/HoldingsView.swift:1211
 }
 
-// ios: Views/HoldingsView.swift:856
+// ios: Views/HoldingsView.swift:1214
 @Composable
 private fun CompareCard(c: Cmp) {
-    val gap = c.mine - c.mkt   // ios: Views/HoldingsView.swift:857
-    // ios: Views/HoldingsView.swift:858,867
+    val gap = c.mine - c.mkt   // ios: Views/HoldingsView.swift:1215
+    // ios: Views/HoldingsView.swift:1216,1225
     Column(Modifier.newsCard(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        T("최근 1달, 시장과 비교", style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:859
-        // ios: Views/HoldingsView.swift:860
+        T("최근 1달, 시장과 비교", style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:1217
+        // ios: Views/HoldingsView.swift:1218
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Cell("내 종목", c.mine)   // ios: Views/HoldingsView.swift:861
-            Cell(c.name, c.mkt)   // ios: Views/HoldingsView.swift:862
+            Cell("내 종목", c.mine)   // ios: Views/HoldingsView.swift:1219
+            Cell(c.name, c.mkt)   // ios: Views/HoldingsView.swift:1220
         }
         // Views/HoldingsView.swift:837 (검사 예외: 같은 글로 옮김)
         val pct = cformat("%.1f", abs(gap) * 100); val dir = if (gap > 0) "높아요" else "낮아요"
         T(if (abs(gap) < 0.001) "시장과 거의 같게 움직였어요" else "시장보다 $pct% $dir",
-          style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:865
+          style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:1223
     }
 }
 
-// ios: Views/HoldingsView.swift:870
+// ios: Views/HoldingsView.swift:1228
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.Cell(t: String, v: Double) {
-    // ios: Views/HoldingsView.swift:871,875,876,877
+    // ios: Views/HoldingsView.swift:1229,1233,1234,1235
     Column(Modifier.weight(1f).background(Theme.bg, RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        T(t, style = appFont(12f), color = Theme.sub, maxLines = 1)   // ios: Views/HoldingsView.swift:872
-        T(AppModel.sgn(v), style = appFont(20f, FontWeight.Bold).tnum(), color = Theme.change(v))   // ios: Views/HoldingsView.swift:873
+        T(t, style = appFont(12f), color = Theme.sub, maxLines = 1)   // ios: Views/HoldingsView.swift:1230
+        T(AppModel.sgn(v), style = appFont(20f, FontWeight.Bold).tnum(), color = Theme.change(v))   // ios: Views/HoldingsView.swift:1231
     }
 }
 
 // MARK: 오늘 많이 움직인 종목 (오늘 % 크기순 3개)
-// ios: Views/HoldingsView.swift:881
+// ios: Views/HoldingsView.swift:1239
 @Composable
 private fun MoversCard(m: AppModel, rows: List<AppModel.Row>) {
-    val top = rows.sortedByDescending { abs(it.sym.quote.change) }.take(3)   // ios: Views/HoldingsView.swift:882
-    // ios: Views/HoldingsView.swift:883,891
+    val top = rows.sortedByDescending { abs(it.sym.quote.change) }.take(3)   // ios: Views/HoldingsView.swift:1240
+    // ios: Views/HoldingsView.swift:1241,1252
     Column(Modifier.newsCard(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        T("오늘 많이 움직인 종목", Modifier.padding(bottom = 6.dp), style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:884
-        if (top.isEmpty()) T("종목을 넣으면 보여요", style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:885
-        // ios: Views/HoldingsView.swift:886
+        T("오늘 많이 움직인 종목", Modifier.padding(bottom = 6.dp), style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:1242
+        if (top.isEmpty()) T("종목을 넣으면 보여요", style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:1243
+        // ios: Views/HoldingsView.swift:1244
         top.forEach { r ->
-            val d = r.sym.quote.change   // ios: Views/HoldingsView.swift:887
+            val d = r.sym.quote.change   // ios: Views/HoldingsView.swift:1245
             Line(m, r, (if (d >= 0) "+" else "−") + cformat("%.2f%%", abs(d) * 100), Theme.change(d))   // ios: Views/HoldingsView.swift:888
         }
     }
@@ -614,18 +614,18 @@ private fun MoversCard(m: AppModel, rows: List<AppModel.Row>) {
 @Composable
 private fun NearCard(m: AppModel, ks: List<Pair<AppModel.Row, AppModel.HoldMetrics>>) {
     val hi = ks.filter { it.second.dd > -0.05 }.sortedByDescending { it.second.dd }   // ios: Views/HoldingsView.swift:896
-    val lo = ks.filter { it.second.dd <= -0.05 && it.first.sym.last / max(1e-9, it.second.lo) - 1 < 0.05 }   // ios: Views/HoldingsView.swift:897
-    // ios: Views/HoldingsView.swift:898,908
+    val lo = ks.filter { it.second.dd <= -0.05 && it.first.sym.last / max(1e-9, it.second.lo) - 1 < 0.05 }   // ios: Views/HoldingsView.swift:1258
+    // ios: Views/HoldingsView.swift:1259,1269
     Column(Modifier.newsCard(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        T("1년 고점·저점 가까이", Modifier.padding(bottom = 6.dp), style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:899
-        if (hi.isEmpty() && lo.isEmpty()) T("고점·저점 5% 안에 있는 종목은 없어요", style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:900
-        // ios: Views/HoldingsView.swift:901
+        T("1년 고점·저점 가까이", Modifier.padding(bottom = 6.dp), style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:1260
+        if (hi.isEmpty() && lo.isEmpty()) T("고점·저점 5% 안에 있는 종목은 없어요", style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:1261
+        // ios: Views/HoldingsView.swift:1262
         hi.forEach { (r, k) ->
             // Views/HoldingsView.swift:875 (검사 예외: 같은 글로 옮김)
             val p = cformat("%.0f", abs(k.dd) * 100)
             Line(m, r, if (k.dd > -0.005) "1년 고점" else "고점까지 $p%", Theme.up)
         }
-        // ios: Views/HoldingsView.swift:904
+        // ios: Views/HoldingsView.swift:1265
         lo.forEach { (r, k) ->
             // Views/HoldingsView.swift:878 (검사 예외: 같은 글로 옮김)
             val p = cformat("%.0f", (r.sym.last / max(1e-9, k.lo) - 1) * 100)
@@ -634,17 +634,17 @@ private fun NearCard(m: AppModel, ks: List<Pair<AppModel.Row, AppModel.HoldMetri
     }
 }
 
-// ios: Views/HoldingsView.swift:911
+// ios: Views/HoldingsView.swift:1272
 @Composable
 private fun Line(m: AppModel, r: AppModel.Row, right: String, color: Color) {
-    // ios: Views/HoldingsView.swift:912,913,919,921
+    // ios: Views/HoldingsView.swift:1273,1274,1280,1282
     Row(Modifier.fillMaxWidth().plainClickable { m.holdPath = m.holdPath + r.sym }.defaultMinSize(minHeight = 44.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        LogoTile(symbol = r.id, size = 28.dp)   // ios: Views/HoldingsView.swift:914
-        T(r.sym.name, Modifier.weight(1f).padding(end = 4.dp), style = appFont(14f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/HoldingsView.swift:915,916
-        T(right, style = appFont(14f, FontWeight.Bold).tnum(), color = color)   // ios: Views/HoldingsView.swift:917
+        LogoTile(symbol = r.id, size = 28.dp)   // ios: Views/HoldingsView.swift:1275
+        T(r.sym.name, Modifier.weight(1f).padding(end = 4.dp), style = appFont(14f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/HoldingsView.swift:1276,1277
+        T(right, style = appFont(14f, FontWeight.Bold).tnum(), color = color)   // ios: Views/HoldingsView.swift:1278
     }
 }
 
-// ios: Views/HoldingsView.swift:925,926,927,928,929
+// ios: Views/HoldingsView.swift:1286,1287,1288,1289,1290
 @Composable
 private fun Modifier.newsCard(): Modifier = this.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)).padding(16.dp)

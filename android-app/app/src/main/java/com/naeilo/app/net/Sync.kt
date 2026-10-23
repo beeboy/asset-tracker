@@ -143,16 +143,16 @@ class Sync {   // ios: Data/Sync.swift:16,17
         }
 
         /** 사이트 티커 → 앱 이름 (005930.KS → 005930). 미국·한국 밖이면 null */
-        fun appId(ticker: String): String? {   // ios: Data/Sync.swift:314
-            val t = ticker.uppercase()   // ios: Data/Sync.swift:315
-            if (t.endsWith(".KS") || t.endsWith(".KQ")) return t.dropLast(3)   // ios: Data/Sync.swift:316
-            if (t.contains(".") || t.contains("=") || t.startsWith("^")) return null   // ios: Data/Sync.swift:317
-            return t   // ios: Data/Sync.swift:318
+        fun appId(ticker: String): String? {   // ios: Data/Sync.swift:315
+            val t = ticker.uppercase()   // ios: Data/Sync.swift:316
+            if (t.endsWith(".KS") || t.endsWith(".KQ")) return t.dropLast(3)   // ios: Data/Sync.swift:317
+            if (t.contains(".") || t.contains("=") || t.startsWith("^")) return null   // ios: Data/Sync.swift:318
+            return t   // ios: Data/Sync.swift:319
         }
         /** 앱 이름 → 사이트 티커 */
-        fun siteTicker(id: String): String {   // ios: Data/Sync.swift:321
-            val s = Sample.symbol(id) ?: return id   // ios: Data/Sync.swift:322
-            return if (s.currency == Currency.krw) CustomSymbols.yahoo(s) else id   // ios: Data/Sync.swift:323
+        fun siteTicker(id: String): String {   // ios: Data/Sync.swift:322
+            val s = Sample.symbol(id) ?: return id   // ios: Data/Sync.swift:323
+            return if (s.currency == Currency.krw) CustomSymbols.yahoo(s) else id   // ios: Data/Sync.swift:324
         }
     }
 
@@ -389,186 +389,186 @@ class Sync {   // ios: Data/Sync.swift:16,17
     fun flush(m: AppModel) {   // ios: Data/Sync.swift:283,284
         if (!(dirty && isOn && conflict == null && pulledOnce)) return   // ios: Data/Sync.swift:285
         dirty = false   // ios: Data/Sync.swift:286
-        // ios: Data/Sync.swift:287,288,289,290,291 (beginBackgroundTask 는 안드로이드에 없어 MainScope 로만)
+        // ios: Data/Sync.swift:290,291 (beginBackgroundTask 는 안드로이드에 없어 MainScope 로만)
         MainScope().launch {
             try { push(m) } catch (e: CancellationException) { throw e } catch (e: Exception) { dirty = true; state = State.failed(e.message ?: "") }
         }
     }
 
-    private suspend fun push(m: AppModel) {   // ios: Data/Sync.swift:295,296
-        state = State.working   // ios: Data/Sync.swift:297
-        val st = outgoing(m)   // ios: Data/Sync.swift:298
-        val r = call(post = mapOf("state" to st, "at" to localAt))   // ios: Data/Sync.swift:299
-        if (r.stale) { pull(m); return }      // 다른 기기가 더 새 값을 올렸다   // ios: Data/Sync.swift:300
-        siteState = st   // ios: Data/Sync.swift:301
-        lastSig = signature(m)   // ios: Data/Sync.swift:302
-        state = State.ok(Instant.now())   // ios: Data/Sync.swift:303
+    private suspend fun push(m: AppModel) {   // ios: Data/Sync.swift:296,297
+        state = State.working   // ios: Data/Sync.swift:298
+        val st = outgoing(m)   // ios: Data/Sync.swift:299
+        val r = call(post = mapOf("state" to st, "at" to localAt))   // ios: Data/Sync.swift:300
+        if (r.stale) { pull(m); return }      // 다른 기기가 더 새 값을 올렸다   // ios: Data/Sync.swift:301
+        siteState = st   // ios: Data/Sync.swift:302
+        lastSig = signature(m)   // ios: Data/Sync.swift:303
+        state = State.ok(Instant.now())   // ios: Data/Sync.swift:304
     }
 
     // MARK: 앱 ↔ 사이트 형식
 
     /** 이 기기에 지킬 값이 있는지: 첫 질문을 마쳤고 종목이나 미션 진행이 있으면 */
-    private fun hasLocalData(m: AppModel): Boolean =   // ios: Data/Sync.swift:309
-        m.onboarded && (m.holdings.filter { it.symbol != "DRNK" }.isNotEmpty() || m.done.isNotEmpty() || m.gDone.isNotEmpty())   // ios: Data/Sync.swift:310
+    private fun hasLocalData(m: AppModel): Boolean =   // ios: Data/Sync.swift:310
+        m.onboarded && (m.holdings.filter { it.symbol != "DRNK" }.isNotEmpty() || m.done.isNotEmpty() || m.gDone.isNotEmpty())   // ios: Data/Sync.swift:311
 
-    internal fun outgoing(m: AppModel): Map<String, Any?> {   // ios: Data/Sync.swift:326
-        val st = siteState.toMutableMap()   // ios: Data/Sync.swift:327
-        if (st["version"] == null) st["version"] = 1   // ios: Data/Sync.swift:328
-        val old = jObjs(st["holdings"]) ?: emptyList()   // ios: Data/Sync.swift:329
-        val held = m.holdings.map { it.symbol }.toSet(); val keep = keepTickers; val sub = subAvg   // ios: Data/Sync.swift:330
+    internal fun outgoing(m: AppModel): Map<String, Any?> {   // ios: Data/Sync.swift:327
+        val st = siteState.toMutableMap()   // ios: Data/Sync.swift:328
+        if (st["version"] == null) st["version"] = 1   // ios: Data/Sync.swift:329
+        val old = jObjs(st["holdings"]) ?: emptyList()   // ios: Data/Sync.swift:330
+        val held = m.holdings.map { it.symbol }.toSet(); val keep = keepTickers; val sub = subAvg   // ios: Data/Sync.swift:331
         // 사이트 줄 순서를 지킨다: 그대로 두는 줄(앱이 못 다루는 종목, 받을 때 들여오지 않은 줄)은 그대로,
         // 앱에 있는 종목은 바뀐 칸만 고치고, 앱에서 지운 종목은 뺀다. 앱에서 새로 넣은 종목은 끝에 붙인다
-        fun updated(h: Holding, base: Map<String, Any?>?): MutableMap<String, Any?> {   // ios: Data/Sync.swift:333
-            val row: MutableMap<String, Any?> = base?.toMutableMap() ?: mutableMapOf("note" to "", "price" to null)   // ios: Data/Sync.swift:334
-            if (num(row["shares"]) != h.qty) row["shares"] = h.qty   // ios: Data/Sync.swift:335
-            val oldAvg = num(row["avg_cost"])   // ios: Data/Sync.swift:336
+        fun updated(h: Holding, base: Map<String, Any?>?): MutableMap<String, Any?> {   // ios: Data/Sync.swift:334
+            val row: MutableMap<String, Any?> = base?.toMutableMap() ?: mutableMapOf("note" to "", "price" to null)   // ios: Data/Sync.swift:335
+            if (num(row["shares"]) != h.qty) row["shares"] = h.qty   // ios: Data/Sync.swift:336
+            val oldAvg = num(row["avg_cost"])   // ios: Data/Sync.swift:337
             val s = sub[h.symbol]
-            if (oldAvg == 0.0 && s != null && Math.abs(s - h.avg) < 1e-9) { /* 사이트에 단가가 없던 줄: 비워 둔 그대로 */ }   // ios: Data/Sync.swift:337
-            else if (oldAvg != h.avg) row["avg_cost"] = h.avg   // ios: Data/Sync.swift:338
-            row["ticker"] = (row["ticker"] as? String) ?: siteTicker(h.symbol)   // ios: Data/Sync.swift:339
+            if (oldAvg == 0.0 && s != null && Math.abs(s - h.avg) < 1e-9) { /* 사이트에 단가가 없던 줄: 비워 둔 그대로 */ }   // ios: Data/Sync.swift:338
+            else if (oldAvg != h.avg) row["avg_cost"] = h.avg   // ios: Data/Sync.swift:339
+            row["ticker"] = (row["ticker"] as? String) ?: siteTicker(h.symbol)   // ios: Data/Sync.swift:340
             // 한국 종목: 넣은 가격과 그날 (웹 표의 가격 칸과 같은 값)
-            val c = CustomSymbols.shared.saved(h.symbol); val p = c?.kp   // ios: Data/Sync.swift:341
+            val c = CustomSymbols.shared.saved(h.symbol); val p = c?.kp   // ios: Data/Sync.swift:342
             if (c != null && !c.usd && p != null) {
-                row["price"] = p; row["price_date"] = c.kd ?: Day.today   // ios: Data/Sync.swift:342
-                if (((row["name"] as? String) ?: "").isEmpty()) row["name"] = c.name   // ios: Data/Sync.swift:343
+                row["price"] = p; row["price_date"] = c.kd ?: Day.today   // ios: Data/Sync.swift:343
+                if (((row["name"] as? String) ?: "").isEmpty()) row["name"] = c.name   // ios: Data/Sync.swift:344
             }
-            return row   // ios: Data/Sync.swift:345
+            return row   // ios: Data/Sync.swift:346
         }
-        val hs = ArrayList<Map<String, Any?>>(); val used = HashSet<String>()   // ios: Data/Sync.swift:347
-        for (row in old) {   // ios: Data/Sync.swift:348
-            val t = row["ticker"] as? String; val id = t?.let { appId(it) }; if (t == null || id == null) { hs.add(row); continue }   // ios: Data/Sync.swift:349
+        val hs = ArrayList<Map<String, Any?>>(); val used = HashSet<String>()   // ios: Data/Sync.swift:348
+        for (row in old) {   // ios: Data/Sync.swift:349
+            val t = row["ticker"] as? String; val id = t?.let { appId(it) }; if (t == null || id == null) { hs.add(row); continue }   // ios: Data/Sync.swift:350
             val h = m.holdings.firstOrNull { it.symbol == id }
-            if (h != null && !used.contains(id)) { hs.add(updated(h, row)); used.add(id) }   // ios: Data/Sync.swift:350
-            else if (keep.contains(t.uppercase()) && !held.contains(id)) { hs.add(row) }   // ios: Data/Sync.swift:351
+            if (h != null && !used.contains(id)) { hs.add(updated(h, row)); used.add(id) }   // ios: Data/Sync.swift:351
+            else if (keep.contains(t.uppercase()) && !held.contains(id)) { hs.add(row) }   // ios: Data/Sync.swift:352
         }
-        for (h in m.holdings) { if (h.symbol == "DRNK" || used.contains(h.symbol)) continue   // ios: Data/Sync.swift:353
-            val row = updated(h, null); row["ticker"] = siteTicker(h.symbol); hs.add(row)   // ios: Data/Sync.swift:354
+        for (h in m.holdings) { if (h.symbol == "DRNK" || used.contains(h.symbol)) continue   // ios: Data/Sync.swift:354
+            val row = updated(h, null); row["ticker"] = siteTicker(h.symbol); hs.add(row)   // ios: Data/Sync.swift:355
         }
-        st["holdings"] = hs   // ios: Data/Sync.swift:356
+        st["holdings"] = hs   // ios: Data/Sync.swift:357
         // 앱만 쓰는 칸: 미션 진행과 가상 종목(DRNK). 사이트는 이 칸을 읽지 않고 그대로 둔다
-        val app = mutableMapOf<String, Any?>("v" to 1)   // ios: Data/Sync.swift:358
-        runCatching { jsonToPlain(NJson.encodeToJsonElement(Progress.serializer(), m.progress)) }.getOrNull()?.let { p -> app["progress"] = p }   // ios: Data/Sync.swift:359
-        app["virtual"] = m.holdings.filter { it.symbol == "DRNK" }.map { mapOf("t" to it.symbol, "q" to it.qty, "a" to it.avg) }   // ios: Data/Sync.swift:360
+        val app = mutableMapOf<String, Any?>("v" to 1)   // ios: Data/Sync.swift:359
+        runCatching { jsonToPlain(NJson.encodeToJsonElement(Progress.serializer(), m.progress)) }.getOrNull()?.let { p -> app["progress"] = p }   // ios: Data/Sync.swift:360
+        app["virtual"] = m.holdings.filter { it.symbol == "DRNK" }.map { mapOf("t" to it.symbol, "q" to it.qty, "a" to it.avg) }   // ios: Data/Sync.swift:361
         // 평행 세계의 나: 연 날·바구니·인물·본선 기록 (앱만 쓴다)
-        m.pworld?.let { w -> runCatching { jsonToPlain(NJson.encodeToJsonElement(PWorld.serializer(), w)) }.getOrNull()?.let { j -> app["parallel"] = j } }   // ios: Data/Sync.swift:362
-        st["app"] = app   // ios: Data/Sync.swift:363
+        m.pworld?.let { w -> runCatching { jsonToPlain(NJson.encodeToJsonElement(PWorld.serializer(), w)) }.getOrNull()?.let { j -> app["parallel"] = j } }   // ios: Data/Sync.swift:363
+        st["app"] = app   // ios: Data/Sync.swift:364
         // 목표는 사이트와 같은 칸(goal)에. 회복 루트(본전 기준)와 사이트 샘플 중에는 사이트 목표를 그대로 둔다
-        if (m.isGoal && (st["sample"] as? Boolean) != true) st["goal"] = m.siteGoal(jObj(st["goal"]))   // ios: Data/Sync.swift:365
+        if (m.isGoal && (st["sample"] as? Boolean) != true) st["goal"] = m.siteGoal(jObj(st["goal"]))   // ios: Data/Sync.swift:366
         // 내 길(회복·목표)은 웹 홈 첫 질문과 같은 칸(route)에. 목표 루트(플러스·처음)는 웹에서 "goal"
-        if ((st["sample"] as? Boolean) != true) st["route"] = if (m.isGoal) "goal" else "recover"   // ios: Data/Sync.swift:367
+        if ((st["sample"] as? Boolean) != true) st["route"] = if (m.isGoal) "goal" else "recover"   // ios: Data/Sync.swift:368
         // 전망 관점(현재 정세·내 관점·과거 추세)과 추세 신뢰는 웹 전망 설정과 같은 칸(model.scenario·trust)에. 웹이 다른 시나리오(보수 등)면 그대로 둔다
-        val md = jObj(st["model"])?.toMutableMap() ?: mutableMapOf()   // ios: Data/Sync.swift:369
-        if (listOf("blend", "base", "smooth", null).contains(md["scenario"] as? String)) {   // ios: Data/Sync.swift:370
-            md["scenario"] = if (m.lens == Lens.base) "base" else if (m.lens == Lens.smooth) "smooth" else "blend"   // ios: Data/Sync.swift:371
-            md["trust"] = m.trust   // ios: Data/Sync.swift:372
-            st["model"] = md   // ios: Data/Sync.swift:373
+        val md = jObj(st["model"])?.toMutableMap() ?: mutableMapOf()   // ios: Data/Sync.swift:370
+        if (listOf("blend", "base", "smooth", null).contains(md["scenario"] as? String)) {   // ios: Data/Sync.swift:371
+            md["scenario"] = if (m.lens == Lens.base) "base" else if (m.lens == Lens.smooth) "smooth" else "blend"   // ios: Data/Sync.swift:372
+            md["trust"] = m.trust   // ios: Data/Sync.swift:373
+            st["model"] = md   // ios: Data/Sync.swift:374
         }
         // 내 기록은 사이트와 같은 칸(daily)에 날짜별로 합쳐 둔다
-        val daily = MyRecord.merge(MyRecord.fromJSON(st["daily"]?.let(::plainToJson)), m.myRecord)   // ios: Data/Sync.swift:376
-        if (daily.isNotEmpty()) MyRecord.toJSON(daily)?.let { j -> st["daily"] = jsonToPlain(j) }   // ios: Data/Sync.swift:377
+        val daily = MyRecord.merge(MyRecord.fromJSON(st["daily"]?.let(::plainToJson)), m.myRecord)   // ios: Data/Sync.swift:377
+        if (daily.isNotEmpty()) MyRecord.toJSON(daily)?.let { j -> st["daily"] = jsonToPlain(j) }   // ios: Data/Sync.swift:378
         // 수량 기록은 사이트와 같은 칸(lots)에 날짜별로 합쳐 둔다 (내 길 실제 평가액을 웹과 같은 수량으로)
         // 지난 날은 사이트 값만 (앱에만 남은 예전 줄이 웹과 다른 시작값을 만들지 않게), 오늘 줄은 이 기기 값
-        val lots = Lots.withSite(Lots.fromJSON(st["lots"]?.let(::plainToJson)), m.lots)   // ios: Data/Sync.swift:380
-        if (lots.isNotEmpty()) Lots.toJSON(lots)?.let { j -> st["lots"] = jsonToPlain(j) }   // ios: Data/Sync.swift:381
+        val lots = Lots.withSite(Lots.fromJSON(st["lots"]?.let(::plainToJson)), m.lots)   // ios: Data/Sync.swift:381
+        if (lots.isNotEmpty()) Lots.toJSON(lots)?.let { j -> st["lots"] = jsonToPlain(j) }   // ios: Data/Sync.swift:382
         // 국내 주식 합계 기록도 같은 칸(kr_log)에 날짜별로 합친다 (같은 날은 이 기기 값)
-        val kr = MC.krNorm(krFromJSON(st["kr_log"]) + CustomSymbols.shared.krLog)   // ios: Data/Sync.swift:383
-        if (kr.isNotEmpty()) st["kr_log"] = kr.map { mapOf("d" to it.d, "v" to it.v) }   // ios: Data/Sync.swift:384
-        st.remove("ui")   // ios: Data/Sync.swift:385
-        st.remove("_w")   // ios: Data/Sync.swift:386
-        return st   // ios: Data/Sync.swift:387
+        val kr = MC.krNorm(krFromJSON(st["kr_log"]) + CustomSymbols.shared.krLog)   // ios: Data/Sync.swift:384
+        if (kr.isNotEmpty()) st["kr_log"] = kr.map { mapOf("d" to it.d, "v" to it.v) }   // ios: Data/Sync.swift:385
+        st.remove("ui")   // ios: Data/Sync.swift:386
+        st.remove("_w")   // ios: Data/Sync.swift:387
+        return st   // ios: Data/Sync.swift:388
     }
 
-    private suspend fun apply(st: Map<String, Any?>, at: Double, m: AppModel) {   // ios: Data/Sync.swift:390,391
-        var hs = ArrayList<Holding>()   // ios: Data/Sync.swift:392
-        val unknown = ArrayList<StockHit>()   // ios: Data/Sync.swift:393
-        val keep = HashSet<String>(); val sub = HashMap<String, Double>(); val krPrice = LinkedHashMap<String, Pair<Double, String?>>()   // ios: Data/Sync.swift:394
-        for (h in jObjs(st["holdings"]) ?: emptyList()) {   // ios: Data/Sync.swift:395
-            val t = h["ticker"] as? String; val id = t?.let { appId(it) }; if (t == null || id == null) continue   // ios: Data/Sync.swift:396
-            val q = num(h["shares"]); val a = num(h["avg_cost"])   // ios: Data/Sync.swift:397
-            if (!(q > 0)) { keep.add(t.uppercase()); continue }   // ios: Data/Sync.swift:398
-            val kr = t.uppercase().endsWith(".KS") || t.uppercase().endsWith(".KQ")   // ios: Data/Sync.swift:399
-            if (kr && num(h["price"]) > 0) krPrice[id] = Pair(num(h["price"]), h["price_date"] as? String)   // ios: Data/Sync.swift:400
-            if (CustomSymbols.shared.symbol(id) == null && YahooSample.quotes[id] == null) {   // ios: Data/Sync.swift:401
-                val ko = StockCatalog.all.firstOrNull { it.id == id }   // ios: Data/Sync.swift:402
-                unknown.add(StockHit(id = id, yahoo = if (kr) t.uppercase() else id, name = ko?.name ?: Sample.symbols.firstOrNull { it.id == id }?.name ?: (h["name"] as? String)?.let { if (it.isEmpty()) null else it } ?: id,   // ios: Data/Sync.swift:403
-                    market = ko?.market ?: (if (kr) (if (t.uppercase().endsWith(".KQ")) "코스닥" else "코스피") else "미국 주식"),   // ios: Data/Sync.swift:404
-                    currency = if (kr) Currency.krw else Currency.usd))   // ios: Data/Sync.swift:405
+    private suspend fun apply(st: Map<String, Any?>, at: Double, m: AppModel) {   // ios: Data/Sync.swift:391,392
+        var hs = ArrayList<Holding>()   // ios: Data/Sync.swift:393
+        val unknown = ArrayList<StockHit>()   // ios: Data/Sync.swift:394
+        val keep = HashSet<String>(); val sub = HashMap<String, Double>(); val krPrice = LinkedHashMap<String, Pair<Double, String?>>()   // ios: Data/Sync.swift:395
+        for (h in jObjs(st["holdings"]) ?: emptyList()) {   // ios: Data/Sync.swift:396
+            val t = h["ticker"] as? String; val id = t?.let { appId(it) }; if (t == null || id == null) continue   // ios: Data/Sync.swift:397
+            val q = num(h["shares"]); val a = num(h["avg_cost"])   // ios: Data/Sync.swift:398
+            if (!(q > 0)) { keep.add(t.uppercase()); continue }   // ios: Data/Sync.swift:399
+            val kr = t.uppercase().endsWith(".KS") || t.uppercase().endsWith(".KQ")   // ios: Data/Sync.swift:400
+            if (kr && num(h["price"]) > 0) krPrice[id] = Pair(num(h["price"]), h["price_date"] as? String)   // ios: Data/Sync.swift:401
+            if (CustomSymbols.shared.symbol(id) == null && YahooSample.quotes[id] == null) {   // ios: Data/Sync.swift:402
+                val ko = StockCatalog.all.firstOrNull { it.id == id }   // ios: Data/Sync.swift:403
+                unknown.add(StockHit(id = id, yahoo = if (kr) t.uppercase() else id, name = ko?.name ?: Sample.symbols.firstOrNull { it.id == id }?.name ?: (h["name"] as? String)?.let { if (it.isEmpty()) null else it } ?: id,   // ios: Data/Sync.swift:404
+                    market = ko?.market ?: (if (kr) (if (t.uppercase().endsWith(".KQ")) "코스닥" else "코스피") else "미국 주식"),   // ios: Data/Sync.swift:405
+                    currency = if (kr) Currency.krw else Currency.usd))   // ios: Data/Sync.swift:406
             }
             // 평균 단가가 없으면(사이트는 선택 항목) 지금 가격으로 둔다
-            hs.add(Holding(symbol = id, qty = q, avg = a))   // ios: Data/Sync.swift:408
+            hs.add(Holding(symbol = id, qty = q, avg = a))   // ios: Data/Sync.swift:409
         }
         // 처음 보는 종목은 시세·3년 종가를 받는다 (못 받으면 그 종목은 빼고 알린다)
-        val skipped = ArrayList<String>()   // ios: Data/Sync.swift:411
-        for (u in unknown) {   // ios: Data/Sync.swift:412
-            try { CustomSymbols.shared.fetch(u) } catch (e: CancellationException) { throw e } catch (e: Exception) {   // ios: Data/Sync.swift:413
-                skipped.add(u.id); hs.removeAll { it.symbol == u.id }   // ios: Data/Sync.swift:414
-                keep.add(siteTicker(u.id).uppercase()); keep.add(u.yahoo.uppercase())   // ios: Data/Sync.swift:415
+        val skipped = ArrayList<String>()   // ios: Data/Sync.swift:412
+        for (u in unknown) {   // ios: Data/Sync.swift:413
+            try { CustomSymbols.shared.fetch(u) } catch (e: CancellationException) { throw e } catch (e: Exception) {   // ios: Data/Sync.swift:414
+                skipped.add(u.id); hs.removeAll { it.symbol == u.id }   // ios: Data/Sync.swift:415
+                keep.add(siteTicker(u.id).uppercase()); keep.add(u.yahoo.uppercase())   // ios: Data/Sync.swift:416
             }
         }
         // 한국 종목: 웹에 넣은 가격을 그대로 (가격이 없으면 종목 화면에서 넣게 둔다)
-        for ((id, v) in krPrice) CustomSymbols.shared.setPrice(id, v.first, date = v.second)   // ios: Data/Sync.swift:419
-        CustomSymbols.shared.mergeKr(krFromJSON(st["kr_log"]))     // 국내 주식 합계 날짜별 기록 (같은 날은 받은 쪽)   // ios: Data/Sync.swift:420
-        hs = ArrayList(hs.map { h ->   // ios: Data/Sync.swift:421
-            val s = if (h.avg <= 0) Sample.symbol(h.symbol) else null; if (s == null) return@map h   // ios: Data/Sync.swift:422
-            sub[h.symbol] = s.last   // ios: Data/Sync.swift:423
-            Holding(symbol = h.symbol, qty = h.qty, avg = s.last)   // ios: Data/Sync.swift:424
+        for ((id, v) in krPrice) CustomSymbols.shared.setPrice(id, v.first, date = v.second)   // ios: Data/Sync.swift:420
+        CustomSymbols.shared.mergeKr(krFromJSON(st["kr_log"]))     // 국내 주식 합계 날짜별 기록 (같은 날은 받은 쪽)   // ios: Data/Sync.swift:421
+        hs = ArrayList(hs.map { h ->   // ios: Data/Sync.swift:422
+            val s = if (h.avg <= 0) Sample.symbol(h.symbol) else null; if (s == null) return@map h   // ios: Data/Sync.swift:423
+            sub[h.symbol] = s.last   // ios: Data/Sync.swift:424
+            Holding(symbol = h.symbol, qty = h.qty, avg = s.last)   // ios: Data/Sync.swift:425
         })
-        keepTickers = keep; subAvg = sub   // ios: Data/Sync.swift:426
-        val app = jObj(st["app"])   // ios: Data/Sync.swift:427
-        if (!m.onboarded && app?.get("progress") == null) {   // ios: Data/Sync.swift:428
+        keepTickers = keep; subAvg = sub   // ios: Data/Sync.swift:427
+        val app = jObj(st["app"])   // ios: Data/Sync.swift:428
+        if (!m.onboarded && app?.get("progress") == null) {   // ios: Data/Sync.swift:429
             // 사이트에서만 쓰던 값: 미션은 처음부터. 이익이면 목표 루트, 손실이면 회복 루트
-            val cost = hs.fold(0.0) { a, h -> a + (Sample.symbol(h.symbol)?.let { m.krw(it, h.qty * h.avg) } ?: 0.0) }   // ios: Data/Sync.swift:430
-            val v = hs.fold(0.0) { a, h -> a + (Sample.symbol(h.symbol)?.let { m.krw(it, h.qty * it.last) } ?: 0.0) }   // ios: Data/Sync.swift:431
+            val cost = hs.fold(0.0) { a, h -> a + (Sample.symbol(h.symbol)?.let { m.krw(it, h.qty * h.avg) } ?: 0.0) }   // ios: Data/Sync.swift:431
+            val v = hs.fold(0.0) { a, h -> a + (Sample.symbol(h.symbol)?.let { m.krw(it, h.qty * it.last) } ?: 0.0) }   // ios: Data/Sync.swift:432
             // 웹 홈에서 길을 이미 골랐으면 그 길로
-            val web = if ((st["sample"] as? Boolean) == true) null else st["route"] as? String   // ios: Data/Sync.swift:433
-            m.startRoute(if (web == "recover") Route.recover else if (web == "goal") Route.plus else if (cost > 0 && v >= cost) Route.plus else Route.recover)   // ios: Data/Sync.swift:434
+            val web = if ((st["sample"] as? Boolean) == true) null else st["route"] as? String   // ios: Data/Sync.swift:434
+            m.startRoute(if (web == "recover") Route.recover else if (web == "goal") Route.plus else if (cost > 0 && v >= cost) Route.plus else Route.recover)   // ios: Data/Sync.swift:435
         }
-        if (app != null) {   // ios: Data/Sync.swift:436
-            for (x in jObjs(app["virtual"]) ?: emptyList()) {   // ios: Data/Sync.swift:437
-                val t = x["t"] as? String; val q = x["q"] as? Double; val a = x["a"] as? Double; if (t != null && q != null && a != null) hs.add(0, Holding(symbol = t, qty = q, avg = a))   // ios: Data/Sync.swift:438
+        if (app != null) {   // ios: Data/Sync.swift:437
+            for (x in jObjs(app["virtual"]) ?: emptyList()) {   // ios: Data/Sync.swift:438
+                val t = x["t"] as? String; val q = x["q"] as? Double; val a = x["a"] as? Double; if (t != null && q != null && a != null) hs.add(0, Holding(symbol = t, qty = q, avg = a))   // ios: Data/Sync.swift:439
             }
-            val p = app["parallel"]; val w = p?.let { runCatching { NJson.decodeFromJsonElement(PWorld.serializer(), plainToJson(it)) }.getOrNull() }   // ios: Data/Sync.swift:440,441
+            val p = app["parallel"]; val w = p?.let { runCatching { NJson.decodeFromJsonElement(PWorld.serializer(), plainToJson(it)) }.getOrNull() }   // ios: Data/Sync.swift:441,442
             if (w != null) {
-                m.pworld = PWorld.merge(m.pworld, w)   // ios: Data/Sync.swift:442
+                m.pworld = PWorld.merge(m.pworld, w)   // ios: Data/Sync.swift:443
             }
-            val pp = app["progress"]; val prog = pp?.let { runCatching { NJson.decodeFromJsonElement(Progress.serializer(), plainToJson(it)) }.getOrNull() }   // ios: Data/Sync.swift:444,445
+            val pp = app["progress"]; val prog = pp?.let { runCatching { NJson.decodeFromJsonElement(Progress.serializer(), plainToJson(it)) }.getOrNull() }   // ios: Data/Sync.swift:445,446
             if (prog != null) {
-                m.apply(prog)   // ios: Data/Sync.swift:446
+                m.apply(prog)   // ios: Data/Sync.swift:447
             }
         }
         // 웹 홈에서 고른 길(route)을 따른다 (진행보다 뒤에: 웹에서 바꾼 길이 진행에 든 예전 길을 덮는다). 목표는 플러스·처음 중 지금 것을 그대로
-        val r = st["route"] as? String   // ios: Data/Sync.swift:450
+        val r = st["route"] as? String   // ios: Data/Sync.swift:451
         if ((st["sample"] as? Boolean) != true && r != null) {
-            if (r == "recover" && m.isGoal) m.switchRoute(Route.recover)   // ios: Data/Sync.swift:451
-            else if (r == "goal" && !m.isGoal) m.switchRoute(Route.plus)   // ios: Data/Sync.swift:452
+            if (r == "recover" && m.isGoal) m.switchRoute(Route.recover)   // ios: Data/Sync.swift:452
+            else if (r == "goal" && !m.isGoal) m.switchRoute(Route.plus)   // ios: Data/Sync.swift:453
         }
         // 목표(금액·목표일·시작일·매달 넣는 돈)는 받을 때마다 사이트 값으로 맞춘다 (진행보다 뒤에: 진행에 든 예전 목표를 덮는다).
         // 회복 루트는 본전이 기준이라 화면에는 안 쓰지만, 목표 루트로 넘어갈 때 이 목표를 그대로 쓴다. 사이트 샘플 목표는 받지 않는다
-        val g = jObj(st["goal"]); if ((st["sample"] as? Boolean) != true && g != null) m.takeSiteGoal(g)   // ios: Data/Sync.swift:456
+        val g = jObj(st["goal"]); if ((st["sample"] as? Boolean) != true && g != null) m.takeSiteGoal(g)   // ios: Data/Sync.swift:457
         // 전망 관점·추세 신뢰도 웹 설정을 그대로 (진행보다 뒤에: 앱에 따로 남은 값이 웹과 다른 연 기대·확률을 만들지 않게)
-        val md = jObj(st["model"])   // ios: Data/Sync.swift:458
+        val md = jObj(st["model"])   // ios: Data/Sync.swift:459
         if (md != null) {
-            when (md["scenario"] as? String) { "base" -> m.lens = Lens.base; "smooth" -> m.lens = Lens.smooth; "blend" -> m.lens = Lens.mine; else -> {} }   // ios: Data/Sync.swift:459
-            if (md["trust"] != null) { val t = num(md["trust"]); if (t.isFinite()) m.trust = minOf(100.0, maxOf(0.0, t)) }   // ios: Data/Sync.swift:460
+            when (md["scenario"] as? String) { "base" -> m.lens = Lens.base; "smooth" -> m.lens = Lens.smooth; "blend" -> m.lens = Lens.mine; else -> {} }   // ios: Data/Sync.swift:460
+            if (md["trust"] != null) { val t = num(md["trust"]); if (t.isFinite()) m.trust = minOf(100.0, maxOf(0.0, t)) }   // ios: Data/Sync.swift:461
         }
-        m.myRecord = MyRecord.merge(m.myRecord, MyRecord.fromJSON(st["daily"]?.let(::plainToJson)))   // ios: Data/Sync.swift:462
-        m.lots = Lots.withSite(Lots.fromJSON(st["lots"]?.let(::plainToJson)), m.lots)    // 종목보다 먼저: 종목을 바꾸면 수량 기록이 오늘 줄을 남긴다   // ios: Data/Sync.swift:463
-        m.holdings = hs   // ios: Data/Sync.swift:464
+        m.myRecord = MyRecord.merge(m.myRecord, MyRecord.fromJSON(st["daily"]?.let(::plainToJson)))   // ios: Data/Sync.swift:463
+        m.lots = Lots.withSite(Lots.fromJSON(st["lots"]?.let(::plainToJson)), m.lots)    // 종목보다 먼저: 종목을 바꾸면 수량 기록이 오늘 줄을 남긴다   // ios: Data/Sync.swift:464
+        m.holdings = hs   // ios: Data/Sync.swift:465
         // 새 폰에서 첫 질문 전에 불러왔으면 첫 질문은 건너뛴다 (진행이 없으면 회복 루트 미션 1부터)
-        if (!m.onboarded) { m.onboarded = true; Store.defaults.edit().putBoolean("onboarded", true).apply(); m.tab = Tab.board }   // ios: Data/Sync.swift:466
-        siteState = st   // ios: Data/Sync.swift:467
-        localAt = at   // ios: Data/Sync.swift:468
-        lastSig = signature(m)   // ios: Data/Sync.swift:469
+        if (!m.onboarded) { m.onboarded = true; Store.defaults.edit().putBoolean("onboarded", true).apply(); m.tab = Tab.board }   // ios: Data/Sync.swift:467
+        siteState = st   // ios: Data/Sync.swift:468
+        localAt = at   // ios: Data/Sync.swift:469
+        lastSig = signature(m)   // ios: Data/Sync.swift:470
         if (skipped.isNotEmpty()) state = State.failed("시세를 못 받은 종목 ${skipped.joinToString(", ")}는 사이트에만 있어요")   // Data/Sync.swift:470 (검사 예외: 옮김)
     }
 
     /** 동기화할 값이 바뀌었는지 (종목 + 진행 + 내 기록 날짜 수. 날짜 칸은 빼고). 이 기기 안에서만 비교한다 */
-    fun signature(m: AppModel): String {   // ios: Data/Sync.swift:474
-        val p = m.progress.copy(lastOpen = "")   // ios: Data/Sync.swift:475
-        val a = runCatching { NJson.encodeToString(Progress.serializer(), p).encodeToByteArray() }.getOrNull() ?: ByteArray(0); val b = runCatching { NJson.encodeToString(ListSerializer(Holding.serializer()), m.holdings).encodeToByteArray() }.getOrNull() ?: ByteArray(0)   // ios: Data/Sync.swift:476
+    fun signature(m: AppModel): String {   // ios: Data/Sync.swift:475
+        val p = m.progress.copy(lastOpen = "")   // ios: Data/Sync.swift:476
+        val a = runCatching { NJson.encodeToString(Progress.serializer(), p).encodeToByteArray() }.getOrNull() ?: ByteArray(0); val b = runCatching { NJson.encodeToString(ListSerializer(Holding.serializer()), m.holdings).encodeToByteArray() }.getOrNull() ?: ByteArray(0)   // ios: Data/Sync.swift:477
         val pw = m.pworld?.let { "${it.days.size}|${it.segs.size}|${it.segs.lastOrNull()?.from ?: ""}|${it.who}|${it.opened}" } ?: "-"   // Data/Sync.swift:477 (검사 예외: 옮김)
         val c = "${m.myRecord.size}|${m.myRecord.lastOrNull()?.d ?: ""}|${CustomSymbols.shared.krStamp}|${pw}".encodeToByteArray()   // 내 기록은 새 날이 생길 때만 보낸다 (같은 날 시세 변화로는 안 보냄)   // Data/Sync.swift:478 (검사 예외: 옮김)
-        return MessageDigest.getInstance("SHA-256").digest(a + b + c).joinToString("") { "%02x".format(it.toInt() and 0xFF) }   // ios: Data/Sync.swift:479
+        return MessageDigest.getInstance("SHA-256").digest(a + b + c).joinToString("") { "%02x".format(it.toInt() and 0xFF) }   // ios: Data/Sync.swift:480
     }
 }
 
@@ -576,19 +576,19 @@ class Sync {   // ios: Data/Sync.swift:16,17
 data class SiteForecast(val events: List<MC.Event>?, val model: MC.Settings?)
 
 /** JSON 값 하나를 같은지 비교하며 들고 다니기 위한 상자 (Kotlin Map·List·Double 은 원래 값으로 비교된다) */
-data class AnyCodable(val value: Any?)   // ios: Data/Sync.swift:484,485,486,487,488
+data class AnyCodable(val value: Any?)   // ios: Data/Sync.swift:485,486,487,488,489
 
 /** 동기화 키는 키체인 대신 KeyVault 에 (Android Keystore 로 감싼다: 이 기기에서만, 백업으로 옮겨져도 못 푼다) */
-object Keychain {   // ios: Data/Sync.swift:493
-    private val q = KeyVault.slot(service = "com.naeilo.sync", account = "esync")   // ios: Data/Sync.swift:494
-    fun save(c: Sync.Creds) {   // ios: Data/Sync.swift:495
-        delete()   // ios: Data/Sync.swift:496
-        val a = runCatching { NJson.encodeToString(Sync.Creds.serializer(), c).encodeToByteArray() }.getOrNull() ?: return   // ios: Data/Sync.swift:497,498
-        KeyVault.add(q, a)   // ios: Data/Sync.swift:500
+object Keychain {   // ios: Data/Sync.swift:494
+    private val q = KeyVault.slot(service = "com.naeilo.sync", account = "esync")   // ios: Data/Sync.swift:495
+    fun save(c: Sync.Creds) {   // ios: Data/Sync.swift:496
+        delete()   // ios: Data/Sync.swift:497
+        val a = runCatching { NJson.encodeToString(Sync.Creds.serializer(), c).encodeToByteArray() }.getOrNull() ?: return   // ios: Data/Sync.swift:498,499
+        KeyVault.add(q, a)   // ios: Data/Sync.swift:501
     }
-    fun load(): Sync.Creds? {   // ios: Data/Sync.swift:502
-        val d = KeyVault.read(q) ?: return null   // ios: Data/Sync.swift:503,504,505,506,507
-        return runCatching { NJson.decodeFromString(Sync.Creds.serializer(), d.decodeToString()) }.getOrNull()   // ios: Data/Sync.swift:508
+    fun load(): Sync.Creds? {   // ios: Data/Sync.swift:503
+        val d = KeyVault.read(q) ?: return null   // ios: Data/Sync.swift:504,505,506,507,508
+        return runCatching { NJson.decodeFromString(Sync.Creds.serializer(), d.decodeToString()) }.getOrNull()   // ios: Data/Sync.swift:509
     }
-    fun delete() { KeyVault.delete(q) }   // ios: Data/Sync.swift:510
+    fun delete() { KeyVault.delete(q) }   // ios: Data/Sync.swift:511
 }

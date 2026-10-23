@@ -761,7 +761,7 @@ fun GoalSetView(m: AppModel, fromSettings: Boolean = false) {
     val ok = m.gK > 0 && m.gY >= 1   // ios: Views/GoalViews.swift:427
     val teal = Theme.teal; val line = Theme.line
     // 위로 끌면 자판을 내린다 (scrollDismissesKeyboard(.interactively))
-    Box(Modifier.fillMaxSize().background(Theme.bg).hideKeyboardOnDrag(focus)) {   // ios: Views/GoalViews.swift:499,500 (inline 제목 막대는 NavStack 몫)
+    Box(Modifier.fillMaxSize().background(Theme.bg).hideKeyboardOnDrag(focus)) {   // ios: Views/GoalViews.swift:499,500,502 (inline 제목 막대는 NavStack 몫)
         PinnedLayout(header = {   // ios: Views/GoalViews.swift:428
             // ios: Views/GoalViews.swift:429,448
             Column(Modifier.fillMaxWidth().background(Theme.card).bottomLine(line).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1052,10 +1052,10 @@ fun GoalTaxView(m: AppModel) {
 
 // ── 3개월 인터미션 ──
 
-// ios: Views/GoalViews.swift:703,704,705
+// ios: Views/GoalViews.swift:703,704,705,706
 @Composable
 fun GoalIntermissionView(m: AppModel) {
-    val fixed = m.gWeeks; val i = min(fixed.size, 2); @Suppress("UNUSED_VARIABLE") val step = AppModel.goalMonthSteps[i]   // ios: Views/GoalViews.swift:706,707
+    val fixed = m.gWeeks   // ios: Views/GoalViews.swift:707
     // ios: Views/GoalViews.swift:708 (도착까지 개월은 경로 계산이라 값이 바뀔 때만)
     @Suppress("UNUSED_VARIABLE") val now = m.goalSaved; val eta by remember(m) { derivedStateOf { m.monthsTo(from = m.goalSaved, monthly = m.gM) } }; val plan = (m.gY * 12 - fixed.size - (if (m.gWeekCur == null) 0 else 1)).toDouble()
     val last = m.gWeekCur ?: fixed.lastOrNull()   // ios: Views/GoalViews.swift:709

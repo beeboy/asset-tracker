@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -103,6 +104,7 @@ import com.naeilo.app.ui.Screen
 import com.naeilo.app.ui.Segmented
 import com.naeilo.app.ui.Sym
 import com.naeilo.app.ui.T
+import com.naeilo.app.ui.FitText
 import com.naeilo.app.ui.Theme
 import com.naeilo.app.ui.ToggleRow
 import com.naeilo.app.ui.appFont
@@ -524,159 +526,176 @@ fun WidgetPickView(m: AppModel, cover: Boolean = false) {   // cover: 홈 [위�
     val sel = who ?: m.homeFriendShown   // ios: Views/SettingsDetail.swift:375
     val fi = Shelter.friends.indexOfFirst { it.id == sel }.let { if (it < 0) 0 else it }; val on = if (sel == "me") m.meUnlocked else m.friendOn(fi)   // ios: Views/SettingsDetail.swift:376
 
-    // ios: Views/SettingsDetail.swift:482
+    // ios: Views/SettingsDetail.swift:491
     @Composable
-    fun androidx.compose.foundation.layout.RowScope.Stat(k: String, v: String) {
-        // ios: Views/SettingsDetail.swift:483,487,488,489
-        Column(Modifier.weight(1f).background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            T(k, style = appFont(12f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:484
-            T(v + " 열림", style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:485
+    fun androidx.compose.foundation.layout.RowScope.Stat(k: String, v: String, note: String? = null) {
+        // ios: Views/SettingsDetail.swift:492,497,498,499,500 (fillMaxHeight: 두 칸 높이를 같게)
+        Column(Modifier.weight(1f).fillMaxHeight().background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            T(k, style = appFont(12f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:493
+            T(v + " 열림", style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:494
+            if (note != null) FitText(note, appFont(11f), 0.8f, maxLines = 1, color = Theme.sub)   // ios: Views/SettingsDetail.swift:495
         }
     }
 
-    // ios: Views/SettingsDetail.swift:492,493
+    // ios: Views/SettingsDetail.swift:503
+    @Composable
+    fun AddStep(n: Int, icon: String, t: String) {
+        // ios: Views/SettingsDetail.swift:504,508
+        Row(Modifier.semantics(mergeDescendants = true) {}, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.width(24.dp), contentAlignment = Alignment.Center) { Sym(icon, 16f, Theme.teal) }   // ios: Views/SettingsDetail.swift:505
+            T("$n. " + tr(t), style = appFont(14f))   // ios: Views/SettingsDetail.swift:506
+        }
+    }
+
+    // ios: Views/SettingsDetail.swift:511,512
     @Composable
     fun Caption(t: String, v: @Composable () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { v(); T(t, style = appFont(12f), color = Theme.sub) }
     }
 
     /** 큰 위젯 크기 그대로 (338×354 를 폭에 맞춰 줄인다) */
-    // ios: Views/SettingsDetail.swift:497
+    // ios: Views/SettingsDetail.swift:516
     @Composable
     @Suppress("unused")
     fun LargeTile(e: CharEntry, w: androidx.compose.ui.unit.Dp, v: @Composable () -> Unit) {
-        val k = min(1f, w.value / 338)   // ios: Views/SettingsDetail.swift:498
-        // ios: Views/SettingsDetail.swift:499,504,505
+        val k = min(1f, w.value / 338)   // ios: Views/SettingsDetail.swift:517
+        // ios: Views/SettingsDetail.swift:518,523,524
         Box(Modifier.size(w, (354 * k).dp).clip(RoundedCornerShape((22 * k).dp)), contentAlignment = Alignment.Center) {
-            CharBG(c = e.c, locked = e.locked, dark = dark)   // ios: Views/SettingsDetail.swift:500
-            // ios: Views/SettingsDetail.swift:501,502
+            CharBG(c = e.c, locked = e.locked, dark = dark)   // ios: Views/SettingsDetail.swift:519
+            // ios: Views/SettingsDetail.swift:520,521
             Box(Modifier.requiredSize(338.dp, 354.dp).graphicsLayer { scaleX = k; scaleY = k }.padding(16.dp)) { CompositionLocalProvider(LocalCharDark provides dark) { Fg(Color.White) { v() } } }
         }
     }
 
     /** 위젯 크기 그대로 (바탕 + 위젯 안쪽 여백) */
-    // ios: Views/SettingsDetail.swift:509
+    // ios: Views/SettingsDetail.swift:528
     @Composable
     fun Tile(e: CharEntry, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp, v: @Composable () -> Unit) {
-        val k = min(1f, h.value / 158)   // ios: Views/SettingsDetail.swift:510
-        // ios: Views/SettingsDetail.swift:511,516,517
+        val k = min(1f, h.value / 158)   // ios: Views/SettingsDetail.swift:529
+        // ios: Views/SettingsDetail.swift:530,535,536
         Box(Modifier.size(w, h).clip(RoundedCornerShape((22 * k).dp)), contentAlignment = Alignment.Center) {
-            CharBG(c = e.c, locked = e.locked, dark = dark)   // ios: Views/SettingsDetail.swift:512
-            // ios: Views/SettingsDetail.swift:513,514
+            CharBG(c = e.c, locked = e.locked, dark = dark)   // ios: Views/SettingsDetail.swift:531
+            // ios: Views/SettingsDetail.swift:532,533
             Box(Modifier.requiredSize((w.value / k).dp, 158.dp).graphicsLayer { scaleX = k; scaleY = k }.padding(16.dp)) { CompositionLocalProvider(LocalCharDark provides dark) { Fg(Color.White) { v() } } }
         }
     }
 
-    // ios: Views/SettingsDetail.swift:377,476,478,479
+    // ios: Views/SettingsDetail.swift:377,485,487,488
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState())) {
         Screen {
             // ios: Views/SettingsDetail.swift:378
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (cover) com.naeilo.app.ui.wave.GameHeader(title = "위젯", dismiss = { m.widgetsOpen = false }) else T("위젯", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:379
-                // ios: Views/SettingsDetail.swift:381 (394 '홈 화면 길게 누르기 → +' 는 안드로이드 위젯 추가 순서로: 예외)
-                T("미션을 마치면 열려요. 홈 화면 길게 누르기 → 위젯 → naeilo", style = appFont(14f), color = Theme.sub)
-                // ios: Views/SettingsDetail.swift:382
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Stat("기본 위젯", "${base.count { it.ok }}/${base.size}")   // ios: Views/SettingsDetail.swift:383
-                    Stat("인물", "$friendsOn/${Shelter.friends.size}")   // ios: Views/SettingsDetail.swift:384
+                // 홈 화면에 위젯 넣는 단계 (단계마다 기호 하나). 안드로이드 런처 순서로 2·4·5단계 글이 다르다 (예외 목록)
+                // ios: Views/SettingsDetail.swift:381,388,389,390
+                Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AddStep(1, "hand.tap", "홈 화면 빈 곳 길게 누르기")   // ios: Views/SettingsDetail.swift:382
+                    AddStep(2, "plus.square", "\"위젯\" 누르기")
+                    AddStep(3, "magnifyingglass", "\"naeilo\" 검색")   // ios: Views/SettingsDetail.swift:384
+                    AddStep(4, "square.grid.2x2", "크기 고르고 \"추가\"")
+                    AddStep(5, "person.crop.square", "인물 바꾸기: 위젯 길게 눌러 \"설정\"")
+                }
+                // ios: Views/SettingsDetail.swift:391,395 (IntrinsicSize.Min: 두 칸 높이를 같게)
+                Row(Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Stat("기본 위젯", "${base.count { it.ok }}/${base.size}", note = "미션을 마치면 열려요")   // ios: Views/SettingsDetail.swift:392
+                    Stat("인물", "$friendsOn/${Shelter.friends.size}")   // ios: Views/SettingsDetail.swift:393
                 }
 
                 // 인물 위젯: 만난 인물을 고르면 여덟 가지 모양을 바로 본다 (못 만난 친구는 목록에 없다)
-                T("인물 위젯", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:388
-                // ios: Views/SettingsDetail.swift:389,390
+                T("인물 위젯", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:398
+                // ios: Views/SettingsDetail.swift:399,400
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    // ios: Views/SettingsDetail.swift:391
+                    // ios: Views/SettingsDetail.swift:401
                     Shelter.friends.withIndex().filter { m.friendOn(it.index) }.forEach { (i, f) ->
-                        val ok = m.friendOn(i); val cur = f.id == sel   // ios: Views/SettingsDetail.swift:392
-                        // ios: Views/SettingsDetail.swift:393,399,400,401,403,404
+                        val ok = m.friendOn(i); val cur = f.id == sel   // ios: Views/SettingsDetail.swift:402
+                        // ios: Views/SettingsDetail.swift:403,409,410,411,413,414
                         Column(
                             Modifier.plainClickable { who = f.id; prefs.edit().putString("cpWho", f.id).apply() }
                                 .semantics(mergeDescendants = true) { contentDescription = tr(if (ok) f.name else "잠긴 인물, 인터미션 ${i}주차") }
                                 .size(72.dp, 86.dp)
                                 .background(if (cur) Theme.mintBg else Theme.card, RoundedCornerShape(12.dp))
                                 .border(2.dp, if (cur) Theme.teal else Theme.border, RoundedCornerShape(12.dp)),
-                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),   // ios: Views/SettingsDetail.swift:394
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),   // ios: Views/SettingsDetail.swift:404
                         ) {
-                            PixelN((if (ok) "spr_" else "sil_") + f.id, width = 30.dp, height = 42.dp)   // ios: Views/SettingsDetail.swift:395
-                            T(if (ok) f.name else "???", style = appFont(12f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:396
-                            T(if (ok) (if (f.id == m.homeFriendShown) "홈에 있음" else "만남") else "인터미션 ${i}주차", style = appFont(10f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:397
+                            PixelN((if (ok) "spr_" else "sil_") + f.id, width = 30.dp, height = 42.dp)   // ios: Views/SettingsDetail.swift:405
+                            T(if (ok) f.name else "???", style = appFont(12f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:406
+                            T(if (ok) (if (f.id == m.homeFriendShown) "홈에 있음" else "만남") else "인터미션 ${i}주차", style = appFont(10f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:407
                         }
                     }
                     // 내 캐릭터: 열렸을 때만
-                    // ios: Views/SettingsDetail.swift:407
+                    // ios: Views/SettingsDetail.swift:417
                     if (m.meUnlocked) {
-                        // ios: Views/SettingsDetail.swift:408,414,415,416,418
+                        // ios: Views/SettingsDetail.swift:418,424,425,426,428
                         Column(
                             Modifier.plainClickable { who = "me"; prefs.edit().putString("cpWho", "me").apply() }
                                 .size(72.dp, 86.dp)
                                 .background(if (sel == "me") Theme.mintBg else Theme.card, RoundedCornerShape(12.dp))
                                 .border(2.dp, if (sel == "me") Theme.teal else Theme.border, RoundedCornerShape(12.dp)),
-                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),   // ios: Views/SettingsDetail.swift:409
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),   // ios: Views/SettingsDetail.swift:419
                         ) {
-                            CharPixel(id = "me", width = 30.dp, height = 42.dp)   // ios: Views/SettingsDetail.swift:410
-                            T(m.friendName("me"), style = appFont(12f, FontWeight.Bold), maxLines = 1)   // ios: Views/SettingsDetail.swift:411
-                            T(if (m.homeFriendShown == "me") "홈에 있음" else "내 캐릭터", style = appFont(10f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:412
+                            CharPixel(id = "me", width = 30.dp, height = 42.dp)   // ios: Views/SettingsDetail.swift:420
+                            T(m.friendName("me"), style = appFont(12f, FontWeight.Bold), maxLines = 1)   // ios: Views/SettingsDetail.swift:421
+                            T(if (m.homeFriendShown == "me") "홈에 있음" else "내 캐릭터", style = appFont(10f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:422
                         }
                     }
                 }
-                // ios: Views/SettingsDetail.swift:422
+                // ios: Views/SettingsDetail.swift:432
                 Segmented(listOf(false to "기본", true to "다크"), dark, { dark = it; prefs.edit().putBoolean("cpDark", it).apply() })
-                val c = WChar.of(if (on) sel else "seri"); val e = CharEntry(r = reward, c = c, locked = false)   // ios: Views/SettingsDetail.swift:423
-                // ios: Views/SettingsDetail.swift:424,445 (폭 : 높이 = 1 : 2.3)
+                val c = WChar.of(if (on) sel else "seri"); val e = CharEntry(r = reward, c = c, locked = false)   // ios: Views/SettingsDetail.swift:433
+                // ios: Views/SettingsDetail.swift:434,455 (폭 : 높이 = 1 : 2.3)
                 BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1 / 2.3f)) {
-                    val w = (maxWidth - 12.dp) / 2   // ios: Views/SettingsDetail.swift:425
-                    // ios: Views/SettingsDetail.swift:426
+                    val w = (maxWidth - 12.dp) / 2   // ios: Views/SettingsDetail.swift:435
+                    // ios: Views/SettingsDetail.swift:436
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // ios: Views/SettingsDetail.swift:427
+                        // ios: Views/SettingsDetail.swift:437
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Caption("자산 언덕") { Tile(e, w = w, h = w) { HillCharView(e = e) } }   // ios: Views/SettingsDetail.swift:428
-                            Caption("본전 사다리") { Tile(e, w = w, h = w) { LadderCharView(e = e) } }   // ios: Views/SettingsDetail.swift:429
+                            Caption("자산 언덕") { Tile(e, w = w, h = w) { HillCharView(e = e) } }   // ios: Views/SettingsDetail.swift:438
+                            Caption("본전 사다리") { Tile(e, w = w, h = w) { LadderCharView(e = e) } }   // ios: Views/SettingsDetail.swift:439
                         }
-                        // ios: Views/SettingsDetail.swift:431
+                        // ios: Views/SettingsDetail.swift:441
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Caption("블록 탑") { Tile(e, w = w, h = w) { TowerCharView(e = e) } }   // ios: Views/SettingsDetail.swift:432
-                            Caption("전광판") { Tile(e, w = w, h = w) { BoardCharView(e = e) } }   // ios: Views/SettingsDetail.swift:433
+                            Caption("블록 탑") { Tile(e, w = w, h = w) { TowerCharView(e = e) } }   // ios: Views/SettingsDetail.swift:442
+                            Caption("전광판") { Tile(e, w = w, h = w) { BoardCharView(e = e) } }   // ios: Views/SettingsDetail.swift:443
                         }
-                        // ios: Views/SettingsDetail.swift:435
+                        // ios: Views/SettingsDetail.swift:445
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Caption("키 재기") { Tile(e, w = w, h = w) { HeightCharView(e = e) } }   // ios: Views/SettingsDetail.swift:436
-                            Caption("퍼즐 맞추기") { Tile(e, w = w, h = w) { PuzzleCharView(e = e) } }   // ios: Views/SettingsDetail.swift:437
+                            Caption("키 재기") { Tile(e, w = w, h = w) { HeightCharView(e = e) } }   // ios: Views/SettingsDetail.swift:446
+                            Caption("퍼즐 맞추기") { Tile(e, w = w, h = w) { PuzzleCharView(e = e) } }   // ios: Views/SettingsDetail.swift:447
                         }
-                        // ios: Views/SettingsDetail.swift:439
+                        // ios: Views/SettingsDetail.swift:449
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Caption("꽃밭") { Tile(e, w = w, h = w) { GardenCharView(e = e) } }   // ios: Views/SettingsDetail.swift:440
-                            Caption("줄다리기") { Tile(e, w = w, h = w) { TugCharView(e = e) } }   // ios: Views/SettingsDetail.swift:441
+                            Caption("꽃밭") { Tile(e, w = w, h = w) { GardenCharView(e = e) } }   // ios: Views/SettingsDetail.swift:450
+                            Caption("줄다리기") { Tile(e, w = w, h = w) { TugCharView(e = e) } }   // ios: Views/SettingsDetail.swift:451
                         }
                     }
                 }
-                Note("인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요.")   // ios: Views/SettingsDetail.swift:446
 
                 // 기본 위젯: 앱 시작 단계로 열림
-                T("기본 위젯", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:449
-                // ios: Views/SettingsDetail.swift:450,467,468
+                T("기본 위젯", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:458
+                // ios: Views/SettingsDetail.swift:459,476,477
                 Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    // ios: Views/SettingsDetail.swift:451
+                    // ios: Views/SettingsDetail.swift:460
                     base.forEachIndexed { i, w ->
-                        if (i > 0) HDivider(Theme.line)   // ios: Views/SettingsDetail.swift:452
-                        // ios: Views/SettingsDetail.swift:453,463,464
+                        if (i > 0) HDivider(Theme.line)   // ios: Views/SettingsDetail.swift:461
+                        // ios: Views/SettingsDetail.swift:462,472,473
                         Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}.defaultMinSize(minHeight = 56.dp).padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            // ios: Views/SettingsDetail.swift:454,455
+                            // ios: Views/SettingsDetail.swift:463,464
                             Box(Modifier.width(24.dp), contentAlignment = Alignment.Center) { Sym(if (w.ok) "checkmark.circle.fill" else "lock.fill", 18f, if (w.ok) Theme.teal else Theme.muted, scaled = false) }
-                            // ios: Views/SettingsDetail.swift:456,461
+                            // ios: Views/SettingsDetail.swift:465,470
                             Column(Modifier.weight(1f).padding(end = 0.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                T(w.name, style = appFont(16f, FontWeight.SemiBold), color = if (w.ok) Theme.ink else Theme.muted)   // ios: Views/SettingsDetail.swift:457
-                                T(w.size + " · " + (if (w.ok) w.desc else w.how), style = appFont(12f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:458,459
+                                T(w.name, style = appFont(16f, FontWeight.SemiBold), color = if (w.ok) Theme.ink else Theme.muted)   // ios: Views/SettingsDetail.swift:466
+                                T(w.size + " · " + (if (w.ok) w.desc else w.how), style = appFont(12f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:467,468
                             }
                         }
                     }
                 }
-                Note("못 받은 위젯은 잠긴 모습으로 보여요.")   // ios: Views/SettingsDetail.swift:469
+                Note("못 받은 위젯은 잠긴 모습으로 보여요.")   // ios: Views/SettingsDetail.swift:478
 
                 // 금액 가리기: 위젯에서 금액을 누르면 •••• 로 가려진다. 함께/따로는 Store.hideEach
-                T("금액 가리기", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:472
-                AmountHideCard()   // ios: Views/SettingsDetail.swift:473
-                Note("금액을 누르면 가려지고, 다시 누르면 보여요. 잠금화면 위젯은 폰이 잠겨 있는 동안 금액을 가리고, 얼굴이나 지문으로 풀면 보여요.")   // ios: Views/SettingsDetail.swift:474
+                T("금액 가리기", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:481
+                AmountHideCard()   // ios: Views/SettingsDetail.swift:482
+                Note("금액을 누르면 가려지고, 다시 누르면 보여요. 잠금화면 위젯은 폰이 잠겨 있는 동안 금액을 가리고, 얼굴이나 지문으로 풀면 보여요.")   // ios: Views/SettingsDetail.swift:483
             }
         }
     }
@@ -686,86 +705,86 @@ fun WidgetPickView(m: AppModel, cover: Boolean = false) {   // cover: 홈 [위�
 
 /** 세금 규칙 화면의 셈 (숫자 맞추기 E 가 같이 쓴다) */
 object TaxCalc {
-    fun tax(G: Double): Double = max(0.0, G - 250) * 0.22   // ios: Views/SettingsDetail.swift:528
-    fun won0(x: Double): String = cformat("%,d", x.roundToLong()) + "만원"   // ios: Views/SettingsDetail.swift:529
+    fun tax(G: Double): Double = max(0.0, G - 250) * 0.22   // ios: Views/SettingsDetail.swift:547
+    fun won0(x: Double): String = cformat("%,d", x.roundToLong()) + "만원"   // ios: Views/SettingsDetail.swift:548
 }
 
-// ios: Views/SettingsDetail.swift:523,524,527
+// ios: Views/SettingsDetail.swift:542,543,546
 @Composable
 fun TaxRulesView(m: AppModel) {
-    var gain by remember { mutableStateOf(m.taxGain.toInt().toString()) }   // ios: Views/SettingsDetail.swift:525,573
+    var gain by remember { mutableStateOf(m.taxGain.toInt().toString()) }   // ios: Views/SettingsDetail.swift:544,592
     val G = m.taxGain; val tax = TaxCalc.tax(G)
     val won0 = TaxCalc::won0
-    // ios: Views/SettingsDetail.swift:530
+    // ios: Views/SettingsDetail.swift:549
     SettingsPage(title = "세금 규칙") {
         // 세금 규칙은 아직 대한민국 거주자만: 다른 나라에 살면 준비 중이라고 알리고 한국 기준을 보여 준다
-        // ios: Views/SettingsDetail.swift:532,533,537,538,539
+        // ios: Views/SettingsDetail.swift:551,552,556,557,558
         Row(Modifier.plainClickable { m.settingsPath = m.settingsPath + SettingsRoute.residence }.defaultMinSize(minHeight = 40.dp).background(Theme.teal, CapsuleShape).padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            T("${m.residenceName} 거주자", style = appFont(14f, FontWeight.Bold), color = Color.White)   // ios: Views/SettingsDetail.swift:534
-            Sym("chevron.right", 12f, Color.White)   // ios: Views/SettingsDetail.swift:535
+            T("${m.residenceName} 거주자", style = appFont(14f, FontWeight.Bold), color = Color.White)   // ios: Views/SettingsDetail.swift:553
+            Sym("chevron.right", 12f, Color.White)   // ios: Views/SettingsDetail.swift:554
         }
-        // ios: Views/SettingsDetail.swift:540
+        // ios: Views/SettingsDetail.swift:559
         if (m.residence != "KR") {
-            T("${m.residenceName} 세금 규칙은 준비 중이에요. 아래는 대한민국 기준이에요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:541
+            T("${m.residenceName} 세금 규칙은 준비 중이에요. 아래는 대한민국 기준이에요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:560
         }
-        // ios: Views/SettingsDetail.swift:543,548,549
+        // ios: Views/SettingsDetail.swift:562,567,568
         Fg(Color.White) {
             Column(Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(20.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                T("내년 5월에 낼 해외주식 세금 (예상)", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/SettingsDetail.swift:544
-                T(won0(tax), style = appFont(30f, FontWeight.Bold), roll = won0(tax))   // ios: Views/SettingsDetail.swift:545
-                T(if (G > 250) "(${won0(G)} − 기본공제 250만원) × 22%" else "이익이 250만원 이하라 낼 세금이 없어요", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/SettingsDetail.swift:546
+                T("내년 5월에 낼 해외주식 세금 (예상)", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/SettingsDetail.swift:563
+                T(won0(tax), style = appFont(30f, FontWeight.Bold), roll = won0(tax))   // ios: Views/SettingsDetail.swift:564
+                T(if (G > 250) "(${won0(G)} − 기본공제 250만원) × 22%" else "이익이 250만원 이하라 낼 세금이 없어요", style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/SettingsDetail.swift:565
             }
         }
-        // ios: Views/SettingsDetail.swift:550
+        // ios: Views/SettingsDetail.swift:569
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            T("올해 해외주식 실현 이익 (만원)", style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/SettingsDetail.swift:551
-            // ios: Views/SettingsDetail.swift:552,553,554,555,556,557
+            T("올해 해외주식 실현 이익 (만원)", style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/SettingsDetail.swift:570
+            // ios: Views/SettingsDetail.swift:571,572,573,574,575,576
             InputField(gain, { v -> gain = v; m.taxGain = max(0.0, v.toDoubleOrNull() ?: 0.0) }, "",
                 Modifier.background(Theme.card, RoundedCornerShape(10.dp)).border(2.dp, Theme.border, RoundedCornerShape(10.dp)).defaultMinSize(minHeight = 48.dp).padding(horizontal = 12.dp)
                     .semantics { contentDescription = tr("올해 해외주식 실현 이익 (만원)") },
                 number = true, style = appFont(18f, FontWeight.SemiBold))
         }
-        // ios: Views/SettingsDetail.swift:559
+        // ios: Views/SettingsDetail.swift:578
         Card {
-            // ios: Views/SettingsDetail.swift:560,561,562,563
+            // ios: Views/SettingsDetail.swift:579,580,581,582
             listOf("해외주식 양도소득세" to "한 해 손익 합계에서 250만원 넘는 부분에 22%. 다음 해 5월 신고.",
                    "국내 상장주식" to "대주주가 아니면 양도세 없음. 증권거래세만.",
                    "배당" to "국내 15.4%, 미국 15% (현지 원천징수).",
                    "손실 상계" to "같은 해 이익과 손실을 합쳐서 계산해요.").forEach { (t, v) ->
-                // ios: Views/SettingsDetail.swift:564,568
+                // ios: Views/SettingsDetail.swift:583,587
                 Column(Modifier.padding(vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    T(t, style = appFont(14f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:565
-                    T(v, style = appFont(13f).ls(2f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:566
+                    T(t, style = appFont(14f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:584
+                    T(v, style = appFont(13f).ls(2f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:585
                 }
             }
         }
-        Note("계산 예시이며 세무 상담이 아닙니다.")   // ios: Views/SettingsDetail.swift:571
+        Note("계산 예시이며 세무 상담이 아닙니다.")   // ios: Views/SettingsDetail.swift:590
     }
 }
 
 // MARK: 사용 방법 (인터미션 뒤 한 번 보인 안내를 보관)
 
-// ios: Views/SettingsDetail.swift:579,580
+// ios: Views/SettingsDetail.swift:598,599
 @Composable
 fun HowToView() {
-    // ios: Views/SettingsDetail.swift:581
+    // ios: Views/SettingsDetail.swift:600
     SettingsPage(title = "사용 방법") {
-        // ios: Views/SettingsDetail.swift:582,583,584,585,586
+        // ios: Views/SettingsDetail.swift:601,602,603,604,605
         listOf(Triple("위젯", "위젯", "아침에 위젯 속 친구가 알려 주는 본전까지 남은 % 보기"),
                Triple("홈", "리마인드", "달성·새 소식은 친구 말풍선으로, 3일 안의 일정은 노란 띠로 떠요. 지난 소식은 ‘새 소식’에 30일 남아요."),
                Triple("알림", "알림", "비중이 계획에서 5%p 넘게 벗어난 날만 울려요."),
                Triple("미션", "1000칸", "본전을 1000칸으로 나눠 채워요."),
                Triple("미션", "주간 예보", "월요일에 금요일 범위를 적고, 금요일 종가로 도장을 찍어요.")).forEach { (w, t, v) ->
-            // ios: Views/SettingsDetail.swift:587,596,597,598
+            // ios: Views/SettingsDetail.swift:606,615,616,617
             Row(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)).padding(14.dp),
                 verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                // ios: Views/SettingsDetail.swift:588,589
+                // ios: Views/SettingsDetail.swift:607,608
                 T(w, Modifier.background(Theme.mint, CapsuleShape).padding(horizontal = 8.dp, vertical = 3.dp), style = appFont(11f, FontWeight.Bold), color = Theme.inkFixed)
-                // ios: Views/SettingsDetail.swift:590,594
+                // ios: Views/SettingsDetail.swift:609,613
                 Column(Modifier.weight(1f).padding(end = 0.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    T(t, style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:591
-                    T(v, style = appFont(14f).ls(2f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:592
+                    T(t, style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:610
+                    T(v, style = appFont(14f).ls(2f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:611
                 }
             }
         }
@@ -774,80 +793,80 @@ fun HowToView() {
 
 // MARK: 루트 바꾸기
 
-// ios: Views/SettingsDetail.swift:606,607,610
+// ios: Views/SettingsDetail.swift:625,626,629
 @Composable
 fun RouteView(m: AppModel) {
-    var pick by remember { mutableStateOf("") }   // ios: Views/SettingsDetail.swift:608
-    // ios: Views/SettingsDetail.swift:611
+    var pick by remember { mutableStateOf("") }   // ios: Views/SettingsDetail.swift:627
+    // ios: Views/SettingsDetail.swift:630
     val cards = listOf(Triple("minus", "회복 루트", "마이너스") to "본전까지 · 원인 진단 · 계획 4안 · 절세 · 4주 인터미션",
-                       Triple("plus", "목표 루트 · 플러스", "플러스") to "지금 → 목표 금액 · 구성 비교 · 비중 세금 · 3개월 인터미션",   // ios: Views/SettingsDetail.swift:612
-                       Triple("none", "목표 루트 · 시작 전", "시작 전") to "매달 적립으로 첫 목표 · 구성 고르기 · 3개월 인터미션")   // ios: Views/SettingsDetail.swift:613
-    val cur = if (m.route == Route.recover) "minus" else if (m.route == Route.plus) "plus" else "none"   // ios: Views/SettingsDetail.swift:614
-    val sel = if (pick.isEmpty()) cur else pick   // ios: Views/SettingsDetail.swift:615
-    // ios: Views/SettingsDetail.swift:616
+                       Triple("plus", "목표 루트 · 플러스", "플러스") to "지금 → 목표 금액 · 구성 비교 · 비중 세금 · 3개월 인터미션",   // ios: Views/SettingsDetail.swift:631
+                       Triple("none", "목표 루트 · 시작 전", "시작 전") to "매달 적립으로 첫 목표 · 구성 고르기 · 3개월 인터미션")   // ios: Views/SettingsDetail.swift:632
+    val cur = if (m.route == Route.recover) "minus" else if (m.route == Route.plus) "plus" else "none"   // ios: Views/SettingsDetail.swift:633
+    val sel = if (pick.isEmpty()) cur else pick   // ios: Views/SettingsDetail.swift:634
+    // ios: Views/SettingsDetail.swift:635
     SettingsPage(title = "루트 바꾸기") {
-        FriendSay(m, key = "route", fallback = "길을 고르면 아래 그래프가 바뀌어요.")   // ios: Views/SettingsDetail.swift:617
-        // ios: Views/SettingsDetail.swift:618
+        FriendSay(m, key = "route", fallback = "길을 고르면 아래 그래프가 바뀌어요.")   // ios: Views/SettingsDetail.swift:636
+        // ios: Views/SettingsDetail.swift:637
         if (m.route == Route.recover && m.total >= m.cost) {
-            // ios: Views/SettingsDetail.swift:619,620,621
+            // ios: Views/SettingsDetail.swift:638,639,640
             T("본전 넘음 · 목표 루트 · 플러스로 바꿀 수 있어요", Modifier.fillMaxWidth().background(hexD(0xE3F4EC, 0x163226), RoundedCornerShape(12.dp)).padding(12.dp),
               style = appFont(14f, FontWeight.SemiBold), color = hexD(0x0B5E40, 0x7FD8B0))
         }
-        // ios: Views/SettingsDetail.swift:623
+        // ios: Views/SettingsDetail.swift:642
         cards.forEach { (head, sub) ->
             val (k, name, tag) = head
-            val on = sel == k   // ios: Views/SettingsDetail.swift:624
-            // ios: Views/SettingsDetail.swift:625,626,634,635,636,638
+            val on = sel == k   // ios: Views/SettingsDetail.swift:643
+            // ios: Views/SettingsDetail.swift:644,645,653,654,655,657
             Column(
                 Modifier.fillMaxWidth().plainClickable { pick = k }
                     .background(if (on) Theme.mintBg else Theme.card, RoundedCornerShape(16.dp)).border(2.dp, if (on) Theme.teal else Theme.border, RoundedCornerShape(16.dp)).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                // ios: Views/SettingsDetail.swift:627,629
+                // ios: Views/SettingsDetail.swift:646,648
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    T(name, Modifier.weight(1f), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:628
-                    T(if (k == cur) "지금 루트" else tag, style = appFont(12f, FontWeight.Bold), color = if (k == cur) Theme.teal else Theme.sub)   // ios: Views/SettingsDetail.swift:630
+                    T(name, Modifier.weight(1f), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:647
+                    T(if (k == cur) "지금 루트" else tag, style = appFont(12f, FontWeight.Bold), color = if (k == cur) Theme.teal else Theme.sub)   // ios: Views/SettingsDetail.swift:649
                 }
-                T(sub, style = appFont(14f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:632
+                T(sub, style = appFont(14f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:651
             }
         }
-        // ios: Views/SettingsDetail.swift:640
+        // ios: Views/SettingsDetail.swift:659
         PrimaryButton(title = if (sel == cur) "지금 루트" else "이 루트로", color = if (sel == cur) Theme.muted else Theme.teal) {
-            if (sel == cur) return@PrimaryButton   // ios: Views/SettingsDetail.swift:641
-            m.switchRoute(if (sel == "minus") Route.recover else if (sel == "plus") Route.plus else Route.novice)   // ios: Views/SettingsDetail.swift:642
-            pick = ""; m.settingsPath = emptyList()   // ios: Views/SettingsDetail.swift:643
+            if (sel == cur) return@PrimaryButton   // ios: Views/SettingsDetail.swift:660
+            m.switchRoute(if (sel == "minus") Route.recover else if (sel == "plus") Route.plus else Route.novice)   // ios: Views/SettingsDetail.swift:661
+            pick = ""; m.settingsPath = emptyList()   // ios: Views/SettingsDetail.swift:662
         }
-        Note("바꿔도 받은 것은 그대로")   // ios: Views/SettingsDetail.swift:645
+        Note("바꿔도 받은 것은 그대로")   // ios: Views/SettingsDetail.swift:664
         // 첫 질문 화면처럼: 고른 루트에 따라 바뀌는 예시 3년 그래프
-        StartForecastCard(route = if (sel == "minus") Route.recover else if (sel == "plus") Route.plus else Route.novice)   // ios: Views/SettingsDetail.swift:647
+        StartForecastCard(route = if (sel == "minus") Route.recover else if (sel == "plus") Route.plus else Route.novice)   // ios: Views/SettingsDetail.swift:666
     }
 }
 
 /** 거주 국가 고르기: 세금 기능만 이 값을 따른다 (증권사 연결은 나라와 상관없이 누구나) */
-// ios: Views/SettingsDetail.swift:653,654,655,662
+// ios: Views/SettingsDetail.swift:672,673,674,681
 @Composable
 fun ResidenceView(m: AppModel) {
-    var q by remember { mutableStateOf("") }   // ios: Views/SettingsDetail.swift:656
-    // ios: Views/SettingsDetail.swift:657,658,659,660
+    var q by remember { mutableStateOf("") }   // ios: Views/SettingsDetail.swift:675
+    // ios: Views/SettingsDetail.swift:676,677,678,679
     val all = remember {
         Locale.getISOCountries().map { it to Locale("", it).getDisplayCountry(Locale.getDefault()).ifEmpty { it } }
             .sortedWith(Comparator<Pair<String, String>> { a, b -> java.text.Collator.getInstance(Locale.getDefault()).compare(a.second, b.second) })
     }
     // 검색 전엔 지금 고른 나라를 맨 위에
-    // ios: Views/SettingsDetail.swift:664
+    // ios: Views/SettingsDetail.swift:683
     val rows = if (q.isEmpty()) all.filter { it.first == m.residence } + all.filter { it.first != m.residence } else all.filter { it.second.contains(q, ignoreCase = true) || it.first.contains(q, ignoreCase = true) }
-    // ios: Views/SettingsDetail.swift:677 navigationTitle: 이동 막대 제목과 같은 화면 이름
+    // ios: Views/SettingsDetail.swift:696 navigationTitle: 이동 막대 제목과 같은 화면 이름
     Column(Modifier.fillMaxSize().background(Theme.bg).semantics { paneTitle = tr("거주 국가") }) {
-        // ios: Views/SettingsDetail.swift:676 (검색 칸: 이동 막대 아래 늘 보임)
+        // ios: Views/SettingsDetail.swift:695 (검색 칸: 이동 막대 아래 늘 보임)
         InputField(q, { q = it }, "검색", Modifier.padding(horizontal = 16.dp, vertical = 8.dp).background(Theme.track, RoundedCornerShape(10.dp)).defaultMinSize(minHeight = 36.dp).padding(horizontal = 10.dp))
-        // ios: Views/SettingsDetail.swift:665
+        // ios: Views/SettingsDetail.swift:684
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
             items(rows, key = { it.first }) { r ->
-                // ios: Views/SettingsDetail.swift:666,667,668,669
+                // ios: Views/SettingsDetail.swift:685,686,687,688
                 Row(Modifier.fillMaxWidth().background(Theme.card).plainClickable { m.residence = r.first; m.settingsPath = m.settingsPath.dropLast(1) }.defaultMinSize(minHeight = 44.dp).padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    T(r.second, Modifier.weight(1f), style = appFont(17f), color = Theme.ink)   // ios: Views/SettingsDetail.swift:670,671
-                    if (r.first == m.residence) Sym("checkmark", 17f, Theme.teal)   // ios: Views/SettingsDetail.swift:672
+                    T(r.second, Modifier.weight(1f), style = appFont(17f), color = Theme.ink)   // ios: Views/SettingsDetail.swift:689,690
+                    if (r.first == m.residence) Sym("checkmark", 17f, Theme.teal)   // ios: Views/SettingsDetail.swift:691
                 }
                 HDivider(Theme.line)
             }

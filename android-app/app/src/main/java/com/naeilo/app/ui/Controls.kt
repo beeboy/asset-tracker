@@ -172,6 +172,7 @@ val SF: Map<String, Int> = mapOf(
     "square.grid.3x3.fill" to R.drawable.ms_grid_on, "water.waves" to R.drawable.ms_waves, "gamecontroller" to R.drawable.ms_sports_esports,
     "nosign" to R.drawable.ms_block, "arrow.counterclockwise" to R.drawable.ms_replay,
     "circle.dotted" to R.drawable.ms_radio_button_partial, "play.fill" to R.drawable.ms_play_arrow_fill, "photo" to R.drawable.ms_image,
+    "hand.tap" to R.drawable.ms_touch_app, "plus.square" to R.drawable.ms_add_box, "magnifyingglass" to R.drawable.ms_search, "square.grid.2x2" to R.drawable.ms_grid_view, "person.crop.square" to R.drawable.ms_account_box,
     "pause.fill" to R.drawable.ms_pause_fill, "trophy" to R.drawable.ms_trophy, "star" to R.drawable.ms_star, "heart" to R.drawable.ms_favorite,
     "heart.fill" to R.drawable.ms_favorite_fill, "cloud.fill" to R.drawable.ms_cloud_fill, "circle.fill" to R.drawable.ms_circle_fill,
 )
@@ -651,6 +652,21 @@ fun rememberPrefString(key: String, default: String): androidx.compose.runtime.M
             override var value: String
                 get() = s.value
                 set(v) { s.value = v; prefs.edit().putString(key, v).apply() }
+        }
+    }
+}
+
+/** HStack { … }.lineLimit(1).minimumScaleFactor(k): 한 줄 가로 묶음. 자리가 모자라면 묶음째 k 배까지 줄인다 */
+@Composable
+fun FitRow(minScale: Float, modifier: Modifier = Modifier, spacing: Dp = 0.dp, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.SubcomposeLayout(modifier) { c ->
+        val p = subcompose(Unit) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing), verticalAlignment = Alignment.CenterVertically) { content() }
+        }.first().measure(androidx.compose.ui.unit.Constraints())
+        val k = if (c.hasBoundedWidth && p.width > c.maxWidth) maxOf(minScale, c.maxWidth.toFloat() / p.width) else 1f
+        val w = minOf((p.width * k).toInt(), if (c.hasBoundedWidth) c.maxWidth else Int.MAX_VALUE)
+        layout(w, (p.height * k).toInt()) {
+            p.placeWithLayer(0, 0) { scaleX = k; scaleY = k; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f) }
         }
     }
 }

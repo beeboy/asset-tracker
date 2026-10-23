@@ -46,41 +46,41 @@ enum class Period(val raw: String) {
         when (this) { d1, w1 -> 0.0; m1 -> 1.0 / 36; m3 -> 1.0 / 12; m6 -> 1.0 / 6; y1 -> 1.0 / 3; y3 -> 1.0 }
 }
 
-// ios: Data/Services.swift:29
+// ios: Data/Services.swift:35
 class StubPriceProvider : PriceProvider {
     // DRNK 가격 흐름 = 내 지난 자산 기록(2024-01-01~어제, 1010일)을 마지막 값 1로 나눈 비율
-    // ios: Data/Services.swift:31,32,33,34,35,36
+    // ios: Data/Services.swift:37,38,39,40,41,42
     val drnkRatio: List<Double> by lazy {
         Defaults.asset("drnk_ratio", "json")
             ?.let { data -> runCatching { NJson.decodeFromString<List<Double>>(data) }.getOrNull() } ?: listOf(1.0)
     }
 
-    // ios: Data/Services.swift:38
+    // ios: Data/Services.swift:44
     override fun close(symbol: Symbol): Double = symbol.close
-    // ios: Data/Services.swift:39
+    // ios: Data/Services.swift:45
     override fun price(symbol: Symbol, at: Double): Double {
         val s = symbol; val x = at
         // 국내 주식 합계: 그날까지 넣은 마지막 금액 (첫 기록 전은 0). x 를 3년 날짜로 (0 = 3년 전, 1 = 오늘)
-        // ios: Data/Services.swift:41
+        // ios: Data/Services.swift:47
         if (s.id == KoreaEstimate.sumId) return MC.krAt(CustomSymbols.shared.krLog, Day.str(Instant.now().plusMillis((-(1 - x) * 1095.75 * 86400 * 1000).toLong())))
-        // ios: Data/Services.swift:42
+        // ios: Data/Services.swift:48
         if (PriceHistory.of(s.id) != null) return exp(logPrice(s, x))   // 실제 종가 그대로
-        // ios: Data/Services.swift:43
+        // ios: Data/Services.swift:49
         return s.close * exp(logPrice(s, x) - logPrice(s, 1.0))
     }
 
     /** 로그 가격. x = 0 (3년 전) … 1 (어제). 시안의 lfA 와 같은 식. */
-    // ios: Data/Services.swift:47
+    // ios: Data/Services.swift:53
     fun logPrice(s: Symbol, x: Double): Double {
-        // ios: Data/Services.swift:48
+        // ios: Data/Services.swift:54
         if (s.id == KoreaEstimate.sumId) return ln(max(1.0, price(s, at = x)))
-        // ios: Data/Services.swift:49,51,52
+        // ios: Data/Services.swift:55,57,58
         PriceHistory.of(s.id)?.takeIf { it.closes.size > 1 }?.let { h ->
             // 3년치 거래일을 0…1 로 펴서 사이를 잇는다
             val L = (h.closes.size - 1).toDouble(); val t = max(0.0, min(L, x * L)); val i = t.toInt(); val f = t - i
             return ln(h.closes[i] * (1 - f) + h.closes[min(L.toInt(), i + 1)] * f)
         }
-        // ios: Data/Services.swift:54,55,56,57,58
+        // ios: Data/Services.swift:60,61,62,63,64
         if (s.id == "DRNK") {
             val L = (drnkRatio.size - 1).toDouble()
             val t = max(0.0, min(L, L - (1 - x) * 1095)); val i = t.toInt(); val f = t - i
@@ -88,22 +88,22 @@ class StubPriceProvider : PriceProvider {
             return ln(v)
         }
         // 과거 시세가 없으면 만들어 내지 않는다: 전일 종가 그대로 (평평한 선). 화면은 hasHistory 로 "과거 시세 없음"을 알린다
-        // ios: Data/Services.swift:61
+        // ios: Data/Services.swift:67
         return ln(max(1e-9, s.close))
     }
 
     /** 실제 과거 시세(또는 샘플 DRNK 기록)가 있는지 */
-    // ios: Data/Services.swift:65
+    // ios: Data/Services.swift:71
     override fun hasHistory(symbol: Symbol): Boolean = symbol.id == "DRNK" || PriceHistory.of(symbol.id) != null
 
-    // ios: Data/Services.swift:67,68,69,70
+    // ios: Data/Services.swift:73,74,75,76
     private fun dayCloses(s: Symbol, n: Int): List<Double> {
         PriceHistory.of(s.id)?.let { h -> return h.closes.takeLast(n + 1) }
         if (s.id == "DRNK") return drnkRatio.takeLast(n + 1).map { s.close * it }
         return List(n + 1) { s.close }
     }
 
-    // ios: Data/Services.swift:73,74,75,76,77,78
+    // ios: Data/Services.swift:79,80,81,82,83,84
     override fun series(symbol: Symbol, period: Period): List<Double> {
         val s = symbol
         val q = Market.shared.quote(s)
@@ -111,7 +111,7 @@ class StubPriceProvider : PriceProvider {
             Period.d1 -> listOf(q.prevClose, q.last)
             Period.w1 -> dayCloses(s, 5).drop(1) + q.last
             else -> {
-                // ios: Data/Services.swift:79,81,82
+                // ios: Data/Services.swift:107
                 if (PriceHistory.of(s.id) != null) {
                     // 테스트 자료: 마지막 날이 이미 오늘 값이라 그대로 쓰고 끝만 지금 가격으로 맞춘다
                     val sp = period.span

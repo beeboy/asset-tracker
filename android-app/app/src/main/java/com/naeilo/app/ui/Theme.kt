@@ -221,39 +221,39 @@ fun <K> ChipRow(
     accent: Color = Theme.teal,     // ios: Theme.swift:124
     fill: Boolean = false,          // ios: Theme.swift:125
 ) {
-    // ios: Theme.swift:126
-    val style = appFont(13f, FontWeight.Bold)   // ios: Theme.swift:132
-    @Composable fun chip(item: Pair<K, String>, mod: Modifier) {   // ios: Theme.swift:128
-        val on = item.first == selection   // ios: Theme.swift:129
+    // ios: Theme.swift:127
+    val style = appFont(13f, FontWeight.Bold)   // ios: Theme.swift:133
+    @Composable fun chip(item: Pair<K, String>, mod: Modifier) {   // ios: Theme.swift:129
+        val on = item.first == selection   // ios: Theme.swift:130
         Box(
             mod
-                // ios: Theme.swift:130,140
+                // ios: Theme.swift:131,142
                 .plainClickable { onSelect(item.first) }
-                .defaultMinSize(minHeight = 40.dp)   // ios: Theme.swift:135
-                .background(if (on) accent else Theme.card, CapsuleShape)   // ios: Theme.swift:137
-                .border(2.dp, if (on) accent else Theme.border, CapsuleShape)   // ios: Theme.swift:138
-                .semantics { selected = on }   // ios: Theme.swift:141
+                .defaultMinSize(minHeight = 40.dp)   // ios: Theme.swift:137
+                .background(if (on) accent else Theme.card, CapsuleShape)   // ios: Theme.swift:139
+                .border(2.dp, if (on) accent else Theme.border, CapsuleShape)   // ios: Theme.swift:140
+                .semantics { selected = on }   // ios: Theme.swift:143
                 .padding(horizontal = if (fill) 8.dp else 14.dp),   // ios: Theme.swift:134
             contentAlignment = Alignment.Center,
         ) {
             T(
-                item.second,   // ios: Theme.swift:131
+                item.second,   // ios: Theme.swift:132
                 style = style,
-                maxLines = 1,   // ios: Theme.swift:133
-                color = if (on) Color.White else Theme.ink,   // ios: Theme.swift:136
+                maxLines = 1,   // ios: Theme.swift:134
+                color = if (on) Color.White else Theme.ink,   // ios: Theme.swift:138
             )
         }
     }
-    // ios: Theme.swift:127
+    // ios: Theme.swift:128
     val gap = 6.dp
     // 칸에 다 들어가면 같은 폭으로 채우고, 큰 글자라 넘치면 가로로 밀어 보게 한다
-    // ios: Theme.swift:145
+    // ios: Theme.swift:147
     @Composable fun scroll() = Row(
         Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 1.dp),
         horizontalArrangement = Arrangement.spacedBy(gap),
     ) { items.forEach { chip(it, Modifier) } }
     if (fill) {
-        // ios: Theme.swift:146 ViewThatFits: 글자 폭을 재서 한 줄에 들어가면 같은 폭, 아니면 가로 스크롤
+        // ios: Theme.swift:148 ViewThatFits: 글자 폭을 재서 한 줄에 들어가면 같은 폭, 아니면 가로 스크롤
         val measurer = rememberTextMeasurer()
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val need = with(androidx.compose.ui.platform.LocalDensity.current) {
@@ -269,36 +269,36 @@ fun <K> ChipRow(
     } else scroll()
 }
 
-// ios: Theme.swift:150
+// ios: Theme.swift:152
 @Composable
 fun PrimaryButton(
-    title: String,                    // ios: Theme.swift:151
-    color: Color = Theme.teal,        // ios: Theme.swift:152
-    fg: Color = Color.White,          // ios: Theme.swift:153
-    action: () -> Unit,               // ios: Theme.swift:154
+    title: String,                    // ios: Theme.swift:153
+    color: Color = Theme.teal,        // ios: Theme.swift:154
+    fg: Color = Color.White,          // ios: Theme.swift:155
+    action: () -> Unit,               // ios: Theme.swift:156
 ) {
-    // ios: Theme.swift:155,156,162
+    // ios: Theme.swift:157,158,164
     Box(
         Modifier
             .plainClickable(onClick = action)
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 50.dp)   // ios: Theme.swift:158
-            .background(color, RoundedCornerShape(12.dp)),   // ios: Theme.swift:160
+            .defaultMinSize(minHeight = 50.dp)   // ios: Theme.swift:160
+            .background(color, RoundedCornerShape(12.dp)),   // ios: Theme.swift:162
         contentAlignment = Alignment.Center,
     ) {
-        T(title, style = appFont(16f, FontWeight.Bold), color = fg)   // ios: Theme.swift:157,159
+        T(title, style = appFont(16f, FontWeight.Bold), color = fg)   // ios: Theme.swift:159,161
     }
 }
 
 // 도트 그림은 보간 없이 키운다
-// ios: Theme.swift:167
+// ios: Theme.swift:169
 @Composable
 fun Pixel(
-    @DrawableRes name: Int,   // ios: Theme.swift:168
-    width: Dp,                // ios: Theme.swift:169
-    height: Dp,               // ios: Theme.swift:170
+    @DrawableRes name: Int,   // ios: Theme.swift:170
+    width: Dp,                // ios: Theme.swift:171
+    height: Dp,               // ios: Theme.swift:172
 ) {
-    // ios: Theme.swift:171,172 interpolation(.none) = FilterQuality.None
+    // ios: Theme.swift:173,174 interpolation(.none) = FilterQuality.None
     Image(ImageBitmap.imageResource(name), null, Modifier.size(width, height), filterQuality = FilterQuality.None,
         contentScale = androidx.compose.ui.layout.ContentScale.FillBounds)
 }
@@ -310,27 +310,27 @@ fun Pixel(
  * 움직임은 그리기 직전(layout)에서만 읽어 화면을 다시 짜지 않는다.
  */
 @Composable
-fun Modifier.charIdle(seed: Int = 0): Modifier {   // ios: Theme.swift:179,180,210,211
-    val reduce = LocalReduceMotion.current         // ios: Theme.swift:181
+fun Modifier.charIdle(seed: Int = 0): Modifier {   // ios: Theme.swift:181,182,212,213
+    val reduce = LocalReduceMotion.current         // ios: Theme.swift:183
     val active = LocalTabActive.current
-    var up by remember { mutableStateOf(false) }   // ios: Theme.swift:182
-    val hop = remember { Animatable(0f) }          // ios: Theme.swift:183
-    // ios: Theme.swift:184 (seed 는 iOS 에서도 박자에 안 쓴다: 박자는 무작위)
-    LaunchedEffect(reduce, active) {   // ios: Theme.swift:187
-        // ios: Theme.swift:201 화면 밖(숨은 탭)·동작 줄이기: 반복을 끊고 제자리
-        if (reduce || !active) { up = false; hop.snapTo(0f); return@LaunchedEffect }   // ios: Theme.swift:188,204,205,206
-        val beat = Random.nextDouble(1.2, 2.0)   // ios: Theme.swift:189
-        delay((Random.nextDouble(0.0, beat) * 1000).toLong())   // ios: Theme.swift:190
-        while (true) {   // ios: Theme.swift:191,193 (취소되면 delay 에서 끝난다)
-            delay((beat * Random.nextDouble(0.8, 1.25) * 1000).toLong())   // ios: Theme.swift:192
-            up = !up   // ios: Theme.swift:194
-            if (up || Random.nextInt(0, 5) != 0) continue   // ios: Theme.swift:195
-            hop.animateTo(-1.5f, tween(90, easing = EaseOut))   // ios: Theme.swift:196 easeOut 0.09초
-            delay(110)   // ios: Theme.swift:197
-            hop.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = stiffness(response = 0.25f)))   // ios: Theme.swift:198
+    var up by remember { mutableStateOf(false) }   // ios: Theme.swift:184
+    val hop = remember { Animatable(0f) }          // ios: Theme.swift:185
+    // ios: Theme.swift:186 (seed 는 iOS 에서도 박자에 안 쓴다: 박자는 무작위)
+    LaunchedEffect(reduce, active) {   // ios: Theme.swift:189
+        // ios: Theme.swift:203 화면 밖(숨은 탭)·동작 줄이기: 반복을 끊고 제자리
+        if (reduce || !active) { up = false; hop.snapTo(0f); return@LaunchedEffect }   // ios: Theme.swift:190,206,207,208
+        val beat = Random.nextDouble(1.2, 2.0)   // ios: Theme.swift:191
+        delay((Random.nextDouble(0.0, beat) * 1000).toLong())   // ios: Theme.swift:192
+        while (true) {   // ios: Theme.swift:193,195 (취소되면 delay 에서 끝난다)
+            delay((beat * Random.nextDouble(0.8, 1.25) * 1000).toLong())   // ios: Theme.swift:194
+            up = !up   // ios: Theme.swift:196
+            if (up || Random.nextInt(0, 5) != 0) continue   // ios: Theme.swift:197
+            hop.animateTo(-1.5f, tween(90, easing = EaseOut))   // ios: Theme.swift:198 easeOut 0.09초
+            delay(110)   // ios: Theme.swift:199
+            hop.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = stiffness(response = 0.25f)))   // ios: Theme.swift:200
         }
     }
-    // ios: Theme.swift:185,186
+    // ios: Theme.swift:187,188
     return this.layout { m, c ->
         val p = m.measure(c)
         layout(p.width, p.height) { p.place(IntOffset(0, ((if (up) -1f else 0f) + hop.value).dp.roundToPx())) }
@@ -342,48 +342,48 @@ val EaseOut = CubicBezierEasing(0f, 0f, 0.58f, 1f)
 /** SwiftUI spring(response:) 를 Compose 강성으로: (2π/response)² */
 fun stiffness(response: Float): Float = ((2 * PI / response) * (2 * PI / response)).toFloat()
 
-// ios: Theme.swift:214
+// ios: Theme.swift:216
 @Composable
 fun ProgressBar(
-    value: Double,                 // ios: Theme.swift:215
-    height: Dp = 10.dp,            // ios: Theme.swift:216
-    fill: Color = Theme.yellow,    // ios: Theme.swift:217
-    track: Color = Theme.slate,    // ios: Theme.swift:218
+    value: Double,                 // ios: Theme.swift:217
+    height: Dp = 10.dp,            // ios: Theme.swift:218
+    fill: Color = Theme.yellow,    // ios: Theme.swift:219
+    track: Color = Theme.slate,    // ios: Theme.swift:220
     modifier: Modifier = Modifier,
 ) {
-    // ios: Theme.swift:219,220,221,226
+    // ios: Theme.swift:221,222,223,228
     Box(modifier.fillMaxWidth().height(height)) {
-        Box(Modifier.fillMaxSize().background(track, CapsuleShape))   // ios: Theme.swift:222
-        // ios: Theme.swift:223
+        Box(Modifier.fillMaxSize().background(track, CapsuleShape))   // ios: Theme.swift:224
+        // ios: Theme.swift:225
         Box(Modifier.fillMaxHeight().fillMaxWidth(maxOf(0.0, minOf(1.0, value)).toFloat()).background(fill, CapsuleShape))
     }
 }
 
-// ios: Theme.swift:230
+// ios: Theme.swift:232
 @Composable
 fun ScreenTitle(
-    kicker: String?,   // ios: Theme.swift:231
-    title: String,     // ios: Theme.swift:232
+    kicker: String?,   // ios: Theme.swift:233
+    title: String,     // ios: Theme.swift:234
 ) {
-    // ios: Theme.swift:233,234,238
+    // ios: Theme.swift:235,236,240
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (kicker != null) T(kicker, style = appFont(14f, FontWeight.SemiBold), color = Theme.teal)   // ios: Theme.swift:235
-        T(title, style = appFont(24f, FontWeight.Bold).copy(letterSpacing = (-0.4).sp))   // ios: Theme.swift:236
+        if (kicker != null) T(kicker, style = appFont(14f, FontWeight.SemiBold), color = Theme.teal)   // ios: Theme.swift:237
+        T(title, style = appFont(24f, FontWeight.Bold).copy(letterSpacing = (-0.4).sp))   // ios: Theme.swift:238
     }
 }
 
 // 탭 화면 공통 바탕
-// ios: Theme.swift:242,244
+// ios: Theme.swift:244,246
 @Composable
 fun Screen(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val maxW = Theme.maxWidth
-    // ios: Theme.swift:247 가로 화면: 가운데 한 줄로
+    // ios: Theme.swift:249 가로 화면: 가운데 한 줄로
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-        CompositionLocalProvider(LocalFg provides { it.ink }) {   // ios: Theme.swift:248
+        CompositionLocalProvider(LocalFg provides { it.ink }) {   // ios: Theme.swift:250
             Column(
                 Modifier
-                    .widthIn(max = maxW).fillMaxWidth()   // ios: Theme.swift:246
-                    .padding(horizontal = 16.dp).padding(bottom = 24.dp),   // ios: Theme.swift:245
+                    .widthIn(max = maxW).fillMaxWidth()   // ios: Theme.swift:248
+                    .padding(horizontal = 16.dp).padding(bottom = 24.dp),   // ios: Theme.swift:247
             ) { content() }
         }
     }
@@ -404,7 +404,7 @@ class TextScale(val step: Int) {
     val isAccessibilitySize: Boolean get() = step >= AX1
 
     companion object {
-        fun from(fontScale: Float): TextScale {   // ios: Theme.swift:260,261
+        fun from(fontScale: Float): TextScale {   // ios: Theme.swift:262,263
             val want = 17f * fontScale
             var best = 0
             BODY_STEPS.forEachIndexed { i, s -> if (kotlin.math.abs(s - want) < kotlin.math.abs(BODY_STEPS[best] - want)) best = i }
@@ -415,7 +415,7 @@ class TextScale(val step: Int) {
 
 val LocalTextScale = staticCompositionLocalOf { TextScale(3) }
 
-// ios: Theme.swift:254,255,256,257,259,262,266,267,268 (글자 단계 계산은 TextScale.from)
+// ios: Theme.swift:256,257,258,259,261,264,268,269,270 (글자 단계 계산은 TextScale.from)
 @Composable
 fun appFont(size: Float, weight: FontWeight = FontWeight.Normal): TextStyle =
     TextStyle(fontSize = (size * LocalTextScale.current.ratio).sp, fontWeight = weight, lineBreak = KoLineBreak)
@@ -458,25 +458,25 @@ fun T(
 }
 
 // 위 그래프를 고정하고 아래만 스크롤. 손쉬운 사용의 아주 큰 글자에서는 고정 영역이 화면을 다 차지하므로 함께 스크롤한다.
-// ios: Theme.swift:273
+// ios: Theme.swift:275
 @Composable
 fun PinnedLayout(
-    header: @Composable () -> Unit,    // ios: Theme.swift:276
-    content: @Composable () -> Unit,   // ios: Theme.swift:277
+    header: @Composable () -> Unit,    // ios: Theme.swift:278
+    content: @Composable () -> Unit,   // ios: Theme.swift:279
 ) {
-    val dts = LocalTextScale.current   // ios: Theme.swift:274
+    val dts = LocalTextScale.current   // ios: Theme.swift:276
     val conf = androidx.compose.ui.platform.LocalConfiguration.current
-    // ios: Theme.swift:275 세로 공간이 좁은 가로 화면 (iPhone 의 verticalSizeClass compact 자리)
+    // ios: Theme.swift:277 세로 공간이 좁은 가로 화면 (iPhone 의 verticalSizeClass compact 자리)
     val vsc = conf.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && conf.screenHeightDp < 500
     val maxW = Theme.maxWidth
-    // ios: Theme.swift:278 아주 큰 글자나 가로 화면(세로 공간이 좁음)에서는 머리를 고정하지 않고 같이 스크롤
-    if (dts.isAccessibilitySize || vsc) {   // ios: Theme.swift:280
-        // ios: Theme.swift:281
+    // ios: Theme.swift:280 아주 큰 글자나 가로 화면(세로 공간이 좁음)에서는 머리를 고정하지 않고 같이 스크롤
+    if (dts.isAccessibilitySize || vsc) {   // ios: Theme.swift:282
+        // ios: Theme.swift:283
         Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = maxW).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) { header(); content() }
         }
-    } else {   // ios: Theme.swift:282
-        // ios: Theme.swift:283
+    } else {   // ios: Theme.swift:284
+        // ios: Theme.swift:285
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
             header()
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { content() }

@@ -67,6 +67,8 @@ import com.naeilo.app.core.calc.fetchParallelUniverse
 import com.naeilo.app.core.calc.isGoal
 import com.naeilo.app.core.calc.openParallelIfNeeded
 import com.naeilo.app.core.calc.parallelBase
+import com.naeilo.app.core.calc.parallelHome
+import com.naeilo.app.ui.FitRow
 import com.naeilo.app.core.calc.parallelDistance
 import com.naeilo.app.core.calc.parallelRace
 import com.naeilo.app.core.calc.parallelSeries
@@ -557,17 +559,41 @@ fun ParallelBasketView(m: AppModel, dismiss: () -> Unit) {
 fun ParallelHomeCard(m: AppModel) {
     // ios: Views/ParallelView.swift:422
     if (m.parallelBase.isNotEmpty()) {
-        // ios: Views/ParallelView.swift:423,424,432,433,434,435,437,438
+        // ios: Views/ParallelView.swift:423,424,445,446,447,448,450,451
         Row(Modifier.fillMaxWidth().plainClickable { m.homePath = m.homePath + "parallel" }.semantics(mergeDescendants = true) {}
             .defaultMinSize(minHeight = 44.dp).background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)).padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            // ios: Views/ParallelView.swift:425,429
+            // 1줄: 질문 + 결론, 2줄: 셋의 수익률 (점 색은 상세 화면과 같은 초록·주황·보라)
+            val h = m.parallelHome   // ios: Views/ParallelView.swift:426
+            // ios: Views/ParallelView.swift:427,442
             Column(Modifier.weight(1f).padding(end = 0.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                T("다른 방식이었다면?", style = appFont(15f, FontWeight.Bold))   // ios: Views/ParallelView.swift:426
-                m.parallelVerdictLine?.let { T(it, style = appFont(13f, FontWeight.SemiBold), color = Theme.myReal) }   // ios: Views/ParallelView.swift:427
+                // ios: Views/ParallelView.swift:428
+                FitRow(0.8f, spacing = 6.dp) {
+                    T("다른 방식이었다면?", style = appFont(15f, FontWeight.Bold), maxLines = 1)   // ios: Views/ParallelView.swift:429
+                    if (h != null) T(h.first, style = appFont(13f, FontWeight.SemiBold), color = Theme.myReal, maxLines = 1)   // ios: Views/ParallelView.swift:430
+                }
+                // ios: Views/ParallelView.swift:433
+                if (h != null) {
+                    // ios: Views/ParallelView.swift:434
+                    FitRow(0.8f, spacing = 10.dp) {
+                        Dot(Theme.myReal, "실제", h.second[0])   // ios: Views/ParallelView.swift:435
+                        Dot(Theme.basket, "모의", h.second[1])   // ios: Views/ParallelView.swift:436
+                        Dot(Theme.rule, m.friendName(h.third), h.second[2])   // ios: Views/ParallelView.swift:437
+                    }
+                }
             }
-            T("›", style = appFont(16f, FontWeight.Bold), color = Theme.sub)   // ios: Views/ParallelView.swift:430
+            T("›", style = appFont(16f, FontWeight.Bold), color = Theme.sub)   // ios: Views/ParallelView.swift:443
         }
+    }
+}
+
+// ios: Views/ParallelView.swift:455
+@Composable
+private fun Dot(c: Color, name: String, r: Double) {
+    // ios: Views/ParallelView.swift:456
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(7.dp, 7.dp).background(c, CircleShape))   // ios: Views/ParallelView.swift:457
+        T(tr(name) + " " + AppModel.sgn(r), style = appFont(12f).copy(fontFeatureSettings = "tnum"), color = Theme.sub, maxLines = 1)   // ios: Views/ParallelView.swift:458
     }
 }
 

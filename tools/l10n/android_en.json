@@ -51,5 +51,8 @@
   "서버엔 암호화한 값만 · 비밀번호는 저장 안 함": "Only encrypted data on the server · Password isn't stored",
   "출시": "Release",
   "앱 시작 %@단계를 하면 열려요": "Opens at app start step %@",
-  "%@ 번 돈 중 내 몫": "My share of what %@ earned"
+  "%@ 번 돈 중 내 몫": "My share of what %@ earned",
+  "\"위젯\" 누르기": "Tap \"Widgets\"",
+  "크기 고르고 \"추가\"": "Pick a size, tap \"Add\"",
+  "인물 바꾸기: 위젯 길게 눌러 \"설정\"": "Change character: long-press the widget → \"Settings\""
 }

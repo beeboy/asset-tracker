@@ -928,7 +928,14 @@
       }
     },
     "\"naeilo\" 검색" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search \"naeilo\""
+          }
+        }
+      }
     },
     "“거기까지만요.”" : {
       "localizations" : {
@@ -1776,6 +1783,12 @@
     },
     "%@ %@, %@까지 %@, %@" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@, %4$@ to %3$@, %5$@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
@@ -3802,7 +3815,14 @@
       }
     },
     "%@시간 전" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hr ago"
+          }
+        }
+      }
     },
     "%@억" : {
       "localizations" : {
@@ -4138,7 +4158,14 @@
       }
     },
     "%@일 전" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ days ago"
+          }
+        }
+      }
     },
     "%@일째" : {
       "localizations" : {
@@ -16501,7 +16528,14 @@
       }
     },
     "목표 도달!" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goal reached!"
+          }
+        }
+      }
     },
     "목표 루트 · 시작 전" : {
       "localizations" : {
@@ -17477,7 +17511,14 @@
       }
     },
     "미션을 마치면 열려요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens as you finish missions"
+          }
+        }
+      }
     },
     "미션을 마치면 열려요. 홈 화면 길게 누르기 → + → naeilo" : {
       "extractionState" : "stale",
@@ -21624,7 +21665,14 @@
       }
     },
     "숫자 기다리는 중" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for numbers"
+          }
+        }
+      }
     },
     "숫자가 들어오면 강이 차요" : {
       "localizations" : {
@@ -25991,7 +26039,14 @@
       }
     },
     "왼쪽 위 \"편집\" → \"위젯 추가\"" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap \"Edit\" at top left → \"Add Widget\""
+          }
+        }
+      }
     },
     "왼쪽으로 돌리기" : {
       "localizations" : {
@@ -26034,7 +26089,14 @@
       }
     },
     "욕조와 오리" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tub & Duck"
+          }
+        }
+      }
     },
     "우리 다 같이 축하해! 목표 칸을 다 깼어." : {
       "localizations" : {
@@ -27700,7 +27762,14 @@
       }
     },
     "인물 바꾸기: 위젯 길게 눌러 \"위젯 편집\"" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change character: long-press the widget → \"Edit Widget\""
+          }
+        }
+      }
     },
     "인물 아이콘은 그 인물을 만나면 열려요." : {
       "localizations" : {
@@ -28727,7 +28796,14 @@
       }
     },
     "적립 정하기 ›" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set deposit ›"
+          }
+        }
+      }
     },
     "적립 포함" : {
       "localizations" : {
@@ -28800,7 +28876,14 @@
       }
     },
     "적자 %@" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loss %@"
+          }
+        }
+      }
     },
     "전 세계 ETF" : {
       "localizations" : {
@@ -28973,7 +29056,14 @@
       }
     },
     "절반" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Half"
+          }
+        }
+      }
     },
     "절반 왔어요. 판도 자랐어요." : {
       "localizations" : {
@@ -29182,7 +29272,14 @@
       }
     },
     "점프 직전" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to Jump"
+          }
+        }
+      }
     },
     "접기 ▴" : {
       "localizations" : {
@@ -31372,7 +31469,14 @@
       }
     },
     "지평선" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizon"
+          }
+        }
+      }
     },
     "직장 생활을 오래 하고 은퇴한 \"늙은 인간\". 결혼 10년 차다. 원래는 짧게 깎은 검은 머리인데, 애쉬그레이 중단발은 '보이고 싶은 얼굴'로만 나온다. 앱 도트의 애쉬그레이 볼륨펌은 이 '보이고 싶은 얼굴' 쪽을 고른 디자인이에요." : {
       "localizations" : {
@@ -31455,7 +31559,14 @@
       }
     },
     "진행 막대" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progress Bar"
+          }
+        }
+      }
     },
     "진행 중" : {
       "localizations" : {
@@ -32771,7 +32882,14 @@
       }
     },
     "크기 고르고 \"위젯 추가\"" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick a size, tap \"Add Widget\""
+          }
+        }
+      }
     },
     "크롭 티" : {
       "localizations" : {
@@ -33582,7 +33700,14 @@
       }
     },
     "평가액 박스 모양" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Value box style"
+          }
+        }
+      }
     },
     "평가액 보기" : {
       "localizations" : {
@@ -35478,10 +35603,24 @@
       }
     },
     "홈 평가액 박스" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home value box"
+          }
+        }
+      }
     },
     "홈 화면 빈 곳 길게 누르기" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long-press an empty spot on the Home Screen"
+          }
+        }
+      }
     },
     "홈 화면 위젯" : {
       "localizations" : {
