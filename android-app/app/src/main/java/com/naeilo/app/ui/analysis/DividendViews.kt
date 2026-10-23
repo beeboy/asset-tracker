@@ -1,5 +1,7 @@
 package com.naeilo.app.ui.analysis
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import com.naeilo.app.core.cformat
 import com.naeilo.app.core.tr
 import androidx.compose.animation.AnimatedVisibility
@@ -107,9 +109,13 @@ private class Per(val id: String, val out: SiteCalc.DivOut?, val known: Boolean,
 private class DivData(val months: List<String>, val byMonth: List<Double>, val paid: List<DividendView.Paid>, val net: Double, val gross: Double,
                       val zero: List<String>, val unknown: List<String>, val usIds: List<String>, val usU: Double)
 
-// ios: Views/AnalysisDetail.swift:1713,1733
+// ios: Views/AnalysisDetail.swift:1723,1746
 @Composable
-fun DividendView(m: AppModel) {
+fun DividendView(
+    m: AppModel,
+    /** 분석 탭 시트: "div" 배당만 · "tax" 세금만 (나눈 두 페이지). null 이면 예전처럼 둘을 전환 */
+    only: String? = null,   // ios: Views/AnalysisDetail.swift:1726
+) {
     var tab by remember { mutableStateOf("div") }   // ios: Views/AnalysisDetail.swift:1714
     var mode by remember { mutableStateOf("month") }   // ios: Views/AnalysisDetail.swift:1715
     var extra by remember { mutableStateOf(0.0) }   // ios: Views/AnalysisDetail.swift:1716
@@ -147,26 +153,31 @@ fun DividendView(m: AppModel) {
     val G = m.taxGain * 1e4   // ios: Views/AnalysisDetail.swift:1757
 
     LaunchedEffect(Unit) { calc.refresh() }   // ios: Views/AnalysisDetail.swift:1776
-    // ios: Views/AnalysisDetail.swift:1774,1775 (제목 줄은 늘 한 줄: NavBar)
+    // ios: Views/AnalysisDetail.swift:1772,1773,1774,1775,1776,1777,1778
+    val inner: @Composable () -> Unit = {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if ((only ?: tab) == "div") {
+                Income(dd.months, dd.byMonth, dd.paid, dd.net, dd.gross, dd.zero, dd.unknown, mode) { mode = it }
+            } else {
+                CapTax(G = G, usU = dd.usU, usIds = dd.usIds, extra = extra) { extra = it }
+            }
+        }
+    }
+    // ios: Views/AnalysisDetail.swift:1794,1795 (제목 줄은 늘 한 줄: NavBar)
     Box(Modifier.fillMaxSize().background(Theme.bg)) {
-        // ios: Views/AnalysisDetail.swift:1759
-        PinnedLayout(header = {
-            // ios: Views/AnalysisDetail.swift:1760
-            PinnedBox {
-                DetailHead(title = "배당·세금", sub = "")   // ios: Views/AnalysisDetail.swift:1761
-                SegTabs(items = listOf("div" to "받는 배당", "tax" to "낼 양도세"), selection = tab, onSelect = { tab = it })   // ios: Views/AnalysisDetail.swift:1762
-            }
-        }, content = {   // ios: Views/AnalysisDetail.swift:1764
-            // ios: Views/AnalysisDetail.swift:1765,1772
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                // ios: Views/AnalysisDetail.swift:1766
-                if (tab == "div") {
-                    Income(dd.months, dd.byMonth, dd.paid, dd.net, dd.gross, dd.zero, dd.unknown, mode) { mode = it }   // ios: Views/AnalysisDetail.swift:1767
-                } else {   // ios: Views/AnalysisDetail.swift:1768
-                    CapTax(G = G, usU = dd.usU, usIds = dd.usIds, extra = extra) { extra = it }   // ios: Views/AnalysisDetail.swift:1769
+        // 나눈 한 페이지: 위에 고정할 전환 칸이 없으니 그냥 넘긴다
+        // ios: Views/AnalysisDetail.swift:1781,1782,1783,1784
+        if (only != null) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).detailTitle(if (only == "div") "배당" else "세금")) { inner() }
+        } else {
+            // ios: Views/AnalysisDetail.swift:1785,1786,1787,1788,1790
+            PinnedLayout(header = {
+                PinnedBox {
+                    DetailHead(title = "배당·세금", sub = "")
+                    SegTabs(items = listOf("div" to "받는 배당", "tax" to "낼 양도세"), selection = tab, onSelect = { tab = it })
                 }
-            }
-        })
+            }, content = { inner() })
+        }
     }
 }
 
