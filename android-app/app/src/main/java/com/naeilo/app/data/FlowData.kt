@@ -485,7 +485,7 @@ object FlowStore {   // ios: Data/FlowData.swift:409,410,411
         return null   // ios: Data/FlowData.swift:435
     }
 
-    private fun stamp(b: FlowBars.Series) = "${b.d.size}" + (b.d.lastOrNull() ?: "")   // ios: Data/FlowData.swift:442
+    private fun stamp(b: FlowBars.Series) = "${b.d.size}" + (b.d.lastOrNull() ?: "")   // 442 의 앞 조각
     fun series(id: String): FlowSeries? {   // ios: Data/FlowData.swift:438
         if (id == "DRNK") return DrnkSample.series   // ios: Data/FlowData.swift:439
         val b = bars(id) ?: return null   // ios: Data/FlowData.swift:440

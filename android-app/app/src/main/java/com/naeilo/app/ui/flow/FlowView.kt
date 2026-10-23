@@ -1,5 +1,19 @@
 package com.naeilo.app.ui.flow
 
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.naeilo.app.core.tr
+import com.naeilo.app.ui.rememberPrefBool
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -99,6 +113,8 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
     var showAll by remember { mutableStateOf(false) }   // ios: Views/FlowView.swift:8
     var layers by remember { mutableStateOf(setOf(FlowLayer.trend)) }   // ios: Views/FlowView.swift:9
     var term by remember { mutableStateOf<FlowTerm?>(null) }   // ios: Views/FlowView.swift:10
+    var showGuide by remember { mutableStateOf(false) }   // ios: Views/FlowView.swift:11
+    var guideFocus by remember { mutableStateOf<String?>(null) }   // ios: Views/FlowView.swift:12
 
     /** 차트 실데이터를 받을 키 (토스·알파카) */
     // 키를 넣고 받기를 마치면(tossDone) 다시 그린다   // ios: Views/FlowView.swift:15,16
@@ -135,13 +151,13 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                         T("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요", Modifier.plainClickable { model.openSettings(SettingsRoute.toss) },
                             style = appFont(13f).copy(textDecoration = TextDecoration.Underline), color = Theme.teal)
                     }
-                    LayerRow(layers) { layers = it }   // ios: Views/FlowView.swift:44
+                    LayerRow(layers, onGuide = { guideFocus = null; showGuide = true }) { layers = it }   // ios: Views/FlowView.swift:44
                     // ios: Views/FlowView.swift:45,65
-                    Box(Modifier.fillMaxWidth().height(420.dp).background(Theme.card, RoundedCornerShape(16.dp))) {
+                    Box(Modifier.fillMaxWidth().height(560.dp).background(Theme.card, RoundedCornerShape(16.dp))) {   // ios: Views/FlowView.swift:64,65
                         val s = cur?.let { store.peek(it) }
                         if (cur != null && s != null) {   // ios: Views/FlowView.swift:46
                             // ios: Views/FlowView.swift:48 (.id(sel): 종목이 바뀌면 확대·밀기 상태를 새로)
-                            androidx.compose.runtime.key(cur) { FlowChart(series = s, title = if (cur == "DRNK") "DRNK · 샘플" else name(cur), layers = layers, onTerm = { term = it }) }
+                            androidx.compose.runtime.key(cur) { FlowChart(series = s, title = if (cur == "DRNK") "DRNK · 샘플" else name(cur), layers = layers, term = term, setTerm = { term = it }, more = { t -> guideFocus = t.key; showGuide = true }) }   // ios: Views/FlowView.swift:47
                         } else if (cur != null && store.bars(cur) != null) {
                             // 캔들은 있고 계산하는 중: 빈 카드 (잠깐)
                         } else if (cur == null) {   // ios: Views/FlowView.swift:49
@@ -158,22 +174,26 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                             }
                         }
                     }
-                    T("옆으로 밀면 지난 날 · 두 손가락으로 확대", style = appFont(12f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:64,65
-                    Explain(term)   // ios: Views/FlowView.swift:66
                 }
             }
         }
     }
     // ios: Views/FlowView.swift:71
     AllSheet(showAll, ids, cur, ::name, onDismiss = { showAll = false }) { sel = it; term = null; showAll = false }
+    Sheet(showGuide, onDismiss = { showGuide = false }) { FlowGuide(guideFocus) { showGuide = false } }   // ios: Views/FlowView.swift:72
 }
+
+/** 오른쪽 끝을 흐리게 지워 잘린 칩이 '더 있음'으로 녹아들게 */
+// ios: Views/FlowView.swift:86
+private fun Modifier.fadeEnd(): Modifier = this.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+    .drawWithContent { drawContent(); drawRect(Brush.horizontalGradient(0.9f to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn) }
 
 // 맨 위 내 종목 칩 줄 + '전체'
 @Composable
 private fun Chips(ids: List<String>, cur: String?, name: (String) -> String, onAll: () -> Unit, onPick: (String) -> Unit) {   // ios: Views/FlowView.swift:80
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/FlowView.swift:81
         // ios: Views/FlowView.swift:82,83
-        Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { ids.forEach { Chip(it, cur, name, onPick) } }
+        Box(Modifier.weight(1f).fadeEnd()) { Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { ids.forEach { Chip(it, cur, name, onPick) } } }
         // ios: Views/FlowView.swift:87,88
         T("전체", Modifier.heightIn(min = 36.dp).plainClickable(onAll).padding(vertical = 8.dp), style = appFont(13f, FontWeight.SemiBold), color = Theme.teal)
     }
@@ -217,7 +237,7 @@ private fun AllSheet(show: Boolean, ids: List<String>, cur: String?, name: (Stri
 
 // 겹 켜고 끄기. 칸 크기는 늘 같고 색만 바뀐다
 @Composable
-private fun LayerRow(layers: Set<FlowLayer>, set: (Set<FlowLayer>) -> Unit) {   // ios: Views/FlowView.swift:128
+private fun LayerRow(layers: Set<FlowLayer>, onGuide: () -> Unit, set: (Set<FlowLayer>) -> Unit) {   // ios: Views/FlowView.swift:128
     val all = layers.size == FlowLayer.entries.size   // ios: Views/FlowView.swift:129
     // ios: Views/FlowView.swift:130,131
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -238,23 +258,10 @@ private fun LayerRow(layers: Set<FlowLayer>, set: (Set<FlowLayer>) -> Unit) {   
             val aOn by animateFloatAsState(if (all) 0f else 1f, tween(200), label = "allOn"); T("모두 켜기", Modifier.graphicsLayer { alpha = aOn }, style = st, color = Theme.teal)   // ios: Views/FlowView.swift:146,150
             val aOff by animateFloatAsState(if (all) 1f else 0f, tween(200), label = "allOff"); T("추세만", Modifier.graphicsLayer { alpha = aOff }, style = st, color = Theme.teal)   // ios: Views/FlowView.swift:151
         }
-    }
-}
-
-// 차트 아래 고정 높이 설명 칸
-@Composable
-private fun Explain(term: FlowTerm?) {   // ios: Views/FlowView.swift:159
-    // ios: Views/FlowView.swift:160,171,172,173,174
-    Column(Modifier.fillMaxWidth().heightIn(min = 132.dp, max = 132.dp).background(Theme.card, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (term != null) {   // ios: Views/FlowView.swift:161
-            T(term.title, style = appFont(15f, FontWeight.Bold), color = Theme.ink)   // ios: Views/FlowView.swift:162
-            T(term.body, style = appFont(13f), color = Theme.sub)   // ios: Views/FlowView.swift:163
-        } else {   // ios: Views/FlowView.swift:164
-            T("이름표나 선을 눌러 보세요", style = appFont(15f, FontWeight.Bold), color = Theme.ink)   // ios: Views/FlowView.swift:165
-            // ios: Views/FlowView.swift:166,167
-            T("누른 것의 뜻만 여기에 떠요. 흐린 점선 이름표는 확정 전이거나 거래량이 적었던 것이에요. 정보 제공용이며 매매 권유가 아니에요.", style = appFont(13f), color = Theme.sub)
+        // ios: Views/FlowView.swift:156,157,158,160,161
+        Box(Modifier.size(34.dp, 34.dp).plainClickable(onGuide).semantics { contentDescription = tr("흐름 읽는 법") }, contentAlignment = Alignment.Center) {
+            Sym("questionmark.circle", 18f, Theme.teal)
         }
-        Spacer(Modifier.heightIn(min = 0.dp))   // ios: Views/FlowView.swift:169
     }
 }
 
@@ -272,6 +279,15 @@ enum class FlowLayer {   // ios: Views/FlowView.swift:167
 sealed class FlowTerm {   // ios: Views/FlowView.swift:180
     // ios: Views/FlowView.swift:181
     object dots : FlowTerm(); object band : FlowTerm(); object support : FlowTerm(); object resistance : FlowTerm(); data class pattern(val k: FlowPattern.Kind) : FlowTerm()
+    /** 설명 페이지에서 그 줄로 바로 가는 이름 */
+    // ios: Views/FlowView.swift:183,184
+    val key: String get() = when (this) {
+        dots -> "dots"   // ios: Views/FlowView.swift:185
+        band -> "band"   // ios: Views/FlowView.swift:186
+        support -> "support"   // ios: Views/FlowView.swift:187
+        resistance -> "resistance"   // ios: Views/FlowView.swift:188
+        is pattern -> k.name   // ios: Views/FlowView.swift:189
+    }
     val title: String get() = when (this) {   // ios: Views/FlowView.swift:192,193
         dots -> "추세 점"   // ios: Views/FlowView.swift:194
         band -> "추세 띠"   // ios: Views/FlowView.swift:195
@@ -280,10 +296,10 @@ sealed class FlowTerm {   // ios: Views/FlowView.swift:180
         is pattern -> k.title   // ios: Views/FlowView.swift:198
     }
     val body: String get() = when (this) {   // ios: Views/FlowView.swift:201,202
-        dots -> "고점·저점마다 찍은 점이에요. 점이 계단처럼 올라가면 상승, 내려가면 하락, 같은 높이를 오가면 횡보예요."   // ios: Views/FlowView.swift:204
-        band -> "위에서부터 큰·중간·작은 흐름이에요. 빨강은 상승, 파랑은 하락, 회색은 횡보예요."   // ios: Views/FlowView.swift:205
-        support -> "주가가 여러 번 내려와 받친 가격이에요. 여러 번 닿을수록 선이 진해요."   // ios: Views/FlowView.swift:206
-        resistance -> "주가가 여러 번 올라와 튕겨 나간 가격이에요. 여러 번 닿을수록 선이 진해요."   // ios: Views/FlowView.swift:207
+        dots -> "고점·저점 표시 · 계단 위로 상승 · 아래로 하락 · 같은 높이 횡보"   // ios: Views/FlowView.swift:203
+        band -> "큰 흐름 · 22% 넘는 출렁임만 셈\n중간 흐름 · 12% 넘는 출렁임\n작은 흐름 · 6% 넘는 출렁임\n빨강 상승 · 파랑 하락 · 회색 횡보"   // ios: Views/FlowView.swift:204
+        support -> "여러 번 내려와 받친 가격 · 많이 닿을수록 진하게"   // ios: Views/FlowView.swift:205
+        resistance -> "여러 번 올라와 막힌 가격 · 많이 닿을수록 진하게"   // ios: Views/FlowView.swift:206
         is pattern -> k.body   // ios: Views/FlowView.swift:207
     }
 }
@@ -304,22 +320,22 @@ val FlowPattern.Kind.title: String get() = when (this) {
 }
 // ios: Views/FlowView.swift:228,229
 val FlowPattern.Kind.body: String get() = when (this) {
-    FlowPattern.Kind.doubleBottom -> "비슷한 높이의 바닥이 두 번 생긴 모양(W)이에요. 두 바닥 사이 고점을 종가가 넘으면 확정이에요."   // ios: Views/FlowView.swift:231
-    FlowPattern.Kind.doubleTop -> "비슷한 높이의 꼭대기가 두 번 생긴 모양(M)이에요. 두 꼭대기 사이 저점 아래로 종가가 내려가면 확정이에요."   // ios: Views/FlowView.swift:232
-    FlowPattern.Kind.headShoulders -> "가운데 꼭대기가 양옆보다 높은 세 봉우리예요. 두 골짜기를 이은 선 아래로 내려가면 확정이에요."   // ios: Views/FlowView.swift:233
-    FlowPattern.Kind.ascTriangle -> "꼭대기는 같은 높이인데 바닥이 점점 높아지는 모양이에요. 그 꼭대기를 종가가 넘으면 확정이에요."   // ios: Views/FlowView.swift:234
-    FlowPattern.Kind.descTriangle -> "바닥은 같은 높이인데 꼭대기가 점점 낮아지는 모양이에요. 그 바닥 아래로 종가가 내려가면 확정이에요."   // ios: Views/FlowView.swift:235
-    FlowPattern.Kind.bullFlag -> "짧게 크게 오른 뒤(깃대) 잠시 쉬는 모양이에요. 쉬던 자리를 위로 벗어나면 확정이에요."   // ios: Views/FlowView.swift:236
-    FlowPattern.Kind.bearFlag -> "짧게 크게 내린 뒤(깃대) 잠시 쉬는 모양이에요. 쉬던 자리를 아래로 벗어나면 확정이에요."   // ios: Views/FlowView.swift:237
-    FlowPattern.Kind.hammer -> "아래꼬리가 몸통보다 훨씬 긴 캔들이에요. 내려갔다가 다시 끌어올린 날이라는 뜻이에요."   // ios: Views/FlowView.swift:238
-    FlowPattern.Kind.shootingStar -> "위꼬리가 몸통보다 훨씬 긴 캔들이에요. 올라갔다가 다시 밀려 내려온 날이라는 뜻이에요."   // ios: Views/FlowView.swift:239
-    FlowPattern.Kind.bullEngulf -> "전날 음봉 몸통을 다음 날 양봉 몸통이 다 덮은 모양이에요."   // ios: Views/FlowView.swift:240
-    FlowPattern.Kind.bearEngulf -> "전날 양봉 몸통을 다음 날 음봉 몸통이 다 덮은 모양이에요."   // ios: Views/FlowView.swift:241
-    FlowPattern.Kind.insideBar -> "전날 고가·저가 안에서만 움직인 날이에요. 힘이 잠시 멈춘 자리예요."   // ios: Views/FlowView.swift:242
+    FlowPattern.Kind.doubleBottom -> "비슷한 바닥 두 번 (W) · 사이 고점 넘는 종가에 확정"   // ios: Views/FlowView.swift:230
+    FlowPattern.Kind.doubleTop -> "비슷한 꼭대기 두 번 (M) · 사이 저점 깨는 종가에 확정"   // ios: Views/FlowView.swift:231
+    FlowPattern.Kind.headShoulders -> "가운데가 가장 높은 세 봉우리 · 두 골짜기 선 깨면 확정"   // ios: Views/FlowView.swift:232
+    FlowPattern.Kind.ascTriangle -> "꼭대기 같고 바닥은 높아짐 · 꼭대기 넘는 종가에 확정"   // ios: Views/FlowView.swift:233
+    FlowPattern.Kind.descTriangle -> "바닥 같고 꼭대기는 낮아짐 · 바닥 깨는 종가에 확정"   // ios: Views/FlowView.swift:234
+    FlowPattern.Kind.bullFlag -> "급등(깃대) 뒤 쉬어 가기 · 위로 벗어나면 확정"   // ios: Views/FlowView.swift:235
+    FlowPattern.Kind.bearFlag -> "급락(깃대) 뒤 쉬어 가기 · 아래로 벗어나면 확정"   // ios: Views/FlowView.swift:236
+    FlowPattern.Kind.hammer -> "아래꼬리가 긴 캔들 · 밀렸다 끌어올린 날"   // ios: Views/FlowView.swift:237
+    FlowPattern.Kind.shootingStar -> "위꼬리가 긴 캔들 · 올랐다 밀려난 날"   // ios: Views/FlowView.swift:238
+    FlowPattern.Kind.bullEngulf -> "전날 음봉을 양봉이 다 덮음"   // ios: Views/FlowView.swift:239
+    FlowPattern.Kind.bearEngulf -> "전날 양봉을 음봉이 다 덮음"   // ios: Views/FlowView.swift:240
+    FlowPattern.Kind.insideBar -> "전날 범위 안에서만 움직인 날 · 잠시 멈춤"   // ios: Views/FlowView.swift:241
 }
 
 /** 이름표 자리 잡기에 넘기는 것 */
-class TagWant(val key: String, val layer: FlowLayer, val strong: Boolean, val w: Float, val cands: List<Offset>)   // ios: Views/FlowView.swift:554
+class TagWant(val key: String, val layer: FlowLayer, val strong: Boolean, val w: Float, val cands: List<Offset>)   // ios: Views/FlowView.swift:556
 
 /** .position(x:y:): 가운데를 (x, y) dp 에 둔다 (부모 Box 왼쪽 위 기준) */
 private fun Modifier.centerAt(x: Float, y: Float): Modifier = this.layout { m, c ->
@@ -329,11 +345,17 @@ private fun Modifier.centerAt(x: Float, y: Float): Modifier = this.layout { m, c
 
 /** 캔들 차트. 보이는 구간의 캔들만 그리고, 넓게 보면 5일·21일씩 묶어 주봉·월봉으로 접는다 */
 @Composable
-fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm: (FlowTerm) -> Unit) {   // ios: Views/FlowView.swift:247,248,249,250,251
+fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: FlowTerm?, setTerm: (FlowTerm?) -> Unit,   // ios: Views/FlowView.swift:247,248,249,250,251
+              more: (FlowTerm) -> Unit = {}) {   // ios: Views/FlowView.swift:252
     var count by remember { mutableStateOf(160) }          // 보이는 날 수   // ios: Views/FlowView.swift:253
     var end by remember { mutableStateOf<Int?>(null) }      // 맨 오른쪽 날 (null = 마지막 날)   // ios: Views/FlowView.swift:254
     var pinchBase by remember { mutableStateOf<Int?>(null) }   // ios: Views/FlowView.swift:255
     var dragBase by remember { mutableStateOf<Int?>(null) }   // ios: Views/FlowView.swift:256
+    var tapAt by remember { mutableStateOf(Offset.Zero) }   // ios: Views/FlowView.swift:257 마지막으로 누른 자리 (dp, 말풍선을 그 근처에 띄운다)
+    var hintSeen by rememberPrefBool("flow.hintSeen", false)   // ios: Views/FlowView.swift:258
+    val onTerm = { t: FlowTerm -> setTerm(t) }
+    // ios: Views/FlowView.swift:471
+    LaunchedEffect(term) { if (term != null) hintSeen = true }
     val axisW = 46f; val bandH = 36f; val topH = 68f; val botH = 20f   // ios: Views/FlowView.swift:260
     val haptic = LocalHapticFeedback.current
     val dens = LocalDensity.current.density
@@ -355,7 +377,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
         if (pMin > pMax) { pMin = 0.0; pMax = 1.0 }   // ios: Views/FlowView.swift:270
         val pad = (pMax - pMin) * 0.08   // ios: Views/FlowView.swift:271
         val yMin = pMin - pad; val yMax = pMax + pad   // ios: Views/FlowView.swift:272
-        val x = { i: Double -> ((i - lo + 0.5) / cnt).toFloat() * W }   // ios: Views/FlowView.swift:271
+        val x = { i: Double -> ((i - lo + 0.5) / cnt).toFloat() * W }   // ios: Views/FlowView.swift:278
         val y = { v: Double -> top + (1 - (v - yMin) / max(1e-12, yMax - yMin)).toFloat() * H }   // ios: Views/FlowView.swift:273
         val last = k[hi]   // ios: Views/FlowView.swift:274
         val piv = series.pivotSets[if (step == 1) 0 else if (step == 5) 1 else 2]   // ios: Views/FlowView.swift:275
@@ -363,7 +385,9 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
         val lvls = series.levels.filter { it.price >= yMin && it.price <= yMax && it.from <= hi }.take(4)   // ios: Views/FlowView.swift:277
         // 월봉으로 볼 땐 패턴 없이 추세·지지/저항만 (한 칸이 한 달이라 몇 주짜리 모양은 뜻이 없다)
         val bigs = if (step == 21) emptyList() else series.patterns.filter { it.big && it.to >= lo && it.from <= hi }   // ios: Views/FlowView.swift:280
-        val smalls = if (step == 1) series.patterns.filter { !it.big && it.to >= lo && it.to <= hi } else emptyList()   // ios: Views/FlowView.swift:279
+        // 흐린(확정 전·거래량 적은) 캔들 패턴은 확대해서 60일 이하로 볼 때만 띄운다
+        val showWeak: Boolean = cnt <= 60   // ios: Views/FlowView.swift:282
+        val smalls = if (step == 1) series.patterns.filter { !it.big && it.to >= lo && it.to <= hi && (it.strong || showWeak) } else emptyList()   // ios: Views/FlowView.swift:283
         // 큰 패턴 틀: 구간 안 최고가·최저가
         val box = { pt: FlowPattern ->   // ios: Views/FlowView.swift:285
             val a = x(max(lo, pt.from).toDouble() - 0.5); val b = x(min(hi, pt.to).toDouble() + 0.5)   // ios: Views/FlowView.swift:286
@@ -397,6 +421,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
                 .pointerInput(lo, hi, layers, W, H) {   // ios: Views/FlowView.swift:473
                     detectTapGestures { o ->
                         val lx = o.x / dens; val ly = o.y / dens
+                        setTerm(null); tapAt = Offset(lx, ly)   // ios: Views/FlowView.swift:474
                         // ios: Views/FlowView.swift:475,476,477
                         val lv = if (FlowLayer.levels in layers) lvls.minByOrNull { abs(y(it.price) - ly) } else null
                         if (lv != null && abs(y(lv.price) - ly) < 10) { onTerm(if (lv.support) FlowTerm.support else FlowTerm.resistance); return@detectTapGestures }
@@ -413,10 +438,10 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
                             val ev = awaitPointerEvent()
                             val down = ev.changes.count { it.pressed }
                             if (down >= 2) {
-                                mag *= ev.calculateZoom()
+                                mag *= ev.calculateZoom()   // ios: Views/FlowView.swift:494
                                 val base = pinchBase ?: count   // ios: Views/FlowView.swift:495
                                 if (pinchBase == null) pinchBase = count   // ios: Views/FlowView.swift:496
-                                count = max(20, min(n, (base / max(0.05f, mag)).toInt()))   // ios: Views/FlowView.swift:494,497
+                                count = max(20, min(n, (base / max(0.05f, mag)).toInt()))   // ios: Views/FlowView.swift:497
                                 ev.changes.forEach { it.consume() }
                             } else if (down == 1) {
                                 val d = ev.calculatePan()
@@ -425,7 +450,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
                                     tx += d.x / dens
                                     val c0 = max(20, min(n, count)); val h0 = max(c0 - 1, min(n - 1, end ?: (n - 1)))
                                     val base = dragBase ?: h0   // ios: Views/FlowView.swift:486,487
-                                    if (dragBase == null) dragBase = h0   // ios: Views/FlowView.swift:474
+                                    if (dragBase == null) { dragBase = h0; setTerm(null) }   // ios: Views/FlowView.swift:488
                                     val shift = (tx / max(1f, W) * c0).roundToInt()   // ios: Views/FlowView.swift:489
                                     end = max(c0 - 1, min(n - 1, base - shift))   // ios: Views/FlowView.swift:490
                                     ev.changes.forEach { it.consume() }
@@ -515,8 +540,8 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
                     T(t, Modifier.centerAt(W + 4 + 12, topH + row * (bandH / 3) + bandH / 6), style = appFont(8f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:393,394
                 }
                 // 띠를 누르면 띠 설명
-                // ios: Views/FlowView.swift:397,398,402
-                if (FlowLayer.trend in layers) Box(Modifier.width(W.dp).height((bandH + 6).dp).layout { m, c -> val p = m.measure(c); layout(p.width, p.height) { p.place(0, (topH - 3).dp.roundToPx()) } }.plainClickable { onTerm(FlowTerm.band) })
+                // ios: Views/FlowView.swift:397,398,399,402
+                if (FlowLayer.trend in layers) Box(Modifier.width(W.dp).height((bandH + 6).dp).layout { m, c -> val p = m.measure(c); layout(p.width, p.height) { p.place(0, (topH - 3).dp.roundToPx()) } }.plainClickable { tapAt = Offset(W / 2, topH + bandH); onTerm(FlowTerm.band) })
             }
 
             // 겹 2: 지지·저항 가로선
@@ -532,8 +557,8 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
                 for (lv in lvls) {
                     val sp = spots["L${lv.id}"] ?: continue   // ios: Views/FlowView.swift:412
                     val col = if (lv.support) up else down; val op = min(1.0, 0.25 + 0.2 * lv.touches).toFloat()
-                    // ios: Views/FlowView.swift:414,415,416,417,419,420,425
-                    T(levelText(lv), Modifier.centerAt(sp.x, sp.y).heightIn(min = 24.dp).then(if (FlowLayer.levels in layers) Modifier.plainClickable { onTerm(if (lv.support) FlowTerm.support else FlowTerm.resistance) } else Modifier)
+                    // ios: Views/FlowView.swift:413,414,415,416,417,419,420,425
+                    T(levelText(lv), Modifier.centerAt(sp.x, sp.y).heightIn(min = 24.dp).then(if (FlowLayer.levels in layers) Modifier.plainClickable { tapAt = sp; onTerm(if (lv.support) FlowTerm.support else FlowTerm.resistance) } else Modifier)
                         .padding(vertical = 4.dp).background(card.copy(alpha = 0.9f), RoundedCornerShape(50)).padding(horizontal = 4.dp),
                         style = appFont(10f, FontWeight.SemiBold), color = col.copy(alpha = max(0.7f, op)), maxLines = 1)
                 }
@@ -554,7 +579,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
                 }
                 for (pt in bigs) {
                     val sp = spots["B${pt.id}"] ?: continue   // ios: Views/FlowView.swift:438
-                    Tag(pt.kind.title, purple, pt.strong, Modifier.centerAt(sp.x, sp.y), FlowLayer.big in layers) { onTerm(FlowTerm.pattern(pt.kind)) }   // ios: Views/FlowView.swift:444
+                    Tag(pt.kind.title, purple, pt.strong, Modifier.centerAt(sp.x, sp.y), FlowLayer.big in layers) { tapAt = sp; onTerm(FlowTerm.pattern(pt.kind)) }   // ios: Views/FlowView.swift:439,444
                 }
             }
 
@@ -562,62 +587,279 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, onTerm:
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = aCandle }) {   // ios: Views/FlowView.swift:447,454
                 for (pt in smalls) {   // ios: Views/FlowView.swift:448
                     val sp = spots["C${pt.id}"] ?: continue   // ios: Views/FlowView.swift:449
-                    Tag(pt.kind.title, Theme.orange, pt.strong, Modifier.centerAt(sp.x, sp.y), FlowLayer.candle in layers) { onTerm(FlowTerm.pattern(pt.kind)) }   // ios: Views/FlowView.swift:455
+                    Tag(pt.kind.title, Theme.orange, pt.strong, Modifier.centerAt(sp.x, sp.y), FlowLayer.candle in layers) { tapAt = sp; onTerm(FlowTerm.pattern(pt.kind)) }   // ios: Views/FlowView.swift:450,455
                 }
             }
 
             // 아래: 보이는 기간
-            // ios: Views/FlowView.swift:460
-            T(date(series, lo) + " – " + date(series, hi), Modifier.centerAt(W / 2, fullH - botH / 2), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
+            // ios: Views/FlowView.swift:458,459,460
+            T(date(series, lo) + " – " + date(series, hi) + "  ·  " + tr("밀기 · 두 손가락 확대"), Modifier.centerAt(W / 2, fullH - botH / 2), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
+
+            // 말풍선: 누른 것의 뜻. 처음 한 번은 사용 안내
+            // ios: Views/FlowView.swift:463,464
+            if (term != null) Bubble(term.title, term.body, at = tapAt, top = top, W = W, onClose = { setTerm(null) }) { more(term) }
+            // ios: Views/FlowView.swift:465,466,467
+            else if (!hintSeen) Bubble("이름표나 선을 눌러 보세요", "누른 것의 뜻이 여기 떠요. 흐린 점선 이름표는 확정 전이거나 거래량이 적었던 것이에요.", at = Offset(W / 2, fullH - botH), top = top, W = W, onClose = { hintSeen = true }, more = null)
         }
     }
 }
 
-private fun levelText(lv: FlowLevel): String =   // ios: Views/FlowView.swift:548
-    (if (lv.support) "지지" else "저항") + " ×${lv.touches}"   // ios: Views/FlowView.swift:549
+/** 누른 자리 바로 위에 띄운다. 차트 위쪽 끝이면 바로 아래로. 가로는 화면 밖으로 안 나가게. 꼬리는 누른 자리를 가리킨다 (자리는 dp) */
+// ios: Views/FlowView.swift:508
+@Composable
+private fun Bubble(title: String, body: String, at: Offset, top: Float, W: Float, onClose: () -> Unit, more: (() -> Unit)?) {
+    val p = at
+    val bw: Float = min(240f, W - 8)   // ios: Views/FlowView.swift:509
+    val cx: Float = min(max(p.x, bw / 2 + 4), W - bw / 2 - 4)   // ios: Views/FlowView.swift:510
+    val below: Boolean = p.y < top + 110   // ios: Views/FlowView.swift:511
+    val tailX: Float = min(max(p.x - (cx - bw / 2), 16f), bw - 16)   // ios: Views/FlowView.swift:512
+    // ios: Views/FlowView.swift:513,514
+    val ink = Theme.inkFixed
+    @Composable fun Tail() = Box(Modifier.width(bw.dp).height(7.dp)) {
+        Canvas(Modifier.offset(x = (tailX - 7).dp).size(14.dp, 7.dp)) { drawPath(FlowTail.path(below, size), ink) }
+    }
+    // ios: Views/FlowView.swift:516,540,541,544,546 (누른 자리 p 에 붙여 폭 bw 로 재고, 키는 글 따라)
+    Column(
+        Modifier.layout { m, c ->
+            val pl = m.measure(androidx.compose.ui.unit.Constraints.fixedWidth(bw.dp.roundToPx()))
+            val off = (if (below) 8 else -8).dp.roundToPx()   // ios: Views/FlowView.swift:543
+            layout(c.maxWidth, c.maxHeight) { pl.place((cx - bw / 2).dp.roundToPx(), p.y.dp.roundToPx() + off - (if (below) 0 else pl.height)) }
+        }.plainClickable(onClose),
+        verticalArrangement = Arrangement.spacedBy(0.dp),   // ios: Views/FlowView.swift:517
+    ) {
+        if (below) Tail()   // ios: Views/FlowView.swift:518
+        // 다크 모드에서도 늘 어두운 바탕 (Theme.ink 는 다크에서 밝아져 흰 글자가 묻힌다)
+        // ios: Views/FlowView.swift:519,533,534,536,537
+        Column(Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(12.dp), ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.18f)).background(Theme.inkFixed, RoundedCornerShape(12.dp)).border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            T(title, style = appFont(13f, FontWeight.Bold), color = Color.White)   // ios: Views/FlowView.swift:520
+            T(body, style = appFont(12f), color = Color.White.copy(alpha = 0.85f))   // ios: Views/FlowView.swift:521
+            // ios: Views/FlowView.swift:522
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                T("정보 제공용 · 매매 권유 아님", Modifier.weight(1f).padding(end = 4.dp), style = appFont(10f), color = Color.White.copy(alpha = 0.55f))   // ios: Views/FlowView.swift:523,524
+                // ios: Views/FlowView.swift:525,526,527,529
+                if (more != null) T("자세히 ›", Modifier.plainClickable(more), style = appFont(11f, FontWeight.SemiBold), color = Theme.mint)
+            }
+        }
+        if (!below) Tail()   // ios: Views/FlowView.swift:538
+    }
+}
+
+/** 말풍선 꼬리 (작은 삼각형) */
+object FlowTail {   // ios: Views/FlowView.swift:604
+    // ios: Views/FlowView.swift:605,606
+    fun path(up: Boolean, r: Size): Path {
+        val p = Path()   // ios: Views/FlowView.swift:607
+        if (up) { p.moveTo(r.width / 2, 0f); p.lineTo(r.width, r.height); p.lineTo(0f, r.height) }   // ios: Views/FlowView.swift:608
+        else { p.moveTo(0f, 0f); p.lineTo(r.width, 0f); p.lineTo(r.width / 2, r.height) }   // ios: Views/FlowView.swift:609
+        p.close()   // ios: Views/FlowView.swift:610
+        return p   // ios: Views/FlowView.swift:611
+    }
+}
+
+/** '흐름 읽는 법': 겹마다 항목 한 줄씩, 작은 그림 + 두세 줄 설명 */
+// ios: Views/FlowView.swift:616,617,618
+@Composable
+fun FlowGuide(focus: String?, dismiss: () -> Unit) {
+    class Item(val id: String, val title: String, val body: String)   // ios: Views/FlowView.swift:620
+    // ios: Views/FlowView.swift:621
+    val groups: List<Pair<String, List<Item>>> = remember {
+        val t = { x: FlowTerm -> Item(x.key, x.title, x.body) }   // ios: Views/FlowView.swift:622
+        val k = { x: FlowPattern.Kind -> Item(x.name, x.title, x.body) }   // ios: Views/FlowView.swift:623
+        // ios: Views/FlowView.swift:624
+        listOf(
+            FlowLayer.trend.title to listOf(t(FlowTerm.band), t(FlowTerm.dots)),   // ios: Views/FlowView.swift:625
+            FlowLayer.levels.title to listOf(t(FlowTerm.support), t(FlowTerm.resistance)),   // ios: Views/FlowView.swift:626
+            FlowLayer.big.title to listOf(k(FlowPattern.Kind.doubleTop), k(FlowPattern.Kind.doubleBottom), k(FlowPattern.Kind.headShoulders), k(FlowPattern.Kind.ascTriangle), k(FlowPattern.Kind.descTriangle), k(FlowPattern.Kind.bullFlag), k(FlowPattern.Kind.bearFlag)),   // ios: Views/FlowView.swift:627
+            FlowLayer.candle.title to listOf(k(FlowPattern.Kind.hammer), k(FlowPattern.Kind.shootingStar), k(FlowPattern.Kind.bullEngulf), k(FlowPattern.Kind.bearEngulf), k(FlowPattern.Kind.insideBar)),   // ios: Views/FlowView.swift:628
+        )
+    }
+    val scroll = rememberScrollState()
+    var focusY by remember { mutableStateOf<Int?>(null) }
+    // ios: Views/FlowView.swift:666 (고른 줄을 가운데로)
+    LaunchedEffect(focusY) { focusY?.let { scroll.scrollTo(max(0, it - scroll.viewportSize / 2)) } }
+    // ios: Views/FlowView.swift:672,673,674,685,686
+    @Composable fun Row0(it: Item) {
+        val on = it.id == focus
+        Row(Modifier.fillMaxWidth().background(if (on) Theme.tealBg else Color.Transparent, RoundedCornerShape(16.dp)).padding(12.dp)
+            .then(if (on) Modifier.onGloballyPositioned { c -> if (focusY == null) focusY = c.positionInParent().y.toInt() + c.size.height / 2 } else Modifier),
+            horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+            // ios: Views/FlowView.swift:675,676,677,678
+            Box(Modifier.background(Theme.bg, RoundedCornerShape(10.dp)).padding(4.dp)) { FlowMini(it.id, Modifier.size(56.dp, 40.dp)) }
+            // ios: Views/FlowView.swift:679,683
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                T(it.title, style = appFont(15f, FontWeight.Bold), color = Theme.ink)   // ios: Views/FlowView.swift:680
+                T(it.body, style = appFont(13f), color = Theme.sub)   // ios: Views/FlowView.swift:681
+            }
+            Spacer(Modifier.widthIn(min = 0.dp))   // ios: Views/FlowView.swift:683
+        }
+    }
+    // ios: Views/FlowView.swift:632,633,669
+    Column(Modifier.fillMaxSize().background(Theme.bg), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        // ios: Views/FlowView.swift:634,643
+        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            T("흐름 읽는 법", Modifier.weight(1f).padding(end = 8.dp), style = appFont(20f, FontWeight.Bold), color = Theme.ink)   // ios: Views/FlowView.swift:635,636
+            // ios: Views/FlowView.swift:637,638,639,641
+            Box(Modifier.size(44.dp, 44.dp).plainClickable(dismiss).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
+                Sym("xmark", 15f, Theme.sub, scaled = false)
+            }
+        }
+        // ios: Views/FlowView.swift:644,645,646,663,665
+        Column(Modifier.fillMaxWidth().verticalScroll(scroll).background(Theme.bg).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            // ios: Views/FlowView.swift:647,648
+            groups.forEach { g ->
+                // ios: Views/FlowView.swift:649
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    T(g.first, Modifier.padding(start = 4.dp), style = appFont(13f, FontWeight.SemiBold), color = Theme.muted)   // ios: Views/FlowView.swift:650
+                    // ios: Views/FlowView.swift:651,657
+                    Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(16.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                        // ios: Views/FlowView.swift:652
+                        g.second.forEachIndexed { i, it ->
+                            if (i > 0) Box(Modifier.fillMaxWidth().padding(start = 84.dp).height(1.dp).background(Theme.line))   // ios: Views/FlowView.swift:653
+                            Row0(it)   // ios: Views/FlowView.swift:654
+                        }
+                    }
+                }
+            }
+            // ios: Views/FlowView.swift:660,661
+            T("흐린 점선 = 확정 전·거래량 적음 · 투자 권유 아님", Modifier.padding(horizontal = 4.dp), style = appFont(12f), color = Theme.muted)
+        }
+    }
+}
+
+/** 설명 페이지의 작은 그림. 좌표는 0~1 (y 0 = 위) */
+// ios: Views/FlowView.swift:691
+object FlowMini {
+    // ios: Views/FlowView.swift:694,695,696,708
+    val lines: Map<String, List<Offset>> = run {
+        fun pts(a: List<Pair<Float, Float>>): List<Offset> = a.map { Offset(it.first, it.second) }
+        mapOf(
+            "dots" to pts(listOf(0f to 0.85f, 0.22f to 0.5f, 0.38f to 0.68f, 0.62f to 0.3f, 0.78f to 0.48f, 1f to 0.12f)),   // ios: Views/FlowView.swift:697
+            "support" to pts(listOf(0f to 0.25f, 0.2f to 0.75f, 0.4f to 0.4f, 0.6f to 0.75f, 0.8f to 0.35f, 1f to 0.75f)),   // ios: Views/FlowView.swift:698
+            "resistance" to pts(listOf(0f to 0.75f, 0.2f to 0.25f, 0.4f to 0.6f, 0.6f to 0.25f, 0.8f to 0.65f, 1f to 0.25f)),   // ios: Views/FlowView.swift:699
+            "doubleTop" to pts(listOf(0f to 0.9f, 0.25f to 0.15f, 0.5f to 0.55f, 0.75f to 0.15f, 1f to 0.9f)),   // ios: Views/FlowView.swift:700
+            "doubleBottom" to pts(listOf(0f to 0.1f, 0.25f to 0.85f, 0.5f to 0.45f, 0.75f to 0.85f, 1f to 0.1f)),   // ios: Views/FlowView.swift:701
+            "headShoulders" to pts(listOf(0f to 0.9f, 0.18f to 0.42f, 0.33f to 0.65f, 0.5f to 0.08f, 0.67f to 0.65f, 0.82f to 0.42f, 1f to 0.9f)),   // ios: Views/FlowView.swift:702
+            "ascTriangle" to pts(listOf(0f to 0.9f, 0.2f to 0.18f, 0.4f to 0.72f, 0.6f to 0.18f, 0.8f to 0.5f, 1f to 0.18f)),   // ios: Views/FlowView.swift:703
+            "descTriangle" to pts(listOf(0f to 0.1f, 0.2f to 0.82f, 0.4f to 0.28f, 0.6f to 0.82f, 0.8f to 0.5f, 1f to 0.82f)),   // ios: Views/FlowView.swift:704
+            "bullFlag" to pts(listOf(0f to 0.95f, 0.35f to 0.15f, 0.5f to 0.32f, 0.65f to 0.22f, 0.8f to 0.38f, 1f to 0.05f)),   // ios: Views/FlowView.swift:705
+            "bearFlag" to pts(listOf(0f to 0.05f, 0.35f to 0.85f, 0.5f to 0.68f, 0.65f to 0.78f, 0.8f to 0.62f, 1f to 0.95f)),   // ios: Views/FlowView.swift:706
+        )
+    }
+    /** 캔들 (시가, 고가, 저가, 종가), 0~1 (1 = 높음) */
+    // ios: Views/FlowView.swift:710
+    val candles: Map<String, List<FloatArray>> = mapOf(
+        "hammer" to listOf(floatArrayOf(0.62f, 0.72f, 0.08f, 0.7f)),   // ios: Views/FlowView.swift:711
+        "shootingStar" to listOf(floatArrayOf(0.38f, 0.92f, 0.3f, 0.32f)),   // ios: Views/FlowView.swift:712
+        "bullEngulf" to listOf(floatArrayOf(0.62f, 0.68f, 0.4f, 0.45f), floatArrayOf(0.38f, 0.78f, 0.34f, 0.72f)),   // ios: Views/FlowView.swift:713
+        "bearEngulf" to listOf(floatArrayOf(0.45f, 0.66f, 0.4f, 0.6f), floatArrayOf(0.7f, 0.74f, 0.28f, 0.34f)),   // ios: Views/FlowView.swift:714
+        "insideBar" to listOf(floatArrayOf(0.25f, 0.95f, 0.08f, 0.85f), floatArrayOf(0.45f, 0.68f, 0.38f, 0.62f)),   // ios: Views/FlowView.swift:715
+    )
+    /** 겹 선: 지지는 아래, 저항·삼각형 꼭대기는 위 (색은 그릴 때 Theme 에서) */
+    // ios: Views/FlowView.swift:718,719,720
+    val guide: Map<String, Pair<Float, String>> = mapOf(
+        "support" to (0.75f to "up"), "resistance" to (0.25f to "down"),
+        "ascTriangle" to (0.18f to "purple"), "descTriangle" to (0.82f to "purple"),
+    )
+}
+
+// ios: Views/FlowView.swift:692,723,724,765 (그림이라 읽어 주기 없음)
+@Composable
+fun FlowMini(key: String, modifier: Modifier) {
+    val up = Theme.up; val down = Theme.down; val dash = Theme.dash; val purple = Theme.purple; val sub = Theme.sub; val teal = Theme.teal
+    Canvas(modifier.clearAndSetSemantics {}) {
+        val P = { p: Offset -> Offset(p.x * size.width, p.y * size.height) }   // ios: Views/FlowView.swift:725
+        val d = density
+        // ios: Views/FlowView.swift:726
+        if (key == "band") {
+            // ios: Views/FlowView.swift:727,728,729,730
+            val rows: List<List<Triple<Float, Float, Color>>> = listOf(
+                listOf(Triple(0f, 1f, up)),
+                listOf(Triple(0f, 0.4f, dash), Triple(0.4f, 1f, up)),
+                listOf(Triple(0f, 0.3f, down), Triple(0.3f, 0.7f, up), Triple(0.7f, 1f, down)),
+            )
+            // ios: Views/FlowView.swift:732,733
+            for ((i, r) in rows.withIndex()) for ((a, b, c) in r) {
+                val rect = Rect(Offset(a * size.width + 1 * d, i * size.height / 3 + 3 * d), Size((b - a) * size.width - 2 * d, size.height / 3 - 6 * d))   // ios: Views/FlowView.swift:734
+                drawRoundRect(c, rect.topLeft, rect.size, CornerRadius(2 * d, 2 * d))   // ios: Views/FlowView.swift:735
+            }
+            return@Canvas   // ios: Views/FlowView.swift:738
+        }
+        // ios: Views/FlowView.swift:740
+        FlowMini.guide[key]?.let { g ->
+            val col = when (g.second) { "up" -> up; "down" -> down; else -> purple }
+            drawLine(col.copy(alpha = 0.7f), P(Offset(0f, g.first)), P(Offset(1f, g.first)), 1.5f * d)   // ios: Views/FlowView.swift:741,742
+        }
+        // ios: Views/FlowView.swift:744
+        FlowMini.lines[key]?.let { pts ->
+            val l = Path(); pts.map(P).forEachIndexed { i, o -> if (i == 0) l.moveTo(o.x, o.y) else l.lineTo(o.x, o.y) }   // ios: Views/FlowView.swift:745
+            val col: Color = if (key == "dots" || key == "support" || key == "resistance") sub else purple   // ios: Views/FlowView.swift:746
+            drawPath(l, col, style = Stroke(1.8f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))   // ios: Views/FlowView.swift:747
+            // ios: Views/FlowView.swift:748
+            if (key == "dots") {
+                for (p in pts) drawOval(teal, Offset(P(p).x - 3 * d, P(p).y - 3 * d), Size(6 * d, 6 * d))   // ios: Views/FlowView.swift:749
+            }
+        }
+        // ios: Views/FlowView.swift:752
+        FlowMini.candles[key]?.let { cs ->
+            val n = cs.size.toFloat(); val bw = 10f * d   // ios: Views/FlowView.swift:753
+            // ios: Views/FlowView.swift:754
+            for ((i, c) in cs.withIndex()) {
+                val x = size.width * (i + 1) / (n + 1)   // ios: Views/FlowView.swift:755
+                val Y = { v: Float -> (1 - v) * size.height }   // ios: Views/FlowView.swift:756
+                val col = if (c[3] >= c[0]) up else down   // ios: Views/FlowView.swift:757
+                drawLine(col, Offset(x, Y(c[1])), Offset(x, Y(c[2])), 1.2f * d)   // ios: Views/FlowView.swift:758,759
+                val top = Y(max(c[0], c[3])); val h = max(2f * d, abs(Y(c[0]) - Y(c[3])))   // ios: Views/FlowView.swift:760
+                drawRect(col, Offset(x - bw / 2, top), Size(bw, h))   // ios: Views/FlowView.swift:761
+            }
+        }
+    }
+}
+
+private fun levelText(lv: FlowLevel): String =   // ios: Views/FlowView.swift:550
+    (if (lv.support) "지지" else "저항") + " ×${lv.touches}"   // ios: Views/FlowView.swift:551
 /** 10pt 굵은 글자 이름표 폭 어림 (한글 10.5, 영문 6.2 + 여백) */
-private fun tagW(t0: String): Float { val t = com.naeilo.app.core.tr(t0); return t.fold(14f) { a, ch -> a + if (ch.code < 128) 6.2f else 10.5f } }   // ios: Views/FlowView.swift:552
+private fun tagW(t0: String): Float { val t = com.naeilo.app.core.tr(t0); return t.fold(14f) { a, ch -> a + if (ch.code < 128) 6.2f else 10.5f } }   // ios: Views/FlowView.swift:554
 
 /** 이름표 자리 잡기: 지지·저항 → 큰 패턴 → 캔들 패턴 순서로, 켜진 앞 겹 이름표와 이미 놓인 것을 피해
  *  후보 자리를 차례로 본다. 진한 것부터 놓으니 끝내 겹치면 약한 쪽이 숨는다.
  *  뒤 겹을 켜고 꺼도 앞 겹 이름표는 움직이지 않는다 */
-fun placeTags(levels: List<TagWant>, big: List<TagWant>, candle: List<TagWant>, on: Set<FlowLayer>, bounds: Rect): Map<String, Offset> {   // ios: Views/FlowView.swift:559
-    val out = HashMap<String, Offset>(); val taken = ArrayList<Rect>()   // ios: Views/FlowView.swift:560
-    for (group in listOf(levels, big, candle)) {   // ios: Views/FlowView.swift:561
-        val mine = ArrayList<Rect>()   // ios: Views/FlowView.swift:562
-        for (t in group.sortedBy { if (it.strong) 0 else 1 }) {   // ios: Views/FlowView.swift:563
-            for (c in t.cands) {   // ios: Views/FlowView.swift:564
-                val cx = min(max(c.x, bounds.left + t.w / 2), bounds.right - t.w / 2)   // ios: Views/FlowView.swift:565
-                val cy = min(max(c.y, bounds.top + 9), bounds.bottom - 9)   // ios: Views/FlowView.swift:566
-                val r = Rect(cx - t.w / 2, cy - 9, cx + t.w / 2, cy - 9 + 18)   // ios: Views/FlowView.swift:567
-                if ((taken + mine).none { it.overlaps(r) }) {   // ios: Views/FlowView.swift:568
-                    out[t.key] = Offset(cx, cy); mine.add(r); break   // ios: Views/FlowView.swift:569
+fun placeTags(levels: List<TagWant>, big: List<TagWant>, candle: List<TagWant>, on: Set<FlowLayer>, bounds: Rect): Map<String, Offset> {   // ios: Views/FlowView.swift:561
+    val out = HashMap<String, Offset>(); val taken = ArrayList<Rect>()   // ios: Views/FlowView.swift:562
+    for (group in listOf(levels, big, candle)) {   // ios: Views/FlowView.swift:563
+        val mine = ArrayList<Rect>()   // ios: Views/FlowView.swift:564
+        for (t in group.sortedBy { if (it.strong) 0 else 1 }) {   // ios: Views/FlowView.swift:565
+            for (c in t.cands) {   // ios: Views/FlowView.swift:566
+                val cx = min(max(c.x, bounds.left + t.w / 2), bounds.right - t.w / 2)   // ios: Views/FlowView.swift:567
+                val cy = min(max(c.y, bounds.top + 9), bounds.bottom - 9)   // ios: Views/FlowView.swift:568
+                val r = Rect(cx - t.w / 2, cy - 9, cx + t.w / 2, cy - 9 + 18)   // ios: Views/FlowView.swift:569
+                if ((taken + mine).none { it.overlaps(r) }) {   // ios: Views/FlowView.swift:570
+                    out[t.key] = Offset(cx, cy); mine.add(r); break   // ios: Views/FlowView.swift:571
                 }
             }
         }
         // 이 겹이 켜져 있을 때만 뒤 겹이 피한다
-        val l = group.firstOrNull()?.layer; if (l != null && l in on) taken += mine   // ios: Views/FlowView.swift:574
+        val l = group.firstOrNull()?.layer; if (l != null && l in on) taken += mine   // ios: Views/FlowView.swift:576
     }
-    return out   // ios: Views/FlowView.swift:576
+    return out   // ios: Views/FlowView.swift:578
 }
 
 /** 이름표: 확정은 진하게, 약한 것은 흐린 점선 테두리 */
 @Composable
-private fun Tag(t: String, col: Color, strong: Boolean, modifier: Modifier, enabled: Boolean, tap: () -> Unit) {   // ios: Views/FlowView.swift:580
+private fun Tag(t: String, col: Color, strong: Boolean, modifier: Modifier, enabled: Boolean, tap: () -> Unit) {   // ios: Views/FlowView.swift:582
     val card = Theme.card
-    // ios: Views/FlowView.swift:581,584,585,586,587,588,590
+    // ios: Views/FlowView.swift:583,586,587,588,589,590,592
     Box(modifier.heightIn(min = 24.dp).then(if (enabled) Modifier.plainClickable(tap) else Modifier), contentAlignment = Alignment.Center) {
         T(t, Modifier.graphicsLayer { alpha = if (strong) 1f else 0.75f }
             .background(if (strong) col else card.copy(alpha = 0.85f), RoundedCornerShape(50))
             .drawBehind { drawRoundRect(col.copy(alpha = if (strong) 0f else 0.6f), cornerRadius = CornerRadius(size.height / 2), style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx())))) }
             .padding(horizontal = 6.dp, vertical = 2.dp),
-            style = appFont(10f, FontWeight.Bold), color = if (strong) Color.White else col.copy(alpha = 0.8f), maxLines = 1)   // ios: Views/FlowView.swift:582,583
+            style = appFont(10f, FontWeight.Bold), color = if (strong) Color.White else col.copy(alpha = 0.8f), maxLines = 1)   // ios: Views/FlowView.swift:584,585
     }
 }
 
 /** 실데이터는 거래일, DRNK 기록은 어제가 마지막 날로 하루에 한 칸 */
-private fun date(series: FlowSeries, i: Int): String {   // ios: Views/FlowView.swift:594
-    series.dates?.let { d -> if (i < d.size) return d[i].replace("-", ".") }   // ios: Views/FlowView.swift:595
-    return fmt.format(Instant.ofEpochSecond(Instant.now().epochSecond - (series.candles.size - i) * 86400L))   // ios: Views/FlowView.swift:596
+private fun date(series: FlowSeries, i: Int): String {   // ios: Views/FlowView.swift:596
+    series.dates?.let { d -> if (i < d.size) return d[i].replace("-", ".") }   // ios: Views/FlowView.swift:597
+    return fmt.format(Instant.ofEpochSecond(Instant.now().epochSecond - (series.candles.size - i) * 86400L))   // ios: Views/FlowView.swift:598
 }
-private val fmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.US).withZone(ZoneId.systemDefault())   // ios: Views/FlowView.swift:598
+private val fmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.US).withZone(ZoneId.systemDefault())   // ios: Views/FlowView.swift:600

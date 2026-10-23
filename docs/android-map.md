@@ -6,12 +6,12 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | Swift | Kotlin (표시 수) |
 |---|---|
 | `App.swift` | `com/naeilo/app/App.kt` (65), `com/naeilo/app/MainActivity.kt` (7), `com/naeilo/app/AppModel.kt` (6), `com/naeilo/app/ui/AppHeader.kt` (6), `com/naeilo/app/ui/Theme.kt` (1) |
-| `Data/AppModel.swift` | `com/naeilo/app/AppModel.kt` (566) |
+| `Data/AppModel.swift` | `com/naeilo/app/AppModel.kt` (567) |
 | `Data/Backup.swift` | `com/naeilo/app/net/Backup.kt` (39) |
 | `Data/BrickGame.swift` | `com/naeilo/app/core/game/BrickGame.kt` (682) |
 | `Data/Calm.swift` | `com/naeilo/app/core/calc/Calm.kt` (364) |
 | `Data/Earnings.swift` | `com/naeilo/app/data/Earnings.kt` (23) |
-| `Data/FlowData.swift` | `com/naeilo/app/data/FlowData.kt` (348) |
+| `Data/FlowData.swift` | `com/naeilo/app/data/FlowData.kt` (347) |
 | `Data/ForecastEngine.swift` | `com/naeilo/app/core/calc/ForecastEngine.kt` (157) |
 | `Data/GoalRoute.swift` | `com/naeilo/app/core/calc/GoalRoute.kt` (312) |
 | `Data/Industries.swift` | `com/naeilo/app/core/calc/Industries.kt` (81) |
@@ -19,50 +19,50 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Data/InvestEvents.swift` | `com/naeilo/app/core/calc/InvestEvents.kt` (22) |
 | `Data/Lines.swift` | `com/naeilo/app/data/Lines.kt` (42) |
 | `Data/Lots.swift` | `com/naeilo/app/data/Lots.kt` (11), `com/naeilo/app/net/Market.kt` (5) |
-| `Data/Market.swift` | `com/naeilo/app/net/Market.kt` (376) |
+| `Data/Market.swift` | `com/naeilo/app/net/Market.kt` (392) |
 | `Data/Me.swift` | `com/naeilo/app/data/Me.kt` (106) |
 | `Data/MonteCarlo.swift` | `com/naeilo/app/core/calc/MonteCarlo.kt` (546) |
 | `Data/MyRecord.swift` | `com/naeilo/app/data/MyRecord.kt` (9) |
 | `Data/Notifier.swift` | `com/naeilo/app/data/Notifier.kt` (129) |
-| `Data/Parallel.swift` | `com/naeilo/app/core/calc/Parallel.kt` (516) |
+| `Data/Parallel.swift` | `com/naeilo/app/core/calc/Parallel.kt` (524) |
 | `Data/Progress.swift` | `com/naeilo/app/data/Progress.kt` (68) |
 | `Data/Recovery.swift` | `com/naeilo/app/core/calc/Recovery.kt` (248) |
 | `Data/Remind.swift` | `com/naeilo/app/data/Remind.kt` (378) |
 | `Data/SampleData.swift` | `com/naeilo/app/data/SampleData.kt` (159) |
-| `Data/Services.swift` | `com/naeilo/app/data/Services.kt` (25) |
+| `Data/Services.swift` | `com/naeilo/app/data/Services.kt` (51) |
 | `Data/SiteCalc.swift` | `com/naeilo/app/core/calc/SiteCalc.kt` (63) |
 | `Data/SiteStats.swift` | `com/naeilo/app/net/SiteStats.kt` (123) |
 | `Data/StockCatalog.swift` | `com/naeilo/app/net/StockCatalog.kt` (126) |
-| `Data/StockSearch.swift` | `com/naeilo/app/net/StockSearch.kt` (313) |
+| `Data/StockSearch.swift` | `com/naeilo/app/net/StockSearch.kt` (314) |
 | `Data/StoreAPI.swift` | `com/naeilo/app/net/StoreAPI.kt` (27) |
 | `Data/Story.swift` | `com/naeilo/app/data/Story.kt` (118) |
 | `Data/Support.swift` | `com/naeilo/app/data/Support.kt` (107) |
 | `Data/Sync.swift` | `com/naeilo/app/net/Sync.kt` (312) |
 | `Data/WaveEngine.swift` | `com/naeilo/app/core/calc/WaveEngine.kt` (259) |
 | `Data/WidgetBridge.swift` | `com/naeilo/app/data/WidgetBridge.kt` (82) |
-| `Theme.swift` | `com/naeilo/app/ui/Theme.kt` (156) |
+| `Theme.swift` | `com/naeilo/app/ui/Theme.kt` (157) |
 | `Views/AnalysisDetail.swift` | `com/naeilo/app/ui/analysis/ExternalViews.kt` (369), `com/naeilo/app/ui/analysis/RateViews.kt` (318), `com/naeilo/app/ui/analysis/FxGlanceViews.kt` (293), `com/naeilo/app/ui/analysis/MyPathViews.kt` (280), `com/naeilo/app/ui/analysis/DividendViews.kt` (221), `com/naeilo/app/ui/analysis/AnalysisCommon.kt` (90), `com/naeilo/app/core/calc/GoalRoute.kt` (8) |
 | `Views/AnalysisView.swift` | `com/naeilo/app/ui/analysis/AnalysisView.kt` (217), `com/naeilo/app/ui/analysis/AnalysisCommon.kt` (3), `com/naeilo/app/App.kt` (2) |
 | `Views/BoardView.swift` | `com/naeilo/app/ui/board/BoardView.kt` (287) |
 | `Views/BrickGameView.swift` | `com/naeilo/app/ui/game/BrickGameView.kt` (432) |
 | `Views/CalmView.swift` | `com/naeilo/app/ui/calm/CalmView.kt` (133) |
-| `Views/CharMotion.swift` | `com/naeilo/app/ui/CharMotion.kt` (259) |
+| `Views/CharMotion.swift` | `com/naeilo/app/ui/CharMotion.kt` (416) |
 | `Views/Charts.swift` | `com/naeilo/app/ui/Charts.kt` (70) |
-| `Views/EarningsRiver.swift` | `com/naeilo/app/ui/hold/EarningsRiver.kt` (244), `com/naeilo/app/data/Earnings.kt` (8) |
-| `Views/FlowView.swift` | `com/naeilo/app/ui/flow/FlowView.kt` (281) |
+| `Views/EarningsRiver.swift` | `com/naeilo/app/ui/hold/EarningsRiver.kt` (242), `com/naeilo/app/data/Earnings.kt` (8) |
+| `Views/FlowView.swift` | `com/naeilo/app/ui/flow/FlowView.kt` (390) |
 | `Views/ForecastParts.swift` | `com/naeilo/app/ui/analysis/ForecastParts.kt` (72) |
 | `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (501) |
 | `Views/Guide.swift` | `com/naeilo/app/ui/Guide.kt` (72) |
-| `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingDetail.kt` (236), `com/naeilo/app/ui/hold/HoldingsView.kt` (205) |
-| `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (186) |
+| `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (342), `com/naeilo/app/ui/hold/HoldingDetail.kt` (263) |
+| `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (458) |
 | `Views/InvestViews.swift` | `com/naeilo/app/ui/analysis/InvestViews.kt` (95) |
 | `Views/MeViews.swift` | `com/naeilo/app/ui/me/MeViews.kt` (480) |
 | `Views/MissionViews.swift` | `com/naeilo/app/ui/board/MissionViews.kt` (471) |
 | `Views/MyRecordCard.swift` | `com/naeilo/app/ui/MyRecordCard.kt` (44) |
-| `Views/ParallelView.swift` | `com/naeilo/app/ui/analysis/ParallelViews.kt` (204) |
-| `Views/RemindViews.swift` | `com/naeilo/app/ui/remind/RemindViews.kt` (145) |
-| `Views/SettingsDetail.swift` | `com/naeilo/app/ui/settings/SettingsDetail.kt` (298) |
-| `Views/SettingsView.swift` | `com/naeilo/app/ui/settings/SettingsView.kt` (375) |
+| `Views/ParallelView.swift` | `com/naeilo/app/ui/analysis/ParallelViews.kt` (215) |
+| `Views/RemindViews.swift` | `com/naeilo/app/ui/remind/RemindViews.kt` (151) |
+| `Views/SettingsDetail.swift` | `com/naeilo/app/ui/settings/SettingsDetail.kt` (304) |
+| `Views/SettingsView.swift` | `com/naeilo/app/ui/settings/SettingsView.kt` (378) |
 | `Views/ShareCard.swift` | `com/naeilo/app/ui/ShareCard.kt` (105) |
 | `Views/ShelterView.swift` | `com/naeilo/app/ui/shelter/ShelterView.kt` (464) |
 | `Views/StartView.swift` | `com/naeilo/app/ui/start/StartView.kt` (88) |

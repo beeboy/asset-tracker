@@ -263,3 +263,6 @@ Views/HoldingsView.swift:409 검사기 한계: 보간 속 따옴표 "+" : "−" 
 Views/HoldingsView.swift:419 검사기 한계: 보간 속 따옴표 "+" : "−" (옮김, HoldingsView.kt Foot 산 가격 대비 글)
 Views/EarningsRiver.swift:458 검사기 한계: 보간 속 따옴표 ?? "–" (옮김, EarningsRiver.kt gauge 작년 꼬리표)
 Views/HoldingsView.swift:91 플랫폼: 취소 단추는 ConfirmSheet 가 cancel 글로 만들고 누르면 onDismiss (swiped = null)
+Views/FlowView.swift:515 플랫폼: 1×1 자리 틀(Color.clear.frame) 대신 Compose layout 이 말풍선을 누른 자리 p 에 바로 놓는다 (FlowView.kt Bubble)
+Views/FlowView.swift:542 플랫폼: Compose 그림자는 shadow(8.dp) 높이로 아래로 진다 (y 4 따로 없음, Bubble)
+Views/FlowView.swift:547 플랫폼: .transition(.opacity) 는 애니메이션 없이 바뀌는 term 이라 아이폰도 바로 나타난다 (Compose 도 바로)
