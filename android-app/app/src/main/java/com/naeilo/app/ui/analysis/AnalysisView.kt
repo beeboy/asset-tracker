@@ -788,7 +788,7 @@ fun ProgressTrack(look: BoxLook, fill: Double, modifier: Modifier = Modifier) {
 // ios: Views/AnalysisView.swift:642,643,660
 @Composable
 private fun Road(f: Float, on: Color, modifier: Modifier) {
-    Canvas(modifier.outset(18.dp)) {
+    Canvas(modifier.outset(18.dp).fillMaxSize()) {   // outset 은 안쪽 최소 폭을 0 으로 풀어 다시 채운다
         val pad = 18.dp.toPx(); val w = size.width - pad * 2; val cut = pad + w * f   // ios: Views/AnalysisView.swift:644
         drawRect(hex(0x151925))   // ios: Views/AnalysisView.swift:645
         drawRect(hex(0x232A3E), Offset.Zero, Size(size.width, 1.dp.toPx()))   // ios: Views/AnalysisView.swift:646
