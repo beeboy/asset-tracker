@@ -1722,6 +1722,8 @@ private struct RateBandChart: View {
 
 struct DividendView: View {
     @Environment(AppModel.self) private var m
+    /// 분석 탭 시트: "div" 배당만 · "tax" 세금만 (나눈 두 페이지). nil 이면 예전처럼 둘을 전환
+    var only: String? = nil
     @State private var tab = "div"
     @State private var mode = "month"
     @State private var extra = 0.0
@@ -1767,20 +1769,27 @@ struct DividendView: View {
         let usU = us.reduce(0.0) { $0 + ($1.sym.last - $1.h.avg) * $1.h.qty * fx }
         let G = m.taxGain * 1e4
 
-        PinnedLayout {
-            pinnedBox {
-                DetailHead(title: String(localized: "배당·세금"), sub: "")
-                SegTabs(items: [("div", String(localized: "받는 배당")), ("tax", String(localized: "낼 양도세"))], selection: $tab)
+        let inner = VStack(alignment: .leading, spacing: 14) {
+            if (only ?? tab) == "div" {
+                income(months: months, byMonth: byMonth, paid: paid, net: net, gross: gross, zero: zero, unknown: unknown)
+            } else {
+                capTax(G: G, usU: usU, usIds: us.map(\.id))
             }
-        } content: {
-            VStack(alignment: .leading, spacing: 14) {
-                if tab == "div" {
-                    income(months: months, byMonth: byMonth, paid: paid, net: net, gross: gross, zero: zero, unknown: unknown)
-                } else {
-                    capTax(G: G, usU: usU, usIds: us.map(\.id))
-                }
+        }
+        .padding(16)
+        Group {
+            // 나눈 한 페이지: 위에 고정할 전환 칸이 없으니 그냥 넘긴다
+            if let only {
+                ScrollView { inner }
+                    .modifier(DetailTitle(title: only == "div" ? String(localized: "배당") : String(localized: "세금")))
+            } else {
+                PinnedLayout {
+                    pinnedBox {
+                        DetailHead(title: String(localized: "배당·세금"), sub: "")
+                        SegTabs(items: [("div", String(localized: "받는 배당")), ("tax", String(localized: "낼 양도세"))], selection: $tab)
+                    }
+                } content: { inner }
             }
-            .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)

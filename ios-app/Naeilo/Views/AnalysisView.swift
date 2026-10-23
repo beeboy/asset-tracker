@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum AnalysisRoute: Hashable, Identifiable {
-    case forecast, myPath, rateScen, external, dividend, fx, glance, calm
+    case forecast, myPath, rateScen, external, dividend, tax, fx, glance, calm, goal
     var id: Self { self }
 
     func title(_ m: AppModel) -> String {
@@ -11,7 +11,9 @@ enum AnalysisRoute: Hashable, Identifiable {
         case .forecast: return m.forecastTitle
         case .rateScen: return String(localized: "금리 충격 테스트")
         case .external: return String(localized: "외부 요인")
-        case .dividend: return String(localized: "배당·세금")
+        case .dividend: return String(localized: "배당")
+        case .tax: return String(localized: "세금")
+        case .goal: return String(localized: "목표 고치기")
         case .fx: return String(localized: "환율 영향")
         case .glance: return String(localized: "종목 한눈에")
         }
@@ -46,7 +48,9 @@ struct AnalysisPage: View {
         case .myPath: if Support.shared.pro { MyPathView() } else { SubLocked(what: String(localized: "내 길(목표까지 확률)")) }
         case .rateScen: RateScenarioView()
         case .external: ExternalView()
-        case .dividend: DividendView()
+        case .dividend: DividendView(only: "div")
+        case .tax: DividendView(only: "tax")
+        case .goal: GoalSetView(fromSettings: true)
         case .fx: FxImpactView()
         case .glance: GlanceView()
         case .calm: CalmView()
@@ -58,7 +62,7 @@ struct AnalysisPage: View {
 struct AnalysisPager: View {
     @Environment(AppModel.self) private var m
     @State private var sel: AnalysisRoute
-    static let order: [AnalysisRoute] = [.calm, .myPath, .forecast, .rateScen, .external, .fx, .glance, .dividend]
+    static let order: [AnalysisRoute] = [.calm, .myPath, .forecast, .rateScen, .external, .fx, .glance, .dividend, .tax]
 
     init(start: AnalysisRoute) { _sel = State(initialValue: start) }
 
@@ -149,7 +153,7 @@ struct AnalysisView: View {
             VStack(alignment: .leading, spacing: 14) {
                 AppHeader(tab: String(localized: "분석")).padding(.horizontal, -16)
                 SampleNote()
-                Button { sheet = .myPath } label: {
+                Button { sheet = .forecast } label: {
                     ChanceBox(look: BoxLook(rawValue: lookRaw) ?? .jump, d: chance(p, f, pPlan, pro: pro))
                 }
                 .buttonStyle(.plain)
@@ -230,8 +234,8 @@ struct AnalysisView: View {
         let usdV = m.rows.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value }
         down.append(Pull(label: String(localized: "환율 10원↓"), value: usdV > 0 ? "−" + AppModel.man(usdV * 10 / max(1, Market.shared.valFx)) : String(localized: "그대로"), route: .fx))
         let tax = DividendView.hubTax(m)
-        if tax > 0 { down.append(Pull(label: String(localized: "5월 세금"), value: "−" + AppModel.man(tax), route: .dividend)) }
-        if m.isGoal && m.gM > 0 { up.append(Pull(label: String(localized: "매달 적립"), value: AppModel.wonK(m.gM), route: .myPath)) }
+        if tax > 0 { down.append(Pull(label: String(localized: "5월 세금"), value: "−" + AppModel.man(tax), route: .tax)) }
+        if m.isGoal && m.gM > 0 { up.append(Pull(label: String(localized: "매달 적립"), value: AppModel.wonK(m.gM), route: .goal)) }
         let mo = DividendView.hubMonthly(m)
         up.append(Pull(label: String(localized: "배당"), value: mo > 0 ? String(localized: "월 \(String(describing: Self.short(mo)))") : String(localized: "없음"), route: .dividend))
         let verdict = AppModel.verdict(p)
@@ -321,7 +325,7 @@ struct AnalysisView: View {
         if DividendView.hubTax(m) > 0 {
             let y = Calendar.current.component(.year, from: Date()) + 1
             let t = p.start + AppModel.yrs(Day.today, "\(y)-05-31")
-            if t <= p.end { out.append(Flag(t: t, text: String(localized: "\(String(y)).5 세금"), warn: true, route: .dividend)) }
+            if t <= p.end { out.append(Flag(t: t, text: String(localized: "\(String(y)).5 세금"), warn: true, route: .tax)) }
         }
         return out.sorted { $0.t < $1.t }
     }
@@ -379,18 +383,21 @@ struct AnalysisView: View {
                         .buttonStyle(.plain)
                         .offset(x: min(max(0, x - 4), max(0, w - 110)), y: y)
                     }
-                    // 오른쪽: 목표선 이름 + 안개(목표일 보통 값) → 전망 시트
+                    // 오른쪽: 목표선 이름은 선 바로 위에, 안개(목표일 보통 값) 알약은 선 아래 여유를 두고 → 전망 시트
+                    let gy = topH + Y(K) * chartH
+                    Text("\(m.keyName) \(goal ? AppModel.wonK(m.gK) : AppModel.eok(K))").appFont(11, .bold).foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 4).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
+                        .frame(width: w, alignment: .trailing)
+                        .offset(y: max(0, gy - 18))
                     Button { sheet = .forecast } label: {
-                        VStack(alignment: .trailing, spacing: 1) {
-                            Text("\(m.keyName) \(goal ? AppModel.wonK(m.gK) : AppModel.eok(K))")
-                            if pro && f.exact && fog > 0 { Text("안개: \(AppModel.eok(fog))쯤 ›") } else { Text("전망 ›") }
-                        }
-                        .appFont(11, .bold).foregroundStyle(Theme.teal).multilineTextAlignment(.trailing)
-                        .padding(.horizontal, 4).background(Theme.card.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
+                        Text(pro && f.exact && fog > 0 ? String(localized: "안개 \(String(describing: AppModel.eok(fog)))쯤 ›") : String(localized: "목표일 전망 ›"))
+                            .appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
+                            .padding(.horizontal, 10).frame(height: 28).background(Theme.teal, in: Capsule())
+                            .frame(minHeight: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .frame(width: w, alignment: .trailing)
-                    .offset(y: max(0, topH + Y(K) * chartH - 34))
+                    .offset(y: min(topH + chartH - 44, gy + 4))
                 }
             }
             .frame(height: topH + chartH)
@@ -561,7 +568,7 @@ struct ChanceBox: View {
                 Text(d.status)
             }
         }
-        .font(.system(size: 32, weight: .bold)).tracking(-0.5).foregroundStyle(.white)
+        .font(.system(size: 30, weight: .heavy)).tracking(-0.5).foregroundStyle(.white)   // 흐름 탭 큰 흐름 박스와 같은 크기
         .lineLimit(1).minimumScaleFactor(0.6)
     }
 
