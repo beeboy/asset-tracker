@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -210,10 +211,10 @@ fun HomeView(m: AppModel) {
                     Reminder { inbox = true }   // ios: Views/HomeView.swift:21
                     EarnHomeCard(m)   // ios: Views/HomeView.swift:22
                     TownButton { TownView(m, scroll = it) }   // ios: Views/HomeView.swift:23
-                    // ios: Views/HomeView.swift:24,25,26
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CoverButton("위젯", "rectangle.3.group", Modifier.weight(1f)) { m.widgetsOpen = true }
-                        CoverButton("설정", "gearshape", Modifier.weight(1f)) { m.openSettings() }
+                    // ios: Views/HomeView.swift:24,25,26,28
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+                        CoverButton("위젯", "rectangle.3.group") { m.widgetsOpen = true }
+                        CoverButton("설정", "gearshape") { m.openSettings() }
                     }
                 }
             }
@@ -599,14 +600,14 @@ private fun StripRow(tag: String, text: String, openInbox: () -> Unit) {
     }
 }
 
-/** 미션 탭 [블록]·[파도]와 같은 모양 (WaveGameButton) */
-// ios: Views/HomeView.swift:318,319,320,321,322,324
+/** 작은 알약 두 개를 가운데에 (꽉 찬 버튼은 거슬려 줄였다, 2026-10-23). 누르는 자리는 44 높이 그대로 */
+// ios: Views/HomeView.swift:318,319,320,321,325,327
 @Composable
-private fun CoverButton(t: String, icon: String, modifier: Modifier, act: () -> Unit) {
-    Box(modifier.fillMaxWidth().plainClickable(act).background(Theme.teal, RoundedCornerShape(12.dp))) {
-        val st = appFont(14f, FontWeight.Bold)
-        Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp).padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-            Sym(icon, 14f, Color.White); FitText(t, st, 0.8f, maxLines = 1, color = Color.White)
+private fun CoverButton(t: String, icon: String, act: () -> Unit) {
+    Box(Modifier.defaultMinSize(minHeight = 44.dp).plainClickable(act), contentAlignment = Alignment.Center) {
+        // ios: Views/HomeView.swift:322,323,324
+        Row(Modifier.height(34.dp).background(Theme.teal, CapsuleShape).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Sym(icon, 13f, Color.White); T(t, style = appFont(13f, FontWeight.Bold), color = Color.White, maxLines = 1)
         }
     }
 }

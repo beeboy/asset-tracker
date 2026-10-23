@@ -1,6 +1,22 @@
 package com.naeilo.app.ui.flow
 
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.semantics.selected
+import com.naeilo.app.ui.hex
+import com.naeilo.app.ui.home.BoxLook
+import com.naeilo.app.ui.home.FreshLabel
+import com.naeilo.app.ui.hold.FitAnnotated
+import com.naeilo.app.ui.hold.MoodBand
+import com.naeilo.app.ui.hold.TodayBox
+import com.naeilo.app.ui.hold.moodBackdrop
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -109,7 +125,8 @@ import kotlin.math.roundToInt
 // 키 없는 사용자는 샘플 종목 DRNK 만 그린다. 정보 제공용 (매매 권유 아님)
 @Composable
 fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
-    var sel by remember { mutableStateOf("DRNK") }   // ios: Views/FlowView.swift:7
+    var sel by remember { mutableStateOf<String?>(null) }   // ios: Views/FlowView.swift:7
+    val lookRaw = BoxLook.raw   // ios: Views/FlowView.swift:8
     var showAll by remember { mutableStateOf(false) }   // ios: Views/FlowView.swift:8
     var layers by remember { mutableStateOf(setOf(FlowLayer.trend)) }   // ios: Views/FlowView.swift:9
     var term by remember { mutableStateOf<FlowTerm?>(null) }   // ios: Views/FlowView.swift:10
@@ -125,10 +142,18 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
         for (h in model.holdings) if (h.symbol !in out && h.symbol != KoreaEstimate.sumId && h.symbol != "DRNK") out.add(h.symbol)   // ios: Views/FlowView.swift:22
         out   // ios: Views/FlowView.swift:23
     }
-    /** 고른 종목이 칩 줄에서 빠졌으면(키를 넣어 DRNK 가 숨는 등) 첫 종목 */
-    val cur: String? = if (sel in ids) sel else ids.firstOrNull()   // ios: Views/FlowView.swift:26
-    fun name(id: String): String = Sample.symbol(id)?.name ?: id   // ios: Views/FlowView.swift:27
-    val store = FlowStore   // ios: Views/FlowView.swift:28
+    val store = FlowStore   // ios: Views/FlowView.swift:54
+    /** 평가액 (원). 샘플 DRNK 는 담지 않았어도 1 */
+    fun weight(id: String): Double = model.rows.firstOrNull { it.id == id }?.value ?: (if (id == "DRNK") 1.0 else 0.0)   // ios: Views/FlowView.swift:32
+    /** 비중 큰 순서 */
+    val byWeight: List<String> = ids.withIndex().sortedWith(compareByDescending<IndexedValue<String>> { weight(it.value) }.thenBy { it.index }).map { it.value }   // ios: Views/FlowView.swift:34
+    val mood = flowMood(byWeight, ::weight) { store.peek(it) }   // ios: Views/FlowView.swift:40
+    /** 아래 칩 줄: 큰 흐름 박스에 없는 종목만 비중 순 */
+    val restIds = byWeight.filter { it !in mood.box }   // ios: Views/FlowView.swift:36
+    /** 고른 종목이 없거나 칩 줄에서 빠졌으면(키를 넣어 DRNK 가 숨는 등) 큰 흐름 박스의 첫 종목 */
+    // ios: Views/FlowView.swift:27,28,29,30
+    val cur: String? = sel?.takeIf { it in ids } ?: mood.box.firstOrNull() ?: byWeight.firstOrNull()
+    fun name(id: String): String = Sample.symbol(id)?.name ?: id   // ios: Views/FlowView.swift:53
     /** 키가 없어 못 그리는 종목이 있으면 설정 링크를 보인다 */
     val needKey = ids.any { it != "DRNK" && !FlowStore.canFetch(it) }   // ios: Views/FlowView.swift:30
 
@@ -140,20 +165,27 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
     // ios: Views/FlowView.swift:32,33,67,69,70
     // 당기면 다른 탭처럼 시세를 받고, 일봉도 다시 묻는다 (장이 끝나 새 날이 생겼을 때만 실제로 받는다)
     Refreshable({ Market.shared.pullRefresh(model); store.ensure(ids) }, Modifier.fillMaxSize().background(Theme.bg)) {   // ios: Views/FlowView.swift:76
+        BoxWithConstraints(Modifier.fillMaxSize()) {   // ios: Views/FlowView.swift:59
+        val vh = maxHeight
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Screen {
-                // ios: Views/FlowView.swift:34
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.outset(16.dp)) { AppHeader(tab = FlowTab.name) }   // ios: Views/FlowView.swift:35 (-16)
-                    if (ids.isNotEmpty()) Chips(ids, cur, ::name, onAll = { showAll = true }) { sel = it; term = null }   // ios: Views/FlowView.swift:36
-                    if (needKey) {   // ios: Views/FlowView.swift:37
-                        // ios: Views/FlowView.swift:38,39,40,42
+            // ios: Views/FlowView.swift:97 (.padding(.bottom, -12): 아래 여백 24 를 12 로)
+            Screen(Modifier.layout { m, c -> val p = m.measure(c); layout(p.width, max(0, p.height - 12.dp.roundToPx())) { p.place(0, 0) } }) {
+                // 차트는 아래 탭 바 바로 위까지 (화면이 작아도 300 은 둔다)
+                // ios: Views/FlowView.swift:60,93,98
+                FillLast(minTotal = vh - 12.dp, minLast = 300.dp, gap = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/FlowView.swift:61
+                    Box(Modifier.outset(16.dp)) { AppHeader(tab = FlowTab.name) }   // ios: Views/FlowView.swift:62 (-16)
+                    if (mood.box.isNotEmpty()) MoodBox(mood, BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, cur, ::name) { sel = it; term = null }   // ios: Views/FlowView.swift:63
+                    if (restIds.isNotEmpty()) Chips(restIds, cur, ::name, onAll = { showAll = true }) { sel = it; term = null }   // ios: Views/FlowView.swift:64
+                    if (needKey) {   // ios: Views/FlowView.swift:65
+                        // ios: Views/FlowView.swift:66,67,68,70
                         T("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요", Modifier.plainClickable { model.openSettings(SettingsRoute.toss) },
                             style = appFont(13f).copy(textDecoration = TextDecoration.Underline), color = Theme.teal)
                     }
-                    LayerRow(layers, onGuide = { guideFocus = null; showGuide = true }) { layers = it }   // ios: Views/FlowView.swift:44
-                    // ios: Views/FlowView.swift:45,65
-                    Box(Modifier.fillMaxWidth().height(560.dp).background(Theme.card, RoundedCornerShape(16.dp))) {   // ios: Views/FlowView.swift:64,65
+                    LayerRow(layers, onGuide = { guideFocus = null; showGuide = true }) { layers = it }   // ios: Views/FlowView.swift:72
+                }
+                    // ios: Views/FlowView.swift:73,93,94
+                    Box(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(16.dp))) {
                         val s = cur?.let { store.peek(it) }
                         if (cur != null && s != null) {   // ios: Views/FlowView.swift:46
                             // ios: Views/FlowView.swift:48 (.id(sel): 종목이 바뀌면 확대·밀기 상태를 새로)
@@ -177,18 +209,98 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                 }
             }
         }
+        }
     }
-    // ios: Views/FlowView.swift:71
-    AllSheet(showAll, ids, cur, ::name, onDismiss = { showAll = false }) { sel = it; term = null; showAll = false }
+    // ios: Views/FlowView.swift:105
+    AllSheet(showAll, byWeight, cur, ::name, onDismiss = { showAll = false }) { sel = it; term = null; showAll = false }
     Sheet(showGuide, onDismiss = { showGuide = false }) { FlowGuide(guideFocus) { showGuide = false } }   // ios: Views/FlowView.swift:72
 }
 
+/** 위 묶음 + 마지막 칸: 합이 minTotal 이 되게 마지막 칸을 늘린다 (minLast 보다 작게는 안 줄인다). SwiftUI maxHeight: .infinity + frame(minHeight:) 자리 */
+@Composable
+private fun FillLast(minTotal: Dp, minLast: Dp, gap: Dp, content: @Composable () -> Unit) {
+    Layout(content) { ms, c ->
+        val head = ms[0].measure(c.copy(minHeight = 0, maxHeight = Constraints.Infinity))
+        val g = gap.roundToPx()
+        val h = max(minLast.roundToPx(), minTotal.roundToPx() - head.height - g)
+        val last = ms[1].measure(Constraints.fixed(c.maxWidth, h))
+        layout(c.maxWidth, head.height + g + h) { head.place(0, 0); last.place(0, head.height + g) }
+    }
+}
+
+/** 큰 흐름 박스 값: 일봉이 있는 종목의 큰 흐름(22% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다 */
+// ios: Views/FlowView.swift:39
+class Mood(val shares: List<Double> = listOf(0.0, 0.0, 0.0), val side: Int = 0, val strong: Boolean = false, val box: List<String> = emptyList())
+
+// ios: Views/FlowView.swift:40
+private fun flowMood(byWeight: List<String>, weight: (String) -> Double, series: (String) -> FlowSeries?): Mood {
+    // ios: Views/FlowView.swift:41,42,43
+    val items: List<Triple<String, Int, Double>> = byWeight.mapNotNull { id ->
+        series(id)?.trends?.getOrNull(2)?.lastOrNull()?.let { Triple(id, if (it.dir > 0) 1 else if (it.dir < 0) -1 else 0, weight(id)) }
+    }
+    if (items.isEmpty()) return Mood()   // ios: Views/FlowView.swift:44
+    val total = items.sumOf { it.third }   // ios: Views/FlowView.swift:45
+    val w = { d: Int -> items.filter { it.second == d }.sumOf { if (total > 0) it.third / total else 1.0 / items.size } }   // ios: Views/FlowView.swift:46
+    val sh = listOf(w(1), w(0), w(-1))   // ios: Views/FlowView.swift:47
+    // 횡보는 빼고 상승·하락 중 큰 쪽. 둘 다 없으면 횡보
+    val side = if (sh[0] == 0.0 && sh[2] == 0.0) 0 else if (sh[0] >= sh[2]) 1 else -1   // ios: Views/FlowView.swift:49
+    val win = if (side > 0) sh[0] else if (side < 0) sh[2] else sh[1]   // ios: Views/FlowView.swift:50
+    return Mood(sh, side, win > 0.5, items.filter { it.second == side }.map { it.first })   // ios: Views/FlowView.swift:51
+}
+
+// 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 상승·하락 중 큰 쪽 (절반 넘으면 강한), 버튼 = 그쪽 종목만
+// ios: Views/FlowView.swift:112
+@Composable
+private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> String, onPick: (String) -> Unit) {
+    val c = if (md.side > 0) TodayBox.upC else if (md.side < 0) TodayBox.downC else TodayBox.dim   // ios: Views/FlowView.swift:114
+    // ios: Views/FlowView.swift:115,116,117
+    val head = if (md.side == 0) tr("횡보")
+        else if (md.side > 0) (if (md.strong) tr("강한 상승") else tr("약한 상승"))
+        else (if (md.strong) tr("강한 하락") else tr("약한 하락"))
+    val share = if (md.side > 0) md.shares[0] else if (md.side < 0) md.shares[2] else md.shares[1]   // ios: Views/FlowView.swift:118
+    // ios: Views/FlowView.swift:119,132,133,134,135
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).moodBackdrop(look).padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 16.dp)) {
+        // ios: Views/FlowView.swift:120
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("내 종목 · 큰 흐름", Modifier.weight(1f), style = appFont(13f), color = TodayBox.dim); FreshLabel() }
+        // ios: Views/FlowView.swift:121,122,123
+        FitAnnotated(buildAnnotatedString {
+            withStyle(SpanStyle(color = Color.White)) { append("$head · ") }
+            withStyle(SpanStyle(color = c)) { append(AppModel.pct(share)) }
+        }, TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.6f, Color.White, Modifier.padding(top = 6.dp))
+        Box(Modifier.padding(top = 14.dp)) { MoodBand(look, md.shares, road = 10.dp) }   // ios: Views/FlowView.swift:124
+        // ios: Views/FlowView.swift:125,126,127,128,129,130 (오른쪽 끝 16% 를 흐리게)
+        Box(Modifier.outset(18.dp).padding(top = 14.dp).fadeEnd(0.84f)) {
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { md.box.forEach { BoxChip(it, c, cur, name, onPick) } }
+        }
+    }
+}
+
+// ios: Views/FlowView.swift:138
+@Composable
+private fun BoxChip(id: String, dot: Color, cur: String?, name: (String) -> String, onPick: (String) -> Unit) {
+    val on = cur == id   // ios: Views/FlowView.swift:139
+    // ios: Views/FlowView.swift:140,141,145,146,147,149,150
+    Row(
+        Modifier.heightIn(min = 34.dp).clip(RoundedCornerShape(50)).border(1.dp, if (on) Color.White else Color.White.copy(alpha = 0.22f), RoundedCornerShape(50))
+            .semantics { if (on) selected = true }.plainClickable { onPick(id) }.padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(8.dp).background(dot, androidx.compose.foundation.shape.CircleShape))   // ios: Views/FlowView.swift:142
+        // ios: Views/FlowView.swift:143,145
+        T(if (id == "DRNK") "DRNK" else name(id), style = appFont(15f, if (on) FontWeight.Bold else FontWeight.Normal), color = if (on) Color.White else hex(0xC9D0D6), maxLines = 1)
+    }
+}
+
+/** 글자 크기 고정 (.font(.system(size:)) 자리: 손쉬운 사용 크기를 따르지 않는다) */
+@Composable
+private fun fx(size: Float): androidx.compose.ui.unit.TextUnit = (size / LocalDensity.current.fontScale).sp
+
 /** 오른쪽 끝을 흐리게 지워 잘린 칩이 '더 있음'으로 녹아들게 */
 // ios: Views/FlowView.swift:86
-private fun Modifier.fadeEnd(): Modifier = this.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
-    .drawWithContent { drawContent(); drawRect(Brush.horizontalGradient(0.9f to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn) }
+private fun Modifier.fadeEnd(from: Float = 0.9f): Modifier = this.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+    .drawWithContent { drawContent(); drawRect(Brush.horizontalGradient(from to Color.Black, 1f to Color.Transparent), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn) }
 
-// 맨 위 내 종목 칩 줄 + '전체'
+// 큰 흐름 박스 밖 내 종목 칩 줄 + '전체'
 @Composable
 private fun Chips(ids: List<String>, cur: String?, name: (String) -> String, onAll: () -> Unit, onPick: (String) -> Unit) {   // ios: Views/FlowView.swift:80
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/FlowView.swift:81
@@ -334,6 +446,23 @@ val FlowPattern.Kind.body: String get() = when (this) {
     FlowPattern.Kind.insideBar -> "전날 범위 안에서만 움직인 날 · 잠시 멈춤"   // ios: Views/FlowView.swift:241
 }
 
+/** 흐름 읽는 법 '이럴 때': 흔히 생기는 장면 한 줄 (널리 쓰이는 차트 읽기 지식, 특정 종목 사례 아님) */
+// ios: Views/FlowView.swift:320,321
+val FlowPattern.Kind.`when`: String get() = when (this) {
+    FlowPattern.Kind.doubleBottom -> "실적 쇼크 급락 뒤 · 첫 바닥 근처에서 또 사들임"   // ios: Views/FlowView.swift:322
+    FlowPattern.Kind.doubleTop -> "신고가 뒤 차익 매물 · 같은 가격에서 또 막힘"   // ios: Views/FlowView.swift:323
+    FlowPattern.Kind.headShoulders -> "긴 상승 끝물 · 호재에 마지막 신고가"   // ios: Views/FlowView.swift:324
+    FlowPattern.Kind.ascTriangle -> "한 가격에 매물 · 사는 쪽이 점점 높게 받침"   // ios: Views/FlowView.swift:325
+    FlowPattern.Kind.descTriangle -> "받치는 가격 하나 · 파는 쪽이 점점 낮게 내놓음"   // ios: Views/FlowView.swift:326
+    FlowPattern.Kind.bullFlag -> "실적 깜짝·큰 계약에 급등 뒤 쉬어 가기"   // ios: Views/FlowView.swift:327
+    FlowPattern.Kind.bearFlag -> "악재 급락 뒤 · 힘 약한 저가 매수 반등"   // ios: Views/FlowView.swift:328
+    FlowPattern.Kind.hammer -> "며칠 하락 뒤 · 아침 악재에 빠졌다 오후에 회복"   // ios: Views/FlowView.swift:329
+    FlowPattern.Kind.shootingStar -> "며칠 상승 뒤 · 아침 호재에 치솟다 차익 매물에 밀림"   // ios: Views/FlowView.swift:330
+    FlowPattern.Kind.bullEngulf -> "공포로 급락한 다음 날 · 하락을 다 되돌림"   // ios: Views/FlowView.swift:331
+    FlowPattern.Kind.bearEngulf -> "기대로 급등한 다음 날 · 실적 실망에 다 내줌"   // ios: Views/FlowView.swift:332
+    FlowPattern.Kind.insideBar -> "금리 결정·실적·물가 발표 하루 전"   // ios: Views/FlowView.swift:333
+}
+
 /** 이름표 자리 잡기에 넘기는 것 */
 class TagWant(val key: String, val layer: FlowLayer, val strong: Boolean, val w: Float, val cands: List<Offset>)   // ios: Views/FlowView.swift:556
 
@@ -356,7 +485,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
     val onTerm = { t: FlowTerm -> setTerm(t) }
     // ios: Views/FlowView.swift:471
     LaunchedEffect(term) { if (term != null) hintSeen = true }
-    val axisW = 46f; val bandH = 36f; val topH = 68f; val botH = 20f   // ios: Views/FlowView.swift:260
+    val axisW = 46f; val bandH = 36f; val topH = 50f; val botH = 20f   // ios: Views/FlowView.swift:358
     val haptic = LocalHapticFeedback.current
     val dens = LocalDensity.current.density
     // 겹 투명도: 켜고 끌 때 0.2초에 걸쳐 (자리는 그대로)
@@ -461,18 +590,20 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
                     }
                 },
         ) {
-            // 머리: 종목·마지막 값 (시작 대비) + 지금 단위
-            // ios: Views/FlowView.swift:309,333
-            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 8.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {   // ios: Views/FlowView.swift:310
-                    T(title, style = appFont(12f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:311
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/FlowView.swift:312
-                        // ios: Views/FlowView.swift:313,314
-                        T(cformat("%+.0f%%", series.pct(last.c)), Modifier.alignByBaseline(), style = appFont(20f, FontWeight.Bold).copy(fontFeatureSettings = "tnum"), color = Theme.change(series.pct(last.c)))
-                        T("시작 대비", Modifier.alignByBaseline(), style = appFont(12f), color = Theme.muted)   // ios: Views/FlowView.swift:315
-                    }
+            // 머리: ▲44% 테슬라 · 시작 대비 (세모는 숫자의 70%) + 지금 단위
+            // ios: Views/FlowView.swift:406,407
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                val v = series.pct(last.c)   // ios: Views/FlowView.swift:408
+                // ios: Views/FlowView.swift:409
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // ios: Views/FlowView.swift:410,411,412
+                    com.naeilo.app.ui.TA(buildAnnotatedString {
+                        withStyle(SpanStyle(fontSize = fx(15f), baselineShift = androidx.compose.ui.text.style.BaselineShift(2f / 15f))) { append(if (v > 0) "▲" else if (v < 0) "▼" else "") }
+                        append(cformat("%.0f%%", abs(v)))
+                    }, Modifier.alignByBaseline(), style = TextStyle(fontSize = fx(22f), fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"), color = Theme.change(v), maxLines = 1)
+                    T(title + " · " + tr("시작 대비"), Modifier.alignByBaseline(), style = appFont(13f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:413
                 }
-                Spacer(Modifier.weight(1f))   // ios: Views/FlowView.swift:318
+                Spacer(Modifier.width(6.dp))   // ios: Views/FlowView.swift:415
                 // 일·주·월 고르기: 고르면 보이는 날 수를 그 단위로, 핀치로 바뀌면 고른 칸도 따라 바뀐다
                 Row(Modifier.background(Theme.line, RoundedCornerShape(50)).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/FlowView.swift:320,331
                     listOf(Triple(1, "일봉", 160), Triple(5, "주봉", 520), Triple(21, "월봉", n)).forEach { (u, t, c) ->   // ios: Views/FlowView.swift:321
@@ -609,14 +740,20 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
 @Composable
 private fun Bubble(title: String, body: String, at: Offset, top: Float, W: Float, onClose: () -> Unit, more: (() -> Unit)?) {
     val p = at
-    val bw: Float = min(240f, W - 8)   // ios: Views/FlowView.swift:509
+    val bw: Float = min(280f, W - 8)   // ios: Views/FlowView.swift:606
     val cx: Float = min(max(p.x, bw / 2 + 4), W - bw / 2 - 4)   // ios: Views/FlowView.swift:510
     val below: Boolean = p.y < top + 110   // ios: Views/FlowView.swift:511
     val tailX: Float = min(max(p.x - (cx - bw / 2), 16f), bw - 16)   // ios: Views/FlowView.swift:512
     // ios: Views/FlowView.swift:513,514
-    val ink = Theme.inkFixed
-    @Composable fun Tail() = Box(Modifier.width(bw.dp).height(7.dp)) {
-        Canvas(Modifier.offset(x = (tailX - 7).dp).size(14.dp, 7.dp)) { drawPath(FlowTail.path(below, size), ink) }
+    // 말풍선: 라이트는 흰 바탕 + 테두리 + 그림자, 다크는 카드보다 한 단 밝은 바탕
+    val bb = Bb.pick(Theme.isDark)   // ios: Views/FlowView.swift:354,355,356
+    // 꼬리: 바탕색으로 채우고 바깥 두 변만 테두리. 몸통에 1pt 겹쳐 이음매 테두리를 덮는다
+    // ios: Views/FlowView.swift:611,612,613,614,615,616
+    @Composable fun Tail() = Box(Modifier.width(bw.dp).height(7.dp).offset(y = (if (below) 1 else -1).dp).zIndex(1f)) {
+        Canvas(Modifier.offset(x = (tailX - 7).dp).size(14.dp, 7.dp)) {
+            drawPath(FlowTail.path(below, size), bb.bg)
+            drawPath(FlowTail.path(below, size, open = true), bb.line, style = Stroke(1.dp.toPx()))
+        }
     }
     // ios: Views/FlowView.swift:516,540,541,544,546 (누른 자리 p 에 붙여 폭 bw 로 재고, 키는 글 따라)
     Column(
@@ -628,31 +765,41 @@ private fun Bubble(title: String, body: String, at: Offset, top: Float, W: Float
         verticalArrangement = Arrangement.spacedBy(0.dp),   // ios: Views/FlowView.swift:517
     ) {
         if (below) Tail()   // ios: Views/FlowView.swift:518
-        // 다크 모드에서도 늘 어두운 바탕 (Theme.ink 는 다크에서 밝아져 흰 글자가 묻힌다)
-        // ios: Views/FlowView.swift:519,533,534,536,537
-        Column(Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(12.dp), ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.18f)).background(Theme.inkFixed, RoundedCornerShape(12.dp)).border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            T(title, style = appFont(13f, FontWeight.Bold), color = Color.White)   // ios: Views/FlowView.swift:520
-            T(body, style = appFont(12f), color = Color.White.copy(alpha = 0.85f))   // ios: Views/FlowView.swift:521
+        // ios: Views/FlowView.swift:621,635,636,637,638,643
+        val sh = if (Theme.isDark) Color.Black.copy(alpha = 0.55f) else hex(0x15202B, 0.16f)
+        Column(Modifier.fillMaxWidth().shadow(12.dp, RoundedCornerShape(12.dp), ambientColor = sh, spotColor = sh).background(bb.bg, RoundedCornerShape(12.dp)).border(1.dp, bb.line, RoundedCornerShape(12.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            T(title, style = appFont(15f, FontWeight.Bold), color = bb.title)   // ios: Views/FlowView.swift:622
+            T(body, style = appFont(14f), color = bb.body)   // ios: Views/FlowView.swift:623
             // ios: Views/FlowView.swift:522
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T("정보 제공용 · 매매 권유 아님", Modifier.weight(1f).padding(end = 4.dp), style = appFont(10f), color = Color.White.copy(alpha = 0.55f))   // ios: Views/FlowView.swift:523,524
+                T("정보 제공용 · 매매 권유 아님", Modifier.weight(1f).padding(end = 4.dp), style = appFont(11f), color = bb.foot)   // ios: Views/FlowView.swift:625
                 // ios: Views/FlowView.swift:525,526,527,529
-                if (more != null) T("자세히 ›", Modifier.plainClickable(more), style = appFont(11f, FontWeight.SemiBold), color = Theme.mint)
+                if (more != null) T("자세히 ›", Modifier.plainClickable(more), style = appFont(13f, FontWeight.SemiBold), color = bb.more)   // ios: Views/FlowView.swift:629
             }
         }
         if (!below) Tail()   // ios: Views/FlowView.swift:538
     }
 }
 
+/** 말풍선 색 (라이트 · 다크) */
+// ios: Views/FlowView.swift:354,355,356
+private class Bb(val bg: Color, val line: Color, val title: Color, val body: Color, val foot: Color, val more: Color) {
+    companion object {
+        val light = Bb(hex(0xFFFFFF), hex(0xD5DBE1), hex(0x15202B), hex(0x46525E), hex(0x8A949E), hex(0x0B6B66))
+        val dark = Bb(hex(0x2E3945), hex(0x46535F), hex(0xF2F5F8), hex(0xC6CED6), hex(0x8E99A4), hex(0x8FD8CE))
+        fun pick(isDark: Boolean) = if (isDark) dark else light
+    }
+}
+
 /** 말풍선 꼬리 (작은 삼각형) */
-object FlowTail {   // ios: Views/FlowView.swift:604
-    // ios: Views/FlowView.swift:605,606
-    fun path(up: Boolean, r: Size): Path {
-        val p = Path()   // ios: Views/FlowView.swift:607
-        if (up) { p.moveTo(r.width / 2, 0f); p.lineTo(r.width, r.height); p.lineTo(0f, r.height) }   // ios: Views/FlowView.swift:608
-        else { p.moveTo(0f, 0f); p.lineTo(r.width, 0f); p.lineTo(r.width / 2, r.height) }   // ios: Views/FlowView.swift:609
-        p.close()   // ios: Views/FlowView.swift:610
-        return p   // ios: Views/FlowView.swift:611
+object FlowTail {   // ios: Views/FlowView.swift:705
+    // ios: Views/FlowView.swift:706,707,708
+    fun path(up: Boolean, r: Size, open: Boolean = false): Path {   // open: 몸통 쪽 밑변 없이 두 변만 (테두리용)
+        val p = Path()   // ios: Views/FlowView.swift:709
+        if (up) { p.moveTo(0f, r.height); p.lineTo(r.width / 2, 0f); p.lineTo(r.width, r.height) }   // ios: Views/FlowView.swift:710,711
+        else { p.moveTo(0f, 0f); p.lineTo(r.width / 2, r.height); p.lineTo(r.width, 0f) }   // ios: Views/FlowView.swift:712,713
+        if (!open) p.close()   // ios: Views/FlowView.swift:715
+        return p   // ios: Views/FlowView.swift:716
     }
 }
 
@@ -660,11 +807,11 @@ object FlowTail {   // ios: Views/FlowView.swift:604
 // ios: Views/FlowView.swift:616,617,618
 @Composable
 fun FlowGuide(focus: String?, dismiss: () -> Unit) {
-    class Item(val id: String, val title: String, val body: String)   // ios: Views/FlowView.swift:620
+    class Item(val id: String, val title: String, val body: String, val `when`: String? = null)   // ios: Views/FlowView.swift:725
     // ios: Views/FlowView.swift:621
     val groups: List<Pair<String, List<Item>>> = remember {
         val t = { x: FlowTerm -> Item(x.key, x.title, x.body) }   // ios: Views/FlowView.swift:622
-        val k = { x: FlowPattern.Kind -> Item(x.name, x.title, x.body) }   // ios: Views/FlowView.swift:623
+        val k = { x: FlowPattern.Kind -> Item(x.name, x.title, x.body, x.`when`) }   // ios: Views/FlowView.swift:728
         // ios: Views/FlowView.swift:624
         listOf(
             FlowLayer.trend.title to listOf(t(FlowTerm.band), t(FlowTerm.dots)),   // ios: Views/FlowView.swift:625
@@ -687,8 +834,15 @@ fun FlowGuide(focus: String?, dismiss: () -> Unit) {
             Box(Modifier.background(Theme.bg, RoundedCornerShape(10.dp)).padding(4.dp)) { FlowMini(it.id, Modifier.size(56.dp, 40.dp)) }
             // ios: Views/FlowView.swift:679,683
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                T(it.title, style = appFont(15f, FontWeight.Bold), color = Theme.ink)   // ios: Views/FlowView.swift:680
-                T(it.body, style = appFont(13f), color = Theme.sub)   // ios: Views/FlowView.swift:681
+                T(it.title, style = appFont(17f, FontWeight.Bold), color = Theme.ink)   // ios: Views/FlowView.swift:785
+                T(it.body, style = appFont(15f), color = Theme.sub)   // ios: Views/FlowView.swift:786
+                // ios: Views/FlowView.swift:787,788,789
+                it.`when`?.let { w ->
+                    com.naeilo.app.ui.TA(buildAnnotatedString {
+                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = Theme.teal)) { append(tr("이럴 때")) }
+                        withStyle(SpanStyle(color = Theme.sub)) { append("  " + tr(w)) }
+                    }, Modifier.padding(top = 2.dp), style = appFont(14f), color = Theme.sub)
+                }
             }
             Spacer(Modifier.widthIn(min = 0.dp))   // ios: Views/FlowView.swift:683
         }
@@ -697,7 +851,7 @@ fun FlowGuide(focus: String?, dismiss: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Theme.bg), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         // ios: Views/FlowView.swift:634,643
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            T("흐름 읽는 법", Modifier.weight(1f).padding(end = 8.dp), style = appFont(20f, FontWeight.Bold), color = Theme.ink)   // ios: Views/FlowView.swift:635,636
+            T("흐름 읽는 법", Modifier.weight(1f).padding(end = 8.dp), style = appFont(22f, FontWeight.Bold), color = Theme.ink)   // ios: Views/FlowView.swift:740
             // ios: Views/FlowView.swift:637,638,639,641
             Box(Modifier.size(44.dp, 44.dp).plainClickable(dismiss).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
                 Sym("xmark", 15f, Theme.sub, scaled = false)
@@ -709,7 +863,7 @@ fun FlowGuide(focus: String?, dismiss: () -> Unit) {
             groups.forEach { g ->
                 // ios: Views/FlowView.swift:649
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    T(g.first, Modifier.padding(start = 4.dp), style = appFont(13f, FontWeight.SemiBold), color = Theme.muted)   // ios: Views/FlowView.swift:650
+                    T(g.first, Modifier.padding(start = 4.dp), style = appFont(14f, FontWeight.SemiBold), color = Theme.muted)   // ios: Views/FlowView.swift:755
                     // ios: Views/FlowView.swift:651,657
                     Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(16.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                         // ios: Views/FlowView.swift:652
@@ -721,7 +875,7 @@ fun FlowGuide(focus: String?, dismiss: () -> Unit) {
                 }
             }
             // ios: Views/FlowView.swift:660,661
-            T("흐린 점선 = 확정 전·거래량 적음 · 투자 권유 아님", Modifier.padding(horizontal = 4.dp), style = appFont(12f), color = Theme.muted)
+            T("흐린 점선 = 확정 전·거래량 적음 · 투자 권유 아님", Modifier.padding(horizontal = 4.dp), style = appFont(13f), color = Theme.muted)   // ios: Views/FlowView.swift:766
         }
     }
 }

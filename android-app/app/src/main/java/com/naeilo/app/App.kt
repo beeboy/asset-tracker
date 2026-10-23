@@ -80,7 +80,8 @@ import com.naeilo.app.ui.analysis.RateWhyView
 import com.naeilo.app.ui.settings.SettingsView
 import com.naeilo.app.ui.settings.settingsPage
 import com.naeilo.app.ui.settings.WidgetPickView
-import com.naeilo.app.ui.wave.WaveCover
+import com.naeilo.app.ui.LocalNavBack
+import com.naeilo.app.ui.NavBack
 import com.naeilo.app.ui.start.StartView
 import com.naeilo.app.core.Day
 import com.naeilo.app.core.calc.Compute
@@ -194,17 +195,22 @@ fun RootView(model: AppModel) {
     AppHooks(model)
 }
 
-/** 설정·위젯 팝업: 블록·파도처럼 전체 화면, 맨 위 X로 닫는다. 어느 탭에서든 뜬다 */
-// ios: App.swift:156,157,158,159,160
+/** 설정·위젯 팝업: 다른 팝업처럼 시트, 맨 위 줄 제목 + X로 닫는다. 어느 탭에서든 뜬다 */
+// ios: App.swift:181,182,183,184,185
 @Composable
 private fun HomeSheets(model: AppModel) {
-    // ios: App.swift:161,162 (닫으면 settingsPath 비우기)
-    WaveCover(model.settingsOpen, onDismiss = { model.settingsOpen = false; model.settingsPath = emptyList() }) {
-        NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model, cover = true) }) { settingsPage(model, it) }
+    val closeSettings = { model.settingsOpen = false; model.settingsPath = emptyList() }
+    // ios: App.swift:188,189 (닫으면 settingsPath 비우기)
+    Sheet(model.settingsOpen, onDismiss = closeSettings) {
+        CompositionLocalProvider(LocalNavBack provides NavBack(null, closeSettings)) {
+            NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model, cover = true) }) { settingsPage(model, it) }
+        }
     }
-    // ios: App.swift:164,165
-    WaveCover(model.widgetsOpen, onDismiss = { model.widgetsOpen = false }) {
-        Column(Modifier.fillMaxSize().background(Theme.bg)) { WidgetPickView(model, cover = true) }
+    // ios: App.swift:191,192
+    Sheet(model.widgetsOpen, onDismiss = { model.widgetsOpen = false }) {
+        CompositionLocalProvider(LocalNavBack provides NavBack(null) { model.widgetsOpen = false }) {
+            Column(Modifier.fillMaxSize().background(Theme.bg)) { WidgetPickView(model, cover = true) }
+        }
     }
 }
 

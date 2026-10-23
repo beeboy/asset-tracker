@@ -580,7 +580,6 @@ fun TodayBox(
     parts: List<Double>,            // ios: Views/HoldingsView.swift:367 등락 띠: 오른 · 그대로 · 내린 종목 평가액
     gain: Double, ret: Double,      // ios: Views/HoldingsView.swift:368 산 가격 대비 (원, 비율)
 ) {
-    val colors = listOf(TodayBox.upC, TodayBox.flatC, TodayBox.downC)   // ios: Views/HoldingsView.swift:370
     /** 띠 몫 (0~1, 합 1). 종목이 없으면 모두 0 */
     // ios: Views/HoldingsView.swift:372
     val shares: List<Double> = run {
@@ -591,7 +590,7 @@ fun TodayBox(
     val tri = if (move > 0) "▲ " else if (move < 0) "▼ " else ""   // ios: Views/HoldingsView.swift:379
     // ios: Views/HoldingsView.swift:377,380,404,405,406,407,408
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).drawBehind { backdrop(look) }
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).moodBackdrop(look)   // ios: Views/HoldingsView.swift:393
             .clearAndSetSemantics { contentDescription = tr("오늘 ${if (move >= 0) "+" else "−"}${TodayBox.won(abs(move))}, ${AppModel.sgn(pct)}. 산 가격 대비 ${AppModel.sgn(ret)}") }
             .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = if (look == BoxLook.jump) 0.dp else 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -607,24 +606,33 @@ fun TodayBox(
             }, TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.5f, c, Modifier.weight(1f, fill = false).alignByBaseline(), roll = move, maxLines = 1)
             T(AppModel.sgn(pct), Modifier.alignByBaseline(), style = TextStyle(fontSize = fx(16f), fontWeight = FontWeight.SemiBold), color = c, maxLines = 1)   // ios: Views/HoldingsView.swift:386
         }
-        // ios: Views/HoldingsView.swift:388
-        when (look) {
-            // ios: Views/HoldingsView.swift:389,390,391
-            BoxLook.jump -> { Foot(gain, ret); Lane(shares, colors) }
-            // ios: Views/HoldingsView.swift:392,393,394
-            BoxLook.horizon -> { Wave(shares, colors, Modifier.fillMaxWidth().height(12.dp)); Foot(gain, ret) }
-            BoxLook.tub -> {   // ios: Views/HoldingsView.swift:395
-                // ios: Views/HoldingsView.swift:396,397
-                Box(Modifier.fillMaxWidth().background(hex(0xEEF2F8), RoundedCornerShape(8.dp)).padding(4.dp)) { Band(shares, colors, 8.dp, 4.dp) }
-                Foot(gain, ret)   // ios: Views/HoldingsView.swift:398
-            }
-            BoxLook.bar -> {   // ios: Views/HoldingsView.swift:399
-                Box(Modifier.fillMaxWidth().clip(CapsuleShape).background(hex(0x2E3542), CapsuleShape)) { Band(shares, colors, 10.dp, 5.dp) }   // ios: Views/HoldingsView.swift:400
-                Foot(gain, ret)   // ios: Views/HoldingsView.swift:401
-            }
-        }
+        // 점프 직전: 도로는 박스 맨 아래에 붙인다
+        if (look == BoxLook.jump) { Foot(gain, ret); MoodBand(look, shares) }   // ios: Views/HoldingsView.swift:388
+        else { MoodBand(look, shares); Foot(gain, ret) }   // ios: Views/HoldingsView.swift:389
     }
 }
+
+/** 몫 띠: 홈에서 고른 박스 모양대로 그린다 (종목 오늘 박스·흐름 큰 흐름 박스가 같이 쓴다). 몫은 위·그대로·아래 순서, 합 1 */
+// ios: Views/HoldingsView.swift:412
+@Composable
+fun MoodBand(
+    look: BoxLook, shares: List<Double>,
+    road: Dp = 18.dp,   // ios: Views/HoldingsView.swift:415 점프 직전 도로 위아래 여백 (흐름 박스는 버튼이 아래에 붙어 좁게)
+) {
+    val colors = listOf(TodayBox.upC, TodayBox.flatC, TodayBox.downC)   // ios: Views/HoldingsView.swift:416
+    when (look) {
+        BoxLook.jump -> Lane(shares, colors, road)   // ios: Views/HoldingsView.swift:420
+        BoxLook.horizon -> Wave(shares, colors, Modifier.fillMaxWidth().height(12.dp))   // ios: Views/HoldingsView.swift:421
+        // ios: Views/HoldingsView.swift:422,423,424
+        BoxLook.tub -> Box(Modifier.fillMaxWidth().background(hex(0xEEF2F8), RoundedCornerShape(8.dp)).padding(4.dp)) { Band(shares, colors, 8.dp, 4.dp) }
+        // ios: Views/HoldingsView.swift:425,426
+        BoxLook.bar -> Box(Modifier.fillMaxWidth().clip(CapsuleShape).background(hex(0x2E3542), CapsuleShape)) { Band(shares, colors, 10.dp, 5.dp) }
+    }
+}
+
+/** 박스 바탕: 홈에서 고른 박스 모양의 장면 (늘 어둡다) */
+// ios: Views/HoldingsView.swift:495
+fun Modifier.moodBackdrop(look: BoxLook): Modifier = drawBehind { backdrop(look) }
 
 // ios: Views/HoldingsView.swift:364 (struct TodayBox 의 static)
 object TodayBox {
@@ -682,9 +690,9 @@ private fun Band(shares: List<Double>, colors: List<Color>, height: Dp, radius: 
 /** 점프 직전: 박스 아래 밤 도로 가운데의 가는 점선 중앙선(칸과 틈이 거의 같다). 한 칸은 한 색만 (칸 반올림으로 몫이 조금 어긋나도 느낌만 전한다) */
 // ios: Views/HoldingsView.swift:439,455,456,457,458,459
 @Composable
-private fun Lane(shares: List<Double>, colors: List<Color>) {
+private fun Lane(shares: List<Double>, colors: List<Color>, road: Dp) {
     Box(Modifier.outset(18.dp).background(hex(0x151925)).drawBehind { drawRect(hex(0x232A3E), Offset.Zero, Size(size.width, 1.dp.toPx())) }
-        .padding(horizontal = 18.dp, vertical = 18.dp)) {
+        .padding(horizontal = 18.dp, vertical = road)) {   // ios: Views/HoldingsView.swift:463
         // ios: Views/HoldingsView.swift:440,455
         Canvas(Modifier.fillMaxWidth().height(2.5.dp)) {
             val gap = 12.dp.toPx(); val n = max(1, ((size.width + gap) / 26.dp.toPx()).toInt())   // ios: Views/HoldingsView.swift:441
