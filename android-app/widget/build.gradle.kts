@@ -24,7 +24,7 @@ extensions.getByType<com.android.build.api.dsl.LibraryExtension>().sourceSets.ge
     .directories.add(layout.buildDirectory.dir("iosRes").get().asFile.path)
 
 // 아이폰 위젯 그림 중 쓰는 것만 drawable-nodpi 로: 인물 기본·포즈·raise·spread, 쉼터 고양이 (투명·틴트용 _tint 와 CharItem 물건 그림은 안 쓴다)
-val copyWidgetImages by tasks.registering(Copy::class) {
+val copyWidgetImages = tasks.register<Copy>("copyWidgetImages") {
     from("../../ios-app/Widgets/Assets.xcassets") { include("w_*.imageset/*.png"); exclude("w_*_tint.imageset/**", "w_item_*.imageset/**") }
     eachFile { path = "drawable-nodpi/" + file.parentFile.name.removeSuffix(".imageset") + ".png" }
     includeEmptyDirs = false

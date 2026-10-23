@@ -338,7 +338,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     var residence: String by observed(prefs.getString("residence", null) ?: Locale.getDefault().country.ifEmpty { null } ?: "KR") {   // ios: Data/AppModel.swift:347
         prefs.edit().putString("residence", residence).apply()   // ios: Data/AppModel.swift:348
     }
-    val residenceName: String get() = Locale("", residence).displayCountry.ifEmpty { residence }   // ios: Data/AppModel.swift:350
+    val residenceName: String get() = (runCatching { Locale.Builder().setRegion(residence).build().displayCountry }.getOrNull() ?: "").ifEmpty { residence }   // ios: Data/AppModel.swift:350
     // 종목 탭은 종목(Symbol)과 '종목 추가'(String)를, 분석 탭은 분석 화면과 종목을 같이 쌓으므로 여러 종류 목록
     var holdPath by mutableStateOf(listOf<Any>())   // ios: Data/AppModel.swift:352
     /** 내 기록 카드에서 '국내 주식 합계' 그래프를 보고 있는지 (합계 입력 칸의 안내 줄에서 바로 연다) */

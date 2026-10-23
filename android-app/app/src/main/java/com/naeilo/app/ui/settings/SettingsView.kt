@@ -54,7 +54,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -138,7 +137,7 @@ fun NotifyListView() {
     var msg by remember { mutableStateOf<String?>(null) }
     // ios: Views/SettingsView.swift:12
     var copied by remember { mutableStateOf(false) }
-    val clip = LocalClipboardManager.current
+    val clip = rememberClip()
     val scope = rememberCoroutineScope()
 
     val token = if (key.isEmpty()) (Sync.shared.creds?.token ?: "") else key   // ios: Views/SettingsView.swift:14
@@ -184,7 +183,7 @@ fun NotifyListView() {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T("${rows.size}명", Modifier.weight(1f), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsView.swift:30,31
                 // ios: Views/SettingsView.swift:32,33,34
-                T(if (copied) "복사됨" else "주소 전부 복사", Modifier.plainClickable { clip.setText(AnnotatedString(rows.joinToString(", ") { it.email })); copied = true },
+                T(if (copied) "복사됨" else "주소 전부 복사", Modifier.plainClickable { clip(rows.joinToString(", ") { it.email }); copied = true },
                   style = appFont(15f, FontWeight.SemiBold), color = Theme.teal)
             }
             // ios: Views/SettingsView.swift:36
@@ -519,7 +518,7 @@ fun TossKeyView(m: AppModel) {
     var askOff by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:344
     var copied by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:345
     val scope = rememberCoroutineScope()
-    val clip = LocalClipboardManager.current
+    val clip = rememberClip()
 
     // ios: Views/SettingsView.swift:347
     val status: String = run {
@@ -559,7 +558,7 @@ fun TossKeyView(m: AppModel) {
         Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             T(ip, Modifier.weight(1f), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsView.swift:416,417
             // ios: Views/SettingsView.swift:418,419
-            Box(Modifier.defaultMinSize(minHeight = 44.dp).plainClickable { clip.setText(AnnotatedString(ip)); copied = true }, contentAlignment = Alignment.Center) {
+            Box(Modifier.defaultMinSize(minHeight = 44.dp).plainClickable { clip(ip); copied = true }, contentAlignment = Alignment.Center) {
                 T(if (copied) "복사됨" else "복사", style = appFont(14f, FontWeight.SemiBold), color = Theme.teal)
             }
         }
@@ -962,3 +961,9 @@ fun AppIconScreen(m: AppModel) {
     }
 }
 
+/** 글 복사: 시스템 클립보드에 바로 (LocalClipboardManager 는 더는 안 쓴다) */
+@Composable
+private fun rememberClip(): (String) -> Unit {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    return remember(ctx) { { t: String -> ctx.getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(android.content.ClipData.newPlainText("", t)) } }
+}

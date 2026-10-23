@@ -849,7 +849,7 @@ fun ResidenceView(m: AppModel) {
     var q by remember { mutableStateOf("") }   // ios: Views/SettingsDetail.swift:675
     // ios: Views/SettingsDetail.swift:676,677,678,679
     val all = remember {
-        Locale.getISOCountries().map { it to Locale("", it).getDisplayCountry(Locale.getDefault()).ifEmpty { it } }
+        Locale.getISOCountries().map { it to Locale.Builder().setRegion(it).build().getDisplayCountry(Locale.getDefault()).ifEmpty { it } }
             .sortedWith(Comparator<Pair<String, String>> { a, b -> java.text.Collator.getInstance(Locale.getDefault()).compare(a.second, b.second) })
     }
     // 검색 전엔 지금 고른 나라를 맨 위에

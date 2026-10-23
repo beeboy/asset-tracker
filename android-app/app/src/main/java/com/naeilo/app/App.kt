@@ -120,7 +120,7 @@ import com.naeilo.app.ui.hex
 import com.naeilo.app.ui.stiffness
 
 // ios: App.swift:23,33,35,37,39,43 (label·SF Symbol 이름·아이콘). 탭 순서는 여기 한 곳 (아래 막대도 이 순서). 설정은 탭이 아니라 홈 위 팝업 (2026-10-21)
-enum class Tab(val label: String, val sf: String, @DrawableRes val icon: Int) {
+enum class Tab(val label: String, val sf: String, @param:DrawableRes val icon: Int) {
     home("홈", "house", R.drawable.tab_home),
     hold("종목", "chart.bar", R.drawable.tab_hold),
     flow(com.naeilo.app.data.FlowTab.name, com.naeilo.app.data.FlowTab.icon, R.drawable.tab_flow),   // 차트 탭 (이름은 FlowTab 한 곳에서)
