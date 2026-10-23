@@ -611,7 +611,7 @@ struct AppStartView: View {
     private var totalSeries: [Double] {
         let s = m.rows.map { r in m.prices.series(r.sym, period: .m3).map { m.krw(r.sym, $0 * r.h.qty) } }
         let n = s.map(\.count).min() ?? 0
-        return (0..<n).map { i in s.reduce(0) { $0 + $1[i] } }
+        return (0..<n).map { i in s.reduce(0) { $0 + $1[$1.count - n + i] } }   // 끝(오늘)을 맞춰 더한다
     }
     var body: some View {
         let n = max(1, m.nxStep)   // 미션 4에 왔으면 1단계(종목 추가)는 이미 한 것

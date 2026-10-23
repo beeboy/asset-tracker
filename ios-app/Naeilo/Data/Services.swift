@@ -24,6 +24,12 @@ enum Period: String, CaseIterable, Hashable {
     var span: Double {
         switch self { case .d1, .w1: 0; case .m1: 1.0 / 36; case .m3: 1.0 / 12; case .m6: 1.0 / 6; case .y1: 1.0 / 3; case .y3: 1 }
     }
+    /// 그래프가 덮는 날 수 (오늘에서 거꾸로)
+    var days: Int {
+        switch self { case .d1: 1; case .w1: 7; case .m1: 30; case .m3: 91; case .m6: 182; case .y1: 365; case .y3: 1095 }
+    }
+    /// 6개월부터는 주봉 (1·3개월은 일봉)
+    var weekly: Bool { self == .m6 || self == .y1 || self == .y3 }
 }
 
 struct StubPriceProvider: PriceProvider {
@@ -76,13 +82,44 @@ struct StubPriceProvider: PriceProvider {
         case .d1: return [q.prevClose, q.last]
         case .w1: return Array(dayCloses(s, 5).dropFirst()) + [q.last]
         default:
-            if PriceHistory.of(s.id) != nil {
-                // 테스트 자료: 마지막 날이 이미 오늘 값이라 그대로 쓰고 끝만 지금 가격으로 맞춘다
-                let sp = period.span
-                return (0...60).map { i in i == 60 ? q.last : exp(logPrice(s, 1 - sp + sp * Double(i) / 60)) }
+            if s.id != KoreaEstimate.sumId, let h = PriceHistory.of(s.id), h.closes.count > 1, h.dates.count == h.closes.count {
+                // 날짜로 자른 일봉 그대로 (6개월부터는 주마다 마지막 종가). 끝은 지금 가격으로 맞춘다
+                let c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+                let from = Self.dayNum(c.year ?? 1970, c.month ?? 1, c.day ?? 1) - period.days
+                var pts: [Double] = [], wk = Int.min
+                for (d, v) in zip(h.dates, h.closes) {
+                    guard let n = Self.dayNum(d), n >= from else { continue }
+                    if period.weekly {
+                        let w = (n + 3) / 7   // 월요일에 시작하는 주 (1970-01-01 = 목)
+                        if w == wk { pts[pts.count - 1] = v; continue }
+                        wk = w
+                    }
+                    pts.append(v)
+                }
+                if pts.isEmpty { pts = [h.closes[h.closes.count - 1]] }
+                if pts.count == 1 { pts.append(q.last) } else { pts[pts.count - 1] = q.last }
+                return pts
             }
+            // 과거 시세가 없으면: 같은 기간 일봉·주봉 개수만큼 (합계 그래프가 끝을 맞춰 더한다)
             let sp = period.span, k = q.last / max(1e-9, s.close)
-            return (0...60).map { i in s.close * exp(logPrice(s, 1 - sp + sp * Double(i) / 60) - logPrice(s, 1)) * (i == 60 ? k : 1) }
+            let L = max(2, period.weekly ? period.days / 7 : period.days * 5 / 7)
+            // 국내 주식 합계: 그날까지 넣은 금액 그대로
+            if PriceHistory.of(s.id) != nil {
+                return (0...L).map { i in i == L ? q.last : exp(logPrice(s, 1 - sp + sp * Double(i) / Double(L))) }
+            }
+            return (0...L).map { i in s.close * exp(logPrice(s, 1 - sp + sp * Double(i) / Double(L)) - logPrice(s, 1)) * (i == L ? k : 1) }
         }
+    }
+
+    /// "yyyy-MM-dd" → 1970-01-01부터 날 수
+    static func dayNum(_ s: String) -> Int? {
+        let p = s.prefix(10).split(separator: "-")
+        guard p.count == 3, let y = Int(p[0]), let m = Int(p[1]), let d = Int(p[2]) else { return nil }
+        return dayNum(y, m, d)
+    }
+    static func dayNum(_ y0: Int, _ m: Int, _ d: Int) -> Int {
+        let y = m <= 2 ? y0 - 1 : y0, era = (y >= 0 ? y : y - 399) / 400, yoe = y - era * 400
+        let doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1
+        return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468
     }
 }

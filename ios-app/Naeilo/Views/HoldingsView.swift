@@ -112,7 +112,7 @@ struct HoldingsView: View {
     private func totalChart(_ rows: [AppModel.Row]) -> some View {
         let series = rows.map { r in m.prices.series(r.sym, period: period).map { m.krw(r.sym, $0 * r.h.qty) } }
         let n = series.map(\.count).min() ?? 0
-        let tot = (0..<n).map { i in series.reduce(0) { $0 + $1[i] } }
+        let tot = (0..<n).map { i in series.reduce(0) { $0 + $1[$1.count - n + i] } }   // 끝(오늘)을 맞춰 더한다
         let first = tot.first ?? 0, last = tot.last ?? 0, up = last >= first
         let start = Calendar.current.date(byAdding: .day, value: -Int(period.span * 1095), to: Date()) ?? Date()
         let d0 = period.span < 1 ? String(localized: "\(String(describing: Calendar.current.component(.month, from: start)))월") : "\(Calendar.current.component(.year, from: start).formatted(.number.grouping(.never))).\(Calendar.current.component(.month, from: start))"
@@ -375,10 +375,10 @@ struct TodayBox: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack { Text("오늘"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(Self.dim)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                (Text(tri).font(.system(size: 20, weight: .heavy)).baselineOffset(5) + Text(Self.won(abs(move))))
-                    .appFont(34, .heavy).tracking(-0.5).foregroundStyle(c).roll(move)
+                (Text(tri).font(.system(size: 18, weight: .heavy)).baselineOffset(4) + Text(Self.won(abs(move))))
+                    .font(.system(size: 30, weight: .heavy)).tracking(-0.5).foregroundStyle(c).roll(move)
                     .lineLimit(1).minimumScaleFactor(0.5).layoutPriority(1)
-                Text(AppModel.sgn(pct)).appFont(20, .semibold).foregroundStyle(c).lineLimit(1).fixedSize()
+                Text(AppModel.sgn(pct)).font(.system(size: 16, weight: .semibold)).foregroundStyle(c).lineLimit(1).fixedSize()
             }
             switch look {
             case .jump:
@@ -412,7 +412,7 @@ struct TodayBox: View {
     private var foot: some View {
         (Text("산 가격 대비 ").foregroundColor(Self.dim)
          + Text("\(gain >= 0 ? "+" : "−")\(HoldFmt.won(abs(gain))) · \(AppModel.sgn(ret))").fontWeight(.semibold).foregroundColor(gain >= 0 ? Self.upC : Self.downC))
-            .appFont(13).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            .font(.system(size: 13)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
     }
 
     /// 띠 한 줄 (욕조·진행 막대): 몫만큼 나란히, 사이 2pt
@@ -662,8 +662,8 @@ struct HoldingDetailView: View {
     }
 }
 
-/// 평단 계산기 (시안 v38): 수량 탭 = 살 가격(지금 가격으로 채움)·더 살 수량, 금액 탭 = 더 살 금액을 지금 가격으로.
-/// 결과 = 평균 단가·산 가격 대비·보유 수량 전 → 후. 칸은 $/원 버튼을 따른다 (계산은 원래 통화)
+/// 평단 계산기 (시안 v38): 결과(평균 단가·산 가격 대비·보유 수량 전 → 후)가 위, 입력 칸이 아래.
+/// 수량 탭 = 살 가격(지금 가격으로 채움)·더 살 수량, 금액 탭 = 더 살 금액을 지금 가격으로. 칸은 $/원 버튼을 따른다 (계산은 원래 통화)
 struct AvgCalc: View {
     let sym: Symbol
     let qty: Double, avg: Double
@@ -697,6 +697,13 @@ struct AvgCalc: View {
                 Spacer()
                 HoldSeg(items: [("qty", String(localized: "수량")), ("amt", String(localized: "금액"))], selection: $tab)
             }
+            Grid(alignment: .trailing, horizontalSpacing: 6, verticalSpacing: 8) {
+                line(String(localized: "평균 단가"), Text(money(avg)), Text(money(na)))
+                line(String(localized: "산 가격 대비"), pct(avg), pct(na))
+                line(String(localized: "보유 수량"), Text(qty.formatted() + String(localized: "주")), Text((qty + add).formatted(.number.precision(.fractionLength(0...2))) + String(localized: "주")))
+            }
+            .appFont(14).monospacedDigit()
+            Divider().overlay(Theme.line)
             HStack(spacing: 8) {
                 if tab == "qty" {
                     field(String(localized: "살 가격 (\(cur))"), $px)
@@ -708,13 +715,6 @@ struct AvgCalc: View {
             }
             Text(tab == "qty" ? String(localized: "총 \(money(buy * (num(q) ?? 0)))") : String(localized: "약 \(add.formatted(.number.precision(.fractionLength(add < 10 ? 2 : 1))))주"))
                 .appFont(12).foregroundStyle(Theme.sub).monospacedDigit().padding(.top, -4)
-            Divider().overlay(Theme.line)
-            Grid(alignment: .trailing, horizontalSpacing: 6, verticalSpacing: 8) {
-                line(String(localized: "평균 단가"), Text(money(avg)), Text(money(na)))
-                line(String(localized: "산 가격 대비"), pct(avg), pct(na))
-                line(String(localized: "보유 수량"), Text(qty.formatted() + String(localized: "주")), Text((qty + add).formatted(.number.precision(.fractionLength(0...2))) + String(localized: "주")))
-            }
-            .appFont(14).monospacedDigit()
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 16)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
