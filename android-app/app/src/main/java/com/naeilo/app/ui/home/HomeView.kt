@@ -723,49 +723,6 @@ private fun Step(tag: String, c: @Composable () -> Unit) {
     }
 }
 
-// 지금 평가액 카드 오른쪽 작은 그래프: 내 길 '시작부터' (실제 = 민트 선, 내 길 = 보라 점선). 누르면 분석 > 내 길
-// ios: Views/HomeView.swift:474,475,476
-@Composable
-fun MiniPath(m: AppModel) {
-    // 분석 > 내 길 '지금까지' 그래프와 같은 점·같은 세로 범위 (목표 금액 포함), 눈금·범위 띠만 뺀다
-    val p = m.myPath; val x1 = p.start + 1.0 / 12; val gap = m.myPathGapToday; val K = m.gK * 1e4   // ios: Views/HomeView.swift:478
-    val act = p.pts   // ios: Views/HomeView.swift:479
-    val need: List<Pair<Double, Double>> = (0..30).map { i -> val t = x1 * i.toDouble() / 30; Pair(t, p.need(t)) }   // ios: Views/HomeView.swift:480
-    val needAll = (0..30).map { i -> p.need(p.end * i.toDouble() / 30) }   // ios: Views/HomeView.swift:481
-    val vals = act.map { it.second } + needAll + listOf(K)   // ios: Views/HomeView.swift:482
-    val hi = (vals.maxOrNull() ?: 1.0) * 1.05; val lo = (vals.filter { it > 0 }.minOrNull() ?: 0.0) * 0.9   // ios: Views/HomeView.swift:483
-    val mint = Theme.mint
-    // ios: Views/HomeView.swift:484,485,486,487,512,514 (388 은 검사 예외: 같은 줄에 옮김)
-    Box(
-        Modifier.plainClickable {
-            m.tab = Tab.analysis
-            m.analysisPath = listOf(AnalysisRoute.myPath)
-        }.semantics(mergeDescendants = true) { contentDescription = tr("내 길 그래프, ${if (gap >= 0) "계획대로" else "계획보다 조금 늦어요"}, 눌러서 분석의 내 길 보기") }
-            .padding(bottom = 15.dp),   // ios: Views/HomeView.swift:511
-    ) {
-        // ios: Views/HomeView.swift:488,504,505
-        Canvas(Modifier.size(84.dp, 40.dp).pulse(Theme.mint, dot = 6.dp) { s -> act.lastOrNull()?.let { Offset((p.start / max(1e-6, x1)).toFloat() * s.width, ((hi - it.second) / max(1.0, hi - lo)).toFloat() * s.height) } }) {
-            // ios: Views/HomeView.swift:489,490
-            fun pt(q: Pair<Double, Double>) = Offset((q.first / max(1e-6, x1)).toFloat() * size.width, ((hi - q.second) / max(1.0, hi - lo)).toFloat() * size.height)
-            // ios: Views/HomeView.swift:492,493,494,495
-            fun line(qs: List<Pair<Double, Double>>): Path {
-                val path = Path()
-                qs.forEachIndexed { i, q -> val o = pt(q); if (i == 0) path.moveTo(o.x, o.y) else path.lineTo(o.x, o.y) }
-                return path
-            }
-            drawPath(line(need), hex(0xB79CF0), style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))   // ios: Views/HomeView.swift:497
-            drawPath(line(act), mint, style = Stroke(2.dp.toPx(), join = StrokeJoin.Round))   // ios: Views/HomeView.swift:498
-            // ios: Views/HomeView.swift:499
-            act.lastOrNull()?.let { last ->
-                val end = pt(Pair(p.start, last.second))   // ios: Views/HomeView.swift:500
-                drawOval(mint, topLeft = Offset(end.x - 3.dp.toPx(), end.y - 3.dp.toPx()), size = Size(6.dp.toPx(), 6.dp.toPx()))   // ios: Views/HomeView.swift:501
-            }
-        }
-        // ios: Views/HomeView.swift:506,507,508,509
-        T(if (gap >= 0) "계획대로" else "조금 늦어요", Modifier.align(Alignment.BottomCenter).offset(y = 16.dp), style = appFont(10f, FontWeight.Bold), color = if (gap >= 0) Theme.teal else hexD(0xB5651D, 0xE8A060), maxLines = 1)
-    }
-}
-
 // 줄바꿈되는 가로 배치
 @Composable
 // ios: Views/HomeView.swift:520,521,522,532

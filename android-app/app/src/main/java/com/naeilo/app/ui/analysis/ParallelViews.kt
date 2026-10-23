@@ -119,7 +119,7 @@ object ParallelUI {
 /** 이동 막대 제목 (App.kt 홈 길에서 쓴다) */
 object ParallelTitles {
     const val main = "다른 방식이었다면?"   // ios: Views/ParallelView.swift:43
-    const val basket = "모의 바구니 고치기"   // ios: Views/ParallelView.swift:384
+    const val basket = "모의바구니 고치기"   // ios: Views/ParallelView.swift:384
 }
 
 // ios: Views/ParallelView.swift:12,13,16

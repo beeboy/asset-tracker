@@ -146,17 +146,17 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.math.min
 
 private fun Double.swRound(): Double = if (this < 0) -floor(-this + 0.5) else floor(this + 0.5)
 
 // ios: Views/AnalysisView.swift:3
-enum class AnalysisRoute { forecast, myPath, rateScen, external, dividend, tax, fx, glance, calm, goal }
+enum class AnalysisRoute { forecast, rateScen, external, dividend, tax, fx, glance, calm, goal }
 
 // ios: Views/AnalysisView.swift:7,8
 fun AnalysisRoute.title(m: AppModel): String = when (this) {
     AnalysisRoute.calm -> "내 투자 습관"   // ios: Views/AnalysisView.swift:9
-    AnalysisRoute.myPath -> "내 길"   // ios: Views/AnalysisView.swift:10
     AnalysisRoute.forecast -> m.forecastTitle   // ios: Views/AnalysisView.swift:11
     AnalysisRoute.rateScen -> "금리 충격 테스트"   // ios: Views/AnalysisView.swift:12
     AnalysisRoute.external -> "외부 요인"   // ios: Views/AnalysisView.swift:13
@@ -173,7 +173,6 @@ fun AnalysisRoute.title(m: AppModel): String = when (this) {
 fun AnalysisPage(m: AppModel, route: AnalysisRoute) = when (route) {
     // 7일 무료 뒤 구독하지 않으면 목표(내 길)·확률 전망만 잠근다 (Support.pro)
     AnalysisRoute.forecast -> if (Support.shared.pro) ForecastView(m) else SubLocked(m, what = "확률 전망")   // ios: Views/AnalysisView.swift:47
-    AnalysisRoute.myPath -> if (Support.shared.pro) MyPathView(m) else SubLocked(m, what = "내 길(목표까지 확률)")   // ios: Views/AnalysisView.swift:48
     AnalysisRoute.rateScen -> RateScenarioView(m)   // ios: Views/AnalysisView.swift:49
     AnalysisRoute.external -> ExternalView(m)   // ios: Views/AnalysisView.swift:50
     AnalysisRoute.dividend -> DividendView(m, only = "div")   // ios: Views/AnalysisView.swift:51
@@ -218,7 +217,7 @@ fun AnalysisPager(m: AppModel, start: AnalysisRoute) {
 }
 object AnalysisPager {
     // ios: Views/AnalysisView.swift:65
-    val order: List<AnalysisRoute> = listOf(AnalysisRoute.calm, AnalysisRoute.myPath, AnalysisRoute.forecast, AnalysisRoute.rateScen, AnalysisRoute.external, AnalysisRoute.fx, AnalysisRoute.glance, AnalysisRoute.dividend, AnalysisRoute.tax)
+    val order: List<AnalysisRoute> = listOf(AnalysisRoute.calm, AnalysisRoute.forecast, AnalysisRoute.rateScen, AnalysisRoute.external, AnalysisRoute.fx, AnalysisRoute.glance, AnalysisRoute.dividend, AnalysisRoute.tax)
 }
 
 /** 분석 재료 시트: 제목 왼쪽, X 오른쪽. 시트 안 링크는 같은 시트에서 넘기고(뒤로 화살표), X 는 몇 단계 들어갔어도 한 번에 닫는다 */
@@ -259,7 +258,6 @@ fun AnalysisSheet(m: AppModel, route: AnalysisRoute, dismiss: () -> Unit) {
 private fun analysisSheetPage(m: AppModel, r: Any): NavPage = when (r) {
     is AnalysisRoute -> NavPage(r.title(m)) { AnalysisPage(m, r) }   // ios: Views/AnalysisView.swift:117 (detailInPager false)
     is Symbol -> NavPage(r.name) { HoldingDetailView(m, sym = r, period0 = Period.y1) }   // ios: Views/AnalysisView.swift:118
-    MyPathCompareRoute -> NavPage(MyPathCompareRoute.title) { MyPathCompareView(m) }
     is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailView(m, r.factor, r.start) }
     is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }
     is com.naeilo.app.ui.calm.CalmFriendRoute -> com.naeilo.app.ui.shelter.characterPage(m, r.friend, invest = true)
@@ -467,8 +465,8 @@ private fun HabitChip(m: AppModel, open: (AnalysisRoute) -> Unit) {
 private class Flag(val t: Double, val text: String, val warn: Boolean, val route: AnalysisRoute)
 
 // ios: Views/AnalysisView.swift:314
-private fun flags(m: AppModel, p: MyPath): List<Flag> {
-    val days = max(0.0, (p.end - p.start) * 365.25).toInt()   // ios: Views/AnalysisView.swift:315
+private fun flags(m: AppModel, p: MyPath, until: Double): List<Flag> {   // ios: Views/AnalysisView.swift:313
+    val days = max(0.0, (until - p.start) * 365.25).toInt()   // ios: Views/AnalysisView.swift:314
     val hits = MarketEvents.upcoming(held = m.rows.map { it.id }, days = min(days, 400))   // ios: Views/AnalysisView.swift:316
     val dday = { d: String -> val n = Day.dday(d); if (n == 0) "오늘" else "D-$n" }   // ios: Views/AnalysisView.swift:317
     val out = ArrayList<Flag>()   // ios: Views/AnalysisView.swift:318
@@ -480,9 +478,9 @@ private fun flags(m: AppModel, p: MyPath): List<Flag> {
     if (DividendView.hubTax(m) > 0) {
         val y = java.time.LocalDate.now().year + 1   // ios: Views/AnalysisView.swift:326
         val t = p.start + yrs(Day.today, "$y-05-31")   // ios: Views/AnalysisView.swift:327
-        if (t <= p.end) out.add(Flag(t, "$y.5 세금", true, AnalysisRoute.tax))   // ios: Views/AnalysisView.swift:328
+        if (t <= until) out.add(Flag(t, "$y.5 세금", true, AnalysisRoute.tax))   // ios: Views/AnalysisView.swift:328
     }
-    return out.sortedBy { it.t }   // ios: Views/AnalysisView.swift:330
+    return out.filter { it.t <= until }.sortedBy { it.t }   // ios: Views/AnalysisView.swift:330
 }
 
 // ios: Views/AnalysisView.swift:333
@@ -501,8 +499,9 @@ private fun Shake(m: AppModel, p: MyPath, f: AppModel.Forecast, pro: Boolean, to
     val bandPts = if (toGoal) bandAll else emptyList()   // ios: Views/AnalysisView.swift:343
     val vals = actPts.map { it.second } + needAll.map { it.second } + bandAll.flatMap { listOf(it.second, it.third) } + listOf(K)   // ios: Views/AnalysisView.swift:344
     val hi = (vals.maxOrNull() ?: 1.0) * 1.05; val lo = (vals.filter { it > 0 }.minOrNull() ?: 0.0) * 0.9   // ios: Views/AnalysisView.swift:345
-    val X = { t: Double -> t / max(1e-6, x1) }; val Y = { v: Double -> (hi - v) / max(1.0, hi - lo) }   // ios: Views/AnalysisView.swift:346
-    val fl = if (toGoal) flags(m, p) else emptyList()   // ios: Views/AnalysisView.swift:347
+    // 왼쪽 2% 비움: 시작점 동그라미가 그래프 왼쪽 끝에서 반쯤 잘리지 않게
+    val X = { t: Double -> 0.02 + 0.98 * t / max(1e-6, x1) }; val Y = { v: Double -> (hi - v) / max(1.0, hi - lo) }   // ios: Views/AnalysisView.swift:346
+    val fl = flags(m, p, until = x1)   // ios: Views/AnalysisView.swift:347 지금까지 보기는 다음 달까지 일정만
     val fog = if (iE < f.q50.size) f.q50[iE] + (if (f.exact) m.cashKrw else 0.0) else 0.0   // ios: Views/AnalysisView.swift:348
     val gc = m.goalToDate.atZone(ZoneId.systemDefault())   // ios: Views/AnalysisView.swift:349
     val chartH = 150.dp; val topH = 30.dp   // ios: Views/AnalysisView.swift:350
@@ -601,7 +600,19 @@ private fun At(x: Dp, y: Dp, content: @Composable () -> Unit) {
 private fun Raise(m: AppModel) {
     val yrsE = m.etaYears   // ios: Views/AnalysisView.swift:447
     val mixes = listOf("지금 구성" to m.nowMix, "성장 구성" to AppModel.mixes[1], "방패 구성" to AppModel.mixes[2])   // ios: Views/AnalysisView.swift:448
-    val sims = mixes.map { m.simulate(it.second, years = yrsE) }   // ios: Views/AnalysisView.swift:449
+    // 모의바구니: 평행 세계에 저장한 모의바구니 (없으면 줄을 숨긴다)
+    val mine = m.pworld?.segs?.lastOrNull()?.w?.filter { it.value > 0 } ?: emptyMap()   // ios: Views/AnalysisView.swift:447
+    // ios: Views/AnalysisView.swift:448,449,450,451
+    val customSim: GoalSim? = if (mine.isEmpty()) null else m.simulate(m.nowMix, years = yrsE, parts = mine.map { (id, x) ->
+        val usd = m.rows.firstOrNull { it.id == id }?.let { it.sym.currency == Currency.usd } ?: com.naeilo.app.net.ExtraStats.shared.usd(id) ?: true
+        com.naeilo.app.core.calc.Part(key = com.naeilo.app.net.SiteStats.mcKey(id), ccy = if (usd) "USD" else "KRW", w = x)
+    })
+    // ios: Views/AnalysisView.swift:452,453,454,455
+    val customDesc = mine.entries.sortedByDescending { it.value }.take(3).joinToString(" · ") { (id, x) ->
+        val name = m.rows.firstOrNull { it.id == id }?.sym?.name ?: com.naeilo.app.core.calc.Parallel.universe.firstOrNull { it.id == id }?.name ?: com.naeilo.app.net.ExtraStats.shared.name(id) ?: id
+        "$name ${(x * 100).roundToInt()}"
+    } + if (mine.size > 3) " …" else ""
+    val sims = mixes.map { m.simulate(it.second, years = yrsE) } + listOfNotNull(customSim)   // ios: Views/AnalysisView.swift:457
     val goalMo = max(0.0, (m.goalToDate.toEpochMilli() - System.currentTimeMillis()) / 1000.0 / (365.25 * 86400) * 12)   // ios: Views/AnalysisView.swift:450
     val ax = EtaRow.axis(sims, goalYear = AppModel.yearAt(goalMo)); val a0 = ax.first; val a1 = ax.second   // ios: Views/AnalysisView.swift:451
     val x = { y: Double -> min(1.0, max(0.0, (y - a0) / max(0.5, a1 - a0))) }   // ios: Views/AnalysisView.swift:452
@@ -622,15 +633,18 @@ private fun Raise(m: AppModel) {
             Spacer(Modifier.width(52.dp))
         }
         // ios: Views/AnalysisView.swift:468,469
-        sims.indices.forEach { i -> EtaLine(mixes[i].first, mixes[i].second.desc, sims[i], x, gx = x(AppModel.yearAt(goalMo)), mine = i == 0) }
+        mixes.indices.forEach { i -> EtaLine(mixes[i].first, mixes[i].second.desc, sims[i], x, gx = x(AppModel.yearAt(goalMo)), mine = i == 0) }   // ios: Views/AnalysisView.swift:475
+        if (customSim != null) EtaLine("모의바구니", customDesc, customSim, x, gx = x(AppModel.yearAt(goalMo)), mine = false)   // ios: Views/AnalysisView.swift:478,479
         // ios: Views/AnalysisView.swift:471
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { FitText("● 보통 · ─ 10번 중 8번 · ┊ 목표일", appFont(12f), 0.8f, color = Theme.sub) }   // ios: Views/AnalysisView.swift:472,473
             // ios: Views/AnalysisView.swift:474,475,476,477
             if (m.route != Route.novice && m.rows.isNotEmpty()) {
-                Box(Modifier.defaultMinSize(minHeight = 30.dp).background(Theme.teal, CapsuleShape).plainClickable { m.analysisPath = m.analysisPath + MyPathCompareRoute }.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
-                    T("내 구성 비교", style = appFont(12f, FontWeight.Bold), color = Color.White, maxLines = 1)
+                var comparing by remember { mutableStateOf(false) }   // ios: Views/AnalysisView.swift:140
+                Box(Modifier.defaultMinSize(minHeight = 30.dp).background(Theme.teal, CapsuleShape).plainClickable { comparing = true }.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
+                    T("구성 변경", style = appFont(12f, FontWeight.Bold), color = Color.White, maxLines = 1)
                 }
+                Sheet(comparing, onDismiss = { comparing = false }) { MyPathCompareView(m, dismiss = { comparing = false }) }   // ios: Views/AnalysisView.swift .sheet(isPresented: $comparing)
             }
         }
     }

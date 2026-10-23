@@ -71,7 +71,6 @@ import com.naeilo.app.ui.hold.KoreaSumCard
 import com.naeilo.app.ui.Sheet
 import com.naeilo.app.net.CustomSymbols
 import com.naeilo.app.ui.home.homePage
-import com.naeilo.app.ui.analysis.MyPathCompareRoute
 import com.naeilo.app.ui.analysis.MyPathCompareView
 import com.naeilo.app.ui.analysis.FactorDetailRoute
 import com.naeilo.app.ui.analysis.FactorDetailView
@@ -175,7 +174,6 @@ fun RootView(model: AppModel) {
                         when (r) {
                             is AnalysisRoute -> NavPage(bar = false) { AnalysisPager(model, start = r) }   // ios: Views/AnalysisView.swift:128 (넘기기 화면은 막대를 스스로 그린다)
                             is Symbol -> NavPage(r.name) { HoldingDetailView(model, sym = r, period0 = Period.y1) }   // ios: Views/AnalysisView.swift:83
-                            MyPathCompareRoute -> NavPage(MyPathCompareRoute.title) { MyPathCompareView(model) }   // 내 길 '내 구성으로 비교'
                             is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailView(model, r.factor, r.start) }   // 외부 요인 상세
                             is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }   // 금리 시나리오 근거
                             is com.naeilo.app.ui.calm.CalmFriendRoute -> com.naeilo.app.ui.shelter.characterPage(model, r.friend, invest = true)   // 내 투자 습관 → 인물 투자 갈래

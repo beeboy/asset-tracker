@@ -140,7 +140,7 @@ private class Ratio(val cash: Double, val top: Double)
 
 // ios: Data/Parallel.swift:68
 object Parallel {
-    val names = listOf("내 실제 투자", "모의 바구니", "인물 규칙대로")   // ios: Data/Parallel.swift:69
+    val names = listOf("내 실제 투자", "모의바구니", "인물 규칙대로")   // ios: Data/Parallel.swift:69
 
     /// v1에 담을 수 있는 종목: 사이트가 지난 종가를 모으는 종목 + 견본 ETF (VTV·USMV)
     data class Item(val id: String, val name: String)   // ios: Data/Parallel.swift:72

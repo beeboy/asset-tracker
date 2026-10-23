@@ -85,6 +85,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -342,6 +343,19 @@ fun SheetBar(title: String?, trailing: String? = null, onClick: () -> Unit = {})
     Box(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp)) {
         if (title != null) T(title, Modifier.align(Alignment.Center), style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.SemiBold), maxLines = 1)
         if (trailing != null) T(trailing, Modifier.align(Alignment.CenterEnd).plainClickable(onClick), style = TextStyle(fontSize = 17.sp), color = Theme.teal)
+    }
+}
+
+/** 팝업 머리: 제목은 왼쪽, 닫기(X)는 오른쪽 (흐름 읽는 법과 같은 모양) */
+// ios: Theme.swift:291
+@Composable
+fun SheetTitleBar(title: String, close: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Theme.swift:295,305
+        T(title, Modifier.weight(1f), style = appFont(22f, FontWeight.Bold), color = Theme.ink)   // ios: Theme.swift:296
+        // ios: Theme.swift:298,299,300,302
+        Box(Modifier.size(44.dp).plainClickable(close).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
+            Sym("xmark", 15f, Theme.sub)
+        }
     }
 }
 

@@ -299,7 +299,7 @@ fun ShareCardSheet(m: AppModel, party: Boolean = false, dismiss: () -> Unit) {  
 
     // ios: Views/ShareCard.swift:51,99,100
     Column(Modifier.fillMaxSize()) {
-        SheetBar("미션 위젯 공유", trailing = "닫기", onClick = dismiss)
+        SheetTitleBar("미션 위젯 공유", close = dismiss)   // ios: Views/ShareCard.swift:52
         // ios: Views/ShareCard.swift:52,53,96,98
         Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             T("보낼 위젯 고르기", style = appFont(13f), color = Theme.sub)   // ios: Views/ShareCard.swift:54

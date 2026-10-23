@@ -3587,6 +3587,12 @@
     },
     "%@년 %@개월" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ yr %2$@ mo"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
@@ -3648,7 +3654,14 @@
       }
     },
     "%@년 안에 닿기 어려워요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlikely within %@ years"
+          }
+        }
+      }
     },
     "%@년간 %@%@%%" : {
       "localizations" : {
@@ -9334,7 +9347,14 @@
       }
     },
     "구성 변경" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change mix"
+          }
+        }
+      }
     },
     "구성 비교" : {
       "localizations" : {
@@ -16484,7 +16504,14 @@
       }
     },
     "모의바구니 구성" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mock basket mix"
+          }
+        }
+      }
     },
     "모자" : {
       "localizations" : {
@@ -17006,7 +17033,14 @@
       }
     },
     "목표일 즈음이에요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right around the goal date"
+          }
+        }
+      }
     },
     "목표일까지" : {
       "localizations" : {
@@ -17019,10 +17053,24 @@
       }
     },
     "목표일보다 %@ 늦어요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ behind the goal date"
+          }
+        }
+      }
     },
     "목표일보다 %@ 앞서요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ahead of the goal date"
+          }
+        }
+      }
     },
     "몰린 종목" : {
       "localizations" : {
@@ -20342,6 +20390,12 @@
     },
     "빠르면 %@, 늦으면 %@" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Early %1$@, late %2$@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
@@ -31478,7 +31532,14 @@
       }
     },
     "지금과 거의 같아요 · %@쯤" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About the same as now · around %@"
+          }
+        }
+      }
     },
     "지금까지" : {
       "localizations" : {
@@ -31503,6 +31564,12 @@
     },
     "지금보다 %@ 늦어요 · %@쯤" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ later than now · around %2$@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
@@ -31513,6 +31580,12 @@
     },
     "지금보다 %@ 빨라요 · %@쯤" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sooner than now · around %2$@"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "new",
@@ -31532,7 +31605,14 @@
       }
     },
     "지금보다 빨라요 · %@쯤" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sooner than now · around %@"
+          }
+        }
+      }
     },
     "지금은 구독할 수 없어요" : {
       "localizations" : {
@@ -37016,13 +37096,34 @@
       }
     },
     "흔들림은 지금과 비슷해요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swing about the same as now"
+          }
+        }
+      }
     },
     "흔들림이 줄어요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Narrower swing"
+          }
+        }
+      }
     },
     "흔들림이 커져요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wider swing"
+          }
+        }
+      }
     },
     "흔한 나쁜 날" : {
       "localizations" : {

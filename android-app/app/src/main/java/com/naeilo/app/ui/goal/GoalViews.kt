@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
@@ -353,7 +354,7 @@ private fun WaitLabel(wait: String) = Row(horizontalArrangement = Arrangement.sp
 // 공유 카드·벽돌깨기는 1000칸 그대로 (값만 넘긴다)
 // ios: Views/GoalViews.swift:65,66,67
 @Composable
-fun GoalCellsCard(m: AppModel) {
+fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 판이 화면 아래(탭 위)까지 늘린다
     var showGame by remember { mutableStateOf(false) }   // ios: Views/GoalViews.swift:150
     var showWave by remember { mutableStateOf(false) }   // ios: Views/GoalViews.swift:151
     var showShare by remember { mutableStateOf(false) }   // ios: Views/GoalViews.swift:152
@@ -389,14 +390,14 @@ fun GoalCellsCard(m: AppModel) {
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/GoalViews.swift:79
         // ios: Views/GoalViews.swift:80,142,143
-        Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(20.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.fillMaxWidth().heightIn(min = minHeight).background(Theme.card, RoundedCornerShape(20.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/GoalViews.swift:148
             Row(Modifier.fillMaxWidth()) {   // ios: Views/GoalViews.swift:81
                 T(if (goal) "${AppModel.wonK(m.gK)}까지 100칸" else "본전까지 100칸", Modifier.alignByBaseline(), style = appFont(18f, FontWeight.Bold))   // Views/GoalViews.swift:292 (검사 예외: 같은 글)
                 Spacer(Modifier.weight(1f))   // ios: Views/GoalViews.swift:83
                 T(if (fV >= 100) "100칸 완성!" else "1칸 = ${AppModel.man(unit)}", Modifier.alignByBaseline(), style = appFont(14f), color = Theme.sub)   // ios: Views/GoalViews.swift:84
             }
             // 박스는 60% 폭, 정보는 오른쪽
-            SplitRow(ratio = 0.6f, spacing = 14.dp) {   // ios: Views/GoalViews.swift:87
+            SplitRow(ratio = 0.6f, spacing = 14.dp, rightFill = 0.9f) {   // ios: Views/GoalViews.swift:87
                 // 100칸이 곧 벽돌. 아래 빈 곳을 누르면 공 발사, 끌면 패들
                 // ios: Views/GoalViews.swift:89,90
                 BrickBox(mine = mine, filled = fV, lost = lost, g = game, on = playing, setOn = { playing = it }, end = { clear -> if (clear) party = true else showGame = true },
@@ -415,11 +416,8 @@ fun GoalCellsCard(m: AppModel) {
                         legend(GoalCellsCard.mintC, null, "회복", "+" + AppModel.man(max(0.0, tkV - floorV)))   // ios: Views/GoalViews.swift:104
                         legend(Theme.card, Theme.gold, "마지막 칸 = 본전", null)   // ios: Views/GoalViews.swift:105
                     }
-                    action("공유하기", "square.and.arrow.up", fill = false) { showShare = true }   // ios: Views/GoalViews.swift:107
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/GoalViews.swift:108
-                        action("블록", "square.grid.3x3.fill", fill = true, tight = true, modifier = Modifier.weight(1f)) { showGame = true }   // ios: Views/GoalViews.swift:109
-                        action("파도", "water.waves", fill = true, tight = true, modifier = Modifier.weight(1f)) { showWave = true }   // ios: Views/GoalViews.swift:110
-                    }
+                    Spacer(Modifier.weight(1f))   // ios: Views/GoalViews.swift:107 공유하기는 박스 아래 끝 줄에 맞춘다
+                    action("공유하기", "square.and.arrow.up", fill = false) { showShare = true }   // ios: Views/GoalViews.swift:108
                 }
             }
             // 패들 조작 칸: 손가락이 패들을 가리지 않게 박스 아래 빈 곳에서 끈다
@@ -435,6 +433,14 @@ fun GoalCellsCard(m: AppModel) {
                         game.px = max(0.0, min(1.0, c.position.x.toDouble() / max(1, size.width))); c.consume()   // ios: Views/GoalViews.swift:124
                     } while (awaitPointerEvent().changes.any { it.pressed })
                 } })
+            // 남는 높이는 여기서 벌려 캐릭터·말풍선을 카드 맨 아래(탭 위)로 내린다
+            Spacer(Modifier.weight(1f))   // ios: Views/GoalViews.swift:126
+            // 블록·파도: 말풍선 위 오른쪽
+            // ios: Views/GoalViews.swift:128,129,130,131,133
+            Row(Modifier.fillMaxWidth().padding(bottom = 0.dp).offset(y = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                action("블록", "square.grid.3x3.fill", fill = true, tight = true, modifier = Modifier.width(76.dp)) { showGame = true }
+                action("파도", "water.waves", fill = true, tight = true, modifier = Modifier.width(76.dp)) { showWave = true }
+            }
             // 캐릭터가 자랑하자고 권한다 (누르는 곳 아님, 공유는 오른쪽 버튼). 다 깨면 친구들이 이 자리를 채운다
             if (party) MiniParty(Modifier.fillMaxWidth()) else {   // ios: Views/GoalViews.swift:129
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:130
@@ -657,16 +663,18 @@ class MiniBreakout(private val sm: SensorManager?) : SensorEventListener {
 /** 왼쪽 칸은 폭의 ratio만큼 정사각형, 오른쪽은 남은 폭에 세로 가운데 */
 // ios: Views/GoalViews.swift:332,333
 @Composable
-fun SplitRow(ratio: Float, spacing: Dp, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun SplitRow(ratio: Float, spacing: Dp, modifier: Modifier = Modifier, rightFill: Float = 0f, content: @Composable () -> Unit) {
+    // rightFill > 0: 오른쪽 칸 높이 = 왼쪽 높이 × 이 값, 위에 붙인다 (100칸 카드: 0.9 = 패들 칸을 뺀 칸 그림 끝 줄). ios: Views/GoalViews.swift:341,351
     Layout(content, modifier) { ms, c ->   // ios: Views/GoalViews.swift:334,340
         val w = if (c.hasBoundedWidth) c.maxWidth else 320.dp.roundToPx(); val side = (w * ratio).roundToInt(); val sp = spacing.roundToPx()   // ios: Views/GoalViews.swift:335,341
-        val ps = ms.mapIndexed { i, x -> x.measure(if (i == 0) Constraints(minWidth = side, maxWidth = side) else Constraints(maxWidth = max(0, w - side - sp))) }
-        val lh = ps.firstOrNull()?.height ?: 0   // ios: Views/GoalViews.swift:336
-        val h = if (ms.size > 1) ps[1].height else 0   // ios: Views/GoalViews.swift:337
+        val pl = ms.firstOrNull()?.measure(Constraints(minWidth = side, maxWidth = side))
+        val lh = pl?.height ?: 0   // ios: Views/GoalViews.swift:336
+        val pr = ms.getOrNull(1)?.measure(Constraints(maxWidth = max(0, w - side - sp), minHeight = if (rightFill > 0f) (lh * rightFill).roundToInt() else 0))
+        val h = pr?.height ?: 0   // ios: Views/GoalViews.swift:337
         layout(w, max(lh, h)) {   // ios: Views/GoalViews.swift:338
             val H = max(lh, h)
-            ps.firstOrNull()?.let { it.place(0, (H - it.height) / 2) }   // ios: Views/GoalViews.swift:342
-            if (ps.size > 1) ps[1].place(side + sp, (H - ps[1].height) / 2)   // ios: Views/GoalViews.swift:343
+            pl?.place(0, (H - lh) / 2)   // ios: Views/GoalViews.swift:353
+            pr?.place(side + sp, if (rightFill > 0f) 0 else (H - h) / 2)   // ios: Views/GoalViews.swift:355
         }
     }
 }

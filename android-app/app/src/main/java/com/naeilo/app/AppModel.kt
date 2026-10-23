@@ -874,7 +874,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         // 캡처용: --es route m3 처럼 미션 화면을 바로 연다
         val routes: Map<String, MissionRoute> = mapOf("m1" to MissionRoute.m1, "m1r" to MissionRoute.m1r, "m2" to MissionRoute.m2, "m2r" to MissionRoute.m2r, "m3" to MissionRoute.m3, "m3r" to MissionRoute.m3r, "m4" to MissionRoute.m4, "m4r" to MissionRoute.m4r, "nx" to MissionRoute.nx, "g1" to MissionRoute.g1, "g1r" to MissionRoute.g1r, "g3" to MissionRoute.g3, "g3r" to MissionRoute.g3r, "gt" to MissionRoute.gt, "gi" to MissionRoute.gi, "gp1r" to MissionRoute.gp1r)   // ios: Data/AppModel.swift:72
         arg("route")?.let { routes[it] }?.let { r -> boardPath = listOf(r) }   // ios: Data/AppModel.swift:73
-        val an: Map<String, AnalysisRoute> = mapOf("forecast" to AnalysisRoute.forecast, "myPath" to AnalysisRoute.myPath, "external" to AnalysisRoute.external, "dividend" to AnalysisRoute.dividend, "fx" to AnalysisRoute.fx, "glance" to AnalysisRoute.glance)   // ios: Data/AppModel.swift:74
+        val an: Map<String, AnalysisRoute> = mapOf("forecast" to AnalysisRoute.forecast, "external" to AnalysisRoute.external, "dividend" to AnalysisRoute.dividend, "fx" to AnalysisRoute.fx, "glance" to AnalysisRoute.glance)   // ios: Data/AppModel.swift:74
         arg("an")?.let { an[it] }?.let { r -> analysisPath = listOf(r) }   // ios: Data/AppModel.swift:75
     }
 
