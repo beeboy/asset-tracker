@@ -435,10 +435,10 @@ struct TodayBox: View {
         .clipShape(RoundedRectangle(cornerRadius: radius))
     }
 
-    /// 점프 직전: 박스 아래 밤 도로의 굵은 점선 차선. 한 칸은 한 색만 (칸 반올림으로 몫이 조금 어긋나도 느낌만 전한다)
+    /// 점프 직전: 박스 아래 밤 도로 가운데의 가는 점선 중앙선(칸과 틈이 거의 같다). 한 칸은 한 색만 (칸 반올림으로 몫이 조금 어긋나도 느낌만 전한다)
     private var lane: some View {
         Canvas { ctx, size in
-            let gap: CGFloat = 8, n = max(1, Int((size.width + gap) / 26))
+            let gap: CGFloat = 12, n = max(1, Int((size.width + gap) / 26))
             let w = (size.width - gap * CGFloat(n - 1)) / CGFloat(n)
             let s = shares
             guard s.reduce(0, +) > 0 else { return }
@@ -448,12 +448,12 @@ struct TodayBox: View {
             for i in 0..<n {
                 let c = i < up ? colors[0] : i < up + flat ? colors[1] : colors[2]
                 var l = ctx
-                if c != colors[1] { l.addFilter(.shadow(color: c, radius: 3)) }
-                l.fill(Path(CGRect(x: CGFloat(i) * (w + gap), y: 0, width: w, height: size.height)), with: .color(c))
+                if c != colors[1] { l.addFilter(.shadow(color: c, radius: 2)) }
+                l.fill(Path(CGRect(x: CGFloat(i) * (w + gap), y: 0, width: w, height: size.height)), with: .color(c.opacity(0.75)))
             }
         }
-        .frame(height: 5)
-        .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 14)
+        .frame(height: 2.5)
+        .padding(.horizontal, 18).padding(.vertical, 18)
         .background(Color(hex: 0x151925))
         .overlay(alignment: .top) { Rectangle().fill(Color(hex: 0x232A3E)).frame(height: 1) }
         .padding(.horizontal, -18)

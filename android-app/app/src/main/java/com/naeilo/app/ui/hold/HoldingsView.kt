@@ -677,15 +677,15 @@ private fun Band(shares: List<Double>, colors: List<Color>, height: Dp, radius: 
     }
 }
 
-/** 점프 직전: 박스 아래 밤 도로의 굵은 점선 차선. 한 칸은 한 색만 (칸 반올림으로 몫이 조금 어긋나도 느낌만 전한다) */
+/** 점프 직전: 박스 아래 밤 도로 가운데의 가는 점선 중앙선(칸과 틈이 거의 같다). 한 칸은 한 색만 (칸 반올림으로 몫이 조금 어긋나도 느낌만 전한다) */
 // ios: Views/HoldingsView.swift:439,455,456,457,458,459
 @Composable
 private fun Lane(shares: List<Double>, colors: List<Color>) {
     Box(Modifier.outset(18.dp).background(hex(0x151925)).drawBehind { drawRect(hex(0x232A3E), Offset.Zero, Size(size.width, 1.dp.toPx())) }
-        .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 14.dp)) {
+        .padding(horizontal = 18.dp, vertical = 18.dp)) {
         // ios: Views/HoldingsView.swift:440,455
-        Canvas(Modifier.fillMaxWidth().height(5.dp)) {
-            val gap = 8.dp.toPx(); val n = max(1, ((size.width + gap) / 26.dp.toPx()).toInt())   // ios: Views/HoldingsView.swift:441
+        Canvas(Modifier.fillMaxWidth().height(2.5.dp)) {
+            val gap = 12.dp.toPx(); val n = max(1, ((size.width + gap) / 26.dp.toPx()).toInt())   // ios: Views/HoldingsView.swift:441
             val w = (size.width - gap * (n - 1)) / n   // ios: Views/HoldingsView.swift:442
             val s = shares   // ios: Views/HoldingsView.swift:443
             if (s.fold(0.0) { a, x -> a + x } <= 0) return@Canvas   // ios: Views/HoldingsView.swift:444
@@ -694,9 +694,9 @@ private fun Lane(shares: List<Double>, colors: List<Color>) {
             for (i in 0 until n) {
                 val c = if (i < up) colors[0] else if (i < up + flat) colors[1] else colors[2]   // ios: Views/HoldingsView.swift:449
                 val x = i * (w + gap)
-                // ios: Views/HoldingsView.swift:450,451 (색 칸은 같은 색으로 빛 번짐 반경 3)
-                if (c != colors[1]) glow(3.dp.toPx()) { g, a -> drawRoundRect(c.copy(alpha = a), Offset(x - g, -g), Size(w + g * 2, size.height + g * 2), CornerRadius(g, g)) }
-                drawRect(c, Offset(x, 0f), Size(w, size.height))   // ios: Views/HoldingsView.swift:452
+                // ios: Views/HoldingsView.swift:450,451 (색 칸은 같은 색으로 빛 번짐 반경 2)
+                if (c != colors[1]) glow(2.dp.toPx()) { g, a -> drawRoundRect(c.copy(alpha = a), Offset(x - g, -g), Size(w + g * 2, size.height + g * 2), CornerRadius(g, g)) }
+                drawRect(c.copy(alpha = 0.75f), Offset(x, 0f), Size(w, size.height))   // ios: Views/HoldingsView.swift:452
             }
         }
     }
