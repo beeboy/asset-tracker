@@ -603,7 +603,7 @@ struct FlowChart: View {
 
     /// 누른 자리 바로 위에 띄운다. 차트 위쪽 끝이면 바로 아래로. 가로는 화면 밖으로 안 나가게. 꼬리는 누른 자리를 가리킨다
     private func bubble(_ title: String, _ body: String, at p: CGPoint, top: CGFloat, W: CGFloat, more: (() -> Void)?) -> some View {
-        let bw: CGFloat = min(240, W - 8)
+        let bw: CGFloat = min(280, W - 8)
         let cx: CGFloat = min(max(p.x, bw / 2 + 4), W - bw / 2 - 4)
         let below: Bool = p.y < top + 110
         let tailX: CGFloat = min(max(p.x - (cx - bw / 2), 16), bw - 16)
@@ -619,14 +619,14 @@ struct FlowChart: View {
                 VStack(spacing: 0) {
                     if below { tail }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(title).appFont(13, .bold).foregroundStyle(Self.bbTitle)
-                        Text(body).appFont(12).foregroundStyle(Self.bbBody).fixedSize(horizontal: false, vertical: true)
+                        Text(title).appFont(15, .bold).foregroundStyle(Self.bbTitle)
+                        Text(body).appFont(14).foregroundStyle(Self.bbBody).fixedSize(horizontal: false, vertical: true)
                         HStack {
-                            Text("정보 제공용 · 매매 권유 아님").appFont(10).foregroundStyle(Self.bbFoot)
+                            Text("정보 제공용 · 매매 권유 아님").appFont(11).foregroundStyle(Self.bbFoot)
                             Spacer(minLength: 4)
                             if let more {
                                 Button(action: more) {
-                                    Text("자세히 ›").appFont(11, .semibold).foregroundStyle(Self.bbMore)
+                                    Text("자세히 ›").appFont(13, .semibold).foregroundStyle(Self.bbMore)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -737,7 +737,7 @@ struct FlowGuide: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center) {
-                Text("흐름 읽는 법").appFont(20, .bold).foregroundStyle(Theme.ink)
+                Text("흐름 읽는 법").appFont(22, .bold).foregroundStyle(Theme.ink)
                 Spacer(minLength: 8)
                 Button { dismiss() } label: {
                     Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.sub)
@@ -752,7 +752,7 @@ struct FlowGuide: View {
                         ForEach(groups.indices, id: \.self) { gi in
                             let g = groups[gi]
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(g.0).appFont(13, .semibold).foregroundStyle(Theme.muted).padding(.leading, 4)
+                                Text(g.0).appFont(14, .semibold).foregroundStyle(Theme.muted).padding(.leading, 4)
                                 VStack(spacing: 0) {
                                     ForEach(Array(g.1.enumerated()), id: \.element.id) { i, it in
                                         if i > 0 { Rectangle().fill(Theme.line).frame(height: 1).padding(.leading, 84) }
@@ -763,7 +763,7 @@ struct FlowGuide: View {
                             }
                         }
                         Text("흐린 점선 = 확정 전·거래량 적음 · 투자 권유 아님")
-                            .appFont(12).foregroundStyle(Theme.muted).padding(.horizontal, 4)
+                            .appFont(13).foregroundStyle(Theme.muted).padding(.horizontal, 4)
                     }
                     .padding(16)
                 }
@@ -782,11 +782,11 @@ struct FlowGuide: View {
                 .padding(4)
                 .background(Theme.bg, in: RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 3) {
-                Text(it.title).appFont(15, .bold).foregroundStyle(Theme.ink)
-                Text(it.body).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                Text(it.title).appFont(17, .bold).foregroundStyle(Theme.ink)
+                Text(it.body).appFont(15).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
                 if let w = it.when {
                     (Text("이럴 때").fontWeight(.semibold).foregroundColor(Theme.teal) + Text("  " + w).foregroundColor(Theme.sub))
-                        .appFont(12).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
+                        .appFont(14).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
                 }
             }
             Spacer(minLength: 0)
