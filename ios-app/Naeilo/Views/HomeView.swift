@@ -220,18 +220,26 @@ struct HomeView: View {
         let on = (0..<5).filter { m.friendOn($0) }.count
         let next = (0..<5).first { !m.friendOn($0) }
         let r = Remind.shared, b = r.bubble, n = r.fresh.count
-        let line: String = b.map { $0.text + ($0.go != .nowhere ? " ›" : "") } ?? m.homeSay
-        // 정보 문장(오늘 움직인 종목)을 먼저, 대사는 그 아래
-        let say = m.todayMoversText.map { $0 + "\n" + m.friendName(m.homeFriendShown) + ": “" + line + "”" } ?? line
+        // 말풍선은 오늘 브리핑 한 문장. 인물 대사는 빼고, 인물은 오늘 장 흐름을 동작으로 보인다 (2026-10-23)
+        // 리마인드 소식은 정보라 브리핑 아래에 둔다. 둘 다 없을 때(종목 없음)만 인물 한마디
+        let news = b.map { $0.text + ($0.go != .nowhere ? " ›" : "") }
+        let say = [m.todayMoversText, news].compactMap { $0 }.joined(separator: "\n")
+        let who = m.homeFriendShown
         let tint: Color = b.map { $0.cat.color.opacity(0.14) } ?? Theme.mintBg
         return VStack(alignment: .leading, spacing: 10) {
             Button {
                 if let b, b.go != .nowhere { m.go(b.go) } else { m.homePath.append("shelter") }
             } label: {
                 HStack(alignment: .bottom, spacing: 10) {
-                    CharPixel(id: m.homeFriendShown, width: 56, height: 80).charIdle()
-                        .accessibilityLabel(m.friendName(m.homeFriendShown))
-                    Text(say)
+                    Group {
+                        if who == "me" ? m.me != nil : FriendMotion.has(who) {
+                            MoodFigure(who: who, me: m.me, mood: DayMood.of(m.todayMove), width: 56, height: 80)
+                        } else {
+                            CharPixel(id: who, width: 56, height: 80).charIdle()
+                        }
+                    }
+                    .accessibilityLabel(m.friendName(who))
+                    Text(say.isEmpty ? m.homeSay : say)
                         .appFont(14).lineSpacing(3)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
