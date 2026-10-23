@@ -50,6 +50,21 @@ struct RemindSheet: View {
                     if showPast && past.contains(where: { $0.cat == .analysis }) {
                         Text("분석 소식은 내 숫자로 계산한 값이에요. 종목 추천이 아닙니다.").appFont(12).foregroundStyle(Theme.muted)
                     }
+                    // 친구 다섯이 다 풀리면 홈에서 빠진 친구 줄을 여기 둔다 (2026-10-23)
+                    if (0..<Shelter.friends.count).allSatisfy({ m.friendOn($0) }) {
+                        Divider().overlay(Theme.line)
+                        Button { dismiss(); m.go(.shelter) } label: {
+                            HStack(alignment: .bottom, spacing: 8) {
+                                ForEach(Shelter.friends, id: \.id) { f in Pixel(name: "spr_" + f.id, width: 20, height: 28) }
+                                Spacer()
+                                Text(String(localized: "친구 \(String(describing: Shelter.friends.count))/5") + String(localized: " · 외전 5장") + " ›")
+                                    .appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+                            }
+                            .frame(minHeight: 44).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("쉼터 보기")
+                    }
                 }
                 .padding(16)
                 .frame(maxWidth: Theme.maxWidth)

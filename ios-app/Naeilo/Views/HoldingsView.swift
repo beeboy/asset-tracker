@@ -331,7 +331,7 @@ struct HoldingDetailView: View {
                         kv(String(localized: "보유 수량"), h.qty.formatted() + String(localized: "주"))
                         kv(String(localized: "평균 단가"), AppModel.price(sym, h.avg))
                         kv(Market.shared.isToss(sym) ? String(localized: "오픈 API 시세") : Market.shared.isAlpaca(sym) ? String(localized: "Alpaca(IEX) 시세") : Market.shared.isLongbridge(sym) ? String(localized: "Longbridge 시세") : sym.currency == .krw ? (CustomSymbols.shared.isLive(sym.id) ? String(localized: "전일 종가 (테스트)") : KoreaEstimate.info(id: sym.id, name: sym.name).proxy != nil ? String(localized: "추정 가격") : String(localized: "넣은 가격")) : sym.quote.live ? String(localized: "지금 가격") : String(localized: "전일 종가"), AppModel.price(sym, sym.last))
-                        if sym.quote.live { kv(String(localized: "오늘 등락"), AppModel.sgn(sym.quote.change)) }
+                        if sym.quote.live { kv(String(localized: "오늘 등락"), AppModel.sgn2(sym.quote.change)) }
                         if sym.currency == .usd { kv(String(localized: "환율"), String(localized: "1달러 ") + Int(Market.shared.valFx.rounded()).formatted() + String(localized: "원")) }
                         kv(need > 0.0005 ? String(localized: "본전까지") : String(localized: "본전 대비"), need > 0.0005 ? String(localized: "주가가 ") + String(format: "%.1f", need * 100) + String(localized: "% 오르면 본전")
                            : need > -0.0005 ? String(localized: "본전과 같아요") : String(localized: "본전보다 ") + String(format: "%.1f", -need * 100) + String(localized: "% 위"))
@@ -885,15 +885,18 @@ struct HoldingsNews: View {
         .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    // MARK: 오늘 많이 움직인 종목 (오늘 % 크기순 3개)
+    // MARK: 오늘 많이 움직인 종목: 내 평가액에 준 영향(원화 금액) 크기순 3개. 홈 말풍선 한 줄 해석의 근거
     private func moversCard(_ rows: [AppModel.Row]) -> some View {
-        let top = rows.sorted { abs($0.sym.quote.change) > abs($1.sym.quote.change) }.prefix(3)
+        let fx = Market.shared.valFx
+        let top = rows.filter { $0.id != KoreaEstimate.sumId }
+            .map { r in (r: r, w: r.h.qty * r.sym.quote.prevClose * (r.sym.currency == .usd ? fx : 1) * r.sym.quote.change) }
+            .sorted { abs($0.w) > abs($1.w) }.prefix(3)
         return VStack(alignment: .leading, spacing: 0) {
             Text("오늘 많이 움직인 종목").appFont(15, .bold).padding(.bottom, 6)
             if top.isEmpty { Text("종목을 넣으면 보여요").appFont(13).foregroundStyle(Theme.sub) }
-            ForEach(Array(top)) { r in
-                let d = r.sym.quote.change
-                line(r, Text((d >= 0 ? "+" : "−") + String(format: "%.2f%%", abs(d) * 100)).foregroundColor(Theme.change(d)))
+            ForEach(Array(top), id: \.r.id) { x in
+                let d = x.r.sym.quote.change
+                line(x.r, Text(AppModel.sgn2(d) + " · " + AppModel.eokS(x.w)).foregroundColor(Theme.change(d)))
             }
         }
         .card()

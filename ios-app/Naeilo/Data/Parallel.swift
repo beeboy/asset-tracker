@@ -689,6 +689,18 @@ extension AppModel {
     }
 }
 
+extension AppModel {
+    /// 홈 비교 박스: 결론 한 줄(차이 값 없이) + 셋의 수익률 (실제·모의·인물 순). 상세 화면과 같은 값(parallelSeries, 마지막 칸)
+    var parallelHome: (verdict: String, r: [Double], who: String)? {
+        guard let w = pworldShown ?? newParallel(), let race = parallelRun(w, who: w.who) else { return nil }
+        let r = pworldShown == nil ? race.r : parallelSeries(race)
+        let v = Parallel.verdict(r, at: race.last)
+        let lead = parallelTitle(v.order[0], who: w.who)
+        let say = v.similar ? String(localized: "셋 다 비슷해요") : String(localized: "\(String(describing: lead))\(String(describing: WChar.josa(lead))) 앞서요")
+        return (say, (0..<3).map { r[$0][race.last] }, w.who)
+    }
+}
+
 /// 결론 규칙: 가장 앞선 쪽과 뒤진 쪽 차이가 1.0%p 미만이면 "비슷해요"
 struct PVerdict { let order: [Int]; let gap: Double; var similar: Bool { gap < Parallel.similarGap } }
 

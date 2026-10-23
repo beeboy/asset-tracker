@@ -234,6 +234,8 @@ final class AppModel {
     static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }
     static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
     static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(p) * 100) }
+    /// 종목 하루 등락: 소수 둘째 자리 (종목 목록·오늘 많이 움직인 종목·말풍선이 같은 자릿수)
+    static func sgn2(_ p: Double) -> String { (p >= 0 ? "+" : "−") + String(format: "%.2f%%", abs(p) * 100) }
     static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "−") + "\(Int((abs(p) * 100).rounded()))%" }
     static func price(_ s: Symbol, _ x: Double) -> String {
         s.currency == .usd ? "$" + x.formatted(.number.precision(.fractionLength(0...2))) : Int(x.rounded()).formatted() + String(localized: "원")
@@ -469,12 +471,12 @@ final class AppModel {
         let mv = todayMove, up = mv >= 0
         let top = c.filter { ($0.1 >= 0) == up }.sorted { abs($0.1) > abs($1.1) }.prefix(2).filter { abs($0.1) >= all * 0.3 }
         if top.isEmpty { return String(localized: "오늘은 여러 종목이 고르게 움직였어요.") }
-        let names = top.map { "\($0.0.sym.short)(\(Self.sgn($0.0.sym.quote.change)))" }.joined(separator: String(localized: "와 "))
+        let names = top.map { "\($0.0.sym.short)(\(Self.sgn2($0.0.sym.quote.change)))" }.joined(separator: String(localized: "와 "))
         return String(localized: "오늘 \(String(describing: up ? String(localized: "상승") : String(localized: "하락")))은 주로 \(String(describing: names)) 때문이에요.")
     }
     var routineFact: String {
         let tot = todayMove
-        let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
+        let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn2($0.sym.quote.change))" }.joined(separator: " · ")
         let head = rows.isEmpty ? "" : "**\(Self.sgn(tot))**" + (mv.isEmpty ? "" : " · \(mv)") + "\n"     // 오늘 움직임은 진하게 (마크다운)
         if route == .novice {
             return head + (noviceOwn ? String(localized: "평가액은") : String(localized: "모은 돈은")) + String(localized: " 목표의 \(String(describing: AppModel.pct(goalSaved / max(1, gK))))예요. 다음 적립일에 \(String(describing: AppModel.wonK(gM)))이 더해져요.")
@@ -519,7 +521,7 @@ final class AppModel {
         if byW.count >= 2 {
             let c = byW.prefix(3).sorted { $0.sym.short < $1.sym.short }
             let chg = c.map { abs($0.sym.quote.change) }, wt = c.map { $0.value / tot }
-            let mvList = c.map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
+            let mvList = c.map { "\($0.sym.short) \(Self.sgn2($0.sym.quote.change))" }.joined(separator: " · ")
             let wtList = c.sorted { $0.value > $1.value }.map { "\($0.sym.short) \(Self.pct($0.value / tot))" }.joined(separator: " · ")
             qs.append(.init(id: "mover", tag: String(localized: "오늘 움직임"), q: String(localized: "오늘 가장 크게 움직인 종목은?"), opts: c.map(\.sym.short),
                             right: chg.indices.max { chg[$0] < chg[$1] } ?? 0,

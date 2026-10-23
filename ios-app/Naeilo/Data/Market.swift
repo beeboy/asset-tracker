@@ -135,13 +135,36 @@ final class Market {
         return Quote(last: Sample.fx, prevClose: Sample.fx, live: false)
     }
 
+    /// 지금 쓰는 시세(사이트·토스·Alpaca·Longbridge) 중 가장 늦게 받은 때(got)와 그 값들의 가장 늦은 가격 시각(at), 초.
+    /// 토스가 내 종목을 다 받으면 사이트 시세는 다시 받지 않는다(QuoteFeed.fetch). 사이트 받은 때만 보면 시각이 멈춘다
+    var quoteTimes: (got: Double, at: Double)? {
+        let fs = [site, toss, alpaca, longbridge].compactMap { $0 }.filter { !$0.q.isEmpty }
+        guard let got = fs.map(\.got).max(), got > 0 else { return nil }
+        return (got, fs.flatMap { $0.q.values.map(\.at) }.max() ?? got)
+    }
+    /// 받은 지 얼마나: 방금 · n분 전 · n시간 전 · n일 전
+    static func agoText(_ sec: Double) -> String {
+        let m = Int(max(0, sec)) / 60
+        if m < 1 { return String(localized: "방금") }
+        if m < 60 { return String(localized: "\(String(describing: m))분 전") }
+        if m < 24 * 60 { return String(localized: "\(String(describing: m / 60))시간 전") }
+        return String(localized: "\(String(describing: m / 1440))일 전")
+    }
+    /// 평가액 박스 오른쪽 위 (위젯의 '1분 전'과 짝). 1시간 넘게 못 받았으면(서버 오류 등) 그 값의 시각 '10/21 23:50 기준'. 경고 없이 같은 모양
+    func freshText(now: Date = Date()) -> String? {
+        guard let t = quoteTimes else { return nil }
+        let sec = now.timeIntervalSince1970 - t.got
+        if sec < 3600 { return Self.agoText(sec) }
+        let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "M/d HH:mm"
+        return String(localized: "\(String(describing: f.string(from: Date(timeIntervalSince1970: t.at)))) 기준")
+    }
+
     var asOfText: String {
         let f = DateFormatter(); f.locale = AppModel.dateLocale
-        if let s = site, let t = s.q.values.map(\.at).max(), t > 0 {
-            let d = Date(timeIntervalSince1970: t)
+        if let t = quoteTimes, t.at > 0 {
+            let d = Date(timeIntervalSince1970: t.at)
             f.dateFormat = Calendar.current.isDateInToday(d) ? "a h:mm" : String(localized: "M월 d일 a h:mm")
-            let ago = Int(Date().timeIntervalSince1970 - s.got) / 60
-            return String(localized: "\(String(describing: f.string(from: d))) 시세 · \(String(describing: ago < 1 ? String(localized: "방금") : String(localized: "\(String(describing: ago))분 전"))) 받음")
+            return String(localized: "\(String(describing: f.string(from: d))) 시세 · \(String(describing: Self.agoText(Date().timeIntervalSince1970 - t.got))) 받음")
         }
         if let t = YahooSample.asOf {
             f.dateFormat = String(localized: "M월 d일 a h:mm")

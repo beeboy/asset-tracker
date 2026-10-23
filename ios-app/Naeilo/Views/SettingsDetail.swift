@@ -377,12 +377,22 @@ struct WidgetPickView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 if cover { GameHeader(title: String(localized: "위젯")).toolbar(.hidden, for: .navigationBar) } else { Text("위젯").appFont(22, .bold) }
-                Text("미션을 마치면 열려요. 홈 화면 길게 누르기 → + → naeilo")
-                    .appFont(14).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                // 홈 화면에 위젯 넣는 단계 (단계마다 시스템 아이콘 하나)
+                VStack(alignment: .leading, spacing: 8) {
+                    addStep(1, "hand.tap", String(localized: "홈 화면 빈 곳 길게 누르기"))
+                    addStep(2, "plus.square", String(localized: "왼쪽 위 \"편집\" → \"위젯 추가\""))
+                    addStep(3, "magnifyingglass", String(localized: "\"naeilo\" 검색"))
+                    addStep(4, "square.grid.2x2", String(localized: "크기 고르고 \"위젯 추가\""))
+                    addStep(5, "person.crop.square", String(localized: "인물 바꾸기: 위젯 길게 눌러 \"위젯 편집\""))
+                }
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
                 HStack(spacing: 8) {
-                    stat(String(localized: "기본 위젯"), "\(base.filter(\.ok).count)/\(base.count)")
+                    stat(String(localized: "기본 위젯"), "\(base.filter(\.ok).count)/\(base.count)", note: String(localized: "미션을 마치면 열려요"))
                     stat(String(localized: "인물"), "\(friendsOn)/\(Shelter.friends.count)")
                 }
+                .fixedSize(horizontal: false, vertical: true)   // 두 칸 높이를 같게
 
                 // 인물 위젯: 만난 인물을 고르면 여덟 가지 모양을 바로 본다 (못 만난 친구는 목록에 없다)
                 Text("인물 위젯").appFont(17, .bold).padding(.top, 6)
@@ -443,7 +453,6 @@ struct WidgetPickView: View {
                     }
                 }
                 .aspectRatio(1 / 2.3, contentMode: .fit)
-                note(String(localized: "인물은 위젯을 길게 눌러 '위젯 편집'에서 골라요."))
 
                 // 기본 위젯: 앱 시작 단계로 열림
                 Text("기본 위젯").appFont(17, .bold).padding(.top, 6)
@@ -479,14 +488,24 @@ struct WidgetPickView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func stat(_ k: String, _ v: String) -> some View {
+    private func stat(_ k: String, _ v: String, note: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(k).appFont(12).foregroundStyle(Theme.sub)
             Text(v + String(localized: " 열림")).appFont(17, .bold)
+            if let note { Text(note).appFont(11).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8) }
         }
+        .frame(maxHeight: .infinity, alignment: .topLeading)
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+    }
+
+    private func addStep(_ n: Int, _ icon: String, _ t: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).font(.system(size: 16)).foregroundStyle(Theme.teal).frame(width: 24)
+            Text("\(n). " + t).appFont(14).fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func caption<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View {

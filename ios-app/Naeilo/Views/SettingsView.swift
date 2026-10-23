@@ -99,6 +99,7 @@ enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alp
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
     var cover = false   // 홈 [설정] 전체 화면 팝업: 맨 위 줄을 블록·파도처럼 제목 + X로
+    @AppStorage(BoxLook.key) private var boxLook = BoxLook.horizon.rawValue
 
     var body: some View {
         let onN = m.alerts.values.filter { $0 }.count
@@ -142,6 +143,9 @@ struct SettingsView: View {
                 Text("밝기 모드").appFont(13, .bold).foregroundStyle(Theme.sub)
                 ChipRow(items: [("system", String(localized: "기기 설정대로")), ("light", String(localized: "밝게")), ("dark", String(localized: "어둡게"))],
                         selection: Binding(get: { m.appearance }, set: { m.appearance = $0; UserDefaults.standard.set($0, forKey: "appearance") }), fill: true)
+                // 홈 평가액 박스 모양 (홈 박스를 길게 눌러도 고른다)
+                Text("홈 평가액 박스").appFont(13, .bold).foregroundStyle(Theme.sub)
+                ChipRow(items: BoxLook.allCases.map { ($0.rawValue, $0.name) }, selection: $boxLook, fill: true)
                 group(nil, [(String(localized: "앱 아이콘"), AppIconPicker.currentName, .icon)])
                 // 앱 언어는 iOS 설정의 앱 화면에서 바꾼다 (누르면 그 화면이 열린다)
                 Button {
