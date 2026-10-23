@@ -510,7 +510,7 @@ struct FlowChart: View {
         let cx: CGFloat = min(max(p.x, bw / 2 + 4), W - bw / 2 - 4)
         let below: Bool = p.y < top + 110
         let tailX: CGFloat = min(max(p.x - (cx - bw / 2), 16), bw - 16)
-        let tail = FlowTail(up: below).fill(Theme.ink).frame(width: 14, height: 7)
+        let tail = FlowTail(up: below).fill(Theme.inkFixed).frame(width: 14, height: 7)
             .frame(width: bw, alignment: .leading).offset(x: tailX - 7)
         return Color.clear.frame(width: 1, height: 1)
             .overlay(alignment: below ? .top : .bottom) {
@@ -532,7 +532,9 @@ struct FlowChart: View {
                     }
                     .padding(10)
                     .frame(width: bw, alignment: .leading)
-                    .background(Theme.ink, in: RoundedRectangle(cornerRadius: 12))
+                    // 다크 모드에서도 늘 어두운 바탕 (Theme.ink 는 다크에서 밝아져 흰 글자가 묻힌다)
+                    .background(Theme.inkFixed, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.12)))
                     if !below { tail }
                 }
                 .fixedSize(horizontal: false, vertical: true)
