@@ -3,7 +3,6 @@ package com.naeilo.app
 import com.naeilo.app.core.NJson
 import com.naeilo.app.net.jsonToPlain
 import com.naeilo.app.net.plainToJson
-import com.naeilo.app.ui.analysis.AnalysisHub
 import com.naeilo.app.ui.analysis.ForecastView
 import com.naeilo.app.ui.analysis.ScenarioChart
 import com.naeilo.app.ui.analysis.manS
@@ -67,7 +66,6 @@ class GParityTest {
         out["amt"] = won.map { ForecastView.amt(it) }
         out["short"] = listOf(Lens.base, Lens.mine, Lens.smooth).map { ForecastView.short(it) }
         out["ym"] = (inp["dates"] as List<String>).map { val x = ForecastView.ym(it); listOf(x.first, x.second) }
-        out["freq"] = ps.map { AnalysisHub.freq(it) }
         out["step"] = won.map { ScenarioChart.step(abs(it)) }
         out["axis"] = won.map { ScenarioChart.axis(it) }
         out["manS"] = won.map { AppModel.manS(it) }
