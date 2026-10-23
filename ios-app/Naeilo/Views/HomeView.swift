@@ -608,6 +608,8 @@ struct SceneBox: View {
             // 욕조: 수익률·계획 줄은 장면 아래 따로 (박스 끝에 붙지 않게)
             if look == .tub { subLine(13).padding(.top, 2).padding(.bottom, 12) }
         }
+        // 욕조: 아래 수익률 줄까지 타일 벽이 이어지게 (장면 타일과 같은 칸 크기)
+        .background { if look == .tub { GeometryReader { g in TileWall(cell: 22 * g.size.width / 300) } } }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(s.label) \(amountText), \(s.target)까지 \(AppModel.pct(s.f)), \(s.status)")
     }
@@ -656,6 +658,21 @@ struct SceneBox: View {
         (Text(s.ret.map { AppModel.sgn($0) + " · " } ?? "").foregroundColor((s.ret ?? 0) >= 0 ? Self.upC : Self.downC)
          + Text(s.status).foregroundColor(Self.dim))
             .font(.system(size: size)).lineLimit(1).minimumScaleFactor(0.7)
+    }
+}
+
+/// 욕조 뒤 남색 타일 벽 (cell = 타일 한 칸 크기)
+private struct TileWall: View {
+    let cell: CGFloat
+    var body: some View {
+        Canvas { ctx, size in
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: 0x1B2744)))
+            guard cell > 1 else { return }
+            var grid = Path(), x: CGFloat = 0, y: CGFloat = 0
+            while x <= size.width { grid.move(to: CGPoint(x: x, y: 0)); grid.addLine(to: CGPoint(x: x, y: size.height)); x += cell }
+            while y <= size.height { grid.move(to: CGPoint(x: 0, y: y)); grid.addLine(to: CGPoint(x: size.width, y: y)); y += cell }
+            ctx.stroke(grid, with: .color(Color(hex: 0x2A3A60)), lineWidth: 1.5 * cell / 22)
+        }
     }
 }
 
