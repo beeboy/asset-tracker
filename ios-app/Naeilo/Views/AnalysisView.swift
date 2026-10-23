@@ -100,13 +100,15 @@ struct AnalysisSheet: View {
 
     var body: some View {
         NavigationStack {
+            // 첫 화면 제목은 글자만 (다른 팝업 GameHeader 와 같은 크기). 툴바에 두면 iOS 26 이 알약 바탕을 씌운다
             AnalysisPage(route: route)
                 .environment(\.detailInPager, true)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Text(route.title(m)).appFont(17, .bold).foregroundStyle(Theme.ink).lineLimit(1).fixedSize()
-                    }
+                .toolbar(.hidden, for: .navigationBar)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    Text(route.title(m)).appFont(20, .bold).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+                        .padding(.leading, 16).padding(.trailing, 56)
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                        .background(Theme.bg)
                 }
                 .navigationDestination(for: AnalysisRoute.self) { AnalysisPage(route: $0).environment(\.detailInPager, false) }
                 .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: .y1) }
@@ -118,7 +120,7 @@ struct AnalysisSheet: View {
                     .frame(width: 44, height: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.trailing, 8).padding(.top, 2)
+            .padding(.trailing, 8).padding(.top, 2)   // 첫 화면 제목 줄(48) 가운데
             .accessibilityLabel("닫기")
         }
     }

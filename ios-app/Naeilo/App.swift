@@ -178,15 +178,15 @@ struct AppHeader: View {
     }
 }
 
-/// 설정·위젯 팝업: 블록·파도처럼 전체 화면, 맨 위 X로 닫는다. 어느 탭에서든 뜬다 (RootView 수식어가 길어 따로 뺐다)
+/// 설정·위젯 팝업: 다른 팝업처럼 시트, 맨 위 줄 제목 + X로 닫는다. 어느 탭에서든 뜬다 (RootView 수식어가 길어 따로 뺐다)
 private struct HomeSheets: ViewModifier {
     @Bindable var model: AppModel
     func body(content: Content) -> some View {
         content
-            .fullScreenCover(isPresented: $model.settingsOpen, onDismiss: { model.settingsPath = [] }) {
+            .sheet(isPresented: $model.settingsOpen, onDismiss: { model.settingsPath = [] }) {
                 NavigationStack(path: $model.settingsPath) { SettingsView(cover: true) }.environment(model)
             }
-            .fullScreenCover(isPresented: $model.widgetsOpen) {
+            .sheet(isPresented: $model.widgetsOpen) {
                 NavigationStack { WidgetPickView(cover: true) }.environment(model)
             }
     }
