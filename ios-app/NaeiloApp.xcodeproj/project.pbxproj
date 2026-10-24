@@ -51,7 +51,6 @@
 		7107A43B79E31316CBE1B701 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CB3081436E1A6F74D763B5 /* Config.swift */; };
 		7479B774E98602DE2E0479CA /* Catalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A824AF1DB8AF8410F855C8 /* Catalog.swift */; };
 		75215A8C66E9E6106DAA964C /* Notifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F05ABBC8318AD1E592196DD /* Notifier.swift */; };
-		76175DF9F7E9BADC8A2992F0 /* calc.json in Resources */ = {isa = PBXBuildFile; fileRef = F509A415790715D23F1E6D7B /* calc.json */; };
 		789CAF4CCBE1155775CDFEA7 /* NaeiloWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8879E43C67DB54529B3BAB25 /* NaeiloWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7A47E9AE200D65D15BBCA430 /* StockCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C0F24B12A0E97C97C96F8E2 /* StockCatalog.swift */; };
 		7AE72E73708FC421D35A432B /* CharWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FA7F03FB0B8EB7411D811C /* CharWidgets.swift */; };
@@ -60,9 +59,7 @@
 		7D20A1B2C3D4E5F6A7B8C9A1 /* Wave/WavePlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D20A1B2C3D4E5F6A7B8C9A2 /* Wave/WavePlayView.swift */; };
 		7D20A1B2C3D4E5F6A7B8C9B1 /* Wave/WaveResultPopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D20A1B2C3D4E5F6A7B8C9B2 /* Wave/WaveResultPopup.swift */; };
 		7F4FF7AD5F5051BB7F274A1A /* GoalViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68521199848D8FCA256D8B7B /* GoalViews.swift */; };
-		81A915C15DB304AE45CD6B4A /* stats.json in Resources */ = {isa = PBXBuildFile; fileRef = EE06E92AB3F3E0602FB28BB1 /* stats.json */; };
 		8C43044F5F47ED770ECE4F6A /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CB3081436E1A6F74D763B5 /* Config.swift */; };
-		8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */ = {isa = PBXBuildFile; fileRef = BE16646A583833EE1115FA08 /* prices */; };
 		8DAA47AF36B9BDA0EDFF4AF0 /* CalmView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08124010F0FC18140D2673FF /* CalmView.swift */; };
 		927EE0531CEA5194096A7E87 /* MeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A582148F29787AC4A7C10DE2 /* MeViews.swift */; };
 		98F299D8C7B3CBBC431D31ED /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6F03765313B364DF7C9F94 /* Models.swift */; };
@@ -92,7 +89,6 @@
 		C27DDD254ECE5621BE784C17 /* EarningsRiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0405DCF23F728995FE6BC47C /* EarningsRiver.swift */; };
 		C727C88DCAEDE095515D279B /* ForecastEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4F2FD4AB2264F597B6817D /* ForecastEngine.swift */; };
 		CB09D15A0B85AA1E4B93E903 /* AnalysisDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C4668A7B9FECB1D2C27F7F /* AnalysisDetail.swift */; };
-		CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */ = {isa = PBXBuildFile; fileRef = CA972EE98F92EF464180B15F /* quotes.json */; };
 		CD0713B84C32526597218283 /* HoldingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B93F44AA00A552A3868A92 /* HoldingsView.swift */; };
 		CD1B58E37A334086753B306E /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F5CFD9372155F687DC62A14 /* Support.swift */; };
 		CDC9A9B0B5F97C64D91F58A7 /* Industries.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D0C4109B5070AD88349788 /* Industries.swift */; };
@@ -473,6 +469,7 @@
 			buildPhases = (
 				C7FF9AF98A7310DC6786FB02 /* Sources */,
 				774616BC84B2C3A599B85107 /* Resources */,
+				B11D0A000000000000000003 /* 시세 자료 넣기 */,
 				8054E53D3E26278BFFC23C39 /* Embed Foundation Extensions */,
 				B11D0A000000000000000001 /* 빌드 번호 */,
 			);
@@ -563,10 +560,6 @@
 				E7A1C0DE00000000000000D4 /* data_en.json in Resources */,
 				E7A1C0DE00000000000000D2 /* lines_app_en.json in Resources */,
 				E7A1C0DE00000000000000A1 /* lines_en.json in Resources */,
-				8D8966D6C0FAF7FA4C69AEDA /* prices in Resources */,
-				CB273B21A8A2BA6508DE1A89 /* quotes.json in Resources */,
-				81A915C15DB304AE45CD6B4A /* stats.json in Resources */,
-				76175DF9F7E9BADC8A2992F0 /* calc.json in Resources */,
 				486FAE43C7DEF8FB95F4D4C9 /* story_en.json in Resources */,
 				B9FFF848DCFE762EA9C1DFEE /* story_ko.json in Resources */,
 			);
@@ -625,6 +618,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "[ \"$CONFIGURATION\" = \"Debug\" ] || exit 0\nV=$(date +%y%m%d.%H%M%S)\necho \"$V\" > \"$BUILT_PRODUCTS_DIR/.naeilo-build\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $V\" \"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n";
+		};
+		B11D0A000000000000000003 /* 시세 자료 넣기 */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "시세 자료 넣기";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# 시세 자료 넣기: 내부 베타는 사이트가 Yahoo 로 모은 자료(data/), 공개 베타·출시는 가상 샘플(data/sample/)\nD=\"$SRCROOT/../data\"\n[ \"$NAEILO_CHANNEL\" = \"internalBeta\" ] || D=\"$D/sample\"\nR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nrm -rf \"$R/prices\" \"$R/quotes.json\" \"$R/stats.json\" \"$R/calc.json\"\ncp \"$D/quotes.json\" \"$R/\" && cp -R \"$D/prices\" \"$R/prices\" || exit 1\nfor f in stats.json calc.json; do [ ! -f \"$D/$f\" ] || cp \"$D/$f\" \"$R/\"; done\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -814,6 +826,7 @@
 		72AAC524E4826297423654C5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				NAEILO_CHANNEL = internalBeta;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -896,6 +909,7 @@
 		D92E76F917EFEFD58DCB0BB3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				NAEILO_CHANNEL = internalBeta;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;

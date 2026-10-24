@@ -52,7 +52,8 @@ final class Market {
     /// 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만.
     /// 내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged)
     var prices: SitePrices.File? = TossHistory.merged(SitePrices.cached(), TossHistory.cached())
-    var source: String { site != nil ? String(localized: "naeilo 사이트") : YahooSample.quotes.isEmpty ? String(localized: "예시 값") : String(localized: "Yahoo 중계 (테스트)") }
+    /// 공개 베타·출시 번들의 자료는 가상 샘플이라 '예시 값'
+    var source: String { site != nil ? String(localized: "naeilo 사이트") : YahooSample.quotes.isEmpty || !Config.usesCollectedData ? String(localized: "예시 값") : String(localized: "Yahoo 중계 (테스트)") }
 
     // 샘플 종목 DRNK 의 하루 움직임 (샘플 기록의 마지막 날). 다른 종목은 받은 시세가 없으면 움직임을 만들지 않는다
     static let todayMove: [String: Double] = ["DRNK": -0.0221]
@@ -347,7 +348,8 @@ enum SitePrices {
     /// h 키 = 사이트 티커 (KRW=X 등). asked = 그때 받으려던 티커 (사이트에 없는 종목은 h 에 없다)
     struct File: Codable { var got: Double; var updated: String; var asked: [String]; var h: [String: YahooSample.Hist] }
     static let name = "site_prices.json"
-    static func cached() -> File? { Store.read(File.self, name) }
+    /// 공개 베타·출시는 사이트·Yahoo 종가를 쓰지 않는다 (번들의 가상 샘플만)
+    static func cached() -> File? { Config.usesCollectedData ? Store.read(File.self, name) : nil }
 
     /// 빈 값은 앞 값으로 메운다 (웹 history 와 같다)
     static func hist(_ o: [String: Any]) -> YahooSample.Hist? {
@@ -400,6 +402,7 @@ enum SitePrices {
 
     /// keys = 사이트 티커(= Yahoo 기호). Yahoo 에서 직접 받고, 못 받은 것만 사이트 파일로 채운다. 받은 지 minAge 안이고 다 있으면 그대로
     static func fetch(keys: Set<String>, old: File?, minAge: TimeInterval) async -> File? {
+        guard Config.usesCollectedData else { return nil }
         let now = Date().timeIntervalSince1970
         if let o = old, now - o.got < minAge, keys.isSubset(of: Set(o.asked)) { return o }
         var h: [String: YahooSample.Hist] = [:]
@@ -548,7 +551,7 @@ enum MarFeed {
         if let o = old, MarFeed.started(o.date) || o.prev != nil, Date().timeIntervalSince1970 - o.got < (o.date >= Day.today ? minAge : min(minAge, 600)) { return o }
         // 1순위: 서울외국환중개에서 직접 (최신 고시 + 앞 날짜 고시). 못 받을 때만 웹(data/mar.json → 중계 /mar)
         var best: File? = await smbs()
-        if best == nil {
+        if best == nil, Config.usesCollectedData {   // 사이트가 모은 자료·중계는 내부 베타만
             var c = URLComponents(url: Config.data.appendingPathComponent("mar.json"), resolvingAgainstBaseURL: false)!
             c.queryItems = [URLQueryItem(name: "t", value: String(Int(Date().timeIntervalSince1970 / 600)))]
             best = await get(URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10))

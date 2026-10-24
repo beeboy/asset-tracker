@@ -11,8 +11,10 @@ enum Config {
     static let tossRelayIP = "3.36.161.165"
 
     /// 배포 단계. 내부 베타까지만 사이트가 Yahoo 에서 모은 시세·종가·환율·계산 자료를 쓴다 (2026-10-15 결정).
-    /// 공개 베타·출시 빌드는 이 값을 바꾸고, 사용자 본인 키로 받은 시세와 가상 샘플만 쓴다 (아직 구현 안 함)
-    static let channel: Channel = .internalBeta
+    /// 공개 베타·출시 빌드는 사용자 본인 키로 받은 시세와 가상 샘플(data/sample)만 쓴다.
+    /// 값은 빌드 설정 NAEILO_CHANNEL (프로젝트 Build Settings 한 곳) → 앱·위젯 Info.plist 의 NaeiloChannel 로 들어온다.
+    /// 같은 값으로 '시세 자료 넣기' 단계가 번들에 넣을 자료(data/ 또는 data/sample/)도 고른다
+    static let channel: Channel = Channel(key: Bundle.main.object(forInfoDictionaryKey: "NaeiloChannel") as? String) ?? .internalBeta
     /// 사이트가 Yahoo 로 모은 자료(data/quotes.json·prices·stats·calc 등, 추가 종목 Yahoo 중계)를 써도 되는 빌드인가
     static var usesCollectedData: Bool { channel == .internalBeta }
 }
@@ -21,6 +23,16 @@ enum Channel: String {
     case internalBeta = "내부 베타"
     case publicBeta = "공개 베타"
     case release = "출시"
+
+    /// 빌드 설정 값 (internalBeta · publicBeta · release)
+    init?(key: String?) {
+        switch key {
+        case "internalBeta": self = .internalBeta
+        case "publicBeta": self = .publicBeta
+        case "release": self = .release
+        default: return nil
+        }
+    }
 }
 
 /// 앱과 위젯이 같이 쓰는 저장소 (App Group 폴더의 JSON 파일)

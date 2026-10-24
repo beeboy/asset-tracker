@@ -39,7 +39,8 @@ SYMBOLS = [
     ("V00002", "내일 코스피 ETF", "코스피 ETF", "KRW", "지수", "naeilo kospi", 38450, 0.06, 0.19, 505,
      "가상 한국 대형주 200개를 담는 가상 ETF예요."),
 ]
-FX = ("FX", "원/달러 (가상)", 1365.0, 0.0, 0.07, 17)
+# 원/달러는 data/quotes.json·prices 와 같은 기호(KRW=X, 파일 KRW_X.json)로 써서 앱이 그대로 바꿔 끼운다
+FX = ("KRW=X", "원/달러 (가상)", 1365.0, 0.0, 0.07, 17)
 
 
 def walk(last, mu, sigma, seed, n=DAYS):
@@ -91,9 +92,9 @@ def main():
         else:
             ds, path = dates, walk(last, mu, sigma, seed)
         close = [rnd(v, cur) for v in path]
-        doc = {"symbol": sid, "currency": cur, "name": f"{name} (가상 종목)" if sid != "FX" else name,
+        doc = {"symbol": sid, "currency": cur, "name": f"{name} (가상 종목)" if sid != FX[0] else name,
                "updated": updated, "virtual": True, "dates": ds, "close": close, "adj": close}
-        (OUT / "prices" / f"{sid}.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")) + "\n")
+        (OUT / "prices" / f"{sid.replace('=', '_')}.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")) + "\n")
         # 지금 가격: 마지막 종가에서 씨앗으로 정한 작은 움직임
         move = -0.0221 if sid == "DRNK" else random.Random(seed + 1).gauss(0, sigma / math.sqrt(252))
         now = rnd(close[-1] * (1 + move), cur)

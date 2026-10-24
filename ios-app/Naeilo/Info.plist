@@ -34,6 +34,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NaeiloChannel</key>
+	<string>$(NAEILO_CHANNEL)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

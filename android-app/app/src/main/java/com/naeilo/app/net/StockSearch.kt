@@ -222,11 +222,13 @@ object KrDaily {   // ios: Data/StockSearch.swift:163
     const val name = "kr_daily.json"   // ios: Data/StockSearch.swift:166
     /** 이만큼(약 한 달) 쌓이기 전에는 "기록 모으는 중" */
     const val enough = 20   // ios: Data/StockSearch.swift:168
-    fun cached(): File? = Store.read(File.serializer(), name)   // ios: Data/StockSearch.swift:169
+    /** 사이트가 Yahoo 로 모은 자료라 내부 베타만 */
+    fun cached(): File? = if (Config.usesCollectedData) Store.read(File.serializer(), name) else null   // ios: Data/StockSearch.swift:170
 
     /** 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 실패하면 저장해 둔 값 */
     suspend fun fetch(minAge: Double = 0.0): File? = withContext(Dispatchers.IO) {   // ios: Data/StockSearch.swift:172
-        val old = cached()   // ios: Data/StockSearch.swift:173
+        if (!Config.usesCollectedData) return@withContext null   // ios: Data/StockSearch.swift:174
+        val old = cached()   // ios: Data/StockSearch.swift:175
         if (old != null && nowSec() - old.got < minAge) return@withContext old   // ios: Data/StockSearch.swift:174
         val c = URL(Config.data, name).toString()   // ios: Data/StockSearch.swift:175
         val queryItems = listOf("t" to (nowSec() / 60).toLong().toString()); val url = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // ios: Data/StockSearch.swift:176

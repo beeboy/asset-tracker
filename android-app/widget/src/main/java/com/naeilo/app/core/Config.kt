@@ -28,11 +28,12 @@ object Config {
     const val tossRelayIP = "3.36.161.165"
 
     /** 배포 단계. 내부 베타까지만 사이트가 Yahoo 에서 모은 시세·종가·환율·계산 자료를 쓴다 (2026-10-15 결정).
-     *  공개 베타·출시 빌드는 이 값을 바꾸고, 사용자 본인 키로 받은 시세와 가상 샘플만 쓴다 (아직 구현 안 함) */
-    // ios: WidgetShared/Config.swift:13
-    val channel: Channel = Channel.internalBeta
+     *  공개 베타·출시 빌드는 사용자 본인 키로 받은 시세와 가상 샘플(data/sample)만 쓴다.
+     *  값은 gradle.properties 의 naeilo.channel 한 곳 → BuildConfig.CHANNEL. 앱 모듈 copyIosAssets 도 같은 값으로 넣을 자료를 고른다 */
+    // ios: WidgetShared/Config.swift:17
+    val channel: Channel = Channel.of(com.naeilo.widget.BuildConfig.CHANNEL) ?: Channel.internalBeta
     /** 사이트가 Yahoo 로 모은 자료(data/quotes.json·prices·stats·calc 등, 추가 종목 Yahoo 중계)를 써도 되는 빌드인가 */
-    // ios: WidgetShared/Config.swift:15
+    // ios: WidgetShared/Config.swift:19
     val usesCollectedData: Boolean get() = channel == Channel.internalBeta
 }
 
@@ -44,6 +45,12 @@ enum class Channel(val raw: String) {
     publicBeta("공개 베타"),
     // ios: WidgetShared/Config.swift:21
     release("출시"),
+    ;
+
+    companion object {
+        /** 빌드 설정 값 (internalBeta · publicBeta · release) */
+        fun of(key: String?): Channel? = entries.firstOrNull { it.name == key }   // ios: WidgetShared/Config.swift:28
+    }
 }
 
 /** SharedPreferences 에 없는 Double: 문자열로 둔다 (다른 형식으로 들어 있어도 숫자면 읽는다) */

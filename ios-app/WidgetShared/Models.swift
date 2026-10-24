@@ -74,6 +74,7 @@ enum Relay {
     static let host = "https://query1.finance.yahoo.com"
 
     static func yahoo(_ path: String, timeout: TimeInterval = 15) async throws -> [String: Any] {
+        guard Config.usesCollectedData else { throw URLError(.cancelled) }   // 공개 베타·출시는 Yahoo 를 부르지 않는다
         let target = host + path
         if let url = URL(string: target), let o = try? await get(url, timeout: timeout, ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)") { return o }
         guard let enc = target.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
@@ -116,7 +117,7 @@ enum Relay {
 // 국내 개별 종목 시세 (KoreaEstimate.popular). 사이트 quotes.json 에 없어서 위젯도 앱처럼 Yahoo 중계로 직접 받는다
 enum KrQuoteFeed {
     static let name = "kr_quotes.json"
-    static func cached() -> QuoteFeed.File? { Store.read(QuoteFeed.File.self, name) }
+    static func cached() -> QuoteFeed.File? { Config.usesCollectedData ? Store.read(QuoteFeed.File.self, name) : nil }
 
     /// syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐거나 받을 종목이 같으면 저장해 둔 값
     @discardableResult
@@ -768,11 +769,13 @@ enum QuoteFeed {
     struct File: Codable { var got: Double; var q: [String: Q] }               // got = 받은 시각(초)
 
     static let name = "site_quotes.json"
-    static func cached() -> File? { Store.read(File.self, name) }
+    /// 공개 베타·출시는 사이트·Yahoo 시세를 쓰지 않는다 (내부 베타 때 받아 둔 파일이 남아 있어도 읽지 않는다)
+    static func cached() -> File? { Config.usesCollectedData ? Store.read(File.self, name) : nil }
 
     /// 받은 지 minAge 초가 안 됐으면 저장해 둔 값을 그대로 쓴다. 실패하면 저장해 둔 값
     @discardableResult
     static func fetch(minAge: TimeInterval = 0) async -> File? {
+        guard Config.usesCollectedData else { return nil }
         let old = cached()
         let list = Store.quoteSyms
         if list?.isEmpty == true { return old }   // 토스가 다 받는다

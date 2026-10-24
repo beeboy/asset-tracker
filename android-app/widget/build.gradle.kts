@@ -11,13 +11,17 @@ android {
     lint { checkReleaseBuilds = false }
     namespace = "com.naeilo.widget"
     compileSdk = 37
-    defaultConfig { minSdk = 26 }
+    defaultConfig {
+        minSdk = 26
+        // 배포 단계 (gradle.properties naeilo.channel). core/Config.kt 가 읽는다
+        buildConfigField("String", "CHANNEL", "\"${providers.gradleProperty("naeilo.channel").getOrElse("internalBeta")}\"")
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
-    buildFeatures { compose = true; buildConfig = false }
+    buildFeatures { compose = true; buildConfig = true }
 }
 // AGP 9 새 DSL 로 자료 폴더를 넘긴다 (옛 sourceSets 접근자는 형 변환에서 깨진다)
 extensions.getByType<com.android.build.api.dsl.LibraryExtension>().sourceSets.getByName("main").res

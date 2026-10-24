@@ -11,12 +11,14 @@ enum SiteStats {
 
     static let name = "site_stats.json"
     private static func decode(_ d: Data?) -> File? { d.flatMap { try? JSONDecoder().decode(File.self, from: $0) } }
+    /// 공개 베타·출시는 받아 둔 사이트 값을 읽지 않고 번들 값(가상 샘플)만
     static func load() -> File? {
-        decode(Store.readData(name)) ?? decode(Bundle.main.url(forResource: "stats", withExtension: "json").flatMap { try? Data(contentsOf: $0) })
+        (Config.usesCollectedData ? decode(Store.readData(name)) : nil) ?? decode(Bundle.main.url(forResource: "stats", withExtension: "json").flatMap { try? Data(contentsOf: $0) })
     }
 
     /// 받은 지 minAge 초가 안 됐으면 받지 않는다 (사이트는 하루 한 번 만든다). 실패하면 nil
     static func fetch(minAge: TimeInterval = 6 * 3600) async -> File? {
+        guard Config.usesCollectedData else { return nil }
         let key = "statsGot", now = Date().timeIntervalSince1970
         if now - Store.defaults.double(forKey: key) < minAge { return nil }
         var c = URLComponents(url: Config.data.appendingPathComponent("stats.json"), resolvingAgainstBaseURL: false)!
@@ -74,7 +76,7 @@ enum SiteStats {
 final class ExtraStats {
     static let shared = ExtraStats()
     struct Item: Codable { var name: String; var hist: YahooSample.Hist; var at: Date; var usd: Bool?; var yahoo: String? }
-    private(set) var items: [String: Item] = (Store.readData("extra_stats.json").flatMap { try? JSONDecoder().decode([String: Item].self, from: $0) }) ?? [:]
+    private(set) var items: [String: Item] = (Store.readData(Config.usesCollectedData ? "extra_stats.json" : "").flatMap { try? JSONDecoder().decode([String: Item].self, from: $0) }) ?? [:]
 
     func name(_ k: String) -> String? { items[k]?.name }
     func usd(_ k: String) -> Bool? { items[k].map { $0.usd ?? true } }

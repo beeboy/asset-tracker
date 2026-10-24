@@ -166,10 +166,12 @@ enum KrDaily {
     static let name = "kr_daily.json"
     /// 이만큼(약 한 달) 쌓이기 전에는 "기록 모으는 중"
     static let enough = 20
-    static func cached() -> File? { Store.read(File.self, name) }
+    /// 사이트가 Yahoo 로 모은 자료라 내부 베타만
+    static func cached() -> File? { Config.usesCollectedData ? Store.read(File.self, name) : nil }
 
     /// 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 실패하면 저장해 둔 값
     static func fetch(minAge: TimeInterval = 0) async -> File? {
+        guard Config.usesCollectedData else { return nil }
         let old = cached()
         if let o = old, Date().timeIntervalSince1970 - o.got < minAge { return o }
         var c = URLComponents(url: Config.data.appendingPathComponent(name), resolvingAgainstBaseURL: false)!

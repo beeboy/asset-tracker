@@ -134,7 +134,8 @@ class Market {   // ios: Data/Market.swift:13,14
     /** 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만.
      *  내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged) */
     var prices by mutableStateOf(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))   // ios: Data/Market.swift:54
-    val source: String get() = if (site != null) "naeilo 사이트" else if (YahooSample.quotes.isEmpty()) "예시 값" else "Yahoo 중계 (테스트)"   // ios: Data/Market.swift:55
+    /** 공개 베타·출시 번들의 자료는 가상 샘플이라 '예시 값' */
+    val source: String get() = if (site != null) "naeilo 사이트" else if (YahooSample.quotes.isEmpty() || !Config.usesCollectedData) "예시 값" else "Yahoo 중계 (테스트)"   // ios: Data/Market.swift:55
 
     fun quote(s: Symbol): Quote {   // ios: Data/Market.swift:60
         val b = yahooQuote(s)   // ios: Data/Market.swift:61
@@ -426,7 +427,8 @@ object SitePrices {   // ios: Data/Market.swift:343
     /** h 키 = 사이트 티커 (KRW=X 등). asked = 그때 받으려던 티커 (사이트에 없는 종목은 h 에 없다) */
     @Serializable data class File(var got: Double, var updated: String, var asked: List<String>, var h: Map<String, YahooSample.Hist>)   // ios: Data/Market.swift:345
     const val name = "site_prices.json"   // ios: Data/Market.swift:346
-    fun cached(): File? = Store.read(File.serializer(), name)   // ios: Data/Market.swift:347
+    /** 공개 베타·출시는 사이트·Yahoo 종가를 쓰지 않는다 (번들의 가상 샘플만) */
+    fun cached(): File? = if (Config.usesCollectedData) Store.read(File.serializer(), name) else null   // ios: Data/Market.swift:351
 
     /** 빈 값은 앞 값으로 메운다 (웹 history 와 같다) */
     fun hist(o: Map<String, Any?>): YahooSample.Hist? {   // ios: Data/Market.swift:350
@@ -481,7 +483,8 @@ object SitePrices {   // ios: Data/Market.swift:343
     }
 
     /** keys = 사이트 티커(= Yahoo 기호). Yahoo 에서 직접 받고, 못 받은 것만 사이트 파일로 채운다. 받은 지 minAge 안이고 다 있으면 그대로 */
-    suspend fun fetch(keys: Set<String>, old: File?, minAge: Double): File? = withContext(Dispatchers.IO) {   // ios: Data/Market.swift:399
+    suspend fun fetch(keys: Set<String>, old: File?, minAge: Double): File? = withContext(Dispatchers.IO) {   // ios: Data/Market.swift:404
+        if (!Config.usesCollectedData) return@withContext null   // ios: Data/Market.swift:405
         val now = nowSec()   // ios: Data/Market.swift:400
         if (old != null && now - old.got < minAge && old.asked.toSet().containsAll(keys)) return@withContext old   // ios: Data/Market.swift:401
         val h = mutableMapOf<String, YahooSample.Hist>()   // ios: Data/Market.swift:402
@@ -636,7 +639,7 @@ object MarFeed {   // ios: Data/Market.swift:528
         if (old != null && (started(old.date) || old.prev != null) && nowSec() - old.got < (if (old.date >= Day.today) minAge else minOf(minAge, 600.0))) return@withContext old   // ios: Data/Market.swift:545
         // 1순위: 서울외국환중개에서 직접 (최신 고시 + 앞 날짜 고시). 못 받을 때만 웹(data/mar.json → 중계 /mar)
         var best: File? = smbs()   // ios: Data/Market.swift:547
-        if (best == null) {   // ios: Data/Market.swift:548
+        if (best == null && Config.usesCollectedData) {   // 사이트가 모은 자료·중계는 내부 베타만   // ios: Data/Market.swift:554
             val c = URL(Config.data, "mar.json").toString()   // ios: Data/Market.swift:549
             val queryItems = listOf("t" to (nowSec() / 600).toLong().toString()); val u = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // ios: Data/Market.swift:550
             best = get(FeedReq(u, timeout = 10.0))   // ios: Data/Market.swift:551
