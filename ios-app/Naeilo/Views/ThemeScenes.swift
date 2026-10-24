@@ -348,6 +348,34 @@ enum MugArt {
         return img
     }
 
+    /// 기지개: 두 팔을 머리 옆으로 곧게 올린다 (소매 2칸 + 끝에 손 2줄, 둘레는 테두리). 내려 있던 손은 소매색으로 덮는다.
+    /// 예전엔 장면 도구의 만세(.cheer)를 썼는데, 팔이 어깨 옆 짧은 사선이라 날개처럼 보이고 웃는 눈 덧그림이 밝은 머리에서 얼굴에 줄을 그었다
+    static func stretch(_ p: inout [UInt32], _ w: Int, _ h: Int, skin: UInt32) {
+        let T = 2, sh = T + 17
+        let row = (0..<w).filter { PixBuf.on(p[sh * w + $0]) }
+        guard let l = row.first, let r = row.last else { return }
+        let sleeve = p[(sh + 1) * w + l + 2], hand = PixBuf.rgb(skin), ink = PixBuf.rgb(MeArt.outline)
+        // 내려 있던 손 (몸 아래쪽 피부색 칸) → 소매
+        for y in (sh + 4)..<min(h, T + 28) { for x in 0..<w where PixBuf.on(p[y * w + x]) && p[y * w + x] & 0xFF > (p[y * w + x] >> 8 & 0xFF) + 20 {
+            p[y * w + x] = sleeve
+        } }
+        var drawn: [Int] = []
+        for xs in [(l - 2)...(l - 1), (r + 1)...(r + 2)] {
+            for y in (T + 6)...(sh + 1) {
+                for x in xs where x >= 0 && x < w {
+                    p[y * w + x] = y <= T + 7 ? hand : sleeve
+                    drawn.append(y * w + x)
+                }
+            }
+        }
+        for i in drawn {
+            let x = i % w, y = i / w
+            for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] where nx >= 0 && nx < w && ny >= 0 && ny < h && !PixBuf.on(p[ny * w + nx]) {
+                p[ny * w + nx] = ink
+            }
+        }
+    }
+
     /// 기훈 한 장 (24×36, 위 2줄 빈 줄). 목 위는 내 캐릭터(소품 빼고), 어깨 아래는 체육복. 다리·들썩·만세는 장면 도구 그대로
     static func gihun(_ me: MeChar, leg: Int = 0, lift: Bool = false, cheer: Bool = false) -> UIImage? {
         let key = Key(me: me, leg: leg, lift: lift, cheer: cheer)
@@ -362,13 +390,7 @@ enum MugArt {
         PixBuf.legs(&p, w, h, leg, top: top, split: w / 2)
         PixBuf.pad(&p, w, top: 2)
         if lift { PixBuf.lift(&p, w, until: top + 2) }
-        if cheer {
-            // 만세(기지개)는 팔만 쓴다. 만세 도구가 같이 그리는 웃는 눈은 머리 모양에 따라 눈을 잘못 찾아
-            // 얼굴 위에 검은 줄을 긋는다 (긴 머리·묶은 머리) → 목 위(머리 2줄 + 0~14줄)는 원래대로 되돌린다
-            let face = p
-            MoodArt.apply(.cheer, &p, w, h + 2, legTop: top + 2)
-            for i in 0..<(17 * w) { p[i] = face[i] }
-        }
+        if cheer { stretch(&p, w, h + 2, skin: MeColor.skin[MeColor.skinIdx(me)]) }
         let img = PixBuf.image(p, w, h + 2)
         if cache.count > 60 { cache.removeAll() }
         cache[key] = img
