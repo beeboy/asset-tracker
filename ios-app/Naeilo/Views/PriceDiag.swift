@@ -27,7 +27,8 @@ struct PriceDiagView: View {
         return f.string(from: Date(timeIntervalSince1970: t)) + " ET"
     }
 
-    private static func n(_ v: Double?) -> String { v.map { String(format: "%.2f", $0) } ?? "-" }
+    /// 반올림 없이 받은 그대로 (Double 원래 값)
+    private static func n(_ v: Double?) -> String { v.map { "\($0)" } ?? "-" }
 
     static func line(_ s: Symbol) -> String {
         let mk = Market.shared
