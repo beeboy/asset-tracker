@@ -101,7 +101,7 @@ img.px, .bye img { image-rendering: pixelated; }
 /* ---------------------------------------------------------------- 2. 앱 안 화면 */
 .inside > p { max-width: 560px; margin: 0 0 20px; }
 .rail { display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
-.rail figure { margin: 0; flex: 0 0 min(62vw, 240px); scroll-snap-align: center; text-align: center; }
+.rail figure { margin: 0; flex: 0 0 min(62vw, 218px); scroll-snap-align: center; text-align: center; }
 .phone { aspect-ratio: 9 / 19.5; border-radius: 30px; padding: 7px; background: #05090d; box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgba(0, 0, 0, 0.25); overflow: hidden; position: relative; }
 /* 사파리는 aspect-ratio 상자 안의 height: 100% 를 못 받아 그림이 틀 밖으로 나가니, 틀 안쪽에 딱 붙인다 */
 .phone picture { position: absolute; inset: 7px; border-radius: 24px; overflow: hidden; }
