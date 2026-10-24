@@ -182,14 +182,14 @@ object TossDaily {   // ios: WidgetShared/Models.swift:557
             .atZone(ZoneId.of(if (kr) "Asia/Seoul" else "America/New_York"))
         return cformat("%04d-%02d-%02d", z.year, z.monthValue, z.dayOfMonth) to z.hour   // ios: WidgetShared/Models.swift:566
     }
-    /** 토스 주간거래 시간(미국 동부 20시~4시)에 체결된 값인가 */
-    fun daytime(at: Double): Boolean { val h = day(at, kr = false).second; return h >= 20 || h < 4 }   // ios: WidgetShared/Models.swift:569
+    /** 토스 주간거래 시간(미국 동부 일요일 20시~금요일 4시 중 20시~4시)에 체결된 값인가. 금요일 20시 뒤·주말은 장이 없어 금요일 종가로 센다 (토스와 같게) */
+    fun daytime(at: Double): Boolean { val h = day(at, kr = false).second; val w = Instant.ofEpochMilli((at * 1000).toLong()).atZone(ZoneId.of("America/New_York")).dayOfWeek.value % 7 + 1; return (h >= 20 && w <= 5) || (h < 4 && w >= 2 && w <= 6) }   // ios: WidgetShared/Models.swift:569
     /** 토스 값(at 시각)의 전일 종가: 그 거래일 앞 마지막 종가.
      *  미국 20시 뒤 주간거래는 다음 거래일 몫이라 그날 종가까지 넣는다 (4시 전은 이미 다음 날짜) */
     fun prev(h: Hist?, at: Double, kr: Boolean): Double? {   // ios: WidgetShared/Models.swift:572
         if (h == null || at <= 0) return null   // ios: WidgetShared/Models.swift:573
         val (d, hr) = day(at, kr)   // ios: WidgetShared/Models.swift:574
-        val late = !kr && hr >= 20   // ios: WidgetShared/Models.swift:575
+        val late = !kr && hr >= 20 && daytime(at)   // ios: WidgetShared/Models.swift:575
         val i = h.dates.indexOfLast { if (late) it <= d else it < d }.takeIf { it >= 0 } ?: return null   // ios: WidgetShared/Models.swift:576
         return h.closes.getOrNull(i)   // ios: WidgetShared/Models.swift:577
     }

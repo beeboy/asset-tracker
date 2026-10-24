@@ -208,3 +208,6 @@
 - 알려진 불일치: GoalRoute.simulate·closedSim 은 안드로이드만 뒤 줄에서 셈(Swift 는 그 자리), 캐시 개수(MonteCarlo 658·667, Recovery 185)는 안드로이드만 작게. port_check 짝 없음 5 는 이것.
 - 남은 것: 삼성 기기에서 Compose 가 그릴 때마다 부르는 View.setRequestedFrameRate 를 기기가 스택과 함께 로그로 남겨 main CPU 약 11%(분석 탭 맥박 애니메이션이 계속 그림). Compose 1.11 에는 끄는 플래그가 없음. paths_mc.plist 52.8MB 크기 자체(경로 수·형식)는 그대로.
 - 맥박(8b3dd6a6): 분석 탭 '언제 흔들릴까' 맥박만 세 번 뛰고 멈춤(안드로이드만, 알려진 불일치). 플립4 분석 탭 30초: main CPU 14.05초 → 0초, setRequestedFrameRate 로그 1818줄 → 0줄. 다른 화면 맥박(ForecastParts·FxGlanceViews·StartView·Charts 작은 그래프)은 그대로.
+
+## 주말 시세: 금요일 종가 (2026-10-24, 로컬 커밋)
+- 토스 주간거래 판정(`TossDaily.daytime`)이 미국 동부 금요일 20시 뒤·주말을 주간거래로 쳐서, 토요일 오전(한국)에 토스 last 를 금요일 종가 대신 쓰던 일을 고침 (아이폰 평가액이 토스보다 3.6% 높았음). 아이폰·안드로이드 같게. 토스 시각 파싱은 소수 초도 읽혀서 그대로 둠.
