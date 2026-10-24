@@ -362,7 +362,13 @@ enum MugArt {
         PixBuf.legs(&p, w, h, leg, top: top, split: w / 2)
         PixBuf.pad(&p, w, top: 2)
         if lift { PixBuf.lift(&p, w, until: top + 2) }
-        if cheer { MoodArt.apply(.cheer, &p, w, h + 2, legTop: top + 2) }
+        if cheer {
+            // 만세(기지개)는 팔만 쓴다. 만세 도구가 같이 그리는 웃는 눈은 머리 모양에 따라 눈을 잘못 찾아
+            // 얼굴 위에 검은 줄을 긋는다 (긴 머리·묶은 머리) → 목 위(머리 2줄 + 0~14줄)는 원래대로 되돌린다
+            let face = p
+            MoodArt.apply(.cheer, &p, w, h + 2, legTop: top + 2)
+            for i in 0..<(17 * w) { p[i] = face[i] }
+        }
         let img = PixBuf.image(p, w, h + 2)
         if cache.count > 60 { cache.removeAll() }
         cache[key] = img
