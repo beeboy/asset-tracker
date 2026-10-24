@@ -241,18 +241,29 @@ object Pulse {
     const val period = 1.6; const val spread = 0.9; const val gap = 0.2   // ios: Views/Charts.swift:111
 }
 
-/** 지금 시각(초)을 1/30초마다: 그리기 단계에서만 읽는다. 동작 줄이기·숨은 탭이면 멈춘다 (null) */
+/** 지금 시각(초)을 1/30초마다: 그리기 단계에서만 읽는다. 동작 줄이기·숨은 탭이면 멈춘다 (null).
+ *  beats 를 주면 (안드로이드) 그만큼만 뛰고 멈춘다: 멈추면 null 이라 다시 그리지 않는다. key 가 바뀌면 다시 뛴다 */
 @Composable
-private fun pulseClock(): androidx.compose.runtime.FloatState? {
+private fun pulseClock(beats: Int? = null, key: Any? = null): androidx.compose.runtime.FloatState? {
     val still = LocalReduceMotion.current || !LocalTabActive.current   // ios: Views/Charts.swift:118,120
     val t = remember { mutableFloatStateOf(0f) }
+    var done by remember(key) { mutableStateOf(false) }
     // Views/Charts.swift:121 TimelineView(.animation(minimumInterval: 1 / 30)): 화면 프레임 시계를 1/30초마다만 받는다 (검사 예외)
-    LaunchedEffect(still) {
-        if (still) return@LaunchedEffect
-        var last = 0L; val gap = (1.0 / 30 * 1e9).toLong()
-        while (true) withFrameNanos { n -> if (n - last >= gap) { last = n; t.floatValue = (n / 1e9).toFloat() } }
+    LaunchedEffect(still, key) {
+        if (still) { done = false; return@LaunchedEffect }   // 탭으로 돌아오면 다시 뛴다
+        var last = 0L; val gap = (1.0 / 30 * 1e9).toLong(); var t0 = 0L
+        // 박동 하나(period)의 처음부터 뛰게 시계를 맞춘다: now % period 가 0 에서 시작
+        val end = beats?.let { (it * Pulse.period * 1e9).toLong() }
+        while (true) {
+            val stop = withFrameNanos { n ->
+                if (t0 == 0L) t0 = n
+                if (end != null && n - t0 >= end) true
+                else { if (n - last >= gap) { last = n; t.floatValue = (if (end != null) (n - t0) / 1e9 else n / 1e9).toFloat() }; false }
+            }
+            if (stop) { done = true; break }
+        }
     }
-    return if (still) null else t
+    return if (still || done) null else t
 }
 
 /** 박동 원 그리기 (가운데 c, 점 지름 d) */
@@ -302,8 +313,8 @@ fun PulseDot(
  */
 // ios: Views/Charts.swift:152,154,155,156,159
 @Composable
-fun Modifier.pulse(color: Color, dot: Dp, at: (Size) -> Offset?): Modifier {
-    val t = pulseClock() ?: return this
+fun Modifier.pulse(color: Color, dot: Dp, beats: Int? = null, key: Any? = null, at: (Size) -> Offset?): Modifier {
+    val t = pulseClock(beats, key) ?: return this
     return this.drawWithContent {
         drawContent()
         val c = at(size) ?: return@drawWithContent   // ios: Views/Charts.swift:157

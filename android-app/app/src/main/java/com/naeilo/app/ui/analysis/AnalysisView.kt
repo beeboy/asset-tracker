@@ -512,8 +512,8 @@ private fun Shake(m: AppModel, p: MyPath, f: AppModel.Forecast, pro: Boolean, to
         // ios: Views/AnalysisView.swift:352,353,354,403,404
         BoxWithConstraints(Modifier.fillMaxWidth().height(topH + chartH)) {
             val w = maxWidth
-            // ios: Views/AnalysisView.swift:355,370,371,372
-            Canvas(Modifier.offset(y = topH).size(w, chartH).pulse(teal, 8.dp) { s -> Offset((X(mS) * s.width).toFloat(), (Y(lastY) * s.height).toFloat()) }) {
+            // ios: Views/AnalysisView.swift:355,370,371,372 (안드로이드: 맥박은 세 번 뛰고 멈춘다. 계속 그리면 삼성 기기에서 프레임마다 로그가 쌓여 느려진다)
+            Canvas(Modifier.offset(y = topH).size(w, chartH).pulse(teal, 8.dp, beats = 3, key = lastY) { s -> Offset((X(mS) * s.width).toFloat(), (Y(lastY) * s.height).toFloat()) }) {
                 // ios: Views/AnalysisView.swift:356,357,358,359,360
                 if (bandPts.isNotEmpty()) {
                     val band = linePath(bandPts.map { Pair(X(it.first), Y(it.second)) }, size)
