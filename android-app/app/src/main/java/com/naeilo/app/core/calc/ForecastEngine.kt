@@ -134,11 +134,14 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
     private var viewTick by mutableStateOf(0)
     private val viewBusy = HashSet<String>()
     private var lastView: Pair<String, MC.Result>? = null
+    /** 파일에서 읽은 것 (계산 스레드에서만, 처음 계산 하나가 보고 놓는다). Swift 는 그 자리에서 읽어 첫 ensure 가 건너뛴다 */
+    private var disk: Run? = null
 
     init {   // ios: Data/ForecastEngine.swift:61
         // 어제 계산한 것이라도 불러 둔다 (키가 다르면 쓰지 않고 새로 계산). 읽기·풀기는 계산 스레드에서 (계산보다 먼저 줄 선다)
         exec.execute {
             val r = readJson(file, Run.serializer())   // ios: Data/ForecastEngine.swift:63
+            disk = r
             if (r != null) mainH.post { if (run == null) run = r }
         }
     }
@@ -152,14 +155,16 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
         pending = job.key   // ios: Data/ForecastEngine.swift:71
         val halt = Compute.Halt()   // ios: Data/ForecastEngine.swift:72
         exec.execute {   // ios: Data/ForecastEngine.swift:73
-            val r = runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:74
-            val halted = halt.hit   // ios: Data/ForecastEngine.swift:75
+            // 읽기가 끝나기 전에 줄 선 계산: 읽은 것이 같은 키면 다시 계산하지 않는다. 그 뒤 ensure 는 화면 스레드에서 run 을 보고 거른다
+            val saved = disk?.takeIf { it.key == job.key }; disk = null
+            val r = saved ?: runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:74
+            val halted = saved == null && halt.hit   // ios: Data/ForecastEngine.swift:75
             mainH.post {   // ios: Data/ForecastEngine.swift:76
                 pending = null   // ios: Data/ForecastEngine.swift:77
                 if (r != null && !halted) {   // ios: Data/ForecastEngine.swift:78
-                    views.clear(); lastView = null   // ios: Data/ForecastEngine.swift:79
+                    if (run !== r) { views.clear(); lastView = null }   // ios: Data/ForecastEngine.swift:79
                     run = r   // ios: Data/ForecastEngine.swift:80
-                    writer.execute { writeJson(file, Run.serializer(), r) }   // ios: Data/ForecastEngine.swift:81
+                    if (saved == null) writer.execute { writeJson(file, Run.serializer(), r) }   // ios: Data/ForecastEngine.swift:81
                 } else if (halted) {   // ios: Data/ForecastEngine.swift:82
                     if (waiting == null) waiting = job   // ios: Data/ForecastEngine.swift:83 다시 켜지면 처음부터
                 } else failed.add(job.key)   // ios: Data/ForecastEngine.swift:84
@@ -259,6 +264,8 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
     private val failed = HashSet<String>()   // ios: Data/ForecastEngine.swift:165 모형을 못 만든 job (다시 줄 세우지 않는다)
     private val exec = worker("naeilo-paths", Thread.MIN_PRIORITY)
     private val runsSer = MapSerializer(String.serializer(), Run.serializer())
+    /** 파일에서 읽은 오늘 경로 (계산 스레드에서만, 처음 계산 하나가 보고 놓는다). 그 뒤는 next 가 화면 스레드에서 runs 를 보고 거른다 */
+    private var disk: Map<String, Run> = emptyMap()
 
     init {   // ios: Data/ForecastEngine.swift:168
         // 파일 읽기·풀기는 계산 스레드에서 (계산보다 먼저 줄 선다). 그새 계산해 둔 것이 있으면 그쪽이 이긴다
@@ -266,6 +273,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
             // 오늘 쓴 파일이 아니면 오늘 키(날짜로 시작)가 있을 수 없다: 다 풀고 버리지 않게 읽지 않는다 (결과는 같다)
             val fresh = Store.url(file).let { f -> f.exists() && Day.str(java.time.Instant.ofEpochMilli(f.lastModified())) >= Day.today }
             val r = if (fresh) readJson(file, runsSer) else null   // ios: Data/ForecastEngine.swift:169
+            disk = r?.filter { it.key.startsWith(Day.today) } ?: emptyMap()
             if (r != null) mainH.post {
                 val today = Day.today   // ios: Data/ForecastEngine.swift:170
                 runs = r.filter { it.key.startsWith(today) } + runs   // ios: Data/ForecastEngine.swift:171
@@ -294,16 +302,22 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
         if (busy || queue.isEmpty() || !Compute.active) return   // ios: Data/ForecastEngine.swift:206
         busy = true   // ios: Data/ForecastEngine.swift:207
         val job = queue.removeAt(0)   // ios: Data/ForecastEngine.swift:208
+        // 줄에 선 사이 파일 읽기·다른 계산으로 생긴 경로면 계산하지 않는다 (get 과 같은 규칙)
+        if (runs[job.key] != null || (job.group.isNotEmpty() && runs.values.any { it.group == job.group && close(it.w, job.w) })) { busy = false; onRun?.invoke(); next(); return }
         val halt = Compute.Halt()   // ios: Data/ForecastEngine.swift:209
         exec.execute {   // ios: Data/ForecastEngine.swift:210
-            val r = runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:211
-            val halted = halt.hit   // ios: Data/ForecastEngine.swift:212
+            // 읽어 둔 파일에 같은 키·같은 묶음(비중이 가까운)이 있으면 그대로 (get 과 같은 규칙)
+            val saved = disk[job.key] ?: if (job.group.isNotEmpty()) disk.values.firstOrNull { it.group == job.group && close(it.w, job.w) } else null
+            disk = emptyMap()
+            val r = saved ?: runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:211
+            val halted = saved == null && halt.hit   // ios: Data/ForecastEngine.swift:212
             mainH.post {   // ios: Data/ForecastEngine.swift:213
                 busy = false   // ios: Data/ForecastEngine.swift:214
                 if (halted) {   // ios: Data/ForecastEngine.swift:215
                     queue.add(0, job)   // ios: Data/ForecastEngine.swift:216 다시 켜지면 이어서
                     return@post   // ios: Data/ForecastEngine.swift:217
                 }
+                if (saved != null) { onRun?.invoke(); next(); return@post }   // 이미 runs 에 있다 (읽기를 넣은 뒤)
                 if (r != null) {   // ios: Data/ForecastEngine.swift:219
                     val today = Day.today   // ios: Data/ForecastEngine.swift:220
                     val all = LinkedHashMap(runs.filter { it.key.startsWith(today) })   // ios: Data/ForecastEngine.swift:221
