@@ -119,7 +119,7 @@ struct HoldingsView: View {
         return Card {
             TagChart(points: tot, height: 120, tags: [
                 .init(at: first, text: HoldFmt.won(first), bg: TagChart.gray),
-                .init(at: last, text: (up ? "+" : "−") + HoldFmt.won(abs(last - first)), bg: up ? TodayBox.upC : TodayBox.downC),
+                .init(at: last, text: (up ? "+" : "−") + HoldFmt.won(abs(last - first)), bg: up ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2)),
             ], left: d0, right: String(localized: "오늘"), scrub: .period(period) { AppModel.man($0) + String(localized: "원") })
             ChipRow(items: Self.periods.map { ($0, $0.label) }, selection: $period, fill: true)
             let noHist = rows.filter { !m.prices.hasHistory($0.sym) }.map(\.sym.name)
@@ -217,7 +217,7 @@ struct HoldingsView: View {
     private func tint(_ r: AppModel.Row, _ mx: Double) -> some View {
         let v = move(r)
         let f = v != 0 && mx > 0 ? max(0.12, abs(v) / mx) : 0.12
-        let c = v > 0 ? TodayBox.upC : v < 0 ? TodayBox.downC : Color(hex: 0xAAB2BE, dark: 0x4A5672)
+        let c = v > 0 ? Color(hex: 0xFF8A80) : v < 0 ? Color(hex: 0x8CC4F2) : Color(hex: 0xAAB2BE, dark: 0x4A5672)
         return GeometryReader { g in
             Rectangle().fill(c).opacity(scheme == .dark ? 0.26 : 0.32).frame(width: g.size.width * 0.34 * f)
         }
@@ -676,7 +676,7 @@ struct HoldingDetailView: View {
                     } else {
                         TagChart(points: pts, height: 140, tags: [
                             .init(at: E, text: big(E), bg: Theme.ink, fg: Theme.card),
-                            .init(at: E, dy: 20, text: (up ? "+" : "−") + big(E - S), bg: up ? TodayBox.upC : TodayBox.downC),
+                            .init(at: E, dy: 20, text: (up ? "+" : "−") + big(E - S), bg: up ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2)),
                             .init(at: S, text: big(S), bg: TagChart.gray),
                         ], left: startLabel, right: String(localized: "지금"), scrub: .period(period) { big($0) })
                     }
