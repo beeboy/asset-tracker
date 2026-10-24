@@ -111,13 +111,13 @@ fun AppModel.pathSeries(start: String): List<Pair<String, Double>> {
 // ios: Views/AnalysisDetail.swift:50
 val AppModel.myPath: MyPath get() = myPathOf(
     isGoal = isGoal, goalSpan = goalSpan, pathStartDate = pathStartDate, today = Day.today, gM = gM, keyValue = keyValue, trackValue = trackValue,
-    route = route, isSample = isSample, krSum = krSum,
+    bare = bare, isSample = isSample, krSum = krSum,
     KL = CustomSymbols.shared.krLog,   // ios: Views/AnalysisDetail.swift:80
     pathSeries = { pathSeries(start = it) }, totalAt = { totalAt(it) })
 
 /** 내 길 몸통: AppModel 값만 받아 셈한다 (같은 입력 숫자 맞추기 tools/num_parity g 가 직접 부른다) */
 fun myPathOf(isGoal: Boolean, goalSpan: Double, pathStartDate: Instant, today: String, gM: Double, keyValue: Double, trackValue: Double,
-             route: Route, isSample: Boolean, krSum: Double, KL: List<MC.KrDay>, pathSeries: (String) -> List<Pair<String, Double>>, totalAt: (Double) -> Double): MyPath {
+             bare: Boolean, isSample: Boolean, krSum: Double, KL: List<MC.KrDay>, pathSeries: (String) -> List<Pair<String, Double>>, totalAt: (Double) -> Double): MyPath {
     val mEnd = if (isGoal) goalSpan else 1.0     // ios: Views/AnalysisDetail.swift:51 목표: 시작일부터 목표일까지 (사이트와 같은 날짜)
     val sD = Day.str(pathStartDate)   // ios: Views/AnalysisDetail.swift:52 (today 는 받는다)
     // 시작한 날부터 오늘까지 (년). 오늘 시작이면 하루로 둔다

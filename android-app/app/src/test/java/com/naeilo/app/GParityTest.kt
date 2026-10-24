@@ -76,7 +76,7 @@ class GParityTest {
             val tot = c["tot"] as List<Double>
             val p = myPathOf(isGoal = c["isGoal"] as Boolean, goalSpan = c["goalSpan"] as Double, pathStartDate = Instant.ofEpochMilli(((c["start"] as Double) * 1000).toLong()),
                 today = c["today"] as String, gM = c["gM"] as Double, keyValue = c["K"] as Double, trackValue = c["now"] as Double,
-                route = Route.valueOf(c["route"] as String), isSample = c["isSample"] as Boolean, krSum = c["krSum"] as Double,
+                bare = c["route"] == "novice", isSample = c["isSample"] as Boolean, krSum = c["krSum"] as Double,
                 KL = (c["KL"] as List<List<Any?>>).map { MC.KrDay(it[0] as String, it[1] as Double) },
                 pathSeries = { (c["S"] as List<List<Any?>>).map { Pair(it[0] as String, it[1] as Double) } },
                 totalAt = { x -> tot[maxOf(0, minOf(tot.size - 1, floor(x * (tot.size - 1) + 0.5).toInt()))] })
