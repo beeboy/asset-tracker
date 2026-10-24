@@ -486,6 +486,7 @@ fun PriceBasisView(m: AppModel) {
             }
             // ios: Views/SettingsView.swift:318,319
             T("그래프와 미션은 종가로 계산해요. 아래로 당기면 바로 다시 받아요.", style = appFont(13f).ls(2f), color = Theme.sub)
+            if (Config.usesCollectedData) PriceDiagView(m)   // 임시 진단 (내부 베타만)
         }
     }
 }
