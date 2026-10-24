@@ -336,7 +336,7 @@ enum MugArt {
     /// 기훈 몸 (녹색 체육복, 24×36 · 위 2줄 빈 줄). 머리는 내 캐릭터 것을 쓴다
     private static let suit = "iVBORw0KGgoAAAANSUhEUgAAABgAAAAkCAYAAACTz/ouAAAB7klEQVR42mNgGOqAkZACLTm9//jkrz26hNcMFkKGu3uY4pR//uoVAwMDw398lrAQMvzkkcMMCjJSDA+ePGNgYGBAYTMwMDCoaSngtYSRkOGEwIfPXxjUtHUYbl17gTW4mHBpJMZwGLh4/hx5cYAO9qzoQuG7RJQR1MNCioHY5J9ev8XglodbHROt88HAWYAcPKYRDRjyyGJduRGDPIhOr2ggSoxoC649usRo4lPHwMDAwPD37ju4+KkdJxhO7TgB5/+9+47hwu1HDPWzDuEsk1jwFWImPnX/z2xpgouZeVjA2U+v36K8NEUuSTd2x8DFYa4mpkRlxGcwa4MfivjRiDIG3ZZcBj4VWbjYt7tPGVgXn8VpEQs2w9ENxge4lKUZGBqkGb4/eM6gtQCzVMUayVrCUnAXHyWivPn+4Dl5ZZE1gbJocBcVw9cC5CRKtgXztbQYjpuYEG1IJyc3QycnN+k++N2wCSWZoqeqoxFlDL8bNpFWZV57dInRyDkPXkQwMTGjWAjL4d8fPGc4f/4CAwMDA0P19APE52RkhYRadcSURQOfiv79+4tVnFNBkigLCLaLmO7sg6coEwZIHKzh5mNgYGBguHJoDeUW/FNxQuJBajlJ3wwGBgYGhhfnLzAwQCOYKs13bJFPqPk+9AEA5jTD+hEL1A8AAAAASUVORK5CYII="
     private static var eyeCache: [Eyes: UIImage] = [:]
-    private struct Key: Hashable { let me: MeChar; let leg: Int; let lift: Bool; let cheer: Bool }
+    private struct Key: Hashable { let me: MeChar; let leg: Int; let lift: Bool }
     private static var cache: [Key: UIImage] = [:]
 
     private static func png(_ s: String) -> UIImage? { Data(base64Encoded: s).flatMap { UIImage(data: $0) } }
@@ -348,37 +348,9 @@ enum MugArt {
         return img
     }
 
-    /// 기지개: 두 팔을 머리 옆으로 곧게 올린다 (소매 2칸 + 끝에 손 2줄, 둘레는 테두리). 내려 있던 손은 소매색으로 덮는다.
-    /// 예전엔 장면 도구의 만세(.cheer)를 썼는데, 팔이 어깨 옆 짧은 사선이라 날개처럼 보이고 웃는 눈 덧그림이 밝은 머리에서 얼굴에 줄을 그었다
-    static func stretch(_ p: inout [UInt32], _ w: Int, _ h: Int, skin: UInt32) {
-        let T = 2, sh = T + 17
-        let row = (0..<w).filter { PixBuf.on(p[sh * w + $0]) }
-        guard let l = row.first, let r = row.last else { return }
-        let sleeve = p[(sh + 1) * w + l + 2], hand = PixBuf.rgb(skin), ink = PixBuf.rgb(MeArt.outline)
-        // 내려 있던 손 (몸 아래쪽 피부색 칸) → 소매
-        for y in (sh + 4)..<min(h, T + 28) { for x in 0..<w where PixBuf.on(p[y * w + x]) && p[y * w + x] & 0xFF > (p[y * w + x] >> 8 & 0xFF) + 20 {
-            p[y * w + x] = sleeve
-        } }
-        var drawn: [Int] = []
-        for xs in [(l - 2)...(l - 1), (r + 1)...(r + 2)] {
-            for y in (T + 6)...(sh + 1) {
-                for x in xs where x >= 0 && x < w {
-                    p[y * w + x] = y <= T + 7 ? hand : sleeve
-                    drawn.append(y * w + x)
-                }
-            }
-        }
-        for i in drawn {
-            let x = i % w, y = i / w
-            for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] where nx >= 0 && nx < w && ny >= 0 && ny < h && !PixBuf.on(p[ny * w + nx]) {
-                p[ny * w + nx] = ink
-            }
-        }
-    }
-
-    /// 기훈 한 장 (24×36, 위 2줄 빈 줄). 목 위는 내 캐릭터(소품 빼고), 어깨 아래는 체육복. 다리·들썩·만세는 장면 도구 그대로
-    static func gihun(_ me: MeChar, leg: Int = 0, lift: Bool = false, cheer: Bool = false) -> UIImage? {
-        let key = Key(me: me, leg: leg, lift: lift, cheer: cheer)
+    /// 기훈 한 장 (24×36, 위 2줄 빈 줄). 목 위는 내 캐릭터(소품 빼고), 어깨 아래는 체육복. 다리·들썩은 장면 도구 그대로
+    static func gihun(_ me: MeChar, leg: Int = 0, lift: Bool = false) -> UIImage? {
+        let key = Key(me: me, leg: leg, lift: lift)
         if let c = cache[key] { return c }
         var who = me
         who.parts["prop"] = 0
@@ -390,7 +362,6 @@ enum MugArt {
         PixBuf.legs(&p, w, h, leg, top: top, split: w / 2)
         PixBuf.pad(&p, w, top: 2)
         if lift { PixBuf.lift(&p, w, until: top + 2) }
-        if cheer { stretch(&p, w, h + 2, skin: MeColor.skin[MeColor.skinIdx(me)]) }
         let img = PixBuf.image(p, w, h + 2)
         if cache.count > 60 { cache.removeAll() }
         cache[key] = img
@@ -702,7 +673,6 @@ private struct PinoBird: View {
 struct MugScene: View {
     let s: BoxScene
     @State private var eyes: MugArt.Eyes = .open
-    @State private var night = false
     @Environment(\.accessibilityReduceMotion) private var still
     @Environment(\.colorScheme) private var cs
     var body: some View {
@@ -761,13 +731,12 @@ struct MugScene: View {
                 }
                 .colorMultiply(dim)
             }
-            Gihun(to: gx, down: down, eyes: eyes, night: night).colorMultiply(dim)
+            Gihun(to: gx, down: down, eyes: eyes).colorMultiply(dim)
         }
         .task(id: still) {
             // 장중엔 눈 뜨고 가끔 감고, 장 마감·주말엔 감고 가끔 한쪽 눈
             while !Task.isCancelled {
                 let shut = !MarketClock.open()
-                night = shut
                 eyes = shut ? .closed : .open
                 if still { try? await Task.sleep(for: .seconds(60)); continue }
                 try? await Task.sleep(for: .seconds(shut ? 5.2 : 4.2))
@@ -780,12 +749,11 @@ struct MugScene: View {
 }
 
 /// 기훈: 내 캐릭터 얼굴 + 녹색 체육복. 자리가 바뀌면 옆걸음, 서 있으면 영희 눈에 맞춰 차분히 숨,
-/// 영희가 눈 감으면 크게 숨 (오른 날엔 한 번 폴짝), 장 마감엔 기지개 (밤 그늘은 두지 않는다, 2026-10-24). 떨어진 날 영희가 보고 있으면 식은땀
+/// 영희가 눈 감으면 크게 숨 (오른 날엔 한 번 폴짝). 떨어진 날 영희가 보고 있으면 식은땀
 private struct Gihun: View {
     let to: CGFloat
     let down: Bool
     let eyes: MugArt.Eyes
-    let night: Bool
     @State private var x: CGFloat?
     @State private var k = 0
     @State private var shutAt = -99
@@ -801,8 +769,6 @@ private struct Gihun: View {
         if walking {
             let i = (k / 2) % 4
             img = MugArt.gihun(me, leg: [0, 1, 0, 2][i], lift: i % 2 == 1)
-        } else if night {
-            img = MugArt.gihun(me, lift: eyes != .peek && k % 16 >= 8, cheer: true)
         } else if eyes == .open {
             img = MugArt.gihun(me); sy = k % 24 < 21 ? 1 : 1.012
         } else {
