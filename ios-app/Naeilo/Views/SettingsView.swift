@@ -246,6 +246,7 @@ struct SettingsGroupView: View {
     @Environment(AppModel.self) private var m
     let kind: SettingsRoute
     @AppStorage(BoxLook.key) private var boxLook = BoxLook.jump.rawValue
+    @AppStorage(BoxScheme.key) private var boxScheme = BoxScheme.system.rawValue
 
     static func routeLine(_ m: AppModel) -> String {
         m.route == .recover ? String(localized: "본전부터 되찾는 중이에요") : m.route == .plus ? String(localized: "목표를 향해 가는 중이에요") : String(localized: "아직 첫 단계예요")
@@ -276,6 +277,9 @@ struct SettingsGroupView: View {
                     // 홈 평가액 박스 모양 (홈 박스를 길게 눌러도 고른다)
                     Text("홈 평가액 박스").appFont(13, .bold).foregroundStyle(Theme.sub)
                     ChipRow(items: BoxLook.allCases.map { ($0.rawValue, $0.name) }, selection: $boxLook, fill: true)
+                    // 상단 박스(홈·종목·흐름·분석)만 밝기 모드를 따로 고른다. 앱 전체 모드는 그대로
+                    Text("상단 박스").appFont(13, .bold).foregroundStyle(Theme.sub)
+                    ChipRow(items: BoxScheme.allCases.map { ($0.rawValue, $0.name) }, selection: $boxScheme, fill: true)
                     SettingsRows(title: nil, rows: [(String(localized: "앱 아이콘"), AppIconPicker.currentName, .icon)])
                     WaveFeedbackToggles()
                 case .numberGroup:

@@ -490,7 +490,7 @@ enum MoodArt {
         return img
     }
 
-    private static func apply(_ a: MoodAct, _ p: inout [UInt32], _ w: Int, _ h: Int, legTop: Int) {
+    static func apply(_ a: MoodAct, _ p: inout [UInt32], _ w: Int, _ h: Int, legTop: Int) {
         guard a != .stand, a != .breath else { return }
         let ink = PixBuf.rgb(MeArt.outline), orig = p
         func at(_ x: Int, _ y: Int) -> UInt32 { x >= 0 && x < w && y >= 0 && y < h ? p[y * w + x] : 0 }

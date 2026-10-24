@@ -118,10 +118,10 @@ struct FlowView: View {
         let share = md.side > 0 ? md.shares[0] : md.side < 0 ? md.shares[2] : md.shares[1]
         return VStack(alignment: .leading, spacing: 0) {
             HStack { Text("내 종목 · 큰 흐름"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(TodayBox.dim)
-            (Text(head + " · ").foregroundColor(.white) + Text(AppModel.pct(share)).foregroundColor(c))
+            (Text(head + " · ").foregroundColor(BoxInk.ink) + Text(AppModel.pct(share)).foregroundColor(c))
                 .font(.system(size: 30, weight: .heavy)).tracking(-0.5).lineLimit(1).minimumScaleFactor(0.6)
                 .padding(.top, 6)
-            MoodBand(look: look, shares: md.shares, road: 10).padding(.top, 14)
+            MoodBand(look: look, shares: md.shares, road: 10, up: md.side >= 0).padding(.top, 14)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) { ForEach(md.box, id: \.self) { boxChip($0, c) } }
                     .padding(.horizontal, 18)
@@ -133,6 +133,7 @@ struct FlowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { MoodBackdrop(look: look) }
         .clipShape(RoundedRectangle(cornerRadius: 20))
+        .boxScheme()
     }
 
     private func boxChip(_ id: String, _ dot: Color) -> some View {
@@ -142,9 +143,10 @@ struct FlowView: View {
                 Circle().fill(dot).frame(width: 8, height: 8)
                 Text(id == "DRNK" ? "DRNK" : name(id)).appFont(15, on ? .bold : .regular).lineLimit(1)
             }
-            .foregroundStyle(on ? .white : Color(hex: 0xC9D0D6))
+            .foregroundStyle(on ? BoxInk.ink : BoxInk.sub)
             .padding(.horizontal, 14).frame(minHeight: 34)
-            .overlay(Capsule().stroke(on ? .white : .white.opacity(0.22)))
+            .background(bx(0xFFFFFF, 0.55, 0xFFFFFF, 0), in: Capsule())
+            .overlay(Capsule().stroke(on ? BoxInk.ink : bx(0x16181D, 0.16, 0xFFFFFF, 0.22)))
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)

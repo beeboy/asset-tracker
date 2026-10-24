@@ -371,7 +371,7 @@ struct TodayBox: View {
     let move: Double, pct: Double      // 오늘 등락 (원, 비율)
     let parts: [Double]                // 등락 띠: 오른 · 그대로 · 내린 종목 평가액
     let gain: Double, ret: Double      // 산 가격 대비 (원, 비율)
-    static let upC = Color(hex: 0xFF8A80), downC = Color(hex: 0x8CC4F2), flatC = Color(hex: 0x4A5672), dim = Color(hex: 0x8A93A6)
+    static let upC = BoxInk.up, downC = BoxInk.down, flatC = BoxInk.flatF, dim = BoxInk.dim
     /// 띠 몫 (0~1, 합 1). 종목이 없으면 모두 0
     private var shares: [Double] {
         let s = parts.reduce(0, +)
@@ -390,13 +390,14 @@ struct TodayBox: View {
                 Text(AppModel.sgn(pct)).font(.system(size: 16, weight: .semibold)).foregroundStyle(c).lineLimit(1).fixedSize()
             }
             // 점프 직전: 도로는 박스 맨 아래에 붙인다
-            if look == .jump { foot; MoodBand(look: look, shares: shares) }
-            else { MoodBand(look: look, shares: shares); foot }
+            if look == .jump { foot; MoodBand(look: look, shares: shares, up: move >= 0) }
+            else { MoodBand(look: look, shares: shares, up: move >= 0); foot }
         }
         .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, look == .jump ? 0 : 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { MoodBackdrop(look: look) }
         .clipShape(RoundedRectangle(cornerRadius: 20))
+        .boxScheme()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("오늘 \(move >= 0 ? "+" : "−")\(Self.won(abs(move))), \(AppModel.sgn(pct)). 산 가격 대비 \(AppModel.sgn(ret))")
     }
@@ -414,25 +415,50 @@ struct TodayBox: View {
 }
 
 /// 몫 띠: 홈에서 고른 박스 모양대로 그린다 (종목 오늘 박스·흐름 큰 흐름 박스가 같이 쓴다). 몫은 위·그대로·아래 순서, 합 1
+/// 띠 위 오른쪽 끝에 테마의 작은 인물이 선다 (up = 오른 날). 색은 라이트·다크 한 쌍
 struct MoodBand: View {
     let look: BoxLook
     let shares: [Double]
     var road: CGFloat = 18        // 점프 직전 도로 위아래 여백 (흐름 박스는 버튼이 아래에 붙어 좁게)
-    private var colors: [Color] { [TodayBox.upC, TodayBox.flatC, TodayBox.downC] }
+    var up = true
+    private var colors: [Color] { [BoxInk.upF, look == .pino ? ThemeBand.woodFlat : look == .horizon ? bx(0xAEB7C4, 0x4A5672) : BoxInk.flatF, BoxInk.downF] }
 
     var body: some View {
+        strip.overlay(alignment: .topTrailing) {
+            BandBuddy(look: look, up: up)
+                .alignmentGuide(.top) { $0[.bottom] + 2 }
+                .padding(.trailing, look == .jump ? 18 : 0)
+        }
+    }
+
+    @ViewBuilder private var strip: some View {
         switch look {
         case .jump: lane
         case .horizon: wave.frame(height: 12)
         case .tub:
             band(height: 8, radius: 4)
-                .padding(4).background(Color(hex: 0xEEF2F8), in: RoundedRectangle(cornerRadius: 8))
+                .padding(4).background(bx(0xFFFFFF, 0xEEF2F8), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(bx(0xB7CAE3, 1, 0xB7CAE3, 0), lineWidth: 1))
         case .bar:
-            band(height: 10, radius: 5).background(Color(hex: 0x2E3542), in: Capsule()).clipShape(Capsule())
+            band(height: 10, radius: 5).background(bx(0xE6E9EE, 0x2E3542), in: Capsule()).clipShape(Capsule())
+        case .dory:
+            band(height: 8, radius: 4)
+                .padding(2).background(ThemeBand.glass, in: Capsule())
+                .overlay(Capsule().strokeBorder(ThemeBand.glassRim, lineWidth: 1.5))
+        case .pino:
+            band(height: 7, radius: 3)
+                .padding(2).background(ThemeBand.wood, in: ThemeBand.pinoShape)
+        case .mug:
+            VStack(spacing: 0) {
+                ThemeBand.chalk.frame(height: 2)
+                band(height: 4, radius: 0).padding(.vertical, 3).background(ThemeBand.dirt)
+                ThemeBand.chalk.frame(height: 2)
+            }
+            .overlay(Rectangle().stroke(ThemeBand.dirtRim, lineWidth: 1))
         }
     }
 
-    /// 띠 한 줄 (욕조·진행 막대): 몫만큼 나란히, 사이 2pt
+    /// 띠 한 줄: 몫만큼 나란히, 사이 2pt
     private func band(height: CGFloat, radius: CGFloat) -> some View {
         GeometryReader { g in
             let on = shares.indices.filter { shares[$0] > 0 }
@@ -448,8 +474,10 @@ struct MoodBand: View {
     }
 
     /// 점프 직전: 박스 아래 밤 도로 가운데의 가는 점선 중앙선(칸과 틈이 거의 같다). 한 칸은 한 색만 (칸 반올림으로 몫이 조금 어긋나도 느낌만 전한다)
+    /// 라이트도 도로는 어둡게 둔다 (차선 불빛이 밝은 바탕에 묻히지 않게)
     private var lane: some View {
-        Canvas { ctx, size in
+        let colors = [BoxInk.upF, bx(0x5A6585, 0x4A5672), BoxInk.downF]
+        return Canvas { ctx, size in
             let gap: CGFloat = 12, n = max(1, Int((size.width + gap) / 26))
             let w = (size.width - gap * CGFloat(n - 1)) / CGFloat(n)
             let s = shares
@@ -458,22 +486,23 @@ struct MoodBand: View {
             if up + dn > n { if up >= dn { up = n - dn } else { dn = n - up } }
             let flat = n - up - dn
             for i in 0..<n {
-                let c = i < up ? colors[0] : i < up + flat ? colors[1] : colors[2]
+                let k = i < up ? 0 : i < up + flat ? 1 : 2, c = colors[k]
                 var l = ctx
-                if c != colors[1] { l.addFilter(.shadow(color: c, radius: 2)) }
+                if k != 1 { l.addFilter(.shadow(color: c, radius: 2)) }
                 l.fill(Path(CGRect(x: CGFloat(i) * (w + gap), y: 0, width: w, height: size.height)), with: .color(c.opacity(0.75)))
             }
         }
         .frame(height: 2.5)
         .padding(.horizontal, 18).padding(.vertical, road)
-        .background(Color(hex: 0x151925))
-        .overlay(alignment: .top) { Rectangle().fill(Color(hex: 0x232A3E)).frame(height: 1) }
+        .background(bx(0x2F3650, 0x151925))
+        .overlay(alignment: .top) { Rectangle().fill(bx(0x2F3650, 0x232A3E)).frame(height: 1) }
         .padding(.horizontal, -18)
     }
 
     /// 지평선: 두꺼운 물결 한 줄을 몫대로 나눠 칠한다
     private var wave: some View {
-        Canvas { ctx, size in
+        let colors = colors
+        return Canvas { ctx, size in
             let s = shares
             guard s.reduce(0, +) > 0 else { return }
             var p = Path(), x: CGFloat = 0, up = true
@@ -496,22 +525,27 @@ struct MoodBand: View {
     }
 }
 
-/// 박스 바탕: 홈에서 고른 박스 모양의 장면 (늘 어둡다)
+/// 박스 바탕: 홈에서 고른 박스 모양의 장면. 라이트·다크 한 쌍 (라이트는 낮 장면, 점프 직전은 하늘만 밝게)
 struct MoodBackdrop: View {
     let look: BoxLook
+    @Environment(\.colorScheme) private var cs
     var body: some View {
+        let dk = cs == .dark
         switch look {
         case .jump:
-            LinearGradient(colors: [Color(hex: 0x0B1022), Color(hex: 0x232A52)], startPoint: .top, endPoint: .bottom)
-                .overlay { stars([(0.67, 0.11, 0.9), (0.8, 0.26, 0.6), (0.57, 0.24, 0.5)]) }
+            LinearGradient(colors: [bx(0xE4EAF7, 0x0B1022), bx(0xBAC7E8, 0x232A52)], startPoint: .top, endPoint: .bottom)
+                .overlay { if dk { stars([(0.67, 0.11, 0.9), (0.8, 0.26, 0.6), (0.57, 0.24, 0.5)]) } }
         case .horizon:
-            LinearGradient(colors: [Color(hex: 0x0C111D), Color(hex: 0x1C2747)], startPoint: .top, endPoint: .bottom)
-                .overlay { RadialGradient(colors: [Color(hex: 0xFFD98A).opacity(0.4), Color(hex: 0xFFD98A).opacity(0)], center: UnitPoint(x: 1, y: 0.8), startRadius: 0, endRadius: 190) }
-                .overlay { stars([(0.2, 0.12, 0.8), (0.5, 0.07, 0.6), (0.77, 0.18, 0.9), (0.9, 0.08, 0.5)]) }
+            LinearGradient(colors: [bx(0xEAF0F9, 0x0C111D), bx(0xF8F0E5, 0x1C2747)], startPoint: .top, endPoint: .bottom)
+                .overlay { RadialGradient(colors: [bx(0xFFBA68, 0.55, 0xFFD98A, 0.4), bx(0xFFBA68, 0, 0xFFD98A, 0)], center: UnitPoint(x: 1, y: 0.8), startRadius: 0, endRadius: 190) }
+                .overlay { if dk { stars([(0.2, 0.12, 0.8), (0.5, 0.07, 0.6), (0.77, 0.18, 0.9), (0.9, 0.08, 0.5)]) } }
         case .tub:
             TileWall(cell: 22)
         case .bar:
-            Color(hex: 0x1E2430)
+            bx(0xFFFFFF, 0x1E2430)
+                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(BoxInk.cardRim, lineWidth: 1))
+        case .dory, .pino, .mug:
+            ThemeBackdrop(look: look)
         }
     }
 
