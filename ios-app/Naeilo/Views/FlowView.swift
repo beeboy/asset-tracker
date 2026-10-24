@@ -415,7 +415,7 @@ struct FlowChart: View {
                     Spacer(minLength: 6)
                     // 지금 단위 표시: 손 그림으로 두 손가락 확대를 알린다. 핀치로 넓히면 주봉·월봉으로 바뀐다
                     HStack(spacing: 3) {
-                        Image(systemName: "hand.pinch").font(.system(size: 12, weight: .semibold))
+                        Text(verbatim: "🤏").font(.system(size: 11))   // 두 기기 같은 그림 (SF 기호는 안드로이드에서 못 써서 이모지)
                         Text(LocalizedStringKey(step == 1 ? "일봉" : step == 5 ? "주봉" : "월봉")).appFont(12, .semibold)
                     }
                     .foregroundStyle(Theme.sub)
