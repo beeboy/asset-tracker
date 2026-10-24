@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -21,6 +23,7 @@ import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.currentState
 import androidx.glance.layout.Box
@@ -31,7 +34,9 @@ import androidx.glance.layout.size
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.naeilo.app.core.Store
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // 안드로이드 홈 위젯 틀 (Glance): 위젯 한 장을 비트맵 한 장으로 그려 놓고, 누르는 자리(↻·금액)에 투명 버튼을 얹는다.
 // 아이폰 WidgetKit 의 타임라인 대신, 다시 그릴 때마다 지금 값으로 새로 그린다 (Provider.kt 가 다시 그릴 때를 정한다)
@@ -58,15 +63,19 @@ abstract class FaceWidget(val kind: String) : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         Store.init(context)
         Refresh.ensure(context)
-        provideContent { Content() }
+        // face 는 저장 파일 여러 개를 읽는다: 위젯 그리기는 앱과 같은 프로세스의 화면 스레드라 IO 에서 미리 만든다
+        val st0 = getAppWidgetState<Preferences>(context, id)
+        val f0 = withContext(Dispatchers.IO) { face(context, st0) }
+        provideContent { Content(st0, f0) }
     }
 
     @Composable
-    private fun Content() {
+    private fun Content(st0: Preferences, f0: Face) {
         val ctx = LocalContext.current
         val state = currentState<Preferences>()
         val size = LocalSize.current
-        val f = face(ctx, state)
+        // 상태가 바뀌면(다시 그리기) IO 에서 새로 만들고, 그동안은 앞 장을 그린다
+        val f by produceState(f0, state) { if (state != st0) value = withContext(Dispatchers.IO) { face(ctx, state) } }
         // 삼성 기본 위젯처럼 칸 안쪽으로 들여 그린다 (칸을 꽉 채우면 더 크고 길어 보인다)
         val r = render(ctx, size.width.value - padX * 2, size.height.value - padY * 2, isDark(ctx), designW = guideW(ctx), draw = f.draw)
         val open = actionStartActivity(Intent(Intent.ACTION_VIEW, Uri.parse(f.url)).setPackage(ctx.packageName))
