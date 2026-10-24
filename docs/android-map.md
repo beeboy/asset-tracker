@@ -13,7 +13,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Data/Earnings.swift` | `com/naeilo/app/data/Earnings.kt` (23) |
 | `Data/FlowData.swift` | `com/naeilo/app/data/FlowData.kt` (347) |
 | `Data/ForecastEngine.swift` | `com/naeilo/app/core/calc/ForecastEngine.kt` (157) |
-| `Data/GoalRoute.swift` | `com/naeilo/app/core/calc/GoalRoute.kt` (312) |
+| `Data/GoalRoute.swift` | `com/naeilo/app/core/calc/GoalRoute.kt` (308) |
 | `Data/Industries.swift` | `com/naeilo/app/core/calc/Industries.kt` (81) |
 | `Data/Invest.swift` | `com/naeilo/app/core/calc/Invest.kt` (68) |
 | `Data/InvestEvents.swift` | `com/naeilo/app/core/calc/InvestEvents.kt` (22) |
@@ -52,9 +52,9 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/FlowView.swift` | `com/naeilo/app/ui/flow/FlowView.kt` (440) |
 | `Views/ForecastParts.swift` | `com/naeilo/app/ui/analysis/ForecastParts.kt` (72) |
 | `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (503) |
-| `Views/Guide.swift` | `com/naeilo/app/ui/Guide.kt` (72) |
+| `Views/Guide.swift` | `com/naeilo/app/ui/Guide.kt` (78) |
 | `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (344), `com/naeilo/app/ui/hold/HoldingDetail.kt` (263) |
-| `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (441) |
+| `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (443) |
 | `Views/InvestViews.swift` | `com/naeilo/app/ui/analysis/InvestViews.kt` (95) |
 | `Views/MeViews.swift` | `com/naeilo/app/ui/me/MeViews.kt` (480) |
 | `Views/MissionViews.swift` | `com/naeilo/app/ui/board/MissionViews.kt` (471) |
@@ -62,7 +62,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/ParallelView.swift` | `com/naeilo/app/ui/analysis/ParallelViews.kt` (215) |
 | `Views/RemindViews.swift` | `com/naeilo/app/ui/remind/RemindViews.kt` (151) |
 | `Views/SettingsDetail.swift` | `com/naeilo/app/ui/settings/SettingsDetail.kt` (304) |
-| `Views/SettingsView.swift` | `com/naeilo/app/ui/settings/SettingsView.kt` (378) |
+| `Views/SettingsView.swift` | `com/naeilo/app/ui/settings/SettingsView.kt` (359) |
 | `Views/ShareCard.swift` | `com/naeilo/app/ui/ShareCard.kt` (106) |
 | `Views/ShelterView.swift` | `com/naeilo/app/ui/shelter/ShelterView.kt` (464) |
 | `Views/StartView.swift` | `com/naeilo/app/ui/start/StartView.kt` (88) |
