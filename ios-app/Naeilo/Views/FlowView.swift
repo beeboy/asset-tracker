@@ -413,19 +413,13 @@ struct FlowChart: View {
                         Text(title + " · " + String(localized: "시작 대비")).appFont(13).foregroundStyle(Theme.muted).lineLimit(1)
                     }
                     Spacer(minLength: 6)
-                    // 일·주·월 고르기: 고르면 보이는 날 수를 그 단위로, 핀치로 바뀌면 고른 칸도 따라 바뀐다
-                    HStack(spacing: 2) {
-                        ForEach([(1, "일봉", 160), (5, "주봉", 520), (21, "월봉", n)], id: \.0) { u, t, c in
-                            let ok = u == 1 || (u == 5 ? n > 200 : n > 600), on = step == u
-                            Button { count = c } label: {
-                                Text(LocalizedStringKey(t)).appFont(12, .semibold).foregroundStyle(on ? .white : Theme.sub)
-                                    .padding(.horizontal, 8).padding(.vertical, 4)
-                                    .background(on ? Theme.teal : .clear, in: Capsule())
-                            }
-                            .buttonStyle(.plain).disabled(!ok).opacity(ok ? 1 : 0.35)
-                        }
+                    // 지금 단위 표시: 손 그림으로 두 손가락 확대를 알린다. 핀치로 넓히면 주봉·월봉으로 바뀐다
+                    HStack(spacing: 3) {
+                        Image(systemName: "hand.pinch").font(.system(size: 12, weight: .semibold))
+                        Text(LocalizedStringKey(step == 1 ? "일봉" : step == 5 ? "주봉" : "월봉")).appFont(12, .semibold)
                     }
-                    .padding(2).background(Theme.line, in: Capsule())
+                    .foregroundStyle(Theme.sub)
+                    .padding(.horizontal, 8).padding(.vertical, 3).background(Theme.line, in: Capsule())
                 }
                 .padding(.horizontal, 12).padding(.top, 8)
 
@@ -552,7 +546,7 @@ struct FlowChart: View {
                 .allowsHitTesting(layers.contains(.candle))
 
                 // 아래: 보이는 기간
-                Text(date(lo) + " – " + date(hi) + "  ·  " + String(localized: "밀기 · 두 손가락 확대"))
+                Text(date(lo) + " – " + date(hi) + "  ·  " + String(localized: "← 옆으로 밀면 지난 날"))
                     .appFont(10).monospacedDigit().foregroundStyle(Theme.muted).lineLimit(1)
                     .position(x: W / 2, y: g.size.height - botH / 2)
 

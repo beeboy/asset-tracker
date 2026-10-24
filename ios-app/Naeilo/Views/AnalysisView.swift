@@ -481,7 +481,7 @@ struct AnalysisView: View {
             HStack(spacing: 8) {
                 Text("● 보통 · ─ 10번 중 8번 · ┊ 목표일").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
-                if m.route != .novice && !m.rows.isEmpty {
+                if !m.rows.isEmpty {   // 처음 루트도 종목을 담았으면 보인다
                     Button { comparing = true } label: {
                         Text("구성 변경").appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
                             .padding(.horizontal, 12).frame(minHeight: 30).background(Theme.teal, in: Capsule())

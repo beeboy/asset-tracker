@@ -173,7 +173,7 @@ val SF: Map<String, Int> = mapOf(
     "square.grid.3x3.fill" to R.drawable.ms_grid_on, "water.waves" to R.drawable.ms_waves, "gamecontroller" to R.drawable.ms_sports_esports,
     "nosign" to R.drawable.ms_block, "arrow.counterclockwise" to R.drawable.ms_replay,
     "circle.dotted" to R.drawable.ms_radio_button_partial, "play.fill" to R.drawable.ms_play_arrow_fill, "photo" to R.drawable.ms_image,
-    "questionmark.circle" to R.drawable.ms_help, "hand.tap" to R.drawable.ms_touch_app, "plus.square" to R.drawable.ms_add_box, "magnifyingglass" to R.drawable.ms_search, "square.grid.2x2" to R.drawable.ms_grid_view, "person.crop.square" to R.drawable.ms_account_box,
+    "questionmark.circle" to R.drawable.ms_help, "hand.tap" to R.drawable.ms_touch_app, "hand.pinch" to R.drawable.ms_pinch, "plus.square" to R.drawable.ms_add_box, "magnifyingglass" to R.drawable.ms_search, "square.grid.2x2" to R.drawable.ms_grid_view, "person.crop.square" to R.drawable.ms_account_box,
     "pause.fill" to R.drawable.ms_pause_fill, "trophy" to R.drawable.ms_trophy, "star" to R.drawable.ms_star, "heart" to R.drawable.ms_favorite,
     "heart.fill" to R.drawable.ms_favorite_fill, "cloud.fill" to R.drawable.ms_cloud_fill, "circle.fill" to R.drawable.ms_circle_fill,
     "scope" to R.drawable.ms_my_location,

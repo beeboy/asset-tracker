@@ -185,7 +185,7 @@ enum GameLines {
     ]
     /// 옆에서 끼어드는 다른 인물의 한마디 (상황별)
     private static let guest: [String: [String: [String]]] = [
-        "seri": ["last": [String(localized: "마지막 공이에요. 가운데를 지켜요."), String(localized: "남은 공 하나. 관찰하고 받아요.")], "half": [String(localized: "절반 지났어요. 기록 중이에요.")],
+        "seri": ["last": [String(localized: "마지막 공이에요. 가운데를 지켜요."), String(localized: "마지막 공. 관찰하고 받아요.")], "half": [String(localized: "절반 지났어요. 기록 중이에요.")],
                  "clear": [String(localized: "통과 확인했어요."), String(localized: "저도 봤어요. 깔끔했어요.")], "over": [String(localized: "기록은 남았어요. 다음에 이어 가요.")], "item": [String(localized: "그 물건, 쉼터에서 본 거예요.")]],
         "sio": ["last": [String(localized: "마지막이야. 서두르지 말고."), String(localized: "하나 남았어. 기다렸다 받아.")], "half": [String(localized: "반 왔네. 잘하고 있어.")],
                 "clear": [String(localized: "봤어? 기다린 보람 있지."), String(localized: "멋졌어.")], "over": [String(localized: "괜찮아. 다음엔 내가 옆에 있을게.")], "item": [String(localized: "오, 그거 쓸모 있지.")]],
@@ -836,7 +836,7 @@ final class BrickGame: Identifiable {
 
     /// 인물 말풍선 (시작 전에는 계속, 그 밖에는 3초)
     func talk(_ e: GameLines.Event, item: String? = nil) {
-        let vars = ["stage": stage.bg.volume + " " + stage.bg.name, "n": "\(max(0, lives))", "score": score.formatted(),
+        let vars = ["stage": stage.bg.volume + " " + stage.bg.name, "n": "\(max(0, lives - 1))", "score": score.formatted(),
                     "broken": "\(broken)", "left": "\(total)"]
         speech = GameLines.pick(e, player, item: item, vars)
         speechUntil = t + 3.2

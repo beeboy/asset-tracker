@@ -639,7 +639,7 @@ private fun Raise(m: AppModel) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { FitText("● 보통 · ─ 10번 중 8번 · ┊ 목표일", appFont(12f), 0.8f, color = Theme.sub) }   // ios: Views/AnalysisView.swift:472,473
             // ios: Views/AnalysisView.swift:474,475,476,477
-            if (m.route != Route.novice && m.rows.isNotEmpty()) {
+            if (m.rows.isNotEmpty()) {   // 처음 루트도 종목을 담았으면 보인다
                 var comparing by remember { mutableStateOf(false) }   // ios: Views/AnalysisView.swift:140
                 Box(Modifier.defaultMinSize(minHeight = 30.dp).background(Theme.teal, CapsuleShape).plainClickable { comparing = true }.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
                     T("구성 변경", style = appFont(12f, FontWeight.Bold), color = Color.White, maxLines = 1)

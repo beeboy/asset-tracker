@@ -604,15 +604,10 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
                     T(title + " · " + tr("시작 대비"), Modifier.alignByBaseline(), style = appFont(13f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:413
                 }
                 Spacer(Modifier.width(6.dp))   // ios: Views/FlowView.swift:415
-                // 일·주·월 고르기: 고르면 보이는 날 수를 그 단위로, 핀치로 바뀌면 고른 칸도 따라 바뀐다
-                Row(Modifier.background(Theme.line, RoundedCornerShape(50)).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/FlowView.swift:320,331
-                    listOf(Triple(1, "일봉", 160), Triple(5, "주봉", 520), Triple(21, "월봉", n)).forEach { (u, t, c) ->   // ios: Views/FlowView.swift:321
-                        val ok = u == 1 || (if (u == 5) n > 200 else n > 600); val on = step == u   // ios: Views/FlowView.swift:322
-                        // ios: Views/FlowView.swift:323,324,325,326,328
-                        T(t, Modifier.graphicsLayer { alpha = if (ok) 1f else 0.35f }.background(if (on) Theme.teal else Color.Transparent, RoundedCornerShape(50))
-                            .then(if (ok) Modifier.plainClickable { count = c } else Modifier).padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = appFont(12f, FontWeight.SemiBold), color = if (on) Color.White else Theme.sub, maxLines = 1)
-                    }
+                // 지금 단위 표시: 손 그림으로 두 손가락 확대를 알린다. 핀치로 넓히면 주봉·월봉으로 바뀐다
+                Row(Modifier.background(Theme.line, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/FlowView.swift:417,421,422
+                    com.naeilo.app.ui.Sym("hand.pinch", 12f, Theme.sub)   // ios: Views/FlowView.swift:418
+                    T(if (step == 1) "일봉" else if (step == 5) "주봉" else "월봉", style = appFont(12f, FontWeight.SemiBold), color = Theme.sub, maxLines = 1)   // ios: Views/FlowView.swift:419
                 }
             }
 
@@ -724,7 +719,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
 
             // 아래: 보이는 기간
             // ios: Views/FlowView.swift:458,459,460
-            T(date(series, lo) + " – " + date(series, hi) + "  ·  " + tr("밀기 · 두 손가락 확대"), Modifier.centerAt(W / 2, fullH - botH / 2), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
+            T(date(series, lo) + " – " + date(series, hi) + "  ·  " + tr("← 옆으로 밀면 지난 날"), Modifier.centerAt(W / 2, fullH - botH / 2), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
 
             // 말풍선: 누른 것의 뜻. 처음 한 번은 사용 안내
             // ios: Views/FlowView.swift:463,464

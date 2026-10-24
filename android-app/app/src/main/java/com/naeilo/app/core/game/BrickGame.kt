@@ -428,7 +428,7 @@ object GameLines {   // ios: Data/BrickGame.swift:133
     )
     /** 옆에서 끼어드는 다른 인물의 한마디 (상황별) */
     private val guest: Map<String, Map<String, List<String>>> = mapOf(   // ios: Data/BrickGame.swift:187
-        "seri" to mapOf("last" to listOf("마지막 공이에요. 가운데를 지켜요.", "남은 공 하나. 관찰하고 받아요."), "half" to listOf("절반 지났어요. 기록 중이에요."),   // ios: Data/BrickGame.swift:188
+        "seri" to mapOf("last" to listOf("마지막 공이에요. 가운데를 지켜요.", "마지막 공. 관찰하고 받아요."), "half" to listOf("절반 지났어요. 기록 중이에요."),   // ios: Data/BrickGame.swift:188
                  "clear" to listOf("통과 확인했어요.", "저도 봤어요. 깔끔했어요."), "over" to listOf("기록은 남았어요. 다음에 이어 가요."), "item" to listOf("그 물건, 쉼터에서 본 거예요.")),   // ios: Data/BrickGame.swift:189
         "sio" to mapOf("last" to listOf("마지막이야. 서두르지 말고.", "하나 남았어. 기다렸다 받아."), "half" to listOf("반 왔네. 잘하고 있어."),   // ios: Data/BrickGame.swift:190
                 "clear" to listOf("봤어? 기다린 보람 있지.", "멋졌어."), "over" to listOf("괜찮아. 다음엔 내가 옆에 있을게."), "item" to listOf("오, 그거 쓸모 있지.")),   // ios: Data/BrickGame.swift:191
@@ -1095,7 +1095,7 @@ class BrickGame(
 
     /** 인물 말풍선 (시작 전에는 계속, 그 밖에는 3초) */
     fun talk(e: GameLines.Event, item: String? = null) {   // ios: Data/BrickGame.swift:838
-        val vars = mapOf("stage" to stage.bg.volume + " " + stage.bg.name, "n" to "${max(0, lives)}", "score" to score.toDouble().swFmt(),   // ios: Data/BrickGame.swift:839
+        val vars = mapOf("stage" to stage.bg.volume + " " + stage.bg.name, "n" to "${max(0, lives - 1)}", "score" to score.toDouble().swFmt(),   // ios: Data/BrickGame.swift:839
                     "broken" to "$broken", "left" to "$total")   // ios: Data/BrickGame.swift:840
         speech = GameLines.pick(e, player, item = item, vars = vars, rng = rng)   // ios: Data/BrickGame.swift:841
         speechUntil = t + 3.2   // ios: Data/BrickGame.swift:842
