@@ -266,6 +266,9 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
     private val runsSer = MapSerializer(String.serializer(), Run.serializer())
     /** 파일에서 읽은 오늘 경로 (계산 스레드에서만, 처음 계산 하나가 보고 놓는다). 그 뒤는 next 가 화면 스레드에서 runs 를 보고 거른다 */
     private var disk: Map<String, Run> = emptyMap()
+    /** 아직 파일에 안 쓴 경로가 있다. 쓰기는 줄이 비거나 앱이 뒤로 갈 때 한 번 (경로 하나마다 수십 MB 를 통째로 다시 쓰지 않게, 형식은 그대로) */
+    private var dirty = false
+    private fun flush() { if (!dirty) return; dirty = false; val all = runs; writer.execute { writeJson(file, runsSer, all) } }
 
     init {   // ios: Data/ForecastEngine.swift:168
         // 파일 읽기·풀기는 계산 스레드에서 (계산보다 먼저 줄 선다). 그새 계산해 둔 것이 있으면 그쪽이 이긴다
@@ -299,7 +302,8 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
     fun resume() { next() }   // ios: Data/ForecastEngine.swift:203
 
     private fun next() {   // ios: Data/ForecastEngine.swift:205
-        if (busy || queue.isEmpty() || !Compute.active) return   // ios: Data/ForecastEngine.swift:206
+        if (busy) return
+        if (queue.isEmpty() || !Compute.active) { flush(); return }   // ios: Data/ForecastEngine.swift:206
         busy = true   // ios: Data/ForecastEngine.swift:207
         val job = queue.removeAt(0)   // ios: Data/ForecastEngine.swift:208
         // 줄에 선 사이 파일 읽기·다른 계산으로 생긴 경로면 계산하지 않는다 (get 과 같은 규칙)
@@ -315,6 +319,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
                 busy = false   // ios: Data/ForecastEngine.swift:214
                 if (halted) {   // ios: Data/ForecastEngine.swift:215
                     queue.add(0, job)   // ios: Data/ForecastEngine.swift:216 다시 켜지면 이어서
+                    flush()
                     return@post   // ios: Data/ForecastEngine.swift:217
                 }
                 if (saved != null) { onRun?.invoke(); next(); return@post }   // 이미 runs 에 있다 (읽기를 넣은 뒤)
@@ -325,7 +330,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
                     while (all.size >= 16) { val k = all.entries.minWithOrNull(Comparator { x, y -> (x.value.at ?: 0.0).compareTo(y.value.at ?: 0.0) })?.key ?: break; all.remove(k) }   // ios: Data/ForecastEngine.swift:223
                     all[r.key] = r   // ios: Data/ForecastEngine.swift:224
                     runs = all   // ios: Data/ForecastEngine.swift:225
-                    writer.execute { writeJson(file, runsSer, all) }   // ios: Data/ForecastEngine.swift:226
+                    dirty = true   // ios: Data/ForecastEngine.swift:226 (쓰기는 flush 에서)
                     onRun?.invoke()   // ios: Data/ForecastEngine.swift:227
                 } else failed.add(job.key)   // ios: Data/ForecastEngine.swift:228
                 next()   // ios: Data/ForecastEngine.swift:229
