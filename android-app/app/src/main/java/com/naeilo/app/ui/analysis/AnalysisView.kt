@@ -136,6 +136,11 @@ import com.naeilo.app.ui.NavPage
 import com.naeilo.app.ui.NavStack
 import com.naeilo.app.ui.Sheet
 import com.naeilo.app.ui.home.BoxLook
+import com.naeilo.app.ui.home.BoxSchemeScope
+import com.naeilo.app.ui.home.ThemeTrack
+import com.naeilo.app.ui.home.TrackBuddy
+import com.naeilo.app.ui.home.boxInk
+import com.naeilo.app.ui.home.bx
 import com.naeilo.app.ui.home.FreshLabel
 import com.naeilo.app.ui.hold.FitAnnotated
 import com.naeilo.app.ui.hold.HoldingDetailView
@@ -317,7 +322,7 @@ fun AnalysisView(m: AppModel) {
                     SampleNote(m)   // ios: Views/AnalysisView.swift:155
                     // ios: Views/AnalysisView.swift:156,157,159
                     Box(Modifier.plainClickable { open(AnalysisRoute.forecast) }) {
-                        ChanceBox(look = BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, d = chance(m, p, f, pPlan, pro = pro))
+                        BoxSchemeScope { ChanceBox(look = BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, d = chance(m, p, f, pPlan, pro = pro)) }
                     }
                     Tug(m, pPlan, known = pro && f.exact, open)   // ios: Views/AnalysisView.swift:160
                     Shake(m, p, f, pro = pro, toGoal = toGoal, setToGoal = { toGoal = it }, open)   // ios: Views/AnalysisView.swift:161
@@ -639,7 +644,7 @@ private fun Raise(m: AppModel) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { FitText("● 보통 · ─ 10번 중 8번 · ┊ 목표일", appFont(12f), 0.8f, color = Theme.sub) }   // ios: Views/AnalysisView.swift:472,473
             // ios: Views/AnalysisView.swift:474,475,476,477
-            if (m.route != Route.novice && m.rows.isNotEmpty()) {
+            if (m.rows.isNotEmpty()) {   // 처음 루트도 종목을 담았으면 보인다
                 var comparing by remember { mutableStateOf(false) }   // ios: Views/AnalysisView.swift:140
                 Box(Modifier.defaultMinSize(minHeight = 30.dp).background(Theme.teal, CapsuleShape).plainClickable { comparing = true }.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
                     T("구성 변경", style = appFont(12f, FontWeight.Bold), color = Color.White, maxLines = 1)
@@ -709,8 +714,9 @@ fun ChanceBox(look: BoxLook, d: ChanceBox.Data) {
         Box(Modifier.padding(top = 6.dp)) {
             val st = TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
             val v = d.verdict
-            if (v != null) FitAnnotated(buildAnnotatedString { append(tr("가능성 $v · ")); withStyle(SpanStyle(color = Theme.yellow)) { append(d.pct) } }, st, 0.6f, Color.White)
-            else FitText(d.status, st, 0.6f, color = Color.White)
+            val ink = boxInk()
+            if (v != null) FitAnnotated(buildAnnotatedString { append(tr("가능성 $v · ")); withStyle(SpanStyle(color = ink.gold)) { append(d.pct) } }, st, 0.6f, ink.ink)
+            else FitText(d.status, st, 0.6f, color = ink.ink)
         }
         ChanceBar(look, d, Modifier.padding(top = 10.dp).fillMaxWidth().height(62.dp))   // ios: Views/AnalysisView.swift:546
         // ios: Views/AnalysisView.swift:547,548,549,550,552,553
@@ -732,16 +738,25 @@ private fun ChanceBar(look: BoxLook, d: ChanceBox.Data, modifier: Modifier) {
         val names = listOf("나쁠 때", "보통", "좋을 때")   // ios: Views/AnalysisView.swift:580
         ProgressTrack(look, d.now, Modifier.offset(y = 30.dp).width(w).height(14.dp))   // ios: Views/AnalysisView.swift:582
         // ios: Views/AnalysisView.swift:583
+        val ink = boxInk(); val dk = ink.dk
         d.goal?.let { gx ->
-            Box(Modifier.offset(x = X(gx) - 1.dp, y = 4.dp).size(2.dp, 44.dp).background(Color.White))   // ios: Views/AnalysisView.swift:584
-            At(minOf(w - 16.dp, X(gx).coerceAtLeast(16.dp)), 56.dp) { T(d.goalLabel, style = TextStyle(fontSize = fx(10f)), color = Color.White, maxLines = 1) }   // ios: Views/AnalysisView.swift:585,586
+            // 목표선 (점프 직전 라이트는 어두운 도로 위라 흰 선 + 옅은 그림자)
+            val line = if (look == BoxLook.jump) Color.White else ink.ink
+            if (look == BoxLook.jump && !dk) Box(Modifier.offset(x = X(gx) - 1.5.dp, y = 3.5.dp).size(3.dp, 45.dp).background(hex(0x16181D, 0.45f)))
+            Box(Modifier.offset(x = X(gx) - 1.dp, y = 4.dp).size(2.dp, 44.dp).background(line))   // ios: Views/AnalysisView.swift:586,587,588
+            At(minOf(w - 16.dp, X(gx).coerceAtLeast(16.dp)), 56.dp) { T(d.goalLabel, style = TextStyle(fontSize = fx(10f), fontWeight = if (dk) FontWeight.Normal else FontWeight.Bold), color = ink.ink, maxLines = 1) }   // ios: Views/AnalysisView.swift:589,590
+            // 목표선 옆에 서는 것 (오페라하우스·출구·일렁임·해·거품)   // ios: Views/AnalysisView.swift:591,592,593,594
+            Box(Modifier.offset(x = X(gx) - 3.dp - 60.dp, y = 4.dp).size(60.dp, 40.dp), contentAlignment = Alignment.BottomEnd) { TrackBuddy(look, goal = true) }
         }
-        // ios: Views/AnalysisView.swift:588
+        // ios: Views/AnalysisView.swift:596
         xs.indices.forEach { i ->
-            val r = if (i == 2) 8.dp else 7.dp   // ios: Views/AnalysisView.swift:589
-            At(xs[i], 19.dp) { Box(Modifier.size(r * 2).background(ChanceBox.dotC[i], CircleShape)) }   // ios: Views/AnalysisView.swift:590
-            At(lx[i], 0.dp) { T(names[i], style = TextStyle(fontSize = fx(10f)), color = ChanceBox.dotC[i], maxLines = 1) }   // ios: Views/AnalysisView.swift:591
+            val r = if (i == 2) 8.dp else 7.dp   // ios: Views/AnalysisView.swift:597
+            // ios: Views/AnalysisView.swift:598,599,600
+            At(xs[i], 19.dp) { Box(Modifier.size(r * 2).background(ChanceBox.dotC(dk)[i], CircleShape).then(if (i == 1 && !dk) Modifier.border(1.5.dp, Color.White, CircleShape) else Modifier)) }
+            At(lx[i], 0.dp) { T(names[i], style = TextStyle(fontSize = fx(10f)), color = ChanceBox.labC(dk)[i], maxLines = 1) }   // ios: Views/AnalysisView.swift:601
         }
+        // 지금 자리에 서는 작은 인물   // ios: Views/AnalysisView.swift:603,604,605,606
+        Box(Modifier.offset(x = X(d.now).coerceIn(14.dp, maxOf(14.dp, w - 14.dp)) - 30.dp, y = (-10).dp).size(60.dp, 40.dp), contentAlignment = Alignment.BottomCenter) { TrackBuddy(look) }
     }
 }
 
@@ -760,8 +775,10 @@ object ChanceBox {
         val foot: String,
         val nowText: String,
     )
-    val dim = hex(0xC9D0D6)   // ios: Views/AnalysisView.swift:534
-    val dotC = listOf(hex(0x8A96A3), hex(0xC9D0D6), hex(0x3FB3A3))   // ios: Views/AnalysisView.swift:535
+    val dim @Composable get() = boxInk().sub   // ios: Views/AnalysisView.swift:545
+    // ios: Views/AnalysisView.swift:546,547
+    fun dotC(dk: Boolean) = listOf(bx(dk, 0x7D8794, 0x8A96A3), bx(dk, 0xB5BDC7, 0xC9D0D6), bx(dk, 0x2E9C8C, 0x3FB3A3))
+    fun labC(dk: Boolean) = listOf(bx(dk, 0x5F6670, 0x8A96A3), bx(dk, 0x6B7480, 0xC9D0D6), bx(dk, 0x1F8577, 0x3FB3A3))
 
     /** 이름표 자리: 점 바로 위, 서로 gap 보다 가까우면 밀어 낸다 (박스 밖으로 나가지 않게) */
     // ios: Views/AnalysisView.swift:598
@@ -784,16 +801,18 @@ object ChanceBox {
 fun ProgressTrack(look: BoxLook, fill: Double, modifier: Modifier = Modifier) {
     val f = min(1.0, max(0.0, fill)).toFloat()   // ios: Views/AnalysisView.swift:615
     val on = Theme.yellow   // ios: Views/AnalysisView.swift:614
+    val dk = boxInk().dk
     Box(modifier, contentAlignment = Alignment.CenterStart) {
         when (look) {
-            BoxLook.jump -> Road(f, on, Modifier.fillMaxSize())   // ios: Views/AnalysisView.swift:619
-            BoxLook.horizon -> Wave(f, on, Modifier.fillMaxSize())   // ios: Views/AnalysisView.swift:620
-            // ios: Views/AnalysisView.swift:621,622,623,624,625,628,629
-            BoxLook.tub -> Box(Modifier.fillMaxWidth().background(hex(0xEEF2F8), RoundedCornerShape(7.dp)).padding(3.dp)) {
-                Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(hex(0x3C5F9C))) { Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(on)) }
+            BoxLook.jump -> Road(f, on, Modifier.fillMaxSize(), dk)   // ios: Views/AnalysisView.swift:619
+            BoxLook.horizon -> Wave(f, on, Modifier.fillMaxSize(), dk)   // ios: Views/AnalysisView.swift:620
+            // ios: Views/AnalysisView.swift:621,622,623,624,625,628,629,630
+            BoxLook.tub -> Box(Modifier.fillMaxWidth().background(bx(dk, 0xFFFFFF, 0xEEF2F8), RoundedCornerShape(7.dp)).border(1.dp, bx(dk, 0xB7CAE3, 0xB7CAE3, 1f, 0f), RoundedCornerShape(7.dp)).padding(3.dp)) {
+                Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(bx(dk, 0xCFDDF0, 0x3C5F9C))) { Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(on)) }
             }
-            // ios: Views/AnalysisView.swift:630,631,632,633,634,637
-            BoxLook.bar -> Box(Modifier.fillMaxWidth().height(6.dp).background(hex(0x2E3B48), CapsuleShape)) { Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(on, CapsuleShape)) }
+            BoxLook.dory, BoxLook.pino, BoxLook.mug -> ThemeTrack(look, f, on)   // ios: Views/AnalysisView.swift:631,632
+            // ios: Views/AnalysisView.swift:633,634,635,636,637,640
+            BoxLook.bar -> Box(Modifier.fillMaxWidth().height(6.dp).background(bx(dk, 0xE6E9EE, 0x2E3B48), CapsuleShape)) { Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(on, CapsuleShape)) }
         }
     }
 }
@@ -801,11 +820,11 @@ fun ProgressTrack(look: BoxLook, fill: Double, modifier: Modifier = Modifier) {
 /** 점프 직전: 박스 폭 끝까지 이어진 밤 도로, 가운데 점선. 지금까지 온 칸은 노랗게 빛난다 */
 // ios: Views/AnalysisView.swift:642,643,660
 @Composable
-private fun Road(f: Float, on: Color, modifier: Modifier) {
+private fun Road(f: Float, on: Color, modifier: Modifier, dk: Boolean) {
     Canvas(modifier.outset(18.dp).fillMaxSize()) {   // outset 은 안쪽 최소 폭을 0 으로 풀어 다시 채운다
         val pad = 18.dp.toPx(); val w = size.width - pad * 2; val cut = pad + w * f   // ios: Views/AnalysisView.swift:644
-        drawRect(hex(0x151925))   // ios: Views/AnalysisView.swift:645
-        drawRect(hex(0x232A3E), Offset.Zero, Size(size.width, 1.dp.toPx()))   // ios: Views/AnalysisView.swift:646
+        drawRect(bx(dk, 0x2F3650, 0x151925))   // ios: Views/AnalysisView.swift:645
+        drawRect(bx(dk, 0x2F3650, 0x232A3E), Offset.Zero, Size(size.width, 1.dp.toPx()))   // ios: Views/AnalysisView.swift:646
         val dash = 14.dp.toPx(); val gap = 7.dp.toPx(); val h = 3.dp.toPx(); val y = size.height / 2 - h / 2   // ios: Views/AnalysisView.swift:647
         var x = 0f   // ios: Views/AnalysisView.swift:648
         // ios: Views/AnalysisView.swift:649
@@ -816,7 +835,7 @@ private fun Road(f: Float, on: Color, modifier: Modifier) {
                 val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = on.toArgb(); setShadowLayer(2.dp.toPx(), 0f, 0f, on.toArgb()) }
                 cv.nativeCanvas.drawRect(a, y, min(b, cut), y + h, p)
             }
-            if (cut < b) drawRect(hex(0x3A4466), Offset(max(a, cut), y), Size(b - max(a, cut), h))   // ios: Views/AnalysisView.swift:656
+            if (cut < b) drawRect(bx(dk, 0x5A6585, 0x3A4466), Offset(max(a, cut), y), Size(b - max(a, cut), h))   // ios: Views/AnalysisView.swift:656
             x += dash + gap   // ios: Views/AnalysisView.swift:657
         }
     }
@@ -825,14 +844,14 @@ private fun Road(f: Float, on: Color, modifier: Modifier) {
 /** 지평선: 물결 한 줄, 지금까지는 노랑 */
 // ios: Views/AnalysisView.swift:664,665
 @Composable
-private fun Wave(f: Float, on: Color, modifier: Modifier) {
+private fun Wave(f: Float, on: Color, modifier: Modifier, dk: Boolean) {
     Canvas(modifier) {
         val p = Path(); var x = 0f; var up = true   // ios: Views/AnalysisView.swift:666
         val mid = size.height / 2; val s = 12.dp.toPx(); val a = 6.dp.toPx()   // ios: Views/AnalysisView.swift:667
         p.moveTo(0f, mid)   // ios: Views/AnalysisView.swift:668
         // ios: Views/AnalysisView.swift:669,670,671
         while (x < size.width) { p.quadraticTo(x + s / 2, if (up) mid - a else mid + a, x + s, mid); x += s; up = !up }
-        drawPath(p, hex(0x3A4656), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))   // ios: Views/AnalysisView.swift:673
+        drawPath(p, bx(dk, 0xC9D0DA, 0x3A4656), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))   // ios: Views/AnalysisView.swift:673
         // ios: Views/AnalysisView.swift:674,675,676,677
         clipRect(-4.dp.toPx(), -4.dp.toPx(), size.width * f + 4.dp.toPx(), size.height + 4.dp.toPx()) {
             drawIntoCanvas { cv ->

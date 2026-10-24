@@ -363,7 +363,7 @@ struct BrickPlayView: View {
                 Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 1) {
                     Text("\(g.score.formatted())점").appFont(18, .bold).monospacedDigit()
-                    Text("남은 공 \(max(0, g.lives))").appFont(12, .bold).foregroundStyle(Theme.up)
+                    Text("남은 공 \(max(0, g.lives - 1))").appFont(12, .bold).foregroundStyle(Theme.up)
                 }
             }
             HStack(spacing: 8) {
@@ -479,8 +479,8 @@ struct BrickPlayView: View {
                 let b = g.rect(g.exitCell)
                 ctx.fill(Path(r(b.minX, b.minY, 1, 1)), with: .color(Theme.yellow))
             }
-            // 남은 공 (판 왼쪽 아래)
-            let lives = max(0, g.lives)
+            // 남은 공 (판 왼쪽 아래): 패들 위 지금 공은 빼고 그린다
+            let lives = max(0, g.lives - 1)
             for k in 0..<lives {
                 let e = r(0.8 + Double(k) * 1.4, BrickGame.H - 1.4, 0.9, 0.9)
                 ctx.fill(Path(ellipseIn: e), with: .color(.white)); ctx.stroke(Path(ellipseIn: e), with: .color(Theme.ink), lineWidth: 1)

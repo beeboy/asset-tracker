@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.home
 
+import com.naeilo.app.core.calc.bare
 import com.naeilo.app.ui.shelter.shelterPage
 import com.naeilo.app.core.tr
 import com.naeilo.app.ui.shelter.readerPage
@@ -73,7 +74,6 @@ import com.naeilo.app.core.calc.goalSaved
 import com.naeilo.app.core.calc.graduateToGoal
 import com.naeilo.app.core.calc.isGoal
 import com.naeilo.app.core.calc.keepPlan
-import com.naeilo.app.core.calc.noviceOwn
 import com.naeilo.app.core.calc.paceText
 import com.naeilo.app.core.calc.suggestNextGoal
 import com.naeilo.app.core.calc.wonK
@@ -258,11 +258,13 @@ private fun Summary(m: AppModel, lookRaw: String, setLook: (String) -> Unit, hid
     // ios: Views/HomeView.swift:58,65 (.contextMenu: 길게 누르면 메뉴)
     Box(Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { menu = true }) }
         .semantics { onLongClick(label = tr("평가액 박스 모양")) { menu = true; true } }) {   // ios: Views/HomeView.swift:66
-        // ios: Views/HomeView.swift:59,60
-        if (look == BoxLook.bar) {
-            if (m.isGoal) GoalSummary(m, hideAmt, toggleHide) else RecoverSummary(m, hideAmt, toggleHide)
-        } else {   // ios: Views/HomeView.swift:61
-            SceneSummary(m, look, hideAmt, toggleHide)   // ios: Views/HomeView.swift:62
+        // ios: Views/HomeView.swift:59,60,69 (.boxScheme(): 상단 박스만 고른 밝기 모드)
+        BoxSchemeScope {
+            if (look == BoxLook.bar) {
+                if (m.isGoal) GoalSummary(m, hideAmt, toggleHide) else RecoverSummary(m, hideAmt, toggleHide)
+            } else {   // ios: Views/HomeView.swift:61
+                SceneSummary(m, look, hideAmt, toggleHide)   // ios: Views/HomeView.swift:62
+            }
         }
     }
     // ios: Views/HomeView.swift:67 Picker: 고른 모양에 ✓
@@ -277,12 +279,12 @@ private fun sceneOf(m: AppModel): BoxScene {
     val onPlan = n <= 0 || me >= n   // ios: Views/HomeView.swift:75
     // ios: Views/HomeView.swift:76
     if (m.isGoal) {
-        val value = m.route == Route.plus || m.noviceOwn   // ios: Views/HomeView.swift:77
+        val value = m.isGoal && !m.bare   // ios: Views/HomeView.swift:77
         val years = kotlin.math.ceil(p.end).toInt()   // ios: Views/HomeView.swift:78
         val ticks: List<Pair<String, Double>> = if (years > 1) (1 until years).map { y -> Pair("${y}년", p.need(y.toDouble()) / K) } else emptyList()   // ios: Views/HomeView.swift:79
         // ios: Views/HomeView.swift:80
         return BoxScene(label = if (value) "평가액" else "모은 돈",
-            amount = if (m.route == Route.novice) m.goalSaved * 1e4 else m.total,   // ios: Views/HomeView.swift:81
+            amount = if (m.bare) m.goalSaved * 1e4 else m.total,   // ios: Views/HomeView.swift:81
             f = me / K, plan = if (n > 0) n / K else null, ticks = ticks,   // ios: Views/HomeView.swift:82
             target = AppModel.wonK(m.gK), half = AppModel.wonK(m.gK / 2),   // ios: Views/HomeView.swift:83
             today = if (value && m.route == Route.plus && m.total > 0) m.todayMove else null,   // ios: Views/HomeView.swift:84
@@ -301,16 +303,16 @@ private fun sceneOf(m: AppModel): BoxScene {
 @Composable
 private fun SceneSummary(m: AppModel, look: BoxLook, hideAmt: Boolean, toggleHide: () -> Unit) {
     val reached = if (m.isGoal) m.goalReached else m.cost <= m.total   // ios: Views/HomeView.swift:96
-    val setMonthly = m.isGoal && !m.goalReached && m.route != Route.novice && m.gM <= 0   // ios: Views/HomeView.swift:97
+    val setMonthly = m.isGoal && !m.goalReached && !m.bare && m.gM <= 0   // ios: Views/HomeView.swift:97
     val scene by remember(m) { derivedStateOf { sceneOf(m) } }   // ios: Views/HomeView.swift:73 (scene)
     // ios: Views/HomeView.swift:98,114,115,116
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Theme.night), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(boxInk().card), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         // ios: Views/HomeView.swift:99,100
         Box {
             SceneBox(look = look, s = scene, hide = hideAmt, toggleHide = toggleHide)
             // ios: Views/HomeView.swift:101
             if (setMonthly) {
-                // ios: Views/HomeView.swift:102,103
+                // ios: Views/HomeView.swift:103
                 Box(Modifier.align(Alignment.BottomEnd).padding(end = 14.dp).defaultMinSize(minHeight = 32.dp).plainClickable { m.homePath = m.homePath + "goal" }
                     .semantics { contentDescription = tr("다음달 적립 정하기") }, contentAlignment = Alignment.Center) {
                     T("적립 정하기 ›", style = appFont(12f, FontWeight.Bold), color = Theme.yellow)
@@ -331,17 +333,18 @@ private val C9 = hex(0xC9D0D6)
 // ios: Views/HomeView.swift:120
 @Composable
 private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
+    val ink = boxInk()   // ios: Views/HomeView.swift:120 (라이트는 흰 카드 + 짙은 글자)
     // ios: Views/HomeView.swift:121
-    val now = if (m.route == Route.novice) m.goalSaved else m.total / 1e4; val value = m.route == Route.plus || m.noviceOwn; val prog = min(1.0, now / max(1.0, m.gK))
+    val now = if (m.bare) m.goalSaved else m.total / 1e4; val value = m.isGoal && !m.bare; val prog = min(1.0, now / max(1.0, m.gK))
     // ios: Views/HomeView.swift:122,159,160,161,162
-    Fg(Color.White) {
+    Fg(ink.ink) {
         Column(
-            Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(20.dp)).padding(18.dp),
+            Modifier.fillMaxWidth().background(ink.card, RoundedCornerShape(20.dp)).border(1.dp, ink.cardRim, RoundedCornerShape(20.dp)).padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // ios: Views/HomeView.swift:123,125
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T(if (value) "평가액" else "모은 돈", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:124
+                T(if (value) "평가액" else "모은 돈", Modifier.weight(1f), style = appFont(13f), color = ink.sub)   // ios: Views/HomeView.swift:124
                 if (value) FreshLabel()   // ios: Views/HomeView.swift:126
             }
             // ios: Views/HomeView.swift:128
@@ -354,28 +357,28 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
                 // ios: Views/HomeView.swift:134
                 if (value && m.cost > 0) {
                     // ios: Views/HomeView.swift:135,136
-                    FitText(AppModel.sgn(m.ret), appFont(14f, FontWeight.Bold), 0.6f, Modifier.alignByBaseline(), maxLines = 1, color = if (m.ret >= 0) hex(0xFF8A80) else hex(0x8CC4F2))
+                    FitText(AppModel.sgn(m.ret), appFont(14f, FontWeight.Bold), 0.6f, Modifier.alignByBaseline(), maxLines = 1, color = if (m.ret >= 0) ink.up else ink.down)
                 }
             }
             if (value && m.route == Route.plus && m.total > 0) TodayLine(m)   // ios: Views/HomeView.swift:139
             // ios: Views/HomeView.swift:140
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T("목표 ${AppModel.wonK(m.gK)} · ${m.gY}년", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:141,144
-                T(AppModel.pct(prog), style = appFont(13f, FontWeight.Bold), color = Theme.yellow)   // ios: Views/HomeView.swift:142
+                T("목표 ${AppModel.wonK(m.gK)} · ${m.gY}년", Modifier.weight(1f), style = appFont(13f), color = ink.sub)   // ios: Views/HomeView.swift:141,144
+                T(AppModel.pct(prog), style = appFont(13f, FontWeight.Bold), color = ink.gold)   // ios: Views/HomeView.swift:142
             }
-            ProgressBar(value = prog)   // ios: Views/HomeView.swift:145
+            ProgressBar(value = prog, height = 8.dp, track = bx(ink.dk, 0xE6E9EE, 0x3A4651))   // ios: Views/HomeView.swift:145
             // ios: Views/HomeView.swift:146
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T(if (m.goalReached) "목표 ${AppModel.wonK(m.gK)} 도달!"   // ios: Views/HomeView.swift:147
-                  else if (m.route == Route.novice) "매달 ${AppModel.wonK(m.gM)} 적립 · 다음 적립일 +${AppModel.wonK(m.gM)}"   // ios: Views/HomeView.swift:148
+                  else if (m.bare) "매달 ${AppModel.wonK(m.gM)} 적립 · 다음 적립일 +${AppModel.wonK(m.gM)}"   // ios: Views/HomeView.swift:148
                   else AppModel.paceText(m.goalPace()) + (if (m.gM > 0) " · 다음달 ${AppModel.wonK(m.gM)} 적립" else " · 추가 적립 미정"),   // ios: Views/HomeView.swift:149
-                  Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:150
+                  Modifier.weight(1f), style = appFont(13f), color = ink.sub)   // ios: Views/HomeView.swift:150
                 // ios: Views/HomeView.swift:151
-                if (!m.goalReached && m.route != Route.novice && m.gM <= 0) {
+                if (!m.goalReached && !m.bare && m.gM <= 0) {
                     Spacer(Modifier.width(8.dp))   // ios: Views/HomeView.swift:152
-                    // ios: Views/HomeView.swift:153,154
+                    // ios: Views/HomeView.swift:154
                     Box(Modifier.defaultMinSize(minHeight = 32.dp).plainClickable { m.homePath = m.homePath + "goal" }.semantics { contentDescription = tr("다음달 적립 정하기") }, contentAlignment = Alignment.Center) {
-                        T("정하기 ›", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)
+                        T("정하기 ›", style = appFont(13f, FontWeight.Bold), color = ink.gold)
                     }
                 }
             }
@@ -387,37 +390,38 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
 // ios: Views/HomeView.swift:165
 @Composable
 private fun RecoverSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
+    val ink = boxInk()
     val need = m.cost / max(1.0, m.total) - 1   // ios: Views/HomeView.swift:166
     val needY = m.cost / (m.total / (1 + m.todayMove)) - 1   // ios: Views/HomeView.swift:167
     // ios: Views/HomeView.swift:168,196,197,198,199
-    Fg(Color.White) {
+    Fg(ink.ink) {
         Column(
-            Modifier.fillMaxWidth().background(Theme.night, RoundedCornerShape(20.dp)).padding(18.dp),
+            Modifier.fillMaxWidth().background(ink.card, RoundedCornerShape(20.dp)).border(1.dp, ink.cardRim, RoundedCornerShape(20.dp)).padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // ios: Views/HomeView.swift:169,171
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T("평가액 · 넣은 돈 ${AppModel.man(m.cost)}", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:170
+                T("평가액 · 넣은 돈 ${AppModel.man(m.cost)}", Modifier.weight(1f), style = appFont(13f), color = ink.sub)   // ios: Views/HomeView.swift:170
                 FreshLabel()   // ios: Views/HomeView.swift:172
             }
             // ios: Views/HomeView.swift:174
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 // ios: Views/HomeView.swift:175,176,177 (금액을 누르면 가린다)
-                FitText(if (hideAmt) "••••••" else AppModel.man(m.total), appFont(32f, FontWeight.Bold).copy(letterSpacing = (-0.5).sp), 0.4f, Modifier.weight(1f, fill = false).alignByBaseline().plainClickable { toggleHide() }, maxLines = 1, color = Color.White, roll = m.total)
+                FitText(if (hideAmt) "••••••" else AppModel.man(m.total), appFont(32f, FontWeight.Bold).copy(letterSpacing = (-0.5).sp), 0.4f, Modifier.weight(1f, fill = false).alignByBaseline().plainClickable { toggleHide() }, maxLines = 1, color = ink.ink, roll = m.total)
                 // ios: Views/HomeView.swift:178,179
-                T(AppModel.sgn(m.ret), Modifier.alignByBaseline(), style = appFont(16f, FontWeight.Bold), maxLines = 1, color = if (m.ret >= 0) hex(0xFF8A80) else hex(0x8CC4F2))
+                T(AppModel.sgn(m.ret), Modifier.alignByBaseline(), style = appFont(16f, FontWeight.Bold), maxLines = 1, color = if (m.ret >= 0) ink.up else ink.down)
             }
             if (m.total > 0) TodayLine(m)   // ios: Views/HomeView.swift:181
             // ios: Views/HomeView.swift:182
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T("본전까지", Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:183,184,188
+                T("본전까지", Modifier.weight(1f), style = appFont(13f), color = ink.sub)   // ios: Views/HomeView.swift:183,184,188
                 // ios: Views/HomeView.swift:185,186
-                T(if (need > 0) "+" + cformat("%.1f", need * 100) + "% 남음" else "본전 도달", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)
+                T(if (need > 0) "+" + cformat("%.1f", need * 100) + "% 남음" else "본전 도달", style = appFont(13f, FontWeight.Bold), color = ink.gold)
             }
-            ProgressBar(value = m.total / max(1.0, m.cost))   // ios: Views/HomeView.swift:189
+            ProgressBar(value = m.total / max(1.0, m.cost), height = 8.dp, track = bx(ink.dk, 0xE6E9EE, 0x3A4651))   // ios: Views/HomeView.swift:189
             // ios: Views/HomeView.swift:190,192,193 (118 은 검사 예외: 같은 줄에 옮김)
             T(if (need > 0) "어제 ${cformat("%.1f", needY * 100)}% → 오늘 ${cformat("%.1f", need * 100)}%"
-              else "본전 넘음 · 종목·친구 그대로", style = appFont(13f), color = hex(0xC9D0D6))
+              else "본전 넘음 · 종목·친구 그대로", style = appFont(13f), color = ink.sub)
             if (need <= 0) DarkButton("목표 루트로") { m.graduateToGoal(); m.tab = Tab.board }   // ios: Views/HomeView.swift:194
         }
     }
@@ -427,10 +431,11 @@ private fun RecoverSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit
 // ios: Views/HomeView.swift:203
 @Composable
 private fun TodayLine(m: AppModel) {
+    val ink = boxInk()
     val mv = m.todayMove; val diff = m.stockTotal - m.stockTotal / (1 + mv)   // ios: Views/HomeView.swift:204
     // ios: Views/HomeView.swift:205,206
     T("오늘 " + (if (mv >= 0) "▲ " else "▼ ") + cformat("%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)),
-      style = appFont(13f), color = if (mv >= 0) hex(0xFF8A80) else hex(0x8CC4F2))
+      style = appFont(13f), color = if (mv >= 0) ink.up else ink.down)
 }
 
 // 어두운 요약 카드 안의 노란 버튼 (목표 루트로 · 다음 목표)
@@ -763,14 +768,15 @@ fun SampleNote(m: AppModel) {
 }
 
 
-// 평가액 박스 모양 (2026-10-23). 사용자가 고른다 점프 직전(기본) → 지평선 → 욕조와 오리 → 진행 막대(예전 모습)
+// 평가액 박스 모양 (2026-10-23). 사용자가 고른다 점프 직전(기본) → 지평선 → 욕조와 오리 → 도리와 문어 → 피노키오와 새 → 철수와 영희 → 진행 막대(예전 모습)
+// 색은 테마마다 라이트·다크 한 쌍 (상단 박스 밝기 모드: 자동·밝게·어둡게, BoxScheme). 모양·움직임은 한 벌
 // 장면은 300×170 판에 그리고 박스 폭에 맞춰 늘린다. 글자는 장면 왼쪽 위에 겹친다.
 // 가로 위치·물높이 = 지금 값 ÷ 목표(목표 루트) 또는 넣은 돈(회복 루트). 계획 자리 = 내 길 계획선(적립 포함, myPath.need)의 오늘 값.
 // 움직임은 작은 조각만 반복 애니메이션 (장면 그림 층은 값이 바뀔 때만 다시 그린다). 동작 줄이기·숨은 탭이면 멈춘다
 
 // ios: Views/HomeView.swift:566
 enum class BoxLook {
-    jump, horizon, tub, bar;   // ios: Views/HomeView.swift:567
+    jump, horizon, tub, dory, pino, mug, bar;   // ios: Views/HomeView.swift:528
     val id: String get() = name   // ios: Views/HomeView.swift:568
     /** 보이는 이름 (Swift name: Kotlin enum 의 name 은 rawValue 자리라 label) */
     // ios: Views/HomeView.swift:569,570
@@ -778,6 +784,9 @@ enum class BoxLook {
         horizon -> "지평선"   // ios: Views/HomeView.swift:571
         jump -> "점프 직전"   // ios: Views/HomeView.swift:572
         tub -> "욕조와 오리"   // ios: Views/HomeView.swift:573
+        dory -> "도리와 문어"   // ios: Views/HomeView.swift:535
+        pino -> "피노키오와 새"   // ios: Views/HomeView.swift:536
+        mug -> "철수와 영희"   // ios: Views/HomeView.swift:537
         bar -> "진행 막대"   // ios: Views/HomeView.swift:574
     }
     companion object {
@@ -807,11 +816,11 @@ data class BoxScene(
 
 /** 박스 오른쪽 위 '1분 전'. 오래되면 '10/21 23:50 기준' (Market.freshText). 분이 바뀔 때마다 다시 쓴다 */
 @Composable
-fun FreshLabel(color: Color = hex(0x8A93A6)) {   // ios: Views/HomeView.swift:595,596
+fun FreshLabel(color: Color = Color.Unspecified) {   // ios: Views/HomeView.swift:595,596
     var now by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1000.0) }
     // ios: Views/HomeView.swift:597,598 TimelineView(.everyMinute)
     LaunchedEffect(Unit) { while (true) { delay(60_000L - System.currentTimeMillis() % 60_000L); now = System.currentTimeMillis() / 1000.0 } }
-    T(Market.shared.freshText(now) ?: "", style = appFont(12f), color = color, maxLines = 1)   // ios: Views/HomeView.swift:599
+    T(Market.shared.freshText(now) ?: "", style = appFont(12f), color = if (color == Color.Unspecified) boxInk().dim else color, maxLines = 1)   // ios: Views/HomeView.swift:599
 }
 
 /** .font(.system(size:)): 글자 크기 키우기를 따르지 않는 고정 크기 */
@@ -820,8 +829,8 @@ private fun fx(size: Float): androidx.compose.ui.unit.TextUnit = (size / LocalDe
 
 // ios: Views/HomeView.swift:604 (struct SceneBox 의 static)
 private object SceneBox {
-    val dim = hex(0x8A93A6)   // ios: Views/HomeView.swift:610
-    val upC = hex(0xFF8A80); val downC = hex(0x8CC4F2)   // ios: Views/HomeView.swift:611
+    val dim @Composable get() = boxInk().dim   // ios: Views/HomeView.swift:571
+    val upC @Composable get() = boxInk().up; val downC @Composable get() = boxInk().down   // ios: Views/HomeView.swift:572
 }
 
 // ios: Views/HomeView.swift:604,605,606,607
@@ -829,7 +838,8 @@ private object SceneBox {
 fun SceneBox(look: BoxLook, s: BoxScene, hide: Boolean, toggleHide: () -> Unit) {
     val amountText = if (hide) "••••••" else AppModel.man(s.amount)   // ios: Views/HomeView.swift:609
     // 욕조: 아래 수익률 줄까지 타일 벽이 이어지게 (장면 타일과 같은 칸 크기)
-    val wall = if (look == BoxLook.tub) Modifier.drawBehind { tileWall(22 * size.width / 300) } else Modifier   // ios: Views/HomeView.swift:620
+    val dk = boxDark()
+    val wall = if (look == BoxLook.tub) Modifier.drawBehind { tileWall(22 * size.width / 300, dk) } else Modifier   // ios: Views/HomeView.swift:620
     // ios: Views/HomeView.swift:613,614,621,622
     Column(Modifier.fillMaxWidth().then(wall).semantics(mergeDescendants = true) { contentDescription = tr("${s.label} $amountText, ${s.target}까지 ${AppModel.pct(s.f)}, ${s.status}") },
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -849,6 +859,9 @@ private fun Scene(look: BoxLook, s: BoxScene, amountText: String, toggleHide: ()
             when (look) {
                 BoxLook.jump -> JumpScene(s)   // ios: Views/HomeView.swift:631
                 BoxLook.tub -> TubScene(s)   // ios: Views/HomeView.swift:632
+                BoxLook.dory -> DoryScene(s)   // ios: Views/HomeView.swift:594
+                BoxLook.pino -> PinoScene(s)   // ios: Views/HomeView.swift:595
+                BoxLook.mug -> MugScene(s)   // ios: Views/HomeView.swift:596
                 else -> HorizonScene(s)   // ios: Views/HomeView.swift:633
             }
         }
@@ -866,7 +879,7 @@ private fun Scene(look: BoxLook, s: BoxScene, amountText: String, toggleHide: ()
             // ios: Views/HomeView.swift:645,650
             Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Head(s)   // ios: Views/HomeView.swift:646
-                AmountView(amountText, s.amount, 30f, Color.White, toggleHide)   // ios: Views/HomeView.swift:647
+                AmountView(amountText, s.amount, 30f, boxInk().ink, toggleHide)   // ios: Views/HomeView.swift:647
                 SubLine(s, 13f)   // ios: Views/HomeView.swift:648
             }
         }
@@ -903,21 +916,21 @@ private fun SubLine(s: BoxScene, size: Float, modifier: Modifier = Modifier) {
 
 /** 욕조 뒤 남색 타일 벽 (cell = 타일 한 칸 크기) */
 // ios: Views/HomeView.swift:673,674,675,676
-internal fun DrawScope.tileWall(cell: Float) {
-    drawRect(hex(0x1B2744), Offset.Zero, size)   // ios: Views/HomeView.swift:677
+internal fun DrawScope.tileWall(cell: Float, dk: Boolean = true) {
+    drawRect(hex(if (dk) 0x1B2744 else 0xE2ECF8), Offset.Zero, size)   // ios: Views/HomeView.swift:677
     if (cell <= 1) return   // ios: Views/HomeView.swift:678
     val grid = Path(); var x = 0f; var y = 0f   // ios: Views/HomeView.swift:679
     while (x <= size.width) { grid.moveTo(x, 0f); grid.lineTo(x, size.height); x += cell }   // ios: Views/HomeView.swift:680
     while (y <= size.height) { grid.moveTo(0f, y); grid.lineTo(size.width, y); y += cell }   // ios: Views/HomeView.swift:681
-    drawPath(grid, hex(0x2A3A60), style = Stroke(1.5f * cell / 22))   // ios: Views/HomeView.swift:682
+    drawPath(grid, hex(if (dk) 0x2A3A60 else 0xC6D6EB), style = Stroke(1.5f * cell / 22))   // ios: Views/HomeView.swift:682
 }
 
 /** 글 붙이는 자리 (UnitPoint .leading · .center · .trailing) */
-private enum class Anchor { leading, center, trailing }
+internal enum class Anchor { leading, center, trailing }
 
 /** 장면 그림 도구: 300×170 판 좌표 */
 // ios: Views/HomeView.swift:688
-private object Sk {
+internal object Sk {
     // ios: Views/HomeView.swift:689,690,691,692,693
     fun p(pts: List<Pair<Float, Float>>): Path {
         val path = Path()
@@ -943,12 +956,12 @@ private object Sk {
     }
     /** 오늘 등락 글: ▼4.3% */
     fun today(v: Double): String = tr("오늘 ") + (if (v >= 0) "▲" else "▼") + cformat("%.1f%%", abs(v) * 100)   // ios: Views/HomeView.swift:706
-    fun todayColor(v: Double): Color = if (v >= 0) hex(0xFF8A80) else hex(0x9EC1FF)   // ios: Views/HomeView.swift:707
+    fun todayColor(v: Double, dk: Boolean = true): Color = if (v >= 0) hex(if (dk) 0xFF8A80 else 0xC0392B) else hex(if (dk) 0x9EC1FF else 0x1B5E96)   // ios: Views/HomeView.swift:707
 }
 
 /** 판 한 층: 300×170 판 좌표로 그리고 박스 폭에 맞춰 늘린다 */
 @Composable
-private fun Plate(modifier: Modifier = Modifier, draw: DrawScope.() -> Unit) {
+internal fun Plate(modifier: Modifier = Modifier, draw: DrawScope.() -> Unit) {
     Canvas(modifier.fillMaxSize()) {
         // ios: Views/HomeView.swift:636,637 (.frame(width: 300, height: 170).scaleEffect(k, anchor: .topLeading))
         val plate = Size(300f, 170f); val k = size.width / plate.width
@@ -960,7 +973,7 @@ private fun Plate(modifier: Modifier = Modifier, draw: DrawScope.() -> Unit) {
  *  동작 줄이기·숨은 탭이면 0 에 멈춘다 */
 // ios: Views/HomeView.swift:711,712,713,714,715,716,717,718,719,720,721
 @Composable
-private fun Loop(duration: Double, reverse: Boolean = true, curve: DurationBasedAnimationSpec<Float>? = null): () -> Float {
+internal fun Loop(duration: Double, reverse: Boolean = true, curve: DurationBasedAnimationSpec<Float>? = null): () -> Float {
     val still = LocalReduceMotion.current || !LocalTabActive.current
     if (still) return { 0f }
     val t = rememberInfiniteTransition(label = "loop")
@@ -976,31 +989,40 @@ private fun HorizonScene(s: BoxScene) {
     val X = { f: Double -> x0 + (x1 - x0) * min(1.0, max(0.0, f)).toFloat() }   // ios: Views/HomeView.swift:731
     val me = X(s.f)   // ios: Views/HomeView.swift:732
     val tm = rememberTextMeasurer()
+    val dk = boxDark()
     // ios: Views/HomeView.swift:733,734
     Plate {
         val all = Rect(0f, 0f, 300f, 170f)   // ios: Views/HomeView.swift:735 (width: 300, height: 170)
-        drawRect(Brush.linearGradient(listOf(hex(0x0C111D), hex(0x1C2747)), start = Offset.Zero, end = Offset(0f, 170f)), all.topLeft, all.size)   // ios: Views/HomeView.swift:736
-        drawRect(Brush.radialGradient(0f to hex(0xFFD98A).copy(alpha = 0.4f), 1f to hex(0xFFD98A).copy(alpha = 0f), center = Offset(300f, 136f), radius = 190f), all.topLeft, all.size)   // ios: Views/HomeView.swift:737
-        Sk.stars(this)   // ios: Views/HomeView.swift:738
-        drawPath(Sk.line(Offset(x0, y), Offset(x1, y)), hex(0x4A5672), style = Stroke(1.5f))   // ios: Views/HomeView.swift:739
+        // ios: Views/HomeView.swift:701,702,703,704,705,706,707,708,709
+        if (dk) {
+            drawRect(Brush.linearGradient(listOf(hex(0x0C111D), hex(0x1C2747)), start = Offset.Zero, end = Offset(0f, 170f)), all.topLeft, all.size)   // ios: Views/HomeView.swift:736
+            drawRect(Brush.radialGradient(0f to hex(0xFFD98A).copy(alpha = 0.4f), 1f to hex(0xFFD98A).copy(alpha = 0f), center = Offset(300f, 136f), radius = 190f), all.topLeft, all.size)   // ios: Views/HomeView.swift:737
+            Sk.stars(this)   // ios: Views/HomeView.swift:738
+        } else {
+            // 라이트: 새벽 대신 맑은 아침빛
+            drawRect(Brush.linearGradient(listOf(hex(0xEAF0F9), hex(0xF8F0E5)), start = Offset.Zero, end = Offset(0f, 170f)), all.topLeft, all.size)
+            drawRect(Brush.radialGradient(0f to hex(0xFFBA68).copy(alpha = 0.55f), 1f to hex(0xFFBA68).copy(alpha = 0f), center = Offset(300f, 136f), radius = 190f), all.topLeft, all.size)
+        }
+        val line = hex(if (dk) 0x4A5672 else 0xB4BDCC); val road = hex(if (dk) 0xF2C14E else 0xE0A21E); val lab = hex(if (dk) 0x8A93A6 else 0x5F6670)   // ios: Views/HomeView.swift:710
+        drawPath(Sk.line(Offset(x0, y), Offset(x1, y)), line, style = Stroke(1.5f))   // ios: Views/HomeView.swift:739
         // ios: Views/HomeView.swift:740
         if (me > x0) {
             // ios: Views/HomeView.swift:741,742
             drawPath(Sk.line(Offset(x0, y), Offset(me, y)),
-                Brush.linearGradient(listOf(hex(0xF2C14E).copy(alpha = 0.15f), hex(0xF2C14E).copy(alpha = 0.9f)), start = Offset(x0, y), end = Offset(me, y)), style = Stroke(2.5f))
+                Brush.linearGradient(listOf(road.copy(alpha = if (dk) 0.15f else 0.2f), road.copy(alpha = if (dk) 0.9f else 1f)), start = Offset(x0, y), end = Offset(me, y)), style = Stroke(2.5f))
         }
         // ios: Views/HomeView.swift:744
         for ((t, f) in s.ticks) if (f > 0 && f < 1) {
-            drawPath(Sk.line(Offset(X(f), y - 4), Offset(X(f), y + 4)), hex(0x4A5672), style = Stroke(1f))   // ios: Views/HomeView.swift:745
-            Sk.text(this, tm, t, X(f), 150f, hex(0x8A93A6), anchor = Anchor.center)   // ios: Views/HomeView.swift:746
+            drawPath(Sk.line(Offset(X(f), y - 4), Offset(X(f), y + 4)), line, style = Stroke(1f))   // ios: Views/HomeView.swift:745
+            Sk.text(this, tm, t, X(f), 150f, lab, anchor = Anchor.center)   // ios: Views/HomeView.swift:746
         }
-        drawPath(Sk.dot(x1, y, 3f), hex(0xFFD98A))   // ios: Views/HomeView.swift:748
+        drawPath(Sk.dot(x1, y, 3f), hex(if (dk) 0xFFD98A else 0xE0A21E))   // ios: Views/HomeView.swift:748
         // ios: Views/HomeView.swift:749
         s.plan?.let { p ->
-            drawPath(Sk.dot(X(p), y, 7f), hex(0x8A93A6), style = Stroke(1.2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 2f))))   // ios: Views/HomeView.swift:750
+            drawPath(Sk.dot(X(p), y, 7f), hex(if (dk) 0x8A93A6 else 0x6B7480), style = Stroke(1.2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 2f))))   // ios: Views/HomeView.swift:750
         }
-        Sk.text(this, tm, "출발", x0, 150f, hex(0x8A93A6))   // ios: Views/HomeView.swift:752
-        Sk.text(this, tm, s.target, x1, 150f, hex(0xFFD98A), anchor = Anchor.trailing)   // ios: Views/HomeView.swift:753
+        Sk.text(this, tm, "출발", x0, 150f, lab)   // ios: Views/HomeView.swift:752
+        Sk.text(this, tm, s.target, x1, 150f, hex(if (dk) 0xFFD98A else 0x9A6A00), bold = !dk, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:753
     }
     // 숨 쉬는 내 불빛
     val glow = Loop(1.5)   // ios: Views/HomeView.swift:756
@@ -1011,11 +1033,13 @@ private fun HorizonScene(s: BoxScene) {
         val on = glow()
         val d = Size(32f, 32f); val k = lerp(1f, 1.25f, on); val op = lerp(1f, 0.35f, on)   // ios: Views/HomeView.swift:758
         // ios: Views/HomeView.swift:757,760 (endRadius: 16, position(x: me, y: y))
-        drawCircle(Brush.radialGradient(0f to hex(0xF2C14E).copy(alpha = 0.7f), 1f to hex(0xF2C14E).copy(alpha = 0f), center = Offset(me, y), radius = 16f * k), radius = d.width / 2 * k, center = Offset(me, y), alpha = op)
-        val dot = Size(9f, 9f); drawCircle(hex(0xFFF4D6), radius = dot.width / 2, center = Offset(me, y))   // ios: Views/HomeView.swift:761
+        val halo = hex(if (dk) 0xF2C14E else 0xF2B42E)
+        drawCircle(Brush.radialGradient(0f to halo.copy(alpha = if (dk) 0.7f else 0.75f), 1f to halo.copy(alpha = 0f), center = Offset(me, y), radius = 16f * k), radius = d.width / 2 * k, center = Offset(me, y), alpha = op)
+        val dot = Size(9f, 9f); drawCircle(hex(if (dk) 0xFFF4D6 else 0xE8A417), radius = dot.width / 2, center = Offset(me, y))   // ios: Views/HomeView.swift:761
+        if (!dk) drawCircle(Color.White, radius = dot.width / 2, center = Offset(me, y), style = Stroke(1.5f))   // ios: Views/HomeView.swift:735
         // 오늘 등락: 내 불빛 위 작은 물결
         if (v != null && todayText != null) {
-            val c = Sk.todayColor(v)
+            val c = Sk.todayColor(v, dk)
             val r = tm.measure(todayText, TextStyle(fontSize = (9.5f / (density * fontScale)).sp, color = c), softWrap = false)   // ios: Views/HomeView.swift:767
             val w = 18f + 3f + r.size.width   // ios: Views/HomeView.swift:765 (spacing: 3)
             val cx = min(250f, max(50f, me + 20)); val cy = 112f + lerp(0f, -2f, bob())   // ios: Views/HomeView.swift:769,771
@@ -1060,17 +1084,18 @@ private fun TubScene(s: BoxScene) {
     val w = TubScene.level(s.f)   // ios: Views/HomeView.swift:806
     val tub = TubScene.tub
     val tm = rememberTextMeasurer()
+    val dk = boxDark()   // ios: Views/HomeView.swift:784
     // ios: Views/HomeView.swift:807,808
     Plate {
         // 타일 벽
-        drawRect(hex(0x1B2744), Offset(0f, 0f), Size(300f, 170f))   // ios: Views/HomeView.swift:810
+        drawRect(hex(if (dk) 0x1B2744 else 0xE2ECF8), Offset(0f, 0f), Size(300f, 170f))   // ios: Views/HomeView.swift:810
         val grid = Path()   // ios: Views/HomeView.swift:811
         for (i in 0..14) { val x = i * 22f; grid.moveTo(x, 0f); grid.lineTo(x, 170f) }   // ios: Views/HomeView.swift:812
         for (j in 0..8) { val y = j * 22f; grid.moveTo(0f, y); grid.lineTo(300f, y) }   // ios: Views/HomeView.swift:813
-        drawPath(grid, hex(0x2A3A60), style = Stroke(1.5f))   // ios: Views/HomeView.swift:814
+        drawPath(grid, hex(if (dk) 0x2A3A60 else 0xC6D6EB), style = Stroke(1.5f))   // ios: Views/HomeView.swift:814
         // 욕조 안쪽 (눈금은 물 위에 따로 그린다)
         // ios: Views/HomeView.swift:816,817,818
-        clipPath(tub) { drawRect(hex(0xEEF2F8), Offset(0f, 0f), Size(300f, 170f)) }
+        clipPath(tub) { drawRect(hex(if (dk) 0xEEF2F8 else 0xFFFFFF), Offset(0f, 0f), Size(300f, 170f)) }
     }
     // 물: 욕조 안에서 출렁인다
     val flow = Loop(3.0, reverse = false, curve = tween(3 * 1000, easing = LinearEasing))   // ios: Views/HomeView.swift:821
@@ -1082,7 +1107,7 @@ private fun TubScene(s: BoxScene) {
         clipRect(0f, 0f, 300f, 170f) { clipPath(tub) {
             translate(ox, oy) {
                 drawPath(tubWater(400f, h), Brush.verticalGradient(   // ios: Views/HomeView.swift:822,823
-listOf(hex(0x7CC8F0).copy(alpha = 0.85f), hex(0x3F7FC0).copy(alpha = 0.9f)), startY = 0f, endY = h))
+listOf(hex(if (dk) 0x7CC8F0 else 0x8CCFF2).copy(alpha = if (dk) 0.85f else 0.9f), hex(if (dk) 0x3F7FC0 else 0x4C8CCB).copy(alpha = 0.9f)), startY = 0f, endY = h))
             }
         } }
     }
@@ -1092,22 +1117,23 @@ listOf(hex(0x7CC8F0).copy(alpha = 0.85f), hex(0x3F7FC0).copy(alpha = 0.9f)), sta
         // ios: Views/HomeView.swift:830,831
         clipPath(tub) {
             val mark = { y: Float, dry: Color -> if (y > w) Color.White.copy(alpha = 0.9f) else dry }   // ios: Views/HomeView.swift:832
-            drawPath(Sk.line(Offset(240f, 70f), Offset(254f, 70f)), mark(70f, hex(0x7D889E)), style = Stroke(1.6f))   // ios: Views/HomeView.swift:833
-            Sk.text(this, tm, s.target, 237f, 70f, mark(70f, hex(0x7D889E)), size = 8.5f, bold = true, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:834
+            drawPath(Sk.line(Offset(240f, 70f), Offset(254f, 70f)), mark(70f, hex(if (dk) 0x7D889E else 0x6B7690)), style = Stroke(1.6f))   // ios: Views/HomeView.swift:833
+            Sk.text(this, tm, s.target, 237f, 70f, mark(70f, hex(if (dk) 0x7D889E else 0x5A6580)), size = 8.5f, bold = true, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:834
             // ios: Views/HomeView.swift:835
             for ((t, y) in listOf(Pair("75%", 90.0f), Pair("25%", 130.0f))) {
                 drawPath(Sk.line(Offset(246f, y), Offset(254f, y)), mark(y, hex(0x9AA6BD)), style = Stroke(1.2f))   // ios: Views/HomeView.swift:836
-                Sk.text(this, tm, t, 243f, y, mark(y, hex(0x9AA6BD)), size = 8f, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:837
+                Sk.text(this, tm, t, 243f, y, mark(y, hex(if (dk) 0x9AA6BD else 0x7D889E)), size = 8f, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:837
             }
             // ios: Views/HomeView.swift:839
             s.plan?.let { p ->
                 val y = TubScene.level(p)   // ios: Views/HomeView.swift:840
-                drawPath(Sk.line(Offset(236f, y), Offset(254f, y)), hex(0xC98A00), style = Stroke(2.2f))   // ios: Views/HomeView.swift:841
-                Sk.text(this, tm, "계획", 233f, y - 4, if (y - 4 > w) hex(0xFFE08A) else hex(0xC98A00), size = 8.5f, bold = true, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:842
+                drawPath(Sk.line(Offset(236f, y), Offset(254f, y)), hex(if (dk) 0xC98A00 else 0xB07A00), style = Stroke(2.2f))   // ios: Views/HomeView.swift:841
+                Sk.text(this, tm, "계획", 233f, y - 4, if (y - 4 > w) hex(0xFFE08A) else hex(if (dk) 0xC98A00 else 0x9A6A00), size = 8.5f, bold = true, anchor = Anchor.trailing)   // ios: Views/HomeView.swift:842
             }
         }
-        drawPath(tub, Color.White, style = Stroke(3f))   // ios: Views/HomeView.swift:844
+        drawPath(tub, if (dk) Color.White else hex(0xB7CAE3), style = Stroke(3f))   // ios: Views/HomeView.swift:844
         drawRoundRect(Color.White, Offset(32f, 46f), Size(236f, 8f), CornerRadius(4f, 4f))   // ios: Views/HomeView.swift:845
+        if (!dk) drawRoundRect(hex(0xB7CAE3), Offset(32f, 46f), Size(236f, 8f), CornerRadius(4f, 4f), style = Stroke(1f))   // ios: Views/HomeView.swift:828
     }
     // 오리 = 나
     val bob = Loop(1.3)   // ios: Views/HomeView.swift:848
@@ -1119,7 +1145,7 @@ listOf(hex(0x7CC8F0).copy(alpha = 0.85f), hex(0x3F7FC0).copy(alpha = 0.9f)), sta
     }
     // ios: Views/HomeView.swift:850
     s.today?.let { v ->
-        Plate { Sk.text(this, tm, Sk.today(v), 100f, w - 21, Sk.todayColor(v), size = 9.5f, anchor = Anchor.center) }   // ios: Views/HomeView.swift:851,852
+        Plate { Sk.text(this, tm, Sk.today(v), 100f, w - 21, Sk.todayColor(v, dk), size = 9.5f, anchor = Anchor.center) }   // ios: Views/HomeView.swift:851,852
     }
 }
 
@@ -1136,7 +1162,7 @@ private fun tubWater(width: Float, height: Float): Path {
 private object Duck { val size = Size(46f, 38f) }   // ios: Views/HomeView.swift:869,883
 
 // ios: Views/HomeView.swift:870,871
-private fun DrawScope.duck() {
+internal fun DrawScope.duck() {
     // 판 좌표 (136~177, 96~130) 을 (0,0) 기준으로
     translate(-133f, -94f) {   // ios: Views/HomeView.swift:873
         val y = hex(0xFFD23F)   // ios: Views/HomeView.swift:874
@@ -1159,31 +1185,34 @@ private fun JumpScene(s: BoxScene) {
     val X = { f: Double -> x0 + (x1 - x0) * min(1.0, max(0.0, f)).toFloat() }   // ios: Views/HomeView.swift:892
     val nose = X(s.f); val rear = nose - 85   // ios: Views/HomeView.swift:893
     val tm = rememberTextMeasurer()
-    // ios: Views/HomeView.swift:894,938 (.clipped())
+    val dk = boxDark()   // ios: Views/HomeView.swift:890
+    // ios: Views/HomeView.swift:894 (.clipped())
     Box(Modifier.fillMaxSize().clipToBounds()) {
         // ios: Views/HomeView.swift:895
         Plate {
-            drawRect(Brush.linearGradient(listOf(hex(0x0B1022), hex(0x232A52)), start = Offset.Zero, end = Offset(0f, 170f)), Offset(0f, 0f), Size(300f, 170f))   // ios: Views/HomeView.swift:896
-            for ((x, y, r) in listOf(Triple(200f, 18f, 0.9f), Triple(240f, 44f, 0.6f), Triple(170f, 40f, 0.5f))) drawPath(Sk.dot(x, y, r), hex(0xC9D3EA))   // ios: Views/HomeView.swift:897
-            drawRect(hex(0x151925), Offset(0f, 128f), Size(300f, 42f))   // ios: Views/HomeView.swift:898
-            drawPath(Sk.line(Offset(0f, 160f), Offset(300f, 160f)), hex(0x3A4155), style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))))   // ios: Views/HomeView.swift:899
-            Sk.text(this, tm, s.target, x1, 62f, hex(0x9FDCFF), size = 10f, bold = true, anchor = Anchor.center)   // ios: Views/HomeView.swift:900
+            // 라이트: 하늘만 밝히고 도로는 어둡게 (차선 불빛이 묻히지 않게)
+            drawRect(Brush.linearGradient(listOf(hex(if (dk) 0x0B1022 else 0xE4EAF7), hex(if (dk) 0x232A52 else 0xBAC7E8)), start = Offset.Zero, end = Offset(0f, 170f)), Offset(0f, 0f), Size(300f, 170f))   // ios: Views/HomeView.swift:896
+            if (dk) for ((x, y, r) in listOf(Triple(200f, 18f, 0.9f), Triple(240f, 44f, 0.6f), Triple(170f, 40f, 0.5f))) drawPath(Sk.dot(x, y, r), hex(0xC9D3EA))   // ios: Views/HomeView.swift:897
+            drawRect(hex(if (dk) 0x151925 else 0x2F3650), Offset(0f, 128f), Size(300f, 42f))   // ios: Views/HomeView.swift:898
+            drawPath(Sk.line(Offset(0f, 160f), Offset(300f, 160f)), hex(if (dk) 0x3A4155 else 0x5A6585), style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))))   // ios: Views/HomeView.swift:899
+            Sk.text(this, tm, s.target, x1, 62f, hex(if (dk) 0x9FDCFF else 0x1E5FA8), size = 10f, bold = true, anchor = Anchor.center)   // ios: Views/HomeView.swift:900
             // ios: Views/HomeView.swift:901
             for ((i, f) in listOf(0.0, 0.25, 0.5, 0.75).withIndex()) {
                 val x = X(f); val long = i % 2 == 0   // ios: Views/HomeView.swift:902
-                drawPath(Sk.line(Offset(x, 128f), Offset(x, if (long) 134f else 131f)), hex(0x6B7489), style = Stroke(1f))   // ios: Views/HomeView.swift:903
+                drawPath(Sk.line(Offset(x, 128f), Offset(x, if (long) 134f else 131f)), hex(if (dk) 0x6B7489 else 0xAEB6C6), style = Stroke(1f))   // ios: Views/HomeView.swift:903
             }
-            Sk.text(this, tm, "출발", x0, 166f, hex(0x6B7489), size = 8f, anchor = Anchor.center)   // ios: Views/HomeView.swift:905
-            Sk.text(this, tm, s.half, X(0.5), 166f, hex(0x6B7489), size = 8f, anchor = Anchor.center)   // ios: Views/HomeView.swift:906
+            Sk.text(this, tm, "출발", x0, 166f, hex(if (dk) 0x6B7489 else 0xAEB6C6), size = 8f, anchor = Anchor.center)   // ios: Views/HomeView.swift:905
+            Sk.text(this, tm, s.half, X(0.5), 166f, hex(if (dk) 0x6B7489 else 0xAEB6C6), size = 8f, anchor = Anchor.center)   // ios: Views/HomeView.swift:906
             // ios: Views/HomeView.swift:907
             s.plan?.let { p ->
                 val x = X(p)   // ios: Views/HomeView.swift:908
-                drawPath(Sk.line(Offset(x, 96f), Offset(x, 131f)), hex(0x9AA2B2), style = Stroke(2f))   // ios: Views/HomeView.swift:909
+                val pole = hex(if (dk) 0x9AA2B2 else 0x6B7489)
+                drawPath(Sk.line(Offset(x, 96f), Offset(x, 131f)), pole, style = Stroke(2f))   // ios: Views/HomeView.swift:909
                 val sign = Path().apply { addRoundRect(RoundRect(x - 12, 86f, x - 12 + 24, 86f + 13, CornerRadius(2f, 2f))) }   // ios: Views/HomeView.swift:910 (width: 24, height: 13)
-                drawPath(sign, hex(0x2B3350)); drawPath(sign, hex(0x9AA2B2), style = Stroke(1f))   // ios: Views/HomeView.swift:911
-                Sk.text(this, tm, "계획", x, 92.5f, hex(0xFFD98A), size = 8f, anchor = Anchor.center)   // ios: Views/HomeView.swift:912
+                drawPath(sign, hex(if (dk) 0x2B3350 else 0xFFFFFF)); drawPath(sign, pole, style = Stroke(1f))   // ios: Views/HomeView.swift:911
+                Sk.text(this, tm, "계획", x, 92.5f, hex(if (dk) 0xFFD98A else 0x9A6A00), size = 8f, bold = !dk, anchor = Anchor.center)   // ios: Views/HomeView.swift:912
             }
-            s.today?.let { v -> Sk.text(this, tm, Sk.today(v), 6f, 120f, Sk.todayColor(v)) }   // ios: Views/HomeView.swift:914
+            s.today?.let { v -> Sk.text(this, tm, Sk.today(v), 6f, 120f, Sk.todayColor(v, dk)) }   // ios: Views/HomeView.swift:914
         }
         // 목표: 파란 일렁임
         val ripple = Loop(1.2)   // ios: Views/HomeView.swift:917
@@ -1195,7 +1224,7 @@ private fun JumpScene(s: BoxScene) {
             // 타원 그러데이션: 원(지름 32)을 세로로 84/32 배 늘린다
             val sx = lerp(1f, 1.25f, on); val sy = 1f * 84f / 32f; val op = lerp(1f, 0.75f, on)   // ios: Views/HomeView.swift:919
             withTransform({ scale(sx, sy, pivot = Offset(x1, 112f)) }) {   // ios: Views/HomeView.swift:921
-                drawCircle(Brush.radialGradient(0f to hex(0xE8F7FF), 0.5f to hex(0x5FC8FF).copy(alpha = 0.8f), 1f to hex(0x2A6CFF).copy(alpha = 0f), center = Offset(x1, 112f), radius = 32f * 0.5f), radius = 16f, center = Offset(x1, 112f), alpha = op)   // ios: Views/HomeView.swift:918
+                drawCircle(Brush.radialGradient(0f to hex(if (dk) 0xE8F7FF else 0xFFFFFF), 0.5f to hex(0x5FC8FF).copy(alpha = if (dk) 0.8f else 0.85f), 1f to hex(0x2A6CFF).copy(alpha = 0f), center = Offset(x1, 112f), radius = 32f * 0.5f), radius = 16f, center = Offset(x1, 112f), alpha = op)   // ios: Views/HomeView.swift:918
             }
             if (rear + 13 > x0) {
                 val top = 140f; val gap = 2.5f   // ios: Views/HomeView.swift:925,932 (VStack 간격, 왼쪽 위 = (x0, 140))
@@ -1208,21 +1237,22 @@ private fun JumpScene(s: BoxScene) {
                 drawRoundRect(fire, Offset(x0 + lead, top + h1 + gap), Size(w2, h2), CornerRadius(h2 / 2, h2 / 2), alpha = a)
             }
             val carSize = Size(95f, 35f)   // ios: Views/HomeView.swift:935
-            translate(nose - 84.7f + 47.5f - carSize.width / 2, 129.5f - carSize.height / 2 + lerp(0f, 0.6f, shake())) { car() }   // ios: Views/HomeView.swift:934,936
+            translate(nose - 84.7f + 47.5f - carSize.width / 2, 129.5f - carSize.height / 2 + lerp(0f, 0.6f, shake())) { car(dk) }   // ios: Views/HomeView.swift:934,936
         }
     }
 }
 
 /** 은빛 쐐기형 차 (시안 4 의 차를 0.7 배로, 앞코가 오른쪽 끝) */
 // ios: Views/HomeView.swift:943,944,945
-private fun DrawScope.car() {
+internal fun DrawScope.car(dk: Boolean = true) {
     // ios: Views/HomeView.swift:946,947
     withTransform({ scale(0.7f, 0.7f, pivot = Offset.Zero); translate(-100f, -97f) }) {
         val body = Sk.p(listOf(Pair(100f, 138f), Pair(100f, 123f), Pair(128f, 121f), Pair(146f, 109f), Pair(168f, 108f), Pair(188f, 121f), Pair(220f, 128f), Pair(221f, 133f), Pair(214f, 138f)))   // ios: Views/HomeView.swift:948
-        drawPath(body, Brush.linearGradient(listOf(hex(0xEEF1F6), hex(0x8D95A6)), start = Offset(0f, 108f), end = Offset(0f, 138f)))   // ios: Views/HomeView.swift:949
+        drawPath(body, Brush.linearGradient(listOf(hex(if (dk) 0xEEF1F6 else 0xF4F6FA), hex(0x8D95A6)), start = Offset(0f, 108f), end = Offset(0f, 138f)))   // ios: Views/HomeView.swift:949
+        if (!dk) drawPath(body, hex(0x6B7489), style = Stroke(0.8f))   // 라이트: 옅은 외곽선   // ios: Views/HomeView.swift:947
         drawPath(Sk.p(listOf(Pair(100f, 133f), Pair(220f, 133f), Pair(214f, 138f), Pair(100f, 138f))), hex(0x2A2E38))   // ios: Views/HomeView.swift:950
         drawPath(Sk.line(Offset(100f, 128f), Offset(220f, 130f)), hex(0xAAB1BF), style = Stroke(0.8f))   // ios: Views/HomeView.swift:951
-        drawPath(Sk.p(listOf(Pair(150f, 111f), Pair(167f, 111f), Pair(180f, 120f), Pair(146f, 120f))), hex(0x2B3550))   // ios: Views/HomeView.swift:952
+        drawPath(Sk.p(listOf(Pair(150f, 111f), Pair(167f, 111f), Pair(180f, 120f), Pair(146f, 120f))), hex(if (dk) 0x2B3550 else 0x3A4766))   // ios: Views/HomeView.swift:952
         drawPath(Sk.line(Offset(158f, 111f), Offset(156f, 120f)), hex(0x9AA2B2), style = Stroke(1f))   // ios: Views/HomeView.swift:953
         for (x in listOf(131.0f, 135f, 139f)) drawPath(Sk.line(Offset(x, 120f), Offset(x + 6, 115f)), hex(0x59606F), style = Stroke(1f))   // ios: Views/HomeView.swift:954
         drawRect(hex(0x151925), Offset(113f, 131f), Size(18f, 9f))   // ios: Views/HomeView.swift:955
@@ -1240,7 +1270,7 @@ private fun DrawScope.car() {
             val arc = Path()   // ios: Views/HomeView.swift:964
             arc.moveTo(222f, 121f); arc.lineTo(228f, 116f); arc.lineTo(226f, 123f); arc.lineTo(234f, 119f)   // ios: Views/HomeView.swift:965
             arc.moveTo(152f, 104f); arc.lineTo(156f, 98f); arc.lineTo(157f, 104f); arc.lineTo(162f, 99f)   // ios: Views/HomeView.swift:966
-            drawPath(arc, hex(0x7FD4FF), style = Stroke(1.2f))   // ios: Views/HomeView.swift:967
+            drawPath(arc, hex(if (dk) 0x7FD4FF else 0x2A8FE0), style = Stroke(1.2f))   // ios: Views/HomeView.swift:967
         }
     }
 }

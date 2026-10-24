@@ -4,6 +4,26 @@
     "" : {
 
     },
+    "← 옆으로 밀면 지난 날" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "← Swipe for earlier days"
+          }
+        }
+      }
+    },
+    "마지막 공. 관찰하고 받아요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ball. Watch, then catch."
+          }
+        }
+      }
+    },
     "  %@~%@" : {
       "localizations" : {
         "ko" : {

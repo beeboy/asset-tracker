@@ -7,4 +7,11 @@
     <color name="icon_bg_seonbae">#301E2C</color>
     <color name="icon_bg_ir">#0E0C16</color>
     <color name="icon_bg_sua">#3A2228</color>
+    <color name="icon_bg_jump">#0B1022</color>
+    <color name="icon_bg_horizon">#0C111D</color>
+    <color name="icon_bg_tub">#2A5FA0</color>
+    <color name="icon_bg_dory">#0A3560</color>
+    <color name="icon_bg_pino">#22170E</color>
+    <color name="icon_bg_mug">#0F4F3E</color>
+    <color name="icon_bg_bar">#15202B</color>
 </resources>

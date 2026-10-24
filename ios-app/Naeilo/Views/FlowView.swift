@@ -118,10 +118,10 @@ struct FlowView: View {
         let share = md.side > 0 ? md.shares[0] : md.side < 0 ? md.shares[2] : md.shares[1]
         return VStack(alignment: .leading, spacing: 0) {
             HStack { Text("내 종목 · 큰 흐름"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(TodayBox.dim)
-            (Text(head + " · ").foregroundColor(.white) + Text(AppModel.pct(share)).foregroundColor(c))
+            (Text(head + " · ").foregroundColor(BoxInk.ink) + Text(AppModel.pct(share)).foregroundColor(c))
                 .font(.system(size: 30, weight: .heavy)).tracking(-0.5).lineLimit(1).minimumScaleFactor(0.6)
                 .padding(.top, 6)
-            MoodBand(look: look, shares: md.shares, road: 10).padding(.top, 14)
+            MoodBand(look: look, shares: md.shares, road: 10, up: md.side >= 0).padding(.top, 14)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) { ForEach(md.box, id: \.self) { boxChip($0, c) } }
                     .padding(.horizontal, 18)
@@ -133,6 +133,7 @@ struct FlowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { MoodBackdrop(look: look) }
         .clipShape(RoundedRectangle(cornerRadius: 20))
+        .boxScheme()
     }
 
     private func boxChip(_ id: String, _ dot: Color) -> some View {
@@ -142,9 +143,10 @@ struct FlowView: View {
                 Circle().fill(dot).frame(width: 8, height: 8)
                 Text(id == "DRNK" ? "DRNK" : name(id)).appFont(15, on ? .bold : .regular).lineLimit(1)
             }
-            .foregroundStyle(on ? .white : Color(hex: 0xC9D0D6))
+            .foregroundStyle(on ? BoxInk.ink : BoxInk.sub)
             .padding(.horizontal, 14).frame(minHeight: 34)
-            .overlay(Capsule().stroke(on ? .white : .white.opacity(0.22)))
+            .background(bx(0xFFFFFF, 0.55, 0xFFFFFF, 0), in: Capsule())
+            .overlay(Capsule().stroke(on ? BoxInk.ink : bx(0x16181D, 0.16, 0xFFFFFF, 0.22)))
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -413,19 +415,13 @@ struct FlowChart: View {
                         Text(title + " · " + String(localized: "시작 대비")).appFont(13).foregroundStyle(Theme.muted).lineLimit(1)
                     }
                     Spacer(minLength: 6)
-                    // 일·주·월 고르기: 고르면 보이는 날 수를 그 단위로, 핀치로 바뀌면 고른 칸도 따라 바뀐다
-                    HStack(spacing: 2) {
-                        ForEach([(1, "일봉", 160), (5, "주봉", 520), (21, "월봉", n)], id: \.0) { u, t, c in
-                            let ok = u == 1 || (u == 5 ? n > 200 : n > 600), on = step == u
-                            Button { count = c } label: {
-                                Text(LocalizedStringKey(t)).appFont(12, .semibold).foregroundStyle(on ? .white : Theme.sub)
-                                    .padding(.horizontal, 8).padding(.vertical, 4)
-                                    .background(on ? Theme.teal : .clear, in: Capsule())
-                            }
-                            .buttonStyle(.plain).disabled(!ok).opacity(ok ? 1 : 0.35)
-                        }
+                    // 지금 단위 표시: 손 그림으로 두 손가락 확대를 알린다. 핀치로 넓히면 주봉·월봉으로 바뀐다
+                    HStack(spacing: 3) {
+                        Image(systemName: "hand.pinch").font(.system(size: 12, weight: .semibold))
+                        Text(LocalizedStringKey(step == 1 ? "일봉" : step == 5 ? "주봉" : "월봉")).appFont(12, .semibold)
                     }
-                    .padding(2).background(Theme.line, in: Capsule())
+                    .foregroundStyle(Theme.sub)
+                    .padding(.horizontal, 8).padding(.vertical, 3).background(Theme.line, in: Capsule())
                 }
                 .padding(.horizontal, 12).padding(.top, 8)
 
@@ -552,7 +548,7 @@ struct FlowChart: View {
                 .allowsHitTesting(layers.contains(.candle))
 
                 // 아래: 보이는 기간
-                Text(date(lo) + " – " + date(hi) + "  ·  " + String(localized: "밀기 · 두 손가락 확대"))
+                Text(date(lo) + " – " + date(hi) + "  ·  " + String(localized: "← 옆으로 밀면 지난 날"))
                     .appFont(10).monospacedDigit().foregroundStyle(Theme.muted).lineLimit(1)
                     .position(x: W / 2, y: g.size.height - botH / 2)
 

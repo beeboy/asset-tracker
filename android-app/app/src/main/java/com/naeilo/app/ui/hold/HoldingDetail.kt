@@ -95,6 +95,7 @@ import com.naeilo.app.ui.T
 import com.naeilo.app.ui.Theme
 import com.naeilo.app.ui.appFont
 import com.naeilo.app.ui.hexD
+import com.naeilo.app.ui.hex
 import com.naeilo.app.ui.ls
 import com.naeilo.app.ui.plainClickable
 import com.naeilo.app.ui.rememberPrefString
@@ -199,7 +200,7 @@ fun HoldingDetailView(m: AppModel,
                             // ios: Views/HoldingsView.swift:626,627,628,629,630
                             TagChart(points = pts, height = 140.dp, tags = listOf(
                                 TagChart.Tag(at = E, text = big(E), bg = Theme.ink, fg = Theme.card),
-                                TagChart.Tag(at = E, dy = 20.dp, text = (if (up) "+" else "−") + big(E - S), bg = if (up) TodayBox.upC else TodayBox.downC),
+                                TagChart.Tag(at = E, dy = 20.dp, text = (if (up) "+" else "−") + big(E - S), bg = if (up) hex(0xFF8A80) else hex(0x8CC4F2)),
                                 TagChart.Tag(at = S, text = big(S), bg = TagChart.gray),
                             ), left = startLabel(period), right = "지금", scrub = Scrub.period(period) { big(it) })
                         }

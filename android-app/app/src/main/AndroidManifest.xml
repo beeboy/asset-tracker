@@ -35,6 +35,29 @@
         <activity-alias android:name=".IconDefault" android:targetActivity=".MainActivity" android:exported="true" android:enabled="true" android:icon="@drawable/ic_launcher_star">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity-alias>
+        <!-- 2026-10-24: 상단 박스 테마 7개 아이콘 (iOS AppIcon-<테마>) -->
+        <activity-alias android:name=".Icon_jump" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false" android:icon="@drawable/ic_launcher_jump">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".Icon_horizon" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false" android:icon="@drawable/ic_launcher_horizon">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".Icon_tub" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false" android:icon="@drawable/ic_launcher_tub">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".Icon_dory" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false" android:icon="@drawable/ic_launcher_dory">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".Icon_pino" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false" android:icon="@drawable/ic_launcher_pino">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".Icon_mug" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false" android:icon="@drawable/ic_launcher_mug">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".Icon_bar" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false" android:icon="@drawable/ic_launcher_bar">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity-alias>
+        <!-- 예전 인물 아이콘 5개: 지우면 그 아이콘을 쓰던 사람의 런처에서 앱이 사라진다. 꺼진 채 두고, 켜져 있으면 앱이 켜질 때 기본 아이콘으로 돌린다 (IconFollow) -->
         <activity-alias android:name=".Icon_seri" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false" android:icon="@drawable/ic_launcher_seri">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity-alias>

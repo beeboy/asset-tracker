@@ -475,7 +475,7 @@ private fun Chip(text: String, t: String, d: GlanceView.Item, onTip: (GlanceTip)
 @Composable
 private fun GlanceCard(m: AppModel, d: GlanceView.Item, onTip: (GlanceTip) -> Unit) {
     val s = d.row.sym   // ios: Views/AnalysisDetail.swift:2385
-    // ios: Views/AnalysisDetail.swift:2386,2430,2431,2432
+    // ios: Views/AnalysisDetail.swift:2386
     Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(16.dp)).border(1.dp, Theme.border, RoundedCornerShape(16.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // ios: Views/AnalysisDetail.swift:2387
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -493,7 +493,7 @@ private fun GlanceCard(m: AppModel, d: GlanceView.Item, onTip: (GlanceTip) -> Un
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) { T("1년 최고가 대비", style = appFont(13f), color = Theme.sub); Info("dd", d, onTip) }   // ios: Views/AnalysisDetail.swift:2397
             // ios: Views/AnalysisDetail.swift:2398
             T(if (d.k.dd > -0.0005) "지금이 최고가" else AppModel.sgn(d.k.dd), style = appFont(28f, FontWeight.Bold), color = if (d.k.dd > -0.0005) Theme.up else Theme.down, roll = if (d.k.dd > -0.0005) "지금이 최고가" else AppModel.sgn(d.k.dd))
-            // ios: Views/AnalysisDetail.swift:2399,2411
+            // ios: Views/AnalysisDetail.swift:2399
             Column(Modifier.fillMaxWidth().background(Theme.bg, RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // ios: Views/AnalysisDetail.swift:2400
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

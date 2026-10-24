@@ -32,6 +32,7 @@ struct RootView: View {
         tabs
             .modifier(Hooks(model: model, phase: phase))
             .modifier(Links(model: model, phase: phase))
+            .modifier(IconFollow())
             // 처음 실행이면 첫 질문을 탭 화면 위에 덮는다
             .overlay { if showStart { StartView().transition(.opacity) } }
             .animation(.default, value: showStart)

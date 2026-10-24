@@ -49,7 +49,7 @@ enum WidgetBridge {
 
         // 요약: 최근 3달 평가액(만원), 3년 전망 부채꼴, 이번 주 예보
         // 최근 3달은 앱 내 길과 같은 식: 그날 수량(수량 기록) × 그날 종가 × 그날 원/달러 종가 + 현금. 마지막 점은 위젯이 지금 값으로 바꾼다
-        let hist: [Double] = m.isSample || m.route == .novice ? [] : m.pathSeries(from: Day.str(Calendar.current.date(byAdding: .month, value: -3, to: now)!)).map(\.v)
+        let hist: [Double] = m.isSample || m.bare ? [] : m.pathSeries(from: Day.str(Calendar.current.date(byAdding: .month, value: -3, to: now)!)).map(\.v)
         let spark: [Double?] = hist.isEmpty
             ? (0..<63).map { i in Optional((m.totalAt(1 - Double(62 - i) / 756) + cash) / 1e4) }   // 샘플·시작 전·과거 시세가 없을 때: 지금 수량 × 과거 가격
             : (hist.suffix(62) + [m.total + cash]).map { Optional($0 / 1e4) }

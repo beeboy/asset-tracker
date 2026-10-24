@@ -67,6 +67,7 @@ struct HomeView: View {
                 sceneSummary(look)
             }
         }
+        .boxScheme()
         .contextMenu {
             Picker(String(localized: "평가액 박스 모양"), selection: $lookRaw) {
                 ForEach(BoxLook.allCases) { Text($0.name).tag($0.rawValue) }
@@ -79,11 +80,11 @@ struct HomeView: View {
         let p = m.myPath, K = max(1, p.key), me = m.trackValue, n = p.need(p.start)
         let onPlan = n <= 0 || me >= n
         if m.isGoal {
-            let value = m.route == .plus || m.noviceOwn
+            let value = m.isGoal && !m.bare
             let years = Int(p.end.rounded(.up))
             let ticks: [(String, Double)] = years > 1 ? (1..<years).map { y in (String(localized: "\(String(describing: y))년"), p.need(Double(y)) / K) } : []
             return BoxScene(label: value ? String(localized: "평가액") : String(localized: "모은 돈"),
-                            amount: m.route == .novice ? m.goalSaved * 1e4 : m.total,
+                            amount: m.bare ? m.goalSaved * 1e4 : m.total,
                             f: me / K, plan: n > 0 ? n / K : nil, ticks: ticks,
                             target: AppModel.wonK(m.gK), half: AppModel.wonK(m.gK / 2),
                             today: value && m.route == .plus && m.total > 0 ? m.todayMove : nil,
@@ -99,7 +100,7 @@ struct HomeView: View {
 
     private func sceneSummary(_ look: BoxLook) -> some View {
         let reached = m.isGoal ? m.goalReached : m.cost <= m.total
-        let setMonthly = m.isGoal && !m.goalReached && m.route != .novice && m.gM <= 0
+        let setMonthly = m.isGoal && !m.goalReached && !m.bare && m.gM <= 0
         return VStack(spacing: 0) {
             SceneBox(look: look, s: scene, hide: $hideAmt)
                 .overlay(alignment: .bottomTrailing) {
@@ -117,16 +118,16 @@ struct HomeView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(Theme.night)
+        .background(BoxInk.card)
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
     // 목표 루트: 지금 평가액(플러스) 또는 모은 돈(시작 전)과 목표 진행
     private var goalSummary: some View {
-        let now = m.route == .novice ? m.goalSaved : m.total / 1e4, value = m.route == .plus || m.noviceOwn, prog = min(1, now / max(1, m.gK))
+        let now = m.bare ? m.goalSaved : m.total / 1e4, value = m.isGoal && !m.bare, prog = min(1, now / max(1, m.gK))
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(value ? String(localized: "평가액") : String(localized: "모은 돈")).foregroundStyle(Color(hex: 0xC9D0D6)).appFont(13)
+                Text(value ? String(localized: "평가액") : String(localized: "모은 돈")).foregroundStyle(BoxInk.sub).appFont(13)
                 Spacer()
                 if value { FreshLabel() }
             }
@@ -137,34 +138,35 @@ struct HomeView: View {
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
                     .contentShape(Rectangle()).onTapGesture { hideAmt.toggle() }
                 if value && m.cost > 0 {
-                    Text(AppModel.sgn(m.ret)).appFont(14, .bold).foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
+                    Text(AppModel.sgn(m.ret)).appFont(14, .bold).foregroundStyle(m.ret >= 0 ? BoxInk.up : BoxInk.down)
                         .lineLimit(1).minimumScaleFactor(0.6)
                 }
             }
             if value && m.route == .plus && m.total > 0 { todayLine }
             HStack {
                 Text("목표 \(AppModel.wonK(m.gK)) · \(m.gY)년"); Spacer()
-                Text(AppModel.pct(prog)).fontWeight(.bold).foregroundStyle(Theme.yellow)
+                Text(AppModel.pct(prog)).fontWeight(.bold).foregroundStyle(BoxInk.gold)
             }
-            .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-            ProgressBar(value: prog)
+            .appFont(13).foregroundStyle(BoxInk.sub)
+            ProgressBar(value: prog, height: 8, track: bx(0xE6E9EE, 0x3A4651))
             HStack {
                 Text(m.goalReached ? String(localized: "목표 \(String(describing: AppModel.wonK(m.gK))) 도달!")
-                     : m.route == .novice ? String(localized: "매달 \(String(describing: AppModel.wonK(m.gM))) 적립 · 다음 적립일 +\(String(describing: AppModel.wonK(m.gM)))")
+                     : m.bare ? String(localized: "매달 \(String(describing: AppModel.wonK(m.gM))) 적립 · 다음 적립일 +\(String(describing: AppModel.wonK(m.gM)))")
                      : AppModel.paceText(m.goalPace()) + (m.gM > 0 ? String(localized: " · 다음달 \(String(describing: AppModel.wonK(m.gM))) 적립") : String(localized: " · 추가 적립 미정")))
-                    .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
-                if !m.goalReached && m.route != .novice && m.gM <= 0 {
+                    .appFont(13).foregroundStyle(BoxInk.sub).fixedSize(horizontal: false, vertical: true)
+                if !m.goalReached && !m.bare && m.gM <= 0 {
                     Spacer(minLength: 8)
-                    NavigationLink(value: "goal") { Text("정하기 ›").appFont(13, .bold).foregroundStyle(Theme.yellow).frame(minHeight: 32) }
+                    NavigationLink(value: "goal") { Text("정하기 ›").appFont(13, .bold).foregroundStyle(BoxInk.gold).frame(minHeight: 32) }
                         .buttonStyle(.plain).accessibilityLabel("다음달 적립 정하기")
                 }
             }
             if m.goalReached { darkButton(String(localized: "다음 목표 정하기")) { m.suggestNextGoal(); m.homePath.append("goal") } }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(BoxInk.ink)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+        .background(BoxInk.card, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(BoxInk.cardRim, lineWidth: 1))
     }
 
     private var recoverSummary: some View {
@@ -172,7 +174,7 @@ struct HomeView: View {
         let needY = m.cost / (m.total / (1 + m.todayMove)) - 1
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("평가액 · 넣은 돈 \(AppModel.man(m.cost))").appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
+                Text("평가액 · 넣은 돈 \(AppModel.man(m.cost))").appFont(13).foregroundStyle(BoxInk.sub)
                 Spacer()
                 FreshLabel()
             }
@@ -181,34 +183,35 @@ struct HomeView: View {
                     .lineLimit(1).minimumScaleFactor(0.4).layoutPriority(1)
                     .contentShape(Rectangle()).onTapGesture { hideAmt.toggle() }
                 Text(AppModel.sgn(m.ret)).appFont(16, .bold).lineLimit(1).fixedSize()
-                    .foregroundStyle(m.ret >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
+                    .foregroundStyle(m.ret >= 0 ? BoxInk.up : BoxInk.down)
             }
             if m.total > 0 { todayLine }
             HStack {
                 Text("본전까지")
                 Spacer()
                 Text(need > 0 ? "+" + String(format: "%.1f", need * 100) + String(localized: "% 남음") : String(localized: "본전 도달"))
-                    .fontWeight(.bold).foregroundStyle(Theme.yellow)
+                    .fontWeight(.bold).foregroundStyle(BoxInk.gold)
             }
-            .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6))
-            ProgressBar(value: m.total / max(1, m.cost))
+            .appFont(13).foregroundStyle(BoxInk.sub)
+            ProgressBar(value: m.total / max(1, m.cost), height: 8, track: bx(0xE6E9EE, 0x3A4651))
             Text(need > 0
                  ? String(localized: "어제 \(String(describing: String(format: "%.1f", needY * 100)))% → 오늘 \(String(describing: String(format: "%.1f", need * 100)))%")
                  : String(localized: "본전 넘음 · 종목·친구 그대로"))
-                .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
+                .appFont(13).foregroundStyle(BoxInk.sub).fixedSize(horizontal: false, vertical: true)
             if need <= 0 { darkButton(String(localized: "목표 루트로")) { m.graduateToGoal(); m.tab = .board } }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(BoxInk.ink)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+        .background(BoxInk.card, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(BoxInk.cardRim, lineWidth: 1))
     }
 
     // 오늘 등락: 부호는 한 번만 (▲/▼ 뒤 퍼센트·금액은 부호 없이). 목표·회복 카드 공통
     private var todayLine: some View {
         let mv = m.todayMove, diff = m.stockTotal - m.stockTotal / (1 + mv)
         return Text(String(localized: "오늘 ") + (mv >= 0 ? "▲ " : "▼ ") + String(format: "%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)))
-            .appFont(13).foregroundStyle(mv >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2))
+            .appFont(13).foregroundStyle(mv >= 0 ? BoxInk.up : BoxInk.down)
     }
 
     // 어두운 요약 카드 안의 노란 버튼 (목표 루트로 · 다음 목표)
@@ -519,19 +522,23 @@ struct SampleNote: View {
     }
 }
 
-// MARK: 평가액 박스 모양 (2026-10-23). 사용자가 고른다 점프 직전(기본) → 지평선 → 욕조와 오리 → 진행 막대(예전 모습)
+// MARK: 평가액 박스 모양 (2026-10-23). 사용자가 고른다 점프 직전(기본) → 지평선 → 욕조와 오리 → 도리와 문어 → 피노키오와 새 → 철수와 영희 → 진행 막대(예전 모습)
+// 색은 테마마다 라이트·다크 한 쌍 (상단 박스 밝기 모드: 자동·밝게·어둡게, BoxScheme). 모양·움직임은 한 벌
 // 장면은 300×170 판에 그리고 박스 폭에 맞춰 늘린다. 글자는 장면 왼쪽 위에 겹친다.
 // 가로 위치·물높이 = 지금 값 ÷ 목표(목표 루트) 또는 넣은 돈(회복 루트). 계획 자리 = 내 길 계획선(적립 포함, myPath.need)의 오늘 값.
 // 움직임은 작은 조각만 반복 애니메이션 (장면 그림은 값이 바뀔 때만 다시 그린다). 동작 줄이기면 멈춘다
 
 enum BoxLook: String, CaseIterable, Identifiable {
-    case jump, horizon, tub, bar
+    case jump, horizon, tub, dory, pino, mug, bar
     var id: String { rawValue }
     var name: String {
         switch self {
         case .horizon: return String(localized: "지평선")
         case .jump: return String(localized: "점프 직전")
         case .tub: return String(localized: "욕조와 오리")
+        case .dory: return String(localized: "도리와 문어")
+        case .pino: return String(localized: "피노키오와 새")
+        case .mug: return String(localized: "철수와 영희")
         case .bar: return String(localized: "진행 막대")
         }
     }
@@ -554,7 +561,7 @@ struct BoxScene {
 
 /// 박스 오른쪽 위 '1분 전'. 오래되면 '10/21 23:50 기준' (Market.freshText)
 struct FreshLabel: View {
-    var color: Color = Color(hex: 0x8A93A6)
+    var color: Color = BoxInk.dim
     var body: some View {
         TimelineView(.everyMinute) { ctx in
             Text(Market.shared.freshText(now: ctx.date) ?? "").appFont(12).foregroundStyle(color).lineLimit(1)
@@ -568,8 +575,8 @@ struct SceneBox: View {
     @Binding var hide: Bool
 
     private var amountText: String { hide ? "••••••" : AppModel.man(s.amount) }
-    private static let dim = Color(hex: 0x8A93A6)
-    private static let upC = Color(hex: 0xFF8A80), downC = Color(hex: 0x8CC4F2)
+    private static let dim = BoxInk.dim
+    private static let upC = BoxInk.up, downC = BoxInk.down
 
     var body: some View {
         VStack(spacing: 0) {
@@ -579,6 +586,7 @@ struct SceneBox: View {
         }
         // 욕조: 아래 수익률 줄까지 타일 벽이 이어지게 (장면 타일과 같은 칸 크기)
         .background { if look == .tub { GeometryReader { g in TileWall(cell: 22 * g.size.width / 300) } } }
+        .boxScheme()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(s.label) \(amountText), \(s.target)까지 \(AppModel.pct(s.f)), \(s.status)")
     }
@@ -591,6 +599,9 @@ struct SceneBox: View {
                     switch look {
                     case .jump: JumpScene(s: s)
                     case .tub: TubScene(s: s)
+                    case .dory: DoryScene(s: s)
+                    case .pino: PinoScene(s: s)
+                    case .mug: MugScene(s: s)
                     default: HorizonScene(s: s)
                     }
                 }
@@ -605,7 +616,7 @@ struct SceneBox: View {
                 } else {
                     VStack(alignment: .leading, spacing: 2) {
                         head
-                        amountView(30, color: .white)
+                        amountView(30, color: BoxInk.ink)
                         subLine(13)
                     }
                     .padding(.horizontal, 18).padding(.top, 12)
@@ -633,20 +644,22 @@ struct SceneBox: View {
 /// 욕조 뒤 남색 타일 벽 (cell = 타일 한 칸 크기)
 struct TileWall: View {
     let cell: CGFloat
+    @Environment(\.self) private var env
     var body: some View {
-        Canvas { ctx, size in
-            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: 0x1B2744)))
+        let bg = bx(0xE2ECF8, 0x1B2744).fixed(env), joint = bx(0xC6D6EB, 0x2A3A60).fixed(env)
+        return Canvas { ctx, size in
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(bg))
             guard cell > 1 else { return }
             var grid = Path(), x: CGFloat = 0, y: CGFloat = 0
             while x <= size.width { grid.move(to: CGPoint(x: x, y: 0)); grid.addLine(to: CGPoint(x: x, y: size.height)); x += cell }
             while y <= size.height { grid.move(to: CGPoint(x: 0, y: y)); grid.addLine(to: CGPoint(x: size.width, y: y)); y += cell }
-            ctx.stroke(grid, with: .color(Color(hex: 0x2A3A60)), lineWidth: 1.5 * cell / 22)
+            ctx.stroke(grid, with: .color(joint), lineWidth: 1.5 * cell / 22)
         }
     }
 }
 
 /// 장면 그림 도구: 300×170 판 좌표
-private enum Sk {
+enum Sk {
     static func p(_ pts: [(CGFloat, CGFloat)]) -> Path {
         var path = Path()
         for (i, q) in pts.enumerated() { i == 0 ? path.move(to: CGPoint(x: q.0, y: q.1)) : path.addLine(to: CGPoint(x: q.0, y: q.1)) }
@@ -665,11 +678,11 @@ private enum Sk {
     }
     /// 오늘 등락 글: ▼4.3%
     static func today(_ v: Double) -> String { String(localized: "오늘 ") + (v >= 0 ? "▲" : "▼") + String(format: "%.1f%%", abs(v) * 100) }
-    static func todayColor(_ v: Double) -> Color { v >= 0 ? Color(hex: 0xFF8A80) : Color(hex: 0x9EC1FF) }
+    static func todayColor(_ v: Double) -> Color { v >= 0 ? bx(0xC0392B, 0xFF8A80) : bx(0x1B5E96, 0x9EC1FF) }
 }
 
 /// 반복 움직임 하나 (켜지면 on 이 true 로 돌고 되돌기를 되풀이한다)
-private struct Loop<V: View>: View {
+struct Loop<V: View>: View {
     var duration: Double
     var reverse = true
     var curve: Animation? = nil
@@ -687,39 +700,50 @@ private struct Loop<V: View>: View {
 // MARK: 시안 1 지평선: 새벽빛 밤하늘, 출발~목표 지평선(1년·2년 눈금), 숨 쉬는 내 불빛과 점선 계획 자리, 오늘 등락은 작은 물결
 private struct HorizonScene: View {
     let s: BoxScene
+    @Environment(\.colorScheme) private var cs
     var body: some View {
+        let dk = cs == .dark
         let x0: CGFloat = 10, x1: CGFloat = 290, y: CGFloat = 130
         let X = { (f: Double) in x0 + (x1 - x0) * CGFloat(min(1, max(0, f))) }
         let me = X(s.f)
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
                 let all = Path(CGRect(x: 0, y: 0, width: 300, height: 170))
-                ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: 0x0C111D), Color(hex: 0x1C2747)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
-                ctx.fill(all, with: .radialGradient(Gradient(colors: [Color(hex: 0xFFD98A).opacity(0.4), Color(hex: 0xFFD98A).opacity(0)]), center: CGPoint(x: 300, y: 136), startRadius: 0, endRadius: 190))
-                Sk.stars(ctx)
-                ctx.stroke(Sk.line(CGPoint(x: x0, y: y), CGPoint(x: x1, y: y)), with: .color(Color(hex: 0x4A5672)), lineWidth: 1.5)
+                if dk {
+                    ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: 0x0C111D), Color(hex: 0x1C2747)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
+                    ctx.fill(all, with: .radialGradient(Gradient(colors: [Color(hex: 0xFFD98A).opacity(0.4), Color(hex: 0xFFD98A).opacity(0)]), center: CGPoint(x: 300, y: 136), startRadius: 0, endRadius: 190))
+                    Sk.stars(ctx)
+                } else {
+                    // 라이트: 새벽 대신 맑은 아침빛
+                    ctx.fill(all, with: .linearGradient(Gradient(colors: [Color(hex: 0xEAF0F9), Color(hex: 0xF8F0E5)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
+                    ctx.fill(all, with: .radialGradient(Gradient(colors: [Color(hex: 0xFFBA68).opacity(0.55), Color(hex: 0xFFBA68).opacity(0)]), center: CGPoint(x: 300, y: 136), startRadius: 0, endRadius: 190))
+                }
+                let line = Color(hex: dk ? 0x4A5672 : 0xB4BDCC), road = Color(hex: dk ? 0xF2C14E : 0xE0A21E), lab = Color(hex: dk ? 0x8A93A6 : 0x5F6670)
+                ctx.stroke(Sk.line(CGPoint(x: x0, y: y), CGPoint(x: x1, y: y)), with: .color(line), lineWidth: 1.5)
                 if me > x0 {
                     ctx.stroke(Sk.line(CGPoint(x: x0, y: y), CGPoint(x: me, y: y)),
-                               with: .linearGradient(Gradient(colors: [Color(hex: 0xF2C14E).opacity(0.15), Color(hex: 0xF2C14E).opacity(0.9)]), startPoint: CGPoint(x: x0, y: y), endPoint: CGPoint(x: me, y: y)), lineWidth: 2.5)
+                               with: .linearGradient(Gradient(colors: [road.opacity(dk ? 0.15 : 0.2), road.opacity(dk ? 0.9 : 1)]), startPoint: CGPoint(x: x0, y: y), endPoint: CGPoint(x: me, y: y)), lineWidth: 2.5)
                 }
                 for (t, f) in s.ticks where f > 0 && f < 1 {
-                    ctx.stroke(Sk.line(CGPoint(x: X(f), y: y - 4), CGPoint(x: X(f), y: y + 4)), with: .color(Color(hex: 0x4A5672)), lineWidth: 1)
-                    Sk.text(ctx, t, X(f), 150, Color(hex: 0x8A93A6), anchor: .center)
+                    ctx.stroke(Sk.line(CGPoint(x: X(f), y: y - 4), CGPoint(x: X(f), y: y + 4)), with: .color(line), lineWidth: 1)
+                    Sk.text(ctx, t, X(f), 150, lab, anchor: .center)
                 }
-                ctx.fill(Sk.dot(x1, y, 3), with: .color(Color(hex: 0xFFD98A)))
+                ctx.fill(Sk.dot(x1, y, 3), with: .color(Color(hex: dk ? 0xFFD98A : 0xE0A21E)))
                 if let p = s.plan {
-                    ctx.stroke(Sk.dot(X(p), y, 7), with: .color(Color(hex: 0x8A93A6)), style: StrokeStyle(lineWidth: 1.2, dash: [2, 2]))
+                    ctx.stroke(Sk.dot(X(p), y, 7), with: .color(Color(hex: dk ? 0x8A93A6 : 0x6B7480)), style: StrokeStyle(lineWidth: 1.2, dash: [2, 2]))
                 }
-                Sk.text(ctx, String(localized: "출발"), x0, 150, Color(hex: 0x8A93A6))
-                Sk.text(ctx, s.target, x1, 150, Color(hex: 0xFFD98A), anchor: .trailing)
+                Sk.text(ctx, String(localized: "출발"), x0, 150, lab)
+                Sk.text(ctx, s.target, x1, 150, Color(hex: dk ? 0xFFD98A : 0x9A6A00), bold: !dk, anchor: .trailing)
             }
             // 숨 쉬는 내 불빛
             Loop(duration: 1.5) { on in
-                Circle().fill(RadialGradient(colors: [Color(hex: 0xF2C14E).opacity(0.7), Color(hex: 0xF2C14E).opacity(0)], center: .center, startRadius: 0, endRadius: 16))
+                Circle().fill(RadialGradient(colors: [Color(hex: dk ? 0xF2C14E : 0xF2B42E).opacity(dk ? 0.7 : 0.75), Color(hex: dk ? 0xF2C14E : 0xF2B42E).opacity(0)], center: .center, startRadius: 0, endRadius: 16))
                     .frame(width: 32, height: 32).scaleEffect(on ? 1.25 : 1).opacity(on ? 0.35 : 1)
             }
             .position(x: me, y: y)
-            Circle().fill(Color(hex: 0xFFF4D6)).frame(width: 9, height: 9).position(x: me, y: y)
+            Circle().fill(Color(hex: dk ? 0xFFF4D6 : 0xE8A417)).frame(width: 9, height: 9)
+                .overlay { if !dk { Circle().stroke(.white, lineWidth: 1.5) } }
+                .position(x: me, y: y)
             if let v = s.today {
                 // 오늘 등락: 내 불빛 위 작은 물결
                 Loop(duration: 2) { on in
@@ -763,24 +787,25 @@ private struct TubScene: View {
         return p
     }()
 
+    @Environment(\.colorScheme) private var cs
     var body: some View {
-        let w = Self.level(s.f)
+        let w = Self.level(s.f), dk = cs == .dark
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
                 // 타일 벽
-                ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .color(Color(hex: 0x1B2744)))
+                ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .color(Color(hex: dk ? 0x1B2744 : 0xE2ECF8)))
                 var grid = Path()
                 for i in 0...14 { let x = CGFloat(i) * 22; grid.move(to: CGPoint(x: x, y: 0)); grid.addLine(to: CGPoint(x: x, y: 170)) }
                 for j in 0...8 { let y = CGFloat(j) * 22; grid.move(to: CGPoint(x: 0, y: y)); grid.addLine(to: CGPoint(x: 300, y: y)) }
-                ctx.stroke(grid, with: .color(Color(hex: 0x2A3A60)), lineWidth: 1.5)
+                ctx.stroke(grid, with: .color(Color(hex: dk ? 0x2A3A60 : 0xC6D6EB)), lineWidth: 1.5)
                 // 욕조 안쪽 (눈금은 물 위에 따로 그린다)
                 var inner = ctx
                 inner.clip(to: Self.tub)
-                inner.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .color(Color(hex: 0xEEF2F8)))
+                inner.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .color(Color(hex: dk ? 0xEEF2F8 : 0xFFFFFF)))
             }
             // 물: 욕조 안에서 출렁인다
             Loop(duration: 3, reverse: false, curve: .linear(duration: 3)) { on in
-                TubWater().fill(LinearGradient(colors: [Color(hex: 0x7CC8F0).opacity(0.85), Color(hex: 0x3F7FC0).opacity(0.9)], startPoint: .top, endPoint: .bottom))
+                TubWater().fill(LinearGradient(colors: [Color(hex: dk ? 0x7CC8F0 : 0x8CCFF2).opacity(dk ? 0.85 : 0.9), Color(hex: dk ? 0x3F7FC0 : 0x4C8CCB).opacity(0.9)], startPoint: .top, endPoint: .bottom))
                     .frame(width: 400, height: 170 - w + 6)
                     .offset(x: on ? -10 : -70, y: w - 6)
             }
@@ -791,19 +816,21 @@ private struct TubScene: View {
                 var inner = ctx
                 inner.clip(to: Self.tub)
                 let mark = { (y: CGFloat, dry: Color) in y > w ? Color.white.opacity(0.9) : dry }
-                inner.stroke(Sk.line(CGPoint(x: 240, y: 70), CGPoint(x: 254, y: 70)), with: .color(mark(70, Color(hex: 0x7D889E))), lineWidth: 1.6)
-                Sk.text(inner, s.target, 237, 70, mark(70, Color(hex: 0x7D889E)), size: 8.5, bold: true, anchor: .trailing)
+                inner.stroke(Sk.line(CGPoint(x: 240, y: 70), CGPoint(x: 254, y: 70)), with: .color(mark(70, Color(hex: dk ? 0x7D889E : 0x6B7690))), lineWidth: 1.6)
+                Sk.text(inner, s.target, 237, 70, mark(70, Color(hex: dk ? 0x7D889E : 0x5A6580)), size: 8.5, bold: true, anchor: .trailing)
                 for (t, y) in [("75%", 90.0), ("25%", 130.0)] as [(String, CGFloat)] {
                     inner.stroke(Sk.line(CGPoint(x: 246, y: y), CGPoint(x: 254, y: y)), with: .color(mark(y, Color(hex: 0x9AA6BD))), lineWidth: 1.2)
-                    Sk.text(inner, t, 243, y, mark(y, Color(hex: 0x9AA6BD)), size: 8, anchor: .trailing)
+                    Sk.text(inner, t, 243, y, mark(y, Color(hex: dk ? 0x9AA6BD : 0x7D889E)), size: 8, anchor: .trailing)
                 }
                 if let p = s.plan {
                     let y = Self.level(p)
-                    inner.stroke(Sk.line(CGPoint(x: 236, y: y), CGPoint(x: 254, y: y)), with: .color(Color(hex: 0xC98A00)), lineWidth: 2.2)
-                    Sk.text(inner, String(localized: "계획"), 233, y - 4, y - 4 > w ? Color(hex: 0xFFE08A) : Color(hex: 0xC98A00), size: 8.5, bold: true, anchor: .trailing)
+                    inner.stroke(Sk.line(CGPoint(x: 236, y: y), CGPoint(x: 254, y: y)), with: .color(Color(hex: dk ? 0xC98A00 : 0xB07A00)), lineWidth: 2.2)
+                    Sk.text(inner, String(localized: "계획"), 233, y - 4, y - 4 > w ? Color(hex: 0xFFE08A) : Color(hex: dk ? 0xC98A00 : 0x9A6A00), size: 8.5, bold: true, anchor: .trailing)
                 }
-                ctx.stroke(Self.tub, with: .color(.white), lineWidth: 3)
-                ctx.fill(Path(roundedRect: CGRect(x: 32, y: 46, width: 236, height: 8), cornerRadius: 4), with: .color(.white))
+                ctx.stroke(Self.tub, with: .color(dk ? .white : Color(hex: 0xB7CAE3)), lineWidth: 3)
+                let rim = Path(roundedRect: CGRect(x: 32, y: 46, width: 236, height: 8), cornerRadius: 4)
+                ctx.fill(rim, with: .color(.white))
+                if !dk { ctx.stroke(rim, with: .color(Color(hex: 0xB7CAE3)), lineWidth: 1) }
             }
             // 오리 = 나
             Loop(duration: 1.3) { on in Duck().rotationEffect(.degrees(on ? -2 : 0)).offset(y: on ? 2.5 : 0) }
@@ -827,7 +854,7 @@ private struct TubWater: Shape {
     }
 }
 
-private struct Duck: View {
+struct Duck: View {
     var body: some View {
         Canvas { ctx, _ in
             // 판 좌표 (136~177, 96~130) 을 (0,0) 기준으로
@@ -848,35 +875,39 @@ private struct Duck: View {
 // MARK: 시안 4 점프 직전: 밤 도로를 은빛 쐐기형 차가 불꽃 두 줄을 끌며 오른쪽 파란 일렁임(목표)으로. 앞코 = 내 자리, 이정표 봉 = 계획
 private struct JumpScene: View {
     let s: BoxScene
+    @Environment(\.colorScheme) private var cs
     var body: some View {
+        let dk = cs == .dark
         let x0: CGFloat = 20, x1: CGFloat = 284
         let X = { (f: Double) in x0 + (x1 - x0) * CGFloat(min(1, max(0, f))) }
         let nose = X(s.f), rear = nose - 85
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
-                ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [Color(hex: 0x0B1022), Color(hex: 0x232A52)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
-                for (x, y, r) in [(200, 18, 0.9), (240, 44, 0.6), (170, 40, 0.5)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(Sk.dot(x, y, r), with: .color(Color(hex: 0xC9D3EA))) }
-                ctx.fill(Path(CGRect(x: 0, y: 128, width: 300, height: 42)), with: .color(Color(hex: 0x151925)))
-                ctx.stroke(Sk.line(CGPoint(x: 0, y: 160), CGPoint(x: 300, y: 160)), with: .color(Color(hex: 0x3A4155)), style: StrokeStyle(lineWidth: 1.5, dash: [10, 8]))
-                Sk.text(ctx, s.target, x1, 62, Color(hex: 0x9FDCFF), size: 10, bold: true, anchor: .center)
+                // 라이트: 하늘만 밝히고 도로는 어둡게 (차선 불빛이 묻히지 않게)
+                ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x0B1022 : 0xE4EAF7), Color(hex: dk ? 0x232A52 : 0xBAC7E8)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 170)))
+                if dk { for (x, y, r) in [(200, 18, 0.9), (240, 44, 0.6), (170, 40, 0.5)] as [(CGFloat, CGFloat, CGFloat)] { ctx.fill(Sk.dot(x, y, r), with: .color(Color(hex: 0xC9D3EA))) } }
+                ctx.fill(Path(CGRect(x: 0, y: 128, width: 300, height: 42)), with: .color(Color(hex: dk ? 0x151925 : 0x2F3650)))
+                ctx.stroke(Sk.line(CGPoint(x: 0, y: 160), CGPoint(x: 300, y: 160)), with: .color(Color(hex: dk ? 0x3A4155 : 0x5A6585)), style: StrokeStyle(lineWidth: 1.5, dash: [10, 8]))
+                Sk.text(ctx, s.target, x1, 62, Color(hex: dk ? 0x9FDCFF : 0x1E5FA8), size: 10, bold: true, anchor: .center)
+                let tick = Color(hex: dk ? 0x6B7489 : 0xAEB6C6)
                 for (i, f) in [0, 0.25, 0.5, 0.75].enumerated() {
                     let x = X(f), long = i % 2 == 0
-                    ctx.stroke(Sk.line(CGPoint(x: x, y: 128), CGPoint(x: x, y: long ? 134 : 131)), with: .color(Color(hex: 0x6B7489)), lineWidth: 1)
+                    ctx.stroke(Sk.line(CGPoint(x: x, y: 128), CGPoint(x: x, y: long ? 134 : 131)), with: .color(tick), lineWidth: 1)
                 }
-                Sk.text(ctx, String(localized: "출발"), x0, 166, Color(hex: 0x6B7489), size: 8, anchor: .center)
-                Sk.text(ctx, s.half, X(0.5), 166, Color(hex: 0x6B7489), size: 8, anchor: .center)
+                Sk.text(ctx, String(localized: "출발"), x0, 166, tick, size: 8, anchor: .center)
+                Sk.text(ctx, s.half, X(0.5), 166, tick, size: 8, anchor: .center)
                 if let p = s.plan {
-                    let x = X(p)
-                    ctx.stroke(Sk.line(CGPoint(x: x, y: 96), CGPoint(x: x, y: 131)), with: .color(Color(hex: 0x9AA2B2)), lineWidth: 2)
+                    let x = X(p), pole = Color(hex: dk ? 0x9AA2B2 : 0x6B7489)
+                    ctx.stroke(Sk.line(CGPoint(x: x, y: 96), CGPoint(x: x, y: 131)), with: .color(pole), lineWidth: 2)
                     let sign = Path(roundedRect: CGRect(x: x - 12, y: 86, width: 24, height: 13), cornerRadius: 2)
-                    ctx.fill(sign, with: .color(Color(hex: 0x2B3350))); ctx.stroke(sign, with: .color(Color(hex: 0x9AA2B2)), lineWidth: 1)
-                    Sk.text(ctx, String(localized: "계획"), x, 92.5, Color(hex: 0xFFD98A), size: 8, anchor: .center)
+                    ctx.fill(sign, with: .color(Color(hex: dk ? 0x2B3350 : 0xFFFFFF))); ctx.stroke(sign, with: .color(pole), lineWidth: 1)
+                    Sk.text(ctx, String(localized: "계획"), x, 92.5, Color(hex: dk ? 0xFFD98A : 0x9A6A00), size: 8, bold: !dk, anchor: .center)
                 }
                 if let v = s.today { Sk.text(ctx, Sk.today(v), 6, 120, Sk.todayColor(v)) }
             }
             // 목표: 파란 일렁임
             Loop(duration: 1.2) { on in
-                Ellipse().fill(EllipticalGradient(colors: [Color(hex: 0xE8F7FF), Color(hex: 0x5FC8FF).opacity(0.8), Color(hex: 0x2A6CFF).opacity(0)], center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5))
+                Ellipse().fill(EllipticalGradient(colors: [Color(hex: dk ? 0xE8F7FF : 0xFFFFFF), Color(hex: 0x5FC8FF).opacity(dk ? 0.8 : 0.85), Color(hex: 0x2A6CFF).opacity(0)], center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5))
                     .frame(width: 32, height: 84).scaleEffect(x: on ? 1.25 : 1, y: 1).opacity(on ? 0.75 : 1)
             }
             .position(x: x1, y: 112)
@@ -901,16 +932,19 @@ private struct JumpScene: View {
 }
 
 /// 은빛 쐐기형 차 (시안 4 의 차를 0.7 배로, 앞코가 오른쪽 끝)
-private struct Car: View {
+struct Car: View {
+    @Environment(\.colorScheme) private var cs
     var body: some View {
-        Canvas { ctx, _ in
+        let dk = cs == .dark
+        return Canvas { ctx, _ in
             ctx.scaleBy(x: 0.7, y: 0.7)
             ctx.translateBy(x: -100, y: -97)
             let body = Sk.p([(100, 138), (100, 123), (128, 121), (146, 109), (168, 108), (188, 121), (220, 128), (221, 133), (214, 138)])
-            ctx.fill(body, with: .linearGradient(Gradient(colors: [Color(hex: 0xEEF1F6), Color(hex: 0x8D95A6)]), startPoint: CGPoint(x: 0, y: 108), endPoint: CGPoint(x: 0, y: 138)))
+            ctx.fill(body, with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0xEEF1F6 : 0xF4F6FA), Color(hex: 0x8D95A6)]), startPoint: CGPoint(x: 0, y: 108), endPoint: CGPoint(x: 0, y: 138)))
+            if !dk { ctx.stroke(body, with: .color(Color(hex: 0x6B7489)), lineWidth: 0.8) }   // 라이트: 옅은 외곽선
             ctx.fill(Sk.p([(100, 133), (220, 133), (214, 138), (100, 138)]), with: .color(Color(hex: 0x2A2E38)))
             ctx.stroke(Sk.line(CGPoint(x: 100, y: 128), CGPoint(x: 220, y: 130)), with: .color(Color(hex: 0xAAB1BF)), lineWidth: 0.8)
-            ctx.fill(Sk.p([(150, 111), (167, 111), (180, 120), (146, 120)]), with: .color(Color(hex: 0x2B3550)))
+            ctx.fill(Sk.p([(150, 111), (167, 111), (180, 120), (146, 120)]), with: .color(Color(hex: dk ? 0x2B3550 : 0x3A4766)))
             ctx.stroke(Sk.line(CGPoint(x: 158, y: 111), CGPoint(x: 156, y: 120)), with: .color(Color(hex: 0x9AA2B2)), lineWidth: 1)
             for x in [131.0, 135, 139] as [CGFloat] { ctx.stroke(Sk.line(CGPoint(x: x, y: 120), CGPoint(x: x + 6, y: 115)), with: .color(Color(hex: 0x59606F)), lineWidth: 1) }
             ctx.fill(Path(CGRect(x: 113, y: 131, width: 18, height: 9)), with: .color(Color(hex: 0x151925)))
@@ -925,7 +959,7 @@ private struct Car: View {
                 var arc = Path()
                 arc.move(to: CGPoint(x: 222, y: 121)); arc.addLine(to: CGPoint(x: 228, y: 116)); arc.addLine(to: CGPoint(x: 226, y: 123)); arc.addLine(to: CGPoint(x: 234, y: 119))
                 arc.move(to: CGPoint(x: 152, y: 104)); arc.addLine(to: CGPoint(x: 156, y: 98)); arc.addLine(to: CGPoint(x: 157, y: 104)); arc.addLine(to: CGPoint(x: 162, y: 99))
-                ctx.stroke(arc, with: .color(Color(hex: 0x7FD4FF)), lineWidth: 1.2)
+                ctx.stroke(arc, with: .color(Color(hex: dk ? 0x7FD4FF : 0x2A8FE0)), lineWidth: 1.2)
             }
         }
     }

@@ -153,7 +153,7 @@ struct AnalysisView: View {
                 AppHeader(tab: String(localized: "분석")).padding(.horizontal, -16)
                 SampleNote()
                 Button { sheet = .forecast } label: {
-                    ChanceBox(look: BoxLook(rawValue: lookRaw) ?? .jump, d: chance(p, f, pPlan, pro: pro))
+                    ChanceBox(look: BoxLook(rawValue: lookRaw) ?? .jump, d: chance(p, f, pPlan, pro: pro)).boxScheme()
                 }
                 .buttonStyle(.plain)
                 tug(pPlan, known: pro && f.exact)
@@ -481,7 +481,7 @@ struct AnalysisView: View {
             HStack(spacing: 8) {
                 Text("● 보통 · ─ 10번 중 8번 · ┊ 목표일").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
-                if m.route != .novice && !m.rows.isEmpty {
+                if !m.rows.isEmpty {   // 처음 루트도 종목을 담았으면 보인다
                     Button { comparing = true } label: {
                         Text("구성 변경").appFont(12, .bold).foregroundStyle(.white).lineLimit(1).fixedSize()
                             .padding(.horizontal, 12).frame(minHeight: 30).background(Theme.teal, in: Capsule())
@@ -542,8 +542,9 @@ struct ChanceBox: View {
     }
     let look: BoxLook
     let d: Data
-    private static let dim = Color(hex: 0xC9D0D6)
-    private static let dotC = [Color(hex: 0x8A96A3), Color(hex: 0xC9D0D6), Color(hex: 0x3FB3A3)]
+    private static let dim = BoxInk.sub
+    private static let dotC = [bx(0x7D8794, 0x8A96A3), bx(0xB5BDC7, 0xC9D0D6), bx(0x2E9C8C, 0x3FB3A3)]
+    private static let labC = [bx(0x5F6670, 0x8A96A3), bx(0x6B7480, 0xC9D0D6), BoxInk.good]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -574,14 +575,17 @@ struct ChanceBox: View {
     private var title: some View {
         Group {
             if let v = d.verdict {
-                Text(String(localized: "가능성 \(String(describing: v)) · ")) + Text(d.pct).foregroundColor(Theme.yellow)
+                Text(String(localized: "가능성 \(String(describing: v)) · ")) + Text(d.pct).foregroundColor(BoxInk.gold)
             } else {
                 Text(d.status)
             }
         }
-        .font(.system(size: 30, weight: .heavy)).tracking(-0.5).foregroundStyle(.white)   // 흐름 탭 큰 흐름 박스와 같은 크기
+        .font(.system(size: 30, weight: .heavy)).tracking(-0.5).foregroundStyle(BoxInk.ink)   // 흐름 탭 큰 흐름 박스와 같은 크기
         .lineLimit(1).minimumScaleFactor(0.6)
     }
+
+    @Environment(\.colorScheme) private var cs
+    private var dk: Bool { cs == .dark }
 
     private var bar: some View {
         GeometryReader { g in
@@ -592,15 +596,28 @@ struct ChanceBox: View {
             ZStack(alignment: .topLeading) {
                 ProgressTrack(look: look, fill: d.now).frame(width: w, height: 14).offset(y: 30)
                 if let gx = d.goal {
-                    Rectangle().fill(.white).frame(width: 2, height: 44).offset(x: X(gx) - 1, y: 4)
-                    Text(d.goalLabel).font(.system(size: 10)).foregroundStyle(.white).fixedSize()
+                    // 목표선 (점프 직전 라이트는 어두운 도로 위라 흰 선 + 옅은 그림자)
+                    Rectangle().fill(look == .jump ? bx(0xFFFFFF, 0xFFFFFF) : BoxInk.ink).frame(width: 2, height: 44)
+                        .shadow(color: look == .jump ? bx(0x16181D, 0.45, 0x000000, 0) : .clear, radius: 0.5)
+                        .offset(x: X(gx) - 1, y: 4)
+                    Text(d.goalLabel).font(.system(size: 10, weight: dk ? .regular : .bold)).foregroundStyle(BoxInk.ink).fixedSize()
                         .position(x: min(w - 16, max(16, X(gx))), y: 56)
+                    // 목표선 옆에 서는 것 (오페라하우스·출구·일렁임·해·거품)
+                    TrackBuddy(look: look, goal: true)
+                        .frame(width: 60, height: 40, alignment: .bottomTrailing)
+                        .position(x: X(gx) - 3 - 30, y: 44 - 20)
                 }
                 ForEach(xs.indices, id: \.self) { i in
                     let r: CGFloat = i == 2 ? 8 : 7
-                    Circle().fill(Self.dotC[i]).frame(width: r * 2, height: r * 2).position(x: xs[i], y: 19)
-                    Text(names[i]).font(.system(size: 10)).foregroundStyle(Self.dotC[i]).fixedSize().position(x: lx[i], y: 0)
+                    Circle().fill(Self.dotC[i]).frame(width: r * 2, height: r * 2)
+                        .overlay { if i == 1 && !dk { Circle().stroke(.white, lineWidth: 1.5) } }
+                        .position(x: xs[i], y: 19)
+                    Text(names[i]).font(.system(size: 10)).foregroundStyle(Self.labC[i]).fixedSize().position(x: lx[i], y: 0)
                 }
+                // 지금 자리에 서는 작은 인물
+                TrackBuddy(look: look)
+                    .frame(width: 60, height: 40, alignment: .bottom)
+                    .position(x: min(w - 14, max(14, X(d.now))), y: 30 - 20)
             }
         }
     }
@@ -623,6 +640,7 @@ struct ProgressTrack: View {
     let look: BoxLook
     let fill: Double
     private static let on = Theme.yellow
+    @Environment(\.self) private var env
     private var f: CGFloat { CGFloat(min(1, max(0, fill))) }
 
     var body: some View {
@@ -632,16 +650,19 @@ struct ProgressTrack: View {
         case .tub:
             GeometryReader { g in
                 ZStack(alignment: .leading) {
-                    Color(hex: 0x3C5F9C)
+                    bx(0xCFDDF0, 0x3C5F9C)
                     Self.on.frame(width: g.size.width * f)
                 }
             }
             .frame(height: 8).clipShape(RoundedRectangle(cornerRadius: 4))
-            .padding(3).background(Color(hex: 0xEEF2F8), in: RoundedRectangle(cornerRadius: 7))
+            .padding(3).background(bx(0xFFFFFF, 0xEEF2F8), in: RoundedRectangle(cornerRadius: 7))
+            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(bx(0xB7CAE3, 1, 0xB7CAE3, 0), lineWidth: 1))
+        case .dory, .pino, .mug:
+            ThemeTrack(look: look, f: f, on: Self.on)
         case .bar:
             GeometryReader { g in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color(hex: 0x2E3B48))
+                    Capsule().fill(bx(0xE6E9EE, 0x2E3B48))
                     Capsule().fill(Self.on).frame(width: g.size.width * f)
                 }
             }
@@ -651,10 +672,11 @@ struct ProgressTrack: View {
 
     /// 점프 직전: 박스 폭 끝까지 이어진 밤 도로, 가운데 점선. 지금까지 온 칸은 노랗게 빛난다
     private var road: some View {
-        Canvas { ctx, size in
+        let bg = bx(0x2F3650, 0x151925).fixed(env), top = bx(0x2F3650, 0x232A3E).fixed(env), lane = bx(0x5A6585, 0x3A4466).fixed(env)
+        return Canvas { ctx, size in
             let pad: CGFloat = 18, w = size.width - pad * 2, cut = pad + w * f
-            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: 0x151925)))
-            ctx.fill(Path(CGRect(x: 0, y: 0, width: size.width, height: 1)), with: .color(Color(hex: 0x232A3E)))
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(bg))
+            ctx.fill(Path(CGRect(x: 0, y: 0, width: size.width, height: 1)), with: .color(top))
             let dash: CGFloat = 14, gap: CGFloat = 7, h: CGFloat = 3, y = size.height / 2 - h / 2
             var x: CGFloat = 0
             while x < w {
@@ -664,7 +686,7 @@ struct ProgressTrack: View {
                     l.addFilter(.shadow(color: Self.on, radius: 2))
                     l.fill(Path(CGRect(x: a, y: y, width: min(b, cut) - a, height: h)), with: .color(Self.on))
                 }
-                if cut < b { ctx.fill(Path(CGRect(x: max(a, cut), y: y, width: b - max(a, cut), height: h)), with: .color(Color(hex: 0x3A4466))) }
+                if cut < b { ctx.fill(Path(CGRect(x: max(a, cut), y: y, width: b - max(a, cut), height: h)), with: .color(lane)) }
                 x += dash + gap
             }
         }
@@ -673,7 +695,8 @@ struct ProgressTrack: View {
 
     /// 지평선: 물결 한 줄, 지금까지는 노랑
     private var wave: some View {
-        Canvas { ctx, size in
+        let base = bx(0xC9D0DA, 0x3A4656).fixed(env)
+        return Canvas { ctx, size in
             var p = Path(), x: CGFloat = 0, up = true
             let mid = size.height / 2
             p.move(to: CGPoint(x: 0, y: mid))
@@ -681,7 +704,7 @@ struct ProgressTrack: View {
                 p.addQuadCurve(to: CGPoint(x: x + 12, y: mid), control: CGPoint(x: x + 6, y: up ? mid - 6 : mid + 6))
                 x += 12; up.toggle()
             }
-            ctx.stroke(p, with: .color(Color(hex: 0x3A4656)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+            ctx.stroke(p, with: .color(base), style: StrokeStyle(lineWidth: 3, lineCap: .round))
             var l = ctx
             l.clip(to: Path(CGRect(x: -4, y: -4, width: size.width * f + 4, height: size.height + 8)))
             l.addFilter(.shadow(color: Self.on, radius: 3))

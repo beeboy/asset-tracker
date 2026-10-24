@@ -246,6 +246,7 @@ struct SettingsGroupView: View {
     @Environment(AppModel.self) private var m
     let kind: SettingsRoute
     @AppStorage(BoxLook.key) private var boxLook = BoxLook.jump.rawValue
+    @AppStorage(BoxScheme.key) private var boxScheme = BoxScheme.system.rawValue
 
     static func routeLine(_ m: AppModel) -> String {
         m.route == .recover ? String(localized: "본전부터 되찾는 중이에요") : m.route == .plus ? String(localized: "목표를 향해 가는 중이에요") : String(localized: "아직 첫 단계예요")
@@ -276,6 +277,9 @@ struct SettingsGroupView: View {
                     // 홈 평가액 박스 모양 (홈 박스를 길게 눌러도 고른다)
                     Text("홈 평가액 박스").appFont(13, .bold).foregroundStyle(Theme.sub)
                     ChipRow(items: BoxLook.allCases.map { ($0.rawValue, $0.name) }, selection: $boxLook, fill: true)
+                    // 상단 박스(홈·종목·흐름·분석)만 밝기 모드를 따로 고른다. 앱 전체 모드는 그대로
+                    Text("상단 박스").appFont(13, .bold).foregroundStyle(Theme.sub)
+                    ChipRow(items: BoxScheme.allCases.map { ($0.rawValue, $0.name) }, selection: $boxScheme, fill: true)
                     SettingsRows(title: nil, rows: [(String(localized: "앱 아이콘"), AppIconPicker.currentName, .icon)])
                     WaveFeedbackToggles()
                 case .numberGroup:
@@ -735,63 +739,91 @@ private struct TossLinkLine: View {
     }
 }
 
-// 앱 아이콘 바꾸기: 기본 A · 내일의 별 + 인물 5. 각각 다크·틴트 모양이 따로 있어 홈 화면 모드를 따라간다
-// 인물 아이콘은 그 인물을 만나야 열린다 (세리는 처음부터, 나머지는 인터미션 1~4주차. 쉼터와 같은 단계)
+// 앱 아이콘 바꾸기 (2026-10-24): 내일의 별 + 상단 박스 테마 7개. 모양은 내일의 별 그대로, 색만 테마 장면에서 뽑았다
+// 라이트·다크 그림이 따로 있고 틴트는 내일의 별 것을 같이 쓴다 (틴트·투명은 아이폰이 색을 지워 어차피 같아 보인다)
+// 테마 따라가기를 켜면 홈 평가액 박스 테마를 바꿀 때 아이콘도 그 테마 것으로 바뀐다 (IconFollow)
 struct AppIconPicker: View {
-    @Environment(AppModel.self) private var m
-    static let icons: [(id: String?, name: String, prev: String, friend: Int?)] = [
-        (nil, String(localized: "내일의 별"), "iconprev_star", nil), ("AppIcon-seri", String(localized: "세리"), "iconprev_seri", 0), ("AppIcon-sio", String(localized: "시오"), "iconprev_sio", 1),
-        ("AppIcon-seonbae", String(localized: "선배"), "iconprev_seonbae", 2), ("AppIcon-ir", String(localized: "이르"), "iconprev_ir", 3), ("AppIcon-sua", String(localized: "수아"), "iconprev_sua", 4),
-    ]
-    @State private var current: String? = UIApplication.shared.alternateIconName
-    static var currentName: String { icons.first { $0.id == UIApplication.shared.alternateIconName }?.name ?? String(localized: "내일의 별") }
-
-    private func open(_ f: Int?) -> Bool { f.map { m.friendOn($0) } ?? true }
-    private func set(_ id: String?) {
-        guard UIApplication.shared.supportsAlternateIcons, current != id else { return }
-        UIApplication.shared.setAlternateIconName(id) { err in if err == nil { current = id } }
+    static let icons: [(id: String?, name: String, prev: String)] = {
+        var a: [(id: String?, name: String, prev: String)] = [(nil, String(localized: "내일의 별"), "iconprev_star")]
+        for l in BoxLook.allCases { a.append((AppIconPicker.id(for: l), l.name, "iconprev_\(l.rawValue)")) }
+        return a
+    }()
+    static let linkKey = "appIconLinked"
+    static func id(for look: BoxLook) -> String { "AppIcon-\(look.rawValue)" }
+    static var currentName: String {
+        let name = icons.first { $0.id == UIApplication.shared.alternateIconName }?.name ?? String(localized: "내일의 별")
+        return UserDefaults.standard.bool(forKey: linkKey) ? String(localized: "테마 따라 · \(String(describing: name))") : name
+    }
+    /// 아이콘을 바꾼다. 같은 아이콘이면 아이폰 알림 창이 뜨지 않게 그냥 둔다
+    static func apply(_ id: String?, done: ((String?) -> Void)? = nil) {
+        guard UIApplication.shared.supportsAlternateIcons, UIApplication.shared.alternateIconName != id else { return }
+        UIApplication.shared.setAlternateIconName(id) { err in if err == nil { done?(id) } }
     }
 
+    @AppStorage(AppIconPicker.linkKey) private var linked = false
+    @AppStorage(BoxLook.key) private var boxLook = BoxLook.jump.rawValue
+    @State private var current: String? = UIApplication.shared.alternateIconName
+
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 12) {
-            ForEach(Self.icons, id: \.name) { ic in
-                let on = current == ic.id, ok = open(ic.friend)
-                Button { if ok { set(ic.id) } } label: {
-                    VStack(spacing: 6) {
-                        Image(ic.prev).resizable().interpolation(.high).scaledToFit()
-                            .frame(width: 64, height: 64)
-                            .saturation(ok ? 1 : 0).brightness(ok ? 0 : -0.35)
-                            .overlay { if !ok { Image(systemName: "lock.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(.white) } }
-                            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 3 : 1))
-                        Text(ok ? ic.name : String(localized: "인터미션 \(String(describing: ic.friend ?? 0))주차")).appFont(ok ? 13 : 11, on ? .bold : .regular)
-                            .foregroundStyle(on ? Theme.ink : ok ? Theme.sub : Theme.muted).lineLimit(1).minimumScaleFactor(0.8)
+        VStack(alignment: .leading, spacing: 12) {
+            ChipRow(items: [(true, String(localized: "테마 따라가기")), (false, String(localized: "직접 고르기"))],
+                    selection: Binding(get: { linked }, set: { on in
+                        linked = on
+                        if on { Self.apply(Self.id(for: BoxLook(rawValue: boxLook) ?? .jump)) { current = $0 } }
+                    }), fill: true)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 12) {
+                ForEach(Self.icons, id: \.name) { ic in
+                    let on = current == ic.id
+                    Button { Self.apply(ic.id) { current = $0 } } label: {
+                        VStack(spacing: 6) {
+                            Image(ic.prev).resizable().interpolation(.high).scaledToFit()
+                                .frame(width: 64, height: 64)
+                                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(on ? Theme.teal : Theme.border, lineWidth: on ? 3 : 1))
+                            Text(ic.name).appFont(13, on ? .bold : .regular)
+                                .foregroundStyle(on ? Theme.ink : Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 8).contentShape(Rectangle())
                     }
-                    .frame(maxWidth: .infinity).padding(.vertical, 8).contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .disabled(linked)
+                    .opacity(linked && !on ? 0.45 : 1)
+                    .accessibilityLabel(String(localized: "\(String(describing: ic.name)) 아이콘"))
+                    .accessibilityAddTraits(on ? .isSelected : [])
                 }
-                .buttonStyle(.plain)
-                .disabled(!ok)
-                .accessibilityLabel(ok ? String(localized: "\(String(describing: ic.name)) 아이콘") : String(localized: "\(String(describing: ic.name)) 아이콘, 인터미션 \(String(describing: ic.friend ?? 0))주차에 열려요"))
-                .accessibilityAddTraits(on ? .isSelected : [])
             }
+            .padding(8)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
         }
-        .padding(8)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
-        // 시안 조작으로 단계를 되돌려 지금 아이콘이 다시 잠기면 기본 아이콘으로 돌린다
-        .onAppear {
-            if let c = current, let ic = Self.icons.first(where: { $0.id == c }), !open(ic.friend) { set(nil) }
-        }
+        .onAppear { current = UIApplication.shared.alternateIconName }
+    }
+}
+
+/// 테마 따라가기: 홈 박스를 길게 눌러 고르든 설정에서 고르든 테마가 바뀌면 아이콘도 따라 바꾼다
+struct IconFollow: ViewModifier {
+    @AppStorage(AppIconPicker.linkKey) private var linked = false
+    @AppStorage(BoxLook.key) private var boxLook = BoxLook.jump.rawValue
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: boxLook) { _, raw in
+                if linked, let look = BoxLook(rawValue: raw) { AppIconPicker.apply(AppIconPicker.id(for: look)) }
+            }
+            // 예전 인물 아이콘(세리·시오·선배·이르·수아)을 쓰던 사람은 기본 아이콘으로 돌린다
+            .onAppear {
+                if let alt = UIApplication.shared.alternateIconName, !AppIconPicker.icons.contains(where: { $0.id == alt }) { AppIconPicker.apply(nil) }
+            }
     }
 }
 
 /// 설정 > 앱 아이콘 › 고르는 화면 (설정 첫 화면에서 격자를 뺐다)
 struct AppIconScreen: View {
+    @AppStorage(AppIconPicker.linkKey) private var linked = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text("앱 아이콘").appFont(22, .bold)
-                Text("인물 아이콘은 그 인물을 만나면 열려요.").appFont(13).foregroundStyle(Theme.sub)
+                Text(linked ? String(localized: "테마를 바꾸면 아이콘도 함께 바뀌어요.") : String(localized: "테마와 상관없이 아이콘을 골라요.")).appFont(13).foregroundStyle(Theme.sub)
                 AppIconPicker()
             }.padding(16)
         }

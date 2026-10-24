@@ -12,6 +12,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.semantics.selected
 import com.naeilo.app.ui.hex
 import com.naeilo.app.ui.home.BoxLook
+import com.naeilo.app.ui.home.BoxSchemeScope
+import com.naeilo.app.ui.home.boxInk
+import com.naeilo.app.ui.home.bx
 import com.naeilo.app.ui.home.FreshLabel
 import com.naeilo.app.ui.hold.FitAnnotated
 import com.naeilo.app.ui.hold.MoodBand
@@ -175,7 +178,7 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                 FillLast(minTotal = vh - 12.dp, minLast = 300.dp, gap = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/FlowView.swift:61
                     Box(Modifier.outset(16.dp)) { AppHeader(tab = FlowTab.name) }   // ios: Views/FlowView.swift:62 (-16)
-                    if (mood.box.isNotEmpty()) MoodBox(mood, BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, cur, ::name) { sel = it; term = null }   // ios: Views/FlowView.swift:63
+                    if (mood.box.isNotEmpty()) BoxSchemeScope { MoodBox(mood, BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, cur, ::name) { sel = it; term = null } }   // ios: Views/FlowView.swift:63
                     if (restIds.isNotEmpty()) Chips(restIds, cur, ::name, onAll = { showAll = true }) { sel = it; term = null }   // ios: Views/FlowView.swift:64
                     if (needKey) {   // ios: Views/FlowView.swift:65
                         // ios: Views/FlowView.swift:66,67,68,70
@@ -264,10 +267,10 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("내 종목 · 큰 흐름", Modifier.weight(1f), style = appFont(13f), color = TodayBox.dim); FreshLabel() }
         // ios: Views/FlowView.swift:121,122,123
         FitAnnotated(buildAnnotatedString {
-            withStyle(SpanStyle(color = Color.White)) { append("$head · ") }
+            withStyle(SpanStyle(color = boxInk().ink)) { append("$head · ") }
             withStyle(SpanStyle(color = c)) { append(AppModel.pct(share)) }
-        }, TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.6f, Color.White, Modifier.padding(top = 6.dp))
-        Box(Modifier.padding(top = 14.dp)) { MoodBand(look, md.shares, road = 10.dp) }   // ios: Views/FlowView.swift:124
+        }, TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.6f, boxInk().ink, Modifier.padding(top = 6.dp))
+        Box(Modifier.padding(top = 14.dp)) { MoodBand(look, md.shares, road = 10.dp, up = md.side >= 0) }   // ios: Views/FlowView.swift:124
         // ios: Views/FlowView.swift:125,126,127,128,129,130 (오른쪽 끝 16% 를 흐리게)
         Box(Modifier.outset(18.dp).padding(top = 14.dp).fadeEnd(0.84f)) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { md.box.forEach { BoxChip(it, c, cur, name, onPick) } }
@@ -279,15 +282,17 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
 @Composable
 private fun BoxChip(id: String, dot: Color, cur: String?, name: (String) -> String, onPick: (String) -> Unit) {
     val on = cur == id   // ios: Views/FlowView.swift:139
+    val ink = boxInk()
     // ios: Views/FlowView.swift:140,141,145,146,147,149,150
     Row(
-        Modifier.heightIn(min = 34.dp).clip(RoundedCornerShape(50)).border(1.dp, if (on) Color.White else Color.White.copy(alpha = 0.22f), RoundedCornerShape(50))
+        Modifier.heightIn(min = 34.dp).clip(RoundedCornerShape(50)).background(bx(ink.dk, 0xFFFFFF, 0xFFFFFF, 0.55f, 0f))
+            .border(1.dp, if (on) ink.ink else bx(ink.dk, 0x16181D, 0xFFFFFF, 0.16f, 0.22f), RoundedCornerShape(50))   // ios: Views/FlowView.swift:148,149
             .semantics { if (on) selected = true }.plainClickable { onPick(id) }.padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(Modifier.size(8.dp).background(dot, androidx.compose.foundation.shape.CircleShape))   // ios: Views/FlowView.swift:142
         // ios: Views/FlowView.swift:143,145
-        T(if (id == "DRNK") "DRNK" else name(id), style = appFont(15f, if (on) FontWeight.Bold else FontWeight.Normal), color = if (on) Color.White else hex(0xC9D0D6), maxLines = 1)
+        T(if (id == "DRNK") "DRNK" else name(id), style = appFont(15f, if (on) FontWeight.Bold else FontWeight.Normal), color = if (on) ink.ink else ink.sub, maxLines = 1)
     }
 }
 
@@ -604,15 +609,10 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
                     T(title + " · " + tr("시작 대비"), Modifier.alignByBaseline(), style = appFont(13f), color = Theme.muted, maxLines = 1)   // ios: Views/FlowView.swift:413
                 }
                 Spacer(Modifier.width(6.dp))   // ios: Views/FlowView.swift:415
-                // 일·주·월 고르기: 고르면 보이는 날 수를 그 단위로, 핀치로 바뀌면 고른 칸도 따라 바뀐다
-                Row(Modifier.background(Theme.line, RoundedCornerShape(50)).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/FlowView.swift:320,331
-                    listOf(Triple(1, "일봉", 160), Triple(5, "주봉", 520), Triple(21, "월봉", n)).forEach { (u, t, c) ->   // ios: Views/FlowView.swift:321
-                        val ok = u == 1 || (if (u == 5) n > 200 else n > 600); val on = step == u   // ios: Views/FlowView.swift:322
-                        // ios: Views/FlowView.swift:323,324,325,326,328
-                        T(t, Modifier.graphicsLayer { alpha = if (ok) 1f else 0.35f }.background(if (on) Theme.teal else Color.Transparent, RoundedCornerShape(50))
-                            .then(if (ok) Modifier.plainClickable { count = c } else Modifier).padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = appFont(12f, FontWeight.SemiBold), color = if (on) Color.White else Theme.sub, maxLines = 1)
-                    }
+                // 지금 단위 표시: 손 그림으로 두 손가락 확대를 알린다. 핀치로 넓히면 주봉·월봉으로 바뀐다
+                Row(Modifier.background(Theme.line, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/FlowView.swift:417,421,422
+                    com.naeilo.app.ui.Sym("hand.pinch", 12f, Theme.sub)   // ios: Views/FlowView.swift:418
+                    T(if (step == 1) "일봉" else if (step == 5) "주봉" else "월봉", style = appFont(12f, FontWeight.SemiBold), color = Theme.sub, maxLines = 1)   // ios: Views/FlowView.swift:419
                 }
             }
 
@@ -724,7 +724,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
 
             // 아래: 보이는 기간
             // ios: Views/FlowView.swift:458,459,460
-            T(date(series, lo) + " – " + date(series, hi) + "  ·  " + tr("밀기 · 두 손가락 확대"), Modifier.centerAt(W / 2, fullH - botH / 2), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
+            T(date(series, lo) + " – " + date(series, hi) + "  ·  " + tr("← 옆으로 밀면 지난 날"), Modifier.centerAt(W / 2, fullH - botH / 2), style = appFont(10f).copy(fontFeatureSettings = "tnum"), color = Theme.muted, maxLines = 1)
 
             // 말풍선: 누른 것의 뜻. 처음 한 번은 사용 안내
             // ios: Views/FlowView.swift:463,464

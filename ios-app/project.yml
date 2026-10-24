@@ -79,7 +79,7 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # 설정의 앱 아이콘 바꾸기: 기본 내일의 별 + 인물 5
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-seri AppIcon-sio AppIcon-seonbae AppIcon-ir AppIcon-sua"
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-jump AppIcon-horizon AppIcon-tub AppIcon-dory AppIcon-pino AppIcon-mug AppIcon-bar"
     dependencies:
       - target: NaeiloWidgets
     postCompileScripts:

@@ -704,7 +704,7 @@ private fun HudBar(g: BrickGame, hud: Hud, act: (() -> Unit) -> Unit) {
             Spacer(Modifier.weight(1f).widthIn(min = 0.dp))   // ios: Views/BrickGameView.swift:363
             Column(verticalArrangement = Arrangement.spacedBy(1.dp), horizontalAlignment = Alignment.End) {   // ios: Views/BrickGameView.swift:364
                 T("${cformat("%,d", hud.score)}점", style = appFont(18f, FontWeight.Bold).copy(fontFeatureSettings = Tnum))   // ios: Views/BrickGameView.swift:365
-                T("남은 공 ${max(0, hud.lives)}", style = appFont(12f, FontWeight.Bold), color = Theme.up)   // ios: Views/BrickGameView.swift:366
+                T("남은 공 ${max(0, hud.lives - 1)}", style = appFont(12f, FontWeight.Bold), color = Theme.up)   // ios: Views/BrickGameView.swift:366
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/BrickGameView.swift:369
@@ -837,8 +837,8 @@ private fun DrawScope.field(
         val rw = g.exitCell / 40   // ios: Views/BrickGameView.swift:479 g.rect(exitCell)
         val e = r((g.exitCell % 40) + g.sway(rw), BrickGame.top + (24 - rw), 1.0, 1.0); drawRect(pal.yellow, e.topLeft, e.size, alpha = op)   // ios: Views/BrickGameView.swift:480
     }
-    // 남은 공 (판 왼쪽 아래)
-    val lives = max(0, g.lives)   // ios: Views/BrickGameView.swift:483
+    // 남은 공 (판 왼쪽 아래): 패들 위 지금 공은 빼고 그린다
+    val lives = max(0, g.lives - 1)   // ios: Views/BrickGameView.swift:483
     for (k in 0 until lives) {   // ios: Views/BrickGameView.swift:484
         val e = r(0.8 + k * 1.4, BrickGame.H - 1.4, 0.9, 0.9)   // ios: Views/BrickGameView.swift:485
         drawOval(Color.White, e.topLeft, e.size); drawOval(pal.ink, e.topLeft, e.size, style = Stroke(p(1.0)))   // ios: Views/BrickGameView.swift:486
