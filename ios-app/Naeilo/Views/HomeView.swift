@@ -644,14 +644,16 @@ struct SceneBox: View {
 /// 욕조 뒤 남색 타일 벽 (cell = 타일 한 칸 크기)
 struct TileWall: View {
     let cell: CGFloat
+    @Environment(\.self) private var env
     var body: some View {
-        Canvas { ctx, size in
-            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(bx(0xE2ECF8, 0x1B2744)))
+        let bg = bx(0xE2ECF8, 0x1B2744).fixed(env), joint = bx(0xC6D6EB, 0x2A3A60).fixed(env)
+        return Canvas { ctx, size in
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(bg))
             guard cell > 1 else { return }
             var grid = Path(), x: CGFloat = 0, y: CGFloat = 0
             while x <= size.width { grid.move(to: CGPoint(x: x, y: 0)); grid.addLine(to: CGPoint(x: x, y: size.height)); x += cell }
             while y <= size.height { grid.move(to: CGPoint(x: 0, y: y)); grid.addLine(to: CGPoint(x: size.width, y: y)); y += cell }
-            ctx.stroke(grid, with: .color(bx(0xC6D6EB, 0x2A3A60)), lineWidth: 1.5 * cell / 22)
+            ctx.stroke(grid, with: .color(joint), lineWidth: 1.5 * cell / 22)
         }
     }
 }

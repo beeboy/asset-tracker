@@ -94,6 +94,11 @@ extension View {
     func boxScheme() -> some View { modifier(BoxSchemeMod()) }
 }
 
+extension Color {
+    /// 지금 환경(상단 박스 모드로 덮어쓴 colorScheme)대로 색을 굳힌다. Canvas 안에 넘기는 한 쌍 색이 기기 모드로 풀리지 않게
+    func fixed(_ env: EnvironmentValues) -> Color { Color(resolve(in: env)) }
+}
+
 /// 상단 박스 색 한 쌍 (라이트, 다크). 모양·자리·움직임은 한 벌을 같이 쓰고 색만 고른다
 func bx(_ light: UInt32, _ dark: UInt32) -> Color { Color(hex: light, dark: dark) }
 func bx(_ light: UInt32, _ la: Double, _ dark: UInt32, _ da: Double) -> Color {
@@ -943,6 +948,7 @@ private struct Mini {
 /// 박스 바탕 (새 테마 셋)
 struct ThemeBackdrop: View {
     let look: BoxLook
+    @Environment(\.self) private var env
     var body: some View {
         switch look {
         case .dory:
@@ -951,7 +957,7 @@ struct ThemeBackdrop: View {
         case .pino:
             LinearGradient(colors: [bx(0xFBF2E3, 0x22170E), bx(0xEFDDC0, 0x4A331D)], startPoint: .top, endPoint: .bottom)
                 .overlay {
-                    let plank = bx(0xB9915F, 0.4, 0x3A2816, 0.8)
+                    let plank = bx(0xB9915F, 0.4, 0x3A2816, 0.8).fixed(env)
                     Canvas { c, size in
                         var x: CGFloat = 69
                         while x < size.width { c.fill(Path(CGRect(x: x, y: 0, width: 1, height: size.height)), with: .color(plank)); x += 70 }

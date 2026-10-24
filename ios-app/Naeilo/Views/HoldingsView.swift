@@ -421,6 +421,7 @@ struct MoodBand: View {
     let shares: [Double]
     var road: CGFloat = 18        // 점프 직전 도로 위아래 여백 (흐름 박스는 버튼이 아래에 붙어 좁게)
     var up = true
+    @Environment(\.self) private var env
     private var colors: [Color] { [BoxInk.upF, look == .pino ? ThemeBand.woodFlat : look == .horizon ? bx(0xAEB7C4, 0x4A5672) : BoxInk.flatF, BoxInk.downF] }
 
     var body: some View {
@@ -476,7 +477,7 @@ struct MoodBand: View {
     /// 점프 직전: 박스 아래 밤 도로 가운데의 가는 점선 중앙선(칸과 틈이 거의 같다). 한 칸은 한 색만 (칸 반올림으로 몫이 조금 어긋나도 느낌만 전한다)
     /// 라이트도 도로는 어둡게 둔다 (차선 불빛이 밝은 바탕에 묻히지 않게)
     private var lane: some View {
-        let colors = [BoxInk.upF, bx(0x5A6585, 0x4A5672), BoxInk.downF]
+        let colors = [BoxInk.upF, bx(0x5A6585, 0x4A5672), BoxInk.downF].map { $0.fixed(env) }
         return Canvas { ctx, size in
             let gap: CGFloat = 12, n = max(1, Int((size.width + gap) / 26))
             let w = (size.width - gap * CGFloat(n - 1)) / CGFloat(n)
@@ -501,7 +502,7 @@ struct MoodBand: View {
 
     /// 지평선: 두꺼운 물결 한 줄을 몫대로 나눠 칠한다
     private var wave: some View {
-        let colors = colors
+        let colors = colors.map { $0.fixed(env) }
         return Canvas { ctx, size in
             let s = shares
             guard s.reduce(0, +) > 0 else { return }

@@ -640,6 +640,7 @@ struct ProgressTrack: View {
     let look: BoxLook
     let fill: Double
     private static let on = Theme.yellow
+    @Environment(\.self) private var env
     private var f: CGFloat { CGFloat(min(1, max(0, fill))) }
 
     var body: some View {
@@ -671,7 +672,7 @@ struct ProgressTrack: View {
 
     /// 점프 직전: 박스 폭 끝까지 이어진 밤 도로, 가운데 점선. 지금까지 온 칸은 노랗게 빛난다
     private var road: some View {
-        let bg = bx(0x2F3650, 0x151925), top = bx(0x2F3650, 0x232A3E), lane = bx(0x5A6585, 0x3A4466)
+        let bg = bx(0x2F3650, 0x151925).fixed(env), top = bx(0x2F3650, 0x232A3E).fixed(env), lane = bx(0x5A6585, 0x3A4466).fixed(env)
         return Canvas { ctx, size in
             let pad: CGFloat = 18, w = size.width - pad * 2, cut = pad + w * f
             ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(bg))
@@ -694,7 +695,7 @@ struct ProgressTrack: View {
 
     /// 지평선: 물결 한 줄, 지금까지는 노랑
     private var wave: some View {
-        let base = bx(0xC9D0DA, 0x3A4656)
+        let base = bx(0xC9D0DA, 0x3A4656).fixed(env)
         return Canvas { ctx, size in
             var p = Path(), x: CGFloat = 0, up = true
             let mid = size.height / 2
