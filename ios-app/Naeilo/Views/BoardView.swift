@@ -9,6 +9,7 @@ struct BoardView: View {
 
     var body: some View {
         let steps = m.boardSteps, starts = steps.filter { !$0.inter }
+        GeometryReader { geo in
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AppHeader(tab: String(localized: "미션")).padding(.horizontal, -16)
@@ -21,9 +22,12 @@ struct BoardView: View {
                 if let next = steps.first(where: { !$0.ok && $0.avail }), !next.inter {
                     nextCard(next, steps: starts)
                 }
-                if m.playUnlocked { GoalCellsCard() } else { lockedPlay }
+                // 100칸 카드는 화면 아래(탭 위)까지 늘어난다
+                if m.playUnlocked { GoalCellsCard().frame(maxHeight: .infinity) } else { lockedPlay }
             }
             .screen()
+            .frame(minHeight: geo.size.height, alignment: .top)
+        }
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)

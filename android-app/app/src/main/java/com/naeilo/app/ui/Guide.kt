@@ -150,12 +150,28 @@ object Voice {
 /** 설정 > 함께할 인물: 한 줄(그림·이름·바꾸기) + 자동 토글. 토글 = 예전 "자동" 칩, 끄면 고른 인물로 고정 */
 // ios: Views/Guide.swift:114,115,116
 @Composable
-fun GuidePickRow(m: AppModel) {
+fun GuidePickRow(m: AppModel, compact: Boolean = false) {   // ios: Views/Guide.swift:116 compact: 설정 첫 화면, 인물을 누르면 바로 고르는 메뉴(자동 교체도 그 안에)
     m.guideTick   // ios: Views/Guide.swift:117
     // ios: Views/Guide.swift:118,119
     val opts: List<Pair<String, String>> = Shelter.friends.withIndex().filter { m.friendOn(it.index) }.map { it.value.id to it.value.name } +
         (if (m.meUnlocked) listOf("me" to m.friendName("me")) else emptyList())
-    // ios: Views/Guide.swift:120,144,145,146
+    // ios: Views/Guide.swift:122,123,124,125,126,127,128
+    if (compact) {
+        val auto = m.guidePick == null
+        DropMenu(opts.map { (id, name) -> MenuItem(name, onClick = { m.guidePick = id }) } +
+            MenuItem("새 친구 만나면 자동 교체", icon = if (auto) "checkmark" else null, onClick = { m.guidePick = if (auto) m.guideFriend else null })) {
+            // ios: Views/Guide.swift:130,139
+            Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 64.dp).padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                MotionSprite(friend = m.guideFriend, pose = Pose.wave, height = 48.dp, modifier = Modifier.charIdle(2), model = m)   // ios: Views/Guide.swift:131
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    T(m.friendName(m.guideFriend), style = appFont(16f, FontWeight.Bold), color = Theme.ink)   // ios: Views/Guide.swift:133
+                    T("눌러서 함께할 인물 바꾸기", style = appFont(12f), color = Theme.sub)   // ios: Views/Guide.swift:134
+                }
+            }
+        }
+        return
+    }
+    // ios: Views/Guide.swift:142
     Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // ios: Views/Guide.swift:121
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {

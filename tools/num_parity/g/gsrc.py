@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """숫자 맞추기 G 단계 (분석): 아이폰 원본에서 꺼내 한 파일(main.swift)로 만들고 고정 입력을 쓴다. parity.py gen 이 부른다.
 
-꺼내는 것 (원본 그대로): ForecastView.amt·short·ym (AnalysisView.swift 507-519), AnalysisView.freq (99-103),
+꺼내는 것 (원본 그대로): ForecastView.amt·short·ym (AnalysisView.swift 507-519),
 ScenarioChart.step·axis (ForecastParts.swift 17-28), AppModel.manS·won1·wonRead (AnalysisDetail.swift 88-98), AppModel.man (영어 아님).
 내 길 (G2): MyPath·yrs (AnalysisDetail.swift 21-29), myPath·myPathGapToday (50-86), MC.krAt, Day. 지난 평가액(pathSeries)·3년 흐름(totalAt)은 입력으로 준다.
 """
@@ -435,9 +435,6 @@ enum AppModel {{
 enum ForecastView {{
 {span("Views/AnalysisView.swift", "    static func amt(_ v: Double) -> String {", "    }", 1, 2)}
 }}
-enum AnalysisView {{
-{span("Views/AnalysisView.swift", "    static func freq(_ p: Double) -> String {", "    }")}
-}}
 enum ScenarioChart {{
 {span("Views/ForecastParts.swift", "    static func step(_ top: Double) -> Double {", "    }", 1, 2)}
 }}
@@ -449,7 +446,6 @@ let won = inp["won"] as! [Double], ps = inp["p"] as! [Double]
 out["amt"] = won.map {{ ForecastView.amt($0) }}
 out["short"] = [Lens.base, .mine, .smooth].map {{ ForecastView.short($0) }}
 out["ym"] = (inp["dates"] as! [String]).map {{ let x = ForecastView.ym($0); return [x.long, x.short] }}
-out["freq"] = ps.map {{ AnalysisView.freq($0) }}
 out["step"] = won.map {{ ScenarioChart.step(abs($0)) }}
 out["axis"] = won.map {{ ScenarioChart.axis($0) }}
 out["manS"] = won.map {{ AppModel.manS($0) }}

@@ -10,21 +10,25 @@ android {
     // 출시판 빌드마다 도는 lint 검사(빌드 시간의 대부분)를 끈다. 필요하면 ./gradlew lint 로 따로 돌린다
     lint { checkReleaseBuilds = false }
     namespace = "com.naeilo.widget"
-    compileSdk = 35
-    defaultConfig { minSdk = 26 }
+    compileSdk = 37
+    defaultConfig {
+        minSdk = 26
+        // 배포 단계 (gradle.properties naeilo.channel). core/Config.kt 가 읽는다
+        buildConfigField("String", "CHANNEL", "\"${providers.gradleProperty("naeilo.channel").getOrElse("internalBeta")}\"")
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
-    buildFeatures { compose = true; buildConfig = false }
+    buildFeatures { compose = true; buildConfig = true }
 }
 // AGP 9 새 DSL 로 자료 폴더를 넘긴다 (옛 sourceSets 접근자는 형 변환에서 깨진다)
 extensions.getByType<com.android.build.api.dsl.LibraryExtension>().sourceSets.getByName("main").res
     .directories.add(layout.buildDirectory.dir("iosRes").get().asFile.path)
 
 // 아이폰 위젯 그림 중 쓰는 것만 drawable-nodpi 로: 인물 기본·포즈·raise·spread, 쉼터 고양이 (투명·틴트용 _tint 와 CharItem 물건 그림은 안 쓴다)
-val copyWidgetImages by tasks.registering(Copy::class) {
+val copyWidgetImages = tasks.register<Copy>("copyWidgetImages") {
     from("../../ios-app/Widgets/Assets.xcassets") { include("w_*.imageset/*.png"); exclude("w_*_tint.imageset/**", "w_item_*.imageset/**") }
     eachFile { path = "drawable-nodpi/" + file.parentFile.name.removeSuffix(".imageset") + ".png" }
     includeEmptyDirs = false

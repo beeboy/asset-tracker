@@ -151,14 +151,18 @@ struct EarningsRiverSheet: View {
         let s = feed.summary(target.sym, qty: target.qty)
         let pages = feed.pages(target.sym)
         VStack(spacing: 0) {
-            HStack {
-                Spacer()
+            // 제목과 ✕ 한 줄 (위 빈 바 없음, 제목 왼쪽 정렬. 시안 v40)
+            HStack(alignment: .center) {
+                Text(EarningsRiver.title(target.sym.name)).font(.system(size: 20, weight: .bold, design: .serif)).foregroundStyle(EarnColor.fg)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Spacer(minLength: 8)
                 Button { dismiss() } label: {
                     Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.sub)
                         .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).accessibilityLabel("닫기")
             }
+            .padding(.leading, 24).padding(.top, 10)
             if s != nil {
                 // 옆으로 밀면 지난 분기 (맨 오른쪽이 이번 분기). 장에 들어올 때마다 그 분기 강이 다시 흐른다
                 TabView(selection: $page) {
@@ -189,7 +193,7 @@ struct EarningsRiverSheet: View {
         .background(EarnColor.screen)
         .onAppear { page = -1 }
         .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
     }
 }
 
@@ -242,7 +246,8 @@ struct EarningsRiver: View {
     @State private var start = Date()
     @State private var done = false
 
-    private static let W: CGFloat = 360, H: CGFloat = 680, bed: CGFloat = 300, top: CGFloat = 110
+    /// 판 위 cut 만큼은 그리지 않는다 (제목은 팝업 머리줄로 옮겼다)
+    private static let W: CGFloat = 360, H: CGFloat = 680 - cut, cut: CGFloat = 44, bed: CGFloat = 300, top: CGFloat = 110
     private static let left: CGFloat = 24, right: CGFloat = 250, total: CGFloat = 50, mid: CGFloat = 175
     private static let end: Double = 2.9   // 마지막 동작(떡잎)이 끝나는 초
 
@@ -255,6 +260,7 @@ struct EarningsRiver: View {
                 let k = min(size.width / Self.W, size.height / Self.H)
                 ctx.translateBy(x: (size.width - Self.W * k) / 2, y: 0)
                 ctx.scaleBy(x: k, y: k)
+                ctx.translateBy(x: 0, y: -Self.cut)
                 draw(&ctx, t: still ? 99 : el, el: still ? 0 : el)
             }
         }
@@ -274,12 +280,13 @@ struct EarningsRiver: View {
         var t = "\(title) " + (now ? String(localized: "\(s.months)월") : s.label) + ". "
         t += String(localized: "내 몫 매출 \(EarnText.money(s.revenue ?? 0, s.currency))")
         if let y = s.revYoY { t += ", " + (y == "작년과 같음" ? EarnText.yoy(y) : String(localized: "작년보다 \(y)")) }
-        t += ". " + (s.loss ? (now ? String(localized: "이번 분기 내 몫 손실") : String(localized: "그 분기 내 몫 손실")) + " " + EarnText.money(s.short, s.currency) : String(localized: "내 몫 순이익 \(EarnText.money(s.net ?? 0, s.currency))"))
+        t += ". " + (s.loss ? (now ? String(localized: "이번 분기 내 몫 손실") : String(localized: "이 분기 내 몫 손실")) + " " + EarnText.money(s.short, s.currency) : String(localized: "내 몫 순이익 \(EarnText.money(s.net ?? 0, s.currency))"))
         if let w = EarnText.krw(s) { t += ", \(w)" }
         return t
     }
 
-    private var title: String {
+    private var title: String { Self.title(name) }
+    static func title(_ name: String) -> String {
         String(localized: "\(name)\(TownLook.batchim(name) ? "이" : "가") 번 돈 중 내 몫")
     }
 
@@ -321,9 +328,6 @@ struct EarningsRiver: View {
 
     private func draw(_ ctx: inout GraphicsContext, t: Double, el: Double) {
         let fmt = { (v: Double) in EarnText.money(v, s.currency) }
-        // 제목
-        text(&ctx, title, 20, .bold, EarnColor.fg, CGPoint(x: 24, y: 42), .leading, serif: true)
-
         // 물높이 lv(v) = 270 − (v−min)/(max−min)×210 (지난 4분기 + 지금, 회사 매출)
         let co = s.coRevenue ?? 0
         let vals = s.gauge.map { $0.co ?? 0 } + [co]
@@ -431,7 +435,7 @@ struct EarningsRiver: View {
         // 금색 끝: 큰 금액(+원화) · 설명. 적자면 옅은 손실
         if s.loss {
             text(&ctx, fmt(-s.short), 30, .bold, EarnColor.muted, CGPoint(x: Self.mid, y: 636), .center, fade(t, 1.9), serif: true)
-            text(&ctx, now ? String(localized: "이번 분기 내 몫 손실") : String(localized: "그 분기 내 몫 손실"), 12, .regular, EarnColor.muted, CGPoint(x: Self.mid, y: 660), .center, fade(t, 2.1))
+            text(&ctx, now ? String(localized: "이번 분기 내 몫 손실") : String(localized: "이 분기 내 몫 손실"), 12, .regular, EarnColor.muted, CGPoint(x: Self.mid, y: 660), .center, fade(t, 2.1))
         } else {
             let op = fade(t, 1.9)
             if op > 0 {
@@ -441,45 +445,41 @@ struct EarningsRiver: View {
                 ctx.draw(big, at: CGPoint(x: goldX, y: 636), anchor: .center)
                 ctx.opacity = 1
             }
-            text(&ctx, now ? String(localized: "회사가 이번 분기 내 몫으로 번 순이익") : String(localized: "회사가 그 분기 내 몫으로 번 순이익"), 12, .regular, EarnColor.muted, CGPoint(x: goldX, y: 660), .center, fade(t, 2.1))
+            text(&ctx, now ? String(localized: "회사가 이번 분기 내 몫으로 번 순이익") : String(localized: "회사가 이 분기 내 몫으로 번 순이익"), 12, .regular, EarnColor.muted, CGPoint(x: goldX, y: 660), .center, fade(t, 2.1))
         }
     }
 
-    /// 수위표: 막대 x268 y62, 눈금 x261~279. S = 지금 물높이 (기다리는 중이면 nil), last = 기다리는 중 지난 분기 높이
+    /// 수위표 (시안 v40): 막대 x268, 눈금 글자·가로 눈금 없이 꼬리표 두 개만. 작년 같은 분기 = 회색, 지금(이때) = 산호(작년보다 줄면 하늘), 글씨 검정.
+    /// S = 지금 물높이 (기다리는 중이면 nil), last = 기다리는 중 지난 분기 높이
     private func gauge(_ ctx: inout GraphicsContext, lv: (Double) -> CGFloat, S: CGFloat?, last lastS: CGFloat? = nil, t: Double) {
         ctx.fill(Path(CGRect(x: 268, y: 62, width: 4, height: 238)), with: .color(EarnColor.muted.opacity(0.55)))
-        let tick = { (ctx: inout GraphicsContext, y: CGFloat, strong: Bool) in
-            ctx.fill(Path(CGRect(x: 261, y: y - (strong ? 1 : 0.75), width: 18, height: strong ? 2 : 1.5)),
-                     with: .color(strong ? EarnColor.fg : EarnColor.onwater.opacity(0.6)))
+        var tags: [(y: CGFloat, s: String, bg: Color, op: Double)] = []
+        if let g = s.gauge.first(where: { $0.lastYear }) {
+            tags.append((lv(g.co ?? 0), String(localized: "작년 \(g.co.map(eok) ?? "–")"), Self.gray, 1))
         }
-        var others: [(y: CGFloat, s: String)] = []
-        for g in s.gauge {
-            let y = lv(g.co ?? 0)
-            let strong = g.lastYear
-            tick(&ctx, y, strong)
-            let v = g.co.map(eok) ?? "–"
-            if strong { text(&ctx, String(localized: "작년 \(v)"), 11, .regular, EarnColor.muted, CGPoint(x: 284, y: y - 5), .leading) }
-            else { others.append((y + 4, v)) }
-        }
-        others.sort { $0.y < $1.y }
-        var last: CGFloat = -100
-        for i in others.indices { if others[i].y - last < 13 { others[i].y = last + 13 }; last = others[i].y }   // 겹치면 앞보다 13 아래로
-        for o in others { text(&ctx, o.s, 11, .regular, EarnColor.onwater, CGPoint(x: 284, y: o.y), .leading, 0.75) }
         if let S {
-            tick(&ctx, S, false)
-            let op = fade(t, 0.3)
-            text(&ctx, now ? String(localized: "지금 \(eok(s.coRevenue ?? 0))") : String(localized: "이때 \(eok(s.coRevenue ?? 0))"), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 17), .leading, op)
-            if let y = s.revYoY { text(&ctx, EarnText.yoy(y), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: S + 31), .leading, op) }
+            let y = s.revYoY.map { " " + EarnText.yoy($0) } ?? ""
+            let down = s.revYoY.map { $0.hasPrefix("−") || $0.hasPrefix("-") } ?? false
+            tags.append((S, (now ? String(localized: "지금 \(eok(s.coRevenue ?? 0))") : String(localized: "이때 \(eok(s.coRevenue ?? 0))")) + y, down ? Self.sky : Self.coral, fade(t, 0.3)))
         }
-        // 기다리는 중: 지난 분기 높이 눈금. 물이 다 차오른 뒤(1.8초) 나타난다
-        if let L = lastS {
-            let op = fade(t, 1.8)
-            ctx.opacity = op
-            tick(&ctx, L, false)
+        // 기다리는 중: 지난 분기 높이. 물이 다 차오른 뒤(1.8초) 나타난다
+        if let L = lastS { tags.append((L, String(localized: "지난 \(eok(s.coRevenue ?? 0))"), Self.gray, fade(t, 1.8))) }
+        // 꼬리표 높이: 가까우면 20씩 벌린다 (눈금 자리는 그대로)
+        var ys = tags.map(\.y)
+        let order = ys.indices.sorted { ys[$0] < ys[$1] }
+        for (i, j) in zip(order, order.dropFirst()) where ys[j] - ys[i] < 20 { ys[j] = ys[i] + 20 }
+        for (i, g) in tags.enumerated() where g.op > 0 {
+            ctx.opacity = g.op
+            ctx.fill(Path(CGRect(x: 261, y: g.y - 1, width: 18, height: 2)), with: .color(.white))
+            let txt = Text(g.s).font(.system(size: 11, weight: .bold)).foregroundStyle(Color.black)
+            let w = ctx.resolve(txt).measure(in: CGSize(width: CGFloat.infinity, height: .infinity)).width + 12
+            let x = min(282, Self.W - 4 - w)
+            ctx.fill(Path(roundedRect: CGRect(x: x, y: ys[i] - 9, width: w, height: 18), cornerRadius: 5), with: .color(g.bg))
+            ctx.draw(txt, at: CGPoint(x: x + 6, y: ys[i]), anchor: .leading)
             ctx.opacity = 1
-            text(&ctx, String(localized: "지난 \(eok(s.coRevenue ?? 0))"), 11, .semibold, EarnColor.onwater, CGPoint(x: 284, y: L + 17), .leading, op)
         }
     }
+    private static let gray = Color(hex: 0x8A949E), coral = Color(hex: 0xFF8A80), sky = Color(hex: 0x8CC4F2)
 
     /// 흐르는 실: 시작 색 strand → 끝 색(옅어짐 또는 떡잎색). 적자 마지막 실은 hollow 만큼 속 빈 테두리
     private func flow(_ ctx: inout GraphicsContext, _ p: Path, _ w: CGFloat, fadeTo: CGPoint, from sx: CGFloat, to end: Color, grow: Double, hollow: CGFloat) {

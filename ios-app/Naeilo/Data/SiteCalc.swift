@@ -22,11 +22,13 @@ final class SiteCalc {
 
     static let name = "site_calc.json"
     private static func decode(_ d: Data?) -> File? { d.flatMap { try? JSONDecoder().decode(File.self, from: $0) } }
+    /// 공개 베타·출시는 받아 둔 사이트 값을 읽지 않고 번들 값(가상 샘플)만
     static func load() -> File? {
-        decode(Store.readData(name)) ?? decode(Bundle.main.url(forResource: "calc", withExtension: "json").flatMap { try? Data(contentsOf: $0) })
+        (Config.usesCollectedData ? decode(Store.readData(name)) : nil) ?? decode(Bundle.main.url(forResource: "calc", withExtension: "json").flatMap { try? Data(contentsOf: $0) })
     }
     /// 사이트는 하루 한 번 만든다. 6시간 안에 받았으면 다시 받지 않는다
     func refresh() async {
+        guard Config.usesCollectedData else { return }
         let key = "calcGot", now = Date().timeIntervalSince1970
         if now - Store.defaults.double(forKey: key) < 6 * 3600 { return }
         var c = URLComponents(url: Config.data.appendingPathComponent("calc.json"), resolvingAgainstBaseURL: false)!

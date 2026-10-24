@@ -66,7 +66,7 @@ struct PRace {
 }
 
 enum Parallel {
-    static let names = [String(localized: "내 실제 투자"), String(localized: "모의 바구니"), String(localized: "인물 규칙대로")]
+    static let names = [String(localized: "내 실제 투자"), String(localized: "모의바구니"), String(localized: "인물 규칙대로")]
 
     /// v1에 담을 수 있는 종목: 사이트가 지난 종가를 모으는 종목 + 견본 ETF (VTV·USMV)
     struct Item { let id: String; let name: String }
@@ -686,6 +686,18 @@ extension AppModel {
         let gap = String(format: "%.1f%%p", v.gap * 100)
         let lead = parallelTitle(v.order[0], who: w.who)
         return v.similar ? String(localized: "셋 다 비슷해요 · 차이 \(String(describing: gap))") : String(localized: "\(String(describing: lead))\(String(describing: WChar.josa(lead))) \(String(describing: gap)) 앞서요")
+    }
+}
+
+extension AppModel {
+    /// 홈 비교 박스: 결론 한 줄(차이 값 없이) + 셋의 수익률 (실제·모의·인물 순). 상세 화면과 같은 값(parallelSeries, 마지막 칸)
+    var parallelHome: (verdict: String, r: [Double], who: String)? {
+        guard let w = pworldShown ?? newParallel(), let race = parallelRun(w, who: w.who) else { return nil }
+        let r = pworldShown == nil ? race.r : parallelSeries(race)
+        let v = Parallel.verdict(r, at: race.last)
+        let lead = parallelTitle(v.order[0], who: w.who)
+        let say = v.similar ? String(localized: "셋 다 비슷해요") : String(localized: "\(String(describing: lead))\(String(describing: WChar.josa(lead))) 앞서요")
+        return (say, (0..<3).map { r[$0][race.last] }, w.who)
     }
 }
 

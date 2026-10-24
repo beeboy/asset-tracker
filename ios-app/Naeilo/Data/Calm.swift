@@ -476,7 +476,7 @@ extension AppModel {
         for (a, b) in zip(lots, lots.dropFirst()) where b.d < Day.today {
             for t in Set(a.h.keys).union(b.h.keys) {
                 let q0 = a.h[t] ?? 0, q1 = b.h[t] ?? 0
-                guard q0 != q1, let id = Sync.appId(t), id != "DRNK",
+                guard q0 != q1, let id = Sync.appId(t), !Sample.isVirtual(id),
                       !calm.events.contains(where: { $0.day == b.d && $0.sym == id }) else { continue }
                 let buy = q1 > q0, h = PriceHistory.of(id), close = h?.on(b.d)
                 let prev = h.flatMap { h in h.dates.lastIndex { $0 < b.d }.map { h.closes[$0] } }

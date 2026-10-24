@@ -49,6 +49,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.naeilo.app.core.tr
+import com.naeilo.app.ui.Sym
+import com.naeilo.app.ui.plainClickable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
@@ -71,7 +75,6 @@ import com.naeilo.app.ui.hold.KoreaSumCard
 import com.naeilo.app.ui.Sheet
 import com.naeilo.app.net.CustomSymbols
 import com.naeilo.app.ui.home.homePage
-import com.naeilo.app.ui.analysis.MyPathCompareRoute
 import com.naeilo.app.ui.analysis.MyPathCompareView
 import com.naeilo.app.ui.analysis.FactorDetailRoute
 import com.naeilo.app.ui.analysis.FactorDetailView
@@ -80,7 +83,8 @@ import com.naeilo.app.ui.analysis.RateWhyView
 import com.naeilo.app.ui.settings.SettingsView
 import com.naeilo.app.ui.settings.settingsPage
 import com.naeilo.app.ui.settings.WidgetPickView
-import com.naeilo.app.ui.wave.WaveCover
+import com.naeilo.app.ui.LocalNavBack
+import com.naeilo.app.ui.NavBack
 import com.naeilo.app.ui.start.StartView
 import com.naeilo.app.core.Day
 import com.naeilo.app.core.calc.Compute
@@ -120,7 +124,7 @@ import com.naeilo.app.ui.hex
 import com.naeilo.app.ui.stiffness
 
 // ios: App.swift:23,33,35,37,39,43 (label·SF Symbol 이름·아이콘). 탭 순서는 여기 한 곳 (아래 막대도 이 순서). 설정은 탭이 아니라 홈 위 팝업 (2026-10-21)
-enum class Tab(val label: String, val sf: String, @DrawableRes val icon: Int) {
+enum class Tab(val label: String, val sf: String, @param:DrawableRes val icon: Int) {
     home("홈", "house", R.drawable.tab_home),
     hold("종목", "chart.bar", R.drawable.tab_hold),
     flow(com.naeilo.app.data.FlowTab.name, com.naeilo.app.data.FlowTab.icon, R.drawable.tab_flow),   // 차트 탭 (이름은 FlowTab 한 곳에서)
@@ -174,7 +178,6 @@ fun RootView(model: AppModel) {
                         when (r) {
                             is AnalysisRoute -> NavPage(bar = false) { AnalysisPager(model, start = r) }   // ios: Views/AnalysisView.swift:128 (넘기기 화면은 막대를 스스로 그린다)
                             is Symbol -> NavPage(r.name) { HoldingDetailView(model, sym = r, period0 = Period.y1) }   // ios: Views/AnalysisView.swift:83
-                            MyPathCompareRoute -> NavPage(MyPathCompareRoute.title) { MyPathCompareView(model) }   // 내 길 '내 구성으로 비교'
                             is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailView(model, r.factor, r.start) }   // 외부 요인 상세
                             is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }   // 금리 시나리오 근거
                             is com.naeilo.app.ui.calm.CalmFriendRoute -> com.naeilo.app.ui.shelter.characterPage(model, r.friend, invest = true)   // 내 투자 습관 → 인물 투자 갈래
@@ -194,17 +197,31 @@ fun RootView(model: AppModel) {
     AppHooks(model)
 }
 
-/** 설정·위젯 팝업: 블록·파도처럼 전체 화면, 맨 위 X로 닫는다. 어느 탭에서든 뜬다 */
-// ios: App.swift:156,157,158,159,160
+/** 설정·위젯 팝업: 다른 팝업처럼 시트, 맨 위 줄 제목 + X로 닫는다. 어느 탭에서든 뜬다 */
+// ios: App.swift:181,182,183,184,185
 @Composable
 private fun HomeSheets(model: AppModel) {
-    // ios: App.swift:161,162 (닫으면 settingsPath 비우기)
-    WaveCover(model.settingsOpen, onDismiss = { model.settingsOpen = false; model.settingsPath = emptyList() }) {
-        NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model, cover = true) }) { settingsPage(model, it) }
+    val closeSettings = { model.settingsOpen = false; model.settingsPath = emptyList() }
+    // ios: App.swift:188,189 (닫으면 settingsPath 비우기)
+    Sheet(model.settingsOpen, onDismiss = closeSettings) {
+        CompositionLocalProvider(LocalNavBack provides NavBack(null, closeSettings)) {
+            Box(Modifier.fillMaxSize()) {
+                NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model, cover = true) }) { settingsPage(model, it) }
+                // 깊이 들어간 화면에도 오른쪽 위 X (첫 화면은 GameHeader 에 X가 있다)
+                // ios: App.swift:190
+                if (model.settingsPath.isNotEmpty()) {
+                    Box(Modifier.align(Alignment.TopEnd).padding(end = 8.dp, top = 2.dp).size(44.dp).plainClickable(closeSettings).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
+                        Sym("xmark", 16f, Theme.ink, scaled = false)
+                    }
+                }
+            }
+        }
     }
-    // ios: App.swift:164,165
-    WaveCover(model.widgetsOpen, onDismiss = { model.widgetsOpen = false }) {
-        Column(Modifier.fillMaxSize().background(Theme.bg)) { WidgetPickView(model, cover = true) }
+    // ios: App.swift:191,192
+    Sheet(model.widgetsOpen, onDismiss = { model.widgetsOpen = false }) {
+        CompositionLocalProvider(LocalNavBack provides NavBack(null) { model.widgetsOpen = false }) {
+            Column(Modifier.fillMaxSize().background(Theme.bg)) { WidgetPickView(model, cover = true) }
+        }
     }
 }
 

@@ -271,7 +271,20 @@ object RateScenarioView {
         return timing(months(ci, 0.0), months(ci, mid))   // ios: Views/AnalysisDetail.swift:1553
     }
 
+    /** 분석 탭 줄다리기: 같은 기본 프리셋일 때 목표 확률 (화면 첫 막대와 같은 식) */
     // ios: Views/AnalysisDetail.swift:1556
+    fun hubProb(m: AppModel): Double? {
+        val macro = MacroData.shared   // ios: Views/AnalysisDetail.swift:1557
+        val file = macro.file; val M = file?.meals; if (!m.forecast.exact || file == null || M == null) return null   // ios: Views/AnalysisDetail.swift:1558
+        val d = macro.defaultDr   // ios: Views/AnalysisDetail.swift:1559
+        val r = macro.scen(dr = d, m = 0.0) ?: RateScen(coef = M.coef, g0 = M.g_now, dr = d, m = 0.0)   // ios: Views/AnalysisDetail.swift:1560
+        val f = m.forecast; val tot = max(1.0, m.total)   // ios: Views/AnalysisDetail.swift:1561
+        val kb = m.rows.fold(0.0) { a, r0 -> a + r0.value / tot * ExternalView.coef(r0.sym).first }   // ios: Views/AnalysisDetail.swift:1562
+        val ci = Closed(T = max(1.0 / 12, f.tY.lastOrNull() ?: 3.0), sg = max(0.01, f.sigma), mu = f.mu, V0 = m.trackValue, K = m.keyValue, M = m.fcMonthly)   // ios: Views/AnalysisDetail.swift:1563
+        return prob(f, ci, RateScen.band(r.slope.map { b -> kb * (b * d / 3 / 100) })[1])   // ios: Views/AnalysisDetail.swift:1564
+    }
+
+    // ios: Views/AnalysisDetail.swift:1567
     fun timing(a: Int?, b: Int?): String {
         if (a == null || b == null) return if (b == null && a != null) "50년 안엔 어려움" else "계산 불가"   // ios: Views/AnalysisDetail.swift:1557
         if (a == 0) return "이미 도달"   // ios: Views/AnalysisDetail.swift:1558

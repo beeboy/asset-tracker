@@ -63,3 +63,11 @@ fun cformat(fmt: String, vararg a: Any?): String {
         }
     }
 }
+
+/** 달러 가격 글 (ios: Data/AppModel.swift 의 Double.usdText): 토스처럼 소수 둘째 자리 아래는 버린다 (147.495 → 147.49). 표시만.
+ *  계산 끝에 0.7999… 처럼 남는 값이 한 푼 내려가지 않게 아주 작은 여유를 둔다 */
+fun Double.usdText(a: Int = 2, b: Int = 2): String {
+    if (!isFinite()) return swFmtFrac(a, b)
+    val f = DecimalFormat("#,##0" + (if (b > 0) "." + "0".repeat(a) + "#".repeat(b - a) else ""), sym).apply { roundingMode = RoundingMode.DOWN }
+    return f.format(BigDecimal((this + (if (this < 0) -1e-9 else 1e-9)).toString()))
+}

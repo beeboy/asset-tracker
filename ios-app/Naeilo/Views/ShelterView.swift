@@ -293,7 +293,6 @@ struct ShelterView: View {
             foldRow("side0", String(localized: "프롤로그 ~ 5장"), String(localized: "\(String(describing: (0..<6).filter { story.isDone(.side, $0) }.count))/6 읽음"), cur)
             if isOpen("side0", cur) { ForEach(0..<6, id: \.self) { i in
                 let on = m.chapterOn(i), ch = Shelter.chapters[i]
-                let fi = Shelter.friends.firstIndex { $0.id == ch.friend } ?? 0
                 let row = HStack(spacing: 10) {
                     ChapterCover(index: i, on: on).frame(width: 64, height: 40)
                     Text(ch.title).appFont(12, .bold).foregroundStyle(Theme.teal).frame(width: 44, alignment: .leading)

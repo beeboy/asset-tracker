@@ -58,6 +58,7 @@ class SiteCalc {
     // ios: Data/SiteCalc.swift:29
     suspend fun refresh() {
         // ios: Data/SiteCalc.swift:30
+        if (!Config.usesCollectedData) return
         val key = "calcGot"; val now = System.currentTimeMillis() / 1000.0
         // ios: Data/SiteCalc.swift:31
         if (now - Store.defaults.getDouble(key) < 6 * 3600) return
@@ -109,8 +110,9 @@ class SiteCalc {
         // ios: Data/SiteCalc.swift:24
         private fun decode(d: ByteArray?): File? = d?.let { runCatching { NJson.decodeFromString(File.serializer(), it.decodeToString()) }.getOrNull() }
         // ios: Data/SiteCalc.swift:25,26
+        /** 공개 베타·출시는 받아 둔 사이트 값을 읽지 않고 번들 값(가상 샘플)만 */
         fun load(): File? =
-            decode(Store.readData(name)) ?: decode(Defaults.asset("calc", "json")?.encodeToByteArray())
+            (if (Config.usesCollectedData) decode(Store.readData(name)) else null) ?: decode(Defaults.asset("calc", "json")?.encodeToByteArray())
 
         // ios: Data/SiteCalc.swift:43,44,45
         fun key(id: String): String {

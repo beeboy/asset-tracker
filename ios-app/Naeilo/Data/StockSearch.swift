@@ -166,10 +166,12 @@ enum KrDaily {
     static let name = "kr_daily.json"
     /// 이만큼(약 한 달) 쌓이기 전에는 "기록 모으는 중"
     static let enough = 20
-    static func cached() -> File? { Store.read(File.self, name) }
+    /// 사이트가 Yahoo 로 모은 자료라 내부 베타만
+    static func cached() -> File? { Config.usesCollectedData ? Store.read(File.self, name) : nil }
 
     /// 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 실패하면 저장해 둔 값
     static func fetch(minAge: TimeInterval = 0) async -> File? {
+        guard Config.usesCollectedData else { return nil }
         let old = cached()
         if let o = old, Date().timeIntervalSince1970 - o.got < minAge { return o }
         var c = URLComponents(url: Config.data.appendingPathComponent(name), resolvingAgainstBaseURL: false)!
@@ -255,9 +257,10 @@ final class CustomSymbols {
             let pc = hs.closes.count > 1 ? hs.closes[hs.closes.count - 2] : q.prev
             var s = Saved(id: h.id, yahoo: h.yahoo, name: h.name, market: h.market, usd: false, prev: pc, last: q.last, at: Date())
             s.kp = q.last; s.kd = hs.dates.last; s.lv = true
+            let done = s
             await MainActor.run {
                 items.removeAll { $0.id == h.id }
-                items.append(s)
+                items.append(done)
                 hist[h.id] = hs
                 save()
             }
@@ -457,7 +460,7 @@ enum PriceHistory {
     /// 둘 다 없으면 빌드 때 넣은 파일. 가상 종목 DRNK 는 샘플 흐름을 따로 쓴다
     static func of(_ id: String) -> YahooSample.Hist? {
         let key = SiteStats.key(id)
-        let site = id == "DRNK" ? nil : Market.shared.prices?.h[key]
+        let site = Sample.isVirtual(id) ? nil : Market.shared.prices?.h[key]
         // 국내 주식 합계는 넣은 기록만 (하루치여도. 첫 기록 전은 없음 = 0)
         if id == KoreaEstimate.sumId { return CustomSymbols.shared.hist[id].map { YahooSample.Hist(dates: $0.dates, closes: $0.closes) } }
         let mine = CustomSymbols.shared.hist[id].flatMap { $0.closes.count > 1 ? YahooSample.Hist(dates: $0.dates, closes: $0.closes) : nil }
@@ -471,6 +474,6 @@ enum PriceHistory {
         if let h = site ?? mine { return h }
         // 비중 바꿔 비교에서 담은 종목 (모의 바구니)
         if let e = ExtraStats.shared.items[id]?.hist { return e }
-        return YahooSample.history[id] ?? (id == "DRNK" ? nil : YahooSample.bundled[key])
+        return YahooSample.history[id] ?? (Sample.isVirtual(id) ? nil : YahooSample.bundled[key])
     }
 }

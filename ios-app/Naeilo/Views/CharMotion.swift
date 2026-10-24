@@ -408,3 +408,235 @@ struct MeTurntable: View {
         .accessibilityLabel(label)
     }
 }
+
+// MARK: 홈 쉼터 박스 인물: 오늘 장 흐름에 따라 짧은 장면을 되풀이한다 (2026-10-23)
+// 기본 장면(FriendMotion·MeMotion)에 눈·팔·머리·다리만 몇 칸 바꿔 입힌다. 새 그림 없음.
+// 눈을 못 찾는 인물(세리·이르처럼 눈이 밝은 그림)은 눈만 그대로 두고 나머지 동작은 한다
+
+/// 오늘 장 흐름: ±0.3% 안은 보합, ±2%를 넘으면 크게
+enum DayMood {
+    case bigUp, up, flat, down, bigDown
+    static func of(_ mv: Double) -> DayMood {
+        mv >= 0.02 ? .bigUp : mv >= 0.003 ? .up : mv > -0.003 ? .flat : mv > -0.02 ? .down : .bigDown
+    }
+}
+
+/// 기본 장면 위에 입히는 동작
+enum MoodAct: Hashable {
+    /// blink 눈 감기 · smile ^^ · look 눈 옆으로 · phone 휴대폰 들어 보기 · sigh 고개 숙이고 눈 감기 · nod 고개 한 칸 · crouch 쪼그려 앉기 · cheer 만세 · spark 만세 + 반짝
+    case stand, breath, blink, smile, lookL, lookR, phone, phoneShut, phoneSweat, sweat, sigh, nod, crouch, cheer, spark
+}
+
+/// 대본 한 칸: 방향·다리 + 동작 + 0.15초 칸 수 + 옮김(도트, 위가 -)
+struct MoodStep {
+    var act: MoodAct = .stand
+    var dir: CharDir = .down
+    var leg = 0
+    var n: Int
+    var dx = 0
+    var dy = 0
+}
+
+enum MoodScript {
+    static let tick = 0.15
+    private static func s(_ a: MoodAct, _ n: Int, dy: Int = 0) -> MoodStep { MoodStep(act: a, n: n, dy: dy) }
+    private static func w(_ d: CharDir, _ leg: Int, _ dx: Int) -> MoodStep { MoodStep(dir: d, leg: leg, n: 2, dx: dx) }
+    static func steps(_ m: DayMood) -> [MoodStep] {
+        switch m {
+        // 휴대폰을 보고 → 만세하며 두 번 뛰고 → 반짝 → 신나서 옆으로 몇 걸음 갔다가 돌아온다
+        case .bigUp: return [s(.stand, 4), s(.breath, 4), s(.phone, 12), s(.cheer, 3), s(.cheer, 2, dy: -2), s(.cheer, 2), s(.cheer, 2, dy: -2), s(.spark, 6), s(.smile, 4),
+                             w(.right, 1, 1), w(.right, 0, 2), w(.right, 2, 3), w(.up, 0, 3), w(.left, 1, 2), w(.left, 0, 1), w(.left, 2, 0), s(.stand, 4)]
+        // 느긋하게 숨 쉬다 휴대폰을 한 번 보고, 빙긋 웃으며 두 번 끄덕인다
+        case .up: return [s(.stand, 4), s(.breath, 4), s(.stand, 4), s(.breath, 4), s(.phone, 8), s(.smile, 6), s(.nod, 2), s(.stand, 2), s(.nod, 2),
+                          s(.stand, 4), s(.breath, 4), s(.blink, 1), s(.stand, 4)]
+        // 심심하게 두리번거리고, 꾸벅 졸다가, 휴대폰을 슬쩍 본다
+        case .flat: return [s(.stand, 4), s(.breath, 4), s(.blink, 1), s(.stand, 4), s(.lookL, 6), s(.lookR, 6), s(.stand, 3), s(.blink, 6), s(.nod, 2), s(.stand, 4),
+                            s(.breath, 4), s(.phone, 10), s(.stand, 4)]
+        // 휴대폰을 보다 땀 한 방울, 옆을 보고 짧게 한숨, 끄덕여 마음을 다잡는다
+        case .down: return [s(.stand, 4), s(.phone, 8), s(.phoneSweat, 8), s(.sweat, 4), s(.lookL, 4), s(.sigh, 6), s(.stand, 4), s(.breath, 6), s(.nod, 2), s(.stand, 4)]
+        // 휴대폰을 보고 질끈, 쪼그려 앉았다 일어나 잠깐 먼 곳을 보고, 돌아서서 두 번 끄덕인다
+        case .bigDown: return [s(.phone, 6), s(.phoneShut, 8), s(.sweat, 6), s(.crouch, 14), s(.sigh, 6), s(.stand, 4), MoodStep(dir: .up, n: 8), s(.stand, 4),
+                               s(.nod, 2), s(.stand, 2), s(.nod, 2), s(.breath, 6), s(.stand, 4)]
+        }
+    }
+    static func at(_ m: DayMood, _ k: Int) -> MoodStep {
+        let st = steps(m)
+        var i = k % max(1, st.reduce(0) { $0 + $1.n })
+        for s in st { if i < s.n { return s }; i -= s.n }
+        return st[0]
+    }
+}
+
+/// 동작을 입힌 장면 그림 (인물·방향·다리·동작마다 한 번 만들어 둔다)
+enum MoodArt {
+    private struct Key: Hashable { let who: String; let me: MeChar?; let dir: CharDir; let leg: Int; let act: MoodAct }
+    private static var cache: [Key: UIImage] = [:]
+    /// 장면 위에 둔 빈 줄 (CharScene.room)
+    private static let T = 2
+
+    /// who: 친구 id 또는 "me"
+    static func image(_ who: String, me: MeChar?, _ st: MoodStep) -> UIImage? {
+        let key = Key(who: who, me: who == "me" ? me : nil, dir: st.dir, leg: st.leg, act: st.act)
+        if let c = cache[key] { return c }
+        let f = CharScene(dir: st.dir, leg: st.leg, lift: st.act == .breath, room: true)
+        let base = who == "me" ? me.flatMap { MeMotion.image($0, f) } : FriendMotion.image(who, f)
+        guard let cg = base?.cgImage else { return nil }
+        let w = cg.width, h = cg.height
+        var p = PixBuf.read(cg, w, h)
+        apply(st.act, &p, w, h, legTop: (who == "me" ? MeMotion.legTop : FriendMotion.legTop) + T)
+        let img = PixBuf.image(p, w, h)
+        if cache.count > 300 { cache.removeAll() }
+        cache[key] = img
+        return img
+    }
+
+    private static func apply(_ a: MoodAct, _ p: inout [UInt32], _ w: Int, _ h: Int, legTop: Int) {
+        guard a != .stand, a != .breath else { return }
+        let ink = PixBuf.rgb(MeArt.outline), orig = p
+        func at(_ x: Int, _ y: Int) -> UInt32 { x >= 0 && x < w && y >= 0 && y < h ? p[y * w + x] : 0 }
+        func put(_ x: Int, _ y: Int, _ c: UInt32) { if x >= 0, x < w, y >= 0, y < h { p[y * w + x] = c } }
+        func light(_ v: UInt32) -> Bool { PixBuf.on(v) && PixBuf.luma(v) >= 70 }
+
+        // 눈 두 개: 얼굴 줄에서 양옆이 밝은 칸인 짧은 짙은 줄(1~2칸)을 모아 왼쪽·오른쪽 무리로
+        struct Eye { var x0: Int, x1: Int, y0: Int, y1: Int, skin: UInt32 }
+        func eyes() -> [Eye] {
+            var l: Eye?, r: Eye?
+            for y in (T + 8)...(T + 12) {
+                var x = w / 4
+                while x < w * 3 / 4 {
+                    guard PixBuf.on(at(x, y)), !light(at(x, y)), light(at(x - 1, y)) else { x += 1; continue }
+                    var e = x
+                    while e + 1 < w, PixBuf.on(at(e + 1, y)), !light(at(e + 1, y)) { e += 1 }
+                    if e - x <= 1, light(at(e + 1, y)) {
+                        let sk = at(x - 1, y)
+                        if (x + e) / 2 < w / 2 {
+                            l = l.map { Eye(x0: min($0.x0, x), x1: max($0.x1, e), y0: $0.y0, y1: y, skin: $0.skin) } ?? Eye(x0: x, x1: e, y0: y, y1: y, skin: sk)
+                        } else {
+                            r = r.map { Eye(x0: min($0.x0, x), x1: max($0.x1, e), y0: $0.y0, y1: y, skin: $0.skin) } ?? Eye(x0: x, x1: e, y0: y, y1: y, skin: sk)
+                        }
+                    }
+                    x = e + 1
+                }
+            }
+            guard let l, let r else { return [] }
+            return [l, r]
+        }
+        func clear(_ e: Eye) {
+            for y in e.y0...e.y1 { for x in max(0, e.x0 - 1)...min(w - 1, e.x1 + 1) where PixBuf.near(p[y * w + x], 0xF8F9FA) || !light(p[y * w + x]) { p[y * w + x] = e.skin } }
+        }
+        func shut() { for e in eyes() { clear(e); for x in (e.x0 - 1)...(e.x1 + 1) { put(x, e.y1, ink) } } }
+        func smile() { for e in eyes() { clear(e); put(e.x0 - 1, e.y1, ink); for x in e.x0...e.x1 { put(x, e.y1 - 1, ink) }; put(e.x1 + 1, e.y1, ink) } }
+        func look(_ d: Int) {
+            for e in eyes() {
+                let old = (e.y0...e.y1).map { y in (e.x0...e.x1).map { at($0, y) } }
+                clear(e)
+                for (i, y) in (e.y0...e.y1).enumerated() { for (j, x) in (e.x0...e.x1).enumerated() where !light(old[i][j]) { put(x + d, y, old[i][j]) } }
+            }
+        }
+        /// 머리(목 위)를 한 칸 내린다
+        func bow() {
+            let neck = T + 14
+            for y in stride(from: neck, through: 1, by: -1) { for x in 0..<w { p[y * w + x] = p[(y - 1) * w + x] } }
+            for x in 0..<w { p[x] = 0 }
+        }
+        /// 다리 세 줄을 접어 몸을 내린다 (CharPose.crouch 와 같은 방식)
+        func fold() {
+            let n = 3
+            for y in stride(from: legTop + n, through: n, by: -1) { for x in 0..<w { p[y * w + x] = p[(y - n) * w + x] } }
+            for i in 0..<(n * w) { p[i] = 0 }
+        }
+        func faceSkin() -> UInt32 { eyes().first?.skin ?? at(w / 2, T + 12) }
+        /// 휴대폰을 얼굴 왼쪽으로 들어 본다. 원래 손에 든 휴대폰(화면 하늘색)은 지운다
+        func phone() {
+            let scr = PixBuf.rgb(0x7FD6FF)
+            let held = (0..<h).flatMap { y in (0..<w).filter { y > T + 18 && p[y * w + $0] == scr }.map { ($0, y) } }
+            if let x0 = held.map(\.0).min(), let x1 = held.map(\.0).max(), let y0 = held.map(\.1).min(), let y1 = held.map(\.1).max() {
+                for y in (y0 - 2)...(y1 + 2) { for x in (x0 - 2)...(x1 + 1) { put(x, y, 0) } }
+            }
+            let y = T + 11
+            guard let fl = (0..<w).first(where: { PixBuf.on(at($0, y)) }) else { return }
+            let sk = faceSkin(), shirt = at((0..<w).first(where: { PixBuf.on(at($0, T + 18)) }).map { $0 + 1 } ?? w / 2, T + 18)
+            for yy in (T + 15)...(T + 17) { put(fl - 2, yy, shirt) }
+            put(fl - 2, T + 15, sk); put(fl - 1, T + 15, sk)
+            for yy in (T + 10)...(T + 14) { for x in (fl - 3)...(fl - 1) { put(x, yy, PixBuf.rgb(0x1D1D24)) } }
+            for yy in (T + 11)...(T + 13) { put(fl - 2, yy, scr) }
+            look(-1)
+        }
+        func cheer() {
+            let y = T + 17
+            let xs = (0..<w).filter { PixBuf.on(at($0, y)) }
+            guard let l = xs.first, let r = xs.last else { return }
+            let shirt = at(l + 1, y), sk = faceSkin()
+            for k in 1...3 { put(l - k, y - k, shirt); put(r + k, y - k, shirt) }
+            put(l - 3, y - 4, sk); put(r + 3, y - 4, sk)
+            smile()
+        }
+        func sweat() {
+            let y = T + 4
+            guard let r = (0..<w).last(where: { PixBuf.on(at($0, y)) }) else { return }
+            let c = PixBuf.rgb(0x9FD8FF)
+            put(r + 2, y - 1, c); put(r + 2, y, c); put(r + 1, y, c)
+        }
+        switch a {
+        case .stand, .breath: break
+        case .blink: shut()
+        case .smile: smile()
+        case .lookL: look(-1)
+        case .lookR: look(1)
+        case .phone: phone()
+        case .phoneShut: phone(); shut()
+        case .phoneSweat: phone(); sweat()
+        case .sweat: sweat()
+        case .sigh: shut(); bow()
+        case .nod: bow()
+        case .crouch: shut(); fold()
+        case .cheer, .spark: cheer()
+        }
+        // 테두리는 새로 그린 팔·휴대폰·땀 둘레에만 (머리·몸을 옮긴 장면은 테두리째 옮겼고, 이르의 빛 알갱이처럼 테두리 없는 조각은 그대로)
+        let drawn = [.phone, .phoneShut, .phoneSweat, .sweat, .cheer, .spark].contains(a)
+            ? (0..<(w * h)).filter { PixBuf.on(p[$0]) && p[$0] != orig[$0] && p[$0] != ink } : []
+        for i in drawn {
+            let x = i % w, y = i / w
+            for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] where nx >= 0 && nx < w && ny >= 0 && ny < h && !PixBuf.on(p[ny * w + nx]) {
+                p[ny * w + nx] = ink
+            }
+        }
+        if a == .spark {
+            // 반짝이는 테두리 없이 맨 나중에
+            let c = PixBuf.rgb(0xFFD84A)
+            for (cx, cy) in [(1, T + 6), (w - 2, T + 5)] { for (dx, dy) in [(0, -1), (-1, 0), (1, 0), (0, 1)] { put(cx + dx, cy + dy, c) } }
+        }
+    }
+}
+
+/// 홈 쉼터 박스 인물: 오늘 장 흐름 대본을 0.15초 칸으로 되풀이한다. 화면에 있을 때만 돌고, 동작 줄이기를 켜면 서 있기만 한다
+struct MoodFigure: View {
+    let who: String
+    var me: MeChar?
+    let mood: DayMood
+    var width: CGFloat
+    var height: CGFloat
+    /// 한 도트 크기(pt): 정수 배라야 도트 줄이 고르게 보인다
+    var dot: CGFloat = 2
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    @State private var k = 0
+    var body: some View {
+        let st = MoodScript.at(mood, reduce ? 0 : k)
+        Group {
+            if let img = MoodArt.image(who, me: me, st) {
+                Image(uiImage: img).interpolation(.none).resizable()
+                    .frame(width: img.size.width * dot, height: img.size.height * dot)
+                    .offset(x: CGFloat(st.dx) * dot, y: CGFloat(st.dy) * dot)
+            }
+        }
+        .frame(width: width, height: height, alignment: .bottom)
+        .task(id: reduce) {
+            guard !reduce else { k = 0; return }
+            k = Int.random(in: 0..<40)   // 열 때마다 대본 같은 자리에서 시작하지 않게
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(MoodScript.tick))
+                k &+= 1
+            }
+        }
+    }
+}

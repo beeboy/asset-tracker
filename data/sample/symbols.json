@@ -1,6 +1,6 @@
 {
  "note": "가상 종목·가상 가격 (tools/sample_market.py). 실제 시세가 아니다. 키 등록 전 화면용",
- "updated": "2026-10-14T00:00:00+00:00",
+ "updated": "2026-10-23T00:00:00+00:00",
  "start_holdings": [
   {
    "symbol": "DRNK",

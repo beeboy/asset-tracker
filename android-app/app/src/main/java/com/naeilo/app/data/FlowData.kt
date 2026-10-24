@@ -474,7 +474,7 @@ object FlowStore {   // ios: Data/FlowData.swift:409,410,411
     fun isKR(id: String): Boolean = Sample.symbol(id)?.currency == Currency.krw   // ios: Data/FlowData.swift:424
     /** 이 종목을 받을 키가 있는지: 한국은 토스, 미국은 토스나 알파카 */
     fun canFetch(id: String): Boolean {   // ios: Data/FlowData.swift:426
-        if (id == "DRNK" || id == KoreaEstimate.sumId) return false   // ios: Data/FlowData.swift:427
+        if (Sample.isVirtual(id) || id == KoreaEstimate.sumId) return false   // ios: Data/FlowData.swift:427
         return TossKeys.on || (!isKR(id) && AlpacaKeys.on)   // ios: Data/FlowData.swift:428
     }
 
@@ -485,7 +485,7 @@ object FlowStore {   // ios: Data/FlowData.swift:409,410,411
         return null   // ios: Data/FlowData.swift:435
     }
 
-    private fun stamp(b: FlowBars.Series) = "${b.d.size}" + (b.d.lastOrNull() ?: "")   // ios: Data/FlowData.swift:442
+    private fun stamp(b: FlowBars.Series) = "${b.d.size}" + (b.d.lastOrNull() ?: "")   // 442 의 앞 조각
     fun series(id: String): FlowSeries? {   // ios: Data/FlowData.swift:438
         if (id == "DRNK") return DrnkSample.series   // ios: Data/FlowData.swift:439
         val b = bars(id) ?: return null   // ios: Data/FlowData.swift:440

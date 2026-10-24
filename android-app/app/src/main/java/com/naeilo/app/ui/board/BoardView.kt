@@ -25,6 +25,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -126,7 +130,11 @@ fun BoardView(
     var openDone by remember { mutableStateOf(false) }   // ios: Views/BoardView.swift:8
     val steps = m.boardSteps; val starts = steps.filter { !it.inter }   // ios: Views/BoardView.swift:11
     // ios: Views/BoardView.swift:10,12,28,29 (이동 막대 숨김: NavStack 은 첫 화면에 막대를 그리지 않는다)
-    Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState())) {
+    // 100칸 카드는 화면 아래(탭 위)까지 늘어난다: 카드 위치를 재서 남은 높이를 넘긴다
+    var cardTop by remember { mutableStateOf(0) }
+    BoxWithConstraints(Modifier.fillMaxSize().background(Theme.bg)) {   // ios: Views/BoardView.swift:12
+    val vh = constraints.maxHeight
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         // ios: Views/BoardView.swift:26
         Screen {
             // ios: Views/BoardView.swift:13
@@ -142,9 +150,14 @@ fun BoardView(
                 steps.firstOrNull { !it.ok && it.avail }?.takeIf { !it.inter }?.let { next ->
                     NextCard(m, next, steps = starts)   // ios: Views/BoardView.swift:22
                 }
-                if (m.playUnlocked) com.naeilo.app.ui.goal.GoalCellsCard(m) else LockedPlay(m)   // ios: Views/BoardView.swift:24
+                // ios: Views/BoardView.swift:25,26,29
+                if (m.playUnlocked) Box(Modifier.onGloballyPositioned { cardTop = it.positionInParent().y.toInt() }) {
+                    val d = LocalDensity.current
+                    com.naeilo.app.ui.goal.GoalCellsCard(m, minHeight = with(d) { max(0, vh - cardTop - 24.dp.roundToPx()).toDp() })
+                } else LockedPlay(m)
             }
         }
+    }
     }
 }
 

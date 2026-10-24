@@ -8,6 +8,7 @@ import com.naeilo.app.core.Day
 import com.naeilo.app.core.NJson
 import com.naeilo.app.core.calc.CalmEvent.Act
 import com.naeilo.app.data.Defaults
+import com.naeilo.app.data.Sample
 import com.naeilo.app.data.Symbol
 import com.naeilo.app.data.persists
 import com.naeilo.app.data.recordDay
@@ -547,7 +548,7 @@ fun AppModel.calmBackfill() {
     for ((a, b) in lots.zip(lots.drop(1))) { if (b.d >= Day.today) continue  // ios: Data/Calm.swift:476
         for (t in LinkedHashSet(a.h.keys).apply { addAll(b.h.keys) }) {  // ios: Data/Calm.swift:477
             val q0 = a.h[t] ?: 0.0; val q1 = b.h[t] ?: 0.0  // ios: Data/Calm.swift:478
-            val id = Sync.appId(t); if (q0 == q1 || id == null || id == "DRNK" ||  // ios: Data/Calm.swift:479,480
+            val id = Sync.appId(t); if (q0 == q1 || id == null || Sample.isVirtual(id) ||  // ios: Data/Calm.swift:479,480
                 calm.events.any { it.day == b.d && it.sym == id }) continue
             val buy = q1 > q0; val h = PriceHistory.of(id); val close = h?.on(b.d)  // ios: Data/Calm.swift:481
             val prev = h?.let { hh -> hh.dates.indexOfLast { it < b.d }.takeIf { it >= 0 }?.let { hh.closes[it] } }  // ios: Data/Calm.swift:482

@@ -99,7 +99,8 @@ object Relay {   // ios: WidgetShared/Models.swift:72
 
     /** 못 받으면 IOException */
     suspend fun yahoo(path: String, timeout: Double = 15.0): Map<String, Any?> {   // ios: WidgetShared/Models.swift:76
-        val target = host + path   // ios: WidgetShared/Models.swift:77
+        if (!Config.usesCollectedData) throw java.io.IOException("collected data off")   // 공개 베타·출시는 Yahoo 를 부르지 않는다   // ios: WidgetShared/Models.swift:77
+        val target = host + path   // ios: WidgetShared/Models.swift:78
         runCatching { get(target, timeout, ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)") }.getOrNull()?.let { return it }   // ios: WidgetShared/Models.swift:78
         val enc = pctEncode(target)   // ios: WidgetShared/Models.swift:79
         val url = uriOrNull(base + enc) ?: throw IOException("bad url")   // ios: WidgetShared/Models.swift:80
@@ -141,7 +142,7 @@ object Relay {   // ios: WidgetShared/Models.swift:72
 // 국내 개별 종목 시세 (KoreaEstimate.popular). 사이트 quotes.json 에 없어서 위젯도 앱처럼 Yahoo 중계로 직접 받는다
 object KrQuoteFeed {   // ios: WidgetShared/Models.swift:117
     const val name = "kr_quotes.json"   // ios: WidgetShared/Models.swift:118
-    fun cached(): QuoteFeed.File? = Store.read(QuoteFeed.File.serializer(), name)   // ios: WidgetShared/Models.swift:119
+    fun cached(): QuoteFeed.File? = if (Config.usesCollectedData) Store.read(QuoteFeed.File.serializer(), name) else null   // ios: WidgetShared/Models.swift:120
 
     /** syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐거나 받을 종목이 같으면 저장해 둔 값 */
     suspend fun fetch(syms: Map<String, String>, minAge: Double = 0.0): QuoteFeed.File? = withContext(Dispatchers.IO) { fetchIO(syms, minAge) }   // ios: WidgetShared/Models.swift:122,123
@@ -181,14 +182,14 @@ object TossDaily {   // ios: WidgetShared/Models.swift:557
             .atZone(ZoneId.of(if (kr) "Asia/Seoul" else "America/New_York"))
         return cformat("%04d-%02d-%02d", z.year, z.monthValue, z.dayOfMonth) to z.hour   // ios: WidgetShared/Models.swift:566
     }
-    /** 토스 주간거래 시간(미국 동부 20시~4시)에 체결된 값인가 */
-    fun daytime(at: Double): Boolean { val h = day(at, kr = false).second; return h >= 20 || h < 4 }   // ios: WidgetShared/Models.swift:569
+    /** 토스 주간거래 시간(미국 동부 일요일 20시~금요일 4시 중 20시~4시)에 체결된 값인가. 금요일 20시 뒤·주말은 장이 없어 금요일 종가로 센다 (토스와 같게) */
+    fun daytime(at: Double): Boolean { val h = day(at, kr = false).second; val w = Instant.ofEpochMilli((at * 1000).toLong()).atZone(ZoneId.of("America/New_York")).dayOfWeek.value % 7 + 1; return (h >= 20 && w <= 5) || (h < 4 && w >= 2 && w <= 6) }   // ios: WidgetShared/Models.swift:569
     /** 토스 값(at 시각)의 전일 종가: 그 거래일 앞 마지막 종가.
      *  미국 20시 뒤 주간거래는 다음 거래일 몫이라 그날 종가까지 넣는다 (4시 전은 이미 다음 날짜) */
     fun prev(h: Hist?, at: Double, kr: Boolean): Double? {   // ios: WidgetShared/Models.swift:572
         if (h == null || at <= 0) return null   // ios: WidgetShared/Models.swift:573
         val (d, hr) = day(at, kr)   // ios: WidgetShared/Models.swift:574
-        val late = !kr && hr >= 20   // ios: WidgetShared/Models.swift:575
+        val late = !kr && hr >= 20 && daytime(at)   // ios: WidgetShared/Models.swift:575
         val i = h.dates.indexOfLast { if (late) it <= d else it < d }.takeIf { it >= 0 } ?: return null   // ios: WidgetShared/Models.swift:576
         return h.closes.getOrNull(i)   // ios: WidgetShared/Models.swift:577
     }
@@ -219,12 +220,14 @@ object QuoteFeed {   // ios: WidgetShared/Models.swift:763
     @Serializable data class File(var got: Double, var q: Map<String, Q>)               // got = 받은 시각(초)   // ios: WidgetShared/Models.swift:768
 
     const val name = "site_quotes.json"   // ios: WidgetShared/Models.swift:770
-    fun cached(): File? = Store.read(File.serializer(), name)   // ios: WidgetShared/Models.swift:771
+    /** 공개 베타·출시는 사이트·Yahoo 시세를 쓰지 않는다 (내부 베타 때 받아 둔 파일이 남아 있어도 읽지 않는다) */
+    fun cached(): File? = if (Config.usesCollectedData) Store.read(File.serializer(), name) else null   // ios: WidgetShared/Models.swift:774
 
     /** 받은 지 minAge 초가 안 됐으면 저장해 둔 값을 그대로 쓴다. 실패하면 저장해 둔 값 */
     suspend fun fetch(minAge: Double = 0.0): File? = withContext(Dispatchers.IO) { fetchIO(minAge) }   // ios: WidgetShared/Models.swift:774,775
     private suspend fun fetchIO(minAge: Double): File? {
-        val old = cached()   // ios: WidgetShared/Models.swift:776
+        if (!Config.usesCollectedData) return null   // ios: WidgetShared/Models.swift:779
+        val old = cached()   // ios: WidgetShared/Models.swift:780
         val list = Store.quoteSyms   // ios: WidgetShared/Models.swift:777
         if (list?.isEmpty() == true) return old   // 토스가 다 받는다   // ios: WidgetShared/Models.swift:778
         val want = (list ?: emptyList()).toSet()   // ios: WidgetShared/Models.swift:779

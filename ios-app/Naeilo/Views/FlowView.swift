@@ -4,10 +4,13 @@ import SwiftUI
 // 1단계: 키 없는 사용자도 샘플 종목 DRNK 만 실제로 그린다. 정보 제공용 (매매 권유 아님)
 struct FlowView: View {
     @Environment(AppModel.self) private var model
-    @State private var sel = "DRNK"
+    @State private var sel: String? = nil
+    @AppStorage(BoxLook.key) private var lookRaw = BoxLook.jump.rawValue
     @State private var showAll = false
     @State private var layers: Set<FlowLayer> = [.trend]
     @State private var term: FlowTerm? = nil
+    @State private var showGuide = false
+    @State private var guideFocus: String? = nil
 
     /// 차트 실데이터를 받을 키 (토스·알파카)
     private var hasKey: Bool {
@@ -17,21 +20,48 @@ struct FlowView: View {
     /// 칩 줄: 키가 없으면 샘플 DRNK 를 맨 앞에, 키가 있으면 DRNK 는 빼고 내 종목만
     private var ids: [String] {
         var out = hasKey ? [] : ["DRNK"]
-        for h in model.holdings where !out.contains(h.symbol) && h.symbol != KoreaEstimate.sumId && h.symbol != "DRNK" { out.append(h.symbol) }
+        for h in model.holdings where !out.contains(h.symbol) && h.symbol != KoreaEstimate.sumId && !Sample.isVirtual(h.symbol) { out.append(h.symbol) }
         return out
     }
-    /// 고른 종목이 칩 줄에서 빠졌으면(키를 넣어 DRNK 가 숨는 등) 첫 종목
-    private var cur: String? { ids.contains(sel) ? sel : ids.first }
+    /// 고른 종목이 없거나 칩 줄에서 빠졌으면(키를 넣어 DRNK 가 숨는 등) 큰 흐름 박스의 첫 종목
+    private var cur: String? {
+        if let sel, ids.contains(sel) { return sel }
+        return mood.box.first ?? byWeight.first
+    }
+    /// 평가액 (원). 샘플 DRNK 는 담지 않았어도 1
+    private func weight(_ id: String) -> Double { model.rows.first { $0.id == id }?.value ?? (id == "DRNK" ? 1 : 0) }
+    /// 비중 큰 순서
+    private var byWeight: [String] { ids.enumerated().sorted { (weight($0.1), -$0.0) > (weight($1.1), -$1.0) }.map(\.1) }
+    /// 아래 칩 줄: 큰 흐름 박스에 없는 종목만 비중 순
+    private var restIds: [String] { let b = Set(mood.box); return byWeight.filter { !b.contains($0) } }
+
+    /// 큰 흐름 박스 값: 일봉이 있는 종목의 큰 흐름(22% 넘는 출렁임 띠) 마지막 방향을 평가액 몫으로 쌓는다
+    struct Mood { var shares: [Double] = [0, 0, 0]; var side = 0; var strong = false; var box: [String] = [] }
+    private var mood: Mood {
+        let items: [(String, Int, Double)] = byWeight.compactMap { id in
+            store.series(id)?.trends[2].last.map { (id, $0.dir > 0 ? 1 : $0.dir < 0 ? -1 : 0, weight(id)) }
+        }
+        guard !items.isEmpty else { return Mood() }
+        let total = items.reduce(0) { $0 + $1.2 }
+        let w = { (d: Int) in items.filter { $0.1 == d }.reduce(0) { $0 + (total > 0 ? $1.2 / total : 1 / Double(items.count)) } }
+        let sh = [w(1), w(0), w(-1)]
+        // 횡보는 빼고 상승·하락 중 큰 쪽. 둘 다 없으면 횡보
+        let side = sh[0] == 0 && sh[2] == 0 ? 0 : sh[0] >= sh[2] ? 1 : -1
+        let win = side > 0 ? sh[0] : side < 0 ? sh[2] : sh[1]
+        return Mood(shares: sh, side: side, strong: win > 0.5, box: items.filter { $0.1 == side }.map(\.0))
+    }
     private func name(_ id: String) -> String { Sample.symbol(id)?.name ?? id }
     private var store: FlowStore { FlowStore.shared }
     /// 키가 없어 못 그리는 종목이 있으면 설정 링크를 보인다
-    private var needKey: Bool { _ = hasKey; return ids.contains { $0 != "DRNK" && !FlowStore.canFetch($0) } }
+    private var needKey: Bool { _ = hasKey; return ids.contains { !Sample.isVirtual($0) && !FlowStore.canFetch($0) } }
 
     var body: some View {
+        GeometryReader { geo in
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: String(localized: String.LocalizationValue(FlowTab.name))).padding(.horizontal, -16)
-                if !ids.isEmpty { chips }
+                if !mood.box.isEmpty { moodBox }
+                if !restIds.isEmpty { chips }
                 if needKey {
                     Button { model.openSettings(.toss) } label: {
                         Text("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요").appFont(13).underline()
@@ -42,7 +72,7 @@ struct FlowView: View {
                 layerRow
                 Group {
                     if let sel = cur, let s = store.series(sel) {
-                        FlowChart(series: s, title: sel == "DRNK" ? String(localized: "DRNK · 샘플") : name(sel), layers: layers, term: $term)
+                        FlowChart(series: s, title: sel == "DRNK" ? String(localized: "DRNK · 샘플") : name(sel), layers: layers, term: $term, more: { t in guideFocus = t.key; showGuide = true })
                             .id(sel)
                     } else if cur == nil {
                         Text("종목을 담으면 흐름이 보여요").appFont(14).foregroundStyle(Theme.sub)
@@ -59,29 +89,76 @@ struct FlowView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                .frame(height: 420)
+                // 차트는 아래 탭 바 바로 위까지 (화면이 작아도 300 은 둔다)
+                .frame(minHeight: 300, maxHeight: .infinity)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-                Text("옆으로 밀면 지난 날 · 두 손가락으로 확대")
-                    .appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
-                explain
             }
             .screen()
+            .padding(.bottom, -12)
+            .frame(minHeight: geo.size.height, alignment: .top)
+        }
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAll) { allSheet }
+        .sheet(isPresented: $showGuide) { FlowGuide(focus: guideFocus) }
         // 열 때 담은 종목 일봉을 받는다 (하루 한 번만 실제로 부른다)
         .task(id: hasKey) { await store.ensure(ids) }
         // 당기면 다른 탭처럼 시세를 받고, 일봉도 다시 묻는다 (장이 끝나 새 날이 생겼을 때만 실제로 받는다)
         .refreshable { await Market.shared.pullRefresh(model); await store.ensure(ids) }
     }
 
-    // 맨 위 내 종목 칩 줄 + '전체'
+    // 맨 위 큰 흐름 박스: 홈에서 고른 박스 모양. 큰 글자 = 상승·하락 중 큰 쪽 (절반 넘으면 강한), 버튼 = 그쪽 종목만
+    private var moodBox: some View {
+        let md = mood, look = BoxLook(rawValue: lookRaw) ?? .jump
+        let c = md.side > 0 ? TodayBox.upC : md.side < 0 ? TodayBox.downC : TodayBox.dim
+        let head = md.side == 0 ? String(localized: "횡보")
+            : md.side > 0 ? (md.strong ? String(localized: "강한 상승") : String(localized: "약한 상승"))
+            : (md.strong ? String(localized: "강한 하락") : String(localized: "약한 하락"))
+        let share = md.side > 0 ? md.shares[0] : md.side < 0 ? md.shares[2] : md.shares[1]
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack { Text("내 종목 · 큰 흐름"); Spacer(); FreshLabel() }.appFont(13).foregroundStyle(TodayBox.dim)
+            (Text(head + " · ").foregroundColor(.white) + Text(AppModel.pct(share)).foregroundColor(c))
+                .font(.system(size: 30, weight: .heavy)).tracking(-0.5).lineLimit(1).minimumScaleFactor(0.6)
+                .padding(.top, 6)
+            MoodBand(look: look, shares: md.shares, road: 10).padding(.top, 14)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) { ForEach(md.box, id: \.self) { boxChip($0, c) } }
+                    .padding(.horizontal, 18)
+            }
+            .mask(LinearGradient(stops: [.init(color: .black, location: 0.84), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+            .padding(.horizontal, -18).padding(.top, 14)
+        }
+        .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background { MoodBackdrop(look: look) }
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func boxChip(_ id: String, _ dot: Color) -> some View {
+        let on = cur == id
+        return Button { sel = id; term = nil } label: {
+            HStack(spacing: 6) {
+                Circle().fill(dot).frame(width: 8, height: 8)
+                Text(id == "DRNK" ? "DRNK" : name(id)).appFont(15, on ? .bold : .regular).lineLimit(1)
+            }
+            .foregroundStyle(on ? .white : Color(hex: 0xC9D0D6))
+            .padding(.horizontal, 14).frame(minHeight: 34)
+            .overlay(Capsule().stroke(on ? .white : .white.opacity(0.22)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    // 큰 흐름 박스 밖 내 종목 칩 줄 + '전체'
     private var chips: some View {
         HStack(spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) { ForEach(ids, id: \.self) { chip($0) } }
+                HStack(spacing: 6) { ForEach(restIds, id: \.self) { chip($0) } }
             }
+            // 오른쪽 끝을 흐리게 지워 잘린 칩이 '더 있음'으로 녹아들게
+            .mask(LinearGradient(stops: [.init(color: .black, location: 0.9), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
             Button("전체") { showAll = true }
                 .appFont(13, .semibold).foregroundStyle(Theme.teal).frame(minHeight: 36)
         }
@@ -105,7 +182,7 @@ struct FlowView: View {
 
     private var allSheet: some View {
         NavigationStack {
-            List(ids, id: \.self) { id in
+            List(byWeight, id: \.self) { id in
                 Button { sel = id; term = nil; showAll = false } label: {
                     HStack {
                         Text(id == "DRNK" ? "DRNK · " + name(id) : name(id)).foregroundStyle(Theme.ink)
@@ -151,27 +228,14 @@ struct FlowView: View {
                     .appFont(13, .semibold).foregroundStyle(Theme.teal).padding(.horizontal, 8).frame(minHeight: 34)
                 }
                 .buttonStyle(.plain)
+                Button { guideFocus = nil; showGuide = true } label: {
+                    Image(systemName: "questionmark.circle").font(.system(size: 18)).foregroundStyle(Theme.teal)
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("흐름 읽는 법"))
             }
         }
-    }
-
-    // 차트 아래 고정 높이 설명 칸
-    private var explain: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let t = term {
-                Text(t.title).appFont(15, .bold).foregroundStyle(Theme.ink)
-                Text(t.body).appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-            } else {
-                Text("이름표나 선을 눌러 보세요").appFont(15, .bold).foregroundStyle(Theme.ink)
-                Text("누른 것의 뜻만 여기에 떠요. 흐린 점선 이름표는 확정 전이거나 거래량이 적었던 것이에요. 정보 제공용이며 매매 권유가 아니에요.")
-                    .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 132, maxHeight: 132, alignment: .topLeading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-        .clipped()
     }
 }
 
@@ -190,6 +254,16 @@ enum FlowLayer: Int, CaseIterable, Hashable {
 /// 설명 칸에 띄울 용어
 enum FlowTerm: Equatable {
     case dots, band, support, resistance, pattern(FlowPattern.Kind)
+    /// 설명 페이지에서 그 줄로 바로 가는 이름
+    var key: String {
+        switch self {
+        case .dots: "dots"
+        case .band: "band"
+        case .support: "support"
+        case .resistance: "resistance"
+        case .pattern(let k): k.rawValue
+        }
+    }
     var title: String {
         switch self {
         case .dots: String(localized: "추세 점")
@@ -201,10 +275,10 @@ enum FlowTerm: Equatable {
     }
     var body: String {
         switch self {
-        case .dots: String(localized: "고점·저점마다 찍은 점이에요. 점이 계단처럼 올라가면 상승, 내려가면 하락, 같은 높이를 오가면 횡보예요.")
-        case .band: String(localized: "위에서부터 큰·중간·작은 흐름이에요. 빨강은 상승, 파랑은 하락, 회색은 횡보예요.")
-        case .support: String(localized: "주가가 여러 번 내려와 받친 가격이에요. 여러 번 닿을수록 선이 진해요.")
-        case .resistance: String(localized: "주가가 여러 번 올라와 튕겨 나간 가격이에요. 여러 번 닿을수록 선이 진해요.")
+        case .dots: String(localized: "고점·저점 표시 · 계단 위로 상승 · 아래로 하락 · 같은 높이 횡보")
+        case .band: String(localized: "큰 흐름 · 22% 넘는 출렁임만 셈\n중간 흐름 · 12% 넘는 출렁임\n작은 흐름 · 6% 넘는 출렁임\n빨강 상승 · 파랑 하락 · 회색 횡보")
+        case .support: String(localized: "여러 번 내려와 받친 가격 · 많이 닿을수록 진하게")
+        case .resistance: String(localized: "여러 번 올라와 막힌 가격 · 많이 닿을수록 진하게")
         case .pattern(let k): k.body
         }
     }
@@ -228,18 +302,35 @@ extension FlowPattern.Kind {
     }
     var body: String {
         switch self {
-        case .doubleBottom: String(localized: "비슷한 높이의 바닥이 두 번 생긴 모양(W)이에요. 두 바닥 사이 고점을 종가가 넘으면 확정이에요.")
-        case .doubleTop: String(localized: "비슷한 높이의 꼭대기가 두 번 생긴 모양(M)이에요. 두 꼭대기 사이 저점 아래로 종가가 내려가면 확정이에요.")
-        case .headShoulders: String(localized: "가운데 꼭대기가 양옆보다 높은 세 봉우리예요. 두 골짜기를 이은 선 아래로 내려가면 확정이에요.")
-        case .ascTriangle: String(localized: "꼭대기는 같은 높이인데 바닥이 점점 높아지는 모양이에요. 그 꼭대기를 종가가 넘으면 확정이에요.")
-        case .descTriangle: String(localized: "바닥은 같은 높이인데 꼭대기가 점점 낮아지는 모양이에요. 그 바닥 아래로 종가가 내려가면 확정이에요.")
-        case .bullFlag: String(localized: "짧게 크게 오른 뒤(깃대) 잠시 쉬는 모양이에요. 쉬던 자리를 위로 벗어나면 확정이에요.")
-        case .bearFlag: String(localized: "짧게 크게 내린 뒤(깃대) 잠시 쉬는 모양이에요. 쉬던 자리를 아래로 벗어나면 확정이에요.")
-        case .hammer: String(localized: "아래꼬리가 몸통보다 훨씬 긴 캔들이에요. 내려갔다가 다시 끌어올린 날이라는 뜻이에요.")
-        case .shootingStar: String(localized: "위꼬리가 몸통보다 훨씬 긴 캔들이에요. 올라갔다가 다시 밀려 내려온 날이라는 뜻이에요.")
-        case .bullEngulf: String(localized: "전날 음봉 몸통을 다음 날 양봉 몸통이 다 덮은 모양이에요.")
-        case .bearEngulf: String(localized: "전날 양봉 몸통을 다음 날 음봉 몸통이 다 덮은 모양이에요.")
-        case .insideBar: String(localized: "전날 고가·저가 안에서만 움직인 날이에요. 힘이 잠시 멈춘 자리예요.")
+        case .doubleBottom: String(localized: "비슷한 바닥 두 번 (W) · 사이 고점 넘는 종가에 확정")
+        case .doubleTop: String(localized: "비슷한 꼭대기 두 번 (M) · 사이 저점 깨는 종가에 확정")
+        case .headShoulders: String(localized: "가운데가 가장 높은 세 봉우리 · 두 골짜기 선 깨면 확정")
+        case .ascTriangle: String(localized: "꼭대기 같고 바닥은 높아짐 · 꼭대기 넘는 종가에 확정")
+        case .descTriangle: String(localized: "바닥 같고 꼭대기는 낮아짐 · 바닥 깨는 종가에 확정")
+        case .bullFlag: String(localized: "급등(깃대) 뒤 쉬어 가기 · 위로 벗어나면 확정")
+        case .bearFlag: String(localized: "급락(깃대) 뒤 쉬어 가기 · 아래로 벗어나면 확정")
+        case .hammer: String(localized: "아래꼬리가 긴 캔들 · 밀렸다 끌어올린 날")
+        case .shootingStar: String(localized: "위꼬리가 긴 캔들 · 올랐다 밀려난 날")
+        case .bullEngulf: String(localized: "전날 음봉을 양봉이 다 덮음")
+        case .bearEngulf: String(localized: "전날 양봉을 음봉이 다 덮음")
+        case .insideBar: String(localized: "전날 범위 안에서만 움직인 날 · 잠시 멈춤")
+        }
+    }
+    /// 흐름 읽는 법 '이럴 때': 흔히 생기는 장면 한 줄 (널리 쓰이는 차트 읽기 지식, 특정 종목 사례 아님)
+    var when: String {
+        switch self {
+        case .doubleBottom: String(localized: "실적 쇼크 급락 뒤 · 첫 바닥 근처에서 또 사들임")
+        case .doubleTop: String(localized: "신고가 뒤 차익 매물 · 같은 가격에서 또 막힘")
+        case .headShoulders: String(localized: "긴 상승 끝물 · 호재에 마지막 신고가")
+        case .ascTriangle: String(localized: "한 가격에 매물 · 사는 쪽이 점점 높게 받침")
+        case .descTriangle: String(localized: "받치는 가격 하나 · 파는 쪽이 점점 낮게 내놓음")
+        case .bullFlag: String(localized: "실적 깜짝·큰 계약에 급등 뒤 쉬어 가기")
+        case .bearFlag: String(localized: "악재 급락 뒤 · 힘 약한 저가 매수 반등")
+        case .hammer: String(localized: "며칠 하락 뒤 · 아침 악재에 빠졌다 오후에 회복")
+        case .shootingStar: String(localized: "며칠 상승 뒤 · 아침 호재에 치솟다 차익 매물에 밀림")
+        case .bullEngulf: String(localized: "공포로 급락한 다음 날 · 하락을 다 되돌림")
+        case .bearEngulf: String(localized: "기대로 급등한 다음 날 · 실적 실망에 다 내줌")
+        case .insideBar: String(localized: "금리 결정·실적·물가 발표 하루 전")
         }
     }
 }
@@ -250,12 +341,21 @@ struct FlowChart: View {
     let title: String
     let layers: Set<FlowLayer>
     @Binding var term: FlowTerm?
+    var more: (FlowTerm) -> Void = { _ in }
     @State private var count = 160          // 보이는 날 수
     @State private var end: Int? = nil      // 맨 오른쪽 날 (nil = 마지막 날)
     @State private var pinchBase: Int? = nil
     @State private var dragBase: Int? = nil
+    @State private var tapAt: CGPoint = .zero   // 마지막으로 누른 자리 (말풍선을 그 근처에 띄운다)
+    @AppStorage("flow.hintSeen") private var hintSeen = false
+    @Environment(\.colorScheme) private var scheme
 
-    private let axisW: CGFloat = 46, bandH: CGFloat = 36, topH: CGFloat = 68, botH: CGFloat = 20
+    // 말풍선: 라이트는 흰 바탕 + 테두리 + 그림자, 다크는 카드보다 한 단 밝은 바탕
+    private static let bb = Color(hex: 0xFFFFFF, dark: 0x2E3945), bbLine = Color(hex: 0xD5DBE1, dark: 0x46535F)
+    private static let bbTitle = Color(hex: 0x15202B, dark: 0xF2F5F8), bbBody = Color(hex: 0x46525E, dark: 0xC6CED6)
+    private static let bbFoot = Color(hex: 0x8A949E, dark: 0x8E99A4), bbMore = Color(hex: 0x0B6B66, dark: 0x8FD8CE)
+
+    private let axisW: CGFloat = 46, bandH: CGFloat = 36, topH: CGFloat = 50, botH: CGFloat = 20
 
     var body: some View {
         GeometryReader { g in
@@ -268,15 +368,17 @@ struct FlowChart: View {
             let pMin = slice.map(\.l).min() ?? 0, pMax = slice.map(\.h).max() ?? 1
             let pad = (pMax - pMin) * 0.08
             let yMin = pMin - pad, yMax = pMax + pad
-            let x = { (i: Double) in CGFloat((i - Double(lo) + 0.5) / Double(cnt)) * W }
             let y = { (v: Double) in top + CGFloat(1 - (v - yMin) / max(1e-12, yMax - yMin)) * H }
             let last = k[hi]
             let piv = series.pivotSets[step == 1 ? 0 : step == 5 ? 1 : 2]
             // 지지·저항: 보이는 것 중 많이 닿은 4개. 이름표는 위아래로 붙으면 뒤의 것을 뺀다
             let lvls = Array(series.levels.filter { $0.price >= yMin && $0.price <= yMax && $0.from <= hi }.prefix(4))
+            let x = { (i: Double) in CGFloat((i - Double(lo) + 0.5) / Double(cnt)) * W }
             // 월봉으로 볼 땐 패턴 없이 추세·지지/저항만 (한 칸이 한 달이라 몇 주짜리 모양은 뜻이 없다)
             let bigs = step == 21 ? [] : series.patterns.filter { $0.big && $0.to >= lo && $0.from <= hi }
-            let smalls = step == 1 ? series.patterns.filter { !$0.big && $0.to >= lo && $0.to <= hi } : []
+            // 흐린(확정 전·거래량 적은) 캔들 패턴은 확대해서 60일 이하로 볼 때만 띄운다
+            let showWeak: Bool = cnt <= 60
+            let smalls = step == 1 ? series.patterns.filter { !$0.big && $0.to >= lo && $0.to <= hi && ($0.strong || showWeak) } : []
             // 큰 패턴 틀: 구간 안 최고가·최저가
             let box = { (pt: FlowPattern) -> (CGFloat, CGFloat, CGFloat, CGFloat) in
                 let a = x(Double(max(lo, pt.from)) - 0.5), b = x(Double(min(hi, pt.to)) + 0.5)
@@ -301,17 +403,16 @@ struct FlowChart: View {
             }, on: layers, bounds: CGRect(x: 0, y: top - 6, width: W, height: H + 14))
 
             ZStack(alignment: .topLeading) {
-                // 머리: 종목·마지막 값 (시작 대비) + 지금 단위
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(title).appFont(12).foregroundStyle(Theme.muted).lineLimit(1)
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(String(format: "%+.0f%%", series.pct(last.c))).appFont(20, .bold).monospacedDigit()
-                                .foregroundStyle(Theme.change(series.pct(last.c)))
-                            Text("시작 대비").appFont(12).foregroundStyle(Theme.muted)
-                        }
+                // 머리: ▲44% 테슬라 · 시작 대비 (세모는 숫자의 70%) + 지금 단위
+                HStack(alignment: .center) {
+                    let v = series.pct(last.c)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        (Text(v > 0 ? "▲" : v < 0 ? "▼" : "").font(.system(size: 15, weight: .heavy)).baselineOffset(2)
+                         + Text(String(format: "%.0f%%", abs(v))).font(.system(size: 22, weight: .heavy)))
+                            .monospacedDigit().foregroundStyle(Theme.change(v)).fixedSize()
+                        Text(title + " · " + String(localized: "시작 대비")).appFont(13).foregroundStyle(Theme.muted).lineLimit(1)
                     }
-                    Spacer()
+                    Spacer(minLength: 6)
                     // 일·주·월 고르기: 고르면 보이는 날 수를 그 단위로, 핀치로 바뀌면 고른 칸도 따라 바뀐다
                     HStack(spacing: 2) {
                         ForEach([(1, "일봉", 160), (5, "주봉", 520), (21, "월봉", n)], id: \.0) { u, t, c in
@@ -392,7 +493,7 @@ struct FlowChart: View {
                     // 띠를 누르면 띠 설명
                     Color.clear.contentShape(Rectangle()).frame(width: W, height: bandH + 6)
                         .offset(y: topH - 3)
-                        .onTapGesture { term = .band }
+                        .onTapGesture { tapAt = CGPoint(x: W / 2, y: topH + bandH); term = .band }
                 }
                 .opacity(layers.contains(.trend) ? 1 : 0)
                 .allowsHitTesting(layers.contains(.trend))
@@ -406,7 +507,7 @@ struct FlowChart: View {
                         Path { p in p.move(to: CGPoint(x: a, y: yy)); p.addLine(to: CGPoint(x: W, y: yy)) }
                             .stroke(col.opacity(op), lineWidth: lv.touches >= 4 ? 2 : 1.2)
                         if let sp = spots["L\(lv.id)"] {
-                            Button { term = lv.support ? .support : .resistance } label: {
+                            Button { tapAt = sp; term = lv.support ? .support : .resistance } label: {
                                 Text(levelText(lv))
                                     .appFont(10, .semibold).foregroundStyle(col.opacity(max(0.7, op))).fixedSize()
                                     .padding(.horizontal, 4).background(Theme.card.opacity(0.9), in: Capsule())
@@ -432,7 +533,7 @@ struct FlowChart: View {
                             .position(x: (a + b) / 2, y: (t + bt) / 2)
                             .allowsHitTesting(false)
                         if let sp = spots["B\(pt.id)"] {
-                            tag(pt.kind.title, col, pt.strong) { term = .pattern(pt.kind) }.position(sp)
+                            tag(pt.kind.title, col, pt.strong) { tapAt = sp; term = .pattern(pt.kind) }.position(sp)
                         }
                     }
                 }
@@ -443,7 +544,7 @@ struct FlowChart: View {
                 ZStack(alignment: .topLeading) {
                     ForEach(smalls) { pt in
                         if let sp = spots["C\(pt.id)"] {
-                            tag(pt.kind.title, Theme.orange, pt.strong) { term = .pattern(pt.kind) }.position(sp)
+                            tag(pt.kind.title, Theme.orange, pt.strong) { tapAt = sp; term = .pattern(pt.kind) }.position(sp)
                         }
                     }
                 }
@@ -451,13 +552,23 @@ struct FlowChart: View {
                 .allowsHitTesting(layers.contains(.candle))
 
                 // 아래: 보이는 기간
-                Text(date(lo) + " – " + date(hi))
-                    .appFont(10).monospacedDigit().foregroundStyle(Theme.muted)
+                Text(date(lo) + " – " + date(hi) + "  ·  " + String(localized: "밀기 · 두 손가락 확대"))
+                    .appFont(10).monospacedDigit().foregroundStyle(Theme.muted).lineLimit(1)
                     .position(x: W / 2, y: g.size.height - botH / 2)
+
+                // 말풍선: 누른 것의 뜻. 처음 한 번은 사용 안내
+                if let t = term {
+                    bubble(t.title, t.body, at: tapAt, top: top, W: W) { more(t) }
+                } else if !hintSeen {
+                    bubble(String(localized: "이름표나 선을 눌러 보세요"), String(localized: "누른 것의 뜻이 여기 떠요. 흐린 점선 이름표는 확정 전이거나 거래량이 적었던 것이에요."), at: CGPoint(x: W / 2, y: g.size.height - botH), top: top, W: W, more: nil)
+                        .onTapGesture { hintSeen = true }
+                }
             }
             .contentShape(Rectangle())
+            .onChange(of: term) { if term != nil { hintSeen = true } }
             // 점·선 근처를 누르면 그 뜻. 이름표는 버튼이라 먼저 받는다
             .onTapGesture(coordinateSpace: .local) { loc in
+                term = nil; tapAt = loc
                 if layers.contains(.levels), let lv = lvls
                     .min(by: { abs(y($0.price) - loc.y) < abs(y($1.price) - loc.y) }), abs(y(lv.price) - loc.y) < 10 {
                     term = lv.support ? .support : .resistance; return
@@ -471,7 +582,7 @@ struct FlowChart: View {
                 DragGesture(minimumDistance: 8)
                     .onChanged { v in
                         let base = dragBase ?? hi
-                        if dragBase == nil { dragBase = hi }
+                        if dragBase == nil { dragBase = hi; term = nil }
                         let shift = Int((v.translation.width / max(1, W) * CGFloat(cnt)).rounded())
                         end = max(cnt - 1, min(n - 1, base - shift))
                     }
@@ -488,6 +599,53 @@ struct FlowChart: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
+    }
+
+    /// 누른 자리 바로 위에 띄운다. 차트 위쪽 끝이면 바로 아래로. 가로는 화면 밖으로 안 나가게. 꼬리는 누른 자리를 가리킨다
+    private func bubble(_ title: String, _ body: String, at p: CGPoint, top: CGFloat, W: CGFloat, more: (() -> Void)?) -> some View {
+        let bw: CGFloat = min(280, W - 8)
+        let cx: CGFloat = min(max(p.x, bw / 2 + 4), W - bw / 2 - 4)
+        let below: Bool = p.y < top + 110
+        let tailX: CGFloat = min(max(p.x - (cx - bw / 2), 16), bw - 16)
+        // 꼬리: 바탕색으로 채우고 바깥 두 변만 테두리. 몸통에 1pt 겹쳐 이음매 테두리를 덮는다
+        let tail = ZStack {
+            FlowTail(up: below).fill(Self.bb)
+            FlowTail(up: below, open: true).stroke(Self.bbLine, lineWidth: 1)
+        }
+        .frame(width: 14, height: 7)
+        .frame(width: bw, alignment: .leading).offset(x: tailX - 7, y: below ? 1 : -1).zIndex(1)
+        return Color.clear.frame(width: 1, height: 1)
+            .overlay(alignment: below ? .top : .bottom) {
+                VStack(spacing: 0) {
+                    if below { tail }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title).appFont(15, .bold).foregroundStyle(Self.bbTitle)
+                        Text(body).appFont(14).foregroundStyle(Self.bbBody).fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            Text("정보 제공용 · 매매 권유 아님").appFont(11).foregroundStyle(Self.bbFoot)
+                            Spacer(minLength: 4)
+                            if let more {
+                                Button(action: more) {
+                                    Text("자세히 ›").appFont(13, .semibold).foregroundStyle(Self.bbMore)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .frame(width: bw, alignment: .leading)
+                    .background(Self.bb, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Self.bbLine))
+                    if !below { tail }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .compositingGroup()
+                .shadow(color: scheme == .dark ? .black.opacity(0.55) : Color(hex: 0x15202B).opacity(0.16), radius: 12, y: 8)
+                .offset(x: cx - p.x, y: below ? 8 : -8)
+                .onTapGesture { term = nil }
+            }
+            .position(p)
+            .transition(.opacity)
     }
 
     private func levelText(_ lv: FlowLevel) -> String {
@@ -541,4 +699,178 @@ struct FlowChart: View {
         return Self.fmt.string(from: Date().addingTimeInterval(-Double(series.candles.count - i) * 86400))
     }
     static let fmt: DateFormatter = { let f = DateFormatter(); f.locale = AppModel.dateLocale; f.dateFormat = "yyyy.MM.dd"; return f }()
+}
+
+/// 말풍선 꼬리 (작은 삼각형)
+struct FlowTail: Shape {
+    let up: Bool
+    var open = false     // 몸통 쪽 밑변 없이 두 변만 (테두리용)
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        if up {
+            p.move(to: CGPoint(x: r.minX, y: r.maxY)); p.addLine(to: CGPoint(x: r.midX, y: r.minY)); p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        } else {
+            p.move(to: CGPoint(x: r.minX, y: r.minY)); p.addLine(to: CGPoint(x: r.midX, y: r.maxY)); p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        }
+        if !open { p.closeSubpath() }
+        return p
+    }
+}
+
+/// '흐름 읽는 법': 겹마다 항목 한 줄씩, 작은 그림 + 두세 줄 설명
+struct FlowGuide: View {
+    let focus: String?
+    @Environment(\.dismiss) private var dismiss
+
+    private struct Item: Identifiable { let id: String; let title: String; let body: String; var when: String? = nil }
+    private var groups: [(String, [Item])] {
+        let t = { (x: FlowTerm) in Item(id: x.key, title: x.title, body: x.body) }
+        let k = { (x: FlowPattern.Kind) in Item(id: x.rawValue, title: x.title, body: x.body, when: x.when) }
+        return [
+            (FlowLayer.trend.title, [t(.band), t(.dots)]),
+            (FlowLayer.levels.title, [t(.support), t(.resistance)]),
+            (FlowLayer.big.title, [k(.doubleTop), k(.doubleBottom), k(.headShoulders), k(.ascTriangle), k(.descTriangle), k(.bullFlag), k(.bearFlag)]),
+            (FlowLayer.candle.title, [k(.hammer), k(.shootingStar), k(.bullEngulf), k(.bearEngulf), k(.insideBar)]),
+        ]
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                Text("흐름 읽는 법").appFont(22, .bold).foregroundStyle(Theme.ink)
+                Spacer(minLength: 8)
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.sub)
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).accessibilityLabel("닫기")
+            }
+            .padding(.leading, 20).padding(.trailing, 8).padding(.top, 10)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        ForEach(groups.indices, id: \.self) { gi in
+                            let g = groups[gi]
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(g.0).appFont(14, .semibold).foregroundStyle(Theme.muted).padding(.leading, 4)
+                                VStack(spacing: 0) {
+                                    ForEach(Array(g.1.enumerated()), id: \.element.id) { i, it in
+                                        if i > 0 { Rectangle().fill(Theme.line).frame(height: 1).padding(.leading, 84) }
+                                        row(it).id(it.id)
+                                    }
+                                }
+                                .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+                            }
+                        }
+                        Text("흐린 점선 = 확정 전·거래량 적음 · 투자 권유 아님")
+                            .appFont(13).foregroundStyle(Theme.muted).padding(.horizontal, 4)
+                    }
+                    .padding(16)
+                }
+                .background(Theme.bg)
+                .onAppear { if let focus { proxy.scrollTo(focus, anchor: .center) } }
+            }
+        }
+        .background(Theme.bg)
+    }
+
+    private func row(_ it: Item) -> some View {
+        let on = it.id == focus
+        return HStack(alignment: .top, spacing: 12) {
+            FlowMini(key: it.id)
+                .frame(width: 56, height: 40)
+                .padding(4)
+                .background(Theme.bg, in: RoundedRectangle(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(it.title).appFont(17, .bold).foregroundStyle(Theme.ink)
+                Text(it.body).appFont(15).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
+                if let w = it.when {
+                    (Text("이럴 때").fontWeight(.semibold).foregroundColor(Theme.teal) + Text("  " + w).foregroundColor(Theme.sub))
+                        .appFont(14).fixedSize(horizontal: false, vertical: true).padding(.top, 2)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(on ? Theme.tealBg : .clear, in: RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+/// 설명 페이지의 작은 그림. 좌표는 0~1 (y 0 = 위)
+struct FlowMini: View {
+    let key: String
+
+    private static let lines: [String: [CGPoint]] = {
+        func pts(_ a: [(CGFloat, CGFloat)]) -> [CGPoint] { a.map { CGPoint(x: $0.0, y: $0.1) } }
+        return [
+            "dots": pts([(0, 0.85), (0.22, 0.5), (0.38, 0.68), (0.62, 0.3), (0.78, 0.48), (1, 0.12)]),
+            "support": pts([(0, 0.25), (0.2, 0.75), (0.4, 0.4), (0.6, 0.75), (0.8, 0.35), (1, 0.75)]),
+            "resistance": pts([(0, 0.75), (0.2, 0.25), (0.4, 0.6), (0.6, 0.25), (0.8, 0.65), (1, 0.25)]),
+            "doubleTop": pts([(0, 0.9), (0.25, 0.15), (0.5, 0.55), (0.75, 0.15), (1, 0.9)]),
+            "doubleBottom": pts([(0, 0.1), (0.25, 0.85), (0.5, 0.45), (0.75, 0.85), (1, 0.1)]),
+            "headShoulders": pts([(0, 0.9), (0.18, 0.42), (0.33, 0.65), (0.5, 0.08), (0.67, 0.65), (0.82, 0.42), (1, 0.9)]),
+            "ascTriangle": pts([(0, 0.9), (0.2, 0.18), (0.4, 0.72), (0.6, 0.18), (0.8, 0.5), (1, 0.18)]),
+            "descTriangle": pts([(0, 0.1), (0.2, 0.82), (0.4, 0.28), (0.6, 0.82), (0.8, 0.5), (1, 0.82)]),
+            "bullFlag": pts([(0, 0.95), (0.35, 0.15), (0.5, 0.32), (0.65, 0.22), (0.8, 0.38), (1, 0.05)]),
+            "bearFlag": pts([(0, 0.05), (0.35, 0.85), (0.5, 0.68), (0.65, 0.78), (0.8, 0.62), (1, 0.95)]),
+        ]
+    }()
+    /// 캔들 (시가, 고가, 저가, 종가), 0~1 (1 = 높음)
+    private static let candles: [String: [(CGFloat, CGFloat, CGFloat, CGFloat)]] = [
+        "hammer": [(0.62, 0.72, 0.08, 0.7)],
+        "shootingStar": [(0.38, 0.92, 0.3, 0.32)],
+        "bullEngulf": [(0.62, 0.68, 0.4, 0.45), (0.38, 0.78, 0.34, 0.72)],
+        "bearEngulf": [(0.45, 0.66, 0.4, 0.6), (0.7, 0.74, 0.28, 0.34)],
+        "insideBar": [(0.25, 0.95, 0.08, 0.85), (0.45, 0.68, 0.38, 0.62)],
+    ]
+    /// 겹 선: 지지는 아래, 저항·삼각형 꼭대기는 위
+    private static let guide: [String: (CGFloat, Color)] = [
+        "support": (0.75, Theme.up), "resistance": (0.25, Theme.down),
+        "ascTriangle": (0.18, Theme.purple), "descTriangle": (0.82, Theme.purple),
+    ]
+
+    var body: some View {
+        Canvas { ctx, size in
+            let P = { (p: CGPoint) in CGPoint(x: p.x * size.width, y: p.y * size.height) }
+            if key == "band" {
+                let rows: [[(CGFloat, CGFloat, Color)]] = [
+                    [(0, 1, Theme.up)],
+                    [(0, 0.4, Theme.dash), (0.4, 1, Theme.up)],
+                    [(0, 0.3, Theme.down), (0.3, 0.7, Theme.up), (0.7, 1, Theme.down)],
+                ]
+                for (i, r) in rows.enumerated() {
+                    for (a, b, c) in r {
+                        let rect = CGRect(x: a * size.width + 1, y: CGFloat(i) * size.height / 3 + 3, width: (b - a) * size.width - 2, height: size.height / 3 - 6)
+                        ctx.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(c))
+                    }
+                }
+                return
+            }
+            if let g = Self.guide[key] {
+                var l = Path(); l.move(to: P(CGPoint(x: 0, y: g.0))); l.addLine(to: P(CGPoint(x: 1, y: g.0)))
+                ctx.stroke(l, with: .color(g.1.opacity(0.7)), lineWidth: 1.5)
+            }
+            if let pts = Self.lines[key] {
+                var l = Path(); l.addLines(pts.map(P))
+                let col: Color = key == "dots" || key == "support" || key == "resistance" ? Theme.sub : Theme.purple
+                ctx.stroke(l, with: .color(col), style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                if key == "dots" {
+                    for p in pts { ctx.fill(Path(ellipseIn: CGRect(x: P(p).x - 3, y: P(p).y - 3, width: 6, height: 6)), with: .color(Theme.teal)) }
+                }
+            }
+            if let cs = Self.candles[key] {
+                let n = CGFloat(cs.count), bw: CGFloat = 10
+                for (i, c) in cs.enumerated() {
+                    let x = size.width * (CGFloat(i) + 1) / (n + 1)
+                    let Y = { (v: CGFloat) in (1 - v) * size.height }
+                    let col = c.3 >= c.0 ? Theme.up : Theme.down
+                    var w = Path(); w.move(to: CGPoint(x: x, y: Y(c.1))); w.addLine(to: CGPoint(x: x, y: Y(c.2)))
+                    ctx.stroke(w, with: .color(col), lineWidth: 1.2)
+                    let top = Y(max(c.0, c.3)), h = max(2, abs(Y(c.0) - Y(c.3)))
+                    ctx.fill(Path(CGRect(x: x - bw / 2, y: top, width: bw, height: h)), with: .color(col))
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
 }

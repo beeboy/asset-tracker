@@ -3,6 +3,8 @@ package com.naeilo.app.core.calc
 import com.naeilo.app.ui.board.Mission3ResultView
 import com.naeilo.app.core.cformat
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import com.naeilo.app.AppModel
 import com.naeilo.app.core.Day
@@ -196,6 +198,8 @@ fun AppModel.simulate(mx: GoalMix, monthly: Double? = null, k: Double? = null, y
         ?: return closedSim(mx, parts = pts, monthly = mo, k = K, years = yrs, start = A, cache = cache)   // ios: Data/GoalRoute.swift:149
     val ck = "x|${ps.key}|${mo}|${yrs}|${K}|${A}|${years == null}"   // ios: Data/GoalRoute.swift:151
     if (cache) simCache[ck]?.let { c -> return c.copy(mix = mx) }   // ios: Data/GoalRoute.swift:152
+    // 안드로이드: 경로 세기(수 MB 배열 몇 번)는 화면을 그리는 중에 하지 않는다. 아래 calc 는 뒤 줄에서 돈다 (cache: false 만 그 자리에서)
+    val calc = fun(): GoalSim {
     val V = A * 1e4; val Mo = mo * 1e4; val Kw = K * 1e4; val M = ps.M   // ios: Data/GoalRoute.swift:153
     val v = ps.values(V, Mo)   // ios: Data/GoalRoute.swift:154
     // 그 햇수 뒤 칸: 그 달 적립은 빼고 센다 (목표일 당일에는 넣지 않는다, 웹과 같게)
@@ -210,11 +214,12 @@ fun AppModel.simulate(mx: GoalMix, monthly: Double? = null, k: Double? = null, y
     val r = GoalSim(mix = mx, prob = prob, etaMonths = eta, med = q(0.5), lo = q(0.05), hi = q(0.95),   // ios: Data/GoalRoute.swift:164
                     principal = (0..yrs).map { A + mo * 12 * it.toDouble() }, badYear = b[0][k12] / max(V, 1e6) - 1,   // ios: Data/GoalRoute.swift:165
                     capYears = ((ps.tM.lastOrNull() ?: 12.0) / 12 + 0.5).toInt(), etaLo = etaLo, etaHi = etaHi)   // ios: Data/GoalRoute.swift:166
-    if (cache) {   // ios: Data/GoalRoute.swift:167
-        if (simCache.size > 64) simCache.clear()   // ios: Data/GoalRoute.swift:168
-        simCache[ck] = r   // ios: Data/GoalRoute.swift:169
-    }
     return r   // ios: Data/GoalRoute.swift:171
+    }
+    // 뒤에서 세는 동안은 시작 금액만 다른 직전 값, 그것도 없으면 닫힌 식 값 (끝나면 simCache 에 넣고 다시 그린다)
+    if (cache) return later(ck, slot = "x|${ps.key}|${mo}|${yrs}|${K}|${years == null}", calc)?.copy(mix = mx)   // ios: Data/GoalRoute.swift:167,168,169
+        ?: closedSim(mx, parts = pts, monthly = mo, k = K, years = yrs, start = A, cache = true)
+    return calc()
 }
 
 /** 경로 계산이 끝나기 전 잠깐: 닫힌 식 μ·σ(사이트 통계)로 500번 월 단위 */
@@ -223,6 +228,7 @@ private fun AppModel.closedSim(mx: GoalMix, parts: List<Part>, monthly: Double, 
     val c = closedParams(parts)   // ios: Data/GoalRoute.swift:176
     val ck = "c|${c.mu}|${c.sigma}|${mo}|${gY}|${K}|${A}"   // ios: Data/GoalRoute.swift:177
     if (cache) simCache[ck]?.let { x -> return x.copy(mix = mx) }   // ios: Data/GoalRoute.swift:178
+    val calc = fun(): GoalSim {
     var seed = 12345L   // ios: Data/GoalRoute.swift:179
     fun rnd(): Double { seed = (seed * 1103515245L + 12345L) % 2147483648L; return (seed.toDouble() + 0.5) / 2147483648.0 }   // ios: Data/GoalRoute.swift:180
     val NP = 500; val H = min(40, gY * 2 + 5) * 12   // ios: Data/GoalRoute.swift:181
@@ -247,12 +253,51 @@ private fun AppModel.closedSim(mx: GoalMix, parts: List<Part>, monthly: Double, 
                     principal = (0..gY).map { A + mo * 12 * it.toDouble() },   // ios: Data/GoalRoute.swift:200
                     badYear = exp(c.mu - c.sigma * c.sigma / 2 - 1.645 * c.sigma) - 1, capYears = H / 12,   // ios: Data/GoalRoute.swift:201
                     etaLo = q(hits, 0.1), etaHi = q(hits, 0.9))   // ios: Data/GoalRoute.swift:202
-    if (cache) {   // ios: Data/GoalRoute.swift:203
-        if (simCache.size > 64) simCache.clear()   // ios: Data/GoalRoute.swift:204
-        simCache[ck] = r   // ios: Data/GoalRoute.swift:205
-    }
     return r   // ios: Data/GoalRoute.swift:207
+    }
+    if (!cache) return calc()
+    // 처음 한 번(직전 값이 없을 때)만 그 자리에서 센다: 500번 월 단위라 가볍다
+    later(ck, slot = "c|${c.mu}|${c.sigma}|${mo}|${gY}|${K}", calc)?.let { return it.copy(mix = mx) }   // ios: Data/GoalRoute.swift:203,204,205
+    return calc().also { r -> GoalLater.put(this, ck, "c|${c.mu}|${c.sigma}|${mo}|${gY}|${K}", r) }
 }
+
+/** 안드로이드: 목표 몬테카를로를 화면 스레드 밖 한 줄에서 센다 (Swift 는 그 자리에서). 같은 자리(시작 금액만 다른 키)는
+ *  가장 최근 부탁 하나만 세고, 끝나면 simCache 에 넣고 tick 을 올려 부른 화면이 다시 그려진다. 값은 그 자리에서 센 것과 같다 */
+internal object GoalLater {
+    private val exec = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "naeilo-goal").apply { isDaemon = true } }
+    private val main by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+    var tick by androidx.compose.runtime.mutableStateOf(0)
+        private set
+    /** 자리마다 마지막 값 (화면 스레드에서만) */
+    private val last = HashMap<String, GoalSim>()
+    /** 자리마다 가장 최근에 부탁한 키 (줄에서 기다리던 지난 부탁은 건너뛴다) */
+    private val want = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    fun put(m: AppModel, ck: String, slot: String, r: GoalSim) {
+        if (m.simCache.size > 64) m.simCache.clear()
+        m.simCache[ck] = r
+        if (last.size > 64) { last.clear(); want.clear() }
+        last[slot] = r
+    }
+    /** 화면 스레드에서 부른다. 직전 값(없으면 null)을 바로 돌려준다 */
+    fun ask(m: AppModel, ck: String, slot: String, calc: () -> GoalSim): GoalSim? {
+        if (tick < 0) return null   // 끝나면 다시 읽게 (상태 구독)
+        if (want[slot] != ck) {
+            want[slot] = ck
+            exec.execute {
+                if (want[slot] != ck) return@execute
+                val r = runCatching(calc).getOrNull()
+                main.post {
+                    if (r == null) { want.remove(slot, ck); return@post }
+                    put(m, ck, slot, r)
+                    tick += 1
+                }
+            }
+        }
+        return last[slot]
+    }
+}
+private fun AppModel.later(ck: String, slot: String, calc: () -> GoalSim): GoalSim? = GoalLater.ask(this, ck, slot, calc)
 
 /** 목표에 맞추려면 매달 넣을 돈 (만원): 목표일(years 를 주면 그 햇수 뒤)에 목표 이상인 경우가 절반이 되는 적립 (웹 req50 과 같은 셈) */
 fun AppModel.neededMonthly(k: Double? = null, years: Int? = null): Double {   // ios: Data/GoalRoute.swift:211

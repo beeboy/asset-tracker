@@ -71,7 +71,7 @@ final class AppModel {
         // 캡처용: -route m3 처럼 미션 화면을 바로 연다
         let routes: [String: MissionRoute] = ["m1": .m1, "m1r": .m1r, "m2": .m2, "m2r": .m2r, "m3": .m3, "m3r": .m3r, "m4": .m4, "m4r": .m4r, "nx": .nx, "g1": .g1, "g1r": .g1r, "g3": .g3, "g3r": .g3r, "gt": .gt, "gi": .gi, "gp1r": .gp1r]
         if let r = UserDefaults.standard.string(forKey: "route").flatMap({ routes[$0] }) { boardPath = [r] }
-        let an: [String: AnalysisRoute] = ["forecast": .forecast, "myPath": .myPath, "external": .external, "dividend": .dividend, "fx": .fx, "glance": .glance]
+        let an: [String: AnalysisRoute] = ["forecast": .forecast, "external": .external, "dividend": .dividend, "fx": .fx, "glance": .glance]
         if let r = UserDefaults.standard.string(forKey: "an").flatMap({ an[$0] }) { analysisPath = NavigationPath([r]) }
     }
 
@@ -110,10 +110,10 @@ final class AppModel {
     }
     /// 평정 지수 기록 (Calm.swift). 내 종목처럼 앱을 다시 켜도 남는다
     var calm = Calm.load() { didSet { calm.save() } }
-    /// 지금 종목이 샘플(가상 종목 DRNK + QQQ)인지. 새 사용자는 샘플로 시작하고, 화면마다 샘플이라고 알린다
+    /// 지금 종목이 샘플(가상 종목 DRNK + QQQ, 공개 베타·출시는 DRNK + NXIX)인지. 새 사용자는 샘플로 시작하고, 화면마다 샘플이라고 알린다
     var isSample: Bool {
         let ids = Set(holdings.map(\.symbol))
-        return ids.contains("DRNK") && ids.isSubset(of: ["DRNK", "QQQ"])
+        return ids.contains("DRNK") && ids.isSubset(of: Set(Sample.startHoldings.map(\.symbol)))
     }
     /// 둘러보기 샘플 수량: DRNK 4주 (가장 큰 종목이 DRNK가 되게), QQQ 1주
     static func sampleQty(_ id: String) -> Double { id == "DRNK" ? 4 : 1 }
@@ -234,9 +234,11 @@ final class AppModel {
     static func dash(_ v: String, ready: Bool) -> String { ready ? v : "—" }
     static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
     static func sgn(_ p: Double) -> String { (p >= 0 ? "+" : "−") + String(format: "%.1f%%", abs(p) * 100) }
+    /// 종목 하루 등락: 소수 둘째 자리 (종목 목록·오늘 많이 움직인 종목·말풍선이 같은 자릿수)
+    static func sgn2(_ p: Double) -> String { (p >= 0 ? "+" : "−") + String(format: "%.2f%%", abs(p) * 100) }
     static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "−") + "\(Int((abs(p) * 100).rounded()))%" }
     static func price(_ s: Symbol, _ x: Double) -> String {
-        s.currency == .usd ? "$" + x.formatted(.number.precision(.fractionLength(0...2))) : Int(x.rounded()).formatted() + String(localized: "원")
+        s.currency == .usd ? "$" + x.usdText(0...2) : Int(x.rounded()).formatted() + String(localized: "원")
     }
 
     // MARK: 보유 계산 (원화)
@@ -250,8 +252,10 @@ final class AppModel {
             guard h.qty > 0, let s = Sample.symbol(h.symbol) else { return nil }
             return (s, h)
         }.enumerated().map { i, p in
+            // 공개 베타·출시에서 내 키 시세가 없는 실제 종목은 평가액·들어간 돈 모두에서 뺀다 (Market.needsKey)
+            if Market.shared.needsKey(p.0) { return Row(id: p.0.id, sym: p.0, h: p.1, value: 0, cost: 0, color: Theme.holdColors[i % Theme.holdColors.count]) }
             // 국내 주식 합계는 현금처럼: 들어간 돈 = 지금 금액 (본전·수익률을 움직이지 않는다)
-            Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: p.0.id == KoreaEstimate.sumId ? krw(p.0, p.1.qty * p.0.last) : costKrw(p.0, p.1.qty * p.1.avg),
+            return Row(id: p.0.id, sym: p.0, h: p.1, value: krw(p.0, p.1.qty * p.0.last), cost: p.0.id == KoreaEstimate.sumId ? krw(p.0, p.1.qty * p.0.last) : costKrw(p.0, p.1.qty * p.1.avg),
                 color: Theme.holdColors[i % Theme.holdColors.count])
         }
     }
@@ -469,12 +473,12 @@ final class AppModel {
         let mv = todayMove, up = mv >= 0
         let top = c.filter { ($0.1 >= 0) == up }.sorted { abs($0.1) > abs($1.1) }.prefix(2).filter { abs($0.1) >= all * 0.3 }
         if top.isEmpty { return String(localized: "오늘은 여러 종목이 고르게 움직였어요.") }
-        let names = top.map { "\($0.0.sym.short)(\(Self.sgn($0.0.sym.quote.change)))" }.joined(separator: String(localized: "와 "))
+        let names = top.map { "\($0.0.sym.short)(\(Self.sgn2($0.0.sym.quote.change)))" }.joined(separator: String(localized: "와 "))
         return String(localized: "오늘 \(String(describing: up ? String(localized: "상승") : String(localized: "하락")))은 주로 \(String(describing: names)) 때문이에요.")
     }
     var routineFact: String {
         let tot = todayMove
-        let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
+        let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn2($0.sym.quote.change))" }.joined(separator: " · ")
         let head = rows.isEmpty ? "" : "**\(Self.sgn(tot))**" + (mv.isEmpty ? "" : " · \(mv)") + "\n"     // 오늘 움직임은 진하게 (마크다운)
         if route == .novice {
             return head + (noviceOwn ? String(localized: "평가액은") : String(localized: "모은 돈은")) + String(localized: " 목표의 \(String(describing: AppModel.pct(goalSaved / max(1, gK))))예요. 다음 적립일에 \(String(describing: AppModel.wonK(gM)))이 더해져요.")
@@ -519,7 +523,7 @@ final class AppModel {
         if byW.count >= 2 {
             let c = byW.prefix(3).sorted { $0.sym.short < $1.sym.short }
             let chg = c.map { abs($0.sym.quote.change) }, wt = c.map { $0.value / tot }
-            let mvList = c.map { "\($0.sym.short) \(Self.sgn($0.sym.quote.change))" }.joined(separator: " · ")
+            let mvList = c.map { "\($0.sym.short) \(Self.sgn2($0.sym.quote.change))" }.joined(separator: " · ")
             let wtList = c.sorted { $0.value > $1.value }.map { "\($0.sym.short) \(Self.pct($0.value / tot))" }.joined(separator: " · ")
             qs.append(.init(id: "mover", tag: String(localized: "오늘 움직임"), q: String(localized: "오늘 가장 크게 움직인 종목은?"), opts: c.map(\.sym.short),
                             right: chg.indices.max { chg[$0] < chg[$1] } ?? 0,
@@ -678,13 +682,13 @@ final class AppModel {
 
     /// 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 nil (닫힌 식만)
     var forecastJob: ForecastEngine.Job? {
-        let rs = rows, today = Day.today, H = forecastHorizon
+        let rs = rows.filter { !Market.shared.needsKey($0.sym) }, today = Day.today, H = forecastHorizon   // 키 시세 없는 종목은 전망에서도 뺀다
         guard route != .novice, !rs.isEmpty, H > today, let inp = mcInputs(full: true) else { return nil }
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 지금 가격
         // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
         let px = rs.map { r -> Double in
-            if r.id != "DRNK", let c = Market.shared.prices?.h[SiteStats.key(r.id)]?.closes.last, c > 0 { return c }
+            if !Sample.isVirtual(r.id), let c = Market.shared.prices?.h[SiteStats.key(r.id)]?.closes.last, c > 0 { return c }
             let q = r.sym.quote
             return q.prevClose > 0 ? q.prevClose : q.last
         }
@@ -805,7 +809,7 @@ final class AppModel {
         let mine: [Holding]? = holdings.isEmpty || isSample ? nil : holdings
         resetDemo(.fresh)
         if let mine { holdings = mine }
-        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 4, avg: 180), Holding(symbol: "QQQ", qty: 1, avg: 400)] }
+        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 4, avg: 180), Config.usesCollectedData ? Holding(symbol: "QQQ", qty: 1, avg: 400) : Holding(symbol: "NXIX", qty: 1, avg: 340)] }
         if r == .plus { taxGain = 0 }
         if r != .recover { switchRoute(r); gDone = [] }
         day = 0                  // 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
@@ -825,5 +829,13 @@ final class AppModel {
         interStartAt = nil; goalStartAt = nil; gInterStartAt = nil; recM = 0
         weekGuess = nil; weekFridaySkip = false; planKey = "balance"; horizon = 3; quizAnswer = nil
         taxGain = 0; taxSellQty = 0; boardPath = []
+    }
+}
+
+extension Double {
+    /// 달러 가격 글: 토스처럼 소수 둘째 자리 아래는 버린다 (147.495 → 147.49). 표시만, 계산값은 그대로.
+    /// 계산 끝에 0.7999… 처럼 남는 값이 한 푼 내려가지 않게 아주 작은 여유를 둔다
+    func usdText(_ f: ClosedRange<Int> = 2...2) -> String {
+        (self + (self < 0 ? -1e-9 : 1e-9)).formatted(.number.precision(.fractionLength(f)).rounded(rule: .towardZero))
     }
 }

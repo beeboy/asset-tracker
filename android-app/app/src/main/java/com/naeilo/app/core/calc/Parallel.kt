@@ -140,7 +140,7 @@ private class Ratio(val cash: Double, val top: Double)
 
 // ios: Data/Parallel.swift:68
 object Parallel {
-    val names = listOf("내 실제 투자", "모의 바구니", "인물 규칙대로")   // ios: Data/Parallel.swift:69
+    val names = listOf("내 실제 투자", "모의바구니", "인물 규칙대로")   // ios: Data/Parallel.swift:69
 
     /// v1에 담을 수 있는 종목: 사이트가 지난 종가를 모으는 종목 + 견본 ETF (VTV·USMV)
     data class Item(val id: String, val name: String)   // ios: Data/Parallel.swift:72
@@ -813,23 +813,36 @@ val AppModel.parallelVerdictLine: String? get() {
     return if (v.similar) "셋 다 비슷해요 · 차이 ${gap}" else "${lead}${WChar.josa(lead)} ${gap} 앞서요"   // ios: Data/Parallel.swift:688
 }
 
-/** 결론 규칙: 가장 앞선 쪽과 뒤진 쪽 차이가 1.0%p 미만이면 "비슷해요" */
-data class PVerdict(val order: List<Int>, val gap: Double) { val similar: Boolean get() = gap < Parallel.similarGap }   // ios: Data/Parallel.swift:693
-
-// ios: Data/Parallel.swift:695 (extension Parallel)
-val Parallel.similarGap: Double get() = 0.01   // ios: Data/Parallel.swift:696
-// ios: Data/Parallel.swift:697
-fun Parallel.verdict(r: List<DoubleArray>, at: Int): PVerdict {
-    val order = listOf(0, 1, 2).sortedWith { a, b -> descCmp(r[a][at], r[b][at]) }   // ios: Data/Parallel.swift:698
-    return PVerdict(order = order, gap = r[order[0]][at] - r[order[2]][at])   // ios: Data/Parallel.swift:699
+// ios: Data/Parallel.swift:692 (extension AppModel)
+/** 홈 비교 박스: 결론 한 줄(차이 값 없이) + 셋의 수익률 (실제·모의·인물 순). 상세 화면과 같은 값(parallelSeries, 마지막 칸)
+ *  (verdict, r, who) */
+// ios: Data/Parallel.swift:694
+val AppModel.parallelHome: Triple<String, List<Double>, String>? get() {
+    val w = pworldShown ?: newParallel() ?: return null; val race = parallelRun(w, who = w.who) ?: return null   // ios: Data/Parallel.swift:695
+    val r = if (pworldShown == null) race.r else parallelSeries(race)   // ios: Data/Parallel.swift:696
+    val v = Parallel.verdict(r, at = race.last)   // ios: Data/Parallel.swift:697
+    val lead = parallelTitle(v.order[0], who = w.who)   // ios: Data/Parallel.swift:698
+    val say = if (v.similar) "셋 다 비슷해요" else "${lead}${WChar.josa(lead)} 앞서요"   // ios: Data/Parallel.swift:699
+    return Triple(say, (0 until 3).map { r[it][race.last] }, w.who)   // ios: Data/Parallel.swift:700
 }
 
-// ios: Data/Parallel.swift:703 (extension Market)
+/** 결론 규칙: 가장 앞선 쪽과 뒤진 쪽 차이가 1.0%p 미만이면 "비슷해요" */
+data class PVerdict(val order: List<Int>, val gap: Double) { val similar: Boolean get() = gap < Parallel.similarGap }   // ios: Data/Parallel.swift:705
+
+// ios: Data/Parallel.swift:707 (extension Parallel)
+val Parallel.similarGap: Double get() = 0.01   // ios: Data/Parallel.swift:708
+// ios: Data/Parallel.swift:709
+fun Parallel.verdict(r: List<DoubleArray>, at: Int): PVerdict {
+    val order = listOf(0, 1, 2).sortedWith { a, b -> descCmp(r[a][at], r[b][at]) }   // ios: Data/Parallel.swift:710
+    return PVerdict(order = order, gap = r[order[0]][at] - r[order[2]][at])   // ios: Data/Parallel.swift:711
+}
+
+// ios: Data/Parallel.swift:715 (extension Market)
 /** 바구니 고치기 화면: 담을 수 있는 종목의 지난 종가를 한 번 받아 둔다 (받은 지 30분 안이면 그대로) */
-// ios: Data/Parallel.swift:705
+// ios: Data/Parallel.swift:717
 suspend fun Market.fetchParallelUniverse() {
-    val keys = (prices?.asked ?: emptyList()).toMutableSet()   // ios: Data/Parallel.swift:706
-    for (u in Parallel.universe) keys.add(u.id)   // ios: Data/Parallel.swift:707
-    keys.add("KRW=X")   // ios: Data/Parallel.swift:708
-    val p = SitePrices.fetch(keys = keys, old = prices, minAge = 1800.0); if (p != null) prices = p   // ios: Data/Parallel.swift:709
+    val keys = (prices?.asked ?: emptyList()).toMutableSet()   // ios: Data/Parallel.swift:718
+    for (u in Parallel.universe) keys.add(u.id)   // ios: Data/Parallel.swift:719
+    keys.add("KRW=X")   // ios: Data/Parallel.swift:720
+    val p = SitePrices.fetch(keys = keys, old = prices, minAge = 1800.0); if (p != null) prices = p   // ios: Data/Parallel.swift:721
 }

@@ -38,7 +38,6 @@ class FParityTest {
         out["man"] = xs.map { AppModel.man(it) }
         out["price"] = syms.flatMap { s -> xs.map { AppModel.price(s, it) } }
         out["fmt"] = xs.map { listOf(it.swFmt(), it.swFmtNoGroup(), "$" + it.swFmtFrac(2)) }
-        out["breakEven"] = (inp["needs"] as List<Double>).map { val (a, b) = com.naeilo.app.ui.hold.breakEven(it); listOf(a, b) }
         out["needText"] = (inp["needs"] as List<Double>).map { com.naeilo.app.ui.hold.needText(100.0 * (1 + it), 100.0) }
         dir.resolve("kotlin.json").writeText(plainToJson(out).toString())
         println("num_parity f: 고치기 ${(out["edit"] as List<*>).size}")

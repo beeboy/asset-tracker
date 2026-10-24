@@ -5,6 +5,7 @@ import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.ExperimentalSerializationApi
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -35,6 +36,8 @@ private fun worker(name: String, prio: Int): ExecutorService =
     Executors.newSingleThreadExecutor { r -> Thread(r, name).apply { isDaemon = true; priority = prio } }
 // 파일 쓰기 (Swift DispatchQueue.global(qos: .utility)). 풀어 쓰기(JSON)도 여기서 해서 화면 스레드가 멈추지 않게
 private val writer: ExecutorService by lazy { worker("naeilo-mc-write", Thread.MIN_PRIORITY) }
+/** 계산 횟수를 기기 로그로 센다: adb logcat -s naeilo.mc */
+private fun mcLog(s: String) { Log.i("naeilo.mc", s) }
 
 /** 무거운 계산은 앱이 화면에 떠 있을 때만 (MainActivity 가 onStart·onStop 에서 켜고 끈다). 뒤로 가면 돌던 계산도 멈추고 다시 켜질 때 이어 간다 */
 object Compute {   // ios: Data/ForecastEngine.swift:5
@@ -74,17 +77,16 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
     companion object {
         val shared = ForecastEngine()   // ios: Data/ForecastEngine.swift:25
         private const val file = "forecast_mc.plist"   // ios: Data/ForecastEngine.swift:59 (이름만 같고 속은 JSON)
-        /** 사건 없는 경로를 같이 도는 줄 */
-        private val side = worker("naeilo-forecast-no", Thread.NORM_PRIORITY)
 
         fun compute(j: Job, stop: (() -> Boolean)? = null): Run? {   // ios: Data/ForecastEngine.swift:92
             val model = MC.build(holdings = j.holdings, stats = j.stats, settings = j.settings, events = j.events, start = j.start, goal = j.horizon) ?: return null   // ios: Data/ForecastEngine.swift:93
             val t0 = System.nanoTime(); val s = j.settings; val mu = MC.scenarioMu(model, s.scenario)   // ios: Data/ForecastEngine.swift:94
             val sim = { ev: Boolean -> MC.simulate(model, holdings = j.holdings, mu = mu, nPaths = s.nPaths, seed = s.seedU32, goal = j.goal, monthly = j.monthly, withEvents = ev, dof = s.dof, stop = stop) }   // ios: Data/ForecastEngine.swift:95
-            // ios: Data/ForecastEngine.swift:96 안드로이드: 사건 없는 경로는 다른 줄에서 같이 돈다 (서로 다른 난수열이라 결과는 차례로 돈 것과 같다)
-            val noF = if (model.eventCount > 0) side.submit<MC.Sim?> { if (stop?.invoke() != true) sim(false) else null } else null
-            val ev = sim(true); val no = noF?.get()
+            // 사건 없는 경로는 다 돈 뒤에 차례로 (Swift 와 같다. 같이 돌리면 경로 묶음 두 벌이 4줄 풀과 메모리를 함께 차지한다)
+            mcLog("전망 시작 ${j.key.take(60)} 경로 ${s.nPaths}")
+            val ev = sim(true); val no = if (model.eventCount > 0 && stop?.invoke() != true) sim(false) else null   // ios: Data/ForecastEngine.swift:96
             return Run(key = j.key, factors = model.factors, events = model.eventCount, ev = ev, no = no, ms = (System.nanoTime() - t0) / 1000000.0)   // ios: Data/ForecastEngine.swift:97
+                .also { mcLog("전망 끝 ${j.key.take(60)} ${it.ms.toInt()}ms") }
         }
 
         /** 짧은 지문 (FNV-1a). 앱을 다시 켜도 같은 값이어야 해서 hashCode 대신 */
@@ -134,11 +136,14 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
     private var viewTick by mutableStateOf(0)
     private val viewBusy = HashSet<String>()
     private var lastView: Pair<String, MC.Result>? = null
+    /** 파일에서 읽은 것 (계산 스레드에서만, 처음 계산 하나가 보고 놓는다). Swift 는 그 자리에서 읽어 첫 ensure 가 건너뛴다 */
+    private var disk: Run? = null
 
     init {   // ios: Data/ForecastEngine.swift:61
         // 어제 계산한 것이라도 불러 둔다 (키가 다르면 쓰지 않고 새로 계산). 읽기·풀기는 계산 스레드에서 (계산보다 먼저 줄 선다)
         exec.execute {
             val r = readJson(file, Run.serializer())   // ios: Data/ForecastEngine.swift:63
+            disk = r
             if (r != null) mainH.post { if (run == null) run = r }
         }
     }
@@ -152,14 +157,17 @@ class ForecastEngine private constructor() {   // ios: Data/ForecastEngine.swift
         pending = job.key   // ios: Data/ForecastEngine.swift:71
         val halt = Compute.Halt()   // ios: Data/ForecastEngine.swift:72
         exec.execute {   // ios: Data/ForecastEngine.swift:73
-            val r = runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:74
-            val halted = halt.hit   // ios: Data/ForecastEngine.swift:75
+            // 읽기가 끝나기 전에 줄 선 계산: 읽은 것이 같은 키면 다시 계산하지 않는다. 그 뒤 ensure 는 화면 스레드에서 run 을 보고 거른다
+            val saved = disk?.takeIf { it.key == job.key }; disk = null
+            if (saved != null) mcLog("전망 저장본 그대로 ${job.key.take(60)}")
+            val r = saved ?: runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:74
+            val halted = saved == null && halt.hit   // ios: Data/ForecastEngine.swift:75
             mainH.post {   // ios: Data/ForecastEngine.swift:76
                 pending = null   // ios: Data/ForecastEngine.swift:77
                 if (r != null && !halted) {   // ios: Data/ForecastEngine.swift:78
-                    views.clear(); lastView = null   // ios: Data/ForecastEngine.swift:79
+                    if (run !== r) { views.clear(); lastView = null }   // ios: Data/ForecastEngine.swift:79
                     run = r   // ios: Data/ForecastEngine.swift:80
-                    writer.execute { writeJson(file, Run.serializer(), r) }   // ios: Data/ForecastEngine.swift:81
+                    if (saved == null) writer.execute { writeJson(file, Run.serializer(), r) }   // ios: Data/ForecastEngine.swift:81
                 } else if (halted) {   // ios: Data/ForecastEngine.swift:82
                     if (waiting == null) waiting = job   // ios: Data/ForecastEngine.swift:83 다시 켜지면 처음부터
                 } else failed.add(job.key)   // ios: Data/ForecastEngine.swift:84
@@ -237,10 +245,12 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
         fun compute(job: ForecastEngine.Job, stop: (() -> Boolean)? = null): Run? {   // ios: Data/ForecastEngine.swift:194
             val model = MC.build(holdings = job.holdings, stats = job.stats, settings = job.settings, events = job.events, start = job.start, goal = job.horizon) ?: return null   // ios: Data/ForecastEngine.swift:195
             val s = job.settings; val t0 = System.nanoTime()   // ios: Data/ForecastEngine.swift:196
+            mcLog("구성 경로 시작 ${job.key.take(60)} 경로 ${s.nPaths}")
             val sim = MC.simulate(model, holdings = job.holdings, mu = MC.scenarioMu(model, s.scenario), nPaths = s.nPaths, seed = s.seedU32,   // ios: Data/ForecastEngine.swift:197
                                   goal = Double.POSITIVE_INFINITY, monthly = 0.0, withEvents = true, dof = s.dof, stop = stop)   // ios: Data/ForecastEngine.swift:198
             return Run(key = job.key, factors = model.factors, sim = sim, group = job.group, w = job.w,   // ios: Data/ForecastEngine.swift:199
                        ms = (System.nanoTime() - t0) / 1000000.0, at = System.currentTimeMillis() / 1000.0)   // ios: Data/ForecastEngine.swift:200
+                .also { mcLog("구성 경로 끝 ${job.key.take(60)} ${it.ms?.toInt()}ms") }
         }
     }
     @Serializable data class Run(   // ios: Data/ForecastEngine.swift:151
@@ -259,6 +269,11 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
     private val failed = HashSet<String>()   // ios: Data/ForecastEngine.swift:165 모형을 못 만든 job (다시 줄 세우지 않는다)
     private val exec = worker("naeilo-paths", Thread.MIN_PRIORITY)
     private val runsSer = MapSerializer(String.serializer(), Run.serializer())
+    /** 파일에서 읽은 오늘 경로 (계산 스레드에서만, 처음 계산 하나가 보고 놓는다). 그 뒤는 next 가 화면 스레드에서 runs 를 보고 거른다 */
+    private var disk: Map<String, Run> = emptyMap()
+    /** 아직 파일에 안 쓴 경로가 있다. 쓰기는 줄이 비거나 앱이 뒤로 갈 때 한 번 (경로 하나마다 수십 MB 를 통째로 다시 쓰지 않게, 형식은 그대로) */
+    private var dirty = false
+    private fun flush() { if (!dirty) return; dirty = false; val all = runs; writer.execute { writeJson(file, runsSer, all) } }
 
     init {   // ios: Data/ForecastEngine.swift:168
         // 파일 읽기·풀기는 계산 스레드에서 (계산보다 먼저 줄 선다). 그새 계산해 둔 것이 있으면 그쪽이 이긴다
@@ -266,6 +281,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
             // 오늘 쓴 파일이 아니면 오늘 키(날짜로 시작)가 있을 수 없다: 다 풀고 버리지 않게 읽지 않는다 (결과는 같다)
             val fresh = Store.url(file).let { f -> f.exists() && Day.str(java.time.Instant.ofEpochMilli(f.lastModified())) >= Day.today }
             val r = if (fresh) readJson(file, runsSer) else null   // ios: Data/ForecastEngine.swift:169
+            disk = r?.filter { it.key.startsWith(Day.today) } ?: emptyMap()
             if (r != null) mainH.post {
                 val today = Day.today   // ios: Data/ForecastEngine.swift:170
                 runs = r.filter { it.key.startsWith(today) } + runs   // ios: Data/ForecastEngine.swift:171
@@ -291,19 +307,28 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
     fun resume() { next() }   // ios: Data/ForecastEngine.swift:203
 
     private fun next() {   // ios: Data/ForecastEngine.swift:205
-        if (busy || queue.isEmpty() || !Compute.active) return   // ios: Data/ForecastEngine.swift:206
+        if (busy) return
+        if (queue.isEmpty() || !Compute.active) { flush(); return }   // ios: Data/ForecastEngine.swift:206
         busy = true   // ios: Data/ForecastEngine.swift:207
         val job = queue.removeAt(0)   // ios: Data/ForecastEngine.swift:208
+        // 줄에 선 사이 파일 읽기·다른 계산으로 생긴 경로면 계산하지 않는다 (get 과 같은 규칙)
+        if (runs[job.key] != null || (job.group.isNotEmpty() && runs.values.any { it.group == job.group && close(it.w, job.w) })) { busy = false; onRun?.invoke(); next(); return }
         val halt = Compute.Halt()   // ios: Data/ForecastEngine.swift:209
         exec.execute {   // ios: Data/ForecastEngine.swift:210
-            val r = runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:211
-            val halted = halt.hit   // ios: Data/ForecastEngine.swift:212
+            // 읽어 둔 파일에 같은 키·같은 묶음(비중이 가까운)이 있으면 그대로 (get 과 같은 규칙)
+            val saved = disk[job.key] ?: if (job.group.isNotEmpty()) disk.values.firstOrNull { it.group == job.group && close(it.w, job.w) } else null
+            disk = emptyMap()
+            if (saved != null) mcLog("구성 경로 저장본 그대로 ${job.key.take(60)}")
+            val r = saved ?: runCatching { compute(job, stop = halt.check) }.getOrNull()   // ios: Data/ForecastEngine.swift:211
+            val halted = saved == null && halt.hit   // ios: Data/ForecastEngine.swift:212
             mainH.post {   // ios: Data/ForecastEngine.swift:213
                 busy = false   // ios: Data/ForecastEngine.swift:214
                 if (halted) {   // ios: Data/ForecastEngine.swift:215
                     queue.add(0, job)   // ios: Data/ForecastEngine.swift:216 다시 켜지면 이어서
+                    flush()
                     return@post   // ios: Data/ForecastEngine.swift:217
                 }
+                if (saved != null) { onRun?.invoke(); next(); return@post }   // 이미 runs 에 있다 (읽기를 넣은 뒤)
                 if (r != null) {   // ios: Data/ForecastEngine.swift:219
                     val today = Day.today   // ios: Data/ForecastEngine.swift:220
                     val all = LinkedHashMap(runs.filter { it.key.startsWith(today) })   // ios: Data/ForecastEngine.swift:221
@@ -311,7 +336,7 @@ class PathRuns private constructor() {   // ios: Data/ForecastEngine.swift:148,1
                     while (all.size >= 16) { val k = all.entries.minWithOrNull(Comparator { x, y -> (x.value.at ?: 0.0).compareTo(y.value.at ?: 0.0) })?.key ?: break; all.remove(k) }   // ios: Data/ForecastEngine.swift:223
                     all[r.key] = r   // ios: Data/ForecastEngine.swift:224
                     runs = all   // ios: Data/ForecastEngine.swift:225
-                    writer.execute { writeJson(file, runsSer, all) }   // ios: Data/ForecastEngine.swift:226
+                    dirty = true   // ios: Data/ForecastEngine.swift:226 (쓰기는 flush 에서)
                     onRun?.invoke()   // ios: Data/ForecastEngine.swift:227
                 } else failed.add(job.key)   // ios: Data/ForecastEngine.swift:228
                 next()   // ios: Data/ForecastEngine.swift:229

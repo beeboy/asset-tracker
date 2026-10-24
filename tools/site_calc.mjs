@@ -4,16 +4,18 @@
 // - 환율: web/model.js indicators() 를 원/달러(KRW=X)에 그대로 돌린 값 (칼만 추세, 1개월·3개월·1년 변화, 변동성) + 지난 3년 종가·추세선
 // 앱은 날짜 계산(지난 12개월, 증가율, 앞으로 3년)과 세율을 웹 식 그대로 한다. 원시 시세가 공개 저장소를 떠나도 이 파일만 있으면 된다
 // 사용: node tools/site_calc.mjs   (stats.yml 이 매일 돌린다)
+// 공개 판 가상 샘플: DATA_DIR=data/sample node tools/site_calc.mjs
 import { readFileSync, writeFileSync } from "node:fs";
 import vm from "node:vm";
 
 const root = new URL("../", import.meta.url);
 const read = (p) => JSON.parse(readFileSync(new URL(p, root), "utf8"));
+const dir = (process.env.DATA_DIR || "data").replace(/\/+$/, "") + "/";   // 시세 폴더 (index.json·prices/)
 const ctx = { window: {}, console, Math, Date };
 vm.runInNewContext(readFileSync(new URL("web/model.js", root), "utf8"), ctx);
 const Model = ctx.window.Model;
 
-const index = read("data/index.json").prices;
+const index = read(dir + "index.json").prices;
 const kst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const r6 = (x) => (x == null || !Number.isFinite(x) ? null : +x.toPrecision(6));
 
@@ -32,7 +34,7 @@ const divs = {}, from = Model.addMonths(kst, -37);
 let fx = null;
 for (const [k, file] of Object.entries(index)) {
   if (k === "^TNX") continue;
-  const o = read("data/prices/" + file);
+  const o = read(dir + "prices/" + file);
   if (k === "KRW=X") {
     const ind = Model.indicators(o.dates, o.close), s = ind.sig, n = o.dates.length, k0 = Math.max(0, n - 780), i0 = Math.max(0, n - 253);
     fx = {
@@ -50,6 +52,6 @@ for (const [k, file] of Object.entries(index)) {
 
 export const out = { date: kst, at: new Date().toISOString(), basis: "web/app.js dividends() · web/model.js indicators(KRW=X)", divs, fx };
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop())) {
-  writeFileSync(new URL("data/calc.json", root), JSON.stringify(out) + "\n");
+  writeFileSync(new URL(dir + "calc.json", root), JSON.stringify(out) + "\n");
   console.log("calc.json", kst, Object.entries(divs).filter(([, v]) => v.events.length).map(([k, v]) => `${k} ${v.events.length}회`).join(" · "), "· 환율", fx && fx.close);
 }

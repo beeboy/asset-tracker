@@ -5,6 +5,7 @@ import com.naeilo.app.core.calc.*
 import androidx.compose.ui.geometry.Offset
 import com.naeilo.app.AppModel
 import com.naeilo.app.core.NJson
+import com.naeilo.app.core.Config
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import java.util.Objects
@@ -95,8 +96,21 @@ object Sample {
             Symbol(id = s.id, name = s.name, market = s.market, close = q.prevClose, currency = s.currency, sector = s.sector, search = s.search)
         }
     }
-    // ios: Data/SampleData.swift:80
-    val baseSymbols: List<Symbol> by lazy { listOf(
+    /** 공개 베타·출시는 가상 시장 샘플 6종목만 (data/sample/symbols.json 과 같은 값). 내부 베타는 아래 실제 종목 예시 */
+    val baseSymbols: List<Symbol> by lazy { if (Config.usesCollectedData) collectedSymbols else virtualSymbols }   // ios: Data/SampleData.swift:81
+    val virtualSymbols: List<Symbol> by lazy { listOf(   // ios: Data/SampleData.swift:82
+        Symbol(id = "DRNK", name = "드링커", market = "미국 주식", close = 250.0, currency = Currency.usd, sector = "우주항공·궤도 통신", search = "drinker"),  // ios: Data/SampleData.swift:83
+        Symbol(id = "NXIX", name = "내일100 지수 ETF", market = "미국 ETF", close = 412.3, currency = Currency.usd, sector = "지수", search = "naeilo index"),  // ios: Data/SampleData.swift:84
+        Symbol(id = "SERI", name = "세리 로보틱스", market = "미국 주식", close = 87.45, currency = Currency.usd, sector = "로봇·AI", search = "seri robotics"),  // ios: Data/SampleData.swift:85
+        Symbol(id = "NLBD", name = "내일 단기채 ETF", market = "미국 ETF", close = 100.42, currency = Currency.usd, sector = "채권", search = "naeilo bond"),  // ios: Data/SampleData.swift:86
+        Symbol(id = "V00001", name = "한빛반도체", market = "코스피", close = 71200.0, currency = Currency.krw, sector = "반도체", search = "hanbit semi"),  // ios: Data/SampleData.swift:87
+        Symbol(id = "V00002", name = "내일 코스피 ETF", market = "코스피 ETF", close = 38450.0, currency = Currency.krw, sector = "지수", search = "naeilo kospi"),  // ios: Data/SampleData.swift:88
+    ) }
+    /** 가상 종목 (사이트·키 시세를 받지 않고 번들 샘플 값만 쓴다). 내부 베타는 DRNK 하나 */
+    val virtualIds: Set<String> by lazy { if (Config.usesCollectedData) setOf("DRNK") else virtualSymbols.map { it.id }.toSet() }   // ios: Data/SampleData.swift:91
+    fun isVirtual(id: String): Boolean = id in virtualIds   // ios: Data/SampleData.swift:92
+    // ios: Data/SampleData.swift:93
+    private val collectedSymbols: List<Symbol> by lazy { listOf(
         Symbol(id = "DRNK", name = "드링커", market = "미국 주식", close = 250.0, currency = Currency.usd, sector = "우주항공·궤도 통신", search = "drinker"),  // ios: Data/SampleData.swift:81
         Symbol(id = "QQQ", name = "나스닥100 ETF", market = "미국 ETF", close = 480.0, currency = Currency.usd, sector = "지수", search = "invesco nasdaq"),  // ios: Data/SampleData.swift:82
         Symbol(id = "AAPL", name = "애플", market = "미국 주식", close = 229.0, currency = Currency.usd, sector = "컴퓨터·주변기기", search = "apple"),  // ios: Data/SampleData.swift:83
@@ -112,7 +126,7 @@ object Sample {
     /** 앱에 시세 자료가 없는 예시 종목(한국 종목·MSFT)은 추가할 때 받은 Yahoo 중계 값이 있으면 그것을 쓴다 */
     // ios: Data/SampleData.swift:94,95,96
     fun symbol(id: String): Symbol? {
-        if (id != "DRNK" && YahooSample.quotes[id] == null) CustomSymbols.shared.symbol(id)?.let { return it }
+        if (!isVirtual(id) && YahooSample.quotes[id] == null) CustomSymbols.shared.symbol(id)?.let { return it }
         return symbols.firstOrNull { it.id == id }
     }
 
@@ -120,8 +134,22 @@ object Sample {
     /** 영어면 소개 글을 영어로 (data_en.json). 동네 얼굴 열쇠는 한국어 이름을 쓰므로 profilesKo */
     // ios: Data/SampleData.swift:101
     val profiles: Map<String, Profile> by lazy { if (AppModel.en) profilesKo.mapValues { it.value.en } else profilesKo }
-    // ios: Data/SampleData.swift:102
-    val profilesKo: Map<String, Profile> by lazy { mapOf(
+    /** 공개 베타·출시는 가상 종목 소개를 더한다 (실제 같은 기호의 종목과 섞이지 않게 내부 베타에는 넣지 않는다) */
+    val profilesKo: Map<String, Profile> by lazy { if (Config.usesCollectedData) collectedProfiles else virtualProfiles + collectedProfiles }   // ios: Data/SampleData.swift:116
+    private val virtualProfiles: Map<String, Profile> by lazy { mapOf(   // ios: Data/SampleData.swift:117
+        "NXIX" to Profile(mono = "N", color = 0x3A5BA0, etf = true, virtual = true, ceo = Pair("운용사", "내일 자산운용 (가상)"), hq = "가상 시장", since = "가상 종목",  // ios: Data/SampleData.swift:118
+                        what = "가상 미국 대형주 100개를 담는 가상 ETF예요.", vision = "내일100 지수 (가상)", extra = Pair("담은 종목", "약 100개 (가상)")),  // ios: Data/SampleData.swift:119
+        "SERI" to Profile(mono = "S", color = 0x7A4FB8, virtual = true, ceo = Pair("대표", "가상 인물"), hq = "가상 시장", since = "가상 종목",  // ios: Data/SampleData.swift:120
+                        what = "집안일을 돕는 안드로이드와 그 위에서 도는 AI를 만드는 가상 회사예요.", vision = "집안일을 덜어 사람에게 시간을 돌려준다."),  // ios: Data/SampleData.swift:121
+        "NLBD" to Profile(mono = "B", color = 0x4F7F6A, etf = true, virtual = true, ceo = Pair("운용사", "내일 자산운용 (가상)"), hq = "가상 시장", since = "가상 종목",  // ios: Data/SampleData.swift:122
+                        what = "만기가 짧은 가상 국채만 담는 가상 ETF예요. 가격이 거의 그대로예요.", vision = "가상 단기 국채", extra = Pair("담은 것", "가상 단기 국채")),  // ios: Data/SampleData.swift:123
+        "V00001" to Profile(mono = "한", color = 0x2C6E8F, virtual = true, ceo = Pair("대표", "가상 인물"), hq = "가상 시장", since = "가상 종목",  // ios: Data/SampleData.swift:124
+                          what = "메모리 반도체를 만드는 가상 회사예요.", vision = "더 빠른 메모리를 만든다."),  // ios: Data/SampleData.swift:125
+        "V00002" to Profile(mono = "K", color = 0x8F6A2C, etf = true, virtual = true, ceo = Pair("운용사", "내일 자산운용 (가상)"), hq = "가상 시장", since = "가상 종목",  // ios: Data/SampleData.swift:126
+                          what = "가상 한국 대형주 200개를 담는 가상 ETF예요.", vision = "내일 코스피 지수 (가상)", extra = Pair("담은 종목", "약 200개 (가상)")),  // ios: Data/SampleData.swift:127
+    ) }
+    // ios: Data/SampleData.swift:129
+    private val collectedProfiles: Map<String, Profile> by lazy { mapOf(
         "DRNK" to Profile(mono = "", color = 0x0F1424, logoImage = "drnk_logo", virtual = true,  // ios: Data/SampleData.swift:103
                         ceo = Pair("대표", "드링커 (창업자, 본명 비공개)"), hqKey = "대표 작품", hq = "궤도 정거장 (2031년 개통)", since = "2030년",  // ios: Data/SampleData.swift:104
                         what = "하늘의 깜빡이지 않는 별, 궤도 정거장을 설계하고 지었어요. 이종 연결 프로토콜 연결망과 가구 통신 계정을 깔고, 정거장을 고치고 늘려요.",  // ios: Data/SampleData.swift:105
@@ -168,7 +196,8 @@ object Sample {
     // ios: Data/SampleData.swift:146
     val startHoldings: List<Holding> = listOf(
         Holding(symbol = "DRNK", qty = 4.0, avg = 400.0),  // ios: Data/SampleData.swift:147
-        Holding(symbol = "QQQ", qty = 1.0, avg = 500.0),  // ios: Data/SampleData.swift:148
+        // 공개 베타·출시는 가상 ETF NXIX 1주 $430 (data/sample/symbols.json start_holdings)
+        if (Config.usesCollectedData) Holding(symbol = "QQQ", qty = 1.0, avg = 500.0) else Holding(symbol = "NXIX", qty = 1.0, avg = 430.0),  // ios: Data/SampleData.swift:176
     )
 
     // 3년 전망용 가정값: [현재 정세 연 기대, 과거 추세 연 성장, 연 변동성]. 사이트 stats.json 에 없는 종목(한국 종목 등)에만 쓴다 (SiteStats.params)

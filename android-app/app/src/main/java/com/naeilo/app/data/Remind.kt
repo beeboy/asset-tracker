@@ -804,7 +804,7 @@ fun AppModel.go(g: RemindGo) {
         RemindGo.board -> { tab = Tab.board; boardPath = emptyList() }   // ios: Data/Remind.swift:630
         RemindGo.week -> { tab = Tab.board; boardPath = emptyList() }   // ios: Data/Remind.swift:631
         RemindGo.calm -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.calm) }   // ios: Data/Remind.swift:632
-        RemindGo.myPath -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.myPath) }   // ios: Data/Remind.swift:633
+        RemindGo.myPath -> { tab = Tab.analysis; analysisPath = listOf() }   // ios: Data/Remind.swift:633 내 길은 분석 탭 메인으로 옮겼다
         RemindGo.forecast -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.forecast) }   // ios: Data/Remind.swift:634
         RemindGo.rateScen -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.rateScen) }   // ios: Data/Remind.swift:635
         RemindGo.external -> { tab = Tab.analysis; analysisPath = listOf(AnalysisRoute.external) }   // ios: Data/Remind.swift:636

@@ -16,6 +16,8 @@ struct NaeiloApp: App {
                 .preferredColorScheme(model.appearance == "light" ? .light : model.appearance == "dark" ? .dark : nil)
                 // 아주 큰 손쉬운 사용 크기에서도 화면이 무너지지 않게 상한을 둔다
                 .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+                // 넘길 때 옆에 뜨는 스크롤 막대는 앱 전체에서 끈다 (2026-10-23)
+                .scrollIndicators(.hidden)
         }
     }
 }
@@ -178,15 +180,26 @@ struct AppHeader: View {
     }
 }
 
-/// 설정·위젯 팝업: 블록·파도처럼 전체 화면, 맨 위 X로 닫는다. 어느 탭에서든 뜬다 (RootView 수식어가 길어 따로 뺐다)
+/// 설정·위젯 팝업: 다른 팝업처럼 시트, 맨 위 줄 제목 + X로 닫는다. 어느 탭에서든 뜬다 (RootView 수식어가 길어 따로 뺐다)
 private struct HomeSheets: ViewModifier {
     @Bindable var model: AppModel
     func body(content: Content) -> some View {
         content
-            .fullScreenCover(isPresented: $model.settingsOpen, onDismiss: { model.settingsPath = [] }) {
+            .sheet(isPresented: $model.settingsOpen, onDismiss: { model.settingsPath = [] }) {
                 NavigationStack(path: $model.settingsPath) { SettingsView(cover: true) }.environment(model)
+                    // 깊이 들어간 화면에도 오른쪽 위 X (첫 화면은 GameHeader 에 X가 있다. 분석 팝업과 같은 자리)
+                    .overlay(alignment: .topTrailing) {
+                        if !model.settingsPath.isEmpty {
+                            Button { model.settingsOpen = false } label: {
+                                Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.ink)
+                                    .frame(width: 44, height: 44).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain).accessibilityLabel("닫기")
+                            .padding(.trailing, 8).padding(.top, 2)
+                        }
+                    }
             }
-            .fullScreenCover(isPresented: $model.widgetsOpen) {
+            .sheet(isPresented: $model.widgetsOpen) {
                 NavigationStack { WidgetPickView(cover: true) }.environment(model)
             }
     }

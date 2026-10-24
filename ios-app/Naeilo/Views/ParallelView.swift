@@ -120,7 +120,7 @@ struct ParallelView: View {
         switch k {
         case 0: return String(localized: "지금 종목 그대로")
         case 1:
-            let parts = (w.segs.last?.w ?? [:]).sorted { $0.value > $1.value }.map { "\($0.key) \(Int(($0.value * 100).rounded()))" }
+            let parts = (w.segs.last?.w ?? [:]).sorted { $0.value > $1.value }.map { "\($0.key) \(AppModel.pct($0.value))" }
             return parts.joined(separator: " · ")
         default: return Parallel.rules[w.who] ?? ""
         }
@@ -381,7 +381,7 @@ struct ParallelBasketView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("모의 바구니 고치기").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("모의바구니 고치기").navigationBarTitleDisplayMode(.inline)
         .onAppear {
             guard !loaded else { return }
             loaded = true
@@ -422,9 +422,22 @@ struct ParallelHomeCard: View {
         if !m.parallelBase.isEmpty {
             Button { m.homePath.append("parallel") } label: {
                 HStack(spacing: 10) {
+                    // 1줄: 질문 + 결론, 2줄: 셋의 수익률 (점 색은 상세 화면과 같은 초록·주황·보라)
+                    let h = m.parallelHome
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("다른 방식이었다면?").appFont(15, .bold)
-                        if let v = m.parallelVerdictLine { Text(v).appFont(13, .semibold).foregroundStyle(Theme.myReal) }
+                        HStack(spacing: 6) {
+                            Text("다른 방식이었다면?").appFont(15, .bold)
+                            if let h { Text(h.verdict).appFont(13, .semibold).foregroundStyle(Theme.myReal) }
+                        }
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                        if let h {
+                            HStack(spacing: 10) {
+                                dot(Theme.myReal, String(localized: "실제"), h.r[0])
+                                dot(Theme.basket, String(localized: "모의"), h.r[1])
+                                dot(Theme.rule, m.friendName(h.who), h.r[2])
+                            }
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                        }
                     }
                     Spacer(minLength: 0)
                     Text("›").appFont(16, .bold).foregroundStyle(Theme.sub)
@@ -436,6 +449,13 @@ struct ParallelHomeCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
+        }
+    }
+
+    private func dot(_ c: Color, _ name: String, _ r: Double) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(c).frame(width: 7, height: 7)
+            Text(name + " " + AppModel.sgn(r)).appFont(12).foregroundStyle(Theme.sub).monospacedDigit()
         }
     }
 }

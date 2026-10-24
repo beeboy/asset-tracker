@@ -723,7 +723,8 @@ object MC {
 
 // 경로 묶음: 전망과 같은 몬테카를로 경로로 계획·구성의 확률을 센다 (웹 breakeven·reweight 와 같은 식)
 // 경로는 종목별 처음 금액 base 로 계산해 두고, 다른 금액이면 비율로 늘이거나 줄인다 (적립도 같은 비율로).
-// 화면 스레드에서만 쓴다 (캐시가 잠금 없는 HashMap). values 가 돌려주는 DoubleArray 는 캐시와 같은 것이라 고치지 않는다.
+// 화면 스레드와 목표 계산 줄(GoalRoute)이 같이 쓴다: 캐시를 만지는 values·bands 는 잠근다. values 가 돌려주는 DoubleArray 는 캐시와 같은 것이라 고치지 않는다.
+// 배열 하나가 수 MB(경로 수 × 달 수)라 캐시는 몇 개만 든다 (값은 같고 다시 셀 뿐)
 class PathSet(   // ios: Data/MonteCarlo.swift:625
     val sim: MC.Sim,   // ios: Data/MonteCarlo.swift:626
     val mu: List<Double>,   // ios: Data/MonteCarlo.swift:627 종목별 연 기대수익 (지금 관점)
@@ -745,7 +746,7 @@ class PathSet(   // ios: Data/MonteCarlo.swift:625
     val M: Int get() = sim.M   // ios: Data/MonteCarlo.swift:643
 
     /** 지금 금액 V(원)에서, 매달 monthly(원)씩 구성 비중대로 넣을 때 월 경계마다 평가액 [k*P+p] */
-    fun values(V: Double, monthly: Double = 0.0): DoubleArray {   // ios: Data/MonteCarlo.swift:646
+    @Synchronized fun values(V: Double, monthly: Double = 0.0): DoubleArray {   // ios: Data/MonteCarlo.swift:646
         val ck = "$V|$monthly"   // ios: Data/MonteCarlo.swift:647
         cache[ck]?.let { return it }   // ios: Data/MonteCarlo.swift:648
         var S = 0.0; for (x in base) S += x   // ios: Data/MonteCarlo.swift:649
@@ -757,16 +758,16 @@ class PathSet(   // ios: Data/MonteCarlo.swift:625
         } else {   // ios: Data/MonteCarlo.swift:655
             v = MC.values(sim, mu = mu, start = base.map { 0.0 }, monthly = monthly, wC = wC)   // ios: Data/MonteCarlo.swift:656
         }
-        if (cache.size > 24) cache.clear()   // ios: Data/MonteCarlo.swift:658
+        if (cache.size > 3) cache.clear()   // ios: Data/MonteCarlo.swift:658
         cache[ck] = v   // ios: Data/MonteCarlo.swift:659
         return v   // ios: Data/MonteCarlo.swift:660
     }
     /** 월 경계마다 5·25·50·75·95% (적립 없이) */
-    fun bands(V: Double): List<List<Double>> {   // ios: Data/MonteCarlo.swift:663
+    @Synchronized fun bands(V: Double): List<List<Double>> {   // ios: Data/MonteCarlo.swift:663
         val ck = "$V"   // ios: Data/MonteCarlo.swift:664
         bandCache[ck]?.let { return it }   // ios: Data/MonteCarlo.swift:665
         val b = MC.bandsOf(values(V), M = M, P = P)   // ios: Data/MonteCarlo.swift:666
-        if (bandCache.size > 8) bandCache.clear()   // ios: Data/MonteCarlo.swift:667
+        if (bandCache.size > 4) bandCache.clear()   // ios: Data/MonteCarlo.swift:667
         bandCache[ck] = b   // ios: Data/MonteCarlo.swift:668
         return b   // ios: Data/MonteCarlo.swift:669
     }

@@ -630,7 +630,7 @@ extension AppModel {
         case .board: tab = .board; boardPath = []
         case .week: tab = .board; boardPath = []
         case .calm: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.calm])
-        case .myPath: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.myPath])
+        case .myPath: tab = .analysis; analysisPath = NavigationPath()   // 내 길은 분석 탭 메인으로 옮겼다
         case .forecast: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.forecast])
         case .rateScen: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.rateScen])
         case .external: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.external])

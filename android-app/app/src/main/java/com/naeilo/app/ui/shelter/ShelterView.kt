@@ -192,44 +192,44 @@ private class ShelterState(m: AppModel) {
     // 서재 묶음 접기: 외전 프롤로그~5장 · 6장~코다 · 본편 1권 1부 · 2부 · 3부 … 중에 가장 최근에 읽고 있는 묶음 하나만 펼치고 나머지는 접는다.
     // 최근에 읽은 장을 끝까지 읽었으면 그다음 장이 든 묶음을 펼친다 (한 묶음을 다 읽으면 다음 묶음이 저절로 펼쳐진다).
     // 읽은 기록이 없으면 다 읽지 않은 첫 묶음. 손으로 펼치고 접은 것(fold)이 이보다 먼저다
-    // ios: Views/ShelterView.swift:349
+    // ios: Views/ShelterView.swift:348
     fun groups(): List<StoryGroup> {
-        val paid = if (story.count(StoryBook.side) > 6) (6 until story.count(StoryBook.side)).toList() else emptyList()   // ios: Views/ShelterView.swift:350
-        val g = mutableListOf(StoryGroup("side0", StoryBook.side, (0 until 6).toList()), StoryGroup("side1", StoryBook.side, paid))   // ios: Views/ShelterView.swift:351
-        if (vol1Shown()) g += vol1Parts().map { StoryGroup(it.id, StoryBook.vol1, it.idx) }   // ios: Views/ShelterView.swift:352
-        return g   // ios: Views/ShelterView.swift:353
+        val paid = if (story.count(StoryBook.side) > 6) (6 until story.count(StoryBook.side)).toList() else emptyList()   // ios: Views/ShelterView.swift:349
+        val g = mutableListOf(StoryGroup("side0", StoryBook.side, (0 until 6).toList()), StoryGroup("side1", StoryBook.side, paid))   // ios: Views/ShelterView.swift:350
+        if (vol1Shown()) g += vol1Parts().map { StoryGroup(it.id, StoryBook.vol1, it.idx) }   // ios: Views/ShelterView.swift:351
+        return g   // ios: Views/ShelterView.swift:352
     }
-    // ios: Views/ShelterView.swift:355
+    // ios: Views/ShelterView.swift:354
     fun current(m: AppModel): String? {
-        val gs = groups()   // ios: Views/ShelterView.swift:356
-        val k = story.last ?: m.readLast; if (k != null) {   // ios: Views/ShelterView.swift:357 예전 기록은 외전 이어 읽기 장
-            val b = if (k >= 1000) StoryBook.vol1 else StoryBook.side; val i = if (k >= 1000) k - 1000 else k   // ios: Views/ShelterView.swift:358
-            val n = if (story.isDone(b, i) && i + 1 < story.count(b)) i + 1 else i   // ios: Views/ShelterView.swift:359
-            // ios: Views/ShelterView.swift:360
+        val gs = groups()   // ios: Views/ShelterView.swift:355
+        val k = story.last ?: m.readLast; if (k != null) {   // ios: Views/ShelterView.swift:356 예전 기록은 외전 이어 읽기 장
+            val b = if (k >= 1000) StoryBook.vol1 else StoryBook.side; val i = if (k >= 1000) k - 1000 else k   // ios: Views/ShelterView.swift:357
+            val n = if (story.isDone(b, i) && i + 1 < story.count(b)) i + 1 else i   // ios: Views/ShelterView.swift:358
+            // ios: Views/ShelterView.swift:359
             val g = gs.firstOrNull { it.book == b && it.idx.contains(n) } ?: gs.firstOrNull { it.book == b && it.idx.contains(i) }; if (g != null) return g.id
         }
-        return gs.firstOrNull { g -> g.idx.isEmpty() || !g.idx.all { story.isDone(g.book, it) } }?.id   // ios: Views/ShelterView.swift:362
+        return gs.firstOrNull { g -> g.idx.isEmpty() || !g.idx.all { story.isDone(g.book, it) } }?.id   // ios: Views/ShelterView.swift:361
     }
-    fun isOpen(id: String, cur: String?): Boolean = fold[id] ?: (id == cur)   // ios: Views/ShelterView.swift:364
+    fun isOpen(id: String, cur: String?): Boolean = fold[id] ?: (id == cur)   // ios: Views/ShelterView.swift:363
 
     /** 본편 1권의 부: 장 제목 앞의 'N부'('Part N, …') 로 묶고, 이름은 그 부 첫 장의 '1부. 거부할 권리'('Part One — The Right to Refuse') 같은 절 제목 */
-    // ios: Views/ShelterView.swift:383
+    // ios: Views/ShelterView.swift:382
     fun vol1Parts(): List<StoryPart> {
-        val out = mutableListOf<StoryPart>()   // ios: Views/ShelterView.swift:384
-        for (i in 0 until story.count(StoryBook.vol1)) {   // ios: Views/ShelterView.swift:385
-            val ch = story.chapter(i, StoryBook.vol1); val title = ch?.title ?: ""   // ios: Views/ShelterView.swift:386
-            val p = if (title.startsWith("Part")) title.split(",")[0] else title.split(" ").firstOrNull { it.isNotEmpty() } ?: ""   // ios: Views/ShelterView.swift:387
-            if (out.lastOrNull()?.id != "vol1-" + p) {   // ios: Views/ShelterView.swift:388
-                val h = ch?.blocks?.firstOrNull { it.k == "h" && (it.t.startsWith(p) || it.t.startsWith("Part ")) }?.t   // ios: Views/ShelterView.swift:389
-                out.add(StoryPart(id = "vol1-" + p, name = h?.replace(". ", " · ")?.replace(" — ", " · ") ?: p, idx = mutableListOf()))   // ios: Views/ShelterView.swift:390
+        val out = mutableListOf<StoryPart>()   // ios: Views/ShelterView.swift:383
+        for (i in 0 until story.count(StoryBook.vol1)) {   // ios: Views/ShelterView.swift:384
+            val ch = story.chapter(i, StoryBook.vol1); val title = ch?.title ?: ""   // ios: Views/ShelterView.swift:385
+            val p = if (title.startsWith("Part")) title.split(",")[0] else title.split(" ").firstOrNull { it.isNotEmpty() } ?: ""   // ios: Views/ShelterView.swift:386
+            if (out.lastOrNull()?.id != "vol1-" + p) {   // ios: Views/ShelterView.swift:387
+                val h = ch?.blocks?.firstOrNull { it.k == "h" && (it.t.startsWith(p) || it.t.startsWith("Part ")) }?.t   // ios: Views/ShelterView.swift:388
+                out.add(StoryPart(id = "vol1-" + p, name = h?.replace(". ", " · ")?.replace(" — ", " · ") ?: p, idx = mutableListOf()))   // ios: Views/ShelterView.swift:389
             }
-            out[out.size - 1].idx.add(i)   // ios: Views/ShelterView.swift:392
+            out[out.size - 1].idx.add(i)   // ios: Views/ShelterView.swift:391
         }
-        return out   // ios: Views/ShelterView.swift:394
+        return out   // ios: Views/ShelterView.swift:393
     }
 
     /** 앱 연재판 1권: 연 구독 또는 월 구독 9개월 이상이면 서버에서 받는다. 받은 장은 구독을 멈춰도 그대로 */
-    fun vol1Shown(): Boolean = Support.shared.vol1Open || story.count(StoryBook.vol1) > 0   // ios: Views/ShelterView.swift:422
+    fun vol1Shown(): Boolean = Support.shared.vol1Open || story.count(StoryBook.vol1) > 0   // ios: Views/ShelterView.swift:421
 }
 
 // ios: Views/ShelterView.swift:4,5,12,14
@@ -588,126 +588,126 @@ private fun Library(m: AppModel, s: ShelterState) {
     val scope = rememberCoroutineScope()
     val paid = if (story.count(StoryBook.side) > 6) (6 until story.count(StoryBook.side)).toList() else emptyList()   // ios: Views/ShelterView.swift:290
     val cur = s.current(m)   // ios: Views/ShelterView.swift:291
-    LaunchedEffect(story.lang) { story.fetch(StoryBook.side) }   // ios: Views/ShelterView.swift:343 구독 중이면 6장부터 받아 둔다
-    // ios: Views/ShelterView.swift:292,340,341,342
+    LaunchedEffect(story.lang) { story.fetch(StoryBook.side) }   // ios: Views/ShelterView.swift:342 구독 중이면 6장부터 받아 둔다
+    // ios: Views/ShelterView.swift:292,339,340,341
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Theme.card).border(1.dp, Theme.border, RoundedCornerShape(18.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         // ios: Views/ShelterView.swift:293
         val read0 = (0 until 6).count { story.isDone(StoryBook.side, it) }; FoldRow(s, "side0", "프롤로그 ~ 5장", "$read0/6 읽음", cur)
         if (s.isOpen("side0", cur)) { for (i in 0 until 6) {   // ios: Views/ShelterView.swift:294
             val on = m.chapterOn(i); val ch = Shelter.chapters[i]   // ios: Views/ShelterView.swift:295
             @Suppress("UNUSED_VARIABLE") val fi = Shelter.friends.indexOfFirst { it.id == ch.friend }.takeIf { it >= 0 } ?: 0   // ios: Views/ShelterView.swift:296
-            HDivider(Theme.line)   // ios: Views/ShelterView.swift:311
-            // ios: Views/ShelterView.swift:312,313
+            HDivider(Theme.line)   // ios: Views/ShelterView.swift:310
+            // ios: Views/ShelterView.swift:311,312
             val click = if (on) Modifier.plainClickable { m.push("read:$i") } else Modifier.plainClickable { s.sel = ch.friend }
-            // ios: Views/ShelterView.swift:297,308,309,310
+            // ios: Views/ShelterView.swift:296,307,308,309
             Fg(if (on) Theme.ink else Theme.muted) { Row(click.fillMaxWidth().defaultMinSize(minHeight = 64.dp).padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                ChapterCover(index = i, on = on, modifier = Modifier.size(64.dp, 40.dp))   // ios: Views/ShelterView.swift:298
-                T(ch.title, Modifier.width(44.dp), style = appFont(12f, FontWeight.Bold), color = Theme.teal)   // ios: Views/ShelterView.swift:299
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:300
-                    T(if (on) ch.name else "???", style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:301
-                    // ios: Views/ShelterView.swift:302,303
+                ChapterCover(index = i, on = on, modifier = Modifier.size(64.dp, 40.dp))   // ios: Views/ShelterView.swift:297
+                T(ch.title, Modifier.width(44.dp), style = appFont(12f, FontWeight.Bold), color = Theme.teal)   // ios: Views/ShelterView.swift:298
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:299
+                    T(if (on) ch.name else "???", style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:300
+                    // ios: Views/ShelterView.swift:301,302
                     T(if (on) (if (i == 0) "처음부터 열림" else "앞 장을 읽어 열림") else "앞 장을 끝까지 읽으면 열려요", style = appFont(12f), color = Theme.sub)
                 }
-                FlexSpacer(0.dp)   // ios: Views/ShelterView.swift:305
-                // ios: Views/ShelterView.swift:306
+                FlexSpacer(0.dp)   // ios: Views/ShelterView.swift:304
+                // ios: Views/ShelterView.swift:305
                 T(if (on) (if (m.readPos.contains(i)) "이어 읽기" else "읽기") else "잠김", style = appFont(12f), color = Theme.muted)
             } }
         } }
-        HDivider(Theme.line)   // ios: Views/ShelterView.swift:315
-        // ios: Views/ShelterView.swift:316
+        HDivider(Theme.line)   // ios: Views/ShelterView.swift:314
+        // ios: Views/ShelterView.swift:315
         FoldRow(s, "side1", "6장 ~ 코다", if (paid.isEmpty()) "구독" else "${paid.count { story.isDone(StoryBook.side, it) }}/${paid.size} 읽음", cur)
         // 6장부터: 구독하면 서버에서 받은 장 (구독을 멈춰도 받은 장은 그대로), 아니면 누르면 구독 화면
-        if (!s.isOpen("side1", cur)) {   // ios: Views/ShelterView.swift:318
-        } else if (story.count(StoryBook.side) > 6) {   // ios: Views/ShelterView.swift:319
-            for (i in 6 until story.count(StoryBook.side)) {   // ios: Views/ShelterView.swift:320
-                HDivider(Theme.line)   // ios: Views/ShelterView.swift:321
-                // ios: Views/ShelterView.swift:322,323
+        if (!s.isOpen("side1", cur)) {   // ios: Views/ShelterView.swift:317
+        } else if (story.count(StoryBook.side) > 6) {   // ios: Views/ShelterView.swift:318
+            for (i in 6 until story.count(StoryBook.side)) {   // ios: Views/ShelterView.swift:319
+                HDivider(Theme.line)   // ios: Views/ShelterView.swift:320
+                // ios: Views/ShelterView.swift:321,322
                 PaidRow(rememberCover(story, i, StoryBook.side) ?: (if (i == 6) artPainter("art_ch6") else null), story.chapter(i)?.title ?: "", story.chapter(i)?.name ?: "", if ((story.pos[i] ?: 0) > 0) "이어 읽기" else "읽기", Modifier.plainClickable { m.push("read:$i") })
             }
-        } else if (Support.shared.sideOpen) {   // ios: Views/ShelterView.swift:325
-            HDivider(Theme.line)   // ios: Views/ShelterView.swift:326
+        } else if (Support.shared.sideOpen) {   // ios: Views/ShelterView.swift:324
+            HDivider(Theme.line)   // ios: Views/ShelterView.swift:325
             val busy = story.isLoading(StoryBook.side)
-            // ios: Views/ShelterView.swift:327,328,329,331
+            // ios: Views/ShelterView.swift:326,327,328,330
             PaidRow(artPainter("art_ch6"), "6장", Shelter.chapter6Name, if (story.isLoading(StoryBook.side)) "받는 중…" else if (story.failText(StoryBook.side) == null) "받기" else "다시 받기",
                 if (busy) Modifier else Modifier.plainClickable { scope.launch { story.fetch(StoryBook.side, force = true) } }, note = story.failText(StoryBook.side))
-        } else {   // ios: Views/ShelterView.swift:332
-            HDivider(Theme.line)   // ios: Views/ShelterView.swift:333
-            // ios: Views/ShelterView.swift:334,335,337
+        } else {   // ios: Views/ShelterView.swift:331
+            HDivider(Theme.line)   // ios: Views/ShelterView.swift:332
+            // ios: Views/ShelterView.swift:333,334,336
             PaidRow(artPainter("art_ch6"), "6장", Shelter.chapter6Name, "구독 ›", Modifier.plainClickable { s.support = true }, note = "구독하면 이어 읽어요", locked = true)
         }
     }
 }
 
-// ios: Views/ShelterView.swift:365
+// ios: Views/ShelterView.swift:364
 @Composable
 private fun FoldRow(s: ShelterState, id: String, title: String, right: String, cur: String?) {
-    val open = s.isOpen(id, cur)   // ios: Views/ShelterView.swift:366
+    val open = s.isOpen(id, cur)   // ios: Views/ShelterView.swift:365
     val st = if (open) "펼침" else "접힘"
-    // ios: Views/ShelterView.swift:367,370 (withAnimation easeOut 0.2초: 꺾쇠가 open ? 90 : 0 으로 돈다)
+    // ios: Views/ShelterView.swift:366,369 (withAnimation easeOut 0.2초: 꺾쇠가 open ? 90 : 0 으로 돈다)
     val rot by animateFloatAsState(if (open) 90f else 0f, tween(200, easing = EaseOut), label = "fold"); val click = Modifier.plainClickable { s.fold[id] = !open }
     // Views/ShelterView.swift:380 (검사 예외: 보간 속 따옴표)
-    // ios: Views/ShelterView.swift:368,375,376,377,379
+    // ios: Views/ShelterView.swift:367,374,375,376,378
     Fg(Theme.ink) { Row(click.fillMaxWidth().defaultMinSize(minHeight = 44.dp).semantics(mergeDescendants = true) { contentDescription = tr("$title, $right, $st") }.padding(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Sym("chevron.right", 12f, Theme.teal, Modifier.rotate(rot))   // ios: Views/ShelterView.swift:369
-        T(title, style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:371
-        FlexSpacer(0.dp)   // ios: Views/ShelterView.swift:372
-        T(right, style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:373
+        Sym("chevron.right", 12f, Theme.teal, Modifier.rotate(rot))   // ios: Views/ShelterView.swift:368
+        T(title, style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:370
+        FlexSpacer(0.dp)   // ios: Views/ShelterView.swift:371
+        T(right, style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:372
     } }
 }
 
 /** 서버에서 받는 장 한 줄 (6장부터, 본편 1권) */
-// ios: Views/ShelterView.swift:398
+// ios: Views/ShelterView.swift:397
 @Composable
 private fun PaidRow(art: Painter?, title: String, name: String, right: String, modifier: Modifier = Modifier, note: String? = null, locked: Boolean = false) {
-    // ios: Views/ShelterView.swift:399,415,416,417,418
+    // ios: Views/ShelterView.swift:398,414,415,416,417
     Fg(if (locked) Theme.sub else Theme.ink) { Row(modifier.fillMaxWidth().background(if (locked) hexD(0xF7F8FA, 0x202933) else Color.Transparent).defaultMinSize(minHeight = 56.dp).padding(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(64.dp, 40.dp).clip(RoundedCornerShape(6.dp))) {   // ios: Views/ShelterView.swift:400,406
-            if (art != null) {   // ios: Views/ShelterView.swift:401
-                // ios: Views/ShelterView.swift:402,403
+        Box(Modifier.size(64.dp, 40.dp).clip(RoundedCornerShape(6.dp))) {   // ios: Views/ShelterView.swift:399,405
+            if (art != null) {   // ios: Views/ShelterView.swift:400
+                // ios: Views/ShelterView.swift:401,402
                 Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds, colorFilter = toneFilter(if (locked) 1f else 0f, if (locked) -0.3f else 0f), alpha = if (locked) 0.6f else 1f)
-            } else Box(Modifier.fillMaxSize().background(Theme.shelter))   // ios: Views/ShelterView.swift:404
+            } else Box(Modifier.fillMaxSize().background(Theme.shelter))   // ios: Views/ShelterView.swift:403
         }
-        FitText(title, appFont(12f, FontWeight.Bold), 0.7f, Modifier.width(44.dp), maxLines = 1, color = Theme.teal)   // ios: Views/ShelterView.swift:407
-        Column(Modifier.weight(1f).widthIn(min = 0.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:408,412 (남은 폭)
-            T(name, style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:409
-            if (note != null) T(note, style = appFont(12f), color = Theme.sub, maxLines = 2)   // ios: Views/ShelterView.swift:410
+        FitText(title, appFont(12f, FontWeight.Bold), 0.7f, Modifier.width(44.dp), maxLines = 1, color = Theme.teal)   // ios: Views/ShelterView.swift:406
+        Column(Modifier.weight(1f).widthIn(min = 0.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:407,411 (남은 폭)
+            T(name, style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:408
+            if (note != null) T(note, style = appFont(12f), color = Theme.sub, maxLines = 2)   // ios: Views/ShelterView.swift:409
         }
-        T(right, style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:413
+        T(right, style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:412
     } }
 }
 
 // 본편 『중첩된 현실』 1권 (앱 연재판). 한국어만
-// ios: Views/ShelterView.swift:424
+// ios: Views/ShelterView.swift:423
 @Composable
 private fun Vol1(m: AppModel, s: ShelterState) {
     val story = s.story
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) { story.fetch(StoryBook.vol1) }   // ios: Views/ShelterView.swift:455
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/ShelterView.swift:425
-        Header("본편 『중첩된 현실』 1권", if (story.count(StoryBook.vol1) > 0) "${story.count(StoryBook.vol1)}장" else "")   // ios: Views/ShelterView.swift:426
-        // ios: Views/ShelterView.swift:427,451,452,453
+    LaunchedEffect(Unit) { story.fetch(StoryBook.vol1) }   // ios: Views/ShelterView.swift:454
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/ShelterView.swift:424
+        Header("본편 『중첩된 현실』 1권", if (story.count(StoryBook.vol1) > 0) "${story.count(StoryBook.vol1)}장" else "")   // ios: Views/ShelterView.swift:425
+        // ios: Views/ShelterView.swift:426,450,451,452
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Theme.card).border(1.dp, Theme.border, RoundedCornerShape(18.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            if (story.count(StoryBook.vol1) > 0) {   // ios: Views/ShelterView.swift:428
-                val parts = s.vol1Parts(); val cur = s.current(m)   // ios: Views/ShelterView.swift:429
-                parts.forEachIndexed { n, part ->   // ios: Views/ShelterView.swift:430
-                    if (n > 0) HDivider(Theme.line)   // ios: Views/ShelterView.swift:431
-                    // ios: Views/ShelterView.swift:432
+            if (story.count(StoryBook.vol1) > 0) {   // ios: Views/ShelterView.swift:427
+                val parts = s.vol1Parts(); val cur = s.current(m)   // ios: Views/ShelterView.swift:428
+                parts.forEachIndexed { n, part ->   // ios: Views/ShelterView.swift:429
+                    if (n > 0) HDivider(Theme.line)   // ios: Views/ShelterView.swift:430
+                    // ios: Views/ShelterView.swift:431
                     FoldRow(s, part.id, part.name, "${part.idx.count { story.isDone(StoryBook.vol1, it) }}/${part.idx.size} 읽음", cur)
-                    if (s.isOpen(part.id, cur)) {   // ios: Views/ShelterView.swift:433
-                        for (i in part.idx) {   // ios: Views/ShelterView.swift:434
-                            HDivider(Theme.line)   // ios: Views/ShelterView.swift:435
-                            // ios: Views/ShelterView.swift:436,437,438,440
+                    if (s.isOpen(part.id, cur)) {   // ios: Views/ShelterView.swift:432
+                        for (i in part.idx) {   // ios: Views/ShelterView.swift:433
+                            HDivider(Theme.line)   // ios: Views/ShelterView.swift:434
+                            // ios: Views/ShelterView.swift:435,436,437,439
                             PaidRow(rememberCover(story, i, StoryBook.vol1), story.chapter(i, StoryBook.vol1)?.title ?: "", story.chapter(i, StoryBook.vol1)?.name ?: "",
                                 if (story.isDone(StoryBook.vol1, i)) "다 읽음" else if ((story.pos[Story.key(StoryBook.vol1, i)] ?: 0) > 0) "이어 읽기" else "읽기", Modifier.plainClickable { m.push("vol1:$i") })
                         }
                     }
                 }
-            } else {   // ios: Views/ShelterView.swift:444
+            } else {   // ios: Views/ShelterView.swift:443
                 val busy = story.isLoading(StoryBook.vol1)
-                // ios: Views/ShelterView.swift:445,446,448
+                // ios: Views/ShelterView.swift:444,445,447
                 PaidRow(null, "1권", "중첩된 현실", if (story.isLoading(StoryBook.vol1)) "받는 중…" else if (story.failText(StoryBook.vol1) == null) "받기" else "다시 받기",
                     if (busy) Modifier else Modifier.plainClickable { scope.launch { story.fetch(StoryBook.vol1, force = true) } }, note = story.failText(StoryBook.vol1))
             }
@@ -715,125 +715,125 @@ private fun Vol1(m: AppModel, s: ShelterState) {
     }
 }
 
-// ios: Views/ShelterView.swift:458
+// ios: Views/ShelterView.swift:457
 @Composable
 private fun ItemTile(m: AppModel, s: ShelterState, i: Int, itm: com.naeilo.app.data.ShelterItem) {
-    val on = i < m.itemsOn   // ios: Views/ShelterView.swift:459
-    val off = on && m.itemsOff.contains(itm.id)   // ios: Views/ShelterView.swift:460
-    // ios: Views/ShelterView.swift:461,467,468,472
+    val on = i < m.itemsOn   // ios: Views/ShelterView.swift:458
+    val off = on && m.itemsOff.contains(itm.id)   // ios: Views/ShelterView.swift:459
+    // ios: Views/ShelterView.swift:460,466,467,471
     Fg(if (on) Theme.ink else Theme.muted) { Column(Modifier.fillMaxWidth().defaultMinSize(minHeight = 84.dp).plainClickable { if (on) { if (s.item == itm.id) { togglePlace(m, itm.id) } else { s.item = itm.id } } }
-        // ios: Views/ShelterView.swift:469
+        // ios: Views/ShelterView.swift:468
         .background(if (on) (if (s.item == itm.id) Theme.mintBg else Theme.card) else hexD(0xF6F7F8, 0x1D252E), RoundedCornerShape(12.dp))
-        // ios: Views/ShelterView.swift:470
+        // ios: Views/ShelterView.swift:469
         .dashBorder(if (on) (if (s.item == itm.id) Theme.teal else if (off) Theme.dash else Theme.border) else Theme.dash, 12.dp, 2.dp, if (on && !off) null else floatArrayOf(4f, 3f))
-        // ios: Views/ShelterView.swift:462,473
+        // ios: Views/ShelterView.swift:461,472
         .semantics(mergeDescendants = true) { contentDescription = tr(if (on) itm.name + (if (off) ", 방에서 빼 둠" else "") else if (i == m.itemsOn) "다음에 돌아오는 물건" else "${i + 1}번째로 돌아오는 물건") },
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
-        PixelN("art_" + itm.id + (if (on) "" else "_l"), 32.dp, 32.dp, alpha = if (off) 0.4f else 1f)   // ios: Views/ShelterView.swift:463
-        T(if (on) itm.name else "???", style = appFont(11f, FontWeight.Bold).copy(textAlign = TextAlign.Center), maxLines = 2)   // ios: Views/ShelterView.swift:464
-        // ios: Views/ShelterView.swift:465
+        PixelN("art_" + itm.id + (if (on) "" else "_l"), 32.dp, 32.dp, alpha = if (off) 0.4f else 1f)   // ios: Views/ShelterView.swift:462
+        T(if (on) itm.name else "???", style = appFont(11f, FontWeight.Bold).copy(textAlign = TextAlign.Center), maxLines = 2)   // ios: Views/ShelterView.swift:463
+        // ios: Views/ShelterView.swift:464
         T(if (off) "빼 둠" else if (i == m.itemsOn) "다음 차례" else "${i + 1}번째", style = appFont(10f), color = if (i == m.itemsOn) Theme.teal else Theme.sub)
     } }
 }
 
 /** 쉼터 방: 돌아온 물건이 제자리에 놓이고, 홈에 둔 친구는 물건과 겹치지 않게 문 앞에 선다. */
-// ios: Views/ShelterView.swift:477
+// ios: Views/ShelterView.swift:476
 @Composable
 private fun Room(m: AppModel, s: ShelterState) {
-    // ios: Views/ShelterView.swift:478,500,501,502,503
+    // ios: Views/ShelterView.swift:477,499,500,501,502
     BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(16.dp)).semantics { contentDescription = tr("쉼터 방, 돌아온 물건 ${m.itemsOn}개") }) {
-        val u = maxWidth / 128   // ios: Views/ShelterView.swift:479
-        Box(Modifier.fillMaxSize()) {   // ios: Views/ShelterView.swift:480
-            RoomImage(m.roomBG, Modifier.fillMaxSize())   // ios: Views/ShelterView.swift:481
-            Shelter.items.forEachIndexed { i, itm ->   // ios: Views/ShelterView.swift:482
-                val p = Shelter.slots[itm.id]; if (p != null && i < m.itemsOn && !m.itemsOff.contains(itm.id)) {   // ios: Views/ShelterView.swift:483
-                    val on = i < m.itemsOn   // ios: Views/ShelterView.swift:484
-                    // ios: Views/ShelterView.swift:485,489,490,491,492
+        val u = maxWidth / 128   // ios: Views/ShelterView.swift:478
+        Box(Modifier.fillMaxSize()) {   // ios: Views/ShelterView.swift:479
+            RoomImage(m.roomBG, Modifier.fillMaxSize())   // ios: Views/ShelterView.swift:480
+            Shelter.items.forEachIndexed { i, itm ->   // ios: Views/ShelterView.swift:481
+                val p = Shelter.slots[itm.id]; if (p != null && i < m.itemsOn && !m.itemsOff.contains(itm.id)) {   // ios: Views/ShelterView.swift:482
+                    val on = i < m.itemsOn   // ios: Views/ShelterView.swift:483
+                    // ios: Views/ShelterView.swift:484,488,489,490,491
                     Box(Modifier.offset(x = u * p.x, y = u * p.y).semantics { contentDescription = tr(if (on) itm.name else "아직 안 돌아온 물건 미리 보기") }
                         .clickable(remember { MutableInteractionSource() }, indication = null, enabled = on, onClickLabel = if (on) "누르면 방에서 빼요" else "") { if (on) { s.item = itm.id; m.itemsOff = m.itemsOff + itm.id } }) {
-                        PixelN("art_" + itm.id, u * 16, u * 16, alpha = if (on) 1f else 0.35f)   // ios: Views/ShelterView.swift:486,487
+                        PixelN("art_" + itm.id, u * 16, u * 16, alpha = if (on) 1f else 0.35f)   // ios: Views/ShelterView.swift:485,486
                     }
                 }
             }
-            // ios: Views/ShelterView.swift:495,496,497 문(6~26) 앞. 의자는 30부터라 겹치지 않는다
+            // ios: Views/ShelterView.swift:494,495,496 문(6~26) 앞. 의자는 30부터라 겹치지 않는다
             CharPixel(id = m.homeFriendShown, width = u * 24, height = u * 34, modifier = Modifier.offset(x = u * 4, y = u * 42).clearAndSetSemantics {}.charIdle(), model = m)
         }
     }
 }
 
-// ios: Views/ShelterView.swift:506
+// ios: Views/ShelterView.swift:505
 @Composable
 private fun ItemNote(m: AppModel, s: ShelterState) {
-    val cur = Shelter.items.firstOrNull { it.id == s.item } ?: (if (m.itemsOn > 0) Shelter.items[m.itemsOn - 1] else null)   // ios: Views/ShelterView.swift:507
-    // ios: Views/ShelterView.swift:508,530,531,532
+    val cur = Shelter.items.firstOrNull { it.id == s.item } ?: (if (m.itemsOn > 0) Shelter.items[m.itemsOn - 1] else null)   // ios: Views/ShelterView.swift:506
+    // ios: Views/ShelterView.swift:507,529,530,531
     Row(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(12.dp)).border(1.dp, Theme.border, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        PixelN("art_" + (cur?.id ?: "barley_tea") + (if (cur == null) "_l" else ""), 32.dp, 32.dp)   // ios: Views/ShelterView.swift:509
-        Column(Modifier.weight(1f).widthIn(min = 0.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:510,518 (남은 폭)
-            T(cur?.name ?: "아직 돌아오지 않았어요", style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:511
-            T(cur?.line ?: "물건은 하루 두 개씩 돌아와요.", style = appFont(13f), color = Theme.sub)   // ios: Views/ShelterView.swift:512
+        PixelN("art_" + (cur?.id ?: "barley_tea") + (if (cur == null) "_l" else ""), 32.dp, 32.dp)   // ios: Views/ShelterView.swift:508
+        Column(Modifier.weight(1f).widthIn(min = 0.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:509,517 (남은 폭)
+            T(cur?.name ?: "아직 돌아오지 않았어요", style = appFont(14f, FontWeight.Bold))   // ios: Views/ShelterView.swift:510
+            T(cur?.line ?: "물건은 하루 두 개씩 돌아와요.", style = appFont(13f), color = Theme.sub)   // ios: Views/ShelterView.swift:511
             val voice = m.voice(m.homeFriendShown)
-            // ios: Views/ShelterView.swift:513
+            // ios: Views/ShelterView.swift:512
             val say = cur?.let { c -> Lines.pick("item.${c.id}.$voice") ?: WItem.say(c.id, m.voice(m.homeFriendShown)) }; if (cur != null && say != null) {
-                val who = m.friendName(m.homeFriendShown)   // ios: Views/ShelterView.swift:514
-                T("$who “$say”", style = appFont(13f, FontWeight.Bold), color = Theme.teal)   // ios: Views/ShelterView.swift:515
+                val who = m.friendName(m.homeFriendShown)   // ios: Views/ShelterView.swift:513
+                T("$who “$say”", style = appFont(13f, FontWeight.Bold), color = Theme.teal)   // ios: Views/ShelterView.swift:514
             }
         }
-        val c = cur; if (c != null) {   // ios: Views/ShelterView.swift:519
-            val off = m.itemsOff.contains(c.id)   // ios: Views/ShelterView.swift:520
-            // ios: Views/ShelterView.swift:521,523,524,526,527
+        val c = cur; if (c != null) {   // ios: Views/ShelterView.swift:518
+            val off = m.itemsOff.contains(c.id)   // ios: Views/ShelterView.swift:519
+            // ios: Views/ShelterView.swift:520,522,523,525,526
             Box(Modifier.semantics(mergeDescendants = true) { contentDescription = tr(if (off) "${c.name} 방에 다시 놓기" else "${c.name} 방에서 빼기") }
                 .plainClickable { s.item = c.id; togglePlace(m, c.id) }
                 .defaultMinSize(minHeight = 36.dp).background(if (off) Theme.teal else Theme.mintBg, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
-                T(if (off) "다시 놓기" else "빼기", style = appFont(13f, FontWeight.Bold), color = if (off) Color.White else Theme.teal)   // ios: Views/ShelterView.swift:522
+                T(if (off) "다시 놓기" else "빼기", style = appFont(13f, FontWeight.Bold), color = if (off) Color.White else Theme.teal)   // ios: Views/ShelterView.swift:521
             }
         }
     }
 }
 
 /** 방 배치에서 빼거나 다시 놓는다. 모은 물건은 그대로 남는다 */
-// ios: Views/ShelterView.swift:536
+// ios: Views/ShelterView.swift:535
 private fun togglePlace(m: AppModel, id: String) {
-    if (m.itemsOff.contains(id)) { m.itemsOff = m.itemsOff - id } else { m.itemsOff = m.itemsOff + id }   // ios: Views/ShelterView.swift:537
+    if (m.itemsOff.contains(id)) { m.itemsOff = m.itemsOff - id } else { m.itemsOff = m.itemsOff + id }   // ios: Views/ShelterView.swift:536
 }
 
 // 장면 도트 표지. 5장은 4프레임 애니메이션 (움직임 줄이기 설정이면 첫 프레임만).
 /** 서버에서 받은 장의 도트 그림 (data URL → 그림). 한 번 푼 그림은 기억해 둔다 */
-private val coverCache = HashMap<String, ImageBitmap>()   // ios: Views/ShelterView.swift:543
-// ios: Views/ShelterView.swift:544,545
+private val coverCache = HashMap<String, ImageBitmap>()   // ios: Views/ShelterView.swift:542
+// ios: Views/ShelterView.swift:543,544
 fun Story.cover(i: Int, b: StoryBook = StoryBook.side): ImageBitmap? {
-    val url = chapter(i, b)?.cover ?: return null   // ios: Views/ShelterView.swift:546
+    val url = chapter(i, b)?.cover ?: return null   // ios: Views/ShelterView.swift:545
     return coverImage(url)
 }
 private fun cachedCover(url: String): ImageBitmap? = synchronized(coverCache) { coverCache[url] }
 /** data URL 하나를 푼다 (그리기 밖에서 부른다) */
 private fun coverImage(url: String): ImageBitmap? {
-    cachedCover(url)?.let { return it }   // ios: Views/ShelterView.swift:547
-    // ios: Views/ShelterView.swift:548
+    cachedCover(url)?.let { return it }   // ios: Views/ShelterView.swift:546
+    // ios: Views/ShelterView.swift:547
     val comma = url.indexOf(","); val d = (if (comma < 0) null else runCatching { Base64.decode(url.substring(comma + 1), Base64.DEFAULT) }.getOrNull()) ?: return null
-    val ui = BitmapFactory.decodeByteArray(d, 0, d.size) ?: return null   // ios: Views/ShelterView.swift:549
-    val img = ui.asImageBitmap()   // ios: Views/ShelterView.swift:550
-    synchronized(coverCache) { coverCache[url] = img }   // ios: Views/ShelterView.swift:551
-    return img   // ios: Views/ShelterView.swift:552
+    val ui = BitmapFactory.decodeByteArray(d, 0, d.size) ?: return null   // ios: Views/ShelterView.swift:548
+    val img = ui.asImageBitmap()   // ios: Views/ShelterView.swift:549
+    synchronized(coverCache) { coverCache[url] = img }   // ios: Views/ShelterView.swift:550
+    return img   // ios: Views/ShelterView.swift:551
 }
 
-// ios: Views/ShelterView.swift:556,557,558,560
+// ios: Views/ShelterView.swift:555,556,557,559
 @Composable
 fun ChapterCover(index: Int, on: Boolean = true, modifier: Modifier = Modifier) {
-    val reduce = LocalReduceMotion.current   // ios: Views/ShelterView.swift:559
+    val reduce = LocalReduceMotion.current   // ios: Views/ShelterView.swift:558
     val active = LocalTabActive.current
     val ctx = LocalContext.current
-    // ios: Views/ShelterView.swift:561,571,572,573
+    // ios: Views/ShelterView.swift:560,570,571,572
     val filter = remember(on) { toneFilter(if (on) 0f else 1f, if (on) 0f else -0.3f) }; val alpha = if (on) 1f else 0.6f; val box = modifier.clip(RoundedCornerShape(6.dp)).background(Theme.shelter)
-    if (index == 5 && on && !reduce) {   // ios: Views/ShelterView.swift:562
-        // ios: Views/ShelterView.swift:565 (그림 네 장은 한 번만 읽는다)
+    if (index == 5 && on && !reduce) {   // ios: Views/ShelterView.swift:561
+        // ios: Views/ShelterView.swift:564 (그림 네 장은 한 번만 읽는다)
         val ids = remember { (0 until 4).map { drawableId(ctx, "art_ch5_$it") } }; val frames = ids.filter { it != 0 }.map { ImageBitmap.imageResource(it) }
         val frame = remember { mutableIntStateOf(0) }
-        // ios: Views/ShelterView.swift:563,564 0.7초마다 다음 장면 (그리기만 다시 한다). 탭이 숨으면 멈춘다
+        // ios: Views/ShelterView.swift:562,563 0.7초마다 다음 장면 (그리기만 다시 한다). 탭이 숨으면 멈춘다
         LaunchedEffect(active) { while (active) { frame.intValue = ((System.currentTimeMillis() / 700) % 4).toInt(); delay(700 - System.currentTimeMillis() % 700) } }
         Canvas(box) { if (frames.isNotEmpty()) drawImage(frames[frame.intValue % frames.size], dstSize = IntSize(this.size.width.toInt(), this.size.height.toInt()), filterQuality = FilterQuality.None, alpha = alpha, colorFilter = filter) }
-    } else {   // ios: Views/ShelterView.swift:567
-        // ios: Views/ShelterView.swift:568
+    } else {   // ios: Views/ShelterView.swift:566
+        // ios: Views/ShelterView.swift:567
         val id = drawableId(ctx, Shelter.cover(index)); val bmp = if (id != 0) ImageBitmap.imageResource(id) else null
         Canvas(box) { if (bmp != null) drawImage(bmp, dstSize = IntSize(this.size.width.toInt(), this.size.height.toInt()), filterQuality = FilterQuality.None, alpha = alpha, colorFilter = filter) }
     }
@@ -845,16 +845,16 @@ private suspend fun LazyListState.scrollTo(id: Any) = scrollToItem(if (id is Int
 // 서재 읽기: 외전 원고(한글·영문)를 앱에 넣어 두고 읽는다. 언어는 기기 언어가 기본이고, 위의 한/EN 으로 바꾸면 기억한다.
 // 읽던 자리는 장마다 블록 번호로 남기고(두 언어가 같은 번호), 서재 위젯이 그 자리의 문단을 보여 준다.
 // 이동 막대는 화면이 그린다 (어둡게 읽을 때 막대도 같은 바탕). readerPage 로 연다
-// ios: Views/ShelterView.swift:579,580,582,593
+// ios: Views/ShelterView.swift:578,579,581,592
 @Composable
 fun ReaderView(m: AppModel, index: Int, book: StoryBook = StoryBook.side) {
-    var idx by remember(book) { mutableIntStateOf(index) }   // ios: Views/ShelterView.swift:581 @State var index
-    var size by remember { mutableDoubleStateOf(17.0) }   // ios: Views/ShelterView.swift:583
-    var dark by remember { mutableStateOf(false) }   // ios: Views/ShelterView.swift:584
-    var top by remember { mutableStateOf<Int?>(null) }   // ios: Views/ShelterView.swift:585
-    val story = remember { Story.shared }   // ios: Views/ShelterView.swift:586
-    var support by remember { mutableStateOf(false) }   // ios: Views/ShelterView.swift:587
-    val scheme = LocalPal.current.isDark   // ios: Views/ShelterView.swift:588
+    var idx by remember(book) { mutableIntStateOf(index) }   // ios: Views/ShelterView.swift:580 @State var index
+    var size by remember { mutableDoubleStateOf(17.0) }   // ios: Views/ShelterView.swift:582
+    var dark by remember { mutableStateOf(false) }   // ios: Views/ShelterView.swift:583
+    var top by remember { mutableStateOf<Int?>(null) }   // ios: Views/ShelterView.swift:584
+    val story = remember { Story.shared }   // ios: Views/ShelterView.swift:585
+    var support by remember { mutableStateOf(false) }   // ios: Views/ShelterView.swift:586
+    val scheme = LocalPal.current.isDark   // ios: Views/ShelterView.swift:587
     val nav = LocalNavBack.current
     val scope = rememberCoroutineScope()
     val list = rememberLazyListState()
@@ -862,133 +862,133 @@ fun ReaderView(m: AppModel, index: Int, book: StoryBook = StoryBook.side) {
     val opened = remember { intArrayOf(index) }   // 자리를 재기 시작한 장 (다음 장으로 넘기면 맨 위부터 잰다)
 
     /** 앱에 든 외전 장(프롤로그~5장): 쉼터 친구·표지·미션 열림과 이어진다. 6장부터와 앱 연재판 1권은 구독으로 서버에서 받은 장 */
-    val inApp = book == StoryBook.side && idx < 6   // ios: Views/ShelterView.swift:591
-    val accent = if (dark) Theme.mint else Theme.teal   // ios: Views/ShelterView.swift:594
-    val ch = if (inApp) Shelter.chapters[idx] else null   // ios: Views/ShelterView.swift:595
-    val fi = ch?.let { c -> Shelter.friends.indexOfFirst { it.id == c.friend }.takeIf { it >= 0 } ?: 0 }   // ios: Views/ShelterView.swift:596
-    val text = story.chapter(idx, book)   // ios: Views/ShelterView.swift:597
-    val started = if (inApp) m.readPos.contains(idx) else (story.pos[Story.key(book, idx)] ?: 0) > 0   // ios: Views/ShelterView.swift:598
+    val inApp = book == StoryBook.side && idx < 6   // ios: Views/ShelterView.swift:590
+    val accent = if (dark) Theme.mint else Theme.teal   // ios: Views/ShelterView.swift:593
+    val ch = if (inApp) Shelter.chapters[idx] else null   // ios: Views/ShelterView.swift:594
+    val fi = ch?.let { c -> Shelter.friends.indexOfFirst { it.id == c.friend }.takeIf { it >= 0 } ?: 0 }   // ios: Views/ShelterView.swift:595
+    val text = story.chapter(idx, book)   // ios: Views/ShelterView.swift:596
+    val started = if (inApp) m.readPos.contains(idx) else (story.pos[Story.key(book, idx)] ?: 0) > 0   // ios: Views/ShelterView.swift:597
     val blocks = text?.blocks ?: emptyList()
     val subC = if (dark) hex(0xA6ADC6) else Theme.sub2
 
-    // ios: Views/ShelterView.swift:638
+    // ios: Views/ShelterView.swift:637
     LaunchedEffect(Unit) {
-        story.touch(book, idx)   // ios: Views/ShelterView.swift:639
-        if (inApp) m.readLast = idx   // ios: Views/ShelterView.swift:640
-        if (scheme) dark = true   // ios: Views/ShelterView.swift:641 (scheme == .dark)
+        story.touch(book, idx)   // ios: Views/ShelterView.swift:638
+        if (inApp) m.readLast = idx   // ios: Views/ShelterView.swift:639
+        if (scheme) dark = true   // ios: Views/ShelterView.swift:640 (scheme == .dark)
     }
-    // ios: Views/ShelterView.swift:632 원고가 오면 읽던 자리로 간 뒤, 맨 위에 보이는 문단 번호를 읽던 자리로 둔다
+    // ios: Views/ShelterView.swift:631 원고가 오면 읽던 자리로 간 뒤, 맨 위에 보이는 문단 번호를 읽던 자리로 둔다
     LaunchedEffect(idx, book, text) {
         if (text == null) return@LaunchedEffect
-        val p = story.pos[Story.key(book, idx)]; if (!restored && p != null && p > 0) list.scrollTo(p)   // ios: Views/ShelterView.swift:642
+        val p = story.pos[Story.key(book, idx)]; if (!restored && p != null && p > 0) list.scrollTo(p)   // ios: Views/ShelterView.swift:641
         else if (restored && opened[0] != idx) list.scrollTo("top")   // 앞 장의 자리가 새 장에 남지 않게
         restored = true; opened[0] = idx
         snapshotFlow { list.firstVisibleItemIndex }.collect { fv -> top = max(0, minOf(fv - 1, blocks.size - 1)) }
     }
-    // ios: Views/ShelterView.swift:633
+    // ios: Views/ShelterView.swift:632
     LaunchedEffect(top) {
-        val t = top ?: return@LaunchedEffect   // ios: Views/ShelterView.swift:634
-        story.setPos(book, idx, t)   // ios: Views/ShelterView.swift:635
-        if (inApp && t > 0 && !m.readPos.contains(idx)) m.readPos = m.readPos + idx   // ios: Views/ShelterView.swift:636
+        val t = top ?: return@LaunchedEffect   // ios: Views/ShelterView.swift:633
+        story.setPos(book, idx, t)   // ios: Views/ShelterView.swift:634
+        if (inApp && t > 0 && !m.readPos.contains(idx)) m.readPos = m.readPos + idx   // ios: Views/ShelterView.swift:635
     }
     // 받은 장이 없으면(처음이거나 다른 언어) 받는다. 5장 끝에서는 6장을 미리 받아 둔다
-    // ios: Views/ShelterView.swift:650,651
+    // ios: Views/ShelterView.swift:649,650
     LaunchedEffect("$idx-${story.lang(book).name}") { if (story.chapter(idx, book) == null || (book == StoryBook.side && idx == 5)) story.fetch(book) }
-    LaunchedEffect(Unit) { snapshotFlow { story.lang }.drop(1).collect { story.pushWidget(m) } }   // ios: Views/ShelterView.swift:653
-    DisposableEffect(Unit) { onDispose { story.pushWidget(m) } }   // ios: Views/ShelterView.swift:654
+    LaunchedEffect(Unit) { snapshotFlow { story.lang }.drop(1).collect { story.pushWidget(m) } }   // ios: Views/ShelterView.swift:652
+    DisposableEffect(Unit) { onDispose { story.pushWidget(m) } }   // ios: Views/ShelterView.swift:653
     // 끝까지 내려와 '다음' 줄이 보이면 다 읽은 장
-    // ios: Views/ShelterView.swift:629
+    // ios: Views/ShelterView.swift:628
     LaunchedEffect(idx, book, text) { if (text != null) { snapshotFlow { list.layoutInfo.visibleItemsInfo.any { it.key == "next" } }.first { it }; story.markDone(book, idx) } }
 
-    // ios: Views/ShelterView.swift:645,646,647
+    // ios: Views/ShelterView.swift:644,645,646
     Fg(if (dark) hex(0xEEF0F7) else Theme.ink) { Column(Modifier.fillMaxSize().background(if (dark) hex(0x141824) else hex(0xFBFAF7))) {
-        NavBar(if (book == StoryBook.side) "서재" else "본편 1권", back = nav?.back) { nav?.pop?.invoke() }   // ios: Views/ShelterView.swift:648
-        LazyColumn(Modifier.weight(1f), state = list, verticalArrangement = Arrangement.spacedBy(0.dp)) {   // ios: Views/ShelterView.swift:599,600,601
-            // ios: Views/ShelterView.swift:602,615,616
+        NavBar(if (book == StoryBook.side) "서재" else "본편 1권", back = nav?.back) { nav?.pop?.invoke() }   // ios: Views/ShelterView.swift:647
+        LazyColumn(Modifier.weight(1f), state = list, verticalArrangement = Arrangement.spacedBy(0.dp)) {   // ios: Views/ShelterView.swift:598,599,600
+            // ios: Views/ShelterView.swift:601,614,615
             item(key = "top") { Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ReaderControls(story, book, dark, size, accent, { size = it }, { dark = !dark })   // ios: Views/ShelterView.swift:603
-                ReaderCover(story, idx, book, inApp)   // ios: Views/ShelterView.swift:604
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:605
-                    T(story.heading(idx, book), style = appFont(13f, FontWeight.SemiBold), color = accent)   // ios: Views/ShelterView.swift:606
-                    T(text?.name ?: ch?.name ?: "", style = appFont(22f, FontWeight.Bold))   // ios: Views/ShelterView.swift:607
+                ReaderControls(story, book, dark, size, accent, { size = it }, { dark = !dark })   // ios: Views/ShelterView.swift:602
+                ReaderCover(story, idx, book, inApp)   // ios: Views/ShelterView.swift:603
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {   // ios: Views/ShelterView.swift:604
+                    T(story.heading(idx, book), style = appFont(13f, FontWeight.SemiBold), color = accent)   // ios: Views/ShelterView.swift:605
+                    T(text?.name ?: ch?.name ?: "", style = appFont(22f, FontWeight.Bold))   // ios: Views/ShelterView.swift:606
                 }
-                if (text == null) {   // ios: Views/ShelterView.swift:609
-                    FetchNote(story, book, dark, accent) { support = true }   // ios: Views/ShelterView.swift:610
-                } else {   // ios: Views/ShelterView.swift:611
-                    T(if (started) "읽던 곳에서 이어 읽는 중" else "처음부터", style = appFont(13f), color = if (dark) hex(0xA6ADC6) else Theme.sub2)   // ios: Views/ShelterView.swift:612
+                if (text == null) {   // ios: Views/ShelterView.swift:608
+                    FetchNote(story, book, dark, accent) { support = true }   // ios: Views/ShelterView.swift:609
+                } else {   // ios: Views/ShelterView.swift:610
+                    T(if (started) "읽던 곳에서 이어 읽는 중" else "처음부터", style = appFont(13f), color = if (dark) hex(0xA6ADC6) else Theme.sub2)   // ios: Views/ShelterView.swift:611
                 }
             } }
-            // ios: Views/ShelterView.swift:617,618,619,623,626,627 (문단 사이 size × 0.8, 첫 문단 위 8, 묶음 안 간격 0)
+            // ios: Views/ShelterView.swift:616,617,618,622,625,626 (문단 사이 size × 0.8, 첫 문단 위 8, 묶음 안 간격 0)
             itemsIndexed(blocks, key = { p, _ -> p }) { p, b -> Column(Modifier.padding(horizontal = 16.dp).padding(top = if (p == 0) 8.dp else (size * 0.8).dp)) {
-                ReaderBlock(b, size, dark, accent, subC)   // ios: Views/ShelterView.swift:620
-                // ios: Views/ShelterView.swift:621
+                ReaderBlock(b, size, dark, accent, subC)   // ios: Views/ShelterView.swift:619
+                // ios: Views/ShelterView.swift:620
                 if (p == 1 && ch != null && fi != null && Shelter.friends[fi].inSideStory) FirstAppear(m, ch.friend, fi, dark, Modifier.padding(top = (size * 0.8).dp))
             } }
-            // ios: Views/ShelterView.swift:628
+            // ios: Views/ShelterView.swift:627
             item(key = "next") { Box(Modifier.padding(16.dp)) {
                 ReaderNext(m, fi ?: 0, story, book, idx, inApp, dark, accent, { support = true }) {
-                    if (inApp) { m.readPos = m.readPos + idx; story.pushWidget(m) }   // ios: Views/ShelterView.swift:778
-                    idx += 1; top = null   // ios: Views/ShelterView.swift:779
-                    story.touch(book, idx)   // ios: Views/ShelterView.swift:780
-                    if (book == StoryBook.side && idx < 6) m.readLast = idx   // ios: Views/ShelterView.swift:781 (inApp 은 다음 장 기준으로 다시 본다)
-                    scope.launch { list.scrollTo("top") }   // ios: Views/ShelterView.swift:782
+                    if (inApp) { m.readPos = m.readPos + idx; story.pushWidget(m) }   // ios: Views/ShelterView.swift:777
+                    idx += 1; top = null   // ios: Views/ShelterView.swift:778
+                    story.touch(book, idx)   // ios: Views/ShelterView.swift:779
+                    if (book == StoryBook.side && idx < 6) m.readLast = idx   // ios: Views/ShelterView.swift:780 (inApp 은 다음 장 기준으로 다시 본다)
+                    scope.launch { list.scrollTo("top") }   // ios: Views/ShelterView.swift:781
                 }
             } }
         }
     } }
-    Sheet(support, { support = false }) { SupportView(m) }   // ios: Views/ShelterView.swift:655
+    Sheet(support, { support = false }) { SupportView(m) }   // ios: Views/ShelterView.swift:654
 }
 
-// ios: Views/ShelterView.swift:658
+// ios: Views/ShelterView.swift:657
 @Composable
 private fun ReaderCover(story: Story, idx: Int, book: StoryBook, inApp: Boolean) {
-    if (inApp) {   // ios: Views/ShelterView.swift:659
-        ChapterCover(index = idx, modifier = Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(12.dp)))   // ios: Views/ShelterView.swift:660
+    if (inApp) {   // ios: Views/ShelterView.swift:658
+        ChapterCover(index = idx, modifier = Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(12.dp)))   // ios: Views/ShelterView.swift:659
     } else {
-        val art = rememberCover(story, idx, book); if (art != null) {   // ios: Views/ShelterView.swift:661
-            // ios: Views/ShelterView.swift:662,663
+        val art = rememberCover(story, idx, book); if (art != null) {   // ios: Views/ShelterView.swift:660
+            // ios: Views/ShelterView.swift:661,662
             Image(art, null, Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(12.dp)).background(Theme.shelter), contentScale = ContentScale.FillBounds)
-        } else if (book == StoryBook.side) {   // ios: Views/ShelterView.swift:664
-            // ios: Views/ShelterView.swift:665,666
+        } else if (book == StoryBook.side) {   // ios: Views/ShelterView.swift:663
+            // ios: Views/ShelterView.swift:664,665
             artPainter("art_ch6")?.let { Image(it, null, Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(12.dp)).background(Theme.shelter), contentScale = ContentScale.FillBounds) }
         }
     }
 }
 
 /** 받는 중 · 오류 · 다시 받기 */
-// ios: Views/ShelterView.swift:671
+// ios: Views/ShelterView.swift:670
 @Composable
 private fun FetchNote(story: Story, book: StoryBook, dark: Boolean, accent: Color, openSupport: () -> Unit) {
     val scope = rememberCoroutineScope()
-    if (story.isLoading(book)) {   // ios: Views/ShelterView.swift:672
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { Spinner(); T("원고를 받는 중이에요", style = appFont(14f)) }   // ios: Views/ShelterView.swift:673
-    } else if (!Support.shared.open(book)) {   // ios: Views/ShelterView.swift:674
-        // ios: Views/ShelterView.swift:675,676,677
+    if (story.isLoading(book)) {   // ios: Views/ShelterView.swift:671
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { Spinner(); T("원고를 받는 중이에요", style = appFont(14f)) }   // ios: Views/ShelterView.swift:672
+    } else if (!Support.shared.open(book)) {   // ios: Views/ShelterView.swift:673
+        // ios: Views/ShelterView.swift:674,675,676
         T(if (book == StoryBook.side) "구독하면 읽을 수 있어요 ›" else "연 구독, 또는 월 구독 ${Support.vol1Months}개월 이상이면 읽을 수 있어요 ›", Modifier.plainClickable(openSupport), style = appFont(14f, FontWeight.Bold), color = accent)
-    } else {   // ios: Views/ShelterView.swift:678
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/ShelterView.swift:679
-            // ios: Views/ShelterView.swift:680,681
+    } else {   // ios: Views/ShelterView.swift:677
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {   // ios: Views/ShelterView.swift:678
+            // ios: Views/ShelterView.swift:679,680
             T(story.failText(book) ?: "원고를 아직 받지 못했어요.", style = appFont(14f), color = if (dark) hex(0xA6ADC6) else Theme.sub2)
-            // ios: Views/ShelterView.swift:682,683
+            // ios: Views/ShelterView.swift:681,682
             T("다시 받기", Modifier.plainClickable { scope.launch { story.fetch(book, force = true) } }, style = appFont(14f, FontWeight.Bold), color = accent)
         }
     }
 }
 
 // 한/EN · 글자 크기 3단계 · 어둡게
-// ios: Views/ShelterView.swift:689
+// ios: Views/ShelterView.swift:688
 @Composable
 private fun ReaderControls(story: Story, book: StoryBook, dark: Boolean, size: Double, accent: Color, setSize: (Double) -> Unit, toggleDark: () -> Unit) {
-    val ink = if (dark) hex(0xEEF0F7) else Theme.ink; val edge = if (dark) hex(0x4A5578) else Theme.border   // ios: Views/ShelterView.swift:690
+    val ink = if (dark) hex(0xEEF0F7) else Theme.ink; val edge = if (dark) hex(0x4A5578) else Theme.border   // ios: Views/ShelterView.swift:689
     val density = LocalDensity.current
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/ShelterView.swift:691
-        if (book.langs.size == 1) {   // ios: Views/ShelterView.swift:692
-            T("한국어만 있어요", style = appFont(12f), color = if (dark) hex(0xA6ADC6) else Theme.sub2)   // ios: Views/ShelterView.swift:693
-        } else {   // ios: Views/ShelterView.swift:694
-            Row(Modifier.border(2.dp, edge, CapsuleShape).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(0.dp)) {   // ios: Views/ShelterView.swift:695,705
-                StoryLang.entries.forEach { l ->   // ios: Views/ShelterView.swift:696
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/ShelterView.swift:690
+        if (book.langs.size == 1) {   // ios: Views/ShelterView.swift:691
+            T("한국어만 있어요", style = appFont(12f), color = if (dark) hex(0xA6ADC6) else Theme.sub2)   // ios: Views/ShelterView.swift:692
+        } else {   // ios: Views/ShelterView.swift:693
+            Row(Modifier.border(2.dp, edge, CapsuleShape).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(0.dp)) {   // ios: Views/ShelterView.swift:694,704
+                StoryLang.entries.forEach { l ->   // ios: Views/ShelterView.swift:695
                     val on = story.lang == l
-                    // ios: Views/ShelterView.swift:697,698,699,700,701,702
+                    // ios: Views/ShelterView.swift:696,697,698,699,700,701
                     Box(Modifier.defaultMinSize(38.dp, 32.dp).background(if (story.lang == l) accent else Color.Transparent, CapsuleShape)
                         .semantics { contentDescription = tr(if (l == StoryLang.ko) "한글 원고" else "영문 번역본"); selected = on }
                         .plainClickable { story.pick(l) }, contentAlignment = Alignment.Center) {
@@ -997,16 +997,16 @@ private fun ReaderControls(story: Story, book: StoryBook, dark: Boolean, size: D
                 }
             }
         }
-        Spacer(Modifier.weight(1f).widthIn(min = 4.dp))   // ios: Views/ShelterView.swift:707
-        // ios: Views/ShelterView.swift:708
+        Spacer(Modifier.weight(1f).widthIn(min = 4.dp))   // ios: Views/ShelterView.swift:706
+        // ios: Views/ShelterView.swift:707
         listOf(Triple(15.0, 12.0, "작은 글자"), Triple(17.0, 15.0, "보통 글자"), Triple(20.0, 18.0, "큰 글자")).forEach { (s, f, label) ->
-            // ios: Views/ShelterView.swift:709,710,711,712,713,714,715 (.font(.system(size:)): 큰 글자 설정을 따르지 않는다)
+            // ios: Views/ShelterView.swift:708,709,710,711,712,713,714 (.font(.system(size:)): 큰 글자 설정을 따르지 않는다)
             Box(Modifier.defaultMinSize(36.dp, 36.dp).background(if (size == s) accent else Color.Transparent, CapsuleShape).border(2.dp, if (size == s) accent else edge, CapsuleShape)
                 .semantics { contentDescription = tr(label) }.plainClickable { setSize(s) }, contentAlignment = Alignment.Center) {
                 T("가", style = TextStyle(fontSize = with(density) { f.toFloat().dp.toSp() }, fontWeight = FontWeight.Bold), color = if (size == s) (if (dark) hex(0x141824) else Color.White) else ink)
             }
         }
-        // ios: Views/ShelterView.swift:717,718,719,720,721
+        // ios: Views/ShelterView.swift:716,717,718,719,720
         Box(Modifier.defaultMinSize(minHeight = 36.dp).background(if (dark) hex(0x262E45) else Theme.card, CapsuleShape).border(2.dp, edge, CapsuleShape).plainClickable(toggleDark).padding(horizontal = 10.dp),
             contentAlignment = Alignment.Center) {
             T(if (dark) "밝게" else "어둡게", style = appFont(13f, FontWeight.Bold), color = ink)
@@ -1014,33 +1014,33 @@ private fun ReaderControls(story: Story, book: StoryBook, dark: Boolean, size: D
     }
 }
 
-// ios: Views/ShelterView.swift:725
+// ios: Views/ShelterView.swift:724
 @Composable
 private fun ReaderBlock(b: StoryBlock, size: Double, dark: Boolean, accent: Color, sub: Color) {
-    @Suppress("UNUSED_VARIABLE") val sub0 = if (dark) hex(0xA6ADC6) else Theme.sub2   // ios: Views/ShelterView.swift:726 (바깥에서 sub 로 받는다)
+    @Suppress("UNUSED_VARIABLE") val sub0 = if (dark) hex(0xA6ADC6) else Theme.sub2   // ios: Views/ShelterView.swift:725 (바깥에서 sub 로 받는다)
     val fs = size.toFloat()
-    when (b.k) {   // ios: Views/ShelterView.swift:727
-        "h" ->   // ios: Views/ShelterView.swift:728
-            T(b.t, Modifier.padding(top = size.dp), style = appFont((size * 0.85).toFloat(), FontWeight.Bold), color = accent)   // ios: Views/ShelterView.swift:729
+    when (b.k) {   // ios: Views/ShelterView.swift:726
+        "h" ->   // ios: Views/ShelterView.swift:727
+            T(b.t, Modifier.padding(top = size.dp), style = appFont((size * 0.85).toFloat(), FontWeight.Bold), color = accent)   // ios: Views/ShelterView.swift:728
         // 화면에 뜬 글·메시지: 왼쪽 줄 + 조금 흐린 색
-        "q" ->   // ios: Views/ShelterView.swift:730
-            // ios: Views/ShelterView.swift:732,733,734,735
+        "q" ->   // ios: Views/ShelterView.swift:729
+            // ios: Views/ShelterView.swift:731,732,733,734
             TA(readerMd(b.t), Modifier.drawBehind { drawRoundRect(accent.copy(alpha = 0.6f), size = Size(2.dp.toPx(), this.size.height), cornerRadius = CornerRadius(1.dp.toPx())) }.padding(start = 12.dp),
                style = appFont((size * 0.95).toFloat()).ls((size * 0.35).toFloat()), color = sub)
-        "s" ->   // ios: Views/ShelterView.swift:736
-            T("⁂", Modifier.fillMaxWidth().clearAndSetSemantics {}, style = appFont(fs).copy(textAlign = TextAlign.Center), color = sub)   // ios: Views/ShelterView.swift:737
-        "t" ->   // ios: Views/ShelterView.swift:738
-            // ios: Views/ShelterView.swift:739,749,750
+        "s" ->   // ios: Views/ShelterView.swift:735
+            T("⁂", Modifier.fillMaxWidth().clearAndSetSemantics {}, style = appFont(fs).copy(textAlign = TextAlign.Center), color = sub)   // ios: Views/ShelterView.swift:736
+        "t" ->   // ios: Views/ShelterView.swift:737
+            // ios: Views/ShelterView.swift:738,748,749
             Box(Modifier.border(1.dp, if (dark) hex(0x3A4459) else Theme.border, RoundedCornerShape(10.dp)).padding(12.dp)) { TableGrid(b.rows ?: emptyList(), hSpacing = 12.dp, vSpacing = 6.dp, divider = sub) { r, c ->
-                TA(readerMd(c), style = appFont((size * 0.85).toFloat(), if (r == 0) FontWeight.Bold else FontWeight.Normal))   // ios: Views/ShelterView.swift:740,741,742,743 (머리 줄 아래 선: 746)
+                TA(readerMd(c), style = appFont((size * 0.85).toFloat(), if (r == 0) FontWeight.Bold else FontWeight.Normal))   // ios: Views/ShelterView.swift:739,740,741,742 (머리 줄 아래 선: 746)
             } }
-        else ->   // ios: Views/ShelterView.swift:751
-            TA(readerMd(b.t), style = appFont(fs).ls((size * 0.45).toFloat()))   // ios: Views/ShelterView.swift:752
+        else ->   // ios: Views/ShelterView.swift:750
+            TA(readerMd(b.t), style = appFont(fs).ls((size * 0.45).toFloat()))   // ios: Views/ShelterView.swift:751
     }
 }
 
 /** Grid(alignment: .leading): 칸 폭 = 그 열에서 가장 긴 글. 넓으면 비율대로 줄여 접는다. 첫 줄 아래엔 선 (r == 0 → Divider) */
-// ios: Views/ShelterView.swift:746
+// ios: Views/ShelterView.swift:745
 @Composable
 private fun TableGrid(rows: List<List<String>>, hSpacing: Dp, vSpacing: Dp, divider: Color, cell: @Composable (Int, String) -> Unit) {
     val cols = rows.maxOfOrNull { it.size } ?: 0
@@ -1073,49 +1073,49 @@ private fun TableGrid(rows: List<List<String>>, hSpacing: Dp, vSpacing: Dp, divi
     }
 }
 
-// ios: Views/ShelterView.swift:756
+// ios: Views/ShelterView.swift:755
 @Composable
 private fun FirstAppear(m: AppModel, id: String, fi: Int, dark: Boolean, modifier: Modifier) {
-    // ios: Views/ShelterView.swift:757,758,766,767,768,770
+    // ios: Views/ShelterView.swift:756,757,765,766,767,769
     Row(modifier.fillMaxWidth().background(if (dark) hex(0x262E45) else Theme.cream, RoundedCornerShape(12.dp)).border(1.dp, if (dark) hex(0x4A5578) else Theme.yellow, RoundedCornerShape(12.dp))
         .plainClickable { m.push("char:" + id) }.padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        PixelN("spr_" + id, 24.dp, 34.dp)   // ios: Views/ShelterView.swift:759
-        Column {   // ios: Views/ShelterView.swift:760
-            T("${Shelter.friends[fi].name} 처음 나오는 장면", style = appFont(13f, FontWeight.Bold))   // ios: Views/ShelterView.swift:761
-            T("쉼터에서 만날 수 있어요 ›", style = appFont(12f))   // ios: Views/ShelterView.swift:762
+        PixelN("spr_" + id, 24.dp, 34.dp)   // ios: Views/ShelterView.swift:758
+        Column {   // ios: Views/ShelterView.swift:759
+            T("${Shelter.friends[fi].name} 처음 나오는 장면", style = appFont(13f, FontWeight.Bold))   // ios: Views/ShelterView.swift:760
+            T("쉼터에서 만날 수 있어요 ›", style = appFont(12f))   // ios: Views/ShelterView.swift:761
         }
-        Spacer(Modifier.weight(1f))   // ios: Views/ShelterView.swift:764
+        Spacer(Modifier.weight(1f))   // ios: Views/ShelterView.swift:763
     }
 }
 
-// ios: Views/ShelterView.swift:773
+// ios: Views/ShelterView.swift:772
 @Composable
 private fun ReaderNext(m: AppModel, @Suppress("UNUSED_PARAMETER") fi: Int, story: Story, book: StoryBook, idx: Int, inApp: Boolean, dark: Boolean, accent: Color, openSupport: () -> Unit, goNext: () -> Unit) {
-    val last = if (inApp && idx < 5) !m.chapterOn(idx + 1) else idx + 1 >= story.count(book)   // ios: Views/ShelterView.swift:774
-    if (!last) {   // ios: Views/ShelterView.swift:775
-        val n = story.chapter(idx + 1, book)   // ios: Views/ShelterView.swift:776
+    val last = if (inApp && idx < 5) !m.chapterOn(idx + 1) else idx + 1 >= story.count(book)   // ios: Views/ShelterView.swift:773
+    if (!last) {   // ios: Views/ShelterView.swift:774
+        val n = story.chapter(idx + 1, book)   // ios: Views/ShelterView.swift:775
         val nt = n?.title.orEmpty(); val nn = n?.name.orEmpty()
-        // ios: Views/ShelterView.swift:777,783,785,786
+        // ios: Views/ShelterView.swift:776,782,784,785
         Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).background(accent, RoundedCornerShape(12.dp)).plainClickable(goNext), contentAlignment = Alignment.Center) {
             T("다음: $nt · $nn ›", style = appFont(15f, FontWeight.Bold), color = Color.White)   // Views/ShelterView.swift:784 (검사 예외: 보간 속 따옴표)
         }
-    } else if (book == StoryBook.side && idx == 5 && !Support.shared.sideOpen && story.count(StoryBook.side) <= 6) {   // ios: Views/ShelterView.swift:787
+    } else if (book == StoryBook.side && idx == 5 && !Support.shared.sideOpen && story.count(StoryBook.side) <= 6) {   // ios: Views/ShelterView.swift:786
         // 5장 끝: 6장부터는 구독으로
-        // ios: Views/ShelterView.swift:789,792,793
+        // ios: Views/ShelterView.swift:788,791,792
         Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).background(accent, RoundedCornerShape(12.dp)).plainClickable(openSupport).padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
-            // ios: Views/ShelterView.swift:790,791
+            // ios: Views/ShelterView.swift:789,790
             T("6장 · ${Shelter.chapter6Name}는 구독하면 이어 읽어요 ›", style = appFont(14f, FontWeight.Bold).copy(textAlign = TextAlign.Center), color = Color.White)
         }
-    } else {   // ios: Views/ShelterView.swift:794
-        // ios: Views/ShelterView.swift:795,796,797
+    } else {   // ios: Views/ShelterView.swift:793
+        // ios: Views/ShelterView.swift:794,795,796
         val t = if (inApp && idx < 5) "이 장을 끝까지 읽으면 다음 장이 열려요." else if (book == StoryBook.side && idx == 5) (if (story.isLoading(StoryBook.side)) "6장을 받는 중이에요" else story.failText(StoryBook.side) ?: "6장은 곧 이어져요") else "끝까지 읽었어요"
-        // ios: Views/ShelterView.swift:798,799,800,801
+        // ios: Views/ShelterView.swift:797,798,799,800
         T(t, Modifier.fillMaxWidth().dashBorder(if (dark) hex(0x4A5578) else Theme.dash, 12.dp, 1.dp, floatArrayOf(4f, 3f)).padding(12.dp), style = appFont(14f, FontWeight.Bold).copy(textAlign = TextAlign.Center), color = if (dark) Theme.gold else Theme.sub)
     }
 }
 
 /** 문단 안의 **굵게**·_기울임_·~~지움~~ 과 줄바꿈을 그대로 (인라인 마크다운만, 공백 유지) */
-// ios: Views/ShelterView.swift:806,807
+// ios: Views/ShelterView.swift:805,806
 fun readerMd(s: String): AnnotatedString = buildAnnotatedString {
     var bold = false; var ital = false; var strike = false; var i = 0
     fun style() = SpanStyle(fontWeight = if (bold) FontWeight.Bold else null, fontStyle = if (ital) FontStyle.Italic else null, textDecoration = if (strike) TextDecoration.LineThrough else null)
@@ -1139,114 +1139,114 @@ fun readerMd(s: String): AnnotatedString = buildAnnotatedString {
 // 소설 속 = 『중첩된 현실』 등장 시점, 특징, 배경, 대표 장면 (캐릭터 설정 스레드 요약 기준). 투자하는 = InvestBranch.
 // 들어온 길이 처음 갈래를 정한다: 쉼터 → 소설 속, 평정 지수·평행 세계·홈 리마인드 → 투자하는
 // 이동 막대는 화면이 그린다 (갈래에 따라 제목이 바뀐다). characterPage 로 연다
-// ios: Views/ShelterView.swift:814,815,816,819,821,822,823,827
+// ios: Views/ShelterView.swift:813,814,815,818,820,821,822,826
 @Composable
 fun CharacterDetailView(m: AppModel, friend: Friend, invest: Boolean = false, focus: Int? = null) {
-    var investOn by remember(friend.id) { mutableStateOf(invest && Calm.kind(friend.id) != null) }   // ios: Views/ShelterView.swift:817,824 (@State invest)
-    val story = remember { Story.shared }   // ios: Views/ShelterView.swift:818
+    var investOn by remember(friend.id) { mutableStateOf(invest && Calm.kind(friend.id) != null) }   // ios: Views/ShelterView.swift:816,823 (@State invest)
+    val story = remember { Story.shared }   // ios: Views/ShelterView.swift:817
     val nav = LocalNavBack.current
-    val f = friend; val k = Calm.kind(f.id)   // ios: Views/ShelterView.swift:828
-    // ios: Views/ShelterView.swift:829,853
+    val f = friend; val k = Calm.kind(f.id)   // ios: Views/ShelterView.swift:827
+    // ios: Views/ShelterView.swift:828,852
     Column(Modifier.fillMaxSize().background(Theme.bg)) {
-        NavBar(if (investOn) "${f.name} 규칙" else f.name, back = nav?.back) { nav?.pop?.invoke() }   // ios: Views/ShelterView.swift:854
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { Screen(Modifier.padding(top = 8.dp)) {   // ios: Views/ShelterView.swift:851
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/ShelterView.swift:830
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/ShelterView.swift:831
-                    // ios: Views/ShelterView.swift:832,833,834
+        NavBar(if (investOn) "${f.name} 규칙" else f.name, back = nav?.back) { nav?.pop?.invoke() }   // ios: Views/ShelterView.swift:853
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { Screen(Modifier.padding(top = 8.dp)) {   // ios: Views/ShelterView.swift:850
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/ShelterView.swift:829
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/ShelterView.swift:830
+                    // ios: Views/ShelterView.swift:831,832,833
                     Box(Modifier.background(Shelter.spriteBacking(f.id), RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 8.dp)) { PixelN("spr_" + f.id, 84.dp, 119.dp, Modifier.charIdle()) }
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/ShelterView.swift:835
-                        FitText(f.name + (k?.let { " · " + it.title } ?: ""), appFont(24f, FontWeight.Bold), 0.7f, maxLines = 1)   // ios: Views/ShelterView.swift:836
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {   // ios: Views/ShelterView.swift:834
+                        FitText(f.name + (k?.let { " · " + it.title } ?: ""), appFont(24f, FontWeight.Bold), 0.7f, maxLines = 1)   // ios: Views/ShelterView.swift:835
                         // 대사 대신 하는 일 한 줄 (투자 성향이 없는 인물은 기존 대사)
-                        // ios: Views/ShelterView.swift:838,839
+                        // ios: Views/ShelterView.swift:837,838
                         T(if (f.does.isEmpty()) f.line else f.does, style = appFont(14f, FontWeight.SemiBold), color = Theme.sub)
                     }
                 }
-                if (k != null) {   // ios: Views/ShelterView.swift:842
-                    // ios: Views/ShelterView.swift:843,844,845,847
+                if (k != null) {   // ios: Views/ShelterView.swift:841
+                    // ios: Views/ShelterView.swift:842,843,844,846
                     Segmented(listOf(true to "규칙과 결과", false to "${f.name} 이야기"), investOn, { investOn = it }, Modifier.semantics { contentDescription = tr("갈래") })
                 }
-                if (investOn) InvestBranch(m, f.id, focus) { investOn = false } else Novel(f, story)   // ios: Views/ShelterView.swift:849
+                if (investOn) InvestBranch(m, f.id, focus) { investOn = false } else Novel(f, story)   // ios: Views/ShelterView.swift:848
             }
         } }
     }
 }
 
-// ios: Views/ShelterView.swift:857
+// ios: Views/ShelterView.swift:856
 @Composable
 private fun Novel(f: Friend, story: Story) {
-    Card {   // ios: Views/ShelterView.swift:858
-        T("소설에 나오는 곳", style = appFont(15f, FontWeight.Bold))   // ios: Views/ShelterView.swift:859
-        Appear("본편", f.main)   // ios: Views/ShelterView.swift:860
-        Appear("외전 『이종 공명』", f.side)   // ios: Views/ShelterView.swift:861
-        Appear("프리퀄", f.prequel?.let { it + " · 준비 중" })   // ios: Views/ShelterView.swift:862
-        if (f.side == null) {   // ios: Views/ShelterView.swift:863
-            T("앱 외전엔 안 나옴 · 쉼터엔 인터미션 체크인으로", style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:864
+    Card {   // ios: Views/ShelterView.swift:857
+        T("소설에 나오는 곳", style = appFont(15f, FontWeight.Bold))   // ios: Views/ShelterView.swift:858
+        Appear("본편", f.main)   // ios: Views/ShelterView.swift:859
+        Appear("외전 『이종 공명』", f.side)   // ios: Views/ShelterView.swift:860
+        Appear("프리퀄", f.prequel?.let { it + " · 준비 중" })   // ios: Views/ShelterView.swift:861
+        if (f.side == null) {   // ios: Views/ShelterView.swift:862
+            T("앱 외전엔 안 나옴 · 쉼터엔 인터미션 체크인으로", style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:863
         }
     }
-    Section("특징", f.traits)   // ios: Views/ShelterView.swift:867
-    Section("배경", f.background)   // ios: Views/ShelterView.swift:868
-    Card {   // ios: Views/ShelterView.swift:869
-        val open = f.scenes.filter { sceneOpen(it.first, story) }; val shut = f.scenes.filter { !sceneOpen(it.first, story) }   // ios: Views/ShelterView.swift:870
-        T("대표 장면", style = appFont(15f, FontWeight.Bold))   // ios: Views/ShelterView.swift:871
-        T("읽은 장면만", style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:872
-        open.forEach { (k, v) ->   // ios: Views/ShelterView.swift:873
-            Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {   // ios: Views/ShelterView.swift:874,878
-                T(k, style = appFont(12f, FontWeight.Bold), color = Theme.teal)   // ios: Views/ShelterView.swift:875
-                T(v, style = appFont(14f).ls(4f))   // ios: Views/ShelterView.swift:876
+    Section("특징", f.traits)   // ios: Views/ShelterView.swift:866
+    Section("배경", f.background)   // ios: Views/ShelterView.swift:867
+    Card {   // ios: Views/ShelterView.swift:868
+        val open = f.scenes.filter { sceneOpen(it.first, story) }; val shut = f.scenes.filter { !sceneOpen(it.first, story) }   // ios: Views/ShelterView.swift:869
+        T("대표 장면", style = appFont(15f, FontWeight.Bold))   // ios: Views/ShelterView.swift:870
+        T("읽은 장면만", style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:871
+        open.forEach { (k, v) ->   // ios: Views/ShelterView.swift:872
+            Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {   // ios: Views/ShelterView.swift:873,877
+                T(k, style = appFont(12f, FontWeight.Bold), color = Theme.teal)   // ios: Views/ShelterView.swift:874
+                T(v, style = appFont(14f).ls(4f))   // ios: Views/ShelterView.swift:875
             }
         }
-        if (shut.isNotEmpty()) {   // ios: Views/ShelterView.swift:880
-            // ios: Views/ShelterView.swift:881,885,886
+        if (shut.isNotEmpty()) {   // ios: Views/ShelterView.swift:879
+            // ios: Views/ShelterView.swift:880,884,885
             Row(Modifier.fillMaxWidth().background(Theme.bg, RoundedCornerShape(12.dp)).padding(12.dp), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Sym("lock.fill", 17f, Theme.muted)   // ios: Views/ShelterView.swift:882
-                T(lockedText(shut.map { it.first }), style = appFont(13f), color = Theme.sub)   // ios: Views/ShelterView.swift:883
+                Sym("lock.fill", 17f, Theme.muted)   // ios: Views/ShelterView.swift:881
+                T(lockedText(shut.map { it.first }), style = appFont(13f), color = Theme.sub)   // ios: Views/ShelterView.swift:882
             }
         }
     }
-    T("본편 9·10권 결말·일부 인물 이야기 제외", style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:889
+    T("본편 9·10권 결말·일부 인물 이야기 제외", style = appFont(12f), color = Theme.muted)   // ios: Views/ShelterView.swift:888
 }
 
 /** 장면 잠금: 앱에서 읽을 수 있는 책의 장을 끝까지 읽어야 열린다. 외전 장면 = 외전 마지막 장, 본편 1권 장면 = 본편 1권 1장.
  *  앱에 없는 책(본편 2권~, 프리퀄)의 장면은 잠긴 채로 둔다 */
-// ios: Views/ShelterView.swift:894,895
+// ios: Views/ShelterView.swift:893,894
 internal fun sceneOpen(label: String, s: Story): Boolean = when (label) {
-    "외전" -> s.isDone(StoryBook.side, StoryBook.side.bundled - 1)   // ios: Views/ShelterView.swift:896
-    "본편 1권" -> s.isDone(StoryBook.vol1, 1)   // ios: Views/ShelterView.swift:897
-    else -> false   // ios: Views/ShelterView.swift:898
+    "외전" -> s.isDone(StoryBook.side, StoryBook.side.bundled - 1)   // ios: Views/ShelterView.swift:895
+    "본편 1권" -> s.isDone(StoryBook.vol1, 1)   // ios: Views/ShelterView.swift:896
+    else -> false   // ios: Views/ShelterView.swift:897
 }
 /** "본편 3·4권, 프리퀄 장면 3개 · 그 장 읽으면 열림" */
-// ios: Views/ShelterView.swift:902
+// ios: Views/ShelterView.swift:901
 internal fun lockedText(labels: List<String>): String {
-    val vols = mutableListOf<String>(); val other = mutableListOf<String>()   // ios: Views/ShelterView.swift:903
-    for (l in labels) {   // ios: Views/ShelterView.swift:904
-        if (!AppModel.en && l.startsWith("본편 ") && l.endsWith("권")) { val v = l.drop(3).dropLast(1); if (!vols.contains(v)) vols.add(v) }   // ios: Views/ShelterView.swift:905
-        else if (!other.contains(l)) other.add(l)   // ios: Views/ShelterView.swift:906
+    val vols = mutableListOf<String>(); val other = mutableListOf<String>()   // ios: Views/ShelterView.swift:902
+    for (l in labels) {   // ios: Views/ShelterView.swift:903
+        if (!AppModel.en && l.startsWith("본편 ") && l.endsWith("권")) { val v = l.drop(3).dropLast(1); if (!vols.contains(v)) vols.add(v) }   // ios: Views/ShelterView.swift:904
+        else if (!other.contains(l)) other.add(l)   // ios: Views/ShelterView.swift:905
     }
-    val parts = (if (vols.isEmpty()) emptyList<String>() else listOf("본편 " + vols.joinToString("·") + "권")) + other   // ios: Views/ShelterView.swift:908
-    return parts.joinToString(", ") + " 장면 ${labels.size}개 · 그 장 읽으면 열림"   // ios: Views/ShelterView.swift:909
+    val parts = (if (vols.isEmpty()) emptyList<String>() else listOf("본편 " + vols.joinToString("·") + "권")) + other   // ios: Views/ShelterView.swift:907
+    return parts.joinToString(", ") + " 장면 ${labels.size}개 · 그 장 읽으면 열림"   // ios: Views/ShelterView.swift:908
 }
 
-// ios: Views/ShelterView.swift:912
+// ios: Views/ShelterView.swift:911
 @Composable
 private fun Appear(k: String, v: String?) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {   // ios: Views/ShelterView.swift:913 (HStack 기본 간격 8)
-        T(k, Modifier.widthIn(min = 110.dp), style = appFont(14f), color = Theme.sub)   // ios: Views/ShelterView.swift:914
-        // ios: Views/ShelterView.swift:915
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {   // ios: Views/ShelterView.swift:912 (HStack 기본 간격 8)
+        T(k, Modifier.widthIn(min = 110.dp), style = appFont(14f), color = Theme.sub)   // ios: Views/ShelterView.swift:913
+        // ios: Views/ShelterView.swift:914
         T(v ?: "나오지 않음", style = appFont(14f, if (v == null) FontWeight.Normal else FontWeight.SemiBold), color = if (v == null) Theme.muted else Theme.ink)
-        FlexSpacer(0.dp)   // ios: Views/ShelterView.swift:916
+        FlexSpacer(0.dp)   // ios: Views/ShelterView.swift:915
     }
 }
 
-// ios: Views/ShelterView.swift:920
+// ios: Views/ShelterView.swift:919
 @Composable
 private fun Section(t: String, body: String) {
-    Card {   // ios: Views/ShelterView.swift:921
-        T(t, style = appFont(15f, FontWeight.Bold))   // ios: Views/ShelterView.swift:922
-        T(body, style = appFont(14f).ls(4f))   // ios: Views/ShelterView.swift:923
+    Card {   // ios: Views/ShelterView.swift:920
+        T(t, style = appFont(15f, FontWeight.Bold))   // ios: Views/ShelterView.swift:921
+        T(body, style = appFont(14f).ls(4f))   // ios: Views/ShelterView.swift:922
     }
 }
 
 // 캐릭터 받침: 원래 남색. 검은 후드(이르)·흑발(수아)만 조금 밝게 해서 머리가 보이게 한다
-// ios: Views/ShelterView.swift:928,930
+// ios: Views/ShelterView.swift:927,929
 fun Shelter.spriteBacking(id: String): Color =
-    if (id == "ir" || id == "sua") hex(0x3A4566) else hex(0x232B42)   // ios: Views/ShelterView.swift:931
+    if (id == "ir" || id == "sua") hex(0x3A4566) else hex(0x232B42)   // ios: Views/ShelterView.swift:930

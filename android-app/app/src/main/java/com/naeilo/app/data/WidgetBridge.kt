@@ -110,7 +110,7 @@ object WidgetBridge {
         // ios: Data/WidgetBridge.swift:42
         val ty = mutableMapOf<String, String>()
         // ios: Data/WidgetBridge.swift:43
-        for (r in rows) if (r.id != "DRNK" && r.id != KoreaEstimate.sumId) ty[r.id] = CustomSymbols.yahoo(r.sym)
+        for (r in rows) if (!Sample.isVirtual(r.id) && r.id != KoreaEstimate.sumId) ty[r.id] = CustomSymbols.yahoo(r.sym)
         // ios: Data/WidgetBridge.swift:44
         feed.ty = ty.ifEmpty { null }
 

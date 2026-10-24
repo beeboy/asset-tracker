@@ -56,7 +56,7 @@ enum Theme {
 
     // 쉬운 말 개편 색 규칙: 화면 사이에서 같은 뜻엔 같은 색 (유리/불리는 색맹을 고려해 파랑/주황)
     static let myReal = Color(hex: 0x2E6B63, dark: 0x5FB3A6)     // 내 실제 투자
-    static let basket = Color(hex: 0xD9873A, dark: 0xE9A564)     // 모의 바구니
+    static let basket = Color(hex: 0xD9873A, dark: 0xE9A564)     // 모의바구니
     static let rule = Color(hex: 0x6847B8, dark: 0x9B78E0)       // 인물 규칙 (점선과 함께)
     static let hold = Color(hex: 0x9AA1AC, dark: 0x7F8792)       // 그냥 둠
     static let favor = Color(hex: 0x2F6FB8, dark: 0x6FA6E6)      // 유리
@@ -123,6 +123,7 @@ struct ChipRow<T: Hashable>: View {
     @Binding var selection: T
     var accent: Color = Theme.teal
     var fill = false
+    var pad: CGFloat? = nil          // 칩 안 가로 여백 (칸이 많은 줄은 좁게)
     var body: some View {
         let row = HStack(spacing: 6) {
             ForEach(items, id: \.0) { item in
@@ -131,7 +132,8 @@ struct ChipRow<T: Hashable>: View {
                     Text(item.1)
                         .appFont(13, .bold)
                         .lineLimit(1)
-                        .padding(.horizontal, fill ? 8 : 14)
+                        .fixedSize()   // 글자를 자르지 않는다: 큰 글자로 안 맞으면 아래 ViewThatFits 가 가로 밀기로 바꾼다
+                        .padding(.horizontal, pad ?? (fill ? 8 : 14))
                         .frame(maxWidth: fill ? .infinity : nil, minHeight: 40)
                         .foregroundStyle(on ? .white : Theme.ink)
                         .background(on ? accent : Theme.card, in: Capsule())
@@ -282,5 +284,23 @@ struct PinnedLayout<Header: View, Content: View>: View {
         } else {
             VStack(spacing: 0) { header; ScrollView { content } }
         }
+    }
+}
+
+/// 팝업 머리: 제목은 왼쪽, 닫기(X)는 오른쪽 (흐름 읽는 법과 같은 모양)
+struct SheetTitleBar: View {
+    let title: LocalizedStringKey
+    let close: () -> Void
+    var body: some View {
+        HStack(alignment: .center) {
+            Text(title).appFont(22, .bold).foregroundStyle(Theme.ink)
+            Spacer(minLength: 8)
+            Button(action: close) {
+                Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.sub)
+                    .frame(width: 44, height: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).accessibilityLabel("닫기")
+        }
+        .padding(.leading, 20).padding(.trailing, 8).padding(.top, 10)
     }
 }

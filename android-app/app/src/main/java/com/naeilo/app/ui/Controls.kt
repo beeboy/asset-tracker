@@ -85,6 +85,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -172,8 +173,10 @@ val SF: Map<String, Int> = mapOf(
     "square.grid.3x3.fill" to R.drawable.ms_grid_on, "water.waves" to R.drawable.ms_waves, "gamecontroller" to R.drawable.ms_sports_esports,
     "nosign" to R.drawable.ms_block, "arrow.counterclockwise" to R.drawable.ms_replay,
     "circle.dotted" to R.drawable.ms_radio_button_partial, "play.fill" to R.drawable.ms_play_arrow_fill, "photo" to R.drawable.ms_image,
+    "questionmark.circle" to R.drawable.ms_help, "hand.tap" to R.drawable.ms_touch_app, "plus.square" to R.drawable.ms_add_box, "magnifyingglass" to R.drawable.ms_search, "square.grid.2x2" to R.drawable.ms_grid_view, "person.crop.square" to R.drawable.ms_account_box,
     "pause.fill" to R.drawable.ms_pause_fill, "trophy" to R.drawable.ms_trophy, "star" to R.drawable.ms_star, "heart" to R.drawable.ms_favorite,
     "heart.fill" to R.drawable.ms_favorite_fill, "cloud.fill" to R.drawable.ms_cloud_fill, "circle.fill" to R.drawable.ms_circle_fill,
+    "scope" to R.drawable.ms_my_location,
 )
 
 /** Image(systemName:) 자리. size = 글자 크기(pt), 기호 칸은 글자 크기의 1.25배. scaled = 큰 글자 설정을 따를지 (.font(.system(size:)) 도 따른다) */
@@ -341,6 +344,19 @@ fun SheetBar(title: String?, trailing: String? = null, onClick: () -> Unit = {})
     Box(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp)) {
         if (title != null) T(title, Modifier.align(Alignment.Center), style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.SemiBold), maxLines = 1)
         if (trailing != null) T(trailing, Modifier.align(Alignment.CenterEnd).plainClickable(onClick), style = TextStyle(fontSize = 17.sp), color = Theme.teal)
+    }
+}
+
+/** 팝업 머리: 제목은 왼쪽, 닫기(X)는 오른쪽 (흐름 읽는 법과 같은 모양) */
+// ios: Theme.swift:291
+@Composable
+fun SheetTitleBar(title: String, close: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Theme.swift:295,305
+        T(title, Modifier.weight(1f), style = appFont(22f, FontWeight.Bold), color = Theme.ink)   // ios: Theme.swift:296
+        // ios: Theme.swift:298,299,300,302
+        Box(Modifier.size(44.dp).plainClickable(close).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
+            Sym("xmark", 15f, Theme.sub)
+        }
     }
 }
 
@@ -651,6 +667,21 @@ fun rememberPrefString(key: String, default: String): androidx.compose.runtime.M
             override var value: String
                 get() = s.value
                 set(v) { s.value = v; prefs.edit().putString(key, v).apply() }
+        }
+    }
+}
+
+/** HStack { … }.lineLimit(1).minimumScaleFactor(k): 한 줄 가로 묶음. 자리가 모자라면 묶음째 k 배까지 줄인다 */
+@Composable
+fun FitRow(minScale: Float, modifier: Modifier = Modifier, spacing: Dp = 0.dp, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.SubcomposeLayout(modifier) { c ->
+        val p = subcompose(Unit) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing), verticalAlignment = Alignment.CenterVertically) { content() }
+        }.first().measure(androidx.compose.ui.unit.Constraints())
+        val k = if (c.hasBoundedWidth && p.width > c.maxWidth) maxOf(minScale, c.maxWidth.toFloat() / p.width) else 1f
+        val w = minOf((p.width * k).toInt(), if (c.hasBoundedWidth) c.maxWidth else Int.MAX_VALUE)
+        layout(w, (p.height * k).toInt()) {
+            p.placeWithLayer(0, 0) { scaleX = k; scaleY = k; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f) }
         }
     }
 }

@@ -40,12 +40,14 @@ object SiteStats {   // ios: Data/SiteStats.swift:6
 
     const val name = "site_stats.json"   // ios: Data/SiteStats.swift:12
     private fun decode(d: ByteArray?): MC.Stats? = d?.let { runCatching { NJson.decodeFromString(MC.Stats.serializer(), it.decodeToString()) }.getOrNull() }   // ios: Data/SiteStats.swift:13
-    fun load(): MC.Stats? =   // ios: Data/SiteStats.swift:14
-        decode(Store.readData(name)) ?: decode(Defaults.asset("stats", "json")?.encodeToByteArray())   // ios: Data/SiteStats.swift:15
+    /** 공개 베타·출시는 받아 둔 사이트 값을 읽지 않고 번들 값(가상 샘플)만 */
+    fun load(): MC.Stats? =   // ios: Data/SiteStats.swift:15
+        (if (Config.usesCollectedData) decode(Store.readData(name)) else null) ?: decode(Defaults.asset("stats", "json")?.encodeToByteArray())   // ios: Data/SiteStats.swift:15
 
     /** 받은 지 minAge 초가 안 됐으면 받지 않는다 (사이트는 하루 한 번 만든다). 실패하면 null */
     suspend fun fetch(minAge: Double = 6 * 3600.0): MC.Stats? = withContext(Dispatchers.IO) {   // ios: Data/SiteStats.swift:19
-        val key = "statsGot"; val now = nowSec()   // ios: Data/SiteStats.swift:20
+        if (!Config.usesCollectedData) return@withContext null   // ios: Data/SiteStats.swift:21
+        val key = "statsGot"; val now = nowSec()   // ios: Data/SiteStats.swift:22
         if (now - Store.defaults.getDouble(key) < minAge) return@withContext null   // ios: Data/SiteStats.swift:21
         val (data, f) = download(now) ?: return@withContext null
         Store.writeData(data, name)   // ios: Data/SiteStats.swift:28
@@ -110,7 +112,7 @@ class ExtraStats(initial: Map<String, Item>? = null) {   // ios: Data/SiteStats.
         private val ser = MapSerializer(String.serializer(), Item.serializer())
     }
     @Serializable data class Item(var name: String, var hist: YahooSample.Hist, @Serializable(with = SwiftDate::class) var at: Instant, var usd: Boolean? = null, var yahoo: String? = null)   // ios: Data/SiteStats.swift:76
-    var items: Map<String, Item> by mutableStateOf(initial ?: (Store.readData("extra_stats.json")?.let { runCatching { NJson.decodeFromString(ser, it.decodeToString()) }.getOrNull() }) ?: emptyMap())   // ios: Data/SiteStats.swift:77
+    var items: Map<String, Item> by mutableStateOf(initial ?: (Store.readData(if (Config.usesCollectedData) "extra_stats.json" else "")?.let { runCatching { NJson.decodeFromString(ser, it.decodeToString()) }.getOrNull() }) ?: emptyMap())   // ios: Data/SiteStats.swift:77
         private set
 
     fun name(k: String): String? = items[k]?.name   // ios: Data/SiteStats.swift:79

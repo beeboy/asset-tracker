@@ -43,12 +43,16 @@ extensions.getByType<com.android.build.api.dsl.ApplicationExtension>().sourceSet
 }
 
 // iOS 원본 자료 중 앱이 읽는 것만 빌드 때 복사한다 (저장소에 같은 파일을 두 벌 두지 않는다)
-val copyIosAssets by tasks.registering(Copy::class) {
+// Sync: 배포 단계를 바꿔 빌드하면 예전 단계의 시세 파일(prices/*.json)이 남지 않게 지운다
+val copyIosAssets by tasks.registering(Sync::class) {
     from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json", "lines_ko.json", "lines_app_en.json", "story_ko.json", "story_en.json", "earnings_seed.json") }
     from("../../ios-app/WidgetShared") { include("lines_en.json") }
-    // 아이폰 번들과 같은 시세 자료 (project.yml: data/quotes.json·stats.json·prices). 앱이 아직 받지 못했을 때만 쓴다
-    from("../../data") { include("quotes.json", "stats.json") }
-    from("../../data/prices") { include("*.json"); into("prices") }
+    // 아이폰 번들과 같은 시세 자료 ('시세 자료 넣기'). 내부 베타는 사이트가 모은 data/, 공개 베타·출시는 가상 샘플 data/sample/
+    val internal = providers.gradleProperty("naeilo.channel").getOrElse("internalBeta") == "internalBeta"
+    val dataDir = if (internal) "../../data" else "../../data/sample"
+    // 공개 베타·출시는 가상 샘플의 배당·환율 값(calc.json)도 넣는다. 내부 베타는 지금처럼 받은 값만
+    from(dataDir) { if (internal) include("quotes.json", "stats.json") else include("quotes.json", "stats.json", "calc.json") }
+    from("$dataDir/prices") { include("*.json"); into("prices") }
     into(layout.buildDirectory.dir("iosAssets"))
 }
 // iOS 그림(xcassets) 중 화면이 쓰는 묶음만 drawable-nodpi 로 (이름 = imageset 이름). 도트 그림은 보간 없이 키운다 (Pixel)

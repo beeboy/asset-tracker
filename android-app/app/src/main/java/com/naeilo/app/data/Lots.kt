@@ -73,7 +73,7 @@ object Lots {
 fun AppModel.recordLot() {
     if (isSample || !persists) return
     val h = mutableMapOf<String, Double>()
-    for (x in holdings.filter { it.qty > 0 && it.symbol != "DRNK" }) h[Sync.siteTicker(x.symbol)] = x.qty
+    for (x in holdings.filter { it.qty > 0 && !Sample.isVirtual(it.symbol) }) h[Sync.siteTicker(x.symbol)] = x.qty
     if (h.isEmpty()) return
     val L = lots.toMutableList()
     Lots.record(L, h = h, start = Day.str(pathStartDate))

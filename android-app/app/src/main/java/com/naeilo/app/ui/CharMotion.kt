@@ -578,3 +578,291 @@ private fun Modifier.drawWithStroke(c: Color, width: Dp = 1.dp): Modifier = this
     val r = size.height / 2
     drawRoundRect(c, Offset.Zero, Size(size.width, size.height), CornerRadius(r, r), style = Stroke(width.toPx()))
 }
+
+// 홈 쉼터 박스 인물: 오늘 장 흐름에 따라 짧은 장면을 되풀이한다 (2026-10-23)
+// 기본 장면(FriendMotion·MeMotion)에 눈·팔·머리·다리만 몇 칸 바꿔 입힌다. 새 그림 없음.
+// 눈을 못 찾는 인물(세리·이르처럼 눈이 밝은 그림)은 눈만 그대로 두고 나머지 동작은 한다
+
+/** 오늘 장 흐름: ±0.3% 안은 보합, ±2%를 넘으면 크게 */
+// ios: Views/CharMotion.swift:417
+enum class DayMood {
+    bigUp, up, flat, down, bigDown;   // ios: Views/CharMotion.swift:418
+    companion object {
+        // ios: Views/CharMotion.swift:419,420
+        fun of(mv: Double): DayMood =
+            if (mv >= 0.02) bigUp else if (mv >= 0.003) up else if (mv > -0.003) flat else if (mv > -0.02) down else bigDown
+    }
+}
+
+/** 기본 장면 위에 입히는 동작
+ *  blink 눈 감기 · smile ^^ · look 눈 옆으로 · phone 휴대폰 들어 보기 · sigh 고개 숙이고 눈 감기 · nod 고개 한 칸 · crouch 쪼그려 앉기 · cheer 만세 · spark 만세 + 반짝 */
+// ios: Views/CharMotion.swift:425
+enum class MoodAct {
+    stand, breath, blink, smile, lookL, lookR, phone, phoneShut, phoneSweat, sweat, sigh, nod, crouch, cheer, spark   // ios: Views/CharMotion.swift:427
+}
+
+/** 대본 한 칸: 방향·다리 + 동작 + 0.15초 칸 수 + 옮김(도트, 위가 -) */
+// ios: Views/CharMotion.swift:431
+data class MoodStep(
+    val act: MoodAct = MoodAct.stand,   // ios: Views/CharMotion.swift:432
+    val dir: CharDir = CharDir.down,   // ios: Views/CharMotion.swift:433
+    val leg: Int = 0,   // ios: Views/CharMotion.swift:434
+    val n: Int,   // ios: Views/CharMotion.swift:435
+    val dx: Int = 0,   // ios: Views/CharMotion.swift:436
+    val dy: Int = 0,   // ios: Views/CharMotion.swift:437
+)
+
+// ios: Views/CharMotion.swift:440
+object MoodScript {
+    const val tick = 0.15   // ios: Views/CharMotion.swift:441
+    private fun s(a: MoodAct, n: Int, dy: Int = 0): MoodStep = MoodStep(act = a, n = n, dy = dy)   // ios: Views/CharMotion.swift:442
+    private fun w(d: CharDir, leg: Int, dx: Int): MoodStep = MoodStep(dir = d, leg = leg, n = 2, dx = dx)   // ios: Views/CharMotion.swift:443
+    private val stand = MoodAct.stand; private val breath = MoodAct.breath; private val blink = MoodAct.blink; private val smile = MoodAct.smile
+    private val lookL = MoodAct.lookL; private val lookR = MoodAct.lookR; private val phone = MoodAct.phone; private val phoneShut = MoodAct.phoneShut
+    private val phoneSweat = MoodAct.phoneSweat; private val sweat = MoodAct.sweat; private val sigh = MoodAct.sigh; private val nod = MoodAct.nod
+    private val crouch = MoodAct.crouch; private val cheer = MoodAct.cheer; private val spark = MoodAct.spark
+    private val right = CharDir.right; private val left = CharDir.left; private val up = CharDir.up
+    // ios: Views/CharMotion.swift:444,445
+    fun steps(m: DayMood): List<MoodStep> = when (m) {
+        // 휴대폰을 보고 → 만세하며 두 번 뛰고 → 반짝 → 신나서 옆으로 몇 걸음 갔다가 돌아온다
+        // ios: Views/CharMotion.swift:447
+        DayMood.bigUp -> listOf(s(stand, 4), s(breath, 4), s(phone, 12), s(cheer, 3), s(cheer, 2, dy = -2), s(cheer, 2), s(cheer, 2, dy = -2), s(spark, 6), s(smile, 4),
+            w(right, 1, 1), w(right, 0, 2), w(right, 2, 3), w(up, 0, 3), w(left, 1, 2), w(left, 0, 1), w(left, 2, 0), s(stand, 4))   // ios: Views/CharMotion.swift:448
+        // 느긋하게 숨 쉬다 휴대폰을 한 번 보고, 빙긋 웃으며 두 번 끄덕인다
+        // ios: Views/CharMotion.swift:450
+        DayMood.up -> listOf(s(stand, 4), s(breath, 4), s(stand, 4), s(breath, 4), s(phone, 8), s(smile, 6), s(nod, 2), s(stand, 2), s(nod, 2),
+            s(stand, 4), s(breath, 4), s(blink, 1), s(stand, 4))   // ios: Views/CharMotion.swift:451
+        // 심심하게 두리번거리고, 꾸벅 졸다가, 휴대폰을 슬쩍 본다
+        // ios: Views/CharMotion.swift:453
+        DayMood.flat -> listOf(s(stand, 4), s(breath, 4), s(blink, 1), s(stand, 4), s(lookL, 6), s(lookR, 6), s(stand, 3), s(blink, 6), s(nod, 2), s(stand, 4),
+            s(breath, 4), s(phone, 10), s(stand, 4))   // ios: Views/CharMotion.swift:454
+        // 휴대폰을 보다 땀 한 방울, 옆을 보고 짧게 한숨, 끄덕여 마음을 다잡는다
+        DayMood.down -> listOf(s(stand, 4), s(phone, 8), s(phoneSweat, 8), s(sweat, 4), s(lookL, 4), s(sigh, 6), s(stand, 4), s(breath, 6), s(nod, 2), s(stand, 4))   // ios: Views/CharMotion.swift:456
+        // 휴대폰을 보고 질끈, 쪼그려 앉았다 일어나 잠깐 먼 곳을 보고, 돌아서서 두 번 끄덕인다
+        // ios: Views/CharMotion.swift:458
+        DayMood.bigDown -> listOf(s(phone, 6), s(phoneShut, 8), s(sweat, 6), s(crouch, 14), s(sigh, 6), s(stand, 4), MoodStep(dir = up, n = 8), s(stand, 4),
+            s(nod, 2), s(stand, 2), s(nod, 2), s(breath, 6), s(stand, 4))   // ios: Views/CharMotion.swift:459
+    }
+    // ios: Views/CharMotion.swift:462
+    fun at(m: DayMood, k: Int): MoodStep {
+        val st = steps(m)   // ios: Views/CharMotion.swift:463
+        var i = Math.floorMod(k, max(1, st.fold(0) { a, s -> a + s.n }))   // ios: Views/CharMotion.swift:464
+        for (s in st) { if (i < s.n) return s; i -= s.n }   // ios: Views/CharMotion.swift:465
+        return st[0]   // ios: Views/CharMotion.swift:466
+    }
+}
+
+/** 동작을 입힌 장면 그림 (인물·방향·다리·동작마다 한 번 만들어 둔다) */
+// ios: Views/CharMotion.swift:471
+object MoodArt {
+    private data class Key(val who: String, val me: MeChar?, val dir: CharDir, val leg: Int, val act: MoodAct)   // ios: Views/CharMotion.swift:472
+    private val cache = HashMap<Key, Bitmap?>()   // ios: Views/CharMotion.swift:473
+    /** 장면 위에 둔 빈 줄 (CharScene.room) */
+    private const val T = 2   // ios: Views/CharMotion.swift:475
+
+    /** who: 친구 id 또는 "me" (아무 스레드에서나) */
+    // ios: Views/CharMotion.swift:478
+    fun image(who: String, me: MeChar?, st: MoodStep): Bitmap? {
+        val key = Key(who = who, me = if (who == "me") me else null, dir = st.dir, leg = st.leg, act = st.act)   // ios: Views/CharMotion.swift:479
+        synchronized(cache) { if (cache.containsKey(key)) return cache[key] }   // ios: Views/CharMotion.swift:480
+        val f = CharScene(dir = st.dir, leg = st.leg, lift = st.act == MoodAct.breath, room = true)   // ios: Views/CharMotion.swift:481
+        val base = if (who == "me") me?.let { MeMotion.image(it, f) } else FriendMotion.image(who, f)   // ios: Views/CharMotion.swift:482
+        val cg = base ?: return null   // ios: Views/CharMotion.swift:483
+        val w = cg.width; val h = cg.height   // ios: Views/CharMotion.swift:484
+        val p = PixBuf.read(cg, w, h)   // ios: Views/CharMotion.swift:485
+        apply(st.act, p, w, h, legTop = (if (who == "me") MeMotion.legTop else FriendMotion.legTop) + T)   // ios: Views/CharMotion.swift:486
+        val img = PixBuf.image(p, w, h)   // ios: Views/CharMotion.swift:487
+        synchronized(cache) {
+            if (cache.size > 300) cache.clear()   // ios: Views/CharMotion.swift:488
+            cache[key] = img   // ios: Views/CharMotion.swift:489
+        }
+        return img   // ios: Views/CharMotion.swift:490
+    }
+
+    /** 눈 한쪽 */
+    private class Eye(val x0: Int, val x1: Int, val y0: Int, val y1: Int, val skin: Int)   // ios: Views/CharMotion.swift:501
+
+    // ios: Views/CharMotion.swift:493
+    private fun apply(a: MoodAct, p: IntArray, w: Int, h: Int, legTop: Int) {
+        if (a == MoodAct.stand || a == MoodAct.breath) return   // ios: Views/CharMotion.swift:494
+        val ink = PixBuf.rgb(MeArt.outline); val orig = p.copyOf()   // ios: Views/CharMotion.swift:495
+        fun at(x: Int, y: Int): Int = if (x >= 0 && x < w && y >= 0 && y < h) p[y * w + x] else 0   // ios: Views/CharMotion.swift:496
+        fun put(x: Int, y: Int, c: Int) { if (x >= 0 && x < w && y >= 0 && y < h) p[y * w + x] = c }   // ios: Views/CharMotion.swift:497
+        fun light(v: Int): Boolean = PixBuf.on(v) && PixBuf.luma(v) >= 70   // ios: Views/CharMotion.swift:498
+
+        // 눈 두 개: 얼굴 줄에서 양옆이 밝은 칸인 짧은 짙은 줄(1~2칸)을 모아 왼쪽·오른쪽 무리로
+        // ios: Views/CharMotion.swift:502
+        fun eyes(): List<Eye> {
+            var l: Eye? = null; var r: Eye? = null   // ios: Views/CharMotion.swift:503
+            for (y in (T + 8)..(T + 12)) {   // ios: Views/CharMotion.swift:504
+                var x = w / 4   // ios: Views/CharMotion.swift:505
+                while (x < w * 3 / 4) {   // ios: Views/CharMotion.swift:506
+                    if (!(PixBuf.on(at(x, y)) && !light(at(x, y)) && light(at(x - 1, y)))) { x += 1; continue }   // ios: Views/CharMotion.swift:507
+                    var e = x   // ios: Views/CharMotion.swift:508
+                    while (e + 1 < w && PixBuf.on(at(e + 1, y)) && !light(at(e + 1, y))) e += 1   // ios: Views/CharMotion.swift:509
+                    // ios: Views/CharMotion.swift:510
+                    if (e - x <= 1 && light(at(e + 1, y))) {
+                        val sk = at(x - 1, y)   // ios: Views/CharMotion.swift:511
+                        // ios: Views/CharMotion.swift:512
+                        if ((x + e) / 2 < w / 2) {
+                            l = l?.let { Eye(x0 = min(it.x0, x), x1 = max(it.x1, e), y0 = it.y0, y1 = y, skin = it.skin) } ?: Eye(x0 = x, x1 = e, y0 = y, y1 = y, skin = sk)   // ios: Views/CharMotion.swift:513
+                        } else {   // ios: Views/CharMotion.swift:514
+                            r = r?.let { Eye(x0 = min(it.x0, x), x1 = max(it.x1, e), y0 = it.y0, y1 = y, skin = it.skin) } ?: Eye(x0 = x, x1 = e, y0 = y, y1 = y, skin = sk)   // ios: Views/CharMotion.swift:515
+                        }
+                    }
+                    x = e + 1   // ios: Views/CharMotion.swift:518
+                }
+            }
+            val ll = l ?: return emptyList(); val rr = r ?: return emptyList()   // ios: Views/CharMotion.swift:521
+            return listOf(ll, rr)   // ios: Views/CharMotion.swift:522
+        }
+        // ios: Views/CharMotion.swift:524
+        fun clear(e: Eye) {
+            for (y in e.y0..e.y1) for (x in max(0, e.x0 - 1)..min(w - 1, e.x1 + 1)) if (PixBuf.near(p[y * w + x], 0xF8F9FA) || !light(p[y * w + x])) p[y * w + x] = e.skin   // ios: Views/CharMotion.swift:525
+        }
+        fun shut() { for (e in eyes()) { clear(e); for (x in (e.x0 - 1)..(e.x1 + 1)) put(x, e.y1, ink) } }   // ios: Views/CharMotion.swift:527
+        fun smile() { for (e in eyes()) { clear(e); put(e.x0 - 1, e.y1, ink); for (x in e.x0..e.x1) put(x, e.y1 - 1, ink); put(e.x1 + 1, e.y1, ink) } }   // ios: Views/CharMotion.swift:528
+        // ios: Views/CharMotion.swift:529
+        fun look(d: Int) {
+            for (e in eyes()) {   // ios: Views/CharMotion.swift:530
+                val old = (e.y0..e.y1).map { y -> (e.x0..e.x1).map { at(it, y) } }   // ios: Views/CharMotion.swift:531
+                clear(e)   // ios: Views/CharMotion.swift:532
+                for ((i, y) in (e.y0..e.y1).withIndex()) for ((j, x) in (e.x0..e.x1).withIndex()) if (!light(old[i][j])) put(x + d, y, old[i][j])   // ios: Views/CharMotion.swift:533
+            }
+        }
+        /** 머리(목 위)를 한 칸 내린다 */
+        // ios: Views/CharMotion.swift:537
+        fun bow() {
+            val neck = T + 14   // ios: Views/CharMotion.swift:538
+            for (y in neck downTo 1 step 1) for (x in 0 until w) p[y * w + x] = p[(y - 1) * w + x]   // ios: Views/CharMotion.swift:539
+            for (x in 0 until w) p[x] = 0   // ios: Views/CharMotion.swift:540
+        }
+        /** 다리 세 줄을 접어 몸을 내린다 (CharPose.crouch 와 같은 방식) */
+        // ios: Views/CharMotion.swift:543
+        fun fold() {
+            val n = 3   // ios: Views/CharMotion.swift:544
+            for (y in (legTop + n) downTo n step 1) for (x in 0 until w) p[y * w + x] = p[(y - n) * w + x]   // ios: Views/CharMotion.swift:545
+            for (i in 0 until (n * w)) p[i] = 0   // ios: Views/CharMotion.swift:546
+        }
+        fun faceSkin(): Int = eyes().firstOrNull()?.skin ?: at(w / 2, T + 12)   // ios: Views/CharMotion.swift:548
+        /** 휴대폰을 얼굴 왼쪽으로 들어 본다. 원래 손에 든 휴대폰(화면 하늘색)은 지운다 */
+        // ios: Views/CharMotion.swift:550
+        fun phone() {
+            val scr = PixBuf.rgb(0x7FD6FF)   // ios: Views/CharMotion.swift:551
+            val held = (0 until h).flatMap { y -> (0 until w).filter { y > T + 18 && p[y * w + it] == scr }.map { Pair(it, y) } }   // ios: Views/CharMotion.swift:552
+            // ios: Views/CharMotion.swift:553
+            if (held.isNotEmpty()) {
+                val x0 = held.minOf { it.first }; val x1 = held.maxOf { it.first }; val y0 = held.minOf { it.second }; val y1 = held.maxOf { it.second }
+                for (y in (y0 - 2)..(y1 + 2)) for (x in (x0 - 2)..(x1 + 1)) put(x, y, 0)   // ios: Views/CharMotion.swift:554
+            }
+            val y = T + 11   // ios: Views/CharMotion.swift:556
+            val fl = (0 until w).firstOrNull { PixBuf.on(at(it, y)) } ?: return   // ios: Views/CharMotion.swift:557
+            val sk = faceSkin(); val shirt = at((0 until w).firstOrNull { PixBuf.on(at(it, T + 18)) }?.let { it + 1 } ?: (w / 2), T + 18)   // ios: Views/CharMotion.swift:558
+            for (yy in (T + 15)..(T + 17)) put(fl - 2, yy, shirt)   // ios: Views/CharMotion.swift:559
+            put(fl - 2, T + 15, sk); put(fl - 1, T + 15, sk)   // ios: Views/CharMotion.swift:560
+            for (yy in (T + 10)..(T + 14)) for (x in (fl - 3)..(fl - 1)) put(x, yy, PixBuf.rgb(0x1D1D24))   // ios: Views/CharMotion.swift:561
+            for (yy in (T + 11)..(T + 13)) put(fl - 2, yy, scr)   // ios: Views/CharMotion.swift:562
+            look(-1)   // ios: Views/CharMotion.swift:563
+        }
+        // ios: Views/CharMotion.swift:565
+        fun cheer() {
+            val y = T + 17   // ios: Views/CharMotion.swift:566
+            val xs = (0 until w).filter { PixBuf.on(at(it, y)) }   // ios: Views/CharMotion.swift:567
+            val l = xs.firstOrNull() ?: return; val r = xs.last()   // ios: Views/CharMotion.swift:568
+            val shirt = at(l + 1, y); val sk = faceSkin()   // ios: Views/CharMotion.swift:569
+            for (k in 1..3) { put(l - k, y - k, shirt); put(r + k, y - k, shirt) }   // ios: Views/CharMotion.swift:570
+            put(l - 3, y - 4, sk); put(r + 3, y - 4, sk)   // ios: Views/CharMotion.swift:571
+            smile()   // ios: Views/CharMotion.swift:572
+        }
+        // ios: Views/CharMotion.swift:574
+        fun sweat() {
+            val y = T + 4   // ios: Views/CharMotion.swift:575
+            val r = (0 until w).lastOrNull { PixBuf.on(at(it, y)) } ?: return   // ios: Views/CharMotion.swift:576
+            val c = PixBuf.rgb(0x9FD8FF)   // ios: Views/CharMotion.swift:577
+            put(r + 2, y - 1, c); put(r + 2, y, c); put(r + 1, y, c)   // ios: Views/CharMotion.swift:578
+        }
+        // ios: Views/CharMotion.swift:580
+        when (a) {
+            MoodAct.stand, MoodAct.breath -> {}   // ios: Views/CharMotion.swift:581
+            MoodAct.blink -> shut()   // ios: Views/CharMotion.swift:582
+            MoodAct.smile -> smile()   // ios: Views/CharMotion.swift:583
+            MoodAct.lookL -> look(-1)   // ios: Views/CharMotion.swift:584
+            MoodAct.lookR -> look(1)   // ios: Views/CharMotion.swift:585
+            MoodAct.phone -> phone()   // ios: Views/CharMotion.swift:586
+            MoodAct.phoneShut -> { phone(); shut() }   // ios: Views/CharMotion.swift:587
+            MoodAct.phoneSweat -> { phone(); sweat() }   // ios: Views/CharMotion.swift:588
+            MoodAct.sweat -> sweat()   // ios: Views/CharMotion.swift:589
+            MoodAct.sigh -> { shut(); bow() }   // ios: Views/CharMotion.swift:590
+            MoodAct.nod -> bow()   // ios: Views/CharMotion.swift:591
+            MoodAct.crouch -> { shut(); fold() }   // ios: Views/CharMotion.swift:592
+            MoodAct.cheer, MoodAct.spark -> cheer()   // ios: Views/CharMotion.swift:593
+        }
+        // 테두리는 새로 그린 팔·휴대폰·땀 둘레에만 (머리·몸을 옮긴 장면은 테두리째 옮겼고, 이르의 빛 알갱이처럼 테두리 없는 조각은 그대로)
+        // ios: Views/CharMotion.swift:596,597
+        val drawn = if (a in listOf(MoodAct.phone, MoodAct.phoneShut, MoodAct.phoneSweat, MoodAct.sweat, MoodAct.cheer, MoodAct.spark))
+            (0 until (w * h)).filter { PixBuf.on(p[it]) && p[it] != orig[it] && p[it] != ink } else emptyList()
+        // ios: Views/CharMotion.swift:598
+        for (i in drawn) {
+            val x = i % w; val y = i / w   // ios: Views/CharMotion.swift:599
+            // ios: Views/CharMotion.swift:600
+            for ((nx, ny) in listOf(Pair(x - 1, y), Pair(x + 1, y), Pair(x, y - 1), Pair(x, y + 1))) if (nx >= 0 && nx < w && ny >= 0 && ny < h && !PixBuf.on(p[ny * w + nx])) {
+                p[ny * w + nx] = ink   // ios: Views/CharMotion.swift:601
+            }
+        }
+        // ios: Views/CharMotion.swift:604
+        if (a == MoodAct.spark) {
+            // 반짝이는 테두리 없이 맨 나중에
+            val c = PixBuf.rgb(0xFFD84A)   // ios: Views/CharMotion.swift:606
+            for ((cx, cy) in listOf(Pair(1, T + 6), Pair(w - 2, T + 5))) for ((dx, dy) in listOf(Pair(0, -1), Pair(-1, 0), Pair(1, 0), Pair(0, 1))) put(cx + dx, cy + dy, c)   // ios: Views/CharMotion.swift:607
+        }
+    }
+}
+
+/** 홈 쉼터 박스 인물: 오늘 장 흐름 대본을 0.15초 칸으로 되풀이한다. 화면에 있을 때만 돌고, 동작 줄이기를 켜면 서 있기만 한다.
+ *  장면 그림은 (인물·흐름)이 바뀔 때 화면 밖(Default)에서 한 번 만들고, 박자마다 그리기 단계에서 고르기만 한다 */
+// ios: Views/CharMotion.swift:613
+@Composable
+fun MoodFigure(
+    who: String,   // ios: Views/CharMotion.swift:614
+    me: MeChar?,   // ios: Views/CharMotion.swift:615
+    mood: DayMood,   // ios: Views/CharMotion.swift:616
+    width: Dp,   // ios: Views/CharMotion.swift:617
+    height: Dp,   // ios: Views/CharMotion.swift:618
+    /** 한 도트 크기: 정수 배라야 도트 줄이 고르게 보인다 */
+    dot: Dp = 2.dp,   // ios: Views/CharMotion.swift:620
+    modifier: Modifier = Modifier,
+) {
+    val reduce = LocalReduceMotion.current   // ios: Views/CharMotion.swift:621
+    val active = LocalTabActive.current
+    val k = remember { mutableIntStateOf(0) }   // ios: Views/CharMotion.swift:622 @State private var k = 0
+    // 대본에 나오는 장면 그림 한 벌 (동작·방향·다리가 같은 칸은 한 장)
+    val frames by androidx.compose.runtime.produceState<Map<MoodStep, ImageBitmap?>?>(null, who, me, mood) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            MoodScript.steps(mood).associateWith { st -> MoodArt.image(who, me = me, st = st)?.asImageBitmap() }   // ios: Views/CharMotion.swift:626
+        }
+    }
+    // ios: Views/CharMotion.swift:623,625,632
+    Box(modifier.size(width, height), contentAlignment = Alignment.BottomCenter) {
+        val any = frames?.values?.firstOrNull { it != null }
+        if (any != null) {
+            // ios: Views/CharMotion.swift:627,628,629
+            Canvas(Modifier.requiredSize(dot * any.width, dot * any.height)) {
+                val st = MoodScript.at(mood, if (reduce) 0 else k.intValue)   // ios: Views/CharMotion.swift:624
+                val img = frames?.get(st) ?: return@Canvas
+                val d = dot.toPx()
+                drawImage(img, IntOffset.Zero, IntSize(img.width, img.height),
+                    IntOffset((st.dx * d).roundToInt(), (st.dy * d).roundToInt()), IntSize((img.width * d).roundToInt(), (img.height * d).roundToInt()), filterQuality = FilterQuality.None)
+            }
+        }
+    }
+    // ios: Views/CharMotion.swift:633 .task(id: reduce) — 숨은 탭에서도 멈춘다
+    androidx.compose.runtime.LaunchedEffect(reduce, active) {
+        if (reduce) { k.intValue = 0; return@LaunchedEffect }   // ios: Views/CharMotion.swift:634
+        if (!active) return@LaunchedEffect
+        k.intValue = Random.nextInt(0, 40)   // ios: Views/CharMotion.swift:635 열 때마다 대본 같은 자리에서 시작하지 않게
+        while (true) {   // ios: Views/CharMotion.swift:636 (취소되면 delay 에서 끝난다)
+            delay((MoodScript.tick * 1000).toLong())   // ios: Views/CharMotion.swift:637
+            k.intValue += 1   // ios: Views/CharMotion.swift:638 &+= 1
+        }
+    }
+}

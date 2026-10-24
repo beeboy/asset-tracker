@@ -84,7 +84,7 @@ struct GoalCellsCard: View {
                     Text(fV >= 100 ? String(localized: "100칸 완성!") : String(localized: "1칸 = \(String(describing: AppModel.man(unit)))")).appFont(14).foregroundStyle(Theme.sub)
                 }
                 // 박스는 60% 폭, 정보는 오른쪽
-                SplitRow(ratio: 0.6, spacing: 14) {
+                SplitRow(ratio: 0.6, spacing: 14, rightFill: 0.9) {
                     // 100칸이 곧 벽돌. 아래 빈 곳을 누르면 공 발사, 끌면 패들
                     BrickBox(mine: mine, filled: fV, lost: lost, g: game, on: $playing) { clear in
                         if clear { party = true } else { showGame = true }
@@ -104,13 +104,10 @@ struct GoalCellsCard: View {
                             legend(Self.mintC, nil, String(localized: "회복"), "+" + AppModel.man(max(0, tkV - floorV)))
                             legend(Theme.card, Theme.gold, String(localized: "마지막 칸 = 본전"), nil)
                         }
+                        Spacer(minLength: 0)   // 공유하기는 박스 아래 끝 줄에 맞춘다
                         action(String(localized: "공유하기"), "square.and.arrow.up", fill: false) { showShare = true }
-                        HStack(spacing: 6) {
-                            action(String(localized: "블록"), "square.grid.3x3.fill", fill: true) { showGame = true }.labelStyle(TightLabel())
-                            action(String(localized: "파도"), "water.waves", fill: true) { showWave = true }.labelStyle(TightLabel())
-                        }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
                 // 패들 조작 칸: 손가락이 패들을 가리지 않게 박스 아래 빈 곳에서 끈다
                 GeometryReader { pg in
@@ -125,6 +122,15 @@ struct GoalCellsCard: View {
                         } : nil)
                 }
                 .frame(height: 44)
+                // 남는 높이는 여기서 벌려 캐릭터·말풍선을 카드 맨 아래(탭 위)로 내린다
+                Spacer(minLength: 0)
+                // 블록·파도: 말풍선 위 오른쪽
+                HStack(spacing: 6) {
+                    Spacer(minLength: 0)
+                    action(String(localized: "블록"), "square.grid.3x3.fill", fill: true) { showGame = true }.labelStyle(TightLabel()).frame(width: 76)
+                    action(String(localized: "파도"), "water.waves", fill: true) { showWave = true }.labelStyle(TightLabel()).frame(width: 76)
+                }
+                .padding(.bottom, -4)
                 // 캐릭터가 자랑하자고 권한다 (누르는 곳 아님, 공유는 오른쪽 버튼). 다 깨면 친구들이 이 자리를 채운다
                 if party { MiniParty().frame(maxWidth: .infinity) } else {
                 HStack(alignment: .bottom, spacing: 10) {
@@ -139,6 +145,7 @@ struct GoalCellsCard: View {
                     }
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .top)
             .padding(18)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
         }
@@ -331,6 +338,7 @@ final class MiniBreakout {
 /// 왼쪽 칸은 폭의 ratio만큼 정사각형, 오른쪽은 남은 폭에 세로 가운데
 struct SplitRow: Layout {
     let ratio: CGFloat, spacing: CGFloat
+    var rightFill: CGFloat = 1   // 오른쪽 칸 높이 = 왼쪽 높이 × 이 값 (100칸 카드: 0.9 = 패들 칸을 뺀 칸 그림 끝 줄)
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let w = proposal.width ?? 320, side = w * ratio
         let lh = subviews.first?.sizeThatFits(.init(width: side, height: nil)).height ?? 0
@@ -340,7 +348,11 @@ struct SplitRow: Layout {
     func placeSubviews(in b: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let side = b.width * ratio, rw = b.width - side - spacing
         subviews.first?.place(at: CGPoint(x: b.minX, y: b.midY), anchor: .leading, proposal: .init(width: side, height: nil))
-        if subviews.count > 1 { subviews[1].place(at: CGPoint(x: b.minX + side + spacing, y: b.midY), anchor: .leading, proposal: .init(width: rw, height: nil)) }
+        // 오른쪽 칸은 왼쪽 높이(× rightFill)를 받는다 (안의 Spacer로 아래 버튼을 칸 그림 끝 줄에 맞출 수 있게)
+        guard subviews.count > 1 else { return }
+        let lh = subviews[0].sizeThatFits(.init(width: side, height: nil)).height
+        let rh = subviews[1].sizeThatFits(.init(width: rw, height: nil)).height
+        subviews[1].place(at: CGPoint(x: b.minX + side + spacing, y: b.minY), anchor: .topLeading, proposal: .init(width: rw, height: max(rh, lh * rightFill)))
     }
 }
 
@@ -704,7 +716,7 @@ struct GoalIntermissionView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
         @Bindable var m = m
-        let fixed = m.gWeeks, i = min(fixed.count, 2), step = AppModel.goalMonthSteps[i]
+        let fixed = m.gWeeks
         let now = m.goalSaved, eta = m.monthsTo(from: now, monthly: m.gM), plan = Double(m.gY * 12 - fixed.count - (m.gWeekCur == nil ? 0 : 1))
         let last = m.gWeekCur ?? fixed.last
         ScrollView {
