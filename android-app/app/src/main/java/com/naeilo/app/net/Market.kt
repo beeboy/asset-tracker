@@ -141,20 +141,25 @@ class Market {   // ios: Data/Market.swift:13,14
         val b = yahooQuote(s)   // ios: Data/Market.swift:61
         tossLast(s)?.let { t -> return Quote(last = t, prevClose = tossPrev(s, b) ?: t, live = true) }   // ios: Data/Market.swift:62
         // Alpaca·Longbridge: 전일 종가는 사이트(공식 종가)가 먼저, 없으면 받은 전일 종가
-        val a = alpacaQ(s) ?: lbQ(s) ?: return b   // ios: Data/Market.swift:64
+        val a = alpacaQ(s) ?: lbQ(s) ?: return tossReg(s, b) ?: b   // ios: Data/Market.swift:64
         return Quote(last = a.last, prevClose = if (b.prevClose > 0) b.prevClose else if (a.prev > 0) a.prev else a.last, live = true)   // ios: Data/Market.swift:65
     }
     /** Alpaca 값을 쓰는 종목 (종목 화면에 "Alpaca(IEX) 시세" 표시) */
+    /** 공개 베타·출시에서 내 키 시세가 없는 실제 미국 종목: 가격 칸에 키 안내를 띄우고 평가액에서 뺀다 (가짜 값·0원으로 세지 않는다) */
+    fun needsKey(s: Symbol): Boolean {   // ios: Data/Market.swift:69
+        if (Config.usesCollectedData || Sample.isVirtual(s.id) || s.currency != Currency.usd) return false   // ios: Data/Market.swift:70
+        return toss?.q?.get(s.id) == null && alpaca?.q?.get(s.id) == null && longbridge?.q?.get(s.id) == null
+    }
     fun isAlpaca(s: Symbol): Boolean = tossLast(s) == null && alpacaQ(s) != null   // ios: Data/Market.swift:68
     /** Longbridge 값을 쓰는 종목 (종목 화면에 "Longbridge 시세" 표시) */
     fun isLongbridge(s: Symbol): Boolean = tossLast(s) == null && alpacaQ(s) == null && lbQ(s) != null   // ios: Data/Market.swift:70
     private fun lbQ(s: Symbol): QuoteFeed.Q? {   // ios: Data/Market.swift:71
-        if (s.id == "DRNK" || s.currency != Currency.usd || regClose(s) != null) return null   // ios: Data/Market.swift:72
+        if (Sample.isVirtual(s.id) || s.currency != Currency.usd || regClose(s) != null) return null   // ios: Data/Market.swift:78
         val q = longbridge?.q?.get(s.id)?.takeIf { it.last > 0 } ?: return null
         return q   // ios: Data/Market.swift:73
     }
     private fun alpacaQ(s: Symbol): QuoteFeed.Q? {   // ios: Data/Market.swift:75
-        if (s.id == "DRNK" || s.currency != Currency.usd || regClose(s) != null) return null   // ios: Data/Market.swift:76
+        if (Sample.isVirtual(s.id) || s.currency != Currency.usd || regClose(s) != null) return null   // ios: Data/Market.swift:82
         val q = alpaca?.q?.get(s.id)?.takeIf { it.last > 0 } ?: return null
         return q   // ios: Data/Market.swift:77
     }
@@ -173,7 +178,7 @@ class Market {   // ios: Data/Market.swift:13,14
     /** 토스 값을 쓰는 종목 (종목 화면에 "토스 시세" 표시) */
     fun isToss(s: Symbol): Boolean = tossLast(s) != null   // ios: Data/Market.swift:91
     private fun tossLast(s: Symbol): Double? {   // ios: Data/Market.swift:92
-        if (s.id == "DRNK") return null; val t = toss?.q?.get(s.id)?.takeIf { it.last > 0 } ?: return null   // ios: Data/Market.swift:93
+        if (Sample.isVirtual(s.id)) return null; val t = toss?.q?.get(s.id)?.takeIf { it.last > 0 } ?: return null   // ios: Data/Market.swift:93
         // 장이 끝난 때도 애프터마켓 뒤에 체결된 값(토스 주간거래)이면 그 값. 토스 총자산이 주간거래 가격으로 센다
         if (regClose(s) != null && !TossDaily.daytime(t.at)) return null   // ios: Data/Market.swift:95
         return t.last   // ios: Data/Market.swift:96
@@ -184,6 +189,12 @@ class Market {   // ios: Data/Market.swift:13,14
     /** 토스가 지금 가격과 일봉을 다 주는 종목 (Yahoo 를 부르지 않는다) */
     fun tossCovers(id: String): Boolean = toss?.q?.get(id) != null && tossHist?.h?.get(SiteStats.key(id)) != null   // ios: Data/Market.swift:103
     /** 미국 장이 다 끝났으면 사이트 정규장 종가. 토스·Alpaca 의 애프터마켓 가격 대신 이걸로 센다 (토스 총자산과 같은 기준) */
+    /** 미국 장이 다 끝났고 토스 값이 있으면 출처와 상관없이 정규장 종가로 센다 (추가한 종목의 묵은 Yahoo 값을 쓰던 일) */
+    private fun tossReg(s: Symbol, b: Quote): Quote? {   // ios: Data/Market.swift:622
+        if (toss?.q?.get(s.id) == null) return null
+        val r = regClose(s) ?: return null
+        return Quote(last = r, prevClose = tossPrev(s, b) ?: b.prevClose, live = true)
+    }
     private fun regClose(s: Symbol): Double? {   // ios: Data/Market.swift:105
         if (s.currency != Currency.usd || !USSession.closed()) return null   // ios: Data/Market.swift:106
         toss?.q?.get(s.id)?.let { t -> TossDaily.reg(tossDaily(s), at = t.at)?.let { r -> return r } }   // ios: Data/Market.swift:107
@@ -193,7 +204,7 @@ class Market {   // ios: Data/Market.swift:13,14
     }
 
     private fun yahooQuote(s: Symbol): Quote {   // ios: Data/Market.swift:113
-        if (s.id != "DRNK") {   // ios: Data/Market.swift:114
+        if (!Sample.isVirtual(s.id)) {   // ios: Data/Market.swift:120
             // 사이트 시세와 추가한 종목(5분마다 Yahoo 중계) 중 나중에 받은 값
             val c = CustomSymbols.shared.items.firstOrNull { it.id == s.id }   // ios: Data/Market.swift:116
             val f = site; val q = f?.q?.get(YahooSample.keyFor[s.id] ?: CustomSymbols.yahoo(s))   // ios: Data/Market.swift:117
@@ -246,7 +257,8 @@ class Market {   // ios: Data/Market.swift:13,14
         }
         YahooSample.asOf?.let { t2 ->   // ios: Data/Market.swift:169
             val p = "M월 d일 a h:mm"   // ios: Data/Market.swift:170
-            return "${f(p).format(t2)} 시세 (테스트 자료)"   // ios: Data/Market.swift:171
+            // 공개 베타·출시 번들은 가상 샘플이라 '예시 값'
+            return if (Config.usesCollectedData) "${f(p).format(t2)} 시세 (테스트 자료)" else "${f(p).format(t2)} 예시 값"   // ios: Data/Market.swift:178
         }
         val p = "a h:mm"   // ios: Data/Market.swift:173
         return "지금 시세 · ${f(p).format(updatedAt)} 갱신"   // ios: Data/Market.swift:174
@@ -267,12 +279,12 @@ class Market {   // ios: Data/Market.swift:13,14
         if (!force) bg.launch { refreshLongbridge(held = held, force = false) }   // ios: Data/Market.swift:189
         // 나머지 시세는 한꺼번에 받는다 (차례로 기다리지 않게)
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
-        val keys = if (held.isEmpty()) (prices?.h?.keys ?: emptySet()).toSet() else held.filter { it != "DRNK" }.map(SiteStats::key).toSet() + KoreaEstimate.baseKeys(held)   // ios: Data/Market.swift:192
+        val keys = if (held.isEmpty()) (prices?.h?.keys ?: emptySet()).toSet() else held.filter { !Sample.isVirtual(it) }.map(SiteStats::key).toSet() + KoreaEstimate.baseKeys(held)   // ios: Data/Market.swift:192
         val oldPrices = withContext(Dispatchers.IO) { SitePrices.cached() }   // 토스 값을 섞지 않은 사이트 값   // ios: Data/Market.swift:193
         // 지금 가격: 미국 종목·국내 개별 종목·원/달러를 Yahoo 에서 직접 (못 받은 것만 사이트). 4분 안에 받았으면 그대로
         if (held.isNotEmpty()) {   // ios: Data/Market.swift:195
             val syms = held.mapNotNull { id ->   // ios: Data/Market.swift:196
-                val s = if (id != "DRNK" && id != KoreaEstimate.sumId) Sample.symbol(id) else null; if (s == null) return@mapNotNull null   // ios: Data/Market.swift:197
+                val s = if (!Sample.isVirtual(id) && id != KoreaEstimate.sumId) Sample.symbol(id) else null; if (s == null) return@mapNotNull null   // ios: Data/Market.swift:197
                 if (!((s.currency == Currency.usd || KoreaEstimate.popular.contains(id)) && !tossCovers(id))) return@mapNotNull null   // ios: Data/Market.swift:198
                 YahooSample.keyFor[id] ?: CustomSymbols.yahoo(s)   // ios: Data/Market.swift:199
             }
@@ -305,7 +317,7 @@ class Market {   // ios: Data/Market.swift:13,14
     /** 토스 지금 가격과 지난 종가·원/달러를 받는다. 받는 중이면 평소에는 건너뛰고, force 면 그 일이 끝난 뒤 새로 한 번 더 받는다 */
     suspend fun refreshToss(held: Set<String>, force: Boolean) {   // ios: Data/Market.swift:226,227
         val ty = mutableMapOf<String, String>()   // ios: Data/Market.swift:228
-        for (id in held) { if (id == "DRNK" || id == KoreaEstimate.sumId) continue; Sample.symbol(id)?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:229
+        for (id in held) { if (Sample.isVirtual(id) || id == KoreaEstimate.sumId) continue; Sample.symbol(id)?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:229
         if (ty.isEmpty() || !(TossFeed.base != null || TossKeys.on)) return   // ios: Data/Market.swift:230
         synchronized(this) { tossTask }?.let { t ->   // ios: Data/Market.swift:231
             if (!force) return   // ios: Data/Market.swift:232
@@ -331,7 +343,7 @@ class Market {   // ios: Data/Market.swift:13,14
     suspend fun refreshAlpaca(held: Set<String>, force: Boolean) {   // ios: Data/Market.swift:252,253
         if (!AlpacaKeys.on) { if (alpaca != null) alpaca = null; return }   // ios: Data/Market.swift:254
         val ty = mutableMapOf<String, String>()   // ios: Data/Market.swift:255
-        for (id in held) { if (id == "DRNK") continue; Sample.symbol(id)?.takeIf { it.currency == Currency.usd }?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:256
+        for (id in held) { if (Sample.isVirtual(id)) continue; Sample.symbol(id)?.takeIf { it.currency == Currency.usd }?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:256
         if (ty.isEmpty()) return   // ios: Data/Market.swift:257
         alpaca = AlpacaFeed.fetch(ty, minAge = if (force) 0.0 else 60.0)   // ios: Data/Market.swift:258
         alpacaDone = Instant.now()   // ios: Data/Market.swift:259
@@ -341,7 +353,7 @@ class Market {   // ios: Data/Market.swift:13,14
     suspend fun refreshLongbridge(held: Set<String>, force: Boolean) {   // ios: Data/Market.swift:263,264
         if (!LongbridgeKeys.on) { if (longbridge != null) longbridge = null; return }   // ios: Data/Market.swift:265
         val ty = mutableMapOf<String, String>()   // ios: Data/Market.swift:266
-        for (id in held) { if (id == "DRNK") continue; Sample.symbol(id)?.takeIf { it.currency == Currency.usd }?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:267
+        for (id in held) { if (Sample.isVirtual(id)) continue; Sample.symbol(id)?.takeIf { it.currency == Currency.usd }?.let { s -> ty[id] = CustomSymbols.yahoo(s) } }   // ios: Data/Market.swift:267
         if (ty.isEmpty()) return   // ios: Data/Market.swift:268
         longbridge = LongbridgeFeed.fetch(ty, minAge = if (force) 0.0 else 60.0)   // ios: Data/Market.swift:269
         longbridgeDone = Instant.now()   // ios: Data/Market.swift:270
@@ -374,7 +386,9 @@ object YahooSample {   // ios: Data/Market.swift:291
     }
     data class Q(val prevClose: Double, val last: Double, val time: Instant)   // ios: Data/Market.swift:293
 
-    val keyFor: Map<String, String> = mapOf("QQQ" to "QQQ", "AAPL" to "AAPL", "NVDA" to "NVDA", "SPY" to "SPY", "FX" to "KRW=X")   // ios: Data/Market.swift:295
+    /** 공개 베타·출시 번들은 가상 샘플 (data/sample): 종목 id 가 곧 파일 기호 */
+    val keyFor: Map<String, String> = if (Config.usesCollectedData) mapOf("QQQ" to "QQQ", "AAPL" to "AAPL", "NVDA" to "NVDA", "SPY" to "SPY", "FX" to "KRW=X")   // ios: Data/Market.swift:307
+        else Sample.virtualSymbols.associate { it.id to it.id } + ("FX" to "KRW=X")
     private fun file(k: String): String = k.replace("=", "_").replace("^", "_")   // ios: Data/Market.swift:296
     /** Bundle.main.url(forResource:withExtension:subdirectory:) 자리: assets 파일 (없으면 null) */
     private fun asset(name: String, ext: String, dir: String? = null): ByteArray? =

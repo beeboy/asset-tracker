@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import com.naeilo.app.core.Config
 import com.naeilo.app.core.Day
 import com.naeilo.app.core.NJson
 import com.naeilo.app.core.Store
@@ -176,7 +177,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     /** 지금 종목이 샘플(가상 종목 DRNK + QQQ)인지. 새 사용자는 샘플로 시작하고, 화면마다 샘플이라고 알린다 */
     val isSample: Boolean get() {   // ios: Data/AppModel.swift:114
         val ids = holdings.map { it.symbol }.toSet()   // ios: Data/AppModel.swift:115
-        return ids.contains("DRNK") && setOf("DRNK", "QQQ").containsAll(ids)   // ios: Data/AppModel.swift:116
+        return ids.contains("DRNK") && Sample.startHoldings.map { it.symbol }.toSet().containsAll(ids)   // ios: Data/AppModel.swift:116
     }
 
     // 미션 (회복 루트): 1 종목·단가, 2 원인 진단, 3 내 계획, 5 앱 시작 3단계, 6 인터미션
@@ -248,6 +249,8 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
             val s = Sample.symbol(h.symbol)
             if (h.qty > 0 && s != null) Pair(s, h) else null   // ios: Data/AppModel.swift:252,253
         }.mapIndexed { i, p ->   // ios: Data/AppModel.swift:254
+            // 공개 베타·출시에서 내 키 시세가 없는 실제 종목은 평가액·들어간 돈 모두에서 뺀다 (Market.needsKey)
+            if (Market.shared.needsKey(p.first)) return@mapIndexed Row(id = p.first.id, sym = p.first, h = p.second, value = 0.0, cost = 0.0, color = Palette.Light.holdColors[i % Palette.Light.holdColors.size])   // ios: Data/AppModel.swift:256
             // 국내 주식 합계는 현금처럼: 들어간 돈 = 지금 금액 (본전·수익률을 움직이지 않는다)
             Row(id = p.first.id, sym = p.first, h = p.second, value = krw(p.first, p.second.qty * p.first.last), cost = if (p.first.id == KoreaEstimate.sumId) krw(p.first, p.second.qty * p.first.last) else costKrw(p.first, p.second.qty * p.second.avg),   // ios: Data/AppModel.swift:256
                 color = Palette.Light.holdColors[i % Palette.Light.holdColors.size])   // ios: Data/AppModel.swift:257
@@ -675,12 +678,12 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
 
     /** 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 null (닫힌 식만) */
     val forecastJob: ForecastEngine.Job? get() {   // ios: Data/AppModel.swift:682
-        val rs = rows; val today = Day.today; val H = forecastHorizon   // ios: Data/AppModel.swift:683
+        val rs = rows.filter { !Market.shared.needsKey(it.sym) }; val today = Day.today; val H = forecastHorizon   // ios: Data/AppModel.swift:685 키 시세 없는 종목은 전망에서도 뺀다
         val inp = mcInputs(true); if (route == Route.novice || rs.isEmpty() || H <= today || inp == null) return null   // ios: Data/AppModel.swift:684 full
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
         val px = rs.map { r ->   // ios: Data/AppModel.swift:688
-            val c = if (r.id != "DRNK") Market.shared.prices?.h?.get(SiteStats.key(r.id))?.closes?.lastOrNull() else null   // ios: Data/AppModel.swift:689
+            val c = if (!Sample.isVirtual(r.id)) Market.shared.prices?.h?.get(SiteStats.key(r.id))?.closes?.lastOrNull() else null   // ios: Data/AppModel.swift:689
             if (c != null && c > 0) return@map c
             val q = r.sym.quote   // ios: Data/AppModel.swift:690
             if (q.prevClose > 0) q.prevClose else q.last   // ios: Data/AppModel.swift:691
@@ -805,7 +808,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         val mine: List<Holding>? = if (holdings.isEmpty() || isSample) null else holdings   // ios: Data/AppModel.swift:807
         resetDemo(Demo.fresh)   // ios: Data/AppModel.swift:808
         if (mine != null) holdings = mine   // ios: Data/AppModel.swift:809
-        else if (r == Route.plus) holdings = listOf(Holding(symbol = "DRNK", qty = 4.0, avg = 180.0), Holding(symbol = "QQQ", qty = 1.0, avg = 400.0))   // ios: Data/AppModel.swift:810
+        else if (r == Route.plus) holdings = listOf(Holding(symbol = "DRNK", qty = 4.0, avg = 180.0), if (Config.usesCollectedData) Holding(symbol = "QQQ", qty = 1.0, avg = 400.0) else Holding(symbol = "NXIX", qty = 1.0, avg = 340.0))   // ios: Data/AppModel.swift:812
         if (r == Route.plus) taxGain = 0.0   // ios: Data/AppModel.swift:811
         if (r != Route.recover) { switchRoute(r); gDone = emptySet() }   // ios: Data/AppModel.swift:812
         day = 0                  // ios: Data/AppModel.swift:813 실제로 시작하는 날이 1일째 (시연 상태는 6일째)

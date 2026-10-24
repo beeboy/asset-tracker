@@ -415,7 +415,7 @@ class Sync {   // ios: Data/Sync.swift:17,18
 
     /** 이 기기에 지킬 값이 있는지: 첫 질문을 마쳤고 종목이나 미션 진행이 있으면 */
     private fun hasLocalData(m: AppModel): Boolean =   // ios: Data/Sync.swift:312
-        m.onboarded && (m.holdings.filter { it.symbol != "DRNK" }.isNotEmpty() || m.done.isNotEmpty() || m.gDone.isNotEmpty())   // ios: Data/Sync.swift:313
+        m.onboarded && (m.holdings.filter { !Sample.isVirtual(it.symbol) }.isNotEmpty() || m.done.isNotEmpty() || m.gDone.isNotEmpty())   // ios: Data/Sync.swift:313
 
     internal fun outgoing(m: AppModel): Map<String, Any?> {   // ios: Data/Sync.swift:329
         val st = siteState.toMutableMap()   // ios: Data/Sync.swift:330
@@ -447,14 +447,14 @@ class Sync {   // ios: Data/Sync.swift:17,18
             if (h != null && !used.contains(id)) { hs.add(updated(h, row)); used.add(id) }   // ios: Data/Sync.swift:353
             else if (keep.contains(t.uppercase()) && !held.contains(id)) { hs.add(row) }   // ios: Data/Sync.swift:354
         }
-        for (h in m.holdings) { if (h.symbol == "DRNK" || used.contains(h.symbol)) continue   // ios: Data/Sync.swift:356
+        for (h in m.holdings) { if (Sample.isVirtual(h.symbol) || used.contains(h.symbol)) continue   // ios: Data/Sync.swift:356
             val row = updated(h, null); row["ticker"] = siteTicker(h.symbol); hs.add(row)   // ios: Data/Sync.swift:357
         }
         st["holdings"] = hs   // ios: Data/Sync.swift:359
         // 앱만 쓰는 칸: 미션 진행과 가상 종목(DRNK). 사이트는 이 칸을 읽지 않고 그대로 둔다
         val app = mutableMapOf<String, Any?>("v" to 1)   // ios: Data/Sync.swift:361
         runCatching { jsonToPlain(NJson.encodeToJsonElement(Progress.serializer(), m.progress)) }.getOrNull()?.let { p -> app["progress"] = p }   // ios: Data/Sync.swift:362
-        app["virtual"] = m.holdings.filter { it.symbol == "DRNK" }.map { mapOf("t" to it.symbol, "q" to it.qty, "a" to it.avg) }   // ios: Data/Sync.swift:363
+        app["virtual"] = m.holdings.filter { Sample.isVirtual(it.symbol) }.map { mapOf("t" to it.symbol, "q" to it.qty, "a" to it.avg) }   // ios: Data/Sync.swift:363
         // 동네: 주민 수첩(이름·모자·모습)·대화 기록(한 줄 답)·배경·산 물건·별사탕 (앱만 쓴다)
         townOut((st["app"] as? Map<*, *>)?.get("town"))?.let { t -> app["town"] = t }   // ios: Data/Sync.swift:365
         // 평행 세계의 나: 연 날·바구니·인물·본선 기록 (앱만 쓴다)

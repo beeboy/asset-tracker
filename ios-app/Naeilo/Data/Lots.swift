@@ -65,7 +65,7 @@ extension AppModel {
     func recordLot() {
         guard !isSample, persists else { return }
         var h: [String: Double] = [:]
-        for x in holdings where x.qty > 0 && x.symbol != "DRNK" { h[Sync.siteTicker(x.symbol)] = x.qty }
+        for x in holdings where x.qty > 0 && !Sample.isVirtual(x.symbol) { h[Sync.siteTicker(x.symbol)] = x.qty }
         guard !h.isEmpty else { return }
         var L = lots
         Lots.record(&L, h: h, start: Day.str(pathStartDate))

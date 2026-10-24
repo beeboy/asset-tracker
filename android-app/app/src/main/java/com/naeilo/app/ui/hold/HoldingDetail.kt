@@ -449,7 +449,7 @@ fun AddHoldingView(m: AppModel,
     // ios: Views/HoldingsView.swift:940
     fun known(h: StockHit): Symbol? {
         if (h.currency == Currency.krw && KoreaEstimate.liveOK(h.id, name = h.name) && !CustomSymbols.shared.isLive(h.id)) return null   // ios: Views/HoldingsView.swift:941 테스트 시세를 새로 받는다
-        if (h.id == "DRNK" || YahooSample.quotes[h.id] != null || CustomSymbols.shared.symbol(h.id) != null) return Sample.symbol(h.id)   // ios: Views/HoldingsView.swift:942
+        if (Sample.isVirtual(h.id) || YahooSample.quotes[h.id] != null || CustomSymbols.shared.symbol(h.id) != null) return Sample.symbol(h.id)   // ios: Views/HoldingsView.swift:942
         return null   // ios: Views/HoldingsView.swift:943
     }
     // ios: Views/HoldingsView.swift:958

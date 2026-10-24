@@ -424,7 +424,7 @@ final class FlowStore {
     static func isKR(_ id: String) -> Bool { Sample.symbol(id)?.currency == .krw }
     /// 이 종목을 받을 키가 있는지: 한국은 토스, 미국은 토스나 알파카
     static func canFetch(_ id: String) -> Bool {
-        guard id != "DRNK", id != KoreaEstimate.sumId else { return false }
+        guard !Sample.isVirtual(id), id != KoreaEstimate.sumId else { return false }
         return TossKeys.on || (!isKR(id) && AlpacaKeys.on)
     }
 

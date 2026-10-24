@@ -533,7 +533,7 @@ object PriceHistory {   // ios: Data/StockSearch.swift:456
      *  둘 다 없으면 빌드 때 넣은 파일. 가상 종목 DRNK 는 샘플 흐름을 따로 쓴다 */
     fun of(id: String): YahooSample.Hist? {   // ios: Data/StockSearch.swift:459
         val key = SiteStats.key(id)   // ios: Data/StockSearch.swift:460
-        val site = if (id == "DRNK") null else Market.shared.prices?.h?.get(key)   // ios: Data/StockSearch.swift:461
+        val site = if (Sample.isVirtual(id)) null else Market.shared.prices?.h?.get(key)   // ios: Data/StockSearch.swift:461
         // 국내 주식 합계는 넣은 기록만 (하루치여도. 첫 기록 전은 없음 = 0)
         if (id == KoreaEstimate.sumId) return CustomSymbols.shared.hist[id]?.let { YahooSample.Hist(dates = it.dates, closes = it.closes) }   // ios: Data/StockSearch.swift:463
         val mine = CustomSymbols.shared.hist[id]?.let { if (it.closes.size > 1) YahooSample.Hist(dates = it.dates, closes = it.closes) else null }   // ios: Data/StockSearch.swift:464
@@ -547,6 +547,6 @@ object PriceHistory {   // ios: Data/StockSearch.swift:456
         (site ?: mine)?.let { return it }   // ios: Data/StockSearch.swift:472
         // 비중 바꿔 비교에서 담은 종목 (모의 바구니)
         ExtraStats.shared.items[id]?.hist?.let { return it }   // ios: Data/StockSearch.swift:474
-        return YahooSample.history[id] ?: (if (id == "DRNK") null else YahooSample.bundled[key])   // ios: Data/StockSearch.swift:475
+        return YahooSample.history[id] ?: (if (Sample.isVirtual(id)) null else YahooSample.bundled[key])   // ios: Data/StockSearch.swift:475
     }
 }

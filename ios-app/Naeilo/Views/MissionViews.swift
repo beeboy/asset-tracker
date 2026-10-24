@@ -119,7 +119,7 @@ struct Mission1View: View {
 
     /// 지금 가격 (시세 기준과 같음). DRNK 는 가상 종목
     private func now(_ s: Symbol) -> String {
-        (s.quote.live ? String(localized: "지금 ") : String(localized: "전일 종가 ")) + AppModel.price(s, s.last) + (s.id == "DRNK" ? String(localized: " (가상)") : "")
+        (s.quote.live ? String(localized: "지금 ") : String(localized: "전일 종가 ")) + AppModel.price(s, s.last) + (Sample.isVirtual(s.id) ? String(localized: " (가상)") : "")
     }
 
     private func entry(_ s: Symbol) -> some View {

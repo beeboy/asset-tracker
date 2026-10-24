@@ -139,7 +139,7 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
     /** 칩 줄: 키가 없으면 샘플 DRNK 를 맨 앞에, 키가 있으면 DRNK 는 빼고 내 종목만 */
     val ids = run {   // ios: Views/FlowView.swift:20
         val out = if (hasKey) mutableListOf() else mutableListOf("DRNK")   // ios: Views/FlowView.swift:21
-        for (h in model.holdings) if (h.symbol !in out && h.symbol != KoreaEstimate.sumId && h.symbol != "DRNK") out.add(h.symbol)   // ios: Views/FlowView.swift:22
+        for (h in model.holdings) if (h.symbol !in out && h.symbol != KoreaEstimate.sumId && !Sample.isVirtual(h.symbol)) out.add(h.symbol)   // ios: Views/FlowView.swift:22
         out   // ios: Views/FlowView.swift:23
     }
     val store = FlowStore   // ios: Views/FlowView.swift:54
@@ -155,7 +155,7 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
     val cur: String? = sel?.takeIf { it in ids } ?: mood.box.firstOrNull() ?: byWeight.firstOrNull()
     fun name(id: String): String = Sample.symbol(id)?.name ?: id   // ios: Views/FlowView.swift:53
     /** 키가 없어 못 그리는 종목이 있으면 설정 링크를 보인다 */
-    val needKey = ids.any { it != "DRNK" && !FlowStore.canFetch(it) }   // ios: Views/FlowView.swift:30
+    val needKey = ids.any { !Sample.isVirtual(it) && !FlowStore.canFetch(it) }   // ios: Views/FlowView.swift:30
 
     // 열 때 담은 종목 일봉을 받는다 (하루 한 번만 실제로 부른다)
     LaunchedEffect(hasKey) { store.ensure(ids) }   // ios: Views/FlowView.swift:74

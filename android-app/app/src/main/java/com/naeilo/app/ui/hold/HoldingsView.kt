@@ -459,12 +459,17 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
             Modifier.background(if (es != null) HoldingsView.gold else Color.Transparent, CapsuleShape).padding(horizontal = if (v) 6.dp else 7.dp, vertical = 2.dp),
             style = appFont(small, FontWeight.Bold).tnum(), color = if (es != null) Color.Black else Theme.ink, maxLines = 1)
     }
+    // 공개 베타·출시에서 내 키 시세가 없는 실제 종목: 가격·% 대신 키 안내 (평가액에서도 빠진다, Market.needsKey)
+    val nk = Market.shared.needsKey(r.sym)   // ios: Views/HoldingsView.swift:257
     // 실적이 있으면 알약만 따로 누른다 (없으면 알약도 세부 링크 안)
-    // ios: Views/HoldingsView.swift:257
-    @Composable fun Right() = Row(horizontalArrangement = Arrangement.spacedBy(if (v) 5.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) { Pct(); if (es == null) Pill() }
-    // ios: Views/HoldingsView.swift:258,259,260,261
+    // ios: Views/HoldingsView.swift:259,260,261,262
+    @Composable fun Right() {
+        if (nk) T("키를 연결하면 시세가 보여요", style = appFont(12f), color = Theme.sub, maxLines = 1)
+        else Row(horizontalArrangement = Arrangement.spacedBy(if (v) 5.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) { Pct(); if (es == null) Pill() }
+    }
+    // ios: Views/HoldingsView.swift:263,264,265,266
     @Composable fun Earn() {
-        if (es != null) Box(Modifier.defaultMinSize(minHeight = 44.dp).plainClickable { openRiver(EarnTarget(r.sym, r.h.qty)) }
+        if (es != null && !nk) Box(Modifier.defaultMinSize(minHeight = 44.dp).plainClickable { openRiver(EarnTarget(r.sym, r.h.qty)) }
             .semantics { onClick(label = tr("내 몫 실적 보기")) { openRiver(EarnTarget(r.sym, r.h.qty)); true } }, contentAlignment = Alignment.Center) { Pill() }
     }
     // ios: Views/HoldingsView.swift:264,288,289
@@ -487,7 +492,7 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
                 Row(Modifier.weight(1f).defaultMinSize(minHeight = 52.dp).plainClickable(onOpen), horizontalArrangement = Arrangement.spacedBy(if (v) 4.dp else 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     // 이름이 남은 폭을 다 먼저 쓴다 (Spacer 에 weight 를 주면 이름이 반으로 잘린다)
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(0.dp)) { Name(Modifier.weight(1f, fill = false)); Spacer(Modifier.width(4.dp)) }   // ios: Views/HoldingsView.swift:279
-                    Mid(Modifier.holdCol(0, colW))   // ios: Views/HoldingsView.swift:280
+                    if (!nk) Mid(Modifier.holdCol(0, colW))   // ios: Views/HoldingsView.swift:286
                     Right()   // ios: Views/HoldingsView.swift:281
                 }
                 Earn()   // ios: Views/HoldingsView.swift:284

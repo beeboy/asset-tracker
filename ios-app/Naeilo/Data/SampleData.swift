@@ -77,7 +77,20 @@ enum Sample {
         guard let q = YahooSample.quotes[s.id] else { return s }
         return Symbol(id: s.id, name: s.name, market: s.market, close: q.prevClose, currency: s.currency, sector: s.sector, search: s.search)
     }
-    static let baseSymbols: [Symbol] = [
+    /// 공개 베타·출시는 가상 시장 샘플 6종목만 (data/sample/symbols.json 과 같은 값). 내부 베타는 아래 실제 종목 예시
+    static let baseSymbols: [Symbol] = Config.usesCollectedData ? collectedSymbols : virtualSymbols
+    static let virtualSymbols: [Symbol] = [
+        .init(id: "DRNK", name: "드링커", market: "미국 주식", close: 250, currency: .usd, sector: "우주항공·궤도 통신", search: "drinker"),
+        .init(id: "NXIX", name: "내일100 지수 ETF", market: "미국 ETF", close: 412.3, currency: .usd, sector: "지수", search: "naeilo index"),
+        .init(id: "SERI", name: "세리 로보틱스", market: "미국 주식", close: 87.45, currency: .usd, sector: "로봇·AI", search: "seri robotics"),
+        .init(id: "NLBD", name: "내일 단기채 ETF", market: "미국 ETF", close: 100.42, currency: .usd, sector: "채권", search: "naeilo bond"),
+        .init(id: "V00001", name: "한빛반도체", market: "코스피", close: 71200, currency: .krw, sector: "반도체", search: "hanbit semi"),
+        .init(id: "V00002", name: "내일 코스피 ETF", market: "코스피 ETF", close: 38450, currency: .krw, sector: "지수", search: "naeilo kospi"),
+    ]
+    /// 가상 종목 (사이트·키 시세를 받지 않고 번들 샘플 값만 쓴다). 내부 베타는 DRNK 하나
+    static let virtualIds: Set<String> = Config.usesCollectedData ? ["DRNK"] : Set(virtualSymbols.map(\.id))
+    static func isVirtual(_ id: String) -> Bool { virtualIds.contains(id) }
+    private static let collectedSymbols: [Symbol] = [
         .init(id: "DRNK", name: "드링커", market: "미국 주식", close: 250, currency: .usd, sector: "우주항공·궤도 통신", search: "drinker"),
         .init(id: "QQQ", name: "나스닥100 ETF", market: "미국 ETF", close: 480, currency: .usd, sector: "지수", search: "invesco nasdaq"),
         .init(id: "AAPL", name: "애플", market: "미국 주식", close: 229, currency: .usd, sector: "컴퓨터·주변기기", search: "apple"),
@@ -92,14 +105,28 @@ enum Sample {
     ]
     /// 앱에 시세 자료가 없는 예시 종목(한국 종목·MSFT)은 추가할 때 받은 Yahoo 중계 값이 있으면 그것을 쓴다
     static func symbol(_ id: String) -> Symbol? {
-        if id != "DRNK", YahooSample.quotes[id] == nil, let c = CustomSymbols.shared.symbol(id) { return c }
+        if !isVirtual(id), YahooSample.quotes[id] == nil, let c = CustomSymbols.shared.symbol(id) { return c }
         return symbols.first { $0.id == id }
     }
 
     // 종목 소개 (시안 예시. 실제 앱은 공시와 데이터 제공처 값으로 바꾼다). 로고는 상표 대신 글자 마크.
     /// 영어면 소개 글을 영어로 (data_en.json). 동네 얼굴 열쇠는 한국어 이름을 쓰므로 profilesKo
     static let profiles: [String: Profile] = AppModel.en ? profilesKo.mapValues(\.en) : profilesKo
-    static let profilesKo: [String: Profile] = [
+    /// 공개 베타·출시는 가상 종목 소개를 더한다 (실제 같은 기호의 종목과 섞이지 않게 내부 베타에는 넣지 않는다)
+    static let profilesKo: [String: Profile] = Config.usesCollectedData ? collectedProfiles : collectedProfiles.merging(virtualProfiles) { a, _ in a }
+    private static let virtualProfiles: [String: Profile] = [
+        "NXIX": Profile(mono: "N", color: 0x3A5BA0, etf: true, virtual: true, ceo: ("운용사", "내일 자산운용 (가상)"), hq: "가상 시장", since: "가상 종목",
+                        what: "가상 미국 대형주 100개를 담는 가상 ETF예요.", vision: "내일100 지수 (가상)", extra: ("담은 종목", "약 100개 (가상)")),
+        "SERI": Profile(mono: "S", color: 0x7A4FB8, virtual: true, ceo: ("대표", "가상 인물"), hq: "가상 시장", since: "가상 종목",
+                        what: "집안일을 돕는 안드로이드와 그 위에서 도는 AI를 만드는 가상 회사예요.", vision: "집안일을 덜어 사람에게 시간을 돌려준다."),
+        "NLBD": Profile(mono: "B", color: 0x4F7F6A, etf: true, virtual: true, ceo: ("운용사", "내일 자산운용 (가상)"), hq: "가상 시장", since: "가상 종목",
+                        what: "만기가 짧은 가상 국채만 담는 가상 ETF예요. 가격이 거의 그대로예요.", vision: "가상 단기 국채", extra: ("담은 것", "가상 단기 국채")),
+        "V00001": Profile(mono: "한", color: 0x2C6E8F, virtual: true, ceo: ("대표", "가상 인물"), hq: "가상 시장", since: "가상 종목",
+                          what: "메모리 반도체를 만드는 가상 회사예요.", vision: "더 빠른 메모리를 만든다."),
+        "V00002": Profile(mono: "K", color: 0x8F6A2C, etf: true, virtual: true, ceo: ("운용사", "내일 자산운용 (가상)"), hq: "가상 시장", since: "가상 종목",
+                          what: "가상 한국 대형주 200개를 담는 가상 ETF예요.", vision: "내일 코스피 지수 (가상)", extra: ("담은 종목", "약 200개 (가상)")),
+    ]
+    private static let collectedProfiles: [String: Profile] = [
         "DRNK": Profile(mono: "", color: 0x0F1424, logoImage: "drnk_logo", virtual: true,
                         ceo: ("대표", "드링커 (창업자, 본명 비공개)"), hqKey: "대표 작품", hq: "궤도 정거장 (2031년 개통)", since: "2030년",
                         what: "하늘의 깜빡이지 않는 별, 궤도 정거장을 설계하고 지었어요. 이종 연결 프로토콜 연결망과 가구 통신 계정을 깔고, 정거장을 고치고 늘려요.",
@@ -143,9 +170,10 @@ enum Sample {
     ]
 
     // 시작 보유 (둘러보기용 샘플, 세 루트 같음): DRNK 4주 $400, QQQ 1주 $500. 내 것처럼 보이지 않게 소액으로 (2026-10-11 결정)
+    // 공개 베타·출시는 가상 ETF NXIX 1주 $430 (data/sample/symbols.json start_holdings)
     static let startHoldings: [Holding] = [
         .init(symbol: "DRNK", qty: 4, avg: 400),
-        .init(symbol: "QQQ", qty: 1, avg: 500),
+        Config.usesCollectedData ? .init(symbol: "QQQ", qty: 1, avg: 500) : .init(symbol: "NXIX", qty: 1, avg: 430),
     ]
 
     // 3년 전망용 가정값: [현재 정세 연 기대, 과거 추세 연 성장, 연 변동성]. 사이트 stats.json 에 없는 종목(한국 종목 등)에만 쓴다 (SiteStats.params)

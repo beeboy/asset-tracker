@@ -48,8 +48,10 @@ val copyIosAssets by tasks.registering(Sync::class) {
     from("../../ios-app/Naeilo/Resources") { include("data_en.json", "drnk_ratio.json", "krx_stocks.json", "lines_ko.json", "lines_app_en.json", "story_ko.json", "story_en.json", "earnings_seed.json") }
     from("../../ios-app/WidgetShared") { include("lines_en.json") }
     // 아이폰 번들과 같은 시세 자료 ('시세 자료 넣기'). 내부 베타는 사이트가 모은 data/, 공개 베타·출시는 가상 샘플 data/sample/
-    val dataDir = if (providers.gradleProperty("naeilo.channel").getOrElse("internalBeta") == "internalBeta") "../../data" else "../../data/sample"
-    from(dataDir) { include("quotes.json", "stats.json") }
+    val internal = providers.gradleProperty("naeilo.channel").getOrElse("internalBeta") == "internalBeta"
+    val dataDir = if (internal) "../../data" else "../../data/sample"
+    // 공개 베타·출시는 가상 샘플의 배당·환율 값(calc.json)도 넣는다. 내부 베타는 지금처럼 받은 값만
+    from(dataDir) { if (internal) include("quotes.json", "stats.json") else include("quotes.json", "stats.json", "calc.json") }
     from("$dataDir/prices") { include("*.json"); into("prices") }
     into(layout.buildDirectory.dir("iosAssets"))
 }

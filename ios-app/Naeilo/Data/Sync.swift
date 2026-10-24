@@ -310,7 +310,7 @@ final class Sync {
 
     /// 이 기기에 지킬 값이 있는지: 첫 질문을 마쳤고 종목이나 미션 진행이 있으면
     private func hasLocalData(_ m: AppModel) -> Bool {
-        m.onboarded && (!m.holdings.filter { $0.symbol != "DRNK" }.isEmpty || !m.done.isEmpty || !m.gDone.isEmpty)
+        m.onboarded && (!m.holdings.filter { !Sample.isVirtual($0.symbol) }.isEmpty || !m.done.isEmpty || !m.gDone.isEmpty)
     }
 
     /// 사이트 티커 → 앱 이름 (005930.KS → 005930). 미국·한국 밖이면 nil
@@ -353,14 +353,14 @@ final class Sync {
             if let h = m.holdings.first(where: { $0.symbol == id }), !used.contains(id) { hs.append(updated(h, row)); used.insert(id) }
             else if keep.contains(t.uppercased()) && !held.contains(id) { hs.append(row) }
         }
-        for h in m.holdings where h.symbol != "DRNK" && !used.contains(h.symbol) {
+        for h in m.holdings where !Sample.isVirtual(h.symbol) && !used.contains(h.symbol) {
             var row = updated(h, nil); row["ticker"] = Self.siteTicker(h.symbol); hs.append(row)
         }
         st["holdings"] = hs
         // 앱만 쓰는 칸: 미션 진행과 가상 종목(DRNK). 사이트는 이 칸을 읽지 않고 그대로 둔다
         var app: [String: Any] = ["v": 1]
         if let p = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(m.progress)) { app["progress"] = p }
-        app["virtual"] = m.holdings.filter { $0.symbol == "DRNK" }.map { ["t": $0.symbol, "q": $0.qty, "a": $0.avg] }
+        app["virtual"] = m.holdings.filter { Sample.isVirtual($0.symbol) }.map { ["t": $0.symbol, "q": $0.qty, "a": $0.avg] }
         // 동네: 주민 수첩(이름·모자·모습)·대화 기록(한 줄 답)·배경·산 물건·별사탕 (앱만 쓴다)
         if let t = Self.townOut((st["app"] as? [String: Any])?["town"]) { app["town"] = t }
         // 평행 세계의 나: 연 날·바구니·인물·본선 기록 (앱만 쓴다)

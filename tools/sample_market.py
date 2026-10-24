@@ -2,17 +2,21 @@
 
 공개 버전은 사용자 본인 증권사 키로만 시세를 받으므로, 키를 넣기 전에는 이 가상 값만 보여 준다 (2026-10-15 결정).
 실제 시세에서 따온 숫자가 하나도 없다: 종목·이름·가격·환율 모두 고정 씨앗의 난수로 만든 가상 값이다.
-내부 베타는 계속 Yahoo 자료를 쓰므로 아직 앱·웹에 연결하지 않았다.
+공개 베타·출시 앱 번들에 이 폴더가 들어간다 (내부 베타는 data/ 의 Yahoo 자료).
 
 만드는 파일 (기존 data/ 파일과 같은 모양이라 그대로 바꿔 끼울 수 있다)
 - data/sample/symbols.json : 가상 종목 목록과 소개
 - data/sample/quotes.json  : data/quotes.json 과 같은 키 (prev_close·last·last_time 등)
 - data/sample/prices/*.json : data/prices/*.json 과 같은 모양 (3년 평일 종가)
+- data/sample/index.json   : data/index.json 과 같은 모양 (기호 → 파일)
+- data/sample/stats.json·calc.json : 위 가상 종가로 tools/site_stats.mjs·site_calc.mjs 를 돌린 값 (DATA_DIR=data/sample)
 
 날짜는 끝을 '어제'(한국 시간, 주말이면 그 전 금요일)에 맞춘다. 가격 흐름은 씨앗이 같으면 늘 같다.
 실행: python3 tools/sample_market.py
 """
 import json
+import os
+import subprocess
 import math
 import random
 from datetime import datetime, timedelta, timezone
@@ -108,7 +112,13 @@ def main():
             "updated": updated, "start_holdings": [{"symbol": "DRNK", "qty": 4, "avg": 400}, {"symbol": "NXIX", "qty": 1, "avg": 430}]}
     (OUT / "symbols.json").write_text(json.dumps({**meta, "symbols": symbols}, ensure_ascii=False, indent=1) + "\n")
     (OUT / "quotes.json").write_text(json.dumps(quotes, ensure_ascii=False, indent=1) + "\n")
+    prices = {r[0]: f"{r[0].replace('=', '_')}.json" for r in sorted(rows)}
+    (OUT / "index.json").write_text(json.dumps({"updated": updated, "prices": prices}, ensure_ascii=False, indent=1) + "\n")
     print("data/sample:", len(rows), "종목", dates[0], "~", dates[-1])
+    # 전망 입력값·배당/환율 값도 가상 종가로 (공개 판 번들에 들어간다)
+    env = {**os.environ, "DATA_DIR": "data/sample"}
+    for tool in ("site_stats.mjs", "site_calc.mjs"):
+        subprocess.run(["node", str(ROOT / "tools" / tool)], cwd=ROOT, env=env, check=True)
 
 
 if __name__ == "__main__":

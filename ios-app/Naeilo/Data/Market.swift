@@ -62,19 +62,24 @@ final class Market {
         let b = yahooQuote(s)
         if let t = tossLast(s) { return Quote(last: t, prevClose: tossPrev(s, b) ?? t, live: true) }
         // Alpaca·Longbridge: 전일 종가는 사이트(공식 종가)가 먼저, 없으면 받은 전일 종가
-        guard let a = alpacaQ(s) ?? lbQ(s) else { return b }
+        guard let a = alpacaQ(s) ?? lbQ(s) else { return tossReg(s, b) ?? b }
         return Quote(last: a.last, prevClose: b.prevClose > 0 ? b.prevClose : a.prev > 0 ? a.prev : a.last, live: true)
+    }
+    /// 공개 베타·출시에서 내 키 시세가 없는 실제 미국 종목: 가격 칸에 키 안내를 띄우고 평가액에서 뺀다 (가짜 값·0원으로 세지 않는다)
+    func needsKey(_ s: Symbol) -> Bool {
+        guard !Config.usesCollectedData, !Sample.isVirtual(s.id), s.currency == .usd else { return false }
+        return toss?.q[s.id] == nil && alpaca?.q[s.id] == nil && longbridge?.q[s.id] == nil
     }
     /// Alpaca 값을 쓰는 종목 (종목 화면에 "Alpaca(IEX) 시세" 표시)
     func isAlpaca(_ s: Symbol) -> Bool { tossLast(s) == nil && alpacaQ(s) != nil }
     /// Longbridge 값을 쓰는 종목 (종목 화면에 "Longbridge 시세" 표시)
     func isLongbridge(_ s: Symbol) -> Bool { tossLast(s) == nil && alpacaQ(s) == nil && lbQ(s) != nil }
     private func lbQ(_ s: Symbol) -> QuoteFeed.Q? {
-        guard s.id != "DRNK", s.currency == .usd, regClose(s) == nil, let q = longbridge?.q[s.id], q.last > 0 else { return nil }
+        guard !Sample.isVirtual(s.id), s.currency == .usd, regClose(s) == nil, let q = longbridge?.q[s.id], q.last > 0 else { return nil }
         return q
     }
     private func alpacaQ(_ s: Symbol) -> QuoteFeed.Q? {
-        guard s.id != "DRNK", s.currency == .usd, regClose(s) == nil, let q = alpaca?.q[s.id], q.last > 0 else { return nil }
+        guard !Sample.isVirtual(s.id), s.currency == .usd, regClose(s) == nil, let q = alpaca?.q[s.id], q.last > 0 else { return nil }
         return q
     }
     /// 토스 값의 전일 종가. 사이트 시세가 토스 값보다 앞선 날 것이면 (주말·장중에 사이트가 아직 안 바뀜) 사이트 마지막 값이 전일 종가
@@ -91,7 +96,7 @@ final class Market {
     /// 토스 값을 쓰는 종목 (지금 화면 표시는 없음)
     func isToss(_ s: Symbol) -> Bool { tossLast(s) != nil }
     private func tossLast(_ s: Symbol) -> Double? {
-        guard s.id != "DRNK", let t = toss?.q[s.id], t.last > 0 else { return nil }
+        guard !Sample.isVirtual(s.id), let t = toss?.q[s.id], t.last > 0 else { return nil }
         // 장이 끝난 때도 애프터마켓 뒤에 체결된 값(토스 주간거래)이면 그 값. 토스 총자산이 주간거래 가격으로 센다
         if regClose(s) != nil, !TossDaily.daytime(t.at) { return nil }
         return t.last
@@ -112,7 +117,7 @@ final class Market {
     }
 
     private func yahooQuote(_ s: Symbol) -> Quote {
-        if s.id != "DRNK" {
+        if !Sample.isVirtual(s.id) {
             // 사이트 시세와 추가한 종목(5분마다 Yahoo 중계) 중 나중에 받은 값
             let c = CustomSymbols.shared.items.first { $0.id == s.id }
             if let f = site, let q = f.q[YahooSample.keyFor[s.id] ?? CustomSymbols.yahoo(for: s)],
@@ -169,7 +174,9 @@ final class Market {
         }
         if let t = YahooSample.asOf {
             f.dateFormat = String(localized: "M월 d일 a h:mm")
-            return String(localized: "\(String(describing: f.string(from: t))) 시세 (테스트 자료)")
+            // 공개 베타·출시 번들은 가상 샘플이라 '예시 값'
+            return Config.usesCollectedData ? String(localized: "\(String(describing: f.string(from: t))) 시세 (테스트 자료)")
+                : String(localized: "\(String(describing: f.string(from: t))) 예시 값")
         }
         f.dateFormat = "a h:mm"
         return String(localized: "지금 시세 · \(String(describing: f.string(from: updatedAt))) 갱신")
@@ -190,12 +197,12 @@ final class Market {
         if !force { Task { await refreshLongbridge(held: held, force: false) } }
         // 나머지 시세는 한꺼번에 받는다 (차례로 기다리지 않게)
         // 지난 종가: 30분마다 사이트 index.json 만 보고, 새로 모았을 때만 내 종목 파일을 다시 받는다 (내 길·전망 기준값이 웹과 같은 종가)
-        let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { $0 != "DRNK" }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
+        let keys = held.isEmpty ? Set(prices?.h.keys.map { $0 } ?? []) : Set(held.filter { !Sample.isVirtual($0) }.map(SiteStats.key)).union(KoreaEstimate.baseKeys(held))
         let oldPrices = SitePrices.cached()   // 토스 값을 섞지 않은 사이트 값
         // 지금 가격: 미국 종목·국내 개별 종목·원/달러를 Yahoo 에서 직접 (못 받은 것만 사이트). 4분 안에 받았으면 그대로
         if !held.isEmpty {
             let syms = held.compactMap { id -> String? in
-                guard id != "DRNK", id != KoreaEstimate.sumId, let s = Sample.symbol(id) else { return nil }
+                guard !Sample.isVirtual(id), id != KoreaEstimate.sumId, let s = Sample.symbol(id) else { return nil }
                 guard s.currency == .usd || KoreaEstimate.popular.contains(id), !tossCovers(id) else { return nil }
                 return YahooSample.keyFor[id] ?? CustomSymbols.yahoo(for: s)
             }
@@ -230,7 +237,7 @@ final class Market {
     @MainActor
     func refreshToss(held: Set<String>, force: Bool) async {
         var ty: [String: String] = [:]
-        for id in held where id != "DRNK" && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
+        for id in held where !Sample.isVirtual(id) && id != KoreaEstimate.sumId { if let s = Sample.symbol(id) { ty[id] = CustomSymbols.yahoo(for: s) } }
         guard !ty.isEmpty, TossFeed.base != nil || TossKeys.on else { return }
         if let t = tossTask {
             if !force { return }
@@ -257,7 +264,7 @@ final class Market {
     func refreshAlpaca(held: Set<String>, force: Bool) async {
         guard AlpacaKeys.on else { if alpaca != nil { alpaca = nil }; return }
         var ty: [String: String] = [:]
-        for id in held where id != "DRNK" { if let s = Sample.symbol(id), s.currency == .usd { ty[id] = CustomSymbols.yahoo(for: s) } }
+        for id in held where !Sample.isVirtual(id) { if let s = Sample.symbol(id), s.currency == .usd { ty[id] = CustomSymbols.yahoo(for: s) } }
         guard !ty.isEmpty else { return }
         alpaca = await AlpacaFeed.fetch(ty, minAge: force ? 0 : 60)
         alpacaDone = Date()
@@ -268,7 +275,7 @@ final class Market {
     func refreshLongbridge(held: Set<String>, force: Bool) async {
         guard LongbridgeKeys.on else { if longbridge != nil { longbridge = nil }; return }
         var ty: [String: String] = [:]
-        for id in held where id != "DRNK" { if let s = Sample.symbol(id), s.currency == .usd { ty[id] = CustomSymbols.yahoo(for: s) } }
+        for id in held where !Sample.isVirtual(id) { if let s = Sample.symbol(id), s.currency == .usd { ty[id] = CustomSymbols.yahoo(for: s) } }
         guard !ty.isEmpty else { return }
         longbridge = await LongbridgeFeed.fetch(ty, minAge: force ? 0 : 60)
         longbridgeDone = Date()
@@ -296,7 +303,10 @@ enum YahooSample {
     struct Hist: Codable { let dates: [String]; let closes: [Double] }
     struct Q { let prevClose: Double; let last: Double; let time: Date }
 
-    static let keyFor: [String: String] = ["QQQ": "QQQ", "AAPL": "AAPL", "NVDA": "NVDA", "SPY": "SPY", "FX": "KRW=X"]
+    /// 공개 베타·출시 번들은 가상 샘플 (data/sample): 종목 id 가 곧 파일 기호
+    static let keyFor: [String: String] = Config.usesCollectedData
+        ? ["QQQ": "QQQ", "AAPL": "AAPL", "NVDA": "NVDA", "SPY": "SPY", "FX": "KRW=X"]
+        : Dictionary(uniqueKeysWithValues: Sample.virtualSymbols.map { ($0.id, $0.id) } + [("FX", "KRW=X")])
     private static func file(_ k: String) -> String { k.replacingOccurrences(of: "=", with: "_").replacingOccurrences(of: "^", with: "_") }
 
     static let quotes: [String: Q] = {
@@ -614,5 +624,13 @@ enum TossSplit {
             out[i] = c * f
         }
         return .init(dates: t.dates, closes: out)
+    }
+}
+
+extension Market {
+    /// 미국 장이 다 끝났고 토스 값이 있으면 출처와 상관없이 정규장 종가로 센다 (추가한 종목의 묵은 Yahoo 값을 쓰던 일. 토스 총자산과 같은 기준)
+    fileprivate func tossReg(_ s: Symbol, _ b: Quote) -> Quote? {
+        guard toss?.q[s.id] != nil, let r = regClose(s) else { return nil }
+        return Quote(last: r, prevClose: tossPrev(s, b) ?? b.prevClose, live: true)
     }
 }

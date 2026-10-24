@@ -253,10 +253,15 @@ struct HoldingsView: View {
             .padding(.horizontal, v ? 6 : 7).padding(.vertical, 2)
             .background(es != nil ? Self.gold : .clear, in: Capsule())
             .holdCol(2, colW)
+        // 공개 베타·출시에서 내 키 시세가 없는 실제 종목: 가격·% 대신 키 안내 (평가액에서도 빠진다, Market.needsKey)
+        let nk = Market.shared.needsKey(r.sym)
         // 실적이 있으면 알약만 따로 누른다 (없으면 알약도 세부 링크 안)
-        let right = HStack(spacing: v ? 5 : 8) { pct; if es == nil { pill } }
+        let right = Group {
+            if nk { Text("키를 연결하면 시세가 보여요").appFont(12).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8) }
+            else { HStack(spacing: v ? 5 : 8) { pct; if es == nil { pill } } }
+        }
         let earn = Group {
-            if es != nil {
+            if es != nil, !nk {
                 Button { river = EarnTarget(sym: r.sym, qty: r.h.qty) } label: { pill.frame(minHeight: 44).contentShape(Rectangle()) }
                     .buttonStyle(.plain).accessibilityHint(String(localized: "내 몫 실적 보기"))
             }
@@ -277,7 +282,7 @@ struct HoldingsView: View {
                     NavigationLink(value: r.sym) {
                         HStack(spacing: v ? 4 : 6) {
                             HStack(spacing: 0) { name; Spacer(minLength: 4) }
-                            mid.holdCol(0, colW)
+                            if !nk { mid.holdCol(0, colW) }
                             right
                         }.frame(minHeight: 52).contentShape(Rectangle())
                     }.buttonStyle(.plain)
@@ -950,7 +955,7 @@ struct AddHoldingView: View {
     /// 이미 시세를 아는 종목 (예시 종목 중 앱에 자료가 있는 것, 전에 추가한 것)
     private func known(_ h: StockHit) -> Symbol? {
         if h.currency == .krw && KoreaEstimate.liveOK(h.id, name: h.name) && !CustomSymbols.shared.isLive(h.id) { return nil }   // 테스트 시세를 새로 받는다
-        if h.id == "DRNK" || YahooSample.quotes[h.id] != nil || CustomSymbols.shared.symbol(h.id) != nil { return Sample.symbol(h.id) }
+        if Sample.isVirtual(h.id) || YahooSample.quotes[h.id] != nil || CustomSymbols.shared.symbol(h.id) != nil { return Sample.symbol(h.id) }
         return nil
     }
 

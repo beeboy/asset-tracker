@@ -20,7 +20,7 @@ struct FlowView: View {
     /// 칩 줄: 키가 없으면 샘플 DRNK 를 맨 앞에, 키가 있으면 DRNK 는 빼고 내 종목만
     private var ids: [String] {
         var out = hasKey ? [] : ["DRNK"]
-        for h in model.holdings where !out.contains(h.symbol) && h.symbol != KoreaEstimate.sumId && h.symbol != "DRNK" { out.append(h.symbol) }
+        for h in model.holdings where !out.contains(h.symbol) && h.symbol != KoreaEstimate.sumId && !Sample.isVirtual(h.symbol) { out.append(h.symbol) }
         return out
     }
     /// 고른 종목이 없거나 칩 줄에서 빠졌으면(키를 넣어 DRNK 가 숨는 등) 큰 흐름 박스의 첫 종목
@@ -53,7 +53,7 @@ struct FlowView: View {
     private func name(_ id: String) -> String { Sample.symbol(id)?.name ?? id }
     private var store: FlowStore { FlowStore.shared }
     /// 키가 없어 못 그리는 종목이 있으면 설정 링크를 보인다
-    private var needKey: Bool { _ = hasKey; return ids.contains { $0 != "DRNK" && !FlowStore.canFetch($0) } }
+    private var needKey: Bool { _ = hasKey; return ids.contains { !Sample.isVirtual($0) && !FlowStore.canFetch($0) } }
 
     var body: some View {
         GeometryReader { geo in

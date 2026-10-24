@@ -40,7 +40,7 @@ enum WidgetBridge {
         feed.ky = ky.isEmpty ? nil : ky
         // 토스로 받을 종목 (Market.refreshToss 와 같은 목록): 내 키가 있으면 위젯이 이걸로 토스 지금 가격을 받는다
         var ty: [String: String] = [:]
-        for r in rows where r.id != "DRNK" && r.id != KoreaEstimate.sumId { ty[r.id] = CustomSymbols.yahoo(for: r.sym) }
+        for r in rows where !Sample.isVirtual(r.id) && r.id != KoreaEstimate.sumId { ty[r.id] = CustomSymbols.yahoo(for: r.sym) }
         feed.ty = ty.isEmpty ? nil : ty
 
         let live = WLive(hold: rows.map { .init(t: $0.id, sh: $0.h.qty, price: $0.sym.last) },

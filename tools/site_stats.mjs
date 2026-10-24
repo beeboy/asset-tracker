@@ -3,12 +3,14 @@
 // 전망 설정(model), 기본 사건 목록(events: 실적 발표·외부 요인), 종목별 요인 민감도(betas)도 같이 넣는다.
 // 원시 시세가 나중에 공개 저장소를 떠나도 이 파일(파생 통계)만 있으면 앱은 그대로 쓴다.
 // 사용: node tools/site_stats.mjs   (GitHub Actions 의 stats.yml 이 매일 돌린다)
+// 공개 판 가상 샘플: DATA_DIR=data/sample node tools/site_stats.mjs (시세는 그 폴더, 웹 설정·한국 추정 규칙은 data/)
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
 const root = new URL("../", import.meta.url);
 const read = (p) => JSON.parse(readFileSync(new URL(p, root), "utf8"));
+const dir = (process.env.DATA_DIR || "data").replace(/\/+$/, "") + "/";   // 시세 폴더 (index.json·prices/)
 export function loadModel() {
   const ctx = { window: {}, console, Math, Date };
   vm.runInNewContext(readFileSync(new URL("web/model.js", root), "utf8"), ctx);
@@ -21,9 +23,9 @@ const p12 = (x) => (x == null || !Number.isFinite(x) ? null : +x.toPrecision(12)
 
 /** 사이트 시세 파일 전부 → {series, holdings(종목만)} */
 export function siteSeries() {
-  const index = read("data/index.json").prices, series = {}, holdings = [];
+  const index = read(dir + "index.json").prices, series = {}, holdings = [];
   for (const [k, file] of Object.entries(index)) {
-    const o = read("data/prices/" + file);
+    const o = read(dir + "prices/" + file);
     series[k] = { dates: o.dates, adj: o.adj };
     if (SKIP.has(k) || k.endsWith("=X")) continue;
     holdings.push({ ticker: k, ccy: o.currency || "USD", valueKrw: 1 });
@@ -86,6 +88,6 @@ export function buildStats(startDate, { series, holdings } = siteSeries()) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const kst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   const out = buildStats(kst);
-  writeFileSync(new URL("data/stats.json", root), JSON.stringify(out) + "\n");
+  writeFileSync(new URL(dir + "stats.json", root), JSON.stringify(out) + "\n");
   console.log("stats.json", kst, out.corr.keys.length + "종목", out.events.length + "사건", Object.entries(out.tickers).map(([k, v]) => `${k} μ${v.mu?.toFixed(4)} σ${v.vol?.toFixed(4)}`).join(" · "));
 }

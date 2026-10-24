@@ -338,7 +338,7 @@ fun Mission1View(m: AppModel) {
 /** 지금 가격 (시세 기준과 같음). DRNK 는 가상 종목 */
 // ios: Views/MissionViews.swift:121
 private fun now(s: Symbol): String =
-    (if (s.quote.live) "지금 " else "전일 종가 ") + AppModel.price(s, s.last) + (if (s.id == "DRNK") " (가상)" else "")   // ios: Views/MissionViews.swift:122
+    (if (s.quote.live) "지금 " else "전일 종가 ") + AppModel.price(s, s.last) + (if (Sample.isVirtual(s.id)) " (가상)" else "")   // ios: Views/MissionViews.swift:122
 
 // ios: Views/MissionViews.swift:125
 @Composable

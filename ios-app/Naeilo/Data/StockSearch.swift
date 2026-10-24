@@ -460,7 +460,7 @@ enum PriceHistory {
     /// 둘 다 없으면 빌드 때 넣은 파일. 가상 종목 DRNK 는 샘플 흐름을 따로 쓴다
     static func of(_ id: String) -> YahooSample.Hist? {
         let key = SiteStats.key(id)
-        let site = id == "DRNK" ? nil : Market.shared.prices?.h[key]
+        let site = Sample.isVirtual(id) ? nil : Market.shared.prices?.h[key]
         // 국내 주식 합계는 넣은 기록만 (하루치여도. 첫 기록 전은 없음 = 0)
         if id == KoreaEstimate.sumId { return CustomSymbols.shared.hist[id].map { YahooSample.Hist(dates: $0.dates, closes: $0.closes) } }
         let mine = CustomSymbols.shared.hist[id].flatMap { $0.closes.count > 1 ? YahooSample.Hist(dates: $0.dates, closes: $0.closes) : nil }
@@ -474,6 +474,6 @@ enum PriceHistory {
         if let h = site ?? mine { return h }
         // 비중 바꿔 비교에서 담은 종목 (모의 바구니)
         if let e = ExtraStats.shared.items[id]?.hist { return e }
-        return YahooSample.history[id] ?? (id == "DRNK" ? nil : YahooSample.bundled[key])
+        return YahooSample.history[id] ?? (Sample.isVirtual(id) ? nil : YahooSample.bundled[key])
     }
 }
