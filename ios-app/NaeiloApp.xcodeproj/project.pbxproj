@@ -769,7 +769,7 @@
 		25B89E22945C75CB5B7C7D0B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-seri AppIcon-sio AppIcon-seonbae AppIcon-ir AppIcon-sua";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-jump AppIcon-horizon AppIcon-tub AppIcon-dory AppIcon-pino AppIcon-mug AppIcon-bar";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Naeilo/App.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -809,7 +809,7 @@
 		58F93CE5FC41A6627999EEAC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-seri AppIcon-sio AppIcon-seonbae AppIcon-ir AppIcon-sua";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-jump AppIcon-horizon AppIcon-tub AppIcon-dory AppIcon-pino AppIcon-mug AppIcon-bar";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Naeilo/App.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
