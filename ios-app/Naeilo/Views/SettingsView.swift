@@ -317,7 +317,6 @@ struct PriceBasisView: View {
                 }
                 Text("그래프와 미션은 종가로 계산해요. 아래로 당기면 바로 다시 받아요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
-                if Config.channel == .internalBeta { PriceDiagView() }   // 임시 진단
             }
             .padding(16)
         }
