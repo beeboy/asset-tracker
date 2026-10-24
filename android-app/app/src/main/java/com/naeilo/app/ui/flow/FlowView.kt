@@ -606,7 +606,7 @@ fun FlowChart(series: FlowSeries, title: String, layers: Set<FlowLayer>, term: F
                 Spacer(Modifier.width(6.dp))   // ios: Views/FlowView.swift:415
                 // 지금 단위 표시: 손 그림으로 두 손가락 확대를 알린다. 핀치로 넓히면 주봉·월봉으로 바뀐다
                 Row(Modifier.background(Theme.line, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/FlowView.swift:417,421,422
-                    T("🤏", style = appFont(11f), maxLines = 1)   // ios: Views/FlowView.swift:418 (두 기기 같은 그림: 이모지)
+                    com.naeilo.app.ui.Sym("hand.pinch", 12f, Theme.sub)   // ios: Views/FlowView.swift:418
                     T(if (step == 1) "일봉" else if (step == 5) "주봉" else "월봉", style = appFont(12f, FontWeight.SemiBold), color = Theme.sub, maxLines = 1)   // ios: Views/FlowView.swift:419
                 }
             }
