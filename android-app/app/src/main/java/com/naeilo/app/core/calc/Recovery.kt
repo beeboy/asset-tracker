@@ -228,7 +228,7 @@ fun AppModel.paths(parts0: List<Part>, horizon: String): PathSet? {   // ios: Da
     val pk = "pr|${run.key}|${lk}"   // ios: Data/Recovery.swift:182
     pathSetCache[pk]?.let { return it }   // ios: Data/Recovery.swift:183
     val ps = PathSet(sim = run.sim, mu = lensMu(run.factors, run.sim.A), base = run.sim.v0, key = pk)   // ios: Data/Recovery.swift:184
-    if (pathSetCache.size > 24) pathSetCache = mutableMapOf()   // ios: Data/Recovery.swift:185
+    if (pathSetCache.size > 6) pathSetCache = mutableMapOf()   // ios: Data/Recovery.swift:185 (안드로이드: 경로 묶음마다 수십 MB 배열을 들고 있어 몇 개만)
     pathSetCache[pk] = ps   // ios: Data/Recovery.swift:186
     return ps   // ios: Data/Recovery.swift:187
 }
