@@ -682,10 +682,11 @@ struct MugScene: View {
         let gx = 68 + 212 * CGFloat(min(1, max(0, s.f)))
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
-                ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x2C5F8F : 0xA9D6F6), Color(hex: dk ? 0x6AA8DB : 0xE4F3FD)]), startPoint: .zero, endPoint: pt(0, 170)))
+                // 다크 하늘은 종목·흐름·분석 바탕과 같은 밝기 (2026-10-24)
+            ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x14304F : 0xA9D6F6), Color(hex: dk ? 0x2C5F8F : 0xE4F3FD)]), startPoint: .zero, endPoint: pt(0, 170)))
                 // 구름은 위쪽 (기훈 머리와 겹치지 않게)
                 for (x, y, rx, ry) in [(210, 30, 22, 7), (224, 25, 12, 7), (168, 62, 18, 5), (178, 58, 9, 5)] as [(CGFloat, CGFloat, CGFloat, CGFloat)] {
-                    ctx.fill(Path(ellipseIn: CGRect(x: x - rx, y: y - ry, width: rx * 2, height: ry * 2)), with: dk ? hex(0xE9F3FB, 0.85) : hex(0xFFFFFF))
+                    ctx.fill(Path(ellipseIn: CGRect(x: x - rx, y: y - ry, width: rx * 2, height: ry * 2)), with: dk ? hex(0xE9F3FB, 0.6) : hex(0xFFFFFF))
                 }
                 ctx.fill(Path(CGRect(x: 0, y: 136, width: 300, height: 34)), with: hex(dk, 0xE2C595, 0xD9BB8C))
                 ctx.fill(Path(CGRect(x: 0, y: 136, width: 300, height: 2.5)), with: hex(dk, 0xC9A673, 0xC4A374))
@@ -713,8 +714,6 @@ struct MugScene: View {
                 Sk.text(ctx, "EXIT", 282, 88.5, Color(hex: 0x7DFFAE), size: 7, bold: true, anchor: .center)
                 Sk.text(ctx, s.target, 282, 75, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 9.5, bold: true, anchor: .center)
             }
-            // 장 마감·주말: 어둑하게
-            Color(hex: 0x0A1430).opacity(night ? (dk ? 0.42 : 0.3) : 0).frame(width: 300, height: 170)
             Dot(img: MugArt.younghi(eyes), w: 45, h: 52.5).position(x: 30.5, y: 122.25)
             if eyes == .closed && !still {
                 // 눈 감은 동안 노래한다 (무궁화 꽃이 피었습니다)
@@ -725,7 +724,6 @@ struct MugScene: View {
             }
             Gihun(to: gx, down: down, eyes: eyes, night: night)
         }
-        .animation(.easeInOut(duration: 0.8), value: night)
         .task(id: still) {
             // 장중엔 눈 뜨고 가끔 감고, 장 마감·주말엔 감고 가끔 한쪽 눈
             while !Task.isCancelled {
@@ -743,7 +741,7 @@ struct MugScene: View {
 }
 
 /// 기훈: 내 캐릭터 얼굴 + 녹색 체육복. 자리가 바뀌면 옆걸음, 서 있으면 영희 눈에 맞춰 차분히 숨,
-/// 영희가 눈 감으면 크게 숨 (오른 날엔 한 번 폴짝), 장 마감엔 기지개. 떨어진 날 영희가 보고 있으면 식은땀
+/// 영희가 눈 감으면 크게 숨 (오른 날엔 한 번 폴짝), 장 마감엔 기지개 (밤 그늘은 두지 않는다, 2026-10-24). 떨어진 날 영희가 보고 있으면 식은땀
 private struct Gihun: View {
     let to: CGFloat
     let down: Bool
