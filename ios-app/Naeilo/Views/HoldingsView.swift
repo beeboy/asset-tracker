@@ -150,7 +150,7 @@ struct HoldingsView: View {
     /// 지금 가격·평균 단가: 미국 종목은 $ 보기면 달러, 원 보기면 원으로
     private func px(_ r: AppModel.Row, _ v: Double) -> String {
         guard r.sym.currency == .usd else { return Int(v.rounded()).formatted() + String(localized: "원") }
-        return usd(r) ? "$" + v.formatted(.number.precision(.fractionLength(2))) : Int((v * Market.shared.valFx).rounded()).formatted() + String(localized: "원")
+        return usd(r) ? "$" + v.usdText() : Int((v * Market.shared.valFx).rounded()).formatted() + String(localized: "원")
     }
     /// 평가금·변동 금액 (부호 없음): $ 보기면 달러 정수, 아니면 만원 (만원 미만은 원)
     private func amt(_ r: AppModel.Row, krw: Double, native: Double) -> String {
@@ -599,7 +599,7 @@ struct HoldingDetailView: View {
     /// 원래 통화 값 → 지금 고른 통화 글 (가격: $는 소수 둘째 자리)
     private func price(_ v: Double, usd: Bool) -> String {
         guard isUsd else { return Int(v.rounded()).formatted() + String(localized: "원") }
-        return usd ? "$" + v.formatted(.number.precision(.fractionLength(2))) : Int((v * Market.shared.valFx).rounded()).formatted() + String(localized: "원")
+        return usd ? "$" + v.usdText() : Int((v * Market.shared.valFx).rounded()).formatted() + String(localized: "원")
     }
     /// 큰 값과 괄호 값 (국내 종목은 괄호 없음)
     private func pair(_ v: Double) -> (String, String?) {

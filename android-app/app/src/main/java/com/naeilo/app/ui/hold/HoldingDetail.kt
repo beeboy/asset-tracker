@@ -2,6 +2,7 @@ package com.naeilo.app.ui.hold
 
 import com.naeilo.app.ui.rememberPrefBool
 import com.naeilo.app.core.swFmtFrac
+import com.naeilo.app.core.usdText
 import androidx.compose.ui.text.AnnotatedString
 import com.naeilo.app.ui.TA
 import androidx.compose.foundation.layout.widthIn
@@ -133,7 +134,7 @@ fun HoldingDetailView(m: AppModel,
     // ios: Views/HoldingsView.swift:584
     fun price(v: Double, usd: Boolean): String {
         if (!isUsd) return won(v) + tr("원")   // ios: Views/HoldingsView.swift:585
-        return if (usd) "$" + v.swFmtFrac(2) else won(v * Market.shared.valFx) + tr("원")   // ios: Views/HoldingsView.swift:586
+        return if (usd) "$" + v.usdText() else won(v * Market.shared.valFx) + tr("원")   // ios: Views/HoldingsView.swift:586
     }
     /** 큰 값과 괄호 값 (국내 종목은 괄호 없음) */
     // ios: Views/HoldingsView.swift:589,590

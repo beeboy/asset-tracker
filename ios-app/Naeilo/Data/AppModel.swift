@@ -238,7 +238,7 @@ final class AppModel {
     static func sgn2(_ p: Double) -> String { (p >= 0 ? "+" : "−") + String(format: "%.2f%%", abs(p) * 100) }
     static func sgn0(_ p: Double) -> String { (p >= 0 ? "+" : "−") + "\(Int((abs(p) * 100).rounded()))%" }
     static func price(_ s: Symbol, _ x: Double) -> String {
-        s.currency == .usd ? "$" + x.formatted(.number.precision(.fractionLength(0...2))) : Int(x.rounded()).formatted() + String(localized: "원")
+        s.currency == .usd ? "$" + x.usdText(0...2) : Int(x.rounded()).formatted() + String(localized: "원")
     }
 
     // MARK: 보유 계산 (원화)
@@ -829,5 +829,13 @@ final class AppModel {
         interStartAt = nil; goalStartAt = nil; gInterStartAt = nil; recM = 0
         weekGuess = nil; weekFridaySkip = false; planKey = "balance"; horizon = 3; quizAnswer = nil
         taxGain = 0; taxSellQty = 0; boardPath = []
+    }
+}
+
+extension Double {
+    /// 달러 가격 글: 토스처럼 소수 둘째 자리 아래는 버린다 (147.495 → 147.49). 표시만, 계산값은 그대로.
+    /// 계산 끝에 0.7999… 처럼 남는 값이 한 푼 내려가지 않게 아주 작은 여유를 둔다
+    func usdText(_ f: ClosedRange<Int> = 2...2) -> String {
+        (self + (self < 0 ? -1e-9 : 1e-9)).formatted(.number.precision(.fractionLength(f)).rounded(rule: .towardZero))
     }
 }

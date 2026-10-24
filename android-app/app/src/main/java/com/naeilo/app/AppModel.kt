@@ -9,6 +9,7 @@ import com.naeilo.app.data.Remind
 import com.naeilo.app.ui.analysis.AnalysisRoute
 import com.naeilo.app.ui.settings.SettingsRoute
 import com.naeilo.app.core.swFmtFrac
+import com.naeilo.app.core.usdText
 import com.naeilo.app.net.*
 import com.naeilo.app.core.calc.*
 import android.content.Context
@@ -955,7 +956,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         fun sgn2(p: Double): String = (if (p >= 0) "+" else "−") + fmtF("%.2f%%", abs(p) * 100)   // ios: Data/AppModel.swift:238
         fun sgn0(p: Double): String = (if (p >= 0) "+" else "−") + "${(abs(p) * 100).rnd().toInt()}%"   // ios: Data/AppModel.swift:239
         fun price(s: Symbol, x: Double): String =   // ios: Data/AppModel.swift:240
-            if (s.currency == Currency.usd) "$" + x.swFmtFrac(0, 2) else x.rnd().toInt().fmt() + "원"   // ios: Data/AppModel.swift:241 (0...2 자리, 십진 반올림은 swFmt)
+            if (s.currency == Currency.usd) "$" + x.usdText(0, 2) else x.rnd().toInt().fmt() + "원"   // ios: Data/AppModel.swift:241 (0...2 자리, 십진 반올림은 swFmt)
 
         // 회복 계획 (계산은 Recovery)
         fun normCDF(x: Double): Double {   // ios: Data/AppModel.swift:313

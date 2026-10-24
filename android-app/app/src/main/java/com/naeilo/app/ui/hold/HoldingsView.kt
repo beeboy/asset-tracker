@@ -136,6 +136,7 @@ import com.naeilo.app.ui.rememberPrefString
 import com.naeilo.app.ui.stiffness
 import com.naeilo.app.core.swFmt
 import com.naeilo.app.core.swFmtFrac
+import com.naeilo.app.core.usdText
 import com.naeilo.app.core.swFmtNoGroup
 import java.time.LocalDate
 import java.util.Locale
@@ -332,7 +333,7 @@ private fun usd(inUsd: Boolean, r: AppModel.Row): Boolean = inUsd && r.sym.curre
 // ios: Views/HoldingsView.swift:151
 private fun px(inUsd: Boolean, r: AppModel.Row, v: Double): String {
     if (r.sym.currency != Currency.usd) return v.intFmt() + tr("원")   // ios: Views/HoldingsView.swift:152
-    return if (usd(inUsd, r)) "$" + v.swFmtFrac(2) else (v * Market.shared.valFx).intFmt() + tr("원")   // ios: Views/HoldingsView.swift:153
+    return if (usd(inUsd, r)) "$" + v.usdText() else (v * Market.shared.valFx).intFmt() + tr("원")   // ios: Views/HoldingsView.swift:153
 }
 /** 평가금·변동 금액 (부호 없음): $ 보기면 달러 정수, 아니면 만원 (만원 미만은 원) */
 // ios: Views/HoldingsView.swift:156,157
