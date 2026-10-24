@@ -9,7 +9,16 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                // 위젯·설정은 맨 아래 버튼 대신 우상단 아이콘으로 (2026-10-24)
                 AppHeader(tab: String(localized: "홈")).padding(.horizontal, -16)
+                    .overlay(alignment: .trailing) {
+                        HStack(spacing: 0) {
+                            headerIcon(String(localized: "위젯"), "rectangle.3.group") { m.widgetsOpen = true }
+                            headerIcon(String(localized: "설정"), "gearshape") { m.openSettings() }
+                        }
+                        // 기호 오른쪽 끝을 평가액 박스보다 조금 안쪽에 (안드로이드 실기기 재서 +4.5)
+                        .padding(.trailing, 7.5)
+                    }
                 SampleNote()
                 summary
                 // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
@@ -21,11 +30,6 @@ struct HomeView: View {
                 reminder
                 EarnHomeCard()
                 TownButton { TownView(scroll: $0) }
-                HStack(spacing: 8) {
-                    coverButton(String(localized: "위젯"), "rectangle.3.group") { m.widgetsOpen = true }
-                    coverButton(String(localized: "설정"), "gearshape") { m.openSettings() }
-                }
-                .frame(maxWidth: .infinity)
             }
             .screen()
         }
@@ -316,15 +320,15 @@ struct HomeView: View {
     }
 
     /// 작은 알약 두 개를 가운데에 (꽉 찬 버튼은 거슬려 줄였다, 2026-10-23). 누르는 자리는 44 높이 그대로
-    private func coverButton(_ t: String, _ icon: String, _ act: @escaping () -> Void) -> some View {
+    private func headerIcon(_ t: String, _ icon: String, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
-            Label(t, systemImage: icon)
-                .appFont(13, .bold).lineLimit(1).fixedSize()
-                .padding(.horizontal, 16).frame(height: 34)
-                .foregroundStyle(.white).background(Theme.teal, in: Capsule())
-                .frame(minHeight: 44).contentShape(Rectangle())
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(Theme.ink)
+                .frame(width: 44, height: 44).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(t)
     }
 }
 

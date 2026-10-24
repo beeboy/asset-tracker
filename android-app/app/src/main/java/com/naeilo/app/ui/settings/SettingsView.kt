@@ -63,6 +63,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.naeilo.app.AppModel
@@ -219,124 +221,73 @@ object AdminKey {
 }
 
 // ios: Views/SettingsView.swift:97
-enum class SettingsRoute { alerts, sync, widgets, tax, price, toss, alpaca, longbridge, howto, route, goal, charPreview, support, icon, notifyList, residence }
+enum class SettingsRoute { alerts, sync, widgets, tax, price, toss, alpaca, longbridge, howto, route, goal, charPreview, support, icon, notifyList, residence, goalGroup, oftenGroup, screenGroup, numberGroup }   // ios: Views/SettingsView.swift:97
 
 /** 설정 한 줄 (제목, 설명, 갈 곳) */
-private class SRow(val title: String, val sub: String, val to: SettingsRoute)
+internal class SRow(val title: String, val sub: String, val to: SettingsRoute)
 
-// ios: Views/SettingsView.swift:99,100,101,104
+/** 설정 첫 화면: 내 키 한 줄 → 함께할 인물 → 타일 넷(목표·알림과 위젯·화면·숫자 기준) → 작은 글 링크.
+ *  타일을 누르면 그 묶음 화면(SettingsGroupView)으로 간다 */
+// ios: Views/SettingsView.swift:101,110
 @Composable
 fun SettingsView(m: AppModel, cover: Boolean = false) {   // cover: 홈 [설정] 전체 화면 팝업, 맨 위 줄을 블록·파도처럼 제목 + X로
-    val ctx = LocalContext.current
-    val boxLook = com.naeilo.app.ui.home.BoxLook.raw   // ios: Views/SettingsView.swift:102 (@AppStorage(BoxLook.key))
-    val onN = m.alerts.values.count { it }   // ios: Views/SettingsView.swift:105
-    // 위에서 아래로: 오픈 API 카드 → 내 목표 → 알림과 위젯 → 함께할 인물 → 화면 → 계산 기준 → 도움과 기타
-    val routeLine = if (m.route == Route.recover) "본전부터 되찾는 중이에요" else if (m.route == Route.plus) "목표를 향해 가는 중이에요" else "아직 첫 단계예요"   // ios: Views/SettingsView.swift:107
-    // ios: Views/SettingsView.swift:108
-    val goalRows = listOf(
-        SRow("목표 고치기", if (m.isGoal) "${m.goalToText}까지 ${AppModel.wonK(m.gK)}" else "아직 목표가 없어요", SettingsRoute.goal),   // ios: Views/SettingsView.swift:109
-        SRow("루트 바꾸기", routeLine, SettingsRoute.route),   // ios: Views/SettingsView.swift:110
-    )
-    // ios: Views/SettingsView.swift:112
-    val oftenRows = listOf(
-        SRow("알림", if (onN > 0) "${onN}개 켜짐" else "모두 꺼짐", SettingsRoute.alerts),   // ios: Views/SettingsView.swift:113
-        SRow("홈 화면 위젯", "${m.baseWidgets.size + Shelter.friends.size}가지 · 미리보기", SettingsRoute.widgets),   // ios: Views/SettingsView.swift:114
-    )
-    // 증권사는 나라와 상관없이 누구나 연결: 거주 국가에 맞는 것만 위로 올린다
-    val kr = m.residence == "KR"   // ios: Views/SettingsView.swift:117
-    val lbFirst = listOf("HK", "CN", "SG", "MO", "TW", "MY").contains(m.residence)   // ios: Views/SettingsView.swift:118
-    // ios: Views/SettingsView.swift:119
-    val brokerRows = listOf(
-        SRow("내 Alpaca 키", if (AlpacaKeys.on) "미국 종목을 Alpaca(IEX) 시세로 받는 중" else "넣지 않음 · 미국 종목 실시간 시세", SettingsRoute.alpaca),   // ios: Views/SettingsView.swift:120
-        SRow("내 Longbridge 키", if (LongbridgeKeys.on) "미국 종목을 Longbridge 시세로 받는 중" else "넣지 않음 · 미국·홍콩·중국 실시간 시세", SettingsRoute.longbridge),   // ios: Views/SettingsView.swift:121
-    )
-    // ios: Views/SettingsView.swift:123
-    val refRows = listOf(
-        SRow("시세 기준", "종목·환율 시세를 어디서 받는지", SettingsRoute.price),   // ios: Views/SettingsView.swift:124
-        SRow("거주 국가", "${m.residenceName} · 세금 계산만 이 나라를 따라요", SettingsRoute.residence),   // ios: Views/SettingsView.swift:125
-        SRow("세금", if (kr) "한국 거주자 기준으로 계산해요" else "이 나라 규칙은 준비 중 · 지금은 한국 기준", SettingsRoute.tax),   // ios: Views/SettingsView.swift:126
-    ) + (if (lbFirst) brokerRows.reversed() else brokerRows)   // ios: Views/SettingsView.swift:127
-    // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
-    // ios: Views/SettingsView.swift:129
-    val helpRows = listOf(
-        SRow("처음 쓰는 법", "목표 칸 · 주간 예보", SettingsRoute.howto),   // ios: Views/SettingsView.swift:130
-        SRow("기기 옮기기", if (Sync.shared.isOn) "파일 · 동기화 켜짐" else "파일로 새 폰에", SettingsRoute.sync),   // ios: Views/SettingsView.swift:131
-        // ios: Views/SettingsView.swift:132
-        SRow("구독", Support.shared.plan?.let { "${it.nameText} 중 · 고마워요" } ?: (if (Support.shared.inTrial) "7일 무료 · ${Support.shared.trialLeft}일 남음" else "월 1,000원 · 연 9,000원"), SettingsRoute.support),
-    )
-    // ios: Views/SettingsView.swift:134,182,184,185
+    val boxLook = com.naeilo.app.ui.home.BoxLook.raw   // ios: Views/SettingsView.swift:104 (@AppStorage(BoxLook.key))
+    var showDemo by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:105 시연 상태: 개발자 기기에서 버전 글을 길게 누르면 열린다
+    val onN = m.alerts.values.count { it }   // ios: Views/SettingsView.swift:111
+    val looks = mapOf("system" to "기기 설정대로", "light" to "밝게", "dark" to "어둡게")   // ios: Views/SettingsView.swift:112
+    // ios: Views/SettingsView.swift:113,141,142
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState())) {
         Screen {
-            // ios: Views/SettingsView.swift:135
+            // ios: Views/SettingsView.swift:114
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (cover) GameHeader(title = "설정", dismiss = { m.settingsOpen = false; m.settingsPath = emptyList() }) else Box(Modifier.outset(16.dp)) { AppHeader(tab = "설정") }   // ios: Views/SettingsView.swift:136 (-16)
-                if (kr) ApiCard(m)   // ios: Views/SettingsView.swift:137
-                Group(m, "내 목표", goalRows)   // ios: Views/SettingsView.swift:138
-                Group(m, "알림과 위젯", oftenRows)   // ios: Views/SettingsView.swift:139
-                Head("함께할 인물")   // ios: Views/SettingsView.swift:140
-                GuidePickRow(m)   // ios: Views/SettingsView.swift:141
-                Head("화면")   // ios: Views/SettingsView.swift:142
-                T("밝기 모드", style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/SettingsView.swift:143
-                // ios: Views/SettingsView.swift:144,145
-                ChipRow(items = listOf("system" to "기기 설정대로", "light" to "밝게", "dark" to "어둡게"),
-                        selection = m.appearance, onSelect = { m.appearance = it; Defaults.prefs.edit().putString("appearance", it).apply() }, fill = true)
-                // 홈 평가액 박스 모양 (홈 박스를 길게 눌러도 고른다)
-                T("홈 평가액 박스", style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/SettingsView.swift:147
-                ChipRow(items = com.naeilo.app.ui.home.BoxLook.entries.map { it.name to it.label }, selection = boxLook, onSelect = { com.naeilo.app.ui.home.BoxLook.raw = it }, fill = true)   // ios: Views/SettingsView.swift:148
-                Group(m, null, listOf(SRow("앱 아이콘", AppIconPicker.currentName(ctx), SettingsRoute.icon)))   // ios: Views/SettingsView.swift:149
-                // 앱 언어는 안드로이드 설정의 앱 언어 화면에서 바꾼다 (누르면 그 화면이 열린다)
-                // ios: Views/SettingsView.swift:151,152,153,159,161,162,163
-                Row(
-                    Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp))
-                        .plainClickable { openAppLanguage(ctx) }.defaultMinSize(minHeight = 52.dp).padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,   // ios: Views/SettingsView.swift:154,156
-                ) {
-                    T("언어 변경", Modifier.weight(1f), style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:155
-                    Sym("arrow.up.right", 13f, Theme.muted)   // ios: Views/SettingsView.swift:157
+                if (cover) GameHeader(title = "설정", dismiss = { m.settingsOpen = false; m.settingsPath = emptyList() }) else Box(Modifier.outset(16.dp)) { AppHeader(tab = "설정") }   // ios: Views/SettingsView.swift:115 (-16)
+                ApiLine(m)   // ios: Views/SettingsView.swift:116
+                GuidePickRow(m, compact = true)   // ios: Views/SettingsView.swift:117
+                // ios: Views/SettingsView.swift:118 (LazyVGrid 두 칸)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // ios: Views/SettingsView.swift:119
+                    Tile(m, "flag", "내 목표", if (m.isGoal) "${m.goalToText}까지 ${AppModel.wonK(m.gK)}" else "아직 목표가 없어요", SettingsGroupView.routeLine(m), SettingsRoute.goalGroup)
+                    // ios: Views/SettingsView.swift:122
+                    Tile(m, "bell", "알림과 위젯", if (onN > 0) "알림 ${onN}개 켜짐" else "알림 모두 꺼짐", "위젯 ${m.baseWidgets.size + Shelter.friends.size}가지", SettingsRoute.oftenGroup)
                 }
-                WaveFeedbackToggles()   // ios: Views/SettingsView.swift:164
-                Group(m, "숫자를 계산하는 기준", refRows)   // ios: Views/SettingsView.swift:165
-                if (!kr) ApiCard(m)   // ios: Views/SettingsView.swift:166
-                Group(m, "도움과 기타", helpRows)   // ios: Views/SettingsView.swift:167
-                // 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
-                // ios: Views/SettingsView.swift:169
-                if (m.devAll) {
-                    T("시연 상태 (개발자)", Modifier.padding(top = 8.dp), style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/SettingsView.swift:170
-                    // ios: Views/SettingsView.swift:171
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        DemoButton("첫 질문부터") { m.onboarded = false; Defaults.prefs.edit().putBoolean("onboarded", false).apply() }   // ios: Views/SettingsView.swift:172
-                        DemoButton("미션 1부터") { m.resetDemo(AppModel.Demo.fresh) }   // ios: Views/SettingsView.swift:173
-                        DemoButton("인터미션 1주차로") { m.resetDemo(AppModel.Demo.week1) }   // ios: Views/SettingsView.swift:174
-                        DemoButton("모든 화면 열기") { m.resetDemo(AppModel.Demo.all) }   // ios: Views/SettingsView.swift:175
-                    }
-                    Group(m, null, listOf(SRow("출시 알림 신청 목록", "naeilo.com 앱 받기 신청", SettingsRoute.notifyList)))   // ios: Views/SettingsView.swift:177
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // ios: Views/SettingsView.swift:125
+                    Tile(m, "iphone", "화면", looks[m.appearance] ?: looks.getValue("system"), com.naeilo.app.ui.home.BoxLook.entries.firstOrNull { it.name == boxLook }?.label ?: "", SettingsRoute.screenGroup)
+                    Tile(m, "chart.pie", "숫자 기준", m.residenceName, "시세 · 내 API 키", SettingsRoute.numberGroup)   // ios: Views/SettingsView.swift:128
                 }
-                T("시세: ${Market.shared.source} · ${Config.channel.raw}", style = appFont(12f), color = Theme.muted)   // ios: Views/SettingsView.swift:179
-                T("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)", style = appFont(12f), color = Theme.muted)   // ios: Views/SettingsView.swift:180
+                Footer(m)   // ios: Views/SettingsView.swift:131
+                if (m.devAll && showDemo) Demo(m)   // ios: Views/SettingsView.swift:132
+                // ios: Views/SettingsView.swift:133,134,135,136
+                Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 32.dp)
+                    .pointerInput(Unit) { detectTapGestures(onLongPress = { if (m.devAll) showDemo = !showDemo }) },
+                    contentAlignment = Alignment.Center) {
+                    T("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)", style = appFont(12f), color = Theme.muted)
+                }
             }
         }
     }
 }
 
 /** 설정에서 여는 화면 (navigationDestination for: SettingsRoute) */
-// ios: Views/SettingsView.swift:186,187
+// ios: Views/SettingsView.swift:142,143
 fun settingsPage(m: AppModel, r: SettingsRoute): NavPage = when (r) {
-    SettingsRoute.alerts -> NavPage { AlertsView(m) }   // ios: Views/SettingsView.swift:188
-    SettingsRoute.sync -> NavPage { SyncView(m) }   // ios: Views/SettingsView.swift:189
-    SettingsRoute.widgets -> NavPage { WidgetPickView(m) }   // ios: Views/SettingsView.swift:190
-    SettingsRoute.tax -> NavPage { TaxRulesView(m) }   // ios: Views/SettingsView.swift:191
-    SettingsRoute.price -> NavPage { PriceBasisView(m) }   // ios: Views/SettingsView.swift:192
-    SettingsRoute.toss -> NavPage { TossKeyView(m) }   // ios: Views/SettingsView.swift:193
-    SettingsRoute.alpaca -> NavPage { AlpacaKeyView(m) }   // ios: Views/SettingsView.swift:194
-    SettingsRoute.longbridge -> NavPage { LongbridgeKeyView(m) }   // ios: Views/SettingsView.swift:195
-    SettingsRoute.howto -> NavPage { HowToView() }   // ios: Views/SettingsView.swift:196
-    SettingsRoute.route -> NavPage { RouteView(m) }   // ios: Views/SettingsView.swift:197
-    SettingsRoute.goal -> NavPage { GoalSetView(m, fromSettings = true) }   // ios: Views/SettingsView.swift:198
-    SettingsRoute.support -> NavPage { SupportView(m) }   // ios: Views/SettingsView.swift:199
-    SettingsRoute.icon -> NavPage { AppIconScreen(m) }   // ios: Views/SettingsView.swift:200
-    SettingsRoute.notifyList -> NavPage { NotifyListView() }   // ios: Views/SettingsView.swift:201
-    SettingsRoute.residence -> NavPage("거주 국가") { ResidenceView(m) }   // ios: Views/SettingsView.swift:202 (제목은 ResidenceView 의 navigationTitle)
-    SettingsRoute.charPreview -> NavPage { WidgetPickView(m) }     // ios: Views/SettingsView.swift:203 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
+    SettingsRoute.alerts -> NavPage { AlertsView(m) }   // ios: Views/SettingsView.swift:144
+    SettingsRoute.sync -> NavPage { SyncView(m) }   // ios: Views/SettingsView.swift:145
+    SettingsRoute.widgets -> NavPage { WidgetPickView(m) }   // ios: Views/SettingsView.swift:146
+    SettingsRoute.tax -> NavPage { TaxRulesView(m) }   // ios: Views/SettingsView.swift:147
+    SettingsRoute.price -> NavPage { PriceBasisView(m) }   // ios: Views/SettingsView.swift:148
+    SettingsRoute.toss -> NavPage { TossKeyView(m) }   // ios: Views/SettingsView.swift:149
+    SettingsRoute.alpaca -> NavPage { AlpacaKeyView(m) }   // ios: Views/SettingsView.swift:150
+    SettingsRoute.longbridge -> NavPage { LongbridgeKeyView(m) }   // ios: Views/SettingsView.swift:151
+    SettingsRoute.howto -> NavPage { HowToView() }   // ios: Views/SettingsView.swift:152
+    SettingsRoute.route -> NavPage { RouteView(m) }   // ios: Views/SettingsView.swift:153
+    SettingsRoute.goal -> NavPage { GoalSetView(m, fromSettings = true) }   // ios: Views/SettingsView.swift:154
+    SettingsRoute.support -> NavPage { SupportView(m) }   // ios: Views/SettingsView.swift:155
+    SettingsRoute.icon -> NavPage { AppIconScreen(m) }   // ios: Views/SettingsView.swift:156
+    SettingsRoute.notifyList -> NavPage { NotifyListView() }   // ios: Views/SettingsView.swift:157
+    SettingsRoute.residence -> NavPage("거주 국가") { ResidenceView(m) }   // ios: Views/SettingsView.swift:158 (제목은 ResidenceView 의 navigationTitle)
+    SettingsRoute.charPreview -> NavPage { WidgetPickView(m) }     // ios: Views/SettingsView.swift:159 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
+    SettingsRoute.goalGroup, SettingsRoute.oftenGroup, SettingsRoute.screenGroup, SettingsRoute.numberGroup -> NavPage { SettingsGroupView(m, r) }   // ios: Views/SettingsView.swift:160
 }
 
 /** 앱 언어 화면 (안드로이드 13+: 앱별 언어, 그 전: 앱 정보) */
@@ -347,89 +298,157 @@ private fun openAppLanguage(ctx: Context) {
         .onFailure { runCatching { ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
 }
 
-/** 맨 위 오픈 API 카드: 연결 상태 한 줄 + 내 폰·서버·토스 작은 띠. 누르면 토스증권 오픈 API 화면으로 */
-// ios: Views/SettingsView.swift:209
+/** Longbridge 를 Alpaca 보다 먼저 보이는 거주 국가 */
+internal val lbFirst = listOf("HK", "CN", "SG", "MO", "TW", "MY")   // ios: Views/SettingsView.swift:108
+
+/** 맨 위 조용한 한 줄: 거주 국가에 맞는 내 키(한국 토스, lbFirst 나라 Longbridge, 그 밖 Alpaca).
+ *  평소엔 배경과 같은 결, 키를 넣었는데 받기가 실패하면 주황으로 눈에 띈다 */
+// ios: Views/SettingsView.swift:167
 @Composable
-private fun ApiCard(m: AppModel) {
-    Market.shared.tossDone      // ios: Views/SettingsView.swift:210 토스 받기를 마치면 다시 그린다
-    val on = TossKeys.on   // ios: Views/SettingsView.swift:211
-    // ios: Views/SettingsView.swift:212,213,237,238,239,241
-    Fg(Color.White) {
-        Column(
-            Modifier.fillMaxWidth().plainClickable { m.settingsPath = m.settingsPath + SettingsRoute.toss }
-                .background(Theme.night, RoundedCornerShape(20.dp)).padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            // ios: Views/SettingsView.swift:214
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                T(if (on) "내 오픈 API 키로 시세 받는 중" else "내 오픈 API 키 연결 안 됨", style = appFont(15f, FontWeight.SemiBold))   // ios: Views/SettingsView.swift:215
-                if (on) Sym("chevron.right", 12f, Color.White)   // ios: Views/SettingsView.swift:216
-            }
-            // ios: Views/SettingsView.swift:218,229
-            Row(Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                MiniNode("iphone", on); MiniLine(on)   // ios: Views/SettingsView.swift:219
-                MiniNode("server.rack", on); MiniLine(on)   // ios: Views/SettingsView.swift:220
-                MiniNode("chart.line.uptrend.xyaxis", on)   // ios: Views/SettingsView.swift:221
-                // ios: Views/SettingsView.swift:222,226,227
-                Column(Modifier.weight(1f).padding(start = 5.dp, end = 0.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    T(if (on) "이어져 있어요" else "키는 이 폰에만 있어요", style = appFont(13f, FontWeight.Bold))   // ios: Views/SettingsView.swift:223
-                    // ios: Views/SettingsView.swift:224,225
-                    T(if (on) "현재가·일봉·환율만 받아 왔어요" else "서버는 지나가기만 해요 · 현재가·일봉·환율만", style = appFont(11f), color = hex(0xC9D0D6))
-                }
-            }
-            // ios: Views/SettingsView.swift:230
-            if (!on) {
-                // 다른 버튼(PrimaryButton)과 같은 모양: 청록 바탕 + 흰 글자 (라이트·다크 공통)
-                // ios: Views/SettingsView.swift:232,233,234
-                Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 50.dp).background(Theme.teal, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                    T("연결하기", style = appFont(16f, FontWeight.Bold), color = Color.White)
-                }
-            }
+private fun ApiLine(m: AppModel) {
+    val kr = m.residence == "KR"   // ios: Views/SettingsView.swift:168
+    val lb = lbFirst.contains(m.residence)   // ios: Views/SettingsView.swift:169
+    if (kr) Market.shared.tossDone else if (lb) Market.shared.longbridgeDone else Market.shared.alpacaDone   // ios: Views/SettingsView.swift:170 받기를 마치면 다시 그린다
+    val on = if (kr) TossKeys.on else if (lb) LongbridgeKeys.on else AlpacaKeys.on   // ios: Views/SettingsView.swift:171
+    val broken = on && (if (kr) TossFeed.lastError else if (lb) LongbridgeFeed.lastError else AlpacaFeed.lastError) != null   // ios: Views/SettingsView.swift:172
+    val to = if (kr) SettingsRoute.toss else if (lb) SettingsRoute.longbridge else SettingsRoute.alpaca   // ios: Views/SettingsView.swift:173
+    // ios: Views/SettingsView.swift:174,183,184,185
+    Row(Modifier.fillMaxWidth().background(if (broken) Theme.orange.copy(alpha = 0.16f) else Theme.track, RoundedCornerShape(14.dp))
+        .plainClickable { m.settingsPath = m.settingsPath + to }.defaultMinSize(minHeight = 48.dp).padding(horizontal = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Sym(if (broken) "info.circle.fill" else if (on) "lock.fill" else "key.fill", 14f, if (broken) Theme.orange else if (on) Theme.teal else Theme.muted)   // ios: Views/SettingsView.swift:175,176
+        T(if (broken) "내 키로 못 받고 있어요" else if (on) "내 키로 시세 받는 중" else "내 키로 시세 받기", Modifier.weight(1f), style = appFont(14f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/SettingsView.swift:177,178
+        T(if (kr) "현재가·일봉·환율" else "미국 종목 현재가", style = appFont(12f), color = Theme.sub, maxLines = 1)   // ios: Views/SettingsView.swift:180
+        Sym("chevron.right", 12f, Theme.muted)   // ios: Views/SettingsView.swift:181
+    }
+}
+
+// ios: Views/SettingsView.swift:190,191
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.Tile(m: AppModel, icon: String, title: String, line1: String, line2: String, r: SettingsRoute) {
+    // ios: Views/SettingsView.swift:192,200,201,202,203
+    Column(Modifier.weight(1f).defaultMinSize(minHeight = 116.dp).background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp))
+        .plainClickable { m.settingsPath = m.settingsPath + r }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Sym(icon, 20f, Theme.teal)   // ios: Views/SettingsView.swift:193
+        T(title, style = appFont(16f, FontWeight.Bold))   // ios: Views/SettingsView.swift:194
+        // ios: Views/SettingsView.swift:195,198
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            T(line1, style = appFont(12f), color = Theme.sub, maxLines = 1)   // ios: Views/SettingsView.swift:196
+            T(line2, style = appFont(12f), color = Theme.sub, maxLines = 1)   // ios: Views/SettingsView.swift:197
         }
     }
 }
 
-// ios: Views/SettingsView.swift:244,245,246,247,248
+/** 자주 안 여는 것: 작은 글 링크 한 줄 */
+// ios: Views/SettingsView.swift:210,211,218,219
 @Composable
-private fun MiniNode(icon: String, on: Boolean) {
-    Box(Modifier.size(30.dp, 30.dp).background(if (on) Theme.teal else Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).semantics { hideFromAccessibility() }, contentAlignment = Alignment.Center) {
-        Sym(icon, 13f, if (on) Color.White else hex(0xC9D0D6), scaled = false)   // .font(.system(size: 13, weight: .semibold))
+private fun Footer(m: AppModel) {
+    val ctx = LocalContext.current
+    @Composable
+    fun Link(t: String, a: () -> Unit) = Box(Modifier.plainClickable(onClick = a).defaultMinSize(minHeight = 44.dp), contentAlignment = Alignment.Center) { T(t, style = appFont(13f), color = Theme.sub) }
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+        Link("처음 쓰는 법") { m.settingsPath = m.settingsPath + SettingsRoute.howto }   // ios: Views/SettingsView.swift:212
+        Link("기기 옮기기") { m.settingsPath = m.settingsPath + SettingsRoute.sync }   // ios: Views/SettingsView.swift:213
+        Link("구독") { m.settingsPath = m.settingsPath + SettingsRoute.support }   // ios: Views/SettingsView.swift:214
+        Link("언어") { openAppLanguage(ctx) }   // ios: Views/SettingsView.swift:216 앱 언어는 안드로이드 설정의 앱 언어 화면에서 바꾼다
     }
 }
 
-/** 작은 띠의 줄: 끊김은 회색 점선, 이어짐은 청록 실선 */
-// ios: Views/SettingsView.swift:252,253,254,255,256
+// 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
+// ios: Views/SettingsView.swift:223
 @Composable
-private fun MiniLine(on: Boolean) {
-    val c = if (on) Theme.teal else Theme.muted
-    Canvas(Modifier.size(12.dp, 2.dp).semantics { hideFromAccessibility() }) {
-        drawLine(c, Offset(0f, 1.dp.toPx()), Offset(12.dp.toPx(), 1.dp.toPx()), 2.dp.toPx(),
-            pathEffect = if (on) null else PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx())))
+private fun Demo(m: AppModel) {
+    T("시연 상태 (개발자)", Modifier.padding(top = 8.dp), style = appFont(13f, FontWeight.Bold), color = Theme.sub)   // ios: Views/SettingsView.swift:224
+    // ios: Views/SettingsView.swift:225
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        DemoButton("첫 질문부터") { m.onboarded = false; Defaults.prefs.edit().putBoolean("onboarded", false).apply() }   // ios: Views/SettingsView.swift:226
+        DemoButton("미션 1부터") { m.resetDemo(AppModel.Demo.fresh) }   // ios: Views/SettingsView.swift:227
+        DemoButton("인터미션 1주차로") { m.resetDemo(AppModel.Demo.week1) }   // ios: Views/SettingsView.swift:228
+        DemoButton("모든 화면 열기") { m.resetDemo(AppModel.Demo.all) }   // ios: Views/SettingsView.swift:229
+    }
+    SettingsRows(m, null, listOf(SRow("출시 알림 신청 목록", "naeilo.com 앱 받기 신청", SettingsRoute.notifyList)))   // ios: Views/SettingsView.swift:231
+    T("시세: ${Market.shared.source} · ${Config.channel.raw}", style = appFont(12f), color = Theme.muted)   // ios: Views/SettingsView.swift:232
+}
+
+/** 타일을 누르면 열리는 묶음 화면 */
+// ios: Views/SettingsView.swift:245
+@Composable
+fun SettingsGroupView(m: AppModel, kind: SettingsRoute) {
+    val ctx = LocalContext.current
+    val boxLook = com.naeilo.app.ui.home.BoxLook.raw   // ios: Views/SettingsView.swift:248
+    // ios: Views/SettingsView.swift:255,256,300,301,302
+    Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        when (kind) {
+            // ios: Views/SettingsView.swift:258
+            SettingsRoute.goalGroup -> {
+                T("내 목표", style = appFont(22f, FontWeight.Bold))
+                SettingsRows(m, null, listOf(
+                    SRow("목표 고치기", if (m.isGoal) "${m.goalToText}까지 ${AppModel.wonK(m.gK)}" else "아직 목표가 없어요", SettingsRoute.goal),
+                    SRow("루트 바꾸기", SettingsGroupView.routeLine(m), SettingsRoute.route),
+                ))
+            }
+            // ios: Views/SettingsView.swift:264
+            SettingsRoute.oftenGroup -> {
+                val onN = m.alerts.values.count { it }
+                T("알림과 위젯", style = appFont(22f, FontWeight.Bold))
+                SettingsRows(m, null, listOf(
+                    SRow("알림", if (onN > 0) "${onN}개 켜짐" else "모두 꺼짐", SettingsRoute.alerts),
+                    SRow("홈 화면 위젯", "${m.baseWidgets.size + Shelter.friends.size}가지 · 미리보기", SettingsRoute.widgets),
+                ))
+            }
+            // ios: Views/SettingsView.swift:271
+            SettingsRoute.screenGroup -> {
+                T("화면", style = appFont(22f, FontWeight.Bold))
+                T("밝기 모드", style = appFont(13f, FontWeight.Bold), color = Theme.sub)
+                ChipRow(items = listOf("system" to "기기 설정대로", "light" to "밝게", "dark" to "어둡게"),
+                        selection = m.appearance, onSelect = { m.appearance = it; Defaults.prefs.edit().putString("appearance", it).apply() }, fill = true)
+                // 홈 평가액 박스 모양 (홈 박스를 길게 눌러도 고른다)
+                T("홈 평가액 박스", style = appFont(13f, FontWeight.Bold), color = Theme.sub)
+                ChipRow(items = com.naeilo.app.ui.home.BoxLook.entries.map { it.name to it.label }, selection = boxLook, onSelect = { com.naeilo.app.ui.home.BoxLook.raw = it }, fill = true)
+                SettingsRows(m, null, listOf(SRow("앱 아이콘", AppIconPicker.currentName(ctx), SettingsRoute.icon)))
+                WaveFeedbackToggles()
+            }
+            // ios: Views/SettingsView.swift:281
+            SettingsRoute.numberGroup -> {
+                val kr = m.residence == "KR"
+                // 증권사는 나라와 상관없이 누구나 연결: 거주 국가에 맞는 것만 위로 올린다
+                val toss = SRow("Toss", if (TossKeys.on) "받는 중" else "넣지 않음", SettingsRoute.toss)
+                val alpaca = SRow("Alpaca", if (AlpacaKeys.on) "받는 중" else "넣지 않음 · 미국 종목 실시간 시세", SettingsRoute.alpaca)
+                val lb = SRow("Longbridge", if (LongbridgeKeys.on) "받는 중" else "넣지 않음 · 미국·홍콩·중국 실시간 시세", SettingsRoute.longbridge)
+                T("숫자 기준", style = appFont(22f, FontWeight.Bold))
+                SettingsRows(m, "나라와 세금", listOf(
+                    SRow("거주 국가", "${m.residenceName} · 세금 계산만 이 나라를 따라요", SettingsRoute.residence),
+                    SRow("세금", if (kr) "한국 거주자 기준으로 계산해요" else "이 나라 규칙은 준비 중 · 지금은 한국 기준", SettingsRoute.tax),
+                ))
+                SettingsRows(m, "시세", listOf(SRow("시세 기준", "종목·환율 시세를 어디서 받는지", SettingsRoute.price)))
+                SettingsRows(m, "내 API 키", if (kr) listOf(toss, alpaca, lb) else if (lbFirst.contains(m.residence)) listOf(lb, alpaca, toss) else listOf(alpaca, lb, toss))
+            }
+            else -> {}
+        }
     }
 }
 
-// ios: Views/SettingsView.swift:259,260
-@Composable
-private fun Head(t: String) = T(t, Modifier.padding(top = 8.dp), style = appFont(13f, FontWeight.Bold), color = Theme.teal)
+// ios: Views/SettingsView.swift:245 (static)
+object SettingsGroupView {
+    // ios: Views/SettingsView.swift:250
+    fun routeLine(m: AppModel): String = if (m.route == Route.recover) "본전부터 되찾는 중이에요" else if (m.route == Route.plus) "목표를 향해 가는 중이에요" else "아직 첫 단계예요"
+}
 
-// ios: Views/SettingsView.swift:263
+/** 제목 + 누르면 넘어가는 줄 묶음 (설정 화면들이 같이 쓴다) */
+// ios: Views/SettingsView.swift:306
 @Composable
-private fun Group(m: AppModel, title: String?, rows: List<SRow>) {
-    if (title != null) Head(title)   // ios: Views/SettingsView.swift:264
-    // ios: Views/SettingsView.swift:265,281,282
+internal fun SettingsRows(m: AppModel, title: String?, rows: List<SRow>) {
+    if (title != null) T(title, Modifier.padding(top = 8.dp), style = appFont(13f, FontWeight.Bold), color = Theme.teal)
     Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        // ios: Views/SettingsView.swift:266
         rows.forEachIndexed { i, r ->
-            if (i > 0) HDivider(Theme.line)   // ios: Views/SettingsView.swift:267
-            // ios: Views/SettingsView.swift:268,269,277,278
+            if (i > 0) HDivider(Theme.line)
             Row(Modifier.fillMaxWidth().plainClickable { m.settingsPath = m.settingsPath + r.to }.defaultMinSize(minHeight = 60.dp).padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                // ios: Views/SettingsView.swift:270,274
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    T(r.title, style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:271
-                    T(r.sub, style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:272
+                    T(r.title, style = appFont(15f, FontWeight.Bold))
+                    T(r.sub, style = appFont(13f), color = Theme.sub)
                 }
-                Sym("chevron.right", 13f, Theme.muted)   // ios: Views/SettingsView.swift:275
+                Sym("chevron.right", 13f, Theme.muted)
             }
         }
     }
@@ -475,7 +494,7 @@ fun PriceBasisView(m: AppModel) {
             // ios: Views/SettingsView.swift:309
             Card {
                 PRow("받는 순서", "내 토스 키 → 내 Alpaca·Longbridge 키 → naeilo 사이트. 앞에서 받은 값을 먼저 써요")   // ios: Views/SettingsView.swift:310
-                PRow("미국 종목", if (mk.toss != null) "토스 지금 가격" else if (mk.alpaca != null) "Alpaca(IEX) 지금 가격" else if (mk.longbridge != null) "Longbridge 지금 가격" else "사이트가 평일 30분마다 모은 가격")   // ios: Views/SettingsView.swift:311
+                PRow("미국 종목", if (mk.toss != null) "토스 지금 가격" else if (mk.alpaca != null) "Alpaca 지금 가격" else if (mk.longbridge != null) "Longbridge 지금 가격" else "사이트가 평일 30분마다 모은 가격")   // ios: Views/SettingsView.swift:311
                 PRow("한국 종목", if (mk.toss != null) "토스 지금 가격" else "사이트가 모은 가격. 미국 지수를 따르는 국내 ETF는 그 미국 ETF × 원/달러로 추정해요")   // ios: Views/SettingsView.swift:312
                 PRow("장 마감 뒤", "미국 장이 끝나면 정규장 종가로 세요 (토스 총자산과 같은 기준)")   // ios: Views/SettingsView.swift:313
                 // Views/SettingsView.swift:309 (검사 예외: 같은 줄에 옮김)
@@ -574,7 +593,7 @@ fun TossKeyView(m: AppModel) {
     LaunchedEffect(Unit) { TossKeys.relayIP()?.let { ip = it } }
     // ios: Views/SettingsView.swift:362,368,370,371,363
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        T("오픈 API", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:364
+        T("내 Toss API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:403
         TossLinkMap(on = on)   // ios: Views/SettingsView.swift:365
         // ios: Views/SettingsView.swift:366,375,376
         if (on) Card {
@@ -667,7 +686,8 @@ fun AlpacaKeyView(m: AppModel) {
 
     // ios: Views/SettingsView.swift:474,505,507,508,475
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        T("내 Alpaca 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:476
+        T("내 Alpaca API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:515
+        TossLinkMap(on = on, server = false, broker = "Alpaca", what = "미국 종목의 현재가를 받아 와요.")   // ios: Views/SettingsView.swift:516
         // ios: Views/SettingsView.swift:477
         Card {
             // ios: Views/SettingsView.swift:478
@@ -755,7 +775,8 @@ fun LongbridgeKeyView(m: AppModel) {
 
     // ios: Views/SettingsView.swift:558,591,593,594,559
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        T("내 Longbridge 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:560
+        T("내 Longbridge API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:600
+        TossLinkMap(on = on, server = false, broker = "Longbridge", what = "미국 종목의 현재가를 받아 와요.")   // ios: Views/SettingsView.swift:601
         // ios: Views/SettingsView.swift:561
         Card {
             // ios: Views/SettingsView.swift:562
@@ -793,11 +814,11 @@ fun LongbridgeKeyView(m: AppModel) {
     }
 }
 
-/** 오픈 API 맨 위 그림: 내 폰 · naeilo 서버 · 토스 시세. 키를 넣기 전에는 끊겨 있고, 넣으면 이어진다
+/** 내 키 화면 맨 위 그림: 내 폰 → (토스만) naeilo 서버 → 증권사. 안심은 말보다 그림으로 보인다
  *  (키는 이 폰 보관함에만 두고, 중계 서버는 저장·기록 없이 넘기기만 한다. docs/toss-relay.md) */
 @Composable
-// ios: Views/SettingsView.swift:619,620,622
-fun TossLinkMap(on: Boolean) {
+// ios: Views/SettingsView.swift:661,662,663,664,665
+fun TossLinkMap(on: Boolean, server: Boolean = true, broker: String = "Toss증권", what: String = "내 종목의 현재가·일봉·환율을 받아 와요.") {
     // ios: Views/SettingsView.swift:644 .animation(.easeInOut(duration: 0.4), value: on): 색이 0.4초에 바뀐다
     val teal = animateColorAsState(if (on) Theme.teal else Theme.track, tween(400), label = "node").value
     val icon = animateColorAsState(if (on) Color.White else Theme.muted, tween(400), label = "icon").value
@@ -824,22 +845,22 @@ fun TossLinkMap(on: Boolean) {
     Card {
         // ios: Views/SettingsView.swift:624
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            Node("iphone", "내 폰", "열쇠는 나만", lock = true)   // ios: Views/SettingsView.swift:625
-            TossLinkLine(on = on)   // ios: Views/SettingsView.swift:626
-            Node("server.rack", "naeilo 서버", "통로만 해요", lock = false)   // ios: Views/SettingsView.swift:627
-            TossLinkLine(on = on)   // ios: Views/SettingsView.swift:628
-            Node("chart.line.uptrend.xyaxis", "증권사 시세", " ", lock = false)   // ios: Views/SettingsView.swift:629
+            Node("iphone", "내 폰", "키가 있는 곳", lock = true)   // ios: Views/SettingsView.swift:670
+            TossLinkLine(on = on)   // ios: Views/SettingsView.swift:671
+            // ios: Views/SettingsView.swift:672 Alpaca·Longbridge 는 폰에서 바로 받는다
+            if (server) {
+                Node("server.rack", "naeilo 서버", "이어 주는 곳", lock = false)   // ios: Views/SettingsView.swift:673
+                TossLinkLine(on = on)   // ios: Views/SettingsView.swift:674
+            }
+            Node("chart.line.uptrend.xyaxis", broker, "시세", lock = false)   // ios: Views/SettingsView.swift:676
         }
         // ios: Views/SettingsView.swift:631,632
         T(if (on) "이어졌어요" else "키를 넣으면 이어져요", Modifier.fillMaxWidth(), style = appFont(13f, FontWeight.SemiBold).copy(textAlign = TextAlign.Center), color = if (on) Theme.teal else Theme.muted)
-        T(if (on) "지금 이어져 있어요." else "어디에도 남지 않아요.", Modifier.padding(top = 4.dp), style = appFont(17f, FontWeight.ExtraBold))   // ios: Views/SettingsView.swift:633
-        // ios: Views/SettingsView.swift:634,635
-        T(if (on) "그만두려면 아래 키 지우기를 누르면 돼요." else "키는 암호화되어 지나가기만 해요.", style = appFont(13f), color = Theme.sub)
         // ios: Views/SettingsView.swift:636,642
         Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Sym(if (on) "chart.line.uptrend.xyaxis" else "key.fill", 15f, Theme.teal, scaled = false)   // ios: Views/SettingsView.swift:637
             // ios: Views/SettingsView.swift:638,639,640
-            T(if (on) "현재가·일봉·환율 정보만 받아 왔어요." else "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요.", Modifier.weight(1f).padding(end = 0.dp), style = appFont(13f))
+            T(what, Modifier.weight(1f).padding(end = 0.dp), style = appFont(13f))   // ios: Views/SettingsView.swift:682
         }
     }
 }

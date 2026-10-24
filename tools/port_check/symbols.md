@@ -83,3 +83,4 @@ SF 의 `.fill` 은 채움(FILL 1) 모양으로. 코드에서는 `Sym(R.drawable.
 | `square.grid.2x2` | `grid_view` | - | 위젯 넣는 단계 4 |
 | `person.crop.square` | `account_box` | - | 위젯 넣는 단계 5 |
 | `questionmark.circle` | `help` | - | 흐름 탭 읽는 법 단추 |
+| `scope` | `my_location` | - | 설정 (조준경 기호) |

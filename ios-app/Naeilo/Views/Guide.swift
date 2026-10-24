@@ -113,10 +113,32 @@ enum Voice {
 /// 설정 > 함께할 인물: 한 줄(그림·이름·바꾸기) + 자동 토글. 토글 = 예전 "자동" 칩, 끄면 고른 인물로 고정
 struct GuidePickRow: View {
     @Environment(AppModel.self) private var m
+    var compact = false     // 설정 첫 화면: 인물을 누르면 바로 고르는 메뉴, 자동 교체도 그 메뉴 안에
     var body: some View {
         let _ = m.guideTick
         let opts: [(String, String)] = Shelter.friends.enumerated().filter { m.friendOn($0.offset) }.map { ($0.element.id, $0.element.name) }
             + (m.meUnlocked ? [("me", m.friendName("me"))] : [])
+        let auto = Binding(get: { m.guidePick == nil }, set: { m.guidePick = $0 ? nil : m.guideFriend })
+        if compact {
+            Menu {
+                ForEach(opts, id: \.0) { id, name in
+                    Button { m.guidePick = id } label: { Text(name) }
+                }
+                Divider()
+                Toggle("새 친구 만나면 자동 교체", isOn: auto)
+            } label: {
+                HStack(spacing: 12) {
+                    MotionSprite(friend: m.guideFriend, pose: .wave, height: 48).charIdle(2)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(m.friendName(m.guideFriend)).appFont(16, .bold).foregroundStyle(Theme.ink)
+                        Text("눌러서 함께할 인물 바꾸기").appFont(12).foregroundStyle(Theme.sub)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 4).frame(minHeight: 64).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        } else {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 MotionSprite(friend: m.guideFriend, pose: .wave, height: 48).charIdle(2)
@@ -134,7 +156,7 @@ struct GuidePickRow: View {
                 }
             }
             Divider().overlay(Theme.line)
-            Toggle(isOn: Binding(get: { m.guidePick == nil }, set: { m.guidePick = $0 ? nil : m.guideFriend })) {
+            Toggle(isOn: auto) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("새 친구 만나면 자동 교체").appFont(14, .semibold)
                     Text("처음 세리 → 최근 만난 인물").appFont(12).foregroundStyle(Theme.sub)
@@ -144,5 +166,6 @@ struct GuidePickRow: View {
         .padding(14)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+        }
     }
 }

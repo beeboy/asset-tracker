@@ -199,7 +199,15 @@ fun HomeView(m: AppModel) {
             Screen {
                 // ios: Views/HomeView.swift:11
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(Modifier.outset(16.dp)) { AppHeader(tab = "홈") }   // ios: Views/HomeView.swift:12 (-16)
+                    // 위젯·설정은 맨 아래 버튼 대신 우상단 아이콘으로 (2026-10-24)
+                    Box(Modifier.outset(16.dp)) {   // ios: Views/HomeView.swift:13 (-16)
+                        AppHeader(tab = "홈")
+                        // ios: Views/HomeView.swift:14,15,18,19 overlay(.trailing) · 기호 오른쪽 끝을 평가액 박스보다 조금 안쪽에 (실기기 재서 2 → 6.5)
+                        Row(Modifier.align(Alignment.CenterEnd).padding(end = 6.5.dp)) {
+                            HeaderIcon("위젯", "rectangle.3.group") { m.widgetsOpen = true }   // ios: Views/HomeView.swift:16
+                            HeaderIcon("설정", "gearshape") { m.openSettings() }   // ios: Views/HomeView.swift:17
+                        }
+                    }
                     SampleNote(m)   // ios: Views/HomeView.swift:13
                     Summary(m, lookRaw, { BoxLook.raw = it }, hideAmt) { hideAmt = !hideAmt }   // ios: Views/HomeView.swift:14
                     // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
@@ -211,11 +219,6 @@ fun HomeView(m: AppModel) {
                     Reminder { inbox = true }   // ios: Views/HomeView.swift:21
                     EarnHomeCard(m)   // ios: Views/HomeView.swift:22
                     TownButton { TownView(m, scroll = it) }   // ios: Views/HomeView.swift:23
-                    // ios: Views/HomeView.swift:24,25,26,28
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-                        CoverButton("위젯", "rectangle.3.group") { m.widgetsOpen = true }
-                        CoverButton("설정", "gearshape") { m.openSettings() }
-                    }
                 }
             }
         }
@@ -601,14 +604,12 @@ private fun StripRow(tag: String, text: String, openInbox: () -> Unit) {
 }
 
 /** 작은 알약 두 개를 가운데에 (꽉 찬 버튼은 거슬려 줄였다, 2026-10-23). 누르는 자리는 44 높이 그대로 */
-// ios: Views/HomeView.swift:318,319,320,321,325,327
+// ios: Views/HomeView.swift:322,323,329,330
 @Composable
-private fun CoverButton(t: String, icon: String, act: () -> Unit) {
-    Box(Modifier.defaultMinSize(minHeight = 44.dp).plainClickable(act), contentAlignment = Alignment.Center) {
-        // ios: Views/HomeView.swift:322,323,324
-        Row(Modifier.height(34.dp).background(Theme.teal, CapsuleShape).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Sym(icon, 13f, Color.White); T(t, style = appFont(13f, FontWeight.Bold), color = Color.White, maxLines = 1)
-        }
+private fun HeaderIcon(t: String, icon: String, act: () -> Unit) {
+    // ios: Views/HomeView.swift:324,325,326,327,328
+    Box(Modifier.size(44.dp).plainClickable(act).semantics { contentDescription = tr(t) }, contentAlignment = Alignment.Center) {
+        Sym(icon, 16f, Theme.ink)
     }
 }
 

@@ -533,7 +533,12 @@ fun WidgetPickView(m: AppModel, cover: Boolean = false) {   // cover: 홈 [위�
         Column(Modifier.weight(1f).fillMaxHeight().background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             T(k, style = appFont(12f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:493
             T(v + " 열림", style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:494
-            if (note != null) FitText(note, appFont(11f), 0.8f, maxLines = 1, color = Theme.sub)   // ios: Views/SettingsDetail.swift:495
+            if (note != null) {
+                // 높이 고정: IntrinsicSize.Min 줄 안의 FitText(SubcomposeLayout)는 고유 높이를 못 답해 충돌한다. 한 줄 높이를 재서 박스에 준다
+                val st = appFont(11f)
+                val h = with(LocalDensity.current) { androidx.compose.ui.text.rememberTextMeasurer().measure("가", st).size.height.toDp() }
+                Box(Modifier.fillMaxWidth().height(h)) { FitText(note, st, 0.8f, maxLines = 1, color = Theme.sub) }   // ios: Views/SettingsDetail.swift:495
+            }
         }
     }
 

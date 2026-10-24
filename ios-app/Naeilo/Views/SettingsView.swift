@@ -94,90 +94,46 @@ enum AdminKey {
     }
 }
 
-enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, longbridge, howto, route, goal, charPreview, support, icon, notifyList, residence }
+enum SettingsRoute: Hashable { case alerts, sync, widgets, tax, price, toss, alpaca, longbridge, howto, route, goal, charPreview, support, icon, notifyList, residence, goalGroup, oftenGroup, screenGroup, numberGroup }
 
+/// 설정 첫 화면: 내 키 한 줄 → 함께할 인물 → 타일 넷(목표·알림과 위젯·화면·숫자 기준) → 작은 글 링크.
+/// 타일을 누르면 그 묶음 화면(SettingsGroupView)으로 간다
 struct SettingsView: View {
     @Environment(AppModel.self) private var m
     var cover = false   // 홈 [설정] 전체 화면 팝업: 맨 위 줄을 블록·파도처럼 제목 + X로
     @AppStorage(BoxLook.key) private var boxLook = BoxLook.jump.rawValue
+    @State private var showDemo = false     // 시연 상태: 개발자 기기에서 버전 글을 길게 누르면 열린다
+
+    /// Longbridge 를 Alpaca 보다 먼저 보이는 거주 국가
+    static let lbFirst = ["HK", "CN", "SG", "MO", "TW", "MY"]
 
     var body: some View {
         let onN = m.alerts.values.filter { $0 }.count
-        // 위에서 아래로: 오픈 API 카드 → 내 목표 → 알림과 위젯 → 함께할 인물 → 화면 → 계산 기준 → 도움과 기타
-        let routeLine = m.route == .recover ? String(localized: "본전부터 되찾는 중이에요") : m.route == .plus ? String(localized: "목표를 향해 가는 중이에요") : String(localized: "아직 첫 단계예요")
-        let goalRows: [(String, String, SettingsRoute)] = [
-            (String(localized: "목표 고치기"), m.isGoal ? String(localized: "\(String(describing: m.goalToText))까지 \(String(describing: AppModel.wonK(m.gK)))") : String(localized: "아직 목표가 없어요"), .goal),
-            (String(localized: "루트 바꾸기"), routeLine, .route),
-        ]
-        let oftenRows: [(String, String, SettingsRoute)] = [
-            (String(localized: "알림"), onN > 0 ? String(localized: "\(String(describing: onN))개 켜짐") : String(localized: "모두 꺼짐"), .alerts),
-            (String(localized: "홈 화면 위젯"), String(localized: "\(String(describing: m.baseWidgets.count + Shelter.friends.count))가지 · 미리보기"), .widgets),
-        ]
-        // 증권사는 나라와 상관없이 누구나 연결: 거주 국가에 맞는 것만 위로 올린다
-        let kr = m.residence == "KR"
-        let lbFirst = ["HK", "CN", "SG", "MO", "TW", "MY"].contains(m.residence)
-        let brokerRows: [(String, String, SettingsRoute)] = [
-            (String(localized: "내 Alpaca 키"), AlpacaKeys.on ? String(localized: "미국 종목을 Alpaca(IEX) 시세로 받는 중") : String(localized: "넣지 않음 · 미국 종목 실시간 시세"), .alpaca),
-            (String(localized: "내 Longbridge 키"), LongbridgeKeys.on ? String(localized: "미국 종목을 Longbridge 시세로 받는 중") : String(localized: "넣지 않음 · 미국·홍콩·중국 실시간 시세"), .longbridge),
-        ]
-        let refRows: [(String, String, SettingsRoute)] = [
-            (String(localized: "시세 기준"), String(localized: "종목·환율 시세를 어디서 받는지"), .price),
-            (String(localized: "거주 국가"), String(localized: "\(m.residenceName) · 세금 계산만 이 나라를 따라요"), .residence),
-            (String(localized: "세금"), kr ? String(localized: "한국 거주자 기준으로 계산해요") : String(localized: "이 나라 규칙은 준비 중 · 지금은 한국 기준"), .tax),
-        ] + (lbFirst ? brokerRows.reversed() : brokerRows)
-        // 토스 키 줄은 맨 위 오픈 API 카드로 옮겼다 (동기화 코드는 남김)
-        let helpRows: [(String, String, SettingsRoute)] = [
-            (String(localized: "처음 쓰는 법"), String(localized: "목표 칸 · 주간 예보"), .howto),
-            (String(localized: "기기 옮기기"), Sync.shared.isOn ? String(localized: "파일 · 동기화 켜짐") : String(localized: "파일로 새 폰에"), .sync),
-            (String(localized: "구독"), Support.shared.plan.map { String(localized: "\(String(describing: $0.name)) 중 · 고마워요") } ?? (Support.shared.inTrial ? String(localized: "7일 무료 · \(String(describing: Support.shared.trialLeft))일 남음") : String(localized: "월 1,000원 · 연 9,000원")), .support),
-        ]
+        let looks: [String: String] = ["system": String(localized: "기기 설정대로"), "light": String(localized: "밝게"), "dark": String(localized: "어둡게")]
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 if cover { GameHeader(title: String(localized: "설정")) } else { AppHeader(tab: String(localized: "설정")).padding(.horizontal, -16) }
-                if kr { apiCard }
-                group(String(localized: "내 목표"), goalRows)
-                group(String(localized: "알림과 위젯"), oftenRows)
-                head(String(localized: "함께할 인물"))
-                GuidePickRow()
-                head(String(localized: "화면"))
-                Text("밝기 모드").appFont(13, .bold).foregroundStyle(Theme.sub)
-                ChipRow(items: [("system", String(localized: "기기 설정대로")), ("light", String(localized: "밝게")), ("dark", String(localized: "어둡게"))],
-                        selection: Binding(get: { m.appearance }, set: { m.appearance = $0; UserDefaults.standard.set($0, forKey: "appearance") }), fill: true)
-                // 홈 평가액 박스 모양 (홈 박스를 길게 눌러도 고른다)
-                Text("홈 평가액 박스").appFont(13, .bold).foregroundStyle(Theme.sub)
-                ChipRow(items: BoxLook.allCases.map { ($0.rawValue, $0.name) }, selection: $boxLook, fill: true)
-                group(nil, [(String(localized: "앱 아이콘"), AppIconPicker.currentName, .icon)])
-                // 앱 언어는 iOS 설정의 앱 화면에서 바꾼다 (누르면 그 화면이 열린다)
-                Button {
-                    if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
-                } label: {
-                    HStack {
-                        Text("언어 변경").appFont(15, .bold)
-                        Spacer()
-                        Image(systemName: "arrow.up.right").appFont(13).foregroundStyle(Theme.muted)
-                    }
-                    .padding(.horizontal, 16).frame(minHeight: 52).contentShape(Rectangle())
+                apiLine
+                GuidePickRow(compact: true)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    tile("flag", String(localized: "내 목표"),
+                         m.isGoal ? String(localized: "\(String(describing: m.goalToText))까지 \(String(describing: AppModel.wonK(m.gK)))") : String(localized: "아직 목표가 없어요"),
+                         SettingsGroupView.routeLine(m), .goalGroup)
+                    tile("bell", String(localized: "알림과 위젯"),
+                         onN > 0 ? String(localized: "알림 \(String(describing: onN))개 켜짐") : String(localized: "알림 모두 꺼짐"),
+                         String(localized: "위젯 \(String(describing: m.baseWidgets.count + Shelter.friends.count))가지"), .oftenGroup)
+                    tile("iphone", String(localized: "화면"),
+                         looks[m.appearance] ?? looks["system"]!,
+                         BoxLook(rawValue: boxLook)?.name ?? "", .screenGroup)
+                    tile("chart.pie", String(localized: "숫자 기준"),
+                         m.residenceName, String(localized: "시세 · 내 API 키"), .numberGroup)
                 }
-                .buttonStyle(.plain)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
-                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
-                WaveFeedbackToggles()
-                group(String(localized: "숫자를 계산하는 기준"), refRows)
-                if !kr { apiCard }
-                group(String(localized: "도움과 기타"), helpRows)
-                // 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
-                if m.devAll {
-                    Text("시연 상태 (개발자)").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
-                    HStack(spacing: 8) {
-                        demoButton(String(localized: "첫 질문부터")) { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
-                        demoButton(String(localized: "미션 1부터")) { m.resetDemo(.fresh) }
-                        demoButton(String(localized: "인터미션 1주차로")) { m.resetDemo(.week1) }
-                        demoButton(String(localized: "모든 화면 열기")) { m.resetDemo(.all) }
-                    }
-                    group(nil, [(String(localized: "출시 알림 신청 목록"), String(localized: "naeilo.com 앱 받기 신청"), .notifyList)])
-                }
-                Text("시세: \(Market.shared.source) · \(Config.channel.rawValue)").appFont(12).foregroundStyle(Theme.muted)
+                footer
+                if m.devAll && showDemo { demo }
                 Text("버전 0.1 · 서재: 외전 프롤로그~5장 (한글·영문)").appFont(12).foregroundStyle(Theme.muted)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .contentShape(Rectangle())
+                    .onLongPressGesture { if m.devAll { showDemo.toggle() } }
             }
             .screen()
         }
@@ -201,67 +157,158 @@ struct SettingsView: View {
             case .notifyList: NotifyListView()
             case .residence: ResidenceView()
             case .charPreview: WidgetPickView()     // 예전 '인물 위젯 미리보기'는 위젯 화면으로 합쳤다
+            case .goalGroup, .oftenGroup, .screenGroup, .numberGroup: SettingsGroupView(kind: r)
             }
         }
     }
 
-    /// 맨 위 오픈 API 카드: 연결 상태 한 줄 + 내 폰·서버·토스 작은 띠. 누르면 토스증권 오픈 API 화면으로
-    private var apiCard: some View {
-        _ = Market.shared.tossDone      // 토스 받기를 마치면 다시 그린다
-        let on = TossKeys.on
-        return NavigationLink(value: SettingsRoute.toss) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 4) {
-                    Text(on ? String(localized: "내 오픈 API 키로 시세 받는 중") : String(localized: "내 오픈 API 키 연결 안 됨")).appFont(15, .semibold)
-                    if on { Image(systemName: "chevron.right").appFont(12) }
-                }
-                HStack(spacing: 5) {
-                    miniNode("iphone", on); miniLine(on)
-                    miniNode("server.rack", on); miniLine(on)
-                    miniNode("chart.line.uptrend.xyaxis", on)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(on ? String(localized: "이어져 있어요") : String(localized: "키는 이 폰에만 있어요")).appFont(13, .bold)
-                        Text(on ? String(localized: "현재가·일봉·환율만 받아 왔어요") : String(localized: "서버는 지나가기만 해요 · 현재가·일봉·환율만"))
-                            .appFont(11).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
-                    }.padding(.leading, 5)
-                    Spacer(minLength: 0)
-                }
-                .padding(10).background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
-                if !on {
-                    // 다른 버튼(PrimaryButton)과 같은 모양: 청록 바탕 + 흰 글자 (라이트·다크 공통)
-                    Text("연결하기").appFont(16, .bold).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(Theme.teal, in: RoundedRectangle(cornerRadius: 12))
-                }
+    /// 맨 위 조용한 한 줄: 거주 국가에 맞는 내 키(한국 토스, lbFirst 나라 Longbridge, 그 밖 Alpaca).
+    /// 평소엔 배경과 같은 결, 키를 넣었는데 받기가 실패하면 주황으로 눈에 띈다
+    private var apiLine: some View {
+        let kr = m.residence == "KR"
+        let lb = Self.lbFirst.contains(m.residence)
+        _ = kr ? Market.shared.tossDone : lb ? Market.shared.longbridgeDone : Market.shared.alpacaDone      // 받기를 마치면 다시 그린다
+        let on = kr ? TossKeys.on : lb ? LongbridgeKeys.on : AlpacaKeys.on
+        let broken = on && (kr ? TossFeed.lastError : lb ? LongbridgeFeed.lastError : AlpacaFeed.lastError) != nil
+        return NavigationLink(value: kr ? SettingsRoute.toss : lb ? SettingsRoute.longbridge : SettingsRoute.alpaca) {
+            HStack(spacing: 10) {
+                Image(systemName: broken ? "info.circle.fill" : on ? "lock.fill" : "key.fill")
+                    .appFont(14).foregroundStyle(broken ? Theme.orange : on ? Theme.teal : Theme.muted)
+                Text(broken ? String(localized: "내 키로 못 받고 있어요") : on ? String(localized: "내 키로 시세 받는 중") : String(localized: "내 키로 시세 받기"))
+                    .appFont(14, .semibold).lineLimit(1)
+                Spacer(minLength: 4)
+                Text(kr ? String(localized: "현재가·일봉·환율") : String(localized: "미국 종목 현재가")).appFont(12).foregroundStyle(Theme.sub).lineLimit(1)
+                Image(systemName: "chevron.right").appFont(12).foregroundStyle(Theme.muted)
             }
-            .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
+            .padding(.horizontal, 14).frame(minHeight: 48)
+            .background(broken ? Theme.orange.opacity(0.16) : Theme.track, in: RoundedRectangle(cornerRadius: 14))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    private func miniNode(_ icon: String, _ on: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 8).fill(on ? Theme.teal : Color.white.opacity(0.12))
-            .frame(width: 30, height: 30)
-            .overlay { Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(on ? .white : Color(hex: 0xC9D0D6)) }
-            .accessibilityHidden(true)
+    private func tile(_ icon: String, _ title: String, _ line1: String, _ line2: String, _ r: SettingsRoute) -> some View {
+        NavigationLink(value: r) {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: icon).appFont(20).foregroundStyle(Theme.teal).accessibilityHidden(true)
+                Text(title).appFont(16, .bold)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(line1).lineLimit(1)
+                    Text(line2).lineLimit(1)
+                }
+                .appFont(12).foregroundStyle(Theme.sub)
+            }
+            .padding(14).frame(maxWidth: .infinity, minHeight: 116, alignment: .topLeading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
-    /// 작은 띠의 줄: 끊김은 회색 점선, 이어짐은 청록 실선
-    private func miniLine(_ on: Bool) -> some View {
-        Path { p in p.move(to: CGPoint(x: 0, y: 1)); p.addLine(to: CGPoint(x: 12, y: 1)) }
-            .stroke(on ? Theme.teal : Theme.muted, style: StrokeStyle(lineWidth: 2, dash: on ? [] : [3, 2]))
-            .frame(width: 12, height: 2)
-            .accessibilityHidden(true)
+    /// 자주 안 여는 것: 작은 글 링크 한 줄
+    private var footer: some View {
+        HStack(spacing: 18) {
+            NavigationLink(value: SettingsRoute.howto) { Text("처음 쓰는 법") }
+            NavigationLink(value: SettingsRoute.sync) { Text("기기 옮기기") }
+            NavigationLink(value: SettingsRoute.support) { Text("구독") }
+            // 앱 언어는 iOS 설정의 앱 화면에서 바꾼다 (누르면 그 화면이 열린다)
+            Button("언어") { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
+        }
+        .buttonStyle(.plain).appFont(13).foregroundStyle(Theme.sub)
+        .frame(maxWidth: .infinity, minHeight: 44).padding(.top, 8)
     }
 
-    private func head(_ t: String) -> some View {
-        Text(t).appFont(13, .bold).foregroundStyle(Theme.teal).padding(.top, 8)
+    // 시연 상태로 되돌리기는 내 종목을 샘플로 덮어쓴다: 개발자 기기(테스트 빌드)에서만
+    @ViewBuilder private var demo: some View {
+        Text("시연 상태 (개발자)").appFont(13, .bold).foregroundStyle(Theme.sub).padding(.top, 8)
+        HStack(spacing: 8) {
+            demoButton(String(localized: "첫 질문부터")) { m.onboarded = false; UserDefaults.standard.set(false, forKey: "onboarded") }
+            demoButton(String(localized: "미션 1부터")) { m.resetDemo(.fresh) }
+            demoButton(String(localized: "인터미션 1주차로")) { m.resetDemo(.week1) }
+            demoButton(String(localized: "모든 화면 열기")) { m.resetDemo(.all) }
+        }
+        SettingsRows(title: nil, rows: [(String(localized: "출시 알림 신청 목록"), String(localized: "naeilo.com 앱 받기 신청"), .notifyList)])
+        Text("시세: \(Market.shared.source) · \(Config.channel.rawValue)").appFont(12).foregroundStyle(Theme.muted)
     }
 
-    @ViewBuilder private func group(_ title: String?, _ rows: [(String, String, SettingsRoute)]) -> some View {
-        if let title { head(title) }
+    private func demoButton(_ t: String, _ a: @escaping () -> Void) -> some View {
+        Button(action: a) {
+            Text(t).appFont(14, .semibold).frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(Theme.ink)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+        }.buttonStyle(.plain)
+    }
+}
+
+/// 타일을 누르면 열리는 묶음 화면
+struct SettingsGroupView: View {
+    @Environment(AppModel.self) private var m
+    let kind: SettingsRoute
+    @AppStorage(BoxLook.key) private var boxLook = BoxLook.jump.rawValue
+
+    static func routeLine(_ m: AppModel) -> String {
+        m.route == .recover ? String(localized: "본전부터 되찾는 중이에요") : m.route == .plus ? String(localized: "목표를 향해 가는 중이에요") : String(localized: "아직 첫 단계예요")
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                switch kind {
+                case .goalGroup:
+                    Text("내 목표").appFont(22, .bold)
+                    SettingsRows(title: nil, rows: [
+                        (String(localized: "목표 고치기"), m.isGoal ? String(localized: "\(String(describing: m.goalToText))까지 \(String(describing: AppModel.wonK(m.gK)))") : String(localized: "아직 목표가 없어요"), .goal),
+                        (String(localized: "루트 바꾸기"), Self.routeLine(m), .route),
+                    ])
+                case .oftenGroup:
+                    let onN = m.alerts.values.filter { $0 }.count
+                    Text("알림과 위젯").appFont(22, .bold)
+                    SettingsRows(title: nil, rows: [
+                        (String(localized: "알림"), onN > 0 ? String(localized: "\(String(describing: onN))개 켜짐") : String(localized: "모두 꺼짐"), .alerts),
+                        (String(localized: "홈 화면 위젯"), String(localized: "\(String(describing: m.baseWidgets.count + Shelter.friends.count))가지 · 미리보기"), .widgets),
+                    ])
+                case .screenGroup:
+                    Text("화면").appFont(22, .bold)
+                    Text("밝기 모드").appFont(13, .bold).foregroundStyle(Theme.sub)
+                    ChipRow(items: [("system", String(localized: "기기 설정대로")), ("light", String(localized: "밝게")), ("dark", String(localized: "어둡게"))],
+                            selection: Binding(get: { m.appearance }, set: { m.appearance = $0; UserDefaults.standard.set($0, forKey: "appearance") }), fill: true)
+                    // 홈 평가액 박스 모양 (홈 박스를 길게 눌러도 고른다)
+                    Text("홈 평가액 박스").appFont(13, .bold).foregroundStyle(Theme.sub)
+                    ChipRow(items: BoxLook.allCases.map { ($0.rawValue, $0.name) }, selection: $boxLook, fill: true)
+                    SettingsRows(title: nil, rows: [(String(localized: "앱 아이콘"), AppIconPicker.currentName, .icon)])
+                    WaveFeedbackToggles()
+                case .numberGroup:
+                    let kr = m.residence == "KR"
+                    // 증권사는 나라와 상관없이 누구나 연결: 거주 국가에 맞는 것만 위로 올린다
+                    let toss: (String, String, SettingsRoute) = ("Toss", TossKeys.on ? String(localized: "받는 중") : String(localized: "넣지 않음"), .toss)
+                    let alpaca: (String, String, SettingsRoute) = ("Alpaca", AlpacaKeys.on ? String(localized: "받는 중") : String(localized: "넣지 않음 · 미국 종목 실시간 시세"), .alpaca)
+                    let lb: (String, String, SettingsRoute) = ("Longbridge", LongbridgeKeys.on ? String(localized: "받는 중") : String(localized: "넣지 않음 · 미국·홍콩·중국 실시간 시세"), .longbridge)
+                    Text("숫자 기준").appFont(22, .bold)
+                    SettingsRows(title: String(localized: "나라와 세금"), rows: [
+                        (String(localized: "거주 국가"), String(localized: "\(m.residenceName) · 세금 계산만 이 나라를 따라요"), .residence),
+                        (String(localized: "세금"), kr ? String(localized: "한국 거주자 기준으로 계산해요") : String(localized: "이 나라 규칙은 준비 중 · 지금은 한국 기준"), .tax),
+                    ])
+                    SettingsRows(title: String(localized: "시세"), rows: [(String(localized: "시세 기준"), String(localized: "종목·환율 시세를 어디서 받는지"), .price)])
+                    SettingsRows(title: String(localized: "내 API 키"), rows: kr ? [toss, alpaca, lb] : SettingsView.lbFirst.contains(m.residence) ? [lb, alpaca, toss] : [alpaca, lb, toss])
+                default:
+                    EmptyView()
+                }
+            }
+            .padding(16)
+        }
+        .background(Theme.bg)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// 제목 + 누르면 넘어가는 줄 묶음 (설정 화면들이 같이 쓴다)
+struct SettingsRows: View {
+    let title: String?
+    let rows: [(String, String, SettingsRoute)]
+
+    var body: some View {
+        if let title { Text(title).appFont(13, .bold).foregroundStyle(Theme.teal).padding(.top, 8) }
         VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.offset) { i, r in
                 if i > 0 { Divider().overlay(Theme.line) }
@@ -280,14 +327,6 @@ struct SettingsView: View {
         }
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
-    }
-
-    private func demoButton(_ t: String, _ a: @escaping () -> Void) -> some View {
-        Button(action: a) {
-            Text(t).appFont(14, .semibold).frame(maxWidth: .infinity, minHeight: 44)
-                .foregroundStyle(Theme.ink)
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-        }.buttonStyle(.plain)
     }
 }
 
@@ -308,7 +347,7 @@ struct PriceBasisView: View {
                 .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
                 Card {
                     row(String(localized: "받는 순서"), String(localized: "내 토스 키 → 내 Alpaca·Longbridge 키 → naeilo 사이트. 앞에서 받은 값을 먼저 써요"))
-                    row(String(localized: "미국 종목"), mk.toss != nil ? String(localized: "토스 지금 가격") : mk.alpaca != nil ? String(localized: "Alpaca(IEX) 지금 가격") : mk.longbridge != nil ? String(localized: "Longbridge 지금 가격") : String(localized: "사이트가 평일 30분마다 모은 가격"))
+                    row(String(localized: "미국 종목"), mk.toss != nil ? String(localized: "토스 지금 가격") : mk.alpaca != nil ? String(localized: "Alpaca 지금 가격") : mk.longbridge != nil ? String(localized: "Longbridge 지금 가격") : String(localized: "사이트가 평일 30분마다 모은 가격"))
                     row(String(localized: "한국 종목"), mk.toss != nil ? String(localized: "토스 지금 가격") : String(localized: "사이트가 모은 가격. 미국 지수를 따르는 국내 ETF는 그 미국 ETF × 원/달러로 추정해요"))
                     row(String(localized: "장 마감 뒤"), String(localized: "미국 장이 끝나면 정규장 종가로 세요 (토스 총자산과 같은 기준)"))
                     row(String(localized: "원/달러"), String(localized: "\(String(describing: Int(fx.last.rounded()).formatted()))원 · 오늘 \(String(describing: AppModel.sgn(fx.change)))"))
@@ -361,7 +400,7 @@ struct TossKeyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("오픈 API").appFont(22, .bold)
+                Text("내 Toss API 키").appFont(22, .bold)
                 TossLinkMap(on: on)
                 if on { onCard } else { steps }
             }
@@ -473,7 +512,8 @@ struct AlpacaKeyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("내 Alpaca 키").appFont(22, .bold)
+                Text("내 Alpaca API 키").appFont(22, .bold)
+                TossLinkMap(on: on, server: false, broker: "Alpaca", what: String(localized: "미국 종목의 현재가를 받아 와요."))
                 Card {
                     if on {
                         Text("내 키로 받는 중").appFont(15, .bold)
@@ -557,7 +597,8 @@ struct LongbridgeKeyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("내 Longbridge 키").appFont(22, .bold)
+                Text("내 Longbridge API 키").appFont(22, .bold)
+                TossLinkMap(on: on, server: false, broker: "Longbridge", what: String(localized: "미국 종목의 현재가를 받아 와요."))
                 Card {
                     if on {
                         Text("내 키로 받는 중").appFont(15, .bold)
@@ -616,27 +657,29 @@ struct LongbridgeKeyView: View {
 
 /// 오픈 API 맨 위 그림: 내 폰 · naeilo 서버 · 토스 시세. 키를 넣기 전에는 끊겨 있고, 넣으면 이어진다
 /// (키는 이 폰 키체인에만 두고, 중계 서버는 저장·기록 없이 넘기기만 한다. docs/toss-relay.md)
+/// 내 키 화면 맨 위 그림: 내 폰 → (토스만) naeilo 서버 → 증권사. 안심은 말보다 그림으로 보인다
 struct TossLinkMap: View {
     let on: Bool
+    var server = true                                   // Alpaca·Longbridge 는 폰에서 바로 받는다
+    var broker = String(localized: "Toss증권")
+    var what = String(localized: "내 종목의 현재가·일봉·환율을 받아 와요.")
 
     var body: some View {
         Card {
             HStack(alignment: .top, spacing: 0) {
-                node("iphone", String(localized: "내 폰"), String(localized: "열쇠는 나만"), lock: true)
+                node("iphone", String(localized: "내 폰"), String(localized: "키가 있는 곳"), lock: true)
                 TossLinkLine(on: on)
-                node("server.rack", String(localized: "naeilo 서버"), String(localized: "통로만 해요"), lock: false)
-                TossLinkLine(on: on)
-                node("chart.line.uptrend.xyaxis", String(localized: "증권사 시세"), " ", lock: false)
+                if server {
+                    node("server.rack", String(localized: "naeilo 서버"), String(localized: "이어 주는 곳"), lock: false)
+                    TossLinkLine(on: on)
+                }
+                node("chart.line.uptrend.xyaxis", broker, String(localized: "시세"), lock: false)
             }
             Text(on ? String(localized: "이어졌어요") : String(localized: "키를 넣으면 이어져요")).appFont(13, .semibold)
                 .foregroundStyle(on ? Theme.teal : Theme.muted).frame(maxWidth: .infinity)
-            Text(on ? String(localized: "지금 이어져 있어요.") : String(localized: "어디에도 남지 않아요.")).appFont(17, .heavy).padding(.top, 4)
-            Text(on ? String(localized: "그만두려면 아래 키 지우기를 누르면 돼요.") : String(localized: "키는 암호화되어 지나가기만 해요."))
-                .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Image(systemName: on ? "chart.line.uptrend.xyaxis" : "key.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.teal)
-                Text(on ? String(localized: "현재가·일봉·환율 정보만 받아 왔어요.") : String(localized: "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요."))
-                    .appFont(13).fixedSize(horizontal: false, vertical: true)
+                Text(what).appFont(13).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 12).padding(.vertical, 10).background(Theme.track, in: RoundedRectangle(cornerRadius: 12))

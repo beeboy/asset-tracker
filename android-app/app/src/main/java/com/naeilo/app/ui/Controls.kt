@@ -176,6 +176,7 @@ val SF: Map<String, Int> = mapOf(
     "questionmark.circle" to R.drawable.ms_help, "hand.tap" to R.drawable.ms_touch_app, "plus.square" to R.drawable.ms_add_box, "magnifyingglass" to R.drawable.ms_search, "square.grid.2x2" to R.drawable.ms_grid_view, "person.crop.square" to R.drawable.ms_account_box,
     "pause.fill" to R.drawable.ms_pause_fill, "trophy" to R.drawable.ms_trophy, "star" to R.drawable.ms_star, "heart" to R.drawable.ms_favorite,
     "heart.fill" to R.drawable.ms_favorite_fill, "cloud.fill" to R.drawable.ms_cloud_fill, "circle.fill" to R.drawable.ms_circle_fill,
+    "scope" to R.drawable.ms_my_location,
 )
 
 /** Image(systemName:) 자리. size = 글자 크기(pt), 기호 칸은 글자 크기의 1.25배. scaled = 큰 글자 설정을 따를지 (.font(.system(size:)) 도 따른다) */

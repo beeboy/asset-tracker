@@ -49,6 +49,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.naeilo.app.core.tr
+import com.naeilo.app.ui.Sym
+import com.naeilo.app.ui.plainClickable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
@@ -201,7 +205,16 @@ private fun HomeSheets(model: AppModel) {
     // ios: App.swift:188,189 (닫으면 settingsPath 비우기)
     Sheet(model.settingsOpen, onDismiss = closeSettings) {
         CompositionLocalProvider(LocalNavBack provides NavBack(null, closeSettings)) {
-            NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model, cover = true) }) { settingsPage(model, it) }
+            Box(Modifier.fillMaxSize()) {
+                NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model, cover = true) }) { settingsPage(model, it) }
+                // 깊이 들어간 화면에도 오른쪽 위 X (첫 화면은 GameHeader 에 X가 있다)
+                // ios: App.swift:190
+                if (model.settingsPath.isNotEmpty()) {
+                    Box(Modifier.align(Alignment.TopEnd).padding(end = 8.dp, top = 2.dp).size(44.dp).plainClickable(closeSettings).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
+                        Sym("xmark", 16f, Theme.ink, scaled = false)
+                    }
+                }
+            }
         }
     }
     // ios: App.swift:191,192

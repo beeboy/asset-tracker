@@ -2647,6 +2647,9 @@
         }
       }
     },
+    "%@ 예시 값" : {
+
+    },
     "%@ 움직이면" : {
       "localizations" : {
         "en" : {
@@ -2761,6 +2764,7 @@
       }
     },
     "%@ 중 · 고마워요" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6050,6 +6054,7 @@
       }
     },
     "7일 무료 · %@일 남음" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6842,6 +6847,16 @@
         }
       }
     },
+    "Alpaca 지금 가격" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alpaca live price"
+          }
+        }
+      }
+    },
     "Alpaca 키를 이 폰에서 지울까요?" : {
       "localizations" : {
         "en" : {
@@ -6864,6 +6879,7 @@
       }
     },
     "Alpaca(IEX) 지금 가격" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7136,6 +7152,7 @@
       }
     },
     "naeilo에 추가한 주식의 현재가·일봉·환율 정보만 받아올 거예요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7244,6 +7261,16 @@
     },
     "See Tomorrow, Today." : {
 
+    },
+    "Toss증권" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toss Securities"
+          }
+        }
+      }
     },
     "Yahoo 중계 (테스트)" : {
       "localizations" : {
@@ -9934,6 +9961,7 @@
       }
     },
     "그만두려면 아래 키 지우기를 누르면 돼요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11372,6 +11400,16 @@
         }
       }
     },
+    "나라와 세금" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Country and tax"
+          }
+        }
+      }
+    },
     "나만의 캐릭터를 만들어 홈과 위젯에서 함께하세요" : {
       "localizations" : {
         "en" : {
@@ -11696,7 +11734,18 @@
         }
       }
     },
+    "내 Alpaca API 키" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My Alpaca API key"
+          }
+        }
+      }
+    },
     "내 Alpaca 키" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11706,12 +11755,43 @@
         }
       }
     },
+    "내 API 키" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My API keys"
+          }
+        }
+      }
+    },
+    "내 Longbridge API 키" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My Longbridge API key"
+          }
+        }
+      }
+    },
     "내 Longbridge 키" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "My Longbridge key"
+          }
+        }
+      }
+    },
+    "내 Toss API 키" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My Toss API key"
           }
         }
       }
@@ -11947,6 +12027,7 @@
       }
     },
     "내 오픈 API 키 연결 안 됨" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11957,6 +12038,7 @@
       }
     },
     "내 오픈 API 키로 시세 받는 중" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -12116,6 +12198,16 @@
         }
       }
     },
+    "내 종목의 현재가·일봉·환율을 받아 와요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fetches price, daily bars and FX for my stocks."
+          }
+        }
+      }
+    },
     "내 캐릭터" : {
       "localizations" : {
         "en" : {
@@ -12172,12 +12264,42 @@
         }
       }
     },
+    "내 키로 못 받고 있어요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not fetching with my key"
+          }
+        }
+      }
+    },
     "내 키로 받는 중" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Using my key"
+          }
+        }
+      }
+    },
+    "내 키로 시세 받기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get quotes with my key"
+          }
+        }
+      }
+    },
+    "내 키로 시세 받는 중" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Getting quotes with my key"
           }
         }
       }
@@ -12840,6 +12962,16 @@
         }
       }
     },
+    "넣지 않음" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not added"
+          }
+        }
+      }
+    },
     "넣지 않음 · 미국 종목 실시간 시세" : {
       "localizations" : {
         "en" : {
@@ -13147,6 +13279,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tap to start"
+          }
+        }
+      }
+    },
+    "눌러서 함께할 인물 바꾸기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to change companion"
           }
         }
       }
@@ -14731,6 +14873,7 @@
       }
     },
     "도움과 기타" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -16352,6 +16495,16 @@
         }
       }
     },
+    "모은 돈" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved"
+          }
+        }
+      }
+    },
     "목" : {
       "localizations" : {
         "en" : {
@@ -16428,16 +16581,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saved (×10k KRW)"
-          }
-        }
-      }
-    },
-    "모은 돈" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saved"
           }
         }
       }
@@ -16864,9 +17007,6 @@
           }
         }
       }
-    },
-    "목표 칸 · 주간 예보" : {
-
     },
     "목표 퀴즈" : {
       "localizations" : {
@@ -17470,6 +17610,38 @@
         }
       }
     },
+    "미국 종목 현재가" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "US stock prices"
+          }
+        }
+      }
+    },
+    "미국 종목 현재가만" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "US stock prices only"
+          }
+        }
+      }
+    },
+    "미국 종목 현재가만 받아 왔어요" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only US stock prices were fetched"
+          }
+        }
+      }
+    },
     "미국 종목만 Alpaca에서 지금 가격을 받아요. 키는 이 폰에만 둬요." : {
       "localizations" : {
         "en" : {
@@ -17481,6 +17653,7 @@
       }
     },
     "미국 종목을 Alpaca(IEX) 시세로 받는 중" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -17491,11 +17664,22 @@
       }
     },
     "미국 종목을 Longbridge 시세로 받는 중" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "US stocks use Longbridge quotes"
+          }
+        }
+      }
+    },
+    "미국 종목의 현재가를 받아 와요." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fetches prices for US stocks."
           }
         }
       }
@@ -18263,6 +18447,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Order of sources"
+          }
+        }
+      }
+    },
+    "받는 중" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fetching"
           }
         }
       }
@@ -21005,6 +21199,7 @@
       }
     },
     "서버는 지나가기만 해요 · 현재가·일봉·환율만" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -22074,6 +22269,16 @@
         }
       }
     },
+    "숫자 기준" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Numbers"
+          }
+        }
+      }
+    },
     "숫자가 들어오면 강이 차요" : {
       "localizations" : {
         "en" : {
@@ -22131,6 +22336,7 @@
       }
     },
     "숫자를 계산하는 기준" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -22432,6 +22638,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Salon in the simulation. \"I'll cut away every face you didn't choose.\""
+          }
+        }
+      }
+    },
+    "시세" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quotes"
+          }
+        }
+      }
+    },
+    "시세 · 내 API 키" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quotes · My API keys"
           }
         }
       }
@@ -23791,6 +24017,16 @@
         }
       }
     },
+    "알림 %@개 켜짐" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ alerts on"
+          }
+        }
+      }
+    },
     "알림 꺼짐" : {
       "localizations" : {
         "en" : {
@@ -23807,6 +24043,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Alerts off · allow in Settings > Notifications > naeilo, then retry"
+          }
+        }
+      }
+    },
+    "알림 모두 꺼짐" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All alerts off"
           }
         }
       }
@@ -24477,6 +24723,7 @@
       }
     },
     "어디에도 남지 않아요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -24682,7 +24929,18 @@
         }
       }
     },
+    "언어" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
+          }
+        }
+      }
+    },
     "언어 변경" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -25219,6 +25477,7 @@
       }
     },
     "열쇠는 나만" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -26111,6 +26370,7 @@
       }
     },
     "오픈 API" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -27083,6 +27343,7 @@
       }
     },
     "월 1,000원 · 연 9,000원" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -27231,6 +27492,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Widgets"
+          }
+        }
+      }
+    },
+    "위젯 %@가지" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ widgets"
           }
         }
       }
@@ -28166,6 +28437,16 @@
         }
       }
     },
+    "이어 주는 곳" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relays"
+          }
+        }
+      }
+    },
     "이어서 읽기" : {
       "localizations" : {
         "en" : {
@@ -28177,6 +28458,7 @@
       }
     },
     "이어져 있어요" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -31052,6 +31334,7 @@
       }
     },
     "증권사 시세" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -31462,6 +31745,7 @@
       }
     },
     "지금 이어져 있어요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -33771,7 +34055,18 @@
         }
       }
     },
+    "키가 있는 곳" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Holds the key"
+          }
+        }
+      }
+    },
     "키는 암호화되어 지나가기만 해요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -33782,6 +34077,7 @@
       }
     },
     "키는 이 폰에만 있어요" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -33810,6 +34106,9 @@
           }
         }
       }
+    },
+    "키를 연결하면 시세가 보여요" : {
+
     },
     "타러 가기" : {
       "localizations" : {
@@ -33972,6 +34271,7 @@
       }
     },
     "통로만 해요" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -34148,6 +34448,7 @@
       }
     },
     "파일 · 동기화 켜짐" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -34168,6 +34469,7 @@
       }
     },
     "파일로 새 폰에" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -35948,6 +36250,7 @@
       }
     },
     "함께할 인물" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -36308,7 +36611,18 @@
         }
       }
     },
+    "현재가·일봉·환율" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Price · daily · FX"
+          }
+        }
+      }
+    },
     "현재가·일봉·환율 정보만 받아 왔어요." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -36319,6 +36633,7 @@
       }
     },
     "현재가·일봉·환율만 받아 왔어요" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

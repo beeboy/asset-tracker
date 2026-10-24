@@ -187,6 +187,17 @@ private struct HomeSheets: ViewModifier {
         content
             .sheet(isPresented: $model.settingsOpen, onDismiss: { model.settingsPath = [] }) {
                 NavigationStack(path: $model.settingsPath) { SettingsView(cover: true) }.environment(model)
+                    // 깊이 들어간 화면에도 오른쪽 위 X (첫 화면은 GameHeader 에 X가 있다. 분석 팝업과 같은 자리)
+                    .overlay(alignment: .topTrailing) {
+                        if !model.settingsPath.isEmpty {
+                            Button { model.settingsOpen = false } label: {
+                                Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.ink)
+                                    .frame(width: 44, height: 44).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain).accessibilityLabel("닫기")
+                            .padding(.trailing, 8).padding(.top, 2)
+                        }
+                    }
             }
             .sheet(isPresented: $model.widgetsOpen) {
                 NavigationStack { WidgetPickView(cover: true) }.environment(model)
