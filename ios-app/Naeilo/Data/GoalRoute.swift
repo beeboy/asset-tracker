@@ -52,14 +52,16 @@ extension AppModel {
     var isGoal: Bool { route != .recover }
     /// 시작 전 루트에 내가 넣은 종목(샘플 아님)이 있으면 모아 둔 투자금 대신 그 평가액으로 본다
     var noviceOwn: Bool { route == .novice && !isSample && total > 0 }
+    /// 내 종목이 없는 시작 전 (샘플 포함): 이때만 지수 구성으로 적립 예시를 그린다. 계산·버튼·그래프는 루트가 아니라 이 값으로 가른다 (루트는 기준선·시작 미션만)
+    var bare: Bool { route == .novice && !noviceOwn }
     /// 출발 금액 (만원): 플러스는 지금 평가액, 시작 전은 모아 둔 투자금 (넣은 종목이 있으면 평가액)
-    var goalStart: Double { route == .plus || noviceOwn ? total / 1e4 : gA }
+    var goalStart: Double { isGoal && !bare ? total / 1e4 : gA }
     /// 1000칸·주간 예보에서 쓰는 지금 금액 (원)
     /// 분석 화면의 기준선 (원): 회복 = 들어간 돈(본전), 목표 = 목표 금액
     var keyValue: Double { isGoal ? gK * 1e4 : cost }
     var keyName: String { isGoal ? String(localized: "목표") : String(localized: "본전") }
     /// 시작 전: 모아 둔 돈 + 인터미션에 넣은 돈. 목표 루트는 웹 총자산처럼 현금도 더한다
-    var trackValue: Double { route == .novice ? goalSaved * 1e4 : total + cashKrw }
+    var trackValue: Double { bare ? goalSaved * 1e4 : total + cashKrw }
 
     // 목표 시작일·목표일: 사이트(goal.start_date·goal.date)와 같은 값을 쓴다 (기기 동기화로 양쪽이 맞춘다)
     var goalFromDate: Date { gFrom.flatMap(Day.date) ?? goalStartAt.map { Date(timeIntervalSince1970: $0) } ?? Date() }
@@ -100,7 +102,7 @@ extension AppModel {
               comp: [:], basket: nil, own: true)
     }
     /// 내 길의 '지금 구성': 시작 전 루트는 지수 중심 (neededMonthly 와 같다)
-    var nowMix: GoalMix { route == .novice ? Self.mixes[0] : mineMix }
+    var nowMix: GoalMix { bare ? Self.mixes[0] : mineMix }
     /// 처음 닿는 때를 셀 긴 기간 (햇수): 목표일 뒤에 닿는 경우도 보이게
     var etaYears: Int { max(10, gY * 2) }
     /// 목표 확률을 쉬운 말로
@@ -118,7 +120,7 @@ extension AppModel {
         let c = Calendar.current.dateComponents([.year, .month], from: d)
         return "\(c.year ?? 0).\(c.month ?? 0)"
     }
-    var goalMixes: [GoalMix] { route == .novice ? Self.mixes : [mineMix] + Self.mixes }
+    var goalMixes: [GoalMix] { bare ? Self.mixes : [mineMix] + Self.mixes }
     var selectedMix: GoalMix { goalMixes.first { $0.id == gMix } ?? goalMixes[0] }
 
     /// 구성의 종목 (사이트 티커·통화·비중). 내 구성 = 지금 종목. 시작 전은 묶음만, 플러스는 비중 1위 종목 10%까지 + 묶음 (shift 와 같은 비중)
@@ -126,7 +128,7 @@ extension AppModel {
         if mx.own { return mineParts }
         var out: [Part] = []
         var rest = 1.0
-        if route != .novice, let f = focusRow {
+        if !bare, let f = focusRow {
             let tT = min(focusWeight, 0.10)
             out.append((key: SiteStats.mcKey(f.id), ccy: f.sym.currency == .usd ? "USD" : "KRW", w: tT))
             rest = 1 - tT
@@ -209,7 +211,7 @@ extension AppModel {
 
     /// 목표에 맞추려면 매달 넣을 돈 (만원): 목표일(years 를 주면 그 햇수 뒤)에 목표 이상인 경우가 절반이 되는 적립 (웹 req50 과 같은 셈)
     func neededMonthly(k: Double? = nil, years: Int? = nil) -> Double {
-        let mx = route == .novice ? Self.mixes[0] : mineMix, K = k ?? gK, yrs = years ?? gY
+        let mx = bare ? Self.mixes[0] : mineMix, K = k ?? gK, yrs = years ?? gY
         let parts = mixParts(mx)
         if let ps = paths(parts, horizon: years == nil ? goalHorizon : longHorizon(yrs)) {
             return ps.req50(goalStart * 1e4, goal: K * 1e4, kEnd: years == nil ? ps.M - 1 : ps.k(months: 12 * yrs)) / 1e4
@@ -221,7 +223,7 @@ extension AppModel {
     /// 지금 start(만원)에서 매달 monthly(만원)씩 넣을 때 보통의 경우 목표에 처음 닿는 개월
     func monthsTo(from start: Double, monthly: Double) -> Double {
         if start >= gK { return 0 }
-        let parts = mixParts(route == .novice ? Self.mixes[0] : mineMix)
+        let parts = mixParts(bare ? Self.mixes[0] : mineMix)
         if let ps = paths(parts, horizon: longHorizon(gY)) {
             let v = ps.values(start * 1e4, monthly: monthly * 1e4), K = gK * 1e4
             return ps.medianMonths(ps.firstHits(v, upTo: ps.M - 1) { _ in K })
@@ -262,7 +264,7 @@ extension AppModel {
     /// = 그 햇수 뒤 평가액의 가운데 값 (전망과 같은 경로). 경로 계산 전에는 닫힌 식으로 확률 50% 를 찾는다
     func autoGoal(years: Int, monthly: Double? = nil, from start: Double? = nil) -> Double { autoGoalX(years: years, monthly: monthly, from: start).0 }
     func autoGoalX(years: Int, monthly: Double? = nil, from start: Double? = nil) -> (Double, Bool) {
-        let A = start ?? goalStart, mo = max(0, monthly ?? gM), mx = route == .novice ? Self.mixes[0] : mineMix
+        let A = start ?? goalStart, mo = max(0, monthly ?? gM), mx = bare ? Self.mixes[0] : mineMix
         guard A + mo > 0 else { return (1000, true) }
         let parts = mixParts(mx)
         if let ps = paths(parts, horizon: longHorizon(years)) {
@@ -311,7 +313,7 @@ extension AppModel {
             k <= 1000 ? String(localized: "첫 목표 · 적립 습관") : k <= 10000 ? String(localized: "연 7%면 해마다 +\(String(describing: Self.wonK(k * 0.07).replacingOccurrences(of: "원", with: "")))") : String(localized: "연 4% 꺼내면 월 \(String(describing: Self.wonK(k * 0.04 / 12).replacingOccurrences(of: "원", with: "")))")
         }
         // 플러스: 기간마다 '매달 넣는 돈으로 닿을 확률 50% 근처' 금액 (배수 프리셋 대신, 2026-10-11 결정)
-        if route != .novice {
+        if !bare {
             return [1, 3, 5, 10].map { y in
                 let k = autoGoal(years: y)
                 return GoalPreset(k: k, y: y, name: Self.wonK(k).replacingOccurrences(of: "원", with: ""),
@@ -367,7 +369,7 @@ extension AppModel {
                          note: (hot ? String(localized: "\(String(describing: fn)) 업종(\(String(describing: ind?.ko ?? ""))) 과열 · ") : "") + String(localized: "바꿀 비중은 다른 구성에서"), weights: ["T": w, "I": 1 - w])
         }
         let keys = ["T", "I", "G", "B", "C"]
-        if route == .novice {
+        if bare {
             return Shift(rows: keys.compactMap { k in mx.comp[k].map { (label[k]!, String(localized: "적립의"), AppModel.pct($0), true) } },
                          line: mx.basket.map { b in "\(b.name): " + b.industries.prefix(3).map(\.ko).joined(separator: " · ") + String(localized: " 외 \(String(describing: b.industries.count - 3))개") } ?? "",
                          weights: mx.comp)

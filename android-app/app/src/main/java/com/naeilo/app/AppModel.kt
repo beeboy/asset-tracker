@@ -1,5 +1,6 @@
 package com.naeilo.app
 
+import com.naeilo.app.core.calc.bare
 import com.naeilo.app.core.cformat
 import com.naeilo.app.data.Support
 import com.naeilo.app.data.Story
@@ -282,13 +283,13 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     val total: Double get() = rows.fold(0.0) { a, r -> a + r.value }   // ios: Data/AppModel.swift:283
     /** 사이트에 넣은 현금 (원화 + 달러 × 매매기준율, 웹 cashKrw 와 같다). 앱에는 입력 칸이 없고 동기화로 받은 값만. 샘플·회복 루트는 0 */
     val cashKrw: Double get() {   // ios: Data/AppModel.swift:285
-        if (!isGoal || route == Route.novice || isSample) return 0.0   // ios: Data/AppModel.swift:286
+        if (!isGoal || bare || isSample) return 0.0   // ios: Data/AppModel.swift:286
         val c = Sync.shared.siteCash   // ios: Data/AppModel.swift:287
         return c.krw + c.usd * Market.shared.valFx   // ios: Data/AppModel.swift:288
     }
     /** 국내 주식 합계 (날짜별 기록의 오늘 금액, 웹 krNow 와 같다). 샘플·시작 전 루트는 0. 전망은 다른 종목처럼 EWY × 원/달러 움직임으로 */
     val krSum: Double get() {   // ios: Data/AppModel.swift:291
-        if (route == Route.novice || isSample || !holdings.any { it.symbol == KoreaEstimate.sumId }) return 0.0   // ios: Data/AppModel.swift:292
+        if (bare || isSample || !holdings.any { it.symbol == KoreaEstimate.sumId }) return 0.0   // ios: Data/AppModel.swift:292
         return CustomSymbols.shared.krNow   // ios: Data/AppModel.swift:293
     }
     val cost: Double get() = rows.fold(0.0) { a, r -> a + r.cost }   // ios: Data/AppModel.swift:295
@@ -481,8 +482,8 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         val tot = todayMove   // ios: Data/AppModel.swift:478
         val mv = movers.take(2).joinToString(" · ") { "${it.sym.short} ${sgn2(it.sym.quote.change)}" }   // ios: Data/AppModel.swift:479
         val head = if (rows.isEmpty()) "" else "**${sgn(tot)}**" + (if (mv.isEmpty()) "" else " · $mv") + "\n"     // ios: Data/AppModel.swift:480 오늘 움직임은 진하게 (마크다운)
-        if (route == Route.novice) {   // ios: Data/AppModel.swift:481
-            return head + (if (noviceOwn) "평가액은" else "모은 돈은") + " 목표의 ${pct(goalSaved / max(1.0, gK))}예요. 다음 적립일에 ${wonK(gM)}이 더해져요."   // ios: Data/AppModel.swift:482
+        if (bare) {   // ios: Data/AppModel.swift:481
+            return head + "모은 돈은" + " 목표의 ${pct(goalSaved / max(1.0, gK))}예요. 다음 적립일에 ${wonK(gM)}이 더해져요."   // ios: Data/AppModel.swift:482
         }
         if (total <= 0) return "아직 넣은 종목이 없어요. 종목 탭에서 수량을 넣으면 내일부터 내 숫자를 가져올게요."   // ios: Data/AppModel.swift:484
         val vY = total / (1 + tot)   // ios: Data/AppModel.swift:485
@@ -680,7 +681,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     /** 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 null (닫힌 식만) */
     val forecastJob: ForecastEngine.Job? get() {   // ios: Data/AppModel.swift:682
         val rs = rows.filter { !Market.shared.needsKey(it.sym) }; val today = Day.today; val H = forecastHorizon   // ios: Data/AppModel.swift:685 키 시세 없는 종목은 전망에서도 뺀다
-        val inp = mcInputs(true); if (route == Route.novice || rs.isEmpty() || H <= today || inp == null) return null   // ios: Data/AppModel.swift:684 full
+        val inp = mcInputs(true); if (bare || rs.isEmpty() || H <= today || inp == null) return null   // ios: Data/AppModel.swift:684 full
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
         val px = rs.map { r ->   // ios: Data/AppModel.swift:688
@@ -734,9 +735,9 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         val rs = rows; val tot = max(1.0, total)   // ios: Data/AppModel.swift:733
         // 종목 값은 사이트가 매일 만드는 stats.json (웹 전망과 같은 μ·σ·상관). 달러 종목은 원/달러 흔들림도 더한다
         val st = Market.shared.stats; val t = trust / 100   // ios: Data/AppModel.swift:735
-        val parts: MutableList<Part> = if (rs.isEmpty() || route == Route.novice) mutableListOf(Part(1.0, "", Triple(0.07, 0.11, 0.16)))   // ios: Data/AppModel.swift:736
+        val parts: MutableList<Part> = if (rs.isEmpty() || bare) mutableListOf(Part(1.0, "", Triple(0.07, 0.11, 0.16)))   // ios: Data/AppModel.swift:736
             else rs.map { r -> SiteStats.params(r.id, st).let { (a, b, c) -> Part(r.value / tot, r.id, Triple(a, b, c)) } }.toMutableList()   // ios: Data/AppModel.swift:737
-        val usdW = if (rs.isEmpty() || route == Route.novice) 0.0 else rs.filter { it.sym.currency == Currency.usd }.fold(0.0) { a, r -> a + r.value } / tot   // ios: Data/AppModel.swift:738
+        val usdW = if (rs.isEmpty() || bare) 0.0 else rs.filter { it.sym.currency == Currency.usd }.fold(0.0) { a, r -> a + r.value } / tot   // ios: Data/AppModel.swift:738
         if (usdW > 0) { val (f0, f1) = SiteStats.fx(st); parts.add(Part(usdW, "KRW=X", Triple(f0, f0, f1))) }   // ios: Data/AppModel.swift:739
         var muB = 0.0; var muS = 0.0; var muM = 0.0   // ios: Data/AppModel.swift:740
         for (x in parts) {   // ios: Data/AppModel.swift:741

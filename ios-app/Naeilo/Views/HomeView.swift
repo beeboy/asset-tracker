@@ -79,11 +79,11 @@ struct HomeView: View {
         let p = m.myPath, K = max(1, p.key), me = m.trackValue, n = p.need(p.start)
         let onPlan = n <= 0 || me >= n
         if m.isGoal {
-            let value = m.route == .plus || m.noviceOwn
+            let value = m.isGoal && !m.bare
             let years = Int(p.end.rounded(.up))
             let ticks: [(String, Double)] = years > 1 ? (1..<years).map { y in (String(localized: "\(String(describing: y))년"), p.need(Double(y)) / K) } : []
             return BoxScene(label: value ? String(localized: "평가액") : String(localized: "모은 돈"),
-                            amount: m.route == .novice ? m.goalSaved * 1e4 : m.total,
+                            amount: m.bare ? m.goalSaved * 1e4 : m.total,
                             f: me / K, plan: n > 0 ? n / K : nil, ticks: ticks,
                             target: AppModel.wonK(m.gK), half: AppModel.wonK(m.gK / 2),
                             today: value && m.route == .plus && m.total > 0 ? m.todayMove : nil,
@@ -99,7 +99,7 @@ struct HomeView: View {
 
     private func sceneSummary(_ look: BoxLook) -> some View {
         let reached = m.isGoal ? m.goalReached : m.cost <= m.total
-        let setMonthly = m.isGoal && !m.goalReached && m.route != .novice && m.gM <= 0
+        let setMonthly = m.isGoal && !m.goalReached && !m.bare && m.gM <= 0
         return VStack(spacing: 0) {
             SceneBox(look: look, s: scene, hide: $hideAmt)
                 .overlay(alignment: .bottomTrailing) {
@@ -123,7 +123,7 @@ struct HomeView: View {
 
     // 목표 루트: 지금 평가액(플러스) 또는 모은 돈(시작 전)과 목표 진행
     private var goalSummary: some View {
-        let now = m.route == .novice ? m.goalSaved : m.total / 1e4, value = m.route == .plus || m.noviceOwn, prog = min(1, now / max(1, m.gK))
+        let now = m.bare ? m.goalSaved : m.total / 1e4, value = m.isGoal && !m.bare, prog = min(1, now / max(1, m.gK))
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(value ? String(localized: "평가액") : String(localized: "모은 돈")).foregroundStyle(Color(hex: 0xC9D0D6)).appFont(13)
@@ -150,10 +150,10 @@ struct HomeView: View {
             ProgressBar(value: prog)
             HStack {
                 Text(m.goalReached ? String(localized: "목표 \(String(describing: AppModel.wonK(m.gK))) 도달!")
-                     : m.route == .novice ? String(localized: "매달 \(String(describing: AppModel.wonK(m.gM))) 적립 · 다음 적립일 +\(String(describing: AppModel.wonK(m.gM)))")
+                     : m.bare ? String(localized: "매달 \(String(describing: AppModel.wonK(m.gM))) 적립 · 다음 적립일 +\(String(describing: AppModel.wonK(m.gM)))")
                      : AppModel.paceText(m.goalPace()) + (m.gM > 0 ? String(localized: " · 다음달 \(String(describing: AppModel.wonK(m.gM))) 적립") : String(localized: " · 추가 적립 미정")))
                     .appFont(13).foregroundStyle(Color(hex: 0xC9D0D6)).fixedSize(horizontal: false, vertical: true)
-                if !m.goalReached && m.route != .novice && m.gM <= 0 {
+                if !m.goalReached && !m.bare && m.gM <= 0 {
                     Spacer(minLength: 8)
                     NavigationLink(value: "goal") { Text("정하기 ›").appFont(13, .bold).foregroundStyle(Theme.yellow).frame(minHeight: 32) }
                         .buttonStyle(.plain).accessibilityLabel("다음달 적립 정하기")

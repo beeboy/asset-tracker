@@ -1,5 +1,6 @@
 package com.naeilo.app.data
 
+import com.naeilo.app.core.calc.bare
 import com.naeilo.app.AppModel
 import com.naeilo.app.core.Day
 import com.naeilo.app.core.Store
@@ -122,7 +123,7 @@ object WidgetBridge {
         // 요약: 최근 3달 평가액(만원), 3년 전망 부채꼴, 이번 주 예보
         // 최근 3달은 앱 내 길과 같은 식: 그날 수량(수량 기록) × 그날 종가 × 그날 원/달러 종가 + 현금. 마지막 점은 위젯이 지금 값으로 바꾼다
         // ios: Data/WidgetBridge.swift:52
-        val hist: List<Double> = if (m.isSample || m.route == com.naeilo.app.core.calc.Route.novice) emptyList() else m.pathSeries(Day.str(now.atZone(ZoneId.systemDefault()).minusMonths(3).toInstant())).map { it.second }
+        val hist: List<Double> = if (m.isSample || m.bare) emptyList() else m.pathSeries(Day.str(now.atZone(ZoneId.systemDefault()).minusMonths(3).toInstant())).map { it.second }
         // ios: Data/WidgetBridge.swift:53,54,55
         val spark: List<Double?> = if (hist.isEmpty())
             (0 until 63).map { i -> (m.totalAt(1 - (62 - i).toDouble() / 756) + cash) / 1e4 }   // 샘플·시작 전·과거 시세가 없을 때: 지금 수량 × 과거 가격

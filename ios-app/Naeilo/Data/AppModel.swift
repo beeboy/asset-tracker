@@ -285,13 +285,13 @@ final class AppModel {
     var total: Double { rows.reduce(0) { $0 + $1.value } }
     /// 사이트에 넣은 현금 (원화 + 달러 × 매매기준율, 웹 cashKrw 와 같다). 앱에는 입력 칸이 없고 동기화로 받은 값만. 샘플·회복 루트는 0
     var cashKrw: Double {
-        guard isGoal, route != .novice, !isSample else { return 0 }
+        guard isGoal, !bare, !isSample else { return 0 }
         let c = Sync.shared.siteCash
         return c.krw + c.usd * Market.shared.valFx
     }
     /// 국내 주식 합계 (날짜별 기록의 오늘 금액, 웹 krNow 와 같다). 샘플·시작 전 루트는 0. 전망은 다른 종목처럼 EWY × 원/달러 움직임으로
     var krSum: Double {
-        guard route != .novice, !isSample, holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) else { return 0 }
+        guard !bare, !isSample, holdings.contains(where: { $0.symbol == KoreaEstimate.sumId }) else { return 0 }
         return CustomSymbols.shared.krNow
     }
     var cost: Double { rows.reduce(0) { $0 + $1.cost } }
@@ -480,8 +480,8 @@ final class AppModel {
         let tot = todayMove
         let mv = movers.prefix(2).map { "\($0.sym.short) \(Self.sgn2($0.sym.quote.change))" }.joined(separator: " · ")
         let head = rows.isEmpty ? "" : "**\(Self.sgn(tot))**" + (mv.isEmpty ? "" : " · \(mv)") + "\n"     // 오늘 움직임은 진하게 (마크다운)
-        if route == .novice {
-            return head + (noviceOwn ? String(localized: "평가액은") : String(localized: "모은 돈은")) + String(localized: " 목표의 \(String(describing: AppModel.pct(goalSaved / max(1, gK))))예요. 다음 적립일에 \(String(describing: AppModel.wonK(gM)))이 더해져요.")
+        if bare {
+            return head + String(localized: "모은 돈은") + String(localized: " 목표의 \(String(describing: AppModel.pct(goalSaved / max(1, gK))))예요. 다음 적립일에 \(String(describing: AppModel.wonK(gM)))이 더해져요.")
         }
         guard total > 0 else { return String(localized: "아직 넣은 종목이 없어요. 종목 탭에서 수량을 넣으면 내일부터 내 숫자를 가져올게요.") }
         let vY = total / (1 + tot)
@@ -683,7 +683,7 @@ final class AppModel {
     /// 웹과 같은 계산에 넣을 값. 종목이 없거나 시작 전 루트, 사이트 통계가 없으면 nil (닫힌 식만)
     var forecastJob: ForecastEngine.Job? {
         let rs = rows.filter { !Market.shared.needsKey($0.sym) }, today = Day.today, H = forecastHorizon   // 키 시세 없는 종목은 전망에서도 뺀다
-        guard route != .novice, !rs.isEmpty, H > today, let inp = mcInputs(full: true) else { return nil }
+        guard !bare, !rs.isEmpty, H > today, let inp = mcInputs(full: true) else { return nil }
         // 전망 기준값 = 사이트 마지막 종가 × 매매기준율 (웹 buildModelNow 와 같다. 계산한 시각의 실시간 시세에 따라 웹·앱 숫자가 갈리지 않게).
         // 사이트에 없는 종목은 지금 가격
         // 사이트에 없는 종목은 전일 종가, 매매기준율이 없으면 전일 환율: 키가 1분마다 바뀌어 계산이 끝없이 다시 돌지 않게 (PR #115 발열)
@@ -735,9 +735,9 @@ final class AppModel {
         let rs = rows, tot = max(1, total)
         // 종목 값은 사이트가 매일 만드는 stats.json (웹 전망과 같은 μ·σ·상관). 달러 종목은 원/달러 흔들림도 더한다
         let st = Market.shared.stats, t = trust / 100
-        var parts: [(w: Double, id: String, p: (Double, Double, Double))] = rs.isEmpty || route == .novice ? [(1, "", (0.07, 0.11, 0.16))]
+        var parts: [(w: Double, id: String, p: (Double, Double, Double))] = rs.isEmpty || bare ? [(1, "", (0.07, 0.11, 0.16))]
             : rs.map { ($0.value / tot, $0.id, SiteStats.params($0.id, st)) }
-        let usdW = rs.isEmpty || route == .novice ? 0 : rs.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / tot
+        let usdW = rs.isEmpty || bare ? 0 : rs.filter { $0.sym.currency == .usd }.reduce(0) { $0 + $1.value } / tot
         if usdW > 0 { let fx = SiteStats.fx(st); parts.append((usdW, "KRW=X", (fx.0, fx.0, fx.1))) }
         var muB = 0.0, muS = 0.0, muM = 0.0
         for x in parts {

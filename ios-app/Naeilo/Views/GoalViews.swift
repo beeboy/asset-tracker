@@ -68,7 +68,7 @@ struct GoalCellsCard: View {
         let goal = m.isGoal
         let K = goal ? m.gK * 1e4 : m.cost, unit = K / 100
         let tkV = goal ? m.trackValue : m.total
-        let tkP = !goal ? tkV : m.route == .novice ? tkV / 1.02 : tkV * max(0.8, min(1.25, m.cost / max(1, m.total)))
+        let tkP = !goal ? tkV : m.bare ? tkV / 1.02 : tkV * max(0.8, min(1.25, m.cost / max(1, m.total)))
         let fl = goal ? 0 : m.cellsFloor   // 회복: 바닥 칸 (1000칸 기준)
         let fV = min(100, tkV / max(1, unit)), fP = min(100, tkP / max(1, unit))
         let mine = goal ? min(fV, fP) : min(fV, Double(fl) / 10), lost = max(0, fP - fV), gain = max(0, tkV - tkP)
@@ -433,7 +433,7 @@ struct GoalSetView: View {
 
     var body: some View {
         // 플러스: 내가 매달 넣을 돈(gM)으로 닿을 확률. 시작 전: 보통의 경우로 맞춘 월 적립으로
-        let plus = m.route != .novice
+        let plus = !m.bare
         let need = m.neededMonthly(), path = m.simulate(plus ? m.mineMix : AppModel.mixes[0], monthly: plus ? m.gM : need)
         let start = m.goalStart, cagr = start > 0 ? pow(m.gK / start, 1 / Double(m.gY)) - 1 : 0
         let ok = m.gK > 0 && m.gY >= 1
@@ -451,7 +451,7 @@ struct GoalSetView: View {
                 } else {
                     Text((need > 0 ? String(localized: "월 ") + noWon(AppModel.wonK(need)) : String(localized: "이미 충분")) + String(localized: " · 1년 \(String(describing: noWon(AppModel.wonK(need * 12))))")).appFont(14, .semibold)
                 }
-                Text(m.route == .novice ? (m.gK <= 1000 ? String(localized: "첫 목표 · 적립 습관") : String(localized: "연 7%면 해마다 +\(String(describing: noWon(AppModel.wonK(m.gK * 0.07))))"))
+                Text(m.bare ? (m.gK <= 1000 ? String(localized: "첫 목표 · 적립 습관") : String(localized: "연 7%면 해마다 +\(String(describing: noWon(AppModel.wonK(m.gK * 0.07))))"))
                      : String(localized: "지금의 \(String(describing: String(format: "%.1f", m.gK / max(1, start))))배 · 적립 없이 연 +\(String(describing: Int((cagr * 100).rounded())))%"))
                     .appFont(13).foregroundStyle(Theme.sub)
                 GoalPathChart(sims: [(path, Theme.teal, true)], goal: m.gK).frame(height: 80)
@@ -462,12 +462,12 @@ struct GoalSetView: View {
             VStack(alignment: .leading, spacing: 12) {
                 if fromSettings || m.gDone.contains("goal") {
                     GuideBubble(pose: .point, text: String(localized: "카드를 누르거나 숫자를 고치면 위 그래프와 확률이 바로 바뀌어요. 저장하면 미션 진행은 그대로 두고 목표만 바꿔요."))
-                } else if m.route == .novice {
+                } else if m.bare {
                     GuideBubble(pose: .wave, text: String(localized: "처음 시작하시는군요. …… 첫 목표부터 정해요. 지금 모아 둔 투자금이 없으면 0을 넣으세요."))
                 } else {
                     GuideBubble(pose: .think, text: String(localized: "언제까지, 얼마를 모으고 싶나요? …… 카드는 매달 넣는 돈으로 닿을 확률이 반반쯤인 금액이에요. 모두 지금 \(String(describing: AppModel.wonK(start)))에서 출발한 계산이에요."))
                 }
-                if m.route != .novice {
+                if !m.bare {
                     Text((m.gM > 0 ? String(localized: "월 \(String(describing: noWon(AppModel.wonK(m.gM))))씩 넣으면") : String(localized: "적립 없이")) + String(localized: " 확률 50%인 목표")).appFont(13, .semibold).foregroundStyle(Theme.sub)
                 }
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
@@ -487,9 +487,7 @@ struct GoalSetView: View {
                 }
                 inputField(String(localized: "목표 (만원)"), $k).focused($focus).onChange(of: k) { _, v in if let d = Double(v.replacingOccurrences(of: ",", with: "")), d > 0 { m.gK = d } }
                 inputField(String(localized: "기간 (년)"), $y).focused($focus).onChange(of: y) { _, v in if let d = Int(v.replacingOccurrences(of: ",", with: "")) { m.gY = min(30, max(1, d)) } }
-                if m.noviceOwn {
-                    Text("출발 \(noWon(AppModel.wonK(start))) · 내 종목 기준").appFont(13).foregroundStyle(Theme.sub)
-                } else if m.route == .novice {
+                if m.bare {
                     inputField(String(localized: "모아 둔 돈 (만원)"), $a).focused($focus).onChange(of: a) { _, v in m.gA = max(0, Double(v) ?? 0) }
                 } else {
                     inputField(String(localized: "월 적립 (만원)"), $mo).focused($focus).onChange(of: mo) { _, v in m.gM = max(0, Double(v.replacingOccurrences(of: ",", with: "")) ?? 0) }
@@ -500,7 +498,7 @@ struct GoalSetView: View {
                 PrimaryButton(title: fromSettings || m.gDone.contains("goal") ? String(localized: "저장") : String(localized: "길 보기"), color: ok ? Theme.teal : Theme.muted) {
                     guard ok else { return }
                     focus = false
-                    if m.route == .novice { m.gM = max(5, (need / 5).rounded() * 5) }
+                    if m.bare { m.gM = max(5, (need / 5).rounded() * 5) }
                     if fromSettings { dismiss(); return }
                     if m.gDone.contains("goal") { m.boardPath.removeLast(); return }   // 고치기: 미션 판으로 돌아간다
                     m.gDone.insert("goal"); m.boardPath.append(.g1r)
@@ -519,7 +517,7 @@ struct GoalSetView: View {
 struct GoalSetResultView: View {
     @Environment(AppModel.self) private var m
     var body: some View {
-        let need = m.neededMonthly(), base = m.route == .novice ? AppModel.mixes[0] : m.mineMix
+        let need = m.neededMonthly(), base = m.bare ? AppModel.mixes[0] : m.mineMix
         let path = m.simulate(base, monthly: need)
         MissionPage(kicker: String(localized: "미션 \(String(describing: m.goalNo("goal"))) 완료 · 경로 열림"), title: String(localized: "\(String(describing: m.gY))년 뒤 \(String(describing: noWon(AppModel.wonK(m.gK))))까지")) {
             VStack(alignment: .leading, spacing: 6) {
@@ -528,7 +526,7 @@ struct GoalSetResultView: View {
             }
             .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.night, in: RoundedRectangle(cornerRadius: 20))
-            GuideBubble(pose: .back, text: m.route == .novice
+            GuideBubble(pose: .back, text: m.bare
                         ? String(localized: "같이 봐요. 매달 \(String(describing: AppModel.wonK(need)))씩 넣으면 지날 길이에요. 점선은 내가 넣은 원금이에요.")
                         : String(localized: "같이 봐요. 지금 금액이 보통의 경우처럼 자란다고 보고, 모자란 만큼을 매달로 나눈 금액이에요."), note: String(localized: "그래프 쪽을 돌아봄"))
             Card {
@@ -598,7 +596,7 @@ struct GoalMixView: View {
             .padding(16).background(Theme.card).overlay(alignment: .bottom) { Divider() }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
-                if m.route == .novice {
+                if m.bare {
                     GuideBubble(pose: .think, text: String(localized: "어떤 구성이 덜 흔들리는지 보세요. …… 처음이라면 단순한 구성부터 비교해 봐도 돼요."))
                 } else {
                     GuideBubble(pose: .side, text: String(localized: "구성을 하나씩 눌러 지금 내 구성과 비교해 보세요. 빨리 가는 구성일수록 더 흔들려요. 나쁜 해 한 번의 크기도 같이 보세요."))
@@ -630,14 +628,14 @@ struct GoalMixResultView: View {
         let sel = m.simulate(m.selectedMix), sh = m.shift(m.selectedMix)
         let next = m.goalSteps.first { !m.gDone.contains($0.id) && m.goalAvailable($0) }
         MissionPage(kicker: String(localized: "미션 \(String(describing: m.goalNo("mix"))) 완료 · 구성 비교 열림"), title: String(localized: "내 계획: \(String(describing: sel.mix.name))")) {
-            GuideBubble(pose: .cheer, text: m.route == .novice ? String(localized: "정했어요. 매달 적립을 나누는 비율이에요. 실제 매매 판단은 직접 하셔야 해요.") : String(localized: "정했어요. 계획만 기록해요. 실제 매매 판단은 직접 하셔야 해요."))
+            GuideBubble(pose: .cheer, text: m.bare ? String(localized: "정했어요. 매달 적립을 나누는 비율이에요. 실제 매매 판단은 직접 하셔야 해요.") : String(localized: "정했어요. 계획만 기록해요. 실제 매매 판단은 직접 하셔야 해요."))
             Text(sel.mix.desc).appFont(15).foregroundStyle(Theme.sub)
             Card {
                 (Text("목표일 달성 ") + Text(AppModel.pct(sel.prob)).bold() + Text(" · 보통 ") + Text(sel.etaText).bold()).appFont(15)
             }
             if !sh.rows.isEmpty {
                 Card {
-                    Text(m.route == .novice ? String(localized: "적립 나누기") : String(localized: "비중이 바뀌면")).appFont(15, .bold)
+                    Text(m.bare ? String(localized: "적립 나누기") : String(localized: "비중이 바뀌면")).appFont(15, .bold)
                     ForEach(sh.rows, id: \.0) { label, sub, amt, up in
                         HStack {
                             Text(label).appFont(15, .semibold)

@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.home
 
+import com.naeilo.app.core.calc.bare
 import com.naeilo.app.ui.shelter.shelterPage
 import com.naeilo.app.core.tr
 import com.naeilo.app.ui.shelter.readerPage
@@ -73,7 +74,6 @@ import com.naeilo.app.core.calc.goalSaved
 import com.naeilo.app.core.calc.graduateToGoal
 import com.naeilo.app.core.calc.isGoal
 import com.naeilo.app.core.calc.keepPlan
-import com.naeilo.app.core.calc.noviceOwn
 import com.naeilo.app.core.calc.paceText
 import com.naeilo.app.core.calc.suggestNextGoal
 import com.naeilo.app.core.calc.wonK
@@ -277,12 +277,12 @@ private fun sceneOf(m: AppModel): BoxScene {
     val onPlan = n <= 0 || me >= n   // ios: Views/HomeView.swift:75
     // ios: Views/HomeView.swift:76
     if (m.isGoal) {
-        val value = m.route == Route.plus || m.noviceOwn   // ios: Views/HomeView.swift:77
+        val value = m.isGoal && !m.bare   // ios: Views/HomeView.swift:77
         val years = kotlin.math.ceil(p.end).toInt()   // ios: Views/HomeView.swift:78
         val ticks: List<Pair<String, Double>> = if (years > 1) (1 until years).map { y -> Pair("${y}년", p.need(y.toDouble()) / K) } else emptyList()   // ios: Views/HomeView.swift:79
         // ios: Views/HomeView.swift:80
         return BoxScene(label = if (value) "평가액" else "모은 돈",
-            amount = if (m.route == Route.novice) m.goalSaved * 1e4 else m.total,   // ios: Views/HomeView.swift:81
+            amount = if (m.bare) m.goalSaved * 1e4 else m.total,   // ios: Views/HomeView.swift:81
             f = me / K, plan = if (n > 0) n / K else null, ticks = ticks,   // ios: Views/HomeView.swift:82
             target = AppModel.wonK(m.gK), half = AppModel.wonK(m.gK / 2),   // ios: Views/HomeView.swift:83
             today = if (value && m.route == Route.plus && m.total > 0) m.todayMove else null,   // ios: Views/HomeView.swift:84
@@ -301,7 +301,7 @@ private fun sceneOf(m: AppModel): BoxScene {
 @Composable
 private fun SceneSummary(m: AppModel, look: BoxLook, hideAmt: Boolean, toggleHide: () -> Unit) {
     val reached = if (m.isGoal) m.goalReached else m.cost <= m.total   // ios: Views/HomeView.swift:96
-    val setMonthly = m.isGoal && !m.goalReached && m.route != Route.novice && m.gM <= 0   // ios: Views/HomeView.swift:97
+    val setMonthly = m.isGoal && !m.goalReached && !m.bare && m.gM <= 0   // ios: Views/HomeView.swift:97
     val scene by remember(m) { derivedStateOf { sceneOf(m) } }   // ios: Views/HomeView.swift:73 (scene)
     // ios: Views/HomeView.swift:98,114,115,116
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Theme.night), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -310,7 +310,7 @@ private fun SceneSummary(m: AppModel, look: BoxLook, hideAmt: Boolean, toggleHid
             SceneBox(look = look, s = scene, hide = hideAmt, toggleHide = toggleHide)
             // ios: Views/HomeView.swift:101
             if (setMonthly) {
-                // ios: Views/HomeView.swift:102,103
+                // ios: Views/HomeView.swift:103
                 Box(Modifier.align(Alignment.BottomEnd).padding(end = 14.dp).defaultMinSize(minHeight = 32.dp).plainClickable { m.homePath = m.homePath + "goal" }
                     .semantics { contentDescription = tr("다음달 적립 정하기") }, contentAlignment = Alignment.Center) {
                     T("적립 정하기 ›", style = appFont(12f, FontWeight.Bold), color = Theme.yellow)
@@ -332,7 +332,7 @@ private val C9 = hex(0xC9D0D6)
 @Composable
 private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
     // ios: Views/HomeView.swift:121
-    val now = if (m.route == Route.novice) m.goalSaved else m.total / 1e4; val value = m.route == Route.plus || m.noviceOwn; val prog = min(1.0, now / max(1.0, m.gK))
+    val now = if (m.bare) m.goalSaved else m.total / 1e4; val value = m.isGoal && !m.bare; val prog = min(1.0, now / max(1.0, m.gK))
     // ios: Views/HomeView.swift:122,159,160,161,162
     Fg(Color.White) {
         Column(
@@ -367,13 +367,13 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
             // ios: Views/HomeView.swift:146
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T(if (m.goalReached) "목표 ${AppModel.wonK(m.gK)} 도달!"   // ios: Views/HomeView.swift:147
-                  else if (m.route == Route.novice) "매달 ${AppModel.wonK(m.gM)} 적립 · 다음 적립일 +${AppModel.wonK(m.gM)}"   // ios: Views/HomeView.swift:148
+                  else if (m.bare) "매달 ${AppModel.wonK(m.gM)} 적립 · 다음 적립일 +${AppModel.wonK(m.gM)}"   // ios: Views/HomeView.swift:148
                   else AppModel.paceText(m.goalPace()) + (if (m.gM > 0) " · 다음달 ${AppModel.wonK(m.gM)} 적립" else " · 추가 적립 미정"),   // ios: Views/HomeView.swift:149
                   Modifier.weight(1f), style = appFont(13f), color = hex(0xC9D0D6))   // ios: Views/HomeView.swift:150
                 // ios: Views/HomeView.swift:151
-                if (!m.goalReached && m.route != Route.novice && m.gM <= 0) {
+                if (!m.goalReached && !m.bare && m.gM <= 0) {
                     Spacer(Modifier.width(8.dp))   // ios: Views/HomeView.swift:152
-                    // ios: Views/HomeView.swift:153,154
+                    // ios: Views/HomeView.swift:154
                     Box(Modifier.defaultMinSize(minHeight = 32.dp).plainClickable { m.homePath = m.homePath + "goal" }.semantics { contentDescription = tr("다음달 적립 정하기") }, contentAlignment = Alignment.Center) {
                         T("정하기 ›", style = appFont(13f, FontWeight.Bold), color = Theme.yellow)
                     }
@@ -1159,7 +1159,7 @@ private fun JumpScene(s: BoxScene) {
     val X = { f: Double -> x0 + (x1 - x0) * min(1.0, max(0.0, f)).toFloat() }   // ios: Views/HomeView.swift:892
     val nose = X(s.f); val rear = nose - 85   // ios: Views/HomeView.swift:893
     val tm = rememberTextMeasurer()
-    // ios: Views/HomeView.swift:894,938 (.clipped())
+    // ios: Views/HomeView.swift:894 (.clipped())
     Box(Modifier.fillMaxSize().clipToBounds()) {
         // ios: Views/HomeView.swift:895
         Plate {

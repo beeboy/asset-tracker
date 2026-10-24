@@ -1,5 +1,6 @@
 package com.naeilo.app.ui.analysis
 
+import com.naeilo.app.core.calc.bare
 import androidx.compose.foundation.background
 import com.naeilo.app.core.tr
 import androidx.compose.foundation.border
@@ -124,7 +125,7 @@ fun myPathOf(isGoal: Boolean, goalSpan: Double, pathStartDate: Instant, today: S
     val now = trackValue   // ios: Views/AnalysisDetail.swift:55
     val pts: MutableList<Pair<Double, Double>>   // ios: Views/AnalysisDetail.swift:56
     // ios: Views/AnalysisDetail.swift:57
-    if (route == Route.novice) {
+    if (bare) {
         pts = (0..30).map { i -> val t = mS * i.toDouble() / 30; Pair(t, max(0.0, now - mM * 12 * (mS - t))) }.toMutableList()   // ios: Views/AnalysisDetail.swift:58
     } else if (isSample) {   // ios: Views/AnalysisDetail.swift:59
         // 샘플(가상 종목 DRNK)은 날짜별 시세가 없어 지난 3년 흐름에서 어림한다
@@ -149,7 +150,7 @@ fun myPathOf(isGoal: Boolean, goalSpan: Double, pathStartDate: Instant, today: S
     }
     val vS = P.firstOrNull()?.second ?: now; val kAdj = K - mM * 12 * mEnd   // ios: Views/AnalysisDetail.swift:78
     // 시작일 뒤에 처음 넣은 국내 주식 합계는 들어온 돈: 그날부터 길에도 그 금액을 더한다 (앞선 것으로 보이지 않게. 웹 goalPath 와 같다)
-    val kin = if (krSum > 0 && route != Route.novice && !isSample && MC.krAt(KL, sD) == 0.0) KL.firstOrNull { it.d > sD && it.v > 0 } else null   // ios: Views/AnalysisDetail.swift:81
+    val kin = if (krSum > 0 && !bare && !isSample && MC.krAt(KL, sD) == 0.0) KL.firstOrNull { it.d > sD && it.v > 0 } else null   // ios: Views/AnalysisDetail.swift:81
     val tIn = kin?.let { yrs(sD, it.d) } ?: Double.POSITIVE_INFINITY; val vIn = kin?.v ?: 0.0   // ios: Views/AnalysisDetail.swift:82
     val need: (Double) -> Double = { t -> mM * 12 * t + (if (kAdj > 0 && vS > 0) vS * (kAdj / vS).pow(t / mEnd) else vS + (K - vS) * t / mEnd) + (if (t >= tIn) vIn else 0.0) }   // ios: Views/AnalysisDetail.swift:83
     return MyPath(start = mS, end = mEnd, key = K, monthly = mM, pts = P, act = act, need = need, krIn = vIn)   // ios: Views/AnalysisDetail.swift:84
