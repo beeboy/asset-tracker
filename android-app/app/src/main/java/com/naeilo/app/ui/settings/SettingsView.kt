@@ -37,6 +37,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.alpha
+import com.naeilo.app.ui.home.BoxLook
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -895,93 +897,116 @@ private fun TossLinkLine(on: Boolean) {
     }
 }
 
-// 앱 아이콘 바꾸기: 기본 · 내일의 별 + 인물 5. 안드로이드는 런처 별칭(activity-alias)을 켜고 끈다
-// 인물 아이콘은 그 인물을 만나야 열린다 (세리는 처음부터, 나머지는 인터미션 1~4주차. 쉼터와 같은 단계)
-// ios: Views/SettingsView.swift:697,698,712
+// 앱 아이콘 바꾸기 (2026-10-24): 내일의 별 + 상단 박스 테마 7개. 모양은 내일의 별 그대로, 색만 테마 장면에서 뽑았다
+// 안드로이드는 런처 별칭(activity-alias)을 켜고 끈다. 테마 따라가기를 켜면 홈 평가액 박스 테마를 바꿀 때 아이콘도 그 테마 것으로 바뀐다 (IconFollow)
+// ios: Views/SettingsView.swift:742,743,744,745
 @Composable
-fun AppIconPicker(m: AppModel) {
+fun AppIconPicker(@Suppress("UNUSED_PARAMETER") m: AppModel) {
     val ctx = LocalContext.current
-    var current by remember { mutableStateOf(AppIconPicker.alternateIconName(ctx)) }   // ios: Views/SettingsView.swift:703
-
-    fun open(f: Int?): Boolean = f?.let { m.friendOn(it) } ?: true   // ios: Views/SettingsView.swift:706
-    // ios: Views/SettingsView.swift:707,708,709
-    fun set(id: String?) {
-        if (current == id) return
-        AppIconPicker.setAlternateIconName(ctx, id); current = id
-    }
-
-    // 시안 조작으로 단계를 되돌려 지금 아이콘이 다시 잠기면 기본 아이콘으로 돌린다
-    // ios: Views/SettingsView.swift:739,740
-    LaunchedEffect(Unit) { current?.let { c -> AppIconPicker.icons.firstOrNull { it.id == c }?.let { ic -> if (!open(ic.friend)) set(null) } } }
-    // ios: Views/SettingsView.swift:713,735,736,737 (3열, 칸 사이 8, 줄 사이 12)
-    Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)).padding(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        AppIconPicker.icons.chunked(3).forEach { line ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // ios: Views/SettingsView.swift:714
-                line.forEach { ic ->
-                    val on = current == ic.id; val ok = open(ic.friend)   // ios: Views/SettingsView.swift:715
-                    // ios: Views/SettingsView.swift:716,727,729,730,731,732
-                    Column(
-                        Modifier.weight(1f).then(if (ok) Modifier.plainClickable { set(ic.id) } else Modifier.semantics { disabled() })
-                            .semantics(mergeDescendants = true) { contentDescription = tr(if (ok) "${ic.name} 아이콘" else "${ic.name} 아이콘, 인터미션 ${ic.friend ?: 0}주차에 열려요"); selected = on }
-                            .padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),   // ios: Views/SettingsView.swift:717
-                    ) {
-                        // ios: Views/SettingsView.swift:718,719,720,721,722,723
-                        Box(Modifier.size(64.dp).clip(RoundedCornerShape(15.dp)).border(if (on) 3.dp else 1.dp, if (on) Theme.teal else Theme.border, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
-                            androidx.compose.foundation.Image(
-                                androidx.compose.ui.graphics.ImageBitmap.imageResource(com.naeilo.app.ui.drawableId(ctx, ic.prev)), null, Modifier.size(64.dp),
-                                colorFilter = if (ok) null else ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }.also { it.timesAssign(ColorMatrix(floatArrayOf(1f, 0f, 0f, 0f, -0.35f * 255, 0f, 1f, 0f, 0f, -0.35f * 255, 0f, 0f, 1f, 0f, -0.35f * 255, 0f, 0f, 0f, 1f, 0f))) }),
-                                filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
-                            if (!ok) Sym("lock.fill", 20f, Color.White, scaled = false)
+    var current by remember { mutableStateOf(AppIconPicker.alternateIconName(ctx)) }   // ios: Views/SettingsView.swift:770
+    val linked = AppIconPicker.linked
+    // ios: Views/SettingsView.swift:774,775,776,777,778,779
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ChipRow(items = listOf(true to "테마 따라가기", false to "직접 고르기"), selection = linked, onSelect = { on ->
+            AppIconPicker.linked = on
+            if (on) { val id = AppIconPicker.id(BoxLook.entries.firstOrNull { it.name == BoxLook.raw } ?: BoxLook.jump); AppIconPicker.apply(ctx, id); current = AppIconPicker.alternateIconName(ctx) }
+        }, fill = true)
+        // ios: Views/SettingsView.swift:780,800,801,802 (3열, 칸 사이 8, 줄 사이 12)
+        Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)).padding(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AppIconPicker.icons.chunked(3).forEach { line ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // ios: Views/SettingsView.swift:781
+                    line.forEach { ic ->
+                        val on = current == ic.id   // ios: Views/SettingsView.swift:782
+                        // ios: Views/SettingsView.swift:783,792,793,794,795,796
+                        Column(
+                            Modifier.weight(1f).alpha(if (linked && !on) 0.45f else 1f)
+                                .then(if (!linked) Modifier.plainClickable { AppIconPicker.apply(ctx, ic.id); current = AppIconPicker.alternateIconName(ctx) } else Modifier.semantics { disabled() })
+                                .semantics(mergeDescendants = true) { contentDescription = tr("${ic.name} 아이콘"); selected = on }
+                                .padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),   // ios: Views/SettingsView.swift:784
+                        ) {
+                            // ios: Views/SettingsView.swift:785,786,787,788
+                            Box(Modifier.size(64.dp).clip(RoundedCornerShape(15.dp)).border(if (on) 3.dp else 1.dp, if (on) Theme.teal else Theme.border, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
+                                androidx.compose.foundation.Image(
+                                    androidx.compose.ui.graphics.ImageBitmap.imageResource(com.naeilo.app.ui.drawableId(ctx, ic.prev)), null, Modifier.size(64.dp),
+                                    filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
+                            }
+                            // ios: Views/SettingsView.swift:789,790
+                            FitText(ic.name, appFont(13f, if (on) FontWeight.Bold else FontWeight.Normal), 0.8f, maxLines = 1, color = if (on) Theme.ink else Theme.sub)
                         }
-                        // ios: Views/SettingsView.swift:724,725
-                        FitText(if (ok) ic.name else "인터미션 ${ic.friend ?: 0}주차", appFont(if (ok) 13f else 11f, if (on) FontWeight.Bold else FontWeight.Normal), 0.8f, maxLines = 1,
-                          color = if (on) Theme.ink else if (ok) Theme.sub else Theme.muted)
                     }
+                    repeat(3 - line.size) { Spacer(Modifier.weight(1f)) }
                 }
-                repeat(3 - line.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
+    LaunchedEffect(Unit) { current = AppIconPicker.alternateIconName(ctx) }   // ios: Views/SettingsView.swift:805
 }
 
 /** 아이콘 목록과 바꾸기 (UIApplication.alternateIconName 자리: 런처 별칭) */
 object AppIconPicker {
-    class Icon(val id: String?, val name: String, val prev: String, val friend: Int?)
-    // ios: Views/SettingsView.swift:699
-    val icons: List<Icon> = listOf(
-        Icon(null, "내일의 별", "iconprev_star", null), Icon("AppIcon-seri", "세리", "iconprev_seri", 0), Icon("AppIcon-sio", "시오", "iconprev_sio", 1),   // ios: Views/SettingsView.swift:700
-        Icon("AppIcon-seonbae", "선배", "iconprev_seonbae", 2), Icon("AppIcon-ir", "이르", "iconprev_ir", 3), Icon("AppIcon-sua", "수아", "iconprev_sua", 4),   // ios: Views/SettingsView.swift:701
-    )
-    // ios: Views/SettingsView.swift:704
-    fun currentName(ctx: Context): String = icons.firstOrNull { it.id == alternateIconName(ctx) }?.name ?: "내일의 별"
+    class Icon(val id: String?, val name: String, val prev: String)
+    // ios: Views/SettingsView.swift:747,748,749,750,751
+    val icons: List<Icon> = listOf(Icon(null, "내일의 별", "iconprev_star")) + BoxLook.entries.map { Icon(id(it), it.label, "iconprev_${it.name}") }
+    /** 예전 인물 아이콘 (별칭은 매니페스트에 꺼진 채 남아 있다) */
+    private val legacy = listOf("seri", "sio", "seonbae", "ir", "sua").map { "AppIcon-$it" }
+    const val linkKey = "appIconLinked"   // ios: Views/SettingsView.swift:752
+    fun id(look: BoxLook): String = "AppIcon-${look.name}"   // ios: Views/SettingsView.swift:753
+    /** @AppStorage(linkKey) 자리 */
+    private val linkState by lazy { mutableStateOf(Defaults.prefs.getBoolean(linkKey, false)) }
+    var linked: Boolean
+        get() = linkState.value
+        set(v) { linkState.value = v; Defaults.prefs.edit().putBoolean(linkKey, v).apply() }
+    // ios: Views/SettingsView.swift:754,755,756,757
+    fun currentName(ctx: Context): String {
+        val name = icons.firstOrNull { it.id == alternateIconName(ctx) }?.name ?: "내일의 별"
+        return if (linked) "테마 따라 · $name" else name
+    }
 
-    /** 별칭 이름: 기본은 .IconDefault, 인물은 .Icon_<인물> (AndroidManifest) */
+    /** 별칭 이름: 기본은 .IconDefault, 나머지는 .Icon_<이름> (AndroidManifest) */
     private fun alias(ctx: Context, id: String?) = ComponentName(ctx.packageName, "com.naeilo.app." + (id?.let { "Icon_" + it.removePrefix("AppIcon-") } ?: "IconDefault"))
 
-    /** 지금 켜진 별칭 (기본이면 null) */
-    fun alternateIconName(ctx: Context): String? = icons.firstOrNull { it.id != null && ctx.packageManager.getComponentEnabledSetting(alias(ctx, it.id)) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED }?.id
+    /** 지금 켜진 별칭 (기본이면 null). 예전 인물 아이콘이 켜져 있으면 그 이름 */
+    fun alternateIconName(ctx: Context): String? = (icons.mapNotNull { it.id } + legacy).firstOrNull { ctx.packageManager.getComponentEnabledSetting(alias(ctx, it)) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED }
 
-    /** 고른 별칭만 켜고 나머지는 끈다. 앱은 닫지 않는다 (런처가 아이콘을 바꾸는 데 몇 초 걸릴 수 있다) */
-    fun setAlternateIconName(ctx: Context, id: String?) {
+    /** 아이콘을 바꾼다. 같은 아이콘이면 그냥 둔다. 고른 별칭만 켜고 나머지(예전 인물 포함)는 끈다. 앱은 닫지 않는다 */
+    // ios: Views/SettingsView.swift:758,759,760,761
+    fun apply(ctx: Context, id: String?) {
+        if (alternateIconName(ctx) == id) return
         val pm = ctx.packageManager
         pm.setComponentEnabledSetting(alias(ctx, id), PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
-        icons.filter { it.id != id }.forEach {
-            pm.setComponentEnabledSetting(alias(ctx, it.id), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+        (listOf<String?>(null) + icons.mapNotNull { it.id } + legacy).filter { it != id }.forEach {
+            pm.setComponentEnabledSetting(alias(ctx, it), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
         }
     }
+    /** 예전 인물 아이콘인지 */
+    fun isLegacy(id: String?): Boolean = id != null && id in legacy
+}
+
+/** 테마 따라가기: 홈 박스를 길게 눌러 고르든 설정에서 고르든 테마가 바뀌면 아이콘도 따라 바꾼다.
+ *  예전 인물 아이콘(세리·시오·선배·이르·수아)을 쓰던 사람은 기본 아이콘으로 돌린다 */
+// ios: Views/SettingsView.swift:811,812,813,814,815,816,817,818,819,820,821,822,823
+@Composable
+fun IconFollow() {
+    val ctx = LocalContext.current
+    val look = BoxLook.raw
+    var last by remember { mutableStateOf(look) }
+    LaunchedEffect(look) {
+        if (look != last) { last = look; if (AppIconPicker.linked) BoxLook.entries.firstOrNull { it.name == look }?.let { AppIconPicker.apply(ctx, AppIconPicker.id(it)) } }
+    }
+    LaunchedEffect(Unit) { if (AppIconPicker.isLegacy(AppIconPicker.alternateIconName(ctx))) AppIconPicker.apply(ctx, null) }
 }
 
 /** 설정 > 앱 아이콘 › 고르는 화면 (설정 첫 화면에서 격자를 뺐다) */
-// ios: Views/SettingsView.swift:746,747
+// ios: Views/SettingsView.swift:827,828
 @Composable
 fun AppIconScreen(m: AppModel) {
-    // ios: Views/SettingsView.swift:748,749,753,755,756
+    // ios: Views/SettingsView.swift:829,830,835,837,838
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        T("앱 아이콘", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:750
-        T("인물 아이콘은 그 인물을 만나면 열려요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:751
-        AppIconPicker(m)   // ios: Views/SettingsView.swift:752
+        T("앱 아이콘", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:831
+        T(if (AppIconPicker.linked) "테마를 바꾸면 아이콘도 함께 바뀌어요." else "테마와 상관없이 아이콘을 골라요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:833
+        AppIconPicker(m)   // ios: Views/SettingsView.swift:834
     }
 }
 

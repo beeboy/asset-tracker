@@ -163,6 +163,7 @@ fun NaeiloApp(model: AppModel, window: Window) {   // ios: App.swift:5
 @Composable
 fun RootView(model: AppModel) {
     val showStart = !model.onboarded   // ios: App.swift:30
+    com.naeilo.app.ui.settings.IconFollow()   // ios: App.swift:35 (.modifier(IconFollow()))
     Box(Modifier.fillMaxSize().background(Theme.bg)) {
         Column(Modifier.fillMaxSize()) {
             // ios: App.swift:31

@@ -5,7 +5,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 
 | Swift | Kotlin (표시 수) |
 |---|---|
-| `App.swift` | `com/naeilo/app/App.kt` (66), `com/naeilo/app/MainActivity.kt` (7), `com/naeilo/app/AppModel.kt` (6), `com/naeilo/app/ui/AppHeader.kt` (6), `com/naeilo/app/ui/Theme.kt` (1) |
+| `App.swift` | `com/naeilo/app/App.kt` (67), `com/naeilo/app/MainActivity.kt` (7), `com/naeilo/app/AppModel.kt` (6), `com/naeilo/app/ui/AppHeader.kt` (6), `com/naeilo/app/ui/Theme.kt` (1) |
 | `Data/AppModel.swift` | `com/naeilo/app/AppModel.kt` (568) |
 | `Data/Backup.swift` | `com/naeilo/app/net/Backup.kt` (39) |
 | `Data/BrickGame.swift` | `com/naeilo/app/core/game/BrickGame.kt` (682) |
@@ -62,7 +62,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/ParallelView.swift` | `com/naeilo/app/ui/analysis/ParallelViews.kt` (215) |
 | `Views/RemindViews.swift` | `com/naeilo/app/ui/remind/RemindViews.kt` (151) |
 | `Views/SettingsDetail.swift` | `com/naeilo/app/ui/settings/SettingsDetail.kt` (304) |
-| `Views/SettingsView.swift` | `com/naeilo/app/ui/settings/SettingsView.kt` (360) |
+| `Views/SettingsView.swift` | `com/naeilo/app/ui/settings/SettingsView.kt` (361) |
 | `Views/ShareCard.swift` | `com/naeilo/app/ui/ShareCard.kt` (106) |
 | `Views/ShelterView.swift` | `com/naeilo/app/ui/shelter/ShelterView.kt` (464) |
 | `Views/StartView.swift` | `com/naeilo/app/ui/start/StartView.kt` (88) |
