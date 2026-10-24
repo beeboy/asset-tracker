@@ -685,14 +685,17 @@ struct MugScene: View {
         ZStack(alignment: .topLeading) {
             Canvas { ctx, _ in
                 // 다크 하늘은 종목·흐름·분석 바탕과 같은 밝기 (2026-10-24)
-            ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x14304F : 0xA9D6F6), Color(hex: dk ? 0x2C5F8F : 0xE4F3FD)]), startPoint: .zero, endPoint: pt(0, 170)))
+                ctx.fill(Path(CGRect(x: 0, y: 0, width: 300, height: 170)), with: .linearGradient(Gradient(colors: [Color(hex: dk ? 0x14304F : 0xA9D6F6), Color(hex: dk ? 0x2C5F8F : 0xE4F3FD)]), startPoint: .zero, endPoint: pt(0, 170)))
+                // 땅: 다크는 종목·흐름·분석 바탕의 흙색과 같게 (2026-10-24)
+                ctx.fill(Path(CGRect(x: 0, y: 136, width: 300, height: 34)), with: hex(dk, 0xE2C595, 0x8F7550))
+                ctx.fill(Path(CGRect(x: 0, y: 136, width: 300, height: 2.5)), with: hex(dk, 0xC9A673, 0x7A6243))
+            }
+            // 사물: 다크에선 인물과 같은 비율(dim)로 눌러 어두운 하늘·흙에 녹인다
+            Canvas { ctx, _ in
                 // 구름은 위쪽 (기훈 머리와 겹치지 않게)
                 for (x, y, rx, ry) in [(210, 30, 22, 7), (224, 25, 12, 7), (168, 62, 18, 5), (178, 58, 9, 5)] as [(CGFloat, CGFloat, CGFloat, CGFloat)] {
                     ctx.fill(Path(ellipseIn: CGRect(x: x - rx, y: y - ry, width: rx * 2, height: ry * 2)), with: dk ? hex(0xE9F3FB, 0.6) : hex(0xFFFFFF))
                 }
-                // 땅: 다크는 종목·흐름·분석 바탕의 흙색과 같게 (2026-10-24)
-                ctx.fill(Path(CGRect(x: 0, y: 136, width: 300, height: 34)), with: hex(dk, 0xE2C595, 0x8F7550))
-                ctx.fill(Path(CGRect(x: 0, y: 136, width: 300, height: 2.5)), with: hex(dk, 0xC9A673, 0x7A6243))
                 for r in [CGRect(x: 96, y: 150, width: 3, height: 1.5), CGRect(x: 180, y: 158, width: 4, height: 1.5), CGRect(x: 236, y: 147, width: 2, height: 1.5)] { ctx.fill(Path(r), with: hex(dk, 0xC9A673, 0x6E583A, 0.8)) }
                 // 계획 눈금 (50%). 다크 흙 위에선 금색으로 (다른 새 테마 다크와 같은 색)
                 ctx.stroke(Sk.line(pt(174, 140), pt(174, 152)), with: hex(dk, 0x7A4A10, 0xFFD98A), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2]))
@@ -700,15 +703,16 @@ struct MugScene: View {
                 // 영희 앞 분필 선 (사선)
                 ctx.stroke(Sk.line(pt(64, 137.5), pt(50, 170)), with: dk ? hex(0xFBF6EA, 0.9) : hex(0xFFFFFF), style: StrokeStyle(lineWidth: 2.6, lineCap: .square))
                 // 왼쪽 끝 나무
-                // 나무: 다크는 어두운 하늘에 맞춰 한 단 어둡게 (아래 dim 과 같은 비율)
-                ctx.fill(Path(CGRect(x: -1, y: 94, width: 6, height: 44)), with: hex(dk, 0x7A5634, 0x533D24))
-                ctx.fill(circle(0, 90, 13), with: hex(dk, 0x3A8048, 0x25583A)); ctx.fill(circle(8, 98, 6), with: hex(dk, 0x4A9356, 0x2D643F))
+                ctx.fill(Path(CGRect(x: -1, y: 94, width: 6, height: 44)), with: hex(dk, 0x7A5634, 0x6B4A2B))
+                ctx.fill(circle(0, 90, 13), with: hex(dk, 0x3A8048, 0x2F6B3A)); ctx.fill(circle(8, 98, 6), with: hex(dk, 0x4A9356, 0x3A7A45))
             }
+            .colorMultiply(dim)
             // 출구 빛 (오른 날엔 조금 빨리)
             Loop(duration: down ? 1.2 : 0.7) { on in
                 Ellipse().fill(RadialGradient(colors: [Color(hex: dk ? 0xB8FFCF : 0x5FE08F, opacity: dk ? 0.6 : 0.55), Color(hex: dk ? 0xB8FFCF : 0x5FE08F, opacity: 0)], center: .center, startRadius: 0, endRadius: 30))
                     .frame(width: 52, height: 64).opacity(on ? 0.55 : 1)
             }
+            .colorMultiply(dim)
             .position(x: 282, y: 124)
             Canvas { ctx, _ in
                 let door = Path(roundedRect: CGRect(x: 268, y: 96, width: 28, height: 42), cornerRadius: 2)
@@ -719,6 +723,7 @@ struct MugScene: View {
             }
             .colorMultiply(dim)
             Canvas { ctx, _ in Sk.text(ctx, s.target, 282, 75, Color(hex: dk ? 0xFFD98A : 0x8A5A00), size: 9.5, bold: true, anchor: .center) }
+                .colorMultiply(dim)
             Dot(img: MugArt.younghi(eyes), w: 45, h: 52.5).colorMultiply(dim).position(x: 30.5, y: 122.25)
             if eyes == .closed && !still {
                 // 눈 감은 동안 노래한다 (무궁화 꽃이 피었습니다)
@@ -726,6 +731,7 @@ struct MugScene: View {
                     FlyNote(text: ["♪", "♫", "♪"][i], color: Color(hex: 0xFFF4C2), size: 8.5, period: 1.5, delay: Double(i) * 0.5)
                         .position(x: [53, 58, 50][i], y: [101, 98, 97][i])
                 }
+                .colorMultiply(dim)
             }
             Gihun(to: gx, down: down, eyes: eyes, night: night).colorMultiply(dim)
         }
