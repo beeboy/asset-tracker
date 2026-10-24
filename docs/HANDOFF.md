@@ -200,3 +200,10 @@
 ## 안드로이드 흐름·홈·분석 옮김 (2026-10-24 새벽 KST, 로컬 커밋 1de178fc·ab79973a·33b38826)
 - 흐름(큰 흐름 박스·말풍선·이럴 때), 홈(설정·위젯 시트, 작은 알약), 분석(내 길 메인, 안개는 c09c7cd7 글자 모양)을 옮김. 빌드·시험 통과, 화면은 `TabsShot` 으로 찍음.
 - 알려진 불일치: 분석 새 문구 약 35개는 xcstrings 영어가 없어 안드로이드 영어 화면에 한국어로 나옴. xcstrings 에 영어를 넣고 `gen_en.py` 다시.
+
+## 안드로이드 멈춤(ANR)·메모리 줄이기 (2026-10-24 오전 KST, 로컬 커밋 f61d36b8~695696aa)
+- 원인(플립4 로그 `docs/anr-flip4/`): 분석 '어떻게 올릴까?'가 그릴 때마다 경로 배열을 main 에서 다시 셈(플러스 루트는 시작 금액이 실시간이라 캐시가 매번 빗나감), 저장본 읽기 전 줄 선 같은 키 재계산, 위젯이 main 에서 파일 읽기.
+- 고침: 목표 몬테카를로는 `GoalLater`(naeilo-goal 줄)에서 세고 그동안 직전 값, PathSet 캐시 4개·pathSetCache 7개, 저장본 같은 키면 계산 건너뜀, paths_mc 는 줄이 빌 때 한 번 쓰기, 전망 사건 반영·미반영 차례로, 위젯 face 는 IO, 계산 로그 `adb logcat -s naeilo.mc`.
+- 확인: 플립4 두 번 켜서 전망·구성 경로 재계산 0번(로그 '저장본 그대로'), 분석 탭 3분 동안 ANR·blocking GC·OOM 없음.
+- 알려진 불일치: GoalRoute.simulate·closedSim 은 안드로이드만 뒤 줄에서 셈(Swift 는 그 자리), 캐시 개수(MonteCarlo 658·667, Recovery 185)는 안드로이드만 작게. port_check 짝 없음 5 는 이것.
+- 남은 것: 삼성 기기에서 Compose 가 그릴 때마다 부르는 View.setRequestedFrameRate 를 기기가 스택과 함께 로그로 남겨 main CPU 약 11%(분석 탭 맥박 애니메이션이 계속 그림). Compose 1.11 에는 끄는 플래그가 없음. paths_mc.plist 52.8MB 크기 자체(경로 수·형식)는 그대로.
