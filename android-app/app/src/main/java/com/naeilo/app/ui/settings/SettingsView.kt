@@ -405,6 +405,9 @@ fun SettingsGroupView(m: AppModel, kind: SettingsRoute) {
                 // 홈 평가액 박스 모양 (홈 박스를 길게 눌러도 고른다)
                 T("홈 평가액 박스", style = appFont(13f, FontWeight.Bold), color = Theme.sub)
                 ChipRow(items = com.naeilo.app.ui.home.BoxLook.entries.map { it.name to it.label }, selection = boxLook, onSelect = { com.naeilo.app.ui.home.BoxLook.raw = it }, fill = true)
+                // 상단 박스(홈·종목·흐름·분석)만 밝기 모드를 따로 고른다. 앱 전체 모드는 그대로   // ios: Views/SettingsView.swift:279,280,281
+                T("상단 박스", style = appFont(13f, FontWeight.Bold), color = Theme.sub)
+                ChipRow(items = com.naeilo.app.ui.home.BoxScheme.entries.map { it.name to it.label }, selection = com.naeilo.app.ui.home.BoxScheme.raw, onSelect = { com.naeilo.app.ui.home.BoxScheme.raw = it }, fill = true)
                 SettingsRows(m, null, listOf(SRow("앱 아이콘", AppIconPicker.currentName(ctx), SettingsRoute.icon)))
                 WaveFeedbackToggles()
             }

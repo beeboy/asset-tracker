@@ -6,6 +6,14 @@ import com.naeilo.app.ui.Sheet
 import com.naeilo.app.ui.hex
 import com.naeilo.app.net.KoreaEstimate
 import com.naeilo.app.ui.home.BoxLook
+import com.naeilo.app.ui.home.BandBuddy
+import com.naeilo.app.ui.home.BoxSchemeScope
+import com.naeilo.app.ui.home.ThemeBand
+import com.naeilo.app.ui.home.ThemeBandFrame
+import com.naeilo.app.ui.home.boxDark
+import com.naeilo.app.ui.home.boxInk
+import com.naeilo.app.ui.home.bx
+import com.naeilo.app.ui.home.themeBackdrop
 import com.naeilo.app.ui.LocalReduceMotion
 import com.naeilo.app.ui.TA
 import androidx.compose.ui.text.buildAnnotatedString
@@ -274,8 +282,11 @@ private fun TodayBoxFor(m: AppModel, rows: List<AppModel.Row>, lookRaw: String) 
     val w = { f: (Double) -> Boolean -> st.filter { f(move(m, it)) }.fold(0.0) { a, r -> a + r.value } }   // ios: Views/HoldingsView.swift:105
     val gain = m.total - m.cost   // ios: Views/HoldingsView.swift:106
     // ios: Views/HoldingsView.swift:107,108
-    TodayBox(look = BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, move = mv, pct = m.todayMove,
-        parts = listOf(w { it > 0 }, w { it == 0.0 }, w { it < 0 }), gain = gain, ret = m.ret)
+    // ios: Views/HoldingsView.swift:396 (.boxScheme())
+    BoxSchemeScope {
+        TodayBox(look = BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, move = mv, pct = m.todayMove,
+            parts = listOf(w { it > 0 }, w { it == 0.0 }, w { it < 0 }), gain = gain, ret = m.ret)
+    }
 }
 
 /** 위 그래프의 숫자: 기간·보유·시세가 바뀔 때만 다시 센다 (그리는 중엔 계산하지 않는다) */
@@ -301,7 +312,7 @@ private fun TotalChart(m: AppModel, rows: List<AppModel.Row>, period: Period, se
         // ios: Views/HoldingsView.swift:120,121,122,123
         TagChart(points = t.tot, height = 120.dp, tags = listOf(
             TagChart.Tag(at = first, text = HoldFmt.won(first), bg = TagChart.gray),
-            TagChart.Tag(at = last, text = (if (up) "+" else "−") + HoldFmt.won(abs(last - first)), bg = if (up) TodayBox.upC else TodayBox.downC),
+            TagChart.Tag(at = last, text = (if (up) "+" else "−") + HoldFmt.won(abs(last - first)), bg = if (up) hex(0xFF8A80) else hex(0x8CC4F2)),
         ), left = d0, right = "오늘", scrub = Scrub.period(period) { AppModel.man(it) + tr("원") })
         ChipRow(items = HoldingsView.periods.map { it to it.label }, selection = period, onSelect = setPeriod, fill = true)   // ios: Views/HoldingsView.swift:124
         // ios: Views/HoldingsView.swift:126,128 (127 은 검사 예외: 같은 글)
@@ -419,7 +430,7 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, mx: Double
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.tint(m: AppModel, r: AppModel.Row, mx: Double, dark: Boolean) {
     val v = move(m, r)   // ios: Views/HoldingsView.swift:218
     val f = if (v != 0.0 && mx > 0) max(0.12, abs(v) / mx) else 0.12   // ios: Views/HoldingsView.swift:219
-    val c = if (v > 0) TodayBox.upC else if (v < 0) TodayBox.downC else if (dark) hex(0x4A5672) else hex(0xAAB2BE)   // ios: Views/HoldingsView.swift:220
+    val c = if (v > 0) hex(0xFF8A80) else if (v < 0) hex(0x8CC4F2) else if (dark) hex(0x4A5672) else hex(0xAAB2BE)   // ios: Views/HoldingsView.swift:220
     // ios: Views/HoldingsView.swift:221,222,224 (읽어 주기는 그림이라 없다)
     drawRect(c.copy(alpha = if (dark) 0.26f else 0.32f), Offset.Zero, Size(size.width * 0.34f * f.toFloat(), size.height))
 }
@@ -613,36 +624,54 @@ fun TodayBox(
             T(AppModel.sgn(pct), Modifier.alignByBaseline(), style = TextStyle(fontSize = fx(16f), fontWeight = FontWeight.SemiBold), color = c, maxLines = 1)   // ios: Views/HoldingsView.swift:386
         }
         // 점프 직전: 도로는 박스 맨 아래에 붙인다
-        if (look == BoxLook.jump) { Foot(gain, ret); MoodBand(look, shares) }   // ios: Views/HoldingsView.swift:388
-        else { MoodBand(look, shares); Foot(gain, ret) }   // ios: Views/HoldingsView.swift:389
+        if (look == BoxLook.jump) { Foot(gain, ret); MoodBand(look, shares, up = move >= 0) }   // ios: Views/HoldingsView.swift:388
+        else { MoodBand(look, shares, up = move >= 0); Foot(gain, ret) }   // ios: Views/HoldingsView.swift:389
     }
 }
 
-/** 몫 띠: 홈에서 고른 박스 모양대로 그린다 (종목 오늘 박스·흐름 큰 흐름 박스가 같이 쓴다). 몫은 위·그대로·아래 순서, 합 1 */
+/** 몫 띠: 홈에서 고른 박스 모양대로 그린다 (종목 오늘 박스·흐름 큰 흐름 박스가 같이 쓴다). 몫은 위·그대로·아래 순서, 합 1.
+ *  띠 위 오른쪽 끝에 테마의 작은 인물이 선다 (up = 오른 날). 색은 라이트·다크 한 쌍 */
 // ios: Views/HoldingsView.swift:412
 @Composable
 fun MoodBand(
     look: BoxLook, shares: List<Double>,
     road: Dp = 18.dp,   // ios: Views/HoldingsView.swift:415 점프 직전 도로 위아래 여백 (흐름 박스는 버튼이 아래에 붙어 좁게)
+    up: Boolean = true,   // ios: Views/HoldingsView.swift:416
 ) {
-    val colors = listOf(TodayBox.upC, TodayBox.flatC, TodayBox.downC)   // ios: Views/HoldingsView.swift:416
-    when (look) {
-        BoxLook.jump -> Lane(shares, colors, road)   // ios: Views/HoldingsView.swift:420
-        BoxLook.horizon -> Wave(shares, colors, Modifier.fillMaxWidth().height(12.dp))   // ios: Views/HoldingsView.swift:421
-        // ios: Views/HoldingsView.swift:422,423,424
-        BoxLook.tub -> Box(Modifier.fillMaxWidth().background(hex(0xEEF2F8), RoundedCornerShape(8.dp)).padding(4.dp)) { Band(shares, colors, 8.dp, 4.dp) }
-        // ios: Views/HoldingsView.swift:425,426
-        BoxLook.bar -> Box(Modifier.fillMaxWidth().clip(CapsuleShape).background(hex(0x2E3542), CapsuleShape)) { Band(shares, colors, 10.dp, 5.dp) }
+    val ink = boxInk(); val dk = ink.dk
+    // ios: Views/HoldingsView.swift:417
+    val colors = listOf(ink.upF, if (look == BoxLook.pino) ThemeBand.woodFlat(dk) else if (look == BoxLook.horizon) bx(dk, 0xAEB7C4, 0x4A5672) else ink.flatF, ink.downF)
+    // ios: Views/HoldingsView.swift:419,420,421,422,423,424 (띠 위 오른쪽 끝 = 띠 위 2pt)
+    Box(Modifier.fillMaxWidth()) {
+        when (look) {
+            BoxLook.jump -> Lane(shares, listOf(ink.upF, bx(dk, 0x5A6585, 0x4A5672), ink.downF), road, dk)   // ios: Views/HoldingsView.swift:429
+            BoxLook.horizon -> Wave(shares, colors, Modifier.fillMaxWidth().height(12.dp))   // ios: Views/HoldingsView.swift:430
+            // ios: Views/HoldingsView.swift:431,432,433,434
+            BoxLook.tub -> Box(Modifier.fillMaxWidth().background(bx(dk, 0xFFFFFF, 0xEEF2F8), RoundedCornerShape(8.dp)).border(1.dp, bx(dk, 0xB7CAE3, 0xB7CAE3, 1f, 0f), RoundedCornerShape(8.dp)).padding(4.dp)) { Band(shares, colors, 8.dp, 4.dp) }
+            // ios: Views/HoldingsView.swift:435,436
+            BoxLook.bar -> Box(Modifier.fillMaxWidth().clip(CapsuleShape).background(bx(dk, 0xE6E9EE, 0x2E3542), CapsuleShape)) { Band(shares, colors, 10.dp, 5.dp) }
+            BoxLook.dory, BoxLook.pino, BoxLook.mug -> ThemeBandFrame(look) { h, rad -> Band(shares, colors, h, rad) }   // ios: Views/HoldingsView.swift:437,438,439,440,441,442,443,444,445,446,447,448,449
+        }
+        BandBuddy(look, up, Modifier.align(Alignment.TopEnd).padding(end = if (look == BoxLook.jump) 18.dp else 0.dp).aboveTop(2.dp))
     }
+}
+
+/** .alignmentGuide(.top) { $0[.bottom] + 2 }: 아래 끝을 부모 위 끝보다 gap 위에 둔다 (자리는 차지하지 않는다) */
+private fun Modifier.aboveTop(gap: Dp): Modifier = this.layout { m, c ->
+    val p = m.measure(c.copy(minWidth = 0, minHeight = 0))
+    layout(p.width, 0) { p.place(0, -p.height - gap.roundToPx()) }
 }
 
 /** 박스 바탕: 홈에서 고른 박스 모양의 장면 (늘 어둡다) */
 // ios: Views/HoldingsView.swift:495
-fun Modifier.moodBackdrop(look: BoxLook): Modifier = drawBehind { backdrop(look) }
+@Composable
+fun Modifier.moodBackdrop(look: BoxLook): Modifier { val dk = boxDark(); return drawBehind { backdrop(look, dk) } }
 
 // ios: Views/HoldingsView.swift:364 (struct TodayBox 의 static)
 object TodayBox {
-    val upC = hex(0xFF8A80); val downC = hex(0x8CC4F2); val flatC = hex(0x4A5672); val dim = hex(0x8A93A6)   // ios: Views/HoldingsView.swift:369
+    // ios: Views/HoldingsView.swift:369 (BoxInk: 라이트·다크 한 쌍)
+    val upC @Composable get() = boxInk().up; val downC @Composable get() = boxInk().down
+    val flatC @Composable get() = boxInk().flatF; val dim @Composable get() = boxInk().dim
     /** 449만 원 · 만원 미만은 3,200원 */
     // ios: Views/HoldingsView.swift:413,414
     fun won(v: Double): String = if (AppModel.en || abs(v) < 1e4) HoldFmt.won(v) else AppModel.man(v) + tr(" 원")
@@ -696,8 +725,9 @@ private fun Band(shares: List<Double>, colors: List<Color>, height: Dp, radius: 
 /** 점프 직전: 박스 아래 밤 도로 가운데의 가는 점선 중앙선(칸과 틈이 거의 같다). 한 칸은 한 색만 (칸 반올림으로 몫이 조금 어긋나도 느낌만 전한다) */
 // ios: Views/HoldingsView.swift:439,455,456,457,458,459
 @Composable
-private fun Lane(shares: List<Double>, colors: List<Color>, road: Dp) {
-    Box(Modifier.outset(18.dp).background(hex(0x151925)).drawBehind { drawRect(hex(0x232A3E), Offset.Zero, Size(size.width, 1.dp.toPx())) }
+private fun Lane(shares: List<Double>, colors: List<Color>, road: Dp, dk: Boolean) {
+    // 라이트도 도로는 어둡게 둔다 (차선 불빛이 밝은 바탕에 묻히지 않게)
+    Box(Modifier.outset(18.dp).background(bx(dk, 0x2F3650, 0x151925)).drawBehind { drawRect(bx(dk, 0x2F3650, 0x232A3E), Offset.Zero, Size(size.width, 1.dp.toPx())) }
         .padding(horizontal = 18.dp, vertical = road)) {   // ios: Views/HoldingsView.swift:463
         // ios: Views/HoldingsView.swift:440,455
         Canvas(Modifier.fillMaxWidth().height(2.5.dp)) {
@@ -753,21 +783,28 @@ private fun Wave(shares: List<Double>, colors: List<Color>, modifier: Modifier) 
 }
 
 // ios: Views/HoldingsView.swift:486,487
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.backdrop(look: BoxLook) {
+// 라이트·다크 한 쌍 (라이트는 낮 장면, 점프 직전은 하늘만 밝게)
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.backdrop(look: BoxLook, dk: Boolean) {
     when (look) {
-        // ios: Views/HoldingsView.swift:488,489,490
+        // ios: Views/HoldingsView.swift:525,526,527
         BoxLook.jump -> {
-            drawRect(Brush.verticalGradient(listOf(hex(0x0B1022), hex(0x232A52))))
-            stars(listOf(Triple(0.67f, 0.11f, 0.9f), Triple(0.8f, 0.26f, 0.6f), Triple(0.57f, 0.24f, 0.5f)))
+            drawRect(Brush.verticalGradient(listOf(bx(dk, 0xE4EAF7, 0x0B1022), bx(dk, 0xBAC7E8, 0x232A52))))
+            if (dk) stars(listOf(Triple(0.67f, 0.11f, 0.9f), Triple(0.8f, 0.26f, 0.6f), Triple(0.57f, 0.24f, 0.5f)))
         }
-        // ios: Views/HoldingsView.swift:491,492,493,494
+        // ios: Views/HoldingsView.swift:528,529,530,531
         BoxLook.horizon -> {
-            drawRect(Brush.verticalGradient(listOf(hex(0x0C111D), hex(0x1C2747))))
-            drawRect(Brush.radialGradient(0f to hex(0xFFD98A).copy(alpha = 0.4f), 1f to hex(0xFFD98A).copy(alpha = 0f), center = Offset(size.width * 1, size.height * 0.8f), radius = 190.dp.toPx()))
-            stars(listOf(Triple(0.2f, 0.12f, 0.8f), Triple(0.5f, 0.07f, 0.6f), Triple(0.77f, 0.18f, 0.9f), Triple(0.9f, 0.08f, 0.5f)))
+            drawRect(Brush.verticalGradient(listOf(bx(dk, 0xEAF0F9, 0x0C111D), bx(dk, 0xF8F0E5, 0x1C2747))))
+            val sun = if (dk) hex(0xFFD98A) else hex(0xFFBA68)
+            drawRect(Brush.radialGradient(0f to sun.copy(alpha = if (dk) 0.4f else 0.55f), 1f to sun.copy(alpha = 0f), center = Offset(size.width * 1, size.height * 0.8f), radius = 190.dp.toPx()))
+            if (dk) stars(listOf(Triple(0.2f, 0.12f, 0.8f), Triple(0.5f, 0.07f, 0.6f), Triple(0.77f, 0.18f, 0.9f), Triple(0.9f, 0.08f, 0.5f)))
         }
-        BoxLook.tub -> tileWall(22.dp.toPx())   // ios: Views/HoldingsView.swift:495,496
-        BoxLook.bar -> drawRect(hex(0x1E2430))   // ios: Views/HoldingsView.swift:497,498
+        BoxLook.tub -> tileWall(22.dp.toPx(), dk)   // ios: Views/HoldingsView.swift:532,533
+        // ios: Views/HoldingsView.swift:534,535,536
+        BoxLook.bar -> {
+            drawRect(bx(dk, 0xFFFFFF, 0x1E2430))
+            if (!dk) drawRoundRect(hex(0xE1E5EA), cornerRadius = CornerRadius(20.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+        }
+        BoxLook.dory, BoxLook.pino, BoxLook.mug -> themeBackdrop(look, dk)   // ios: Views/HoldingsView.swift:537,538
     }
 }
 

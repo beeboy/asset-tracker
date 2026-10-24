@@ -12,6 +12,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.semantics.selected
 import com.naeilo.app.ui.hex
 import com.naeilo.app.ui.home.BoxLook
+import com.naeilo.app.ui.home.BoxSchemeScope
+import com.naeilo.app.ui.home.boxInk
+import com.naeilo.app.ui.home.bx
 import com.naeilo.app.ui.home.FreshLabel
 import com.naeilo.app.ui.hold.FitAnnotated
 import com.naeilo.app.ui.hold.MoodBand
@@ -175,7 +178,7 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                 FillLast(minTotal = vh - 12.dp, minLast = 300.dp, gap = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/FlowView.swift:61
                     Box(Modifier.outset(16.dp)) { AppHeader(tab = FlowTab.name) }   // ios: Views/FlowView.swift:62 (-16)
-                    if (mood.box.isNotEmpty()) MoodBox(mood, BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, cur, ::name) { sel = it; term = null }   // ios: Views/FlowView.swift:63
+                    if (mood.box.isNotEmpty()) BoxSchemeScope { MoodBox(mood, BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, cur, ::name) { sel = it; term = null } }   // ios: Views/FlowView.swift:63
                     if (restIds.isNotEmpty()) Chips(restIds, cur, ::name, onAll = { showAll = true }) { sel = it; term = null }   // ios: Views/FlowView.swift:64
                     if (needKey) {   // ios: Views/FlowView.swift:65
                         // ios: Views/FlowView.swift:66,67,68,70
@@ -264,10 +267,10 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { T("내 종목 · 큰 흐름", Modifier.weight(1f), style = appFont(13f), color = TodayBox.dim); FreshLabel() }
         // ios: Views/FlowView.swift:121,122,123
         FitAnnotated(buildAnnotatedString {
-            withStyle(SpanStyle(color = Color.White)) { append("$head · ") }
+            withStyle(SpanStyle(color = boxInk().ink)) { append("$head · ") }
             withStyle(SpanStyle(color = c)) { append(AppModel.pct(share)) }
-        }, TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.6f, Color.White, Modifier.padding(top = 6.dp))
-        Box(Modifier.padding(top = 14.dp)) { MoodBand(look, md.shares, road = 10.dp) }   // ios: Views/FlowView.swift:124
+        }, TextStyle(fontSize = fx(30f), fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp), 0.6f, boxInk().ink, Modifier.padding(top = 6.dp))
+        Box(Modifier.padding(top = 14.dp)) { MoodBand(look, md.shares, road = 10.dp, up = md.side >= 0) }   // ios: Views/FlowView.swift:124
         // ios: Views/FlowView.swift:125,126,127,128,129,130 (오른쪽 끝 16% 를 흐리게)
         Box(Modifier.outset(18.dp).padding(top = 14.dp).fadeEnd(0.84f)) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { md.box.forEach { BoxChip(it, c, cur, name, onPick) } }
@@ -279,15 +282,17 @@ private fun MoodBox(md: Mood, look: BoxLook, cur: String?, name: (String) -> Str
 @Composable
 private fun BoxChip(id: String, dot: Color, cur: String?, name: (String) -> String, onPick: (String) -> Unit) {
     val on = cur == id   // ios: Views/FlowView.swift:139
+    val ink = boxInk()
     // ios: Views/FlowView.swift:140,141,145,146,147,149,150
     Row(
-        Modifier.heightIn(min = 34.dp).clip(RoundedCornerShape(50)).border(1.dp, if (on) Color.White else Color.White.copy(alpha = 0.22f), RoundedCornerShape(50))
+        Modifier.heightIn(min = 34.dp).clip(RoundedCornerShape(50)).background(bx(ink.dk, 0xFFFFFF, 0xFFFFFF, 0.55f, 0f))
+            .border(1.dp, if (on) ink.ink else bx(ink.dk, 0x16181D, 0xFFFFFF, 0.16f, 0.22f), RoundedCornerShape(50))   // ios: Views/FlowView.swift:148,149
             .semantics { if (on) selected = true }.plainClickable { onPick(id) }.padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(Modifier.size(8.dp).background(dot, androidx.compose.foundation.shape.CircleShape))   // ios: Views/FlowView.swift:142
         // ios: Views/FlowView.swift:143,145
-        T(if (id == "DRNK") "DRNK" else name(id), style = appFont(15f, if (on) FontWeight.Bold else FontWeight.Normal), color = if (on) Color.White else hex(0xC9D0D6), maxLines = 1)
+        T(if (id == "DRNK") "DRNK" else name(id), style = appFont(15f, if (on) FontWeight.Bold else FontWeight.Normal), color = if (on) ink.ink else ink.sub, maxLines = 1)
     }
 }
 
