@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import os
 import re
@@ -271,6 +272,13 @@ def mock_err(e: Exception) -> str:
 MOCK_CODE = re.compile(r"[A-Za-z0-9.\-]{1,12}")
 _mock_daily: dict[str, tuple[float, int, list]] = {}  # 코드 → (받은 시각, 봉 수, 봉)
 MOCK_LOCK = threading.Lock()
+DEV_TOKEN = ROOT / "dev_token.json"  # 모의 경로 열쇠 {"token": "…"} (.gitignore, 이 서버에만)
+
+
+def mock_ok(h) -> bool:
+    """모의 경로 열쇠: 공용 중계(Caddy) 뒤로 열리므로 dev_token.json 의 값과 머리글 X-Naeilo-Dev 가 같아야 한다"""
+    t = str(read_json(DEV_TOKEN, {}).get("token", "")).strip()
+    return bool(t) and hmac.compare_digest(t.encode(), str(h.get("X-Naeilo-Dev") or "").encode())  # 바이트로 견줘 한글 머리글에도 안 터짐
 
 
 def mock_kr_busy() -> bool:
@@ -897,6 +905,8 @@ class Handler(SimpleHTTPRequestHandler):
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self.send_json(toss_prices([x for x in (q.get("symbols") or [""])[0].split(",") if x]))
         if self.path.startswith("/api/mock/"):  # 모의투자 (개발자 전용, 앱 Mock/)
+            if not mock_ok(self.headers):
+                return self.send_json({"error": "열쇠 없음"}, 403)
             o = self.headers.get("Origin") or ""
             self.cors = o if toss_origin_ok(o) else None
             r = mock_get(self.path)
@@ -923,6 +933,8 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             b = self.body()
             if self.path == "/api/mock/ai":  # 모의투자 AI 조언 (개발자 전용. 키는 ai_keys.json, 한도·쓴 돈은 mock_wallet.json)
+                if not mock_ok(self.headers):
+                    return self.send_json({"error": "열쇠 없음"}, 403)
                 return self.send_json(mock_ai(b))
             if self.path == "/api/state":
                 with LOCK:

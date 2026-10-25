@@ -1,21 +1,34 @@
 #if MOCK
 import Foundation
 
-// 모의투자 시세 길: 개발자 서버(server.py, Tailscale 주소 = TossFeed.base)의 /api/mock/… 만 부른다.
+// 모의투자 시세 길: 개발자 서버(server.py)의 /api/mock/… 만 부른다.
 // 일봉은 서버가 한도 안에서 동시에 받아 묶어 준다. 호가는 주문하는 순간에만.
 enum MockFeed {
     struct Fail: Error { let why: String }
 
-    static var base: String? { TossFeed.base }
+    /// 개발자 서버: Tailscale 주소(TossFeed.base)가 있으면 그쪽, 없으면 공용 중계 toss.naeilo.com 뒤 (Caddy 가 /api/mock 만 개발자 서버로 넘긴다)
+    static var base: String? { TossFeed.base ?? (token == nil ? nil : Config.tossRelay) }
+
+    /// 개발자 서버 열쇠. naeilo://mock?t=… 로 이 기기에만 넣는다. 저장소·앱 코드에는 없다
+    static let tokenKey = "mock_dev_token"
+    static var token: String? { UserDefaults.standard.string(forKey: tokenKey).flatMap { $0.isEmpty ? nil : $0 } }
+    /// 쿼리 t 가 16자 이상 영숫자·-·_ 이면 저장, 아니면 지운다
+    static func setToken(from url: URL) {
+        let t = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "t" }?.value ?? ""
+        let ok = t.count >= 16 && t.unicodeScalars.allSatisfy { ($0.isASCII && CharacterSet.alphanumerics.contains($0)) || $0 == "-" || $0 == "_" }
+        if ok { UserDefaults.standard.set(t, forKey: tokenKey) } else { UserDefaults.standard.removeObject(forKey: tokenKey) }
+    }
 
     private static func get(_ path: String, timeout: TimeInterval) async throws -> [String: Any] {
-        guard let b = base, let url = URL(string: b + path) else { throw Fail(why: "개발자 서버 주소 없음 (naeilo://toss?u=…)") }
+        guard let b = base, let url = URL(string: b + path) else { throw Fail(why: "개발자 서버 주소·열쇠 없음 (naeilo://mock?t=…)") }
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         req.setValue("naeilo-ios-mock/0.1", forHTTPHeaderField: "User-Agent")
+        if let t = token { req.setValue(t, forHTTPHeaderField: "X-Naeilo-Dev") }
         let data: Data, resp: URLResponse
         do { (data, resp) = try await URLSession.shared.data(for: req) }
         catch let e as URLError { throw Fail(why: e.code == .timedOut ? "서버 응답 없음 (\(Int(timeout))초)" : "서버 연결 실패 (\(e.code.rawValue))") }
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if code == 401 || code == 403 { throw Fail(why: "개발자 서버 열쇠가 맞지 않아요") }
         guard code == 200 else { throw Fail(why: code == 404 ? "서버에 모의투자 경로 없음 (server.py 새 판 필요)" : "서버 응답 \(code)") }
         guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw Fail(why: "응답을 읽지 못함") }
         if let e = o["error"] as? String { throw Fail(why: "서버: " + e) }
@@ -24,16 +37,18 @@ enum MockFeed {
 
     /// AI 조언 (서버가 Claude 를 부른다. 키·한도·쓴 돈은 서버에). 실패해도 쓴 돈이 있으면 함께 온다
     static func ai(kind: String, prompt: String, limits: [String: Double]) async throws -> [String: Any] {
-        guard let b = base, let url = URL(string: b + "/api/mock/ai") else { throw Fail(why: "개발자 서버 주소 없음 (naeilo://toss?u=…)") }
+        guard let b = base, let url = URL(string: b + "/api/mock/ai") else { throw Fail(why: "개발자 서버 주소·열쇠 없음 (naeilo://mock?t=…)") }
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 130)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("naeilo-ios-mock/0.1", forHTTPHeaderField: "User-Agent")
+        if let t = token { req.setValue(t, forHTTPHeaderField: "X-Naeilo-Dev") }
         req.httpBody = try JSONSerialization.data(withJSONObject: ["kind": kind, "prompt": prompt, "limits": limits])
         let data: Data, resp: URLResponse
         do { (data, resp) = try await URLSession.shared.data(for: req) }
         catch let e as URLError { throw Fail(why: e.code == .timedOut ? "AI 응답 없음 (130초)" : "서버 연결 실패 (\(e.code.rawValue))") }
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if code == 401 || code == 403 { throw Fail(why: "개발자 서버 열쇠가 맞지 않아요") }
         guard code == 200 || code == 500 else { throw Fail(why: code == 404 ? "서버에 AI 경로 없음 (server.py 새 판 필요)" : "서버 응답 \(code)") }
         guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw Fail(why: "응답을 읽지 못함") }
         return o

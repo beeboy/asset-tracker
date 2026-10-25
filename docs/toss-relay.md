@@ -34,3 +34,15 @@
 - 키 하나에 토큰 하나: 사용자가 같은 키를 다른 프로그램에서도 쓰면 서로 끊긴다. 화면에 안내함.
 - 웹(`web/`, 개발자용)에는 이 경로가 없다 (앱만).
 - 중계에 일봉·환율 경로를 넣은 새 판을 서버에 올려야 앱이 지난 종가·환율을 토스로 받는다. 첫 3년치는 종목당 4번쯤 불러서, 종목이 많으면 1분 60번 제한에 걸려 다음 갱신 때 이어 받는다.
+
+## 모의투자 경로 (개발자 전용, 2026-10-25)
+- 같은 Caddy 의 `toss.naeilo.com { … }` 안, `reverse_proxy 127.0.0.1:8766` 앞에 넣고 `sudo systemctl reload caddy`:
+  ```
+  handle /api/mock/* {
+      reverse_proxy 127.0.0.1:8765
+  }
+  ```
+- 8765 는 개발자 서버 `server.py` (서비스 `naeilo-dev`, `ExecStart=/usr/bin/python3 /home/ubuntu/asset-tracker/server.py --port 8765 --no-browser`).
+- 열쇠: 서버 `~/asset-tracker/dev_token.json` 에 `{"token": "<16자 이상 영숫자·-·_>"}` (.gitignore). 앱이 머리글 `X-Naeilo-Dev` 로 같은 값을 보내야 답하고, 아니면 403. 파일이 없으면 모의 경로는 모두 403.
+- 앱: 폰에서 `naeilo://mock?t=<같은 값>` 을 한 번 열면 그 기기에만 저장된다(내부 베타만). Tailscale 주소(`naeilo://toss?u=…ts.net`)가 있으면 그쪽이 먼저다.
+- 확인: `curl -H "X-Naeilo-Dev: <값>" https://toss.naeilo.com/api/mock/wallet` 가 `{"spent": …}` 를 돌려주면 된다. 머리글 없이 부르면 403.
