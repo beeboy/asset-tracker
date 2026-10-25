@@ -70,6 +70,7 @@ import com.naeilo.app.net.KoreaEstimate
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.StockHit
 import com.naeilo.app.net.StockSearch
+import com.naeilo.app.net.TossMinutes
 import com.naeilo.app.net.YahooSample
 import com.naeilo.app.net.last
 import com.naeilo.app.net.quote
@@ -129,6 +130,7 @@ fun HoldingDetailView(m: AppModel,
     var editing by remember { mutableStateOf(false) }   // ios: Views/HoldingsView.swift:577
     var opened by remember { mutableStateOf(false) }   // ios: Views/HoldingsView.swift:578
     var inUsd by rememberPrefBool("holdUsd", false)   // ios: Views/HoldingsView.swift:579
+    var mins by remember { mutableStateOf<TossMinutes.Day?>(null) }   // ios: Views/HoldingsView.swift:631 1일: 토스 1분봉 (키가 있을 때만)
     val isUsd = sym.currency == Currency.usd   // ios: Views/HoldingsView.swift:581
     val du = isUsd && inUsd   // ios: Views/HoldingsView.swift:582
     /** 원래 통화 값 → 지금 고른 통화 글 (가격: $는 소수 둘째 자리) */
@@ -146,7 +148,8 @@ fun HoldingDetailView(m: AppModel,
     // 그래프는 내 평가금 (고른 통화). $ 보기면 달러 정수, 원 보기면 만원
     val k = if (isUsd && !du) Market.shared.valFx else 1.0   // ios: Views/HoldingsView.swift:597
     val stamp = Market.shared.updatedAt
-    val pts = remember(period, sym, stamp, q, k) { m.prices.series(sym, period).map { it * q * k } }   // ios: Views/HoldingsView.swift:598 (기간·시세가 바뀔 때만)
+    val day = if (period == Period.d1) mins else null   // ios: Views/HoldingsView.swift:650
+    val pts = remember(period, sym, stamp, q, k, day) { (day?.let { listOf(Market.shared.quote(sym).prevClose) + it.closes } ?: m.prices.series(sym, period)).map { it * q * k } }   // ios: Views/HoldingsView.swift:651 (기간·시세가 바뀔 때만)
     val big = { v: Double -> if (du) "$" + won(abs(v)) else HoldFmt.won(abs(v)) }   // ios: Views/HoldingsView.swift:599
     val S = pts.firstOrNull() ?: 0.0; val E = pts.lastOrNull() ?: 0.0; val up = E >= S   // ios: Views/HoldingsView.swift:600
     val p = pair(sym.last); val a = pair(h.avg)   // ios: Views/HoldingsView.swift:601
@@ -155,6 +158,8 @@ fun HoldingDetailView(m: AppModel,
     LaunchedEffect(Unit) { if (m.arg("editMode") != null && !opened) { opened = true; editing = true } }
     // ios: Views/HoldingsView.swift:653
     LaunchedEffect(editing) { if (editing) { editing = false; m.holdPath = m.holdPath + EditRoute(sym) } }
+    // ios: Views/HoldingsView.swift:709
+    LaunchedEffect(period) { if (period == Period.d1 && mins == null) mins = TossMinutes.day(CustomSymbols.yahoo(sym)) }
 
     // ios: Views/HoldingsView.swift:664,665,666
     @Composable
@@ -202,7 +207,8 @@ fun HoldingDetailView(m: AppModel,
                                 TagChart.Tag(at = E, text = big(E), bg = Theme.ink, fg = Theme.card),
                                 TagChart.Tag(at = E, dy = 20.dp, text = (if (up) "+" else "−") + big(E - S), bg = if (up) hex(0xFF8A80) else hex(0x8CC4F2)),
                                 TagChart.Tag(at = S, text = big(S), bg = TagChart.gray),
-                            ), left = startLabel(period), right = "지금", scrub = Scrub.period(period) { big(it) })
+                            ), left = day?.first ?: startLabel(period), right = "지금",   // ios: Views/HoldingsView.swift:683
+                                scrub = day?.let { dd -> Scrub(date = { x -> dd.at[(Math.round(x * dd.at.size).toInt() - 1).coerceIn(0, dd.at.size - 1)] }, value = { big(it) }) } ?: Scrub.period(period) { big(it) })
                         }
                         ChipRow(items = Period.entries.map { it to it.label }, selection = period, onSelect = { period = it }, fill = true, pad = 4.dp)   // ios: Views/HoldingsView.swift:632
                     }

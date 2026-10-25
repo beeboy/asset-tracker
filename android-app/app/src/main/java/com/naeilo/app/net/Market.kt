@@ -723,3 +723,59 @@ object TossSplit {
         return YahooSample.Hist(t.dates, out)
     }
 }
+
+/** 종목 상세 1일 차트: 내 토스 키로 중계에서 1분봉을 받는다 (토스 봉은 1분·일봉뿐, 1h 는 400 확인).
+ *  마지막 거래일 정규장만 (국내 9:00~15:30, 미국 뉴욕 9:30~16:00). 장 끝 시각부터 거꾸로 200개씩 두 번이면 찬다.
+ *  같은 종목은 1분 동안 다시 쓴다. 키가 없거나 못 받으면 null (그래프는 예전처럼 전일 종가 → 지금) */
+// ios: Data/Market.swift:641
+object TossMinutes {
+    class Day(val at: List<java.time.Instant>, val closes: List<Double>, val first: String)   // ios: Data/Market.swift:642
+    private val cache = mutableMapOf<String, Pair<Long, Day>>()   // ios: Data/Market.swift:643
+
+    // ios: Data/Market.swift:645
+    suspend fun day(yahoo: String): Day? {
+        val code = TossFeed.code(yahoo); if (!TossKeys.on || code == null) return null   // ios: Data/Market.swift:646
+        cache[code]?.let { if (System.currentTimeMillis() - it.first < 60_000) return it.second }   // ios: Data/Market.swift:647
+        val kr = yahoo.uppercase().let { it.endsWith(".KS") || it.endsWith(".KQ") }   // ios: Data/Market.swift:648
+        val zone = java.time.ZoneId.of(if (kr) "Asia/Seoul" else "America/New_York")   // ios: Data/Market.swift:650
+        val oh = if (kr) 9 to 0 else 9 to 30; val ch = if (kr) 15 to 30 else 16 to 0   // ios: Data/Market.swift:651
+        // 그 날(장 시간대 기준)의 정규장 시작·끝
+        // ios: Data/Market.swift:653
+        fun session(d: java.time.Instant): Pair<java.time.Instant, java.time.Instant> {
+            val day = d.atZone(zone).toLocalDate()
+            return day.atTime(oh.first, oh.second).atZone(zone).toInstant() to day.atTime(ch.first, ch.second).atZone(zone).toInstant()
+        }
+        val now = java.time.Instant.now(); val today = session(now)   // ios: Data/Market.swift:657
+        // 장 전이면 어제 장 끝부터. 주말·휴일이면 받은 마지막 봉의 날로 다시 맞춘다
+        var before = if (now < today.first) session(now.minusSeconds(86400)).second else minOf(now, today.second)   // ios: Data/Market.swift:659
+        val bars = mutableMapOf<java.time.Instant, Double>(); var win: Pair<java.time.Instant, java.time.Instant>? = null   // ios: Data/Market.swift:662
+        for (i in 0 until 4) {   // ios: Data/Market.swift:663
+            val b = before.plusSeconds(60).truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()
+            val (st, o, _) = TossFeed.userGet("/api/toss/v1/candles?symbol=${pctEncode(code)}&interval=1m&adjusted=false&count=200&before=${pctEncode(b)}", 8.0)
+            val r = jObj(o?.get("result")); if (st != 200 || r == null) break
+            val page = mutableMapOf<java.time.Instant, Double>()
+            for (v in jObjs(r["candles"]) ?: emptyList()) {
+                val t = v["timestamp"] as? String ?: continue; val cl = num(v["closePrice"])?.takeIf { it > 0 } ?: continue
+                val d = runCatching { java.time.OffsetDateTime.parse(t).toInstant() }.getOrNull() ?: continue
+                page[d] = cl
+            }
+            val newest = page.keys.maxOrNull() ?: break; val oldest = page.keys.minOrNull() ?: break
+            if (win == null) {
+                val w = session(newest); win = w
+                // 마지막 봉이 그 날 장 끝 뒤(애프터·주말 앞 금요일 저녁)면 장 끝부터 다시 받는다
+                if (newest > w.second.plusSeconds(60)) { before = w.second; continue }   // ios: Data/Market.swift:678
+            }
+            for ((k, v) in page) bars.putIfAbsent(k, v)
+            if (oldest <= win!!.first) break
+            before = oldest.minusSeconds(60)
+        }
+        val w = win ?: return null
+        val keep = bars.keys.filter { it > w.first && it <= w.second.plusSeconds(60) }.sorted()   // ios: Data/Market.swift:686
+        if (keep.size < 2) return null
+        val f = java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.systemDefault())
+        val day = Day(keep, keep.map { bars[it]!! }, f.format(keep[0]))
+        cache[code] = System.currentTimeMillis() to day
+        return day
+    }
+}
+

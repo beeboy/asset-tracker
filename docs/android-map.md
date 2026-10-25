@@ -19,7 +19,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Data/InvestEvents.swift` | `com/naeilo/app/core/calc/InvestEvents.kt` (22) |
 | `Data/Lines.swift` | `com/naeilo/app/data/Lines.kt` (42) |
 | `Data/Lots.swift` | `com/naeilo/app/data/Lots.kt` (11), `com/naeilo/app/net/Market.kt` (5) |
-| `Data/Market.swift` | `com/naeilo/app/net/Market.kt` (396) |
+| `Data/Market.swift` | `com/naeilo/app/net/Market.kt` (412) |
 | `Data/Me.swift` | `com/naeilo/app/data/Me.kt` (106) |
 | `Data/MonteCarlo.swift` | `com/naeilo/app/core/calc/MonteCarlo.kt` (546) |
 | `Data/MyRecord.swift` | `com/naeilo/app/data/MyRecord.kt` (9) |
@@ -53,7 +53,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/ForecastParts.swift` | `com/naeilo/app/ui/analysis/ForecastParts.kt` (72) |
 | `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (501) |
 | `Views/Guide.swift` | `com/naeilo/app/ui/Guide.kt` (78) |
-| `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (350), `com/naeilo/app/ui/hold/HoldingDetail.kt` (263), `com/naeilo/app/ui/home/ThemeScenes.kt` (1) |
+| `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (350), `com/naeilo/app/ui/hold/HoldingDetail.kt` (267), `com/naeilo/app/ui/home/ThemeScenes.kt` (1) |
 | `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (457) |
 | `Views/InvestViews.swift` | `com/naeilo/app/ui/analysis/InvestViews.kt` (95) |
 | `Views/MeViews.swift` | `com/naeilo/app/ui/me/MeViews.kt` (480) |
