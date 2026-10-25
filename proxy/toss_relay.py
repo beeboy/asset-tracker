@@ -6,7 +6,7 @@
 
 - 키(client_id·client_secret)와 토큰은 저장하지 않는다. 받은 그대로 토스에 넘기고 토스 응답을 그대로 돌려준다.
 - 기록(로그)에 키·토큰·요청 본문을 남기지 않는다.
-- 토큰 발급, 현재가(/api/v1/prices), 일봉(/api/v1/candles, 1d만), 원/달러(/api/v1/exchange-rate)만 넘긴다. 주문·계좌·자산 경로는 없다 (계좌 헤더도 넘기지 않는다).
+- 토큰 발급, 현재가(/api/v1/prices), 일봉·1분봉(/api/v1/candles, 1d·1m), 원/달러(/api/v1/exchange-rate)만 넘긴다. 주문·계좌·자산 경로는 없다 (계좌 헤더도 넘기지 않는다).
 - 한 IP 가 1분에 60번 넘게 부르면 429 (열린 중계로 쓰이지 않게).
 
 실행: NAEILO_TOSS_IP=<이 서버 공인 IP> python3 proxy/toss_relay.py [--port 8766]
@@ -97,13 +97,13 @@ class Relay(BaseHTTPRequestHandler):
                 return self.err(400, "잘못된 요청")
             out = "/api/v1/prices?symbols=" + urllib.parse.quote(syms, safe=",")
         elif u.path == "/api/toss/v1/candles":
-            # 일봉만 (지난 종가). 한 번에 200개까지, before 로 더 지난 쪽을 받는다
+            # 일봉(지난 종가)과 1분봉(종목 상세 1일 차트). 한 번에 200개까지, before 로 더 지난 쪽을 받는다
             sym, before = q.get("symbol", ""), q.get("before", "")
             cnt = q.get("count", "200")
-            if not SYMBOL.fullmatch(sym) or q.get("interval", "1d") != "1d" or not cnt.isdigit() or not 1 <= int(cnt) <= 200 \
+            if not SYMBOL.fullmatch(sym) or q.get("interval", "1d") not in ("1d", "1m") or not cnt.isdigit() or not 1 <= int(cnt) <= 200 \
                     or (before and not ISO.fullmatch(before)) or q.get("adjusted", "false") not in ("true", "false"):
                 return self.err(400, "잘못된 요청")
-            p = {"symbol": sym, "interval": "1d", "count": cnt, "adjusted": q.get("adjusted", "false")}
+            p = {"symbol": sym, "interval": q.get("interval", "1d"), "count": cnt, "adjusted": q.get("adjusted", "false")}
             if before:
                 p["before"] = before
             out = "/api/v1/candles?" + urllib.parse.urlencode(p)

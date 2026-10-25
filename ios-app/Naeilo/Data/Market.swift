@@ -634,3 +634,44 @@ extension Market {
         return Quote(last: r, prevClose: tossPrev(s, b) ?? b.prevClose, live: true)
     }
 }
+
+/// 종목 상세 1일 차트: 내 토스 키로 중계에서 1분봉을 받는다 (토스 봉은 1분·일봉뿐). 마지막 봉에서 16시간 안쪽만 (국내 8~20시, 미국 밤 장).
+/// 200개씩 네 번까지, 같은 종목은 1분 동안 다시 쓴다. 키가 없거나 못 받으면 nil (그래프는 예전처럼 전일 종가 → 지금)
+enum TossMinutes {
+    struct Day { let at: [Date]; let closes: [Double]; let first: String }
+    @MainActor private static var cache: [String: (got: Date, day: Day)] = [:]
+
+    @MainActor static func day(_ yahoo: String) async -> Day? {
+        guard TossKeys.on, let code = TossFeed.code(yahoo) else { return nil }
+        if let c = cache[code], Date().timeIntervalSince(c.got) < 60 { return c.day }
+        let iso = ISO8601DateFormatter(); iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let iso2 = ISO8601DateFormatter()
+        var bars: [Date: Double] = [:], before: String? = nil
+        for _ in 0..<4 {
+            var path = "/api/toss/v1/candles?symbol=\(code.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? code)&interval=1m&adjusted=false&count=200"
+            if let b = before { path += "&before=" + (b.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? b) }
+            let (st, o, _) = await TossFeed.userGet(path, timeout: 8)
+            guard st == 200, let r = o?["result"] as? [String: Any] else { break }
+            for v in r["candles"] as? [[String: Any]] ?? [] {
+                guard let t = v["timestamp"] as? String, let d = iso.date(from: t) ?? iso2.date(from: t), let cl = num(v["closePrice"]), cl > 0 else { continue }
+                bars[d] = cl
+            }
+            before = (r["nextBefore"] as? String)?.replacingOccurrences(of: #"\.\d+(?=Z|[+-]\d{2}:\d{2}$)"#, with: "", options: .regularExpression)
+            guard let last = bars.keys.max(), let b = before, let bd = iso2.date(from: b), bd > last.addingTimeInterval(-16 * 3600) else { break }
+        }
+        guard let last = bars.keys.max() else { return nil }
+        let keep = bars.keys.filter { $0 > last.addingTimeInterval(-16 * 3600) }.sorted()
+        guard keep.count > 1 else { return nil }
+        let f = DateFormatter(); f.dateFormat = "HH:mm"
+        let day = Day(at: keep, closes: keep.map { bars[$0]! }, first: f.string(from: keep[0]))
+        cache[code] = (Date(), day)
+        return day
+    }
+
+    private static func num(_ v: Any?) -> Double? {
+        if let d = v as? Double { return d }
+        if let s = v as? String { return Double(s) }
+        if let n = v as? NSNumber { return n.doubleValue }
+        return nil
+    }
+}

@@ -628,6 +628,7 @@ struct HoldingDetailView: View {
     @State private var editing = false
     @State private var opened = false
     @AppStorage("holdUsd") private var inUsd = false
+    @State private var mins: TossMinutes.Day?   // 1일: 토스 1분봉 (키가 있을 때만)
 
     private var isUsd: Bool { sym.currency == .usd }
     private var du: Bool { isUsd && inUsd }
@@ -646,7 +647,8 @@ struct HoldingDetailView: View {
         let q = h.qty > 0 ? h.qty : 1
         // 그래프는 내 평가금 (고른 통화). $ 보기면 달러 정수, 원 보기면 만원
         let k = isUsd && !du ? Market.shared.valFx : 1
-        let pts = m.prices.series(sym, period: period).map { $0 * q * k }
+        let day = period == .d1 ? mins : nil
+        let pts = (day.map { [Market.shared.quote(sym).prevClose] + $0.closes } ?? m.prices.series(sym, period: period)).map { $0 * q * k }
         let big = { (v: Double) in du ? "$" + Int(abs(v).rounded()).formatted() : HoldFmt.won(abs(v)) }
         let S = pts.first ?? 0, E = pts.last ?? 0, up = E >= S
         let p = pair(sym.last), a = pair(h.avg)
@@ -678,7 +680,8 @@ struct HoldingDetailView: View {
                             .init(at: E, text: big(E), bg: Theme.ink, fg: Theme.card),
                             .init(at: E, dy: 20, text: (up ? "+" : "−") + big(E - S), bg: up ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2)),
                             .init(at: S, text: big(S), bg: TagChart.gray),
-                        ], left: startLabel, right: String(localized: "지금"), scrub: .period(period) { big($0) })
+                        ], left: day?.first ?? startLabel, right: String(localized: "지금"),
+                                 scrub: day.map { dd in Scrub(date: { x in dd.at[max(0, min(dd.at.count - 1, Int((x * Double(dd.at.count)).rounded()) - 1))] }, value: { big($0) }) } ?? .period(period) { big($0) })
                     }
                     ChipRow(items: Period.allCases.map { ($0, $0.label) }, selection: $period, fill: true, pad: 4)
                 }
@@ -703,6 +706,7 @@ struct HoldingDetailView: View {
         .doneKey()
         .navigationDestination(isPresented: $editing) { HoldingEditView(sym: sym) }
         .onAppear { if UserDefaults.standard.string(forKey: "editMode") != nil && !opened { opened = true; editing = true } }
+        .task(id: period) { if period == .d1 && mins == nil { mins = await TossMinutes.day(CustomSymbols.yahoo(for: sym)) } }
     }
 
     /// 그래프 왼쪽 아래 시작 날짜: 1년 넘으면 2025.10, 아니면 9.23
