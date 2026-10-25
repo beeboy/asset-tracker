@@ -12,6 +12,7 @@
 - 화면을 바꾸면 localhost에서 먼저 띄워 확인(curl·스크린샷)하고, 같은 PR 하나에서 고쳐 가며 맞춘다. 루트 입구 페이지는 `python3 -m http.server`로 띄운다(`server.py`는 `/web/`용).
 - 한 스레드 = 기능·화면 하나, 코드 PR 한 번. 넓은 요청은 나누는 안부터.
 - 비밀값은 저장소에 쓰지 않는다. 사용자에게 토큰·개발 설정을 묻지 않는다.
+- 2026-10-25 평소 빌드는 내부 베타만. 공개 베타 빌드는 배포 직전에만 (Drinker 결정)
 
 ## 지금 상태 (2026-10-15)
 - **naeilo.com/** = 입구 페이지(루트 `index.html`·`entry.js`·`entry.css`). 헤드라인 "귀여운 주식 위젯". 맨 위 아이폰 홈 화면 속 수아(자산 추이)·시오(본전 진행) 위젯을 HTML로 그림(금액 가림, 앱 `CharWidgets.swift` 색·배치, 그림 `img/char/`). 수아·시오는 아이폰 **밖**에 서서 말풍선으로 말함(대사는 앱 `lines_ko.json` widget.down에서 고른 9개씩, 열 때마다 하나). 아이폰 상단 시계는 지금 시각(#232). 그 아래 앱 화면 3장(`img/app-home·mypath·settings.png`, 시뮬레이터 9:41. 두 번째는 쉼터 대신 내 길(`-goal plus -tab analysis -an myPath`, 목표 2,100만원). 세 번째는 미션 대신 오픈 API 연결 후 설정 화면, `toss_user`와 친구 5명 열림(`-devAllTest YES`)으로 찍어 첫 장 홈과 목표 2,100만원·함께할 인물 수아가 같음. 홈 금액은 한 줄 고정). "앱 받기" 바로 위에 구독 칸(7일 무료, 월 1,000원·연 9,000원, 열리는 것·계속 무료인 것). 하단 "직접 해보기"는 아이폰 틀 속 목표일 전망: 예시 자산 1,000만·연 7%·흔들림 18% 로그정규 닫힌 식, 목표일 막대를 밀면 가운데 금액·10번 중 9번 범위·목표 1,500만 확률이 바뀜(앱 몬테카를로가 아니라 숫자 기준이 다름, 예시라서 둠). 종목+수량 입력은 뺌.
@@ -238,6 +239,6 @@
 - 켜기: 개발자 기기(Support.shared.dev)에서 홈 평가액 박스의 금액 글자 밖을 누른다. 홈은 그대로, 나머지 네 탭이 관찰·선정·주문·분석으로 바뀐다. 다시 누르면 일반 모드.
 - 코드: `ios-app/Naeilo/Mock/` 일곱 파일 전부 `#if MOCK`. MOCK 은 NAEILO_CHANNEL=internalBeta 일 때만 켜진다(`NAEILO_MOCK_$(NAEILO_CHANNEL)`, project.yml·pbxproj 둘 다). 공개 베타·출시는 코드가 아예 안 들어간다. 진입 고리는 App.swift(탭)·HomeView.swift(박스 탭) 두 곳뿐.
 - 장부를 바꾸는 곳은 MockDesk 하나. 기록은 기기 Application Support/mock/journal.jsonl (덧붙이기만), 상태는 state.json (못 읽으면 state-unread-시각.json 으로 옮겨 둠).
-- 서버: `server.py` /api/mock/daily·last·book·calendar·wallet(GET), /api/mock/ai(POST). 토스 한도는 묶음별 초당 횟수를 응답 머리로 맞춘다. Claude 키는 서버 `ai_keys.json` {"anthropic_api_key"}, 쓴 돈은 `mock_wallet.json` (둘 다 .gitignore). Lightsail 서버에 새 server.py 를 올려야 앱이 돈다.
+- 서버: `server.py` /api/mock/daily·last·book·calendar·wallet(GET), /api/mock/ai(POST). 토스 한도는 묶음별 초당 횟수를 응답 머리로 맞춘다. Claude 키는 서버 `ai_keys.json` {"anthropic_api_key"}, 쓴 돈은 `mock_wallet.json` (둘 다 .gitignore). Lightsail 서비스 `naeilo-dev`(8765)로 돌고, 공용 중계 `toss.naeilo.com` 뒤 `/api/mock/*` 로 연다(Caddy). 열쇠: 서버 `dev_token.json` {"token"} 과 앱 머리글 `X-Naeilo-Dev` 가 같아야 답한다(아니면 403). 앱 열쇠는 `naeilo://mock?t=…` 를 한 번 열면 그 기기에만 저장. 자세히는 docs/toss-relay.md '모의투자 경로'.
 - 계산 시험: `ios-app/tools/mock_test/` (명령은 main.swift 맨 위). 체결·수수료·세금·현금 부족·0주·이유 사슬·AI 답 거르기.
-- 남은 일: Lightsail 에 server.py 올리고 키 넣기 → 실기기에서 관찰 훑기(2~3분)·장중 정식 체결·장 밖 시험 체결·AI 한 번씩 확인 → 첫 주 AI 실제 비용 보고 한도 다시 맞춤.
+- 남은 일: Lightsail 에 dev_token.json·ai_keys.json 넣고 Caddy 에 /api/mock 줄 더하기, 폰에서 naeilo://mock?t=… 열기 → 실기기에서 관찰 훑기(2~3분)·장중 정식 체결·장 밖 시험 체결·AI 한 번씩 확인 → 첫 주 AI 실제 비용 보고 한도 다시 맞춤.
