@@ -32,6 +32,7 @@ struct MockState: Codable {
     var aiNote: String? = nil                 // AI 장부 마지막 판단 한 줄
     var aiDaily: String? = nil                // 장 마감 뒤 하루 정리
     var aiDailyDay: String? = nil
+    var reviewShut: Bool? = nil               // 검토 문 기본을 닫힘으로 바꾼 뒤 옛 상태를 한 번 닫았는지
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -68,6 +69,8 @@ final class MockDesk {
         let now = Date()
         s = Self.loadState() ?? MockState.fresh(now)
         events = Self.loadEvents()
+        // 옛 상태는 검토 문이 열린 채 저장돼 있다. 기본이 닫힘으로 바뀌어 한 번만 닫는다
+        if s.reviewShut == nil { s.select.review = true; s.reviewShut = true; save() }
     }
 
     /// 상태 파일 꼴이 바뀌어 못 읽으면 그대로 두지 않고 옆에 옮겨 둔다 (새 상태가 옛 장부를 덮지 않게)

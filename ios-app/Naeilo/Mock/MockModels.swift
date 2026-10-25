@@ -168,8 +168,8 @@ struct MockSelectRule: Codable, Equatable {
     var count: Int = 5            // 장부에 둘 최대 종목 수
     var maxPer: Double = 0.20     // 한 종목 최대 (평가액 대비)
     var keepCash: Double = 0.20   // 남길 현금 (평가액 대비)
-    /// 검토 문: 모의에서는 열어 둔다(끔 = 고르면 바로 주문). 실전으로 갈 때 닫는다
-    var review: Bool = false
+    /// 검토 문: 기본은 닫는다(켬 = 고른 뒤 내가 보고 주문, 끔 = 고르면 바로 주문)
+    var review: Bool = true
 }
 
 /// 팔기 규칙 (값이 없으면 끔). 관찰 주기마다 장중 가격으로 판단한다
