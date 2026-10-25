@@ -38,23 +38,8 @@ struct HomeView: View {
         // 기록·소식 계산은 앱을 열 때와 1분 시세 갱신 때 한다 (App.swift). 탭 이동 땐 말풍선만
         .onAppear { Remind.shared.nextBubble() }
         .sheet(isPresented: $inbox, onDismiss: { Remind.shared.markAllSeen() }) { RemindSheet().environment(m) }
+        .detailSheet()   // '오늘 많이 움직인 종목'을 누르면 종목 상세 팝업
         .toolbar(.hidden, for: .navigationBar)
-        .navigationDestination(for: String.self) { route in
-            if route == "shelter" { ShelterView() }
-            else if route == "library" { ShelterView(onlyLibrary: true) }
-            else if route == "parallel" { ParallelView() }
-            else if route == "parallel:basket" { ParallelBasketView() }
-            else if route == "goal" { GoalSetView(fromSettings: true) }
-            else if route.hasPrefix("read:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i) }
-            else if route.hasPrefix("vol1:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i, book: .vol1) }
-            else if route == "me" { MeEditView() }
-            else if route.hasPrefix("char:"), let f = Shelter.friends.first(where: { $0.id == route.dropFirst(5).split(separator: ":").first.map(String.init) }) {
-                // char:<인물> = 소설 속 갈래로, char:<인물>:invest = 투자하는 갈래로, …:invest:h<번호> = 그 버릇을 펴서
-                let parts = route.split(separator: ":")
-                CharacterDetailView(friend: f, invest: parts.contains("invest"),
-                                    focus: parts.last.flatMap { $0.hasPrefix("h") ? Int($0.dropFirst()) : nil })
-            }
-        }
     }
 
     // 평가액 박스: 고른 모양 (기본 지평선). 길게 누르면 모양 고르기 (설정 > 홈 화면에도 있다)
@@ -108,7 +93,7 @@ struct HomeView: View {
             SceneBox(look: look, s: scene, hide: $hideAmt)
                 .overlay(alignment: .bottomTrailing) {
                     if setMonthly {
-                        NavigationLink(value: "goal") { Text("적립 정하기 ›").appFont(12, .bold).foregroundStyle(Theme.yellow).frame(minHeight: 32) }
+                        HomeLink(value: "goal") { Text("적립 정하기 ›").appFont(12, .bold).foregroundStyle(Theme.yellow).frame(minHeight: 32) }
                             .buttonStyle(.plain).padding(.trailing, 14).accessibilityLabel("다음달 적립 정하기")
                     }
                 }
@@ -159,7 +144,7 @@ struct HomeView: View {
                     .appFont(13).foregroundStyle(BoxInk.sub).fixedSize(horizontal: false, vertical: true)
                 if !m.goalReached && !m.bare && m.gM <= 0 {
                     Spacer(minLength: 8)
-                    NavigationLink(value: "goal") { Text("정하기 ›").appFont(13, .bold).foregroundStyle(BoxInk.gold).frame(minHeight: 32) }
+                    HomeLink(value: "goal") { Text("정하기 ›").appFont(13, .bold).foregroundStyle(BoxInk.gold).frame(minHeight: 32) }
                         .buttonStyle(.plain).accessibilityLabel("다음달 적립 정하기")
                 }
             }
@@ -279,7 +264,7 @@ struct HomeView: View {
             }
             if on < 5 {
             Divider().overlay(Theme.line)
-            NavigationLink(value: "shelter") {
+            HomeLink(value: "shelter") {
                 HStack(alignment: .bottom, spacing: 8) {
                     ForEach(Array(Shelter.friends.enumerated()).filter { $0.element.id != m.homeFriendShown }, id: \.element.id) { i, f in
                         Pixel(name: (m.friendOn(i) ? "spr_" : "sil_") + f.id, width: 20, height: 28).opacity(m.friendOn(i) ? 1 : 0.5)
@@ -965,5 +950,26 @@ struct Car: View {
                 ctx.stroke(arc, with: .color(Color(hex: dk ? 0x7FD4FF : 0x2A8FE0)), lineWidth: 1.2)
             }
         }
+    }
+}
+
+/// 홈에서 여는 팝업 화면들 (homePath 한 칸. 첫 칸은 팝업 첫 화면, 다음 칸부터 팝업 안에서 넘긴다)
+struct HomeRoute: View {
+    let route: String
+    var body: some View {
+            if route == "shelter" { ShelterView() }
+            else if route == "library" { ShelterView(onlyLibrary: true) }
+            else if route == "parallel" { ParallelView() }
+            else if route == "parallel:basket" { ParallelBasketView() }
+            else if route == "goal" { GoalSetView(fromSettings: true) }
+            else if route.hasPrefix("read:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i) }
+            else if route.hasPrefix("vol1:"), let i = Int(route.dropFirst(5)) { ReaderView(index: i, book: .vol1) }
+            else if route == "me" { MeEditView() }
+            else if route.hasPrefix("char:"), let f = Shelter.friends.first(where: { $0.id == route.dropFirst(5).split(separator: ":").first.map(String.init) }) {
+                // char:<인물> = 소설 속 갈래로, char:<인물>:invest = 투자하는 갈래로, …:invest:h<번호> = 그 버릇을 펴서
+                let parts = route.split(separator: ":")
+                CharacterDetailView(friend: f, invest: parts.contains("invest"),
+                                    focus: parts.last.flatMap { $0.hasPrefix("h") ? Int($0.dropFirst()) : nil })
+            }
     }
 }

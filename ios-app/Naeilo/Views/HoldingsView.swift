@@ -70,8 +70,8 @@ struct HoldingsView: View {
         .background(Theme.bg)
         .refreshable { await Market.shared.pullRefresh(m) }
         .toolbar(.hidden, for: .navigationBar)
-        .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: period) }
-        .navigationDestination(item: $editSym) { HoldingEditView(sym: $0) }
+        .detailSheet(period: period, takesHoldOpen: true)
+        .sheet(item: $editSym) { s in PopupStack { HoldingEditView(sym: s) }.environment(m) }   // 길게 누르기 '종목 고치기'도 팝업
         .sheet(item: $river) { EarningsRiverSheet(target: $0) }
         .sheet(isPresented: $adding) { NavigationStack { AddHoldingView(sheet: true) } }
         .onAppear { if !arrive.isEmpty { m.tab = .home } }   // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
@@ -269,9 +269,9 @@ struct HoldingsView: View {
         return Group {
             if dts.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 6) {
-                    NavigationLink(value: r.sym) { name.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }.buttonStyle(.plain)
+                    DetailLink(sym: r.sym) { name.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }.buttonStyle(.plain)
                     HStack(spacing: v ? 5 : 8) {
-                        NavigationLink(value: r.sym) {
+                        DetailLink(sym: r.sym) {
                             HStack { mid; Spacer(); right }.frame(minHeight: 44).contentShape(Rectangle())
                         }.buttonStyle(.plain)
                         earn
@@ -279,7 +279,7 @@ struct HoldingsView: View {
                 }.padding(.vertical, 10)
             } else {
                 HStack(spacing: v ? 5 : 8) {
-                    NavigationLink(value: r.sym) {
+                    DetailLink(sym: r.sym) {
                         HStack(spacing: v ? 4 : 6) {
                             HStack(spacing: 0) { name; Spacer(minLength: 4) }
                             if !nk { mid.holdCol(0, colW) }
@@ -621,14 +621,69 @@ struct TagChart: View {
 // MARK: 종목 세부 (시안 v38)
 
 /// 요약 박스(이름+티커, 현재가 큰 값·괄호 다른 통화, $/원) → 내 평가금 그래프(축 꼬리표 총 금액·달라진 금액·시작 금액) → 평균 단가·보유 수량 → 평단 계산기
+/// 종목 상세 팝업: 제목(종목 이름) 왼쪽·X 오른쪽 머리 + 상세. 고치기 화면으로 넘어가려고 안에 NavigationStack
+struct HoldingDetailSheet: View {
+    let sym: Symbol
+    var period: Period = .m1
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                SheetTitleBar(title: "\(sym.name)") { dismiss() }
+                HoldingDetailView(sym: sym, period: period, inSheet: true)
+            }
+            .background(Theme.bg)
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+/// 종목 상세를 팝업으로 여는 동작 (.detailSheet() 가 넣는다)
+private struct OpenDetailKey: EnvironmentKey { static let defaultValue: ((Symbol) -> Void)? = nil }
+extension EnvironmentValues {
+    var openDetail: ((Symbol) -> Void)? { get { self[OpenDetailKey.self] } set { self[OpenDetailKey.self] = newValue } }
+}
+
+/// 종목 줄: 누르면 종목 상세 팝업 (위쪽 어딘가에 .detailSheet() 가 있어야 한다)
+struct DetailLink<Label: View>: View {
+    let sym: Symbol
+    @ViewBuilder let label: () -> Label
+    @Environment(\.openDetail) private var open
+    var body: some View { Button { open?(sym) } label: { label() }.buttonStyle(.plain) }
+}
+
+/// 이 화면 아래 DetailLink 를 누르면 종목 상세 팝업을 띄운다 (종목·분석·홈 탭, 분석 시트)
+private struct DetailSheet: ViewModifier {
+    let period: Period
+    let takesHoldOpen: Bool   // 종목 탭: 알림으로 온 종목(m.holdOpen)도 여기서 띄운다
+    @Environment(AppModel.self) private var m
+    @State private var pick: Symbol?
+    func body(content: Content) -> some View {
+        content
+            .environment(\.openDetail) { pick = $0 }
+            .sheet(item: $pick) { HoldingDetailSheet(sym: $0, period: period).environment(m) }
+            .onAppear { take() }
+            .onChange(of: m.holdOpen) { _, _ in take() }
+    }
+    private func take() {
+        guard takesHoldOpen, let s = m.holdOpen else { return }
+        m.holdOpen = nil
+        pick = s
+    }
+}
+extension View {
+    func detailSheet(period: Period = .m1, takesHoldOpen: Bool = false) -> some View { modifier(DetailSheet(period: period, takesHoldOpen: takesHoldOpen)) }
+}
+
 struct HoldingDetailView: View {
     @Environment(AppModel.self) private var m
     let sym: Symbol
     @State var period: Period
+    var inSheet = false   // 팝업이면 이름은 머리에 있으니 카드에서 뺀다
     @State private var editing = false
     @State private var opened = false
     @AppStorage("holdUsd") private var inUsd = false
-    @State private var mins: TossMinutes.Day?   // 1일: 토스 1분봉, 없으면 Alpaca 1분봉 (키가 있을 때만)
+    @State private var mins: TossMinutes.Day?   // 1일: 토스 1분봉, 없으면 Alpaca, 그다음 Longbridge 1분봉 (키가 있을 때만)
 
     private var isUsd: Bool { sym.currency == .usd }
     private var du: Bool { isUsd && inUsd }
@@ -656,7 +711,7 @@ struct HoldingDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Card {
                     HStack(spacing: 8) {
-                        Text(sym.name).appFont(17, .bold).lineLimit(1)
+                        if !inSheet { Text(sym.name).appFont(17, .bold).lineLimit(1) }
                         Text(sym.id).appFont(12, .bold).foregroundStyle(Theme.sub).lineLimit(1).fixedSize()
                             .padding(.horizontal, 9).padding(.vertical, 2).background(Theme.line, in: Capsule())
                         Spacer(minLength: 4)
@@ -702,11 +757,11 @@ struct HoldingDetailView: View {
         .scrollDismissesKeyboard(.immediately)
         .refreshable { await Market.shared.pullRefresh(m) }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .doneKey()
         .navigationDestination(isPresented: $editing) { HoldingEditView(sym: sym) }
         .onAppear { if UserDefaults.standard.string(forKey: "editMode") != nil && !opened { opened = true; editing = true } }
-        .task(id: period) { if period == .d1 && mins == nil { let y = CustomSymbols.yahoo(for: sym); if let t = await TossMinutes.day(y) { mins = t } else { mins = await AlpacaMinutes.day(y) } } }
+        .task(id: period) { if period == .d1 && mins == nil { let y = CustomSymbols.yahoo(for: sym); if let t = await TossMinutes.day(y) { mins = t } else if let a = await AlpacaMinutes.day(y) { mins = a } else { mins = await LongbridgeMinutes.day(y) } } }
     }
 
     /// 그래프 왼쪽 아래 시작 날짜: 1년 넘으면 2025.10, 아니면 9.23
@@ -898,7 +953,7 @@ struct AddHoldingView: View {
         } else {
             ScrollView { box.screen().padding(.top, 8) }
                 .background(Theme.bg)
-                .navigationBarTitleDisplayMode(.inline)
+                .toolbarTitleDisplayMode(.inlineLarge)
                 .toolbar(sheet ? .hidden : .automatic, for: .navigationBar)
                 .scrollDismissesKeyboard(.interactively)
                 // 숫자 자판에는 닫기 키가 없어서 자판 위에 '완료'를 둔다
@@ -1124,7 +1179,7 @@ struct HoldingEditView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationTitle(sym.name).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(sym.name).toolbarTitleDisplayMode(.inlineLarge)
         .doneKey()
         .onAppear {
             reset(h)
@@ -1332,17 +1387,15 @@ struct HoldingsNews: View {
         .card()
     }
 
-    private func line(_ r: AppModel.Row, _ right: Text) -> some View {
-        NavigationLink(value: r.sym) {
-            HStack(spacing: 10) {
-                LogoTile(symbol: r.id, size: 28)
-                Text(r.sym.name).appFont(14, .semibold).lineLimit(1)
-                Spacer(minLength: 4)
-                right.appFont(14, .bold).monospacedDigit()
-            }
-            .frame(minHeight: 44).contentShape(Rectangle())
+    @ViewBuilder private func line(_ r: AppModel.Row, _ right: Text) -> some View {
+        let row = HStack(spacing: 10) {
+            LogoTile(symbol: r.id, size: 28)
+            Text(r.sym.name).appFont(14, .semibold).lineLimit(1)
+            Spacer(minLength: 4)
+            right.appFont(14, .bold).monospacedDigit()
         }
-        .buttonStyle(.plain)
+        .frame(minHeight: 44).contentShape(Rectangle())
+        DetailLink(sym: r.sym) { row }
     }
 }
 
@@ -2410,7 +2463,7 @@ struct TownDress: View {
                 Spacer()
             }
             .padding(20)
-            .navigationTitle(res.name).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(res.name).toolbarTitleDisplayMode(.inlineLarge)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("저장") { TownBook.shared.set(res.id, n); dismiss() } }
@@ -2454,7 +2507,7 @@ struct TownUs: View {
                 Spacer()
             }
             .padding(20)
-            .navigationTitle(TownLook.shown(res, n)).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(TownLook.shown(res, n)).toolbarTitleDisplayMode(.inlineLarge)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])

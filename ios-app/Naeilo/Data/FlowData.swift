@@ -313,7 +313,7 @@ enum DrnkSample {
 }
 
 /// 차트 탭 실데이터 캔들 저장: 종목(사이트 티커) → 거래일별 시가·고가·저가·종가·거래량.
-/// 토스는 TossHistory.fetch 가 같은 응답에서 같이 남기고, 알파카는 FlowAlpaca 가 받는다. 위젯이 읽는 toss_history.json 과는 따로 둔다
+/// 토스는 TossHistory.fetch 가 같은 응답에서 같이 남기고, 알파카는 FlowAlpaca, Longbridge 는 FlowLongbridge 가 받는다. 위젯이 읽는 toss_history.json 과는 따로 둔다
 struct FlowBars: Codable {
     struct Row { var o, h, l, c, v: Double }
     struct Series: Codable {
@@ -323,7 +323,7 @@ struct FlowBars: Codable {
     var b: [String: Series] = [:]
     var day: [String: String] = [:]     // 마지막으로 받은 날 표시 (알파카: 하루 한 번)
 
-    static let tossName = "flow_toss.json", alpacaName = "flow_alpaca.json"
+    static let tossName = "flow_toss.json", alpacaName = "flow_alpaca_split.json", longbridgeName = "flow_longbridge_adj.json"
     static func read(_ name: String) -> FlowBars { Store.read(FlowBars.self, name) ?? FlowBars() }
     static func write(_ f: FlowBars, _ name: String) { Store.write(f, name) }
 
@@ -339,7 +339,7 @@ struct FlowBars: Codable {
     }
 }
 
-/// 알파카 일봉 (미국 종목, 사용자 본인 키). /v2/stocks/bars 한 번에 여러 종목, feed=sip (거래량이 전체 시장 기준. IEX 는 일부라 안 씀).
+/// 알파카 일봉 (미국 종목, 사용자 본인 키). /v2/stocks/bars 한 번에 여러 종목, 분할 반영(adjustment=split, 사이트 Yahoo close 와 같은 기준), feed=sip (거래량이 전체 시장 기준. IEX 는 일부라 안 씀).
 /// 종목마다 하루 한 번(장 끝난 뒤 한 번 더), 처음엔 3년치, 그다음엔 최근 10일만. 부르는 사이를 0.35초 넘게 띄워 분당 200회 한도 아래로
 enum FlowAlpaca {
     static let base = "https://data.alpaca.markets/v2/stocks/bars"
@@ -374,7 +374,7 @@ enum FlowAlpaca {
             var c = URLComponents(string: base)!
             c.queryItems = [.init(name: "symbols", value: bySym.keys.sorted().joined(separator: ",")),
                             .init(name: "timeframe", value: "1Day"), .init(name: "start", value: start), .init(name: "end", value: end),
-                            .init(name: "adjustment", value: "raw"), .init(name: "feed", value: "sip"), .init(name: "limit", value: "10000")]
+                            .init(name: "adjustment", value: "split"), .init(name: "feed", value: "sip"), .init(name: "limit", value: "10000")]
             if let t = token { c.queryItems!.append(.init(name: "page_token", value: t)) }
             let wait = 0.35 - Date().timeIntervalSince(last)
             if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1e9)) }
@@ -397,6 +397,10 @@ enum FlowAlpaca {
         }
         guard got else { return false }
         for key in need.keys {
+            // 겹친 날 종가가 0.1% 넘게 다르면 새 분할: 지운다 (다음 받기에 3년치를 다시)
+            if let s = f.b[key], s.d.count >= 30, let r = rows[key], zip(s.d, s.c).contains(where: { d, c in r[d].map { abs($0.c / c - 1) > 0.001 } ?? false }) {
+                f.b[key] = nil; f.day[key] = nil; continue
+            }
             f.merge(key, rows[key] ?? [:], full: fresh && (f.b[key]?.d.count ?? 0) < 30, keep: { $0 >= from && ($0 < md || ($0 == md && closed)) })
             f.day[key] = stamp
         }
@@ -405,12 +409,69 @@ enum FlowAlpaca {
     }
 }
 
-/// 차트 탭이 보는 실데이터: 토스 캔들을 먼저, 없으면 알파카. 종목마다 분석(추세·패턴)은 한 번만 하고 마지막 날이 바뀔 때만 다시
+/// Longbridge 일봉 (미국 종목, 사용자 본인 키). 공식 SDK 의 HTTP 방식 POST /quote/history-candlesticks (종목마다 한 번).
+/// 정규장만(trade_session 0). 분할을 맞추려고 수정주가(adjust_type 1, 배당도 반영)를 쓴다: 수정 안 한 값은 NVDA 10:1 분할 전이 10배로 보였다.
+/// 종목마다 하루 한 번(장 끝난 뒤 한 번 더), 처음엔 800개(3년 남짓), 그다음엔 최근 15개. 겹친 날 종가가 달라지면(새 분할·배당) 800개를 다시 받는다.
+/// 한도 30초에 60번이라 부르는 사이를 0.6초 띄운다
+enum FlowLongbridge {
+    @MainActor private static var last = Date.distantPast
+
+    /// keys: 사이트 티커 → Longbridge 기호(AAPL.US). 받은 게 있으면 true
+    @MainActor
+    static func fetch(_ keys: [String: String]) async -> Bool {
+        guard let k = LongbridgeKeys.load(), !keys.isEmpty else { return false }
+        var f = FlowBars.read(FlowBars.longbridgeName)
+        let (md, closed) = FlowAlpaca.nyDay(), stamp = closed ? Day.today + "c" : Day.today
+        let from = Day.str(Date().addingTimeInterval(-(3 * 365 + 15) * 86400))
+        let need = keys.filter { f.day[$0.key] != stamp || f.b[$0.key] == nil }
+        guard !need.isEmpty else { return false }
+        // 봉 시각(초)을 날짜로: 그 날 0시가 어느 시간대여도(뉴욕·UTC·홍콩) 12시간을 더한 UTC 날짜는 같은 날이다
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        var got = false
+        for (key, sym) in need.sorted(by: { $0.key < $1.key }) {
+            let wait = 0.6 - Date().timeIntervalSince(last)
+            if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1e9)) }
+            last = Date()
+            func ask(_ n: Int) async -> [String: FlowBars.Row]? {
+                let body: [String: Any] = ["symbol": sym, "period": 1000, "adjust_type": 1, "query_type": 1, "trade_session": 0,
+                                           "offset_request": ["direction": 0, "date": "", "count": n]]
+                let (o, e) = await LongbridgeFeed.post("/quote/history-candlesticks", body, k)
+                guard e == nil, let o else { return nil }
+                var rows: [String: FlowBars.Row] = [:]
+                for v in o["candlesticks"] as? [[String: Any]] ?? [] {
+                    guard let t = num(v["timestamp"]), t > 0, let cl = num(v["close"]), let op = num(v["open"]), let h = num(v["high"]), let l = num(v["low"]), cl > 0, op > 0 else { continue }
+                    let c = cal.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: t + 12 * 3600))
+                    rows[String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)] = .init(o: op, h: max(h, op, cl), l: min(l, op, cl), c: cl, v: num(v["volume"]) ?? 0)
+                }
+                return rows
+            }
+            var full = (f.b[key]?.d.count ?? 0) < 30
+            guard var rows = await ask(full ? 800 : 15) else { continue }
+            // 겹친 날 종가가 0.1% 넘게 다르면 수정 기준이 바뀐 것: 전부 다시
+            if !full, let s = f.b[key], zip(s.d, s.c).contains(where: { d, c in rows[d].map { abs($0.c / c - 1) > 0.001 } ?? false }) {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                last = Date()
+                guard let all = await ask(800) else { continue }
+                rows = all; full = true
+            }
+            got = true
+            f.merge(key, rows, full: full, keep: { $0 >= from && ($0 < md || ($0 == md && closed)) })
+            f.day[key] = stamp
+        }
+        guard got else { return false }
+        FlowBars.write(f, FlowBars.longbridgeName)
+        return true
+    }
+}
+
+/// 차트 탭이 보는 실데이터: 토스 캔들을 먼저, 없으면 알파카, 그다음 Longbridge. 종목마다 분석(추세·패턴)은 한 번만 하고 마지막 날이 바뀔 때만 다시
 @MainActor @Observable
 final class FlowStore {
     static let shared = FlowStore()
     private(set) var toss = FlowBars.read(FlowBars.tossName)
     private(set) var alpaca = FlowBars.read(FlowBars.alpacaName)
+    private(set) var longbridge = FlowBars.read(FlowBars.longbridgeName)
     private(set) var loading: Set<String> = []
     private(set) var failed: Set<String> = []    // 받아 보았는데 일봉이 없는 종목 (빈 칸 대신 '못 받았어요')
     @ObservationIgnored private var memo: [String: (String, FlowSeries)] = [:]
@@ -419,19 +480,21 @@ final class FlowStore {
     func reload() {
         toss = TossKeys.on ? FlowBars.read(FlowBars.tossName) : FlowBars()
         alpaca = AlpacaKeys.on ? FlowBars.read(FlowBars.alpacaName) : FlowBars()
+        longbridge = LongbridgeKeys.on ? FlowBars.read(FlowBars.longbridgeName) : FlowBars()
     }
 
     static func isKR(_ id: String) -> Bool { Sample.symbol(id)?.currency == .krw }
-    /// 이 종목을 받을 키가 있는지: 한국은 토스, 미국은 토스나 알파카
+    /// 이 종목을 받을 키가 있는지: 한국은 토스, 미국은 토스·알파카·Longbridge
     static func canFetch(_ id: String) -> Bool {
         guard !Sample.isVirtual(id), id != KoreaEstimate.sumId else { return false }
-        return TossKeys.on || (!isKR(id) && AlpacaKeys.on)
+        return TossKeys.on || (!isKR(id) && (AlpacaKeys.on || LongbridgeKeys.on))
     }
 
     func bars(_ id: String) -> FlowBars.Series? {
         let k = SiteStats.key(id)
         if TossKeys.on, let s = toss.b[k], s.d.count >= 30 { return s }
         if AlpacaKeys.on, !Self.isKR(id), let s = alpaca.b[k], s.d.count >= 30 { return s }
+        if LongbridgeKeys.on, !Self.isKR(id), let s = longbridge.b[k], s.d.count >= 30 { return s }
         return nil
     }
 
@@ -484,6 +547,17 @@ final class FlowStore {
             if !keys.isEmpty {
                 loading.formUnion(want.filter { bars($0) == nil })
                 if await FlowAlpaca.fetch(keys) { reload() }
+            }
+        }
+        // Longbridge: 토스·알파카로 못 채운 미국 종목만
+        if LongbridgeKeys.on {
+            var keys: [String: String] = [:]
+            for id in want where !Self.isKR(id) && bars(id) == nil {
+                if let s = Sample.symbol(id), let c = LongbridgeFeed.code(CustomSymbols.yahoo(for: s)) { keys[SiteStats.key(id)] = c }
+            }
+            if !keys.isEmpty {
+                loading.formUnion(want.filter { bars($0) == nil })
+                if await FlowLongbridge.fetch(keys) { reload() }
             }
         }
         loading = []

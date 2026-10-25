@@ -65,14 +65,14 @@ final class AppModel {
         // 캡처용: -home shelter 또는 -home char:ir
         if let h = UserDefaults.standard.string(forKey: "home") { homePath = h == "shelter" ? ["shelter"] : ["shelter", h] }
         if let f = UserDefaults.standard.string(forKey: "friend") { shelterSel = f }
-        if let k = UserDefaults.standard.string(forKey: "hold"), let sy = Sample.symbol(k) { holdPath = NavigationPath([sy]) }
+        if let k = UserDefaults.standard.string(forKey: "hold"), let sy = Sample.symbol(k) { holdOpen = sy }
         let st: [String: SettingsRoute] = ["alerts": .alerts, "sync": .sync, "widgets": .widgets, "tax": .tax, "price": .price, "howto": .howto, "route": .route, "goal": .goal, "charPreview": .charPreview]
         if let r = UserDefaults.standard.string(forKey: "set").flatMap({ st[$0] }) { settingsPath = [r] }
         // 캡처용: -route m3 처럼 미션 화면을 바로 연다
         let routes: [String: MissionRoute] = ["m1": .m1, "m1r": .m1r, "m2": .m2, "m2r": .m2r, "m3": .m3, "m3r": .m3r, "m4": .m4, "m4r": .m4r, "nx": .nx, "g1": .g1, "g1r": .g1r, "g3": .g3, "g3r": .g3r, "gt": .gt, "gi": .gi, "gp1r": .gp1r]
         if let r = UserDefaults.standard.string(forKey: "route").flatMap({ routes[$0] }) { boardPath = [r] }
         let an: [String: AnalysisRoute] = ["forecast": .forecast, "external": .external, "dividend": .dividend, "fx": .fx, "glance": .glance]
-        if let r = UserDefaults.standard.string(forKey: "an").flatMap({ an[$0] }) { analysisPath = NavigationPath([r]) }
+        if let r = UserDefaults.standard.string(forKey: "an").flatMap({ an[$0] }) { analysisPath = [r] }
     }
 
     // 보유
@@ -338,7 +338,7 @@ final class AppModel {
     var taxSellQty = 0.0
     var nxStep = 1               // 앱 시작 3단계 중 끝낸 단계 수 (미션 4에 왔으면 1단계 종목 추가는 이미 한 것)
     var boardPath: [MissionRoute] = []
-    var analysisPath = NavigationPath()
+    var analysisPath: [AnalysisRoute] = []   // 분석 탭에서 띄울 분석 (첫 칸을 분석 팝업으로 열고 비운다)
     var homePath: [String] = []
     var tab: Tab = RootView.launchTab
     // 처음 실행이면 첫 질문(플러스·마이너스·시작 전)부터. 캡처·시연용 실행 인자가 있으면 건너뛴다
@@ -352,6 +352,7 @@ final class AppModel {
     var residenceName: String { Locale.current.localizedString(forRegionCode: residence) ?? residence }
     // 종목 탭은 종목(Symbol)과 '종목 추가'(String)를, 분석 탭은 분석 화면과 종목을 같이 쌓으므로 NavigationPath
     var holdPath = NavigationPath()
+    var holdOpen: Symbol?   // 종목 탭에서 띄울 종목 상세 팝업 (알림·시험 길. 띄우면 비운다)
     /// 내 기록 카드에서 '국내 주식 합계' 그래프를 보고 있는지 (합계 입력 칸의 안내 줄에서 바로 연다)
     var recKr = false
     /// 리마인드에서 국내 주식 합계 입력 칸 띄우기

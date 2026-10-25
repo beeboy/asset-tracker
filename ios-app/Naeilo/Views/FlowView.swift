@@ -12,10 +12,10 @@ struct FlowView: View {
     @State private var showGuide = false
     @State private var guideFocus: String? = nil
 
-    /// 차트 실데이터를 받을 키 (토스·알파카)
+    /// 차트 실데이터를 받을 키 (토스·알파카·Longbridge)
     private var hasKey: Bool {
         _ = Market.shared.tossDone      // 키를 넣고 받기를 마치면 다시 그린다
-        return TossKeys.on || AlpacaKeys.on
+        return TossKeys.on || AlpacaKeys.on || LongbridgeKeys.on
     }
     /// 칩 줄: 키가 없으면 샘플 DRNK 를 맨 앞에, 키가 있으면 DRNK 는 빼고 내 종목만
     private var ids: [String] {
@@ -186,7 +186,7 @@ struct FlowView: View {
                     }
                 }
             }
-            .navigationTitle("전체 종목").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("전체 종목").toolbarTitleDisplayMode(.inlineLarge)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("닫기") { showAll = false } } }
         }
         .presentationDetents([.medium, .large])

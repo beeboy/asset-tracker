@@ -53,7 +53,7 @@ struct RemindSheet: View {
                     // 친구 다섯이 다 풀리면 홈에서 빠진 친구 줄을 여기 둔다 (2026-10-23)
                     if (0..<Shelter.friends.count).allSatisfy({ m.friendOn($0) }) {
                         Divider().overlay(Theme.line)
-                        Button { dismiss(); m.go(.shelter) } label: {
+                        Button { dismiss(); RemindGoLater.go(m, .shelter) } label: {
                             HStack(alignment: .bottom, spacing: 8) {
                                 ForEach(Shelter.friends, id: \.id) { f in Pixel(name: "spr_" + f.id, width: 20, height: 28) }
                                 Spacer()
@@ -99,7 +99,7 @@ struct RemindSheet: View {
     private func open(_ i: RemindItem) {
         guard i.go != .nowhere else { return }
         dismiss()
-        m.go(i.go)
+        RemindGoLater.go(m, i.go)
     }
 
     /// 지금 해 주면 좋아요: 진한 초록 테두리, 이유 한 줄, 버튼
@@ -194,7 +194,7 @@ struct RemindSheet: View {
         Button {
             guard i.go != .nowhere else { return }
             dismiss()
-            m.go(i.go)
+            RemindGoLater.go(m, i.go)
         } label: {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: i.cat.icon).appFont(13, .bold).foregroundStyle(i.cat.color)
@@ -246,5 +246,12 @@ struct RemindOptions: View {
             Text("홈 리마인드").appFont(15, .bold)
         }
         .tint(Theme.sub)
+    }
+}
+
+/// 소식 팝업을 닫고 다른 팝업을 띄울 때: 닫히는 동안 띄우면 iOS 가 무시하므로 닫힌 뒤에 간다
+enum RemindGoLater {
+    @MainActor static func go(_ m: AppModel, _ g: RemindGo) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { m.go(g) }
     }
 }

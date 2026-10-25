@@ -17,7 +17,7 @@ private struct SettingsPage<Content: View>: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 }
 
@@ -136,7 +136,7 @@ struct AlertsView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .task(id: phase) { perm = await Notifier.status() }
         // 알림을 켜는 순간 아이폰 허용을 묻는다
         .onChange(of: m.alerts) { _, v in
@@ -367,6 +367,7 @@ struct WidgetPickView: View {
     var cover = false   // 홈 [위젯] 전체 화면 팝업: 제목 줄에 X
     @State private var dark = UserDefaults.standard.bool(forKey: "cpDark")
     @State private var who: String? = UserDefaults.standard.string(forKey: "cpWho")
+    @State private var baseOpen = false   // 기본 위젯 목록: 처음엔 접어 둔다
 
     private var reward: WReward { Store.read(WReward.self, "reward.json") ?? .sample }
 
@@ -376,7 +377,7 @@ struct WidgetPickView: View {
         let fi = Shelter.friends.firstIndex { $0.id == sel } ?? 0, on = sel == "me" ? m.meUnlocked : m.friendOn(fi)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                if cover { GameHeader(title: String(localized: "위젯")).toolbar(.hidden, for: .navigationBar) } else { Text("위젯").appFont(22, .bold) }
+                if cover { GameHeader(title: String(localized: "홈 화면 위젯")).toolbar(.hidden, for: .navigationBar) } else { Text("위젯").appFont(22, .bold) }
                 // 홈 화면에 위젯 넣는 단계 (단계마다 시스템 아이콘 하나)
                 VStack(alignment: .leading, spacing: 8) {
                     addStep(1, "hand.tap", String(localized: "홈 화면 빈 곳 길게 누르기"))
@@ -454,8 +455,19 @@ struct WidgetPickView: View {
                 }
                 .aspectRatio(1 / 2.3, contentMode: .fit)
 
-                // 기본 위젯: 앱 시작 단계로 열림
-                Text("기본 위젯").appFont(17, .bold).padding(.top, 6)
+                // 기본 위젯: 앱 시작 단계로 열림. 처음엔 접어 두고 제목 줄을 눌러 편다
+                Button { withAnimation(.easeInOut(duration: 0.2)) { baseOpen.toggle() } } label: {
+                    HStack(spacing: 6) {
+                        Text("기본 위젯").appFont(17, .bold)
+                        Text("\(base.filter(\.ok).count)/\(base.count)").appFont(13).foregroundStyle(Theme.sub)
+                        Spacer()
+                        Image(systemName: "chevron.down").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.sub)
+                            .rotationEffect(.degrees(baseOpen ? 180 : 0))
+                    }
+                    .frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).padding(.top, 6)
+                if baseOpen {
                 VStack(spacing: 0) {
                     ForEach(Array(base.enumerated()), id: \.element.id) { i, w in
                         if i > 0 { Divider().overlay(Theme.line) }
@@ -476,6 +488,7 @@ struct WidgetPickView: View {
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
                 note(String(localized: "못 받은 위젯은 잠긴 모습으로 보여요."))
+                }
 
                 // 금액 가리기: 위젯에서 금액을 누르면 •••• 로 가려진다. 함께/따로는 Store.hideEach
                 Text("금액 가리기").appFont(17, .bold).padding(.top, 6)
@@ -485,7 +498,7 @@ struct WidgetPickView: View {
             .screen()
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 
     private func stat(_ k: String, _ v: String, note: String? = nil) -> some View {

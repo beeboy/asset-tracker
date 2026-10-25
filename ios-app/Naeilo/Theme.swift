@@ -287,20 +287,21 @@ struct PinnedLayout<Header: View, Content: View>: View {
     }
 }
 
-/// 팝업 머리: 제목은 왼쪽, 닫기(X)는 오른쪽 (흐름 읽는 법과 같은 모양)
+/// 팝업 머리: 제목은 왼쪽, 닫기(X)는 오른쪽. 모든 팝업이 같은 자리·크기 (GameHeader·PopupX·분석 팝업과 같다)
 struct SheetTitleBar: View {
     let title: LocalizedStringKey
     let close: () -> Void
     var body: some View {
-        HStack(alignment: .center) {
-            Text(title).appFont(22, .bold).foregroundStyle(Theme.ink)
-            Spacer(minLength: 8)
+        HStack(alignment: .center, spacing: 8) {
+            Text(title).appFont(20, .bold).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
             Button(action: close) {
-                Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.sub)
+                Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.ink)
                     .frame(width: 44, height: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain).accessibilityLabel("닫기")
         }
-        .padding(.leading, 20).padding(.trailing, 8).padding(.top, 10)
+        .frame(minHeight: 48)
+        .padding(.leading, 16).padding(.trailing, 8)
     }
 }

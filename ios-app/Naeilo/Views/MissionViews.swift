@@ -40,7 +40,7 @@ struct MissionPage<Content: View>: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 }
 
@@ -354,7 +354,7 @@ struct Mission3View: View {
                 .padding(16)
         }
         .background(Theme.bg)
-        .navigationTitle("미션 3 / 4").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("미션 3 / 4").toolbarTitleDisplayMode(.inlineLarge)
     }
 
     private func pill(_ k: String, _ v: String) -> some View {

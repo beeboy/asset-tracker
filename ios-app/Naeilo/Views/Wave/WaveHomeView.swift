@@ -278,7 +278,7 @@ struct WaveGameButton: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(plain ? Theme.border : .clear, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
-        .fullScreenCover(isPresented: $show) { WaveHub() }
+        .sheet(isPresented: $show) { WaveHub() }   // 첫 화면은 팝업, 파도 타기만 전체 화면
     }
 }
 
@@ -297,17 +297,23 @@ struct WaveHub: View {
 }
 
 /// 게임 화면 맨 위 줄 (벽돌깨기·파도 타기 공용): 왼쪽 굵은 제목, 오른쪽 X 닫기
+/// 팝업 맨 위 줄 (블록·파도·동네·소식·설정·위젯): 다른 팝업(분석·종목·PopupX)과 같은 자리·크기.
+/// 제목 20 굵게, 높이 48, X 는 44 칸으로 화면 오른쪽 끝에서 8. .screen() 안(좌우 16)에 두므로 오른쪽만 -8 로 내민다
 struct GameHeader: View {
     let title: String
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        HStack {
-            Text(title).appFont(20, .bold).lineLimit(1).minimumScaleFactor(0.8)
-            Spacer()
-            Button { dismiss() } label: { Image(systemName: "xmark").appFont(16, .bold).padding(8) }
-                .buttonStyle(.plain).accessibilityLabel("닫기")
+        HStack(spacing: 8) {
+            Text(title).appFont(20, .bold).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            Button { dismiss() } label: {
+                Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.ink)
+                    .frame(width: 44, height: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).accessibilityLabel("닫기")
         }
-        .padding(.top, 8)
+        .frame(minHeight: 48)
+        .padding(.trailing, -8)
     }
 }
 
@@ -336,7 +342,7 @@ struct TownButton<Town: View>: View {
         .accessibilityLabel("동네 한 바퀴: 내 종목 CEO가 한 자리에")
         .onAppear { if !arrive.isEmpty { show = true } }
         .onChange(of: arrive) { if !$1.isEmpty { show = true } }
-        .fullScreenCover(isPresented: $show) {
+        .sheet(isPresented: $show) {   // 동네도 다른 팝업처럼
             ScrollViewReader { sp in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {

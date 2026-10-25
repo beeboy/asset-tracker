@@ -151,8 +151,9 @@ struct GoalCellsCard: View {
         }
         .onChange(of: scenePhase) { if scenePhase == .background { party = false } }   // 다른 앱으로 가면 친구들 퇴장
         .sheet(isPresented: $showShare) { ShareCardSheet(party: party) }
-        .fullScreenCover(isPresented: $showGame) { BrickGameHub(filled: nV, floor: nMine, yesterday: nY) }
-        .fullScreenCover(isPresented: $showWave) { WaveHub() }
+        // 블록·파도 첫 화면도 다른 팝업처럼 시트 (게임 판은 그 안에서 전체 화면)
+        .sheet(isPresented: $showGame) { BrickGameHub(filled: nV, floor: nMine, yesterday: nY) }
+        .sheet(isPresented: $showWave) { WaveHub() }
     }
     @State private var showGame = false
     @State private var showWave = false
@@ -507,7 +508,7 @@ struct GoalSetView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .onAppear { k = String(Int(m.gK)); y = String(m.gY); a = String(Int(m.gA)); mo = String(Int(m.gM)) }
         .scrollDismissesKeyboard(.interactively)
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = false } } }
@@ -611,7 +612,7 @@ struct GoalMixView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 
     private func pill(_ k: String, _ v: String) -> some View {
@@ -814,7 +815,7 @@ struct GoalIntermissionView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 }
 

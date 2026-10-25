@@ -410,7 +410,7 @@ extension AppModel {
     var goalSaved: Double { noviceOwn ? total / 1e4 : gA + (gWeeks + (gWeekCur.map { [$0] } ?? [])).reduce(0) { $0 + gM * $1.factor } }
 
     func switchRoute(_ r: Route) {
-        route = r; boardPath = []; analysisPath = NavigationPath()
+        route = r; boardPath = []; analysisPath = []
         goalStartAt = nil; gInterStartAt = nil; fixStarts()     // 목표 루트 4주는 루트를 고른 날부터 (내 캐릭터 1차 조건)
         switch r {
         case .recover: break

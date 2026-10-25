@@ -22,7 +22,7 @@ struct ShelterView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle(onlyLibrary ? String(localized: "서재") : String(localized: "쉼터")).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(onlyLibrary ? String(localized: "서재") : String(localized: "쉼터")).toolbarTitleDisplayMode(.inlineLarge)
         .onAppear {
             sel = m.shelterSel ?? m.homeFriend
             for i in 0..<5 where m.readPos.contains(i + 1) { story.markDone(.side, i) }   // 다음 장을 연 장은 다 읽은 것으로 (예전 기록)
@@ -43,7 +43,7 @@ struct ShelterView: View {
         meTile
         header(String(localized: "이어서 읽기"), "")
         continueCard
-        NavigationLink(value: "library") {
+        HomeLink(value: "library") {
             HStack { Text("서재 전체").appFont(14, .bold); Spacer(); Text("›").foregroundStyle(Theme.muted) }
                 .foregroundStyle(Theme.ink).padding(.horizontal, 14).frame(minHeight: 44)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
@@ -67,7 +67,7 @@ struct ShelterView: View {
         let sideDone = (0..<6).filter { story.isDone(.side, $0) }.count
         let v1 = story.count(.vol1)
         return VStack(alignment: .leading, spacing: 10) {
-            NavigationLink(value: "read:\(i)") {
+            HomeLink(value: "read:\(i)") {
                 HStack(spacing: 12) {
                     ChapterCover(index: i, on: on).frame(width: 72, height: 46)
                     VStack(alignment: .leading, spacing: 4) {
@@ -153,7 +153,7 @@ struct ShelterView: View {
             }
             if on {
                 HStack(spacing: 8) {
-                    NavigationLink(value: "char:" + f.id) {
+                    HomeLink(value: "char:" + f.id) {
                         Text("자세히 ›").appFont(13, .bold).foregroundStyle(Color(hex: 0xEEF0F7))
                             .padding(.horizontal, 14).frame(minHeight: 40)
                             .overlay(Capsule().stroke(Color(hex: 0x8FD0FF), lineWidth: 1.5))
@@ -196,7 +196,7 @@ struct ShelterView: View {
     // 본인 칸: 비어 있으면 누르는 즉시 만들기 화면으로
     @ViewBuilder private var meTile: some View {
         if m.me == nil {
-            NavigationLink(value: "me") { meTileLabel }.buttonStyle(.plain)
+            HomeLink(value: "me") { meTileLabel }.buttonStyle(.plain)
         } else {
             Button { sel = "me" } label: { meTileLabel }.buttonStyle(.plain)
         }
@@ -254,7 +254,7 @@ struct ShelterView: View {
                 }
             }
             HStack(spacing: 8) {
-                NavigationLink(value: "me") {
+                HomeLink(value: "me") {
                     Text("고치기 ›").appFont(13, .bold).foregroundStyle(Color(hex: 0xEEF0F7))
                         .padding(.horizontal, 14).frame(minHeight: 40)
                         .overlay(Capsule().stroke(Color(hex: 0x8FD0FF), lineWidth: 1.5))
@@ -308,7 +308,7 @@ struct ShelterView: View {
                 .foregroundStyle(on ? Theme.ink : Theme.muted)
                 .contentShape(Rectangle())
                 Divider().overlay(Theme.line)
-                if on { NavigationLink(value: "read:\(i)") { row }.buttonStyle(.plain) }
+                if on { HomeLink(value: "read:\(i)") { row }.buttonStyle(.plain) }
                 else { Button { sel = ch.friend } label: { row }.buttonStyle(.plain) }
             } }
             Divider().overlay(Theme.line)
@@ -318,7 +318,7 @@ struct ShelterView: View {
             } else if story.count(.side) > 6 {
                 ForEach(6..<story.count(.side), id: \.self) { i in
                     Divider().overlay(Theme.line)
-                    NavigationLink(value: "read:\(i)") { paidRow(story.cover(i) ?? (i == 6 ? Image("art_ch6") : nil), story.chapter(i)?.title ?? "", story.chapter(i)?.name ?? "", (story.pos[i] ?? 0) > 0 ? String(localized: "이어 읽기") : String(localized: "읽기")) }
+                    HomeLink(value: "read:\(i)") { paidRow(story.cover(i) ?? (i == 6 ? Image("art_ch6") : nil), story.chapter(i)?.title ?? "", story.chapter(i)?.name ?? "", (story.pos[i] ?? 0) > 0 ? String(localized: "이어 읽기") : String(localized: "읽기")) }
                         .buttonStyle(.plain)
                 }
             } else if Support.shared.sideOpen {
@@ -432,7 +432,7 @@ struct ShelterView: View {
                         if isOpen(part.id, cur) {
                             ForEach(part.idx, id: \.self) { i in
                                 Divider().overlay(Theme.line)
-                                NavigationLink(value: "vol1:\(i)") {
+                                HomeLink(value: "vol1:\(i)") {
                                     paidRow(story.cover(i, .vol1), story.chapter(i, .vol1)?.title ?? "", story.chapter(i, .vol1)?.name ?? "",
                                             story.isDone(.vol1, i) ? String(localized: "다 읽음") : (story.pos[Story.key(.vol1, i)] ?? 0) > 0 ? String(localized: "이어 읽기") : String(localized: "읽기"))
                                 }
@@ -644,7 +644,7 @@ struct ReaderView: View {
         .foregroundStyle(dark ? Color(hex: 0xEEF0F7) : Theme.ink)
         .background(dark ? Color(hex: 0x141824) : Color(hex: 0xFBFAF7))
         .toolbarBackground(dark ? Color(hex: 0x141824) : Color(hex: 0xFBFAF7), for: .navigationBar)
-        .navigationTitle(book == .side ? String(localized: "서재") : String(localized: "본편 1권")).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(book == .side ? String(localized: "서재") : String(localized: "본편 1권")).toolbarTitleDisplayMode(.inlineLarge)
         // 받은 장이 없으면(처음이거나 다른 언어) 받는다. 5장 끝에서는 6장을 미리 받아 둔다
         .task(id: "\(index)-\(story.lang(book).rawValue)") {
             if story.chapter(index, book) == nil || (book == .side && index == 5) { await story.fetch(book) }
@@ -753,7 +753,7 @@ struct ReaderView: View {
     }
 
     private func firstAppear(_ id: String, _ fi: Int) -> some View {
-        NavigationLink(value: "char:" + id) {
+        HomeLink(value: "char:" + id) {
             HStack(spacing: 10) {
                 Pixel(name: "spr_" + id, width: 24, height: 34)
                 VStack(alignment: .leading) {
@@ -850,7 +850,7 @@ struct CharacterDetailView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle(invest ? String(localized: "\(String(describing: f.name)) 규칙") : f.name).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(invest ? String(localized: "\(String(describing: f.name)) 규칙") : f.name).toolbarTitleDisplayMode(.inlineLarge)
     }
 
     @ViewBuilder private func novel(_ f: Friend) -> some View {

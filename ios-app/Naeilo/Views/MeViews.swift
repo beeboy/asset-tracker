@@ -229,7 +229,7 @@ struct MeEditView: View {
         }
         .padding(.horizontal, 12).padding(.top, 8)
         .background(Theme.bg)
-        .navigationTitle("내 캐릭터").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("내 캐릭터").toolbarTitleDisplayMode(.inlineLarge)
         .onAppear { if !loaded { draft = m.me ?? MeChar(); loaded = true } }
         .confirmationDialog("처음부터 다시 만들까요?", isPresented: $askDelete, titleVisibility: .visible) {
             Button("리셋", role: .destructive) {

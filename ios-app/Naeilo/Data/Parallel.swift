@@ -113,9 +113,9 @@ enum Parallel {
 
     /// 시세를 받아 둘 사이트 티커: 바구니 종목 + 인물 세계 현금(SGOV) + 달력(SPY)
     static var wantKeys: Set<String> {
-        var s: Set<String> = []
+        // 달력(SPY)·현금(SGOV)은 세계를 열기 전에도 있어야 첫 화면이 선다
+        var s: Set<String> = ["SGOV", "SPY"]
         guard let w = PWorld.load() else { return s }
-        s.insert("SGOV"); s.insert("SPY")
         for g in w.segs { for k in g.w.keys { s.insert(k) } }
         return s
     }
@@ -605,7 +605,8 @@ extension AppModel {
             return (d: l.d, q: q)
         }
         let monthly = gM * 1e4
-        let pk = Market.shared.prices.map { "\($0.got)" } ?? "-"
+        // 지난 종가가 바뀌면 다시 센다. 내 키(토스·Alpaca·Longbridge) 일봉만 쓰면 사이트 받은 때(got)가 0 그대로라 받은 수·마지막 날도 본다
+        let pk = Market.shared.prices.map { f in "\(f.got)-\(f.h.count)-\(f.h.values.reduce(0) { n, h in n + h.dates.count })" } ?? "-"
         let segKey = w.segs.map(Parallel.segText).joined(separator: ";")
         let key = [w.start, w.opened, who, segKey, base.map { "\($0.id):\($0.qty)" }.joined(separator: ","),
                    "\(lotsIn.count):\(lotsIn.last?.d ?? "")", pk, "\(monthly)", Day.today].joined(separator: "|")

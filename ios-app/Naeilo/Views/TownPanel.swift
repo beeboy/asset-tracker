@@ -198,7 +198,7 @@ private struct TownUsPanel: View {
         .sheet(isPresented: $all) {
             NavigationStack {
                 TownPast(id: res.id).padding(16).frame(maxHeight: .infinity, alignment: .top)
-                    .navigationTitle(TownLook.shown(res, n)).navigationBarTitleDisplayMode(.inline)
+                    .navigationTitle(TownLook.shown(res, n)).toolbarTitleDisplayMode(.inlineLarge)
             }
             .presentationDetents([.medium, .large])
         }

@@ -19,7 +19,7 @@ struct BrickGameButton: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(plain ? Theme.border : .clear, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
-        .fullScreenCover(isPresented: $show) { BrickGameHub(filled: filled, floor: floor, yesterday: yesterday) }
+        .sheet(isPresented: $show) { BrickGameHub(filled: filled, floor: floor, yesterday: yesterday) }   // 첫 화면은 팝업, 게임 판만 전체 화면
     }
 }
 
@@ -729,7 +729,7 @@ struct BrickBoardSheet: View {
             }
             .background(Theme.bg)
             .navigationTitle("내 기록 순위")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
         }
     }

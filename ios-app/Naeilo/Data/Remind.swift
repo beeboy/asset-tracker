@@ -629,14 +629,14 @@ extension AppModel {
         case .reader(let i): tab = .home; homePath = ["shelter", "read:\(i)"]
         case .board: tab = .board; boardPath = []
         case .week: tab = .board; boardPath = []
-        case .calm: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.calm])
-        case .myPath: tab = .analysis; analysisPath = NavigationPath()   // 내 길은 분석 탭 메인으로 옮겼다
-        case .forecast: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.forecast])
-        case .rateScen: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.rateScen])
-        case .external: tab = .analysis; analysisPath = NavigationPath([AnalysisRoute.external])
+        case .calm: tab = .analysis; analysisPath = [AnalysisRoute.calm]
+        case .myPath: tab = .analysis; analysisPath = []   // 내 길은 분석 탭 메인으로 옮겼다
+        case .forecast: tab = .analysis; analysisPath = [AnalysisRoute.forecast]
+        case .rateScen: tab = .analysis; analysisPath = [AnalysisRoute.rateScen]
+        case .external: tab = .analysis; analysisPath = [AnalysisRoute.external]
         case .hold(let s):
             tab = .hold
-            holdPath = Sample.symbol(s).map { NavigationPath([$0]) } ?? NavigationPath()
+            holdPath = NavigationPath(); holdOpen = Sample.symbol(s)
         case .support: openSettings(.support)
         case .widgets: DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in self?.widgetsOpen = true }
         case .sync: openSettings(.sync)

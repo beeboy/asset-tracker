@@ -73,7 +73,7 @@ struct AnalysisPager: View {
         .environment(\.detailInPager, true)
         .background(Theme.bg.ignoresSafeArea())
         .navigationTitle(sel.title(m))
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .toolbar {
             // 제목 밑 점: 지금 몇 번째 분석인지, 좌우로 넘길 수 있다는 표시
             ToolbarItem(placement: .principal) {
@@ -90,7 +90,7 @@ struct AnalysisPager: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: sel)
-        .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: .y1) }
+        .detailSheet(period: .y1)
     }
 }
 
@@ -113,8 +113,9 @@ struct AnalysisSheet: View {
                         .background(Theme.bg)
                 }
                 .navigationDestination(for: AnalysisRoute.self) { AnalysisPage(route: $0).environment(\.detailInPager, false) }
-                .navigationDestination(for: Symbol.self) { HoldingDetailView(sym: $0, period: .y1) }
+                .detailSheet(period: .y1)
         }
+        .environment(\.inPopup, true)
         // 넘긴 화면에도 같은 자리에 (툴바는 화면마다 따로라 시트 위에 얹는다)
         .overlay(alignment: .topTrailing) {
             Button { dismiss() } label: {
@@ -172,8 +173,16 @@ struct AnalysisView: View {
             await MacroData.shared.load()
             await SiteCalc.shared.refresh()
         }
-        .navigationDestination(for: AnalysisRoute.self) { AnalysisPager(start: $0) }
         .sheet(item: $sheet) { AnalysisSheet(route: $0).environment(m) }
+        // 알림·탭 화면 링크로 들어온 분석도 같은 분석 팝업으로 (예전엔 탭 안에서 넘겼다)
+        .onAppear { openPath() }
+        .onChange(of: m.analysisPath) { _, _ in openPath() }
+    }
+
+    private func openPath() {
+        guard let r = m.analysisPath.first else { return }
+        m.analysisPath = []
+        sheet = r
     }
 
     /// 판 흰 카드 (시안: 테두리 없이 둥근 20)
@@ -713,11 +722,15 @@ struct ProgressTrack: View {
     }
 }
 
-/// 분석 허브 행: 앱 다른 화면처럼 기본 이동 링크 그대로 (예전엔 옆으로 밀기 막는 끌기 제스처를 겹쳐 탭이 씹혔다)
+/// 분석 허브 행: 팝업 안에서는 기본 이동 링크 그대로, 탭 화면에서는 분석 팝업을 연다
+/// (예전엔 옆으로 밀기 막는 끌기 제스처를 겹쳐 탭이 씹혔다)
 struct OpenOnTap: ViewModifier {
     let route: AnalysisRoute
+    @Environment(\.inPopup) private var inPopup
+    @Environment(AppModel.self) private var m
     func body(content: Content) -> some View {
-        NavigationLink(value: route) { content }.buttonStyle(.plain)
+        if inPopup { NavigationLink(value: route) { content }.buttonStyle(.plain) }
+        else { Button { m.analysisPath = [route] } label: { content }.buttonStyle(.plain) }
     }
 }
 
@@ -804,7 +817,7 @@ struct ForecastView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 
     // MARK: 시나리오 버튼 3개 + 추세 슬라이더 (같은 축: 신중하게 = 0%, 지난 3년처럼 = 100%)

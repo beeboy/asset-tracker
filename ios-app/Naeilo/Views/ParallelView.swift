@@ -40,7 +40,7 @@ struct ParallelView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("다른 방식이었다면?").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("다른 방식이었다면?").toolbarTitleDisplayMode(.inlineLarge)
         .onAppear {
             m.openParallelIfNeeded()
             m.parallelTick()
@@ -209,7 +209,7 @@ struct ParallelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.mintBg, in: RoundedRectangle(cornerRadius: 12))
                 .fixedSize(horizontal: false, vertical: true)
-            NavigationLink(value: "char:\(w.who):invest") {
+            HomeLink(value: "char:\(w.who):invest") {
                 Text("과거 폭락장에선? ›").appFont(13, .bold).foregroundStyle(Theme.rule).frame(minHeight: 44)
             }
             .buttonStyle(.plain)
@@ -220,7 +220,7 @@ struct ParallelView: View {
     @ViewBuilder private func buttons(_ w: PWorld) -> some View {
         if m.pworld != nil {
             HStack(spacing: 8) {
-                NavigationLink(value: "parallel:basket") { pill(String(localized: "바구니 바꾸기")) }.buttonStyle(.plain)
+                HomeLink(value: "parallel:basket") { pill(String(localized: "바구니 바꾸기")) }.buttonStyle(.plain)
                 Menu {
                     ForEach(Shelter.friends.filter { $0.id != w.who && $0.id != m.calm.type }, id: \.id) { f in
                         Button(f.name + " · " + f.does) { m.pickWho(f.id) }
@@ -381,7 +381,7 @@ struct ParallelBasketView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("모의바구니 고치기").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("모의바구니 고치기").toolbarTitleDisplayMode(.inlineLarge)
         .onAppear {
             guard !loaded else { return }
             loaded = true

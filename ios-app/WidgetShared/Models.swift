@@ -668,8 +668,8 @@ enum LongbridgeFeed {
         return f
     }
 
-    /// 서명한 POST. 응답 {code, message, data} 에서 data 만 돌려준다
-    private static func post(_ path: String, _ body: [String: Any], _ k: LongbridgeKeys.Keys) async -> ([String: Any]?, String?) {
+    /// 서명한 POST. 응답 {code, message, data} 에서 data 만 돌려준다 (일봉 FlowLongbridge 도 쓴다)
+    static func post(_ path: String, _ body: [String: Any], _ k: LongbridgeKeys.Keys) async -> ([String: Any]?, String?) {
         guard let url = URL(string: base + path), let b = try? JSONSerialization.data(withJSONObject: body) else { return (nil, String(localized: "잘못된 요청")) }
         let token = k.token.hasPrefix("Bearer ") ? String(k.token.dropFirst(7)) : k.token
         let ts = String(Int64(Date().timeIntervalSince1970 * 1000))

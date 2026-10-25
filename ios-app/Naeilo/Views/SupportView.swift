@@ -46,7 +46,7 @@ struct SupportView: View {
             .screen().padding(.top, 8)
         }
         .background(Theme.bg)
-        .navigationTitle("구독").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("구독").toolbarTitleDisplayMode(.inlineLarge)
         .task { if s.products.isEmpty { await s.loadProducts() }; await s.refresh() }
         .onDisappear { s.message = nil }
     }

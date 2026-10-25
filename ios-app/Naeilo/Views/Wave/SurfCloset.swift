@@ -206,7 +206,7 @@ struct SurfClosetSheet: View {
                 .padding(16)
             }
             .navigationTitle("꾸미기")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("닫기") { dismiss() } } }
         }
     }

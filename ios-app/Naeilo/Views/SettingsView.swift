@@ -48,7 +48,7 @@ struct NotifyListView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .task { if !token.isEmpty { await load() } }
     }
 
@@ -302,7 +302,7 @@ struct SettingsGroupView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 }
 
@@ -387,7 +387,7 @@ struct PriceBasisView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .refreshable { await Market.shared.pullRefresh(m) }
     }
     /// 받아 둔 사이트 값을 바로 빼거나 다시 읽고, 내 키 시세를 새로 받는다
@@ -453,7 +453,7 @@ struct TossKeyView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .task { if let v = await TossKeys.relayIP() { ip = v } }
     }
 
@@ -591,7 +591,7 @@ struct AlpacaKeyView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 
     private func field(_ title: String, _ v: Binding<String>) -> some View {
@@ -678,7 +678,7 @@ struct LongbridgeKeyView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 
     private func field(_ title: String, _ v: Binding<String>) -> some View {
@@ -870,6 +870,6 @@ struct AppIconScreen: View {
             }.padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 }

@@ -264,7 +264,7 @@ struct CompareAddSheet: View {
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: String(localized: "이름·티커·종목 코드"))
             .task(id: query) { await search() }
-            .navigationTitle("종목 추가").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("종목 추가").toolbarTitleDisplayMode(.inlineLarge)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         }
     }
@@ -788,7 +788,7 @@ struct ExternalView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .task { await SiteCalc.shared.refresh() }
     }
 }
@@ -969,7 +969,7 @@ struct FactorDetailView: View {
         }
         .background(Theme.bg)
         .navigationTitle("외부 요인 · \(name)")
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .task { await SiteCalc.shared.refresh(); if factor == "rate" { await MacroData.shared.load() } }
     }
 
@@ -1146,7 +1146,7 @@ struct RateScenarioView: View {
             }
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .task { await macro.load() }
     }
 
@@ -1445,7 +1445,7 @@ private struct RateWhyView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
     }
 
     private func s(_ v: Double) -> String { RateScenarioView.signed(v, "%", 1) }
@@ -1589,7 +1589,7 @@ struct DividendView: View {
             }
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .task { await calc.refresh() }
     }
 
@@ -2084,7 +2084,7 @@ struct FxImpactView: View {
             .padding(16)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .task { await SiteCalc.shared.refresh() }
     }
 
@@ -2174,7 +2174,7 @@ struct GlanceView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Theme.bg)
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inlineLarge)
         .sheet(item: $tip) { t in GlanceSheet(tip: t, items: all).presentationDetents([.medium, .large]) }
     }
 
@@ -2236,7 +2236,7 @@ struct GlanceView: View {
                 Text("1년 기록 모으는 중").appFont(12).foregroundStyle(Theme.sub)
             }
             Divider()
-            NavigationLink(value: s) {
+            DetailLink(sym: s) {
                 HStack {
                     Text(d.row.cost > 0 && s.id != KoreaEstimate.sumId ? String(localized: "내 보유 \(String(describing: AppModel.sgn(d.k.vc)))") : String(localized: "내 보유")).appFont(13, .semibold)
                     Spacer()
@@ -2259,7 +2259,7 @@ struct GlanceView: View {
             ForEach(Array(list.enumerated()), id: \.element.row.id) { i, d in
                 if i > 0 { Divider() }
                 let s = d.row.sym
-                NavigationLink(value: s) {
+                DetailLink(sym: s) {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text(s.name).appFont(14, .semibold)
@@ -2288,7 +2288,7 @@ struct GlanceView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("그 외").appFont(15, .bold)
             ForEach(list, id: \.row.id) { d in
-                NavigationLink(value: d.row.sym) {
+                DetailLink(sym: d.row.sym) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(d.row.sym.name).appFont(14, .semibold)

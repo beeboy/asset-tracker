@@ -248,8 +248,10 @@ final class Market {
         let t = Task { @MainActor in
             let q = await TossFeed.fetch(ty, minAge: force ? 0 : 60, force: force)
             self.toss = q
-            // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번)
-            if let h = await TossHistory.fetch(Dictionary(ty.map { (SiteStats.key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a }), force: force) {
+            // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번). '다른 방식' 바구니 종목(SPY·SGOV 등)도 같이
+            var hk = Dictionary(ty.map { (SiteStats.key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a })
+            for k in Parallel.wantKeys where hk[k] == nil { hk[k] = k }
+            if let h = await TossHistory.fetch(hk, force: force) {
                 self.tossHist = h
                 self.prices = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), h))
             }
@@ -277,6 +279,8 @@ final class Market {
             let k = SiteStats.key(id)
             if site?.h[k] == nil, tossH?.h[k] == nil, let c = AlpacaFeed.code(y) { keys[k] = c }
         }
+        // '다른 방식' 바구니 종목(SPY·SGOV 등)도: 예전엔 사이트(Yahoo) 값만 써서 내 키만 켜면 화면이 비었다
+        for k in Parallel.wantKeys where keys[k] == nil && site?.h[k] == nil && tossH?.h[k] == nil { if let c = AlpacaFeed.code(k) { keys[k] = c } }
         if !keys.isEmpty, await FlowAlpaca.fetch(keys) {
             prices = AlpacaHistory.merged(TossHistory.merged(site, tossH))
             FlowStore.shared.reload()
@@ -292,6 +296,22 @@ final class Market {
         guard !ty.isEmpty else { return }
         longbridge = await LongbridgeFeed.fetch(ty, minAge: force ? 0 : 60)
         longbridgeDone = Date()
+        // 지난 종가도 내 Longbridge 키로: 사이트·토스·Alpaca 일봉이 없는 종목만, 종목마다 하루 한 번 (차트 탭과 같은 flow_longbridge.json)
+        let site = SitePrices.cached(), tossH = TossHistory.cached()
+        let alp = AlpacaKeys.on ? FlowBars.read(FlowBars.alpacaName) : FlowBars()
+        var keys: [String: String] = [:]
+        for (id, y) in ty {
+            let k = SiteStats.key(id)
+            if site?.h[k] == nil, tossH?.h[k] == nil, (alp.b[k]?.d.count ?? 0) < 30, let c = LongbridgeFeed.code(y) { keys[k] = c }
+        }
+        // '다른 방식' 바구니 종목(SPY·SGOV 등)도
+        for k in Parallel.wantKeys where keys[k] == nil && site?.h[k] == nil && tossH?.h[k] == nil && (alp.b[k]?.d.count ?? 0) < 30 {
+            if let c = LongbridgeFeed.code(k) { keys[k] = c }
+        }
+        if !keys.isEmpty, await FlowLongbridge.fetch(keys) {
+            prices = AlpacaHistory.merged(TossHistory.merged(site, tossH))
+            FlowStore.shared.reload()
+        }
     }
 
     /// 아래로 당겨 갱신: 내 종목을 바로 받고 위젯에도 넘긴다
@@ -648,14 +668,18 @@ extension Market {
     }
 }
 
-/// 내 Alpaca 키로 받은 미국 종목 일봉(flow_alpaca.json)을 지난 종가로도 쓴다. 사이트·토스 값이 없는 종목만 (수정 안 한 종가)
+/// 내 Alpaca·Longbridge 키로 받은 미국 종목 일봉(flow_alpaca.json, flow_longbridge.json)을 지난 종가로도 쓴다.
+/// 사이트·토스 값이 없는 종목만, Alpaca 가 먼저 (분할 반영: Alpaca 는 split, Longbridge 는 수정주가)
 enum AlpacaHistory {
     static func merged(_ p: SitePrices.File?) -> SitePrices.File? {
-        guard AlpacaKeys.on else { return p }
-        let f = FlowBars.read(FlowBars.alpacaName)
-        guard !f.b.isEmpty else { return p }
-        var out = p ?? SitePrices.File(got: 0, updated: "", asked: [], h: [:])
-        for (k, s) in f.b where out.h[k] == nil && s.d.count >= 30 { out.h[k] = YahooSample.Hist(dates: s.d, closes: s.c) }
+        var out = p
+        for (on, name) in [(AlpacaKeys.on, FlowBars.alpacaName), (LongbridgeKeys.on, FlowBars.longbridgeName)] where on {
+            let f = FlowBars.read(name)
+            guard !f.b.isEmpty else { continue }
+            var o = out ?? SitePrices.File(got: 0, updated: "", asked: [], h: [:])
+            for (k, s) in f.b where o.h[k] == nil && s.d.count >= 30 { o.h[k] = YahooSample.Hist(dates: s.d, closes: s.c) }
+            out = o
+        }
         return out
     }
 }
@@ -765,5 +789,37 @@ enum AlpacaMinutes {
         if let d = v as? Double { return d }
         if let n = v as? NSNumber { return n.doubleValue }
         return nil
+    }
+}
+
+/// 종목 상세 1일 차트: 토스·Alpaca 가 없으면 내 Longbridge 키로 1분봉 (POST /quote/history-candlesticks, period 1).
+/// 정규장만(trade_session 0), 마지막 거래일 400개를 거꾸로 받아 그 날만 남긴다. 같은 종목은 1분 동안 다시 쓴다
+enum LongbridgeMinutes {
+    @MainActor private static var cache: [String: (got: Date, day: TossMinutes.Day)] = [:]
+
+    @MainActor static func day(_ yahoo: String) async -> TossMinutes.Day? {
+        guard let k = LongbridgeKeys.load(), let code = LongbridgeFeed.code(yahoo) else { return nil }
+        if let c = cache[code], Date().timeIntervalSince(c.got) < 60 { return c.day }
+        let body: [String: Any] = ["symbol": code, "period": 1, "adjust_type": 0, "query_type": 1, "trade_session": 0,
+                                   "offset_request": ["direction": 0, "date": "", "count": 400]]
+        let (o, e) = await LongbridgeFeed.post("/quote/history-candlesticks", body, k)
+        guard e == nil, let arr = o?["candlesticks"] as? [[String: Any]] else { return nil }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/New_York")!
+        // 봉 시각이 시작인지 끝인지 문서에 없어 9:30~16:00 양 끝을 다 받는다
+        var byDay: [Date: [Date: Double]] = [:]
+        for v in arr {
+            guard let t = num(v["timestamp"]), t > 0, let cl = num(v["close"]), cl > 0 else { continue }
+            let at = Date(timeIntervalSince1970: t)
+            let h = cal.dateComponents([.hour, .minute], from: at), m = h.hour! * 60 + h.minute!
+            guard m >= 9 * 60 + 30, m <= 16 * 60 else { continue }
+            byDay[cal.startOfDay(for: at), default: [:]][at] = cl
+        }
+        guard let last = byDay.keys.max(), let bars = byDay[last], bars.count > 1 else { return nil }
+        let keep = bars.keys.sorted()
+        let f = DateFormatter(); f.dateFormat = "HH:mm"
+        let day = TossMinutes.Day(at: keep, closes: keep.map { bars[$0]! }, first: f.string(from: keep[0]))
+        cache[code] = (Date(), day)
+        return day
     }
 }

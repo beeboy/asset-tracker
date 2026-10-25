@@ -7,6 +7,8 @@ struct NaeiloApp: App {
     init() {
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
         TossKeys.share()   // 내 토스 키를 위젯도 읽는 자리로 (예전 판에서 넣은 키)
+        // 팝업 안 화면 제목(.inlineLarge, 왼쪽): 기본 큰 제목 글꼴은 커서 다른 팝업 머리(20 굵게)와 맞춘다
+        UINavigationBar.appearance().largeTitleTextAttributes = [.font: UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 20, weight: .bold))]
         Task { @MainActor in Support.shared.start() }   // 구독: 지금 구독 확인, 거래 듣기
     }
     var body: some Scene {
@@ -45,7 +47,7 @@ struct RootView: View {
     @ViewBuilder private var tabs: some View {
         @Bindable var model = model
         TabView(selection: $model.tab) {
-            NavigationStack(path: $model.homePath) { HomeView() }
+            NavigationStack { HomeView() }
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
             #if MOCK
             // 개발자 모의투자 모드: 홈·미션은 그대로, 가운데 세 탭이 관찰·선정·일지로 바뀐다 (홈 평가액 박스의 금액 밖을 눌러 켜고 끈다)
@@ -56,6 +58,9 @@ struct RootView: View {
         }
         .tint(Theme.teal)
         .modifier(HomeSheets(model: model))
+        // 홈(쉼터·서재·인물·다른 방식·목표)과 미션 판에서 넘어가던 화면은 팝업으로
+        .modifier(PathSheet(path: $model.homePath, model: model) { HomeRoute(route: $0) })
+        .modifier(PathSheet(path: $model.boardPath, model: model) { MissionScreen(route: $0) })
     }
 
     @ViewBuilder private var plainTabs: some View {
@@ -64,15 +69,15 @@ struct RootView: View {
             .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
         NavigationStack { FlowView() }   // 차트 탭 (이름은 FlowTab 한 곳에서)
             .tabItem { Label(LocalizedStringKey(FlowTab.name), systemImage: FlowTab.icon) }.tag(Tab.flow)
-        NavigationStack(path: $model.analysisPath) { AnalysisView() }
+        NavigationStack { AnalysisView() }
             .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
         boardTab
     }
 
     @ViewBuilder private var boardTab: some View {
         @Bindable var model = model
-        NavigationStack(path: $model.boardPath) {
-            BoardView()   // 목표·회복 루트 같은 미션 판
+        NavigationStack {
+            BoardView()   // 목표·회복 루트 같은 미션 판 (넘어가는 화면은 tabs 의 PathSheet 팝업)
         }
             .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)
     }
@@ -202,6 +207,68 @@ struct AppHeader: View {
     }
 }
 
+/// 팝업 안인가 (팝업 안 링크는 그 자리에서 넘기고, 탭 화면 링크는 팝업을 연다)
+private struct InPopupKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var inPopup: Bool { get { self[InPopupKey.self] } set { self[InPopupKey.self] = newValue } }
+}
+
+/// 팝업 오른쪽 위 X: 몇 단계 들어갔어도 팝업을 한 번에 닫는다 (설정 팝업과 같은 자리·모양)
+struct PopupX: View {
+    let close: () -> Void
+    var body: some View {
+        Button(action: close) {
+            Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.ink)
+                .frame(width: 44, height: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).accessibilityLabel("닫기")
+        .padding(.trailing, 8).padding(.top, 2)
+    }
+}
+
+/// 팝업 한 장: 안에서 넘기면 뒤로 화살표, 오른쪽 위 X 는 한 번에 닫는다
+struct PopupStack<Root: View>: View {
+    @ViewBuilder let root: () -> Root
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack { root() }
+            .environment(\.inPopup, true)
+            .overlay(alignment: .topTrailing) { PopupX { dismiss() } }
+    }
+}
+
+/// 홈 길(homePath) 링크: 탭 화면에서 누르면 팝업이 뜨고, 팝업 안에서 누르면 그 팝업 안에서 넘긴다 (둘 다 homePath 에 잇는다)
+struct HomeLink<Label: View>: View {
+    let value: String
+    @ViewBuilder let label: () -> Label
+    @Environment(AppModel.self) private var m
+    var body: some View { Button { m.homePath.append(value) } label: { label() } }
+}
+
+/// 탭에서 옆으로 넘어가던 화면을 팝업으로 (2026-10-25 드링커님: 앱 화면을 모두 팝업 모양으로).
+/// path 가 차면 시트를 띄운다. 첫 칸이 팝업 첫 화면, 나머지는 팝업 안에서 넘긴다. 알림·위젯 길(homePath = [...])은 그대로 쓴다
+struct PathSheet<R: Hashable, Page: View>: ViewModifier {
+    @Binding var path: [R]
+    let model: AppModel
+    @ViewBuilder let page: (R) -> Page
+    @State private var root: R?   // 닫히는 동안 첫 화면이 비지 않게
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: path.first) { _, f in if let f { root = f } }
+            .sheet(isPresented: Binding(get: { !path.isEmpty }, set: { if !$0 { path = [] } })) {
+                NavigationStack(path: Binding(get: { Array(path.dropFirst()) }, set: { v in if let f = path.first ?? root { path = [f] + v } })) {
+                    if let r = path.first ?? root {
+                        page(r).navigationDestination(for: R.self) { page($0) }
+                    }
+                }
+                .environment(\.inPopup, true)
+                .environment(model)
+                .overlay(alignment: .topTrailing) { PopupX { path = [] } }
+            }
+    }
+}
+
 /// 설정·위젯 팝업: 다른 팝업처럼 시트, 맨 위 줄 제목 + X로 닫는다. 어느 탭에서든 뜬다 (RootView 수식어가 길어 따로 뺐다)
 private struct HomeSheets: ViewModifier {
     @Bindable var model: AppModel
@@ -211,15 +278,9 @@ private struct HomeSheets: ViewModifier {
                 NavigationStack(path: $model.settingsPath) { SettingsView(cover: true) }.environment(model)
                     // 깊이 들어간 화면에도 오른쪽 위 X (첫 화면은 GameHeader 에 X가 있다. 분석 팝업과 같은 자리)
                     .overlay(alignment: .topTrailing) {
-                        if !model.settingsPath.isEmpty {
-                            Button { model.settingsOpen = false } label: {
-                                Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.ink)
-                                    .frame(width: 44, height: 44).contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain).accessibilityLabel("닫기")
-                            .padding(.trailing, 8).padding(.top, 2)
-                        }
+                        if !model.settingsPath.isEmpty { PopupX { model.settingsOpen = false } }
                     }
+                    .environment(\.inPopup, true)
             }
             .sheet(isPresented: $model.widgetsOpen) {
                 NavigationStack { WidgetPickView(cover: true) }.environment(model)

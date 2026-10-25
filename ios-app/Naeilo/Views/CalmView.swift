@@ -187,7 +187,7 @@ struct CalmView: View {
         }
         .background(Theme.bg)
         .onAppear { if m.calm.type != nil && m.calm.ladder?.type != m.calm.type { m.calm.climb() } }
-        .modifier(DetailTitle(title: String(localized: "내 투자 습관"))).navigationBarTitleDisplayMode(.inline)
+        .modifier(DetailTitle(title: String(localized: "내 투자 습관"))).toolbarTitleDisplayMode(.inlineLarge)
     }
 
     /// 지금 유형의 걸음 3개: 완료한 날, 지금 걸음 진행. 인물 순위는 보여 주지 않는다
