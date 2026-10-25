@@ -535,6 +535,71 @@ struct MockRuleForm: View {
     }
 }
 
+/// 팔기 조건 하나를 고치는 중인 값
+struct MockSellDraft: Equatable {
+    var edit: UUID? = nil
+    var kind: MockSellCond.Kind = .loss
+    var pct = "5"
+    var n = "5"
+
+    init() {}
+    init(_ c: MockSellCond) {
+        edit = c.id; kind = c.kind
+        pct = MockFmt.num((c.pct * 100).rounded()); n = "\(c.n)"
+    }
+
+    var cond: MockSellCond? {
+        var c = MockSellCond(id: edit ?? UUID(), kind: kind)
+        switch kind {
+        case .loss, .gain:
+            guard let x = MockNum.parse(pct), x >= 1, x <= 90 else { return nil }
+            c.pct = x / 100
+        case .days:
+            guard let x = Int(n), x >= 1, x <= 60 else { return nil }
+            c.n = x
+        }
+        return c
+    }
+}
+
+/// 팔기 조건 펼침
+struct MockSellForm: View {
+    @Binding var draft: MockSellDraft
+    let close: () -> Void
+    let commit: (MockSellCond) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            FlowRow(spacing: 6) {
+                ForEach(MockSellCond.Kind.allCases) { k in
+                    MockKindChip(name: k.name, on: draft.kind == k) { draft.kind = k }
+                }
+            }
+            HStack(spacing: 6) {
+                switch draft.kind {
+                case .loss:
+                    mt("산 값보다").appFont(14)
+                    MockNumField(text: $draft.pct, width: 56)
+                    mt("% 내리면").appFont(14)
+                case .gain:
+                    mt("산 값보다").appFont(14)
+                    MockNumField(text: $draft.pct, width: 56)
+                    mt("% 오르면").appFont(14)
+                case .days:
+                    mt("산 뒤 거래일").appFont(14)
+                    MockNumField(text: $draft.n, width: 48)
+                    mt("일 넘으면").appFont(14)
+                }
+            }
+            MockFormButtons(commitTitle: draft.edit == nil ? "넣기" : "고치기", canCommit: draft.cond != nil, close: close) {
+                if let c = draft.cond { commit(c) }
+            }
+        }
+        .padding(12)
+        .background(Theme.rule.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
+    }
+}
+
 /// 상태 한 줄 (성공은 회색, 실패는 빨강)
 struct MockRunLine: View {
     let run: MockRun?

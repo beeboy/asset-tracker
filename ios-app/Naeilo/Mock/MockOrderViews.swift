@@ -59,6 +59,8 @@ struct MockJournalView: View {
     @State private var pastOpen = false
     @State private var logOpen = false
     @State private var colW: [Int: CGFloat] = [:]
+    @State private var sdraft = MockSellDraft()
+    @State private var sadding = false
 
     private struct Held: Identifiable {
         let p: MockPosition
@@ -71,6 +73,7 @@ struct MockJournalView: View {
         let d = MockDesk.shared
         MockScreen(tab: .journal, gear: { settings = true }) {
             retCard(d)
+            sellCard(d)
             mineCard(d)
             bestWorst(d)
             pastCard(d)
@@ -79,6 +82,55 @@ struct MockJournalView: View {
         .onPreferenceChange(HoldColW.self) { colW = $0 }
         .sheet(isPresented: $settings) { MockSettingsView() }
         .sheet(isPresented: $logOpen) { MockLogSheet() }
+    }
+
+    // 팔기 조건: 켠 알약에 맞는 내 종목을 판다 (선정의 고르기 반대). 1분 주기도 같은 조건으로 장중 가격을 본다
+    private func sellCard(_ d: MockDesk) -> some View {
+        Card {
+            FlowRow(spacing: 6) {
+                ForEach(d.sconds) { c in
+                    MockCondPill(text: c.text, on: c.on,
+                                 tap: { sToggle(d, c) },
+                                 edit: { sdraft = MockSellDraft(c); sadding = true },
+                                 delete: { sRemove(d, c) })
+                }
+                MockAddPill { sdraft = MockSellDraft(); sadding = true }
+            }
+            if sadding {
+                MockSellForm(draft: $sdraft, close: { sadding = false }) { sCommit(d, $0) }
+            }
+            if let r = d.s.runs["sell"] { MockRunLine(run: r) }
+            HStack {
+                Spacer()
+                MockGoPill(title: "지금 팔기", enabled: !d.ledger(.rule).positions.isEmpty) { await d.runSell() }
+            }
+        }
+    }
+
+    private func sToggle(_ d: MockDesk, _ c: MockSellCond) {
+        var cs = d.sconds
+        guard let i = cs.firstIndex(where: { $0.id == c.id }) else { return }
+        cs[i].on.toggle()
+        d.setSellConds((cs[i].on ? "켬 · " : "끔 · ") + c.text, cs)
+    }
+
+    private func sRemove(_ d: MockDesk, _ c: MockSellCond) {
+        d.setSellConds("지움 · " + c.text, d.sconds.filter { $0.id != c.id })
+        if sdraft.edit == c.id { sadding = false }
+    }
+
+    private func sCommit(_ d: MockDesk, _ c: MockSellCond) {
+        var cs = d.sconds
+        if let i = cs.firstIndex(where: { $0.id == c.id }) {
+            var x = c
+            x.on = cs[i].on
+            cs[i] = x
+            d.setSellConds("고침 · " + c.text, cs)
+        } else {
+            cs.append(c)
+            d.setSellConds("넣음 · " + c.text, cs)
+        }
+        sadding = false
     }
 
     // 내 수익률: 칸마다 마지막 평가액으로 누적 수익률 (출발점은 속 빈 점, 오늘 점은 숨쉬기)
@@ -371,7 +423,6 @@ struct MockSettingsView: View {
     @State private var adding = false
     @State private var resetAsk = false
     @State private var fees = MockDesk.shared.s.fees
-    @State private var sell = MockDesk.shared.s.sell
     @State private var auto = MockDesk.shared.s.auto
 
     var body: some View {
@@ -523,28 +574,10 @@ struct MockSettingsView: View {
             .tint(Theme.teal)
             Divider().overlay(Theme.line)
             VStack(alignment: .leading, spacing: 10) {
-                pctRow("손절", value: $sell.stopLoss, base: 0.05)
-                pctRow("익절", value: $sell.takeProfit, base: 0.10)
-                Toggle(isOn: Binding(get: { sell.maxDays != nil }, set: { sell.maxDays = $0 ? (sell.maxDays ?? 5) : nil })) { mt("오래 들면 팔기").appFont(14) }.tint(Theme.teal)
-                if let n = sell.maxDays {
-                    Stepper(value: Binding(get: { n }, set: { sell.maxDays = $0 }), in: 1...60) { mt("산 뒤 거래일 \(n)일").appFont(14) }
-                }
-            }
-            Divider().overlay(Theme.line)
-            VStack(alignment: .leading, spacing: 10) {
                 Stepper(value: $fees.commission, in: 0...0.005, step: 0.00001) { mt("수수료 (한쪽) " + String(format: "%.3f%%", fees.commission * 100)).appFont(14) }
                 Stepper(value: $fees.sellTax, in: 0...0.01, step: 0.0005) { mt("매도 세금 " + String(format: "%.2f%%", fees.sellTax * 100)).appFont(14) }
             }
-            mt("앱이 열려 있을 때만 돌아요. 팔기는 1분마다 장중 가격으로 봐요.").appFont(12).foregroundStyle(Theme.muted)
-        }
-    }
-
-    private func pctRow(_ name: String, value: Binding<Double?>, base: Double) -> some View {
-        Group {
-            Toggle(isOn: Binding(get: { value.wrappedValue != nil }, set: { value.wrappedValue = $0 ? (value.wrappedValue ?? base) : nil })) { mt(name).appFont(14) }.tint(Theme.teal)
-            if let v = value.wrappedValue {
-                Stepper(value: Binding(get: { v }, set: { value.wrappedValue = $0 }), in: 0.01...0.5, step: 0.01) { mt(name + " " + String(format: "%.0f%%", v * 100)).appFont(14) }
-            }
+            mt("앱이 열려 있을 때만 돌아요.").appFont(12).foregroundStyle(Theme.muted)
         }
     }
 
@@ -552,15 +585,10 @@ struct MockSettingsView: View {
         let d = MockDesk.shared
         var what: [String] = []
         if fees != d.s.fees { what.append("수수료 " + String(format: "%.3f%%", fees.commission * 100) + " · 세금 " + String(format: "%.2f%%", fees.sellTax * 100)) }
-        if sell != d.s.sell {
-            let t = [sell.stopLoss.map { "손절 \(Int(($0 * 100).rounded()))%" }, sell.takeProfit.map { "익절 \(Int(($0 * 100).rounded()))%" },
-                     sell.maxDays.map { "\($0)일" }].compactMap { $0 }.joined(separator: " · ")
-            what.append("팔기 " + (t.isEmpty ? "끔" : t))
-        }
         if auto != d.s.auto { what.append(auto == 0 ? "자동 끔" : "자동 \(auto)분") }
         guard !what.isEmpty else { return }
         d.edit("설정 · " + what.joined(separator: " · ")) { s in
-            s.fees = fees; s.sell = sell; s.auto = auto
+            s.fees = fees; s.auto = auto
         }
     }
 }

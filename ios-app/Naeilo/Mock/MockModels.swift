@@ -202,6 +202,33 @@ struct MockRuleCond: Codable, Equatable, Identifiable {
     }
 }
 
+/// 팔기 조건 알약 하나 (켠 알약으로 sell 값을 맞춘다)
+struct MockSellCond: Codable, Equatable, Identifiable {
+    enum Kind: String, Codable, CaseIterable, Identifiable {
+        case loss, gain, days
+        var id: String { rawValue }
+        var name: String {
+            switch self {
+            case .loss: return "손절"
+            case .gain: return "익절"
+            case .days: return "오래 들면"
+            }
+        }
+    }
+    var id = UUID()
+    var kind: Kind
+    var on: Bool = true
+    var pct: Double = 0.05   // loss · gain: 산 값 대비
+    var n: Int = 5           // days: 산 뒤 거래일
+    var text: String {
+        switch kind {
+        case .loss: return "손절 −\(MockFmt.num((pct * 100).rounded()))%"
+        case .gain: return "익절 +\(MockFmt.num((pct * 100).rounded()))%"
+        case .days: return "보유 \(n)일 넘음"
+        }
+    }
+}
+
 /// 평가액 한 점 (내 수익률 꺾은선)
 struct MockMark: Codable, Equatable {
     var at: Date

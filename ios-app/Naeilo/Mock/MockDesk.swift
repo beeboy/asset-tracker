@@ -35,6 +35,7 @@ struct MockState: Codable {
     var reviewShut: Bool? = nil               // 검토 문 기본을 닫힘으로 바꾼 뒤 옛 상태를 한 번 닫았는지
     var conds: [MockCond]? = nil              // 관찰 조건 알약 (옛 묶음 조각을 옮겨 온다)
     var rconds: [MockRuleCond]? = nil         // 고르기 조건 알약 (select 값은 여기서 맞춘다)
+    var sconds: [MockSellCond]? = nil         // 팔기 조건 알약 (sell 값은 여기서 맞춘다)
     var marks: [MockMark]? = nil              // 평가액 점 (내 수익률 꺾은선)
     var dropped: [MockCalc.Pick]? = nil       // 마지막 고르기에서 손으로 뺀 종목
     var aiPurged: Bool? = nil                 // AI 장부 매매 데이터를 한 번 지웠는지 (2026-10-25)
@@ -105,6 +106,13 @@ final class MockDesk {
                         MockRuleCond(kind: .cash, pct: s.select.keepCash)]
             changed = true
         }
+        if s.sconds == nil {
+            // 설정에 있던 팔기 규칙을 알약으로 옮긴다 (꺼져 있던 것은 꺼진 알약으로)
+            s.sconds = [MockSellCond(kind: .loss, on: s.sell.stopLoss != nil, pct: s.sell.stopLoss ?? 0.05),
+                        MockSellCond(kind: .gain, on: s.sell.takeProfit != nil, pct: s.sell.takeProfit ?? 0.10),
+                        MockSellCond(kind: .days, on: s.sell.maxDays != nil, n: s.sell.maxDays ?? 5)]
+            changed = true
+        }
         // 비정상 폭등 거르기 (일봉 거래량·종가로만 셈). 관찰은 넓게, 고르기는 더 좁게. 켠 채로 한 번만 넣는다
         if s.surgeAdded != true {
             s.conds = (s.conds ?? []) + [MockCond(piece: MockPiece(kind: .volume, hi: 50, days: 20)),
@@ -155,6 +163,7 @@ final class MockDesk {
     static let obsId = UUID(uuidString: "00000000-0000-0000-0000-0000000000B5")!
     var conds: [MockCond] { s.conds ?? [] }
     var rconds: [MockRuleCond] { s.rconds ?? [] }
+    var sconds: [MockSellCond] { s.sconds ?? [] }
     var dropped: [MockCalc.Pick] { s.dropped ?? [] }
     var marks: [MockMark] { let id = ledger(.rule).id; return (s.marks ?? []).filter { $0.ledger == id } }
     func equity(_ b: MockBook) -> Double { MockCalc.equity(ledger(b), prices: s.prices) }
@@ -241,6 +250,30 @@ final class MockDesk {
         busy = nil
         save()
         startAIReview()
+    }
+
+    /// 지금 팔기: 내 종목을 지금 가격으로 팔기 조건에 대 본다 (지금 고르기의 반대)
+    func runSell() async {
+        await waitTick()
+        guard busy == nil else { return }
+        busy = "sell"
+        await sellNow()
+        busy = nil
+        save()
+    }
+
+    private func sellNow() async {
+        let l = ledger(.rule)
+        guard s.sell.on else { s.runs["sell"] = MockRun(at: Date(), ok: false, text: "켠 팔기 조건이 없어요"); return }
+        guard !l.positions.isEmpty else { s.runs["sell"] = MockRun(at: Date(), ok: true, text: "팔 종목이 없어요"); return }
+        if let p = try? await MockFeed.last(Array(l.positions.keys).sorted()) { s.prices.merge(p) { _, b in b }; s.pricesAt = Date() }
+        let sigs = MockCalc.sellSignals(l, rule: s.sell, prices: s.prices, excluded: excluded(), today: MockFmt.day(Date()))
+        var n = 0
+        for sig in sigs {
+            let ref = log(.sell, book: .rule, who: .rule, code: sig.code, name: Self.name(sig.code), text: sig.why, ref: ledger(.rule).positions[sig.code]?.buyRef).id
+            if await placeSell(.rule, code: sig.code, who: .rule, reason: sig.why, ref: ref) { n += 1 }
+        }
+        s.runs["sell"] = MockRun(at: Date(), ok: n == sigs.count, text: MockFmt.stamp(Date()) + (sigs.isEmpty ? " · 조건에 맞는 종목 없음" : " · \(n)종목 팔기 주문"))
     }
 
     /// 고르고, 검토 문이 열려 있으면(모의 기본) 바로 주문한다
@@ -570,6 +603,16 @@ final class MockDesk {
             st.select.maxPer = on.filter { $0.kind == .per }.map(\.pct).min() ?? 1
             st.select.keepCash = on.filter { $0.kind == .cash }.map(\.pct).max() ?? 0
             st.select.name = on.map(\.text).joined(separator: " · ").isEmpty ? "조건 없음" : on.map(\.text).joined(separator: " · ")
+        }
+    }
+
+    func setSellConds(_ what: String, _ new: [MockSellCond]) {
+        edit("팔기 조건 · " + what) { st in
+            st.sconds = new
+            let on = new.filter(\.on)
+            st.sell.stopLoss = on.filter { $0.kind == .loss }.map(\.pct).min()
+            st.sell.takeProfit = on.filter { $0.kind == .gain }.map(\.pct).min()
+            st.sell.maxDays = on.filter { $0.kind == .days }.map(\.n).min()
         }
     }
 
