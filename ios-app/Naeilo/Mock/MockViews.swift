@@ -26,11 +26,11 @@ enum MockTab: String, CaseIterable, Identifiable {
 }
 
 extension MockFmt {
-    /// 만 원 (만 원 아래는 원): "1,240만 원"
+    /// 만원 (만원 아래는 원): "1,240만원"
     static func man(_ x: Double) -> String {
-        abs(x) < 1e4 ? won(x) : Int((x / 1e4).rounded()).formatted() + "만 원"
+        abs(x) < 1e4 ? won(x) : Int((x / 1e4).rounded()).formatted() + "만원"
     }
-    /// 줄 가운데 회색 값: 100만 원 넘으면 만 원으로
+    /// 줄 가운데 회색 값: 100만원 넘으면 만원으로
     static func small(_ x: Double) -> String { abs(x) >= 1e6 ? man(x) : won(x) }
     /// 부호 붙인 원: "+12,300원"
     static func signedWon(_ x: Double) -> String { signed(x.rounded()) + "원" }
