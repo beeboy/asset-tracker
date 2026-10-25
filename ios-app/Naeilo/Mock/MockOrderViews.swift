@@ -63,10 +63,14 @@ struct MockJournalView: View {
     @State private var sadding = false
 
     private struct Held: Identifiable {
-        let p: MockPosition
-        let now: Double
+        let code: String
+        let name: String
+        let avg: Double
+        let value: Double         // 들고 있으면 지금 평가액, 다 팔았으면 판 금액
         let r: Double
-        var id: String { p.code }
+        var wait = 0              // 팔기 대기 주수
+        var sold = 0              // 오늘 팔린 주수
+        var id: String { code }
     }
 
     var body: some View {
@@ -179,13 +183,28 @@ struct MockJournalView: View {
 
     private func mineCard(_ d: MockDesk) -> some View {
         let l = d.ledger(.rule)
-        let rows = l.positions.values.map { p -> Held in
-            let now = d.s.prices[p.code] ?? p.avg
-            return Held(p: p, now: now, r: p.avg > 0 ? now / p.avg - 1 : 0)
+        let today = MockFmt.day(Date())
+        var wait: [String: Int] = [:], sold: [String: (n: Int, amt: Double, basis: Double, name: String)] = [:]
+        for o in l.pending where o.side == .sell { wait[o.code, default: 0] += o.qty }
+        for e in d.events where e.ledger == l.id && e.kind == .fill && e.side == .sell && MockFmt.day(e.at) == today {
+            guard let c = e.code else { continue }
+            let x = sold[c] ?? (0, 0, 0, e.name ?? c)
+            sold[c] = (x.n + (e.qty ?? 0), x.amt + (e.amount ?? 0), x.basis + (e.basis ?? 0), x.name)
         }
-        .sorted { downFirst ? $0.r < $1.r : $0.r > $1.r }
-        let pnl = rows.reduce(0) { $0 + Double($1.p.qty) * $1.now - $1.p.cost }
+        var rows = l.positions.values.map { p -> Held in
+            let now = d.s.prices[p.code] ?? p.avg
+            return Held(code: p.code, name: p.name, avg: p.avg, value: Double(p.qty) * now, r: p.avg > 0 ? now / p.avg - 1 : 0,
+                        wait: wait[p.code] ?? 0, sold: sold[p.code]?.n ?? 0)
+        }
+        // 오늘 다 판 종목도 체결 표시로 남긴다 (수익률은 판 값 대비)
+        for (c, x) in sold where l.positions[c] == nil {
+            rows.append(Held(code: c, name: x.name, avg: x.n > 0 ? x.basis / Double(x.n) : 0, value: x.amt,
+                             r: x.basis > 0 ? x.amt / x.basis - 1 : 0, sold: x.n))
+        }
+        rows.sort { downFirst ? $0.r < $1.r : $0.r > $1.r }
+        let pnl = l.positions.values.reduce(0) { $0 + Double($1.qty) * (d.s.prices[$1.code] ?? $1.avg) - $1.cost }
         let mx = rows.map { abs($0.r) }.max() ?? 0
+        let anyPill = rows.contains { $0.wait > 0 || $0.sold > 0 }
         return MockListCard {
             mt("내 종목 \(rows.count)").appFont(14, .bold)
             MockSortToggle(downFirst: $downFirst)
@@ -195,8 +214,12 @@ struct MockJournalView: View {
         } rows: {
             if rows.isEmpty { MockEmptyRow(text: "아직 산 종목이 없어요") }
             ForEach(rows) { h in
-                MockStockRow(code: h.p.code, name: h.p.name, mid: MockFmt.won(h.p.avg), pct: h.r,
-                             price: MockFmt.man(Double(h.p.qty) * h.now), band: mx > 0 ? abs(h.r) / mx : 0, colW: colW)
+                MockStockRow(code: h.code, name: h.name, mid: MockFmt.small(h.avg), pct: h.r,
+                             price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, colW: colW) {
+                    if h.wait > 0 { MockQtyPill(text: "팔기 \(h.wait)주 대기", done: false).holdCol(3, colW) }
+                    else if h.sold > 0 { MockQtyPill(text: "팔기 \(h.sold)주 체결", done: true).holdCol(3, colW) }
+                    else if anyPill { Color.clear.frame(width: colW[3] ?? 0, height: 1) }
+                }
             }
         }
     }

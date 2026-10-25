@@ -30,6 +30,8 @@ extension MockFmt {
     static func man(_ x: Double) -> String {
         abs(x) < 1e4 ? won(x) : Int((x / 1e4).rounded()).formatted() + "만 원"
     }
+    /// 줄 가운데 회색 값: 100만 원 넘으면 만 원으로
+    static func small(_ x: Double) -> String { abs(x) >= 1e6 ? man(x) : won(x) }
     /// 부호 붙인 원: "+12,300원"
     static func signedWon(_ x: Double) -> String { signed(x.rounded()) + "원" }
     /// "2026-10-24" → "10/24"
@@ -710,6 +712,7 @@ struct MockStockRow<Right: View>: View {
             HStack(spacing: 6) {
                 MockLogo(code: code, name: name)
                 mt(name).strikethrough(struck).appFont(15, .bold).lineLimit(1).truncationMode(.tail)
+                    .frame(minWidth: 56, alignment: .leading).layoutPriority(1)
                 Spacer(minLength: 4)
                 mt(mid).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).holdCol(0, colW)
                 mt(MockFmt.pct(pct)).appFont(14, .bold).monospacedDigit().lineLimit(1)
@@ -732,6 +735,17 @@ struct MockStockRow<Right: View>: View {
             Rectangle().fill(c).opacity(scheme == .dark ? 0.26 : 0.32).frame(width: g.size.width * 0.34 * f)
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// 줄 오른쪽 'N주 체결'(금색) · 'N주 대기'(회색)
+struct MockQtyPill: View {
+    let text: String
+    let done: Bool
+    var body: some View {
+        mt(text).appFont(12, .bold).foregroundStyle(done ? Color.black : Theme.sub).lineLimit(1)
+            .padding(.horizontal, 6).padding(.vertical, 3)
+            .background(done ? Theme.gold : Theme.track, in: Capsule())
     }
 }
 
@@ -1012,7 +1026,7 @@ struct MockSelectView: View {
             if rs.isEmpty { MockEmptyRow(text: "아직 고른 종목이 없어요") }
             ForEach(rs) { r in
                 Button { if r.kind != .dropped { editRow = r } } label: {
-                    MockStockRow(code: r.code, name: r.name, mid: MockFmt.won(r.price), pct: r.pct, price: MockFmt.man(Double(r.qty) * r.price),
+                    MockStockRow(code: r.code, name: r.name, mid: MockFmt.small(r.price), pct: r.pct, price: MockFmt.man(Double(r.qty) * r.price),
                                  band: mx > 0 ? abs(r.pct) / mx : 0, struck: r.kind == .dropped, colW: colW) { pill(r).holdCol(3, colW) }
                 }
                 .buttonStyle(.plain)
@@ -1032,16 +1046,12 @@ struct MockSelectView: View {
     @ViewBuilder private func pill(_ r: MockPickRow) -> some View {
         switch r.kind {
         case .filled:
-            mt("\(r.qty)주 체결").appFont(12, .bold).foregroundStyle(Color.black).lineLimit(1)
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(Theme.gold, in: Capsule())
+            MockQtyPill(text: "\(r.qty)주 체결", done: true)
         case .wait, .pick:
-            mt((r.side == .sell ? "팔기 " : "") + "\(r.qty)주 대기").appFont(12, .bold).foregroundStyle(Theme.sub).lineLimit(1)
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(Theme.track, in: Capsule())
+            MockQtyPill(text: (r.side == .sell ? "팔기 " : "") + "\(r.qty)주 대기", done: false)
         case .dropped:
             mt("뺌").appFont(12, .bold).foregroundStyle(Theme.muted).lineLimit(1)
-                .padding(.horizontal, 8).padding(.vertical, 3)
+                .padding(.horizontal, 6).padding(.vertical, 3)
                 .overlay(Capsule().stroke(Theme.border))
         }
     }
