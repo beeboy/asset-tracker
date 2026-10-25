@@ -635,8 +635,9 @@ extension Market {
     }
 }
 
-/// 종목 상세 1일 차트: 내 토스 키로 중계에서 1분봉을 받는다 (토스 봉은 1분·일봉뿐). 마지막 봉에서 16시간 안쪽만 (국내 8~20시, 미국 밤 장).
-/// 200개씩 네 번까지, 같은 종목은 1분 동안 다시 쓴다. 키가 없거나 못 받으면 nil (그래프는 예전처럼 전일 종가 → 지금)
+/// 종목 상세 1일 차트: 내 토스 키로 중계에서 1분봉을 받는다 (토스 봉은 1분·일봉뿐, 1h 는 400 확인).
+/// 마지막 거래일 정규장만 (국내 9:00~15:30, 미국 뉴욕 9:30~16:00). 장 끝 시각부터 거꾸로 200개씩 두 번이면 찬다.
+/// 같은 종목은 1분 동안 다시 쓴다. 키가 없거나 못 받으면 nil (그래프는 예전처럼 전일 종가 → 지금)
 enum TossMinutes {
     struct Day { let at: [Date]; let closes: [Double]; let first: String }
     @MainActor private static var cache: [String: (got: Date, day: Day)] = [:]
@@ -644,23 +645,45 @@ enum TossMinutes {
     @MainActor static func day(_ yahoo: String) async -> Day? {
         guard TossKeys.on, let code = TossFeed.code(yahoo) else { return nil }
         if let c = cache[code], Date().timeIntervalSince(c.got) < 60 { return c.day }
+        let kr = yahoo.uppercased().hasSuffix(".KS") || yahoo.uppercased().hasSuffix(".KQ")
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: kr ? "Asia/Seoul" : "America/New_York")!
+        let oh = kr ? (9, 0) : (9, 30), ch = kr ? (15, 30) : (16, 0)
+        // 그 날(장 시간대 기준)의 정규장 시작·끝
+        func session(_ d: Date) -> (open: Date, close: Date) {
+            let s = cal.startOfDay(for: d)
+            return (cal.date(bySettingHour: oh.0, minute: oh.1, second: 0, of: s)!, cal.date(bySettingHour: ch.0, minute: ch.1, second: 0, of: s)!)
+        }
+        let now = Date(), today = session(now)
+        // 장 전이면 어제 장 끝부터. 주말·휴일이면 받은 마지막 봉의 날로 다시 맞춘다
+        var before = now < today.open ? session(cal.date(byAdding: .day, value: -1, to: now)!).close : min(now, today.close)
         let iso = ISO8601DateFormatter(); iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let iso2 = ISO8601DateFormatter()
-        var bars: [Date: Double] = [:], before: String? = nil
+        var bars: [Date: Double] = [:], win: (open: Date, close: Date)? = nil
         for _ in 0..<4 {
-            var path = "/api/toss/v1/candles?symbol=\(code.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? code)&interval=1m&adjusted=false&count=200"
-            if let b = before { path += "&before=" + (b.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? b) }
+            let b = iso2.string(from: before.addingTimeInterval(60))
+            let path = "/api/toss/v1/candles?symbol=\(code.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? code)&interval=1m&adjusted=false&count=200&before="
+                + (b.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? b)
             let (st, o, _) = await TossFeed.userGet(path, timeout: 8)
             guard st == 200, let r = o?["result"] as? [String: Any] else { break }
+            var page: [Date: Double] = [:]
             for v in r["candles"] as? [[String: Any]] ?? [] {
                 guard let t = v["timestamp"] as? String, let d = iso.date(from: t) ?? iso2.date(from: t), let cl = num(v["closePrice"]), cl > 0 else { continue }
-                bars[d] = cl
+                page[d] = cl
             }
-            before = (r["nextBefore"] as? String)?.replacingOccurrences(of: #"\.\d+(?=Z|[+-]\d{2}:\d{2}$)"#, with: "", options: .regularExpression)
-            guard let last = bars.keys.max(), let b = before, let bd = iso2.date(from: b), bd > last.addingTimeInterval(-16 * 3600) else { break }
+            guard let newest = page.keys.max(), let oldest = page.keys.min() else { break }
+            if win == nil {
+                let w = session(newest)
+                // 마지막 봉이 그 날 장 끝 뒤(애프터·주말 앞 금요일 저녁)면 장 끝부터 다시 받는다
+                if newest > w.close.addingTimeInterval(60) { win = w; before = w.close; continue }
+                win = w
+            }
+            bars.merge(page) { a, _ in a }
+            guard oldest > win!.open else { break }
+            before = oldest.addingTimeInterval(-60)
         }
-        guard let last = bars.keys.max() else { return nil }
-        let keep = bars.keys.filter { $0 > last.addingTimeInterval(-16 * 3600) }.sorted()
+        guard let w = win else { return nil }
+        let keep = bars.keys.filter { $0 > w.open && $0 <= w.close.addingTimeInterval(60) }.sorted()
         guard keep.count > 1 else { return nil }
         let f = DateFormatter(); f.dateFormat = "HH:mm"
         let day = Day(at: keep, closes: keep.map { bars[$0]! }, first: f.string(from: keep[0]))

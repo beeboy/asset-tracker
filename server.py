@@ -313,36 +313,47 @@ def mock_daily_one(code: str, count: int) -> list:
 
 
 def mock_minutes(code: str) -> dict:
-    """한 종목 마지막 거래일 1분봉 ([시:분, 시가, 고가, 저가, 종가, 거래량]). 토스 봉은 1분·일봉뿐이라 하루치(8~20시)를 200개씩 네 번까지. 1분 동안 다시 쓰기"""
+    """한 종목 마지막 거래일 정규장(9:00~15:30) 1분봉 ([시:분, 시가, 고가, 저가, 종가, 거래량]).
+    토스 봉은 1분·일봉뿐(1h 는 400). 장 끝부터 거꾸로 200개씩 두 번이면 찬다. 1분 동안 다시 쓰기"""
     with MOCK_LOCK:
         c = _mock_min.get(code)
         if c and time.time() - c[0] < 60:
             return c[1]
-    got, before = [], ""
+    kst = timezone(timedelta(hours=9))
+    now = datetime.now(kst)
+    sess = lambda d: (d.replace(hour=9, minute=0, second=0, microsecond=0), d.replace(hour=15, minute=30, second=0, microsecond=0))  # noqa: E731
+    o, cl = sess(now)
+    # 장 전이면 어제 장 끝부터. 주말·휴일이면 받은 마지막 봉의 날로 다시 맞춘다
+    before = sess(now - timedelta(days=1))[1] if now < o else min(now, cl)
+    got, win = {}, None
     for _ in range(4):
-        p = {"symbol": code, "interval": "1m", "count": "200", "adjusted": "false"}
-        if before:
-            p["before"] = before
+        p = {"symbol": code, "interval": "1m", "count": "200", "adjusted": "false",
+             "before": (before + timedelta(minutes=1)).isoformat(timespec="seconds")}
         r = toss_call("/api/v1/candles?" + urllib.parse.urlencode(p), "chart").get("result") or {}
+        page = {}
         for v in r.get("candles") or []:
-            t = str(v.get("timestamp") or "")
             try:
-                row = [t[11:16], float(v["openPrice"]), float(v["highPrice"]), float(v["lowPrice"]), float(v["closePrice"]), float(v.get("volume") or 0)]
+                d = datetime.fromisoformat(str(v.get("timestamp"))).astimezone(kst)
+                row = [d.strftime("%H:%M"), float(v["openPrice"]), float(v["highPrice"]), float(v["lowPrice"]), float(v["closePrice"]), float(v.get("volume") or 0)]
             except (KeyError, TypeError, ValueError):
                 continue
-            if len(t) >= 16 and row[4] > 0:
-                got.append((t[:10], row))
-        # 토스는 1000분의 1초를 붙여 준다. 더 지난 쪽이 마지막 거래일 밖이면 그만
-        before = re.sub(r"\.\d+(?=Z|[+-]\d{2}:\d{2}$)", "", str(r.get("nextBefore") or ""))
-        day = max((d for d, _ in got), default="")
-        if not before or before[:10] < day:
+            if row[4] > 0:
+                page[d] = row
+        if not page:
             break
-    day = max((d for d, _ in got), default="")
-    seen, out = set(), []
-    for d, row in sorted(got, key=lambda x: x[1][0]):
-        if d == day and row[0] not in seen:
-            seen.add(row[0]); out.append(row)
-    res = {"day": day, "bars": out}
+        newest, oldest = max(page), min(page)
+        if win is None:
+            win = sess(newest)
+            # 마지막 봉이 그 날 장 끝 뒤(애프터)면 장 끝부터 다시 받는다
+            if newest > win[1] + timedelta(minutes=1):
+                before = win[1]
+                continue
+        got.update({k: v for k, v in page.items() if k not in got})
+        if oldest <= win[0]:
+            break
+        before = oldest - timedelta(minutes=1)
+    out = [got[k] for k in sorted(got) if win and win[0] < k <= win[1] + timedelta(minutes=1)]
+    res = {"day": win[0].strftime("%Y-%m-%d") if win else "", "bars": out}
     with MOCK_LOCK:
         _mock_min[code] = (time.time(), res)
     return res
