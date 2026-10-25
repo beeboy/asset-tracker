@@ -29,6 +29,17 @@
 4. `sudo cp proxy/naeilo-toss-relay.service /etc/systemd/system/` → `sudo systemctl edit naeilo-toss-relay` 로 `Environment=NAEILO_TOSS_IP=<고정 IP>` → `sudo systemctl enable --now naeilo-toss-relay` → `sudo systemctl reload caddy`.
 5. 확인: `curl https://toss.naeilo.com/api/toss/ip` 가 고정 IP 를 돌려주면 된다.
 
+## 권한과 한도 (2026-10-25 기준, 바꾸면 여기부터 고친다)
+| 누가 | 어느 길 | 무엇을 | 한도 |
+|---|---|---|---|
+| 모든 사용자 (내 토스 키) | 공용 중계 `toss.naeilo.com/api/toss/*` → 8766 `proxy/toss_relay.py` | 토큰 · 현재가 · 일봉(1d) · 1분봉(1m, 종목 상세 1일) · 원/달러. 주문·계좌·호가 없음 | IP 하나 1분 60번 (같은 와이파이 폰은 나눠 씀). 넘으면 429, 1분 뒤 풀림 |
+| 개발자 폰 (모의투자 열쇠를 넣은 내부 베타) | 같은 공용 중계 | 위와 같음 | 없음. 앱이 머리글 `X-Naeilo-Dev` 를 보내고 중계가 서버 `~/asset-tracker/dev_token.json` 과 견준다 (Drinker 결정) |
+| 개발자 폰만 | `toss.naeilo.com/api/mock/*` → Caddy → 8765 `server.py` (naeilo-dev) | 모의투자 일봉·현재가·호가·장 달력·1분봉(정규장)·AI | 자체 한도 없음. 열쇠가 틀리면 403. 토스 쪽 한도(응답 머리 X-RateLimit)만 맞춘다 |
+| 토스 | — | 봉은 1m·1d 뿐 (1h 는 400, 서버에서 확인) | 한 번에 200개 |
+
+- 60 이라는 값은 열린 통로로 쓰이지 않게 2026-10-15 Claude 가 근거 없이 잡았다. Drinker 가 정하면 바꾼다.
+- 서버 파일은 콘솔에서 손으로 고친 적이 있다 (2026-10-25: server.py 1분봉, proxy/toss_relay.py 1m·개발자 열쇠). 저장소에 올린 뒤 서버에서 `git pull` 하기 전에 `git checkout server.py proxy/toss_relay.py` 먼저.
+
 ## 남은 확인
 - 토스 약관: "본인 매매 목적에 한해 이용, 제3자 배포 금지". 사용자가 자기 키로 자기 화면에 보는 건 본인 이용에 가깝다고 봤지만, 제3자 앱이 키를 중계하는 것을 허용하는지는 문서에 없다. 공개 출시 전에 토스에 문의.
 - 키 하나에 토큰 하나: 사용자가 같은 키를 다른 프로그램에서도 쓰면 서로 끊긴다. 화면에 안내함.
