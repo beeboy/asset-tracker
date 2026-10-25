@@ -48,8 +48,8 @@ struct RootView: View {
             NavigationStack(path: $model.homePath) { HomeView() }
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
             #if MOCK
-            // 개발자 모의투자 모드: 홈은 그대로, 나머지 네 탭이 관찰·선정·주문·분석으로 바뀐다 (홈 평가액 박스의 금액 밖을 눌러 켜고 끈다)
-            if MockDesk.shared.active { MockTabs() } else { plainTabs }
+            // 개발자 모의투자 모드: 홈·미션은 그대로, 가운데 세 탭이 관찰·선정·일지로 바뀐다 (홈 평가액 박스의 금액 밖을 눌러 켜고 끈다)
+            if MockDesk.shared.active { MockTabs(); boardTab } else { plainTabs }
             #else
             plainTabs
             #endif
@@ -66,6 +66,11 @@ struct RootView: View {
             .tabItem { Label(LocalizedStringKey(FlowTab.name), systemImage: FlowTab.icon) }.tag(Tab.flow)
         NavigationStack(path: $model.analysisPath) { AnalysisView() }
             .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
+        boardTab
+    }
+
+    @ViewBuilder private var boardTab: some View {
+        @Bindable var model = model
         NavigationStack(path: $model.boardPath) {
             BoardView()   // 목표·회복 루트 같은 미션 판
         }

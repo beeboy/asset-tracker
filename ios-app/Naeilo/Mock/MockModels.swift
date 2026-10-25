@@ -42,6 +42,7 @@ struct MockPiece: Codable, Identifiable, Equatable, Hashable {
         case volume     // 오늘 거래량 ÷ 지난 N일 평균 (배)
         case ma         // 지금 가격과 N일 이동평균 (위·아래)
         case amount     // 오늘 거래대금 (억원)
+        case rise       // 최근 N일 상승률 (%, 30 = +30%). 비정상 폭등 거르기
         var id: String { rawValue }
         var name: String {
             switch self {
@@ -50,6 +51,7 @@ struct MockPiece: Codable, Identifiable, Equatable, Hashable {
             case .volume: return "거래량 배수"
             case .ma: return "이동평균"
             case .amount: return "거래대금"
+            case .rise: return "최근 상승"
             }
         }
     }
@@ -67,6 +69,7 @@ struct MockPiece: Codable, Identifiable, Equatable, Hashable {
         case .change: return 2
         case .volume: return days + 1
         case .ma: return days
+        case .rise: return days + 1
         }
     }
 
@@ -77,8 +80,9 @@ struct MockPiece: Codable, Identifiable, Equatable, Hashable {
         case .price: return "가격 " + range(lo.map { n($0) + "원" }, hi.map { n($0) + "원" })
         case .change: return "등락률 " + range(lo.map { MockFmt.signed($0) + "%" }, hi.map { MockFmt.signed($0) + "%" })
         case .volume:
-            if let lo, hi == nil { return "거래량 ≥ \(days)일 평균 × \(n(lo))" }
-            return "거래량 \(days)일 평균 × " + range(lo.map(n), hi.map(n))
+            let d = days == 20 ? "" : " (\(days)일)"
+            return "거래량 배수 " + range(lo.map { n($0) + "배" }, hi.map { n($0) + "배" }) + d
+        case .rise: return "최근 \(days)일 상승 " + range(lo.map { MockFmt.signed($0) + "%" }, hi.map { MockFmt.signed($0) + "%" })
         case .ma: return "가격 " + (above ? ">" : "<") + " \(days)일선"
         case .amount: return "거래대금 " + range(lo.map { n($0) + "억" }, hi.map { n($0) + "억" })
         }
@@ -134,6 +138,8 @@ struct MockHit: Codable, Equatable, Identifiable {
     var change: Double?          // 오늘 등락률 (비율, 0.042 = +4.2%)
     var score: Double            // 줄 세우기 값 (묶음의 sort 조각)
     var why: String              // "거래량 3.1배 · +4.2% · 20일선 위"
+    var vol: Double? = nil       // 거래량 배수 (지난 20일 평균 대비)
+    var rise5: Double? = nil     // 최근 5일 상승률 (%)
 }
 
 /// 한 번 훑은 결과. 떨어진 종목은 이유(처음 걸린 조각 번호)별 수만 남긴다 (-1 = 자료 없음)
@@ -149,6 +155,58 @@ struct MockScan: Codable, Equatable, Identifiable {
     var dropped: [Int: Int]      // 조각 번호 → 떨어진 수
     var excluded: [String] = []  // 예외로 뺀 종목 코드
     var seconds: Double = 0
+}
+
+/// 관찰 조건 하나 (알약). 켠 조건을 모두 맞는 종목이 걸린다
+struct MockCond: Codable, Equatable, Identifiable {
+    var piece: MockPiece
+    var on: Bool = true
+    var id: UUID { piece.id }
+}
+
+/// 고르기 조건 하나 (알약): 순서·상위 · 종목당 한도 · 현금 남김
+struct MockRuleCond: Codable, Equatable, Identifiable {
+    enum Kind: String, Codable, CaseIterable, Identifiable {
+        case top, per, cash, cap
+        var id: String { rawValue }
+        var name: String {
+            switch self {
+            case .top: return "순서·상위"
+            case .per: return "종목당 한도"
+            case .cash: return "현금 남김"
+            case .cap: return "폭등 거르기"
+            }
+        }
+    }
+    var id = UUID()
+    var kind: Kind
+    var on: Bool = true
+    var sort: MockPiece.Kind = .volume   // top: 줄 세우기 (큰 순)
+    var n: Int = 5                       // top: 몇 종목
+    var pct: Double = 0.2                // per · cash
+    var capKind: MockPiece.Kind = .volume // cap: 거래량 배수(.volume) · 최근 5일 상승(.rise)
+    var lim: Double = 50                 // cap: 이 값을 넘으면 고르지 않는다 (배 · %)
+    var text: String {
+        switch kind {
+        case .top: return "\(sort.name) 순 상위 \(n)"
+        case .per: return "종목당 ≤\(Int((pct * 100).rounded()))%"
+        case .cash: return "현금 \(Int((pct * 100).rounded()))% 남김"
+        case .cap: return capKind == .rise ? "최근 5일 상승 ≤ +\(MockFmt.num(lim))%" : "거래량 배수 ≤ \(MockFmt.num(lim))배"
+        }
+    }
+    /// cap: 걸린 종목이 이 조건을 넘나 (값이 없으면 넘지 않은 것으로 본다)
+    func over(_ h: MockHit) -> Bool {
+        guard kind == .cap else { return false }
+        if capKind == .rise { return (h.rise5 ?? -.infinity) > lim }
+        return (h.vol ?? 0) > lim
+    }
+}
+
+/// 평가액 한 점 (내 수익률 꺾은선)
+struct MockMark: Codable, Equatable {
+    var at: Date
+    var eq: Double
+    var ledger: UUID
 }
 
 // MARK: 예외 종목

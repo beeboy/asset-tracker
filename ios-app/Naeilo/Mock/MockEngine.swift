@@ -25,6 +25,9 @@ enum MockCalc {
             let avg = win.reduce(0) { $0 + $1.c } / Double(max(1, win.count))
             return avg > 0 ? last.c / avg - 1 : nil
         case .amount: return last.c * last.v / 1e8
+        case .rise:
+            let base = bars[bars.count - 1 - p.days].c
+            return base > 0 ? (last.c / base - 1) * 100 : nil
         }
     }
 
@@ -43,6 +46,7 @@ enum MockCalc {
         case .volume: return "거래량 " + String(format: "%.1f", v) + "배"
         case .ma: return "\(p.days)일선 " + (v > 0 ? "위" : "아래")
         case .amount: return "거래대금 " + MockFmt.num((v * 10).rounded() / 10) + "억"
+        case .rise: return "\(p.days)일 " + MockFmt.signed((v * 10).rounded() / 10) + "%"
         }
     }
 
@@ -66,7 +70,8 @@ enum MockCalc {
             let score = value(b.sortPiece, bs) ?? 0
             let ch = value(MockPiece(kind: .change), bs).map { $0 / 100 }
             hits.append(MockHit(code: s.code, name: s.name, price: last.c, change: ch, score: score,
-                                why: why.isEmpty ? "조각 없음 · 전부" : why.joined(separator: " · ")))
+                                why: why.isEmpty ? "조각 없음 · 전부" : why.joined(separator: " · "),
+                                vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs)))
         }
         hits.sort { $0.score != $1.score ? $0.score > $1.score : $0.code < $1.code }
         return MockScan(at: at, bundleId: b.id, bundleName: b.name, pieceTexts: b.pieces.map(\.text), barDay: barDay,

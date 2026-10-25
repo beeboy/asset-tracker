@@ -49,6 +49,8 @@ enum MockAI {
     }
 
     static let maxOrders = 3
+    /// AI 를 부르나. 2026-10-25 모의투자 화면을 새로 하며 꺼 둔다 (AI 장부·선정 의견·하루 정리·말로 조건 모두). 참으로 바꾸면 다시 돈다
+    static let on = false
 
     // MARK: 물음 만들기 (같은 장면이면 같은 글이 되게 시각은 날짜까지만)
 

@@ -33,6 +33,12 @@ struct MockState: Codable {
     var aiDaily: String? = nil                // 장 마감 뒤 하루 정리
     var aiDailyDay: String? = nil
     var reviewShut: Bool? = nil               // 검토 문 기본을 닫힘으로 바꾼 뒤 옛 상태를 한 번 닫았는지
+    var conds: [MockCond]? = nil              // 관찰 조건 알약 (옛 묶음 조각을 옮겨 온다)
+    var rconds: [MockRuleCond]? = nil         // 고르기 조건 알약 (select 값은 여기서 맞춘다)
+    var marks: [MockMark]? = nil              // 평가액 점 (내 수익률 꺾은선)
+    var dropped: [MockCalc.Pick]? = nil       // 마지막 고르기에서 손으로 뺀 종목
+    var aiPurged: Bool? = nil                 // AI 장부 매매 데이터를 한 번 지웠는지 (2026-10-25)
+    var surgeAdded: Bool? = nil               // 폭등 거르기 기본 조건을 한 번 넣었는지 (2026-10-25)
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -57,6 +63,8 @@ final class MockDesk {
     private(set) var events: [MockEvent]
     /// 지금 도는 일 ("observe" 등). 하나가 도는 동안 다른 일은 받지 않는다
     private(set) var busy: String? = nil
+    /// 1분 주기가 도는 중 (busy 와 따로: 버튼을 잠그지 않는다)
+    private(set) var ticking = false
     /// AI 부르는 중 (서버가 Claude 를 기다리는 동안 다른 일은 막지 않는다. AI 끼리는 하나씩)
     private(set) var aiBusy: String? = nil
     private(set) var progress: (done: Int, total: Int)? = nil
@@ -71,6 +79,60 @@ final class MockDesk {
         events = Self.loadEvents()
         // 옛 상태는 검토 문이 열린 채 저장돼 있다. 기본이 닫힘으로 바뀌어 한 번만 닫는다
         if s.reviewShut == nil { s.select.review = true; s.reviewShut = true; save() }
+        migrate()
+        if s.aiPurged != true { purgeAI() }
+    }
+
+    /// 옛 묶음 조각을 관찰 조건 알약으로, 선정 규칙 값을 고르기 조건 알약으로 옮긴다 (한 번만, 묶음 데이터는 그대로 둔다)
+    private func migrate() {
+        var changed = false
+        if s.conds == nil {
+            let cur = s.bundles.first { $0.id == s.current } ?? s.bundles.first
+            var seen = Set<String>(), out: [MockCond] = []
+            for b in (cur.map { [$0] } ?? []) + s.bundles.filter({ $0.id != cur?.id }) {
+                for p in b.pieces where !seen.contains(p.text) {
+                    seen.insert(p.text)
+                    out.append(MockCond(piece: p, on: b.id == cur?.id))
+                }
+            }
+            s.conds = out
+            changed = true
+        }
+        if s.rconds == nil {
+            let cur = s.bundles.first { $0.id == s.current } ?? s.bundles.first
+            s.rconds = [MockRuleCond(kind: .top, sort: cur?.sort ?? .volume, n: s.select.count),
+                        MockRuleCond(kind: .per, pct: s.select.maxPer),
+                        MockRuleCond(kind: .cash, pct: s.select.keepCash)]
+            changed = true
+        }
+        // 비정상 폭등 거르기 (일봉 거래량·종가로만 셈). 관찰은 넓게, 고르기는 더 좁게. 켠 채로 한 번만 넣는다
+        if s.surgeAdded != true {
+            s.conds = (s.conds ?? []) + [MockCond(piece: MockPiece(kind: .volume, hi: 50, days: 20)),
+                                         MockCond(piece: MockPiece(kind: .rise, hi: 30, days: 5))]
+            s.rconds = (s.rconds ?? []) + [MockRuleCond(kind: .cap, capKind: .volume, lim: 20),
+                                           MockRuleCond(kind: .cap, capKind: .rise, lim: 20)]
+            s.surgeAdded = true
+            changed = true
+        }
+        if changed { save() }
+    }
+
+    /// AI 장부의 매매 데이터와 AI 기록을 지운다 (규칙 장부는 그대로). 기록 파일도 그 줄만 빼고 다시 쓴다
+    private func purgeAI() {
+        let now = Date()
+        let aiIds = Set(s.ledgers.filter { $0.book == .ai }.map(\.id) + s.archived.filter { $0.book == .ai }.map(\.id))
+        if let i = s.ledgers.firstIndex(where: { $0.book == .ai }) { s.ledgers[i] = MockLedger(book: .ai, started: now) }
+        s.archived.removeAll { $0.book == .ai }
+        s.aiNote = nil; s.aiDaily = nil; s.aiDailyDay = nil; s.aiViews = [:]; s.aiSeen = [:]; s.aiWallet = nil
+        s.runs["ai"] = nil
+        s.shown = .rule
+        let kept = events.filter { !aiIds.contains($0.ledger) && $0.book != .ai && $0.kind != .ai && $0.who != .ai }
+        if kept.count != events.count {
+            events = kept
+            Self.rewriteLines(kept)
+        }
+        s.aiPurged = true
+        save()
     }
 
     /// 상태 파일 꼴이 바뀌어 못 읽으면 그대로 두지 않고 옆에 옮겨 둔다 (새 상태가 옛 장부를 덮지 않게)
@@ -84,7 +146,17 @@ final class MockDesk {
     // MARK: 읽기
 
     func ledger(_ b: MockBook) -> MockLedger { s.ledgers.first { $0.book == b } ?? MockLedger(book: b, started: Date()) }
-    var bundle: MockBundle? { s.bundles.first { $0.id == s.current } ?? s.bundles.first }
+    /// 관찰에 쓰는 묶음: 켠 조건 알약 모두 (줄 세우기는 고르기 조건의 순서)
+    var bundle: MockBundle? {
+        let on = conds.filter(\.on).map(\.piece)
+        let top = rconds.first { $0.on && $0.kind == .top }
+        return MockBundle(id: Self.obsId, name: "조건 \(on.count)개", pieces: on, scope: .all, sort: top?.sort ?? .volume, sortDays: 20)
+    }
+    static let obsId = UUID(uuidString: "00000000-0000-0000-0000-0000000000B5")!
+    var conds: [MockCond] { s.conds ?? [] }
+    var rconds: [MockRuleCond] { s.rconds ?? [] }
+    var dropped: [MockCalc.Pick] { s.dropped ?? [] }
+    var marks: [MockMark] { let id = ledger(.rule).id; return (s.marks ?? []).filter { $0.ledger == id } }
     func equity(_ b: MockBook) -> Double { MockCalc.equity(ledger(b), prices: s.prices) }
     func ledgerEvents(_ b: MockBook) -> [MockEvent] { let id = ledger(b).id; return events.filter { $0.ledger == id } }
 
@@ -119,6 +191,7 @@ final class MockDesk {
     // MARK: 관찰
 
     func runObserve() async {
+        await waitTick()
         guard busy == nil else { return }
         busy = "observe"
         await observe()
@@ -127,7 +200,10 @@ final class MockDesk {
     }
 
     private func observe() async {
-        guard let b = bundle else { return }
+        guard let b = bundle, !b.pieces.isEmpty else {
+            s.runs["observe"] = MockRun(at: Date(), ok: false, text: "\(MockFmt.time(Date())) 켠 조건이 없어요")
+            return
+        }
         defer { progress = nil }
         let t0 = Date(), stocks = Self.universe, codes = stocks.map(\.code)
         progress = (0, codes.count)
@@ -158,6 +234,7 @@ final class MockDesk {
     // MARK: 선정
 
     func runSelect() async {
+        await waitTick()
         guard busy == nil else { return }
         busy = "select"
         await select()
@@ -172,17 +249,26 @@ final class MockDesk {
         // 고르기 직전 가격 (위쪽 200종목만)
         let top = Array(scan.hits.prefix(200).map(\.code))
         if let p = try? await MockFeed.last(top) { s.prices.merge(p) { _, b in b }; s.pricesAt = Date() }
-        let (picks, skips) = MockCalc.select(scan, ledger: ledger(.rule), rule: s.select, fees: s.fees, prices: s.prices, excluded: excluded())
+        // 고르기 조건의 폭등 거르기: 넘는 종목은 순위에서 빼고 이유를 남긴다
+        let caps = rconds.filter { $0.on && $0.kind == .cap }
+        var sc = scan, capped: [MockCalc.Skip] = []
+        sc.hits = scan.hits.filter { h in
+            guard let c = caps.first(where: { $0.over(h) }) else { return true }
+            capped.append(MockCalc.Skip(code: h.code, name: h.name, why: "폭등 거름 · " + c.text))
+            return false
+        }
+        let (picks, rest) = MockCalc.select(sc, ledger: ledger(.rule), rule: s.select, fees: s.fees, prices: s.prices, excluded: excluded())
+        let skips = capped + rest
         var pe: [String: UUID] = [:]
         for p in picks {
             let e = log(.select, book: .rule, who: .rule, code: p.code, name: p.name,
                         text: p.why + " · 비중 " + String(format: "%.0f%%", p.weight * 100) + " · \(p.qty)주 남짓", bundle: scan.bundleName, ref: s.scanEvent)
             pe[p.code] = e.id
         }
-        for k in skips.prefix(30) where k.short || k.why.hasPrefix("예외") || k.why.hasPrefix("0주") {
+        for k in skips.prefix(30) where k.short || k.why.hasPrefix("예외") || k.why.hasPrefix("0주") || k.why.hasPrefix("폭등") {
             log(k.short ? .short : .exclude, book: .rule, who: .rule, code: k.code, name: k.name, text: k.why, bundle: scan.bundleName, ref: s.scanEvent)
         }
-        s.picks = picks; s.pickEvents = pe; s.skips = skips; s.pickedAt = Date()
+        s.picks = picks; s.pickEvents = pe; s.skips = skips; s.pickedAt = Date(); s.dropped = []
         s.aiViews = [:]
         lastPicks = picks
         let shortN = skips.filter(\.short).count
@@ -194,12 +280,26 @@ final class MockDesk {
     func dropPick(_ code: String) {
         guard let i = s.picks.firstIndex(where: { $0.code == code }) else { return }
         let p = s.picks.remove(at: i)
+        s.dropped = (s.dropped ?? []) + [p]
         log(.select, book: .rule, who: .hand, code: p.code, name: p.name, text: "검토에서 뺌", ref: s.pickEvents[p.code])
+        save()
+    }
+
+    /// 검토 중인 종목의 주수를 손으로 고친다 (쓸 돈도 그 주수만큼)
+    func setPickQty(_ code: String, _ qty: Int) {
+        guard let i = s.picks.firstIndex(where: { $0.code == code }), qty >= 1, s.picks[i].qty != qty else { return }
+        var p = s.picks[i]
+        p.qty = qty
+        p.budget = Double(qty) * p.price * (1 + s.fees.commission)
+        p.who = .hand
+        s.picks[i] = p
+        log(.select, book: .rule, who: .hand, code: p.code, name: p.name, text: "검토에서 \(qty)주로 고침", ref: s.pickEvents[p.code])
         save()
     }
 
     /// 고른 종목을 주문한다 (검토가 끝났거나 검토 문이 열려 있을 때)
     func orderPicks() async {
+        await waitTick()
         guard busy == nil else { return }
         busy = "order"
         await order()
@@ -212,12 +312,14 @@ final class MockDesk {
         let picks = s.picks
         s.picks = []
         var n = 0
-        for p in picks where await placeBuy(.rule, code: p.code, name: p.name, budget: p.budget, who: p.who, reason: p.why, ref: s.pickEvents[p.code]) { n += 1 }
+        for p in picks where await placeBuy(.rule, code: p.code, name: p.name, budget: p.who == .hand ? nil : p.budget, qty: p.who == .hand ? p.qty : nil,
+                                            who: p.who, reason: p.why, ref: s.pickEvents[p.code]) { n += 1 }
         s.runs["order"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 주문 \(n)건 · 고른 \(picks.count)")
     }
 
     /// 한 바퀴: 훑기 → 고르기 (검토 문이 열려 있으면 주문까지)
     func runCycle() async {
+        await waitTick()
         guard busy == nil else { return }
         busy = "cycle"
         await observe()
@@ -230,6 +332,7 @@ final class MockDesk {
     /// 손 주문 (규칙 장부에 '손'으로 적는다. 예외 종목도 막지 않는다)
     @discardableResult
     func runHand(_ side: MockSide, code: String, name: String, qty: Int?, type: MockOrderType, limit: Double?) async -> Bool {
+        await waitTick()
         guard busy == nil else { return false }
         busy = "hand"
         let ok = await side == .buy
@@ -354,8 +457,8 @@ final class MockDesk {
 
     /// 지켜보는 종목 가격 받기 → 대기 주문 다시 보기 → 팔기 규칙 → 한 바퀴 자동 → AI 차례
     func tick() async {
-        guard active, busy == nil, MockFeed.base != nil else { return }
-        busy = "tick"
+        guard active, busy == nil, !ticking, MockFeed.base != nil else { return }
+        ticking = true
         let ph = await refreshPhase()
         var watch = Set<String>()
         for l in s.ledgers { watch.formUnion(l.positions.keys); watch.formUnion(l.pending.map(\.code)) }
@@ -387,10 +490,31 @@ final class MockDesk {
             await select()
             picked = true
         }
-        busy = nil
+        addMark()
+        ticking = false
         save()
         if picked { startAIReview() }
         startAITick(phase: ph)
+    }
+
+    /// 1분 주기는 버튼 잠금(busy)과 따로 돈다 (버튼이 잠겼다 풀리며 깜빡이지 않게). 단추 일은 주기가 끝날 때까지 기다렸다 돈다
+    private func waitTick() async {
+        var n = 0
+        while ticking && n < 300 { try? await Task.sleep(for: .milliseconds(200)); n += 1 }
+    }
+
+    /// 평가액 점: 5분에 하나. 이틀 지난 점은 하루 마지막 하나만 남긴다
+    private func addMark() {
+        let l = ledger(.rule), now = Date()
+        var ms = s.marks ?? []
+        if let last = ms.last(where: { $0.ledger == l.id }), now.timeIntervalSince(last.at) < 300 { return }
+        ms.append(MockMark(at: now, eq: equity(.rule), ledger: l.id))
+        let cut = now.addingTimeInterval(-2 * 86_400)
+        var lastOfDay: [String: Int] = [:]
+        for (i, m) in ms.enumerated() where m.at < cut { lastOfDay[MockFmt.day(m.at) + m.ledger.uuidString] = i }
+        let keep = Set(lastOfDay.values)
+        ms = ms.enumerated().filter { $0.element.at >= cut || keep.contains($0.offset) }.map(\.element)
+        s.marks = ms
     }
 
     // MARK: 장부·설정 바꾸기
@@ -420,7 +544,7 @@ final class MockDesk {
         s.archived.append(old)
         let n = MockLedger(book: b, started: Date())
         s.ledgers[i] = n
-        if b == .rule { s.picks = []; s.skips = []; s.aiViews = [:]; lastPicks = [] }
+        if b == .rule { s.picks = []; s.skips = []; s.aiViews = [:]; s.dropped = []; lastPicks = []; s.marks = (s.marks ?? []).filter { $0.ledger != old.id } }
         if b == .ai { s.aiNote = nil }
         log(.reset, book: b, text: "\(b.name) 처음부터 · 옛 장부 평가 \(MockFmt.won(MockCalc.equity(old, prices: s.prices))) 보관")
         save()
@@ -432,6 +556,23 @@ final class MockDesk {
         log(.rules, book: .rule, text: what)
         save()
     }
+    /// 관찰 조건 알약을 바꾼다 (켜기·끄기·넣기·고치기·지우기)
+    func setConds(_ what: String, _ new: [MockCond]) {
+        edit("관찰 조건 · " + what) { $0.conds = new }
+    }
+
+    /// 고르기 조건 알약을 바꾸고 선정 규칙 값을 맞춘다 (끈 조건은 막지 않는 값: 상위 10 · 한도 없음 · 현금 남김 없음)
+    func setRuleConds(_ what: String, _ new: [MockRuleCond]) {
+        edit("고르기 조건 · " + what) { st in
+            st.rconds = new
+            let on = new.filter(\.on)
+            st.select.count = on.first { $0.kind == .top }?.n ?? 10
+            st.select.maxPer = on.filter { $0.kind == .per }.map(\.pct).min() ?? 1
+            st.select.keepCash = on.filter { $0.kind == .cash }.map(\.pct).max() ?? 0
+            st.select.name = on.map(\.text).joined(separator: " · ").isEmpty ? "조건 없음" : on.map(\.text).joined(separator: " · ")
+        }
+    }
+
     /// 기록 없이 바꾸는 화면 값 (보이는 장부·지금 쓰는 묶음 고르기 등)
     func setView(_ change: (inout MockState) -> Void) { change(&s); save() }
 
@@ -483,6 +624,12 @@ final class MockDesk {
         guard let d = try? Data(contentsOf: dir.appendingPathComponent("journal.jsonl")) else { return [] }
         return d.split(separator: UInt8(ascii: "\n")).compactMap { try? dec.decode(MockEvent.self, from: Data($0)) }
     }
+    /// 기록 파일을 통째로 다시 쓴다 (AI 기록 지우기에만 쓴다)
+    private static func rewriteLines(_ es: [MockEvent]) {
+        var d = Data()
+        for e in es { if let x = try? enc.encode(e) { d.append(x); d.append(UInt8(ascii: "\n")) } }
+        try? d.write(to: dir.appendingPathComponent("journal.jsonl"), options: .atomic)
+    }
     private static func appendLine(_ e: MockEvent) {
         guard var d = try? enc.encode(e) else { return }
         d.append(UInt8(ascii: "\n"))
@@ -512,7 +659,7 @@ extension MockDesk {
 
     /// 1분 주기 끝에 부른다. 때가 된 AI 일 하나만 (AI 끼리는 하나씩, 다른 일은 막지 않는다)
     func startAITick(phase ph: Phase) {
-        guard aiBusy == nil else { return }
+        guard MockAI.on, aiBusy == nil else { return }
         let now = Date(), a = s.ai
         if a.ledgerEvery > 0 && ph == .open && now.timeIntervalSince(s.aiSeen["ledger"] ?? .distantPast) >= Double(a.ledgerEvery * 60) {
             Task { await runAI("ledger") }
@@ -523,7 +670,7 @@ extension MockDesk {
 
     /// 규칙이 고른 뒤 의견을 묻는다. 다른 AI 일이 돌고 있으면 끝날 때까지 (2분 반까지) 기다린다
     func startAIReview() {
-        guard s.ai.reviewEach, !lastPicks.isEmpty else { return }
+        guard MockAI.on, s.ai.reviewEach, !lastPicks.isEmpty else { return }
         Task {
             var n = 0
             while aiBusy != nil && n < 75 { try? await Task.sleep(nanoseconds: 2_000_000_000); n += 1 }
@@ -533,7 +680,7 @@ extension MockDesk {
 
     /// AI 일 하나. 설정·분석 화면의 '지금 돌리기'도 이것을 부른다 (장 밖이면 AI 장부 주문은 시험 체결)
     func runAI(_ kind: String) async {
-        guard aiBusy == nil, active else { return }
+        guard MockAI.on, aiBusy == nil, active else { return }
         aiBusy = kind
         defer { aiBusy = nil; save() }
         s.aiSeen[kind] = Date()
@@ -591,7 +738,7 @@ extension MockDesk {
     /// 말로 쓴 조건 → 조건 묶음 (저장은 화면에서 보고 정한다)
     func aiWords(_ words: String) async -> (bundle: MockBundle, note: String)? {
         let w = words.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !w.isEmpty, aiBusy == nil, active else { return nil }
+        guard MockAI.on, !w.isEmpty, aiBusy == nil, active else { return nil }
         aiBusy = "words"
         defer { aiBusy = nil; save() }
         guard let o = await ask("words", MockAI.wordsPrompt(String(w.prefix(300))), book: .rule) else { return nil }
@@ -607,6 +754,7 @@ extension MockDesk {
     }
 
     func refreshWallet() async {
+        guard MockAI.on else { return }
         if let o = try? await MockFeed.wallet(limits: s.ai.limits), let w = MockAI.wallet(o, at: Date()) { s.aiWallet = w }
     }
 

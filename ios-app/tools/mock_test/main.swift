@@ -29,7 +29,10 @@ do {
     check(MockCalc.value(MockPiece(kind: .ma, days: 20), b)! > 0, "20일선 위")
     check(MockCalc.value(MockPiece(kind: .volume, days: 30), b) == nil, "봉 모자람 → nil")
     let p = MockPiece(kind: .volume, lo: 2, days: 20)
-    check(p.text == "거래량 ≥ 20일 평균 × 2", "조각 글: \(p.text)")
+    check(p.text == "거래량 배수 ≥ 2배", "조각 글: \(p.text)")
+    check(MockPiece(kind: .rise, hi: 30, days: 5).text == "최근 5일 상승 ≤ +30%", "최근 상승 글")
+    check(MockRuleCond(kind: .cap, capKind: .volume, lim: 20).over(MockHit(code: "1", name: "a", price: 1, change: nil, score: 0, why: "", vol: 438.9)), "폭등 거르기: 거래량 배수")
+    check(!MockRuleCond(kind: .cap, capKind: .rise, lim: 20).over(MockHit(code: "1", name: "a", price: 1, change: nil, score: 0, why: "", rise5: 12)), "폭등 거르기: 5일 상승 아래")
     check(MockPiece(kind: .change, lo: 2, hi: 8).text == "등락률 +2% ~ +8%", "등락률 글")
 }
 
