@@ -158,7 +158,6 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
     val cur: String? = sel?.takeIf { it in ids } ?: mood.box.firstOrNull() ?: byWeight.firstOrNull()
     fun name(id: String): String = Sample.symbol(id)?.name ?: id   // ios: Views/FlowView.swift:53
     /** 키가 없어 못 그리는 종목이 있으면 설정 링크를 보인다 */
-    val needKey = ids.any { !Sample.isVirtual(it) && !FlowStore.canFetch(it) }   // ios: Views/FlowView.swift:30
 
     // 열 때 담은 종목 일봉을 받는다 (하루 한 번만 실제로 부른다)
     LaunchedEffect(hasKey) { store.ensure(ids) }   // ios: Views/FlowView.swift:74
@@ -180,11 +179,6 @@ fun FlowView(model: AppModel) {   // ios: Views/FlowView.swift:5,6
                     Box(Modifier.outset(16.dp)) { AppHeader(tab = FlowTab.name) }   // ios: Views/FlowView.swift:62 (-16)
                     if (mood.box.isNotEmpty()) BoxSchemeScope { MoodBox(mood, BoxLook.entries.firstOrNull { it.name == lookRaw } ?: BoxLook.jump, cur, ::name) { sel = it; term = null } }   // ios: Views/FlowView.swift:63
                     if (restIds.isNotEmpty()) Chips(restIds, cur, ::name, onAll = { showAll = true }) { sel = it; term = null }   // ios: Views/FlowView.swift:64
-                    if (needKey) {   // ios: Views/FlowView.swift:65
-                        // ios: Views/FlowView.swift:66,67,68,70
-                        T("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요", Modifier.plainClickable { model.openSettings(SettingsRoute.toss) },
-                            style = appFont(13f).copy(textDecoration = TextDecoration.Underline), color = Theme.teal)
-                    }
                     LayerRow(layers, onGuide = { guideFocus = null; showGuide = true }) { layers = it }   // ios: Views/FlowView.swift:72
                 }
                     // ios: Views/FlowView.swift:73,93,94

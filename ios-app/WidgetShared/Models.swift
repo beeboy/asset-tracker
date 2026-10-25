@@ -156,7 +156,7 @@ enum TossFeed {
     static let name = "toss_quotes.json"
     static let key = "toss_base"
     static var base: String? {
-        get { Store.defaults.string(forKey: key).flatMap { $0.isEmpty ? nil : $0 } }
+        get { TossKeys.paused ? nil : Store.defaults.string(forKey: key).flatMap { $0.isEmpty ? nil : $0 } }   // 토스 멈춤 중엔 개발자 주소도 안 쓴다
         set { Store.defaults.set(newValue, forKey: key) }
     }
     /// 설정 > 개발자용에 보이는 상태: 마지막 성공 시각(초), 마지막 실패 이유 (성공하면 지움)
@@ -392,11 +392,14 @@ enum TossKeys {
         return try? JSONDecoder().decode(T.self, from: d)
     }
     /// 키를 넣었는지 (위젯도 보므로 키 자체가 아니라 표시만 공유 저장소에 둔다)
-    static var on: Bool { Store.defaults.bool(forKey: "toss_user") }
+    static var stored: Bool { Store.defaults.bool(forKey: "toss_user") }
+    /// 개발자용 잠시 멈춤 (내부 베타만): 키는 그대로 두고 없는 것처럼 안 부른다
+    static var paused: Bool { Config.isInternal && Store.defaults.bool(forKey: "toss_pause") }
+    static var on: Bool { stored && !paused }
     static func load() -> Keys? { get(Keys.self, "keys") }
     /// 예전 판은 키를 앱 전용 자리에 두어 위젯이 못 읽었다. 앱이 열릴 때 한 번 그룹 자리로 옮긴다
     static func share() {
-        guard on, !Store.defaults.bool(forKey: "toss_kc_group") else { return }
+        guard stored, !Store.defaults.bool(forKey: "toss_kc_group") else { return }
         if let k = load() { let t = token; put(k, "keys"); put(t, "token") }
         Store.defaults.set(true, forKey: "toss_kc_group")
     }
@@ -532,7 +535,10 @@ enum AlpacaKeys {
         SecItemAdd(a as CFDictionary, nil)
     }
     /// 키를 넣었는지 (위젯도 보므로 표시만 공유 저장소에 둔다)
-    static var on: Bool { Store.defaults.bool(forKey: "alpaca_user") }
+    static var stored: Bool { Store.defaults.bool(forKey: "alpaca_user") }
+    /// 개발자용 잠시 멈춤 (내부 베타만): 키는 그대로 두고 없는 것처럼 안 부른다
+    static var paused: Bool { Config.isInternal && Store.defaults.bool(forKey: "alpaca_pause") }
+    static var on: Bool { stored && !paused }
     static func load() -> Keys? {
         guard on else { return nil }
         var a = q()
@@ -740,7 +746,10 @@ enum LongbridgeKeys {
         SecItemAdd(a as CFDictionary, nil)
     }
     /// 키를 넣었는지 (위젯도 보므로 표시만 공유 저장소에 둔다)
-    static var on: Bool { Store.defaults.bool(forKey: "longbridge_user") }
+    static var stored: Bool { Store.defaults.bool(forKey: "longbridge_user") }
+    /// 개발자용 잠시 멈춤 (내부 베타만): 키는 그대로 두고 없는 것처럼 안 부른다
+    static var paused: Bool { Config.isInternal && Store.defaults.bool(forKey: "longbridge_pause") }
+    static var on: Bool { stored && !paused }
     static func load() -> Keys? {
         guard on else { return nil }
         var a = q()

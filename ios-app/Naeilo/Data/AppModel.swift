@@ -809,7 +809,7 @@ final class AppModel {
         let mine: [Holding]? = holdings.isEmpty || isSample ? nil : holdings
         resetDemo(.fresh)
         if let mine { holdings = mine }
-        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 4, avg: 180), Config.usesCollectedData ? Holding(symbol: "QQQ", qty: 1, avg: 400) : Holding(symbol: "NXIX", qty: 1, avg: 340)] }
+        else if r == .plus { holdings = [Holding(symbol: "DRNK", qty: 4, avg: 180), Config.isInternal ? Holding(symbol: "QQQ", qty: 1, avg: 400) : Holding(symbol: "NXIX", qty: 1, avg: 340)] }
         if r == .plus { taxGain = 0 }
         if r != .recover { switchRoute(r); gDone = [] }
         day = 0                  // 실제로 시작하는 날이 1일째 (시연 상태는 6일째)

@@ -628,7 +628,7 @@ struct HoldingDetailView: View {
     @State private var editing = false
     @State private var opened = false
     @AppStorage("holdUsd") private var inUsd = false
-    @State private var mins: TossMinutes.Day?   // 1일: 토스 1분봉 (키가 있을 때만)
+    @State private var mins: TossMinutes.Day?   // 1일: 토스 1분봉, 없으면 Alpaca 1분봉 (키가 있을 때만)
 
     private var isUsd: Bool { sym.currency == .usd }
     private var du: Bool { isUsd && inUsd }
@@ -706,7 +706,7 @@ struct HoldingDetailView: View {
         .doneKey()
         .navigationDestination(isPresented: $editing) { HoldingEditView(sym: sym) }
         .onAppear { if UserDefaults.standard.string(forKey: "editMode") != nil && !opened { opened = true; editing = true } }
-        .task(id: period) { if period == .d1 && mins == nil { mins = await TossMinutes.day(CustomSymbols.yahoo(for: sym)) } }
+        .task(id: period) { if period == .d1 && mins == nil { let y = CustomSymbols.yahoo(for: sym); if let t = await TossMinutes.day(y) { mins = t } else { mins = await AlpacaMinutes.day(y) } } }
     }
 
     /// 그래프 왼쪽 아래 시작 날짜: 1년 넘으면 2025.10, 아니면 9.23

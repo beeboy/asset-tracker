@@ -52,8 +52,6 @@ struct FlowView: View {
     }
     private func name(_ id: String) -> String { Sample.symbol(id)?.name ?? id }
     private var store: FlowStore { FlowStore.shared }
-    /// 키가 없어 못 그리는 종목이 있으면 설정 링크를 보인다
-    private var needKey: Bool { _ = hasKey; return ids.contains { !Sample.isVirtual($0) && !FlowStore.canFetch($0) } }
 
     var body: some View {
         GeometryReader { geo in
@@ -62,13 +60,6 @@ struct FlowView: View {
                 AppHeader(tab: String(localized: String.LocalizationValue(FlowTab.name))).padding(.horizontal, -16)
                 if !mood.box.isEmpty { moodBox }
                 if !restIds.isEmpty { chips }
-                if needKey {
-                    Button { model.openSettings(.toss) } label: {
-                        Text("설정 > 오픈 API에서 키를 넣으면 내 종목도 그려져요").appFont(13).underline()
-                            .foregroundStyle(Theme.teal).multilineTextAlignment(.leading)
-                    }
-                    .buttonStyle(.plain)
-                }
                 layerRow
                 Group {
                     if let sel = cur, let s = store.series(sel) {

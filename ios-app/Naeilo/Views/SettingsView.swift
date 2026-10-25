@@ -336,6 +336,10 @@ struct SettingsRows: View {
 
 struct PriceBasisView: View {
     @Environment(AppModel.self) private var m
+    @State private var yahooOff = Config.yahooOff
+    @State private var tossPause = TossKeys.paused
+    @State private var alpacaPause = AlpacaKeys.paused
+    @State private var lbPause = LongbridgeKeys.paused
     var body: some View {
         let mk = Market.shared, fx = mk.fx
         ScrollView {
@@ -360,12 +364,50 @@ struct PriceBasisView: View {
                 }
                 Text("그래프와 미션은 종가로 계산해요. 아래로 당기면 바로 다시 받아요.")
                     .appFont(13).foregroundStyle(Theme.sub).lineSpacing(2)
+                if Config.isInternal {
+                    // 시험용 (내부 베타만): 공개판처럼 내 키 시세만 보게 Yahoo·사이트 자료를 끈다
+                    Card {
+                        Toggle(isOn: Binding(get: { yahooOff }, set: { v in yahooOff = v; setYahooOff(v) })) { Text("Yahoo·사이트 시세 끄기").appFont(15, .bold) }.tint(Theme.teal)
+                        Text("시험용이에요. 켜면 내 키로 받은 시세만 보여요.").appFont(13).foregroundStyle(Theme.sub)
+                        if TossKeys.stored {
+                            Toggle(isOn: Binding(get: { tossPause }, set: { v in tossPause = v; setPause("toss", v) })) { Text("토스 키 멈추기").appFont(15, .bold) }.tint(Theme.teal)
+                        }
+                        if AlpacaKeys.stored {
+                            Toggle(isOn: Binding(get: { alpacaPause }, set: { v in alpacaPause = v; setPause("alpaca", v) })) { Text("Alpaca 키 멈추기").appFont(15, .bold) }.tint(Theme.teal)
+                        }
+                        if LongbridgeKeys.stored {
+                            Toggle(isOn: Binding(get: { lbPause }, set: { v in lbPause = v; setPause("longbridge", v) })) { Text("Longbridge 키 멈추기").appFont(15, .bold) }.tint(Theme.teal)
+                        }
+                        if TossKeys.stored || AlpacaKeys.stored || LongbridgeKeys.stored {
+                            Text("키는 그대로 두고 잠시 안 불러요.").appFont(13).foregroundStyle(Theme.sub)
+                        }
+                    }
+                }
             }
             .padding(16)
         }
         .background(Theme.bg)
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await Market.shared.pullRefresh(m) }
+    }
+    /// 받아 둔 사이트 값을 바로 빼거나 다시 읽고, 내 키 시세를 새로 받는다
+    private func setYahooOff(_ v: Bool) {
+        Store.defaults.set(v, forKey: "yahoo_off")
+        let mk = Market.shared
+        mk.site = QuoteFeed.cached()
+        mk.prices = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))
+        Task { await mk.pullRefresh(m) }
+    }
+    /// 키 멈춤을 바꾸고 받아 둔 내 키 시세를 다시 읽는다 (멈추면 비고, 풀면 돌아온다)
+    private func setPause(_ broker: String, _ v: Bool) {
+        Store.defaults.set(v, forKey: "\(broker)_pause")
+        let mk = Market.shared
+        mk.toss = TossFeed.cached()
+        mk.alpaca = AlpacaFeed.cached()
+        mk.longbridge = LongbridgeFeed.cached()
+        mk.prices = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))
+        FlowStore.shared.reload()
+        Task { await mk.pullRefresh(m) }
     }
     private func row(_ k: String, _ v: String) -> some View {
         HStack(alignment: .top) { Text(k).fontWeight(.semibold).frame(width: 80, alignment: .leading); Text(v).foregroundStyle(Theme.sub) }
@@ -383,7 +425,7 @@ struct TossKeyView: View {
     @State private var ip: String? = Config.tossRelayIP   // 고정 IP 를 바로 보여 준다: 받기 실패해도 빈칸 없음
     @State private var busy = false
     @State private var msg: String? = nil
-    @State private var on = TossKeys.on
+    @State private var on = TossKeys.stored   // 멈춰도 키 있음 화면을 보인다
     @State private var askOff = false
     @State private var copied = false
 
@@ -496,7 +538,7 @@ struct AlpacaKeyView: View {
     @State private var secret = ""
     @State private var busy = false
     @State private var msg: String? = nil
-    @State private var on = AlpacaKeys.on
+    @State private var on = AlpacaKeys.stored   // 멈춰도 키 있음 화면을 보인다
     @State private var askOff = false
 
     private var status: String {
@@ -581,7 +623,7 @@ struct LongbridgeKeyView: View {
     @State private var token = ""
     @State private var busy = false
     @State private var msg: String? = nil
-    @State private var on = LongbridgeKeys.on
+    @State private var on = LongbridgeKeys.stored   // 멈춰도 키 있음 화면을 보인다
     @State private var askOff = false
 
     private var status: String {

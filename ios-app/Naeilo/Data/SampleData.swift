@@ -78,7 +78,7 @@ enum Sample {
         return Symbol(id: s.id, name: s.name, market: s.market, close: q.prevClose, currency: s.currency, sector: s.sector, search: s.search)
     }
     /// 공개 베타·출시는 가상 시장 샘플 6종목만 (data/sample/symbols.json 과 같은 값). 내부 베타는 아래 실제 종목 예시
-    static let baseSymbols: [Symbol] = Config.usesCollectedData ? collectedSymbols : virtualSymbols
+    static let baseSymbols: [Symbol] = Config.isInternal ? collectedSymbols : virtualSymbols
     static let virtualSymbols: [Symbol] = [
         .init(id: "DRNK", name: "드링커", market: "미국 주식", close: 250, currency: .usd, sector: "우주항공·궤도 통신", search: "drinker"),
         .init(id: "NXIX", name: "내일100 지수 ETF", market: "미국 ETF", close: 412.3, currency: .usd, sector: "지수", search: "naeilo index"),
@@ -88,7 +88,7 @@ enum Sample {
         .init(id: "V00002", name: "내일 코스피 ETF", market: "코스피 ETF", close: 38450, currency: .krw, sector: "지수", search: "naeilo kospi"),
     ]
     /// 가상 종목 (사이트·키 시세를 받지 않고 번들 샘플 값만 쓴다). 내부 베타는 DRNK 하나
-    static let virtualIds: Set<String> = Config.usesCollectedData ? ["DRNK"] : Set(virtualSymbols.map(\.id))
+    static let virtualIds: Set<String> = Config.isInternal ? ["DRNK"] : Set(virtualSymbols.map(\.id))
     static func isVirtual(_ id: String) -> Bool { virtualIds.contains(id) }
     private static let collectedSymbols: [Symbol] = [
         .init(id: "DRNK", name: "드링커", market: "미국 주식", close: 250, currency: .usd, sector: "우주항공·궤도 통신", search: "drinker"),
@@ -113,7 +113,7 @@ enum Sample {
     /// 영어면 소개 글을 영어로 (data_en.json). 동네 얼굴 열쇠는 한국어 이름을 쓰므로 profilesKo
     static let profiles: [String: Profile] = AppModel.en ? profilesKo.mapValues(\.en) : profilesKo
     /// 공개 베타·출시는 가상 종목 소개를 더한다 (실제 같은 기호의 종목과 섞이지 않게 내부 베타에는 넣지 않는다)
-    static let profilesKo: [String: Profile] = Config.usesCollectedData ? collectedProfiles : collectedProfiles.merging(virtualProfiles) { a, _ in a }
+    static let profilesKo: [String: Profile] = Config.isInternal ? collectedProfiles : collectedProfiles.merging(virtualProfiles) { a, _ in a }
     private static let virtualProfiles: [String: Profile] = [
         "NXIX": Profile(mono: "N", color: 0x3A5BA0, etf: true, virtual: true, ceo: ("운용사", "내일 자산운용 (가상)"), hq: "가상 시장", since: "가상 종목",
                         what: "가상 미국 대형주 100개를 담는 가상 ETF예요.", vision: "내일100 지수 (가상)", extra: ("담은 종목", "약 100개 (가상)")),
@@ -173,7 +173,7 @@ enum Sample {
     // 공개 베타·출시는 가상 ETF NXIX 1주 $430 (data/sample/symbols.json start_holdings)
     static let startHoldings: [Holding] = [
         .init(symbol: "DRNK", qty: 4, avg: 400),
-        Config.usesCollectedData ? .init(symbol: "QQQ", qty: 1, avg: 500) : .init(symbol: "NXIX", qty: 1, avg: 430),
+        Config.isInternal ? .init(symbol: "QQQ", qty: 1, avg: 500) : .init(symbol: "NXIX", qty: 1, avg: 430),
     ]
 
     // 3년 전망용 가정값: [현재 정세 연 기대, 과거 추세 연 성장, 연 변동성]. 사이트 stats.json 에 없는 종목(한국 종목 등)에만 쓴다 (SiteStats.params)

@@ -15,8 +15,12 @@ enum Config {
     /// 값은 빌드 설정 NAEILO_CHANNEL (프로젝트 Build Settings 한 곳) → 앱·위젯 Info.plist 의 NaeiloChannel 로 들어온다.
     /// 같은 값으로 '시세 자료 넣기' 단계가 번들에 넣을 자료(data/ 또는 data/sample/)도 고른다
     static let channel: Channel = Channel(key: Bundle.main.object(forInfoDictionaryKey: "NaeiloChannel") as? String) ?? .internalBeta
-    /// 사이트가 Yahoo 로 모은 자료(data/quotes.json·prices·stats·calc 등, 추가 종목 Yahoo 중계)를 써도 되는 빌드인가
-    static var usesCollectedData: Bool { channel == .internalBeta }
+    /// 내부 베타 빌드인가 (종목 목록·샘플처럼 빌드 때 정해지는 것)
+    static var isInternal: Bool { channel == .internalBeta }
+    /// 시험용: 내부 베타에서 Yahoo·사이트 자료를 잠시 끈다 (설정 > 시세 기준). 공개판처럼 내 키 시세만 본다
+    static var yahooOff: Bool { isInternal && Store.defaults.bool(forKey: "yahoo_off") }
+    /// 사이트가 Yahoo 로 모은 자료(data/quotes.json·prices·stats·calc 등, 추가 종목 Yahoo 중계)를 써도 되는가
+    static var usesCollectedData: Bool { isInternal && !yahooOff }
 }
 
 enum Channel: String {

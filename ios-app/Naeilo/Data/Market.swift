@@ -51,7 +51,7 @@ final class Market {
     var tossFx: TossHistory.FX? { tossHist?.fx.flatMap { Date().timeIntervalSince1970 - $0.got < 86400 ? $0 : nil } }
     /// 사이트 지난 종가 (웹 자산 추이·목표 진행과 같은 data/prices 파일). 내 종목과 원/달러만.
     /// 내 토스 키로 받은 종목은 토스 일봉으로 바꿔 둔다 (TossHistory.merged)
-    var prices: SitePrices.File? = TossHistory.merged(SitePrices.cached(), TossHistory.cached())
+    var prices: SitePrices.File? = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))
     /// 공개 베타·출시 번들의 자료는 가상 샘플이라 '예시 값'
     var source: String { site != nil ? String(localized: "naeilo 사이트") : YahooSample.quotes.isEmpty || !Config.usesCollectedData ? String(localized: "예시 값") : String(localized: "Yahoo 중계 (테스트)") }
 
@@ -117,6 +117,8 @@ final class Market {
     }
 
     private func yahooQuote(_ s: Symbol) -> Quote {
+        // 시험용 Yahoo 끄기: 실제 종목은 내 키 시세만 (빌드 때 넣은 값·추가 종목 Yahoo 값도 쓰지 않는다)
+        if Config.yahooOff, !Sample.isVirtual(s.id) { return Quote(last: 0, prevClose: 0, live: false) }
         if !Sample.isVirtual(s.id) {
             // 사이트 시세와 추가한 종목(5분마다 Yahoo 중계) 중 나중에 받은 값
             let c = CustomSymbols.shared.items.first { $0.id == s.id }
@@ -137,7 +139,7 @@ final class Market {
     var fx: Quote {
         if let t = tossFx { return Quote(last: t.rate, prevClose: t.prev, live: true) }
         if let q = site?.q["KRW=X"] { return Quote(last: q.last, prevClose: q.prev, live: true) }
-        if let q = YahooSample.quotes["FX"] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
+        if !Config.yahooOff, let q = YahooSample.quotes["FX"] { return Quote(last: q.last, prevClose: q.prevClose, live: true) }
         return Quote(last: Sample.fx, prevClose: Sample.fx, live: false)
     }
 
@@ -222,7 +224,7 @@ final class Market {
         async let earnDone: Void = EarningsFeed.shared.refresh(held: held, force: force)
         if let f = await siteNew { site = f }
         if let r = await marNew { mar = r }
-        if let p = await pricesNew { prices = TossHistory.merged(p, tossHist) }
+        if let p = await pricesNew { prices = AlpacaHistory.merged(TossHistory.merged(p, tossHist)) }
         if let s = await statsNew { stats = s }
         await customDone
         await extraDone
@@ -249,7 +251,7 @@ final class Market {
             // 지난 종가·원/달러도 내 키로 (종목마다 하루 한 번, 환율은 10분에 한 번)
             if let h = await TossHistory.fetch(Dictionary(ty.map { (SiteStats.key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a }), force: force) {
                 self.tossHist = h
-                self.prices = TossHistory.merged(SitePrices.cached(), h)
+                self.prices = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), h))
             }
             FlowStore.shared.reload()
             self.tossDone = Date()
@@ -268,6 +270,17 @@ final class Market {
         guard !ty.isEmpty else { return }
         alpaca = await AlpacaFeed.fetch(ty, minAge: force ? 0 : 60)
         alpacaDone = Date()
+        // 지난 종가도 내 Alpaca 키로: 사이트·토스 일봉이 없는 종목만, 종목마다 하루 한 번 (차트 탭과 같은 flow_alpaca.json)
+        let site = SitePrices.cached(), tossH = TossHistory.cached()
+        var keys: [String: String] = [:]
+        for (id, y) in ty {
+            let k = SiteStats.key(id)
+            if site?.h[k] == nil, tossH?.h[k] == nil, let c = AlpacaFeed.code(y) { keys[k] = c }
+        }
+        if !keys.isEmpty, await FlowAlpaca.fetch(keys) {
+            prices = AlpacaHistory.merged(TossHistory.merged(site, tossH))
+            FlowStore.shared.reload()
+        }
     }
 
     /// Longbridge 지금 가격을 받는다 (1분 안에 받았으면 그대로, 당겨 갱신은 바로)
@@ -304,7 +317,7 @@ enum YahooSample {
     struct Q { let prevClose: Double; let last: Double; let time: Date }
 
     /// 공개 베타·출시 번들은 가상 샘플 (data/sample): 종목 id 가 곧 파일 기호
-    static let keyFor: [String: String] = Config.usesCollectedData
+    static let keyFor: [String: String] = Config.isInternal
         ? ["QQQ": "QQQ", "AAPL": "AAPL", "NVDA": "NVDA", "SPY": "SPY", "FX": "KRW=X"]
         : Dictionary(uniqueKeysWithValues: Sample.virtualSymbols.map { ($0.id, $0.id) } + [("FX", "KRW=X")])
     private static func file(_ k: String) -> String { k.replacingOccurrences(of: "=", with: "_").replacingOccurrences(of: "^", with: "_") }
@@ -635,6 +648,18 @@ extension Market {
     }
 }
 
+/// 내 Alpaca 키로 받은 미국 종목 일봉(flow_alpaca.json)을 지난 종가로도 쓴다. 사이트·토스 값이 없는 종목만 (수정 안 한 종가)
+enum AlpacaHistory {
+    static func merged(_ p: SitePrices.File?) -> SitePrices.File? {
+        guard AlpacaKeys.on else { return p }
+        let f = FlowBars.read(FlowBars.alpacaName)
+        guard !f.b.isEmpty else { return p }
+        var out = p ?? SitePrices.File(got: 0, updated: "", asked: [], h: [:])
+        for (k, s) in f.b where out.h[k] == nil && s.d.count >= 30 { out.h[k] = YahooSample.Hist(dates: s.d, closes: s.c) }
+        return out
+    }
+}
+
 /// 종목 상세 1일 차트: 내 토스 키로 중계에서 1분봉을 받는다 (토스 봉은 1분·일봉뿐, 1h 는 400 확인).
 /// 마지막 거래일 정규장만 (국내 9:00~15:30, 미국 뉴욕 9:30~16:00). 장 끝 시각부터 거꾸로 200개씩 두 번이면 찬다.
 /// 같은 종목은 1분 동안 다시 쓴다. 키가 없거나 못 받으면 nil (그래프는 예전처럼 전일 종가 → 지금)
@@ -694,6 +719,50 @@ enum TossMinutes {
     private static func num(_ v: Any?) -> Double? {
         if let d = v as? Double { return d }
         if let s = v as? String { return Double(s) }
+        if let n = v as? NSNumber { return n.doubleValue }
+        return nil
+    }
+}
+
+/// 종목 상세 1일 차트 (토스 키가 없을 때): 내 Alpaca 키로 미국 종목 1분봉 (IEX, 무료 키). 마지막 거래일 뉴욕 정규장 9:30~16:00 만.
+/// 최근 5일을 새것부터 2000개 받으면 장 전·장 뒤 봉을 넘어 마지막 정규장이 다 들어온다. 같은 종목은 1분 동안 다시 쓴다
+enum AlpacaMinutes {
+    @MainActor private static var cache: [String: (got: Date, day: TossMinutes.Day)] = [:]
+
+    @MainActor static func day(_ yahoo: String) async -> TossMinutes.Day? {
+        guard let k = AlpacaKeys.load(), let code = AlpacaFeed.code(yahoo) else { return nil }
+        if let c = cache[code], Date().timeIntervalSince(c.got) < 60 { return c.day }
+        var c = URLComponents(string: FlowAlpaca.base)!
+        c.queryItems = [.init(name: "symbols", value: code), .init(name: "timeframe", value: "1Min"),
+                        .init(name: "start", value: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-5 * 86400))),
+                        .init(name: "feed", value: "iex"), .init(name: "sort", value: "desc"), .init(name: "limit", value: "2000")]
+        var r = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
+        r.setValue(k.id, forHTTPHeaderField: "APCA-API-KEY-ID")
+        r.setValue(k.secret, forHTTPHeaderField: "APCA-API-SECRET-KEY")
+        guard let (d, resp) = try? await URLSession.shared.data(for: r), (resp as? HTTPURLResponse)?.statusCode == 200,
+              let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+              let arr = (o["bars"] as? [String: Any])?.first?.value as? [[String: Any]] else { return nil }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/New_York")!
+        let iso = ISO8601DateFormatter()
+        // 봉 시각(시작)이 그 날 9:30 이상 16:00 미만인 것만, 날짜별로
+        var byDay: [Date: [Date: Double]] = [:]
+        for v in arr {
+            guard let t = v["t"] as? String, let at = iso.date(from: t), let cl = num(v["c"]), cl > 0 else { continue }
+            let h = cal.dateComponents([.hour, .minute], from: at), m = h.hour! * 60 + h.minute!
+            guard m >= 9 * 60 + 30, m < 16 * 60 else { continue }
+            byDay[cal.startOfDay(for: at), default: [:]][at] = cl
+        }
+        guard let last = byDay.keys.max(), let bars = byDay[last], bars.count > 1 else { return nil }
+        let keep = bars.keys.sorted()
+        let f = DateFormatter(); f.dateFormat = "HH:mm"
+        let day = TossMinutes.Day(at: keep, closes: keep.map { bars[$0]! }, first: f.string(from: keep[0]))
+        cache[code] = (Date(), day)
+        return day
+    }
+
+    private static func num(_ v: Any?) -> Double? {
+        if let d = v as? Double { return d }
         if let n = v as? NSNumber { return n.doubleValue }
         return nil
     }

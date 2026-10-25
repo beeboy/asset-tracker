@@ -463,6 +463,8 @@ enum PriceHistory {
         let site = Sample.isVirtual(id) ? nil : Market.shared.prices?.h[key]
         // 국내 주식 합계는 넣은 기록만 (하루치여도. 첫 기록 전은 없음 = 0)
         if id == KoreaEstimate.sumId { return CustomSymbols.shared.hist[id].map { YahooSample.Hist(dates: $0.dates, closes: $0.closes) } }
+        // 시험용 Yahoo 끄기: 내 키로 받은 지난 종가만 (Market.prices 에 토스·Alpaca 일봉이 섞여 있다)
+        if Config.yahooOff, !Sample.isVirtual(id) { return site }
         let mine = CustomSymbols.shared.hist[id].flatMap { $0.closes.count > 1 ? YahooSample.Hist(dates: $0.dates, closes: $0.closes) : nil }
         // 둘 다 있으면 사이트 값을 쓰고, 이 기기가 받은 값은 사이트 마지막 날 뒤의 날만 잇는다
         // (겹치는 날을 기기 값으로 쓰면 수정주가·출처 차이로 웹과 지난 종가가 갈린다: 내 길 시작값 차이)
