@@ -63,7 +63,9 @@ final class Support {
 
     /// 개발자 빌드(TestFlight·Xcode)에서 개발자 동기화로 연결한 기기 (서버가 토큰으로 확인)
     var dev: Bool { testBuild && Sync.shared.isDev }
-    var subscribed: Bool { plan != nil || dev }
+    /// 내부 베타 빌드: 7일 무료 뒤에도 기능을 모두 연다 (2026-10-25 Drinker 결정)
+    var internalBuild: Bool { Config.channel == .internalBeta }
+    var subscribed: Bool { plan != nil || dev || internalBuild }
     var inTrial: Bool { dayN <= Self.trialDays }
     /// 7일 무료 남은 날 (오늘 포함)
     var trialLeft: Int { max(0, Self.trialDays - dayN + 1) }
@@ -72,7 +74,7 @@ final class Support {
     /// 외전 6장부터 끝까지: 구독 중 (7일 무료에는 서재가 안 열린다)
     var sideOpen: Bool { subscribed }
     /// 앱 연재판 1권: 연 구독, 또는 월 구독 9번 이상 결제
-    var vol1Open: Bool { dev || plan == .yearly || monthsPaid >= Self.vol1Months }
+    var vol1Open: Bool { dev || internalBuild || plan == .yearly || monthsPaid >= Self.vol1Months }
     func open(_ b: StoryBook) -> Bool { b == .side ? sideOpen : vol1Open }
 
     func product(_ p: SubPlan) -> Product? { products.first { $0.id == p.productID } }

@@ -445,7 +445,7 @@ final class Remind {
         let sub = Support.shared
         if let p = sub.plan {
             a.append(.init(id: "sub.\(p.rawValue)", cat: .news, text: String(localized: "\(String(describing: p.name)) 고마워요! 위젯, 목표·확률 전망, 서재 외전이 열려 있어요."), go: .support))
-        } else if sub.trialLeft == 1 && !sub.dev {
+        } else if sub.trialLeft == 1 && !sub.subscribed {
             a.append(.init(id: "trial.last", cat: .news, text: String(localized: "7일 무료가 오늘 끝나요. 내일부터 위젯과 목표·확률 전망은 구독하면 볼 수 있어요."), go: .support))
         }
         if case .failed = Sync.shared.state {
