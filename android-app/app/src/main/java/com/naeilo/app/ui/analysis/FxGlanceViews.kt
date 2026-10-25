@@ -520,7 +520,8 @@ private fun GlanceCard(m: AppModel, d: GlanceView.Item, onTip: (GlanceTip) -> Un
         }
         HDivider()   // ios: Views/AnalysisDetail.swift:2421
         // ios: Views/AnalysisDetail.swift:2422,2423,2427,2428 (NavigationLink(value:): 분석 길에 종목을 넣으면 종목 상세가 열린다)
-        Row(Modifier.fillMaxWidth().plainClickable { m.analysisPath = m.analysisPath + s }, verticalAlignment = Alignment.CenterVertically) {
+        val open = com.naeilo.app.ui.hold.openDetail(m)   // ios: Views/AnalysisDetail.swift (DetailLink)
+        Row(Modifier.fillMaxWidth().plainClickable { open(s) }, verticalAlignment = Alignment.CenterVertically) {
             T(if (d.row.cost > 0 && s.id != KoreaEstimate.sumId) "내 보유 ${AppModel.sgn(d.k.vc)}" else "내 보유", style = appFont(13f, FontWeight.SemiBold), color = Theme.teal)   // ios: Views/AnalysisDetail.swift:2424
             Spacer(Modifier.weight(1f))   // ios: Views/AnalysisDetail.swift:2425
             Sym("chevron.right", 12f, Theme.teal)   // ios: Views/AnalysisDetail.swift:2426
@@ -544,7 +545,8 @@ private fun KrCard(m: AppModel, list: List<GlanceView.Item>) {
             if (i > 0) HDivider()   // ios: Views/AnalysisDetail.swift:2443
             val s = d.row.sym   // ios: Views/AnalysisDetail.swift:2444
             // ios: Views/AnalysisDetail.swift:2445,2446,2461,2462 (NavigationLink(value:))
-            Column(Modifier.fillMaxWidth().plainClickable { m.analysisPath = m.analysisPath + s }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val open = com.naeilo.app.ui.hold.openDetail(m)   // ios: Views/AnalysisDetail.swift (DetailLink)
+            Column(Modifier.fillMaxWidth().plainClickable { open(s) }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 // ios: Views/AnalysisDetail.swift:2447
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     T(s.name, style = appFont(14f, FontWeight.SemiBold))   // ios: Views/AnalysisDetail.swift:2448
@@ -577,7 +579,8 @@ private fun CalmCard(m: AppModel, list: List<GlanceView.Item>) {
         // ios: Views/AnalysisDetail.swift:2473
         list.forEach { d ->
             // ios: Views/AnalysisDetail.swift:2474,2475,2482,2483 (NavigationLink(value:))
-            Row(Modifier.fillMaxWidth().plainClickable { m.analysisPath = m.analysisPath + d.row.sym }, verticalAlignment = Alignment.CenterVertically) {
+            val open = com.naeilo.app.ui.hold.openDetail(m)   // ios: Views/AnalysisDetail.swift (DetailLink)
+            Row(Modifier.fillMaxWidth().plainClickable { open(d.row.sym) }, verticalAlignment = Alignment.CenterVertically) {
                 // ios: Views/AnalysisDetail.swift:2476
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     T(d.row.sym.name, style = appFont(14f, FontWeight.SemiBold))   // ios: Views/AnalysisDetail.swift:2477

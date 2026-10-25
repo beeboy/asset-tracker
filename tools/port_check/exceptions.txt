@@ -6,15 +6,15 @@ App.swift:9 위젯 단계: 토스 키를 위젯과 나누기 (TossKeys)
 # models 그룹: WidgetShared/Models.swift → core/Models.kt + core/Feeds.kt
 WidgetShared/Models.swift:377 키체인 접근 그룹: 안드로이드는 위젯이 같은 앱이라 Keystore 키를 같이 쓴다 (플랫폼에 없음)
 WidgetShared/Models.swift:379 kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly: Keystore 키가 원래 이 기기 전용·내보낼 수 없음 (플랫폼에 없음)
-WidgetShared/Models.swift:525 키체인 접근 그룹 (377 과 같음)
-WidgetShared/Models.swift:527 키체인 접근성 (379 와 같음)
-WidgetShared/Models.swift:733 키체인 접근 그룹 (377 과 같음)
-WidgetShared/Models.swift:735 키체인 접근성 (379 와 같음)
+WidgetShared/Models.swift:528 키체인 접근 그룹 (377 과 같음)
+WidgetShared/Models.swift:530 키체인 접근성 (379 와 같음)
+WidgetShared/Models.swift:739 키체인 접근 그룹 (377 과 같음)
+WidgetShared/Models.swift:741 키체인 접근성 (379 와 같음)
 # B 단계 (engine)
 # engine 그룹 (Engine·Format·Flip·Reward·Config·StoryWidgetData)
 WidgetShared/Format.swift:10 위젯 확장(appex) 구분: 안드로이드 위젯은 앱과 같은 프로세스라 구분 없음. appLang 읽기는 Format.kt WL.en 에 옮김
 WidgetShared/Reward.swift:76 문자열 보간 안에 따옴표가 겹쳐 검사기가 조각(", abs(c) * 100))). 셌어.")을 문구로 읽음. Reward.kt line() 의 "sio" 줄에 같은 동작으로 옮김
-WidgetShared/Config.swift:28 App Group 이 없을 때 쓰는 대체 폴더: 안드로이드는 filesDir 하나라 대체가 없음
+WidgetShared/Config.swift:32 App Group 이 없을 때 쓰는 대체 폴더: 안드로이드는 filesDir 하나라 대체가 없음
 # B 단계 (appmodel)
 # appmodel (Data/AppModel.swift → AppModel.kt)
 # 검사기 한계: Swift 보간 속 따옴표(String(localized:) 안의 String(localized:))를 문자열 조각으로 잘못 읽는다. 줄은 옮겼고 Kotlin 주석에 줄 번호를 남겼다
@@ -33,10 +33,10 @@ Data/Me.swift:204 플랫폼: en_US_POSIX 는 자바에 없는 이름, 같은 뜻
 Data/ForecastEngine.swift:116 검사기 한계: 부호 없는 64비트 상수 uL (옮김, ForecastEngine.kt fnv)
 # C 단계 (goal): Recovery.swift → core/calc/Recovery.kt, GoalRoute.swift → core/calc/GoalRoute.kt
 Data/Recovery.swift:176 검사기 한계: 보간 속 따옴표 String(format: "%.4f") (옮김, Recovery.kt paths key)
-Data/GoalRoute.swift:311 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: "원") (옮김, GoalRoute.kt goalPresets meaning)
-Data/GoalRoute.swift:319 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalRoute.kt goalPresets need)
-Data/GoalRoute.swift:366-367 검사기 한계: 보간 속 따옴표 (옮김, GoalRoute.kt shift own line·note)
-Data/GoalRoute.swift:389 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: " 뒤") (옮김, GoalRoute.kt shift note)
+Data/GoalRoute.swift:313 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: "원") (옮김, GoalRoute.kt goalPresets meaning)
+Data/GoalRoute.swift:321 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalRoute.kt goalPresets need)
+Data/GoalRoute.swift:368-369 검사기 한계: 보간 속 따옴표 (옮김, GoalRoute.kt shift own line·note)
+Data/GoalRoute.swift:391 검사기 한계: 보간 속 따옴표 replacingOccurrences(of: " 뒤") (옮김, GoalRoute.kt shift note)
 # C 단계 (par): Data/Parallel.swift → core/calc/Parallel.kt
 Data/Parallel.swift:611 보간 안에 따옴표("")가 겹쳐 검사기가 조각(")")을 문구로 읽음. Parallel.kt parallelRun 의 key 줄에 같은 동작으로 옮김
 Data/Parallel.swift:678 보간 안에 따옴표("%.1f")가 겹쳐 검사기가 조각(", need * 100)))%")을 문구로 읽음. Parallel.kt parallelDistance 에 같은 동작으로 옮김
@@ -154,12 +154,12 @@ Views/MissionViews.swift:570 검사기 한계: 보간 속 따옴표 (옮김, Mis
 # H3 (목표): Views/GoalViews.swift → ui/goal/GoalViews.kt
 Views/GoalViews.swift:430 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetView 머리 미션 번호)
 Views/GoalViews.swift:443 검사기 한계: 보간 속 따옴표 String(format: "%.1f") (옮김, GoalViews.kt GoalSetView sub)
-Views/GoalViews.swift:512 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetResultView MissionPage)
-Views/GoalViews.swift:525 검사기 한계: 보간 속 따옴표 String(format: "%g") (옮김, GoalViews.kt GoalSetResultView 눈금 줄)
-Views/GoalViews.swift:565 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixView 머리 미션 번호)
-Views/GoalViews.swift:620 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixResultView MissionPage)
-Views/GoalViews.swift:667 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView MissionPage)
-Views/GoalViews.swift:689 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView 팔 게 없음 줄)
+Views/GoalViews.swift:510 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalSetResultView MissionPage)
+Views/GoalViews.swift:523 검사기 한계: 보간 속 따옴표 String(format: "%g") (옮김, GoalViews.kt GoalSetResultView 눈금 줄)
+Views/GoalViews.swift:563 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixView 머리 미션 번호)
+Views/GoalViews.swift:618 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalMixResultView MissionPage)
+Views/GoalViews.swift:665 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView MissionPage)
+Views/GoalViews.swift:687 검사기 한계: 보간 속 따옴표 (옮김, GoalViews.kt GoalTaxView 팔 게 없음 줄)
 # I 쉼터·동네·인물: ShelterView·HoldingsView@912-2153·TownPanel·CharMotion·CalmView·Story·Lines
 Views/ShelterView.swift:84 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt ContinueCard)
 Views/ShelterView.swift:228 검사기 한계: 보간 속 따옴표 (옮김, ui/shelter/ShelterView.kt MeTileLabel)
@@ -264,6 +264,6 @@ Views/HoldingsView.swift:409 검사기 한계: 보간 속 따옴표 "+" : "−" 
 Views/HoldingsView.swift:419 검사기 한계: 보간 속 따옴표 "+" : "−" (옮김, HoldingsView.kt Foot 산 가격 대비 글)
 Views/EarningsRiver.swift:458 검사기 한계: 보간 속 따옴표 ?? "–" (옮김, EarningsRiver.kt gauge 작년 꼬리표)
 Views/HoldingsView.swift:91 플랫폼: 취소 단추는 ConfirmSheet 가 cancel 글로 만들고 누르면 onDismiss (swiped = null)
-Views/FlowView.swift:515 플랫폼: 1×1 자리 틀(Color.clear.frame) 대신 Compose layout 이 말풍선을 누른 자리 p 에 바로 놓는다 (FlowView.kt Bubble)
-Views/FlowView.swift:542 플랫폼: Compose 그림자는 shadow(8.dp) 높이로 아래로 진다 (y 4 따로 없음, Bubble)
-Views/FlowView.swift:547 플랫폼: .transition(.opacity) 는 애니메이션 없이 바뀌는 term 이라 아이폰도 바로 나타난다 (Compose 도 바로)
+Views/FlowView.swift:506 플랫폼: 1×1 자리 틀(Color.clear.frame) 대신 Compose layout 이 말풍선을 누른 자리 p 에 바로 놓는다 (FlowView.kt Bubble)
+Views/FlowView.swift:533 플랫폼: Compose 그림자는 shadow(8.dp) 높이로 아래로 진다 (y 4 따로 없음, Bubble)
+Views/FlowView.swift:538 플랫폼: .transition(.opacity) 는 애니메이션 없이 바뀌는 term 이라 아이폰도 바로 나타난다 (Compose 도 바로)

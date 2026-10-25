@@ -61,8 +61,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.naeilo.app.ui.AppHeader
 import com.naeilo.app.ui.NavStack
+import com.naeilo.app.ui.NavBar
+import com.naeilo.app.ui.LocalInPopup
 import com.naeilo.app.ui.home.HomeView
 import com.naeilo.app.ui.hold.HoldingsView
+import com.naeilo.app.ui.hold.DetailSheet
 import com.naeilo.app.ui.hold.HoldingDetailView
 import com.naeilo.app.ui.analysis.AnalysisView
 import com.naeilo.app.ui.analysis.AnalysisPager
@@ -172,21 +175,12 @@ fun RootView(model: AppModel) {
                 .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars).exclude(WindowInsets(bottom = 49.dp)).only(WindowInsetsSides.Bottom))) { t ->
                 // 종목·분석·미션 탭 안 화면은 다음 단계에서 채운다 (지금은 머리글만 있는 빈 자리)
                 when (t) {
-                    Tab.home -> NavStack(model.homePath, { model.homePath = it }, { HomeView(model) }) { homePage(model, it) }       // ios: App.swift:32 (HomeView·homePath)
+                    Tab.home -> DetailSheet(model) { HomeView(model) }       // ios: App.swift:50, Views/HomeView.swift:41 (넘어가는 화면은 PathSheet 팝업, 많이 움직인 종목은 종목 상세 팝업)
                     Tab.hold -> HoldingsView(model)       // ios: App.swift:34 (HoldingsView·holdPath)
                     Tab.flow -> com.naeilo.app.ui.flow.FlowView(model)   // ios: App.swift:36 (FlowView)
-                    Tab.analysis -> NavStack(model.analysisPath, { model.analysisPath = it }, { AnalysisView(model) }) { r ->   // ios: App.swift:38 (AnalysisView·analysisPath)
-                        when (r) {
-                            is AnalysisRoute -> NavPage(bar = false) { AnalysisPager(model, start = r) }   // ios: Views/AnalysisView.swift:128 (넘기기 화면은 막대를 스스로 그린다)
-                            is Symbol -> NavPage(r.name) { HoldingDetailView(model, sym = r, period0 = Period.y1) }   // ios: Views/AnalysisView.swift:83
-                            is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailView(model, r.factor, r.start) }   // 외부 요인 상세
-                            is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }   // 금리 시나리오 근거
-                            is com.naeilo.app.ui.calm.CalmFriendRoute -> com.naeilo.app.ui.shelter.characterPage(model, r.friend, invest = true)   // 내 투자 습관 → 인물 투자 갈래
-                            else -> NavPage { GoalSetPage(model) }   // 전망의 '목표 고치기'
-                        }
-                    }
+                    Tab.analysis -> DetailSheet(model, Period.y1) { AnalysisView(model) }   // ios: Views/AnalysisView.swift:93 · ios: App.swift:72 (분석은 분석 팝업이 연다: AnalysisView openPath)
                     // ios: App.swift:40,41 (목표·회복 루트 같은 미션 판)
-                    Tab.board -> NavStack(model.boardPath, { model.boardPath = it }, { BoardView(model) }) { r -> boardPage(model, r) }
+                    Tab.board -> BoardView(model)   // ios: App.swift:74 (넘어가는 화면은 PathSheet 팝업)
                 }
             }
             TabBar(model.tab, tint = Theme.teal) { model.tab = it }   // ios: App.swift:45
@@ -195,6 +189,10 @@ fun RootView(model: AppModel) {
         StartOverlay(model, showStart)
     }
     HomeSheets(model)   // ios: App.swift:46
+    // 홈(쉼터·서재·인물·다른 방식·목표)과 미션 판에서 넘어가던 화면은 팝업으로
+    // ios: App.swift:61,62,63
+    PathSheet(model.homePath, { model.homePath = it }) { homePage(model, it) }
+    PathSheet(model.boardPath, { model.boardPath = it }) { boardPage(model, it) }
     AppHooks(model)
 }
 
@@ -205,23 +203,56 @@ private fun HomeSheets(model: AppModel) {
     val closeSettings = { model.settingsOpen = false; model.settingsPath = emptyList() }
     // ios: App.swift:188,189 (닫으면 settingsPath 비우기)
     Sheet(model.settingsOpen, onDismiss = closeSettings) {
-        CompositionLocalProvider(LocalNavBack provides NavBack(null, closeSettings)) {
+        CompositionLocalProvider(LocalNavBack provides NavBack(null, closeSettings), LocalInPopup provides true) {   // ios: App.swift:286
             Box(Modifier.fillMaxSize()) {
                 NavStack(model.settingsPath, { model.settingsPath = it }, { SettingsView(model, cover = true) }) { settingsPage(model, it) }
                 // 깊이 들어간 화면에도 오른쪽 위 X (첫 화면은 GameHeader 에 X가 있다)
-                // ios: App.swift:190
-                if (model.settingsPath.isNotEmpty()) {
-                    Box(Modifier.align(Alignment.TopEnd).padding(end = 8.dp, top = 2.dp).size(44.dp).plainClickable(closeSettings).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
-                        Sym("xmark", 16f, Theme.ink, scaled = false)
-                    }
-                }
+                // ios: App.swift:285
+                if (model.settingsPath.isNotEmpty()) PopupX(Modifier.align(Alignment.TopEnd), closeSettings)
             }
         }
     }
     // ios: App.swift:191,192
     Sheet(model.widgetsOpen, onDismiss = { model.widgetsOpen = false }) {
-        CompositionLocalProvider(LocalNavBack provides NavBack(null) { model.widgetsOpen = false }) {
+        CompositionLocalProvider(LocalNavBack provides NavBack(null, { model.widgetsOpen = false })) {
             Column(Modifier.fillMaxSize().background(Theme.bg)) { WidgetPickView(model, cover = true) }
+        }
+    }
+}
+
+/** 팝업 오른쪽 위 X: 몇 단계 들어갔어도 팝업을 한 번에 닫는다 (설정 팝업과 같은 자리·모양) */
+// ios: App.swift:216,217,218,219,220,221,222,223,224,225
+@Composable
+fun PopupX(modifier: Modifier = Modifier, close: () -> Unit) {
+    Box(modifier.padding(end = 8.dp, top = 2.dp).size(44.dp).plainClickable(close).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
+        Sym("xmark", 16f, Theme.ink, scaled = false)
+    }
+}
+
+/**
+ * 탭에서 옆으로 넘어가던 화면을 팝업으로 (2026-10-25 드링커님: 앱 화면을 모두 팝업 모양으로).
+ * path 가 차면 시트를 띄운다. 첫 칸이 팝업 첫 화면(‹ 없이 제목만), 나머지는 팝업 안에서 넘긴다. 알림·위젯 길(homePath = [...])은 그대로 쓴다
+ */
+// ios: App.swift:248,249,250,251,252,253,254,255,256,257,258,259,260,261,262,263,264,265,266,267,268,269
+@Composable
+fun <T> PathSheet(path: List<T>, onPath: (List<T>) -> Unit, page: @Composable (T) -> NavPage) {
+    val close = { onPath(emptyList()) }
+    Sheet(path.isNotEmpty(), onDismiss = close) {
+        val r = path.firstOrNull() ?: return@Sheet
+        CompositionLocalProvider(LocalInPopup provides true) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                NavStack(path.drop(1), { v -> onPath(listOf(r) + v) }, root = {
+                    // 첫 화면: 뒤로 없음 (스스로 막대를 그리는 화면도 ‹ 를 뺀다). 닫기(pop)는 팝업을 닫는다 (ios: 시트 안 dismiss)
+                    CompositionLocalProvider(LocalNavBack provides NavBack(null, close, root = true)) {
+                        val p = page(r)
+                        Column(Modifier.fillMaxSize().background(Theme.bg)) {
+                            if (p.bar) NavBar(p.title, onBack = null)
+                            Box(Modifier.weight(1f)) { p.content() }
+                        }
+                    }
+                }) { page(it) }
+                PopupX(Modifier.align(Alignment.TopEnd), close)
+            }
         }
     }
 }

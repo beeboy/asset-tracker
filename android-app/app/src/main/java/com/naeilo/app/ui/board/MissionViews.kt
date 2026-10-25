@@ -983,7 +983,7 @@ fun AppStartView(m: AppModel) {
 
     NavStack(path = if (meOpen) listOf(Unit) else emptyList(), onPath = { meOpen = it.isNotEmpty() }, root = {
         Column(Modifier.fillMaxSize().background(Theme.bg)) {
-            NavBar(null, back = nb?.back) { nb?.pop?.invoke() }
+            NavBar(null, back = nb?.back, onBack = nb?.backAction)
             Box(Modifier.weight(1f)) {
             // ios: Views/MissionViews.swift:618
             MissionPage(kicker = "미션 4 / 4", title = "세 가지 하면 위젯 하나씩") {

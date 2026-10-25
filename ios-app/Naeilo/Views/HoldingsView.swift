@@ -53,14 +53,19 @@ struct HoldingsView: View {
                 }
                 if !us.isEmpty { group(String(localized: "미국"), us, mx) }
                 if !kr.isEmpty { group(String(localized: "국내"), kr, mx) }
-                Button { adding = true } label: {
-                    Text("+ 종목 추가").appFont(13, .bold).foregroundStyle(Theme.teal)
-                        .padding(.horizontal, 14).frame(minHeight: 32)
-                        .overlay(Capsule().stroke(Theme.teal, lineWidth: 1.5))
-                        .contentShape(Capsule())
+                // 맨 아래 한 줄: 왼쪽 시세 갱신, 오른쪽 '+ 종목 추가'
+                HStack(spacing: 8) {
+                    Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
+                        .lineLimit(2).minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    Button { adding = true } label: {
+                        Text("+ 종목 추가").appFont(13, .bold).foregroundStyle(Theme.teal)
+                            .padding(.horizontal, 14).frame(minHeight: 32)
+                            .overlay(Capsule().stroke(Theme.teal, lineWidth: 1.5))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain).fixedSize()
                 }
-                .buttonStyle(.plain).frame(maxWidth: .infinity)
-                Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
             }
             .screen()

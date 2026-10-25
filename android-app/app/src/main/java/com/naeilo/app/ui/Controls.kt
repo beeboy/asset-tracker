@@ -338,6 +338,15 @@ fun Sheet(show: Boolean, onDismiss: () -> Unit, medium: Boolean = false, content
     }
 }
 
+/** 블록·파도·동네 첫 화면 팝업: Sheet 에 닫기(LocalNavBack)를 건다. 게임 판만 전체 화면 */
+// ios: Views/GoalViews.swift:147,148 (.sheet)
+@Composable
+fun PopupCover(show: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    Sheet(show, onDismiss) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalNavBack provides NavBack(null, onDismiss)) { Box(Modifier.weight(1f)) { content() } }
+    }
+}
+
 /** 시트 맨 위 줄: 가운데 제목 + 오른쪽 버튼 (navigationTitle·inline + ToolbarItem(.topBarTrailing)) */
 @Composable
 fun SheetBar(title: String?, trailing: String? = null, onClick: () -> Unit = {}) {
@@ -351,11 +360,11 @@ fun SheetBar(title: String?, trailing: String? = null, onClick: () -> Unit = {})
 // ios: Theme.swift:291
 @Composable
 fun SheetTitleBar(title: String, close: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Theme.swift:295,305
-        T(title, Modifier.weight(1f), style = appFont(22f, FontWeight.Bold), color = Theme.ink)   // ios: Theme.swift:296
+    Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).padding(start = 16.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Theme.swift:295,304,305
+        FitText(title, appFont(20f, FontWeight.Bold), 0.8f, Modifier.weight(1f))   // ios: Theme.swift:296
         // ios: Theme.swift:298,299,300,302
         Box(Modifier.size(44.dp).plainClickable(close).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
-            Sym("xmark", 15f, Theme.sub)
+            Sym("xmark", 16f, Theme.ink, scaled = false)
         }
     }
 }
@@ -388,27 +397,36 @@ fun DropMenu(items: List<MenuItem>, label: @Composable () -> Unit) {
 
 // ── 화면 쌓기 (NavigationStack) ──
 
-/** iOS 이동 막대 (inline): 왼쪽 '‹ 뒤로', 가운데 제목. 높이 44 */
+/** 팝업 안인가 (팝업 안 링크는 그 자리에서 넘기고, 탭 화면 링크는 팝업을 연다). 팝업 안이면 이동 막대가 오른쪽 위 X 자리를 비운다 */
+// ios: App.swift:211,212,213
+val LocalInPopup = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** iOS 이동 막대 (.inlineLarge): 왼쪽 '‹', 그 옆 제목 20 굵게. 높이 48. onBack 이 없으면 팝업 첫 화면 (‹ 없이 제목만) */
+// ios: App.swift:11 (largeTitleTextAttributes 20 bold)
 @Composable
-fun NavBar(title: String?, back: String? = null, center: (@Composable () -> Unit)? = null, onBack: () -> Unit) {
+fun NavBar(title: String?, back: String? = null, center: (@Composable () -> Unit)? = null, onBack: (() -> Unit)?) {
     // 이동 막대 글자도 큰 글자 설정을 조금 따른다 (iOS 처럼 커지되 막대 높이는 그대로)
     val k = minOf(LocalTextScale.current.ratio, 1.35f)
     val tint = Theme.teal   // 탭 tint
-    Box(Modifier.fillMaxWidth().height(44.dp)) {
-        Row(
-            Modifier.align(Alignment.CenterStart).plainClickable(onBack).padding(start = 8.dp, end = 12.dp).height(44.dp)
-                .semantics { role = Role.Button },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Canvas(Modifier.size(12.dp * k, 21.dp * k)) {
-                val w = 2.6.dp.toPx()
-                drawLine(tint, Offset(size.width - w, w), Offset(w, size.height / 2), w, StrokeCap.Round)
-                drawLine(tint, Offset(w, size.height / 2), Offset(size.width - w, size.height - w), w, StrokeCap.Round)
+    val end = if (LocalInPopup.current) 52.dp else 16.dp   // 팝업 오른쪽 위 X (PopupX) 자리
+    Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)) {
+        Row(Modifier.align(Alignment.CenterStart).fillMaxWidth().padding(end = end), verticalAlignment = Alignment.CenterVertically) {
+            if (onBack != null) {
+                Box(
+                    Modifier.padding(start = 4.dp).size(44.dp).plainClickable(onBack)
+                        .semantics { role = Role.Button; contentDescription = tr(back?.takeIf { it.length <= 12 } ?: "뒤로") },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Canvas(Modifier.size(12.dp * k, 21.dp * k)) {
+                        val w = 2.6.dp.toPx()
+                        drawLine(tint, Offset(size.width - w, w), Offset(w, size.height / 2), w, StrokeCap.Round)
+                        drawLine(tint, Offset(w, size.height / 2), Offset(size.width - w, size.height - w), w, StrokeCap.Round)
+                    }
+                }
             }
-            T(back?.takeIf { it.length <= 12 } ?: "뒤로", Modifier.padding(start = 6.dp), style = TextStyle(fontSize = (17 * k).sp), color = tint, maxLines = 1)
+            if (center == null && title != null) FitText(title, appFont(20f, FontWeight.Bold), 0.8f, Modifier.weight(1f).padding(start = if (onBack != null) 4.dp else 16.dp), color = Theme.ink)
         }
         if (center != null) Box(Modifier.align(Alignment.Center)) { center() }
-        else if (title != null) T(title, Modifier.align(Alignment.Center), style = TextStyle(fontSize = (17 * k).sp, fontWeight = FontWeight.SemiBold), maxLines = 1)
     }
 }
 
@@ -417,7 +435,10 @@ fun NavBar(title: String?, back: String? = null, center: (@Composable () -> Unit
 class NavPage(val title: String? = null, val bar: Boolean = true, val content: @Composable () -> Unit)
 
 /** 쌓인 화면이 이동 막대를 스스로 그릴 때(bar = false) 쓰는 뒤로 가기·뒤로 글자 */
-class NavBack(val back: String?, val pop: () -> Unit)
+class NavBack(val back: String?, val pop: () -> Unit, val root: Boolean = false) {
+    /** 막대의 ‹ 동작: 팝업 첫 화면(root)이면 없다 (pop 은 팝업을 닫는다) */
+    val backAction: (() -> Unit)? get() = if (root) null else pop
+}
 val LocalNavBack = androidx.compose.runtime.staticCompositionLocalOf<NavBack?> { null }
 
 /**
@@ -474,7 +495,7 @@ fun <T> NavStack(path: List<T>, onPath: (List<T>) -> Unit, root: @Composable () 
                 }.background(Theme.bg)
                     .clickable(remember { MutableInteractionSource() }, indication = null) {}) {
                     val back = if (i >= 1) page(path[i - 1]).title else null   // 뒤로 글자 = 앞 화면 제목 (없으면 뒤로)
-                    if (p.bar) NavBar(p.title, back = back, onBack = swipe.pop)
+                    if (p.bar) NavBar(p.title, back = back, onBack = swipe.pop)   // ios: .toolbarTitleDisplayMode(.inlineLarge)
                     Box(Modifier.weight(1f)) { androidx.compose.runtime.CompositionLocalProvider(LocalNavBack provides NavBack(back, swipe.pop)) { p.content() } }
                 }
             }
@@ -606,6 +627,13 @@ fun Modifier.outset(h: Dp): Modifier = this.layout { m, c ->
     val px = h.roundToPx()
     val p = m.measure(c.copy(minWidth = 0, maxWidth = if (c.hasBoundedWidth) c.maxWidth + px * 2 else c.maxWidth))
     layout(c.maxWidth, p.height) { p.place(-px, 0) }
+}
+
+/** .padding(.trailing, -n): 오른쪽으로만 n 만큼 넓힌다 */
+fun Modifier.outsetEnd(e: Dp): Modifier = this.layout { m, c ->
+    val px = e.roundToPx()
+    val p = m.measure(c.copy(minWidth = 0, maxWidth = if (c.hasBoundedWidth) c.maxWidth + px else c.maxWidth))
+    layout(c.maxWidth, p.height) { p.place(0, 0) }
 }
 
 /** @AppStorage("키") Bool 자리: 앱 설정(naeilo) 에 남는다 */

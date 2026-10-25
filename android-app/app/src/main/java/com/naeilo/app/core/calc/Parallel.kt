@@ -193,9 +193,9 @@ object Parallel {
     /** 시세를 받아 둘 사이트 티커: 바구니 종목 + 인물 세계 현금(SGOV) + 달력(SPY) */
     // ios: Data/Parallel.swift:115
     val wantKeys: Set<String> get() {
-        val s = LinkedHashSet<String>()   // ios: Data/Parallel.swift:116
-        val w = PWorld.load() ?: return s   // ios: Data/Parallel.swift:117
-        s.add("SGOV"); s.add("SPY")   // ios: Data/Parallel.swift:118
+        // 달력(SPY)·현금(SGOV)은 세계를 열기 전에도 있어야 첫 화면이 선다
+        val s = linkedSetOf("SGOV", "SPY")   // ios: Data/Parallel.swift:117
+        val w = PWorld.load() ?: return s   // ios: Data/Parallel.swift:118
         for (g in w.segs) { for (k in g.w.keys) s.add(k) }   // ios: Data/Parallel.swift:119
         return s   // ios: Data/Parallel.swift:120
     }
@@ -725,7 +725,8 @@ fun AppModel.parallelRun(w: PWorld, who: String): PRace? {
         Parallel.LotQ(d = l.d, q = q)   // ios: Data/Parallel.swift:605
     }
     val monthly = gM * 1e4   // ios: Data/Parallel.swift:607
-    val pk = Market.shared.prices?.let { swiftDesc(it.got) } ?: "-"   // ios: Data/Parallel.swift:608
+    // 지난 종가가 바뀌면 다시 센다. 내 키(토스·Alpaca·Longbridge) 일봉만 쓰면 사이트 받은 때(got)가 0 그대로라 받은 수·마지막 날도 본다
+    val pk = Market.shared.prices?.let { f -> swiftDesc(f.got) + "-${f.h.size}-${f.h.values.sumOf { it.dates.size }}" } ?: "-"   // ios: Data/Parallel.swift:609
     val segKey = w.segs.joinToString(";") { Parallel.segText(it) }   // ios: Data/Parallel.swift:609
     val key = listOf(w.start, w.opened, who, segKey, base.joinToString(",") { "${it.id}:${swiftDesc(it.qty)}" },   // ios: Data/Parallel.swift:610
                      "${lotsIn.size}:${lotsIn.lastOrNull()?.d ?: ""}", pk, swiftDesc(monthly), Day.today).joinToString("|")   // (Parallel.swift 611: 검사기 예외, 위 줄 구역)

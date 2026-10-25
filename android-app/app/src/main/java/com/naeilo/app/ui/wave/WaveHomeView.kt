@@ -83,6 +83,7 @@ import com.naeilo.app.ui.Card
 import com.naeilo.app.ui.hideKeyboardOnDrag
 import com.naeilo.app.ui.DashedCard
 import com.naeilo.app.ui.FitText
+import com.naeilo.app.ui.outsetEnd
 import com.naeilo.app.ui.LocalNavBack
 import com.naeilo.app.ui.LocalReduceMotion
 import com.naeilo.app.ui.LocalTextScale
@@ -432,7 +433,7 @@ fun WaveGameButton(
             SymOr("water.waves", 14f, fg); FitText("파도", st, 0.8f, maxLines = 1, color = fg)
         }
     }
-    WaveCover(show, onDismiss = { show = false }) { WaveHub(m) }   // ios: Views/Wave/WaveHomeView.swift:281
+    com.naeilo.app.ui.PopupCover(show, onDismiss = { show = false }) { WaveHub(m) }   // ios: Views/Wave/WaveHomeView.swift:281
 }
 
 /** 섬 지도 전체 화면: 위에 닫기, 아래로 섬 지도 */
@@ -462,11 +463,10 @@ fun GameHeader(
     val nav = LocalNavBack.current
     val close = dismiss ?: { nav?.pop?.invoke(); Unit }   // ios: Views/Wave/WaveHomeView.swift:302
     // ios: Views/Wave/WaveHomeView.swift:304,310
-    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        FitText(title, appFont(20f, FontWeight.Bold), 0.8f, Modifier.weight(1f))   // ios: Views/Wave/WaveHomeView.swift:305
-        Spacer(Modifier.size(0.dp))   // ios: Views/Wave/WaveHomeView.swift:306
-        // ios: Views/Wave/WaveHomeView.swift:307,308
-        Box(Modifier.plainClickable(close).padding(8.dp).semantics { contentDescription = tr("닫기") }) { SymOr("xmark", 16f, Theme.ink) }
+    Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).outsetEnd(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/Wave/WaveHomeView.swift:306,315,316
+        FitText(title, appFont(20f, FontWeight.Bold), 0.8f, Modifier.weight(1f))   // ios: Views/Wave/WaveHomeView.swift:307
+        // ios: Views/Wave/WaveHomeView.swift:309,310,311,313
+        Box(Modifier.size(44.dp).plainClickable(close).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) { SymOr("xmark", 16f, Theme.ink) }
     }
 }
 
@@ -503,7 +503,7 @@ fun TownButton(
     }
     LaunchedEffect(arrive) { if (!arrive.isEmpty()) show = true }   // ios: Views/Wave/WaveHomeView.swift:337,338
     // ios: Views/Wave/WaveHomeView.swift:339,340
-    WaveCover(show, onDismiss = { show = false }) {
+    com.naeilo.app.ui.PopupCover(show, onDismiss = { show = false }) {
         val sp = rememberScrollState()
         val focus = LocalFocusManager.current
         // ios: Views/Wave/WaveHomeView.swift:341,348,349,350 (키보드에 안 들썩이게: 창이 키보드만큼 줄지 않는다 · 스크롤하면 키보드를 내린다)

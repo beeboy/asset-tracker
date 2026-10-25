@@ -7,6 +7,8 @@ import com.naeilo.app.core.AlpacaFeed
 import com.naeilo.app.core.AlpacaKeys
 import com.naeilo.app.core.Day
 import com.naeilo.app.core.FeedReq
+import com.naeilo.app.core.LongbridgeFeed
+import com.naeilo.app.core.LongbridgeKeys
 import com.naeilo.app.core.Store
 import com.naeilo.app.core.TossKeys
 import com.naeilo.app.core.cformat
@@ -362,7 +364,7 @@ data class FlowBars(   // ios: Data/FlowData.swift:317
     }
 
     companion object {
-        const val tossName = "flow_toss.json"; const val alpacaName = "flow_alpaca.json"   // ios: Data/FlowData.swift:326
+        const val tossName = "flow_toss.json"; const val alpacaName = "flow_alpaca_split.json"; const val longbridgeName = "flow_longbridge_adj.json"   // ios: Data/FlowData.swift:326
         fun read(name: String): FlowBars = Store.read(serializer(), name) ?: FlowBars()   // ios: Data/FlowData.swift:327
         fun write(f: FlowBars, name: String) = Store.write(serializer(), f, name)   // ios: Data/FlowData.swift:328
     }
@@ -379,7 +381,7 @@ data class FlowBars(   // ios: Data/FlowData.swift:317
     }
 }
 
-/** 알파카 일봉 (미국 종목, 사용자 본인 키). /v2/stocks/bars 한 번에 여러 종목, feed=sip (거래량이 전체 시장 기준. IEX 는 일부라 안 씀).
+/** 알파카 일봉 (미국 종목, 사용자 본인 키). /v2/stocks/bars 한 번에 여러 종목, 분할 반영(adjustment=split, 사이트 Yahoo close 와 같은 기준), feed=sip (거래량이 전체 시장 기준. IEX 는 일부라 안 씀).
  *  종목마다 하루 한 번(장 끝난 뒤 한 번 더), 처음엔 3년치, 그다음엔 최근 10일만. 부르는 사이를 0.35초 넘게 띄워 분당 200회 한도 아래로 */
 object FlowAlpaca {   // ios: Data/FlowData.swift:344
     const val base = "https://data.alpaca.markets/v2/stocks/bars"   // ios: Data/FlowData.swift:345
@@ -412,7 +414,7 @@ object FlowAlpaca {   // ios: Data/FlowData.swift:344
         for (page in 0 until 20) {   // ios: Data/FlowData.swift:373
             val q = mutableListOf("symbols" to bySym.keys.sorted().joinToString(","),   // ios: Data/FlowData.swift:374,375
                 "timeframe" to "1Day", "start" to start, "end" to end,   // ios: Data/FlowData.swift:376
-                "adjustment" to "raw", "feed" to "sip", "limit" to "10000")   // ios: Data/FlowData.swift:377
+                "adjustment" to "split", "feed" to "sip", "limit" to "10000")   // ios: Data/FlowData.swift:377
             token?.let { q.add("page_token" to it) }   // ios: Data/FlowData.swift:378
             val url = base + "?" + q.joinToString("&") { it.first + "=" + enc(it.second) }
             val wait = 350 - (System.currentTimeMillis() - last)   // ios: Data/FlowData.swift:379
@@ -437,6 +439,11 @@ object FlowAlpaca {   // ios: Data/FlowData.swift:344
         if (!got) return@withContext false   // ios: Data/FlowData.swift:398
         val day = f.day.toMutableMap()
         for (key in need.keys) {   // ios: Data/FlowData.swift:399
+            // 겹친 날 종가가 0.1% 넘게 다르면 새 분할: 지운다 (다음 받기에 3년치를 다시)
+            val s0 = f.b[key]; val r0 = rows[key]   // ios: Data/FlowData.swift:400,401
+            if (s0 != null && s0.d.size >= 30 && r0 != null && s0.d.indices.any { i -> r0[s0.d[i]]?.let { abs(it.c / s0.c[i] - 1) > 0.001 } ?: false }) {   // ios: Data/FlowData.swift:401
+                f.b = f.b - key; day.remove(key); continue   // ios: Data/FlowData.swift:402
+            }
             f.merge(key, rows[key] ?: emptyMap(), full = fresh && (f.b[key]?.d?.size ?: 0) < 30, keep = { it >= from && (it < md || (it == md && closed)) })   // ios: Data/FlowData.swift:400
             day[key] = stamp   // ios: Data/FlowData.swift:401
         }
@@ -446,12 +453,69 @@ object FlowAlpaca {   // ios: Data/FlowData.swift:344
     }
 }
 
-/** 차트 탭이 보는 실데이터: 토스 캔들을 먼저, 없으면 알파카. 종목마다 분석(추세·패턴)은 한 번만 하고 마지막 날이 바뀔 때만 다시 */
+/** Longbridge 일봉 (미국 종목, 사용자 본인 키). 공식 SDK 의 HTTP 방식 POST /quote/history-candlesticks (종목마다 한 번).
+ *  정규장만(trade_session 0). 분할을 맞추려고 수정주가(adjust_type 1, 배당도 반영)를 쓴다: 수정 안 한 값은 NVDA 10:1 분할 전이 10배로 보였다.
+ *  종목마다 하루 한 번(장 끝난 뒤 한 번 더), 처음엔 800개(3년 남짓), 그다음엔 최근 15개. 겹친 날 종가가 달라지면(새 분할·배당) 800개를 다시 받는다.
+ *  한도 30초에 60번이라 부르는 사이를 0.6초 띄운다 */
+object FlowLongbridge {   // ios: Data/FlowData.swift:416
+    @Volatile private var last = 0L   // ms   // ios: Data/FlowData.swift:417
+
+    /** keys: 사이트 티커 → Longbridge 기호(AAPL.US). 받은 게 있으면 true */
+    suspend fun fetch(keys: Map<String, String>): Boolean = withContext(Dispatchers.IO) {   // ios: Data/FlowData.swift:420,421
+        val k = LongbridgeKeys.load(); if (k == null || keys.isEmpty()) return@withContext false   // ios: Data/FlowData.swift:422
+        val f = FlowBars.read(FlowBars.longbridgeName)   // ios: Data/FlowData.swift:423
+        val (md, closed) = FlowAlpaca.nyDay(); val stamp = if (closed) Day.today + "c" else Day.today   // ios: Data/FlowData.swift:424
+        val from = Day.str(Instant.now().minusSeconds((3 * 365 + 15) * 86400L))   // ios: Data/FlowData.swift:425
+        val need = keys.filter { f.day[it.key] != stamp || f.b[it.key] == null }   // ios: Data/FlowData.swift:426
+        if (need.isEmpty()) return@withContext false   // ios: Data/FlowData.swift:427
+        val day = f.day.toMutableMap(); var got = false
+        for ((key, sym) in need.entries.sortedBy { it.key }) {   // ios: Data/FlowData.swift:432
+            // 봉 시각(초)을 날짜로: 그 날 0시가 어느 시간대여도(뉴욕·UTC·홍콩) 12시간을 더한 UTC 날짜는 같은 날이다
+            suspend fun ask(n: Int): Map<String, FlowBars.Row>? {   // ios: Data/FlowData.swift:436
+                val wait = 600 - (System.currentTimeMillis() - last)   // ios: Data/FlowData.swift:433
+                if (wait > 0) delay(wait)   // ios: Data/FlowData.swift:434
+                last = System.currentTimeMillis()   // ios: Data/FlowData.swift:435
+                val body = kotlinx.serialization.json.buildJsonObject {   // ios: Data/FlowData.swift:437,438
+                    put("symbol", kotlinx.serialization.json.JsonPrimitive(sym)); put("period", kotlinx.serialization.json.JsonPrimitive(1000))
+                    put("adjust_type", kotlinx.serialization.json.JsonPrimitive(1)); put("query_type", kotlinx.serialization.json.JsonPrimitive(1)); put("trade_session", kotlinx.serialization.json.JsonPrimitive(0))
+                    put("offset_request", kotlinx.serialization.json.buildJsonObject { put("direction", kotlinx.serialization.json.JsonPrimitive(0)); put("date", kotlinx.serialization.json.JsonPrimitive("")); put("count", kotlinx.serialization.json.JsonPrimitive(n)) })
+                }
+                val (o, e) = LongbridgeFeed.postJson("/quote/history-candlesticks", body, k)   // ios: Data/FlowData.swift:439
+                if (e != null || o == null) return null   // ios: Data/FlowData.swift:440
+                val rows = HashMap<String, FlowBars.Row>()   // ios: Data/FlowData.swift:441
+                for (v in (o["candlesticks"] as? List<*>) ?: emptyList<Any?>()) { val m = jObj(v) ?: continue   // ios: Data/FlowData.swift:442
+                    val t = num(m["timestamp"])?.takeIf { it > 0 } ?: continue; val cl = num(m["close"]) ?: continue; val op = num(m["open"]) ?: continue; val h = num(m["high"]) ?: continue; val l = num(m["low"]) ?: continue; if (!(cl > 0 && op > 0)) continue   // ios: Data/FlowData.swift:443
+                    val c = Instant.ofEpochSecond(t.toLong() + 12 * 3600).atZone(ZoneId.of("UTC"))   // ios: Data/FlowData.swift:444
+                    rows[cformat("%04d-%02d-%02d", c.year, c.monthValue, c.dayOfMonth)] = FlowBars.Row(o = op, h = maxOf(h, op, cl), l = minOf(l, op, cl), c = cl, v = num(m["volume"]) ?: 0.0)   // ios: Data/FlowData.swift:445
+                }
+                return rows   // ios: Data/FlowData.swift:447
+            }
+            var full = (f.b[key]?.d?.size ?: 0) < 30   // ios: Data/FlowData.swift:449
+            var rows = ask(if (full) 800 else 15) ?: continue   // ios: Data/FlowData.swift:450
+            // 겹친 날 종가가 0.1% 넘게 다르면 수정 기준이 바뀐 것: 전부 다시
+            val s0 = f.b[key]   // ios: Data/FlowData.swift:452
+            if (!full && s0 != null && s0.d.indices.any { i -> rows[s0.d[i]]?.let { abs(it.c / s0.c[i] - 1) > 0.001 } ?: false }) {   // ios: Data/FlowData.swift:452
+                rows = ask(800) ?: continue; full = true   // ios: Data/FlowData.swift:453,454,455,456
+            }
+            got = true   // ios: Data/FlowData.swift:458
+            f.merge(key, rows, full = full, keep = { it >= from && (it < md || (it == md && closed)) })   // ios: Data/FlowData.swift:459
+            day[key] = stamp   // ios: Data/FlowData.swift:460
+        }
+        if (!got) return@withContext false   // ios: Data/FlowData.swift:462
+        f.day = day
+        FlowBars.write(f, FlowBars.longbridgeName)   // ios: Data/FlowData.swift:463
+        true   // ios: Data/FlowData.swift:464
+    }
+}
+
+/** 차트 탭이 보는 실데이터: 토스 캔들을 먼저, 없으면 알파카, 그다음 Longbridge. 종목마다 분석(추세·패턴)은 한 번만 하고 마지막 날이 바뀔 때만 다시 */
 object FlowStore {   // ios: Data/FlowData.swift:409,410,411
     val shared: FlowStore get() = this
     var toss by mutableStateOf(FlowBars())   // ios: Data/FlowData.swift:412
         private set
     var alpaca by mutableStateOf(FlowBars())   // ios: Data/FlowData.swift:413
+        private set
+    var longbridge by mutableStateOf(FlowBars())   // ios: Data/FlowData.swift:476
         private set
     var loading by mutableStateOf(setOf<String>())   // ios: Data/FlowData.swift:414
         private set
@@ -466,22 +530,24 @@ object FlowStore {   // ios: Data/FlowData.swift:409,410,411
     fun reload() {   // ios: Data/FlowData.swift:419
         toss = if (TossKeys.on) FlowBars.read(FlowBars.tossName) else FlowBars()   // ios: Data/FlowData.swift:420
         alpaca = if (AlpacaKeys.on) FlowBars.read(FlowBars.alpacaName) else FlowBars()   // ios: Data/FlowData.swift:421
+        longbridge = if (LongbridgeKeys.on) FlowBars.read(FlowBars.longbridgeName) else FlowBars()   // ios: Data/FlowData.swift:485
         loaded = true
     }
     /** 처음 한 번 파일 읽기 (iOS 는 만들 때 읽는다. 화면 그리는 중 파일을 읽지 않게 ensure 에서 부른다) */
     suspend fun load() { if (!loaded) withContext(Dispatchers.IO) { reload() } }
 
     fun isKR(id: String): Boolean = Sample.symbol(id)?.currency == Currency.krw   // ios: Data/FlowData.swift:424
-    /** 이 종목을 받을 키가 있는지: 한국은 토스, 미국은 토스나 알파카 */
+    /** 이 종목을 받을 키가 있는지: 한국은 토스, 미국은 토스·알파카·Longbridge */
     fun canFetch(id: String): Boolean {   // ios: Data/FlowData.swift:426
         if (Sample.isVirtual(id) || id == KoreaEstimate.sumId) return false   // ios: Data/FlowData.swift:427
-        return TossKeys.on || (!isKR(id) && AlpacaKeys.on)   // ios: Data/FlowData.swift:428
+        return TossKeys.on || (!isKR(id) && (AlpacaKeys.on || LongbridgeKeys.on))   // ios: Data/FlowData.swift:490
     }
 
     fun bars(id: String): FlowBars.Series? {   // ios: Data/FlowData.swift:431
         val k = SiteStats.key(id)   // ios: Data/FlowData.swift:432
         if (TossKeys.on) toss.b[k]?.takeIf { it.d.size >= 30 }?.let { return it }   // ios: Data/FlowData.swift:433
         if (AlpacaKeys.on && !isKR(id)) alpaca.b[k]?.takeIf { it.d.size >= 30 }?.let { return it }   // ios: Data/FlowData.swift:434
+        if (LongbridgeKeys.on && !isKR(id)) longbridge.b[k]?.takeIf { it.d.size >= 30 }?.let { return it }   // ios: Data/FlowData.swift:497
         return null   // ios: Data/FlowData.swift:435
     }
 
@@ -553,6 +619,17 @@ object FlowStore {   // ios: Data/FlowData.swift:409,410,411
             if (keys.isNotEmpty()) {   // ios: Data/FlowData.swift:484
                 loading = loading + want.filter { bars(it) == null }   // ios: Data/FlowData.swift:485
                 if (FlowAlpaca.fetch(keys)) withContext(Dispatchers.IO) { reload() }   // ios: Data/FlowData.swift:486
+            }
+        }
+        // Longbridge: 토스·알파카로 못 채운 미국 종목만
+        if (LongbridgeKeys.on) {   // ios: Data/FlowData.swift:553
+            val keys = HashMap<String, String>()   // ios: Data/FlowData.swift:554
+            for (id in want) { if (isKR(id) || bars(id) != null) continue   // ios: Data/FlowData.swift:555
+                val s = Sample.symbol(id) ?: continue; val c = LongbridgeFeed.code(CustomSymbols.yahoo(s)) ?: continue; keys[SiteStats.key(id)] = c   // ios: Data/FlowData.swift:556
+            }
+            if (keys.isNotEmpty()) {   // ios: Data/FlowData.swift:558
+                loading = loading + want.filter { bars(it) == null }   // ios: Data/FlowData.swift:559
+                if (FlowLongbridge.fetch(keys)) withContext(Dispatchers.IO) { reload() }   // ios: Data/FlowData.swift:560
             }
         }
         loading = emptySet()   // ios: Data/FlowData.swift:489

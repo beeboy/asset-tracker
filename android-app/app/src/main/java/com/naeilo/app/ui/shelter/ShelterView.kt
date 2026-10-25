@@ -902,7 +902,7 @@ fun ReaderView(m: AppModel, index: Int, book: StoryBook = StoryBook.side) {
 
     // ios: Views/ShelterView.swift:644,645,646
     Fg(if (dark) hex(0xEEF0F7) else Theme.ink) { Column(Modifier.fillMaxSize().background(if (dark) hex(0x141824) else hex(0xFBFAF7))) {
-        NavBar(if (book == StoryBook.side) "서재" else "본편 1권", back = nav?.back) { nav?.pop?.invoke() }   // ios: Views/ShelterView.swift:647
+        NavBar(if (book == StoryBook.side) "서재" else "본편 1권", back = nav?.back, onBack = nav?.backAction)   // ios: Views/ShelterView.swift:647
         LazyColumn(Modifier.weight(1f), state = list, verticalArrangement = Arrangement.spacedBy(0.dp)) {   // ios: Views/ShelterView.swift:598,599,600
             // ios: Views/ShelterView.swift:601,614,615
             item(key = "top") { Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1148,7 +1148,7 @@ fun CharacterDetailView(m: AppModel, friend: Friend, invest: Boolean = false, fo
     val f = friend; val k = Calm.kind(f.id)   // ios: Views/ShelterView.swift:827
     // ios: Views/ShelterView.swift:828,852
     Column(Modifier.fillMaxSize().background(Theme.bg)) {
-        NavBar(if (investOn) "${f.name} 규칙" else f.name, back = nav?.back) { nav?.pop?.invoke() }   // ios: Views/ShelterView.swift:853
+        NavBar(if (investOn) "${f.name} 규칙" else f.name, back = nav?.back, onBack = nav?.backAction)   // ios: Views/ShelterView.swift:853
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { Screen(Modifier.padding(top = 8.dp)) {   // ios: Views/ShelterView.swift:850
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/ShelterView.swift:829
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/ShelterView.swift:830

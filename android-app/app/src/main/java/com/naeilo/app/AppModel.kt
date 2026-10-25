@@ -346,6 +346,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
     val residenceName: String get() = (runCatching { Locale.Builder().setRegion(residence).build().displayCountry }.getOrNull() ?: "").ifEmpty { residence }   // ios: Data/AppModel.swift:350
     // 종목 탭은 종목(Symbol)과 '종목 추가'(String)를, 분석 탭은 분석 화면과 종목을 같이 쌓으므로 여러 종류 목록
     var holdPath by mutableStateOf(listOf<Any>())   // ios: Data/AppModel.swift:352
+    var holdOpen by mutableStateOf<Symbol?>(null)   // ios: Data/AppModel.swift:355 종목 탭에서 띄울 종목 상세 팝업 (알림·시험 길. 띄우면 비운다)
     /** 내 기록 카드에서 '국내 주식 합계' 그래프를 보고 있는지 (합계 입력 칸의 안내 줄에서 바로 연다) */
     var recKr by mutableStateOf(false)   // ios: Data/AppModel.swift:354
     /** 리마인드에서 국내 주식 합계 입력 칸 띄우기 */
@@ -810,7 +811,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         val mine: List<Holding>? = if (holdings.isEmpty() || isSample) null else holdings   // ios: Data/AppModel.swift:807
         resetDemo(Demo.fresh)   // ios: Data/AppModel.swift:808
         if (mine != null) holdings = mine   // ios: Data/AppModel.swift:809
-        else if (r == Route.plus) holdings = listOf(Holding(symbol = "DRNK", qty = 4.0, avg = 180.0), if (Config.usesCollectedData) Holding(symbol = "QQQ", qty = 1.0, avg = 400.0) else Holding(symbol = "NXIX", qty = 1.0, avg = 340.0))   // ios: Data/AppModel.swift:812
+        else if (r == Route.plus) holdings = listOf(Holding(symbol = "DRNK", qty = 4.0, avg = 180.0), if (Config.isInternal) Holding(symbol = "QQQ", qty = 1.0, avg = 400.0) else Holding(symbol = "NXIX", qty = 1.0, avg = 340.0))   // ios: Data/AppModel.swift:812
         if (r == Route.plus) taxGain = 0.0   // ios: Data/AppModel.swift:811
         if (r != Route.recover) { switchRoute(r); gDone = emptySet() }   // ios: Data/AppModel.swift:812
         day = 0                  // ios: Data/AppModel.swift:813 실제로 시작하는 날이 1일째 (시연 상태는 6일째)
@@ -873,7 +874,7 @@ class AppModel(ctx: Context, intent: Intent?) {   // ios: Data/AppModel.swift:22
         // 캡처용: --es home shelter 또는 --es home char:ir
         arg("home")?.let { h -> homePath = if (h == "shelter") listOf("shelter") else listOf("shelter", h) }   // ios: Data/AppModel.swift:66
         arg("friend")?.let { f -> shelterSel = f }   // ios: Data/AppModel.swift:67
-        arg("hold")?.let { k -> Sample.symbol(k)?.let { sy -> holdPath = listOf(sy) } }   // ios: Data/AppModel.swift:68
+        arg("hold")?.let { k -> Sample.symbol(k)?.let { sy -> holdOpen = sy } }   // ios: Data/AppModel.swift:68
         val st: Map<String, SettingsRoute> = mapOf("alerts" to SettingsRoute.alerts, "sync" to SettingsRoute.sync, "widgets" to SettingsRoute.widgets, "tax" to SettingsRoute.tax, "price" to SettingsRoute.price, "howto" to SettingsRoute.howto, "route" to SettingsRoute.route, "goal" to SettingsRoute.goal, "charPreview" to SettingsRoute.charPreview)   // ios: Data/AppModel.swift:69
         arg("set")?.let { st[it] }?.let { r -> settingsPath = listOf(r) }   // ios: Data/AppModel.swift:70
         // 캡처용: --es route m3 처럼 미션 화면을 바로 연다

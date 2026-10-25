@@ -210,7 +210,7 @@ fun BrickGameButton(
         if (SF.containsKey(icon)) Sym(icon, 14f, fg)
         FitText(title, appFont(14f, FontWeight.Bold), 0.8f, maxLines = 1, color = fg)
     }
-    GameCover(show, { show = false }) { BrickGameHub(m, filled = filled, floor = floor, yesterday = yesterday) }   // ios: Views/BrickGameView.swift:22
+    com.naeilo.app.ui.PopupCover(show, { show = false }) { BrickGameHub(m, filled = filled, floor = floor, yesterday = yesterday) }   // ios: Views/BrickGameView.swift:22
 }
 
 /** .fullScreenCover: 아래에서 올라오는 전체 화면 (닫기는 LocalNavBack.pop = dismiss) */

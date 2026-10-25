@@ -186,11 +186,8 @@ fun HoldingsView(m: AppModel) {
     // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
     // ios: Views/HoldingsView.swift:77,78
     LaunchedEffect(arrive) { if (arrive.isNotEmpty()) m.tab = com.naeilo.app.Tab.home }
-    // 길게 누르기 '종목 고치기': 고치기 화면을 쌓는다 (navigationDestination(item:))
-    // ios: Views/HoldingsView.swift:74
-    LaunchedEffect(editSym) { editSym?.let { m.holdPath = m.holdPath + EditRoute(it); editSym = null } }
-
-    // ios: Views/HoldingsView.swift:38,66,70,71,72
+    // ios: Views/HoldingsView.swift:38,66,70,71,72,78 (종목을 누르면 종목 상세 팝업, 알림으로 온 종목 m.holdOpen 도)
+    DetailSheet(m, period, takesHoldOpen = true) {
     NavStack(m.holdPath, { m.holdPath = it }, {
         Refreshable({ Market.shared.pullRefresh(m) }, Modifier.fillMaxSize().background(Theme.bg)) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -225,13 +222,14 @@ fun HoldingsView(m: AppModel) {
                         if (us.isNotEmpty()) Group(m, "미국", us, mx, inUsd, valueMode, dts.isAccessibilitySize, dark, colW, swiped, { swiped = it }, { river = it }, { editSym = it }) { askDel = it }
                         // ios: Views/HoldingsView.swift:55
                         if (kr.isNotEmpty()) Group(m, "국내", kr, mx, inUsd, valueMode, dts.isAccessibilitySize, dark, colW, swiped, { swiped = it }, { river = it }, { editSym = it }) { askDel = it }
-                        // ios: Views/HoldingsView.swift:56,57,58,59,60,62
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        // 맨 아래 한 줄: 왼쪽 시세 갱신, 오른쪽 '+ 종목 추가'
+                        // ios: Views/HoldingsView.swift:57,58,59,60,61,62,63,64,65,66,67,68
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            FitText(Market.shared.asOfText, appFont(13f), 0.8f, Modifier.weight(1f), maxLines = 2, color = Theme.sub2)
                             Box(Modifier.plainClickable { adding = true }.defaultMinSize(minHeight = 32.dp).border(1.5.dp, Theme.teal, CapsuleShape).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-                                T("+ 종목 추가", style = appFont(13f, FontWeight.Bold), color = Theme.teal)
+                                T("+ 종목 추가", style = appFont(13f, FontWeight.Bold), color = Theme.teal, maxLines = 1)
                             }
                         }
-                        T(Market.shared.asOfText, style = appFont(13f), color = Theme.sub2)   // ios: Views/HoldingsView.swift:63
                         Spacer(Modifier.height(24.dp))   // ios: Views/HoldingsView.swift:64 아래 탭바가 마지막 카드를 가리지 않게
                     }
                 }
@@ -243,6 +241,10 @@ fun HoldingsView(m: AppModel) {
         else if (r is EditRoute) NavPage(r.sym.name) { HoldingEditView(m, sym = r.sym) { m.holdPath = m.holdPath.dropLast(1) } }   // 고치기 (길게 누르기·세부)
         else NavPage { AddHoldingView(m) { m.holdPath = m.holdPath.dropLast(1) } }
     }
+    }
+    // 길게 누르기 '종목 고치기'도 팝업
+    // ios: Views/HoldingsView.swift:79
+    com.naeilo.app.PathSheet(listOfNotNull(editSym), { if (it.isEmpty()) editSym = null }) { s -> NavPage(s.name) { HoldingEditView(m, sym = s) { editSym = null } } }
     // ios: Views/HoldingsView.swift:76 ('+ 종목 추가' 팝업: 머리 왼쪽 제목, 오른쪽 x)
     Sheet(adding, onDismiss = { adding = false }) { AddHoldingView(m, sheet = true) { adding = false } }
     // ios: Views/HoldingsView.swift:79,80,81
@@ -378,6 +380,7 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, mx: Double
             // ios: Views/HoldingsView.swift:181,201 밀린 줄은 snappy 스프링으로 움직인다 (지운 뒤 돌아갈 때도)
             val x by animateDpAsState(if (swiped == r.id) (-84).dp else 0.dp, snappy, label = "swipe")
             var menu by remember { mutableStateOf(false) }
+            val open = openDetail(m)   // ios: Views/HoldingsView.swift:277 (DetailLink)
             // ios: Views/HoldingsView.swift:180 (자리 i 는 그대로, 종목이 바뀌면 그 줄만)
             key(i) {
                 // ios: Views/HoldingsView.swift:180,183,197
@@ -416,7 +419,7 @@ private fun Group(m: AppModel, title: String, rs: List<AppModel.Row>, mx: Double
                             .pointerInput(r.id) { detectTapGestures(onLongPress = { menu = true }) }
                             // ios: Views/HoldingsView.swift:207,208
                             .semantics { customActions = listOf(CustomAccessibilityAction(tr("종목 고치기")) { edit(r.sym); true }, CustomAccessibilityAction(tr("지우기")) { askDel(r.sym); true }) },
-                    ) { HoldRow(m, r, inUsd, valueMode, big, colW, onOpen = { if (swiped != null) setSwiped(null) else m.holdPath = m.holdPath + r.sym }, openRiver = openRiver) }
+                    ) { HoldRow(m, r, inUsd, valueMode, big, colW, onOpen = { if (swiped != null) setSwiped(null) else open(r.sym) }, openRiver = openRiver) }
                     // ios: Views/HoldingsView.swift:204,205
                     ContextMenu(menu, listOf(MenuItem("종목 고치기", icon = "pencil", onClick = { edit(r.sym) }), MenuItem("이 종목 지우기", icon = "trash", destructive = true, onClick = { askDel(r.sym) }))) { menu = false }
                 }
@@ -1087,7 +1090,8 @@ private fun NearCard(m: AppModel, ks: List<Pair<AppModel.Row, AppModel.HoldMetri
 @Composable
 private fun Line(m: AppModel, r: AppModel.Row, right: String, color: Color) {
     // ios: Views/HoldingsView.swift:1281,1282,1288,1290
-    Row(Modifier.fillMaxWidth().plainClickable { m.holdPath = m.holdPath + r.sym }.defaultMinSize(minHeight = 44.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    val open = openDetail(m)   // ios: Views/HoldingsView.swift:1403 (DetailLink)
+    Row(Modifier.fillMaxWidth().plainClickable { open(r.sym) }.defaultMinSize(minHeight = 44.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
         LogoTile(symbol = r.id, size = 28.dp)   // ios: Views/HoldingsView.swift:1283
         T(r.sym.name, Modifier.weight(1f).padding(end = 4.dp), style = appFont(14f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/HoldingsView.swift:1284,1285
         T(right, style = appFont(14f, FontWeight.Bold).tnum(), color = color)   // ios: Views/HoldingsView.swift:1286
@@ -1097,3 +1101,31 @@ private fun Line(m: AppModel, r: AppModel.Row, right: String, color: Color) {
 // ios: Views/HoldingsView.swift:1294,1295,1296,1297,1298
 @Composable
 private fun Modifier.newsCard(): Modifier = this.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)).padding(16.dp)
+
+/** 종목 상세를 팝업으로 여는 동작 (DetailSheet 가 넣는다) */
+// ios: Views/HoldingsView.swift:647,648,649
+val LocalOpenDetail = androidx.compose.runtime.staticCompositionLocalOf<((Symbol) -> Unit)?> { null }
+
+/** 종목 줄 누르기 (DetailLink): 위쪽 DetailSheet 가 팝업으로 연다. 없으면 종목 길에 쌓는다 */
+// ios: Views/HoldingsView.swift:653,654,655,656,657
+@Composable
+fun openDetail(m: AppModel): (Symbol) -> Unit = LocalOpenDetail.current ?: { s: Symbol -> m.holdPath = m.holdPath + s }
+
+/**
+ * 이 화면 아래 종목 줄을 누르면 종목 상세 팝업을 띄운다 (종목·분석·홈 탭, 분석 시트).
+ * 팝업 머리는 왼쪽 종목 이름 + 오른쪽 X, 고치기는 팝업 안에서 넘긴다 (HoldingDetailSheet)
+ */
+// ios: Views/HoldingsView.swift:630,631,632,635,637,638,661,662,663,665,666,668,669,670,671,673,674,675,676
+@Composable
+fun DetailSheet(m: AppModel, period: Period = Period.m1, takesHoldOpen: Boolean = false, content: @Composable () -> Unit) {
+    var pick by remember { mutableStateOf(listOf<Any>()) }
+    // 종목 탭: 알림으로 온 종목(m.holdOpen)도 여기서 띄운다
+    LaunchedEffect(takesHoldOpen) {
+        if (takesHoldOpen) androidx.compose.runtime.snapshotFlow { m.holdOpen }.collect { s -> if (s != null) { m.holdOpen = null; pick = listOf(s) } }
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalOpenDetail provides { s: Symbol -> pick = listOf(s) }) { content() }
+    com.naeilo.app.PathSheet(pick, { pick = it }) { r ->
+        if (r is EditRoute) NavPage(r.sym.name) { HoldingEditView(m, sym = r.sym) { pick = pick.dropLast(1) } }   // ios: Views/HoldingsView.swift:767
+        else { val s = r as Symbol; NavPage(s.name) { HoldingDetailView(m, sym = s, period0 = period, inSheet = true, onEdit = { pick = pick + EditRoute(it) }) } }
+    }
+}

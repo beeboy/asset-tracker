@@ -1,5 +1,11 @@
 package com.naeilo.app.ui.settings
 
+import com.naeilo.app.core.QuoteFeed
+import com.naeilo.app.core.Store
+import com.naeilo.app.net.AlpacaHistory
+import com.naeilo.app.net.SitePrices
+import com.naeilo.app.net.TossHistory
+import com.naeilo.app.ui.ToggleRow
 import com.naeilo.app.core.cformat
 import com.naeilo.app.core.tr
 import android.content.ComponentName
@@ -482,6 +488,28 @@ internal fun Modifier.drawDashedRound(c: Color, radius: Float, width: Float, das
 @Composable
 fun PriceBasisView(m: AppModel) {
     val mk = Market.shared; val fx = mk.fx   // ios: Views/SettingsView.swift:297
+    val scope = rememberCoroutineScope()
+    var yahooOff by remember { mutableStateOf(Config.yahooOff) }   // ios: Views/SettingsView.swift:339
+    var tossPause by remember { mutableStateOf(TossKeys.paused) }   // ios: Views/SettingsView.swift:340
+    var alpacaPause by remember { mutableStateOf(AlpacaKeys.paused) }   // ios: Views/SettingsView.swift:341
+    var lbPause by remember { mutableStateOf(LongbridgeKeys.paused) }   // ios: Views/SettingsView.swift:342
+    /** 받아 둔 사이트 값을 바로 빼거나 다시 읽고, 내 키 시세를 새로 받는다 */
+    fun setYahooOff(v: Boolean) {   // ios: Views/SettingsView.swift:394,396
+        Store.defaults.edit().putBoolean("yahoo_off", v).apply()   // ios: Views/SettingsView.swift:395
+        mk.site = QuoteFeed.cached()   // ios: Views/SettingsView.swift:397
+        mk.prices = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))   // ios: Views/SettingsView.swift:398
+        scope.launch { mk.pullRefresh(m) }   // ios: Views/SettingsView.swift:399
+    }
+    /** 키 멈춤을 바꾸고 받아 둔 내 키 시세를 다시 읽는다 (멈추면 비고, 풀면 돌아온다) */
+    fun setPause(broker: String, v: Boolean) {   // ios: Views/SettingsView.swift:402,404
+        Store.defaults.edit().putBoolean("${broker}_pause", v).apply()   // ios: Views/SettingsView.swift:403
+        mk.toss = TossFeed.cached()   // ios: Views/SettingsView.swift:405
+        mk.alpaca = AlpacaFeed.cached()   // ios: Views/SettingsView.swift:406
+        mk.longbridge = LongbridgeFeed.cached()   // ios: Views/SettingsView.swift:407
+        mk.prices = AlpacaHistory.merged(TossHistory.merged(SitePrices.cached(), TossHistory.cached()))   // ios: Views/SettingsView.swift:408
+        com.naeilo.app.data.FlowStore.reload()   // ios: Views/SettingsView.swift:409
+        scope.launch { mk.pullRefresh(m) }   // ios: Views/SettingsView.swift:410
+    }
     // ios: Views/SettingsView.swift:298,323,324,325
     Refreshable({ Market.shared.pullRefresh(m) }, Modifier.fillMaxSize().background(Theme.bg)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/SettingsView.swift:299,321
@@ -510,6 +538,17 @@ fun PriceBasisView(m: AppModel) {
             }
             // ios: Views/SettingsView.swift:318,319
             T("그래프와 미션은 종가로 계산해요. 아래로 당기면 바로 다시 받아요.", style = appFont(13f).ls(2f), color = Theme.sub)
+            if (Config.isInternal) {   // ios: Views/SettingsView.swift:367
+                // 시험용 (내부 베타만): 공개판처럼 내 키 시세만 보게 Yahoo·사이트 자료를 끈다
+                Card {   // ios: Views/SettingsView.swift:369
+                    ToggleRow(yahooOff, { yahooOff = it; setYahooOff(it) }) { T("Yahoo·사이트 시세 끄기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:370
+                    T("시험용이에요. 켜면 내 키로 받은 시세만 보여요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:371
+                    if (TossKeys.stored) ToggleRow(tossPause, { tossPause = it; setPause("toss", it) }) { T("토스 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:372,373
+                    if (AlpacaKeys.stored) ToggleRow(alpacaPause, { alpacaPause = it; setPause("alpaca", it) }) { T("Alpaca 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:375,376
+                    if (LongbridgeKeys.stored) ToggleRow(lbPause, { lbPause = it; setPause("longbridge", it) }) { T("Longbridge 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:378,379
+                    if (TossKeys.stored || AlpacaKeys.stored || LongbridgeKeys.stored) T("키는 그대로 두고 잠시 안 불러요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:381,382
+                }
+            }
         }
     }
 }
@@ -530,199 +569,199 @@ internal fun okAtText(t: Double, todayFmt: String, otherFmt: String): String {
 // 토스증권 시세 (일반 사용자): 내가 받은 토스 Open API 키를 넣으면 국내·미국 종목 지금 가격을 토스에서 받는다.
 // 키는 이 폰 보관함에만 두고, 공용 중계(Config.tossRelay)는 키를 저장하지 않고 토스에 넘기기만 한다.
 // 토스는 등록한 IP 에서만 받으므로 사용자는 중계 IP 를 토스 WTS 허용 IP 에 넣어야 한다.
-// ios: Views/SettingsView.swift:336,337,361
+// ios: Views/SettingsView.swift:336,337,365
 @Composable
 fun TossKeyView(m: AppModel) {
     var id by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:338
-    var secret by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:339
-    var ip by remember { mutableStateOf<String?>(Config.tossRelayIP) }   // ios: Views/SettingsView.swift:340 (고정 IP 를 바로 보여 준다: 받기 실패해도 빈칸 없음)
-    var busy by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:341
-    var msg by remember { mutableStateOf<String?>(null) }   // ios: Views/SettingsView.swift:342
-    var on by remember { mutableStateOf(TossKeys.on) }   // ios: Views/SettingsView.swift:343
-    var askOff by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:344
-    var copied by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:345
+    var secret by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:343
+    var ip by remember { mutableStateOf<String?>(Config.tossRelayIP) }   // ios: Views/SettingsView.swift:344 (고정 IP 를 바로 보여 준다: 받기 실패해도 빈칸 없음)
+    var busy by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:345
+    var msg by remember { mutableStateOf<String?>(null) }   // ios: Views/SettingsView.swift:346
+    var on by remember { mutableStateOf(TossKeys.stored) }   // 멈춰도 키 있음 화면을 보인다   // ios: Views/SettingsView.swift:428
+    var askOff by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:348
+    var copied by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:349
     val scope = rememberCoroutineScope()
     val clip = rememberClip()
 
-    // ios: Views/SettingsView.swift:347
+    // ios: Views/SettingsView.swift:351
     val status: String = run {
-        Market.shared.tossDone      // ios: Views/SettingsView.swift:348 토스 받기를 마치면 다시 그린다
-        val t = TossFeed.okAt   // ios: Views/SettingsView.swift:349
-        var s: String   // ios: Views/SettingsView.swift:350
-        // ios: Views/SettingsView.swift:351,352,353,354,355
+        Market.shared.tossDone      // ios: Views/SettingsView.swift:352 토스 받기를 마치면 다시 그린다
+        val t = TossFeed.okAt   // ios: Views/SettingsView.swift:353
+        var s: String   // ios: Views/SettingsView.swift:354
+        // ios: Views/SettingsView.swift:355,356,357,358,359
         if (t > 0) {
             val f = okAtText(t, "a h:mm:ss", "M월 d일 a h:mm")
             s = "마지막으로 받은 때 $f"
-        } else { s = "아직 받은 적 없어요" }   // ios: Views/SettingsView.swift:356
-        TossFeed.lastError?.let { e -> s += " · 실패: $e" }   // ios: Views/SettingsView.swift:357
-        s   // ios: Views/SettingsView.swift:358
+        } else { s = "아직 받은 적 없어요" }   // ios: Views/SettingsView.swift:360
+        TossFeed.lastError?.let { e -> s += " · 실패: $e" }   // ios: Views/SettingsView.swift:361
+        s   // ios: Views/SettingsView.swift:362
     }
 
     /** 토큰을 새로 받아 키·허용 IP 를 확인하고, 되면 시세를 바로 받는다 */
-    // ios: Views/SettingsView.swift:433
+    // ios: Views/SettingsView.swift:475
     suspend fun check() {
-        busy = true; msg = null   // ios: Views/SettingsView.swift:434
+        busy = true; msg = null   // ios: Views/SettingsView.swift:476
         // 토큰은 만료 전이면 그대로 쓴다 (새로 받으면 받는 중인 다른 요청의 토큰이 끊긴다). 처음 연결이면 키를 넣을 때 토큰을 지워 새로 받는다
-        val (t, e) = TossFeed.token()   // ios: Views/SettingsView.swift:436
-        // ios: Views/SettingsView.swift:437
+        val (t, e) = TossFeed.token()   // ios: Views/SettingsView.swift:478
+        // ios: Views/SettingsView.swift:479
         if (t == null) {
-            msg = (e ?: "연결 실패") + (if (e == "허용 IP에 중계 IP가 없어요") ". 오픈 API 허용 IP에 위 IP를 넣고 다시 눌러 주세요." else "")   // ios: Views/SettingsView.swift:438
-            if (!on) TossKeys.clear()     // ios: Views/SettingsView.swift:439 처음 연결이 실패하면 키를 남기지 않는다
-        } else {   // ios: Views/SettingsView.swift:440
-            on = true   // ios: Views/SettingsView.swift:441
-            Market.shared.refresh(held = m.holdings.map { it.symbol }.toSet(), force = true)   // ios: Views/SettingsView.swift:442
+            msg = (e ?: "연결 실패") + (if (e == "허용 IP에 중계 IP가 없어요") ". 오픈 API 허용 IP에 위 IP를 넣고 다시 눌러 주세요." else "")   // ios: Views/SettingsView.swift:480
+            if (!on) TossKeys.clear()     // ios: Views/SettingsView.swift:481 처음 연결이 실패하면 키를 남기지 않는다
+        } else {   // ios: Views/SettingsView.swift:482
+            on = true   // ios: Views/SettingsView.swift:483
+            Market.shared.refresh(held = m.holdings.map { it.symbol }.toSet(), force = true)   // ios: Views/SettingsView.swift:484
         }
-        busy = false   // ios: Views/SettingsView.swift:444
+        busy = false   // ios: Views/SettingsView.swift:486
     }
 
-    // ios: Views/SettingsView.swift:414
+    // ios: Views/SettingsView.swift:456
     @Composable
     fun IpRow(ip: String) {
-        // ios: Views/SettingsView.swift:415,421
+        // ios: Views/SettingsView.swift:457,463
         Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            T(ip, Modifier.weight(1f), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsView.swift:416,417
-            // ios: Views/SettingsView.swift:418,419
+            T(ip, Modifier.weight(1f), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsView.swift:458,459
+            // ios: Views/SettingsView.swift:460,461
             Box(Modifier.defaultMinSize(minHeight = 44.dp).plainClickable { clip(ip); copied = true }, contentAlignment = Alignment.Center) {
                 T(if (copied) "복사됨" else "복사", style = appFont(14f, FontWeight.SemiBold), color = Theme.teal)
             }
         }
     }
 
-    // ios: Views/SettingsView.swift:424,425,426,428,429
+    // ios: Views/SettingsView.swift:466,467,468,470,471
     @Composable
     fun Field(title: String, v: String, set: (String) -> Unit, secure: Boolean) {
         InputField(v, set, title, Modifier.border(2.dp, Theme.border, RoundedCornerShape(12.dp)).defaultMinSize(minHeight = 48.dp).padding(horizontal = 12.dp), secure = secure)
     }
 
-    // ios: Views/SettingsView.swift:372
+    // ios: Views/SettingsView.swift:414
     LaunchedEffect(Unit) { TossKeys.relayIP()?.let { ip = it } }
-    // ios: Views/SettingsView.swift:362,368,370,371,363
+    // ios: Views/SettingsView.swift:366,391,412,413,386
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        T("내 Toss API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:403
-        TossLinkMap(on = on)   // ios: Views/SettingsView.swift:365
-        // ios: Views/SettingsView.swift:366,375,376
+        T("내 Toss API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:445
+        TossLinkMap(on = on)   // ios: Views/SettingsView.swift:388
+        // ios: Views/SettingsView.swift:389,417,418
         if (on) Card {
-            T("내 키로 받는 중", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:377
-            T(status, style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:378
-            ip?.let { IpRow(it) }   // ios: Views/SettingsView.swift:379
-            PrimaryButton(title = if (busy) "받는 중…" else "지금 다시 받기") { scope.launch { check() } }   // ios: Views/SettingsView.swift:380
-            msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:381
-            // ios: Views/SettingsView.swift:382,383
+            T("내 키로 받는 중", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:419
+            T(status, style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:420
+            ip?.let { IpRow(it) }   // ios: Views/SettingsView.swift:421
+            PrimaryButton(title = if (busy) "받는 중…" else "지금 다시 받기") { scope.launch { check() } }   // ios: Views/SettingsView.swift:422
+            msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:423
+            // ios: Views/SettingsView.swift:424,425
             Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).plainClickable { askOff = true }, contentAlignment = Alignment.Center) {
                 T("키 지우기", style = appFont(15f, FontWeight.SemiBold), color = Theme.up)
             }
-            // ios: Views/SettingsView.swift:384,385,386
+            // ios: Views/SettingsView.swift:426,427
             ConfirmSheet(askOff, "오픈 API 키를 이 폰에서 지울까요?", "기본 시세로 돌아가요. 증권사에서 받은 키는 그 증권사에서 따로 지울 수 있어요.",
                 listOf(DialogAction("지우기", destructive = true, onClick = { TossKeys.clear(); on = false; msg = null; scope.launch { Market.shared.pullRefresh(m) } }))) { askOff = false }
-        } else Card {   // ios: Views/SettingsView.swift:390,391
+        } else Card {   // ios: Views/SettingsView.swift:432,433
             // 안내는 세 줄만 (토스 키 발급 절차는 설명하지 않는다)
-            // ios: Views/SettingsView.swift:393
+            // ios: Views/SettingsView.swift:435
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Sym("info.circle.fill", 15f, Theme.teal, Modifier.padding(top = 2.dp))   // ios: Views/SettingsView.swift:394
-                T("투자자가 본인의 API Key를 통해 본인 정보를 호출하는 구조예요.", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:395,397
+                Sym("info.circle.fill", 15f, Theme.teal, Modifier.padding(top = 2.dp))   // ios: Views/SettingsView.swift:436
+                T("투자자가 본인의 API Key를 통해 본인 정보를 호출하는 구조예요.", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:437,439
             }
-            T("1. 허용 IP에 서버 중계 IP를 넣어 주세요.", Modifier.padding(top = 6.dp), style = appFont(14f, FontWeight.SemiBold))   // ios: Views/SettingsView.swift:398
-            // ios: Views/SettingsView.swift:399
+            T("1. 허용 IP에 서버 중계 IP를 넣어 주세요.", Modifier.padding(top = 6.dp), style = appFont(14f, FontWeight.SemiBold))   // ios: Views/SettingsView.swift:440
+            // ios: Views/SettingsView.swift:441
             ip?.let { IpRow(it) } ?: T("중계 IP를 불러오는 중이에요…", style = appFont(13f), color = Theme.muted)
-            T("2. 클라이언트 키를 넣고 서버와 연결하세요.", Modifier.padding(top = 6.dp), style = appFont(14f, FontWeight.SemiBold))   // ios: Views/SettingsView.swift:400
-            Field("client_id", id, { id = it }, secure = true)   // ios: Views/SettingsView.swift:401
-            Field("client_secret", secret, { secret = it }, secure = true)   // ios: Views/SettingsView.swift:402
-            val ok = id.trim().isNotEmpty() && secret.trim().isNotEmpty()   // ios: Views/SettingsView.swift:403
-            // ios: Views/SettingsView.swift:404
+            T("2. 클라이언트 키를 넣고 서버와 연결하세요.", Modifier.padding(top = 6.dp), style = appFont(14f, FontWeight.SemiBold))   // ios: Views/SettingsView.swift:442
+            Field("client_id", id, { id = it }, secure = true)   // ios: Views/SettingsView.swift:443
+            Field("client_secret", secret, { secret = it }, secure = true)   // ios: Views/SettingsView.swift:444
+            val ok = id.trim().isNotEmpty() && secret.trim().isNotEmpty()   // ios: Views/SettingsView.swift:445
+            // ios: Views/SettingsView.swift:446
             PrimaryButton(title = if (busy) "확인 중…" else "연결하기", color = if (ok) Theme.teal else Theme.muted) {
-                if (!ok || busy) return@PrimaryButton   // ios: Views/SettingsView.swift:405
-                TossKeys.save(TossKeys.Keys(id = id.trim(), secret = secret.trim()))   // ios: Views/SettingsView.swift:406
-                secret = ""   // ios: Views/SettingsView.swift:407
-                scope.launch { check() }   // ios: Views/SettingsView.swift:408
+                if (!ok || busy) return@PrimaryButton   // ios: Views/SettingsView.swift:447
+                TossKeys.save(TossKeys.Keys(id = id.trim(), secret = secret.trim()))   // ios: Views/SettingsView.swift:448
+                secret = ""   // ios: Views/SettingsView.swift:449
+                scope.launch { check() }   // ios: Views/SettingsView.swift:450
             }
-            msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:410
+            msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:452
         }
     }
 }
 
 // 내 Alpaca 키 (미국 종목만): app.alpaca.markets 모의 계정에서 무료로 받은 키를 넣으면 미국 종목 지금 가격을 Alpaca(IEX)에서 받는다.
 // 키는 이 폰 보관함에만 두고 Alpaca 를 직접 부른다 (중계 없음). 토스 키가 있으면 토스 값이 먼저다.
-// ios: Views/SettingsView.swift:450,451,473
+// ios: Views/SettingsView.swift:492,493,515
 @Composable
 fun AlpacaKeyView(m: AppModel) {
-    var id by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:452
-    var secret by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:453
-    var busy by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:454
-    var msg by remember { mutableStateOf<String?>(null) }   // ios: Views/SettingsView.swift:455
-    var on by remember { mutableStateOf(AlpacaKeys.on) }   // ios: Views/SettingsView.swift:456
-    var askOff by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:457
+    var id by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:494
+    var secret by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:495
+    var busy by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:496
+    var msg by remember { mutableStateOf<String?>(null) }   // ios: Views/SettingsView.swift:497
+    var on by remember { mutableStateOf(AlpacaKeys.stored) }   // 멈춰도 키 있음 화면을 보인다   // ios: Views/SettingsView.swift:541
+    var askOff by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:499
     val scope = rememberCoroutineScope()
 
-    // ios: Views/SettingsView.swift:459
+    // ios: Views/SettingsView.swift:501
     val status: String = run {
-        Market.shared.alpacaDone      // ios: Views/SettingsView.swift:460 Alpaca 받기를 마치면 다시 그린다
-        val t = AlpacaFeed.okAt   // ios: Views/SettingsView.swift:461
-        var s: String   // ios: Views/SettingsView.swift:462
-        // ios: Views/SettingsView.swift:463,464,465,466,467
+        Market.shared.alpacaDone      // ios: Views/SettingsView.swift:502 Alpaca 받기를 마치면 다시 그린다
+        val t = AlpacaFeed.okAt   // ios: Views/SettingsView.swift:503
+        var s: String   // ios: Views/SettingsView.swift:504
+        // ios: Views/SettingsView.swift:505,506,507,508,509
         if (t > 0) {
             val f = okAtText(t, "a h:mm:ss", "M월 d일 a h:mm")
             s = "마지막으로 받은 때 $f"
-        } else { s = "아직 받은 적 없어요" }   // ios: Views/SettingsView.swift:468
-        AlpacaFeed.lastError?.let { e -> s += " · 실패: $e" }   // ios: Views/SettingsView.swift:469
-        s   // ios: Views/SettingsView.swift:470
+        } else { s = "아직 받은 적 없어요" }   // ios: Views/SettingsView.swift:510
+        AlpacaFeed.lastError?.let { e -> s += " · 실패: $e" }   // ios: Views/SettingsView.swift:511
+        s   // ios: Views/SettingsView.swift:512
     }
 
     /** 키를 확인하고, 되면 시세를 바로 받는다. 처음 연결이 실패하면 키를 남기지 않는다 */
-    // ios: Views/SettingsView.swift:518
+    // ios: Views/SettingsView.swift:560
     suspend fun check() {
-        busy = true; msg = null   // ios: Views/SettingsView.swift:519
+        busy = true; msg = null   // ios: Views/SettingsView.swift:561
         val e = AlpacaFeed.check()
-        // ios: Views/SettingsView.swift:520
+        // ios: Views/SettingsView.swift:562
         if (e != null) {
-            msg = e   // ios: Views/SettingsView.swift:521
-            if (!on) AlpacaKeys.clear()   // ios: Views/SettingsView.swift:522
-        } else {   // ios: Views/SettingsView.swift:523
-            on = true   // ios: Views/SettingsView.swift:524
-            Market.shared.refresh(held = m.holdings.map { it.symbol }.toSet(), force = true)   // ios: Views/SettingsView.swift:525
+            msg = e   // ios: Views/SettingsView.swift:563
+            if (!on) AlpacaKeys.clear()   // ios: Views/SettingsView.swift:564
+        } else {   // ios: Views/SettingsView.swift:565
+            on = true   // ios: Views/SettingsView.swift:566
+            Market.shared.refresh(held = m.holdings.map { it.symbol }.toSet(), force = true)   // ios: Views/SettingsView.swift:567
         }
-        busy = false   // ios: Views/SettingsView.swift:527
+        busy = false   // ios: Views/SettingsView.swift:569
     }
 
-    // ios: Views/SettingsView.swift:511,512,513,514
+    // ios: Views/SettingsView.swift:553,554,555,556
     @Composable
     fun Field(title: String, v: String, set: (String) -> Unit) {
         InputField(v, set, title, Modifier.border(2.dp, Theme.border, RoundedCornerShape(12.dp)).defaultMinSize(minHeight = 48.dp).padding(horizontal = 12.dp), secure = true)
     }
 
-    // ios: Views/SettingsView.swift:474,505,507,508,475
+    // ios: Views/SettingsView.swift:516,547,549,550,517
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        T("내 Alpaca API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:515
-        TossLinkMap(on = on, server = false, broker = "Alpaca", what = "미국 종목의 현재가를 받아 와요.")   // ios: Views/SettingsView.swift:516
-        // ios: Views/SettingsView.swift:477
+        T("내 Alpaca API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:557
+        TossLinkMap(on = on, server = false, broker = "Alpaca", what = "미국 종목의 현재가를 받아 와요.")   // ios: Views/SettingsView.swift:558
+        // ios: Views/SettingsView.swift:519
         Card {
-            // ios: Views/SettingsView.swift:478
+            // ios: Views/SettingsView.swift:520
             if (on) {
-                T("내 키로 받는 중", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:479
-                T(status, style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:480
-                PrimaryButton(title = if (busy) "받는 중…" else "지금 다시 받기") { scope.launch { check() } }   // ios: Views/SettingsView.swift:481
-                msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:482
-                // ios: Views/SettingsView.swift:483,484
+                T("내 키로 받는 중", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:521
+                T(status, style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:522
+                PrimaryButton(title = if (busy) "받는 중…" else "지금 다시 받기") { scope.launch { check() } }   // ios: Views/SettingsView.swift:523
+                msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:524
+                // ios: Views/SettingsView.swift:525,526
                 Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).plainClickable { askOff = true }, contentAlignment = Alignment.Center) {
                     T("키 지우기", style = appFont(15f, FontWeight.SemiBold), color = Theme.up)
                 }
-                // ios: Views/SettingsView.swift:485,486,487
+                // ios: Views/SettingsView.swift:527,528,529
                 ConfirmSheet(askOff, "Alpaca 키를 이 폰에서 지울까요?", "기본 시세로 돌아가요.",
                     listOf(DialogAction("지우기", destructive = true, onClick = { AlpacaKeys.clear(); on = false; msg = null; scope.launch { Market.shared.pullRefresh(m) } }))) { askOff = false }
-            } else {   // ios: Views/SettingsView.swift:488
-                T("미국 종목만 Alpaca에서 지금 가격을 받아요. 키는 이 폰에만 둬요.", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:489
-                // ios: Views/SettingsView.swift:490,491
+            } else {   // ios: Views/SettingsView.swift:530
+                T("미국 종목만 Alpaca에서 지금 가격을 받아요. 키는 이 폰에만 둬요.", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:531
+                // ios: Views/SettingsView.swift:532,533
                 T("app.alpaca.markets 모의(Paper) 계정에서 무료로 받을 수 있어요. 무료 키는 IEX 거래소 실시간 시세예요.", style = appFont(13f), color = Theme.sub)
-                Field("API Key ID", id) { id = it }   // ios: Views/SettingsView.swift:492
-                Field("Secret Key", secret) { secret = it }   // ios: Views/SettingsView.swift:493
-                val ok = id.trim().isNotEmpty() && secret.trim().isNotEmpty()   // ios: Views/SettingsView.swift:494
-                // ios: Views/SettingsView.swift:495
+                Field("API Key ID", id) { id = it }   // ios: Views/SettingsView.swift:534
+                Field("Secret Key", secret) { secret = it }   // ios: Views/SettingsView.swift:535
+                val ok = id.trim().isNotEmpty() && secret.trim().isNotEmpty()   // ios: Views/SettingsView.swift:536
+                // ios: Views/SettingsView.swift:537
                 PrimaryButton(title = if (busy) "확인 중…" else "연결하기", color = if (ok) Theme.teal else Theme.muted) {
-                    if (!ok || busy) return@PrimaryButton   // ios: Views/SettingsView.swift:496
-                    AlpacaKeys.save(AlpacaKeys.Keys(id = id.trim(), secret = secret.trim()))   // ios: Views/SettingsView.swift:497
-                    secret = ""   // ios: Views/SettingsView.swift:498
+                    if (!ok || busy) return@PrimaryButton   // ios: Views/SettingsView.swift:538
+                    AlpacaKeys.save(AlpacaKeys.Keys(id = id.trim(), secret = secret.trim()))   // ios: Views/SettingsView.swift:539
+                    secret = ""   // ios: Views/SettingsView.swift:540
                     scope.launch { check() }   // ios: Views/SettingsView.swift:499
                 }
-                msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:501
+                msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:543
             }
         }
     }
@@ -730,90 +769,90 @@ fun AlpacaKeyView(m: AppModel) {
 
 // 내 Longbridge 키: open.longbridge.com 개발자 센터에서 받은 App Key·App Secret·Access Token 을 넣으면 지금 가격을 Longbridge 에서 받는다.
 // 앱은 아직 원화·달러 종목만 다루므로 지금은 미국 종목만. 키는 이 폰 보관함에만 두고 Longbridge 를 직접 부른다 (중계 없음). 토스·Alpaca 키가 있으면 그 값이 먼저다.
-// ios: Views/SettingsView.swift:533,534,557
+// ios: Views/SettingsView.swift:575,576,599
 @Composable
 fun LongbridgeKeyView(m: AppModel) {
-    var key by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:535
-    var secret by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:536
-    var token by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:537
-    var busy by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:538
-    var msg by remember { mutableStateOf<String?>(null) }   // ios: Views/SettingsView.swift:539
-    var on by remember { mutableStateOf(LongbridgeKeys.on) }   // ios: Views/SettingsView.swift:540
-    var askOff by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:541
+    var key by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:577
+    var secret by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:578
+    var token by remember { mutableStateOf("") }   // ios: Views/SettingsView.swift:579
+    var busy by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:580
+    var msg by remember { mutableStateOf<String?>(null) }   // ios: Views/SettingsView.swift:581
+    var on by remember { mutableStateOf(LongbridgeKeys.stored) }   // 멈춰도 키 있음 화면을 보인다   // ios: Views/SettingsView.swift:626
+    var askOff by remember { mutableStateOf(false) }   // ios: Views/SettingsView.swift:583
     val scope = rememberCoroutineScope()
 
-    // ios: Views/SettingsView.swift:543
+    // ios: Views/SettingsView.swift:585
     val status: String = run {
-        Market.shared.longbridgeDone      // ios: Views/SettingsView.swift:544 Longbridge 받기를 마치면 다시 그린다
-        val t = LongbridgeFeed.okAt   // ios: Views/SettingsView.swift:545
-        var s: String   // ios: Views/SettingsView.swift:546
-        // ios: Views/SettingsView.swift:547,548,549,550,551
+        Market.shared.longbridgeDone      // ios: Views/SettingsView.swift:586 Longbridge 받기를 마치면 다시 그린다
+        val t = LongbridgeFeed.okAt   // ios: Views/SettingsView.swift:587
+        var s: String   // ios: Views/SettingsView.swift:588
+        // ios: Views/SettingsView.swift:589,590,591,592,593
         if (t > 0) {
             val f = okAtText(t, "a h:mm:ss", "M월 d일 a h:mm")
             s = "마지막으로 받은 때 $f"
-        } else { s = "아직 받은 적 없어요" }   // ios: Views/SettingsView.swift:552
-        LongbridgeFeed.lastError?.let { e -> s += " · 실패: $e" }   // ios: Views/SettingsView.swift:553
-        s   // ios: Views/SettingsView.swift:554
+        } else { s = "아직 받은 적 없어요" }   // ios: Views/SettingsView.swift:594
+        LongbridgeFeed.lastError?.let { e -> s += " · 실패: $e" }   // ios: Views/SettingsView.swift:595
+        s   // ios: Views/SettingsView.swift:596
     }
 
     /** 키를 확인하고, 되면 시세를 바로 받는다. 처음 연결이 실패하면 키를 남기지 않는다 */
-    // ios: Views/SettingsView.swift:604
+    // ios: Views/SettingsView.swift:646
     suspend fun check() {
-        busy = true; msg = null   // ios: Views/SettingsView.swift:605
+        busy = true; msg = null   // ios: Views/SettingsView.swift:647
         val e = LongbridgeFeed.check()
-        // ios: Views/SettingsView.swift:606
+        // ios: Views/SettingsView.swift:648
         if (e != null) {
-            msg = e   // ios: Views/SettingsView.swift:607
-            if (!on) LongbridgeKeys.clear()   // ios: Views/SettingsView.swift:608
-        } else {   // ios: Views/SettingsView.swift:609
-            on = true   // ios: Views/SettingsView.swift:610
-            Market.shared.refresh(held = m.holdings.map { it.symbol }.toSet(), force = true)   // ios: Views/SettingsView.swift:611
+            msg = e   // ios: Views/SettingsView.swift:649
+            if (!on) LongbridgeKeys.clear()   // ios: Views/SettingsView.swift:650
+        } else {   // ios: Views/SettingsView.swift:651
+            on = true   // ios: Views/SettingsView.swift:652
+            Market.shared.refresh(held = m.holdings.map { it.symbol }.toSet(), force = true)   // ios: Views/SettingsView.swift:653
         }
-        busy = false   // ios: Views/SettingsView.swift:613
+        busy = false   // ios: Views/SettingsView.swift:655
     }
 
-    // ios: Views/SettingsView.swift:597,598,599,600
+    // ios: Views/SettingsView.swift:639,640,641,642
     @Composable
     fun Field(title: String, v: String, set: (String) -> Unit) {
         InputField(v, set, title, Modifier.border(2.dp, Theme.border, RoundedCornerShape(12.dp)).defaultMinSize(minHeight = 48.dp).padding(horizontal = 12.dp), secure = true)
     }
 
-    // ios: Views/SettingsView.swift:558,591,593,594,559
+    // ios: Views/SettingsView.swift:600,633,635,636,601
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        T("내 Longbridge API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:600
-        TossLinkMap(on = on, server = false, broker = "Longbridge", what = "미국 종목의 현재가를 받아 와요.")   // ios: Views/SettingsView.swift:601
-        // ios: Views/SettingsView.swift:561
+        T("내 Longbridge API 키", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:642
+        TossLinkMap(on = on, server = false, broker = "Longbridge", what = "미국 종목의 현재가를 받아 와요.")   // ios: Views/SettingsView.swift:643
+        // ios: Views/SettingsView.swift:603
         Card {
-            // ios: Views/SettingsView.swift:562
+            // ios: Views/SettingsView.swift:604
             if (on) {
-                T("내 키로 받는 중", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:563
-                T(status, style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:564
-                PrimaryButton(title = if (busy) "받는 중…" else "지금 다시 받기") { scope.launch { check() } }   // ios: Views/SettingsView.swift:565
-                msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:566
-                // ios: Views/SettingsView.swift:567,568
+                T("내 키로 받는 중", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:605
+                T(status, style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:606
+                PrimaryButton(title = if (busy) "받는 중…" else "지금 다시 받기") { scope.launch { check() } }   // ios: Views/SettingsView.swift:607
+                msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:608
+                // ios: Views/SettingsView.swift:609,610
                 Box(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp).plainClickable { askOff = true }, contentAlignment = Alignment.Center) {
                     T("키 지우기", style = appFont(15f, FontWeight.SemiBold), color = Theme.up)
                 }
-                // ios: Views/SettingsView.swift:569,570,571
+                // ios: Views/SettingsView.swift:611,612,613
                 ConfirmSheet(askOff, "Longbridge 키를 이 폰에서 지울까요?", "기본 시세로 돌아가요.",
                     listOf(DialogAction("지우기", destructive = true, onClick = { LongbridgeKeys.clear(); on = false; msg = null; scope.launch { Market.shared.pullRefresh(m) } }))) { askOff = false }
-            } else {   // ios: Views/SettingsView.swift:572
-                T("미국 종목 지금 가격을 Longbridge에서 받아요. 키는 이 폰에만 둬요.", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:573
-                // ios: Views/SettingsView.swift:574,575
+            } else {   // ios: Views/SettingsView.swift:614
+                T("미국 종목 지금 가격을 Longbridge에서 받아요. 키는 이 폰에만 둬요.", style = appFont(15f, FontWeight.Bold))   // ios: Views/SettingsView.swift:615
+                // ios: Views/SettingsView.swift:616,617
                 T("Longbridge 앱에서 모의 계정을 만든 뒤 open.longbridge.com 개발자 센터에서 무료로 받아요. Access Token은 기한이 있어서 지나면 새로 넣어야 해요. 홍콩·중국 종목은 앱이 그 종목을 다루게 되면 같은 키로 받아요.", style = appFont(13f), color = Theme.sub)
-                Field("App Key", key) { key = it }   // ios: Views/SettingsView.swift:576
-                Field("App Secret", secret) { secret = it }   // ios: Views/SettingsView.swift:577
-                Field("Access Token", token) { token = it }   // ios: Views/SettingsView.swift:578
-                val t = { v: String -> v.trim() }   // ios: Views/SettingsView.swift:579
-                val ok = t(key).isNotEmpty() && t(secret).isNotEmpty() && t(token).isNotEmpty()   // ios: Views/SettingsView.swift:580
-                // ios: Views/SettingsView.swift:581
+                Field("App Key", key) { key = it }   // ios: Views/SettingsView.swift:618
+                Field("App Secret", secret) { secret = it }   // ios: Views/SettingsView.swift:619
+                Field("Access Token", token) { token = it }   // ios: Views/SettingsView.swift:620
+                val t = { v: String -> v.trim() }   // ios: Views/SettingsView.swift:621
+                val ok = t(key).isNotEmpty() && t(secret).isNotEmpty() && t(token).isNotEmpty()   // ios: Views/SettingsView.swift:622
+                // ios: Views/SettingsView.swift:623
                 PrimaryButton(title = if (busy) "확인 중…" else "연결하기", color = if (ok) Theme.teal else Theme.muted) {
-                    if (!ok || busy) return@PrimaryButton   // ios: Views/SettingsView.swift:582
-                    LongbridgeKeys.save(LongbridgeKeys.Keys(key = t(key), secret = t(secret), token = t(token)))   // ios: Views/SettingsView.swift:583
+                    if (!ok || busy) return@PrimaryButton   // ios: Views/SettingsView.swift:624
+                    LongbridgeKeys.save(LongbridgeKeys.Keys(key = t(key), secret = t(secret), token = t(token)))   // ios: Views/SettingsView.swift:625
                     secret = ""; token = ""   // ios: Views/SettingsView.swift:584
-                    scope.launch { check() }   // ios: Views/SettingsView.swift:585
+                    scope.launch { check() }   // ios: Views/SettingsView.swift:627
                 }
-                msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:587
+                msg?.let { T(it, style = appFont(13f), color = Theme.up) }   // ios: Views/SettingsView.swift:629
             }
         }
     }
@@ -822,76 +861,76 @@ fun LongbridgeKeyView(m: AppModel) {
 /** 내 키 화면 맨 위 그림: 내 폰 → (토스만) naeilo 서버 → 증권사. 안심은 말보다 그림으로 보인다
  *  (키는 이 폰 보관함에만 두고, 중계 서버는 저장·기록 없이 넘기기만 한다. docs/toss-relay.md) */
 @Composable
-// ios: Views/SettingsView.swift:661,662,663,664,665
+// ios: Views/SettingsView.swift:703,704,705,706,707
 fun TossLinkMap(on: Boolean, server: Boolean = true, broker: String = "Toss증권", what: String = "내 종목의 현재가·일봉·환율을 받아 와요.") {
-    // ios: Views/SettingsView.swift:644 .animation(.easeInOut(duration: 0.4), value: on): 색이 0.4초에 바뀐다
+    // ios: Views/SettingsView.swift:686 .animation(.easeInOut(duration: 0.4), value: on): 색이 0.4초에 바뀐다
     val teal = animateColorAsState(if (on) Theme.teal else Theme.track, tween(400), label = "node").value
     val icon = animateColorAsState(if (on) Color.White else Theme.muted, tween(400), label = "icon").value
     val lockC = animateColorAsState(if (on) Theme.teal else Theme.muted, tween(400), label = "lock").value
 
-    // ios: Views/SettingsView.swift:647,648,662,663
+    // ios: Views/SettingsView.swift:689,690,704,705
     @Composable
     fun androidx.compose.foundation.layout.RowScope.Node(icn: String, name: String, note: String, lock: Boolean) {
         Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            // ios: Views/SettingsView.swift:649,650,651
+            // ios: Views/SettingsView.swift:691,692,693
             Box(Modifier.size(52.dp, 52.dp).background(teal, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
                 Sym(icn, 22f, icon, scaled = false)
-                // ios: Views/SettingsView.swift:652,653,654,655,656
+                // ios: Views/SettingsView.swift:694,695,696,697,698
                 if (lock) Box(Modifier.align(Alignment.BottomEnd).offset(x = 6.dp, y = 6.dp).size(22.dp, 22.dp).background(Theme.card, CircleShape).border(2.dp, lockC, CircleShape), contentAlignment = Alignment.Center) {
                     Sym("lock.fill", 10f, lockC, scaled = false)
                 }
             }
-            T(name, style = appFont(12f, FontWeight.Bold).copy(textAlign = TextAlign.Center))   // ios: Views/SettingsView.swift:659
-            T(note, style = appFont(11f, if (lock) FontWeight.SemiBold else FontWeight.Normal).copy(textAlign = TextAlign.Center), color = if (lock && on) Theme.teal else Theme.muted)   // ios: Views/SettingsView.swift:660
+            T(name, style = appFont(12f, FontWeight.Bold).copy(textAlign = TextAlign.Center))   // ios: Views/SettingsView.swift:701
+            T(note, style = appFont(11f, if (lock) FontWeight.SemiBold else FontWeight.Normal).copy(textAlign = TextAlign.Center), color = if (lock && on) Theme.teal else Theme.muted)   // ios: Views/SettingsView.swift:702
         }
     }
 
-    // ios: Views/SettingsView.swift:623
+    // ios: Views/SettingsView.swift:665
     Card {
-        // ios: Views/SettingsView.swift:624
+        // ios: Views/SettingsView.swift:666
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            Node("iphone", "내 폰", "키가 있는 곳", lock = true)   // ios: Views/SettingsView.swift:670
-            TossLinkLine(on = on)   // ios: Views/SettingsView.swift:671
-            // ios: Views/SettingsView.swift:672 Alpaca·Longbridge 는 폰에서 바로 받는다
+            Node("iphone", "내 폰", "키가 있는 곳", lock = true)   // ios: Views/SettingsView.swift:712
+            TossLinkLine(on = on)   // ios: Views/SettingsView.swift:713
+            // ios: Views/SettingsView.swift:714 Alpaca·Longbridge 는 폰에서 바로 받는다
             if (server) {
-                Node("server.rack", "naeilo 서버", "이어 주는 곳", lock = false)   // ios: Views/SettingsView.swift:673
-                TossLinkLine(on = on)   // ios: Views/SettingsView.swift:674
+                Node("server.rack", "naeilo 서버", "이어 주는 곳", lock = false)   // ios: Views/SettingsView.swift:715
+                TossLinkLine(on = on)   // ios: Views/SettingsView.swift:716
             }
-            Node("chart.line.uptrend.xyaxis", broker, "시세", lock = false)   // ios: Views/SettingsView.swift:676
+            Node("chart.line.uptrend.xyaxis", broker, "시세", lock = false)   // ios: Views/SettingsView.swift:718
         }
-        // ios: Views/SettingsView.swift:631,632
+        // ios: Views/SettingsView.swift:673,674
         T(if (on) "이어졌어요" else "키를 넣으면 이어져요", Modifier.fillMaxWidth(), style = appFont(13f, FontWeight.SemiBold).copy(textAlign = TextAlign.Center), color = if (on) Theme.teal else Theme.muted)
-        // ios: Views/SettingsView.swift:636,642
+        // ios: Views/SettingsView.swift:678,684
         Row(Modifier.fillMaxWidth().background(Theme.track, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Sym(if (on) "chart.line.uptrend.xyaxis" else "key.fill", 15f, Theme.teal, scaled = false)   // ios: Views/SettingsView.swift:637
-            // ios: Views/SettingsView.swift:638,639,640
-            T(what, Modifier.weight(1f).padding(end = 0.dp), style = appFont(13f))   // ios: Views/SettingsView.swift:682
+            Sym(if (on) "chart.line.uptrend.xyaxis" else "key.fill", 15f, Theme.teal, scaled = false)   // ios: Views/SettingsView.swift:679
+            // ios: Views/SettingsView.swift:680,681,682
+            T(what, Modifier.weight(1f).padding(end = 0.dp), style = appFont(13f))   // ios: Views/SettingsView.swift:724
         }
     }
 }
 
 /** 두 칸 사이 줄: 끊김은 점선 + 빨간 끊긴 표시, 이어짐은 청록 실선 위로 점이 오른쪽에서 왼쪽(내 폰 쪽)으로 흐른다 */
-// ios: Views/SettingsView.swift:668,669,673
+// ios: Views/SettingsView.swift:710,711,715
 @Composable
 private fun TossLinkLine(on: Boolean) {
-    val still = LocalReduceMotion.current   // ios: Views/SettingsView.swift:670
+    val still = LocalReduceMotion.current   // ios: Views/SettingsView.swift:712
     val teal = Theme.teal; val muted = Theme.muted; val up = Theme.up
-    // ios: Views/SettingsView.swift:671,678,679,680 시세가 토스에서 내 폰 쪽으로 온다: 1.4초에 22 → 0 을 되풀이
+    // ios: Views/SettingsView.swift:713,720,721,722 시세가 토스에서 내 폰 쪽으로 온다: 1.4초에 22 → 0 을 되풀이
     val flow = if (on && !still) rememberInfiniteTransition(label = "flow").animateFloat(22f, 0f, infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart), label = "x").value else 11f
-    // ios: Views/SettingsView.swift:674,686,687
+    // ios: Views/SettingsView.swift:716,728,729
     Canvas(Modifier.size(30.dp, 52.dp).semantics { hideFromAccessibility() }) {
         val mid = size.height / 2
-        // ios: Views/SettingsView.swift:675
+        // ios: Views/SettingsView.swift:717
         if (on) {
-            drawLine(teal, Offset(0f, mid), Offset(size.width, mid), 2.dp.toPx())   // ios: Views/SettingsView.swift:676
-            drawOval(teal, Offset(flow.dp.toPx(), mid - 4.dp.toPx()), androidx.compose.ui.geometry.Size(8.dp.toPx(), 8.dp.toPx()))   // ios: Views/SettingsView.swift:677 (왼쪽 끝 + x)
-        } else {   // ios: Views/SettingsView.swift:681
-            // ios: Views/SettingsView.swift:690,691 가운데를 지나는 가로줄
+            drawLine(teal, Offset(0f, mid), Offset(size.width, mid), 2.dp.toPx())   // ios: Views/SettingsView.swift:718
+            drawOval(teal, Offset(flow.dp.toPx(), mid - 4.dp.toPx()), androidx.compose.ui.geometry.Size(8.dp.toPx(), 8.dp.toPx()))   // ios: Views/SettingsView.swift:719 (왼쪽 끝 + x)
+        } else {   // ios: Views/SettingsView.swift:723
+            // ios: Views/SettingsView.swift:732,733 가운데를 지나는 가로줄
             fun line(band: Float): Pair<Offset, Offset> { val y = (size.height - band) / 2 + band / 2; return Offset(0f, y) to Offset(size.width, y) }
-            // ios: Views/SettingsView.swift:682 높이 2 칸 가운데에 굵기 2 점선
+            // ios: Views/SettingsView.swift:724 높이 2 칸 가운데에 굵기 2 점선
             val (a, b) = line(2.dp.toPx())
             drawLine(muted.copy(alpha = 0.7f), a, b, 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())))
-            // ios: Views/SettingsView.swift:683 빨간 끊긴 표시 (2×16, 25도, 왼쪽에서 14)
+            // ios: Views/SettingsView.swift:725 빨간 끊긴 표시 (2×16, 25도, 왼쪽에서 14)
             rotate(25f, Offset(14.dp.toPx() + 1.dp.toPx(), mid)) { drawRect(up.copy(alpha = 0.9f), Offset(14.dp.toPx(), mid - 8.dp.toPx()), androidx.compose.ui.geometry.Size(2.dp.toPx(), 16.dp.toPx())) }
         }
     }
@@ -899,40 +938,40 @@ private fun TossLinkLine(on: Boolean) {
 
 // 앱 아이콘 바꾸기 (2026-10-24): 내일의 별 + 상단 박스 테마 7개. 모양은 내일의 별 그대로, 색만 테마 장면에서 뽑았다
 // 안드로이드는 런처 별칭(activity-alias)을 켜고 끈다. 테마 따라가기를 켜면 홈 평가액 박스 테마를 바꿀 때 아이콘도 그 테마 것으로 바뀐다 (IconFollow)
-// ios: Views/SettingsView.swift:742,743,744,745
+// ios: Views/SettingsView.swift:784,785,786,787
 @Composable
 fun AppIconPicker(@Suppress("UNUSED_PARAMETER") m: AppModel) {
     val ctx = LocalContext.current
-    var current by remember { mutableStateOf(AppIconPicker.alternateIconName(ctx)) }   // ios: Views/SettingsView.swift:770
+    var current by remember { mutableStateOf(AppIconPicker.alternateIconName(ctx)) }   // ios: Views/SettingsView.swift:812
     val linked = AppIconPicker.linked
-    // ios: Views/SettingsView.swift:774,775,776,777,778,779
+    // ios: Views/SettingsView.swift:816,817,818,819,820,821
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ChipRow(items = listOf(true to "테마 따라가기", false to "직접 고르기"), selection = linked, onSelect = { on ->
             AppIconPicker.linked = on
             if (on) { val id = AppIconPicker.id(BoxLook.entries.firstOrNull { it.name == BoxLook.raw } ?: BoxLook.jump); AppIconPicker.apply(ctx, id); current = AppIconPicker.alternateIconName(ctx) }
         }, fill = true)
-        // ios: Views/SettingsView.swift:780,800,801,802 (3열, 칸 사이 8, 줄 사이 12)
+        // ios: Views/SettingsView.swift:822,842,843,844 (3열, 칸 사이 8, 줄 사이 12)
         Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)).padding(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AppIconPicker.icons.chunked(3).forEach { line ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // ios: Views/SettingsView.swift:781
+                    // ios: Views/SettingsView.swift:823
                     line.forEach { ic ->
-                        val on = current == ic.id   // ios: Views/SettingsView.swift:782
-                        // ios: Views/SettingsView.swift:783,792,793,794,795,796
+                        val on = current == ic.id   // ios: Views/SettingsView.swift:824
+                        // ios: Views/SettingsView.swift:825,834,835,836,837,838
                         Column(
                             Modifier.weight(1f).alpha(if (linked && !on) 0.45f else 1f)
                                 .then(if (!linked) Modifier.plainClickable { AppIconPicker.apply(ctx, ic.id); current = AppIconPicker.alternateIconName(ctx) } else Modifier.semantics { disabled() })
                                 .semantics(mergeDescendants = true) { contentDescription = tr("${ic.name} 아이콘"); selected = on }
                                 .padding(vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),   // ios: Views/SettingsView.swift:784
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),   // ios: Views/SettingsView.swift:826
                         ) {
-                            // ios: Views/SettingsView.swift:785,786,787,788
+                            // ios: Views/SettingsView.swift:827,828,829,830
                             Box(Modifier.size(64.dp).clip(RoundedCornerShape(15.dp)).border(if (on) 3.dp else 1.dp, if (on) Theme.teal else Theme.border, RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
                                 androidx.compose.foundation.Image(
                                     androidx.compose.ui.graphics.ImageBitmap.imageResource(com.naeilo.app.ui.drawableId(ctx, ic.prev)), null, Modifier.size(64.dp),
                                     filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
                             }
-                            // ios: Views/SettingsView.swift:789,790
+                            // ios: Views/SettingsView.swift:831,832
                             FitText(ic.name, appFont(13f, if (on) FontWeight.Bold else FontWeight.Normal), 0.8f, maxLines = 1, color = if (on) Theme.ink else Theme.sub)
                         }
                     }
@@ -941,24 +980,24 @@ fun AppIconPicker(@Suppress("UNUSED_PARAMETER") m: AppModel) {
             }
         }
     }
-    LaunchedEffect(Unit) { current = AppIconPicker.alternateIconName(ctx) }   // ios: Views/SettingsView.swift:805
+    LaunchedEffect(Unit) { current = AppIconPicker.alternateIconName(ctx) }   // ios: Views/SettingsView.swift:847
 }
 
 /** 아이콘 목록과 바꾸기 (UIApplication.alternateIconName 자리: 런처 별칭) */
 object AppIconPicker {
     class Icon(val id: String?, val name: String, val prev: String)
-    // ios: Views/SettingsView.swift:747,748,749,750,751
+    // ios: Views/SettingsView.swift:789,790,791,792,793
     val icons: List<Icon> = listOf(Icon(null, "내일의 별", "iconprev_star")) + BoxLook.entries.map { Icon(id(it), it.label, "iconprev_${it.name}") }
     /** 예전 인물 아이콘 (별칭은 매니페스트에 꺼진 채 남아 있다) */
     private val legacy = listOf("seri", "sio", "seonbae", "ir", "sua").map { "AppIcon-$it" }
-    const val linkKey = "appIconLinked"   // ios: Views/SettingsView.swift:752
-    fun id(look: BoxLook): String = "AppIcon-${look.name}"   // ios: Views/SettingsView.swift:753
+    const val linkKey = "appIconLinked"   // ios: Views/SettingsView.swift:794
+    fun id(look: BoxLook): String = "AppIcon-${look.name}"   // ios: Views/SettingsView.swift:795
     /** @AppStorage(linkKey) 자리 */
     private val linkState by lazy { mutableStateOf(Defaults.prefs.getBoolean(linkKey, false)) }
     var linked: Boolean
         get() = linkState.value
         set(v) { linkState.value = v; Defaults.prefs.edit().putBoolean(linkKey, v).apply() }
-    // ios: Views/SettingsView.swift:754,755,756,757
+    // ios: Views/SettingsView.swift:796,797,798,799
     fun currentName(ctx: Context): String {
         val name = icons.firstOrNull { it.id == alternateIconName(ctx) }?.name ?: "내일의 별"
         return if (linked) "테마 따라 · $name" else name
@@ -971,7 +1010,7 @@ object AppIconPicker {
     fun alternateIconName(ctx: Context): String? = (icons.mapNotNull { it.id } + legacy).firstOrNull { ctx.packageManager.getComponentEnabledSetting(alias(ctx, it)) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED }
 
     /** 아이콘을 바꾼다. 같은 아이콘이면 그냥 둔다. 고른 별칭만 켜고 나머지(예전 인물 포함)는 끈다. 앱은 닫지 않는다 */
-    // ios: Views/SettingsView.swift:758,759,760,761
+    // ios: Views/SettingsView.swift:800,801,802,803
     fun apply(ctx: Context, id: String?) {
         if (alternateIconName(ctx) == id) return
         val pm = ctx.packageManager
@@ -986,7 +1025,7 @@ object AppIconPicker {
 
 /** 테마 따라가기: 홈 박스를 길게 눌러 고르든 설정에서 고르든 테마가 바뀌면 아이콘도 따라 바꾼다.
  *  예전 인물 아이콘(세리·시오·선배·이르·수아)을 쓰던 사람은 기본 아이콘으로 돌린다 */
-// ios: Views/SettingsView.swift:811,812,813,814,815,816,817,818,819,820,821,822,823
+// ios: Views/SettingsView.swift:853,854,855,856,857,858,859,860,861,862,863,864,865
 @Composable
 fun IconFollow() {
     val ctx = LocalContext.current
@@ -999,14 +1038,14 @@ fun IconFollow() {
 }
 
 /** 설정 > 앱 아이콘 › 고르는 화면 (설정 첫 화면에서 격자를 뺐다) */
-// ios: Views/SettingsView.swift:827,828
+// ios: Views/SettingsView.swift:869,870
 @Composable
 fun AppIconScreen(m: AppModel) {
-    // ios: Views/SettingsView.swift:829,830,835,837,838
+    // ios: Views/SettingsView.swift:871,872
     Column(Modifier.fillMaxSize().background(Theme.bg).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        T("앱 아이콘", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:831
-        T(if (AppIconPicker.linked) "테마를 바꾸면 아이콘도 함께 바뀌어요." else "테마와 상관없이 아이콘을 골라요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:833
-        AppIconPicker(m)   // ios: Views/SettingsView.swift:834
+        T("앱 아이콘", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsView.swift:873
+        T(if (AppIconPicker.linked) "테마를 바꾸면 아이콘도 함께 바뀌어요." else "테마와 상관없이 아이콘을 골라요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:875
+        AppIconPicker(m)   // ios: Views/SettingsView.swift:876
     }
 }
 

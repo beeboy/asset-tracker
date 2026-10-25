@@ -40,7 +40,7 @@ object TossFeed {   // ios: WidgetShared/Models.swift:154
     const val name = "toss_quotes.json"   // ios: WidgetShared/Models.swift:155
     const val key = "toss_base"   // ios: WidgetShared/Models.swift:156
     var base: String?   // ios: WidgetShared/Models.swift:157
-        get() = Store.defaults.getString(key, null)?.let { if (it.isEmpty()) null else it }   // ios: WidgetShared/Models.swift:158
+        get() = if (TossKeys.paused) null else Store.defaults.getString(key, null)?.let { if (it.isEmpty()) null else it }   // 토스 멈춤 중엔 개발자 주소도 안 쓴다   // ios: WidgetShared/Models.swift:159
         set(newValue) { if (newValue == null) Store.defaults.edit().remove(key).apply() else Store.defaults.edit().putString(key, newValue).apply() }   // ios: WidgetShared/Models.swift:159
     /** 설정 > 개발자용에 보이는 상태: 마지막 성공 시각(초), 마지막 실패 이유 (성공하면 지움) */
     val okAt: Double get() = Store.defaults.getDouble("toss_ok_at")   // ios: WidgetShared/Models.swift:162
@@ -261,157 +261,163 @@ object TossKeys {   // ios: WidgetShared/Models.swift:365
         return runCatching { NJson.decodeFromString(t, d.decodeToString()) }.getOrNull()   // ios: WidgetShared/Models.swift:388
     }
     /** 키를 넣었는지 (위젯도 보므로 키 자체가 아니라 표시만 공유 저장소에 둔다) */
-    val on: Boolean get() = Store.defaults.getBoolean("toss_user", false)   // ios: WidgetShared/Models.swift:391
+    val stored: Boolean get() = Store.defaults.getBoolean("toss_user", false)   // ios: WidgetShared/Models.swift:395
+    /** 개발자용 잠시 멈춤 (내부 베타만): 키는 그대로 두고 없는 것처럼 안 부른다 */
+    val paused: Boolean get() = Config.isInternal && Store.defaults.getBoolean("toss_pause", false)   // ios: WidgetShared/Models.swift:397
+    val on: Boolean get() = stored && !paused   // ios: WidgetShared/Models.swift:398
     fun load(): Keys? = get(Keys.serializer(), "keys")   // ios: WidgetShared/Models.swift:392
     /** 아이폰 예전 판은 키를 앱 전용 자리에 두어 위젯이 못 읽었다. 앱이 열릴 때 한 번 그룹 자리로 옮긴다 (안드로이드는 같은 자리에 다시 쓴다) */
     fun share() {   // ios: WidgetShared/Models.swift:394
-        if (!on || Store.defaults.getBoolean("toss_kc_group", false)) return   // ios: WidgetShared/Models.swift:395
-        load()?.let { k -> val t = token; put(k, Keys.serializer(), "keys"); put(t, Token.serializer(), "token") }   // ios: WidgetShared/Models.swift:396
-        Store.defaults.edit().putBoolean("toss_kc_group", true).apply()   // ios: WidgetShared/Models.swift:397
+        if (!stored || Store.defaults.getBoolean("toss_kc_group", false)) return   // ios: WidgetShared/Models.swift:395
+        load()?.let { k -> val t = token; put(k, Keys.serializer(), "keys"); put(t, Token.serializer(), "token") }   // ios: WidgetShared/Models.swift:399
+        Store.defaults.edit().putBoolean("toss_kc_group", true).apply()   // ios: WidgetShared/Models.swift:400
     }
     fun save(k: Keys) {   // ios: WidgetShared/Models.swift:399
-        put(k, Keys.serializer(), "keys"); put(null, Token.serializer(), "token")   // ios: WidgetShared/Models.swift:400
-        Store.defaults.edit().putBoolean("toss_user", true)   // ios: WidgetShared/Models.swift:401
-            .remove("toss_miss")   // ios: WidgetShared/Models.swift:402
-            .remove("toss_hist_miss").apply()   // ios: WidgetShared/Models.swift:403
+        put(k, Keys.serializer(), "keys"); put(null, Token.serializer(), "token")   // ios: WidgetShared/Models.swift:403
+        Store.defaults.edit().putBoolean("toss_user", true)   // ios: WidgetShared/Models.swift:404
+            .remove("toss_miss")   // ios: WidgetShared/Models.swift:405
+            .remove("toss_hist_miss").apply()   // ios: WidgetShared/Models.swift:406
     }
-    fun clear() {   // ios: WidgetShared/Models.swift:405
-        put(null, Keys.serializer(), "keys"); put(null, Token.serializer(), "token")   // ios: WidgetShared/Models.swift:406
-        Store.defaults.edit().putBoolean("toss_user", false)   // ios: WidgetShared/Models.swift:407
-            .remove("toss_err")   // ios: WidgetShared/Models.swift:408
-            .remove("toss_ok_at").apply()   // ios: WidgetShared/Models.swift:409
-        Store.remove(TossFeed.name)   // ios: WidgetShared/Models.swift:410
-        Store.remove("toss_history.json")   // 내 키로 받은 지난 종가·환율 (앱 TossHistory)   // ios: WidgetShared/Models.swift:411
+    fun clear() {   // ios: WidgetShared/Models.swift:408
+        put(null, Keys.serializer(), "keys"); put(null, Token.serializer(), "token")   // ios: WidgetShared/Models.swift:409
+        Store.defaults.edit().putBoolean("toss_user", false)   // ios: WidgetShared/Models.swift:410
+            .remove("toss_err")   // ios: WidgetShared/Models.swift:411
+            .remove("toss_ok_at").apply()   // ios: WidgetShared/Models.swift:412
+        Store.remove(TossFeed.name)   // ios: WidgetShared/Models.swift:413
+        Store.remove("toss_history.json")   // 내 키로 받은 지난 종가·환율 (앱 TossHistory)   // ios: WidgetShared/Models.swift:414
     }
-    var token: Token?   // ios: WidgetShared/Models.swift:413
-        get() = get(Token.serializer(), "token")   // ios: WidgetShared/Models.swift:414
-        set(newValue) { put(newValue, Token.serializer(), "token") }   // ios: WidgetShared/Models.swift:415
+    var token: Token?   // ios: WidgetShared/Models.swift:416
+        get() = get(Token.serializer(), "token")   // ios: WidgetShared/Models.swift:417
+        set(newValue) { put(newValue, Token.serializer(), "token") }   // ios: WidgetShared/Models.swift:418
     /** 사용자가 토스에 등록할 중계 IP (중계가 알려 준다) */
-    suspend fun relayIP(): String? {   // ios: WidgetShared/Models.swift:418
-        val url = uriOrNull(Config.tossRelay + "/api/toss/ip") ?: return null   // ios: WidgetShared/Models.swift:419
-        val (_, d) = runCatching { FeedReq(url, timeout = 5.0).send() }.getOrNull() ?: return null   // ios: WidgetShared/Models.swift:420
-        val ip = jObj(feedJson(d))?.get("ip") as? String; if (ip.isNullOrEmpty()) return null   // ios: WidgetShared/Models.swift:421
-        return ip   // ios: WidgetShared/Models.swift:422
+    suspend fun relayIP(): String? {   // ios: WidgetShared/Models.swift:421
+        val url = uriOrNull(Config.tossRelay + "/api/toss/ip") ?: return null   // ios: WidgetShared/Models.swift:422
+        val (_, d) = runCatching { FeedReq(url, timeout = 5.0).send() }.getOrNull() ?: return null   // ios: WidgetShared/Models.swift:423
+        val ip = jObj(feedJson(d))?.get("ip") as? String; if (ip.isNullOrEmpty()) return null   // ios: WidgetShared/Models.swift:424
+        return ip   // ios: WidgetShared/Models.swift:425
     }
 }
 
 // Alpaca 지금 가격 (미국 종목만). 사용자가 app.alpaca.markets 모의 계정에서 무료로 받은 키로 Alpaca 를 직접 부른다 (중계 없음).
 // 무료 키는 IEX 거래소 실시간. 우선순위: 토스 키 > Alpaca 키 > 사이트 시세. 한국 종목·원/달러는 그대로.
 // 전일 종가는 사이트(공식 종가) 값을 먼저 쓰고, 없을 때만 Alpaca prevDailyBar(IEX 종가)를 쓴다.
-object AlpacaFeed {   // ios: WidgetShared/Models.swift:429
-    const val name = "alpaca_quotes.json"   // ios: WidgetShared/Models.swift:430
-    const val base = "https://data.alpaca.markets/v2/stocks/snapshots"   // ios: WidgetShared/Models.swift:431
+object AlpacaFeed {   // ios: WidgetShared/Models.swift:432
+    const val name = "alpaca_quotes.json"   // ios: WidgetShared/Models.swift:433
+    const val base = "https://data.alpaca.markets/v2/stocks/snapshots"   // ios: WidgetShared/Models.swift:434
     /** 설정 > 내 Alpaca 키에 보이는 상태: 마지막 성공 시각(초), 마지막 실패 이유 (성공하면 지움) */
-    val okAt: Double get() = Store.defaults.getDouble("alpaca_ok_at")   // ios: WidgetShared/Models.swift:433
-    val lastError: String? get() = Store.defaults.getString("alpaca_err", null)   // ios: WidgetShared/Models.swift:434
-    private fun fail(why: String): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:435
-        Store.defaults.edit().putString("alpaca_err", why).apply()   // ios: WidgetShared/Models.swift:436
-        return cached()   // ios: WidgetShared/Models.swift:437
+    val okAt: Double get() = Store.defaults.getDouble("alpaca_ok_at")   // ios: WidgetShared/Models.swift:436
+    val lastError: String? get() = Store.defaults.getString("alpaca_err", null)   // ios: WidgetShared/Models.swift:437
+    private fun fail(why: String): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:438
+        Store.defaults.edit().putString("alpaca_err", why).apply()   // ios: WidgetShared/Models.swift:439
+        return cached()   // ios: WidgetShared/Models.swift:440
     }
     /** 15분 안에 받은 값만 (토스와 같다) */
-    fun cached(): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:440
-        val f = (if (AlpacaKeys.on) Store.read(QuoteFeed.File.serializer(), name) else null)?.takeIf { nowSec() - it.got < 900 } ?: return null   // ios: WidgetShared/Models.swift:441
-        return f   // ios: WidgetShared/Models.swift:442
+    fun cached(): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:443
+        val f = (if (AlpacaKeys.on) Store.read(QuoteFeed.File.serializer(), name) else null)?.takeIf { nowSec() - it.got < 900 } ?: return null   // ios: WidgetShared/Models.swift:444
+        return f   // ios: WidgetShared/Models.swift:445
     }
     /** Yahoo 기호 → Alpaca 기호. 미국 종목만 (BRK-B → BRK.B, 토스 코드와 같은 꼴). 국내·지수·환율은 null */
-    fun code(sym: String): String? {   // ios: WidgetShared/Models.swift:445
-        val u = sym.uppercase()   // ios: WidgetShared/Models.swift:446
-        if (u.endsWith(".KS") || u.endsWith(".KQ")) return null   // ios: WidgetShared/Models.swift:447
-        return TossFeed.code(u)   // ios: WidgetShared/Models.swift:448
+    fun code(sym: String): String? {   // ios: WidgetShared/Models.swift:448
+        val u = sym.uppercase()   // ios: WidgetShared/Models.swift:449
+        if (u.endsWith(".KS") || u.endsWith(".KQ")) return null   // ios: WidgetShared/Models.swift:450
+        return TossFeed.code(u)   // ios: WidgetShared/Models.swift:451
     }
 
     /** syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 5초를 기다린다 */
-    suspend fun fetch(syms: Map<String, String>, minAge: Double = 0.0): QuoteFeed.File? = withContext(Dispatchers.IO) { fetchIO(syms, minAge) }   // ios: WidgetShared/Models.swift:452,453
+    suspend fun fetch(syms: Map<String, String>, minAge: Double = 0.0): QuoteFeed.File? = withContext(Dispatchers.IO) { fetchIO(syms, minAge) }   // ios: WidgetShared/Models.swift:455,456
     private suspend fun fetchIO(syms: Map<String, String>, minAge: Double): QuoteFeed.File? {
-        val k = AlpacaKeys.load() ?: return null   // ios: WidgetShared/Models.swift:454
-        val ids = mutableMapOf<String, MutableList<String>>()   // Alpaca 기호 → 앱 종목들   // ios: WidgetShared/Models.swift:455
-        for ((id, y) in syms) { code(y)?.let { c -> ids.getOrPut(c) { mutableListOf() }.add(id) } }   // ios: WidgetShared/Models.swift:456
-        if (ids.isEmpty()) return null   // ios: WidgetShared/Models.swift:457
-        cached()?.let { o -> if (nowSec() - o.got < minAge) return o }   // ios: WidgetShared/Models.swift:458
-        val q = mutableMapOf<String, QuoteFeed.Q>()   // ios: WidgetShared/Models.swift:459
-        val all = ids.keys.sorted()   // ios: WidgetShared/Models.swift:460
-        for (i in 0 until all.size step 100) {   // ios: WidgetShared/Models.swift:461
-            val part = all.subList(i, min(i + 100, all.size)).joinToString(",")   // ios: WidgetShared/Models.swift:462
-            val enc = pctEncode(part, ".,")   // ios: WidgetShared/Models.swift:463
-            val url = uriOrNull(base + "?symbols=" + enc + "&feed=iex") ?: return fail("잘못된 종목")   // ios: WidgetShared/Models.swift:464
-            val (code, o, e) = get(url, k)   // ios: WidgetShared/Models.swift:465
-            if (e != null) return fail(e)   // ios: WidgetShared/Models.swift:466
-            if (code != 200 || o == null) return fail(why(code))   // ios: WidgetShared/Models.swift:467
-            for ((c, v) in o) {   // ios: WidgetShared/Models.swift:468
-                val s = jObj(v) ?: continue; val t = jObj(s["latestTrade"]) ?: continue; val last = num(t["p"])?.takeIf { it > 0 } ?: continue   // ios: WidgetShared/Models.swift:469
-                val prev = num(jObj(s["prevDailyBar"])?.get("c")) ?: 0.0   // ios: WidgetShared/Models.swift:470
-                val at = (t["t"] as? String)?.let { isoSec(it) } ?: nowSec()   // ios: WidgetShared/Models.swift:471
-                for (id in ids[c.uppercase()] ?: emptyList()) q[id] = QuoteFeed.Q(last = last, prev = prev, at = at)   // ios: WidgetShared/Models.swift:472
+        val k = AlpacaKeys.load() ?: return null   // ios: WidgetShared/Models.swift:457
+        val ids = mutableMapOf<String, MutableList<String>>()   // Alpaca 기호 → 앱 종목들   // ios: WidgetShared/Models.swift:458
+        for ((id, y) in syms) { code(y)?.let { c -> ids.getOrPut(c) { mutableListOf() }.add(id) } }   // ios: WidgetShared/Models.swift:459
+        if (ids.isEmpty()) return null   // ios: WidgetShared/Models.swift:460
+        cached()?.let { o -> if (nowSec() - o.got < minAge) return o }   // ios: WidgetShared/Models.swift:461
+        val q = mutableMapOf<String, QuoteFeed.Q>()   // ios: WidgetShared/Models.swift:462
+        val all = ids.keys.sorted()   // ios: WidgetShared/Models.swift:463
+        for (i in 0 until all.size step 100) {   // ios: WidgetShared/Models.swift:464
+            val part = all.subList(i, min(i + 100, all.size)).joinToString(",")   // ios: WidgetShared/Models.swift:465
+            val enc = pctEncode(part, ".,")   // ios: WidgetShared/Models.swift:466
+            val url = uriOrNull(base + "?symbols=" + enc + "&feed=iex") ?: return fail("잘못된 종목")   // ios: WidgetShared/Models.swift:467
+            val (code, o, e) = get(url, k)   // ios: WidgetShared/Models.swift:468
+            if (e != null) return fail(e)   // ios: WidgetShared/Models.swift:469
+            if (code != 200 || o == null) return fail(why(code))   // ios: WidgetShared/Models.swift:470
+            for ((c, v) in o) {   // ios: WidgetShared/Models.swift:471
+                val s = jObj(v) ?: continue; val t = jObj(s["latestTrade"]) ?: continue; val last = num(t["p"])?.takeIf { it > 0 } ?: continue   // ios: WidgetShared/Models.swift:472
+                val prev = num(jObj(s["prevDailyBar"])?.get("c")) ?: 0.0   // ios: WidgetShared/Models.swift:473
+                val at = (t["t"] as? String)?.let { isoSec(it) } ?: nowSec()   // ios: WidgetShared/Models.swift:474
+                for (id in ids[c.uppercase()] ?: emptyList()) q[id] = QuoteFeed.Q(last = last, prev = prev, at = at)   // ios: WidgetShared/Models.swift:475
             }
         }
-        if (q.isEmpty()) return fail("받은 종목 없음")   // ios: WidgetShared/Models.swift:475
-        val f = QuoteFeed.File(got = nowSec(), q = q)   // ios: WidgetShared/Models.swift:476
-        Store.write(QuoteFeed.File.serializer(), f, name)   // ios: WidgetShared/Models.swift:477
-        Store.defaults.edit().putDouble("alpaca_ok_at", f.got)   // ios: WidgetShared/Models.swift:478
-            .remove("alpaca_err").apply()   // ios: WidgetShared/Models.swift:479
-        return f   // ios: WidgetShared/Models.swift:480
+        if (q.isEmpty()) return fail("받은 종목 없음")   // ios: WidgetShared/Models.swift:478
+        val f = QuoteFeed.File(got = nowSec(), q = q)   // ios: WidgetShared/Models.swift:479
+        Store.write(QuoteFeed.File.serializer(), f, name)   // ios: WidgetShared/Models.swift:480
+        Store.defaults.edit().putDouble("alpaca_ok_at", f.got)   // ios: WidgetShared/Models.swift:481
+            .remove("alpaca_err").apply()   // ios: WidgetShared/Models.swift:482
+        return f   // ios: WidgetShared/Models.swift:483
     }
 
-    private suspend fun get(url: String, k: AlpacaKeys.Keys): Triple<Int, Map<String, Any?>?, String?> {   // ios: WidgetShared/Models.swift:483
-        val r = FeedReq(url, timeout = 5.0)   // ios: WidgetShared/Models.swift:484
-        r.setValue(k.id, "APCA-API-KEY-ID")   // ios: WidgetShared/Models.swift:485
-        r.setValue(k.secret, "APCA-API-SECRET-KEY")   // ios: WidgetShared/Models.swift:486
-        try {   // ios: WidgetShared/Models.swift:487
-            val (code, d) = r.send()   // ios: WidgetShared/Models.swift:488
-            return Triple(code.coerceAtLeast(0), jObj(feedJson(d)), null)   // ios: WidgetShared/Models.swift:489
-        } catch (e: IOException) { return Triple(0, null, if (e is SocketTimeoutException) "5초 안에 응답 없음" else "Alpaca에 닿지 못함") }   // ios: WidgetShared/Models.swift:490
-        catch (e: Exception) { return Triple(0, null, "Alpaca에 닿지 못함") }   // ios: WidgetShared/Models.swift:491
+    private suspend fun get(url: String, k: AlpacaKeys.Keys): Triple<Int, Map<String, Any?>?, String?> {   // ios: WidgetShared/Models.swift:486
+        val r = FeedReq(url, timeout = 5.0)   // ios: WidgetShared/Models.swift:487
+        r.setValue(k.id, "APCA-API-KEY-ID")   // ios: WidgetShared/Models.swift:488
+        r.setValue(k.secret, "APCA-API-SECRET-KEY")   // ios: WidgetShared/Models.swift:489
+        try {   // ios: WidgetShared/Models.swift:490
+            val (code, d) = r.send()   // ios: WidgetShared/Models.swift:491
+            return Triple(code.coerceAtLeast(0), jObj(feedJson(d)), null)   // ios: WidgetShared/Models.swift:492
+        } catch (e: IOException) { return Triple(0, null, if (e is SocketTimeoutException) "5초 안에 응답 없음" else "Alpaca에 닿지 못함") }   // ios: WidgetShared/Models.swift:493
+        catch (e: Exception) { return Triple(0, null, "Alpaca에 닿지 못함") }   // ios: WidgetShared/Models.swift:494
     }
 
-    fun why(code: Int): String {   // ios: WidgetShared/Models.swift:494
-        if (code == 401 || code == 403) return "키가 맞지 않아요"   // ios: WidgetShared/Models.swift:495
-        if (code == 429) return "잠시 뒤에 다시 받아요"   // ios: WidgetShared/Models.swift:496
-        return "Alpaca 응답 $code"   // ios: WidgetShared/Models.swift:497
+    fun why(code: Int): String {   // ios: WidgetShared/Models.swift:497
+        if (code == 401 || code == 403) return "키가 맞지 않아요"   // ios: WidgetShared/Models.swift:498
+        if (code == 429) return "잠시 뒤에 다시 받아요"   // ios: WidgetShared/Models.swift:499
+        return "Alpaca 응답 $code"   // ios: WidgetShared/Models.swift:500
     }
 
     /** 키 확인: AAPL 하나를 물어 본다 (설정 화면 '연결하기') */
-    suspend fun check(): String? {   // ios: WidgetShared/Models.swift:501
-        val k = AlpacaKeys.load() ?: return "키 없음"; val url = base + "?symbols=AAPL&feed=iex"   // ios: WidgetShared/Models.swift:502
-        val (code, _, e) = get(url, k)   // ios: WidgetShared/Models.swift:503
-        return e ?: (if (code == 200) null else why(code))   // ios: WidgetShared/Models.swift:504
+    suspend fun check(): String? {   // ios: WidgetShared/Models.swift:504
+        val k = AlpacaKeys.load() ?: return "키 없음"; val url = base + "?symbols=AAPL&feed=iex"   // ios: WidgetShared/Models.swift:505
+        val (code, _, e) = get(url, k)   // ios: WidgetShared/Models.swift:506
+        return e ?: (if (code == 200) null else why(code))   // ios: WidgetShared/Models.swift:507
     }
 
     /** 위젯: 앱이 feed.json 에 넘긴 내 종목을 위젯이 직접 Alpaca 에 묻는다 */
-    suspend fun widgetFetch(minAge: Double): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:508,509
-        val ty = (if (AlpacaKeys.on) Store.read(WFeed.serializer(), "feed.json")?.ty else null)?.takeIf { it.isNotEmpty() } ?: return null   // ios: WidgetShared/Models.swift:510
-        return fetch(ty, minAge = minAge)   // ios: WidgetShared/Models.swift:511
+    suspend fun widgetFetch(minAge: Double): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:511,512
+        val ty = (if (AlpacaKeys.on) Store.read(WFeed.serializer(), "feed.json")?.ty else null)?.takeIf { it.isNotEmpty() } ?: return null   // ios: WidgetShared/Models.swift:513
+        return fetch(ty, minAge = minAge)   // ios: WidgetShared/Models.swift:514
     }
 }
 
 /** 사용자가 넣은 Alpaca 키. 토스 키처럼 이 기기 Keystore 로 감싸 둔다 */
-object AlpacaKeys {   // ios: WidgetShared/Models.swift:516
-    @Serializable data class Keys(var id: String, var secret: String)   // ios: WidgetShared/Models.swift:517
-    private fun q(): String =   // ios: WidgetShared/Models.swift:518
-        KeyVault.slot("com.naeilo.alpaca", "keys")   // ios: WidgetShared/Models.swift:519
-    private fun put(v: Keys?) {   // ios: WidgetShared/Models.swift:521
-        KeyVault.delete(q())   // ios: WidgetShared/Models.swift:522
-        if (v == null) return; val d = runCatching { NJson.encodeToString(Keys.serializer(), v).toByteArray(Charsets.UTF_8) }.getOrNull() ?: return   // ios: WidgetShared/Models.swift:523
-        val a = q()   // ios: WidgetShared/Models.swift:524
-        KeyVault.add(a, d)   // ios: WidgetShared/Models.swift:526,528
+object AlpacaKeys {   // ios: WidgetShared/Models.swift:519
+    @Serializable data class Keys(var id: String, var secret: String)   // ios: WidgetShared/Models.swift:520
+    private fun q(): String =   // ios: WidgetShared/Models.swift:521
+        KeyVault.slot("com.naeilo.alpaca", "keys")   // ios: WidgetShared/Models.swift:522
+    private fun put(v: Keys?) {   // ios: WidgetShared/Models.swift:524
+        KeyVault.delete(q())   // ios: WidgetShared/Models.swift:525
+        if (v == null) return; val d = runCatching { NJson.encodeToString(Keys.serializer(), v).toByteArray(Charsets.UTF_8) }.getOrNull() ?: return   // ios: WidgetShared/Models.swift:526
+        val a = q()   // ios: WidgetShared/Models.swift:527
+        KeyVault.add(a, d)   // ios: WidgetShared/Models.swift:529,531
     }
     /** 키를 넣었는지 (위젯도 보므로 표시만 공유 저장소에 둔다) */
-    val on: Boolean get() = Store.defaults.getBoolean("alpaca_user", false)   // ios: WidgetShared/Models.swift:531
-    fun load(): Keys? {   // ios: WidgetShared/Models.swift:532
-        if (!on) return null   // ios: WidgetShared/Models.swift:533
-        val a = q()   // ios: WidgetShared/Models.swift:534
-        val d = KeyVault.read(a) ?: return null   // ios: WidgetShared/Models.swift:535,536,537,538
-        return runCatching { NJson.decodeFromString(Keys.serializer(), d.decodeToString()) }.getOrNull()   // ios: WidgetShared/Models.swift:539
+    val stored: Boolean get() = Store.defaults.getBoolean("alpaca_user", false)   // ios: WidgetShared/Models.swift:538
+    /** 개발자용 잠시 멈춤 (내부 베타만): 키는 그대로 두고 없는 것처럼 안 부른다 */
+    val paused: Boolean get() = Config.isInternal && Store.defaults.getBoolean("alpaca_pause", false)   // ios: WidgetShared/Models.swift:540
+    val on: Boolean get() = stored && !paused   // ios: WidgetShared/Models.swift:541
+    fun load(): Keys? {   // ios: WidgetShared/Models.swift:535
+        if (!on) return null   // ios: WidgetShared/Models.swift:536
+        val a = q()   // ios: WidgetShared/Models.swift:537
+        val d = KeyVault.read(a) ?: return null   // ios: WidgetShared/Models.swift:535,542,543,544
+        return runCatching { NJson.decodeFromString(Keys.serializer(), d.decodeToString()) }.getOrNull()   // ios: WidgetShared/Models.swift:545
     }
-    fun save(k: Keys) {   // ios: WidgetShared/Models.swift:541
-        put(k)   // ios: WidgetShared/Models.swift:542
-        Store.defaults.edit().putBoolean("alpaca_user", true).apply()   // ios: WidgetShared/Models.swift:543
+    fun save(k: Keys) {   // ios: WidgetShared/Models.swift:547
+        put(k)   // ios: WidgetShared/Models.swift:548
+        Store.defaults.edit().putBoolean("alpaca_user", true).apply()   // ios: WidgetShared/Models.swift:549
     }
-    fun clear() {   // ios: WidgetShared/Models.swift:545
-        put(null)   // ios: WidgetShared/Models.swift:546
-        Store.defaults.edit().putBoolean("alpaca_user", false)   // ios: WidgetShared/Models.swift:547
-            .remove("alpaca_err")   // ios: WidgetShared/Models.swift:548
-            .remove("alpaca_ok_at").apply()   // ios: WidgetShared/Models.swift:549
-        Store.remove(AlpacaFeed.name)   // ios: WidgetShared/Models.swift:550
+    fun clear() {   // ios: WidgetShared/Models.swift:551
+        put(null)   // ios: WidgetShared/Models.swift:552
+        Store.defaults.edit().putBoolean("alpaca_user", false)   // ios: WidgetShared/Models.swift:553
+            .remove("alpaca_err")   // ios: WidgetShared/Models.swift:554
+            .remove("alpaca_ok_at").apply()   // ios: WidgetShared/Models.swift:555
+        Store.remove(AlpacaFeed.name)   // ios: WidgetShared/Models.swift:556
     }
 }
 
@@ -419,157 +425,163 @@ object AlpacaKeys {   // ios: WidgetShared/Models.swift:516
 // 모의(paper) 계정에도 홍콩·미국·A주 기본 실시간 시세가 들어 있다. 공식 SDK 의 HTTP 방식(POST /quote/quotes, HMAC-SHA256 서명)을 그대로 쓴다.
 // 앱은 아직 원화·달러 종목만 다루므로 지금은 미국 종목에 쓰인다. 홍콩(.HK)·상하이(.SS)·선전(.SZ) 기호도 알아듣게 해 두었다.
 // 우선순위: 토스 키 > Alpaca 키 > Longbridge 키 > 사이트 시세. 전일 종가는 Alpaca 처럼 사이트(공식 종가) 값이 먼저다.
-object LongbridgeFeed {   // ios: WidgetShared/Models.swift:601
-    const val name = "longbridge_quotes.json"   // ios: WidgetShared/Models.swift:602
-    const val base = "https://openapi.longbridge.com"   // ios: WidgetShared/Models.swift:603
+object LongbridgeFeed {   // ios: WidgetShared/Models.swift:607
+    const val name = "longbridge_quotes.json"   // ios: WidgetShared/Models.swift:608
+    const val base = "https://openapi.longbridge.com"   // ios: WidgetShared/Models.swift:609
     /** 설정 > 내 Longbridge 키에 보이는 상태: 마지막 성공 시각(초), 마지막 실패 이유 (성공하면 지움) */
-    val okAt: Double get() = Store.defaults.getDouble("longbridge_ok_at")   // ios: WidgetShared/Models.swift:605
-    val lastError: String? get() = Store.defaults.getString("longbridge_err", null)   // ios: WidgetShared/Models.swift:606
-    private fun fail(why: String): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:607
-        Store.defaults.edit().putString("longbridge_err", why).apply()   // ios: WidgetShared/Models.swift:608
-        return cached()   // ios: WidgetShared/Models.swift:609
+    val okAt: Double get() = Store.defaults.getDouble("longbridge_ok_at")   // ios: WidgetShared/Models.swift:611
+    val lastError: String? get() = Store.defaults.getString("longbridge_err", null)   // ios: WidgetShared/Models.swift:612
+    private fun fail(why: String): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:613
+        Store.defaults.edit().putString("longbridge_err", why).apply()   // ios: WidgetShared/Models.swift:614
+        return cached()   // ios: WidgetShared/Models.swift:615
     }
     /** 15분 안에 받은 값만 (토스·Alpaca 와 같다) */
-    fun cached(): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:612
-        val f = (if (LongbridgeKeys.on) Store.read(QuoteFeed.File.serializer(), name) else null)?.takeIf { nowSec() - it.got < 900 } ?: return null   // ios: WidgetShared/Models.swift:613
-        return f   // ios: WidgetShared/Models.swift:614
+    fun cached(): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:618
+        val f = (if (LongbridgeKeys.on) Store.read(QuoteFeed.File.serializer(), name) else null)?.takeIf { nowSec() - it.got < 900 } ?: return null   // ios: WidgetShared/Models.swift:619
+        return f   // ios: WidgetShared/Models.swift:620
     }
     /** Yahoo 기호 → Longbridge 기호. AAPL → AAPL.US, BRK-B → BRK.B.US, 0700.HK → 700.HK, 600519.SS → 600519.SH, 000001.SZ → 000001.SZ. 국내·지수·환율은 null */
-    fun code(sym: String): String? {   // ios: WidgetShared/Models.swift:617
-        val u = sym.trim().uppercase()   // ios: WidgetShared/Models.swift:618
-        val digits = { x: String -> x.isNotEmpty() && x.all { "0" <= it.toString() && it.toString() <= "9" } }   // ios: WidgetShared/Models.swift:619
-        if (u.endsWith(".HK")) {   // ios: WidgetShared/Models.swift:620
-            val c = u.dropLast(3)   // ios: WidgetShared/Models.swift:621
-            if (!digits(c)) return null   // ios: WidgetShared/Models.swift:622
-            val n = c.dropWhile { it.toString() == "0" }   // ios: WidgetShared/Models.swift:623
-            return (if (n.isEmpty()) "0" else n) + ".HK"   // ios: WidgetShared/Models.swift:624
-        }
-        if (u.endsWith(".SS") || u.endsWith(".SZ")) {   // ios: WidgetShared/Models.swift:626
+    fun code(sym: String): String? {   // ios: WidgetShared/Models.swift:623
+        val u = sym.trim().uppercase()   // ios: WidgetShared/Models.swift:624
+        val digits = { x: String -> x.isNotEmpty() && x.all { "0" <= it.toString() && it.toString() <= "9" } }   // ios: WidgetShared/Models.swift:625
+        if (u.endsWith(".HK")) {   // ios: WidgetShared/Models.swift:626
             val c = u.dropLast(3)   // ios: WidgetShared/Models.swift:627
-            if (c.length != 6 || !digits(c)) return null   // ios: WidgetShared/Models.swift:628
-            return c + (if (u.endsWith(".SS")) ".SH" else ".SZ")   // ios: WidgetShared/Models.swift:629
+            if (!digits(c)) return null   // ios: WidgetShared/Models.swift:628
+            val n = c.dropWhile { it.toString() == "0" }   // ios: WidgetShared/Models.swift:629
+            return (if (n.isEmpty()) "0" else n) + ".HK"   // ios: WidgetShared/Models.swift:630
         }
-        return AlpacaFeed.code(u)?.let { it + ".US" }   // ios: WidgetShared/Models.swift:631
+        if (u.endsWith(".SS") || u.endsWith(".SZ")) {   // ios: WidgetShared/Models.swift:632
+            val c = u.dropLast(3)   // ios: WidgetShared/Models.swift:633
+            if (c.length != 6 || !digits(c)) return null   // ios: WidgetShared/Models.swift:634
+            return c + (if (u.endsWith(".SS")) ".SH" else ".SZ")   // ios: WidgetShared/Models.swift:635
+        }
+        return AlpacaFeed.code(u)?.let { it + ".US" }   // ios: WidgetShared/Models.swift:637
     }
 
     /** syms: 종목 → Yahoo 기호. 받은 지 minAge 초가 안 됐으면 저장해 둔 값. 5초를 기다린다 */
-    suspend fun fetch(syms: Map<String, String>, minAge: Double = 0.0): QuoteFeed.File? = withContext(Dispatchers.IO) { fetchIO(syms, minAge) }   // ios: WidgetShared/Models.swift:635,636
+    suspend fun fetch(syms: Map<String, String>, minAge: Double = 0.0): QuoteFeed.File? = withContext(Dispatchers.IO) { fetchIO(syms, minAge) }   // ios: WidgetShared/Models.swift:641,642
     private suspend fun fetchIO(syms: Map<String, String>, minAge: Double): QuoteFeed.File? {
-        val k = LongbridgeKeys.load() ?: return null   // ios: WidgetShared/Models.swift:637
-        val ids = mutableMapOf<String, MutableList<String>>()   // Longbridge 기호 → 앱 종목들   // ios: WidgetShared/Models.swift:638
-        for ((id, y) in syms) { code(y)?.let { c -> ids.getOrPut(c) { mutableListOf() }.add(id) } }   // ios: WidgetShared/Models.swift:639
-        if (ids.isEmpty()) return null   // ios: WidgetShared/Models.swift:640
-        cached()?.let { o -> if (nowSec() - o.got < minAge) return o }   // ios: WidgetShared/Models.swift:641
-        val q = mutableMapOf<String, QuoteFeed.Q>()   // ios: WidgetShared/Models.swift:642
-        val all = ids.keys.sorted()   // ios: WidgetShared/Models.swift:643
-        for (i in 0 until all.size step 500) {   // 한 번에 500종목까지   // ios: WidgetShared/Models.swift:644
-            val (o, e) = post("/quote/quotes", mapOf("symbol" to all.subList(i, min(i + 500, all.size))), k)   // ios: WidgetShared/Models.swift:645
-            if (e != null) return fail(e)   // ios: WidgetShared/Models.swift:646
-            for (v in jObjs(o?.get("secu_quote")) ?: emptyList()) {   // ios: WidgetShared/Models.swift:647
-                val c = (v["symbol"] as? String)?.uppercase() ?: continue; val last = num(v["last_done"])?.takeIf { it > 0 } ?: continue   // ios: WidgetShared/Models.swift:648
-                val at = num(v["timestamp"])?.takeIf { it > 0 } ?: nowSec()   // ios: WidgetShared/Models.swift:649
-                for (id in ids[c] ?: emptyList()) q[id] = QuoteFeed.Q(last = last, prev = num(v["prev_close"]) ?: 0.0, at = at)   // ios: WidgetShared/Models.swift:650
+        val k = LongbridgeKeys.load() ?: return null   // ios: WidgetShared/Models.swift:643
+        val ids = mutableMapOf<String, MutableList<String>>()   // Longbridge 기호 → 앱 종목들   // ios: WidgetShared/Models.swift:644
+        for ((id, y) in syms) { code(y)?.let { c -> ids.getOrPut(c) { mutableListOf() }.add(id) } }   // ios: WidgetShared/Models.swift:645
+        if (ids.isEmpty()) return null   // ios: WidgetShared/Models.swift:646
+        cached()?.let { o -> if (nowSec() - o.got < minAge) return o }   // ios: WidgetShared/Models.swift:647
+        val q = mutableMapOf<String, QuoteFeed.Q>()   // ios: WidgetShared/Models.swift:648
+        val all = ids.keys.sorted()   // ios: WidgetShared/Models.swift:649
+        for (i in 0 until all.size step 500) {   // 한 번에 500종목까지   // ios: WidgetShared/Models.swift:650
+            val (o, e) = post("/quote/quotes", mapOf("symbol" to all.subList(i, min(i + 500, all.size))), k)   // ios: WidgetShared/Models.swift:651
+            if (e != null) return fail(e)   // ios: WidgetShared/Models.swift:652
+            for (v in jObjs(o?.get("secu_quote")) ?: emptyList()) {   // ios: WidgetShared/Models.swift:653
+                val c = (v["symbol"] as? String)?.uppercase() ?: continue; val last = num(v["last_done"])?.takeIf { it > 0 } ?: continue   // ios: WidgetShared/Models.swift:654
+                val at = num(v["timestamp"])?.takeIf { it > 0 } ?: nowSec()   // ios: WidgetShared/Models.swift:655
+                for (id in ids[c] ?: emptyList()) q[id] = QuoteFeed.Q(last = last, prev = num(v["prev_close"]) ?: 0.0, at = at)   // ios: WidgetShared/Models.swift:656
             }
         }
-        if (q.isEmpty()) return fail("받은 종목 없음")   // ios: WidgetShared/Models.swift:653
-        val f = QuoteFeed.File(got = nowSec(), q = q)   // ios: WidgetShared/Models.swift:654
-        Store.write(QuoteFeed.File.serializer(), f, name)   // ios: WidgetShared/Models.swift:655
-        Store.defaults.edit().putDouble("longbridge_ok_at", f.got)   // ios: WidgetShared/Models.swift:656
-            .remove("longbridge_err").apply()   // ios: WidgetShared/Models.swift:657
-        return f   // ios: WidgetShared/Models.swift:658
+        if (q.isEmpty()) return fail("받은 종목 없음")   // ios: WidgetShared/Models.swift:659
+        val f = QuoteFeed.File(got = nowSec(), q = q)   // ios: WidgetShared/Models.swift:660
+        Store.write(QuoteFeed.File.serializer(), f, name)   // ios: WidgetShared/Models.swift:661
+        Store.defaults.edit().putDouble("longbridge_ok_at", f.got)   // ios: WidgetShared/Models.swift:662
+            .remove("longbridge_err").apply()   // ios: WidgetShared/Models.swift:663
+        return f   // ios: WidgetShared/Models.swift:664
     }
 
-    /** 서명한 POST. 응답 {code, message, data} 에서 data 만 돌려준다 */
-    private suspend fun post(path: String, body: Map<String, List<String>>, k: LongbridgeKeys.Keys): Pair<Map<String, Any?>?, String?> {   // ios: WidgetShared/Models.swift:662
-        val url = uriOrNull(base + path) ?: return null to "잘못된 요청"; val b = JsonObject(body.mapValues { (_, v) -> JsonArray(v.map { JsonPrimitive(it) }) }).toString().toByteArray(Charsets.UTF_8)   // ios: WidgetShared/Models.swift:663
-        val token = if (k.token.startsWith("Bearer ")) k.token.drop(7) else k.token   // ios: WidgetShared/Models.swift:664
-        val ts = (nowSec() * 1000).toLong().toString()   // ios: WidgetShared/Models.swift:665
-        val r = FeedReq(url, timeout = 5.0)   // ios: WidgetShared/Models.swift:666
-        r.httpMethod = "POST"   // ios: WidgetShared/Models.swift:667
-        r.httpBody = b   // ios: WidgetShared/Models.swift:668
-        r.setValue("application/json; charset=utf-8", "content-type")   // ios: WidgetShared/Models.swift:669
-        r.setValue(k.key, "x-api-key")   // ios: WidgetShared/Models.swift:670
-        r.setValue(token, "authorization")   // ios: WidgetShared/Models.swift:671
-        r.setValue(ts, "x-timestamp")   // ios: WidgetShared/Models.swift:672
+    /** 서명한 POST (기호 목록 본문). 응답 {code, message, data} 에서 data 만 돌려준다 */
+    private suspend fun post(path: String, body: Map<String, List<String>>, k: LongbridgeKeys.Keys): Pair<Map<String, Any?>?, String?> =   // ios: WidgetShared/Models.swift:668
+        postJson(path, JsonObject(body.mapValues { (_, v) -> JsonArray(v.map { JsonPrimitive(it) }) }), k)
+    /** 서명한 POST (아무 JSON 본문. 일봉 FlowLongbridge·1분봉 LongbridgeMinutes 도 쓴다) */
+    suspend fun postJson(path: String, body: JsonObject, k: LongbridgeKeys.Keys): Pair<Map<String, Any?>?, String?> {   // ios: WidgetShared/Models.swift:668
+        val url = uriOrNull(base + path) ?: return null to "잘못된 요청"; val b = body.toString().toByteArray(Charsets.UTF_8)   // ios: WidgetShared/Models.swift:669
+        val token = if (k.token.startsWith("Bearer ")) k.token.drop(7) else k.token   // ios: WidgetShared/Models.swift:670
+        val ts = (nowSec() * 1000).toLong().toString()   // ios: WidgetShared/Models.swift:671
+        val r = FeedReq(url, timeout = 5.0)   // ios: WidgetShared/Models.swift:672
+        r.httpMethod = "POST"   // ios: WidgetShared/Models.swift:673
+        r.httpBody = b   // ios: WidgetShared/Models.swift:674
+        r.setValue("application/json; charset=utf-8", "content-type")   // ios: WidgetShared/Models.swift:675
+        r.setValue(k.key, "x-api-key")   // ios: WidgetShared/Models.swift:676
+        r.setValue(token, "authorization")   // ios: WidgetShared/Models.swift:677
+        r.setValue(ts, "x-timestamp")   // ios: WidgetShared/Models.swift:678
         // 미국 데이터센터 계정은 키 앞에 us_ 가 붙는다 (공식 SDK 와 같게)
-        r.setValue(if (listOf(k.key, k.secret, token).any { it.startsWith("us_") }) "us" else "ap", "x-dc-region")   // ios: WidgetShared/Models.swift:674
-        r.setValue(sign(path = path, key = k.key, token = token, ts = ts, body = b, secret = k.secret), "x-api-signature")   // ios: WidgetShared/Models.swift:675
-        try {   // ios: WidgetShared/Models.swift:676
-            val (http0, d) = r.send()   // ios: WidgetShared/Models.swift:677
-            val http = http0.coerceAtLeast(0)   // ios: WidgetShared/Models.swift:678
-            val o = jObj(feedJson(d))   // ios: WidgetShared/Models.swift:679
-            val code = o?.let { num(it["code"]) } ?: -1.0   // ios: WidgetShared/Models.swift:680
-            if (http == 200 && code == 0.0) return (jObj(o?.get("data")) ?: emptyMap()) to null   // ios: WidgetShared/Models.swift:681
-            return null to why(http, o?.get("message") as? String)   // ios: WidgetShared/Models.swift:682
-        } catch (e: IOException) { return null to (if (e is SocketTimeoutException) "5초 안에 응답 없음" else "Longbridge에 닿지 못함") }   // ios: WidgetShared/Models.swift:683
-        catch (e: Exception) { return null to "Longbridge에 닿지 못함" }   // ios: WidgetShared/Models.swift:684
+        r.setValue(if (listOf(k.key, k.secret, token).any { it.startsWith("us_") }) "us" else "ap", "x-dc-region")   // ios: WidgetShared/Models.swift:680
+        r.setValue(sign(path = path, key = k.key, token = token, ts = ts, body = b, secret = k.secret), "x-api-signature")   // ios: WidgetShared/Models.swift:681
+        try {   // ios: WidgetShared/Models.swift:682
+            val (http0, d) = r.send()   // ios: WidgetShared/Models.swift:683
+            val http = http0.coerceAtLeast(0)   // ios: WidgetShared/Models.swift:684
+            val o = jObj(feedJson(d))   // ios: WidgetShared/Models.swift:685
+            val code = o?.let { num(it["code"]) } ?: -1.0   // ios: WidgetShared/Models.swift:686
+            if (http == 200 && code == 0.0) return (jObj(o?.get("data")) ?: emptyMap()) to null   // ios: WidgetShared/Models.swift:687
+            return null to why(http, o?.get("message") as? String)   // ios: WidgetShared/Models.swift:688
+        } catch (e: IOException) { return null to (if (e is SocketTimeoutException) "5초 안에 응답 없음" else "Longbridge에 닿지 못함") }   // ios: WidgetShared/Models.swift:689
+        catch (e: Exception) { return null to "Longbridge에 닿지 못함" }   // ios: WidgetShared/Models.swift:690
     }
 
     /** 공식 SDK 서명: "방법|경로|쿼리|서명할 헤더들\n|헤더 이름들|본문 SHA1" 의 SHA1 을 "HMAC-SHA256|…" 로 묶어 App Secret 으로 HMAC */
-    fun sign(path: String, key: String, token: String, ts: String, body: ByteArray, secret: String): String {   // ios: WidgetShared/Models.swift:688
-        val names = "authorization;x-api-key;x-timestamp"   // ios: WidgetShared/Models.swift:689
-        var plain = "POST|" + path + "||"   // ios: WidgetShared/Models.swift:690
-        plain += "authorization:$token\nx-api-key:$key\nx-timestamp:$ts\n"   // ios: WidgetShared/Models.swift:691
-        plain += "|" + names + "|"   // ios: WidgetShared/Models.swift:692
-        if (body.isNotEmpty()) plain += hex(MessageDigest.getInstance("SHA-1").digest(body))   // ios: WidgetShared/Models.swift:693
-        val text = "HMAC-SHA256|" + hex(MessageDigest.getInstance("SHA-1").digest(plain.toByteArray(Charsets.UTF_8)))   // ios: WidgetShared/Models.swift:694
+    fun sign(path: String, key: String, token: String, ts: String, body: ByteArray, secret: String): String {   // ios: WidgetShared/Models.swift:694
+        val names = "authorization;x-api-key;x-timestamp"   // ios: WidgetShared/Models.swift:695
+        var plain = "POST|" + path + "||"   // ios: WidgetShared/Models.swift:696
+        plain += "authorization:$token\nx-api-key:$key\nx-timestamp:$ts\n"   // ios: WidgetShared/Models.swift:697
+        plain += "|" + names + "|"   // ios: WidgetShared/Models.swift:698
+        if (body.isNotEmpty()) plain += hex(MessageDigest.getInstance("SHA-1").digest(body))   // ios: WidgetShared/Models.swift:699
+        val text = "HMAC-SHA256|" + hex(MessageDigest.getInstance("SHA-1").digest(plain.toByteArray(Charsets.UTF_8)))   // ios: WidgetShared/Models.swift:700
         // 빈 비밀값은 HMAC 에서 0 한 바이트 키와 같다 (SecretKeySpec 은 빈 키를 받지 않는다)
-        val mac = Mac.getInstance("HmacSHA256").run { init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8).let { if (it.isEmpty()) ByteArray(1) else it }, "HmacSHA256")); doFinal(text.toByteArray(Charsets.UTF_8)) }   // ios: WidgetShared/Models.swift:695
-        return "HMAC-SHA256 SignedHeaders=$names, Signature=" + hex(mac)   // ios: WidgetShared/Models.swift:696
+        val mac = Mac.getInstance("HmacSHA256").run { init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8).let { if (it.isEmpty()) ByteArray(1) else it }, "HmacSHA256")); doFinal(text.toByteArray(Charsets.UTF_8)) }   // ios: WidgetShared/Models.swift:701
+        return "HMAC-SHA256 SignedHeaders=$names, Signature=" + hex(mac)   // ios: WidgetShared/Models.swift:702
     }
-    private fun hex(d: ByteArray): String = d.joinToString("") { String.format("%02x", it) }   // ios: WidgetShared/Models.swift:698
+    private fun hex(d: ByteArray): String = d.joinToString("") { String.format("%02x", it) }   // ios: WidgetShared/Models.swift:704
 
-    fun why(http: Int, message: String?): String {   // ios: WidgetShared/Models.swift:700
-        if (http == 401 || http == 403) return "키가 맞지 않거나 토큰 기한이 지났어요"   // ios: WidgetShared/Models.swift:701
-        if (http == 429) return "잠시 뒤에 다시 받아요"   // ios: WidgetShared/Models.swift:702
-        if (!message.isNullOrEmpty()) return "Longbridge: " + message.take(60)   // ios: WidgetShared/Models.swift:703
-        return "Longbridge 응답 $http"   // ios: WidgetShared/Models.swift:704
+    fun why(http: Int, message: String?): String {   // ios: WidgetShared/Models.swift:706
+        if (http == 401 || http == 403) return "키가 맞지 않거나 토큰 기한이 지났어요"   // ios: WidgetShared/Models.swift:707
+        if (http == 429) return "잠시 뒤에 다시 받아요"   // ios: WidgetShared/Models.swift:708
+        if (!message.isNullOrEmpty()) return "Longbridge: " + message.take(60)   // ios: WidgetShared/Models.swift:709
+        return "Longbridge 응답 $http"   // ios: WidgetShared/Models.swift:710
     }
 
     /** 키 확인: AAPL 하나를 물어 본다 (설정 화면 '연결하기') */
-    suspend fun check(): String? {   // ios: WidgetShared/Models.swift:708
-        val k = LongbridgeKeys.load() ?: return "키 없음"   // ios: WidgetShared/Models.swift:709
-        val (o, e) = post("/quote/quotes", mapOf("symbol" to listOf("AAPL.US")), k)   // ios: WidgetShared/Models.swift:710
-        if (e != null) return e   // ios: WidgetShared/Models.swift:711
-        return if ((o?.get("secu_quote") as? List<*>)?.isEmpty() == false) null else "시세 권한이 없어요"   // ios: WidgetShared/Models.swift:712
+    suspend fun check(): String? {   // ios: WidgetShared/Models.swift:714
+        val k = LongbridgeKeys.load() ?: return "키 없음"   // ios: WidgetShared/Models.swift:715
+        val (o, e) = post("/quote/quotes", mapOf("symbol" to listOf("AAPL.US")), k)   // ios: WidgetShared/Models.swift:716
+        if (e != null) return e   // ios: WidgetShared/Models.swift:717
+        return if ((o?.get("secu_quote") as? List<*>)?.isEmpty() == false) null else "시세 권한이 없어요"   // ios: WidgetShared/Models.swift:718
     }
 
     /** 위젯: 앱이 feed.json 에 넘긴 내 종목을 위젯이 직접 Longbridge 에 묻는다 */
-    suspend fun widgetFetch(minAge: Double): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:716,717
-        val ty = (if (LongbridgeKeys.on) Store.read(WFeed.serializer(), "feed.json")?.ty else null)?.takeIf { it.isNotEmpty() } ?: return null   // ios: WidgetShared/Models.swift:718
-        return fetch(ty, minAge = minAge)   // ios: WidgetShared/Models.swift:719
+    suspend fun widgetFetch(minAge: Double): QuoteFeed.File? {   // ios: WidgetShared/Models.swift:722,723
+        val ty = (if (LongbridgeKeys.on) Store.read(WFeed.serializer(), "feed.json")?.ty else null)?.takeIf { it.isNotEmpty() } ?: return null   // ios: WidgetShared/Models.swift:724
+        return fetch(ty, minAge = minAge)   // ios: WidgetShared/Models.swift:725
     }
 }
 
 /** 사용자가 넣은 Longbridge 키. Alpaca 키처럼 이 기기 Keystore 로 감싸 둔다 */
-object LongbridgeKeys {   // ios: WidgetShared/Models.swift:724
-    @Serializable data class Keys(var key: String, var secret: String, var token: String)   // ios: WidgetShared/Models.swift:725
-    private fun q(): String =   // ios: WidgetShared/Models.swift:726
-        KeyVault.slot("com.naeilo.longbridge", "keys")   // ios: WidgetShared/Models.swift:727
-    private fun put(v: Keys?) {   // ios: WidgetShared/Models.swift:729
-        KeyVault.delete(q())   // ios: WidgetShared/Models.swift:730
-        if (v == null) return; val d = runCatching { NJson.encodeToString(Keys.serializer(), v).toByteArray(Charsets.UTF_8) }.getOrNull() ?: return   // ios: WidgetShared/Models.swift:731
-        val a = q()   // ios: WidgetShared/Models.swift:732
-        KeyVault.add(a, d)   // ios: WidgetShared/Models.swift:734,736
+object LongbridgeKeys {   // ios: WidgetShared/Models.swift:730
+    @Serializable data class Keys(var key: String, var secret: String, var token: String)   // ios: WidgetShared/Models.swift:731
+    private fun q(): String =   // ios: WidgetShared/Models.swift:732
+        KeyVault.slot("com.naeilo.longbridge", "keys")   // ios: WidgetShared/Models.swift:733
+    private fun put(v: Keys?) {   // ios: WidgetShared/Models.swift:735
+        KeyVault.delete(q())   // ios: WidgetShared/Models.swift:736
+        if (v == null) return; val d = runCatching { NJson.encodeToString(Keys.serializer(), v).toByteArray(Charsets.UTF_8) }.getOrNull() ?: return   // ios: WidgetShared/Models.swift:737
+        val a = q()   // ios: WidgetShared/Models.swift:738
+        KeyVault.add(a, d)   // ios: WidgetShared/Models.swift:740,742
     }
     /** 키를 넣었는지 (위젯도 보므로 표시만 공유 저장소에 둔다) */
-    val on: Boolean get() = Store.defaults.getBoolean("longbridge_user", false)   // ios: WidgetShared/Models.swift:739
-    fun load(): Keys? {   // ios: WidgetShared/Models.swift:740
-        if (!on) return null   // ios: WidgetShared/Models.swift:741
-        val a = q()   // ios: WidgetShared/Models.swift:742
-        val d = KeyVault.read(a) ?: return null   // ios: WidgetShared/Models.swift:743,744,745,746
-        return runCatching { NJson.decodeFromString(Keys.serializer(), d.decodeToString()) }.getOrNull()   // ios: WidgetShared/Models.swift:747
+    val stored: Boolean get() = Store.defaults.getBoolean("longbridge_user", false)   // ios: WidgetShared/Models.swift:749
+    /** 개발자용 잠시 멈춤 (내부 베타만): 키는 그대로 두고 없는 것처럼 안 부른다 */
+    val paused: Boolean get() = Config.isInternal && Store.defaults.getBoolean("longbridge_pause", false)   // ios: WidgetShared/Models.swift:751
+    val on: Boolean get() = stored && !paused   // ios: WidgetShared/Models.swift:752
+    fun load(): Keys? {   // ios: WidgetShared/Models.swift:746
+        if (!on) return null   // ios: WidgetShared/Models.swift:747
+        val a = q()   // ios: WidgetShared/Models.swift:748
+        val d = KeyVault.read(a) ?: return null   // ios: WidgetShared/Models.swift:743,753,754,755
+        return runCatching { NJson.decodeFromString(Keys.serializer(), d.decodeToString()) }.getOrNull()   // ios: WidgetShared/Models.swift:756
     }
-    fun save(k: Keys) {   // ios: WidgetShared/Models.swift:749
-        put(k)   // ios: WidgetShared/Models.swift:750
-        Store.defaults.edit().putBoolean("longbridge_user", true).apply()   // ios: WidgetShared/Models.swift:751
+    fun save(k: Keys) {   // ios: WidgetShared/Models.swift:758
+        put(k)   // ios: WidgetShared/Models.swift:759
+        Store.defaults.edit().putBoolean("longbridge_user", true).apply()   // ios: WidgetShared/Models.swift:760
     }
-    fun clear() {   // ios: WidgetShared/Models.swift:753
-        put(null)   // ios: WidgetShared/Models.swift:754
-        Store.defaults.edit().putBoolean("longbridge_user", false)   // ios: WidgetShared/Models.swift:755
-            .remove("longbridge_err")   // ios: WidgetShared/Models.swift:756
-            .remove("longbridge_ok_at").apply()   // ios: WidgetShared/Models.swift:757
-        Store.remove(LongbridgeFeed.name)   // ios: WidgetShared/Models.swift:758
+    fun clear() {   // ios: WidgetShared/Models.swift:762
+        put(null)   // ios: WidgetShared/Models.swift:763
+        Store.defaults.edit().putBoolean("longbridge_user", false)   // ios: WidgetShared/Models.swift:764
+            .remove("longbridge_err")   // ios: WidgetShared/Models.swift:765
+            .remove("longbridge_ok_at").apply()   // ios: WidgetShared/Models.swift:766
+        Store.remove(LongbridgeFeed.name)   // ios: WidgetShared/Models.swift:767
     }
 }
 

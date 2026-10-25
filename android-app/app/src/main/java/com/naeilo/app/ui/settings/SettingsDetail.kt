@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -519,6 +520,7 @@ fun WidgetPickView(m: AppModel, cover: Boolean = false) {   // cover: 홈 [위�
     val prefs = Defaults.prefs
     var dark by remember { mutableStateOf(prefs.getBoolean("cpDark", false)) }   // ios: Views/SettingsDetail.swift:368
     var who by remember { mutableStateOf(prefs.getString("cpWho", null)) }   // ios: Views/SettingsDetail.swift:369
+    var baseOpen by remember { mutableStateOf(false) }   // ios: Views/SettingsDetail.swift:370 기본 위젯 목록: 처음엔 접어 둔다
 
     val reward: WReward = Store.read(WReward.serializer(), "reward.json") ?: WReward.sample   // ios: Views/SettingsDetail.swift:371
 
@@ -590,7 +592,7 @@ fun WidgetPickView(m: AppModel, cover: Boolean = false) {   // cover: 홈 [위�
         Screen {
             // ios: Views/SettingsDetail.swift:378
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                if (cover) com.naeilo.app.ui.wave.GameHeader(title = "위젯", dismiss = { m.widgetsOpen = false }) else T("위젯", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:379
+                if (cover) com.naeilo.app.ui.wave.GameHeader(title = "홈 화면 위젯", dismiss = { m.widgetsOpen = false }) else T("위젯", style = appFont(22f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:380
                 // 홈 화면에 위젯 넣는 단계 (단계마다 기호 하나). 안드로이드 런처 순서로 2·4·5단계 글이 다르다 (예외 목록)
                 // ios: Views/SettingsDetail.swift:381,388,389,390
                 Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(14.dp)).border(1.dp, Theme.border, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -675,8 +677,16 @@ fun WidgetPickView(m: AppModel, cover: Boolean = false) {   // cover: 홈 [위�
                     }
                 }
 
-                // 기본 위젯: 앱 시작 단계로 열림
-                T("기본 위젯", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:458
+                // 기본 위젯: 앱 시작 단계로 열림. 처음엔 접어 두고 제목 줄을 눌러 편다
+                val turn by animateFloatAsState(if (baseOpen) 180f else 0f, tween(200), label = "base")   // ios: Views/SettingsDetail.swift:459,465
+                // ios: Views/SettingsDetail.swift:459,460,467,469
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp).defaultMinSize(minHeight = 44.dp).plainClickable { baseOpen = !baseOpen }, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    T("기본 위젯", style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:461
+                    T("${base.count { it.ok }}/${base.size}", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsDetail.swift:462
+                    Spacer(Modifier.weight(1f))   // ios: Views/SettingsDetail.swift:463
+                    Sym("chevron.down", 13f, Theme.sub, Modifier.rotate(turn))   // ios: Views/SettingsDetail.swift:464,465
+                }
+                if (baseOpen) {   // ios: Views/SettingsDetail.swift:470
                 // ios: Views/SettingsDetail.swift:459,476,477
                 Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(18.dp)).border(1.dp, Theme.border, RoundedCornerShape(18.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                     // ios: Views/SettingsDetail.swift:460
@@ -695,7 +705,8 @@ fun WidgetPickView(m: AppModel, cover: Boolean = false) {   // cover: 홈 [위�
                         }
                     }
                 }
-                Note("못 받은 위젯은 잠긴 모습으로 보여요.")   // ios: Views/SettingsDetail.swift:478
+                Note("못 받은 위젯은 잠긴 모습으로 보여요.")   // ios: Views/SettingsDetail.swift:490
+                }
 
                 // 금액 가리기: 위젯에서 금액을 누르면 •••• 로 가려진다. 함께/따로는 Store.hideEach
                 T("금액 가리기", Modifier.padding(top = 6.dp), style = appFont(17f, FontWeight.Bold))   // ios: Views/SettingsDetail.swift:481

@@ -97,7 +97,7 @@ object Sample {
         }
     }
     /** 공개 베타·출시는 가상 시장 샘플 6종목만 (data/sample/symbols.json 과 같은 값). 내부 베타는 아래 실제 종목 예시 */
-    val baseSymbols: List<Symbol> by lazy { if (Config.usesCollectedData) collectedSymbols else virtualSymbols }   // ios: Data/SampleData.swift:81
+    val baseSymbols: List<Symbol> by lazy { if (Config.isInternal) collectedSymbols else virtualSymbols }   // ios: Data/SampleData.swift:81
     val virtualSymbols: List<Symbol> by lazy { listOf(   // ios: Data/SampleData.swift:82
         Symbol(id = "DRNK", name = "드링커", market = "미국 주식", close = 250.0, currency = Currency.usd, sector = "우주항공·궤도 통신", search = "drinker"),  // ios: Data/SampleData.swift:83
         Symbol(id = "NXIX", name = "내일100 지수 ETF", market = "미국 ETF", close = 412.3, currency = Currency.usd, sector = "지수", search = "naeilo index"),  // ios: Data/SampleData.swift:84
@@ -107,7 +107,7 @@ object Sample {
         Symbol(id = "V00002", name = "내일 코스피 ETF", market = "코스피 ETF", close = 38450.0, currency = Currency.krw, sector = "지수", search = "naeilo kospi"),  // ios: Data/SampleData.swift:88
     ) }
     /** 가상 종목 (사이트·키 시세를 받지 않고 번들 샘플 값만 쓴다). 내부 베타는 DRNK 하나 */
-    val virtualIds: Set<String> by lazy { if (Config.usesCollectedData) setOf("DRNK") else virtualSymbols.map { it.id }.toSet() }   // ios: Data/SampleData.swift:91
+    val virtualIds: Set<String> by lazy { if (Config.isInternal) setOf("DRNK") else virtualSymbols.map { it.id }.toSet() }   // ios: Data/SampleData.swift:91
     fun isVirtual(id: String): Boolean = id in virtualIds   // ios: Data/SampleData.swift:92
     // ios: Data/SampleData.swift:93
     private val collectedSymbols: List<Symbol> by lazy { listOf(
@@ -135,7 +135,7 @@ object Sample {
     // ios: Data/SampleData.swift:101
     val profiles: Map<String, Profile> by lazy { if (AppModel.en) profilesKo.mapValues { it.value.en } else profilesKo }
     /** 공개 베타·출시는 가상 종목 소개를 더한다 (실제 같은 기호의 종목과 섞이지 않게 내부 베타에는 넣지 않는다) */
-    val profilesKo: Map<String, Profile> by lazy { if (Config.usesCollectedData) collectedProfiles else virtualProfiles + collectedProfiles }   // ios: Data/SampleData.swift:116
+    val profilesKo: Map<String, Profile> by lazy { if (Config.isInternal) collectedProfiles else virtualProfiles + collectedProfiles }   // ios: Data/SampleData.swift:116
     private val virtualProfiles: Map<String, Profile> by lazy { mapOf(   // ios: Data/SampleData.swift:117
         "NXIX" to Profile(mono = "N", color = 0x3A5BA0, etf = true, virtual = true, ceo = Pair("운용사", "내일 자산운용 (가상)"), hq = "가상 시장", since = "가상 종목",  // ios: Data/SampleData.swift:118
                         what = "가상 미국 대형주 100개를 담는 가상 ETF예요.", vision = "내일100 지수 (가상)", extra = Pair("담은 종목", "약 100개 (가상)")),  // ios: Data/SampleData.swift:119
@@ -197,7 +197,7 @@ object Sample {
     val startHoldings: List<Holding> = listOf(
         Holding(symbol = "DRNK", qty = 4.0, avg = 400.0),  // ios: Data/SampleData.swift:147
         // 공개 베타·출시는 가상 ETF NXIX 1주 $430 (data/sample/symbols.json start_holdings)
-        if (Config.usesCollectedData) Holding(symbol = "QQQ", qty = 1.0, avg = 500.0) else Holding(symbol = "NXIX", qty = 1.0, avg = 430.0),  // ios: Data/SampleData.swift:176
+        if (Config.isInternal) Holding(symbol = "QQQ", qty = 1.0, avg = 500.0) else Holding(symbol = "NXIX", qty = 1.0, avg = 430.0),  // ios: Data/SampleData.swift:176
     )
 
     // 3년 전망용 가정값: [현재 정세 연 기대, 과거 추세 연 성장, 연 변동성]. 사이트 stats.json 에 없는 종목(한국 종목 등)에만 쓴다 (SiteStats.params)
@@ -215,7 +215,7 @@ object Sample {
 
 // MARK: 쉼터 (『중첩된 현실』 외전 『이종 공명』, 이름·설정은 캐릭터 설정 스레드 기준)
 
-// ios: Data/SampleData.swift:164,165,166,167,168,169,171,172,173,174,175,176
+// ios: Data/SampleData.swift:164,165,166,167,168,169,171,172,173,174,175
 class Friend(
     val id: String,
     val name: String,

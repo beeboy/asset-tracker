@@ -811,7 +811,7 @@ fun AppModel.go(g: RemindGo) {
         // ios: Data/Remind.swift:637
         is RemindGo.hold -> {
             tab = Tab.hold   // ios: Data/Remind.swift:638
-            holdPath = Sample.symbol(g.s)?.let { listOf(it) } ?: emptyList()   // ios: Data/Remind.swift:639
+            holdPath = emptyList(); holdOpen = Sample.symbol(g.s)   // ios: Data/Remind.swift:639
         }
         RemindGo.support -> openSettings(SettingsRoute.support)   // ios: Data/Remind.swift:640
         RemindGo.widgets -> kotlinx.coroutines.MainScope().launch { kotlinx.coroutines.delay(350); widgetsOpen = true }   // ios: Data/Remind.swift:641 (0.35초)

@@ -172,99 +172,99 @@ object KrQuoteFeed {   // ios: WidgetShared/Models.swift:117
 }
 
 /// 내 토스 키로 받아 둔 일봉 (앱 TossHistory 가 쓰는 toss_history.json, 키 = Yahoo 기호). 토스 값의 전일 종가·정규장 종가를 여기서 센다
-object TossDaily {   // ios: WidgetShared/Models.swift:557
-    @Serializable data class Hist(val dates: List<String>, val closes: List<Double>)   // ios: WidgetShared/Models.swift:558
-    @Serializable data class File(var h: Map<String, Hist>)   // ios: WidgetShared/Models.swift:559
-    fun cached(): File? = if (TossKeys.on) Store.read(File.serializer(), "toss_history.json") else null   // ios: WidgetShared/Models.swift:560
+object TossDaily {   // ios: WidgetShared/Models.swift:563
+    @Serializable data class Hist(val dates: List<String>, val closes: List<Double>)   // ios: WidgetShared/Models.swift:564
+    @Serializable data class File(var h: Map<String, Hist>)   // ios: WidgetShared/Models.swift:565
+    fun cached(): File? = if (TossKeys.on) Store.read(File.serializer(), "toss_history.json") else null   // ios: WidgetShared/Models.swift:566
 
-    private fun day(t: Double, kr: Boolean): Pair<String, Int> {   // ios: WidgetShared/Models.swift:562
-        val z = Instant.ofEpochMilli((t * 1000).toLong())   // ios: WidgetShared/Models.swift:563,564,565
+    private fun day(t: Double, kr: Boolean): Pair<String, Int> {   // ios: WidgetShared/Models.swift:568
+        val z = Instant.ofEpochMilli((t * 1000).toLong())   // ios: WidgetShared/Models.swift:569,570,571
             .atZone(ZoneId.of(if (kr) "Asia/Seoul" else "America/New_York"))
-        return cformat("%04d-%02d-%02d", z.year, z.monthValue, z.dayOfMonth) to z.hour   // ios: WidgetShared/Models.swift:566
+        return cformat("%04d-%02d-%02d", z.year, z.monthValue, z.dayOfMonth) to z.hour   // ios: WidgetShared/Models.swift:572
     }
     /** 토스 주간거래 시간(미국 동부 일요일 20시~금요일 4시 중 20시~4시)에 체결된 값인가. 금요일 20시 뒤·주말은 장이 없어 금요일 종가로 센다 (토스와 같게) */
-    fun daytime(at: Double): Boolean { val h = day(at, kr = false).second; val w = Instant.ofEpochMilli((at * 1000).toLong()).atZone(ZoneId.of("America/New_York")).dayOfWeek.value % 7 + 1; return (h >= 20 && w <= 5) || (h < 4 && w >= 2 && w <= 6) }   // ios: WidgetShared/Models.swift:569
+    fun daytime(at: Double): Boolean { val h = day(at, kr = false).second; val w = Instant.ofEpochMilli((at * 1000).toLong()).atZone(ZoneId.of("America/New_York")).dayOfWeek.value % 7 + 1; return (h >= 20 && w <= 5) || (h < 4 && w >= 2 && w <= 6) }   // ios: WidgetShared/Models.swift:575
     /** 토스 값(at 시각)의 전일 종가: 그 거래일 앞 마지막 종가.
      *  미국 20시 뒤 주간거래는 다음 거래일 몫이라 그날 종가까지 넣는다 (4시 전은 이미 다음 날짜) */
-    fun prev(h: Hist?, at: Double, kr: Boolean): Double? {   // ios: WidgetShared/Models.swift:572
-        if (h == null || at <= 0) return null   // ios: WidgetShared/Models.swift:573
-        val (d, hr) = day(at, kr)   // ios: WidgetShared/Models.swift:574
-        val late = !kr && hr >= 20 && daytime(at)   // ios: WidgetShared/Models.swift:575
-        val i = h.dates.indexOfLast { if (late) it <= d else it < d }.takeIf { it >= 0 } ?: return null   // ios: WidgetShared/Models.swift:576
-        return h.closes.getOrNull(i)   // ios: WidgetShared/Models.swift:577
+    fun prev(h: Hist?, at: Double, kr: Boolean): Double? {   // ios: WidgetShared/Models.swift:578
+        if (h == null || at <= 0) return null   // ios: WidgetShared/Models.swift:579
+        val (d, hr) = day(at, kr)   // ios: WidgetShared/Models.swift:580
+        val late = !kr && hr >= 20 && daytime(at)   // ios: WidgetShared/Models.swift:581
+        val i = h.dates.indexOfLast { if (late) it <= d else it < d }.takeIf { it >= 0 } ?: return null   // ios: WidgetShared/Models.swift:582
+        return h.closes.getOrNull(i)   // ios: WidgetShared/Models.swift:583
     }
     /** 미국 정규장 종가: 토스 값이 주간거래가 아니면 그날 일봉 종가 (그날 일봉을 아직 못 받았으면 null) */
-    fun reg(h: Hist?, at: Double): Double? {   // ios: WidgetShared/Models.swift:580
-        if (h == null || at <= 0 || daytime(at)) return null   // ios: WidgetShared/Models.swift:581
-        val d = day(at, kr = false).first   // ios: WidgetShared/Models.swift:582
-        val i = h.dates.lastIndexOf(d).takeIf { it >= 0 } ?: return null   // ios: WidgetShared/Models.swift:583
-        return h.closes.getOrNull(i)   // ios: WidgetShared/Models.swift:584
+    fun reg(h: Hist?, at: Double): Double? {   // ios: WidgetShared/Models.swift:586
+        if (h == null || at <= 0 || daytime(at)) return null   // ios: WidgetShared/Models.swift:587
+        val d = day(at, kr = false).first   // ios: WidgetShared/Models.swift:588
+        val i = h.dates.lastIndexOf(d).takeIf { it >= 0 } ?: return null   // ios: WidgetShared/Models.swift:589
+        return h.closes.getOrNull(i)   // ios: WidgetShared/Models.swift:590
     }
 }
 
 /** 미국 장이 다 끝난 때: 뉴욕 시각 평일 20시(애프터마켓 끝)부터 다음 날 4시(프리마켓 시작)까지와 주말.
  *  이때는 애프터마켓 가격 대신 정규장 종가로 센다. 토스 총자산·오늘 손익이 이렇게 센다 (2026-10-17 토스 화면과 맞춰 봄) */
-object USSession {   // ios: WidgetShared/Models.swift:588
-    fun closed(d: Instant = Instant.now()): Boolean {   // ios: WidgetShared/Models.swift:589
-        val c = d.atZone(ZoneId.of("America/New_York")); val weekday = c.dayOfWeek.value % 7 + 1   // 1 일요일 … 7 토요일 (Calendar.weekday 와 같게)   // ios: WidgetShared/Models.swift:590,591,592
-        return weekday == 7 || weekday == 1 || c.hour >= 20 || c.hour < 4   // 7 토요일, 1 일요일   // ios: WidgetShared/Models.swift:593
+object USSession {   // ios: WidgetShared/Models.swift:594
+    fun closed(d: Instant = Instant.now()): Boolean {   // ios: WidgetShared/Models.swift:595
+        val c = d.atZone(ZoneId.of("America/New_York")); val weekday = c.dayOfWeek.value % 7 + 1   // 1 일요일 … 7 토요일 (Calendar.weekday 와 같게)   // ios: WidgetShared/Models.swift:596,597,598
+        return weekday == 7 || weekday == 1 || c.hour >= 20 || c.hour < 4   // 7 토요일, 1 일요일   // ios: WidgetShared/Models.swift:599
     }
 }
 
 // 지금 가격·원/달러 백업: 토스가 못 받는 내 종목(Store.quoteSyms)을 Yahoo 에서 직접 받는다. 그것도 못 받은 종목만 사이트(naeilo.com/data/quotes.json, 평일 30분마다 모음)로 채운다.
-object QuoteFeed {   // ios: WidgetShared/Models.swift:763
-    @Serializable data class Q(   // ios: WidgetShared/Models.swift:764
-        var last: Double, var prev: Double, var at: Double,   // 지금 가격, 전일 종가, 가격 시각(초)   // ios: WidgetShared/Models.swift:765
-        var reg: Double? = null,                              // 정규장 가격 (사이트 시세만. 미국 장이 다 끝나면 이 값으로 센다)   // ios: WidgetShared/Models.swift:766
+object QuoteFeed {   // ios: WidgetShared/Models.swift:772
+    @Serializable data class Q(   // ios: WidgetShared/Models.swift:773
+        var last: Double, var prev: Double, var at: Double,   // 지금 가격, 전일 종가, 가격 시각(초)   // ios: WidgetShared/Models.swift:774
+        var reg: Double? = null,                              // 정규장 가격 (사이트 시세만. 미국 장이 다 끝나면 이 값으로 센다)   // ios: WidgetShared/Models.swift:775
     )
-    @Serializable data class File(var got: Double, var q: Map<String, Q>)               // got = 받은 시각(초)   // ios: WidgetShared/Models.swift:768
+    @Serializable data class File(var got: Double, var q: Map<String, Q>)               // got = 받은 시각(초)   // ios: WidgetShared/Models.swift:777
 
-    const val name = "site_quotes.json"   // ios: WidgetShared/Models.swift:770
+    const val name = "site_quotes.json"   // ios: WidgetShared/Models.swift:779
     /** 공개 베타·출시는 사이트·Yahoo 시세를 쓰지 않는다 (내부 베타 때 받아 둔 파일이 남아 있어도 읽지 않는다) */
-    fun cached(): File? = if (Config.usesCollectedData) Store.read(File.serializer(), name) else null   // ios: WidgetShared/Models.swift:774
+    fun cached(): File? = if (Config.usesCollectedData) Store.read(File.serializer(), name) else null   // ios: WidgetShared/Models.swift:783
 
     /** 받은 지 minAge 초가 안 됐으면 저장해 둔 값을 그대로 쓴다. 실패하면 저장해 둔 값 */
-    suspend fun fetch(minAge: Double = 0.0): File? = withContext(Dispatchers.IO) { fetchIO(minAge) }   // ios: WidgetShared/Models.swift:774,775
+    suspend fun fetch(minAge: Double = 0.0): File? = withContext(Dispatchers.IO) { fetchIO(minAge) }   // ios: WidgetShared/Models.swift:783,784
     private suspend fun fetchIO(minAge: Double): File? {
-        if (!Config.usesCollectedData) return null   // ios: WidgetShared/Models.swift:779
-        val old = cached()   // ios: WidgetShared/Models.swift:780
-        val list = Store.quoteSyms   // ios: WidgetShared/Models.swift:777
-        if (list?.isEmpty() == true) return old   // 토스가 다 받는다   // ios: WidgetShared/Models.swift:778
-        val want = (list ?: emptyList()).toSet()   // ios: WidgetShared/Models.swift:779
-        if (old != null && nowSec() - old.got < minAge && old.q.keys.containsAll(want)) return old   // ios: WidgetShared/Models.swift:780
-        val q = mutableMapOf<String, Q>()   // ios: WidgetShared/Models.swift:781
-        coroutineScope {   // ios: WidgetShared/Models.swift:782
-            val g = want.map { k -> async { k to Relay.quote(k) } }   // ios: WidgetShared/Models.swift:783
-            for ((k, v) in g.awaitAll()) { if (v != null) q[k] = v }   // ios: WidgetShared/Models.swift:784
+        if (!Config.usesCollectedData) return null   // ios: WidgetShared/Models.swift:788
+        val old = cached()   // ios: WidgetShared/Models.swift:789
+        val list = Store.quoteSyms   // ios: WidgetShared/Models.swift:786
+        if (list?.isEmpty() == true) return old   // 토스가 다 받는다   // ios: WidgetShared/Models.swift:787
+        val want = (list ?: emptyList()).toSet()   // ios: WidgetShared/Models.swift:788
+        if (old != null && nowSec() - old.got < minAge && old.q.keys.containsAll(want)) return old   // ios: WidgetShared/Models.swift:789
+        val q = mutableMapOf<String, Q>()   // ios: WidgetShared/Models.swift:790
+        coroutineScope {   // ios: WidgetShared/Models.swift:791
+            val g = want.map { k -> async { k to Relay.quote(k) } }   // ios: WidgetShared/Models.swift:792
+            for ((k, v) in g.awaitAll()) { if (v != null) q[k] = v }   // ios: WidgetShared/Models.swift:793
         }
-        if (want.isNotEmpty() && q.keys.containsAll(want)) return save(q)   // ios: WidgetShared/Models.swift:786
+        if (want.isNotEmpty() && q.keys.containsAll(want)) return save(q)   // ios: WidgetShared/Models.swift:795
         // 못 받은 종목은 사이트 값 (사이트도 안 되면 받아 둔 값)
-        siteFetch()?.let { site -> for ((k, v) in site) if (q[k] == null) q[k] = v }   // ios: WidgetShared/Models.swift:788
-        for ((k, v) in old?.q ?: emptyMap()) if (q[k] == null && (want.contains(k) || want.isEmpty())) q[k] = v   // ios: WidgetShared/Models.swift:789
-        if (q.isEmpty()) return old   // ios: WidgetShared/Models.swift:790
-        return save(q)   // ios: WidgetShared/Models.swift:791
+        siteFetch()?.let { site -> for ((k, v) in site) if (q[k] == null) q[k] = v }   // ios: WidgetShared/Models.swift:797
+        for ((k, v) in old?.q ?: emptyMap()) if (q[k] == null && (want.contains(k) || want.isEmpty())) q[k] = v   // ios: WidgetShared/Models.swift:798
+        if (q.isEmpty()) return old   // ios: WidgetShared/Models.swift:799
+        return save(q)   // ios: WidgetShared/Models.swift:800
     }
 
-    private fun save(q: Map<String, Q>): File {   // ios: WidgetShared/Models.swift:794
-        val f = File(got = nowSec(), q = q)   // ios: WidgetShared/Models.swift:795
-        Store.write(File.serializer(), f, name)   // ios: WidgetShared/Models.swift:796
-        return f   // ios: WidgetShared/Models.swift:797
+    private fun save(q: Map<String, Q>): File {   // ios: WidgetShared/Models.swift:803
+        val f = File(got = nowSec(), q = q)   // ios: WidgetShared/Models.swift:804
+        Store.write(File.serializer(), f, name)   // ios: WidgetShared/Models.swift:805
+        return f   // ios: WidgetShared/Models.swift:806
     }
 
-    private suspend fun siteFetch(): Map<String, Q>? {   // ios: WidgetShared/Models.swift:800
-        val c = URL(Config.data, "quotes.json").toString()   // ios: WidgetShared/Models.swift:801
-        val queryItems = listOf("t" to (nowSec() / 60).toLong().toString()); val url = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // 사이트 캐시를 피한다 (1분 단위)   // ios: WidgetShared/Models.swift:802
-        val req = FeedReq(url, timeout = 10.0)   // ios: WidgetShared/Models.swift:803
-        req.setValue("naeilo-ios/0.1", "User-Agent")   // ios: WidgetShared/Models.swift:804
-        val (code, data) = runCatching { req.send() }.getOrNull() ?: return null   // ios: WidgetShared/Models.swift:805
-        if (code != 200) return null   // ios: WidgetShared/Models.swift:806
-        val o = jObj(feedJson(data)) ?: return null   // ios: WidgetShared/Models.swift:807
-        val q = mutableMapOf<String, Q>()   // ios: WidgetShared/Models.swift:808
-        for ((k, any) in o) {   // 종목이 아닌 칸(예: 갱신 시각)이 생겨도 나머지는 읽는다   // ios: WidgetShared/Models.swift:809
-            val v = jObj(any) ?: continue; val prev = num(v["prev_close"]) ?: continue; val last = num(v["last"]) ?: num(v["regular"]) ?: continue   // ios: WidgetShared/Models.swift:810
-            q[k] = Q(last = last, prev = prev, at = num(v["last_time"]) ?: num(v["regular_time"]) ?: 0.0, reg = num(v["regular"]))   // ios: WidgetShared/Models.swift:811
+    private suspend fun siteFetch(): Map<String, Q>? {   // ios: WidgetShared/Models.swift:809
+        val c = URL(Config.data, "quotes.json").toString()   // ios: WidgetShared/Models.swift:810
+        val queryItems = listOf("t" to (nowSec() / 60).toLong().toString()); val url = c + "?" + queryItems.joinToString("&") { "${it.first}=${it.second}" }   // 사이트 캐시를 피한다 (1분 단위)   // ios: WidgetShared/Models.swift:811
+        val req = FeedReq(url, timeout = 10.0)   // ios: WidgetShared/Models.swift:812
+        req.setValue("naeilo-ios/0.1", "User-Agent")   // ios: WidgetShared/Models.swift:813
+        val (code, data) = runCatching { req.send() }.getOrNull() ?: return null   // ios: WidgetShared/Models.swift:814
+        if (code != 200) return null   // ios: WidgetShared/Models.swift:815
+        val o = jObj(feedJson(data)) ?: return null   // ios: WidgetShared/Models.swift:816
+        val q = mutableMapOf<String, Q>()   // ios: WidgetShared/Models.swift:817
+        for ((k, any) in o) {   // 종목이 아닌 칸(예: 갱신 시각)이 생겨도 나머지는 읽는다   // ios: WidgetShared/Models.swift:818
+            val v = jObj(any) ?: continue; val prev = num(v["prev_close"]) ?: continue; val last = num(v["last"]) ?: num(v["regular"]) ?: continue   // ios: WidgetShared/Models.swift:819
+            q[k] = Q(last = last, prev = prev, at = num(v["last_time"]) ?: num(v["regular_time"]) ?: 0.0, reg = num(v["regular"]))   // ios: WidgetShared/Models.swift:820
         }
-        return if (q.isEmpty()) null else q   // ios: WidgetShared/Models.swift:813
+        return if (q.isEmpty()) null else q   // ios: WidgetShared/Models.swift:822
     }
 }
 

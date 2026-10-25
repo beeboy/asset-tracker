@@ -213,7 +213,7 @@ fun AnalysisPager(m: AppModel, start: AnalysisRoute) {
                     order.forEach { r -> Box(Modifier.size(5.dp, 5.dp).background(if (r == sel) Theme.teal else Theme.border, CircleShape)) }
                 }
             }
-        }) { nav?.pop?.invoke() }
+        }, onBack = nav?.backAction)
         // ios: Views/AnalysisView.swift:70,71,73,75
         CompositionLocalProvider(LocalDetailInPager provides true) {
             HorizontalPager(ps, Modifier.weight(1f), beyondViewportPageCount = 0, key = { order[it] }) { i -> Box(Modifier.fillMaxSize()) { AnalysisPage(m, order[i]) } }
@@ -237,6 +237,8 @@ fun AnalysisSheet(m: AppModel, route: AnalysisRoute, dismiss: () -> Unit) {
             if (p.size > base.size && p.take(base.size) == base) { path = path + p.drop(base.size); m.analysisPath = base }
         }
     }
+    // ios: Views/AnalysisView.swift:116,120 (.detailSheet(period: .y1), inPopup)
+    CompositionLocalProvider(com.naeilo.app.ui.LocalInPopup provides true) { com.naeilo.app.ui.hold.DetailSheet(m, Period.y1) {
     Box(Modifier.fillMaxSize()) {
         NavStack(path, { path = it }, root = {
             Column(Modifier.fillMaxSize()) {
@@ -251,10 +253,9 @@ fun AnalysisSheet(m: AppModel, route: AnalysisRoute, dismiss: () -> Unit) {
         }) { r -> analysisSheetPage(m, r) }   // ios: Views/AnalysisView.swift:117,118
         // 넘긴 화면에도 같은 자리에
         // ios: Views/AnalysisView.swift:121,122,123,124,126,127,128
-        Box(Modifier.align(Alignment.TopEnd).padding(end = 8.dp, top = 2.dp).size(44.dp).plainClickable(dismiss).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
-            Sym("xmark", 16f, Theme.ink, scaled = false)
-        }
+        com.naeilo.app.PopupX(Modifier.align(Alignment.TopEnd), dismiss)
     }
+    } }
 }
 
 /** 시트 안에서 넘긴 화면 (분석 탭 길과 같은 갈래: App.kt) */
@@ -262,7 +263,6 @@ fun AnalysisSheet(m: AppModel, route: AnalysisRoute, dismiss: () -> Unit) {
 @Composable
 private fun analysisSheetPage(m: AppModel, r: Any): NavPage = when (r) {
     is AnalysisRoute -> NavPage(r.title(m)) { AnalysisPage(m, r) }   // ios: Views/AnalysisView.swift:117 (detailInPager false)
-    is Symbol -> NavPage(r.name) { HoldingDetailView(m, sym = r, period0 = Period.y1) }   // ios: Views/AnalysisView.swift:118
     is FactorDetailRoute -> NavPage(FactorDetailView.navTitle(r.factor)) { FactorDetailView(m, r.factor, r.start) }
     is RateWhyRoute -> NavPage("근거") { RateWhyView(r.r, r.`when`, r.epsLast) }
     is com.naeilo.app.ui.calm.CalmFriendRoute -> com.naeilo.app.ui.shelter.characterPage(m, r.friend, invest = true)
@@ -334,6 +334,14 @@ fun AnalysisView(m: AppModel) {
     // ios: Views/AnalysisView.swift:177
     Sheet(show = sheet != null, onDismiss = { sheet = null }) {
         sheet?.let { r -> key(r) { AnalysisSheet(m, r) { sheet = null } } }
+    }
+    // 알림·탭 화면 링크로 들어온 분석도 같은 분석 팝업으로 (예전엔 탭 안에서 넘겼다). 팝업이 떠 있으면 팝업이 제 길로 옮긴다
+    // ios: Views/AnalysisView.swift:129,130,133,134,135,136
+    LaunchedEffect(Unit) {
+        snapshotFlow { m.analysisPath }.collect { p ->
+            val r = p.firstOrNull() as? AnalysisRoute
+            if (sheet == null && r != null) { m.analysisPath = emptyList(); sheet = r }
+        }
     }
 }
 

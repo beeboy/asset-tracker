@@ -70,6 +70,8 @@ import com.naeilo.app.net.KoreaEstimate
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.StockHit
 import com.naeilo.app.net.StockSearch
+import com.naeilo.app.net.AlpacaMinutes
+import com.naeilo.app.net.LongbridgeMinutes
 import com.naeilo.app.net.TossMinutes
 import com.naeilo.app.net.YahooSample
 import com.naeilo.app.net.last
@@ -125,12 +127,14 @@ private fun won(x: Double): String = cformat("%,d", x.swRound().roundToLong())
 fun HoldingDetailView(m: AppModel,
     sym: Symbol,   // ios: Views/HoldingsView.swift:575
     period0: Period,
+    inSheet: Boolean = false,   // ios: Views/HoldingsView.swift:687 팝업이면 이름은 머리에 있으니 카드에서 뺀다
+    onEdit: ((Symbol) -> Unit)? = null,   // 팝업 안이면 고치기를 그 팝업 안에서 넘긴다 (ios: 시트 안 navigationDestination)
 ) {
     var period by remember { mutableStateOf(period0) }   // ios: Views/HoldingsView.swift:576
     var editing by remember { mutableStateOf(false) }   // ios: Views/HoldingsView.swift:577
     var opened by remember { mutableStateOf(false) }   // ios: Views/HoldingsView.swift:578
     var inUsd by rememberPrefBool("holdUsd", false)   // ios: Views/HoldingsView.swift:579
-    var mins by remember { mutableStateOf<TossMinutes.Day?>(null) }   // ios: Views/HoldingsView.swift:631 1일: 토스 1분봉 (키가 있을 때만)
+    var mins by remember { mutableStateOf<TossMinutes.Day?>(null) }   // ios: Views/HoldingsView.swift:631 1일: 토스 1분봉, 없으면 Alpaca 1분봉 (키가 있을 때만)
     val isUsd = sym.currency == Currency.usd   // ios: Views/HoldingsView.swift:581
     val du = isUsd && inUsd   // ios: Views/HoldingsView.swift:582
     /** 원래 통화 값 → 지금 고른 통화 글 (가격: $는 소수 둘째 자리) */
@@ -157,9 +161,9 @@ fun HoldingDetailView(m: AppModel,
     // ios: Views/HoldingsView.swift:654 캡처용: --es editMode buy 면 고치기를 바로 연다
     LaunchedEffect(Unit) { if (m.arg("editMode") != null && !opened) { opened = true; editing = true } }
     // ios: Views/HoldingsView.swift:653
-    LaunchedEffect(editing) { if (editing) { editing = false; m.holdPath = m.holdPath + EditRoute(sym) } }
+    LaunchedEffect(editing) { if (editing) { editing = false; onEdit?.invoke(sym) ?: run { m.holdPath = m.holdPath + EditRoute(sym) } } }
     // ios: Views/HoldingsView.swift:709
-    LaunchedEffect(period) { if (period == Period.d1 && mins == null) mins = TossMinutes.day(CustomSymbols.yahoo(sym)) }
+    LaunchedEffect(period) { if (period == Period.d1 && mins == null) { val y = CustomSymbols.yahoo(sym); mins = TossMinutes.day(y) ?: AlpacaMinutes.day(y) ?: LongbridgeMinutes.day(y) } }   // ios: Views/HoldingsView.swift:745
 
     // ios: Views/HoldingsView.swift:664,665,666
     @Composable
@@ -179,7 +183,7 @@ fun HoldingDetailView(m: AppModel,
                     Card {
                         // ios: Views/HoldingsView.swift:605
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            T(sym.name, Modifier.weight(1f, fill = false), style = appFont(17f, FontWeight.Bold), maxLines = 1)   // ios: Views/HoldingsView.swift:606
+                            if (!inSheet) T(sym.name, Modifier.weight(1f, fill = false), style = appFont(17f, FontWeight.Bold), maxLines = 1)   // ios: Views/HoldingsView.swift:719
                             // ios: Views/HoldingsView.swift:607,608
                             T(sym.id, Modifier.background(Theme.line, CapsuleShape).padding(horizontal = 9.dp, vertical = 2.dp), style = appFont(12f, FontWeight.Bold), color = Theme.sub, maxLines = 1)
                             Spacer(Modifier.weight(1f).widthIn(min = 4.dp))   // ios: Views/HoldingsView.swift:609

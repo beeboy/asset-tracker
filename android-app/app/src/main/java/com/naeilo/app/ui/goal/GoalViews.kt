@@ -240,19 +240,6 @@ private fun <V> OnChange(v: V, f: (V) -> Unit) {
     LaunchedEffect(v) { if (first[0]) first[0] = false else f(v) }
 }
 
-/** .fullScreenCover: 아래에서 올라와 화면을 다 덮는다. 안에서 닫기는 LocalNavBack.current?.pop */
-@Composable
-private fun FullCover(show: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
-    if (!show) return
-    Dialog(onDismiss, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        val y = remember { Animatable(1f) }
-        LaunchedEffect(Unit) { y.animateTo(0f, tween(350, easing = EaseOut)) }
-        Box(Modifier.fillMaxSize().graphicsLayer { translationY = y.value * size.height }.background(Theme.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
-            CompositionLocalProvider(LocalNavBack provides NavBack(null, onDismiss)) { content() }
-        }
-    }
-}
-
 // ios: Views/GoalViews.swift:6
 private val mixColor: Map<String, Color> @Composable get() = mapOf("mine" to Theme.purple, "index" to hexD(0x1F3A7A, 0x7F9BE0), "grow" to Theme.green, "steady" to Theme.blue)
 // ios: Views/GoalViews.swift:7
@@ -457,8 +444,8 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
     }
     LaunchedEffect(scenePhase) { if (!scenePhase) party = false }   // ios: Views/GoalViews.swift:145 다른 앱으로 가면 친구들 퇴장
     Sheet(showShare, onDismiss = { showShare = false }) { ShareCardSheet(m, party = party, dismiss = { showShare = false }) }   // ios: Views/GoalViews.swift:146
-    FullCover(showGame, { showGame = false }) { BrickGameHub(m, filled = nV, floor = nMine, yesterday = nY) }   // ios: Views/GoalViews.swift:147
-    FullCover(showWave, { showWave = false }) { WaveHub(m) }   // ios: Views/GoalViews.swift:148
+    com.naeilo.app.ui.PopupCover(showGame, { showGame = false }) { BrickGameHub(m, filled = nV, floor = nMine, yesterday = nY) }   // ios: Views/GoalViews.swift:147
+    com.naeilo.app.ui.PopupCover(showWave, { showWave = false }) { WaveHub(m) }   // ios: Views/GoalViews.swift:148
 }
 
 /** GoalCellsCard 의 static 값·함수 */
