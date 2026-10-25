@@ -5,6 +5,7 @@ import SwiftUI
 // 루트마다 다른 것은 값뿐: 목표 = 석 달 체크인(달), 회복 = 처음 4주 체크인(주)
 struct BoardView: View {
     @Environment(AppModel.self) private var m
+    @AppStorage(BoxLook.key) private var lookRaw = BoxLook.jump.rawValue
     @State private var openDone = false
 
     var body: some View {
@@ -22,7 +23,7 @@ struct BoardView: View {
                 if let next = steps.first(where: { !$0.ok && $0.avail }), !next.inter {
                     nextCard(next, steps: starts)
                 }
-                // 100칸 카드는 화면 아래(탭 위)까지 늘어난다
+                // 100칸 카드(패들까지) · 게임 박스 · 맨 아래 캐릭터 말풍선
                 if m.playUnlocked { GoalCellsCard().frame(maxHeight: .infinity) } else { lockedPlay }
             }
             .screen()
@@ -78,15 +79,17 @@ struct BoardView: View {
     /// 인터미션 카드: 목표 = 달마다 계획대로 넣었나(3달), 회복 = 주마다 비중을 지켰나(4주)
     private func interCard(_ b: AppModel.BoardStep) -> some View {
         let goal = m.isGoal, done = b.ok, avail = b.avail
+        // 열린 카드는 홈에서 고른 박스 모양의 바탕·글자색을 따른다 (2026-10-25)
+        let look = BoxLook(rawValue: lookRaw) ?? .jump, on = done || avail
         let n = goal ? m.gWeeks.count : m.weeks.count, total = goal ? 3 : 4
         let picks: [(String, Color)] = goal ? m.gWeeks.map { ($0.label, $0.color) } : m.weeks.map { ($0.label, $0.color) }
         let tap = done || avail ? b.to : nil
         return Button { if let tap { m.boardPath.append(tap) } } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(goal ? String(localized: "석 달 체크인") : String(localized: "처음 4주 체크인")).appFont(12, .bold).foregroundStyle(Theme.mint)
+                    Text(goal ? String(localized: "석 달 체크인") : String(localized: "처음 4주 체크인")).appFont(12, .bold).foregroundStyle(on ? BoxInk.good : Theme.mint)
                     Spacer()
-                    if done { Text("완료 ✓").appFont(12, .bold).foregroundStyle(Theme.yellow) }
+                    if done { Text("완료 ✓").appFont(12, .bold).foregroundStyle(BoxInk.gold) }
                     else if !avail { Image(systemName: "lock").appFont(12) }
                 }
                 if !(done || n >= total) {
@@ -103,16 +106,19 @@ struct BoardView: View {
                             Text(pick?.0 ?? (cur ? (goal ? String(localized: "이번 달") : String(localized: "이번 주")) : "–")).appFont(13, .bold)
                         }
                         .frame(maxWidth: .infinity, minHeight: 60)
-                        .foregroundStyle(pick != nil ? .white : cur ? Theme.yellow : Theme.muted)
-                        .background(pick?.1 ?? .clear, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(pick?.1 ?? (cur ? Theme.yellow : Theme.slate),
+                        // 고른 칸: 테마 바탕이 비치는 반투명 칸 + 결과 색 테두리 (계획대로·더·덜 구분은 테두리 색으로)
+                        .foregroundStyle(pick != nil ? BoxInk.ink : cur ? BoxInk.gold : BoxInk.dim)
+                        .background(pick != nil ? bx(0xFFFFFF, 0.72, 0xFFFFFF, 0.10) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(pick?.1 ?? (cur ? BoxInk.gold : BoxInk.flatF),
                                                                           style: StrokeStyle(lineWidth: 2, dash: pick == nil ? [5, 4] : [])))
                     }
                 }
             }
-            .foregroundStyle(done || avail ? .white : Theme.sub2)
+            .foregroundStyle(on ? BoxInk.ink : Theme.sub2)
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .background(done || avail ? Theme.night : Theme.track, in: RoundedRectangle(cornerRadius: 18))
+            .background { if on { MoodBackdrop(look: look) } else { Theme.track } }
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .boxScheme()
         }
         .buttonStyle(.plain).disabled(tap == nil)
         .accessibilityLabel(goal ? String(localized: "처음 석 달 체크인, \(n)/3달") : String(localized: "처음 4주 체크인, \(n)/4주"))

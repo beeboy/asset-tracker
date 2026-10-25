@@ -85,7 +85,7 @@ struct GoalCellsCard: View {
                 }
                 // 박스는 60% 폭, 정보는 오른쪽
                 SplitRow(ratio: 0.6, spacing: 14, rightFill: 0.9) {
-                    // 100칸이 곧 벽돌. 아래 빈 곳을 누르면 공 발사, 끌면 패들
+                    // 100칸이 곧 벽돌. 박스를 누르면 공 발사, 패들은 기울여서만
                     BrickBox(mine: mine, filled: fV, lost: lost, g: game, on: $playing) { clear in
                         if clear { party = true } else { showGame = true }
                     }
@@ -109,51 +109,62 @@ struct GoalCellsCard: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
-                // 패들 조작 칸: 손가락이 패들을 가리지 않게 박스 아래 빈 곳에서 끈다
-                GeometryReader { pg in
-                    // 평소엔 톡 눌러 시작(위아래 스크롤은 그대로), 게임 중에만 끌어서 패들
-                    Color.clear.contentShape(Rectangle())
-                        .onTapGesture { p in
-                            game.px = max(0, min(1, p.x / max(1, pg.size.width)))
-                            if !playing && !party { startMini(fV, mine) }
-                        }
-                        .gesture(playing ? DragGesture(minimumDistance: 0).onChanged { v in
-                            game.px = max(0, min(1, v.location.x / max(1, pg.size.width)))
-                        } : nil)
-                }
-                .frame(height: 44)
-                // 남는 높이는 여기서 벌려 캐릭터·말풍선을 카드 맨 아래(탭 위)로 내린다
-                Spacer(minLength: 0)
-                // 블록·파도: 말풍선 위 오른쪽
-                HStack(spacing: 6) {
-                    Spacer(minLength: 0)
-                    action(String(localized: "블록"), "square.grid.3x3.fill", fill: true) { showGame = true }.labelStyle(TightLabel()).frame(width: 76)
-                    action(String(localized: "파도"), "water.waves", fill: true) { showWave = true }.labelStyle(TightLabel()).frame(width: 76)
-                }
-                .padding(.bottom, -4)
-                // 캐릭터가 자랑하자고 권한다 (누르는 곳 아님, 공유는 오른쪽 버튼). 다 깨면 친구들이 이 자리를 채운다
-                if party { MiniParty().frame(maxWidth: .infinity) } else {
-                HStack(alignment: .bottom, spacing: 10) {
-                        CharPixel(id: m.homeFriendShown, width: 42, height: 60).charIdle().accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(m.friendName(m.homeFriendShown)).appFont(12, .semibold).foregroundStyle(Theme.blue)
-                            Text(Self.boast(pct, Int(fV))).appFont(14).fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(.horizontal, 12).padding(.vertical, 10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.mintBg, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14))
-                    }
-                }
             }
-            .frame(maxHeight: .infinity, alignment: .top)
             .padding(18)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
+            gameBox
+            // 캐릭터·말풍선은 화면 맨 아래(탭 위)
+            Spacer(minLength: 0)
+            // 캐릭터가 자랑하자고 권한다 (누르는 곳 아님, 공유는 오른쪽 버튼). 다 깨면 친구들이 이 자리를 채운다
+            if party { MiniParty().frame(maxWidth: .infinity) } else {
+            HStack(alignment: .bottom, spacing: 10) {
+                    CharPixel(id: m.homeFriendShown, width: 42, height: 60).charIdle().accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(m.friendName(m.homeFriendShown)).appFont(12, .semibold).foregroundStyle(Theme.blue)
+                        Text(Self.boast(pct, Int(fV))).appFont(14).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.mintBg, in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 4, bottomTrailingRadius: 14, topTrailingRadius: 14))
+                }
+            }
         }
         .onChange(of: scenePhase) { if scenePhase == .background { party = false } }   // 다른 앱으로 가면 친구들 퇴장
         .sheet(isPresented: $showShare) { ShareCardSheet(party: party) }
         // 블록·파도 첫 화면도 다른 팝업처럼 시트 (게임 판은 그 안에서 전체 화면)
         .sheet(isPresented: $showGame) { BrickGameHub(filled: nV, floor: nMine, yesterday: nY) }
         .sheet(isPresented: $showWave) { WaveHub() }
+    }
+    /// 내 자산 게임 (2026-10-25 시안 A안): 100칸 아래, 벽돌깨기·파도타기 두 칸 나란히
+    private var gameBox: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("내 자산 게임").appFont(18, .bold)
+            HStack(spacing: 10) {
+                gameTile(.brick, String(localized: "채운 칸을 부시자"), String(localized: "벽돌깨기")) { showGame = true }
+                gameTile(.wave, String(localized: "내 흐름을 타자"), String(localized: "파도타기")) { showWave = true }
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
+    }
+    private func gameTile(_ k: GameThumb.Kind, _ say: String, _ name: String, _ go: @escaping () -> Void) -> some View {
+        VStack(spacing: 0) {
+            GameThumb(kind: k).frame(height: 120)
+            HStack(spacing: 3) {
+                Text(say).appFont(12).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                Button(action: go) {
+                    Text(name).appFont(12, .bold).lineLimit(1).fixedSize()
+                        .foregroundStyle(.white).padding(.horizontal, 5).padding(.vertical, 6)
+                        .background(Theme.teal, in: RoundedRectangle(cornerRadius: 9))
+                }.buttonStyle(.plain)
+            }
+            .padding(.horizontal, 6).padding(.vertical, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+        .contentShape(Rectangle()).onTapGesture(perform: go)
     }
     @State private var showGame = false
     @State private var showWave = false
@@ -706,6 +717,68 @@ struct GoalTaxView: View {
             PrimaryButton(title: String(localized: "확인")) { m.gDone.insert("tax"); m.boardPath = [] }
         }
         .onAppear { gain = String(Int(m.taxGain)) }
+    }
+}
+
+/// 게임 박스 칸 그림: 판(위)에 웅크린 졸라맨과 아래 벽돌 / 자산 흐름 파도 위 보드 탄 졸라맨. 값이 바뀌지 않는 정지 그림
+private struct GameThumb: View {
+    enum Kind { case brick, wave }
+    let kind: Kind
+    var body: some View {
+        Canvas { ctx, sz in
+            let W = sz.width, H = sz.height
+            ctx.fill(Path(CGRect(origin: .zero, size: sz)), with: .color(Theme.mintBg))
+            if kind == .brick { brick(ctx, W, H) } else { wave(ctx, W, H) }
+        }
+        .accessibilityHidden(true)
+    }
+    private func line(_ c: GraphicsContext, _ ls: [(CGFloat, CGFloat, CGFloat, CGFloat)]) {
+        var p = Path()
+        for l in ls { p.move(to: CGPoint(x: l.0, y: l.1)); p.addLine(to: CGPoint(x: l.2, y: l.3)) }
+        c.stroke(p, with: .color(Theme.ink), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+    }
+    private func head(_ c: GraphicsContext, _ x: CGFloat, _ y: CGFloat) {
+        c.fill(Path(ellipseIn: CGRect(x: x - 4, y: y - 4, width: 8, height: 8)), with: .color(Theme.ink))
+    }
+    private func brick(_ c: GraphicsContext, _ W: CGFloat, _ H: CGFloat) {
+        let cols = 8, rows = 4, gap: CGFloat = 3, ch: CGFloat = 9, cw = (W - 16 - CGFloat(cols - 1) * gap) / CGFloat(cols)
+        let kb = Int((W * 0.66 - 8) / (cw + gap))   // 공 바로 밑 칸
+        for r in 0..<rows { for k in 0..<cols {
+            // 깨진 자리: 공은 위에서 오니 위 칸이 깨진 곳만 아래도 깨진다. 공 밑 칸과 그 오른쪽 칸도 비운다
+            if (r == 0 && (k % 5 == 2 || k == kb || k == kb + 1)) || (r == 1 && k == 2) { continue }
+            let y = H - 8 - CGFloat(rows - r) * (ch + gap)
+            c.fill(Path(roundedRect: CGRect(x: 8 + CGFloat(k) * (cw + gap), y: y, width: cw, height: ch), cornerRadius: 2),
+                   with: .color(r < 2 ? Theme.teal : GoalCellsCard.mintC))
+        } }
+        let px = W * 0.38, pw = W * 0.24, py: CGFloat = 30
+        c.fill(Path(roundedRect: CGRect(x: px, y: py, width: pw, height: 6), cornerRadius: 3), with: .color(Theme.ink))
+        // 졸라맨: 판 위에 웅크려 아래 공을 가리킨다
+        let X = { (f: CGFloat) in px + pw * f }
+        head(c, X(0.5), py - 17)
+        line(c, [(X(0.5), py - 13, X(0.42), py - 6),
+                 (X(0.42), py - 6, X(0.3), py - 9), (X(0.3), py - 9, X(0.32), py), (X(0.42), py - 6, X(0.58), py - 5), (X(0.58), py - 5, X(0.62), py),
+                 (X(0.47), py - 11, X(0.62), py - 11), (X(0.62), py - 11, X(0.74), py - 4), (X(0.47), py - 11, X(0.36), py - 16)])
+        var tr = Path(); tr.move(to: CGPoint(x: X(0.7), y: py + 8)); tr.addLine(to: CGPoint(x: W * 0.66, y: H * 0.44))
+        c.stroke(tr, with: .color(Theme.muted), style: StrokeStyle(lineWidth: 1.5, dash: [3, 4]))
+        c.fill(Path(ellipseIn: CGRect(x: W * 0.66 - 5, y: H * 0.44 - 5, width: 10, height: 10)), with: .color(Theme.gold))
+    }
+    private func wave(_ c: GraphicsContext, _ W: CGFloat, _ H: CGFloat) {
+        let pts: [CGPoint] = (0...40).map { i in
+            let t = CGFloat(i) / 40
+            return CGPoint(x: t * W, y: H * 0.62 - sin(t * 6.5) * H * 0.14 - t * H * 0.22 + sin(t * 19) * 3)
+        }
+        var top = Path(); top.addLines(pts)
+        var fill = top; fill.addLine(to: CGPoint(x: W, y: H)); fill.addLine(to: CGPoint(x: 0, y: H)); fill.closeSubpath()
+        c.fill(fill, with: .color(GoalCellsCard.mintC))
+        c.stroke(top, with: .color(Theme.teal), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+        // 졸라맨: 무릎 굽혀 보드 위에, 두 팔을 넓게
+        var s = c
+        s.translateBy(x: pts[17].x, y: pts[17].y - 3); s.rotate(by: .radians(-0.35))
+        s.fill(Path(ellipseIn: CGRect(x: -14, y: -3, width: 28, height: 6)), with: .color(Theme.gold))
+        head(s, 1, -25)
+        line(s, [(0, -21, -1, -10), (-1, -10, -6, -5), (-6, -5, -7, -2), (-1, -10, 5, -6), (5, -6, 7, -2),
+                 (0, -18, -9, -21), (-9, -21, -14, -17), (0, -18, 8, -14), (8, -14, 13, -16)])
+        c.draw(Text("★").font(.system(size: 13, weight: .bold)).foregroundColor(Theme.gold), at: CGPoint(x: pts[30].x, y: pts[30].y - 14))
     }
 }
 
