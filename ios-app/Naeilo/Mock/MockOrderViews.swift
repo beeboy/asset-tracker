@@ -58,6 +58,7 @@ struct MockJournalView: View {
     @State private var settings = false
     @State private var pastOpen = false
     @State private var logOpen = false
+    @State private var colW: [Int: CGFloat] = [:]
 
     private struct Held: Identifiable {
         let p: MockPosition
@@ -75,6 +76,7 @@ struct MockJournalView: View {
             pastCard(d)
             errLine(d)
         }
+        .onPreferenceChange(HoldColW.self) { colW = $0 }
         .sheet(isPresented: $settings) { MockSettingsView() }
         .sheet(isPresented: $logOpen) { MockLogSheet() }
     }
@@ -89,7 +91,10 @@ struct MockJournalView: View {
                 Spacer()
                 mt(MockFmt.pct(last)).appFont(14, .bold).monospacedDigit().foregroundStyle(last > 0 ? Theme.up : last < 0 ? Theme.down : Theme.sub)
             }
-            HoldSeg(items: MockCalc.Unit.allCases.map { ($0, $0.name) }, selection: $unit)
+            HStack {
+                Spacer()
+                HoldSeg(items: MockCalc.Unit.allCases.map { ($0, $0.name) }, selection: $unit)
+            }
             MockRetChart(points: pts).frame(height: 120)
         }
     }
@@ -131,11 +136,7 @@ struct MockJournalView: View {
         let mx = rows.map { abs($0.r) }.max() ?? 0
         return MockListCard {
             mt("내 종목 \(rows.count)").appFont(14, .bold)
-            Button { downFirst.toggle() } label: {
-                mt(downFirst ? "내린 순 ⇅" : "오른 순 ⇅").appFont(13, .bold).foregroundStyle(Theme.teal)
-                    .frame(minHeight: 32).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            MockSortToggle(downFirst: $downFirst)
             Spacer()
             mt(MockFmt.signedWon(pnl)).appFont(14, .semibold).monospacedDigit().lineLimit(1)
                 .foregroundStyle(pnl > 0 ? Theme.up : pnl < 0 ? Theme.down : Theme.sub)
@@ -143,7 +144,7 @@ struct MockJournalView: View {
             if rows.isEmpty { MockEmptyRow(text: "아직 산 종목이 없어요") }
             ForEach(rows) { h in
                 MockStockRow(code: h.p.code, name: h.p.name, mid: MockFmt.won(h.p.avg), pct: h.r,
-                             price: MockFmt.won(h.now), band: mx > 0 ? abs(h.r) / mx : 0)
+                             price: MockFmt.man(Double(h.p.qty) * h.now), band: mx > 0 ? abs(h.r) / mx : 0, colW: colW)
             }
         }
     }
@@ -153,9 +154,9 @@ struct MockJournalView: View {
         let best = all.filter { $0.pnl > 0 }.max { $0.pnl < $1.pnl }
         let worst = all.filter { $0.pnl < 0 }.min { $0.pnl < $1.pnl }
         return HStack(spacing: 0) {
-            cell("가장 많이 번", best)
+            cell("최고", best)
             Divider().overlay(Theme.line)
-            cell("가장 많이 잃은", worst)
+            cell("최저", worst)
         }
         .fixedSize(horizontal: false, vertical: true)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
@@ -168,8 +169,11 @@ struct MockJournalView: View {
             if let x {
                 let c = x.pnl > 0 ? Theme.up : Theme.down
                 mt(x.name).appFont(15, .bold).lineLimit(1)
-                mt(MockFmt.signedWon(x.pnl)).appFont(14, .bold).monospacedDigit().foregroundStyle(c).lineLimit(1).minimumScaleFactor(0.7)
-                mt(MockFmt.pct(x.ret)).appFont(12, .semibold).monospacedDigit().foregroundStyle(c)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    mt(MockFmt.signedWon(x.pnl)).appFont(14, .bold)
+                    mt(MockFmt.pct(x.ret)).appFont(12, .semibold)
+                }
+                .monospacedDigit().foregroundStyle(c).lineLimit(1).minimumScaleFactor(0.7)
             } else {
                 mt("없어요").appFont(14).foregroundStyle(Theme.muted)
             }
@@ -376,6 +380,7 @@ struct MockSettingsView: View {
             MockSheetBar(title: "모의투자 설정") { dismiss() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    reviewCard(d)
                     exceptCard(d)
                     ledgerCard(d)
                     runCard
@@ -397,6 +402,20 @@ struct MockSettingsView: View {
             Button(role: .cancel) {} label: { mt("그만두기") }
         } message: {
             mt("현금 1,000만원으로 다시 시작해요. 옛 장부와 기록은 지우지 않아요.")
+        }
+    }
+
+    /// 직접 검토 (옛 '검토 문'): 켜면 고른 뒤 내가 보고 주문, 끄면 고르자마자 주문
+    private func reviewCard(_ d: MockDesk) -> some View {
+        let on = d.s.select.review
+        return Card {
+            Toggle(isOn: Binding(get: { on }, set: { v in d.edit(v ? "직접 검토 켬" : "직접 검토 끔 · 바로 주문") { $0.select.review = v } })) {
+                VStack(alignment: .leading, spacing: 1) {
+                    mt("직접 검토").appFont(16, .bold)
+                    mt(on ? "고른 뒤 보고 주문" : "고르면 바로 주문").appFont(12).foregroundStyle(Theme.muted)
+                }
+            }
+            .tint(Theme.teal)
         }
     }
 

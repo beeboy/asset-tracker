@@ -48,7 +48,7 @@ struct MockPiece: Codable, Identifiable, Equatable, Hashable {
             switch self {
             case .price: return "가격"
             case .change: return "등락률"
-            case .volume: return "거래량 배수"
+            case .volume: return "거래량"
             case .ma: return "이동평균"
             case .amount: return "거래대금"
             case .rise: return "최근 상승"
@@ -81,8 +81,8 @@ struct MockPiece: Codable, Identifiable, Equatable, Hashable {
         case .change: return "등락률 " + range(lo.map { MockFmt.signed($0) + "%" }, hi.map { MockFmt.signed($0) + "%" })
         case .volume:
             let d = days == 20 ? "" : " (\(days)일)"
-            return "거래량 배수 " + range(lo.map { n($0) + "배" }, hi.map { n($0) + "배" }) + d
-        case .rise: return "최근 \(days)일 상승 " + range(lo.map { MockFmt.signed($0) + "%" }, hi.map { MockFmt.signed($0) + "%" })
+            return "거래량 " + range(lo.map { n($0) + "배" }, hi.map { n($0) + "배" }) + d
+        case .rise: return "최근 \(days)일 " + range(lo.map { MockFmt.signed($0) + "%" }, hi.map { MockFmt.signed($0) + "%" })
         case .ma: return "가격 " + (above ? ">" : "<") + " \(days)일선"
         case .amount: return "거래대금 " + range(lo.map { n($0) + "억" }, hi.map { n($0) + "억" })
         }
@@ -191,7 +191,7 @@ struct MockRuleCond: Codable, Equatable, Identifiable {
         case .top: return "\(sort.name) 순 상위 \(n)"
         case .per: return "종목당 ≤\(Int((pct * 100).rounded()))%"
         case .cash: return "현금 \(Int((pct * 100).rounded()))% 남김"
-        case .cap: return capKind == .rise ? "최근 5일 상승 ≤ +\(MockFmt.num(lim))%" : "거래량 배수 ≤ \(MockFmt.num(lim))배"
+        case .cap: return capKind == .rise ? "최근 5일 ≤ +\(MockFmt.num(lim))%" : "거래량 ≤ \(MockFmt.num(lim))배"
         }
     }
     /// cap: 걸린 종목이 이 조건을 넘나 (값이 없으면 넘지 않은 것으로 본다)
