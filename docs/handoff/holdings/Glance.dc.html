@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>종목 한눈에</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2B6B64;text-decoration:none}a:hover{color:#1F4F4A}
+</style>
+</helmet>
+<div style="width: 390px; height: 2240px; box-sizing: border-box; background: #F2F3F5; color: #15181D; font-family: -apple-system, 'Apple SD Gothic Neo', 'IBM Plex Sans KR', sans-serif; display: flex; flex-direction: column; position: relative; overflow: hidden">
+
+  <div style="padding: 56px 20px 0; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px">종목 한눈에</h1>
+      <div style="font-size: 14px; color: #5F6670">지금 가격이 지난 1년 중 어디쯤인지 봐요</div>
+    </div>
+
+    <section style="background: #E4F0ED; border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 12px; font-weight: 700; color: #22574F">한 줄 요약</div>
+      <div style="font-size: 15px; font-weight: 600; line-height: 1.55">내 자산의 65%가 테슬라예요. 테슬라 가격이 움직이면 내 자산도 거의 같이 움직여요.</div>
+    </section>
+
+    <div role="group" aria-label="정렬" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #E6E8EB; border-radius: 12px; padding: 4px">
+      <button aria-pressed="true" style="height: 40px; border: 0; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 14px; font-weight: 700; color: #15181D; box-shadow: 0 1px 2px rgba(0,0,0,0.12)">비중 큰 순</button>
+      <button style="height: 40px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; color: #3E444C">많이 내려온 순</button>
+      <button style="height: 40px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; color: #3E444C">출렁임 큰 순</button>
+    </div>
+
+    <!-- 테슬라 -->
+    <section style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <div style="display: flex; align-items: baseline; gap: 6px"><span style="font-size: 18px; font-weight: 700">테슬라</span><span style="font-size: 13px; color: #5F6670">TSLA</span></div>
+        <span style="font-size: 12px; font-weight: 600; color: #3E444C; background: #EEF0F2; border-radius: 999px; padding: 5px 10px">내 자산의 65%</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 13px; color: #5F6670">1년 중 가장 비쌀 때보다</div>
+        <div style="font-size: 30px; font-weight: 700; color: #2D5C9C; letter-spacing: -0.6px">−23.4%</div>
+      </div>
+      <div style="background: #F5F6F8; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 700">지금 $370.14</span><span style="color: #5F6670">최근 1년 가격 범위</span></div>
+        <div style="position: relative; height: 16px">
+          <div style="position: absolute; left: 0; right: 0; top: 6px; height: 4px; border-radius: 2px; background: #DADDE2"></div>
+          <div style="position: absolute; left: 38%; top: 0; width: 16px; height: 16px; margin-left: -8px; border-radius: 8px; background: #2B6B64; border: 2px solid #FFFFFF; box-sizing: border-box; box-shadow: 0 0 0 1px #2B6B64"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5F6670"><span>최저 $301</span><span>최고 $483</span></div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
+        <span style="font-size: 13px; border: 1px solid #E3E6EA; border-radius: 999px; padding: 7px 12px">1년 전보다 <b style="color: #2D5C9C">−15.0%</b></span>
+        <a href="Sheet.dc.html" style="font-size: 13px; color: #15181D; border: 1px solid #E3E6EA; border-radius: 999px; padding: 7px 12px; display: flex; align-items: center; gap: 4px">출렁임 <b>큰 편</b>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6670" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5v.5"></path></svg>
+        </a>
+      </div>
+      <a href="Detail.dc.html" style="font-size: 14px; font-weight: 700; border-top: 1px solid #EEF0F2; padding-top: 12px; display: flex; justify-content: space-between; align-items: center">내 보유 보기 · 산 가격보다 +56.5%
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+      </a>
+    </section>
+
+    <!-- 엔비디아 -->
+    <section style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <div style="display: flex; align-items: baseline; gap: 6px"><span style="font-size: 18px; font-weight: 700">엔비디아</span><span style="font-size: 13px; color: #5F6670">NVDA</span></div>
+        <span style="font-size: 12px; font-weight: 600; color: #3E444C; background: #EEF0F2; border-radius: 999px; padding: 5px 10px">내 자산의 17%</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 13px; color: #5F6670">1년 중 가장 비쌀 때보다</div>
+        <div style="font-size: 30px; font-weight: 700; color: #2D5C9C; letter-spacing: -0.6px">−5.7%</div>
+      </div>
+      <div style="background: #F5F6F8; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 700">지금 $225.32</span><span style="color: #5F6670">최근 1년 가격 범위</span></div>
+        <div style="position: relative; height: 16px">
+          <div style="position: absolute; left: 0; right: 0; top: 6px; height: 4px; border-radius: 2px; background: #DADDE2"></div>
+          <div style="position: absolute; left: 81%; top: 0; width: 16px; height: 16px; margin-left: -8px; border-radius: 8px; background: #2B6B64; border: 2px solid #FFFFFF; box-sizing: border-box; box-shadow: 0 0 0 1px #2B6B64"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5F6670"><span>최저 $167</span><span>최고 $239</span></div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <span style="font-size: 13px; border: 1px solid #E3E6EA; border-radius: 999px; padding: 7px 12px">1년 전보다 <b style="color: #C2372B">+20.1%</b></span>
+        <span style="font-size: 13px; border: 1px solid #E3E6EA; border-radius: 999px; padding: 7px 12px">출렁임 <b>보통</b></span>
+      </div>
+      <a href="Detail.dc.html" style="font-size: 14px; font-weight: 700; border-top: 1px solid #EEF0F2; padding-top: 12px; display: flex; justify-content: space-between; align-items: center">내 보유 보기
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+      </a>
+    </section>
+
+    <!-- SPCX -->
+    <section style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <div style="display: flex; align-items: baseline; gap: 6px"><span style="font-size: 18px; font-weight: 700">SPCX</span><span style="font-size: 13px; color: #5F6670">SPCX</span></div>
+        <span style="font-size: 12px; font-weight: 600; color: #3E444C; background: #EEF0F2; border-radius: 999px; padding: 5px 10px">내 자산의 13%</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 13px; color: #5F6670">1년 중 가장 비쌀 때보다</div>
+        <div style="font-size: 30px; font-weight: 700; color: #2D5C9C; letter-spacing: -0.6px">−9.8%</div>
+      </div>
+      <div style="background: #F5F6F8; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 700">지금 $155.19</span><span style="color: #5F6670">최근 1년 가격 범위</span></div>
+        <div style="position: relative; height: 16px">
+          <div style="position: absolute; left: 0; right: 0; top: 6px; height: 4px; border-radius: 2px; background: #DADDE2"></div>
+          <div style="position: absolute; left: 38%; top: 0; width: 16px; height: 16px; margin-left: -8px; border-radius: 8px; background: #2B6B64; border: 2px solid #FFFFFF; box-sizing: border-box; box-shadow: 0 0 0 1px #2B6B64"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5F6670"><span>최저 $145</span><span>최고 $172</span></div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <span style="font-size: 13px; border: 1px solid #E3E6EA; border-radius: 999px; padding: 7px 12px">1년 전보다 <b style="color: #C2372B">+4.1%</b></span>
+        <span style="font-size: 13px; border: 1px solid #E3E6EA; border-radius: 999px; padding: 7px 12px">출렁임 <b>보통</b></span>
+      </div>
+      <a href="Detail.dc.html" style="font-size: 14px; font-weight: 700; border-top: 1px solid #EEF0F2; padding-top: 12px; display: flex; justify-content: space-between; align-items: center">내 보유 보기
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+      </a>
+    </section>
+
+    <!-- 국내 주식 -->
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px">
+      <span style="font-size: 17px; font-weight: 700">국내 주식 3</span><span style="font-size: 13px; color: #5F6670">합쳐서 내 자산의 2%</span>
+    </div>
+
+    <section style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 20px; overflow: hidden">
+      <a href="KrDetail.dc.html" style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; color: #15181D">
+        <div style="display: flex; justify-content: space-between; align-items: baseline">
+          <span style="font-size: 16px; font-weight: 700">대한전선</span>
+          <span style="font-size: 14px; font-weight: 700; color: #C2372B">1년 중 가장 비싼 가격</span>
+        </div>
+        <div style="position: relative; height: 16px">
+          <div style="position: absolute; left: 0; right: 0; top: 6px; height: 4px; border-radius: 2px; background: #DADDE2"></div>
+          <div style="position: absolute; left: 100%; top: 0; width: 16px; height: 16px; margin-left: -16px; border-radius: 8px; background: #2B6B64; border: 2px solid #FFFFFF; box-sizing: border-box; box-shadow: 0 0 0 1px #2B6B64"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5F6670"><span>최저 12,240원</span><span>지금 16,850원 · 1년 전보다 +28.6% · 출렁임 큰 편</span></div>
+      </a>
+      <a href="KrDetail.dc.html" style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; color: #15181D; border-top: 1px solid #EEF0F2">
+        <div style="display: flex; justify-content: space-between; align-items: baseline">
+          <span style="font-size: 16px; font-weight: 700">에이비엘바이오</span>
+          <span style="font-size: 14px; font-weight: 700; color: #2D5C9C">가장 비쌀 때보다 −16.4%</span>
+        </div>
+        <div style="position: relative; height: 16px">
+          <div style="position: absolute; left: 0; right: 0; top: 6px; height: 4px; border-radius: 2px; background: #DADDE2"></div>
+          <div style="position: absolute; left: 64%; top: 0; width: 16px; height: 16px; margin-left: -8px; border-radius: 8px; background: #2B6B64; border: 2px solid #FFFFFF; box-sizing: border-box; box-shadow: 0 0 0 1px #2B6B64"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5F6670"><span>최저 48,500원</span><span>최고 89,200원 · 출렁임 큰 편</span></div>
+      </a>
+      <a href="KrDetail.dc.html" style="display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; color: #15181D; border-top: 1px solid #EEF0F2">
+        <div style="display: flex; justify-content: space-between; align-items: baseline">
+          <span style="font-size: 16px; font-weight: 700">대한광통신</span>
+          <span style="font-size: 14px; font-weight: 600; color: #5F6670">지금 2,880원</span>
+        </div>
+        <div style="height: 4px; border-radius: 2px; background: repeating-linear-gradient(90deg, #DADDE2 0 6px, transparent 6px 10px)"></div>
+        <div style="font-size: 12px; color: #5F6670; line-height: 1.5">1년 가격 기록을 모으는 중이에요 (12일째). 기록이 쌓이면 범위를 보여드려요.</div>
+      </a>
+    </section>
+
+    <div style="font-size: 17px; font-weight: 700; margin-top: 8px">그 외</div>
+    <section style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 20px; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 16px; font-weight: 700">SGOV</span>
+        <span style="font-size: 13px; color: #5F6670">가격이 거의 움직이지 않아요</span>
+      </div>
+      <span style="font-size: 12px; font-weight: 600; color: #3E444C; background: #EEF0F2; border-radius: 999px; padding: 5px 10px">현금처럼 쓰는 자산</span>
+    </section>
+  </div>
+
+  <nav aria-label="하단 메뉴" style="position: absolute; left: 12px; right: 12px; bottom: 24px; height: 68px; background: rgba(255,255,255,0.96); border: 1px solid #E3E6EA; border-radius: 34px; box-shadow: 0 6px 20px rgba(20,24,29,0.08); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: #3E444C"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"></path></svg>홈</a>
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: #3E444C"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-7"></path></svg>종목</a>
+    <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: #2B6B64"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18M4 16l5-5 4 3 7-7"></path></svg>분석</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: #3E444C"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>미션</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: #3E444C"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>설정</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2240}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

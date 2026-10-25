@@ -1,0 +1,24 @@
+diff --git a/android-app/app/src/main/java/com/naeilo/app/ui/shelter/ShelterView.kt b/android-app/app/src/main/java/com/naeilo/app/ui/shelter/ShelterView.kt
+index f7a6af3e..bffcf6d6 100644
+--- a/android-app/app/src/main/java/com/naeilo/app/ui/shelter/ShelterView.kt
++++ b/android-app/app/src/main/java/com/naeilo/app/ui/shelter/ShelterView.kt
+@@ -150,7 +150,6 @@ import com.naeilo.app.ui.support.SupportView
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.delay
+ import kotlinx.coroutines.flow.drop
+-import kotlinx.coroutines.flow.first
+ import kotlinx.coroutines.launch
+ import kotlinx.coroutines.withContext
+ import kotlin.math.max
+@@ -895,9 +894,8 @@ fun ReaderView(m: AppModel, index: Int, book: StoryBook = StoryBook.side) {
+     LaunchedEffect("$idx-${story.lang(book).name}") { if (story.chapter(idx, book) == null || (book == StoryBook.side && idx == 5)) story.fetch(book) }
+     LaunchedEffect(Unit) { snapshotFlow { story.lang }.drop(1).collect { story.pushWidget(m) } }   // ios: Views/ShelterView.swift:653
+     DisposableEffect(Unit) { onDispose { story.pushWidget(m) } }   // ios: Views/ShelterView.swift:654
+-    // 끝까지 내려와 '다음' 줄이 보이면 다 읽은 장
+-    // ios: Views/ShelterView.swift:629
+-    LaunchedEffect(idx, book, text) { if (text != null) { snapshotFlow { list.layoutInfo.visibleItemsInfo.any { it.key == "next" } }.first { it }; story.markDone(book, idx) } }
++    // 원고가 있는 장을 열면 다 읽은 장 (아이폰: '다음' 줄이 LazyVStack 밖 VStack 에 있어 장을 여는 순간 onAppear 가 불린다)
++    LaunchedEffect(idx, book, text != null) { if (text != null) story.markDone(book, idx) }   // ios: Views/ShelterView.swift:629
+ 
+     // ios: Views/ShelterView.swift:645,646,647
+     Fg(if (dark) hex(0xEEF0F7) else Theme.ink) { Column(Modifier.fillMaxSize().background(if (dark) hex(0x141824) else hex(0xFBFAF7))) {

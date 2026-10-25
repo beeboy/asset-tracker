@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>낼 양도세</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2B6A62}a:hover{color:#1E4F49}
+</style>
+</helmet>
+<div style="width: 390px; height: 1560px; box-sizing: border-box; background: #F2F3F5; font-family: 'IBM Plex Sans KR', sans-serif; color: #191F28; font-variant-numeric: tabular-nums; padding: 12px 16px 40px; display: flex; flex-direction: column; gap: 16px">
+
+<div style="display: flex; align-items: center; gap: 12px; height: 48px">
+<button aria-label="뒤로" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #E1E4E8; background: #FFFFFF; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#191F28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+<h1 style="margin: 0; font-size: 19px; font-weight: 700">배당·세금</h1>
+</div>
+
+<nav aria-label="화면 전환" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #E4E7EB; border-radius: 14px">
+<a href="Main.dc.html" style="height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #4A5260; font-weight: 500; font-size: 15px; text-decoration: none">받는 배당</a>
+<a href="Tax.dc.html" aria-current="page" style="height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #FFFFFF; color: #191F28; font-weight: 700; font-size: 15px; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.08)">낼 양도세</a>
+</nav>
+
+<section style="background: #FFFFFF; border-radius: 20px; padding: 24px 20px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<p style="margin: 0; font-size: 14px; color: #5B6470">올해 판 미국 주식 기준</p>
+<p style="margin: 0; font-size: 26px; line-height: 1.35; font-weight: 700; letter-spacing: -0.5px">내년 5월에<br><span style="color: #C2410C">약 375만원</span>을<br>세금으로 내야 해요</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4A5260">올해 미국 주식을 팔아 남긴 이익 때문이에요. 12월 31일 전에 더 팔면 늘어나요.</p>
+</div>
+
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #F2F3F5; border-radius: 10px; font-size: 14px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A5260" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+<span>신고·납부 <strong>2027년 5월 1일 ~ 31일</strong></span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div role="img" aria-label="이익 1,953만원 중 250만원은 세금 없음, 1,703만원에 22%" style="display: flex; height: 28px; border-radius: 8px; overflow: hidden">
+<div style="width: 12.8%; background: #9CC6BE"></div>
+<div style="flex: 1; background: #F4A383"></div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #4A5260">
+<span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: #9CC6BE"></span>250만원까지 세금 없음</span>
+<span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 3px; background: #F4A383"></span>나머지에 22%</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px; font-size: 15px">
+<div style="display: flex; justify-content: space-between"><span style="color: #4A5260">올해 판 이익</span><span>1,953만원</span></div>
+<div style="display: flex; justify-content: space-between"><span style="color: #4A5260">세금 없는 몫</span><span style="color: #4A5260">−250만원</span></div>
+<div style="display: flex; justify-content: space-between"><span style="color: #4A5260">세금 붙는 이익</span><span>1,703만원</span></div>
+<div style="display: flex; justify-content: space-between"><span style="color: #4A5260">세율 (지방세 포함)</span><span>× 22%</span></div>
+<div style="height: 1px; background: #E8EAED"></div>
+<div style="display: flex; justify-content: space-between; font-weight: 700"><span>낼 세금</span><span style="color: #C2410C">약 375만원</span></div>
+</div>
+</section>
+
+<section style="background: #FFFFFF; border-radius: 20px; padding: 22px 20px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 700">올해 더 팔면 세금은 얼마?</h2>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #4A5260">아직 안 판 미국 주식에 <strong style="color: #191F28">2억 1,150만원</strong>의 이익이 있어요 (TSLA·NVDA·SPCX·SGOV).</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<label for="extra-sell" style="display: flex; justify-content: space-between; font-size: 14px; color: #4A5260"><span>추가로 팔 이익</span><strong style="color: #191F28; font-size: 15px">{{extraLabel}}</strong></label>
+<input id="extra-sell" type="range" min="0" max="21150" step="50" value="{{extra}}" onChange="{{onSlide}}" style="width: 100%; height: 44px; margin: 0; accent-color: #C2410C; cursor: pointer">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5B6470"><span>안 팔면</span><span>전부 팔면</span></div>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 16px; background: #FDEBE3; border-radius: 14px">
+<span style="font-size: 15px; color: #7C2D12">내년 5월 낼 세금</span>
+<span style="font-size: 22px; font-weight: 700; color: #9A3412">{{taxLabel}}</span>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6470">{{deltaLabel}}</p>
+</section>
+
+<section style="background: #FFFFFF; border-radius: 20px; padding: 22px 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 700">연말 전에 알아두면 좋은 것</h2>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; font-size: 14px; line-height: 1.55; color: #353C47">
+<li style="display: flex; gap: 12px"><span aria-hidden="true" style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: #E2EFEC; color: #1E4F49; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">1</span><span><strong>손해 본 종목</strong>이 있다면 올해 안에 팔면, 그 손해만큼 이익에서 빠져서 세금이 줄어요.</span></li>
+<li style="display: flex; gap: 12px"><span aria-hidden="true" style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: #E2EFEC; color: #1E4F49; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">2</span><span>더 팔 계획이 있다면 <strong>내년 1월 이후</strong>로 미루면, 내년 몫 250만원을 새로 쓸 수 있어요.</span></li>
+<li style="display: flex; gap: 12px"><span aria-hidden="true" style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: #E2EFEC; color: #1E4F49; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">3</span><span>미국 주식은 판 다음 날 돈이 정산돼요. <strong>12월 마지막 거래일 1~2일 전</strong>까지 팔아야 올해로 잡혀요.</span></li>
+</ol>
+</section>
+
+<details style="background: #FFFFFF; border-radius: 16px; padding: 0 20px">
+<summary style="min-height: 52px; display: flex; align-items: center; font-size: 15px; font-weight: 600; cursor: pointer">이 숫자는 어떻게 계산했나요?</summary>
+<div style="margin: 0 0 18px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.6; color: #4A5260">
+<p style="margin: 0">올해 판 이익 1,953만원은 앱에 입력해 둔 값이에요. 안 판 이익은 산 날과 오늘의 환율을 각각 적용해 원화로 계산했어요.</p>
+<p style="margin: 0">국내 상장 주식은 대주주가 아니면 팔 때 양도세가 없어요(거래세만 내요).</p>
+<p style="margin: 0">세무 상담이 아니에요.</p>
+</div>
+</details>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { extra: 0 };
+  }
+  fmt(v) {
+    v = Math.round(v);
+    if (v >= 10000) {
+      var eok = Math.floor(v / 10000);
+      var rest = v % 10000;
+      return eok + '억' + (rest ? ' ' + rest.toLocaleString('ko-KR') + '만원' : '원');
+    }
+    return v.toLocaleString('ko-KR') + '만원';
+  }
+  renderVals() {
+    var realized = 1953;
+    var extra = this.state.extra;
+    var base = Math.max(0, realized - 250) * 0.22;
+    var tax = Math.max(0, realized + extra - 250) * 0.22;
+    var delta = tax - base;
+    return {
+      extra: extra,
+      extraLabel: extra === 0 ? '0원' : this.fmt(extra),
+      taxLabel: '약 ' + this.fmt(tax),
+      deltaLabel: extra === 0 ? '지금 그대로면 이 금액이에요.' : '지금보다 약 ' + this.fmt(delta) + ' 늘어요. 판 이익의 22%만큼 늘어나요.',
+      onSlide: (e) => this.setState({ extra: Number(e.target.value) })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>미국 금리 상세</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2B6B5D}a:hover{color:#1F5045}
+</style>
+</helmet>
+<div style="width: 390px; height: 2120px; box-sizing: border-box; background: #F2F3F5; font-family: 'Noto Sans KR', sans-serif; color: #191C22; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: center; height: 48px; position: relative">
+    <a href="Main.dc.html" aria-label="뒤로" style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 22px; border: 1px solid #E3E5E8; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#191C22" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <div style="position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; font-weight: 700; pointer-events: none">외부 요인 · 미국 금리</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px">
+    <h1 style="margin: 0; font-size: 23px; line-height: 1.4; font-weight: 800; letter-spacing: -0.3px">미국 금리가 이렇게 되면,<br>지금 내 돈은 얼마나 움직일까요?</h1>
+    <p style="margin: 0; font-size: 13px; color: #5B6270; line-height: 1.6">미국 10년물 국채 금리 기준이에요. 시장 전체 움직임은 빼고, 금리만의 영향을 봐요.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+    <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+      <button onClick="{{p.pick}}" style="min-height: 64px; text-align: left; border-radius: 14px; padding: 12px 14px; font-family: inherit; border: 1px solid {{p.border}}; background: {{p.bg}}; color: {{p.fg}}; display: flex; flex-direction: column; gap: 2px; cursor: pointer">
+        <span style="font-size: 15px; font-weight: 700">{{p.label}}</span>
+        <span style="font-size: 12px; opacity: 0.8">{{p.sub}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <section style="background: #1B2130; border-radius: 20px; padding: 20px; color: #FFFFFF; display: flex; flex-direction: column; gap: 14px">
+    <div style="font-size: 14px; color: #C5CAD3">{{condition}}</div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <div style="font-size: 30px; font-weight: 800; letter-spacing: -0.5px">{{verdict}}</div>
+      <div style="font-size: 15px; color: #C5CAD3">내 자산 {{totalText}} · {{pctText}}</div>
+    </div>
+    <div style="border-top: 1px solid #2E3546; padding-top: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="width: 56px; font-size: 12.5px; color: #9AA1AD">오르는 쪽</span>
+        <span style="flex: 1; height: 8px; border-radius: 4px; background: #2E3546; overflow: hidden; display: block"><span style="display: block; height: 8px; border-radius: 4px; background: #E0806A; width: {{gainW}}%"></span></span>
+        <span style="width: 76px; text-align: right; font-size: 14px; font-weight: 700">{{gainText}}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="width: 56px; font-size: 12.5px; color: #9AA1AD">내리는 쪽</span>
+        <span style="flex: 1; height: 8px; border-radius: 4px; background: #2E3546; overflow: hidden; display: block"><span style="display: block; height: 8px; border-radius: 4px; background: #7EA6DB; width: {{lossW}}%"></span></span>
+        <span style="width: 76px; text-align: right; font-size: 14px; font-weight: 700">{{lossText}}</span>
+      </div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #9AD3C3">종목끼리 반대로 움직여서 거의 상쇄돼요. 금리만 보면 내 구성은 꽤 균형 잡혀 있어요.</div>
+    </div>
+  </section>
+
+  <sc-if value="{{isBig}}" hint-placeholder-val="{{ false }}">
+    <div style="background: #FBEFE6; border-radius: 12px; padding: 14px; font-size: 13px; line-height: 1.6; color: #8A3F14">이만큼 큰 변화는 지난 3년 안에 거의 없었어요. 하루하루 관계를 크게 늘려 계산한 값이라 실제와 다를 수 있어요.</div>
+  </sc-if>
+
+  <section style="background: #FFFFFF; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 4px">
+    <h2 style="margin: 0; font-size: 18px; font-weight: 800">종목별로 보면</h2>
+    <p style="margin: 0 0 10px; font-size: 13px; color: #5B6270; line-height: 1.5">왼쪽은 내려가는 종목, 오른쪽은 올라가는 종목이에요.</p>
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+      <div style="padding: 12px 0; border-top: 1px solid #EEF0F2; display: flex; flex-direction: column; gap: 8px; opacity: {{r.opacity}}">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+          <span style="display: flex; align-items: baseline; gap: 8px; min-width: 0">
+            <span style="font-size: 15px; font-weight: 700">{{r.name}}</span>
+            <span style="font-size: 12.5px; color: {{r.tagColor}}; font-weight: 700">{{r.tag}}</span>
+          </span>
+          <span style="font-size: 15px; font-weight: 700; color: {{r.color}}; white-space: nowrap">{{r.valueText}}</span>
+        </div>
+        <div style="display: flex; height: 10px; align-items: center">
+          <span style="flex: 1; display: flex; justify-content: flex-end; height: 10px"><span style="display: block; height: 10px; border-radius: 5px 0 0 5px; background: #2F5C99; width: {{r.lw}}%"></span></span>
+          <span style="width: 2px; height: 18px; background: #C9CDD3; flex: none"></span>
+          <span style="flex: 1; display: flex; height: 10px"><span style="display: block; height: 10px; border-radius: 0 5px 5px 0; background: #B0412F; width: {{r.rw}}%"></span></span>
+        </div>
+        <span style="font-size: 12px; color: #5B6270">{{r.trust}}</span>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="background: #FFFFFF; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+    <h2 style="margin: 0; font-size: 17px; font-weight: 800">금리 충격 테스트와 숫자가 왜 달라요?</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+      <div style="background: #E6F2EE; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 700; color: #2B6B5D">이 화면</span>
+        <span style="font-size: 13px; line-height: 1.5; color: #1F4D43">금리가 바뀐 그날, 내 돈이 실제로 움직인 만큼</span>
+      </div>
+      <div style="background: #F2F3F5; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 700; color: #5B6270">금리 충격 테스트</span>
+        <span style="font-size: 13px; line-height: 1.5; color: #3C424D">3년 동안 기업 이익을 거쳐 목표에 닿는 영향</span>
+      </div>
+    </div>
+    <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #5B6270">단기에는 거의 상쇄돼도, 길게 보면 성장주 비중이 큰 구성은 금리에 약할 수 있어요.</p>
+    <a href="#" style="min-height: 48px; border-radius: 12px; background: #2B6B5D; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none; display: flex; align-items: center; justify-content: center">목표에 미치는 영향 보기</a>
+  </section>
+
+  <section style="background: #FFFFFF; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 4px">
+    <h2 style="margin: 0 0 8px; font-size: 18px; font-weight: 800">다가오는 금리 일정</h2>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #EEF0F2">
+      <span style="width: 64px; flex: none; display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 700; color: #2B6B5D">10/28</span><span style="font-size: 12px; color: #5B6270">D-14</span></span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 700">미국 금리 결정(FOMC)</span><span style="font-size: 12.5px; color: #5B6270">금리만으로는 보통 ±3만원, 시장까지 더하면 ±1,000만원</span></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #EEF0F2">
+      <span style="width: 64px; flex: none; display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 700; color: #2B6B5D">10/22</span><span style="font-size: 12px; color: #5B6270">D-8</span></span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 700">한국은행 금리 결정</span><span style="font-size: 12.5px; color: #5B6270">미국 금리보다 원/달러에 영향을 줘요</span></span>
+    </div>
+  </section>
+
+  <button style="min-height: 56px; border-radius: 16px; background: #FFFFFF; border: none; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; font-family: inherit; font-size: 15px; font-weight: 700; color: #191C22">
+    금리 변화 직접 정하기
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#191C22" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+  </button>
+
+  <p style="margin: 0; padding: 0 4px; font-size: 12px; line-height: 1.6; color: #6B7280">예측이 아니라 '만약에'를 보는 화면이에요. 지난 3년 하루 단위 움직임에서 시장 전체 움직임을 빼고 계산했어요.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2120}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: 'up' };
+  }
+  fmt(v) {
+    const sign = v > 0 ? '+' : (v < 0 ? '−' : '');
+    const a = Math.round(Math.abs(v));
+    return sign + a.toLocaleString('ko-KR') + '만원';
+  }
+  renderVals() {
+    const presets = [
+      { id: 'down', label: '내린다', sub: '10년물 −0.5%p', d: -0.5 },
+      { id: 'up', label: '오른다', sub: '10년물 +0.5%p', d: 0.5 },
+      { id: 'lastyear', label: '작년만큼 또 오른다', sub: '10년물 +1.1%p', d: 1.1 },
+      { id: 'y2022', label: '2022년처럼 급등', sub: '10년물 +2.5%p', d: 2.5 }
+    ];
+    const cur = presets.find((p) => p.id === this.state.picked) || presets[1];
+    const k = cur.d / 0.1;
+    const per = [
+      { name: 'NVDA', v: 43.6, tag: '금리가 오르면 함께 올랐어요', tagColor: '#B0412F', trust: '10번 중 6번 이 방향이었어요 · 관계가 약한 편', weak: false },
+      { name: 'SPCX', v: -31.6, tag: '금리가 오르면 내려요', tagColor: '#2F5C99', trust: '10번 중 7번 이 방향이었어요', weak: false },
+      { name: 'TSLA', v: -11, tag: '뚜렷한 관계 없음', tagColor: '#6B7280', trust: '날마다 방향이 바뀌어서 믿기 어려운 값이에요', weak: true },
+      { name: 'SGOV · 국내 주식', v: 0, tag: '뚜렷한 관계 없음', tagColor: '#6B7280', trust: '금리와 함께 움직이지 않았어요', weak: true }
+    ];
+    const vals = per.map((r) => r.v * k);
+    const maxAbs = Math.max.apply(null, vals.map((x) => Math.abs(x))) || 1;
+    const rows = per.map((r, i) => {
+      const v = vals[i];
+      const w = Math.round(Math.abs(v) / maxAbs * 100);
+      return {
+        name: r.name, tag: r.tag, tagColor: r.tagColor, trust: r.trust,
+        valueText: r.v === 0 ? '0만원' : this.fmt(v),
+        color: v > 0 ? '#B0412F' : (v < 0 ? '#2F5C99' : '#6B7280'),
+        lw: v < 0 ? w : 0, rw: v > 0 ? w : 0,
+        opacity: r.weak ? 0.55 : 1
+      };
+    });
+    const gain = vals.filter((x) => x > 0).reduce((a, b) => a + b, 0);
+    const loss = vals.filter((x) => x < 0).reduce((a, b) => a + b, 0);
+    const total = gain + loss;
+    const gl = Math.max(gain, -loss) || 1;
+    const pct = total / 51472 * 100;
+    const dTxt = (cur.d > 0 ? '+' : '−') + Math.abs(cur.d) + '%p';
+    return {
+      presets: presets.map((p) => {
+        const on = p.id === cur.id;
+        return { label: p.label, sub: p.sub, bg: on ? '#2B6B5D' : '#FFFFFF', fg: on ? '#FFFFFF' : '#191C22', border: on ? '#2B6B5D' : '#E3E5E8', pick: () => this.setState({ picked: p.id }) };
+      }),
+      condition: '10년물 금리가 ' + Math.abs(cur.d) + '%p ' + (cur.d > 0 ? '오르면' : '내리면') + ' (' + dTxt + ')',
+      verdict: Math.abs(total) < 50 ? '거의 그대로예요' : (total > 0 ? '조금 늘어요' : '조금 줄어요'),
+      totalText: this.fmt(total),
+      pctText: (pct >= 0 ? '+' : '−') + Math.abs(pct).toFixed(2) + '%',
+      gainText: this.fmt(gain),
+      lossText: this.fmt(loss),
+      gainW: Math.round(gain / gl * 100),
+      lossW: Math.round(-loss / gl * 100),
+      isBig: Math.abs(cur.d) >= 2,
+      rows: rows
+    };
+  }
+}
+</script>
+</body>
+</html>

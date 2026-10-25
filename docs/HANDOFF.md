@@ -247,3 +247,28 @@
 - 서버: `server.py` /api/mock/daily·last·book·calendar·wallet(GET), /api/mock/ai(POST). 토스 한도는 묶음별 초당 횟수를 응답 머리로 맞춘다. Claude 키는 서버 `ai_keys.json` {"anthropic_api_key"}, 쓴 돈은 `mock_wallet.json` (둘 다 .gitignore). Lightsail 서비스 `naeilo-dev`(8765)로 돌고, 공용 중계 `toss.naeilo.com` 뒤 `/api/mock/*` 로 연다(Caddy). 열쇠: 서버 `dev_token.json` {"token"} 과 앱 머리글 `X-Naeilo-Dev` 가 같아야 답한다(아니면 403). 앱 열쇠는 `naeilo://mock?t=…` 를 한 번 열면 그 기기에만 저장. 자세히는 docs/toss-relay.md '모의투자 경로'.
 - 계산 시험: `ios-app/tools/mock_test/` (명령은 main.swift 맨 위). 체결·수수료·세금·현금 부족·0주·이유 사슬·AI 답 거르기.
 - 남은 일: Lightsail 에 dev_token.json·ai_keys.json 넣고 Caddy 에 /api/mock 줄 더하기, 폰에서 naeilo://mock?t=… 열기 → 실기기에서 관찰 훑기(2~3분)·장중 정식 체결·장 밖 시험 체결·AI 한 번씩 확인 → 첫 주 AI 실제 비용 보고 한도 다시 맞춤.
+
+## 모의투자 공개판 방향 (2026-10-25, 기록만)
+Drinker 결정. 급하지 않다. 지금 수준의 모의투자는 앱스토어의 모든 키 사용자에게 설정에서 골라 켜게 연다. 개발자 전용은 더 심화로 간다.
+
+공개판 전에 먼저 할 일
+- 앱이 닫혀도 서버가 대신 훑기.
+- 미국 시장.
+- 나라별 사용자: 사용자마다 '내 나라 장 + 미국장' 한 쌍. 지금은 한국(국장+미국장)·미국(미국장)·홍콩·중국(Longbridge)까지. 시세는 `Market.swift` 가 토스·Alpaca·Longbridge 키로 받지만, 모의투자 `MockFeed.swift` 는 토스(개발자 서버) 한 길뿐.
+- 모의투자가 쓰는 네 값(현재가·일봉·1분봉·호가)을 증권사 길마다 미리 시험한다. Alpaca·Longbridge 호가 제공은 미확인.
+- 모의투자 조건 연구 (연구 필요).
+
+공개판 구조 (정해 둠)
+- 서버 `/api/mock` 은 Drinker 토스 키(`toss_keys.json`)로 부르므로 공개판에 쓰지 않는다. 사용자 자기 키 + 공용 중계로 간다.
+- 공용 중계(`proxy/toss_relay.py`)에 호가·장 달력 경로를 더한다. 체결은 지금처럼 호가 잔량(`MockEngine.walk`).
+- 중계 한도는 IP 대신 토큰마다 센다 (토큰은 진짜 키에만 나온다). 지금 IP당 1분 60 은 근거 없이 잡은 값.
+- 빌드: 기본 모의투자는 모든 빌드, 심화(AI 등)만 `MOCK`(project.yml 79줄). 진입은 개발자 조건(`MockOrderViews.swift` 642줄)을 풀고 설정에서 켠다.
+- 키 넣기 묶기 (Drinker 허락): 넘기는 방식이 같은 증권사는 한 타입으로 묶는다. 지금 `SettingsView.swift` 에 TossKeyView(id·secret, +중계 IP 안내)·AlpacaKeyView(id·secret)·LongbridgeKeyView(key·secret·token) 셋이 따로 있고 칸 그리는 함수도 셋(469·556·643줄). 이름표만 다른 '값 N개' 한 화면으로 묶고, 토스 IP 안내 같은 것만 덧붙임으로 둔다.
+- 오픈 API 패턴 (Drinker): 증권사 이름이 아니라 키 형태(값 2개·값 3개 …)로 고르게 한다. 사용자는 자기 키 모양을 보고 고른다. 뒤쪽 부르는 주소·인증 순서·응답 이름표는 증권사마다 다르므로 코드가 아니라 '설명서'(주소·인증 방식·값 위치) 데이터로 두어, 새 증권사는 설명서 한 장으로 붙인다.
+- 증권사 맞추기 (Drinker): 사용자가 넣은 키 모양으로 개발자가 증권사를 찾아 잇는다. 방법: ① 값 개수·앞글자·길이로 후보를 좁힌다(증권사별 키 모양은 아직 실제 키로 확인 전) ② 남은 후보의 인증을 한 번씩 불러 통과한 곳으로 잇는다. 키 넣을 때 한 번만 부르므로 부담 작음.
+- 허용 IP 변종 (Drinker): 같은 '값 N개'라도 토스처럼 허용 IP 등록이 필요한 곳(→ 공용 중계를 거치고 등록할 IP를 보여 줌)과 Alpaca처럼 필요 없는 곳(→ 앱이 바로 부름)이 있다. 설명서에 '허용 IP 필요'를 칸으로 둔다. 증권사 맞추기에서 IP 미등록 실패를 틀린 키와 나눠 읽어야 한다(토스의 IP 미등록 응답 모양은 확인 전).
+- 증권사별 시험 상태 (2026-10-25 확인): 토스 = 현재가·일봉·1분봉·호가·환율 실제로 받음(모의투자가 이 값으로 돎) → 설명서 첫 장. Alpaca = 현재가(IEX, 2026-10-17 afad7fb8)·일봉(흐름 탭, `/v2/stocks/bars`)만 붙음, 실제 키로 받은 기록은 '연결됨'뿐, 1분봉·호가 코드 없음. Longbridge = 현재가만 붙음(`/quote/quotes`), 같은 상태. `docs/broker-apis-global.md`(10-17, 미커밋)는 공개 문서 기반 후보 목록일 뿐 시험 아님.
+- Alpaca 시험 방법: 토스 키 화면엔 끄는 스위치가 없고 '키 지우기'뿐(`SettingsView.swift` 425줄). 토스 키를 지운 채 종목 화면 "Alpaca(IEX) 시세", 설정 > 시세 기준 맨 아래 미국 종목 시세 출처(내부 베타), 흐름 탭 차트로 본다. 끝나면 토스 키를 다시 넣는다.
+- 새 스레드가 이어받을 때 읽을 것: 이 칸 → `docs/toss-relay.md` → `docs/broker-apis.md` → `docs/broker-apis-global.md`.
+- Longbridge 시험 (2026-10-25): 현재가는 HTTP `POST /quote/quotes`로 실제 받음(드링커님 화면 확인). 일봉·1분봉은 공식 SDK HTTP 길 `POST /quote/history-candlesticks`(period 1000=일, 1=분, trade_session 0). 일봉은 수정주가(adjust_type 1), Alpaca 일봉은 `adjustment=split` (NVDA 분할이 10배로 보였음). 저장 파일 flow_longbridge_adj.json·flow_alpaca_split.json.
+- 화면 팝업 통일 (Drinker, 2026-10-25): 탭에서 넘어가던 화면은 모두 시트 팝업. 팝업 안 다음 화면은 같은 팝업 안에서 넘긴다(뒤로 화살표 + 오른쪽 위 X는 한 번에 닫기, 제목은 왼쪽 inlineLarge). 팝업 위에 팝업 쌓기는 안 함. 블록·파도·동네 첫 화면도 시트, 게임 판만 전체 화면. 코드: `App.swift` PathSheet·PopupX·PopupStack·HomeLink, 종목 상세는 `HoldingsView.swift` DetailLink·.detailSheet().
