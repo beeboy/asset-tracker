@@ -68,6 +68,9 @@ struct HomeView: View {
             }
         }
         .boxScheme()
+        #if MOCK
+        .modifier(MockEntry())
+        #endif
         .contextMenu {
             Picker(String(localized: "평가액 박스 모양"), selection: $lookRaw) {
                 ForEach(BoxLook.allCases) { Text($0.name).tag($0.rawValue) }

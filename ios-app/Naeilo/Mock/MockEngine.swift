@@ -1,0 +1,394 @@
+#if MOCK
+import Foundation
+
+// 모의투자 판단·체결 계산. 화면·네트워크 없이 값만 다룬다 (판단 코드와 주문 코드를 나눈다).
+// 상태를 바꾸는 곳은 MockDesk 하나뿐이고, 여기 함수는 장부 사본을 받아 새 장부와 기록 줄을 돌려준다.
+
+enum MockCalc {
+
+    // MARK: 조건 조각 값
+
+    /// 조각의 값 (화면 단위: 가격 원 · 등락률 % · 거래량 배 · 이동평균 위아래 비율 · 거래대금 억). 봉이 모자라면 nil
+    static func value(_ p: MockPiece, _ bars: [MockBar]) -> Double? {
+        guard let last = bars.last, bars.count >= p.need else { return nil }
+        switch p.kind {
+        case .price: return last.c
+        case .change:
+            let prev = bars[bars.count - 2].c
+            return prev > 0 ? (last.c / prev - 1) * 100 : nil
+        case .volume:
+            let past = bars.dropLast().suffix(p.days)
+            let avg = past.reduce(0) { $0 + $1.v } / Double(max(1, past.count))
+            return avg > 0 ? last.v / avg : nil
+        case .ma:
+            let win = bars.suffix(p.days)
+            let avg = win.reduce(0) { $0 + $1.c } / Double(max(1, win.count))
+            return avg > 0 ? last.c / avg - 1 : nil
+        case .amount: return last.c * last.v / 1e8
+        }
+    }
+
+    static func pass(_ p: MockPiece, _ v: Double) -> Bool {
+        if p.kind == .ma { return p.above ? v > 0 : v < 0 }
+        if let lo = p.lo, v < lo { return false }
+        if let hi = p.hi, v > hi { return false }
+        return true
+    }
+
+    /// 걸린 이유 조각 글: "거래량 3.1배"
+    static func short(_ p: MockPiece, _ v: Double) -> String {
+        switch p.kind {
+        case .price: return MockFmt.won(v)
+        case .change: return MockFmt.signed((v * 10).rounded() / 10) + "%"
+        case .volume: return "거래량 " + String(format: "%.1f", v) + "배"
+        case .ma: return "\(p.days)일선 " + (v > 0 ? "위" : "아래")
+        case .amount: return "거래대금 " + MockFmt.num((v * 10).rounded() / 10) + "억"
+        }
+    }
+
+    // MARK: 훑기
+
+    /// 묶음으로 종목들을 거른다. bars: 코드 → 오래된 것부터. 기준 날짜(가장 늦은 봉)에 봉이 없는 종목은 자료 없음
+    static func scan(_ b: MockBundle, stocks: [MockStock], bars: [String: [MockBar]], excluded: Set<String>, at: Date, seconds: Double = 0) -> MockScan {
+        let barDay = bars.values.compactMap { $0.last?.d }.max() ?? ""
+        var hits: [MockHit] = [], dropped: [Int: Int] = [:], ex: [String] = []
+        let list = stocks.filter { b.scope == .all || (b.scope == .kospi) == $0.kospi }
+        for s in list {
+            if excluded.contains(s.code) { ex.append(s.code); continue }
+            guard let bs = bars[s.code], let last = bs.last, last.d == barDay, bs.count >= b.need else { dropped[-1, default: 0] += 1; continue }
+            var why: [String] = [], fail: Int? = nil
+            for (i, p) in b.pieces.enumerated() {
+                guard let v = value(p, bs) else { fail = -1; break }
+                if !pass(p, v) { fail = i; break }
+                why.append(short(p, v))
+            }
+            if let f = fail { dropped[f, default: 0] += 1; continue }
+            let score = value(b.sortPiece, bs) ?? 0
+            let ch = value(MockPiece(kind: .change), bs).map { $0 / 100 }
+            hits.append(MockHit(code: s.code, name: s.name, price: last.c, change: ch, score: score,
+                                why: why.isEmpty ? "조각 없음 · 전부" : why.joined(separator: " · ")))
+        }
+        hits.sort { $0.score != $1.score ? $0.score > $1.score : $0.code < $1.code }
+        return MockScan(at: at, bundleId: b.id, bundleName: b.name, pieceTexts: b.pieces.map(\.text), barDay: barDay,
+                        total: list.count, hits: hits, dropped: dropped, excluded: ex, seconds: seconds)
+    }
+
+    /// 예외 묶음에 걸리는 종목 (조건 추가). 조각이 없는 묶음은 아무것도 빼지 않는다
+    static func exceptionHits(_ bs: [MockBundle], stocks: [MockStock], bars: [String: [MockBar]]) -> [String: String] {
+        var out: [String: String] = [:]
+        for b in bs where !b.pieces.isEmpty {
+            for h in scan(b, stocks: stocks, bars: bars, excluded: [], at: Date()).hits where out[h.code] == nil { out[h.code] = "조건 · " + b.name }
+        }
+        return out
+    }
+
+    // MARK: 평가
+
+    /// 평가액 = 현금 + 묶인 돈 + 보유 × 지금 가격 (가격을 모르면 산 평균값)
+    static func equity(_ l: MockLedger, prices: [String: Double]) -> Double {
+        l.cash + l.reserved + l.positions.values.reduce(0) { $0 + Double($1.qty) * (prices[$1.code] ?? $1.avg) }
+    }
+
+    // MARK: 선정
+
+    struct Pick: Codable, Equatable, Identifiable {
+        var id: String { code }
+        var code: String
+        var name: String
+        var price: Double            // 고를 때 본 가격
+        var budget: Double           // 쓸 돈
+        var qty: Int                 // 그 가격이면 몇 주
+        var rank: Int                // 관찰 결과 순위 (1부터)
+        var why: String
+        var weight: Double           // 평가액 대비
+        var who: MockWho = .rule
+    }
+    struct Skip: Codable, Equatable {
+        var code: String
+        var name: String
+        var why: String
+        var short: Bool = false      // 현금 부족 (못 산 신호로 센다)
+    }
+
+    /// 관찰 결과에서 고른다. 순위 차례대로 (가나다순 같은 우연한 순서가 아니다), 남은 현금에서 하나씩 뺀다
+    static func select(_ scan: MockScan, ledger l: MockLedger, rule: MockSelectRule, fees: MockFees,
+                       prices: [String: Double], excluded: [String: String]) -> (picks: [Pick], skips: [Skip]) {
+        let eq = equity(l, prices: prices)
+        let pendingBuy = Set(l.pending.filter { $0.side == .buy }.map(\.code))
+        var slots = rule.count - l.positions.count - pendingBuy.count
+        var avail = l.cash - rule.keepCash * eq
+        var picks: [Pick] = [], skips: [Skip] = []
+        for (i, h) in scan.hits.enumerated() {
+            if let why = excluded[h.code] { skips.append(Skip(code: h.code, name: h.name, why: "예외 · " + why)); continue }
+            if l.positions[h.code] != nil { skips.append(Skip(code: h.code, name: h.name, why: "이미 보유")); continue }
+            if pendingBuy.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "같은 종목 주문 대기 중")); continue }
+            guard slots > 0 else { break }
+            let px = prices[h.code] ?? h.price
+            let one = px * (1 + fees.commission)
+            guard px > 0 else { skips.append(Skip(code: h.code, name: h.name, why: "가격 확인 못 함")); continue }
+            if avail < one {
+                // 현금이 한 주 값도 안 남으면 남은 자리 몫은 모두 현금 부족
+                skips.append(Skip(code: h.code, name: h.name, why: "현금 부족 · 남은 " + MockFmt.won(max(0, avail)), short: true))
+                slots -= 1
+                continue
+            }
+            let budget = min(rule.maxPer * eq, avail / Double(slots))
+            let qty = Int((budget / one).rounded(.down))
+            if qty < 1 {
+                // 한 주가 쓸 돈보다 비싸면 0주. 오류가 아니라 정상 결과로 남긴다
+                skips.append(Skip(code: h.code, name: h.name, why: "0주 · 한 주 " + MockFmt.won(px) + " > 쓸 돈 " + MockFmt.won(budget)))
+                continue
+            }
+            let spend = Double(qty) * one
+            picks.append(Pick(code: h.code, name: h.name, price: px, budget: spend, qty: qty, rank: i + 1,
+                              why: "\(i + 1)위 · " + h.why, weight: eq > 0 ? spend / eq : 0))
+            avail -= spend
+            slots -= 1
+        }
+        return (picks, skips)
+    }
+
+    // MARK: 호가와 체결
+
+    struct Level: Codable, Equatable { var p: Double; var v: Double }
+    struct Book: Codable, Equatable {
+        var asks: [Level]            // 매도 호가 (싼 것부터)
+        var bids: [Level]            // 매수 호가 (비싼 것부터)
+        var at: Date?
+        init(asks: [Level], bids: [Level], at: Date?) {
+            self.asks = asks.filter { $0.p > 0 && $0.v > 0 }.sorted { $0.p < $1.p }
+            self.bids = bids.filter { $0.p > 0 && $0.v > 0 }.sorted { $0.p > $1.p }
+            self.at = at
+        }
+        var bestAsk: Double? { asks.first?.p }
+        var bestBid: Double? { bids.first?.p }
+    }
+
+    struct Fill: Equatable {
+        var qty: Int = 0
+        var amount: Double = 0       // 체결 금액 (수수료 전)
+        var levels: Int = 0          // 몇 단계 호가를 채웠나
+        var avg: Double { qty > 0 ? amount / Double(qty) : 0 }
+    }
+
+    /// 호가를 차례로 채운다. 매수는 매도 1호가부터, 매도는 매수 1호가부터. 지정가는 그 값을 넘는 호가는 쓰지 않는다.
+    /// cap: 매수에 쓸 수 있는 돈 (수수료 포함). 모자라면 그만큼만
+    static func walk(side: MockSide, type: MockOrderType, qty: Int, limit: Double?, book: Book, fees: MockFees, cap: Double? = nil) -> Fill {
+        var f = Fill(), left = qty
+        let levels = side == .buy ? book.asks : book.bids
+        for lv in levels where left > 0 {
+            if type == .limit, let lim = limit {
+                if side == .buy && lv.p > lim { break }
+                if side == .sell && lv.p < lim { break }
+            }
+            var take = min(left, Int(lv.v.rounded(.down)))
+            if side == .buy, let cap {
+                let room = cap - (f.amount + fees.fee(f.amount))
+                take = min(take, Int((room / (lv.p * (1 + fees.commission))).rounded(.down)))
+            }
+            guard take > 0 else { break }
+            f.qty += take; f.amount += Double(take) * lv.p; f.levels += 1; left -= take
+        }
+        return f
+    }
+
+    /// 지정가가 바로 닿는지 못 닿는지 한 줄 (미체결 이유)
+    static func waitWhy(side: MockSide, limit: Double, book: Book) -> String {
+        if side == .buy {
+            guard let a = book.bestAsk else { return "매도 호가 없음" }
+            return "매도 1호가 " + MockFmt.won(a) + "이 더 높음"
+        }
+        guard let b = book.bestBid else { return "매수 호가 없음" }
+        return "매수 1호가 " + MockFmt.won(b) + "이 더 낮음"
+    }
+
+    /// 매수 주문에 묶을 돈: 지정가면 지정가 × 수량, 시장가면 매도 1호가 × 수량에 2% 여유 (깊은 호가까지 채울 때). 수수료 포함
+    static func reserve(type: MockOrderType, qty: Int, limit: Double?, bestAsk: Double, fees: MockFees, cash: Double) -> Double {
+        let px = type == .limit ? (limit ?? bestAsk) : bestAsk * 1.02
+        return min(cash, (Double(qty) * px * (1 + fees.commission)).rounded(.up))
+    }
+
+    // MARK: 장부에 적기
+
+    /// 매수 체결: 묶은 돈에서 쓰고, 다 채우면 남은 돈을 현금으로 돌린다
+    static func applyBuy(_ l: inout MockLedger, orderIndex i: Int, fill: Fill, fees: MockFees, at: Date, test: Bool) -> MockEvent {
+        var o = l.pending[i]
+        let fee = fees.fee(fill.amount)
+        o.reserved -= fill.amount + fee
+        o.qty -= fill.qty
+        let day = MockFmt.day(at)
+        if var p = l.positions[o.code] {
+            p.qty += fill.qty; p.cost += fill.amount + fee; p.gross += fill.amount; p.test = p.test || test
+            l.positions[o.code] = p
+        } else {
+            l.positions[o.code] = MockPosition(code: o.code, name: o.name, market: o.market, qty: fill.qty, cost: fill.amount + fee, gross: fill.amount,
+                                               opened: at, openedDay: day, who: o.who, test: test, buyRef: o.id)
+        }
+        l.fees += fee
+        if o.qty <= 0 {
+            l.cash += max(0, o.reserved)
+            l.pending.remove(at: i)
+        } else {
+            l.pending[i] = o
+        }
+        return MockEvent(at: at, ledger: l.id, book: l.book, kind: .fill, who: o.who, code: o.code, name: o.name,
+                         text: "\(o.type.name) \(fill.qty)주 · 평균 \(MockFmt.won(fill.avg))" + (fill.levels > 1 ? " · 호가 \(fill.levels)단 채움" : "") + " · 수수료 \(MockFmt.won(fee))",
+                         test: test, side: .buy, qty: fill.qty, price: fill.avg, amount: fill.amount, fee: fee, ref: o.id)
+    }
+
+    /// 매도 체결: 판 몫의 들어간 돈을 비율로 덜고 손익을 남긴다. 성적은 그 몫을 산 쪽(규칙·손·AI)으로 센다
+    static func applySell(_ l: inout MockLedger, orderIndex i: Int, fill: Fill, fees: MockFees, at: Date, test: Bool) -> MockEvent? {
+        var o = l.pending[i]
+        guard var p = l.positions[o.code], p.qty > 0 else { l.pending.remove(at: i); return nil }
+        let n = min(fill.qty, p.qty)
+        let amount = fill.avg * Double(n)
+        let fee = fees.fee(amount), tax = fees.tax(amount)
+        let share = Double(n) / Double(p.qty)
+        let basis = p.cost * share, gross = p.gross * share
+        let proceeds = amount - fee - tax
+        p.qty -= n; p.cost -= basis; p.gross -= gross
+        let opener = p.who, wasTest = p.test
+        if p.qty <= 0 { l.positions[o.code] = nil } else { l.positions[o.code] = p }
+        l.cash += proceeds; l.fees += fee; l.taxes += tax
+        o.qty -= n
+        if o.qty <= 0 || l.positions[o.code] == nil { l.pending.remove(at: i) } else { l.pending[i] = o }
+        return MockEvent(at: at, ledger: l.id, book: l.book, kind: .fill, who: o.who, code: o.code, name: o.name,
+                         text: "\(o.type.name) \(n)주 · 평균 \(MockFmt.won(fill.avg)) · 수수료 \(MockFmt.won(fee)) · 세금 \(MockFmt.won(tax))",
+                         test: test || wasTest, side: .sell, qty: n, price: fill.avg, amount: amount, fee: fee, tax: tax,
+                         pnl: proceeds - basis, pnlGross: amount - gross, basis: basis, opener: opener, ref: o.id)
+    }
+
+    // MARK: 팔기 신호
+
+    /// 보유 종목마다 팔기 규칙을 지금 가격으로 본다. 예외 종목은 규칙이 팔지 않는다
+    static func sellSignals(_ l: MockLedger, rule: MockSellRule, prices: [String: Double], excluded: [String: String], today: String) -> [(code: String, why: String)] {
+        guard rule.on else { return [] }
+        let selling = Set(l.pending.filter { $0.side == .sell }.map(\.code))
+        var out: [(String, String)] = []
+        for p in l.positions.values.sorted(by: { $0.code < $1.code }) where !selling.contains(p.code) && excluded[p.code] == nil && p.who != .hand {
+            guard let px = prices[p.code], px > 0, p.avg > 0 else { continue }
+            let r = px / p.avg - 1
+            if let s = rule.stopLoss, r <= -s { out.append((p.code, "손절 · 산 값 대비 " + MockFmt.pct(r, digits: 1))); continue }
+            if let t = rule.takeProfit, r >= t { out.append((p.code, "익절 · 산 값 대비 " + MockFmt.pct(r, digits: 1))); continue }
+            if let d = rule.maxDays, weekdays(from: p.openedDay, to: today) >= d { out.append((p.code, "보유 \(d)일 넘음")); continue }
+        }
+        return out
+    }
+
+    /// 두 날짜 사이 평일 수 (시작 날 빼고 끝 날 넣음). 공휴일은 모른다
+    static func weekdays(from a: String, to b: String) -> Int {
+        let f = DateFormatter(); f.timeZone = MockFmt.kst; f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
+        guard var d = f.date(from: a), let e = f.date(from: b), d < e else { return 0 }
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
+        var n = 0
+        while d < e {
+            d = cal.date(byAdding: .day, value: 1, to: d)!
+            let w = cal.component(.weekday, from: d)
+            if w != 1 && w != 7 { n += 1 }
+        }
+        return n
+    }
+
+    // MARK: 국내 호가 단위 (2023-01 이후 코스피·코스닥 같은 표)
+
+    static func tick(_ p: Double) -> Double {
+        switch p {
+        case ..<2_000: return 1
+        case ..<5_000: return 5
+        case ..<20_000: return 10
+        case ..<50_000: return 50
+        case ..<200_000: return 100
+        case ..<500_000: return 500
+        default: return 1_000
+        }
+    }
+    /// 지정가를 호가 단위에 맞춘다 (매수는 내림, 매도는 올림: 덜 유리한 쪽으로 붙지 않게)
+    static func snap(_ p: Double, side: MockSide) -> Double {
+        let t = tick(p)
+        return side == .buy ? (p / t).rounded(.down) * t : (p / t).rounded(.up) * t
+    }
+
+    // MARK: 성적
+
+    struct Stat: Equatable {
+        var trades = 0, wins = 0
+        var pnl = 0.0, pnlGross = 0.0, winSum = 0.0, lossSum = 0.0, basis = 0.0
+        var winRate: Double? { trades > 0 ? Double(wins) / Double(trades) : nil }
+        var ret: Double? { basis > 0 ? pnl / basis : nil }
+        var retGross: Double? { basis > 0 ? pnlGross / basis : nil }
+        mutating func add(_ e: MockEvent) {
+            guard let p = e.pnl else { return }
+            trades += 1; pnl += p; pnlGross += e.pnlGross ?? p; basis += e.basis ?? 0
+            if p > 0 { wins += 1; winSum += p } else { lossSum += p }
+        }
+    }
+
+    /// 매도 체결만 매매 한 건으로 센다. test: 시험 체결만(참)·정식만(거짓)
+    static func stat(_ events: [MockEvent], ledger: UUID, who: MockWho? = nil, test: Bool = false, since: Date? = nil) -> Stat {
+        var s = Stat()
+        for e in events where e.ledger == ledger && e.kind == .fill && e.side == .sell && e.test == test {
+            if let who, (e.opener ?? e.who) != who { continue }
+            if let since, e.at < since { continue }
+            s.add(e)
+        }
+        return s
+    }
+
+    enum Unit: String, CaseIterable, Identifiable {
+        case hour, day, week, month, year
+        var id: String { rawValue }
+        var name: String {
+            switch self {
+            case .hour: return "시간"
+            case .day: return "일"
+            case .week: return "주"
+            case .month: return "월"
+            case .year: return "년"
+            }
+        }
+    }
+
+    /// 기간 한 칸의 이름 (한국 시각)
+    static func bucket(_ d: Date, _ u: Unit) -> String {
+        var cal = Calendar(identifier: .iso8601); cal.timeZone = MockFmt.kst
+        let c = cal.dateComponents([.year, .month, .day, .hour, .weekOfYear, .yearForWeekOfYear], from: d)
+        switch u {
+        case .hour: return String(format: "%d/%d %02d시", c.month!, c.day!, c.hour!)
+        case .day: return String(format: "%d/%d", c.month!, c.day!)
+        case .week: return String(format: "%d년 %d주", c.yearForWeekOfYear!, c.weekOfYear!)
+        case .month: return String(format: "%d년 %d월", c.year!, c.month!)
+        case .year: return "\(c.year!)년"
+        }
+    }
+
+    /// 기간별 성적 (최근 칸부터). 정식 체결만
+    static func periods(_ events: [MockEvent], ledger: UUID, unit: Unit) -> [(key: String, stat: Stat)] {
+        var order: [String] = [], by: [String: Stat] = [:]
+        for e in events.sorted(by: { $0.at > $1.at }) where e.ledger == ledger && e.kind == .fill && e.side == .sell && !e.test {
+            let k = bucket(e.at, unit)
+            if by[k] == nil { order.append(k) }
+            by[k, default: Stat()].add(e)
+        }
+        return order.map { ($0, by[$0]!) }
+    }
+
+    /// 이유 따라가기: 체결 하나에서 주문 → 선정 → 관찰로 거슬러 간다 (오래된 단계부터).
+    /// 체결·미체결 줄의 ref = 주문 id = 주문 줄의 id, 주문 줄의 ref = 선정 줄, 선정 줄의 ref = 관찰 줄
+    static func chain(_ e: MockEvent, in events: [MockEvent]) -> [MockEvent] {
+        var byId: [UUID: MockEvent] = [:]
+        for x in events { byId[x.id] = x }
+        var out: [MockEvent] = [e]
+        var cur = e.ref.flatMap { byId[$0] }
+        var n = 0
+        while let c = cur, n < 6 {
+            out.append(c)
+            cur = c.ref.flatMap { byId[$0] }
+            n += 1
+        }
+        // 같은 주문의 미체결 줄도 함께 (왜 기다렸나). 체결이 여러 번이면 앞 체결도
+        let same = events.filter { ($0.kind == .wait || $0.kind == .fill) && $0.ref == e.ref && $0.id != e.id && e.ref != nil }
+        let rank: [MockEvent.Kind: Int] = [.scan: 0, .exclude: 1, .select: 2, .short: 2, .order: 3, .wait: 4, .cancel: 5, .fill: 6]
+        return (out + same).sorted { $0.at != $1.at ? $0.at < $1.at : (rank[$0.kind] ?? 9) < (rank[$1.kind] ?? 9) }
+    }
+}
+#endif
