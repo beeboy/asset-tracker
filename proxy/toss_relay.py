@@ -7,12 +7,13 @@
 - 키(client_id·client_secret)와 토큰은 저장하지 않는다. 받은 그대로 토스에 넘기고 토스 응답을 그대로 돌려준다.
 - 기록(로그)에 키·토큰·요청 본문을 남기지 않는다.
 - 토큰 발급, 현재가(/api/v1/prices), 일봉·1분봉(/api/v1/candles, 1d·1m), 원/달러(/api/v1/exchange-rate)만 넘긴다. 주문·계좌·자산 경로는 없다 (계좌 헤더도 넘기지 않는다).
-- 한 IP 가 1분에 60번 넘게 부르면 429 (열린 중계로 쓰이지 않게).
+- 한 IP 가 1분에 60번 넘게 부르면 429 (열린 중계로 쓰이지 않게). 개발자 열쇠(머리글 X-Naeilo-Dev = 저장소 dev_token.json)가 맞으면 세지 않는다.
 
 실행: NAEILO_TOSS_IP=<이 서버 공인 IP> python3 proxy/toss_relay.py [--port 8766]
 앞에 HTTPS(예: Caddy toss.naeilo.com → 127.0.0.1:8766)를 둔다. 개발자 키를 쓰는 server.py 와는 따로 돈다.
 """
 import argparse
+import hmac
 import json
 import os
 import re
@@ -31,6 +32,22 @@ PER_MIN = 60
 
 _hits: dict[str, list[float]] = {}
 _lock = threading.Lock()
+
+DEV_TOKEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dev_token.json")  # 개발자 서버와 같은 열쇠 (.gitignore)
+_dev = [0.0, ""]  # (읽은 시각, 열쇠). 1분마다 다시 읽는다
+
+
+def dev_ok(h) -> bool:
+    """개발자 폰: 한도를 세지 않는다 (2026-10-25 Drinker 결정)"""
+    now = time.time()
+    if now - _dev[0] > 60:
+        try:
+            with open(DEV_TOKEN, encoding="utf-8") as f:
+                _dev[1] = str(json.load(f).get("token", "")).strip()
+        except (OSError, ValueError):
+            _dev[1] = ""
+        _dev[0] = now
+    return bool(_dev[1]) and hmac.compare_digest(_dev[1].encode(), str(h.get("X-Naeilo-Dev") or "").encode())
 
 
 def too_many(ip: str) -> bool:
@@ -85,7 +102,7 @@ class Relay(BaseHTTPRequestHandler):
             return self.reply(200, json.dumps({"ip": os.environ.get("NAEILO_TOSS_IP", "")}).encode())
         if u.path not in ("/api/toss/v1/prices", "/api/toss/v1/candles", "/api/toss/v1/exchange-rate"):
             return self.err(404, "없는 경로")
-        if too_many(self.client_ip()):
+        if not dev_ok(self.headers) and too_many(self.client_ip()):
             return self.err(429, "잠시 뒤에 다시")
         q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         auth = self.headers.get("Authorization") or ""
@@ -121,7 +138,7 @@ class Relay(BaseHTTPRequestHandler):
     def do_POST(self):
         if urllib.parse.urlparse(self.path).path != "/api/toss/token":
             return self.err(404, "없는 경로")
-        if too_many(self.client_ip()):
+        if not dev_ok(self.headers) and too_many(self.client_ip()):
             return self.err(429, "잠시 뒤에 다시")
         n = int(self.headers.get("Content-Length") or 0)
         if not 0 < n <= 2048:

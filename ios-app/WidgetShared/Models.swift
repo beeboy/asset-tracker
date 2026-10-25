@@ -237,6 +237,9 @@ enum TossFeed {
     // MARK: 일반 사용자 (내 키 + 공용 중계)
 
     private static func relayCall(_ r: URLRequest) async -> (Int, [String: Any]?, String?) {
+        // 개발자 폰(모의투자 열쇠를 넣은 내부 베타)은 중계가 1분 한도를 세지 않는다
+        var r = r
+        if let t = UserDefaults.standard.string(forKey: "mock_dev_token"), !t.isEmpty { r.setValue(t, forHTTPHeaderField: "X-Naeilo-Dev") }
         do {
             let (d, resp) = try await URLSession.shared.data(for: r)
             return ((resp as? HTTPURLResponse)?.statusCode ?? 0, try? JSONSerialization.jsonObject(with: d) as? [String: Any], nil)
