@@ -208,6 +208,13 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import kotlin.random.Random
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 // 목표 달성 루트 화면 (Views/GoalViews.swift: 시안 g1·g1r·g3·g3r·gt·gi·gp1r, 목표 미션 판). 설명은 계산값, 종목 추천 문구 없음.
 // 경로 계산(simulate·neededMonthly·goalPresets·shift·monthsTo)은 derivedStateOf 로 읽은 값이 바뀔 때만 다시 센다.
@@ -375,9 +382,9 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
     // ios: Views/GoalViews.swift:93,121 박스·패들 칸을 누르면 시작
     val tapStart = rememberUpdatedState { if (!playing && !party) startMini(fV, mine) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/GoalViews.swift:79
+    Column(Modifier.heightIn(min = minHeight), verticalArrangement = Arrangement.spacedBy(12.dp)) {   // ios: Views/GoalViews.swift:79
         // ios: Views/GoalViews.swift:80,142,143
-        Column(Modifier.fillMaxWidth().heightIn(min = minHeight).background(Theme.card, RoundedCornerShape(20.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/GoalViews.swift:148
+        Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(20.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {   // ios: Views/GoalViews.swift:148
             Row(Modifier.fillMaxWidth()) {   // ios: Views/GoalViews.swift:81
                 T(if (goal) "${AppModel.wonK(m.gK)}까지 100칸" else "본전까지 100칸", Modifier.alignByBaseline(), style = appFont(18f, FontWeight.Bold))   // Views/GoalViews.swift:292 (검사 예외: 같은 글)
                 Spacer(Modifier.weight(1f))   // ios: Views/GoalViews.swift:83
@@ -385,7 +392,7 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
             }
             // 박스는 60% 폭, 정보는 오른쪽
             SplitRow(ratio = 0.6f, spacing = 14.dp, rightFill = 0.9f) {   // ios: Views/GoalViews.swift:87
-                // 100칸이 곧 벽돌. 아래 빈 곳을 누르면 공 발사, 끌면 패들
+                // 100칸이 곧 벽돌. 박스를 누르면 공 발사, 패들은 기울여서만
                 // ios: Views/GoalViews.swift:89,90
                 BrickBox(mine = mine, filled = fV, lost = lost, g = game, on = playing, setOn = { playing = it }, end = { clear -> if (clear) party = true else showGame = true },
                     modifier = Modifier.pointerInput(Unit) { detectTapGestures { tapStart.value() } }   // ios: Views/GoalViews.swift:92,93
@@ -407,37 +414,27 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
                     action("공유하기", "square.and.arrow.up", fill = false) { showShare = true }   // ios: Views/GoalViews.swift:108
                 }
             }
-            // 패들 조작 칸: 손가락이 패들을 가리지 않게 박스 아래 빈 곳에서 끈다
-            // 평소엔 톡 눌러 시작(위아래 스크롤은 그대로), 게임 중에만 끌어서 패들
-            Box(Modifier.fillMaxWidth().height(44.dp)   // ios: Views/GoalViews.swift:116,118,127
-                // ios: Views/GoalViews.swift:119,120
-                .pointerInput(Unit) { detectTapGestures { p -> game.px = max(0.0, min(1.0, p.x.toDouble() / max(1, size.width))); tapStart.value() } }
-                // ios: Views/GoalViews.swift:123,125 DragGesture(minimumDistance: 0): 누르는 순간부터 패들
-                .pointerInput(playing) { if (playing) awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    do {
-                        val c = currentEvent.changes.getOrNull(0) ?: break
-                        game.px = max(0.0, min(1.0, c.position.x.toDouble() / max(1, size.width))); c.consume()   // ios: Views/GoalViews.swift:124
-                    } while (awaitPointerEvent().changes.any { it.pressed })
-                } })
-            // 남는 높이는 여기서 벌려 캐릭터·말풍선을 카드 맨 아래(탭 위)로 내린다
-            Spacer(Modifier.weight(1f))   // ios: Views/GoalViews.swift:126
-            // 블록·파도: 말풍선 위 오른쪽
-            // ios: Views/GoalViews.swift:128,129,130,131,133
-            Row(Modifier.fillMaxWidth().padding(bottom = 0.dp).offset(y = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-                action("블록", "square.grid.3x3.fill", fill = true, tight = true, modifier = Modifier.width(76.dp)) { showGame = true }
-                action("파도", "water.waves", fill = true, tight = true, modifier = Modifier.width(76.dp)) { showWave = true }
+        }
+        // 내 자산 게임 (2026-10-25 시안 A안): 100칸 바로 아래, 벽돌깨기·파도타기 두 칸 나란히
+        // ios: Views/GoalViews.swift:150
+        Column(Modifier.fillMaxWidth().background(Theme.card, RoundedCornerShape(20.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            T("내 자산 게임", style = appFont(18f, FontWeight.Bold))   // ios: Views/GoalViews.swift:152
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:153
+                GameTile(GameThumbKind.brick, "채운 칸을 부시자", "벽돌깨기", Modifier.weight(1f)) { showGame = true }   // ios: Views/GoalViews.swift:154
+                GameTile(GameThumbKind.wave, "내 흐름을 타자", "파도타기", Modifier.weight(1f)) { showWave = true }   // ios: Views/GoalViews.swift:155
             }
-            // 캐릭터가 자랑하자고 권한다 (누르는 곳 아님, 공유는 오른쪽 버튼). 다 깨면 친구들이 이 자리를 채운다
-            if (party) MiniParty(Modifier.fillMaxWidth()) else {   // ios: Views/GoalViews.swift:129
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:130
-                    CharPixel(id = m.homeFriendShown, width = 42.dp, height = 60.dp, modifier = Modifier.charIdle().clearAndSetSemantics {}, model = m)   // ios: Views/GoalViews.swift:131
-                    val bubble = RoundedCornerShape(topStart = 14.dp, bottomStart = 4.dp, bottomEnd = 14.dp, topEnd = 14.dp)   // ios: Views/GoalViews.swift:138
-                    // ios: Views/GoalViews.swift:132,136,137
-                    Column(Modifier.weight(1f).background(Theme.mintBg, bubble).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        T(m.friendName(m.homeFriendShown), style = appFont(12f, FontWeight.SemiBold), color = Theme.blue)   // ios: Views/GoalViews.swift:133
-                        T(GoalCellsCard.boast(pct, fV.toInt()), style = appFont(14f))   // ios: Views/GoalViews.swift:134
-                    }
+        }
+        // 캐릭터·말풍선은 화면 맨 아래(탭 위)
+        Spacer(Modifier.weight(1f))   // ios: Views/GoalViews.swift:117
+        // 캐릭터가 자랑하자고 권한다 (누르는 곳 아님, 공유는 오른쪽 버튼). 다 깨면 친구들이 이 자리를 채운다
+        if (party) MiniParty(Modifier.fillMaxWidth()) else {   // ios: Views/GoalViews.swift:129
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/GoalViews.swift:130
+                CharPixel(id = m.homeFriendShown, width = 42.dp, height = 60.dp, modifier = Modifier.charIdle().clearAndSetSemantics {}, model = m)   // ios: Views/GoalViews.swift:131
+                val bubble = RoundedCornerShape(topStart = 14.dp, bottomStart = 4.dp, bottomEnd = 14.dp, topEnd = 14.dp)   // ios: Views/GoalViews.swift:138
+                // ios: Views/GoalViews.swift:132,136,137
+                Column(Modifier.weight(1f).background(Theme.mintBg, bubble).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    T(m.friendName(m.homeFriendShown), style = appFont(12f, FontWeight.SemiBold), color = Theme.blue)   // ios: Views/GoalViews.swift:133
+                    T(GoalCellsCard.boast(pct, fV.toInt()), style = appFont(14f))   // ios: Views/GoalViews.swift:134
                 }
             }
         }
@@ -446,6 +443,77 @@ fun GoalCellsCard(m: AppModel, minHeight: Dp = 0.dp) {   // minHeight: 미션 �
     Sheet(showShare, onDismiss = { showShare = false }) { ShareCardSheet(m, party = party, dismiss = { showShare = false }) }   // ios: Views/GoalViews.swift:146
     com.naeilo.app.ui.PopupCover(showGame, { showGame = false }) { BrickGameHub(m, filled = nV, floor = nMine, yesterday = nY) }   // ios: Views/GoalViews.swift:147
     com.naeilo.app.ui.PopupCover(showWave, { showWave = false }) { WaveHub(m) }   // ios: Views/GoalViews.swift:148
+}
+
+/** 게임 박스 한 칸: 그림 + 한 줄(문구 · 버튼). 칸 어디를 눌러도 연다 */
+// ios: Views/GoalViews.swift:163
+@Composable
+private fun GameTile(k: GameThumbKind, say: String, name: String, modifier: Modifier, go: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Column(modifier.clip(shape).border(1.dp, Theme.border, shape).plainClickable(go)) {   // ios: Views/GoalViews.swift:178,179,180
+        GameThumb(k, Modifier.fillMaxWidth().height(120.dp))   // ios: Views/GoalViews.swift:165
+        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/GoalViews.swift:166,175
+            T(say, Modifier.weight(1f), style = appFont(12f), maxLines = 1)   // ios: Views/GoalViews.swift:167
+            // ios: Views/GoalViews.swift:169,170,171,172
+            T(name, Modifier.background(Theme.teal, RoundedCornerShape(9.dp)).plainClickable(go).padding(horizontal = 5.dp, vertical = 6.dp), style = appFont(12f, FontWeight.Bold), color = Color.White, maxLines = 1)
+        }
+    }
+}
+
+enum class GameThumbKind { brick, wave }
+
+/** 게임 박스 칸 그림: 판(위)에 웅크린 졸라맨과 아래 벽돌 / 자산 흐름 파도 위 보드 탄 졸라맨. 정지 그림 */
+// ios: Views/GoalViews.swift:723
+@Composable
+private fun GameThumb(kind: GameThumbKind, modifier: Modifier) {
+    val bg = Theme.mintBg; val ink = Theme.ink; val teal = Theme.teal; val mint = GoalCellsCard.mintC; val gold = Theme.gold; val muted = Theme.muted
+    Canvas(modifier.clearAndSetSemantics {}) {   // ios: Views/GoalViews.swift:727,732
+        val d = density; val W = size.width / d; val H = size.height / d   // 아이폰과 같은 pt 좌표로 그린다
+        scale(d, d, pivot = Offset.Zero) {
+            drawRect(bg, size = Size(W, H))
+            fun line(ls: List<FloatArray>) = ls.forEach { drawLine(ink, Offset(it[0], it[1]), Offset(it[2], it[3]), strokeWidth = 2f, cap = StrokeCap.Round) }   // ios: Views/GoalViews.swift:734
+            fun head(x: Float, y: Float) = drawCircle(ink, 4f, Offset(x, y))   // ios: Views/GoalViews.swift:739
+            if (kind == GameThumbKind.brick) {
+                // ios: Views/GoalViews.swift:742
+                val cols = 8; val rows = 4; val gap = 3f; val ch = 9f; val cw = (W - 16 - (cols - 1) * gap) / cols
+                val kb = ((W * 0.66f - 8) / (cw + gap)).toInt()   // 공 바로 밑 칸
+                for (r in 0 until rows) for (k in 0 until cols) {
+                    // 깨진 자리: 공은 위에서 오니 위 칸이 깨진 곳만 아래도 깨진다. 공 밑 칸과 그 오른쪽 칸도 비운다
+                    if ((r == 0 && (k % 5 == 2 || k == kb || k == kb + 1)) || (r == 1 && k == 2)) continue
+                    val y = H - 8 - (rows - r) * (ch + gap)
+                    drawRoundRect(if (r < 2) teal else mint, Offset(8 + k * (cw + gap), y), Size(cw, ch), CornerRadius(2f))
+                }
+                val px = W * 0.38f; val pw = W * 0.24f; val py = 30f
+                drawRoundRect(ink, Offset(px, py), Size(pw, 6f), CornerRadius(3f))
+                // 졸라맨: 판 위에 웅크려 아래 공을 가리킨다
+                val X = { f: Float -> px + pw * f }
+                head(X(0.5f), py - 17)
+                line(listOf(floatArrayOf(X(0.5f), py - 13, X(0.42f), py - 6),
+                    floatArrayOf(X(0.42f), py - 6, X(0.3f), py - 9), floatArrayOf(X(0.3f), py - 9, X(0.32f), py), floatArrayOf(X(0.42f), py - 6, X(0.58f), py - 5), floatArrayOf(X(0.58f), py - 5, X(0.62f), py),
+                    floatArrayOf(X(0.47f), py - 11, X(0.62f), py - 11), floatArrayOf(X(0.62f), py - 11, X(0.74f), py - 4), floatArrayOf(X(0.47f), py - 11, X(0.36f), py - 16)))
+                drawLine(muted, Offset(X(0.7f), py + 8), Offset(W * 0.66f, H * 0.44f), strokeWidth = 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 4f)))
+                drawCircle(gold, 5f, Offset(W * 0.66f, H * 0.44f))
+            } else {
+                // ios: Views/GoalViews.swift:775
+                val pts = (0..40).map { i -> val t = i / 40f; Offset(t * W, H * 0.62f - sin(t * 6.5f) * H * 0.14f - t * H * 0.22f + sin(t * 19f) * 3f) }
+                val top = Path().apply { moveTo(pts[0].x, pts[0].y); pts.drop(1).forEach { lineTo(it.x, it.y) } }
+                val fill = Path().apply { addPath(top); lineTo(W, H); lineTo(0f, H); close() }
+                drawPath(fill, mint)
+                drawPath(top, teal, style = Stroke(2.5f, cap = StrokeCap.Round))
+                // 졸라맨: 무릎 굽혀 보드 위에, 두 팔을 넓게
+                translate(pts[17].x, pts[17].y - 3) { rotate(-0.35f * 180f / PI.toFloat(), pivot = Offset.Zero) {
+                    drawOval(gold, Offset(-14f, -3f), Size(28f, 6f))
+                    head(1f, -25f)
+                    line(listOf(floatArrayOf(0f, -21f, -1f, -10f), floatArrayOf(-1f, -10f, -6f, -5f), floatArrayOf(-6f, -5f, -7f, -2f), floatArrayOf(-1f, -10f, 5f, -6f), floatArrayOf(5f, -6f, 7f, -2f),
+                        floatArrayOf(0f, -18f, -9f, -21f), floatArrayOf(-9f, -21f, -14f, -17f), floatArrayOf(0f, -18f, 8f, -14f), floatArrayOf(8f, -14f, 13f, -16f)))
+                } }
+                // 별 아이템 (아이폰은 ★ 글자)
+                val c = Offset(pts[30].x, pts[30].y - 14)
+                val star = Path().apply { for (i in 0 until 10) { val r = if (i % 2 == 0) 6.5f else 2.8f; val a = -PI / 2 + i * PI / 5; val x = c.x + r * cos(a).toFloat(); val y = c.y + r * sin(a).toFloat(); if (i == 0) moveTo(x, y) else lineTo(x, y) }; close() }
+                drawPath(star, gold)
+            }
+        }
+    }
 }
 
 /** GoalCellsCard 의 static 값·함수 */

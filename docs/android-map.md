@@ -43,7 +43,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Theme.swift` | `com/naeilo/app/ui/Theme.kt` (157), `com/naeilo/app/ui/Controls.kt` (4) |
 | `Views/AnalysisDetail.swift` | `com/naeilo/app/ui/analysis/ExternalViews.kt` (369), `com/naeilo/app/ui/analysis/RateViews.kt` (327), `com/naeilo/app/ui/analysis/FxGlanceViews.kt` (293), `com/naeilo/app/ui/analysis/DividendViews.kt` (215), `com/naeilo/app/ui/analysis/MyPathViews.kt` (177), `com/naeilo/app/ui/analysis/AnalysisCommon.kt` (90), `com/naeilo/app/core/calc/GoalRoute.kt` (8) |
 | `Views/AnalysisView.swift` | `com/naeilo/app/ui/analysis/AnalysisView.kt` (392), `com/naeilo/app/ui/analysis/AnalysisCommon.kt` (3), `com/naeilo/app/App.kt` (1) |
-| `Views/BoardView.swift` | `com/naeilo/app/ui/board/BoardView.kt` (288) |
+| `Views/BoardView.swift` | `com/naeilo/app/ui/board/BoardView.kt` (290) |
 | `Views/BrickGameView.swift` | `com/naeilo/app/ui/game/BrickGameView.kt` (432) |
 | `Views/CalmView.swift` | `com/naeilo/app/ui/calm/CalmView.kt` (133) |
 | `Views/CharMotion.swift` | `com/naeilo/app/ui/CharMotion.kt` (416) |
@@ -51,7 +51,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/EarningsRiver.swift` | `com/naeilo/app/ui/hold/EarningsRiver.kt` (242), `com/naeilo/app/data/Earnings.kt` (8) |
 | `Views/FlowView.swift` | `com/naeilo/app/ui/flow/FlowView.kt` (437) |
 | `Views/ForecastParts.swift` | `com/naeilo/app/ui/analysis/ForecastParts.kt` (72) |
-| `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (501), `com/naeilo/app/ui/Controls.kt` (1) |
+| `Views/GoalViews.swift` | `com/naeilo/app/ui/goal/GoalViews.kt` (513), `com/naeilo/app/ui/Controls.kt` (1) |
 | `Views/Guide.swift` | `com/naeilo/app/ui/Guide.kt` (78) |
 | `Views/HoldingsView.swift` | `com/naeilo/app/ui/town/TownViews.kt` (871), `com/naeilo/app/ui/hold/HoldingsView.kt` (355), `com/naeilo/app/ui/hold/HoldingDetail.kt` (269), `com/naeilo/app/ui/home/ThemeScenes.kt` (1) |
 | `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (457), `com/naeilo/app/App.kt` (1) |

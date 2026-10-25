@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
@@ -108,6 +109,11 @@ import com.naeilo.app.ui.outset
 import com.naeilo.app.ui.plainClickable
 import com.naeilo.app.ui.stiffness
 import com.naeilo.app.ui.home.FlowRow
+import com.naeilo.app.ui.home.BoxLook
+import com.naeilo.app.ui.home.BoxSchemeScope
+import com.naeilo.app.ui.home.boxInk
+import com.naeilo.app.ui.home.bx
+import com.naeilo.app.ui.hold.moodBackdrop
 import com.naeilo.app.ui.home.SampleNote
 import kotlin.math.floor
 import kotlin.math.max
@@ -239,8 +245,11 @@ private fun InterCard(m: AppModel, b: BoardStep) {
     val picks: List<Pair<String, Color>> = if (goal) m.gWeeks.map { it.label to it.color } else m.weeks.map { it.label to it.color }   // ios: Views/BoardView.swift:78
     val tap = if (done || avail) b.to else null   // ios: Views/BoardView.swift:79
     val lit = done || avail
-    // ios: Views/BoardView.swift:109
-    Fg(if (lit) Color.White else Theme.sub2) {
+    // 열린 카드는 홈에서 고른 박스 모양의 바탕·글자색을 따른다 (2026-10-25)
+    BoxSchemeScope {   // ios: Views/BoardView.swift:115 (.boxScheme())
+    val ink = boxInk(); val look = BoxLook.entries.firstOrNull { it.name == BoxLook.raw } ?: BoxLook.jump   // ios: Views/BoardView.swift:80
+    // ios: Views/BoardView.swift:112
+    Fg(if (lit) ink.ink else Theme.sub2) {
         val fg = LocalFg.current(LocalPal.current)
         // ios: Views/BoardView.swift:81
         Column(
@@ -251,14 +260,14 @@ private fun InterCard(m: AppModel, b: BoardStep) {
                 .semantics(mergeDescendants = true) { if (tap == null) disabled() }
                 .alpha(if (tap == null) 0.5f else 1f)   // SwiftUI 가 눌리지 않는 버튼을 반투명(0.5)으로 그린다 (시뮬레이터에서 잰 값)
                 .semantics { contentDescription = tr(if (goal) "처음 석 달 체크인, $n/3달" else "처음 4주 체크인, $n/4주") }   // ios: Views/BoardView.swift:114
-                .background(if (lit) Theme.night else Theme.track, RoundedCornerShape(18.dp))   // ios: Views/BoardView.swift:111
+                .clip(RoundedCornerShape(18.dp)).then(if (lit) Modifier.moodBackdrop(look) else Modifier.background(Theme.track))   // ios: Views/BoardView.swift:114,115
                 .padding(16.dp),   // ios: Views/BoardView.swift:110
         ) {
             // ios: Views/BoardView.swift:82
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                T(if (goal) "석 달 체크인" else "처음 4주 체크인", style = appFont(12f, FontWeight.Bold), color = Theme.mint)   // ios: Views/BoardView.swift:83
+                T(if (goal) "석 달 체크인" else "처음 4주 체크인", style = appFont(12f, FontWeight.Bold), color = if (lit) ink.good else Theme.mint)   // ios: Views/BoardView.swift:83
                 Spacer(Modifier.weight(1f))   // ios: Views/BoardView.swift:84
-                if (done) T("완료 ✓", style = appFont(12f, FontWeight.Bold), color = Theme.yellow)   // ios: Views/BoardView.swift:85
+                if (done) T("완료 ✓", style = appFont(12f, FontWeight.Bold), color = ink.gold)   // ios: Views/BoardView.swift:85
                 else if (!avail) Sym("lock", 12f, fg)   // ios: Views/BoardView.swift:86
             }
             // ios: Views/BoardView.swift:88 (다 마치면 큰 글은 숨긴다)
@@ -273,13 +282,13 @@ private fun InterCard(m: AppModel, b: BoardStep) {
                 // ios: Views/BoardView.swift:95
                 for (i in 0 until total) {
                     val pick = if (i < picks.size) picks[i] else null; val cur = avail && !done && i == n   // ios: Views/BoardView.swift:96
-                    val edge = pick?.second ?: (if (cur) Theme.yellow else Theme.slate)
+                    val edge = pick?.second ?: (if (cur) ink.gold else ink.flatF)
                     // ios: Views/BoardView.swift:97
                     Column(
                         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.weight(1f).defaultMinSize(minHeight = 60.dp)   // ios: Views/BoardView.swift:101
-                            .background(pick?.second ?: Color.Transparent, RoundedCornerShape(10.dp))   // ios: Views/BoardView.swift:103
+                            .background(if (pick != null) bx(ink.dk, 0xFFFFFF, 0xFFFFFF, 0.72f, 0.10f) else Color.Transparent, RoundedCornerShape(10.dp))   // ios: Views/BoardView.swift:111 고른 칸: 테마가 비치는 반투명 칸 + 결과 색 테두리
                             // ios: Views/BoardView.swift:104 테두리 선은 가장자리 가운데에 (SwiftUI stroke), 10 모서리
                             .drawBehind {
                                 drawRoundRect(edge, cornerRadius = CornerRadius(10.dp.toPx()),
@@ -287,13 +296,14 @@ private fun InterCard(m: AppModel, b: BoardStep) {
                                     style = Stroke(width = 2.dp.toPx(), pathEffect = if (pick == null) PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx())) else null))
                             },
                     ) {
-                        val c = if (pick != null) Color.White else if (cur) Theme.yellow else Theme.muted   // ios: Views/BoardView.swift:102
+                        val c = if (pick != null) ink.ink else if (cur) ink.gold else ink.dim   // ios: Views/BoardView.swift:110
                         T(if (goal) "${i + 1}달" else "${i + 1}주째", style = appFont(11f), color = c)   // ios: Views/BoardView.swift:98
                         T(pick?.first ?: (if (cur) (if (goal) "이번 달" else "이번 주") else "–"), style = appFont(13f, FontWeight.Bold), color = c)   // ios: Views/BoardView.swift:99
                     }
                 }
             }
         }
+    }
     }
 }
 
