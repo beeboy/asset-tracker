@@ -313,13 +313,13 @@ def mock_daily_one(code: str, count: int) -> list:
 
 
 def mock_minutes(code: str) -> dict:
-    """한 종목 마지막 거래일 1분봉 ([시:분, 시가, 고가, 저가, 종가, 거래량]). 토스 봉은 1분·일봉뿐이라 하루치를 200개씩 두 번까지. 1분 동안 다시 쓰기"""
+    """한 종목 마지막 거래일 1분봉 ([시:분, 시가, 고가, 저가, 종가, 거래량]). 토스 봉은 1분·일봉뿐이라 하루치(8~20시)를 200개씩 네 번까지. 1분 동안 다시 쓰기"""
     with MOCK_LOCK:
         c = _mock_min.get(code)
         if c and time.time() - c[0] < 60:
             return c[1]
     got, before = [], ""
-    for _ in range(2):
+    for _ in range(4):
         p = {"symbol": code, "interval": "1m", "count": "200", "adjusted": "false"}
         if before:
             p["before"] = before

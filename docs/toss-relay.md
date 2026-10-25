@@ -45,5 +45,5 @@
 - 8765 는 개발자 서버 `server.py` (서비스 `naeilo-dev`, `ExecStart=/usr/bin/python3 /home/ubuntu/asset-tracker/server.py --port 8765 --no-browser`).
 - 열쇠: 서버 `~/asset-tracker/dev_token.json` 에 `{"token": "<16자 이상 영숫자·-·_>"}` (.gitignore). 앱이 머리글 `X-Naeilo-Dev` 로 같은 값을 보내야 답하고, 아니면 403. 파일이 없으면 모의 경로는 모두 403.
 - 앱: 폰에서 `naeilo://mock?t=<같은 값>` 을 한 번 열면 그 기기에만 저장된다(내부 베타만). Tailscale 주소(`naeilo://toss?u=…ts.net`)가 있으면 그쪽이 먼저다.
-- 종목 상세(2026-10-25): `/api/mock/minutes?symbol=` 는 마지막 거래일 1분봉을 토스 `interval=1m` 200개씩 두 번까지 받아 준다(1분 캐시). 토스 봉은 1분·일봉뿐(외부 도구 기준, 공식 명세 미확인). 시간봉은 없다.
+- 종목 상세(2026-10-25): `/api/mock/minutes?symbol=` 는 마지막 거래일 1분봉을 토스 `interval=1m` 200개씩 네 번까지 받아 준다(8~20시)(1분 캐시). 토스 봉은 1분·일봉뿐(외부 도구 기준, 공식 명세 미확인). 시간봉은 없다.
 - 확인: `curl -H "X-Naeilo-Dev: <값>" https://toss.naeilo.com/api/mock/wallet` 가 `{"spent": …}` 를 돌려주면 된다. 머리글 없이 부르면 403.
