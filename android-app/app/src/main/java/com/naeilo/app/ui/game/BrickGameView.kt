@@ -615,8 +615,9 @@ private class Brick(val pal: Palette, val dark: Color, val light: Color, val cla
 @Composable
 private fun Host(g: BrickGame, hud: Hud, clock: State<Double>, m: AppModel, reduce: Boolean) {
     // 말풍선은 한 줄씩 넓게: 위 줄은 선수, 아래 줄은 끼어든 인물
-    // ios: Views/BrickGameView.swift:283,321
-    Column(Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // 끼어든 인물 줄 자리를 늘 비워 둬서, 말풍선이 떠도 아래 게임판이 움직이지 않게 한다
+    // ios: Views/BrickGameView.swift:283,323
+    Column(Modifier.fillMaxWidth().height((52 + 6 + 56).dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {   // ios: Views/BrickGameView.swift:284
             // ios: Views/BrickGameView.swift:285,290,291
             Box(Modifier.size(44.dp, 52.dp).alive(clock, 0.0, reduce) { g.speaking && g.t - g.moodAt < 0.5 }, contentAlignment = Alignment.Center) {
@@ -639,10 +640,10 @@ private fun Host(g: BrickGame, hud: Hud, clock: State<Double>, m: AppModel, redu
             }
         }
         // 끼어든 인물 (오른쪽)
-        // ios: Views/BrickGameView.swift:304,318,323
+        // ios: Views/BrickGameView.swift:304,319,325
         AnimatedVisibility(hud.guestShown, enter = slideInHorizontally(tween(250, easing = EaseOut)) { it } + fadeIn(tween(250, easing = EaseOut)),
             exit = slideOutHorizontally(tween(250, easing = EaseOut)) { it } + fadeOut(tween(250, easing = EaseOut))) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/BrickGameView.swift:305
+            Row(Modifier.height(56.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {   // ios: Views/BrickGameView.swift:305,318
                 // ios: Views/BrickGameView.swift:306,307,308,309,310
                 Box(Modifier.weight(1f).background(Theme.tealBg, RoundedCornerShape(12.dp)).border(1.5.dp, Theme.teal, RoundedCornerShape(12.dp))
                     .padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.CenterEnd) {
