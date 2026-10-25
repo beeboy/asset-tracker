@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A0C0DE000000000000000001 /* MockModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0DE000000000000000002 /* MockModels.swift */; };
+		A0C0DE000000000000000003 /* MockEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0DE000000000000000004 /* MockEngine.swift */; };
+		A0C0DE000000000000000005 /* MockFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0DE000000000000000006 /* MockFeed.swift */; };
+		A0C0DE000000000000000007 /* MockAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0DE000000000000000008 /* MockAI.swift */; };
+		A0C0DE000000000000000009 /* MockDesk.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0DE00000000000000000A /* MockDesk.swift */; };
+		A0C0DE00000000000000000B /* MockViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0DE00000000000000000C /* MockViews.swift */; };
+		A0C0DE00000000000000000D /* MockOrderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0DE00000000000000000E /* MockOrderViews.swift */; };
 		02D7A588AC677280C686D8DD /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCACC287684D148B6C75C94F /* SampleData.swift */; };
 		08C597E8BE414747DD18FC1F /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113FC119D1DE4AE5F19B494E /* Engine.swift */; };
 		0AB939B5C4907CBD8CD2BCE5 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A659ACA7844B039CC6E3E3 /* HomeView.swift */; };
@@ -149,6 +156,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A0C0DE000000000000000002 /* MockModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockModels.swift; sourceTree = "<group>"; };
+		A0C0DE000000000000000004 /* MockEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEngine.swift; sourceTree = "<group>"; };
+		A0C0DE000000000000000006 /* MockFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockFeed.swift; sourceTree = "<group>"; };
+		A0C0DE000000000000000008 /* MockAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAI.swift; sourceTree = "<group>"; };
+		A0C0DE00000000000000000A /* MockDesk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDesk.swift; sourceTree = "<group>"; };
+		A0C0DE00000000000000000C /* MockViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockViews.swift; sourceTree = "<group>"; };
+		A0C0DE00000000000000000E /* MockOrderViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockOrderViews.swift; sourceTree = "<group>"; };
 		0020D03B6A8743286E629278 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		012F5C5676B198E5CF433509 /* StartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartView.swift; sourceTree = "<group>"; };
 		0331F7703E5FBD6276E1B388 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -264,6 +278,20 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		A0C0DE00000000000000FF01 /* Mock */ = {
+			isa = PBXGroup;
+			children = (
+				A0C0DE000000000000000002 /* MockModels.swift */,
+				A0C0DE000000000000000004 /* MockEngine.swift */,
+				A0C0DE000000000000000006 /* MockFeed.swift */,
+				A0C0DE000000000000000008 /* MockAI.swift */,
+				A0C0DE00000000000000000A /* MockDesk.swift */,
+				A0C0DE00000000000000000C /* MockViews.swift */,
+				A0C0DE00000000000000000E /* MockOrderViews.swift */,
+			);
+			path = Mock;
+			sourceTree = "<group>";
+		};
 		4BEA86B22E7037D4B0C2A858 /* Widgets */ = {
 			isa = PBXGroup;
 			children = (
@@ -439,6 +467,7 @@
 				75F568A375635F9FEAD2A9A2 /* Data */,
 				85AFDE161B334BAE630AF09D /* Resources */,
 				90661100A71FAC0807F72580 /* Views */,
+				A0C0DE00000000000000FF01 /* Mock */,
 			);
 			path = Naeilo;
 			sourceTree = "<group>";
@@ -674,6 +703,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A0C0DE000000000000000001 /* MockModels.swift in Sources */,
+				A0C0DE000000000000000003 /* MockEngine.swift in Sources */,
+				A0C0DE000000000000000005 /* MockFeed.swift in Sources */,
+				A0C0DE000000000000000007 /* MockAI.swift in Sources */,
+				A0C0DE000000000000000009 /* MockDesk.swift in Sources */,
+				A0C0DE00000000000000000B /* MockViews.swift in Sources */,
+				A0C0DE00000000000000000D /* MockOrderViews.swift in Sources */,
 				CB09D15A0B85AA1E4B93E903 /* AnalysisDetail.swift in Sources */,
 				1DFBD64F26F68ABE1A9B5193 /* AnalysisView.swift in Sources */,
 				5CB59D91AF71FB20220B5C04 /* App.swift in Sources */,
@@ -769,6 +805,8 @@
 		25B89E22945C75CB5B7C7D0B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				NAEILO_MOCK_internalBeta = MOCK;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL))";
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-jump AppIcon-horizon AppIcon-tub AppIcon-dory AppIcon-pino AppIcon-mug AppIcon-bar";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Naeilo/App.entitlements;
@@ -809,6 +847,8 @@
 		58F93CE5FC41A6627999EEAC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				NAEILO_MOCK_internalBeta = MOCK;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL))";
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-jump AppIcon-horizon AppIcon-tub AppIcon-dory AppIcon-pino AppIcon-mug AppIcon-bar";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Naeilo/App.entitlements;

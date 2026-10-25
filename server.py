@@ -182,6 +182,399 @@ def toss_prices(symbols: list[str]) -> dict:
     return {"enabled": True, "quotes": out}
 
 
+# ---------------------------------------------------------------- 모의투자 (개발자 전용, 앱 Mock/)
+# 앱의 모의투자 모드가 부른다. 주문 경로는 없다: 시세·일봉·호가·장 일정만 읽는다. 공용 중계(proxy/toss_relay.py)에는 넣지 않는다.
+# 토스 한도는 클라이언트 × 묶음 단위 초당 횟수 (공식 명세 2026-10: MARKET_DATA 15, MARKET_DATA_CHART 20, MARKET_INFO 따로).
+# 응답 머리 X-RateLimit-Remaining·Reset 을 읽어 속도를 맞추고, 429 면 Retry-After 만큼 쉬고 다시 묻는다.
+
+class TossGate:
+    """묶음 하나의 초당 횟수 지키기. 처음엔 명세 값보다 조금 낮게, 응답 머리를 보면 그 값을 따른다"""
+
+    def __init__(self, per_sec: float):
+        self.lock = threading.Lock()
+        self.rate = per_sec
+        self.next = 0.0
+        self.hold = 0.0  # 429 로 쉬라고 한 끝 시각
+
+    def wait(self):
+        with self.lock:
+            now = time.time()
+            t = max(now, self.next, self.hold)
+            self.next = t + 1.0 / max(1.0, self.rate)
+        if t > now:
+            time.sleep(t - now)
+
+    def seen(self, h):
+        try:
+            lim = float(h.get("X-RateLimit-Limit") or 0)
+            rem = float(h.get("X-RateLimit-Remaining") if h.get("X-RateLimit-Remaining") is not None else -1)
+            reset = float(h.get("X-RateLimit-Reset") or 0)
+        except (TypeError, ValueError):
+            return
+        with self.lock:
+            if lim > 0:
+                self.rate = max(1.0, lim - 1)  # 한 칸 여유
+            if rem == 0 and reset > 0:
+                self.hold = max(self.hold, time.time() + reset)
+
+    def told(self, secs: float):
+        with self.lock:
+            self.hold = max(self.hold, time.time() + secs)
+
+
+TOSS_GATES = {"data": TossGate(13), "chart": TossGate(18), "info": TossGate(4)}
+
+
+def toss_call(path: str, gate: str, timeout: float = 6) -> dict:
+    """토큰을 붙여 GET. 401 이면 토큰을 한 번 새로, 429 면 Retry-After 만큼 쉬고 두 번까지 다시"""
+    keys = toss_keys()
+    if not keys:
+        raise RuntimeError("서버에 토스 키 없음")
+    g = TOSS_GATES[gate]
+    renew = False
+    for attempt in range(4):
+        g.wait()
+        req = urllib.request.Request(TOSS + path, headers={"Authorization": "Bearer " + toss_token(keys, renew), "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                g.seen(r.headers)
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            g.seen(e.headers or {})
+            if e.code == 401 and not renew:
+                renew = True
+                continue
+            if e.code == 429 and attempt < 3:
+                try:
+                    secs = float((e.headers or {}).get("Retry-After") or 1)
+                except ValueError:
+                    secs = 1.0
+                g.told(secs)
+                continue
+            raise
+    raise RuntimeError("토스 한도에 계속 걸림")
+
+
+def mock_err(e: Exception) -> str:
+    code = getattr(e, "code", None)
+    if code == 403:
+        return "허용 IP 가 아니에요"
+    if code in (400, 401):
+        return "키를 확인하세요"
+    if code == 404:
+        return "없는 종목"
+    if code == 429:
+        return "토스 한도"
+    return str(e)[:120]
+
+
+MOCK_CODE = re.compile(r"[A-Za-z0-9.\-]{1,12}")
+_mock_daily: dict[str, tuple[float, int, list]] = {}  # 코드 → (받은 시각, 봉 수, 봉)
+MOCK_LOCK = threading.Lock()
+
+
+def mock_kr_busy() -> bool:
+    """한국 평일 8시~20시 (프리마켓~애프터마켓). 이때는 일봉 마지막 칸이 바뀐다"""
+    k = datetime.now(timezone.utc) + timedelta(hours=9)
+    return k.weekday() < 5 and 8 <= k.hour < 20
+
+
+def mock_daily_one(code: str, count: int) -> list:
+    """한 종목 일봉 (오래된 것부터 [날짜, 시가, 고가, 저가, 종가, 거래량]). 장중 5분, 장 밖 6시간 동안 다시 쓰기"""
+    ttl = 300 if mock_kr_busy() else 6 * 3600
+    with MOCK_LOCK:
+        c = _mock_daily.get(code)
+        if c and c[1] >= count and time.time() - c[0] < ttl:
+            return c[2][-count:]
+    q = urllib.parse.urlencode({"symbol": code, "interval": "1d", "count": str(count), "adjusted": "false"})
+    j = toss_call("/api/v1/candles?" + q, "chart")
+    rows = []
+    for v in (j.get("result") or {}).get("candles") or []:
+        t = str(v.get("timestamp") or "")
+        try:
+            row = [t[:10], float(v["openPrice"]), float(v["highPrice"]), float(v["lowPrice"]), float(v["closePrice"]), float(v.get("volume") or 0)]
+        except (KeyError, TypeError, ValueError):
+            continue
+        if len(t) >= 10 and row[4] > 0:
+            rows.append(row)
+    rows.sort(key=lambda r: r[0])
+    with MOCK_LOCK:
+        _mock_daily[code] = (time.time(), count, rows)
+    return rows
+
+
+def mock_daily(codes: list[str], count: int) -> dict:
+    """여러 종목 일봉을 한 번에. 종목마다 따로 부르되 한도 안에서 동시에 (앱은 100종목씩 나눠 부른다)"""
+    count = max(2, min(200, count))
+    out, errs = {}, {}
+    pool = ThreadPoolExecutor(max_workers=8)
+    fs = {pool.submit(mock_daily_one, c, count): c for c in codes[:120]}
+    done, _ = wait(fs, timeout=55)
+    pool.shutdown(wait=False, cancel_futures=True)
+    for f, c in fs.items():
+        if f not in done:
+            errs[c] = "느림"
+        elif f.exception():
+            errs[c] = mock_err(f.exception())
+        else:
+            out[c] = f.result()
+    return {"bars": out, "errors": errs, "rate": TOSS_GATES["chart"].rate}
+
+
+def mock_last(codes: list[str]) -> dict:
+    """지금 가격 (토스 코드 그대로, 200개씩)"""
+    out, err = {}, None
+    for i in range(0, len(codes), 200):
+        part = codes[i:i + 200]
+        try:
+            j = toss_call("/api/v1/prices?symbols=" + urllib.parse.quote(",".join(part), safe=","), "data")
+        except Exception as e:  # noqa: BLE001
+            err = mock_err(e)
+            continue
+        for q in j.get("result") or []:
+            try:
+                v = float(q.get("lastPrice") or 0)
+            except ValueError:
+                continue
+            if v > 0:
+                out[str(q.get("symbol"))] = {"last": v, "at": q.get("timestamp")}
+    r = {"quotes": out}
+    if err:
+        r["error"] = err
+    return r
+
+
+def mock_book(code: str) -> dict:
+    """호가 그대로 (주문하는 순간에만 부른다)"""
+    j = toss_call("/api/v1/orderbook?symbol=" + urllib.parse.quote(code), "data", timeout=4)
+    return j.get("result") or {}
+
+
+_mock_cal: dict[str, tuple[float, dict]] = {}
+
+
+def mock_calendar(market: str) -> dict:
+    """장 운영 정보 (오늘·전·다음 영업일). 10분 동안 다시 쓰기"""
+    m = "US" if market.upper() == "US" else "KR"
+    c = _mock_cal.get(m)
+    if c and time.time() - c[0] < 600:
+        return c[1]
+    j = toss_call("/api/v1/market-calendar/" + m, "info").get("result") or {}
+    _mock_cal[m] = (time.time(), j)
+    return j
+
+
+def mock_get(path: str) -> dict | None:
+    """모의투자 GET 경로. 없으면 None"""
+    u = urllib.parse.urlparse(path)
+    q = urllib.parse.parse_qs(u.query)
+    one = lambda k: (q.get(k) or [""])[0]  # noqa: E731
+    codes = [x for x in one("symbols").split(",") if MOCK_CODE.fullmatch(x)]
+    try:
+        if u.path == "/api/mock/daily":
+            return mock_daily(codes, int(one("count") or 60))
+        if u.path == "/api/mock/last":
+            return mock_last(codes)
+        if u.path == "/api/mock/book":
+            c = one("symbol")
+            return mock_book(c) if MOCK_CODE.fullmatch(c) else {"error": "잘못된 종목"}
+        if u.path == "/api/mock/calendar":
+            return mock_calendar(one("market") or "KR")
+        if u.path == "/api/mock/wallet":  # AI 쓴 돈·한도 (앱 요약 박스)
+            return ai_wallet({k: one(k) for k in ("day", "week", "month") if one(k)})
+    except Exception as e:  # noqa: BLE001
+        return {"error": mock_err(e)}
+    return None
+
+
+# ---- 모의투자 AI 조언 (Claude API). 키는 이 서버의 ai_keys.json 에만 둔다 (.gitignore, 앱·저장소에 안 올림)
+# 표준 라이브러리만 쓰는 서버라 SDK 대신 HTTP 로 부른다. 쓴 돈은 mock_wallet.json 에 한국 날짜별로 쌓고, 한도를 넘기 전에 막는다.
+AI_KEYS = ROOT / "ai_keys.json"
+AI_WALLET = ROOT / "mock_wallet.json"
+AI_MODEL = "claude-opus-5-5"
+AI_PRICE = {"claude-opus-5-5": (4.0, 20.0), "claude-opus-5": (5.0, 25.0), "claude-opus-4-8": (5.0, 25.0)}  # 달러 / 백만 토큰 (입력, 출력)
+AI_CAP = {"day": 10.0, "week": 40.0, "month": 100.0}  # 앱이 보낸 한도도 이 위로는 못 올린다 (월 $100 예산)
+AI_LOCK = threading.Lock()
+_ai_cache: dict[str, tuple[float, dict]] = {}  # 같은 물음 → (받은 시각, 답). 같은 장면에 두 번 돈을 쓰지 않는다
+
+AI_SYSTEM = (
+    "너는 개발자 혼자 쓰는 모의투자(가상 돈, 실제 주문 없음)의 조언자다. 한국 주식만 다룬다. "
+    "받은 자료만 보고 판단한다. 자료에 없는 가격·뉴스·실적은 지어내지 않는다. "
+    "수수료(매수·매도 0.015%)와 매도 세금(0.20%)을 생각한다. 이유는 한국어로 한 문장, 40자 안쪽으로 쓴다. "
+    "확신이 없으면 하지 않는 쪽을 고른다."
+)
+
+AI_KINDS = {
+    # 자기 장부를 굴린다 (장중 몇 분마다). 후보·보유·현금을 받고 주문 몇 개를 낸다
+    "ledger": {"effort": "low", "max_tokens": 6000, "ttl": 600, "schema": {
+        "type": "object", "additionalProperties": False, "required": ["orders", "note"],
+        "properties": {
+            "orders": {"type": "array", "items": {
+                "type": "object", "additionalProperties": False, "required": ["code", "side", "won", "qty", "why"],
+                "properties": {"code": {"type": "string"}, "side": {"type": "string", "enum": ["buy", "sell"]},
+                               "won": {"type": "number"}, "qty": {"type": "integer"}, "why": {"type": "string"}}}},
+            "note": {"type": "string"}}}},
+    # 규칙이 고른 종목에 의견 (주문은 바꾸지 않는다)
+    "review": {"effort": "medium", "max_tokens": 6000, "ttl": 3600, "schema": {
+        "type": "object", "additionalProperties": False, "required": ["items", "note"],
+        "properties": {
+            "items": {"type": "array", "items": {
+                "type": "object", "additionalProperties": False, "required": ["code", "view", "why"],
+                "properties": {"code": {"type": "string"}, "view": {"type": "string", "enum": ["agree", "doubt", "drop"]},
+                               "why": {"type": "string"}}}},
+            "note": {"type": "string"}}}},
+    # 장 마감 뒤 하루 정리
+    "daily": {"effort": "medium", "max_tokens": 8000, "ttl": 6 * 3600, "schema": {
+        "type": "object", "additionalProperties": False, "required": ["summary", "points"],
+        "properties": {"summary": {"type": "string"}, "points": {"type": "array", "items": {"type": "string"}}}}},
+    # 말로 쓴 조건 → 조건 묶음 (누를 때만)
+    "words": {"effort": "medium", "max_tokens": 6000, "ttl": 24 * 3600, "schema": {
+        "type": "object", "additionalProperties": False, "required": ["name", "pieces", "sort", "note"],
+        "properties": {
+            "name": {"type": "string"},
+            "pieces": {"type": "array", "items": {
+                "type": "object", "additionalProperties": False, "required": ["kind", "hasLo", "lo", "hasHi", "hi", "days", "above"],
+                "properties": {"kind": {"type": "string", "enum": ["price", "change", "volume", "ma", "amount"]},
+                               "hasLo": {"type": "boolean"}, "lo": {"type": "number"},
+                               "hasHi": {"type": "boolean"}, "hi": {"type": "number"},
+                               "days": {"type": "integer"}, "above": {"type": "boolean"}}}},
+            "sort": {"type": "string", "enum": ["price", "change", "volume", "ma", "amount"]},
+            "note": {"type": "string"}}}},
+}
+
+
+def ai_key() -> str:
+    return str(read_json(AI_KEYS, {}).get("anthropic_api_key", "")).strip()
+
+
+def ai_kst() -> datetime:
+    return datetime.now(timezone.utc) + timedelta(hours=9)
+
+
+def ai_spent(w: dict) -> dict:
+    """오늘·이번 주(월요일부터)·이번 달 쓴 돈 (한국 날짜)"""
+    k = ai_kst().date()
+    mon = k - timedelta(days=k.weekday())
+    out = {"day": 0.0, "week": 0.0, "month": 0.0}
+    for d, v in (w.get("days") or {}).items():
+        try:
+            x = date.fromisoformat(d)
+        except ValueError:
+            continue
+        v = float(v or 0)
+        if x == k:
+            out["day"] += v
+        if mon <= x <= k:
+            out["week"] += v
+        if (x.year, x.month) == (k.year, k.month):
+            out["month"] += v
+    return {a: round(b, 4) for a, b in out.items()}
+
+
+def ai_limits(want: dict | None) -> dict:
+    base = {"day": 4.0, "week": 18.0, "month": 80.0}
+    for k in base:
+        try:
+            v = float((want or {}).get(k, base[k]))
+        except (TypeError, ValueError):
+            v = base[k]
+        base[k] = max(0.0, min(AI_CAP[k], v))
+    return base
+
+
+def ai_wallet(want: dict | None = None) -> dict:
+    with AI_LOCK:
+        w = read_json(AI_WALLET, {})
+    return {"spent": ai_spent(w), "limits": ai_limits(want), "key": bool(ai_key())}
+
+
+def ai_cost(model: str, u: dict) -> float:
+    pin, pout = AI_PRICE.get(model, AI_PRICE["claude-opus-5"])
+    i = float(u.get("input_tokens") or 0)
+    cw = float(u.get("cache_creation_input_tokens") or 0)
+    cr = float(u.get("cache_read_input_tokens") or 0)
+    o = float(u.get("output_tokens") or 0)
+    return (i * pin + cw * pin * 1.25 + cr * pin * 0.05 + o * pout) / 1e6
+
+
+def mock_ai(b: dict) -> dict:
+    """AI 한 번. b = {kind, prompt, limits}. 한도·같은 물음·거절·잘림을 여기서 막고, 답은 정해진 꼴(JSON)로만 돌려준다"""
+    kind = str(b.get("kind") or "")
+    spec = AI_KINDS.get(kind)
+    if not spec:
+        return {"error": "모르는 AI 일"}
+    prompt = str(b.get("prompt") or "")[:24000]
+    if not prompt:
+        return {"error": "물음이 비었어요"}
+    key = ai_key()
+    if not key:
+        return {"error": "서버에 Claude 키 없음 (ai_keys.json)"}
+    lim = ai_limits(b.get("limits"))
+    ck = kind + "\n" + prompt
+    hit = _ai_cache.get(ck)
+    if hit and time.time() - hit[0] < spec["ttl"]:
+        r = dict(hit[1])
+        r.update({"cached": True, "cost": 0.0, "input": 0, "output": 0})
+        r.update(ai_wallet(b.get("limits")))
+        return r
+    # 가장 비싸게 들 값을 먼저 셈해 한도를 넘으면 부르지 않는다 (한글은 글자당 1토큰 남짓으로 넉넉히)
+    worst = (len(prompt) + len(AI_SYSTEM)) * 1.2 * 4.0 / 1e6 + spec["max_tokens"] * 20.0 / 1e6
+    with AI_LOCK:
+        sp = ai_spent(read_json(AI_WALLET, {}))
+    for k, name in (("day", "오늘"), ("week", "이번 주"), ("month", "이번 달")):
+        if sp[k] + worst > lim[k]:
+            return {"error": f"AI 한도 ({name} ${lim[k]:g} 중 ${sp[k]:.2f} 씀)", "limit": k, "spent": sp, "limits": lim}
+    body = {
+        "model": AI_MODEL, "max_tokens": spec["max_tokens"],
+        "fallbacks": "default",
+        "output_config": {"effort": spec["effort"], "format": {"type": "json_schema", "schema": spec["schema"]}},
+        "system": AI_SYSTEM,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(body, ensure_ascii=False).encode("utf-8"), headers={
+        "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2026-10-21",
+        "anthropic-beta": "server-side-fallback-2026-07-01"})
+    try:
+        with urllib.request.urlopen(req, timeout=110) as r:
+            j = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            msg = json.loads(e.read().decode("utf-8")).get("error", {}).get("message", "")
+        except Exception:  # noqa: BLE001
+            msg = ""
+        why = {401: "Claude 키를 확인하세요", 429: "Claude 한도 (잠시 뒤)", 529: "Claude 붐빔 (잠시 뒤)"}.get(e.code, f"Claude 응답 {e.code}")
+        return {"error": why + (" · " + msg[:80] if msg and e.code not in (401,) else "")}
+    except Exception as e:  # noqa: BLE001
+        return {"error": "Claude 연결 실패 · " + str(e)[:80]}
+    model = str(j.get("model") or AI_MODEL)
+    u = j.get("usage") or {}
+    cost = ai_cost(model, u)
+    with AI_LOCK:  # 실패한 답도 돈은 든다 → 먼저 적는다
+        w = read_json(AI_WALLET, {})
+        days = w.setdefault("days", {})
+        d = ai_kst().date().isoformat()
+        days[d] = round(float(days.get(d) or 0) + cost, 6)
+        write_json(AI_WALLET, w)
+    base = {"model": model, "input": int(u.get("input_tokens") or 0), "output": int(u.get("output_tokens") or 0), "cost": round(cost, 6)}
+    stop = j.get("stop_reason")
+    if stop == "refusal":
+        return {**base, "error": "AI 가 답하지 않음 (거절)", **ai_wallet(b.get("limits"))}
+    if stop == "max_tokens":
+        return {**base, "error": "AI 답이 잘림", **ai_wallet(b.get("limits"))}
+    text = "".join(c.get("text", "") for c in j.get("content") or [] if c.get("type") == "text")
+    try:
+        ans = json.loads(text)
+    except ValueError:
+        return {**base, "error": "AI 답을 읽지 못함", **ai_wallet(b.get("limits"))}
+    r = {**base, "answer": ans, "cached": False}
+    _ai_cache[ck] = (time.time(), r)
+    for k in [k for k, v in _ai_cache.items() if time.time() - v[0] > 24 * 3600]:
+        _ai_cache.pop(k, None)
+    r = dict(r)
+    r.update(ai_wallet(b.get("limits")))
+    return r
+
+
 # ---------------------------------------------------------------- 파일
 def read_json(p: Path, default):
     try:
@@ -503,6 +896,12 @@ class Handler(SimpleHTTPRequestHandler):
             self.cors = o if toss_origin_ok(o) else None
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self.send_json(toss_prices([x for x in (q.get("symbols") or [""])[0].split(",") if x]))
+        if self.path.startswith("/api/mock/"):  # 모의투자 (개발자 전용, 앱 Mock/)
+            o = self.headers.get("Origin") or ""
+            self.cors = o if toss_origin_ok(o) else None
+            r = mock_get(self.path)
+            if r is not None:
+                return self.send_json(r)
         return super().do_GET()
 
     def do_OPTIONS(self):  # 토스 시세 사전 요청 (CORS)
@@ -523,6 +922,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"error": "forbidden"}, 403)
         try:
             b = self.body()
+            if self.path == "/api/mock/ai":  # 모의투자 AI 조언 (개발자 전용. 키는 ai_keys.json, 한도·쓴 돈은 mock_wallet.json)
+                return self.send_json(mock_ai(b))
             if self.path == "/api/state":
                 with LOCK:
                     save_state(b)

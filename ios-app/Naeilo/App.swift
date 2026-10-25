@@ -33,6 +33,9 @@ struct RootView: View {
             .modifier(Hooks(model: model, phase: phase))
             .modifier(Links(model: model, phase: phase))
             .modifier(IconFollow())
+            #if MOCK
+            .modifier(MockTabsHooks(mine: Set(model.holdings.map(\.symbol)), phase: phase))
+            #endif
             // 처음 실행이면 첫 질문을 탭 화면 위에 덮는다
             .overlay { if showStart { StartView().transition(.opacity) } }
             .animation(.default, value: showStart)
@@ -44,19 +47,29 @@ struct RootView: View {
         TabView(selection: $model.tab) {
             NavigationStack(path: $model.homePath) { HomeView() }
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
-            NavigationStack(path: $model.holdPath) { HoldingsView() }
-                .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
-            NavigationStack { FlowView() }   // 차트 탭 (이름은 FlowTab 한 곳에서)
-                .tabItem { Label(LocalizedStringKey(FlowTab.name), systemImage: FlowTab.icon) }.tag(Tab.flow)
-            NavigationStack(path: $model.analysisPath) { AnalysisView() }
-                .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
-            NavigationStack(path: $model.boardPath) {
-                BoardView()   // 목표·회복 루트 같은 미션 판
-            }
-                .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)
+            #if MOCK
+            // 개발자 모의투자 모드: 홈은 그대로, 나머지 네 탭이 관찰·선정·주문·분석으로 바뀐다 (홈 평가액 박스의 금액 밖을 눌러 켜고 끈다)
+            if MockDesk.shared.active { MockTabs() } else { plainTabs }
+            #else
+            plainTabs
+            #endif
         }
         .tint(Theme.teal)
         .modifier(HomeSheets(model: model))
+    }
+
+    @ViewBuilder private var plainTabs: some View {
+        @Bindable var model = model
+        NavigationStack(path: $model.holdPath) { HoldingsView() }
+            .tabItem { Label("종목", systemImage: "chart.bar") }.tag(Tab.hold)
+        NavigationStack { FlowView() }   // 차트 탭 (이름은 FlowTab 한 곳에서)
+            .tabItem { Label(LocalizedStringKey(FlowTab.name), systemImage: FlowTab.icon) }.tag(Tab.flow)
+        NavigationStack(path: $model.analysisPath) { AnalysisView() }
+            .tabItem { Label("분석", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.analysis)
+        NavigationStack(path: $model.boardPath) {
+            BoardView()   // 목표·회복 루트 같은 미션 판
+        }
+            .tabItem { Label("미션", systemImage: "square.grid.2x2") }.tag(Tab.board)
     }
 
     // 위젯·동기화·알림 다시 예약

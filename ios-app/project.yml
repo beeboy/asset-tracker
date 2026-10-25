@@ -74,6 +74,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.naeilo.widget
+        # 개발자 모의투자(Naeilo/Mock/): 내부 베타에서만 MOCK 이 켜진다. 공개 베타·출시는 코드가 아예 들어가지 않는다
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(NAEILO_MOCK_$(NAEILO_CHANNEL))"
+        NAEILO_MOCK_internalBeta: MOCK
         LOCALIZATION_PREFERS_STRING_CATALOGS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO

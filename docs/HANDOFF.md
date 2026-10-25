@@ -232,3 +232,12 @@
 ## 주말 시세: 금요일 종가 (2026-10-24, 로컬 커밋)
 - 토스 주간거래 판정(`TossDaily.daytime`)이 미국 동부 금요일 20시 뒤·주말을 주간거래로 쳐서, 토요일 오전(한국)에 토스 last 를 금요일 종가 대신 쓰던 일을 고침 (아이폰 평가액이 토스보다 3.6% 높았음). 아이폰·안드로이드 같게. 토스 시각 파싱은 소수 초도 읽혀서 그대로 둠.
 - 2026-10-24 시세: 장 마감 뒤 추가 종목도 정규장 종가(토스 일봉), 주말 주간거래 판정 고침, 달러 가격 표시는 둘째 자리 버림. 아이폰·안드로이드·토스 값 같음 확인(Drinker). 임시 진단 카드는 지움
+
+## 개발자 모의투자 모드 (2026-10-25, mock-trading 로컬 커밋, 아이폰만)
+- 구조 문서 https://claude.ai/artifact/2V2oHGx53gEUdmCvhG1JgD · 화면 시안 https://claude.ai/artifact/5PU6S9KyGoBsGcfsVEruKW · 단계 계획 https://claude.ai/artifact/4cHeooppiERbkaU6NzpBL5
+- 켜기: 개발자 기기(Support.shared.dev)에서 홈 평가액 박스의 금액 글자 밖을 누른다. 홈은 그대로, 나머지 네 탭이 관찰·선정·주문·분석으로 바뀐다. 다시 누르면 일반 모드.
+- 코드: `ios-app/Naeilo/Mock/` 일곱 파일 전부 `#if MOCK`. MOCK 은 NAEILO_CHANNEL=internalBeta 일 때만 켜진다(`NAEILO_MOCK_$(NAEILO_CHANNEL)`, project.yml·pbxproj 둘 다). 공개 베타·출시는 코드가 아예 안 들어간다. 진입 고리는 App.swift(탭)·HomeView.swift(박스 탭) 두 곳뿐.
+- 장부를 바꾸는 곳은 MockDesk 하나. 기록은 기기 Application Support/mock/journal.jsonl (덧붙이기만), 상태는 state.json (못 읽으면 state-unread-시각.json 으로 옮겨 둠).
+- 서버: `server.py` /api/mock/daily·last·book·calendar·wallet(GET), /api/mock/ai(POST). 토스 한도는 묶음별 초당 횟수를 응답 머리로 맞춘다. Claude 키는 서버 `ai_keys.json` {"anthropic_api_key"}, 쓴 돈은 `mock_wallet.json` (둘 다 .gitignore). Lightsail 서버에 새 server.py 를 올려야 앱이 돈다.
+- 계산 시험: `ios-app/tools/mock_test/` (명령은 main.swift 맨 위). 체결·수수료·세금·현금 부족·0주·이유 사슬·AI 답 거르기.
+- 남은 일: Lightsail 에 server.py 올리고 키 넣기 → 실기기에서 관찰 훑기(2~3분)·장중 정식 체결·장 밖 시험 체결·AI 한 번씩 확인 → 첫 주 AI 실제 비용 보고 한도 다시 맞춤.
