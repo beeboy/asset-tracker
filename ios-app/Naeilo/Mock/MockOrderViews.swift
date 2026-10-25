@@ -61,6 +61,7 @@ struct MockJournalView: View {
     @State private var colW: [Int: CGFloat] = [:]
     @State private var sdraft = MockSellDraft()
     @State private var sadding = false
+    @State private var info: MockStockRef?
 
     private struct Held: Identifiable {
         let code: String
@@ -86,6 +87,7 @@ struct MockJournalView: View {
         .onPreferenceChange(HoldColW.self) { colW = $0 }
         .sheet(isPresented: $settings) { MockSettingsView() }
         .sheet(isPresented: $logOpen) { MockLogSheet() }
+        .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name) }
     }
 
     // 팔기 조건: 켠 알약에 맞는 내 종목을 판다 (선정의 고르기 반대). 1분 주기도 같은 조건으로 장중 가격을 본다
@@ -214,12 +216,15 @@ struct MockJournalView: View {
         } rows: {
             if rows.isEmpty { MockEmptyRow(text: "아직 산 종목이 없어요") }
             ForEach(rows) { h in
-                MockStockRow(code: h.code, name: h.name, mid: MockFmt.small(h.avg), pct: h.r,
-                             price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, colW: colW) {
-                    if h.wait > 0 { MockQtyPill(text: "팔기 \(h.wait)주 대기", done: false).holdCol(3, colW) }
-                    else if h.sold > 0 { MockQtyPill(text: "팔기 \(h.sold)주 체결", done: true).holdCol(3, colW) }
-                    else if anyPill { Color.clear.frame(width: colW[3] ?? 0, height: 1) }
+                Button { info = MockStockRef(code: h.code, name: h.name) } label: {
+                    MockStockRow(code: h.code, name: h.name, mid: MockFmt.small(h.avg), pct: h.r,
+                                 price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, colW: colW) {
+                        if h.wait > 0 { MockQtyPill(text: "팔기 \(h.wait)주 대기", done: false).holdCol(3, colW) }
+                        else if h.sold > 0 { MockQtyPill(text: "팔기 \(h.sold)주 체결", done: true).holdCol(3, colW) }
+                        else if anyPill { Color.clear.frame(width: colW[3] ?? 0, height: 1) }
+                    }
                 }
+                .buttonStyle(.plain)
             }
         }
     }

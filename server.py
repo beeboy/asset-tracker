@@ -272,6 +272,7 @@ def mock_err(e: Exception) -> str:
 MOCK_CODE = re.compile(r"[A-Za-z0-9.\-]{1,12}")
 _mock_daily: dict[str, tuple[float, int, list]] = {}  # 코드 → (받은 시각, 봉 수, 봉)
 MOCK_LOCK = threading.Lock()
+_mock_min: dict[str, tuple[float, dict]] = {}  # 코드 → (받은 시각, 마지막 거래일 1분봉)
 DEV_TOKEN = ROOT / "dev_token.json"  # 모의 경로 열쇠 {"token": "…"} (.gitignore, 이 서버에만)
 
 
@@ -309,6 +310,42 @@ def mock_daily_one(code: str, count: int) -> list:
     with MOCK_LOCK:
         _mock_daily[code] = (time.time(), count, rows)
     return rows
+
+
+def mock_minutes(code: str) -> dict:
+    """한 종목 마지막 거래일 1분봉 ([시:분, 시가, 고가, 저가, 종가, 거래량]). 토스 봉은 1분·일봉뿐이라 하루치를 200개씩 두 번까지. 1분 동안 다시 쓰기"""
+    with MOCK_LOCK:
+        c = _mock_min.get(code)
+        if c and time.time() - c[0] < 60:
+            return c[1]
+    got, before = [], ""
+    for _ in range(2):
+        p = {"symbol": code, "interval": "1m", "count": "200", "adjusted": "false"}
+        if before:
+            p["before"] = before
+        r = toss_call("/api/v1/candles?" + urllib.parse.urlencode(p), "chart").get("result") or {}
+        for v in r.get("candles") or []:
+            t = str(v.get("timestamp") or "")
+            try:
+                row = [t[11:16], float(v["openPrice"]), float(v["highPrice"]), float(v["lowPrice"]), float(v["closePrice"]), float(v.get("volume") or 0)]
+            except (KeyError, TypeError, ValueError):
+                continue
+            if len(t) >= 16 and row[4] > 0:
+                got.append((t[:10], row))
+        # 토스는 1000분의 1초를 붙여 준다. 더 지난 쪽이 마지막 거래일 밖이면 그만
+        before = re.sub(r"\.\d+(?=Z|[+-]\d{2}:\d{2}$)", "", str(r.get("nextBefore") or ""))
+        day = max((d for d, _ in got), default="")
+        if not before or before[:10] < day:
+            break
+    day = max((d for d, _ in got), default="")
+    seen, out = set(), []
+    for d, row in sorted(got, key=lambda x: x[1][0]):
+        if d == day and row[0] not in seen:
+            seen.add(row[0]); out.append(row)
+    res = {"day": day, "bars": out}
+    with MOCK_LOCK:
+        _mock_min[code] = (time.time(), res)
+    return res
 
 
 def mock_daily(codes: list[str], count: int) -> dict:
@@ -383,6 +420,9 @@ def mock_get(path: str) -> dict | None:
             return mock_daily(codes, int(one("count") or 60))
         if u.path == "/api/mock/last":
             return mock_last(codes)
+        if u.path == "/api/mock/minutes":  # 종목 상세 1일 차트
+            c = one("symbol")
+            return mock_minutes(c) if MOCK_CODE.fullmatch(c) else {"error": "잘못된 종목"}
         if u.path == "/api/mock/book":
             c = one("symbol")
             return mock_book(c) if MOCK_CODE.fullmatch(c) else {"error": "잘못된 종목"}

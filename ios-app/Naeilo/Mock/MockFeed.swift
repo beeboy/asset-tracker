@@ -97,6 +97,23 @@ enum MockFeed {
         return (bars, errors)
     }
 
+    /// 종목 상세: 마지막 거래일 1분봉 (d = "09:01") 과 일봉 200개. 같은 날 한 번 받은 일봉은 다시 쓴다
+    @MainActor static func detail(_ code: String) async throws -> (day: String, minutes: [MockBar], daily: [MockBar]) {
+        let o = try await get("/api/mock/minutes?symbol=" + enc(code), timeout: 12)
+        let mins = (o["bars"] as? [[Any]] ?? []).compactMap { r -> MockBar? in
+            guard r.count >= 6, let d = r[0] as? String, let op = num(r[1]), let h = num(r[2]), let l = num(r[3]), let cl = num(r[4]) else { return nil }
+            return MockBar(d: d, o: op, h: h, l: l, c: cl, v: num(r[5]) ?? 0)
+        }
+        let today = MockFmt.day(Date())
+        var days = dayCache[code].flatMap { $0.day == today ? $0.bars : nil }
+        if days == nil {
+            days = try await daily([code], count: 200) { _ in }.bars[code] ?? []
+            dayCache[code] = (today, days!)
+        }
+        return (o["day"] as? String ?? "", mins, days!)
+    }
+    @MainActor private static var dayCache: [String: (day: String, bars: [MockBar])] = [:]
+
     /// 지금 가격 (토스 코드 → 가격)
     static func last(_ codes: [String]) async throws -> [String: Double] {
         guard !codes.isEmpty else { return [:] }
