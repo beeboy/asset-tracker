@@ -395,6 +395,23 @@ final class MockDesk {
 
     // MARK: 장부·설정 바꾸기
 
+    /// 장 밖 시험으로 산 몫만 장부에서 빼고 들어간 돈을 현금으로 돌린다 (기록은 남긴다)
+    func dropTest(_ b: MockBook) {
+        guard let i = s.ledgers.firstIndex(where: { $0.book == b }) else { return }
+        var l = s.ledgers[i]
+        for (code, p0) in l.positions where p0.test {
+            var p = p0
+            let q = min(p.qty, p0.tQty ?? p.qty), c = p0.tCost ?? p.cost, g = p0.tGross ?? p.gross
+            p.qty -= q; p.cost -= c; p.gross -= g
+            p.test = false; p.tQty = nil; p.tCost = nil; p.tGross = nil
+            l.cash += c; l.fees -= c - g
+            l.positions[code] = p.qty > 0 ? p : nil
+            log(.cancel, book: b, who: p.who, code: code, name: p.name, text: "시험 몫 뺌 · \(q)주 · 돌린 돈 " + MockFmt.won(c), test: true, side: .buy, qty: q, ref: p.buyRef)
+        }
+        s.ledgers[i] = l
+        save()
+    }
+
     /// 장부를 처음부터. 옛 장부는 닫아서 보관한다 (기록도 그대로)
     func reset(_ b: MockBook) {
         guard let i = s.ledgers.firstIndex(where: { $0.book == b }) else { return }

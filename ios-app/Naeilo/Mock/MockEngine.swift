@@ -218,11 +218,13 @@ enum MockCalc {
         o.qty -= fill.qty
         let day = MockFmt.day(at)
         if var p = l.positions[o.code] {
+            if test { p.tQty = (p.tQty ?? 0) + fill.qty; p.tCost = (p.tCost ?? 0) + fill.amount + fee; p.tGross = (p.tGross ?? 0) + fill.amount }
             p.qty += fill.qty; p.cost += fill.amount + fee; p.gross += fill.amount; p.test = p.test || test
             l.positions[o.code] = p
         } else {
             l.positions[o.code] = MockPosition(code: o.code, name: o.name, market: o.market, qty: fill.qty, cost: fill.amount + fee, gross: fill.amount,
-                                               opened: at, openedDay: day, who: o.who, test: test, buyRef: o.id)
+                                               opened: at, openedDay: day, who: o.who, test: test, buyRef: o.id,
+                                               tQty: test ? fill.qty : nil, tCost: test ? fill.amount + fee : nil, tGross: test ? fill.amount : nil)
         }
         l.fees += fee
         if o.qty <= 0 {
@@ -247,6 +249,7 @@ enum MockCalc {
         let basis = p.cost * share, gross = p.gross * share
         let proceeds = amount - fee - tax
         p.qty -= n; p.cost -= basis; p.gross -= gross
+        if let tq = p.tQty { p.tQty = tq - Int((Double(tq) * share).rounded()); p.tCost = p.tCost.map { $0 * (1 - share) }; p.tGross = p.tGross.map { $0 * (1 - share) } }
         let opener = p.who, wasTest = p.test
         if p.qty <= 0 { l.positions[o.code] = nil } else { l.positions[o.code] = p }
         l.cash += proceeds; l.fees += fee; l.taxes += tax

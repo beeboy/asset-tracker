@@ -212,6 +212,9 @@ struct MockPosition: Codable, Equatable, Identifiable {
     var who: MockWho
     var test: Bool               // 시험 체결로 산 몫이 섞였나
     var buyRef: UUID? = nil      // 처음 산 주문 (이유 따라가기)
+    var tQty: Int? = nil         // 그중 시험 몫 (없으면 옛 상태라 전부 시험으로 본다)
+    var tCost: Double? = nil
+    var tGross: Double? = nil
     var avg: Double { qty > 0 ? gross / Double(qty) : 0 }
 }
 

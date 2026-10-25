@@ -22,6 +22,9 @@ struct MockOrderView: View {
                 HStack {
                     MockSmallButton(title: "손 주문") { hand = .init(side: .buy, code: nil) }
                     Spacer()
+                    if l.positions.values.contains(where: \.test) {
+                        MockSmallButton(title: "시험 몫 빼기", color: Theme.up) { d.dropTest(b) }
+                    }
                     MockSmallButton(title: "장부 처음부터", color: Theme.up) { resetAsk = b }
                 }
                 MockRunLine(run: d.s.runs["order"])
