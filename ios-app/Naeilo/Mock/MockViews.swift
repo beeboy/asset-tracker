@@ -745,10 +745,6 @@ struct MockObserveView: View {
 
     private func condCard(_ d: MockDesk) -> some View {
         Card {
-            HStack {
-                Spacer()
-                MockGoPill(title: "지금 훑기") { await d.runObserve() }
-            }
             FlowRow(spacing: 6) {
                 ForEach(d.conds) { c in
                     MockCondPill(text: c.piece.text, on: c.on,
@@ -766,6 +762,10 @@ struct MockObserveView: View {
                 mt("일봉 받는 중 \(p.done.formatted()) / \(p.total.formatted())").appFont(12).foregroundStyle(Theme.muted)
             }
             if let r = d.s.runs["observe"], !r.ok { MockRunLine(run: r) }
+            HStack {
+                Spacer()
+                MockGoPill(title: "지금 훑기") { await d.runObserve() }
+            }
         }
     }
 
@@ -866,10 +866,6 @@ struct MockSelectView: View {
 
     private func ruleCard(_ d: MockDesk) -> some View {
         Card {
-            HStack {
-                Spacer()
-                MockGoPill(title: "지금 고르기") { await d.runSelect() }
-            }
             FlowRow(spacing: 6) {
                 ForEach(d.rconds) { c in
                     MockCondPill(text: c.text, on: c.on,
@@ -884,6 +880,10 @@ struct MockSelectView: View {
             }
             if d.s.scan == nil { mt("관찰 결과가 없어요 · 관찰 탭에서 먼저 훑어요").appFont(12).foregroundStyle(Theme.up) }
             if let r = d.s.runs["select"], !r.ok { MockRunLine(run: r) }
+            HStack {
+                Spacer()
+                MockGoPill(title: "지금 고르기") { await d.runSelect() }
+            }
         }
     }
 
