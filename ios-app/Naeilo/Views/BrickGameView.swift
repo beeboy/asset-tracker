@@ -315,10 +315,12 @@ struct BrickPlayView: View {
                     }
                     .frame(width: 44)
                 }
+                .frame(height: 56)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .frame(minHeight: 52)
+        // 끼어든 인물 줄 자리를 늘 비워 둬서, 말풍선이 떠도 아래 게임판이 움직이지 않게 한다
+        .frame(height: 52 + 6 + 56, alignment: .top)
         .animation(.easeOut(duration: 0.15), value: g.speaking)
         .animation(.easeOut(duration: 0.25), value: g.guestShown)
     }
