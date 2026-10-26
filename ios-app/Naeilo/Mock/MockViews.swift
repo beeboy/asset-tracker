@@ -892,6 +892,7 @@ struct MockObserveView: View {
         MockScreen(tab: .observe) {
             condCard(d)
             if let sc = d.s.scan { hitsCard(sc) }
+            MockCurveCard(curves: d.s.curves ?? [])
         }
         .onPreferenceChange(HoldColW.self) { colW = $0 }
         .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name, seen: true) }
@@ -983,6 +984,72 @@ struct MockObserveView: View {
                 }
             }
         }
+    }
+}
+
+/// 하루 거래량 곡선 (관찰 탭 아래): 최근 곡선들의 칸별 가운데 값 · 지금 쌓임 · 시각별 쌓임. 새 배수가 나누는 값
+struct MockCurveCard: View {
+    let curves: [MockCurve]
+    private static let marks = [2, 4, 12, 20, 24]   // 9:30 10:00 12:00 14:00 15:00
+
+    var body: some View {
+        let cs = curves.filter { $0.cum.count == 27 }
+        Card {
+            HStack {
+                mt("거래량 곡선").appFont(14, .bold)
+                Spacer()
+                if let last = cs.last { mt("\(cs.count)일 · 마지막 \(MockFmt.md(last.day))").appFont(12).foregroundStyle(Theme.muted) }
+            }
+            if let mid = MockCalc.curveNow(cs) {
+                let now = Self.nowX()
+                plot(mid, now: now).frame(height: 60)
+                if now != nil, let f = MockCalc.frac(cs, at: Date()) {
+                    mt("지금 쌓임 \(Int((f * 100).rounded()))%").appFont(12).foregroundStyle(Theme.sub).monospacedDigit()
+                }
+                mt(Self.marks.map { k in "\(Self.time(k)) \(Int((mid[k] * 100).rounded()))%" }.joined(separator: " · "))
+                    .appFont(11).foregroundStyle(Theme.muted).monospacedDigit()
+            } else {
+                mt("아직 없어요 · 한 번 훑은 뒤 15:45 뒤나 8:30 전에 앱을 열어 두면 하루치가 쌓여요")
+                    .appFont(12).foregroundStyle(Theme.muted)
+            }
+        }
+    }
+
+    private static func time(_ k: Int) -> String {
+        let m = 540 + 15 * k
+        return "\(m / 60):" + String(format: "%02d", m % 60)
+    }
+
+    /// 0~100% 꺾은선. 장중이면 지금 시각 위치에 점 하나
+    private func plot(_ ys: [Double], now: CGFloat?) -> some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height, n = ys.count - 1
+            let y = { (v: Double) in h * (1 - CGFloat(min(1, max(0, v)))) }
+            let pt = { (k: Int) in CGPoint(x: w * CGFloat(k) / CGFloat(n), y: y(ys[k])) }
+            ZStack(alignment: .topLeading) {
+                Path { p in p.move(to: CGPoint(x: 0, y: h)); p.addLine(to: CGPoint(x: w, y: h)) }.stroke(Theme.line)
+                Path { p in
+                    p.move(to: pt(0))
+                    for k in 1...n { p.addLine(to: pt(k)) }
+                }
+                .stroke(Theme.teal, lineWidth: 2)
+                if let at = now {
+                    // 15분 칸 사이는 곧게 잇는다 (frac 과 같게)
+                    let u = Double(at) * Double(n), k = min(n - 1, Int(u)), r = u - Double(k)
+                    let v = ys[k] + (ys[k + 1] - ys[k]) * r
+                    Circle().fill(Theme.ink).frame(width: 7, height: 7)
+                        .position(x: w * CGFloat(u) / CGFloat(n), y: y(v))
+                }
+            }
+        }
+    }
+
+    /// 9:00~15:30 사이 지금 위치 (0~1). 장 밖이면 nil
+    private static func nowX() -> CGFloat? {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
+        let c = cal.dateComponents([.hour, .minute], from: Date())
+        let m = (c.hour ?? 0) * 60 + (c.minute ?? 0) - 540
+        return m > 0 && m < 390 ? CGFloat(m) / 390 : nil
     }
 }
 

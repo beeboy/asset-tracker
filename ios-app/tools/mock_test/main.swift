@@ -230,6 +230,8 @@ do {
     check(MockCalc.frac(curves, at: f.date(from: "2026-09-22 08:50")!) == nil, "장 전은 nil")
     check(MockCalc.frac(curves, at: f.date(from: "2026-09-22 16:00")!) == 1, "장 끝 뒤는 1")
     check(MockCalc.frac([], at: at10) == nil, "곡선 없으면 nil")
+    check(MockCalc.curveNow([]) == nil && MockCalc.curveNow([MockCurve(day: "x", cum: [0.5])]) == nil, "27칸 곡선 없으면 curveNow nil")
+    check(MockCalc.curveNow(curves + [MockCurve(day: "2026-09-22", cum: cum.map { min(1, $0 + 0.1) }), MockCurve(day: "2026-09-23", cum: cum)]) == cum, "curveNow 는 칸별 가운데 값")
     // 거래량 0.5배라도 10시 기준이면 새 배수 3.25배 → 새로 걸림
     var b2 = allBars; b2["000005"] = bars(9_000, lastUp: 0.03, volMul: 0.5)
     let st2 = stocks + [MockStock(code: "000005", name: "마", kospi: true)]

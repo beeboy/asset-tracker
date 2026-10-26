@@ -114,17 +114,23 @@ enum MockCalc {
         return cols.map(median)
     }
 
-    /// 이 시각 하루 거래량 누적 비율 (최근 곡선들의 칸별 가운데 값, 15분 사이는 곧게 잇는다). 장 전·곡선 없음은 nil, 장 끝 뒤는 1
-    static func frac(_ curves: [MockCurve], at: Date) -> Double? {
+    /// 최근 곡선들(27칸)의 칸별 가운데 값. 곡선이 없으면 nil
+    static func curveNow(_ curves: [MockCurve]) -> [Double]? {
         let cs = curves.filter { $0.cum.count == 27 }
         guard !cs.isEmpty else { return nil }
+        return (0...26).map { k in median(cs.map { $0.cum[k] }) }
+    }
+
+    /// 이 시각 하루 거래량 누적 비율 (최근 곡선들의 칸별 가운데 값, 15분 사이는 곧게 잇는다). 장 전·곡선 없음은 nil, 장 끝 뒤는 1
+    static func frac(_ curves: [MockCurve], at: Date) -> Double? {
+        guard let mid = curveNow(curves) else { return nil }
         var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
         let c = cal.dateComponents([.hour, .minute], from: at)
         let m = (c.hour ?? 0) * 60 + (c.minute ?? 0) - 540
         guard m > 0 else { return nil }
         if m >= 390 { return 1 }
         let k = m / 15, r = Double(m % 15) / 15
-        let a = median(cs.map { $0.cum[k] }), b = median(cs.map { $0.cum[k + 1] })
+        let a = mid[k], b = mid[k + 1]
         let v = a + (b - a) * r
         return v > 0 ? v : nil
     }
