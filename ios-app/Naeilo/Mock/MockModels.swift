@@ -20,10 +20,19 @@ enum MockWho: String, Codable, CaseIterable {
     }
 }
 
-/// 장부 둘: 규칙 장부(손 주문도 여기에 적고 손으로 표시) · AI 장부
+/// 장부: 모의 장부(rule, 손 주문도 여기에 적고 손으로 표시) · 실전 장부(real, 앱이 낸 토스 실주문 체결만) · AI 장부(꺼 둠)
+/// 모의와 실전은 절대 섞지 않는다 (2026-10-26)
 enum MockBook: String, Codable, CaseIterable {
-    case rule, ai
-    var name: String { self == .rule ? "규칙 장부" : "AI 장부" }
+    case rule, ai, real
+    var name: String {
+        switch self {
+        case .rule: return "모의 장부"
+        case .real: return "실전 장부"
+        case .ai: return "AI 장부"
+        }
+    }
+    /// 세 탭 위 칸 이름
+    var tab: String { self == .real ? "실전" : "모의" }
 }
 
 /// 일봉 한 칸 (토스 캔들). d = 한국 날짜 yyyy-MM-dd
