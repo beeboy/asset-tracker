@@ -27,7 +27,8 @@ struct MockState: Codable {
     var prices: [String: Double] = [:]        // 지켜보는 종목 지금 가격
     var pricesAt: Date? = nil
     var session: MockFeed.Session? = nil
-    var shown: MockBook = .rule               // 세 탭 위 [모의]·[실전] 칸 (rule = 모의, real = 실전)
+    var shown: MockBook = .rule               // 보이는 칸 (rule = 모의, real = 실전). 앱을 켤 때마다 startReal 로 다시 맞춘다
+    var startReal: Bool? = nil                // 앱을 켤 때 [실전]으로 시작 (기본 끔 = 모의)
     var ai = MockAISettings()
     var aiSeen: [String: Date] = [:]          // AI 부르는 때마다 마지막으로 부른 시각
     var aiWallet: MockAIWallet? = nil         // 서버가 알려 준 쓴 돈
@@ -99,7 +100,7 @@ final class MockDesk {
     func broker(_ b: MockBook) -> MockBroker { b == .real ? toss : paper }
     var live: Bool { s.live == true }
 
-    /// 세 탭 위 [모의]·[실전] 칸. 하나 고르면 세 탭이 같이 따른다 (앱을 다시 켜도 남는다)
+    /// [모의]·[실전] 칸. 탭 머리 전환 아이콘으로 바꾸면 세 탭이 같이 따른다 (앱을 켤 때는 설정의 시작 칸으로)
     var shown: MockBook { s.shown == .real ? .real : .rule }
     func show(_ b: MockBook) {
         guard b != s.shown else { return }
@@ -166,6 +167,8 @@ final class MockDesk {
         if s.aiPurged != true { purgeAI() }
         // 실전 장부가 없던 옛 상태: 빈 실전 장부를 더한다 (모의 장부는 그대로)
         if !s.ledgers.contains(where: { $0.book == .real }) { s.ledgers.append(MockLedger(book: .real, started: now)); save() }
+        // 기본은 [모의]로 시작 (설정 '시작 실전'을 켜면 [실전])
+        s.shown = s.startReal == true ? .real : .rule
         toss.armed = s.live == true
         settleDue()
         checkDaily()

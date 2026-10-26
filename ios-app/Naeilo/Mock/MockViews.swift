@@ -186,10 +186,7 @@ struct MockTabBox: View {
             }
         }
         .background { MoodBackdrop(look: BoxLook(rawValue: lookRaw) ?? .jump) }
-        // [실전] 칸: 경고 색 테두리·바탕으로 한눈에 구분
-        .overlay { if d.shown == .real { Theme.orange.opacity(0.12).allowsHitTesting(false) } }
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay { if d.shown == .real { RoundedRectangle(cornerRadius: 20).stroke(Theme.orange, lineWidth: 2.5) } }
         .boxScheme()
     }
 
@@ -852,16 +849,29 @@ struct MockScreen<Content: View>: View {
     @ViewBuilder var content: Content
     @State private var live = false
     var body: some View {
+        let d = MockDesk.shared
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 0) {
                     AppHeader(tab: tab.name)
-                    // 실전: 모의투자에 실전 매매 규칙을 어떻게 반영했나
-                    Button { live = true } label: {
-                        Image(systemName: "checkmark.shield").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
+                    Group {
+                    if tab == .account {
+                        // 계좌 탭(실전 전용): 실전 규칙 목록 (모의투자에 실전 매매 규칙을 어떻게 반영했나)
+                        Button { live = true } label: {
+                            Image(systemName: "checkmark.shield").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
+                                .frame(width: 44, height: 44).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).accessibilityLabel(Text(verbatim: "실전 규칙"))
+                    } else {
+                    // 모의 ↔ 실전 전환: 누를 때마다 바뀌고 세 탭이 같이 따른다 (실전 규칙 목록은 계좌 탭으로 옮김, 2026-10-27)
+                    Button { d.show(d.shown == .real ? .rule : .real) } label: {
+                        Image(systemName: d.shown == .real ? "bolt.fill" : "testtube.2").font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(d.shown == .real ? Theme.up : Theme.sub)
                             .frame(width: 44, height: 44).contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain).accessibilityLabel(Text(verbatim: "실전 규칙"))
+                    .buttonStyle(.plain).accessibilityLabel(Text(verbatim: d.shown == .real ? "실전 · 눌러서 모의로" : "모의 · 눌러서 실전으로"))
+                    }
+                    }
                     .padding(.trailing, gear == nil ? 8 : 0)
                     if let gear {
                         Button(action: gear) {
@@ -874,25 +884,18 @@ struct MockScreen<Content: View>: View {
                 }
                 .padding(.horizontal, -16)
                 MockTabBox(tab: tab)
-                // [모의]·[실전] 칸: 하나 고르면 세 탭이 같이 따른다. 계좌 탭은 실전만이라 칸이 없다
-                if tab != .account {
-                    Picker(selection: Binding(get: { MockDesk.shared.shown }, set: { MockDesk.shared.show($0) })) {
-                        ForEach([MockBook.rule, .real], id: \.self) { b in mt(b.tab).tag(b) }
-                    } label: { EmptyView() }
-                    .pickerStyle(.segmented)
-                }
                 content
             }
             .screen()
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $live) { MockLiveSheet(tab: tab) }
         .task {
             await MockDesk.shared.refreshPhase()
             // [실전] 칸으로 탭을 열 때 토스 계좌를 한 번 읽는다 (계좌 탭은 제 .task 에서 읽는다)
             if tab != .account && MockDesk.shared.shown == .real { await MockDesk.shared.refreshAccount() }
         }
-        .sheet(isPresented: $live) { MockLiveSheet(tab: tab) }
     }
 }
 

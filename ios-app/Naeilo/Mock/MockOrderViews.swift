@@ -700,6 +700,11 @@ struct MockSettingsView: View {
                 }
             }
             .tint(Theme.up)
+            // 앱을 켤 때 시작 칸 (기본 모의)
+            Toggle(isOn: Binding(get: { d.s.startReal == true }, set: { v in d.setView { $0.startReal = v ? true : nil } })) {
+                mt("시작 실전").appFont(14)
+            }
+            .tint(Theme.up)
             mt("서버 " + (d.liveBlock ?? "실전 준비됨")).appFont(12).foregroundStyle(Theme.muted)
             if let liveNote { mt(liveNote).appFont(12).foregroundStyle(Theme.up) }
         }
