@@ -1534,6 +1534,10 @@ extension MockDesk {
                 flows[i].test = flows[i].test || e.test
             case .cancel:
                 if let r = e.ref, let i = orderOf[r], !flows[i].steps.contains("취소") { flows[i].steps.append("취소") }
+            case .reject:
+                // 거부: 주문층(브로커)·안전장치가 받지 않은 주문
+                if let r = e.ref, let i = head[r] { flows[i].steps += ["주문", "거부"]; flows[i].why = e.text }
+                else { flows.append(MockFlow(id: e.id, at: e.at, sell: e.side == .sell, who: e.who ?? .hand, test: e.test, steps: ["주문", "거부"], why: e.text)) }
             case .select where !e.text.hasPrefix("검토에서 뺌"):
                 continue   // 검토에서 주수만 고친 줄
             case .exclude, .short, .order, .error, .select:

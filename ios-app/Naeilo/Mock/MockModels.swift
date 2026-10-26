@@ -291,6 +291,9 @@ struct MockFees: Codable, Equatable {
 enum MockSide: String, Codable { case buy, sell
     var name: String { self == .buy ? "매수" : "매도" }
 }
+/// 주문 상태: 접수 → 부분 체결 → 체결 · 취소 · 거부 (실전 주문 API 와 같은 단계)
+enum MockOrderState: String, Codable { case accepted, partial, filled, canceled, rejected }
+
 enum MockOrderType: String, Codable { case market, limit
     var name: String { self == .market ? "시장가" : "지정가" }
 }
@@ -332,6 +335,7 @@ struct MockOrder: Codable, Equatable, Identifiable {
     var ref: UUID? = nil         // 이 주문을 낸 선정 기록
     var waitWhy: String? = nil   // 왜 대기 중인가 (마지막 확인)
     var until: Date? = nil       // 나눈 남은 몫: 이때까지 다 못 채우면 취소
+    var state: MockOrderState? = nil   // 접수 · 부분 체결 (대기 목록에 있는 동안)
 }
 
 /// 가상 계좌 하나
@@ -354,7 +358,7 @@ struct MockLedger: Codable, Equatable, Identifiable {
 /// 한 기록 파일에 차례로 쌓는 줄. 지난 줄은 고치지 않는다
 struct MockEvent: Codable, Equatable, Identifiable {
     enum Kind: String, Codable {
-        case scan, exclude, select, short, order, fill, wait, cancel, sell, reset, rules, ai, error
+        case scan, exclude, select, short, order, fill, wait, cancel, sell, reset, rules, ai, error, reject
         var name: String {
             switch self {
             case .scan: return "관찰"
@@ -370,6 +374,7 @@ struct MockEvent: Codable, Equatable, Identifiable {
             case .rules: return "규칙 바뀜"
             case .ai: return "AI"
             case .error: return "오류"
+            case .reject: return "거부"
             }
         }
     }

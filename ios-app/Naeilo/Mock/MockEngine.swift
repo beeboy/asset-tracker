@@ -173,6 +173,7 @@ enum MockCalc {
         var qty: Int = 0
         var amount: Double = 0       // 체결 금액 (수수료 전)
         var levels: Int = 0          // 몇 단계 호가를 채웠나
+        var taken: [Level] = []      // 단계마다 채운 수량 (모의 브로커가 그만큼 호가 잔량을 줄인다)
         var avg: Double { qty > 0 ? amount / Double(qty) : 0 }
     }
 
@@ -193,6 +194,7 @@ enum MockCalc {
             }
             guard take > 0 else { break }
             f.qty += take; f.amount += Double(take) * lv.p; f.levels += 1; left -= take
+            f.taken.append(Level(p: lv.p, v: Double(take)))
         }
         return f
     }
