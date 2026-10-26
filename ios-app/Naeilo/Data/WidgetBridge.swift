@@ -93,7 +93,7 @@ enum WidgetBridge {
         let wc = WChar.of(reward.homeFriend ?? "seri")
         WatchSync.shared.send(WWatch(at: now.timeIntervalSince1970 * 1000, char: wc.id, accent: wc.accent, g0: wc.g0, g1: wc.g1,
                                      total: reward.total, dayChg: reward.dayChg, spark: reward.spark ?? [], keyName: reward.keyName,
-                                     pct: reward.pct, line: wc.line(reward), art: wc.id == "me" ? Self.meWatchArt() : nil))
+                                     pct: reward.pct, line: Self.upLine(reward, wc.voice ?? wc.id) ?? wc.line(reward), art: wc.id == "me" ? Self.meWatchArt() : nil))
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")
         Store.write(live, "live.json")
@@ -117,6 +117,14 @@ enum WidgetBridge {
             if r.count > 1, race.last < r[0].count, race.last < r[1].count { me = r[0][race.last]; bk = r[1][race.last] }
         }
         return WSmall(path: pts, need: (0...40).map { p.need(e * Double($0) / 40) }, gap: m.myPathGapToday, t0: m.total + cash, me: me, basket: bk)
+    }
+
+    /// 워치 한마디: 오늘 오른 종목이 있으면 가장 많이 오른 종목을 '오른 날' 대사(종목 이름이 든 줄)로 먼저 말한다. 물건 이야기 날도 같다.
+    /// 오른 종목이 없으면 nil (아이폰 위젯과 같은 한마디). 대사는 says() 와 같은 묶음·순서에서 고른다
+    static func upLine(_ r: WReward, _ voice: String) -> String? {
+        guard let top = r.tiles.filter({ $0.c > 0 }).max(by: { $0.c < $1.c }) else { return nil }
+        let list = Lines.peek("widget.up.\(voice)", ["t": top.t, "c": String(format: "%.1f", top.c * 100)], 10)
+        return list.first { $0.contains(top.t) } ?? list.first
     }
 
     /// 워치 위젯에 보낼 내 캐릭터 그림: 아이폰 위젯과 같은 me_<포즈>.png 넷 + 기본 me.png. 합이 50KB 를 넘으면 안 보낸다(워치는 세리 그림)
