@@ -42,7 +42,7 @@ struct LockGoalView: View { // 2 목표 진행: 동그라미는 목표 대비 %,
 
 // MARK: 인물 잠금화면 위젯 (워치 A·B·C 를 잠금화면 직사각형으로)
 
-/// 인물 그림: 높이는 위젯(72pt)의 80% 수준. 34px 그림 한 칸 = 58/34pt, 발은 아래 맞춤
+/// 인물 그림: 높이는 위젯(72pt)의 80% 수준. 34px 그림 한 칸 = 58/34pt, 발은 아래 맞춤. 58pt 를 넘지 않는다
 struct LockChar: View {
     let c: WChar
     let pose: String
@@ -50,7 +50,7 @@ struct LockChar: View {
         let n = lockPose(c, pose)
         if let img = LockMono.image(n) {
             Image(uiImage: img).interpolation(.none).resizable().aspectRatio(contentMode: .fit)
-                .frame(height: CGFloat(img.cgImage?.height ?? 34) * 58 / 34).accessibilityHidden(true)
+                .frame(height: min(58, img.size.height * 58 / 34)).accessibilityHidden(true)
         }
     }
 }
@@ -78,11 +78,14 @@ enum LockMono {
 
     static func convert(_ img: UIImage) -> UIImage? {
         guard let cg = img.cgImage else { return nil }
-        let w = cg.width, h = cg.height
+        // 그림 칸 수(pt 크기)로 다시 찍는다. 에셋은 기기 배율로 키운 비트맵을 줄 수 있어(34px 그림이 102px),
+        // 그대로 쓰면 인물이 세 배로 커지고 키운 칸 사이 색이 섞인다 (2026-10-26 잠금화면에서 인물만 크게 보인 원인)
+        let w = max(1, Int(img.size.width.rounded())), h = max(1, Int(img.size.height.rounded()))
         var px = [UInt8](repeating: 0, count: w * h * 4)
         return px.withUnsafeMutableBytes { buf -> UIImage? in
             guard let ctx = CGContext(data: buf.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
                                       space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            ctx.interpolationQuality = .none
             ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
             let p = buf.bindMemory(to: UInt8.self)
             let alpha = { (x: Int, y: Int) -> Int in x < 0 || y < 0 || x >= w || y >= h ? 0 : Int(p[(y * w + x) * 4 + 3]) }
@@ -114,7 +117,7 @@ enum LockMono {
                 let o = UInt8((v * a).rounded())
                 p[i] = o; p[i + 1] = o; p[i + 2] = o; p[i + 3] = o   // 흰색, 미리 곱한 알파
             } }
-            return ctx.makeImage().map { UIImage(cgImage: $0, scale: img.scale, orientation: .up) }
+            return ctx.makeImage().map { UIImage(cgImage: $0, scale: 1, orientation: .up) }
         }
     }
 }
