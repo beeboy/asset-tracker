@@ -92,10 +92,10 @@ struct MockJournalView: View {
         let d = MockDesk.shared
         MockScreen(tab: .journal, gear: { settings = true }) {
             retCard(d)
-            soldCard(d)
             sellCard(d)
             mineCard(d)
             bestWorst(d)
+            soldCard(d)
             pastCard(d)
             noteCard(d)
         }
@@ -104,7 +104,7 @@ struct MockJournalView: View {
         .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name, fills: true) }
     }
 
-    /// 오늘 판 종목 (지금 팔기 위 따로 박스, 없으면 숨김). 누르면 매수·매도 기록
+    /// 오늘 판 종목 (최고·최저 밑 따로 박스, 없으면 숨김). 누르면 매수·매도 기록
     @ViewBuilder private func soldCard(_ d: MockDesk) -> some View {
         let sold = d.soldToday()
         if !sold.isEmpty {
