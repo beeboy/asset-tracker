@@ -422,6 +422,8 @@ fun AddHoldingView(m: AppModel,
     /** 종목 탭 '+ 종목 추가' 팝업: 머리 왼쪽 제목, 오른쪽 x 닫기 */
     sheet: Boolean = false,   // ios: Views/HoldingsView.swift:838
     dismiss: () -> Unit = {},
+    /** 종목 탭 맨 아래 상자 (inline): 오른쪽 x 로 접고, 추가하면 접는다 */
+    close: (() -> Unit)? = null,   // ios: Views/HoldingsView.swift:959
 ) {
     var arrive by rememberPrefString("town.arrive", "")   // ios: Views/HoldingsView.swift:823
     var query by remember { mutableStateOf(m.arg("searchTest") ?: "") }   // ios: Views/HoldingsView.swift:824
@@ -487,7 +489,7 @@ fun AddHoldingView(m: AppModel,
     }
     // ios: Views/HoldingsView.swift:995
     fun added(new: String?) {
-        if (inline) { picked = null; query = ""; qty = ""; avg = ""; kp = "" } else { if (new != null) arrive = new; dismiss() }   // ios: Views/HoldingsView.swift:996
+        if (inline) { picked = null; query = ""; qty = ""; avg = ""; kp = ""; close?.let { if (new != null) arrive = new; it() } } else { if (new != null) arrive = new; dismiss() }   // ios: Views/HoldingsView.swift:996
     }
 
     // ios: Views/HoldingsView.swift:999
@@ -577,9 +579,9 @@ fun AddHoldingView(m: AppModel,
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T("종목 추가", Modifier.weight(1f), style = appFont(if (inline) 17f else 22f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:862,864
                 // ios: Views/HoldingsView.swift:863
-                if (sheet) {
+                if (sheet || close != null) {   // ios: Views/HoldingsView.swift:985
                     // ios: Views/HoldingsView.swift:865,866,867,869
-                    Box(Modifier.size(44.dp, 44.dp).plainClickable(dismiss).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(44.dp, 44.dp).plainClickable(close ?: dismiss).semantics { contentDescription = tr("닫기") }, contentAlignment = Alignment.Center) {
                         Sym("xmark", 15f, Theme.sub, scaled = false)
                     }
                 }

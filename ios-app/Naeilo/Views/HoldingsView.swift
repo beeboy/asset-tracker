@@ -12,7 +12,7 @@ struct HoldingsView: View {
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
     @State private var river: EarnTarget? = nil     // 내 몫 실적 강 팝업 (금색 알약을 누르면)
     @State private var editSym: Symbol? = nil       // 길게 누르기 '종목 고치기'
-    @State private var adding = false               // '+ 종목 추가' 팝업
+    @State private var adding = false               // '+ 종목 추가' 상자: 팝업 대신 목록 맨 아래에 펼친다
     @State private var colW: [Int: CGFloat] = [:]   // 목록 칸 폭: 같은 칸은 묶음을 넘어 줄마다 같은 폭
     @AppStorage("holdUsd") private var inUsd = false // 미국 종목을 달러로 볼지
     @AppStorage("holdValue") private var valueMode = false   // 보기: 현재가 | 평가금
@@ -35,6 +35,7 @@ struct HoldingsView: View {
         let kr = sorted.filter { $0.sym.currency != .usd }
         let mx = rows.map { abs(move($0)) }.max() ?? 0
         let earn = rows.contains { EarningsFeed.shared.summary($0.sym, qty: $0.h.qty) != nil }
+        ScrollViewReader { sv in
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: String(localized: "종목")).padding(.horizontal, -16)
@@ -58,7 +59,7 @@ struct HoldingsView: View {
                     Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                         .lineLimit(2).minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
-                    Button { adding = true } label: {
+                    Button { withAnimation(.snappy) { adding.toggle() } } label: {
                         Text("+ 종목 추가").appFont(13, .bold).foregroundStyle(Theme.teal)
                             .padding(.horizontal, 14).frame(minHeight: 32)
                             .overlay(Capsule().stroke(Theme.teal, lineWidth: 1.5))
@@ -66,9 +67,13 @@ struct HoldingsView: View {
                     }
                     .buttonStyle(.plain).fixedSize()
                 }
+                if adding { AddHoldingView(inline: true, close: { withAnimation(.snappy) { adding = false } }).id("add") }
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
             }
             .screen()
+        }
+        // 펼치면 상자가 보이게 올린다
+        .onChange(of: adding) { if $1 { withAnimation(.snappy) { sv.scrollTo("add", anchor: .top) } } }
         }
         .onPreferenceChange(HoldColW.self) { colW = $0 }
         .scrollDismissesKeyboard(.immediately)
@@ -78,7 +83,6 @@ struct HoldingsView: View {
         .detailSheet(period: period, takesHoldOpen: true)
         .sheet(item: $editSym) { s in PopupStack { HoldingEditView(sym: s) }.environment(m) }   // 길게 누르기 '종목 고치기'도 팝업
         .sheet(item: $river) { EarningsRiverSheet(target: $0) }
-        .sheet(isPresented: $adding) { NavigationStack { AddHoldingView(sheet: true) } }
         .onAppear { if !arrive.isEmpty { m.tab = .home } }   // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
         .onChange(of: arrive) { if !$1.isEmpty { m.tab = .home } }
         .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
@@ -951,10 +955,13 @@ struct AddHoldingView: View {
     var inline = false
     /// 종목 탭 '+ 종목 추가' 팝업: 머리 왼쪽 제목, 오른쪽 x 닫기
     var sheet = false
+    /// 종목 탭 맨 아래 상자 (inline): 오른쪽 x 로 접고, 추가하면 접는다
+    var close: (() -> Void)? = nil
 
     var body: some View {
         if inline {
             box.task(id: query) { await search() }
+                .toolbar { ToolbarItemGroup(placement: .keyboard) { if close != nil && focus != nil { Spacer(); Button("완료") { focus = nil } } } }
         } else {
             ScrollView { box.screen().padding(.top, 8) }
                 .background(Theme.bg)
@@ -975,9 +982,9 @@ struct AddHoldingView: View {
         return VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text("종목 추가").appFont(inline ? 17 : 22, .bold)
-                    if sheet {
+                    if sheet || close != nil {
                         Spacer()
-                        Button { dismiss() } label: {
+                        Button { if let close { close() } else { dismiss() } } label: {
                             Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.sub)
                                 .frame(width: 44, height: 44).contentShape(Rectangle())
                         }
@@ -1109,7 +1116,7 @@ struct AddHoldingView: View {
     }
 
     private func added(_ new: String?) {
-        if inline { picked = nil; query = ""; qty = ""; avg = ""; kp = "" } else { if let new { arrive = new }; dismiss() }
+        if inline { picked = nil; query = ""; qty = ""; avg = ""; kp = ""; if let close { if let new { arrive = new }; close() } } else { if let new { arrive = new }; dismiss() }
     }
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {
