@@ -50,8 +50,8 @@ struct RootView: View {
             NavigationStack { HomeView() }
                 .tabItem { Label("홈", systemImage: "house") }.tag(Tab.home)
             #if MOCK
-            // 개발자 모의투자 모드: 홈·미션은 그대로, 가운데 세 탭이 관찰·선정·일지로 바뀐다 (홈 평가액 박스의 금액 밖을 눌러 켜고 끈다)
-            if MockDesk.shared.active { MockTabs(); boardTab } else { plainTabs }
+            // 개발자 모의투자 모드: 홈은 그대로, 나머지가 관찰·선정·일지·계좌로 바뀐다 (미션 자리에 계좌. 홈 평가액 박스의 금액 밖을 눌러 켜고 끈다)
+            if MockDesk.shared.active { MockTabs() } else { plainTabs }
             #else
             plainTabs
             #endif

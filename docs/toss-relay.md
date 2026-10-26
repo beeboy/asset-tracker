@@ -58,3 +58,32 @@
 - 앱: 폰에서 `naeilo://mock?t=<같은 값>` 을 한 번 열면 그 기기에만 저장된다(내부 베타만). Tailscale 주소(`naeilo://toss?u=…ts.net`)가 있으면 그쪽이 먼저다.
 - 종목 상세(2026-10-25): `/api/mock/minutes?symbol=` 는 마지막 거래일 1분봉을 토스 `interval=1m` 정규장(9:00~15:30)만 장 끝부터 200개씩 두 번 받아 준다(1분 캐시). 토스 봉은 1분·일봉뿐(외부 도구 기준, 공식 명세 미확인). 시간봉(1h)은 400 으로 없음 확인(2026-10-25).
 - 확인: `curl -H "X-Naeilo-Dev: <값>" https://toss.naeilo.com/api/mock/wallet` 가 `{"spent": …}` 를 돌려주면 된다. 머리글 없이 부르면 403.
+
+## 토스 실주문 중계 (개발자 전용, 2026-10-26)
+- 토스 주문 API 도 허용 IP 에서만 받고 키는 서버에만 있으므로, 앱 실전 브로커(`MockTossBroker`)는 토스를 직접 부르지 않고 `server.py` 를 거친다. 앱에는 토큰·계좌가 없다.
+- 경로 (모두 머리글 `X-Naeilo-Dev` 필요, 아니면 403. Caddy 의 `handle /api/mock/*` 가 그대로 넘기므로 Caddy 는 안 고친다):
+  | 앱 | 서버가 부르는 토스 | 서버 스위치 꺼짐일 때 |
+  |---|---|---|
+  | `GET /api/mock/order/ready` | — (준비 상태만: armed·account·keys·max_krw) | 답함 |
+  | `POST /api/mock/order` | `POST /api/v1/orders` | 막음 `relay-off` |
+  | `GET /api/mock/order/{orderId}` | `GET /api/v1/orders/{orderId}` | 답함 |
+  | `POST /api/mock/order/{orderId}/cancel` | `POST /api/v1/orders/{orderId}/cancel` | 답함 (꺼도 대기 주문을 치울 수 있게) |
+- 서버 스위치: 서버 `~/asset-tracker/toss_live.json` (.gitignore) `{"armed": true, "account_seq": "<토스 계좌 accountSeq>", "max_krw": 100000}`. 파일이 없거나 `armed` 가 true 가 아니면 새 주문은 토스로 안 나간다. `max_krw` 는 한 번 주문 금액 상한(지정가는 가격×수량, 시장가는 지금 가격×수량). 0 이면 모두 막는다.
+- 주문 본문은 정한 칸만 넘긴다: symbol·side(BUY/SELL)·orderType(LIMIT/MARKET)·quantity(정수)·price(지정가만, 정수)·clientOrderId·timeInForce=DAY.
+- 토큰은 시세와 같은 `toss_keys.json` 토큰을 같이 쓴다 (클라이언트당 토큰 1개). 401 이면 한 번 새로 받아 다시. 429 는 앱에 그대로 넘기고 앱이 Retry-After 뒤 같은 clientOrderId 로 다시 보낸다 (토스 멱등성 10분이라 두 번 안 나감).
+- 기록: `~/asset-tracker/toss_orders.log` (한 줄 JSON: 시각·종목·방향·수량·가격·clientOrderId·결과·토스 오류 코드). 키·토큰·계좌는 안 남긴다.
+- 앱 실전 스위치는 서버가 `ready` 로 준비됐다고 답할 때만 켜진다.
+- 남은 일: 계좌 잔고 맞추기·정정·웹소켓 체결 알림. 토스 주문 경로·머리글은 앱 `TossOrderAPI`(토스 문서 2026-10-26 읽음)를 따랐고, 실주문으로는 아직 확인하지 않았다.
+
+## 실전 화면용 경로 (개발자 전용, 2026-10-26)
+근거: `~/Developer/toss-api/docs` (beeboy/toss-api). 모두 머리글 `X-Naeilo-Dev` 필요.
+| 앱 | 서버가 부르는 토스 | 캐시 · 한도 묶음 |
+|---|---|---|
+| `GET /api/mock/warnings?symbols=` (최대 30) | `GET /api/v1/stocks/{symbol}/warnings` 종목마다. 오늘 걸린 `warningType` 만 (VI_STATIC·VI_DYNAMIC·INVESTMENT_WARNING·INVESTMENT_RISK·OVERHEATED·LIQUIDATION_TRADING…) | 장중 15초 · 장 밖 1시간 · STOCK |
+| `GET /api/mock/suspended?symbols=` | `GET /api/v1/stocks?symbols=` 200개씩 → `krxTradingSuspended`·`liquidationTrading` | 10분 · STOCK |
+| `GET /api/mock/limits?symbol=` | `GET /api/v1/price-limits` → `upperLimitPrice`·`lowerLimitPrice` | 하루 · MARKET_DATA |
+| `POST /api/mock/order/{orderId}/modify` | `POST /api/v1/orders/{orderId}/modify` (국내: quantity 필수, LIMIT 면 price). 새 주문처럼 armed·max_krw 검사, `toss_orders.log` 에 `modify` | ORDER |
+| `GET /api/mock/account` | `GET /api/v1/buying-power?currency=KRW` (`cashBuyingPower`) + `GET /api/v1/holdings` (국내 종목만: 수량·평균가·현재가·세후 손익) | 5초 · ORDER_INFO · ASSET |
+| `GET /api/mock/sellable?symbol=` | `GET /api/v1/sellable-quantity` (`sellableQuantity`) | 없음 · ORDER_INFO |
+- 계좌 경로는 읽기라 `armed` 와 상관없이 답한다 (계좌 `account_seq` 만 있으면). 계좌 번호는 앱에 보내지 않는다.
+- 토스 문서에 없는 것: VI 기준가(정적·동적), 같은 가격 안 대기 순번, 예수금·결제 대기 돈만 따로 주는 경로.

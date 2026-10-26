@@ -140,6 +140,7 @@ struct MockHit: Codable, Equatable, Identifiable {
     var why: String              // "거래량 3.1배 · +4.2% · 20일선 위"
     var vol: Double? = nil       // 거래량 배수 (지난 20일 평균 대비)
     var rise5: Double? = nil     // 최근 5일 상승률 (%)
+    var volNew: Double? = nil    // 시각 보정 거래량 배수 (이 시각까지 보통 쌓이는 양 대비). 장중 훑기만
 }
 
 /// 관찰에 한 번 걸린 기록 (종목별 관찰 기록)
@@ -148,6 +149,14 @@ struct MockSeen: Codable, Equatable {
     var price: Double
     var change: Double?
     var why: String
+    var vol: Double? = nil       // 그때 거래량 배수 (옛 방식)
+    var volNew: Double? = nil    // 그때 시각 보정 배수 (새 방식, 나란히 견주기용)
+}
+
+/// 하루 거래량 곡선: 9:00부터 15분마다 하루 거래량이 얼마나 쌓였는지 (27칸, 0~1). 큰 종목들의 가운데 값
+struct MockCurve: Codable, Equatable {
+    var day: String
+    var cum: [Double]
 }
 
 /// 한 번 훑은 결과. 떨어진 종목은 이유(처음 걸린 조각 번호)별 수만 남긴다 (-1 = 자료 없음)
@@ -163,6 +172,8 @@ struct MockScan: Codable, Equatable, Identifiable {
     var dropped: [Int: Int]      // 조각 번호 → 떨어진 수
     var excluded: [String] = []  // 예외로 뺀 종목 코드
     var seconds: Double = 0
+    var frac: Double? = nil      // 이 시각 하루 거래량 누적 비율 (곡선 기준). 있으면 새 배수도 쟀다
+    var newHits: [String]? = nil // 새 배수로 걸린 종목 코드 (옛 결과와 나란히 견주기용, 고르기에는 안 쓴다)
 }
 
 /// 관찰 조건 하나 (알약). 켠 조건을 모두 맞는 종목이 걸린다
@@ -346,6 +357,8 @@ struct MockOrder: Codable, Equatable, Identifiable {
     var state: MockOrderState? = nil   // 접수 · 부분 체결 (대기 목록에 있는 동안)
     var prev: Double? = nil      // 전일 종가 (가격제한폭 ±30% 확인. 모르면 nil)
     var auction: Bool? = nil     // 마감 동시호가에 접수: 15:30 단일가로 체결
+    var expect: Double? = nil    // 주문 순간 호가로 잰 예상 평균가 (체결가와 견주기)
+    var tossId: String? = nil    // 실전: 토스 주문번호
 }
 
 /// 결제 대기 돈 한 건: 판 날부터 2영업일 뒤(T+2)에 현금이 된다
@@ -423,6 +436,8 @@ struct MockEvent: Codable, Equatable, Identifiable {
     var opener: MockWho? = nil             // 매도 체결: 그 몫을 산 쪽 (성적은 산 쪽으로 센다)
     var ref: UUID? = nil                   // 앞 단계 기록 (선정 → 주문 → 체결)
     var ai: MockAIUse? = nil
+    var expect: Double? = nil              // 주문 · 체결: 주문 순간 예상 평균가
+    var tossId: String? = nil              // 실전 주문 · 체결: 토스 주문번호
 }
 
 /// AI 한 번 쓴 기록
@@ -501,7 +516,7 @@ enum MockLive {
         Rule(name: "호출 한도", how: "그룹별 초당 한도(ORDER 10 · ORDER_HISTORY 5 · ORDER_INFO 6 · AUTH 5) 사이를 두고, 429 면 Retry-After 만큼 기다려 한 번 더",
              gap: "09:00~09:10 피크 한도(ORDER_INFO 3회)는 따로 맞추지 않는다"),
         Rule(name: "실전 장부", how: "실전에서도 앱 장부로 예산을 셈하고, 체결은 토스가 알려 준 수량·금액으로 적는다",
-             gap: "토스 계좌 잔고·매수 가능 금액(buying-power)·매도 가능 수량(sellable-quantity)으로 장부를 맞추지 않는다. 수수료·세금은 앱 설정값으로 셈한다(토스 commission·tax 는 읽기만)"),
+             gap: "계좌 탭에서 토스 주문가능금액·보유 수량을 장부와 견주어 보여 주기만 하고, 장부를 고치지는 않는다. 수수료·세금은 앱 설정값으로 셈한다(토스 commission·tax 는 읽기만)"),
         Rule(name: "주문 상태", how: "접수 → 부분 체결 → 체결 · 취소 · 거부를 기록에 남긴다",
              gap: "모의는 앱이 호가로 셈한다. 실전은 토스 주문 상세를 1분마다 다시 읽는다(웹소켓 주문 알림은 아직 안 씀)"),
         Rule(name: "체결 지연", how: "접수 1.5초 뒤 새로 받은 호가로 체결한다 (그사이 호가가 바뀐다)",
@@ -517,8 +532,8 @@ enum MockLive {
              gap: "전일 종가를 아는 종목(마지막 훑기에 걸린 종목)만 확인한다", at: [.observe, .select, .journal]),
         Rule(name: "마감 동시호가", how: "15:20~15:30 에는 접수만 하고 15:30 단일가(종가)로 체결한다. 20분 안에 못 채우면 취소",
              gap: "장 시작 동시호가(08:30~09:00)는 장 밖 시험으로 처리한다"),
-        Rule(name: "VI · 거래 정지", how: "호가가 양쪽 다 비어 있으면 거부한다 (거래 정지·VI 의심)",
-             gap: "VI·정지 신호를 받지 못해 둘을 가르지 못한다. VI 2분 단일가는 흉내 내지 못한다", at: [.observe, .select, .journal]),
+        Rule(name: "VI · 거래 정지", how: "훑은 뒤 걸린 종목 위쪽 30개의 토스 유의사항(VI·투자경고·투자위험·단기과열·정리매매·거래정지)을 받아 배지로 보인다. 거래정지·정리매매·투자위험은 고르기에서 뺀다. 호가가 양쪽 다 비어 있으면 거부",
+             gap: "VI 기준가·VI 2분 단일가는 토스 API 에 없어 흉내 내지 못한다. 위쪽 30개 밖은 묻지 않는다", at: [.observe, .select, .journal]),
         Rule(name: "하루 손실 한도", how: "오늘 시작 평가액보다 −3%(설정) 넘게 내리면 새로 사지 않는다. 팔기·손 주문은 된다", gap: nil, at: [.select]),
         Rule(name: "한 번 주문 상한", how: "한 번 매수 주문은 300만원(설정)까지. 손 주문도", gap: nil, at: [.select]),
         Rule(name: "모두 멈춤", how: "설정의 단추. 모든 대기 주문을 취소하고 한 바퀴·돌리기·자동 팔기와 규칙 주문을 막는다. 손 주문은 된다", gap: nil, at: [.journal]),
@@ -527,10 +542,13 @@ enum MockLive {
         Rule(name: "증거금 · 미수", how: "미수를 쓰지 않는다. 현금보다 큰 손 주문은 거부하고, 결제 대기 돈이면 '이틀 뒤 들어올 돈'이라 알린다",
              gap: "실전 증거금률(종목별 40~100%)은 흉내 내지 않는다. 늘 현금 100%", at: [.select]),
         Rule(name: "계좌 잔고 맞추기", how: "하루 한 번, 체결 기록을 다시 더해 장부 현금·보유 수량과 견준다. 어긋나면 설정 안전장치 칸에 표시만 한다",
-             gap: "토스 계좌 잔고와는 견주지 못한다 (토스 브로커 연결 전)", at: [.journal]),
+             gap: "실전이면 계좌 탭이 토스 주문가능금액·보유와 따로 견준다", at: [.journal]),
         Rule(name: "토스 API 호출 한도", how: "시세·호가 부르기를 초당 5번(설정)으로 줄 세우고, 한도 응답(429)이면 기다렸다 3번까지 다시 부른다",
              gap: "토스 실제 한도 숫자는 확인 못 했다. 서버 쪽 한도는 따로"),
-        Rule(name: "실전 장 밖", how: "실전이 켜져 있으면 장 밖에는 주문하지 않는다", gap: "장 개시 단일가(OPG)·장 마감 지정가(CLS) 주문, 주문 정정, 웹소켓 체결 알림은 아직 쓰지 않는다"),
+        Rule(name: "실전 장 밖", how: "실전이 켜져 있으면 장 밖에는 주문하지 않는다", gap: "장 개시 단일가(OPG)·장 마감 지정가(CLS) 주문, 웹소켓 체결 알림은 아직 쓰지 않는다"),
+        Rule(name: "주문 정정", how: "대기 주문의 수량·지정가를 고친다(정정하면 지정가). 매수는 묶은 돈을 새로 셈하고, 실전이면 토스 정정을 먼저 보낸다",
+             gap: "부분 체결 뒤 정정 수량을 토스가 남은 수량으로 보는지는 실주문으로 확인 전"),
+        Rule(name: "예상가 대 체결가", how: "주문 순간 호가로 잰 예상 평균가를 남기고, 체결마다 차이를 적는다 (불리하면 +). 계좌 탭에 오늘·전체 누적", gap: nil, at: [.journal]),
         Rule(name: "체결 알림", how: "체결 · 부분 체결 · 거부 때 휴대폰 알림. 앱을 보고 있으면 소리 없이 위쪽 띠로만. 설정에서 끈다",
              gap: "실전은 토스 체결 통지로 알린다. 지금은 앱이 셈한 체결로 알린다"),
     ]

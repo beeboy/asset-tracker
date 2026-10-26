@@ -578,6 +578,10 @@ struct TagChart: View {
     let tags: [Tag]
     var left = "", right = ""
     var scrub: Scrub? = nil
+    /// 선 위 점 (x: 0~1 가로 자리, v: 값. 범위 밖이면 끝에 붙인다). 누르면 onMark(번호)
+    struct Mark { let x: Double; let v: Double; let color: Color }
+    var marks: [Mark] = []
+    var onMark: ((Int) -> Void)? = nil
 
     var body: some View {
         let lo = points.min() ?? 0, hi = points.max() ?? 1
@@ -591,6 +595,16 @@ struct TagChart: View {
                     if points.count > 1, let f = points.first {
                         Circle().fill(Theme.card).overlay(Circle().strokeBorder(Theme.change(up ? 1 : -1), lineWidth: 2))
                             .frame(width: 8, height: 8).position(x: 0, y: y(f)).allowsHitTesting(false)
+                    }
+                    if points.count > 1 && !marks.isEmpty {
+                        GeometryReader { g in
+                            ForEach(marks.indices, id: \.self) { i in
+                                Circle().fill(marks[i].color).overlay(Circle().strokeBorder(Theme.card, lineWidth: 1.5))
+                                    .frame(width: 11, height: 11).frame(width: 28, height: 28).contentShape(Rectangle())
+                                    .position(x: g.size.width * CGFloat(min(1, max(0, marks[i].x))), y: y(min(hi, max(lo, marks[i].v))))
+                                    .onTapGesture { onMark?(i) }
+                            }
+                        }
                     }
                 }
                 .frame(height: height).padding(.leading, 4)

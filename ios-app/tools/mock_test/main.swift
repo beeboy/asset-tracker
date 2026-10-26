@@ -75,6 +75,9 @@ check(sel0.picks.isEmpty && sel0.skips.first?.why.hasPrefix("0주") == true, "0�
 // 예외
 let selEx = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: ["000001": "직접"])
 check(selEx.picks.map(\.code) == ["000002"], "선정에서 예외 막음")
+// 오늘 판 종목은 다시 고르지 않음
+let selSold = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:], soldToday: ["000001"])
+check(selSold.picks.map(\.code) == ["000002"] && selSold.skips.contains { $0.code == "000001" && $0.why.hasPrefix("오늘 판") }, "오늘 판 종목 막음: \(selSold.skips)")
 
 // 호가 채우기
 let book = MockCalc.Book(asks: [.init(p: 8_440, v: 100), .init(p: 8_420, v: 50), .init(p: 8_460, v: 1000)],
@@ -211,6 +214,68 @@ let back = try! dec.decode(MockLedger.self, from: enc.encode(L2))
 check(back == L2, "장부 저장 왕복")
 let sBack = try! dec.decode(MockScan.self, from: enc.encode(scan))
 check(sBack == scan, "훑기 저장 왕복")
+
+// 시각 보정 거래량 (새 배수): 옛 결과는 그대로, 새 배수로 걸린 종목은 따로
+do {
+    let f = DateFormatter(); f.timeZone = MockFmt.kst; f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd HH:mm"
+    let at10 = f.date(from: "2026-09-22 10:00")!
+    // 1분봉 390개가 같은 양이면 10시(60분)에 60/390 쌓인다
+    let flat = (1...390).map { i in MockBar(d: String(format: "%02d:%02d", (540 + i) / 60, (540 + i) % 60), o: 1, h: 1, l: 1, c: 1, v: 10) }
+    let cum = MockCalc.curve(Array(repeating: flat, count: 5))!
+    check(cum.count == 27 && near(cum[4], 60.0 / 390) && near(cum[26], 1), "곡선 칸: \(cum[4]) \(cum[26])")
+    check(MockCalc.curve([flat]) == nil, "종목 5개 안 되면 곡선 없음")
+    let curves = [MockCurve(day: "2026-09-21", cum: cum)]
+    let fr = MockCalc.frac(curves, at: at10)!
+    check(near(fr, 60.0 / 390), "10시 쌓임 비율 \(fr)")
+    check(MockCalc.frac(curves, at: f.date(from: "2026-09-22 08:50")!) == nil, "장 전은 nil")
+    check(MockCalc.frac(curves, at: f.date(from: "2026-09-22 16:00")!) == 1, "장 끝 뒤는 1")
+    check(MockCalc.frac([], at: at10) == nil, "곡선 없으면 nil")
+    check(MockCalc.curveNow([]) == nil && MockCalc.curveNow([MockCurve(day: "x", cum: [0.5])]) == nil, "27칸 곡선 없으면 curveNow nil")
+    check(MockCalc.curveNow(curves + [MockCurve(day: "2026-09-22", cum: cum.map { min(1, $0 + 0.1) }), MockCurve(day: "2026-09-23", cum: cum)]) == cum, "curveNow 는 칸별 가운데 값")
+    // 거래량 0.5배라도 10시 기준이면 새 배수 3.25배 → 새로 걸림
+    var b2 = allBars; b2["000005"] = bars(9_000, lastUp: 0.03, volMul: 0.5)
+    let st2 = stocks + [MockStock(code: "000005", name: "마", kospi: true)]
+    let sc = MockCalc.scan(bundle, stocks: st2, bars: b2, excluded: [], at: at10, frac: fr)
+    check(sc.hits.map(\.code) == ["000001", "000002"], "옛 결과는 그대로: \(sc.hits.map(\.code))")
+    check(Set(sc.newHits ?? []) == ["000001", "000002", "000005"], "새 배수 걸린: \(sc.newHits ?? [])")
+    check(near(sc.hits[0].volNew ?? 0, 3.1 / fr), "새 배수 값")
+    let notToday = MockCalc.scan(bundle, stocks: st2, bars: b2, excluded: [], at: t0, frac: fr)
+    check(notToday.frac == nil && notToday.newHits == nil && notToday.hits[0].volNew == nil, "오늘 봉이 아니면 새 배수 안 잼")
+    check(MockCalc.big(b2, n: 2) == ["000003", "000002"], "큰 종목: \(MockCalc.big(b2, n: 2))")
+}
+
+// 실전 판단: 예상가·차이·확인 카드·정정·유의사항·보유
+do {
+    let fz = MockFees()
+    let bk = MockCalc.Book(asks: [.init(p: 10_000, v: 5), .init(p: 10_100, v: 5)], bids: [.init(p: 9_900, v: 10)], at: nil)
+    check(MockCalc.expect(side: .buy, type: .market, qty: 10, limit: nil, book: bk, fees: fz) == 10_050, "예상가 = 호가 끝까지 평균")
+    check(MockCalc.expect(side: .buy, type: .limit, qty: 10, limit: 9_000, book: bk, fees: fz) == nil, "못 닿는 지정가는 예상가 없음")
+    check(near(MockCalc.slipGap(side: .buy, expect: 10_000, actual: 10_100), 0.01), "매수 비싸게 = +")
+    check(near(MockCalc.slipGap(side: .sell, expect: 10_000, actual: 9_900), 0.01), "매도 싸게 = +")
+    let pv = MockCalc.preview(side: .buy, type: .market, qty: 10, limit: nil, book: bk, fees: fz)
+    check(pv.qty == 10 && pv.amount == 100_500 && pv.fee == fz.fee(100_500) && pv.tax == 0 && near(pv.slip, 0.005), "확인 카드: \(pv)")
+    let ps = MockCalc.preview(side: .sell, type: .market, qty: 10, limit: nil, book: bk, fees: fz)
+    check(ps.tax == fz.tax(99_000) && ps.slip == 0, "매도 확인 카드 세금")
+
+    var lg = MockLedger(book: .rule, started: t0)
+    lg.cash = 60_000
+    lg.pending.append(MockOrder(code: "Q", name: "Q", side: .buy, type: .limit, qty: 5, limit: 10_000, at: t0, who: .hand, reason: "", reserved: 50_008))
+    check(MockCalc.modify(&lg, orderIndex: 0, qty: 10, limit: 10_000, fees: fz) == nil, "정정 매수 늘림")
+    check(lg.pending[0].qty == 10 && lg.pending[0].reserved == (100_000 * (1 + fz.commission)).rounded(.up) && near(lg.cash, 60_000 - (lg.pending[0].reserved - 50_008)), "정정 묶은 돈: \(lg.cash)")
+    check(MockCalc.modify(&lg, orderIndex: 0, qty: 100, limit: 10_000, fees: fz)?.hasPrefix("현금 부족") == true, "정정 현금 모자람")
+    let c0 = lg.cash
+    check(MockCalc.modify(&lg, orderIndex: 0, qty: 3, limit: 9_000, fees: fz) == nil && lg.cash > c0 && lg.pending[0].limit == 9_000, "정정 줄이면 돈 돌려줌")
+    lg.positions["S"] = MockPosition(code: "S", name: "S", qty: 5, cost: 50_000, gross: 50_000, opened: t0, openedDay: "2026-10-01", who: .hand, test: false)
+    lg.pending.append(MockOrder(code: "S", name: "S", side: .sell, type: .market, qty: 5, at: t0, who: .hand, reason: ""))
+    check(MockCalc.modify(&lg, orderIndex: 1, qty: 6, limit: 11_000, fees: fz) != nil, "보유보다 많이 정정 못 함")
+    check(MockCalc.modify(&lg, orderIndex: 1, qty: 4, limit: 11_000, fees: fz) == nil && lg.pending[1].type == .limit, "매도 정정 → 지정가")
+
+    check(MockCalc.warnBlock(["VI_STATIC", "OVERHEATED"]) == nil, "VI·단기과열은 고르기 그대로")
+    check(MockCalc.warnBlock(["INVESTMENT_RISK", "SUSPENDED"]) == "유의 거름 · 투자위험·거래정지", "투자위험·거래정지는 거름")
+    let hp = MockPosition(code: "H", name: "H", qty: 10, cost: 100_015, gross: 100_000, opened: t0, openedDay: "2026-10-01", who: .hand, test: false)
+    check(MockCalc.afterTax(hp, price: 11_000, fees: fz) == 110_000 - fz.fee(110_000) - fz.tax(110_000) - 100_015, "세후 손익")
+    check(near(MockCalc.stopRoom(hp, price: 10_000, stop: 0.05), 10_000 / 9_500 - 1), "손절선까지")
+}
 
 print(fails == 0 ? "ALL OK" : "\(fails) FAILED")
 exit(fails == 0 ? 0 : 1)

@@ -53,29 +53,97 @@ enum MockCalc {
     // MARK: 훑기
 
     /// 묶음으로 종목들을 거른다. bars: 코드 → 오래된 것부터. 기준 날짜(가장 늦은 봉)에 봉이 없는 종목은 자료 없음
-    static func scan(_ b: MockBundle, stocks: [MockStock], bars: [String: [MockBar]], excluded: Set<String>, at: Date, seconds: Double = 0) -> MockScan {
+    /// frac: 이 시각 하루 거래량 누적 비율. 오늘 봉이 장중일 때만 거래량·거래대금을 frac 으로 나눈 새 배수로도 따로 걸러 newHits 에 남긴다
+    static func scan(_ b: MockBundle, stocks: [MockStock], bars: [String: [MockBar]], excluded: Set<String>, at: Date, seconds: Double = 0, frac: Double? = nil) -> MockScan {
         let barDay = bars.values.compactMap { $0.last?.d }.max() ?? ""
-        var hits: [MockHit] = [], dropped: [Int: Int] = [:], ex: [String] = []
+        let f = frac.flatMap { $0 > 0 && $0 < 1 && barDay == MockFmt.day(at) ? $0 : nil }
+        var hits: [MockHit] = [], dropped: [Int: Int] = [:], ex: [String] = [], newHits: [String] = []
         let list = stocks.filter { b.scope == .all || (b.scope == .kospi) == $0.kospi }
         for s in list {
             if excluded.contains(s.code) { ex.append(s.code); continue }
             guard let bs = bars[s.code], let last = bs.last, last.d == barDay, bs.count >= b.need else { dropped[-1, default: 0] += 1; continue }
-            var why: [String] = [], fail: Int? = nil
+            var why: [String] = [], fail: Int? = nil, failNew = f == nil
             for (i, p) in b.pieces.enumerated() {
-                guard let v = value(p, bs) else { fail = -1; break }
-                if !pass(p, v) { fail = i; break }
-                why.append(short(p, v))
+                guard let v = value(p, bs) else { fail = fail ?? -1; failNew = true; break }
+                if let f, !pass(p, scaled(p, v, f)) { failNew = true }
+                if fail == nil { if pass(p, v) { why.append(short(p, v)) } else { fail = i } }
+                if fail != nil && failNew { break }
             }
+            if !failNew { newHits.append(s.code) }
             if let f = fail { dropped[f, default: 0] += 1; continue }
             let score = value(b.sortPiece, bs) ?? 0
             let ch = value(MockPiece(kind: .change), bs).map { $0 / 100 }
             hits.append(MockHit(code: s.code, name: s.name, price: last.c, change: ch, score: score,
                                 why: why.isEmpty ? "조각 없음 · 전부" : MockFmt.uniq(why.joined(separator: " · ")),
-                                vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs)))
+                                vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs),
+                                volNew: f.flatMap { f in value(MockPiece(kind: .volume, days: 20), bs).map { $0 / f } }))
         }
         hits.sort { $0.score != $1.score ? $0.score > $1.score : $0.code < $1.code }
         return MockScan(at: at, bundleId: b.id, bundleName: b.name, pieceTexts: b.pieces.map(\.text), barDay: barDay,
-                        total: list.count, hits: hits, dropped: dropped, excluded: ex, seconds: seconds)
+                        total: list.count, hits: hits, dropped: dropped, excluded: ex, seconds: seconds,
+                        frac: f, newHits: f == nil ? nil : newHits)
+    }
+
+    /// 새 배수: 거래량·거래대금은 아직 쌓이는 중이라 이 시각 누적 비율로 나눈다. 가격 조각은 그대로
+    static func scaled(_ p: MockPiece, _ v: Double, _ f: Double) -> Double {
+        p.kind == .volume || p.kind == .amount ? v / f : v
+    }
+
+    // MARK: 하루 거래량 곡선
+
+    /// 지난 20일 하루 평균 거래대금이 큰 종목 n개 (오늘 봉은 뺀다)
+    static func big(_ bars: [String: [MockBar]], n: Int) -> [String] {
+        let amt: [(String, Double)] = bars.map { (c, bs) in
+            (c, bs.dropLast().suffix(20).reduce(0.0) { (s: Double, x: MockBar) in s + x.c * x.v })
+        }
+        return amt.sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0 < $1.0 }.prefix(n).map(\.0)
+    }
+
+    /// 종목들의 하루 1분봉 ("09:01") → 15분마다 누적 비율 27칸 (종목 사이 가운데 값). 쓸 종목이 5개 안 되면 nil
+    static func curve(_ days: [[MockBar]]) -> [Double]? {
+        var cols = Array(repeating: [Double](), count: 27)
+        for bs in days {
+            let tot = bs.reduce(0) { $0 + $1.v }
+            guard tot > 0 else { continue }
+            for k in 0...26 {
+                let t = k == 26 ? Int.max : 540 + 15 * k
+                cols[k].append(bs.filter { hm($0.d) <= t }.reduce(0) { $0 + $1.v } / tot)
+            }
+        }
+        guard cols[0].count >= 5 else { return nil }
+        return cols.map(median)
+    }
+
+    /// 최근 곡선들(27칸)의 칸별 가운데 값. 곡선이 없으면 nil
+    static func curveNow(_ curves: [MockCurve]) -> [Double]? {
+        let cs = curves.filter { $0.cum.count == 27 }
+        guard !cs.isEmpty else { return nil }
+        return (0...26).map { k in median(cs.map { $0.cum[k] }) }
+    }
+
+    /// 이 시각 하루 거래량 누적 비율 (최근 곡선들의 칸별 가운데 값, 15분 사이는 곧게 잇는다). 장 전·곡선 없음은 nil, 장 끝 뒤는 1
+    static func frac(_ curves: [MockCurve], at: Date) -> Double? {
+        guard let mid = curveNow(curves) else { return nil }
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
+        let c = cal.dateComponents([.hour, .minute], from: at)
+        let m = (c.hour ?? 0) * 60 + (c.minute ?? 0) - 540
+        guard m > 0 else { return nil }
+        if m >= 390 { return 1 }
+        let k = m / 15, r = Double(m % 15) / 15
+        let a = mid[k], b = mid[k + 1]
+        let v = a + (b - a) * r
+        return v > 0 ? v : nil
+    }
+
+    static func hm(_ s: String) -> Int {
+        let p = s.split(separator: ":").compactMap { Int($0) }
+        return p.count == 2 ? p[0] * 60 + p[1] : 0
+    }
+
+    static func median(_ xs: [Double]) -> Double {
+        let s = xs.sorted(), n = s.count
+        guard n > 0 else { return 0 }
+        return n % 2 == 1 ? s[n / 2] : (s[n / 2 - 1] + s[n / 2]) / 2
     }
 
     /// 예외 묶음에 걸리는 종목 (조건 추가). 조각이 없는 묶음은 아무것도 빼지 않는다
@@ -117,7 +185,7 @@ enum MockCalc {
 
     /// 관찰 결과에서 고른다. 순위 차례대로 (가나다순 같은 우연한 순서가 아니다), 남은 현금에서 하나씩 뺀다
     static func select(_ scan: MockScan, ledger l: MockLedger, rule: MockSelectRule, fees: MockFees,
-                       prices: [String: Double], excluded: [String: String]) -> (picks: [Pick], skips: [Skip]) {
+                       prices: [String: Double], excluded: [String: String], soldToday: Set<String> = []) -> (picks: [Pick], skips: [Skip]) {
         let eq = equity(l, prices: prices)
         let pendingBuy = Set(l.pending.filter { $0.side == .buy }.map(\.code))
         var slots = rule.count - l.positions.count - pendingBuy.count
@@ -127,6 +195,8 @@ enum MockCalc {
             if let why = excluded[h.code] { skips.append(Skip(code: h.code, name: h.name, why: "예외 · " + why)); continue }
             if l.positions[h.code] != nil { skips.append(Skip(code: h.code, name: h.name, why: "이미 보유")); continue }
             if pendingBuy.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "같은 종목 주문 대기 중")); continue }
+            // 판 날은 다시 사지 않는다 (같은 날 사고팔기 되풀이로 수수료·세금만 내는 일 막음)
+            if soldToday.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "오늘 판 종목 · 내일부터 다시 고름")); continue }
             guard slots > 0 else { break }
             let px = prices[h.code] ?? h.price
             let one = px * (1 + fees.commission)
@@ -213,6 +283,88 @@ enum MockCalc {
     static func reserve(type: MockOrderType, qty: Int, limit: Double?, bestAsk: Double, fees: MockFees, cash: Double) -> Double {
         let px = type == .limit ? (limit ?? bestAsk) : bestAsk * 1.02
         return min(cash, (Double(qty) * px * (1 + fees.commission)).rounded(.up))
+    }
+
+    // MARK: 실전 판단 (주문 직전 확인 · 정정 · 유의사항 · 보유)
+
+    /// 주문 순간 예상 평균가: 지금 호가로 끝까지 채운 값 (지정가는 그 값까지만). 한 주도 못 채우면 nil
+    static func expect(side: MockSide, type: MockOrderType, qty: Int, limit: Double?, book: Book, fees: MockFees) -> Double? {
+        let f = walk(side: side, type: type, qty: qty, limit: limit, book: book, fees: fees)
+        return f.qty > 0 ? f.avg : nil
+    }
+
+    /// 예상가 대비 실제 체결가 차이 (불리하면 +). 매수: 실제/예상 − 1, 매도: 1 − 실제/예상
+    static func slipGap(side: MockSide, expect: Double, actual: Double) -> Double {
+        guard expect > 0 else { return 0 }
+        return side == .buy ? actual / expect - 1 : 1 - actual / expect
+    }
+
+    /// 주문 직전 확인: 지금 호가로 다 채우면 나갈 돈·수수료·세금·1호가 대비 미끄러짐. 못 채운 수량은 남는다
+    struct Preview: Equatable {
+        var qty = 0                  // 지금 채워지는 수량
+        var avg: Double = 0          // 예상 평균가
+        var amount: Double = 0       // 체결 금액
+        var fee: Double = 0
+        var tax: Double = 0
+        var slip: Double = 0         // 1호가 대비 (불리하면 +)
+        var total: Double { amount + fee + tax }
+    }
+    static func preview(side: MockSide, type: MockOrderType, qty: Int, limit: Double?, book: Book, fees: MockFees) -> Preview {
+        let f = walk(side: side, type: type, qty: qty, limit: limit, book: book, fees: fees)
+        guard f.qty > 0 else { return Preview() }
+        let best = (side == .buy ? book.bestAsk : book.bestBid) ?? f.avg
+        return Preview(qty: f.qty, avg: f.avg, amount: f.amount, fee: fees.fee(f.amount), tax: side == .sell ? fees.tax(f.amount) : 0,
+                       slip: slipGap(side: side, expect: best, actual: f.avg))
+    }
+
+    /// 대기 주문 정정: 남은 수량·지정가를 바꾼다 (정정하면 지정가). 매수는 묶은 돈을 새로 셈하고 모자라면 이유를 돌려준다
+    static func modify(_ l: inout MockLedger, orderIndex i: Int, qty: Int, limit: Double, fees: MockFees) -> String? {
+        guard l.pending.indices.contains(i), qty >= 1, limit > 0 else { return "수량·가격을 확인해 주세요" }
+        var o = l.pending[i]
+        let lim = snap(limit, side: o.side)
+        if o.side == .buy {
+            let need = (Double(qty) * lim * (1 + fees.commission)).rounded(.up)
+            if need - o.reserved > l.cash { return "현금 부족 · 더 필요 " + MockFmt.won(need - o.reserved) }
+            l.cash -= need - o.reserved
+            o.reserved = need
+        } else {
+            let other = l.pending.enumerated().filter { $0.offset != i && $0.element.code == o.code && $0.element.side == .sell }.reduce(0) { $0 + $1.element.qty }
+            if qty + other > (l.positions[o.code]?.qty ?? 0) { return "보유보다 많이 팔 수 없어요" }
+        }
+        o.qty = qty; o.type = .limit; o.limit = lim; o.until = nil; o.waitWhy = nil
+        l.pending[i] = o
+        return nil
+    }
+
+    /// 유의사항 종류 → 짧은 이름 (모르는 값은 그대로)
+    static func warnName(_ t: String) -> String {
+        switch t {
+        case "SUSPENDED": return "거래정지"
+        case "LIQUIDATION_TRADING": return "정리매매"
+        case "INVESTMENT_RISK": return "투자위험"
+        case "INVESTMENT_WARNING": return "투자경고"
+        case "OVERHEATED": return "단기과열"
+        case "VI_STATIC", "VI_DYNAMIC", "VI_STATIC_AND_DYNAMIC": return "VI"
+        default: return t
+        }
+    }
+
+    /// 고르기에서 뺄 유의사항 (거래정지·정리매매·투자위험). 빼면 이유, 아니면 nil
+    static func warnBlock(_ ts: [String]) -> String? {
+        let hard = ts.filter { ["SUSPENDED", "LIQUIDATION_TRADING", "INVESTMENT_RISK"].contains($0) }
+        return hard.isEmpty ? nil : "유의 거름 · " + hard.map(warnName).joined(separator: "·")
+    }
+
+    /// 지금 가격에 다 팔면 남는 손익 (수수료·세금 뒤)
+    static func afterTax(_ p: MockPosition, price: Double, fees: MockFees) -> Double {
+        let amt = Double(p.qty) * price
+        return amt - fees.fee(amt) - fees.tax(amt) - p.cost
+    }
+
+    /// 손절선까지 남은 비율: 지금 가격이 손절 가격(평균가 × (1 − stop))보다 몇 % 위인가. 음수면 이미 넘음
+    static func stopRoom(_ p: MockPosition, price: Double, stop: Double) -> Double {
+        let line = p.avg * (1 - stop)
+        return line > 0 ? price / line - 1 : 0
     }
 
     // MARK: 장부에 적기

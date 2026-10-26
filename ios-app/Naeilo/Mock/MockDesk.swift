@@ -55,6 +55,11 @@ struct MockState: Codable {
     var checks: [String: MockRun]? = nil      // 장부별 마지막 잔고 맞추기 (book → 결과)
     var checkDay: String? = nil               // 잔고 맞추기를 한 날 (하루 한 번)
     var fillAlert: Bool? = nil                // 체결 알림 (없으면 켬)
+    var curves: [MockCurve]? = nil            // 하루 거래량 곡선 (최근 20 거래일). 새 배수 재기용
+    var bigCodes: [String]? = nil             // 곡선을 만들 큰 종목 (마지막 훑기 기준 20개)
+    var curveTried: String? = nil             // 곡선을 받으려 한 때 (날짜+a/p, 하루 두 번까지)
+    var warns: [String: [String]]? = nil      // 걸린 종목 위쪽 30개의 유의사항 (VI·투자경고·거래정지…). 마지막 훑기 기준
+    var warnsAt: Date? = nil
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -91,14 +96,28 @@ final class MockDesk {
     private let toss = MockTossBroker()
     var broker: MockBroker { live ? toss : paper }
     var live: Bool { s.live == true }
-    /// 실전 키(키체인 토큰·계좌)가 있나
-    var liveKeys: Bool { TossLiveKeys.token != nil && TossLiveKeys.account != nil }
+    /// 서버 실전 준비가 안 된 이유 (nil 이면 준비됨). 실전 칸이 열릴 때 checkLive 로 다시 묻는다
+    private(set) var liveBlock: String? = "확인 전"
+    func checkLive() async { liveBlock = await TossOrderAPI.ready() }
+    /// 계좌 탭: 서버 실전 상태 · 토스 계좌 (실전일 때만 계좌를 묻는다). 기기 메모리에만
+    private(set) var ready: TossOrderAPI.Ready? = nil
+    private(set) var account: TossOrderAPI.Account? = nil
+    private(set) var accountWhy: String? = nil
+    func refreshAccount() async {
+        guard MockFeed.base != nil else { ready = nil; accountWhy = "서버 주소 없음"; return }
+        ready = await TossOrderAPI.readyInfo()
+        liveBlock = ready.map { !$0.keys ? "서버에 토스 키 없음" : !$0.account ? "서버에 계좌 없음" : !$0.armed ? "서버 실전 꺼짐" : nil } ?? "서버에 닿지 못함"
+        guard live else { account = nil; accountWhy = nil; return }
+        let (a, why) = await TossOrderAPI.account()
+        if let a { account = a }
+        accountWhy = why
+    }
 
     /// 실전 켜기·끄기 (화면에서 확인을 거친 뒤에만 부른다). 대기 주문이 있으면 바꾸지 않는다
     @discardableResult
     func setLive(_ on: Bool) -> String? {
         if s.ledgers.contains(where: { !$0.pending.isEmpty }) { return "대기 주문을 먼저 정리해 주세요" }
-        if on && !liveKeys { return "키체인에 토스 토큰·계좌가 없어요" }
+        if on, let why = liveBlock { return "실전 못 켬 · " + why }
         edit(on ? "실전 켬 · 토스 브로커" : "실전 끔 · 모의 브로커") { $0.live = on ? true : nil }
         toss.armed = on
         return nil
@@ -262,8 +281,7 @@ final class MockDesk {
     // MARK: 관찰
 
     func runObserve() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "observe"
         await keepAlive("observe")
         busy = nil
@@ -318,15 +336,18 @@ final class MockDesk {
             partial = nil; paused = nil
             let exHits = MockCalc.exceptionHits(s.exceptions.bundles, stocks: stocks, bars: got.bars)
             let ex = excluded(extra: exHits)
-            let scan = MockCalc.scan(b, stocks: stocks, bars: got.bars, excluded: Set(ex.keys), at: Date(), seconds: Date().timeIntervalSince(t0))
+            let scan = MockCalc.scan(b, stocks: stocks, bars: got.bars, excluded: Set(ex.keys), at: Date(), seconds: Date().timeIntervalSince(t0),
+                                     frac: MockCalc.frac(s.curves ?? [], at: Date()))
+            s.bigCodes = MockCalc.big(got.bars, n: 20)
             let dropText = scan.dropped.sorted { $0.key < $1.key }.map { (k, n) in (k < 0 ? "자료 없음" : (k < scan.pieceTexts.count ? scan.pieceTexts[k] : "?")) + " \(n)" }.joined(separator: " · ")
-            let ev = log(.scan, book: .rule, text: "\(b.name) · 걸린 \(scan.hits.count) / \(scan.total) · 기준 \(scan.barDay)" + (dropText.isEmpty ? "" : " · 떨어진 " + dropText), bundle: b.name)
+            let ev = log(.scan, book: .rule, text: "\(b.name) · 걸린 \(scan.hits.count) / \(scan.total) · 기준 \(scan.barDay)" + (dropText.isEmpty ? "" : " · 떨어진 " + dropText) + newText(scan), bundle: b.name)
             if !scan.excluded.isEmpty {
                 let why = Dictionary(grouping: scan.excluded, by: { (ex[$0] ?? "").components(separatedBy: " · ").first ?? "" }).map { "\($0.key) \($0.value.count)" }.joined(separator: " · ")
                 log(.exclude, book: .rule, text: "예외로 뺀 \(scan.excluded.count) · " + why, bundle: b.name, ref: ev.id)
             }
             s.scan = scan; s.scanEvent = ev.id; s.exceptHits = exHits
             addSeen(scan)
+            await refreshWarns(scan)
             for h in scan.hits { s.prices[h.code] = h.price }
             let errN = got.errors.count
             s.runs["observe"] = MockRun(at: Date(), ok: errN < codes.count / 10,
@@ -342,11 +363,57 @@ final class MockDesk {
         }
     }
 
+    /// 걸린 종목 위쪽 30개의 유의사항을 묻는다 (고르기 순서 기준). 못 받으면 지난 값을 버린다 (모르는 채로 거르지 않게)
+    func refreshWarns(_ sc: MockScan) async {
+        let top = sc.hits.prefix(30).map(\.code)
+        do {
+            s.warns = try await MockFeed.warnings(Array(top)); s.warnsAt = Date()
+        } catch is CancellationError {
+        } catch {
+            s.warns = nil; s.warnsAt = nil
+            log(.error, book: .rule, text: "유의사항 확인 못 함 · " + ((error as? MockFeed.Fail)?.why ?? ""))
+        }
+    }
+
+    /// 종목 유의사항 짧은 이름들 ("VI · 투자경고")
+    func warnText(_ code: String) -> String? {
+        guard let w = s.warns?[code], !w.isEmpty else { return nil }
+        return MockFmt.uniq(w.map(MockCalc.warnName).joined(separator: " · "))
+    }
+
+    /// 새 배수로 잰 결과 한 토막: " · 새 배수(쌓임 23%) 걸린 40 · 새로 12 삼성전자·… · 빠진 3"
+    private func newText(_ sc: MockScan) -> String {
+        guard let f = sc.frac, let nh = sc.newHits else { return "" }
+        let old = Set(sc.hits.map(\.code)), new = Set(nh)
+        let added = nh.filter { !old.contains($0) }, gone = sc.hits.filter { !new.contains($0.code) }.count
+        let names = added.prefix(5).map { Self.name($0) }.joined(separator: "·") + (added.count > 5 ? "…" : "")
+        return " · 새 배수(쌓임 \(Int((f * 100).rounded()))%) 걸린 \(nh.count) · 새로 \(added.count)" + (names.isEmpty ? "" : " " + names) + " · 빠진 \(gone)"
+    }
+
+    /// 하루 거래량 곡선: 장 밖(8:30 전·15:45 뒤)에 하루 두 번까지 큰 종목 20개의 마지막 거래일 1분봉을 받아 하나 더한다
+    private var curving = false
+    func curveIfNeeded(now: Date = Date()) async {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
+        let c = cal.dateComponents([.hour, .minute], from: now), m = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        let key = MockFmt.day(now) + (m < 720 ? "a" : "p")
+        guard !curving, m < 510 || m >= 945, s.curveTried != key, let codes = s.bigCodes, !codes.isEmpty else { return }
+        curving = true; defer { curving = false }
+        s.curveTried = key
+        var days: [String: [[MockBar]]] = [:]
+        for code in codes {
+            if let r = try? await MockFeed.minutes(code), !r.day.isEmpty, !r.bars.isEmpty { days[r.day, default: []].append(r.bars) }
+        }
+        guard let best = days.max(by: { $0.key < $1.key }), !(s.curves ?? []).contains(where: { $0.day == best.key }),
+              let cum = MockCalc.curve(best.value) else { return }
+        s.curves = Array(((s.curves ?? []) + [MockCurve(day: best.key, cum: cum)]).sorted { $0.day < $1.day }.suffix(20))
+        save()
+    }
+
     /// 종목별 관찰 기록: 걸린 종목마다 한 줄. 7일 지난 것은 버리고 종목당 20번까지
     private func addSeen(_ sc: MockScan) {
         var all = s.seen ?? [:]
         let cut = sc.at.addingTimeInterval(-7 * 86_400)
-        for h in sc.hits { all[h.code, default: []].append(MockSeen(at: sc.at, price: h.price, change: h.change, why: h.why)) }
+        for h in sc.hits { all[h.code, default: []].append(MockSeen(at: sc.at, price: h.price, change: h.change, why: h.why, vol: h.vol, volNew: h.volNew)) }
         for (c, xs) in all {
             let keep = xs.filter { $0.at >= cut }.suffix(20)
             all[c] = keep.isEmpty ? nil : Array(keep)
@@ -365,8 +432,7 @@ final class MockDesk {
     // MARK: 선정
 
     func runSelect() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "select"
         await select()
         busy = nil
@@ -376,8 +442,7 @@ final class MockDesk {
 
     /// 지금 팔기: 내 종목을 지금 가격으로 팔기 조건에 대 본다 (지금 고르기의 반대)
     func runSell() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "sell"
         await sellNow()
         busy = nil
@@ -412,7 +477,15 @@ final class MockDesk {
             capped.append(MockCalc.Skip(code: h.code, name: h.name, why: "폭등 거름 · " + c.text))
             return false
         }
-        let (picks, rest) = MockCalc.select(sc, ledger: ledger(.rule), rule: s.select, fees: s.fees, prices: s.prices, excluded: excluded())
+        // 유의사항: 거래정지·정리매매·투자위험은 빼고 이유를 남긴다
+        sc.hits = sc.hits.filter { h in
+            guard let why = MockCalc.warnBlock(s.warns?[h.code] ?? []) else { return true }
+            capped.append(MockCalc.Skip(code: h.code, name: h.name, why: why))
+            return false
+        }
+        let today = MockFmt.day(Date())
+        let sold = Set(ledgerEvents(.rule).filter { $0.kind == .fill && $0.side == .sell && MockFmt.day($0.at) == today }.compactMap(\.code))
+        let (picks, rest) = MockCalc.select(sc, ledger: ledger(.rule), rule: s.select, fees: s.fees, prices: s.prices, excluded: excluded(), soldToday: sold)
         let skips = capped + rest
         var pe: [String: UUID] = [:]
         for p in picks {
@@ -420,7 +493,7 @@ final class MockDesk {
                         text: p.why + " · 비중 " + String(format: "%.0f%%", p.weight * 100) + " · \(p.qty)주 남짓", bundle: scan.bundleName, ref: s.scanEvent)
             pe[p.code] = e.id
         }
-        for k in skips.prefix(30) where k.short || k.why.hasPrefix("예외") || k.why.hasPrefix("0주") || k.why.hasPrefix("폭등") {
+        for k in skips.prefix(30) where k.short || k.why.hasPrefix("예외") || k.why.hasPrefix("0주") || k.why.hasPrefix("폭등") || k.why.hasPrefix("오늘 판") || k.why.hasPrefix("유의") {
             log(k.short ? .short : .exclude, book: .rule, who: .rule, code: k.code, name: k.name, text: k.why, bundle: scan.bundleName, ref: s.scanEvent)
         }
         s.picks = picks; s.pickEvents = pe; s.skips = skips; s.pickedAt = Date(); s.dropped = []
@@ -454,8 +527,7 @@ final class MockDesk {
 
     /// 고른 종목을 주문한다 (검토가 끝났거나 검토 문이 열려 있을 때)
     func orderPicks() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "order"
         await order()
         busy = nil
@@ -479,8 +551,7 @@ final class MockDesk {
 
     /// 한 바퀴: 훑기 → 고르기 → 주문 → 팔기 (주문·팔기 알약을 끄면 건너뜀)
     func runCycle() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "cycle"
         await keepAlive("cycle")
         if s.runs["observe"]?.ok == true && !halted { await select(buy: cycleOrder) }
@@ -493,8 +564,7 @@ final class MockDesk {
     /// 손 주문 (규칙 장부에 '손'으로 적는다. 예외 종목도 막지 않는다)
     @discardableResult
     func runHand(_ side: MockSide, code: String, name: String, qty: Int?, type: MockOrderType, limit: Double?) async -> Bool {
-        await waitTick()
-        guard busy == nil else { return false }
+        guard await waitTick(), busy == nil else { return false }
         busy = "hand"
         let ok = await side == .buy
             ? placeBuy(.rule, code: code, name: name, qty: qty, type: type, limit: limit, who: .hand, reason: "손 주문", ref: nil)
@@ -562,9 +632,11 @@ final class MockDesk {
         let (oType, oLim, until) = split(.buy, type: type, limit: lim, qty: q, book: book, reason: reason)
         let r = MockCalc.reserve(type: oType, qty: q, limit: oLim, bestAsk: ask, fees: s.fees, cash: l.cash)
         let auc = !test && inCloseAuction()
-        let o = MockOrder(code: code, name: name, side: .buy, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, reserved: r, ref: ref,
-                          until: auc ? s.session?.close?.addingTimeInterval(1200) : until, state: .accepted, prev: prevClose(code), auction: auc ? true : nil)
+        var o = MockOrder(code: code, name: name, side: .buy, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, reserved: r, ref: ref,
+                          until: auc ? s.session?.close?.addingTimeInterval(1200) : until, state: .accepted, prev: prevClose(code), auction: auc ? true : nil,
+                          expect: MockCalc.expect(side: .buy, type: oType, qty: q, limit: oLim, book: book, fees: s.fees))
         if let why = await broker.submit(o, book: book) { reject(b, o, why, test: test); return false }
+        o.tossId = broker.remoteId(o)
         // 접수를 기다리는 동안 장부가 바뀌었을 수 있다
         guard let l2 = s.ledgers.first(where: { $0.book == b }), !l2.pending.contains(where: { $0.code == code }), l2.cash >= r else { return false }
         l = l2
@@ -572,7 +644,7 @@ final class MockDesk {
         l.pending.append(o)
         set(l)
         log(.order, id: o.id, book: b, who: who, code: code, name: name,
-            text: "접수 · \(oType.name) \(q)주" + (oLim.map { " · " + MockFmt.won($0) } ?? "") + (until != nil ? " · 나눔 (미끄러짐 한도)" : "") + " · 묶은 돈 " + MockFmt.won(r) + (reason.isEmpty ? "" : " · " + reason), test: test, side: .buy, qty: q, ref: ref)
+            text: "접수 · \(oType.name) \(q)주" + (o.tossId.map { " · 토스 " + $0.prefix(8) } ?? "") + (oLim.map { " · " + MockFmt.won($0) } ?? "") + (until != nil ? " · 나눔 (미끄러짐 한도)" : "") + " · 묶은 돈 " + MockFmt.won(r) + (reason.isEmpty ? "" : " · " + reason), test: test, side: .buy, qty: q, ref: ref)
         await settle(b, o, book: book, test: test)
         return true
     }
@@ -599,16 +671,18 @@ final class MockDesk {
               p2.qty - l.pending.filter({ $0.code == code && $0.side == .sell }).reduce(0, { $0 + $1.qty }) >= q else { return false }
         let (oType, oLim, until) = split(.sell, type: type, limit: lim, qty: q, book: book, reason: reason)
         let auc = !test && inCloseAuction()
-        let o = MockOrder(code: code, name: p.name, side: .sell, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, ref: ref ?? p.buyRef,
-                          until: auc ? s.session?.close?.addingTimeInterval(1200) : until, state: .accepted, prev: prevClose(code), auction: auc ? true : nil)
+        var o = MockOrder(code: code, name: p.name, side: .sell, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, ref: ref ?? p.buyRef,
+                          until: auc ? s.session?.close?.addingTimeInterval(1200) : until, state: .accepted, prev: prevClose(code), auction: auc ? true : nil,
+                          expect: MockCalc.expect(side: .sell, type: oType, qty: q, limit: oLim, book: book, fees: s.fees))
         if let why = await broker.submit(o, book: book) { reject(b, o, why, test: test); return false }
+        o.tossId = broker.remoteId(o)
         guard let l2 = s.ledgers.first(where: { $0.book == b }), let p3 = l2.positions[code],
               p3.qty - l2.pending.filter({ $0.code == code && $0.side == .sell }).reduce(0, { $0 + $1.qty }) >= q else { return false }
         l = l2
         l.pending.append(o)
         set(l)
         log(.order, id: o.id, book: b, who: who, code: code, name: p.name,
-            text: "접수 · \(oType.name) 매도 \(q)주" + (oLim.map { " · " + MockFmt.won($0) } ?? "") + (until != nil ? " · 나눔 (미끄러짐 한도)" : "") + (reason.isEmpty ? "" : " · " + reason), test: test, side: .sell, qty: q, ref: o.ref)
+            text: "접수 · \(oType.name) 매도 \(q)주" + (o.tossId.map { " · 토스 " + $0.prefix(8) } ?? "") + (oLim.map { " · " + MockFmt.won($0) } ?? "") + (until != nil ? " · 나눔 (미끄러짐 한도)" : "") + (reason.isEmpty ? "" : " · " + reason), test: test, side: .sell, qty: q, ref: o.ref)
         await settle(b, o, book: book, test: test)
         return true
     }
@@ -708,7 +782,8 @@ final class MockDesk {
         if f.qty > 0 {
             let e = o.side == .buy ? MockCalc.applyBuy(&l, orderIndex: i, fill: f, fees: s.fees, at: Date(), test: test)
                                    : MockCalc.applySell(&l, orderIndex: i, fill: f, fees: s.fees, at: Date(), test: test)
-            if let e {
+            if var e {
+                e.expect = o.expect; e.tossId = o.tossId
                 append(e)
                 let left = l.pending.first { $0.id == orderId }?.qty
                 notify((left == nil ? "체결 · " : "부분 체결 · ") + o.name,
@@ -739,6 +814,29 @@ final class MockDesk {
         set(l)
     }
 
+    /// 대기 주문 정정 (가격·수량, 정정하면 지정가). 실전이면 토스 정정을 먼저 보내고 받아들여지면 장부를 고친다
+    @discardableResult
+    func modify(_ b: MockBook, orderId: UUID, qty: Int, limit: Double) async -> String? {
+        guard let l0 = s.ledgers.first(where: { $0.book == b }), let o = l0.pending.first(where: { $0.id == orderId }) else { return "주문이 없어요" }
+        var t = l0
+        guard let i0 = t.pending.firstIndex(where: { $0.id == orderId }) else { return "주문이 없어요" }
+        if let why = MockCalc.modify(&t, orderIndex: i0, qty: qty, limit: limit, fees: s.fees) { return why }
+        if let why = await broker.modify(o, qty: qty, limit: MockCalc.snap(limit, side: o.side)) {
+            log(.reject, book: b, who: .hand, code: o.code, name: o.name, text: "정정 거부 · " + why, side: o.side, qty: qty, ref: o.id)
+            return why
+        }
+        // 기다리는 동안 장부가 바뀌었을 수 있으니 다시 읽고 고친다
+        guard var l = s.ledgers.first(where: { $0.book == b }), let i = l.pending.firstIndex(where: { $0.id == orderId }) else { return "주문이 없어요" }
+        if let why = MockCalc.modify(&l, orderIndex: i, qty: qty, limit: limit, fees: s.fees) { return why }
+        set(l)
+        log(.order, book: b, who: .hand, code: o.code, name: o.name,
+            text: "정정 · 지정가 \(qty)주 · " + MockFmt.won(MockCalc.snap(limit, side: o.side)) + " (전 \(o.qty)주" + (o.limit.map { " · " + MockFmt.won($0) } ?? " · 시장가") + ")",
+            side: o.side, qty: qty, ref: o.id)
+        if let book = try? await broker.book(o.code) { fill(b, orderId: orderId, book: book, test: phase != .open) }
+        save()
+        return nil
+    }
+
     func cancel(_ b: MockBook, orderId: UUID) {
         guard var l = s.ledgers.first(where: { $0.book == b }), let i = l.pending.firstIndex(where: { $0.id == orderId }) else { return }
         let o = l.pending.remove(at: i)
@@ -758,6 +856,7 @@ final class MockDesk {
         settleDue()
         checkDaily()
         let ph = await refreshPhase()
+        if ph == .closed { Task { await self.curveIfNeeded() } }
         var watch = Set<String>()
         for l in s.ledgers { watch.formUnion(l.positions.keys); watch.formUnion(l.pending.map(\.code)) }
         for h in (s.scan?.hits ?? []).prefix(150) { watch.insert(h.code) }
@@ -816,9 +915,14 @@ final class MockDesk {
     }
 
     /// 1분 주기는 버튼 잠금(busy)과 따로 돈다 (버튼이 잠겼다 풀리며 깜빡이지 않게). 단추 일은 주기가 끝날 때까지 기다렸다 돈다
-    private func waitTick() async {
-        var n = 0
-        while ticking && n < 300 { try? await Task.sleep(for: .milliseconds(200)); n += 1 }
+    /// 시간 한도를 두지 않는다: 주기 안의 자동 훑기는 1분을 넘기기도 해서, 60초만 기다리면 단추 훑기가 겹쳐 관찰이 두 번 적혔다 (2026-10-26).
+    /// 주기는 모든 서버 호출에 시간 한도가 있어 반드시 끝난다
+    /// 기다리던 단추 일이 취소되면 false (그때는 일을 하지 않는다)
+    private func waitTick() async -> Bool {
+        while ticking {
+            do { try await Task.sleep(for: .milliseconds(200)) } catch { return false }
+        }
+        return true
     }
 
     /// 평가액 점: 5분에 하나. 이틀 지난 점은 하루 마지막 하나만 남긴다
@@ -1233,6 +1337,10 @@ extension MockDesk {
     func refresh(_ o: MockOrder) async
     /// 체결 없이 끝난 주문 (취소·거부) 이유. 모의는 없음
     func closed(_ o: MockOrder) -> String?
+    /// 정정: 받아들여지면 nil, 거부면 이유
+    func modify(_ o: MockOrder, qty: Int, limit: Double) async -> String?
+    /// 바깥 주문번호 (실전: 토스 orderId). 모의는 없음
+    func remoteId(_ o: MockOrder) -> String?
 }
 
 /// 모의 브로커: 거래소 대신 받은 호가로 체결을 셈한다
@@ -1282,6 +1390,11 @@ extension MockDesk {
     func cancel(_ o: MockOrder) async {}
     func refresh(_ o: MockOrder) async {}
     func closed(_ o: MockOrder) -> String? { nil }
+    func modify(_ o: MockOrder, qty: Int, limit: Double) async -> String? {
+        var x = o; x.type = .limit; x.limit = limit; x.qty = qty
+        return Self.exchangeReject(x, book: MockCalc.Book(asks: [.init(p: limit, v: 0)], bids: [], at: nil))
+    }
+    func remoteId(_ o: MockOrder) -> String? { nil }
 
     /// 1분 안에 먹은 잔량을 호가에서 뺀다 (같은 순간에 나눠 내도 같은 잔량을 두 번 먹지 않게)
     private func trim(_ code: String, _ b: MockCalc.Book) -> MockCalc.Book {
@@ -1291,7 +1404,7 @@ extension MockDesk {
     }
 }
 
-/// 토스 실주문 브로커 (토스 주문 API 문서대로). 실전 스위치(armed)가 켜지고 키체인에 토큰·계좌가 있을 때만 주문을 보낸다.
+/// 토스 실주문 브로커 (토스 주문 API 문서대로). 실전 스위치(armed)가 켜졌을 때만 개발자 서버 중계로 주문을 보낸다 (서버 스위치도 켜져 있어야 토스로 나간다).
 /// 체결은 토스가 알려 준 주문 상세(체결 수량·평균가)로 셈한다. 호가는 판단용으로 개발자 서버 시세를 그대로 쓴다
 @MainActor final class MockTossBroker: MockBroker {
     let live = true
@@ -1307,7 +1420,7 @@ extension MockDesk {
 
     func submit(_ o: MockOrder, book: MockCalc.Book) async -> String? {
         guard armed else { return "실전 꺼짐 · 주문 안 냄" }
-        guard let r = await call("POST", "/api/v1/orders", body: TossOrderAPI.createBody(o), group: "ORDER") else { return "토스 키 없음 (키체인) · 주문 안 냄" }
+        guard let r = await call("POST", "/api/mock/order", body: TossOrderAPI.createBody(o), group: "ORDER") else { return "개발자 서버 주소·열쇠 없음 · 주문 안 냄" }
         guard r.status == 200, let id = r.json.flatMap(TossOrderAPI.orderId) else { return "토스 거부 · " + TossOrderAPI.reason(r.json, status: r.status) }
         ids[o.id] = id
         return nil
@@ -1321,7 +1434,7 @@ extension MockDesk {
 
     /// 토스 주문 상세를 다시 읽는다 (한도 ORDER_HISTORY 초당 5회)
     func refresh(_ o: MockOrder) async {
-        guard armed, let id = ids[o.id], let r = await call("GET", "/api/v1/orders/" + id, body: nil, group: "ORDER_HISTORY"),
+        guard armed, let id = ids[o.id] ?? o.tossId, let r = await call("GET", "/api/mock/order/" + id, body: nil, group: "ORDER_HISTORY"),
               r.status == 200, let x = r.json.flatMap(TossOrderAPI.order) else { return }
         last[o.id] = x
     }
@@ -1344,14 +1457,25 @@ extension MockDesk {
     }
 
     func cancel(_ o: MockOrder) async {
-        guard armed, let id = ids[o.id] else { return }
-        _ = await call("POST", "/api/v1/orders/" + id + "/cancel", body: [:], group: "ORDER")
+        guard armed, let id = ids[o.id] ?? o.tossId else { return }
+        _ = await call("POST", "/api/mock/order/" + id + "/cancel", body: [:], group: "ORDER")
     }
 
-    /// 한 번 부르기: 키체인 키가 없으면 nil. 그룹별 초당 한도를 넘지 않게 사이를 두고, 429 면 Retry-After 만큼 기다려 한 번 더
+    func modify(_ o: MockOrder, qty: Int, limit: Double) async -> String? {
+        guard armed else { return "실전 꺼짐 · 정정 안 냄" }
+        guard let id = ids[o.id] ?? o.tossId else { return "토스 주문번호 없음" }
+        guard let r = await call("POST", "/api/mock/order/" + id + "/modify", body: TossOrderAPI.modifyBody(o, qty: qty, limit: limit), group: "ORDER") else { return "개발자 서버 주소·열쇠 없음" }
+        guard r.status == 200 else { return "토스 거부 · " + TossOrderAPI.reason(r.json, status: r.status) }
+        // 정정하면 토스가 새 주문번호를 줄 수 있다 (문서 응답의 orderId)
+        if let nid = r.json.flatMap(TossOrderAPI.orderId) { ids[o.id] = nid }
+        return nil
+    }
+
+    func remoteId(_ o: MockOrder) -> String? { ids[o.id] }
+
+    /// 한 번 부르기: 서버 주소·열쇠가 없으면 nil. 그룹별 초당 한도를 넘지 않게 사이를 두고, 429 면 Retry-After 만큼 기다려 한 번 더
     private func call(_ method: String, _ path: String, body: [String: Any]?, group: String) async -> (status: Int, json: [String: Any]?)? {
-        guard armed, let token = TossLiveKeys.token, let account = TossLiveKeys.account,
-              let req = TossOrderAPI.request(method, path, body: body, token: token, account: account) else { return nil }
+        guard armed, let req = TossOrderAPI.request(method, path, body: body) else { return nil }
         for attempt in 0..<2 {
             let gap = 1 / (TossOrderAPI.perSecond[group] ?? 1)
             if let t = lastCall[group], Date().timeIntervalSince(t) < gap { try? await Task.sleep(for: .seconds(gap - Date().timeIntervalSince(t))) }

@@ -8,6 +8,7 @@ node_modules/
 
 # 토스증권 Open API 키 (개발자 PC 에만)
 toss_keys.json
+toss_live.json
 
 # 모의투자 AI (Claude API 키·쓴 돈, 개발자 서버에만)
 ai_keys.json
