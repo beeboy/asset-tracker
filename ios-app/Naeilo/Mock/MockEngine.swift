@@ -117,7 +117,7 @@ enum MockCalc {
 
     /// 관찰 결과에서 고른다. 순위 차례대로 (가나다순 같은 우연한 순서가 아니다), 남은 현금에서 하나씩 뺀다
     static func select(_ scan: MockScan, ledger l: MockLedger, rule: MockSelectRule, fees: MockFees,
-                       prices: [String: Double], excluded: [String: String]) -> (picks: [Pick], skips: [Skip]) {
+                       prices: [String: Double], excluded: [String: String], soldToday: Set<String> = []) -> (picks: [Pick], skips: [Skip]) {
         let eq = equity(l, prices: prices)
         let pendingBuy = Set(l.pending.filter { $0.side == .buy }.map(\.code))
         var slots = rule.count - l.positions.count - pendingBuy.count
@@ -127,6 +127,8 @@ enum MockCalc {
             if let why = excluded[h.code] { skips.append(Skip(code: h.code, name: h.name, why: "예외 · " + why)); continue }
             if l.positions[h.code] != nil { skips.append(Skip(code: h.code, name: h.name, why: "이미 보유")); continue }
             if pendingBuy.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "같은 종목 주문 대기 중")); continue }
+            // 판 날은 다시 사지 않는다 (같은 날 사고팔기 되풀이로 수수료·세금만 내는 일 막음)
+            if soldToday.contains(h.code) { skips.append(Skip(code: h.code, name: h.name, why: "오늘 판 종목 · 내일부터 다시 고름")); continue }
             guard slots > 0 else { break }
             let px = prices[h.code] ?? h.price
             let one = px * (1 + fees.commission)

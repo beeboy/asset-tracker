@@ -75,6 +75,9 @@ check(sel0.picks.isEmpty && sel0.skips.first?.why.hasPrefix("0주") == true, "0�
 // 예외
 let selEx = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: ["000001": "직접"])
 check(selEx.picks.map(\.code) == ["000002"], "선정에서 예외 막음")
+// 오늘 판 종목은 다시 고르지 않음
+let selSold = MockCalc.select(scan, ledger: L, rule: rule, fees: fees, prices: [:], excluded: [:], soldToday: ["000001"])
+check(selSold.picks.map(\.code) == ["000002"] && selSold.skips.contains { $0.code == "000001" && $0.why.hasPrefix("오늘 판") }, "오늘 판 종목 막음: \(selSold.skips)")
 
 // 호가 채우기
 let book = MockCalc.Book(asks: [.init(p: 8_440, v: 100), .init(p: 8_420, v: 50), .init(p: 8_460, v: 1000)],
