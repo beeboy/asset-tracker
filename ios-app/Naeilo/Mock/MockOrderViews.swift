@@ -70,6 +70,7 @@ struct MockJournalView: View {
     @State private var downFirst = false
     @State private var settings = false
     @State private var pastOpen = false
+    @State private var noteOpen = false
     @State private var noteMore = false
     @State private var colW: [Int: CGFloat] = [:]
     @State private var sdraft = MockSellDraft()
@@ -236,7 +237,7 @@ struct MockJournalView: View {
         rows.sort { downFirst ? $0.r < $1.r : $0.r > $1.r }
         let pnl = l.positions.values.reduce(0) { $0 + Double($1.qty) * (d.s.prices[$1.code] ?? $1.avg) - $1.cost }
         let mx = rows.map { abs($0.r) }.max() ?? 0
-        let anyPill = rows.contains { $0.wait > 0 || $0.sold > 0 }
+        let anyPill = rows.contains { $0.wait > 0 }
         return MockListCard {
             mt("내 종목 \(rows.count)").appFont(14, .bold)
             MockSortToggle(downFirst: $downFirst)
@@ -248,9 +249,8 @@ struct MockJournalView: View {
             ForEach(rows) { h in
                 Button { info = MockStockRef(code: h.code, name: h.name) } label: {
                     MockStockRow(code: h.code, name: h.name, mid: MockFmt.small(h.avg), pct: h.r,
-                                 price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, colW: colW) {
+                                 price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, filled: h.sold > 0, colW: colW) {
                         if h.wait > 0 { MockQtyPill(text: "팔기 \(h.wait)주 대기", done: false).holdCol(3, colW) }
-                        else if h.sold > 0 { MockQtyPill(text: "\(h.sold)주", done: true).holdCol(3, colW) }
                         else if anyPill { Color.clear.frame(width: colW[3] ?? 0, height: 1) }
                     }
                 }
@@ -324,28 +324,34 @@ struct MockJournalView: View {
         }
     }
 
-    /// 규칙 바뀜 · 오류: 한 줄씩 (최근부터)
+    /// 오류: 한 줄씩 (최근부터, 처음엔 접어 둔다)
     private func noteCard(_ d: MockDesk) -> some View {
-        let all = d.events.reversed().filter { $0.book == .rule && ($0.kind == .rules || $0.kind == .error) }
-        let shown = Array(all.prefix(noteMore ? 60 : 8))
+        let all = d.events.reversed().filter { $0.book == .rule && $0.kind == .error }
+        let shown = noteOpen ? Array(all.prefix(noteMore ? 60 : 8)) : []
         return MockListCard {
-            mt("규칙 바뀜 · 오류 \(all.count)").appFont(14, .bold)
-            Spacer()
+            Button { withAnimation(.snappy) { noteOpen.toggle() } } label: {
+                HStack {
+                    mt("오류 \(all.count)").appFont(14, .bold)
+                    Spacer()
+                    Image(systemName: noteOpen ? "chevron.down" : "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
+                }
+                .frame(minHeight: 28).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(all.isEmpty)
         } rows: {
-            if all.isEmpty { MockEmptyRow(text: "아직 없어요") }
             ForEach(shown) { e in
                 VStack(spacing: 0) {
                     Divider().overlay(Theme.line)
                     HStack(spacing: 6) {
                         mt(MockFmt.stamp(e.at)).appFont(11).foregroundStyle(Theme.muted).monospacedDigit().fixedSize()
-                        mt(e.kind == .error ? "오류" : "규칙").appFont(11, .bold).foregroundStyle(e.kind == .error ? Theme.orange : Theme.rule).fixedSize()
                         mt(e.text).appFont(12).foregroundStyle(Theme.sub).lineLimit(1).truncationMode(.tail)
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 14).frame(minHeight: 40)
                 }
             }
-            if all.count > 8 {
+            if noteOpen && all.count > 8 {
                 VStack(spacing: 0) {
                     Divider().overlay(Theme.line)
                     Button { withAnimation(.snappy) { noteMore.toggle() } } label: {
