@@ -87,6 +87,8 @@ struct Scrub {
 struct LogoTile: View {
     let symbol: String
     var size: CGFloat = 36
+    /// 그림 로고가 있나 (없으면 이름 첫 글자 로고. 종목 탭은 글자 로고를 쓰지 않는다)
+    static func has(_ symbol: String) -> Bool { Sample.profiles[symbol]?.logoImage != nil }
     var body: some View {
         let p = Sample.profiles[symbol]
         ZStack {

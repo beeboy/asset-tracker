@@ -237,16 +237,17 @@ struct HoldingsView: View {
         let day = r.sym.quote.change
         let bp = r.cost > 0 ? r.value / r.cost - 1 : 0
         let v = valueMode, small: CGFloat = v ? 13 : 14
+        // 글자 로고는 쓰지 않는다 (그림 로고만). 오늘 실적 금색 점은 이름 오른쪽 위
         let name = HStack(spacing: v ? 6 : 8) {
-            LogoTile(symbol: r.id, size: 28)
-                .overlay(alignment: .topTrailing) {
-                    if es?.fresh == true {
-                        Circle().fill(Self.gold).frame(width: 9, height: 9)
-                            .overlay(Circle().strokeBorder(Theme.card, lineWidth: 2)).offset(x: 3, y: -3)
-                            .accessibilityLabel("오늘 실적")
-                    }
-                }
+            if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
             Text(r.sym.name).appFont(15, .bold).lineLimit(1).truncationMode(.tail)
+        }
+        .overlay(alignment: .topTrailing) {
+            if es?.fresh == true {
+                Circle().fill(Self.gold).frame(width: 9, height: 9)
+                    .overlay(Circle().strokeBorder(Theme.card, lineWidth: 2)).offset(x: 8, y: -4)
+                    .accessibilityLabel("오늘 실적")
+            }
         }
         let mid = Text(v ? "\(r.h.qty.formatted())주" : px(r, r.h.avg)).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
         let chg = v ? (Text(AppModel.sgn(bp)) + Text("(" + amt(r, krw: r.value - r.cost, native: r.h.qty * (r.sym.last - r.h.avg)) + ")").font(.system(size: 10.5, weight: .semibold)))
@@ -1034,7 +1035,7 @@ struct AddHoldingView: View {
                 let held = m.holdings.contains { $0.symbol == h.id }
                 Button { Task { await pick(h) } } label: {
                     HStack(spacing: 10) {
-                        LogoTile(symbol: h.id, size: 32)
+                        if LogoTile.has(h.id) { LogoTile(symbol: h.id, size: 32) }
                         VStack(alignment: .leading) {
                             Text(h.name).appFont(15, .bold).lineLimit(1)
                             Text("\(h.id) · \(h.market)\(KoreaEstimate.tag(h))").appFont(12).foregroundStyle(Theme.sub)
@@ -1404,7 +1405,7 @@ struct HoldingsNews: View {
 
     @ViewBuilder private func line(_ r: AppModel.Row, _ right: Text) -> some View {
         let row = HStack(spacing: 10) {
-            LogoTile(symbol: r.id, size: 28)
+            if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
             Text(r.sym.name).appFont(14, .semibold).lineLimit(1)
             Spacer(minLength: 4)
             right.appFont(14, .bold).monospacedDigit()
