@@ -16159,6 +16159,46 @@
         }
       }
     },
+    "매달 더 넣으면 본전이 당겨져요" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adding monthly pulls break-even closer"
+          }
+        }
+      }
+    },
+    "적립" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deposit"
+          }
+        }
+      }
+    },
+    "적립: 매달 더 넣으면 본전이 당겨져요. 접기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deposit: Adding monthly pulls break-even closer. Collapse"
+          }
+        }
+      }
+    },
+    "적립: 매달 더 넣으면 본전이 당겨져요. 펼치기" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deposit: Adding monthly pulls break-even closer. Expand"
+          }
+        }
+      }
+    },
     "매달 얼마면 언제 얼마?" : {
       "localizations" : {
         "en" : {
