@@ -765,7 +765,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "[ \"$CONFIGURATION\" = \"Debug\" ] || exit 0\nV=$(cat \"$BUILT_PRODUCTS_DIR/.naeilo-build\" 2>/dev/null || date +%y%m%d.%H%M%S)\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $V\" \"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n";
+			shellScript = "[ \"$CONFIGURATION\" = \"Debug\" ] || exit 0\nV=$(cat \"$BUILT_PRODUCTS_DIR/.naeilo-build\" 2>/dev/null || date +%y%m%d.%H%M%S)\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $V\" \"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n# 워치 앱·워치 위젯도 같은 빌드 번호로 (다르면 워치가 설치를 거부한다). 바꾼 뒤 안쪽부터 다시 서명\nW=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Watch/NaeiloWatch.app\"\n[ -d \"$W\" ] || exit 0\nfor P in \"$W/PlugIns/NaeiloWatchWidgets.appex\" \"$W\"; do\n  [ -d \"$P\" ] || continue\n  /usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $V\" \"$P/Info.plist\"\n  codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY:--}\" --preserve-metadata=identifier,entitlements,flags --timestamp=none \"$P\" || exit 1\ndone\n";
 		};
 		B11D0A000000000000000002 /* 빌드 번호 */ = {
 			isa = PBXShellScriptBuildPhase;
