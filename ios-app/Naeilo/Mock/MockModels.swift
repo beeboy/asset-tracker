@@ -142,6 +142,14 @@ struct MockHit: Codable, Equatable, Identifiable {
     var rise5: Double? = nil     // 최근 5일 상승률 (%)
 }
 
+/// 관찰에 한 번 걸린 기록 (종목별 관찰 기록)
+struct MockSeen: Codable, Equatable {
+    var at: Date
+    var price: Double
+    var change: Double?
+    var why: String
+}
+
 /// 한 번 훑은 결과. 떨어진 종목은 이유(처음 걸린 조각 번호)별 수만 남긴다 (-1 = 자료 없음)
 struct MockScan: Codable, Equatable, Identifiable {
     var id = UUID()
@@ -413,6 +421,11 @@ enum MockFmt {
         return String(format: "%.2f", x).replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
     }
     static func won(_ x: Double) -> String { Int(x.rounded()).formatted() + "원" }
+    /// " · " 로 이은 글에서 같은 조각은 한 번만 ("거래량 3.1배 · +4% · 거래량 3.1배" → "거래량 3.1배 · +4%")
+    static func uniq(_ s: String) -> String {
+        var seen = Set<String>()
+        return s.components(separatedBy: " · ").filter { seen.insert($0).inserted }.joined(separator: " · ")
+    }
     static func signed(_ x: Double) -> String { (x > 0 ? "+" : x < 0 ? "−" : "") + num(abs(x)) }
     /// 비율 → "+1.24%"
     static func pct(_ r: Double, digits: Int = 2) -> String {

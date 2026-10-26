@@ -40,6 +40,7 @@ struct MockState: Codable {
     var dropped: [MockCalc.Pick]? = nil       // 마지막 고르기에서 손으로 뺀 종목
     var aiPurged: Bool? = nil                 // AI 장부 매매 데이터를 한 번 지웠는지 (2026-10-25)
     var surgeAdded: Bool? = nil               // 폭등 거르기 기본 조건을 한 번 넣었는지 (2026-10-25)
+    var seen: [String: [MockSeen]]? = nil     // 종목별 관찰 기록 (7일 · 종목당 20번까지)
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -229,6 +230,7 @@ final class MockDesk {
                 log(.exclude, book: .rule, text: "예외로 뺀 \(scan.excluded.count) · " + why, bundle: b.name, ref: ev.id)
             }
             s.scan = scan; s.scanEvent = ev.id; s.exceptHits = exHits
+            addSeen(scan)
             for h in scan.hits { s.prices[h.code] = h.price }
             let errN = got.errors.count
             s.runs["observe"] = MockRun(at: Date(), ok: errN < codes.count / 10,
@@ -238,6 +240,26 @@ final class MockDesk {
             s.runs["observe"] = MockRun(at: Date(), ok: false, text: "\(MockFmt.time(Date())) 실패 · " + why)
             log(.error, book: .rule, text: "관찰 실패 · " + why)
         }
+    }
+
+    /// 종목별 관찰 기록: 걸린 종목마다 한 줄. 7일 지난 것은 버리고 종목당 20번까지
+    private func addSeen(_ sc: MockScan) {
+        var all = s.seen ?? [:]
+        let cut = sc.at.addingTimeInterval(-7 * 86_400)
+        for h in sc.hits { all[h.code, default: []].append(MockSeen(at: sc.at, price: h.price, change: h.change, why: h.why)) }
+        for (c, xs) in all {
+            let keep = xs.filter { $0.at >= cut }.suffix(20)
+            all[c] = keep.isEmpty ? nil : Array(keep)
+        }
+        s.seen = all
+    }
+
+    func seen(_ code: String) -> [MockSeen] { s.seen?[code] ?? [] }
+
+    /// 오늘 관찰에 2번 넘게 걸린 종목
+    var seenTwice: Set<String> {
+        let today = MockFmt.day(Date())
+        return Set((s.seen ?? [:]).filter { $0.value.filter { MockFmt.day($0.at) == today }.count >= 2 }.keys)
     }
 
     // MARK: 선정
@@ -511,10 +533,14 @@ final class MockDesk {
         // 팔기 규칙 (규칙 장부, 장중 가격)
         if ph != .unknown && s.sell.on {
             let today = MockFmt.day(Date())
-            for sig in MockCalc.sellSignals(ledger(.rule), rule: s.sell, prices: s.prices, excluded: excluded(), today: today) {
+            let sigs = MockCalc.sellSignals(ledger(.rule), rule: s.sell, prices: s.prices, excluded: excluded(), today: today)
+            var n = 0
+            for sig in sigs {
                 let ref = log(.sell, book: .rule, who: .rule, code: sig.code, name: Self.name(sig.code), text: sig.why, ref: ledger(.rule).positions[sig.code]?.buyRef).id
-                await placeSell(.rule, code: sig.code, who: .rule, reason: sig.why, ref: ref)
+                if await placeSell(.rule, code: sig.code, who: .rule, reason: sig.why, ref: ref) { n += 1 }
             }
+            // 1분 주기가 판 것도 팔기 칸 상태에 남긴다 ('지금 팔기'만 적어 자동으로 판 뒤에도 '없음'으로 보이던 일)
+            if !sigs.isEmpty { s.runs["sell"] = MockRun(at: Date(), ok: n == sigs.count, text: MockFmt.stamp(Date()) + " · 자동 · \(n)종목 팔기 주문") }
         }
         // 한 바퀴 자동 (장중만)
         var picked = false

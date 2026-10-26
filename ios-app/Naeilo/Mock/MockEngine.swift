@@ -70,7 +70,7 @@ enum MockCalc {
             let score = value(b.sortPiece, bs) ?? 0
             let ch = value(MockPiece(kind: .change), bs).map { $0 / 100 }
             hits.append(MockHit(code: s.code, name: s.name, price: last.c, change: ch, score: score,
-                                why: why.isEmpty ? "조각 없음 · 전부" : why.joined(separator: " · "),
+                                why: why.isEmpty ? "조각 없음 · 전부" : MockFmt.uniq(why.joined(separator: " · ")),
                                 vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs)))
         }
         hits.sort { $0.score != $1.score ? $0.score > $1.score : $0.code < $1.code }

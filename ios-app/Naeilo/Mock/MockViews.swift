@@ -626,22 +626,6 @@ struct MockTag: View {
     }
 }
 
-/// 종목 로고 (앱에 로고가 없으면 이름 첫 글자)
-struct MockLogo: View {
-    let code: String
-    let name: String
-    var body: some View {
-        if Sample.profiles[code] != nil {
-            LogoTile(symbol: code, size: 28)
-        } else {
-            mt(String(name.prefix(1))).font(.system(size: 13, weight: .heavy)).foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(Color(hex: 0x5B6670), in: RoundedRectangle(cornerRadius: 28 * 0.28))
-                .accessibilityHidden(true)
-        }
-    }
-}
-
 /// 종목 탭 그룹 카드 모양: 머리줄 + 한 줄 행들
 struct MockListCard<Head: View, Rows: View>: View {
     @ViewBuilder var head: Head
@@ -693,7 +677,7 @@ struct MockEmptyRow: View {
     }
 }
 
-/// 종목 한 줄: 로고 · 이름 · 가운데(12 sub) · % · 값 · 오른쪽 알약. 뒤 왼쪽에 수익률 띠 (종목 탭 tint 와 같은 색, 최대 34%)
+/// 종목 한 줄: 이름(· 빨간 점) · 가운데(12 sub) · % · 값 · 오른쪽 알약. 뒤 왼쪽에 수익률 띠 (종목 탭 tint 와 같은 색, 최대 34%)
 struct MockStockRow<Right: View>: View {
     let code: String
     let name: String
@@ -702,6 +686,7 @@ struct MockStockRow<Right: View>: View {
     var price: String? = nil
     var band: Double = 0           // 띠 몫 (0~1)
     var struck = false
+    var dot = false                // 이름 옆 작은 빨간 점 (오늘 관찰에 2번 넘게 걸림)
     var colW: [Int: CGFloat] = [:] // 칸 폭 (같은 칸은 줄마다 같은 폭, 오른쪽 맞춤)
     @ViewBuilder var right: Right
     @Environment(\.colorScheme) private var scheme
@@ -709,23 +694,35 @@ struct MockStockRow<Right: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             Divider().overlay(Theme.line)
-            HStack(spacing: 6) {
-                MockLogo(code: code, name: name)
-                mt(name).strikethrough(struck).appFont(15, .bold).lineLimit(1).truncationMode(.tail)
-                    .frame(minWidth: 56, alignment: .leading).layoutPriority(1)
-                Spacer(minLength: 4)
-                mt(mid).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).holdCol(0, colW)
-                mt(MockFmt.pct(pct)).appFont(14, .bold).monospacedDigit().lineLimit(1)
-                    .foregroundStyle(pct > 0 ? Theme.up : pct < 0 ? Theme.down : Theme.sub)
-                    .holdCol(1, colW)
-                if let price { mt(price).appFont(14, .bold).monospacedDigit().lineLimit(1).holdCol(2, colW) }
-                right
+            // 줄이 화면보다 넓으면 카드가 밀려 좌우 여백이 잘린다. 모자라면 가운데 칸을 뺀다
+            ViewThatFits(in: .horizontal) {
+                line(mid: true)
+                line(mid: false)
             }
             .padding(.horizontal, 12).frame(minHeight: 52)
             .background(alignment: .leading) { tint }
             .opacity(struck ? 0.55 : 1)
         }
         .contentShape(Rectangle())
+    }
+
+    private func line(mid show: Bool) -> some View {
+        HStack(spacing: 6) {
+            HStack(spacing: 4) {
+                mt(name).strikethrough(struck).appFont(15, .bold).lineLimit(1).truncationMode(.tail)
+                if dot {
+                    Circle().fill(Theme.up).frame(width: 6, height: 6)
+                        .accessibilityLabel(Text(verbatim: "오늘 2번 넘게 걸림"))
+                }
+            }
+            .frame(minWidth: 56, idealWidth: 56, maxWidth: .infinity, alignment: .leading)
+            if show { mt(mid).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).holdCol(0, colW) }
+            mt(MockFmt.pct(pct)).appFont(14, .bold).monospacedDigit().lineLimit(1)
+                .foregroundStyle(pct > 0 ? Theme.up : pct < 0 ? Theme.down : Theme.sub)
+                .holdCol(1, colW)
+            if let price { mt(price).appFont(14, .bold).monospacedDigit().lineLimit(1).holdCol(2, colW) }
+            right
+        }
     }
 
     private var tint: some View {
@@ -738,7 +735,7 @@ struct MockStockRow<Right: View>: View {
     }
 }
 
-/// 줄 오른쪽 'N주 체결'(금색) · 'N주 대기'(회색)
+/// 줄 오른쪽 'N주'(금색, 체결) · 'N주 대기'(회색)
 struct MockQtyPill: View {
     let text: String
     let done: Bool
@@ -750,8 +747,8 @@ struct MockQtyPill: View {
 }
 
 extension MockStockRow where Right == EmptyView {
-    init(code: String, name: String, mid: String, pct: Double, price: String? = nil, band: Double = 0, struck: Bool = false, colW: [Int: CGFloat] = [:]) {
-        self.init(code: code, name: name, mid: mid, pct: pct, price: price, band: band, struck: struck, colW: colW) { EmptyView() }
+    init(code: String, name: String, mid: String, pct: Double, price: String? = nil, band: Double = 0, struck: Bool = false, dot: Bool = false, colW: [Int: CGFloat] = [:]) {
+        self.init(code: code, name: name, mid: mid, pct: pct, price: price, band: band, struck: struck, dot: dot, colW: colW) { EmptyView() }
     }
 }
 
@@ -821,7 +818,7 @@ struct MockObserveView: View {
             if let sc = d.s.scan { hitsCard(sc) }
         }
         .onPreferenceChange(HoldColW.self) { colW = $0 }
-        .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name) }
+        .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name, seen: true) }
     }
 
     private func condCard(_ d: MockDesk) -> some View {
@@ -883,6 +880,7 @@ struct MockObserveView: View {
             return downFirst ? x < y : x > y
         }
         let shown = Array(sorted.prefix(more ? 200 : 10))
+        let twice = MockDesk.shared.seenTwice
         return MockListCard {
             mt("걸린 종목 \(sc.hits.count)").appFont(14, .bold)
             MockSortToggle(downFirst: $downFirst)
@@ -894,7 +892,7 @@ struct MockObserveView: View {
                 let c = h.change ?? 0
                 Button { info = MockStockRef(code: h.code, name: h.name) } label: {
                     MockStockRow(code: h.code, name: h.name, mid: h.vol.map { String(format: "%.1f배", $0) } ?? "",
-                                 pct: c, price: MockFmt.won(h.price), band: mx > 0 ? abs(c) / mx : 0, colW: colW)
+                                 pct: c, price: MockFmt.won(h.price), band: mx > 0 ? abs(c) / mx : 0, dot: twice.contains(h.code), colW: colW)
                 }
                 .buttonStyle(.plain)
             }
@@ -1030,12 +1028,11 @@ struct MockSelectView: View {
         } rows: {
             if rs.isEmpty { MockEmptyRow(text: "아직 고른 종목이 없어요") }
             ForEach(rs) { r in
-                Button { if r.kind != .dropped { editRow = r } } label: {
+                Button { editRow = r } label: {
                     MockStockRow(code: r.code, name: r.name, mid: MockFmt.small(r.price), pct: r.pct, price: MockFmt.man(Double(r.qty) * r.price),
                                  band: mx > 0 ? abs(r.pct) / mx : 0, struck: r.kind == .dropped, colW: colW) { pill(r).holdCol(3, colW) }
                 }
                 .buttonStyle(.plain)
-                .disabled(r.kind == .dropped)
             }
             VStack(spacing: 0) {
                 Divider().overlay(Theme.line)
@@ -1051,7 +1048,7 @@ struct MockSelectView: View {
     @ViewBuilder private func pill(_ r: MockPickRow) -> some View {
         switch r.kind {
         case .filled:
-            MockQtyPill(text: "\(r.qty)주 체결", done: true)
+            MockQtyPill(text: "\(r.qty)주", done: true)
         case .wait, .pick:
             MockQtyPill(text: (r.side == .sell ? "팔기 " : "") + "\(r.qty)주 대기", done: false)
         case .dropped:
@@ -1083,6 +1080,7 @@ struct MockRowEdit: View {
 
     var body: some View {
         let d = MockDesk.shared
+        ScrollView {
         VStack(alignment: .leading, spacing: 14) {
             MockSheetBar(title: row.name) { dismiss() }
             MockStockChart(code: row.code, height: 120).padding(.horizontal, 16)
@@ -1112,12 +1110,14 @@ struct MockRowEdit: View {
                         dismiss()
                     }
                 case .dropped:
-                    EmptyView()
+                    mt("검토에서 뺌").appFont(13).foregroundStyle(Theme.muted)
                 }
                 if let note { mt(note).appFont(12).foregroundStyle(Theme.up).fixedSize(horizontal: false, vertical: true) }
             }
             .padding(.horizontal, 20)
-            Spacer(minLength: 0)
+            MockTradeLog(code: row.code).padding(.horizontal, 16)
+        }
+        .padding(.bottom, 20)
         }
         .background(Theme.bg)
         .onAppear {
@@ -1212,6 +1212,7 @@ struct MockStockRef: Identifiable {
 struct MockStockSheet: View {
     let code: String
     let name: String
+    var seen = false               // 관찰 탭에서 열면 관찰 기록
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1243,6 +1244,7 @@ struct MockStockSheet: View {
                             }
                         }
                     }
+                    if seen { MockSeenLog(code: code) }
                 }
                 .padding(.horizontal, 16)
             }
@@ -1320,6 +1322,105 @@ struct MockStockChart: View {
         let f = DateFormatter(); f.timeZone = MockFmt.kst; f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = span == .d1 ? "yyyy-MM-dd HH:mm" : "yyyy-MM-dd"
         return f.date(from: span == .d1 ? day + " " + b.d : b.d) ?? Date()
+    }
+}
+// MARK: 종목별 기록
+
+/// 관찰 기록 (관찰 탭 종목 상세): 걸린 때 · 이유 · 가격 · 등락 (최근부터)
+struct MockSeenLog: View {
+    let code: String
+    var body: some View {
+        let xs = Array(MockDesk.shared.seen(code).reversed())
+        let today = MockFmt.day(Date())
+        let n = xs.filter { MockFmt.day($0.at) == today }.count
+        Card {
+            HStack {
+                mt("관찰 기록").appFont(16, .bold)
+                Spacer()
+                mt("오늘 \(n)번 · 7일 \(xs.count)번").appFont(12).foregroundStyle(n >= 2 ? Theme.up : Theme.muted)
+            }
+            if xs.isEmpty { mt("아직 관찰에 걸린 기록이 없어요").appFont(13).foregroundStyle(Theme.muted) }
+            ForEach(xs.indices, id: \.self) { i in
+                let x = xs[i]
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    mt(MockFmt.stamp(x.at)).appFont(11).foregroundStyle(Theme.muted).monospacedDigit().fixedSize()
+                    mt(MockFmt.uniq(x.why)).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
+                    Spacer(minLength: 4)
+                    mt(MockFmt.won(x.price)).appFont(12, .semibold).monospacedDigit().fixedSize()
+                }
+            }
+        }
+    }
+}
+
+/// 선정·주문·체결 한 줄. 같은 날 같은 내용은 한 줄로 모으고 몇 번인지 센다
+struct MockTradeLine: Identifiable {
+    var id: UUID
+    var at: Date
+    var last: Date
+    var n = 1
+    var kind: MockEvent.Kind
+    var who: MockWho?
+    var test: Bool
+    var text: String
+    var pnl: Double?
+}
+
+extension MockDesk {
+    /// 종목 하나의 선정 → 주문 → 체결 기록 (규칙 장부, 옛 장부 포함). 날짜별 최근 날부터, 날 안은 시각 순.
+    /// 예외(폭등 거름 등)·현금 부족·오류도 그 종목 기록에 넣는다. 체결은 돈이 움직여 모으지 않는다
+    func tradeLog(_ code: String) -> [(day: String, lines: [MockTradeLine])] {
+        let kinds: Set<MockEvent.Kind> = [.select, .short, .exclude, .order, .fill, .wait, .cancel, .sell, .error]
+        var days: [String: [MockTradeLine]] = [:], keys: [String: [String: Int]] = [:]
+        for e in events where e.code == code && e.book == .rule && kinds.contains(e.kind) {
+            let day = MockFmt.day(e.at), text = MockFmt.uniq(e.text)
+            let key = [e.kind.rawValue, e.side?.rawValue ?? "", e.who?.rawValue ?? "", e.test ? "t" : "", text].joined(separator: "|")
+            if e.kind != .fill, let i = keys[day]?[key] {
+                days[day]![i].n += 1
+                days[day]![i].last = e.at
+                continue
+            }
+            keys[day, default: [:]][key] = days[day, default: []].count
+            days[day, default: []].append(MockTradeLine(id: e.id, at: e.at, last: e.at, kind: e.kind, who: e.who, test: e.test, text: text, pnl: e.pnl))
+        }
+        return days.keys.sorted(by: >).prefix(10).map { ($0, days[$0]!) }
+    }
+}
+
+/// 선정·주문·체결 기록 (선정 탭 종목 시트). 다시 선정되면 지난 선정 날과 견줘 본다
+struct MockTradeLog: View {
+    let code: String
+    var body: some View {
+        let days = MockDesk.shared.tradeLog(code)
+        let today = MockFmt.day(Date())
+        Card {
+            HStack {
+                mt("선정 · 주문 · 체결 기록").appFont(16, .bold)
+                Spacer()
+                if days.count > 1 { mt("선정된 날 \(days.count)일").appFont(12).foregroundStyle(Theme.muted) }
+            }
+            if days.isEmpty { mt("아직 기록이 없어요").appFont(13).foregroundStyle(Theme.muted) }
+            ForEach(days.indices, id: \.self) { i in
+                let x = days[i]
+                if i > 0 { Divider().overlay(Theme.line) }
+                mt(x.day == today ? "오늘" : (i == 0 ? MockFmt.md(x.day) : "지난 선정 · " + MockFmt.md(x.day)))
+                    .appFont(13, .bold).foregroundStyle(i == 0 ? Theme.ink : Theme.sub)
+                ForEach(x.lines) { line($0) }
+            }
+        }
+    }
+
+    private func line(_ l: MockTradeLine) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            mt(MockFmt.time(l.at)).appFont(11).foregroundStyle(Theme.muted).monospacedDigit().fixedSize()
+            mt(l.kind.name).appFont(11, .bold).foregroundStyle(l.kind == .error ? Theme.orange : Theme.sub).fixedSize()
+            if let w = l.who, w != .rule { MockTag.who(w).fixedSize() }
+            if l.test { MockTag(text: "시험", color: Theme.orange).fixedSize() }
+            mt(l.text + (l.n > 1 ? " · \(l.n)번 (~\(MockFmt.time(l.last)))" : "")).appFont(12).foregroundStyle(Theme.sub)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            if let p = l.pnl { mt(MockFmt.signedWon(p)).appFont(12, .bold).monospacedDigit().foregroundStyle(Theme.change(p)).fixedSize() }
+        }
     }
 }
 #endif
