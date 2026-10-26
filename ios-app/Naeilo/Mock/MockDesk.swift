@@ -43,6 +43,7 @@ struct MockState: Codable {
     var seen: [String: [MockSeen]]? = nil     // 종목별 관찰 기록 (7일 · 종목당 20번까지)
     var hidden: [UUID]? = nil                 // 화면에서 숨긴 기록 줄 (손익·장부 계산 원본은 남긴다)
     var cycleSell: Bool? = nil                // 지금 한 바퀴에 팔기까지 (없으면 켬)
+    var cycleOrder: Bool? = nil               // 지금 한 바퀴에 주문까지 (없으면 켬. 켜도 직접 검토가 켜져 있으면 고르기에서 멈춘다)
     var autoSell: Bool? = nil                 // 돌리기(1분 주기)에 팔기까지 (없으면 켬)
 
     static func fresh(_ now: Date) -> MockState {
@@ -301,8 +302,8 @@ final class MockDesk {
         s.runs["sell"] = MockRun(at: Date(), ok: n == sigs.count, text: MockFmt.stamp(Date()) + (sigs.isEmpty ? " · 조건에 맞는 종목 없음" : " · \(n)종목 팔기 주문"))
     }
 
-    /// 고르고, 검토 문이 열려 있으면(모의 기본) 바로 주문한다
-    private func select() async {
+    /// 고르고, 검토 문이 열려 있으면 바로 주문한다. buy = 거짓이면 고르기까지만 (한 바퀴 주문 알약을 끔)
+    private func select(buy: Bool = true) async {
         guard let scan = s.scan else { s.runs["select"] = MockRun(at: Date(), ok: false, text: "관찰 결과 없음 · 먼저 훑어 주세요"); return }
         // 고르기 직전 가격 (위쪽 200종목만)
         let top = Array(scan.hits.prefix(200).map(\.code))
@@ -331,7 +332,7 @@ final class MockDesk {
         lastPicks = picks
         let shortN = skips.filter(\.short).count
         s.runs["select"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 고름 · \(picks.count)종목 · 현금 부족 \(shortN)건")
-        if !s.select.review { await order() }
+        if buy && !s.select.review { await order() }
     }
 
     /// 검토하고 빼기 (손으로 고친 것으로 남긴다)
@@ -376,15 +377,16 @@ final class MockDesk {
     }
 
     var cycleSell: Bool { s.cycleSell ?? true }
+    var cycleOrder: Bool { s.cycleOrder ?? true }
     var autoSell: Bool { s.autoSell ?? true }
 
-    /// 한 바퀴: 훑기 → 고르기 → 주문(직접 검토가 꺼져 있을 때) → 팔기 (팔기 알약을 끄면 건너뜀)
+    /// 한 바퀴: 훑기 → 고르기 → 주문(알약 켬 · 직접 검토 꺼짐일 때) → 팔기 (알약을 끄면 건너뜀)
     func runCycle() async {
         await waitTick()
         guard busy == nil else { return }
         busy = "cycle"
         await observe()
-        if s.runs["observe"]?.ok == true { await select() }
+        if s.runs["observe"]?.ok == true { await select(buy: cycleOrder) }
         if cycleSell { await sellNow() }
         busy = nil
         save()

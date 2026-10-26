@@ -1071,7 +1071,8 @@ struct MockSelectView: View {
 
     private func cycleCard(_ d: MockDesk) -> some View {
         Card {
-            MockCycleLine(sell: d.cycleSell) { v in d.edit(v ? "한 바퀴 팔기 켬" : "한 바퀴 팔기 끔") { $0.cycleSell = v } }
+            MockCycleLine(order: d.cycleOrder, setOrder: { v in d.edit(v ? "한 바퀴 주문 켬" : "한 바퀴 주문 끔") { $0.cycleOrder = v } },
+                          sell: d.cycleSell) { v in d.edit(v ? "한 바퀴 팔기 켬" : "한 바퀴 팔기 끔") { $0.cycleSell = v } }
             HStack {
                 Spacer()
                 MockGoPill(title: "지금 한 바퀴") { await d.runCycle() }
@@ -1080,13 +1081,21 @@ struct MockSelectView: View {
     }
 }
 
-/// 훑기 → 고르기 → 주문 → [팔기]: 팔기만 알약 (누르면 켜고 끔, 끄면 건너뜀)
+/// 훑기 → 고르기 → [주문] → [팔기]: 주문·팔기는 알약 (누르면 켜고 끔, 끄면 건너뜀). order 가 없으면 주문은 글자
 struct MockCycleLine: View {
+    var order: Bool? = nil
+    var setOrder: (Bool) -> Void = { _ in }
     let sell: Bool
     let set: (Bool) -> Void
     var body: some View {
         HStack(spacing: 6) {
-            mt("훑기 → 고르기 → 주문 →").appFont(14, .semibold).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+            if let order {
+                mt("훑기 → 고르기 →").appFont(14, .semibold).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+                MockCondPill(text: order ? "✓ 주문" : "주문", on: order, tap: { setOrder(!order) })
+                mt("→").appFont(14, .semibold).foregroundStyle(Theme.sub)
+            } else {
+                mt("훑기 → 고르기 → 주문 →").appFont(14, .semibold).foregroundStyle(Theme.sub).lineLimit(1).minimumScaleFactor(0.8)
+            }
             MockCondPill(text: sell ? "✓ 팔기" : "팔기", on: sell, tap: { set(!sell) })
             Spacer(minLength: 0)
         }
