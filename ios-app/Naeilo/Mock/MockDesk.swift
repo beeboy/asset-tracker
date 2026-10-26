@@ -43,7 +43,8 @@ struct MockState: Codable {
     var seen: [String: [MockSeen]]? = nil     // 종목별 관찰 기록 (7일 · 종목당 20번까지)
     var hidden: [UUID]? = nil                 // 화면에서 숨긴 기록 줄 (손익·장부 계산 원본은 남긴다)
     var cycleSell: Bool? = nil                // 지금 한 바퀴에 팔기까지 (없으면 켬)
-    var cycleOrder: Bool? = nil               // 지금 한 바퀴에 주문까지 (없으면 켬. 켜도 직접 검토가 켜져 있으면 고르기에서 멈춘다)
+    var cycleOrder: Bool? = nil               // 지금 한 바퀴에 주문까지 (없으면 켬)
+    var autoOrder: Bool? = nil                // 돌리기에 주문까지 (처음 한 번 옛 직접 검토 값에서 옮긴다: 검토 켬 → 끔)
     var autoSell: Bool? = nil                 // 돌리기(1분 주기)에 팔기까지 (없으면 켬)
 
     static func fresh(_ now: Date) -> MockState {
@@ -125,6 +126,11 @@ final class MockDesk {
             s.rconds = (s.rconds ?? []) + [MockRuleCond(kind: .cap, capKind: .volume, lim: 20),
                                            MockRuleCond(kind: .cap, capKind: .rise, lim: 20)]
             s.surgeAdded = true
+            changed = true
+        }
+        // 직접 검토 설정을 뺐다 (2026-10-26). 옛 검토 켬 사용자가 돌리기에서 갑자기 자동 주문되지 않게 한 번 옮긴다
+        if s.autoOrder == nil {
+            s.autoOrder = !s.select.review
             changed = true
         }
         if changed { save() }
@@ -302,8 +308,8 @@ final class MockDesk {
         s.runs["sell"] = MockRun(at: Date(), ok: n == sigs.count, text: MockFmt.stamp(Date()) + (sigs.isEmpty ? " · 조건에 맞는 종목 없음" : " · \(n)종목 팔기 주문"))
     }
 
-    /// 고르고, 검토 문이 열려 있으면 바로 주문한다. buy = 거짓이면 고르기까지만 (한 바퀴 주문 알약을 끔)
-    private func select(buy: Bool = true) async {
+    /// 고른다. buy = 참이면 확인 없이 바로 주문 (한 바퀴·돌리기의 주문 알약). 지금 고르기는 고르기까지만, 주문은 '주문' 단추
+    private func select(buy: Bool = false) async {
         guard let scan = s.scan else { s.runs["select"] = MockRun(at: Date(), ok: false, text: "관찰 결과 없음 · 먼저 훑어 주세요"); return }
         // 고르기 직전 가격 (위쪽 200종목만)
         let top = Array(scan.hits.prefix(200).map(\.code))
@@ -332,7 +338,7 @@ final class MockDesk {
         lastPicks = picks
         let shortN = skips.filter(\.short).count
         s.runs["select"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 고름 · \(picks.count)종목 · 현금 부족 \(shortN)건")
-        if buy && !s.select.review { await order() }
+        if buy { await order() }
     }
 
     /// 검토하고 빼기 (손으로 고친 것으로 남긴다)
@@ -378,9 +384,10 @@ final class MockDesk {
 
     var cycleSell: Bool { s.cycleSell ?? true }
     var cycleOrder: Bool { s.cycleOrder ?? true }
+    var autoOrder: Bool { s.autoOrder ?? true }
     var autoSell: Bool { s.autoSell ?? true }
 
-    /// 한 바퀴: 훑기 → 고르기 → 주문(알약 켬 · 직접 검토 꺼짐일 때) → 팔기 (알약을 끄면 건너뜀)
+    /// 한 바퀴: 훑기 → 고르기 → 주문 → 팔기 (주문·팔기 알약을 끄면 건너뜀)
     func runCycle() async {
         await waitTick()
         guard busy == nil else { return }
@@ -555,7 +562,7 @@ final class MockDesk {
         var picked = false
         if s.auto > 0 && ph == .open, Date().timeIntervalSince(s.runs["observe"]?.at ?? .distantPast) >= Double(s.auto * 60) {
             await observe()
-            await select()
+            await select(buy: autoOrder)
             picked = true
         }
         addMark()

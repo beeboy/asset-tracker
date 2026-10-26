@@ -419,7 +419,6 @@ struct MockSettingsView: View {
             MockSheetBar(title: "모의투자 설정") { dismiss() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    reviewCard(d)
                     exceptCard(d)
                     ledgerCard(d)
                     runCard
@@ -441,20 +440,6 @@ struct MockSettingsView: View {
             Button(role: .cancel) {} label: { mt("그만두기") }
         } message: {
             mt("현금 1,000만원으로 다시 시작해요. 옛 장부와 기록은 지우지 않아요.")
-        }
-    }
-
-    /// 직접 검토 (옛 '검토 문'): 켜면 고른 뒤 내가 보고 주문, 끄면 고르자마자 주문
-    private func reviewCard(_ d: MockDesk) -> some View {
-        let on = d.s.select.review
-        return Card {
-            Toggle(isOn: Binding(get: { on }, set: { v in d.edit(v ? "직접 검토 켬" : "직접 검토 끔 · 바로 주문") { $0.select.review = v } })) {
-                VStack(alignment: .leading, spacing: 1) {
-                    mt("직접 검토").appFont(16, .bold)
-                    mt(on ? "고른 뒤 보고 주문" : "고르면 바로 주문").appFont(12).foregroundStyle(Theme.muted)
-                }
-            }
-            .tint(Theme.teal)
         }
     }
 
@@ -555,7 +540,8 @@ struct MockSettingsView: View {
     private var runCard: some View {
         Card {
             mt("돌리기").appFont(16, .bold)
-            MockCycleLine(sell: MockDesk.shared.autoSell) { v in MockDesk.shared.edit(v ? "돌리기 팔기 켬" : "돌리기 팔기 끔") { $0.autoSell = v } }
+            MockCycleLine(order: MockDesk.shared.autoOrder, setOrder: { v in MockDesk.shared.edit(v ? "돌리기 주문 켬" : "돌리기 주문 끔") { $0.autoOrder = v } },
+                          sell: MockDesk.shared.autoSell) { v in MockDesk.shared.edit(v ? "돌리기 팔기 켬" : "돌리기 팔기 끔") { $0.autoSell = v } }
             Picker(selection: $auto) {
                 ForEach([0, 5, 10, 15, 30, 60], id: \.self) { mt($0 == 0 ? "끔" : "\($0)분마다").tag($0) }
             } label: { mt("한 바퀴 자동 (장중)").appFont(14) }
