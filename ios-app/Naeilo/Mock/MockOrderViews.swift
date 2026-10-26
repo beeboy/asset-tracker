@@ -21,7 +21,7 @@ struct MockDay {
 
 extension MockDesk {
     func perStock() -> [MockStockPnl] {
-        let l = ledger(.rule)
+        let l = ledger(shown)
         var by: [String: MockStockPnl] = [:]
         for e in events where e.ledger == l.id && e.kind == .fill && e.side == .sell {
             guard let c = e.code, let p = e.pnl else { continue }
@@ -36,9 +36,9 @@ extension MockDesk {
         return Array(by.values)
     }
 
-    /// 오늘 판 종목 (규칙 장부 매도 체결을 종목마다 모은다, 처음 판 때 순)
+    /// 오늘 판 종목 (보이는 칸 장부의 매도 체결을 종목마다 모은다, 처음 판 때 순)
     func soldToday() -> [(code: String, name: String, qty: Int, pnl: Double, basis: Double)] {
-        let id = ledger(.rule).id, today = MockFmt.day(Date())
+        let id = ledger(shown).id, today = MockFmt.day(Date())
         var order: [String] = [], by: [String: (name: String, qty: Int, pnl: Double, basis: Double)] = [:]
         for e in events where e.ledger == id && e.kind == .fill && e.side == .sell && MockFmt.day(e.at) == today {
             guard let c = e.code else { continue }
@@ -51,7 +51,7 @@ extension MockDesk {
 
     /// 오늘 전 기록이 있는 날 (최근부터)
     func pastDays(before today: String) -> [MockDay] {
-        let id = ledger(.rule).id
+        let id = ledger(shown).id
         var order: [String] = [], by: [String: MockDay] = [:]
         for e in events.reversed() where e.ledger == id {
             let k = MockFmt.day(e.at)
@@ -85,7 +85,8 @@ struct MockJournalView: View {
         let r: Double
         var wait = 0              // 팔기 대기 주수
         var sold = 0              // 오늘 팔린 주수
-        var id: String { code }
+        var outside = false       // [실전] 칸: 앱이 사지 않은 토스 보유 (보기만)
+        var id: String { code + (outside ? ".out" : "") }
     }
 
     var body: some View {
@@ -143,7 +144,7 @@ struct MockJournalView: View {
             if let r = d.s.runs["sell"] { MockRunLine(run: r) }
             HStack {
                 Spacer()
-                MockGoPill(title: "지금 팔기", enabled: !d.ledger(.rule).positions.isEmpty) { await d.runSell() }
+                MockGoPill(title: "지금 팔기", enabled: !d.ledger(d.shown).positions.isEmpty) { await d.runSell() }
             }
         }
     }
@@ -204,7 +205,7 @@ struct MockJournalView: View {
 
     /// 칸마다 마지막 평가액 (지금 칸은 지금 평가액). 기록이 다 들어가면 장부 시작 현금부터. 첫 칸 이름 · 칸마다 시각도 함께
     private func series(_ d: MockDesk) -> (String, [Double], [Date]) {
-        let l = d.ledger(.rule)
+        let l = d.ledger(d.shown)
         let take: Int
         switch unit {
         case .hour: take = 24
@@ -221,7 +222,7 @@ struct MockJournalView: View {
         }
         let nowKey = MockCalc.bucket(Date(), unit)
         if last[nowKey] == nil { order.append(nowKey) }
-        last[nowKey] = d.equity(.rule); at[nowKey] = Date()
+        last[nowKey] = d.equity(d.shown); at[nowKey] = Date()
         let keys = Array(order.suffix(take))
         var eqs = keys.compactMap { last[$0] }, dates = keys.compactMap { at[$0] }
         var left = keys.first ?? ""
@@ -230,7 +231,7 @@ struct MockJournalView: View {
     }
 
     private func mineCard(_ d: MockDesk) -> some View {
-        let l = d.ledger(.rule)
+        let l = d.ledger(d.shown)
         let today = MockFmt.day(Date())
         var wait: [String: Int] = [:], sold: [String: Int] = [:]
         for o in l.pending where o.side == .sell { wait[o.code, default: 0] += o.qty }
@@ -243,6 +244,11 @@ struct MockJournalView: View {
             let now = d.s.prices[p.code] ?? p.avg
             return Held(code: p.code, name: p.name, avg: p.avg, value: Double(p.qty) * now, r: p.avg > 0 ? now / p.avg - 1 : 0,
                         wait: wait[p.code] ?? 0, sold: sold[p.code] ?? 0)
+        }
+        // [실전] 칸: 실전 장부에 없는 토스 보유도 '외부'로 보기만 (팔기 조건·주문을 붙이지 않는다)
+        rows += d.outside.map { x in
+            let avg = x.avg ?? 0, now = d.s.prices[x.code] ?? avg
+            return Held(code: x.code, name: MockDesk.name(x.code), avg: avg, value: Double(x.qty) * now, r: avg > 0 ? now / avg - 1 : 0, outside: true)
         }
         rows.sort { downFirst ? $0.r < $1.r : $0.r > $1.r }
         let pnl = l.positions.values.reduce(0) { $0 + Double($1.qty) * (d.s.prices[$1.code] ?? $1.avg) - $1.cost }
@@ -257,6 +263,12 @@ struct MockJournalView: View {
         } rows: {
             if rows.isEmpty { MockEmptyRow(text: "아직 산 종목이 없어요") }
             ForEach(rows) { h in
+                if h.outside {
+                    MockStockRow(code: h.code, name: h.name, mid: MockFmt.small(h.avg), pct: h.r,
+                                 price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, filled: false, colW: colW) {
+                        MockTag(text: "외부", color: Theme.muted)
+                    }
+                } else {
                 Button { info = MockStockRef(code: h.code, name: h.name) } label: {
                     MockStockRow(code: h.code, name: h.name, mid: MockFmt.small(h.avg), pct: h.r,
                                  price: MockFmt.man(h.value), band: mx > 0 ? abs(h.r) / mx : 0, filled: h.sold > 0, colW: colW) {
@@ -265,6 +277,7 @@ struct MockJournalView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -339,7 +352,7 @@ struct MockJournalView: View {
 
     /// 오류 · 규칙 바뀜: 한 줄씩 (최근부터, 처음엔 접어 둔다. 규칙 줄 앞엔 작게 '규칙')
     private func noteCard(_ d: MockDesk) -> some View {
-        let all = d.events.reversed().filter { $0.book == .rule && ($0.kind == .error || $0.kind == .rules) }
+        let all = d.events.reversed().filter { ($0.book == d.shown && $0.kind == .error) || $0.kind == .rules }
         let errN = all.filter { $0.kind == .error }.count
         let shown = noteOpen ? Array(all.prefix(noteMore ? 60 : 8)) : []
         return MockListCard {
@@ -576,7 +589,7 @@ struct MockSettingsView: View {
             }
         }
         .confirmationDialog(Text(verbatim: "장부를 처음부터 할까요?"), isPresented: $resetAsk, titleVisibility: .visible) {
-            Button(role: .destructive) { d.reset(.rule) } label: { mt("처음부터 (옛 장부는 보관)") }
+            Button(role: .destructive) { d.reset(d.shown) } label: { mt("처음부터 (옛 장부는 보관)") }
             Button(role: .cancel) {} label: { mt("그만두기") }
         } message: {
             mt("현금 1,000만원으로 다시 시작해요. 옛 장부와 기록은 지우지 않아요.")
@@ -649,12 +662,12 @@ struct MockSettingsView: View {
     }
 
     private func ledgerCard(_ d: MockDesk) -> some View {
-        let l = d.ledger(.rule)
+        let l = d.ledger(d.shown)
         return Card {
             HStack {
                 mt("장부").appFont(16, .bold)
                 Spacer()
-                mt("시작 \(MockFmt.day(l.started)) · 평가 " + MockFmt.man(d.equity(.rule))).appFont(12).foregroundStyle(Theme.muted)
+                mt(d.shown.name + " · 시작 \(MockFmt.day(l.started)) · 평가 " + MockFmt.man(d.equity(d.shown))).appFont(12).foregroundStyle(Theme.muted)
             }
             // 장부(state.json)와 기록(journal.jsonl) 파일을 공유 시트로 내보낸다
             ShareLink(items: MockDesk.exportFiles) {
@@ -784,9 +797,9 @@ struct MockTabs: View {
             .tabItem { Label { mt(MockTab.select.name) } icon: { Image(systemName: MockTab.select.icon) } }.tag(Tab.flow)
         NavigationStack { MockJournalView() }
             .tabItem { Label { mt(MockTab.journal.name) } icon: { Image(systemName: MockTab.journal.icon) } }.tag(Tab.analysis)
-        // 투자 모드에서는 미션 칸 자리 (미션은 투자 모드를 끄면 돌아온다)
+        // 투자 모드에서는 미션 칸 자리 (미션은 투자 모드를 끄면 돌아온다). 계좌는 [실전]만: [모의]면 자물쇠 아이콘, 누르면 세 탭도 [실전]으로
         NavigationStack { MockAccountView() }
-            .tabItem { Label { mt(MockTab.account.name) } icon: { Image(systemName: MockTab.account.icon) } }.tag(Tab.board)
+            .tabItem { Label { mt(MockTab.account.name) } icon: { Image(systemName: MockDesk.shared.shown == .real ? MockTab.account.icon : "lock.rectangle") } }.tag(Tab.board)
     }
 }
 
@@ -806,11 +819,14 @@ struct MockEntry: ViewModifier {
 struct MockTabsHooks: ViewModifier {
     let mine: Set<String>
     let phase: ScenePhase
+    let tab: Tab
     func body(content: Content) -> some View {
         let d = MockDesk.shared
         content
             .onAppear { d.mine = mine }
             .onChange(of: mine) { _, v in d.mine = v }
+            // 계좌 탭은 [실전]만: [모의]에서 누르면 세 탭이 같이 [실전]으로 (주문은 실전 스위치를 따로 켜야 나간다)
+            .onChange(of: tab) { _, t in if t == .board && d.active && d.shown != .real { d.show(.real) } }
             // 멈춘 훑기는 앱이 다시 앞에 오면 이어 받는다
             .onChange(of: phase) { _, p in if p == .active && d.active { Task { await d.resume() } } }
             // 투자 모드이고 앱이 앞에 있는 동안만 1분마다: 가격·대기 주문·팔기 규칙·자동 (AI 는 꺼 둠)
