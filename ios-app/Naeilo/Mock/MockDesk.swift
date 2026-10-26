@@ -42,6 +42,8 @@ struct MockState: Codable {
     var surgeAdded: Bool? = nil               // 폭등 거르기 기본 조건을 한 번 넣었는지 (2026-10-25)
     var seen: [String: [MockSeen]]? = nil     // 종목별 관찰 기록 (7일 · 종목당 20번까지)
     var hidden: [UUID]? = nil                 // 화면에서 숨긴 기록 줄 (손익·장부 계산 원본은 남긴다)
+    var cycleSell: Bool? = nil                // 지금 한 바퀴에 팔기까지 (없으면 켬)
+    var autoSell: Bool? = nil                 // 돌리기(1분 주기)에 팔기까지 (없으면 켬)
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -373,13 +375,17 @@ final class MockDesk {
         s.runs["order"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 주문 \(n)건 · 고른 \(picks.count)")
     }
 
-    /// 한 바퀴: 훑기 → 고르기 (검토 문이 열려 있으면 주문까지)
+    var cycleSell: Bool { s.cycleSell ?? true }
+    var autoSell: Bool { s.autoSell ?? true }
+
+    /// 한 바퀴: 훑기 → 고르기 → 주문(직접 검토가 꺼져 있을 때) → 팔기 (팔기 알약을 끄면 건너뜀)
     func runCycle() async {
         await waitTick()
         guard busy == nil else { return }
         busy = "cycle"
         await observe()
         if s.runs["observe"]?.ok == true { await select() }
+        if cycleSell { await sellNow() }
         busy = nil
         save()
         startAIReview()
@@ -532,7 +538,7 @@ final class MockDesk {
             }
         }
         // 팔기 규칙 (규칙 장부, 장중 가격)
-        if ph != .unknown && s.sell.on {
+        if ph != .unknown && s.sell.on && autoSell {
             let today = MockFmt.day(Date())
             let sigs = MockCalc.sellSignals(ledger(.rule), rule: s.sell, prices: s.prices, excluded: excluded(), today: today)
             var n = 0
@@ -723,6 +729,10 @@ final class MockDesk {
         var d = Data()
         for e in es { if let x = try? enc.encode(e) { d.append(x); d.append(UInt8(ascii: "\n")) } }
         try? d.write(to: dir.appendingPathComponent("journal.jsonl"), options: .atomic)
+    }
+    /// 내보낼 파일: 장부 상태와 기록 (있는 것만)
+    static var exportFiles: [URL] {
+        ["state.json", "journal.jsonl"].map { dir.appendingPathComponent($0) }.filter { FileManager.default.fileExists(atPath: $0.path) }
     }
     private static func appendLine(_ e: MockEvent) {
         guard var d = try? enc.encode(e) else { return }
