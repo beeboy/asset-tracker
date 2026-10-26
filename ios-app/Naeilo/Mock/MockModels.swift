@@ -357,6 +357,8 @@ struct MockOrder: Codable, Equatable, Identifiable {
     var state: MockOrderState? = nil   // 접수 · 부분 체결 (대기 목록에 있는 동안)
     var prev: Double? = nil      // 전일 종가 (가격제한폭 ±30% 확인. 모르면 nil)
     var auction: Bool? = nil     // 마감 동시호가에 접수: 15:30 단일가로 체결
+    var expect: Double? = nil    // 주문 순간 호가로 잰 예상 평균가 (체결가와 견주기)
+    var tossId: String? = nil    // 실전: 토스 주문번호
 }
 
 /// 결제 대기 돈 한 건: 판 날부터 2영업일 뒤(T+2)에 현금이 된다
@@ -434,6 +436,8 @@ struct MockEvent: Codable, Equatable, Identifiable {
     var opener: MockWho? = nil             // 매도 체결: 그 몫을 산 쪽 (성적은 산 쪽으로 센다)
     var ref: UUID? = nil                   // 앞 단계 기록 (선정 → 주문 → 체결)
     var ai: MockAIUse? = nil
+    var expect: Double? = nil              // 주문 · 체결: 주문 순간 예상 평균가
+    var tossId: String? = nil              // 실전 주문 · 체결: 토스 주문번호
 }
 
 /// AI 한 번 쓴 기록

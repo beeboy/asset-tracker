@@ -168,6 +168,29 @@ enum MockFeed {
         return MockCalc.Book(asks: levels("asks"), bids: levels("bids"), at: (o["timestamp"] as? String).flatMap(isoDate))
     }
 
+    /// 유의사항 (최대 30종목): 코드 → 지금 걸린 종류. 거래정지·정리매매는 종목 정보로 따로 물어 같이 넣는다 (SUSPENDED · LIQUIDATION_TRADING)
+    static func warnings(_ codes: [String]) async throws -> [String: [String]] {
+        guard !codes.isEmpty else { return [:] }
+        let top = Array(codes.prefix(30))
+        let w = try await get("/api/mock/warnings?symbols=" + enc(top.joined(separator: ",")), timeout: 20)
+        var out: [String: [String]] = [:]
+        for (c, v) in w["warnings"] as? [String: Any] ?? [:] { out[c] = v as? [String] ?? [] }
+        let sp = try await get("/api/mock/suspended?symbols=" + enc(top.joined(separator: ",")), timeout: 8)
+        for (c, v) in sp["info"] as? [String: Any] ?? [:] {
+            let x = v as? [String: Any] ?? [:]
+            if x["suspended"] as? Bool == true { out[c, default: []].append("SUSPENDED") }
+            if x["liquidation"] as? Bool == true && !(out[c] ?? []).contains("LIQUIDATION_TRADING") { out[c, default: []].append("LIQUIDATION_TRADING") }
+        }
+        return out
+    }
+
+    /// 오늘 상한가·하한가 (서버가 하루 한 번 받는다)
+    static func limits(_ code: String) async throws -> (upper: Double, lower: Double)? {
+        let o = try await get("/api/mock/limits?symbol=" + enc(code), timeout: 6)
+        guard let u = num(o["upper"]), let l = num(o["lower"]) else { return nil }
+        return (u, l)
+    }
+
     /// 국내 장 일정: 오늘 정규장 시작·끝 (휴장이면 nil)
     struct Session: Codable, Equatable {
         var day: String
@@ -291,6 +314,41 @@ enum TossOrderAPI {
         "relay-off": "서버 실전 꺼짐", "relay-no-keys": "서버에 토스 키 없음", "relay-no-account": "서버에 계좌 없음",
         "relay-over-cap": "서버 한 번 주문 상한 넘음", "relay-no-price": "지금 가격을 몰라 시장가 안 냄", "relay-unreachable": "서버가 토스에 닿지 못함",
     ]
+
+    /// 정정 본문 (국내: 수량 필수, 지정가 가격 정수). 서버가 상한을 보려고 종목도 같이 보낸다
+    static func modifyBody(_ o: MockOrder, qty: Int, limit: Double) -> [String: Any] {
+        ["symbol": o.code, "orderType": "LIMIT", "quantity": String(qty), "price": String(Int(limit.rounded()))]
+    }
+
+    /// 서버 실전 상태 (비밀값 없이): 스위치·계좌·키·한 번 주문 상한
+    struct Ready: Equatable { var armed = false, account = false, keys = false, maxKrw: Double = 0 }
+    static func readyInfo() async -> Ready? {
+        guard let req = request("GET", "/api/mock/order/ready", body: nil),
+              let (data, resp) = try? await URLSession.shared.data(for: req), (resp as? HTTPURLResponse)?.statusCode == 200,
+              let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return Ready(armed: j["armed"] as? Bool == true, account: j["account"] as? Bool == true, keys: j["keys"] as? Bool == true,
+                     maxKrw: MockFeed.num(j["max_krw"]) ?? 0)
+    }
+
+    /// 토스 계좌 (서버가 계좌 머리글을 붙여 묻는다): 주문가능금액(원) · 국내 보유
+    struct Account: Equatable {
+        struct Item: Equatable { var code: String; var qty: Int; var avg: Double?; var plAfterCost: Double? }
+        var cash: Double?
+        var items: [Item]
+        var plAfterCost: Double?
+        var at: Date
+    }
+    static func account() async -> (Account?, String?) {
+        guard let req = request("GET", "/api/mock/account", body: nil) else { return (nil, "개발자 서버 주소·열쇠 없음") }
+        guard let (data, resp) = try? await URLSession.shared.data(for: req), let h = resp as? HTTPURLResponse else { return (nil, "서버에 닿지 못함") }
+        let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard h.statusCode == 200, let j else { return (nil, reason(j, status: h.statusCode)) }
+        let items = (j["holdings"] as? [[String: Any]] ?? []).compactMap { x -> Account.Item? in
+            guard let c = x["code"] as? String else { return nil }
+            return Account.Item(code: c, qty: Int(MockFeed.num(x["qty"]) ?? 0), avg: MockFeed.num(x["avg"]), plAfterCost: MockFeed.num(x["plAfterCost"]))
+        }
+        return (Account(cash: MockFeed.num(j["cash"]), items: items, plAfterCost: MockFeed.num(j["plAfterCost"]), at: Date()), nil)
+    }
 
     /// 서버 실전 준비 (toss_live.json 켜짐·계좌·키). 준비가 덜 됐으면 이유, 다 됐으면 nil
     static func ready() async -> String? {

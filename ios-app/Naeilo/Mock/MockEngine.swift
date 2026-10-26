@@ -285,6 +285,88 @@ enum MockCalc {
         return min(cash, (Double(qty) * px * (1 + fees.commission)).rounded(.up))
     }
 
+    // MARK: 실전 판단 (주문 직전 확인 · 정정 · 유의사항 · 보유)
+
+    /// 주문 순간 예상 평균가: 지금 호가로 끝까지 채운 값 (지정가는 그 값까지만). 한 주도 못 채우면 nil
+    static func expect(side: MockSide, type: MockOrderType, qty: Int, limit: Double?, book: Book, fees: MockFees) -> Double? {
+        let f = walk(side: side, type: type, qty: qty, limit: limit, book: book, fees: fees)
+        return f.qty > 0 ? f.avg : nil
+    }
+
+    /// 예상가 대비 실제 체결가 차이 (불리하면 +). 매수: 실제/예상 − 1, 매도: 1 − 실제/예상
+    static func slipGap(side: MockSide, expect: Double, actual: Double) -> Double {
+        guard expect > 0 else { return 0 }
+        return side == .buy ? actual / expect - 1 : 1 - actual / expect
+    }
+
+    /// 주문 직전 확인: 지금 호가로 다 채우면 나갈 돈·수수료·세금·1호가 대비 미끄러짐. 못 채운 수량은 남는다
+    struct Preview: Equatable {
+        var qty = 0                  // 지금 채워지는 수량
+        var avg: Double = 0          // 예상 평균가
+        var amount: Double = 0       // 체결 금액
+        var fee: Double = 0
+        var tax: Double = 0
+        var slip: Double = 0         // 1호가 대비 (불리하면 +)
+        var total: Double { amount + fee + tax }
+    }
+    static func preview(side: MockSide, type: MockOrderType, qty: Int, limit: Double?, book: Book, fees: MockFees) -> Preview {
+        let f = walk(side: side, type: type, qty: qty, limit: limit, book: book, fees: fees)
+        guard f.qty > 0 else { return Preview() }
+        let best = (side == .buy ? book.bestAsk : book.bestBid) ?? f.avg
+        return Preview(qty: f.qty, avg: f.avg, amount: f.amount, fee: fees.fee(f.amount), tax: side == .sell ? fees.tax(f.amount) : 0,
+                       slip: slipGap(side: side, expect: best, actual: f.avg))
+    }
+
+    /// 대기 주문 정정: 남은 수량·지정가를 바꾼다 (정정하면 지정가). 매수는 묶은 돈을 새로 셈하고 모자라면 이유를 돌려준다
+    static func modify(_ l: inout MockLedger, orderIndex i: Int, qty: Int, limit: Double, fees: MockFees) -> String? {
+        guard l.pending.indices.contains(i), qty >= 1, limit > 0 else { return "수량·가격을 확인해 주세요" }
+        var o = l.pending[i]
+        let lim = snap(limit, side: o.side)
+        if o.side == .buy {
+            let need = (Double(qty) * lim * (1 + fees.commission)).rounded(.up)
+            if need - o.reserved > l.cash { return "현금 부족 · 더 필요 " + MockFmt.won(need - o.reserved) }
+            l.cash -= need - o.reserved
+            o.reserved = need
+        } else {
+            let other = l.pending.enumerated().filter { $0.offset != i && $0.element.code == o.code && $0.element.side == .sell }.reduce(0) { $0 + $1.element.qty }
+            if qty + other > (l.positions[o.code]?.qty ?? 0) { return "보유보다 많이 팔 수 없어요" }
+        }
+        o.qty = qty; o.type = .limit; o.limit = lim; o.until = nil; o.waitWhy = nil
+        l.pending[i] = o
+        return nil
+    }
+
+    /// 유의사항 종류 → 짧은 이름 (모르는 값은 그대로)
+    static func warnName(_ t: String) -> String {
+        switch t {
+        case "SUSPENDED": return "거래정지"
+        case "LIQUIDATION_TRADING": return "정리매매"
+        case "INVESTMENT_RISK": return "투자위험"
+        case "INVESTMENT_WARNING": return "투자경고"
+        case "OVERHEATED": return "단기과열"
+        case "VI_STATIC", "VI_DYNAMIC", "VI_STATIC_AND_DYNAMIC": return "VI"
+        default: return t
+        }
+    }
+
+    /// 고르기에서 뺄 유의사항 (거래정지·정리매매·투자위험). 빼면 이유, 아니면 nil
+    static func warnBlock(_ ts: [String]) -> String? {
+        let hard = ts.filter { ["SUSPENDED", "LIQUIDATION_TRADING", "INVESTMENT_RISK"].contains($0) }
+        return hard.isEmpty ? nil : "유의 거름 · " + hard.map(warnName).joined(separator: "·")
+    }
+
+    /// 지금 가격에 다 팔면 남는 손익 (수수료·세금 뒤)
+    static func afterTax(_ p: MockPosition, price: Double, fees: MockFees) -> Double {
+        let amt = Double(p.qty) * price
+        return amt - fees.fee(amt) - fees.tax(amt) - p.cost
+    }
+
+    /// 손절선까지 남은 비율: 지금 가격이 손절 가격(평균가 × (1 − stop))보다 몇 % 위인가. 음수면 이미 넘음
+    static func stopRoom(_ p: MockPosition, price: Double, stop: Double) -> Double {
+        let line = p.avg * (1 - stop)
+        return line > 0 ? price / line - 1 : 0
+    }
+
     // MARK: 장부에 적기
 
     /// 매수 체결: 묶은 돈에서 쓰고, 다 채우면 남은 돈을 현금으로 돌린다
