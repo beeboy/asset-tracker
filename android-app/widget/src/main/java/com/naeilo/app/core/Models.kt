@@ -211,6 +211,14 @@ object USSession {   // ios: WidgetShared/Models.swift:594
     }
 }
 
+/** 종목마다 마지막으로 받은 0보다 큰 시세 (앱·위젯 공용). 종목 id → [지금 가격, 전일 종가, 실시간 1/0, 받은 시각(초)].
+ *  어느 시세에서 왔든 같은 규칙: 한 번이라도 받은 종목은 받기 실패·0·앱 재시작에도 이 값 밑으로 (0원으로) 내려가지 않는다 */
+object GoodQuotes {   // ios: WidgetShared/Models.swift:778
+    const val name = "good_quotes.json"   // ios: WidgetShared/Models.swift:779
+    fun read(): Map<String, List<Double>> = (Store.read<Map<String, List<Double>>>(name) ?: emptyMap()).filter { it.value.size == 4 && it.value[0] > 0 }   // ios: WidgetShared/Models.swift:780
+    fun write(d: Map<String, List<Double>>) = Store.write(d, name)   // ios: WidgetShared/Models.swift:781
+}
+
 // 지금 가격·원/달러 백업: 토스가 못 받는 내 종목(Store.quoteSyms)을 Yahoo 에서 직접 받는다. 그것도 못 받은 종목만 사이트(naeilo.com/data/quotes.json, 평일 30분마다 모음)로 채운다.
 object QuoteFeed {   // ios: WidgetShared/Models.swift:772
     @Serializable data class Q(   // ios: WidgetShared/Models.swift:773

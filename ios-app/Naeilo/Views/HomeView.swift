@@ -21,8 +21,7 @@ struct HomeView: View {
                     }
                 SampleNote()
                 summary
-                // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
-                if !m.isGoal, m.done.contains(3), m.cost > m.total, !m.rows.isEmpty { DepositLeverCard(plan: m.keepPlan) }
+                // '매달 더 넣으면?'은 홈에 두지 않는다. 미션 화면에만 (2026-10-26)
                 shelterBox
                 // 말풍선은 한 줄 해석, 바로 아래 '오늘 많이 움직인 종목'이 그 근거 (2026-10-23)
                 HoldingsNews(moversOnly: true)

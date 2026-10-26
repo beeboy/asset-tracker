@@ -219,7 +219,9 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationDelegate()
     var open: ((String) -> Void)?
     func userNotificationCenter(_ c: UNUserNotificationCenter, willPresent n: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .sound, .list]
+        // 모의투자 체결 알림은 앱을 보고 있을 때 소리 없이 위쪽 띠로만
+        if n.request.content.userInfo["mock"] != nil { return [.banner, .list] }
+        return [.banner, .sound, .list]
     }
     func userNotificationCenter(_ c: UNUserNotificationCenter, didReceive r: UNNotificationResponse) async {
         if let o = r.notification.request.content.userInfo["open"] as? String {

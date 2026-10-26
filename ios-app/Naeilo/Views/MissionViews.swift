@@ -478,6 +478,7 @@ private func mixBar(_ p: Plan) -> some View {
 struct Mission3ResultView: View {
     @Environment(AppModel.self) private var m
     @State private var open: Set<Basket> = []
+    @State private var leverOpen = false
     var body: some View {
         let sel = m.selectedPlan, keep = m.keepPlan, T = Double(m.horizon) / 12, freed = m.freedAmount
         let baskets = Basket.allCases.filter { $0 != .C && (sel.mix[$0] ?? 0) > 0 }
@@ -505,7 +506,24 @@ struct Mission3ResultView: View {
             }
             if !baskets.isEmpty && sel.id != "keep" { BasketList(baskets: baskets, open: $open, title: String(localized: "담을 업종")) }
             // 원인 진단·계획을 마친 뒤에 '매달 더 넣으면?' (2026-10-11 결정: 미션 3 뒤)
-            if m.cost > m.total { DepositLeverCard(plan: keep) }
+            // 기본은 홈 리마인드 같은 한 줄, 누르면 그 자리에서 카드가 펼쳐진다 (2026-10-26)
+            if m.cost > m.total {
+                Button { withAnimation { leverOpen.toggle() } } label: {
+                    HStack(spacing: 8) {
+                        Text("적립").appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 2)
+                            .background(Theme.yellow, in: Capsule())
+                        Text("매달 더 넣으면 본전이 당겨져요").appFont(13).lineLimit(2).multilineTextAlignment(.leading)
+                        Spacer(minLength: 0)
+                        Image(systemName: leverOpen ? "chevron.up" : "chevron.down").appFont(11).foregroundStyle(Theme.muted)
+                    }
+                    .padding(.horizontal, 12).frame(minHeight: 44)
+                    .background(Theme.cream, in: RoundedRectangle(cornerRadius: 12))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(leverOpen ? String(localized: "적립: 매달 더 넣으면 본전이 당겨져요. 접기") : String(localized: "적립: 매달 더 넣으면 본전이 당겨져요. 펼치기"))
+                if leverOpen { DepositLeverCard(plan: keep) }
+            }
             Text("계산 예시 · 매매 추천 아님").appFont(14).foregroundStyle(Theme.sub)
             PrimaryButton(title: String(localized: "다음: 앱 시작 3단계")) { m.boardPath.append(.nx) }
             Button { m.boardPath.append(.m4) } label: {

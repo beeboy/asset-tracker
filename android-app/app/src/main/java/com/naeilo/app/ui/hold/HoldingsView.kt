@@ -2,7 +2,6 @@ package com.naeilo.app.ui.hold
 
 import com.naeilo.app.ui.LocalPal
 import com.naeilo.app.ui.CapsuleShape
-import com.naeilo.app.ui.Sheet
 import com.naeilo.app.ui.hex
 import com.naeilo.app.net.KoreaEstimate
 import com.naeilo.app.ui.home.BoxLook
@@ -103,6 +102,7 @@ import com.naeilo.app.data.Period
 import com.naeilo.app.data.Symbol
 import com.naeilo.app.data.friendName
 import com.naeilo.app.data.recordDay
+import com.naeilo.app.data.todayPL
 import com.naeilo.app.data.voice
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.PriceHistory
@@ -140,7 +140,6 @@ import com.naeilo.app.ui.outset
 import com.naeilo.app.ui.plainClickable
 import com.naeilo.app.ui.plainCombinedClickable
 import com.naeilo.app.ui.rememberPrefBool
-import com.naeilo.app.ui.rememberPrefString
 import com.naeilo.app.ui.stiffness
 import com.naeilo.app.core.swFmt
 import com.naeilo.app.core.swFmtFrac
@@ -172,7 +171,11 @@ fun HoldingsView(m: AppModel) {
     var askDel by remember { mutableStateOf<Symbol?>(null) }        // ios: Views/HoldingsView.swift:12 지울지 한 번 묻는 종목
     var river by remember { mutableStateOf<EarnTarget?>(null) }     // ios: Views/HoldingsView.swift:13 내 몫 실적 강 팝업 (금색 알약을 누르면)
     var editSym by remember { mutableStateOf<Symbol?>(null) }       // ios: Views/HoldingsView.swift:14 길게 누르기 '종목 고치기'
-    var adding by remember { mutableStateOf(false) }                // ios: Views/HoldingsView.swift:15 '+ 종목 추가' 팝업
+    var adding by remember { mutableStateOf(false) }                // ios: Views/HoldingsView.swift:15 '+ 종목 추가' 상자: 팝업 대신 목록 맨 아래에 펼친다
+    val scroll = rememberScrollState()
+    // 펼치면 상자가 보이게 올린다
+    // ios: Views/HoldingsView.swift:76
+    LaunchedEffect(adding) { if (adding) { androidx.compose.runtime.withFrameNanos {}; scroll.animateScrollTo(scroll.maxValue) } }
     var inUsd by rememberPrefBool("holdUsd", false)   // ios: Views/HoldingsView.swift:17 미국 종목을 달러로 볼지
     var valueMode by rememberPrefBool("holdValue", false)   // ios: Views/HoldingsView.swift:18 보기: 현재가 | 평가금
     // 보기·통화가 바뀌면 칸 폭을 새로 잰다 (넓어지기만 해서 평가금 폭이 현재가에 남던 것)
@@ -181,16 +184,12 @@ fun HoldingsView(m: AppModel) {
     val lookRaw = BoxLook.raw   // ios: Views/HoldingsView.swift:20
     val dts = LocalTextScale.current   // ios: Views/HoldingsView.swift:21
     val dark = LocalPal.current.isDark   // ios: Views/HoldingsView.swift:22
-    val arrive by rememberPrefString("town.arrive", "")   // ios: Views/HoldingsView.swift:23
 
-    // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
-    // ios: Views/HoldingsView.swift:77,78
-    LaunchedEffect(arrive) { if (arrive.isNotEmpty()) m.tab = com.naeilo.app.Tab.home }
     // ios: Views/HoldingsView.swift:38,66,70,71,72,78 (종목을 누르면 종목 상세 팝업, 알림으로 온 종목 m.holdOpen 도)
     DetailSheet(m, period, takesHoldOpen = true) {
     NavStack(m.holdPath, { m.holdPath = it }, {
         Refreshable({ Market.shared.pullRefresh(m) }, Modifier.fillMaxSize().background(Theme.bg)) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                 Screen {
                     val rows = m.rows   // ios: Views/HoldingsView.swift:28
                     // 묶음 안은 오늘 등락 순 고정. 같으면 평가액 큰 순
@@ -226,10 +225,11 @@ fun HoldingsView(m: AppModel) {
                         // ios: Views/HoldingsView.swift:57,58,59,60,61,62,63,64,65,66,67,68
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             FitText(Market.shared.asOfText, appFont(13f), 0.8f, Modifier.weight(1f), maxLines = 2, color = Theme.sub2)
-                            Box(Modifier.plainClickable { adding = true }.defaultMinSize(minHeight = 32.dp).border(1.5.dp, Theme.teal, CapsuleShape).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+                            Box(Modifier.plainClickable { adding = !adding }.defaultMinSize(minHeight = 32.dp).border(1.5.dp, Theme.teal, CapsuleShape).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
                                 T("+ 종목 추가", style = appFont(13f, FontWeight.Bold), color = Theme.teal, maxLines = 1)
                             }
                         }
+                        if (adding) AddHoldingView(m, inline = true, close = { adding = false })   // ios: Views/HoldingsView.swift:70
                         Spacer(Modifier.height(24.dp))   // ios: Views/HoldingsView.swift:64 아래 탭바가 마지막 카드를 가리지 않게
                     }
                 }
@@ -245,8 +245,6 @@ fun HoldingsView(m: AppModel) {
     // 길게 누르기 '종목 고치기'도 팝업
     // ios: Views/HoldingsView.swift:79
     com.naeilo.app.PathSheet(listOfNotNull(editSym), { if (it.isEmpty()) editSym = null }) { s -> NavPage(s.name) { HoldingEditView(m, sym = s) { editSym = null } } }
-    // ios: Views/HoldingsView.swift:76 ('+ 종목 추가' 팝업: 머리 왼쪽 제목, 오른쪽 x)
-    Sheet(adding, onDismiss = { adding = false }) { AddHoldingView(m, sheet = true) { adding = false } }
     // ios: Views/HoldingsView.swift:79,80,81
     IosAlert(said != null, "내 투자 습관", said, listOf(DialogAction("확인", onClick = {}))) { said = null }
     EarningsRiverSheet(river) { river = null }   // ios: Views/HoldingsView.swift:75
@@ -1045,17 +1043,15 @@ private fun androidx.compose.foundation.layout.RowScope.Cell(t: String, v: Doubl
 // ios: Views/HoldingsView.swift:1247
 @Composable
 private fun MoversCard(m: AppModel, rows: List<AppModel.Row>) {
-    val fx = Market.shared.valFx   // ios: Views/HoldingsView.swift:1248
-    val top = rows.filter { it.id != KoreaEstimate.sumId }   // ios: Views/HoldingsView.swift:1249
-        .map { r -> Pair(r, r.h.qty * r.sym.quote.prevClose * (if (r.sym.currency == Currency.usd) fx else 1.0) * r.sym.quote.change) }   // ios: Views/HoldingsView.swift:1250 (r, w)
-        .sortedByDescending { abs(it.second) }.take(3)   // ios: Views/HoldingsView.swift:1251
+    val top = rows.filter { it.id != KoreaEstimate.sumId }   // ios: Views/HoldingsView.swift:1372
+        .map { r -> val p = m.todayPL(r); Triple(r, p.first, p.second) }   // ios: Views/HoldingsView.swift:1373 (r, w, d)
+        .sortedByDescending { abs(it.second) }.take(3)   // ios: Views/HoldingsView.swift:1374
     // ios: Views/HoldingsView.swift:1252,1260
     Column(Modifier.newsCard(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        T("오늘 많이 움직인 종목", Modifier.padding(bottom = 6.dp), style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:1253
+        T("오늘 손익 큰 종목", Modifier.padding(bottom = 6.dp), style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:1253
         if (top.isEmpty()) T("종목을 넣으면 보여요", style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:1254
         // ios: Views/HoldingsView.swift:1255
-        top.forEach { (r, w) ->
-            val d = r.sym.quote.change   // ios: Views/HoldingsView.swift:1256
+        top.forEach { (r, w, d) ->   // ios: Views/HoldingsView.swift:1379
             Line(m, r, AppModel.sgn2(d) + " · " + AppModel.eokS(w), Theme.change(d))   // ios: Views/HoldingsView.swift:1257
         }
     }

@@ -17,8 +17,11 @@ enum Config {
     static let channel: Channel = Channel(key: Bundle.main.object(forInfoDictionaryKey: "NaeiloChannel") as? String) ?? .internalBeta
     /// 내부 베타 빌드인가 (종목 목록·샘플처럼 빌드 때 정해지는 것)
     static var isInternal: Bool { channel == .internalBeta }
-    /// 시험용: 내부 베타에서 Yahoo·사이트 자료를 잠시 끈다 (설정 > 시세 기준). 공개판처럼 내 키 시세만 본다
-    static var yahooOff: Bool { isInternal && Store.defaults.bool(forKey: "yahoo_off") }
+    /// 내부 베타에서 Yahoo·사이트 자료를 끈다. 공개판처럼 내 키 시세만 본다.
+    /// 토스·Alpaca·Longbridge 키가 하나라도 켜져 있으면 늘 끈다 (2026-10-26 결정). 키가 없을 때만 설정 > 시세 기준 스위치를 따른다
+    static var yahooOff: Bool { isInternal && (myKey || Store.defaults.bool(forKey: "yahoo_off")) }
+    /// 내 키(토스·Alpaca·Longbridge) 가운데 하나라도 켜져 있는가 (멈춘 키는 빼고)
+    static var myKey: Bool { TossKeys.on || AlpacaKeys.on || LongbridgeKeys.on }
     /// 사이트가 Yahoo 로 모은 자료(data/quotes.json·prices·stats·calc 등, 추가 종목 Yahoo 중계)를 써도 되는가
     static var usesCollectedData: Bool { isInternal && !yahooOff }
 }
@@ -152,8 +155,8 @@ enum Store {
     /// 위젯마다 열리는 단계: 1 자산 추이·인물 자산 언덕·키 재기, 2 목표일 전망·목표 페이스·본전 진행·인물 본전 사다리·퍼즐, 3 나머지 (내 길·블록·과녁·오늘의 움직임·서재·인물 꽃밭·줄다리기 등)
     static func stepNeed(_ kind: String) -> Int {
         switch kind {
-        case "asset.small", "lock.asset", "char.hill", "char.height": 1
-        case "future.small", "pace.small", "lock.goal", "char.ladder", "char.puzzle": 2
+        case "asset.small", "lock.asset", "char.hill", "lock.hill", "char.height": 1
+        case "future.small", "pace.small", "lock.goal", "char.ladder", "lock.ladder", "char.puzzle": 2
         default: 3
         }
     }

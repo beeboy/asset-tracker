@@ -26,7 +26,7 @@ func lockWidget<V: View>(_ kind: String, _ family: WidgetFamily, @ViewBuilder vi
     .catalog(kind).supportedFamilies([family])
 }
 
-/// 잠금화면 위젯의 VoiceOver 문장: 폰이 잠겨 금액이 가려졌으면 금액도 '숨김'으로 읽는다. ↻(직사각형만)·금액 숨기기는 동작으로
+/// 잠금화면 위젯의 VoiceOver 문장: 폰이 잠겨 금액이 가려졌으면 금액도 '숨김'으로 읽는다. ↻(자산 추이만)·금액 숨기기는 동작으로
 struct LockSpeak<Content: View>: View {
     let kind: String
     let s: Snapshot
@@ -34,7 +34,7 @@ struct LockSpeak<Content: View>: View {
     @Environment(\.redactionReasons) private var reasons
     var body: some View {
         let hide = Store.lockPrivate && reasons.contains(.privacy)
-        content.speak(Speech.of(kind, s, hide: hide), kind: kind, money: kind != "lock.goal", reload: kind != "lock.goal")
+        content.speak(Speech.of(kind, s, hide: hide), kind: kind, money: true, reload: kind == "lock.asset")
     }
 }
 
@@ -53,9 +53,6 @@ enum Speech {
         case "future.small":
             line = s.term == nil ? WL.t("앱을 열면 계산합니다")
                 : WL.t("{term} 예상 {v}, 지금보다 {p}", ["term": s.termLabel, "v": s.term.map { money($0.p50) } ?? "-", "p": s.term.map { Fmt.pct(s.total > 0 ? $0.p50 / s.total - 1 : 0, 0) } ?? "-"])
-        case "lock.future":
-            line = s.term == nil && s.fan == nil ? WL.t("앱을 열면 계산합니다")
-                : WL.t("{term} 예상 {v}, 목표 확률 {p}", ["term": s.termLabel, "v": s.term.map { money($0.p50) } ?? "-", "p": pct(s.pGoal)])
         case "path.small":
             if let d = WSmall.load() ?? (s.placeholder ? .sample : nil) {
                 let g = d.gapNow(s.total)
@@ -68,7 +65,7 @@ enum Speech {
             if let d = WSmall.load() ?? (s.placeholder ? .sample : nil), let me = d.me, let bk = d.basket {
                 line = WL.t(me >= bk ? "내가 {p} 빨라요" : "내가 {p} 느려요", ["p": mag(me - bk)]) + ". " + WL.t("나 {a}, 모의 바구니 {b}", ["a": Fmt.pct(me), "b": Fmt.pct(bk)])
             } else { line = WL.t("앱에서 모의 바구니를 담으면 보여요") }
-        case "target.small", "lock.target":
+        case "target.small":
             if let w = s.week {
                 line = WL.t("지금 {v}, 예측 {m}, 예측보다 {p}, {hit}", ["v": money(w.act), "m": money(w.p50), "p": Fmt.pct(w.act / w.p50 - 1), "hit": s.hitText])
             } else { line = WL.t("이번 주 예측 대기") }
@@ -77,7 +74,7 @@ enum Speech {
             let ms = s.moves.prefix(4).map { "\($0.t) \(mag($0.pct)) \(WL.dir($0.pct))" }
             if !ms.isEmpty { line += ". " + ms.joined(separator: ", ") }
         case "lock.goal":
-            line = WL.t("목표 {p} 진행", ["p": pct(s.progress)])
+            line = WL.t("목표 {p} 진행", ["p": pct(s.progress)]) + ". " + WL.t("총자산 {v}, 오늘 {p} {dir}", ["v": money(s.total)].merging(chg) { a, _ in a })
         default:
             line = ""
         }

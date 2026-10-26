@@ -1,5 +1,6 @@
 #if MOCK
 import Foundation
+import Security
 
 // 모의투자 시세 길: 개발자 서버(server.py)의 /api/mock/… 만 부른다.
 // 일봉은 서버가 한도 안에서 동시에 받아 묶어 준다. 호가는 주문하는 순간에만.
@@ -19,15 +20,28 @@ enum MockFeed {
         if ok { UserDefaults.standard.set(t, forKey: tokenKey) } else { UserDefaults.standard.removeObject(forKey: tokenKey) }
     }
 
+    /// 서버가 토스를 부르는 길(시세·호가·일정)은 모두 여기를 지난다. 호출 한도: 초당 N번으로 줄 세우고,
+    /// 한도 응답(429)이면 Retry-After(없으면 1·2·4초) 기다렸다 3번까지 다시 부른다
     private static func get(_ path: String, timeout: TimeInterval) async throws -> [String: Any] {
         guard let b = base, let url = URL(string: b + path) else { throw Fail(why: "개발자 서버 주소·열쇠 없음 (naeilo://mock?t=…)") }
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         req.setValue("naeilo-ios-mock/0.1", forHTTPHeaderField: "User-Agent")
         if let t = token { req.setValue(t, forHTTPHeaderField: "X-Naeilo-Dev") }
-        let data: Data, resp: URLResponse
-        do { (data, resp) = try await URLSession.shared.data(for: req) }
-        catch let e as URLError { throw Fail(why: e.code == .timedOut ? "서버 응답 없음 (\(Int(timeout))초)" : "서버 연결 실패 (\(e.code.rawValue))") }
-        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        var data = Data(), resp: URLResponse = URLResponse(), code = 0
+        for attempt in 0...3 {
+            try await MockGate.shared.wait()
+            do { (data, resp) = try await URLSession.shared.data(for: req) }
+            catch let e as URLError {
+                // -999 는 서버 문제가 아니라 일이 취소된 것 (화면·앱 전환). 오류가 아닌 취소로 올린다
+                if e.code == .cancelled { throw CancellationError() }
+                throw Fail(why: e.code == .timedOut ? "서버 응답 없음 (\(Int(timeout))초)" : "서버 연결 실패 (\(e.code.rawValue))")
+            }
+            code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            guard code == 429 else { break }
+            if attempt == 3 { throw Fail(why: "토스 호출 한도 · 3번 다시 불러도 막힘") }
+            let after = ((resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Retry-After")).flatMap { Double($0) } ?? pow(2, Double(attempt))
+            try await Task.sleep(for: .seconds(min(after, 10)))
+        }
         if code == 401 || code == 403 { throw Fail(why: "개발자 서버 열쇠가 맞지 않아요") }
         guard code == 200 else { throw Fail(why: code == 404 ? "서버에 모의투자 경로 없음 (server.py 새 판 필요)" : "서버 응답 \(code)") }
         guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw Fail(why: "응답을 읽지 못함") }
@@ -69,28 +83,37 @@ enum MockFeed {
 
     static func enc(_ s: String) -> String { s.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? s }
 
-    /// 일봉: 100종목씩 나눠 묻는다. progress(받은 종목 수). 실패한 종목은 errors 에 이유
-    static func daily(_ codes: [String], count: Int, progress: @MainActor (Int) -> Void) async throws -> (bars: [String: [MockBar]], errors: [String: String]) {
+    /// 일봉: 100종목씩 나눠 묻는다. progress(받은 종목 수). 실패한 종목은 errors 에 이유.
+    /// skip: 이미 받은 묶음 (시작 번호) — 멈췄다 이어 받을 때. batch: 묶음 하나를 받을 때마다 (시작 번호, 일봉, 실패)
+    static func daily(_ codes: [String], count: Int, skip: Set<Int> = [], progress: @MainActor (Int) -> Void,
+                      batch: (@MainActor (Int, [String: [MockBar]], [String: String]) -> Void)? = nil) async throws -> (bars: [String: [MockBar]], errors: [String: String]) {
         var bars: [String: [MockBar]] = [:], errors: [String: String] = [:]
         var done = 0
         for i in stride(from: 0, to: codes.count, by: 100) {
-            try Task.checkCancellation()
             let part = Array(codes[i..<min(codes.count, i + 100)])
+            if skip.contains(i) { done += part.count; continue }
+            try Task.checkCancellation()
             let o: [String: Any]
             do { o = try await get("/api/mock/daily?count=\(count)&symbols=" + enc(part.joined(separator: ",")), timeout: 70) }
             catch let f as Fail {
                 // 처음 묶음부터 실패하면 그만 (서버 문제). 중간이면 그 묶음만 이유를 남기고 이어 간다
                 if bars.isEmpty && i == 0 { throw f }
-                for c in part { errors[c] = f.why }
+                var errs: [String: String] = [:]
+                for c in part { errs[c] = f.why }
+                errors.merge(errs) { _, b in b }
+                await batch?(i, [:], errs)
                 done += part.count; await progress(done); continue
             }
+            var got: [String: [MockBar]] = [:], errs: [String: String] = [:]
             for (c, rows) in o["bars"] as? [String: Any] ?? [:] {
-                bars[c] = (rows as? [[Any]] ?? []).compactMap { r in
+                got[c] = (rows as? [[Any]] ?? []).compactMap { r in
                     guard r.count >= 6, let d = r[0] as? String, let op = num(r[1]), let h = num(r[2]), let l = num(r[3]), let cl = num(r[4]) else { return nil }
                     return MockBar(d: d, o: op, h: h, l: l, c: cl, v: num(r[5]) ?? 0)
                 }
             }
-            for (c, e) in o["errors"] as? [String: String] ?? [:] { errors[c] = e }
+            for (c, e) in o["errors"] as? [String: String] ?? [:] { errs[c] = e }
+            bars.merge(got) { _, b in b }; errors.merge(errs) { _, b in b }
+            await batch?(i, got, errs)
             done += part.count
             await progress(done)
         }
@@ -107,7 +130,7 @@ enum MockFeed {
         let today = MockFmt.day(Date())
         var days = dayCache[code].flatMap { $0.day == today ? $0.bars : nil }
         if days == nil {
-            days = try await daily([code], count: 200) { _ in }.bars[code] ?? []
+            days = try await daily([code], count: 200, progress: { _ in }).bars[code] ?? []
             dayCache[code] = (today, days!)
         }
         return (o["day"] as? String ?? "", mins, days!)
@@ -161,5 +184,120 @@ enum MockFeed {
         f.formatOptions = [.withInternetDateTime]
         return f.date(from: s)
     }
+}
+/// 토스 시세 호출 한도: 부르기 사이를 1/N초 이상 띄운다 (N 은 설정 안전장치, 기본 5)
+actor MockGate {
+    static let shared = MockGate()
+    private var gap: Double = 0.2
+    private var next = Date.distantPast
+    func set(_ perSec: Double) { gap = 1 / max(1, perSec) }
+    func wait() async throws {
+        let now = Date(), at = max(now, next)
+        next = at.addingTimeInterval(gap)
+        let d = at.timeIntervalSince(now)
+        if d > 0 { try await Task.sleep(for: .seconds(d)) }
+    }
+}
+// MARK: 토스 주문 API (문서: github.com/beeboy/toss-api docs 의 주문 · 주문 내역 · 인증 · API 소개, 2026-10-26 읽음)
+// 요청을 만들고 응답을 읽는 곳. 보내는 일은 MockTossBroker 가 실전 스위치가 켜졌을 때만 한다
+
+enum TossOrderAPI {
+    static let base = "https://openapi.tossinvest.com"
+
+    /// 호출 한도 (초당, 문서 표). 피크 09:00~09:10 은 ORDER_INFO 만 3회로 줄어든다
+    static let perSecond: [String: Double] = ["AUTH": 5, "ORDER": 10, "ORDER_HISTORY": 5, "ORDER_INFO": 6]
+
+    /// 주문 세부 상태 → 앱 상태. 정정·취소 거부는 원래 주문이 그대로라 nil (상태 유지)
+    static func state(_ s: String) -> MockOrderState? {
+        switch s {
+        case "PENDING", "PENDING_CANCEL", "PENDING_REPLACE": return .accepted
+        case "PARTIAL_FILLED": return .partial
+        case "FILLED": return .filled
+        case "CANCELED", "REPLACED": return .canceled
+        case "REJECTED": return .rejected
+        default: return nil   // CANCEL_REJECTED · REPLACE_REJECTED · 모르는 값 (문서: 모르는 enum 은 받아 넘겨야 함)
+        }
+    }
+
+    /// 주문 한 건 (목록·상세·웹소켓 data.order 가 같은 모양)
+    struct Order {
+        var id: String
+        var status: String
+        var filledQty: Int
+        var avg: Double?
+        var filledAmount: Double?
+        var commission: Double?
+        var tax: Double?
+    }
+
+    /// 주문 생성 본문. 국내는 정수 수량·정수 가격(호가 단위). clientOrderId = 앱 주문 id (멱등성 키, 10분)
+    static func createBody(_ o: MockOrder) -> [String: Any] {
+        var b: [String: Any] = ["symbol": o.code, "side": o.side == .buy ? "BUY" : "SELL",
+                                "orderType": o.type == .limit ? "LIMIT" : "MARKET", "quantity": String(o.qty),
+                                "clientOrderId": o.id.uuidString, "timeInForce": "DAY"]
+        if o.type == .limit, let p = o.limit { b["price"] = String(Int(p.rounded())) }
+        return b
+    }
+
+    static func request(_ method: String, _ path: String, body: [String: Any]?, token: String, account: String) -> URLRequest? {
+        guard let url = URL(string: base + path) else { return nil }
+        var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        r.httpMethod = method
+        r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
+        r.setValue(account, forHTTPHeaderField: "X-Tossinvest-Account")
+        if let body {
+            r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            r.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        }
+        return r
+    }
+
+    static func orderId(_ o: [String: Any]) -> String? { (o["result"] as? [String: Any])?["orderId"] as? String }
+
+    static func order(_ o: [String: Any]) -> Order? {
+        guard let r = o["result"] as? [String: Any], let id = r["orderId"] as? String, let st = r["status"] as? String else { return nil }
+        let e = r["execution"] as? [String: Any] ?? [:]
+        return Order(id: id, status: st, filledQty: Int(MockFeed.num(e["filledQuantity"]) ?? 0), avg: MockFeed.num(e["averageFilledPrice"]),
+                     filledAmount: MockFeed.num(e["filledAmount"]), commission: MockFeed.num(e["commission"]), tax: MockFeed.num(e["tax"]))
+    }
+
+    /// 오류 봉투 {"error":{"code","message"}} → 화면 글
+    static func reason(_ o: [String: Any]?, status: Int) -> String {
+        let e = o?["error"] as? [String: Any]
+        let code = e?["code"] as? String ?? "http-\(status)"
+        return (reasons[code] ?? (e?["message"] as? String) ?? "토스 오류") + " (\(code))"
+    }
+
+    /// 문서의 오류 코드 (주문에 쓰는 것만)
+    static let reasons: [String: String] = [
+        "invalid-request": "요청이 올바르지 않음", "confirm-high-value-required": "1억원 이상 주문 확인 필요",
+        "account-header-required": "계좌 머리글 없음", "invalid-token": "토큰이 맞지 않음", "expired-token": "토큰 만료",
+        "token-revoked": "새 토큰으로 바뀜", "ip-not-allowed": "허용되지 않은 IP", "forbidden": "권한 없음",
+        "account-not-found": "계좌 없음", "order-not-found": "주문 없음", "request-in-progress": "같은 주문 처리 중",
+        "already-filled": "이미 체결됨", "already-canceled": "이미 취소됨", "already-modified": "이미 정정됨",
+        "already-rejected": "이미 거부됨", "already-processing": "정정·취소 처리 중", "opposite-pending-order-exists": "같은 종목 반대 방향 대기 주문 있음",
+        "insufficient-buying-power": "주문 가능 금액 부족", "order-hours-closed": "주문 받는 시간 아님", "stock-restricted": "거래 제한 종목",
+        "price-out-of-range": "상·하한가 밖 가격", "order-type-not-allowed": "지금 못 쓰는 호가 유형", "prerequisite-required": "약관·교육 등 자격 필요",
+        "market-not-supported-for-stock": "이 시장에서 거래 못 하는 종목", "investor-exchange-not-integrated": "거래소 설정이 통합(SOR)이 아님",
+        "insufficient-sellable-quantity": "매도 가능 수량 부족", "order-limit-exceeded": "주문 설정 한도 넘음",
+        "idempotency-key-conflict": "같은 주문 번호로 다른 주문", "account-restricted": "계좌가 이 주문을 허용하지 않음",
+        "max-order-amount-exceeded": "30억원 이상 주문", "rate-limit-exceeded": "호출 한도 넘음", "edge-rate-limit-exceeded": "호출 한도 넘음",
+        "internal-error": "토스 일시 장애", "maintenance": "토스 점검 중",
+    ]
+}
+
+/// 실전 키 자리 (키체인). 앱 코드·저장소·커밋에는 키가 없다. 채우는 화면은 아직 없다
+enum TossLiveKeys {
+    static let service = "com.naeilo.toss.live"
+    static func read(_ key: String) -> String? {
+        let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+                                kSecAttrAccount as String: key, kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+        var out: AnyObject?
+        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
+        return String(data: d, encoding: .utf8).flatMap { $0.isEmpty ? nil : $0 }
+    }
+    /// 액세스 토큰 · 계좌 번호(accountSeq)
+    static var token: String? { read("access_token") }
+    static var account: String? { read("account_seq") }
 }
 #endif

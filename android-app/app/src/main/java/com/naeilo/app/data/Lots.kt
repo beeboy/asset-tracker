@@ -79,3 +79,17 @@ fun AppModel.recordLot() {
     Lots.record(L, h = h, start = Day.str(pathStartDate))
     if (L != lots) lots = L
 }
+
+/** 오늘 손익(원화)과 등락: 어제 수량 × 전일 종가에서 지금까지. 오늘 더 사고판 것도 넣는다
+ *  손익 = 지금 평가액 − 어제 수량 × 전일 종가 − 오늘 산 돈 + 오늘 판 돈. 산·판 돈은 내 기록(그때 가격), 그 밖에 늘어난 수량(종목 추가·직접 고치기)은 구매가(평균 단가)
+ *  다 판 종목은 내 종목에서 빠져 여기 오지 않는다 */
+fun AppModel.todayPL(r: AppModel.Row): Pair<Double, Double> {   // ios: Data/Lots.swift:80
+    val s = r.sym; val t = Sync.siteTicker(r.h.symbol)   // ios: Data/Lots.swift:81
+    if (isSample || Sample.isVirtual(r.h.symbol) || s.last <= 0) return Pair(krw(s, r.h.qty * s.quote.prevClose * s.quote.change), s.quote.change)   // ios: Data/Lots.swift:82
+    val q0 = lots.lastOrNull { it.d < Day.today }?.h?.get(t) ?: 0.0   // ios: Data/Lots.swift:83 어제 수량
+    val f = myRecord.lastOrNull()?.takeIf { it.d == Day.today }?.f?.get(t) ?: listOf(0.0, 0.0)   // ios: Data/Lots.swift:84 오늘 산·판 [수량 ±, 원화 금액 ±]
+    val dx = r.h.qty - q0 - f[0]   // ios: Data/Lots.swift:85 기록 없이 바뀐 수량
+    val w = krw(s, r.h.qty * s.last - q0 * s.quote.prevClose - dx * r.h.avg) - f[1]   // ios: Data/Lots.swift:86
+    val base = krw(s, q0 * s.quote.prevClose + maxOf(0.0, dx) * r.h.avg) + maxOf(0.0, f[1])   // ios: Data/Lots.swift:87
+    return Pair(w, if (base > 0) w / base else 0.0)   // ios: Data/Lots.swift:88
+}

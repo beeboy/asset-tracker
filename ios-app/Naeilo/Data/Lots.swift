@@ -72,3 +72,19 @@ extension AppModel {
         if L != lots { lots = L }
     }
 }
+
+extension AppModel {
+    /// 오늘 손익(원화)과 등락: 어제 수량 × 전일 종가에서 지금까지. 오늘 더 사고판 것도 넣는다
+    /// 손익 = 지금 평가액 − 어제 수량 × 전일 종가 − 오늘 산 돈 + 오늘 판 돈. 산·판 돈은 내 기록(그때 가격), 그 밖에 늘어난 수량(종목 추가·직접 고치기)은 구매가(평균 단가)
+    /// 다 판 종목은 내 종목에서 빠져 여기 오지 않는다
+    func todayPL(_ r: Row) -> (w: Double, d: Double) {
+        let s = r.sym, t = Sync.siteTicker(r.h.symbol)
+        guard !isSample, !Sample.isVirtual(r.h.symbol), s.last > 0 else { return (krw(s, r.h.qty * s.quote.prevClose * s.quote.change), s.quote.change) }
+        let q0 = lots.last { $0.d < Day.today }?.h[t] ?? 0                       // 어제 수량
+        let f = myRecord.last.flatMap { $0.d == Day.today ? $0.f?[t] : nil } ?? [0, 0]   // 오늘 산·판 [수량 ±, 원화 금액 ±]
+        let dx = r.h.qty - q0 - f[0]                                               // 기록 없이 바뀐 수량
+        let w = krw(s, r.h.qty * s.last - q0 * s.quote.prevClose - dx * r.h.avg) - f[1]
+        let base = krw(s, q0 * s.quote.prevClose + max(0, dx) * r.h.avg) + max(0, f[1])
+        return (w, base > 0 ? w / base : 0)
+    }
+}

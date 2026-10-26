@@ -6,7 +6,7 @@ import WidgetKit
 enum Catalog {
     struct Item { let kind: String; let name: String; let desc: String; let size: String }
 
-    /// 기본 작은 위젯 7개 + 잠금화면 4개 (앱 '위젯' 탭의 순서)
+    /// 기본 작은 위젯 7개 + 잠금화면 5개 (앱 '위젯' 탭의 순서)
     static let base: [Item] = [
         Item(kind: "asset.small", name: "자산 추이", desc: "총자산·오늘 등락·최근 10일 흐름", size: "작은"),
         Item(kind: "path.small", name: "내 길", desc: "계획선보다 앞섰는지와 달성 확률", size: "작은"),
@@ -16,9 +16,10 @@ enum Catalog {
         Item(kind: "target.small", name: "이번 주 과녁", desc: "금요일 마감 예측과 지금 위치", size: "작은"),
         Item(kind: "moves.small", name: "오늘의 움직임", desc: "비중 큰 종목의 오늘 등락 히트맵", size: "작은"),
         Item(kind: "lock.asset", name: "자산 추이", desc: "총자산·오늘 등락·1달 흐름", size: "잠금 화면"),
-        Item(kind: "lock.goal", name: "목표 진행", desc: "목표 대비 %", size: "잠금 화면"),
-        Item(kind: "lock.future", name: "3년 뒤", desc: "3년 뒤 예상 범위", size: "잠금 화면"),
-        Item(kind: "lock.target", name: "이번 주 과녁", desc: "금요일 마감 예측과 지금", size: "잠금 화면"),
+        Item(kind: "lock.goal", name: "목표 진행", desc: "목표 대비 %와 총자산", size: "잠금 화면"),
+        Item(kind: "lock.hill", name: "인물 · 자산 언덕", desc: "총액·오늘 등락·최근 10일 기둥과 인물", size: "잠금 화면"),
+        Item(kind: "lock.say", name: "인물 · 한마디", desc: "인물 말풍선과 총액", size: "잠금 화면"),
+        Item(kind: "lock.ladder", name: "인물 · 본전 진행", desc: "본전(목표)까지 진행 막대와 인물", size: "잠금 화면"),
     ]
     /// 인물 8개 + 서재
     static let more: [Item] = [

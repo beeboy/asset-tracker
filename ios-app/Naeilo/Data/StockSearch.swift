@@ -48,9 +48,9 @@ enum KoreaEstimate {
     /// 국내 개별 종목: 앱 한글 목록(StockCatalog)의 국내 주식 (ETF 빼고). 사이트가 매일 지금 가격·종가를 모은다
     /// (data/kr_stocks.json 과 같은 규칙, tools/gen_stock_catalog.py). 토스 시세를 받는 기기는 토스 값이 먼저
     static let popular: Set<String> = Set(StockCatalog.all.filter { $0.currency == .krw && !$0.market.contains("ETF") }.map(\.id))
-    /// 그 밖의 국내 종목(미국 지수 국내 ETF 빼고)은 추가하는 순간 Yahoo 중계(asset-ai 워커)로 지금 가격·1년 종가를 받고, 앱이 시세를 갱신할 때 같이 갱신한다.
-    /// 중계가 실패하면 넣은 가격 방식
-    static func liveOK(_ id: String, name: String = "") -> Bool { id != sumId && (popular.contains(id) || info(id: id, name: name).proxy == nil) }
+    /// 국내 종목은 모두(미국 지수 국내 ETF 포함) 고르는 순간 시세를 받고(Yahoo 중계, 안 되면 내 키), 앱이 시세를 갱신할 때 같이 갱신한다.
+    /// 2026-10-26: 시세를 못 받은 국내 종목은 두지 않는다 (넣은 가격·미국 지수 추정은 예전에 넣은 종목에만 남는다). 전망 움직임 기준(base)은 그대로
+    static func liveOK(_ id: String, name: String = "") -> Bool { id != sumId }
     static func allowed(_ h: StockHit) -> Bool { h.currency == .usd || liveOK(h.id, name: h.name) || info(id: h.id, name: h.name, en: h.en).proxy != nil }
     static func tag(_ h: StockHit) -> String { h.currency == .usd ? "" : liveOK(h.id, name: h.name) ? " · 국내 시세" : " · 미국 지수로 추정" }
     /// 내 한국 종목이 쓰는 사이트 티커 (SPY·EWY 등)
@@ -252,6 +252,17 @@ final class CustomSymbols {
     /// 3년 종가를 받아 저장 (추가할 때). 실패하면 이유를 던진다
     @discardableResult
     func fetch(_ h: StockHit) async throws -> Symbol {
+        if !Config.usesCollectedData {
+            // 내 키(토스·Alpaca·Longbridge)로 받는 기기: Yahoo·사이트는 부르지 않는다. 종목만 남기고 시세는 키로 받는다 (Market.refresh)
+            return await MainActor.run {
+                var s = items.first { $0.id == h.id } ?? Saved(id: h.id, yahoo: h.yahoo, name: h.name, market: h.market, usd: h.currency == .usd, prev: 0, last: 0, at: Date())
+                if h.currency == .krw { s.lv = true }
+                items.removeAll { $0.id == h.id }
+                items.append(s)
+                save()
+                return symbol(s)
+            }
+        }
         if h.currency == .krw && KoreaEstimate.liveOK(h.id, name: h.name), let (q, hs) = try? await Self.chart(h.yahoo, range: "1y", today: true) {
             // 국내 종목: 추가하는 순간 Yahoo 에서 직접 지금 가격·1년 종가 (안 되면 중계)
             let pc = hs.closes.count > 1 ? hs.closes[hs.closes.count - 2] : q.prev
@@ -349,6 +360,14 @@ final class CustomSymbols {
         rebuildKR(); save()
     }
     func saved(_ id: String) -> Saved? { items.first { $0.id == id } }
+    /// 국내 종목을 고른 자리에서 지금 가격을 받았다 (Yahoo 가 아니어도, 예: 토스): 넣은 가격이 아니라 받는 시세 종목으로 둔다
+    @MainActor
+    func live(_ id: String, _ last: Double) {
+        guard last > 0, let i = items.firstIndex(where: { $0.id == id }), !items[i].usd, items[i].lv != true else { return }
+        items[i].lv = true; items[i].last = last; items[i].kp = last; items[i].kd = Day.today
+        if items[i].prev <= 0 { items[i].prev = last }
+        save()
+    }
     /// 국내 개별 종목에 사이트 값을 넣는다: 지금 가격·전일 종가는 quotes.json, 날짜별 종가는 kr_daily.json
     /// (at 은 그대로 두어 Market 이 늘 사이트 시세를 먼저 쓴다)
     @MainActor

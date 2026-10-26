@@ -12,7 +12,7 @@ struct HoldingsView: View {
     @State private var askDel: Symbol? = nil        // 지울지 한 번 묻는 종목
     @State private var river: EarnTarget? = nil     // 내 몫 실적 강 팝업 (금색 알약을 누르면)
     @State private var editSym: Symbol? = nil       // 길게 누르기 '종목 고치기'
-    @State private var adding = false               // '+ 종목 추가' 팝업
+    @State private var adding = false               // '+ 종목 추가' 상자: 팝업 대신 목록 맨 아래에 펼친다
     @State private var colW: [Int: CGFloat] = [:]   // 목록 칸 폭: 같은 칸은 묶음을 넘어 줄마다 같은 폭
     @AppStorage("holdUsd") private var inUsd = false // 미국 종목을 달러로 볼지
     @AppStorage("holdValue") private var valueMode = false   // 보기: 현재가 | 평가금
@@ -20,7 +20,6 @@ struct HoldingsView: View {
     @AppStorage(BoxLook.key) private var lookRaw = BoxLook.jump.rawValue
     @Environment(\.dynamicTypeSize) private var dts
     @Environment(\.colorScheme) private var scheme
-    @AppStorage("town.arrive") private var arrive = ""
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
     private static let gold = Color(hex: 0xF2C14E)
 
@@ -35,6 +34,7 @@ struct HoldingsView: View {
         let kr = sorted.filter { $0.sym.currency != .usd }
         let mx = rows.map { abs(move($0)) }.max() ?? 0
         let earn = rows.contains { EarningsFeed.shared.summary($0.sym, qty: $0.h.qty) != nil }
+        ScrollViewReader { sv in
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppHeader(tab: String(localized: "종목")).padding(.horizontal, -16)
@@ -58,7 +58,7 @@ struct HoldingsView: View {
                     Text(Market.shared.asOfText).appFont(13).foregroundStyle(Theme.sub2)
                         .lineLimit(2).minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
-                    Button { adding = true } label: {
+                    Button { withAnimation(.snappy) { adding.toggle() } } label: {
                         Text("+ 종목 추가").appFont(13, .bold).foregroundStyle(Theme.teal)
                             .padding(.horizontal, 14).frame(minHeight: 32)
                             .overlay(Capsule().stroke(Theme.teal, lineWidth: 1.5))
@@ -66,9 +66,13 @@ struct HoldingsView: View {
                     }
                     .buttonStyle(.plain).fixedSize()
                 }
+                if adding { AddHoldingView(inline: true, close: { withAnimation(.snappy) { adding = false } }).id("add") }
                 Color.clear.frame(height: 24)   // 아래 탭바가 마지막 카드를 가리지 않게
             }
             .screen()
+        }
+        // 펼치면 상자가 보이게 올린다
+        .onChange(of: adding) { if $1 { withAnimation(.snappy) { sv.scrollTo("add", anchor: .top) } } }
         }
         .onPreferenceChange(HoldColW.self) { colW = $0 }
         .scrollDismissesKeyboard(.immediately)
@@ -78,9 +82,6 @@ struct HoldingsView: View {
         .detailSheet(period: period, takesHoldOpen: true)
         .sheet(item: $editSym) { s in PopupStack { HoldingEditView(sym: s) }.environment(m) }   // 길게 누르기 '종목 고치기'도 팝업
         .sheet(item: $river) { EarningsRiverSheet(target: $0) }
-        .sheet(isPresented: $adding) { NavigationStack { AddHoldingView(sheet: true) } }
-        .onAppear { if !arrive.isEmpty { m.tab = .home } }   // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
-        .onChange(of: arrive) { if !$1.isEmpty { m.tab = .home } }
         .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
@@ -236,16 +237,17 @@ struct HoldingsView: View {
         let day = r.sym.quote.change
         let bp = r.cost > 0 ? r.value / r.cost - 1 : 0
         let v = valueMode, small: CGFloat = v ? 13 : 14
+        // 글자 로고는 쓰지 않는다 (그림 로고만). 오늘 실적 금색 점은 이름 오른쪽 위
         let name = HStack(spacing: v ? 6 : 8) {
-            LogoTile(symbol: r.id, size: 28)
-                .overlay(alignment: .topTrailing) {
-                    if es?.fresh == true {
-                        Circle().fill(Self.gold).frame(width: 9, height: 9)
-                            .overlay(Circle().strokeBorder(Theme.card, lineWidth: 2)).offset(x: 3, y: -3)
-                            .accessibilityLabel("오늘 실적")
-                    }
-                }
+            if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
             Text(r.sym.name).appFont(15, .bold).lineLimit(1).truncationMode(.tail)
+        }
+        .overlay(alignment: .topTrailing) {
+            if es?.fresh == true {
+                Circle().fill(Self.gold).frame(width: 9, height: 9)
+                    .overlay(Circle().strokeBorder(Theme.card, lineWidth: 2)).offset(x: 8, y: -4)
+                    .accessibilityLabel("오늘 실적")
+            }
         }
         let mid = Text(v ? "\(r.h.qty.formatted())주" : px(r, r.h.avg)).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1)
         let chg = v ? (Text(AppModel.sgn(bp)) + Text("(" + amt(r, krw: r.value - r.cost, native: r.h.qty * (r.sym.last - r.h.avg)) + ")").font(.system(size: 10.5, weight: .semibold)))
@@ -944,17 +946,19 @@ struct AddHoldingView: View {
     @State private var failed: String? = nil
     @State private var qty = ""
     @State private var avg = ""
-    @State private var kp = ""                        // 한국 종목: 지금 가격 (시세를 받지 않는다)
     @State private var warn = false
     @FocusState private var focus: Int?
     /// 다른 화면 안에 상자로 넣을 때 (미션 1): 스크롤·제목 없이, 추가하면 닫지 않고 빈칸으로
     var inline = false
     /// 종목 탭 '+ 종목 추가' 팝업: 머리 왼쪽 제목, 오른쪽 x 닫기
     var sheet = false
+    /// 종목 탭 맨 아래 상자 (inline): 오른쪽 x 로 접고, 추가하면 접는다
+    var close: (() -> Void)? = nil
 
     var body: some View {
         if inline {
             box.task(id: query) { await search() }
+                .toolbar { ToolbarItemGroup(placement: .keyboard) { if close != nil && focus != nil { Spacer(); Button("완료") { focus = nil } } } }
         } else {
             ScrollView { box.screen().padding(.top, 8) }
                 .background(Theme.bg)
@@ -975,9 +979,9 @@ struct AddHoldingView: View {
         return VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text("종목 추가").appFont(inline ? 17 : 22, .bold)
-                    if sheet {
+                    if sheet || close != nil {
                         Spacer()
-                        Button { dismiss() } label: {
+                        Button { if let close { close() } else { dismiss() } } label: {
                             Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.sub)
                                 .frame(width: 44, height: 44).contentShape(Rectangle())
                         }
@@ -1031,7 +1035,7 @@ struct AddHoldingView: View {
                 let held = m.holdings.contains { $0.symbol == h.id }
                 Button { Task { await pick(h) } } label: {
                     HStack(spacing: 10) {
-                        LogoTile(symbol: h.id, size: 32)
+                        if LogoTile.has(h.id) { LogoTile(symbol: h.id, size: 32) }
                         VStack(alignment: .leading) {
                             Text(h.name).appFont(15, .bold).lineLimit(1)
                             Text("\(h.id) · \(h.market)\(KoreaEstimate.tag(h))").appFont(12).foregroundStyle(Theme.sub)
@@ -1060,20 +1064,36 @@ struct AddHoldingView: View {
 
     private func pick(_ h: StockHit) async {
         failed = nil; focus = nil
-        if let s = known(h) { open(s); return }
         loading = h.id
         defer { loading = nil }
-        do { open(try await CustomSymbols.shared.fetch(h)) }
-        catch {
-            // 예시 종목은 시세를 못 받아도 예시 값으로 넣을 수 있다
-            if let s = Sample.symbols.first(where: { $0.id == h.id }) { open(s); failed = nil }
-            else { failed = String(localized: "\(String(describing: h.name)) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.") }
+        var p: Symbol
+        if let s = known(h) { p = s }
+        else {
+            do { p = try await CustomSymbols.shared.fetch(h) }
+            catch {
+                // 예시 종목은 시세를 못 받아도 예시 값으로 넣을 수 있다
+                if let s = Sample.symbols.first(where: { $0.id == h.id }) { open(s); failed = nil }
+                else { failed = String(localized: "\(String(describing: h.name)) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.") }
+                return
+            }
         }
+        // 지금 가격은 모든 시세(사이트·Yahoo·토스·Alpaca·Longbridge)가 모이는 Market.quote 한 곳에서 본다.
+        // 0이면 고른 그 자리에서 이 종목까지 넣어 모든 시세를 한 번에 다시 받는다 (어느 시세든 같은 길)
+        if p.last <= 0 && !Sample.isVirtual(p.id) {
+            await Market.shared.refresh(held: Set(m.holdings.map(\.symbol)).union([p.id]), force: true)
+            p = Sample.symbol(p.id) ?? p
+        }
+        if p.currency == .krw {
+            // 국내 종목은 시세를 받아야만 넣는다 (0원·직접 넣은 가격으로 두지 않는다)
+            guard p.last > 0 else { failed = String(localized: "\(String(describing: h.name)) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."); return }
+            CustomSymbols.shared.live(p.id, p.last)
+        }
+        open(p)
     }
     private func open(_ s: Symbol) {
-        picked = s; qty = ""; warn = false
-        avg = s.currency == .usd ? String(format: "%.2f", s.last) : ""
-        kp = s.currency == .krw && s.last > 0 ? String(Int(s.last.rounded())) : ""
+        // 기본값은 1주·지금 가격이라 바로 [추가하기]를 눌러도 들어간다
+        picked = s; qty = "1"; warn = false
+        avg = s.last <= 0 ? "" : s.currency == .usd ? String(format: "%.2f", s.last) : String(Int(s.last.rounded()))
     }
 
     private func form(_ p: Symbol) -> some View {
@@ -1081,34 +1101,20 @@ struct AddHoldingView: View {
             HStack {
                 Text("\(p.name) (\(p.id))").appFont(16, .bold)
             }
-            if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
-                let pk = KoreaEstimate.info(id: p.id, name: p.name).proxy != nil
-                Text(pk ? String(localized: "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 그 뒤로는 같은 미국 ETF × 원/달러 움직임으로 추정해요.")
-                        : String(localized: "한국 시세는 받지 않아요. 넣은 가격 그대로 계산하고, 움직임 예측은 한국 시장 평균(EWY × 원/달러)으로 해요."))
-                    .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                field(String(localized: "지금 가격 (원)"), $kp).focused($focus, equals: 3)
-            } else {
-                Text((p.quote.live ? String(localized: "지금 ") : String(localized: "전일 종가 ")) + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
-            }
+            Text((p.quote.live ? String(localized: "지금 ") : String(localized: "전일 종가 ")) + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
             field(String(localized: "수량 (주)"), $qty).focused($focus, equals: 1)
-            field(String(localized: "평균 단가 (\(String(describing: p.currency == .usd ? String(localized: "달러") : String(localized: "원, 비우면 지금 가격"))))"), $avg).focused($focus, equals: 2)
-            if warn { Text(p.currency == .krw ? String(localized: "지금 가격과 수량을 0보다 큰 숫자로 넣어 주세요.") : String(localized: "수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.")).appFont(13).foregroundStyle(Theme.up) }
+            field(String(localized: "평균 단가 (\(String(describing: p.currency == .usd ? String(localized: "달러") : String(localized: "원"))))"), $avg).focused($focus, equals: 2)
+            if warn { Text("수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
             PrimaryButton(title: String(localized: "추가하기")) {
                 focus = nil
                 let fresh = !m.holdings.contains { $0.symbol == p.id }
-                if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
-                    guard let v = Double(kp.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v > 0 else { warn = true; return }
-                    CustomSymbols.shared.setPrice(p.id, v)
-                    if m.addHolding(p.id, qty, avg.trimmingCharacters(in: .whitespaces).isEmpty ? kp : avg) { added(fresh ? p.id : nil) } else { warn = true }
-                    return
-                }
                 if m.addHolding(p.id, qty, avg) { added(fresh ? p.id : nil) } else { warn = true }
             }
         }
     }
 
     private func added(_ new: String?) {
-        if inline { picked = nil; query = ""; qty = ""; avg = ""; kp = "" } else { if let new { arrive = new }; dismiss() }
+        if inline { picked = nil; query = ""; qty = ""; avg = ""; if let close { close() } } else { if let new { arrive = new }; dismiss() }
     }
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {
@@ -1117,6 +1123,11 @@ struct AddHoldingView: View {
             TextField("", text: b).keyboardType(.decimalPad)
                 .padding(.horizontal, 12).frame(minHeight: 44)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
+        }
+        // 칸을 누르면 들어 있던 숫자를 모두 골라 두어 바로 새 숫자로 덮어쓴다 (숫자 칸만, 검색 칸은 그대로)
+        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { n in
+            guard let t = n.object as? UITextField, t.keyboardType == .decimalPad else { return }
+            DispatchQueue.main.async { t.selectAll(nil) }
         }
     }
 }
@@ -1358,17 +1369,16 @@ struct HoldingsNews: View {
         .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    // MARK: 오늘 많이 움직인 종목: 내 평가액에 준 영향(원화 금액) 크기순 3개. 홈 말풍선 한 줄 해석의 근거
+    // MARK: 오늘 손익 큰 종목: 오늘 손익(원화 금액) 크기순 3개. 오늘 넣은 종목은 구매가 기준 (AppModel.todayPL). 홈 말풍선 한 줄 해석의 근거
     private func moversCard(_ rows: [AppModel.Row]) -> some View {
-        let fx = Market.shared.valFx
         let top = rows.filter { $0.id != KoreaEstimate.sumId }
-            .map { r in (r: r, w: r.h.qty * r.sym.quote.prevClose * (r.sym.currency == .usd ? fx : 1) * r.sym.quote.change) }
+            .map { r in let p = m.todayPL(r); return (r: r, w: p.w, d: p.d) }
             .sorted { abs($0.w) > abs($1.w) }.prefix(3)
         return VStack(alignment: .leading, spacing: 0) {
-            Text("오늘 많이 움직인 종목").appFont(15, .bold).padding(.bottom, 6)
+            Text("오늘 손익 큰 종목").appFont(15, .bold).padding(.bottom, 6)
             if top.isEmpty { Text("종목을 넣으면 보여요").appFont(13).foregroundStyle(Theme.sub) }
             ForEach(Array(top), id: \.r.id) { x in
-                let d = x.r.sym.quote.change
+                let d = x.d
                 line(x.r, Text(AppModel.sgn2(d) + " · " + AppModel.eokS(x.w)).foregroundColor(Theme.change(d)))
             }
         }
@@ -1394,7 +1404,7 @@ struct HoldingsNews: View {
 
     @ViewBuilder private func line(_ r: AppModel.Row, _ right: Text) -> some View {
         let row = HStack(spacing: 10) {
-            LogoTile(symbol: r.id, size: 28)
+            if LogoTile.has(r.id) { LogoTile(symbol: r.id, size: 28) }
             Text(r.sym.name).appFont(14, .semibold).lineLimit(1)
             Spacer(minLength: 4)
             right.appFont(14, .bold).monospacedDigit()

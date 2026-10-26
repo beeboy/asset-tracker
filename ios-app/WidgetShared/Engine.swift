@@ -136,6 +136,7 @@ enum Engine {
         var moves: [Snapshot.Move] = []
         var tot = 0.0, prev = 0.0
         var feedVal: [String: Double] = [:], feedAt: [String: Double] = [:]
+        let good = GoodQuotes.read()   // 한 번 받은 종목은 0원으로 세지 않는다 (앱 Market.quote 와 같은 규칙)
         for h in hold {
             let ccy = f?.ccy[h.t] ?? s?.hold.first(where: { $0.t == h.t })?.ccy ?? "USD"
             let q = f?.q[h.t], sq = site?.q[h.t] ?? kr?.q[h.t]
@@ -151,7 +152,8 @@ enum Engine {
                 if reg != nil, let t = tq, TossDaily.daytime(t.at) { reg = nil }
             }
             let quoted: Double? = reg ?? tq?.last ?? aq?.last
-            let last = quoted ?? sq?.last ?? h.manual ?? (q?.first ?? nil) ?? f?.c[h.t]?.c.compactMap { $0 }.last
+            let got = quoted ?? sq?.last ?? h.manual ?? (q?.first ?? nil) ?? f?.c[h.t]?.c.compactMap { $0 }.last
+            let last = (got ?? 0) > 0 ? got : good[h.t]?[0] ?? got
             let tp = tq.flatMap { TossDaily.prev(hist, at: $0.at, kr: ccy == "KRW") }
             let pc = tp ?? sq?.prev ?? ((q?.count ?? 0) > 1 ? q![1] : nil) ?? aq.flatMap { $0.prev > 0 ? $0.prev : nil }
             guard let p = last else { continue }

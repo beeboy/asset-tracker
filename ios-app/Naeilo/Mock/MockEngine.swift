@@ -70,7 +70,7 @@ enum MockCalc {
             let score = value(b.sortPiece, bs) ?? 0
             let ch = value(MockPiece(kind: .change), bs).map { $0 / 100 }
             hits.append(MockHit(code: s.code, name: s.name, price: last.c, change: ch, score: score,
-                                why: why.isEmpty ? "조각 없음 · 전부" : why.joined(separator: " · "),
+                                why: why.isEmpty ? "조각 없음 · 전부" : MockFmt.uniq(why.joined(separator: " · ")),
                                 vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs)))
         }
         hits.sort { $0.score != $1.score ? $0.score > $1.score : $0.code < $1.code }
@@ -89,9 +89,9 @@ enum MockCalc {
 
     // MARK: 평가
 
-    /// 평가액 = 현금 + 묶인 돈 + 보유 × 지금 가격 (가격을 모르면 산 평균값)
+    /// 평가액 = 현금 + 묶인 돈 + 결제 대기 + 보유 × 지금 가격 (가격을 모르면 산 평균값)
     static func equity(_ l: MockLedger, prices: [String: Double]) -> Double {
-        l.cash + l.reserved + l.positions.values.reduce(0) { $0 + Double($1.qty) * (prices[$1.code] ?? $1.avg) }
+        l.cash + l.reserved + l.settling + l.positions.values.reduce(0) { $0 + Double($1.qty) * (prices[$1.code] ?? $1.avg) }
     }
 
     // MARK: 선정
@@ -173,6 +173,7 @@ enum MockCalc {
         var qty: Int = 0
         var amount: Double = 0       // 체결 금액 (수수료 전)
         var levels: Int = 0          // 몇 단계 호가를 채웠나
+        var taken: [Level] = []      // 단계마다 채운 수량 (모의 브로커가 그만큼 호가 잔량을 줄인다)
         var avg: Double { qty > 0 ? amount / Double(qty) : 0 }
     }
 
@@ -193,6 +194,7 @@ enum MockCalc {
             }
             guard take > 0 else { break }
             f.qty += take; f.amount += Double(take) * lv.p; f.levels += 1; left -= take
+            f.taken.append(Level(p: lv.p, v: Double(take)))
         }
         return f
     }
@@ -257,7 +259,10 @@ enum MockCalc {
         if let tq = p.tQty { p.tQty = tq - Int((Double(tq) * share).rounded()); p.tCost = p.tCost.map { $0 * (1 - share) }; p.tGross = p.tGross.map { $0 * (1 - share) } }
         let opener = p.who, wasTest = p.test
         if p.qty <= 0 { l.positions[o.code] = nil } else { l.positions[o.code] = p }
-        l.cash += proceeds; l.fees += fee; l.taxes += tax
+        // 결제 T+2: 판 돈은 2영업일 뒤 현금이 된다 (장 밖 시험은 바로)
+        if test { l.cash += proceeds }
+        else { l.unsettled = (l.unsettled ?? []) + [MockSettle(amount: proceeds, day: settleDay(at), code: o.code)] }
+        l.fees += fee; l.taxes += tax
         o.qty -= n
         if o.qty <= 0 || l.positions[o.code] == nil { l.pending.remove(at: i) } else { l.pending[i] = o }
         return MockEvent(at: at, ledger: l.id, book: l.book, kind: .fill, who: o.who, code: o.code, name: o.name,
@@ -281,6 +286,63 @@ enum MockCalc {
             if let d = rule.maxDays, weekdays(from: p.openedDay, to: today) >= d { out.append((p.code, "보유 \(d)일 넘음")); continue }
         }
         return out
+    }
+
+    // MARK: 결제 (T+2)
+
+    /// 판 날부터 2영업일 뒤 (주말만 뺀다. 공휴일은 모른다)
+    static func settleDay(_ at: Date) -> String {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
+        var d = at, n = 0
+        while n < 2 {
+            d = cal.date(byAdding: .day, value: 1, to: d)!
+            let w = cal.component(.weekday, from: d)
+            if w != 1 && w != 7 { n += 1 }
+        }
+        return MockFmt.day(d)
+    }
+
+    /// 결제일이 된 돈을 현금으로 옮긴다. 옮긴 건들을 돌려준다
+    static func settle(_ l: inout MockLedger, today: String) -> [MockSettle] {
+        let due = (l.unsettled ?? []).filter { $0.day <= today }
+        guard !due.isEmpty else { return [] }
+        l.cash += due.reduce(0) { $0 + $1.amount }
+        let rest = (l.unsettled ?? []).filter { $0.day > today }
+        l.unsettled = rest.isEmpty ? nil : rest
+        return due
+    }
+
+    // MARK: 잔고 맞추기
+
+    /// 체결 기록을 처음부터 다시 더해 장부와 견준다. 현금(+묶인 돈+결제 대기)과 종목별 수량.
+    /// 어긋난 곳을 한 줄로 (맞으면 nil). 시험 몫 뺌은 돌린 돈(amount, 옛 줄은 글의 '돌린 돈')을 더한다
+    static func reconcile(_ l: MockLedger, events: [MockEvent]) -> String? {
+        var cash = l.startCash, qty: [String: Int] = [:], n = 0
+        for e in events where e.ledger == l.id {
+            if e.kind == .fill, let q = e.qty, let a = e.amount, let code = e.code {
+                n += 1
+                if e.side == .buy { cash -= a + (e.fee ?? 0); qty[code, default: 0] += q }
+                else if e.side == .sell { cash += a - (e.fee ?? 0) - (e.tax ?? 0); qty[code, default: 0] -= q }
+            } else if e.kind == .cancel, e.side == .buy, e.text.hasPrefix("시험 몫 뺌"), let q = e.qty, let code = e.code {
+                n += 1
+                qty[code, default: 0] -= q
+                cash += e.amount ?? refund(e.text)
+            }
+        }
+        var out: [String] = []
+        let have = l.cash + l.reserved + l.settling
+        // 원 아래 버림이 체결마다 쌓일 수 있어 체결 수만큼 원을 봐준다
+        if abs(have - cash) > Double(max(1, n)) { out.append("현금 장부 " + MockFmt.won(have) + " · 기록 " + MockFmt.won(cash)) }
+        for code in Set(qty.keys).union(l.positions.keys).sorted() {
+            let a = l.positions[code]?.qty ?? 0, b = qty[code] ?? 0
+            if a != b { out.append((l.positions[code]?.name ?? code) + " 장부 \(a)주 · 기록 \(b)주") }
+        }
+        return out.isEmpty ? nil : out.joined(separator: " · ")
+    }
+    /// 옛 '시험 몫 뺌' 줄의 글에서 돌린 돈을 읽는다 ("… · 돌린 돈 12,345원")
+    private static func refund(_ t: String) -> Double {
+        guard let r = t.range(of: "돌린 돈 ") else { return 0 }
+        return Double(t[r.upperBound...].filter(\.isNumber)) ?? 0
     }
 
     /// 두 날짜 사이 평일 수 (시작 날 빼고 끝 날 넣음). 공휴일은 모른다

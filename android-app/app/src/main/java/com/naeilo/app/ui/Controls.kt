@@ -49,6 +49,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
@@ -246,7 +247,8 @@ fun <K> Segmented(items: List<Pair<K, String>>, selection: K, onSelect: (K) -> U
 
 // ── 글 넣는 칸 ──
 
-/** TextField·SecureField 자리: 비어 있으면 회색 안내 글. secure 면 •로 가린다 */
+/** TextField·SecureField 자리: 비어 있으면 회색 안내 글. secure 면 •로 가린다.
+ *  selectAll 이면 칸에 들어올 때 들어 있던 글을 모두 골라 두어 바로 덮어쓴다 */
 @Composable
 fun InputField(
     value: String,
@@ -257,28 +259,41 @@ fun InputField(
     number: Boolean = false,
     style: TextStyle = appFont(17f),
     onSubmit: (() -> Unit)? = null,
+    selectAll: Boolean = false,
 ) {
     val dark = LocalPal.current.isDark
     val ink = Theme.ink
-    BasicTextField(
-        value, onChange, modifier.fillMaxWidth(),
-        textStyle = style.copy(color = ink),
-        singleLine = true,
-        cursorBrush = SolidColor(Theme.teal),
-        visualTransformation = if (secure) PasswordVisualTransformation('•') else VisualTransformation.None,
-        keyboardOptions = KeyboardOptions(
-            autoCorrectEnabled = false,
-            keyboardType = if (secure) KeyboardType.Password else if (number) KeyboardType.Number else KeyboardType.Text,
-            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
-        ),
-        keyboardActions = KeyboardActions(onDone = { onSubmit?.invoke() }, onGo = { onSubmit?.invoke() }),
-        decorationBox = { inner ->
-            Box(contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty()) T(placeholder, style = style, color = Sys.placeholder(dark), maxLines = 1)
-                inner()
-            }
-        },
+    val textStyle = style.copy(color = ink)
+    val cursor = SolidColor(Theme.teal)
+    val visual = if (secure) PasswordVisualTransformation('•') else VisualTransformation.None
+    val keys = KeyboardOptions(
+        autoCorrectEnabled = false,
+        keyboardType = if (secure) KeyboardType.Password else if (number) KeyboardType.Number else KeyboardType.Text,
+        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
     )
+    val actions = KeyboardActions(onDone = { onSubmit?.invoke() }, onGo = { onSubmit?.invoke() })
+    val deco: @Composable (@Composable () -> Unit) -> Unit = { inner ->
+        Box(contentAlignment = Alignment.CenterStart) {
+            if (value.isEmpty()) T(placeholder, style = style, color = Sys.placeholder(dark), maxLines = 1)
+            inner()
+        }
+    }
+    if (!selectAll) {
+        BasicTextField(value, onChange, modifier.fillMaxWidth(), textStyle = textStyle, singleLine = true, cursorBrush = cursor,
+            visualTransformation = visual, keyboardOptions = keys, keyboardActions = actions, decorationBox = deco)
+        return
+    }
+    var tf by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(value)) }
+    var fresh by remember { mutableStateOf(false) }   // 막 들어왔다: 누른 자리에 커서를 두려는 첫 바뀜을 전체 고름으로 바꾼다
+    if (tf.text != value) tf = androidx.compose.ui.text.input.TextFieldValue(value, androidx.compose.ui.text.TextRange(value.length))
+    val all = { t: String -> androidx.compose.ui.text.TextRange(0, t.length) }
+    BasicTextField(tf, { n ->
+            if (fresh && n.text == tf.text) { fresh = false; tf = n.copy(selection = all(n.text)) }
+            else { fresh = false; tf = n; if (n.text != value) onChange(n.text) }
+        },
+        modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) { if (!fresh) { fresh = true; tf = tf.copy(selection = all(tf.text)) } } else fresh = false },
+        textStyle = textStyle, singleLine = true, cursorBrush = cursor,
+        visualTransformation = visual, keyboardOptions = keys, keyboardActions = actions, decorationBox = deco)
 }
 
 // ── 고르기 창 (confirmationDialog) ──

@@ -58,7 +58,33 @@ final class Market {
     // 샘플 종목 DRNK 의 하루 움직임 (샘플 기록의 마지막 날). 다른 종목은 받은 시세가 없으면 움직임을 만들지 않는다
     static let todayMove: [String: Double] = ["DRNK": -0.0221]
 
+    /// 종목마다 마지막으로 받은 0보다 큰 시세 (GoodQuotes, 기기에 남는다). 바뀐 값만 표시해 두고 시세 갱신 끝에 한 번 쓴다
+    @ObservationIgnored private var good: [String: [Double]] = GoodQuotes.read()
+    @ObservationIgnored private var goodDirty = false
+    @ObservationIgnored private let goodLock = NSLock()
+    /// 바뀐 좋은 값이 있으면 기기에 쓴다 (시세 갱신 끝, 처음 값을 받은 종목)
+    func saveGood() {
+        goodLock.lock()
+        let d: [String: [Double]]? = goodDirty ? good : nil
+        goodDirty = false
+        goodLock.unlock()
+        if let d { GoodQuotes.write(d) }
+    }
+    /// 모든 시세(토스·Alpaca·Longbridge·사이트·Yahoo)가 모이는 곳. 합친 값이 0이면 마지막 좋은 값을 쓴다 (실패·0·nil 은 좋은 값을 덮지 않는다)
     func quote(_ s: Symbol) -> Quote {
+        let q = mergedQuote(s)
+        if s.id == KoreaEstimate.sumId { return q }   // 국내 주식 합계 0 = 다 팔았어요 (실제 값)
+        goodLock.lock()
+        let old = good[s.id]
+        if q.last > 0, old == nil || old![0] != q.last || old![1] != q.prevClose {
+            good[s.id] = [q.last, q.prevClose, q.live ? 1 : 0, Date().timeIntervalSince1970]
+            goodDirty = true
+        }
+        goodLock.unlock()
+        if q.last > 0 { if old == nil { saveGood() }; return q }
+        return old.map { Quote(last: $0[0], prevClose: $0[1], live: $0[2] > 0) } ?? q
+    }
+    private func mergedQuote(_ s: Symbol) -> Quote {
         let b = yahooQuote(s)
         if let t = tossLast(s) { return Quote(last: t, prevClose: tossPrev(s, b) ?? t, live: true) }
         // Alpaca·Longbridge: 전일 종가는 사이트(공식 종가)가 먼저, 없으면 받은 전일 종가
@@ -232,6 +258,7 @@ final class Market {
         await tossWait
         await alpacaWait
         await lbWait
+        saveGood()
         updatedAt = Date()
     }
 
@@ -475,7 +502,8 @@ enum SitePrices {
 enum TossHistory {
     struct FX: Codable { var rate: Double; var prev: Double; var got: Double }   // 지금, 24시간 전, 받은 시각(초)
     /// h 키 = 사이트 티커, day = 그 종목을 마지막으로 받은 날
-    struct File: Codable { var h: [String: YahooSample.Hist]; var day: [String: String]; var fx: FX? }
+    /// krx = 국내 종목의 날짜별 KRX 종가 (15:31 1분봉), krxTry = 그 날짜를 마지막으로 물은 시각
+    struct File: Codable { var h: [String: YahooSample.Hist]; var day: [String: String]; var fx: FX?; var krx: [String: [String: Double]]? = nil; var krxTry: [String: Double]? = nil }
     static let name = "toss_history.json"
     static func cached() -> File? { TossKeys.on ? Store.read(File.self, name) : nil }
 
@@ -554,6 +582,29 @@ enum TossHistory {
             f.day[k] = stamp
             ohlc.day[k] = stamp; ohlcDirty = true   // 캔들을 물어본 날 (짧아도 그날은 다시 안 묻는다)
             if !rows.isEmpty { ohlc.merge(k, rows, full: full, keep: { $0 >= from && ($0 < md || ($0 == md && closed)) }); ohlcDirty = true }
+        }
+        // 국내 일봉 종가는 KRX+NXT 통합이라 NXT 애프터마켓(~20:00) 마지막 값이다 (토스 Open API FAQ).
+        // 토스 기준가(전일 종가)는 KRX 종가라서, 종가 단일가 체결이 들어가는 그날 15:31 1분봉 종가로 최근 두 날의 일봉 종가를 바꾼다.
+        // 날짜마다 한 번 받으면 끝 (못 받으면 1시간 뒤 다시)
+        var krx = f.krx ?? [:], krxTry = f.krxTry ?? [:]
+        for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop && (y.hasSuffix(".KS") || y.hasSuffix(".KQ")) {
+            guard let c = TossFeed.code(y), let hk = f.h[k] else { continue }
+            let recent = Array(hk.dates.suffix(2))
+            krx[k] = krx[k]?.filter { recent.contains($0.key) }
+            for d in recent where krx[k]?[d] == nil && (krxTry[k + "|" + d] ?? 0) < now - 3600 {
+                krxTry[k + "|" + d] = now
+                let (code, o, e) = await TossFeed.userGet("/api/toss/v1/candles?symbol=\(enc(c))&interval=1m&count=1&before=" + enc(d + "T15:31:00+09:00"))
+                if e != nil || code == 429 || code == 401 || code == 403 { stop = true; break }
+                guard code == 200, let v = ((o?["result"] as? [String: Any])?["candles"] as? [[String: Any]])?.first,
+                      let t = v["timestamp"] as? String, t.hasPrefix(d + "T15:3"), let cl = num(v["closePrice"]), cl > 0 else { continue }
+                krx[k, default: [:]][d] = cl
+            }
+        }
+        krxTry = krxTry.filter { now - $0.value < 7 * 86400 }
+        f.krx = krx; f.krxTry = krxTry
+        for (k, m) in krx where !m.isEmpty {
+            guard let h = f.h[k] else { continue }
+            f.h[k] = .init(dates: h.dates, closes: zip(h.dates, h.closes).map { m[$0] ?? $1 })
         }
         TossFeed.histMiss = miss
         if ohlcDirty { FlowBars.write(ohlc, FlowBars.tossName) }

@@ -42,8 +42,9 @@ val LocalCharHide = compositionLocalOf<Boolean?> { null }
 const val pad = 16f
 /** 위젯 그림의 기준 높이 (아이폰 작은 위젯 158pt): 설정 안내 그림(Tile)과 같다 */
 const val designH = 158f
-/** 설정 안내 그림의 폭 = 화면 폭에서 좌우 여백 16 둘·사이 12 를 빼고 반 (Tile 은 158 보다 넓으면 줄이지 않는다) */
-fun guideW(ctx: Context): Float = maxOf(158f, (ctx.resources.configuration.screenWidthDp - 44) / 2f)
+/** 설정 안내 그림의 폭 = 화면 폭에서 좌우 여백 16 둘·사이 12 를 빼고 반 (Tile 은 158 보다 넓으면 줄이지 않는다).
+ *  화면 폭은 폰 크기(480)까지만 본다: 태블릿·가로 화면에서 판이 너무 넓어져 그림이 얇은 띠로 줄어드는 것을 막는다 */
+fun guideW(ctx: Context): Float = maxOf(158f, (minOf(ctx.resources.configuration.screenWidthDp, 480) - 44) / 2f)
 /** 홈 2×2 칸의 세로/가로 비 (삼성 기본 위젯 기준) */
 const val tileRatio = 1.2f
 

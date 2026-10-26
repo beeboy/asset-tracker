@@ -222,6 +222,7 @@ object Engine {
         var tot = 0.0; var prev = 0.0
         val feedVal = mutableMapOf<String, Double>(); val feedAt = mutableMapOf<String, Double>()
         // ios: WidgetShared/Engine.swift:139,140,141,142
+        val good = GoodQuotes.read()   // 한 번 받은 종목은 0원으로 세지 않는다 (앱 Market.quote 와 같은 규칙)   // ios: WidgetShared/Engine.swift:139
         for (h in hold) {
             val ccy = f?.ccy?.get(h.t) ?: s?.hold?.firstOrNull { it.t == h.t }?.ccy ?: "USD"
             val q = f?.q?.get(h.t); val sq = site?.q?.get(h.t) ?: kr?.q?.get(h.t)
@@ -239,7 +240,8 @@ object Engine {
             }
             // ios: WidgetShared/Engine.swift:153,154,155,156,157
             val quoted: Double? = reg ?: tq?.last ?: aq?.last
-            val last = quoted ?: sq?.last ?: h.manual ?: q?.firstOrNull() ?: f?.c?.get(h.t)?.c?.filterNotNull()?.lastOrNull()
+            val got = quoted ?: sq?.last ?: h.manual ?: q?.firstOrNull() ?: f?.c?.get(h.t)?.c?.filterNotNull()?.lastOrNull()   // ios: WidgetShared/Engine.swift:155
+            val last = if ((got ?: 0.0) > 0) got else good[h.t]?.get(0) ?: got   // ios: WidgetShared/Engine.swift:156
             val tp = tq?.let { TossDaily.prev(hist, at = it.at, kr = ccy == "KRW") }
             val pc = tp ?: sq?.prev ?: (if ((q?.size ?: 0) > 1) q!![1] else null) ?: aq?.let { if (it.prev > 0) it.prev else null }
             val p = last ?: continue
