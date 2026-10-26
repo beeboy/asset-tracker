@@ -475,7 +475,8 @@ enum SitePrices {
 enum TossHistory {
     struct FX: Codable { var rate: Double; var prev: Double; var got: Double }   // 지금, 24시간 전, 받은 시각(초)
     /// h 키 = 사이트 티커, day = 그 종목을 마지막으로 받은 날
-    struct File: Codable { var h: [String: YahooSample.Hist]; var day: [String: String]; var fx: FX? }
+    /// krx = 국내 종목의 날짜별 KRX 종가 (15:31 1분봉), krxTry = 그 날짜를 마지막으로 물은 시각
+    struct File: Codable { var h: [String: YahooSample.Hist]; var day: [String: String]; var fx: FX?; var krx: [String: [String: Double]]? = nil; var krxTry: [String: Double]? = nil }
     static let name = "toss_history.json"
     static func cached() -> File? { TossKeys.on ? Store.read(File.self, name) : nil }
 
@@ -554,6 +555,29 @@ enum TossHistory {
             f.day[k] = stamp
             ohlc.day[k] = stamp; ohlcDirty = true   // 캔들을 물어본 날 (짧아도 그날은 다시 안 묻는다)
             if !rows.isEmpty { ohlc.merge(k, rows, full: full, keep: { $0 >= from && ($0 < md || ($0 == md && closed)) }); ohlcDirty = true }
+        }
+        // 국내 일봉 종가는 KRX+NXT 통합이라 NXT 애프터마켓(~20:00) 마지막 값이다 (토스 Open API FAQ).
+        // 토스 기준가(전일 종가)는 KRX 종가라서, 종가 단일가 체결이 들어가는 그날 15:31 1분봉 종가로 최근 두 날의 일봉 종가를 바꾼다.
+        // 날짜마다 한 번 받으면 끝 (못 받으면 1시간 뒤 다시)
+        var krx = f.krx ?? [:], krxTry = f.krxTry ?? [:]
+        for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop && (y.hasSuffix(".KS") || y.hasSuffix(".KQ")) {
+            guard let c = TossFeed.code(y), let hk = f.h[k] else { continue }
+            let recent = Array(hk.dates.suffix(2))
+            krx[k] = krx[k]?.filter { recent.contains($0.key) }
+            for d in recent where krx[k]?[d] == nil && (krxTry[k + "|" + d] ?? 0) < now - 3600 {
+                krxTry[k + "|" + d] = now
+                let (code, o, e) = await TossFeed.userGet("/api/toss/v1/candles?symbol=\(enc(c))&interval=1m&count=1&before=" + enc(d + "T15:31:00+09:00"))
+                if e != nil || code == 429 || code == 401 || code == 403 { stop = true; break }
+                guard code == 200, let v = ((o?["result"] as? [String: Any])?["candles"] as? [[String: Any]])?.first,
+                      let t = v["timestamp"] as? String, t.hasPrefix(d + "T15:3"), let cl = num(v["closePrice"]), cl > 0 else { continue }
+                krx[k, default: [:]][d] = cl
+            }
+        }
+        krxTry = krxTry.filter { now - $0.value < 7 * 86400 }
+        f.krx = krx; f.krxTry = krxTry
+        for (k, m) in krx where !m.isEmpty {
+            guard let h = f.h[k] else { continue }
+            f.h[k] = .init(dates: h.dates, closes: zip(h.dates, h.closes).map { m[$0] ?? $1 })
         }
         TossFeed.histMiss = miss
         if ohlcDirty { FlowBars.write(ohlc, FlowBars.tossName) }
