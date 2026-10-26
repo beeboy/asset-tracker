@@ -391,6 +391,7 @@ struct MockSettingsView: View {
     @State private var resetAsk = false
     @State private var fees = MockDesk.shared.s.fees
     @State private var auto = MockDesk.shared.s.auto
+    @State private var guards = MockDesk.shared.guards
 
     var body: some View {
         let d = MockDesk.shared
@@ -401,6 +402,7 @@ struct MockSettingsView: View {
                     exceptCard(d)
                     ledgerCard(d)
                     runCard
+                    guardCard(d)
                 }
                 .padding(16)
             }
@@ -516,6 +518,32 @@ struct MockSettingsView: View {
     }
 
     // 예전 설정 화면의 돌리기 값 (AI 칸은 뺐다)
+    /// 안전장치: 하루 손실 한도 · 한 번 주문 상한 · 모두 멈춤
+    private func guardCard(_ d: MockDesk) -> some View {
+        Card {
+            HStack {
+                mt("안전장치").appFont(16, .bold)
+                Spacer()
+                if d.dayLossHit { mt("오늘 손실 한도 넘음 · 새로 사지 않음").appFont(12, .semibold).foregroundStyle(Theme.up) }
+            }
+            Stepper(value: $guards.dayLoss, in: 0.01...0.10, step: 0.005) {
+                mt("하루 손실 한도 −" + MockFmt.num(guards.dayLoss * 100) + "%").appFont(14)
+            }
+            Stepper(value: $guards.orderCap, in: 500_000...10_000_000, step: 500_000) {
+                mt("한 번 매수 주문 ≤ " + MockFmt.man(guards.orderCap)).appFont(14)
+            }
+            Divider().overlay(Theme.line)
+            Button { if d.halted { d.resumeAll() } else { d.haltAll() } } label: {
+                mt(d.halted ? "다시 시작" : "모두 멈춤").appFont(15, .bold).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(d.halted ? Theme.teal : Theme.up, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            mt(d.halted ? "멈춤 중: 한 바퀴·돌리기·자동 팔기와 규칙 주문을 막아요. 손 주문은 돼요."
+                        : "누르면 모든 대기 주문을 취소하고 자동매매를 멈춰요.").appFont(12).foregroundStyle(Theme.muted)
+        }
+    }
+
     private var runCard: some View {
         Card {
             mt("돌리기").appFont(16, .bold)
@@ -539,9 +567,10 @@ struct MockSettingsView: View {
         var what: [String] = []
         if fees != d.s.fees { what.append("수수료 " + String(format: "%.3f%%", fees.commission * 100) + " · 세금 " + String(format: "%.2f%%", fees.sellTax * 100)) }
         if auto != d.s.auto { what.append(auto == 0 ? "자동 끔" : "자동 \(auto)분") }
+        if guards != d.guards { what.append("하루 손실 한도 −" + MockFmt.num(guards.dayLoss * 100) + "% · 한 번 주문 " + MockFmt.man(guards.orderCap)) }
         guard !what.isEmpty else { return }
         d.edit("설정 · " + what.joined(separator: " · ")) { s in
-            s.fees = fees; s.auto = auto
+            s.fees = fees; s.auto = auto; s.guards = guards
         }
     }
 }

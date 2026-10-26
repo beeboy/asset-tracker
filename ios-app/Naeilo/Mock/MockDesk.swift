@@ -47,6 +47,8 @@ struct MockState: Codable {
     var cycleOrder: Bool? = nil               // 지금 한 바퀴에 주문까지 (없으면 켬)
     var autoOrder: Bool? = nil                // 돌리기에 주문까지 (처음 한 번 옛 직접 검토 값에서 옮긴다: 검토 켬 → 끔)
     var slipAdded: Bool? = nil                // 미끄러짐 한도 알약을 한 번 넣었는지 (2026-10-26)
+    var guards: MockGuards? = nil             // 안전장치 (없으면 기본값)
+    var halt: Bool? = nil                     // 모두 멈춤: 대기 주문 취소 + 자동매매·규칙 주문 정지 (손 주문은 된다)
     var autoSell: Bool? = nil                 // 돌리기(1분 주기)에 팔기까지 (없으면 켬)
 
     static func fresh(_ now: Date) -> MockState {
@@ -456,8 +458,8 @@ final class MockDesk {
         guard busy == nil else { return }
         busy = "cycle"
         await keepAlive("cycle")
-        if s.runs["observe"]?.ok == true { await select(buy: cycleOrder) }
-        if cycleSell && paused == nil { await sellNow() }
+        if s.runs["observe"]?.ok == true && !halted { await select(buy: cycleOrder) }
+        if cycleSell && paused == nil && !halted { await sellNow() }
         busy = nil
         save()
         startAIReview()
@@ -486,6 +488,12 @@ final class MockDesk {
         let ph = await refreshPhase()
         guard ph != .unknown else { log(.error, book: b, who: who, code: code, name: name, text: "장 일정 확인 못 함 · 새로 사지 않음", ref: ref); return false }
         let test = ph == .closed
+        // 안전장치: 모두 멈춤 · 하루 손실 한도 (손 주문은 막지 않는다)
+        if who != .hand && halted { log(.reject, book: b, who: who, code: code, name: name, text: "모두 멈춤 중 · 안 냄", test: test, side: .buy, ref: ref); return false }
+        if who != .hand && !test && dayLossHit {
+            log(.reject, book: b, who: who, code: code, name: name, text: "하루 손실 한도 −\(MockFmt.num(guards.dayLoss * 100))% 넘음 · 새로 사지 않음", test: test, side: .buy, ref: ref)
+            return false
+        }
         // 주문 직전에 예외를 또 한 번 막는다 (손 주문은 막지 않는다)
         if who != .hand, let why = excluded()[code] { log(.exclude, book: b, who: who, code: code, name: name, text: "주문 직전 예외 · " + why, ref: ref); return false }
         if ledger(b).pending.contains(where: { $0.code == code }) { log(.order, book: b, who: who, code: code, name: name, text: "같은 종목 주문 대기 중 · 안 냄", ref: ref); return false }
@@ -504,6 +512,8 @@ final class MockDesk {
         // 묶을 돈이 현금보다 크면 살 수 있는 만큼으로 줄인다
         let mult = type == .market ? 1.02 : 1
         q = min(q, Int((l.cash / (px * mult * (1 + s.fees.commission))).rounded(.down)))
+        // 안전장치: 한 번 매수 주문 금액 상한 (손 주문도)
+        q = min(q, Int((guards.orderCap / (px * mult * (1 + s.fees.commission))).rounded(.down)))
         guard q >= 1 else {
             log(l.cash < px ? .short : .order, book: b, who: who, code: code, name: name,
                 text: l.cash < px ? "현금 부족 · 남은 " + MockFmt.won(l.cash) : "0주 · 주문 안 냄 (정상)", test: test, ref: ref)
@@ -536,6 +546,7 @@ final class MockDesk {
         let selling = ledger(b).pending.filter { $0.code == code && $0.side == .sell }.reduce(0) { $0 + $1.qty }
         let q = min(qty ?? p.qty, p.qty - selling)
         guard q >= 1 else { return false }
+        if who != .hand && halted { log(.reject, book: b, who: who, code: code, name: p.name, text: "모두 멈춤 중 · 안 냄", side: .sell, ref: ref); return false }
         let ph = await refreshPhase()
         let test = ph != .open
         var book: MockCalc.Book
@@ -586,6 +597,29 @@ final class MockDesk {
         log(.cancel, book: b, who: o.who, code: o.code, name: o.name, text: "남은 \(o.qty)주 취소 · 30분 안에 다 못 채움", ref: o.id)
         Task { await broker.cancel(o) }
     }
+
+    var guards: MockGuards { s.guards ?? MockGuards() }
+    var halted: Bool { s.halt == true }
+
+    /// 하루 손실 한도를 넘었나 (규칙 장부: 오늘 시작 평가액 대비)
+    var dayLossHit: Bool { let base = dayBase; return base > 0 && equity(.rule) <= base * (1 - guards.dayLoss) }
+
+    /// 모두 멈춤: 모든 대기 주문을 취소하고 묶은 돈을 돌려준다. 자동매매(한 바퀴·돌리기·자동 팔기)와 규칙 주문을 막는다
+    func haltAll() {
+        s.halt = true
+        for i in s.ledgers.indices {
+            let os = s.ledgers[i].pending
+            s.ledgers[i].cash += os.reduce(0) { $0 + max(0, $1.reserved) }
+            s.ledgers[i].pending = []
+            for o in os {
+                log(.cancel, book: s.ledgers[i].book, who: .hand, code: o.code, name: o.name, text: "모두 멈춤 · 남은 \(o.qty)주 취소", ref: o.id)
+                Task { await broker.cancel(o) }
+            }
+        }
+        log(.rules, book: .rule, text: "모두 멈춤")
+        save()
+    }
+    func resumeAll() { edit("모두 멈춤 풂") { $0.halt = nil } }
 
     /// 마감 동시호가 (정규장 끝 10분 전부터 끝까지): 접수만 하고 끝나는 시각에 단일가로 체결
     func inCloseAuction(_ now: Date = Date()) -> Bool {
@@ -698,7 +732,7 @@ final class MockDesk {
         }
         // 팔기 규칙 (규칙 장부, 장중 가격)
         // 자동 팔기는 돌리기가 켜져 있고(간격 > 0) 돌리기 팔기 알약이 켜져 있을 때만 (2026-10-26)
-        if ph != .unknown && s.sell.on && s.auto > 0 && autoSell {
+        if ph != .unknown && s.sell.on && s.auto > 0 && autoSell && !halted {
             let today = MockFmt.day(Date())
             let sigs = MockCalc.sellSignals(ledger(.rule), rule: s.sell, prices: s.prices, excluded: excluded(), today: today)
             var n = 0
@@ -711,7 +745,7 @@ final class MockDesk {
         }
         // 한 바퀴 자동 (장중만)
         var picked = false
-        if s.auto > 0 && ph == .open, paused == "auto" || Date().timeIntervalSince(s.runs["observe"]?.at ?? .distantPast) >= Double(s.auto * 60) {
+        if s.auto > 0 && ph == .open && !halted, paused == "auto" || Date().timeIntervalSince(s.runs["observe"]?.at ?? .distantPast) >= Double(s.auto * 60) {
             obsFrom = "auto"
             await observe()
             // 훑기가 끝났을 때만 고른다 (멈춤·실패면 옛 결과로 고르지 않는다)

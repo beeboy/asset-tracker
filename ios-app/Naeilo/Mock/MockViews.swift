@@ -233,6 +233,7 @@ struct MockStatePill: View {
     private func state(_ now: Date) -> (String, Color) {
         let d = MockDesk.shared
         if let b = d.busy { return (MockDesk.busyName(b) + " 중", BoxInk.gold) }
+        if d.halted { return ("모두 멈춤", BoxInk.up) }
         switch d.phase {
         case .open:
             guard let at = d.s.pricesAt ?? d.s.runs["observe"]?.at else { return ("정상", BoxInk.good) }

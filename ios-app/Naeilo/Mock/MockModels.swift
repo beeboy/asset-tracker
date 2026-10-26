@@ -277,6 +277,12 @@ struct MockSellRule: Codable, Equatable {
     var on: Bool { stopLoss != nil || takeProfit != nil || maxDays != nil }
 }
 
+/// 안전장치 (실전 전에 꼭 필요한 막음). 기본: 하루 손실 −3%, 한 번 주문 300만원
+struct MockGuards: Codable, Equatable {
+    var dayLoss: Double = 0.03        // 오늘 시작 평가액보다 이만큼 내리면 새로 사지 않는다
+    var orderCap: Double = 3_000_000  // 한 번 매수 주문 금액 상한 (원, 수수료 포함)
+}
+
 /// 수수료·세금 (설정값). 2026-10 확인: 토스증권 국내 0.015%, 증권거래세 매도 0.20%(코스피 거래세 0.05%+농특세 0.15%, 코스닥 0.20%)
 struct MockFees: Codable, Equatable {
     var commission: Double = 0.00015
