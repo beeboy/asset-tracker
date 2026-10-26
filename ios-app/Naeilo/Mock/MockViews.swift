@@ -861,14 +861,20 @@ struct MockScreen<Content: View>: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 0) {
                     AppHeader(tab: tab.name)
-                    Group {
+                    // 계좌 탭만: 실전 규칙 목록 · 모의투자 설정 (그 뒤에 전환)
                     if tab == .account {
-                        // 계좌 탭: 실전 규칙 목록 (모의투자에 실전 매매 규칙을 어떻게 반영했나)
                         Button { live = true } label: {
                             Image(systemName: "checkmark.shield").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
                                 .frame(width: 44, height: 44).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain).accessibilityLabel(Text(verbatim: "실전 규칙"))
+                    }
+                    if let gear {
+                        Button(action: gear) {
+                            Image(systemName: "gearshape").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
+                                .frame(width: 44, height: 44).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).accessibilityLabel(Text(verbatim: "모의투자 설정"))
                     }
                     // 모의 ↔ 실전 전환: 누를 때마다 바뀌고 네 탭이 같이 따른다
                     Button { d.show(d.shown == .real ? .rule : .real) } label: {
@@ -877,16 +883,7 @@ struct MockScreen<Content: View>: View {
                             .frame(width: 44, height: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain).accessibilityLabel(Text(verbatim: d.shown == .real ? "실전 · 눌러서 모의로" : "모의 · 눌러서 실전으로"))
-                    }
-                    .padding(.trailing, gear == nil ? 8 : 0)
-                    if let gear {
-                        Button(action: gear) {
-                            Image(systemName: "gearshape").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
-                                .frame(width: 44, height: 44).contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain).accessibilityLabel(Text(verbatim: "모의투자 설정"))
-                        .padding(.trailing, 8)
-                    }
+                    .padding(.trailing, 8)
                 }
                 .padding(.horizontal, -16)
                 MockTabBox(tab: tab)

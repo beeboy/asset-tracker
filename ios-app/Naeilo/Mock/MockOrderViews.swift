@@ -68,7 +68,6 @@ extension MockDesk {
 struct MockJournalView: View {
     @State private var unit = MockCalc.Unit.hour   // 그래프 기본은 시간 (2026-10-26)
     @State private var downFirst = false
-    @State private var settings = false
     @State private var pastOpen = false
     @State private var noteOpen = false
     @State private var noteMore = false
@@ -91,7 +90,7 @@ struct MockJournalView: View {
 
     var body: some View {
         let d = MockDesk.shared
-        MockScreen(tab: .journal, gear: { settings = true }) {
+        MockScreen(tab: .journal) {
             retCard(d)
             sellCard(d)
             mineCard(d)
@@ -101,7 +100,6 @@ struct MockJournalView: View {
             noteCard(d)
         }
         .onPreferenceChange(HoldColW.self) { colW = $0 }
-        .sheet(isPresented: $settings) { MockSettingsView() }
         .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name, fills: true) }
     }
 
@@ -401,6 +399,7 @@ struct MockJournalView: View {
 // MARK: 계좌 (투자 모드 5번째 칸. [모의]·[실전]을 따라 그 장부를 그림으로)
 
 struct MockAccountView: View {
+    @State private var settings = false
     @State private var liveAsk = false
     @State private var note: String?
     @State private var editRow: MockPickRow?
@@ -408,13 +407,14 @@ struct MockAccountView: View {
 
     var body: some View {
         let d = MockDesk.shared
-        MockScreen(tab: .account) {
+        MockScreen(tab: .account, gear: { settings = true }) {
             ordersCard(d)
             gapCard(d)
             lights(d)
         }
         .task { await d.refreshAccount() }
         .sheet(item: $editRow) { MockRowEdit(row: $0).presentationDetents([.large]) }
+        .sheet(isPresented: $settings) { MockSettingsView() }
         .confirmationDialog(Text(verbatim: "실전을 켤까요?"), isPresented: $liveAsk, titleVisibility: .visible) {
             Button(role: .destructive) { note = d.setLive(true) } label: { mt("실전 켜기 (실제 주문)") }
         }
@@ -645,7 +645,7 @@ struct MockAccountView: View {
     }
 }
 
-// MARK: 모의투자 설정 (일지 머리 톱니)
+// MARK: 모의투자 설정 (계좌 머리 톱니)
 
 struct MockSettingsView: View {
     @Environment(\.dismiss) private var dismiss
