@@ -129,6 +129,9 @@
 		F11B0000000000000000A003 /* Flip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11B0000000000000000A001 /* Flip.swift */; };
 		FC6AE379FED8F5046A3A423E /* BrickGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E017F73412CCEE93530DD9EE /* BrickGameView.swift */; };
 		FFBF09FFE7A73E919A8C69C3 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF12A424D20E007AF664931 /* BoardView.swift */; };
+		D0A7C4000000000000000007 /* NaeiloWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = D0A7C4000000000000000005 /* NaeiloWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D0A7C4000000000000000008 /* NaeiloWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D0A7C4000000000000000006 /* NaeiloWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D0A7C4000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4580C08E6C4978E007DCE313 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -138,6 +141,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = C2E896DE506F62478F396594;
 			remoteInfo = NaeiloWidgets;
+		};
+		D0A7C4000000000000000012 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8C78CE43616DD983FACD89C9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D0A7C4000000000000000010;
+			remoteInfo = NaeiloWatch;
+		};
+		D0A7C4000000000000000013 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8C78CE43616DD983FACD89C9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D0A7C4000000000000000011;
+			remoteInfo = NaeiloWatchWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -149,6 +166,28 @@
 			dstSubfolderSpec = 13;
 			files = (
 				789CAF4CCBE1155775CDFEA7 /* NaeiloWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0A7C400000000000000000A /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				D0A7C4000000000000000007 /* NaeiloWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0A7C400000000000000000B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D0A7C4000000000000000008 /* NaeiloWatchWidgets.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -275,7 +314,15 @@
 		FAC9ED0D8EABF51ACFAABE54 /* Guide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Guide.swift; sourceTree = "<group>"; };
 		FF24101939FAE2699976EF9A /* Me.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Me.swift; sourceTree = "<group>"; };
 		FFF12A424D20E007AF664931 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
+		D0A7C4000000000000000005 /* NaeiloWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NaeiloWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0A7C4000000000000000006 /* NaeiloWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NaeiloWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D0A7C4000000000000000001 /* Shared */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Shared; sourceTree = "<group>"; };
+		D0A7C4000000000000000002 /* App */ = {isa = PBXFileSystemSynchronizedRootGroup; path = App; sourceTree = "<group>"; };
+		D0A7C4000000000000000003 /* Widgets */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Widgets; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXGroup section */
 		A0C0DE00000000000000FF01 /* Mock */ = {
@@ -437,6 +484,8 @@
 			children = (
 				F34CF3A1B831F99BE76F325E /* NaeiloApp.app */,
 				8879E43C67DB54529B3BAB25 /* NaeiloWidgets.appex */,
+				D0A7C4000000000000000005 /* NaeiloWatch.app */,
+				D0A7C4000000000000000006 /* NaeiloWatchWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -488,8 +537,19 @@
 				B2799FA28A6FE68EF88E385F /* Naeilo */,
 				4BEA86B22E7037D4B0C2A858 /* Widgets */,
 				7F18AAA401CEBA8091E5F643 /* WidgetShared */,
+				D0A7C4000000000000000004 /* Watch */,
 				966FF51AA3B80E1032443E76 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		D0A7C4000000000000000004 /* Watch */ = {
+			isa = PBXGroup;
+			children = (
+				D0A7C4000000000000000001 /* Shared */,
+				D0A7C4000000000000000002 /* App */,
+				D0A7C4000000000000000003 /* Widgets */,
+			);
+			path = Watch;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -503,12 +563,17 @@
 				774616BC84B2C3A599B85107 /* Resources */,
 				B11D0A000000000000000003 /* 시세 자료 넣기 */,
 				8054E53D3E26278BFFC23C39 /* Embed Foundation Extensions */,
+				D0A7C400000000000000000A /* Embed Watch Content */,
 				B11D0A000000000000000001 /* 빌드 번호 */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				82DC4D342FE5D20CFFF59DF1 /* PBXTargetDependency */,
+				D0A7C4000000000000000014 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D0A7C4000000000000000001 /* Shared */,
 			);
 			name = NaeiloApp;
 			packageProductDependencies = (
@@ -536,6 +601,52 @@
 			productReference = 8879E43C67DB54529B3BAB25 /* NaeiloWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		D0A7C4000000000000000010 /* NaeiloWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0A7C4000000000000000016 /* Build configuration list for PBXNativeTarget "NaeiloWatch" */;
+			buildPhases = (
+				D0A7C400000000000000000C /* Sources */,
+				D0A7C400000000000000000D /* Resources */,
+				D0A7C400000000000000000B /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D0A7C4000000000000000015 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D0A7C4000000000000000001 /* Shared */,
+				D0A7C4000000000000000002 /* App */,
+			);
+			name = NaeiloWatch;
+			packageProductDependencies = (
+			);
+			productName = NaeiloWatch;
+			productReference = D0A7C4000000000000000005 /* NaeiloWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D0A7C4000000000000000011 /* NaeiloWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0A7C4000000000000000017 /* Build configuration list for PBXNativeTarget "NaeiloWatchWidgets" */;
+			buildPhases = (
+				D0A7C400000000000000000E /* Sources */,
+				D0A7C400000000000000000F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D0A7C4000000000000000001 /* Shared */,
+				D0A7C4000000000000000003 /* Widgets */,
+			);
+			name = NaeiloWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = NaeiloWatchWidgets;
+			productReference = D0A7C4000000000000000006 /* NaeiloWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -550,6 +661,14 @@
 						ProvisioningStyle = Automatic;
 					};
 					C2E896DE506F62478F396594 = {
+						DevelopmentTeam = 252W43H2KE;
+						ProvisioningStyle = Automatic;
+					};
+					D0A7C4000000000000000010 = {
+						DevelopmentTeam = 252W43H2KE;
+						ProvisioningStyle = Automatic;
+					};
+					D0A7C4000000000000000011 = {
 						DevelopmentTeam = 252W43H2KE;
 						ProvisioningStyle = Automatic;
 					};
@@ -572,6 +691,8 @@
 			targets = (
 				4CD994AFCA420BCE79EF6287 /* NaeiloApp */,
 				C2E896DE506F62478F396594 /* NaeiloWidgets */,
+				D0A7C4000000000000000010 /* NaeiloWatch */,
+				D0A7C4000000000000000011 /* NaeiloWatchWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -605,6 +726,21 @@
 				17F4BF227BB8ABA88817F833 /* PrivacyInfo.xcprivacy in Resources */,
 				E7A1C0DE00000000000000C3 /* Localizable.xcstrings in Resources */,
 				E7A1C0DE00000000000000B1 /* lines_en.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0A7C400000000000000000D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0A7C400000000000000000F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0A7C4000000000000000009 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -791,6 +927,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D0A7C400000000000000000C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0A7C400000000000000000E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -798,6 +948,16 @@
 			isa = PBXTargetDependency;
 			target = C2E896DE506F62478F396594 /* NaeiloWidgets */;
 			targetProxy = 33810E4C8C878B3091330E5C /* PBXContainerItemProxy */;
+		};
+		D0A7C4000000000000000014 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D0A7C4000000000000000010 /* NaeiloWatch */;
+			targetProxy = D0A7C4000000000000000012 /* PBXContainerItemProxy */;
+		};
+		D0A7C4000000000000000015 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D0A7C4000000000000000011 /* NaeiloWatchWidgets */;
+			targetProxy = D0A7C4000000000000000013 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1021,6 +1181,88 @@
 			};
 			name = Debug;
 		};
+		D0A7C4000000000000000018 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Watch/Watch.entitlements;
+				INFOPLIST_FILE = "Watch/App-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.naeilo.widget.watchkitapp;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		D0A7C4000000000000000019 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Watch/Watch.entitlements;
+				INFOPLIST_FILE = "Watch/App-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.naeilo.widget.watchkitapp;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		D0A7C400000000000000001A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Watch/Watch.entitlements;
+				INFOPLIST_FILE = "Watch/Widgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.naeilo.widget.watchkitapp.widgets;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WATCH_WIDGET";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		D0A7C400000000000000001B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Watch/Watch.entitlements;
+				INFOPLIST_FILE = "Watch/Widgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.naeilo.widget.watchkitapp.widgets;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WATCH_WIDGET";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1047,6 +1289,24 @@
 			buildConfigurations = (
 				D92E76F917EFEFD58DCB0BB3 /* Debug */,
 				72AAC524E4826297423654C5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D0A7C4000000000000000016 /* Build configuration list for PBXNativeTarget "NaeiloWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0A7C4000000000000000018 /* Debug */,
+				D0A7C4000000000000000019 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D0A7C4000000000000000017 /* Build configuration list for PBXNativeTarget "NaeiloWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0A7C400000000000000001A /* Debug */,
+				D0A7C400000000000000001B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

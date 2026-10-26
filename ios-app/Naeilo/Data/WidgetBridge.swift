@@ -89,6 +89,11 @@ enum WidgetBridge {
         reward.news = Remind.shared.widgetNews; reward.badge = Remind.shared.widgetBadge; reward.newsDay = Day.today
         MeArt.push(m)
         Store.write(reward, "reward.json")
+        // 워치 위젯: 앱 홈의 인물과 같은 값 (워치는 이 App Group 을 못 읽어 따로 보낸다)
+        let wc = WChar.of(reward.homeFriend ?? "seri")
+        WatchSync.shared.send(WWatch(at: now.timeIntervalSince1970 * 1000, char: wc.id, accent: wc.accent, g0: wc.g0, g1: wc.g1,
+                                     total: reward.total, dayChg: reward.dayChg, spark: reward.spark ?? [], keyName: reward.keyName,
+                                     pct: reward.pct, line: wc.line(reward)))
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")
         Store.write(live, "live.json")
