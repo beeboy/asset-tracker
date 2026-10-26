@@ -281,6 +281,8 @@ struct MockSellRule: Codable, Equatable {
 struct MockGuards: Codable, Equatable {
     var dayLoss: Double = 0.03        // 오늘 시작 평가액보다 이만큼 내리면 새로 사지 않는다
     var orderCap: Double = 3_000_000  // 한 번 매수 주문 금액 상한 (원, 수수료 포함)
+    var apiPerSec: Double? = nil      // 토스 시세 호출 한도 (초당 번, 없으면 5)
+    var perSec: Double { apiPerSec ?? 5 }
 }
 
 /// 수수료·세금 (설정값). 2026-10 확인: 토스증권 국내 0.015%, 증권거래세 매도 0.20%(코스피 거래세 0.05%+농특세 0.15%, 코스닥 0.20%)
@@ -346,6 +348,13 @@ struct MockOrder: Codable, Equatable, Identifiable {
     var auction: Bool? = nil     // 마감 동시호가에 접수: 15:30 단일가로 체결
 }
 
+/// 결제 대기 돈 한 건: 판 날부터 2영업일 뒤(T+2)에 현금이 된다
+struct MockSettle: Codable, Equatable {
+    var amount: Double
+    var day: String              // 결제일 (yyyy-MM-dd)
+    var code: String
+}
+
 /// 가상 계좌 하나
 struct MockLedger: Codable, Equatable, Identifiable {
     var id = UUID()
@@ -358,7 +367,9 @@ struct MockLedger: Codable, Equatable, Identifiable {
     var ended: Date? = nil                 // 처음부터 다시 하면 닫고 보관
     var fees: Double = 0                   // 낸 수수료 합
     var taxes: Double = 0                  // 낸 세금 합
+    var unsettled: [MockSettle]? = nil     // 판 돈 중 결제 대기 (T+2). 이 돈으로는 사지 못한다
     var reserved: Double { pending.reduce(0) { $0 + $1.reserved } }
+    var settling: Double { (unsettled ?? []).reduce(0) { $0 + $1.amount } }
 }
 
 // MARK: 기록
@@ -366,7 +377,7 @@ struct MockLedger: Codable, Equatable, Identifiable {
 /// 한 기록 파일에 차례로 쌓는 줄. 지난 줄은 고치지 않는다
 struct MockEvent: Codable, Equatable, Identifiable {
     enum Kind: String, Codable {
-        case scan, exclude, select, short, order, fill, wait, cancel, sell, reset, rules, ai, error, reject
+        case scan, exclude, select, short, order, fill, wait, cancel, sell, reset, rules, ai, error, reject, settle, check
         var name: String {
             switch self {
             case .scan: return "관찰"
@@ -383,6 +394,8 @@ struct MockEvent: Codable, Equatable, Identifiable {
             case .ai: return "AI"
             case .error: return "오류"
             case .reject: return "거부"
+            case .settle: return "결제"
+            case .check: return "잔고 맞추기"
             }
         }
     }
@@ -497,8 +510,16 @@ enum MockLive {
         Rule(name: "하루 손실 한도", how: "오늘 시작 평가액보다 −3%(설정) 넘게 내리면 새로 사지 않는다. 팔기·손 주문은 된다", gap: nil),
         Rule(name: "한 번 주문 상한", how: "한 번 매수 주문은 300만원(설정)까지. 손 주문도", gap: nil),
         Rule(name: "모두 멈춤", how: "설정의 단추. 모든 대기 주문을 취소하고 한 바퀴·돌리기·자동 팔기와 규칙 주문을 막는다. 손 주문은 된다", gap: nil),
-        Rule(name: "아직 없는 것", how: "—",
-             gap: "결제(T+2)·증거금·미수, 계좌 잔고 맞추기, 토스 API 호출 한도, 체결 알림"),
+        Rule(name: "결제 T+2", how: "판 돈은 2영업일 뒤에 현금이 된다. 그 전엔 '결제 대기'로 따로 두고 평가액에는 넣는다",
+             gap: "공휴일은 몰라 주말만 뺀다. 장 밖 시험으로 판 돈은 바로 현금"),
+        Rule(name: "증거금 · 미수", how: "미수를 쓰지 않는다. 현금보다 큰 손 주문은 거부하고, 결제 대기 돈이면 '이틀 뒤 들어올 돈'이라 알린다",
+             gap: "실전 증거금률(종목별 40~100%)은 흉내 내지 않는다. 늘 현금 100%"),
+        Rule(name: "계좌 잔고 맞추기", how: "하루 한 번, 체결 기록을 다시 더해 장부 현금·보유 수량과 견준다. 어긋나면 설정 안전장치 칸에 표시만 한다",
+             gap: "토스 계좌 잔고와는 견주지 못한다 (토스 브로커 연결 전)"),
+        Rule(name: "토스 API 호출 한도", how: "시세·호가 부르기를 초당 5번(설정)으로 줄 세우고, 한도 응답(429)이면 기다렸다 3번까지 다시 부른다",
+             gap: "토스 실제 한도 숫자는 확인 못 했다. 서버 쪽 한도는 따로"),
+        Rule(name: "체결 알림", how: "체결 · 부분 체결 · 거부 때 휴대폰 알림. 앱을 보고 있으면 소리 없이 위쪽 띠로만. 설정에서 끈다",
+             gap: "실전은 토스 체결 통지로 알린다. 지금은 앱이 셈한 체결로 알린다"),
     ]
 }
 #endif

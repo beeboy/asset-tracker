@@ -111,7 +111,17 @@ let amt = 120 * 9_000.0
 check(L.positions.isEmpty && L.pending.isEmpty, "다 팔림")
 check(near(eSell.pnl!, amt - fees.fee(amt) - fees.tax(amt) - (f1.amount + fees.fee(f1.amount))), "손익 = 받은 돈 − 들어간 돈")
 check(near(eSell.pnlGross!, amt - f1.amount), "수수료 전 손익")
-check(near(L.cash, 10_000_000 + eSell.pnl!), "현금 = 시작 + 손익: \(L.cash)")
+check(near(L.cash + L.settling, 10_000_000 + eSell.pnl!), "현금 + 결제 대기 = 시작 + 손익: \(L.cash)")
+// 결제 T+2: 판 돈은 결제 대기, 2영업일 뒤 현금
+let sd = MockCalc.settleDay(t0.addingTimeInterval(3600))
+check(near(L.settling, amt - fees.fee(amt) - fees.tax(amt)) && L.unsettled?.first?.day == sd, "판 돈은 결제 대기 (\(sd))")
+check(MockCalc.reconcile(L, events: [eBuy, eSell]) == nil, "잔고 맞추기: 기록과 맞음")
+check(MockCalc.settle(&L, today: MockFmt.day(t0)).isEmpty, "결제일 전엔 그대로")
+check(MockCalc.settle(&L, today: sd).count == 1 && near(L.cash, 10_000_000 + eSell.pnl!) && L.unsettled == nil, "결제일에 현금으로")
+var Lbad = L; Lbad.cash += 5_000
+check(MockCalc.reconcile(Lbad, events: [eBuy, eSell])?.hasPrefix("현금") == true, "잔고 맞추기: 어긋남 찾음")
+let kf = DateFormatter(); kf.timeZone = MockFmt.kst; kf.dateFormat = "yyyy-MM-dd HH:mm"
+check(MockCalc.settleDay(kf.date(from: "2026-10-30 10:00")!) == "2026-11-03" && MockCalc.settleDay(kf.date(from: "2026-10-26 10:00")!) == "2026-10-28", "T+2 주말 건너뜀")
 check(near(L.fees, fees.fee(f1.amount) + fees.fee(amt)) && near(L.taxes, fees.tax(amt)), "수수료·세금 합")
 
 // 부분 매도: 들어간 돈 비율

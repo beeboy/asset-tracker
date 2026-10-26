@@ -185,13 +185,13 @@ struct MockTabBox: View {
         let waitBuys = Set(l.pending.filter { $0.side == .buy && l.positions[$0.code] == nil }.map(\.code))
         let n = l.positions.count + waitBuys.count + d.s.picks.count
         let bought = l.positions.values.reduce(0) { $0 + $1.cost }
-        let all = bought + l.cash + l.reserved
+        let all = bought + l.cash + l.reserved + l.settling
         let r = all > 0 ? bought / all : 0
         return MockBox(label: "고른 종목",
                        big: mt("\(n)종목").foregroundColor(BoxInk.ink),
                        side: MockFmt.man(bought),
                        tailL: mt("산 돈 " + String(format: "%.0f%%", r * 100)).foregroundColor(BoxInk.sub),
-                       tailR: "현금 " + MockFmt.man(l.cash)) {
+                       tailR: "현금 " + MockFmt.man(l.cash) + (l.settling > 0 ? " · 결제 대기 " + MockFmt.man(l.settling) : "")) {
             MockShareBar(value: r, color: Theme.gold)
         }
     }

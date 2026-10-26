@@ -2,6 +2,7 @@
 import Foundation
 import Observation
 import UIKit
+import UserNotifications
 
 /// 모의투자 저장 상태. 기록 줄은 따로 journal.jsonl 에 차례로 쌓는다
 struct MockState: Codable {
@@ -50,6 +51,9 @@ struct MockState: Codable {
     var guards: MockGuards? = nil             // 안전장치 (없으면 기본값)
     var halt: Bool? = nil                     // 모두 멈춤: 대기 주문 취소 + 자동매매·규칙 주문 정지 (손 주문은 된다)
     var autoSell: Bool? = nil                 // 돌리기(1분 주기)에 팔기까지 (없으면 켬)
+    var checks: [String: MockRun]? = nil      // 장부별 마지막 잔고 맞추기 (book → 결과)
+    var checkDay: String? = nil               // 잔고 맞추기를 한 날 (하루 한 번)
+    var fillAlert: Bool? = nil                // 체결 알림 (없으면 켬)
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -107,6 +111,10 @@ final class MockDesk {
         if s.reviewShut == nil { s.select.review = true; s.reviewShut = true; save() }
         migrate()
         if s.aiPurged != true { purgeAI() }
+        settleDue()
+        checkDaily()
+        let n = guards.perSec
+        Task { await MockGate.shared.set(n) }
     }
 
     /// 옛 묶음 조각을 관찰 조건 알약으로, 선정 규칙 값을 고르기 조건 알약으로 옮긴다 (한 번만, 묶음 데이터는 그대로 둔다)
@@ -509,14 +517,27 @@ final class MockDesk {
         let lim = limit.map { MockCalc.snap($0, side: .buy) }
         let px = type == .limit ? (lim ?? ask) : ask
         var q = qty ?? Int(((budget ?? 0) / (px * (1 + s.fees.commission))).rounded(.down))
-        // 묶을 돈이 현금보다 크면 살 수 있는 만큼으로 줄인다
         let mult = type == .market ? 1.02 : 1
-        q = min(q, Int((l.cash / (px * mult * (1 + s.fees.commission))).rounded(.down)))
+        let unit = px * mult * (1 + s.fees.commission)
         // 안전장치: 한 번 매수 주문 금액 상한 (손 주문도)
-        q = min(q, Int((guards.orderCap / (px * mult * (1 + s.fees.commission))).rounded(.down)))
+        q = min(q, Int((guards.orderCap / unit).rounded(.down)))
+        // 미수 안 씀: 주수를 정한 주문(손 주문)이 현금보다 크면 줄이지 않고 거부한다. 결제 대기 돈은 쓰지 못한다
+        let can = Int((l.cash / unit).rounded(.down))
+        if qty != nil && q > can {
+            let need = Double(q) * unit
+            let why = l.cash + l.settling >= need
+                ? "현금 부족 · 결제 대기 " + MockFmt.won(l.settling) + "은 이틀 안에 들어올 돈 · 미수 안 씀 · 거부"
+                : "현금 부족 · 필요 " + MockFmt.won(need) + " · 쓸 수 있는 돈 " + MockFmt.won(l.cash) + " · 거부"
+            log(.reject, book: b, who: who, code: code, name: name, text: why, test: test, side: .buy, qty: q, ref: ref)
+            notify("거부 · " + name, why)
+            return false
+        }
+        // 금액으로 정한 주문(규칙·AI)은 살 수 있는 만큼으로 줄인다
+        q = min(q, can)
         guard q >= 1 else {
+            let wait = l.settling > 0 ? " · 결제 대기 " + MockFmt.won(l.settling) : ""
             log(l.cash < px ? .short : .order, book: b, who: who, code: code, name: name,
-                text: l.cash < px ? "현금 부족 · 남은 " + MockFmt.won(l.cash) : "0주 · 주문 안 냄 (정상)", test: test, ref: ref)
+                text: l.cash < px ? "현금 부족 · 남은 " + MockFmt.won(l.cash) + wait : "0주 · 주문 안 냄 (정상)", test: test, ref: ref)
             return false
         }
         // 미끄러짐 한도: 다 채우면 평균 단가가 1호가 + 한도를 넘을 때, 한도 값까지만 지금 채우고 남은 몫은 지정가로 30분 기다린다
@@ -636,6 +657,7 @@ final class MockDesk {
     /// 거부: 장부는 그대로, 이유만 기록 (실전 주문 API 의 거부와 같은 자리)
     private func reject(_ b: MockBook, _ o: MockOrder, _ why: String, test: Bool) {
         log(.reject, book: b, who: o.who, code: o.code, name: o.name, text: why, test: test, side: o.side, qty: o.qty, ref: o.ref)
+        notify("거부 · " + o.name, o.side.name + " \(o.qty)주 · " + why)
     }
 
     /// 접수 뒤 체결: 브로커가 주는 호가로 채운다 (모의는 1~2초 지연 뒤 새 호가, 장 밖 시험은 받은 호가 그대로)
@@ -660,7 +682,12 @@ final class MockDesk {
         if f.qty > 0 {
             let e = o.side == .buy ? MockCalc.applyBuy(&l, orderIndex: i, fill: f, fees: s.fees, at: Date(), test: test)
                                    : MockCalc.applySell(&l, orderIndex: i, fill: f, fees: s.fees, at: Date(), test: test)
-            if let e { append(e) }
+            if let e {
+                append(e)
+                let left = l.pending.first { $0.id == orderId }?.qty
+                notify((left == nil ? "체결 · " : "부분 체결 · ") + o.name,
+                       o.side.name + " \(e.qty ?? f.qty)주 · 평균 " + MockFmt.won(f.avg) + (left.map { " · 남은 \($0)주" } ?? "") + (test ? " · 장 밖 시험" : ""))
+            }
         }
         // 다 채우지 못했으면 대기 이유
         if let j = l.pending.firstIndex(where: { $0.id == orderId }) {
@@ -702,6 +729,8 @@ final class MockDesk {
     func tick() async {
         guard active, busy == nil, !ticking, MockFeed.base != nil else { return }
         ticking = true
+        settleDue()
+        checkDaily()
         let ph = await refreshPhase()
         var watch = Set<String>()
         for l in s.ledgers { watch.formUnion(l.positions.keys); watch.formUnion(l.pending.map(\.code)) }
@@ -779,6 +808,61 @@ final class MockDesk {
         s.marks = ms
     }
 
+    // MARK: 결제 · 잔고 맞추기 · 체결 알림
+
+    /// 결제일이 된 판 돈을 현금으로 (앱을 열 때와 1분 주기마다)
+    private func settleDue() {
+        let today = MockFmt.day(Date())
+        var moved = false
+        for i in s.ledgers.indices {
+            for x in MockCalc.settle(&s.ledgers[i], today: today) {
+                moved = true
+                log(.settle, book: s.ledgers[i].book, code: x.code, name: Self.name(x.code), text: "결제 · " + MockFmt.won(x.amount) + " 현금으로 (T+2)")
+            }
+        }
+        if moved { save() }
+    }
+
+    /// 하루 한 번 장부를 체결 기록과 견준다. 어긋나도 고치지 않고 표시만
+    private func checkDaily() {
+        let today = MockFmt.day(Date())
+        guard s.checkDay != today else { return }
+        runCheck()
+    }
+    func runCheck() {
+        var out = s.checks ?? [:]
+        for l in s.ledgers {
+            let bad = MockCalc.reconcile(l, events: events)
+            out[l.book.rawValue] = MockRun(at: Date(), ok: bad == nil, text: bad ?? "맞음")
+            if let bad { log(.check, book: l.book, text: "어긋남 · " + bad) }
+        }
+        s.checks = out
+        s.checkDay = MockFmt.day(Date())
+        save()
+    }
+    func check(_ b: MockBook) -> MockRun? { s.checks?[b.rawValue] }
+
+    var fillAlert: Bool { s.fillAlert ?? true }
+    func setFillAlert(_ on: Bool) {
+        edit(on ? "체결 알림 켬" : "체결 알림 끔") { $0.fillAlert = on }
+        if on { Task { _ = await Notifier.request() } }
+    }
+    /// 체결 · 부분 체결 · 거부 알림. 앱을 보고 있으면 소리 없이 위쪽 띠로만 (NotificationDelegate)
+    private func notify(_ title: String, _ body: String) {
+        guard fillAlert else { return }
+        Task {
+            switch await Notifier.status() {
+            case .denied: return
+            case .unknown: guard await Notifier.request() else { return }
+            case .allowed: break
+            }
+            let c = UNMutableNotificationContent()
+            c.title = title; c.body = body; c.sound = .default
+            c.userInfo = ["mock": true]
+            try? await Notifier.center.add(UNNotificationRequest(identifier: "mock." + UUID().uuidString, content: c, trigger: nil))
+        }
+    }
+
     // MARK: 장부·설정 바꾸기
 
     /// 장 밖 시험으로 산 몫만 장부에서 빼고 들어간 돈을 현금으로 돌린다 (기록은 남긴다)
@@ -792,7 +876,7 @@ final class MockDesk {
             p.test = false; p.tQty = nil; p.tCost = nil; p.tGross = nil
             l.cash += c; l.fees -= c - g
             l.positions[code] = p.qty > 0 ? p : nil
-            log(.cancel, book: b, who: p.who, code: code, name: p.name, text: "시험 몫 뺌 · \(q)주 · 돌린 돈 " + MockFmt.won(c), test: true, side: .buy, qty: q, ref: p.buyRef)
+            log(.cancel, book: b, who: p.who, code: code, name: p.name, text: "시험 몫 뺌 · \(q)주 · 돌린 돈 " + MockFmt.won(c), test: true, side: .buy, qty: q, amount: c, ref: p.buyRef)
         }
         s.ledgers[i] = l
         save()
@@ -853,11 +937,11 @@ final class MockDesk {
 
     @discardableResult
     func log(_ k: MockEvent.Kind, id: UUID = UUID(), book: MockBook, who: MockWho? = nil, code: String? = nil, name: String? = nil, text: String,
-             test: Bool = false, bundle: String? = nil, side: MockSide? = nil, qty: Int? = nil, ref: UUID? = nil, ai: MockAIUse? = nil) -> MockEvent {
+             test: Bool = false, bundle: String? = nil, side: MockSide? = nil, qty: Int? = nil, amount: Double? = nil, ref: UUID? = nil, ai: MockAIUse? = nil) -> MockEvent {
         let e = MockEvent(id: id, at: Date(), ledger: ledger(book).id, book: book, kind: k, who: who, code: code, name: name, text: text, test: test,
                           bundle: bundle ?? (book == .rule && [.select, .order].contains(k) ? self.bundle?.name : nil),
                           rule: book == .rule && [.select, .order, .fill].contains(k) ? s.select.name : nil,
-                          side: side, qty: qty, ref: ref, ai: ai)
+                          side: side, qty: qty, amount: amount, ref: ref, ai: ai)
         append(e)
         return e
     }

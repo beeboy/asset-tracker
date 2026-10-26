@@ -532,6 +532,21 @@ struct MockSettingsView: View {
             Stepper(value: $guards.orderCap, in: 500_000...10_000_000, step: 500_000) {
                 mt("한 번 매수 주문 ≤ " + MockFmt.man(guards.orderCap)).appFont(14)
             }
+            Stepper(value: Binding(get: { guards.perSec }, set: { guards.apiPerSec = $0 }), in: 1...20, step: 1) {
+                mt("토스 시세 호출 초당 " + MockFmt.num(guards.perSec) + "번까지").appFont(14)
+            }
+            Toggle(isOn: Binding(get: { d.fillAlert }, set: { d.setFillAlert($0) })) {
+                mt("체결 알림 (체결·부분 체결·거부)").appFont(14)
+            }
+            .tint(Theme.teal)
+            ForEach(MockBook.allCases, id: \.self) { b in
+                if let c = d.check(b) {
+                    mt("잔고 맞추기 · " + b.name + " · " + MockFmt.stamp(c.at) + " · " + c.text).appFont(12)
+                        .foregroundStyle(c.ok ? Theme.muted : Theme.up)
+                }
+            }
+            Button { d.runCheck() } label: { mt("지금 잔고 맞춰 보기").appFont(13, .semibold).foregroundStyle(Theme.teal) }
+                .buttonStyle(.plain)
             Divider().overlay(Theme.line)
             Button { if d.halted { d.resumeAll() } else { d.haltAll() } } label: {
                 mt(d.halted ? "다시 시작" : "모두 멈춤").appFont(15, .bold).foregroundStyle(.white)
@@ -567,7 +582,11 @@ struct MockSettingsView: View {
         var what: [String] = []
         if fees != d.s.fees { what.append("수수료 " + String(format: "%.3f%%", fees.commission * 100) + " · 세금 " + String(format: "%.2f%%", fees.sellTax * 100)) }
         if auto != d.s.auto { what.append(auto == 0 ? "자동 끔" : "자동 \(auto)분") }
-        if guards != d.guards { what.append("하루 손실 한도 −" + MockFmt.num(guards.dayLoss * 100) + "% · 한 번 주문 " + MockFmt.man(guards.orderCap)) }
+        if guards != d.guards {
+            what.append("하루 손실 한도 −" + MockFmt.num(guards.dayLoss * 100) + "% · 한 번 주문 " + MockFmt.man(guards.orderCap) + " · 시세 호출 초당 " + MockFmt.num(guards.perSec) + "번")
+            let n = guards.perSec
+            Task { await MockGate.shared.set(n) }
+        }
         guard !what.isEmpty else { return }
         d.edit("설정 · " + what.joined(separator: " · ")) { s in
             s.fees = fees; s.auto = auto; s.guards = guards

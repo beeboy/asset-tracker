@@ -19,19 +19,28 @@ enum MockFeed {
         if ok { UserDefaults.standard.set(t, forKey: tokenKey) } else { UserDefaults.standard.removeObject(forKey: tokenKey) }
     }
 
+    /// 서버가 토스를 부르는 길(시세·호가·일정)은 모두 여기를 지난다. 호출 한도: 초당 N번으로 줄 세우고,
+    /// 한도 응답(429)이면 Retry-After(없으면 1·2·4초) 기다렸다 3번까지 다시 부른다
     private static func get(_ path: String, timeout: TimeInterval) async throws -> [String: Any] {
         guard let b = base, let url = URL(string: b + path) else { throw Fail(why: "개발자 서버 주소·열쇠 없음 (naeilo://mock?t=…)") }
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         req.setValue("naeilo-ios-mock/0.1", forHTTPHeaderField: "User-Agent")
         if let t = token { req.setValue(t, forHTTPHeaderField: "X-Naeilo-Dev") }
-        let data: Data, resp: URLResponse
-        do { (data, resp) = try await URLSession.shared.data(for: req) }
-        catch let e as URLError {
-            // -999 는 서버 문제가 아니라 일이 취소된 것 (화면·앱 전환). 오류가 아닌 취소로 올린다
-            if e.code == .cancelled { throw CancellationError() }
-            throw Fail(why: e.code == .timedOut ? "서버 응답 없음 (\(Int(timeout))초)" : "서버 연결 실패 (\(e.code.rawValue))")
+        var data = Data(), resp: URLResponse = URLResponse(), code = 0
+        for attempt in 0...3 {
+            try await MockGate.shared.wait()
+            do { (data, resp) = try await URLSession.shared.data(for: req) }
+            catch let e as URLError {
+                // -999 는 서버 문제가 아니라 일이 취소된 것 (화면·앱 전환). 오류가 아닌 취소로 올린다
+                if e.code == .cancelled { throw CancellationError() }
+                throw Fail(why: e.code == .timedOut ? "서버 응답 없음 (\(Int(timeout))초)" : "서버 연결 실패 (\(e.code.rawValue))")
+            }
+            code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            guard code == 429 else { break }
+            if attempt == 3 { throw Fail(why: "토스 호출 한도 · 3번 다시 불러도 막힘") }
+            let after = ((resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Retry-After")).flatMap { Double($0) } ?? pow(2, Double(attempt))
+            try await Task.sleep(for: .seconds(min(after, 10)))
         }
-        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         if code == 401 || code == 403 { throw Fail(why: "개발자 서버 열쇠가 맞지 않아요") }
         guard code == 200 else { throw Fail(why: code == 404 ? "서버에 모의투자 경로 없음 (server.py 새 판 필요)" : "서버 응답 \(code)") }
         guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw Fail(why: "응답을 읽지 못함") }
@@ -173,6 +182,19 @@ enum MockFeed {
         if let d = f.date(from: s) { return d }
         f.formatOptions = [.withInternetDateTime]
         return f.date(from: s)
+    }
+}
+/// 토스 시세 호출 한도: 부르기 사이를 1/N초 이상 띄운다 (N 은 설정 안전장치, 기본 5)
+actor MockGate {
+    static let shared = MockGate()
+    private var gap: Double = 0.2
+    private var next = Date.distantPast
+    func set(_ perSec: Double) { gap = 1 / max(1, perSec) }
+    func wait() async throws {
+        let now = Date(), at = max(now, next)
+        next = at.addingTimeInterval(gap)
+        let d = at.timeIntervalSince(now)
+        if d > 0 { try await Task.sleep(for: .seconds(d)) }
     }
 }
 #endif

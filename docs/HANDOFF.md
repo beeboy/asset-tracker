@@ -246,6 +246,7 @@
 - 코드: `ios-app/Naeilo/Mock/` 일곱 파일 전부 `#if MOCK`. MOCK 은 NAEILO_CHANNEL=internalBeta 일 때만 켜진다(`NAEILO_MOCK_$(NAEILO_CHANNEL)`, project.yml·pbxproj 둘 다). 공개 베타·출시는 코드가 아예 안 들어간다. 진입 고리는 App.swift(탭)·HomeView.swift(박스 탭) 두 곳뿐.
 - 장부를 바꾸는 곳은 MockDesk 하나. 기록은 기기 Application Support/mock/journal.jsonl (덧붙이기만), 상태는 state.json (못 읽으면 state-unread-시각.json 으로 옮겨 둠).
 - 서버: `server.py` /api/mock/daily·last·book·calendar·wallet(GET), /api/mock/ai(POST). 토스 한도는 묶음별 초당 횟수를 응답 머리로 맞춘다. Claude 키는 서버 `ai_keys.json` {"anthropic_api_key"}, 쓴 돈은 `mock_wallet.json` (둘 다 .gitignore). Lightsail 서비스 `naeilo-dev`(8765)로 돌고, 공용 중계 `toss.naeilo.com` 뒤 `/api/mock/*` 로 연다(Caddy). 열쇠: 서버 `dev_token.json` {"token"} 과 앱 머리글 `X-Naeilo-Dev` 가 같아야 답한다(아니면 403). 앱 열쇠는 `naeilo://mock?t=…` 를 한 번 열면 그 기기에만 저장. 자세히는 docs/toss-relay.md '모의투자 경로'.
+- 실전 준비 5기능(2026-10-26 드링커님): 결제 T+2(판 돈은 ledger.unsettled, 2영업일 뒤 settleDue 가 현금으로, 장 밖 시험은 바로), 미수 안 씀(주수 정한 손 주문이 현금보다 크면 거부, 결제 대기면 그 이유), 잔고 맞추기(하루 한 번 MockCalc.reconcile 로 체결 기록과 견줘 설정 안전장치 칸에 표시만), 토스 시세 호출 한도(MockGate 초당 5번·429 면 3번 다시), 체결 알림(체결·부분 체결·거부, 앱 안에선 소리 없는 띠, state.fillAlert). 안드로이드에는 모의투자가 없어 옮기지 않았다.
 - 계산 시험: `ios-app/tools/mock_test/` (명령은 main.swift 맨 위). 체결·수수료·세금·현금 부족·0주·이유 사슬·AI 답 거르기.
 - 남은 일: Lightsail 에 dev_token.json·ai_keys.json 넣고 Caddy 에 /api/mock 줄 더하기, 폰에서 naeilo://mock?t=… 열기 → 실기기에서 관찰 훑기(2~3분)·장중 정식 체결·장 밖 시험 체결·AI 한 번씩 확인 → 첫 주 AI 실제 비용 보고 한도 다시 맞춤.
 
