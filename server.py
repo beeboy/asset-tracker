@@ -446,6 +446,125 @@ def mock_get(path: str) -> dict | None:
     return None
 
 
+# ---- 토스 실주문 중계 (개발자 전용, 앱 MockTossBroker). 토스는 허용 IP 에서만 받고 키는 이 서버에만 있으므로 앱 주문은 여기를 지난다.
+# 서버 스위치 toss_live.json {"armed": true, "account_seq": "…", "max_krw": 1000000} (.gitignore). 없거나 armed 가 아니면 새 주문은 막는다.
+# 상태 보기·취소는 스위치와 상관없이 된다 (꺼도 대기 주문을 정리할 수 있게). 토스 응답은 상태 코드·본문 그대로 돌려준다.
+# 주문 기록은 toss_orders.log 에 남긴다 (종목·방향·수량·가격·결과만. 키·토큰·계좌는 안 남김).
+TOSS_LIVE = ROOT / "toss_live.json"
+TOSS_ORDERS_LOG = ROOT / "toss_orders.log"
+ORDER_ID = re.compile(r"[A-Za-z0-9_\-]{1,64}")
+CLIENT_ID = re.compile(r"[A-Za-z0-9\-]{8,64}")
+ORDER_LOG_LOCK = threading.Lock()
+TOSS_GATES.update({"order": TossGate(9), "order_history": TossGate(4)})  # 문서: ORDER 10 · ORDER_HISTORY 5 (초당)
+
+
+def live_conf() -> dict:
+    c = read_json(TOSS_LIVE, {})
+    try:
+        cap = float(c.get("max_krw") or 0)
+    except (TypeError, ValueError):
+        cap = 0.0
+    return {"armed": c.get("armed") is True, "account": str(c.get("account_seq", "")).strip(), "max_krw": cap}
+
+
+def order_log(action: str, info: dict, status: int, body: dict):
+    e = (body or {}).get("error") or {}
+    r = (body or {}).get("result") or {}
+    row = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "do": action, **info, "http": status,
+           "orderId": r.get("orderId"), "state": r.get("status"), "err": e.get("code")}
+    try:
+        with ORDER_LOG_LOCK, TOSS_ORDERS_LOG.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({k: v for k, v in row.items() if v is not None}, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def relay_err(status: int, code: str, msg: str) -> tuple[int, dict]:
+    return status, {"error": {"code": code, "message": msg}}
+
+
+def toss_order(method: str, path: str, body: dict | None, gate: str, account: str) -> tuple[int, dict]:
+    """주문 경로 한 번 부르기. 401 이면 토큰을 한 번 새로 받아 다시 (401 은 처리 안 된 요청). 429 는 앱에 그대로 (앱이 기다렸다 다시, 같은 clientOrderId 라 두 번 안 나감)"""
+    keys = toss_keys()
+    if not keys:
+        return relay_err(503, "relay-no-keys", "서버에 토스 키 없음")
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    g = TOSS_GATES[gate]
+    for renew in (False, True):
+        g.wait()
+        h = {"Authorization": "Bearer " + toss_token(keys, renew), "Accept": "application/json", "X-Tossinvest-Account": account}
+        if data is not None:
+            h["Content-Type"] = "application/json"
+        req = urllib.request.Request(TOSS + path, data=data, headers=h, method=method)
+        try:
+            with urllib.request.urlopen(req, timeout=8) as r:
+                g.seen(r.headers)
+                return r.status, json.loads(r.read().decode("utf-8") or "{}")
+        except urllib.error.HTTPError as e:
+            g.seen(e.headers or {})
+            if e.code == 401 and not renew:
+                continue
+            try:
+                return e.code, json.loads(e.read().decode("utf-8") or "{}")
+            except ValueError:
+                return relay_err(e.code, "http-%d" % e.code, "토스 오류")
+        except Exception:  # noqa: BLE001
+            return relay_err(502, "relay-unreachable", "토스에 닿지 못함")
+    return relay_err(401, "invalid-token", "토큰이 맞지 않음")
+
+
+def order_create(b: dict) -> tuple[int, dict]:
+    """앱 본문을 토스 주문 생성 본문으로 (정한 칸만, 값 검사). 서버 스위치·한 번 주문 상한을 먼저 본다"""
+    c = live_conf()
+    if not c["armed"]:
+        return relay_err(403, "relay-off", "서버 실전 꺼짐")
+    if not c["account"]:
+        return relay_err(503, "relay-no-account", "서버에 계좌 없음")
+    sym, side, kind = str(b.get("symbol", "")), b.get("side"), b.get("orderType")
+    qty, price, cid = str(b.get("quantity", "")), str(b.get("price", "")), str(b.get("clientOrderId", ""))
+    if not (MOCK_CODE.fullmatch(sym) and side in ("BUY", "SELL") and kind in ("LIMIT", "MARKET") and qty.isdigit() and int(qty) > 0
+            and CLIENT_ID.fullmatch(cid) and b.get("timeInForce", "DAY") == "DAY" and (kind == "MARKET" or price.isdigit())):
+        return relay_err(400, "invalid-request", "요청이 올바르지 않음")
+    if kind == "LIMIT":
+        unit = float(price)
+    else:  # 시장가는 지금 가격으로 어림 (상한은 안전망. 앱이 먼저 막는다)
+        unit = float(((mock_last([sym]).get("quotes") or {}).get(sym) or {}).get("last") or 0)
+        if unit <= 0:
+            return relay_err(503, "relay-no-price", "지금 가격을 몰라 시장가 주문 안 냄")
+    if c["max_krw"] <= 0 or unit * int(qty) > c["max_krw"]:
+        return relay_err(403, "relay-over-cap", "서버 한 번 주문 상한 넘음")
+    out = {"symbol": sym, "side": side, "orderType": kind, "quantity": qty, "clientOrderId": cid, "timeInForce": "DAY"}
+    if kind == "LIMIT":
+        out["price"] = price
+    st, j = toss_order("POST", "/api/v1/orders", out, "order", c["account"])
+    order_log("create", {"symbol": sym, "side": side, "type": kind, "qty": int(qty), "price": price or None, "cid": cid}, st, j)
+    return st, j
+
+
+def order_route(method: str, path: str, b: dict | None = None) -> tuple[int, dict] | None:
+    """/api/mock/order… 경로. 아니면 None"""
+    p = urllib.parse.urlparse(path).path
+    if method == "GET" and p == "/api/mock/order/ready":  # 앱 실전 스위치가 켜도 되는지 (비밀값 없이)
+        c = live_conf()
+        return 200, {"armed": c["armed"], "account": bool(c["account"]), "keys": toss_keys() is not None, "max_krw": c["max_krw"]}
+    if method == "POST" and p == "/api/mock/order":
+        return order_create(b or {})
+    m = re.fullmatch(r"/api/mock/order/([^/]+)(/cancel)?", p)
+    if not m or not ORDER_ID.fullmatch(m.group(1)) or m.group(1) == "ready":
+        return None
+    c = live_conf()
+    if not c["account"]:
+        return relay_err(503, "relay-no-account", "서버에 계좌 없음")
+    oid = m.group(1)
+    if method == "GET" and not m.group(2):
+        return toss_order("GET", "/api/v1/orders/" + oid, None, "order_history", c["account"])
+    if method == "POST" and m.group(2):
+        st, j = toss_order("POST", "/api/v1/orders/" + oid + "/cancel", {}, "order", c["account"])
+        order_log("cancel", {"orderId": oid}, st, j)
+        return st, j
+    return None
+
+
 # ---- 모의투자 AI 조언 (Claude API). 키는 이 서버의 ai_keys.json 에만 둔다 (.gitignore, 앱·저장소에 안 올림)
 # 표준 라이브러리만 쓰는 서버라 SDK 대신 HTTP 로 부른다. 쓴 돈은 mock_wallet.json 에 한국 날짜별로 쌓고, 한도를 넘기 전에 막는다.
 AI_KEYS = ROOT / "ai_keys.json"
@@ -960,6 +1079,9 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({"error": "열쇠 없음"}, 403)
             o = self.headers.get("Origin") or ""
             self.cors = o if toss_origin_ok(o) else None
+            r = order_route("GET", self.path)  # 토스 실주문 상태·준비
+            if r is not None:
+                return self.send_json(r[1], r[0])
             r = mock_get(self.path)
             if r is not None:
                 return self.send_json(r)
@@ -987,6 +1109,12 @@ class Handler(SimpleHTTPRequestHandler):
                 if not mock_ok(self.headers):
                     return self.send_json({"error": "열쇠 없음"}, 403)
                 return self.send_json(mock_ai(b))
+            if self.path.startswith("/api/mock/order"):  # 토스 실주문 생성·취소 (개발자 전용)
+                if not mock_ok(self.headers):
+                    return self.send_json({"error": "열쇠 없음"}, 403)
+                r = order_route("POST", self.path, b)
+                if r is not None:
+                    return self.send_json(r[1], r[0])
             if self.path == "/api/state":
                 with LOCK:
                     save_state(b)

@@ -521,7 +521,7 @@ struct MockSettingsView: View {
     }
 
     // 예전 설정 화면의 돌리기 값 (AI 칸은 뺐다)
-    /// 실전 스위치: 기본 끔. 켤 때는 확인을 한 번 더 받는다 (키체인에 토스 토큰·계좌가 있어야 켜진다)
+    /// 실전 스위치: 기본 끔. 켤 때는 확인을 한 번 더 받는다 (개발자 서버의 실전 스위치·계좌·키가 준비돼야 켜진다)
     private func liveCard(_ d: MockDesk) -> some View {
         Card {
             Toggle(isOn: Binding(get: { d.live }, set: { v in if v { liveAsk = true } else { liveNote = d.setLive(false) } })) {
@@ -531,9 +531,10 @@ struct MockSettingsView: View {
                 }
             }
             .tint(Theme.up)
-            mt("키체인 토스 키 " + (d.liveKeys ? "있음" : "없음")).appFont(12).foregroundStyle(Theme.muted)
+            mt("서버 " + (d.liveBlock ?? "실전 준비됨")).appFont(12).foregroundStyle(Theme.muted)
             if let liveNote { mt(liveNote).appFont(12).foregroundStyle(Theme.up) }
         }
+        .task { await d.checkLive() }
         .confirmationDialog(Text(verbatim: "실전을 켤까요?"), isPresented: $liveAsk, titleVisibility: .visible) {
             Button(role: .destructive) { liveNote = d.setLive(true) } label: { mt("실전 켜기 (실제 주문)") }
             Button(role: .cancel) {} label: { mt("그만두기") }

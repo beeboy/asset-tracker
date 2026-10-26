@@ -91,14 +91,15 @@ final class MockDesk {
     private let toss = MockTossBroker()
     var broker: MockBroker { live ? toss : paper }
     var live: Bool { s.live == true }
-    /// 실전 키(키체인 토큰·계좌)가 있나
-    var liveKeys: Bool { TossLiveKeys.token != nil && TossLiveKeys.account != nil }
+    /// 서버 실전 준비가 안 된 이유 (nil 이면 준비됨). 실전 칸이 열릴 때 checkLive 로 다시 묻는다
+    private(set) var liveBlock: String? = "확인 전"
+    func checkLive() async { liveBlock = await TossOrderAPI.ready() }
 
     /// 실전 켜기·끄기 (화면에서 확인을 거친 뒤에만 부른다). 대기 주문이 있으면 바꾸지 않는다
     @discardableResult
     func setLive(_ on: Bool) -> String? {
         if s.ledgers.contains(where: { !$0.pending.isEmpty }) { return "대기 주문을 먼저 정리해 주세요" }
-        if on && !liveKeys { return "키체인에 토스 토큰·계좌가 없어요" }
+        if on, let why = liveBlock { return "실전 못 켬 · " + why }
         edit(on ? "실전 켬 · 토스 브로커" : "실전 끔 · 모의 브로커") { $0.live = on ? true : nil }
         toss.armed = on
         return nil
@@ -1292,7 +1293,7 @@ extension MockDesk {
     }
 }
 
-/// 토스 실주문 브로커 (토스 주문 API 문서대로). 실전 스위치(armed)가 켜지고 키체인에 토큰·계좌가 있을 때만 주문을 보낸다.
+/// 토스 실주문 브로커 (토스 주문 API 문서대로). 실전 스위치(armed)가 켜졌을 때만 개발자 서버 중계로 주문을 보낸다 (서버 스위치도 켜져 있어야 토스로 나간다).
 /// 체결은 토스가 알려 준 주문 상세(체결 수량·평균가)로 셈한다. 호가는 판단용으로 개발자 서버 시세를 그대로 쓴다
 @MainActor final class MockTossBroker: MockBroker {
     let live = true
@@ -1308,7 +1309,7 @@ extension MockDesk {
 
     func submit(_ o: MockOrder, book: MockCalc.Book) async -> String? {
         guard armed else { return "실전 꺼짐 · 주문 안 냄" }
-        guard let r = await call("POST", "/api/v1/orders", body: TossOrderAPI.createBody(o), group: "ORDER") else { return "토스 키 없음 (키체인) · 주문 안 냄" }
+        guard let r = await call("POST", "/api/mock/order", body: TossOrderAPI.createBody(o), group: "ORDER") else { return "개발자 서버 주소·열쇠 없음 · 주문 안 냄" }
         guard r.status == 200, let id = r.json.flatMap(TossOrderAPI.orderId) else { return "토스 거부 · " + TossOrderAPI.reason(r.json, status: r.status) }
         ids[o.id] = id
         return nil
@@ -1322,7 +1323,7 @@ extension MockDesk {
 
     /// 토스 주문 상세를 다시 읽는다 (한도 ORDER_HISTORY 초당 5회)
     func refresh(_ o: MockOrder) async {
-        guard armed, let id = ids[o.id], let r = await call("GET", "/api/v1/orders/" + id, body: nil, group: "ORDER_HISTORY"),
+        guard armed, let id = ids[o.id], let r = await call("GET", "/api/mock/order/" + id, body: nil, group: "ORDER_HISTORY"),
               r.status == 200, let x = r.json.flatMap(TossOrderAPI.order) else { return }
         last[o.id] = x
     }
@@ -1346,13 +1347,12 @@ extension MockDesk {
 
     func cancel(_ o: MockOrder) async {
         guard armed, let id = ids[o.id] else { return }
-        _ = await call("POST", "/api/v1/orders/" + id + "/cancel", body: [:], group: "ORDER")
+        _ = await call("POST", "/api/mock/order/" + id + "/cancel", body: [:], group: "ORDER")
     }
 
-    /// 한 번 부르기: 키체인 키가 없으면 nil. 그룹별 초당 한도를 넘지 않게 사이를 두고, 429 면 Retry-After 만큼 기다려 한 번 더
+    /// 한 번 부르기: 서버 주소·열쇠가 없으면 nil. 그룹별 초당 한도를 넘지 않게 사이를 두고, 429 면 Retry-After 만큼 기다려 한 번 더
     private func call(_ method: String, _ path: String, body: [String: Any]?, group: String) async -> (status: Int, json: [String: Any]?)? {
-        guard armed, let token = TossLiveKeys.token, let account = TossLiveKeys.account,
-              let req = TossOrderAPI.request(method, path, body: body, token: token, account: account) else { return nil }
+        guard armed, let req = TossOrderAPI.request(method, path, body: body) else { return nil }
         for attempt in 0..<2 {
             let gap = 1 / (TossOrderAPI.perSecond[group] ?? 1)
             if let t = lastCall[group], Date().timeIntervalSince(t) < gap { try? await Task.sleep(for: .seconds(gap - Date().timeIntervalSince(t))) }
