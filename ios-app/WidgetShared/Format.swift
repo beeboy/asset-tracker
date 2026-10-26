@@ -32,6 +32,14 @@ enum Fmt {
         if WL.en { return krwC(v) }
         return abs(v) < 1e8 ? man(v) : (v < 0 ? "−" : "") + String(format: "%.\(digits)f억", abs(v) / 1e8)
     }
+    /// 좁은 자리용, 소수 첫째까지: 5.3억 · 2.7천만 · 823만 (잠금화면 목표 진행 동그라미)
+    static func eok1(_ v: Double) -> String {
+        if WL.en { return krwC(v) }
+        let a = abs(v), s = v < 0 ? "−" : ""
+        if a >= 9.95e7 { return s + String(format: "%.1f억", a / 1e8) }
+        if a >= 1e7 { return s + String(format: "%.1f천만", a / 1e7) }
+        return s + man(a)
+    }
     /// 영어: 만·억 대신 ₩2.3M 꼴 (앱 AppModel.krwC 와 같은 규칙)
     static func krwC(_ krw: Double) -> String {
         let a = abs(krw), u: [(Double, String)] = [(1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")]
