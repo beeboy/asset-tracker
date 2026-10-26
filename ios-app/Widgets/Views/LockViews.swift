@@ -132,7 +132,7 @@ struct LockHillView: View { // A 자산 언덕: 총액·오늘 등락·최근 10
         ZStack(alignment: .bottomLeading) {
             VStack(alignment: .leading, spacing: 0) {
                 Money { h in Text(h ? hiddenAmount : Fmt.eok(r.total)).font(.system(size: 20, weight: .heavy, design: .rounded)).lineLimit(1).minimumScaleFactor(0.6).flip(r.total) }
-                Text(lockChg(r.dayChg) + " " + WL.t("오늘")).font(.system(size: 11, weight: .bold)).flip(r.dayChg)
+                Text(lockChg(r.dayChg)).font(.system(size: 11, weight: .bold)).flip(r.dayChg)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
