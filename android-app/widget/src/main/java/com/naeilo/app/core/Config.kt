@@ -34,8 +34,11 @@ object Config {
     val channel: Channel = Channel.of(com.naeilo.widget.BuildConfig.CHANNEL) ?: Channel.internalBeta
     /** 내부 베타 빌드인가 (종목 목록·샘플처럼 빌드 때 정해지는 것) */
     val isInternal: Boolean get() = channel == Channel.internalBeta   // ios: WidgetShared/Config.swift:19
-    /** 시험용: 내부 베타에서 Yahoo·사이트 자료를 잠시 끈다 (설정 > 시세 기준). 공개판처럼 내 키 시세만 본다 */
-    val yahooOff: Boolean get() = isInternal && Store.defaults.getBoolean("yahoo_off", false)   // ios: WidgetShared/Config.swift:21
+    /** 내부 베타에서 Yahoo·사이트 자료를 끈다. 공개판처럼 내 키 시세만 본다.
+     *  토스·Alpaca·Longbridge 키가 하나라도 켜져 있으면 늘 끈다 (2026-10-26 결정). 키가 없을 때만 설정 > 시세 기준 스위치를 따른다 */
+    val yahooOff: Boolean get() = isInternal && (myKey || Store.defaults.getBoolean("yahoo_off", false))   // ios: WidgetShared/Config.swift:23
+    /** 내 키(토스·Alpaca·Longbridge) 가운데 하나라도 켜져 있는가 (멈춘 키는 빼고) */
+    val myKey: Boolean get() = TossKeys.on || AlpacaKeys.on || LongbridgeKeys.on   // ios: WidgetShared/Config.swift:25
     /** 사이트가 Yahoo 로 모은 자료(data/quotes.json·prices·stats·calc 등, 추가 종목 Yahoo 중계)를 써도 되는가 */
     val usesCollectedData: Boolean get() = isInternal && !yahooOff   // ios: WidgetShared/Config.swift:23
 }

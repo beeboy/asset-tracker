@@ -367,8 +367,8 @@ struct PriceBasisView: View {
                 if Config.isInternal {
                     // 시험용 (내부 베타만): 공개판처럼 내 키 시세만 보게 Yahoo·사이트 자료를 끈다
                     Card {
-                        Toggle(isOn: Binding(get: { yahooOff }, set: { v in yahooOff = v; setYahooOff(v) })) { Text("Yahoo·사이트 시세 끄기").appFont(15, .bold) }.tint(Theme.teal)
-                        Text("시험용이에요. 켜면 내 키로 받은 시세만 보여요.").appFont(13).foregroundStyle(Theme.sub)
+                        Toggle(isOn: Binding(get: { yahooOff }, set: { v in yahooOff = v; setYahooOff(v) })) { Text("Yahoo·사이트 시세 끄기").appFont(15, .bold) }.tint(Theme.teal).disabled(Config.myKey)
+                        Text(Config.myKey ? "내 키가 있으면 늘 꺼져요." : "시험용이에요. 켜면 내 키로 받은 시세만 보여요.").appFont(13).foregroundStyle(Theme.sub)
                         if TossKeys.stored {
                             Toggle(isOn: Binding(get: { tossPause }, set: { v in tossPause = v; setPause("toss", v) })) { Text("토스 키 멈추기").appFont(15, .bold) }.tint(Theme.teal)
                         }
@@ -401,7 +401,9 @@ struct PriceBasisView: View {
     /// 키 멈춤을 바꾸고 받아 둔 내 키 시세를 다시 읽는다 (멈추면 비고, 풀면 돌아온다)
     private func setPause(_ broker: String, _ v: Bool) {
         Store.defaults.set(v, forKey: "\(broker)_pause")
+        yahooOff = Config.yahooOff   // 키를 멈추거나 풀면 Yahoo 끄기도 따라 바뀐다
         let mk = Market.shared
+        mk.site = QuoteFeed.cached()
         mk.toss = TossFeed.cached()
         mk.alpaca = AlpacaFeed.cached()
         mk.longbridge = LongbridgeFeed.cached()

@@ -503,6 +503,8 @@ fun PriceBasisView(m: AppModel) {
     /** 키 멈춤을 바꾸고 받아 둔 내 키 시세를 다시 읽는다 (멈추면 비고, 풀면 돌아온다) */
     fun setPause(broker: String, v: Boolean) {   // ios: Views/SettingsView.swift:402,404
         Store.defaults.edit().putBoolean("${broker}_pause", v).apply()   // ios: Views/SettingsView.swift:403
+        yahooOff = Config.yahooOff   // ios: Views/SettingsView.swift:404
+        mk.site = QuoteFeed.cached()   // ios: Views/SettingsView.swift:406
         mk.toss = TossFeed.cached()   // ios: Views/SettingsView.swift:405
         mk.alpaca = AlpacaFeed.cached()   // ios: Views/SettingsView.swift:406
         mk.longbridge = LongbridgeFeed.cached()   // ios: Views/SettingsView.swift:407
@@ -541,8 +543,8 @@ fun PriceBasisView(m: AppModel) {
             if (Config.isInternal) {   // ios: Views/SettingsView.swift:367
                 // 시험용 (내부 베타만): 공개판처럼 내 키 시세만 보게 Yahoo·사이트 자료를 끈다
                 Card {   // ios: Views/SettingsView.swift:369
-                    ToggleRow(yahooOff, { yahooOff = it; setYahooOff(it) }) { T("Yahoo·사이트 시세 끄기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:370
-                    T("시험용이에요. 켜면 내 키로 받은 시세만 보여요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:371
+                    ToggleRow(yahooOff, { if (!Config.myKey) { yahooOff = it; setYahooOff(it) } }) { T("Yahoo·사이트 시세 끄기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:370
+                    T(if (Config.myKey) "내 키가 있으면 늘 꺼져요." else "시험용이에요. 켜면 내 키로 받은 시세만 보여요.", style = appFont(13f), color = Theme.sub)   // ios: Views/SettingsView.swift:371
                     if (TossKeys.stored) ToggleRow(tossPause, { tossPause = it; setPause("toss", it) }) { T("토스 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:372,373
                     if (AlpacaKeys.stored) ToggleRow(alpacaPause, { alpacaPause = it; setPause("alpaca", it) }) { T("Alpaca 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:375,376
                     if (LongbridgeKeys.stored) ToggleRow(lbPause, { lbPause = it; setPause("longbridge", it) }) { T("Longbridge 키 멈추기", style = appFont(15f, FontWeight.Bold)) }   // ios: Views/SettingsView.swift:378,379
