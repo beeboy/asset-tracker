@@ -226,15 +226,16 @@ struct MockTabBox: View {
         }
     }
 
-    /// 계좌: 평가액 · 오늘 손익 / 주문가능 · 손실 한도까지 남은 돈 / 손실 한도를 쓴 만큼 띠
+    /// 계좌: 평가액 · 손익 (실전 = 토스 비용 뺀 손익, 모의 = 오늘) / 주문가능 · 손실 한도까지 남은 돈 / 손실 한도를 쓴 만큼 띠
     private func account(_ d: MockDesk) -> some View {
         let eq = d.equity(d.shown), base = d.dayBase
-        let mv = eq - base, pct = base > 0 ? mv / base : 0
-        let c = mv > 0 ? BoxInk.up : mv < 0 ? BoxInk.down : BoxInk.dim
+        let real = d.shown == .real
+        let pl = real ? d.account?.plAfterCost : eq - base
+        let c = (pl ?? 0) > 0 ? BoxInk.up : (pl ?? 0) < 0 ? BoxInk.down : BoxInk.dim
         let room = d.lossRoom, cap = base * d.guards.dayLoss
-        return MockBox(label: d.shown.tab + " · 평가액",
+        return MockBox(label: (real ? "토스 계좌" : d.shown.tab) + " · 평가액",
                        big: mt(d.shownEquity.map(MockFmt.man) ?? "계좌 못 읽음").foregroundColor(BoxInk.ink),
-                       side: MockFmt.pct(pct), sideColor: c,
+                       side: pl.map { ($0 < 0 ? "−" : $0 > 0 ? "+" : "") + Self.man(abs($0)) + (real ? " 비용 뒤" : " 오늘") } ?? "—", sideColor: c,
                        tailL: mt("주문가능 " + (d.shownCash.map(Self.man) ?? "—")).foregroundColor(BoxInk.sub),
                        tailR: room > 0 ? "한도까지 " + Self.man(room) : "한도 넘음") {
             MockShareBar(value: cap > 0 ? 1 - room / cap : 0, color: room > 0 ? BoxInk.gold : BoxInk.up)
@@ -856,21 +857,20 @@ struct MockScreen<Content: View>: View {
                     AppHeader(tab: tab.name)
                     Group {
                     if tab == .account {
-                        // 계좌 탭(실전 전용): 실전 규칙 목록 (모의투자에 실전 매매 규칙을 어떻게 반영했나)
+                        // 계좌 탭: 실전 규칙 목록 (모의투자에 실전 매매 규칙을 어떻게 반영했나)
                         Button { live = true } label: {
                             Image(systemName: "checkmark.shield").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
                                 .frame(width: 44, height: 44).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain).accessibilityLabel(Text(verbatim: "실전 규칙"))
-                    } else {
-                    // 모의 ↔ 실전 전환: 누를 때마다 바뀌고 세 탭이 같이 따른다 (실전 규칙 목록은 계좌 탭으로 옮김, 2026-10-27)
+                    }
+                    // 모의 ↔ 실전 전환: 누를 때마다 바뀌고 네 탭이 같이 따른다
                     Button { d.show(d.shown == .real ? .rule : .real) } label: {
                         Image(systemName: d.shown == .real ? "bolt.fill" : "testtube.2").font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(d.shown == .real ? Theme.up : Theme.sub)
                             .frame(width: 44, height: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain).accessibilityLabel(Text(verbatim: d.shown == .real ? "실전 · 눌러서 모의로" : "모의 · 눌러서 실전으로"))
-                    }
                     }
                     .padding(.trailing, gear == nil ? 8 : 0)
                     if let gear {

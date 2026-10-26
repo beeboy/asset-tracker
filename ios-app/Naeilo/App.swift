@@ -36,7 +36,7 @@ struct RootView: View {
             .modifier(Links(model: model, phase: phase))
             .modifier(IconFollow())
             #if MOCK
-            .modifier(MockTabsHooks(mine: Set(model.holdings.map(\.symbol)), phase: phase, tab: model.tab))
+            .modifier(MockTabsHooks(mine: Set(model.holdings.map(\.symbol)), phase: phase))
             #endif
             // 처음 실행이면 첫 질문을 탭 화면 위에 덮는다
             .overlay { if showStart { StartView().transition(.opacity) } }

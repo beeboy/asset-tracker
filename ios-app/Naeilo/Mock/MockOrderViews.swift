@@ -394,21 +394,20 @@ struct MockJournalView: View {
     }
 }
 
-// MARK: 계좌 (투자 모드에서 미션 칸 자리. 실전이면 토스 계좌, 아니면 모의 장부로 같은 칸)
+// MARK: 계좌 (투자 모드 5번째 칸. [모의]·[실전]을 따라 그 장부를 그림으로)
 
 struct MockAccountView: View {
     @State private var liveAsk = false
     @State private var note: String?
     @State private var editRow: MockPickRow?
+    @State private var sel: UUID?
 
     var body: some View {
         let d = MockDesk.shared
         MockScreen(tab: .account) {
-            matchCard(d)
             ordersCard(d)
             gapCard(d)
-            switchCard(d)
-            haltCard(d)
+            lights(d)
         }
         .task { await d.refreshAccount() }
         .sheet(item: $editRow) { MockRowEdit(row: $0).presentationDetents([.large]) }
@@ -417,136 +416,228 @@ struct MockAccountView: View {
         }
     }
 
-    /// 라벨 · 값 한 줄
-    private func kv(_ k: String, _ v: String, _ c: Color = Theme.ink) -> some View {
-        HStack {
-            mt(k).appFont(13).foregroundStyle(Theme.sub)
-            Spacer(minLength: 8)
-            mt(v).appFont(13, .semibold).foregroundStyle(c).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
-        }
-    }
-
-    private func head(_ t: String, _ state: String? = nil, ok: Bool = true) -> some View {
-        HStack {
+    private func head(_ t: String, _ r: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
             mt(t).appFont(15, .bold)
             Spacer()
-            if let state { MockTag(text: state, color: ok ? Theme.teal : Theme.up) }
+            mt(r).appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
         }
     }
 
-    // 계좌 대조: 실전 = 토스 보유·주문가능 대 앱 장부, 모의 = 체결 기록 다시 더하기 대 장부
-    private func matchCard(_ d: MockDesk) -> some View {
-        let l = d.ledger(.rule)
-        let diffs = d.live ? Self.diffs(l, d.account) : []
-        let rec = d.live ? nil : MockCalc.reconcile(l, events: d.events)
-        let ok = d.live ? (d.account != nil && diffs.isEmpty) : rec == nil
-        return Card {
-            head("계좌 대조", d.live && d.account == nil ? "모름" : ok ? "맞음" : "어긋남" + (diffs.isEmpty ? "" : " \(diffs.count)"), ok: ok)
-            if d.live {
-                kv("주문가능 · 토스", d.account?.cash.map(MockFmt.won) ?? "—")
-                kv("현금 · 장부", MockFmt.won(l.cash))
-                kv("보유 · 토스 / 장부", "\(d.account?.items.count ?? 0) / \(l.positions.count)종목")
-                ForEach(diffs, id: \.self) { mt($0).appFont(12).foregroundStyle(Theme.up) }
-                if let w = d.accountWhy { mt(w).appFont(12).foregroundStyle(Theme.muted) }
-            } else {
-                kv("현금 · 장부", MockFmt.won(l.cash))
-                kv("보유", "\(l.positions.count)종목")
-                if let rec { mt(rec).appFont(12).foregroundStyle(Theme.up) }
-            }
-            HStack {
-                if let a = d.account?.at, d.live { mt(MockFmt.time(a)).appFont(11).foregroundStyle(Theme.muted) }
-                Spacer()
-                MockGoPill(title: "다시 보기") { await d.refreshAccount() }
-            }
+    // MARK: 오늘 주문 — 끝 모습 띠 + 장 시간줄 점
+
+    /// 주문 한 건의 끝 모습
+    enum End: Int, CaseIterable { case fill, wait, cancel, reject
+        var name: String { ["체결", "대기", "취소", "거부"][rawValue] }
+    }
+    struct Dot: Identifiable { var id: UUID; var at: Date; var side: MockSide; var won: Double; var end: End }
+
+    /// 오늘 주문을 점으로: 접수 기록 하나가 점 하나, 접수 전에 거부된 것도 점 하나
+    static func dots(_ d: MockDesk) -> [Dot] {
+        let l = d.ledger(d.shown), today = MockFmt.day(Date())
+        let es = d.ledgerEvents(d.shown).filter { MockFmt.day($0.at) == today && !$0.test }
+        let wait = Set(l.pending.map(\.id))
+        var by: [UUID: [MockEvent]] = [:]
+        for e in es where e.kind != .order { if let r = e.ref { by[r, default: []].append(e) } }
+        let orders = es.filter { $0.kind == .order && $0.qty != nil && !$0.text.hasPrefix("정정") }
+        let ids = Set(orders.map(\.id))
+        var out = orders.map { o -> Dot in
+            let after = by[o.id] ?? []
+            let px = after.first { $0.kind == .fill }?.price ?? o.code.flatMap { d.s.prices[$0] } ?? 0
+            let end: End = wait.contains(o.id) ? .wait : after.contains { $0.kind == .fill } ? .fill
+                : after.contains { $0.kind == .cancel } ? .cancel : after.contains { $0.kind == .reject } ? .reject : .fill
+            return Dot(id: o.id, at: o.at, side: o.side ?? .buy, won: px * Double(o.qty ?? 0), end: end)
         }
+        out += es.filter { $0.kind == .reject && !($0.ref.map { ids.contains($0) } ?? false) }.map {
+            Dot(id: $0.id, at: $0.at, side: $0.side ?? .buy, won: ($0.code.flatMap { d.s.prices[$0] } ?? 0) * Double($0.qty ?? 0), end: .reject)
+        }
+        return out.sorted { $0.at < $1.at }
     }
 
-    /// 토스와 장부 종목별 수량이 다른 곳 ("삼성전자 · 장부 3 · 토스 2")
-    static func diffs(_ l: MockLedger, _ a: TossOrderAPI.Account?) -> [String] {
-        guard let a else { return [] }
-        let toss = Dictionary(a.items.map { ($0.code, $0.qty) }, uniquingKeysWith: +)
-        return Set(toss.keys).union(l.positions.keys).sorted().compactMap { c in
-            let x = l.positions[c]?.qty ?? 0, y = toss[c] ?? 0
-            return x == y ? nil : MockDesk.name(c) + " · 장부 \(x) · 토스 \(y)"
-        }
-    }
-
-    // 오늘 주문: 대기 주문(정정·취소) + 오늘 낸 주문 수
     private func ordersCard(_ d: MockDesk) -> some View {
-        let l = d.ledger(.rule), today = MockFmt.day(Date())
-        let es = d.ledgerEvents(.rule).filter { MockFmt.day($0.at) == today && !$0.test }
-        let n = { (k: MockEvent.Kind) in es.filter { $0.kind == k }.count }
+        let ds = Self.dots(d)
+        let n = End.allCases.map { e in ds.filter { $0.end == e }.count }
+        let o = sel.flatMap { id in d.ledger(d.shown).pending.first { $0.id == id } }
         return Card {
-            head("오늘 주문", "대기 \(l.pending.count)", ok: true)
-            kv("접수 · 체결 · 취소 · 거부", "\(n(.order)) · \(n(.fill)) · \(n(.cancel)) · \(n(.reject))")
-            ForEach(l.pending) { o in
-                Divider().overlay(Theme.line)
-                HStack(spacing: 6) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        mt(o.name).appFont(14, .semibold).lineLimit(1)
-                        mt(o.side.name + " \(o.qty)주 · " + (o.limit.map(MockFmt.won) ?? "시장가") + (o.tossId.map { " · " + $0.prefix(8) } ?? ""))
-                            .appFont(12).foregroundStyle(Theme.sub).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+            head("오늘 주문", "\(ds.count)건")
+            if ds.isEmpty {
+                mt("아직 없음").appFont(13).foregroundStyle(Theme.muted)
+            } else {
+                // 끝 모습 띠
+                GeometryReader { g in
+                    let on = End.allCases.filter { n[$0.rawValue] > 0 }
+                    let w = g.size.width - 3 * CGFloat(on.count - 1)
+                    HStack(spacing: 3) {
+                        ForEach(on, id: \.self) { e in Self.seg(e).frame(width: w * CGFloat(n[e.rawValue]) / CGFloat(ds.count)) }
                     }
+                }
+                .frame(height: 14)
+                HStack(spacing: 12) {
+                    ForEach(End.allCases, id: \.self) { e in
+                        HStack(spacing: 4) { Self.mark(e, side: .buy, size: 10, gray: true); mt(e.name + " \(n[e.rawValue])") }
+                            .appFont(12).foregroundStyle(Theme.sub)
+                    }
+                }
+            }
+            line(ds)
+            if let o {
+                HStack(spacing: 8) {
+                    Self.mark(.wait, side: o.side, size: 12)
+                    mt(o.name + " · " + o.side.name + " \(o.qty)주 · 대기").appFont(13, .semibold).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 4)
                     Button { editRow = MockPickRow(code: o.code, name: o.name, qty: o.qty, kind: .wait, price: d.s.prices[o.code] ?? o.limit ?? 0, pct: 0, side: o.side, orderId: o.id) } label: {
                         MockTag(text: "정정", color: Theme.teal)
                     }
                     .buttonStyle(.plain)
-                    Button { d.cancel(.rule, orderId: o.id) } label: { MockTag(text: "취소", color: Theme.up) }
+                    Button { d.cancel(d.shown, orderId: o.id); sel = nil } label: { MockTag(text: "취소", color: Theme.up) }
                         .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(Theme.line, in: RoundedRectangle(cornerRadius: 12))
             }
         }
     }
 
-    // 체결 차이: 주문 순간 호가로 잰 예상가 대 실제 체결가 (불리하면 +)
-    private func gapCard(_ d: MockDesk) -> some View {
-        let fs = d.ledgerEvents(.rule).filter { $0.kind == .fill && $0.expect != nil && $0.price != nil && !$0.test }
-        let today = MockFmt.day(Date())
-        return Card {
-            head("체결 차이")
-            row("오늘", fs.filter { MockFmt.day($0.at) == today })
-            row("전체", fs)
+    /// 띠 한 칸
+    @ViewBuilder static func seg(_ e: End) -> some View {
+        let r = RoundedRectangle(cornerRadius: 4)
+        switch e {
+        case .fill: r.fill(Theme.ink)
+        case .wait: r.strokeBorder(Theme.ink, lineWidth: 2)
+        case .cancel: r.fill(Theme.muted.opacity(0.35))
+        case .reject: r.fill(Theme.orange)
         }
     }
 
-    private func row(_ k: String, _ fs: [MockEvent]) -> some View {
-        let gaps = fs.map { MockCalc.slipGap(side: $0.side ?? .buy, expect: $0.expect ?? 0, actual: $0.price ?? 0) }
-        let won = fs.reduce(0.0) { $0 + (($1.price ?? 0) - ($1.expect ?? 0)) * Double($1.qty ?? 0) * ($1.side == .sell ? -1 : 1) }
-        let avg = gaps.isEmpty ? 0 : gaps.reduce(0, +) / Double(gaps.count)
-        return kv(k + " \(fs.count)건", fs.isEmpty ? "—" : MockFmt.pct(avg) + " · " + MockFmt.signedWon(-won), won > 0 ? Theme.up : Theme.ink)
+    /// 점 하나: 체결 꽉 참 · 대기 빈 동그라미 · 취소 ✕ · 거부 주황 테두리 !
+    @ViewBuilder static func mark(_ e: End, side: MockSide, size: CGFloat, gray: Bool = false) -> some View {
+        let c = gray ? Theme.ink : side == .buy ? Theme.up : Theme.down
+        switch e {
+        case .fill: Circle().fill(c).frame(width: size, height: size)
+        case .wait: Circle().strokeBorder(c, lineWidth: max(1.5, size / 9)).frame(width: size, height: size)
+        case .cancel: Image(systemName: "xmark").font(.system(size: size * 0.8, weight: .bold)).foregroundStyle(Theme.muted).frame(width: size, height: size)
+        case .reject:
+            Circle().strokeBorder(Theme.orange, lineWidth: max(1.5, size / 9)).frame(width: size, height: size)
+                .overlay { mt("!").font(.system(size: size * 0.6, weight: .heavy)).foregroundStyle(Theme.orange) }
+        }
     }
 
-    // 서버 스위치 · 상한 · 실전 스위치
-    private func switchCard(_ d: MockDesk) -> some View {
-        let r = d.ready
-        return Card {
-            head("실전 스위치", d.live ? "켬" : "끔", ok: !d.live)
-            kv("서버", r == nil ? "닿지 않음" : r!.armed ? "켜짐" : "꺼짐", r?.armed == true ? Theme.up : Theme.sub)
-            kv("키 · 계좌", r == nil ? "—" : (r!.keys ? "있음" : "없음") + " · " + (r!.account ? "있음" : "없음"))
-            kv("한 번 상한 · 서버", r.map { MockFmt.won($0.maxKrw) } ?? "—")
-            kv("한 번 상한 · 앱", MockFmt.won(d.guards.orderCap))
-            if let note { mt(note).appFont(12).foregroundStyle(Theme.up) }
-            HStack {
-                Spacer()
-                MockGoPill(title: d.live ? "실전 끄기" : "실전 켜기") {
-                    if d.live { note = d.setLive(false) } else { await d.checkLive(); liveAsk = true }
+    /// 9:00~15:30 시간줄. 산 주문은 위, 판 주문은 아래. 점 크기 = 주문 금액
+    private func line(_ ds: [Dot]) -> some View {
+        let cal = Calendar.current, now = Date()
+        let open = cal.date(bySettingHour: 9, minute: 0, second: 0, of: now) ?? now
+        let span = 390.0 * 60
+        let x = { (t: Date) in min(1, max(0, t.timeIntervalSince(open) / span)) }
+        let top = max(1, ds.map(\.won).max() ?? 1)
+        return GeometryReader { g in
+            let w = g.size.width - 16, mid = 52.0
+            let px = { (t: Date) in 8 + w * x(t) }
+            ZStack(alignment: .topLeading) {
+                Rectangle().fill(Theme.line).frame(width: w, height: 2).position(x: 8 + w / 2, y: mid)
+                Rectangle().fill(Theme.muted).frame(width: w * x(now), height: 2).position(x: 8 + w * x(now) / 2, y: mid)
+                if x(now) > 0 && x(now) < 1 {
+                    Rectangle().fill(Theme.orange).frame(width: 1.5, height: 70).position(x: px(now), y: mid)
+                }
+                ForEach(ds) { dot in
+                    let s = 10 + 12 * sqrt(dot.won / top)
+                    Button { sel = dot.end == .wait ? (sel == dot.id ? nil : dot.id) : nil } label: {
+                        Self.mark(dot.end, side: dot.side, size: s)
+                            .padding(6).contentShape(Rectangle())
+                            .overlay { if sel == dot.id { Circle().stroke((dot.side == .buy ? Theme.up : Theme.down).opacity(0.25), lineWidth: 4).frame(width: s + 8, height: s + 8) } }
+                    }
+                    .buttonStyle(.plain)
+                    .position(x: px(dot.at), y: dot.side == .buy ? mid - 22 : mid + 22)
+                }
+                ForEach(Array(["9시", "11시", "13시", "15:30"].enumerated()), id: \.offset) { i, t in
+                    mt(t).appFont(10).foregroundStyle(Theme.muted)
+                        .position(x: 8 + w * [0, 120, 240, 390][i] / 390, y: 112)
                 }
             }
         }
+        .frame(height: 120)
     }
 
-    // 모두 멈춤 · 하루 손실 한도
-    private func haltCard(_ d: MockDesk) -> some View {
-        Card {
-            head("모두 멈춤", d.halted ? "멈춤" : "도는 중", ok: !d.halted)
-            kv("하루 손실 한도", "−" + MockFmt.num(d.guards.dayLoss * 100) + "%")
-            kv("한도까지", d.lossRoom > 0 ? MockFmt.won(d.lossRoom) : "넘음", d.lossRoom > 0 ? Theme.ink : Theme.up)
-            HStack {
-                Spacer()
-                MockGoPill(title: d.halted ? "멈춤 풀기" : "모두 멈춤") { if d.halted { d.resumeAll() } else { d.haltAll() } }
+    // MARK: 체결 차이 — 체결 한 건이 막대 하나. 비싸게 사면(불리) 위, 싸게 사면 아래
+
+    private func gapCard(_ d: MockDesk) -> some View {
+        let today = MockFmt.day(Date())
+        let fs = d.ledgerEvents(d.shown).filter { $0.kind == .fill && $0.expect != nil && $0.price != nil && !$0.test }
+        let gap = { (e: MockEvent) in MockCalc.slipGap(side: e.side ?? .buy, expect: e.expect ?? 0, actual: e.price ?? 0) }
+        let now = fs.filter { MockFmt.day($0.at) == today }
+        let past = Array(fs.filter { MockFmt.day($0.at) != today }.suffix(12))
+        let won = now.reduce(0.0) { $0 + (($1.price ?? 0) - ($1.expect ?? 0)) * Double($1.qty ?? 0) * ($1.side == .sell ? -1 : 1) }
+        let avg = now.isEmpty ? 0 : now.map(gap).reduce(0, +) / Double(now.count)
+        let top = max(0.002, (now + past).map { abs(gap($0)) }.max() ?? 0)
+        return Card {
+            head("체결 차이", now.isEmpty ? "오늘 없음" : "평균 " + MockFmt.pct(avg) + " · " + MockFmt.signedWon(-won))
+            if fs.isEmpty {
+                mt("아직 체결 없음").appFont(13).foregroundStyle(Theme.muted)
+            } else {
+                HStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .leading) {
+                        mt("비싸게").foregroundStyle(Theme.orange)
+                        Spacer()
+                        mt("싸게").foregroundStyle(Theme.teal)
+                    }
+                    .appFont(11, .semibold).frame(height: 96)
+                    ForEach(now) { bar(gap($0), top) }
+                    if !now.isEmpty && !past.isEmpty { Rectangle().fill(Theme.line).frame(width: 1, height: 70).padding(.horizontal, 4) }
+                    ForEach(past) { bar(gap($0), top).opacity(0.45) }
+                    Spacer(minLength: 0)
+                }
+                .background { Rectangle().fill(Theme.line).frame(height: 1.5) }
+                HStack(spacing: 0) {
+                    if !now.isEmpty { mt("오늘").frame(width: CGFloat(now.count) * 26, alignment: .leading) }
+                    if !past.isEmpty { mt("지난 날") }
+                    Spacer()
+                }
+                .appFont(11).foregroundStyle(Theme.muted).padding(.leading, 46)
             }
         }
+    }
+
+    private func bar(_ g: Double, _ top: Double) -> some View {
+        let h = max(3, 46 * min(1, abs(g) / top))
+        let r = g > 0 ? UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4) : UnevenRoundedRectangle(bottomLeadingRadius: 4, bottomTrailingRadius: 4)
+        return r.fill(g > 0 ? Theme.orange : Theme.teal).frame(width: 18, height: h)
+            .offset(y: g > 0 ? -h / 2 : h / 2).frame(width: 18, height: 96)
+    }
+
+    // MARK: 불빛 둘 — 실전 자동주문 · 모두 멈춤
+
+    private func lights(_ d: MockDesk) -> some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                light("실전 자동주문", d.live ? "켬" : "끔", icon: "power", on: d.live, color: Theme.orange) {
+                    if d.live { note = d.setLive(false) } else { await d.checkLive(); liveAsk = true }
+                }
+                light("모두 멈춤", d.halted ? "멈춤" : "도는 중", icon: "pause.fill", on: d.halted, color: Theme.up) {
+                    if d.halted { d.resumeAll() } else { d.haltAll() }
+                }
+            }
+            if let note { mt(note).appFont(12).foregroundStyle(Theme.up) }
+        }
+    }
+
+    private func light(_ t: String, _ state: String, icon: String, on: Bool, color: Color, _ act: @escaping () async -> Void) -> some View {
+        Button { Task { await act() } } label: {
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle().fill(on ? color : Theme.line).frame(width: 64, height: 64)
+                        .shadow(color: on ? color.opacity(0.55) : .clear, radius: 12)
+                    if !on { Circle().strokeBorder(Theme.muted.opacity(0.4), lineWidth: 2).frame(width: 64, height: 64) }
+                    Image(systemName: icon).font(.system(size: 24, weight: .bold)).foregroundStyle(on ? .white : Theme.muted)
+                }
+                .padding(4)
+                mt(t).appFont(15, .bold).foregroundStyle(Theme.ink)
+                mt(state).appFont(12, .semibold).foregroundStyle(on ? color : Theme.sub)
+            }
+            .frame(maxWidth: .infinity).padding(.vertical, 18)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+            .overlay { RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1) }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(verbatim: t + " · " + state))
     }
 }
 
@@ -802,9 +893,9 @@ struct MockTabs: View {
             .tabItem { Label { mt(MockTab.select.name) } icon: { Image(systemName: MockTab.select.icon) } }.tag(Tab.flow)
         NavigationStack { MockJournalView() }
             .tabItem { Label { mt(MockTab.journal.name) } icon: { Image(systemName: MockTab.journal.icon) } }.tag(Tab.analysis)
-        // 투자 모드에서는 미션 칸 자리 (미션은 투자 모드를 끄면 돌아온다). 계좌는 [실전]만: [모의]면 자물쇠 아이콘, 누르면 세 탭도 [실전]으로
+        // 투자 모드에서는 미션 칸 자리 (미션은 투자 모드를 끄면 돌아온다). 계좌도 [모의]·[실전]을 따른다
         NavigationStack { MockAccountView() }
-            .tabItem { Label { mt(MockTab.account.name) } icon: { Image(systemName: MockDesk.shared.shown == .real ? MockTab.account.icon : "lock.rectangle") } }.tag(Tab.board)
+            .tabItem { Label { mt(MockTab.account.name) } icon: { Image(systemName: MockTab.account.icon) } }.tag(Tab.board)
     }
 }
 
@@ -824,14 +915,11 @@ struct MockEntry: ViewModifier {
 struct MockTabsHooks: ViewModifier {
     let mine: Set<String>
     let phase: ScenePhase
-    let tab: Tab
     func body(content: Content) -> some View {
         let d = MockDesk.shared
         content
             .onAppear { d.mine = mine }
             .onChange(of: mine) { _, v in d.mine = v }
-            // 계좌 탭은 [실전]만: [모의]에서 누르면 세 탭이 같이 [실전]으로 (주문은 실전 스위치를 따로 켜야 나간다)
-            .onChange(of: tab) { _, t in if t == .board && d.active && d.shown != .real { d.show(.real) } }
             // 멈춘 훑기는 앱이 다시 앞에 오면 이어 받는다
             .onChange(of: phase) { _, p in if p == .active && d.active { Task { await d.resume() } } }
             // 투자 모드이고 앱이 앞에 있는 동안만 1분마다: 가격·대기 주문·팔기 규칙·자동 (AI 는 꺼 둠)
