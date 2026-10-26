@@ -336,6 +336,8 @@ struct MockOrder: Codable, Equatable, Identifiable {
     var waitWhy: String? = nil   // 왜 대기 중인가 (마지막 확인)
     var until: Date? = nil       // 나눈 남은 몫: 이때까지 다 못 채우면 취소
     var state: MockOrderState? = nil   // 접수 · 부분 체결 (대기 목록에 있는 동안)
+    var prev: Double? = nil      // 전일 종가 (가격제한폭 ±30% 확인. 모르면 nil)
+    var auction: Bool? = nil     // 마감 동시호가에 접수: 15:30 단일가로 체결
 }
 
 /// 가상 계좌 하나

@@ -495,7 +495,7 @@ final class MockDesk {
         catch is CancellationError { return false }
         catch { log(.error, book: b, who: who, code: code, name: name, text: "호가 확인 못 함 · " + ((error as? MockFeed.Fail)?.why ?? ""), ref: ref); return false }
         if test && book.asks.isEmpty, let px = s.prices[code] { book = MockCalc.Book(asks: [.init(p: px, v: 1e12)], bids: book.bids, at: book.at) }
-        guard let ask = book.bestAsk else { log(.error, book: b, who: who, code: code, name: name, text: "매도 호가 없음 · 안 냄", ref: ref); return false }
+        guard let ask = book.bestAsk else { log(.reject, book: b, who: who, code: code, name: name, text: "매도 호가 없음 (거래 정지·VI 의심) · 거부", test: test, side: .buy, ref: ref); return false }
         // 기다리는 동안 장부가 바뀌었을 수 있으니 호가를 받은 뒤에 다시 읽는다
         guard var l = s.ledgers.first(where: { $0.book == b }), !l.pending.contains(where: { $0.code == code }) else { return false }
         let lim = limit.map { MockCalc.snap($0, side: .buy) }
@@ -512,7 +512,9 @@ final class MockDesk {
         // 미끄러짐 한도: 다 채우면 평균 단가가 1호가 + 한도를 넘을 때, 한도 값까지만 지금 채우고 남은 몫은 지정가로 30분 기다린다
         let (oType, oLim, until) = split(.buy, type: type, limit: lim, qty: q, book: book, reason: reason)
         let r = MockCalc.reserve(type: oType, qty: q, limit: oLim, bestAsk: ask, fees: s.fees, cash: l.cash)
-        let o = MockOrder(code: code, name: name, side: .buy, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, reserved: r, ref: ref, until: until, state: .accepted)
+        let auc = !test && inCloseAuction()
+        let o = MockOrder(code: code, name: name, side: .buy, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, reserved: r, ref: ref,
+                          until: auc ? s.session?.close?.addingTimeInterval(1200) : until, state: .accepted, prev: prevClose(code), auction: auc ? true : nil)
         if let why = await broker.submit(o, book: book) { reject(b, o, why, test: test); return false }
         // 접수를 기다리는 동안 장부가 바뀌었을 수 있다
         guard let l2 = s.ledgers.first(where: { $0.book == b }), !l2.pending.contains(where: { $0.code == code }), l2.cash >= r else { return false }
@@ -545,7 +547,9 @@ final class MockDesk {
         guard var l = s.ledgers.first(where: { $0.book == b }), let p2 = l.positions[code],
               p2.qty - l.pending.filter({ $0.code == code && $0.side == .sell }).reduce(0, { $0 + $1.qty }) >= q else { return false }
         let (oType, oLim, until) = split(.sell, type: type, limit: lim, qty: q, book: book, reason: reason)
-        let o = MockOrder(code: code, name: p.name, side: .sell, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, ref: ref ?? p.buyRef, until: until, state: .accepted)
+        let auc = !test && inCloseAuction()
+        let o = MockOrder(code: code, name: p.name, side: .sell, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, ref: ref ?? p.buyRef,
+                          until: auc ? s.session?.close?.addingTimeInterval(1200) : until, state: .accepted, prev: prevClose(code), auction: auc ? true : nil)
         if let why = await broker.submit(o, book: book) { reject(b, o, why, test: test); return false }
         guard let l2 = s.ledgers.first(where: { $0.book == b }), let p3 = l2.positions[code],
               p3.qty - l2.pending.filter({ $0.code == code && $0.side == .sell }).reduce(0, { $0 + $1.qty }) >= q else { return false }
@@ -583,6 +587,18 @@ final class MockDesk {
         Task { await broker.cancel(o) }
     }
 
+    /// 마감 동시호가 (정규장 끝 10분 전부터 끝까지): 접수만 하고 끝나는 시각에 단일가로 체결
+    func inCloseAuction(_ now: Date = Date()) -> Bool {
+        guard let ss = s.session, ss.day == MockFmt.day(now), let c = ss.close else { return false }
+        return now >= c.addingTimeInterval(-600) && now < c
+    }
+
+    /// 전일 종가: 마지막 훑기의 가격·등락으로 거꾸로 셈한다 (훑기에 없으면 모름)
+    func prevClose(_ code: String) -> Double? {
+        guard let h = s.scan?.hits.first(where: { $0.code == code }), let c = h.change, c > -1 else { return nil }
+        return h.price / (1 + c)
+    }
+
     /// 거부: 장부는 그대로, 이유만 기록 (실전 주문 API 의 거부와 같은 자리)
     private func reject(_ b: MockBook, _ o: MockOrder, _ why: String, test: Bool) {
         log(.reject, book: b, who: o.who, code: o.code, name: o.name, text: why, test: test, side: o.side, qty: o.qty, ref: o.ref)
@@ -598,6 +614,14 @@ final class MockDesk {
     private func fill(_ b: MockBook, orderId: UUID, book: MockCalc.Book, test: Bool) {
         guard var l = s.ledgers.first(where: { $0.book == b }), let i = l.pending.firstIndex(where: { $0.id == orderId }) else { return }
         let o = l.pending[i]
+        if o.auction == true, inCloseAuction() {
+            if o.waitWhy == nil {
+                l.pending[i].waitWhy = "마감 동시호가 · 15:30 단일가 체결 대기"
+                set(l)
+                log(.wait, book: b, who: o.who, code: o.code, name: o.name, text: "마감 동시호가 · 15:30 단일가 체결 대기", test: test, ref: o.id)
+            }
+            return
+        }
         let f = broker.match(o, book: book, fees: s.fees)
         if f.qty > 0 {
             let e = o.side == .buy ? MockCalc.applyBuy(&l, orderIndex: i, fill: f, fees: s.fees, at: Date(), test: test)
@@ -655,6 +679,17 @@ final class MockDesk {
         for l in s.ledgers {
             for o in l.pending {
                 if let u = o.until, Date() >= u { expire(l.book, orderId: o.id); continue }
+                if o.auction == true {
+                    // 마감이 지나면 단일가(종가)로 한 번에. 지정가가 안 닿으면 남는다
+                    guard !inCloseAuction(), let px = s.prices[o.code], px > 0 else { continue }
+                    let single = o.side == .buy ? MockCalc.Book(asks: [.init(p: px, v: 1e12)], bids: [], at: Date())
+                                                : MockCalc.Book(asks: [], bids: [.init(p: px, v: 1e12)], at: Date())
+                    if let j = s.ledgers.firstIndex(where: { $0.id == l.id }), let k = s.ledgers[j].pending.firstIndex(where: { $0.id == o.id }) {
+                        s.ledgers[j].pending[k].auction = false
+                    }
+                    fill(l.book, orderId: o.id, book: single, test: false)
+                    continue
+                }
                 let px = s.prices[o.code]
                 let cross: Bool = o.type == .market || px == nil || (o.side == .buy ? px! <= (o.limit ?? 0) : px! >= (o.limit ?? .infinity))
                 guard cross, let book = try? await broker.book(o.code) else { continue }
@@ -1062,7 +1097,20 @@ extension MockDesk {
 
     func book(_ code: String) async throws -> MockCalc.Book { trim(code, try await MockFeed.book(code)) }
 
-    func submit(_ o: MockOrder, book: MockCalc.Book) async -> String? { nil }
+    /// 접수: 거래소가 거부할 주문을 여기서 거부한다 (실전은 토스가 같은 이유로 거부)
+    func submit(_ o: MockOrder, book: MockCalc.Book) async -> String? { Self.exchangeReject(o, book: book) }
+
+    /// 거래소 규칙 (데이터로 판별 가능한 만큼)
+    static func exchangeReject(_ o: MockOrder, book: MockCalc.Book) -> String? {
+        // 거래 정지·VI 단일가: 호가가 양쪽 다 비어 있으면 (둘을 가를 신호는 없다)
+        if book.asks.isEmpty && book.bids.isEmpty && o.auction != true { return "호가 없음 (거래 정지·VI 의심) · 거부" }
+        // 가격제한폭 ±30%: 넘는 지정가는 거래소가 받지 않는다 (전일 종가를 알 때만)
+        if o.type == .limit, let lim = o.limit, let p = o.prev, p > 0 {
+            if lim > p * 1.3 { return "상한가(전일 종가 +30%) 넘는 지정가 · 거부" }
+            if lim < p * 0.7 { return "하한가(전일 종가 −30%) 밑 지정가 · 거부" }
+        }
+        return nil
+    }
 
     func settle(_ o: MockOrder) async -> MockCalc.Book? {
         try? await Task.sleep(for: .milliseconds(Int(latency * 1000)))
