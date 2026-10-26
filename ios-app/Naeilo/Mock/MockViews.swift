@@ -802,11 +802,19 @@ struct MockScreen<Content: View>: View {
     let tab: MockTab
     var gear: (() -> Void)? = nil
     @ViewBuilder var content: Content
+    @State private var live = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 0) {
                     AppHeader(tab: tab.name)
+                    // 실전: 모의투자에 실전 매매 규칙을 어떻게 반영했나
+                    Button { live = true } label: {
+                        Image(systemName: "checkmark.shield").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).accessibilityLabel(Text(verbatim: "실전 규칙"))
+                    .padding(.trailing, gear == nil ? 8 : 0)
                     if let gear {
                         Button(action: gear) {
                             Image(systemName: "gearshape").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.sub)
@@ -825,6 +833,35 @@ struct MockScreen<Content: View>: View {
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .task { await MockDesk.shared.refreshPhase() }
+        .sheet(isPresented: $live) { MockLiveSheet() }
+    }
+}
+
+/// 실전 규칙: 규칙 · 반영 방식 · 아직 다른 점 (목록은 MockLive.rules 한 곳)
+struct MockLiveSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        let br = MockDesk.shared.broker
+        VStack(spacing: 0) {
+            MockSheetBar(title: "실전 규칙") { dismiss() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    mt("주문층: " + br.name + (br.live ? " · 실전" : " · 실제 주문 없음")).appFont(13, .semibold).foregroundStyle(br.live ? Theme.up : Theme.sub)
+                    ForEach(MockLive.rules) { r in
+                        VStack(alignment: .leading, spacing: 4) {
+                            mt(r.name).appFont(15, .bold)
+                            if r.how != "—" { mt(r.how).appFont(13).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true) }
+                            if let g = r.gap {
+                                mt("실전과 다른 점 · " + g).appFont(12).foregroundStyle(Theme.orange).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Divider().overlay(Theme.line)
+                    }
+                }
+                .padding(16)
+            }
+        }
+        .background(Theme.bg)
     }
 }
 
