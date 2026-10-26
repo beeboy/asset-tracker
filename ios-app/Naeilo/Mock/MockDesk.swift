@@ -262,8 +262,7 @@ final class MockDesk {
     // MARK: 관찰
 
     func runObserve() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "observe"
         await keepAlive("observe")
         busy = nil
@@ -365,8 +364,7 @@ final class MockDesk {
     // MARK: 선정
 
     func runSelect() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "select"
         await select()
         busy = nil
@@ -376,8 +374,7 @@ final class MockDesk {
 
     /// 지금 팔기: 내 종목을 지금 가격으로 팔기 조건에 대 본다 (지금 고르기의 반대)
     func runSell() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "sell"
         await sellNow()
         busy = nil
@@ -454,8 +451,7 @@ final class MockDesk {
 
     /// 고른 종목을 주문한다 (검토가 끝났거나 검토 문이 열려 있을 때)
     func orderPicks() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "order"
         await order()
         busy = nil
@@ -479,8 +475,7 @@ final class MockDesk {
 
     /// 한 바퀴: 훑기 → 고르기 → 주문 → 팔기 (주문·팔기 알약을 끄면 건너뜀)
     func runCycle() async {
-        await waitTick()
-        guard busy == nil else { return }
+        guard await waitTick(), busy == nil else { return }
         busy = "cycle"
         await keepAlive("cycle")
         if s.runs["observe"]?.ok == true && !halted { await select(buy: cycleOrder) }
@@ -493,8 +488,7 @@ final class MockDesk {
     /// 손 주문 (규칙 장부에 '손'으로 적는다. 예외 종목도 막지 않는다)
     @discardableResult
     func runHand(_ side: MockSide, code: String, name: String, qty: Int?, type: MockOrderType, limit: Double?) async -> Bool {
-        await waitTick()
-        guard busy == nil else { return false }
+        guard await waitTick(), busy == nil else { return false }
         busy = "hand"
         let ok = await side == .buy
             ? placeBuy(.rule, code: code, name: name, qty: qty, type: type, limit: limit, who: .hand, reason: "손 주문", ref: nil)
@@ -816,9 +810,14 @@ final class MockDesk {
     }
 
     /// 1분 주기는 버튼 잠금(busy)과 따로 돈다 (버튼이 잠겼다 풀리며 깜빡이지 않게). 단추 일은 주기가 끝날 때까지 기다렸다 돈다
-    private func waitTick() async {
-        var n = 0
-        while ticking && n < 300 { try? await Task.sleep(for: .milliseconds(200)); n += 1 }
+    /// 시간 한도를 두지 않는다: 주기 안의 자동 훑기는 1분을 넘기기도 해서, 60초만 기다리면 단추 훑기가 겹쳐 관찰이 두 번 적혔다 (2026-10-26).
+    /// 주기는 모든 서버 호출에 시간 한도가 있어 반드시 끝난다
+    /// 기다리던 단추 일이 취소되면 false (그때는 일을 하지 않는다)
+    private func waitTick() async -> Bool {
+        while ticking {
+            do { try await Task.sleep(for: .milliseconds(200)) } catch { return false }
+        }
+        return true
     }
 
     /// 평가액 점: 5분에 하나. 이틀 지난 점은 하루 마지막 하나만 남긴다
