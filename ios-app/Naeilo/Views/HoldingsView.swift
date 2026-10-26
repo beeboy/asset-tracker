@@ -1071,8 +1071,9 @@ struct AddHoldingView: View {
         }
     }
     private func open(_ s: Symbol) {
-        picked = s; qty = ""; warn = false
-        avg = s.currency == .usd ? String(format: "%.2f", s.last) : ""
+        // 기본값은 1주·지금 가격이라 바로 [추가하기]를 눌러도 들어간다
+        picked = s; qty = "1"; warn = false
+        avg = s.last <= 0 ? "" : s.currency == .usd ? String(format: "%.2f", s.last) : String(Int(s.last.rounded()))
         kp = s.currency == .krw && s.last > 0 ? String(Int(s.last.rounded())) : ""
     }
 
@@ -1117,6 +1118,11 @@ struct AddHoldingView: View {
             TextField("", text: b).keyboardType(.decimalPad)
                 .padding(.horizontal, 12).frame(minHeight: 44)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border))
+        }
+        // 칸을 누르면 들어 있던 숫자를 모두 골라 두어 바로 새 숫자로 덮어쓴다 (숫자 칸만, 검색 칸은 그대로)
+        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { n in
+            guard let t = n.object as? UITextField, t.keyboardType == .decimalPad else { return }
+            DispatchQueue.main.async { t.selectAll(nil) }
         }
     }
 }

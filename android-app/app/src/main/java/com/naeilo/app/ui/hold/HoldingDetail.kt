@@ -466,8 +466,9 @@ fun AddHoldingView(m: AppModel,
     }
     // ios: Views/HoldingsView.swift:958
     fun open(s: Symbol) {
-        picked = s; qty = ""; warn = false   // ios: Views/HoldingsView.swift:959
-        avg = if (s.currency == Currency.usd) cformat("%.2f", s.last) else ""   // ios: Views/HoldingsView.swift:960
+        // 기본값은 1주·지금 가격이라 바로 [추가하기]를 눌러도 들어간다
+        picked = s; qty = "1"; warn = false   // ios: Views/HoldingsView.swift:1087
+        avg = if (s.last <= 0) "" else if (s.currency == Currency.usd) cformat("%.2f", s.last) else s.last.swRound().roundToLong().toString()   // ios: Views/HoldingsView.swift:1088
         kp = if (s.currency == Currency.krw && s.last > 0) s.last.swRound().roundToLong().toString() else ""   // ios: Views/HoldingsView.swift:961
     }
     // ios: Views/HoldingsView.swift:946
@@ -496,7 +497,7 @@ fun AddHoldingView(m: AppModel,
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             T(label, style = appFont(13f, FontWeight.SemiBold), color = Theme.sub)   // ios: Views/HoldingsView.swift:1001
             // ios: Views/HoldingsView.swift:1002,1003,1004
-            InputField(v, set, "", Modifier.focusRequester(f).border(1.dp, Theme.border, RoundedCornerShape(10.dp)).defaultMinSize(minHeight = 44.dp).padding(horizontal = 12.dp), number = true, onSubmit = { focus.clearFocus() })
+            InputField(v, set, "", Modifier.focusRequester(f).border(1.dp, Theme.border, RoundedCornerShape(10.dp)).defaultMinSize(minHeight = 44.dp).padding(horizontal = 12.dp), number = true, onSubmit = { focus.clearFocus() }, selectAll = true)   // ios: Views/HoldingsView.swift:1135
         }
     }
 
