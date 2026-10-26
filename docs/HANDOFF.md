@@ -276,3 +276,9 @@ Drinker 결정. 급하지 않다. 지금 수준의 모의투자는 앱스토어�
 - 새 스레드가 이어받을 때 읽을 것: 이 칸 → `docs/toss-relay.md` → `docs/broker-apis.md` → `docs/broker-apis-global.md`.
 - Longbridge 시험 (2026-10-25): 현재가는 HTTP `POST /quote/quotes`로 실제 받음(드링커님 화면 확인). 일봉·1분봉은 공식 SDK HTTP 길 `POST /quote/history-candlesticks`(period 1000=일, 1=분, trade_session 0). 일봉은 수정주가(adjust_type 1), Alpaca 일봉은 `adjustment=split` (NVDA 분할이 10배로 보였음). 저장 파일 flow_longbridge_adj.json·flow_alpaca_split.json.
 - 화면 팝업 통일 (Drinker, 2026-10-25): 탭에서 넘어가던 화면은 모두 시트 팝업. 팝업 안 다음 화면은 같은 팝업 안에서 넘긴다(뒤로 화살표 + 오른쪽 위 X는 한 번에 닫기, 제목은 왼쪽 inlineLarge). 팝업 위에 팝업 쌓기는 안 함. 블록·파도·동네 첫 화면도 시트, 게임 판만 전체 화면. 코드: `App.swift` PathSheet·PopupX·PopupStack·HomeLink, 종목 상세는 `HoldingsView.swift` DetailLink·.detailSheet().
+
+## 모의투자 실전 화면 (2026-10-26 밤 KST, 로컬 커밋, 아이폰만)
+- 서버(c0b4625d): `/api/mock/warnings`·`suspended`·`limits`·`account`·`sellable`, `POST /api/mock/order/{id}/modify` (docs/toss-relay.md). 서버에 올리고 재시작해야 앱 새 칸이 찬다.
+- 앱: 계좌 탭(미션 자리), 주문 직전 확인 카드, 대기 주문 정정, 관찰 유의 배지·고르기 거름, 종목 상세 세후 손익·손절까지·호가(내 주문 줄·상하한가)·차트 매매 점→이유 사슬, 체결 차이(예상가 대 체결가).
+- 확인 전: 실주문으로 정정·계좌 대조를 아직 안 해 봄. 부분 체결 뒤 정정 수량 뜻, 정정 응답의 새 orderId.
+- 없음(토스 API): VI 기준가, 같은 가격 안 대기 순번, 예수금만 따로 주는 경로.
