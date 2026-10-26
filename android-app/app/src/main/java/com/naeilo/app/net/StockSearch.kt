@@ -353,6 +353,17 @@ class CustomSymbols {   // ios: Data/StockSearch.swift:189,190
 
     /** 3년 종가를 받아 저장 (추가할 때). 실패하면 이유를 던진다 */
     suspend fun fetch(h: StockHit): Symbol {   // ios: Data/StockSearch.swift:251,252
+        // ios: Data/StockSearch.swift:255,256,257,258,259,260,261,262,263,264
+        if (!Config.usesCollectedData) {
+            // 내 키(토스·Alpaca·Longbridge)로 받는 기기: Yahoo·사이트는 부르지 않는다. 종목만 남기고 시세는 키로 받는다 (Market.refresh)
+            synchronized(this) {
+                val s = (items.firstOrNull { it.id == h.id } ?: Saved(id = h.id, yahoo = h.yahoo, name = h.name, market = h.market, usd = h.currency == Currency.usd, prev = 0.0, last = 0.0, at = Instant.now())).copy()
+                if (h.currency == Currency.krw) s.lv = true
+                items = items.filter { it.id != h.id } + s
+                save()
+                return symbol(s)
+            }
+        }
         val kr = if (h.currency == Currency.krw && KoreaEstimate.liveOK(h.id, name = h.name)) runCatching { chart(h.yahoo, range = "1y", today = true) }.getOrNull() else null   // ios: Data/StockSearch.swift:253
         if (kr != null) {
             val (q, hs) = kr

@@ -252,6 +252,17 @@ final class CustomSymbols {
     /// 3년 종가를 받아 저장 (추가할 때). 실패하면 이유를 던진다
     @discardableResult
     func fetch(_ h: StockHit) async throws -> Symbol {
+        if !Config.usesCollectedData {
+            // 내 키(토스·Alpaca·Longbridge)로 받는 기기: Yahoo·사이트는 부르지 않는다. 종목만 남기고 시세는 키로 받는다 (Market.refresh)
+            return await MainActor.run {
+                var s = items.first { $0.id == h.id } ?? Saved(id: h.id, yahoo: h.yahoo, name: h.name, market: h.market, usd: h.currency == .usd, prev: 0, last: 0, at: Date())
+                if h.currency == .krw { s.lv = true }
+                items.removeAll { $0.id == h.id }
+                items.append(s)
+                save()
+                return symbol(s)
+            }
+        }
         if h.currency == .krw && KoreaEstimate.liveOK(h.id, name: h.name), let (q, hs) = try? await Self.chart(h.yahoo, range: "1y", today: true) {
             // 국내 종목: 추가하는 순간 Yahoo 에서 직접 지금 가격·1년 종가 (안 되면 중계)
             let pc = hs.closes.count > 1 ? hs.closes[hs.closes.count - 2] : q.prev
