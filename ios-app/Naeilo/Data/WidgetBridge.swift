@@ -93,7 +93,7 @@ enum WidgetBridge {
         let wc = WChar.of(reward.homeFriend ?? "seri")
         WatchSync.shared.send(WWatch(at: now.timeIntervalSince1970 * 1000, char: wc.id, accent: wc.accent, g0: wc.g0, g1: wc.g1,
                                      total: reward.total, dayChg: reward.dayChg, spark: reward.spark ?? [], keyName: reward.keyName,
-                                     pct: reward.pct, line: wc.line(reward)))
+                                     pct: reward.pct, line: wc.line(reward), art: wc.id == "me" ? Self.meWatchArt() : nil))
         Store.write(summary, "summary.json")
         Store.write(feed, "feed.json")
         Store.write(live, "live.json")
@@ -117,6 +117,15 @@ enum WidgetBridge {
             if r.count > 1, race.last < r[0].count, race.last < r[1].count { me = r[0][race.last]; bk = r[1][race.last] }
         }
         return WSmall(path: pts, need: (0...40).map { p.need(e * Double($0) / 40) }, gap: m.myPathGapToday, t0: m.total + cash, me: me, basket: bk)
+    }
+
+    /// 워치 위젯에 보낼 내 캐릭터 그림: 아이폰 위젯과 같은 me_<포즈>.png 넷 + 기본 me.png. 합이 50KB 를 넘으면 안 보낸다(워치는 세리 그림)
+    static func meWatchArt() -> [String: Data]? {
+        var a: [String: Data] = [:]
+        for p in ["pose_trend_up", "pose_trend_down", "pose_point_up", "pose_point_down"] { a[p] = Store.readData("me_\(p).png") }
+        a["base"] = Store.readData("me.png")
+        guard !a.isEmpty, a.values.reduce(0, { $0 + $1.count }) <= 50_000 else { return nil }
+        return a
     }
 
     /// 인물별 위젯 말풍선: 사흘에 한 번은 돌아온 물건 얘기, 나머지 날은 오늘 가장 크게 움직인 종목 (대사 데이터에서)

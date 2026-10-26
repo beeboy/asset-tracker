@@ -12,6 +12,7 @@ struct WWatch: Codable {
     var keyName: String          // "본전" 또는 "목표"
     var pct: Double              // 본전(목표)까지 진행 0~1
     var line: String             // 인물 한마디
+    var art: [String: Data]? = nil   // 내 캐릭터 그림 PNG (키: 포즈 이름, 기본 그림은 "base"). 워치엔 이 그림이 없어 같이 보낸다
 
     static let sample = WWatch(at: 0, char: "seri", accent: 0x5ab8ff, g0: 0x16203f, g1: 0x2c3e8a, total: 1.234e8, dayChg: 0.008,
                                spark: [11980, 12050, 12010, 12120, 12200, 12150, 12260, 12310, 12240, 12340],

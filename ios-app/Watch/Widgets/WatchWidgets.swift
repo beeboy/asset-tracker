@@ -60,14 +60,18 @@ struct WFrame<Content: View>: View {
     }
 }
 
-/// 도트 그림: 포즈 그림(w_<인물>_pose_*)이 없으면 세리 그림. 아이폰과 같은 그림을 최근접 확대
+/// 도트 그림: 내 캐릭터는 아이폰이 보낸 그림(포즈 → 기본), 그다음 포즈 그림(w_<인물>_pose_*), 없으면 세리 그림. 아이폰과 같은 그림을 최근접 확대
 struct WSprite: View {
     let w: WWatch
     let pose: String
     var height: CGFloat = 48
     var body: some View {
-        let n = ["w_\(w.char)_\(pose)", "w_seri_\(pose)"].first { UIImage(named: $0) != nil } ?? "w_seri"
-        Image(n).interpolation(.none).resizable().scaledToFit().frame(height: height)
+        if let d = w.art?[pose] ?? w.art?["base"], let ui = UIImage(data: d) {
+            Image(uiImage: ui).interpolation(.none).resizable().scaledToFit().frame(height: height)
+        } else {
+            let n = ["w_\(w.char)_\(pose)", "w_seri_\(pose)"].first { UIImage(named: $0) != nil } ?? "w_seri"
+            Image(n).interpolation(.none).resizable().scaledToFit().frame(height: height)
+        }
     }
 }
 
