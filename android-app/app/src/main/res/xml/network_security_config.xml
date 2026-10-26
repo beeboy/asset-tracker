@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 매매기준율(서울외국환중개 smbs.biz)만 http 로 받게 허락한다. 아이폰 Info.plist NSExceptionDomains 와 같다. 다른 주소는 그대로 https 만 -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">smbs.biz</domain>
+    </domain-config>
+</network-security-config>
