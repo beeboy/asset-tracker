@@ -99,7 +99,7 @@ struct MockJournalView: View {
         }
         .onPreferenceChange(HoldColW.self) { colW = $0 }
         .sheet(isPresented: $settings) { MockSettingsView() }
-        .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name) }
+        .sheet(item: $info) { MockStockSheet(code: $0.code, name: $0.name, fills: true) }
     }
 
     // 팔기 조건: 켠 알약에 맞는 내 종목을 판다 (선정의 고르기 반대). 1분 주기도 같은 조건으로 장중 가격을 본다
@@ -128,12 +128,17 @@ struct MockJournalView: View {
                     mt(MockFmt.signedWon(sum)).appFont(13, .bold).monospacedDigit().foregroundStyle(Theme.change(sum))
                 }
                 ForEach(sold, id: \.code) { x in
-                    HStack(spacing: 8) {
-                        mt(x.name).appFont(13).lineLimit(1)
-                        Spacer(minLength: 4)
-                        mt("\(x.qty)주").appFont(12).foregroundStyle(Theme.sub).monospacedDigit()
-                        mt(MockFmt.signedWon(x.pnl)).appFont(12, .bold).monospacedDigit().foregroundStyle(Theme.change(x.pnl))
+                    Button { info = MockStockRef(code: x.code, name: x.name) } label: {
+                        HStack(spacing: 8) {
+                            mt(x.name).appFont(13).lineLimit(1)
+                            Spacer(minLength: 4)
+                            mt("\(x.qty)주").appFont(12).foregroundStyle(Theme.sub).monospacedDigit()
+                            mt(MockFmt.signedWon(x.pnl)).appFont(12, .bold).monospacedDigit().foregroundStyle(Theme.change(x.pnl))
+                            Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.muted)
+                        }
+                        .frame(minHeight: 32).contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
             HStack {

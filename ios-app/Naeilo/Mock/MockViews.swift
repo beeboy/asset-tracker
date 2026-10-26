@@ -1213,6 +1213,7 @@ struct MockStockSheet: View {
     let code: String
     let name: String
     var seen = false               // 관찰 탭에서 열면 관찰 기록
+    var fills = false              // 일지 탭에서 열면 사고 판 기록
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1245,6 +1246,7 @@ struct MockStockSheet: View {
                         }
                     }
                     if seen { MockSeenLog(code: code) }
+                    if fills { MockFillLog(code: code) }
                 }
                 .padding(.horizontal, 16)
             }
@@ -1420,6 +1422,45 @@ struct MockTradeLog: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             if let p = l.pnl { mt(MockFmt.signedWon(p)).appFont(12, .bold).monospacedDigit().foregroundStyle(Theme.change(p)).fixedSize() }
+        }
+    }
+}
+/// 사고 판 기록 (일지 탭 종목 상세): 날짜별 최근 날부터, 날 안은 시각 순. 산 줄 = 주수·평균값·금액, 판 줄 = 주수·평균값·금액·손익
+struct MockFillLog: View {
+    let code: String
+    var body: some View {
+        let d = MockDesk.shared
+        let fs = d.events.filter { $0.code == code && $0.book == .rule && $0.kind == .fill }
+        let days = Dictionary(grouping: fs) { MockFmt.day($0.at) }
+        let keys = days.keys.sorted(by: >)
+        let pnl = fs.compactMap(\.pnl).reduce(0, +)
+        Card {
+            HStack {
+                mt("사고 판 기록").appFont(16, .bold)
+                Spacer()
+                if fs.contains(where: { $0.pnl != nil }) {
+                    mt("판 손익 " + MockFmt.signedWon(pnl)).appFont(12, .bold).monospacedDigit().foregroundStyle(Theme.change(pnl))
+                }
+            }
+            if fs.isEmpty { mt("아직 사고 판 기록이 없어요").appFont(13).foregroundStyle(Theme.muted) }
+            ForEach(keys.indices, id: \.self) { i in
+                if i > 0 { Divider().overlay(Theme.line) }
+                mt(MockFmt.md(keys[i])).appFont(13, .bold)
+                ForEach(days[keys[i]] ?? []) { line($0) }
+            }
+        }
+    }
+
+    private func line(_ e: MockEvent) -> some View {
+        let sell = e.side == .sell
+        return HStack(alignment: .firstTextBaseline, spacing: 6) {
+            mt(MockFmt.time(e.at)).appFont(11).foregroundStyle(Theme.muted).monospacedDigit().fixedSize()
+            mt(sell ? "판" : "산").appFont(12, .bold).foregroundStyle(sell ? Theme.down : Theme.up).fixedSize()
+            if e.test { MockTag(text: "시험", color: Theme.orange).fixedSize() }
+            mt("\(e.qty ?? 0)주 · \(MockFmt.won(e.price ?? 0)) · \(MockFmt.small(e.amount ?? 0))").appFont(12).foregroundStyle(Theme.sub)
+                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            if let p = e.pnl { mt(MockFmt.signedWon(p)).appFont(12, .bold).monospacedDigit().foregroundStyle(Theme.change(p)).fixedSize() }
         }
     }
 }
