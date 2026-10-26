@@ -434,7 +434,6 @@ fun AddHoldingView(m: AppModel,
     var failed by remember { mutableStateOf<String?>(null) }   // ios: Views/HoldingsView.swift:829
     var qty by remember { mutableStateOf("") }   // ios: Views/HoldingsView.swift:830
     var avg by remember { mutableStateOf("") }   // ios: Views/HoldingsView.swift:831
-    var kp by remember { mutableStateOf("") }                        // ios: Views/HoldingsView.swift:832 한국 종목: 지금 가격 (시세를 받지 않는다)
     var warn by remember { mutableStateOf(false) }   // ios: Views/HoldingsView.swift:833
     val focus = LocalFocusManager.current   // ios: Views/HoldingsView.swift:834
     val fr = remember { List(4) { FocusRequester() } }
@@ -471,25 +470,38 @@ fun AddHoldingView(m: AppModel,
         // 기본값은 1주·지금 가격이라 바로 [추가하기]를 눌러도 들어간다
         picked = s; qty = "1"; warn = false   // ios: Views/HoldingsView.swift:1087
         avg = if (s.last <= 0) "" else if (s.currency == Currency.usd) cformat("%.2f", s.last) else s.last.swRound().roundToLong().toString()   // ios: Views/HoldingsView.swift:1088
-        kp = if (s.currency == Currency.krw && s.last > 0) s.last.swRound().roundToLong().toString() else ""   // ios: Views/HoldingsView.swift:961
     }
     // ios: Views/HoldingsView.swift:946
     suspend fun pick(h: StockHit) {
         failed = null; focus.clearFocus()   // ios: Views/HoldingsView.swift:947
-        known(h)?.let { open(it); return }   // ios: Views/HoldingsView.swift:948
-        loading = h.id   // ios: Views/HoldingsView.swift:949
-        // ios: Views/HoldingsView.swift:950,951,952
-        try { open(CustomSymbols.shared.fetch(h)) }
-        catch (e: Exception) {
-            // 예시 종목은 시세를 못 받아도 예시 값으로 넣을 수 있다
-            val s = Sample.symbols.firstOrNull { it.id == h.id }
-            if (s != null) { open(s); failed = null }   // ios: Views/HoldingsView.swift:954
-            else failed = "${h.name} 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."   // ios: Views/HoldingsView.swift:955
+        loading = h.id   // ios: Views/HoldingsView.swift:1063
+        try {
+            // ios: Views/HoldingsView.swift:1065,1066,1067,1068
+            var p: Symbol = known(h) ?: try { CustomSymbols.shared.fetch(h) }
+            catch (e: Exception) {
+                // 예시 종목은 시세를 못 받아도 예시 값으로 넣을 수 있다
+                val s = Sample.symbols.firstOrNull { it.id == h.id }
+                if (s != null) { open(s); failed = null }   // ios: Views/HoldingsView.swift:1071
+                else failed = "${h.name} 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."   // ios: Views/HoldingsView.swift:1072
+                return
+            }
+            // 지금 가격은 모든 시세(사이트·Yahoo·토스·Alpaca·Longbridge)가 모이는 Market.quote 한 곳에서 본다.
+            // Yahoo·사이트로 못 받았으면 고른 그 자리에서 내 키(토스)로 이 종목 시세를 바로 받는다
+            if (p.last <= 0 && !Sample.isVirtual(p.id)) {   // ios: Views/HoldingsView.swift:1084
+                Market.shared.refreshToss(held = m.holdings.map { it.symbol }.toSet() + p.id, force = true)   // ios: Views/HoldingsView.swift:1085
+                p = Sample.symbol(p.id) ?: p   // ios: Views/HoldingsView.swift:1086
+            }
+            // 국내 종목은 시세를 받아야만 넣는다 (0원·직접 넣은 가격으로 두지 않는다)
+            if (p.currency == Currency.krw) {   // ios: Views/HoldingsView.swift:1088
+                if (p.last <= 0) { failed = "${h.name} 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."; return }   // ios: Views/HoldingsView.swift:1090
+                CustomSymbols.shared.live(p.id, p.last)   // ios: Views/HoldingsView.swift:1091
+            }
+            open(p)   // ios: Views/HoldingsView.swift:1093
         } finally { loading = null }
     }
     // ios: Views/HoldingsView.swift:995
     fun added(new: String?) {
-        if (inline) { picked = null; query = ""; qty = ""; avg = ""; kp = ""; close?.let { if (new != null) arrive = new; it() } } else { if (new != null) arrive = new; dismiss() }   // ios: Views/HoldingsView.swift:996
+        if (inline) { picked = null; query = ""; qty = ""; avg = ""; close?.let { if (new != null) arrive = new; it() } } else { if (new != null) arrive = new; dismiss() }   // ios: Views/HoldingsView.swift:996
     }
 
     // ios: Views/HoldingsView.swift:999
@@ -539,30 +551,15 @@ fun AddHoldingView(m: AppModel,
             // ios: Views/HoldingsView.swift:966
             Row { T("${p.name} (${p.id})", style = appFont(16f, FontWeight.Bold)) }   // ios: Views/HoldingsView.swift:967
             // ios: Views/HoldingsView.swift:969
-            if (p.currency == Currency.krw && !CustomSymbols.shared.isLive(p.id)) {
-                val pk = KoreaEstimate.info(id = p.id, name = p.name).proxy != null   // ios: Views/HoldingsView.swift:970
-                // ios: Views/HoldingsView.swift:971,972,973
-                T(if (pk) "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 그 뒤로는 같은 미국 ETF × 원/달러 움직임으로 추정해요."
-                  else "한국 시세는 받지 않아요. 넣은 가격 그대로 계산하고, 움직임 예측은 한국 시장 평균(EWY × 원/달러)으로 해요.", style = appFont(13f), color = Theme.sub)
-                Field("지금 가격 (원)", kp, { kp = it }, fr[3])   // ios: Views/HoldingsView.swift:974
-            } else {   // ios: Views/HoldingsView.swift:975
-                T((if (p.quote.live) "지금 " else "전일 종가 ") + AppModel.price(p, p.last), style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:976
-            }
+            T((if (p.quote.live) "지금 " else "전일 종가 ") + AppModel.price(p, p.last), style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:1106
             Field("수량 (주)", qty, { qty = it }, fr[1])   // ios: Views/HoldingsView.swift:978
-            val unit = if (p.currency == Currency.usd) "달러" else "원, 비우면 지금 가격"
+            val unit = if (p.currency == Currency.usd) "달러" else "원"
             Field("평균 단가 ($unit)", avg, { avg = it }, fr[2])   // Views/HoldingsView.swift:599 (검사 예외: 같은 글)
-            if (warn) T(if (p.currency == Currency.krw) "지금 가격과 수량을 0보다 큰 숫자로 넣어 주세요." else "수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.", style = appFont(13f), color = Theme.up)   // ios: Views/HoldingsView.swift:980
+            if (warn) T("수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.", style = appFont(13f), color = Theme.up)   // ios: Views/HoldingsView.swift:1109
             // ios: Views/HoldingsView.swift:981
             PrimaryButton(title = "추가하기") {
                 focus.clearFocus()   // ios: Views/HoldingsView.swift:982
                 val fresh = m.holdings.none { it.symbol == p.id }   // ios: Views/HoldingsView.swift:983
-                // ios: Views/HoldingsView.swift:984
-                if (p.currency == Currency.krw && !CustomSymbols.shared.isLive(p.id)) {
-                    val v = kp.replace(",", "").trim().toDoubleOrNull(); if (v == null || v <= 0) { warn = true; return@PrimaryButton }   // ios: Views/HoldingsView.swift:985
-                    CustomSymbols.shared.setPrice(p.id, v)   // ios: Views/HoldingsView.swift:986
-                    if (m.addHolding(p.id, qty, if (avg.trim().isEmpty()) kp else avg)) added(if (fresh) p.id else null) else warn = true   // ios: Views/HoldingsView.swift:987
-                    return@PrimaryButton   // ios: Views/HoldingsView.swift:988
-                }
                 if (m.addHolding(p.id, qty, avg)) added(if (fresh) p.id else null) else warn = true   // ios: Views/HoldingsView.swift:990
             }
         }

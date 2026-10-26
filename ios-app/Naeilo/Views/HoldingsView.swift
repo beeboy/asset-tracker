@@ -948,7 +948,6 @@ struct AddHoldingView: View {
     @State private var failed: String? = nil
     @State private var qty = ""
     @State private var avg = ""
-    @State private var kp = ""                        // 한국 종목: 지금 가격 (시세를 받지 않는다)
     @State private var warn = false
     @FocusState private var focus: Int?
     /// 다른 화면 안에 상자로 넣을 때 (미션 1): 스크롤·제목 없이, 추가하면 닫지 않고 빈칸으로
@@ -1067,21 +1066,36 @@ struct AddHoldingView: View {
 
     private func pick(_ h: StockHit) async {
         failed = nil; focus = nil
-        if let s = known(h) { open(s); return }
         loading = h.id
         defer { loading = nil }
-        do { open(try await CustomSymbols.shared.fetch(h)) }
-        catch {
-            // 예시 종목은 시세를 못 받아도 예시 값으로 넣을 수 있다
-            if let s = Sample.symbols.first(where: { $0.id == h.id }) { open(s); failed = nil }
-            else { failed = String(localized: "\(String(describing: h.name)) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.") }
+        var p: Symbol
+        if let s = known(h) { p = s }
+        else {
+            do { p = try await CustomSymbols.shared.fetch(h) }
+            catch {
+                // 예시 종목은 시세를 못 받아도 예시 값으로 넣을 수 있다
+                if let s = Sample.symbols.first(where: { $0.id == h.id }) { open(s); failed = nil }
+                else { failed = String(localized: "\(String(describing: h.name)) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.") }
+                return
+            }
         }
+        // 지금 가격은 모든 시세(사이트·Yahoo·토스·Alpaca·Longbridge)가 모이는 Market.quote 한 곳에서 본다.
+        // Yahoo·사이트로 못 받았으면 고른 그 자리에서 내 키(토스)로 이 종목 시세를 바로 받는다
+        if p.last <= 0 && !Sample.isVirtual(p.id) {
+            await Market.shared.refreshToss(held: Set(m.holdings.map(\.symbol)).union([p.id]), force: true)
+            p = Sample.symbol(p.id) ?? p
+        }
+        if p.currency == .krw {
+            // 국내 종목은 시세를 받아야만 넣는다 (0원·직접 넣은 가격으로 두지 않는다)
+            guard p.last > 0 else { failed = String(localized: "\(String(describing: h.name)) 시세를 받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."); return }
+            CustomSymbols.shared.live(p.id, p.last)
+        }
+        open(p)
     }
     private func open(_ s: Symbol) {
         // 기본값은 1주·지금 가격이라 바로 [추가하기]를 눌러도 들어간다
         picked = s; qty = "1"; warn = false
         avg = s.last <= 0 ? "" : s.currency == .usd ? String(format: "%.2f", s.last) : String(Int(s.last.rounded()))
-        kp = s.currency == .krw && s.last > 0 ? String(Int(s.last.rounded())) : ""
     }
 
     private func form(_ p: Symbol) -> some View {
@@ -1089,34 +1103,20 @@ struct AddHoldingView: View {
             HStack {
                 Text("\(p.name) (\(p.id))").appFont(16, .bold)
             }
-            if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
-                let pk = KoreaEstimate.info(id: p.id, name: p.name).proxy != nil
-                Text(pk ? String(localized: "한국 시세는 받지 않아요. 지금 가격을 한 번 넣으면 그 뒤로는 같은 미국 ETF × 원/달러 움직임으로 추정해요.")
-                        : String(localized: "한국 시세는 받지 않아요. 넣은 가격 그대로 계산하고, 움직임 예측은 한국 시장 평균(EWY × 원/달러)으로 해요."))
-                    .appFont(13).foregroundStyle(Theme.sub).fixedSize(horizontal: false, vertical: true)
-                field(String(localized: "지금 가격 (원)"), $kp).focused($focus, equals: 3)
-            } else {
-                Text((p.quote.live ? String(localized: "지금 ") : String(localized: "전일 종가 ")) + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
-            }
+            Text((p.quote.live ? String(localized: "지금 ") : String(localized: "전일 종가 ")) + AppModel.price(p, p.last)).appFont(13).foregroundStyle(Theme.sub)
             field(String(localized: "수량 (주)"), $qty).focused($focus, equals: 1)
-            field(String(localized: "평균 단가 (\(String(describing: p.currency == .usd ? String(localized: "달러") : String(localized: "원, 비우면 지금 가격"))))"), $avg).focused($focus, equals: 2)
-            if warn { Text(p.currency == .krw ? String(localized: "지금 가격과 수량을 0보다 큰 숫자로 넣어 주세요.") : String(localized: "수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.")).appFont(13).foregroundStyle(Theme.up) }
+            field(String(localized: "평균 단가 (\(String(describing: p.currency == .usd ? String(localized: "달러") : String(localized: "원"))))"), $avg).focused($focus, equals: 2)
+            if warn { Text("수량과 평균 단가를 0보다 큰 숫자로 넣어 주세요.").appFont(13).foregroundStyle(Theme.up) }
             PrimaryButton(title: String(localized: "추가하기")) {
                 focus = nil
                 let fresh = !m.holdings.contains { $0.symbol == p.id }
-                if p.currency == .krw && !CustomSymbols.shared.isLive(p.id) {
-                    guard let v = Double(kp.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespaces)), v > 0 else { warn = true; return }
-                    CustomSymbols.shared.setPrice(p.id, v)
-                    if m.addHolding(p.id, qty, avg.trimmingCharacters(in: .whitespaces).isEmpty ? kp : avg) { added(fresh ? p.id : nil) } else { warn = true }
-                    return
-                }
                 if m.addHolding(p.id, qty, avg) { added(fresh ? p.id : nil) } else { warn = true }
             }
         }
     }
 
     private func added(_ new: String?) {
-        if inline { picked = nil; query = ""; qty = ""; avg = ""; kp = ""; if let close { if let new { arrive = new }; close() } } else { if let new { arrive = new }; dismiss() }
+        if inline { picked = nil; query = ""; qty = ""; avg = ""; if let close { if let new { arrive = new }; close() } } else { if let new { arrive = new }; dismiss() }
     }
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {
