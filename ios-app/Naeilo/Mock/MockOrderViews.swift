@@ -226,7 +226,11 @@ struct MockJournalView: View {
         let keys = Array(order.suffix(take))
         var eqs = keys.compactMap { last[$0] }, dates = keys.compactMap { at[$0] }
         var left = keys.first ?? ""
-        if order.count < take { eqs.insert(l.startCash, at: 0); dates.insert(l.started, at: 0); left = "시작" }
+        // 기록이 다 들어가면 맨 앞은 시작: [모의]는 시작 현금, [실전]은 첫 평가액 점(토스 계좌, 이미 점 안에 있다)
+        if order.count < take {
+            if d.shown != .real { eqs.insert(l.startCash, at: 0); dates.insert(l.started, at: 0) }
+            left = "시작"
+        }
         return (left, eqs, dates)
     }
 

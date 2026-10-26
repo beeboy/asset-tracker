@@ -62,6 +62,8 @@ struct MockState: Codable {
     var curveTried: String? = nil             // 곡선을 받으려 한 때 (날짜+a/p, 하루 두 번까지)
     var warns: [String: [String]]? = nil      // 걸린 종목 위쪽 30개의 유의사항 (VI·투자경고·거래정지…). 마지막 훑기 기준
     var warnsAt: Date? = nil
+    var realBaseDay: String? = nil            // [실전] 하루 손실 한도 기준을 잡은 날
+    var realBase: Double? = nil               // [실전] 그날 처음 읽은 토스 계좌 평가액
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -128,7 +130,12 @@ final class MockDesk {
         liveBlock = ready.map { !$0.keys ? "서버에 토스 키 없음" : !$0.account ? "서버에 계좌 없음" : !$0.armed ? "서버 실전 꺼짐" : nil } ?? "서버에 닿지 못함"
         guard live || shown == .real else { account = nil; accountWhy = nil; return }
         let (a, why) = await TossOrderAPI.account()
-        if let a { account = a }
+        if let a {
+            account = a
+            // [실전] 하루 손실 한도 기준: 오늘 처음 읽은 토스 계좌 평가액
+            let today = MockFmt.day(Date())
+            if s.realBaseDay != today, let eq = realEquity { s.realBaseDay = today; s.realBase = eq; save() }
+        }
         accountWhy = why
     }
 
@@ -271,7 +278,18 @@ final class MockDesk {
     var dropped: [MockCalc.Pick] { s.dropped ?? [] }
     var marks: [MockMark] { marks(shown) }
     func marks(_ b: MockBook) -> [MockMark] { let id = ledger(b).id; return (s.marks ?? []).filter { $0.ledger == id } }
-    func equity(_ b: MockBook) -> Double { MockCalc.equity(ledger(b), prices: s.prices) }
+    /// 평가액. [실전]은 토스 계좌 평가액 (계좌를 못 읽었으면 장부로 셈한다. 판단에는 realEquity 를 쓴다)
+    func equity(_ b: MockBook) -> Double {
+        if b == .real, let eq = realEquity { return eq }
+        return MockCalc.equity(ledger(b), prices: s.prices)
+    }
+    /// [실전] 토스 계좌 평가액: 주문가능 현금 + 보유 × 지금 가격 (가격이 없으면 토스 평균가). 계좌를 못 읽었으면 nil
+    var realEquity: Double? {
+        guard let a = account else { return nil }
+        return (a.cash ?? 0) + a.items.reduce(0) { $0 + Double($1.qty) * (s.prices[$1.code] ?? $1.avg ?? 0) }
+    }
+    /// 수익률 그래프 맨 앞 기준: [실전]은 첫 평가액 점 (없으면 nil), [모의]는 시작 현금
+    func firstEquity(_ b: MockBook) -> Double? { b == .real ? marks(b).min { $0.at < $1.at }?.eq : ledger(b).startCash }
     func ledgerEvents(_ b: MockBook) -> [MockEvent] { let id = ledger(b).id; return events.filter { $0.ledger == id } }
 
     /// 예외 종목 → 이유. 직접 넣은 것, 내 보유 종목 전부, 조건 묶음에 걸린 것
@@ -612,6 +630,14 @@ final class MockDesk {
         if b == .real && test { log(.reject, book: b, who: who, code: code, name: name, text: "실전 · 장 밖이라 주문 안 냄", test: test, side: .buy, ref: ref); return false }
         // 안전장치: 모두 멈춤 · 하루 손실 한도 (손 주문은 막지 않는다)
         if who != .hand && halted { log(.reject, book: b, who: who, code: code, name: name, text: "모두 멈춤 중 · 안 냄", test: test, side: .buy, ref: ref); return false }
+        // [실전]: 매수 직전에 토스 계좌를 한 번 읽어 한도와 견준다. 못 읽으면 사지 않는다
+        if b == .real && who != .hand && !test {
+            await refreshAccount()
+            if realEquity == nil || s.realBaseDay != MockFmt.day(Date()) {
+                log(.reject, book: b, who: who, code: code, name: name, text: "토스 계좌 못 읽음 · 새로 사지 않음", test: test, side: .buy, ref: ref)
+                return false
+            }
+        }
         if who != .hand && !test && dayLossHit(b) {
             log(.reject, book: b, who: who, code: code, name: name, text: "하루 손실 한도 −\(MockFmt.num(guards.dayLoss * 100))% 넘음 · 새로 사지 않음", test: test, side: .buy, ref: ref)
             return false
@@ -745,7 +771,14 @@ final class MockDesk {
     var halted: Bool { s.halt == true }
 
     /// 하루 손실 한도를 넘었나 (장부마다: 오늘 시작 평가액 대비)
-    func dayLossHit(_ b: MockBook) -> Bool { let base = dayBase(b); return base > 0 && equity(b) <= base * (1 - guards.dayLoss) }
+    /// [실전]은 오늘 처음 읽은 토스 평가액 대비 지금 토스 평가액 (모르면 넘지 않은 것으로 보이고, 매수는 placeBuy 가 막는다)
+    func dayLossHit(_ b: MockBook) -> Bool {
+        if b == .real {
+            guard s.realBaseDay == MockFmt.day(Date()), let base = s.realBase, let eq = realEquity else { return false }
+            return base > 0 && eq <= base * (1 - guards.dayLoss)
+        }
+        let base = dayBase(b); return base > 0 && equity(b) <= base * (1 - guards.dayLoss)
+    }
     var dayLossHit: Bool { dayLossHit(shown) }
 
     /// 모두 멈춤: 모든 대기 주문을 취소하고 묶은 돈을 돌려준다. 자동매매(한 바퀴·돌리기·자동 팔기)와 규칙 주문을 막는다
@@ -809,6 +842,8 @@ final class MockDesk {
             return
         }
         let f = broker(b).match(o, book: book, fees: s.fees)
+        // 실전 체결이 나면 토스 계좌(현금·보유)를 한 번 다시 읽는다 (평가액이 옛 계좌로 남지 않게)
+        if b == .real && f.qty > 0 { Task { await refreshAccount() } }
         if f.qty > 0 {
             let e = o.side == .buy ? MockCalc.applyBuy(&l, orderIndex: i, fill: f, fees: s.fees, at: Date(), test: test)
                                    : MockCalc.applySell(&l, orderIndex: i, fill: f, fees: s.fees, at: Date(), test: test)
@@ -889,6 +924,8 @@ final class MockDesk {
         if ph == .closed { Task { await self.curveIfNeeded() } }
         var watch = Set<String>()
         for l in s.ledgers { watch.formUnion(l.positions.keys); watch.formUnion(l.pending.map(\.code)) }
+        // 토스 계좌 보유도 같은 호출로 가격을 받는다 ([실전] 평가액)
+        if let a = account { watch.formUnion(a.items.map(\.code)) }
         for h in (s.scan?.hits ?? []).prefix(150) { watch.insert(h.code) }
         if !watch.isEmpty, let p = try? await MockFeed.last(Array(watch).sorted()) {
             s.prices.merge(p) { _, b in b }; s.pricesAt = Date()
@@ -940,7 +977,7 @@ final class MockDesk {
             if s.runs["observe"]?.ok == true { for b in autoBooks where !halted { await select(b, buy: autoOrder) } }
             picked = true
         }
-        addMark()
+        await addMark()
         ticking = false
         save()
         if picked { startAIReview() }
@@ -959,13 +996,16 @@ final class MockDesk {
     }
 
     /// 평가액 점: 5분에 하나. 이틀 지난 점은 하루 마지막 하나만 남긴다
-    private func addMark() {
+    private func addMark() async {
         let now = Date()
         var ms = s.marks ?? []
         for b in [MockBook.rule, .real] {
             let l = ledger(b)
             if let last = ms.last(where: { $0.ledger == l.id }), now.timeIntervalSince(last.at) < 300 { continue }
-            ms.append(MockMark(at: now, eq: equity(b), ledger: l.id))
+            // [실전] 점은 토스 계좌 평가액. 실전 스위치가 켜졌거나 [실전]을 볼 때만 이 회차에 계좌를 한 번 읽고, 그래도 모르면 건너뛴다
+            if b == .real && (live || shown == .real) { await refreshAccount() }
+            guard let eq = b == .real ? realEquity : equity(b) else { continue }
+            ms.append(MockMark(at: now, eq: eq, ledger: l.id))
         }
         let cut = now.addingTimeInterval(-2 * 86_400)
         var lastOfDay: [String: Int] = [:]

@@ -69,8 +69,14 @@ extension MockDesk {
     }
 
     /// 오늘 시작 평가액: 오늘 전 마지막 점 (없으면 오늘 첫 점, 장부가 오늘 시작했으면 시작 현금)
+    /// [실전]은 오늘 처음 읽은 토스 계좌 평가액 (없으면 오늘 첫 점, 그것도 없으면 지금 토스 평가액)
     func dayBase(_ b: MockBook) -> Double {
-        let l = ledger(b), today = MockFmt.day(Date())
+        let today = MockFmt.day(Date())
+        if b == .real {
+            if s.realBaseDay == today, let base = s.realBase { return base }
+            return marks(b).first(where: { MockFmt.day($0.at) == today })?.eq ?? realEquity ?? 0
+        }
+        let l = ledger(b)
         if MockFmt.day(l.started) == today { return l.startCash }
         let ms = marks(b)
         if let m = ms.last(where: { MockFmt.day($0.at) < today }) { return m.eq }
