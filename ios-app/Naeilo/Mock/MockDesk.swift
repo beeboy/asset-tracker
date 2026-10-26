@@ -99,6 +99,19 @@ final class MockDesk {
     /// 서버 실전 준비가 안 된 이유 (nil 이면 준비됨). 실전 칸이 열릴 때 checkLive 로 다시 묻는다
     private(set) var liveBlock: String? = "확인 전"
     func checkLive() async { liveBlock = await TossOrderAPI.ready() }
+    /// 계좌 탭: 서버 실전 상태 · 토스 계좌 (실전일 때만 계좌를 묻는다). 기기 메모리에만
+    private(set) var ready: TossOrderAPI.Ready? = nil
+    private(set) var account: TossOrderAPI.Account? = nil
+    private(set) var accountWhy: String? = nil
+    func refreshAccount() async {
+        guard MockFeed.base != nil else { ready = nil; accountWhy = "서버 주소 없음"; return }
+        ready = await TossOrderAPI.readyInfo()
+        liveBlock = ready.map { !$0.keys ? "서버에 토스 키 없음" : !$0.account ? "서버에 계좌 없음" : !$0.armed ? "서버 실전 꺼짐" : nil } ?? "서버에 닿지 못함"
+        guard live else { account = nil; accountWhy = nil; return }
+        let (a, why) = await TossOrderAPI.account()
+        if let a { account = a }
+        accountWhy = why
+    }
 
     /// 실전 켜기·끄기 (화면에서 확인을 거친 뒤에만 부른다). 대기 주문이 있으면 바꾸지 않는다
     @discardableResult

@@ -7,13 +7,16 @@ import SwiftUI
 func mt(_ s: String) -> Text { Text(verbatim: s) }
 
 enum MockTab: String, CaseIterable, Identifiable {
-    case observe, select, journal
+    case observe, select, journal, account
     var id: String { rawValue }
+    /// 계좌 탭 이름 (바꿀 때 여기 한 곳만)
+    static let accountName = "계좌"
     var name: String {
         switch self {
         case .observe: return "관찰"
         case .select: return "선정"
         case .journal: return "일지"
+        case .account: return Self.accountName
         }
     }
     var icon: String {
@@ -21,6 +24,7 @@ enum MockTab: String, CaseIterable, Identifiable {
         case .observe: return "binoculars"
         case .select: return "checklist"
         case .journal: return "book.closed"
+        case .account: return "creditcard"
         }
     }
 }
@@ -73,6 +77,9 @@ extension MockDesk {
         return ms.first(where: { MockFmt.day($0.at) == today })?.eq ?? l.startCash
     }
 
+    /// 하루 손실 한도까지 남은 돈 (규칙 장부. 0 이하면 넘음)
+    var lossRoom: Double { equity(.rule) - dayBase * (1 - guards.dayLoss) }
+
     /// 보유 종목을 산 값 대비 오른 · 그대로 · 내린으로 나눈 평가액과 수
     var moods: (values: [Double], counts: [Int]) {
         var v = [0.0, 0.0, 0.0], n = [0, 0, 0]
@@ -104,6 +111,9 @@ struct MockBox<Fig: View>: View {
             HStack(spacing: 8) {
                 mt(label).appFont(13).foregroundStyle(BoxInk.dim).lineLimit(1)
                 Spacer(minLength: 4)
+                if MockDesk.shared.live {
+                    mt("실전").appFont(11, .bold).foregroundStyle(.white).padding(.horizontal, 8).padding(.vertical, 3).background(BoxInk.up, in: Capsule())
+                }
                 MockStatePill()
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -153,6 +163,7 @@ struct MockTabBox: View {
             case .observe: observe(d)
             case .select: select(d)
             case .journal: journal(d)
+            case .account: account(d)
             }
         }
         .background { MoodBackdrop(look: BoxLook(rawValue: lookRaw) ?? .jump) }
@@ -193,6 +204,22 @@ struct MockTabBox: View {
                        tailL: mt("산 돈 " + String(format: "%.0f%%", r * 100)).foregroundColor(BoxInk.sub),
                        tailR: "현금 " + MockFmt.man(l.cash) + (l.settling > 0 ? " · 결제 대기 " + MockFmt.man(l.settling) : "")) {
             MockShareBar(value: r, color: Theme.gold)
+        }
+    }
+
+    /// 계좌: 평가액 · 오늘 손익 / 주문가능 · 손실 한도까지 남은 돈 / 손실 한도를 쓴 만큼 띠
+    private func account(_ d: MockDesk) -> some View {
+        let eq = d.equity(.rule), base = d.dayBase
+        let mv = eq - base, pct = base > 0 ? mv / base : 0
+        let c = mv > 0 ? BoxInk.up : mv < 0 ? BoxInk.down : BoxInk.dim
+        let room = d.lossRoom, cap = base * d.guards.dayLoss
+        let cash = d.live ? (d.account?.cash ?? d.ledger(.rule).cash) : d.ledger(.rule).cash
+        return MockBox(label: (d.live ? "실전" : "모의") + " · 평가액",
+                       big: mt(MockFmt.man(eq)).foregroundColor(BoxInk.ink),
+                       side: MockFmt.pct(pct), sideColor: c,
+                       tailL: mt("주문가능 " + Self.man(cash)).foregroundColor(BoxInk.sub),
+                       tailR: room > 0 ? "한도까지 " + Self.man(room) : "한도 넘음") {
+            MockShareBar(value: cap > 0 ? 1 - room / cap : 0, color: room > 0 ? BoxInk.gold : BoxInk.up)
         }
     }
 
@@ -843,7 +870,7 @@ struct MockLiveSheet: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         let d = MockDesk.shared, br = d.broker
-        let t: MockLive.Tab = tab == .observe ? .observe : tab == .select ? .select : .journal
+        let t: MockLive.Tab = tab == .observe ? .observe : tab == .select ? .select : .journal   // 계좌는 일지 규칙(매도·모두 멈춤·공통)
         VStack(spacing: 0) {
             MockSheetBar(title: tab.name + " · 실전 규칙") { dismiss() }
             ScrollView {
