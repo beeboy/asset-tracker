@@ -26,7 +26,11 @@ enum MockFeed {
         if let t = token { req.setValue(t, forHTTPHeaderField: "X-Naeilo-Dev") }
         let data: Data, resp: URLResponse
         do { (data, resp) = try await URLSession.shared.data(for: req) }
-        catch let e as URLError { throw Fail(why: e.code == .timedOut ? "서버 응답 없음 (\(Int(timeout))초)" : "서버 연결 실패 (\(e.code.rawValue))") }
+        catch let e as URLError {
+            // -999 는 서버 문제가 아니라 일이 취소된 것 (화면·앱 전환). 오류가 아닌 취소로 올린다
+            if e.code == .cancelled { throw CancellationError() }
+            throw Fail(why: e.code == .timedOut ? "서버 응답 없음 (\(Int(timeout))초)" : "서버 연결 실패 (\(e.code.rawValue))")
+        }
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         if code == 401 || code == 403 { throw Fail(why: "개발자 서버 열쇠가 맞지 않아요") }
         guard code == 200 else { throw Fail(why: code == 404 ? "서버에 모의투자 경로 없음 (server.py 새 판 필요)" : "서버 응답 \(code)") }
@@ -69,28 +73,37 @@ enum MockFeed {
 
     static func enc(_ s: String) -> String { s.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? s }
 
-    /// 일봉: 100종목씩 나눠 묻는다. progress(받은 종목 수). 실패한 종목은 errors 에 이유
-    static func daily(_ codes: [String], count: Int, progress: @MainActor (Int) -> Void) async throws -> (bars: [String: [MockBar]], errors: [String: String]) {
+    /// 일봉: 100종목씩 나눠 묻는다. progress(받은 종목 수). 실패한 종목은 errors 에 이유.
+    /// skip: 이미 받은 묶음 (시작 번호) — 멈췄다 이어 받을 때. batch: 묶음 하나를 받을 때마다 (시작 번호, 일봉, 실패)
+    static func daily(_ codes: [String], count: Int, skip: Set<Int> = [], progress: @MainActor (Int) -> Void,
+                      batch: (@MainActor (Int, [String: [MockBar]], [String: String]) -> Void)? = nil) async throws -> (bars: [String: [MockBar]], errors: [String: String]) {
         var bars: [String: [MockBar]] = [:], errors: [String: String] = [:]
         var done = 0
         for i in stride(from: 0, to: codes.count, by: 100) {
-            try Task.checkCancellation()
             let part = Array(codes[i..<min(codes.count, i + 100)])
+            if skip.contains(i) { done += part.count; continue }
+            try Task.checkCancellation()
             let o: [String: Any]
             do { o = try await get("/api/mock/daily?count=\(count)&symbols=" + enc(part.joined(separator: ",")), timeout: 70) }
             catch let f as Fail {
                 // 처음 묶음부터 실패하면 그만 (서버 문제). 중간이면 그 묶음만 이유를 남기고 이어 간다
                 if bars.isEmpty && i == 0 { throw f }
-                for c in part { errors[c] = f.why }
+                var errs: [String: String] = [:]
+                for c in part { errs[c] = f.why }
+                errors.merge(errs) { _, b in b }
+                await batch?(i, [:], errs)
                 done += part.count; await progress(done); continue
             }
+            var got: [String: [MockBar]] = [:], errs: [String: String] = [:]
             for (c, rows) in o["bars"] as? [String: Any] ?? [:] {
-                bars[c] = (rows as? [[Any]] ?? []).compactMap { r in
+                got[c] = (rows as? [[Any]] ?? []).compactMap { r in
                     guard r.count >= 6, let d = r[0] as? String, let op = num(r[1]), let h = num(r[2]), let l = num(r[3]), let cl = num(r[4]) else { return nil }
                     return MockBar(d: d, o: op, h: h, l: l, c: cl, v: num(r[5]) ?? 0)
                 }
             }
-            for (c, e) in o["errors"] as? [String: String] ?? [:] { errors[c] = e }
+            for (c, e) in o["errors"] as? [String: String] ?? [:] { errs[c] = e }
+            bars.merge(got) { _, b in b }; errors.merge(errs) { _, b in b }
+            await batch?(i, got, errs)
             done += part.count
             await progress(done)
         }
@@ -107,7 +120,7 @@ enum MockFeed {
         let today = MockFmt.day(Date())
         var days = dayCache[code].flatMap { $0.day == today ? $0.bars : nil }
         if days == nil {
-            days = try await daily([code], count: 200) { _ in }.bars[code] ?? []
+            days = try await daily([code], count: 200, progress: { _ in }).bars[code] ?? []
             dayCache[code] = (today, days!)
         }
         return (o["day"] as? String ?? "", mins, days!)

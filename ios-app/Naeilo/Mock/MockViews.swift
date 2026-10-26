@@ -861,7 +861,7 @@ struct MockObserveView: View {
             if adding {
                 MockPieceForm(draft: $draft, close: { adding = false }) { commit(d, $0) }
             }
-            if let p = d.progress, d.busy == "observe" || d.busy == "cycle" {
+            if let p = d.progress {
                 ProgressView(value: Double(p.done), total: Double(max(1, p.total))).tint(Theme.teal)
                 mt("일봉 받는 중 \(p.done.formatted()) / \(p.total.formatted())").appFont(12).foregroundStyle(Theme.muted)
             }

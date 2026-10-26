@@ -1,6 +1,7 @@
 #if MOCK
 import Foundation
 import Observation
+import UIKit
 
 /// 모의투자 저장 상태. 기록 줄은 따로 journal.jsonl 에 차례로 쌓는다
 struct MockState: Codable {
@@ -78,6 +79,18 @@ final class MockDesk {
     private(set) var progress: (done: Int, total: Int)? = nil
     /// 앱에 넣은 내 보유 종목 (예외 조건 '내 보유 종목 전부')
     var mine: Set<String> = []
+    /// 받는 중인 관찰 일봉 (멈췄다 이어 받기). 기기 메모리에만 둔다: 기준일·봉 수·종목 수가 같아야 이어 쓴다
+    private struct Partial {
+        var key: String
+        var bars: [String: [MockBar]] = [:]
+        var errors: [String: String] = [:]
+        var done: Set<Int> = []
+        var n: Int { bars.count + errors.count }
+    }
+    private var partial: Partial?
+    /// 멈춘 관찰 (어디서 시작했나: observe · cycle · auto). 앱이 다시 앞에 오면 이어 받는다
+    private(set) var paused: String? = nil
+    private var obsFrom = "observe"
     /// 마지막으로 고른 종목 (검토 문이 열려 있으면 picks 가 바로 비므로 AI 의견용으로 따로 둔다)
     private(set) var lastPicks: [MockCalc.Pick] = []
 
@@ -222,9 +235,33 @@ final class MockDesk {
         await waitTick()
         guard busy == nil else { return }
         busy = "observe"
-        await observe()
+        await keepAlive("observe")
         busy = nil
         save()
+    }
+
+    /// 단추로 시작한 훑기: 앱을 나가도 iOS 가 주는 남은 시간 동안 계속 받는다. 시간이 다 되면 멈춤으로 두고 돌아오면 이어 받는다
+    private func keepAlive(_ from: String) async {
+        obsFrom = from
+        let t = Task { await self.observe() }
+        let box = BgId()
+        box.id = UIApplication.shared.beginBackgroundTask(withName: "mock.observe") {
+            t.cancel()
+            if box.id != .invalid { UIApplication.shared.endBackgroundTask(box.id); box.id = .invalid }
+        }
+        await t.value
+        if box.id != .invalid { UIApplication.shared.endBackgroundTask(box.id); box.id = .invalid }
+    }
+    private final class BgId { var id = UIBackgroundTaskIdentifier.invalid }
+
+    /// 앱이 다시 앞에 왔을 때: 멈춘 훑기를 남은 묶음부터 이어 받는다 (자동은 다음 1분 주기가 잇는다)
+    func resume() async {
+        guard let p = paused, busy == nil else { return }
+        switch p {
+        case "observe": await runObserve()
+        case "cycle": await runCycle()
+        default: break
+        }
     }
 
     private func observe() async {
@@ -234,10 +271,21 @@ final class MockDesk {
         }
         defer { progress = nil }
         let t0 = Date(), stocks = Self.universe, codes = stocks.map(\.code)
-        progress = (0, codes.count)
-        let need = max(61, ([b] + s.exceptions.bundles).map(\.need).max() ?? 0)
+        let need = max(61, ([b] + s.exceptions.bundles).map(\.need).max() ?? 0), count = min(200, need)
+        // 같은 날·같은 봉 수면 멈춘 데서 이어 받는다 (기준일이 바뀌면 처음부터)
+        let key = "\(MockFmt.day(Date()))|\(count)|\(codes.count)"
+        if partial?.key != key { partial = Partial(key: key) }
+        progress = (partial?.n ?? 0, codes.count)
         do {
-            let got = try await MockFeed.daily(codes, count: min(200, need), progress: { [weak self] n in self?.progress = (n, codes.count) })
+            _ = try await MockFeed.daily(codes, count: count, skip: partial?.done ?? [],
+                                         progress: { [weak self] n in self?.progress = (n, codes.count) },
+                                         batch: { [weak self] i, bars, errs in
+                                             self?.partial?.bars.merge(bars) { _, b in b }
+                                             self?.partial?.errors.merge(errs) { _, b in b }
+                                             self?.partial?.done.insert(i)
+                                         })
+            let got = partial ?? Partial(key: key)
+            partial = nil; paused = nil
             let exHits = MockCalc.exceptionHits(s.exceptions.bundles, stocks: stocks, bars: got.bars)
             let ex = excluded(extra: exHits)
             let scan = MockCalc.scan(b, stocks: stocks, bars: got.bars, excluded: Set(ex.keys), at: Date(), seconds: Date().timeIntervalSince(t0))
@@ -253,6 +301,10 @@ final class MockDesk {
             let errN = got.errors.count
             s.runs["observe"] = MockRun(at: Date(), ok: errN < codes.count / 10,
                                         text: "\(MockFmt.time(Date())) 훑음 · \(Int(scan.seconds))초 · 일봉 기준 \(scan.barDay)" + (errN > 0 ? " · 못 받은 \(errN)" : ""))
+        } catch is CancellationError {
+            // 취소(앱 나감·화면 전환)는 오류가 아니다. 받은 묶음은 두고 멈춤으로
+            paused = obsFrom
+            s.runs["observe"] = MockRun(at: Date(), ok: false, text: "\(MockFmt.time(Date())) 멈춤 · 돌아오면 이어 받아요 (\((partial?.n ?? 0).formatted()) / \(codes.count.formatted()))")
         } catch {
             let why = (error as? MockFeed.Fail)?.why ?? error.localizedDescription
             s.runs["observe"] = MockRun(at: Date(), ok: false, text: "\(MockFmt.time(Date())) 실패 · " + why)
@@ -400,9 +452,9 @@ final class MockDesk {
         await waitTick()
         guard busy == nil else { return }
         busy = "cycle"
-        await observe()
+        await keepAlive("cycle")
         if s.runs["observe"]?.ok == true { await select(buy: cycleOrder) }
-        if cycleSell { await sellNow() }
+        if cycleSell && paused == nil { await sellNow() }
         busy = nil
         save()
         startAIReview()
@@ -437,6 +489,7 @@ final class MockDesk {
         if who != .hand && ledger(b).positions[code] != nil { log(.order, book: b, who: who, code: code, name: name, text: "이미 보유 · 안 냄", ref: ref); return false }
         var book: MockCalc.Book
         do { book = try await MockFeed.book(code) }
+        catch is CancellationError { return false }
         catch { log(.error, book: b, who: who, code: code, name: name, text: "호가 확인 못 함 · " + ((error as? MockFeed.Fail)?.why ?? ""), ref: ref); return false }
         if test && book.asks.isEmpty, let px = s.prices[code] { book = MockCalc.Book(asks: [.init(p: px, v: 1e12)], bids: book.bids, at: book.at) }
         guard let ask = book.bestAsk else { log(.error, book: b, who: who, code: code, name: name, text: "매도 호가 없음 · 안 냄", ref: ref); return false }
@@ -478,6 +531,7 @@ final class MockDesk {
         let test = ph != .open
         var book: MockCalc.Book
         do { book = try await MockFeed.book(code) }
+        catch is CancellationError { return false }
         catch { log(.error, book: b, who: who, code: code, name: p.name, text: "호가 확인 못 함 · 팔기 미룸 · " + ((error as? MockFeed.Fail)?.why ?? "")); return false }
         if test && book.bids.isEmpty, let px = s.prices[code] { book = MockCalc.Book(asks: book.asks, bids: [.init(p: px, v: 1e12)], at: book.at) }
         let lim = limit.map { MockCalc.snap($0, side: .sell) }
@@ -597,9 +651,11 @@ final class MockDesk {
         }
         // 한 바퀴 자동 (장중만)
         var picked = false
-        if s.auto > 0 && ph == .open, Date().timeIntervalSince(s.runs["observe"]?.at ?? .distantPast) >= Double(s.auto * 60) {
+        if s.auto > 0 && ph == .open, paused == "auto" || Date().timeIntervalSince(s.runs["observe"]?.at ?? .distantPast) >= Double(s.auto * 60) {
+            obsFrom = "auto"
             await observe()
-            await select(buy: autoOrder)
+            // 훑기가 끝났을 때만 고른다 (멈춤·실패면 옛 결과로 고르지 않는다)
+            if s.runs["observe"]?.ok == true { await select(buy: autoOrder) }
             picked = true
         }
         addMark()

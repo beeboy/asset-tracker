@@ -174,28 +174,36 @@ struct MockJournalView: View {
         sadding = false
     }
 
-    // 평가액 그래프: 종목 탭 그래프와 같은 모양 (오른쪽 세로 축 꼬리표 = 지금 평가액 · 달라진 금액 · 시작 평가액, 아래 가로 축 = 처음 칸 · 지금, 기간 단추는 아래)
+    // 평가액 그래프: 종목 탭 그래프와 같은 모양 (오른쪽 세로 축 꼬리표 = 지금 평가액 · 달라진 금액 · 시작 평가액, 아래 가로 축 = 처음 칸 · 지금, 기간 단추는 아래).
+    // 왼쪽 위 = 그 기간 수익률 (첫 칸 평가액 대비라 시간·일·주·월·년마다 다르다). 손가락으로 훑으면 시각 · 평가액 · 수익률
     private func retCard(_ d: MockDesk) -> some View {
-        let (left, pts) = series(d)
+        let (left, pts, dates) = series(d)
         let S = pts.first ?? 0, E = pts.last ?? 0, up = E >= S
+        let r = S > 0 ? E / S - 1 : 0
         return Card {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                mt(MockFmt.pct(r)).appFont(18, .heavy).monospacedDigit().foregroundStyle(r > 0 ? Theme.up : r < 0 ? Theme.down : Theme.sub)
+                mt(unit.name + " 기준").appFont(12).foregroundStyle(Theme.muted)
+                Spacer()
+            }
             if pts.count < 2 {
                 mt("평가액 점이 쌓이면 그려요").appFont(14, .bold).foregroundStyle(Theme.sub)
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 TagChart(points: pts, height: 120, tags: [
                     .init(at: E, text: MockFmt.man(E), bg: Theme.ink, fg: Theme.card),
-                    .init(at: E, dy: 20, text: (up ? "+" : "−") + MockFmt.man(abs(E - S)) + " · " + MockFmt.pct(S > 0 ? E / S - 1 : 0),
-                          bg: up ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2)),
+                    .init(at: E, dy: 20, text: (up ? "+" : "−") + MockFmt.man(abs(E - S)), bg: up ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2)),
                     .init(at: S, text: MockFmt.man(S), bg: TagChart.gray),
-                ], left: left, right: "지금")
+                ], left: left, right: "지금",
+                         scrub: Scrub(date: { x in dates[min(dates.count - 1, max(0, Int((x * Double(dates.count - 1)).rounded())))] },
+                                      value: { v in MockFmt.man(v) + " · " + MockFmt.pct(S > 0 ? v / S - 1 : 0) }))
             }
             ChipRow(items: MockCalc.Unit.allCases.map { ($0, $0.name) }, selection: $unit, fill: true)
         }
     }
 
-    /// 칸마다 마지막 평가액 (지금 칸은 지금 평가액). 기록이 다 들어가면 장부 시작 현금부터. 첫 칸 이름도 함께
-    private func series(_ d: MockDesk) -> (String, [Double]) {
+    /// 칸마다 마지막 평가액 (지금 칸은 지금 평가액). 기록이 다 들어가면 장부 시작 현금부터. 첫 칸 이름 · 칸마다 시각도 함께
+    private func series(_ d: MockDesk) -> (String, [Double], [Date]) {
         let l = d.ledger(.rule)
         let take: Int
         switch unit {
@@ -205,20 +213,20 @@ struct MockJournalView: View {
         case .month: take = 24
         case .year: take = 10
         }
-        var order: [String] = [], last: [String: Double] = [:]
+        var order: [String] = [], last: [String: Double] = [:], at: [String: Date] = [:]
         for m in d.marks.sorted(by: { $0.at < $1.at }) {
             let k = MockCalc.bucket(m.at, unit)
             if last[k] == nil { order.append(k) }
-            last[k] = m.eq
+            last[k] = m.eq; at[k] = m.at
         }
         let nowKey = MockCalc.bucket(Date(), unit)
         if last[nowKey] == nil { order.append(nowKey) }
-        last[nowKey] = d.equity(.rule)
+        last[nowKey] = d.equity(.rule); at[nowKey] = Date()
         let keys = Array(order.suffix(take))
-        var eqs = keys.compactMap { last[$0] }
+        var eqs = keys.compactMap { last[$0] }, dates = keys.compactMap { at[$0] }
         var left = keys.first ?? ""
-        if order.count < take { eqs.insert(l.startCash, at: 0); left = "시작" }
-        return (left, eqs)
+        if order.count < take { eqs.insert(l.startCash, at: 0); dates.insert(l.started, at: 0); left = "시작" }
+        return (left, eqs, dates)
     }
 
     private func mineCard(_ d: MockDesk) -> some View {
@@ -571,6 +579,8 @@ struct MockTabsHooks: ViewModifier {
         content
             .onAppear { d.mine = mine }
             .onChange(of: mine) { _, v in d.mine = v }
+            // 멈춘 훑기는 앱이 다시 앞에 오면 이어 받는다
+            .onChange(of: phase) { _, p in if p == .active && d.active { Task { await d.resume() } } }
             // 투자 모드이고 앱이 앞에 있는 동안만 1분마다: 가격·대기 주문·팔기 규칙·자동 (AI 는 꺼 둠)
             .task(id: d.active && phase == .active) {
                 guard d.active && phase == .active else { return }
