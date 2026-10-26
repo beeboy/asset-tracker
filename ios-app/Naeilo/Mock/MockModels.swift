@@ -140,6 +140,7 @@ struct MockHit: Codable, Equatable, Identifiable {
     var why: String              // "거래량 3.1배 · +4.2% · 20일선 위"
     var vol: Double? = nil       // 거래량 배수 (지난 20일 평균 대비)
     var rise5: Double? = nil     // 최근 5일 상승률 (%)
+    var volNew: Double? = nil    // 시각 보정 거래량 배수 (이 시각까지 보통 쌓이는 양 대비). 장중 훑기만
 }
 
 /// 관찰에 한 번 걸린 기록 (종목별 관찰 기록)
@@ -148,6 +149,14 @@ struct MockSeen: Codable, Equatable {
     var price: Double
     var change: Double?
     var why: String
+    var vol: Double? = nil       // 그때 거래량 배수 (옛 방식)
+    var volNew: Double? = nil    // 그때 시각 보정 배수 (새 방식, 나란히 견주기용)
+}
+
+/// 하루 거래량 곡선: 9:00부터 15분마다 하루 거래량이 얼마나 쌓였는지 (27칸, 0~1). 큰 종목들의 가운데 값
+struct MockCurve: Codable, Equatable {
+    var day: String
+    var cum: [Double]
 }
 
 /// 한 번 훑은 결과. 떨어진 종목은 이유(처음 걸린 조각 번호)별 수만 남긴다 (-1 = 자료 없음)
@@ -163,6 +172,8 @@ struct MockScan: Codable, Equatable, Identifiable {
     var dropped: [Int: Int]      // 조각 번호 → 떨어진 수
     var excluded: [String] = []  // 예외로 뺀 종목 코드
     var seconds: Double = 0
+    var frac: Double? = nil      // 이 시각 하루 거래량 누적 비율 (곡선 기준). 있으면 새 배수도 쟀다
+    var newHits: [String]? = nil // 새 배수로 걸린 종목 코드 (옛 결과와 나란히 견주기용, 고르기에는 안 쓴다)
 }
 
 /// 관찰 조건 하나 (알약). 켠 조건을 모두 맞는 종목이 걸린다

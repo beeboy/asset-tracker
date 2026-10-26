@@ -1458,6 +1458,10 @@ struct MockSeenLog: View {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         mt(MockFmt.time(x.at)).appFont(12).foregroundStyle(Theme.muted).monospacedDigit()
                         Spacer(minLength: 4)
+                        if let v = x.vol {
+                            mt(String(format: "%.1f배", v) + (x.volNew.map { String(format: " · 새 %.1f배", $0) } ?? ""))
+                                .appFont(11).foregroundStyle(Theme.muted).monospacedDigit()
+                        }
                         mt(MockFmt.won(x.price)).appFont(12, .semibold).monospacedDigit()
                         if let c = x.change {
                             mt(MockFmt.pct(c, digits: 1)).appFont(12, .bold).monospacedDigit()

@@ -215,5 +215,32 @@ check(back == L2, "장부 저장 왕복")
 let sBack = try! dec.decode(MockScan.self, from: enc.encode(scan))
 check(sBack == scan, "훑기 저장 왕복")
 
+// 시각 보정 거래량 (새 배수): 옛 결과는 그대로, 새 배수로 걸린 종목은 따로
+do {
+    let f = DateFormatter(); f.timeZone = MockFmt.kst; f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd HH:mm"
+    let at10 = f.date(from: "2026-09-22 10:00")!
+    // 1분봉 390개가 같은 양이면 10시(60분)에 60/390 쌓인다
+    let flat = (1...390).map { i in MockBar(d: String(format: "%02d:%02d", (540 + i) / 60, (540 + i) % 60), o: 1, h: 1, l: 1, c: 1, v: 10) }
+    let cum = MockCalc.curve(Array(repeating: flat, count: 5))!
+    check(cum.count == 27 && near(cum[4], 60.0 / 390) && near(cum[26], 1), "곡선 칸: \(cum[4]) \(cum[26])")
+    check(MockCalc.curve([flat]) == nil, "종목 5개 안 되면 곡선 없음")
+    let curves = [MockCurve(day: "2026-09-21", cum: cum)]
+    let fr = MockCalc.frac(curves, at: at10)!
+    check(near(fr, 60.0 / 390), "10시 쌓임 비율 \(fr)")
+    check(MockCalc.frac(curves, at: f.date(from: "2026-09-22 08:50")!) == nil, "장 전은 nil")
+    check(MockCalc.frac(curves, at: f.date(from: "2026-09-22 16:00")!) == 1, "장 끝 뒤는 1")
+    check(MockCalc.frac([], at: at10) == nil, "곡선 없으면 nil")
+    // 거래량 0.5배라도 10시 기준이면 새 배수 3.25배 → 새로 걸림
+    var b2 = allBars; b2["000005"] = bars(9_000, lastUp: 0.03, volMul: 0.5)
+    let st2 = stocks + [MockStock(code: "000005", name: "마", kospi: true)]
+    let sc = MockCalc.scan(bundle, stocks: st2, bars: b2, excluded: [], at: at10, frac: fr)
+    check(sc.hits.map(\.code) == ["000001", "000002"], "옛 결과는 그대로: \(sc.hits.map(\.code))")
+    check(Set(sc.newHits ?? []) == ["000001", "000002", "000005"], "새 배수 걸린: \(sc.newHits ?? [])")
+    check(near(sc.hits[0].volNew ?? 0, 3.1 / fr), "새 배수 값")
+    let notToday = MockCalc.scan(bundle, stocks: st2, bars: b2, excluded: [], at: t0, frac: fr)
+    check(notToday.frac == nil && notToday.newHits == nil && notToday.hits[0].volNew == nil, "오늘 봉이 아니면 새 배수 안 잼")
+    check(MockCalc.big(b2, n: 2) == ["000003", "000002"], "큰 종목: \(MockCalc.big(b2, n: 2))")
+}
+
 print(fails == 0 ? "ALL OK" : "\(fails) FAILED")
 exit(fails == 0 ? 0 : 1)

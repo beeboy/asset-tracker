@@ -55,6 +55,9 @@ struct MockState: Codable {
     var checks: [String: MockRun]? = nil      // 장부별 마지막 잔고 맞추기 (book → 결과)
     var checkDay: String? = nil               // 잔고 맞추기를 한 날 (하루 한 번)
     var fillAlert: Bool? = nil                // 체결 알림 (없으면 켬)
+    var curves: [MockCurve]? = nil            // 하루 거래량 곡선 (최근 20 거래일). 새 배수 재기용
+    var bigCodes: [String]? = nil             // 곡선을 만들 큰 종목 (마지막 훑기 기준 20개)
+    var curveTried: String? = nil             // 곡선을 받으려 한 때 (날짜+a/p, 하루 두 번까지)
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -318,9 +321,11 @@ final class MockDesk {
             partial = nil; paused = nil
             let exHits = MockCalc.exceptionHits(s.exceptions.bundles, stocks: stocks, bars: got.bars)
             let ex = excluded(extra: exHits)
-            let scan = MockCalc.scan(b, stocks: stocks, bars: got.bars, excluded: Set(ex.keys), at: Date(), seconds: Date().timeIntervalSince(t0))
+            let scan = MockCalc.scan(b, stocks: stocks, bars: got.bars, excluded: Set(ex.keys), at: Date(), seconds: Date().timeIntervalSince(t0),
+                                     frac: MockCalc.frac(s.curves ?? [], at: Date()))
+            s.bigCodes = MockCalc.big(got.bars, n: 20)
             let dropText = scan.dropped.sorted { $0.key < $1.key }.map { (k, n) in (k < 0 ? "자료 없음" : (k < scan.pieceTexts.count ? scan.pieceTexts[k] : "?")) + " \(n)" }.joined(separator: " · ")
-            let ev = log(.scan, book: .rule, text: "\(b.name) · 걸린 \(scan.hits.count) / \(scan.total) · 기준 \(scan.barDay)" + (dropText.isEmpty ? "" : " · 떨어진 " + dropText), bundle: b.name)
+            let ev = log(.scan, book: .rule, text: "\(b.name) · 걸린 \(scan.hits.count) / \(scan.total) · 기준 \(scan.barDay)" + (dropText.isEmpty ? "" : " · 떨어진 " + dropText) + newText(scan), bundle: b.name)
             if !scan.excluded.isEmpty {
                 let why = Dictionary(grouping: scan.excluded, by: { (ex[$0] ?? "").components(separatedBy: " · ").first ?? "" }).map { "\($0.key) \($0.value.count)" }.joined(separator: " · ")
                 log(.exclude, book: .rule, text: "예외로 뺀 \(scan.excluded.count) · " + why, bundle: b.name, ref: ev.id)
@@ -342,11 +347,39 @@ final class MockDesk {
         }
     }
 
+    /// 새 배수로 잰 결과 한 토막: " · 새 배수(쌓임 23%) 걸린 40 · 새로 12 삼성전자·… · 빠진 3"
+    private func newText(_ sc: MockScan) -> String {
+        guard let f = sc.frac, let nh = sc.newHits else { return "" }
+        let old = Set(sc.hits.map(\.code)), new = Set(nh)
+        let added = nh.filter { !old.contains($0) }, gone = sc.hits.filter { !new.contains($0.code) }.count
+        let names = added.prefix(5).map { Self.name($0) }.joined(separator: "·") + (added.count > 5 ? "…" : "")
+        return " · 새 배수(쌓임 \(Int((f * 100).rounded()))%) 걸린 \(nh.count) · 새로 \(added.count)" + (names.isEmpty ? "" : " " + names) + " · 빠진 \(gone)"
+    }
+
+    /// 하루 거래량 곡선: 장 밖(8:30 전·15:45 뒤)에 하루 두 번까지 큰 종목 20개의 마지막 거래일 1분봉을 받아 하나 더한다
+    private var curving = false
+    func curveIfNeeded(now: Date = Date()) async {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
+        let c = cal.dateComponents([.hour, .minute], from: now), m = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        let key = MockFmt.day(now) + (m < 720 ? "a" : "p")
+        guard !curving, m < 510 || m >= 945, s.curveTried != key, let codes = s.bigCodes, !codes.isEmpty else { return }
+        curving = true; defer { curving = false }
+        s.curveTried = key
+        var days: [String: [[MockBar]]] = [:]
+        for code in codes {
+            if let r = try? await MockFeed.minutes(code), !r.day.isEmpty, !r.bars.isEmpty { days[r.day, default: []].append(r.bars) }
+        }
+        guard let best = days.max(by: { $0.key < $1.key }), !(s.curves ?? []).contains(where: { $0.day == best.key }),
+              let cum = MockCalc.curve(best.value) else { return }
+        s.curves = Array(((s.curves ?? []) + [MockCurve(day: best.key, cum: cum)]).sorted { $0.day < $1.day }.suffix(20))
+        save()
+    }
+
     /// 종목별 관찰 기록: 걸린 종목마다 한 줄. 7일 지난 것은 버리고 종목당 20번까지
     private func addSeen(_ sc: MockScan) {
         var all = s.seen ?? [:]
         let cut = sc.at.addingTimeInterval(-7 * 86_400)
-        for h in sc.hits { all[h.code, default: []].append(MockSeen(at: sc.at, price: h.price, change: h.change, why: h.why)) }
+        for h in sc.hits { all[h.code, default: []].append(MockSeen(at: sc.at, price: h.price, change: h.change, why: h.why, vol: h.vol, volNew: h.volNew)) }
         for (c, xs) in all {
             let keep = xs.filter { $0.at >= cut }.suffix(20)
             all[c] = keep.isEmpty ? nil : Array(keep)
@@ -755,6 +788,7 @@ final class MockDesk {
         settleDue()
         checkDaily()
         let ph = await refreshPhase()
+        if ph == .closed { Task { await self.curveIfNeeded() } }
         var watch = Set<String>()
         for l in s.ledgers { watch.formUnion(l.positions.keys); watch.formUnion(l.pending.map(\.code)) }
         for h in (s.scan?.hits ?? []).prefix(150) { watch.insert(h.code) }

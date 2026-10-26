@@ -53,29 +53,91 @@ enum MockCalc {
     // MARK: 훑기
 
     /// 묶음으로 종목들을 거른다. bars: 코드 → 오래된 것부터. 기준 날짜(가장 늦은 봉)에 봉이 없는 종목은 자료 없음
-    static func scan(_ b: MockBundle, stocks: [MockStock], bars: [String: [MockBar]], excluded: Set<String>, at: Date, seconds: Double = 0) -> MockScan {
+    /// frac: 이 시각 하루 거래량 누적 비율. 오늘 봉이 장중일 때만 거래량·거래대금을 frac 으로 나눈 새 배수로도 따로 걸러 newHits 에 남긴다
+    static func scan(_ b: MockBundle, stocks: [MockStock], bars: [String: [MockBar]], excluded: Set<String>, at: Date, seconds: Double = 0, frac: Double? = nil) -> MockScan {
         let barDay = bars.values.compactMap { $0.last?.d }.max() ?? ""
-        var hits: [MockHit] = [], dropped: [Int: Int] = [:], ex: [String] = []
+        let f = frac.flatMap { $0 > 0 && $0 < 1 && barDay == MockFmt.day(at) ? $0 : nil }
+        var hits: [MockHit] = [], dropped: [Int: Int] = [:], ex: [String] = [], newHits: [String] = []
         let list = stocks.filter { b.scope == .all || (b.scope == .kospi) == $0.kospi }
         for s in list {
             if excluded.contains(s.code) { ex.append(s.code); continue }
             guard let bs = bars[s.code], let last = bs.last, last.d == barDay, bs.count >= b.need else { dropped[-1, default: 0] += 1; continue }
-            var why: [String] = [], fail: Int? = nil
+            var why: [String] = [], fail: Int? = nil, failNew = f == nil
             for (i, p) in b.pieces.enumerated() {
-                guard let v = value(p, bs) else { fail = -1; break }
-                if !pass(p, v) { fail = i; break }
-                why.append(short(p, v))
+                guard let v = value(p, bs) else { fail = fail ?? -1; failNew = true; break }
+                if let f, !pass(p, scaled(p, v, f)) { failNew = true }
+                if fail == nil { if pass(p, v) { why.append(short(p, v)) } else { fail = i } }
+                if fail != nil && failNew { break }
             }
+            if !failNew { newHits.append(s.code) }
             if let f = fail { dropped[f, default: 0] += 1; continue }
             let score = value(b.sortPiece, bs) ?? 0
             let ch = value(MockPiece(kind: .change), bs).map { $0 / 100 }
             hits.append(MockHit(code: s.code, name: s.name, price: last.c, change: ch, score: score,
                                 why: why.isEmpty ? "조각 없음 · 전부" : MockFmt.uniq(why.joined(separator: " · ")),
-                                vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs)))
+                                vol: value(MockPiece(kind: .volume, days: 20), bs), rise5: value(MockPiece(kind: .rise, days: 5), bs),
+                                volNew: f.flatMap { f in value(MockPiece(kind: .volume, days: 20), bs).map { $0 / f } }))
         }
         hits.sort { $0.score != $1.score ? $0.score > $1.score : $0.code < $1.code }
         return MockScan(at: at, bundleId: b.id, bundleName: b.name, pieceTexts: b.pieces.map(\.text), barDay: barDay,
-                        total: list.count, hits: hits, dropped: dropped, excluded: ex, seconds: seconds)
+                        total: list.count, hits: hits, dropped: dropped, excluded: ex, seconds: seconds,
+                        frac: f, newHits: f == nil ? nil : newHits)
+    }
+
+    /// 새 배수: 거래량·거래대금은 아직 쌓이는 중이라 이 시각 누적 비율로 나눈다. 가격 조각은 그대로
+    static func scaled(_ p: MockPiece, _ v: Double, _ f: Double) -> Double {
+        p.kind == .volume || p.kind == .amount ? v / f : v
+    }
+
+    // MARK: 하루 거래량 곡선
+
+    /// 지난 20일 하루 평균 거래대금이 큰 종목 n개 (오늘 봉은 뺀다)
+    static func big(_ bars: [String: [MockBar]], n: Int) -> [String] {
+        let amt: [(String, Double)] = bars.map { (c, bs) in
+            (c, bs.dropLast().suffix(20).reduce(0.0) { (s: Double, x: MockBar) in s + x.c * x.v })
+        }
+        return amt.sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0 < $1.0 }.prefix(n).map(\.0)
+    }
+
+    /// 종목들의 하루 1분봉 ("09:01") → 15분마다 누적 비율 27칸 (종목 사이 가운데 값). 쓸 종목이 5개 안 되면 nil
+    static func curve(_ days: [[MockBar]]) -> [Double]? {
+        var cols = Array(repeating: [Double](), count: 27)
+        for bs in days {
+            let tot = bs.reduce(0) { $0 + $1.v }
+            guard tot > 0 else { continue }
+            for k in 0...26 {
+                let t = k == 26 ? Int.max : 540 + 15 * k
+                cols[k].append(bs.filter { hm($0.d) <= t }.reduce(0) { $0 + $1.v } / tot)
+            }
+        }
+        guard cols[0].count >= 5 else { return nil }
+        return cols.map(median)
+    }
+
+    /// 이 시각 하루 거래량 누적 비율 (최근 곡선들의 칸별 가운데 값, 15분 사이는 곧게 잇는다). 장 전·곡선 없음은 nil, 장 끝 뒤는 1
+    static func frac(_ curves: [MockCurve], at: Date) -> Double? {
+        let cs = curves.filter { $0.cum.count == 27 }
+        guard !cs.isEmpty else { return nil }
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = MockFmt.kst
+        let c = cal.dateComponents([.hour, .minute], from: at)
+        let m = (c.hour ?? 0) * 60 + (c.minute ?? 0) - 540
+        guard m > 0 else { return nil }
+        if m >= 390 { return 1 }
+        let k = m / 15, r = Double(m % 15) / 15
+        let a = median(cs.map { $0.cum[k] }), b = median(cs.map { $0.cum[k + 1] })
+        let v = a + (b - a) * r
+        return v > 0 ? v : nil
+    }
+
+    static func hm(_ s: String) -> Int {
+        let p = s.split(separator: ":").compactMap { Int($0) }
+        return p.count == 2 ? p[0] * 60 + p[1] : 0
+    }
+
+    static func median(_ xs: [Double]) -> Double {
+        let s = xs.sorted(), n = s.count
+        guard n > 0 else { return 0 }
+        return n % 2 == 1 ? s[n / 2] : (s[n / 2 - 1] + s[n / 2]) / 2
     }
 
     /// 예외 묶음에 걸리는 종목 (조건 추가). 조각이 없는 묶음은 아무것도 빼지 않는다
