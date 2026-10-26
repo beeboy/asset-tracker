@@ -139,7 +139,6 @@ import com.naeilo.app.ui.outset
 import com.naeilo.app.ui.plainClickable
 import com.naeilo.app.ui.plainCombinedClickable
 import com.naeilo.app.ui.rememberPrefBool
-import com.naeilo.app.ui.rememberPrefString
 import com.naeilo.app.ui.stiffness
 import com.naeilo.app.core.swFmt
 import com.naeilo.app.core.swFmtFrac
@@ -184,11 +183,7 @@ fun HoldingsView(m: AppModel) {
     val lookRaw = BoxLook.raw   // ios: Views/HoldingsView.swift:20
     val dts = LocalTextScale.current   // ios: Views/HoldingsView.swift:21
     val dark = LocalPal.current.isDark   // ios: Views/HoldingsView.swift:22
-    val arrive by rememberPrefString("town.arrive", "")   // ios: Views/HoldingsView.swift:23
 
-    // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
-    // ios: Views/HoldingsView.swift:77,78
-    LaunchedEffect(arrive) { if (arrive.isNotEmpty()) m.tab = com.naeilo.app.Tab.home }
     // ios: Views/HoldingsView.swift:38,66,70,71,72,78 (종목을 누르면 종목 상세 팝업, 알림으로 온 종목 m.holdOpen 도)
     DetailSheet(m, period, takesHoldOpen = true) {
     NavStack(m.holdPath, { m.holdPath = it }, {

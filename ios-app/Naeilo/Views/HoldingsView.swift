@@ -20,7 +20,6 @@ struct HoldingsView: View {
     @AppStorage(BoxLook.key) private var lookRaw = BoxLook.jump.rawValue
     @Environment(\.dynamicTypeSize) private var dts
     @Environment(\.colorScheme) private var scheme
-    @AppStorage("town.arrive") private var arrive = ""
     private static let periods: [Period] = [.m1, .m3, .m6, .y1, .y3]
     private static let gold = Color(hex: 0xF2C14E)
 
@@ -83,8 +82,6 @@ struct HoldingsView: View {
         .detailSheet(period: period, takesHoldOpen: true)
         .sheet(item: $editSym) { s in PopupStack { HoldingEditView(sym: s) }.environment(m) }   // 길게 누르기 '종목 고치기'도 팝업
         .sheet(item: $river) { EarningsRiverSheet(target: $0) }
-        .onAppear { if !arrive.isEmpty { m.tab = .home } }   // 방금 더한 종목: 홈 아래 [동네]가 바로 연다
-        .onChange(of: arrive) { if !$1.isEmpty { m.tab = .home } }
         .alert("내 투자 습관", isPresented: Binding(get: { said != nil }, set: { if !$0 { said = nil } })) {
             Button("확인") {}
         } message: { Text(said ?? "") }
@@ -1080,9 +1077,9 @@ struct AddHoldingView: View {
             }
         }
         // 지금 가격은 모든 시세(사이트·Yahoo·토스·Alpaca·Longbridge)가 모이는 Market.quote 한 곳에서 본다.
-        // Yahoo·사이트로 못 받았으면 고른 그 자리에서 내 키(토스)로 이 종목 시세를 바로 받는다
+        // 0이면 고른 그 자리에서 이 종목까지 넣어 모든 시세를 한 번에 다시 받는다 (어느 시세든 같은 길)
         if p.last <= 0 && !Sample.isVirtual(p.id) {
-            await Market.shared.refreshToss(held: Set(m.holdings.map(\.symbol)).union([p.id]), force: true)
+            await Market.shared.refresh(held: Set(m.holdings.map(\.symbol)).union([p.id]), force: true)
             p = Sample.symbol(p.id) ?? p
         }
         if p.currency == .krw {
@@ -1116,7 +1113,7 @@ struct AddHoldingView: View {
     }
 
     private func added(_ new: String?) {
-        if inline { picked = nil; query = ""; qty = ""; avg = ""; if let close { if let new { arrive = new }; close() } } else { if let new { arrive = new }; dismiss() }
+        if inline { picked = nil; query = ""; qty = ""; avg = ""; if let close { close() } } else { if let new { arrive = new }; dismiss() }
     }
 
     private func field(_ label: String, _ b: Binding<String>) -> some View {

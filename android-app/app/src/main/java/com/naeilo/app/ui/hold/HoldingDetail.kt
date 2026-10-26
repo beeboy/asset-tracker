@@ -486,9 +486,9 @@ fun AddHoldingView(m: AppModel,
                 return
             }
             // 지금 가격은 모든 시세(사이트·Yahoo·토스·Alpaca·Longbridge)가 모이는 Market.quote 한 곳에서 본다.
-            // Yahoo·사이트로 못 받았으면 고른 그 자리에서 내 키(토스)로 이 종목 시세를 바로 받는다
+            // 0이면 고른 그 자리에서 이 종목까지 넣어 모든 시세를 한 번에 다시 받는다 (어느 시세든 같은 길)
             if (p.last <= 0 && !Sample.isVirtual(p.id)) {   // ios: Views/HoldingsView.swift:1084
-                Market.shared.refreshToss(held = m.holdings.map { it.symbol }.toSet() + p.id, force = true)   // ios: Views/HoldingsView.swift:1085
+                Market.shared.refresh(held = m.holdings.map { it.symbol }.toSet() + p.id, force = true)   // ios: Views/HoldingsView.swift:1085
                 p = Sample.symbol(p.id) ?: p   // ios: Views/HoldingsView.swift:1086
             }
             // 국내 종목은 시세를 받아야만 넣는다 (0원·직접 넣은 가격으로 두지 않는다)
@@ -501,7 +501,7 @@ fun AddHoldingView(m: AppModel,
     }
     // ios: Views/HoldingsView.swift:995
     fun added(new: String?) {
-        if (inline) { picked = null; query = ""; qty = ""; avg = ""; close?.let { if (new != null) arrive = new; it() } } else { if (new != null) arrive = new; dismiss() }   // ios: Views/HoldingsView.swift:996
+        if (inline) { picked = null; query = ""; qty = ""; avg = ""; close?.invoke() } else { if (new != null) arrive = new; dismiss() }   // ios: Views/HoldingsView.swift:996
     }
 
     // ios: Views/HoldingsView.swift:999
