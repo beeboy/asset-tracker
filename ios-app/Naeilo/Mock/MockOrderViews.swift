@@ -399,6 +399,7 @@ struct MockJournalView: View {
 // MARK: 계좌 (투자 모드 5번째 칸. [모의]·[실전]을 따라 그 장부를 그림으로)
 
 struct MockAccountView: View {
+    @AppStorage("mockAutoLast") private var autoLast = 10   // 돌리기 멈춤을 풀 때 쓸 지난 간격 (분)
     @State private var settings = false
     @State private var liveAsk = false
     @State private var note: String?
@@ -607,16 +608,33 @@ struct MockAccountView: View {
             .offset(y: g > 0 ? -h / 2 : h / 2).frame(width: 18, height: 96)
     }
 
-    // MARK: 불빛 둘 — 실전 자동주문 · 모두 멈춤
+    // MARK: 불빛 둘 — [실전] 실전 자동주문 · 모두 멈춤 / [모의] 돌리기 주문 · 돌리기 멈춤
 
     private func lights(_ d: MockDesk) -> some View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
-                light("실전 자동주문", d.live ? "켬" : "끔", icon: "power", on: d.live, color: Theme.orange) {
-                    if d.live { note = d.setLive(false) } else { await d.checkLive(); liveAsk = true }
-                }
-                light("모두 멈춤", d.halted ? "멈춤" : "도는 중", icon: "pause.fill", on: d.halted, color: Theme.up) {
-                    if d.halted { d.resumeAll() } else { d.haltAll() }
+                if d.shown == .real {
+                    light("실전 자동주문", d.live ? "켬" : "끔", icon: "power", on: d.live, color: Theme.orange) {
+                        if d.live { note = d.setLive(false) } else { await d.checkLive(); liveAsk = true }
+                    }
+                    light("모두 멈춤", d.halted ? "멈춤" : "도는 중", icon: "pause.fill", on: d.halted, color: Theme.up) {
+                        if d.halted { d.resumeAll() } else { d.haltAll() }
+                    }
+                } else {
+                    // 모의: 돌리기(한 바퀴 자동)에 주문까지 · 돌리기 자체를 멈춤 (풀면 지난 간격으로)
+                    light("모의 자동주문", d.autoOrder ? "켬" : "끔", icon: "power", on: d.autoOrder, color: Theme.teal) {
+                        let v = !d.autoOrder
+                        d.edit(v ? "돌리기 주문 켬" : "돌리기 주문 끔") { $0.autoOrder = v }
+                    }
+                    light("돌리기 멈춤", d.s.auto == 0 ? "멈춤" : "\(d.s.auto)분마다 도는 중", icon: "pause.fill", on: d.s.auto == 0, color: Theme.down) {
+                        if d.s.auto == 0 {
+                            let m = autoLast > 0 ? autoLast : 10
+                            d.edit("자동 \(m)분") { $0.auto = m }
+                        } else {
+                            autoLast = d.s.auto
+                            d.edit("자동 끔") { $0.auto = 0 }
+                        }
+                    }
                 }
             }
             if let note { mt(note).appFont(12).foregroundStyle(Theme.up) }
