@@ -57,7 +57,7 @@ Kotlin 경로는 `android-app/app/src/main/java/` 또는 `widget/src/main/java/`
 | `Views/HomeView.swift` | `com/naeilo/app/ui/home/HomeView.kt` (457), `com/naeilo/app/App.kt` (1) |
 | `Views/InvestViews.swift` | `com/naeilo/app/ui/analysis/InvestViews.kt` (95) |
 | `Views/MeViews.swift` | `com/naeilo/app/ui/me/MeViews.kt` (480) |
-| `Views/MissionViews.swift` | `com/naeilo/app/ui/board/MissionViews.kt` (471) |
+| `Views/MissionViews.swift` | `com/naeilo/app/ui/board/MissionViews.kt` (477) |
 | `Views/MyRecordCard.swift` | `com/naeilo/app/ui/MyRecordCard.kt` (44) |
 | `Views/ParallelView.swift` | `com/naeilo/app/ui/analysis/ParallelViews.kt` (215) |
 | `Views/RemindViews.swift` | `com/naeilo/app/ui/remind/RemindViews.kt` (151) |
