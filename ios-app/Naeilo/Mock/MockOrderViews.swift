@@ -392,6 +392,8 @@ struct MockSettingsView: View {
     @State private var fees = MockDesk.shared.s.fees
     @State private var auto = MockDesk.shared.s.auto
     @State private var guards = MockDesk.shared.guards
+    @State private var liveAsk = false
+    @State private var liveNote: String?
 
     var body: some View {
         let d = MockDesk.shared
@@ -403,6 +405,7 @@ struct MockSettingsView: View {
                     ledgerCard(d)
                     runCard
                     guardCard(d)
+                    liveCard(d)
                 }
                 .padding(16)
             }
@@ -518,6 +521,27 @@ struct MockSettingsView: View {
     }
 
     // 예전 설정 화면의 돌리기 값 (AI 칸은 뺐다)
+    /// 실전 스위치: 기본 끔. 켤 때는 확인을 한 번 더 받는다 (키체인에 토스 토큰·계좌가 있어야 켜진다)
+    private func liveCard(_ d: MockDesk) -> some View {
+        Card {
+            Toggle(isOn: Binding(get: { d.live }, set: { v in if v { liveAsk = true } else { liveNote = d.setLive(false) } })) {
+                VStack(alignment: .leading, spacing: 1) {
+                    mt("실전 (토스 주문)").appFont(16, .bold)
+                    mt(d.live ? "켜짐 · 실제 돈으로 주문해요" : "꺼짐 · 모의 브로커").appFont(12).foregroundStyle(d.live ? Theme.up : Theme.muted)
+                }
+            }
+            .tint(Theme.up)
+            mt("키체인 토스 키 " + (d.liveKeys ? "있음" : "없음")).appFont(12).foregroundStyle(Theme.muted)
+            if let liveNote { mt(liveNote).appFont(12).foregroundStyle(Theme.up) }
+        }
+        .confirmationDialog(Text(verbatim: "실전을 켤까요?"), isPresented: $liveAsk, titleVisibility: .visible) {
+            Button(role: .destructive) { liveNote = d.setLive(true) } label: { mt("실전 켜기 (실제 주문)") }
+            Button(role: .cancel) {} label: { mt("그만두기") }
+        } message: {
+            mt("토스 계좌로 실제 돈이 오가는 주문이 나가요. 장중에만, 안전장치 안에서 주문해요.")
+        }
+    }
+
     /// 안전장치: 하루 손실 한도 · 한 번 주문 상한 · 모두 멈춤
     private func guardCard(_ d: MockDesk) -> some View {
         Card {

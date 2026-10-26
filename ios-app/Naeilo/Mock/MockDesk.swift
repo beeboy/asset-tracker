@@ -49,6 +49,7 @@ struct MockState: Codable {
     var autoOrder: Bool? = nil                // 돌리기에 주문까지 (처음 한 번 옛 직접 검토 값에서 옮긴다: 검토 켬 → 끔)
     var slipAdded: Bool? = nil                // 미끄러짐 한도 알약을 한 번 넣었는지 (2026-10-26)
     var guards: MockGuards? = nil             // 안전장치 (없으면 기본값)
+    var live: Bool? = nil                     // 실전 스위치 (기본 끔. 켜면 토스 브로커로 실제 주문)
     var halt: Bool? = nil                     // 모두 멈춤: 대기 주문 취소 + 자동매매·규칙 주문 정지 (손 주문은 된다)
     var autoSell: Bool? = nil                 // 돌리기(1분 주기)에 팔기까지 (없으면 켬)
     var checks: [String: MockRun]? = nil      // 장부별 마지막 잔고 맞추기 (book → 결과)
@@ -85,8 +86,23 @@ final class MockDesk {
     private(set) var progress: (done: Int, total: Int)? = nil
     /// 앱에 넣은 내 보유 종목 (예외 조건 '내 보유 종목 전부')
     var mine: Set<String> = []
-    /// 주문층. 판단 코드는 이것만 부른다 (지금은 모의 브로커, 실전은 토스 브로커로 갈아 끼운다)
-    let broker: MockBroker = MockPaperBroker()
+    /// 주문층. 판단 코드는 이것만 부른다. 실전 스위치가 켜져 있으면 토스 브로커, 아니면 모의 브로커
+    private let paper = MockPaperBroker()
+    private let toss = MockTossBroker()
+    var broker: MockBroker { live ? toss : paper }
+    var live: Bool { s.live == true }
+    /// 실전 키(키체인 토큰·계좌)가 있나
+    var liveKeys: Bool { TossLiveKeys.token != nil && TossLiveKeys.account != nil }
+
+    /// 실전 켜기·끄기 (화면에서 확인을 거친 뒤에만 부른다). 대기 주문이 있으면 바꾸지 않는다
+    @discardableResult
+    func setLive(_ on: Bool) -> String? {
+        if s.ledgers.contains(where: { !$0.pending.isEmpty }) { return "대기 주문을 먼저 정리해 주세요" }
+        if on && !liveKeys { return "키체인에 토스 토큰·계좌가 없어요" }
+        edit(on ? "실전 켬 · 토스 브로커" : "실전 끔 · 모의 브로커") { $0.live = on ? true : nil }
+        toss.armed = on
+        return nil
+    }
 
     /// 받는 중인 관찰 일봉 (멈췄다 이어 받기). 기기 메모리에만 둔다: 기준일·봉 수·종목 수가 같아야 이어 쓴다
     private struct Partial {
@@ -111,6 +127,7 @@ final class MockDesk {
         if s.reviewShut == nil { s.select.review = true; s.reviewShut = true; save() }
         migrate()
         if s.aiPurged != true { purgeAI() }
+        toss.armed = s.live == true
         settleDue()
         checkDaily()
         let n = guards.perSec
@@ -496,6 +513,7 @@ final class MockDesk {
         let ph = await refreshPhase()
         guard ph != .unknown else { log(.error, book: b, who: who, code: code, name: name, text: "장 일정 확인 못 함 · 새로 사지 않음", ref: ref); return false }
         let test = ph == .closed
+        if live && test { log(.reject, book: b, who: who, code: code, name: name, text: "실전 · 장 밖이라 주문 안 냄", test: test, side: .buy, ref: ref); return false }
         // 안전장치: 모두 멈춤 · 하루 손실 한도 (손 주문은 막지 않는다)
         if who != .hand && halted { log(.reject, book: b, who: who, code: code, name: name, text: "모두 멈춤 중 · 안 냄", test: test, side: .buy, ref: ref); return false }
         if who != .hand && !test && dayLossHit {
@@ -570,6 +588,7 @@ final class MockDesk {
         if who != .hand && halted { log(.reject, book: b, who: who, code: code, name: p.name, text: "모두 멈춤 중 · 안 냄", side: .sell, ref: ref); return false }
         let ph = await refreshPhase()
         let test = ph != .open
+        if live && test { log(.reject, book: b, who: who, code: code, name: p.name, text: "실전 · 장 밖이라 주문 안 냄", test: test, side: .sell, ref: ref); return false }
         var book: MockCalc.Book
         do { book = try await broker.book(code) }
         catch is CancellationError { return false }
@@ -678,6 +697,13 @@ final class MockDesk {
             }
             return
         }
+        if let why = broker.closed(o) {
+            l.cash += max(0, o.reserved)
+            l.pending.remove(at: i)
+            set(l)
+            log(why.contains("거부") ? .reject : .cancel, book: b, who: o.who, code: o.code, name: o.name, text: why + " · 남은 \(o.qty)주", test: test, ref: o.id)
+            return
+        }
         let f = broker.match(o, book: book, fees: s.fees)
         if f.qty > 0 {
             let e = o.side == .buy ? MockCalc.applyBuy(&l, orderIndex: i, fill: f, fees: s.fees, at: Date(), test: test)
@@ -755,7 +781,8 @@ final class MockDesk {
                 }
                 let px = s.prices[o.code]
                 let cross: Bool = o.type == .market || px == nil || (o.side == .buy ? px! <= (o.limit ?? 0) : px! >= (o.limit ?? .infinity))
-                guard cross, let book = try? await broker.book(o.code) else { continue }
+                guard cross || broker.live, let book = try? await broker.book(o.code) else { continue }
+                await broker.refresh(o)
                 fill(l.book, orderId: o.id, book: book, test: ph != .open)
             }
         }
@@ -1202,6 +1229,10 @@ extension MockDesk {
     func match(_ o: MockOrder, book: MockCalc.Book, fees: MockFees) -> MockCalc.Fill
     /// 주문 취소
     func cancel(_ o: MockOrder) async
+    /// 상태 다시 읽기 (실전: 토스 주문 상세. 모의는 할 일 없음)
+    func refresh(_ o: MockOrder) async
+    /// 체결 없이 끝난 주문 (취소·거부) 이유. 모의는 없음
+    func closed(_ o: MockOrder) -> String?
 }
 
 /// 모의 브로커: 거래소 대신 받은 호가로 체결을 셈한다
@@ -1249,6 +1280,8 @@ extension MockDesk {
     }
 
     func cancel(_ o: MockOrder) async {}
+    func refresh(_ o: MockOrder) async {}
+    func closed(_ o: MockOrder) -> String? { nil }
 
     /// 1분 안에 먹은 잔량을 호가에서 뺀다 (같은 순간에 나눠 내도 같은 잔량을 두 번 먹지 않게)
     private func trim(_ code: String, _ b: MockCalc.Book) -> MockCalc.Book {
@@ -1258,15 +1291,82 @@ extension MockDesk {
     }
 }
 
-/// 토스 실주문 브로커 자리 (껍데기). 실제 주문을 보내는 코드·키·네트워크 호출은 없다. 연결 전까지 모든 주문을 거부한다
+/// 토스 실주문 브로커 (토스 주문 API 문서대로). 실전 스위치(armed)가 켜지고 키체인에 토큰·계좌가 있을 때만 주문을 보낸다.
+/// 체결은 토스가 알려 준 주문 상세(체결 수량·평균가)로 셈한다. 호가는 판단용으로 개발자 서버 시세를 그대로 쓴다
 @MainActor final class MockTossBroker: MockBroker {
     let live = true
-    let name = "토스 브로커 (연결 전)"
-    func book(_ code: String) async throws -> MockCalc.Book { throw MockFeed.Fail(why: "토스 주문 API 연결 전") }
-    func submit(_ o: MockOrder, book: MockCalc.Book) async -> String? { "토스 주문 API 연결 전 · 주문 안 냄" }
-    func settle(_ o: MockOrder) async -> MockCalc.Book? { nil }
-    func match(_ o: MockOrder, book: MockCalc.Book, fees: MockFees) -> MockCalc.Fill { MockCalc.Fill() }
-    func cancel(_ o: MockOrder) async {}
+    let name = "토스 브로커"
+    /// 실전 스위치 (MockDesk 가 맞춘다). 꺼져 있으면 아무것도 보내지 않는다
+    var armed = false
+    private var ids: [UUID: String] = [:]                  // 앱 주문 → 토스 orderId
+    private var last: [UUID: TossOrderAPI.Order] = [:]     // 마지막으로 읽은 토스 주문 상태
+    private var counted: [UUID: (qty: Int, amount: Double)] = [:]   // 장부에 이미 적은 체결 몫
+    private var lastCall: [String: Date] = [:]             // 호출 한도 그룹 → 마지막 부른 때
+
+    func book(_ code: String) async throws -> MockCalc.Book { try await MockFeed.book(code) }
+
+    func submit(_ o: MockOrder, book: MockCalc.Book) async -> String? {
+        guard armed else { return "실전 꺼짐 · 주문 안 냄" }
+        guard let r = await call("POST", "/api/v1/orders", body: TossOrderAPI.createBody(o), group: "ORDER") else { return "토스 키 없음 (키체인) · 주문 안 냄" }
+        guard r.status == 200, let id = r.json.flatMap(TossOrderAPI.orderId) else { return "토스 거부 · " + TossOrderAPI.reason(r.json, status: r.status) }
+        ids[o.id] = id
+        return nil
+    }
+
+    func settle(_ o: MockOrder) async -> MockCalc.Book? {
+        try? await Task.sleep(for: .seconds(1))
+        await refresh(o)
+        return try? await book(o.code)
+    }
+
+    /// 토스 주문 상세를 다시 읽는다 (한도 ORDER_HISTORY 초당 5회)
+    func refresh(_ o: MockOrder) async {
+        guard armed, let id = ids[o.id], let r = await call("GET", "/api/v1/orders/" + id, body: nil, group: "ORDER_HISTORY"),
+              r.status == 200, let x = r.json.flatMap(TossOrderAPI.order) else { return }
+        last[o.id] = x
+    }
+
+    /// 새로 체결된 몫만 (토스 체결 수량·금액 − 장부에 이미 적은 몫)
+    func match(_ o: MockOrder, book: MockCalc.Book, fees: MockFees) -> MockCalc.Fill {
+        guard let x = last[o.id] else { return MockCalc.Fill() }
+        let c = counted[o.id] ?? (0, 0)
+        let amount = x.filledAmount ?? (x.avg ?? 0) * Double(x.filledQty)
+        let dq = x.filledQty - c.qty
+        guard dq > 0 else { return MockCalc.Fill() }
+        counted[o.id] = (x.filledQty, amount)
+        return MockCalc.Fill(qty: dq, amount: amount - c.amount, levels: 1)
+    }
+
+    /// 토스가 체결 없이 끝낸 주문 (취소·거부) → 이유
+    func closed(_ o: MockOrder) -> String? {
+        guard let x = last[o.id], let st = TossOrderAPI.state(x.status), st == .canceled || st == .rejected else { return nil }
+        return st == .rejected ? "토스 거부 (REJECTED)" : "토스 취소 (\(x.status))"
+    }
+
+    func cancel(_ o: MockOrder) async {
+        guard armed, let id = ids[o.id] else { return }
+        _ = await call("POST", "/api/v1/orders/" + id + "/cancel", body: [:], group: "ORDER")
+    }
+
+    /// 한 번 부르기: 키체인 키가 없으면 nil. 그룹별 초당 한도를 넘지 않게 사이를 두고, 429 면 Retry-After 만큼 기다려 한 번 더
+    private func call(_ method: String, _ path: String, body: [String: Any]?, group: String) async -> (status: Int, json: [String: Any]?)? {
+        guard armed, let token = TossLiveKeys.token, let account = TossLiveKeys.account,
+              let req = TossOrderAPI.request(method, path, body: body, token: token, account: account) else { return nil }
+        for attempt in 0..<2 {
+            let gap = 1 / (TossOrderAPI.perSecond[group] ?? 1)
+            if let t = lastCall[group], Date().timeIntervalSince(t) < gap { try? await Task.sleep(for: .seconds(gap - Date().timeIntervalSince(t))) }
+            lastCall[group] = Date()
+            guard let (data, resp) = try? await URLSession.shared.data(for: req), let h = resp as? HTTPURLResponse else { return (0, nil) }
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if h.statusCode == 429 && attempt == 0 {
+                let wait = Double(h.value(forHTTPHeaderField: "Retry-After") ?? "") ?? 1
+                try? await Task.sleep(for: .seconds(min(wait, 5)))
+                continue
+            }
+            return (h.statusCode, json)
+        }
+        return (429, nil)
+    }
 }
 
 #endif
