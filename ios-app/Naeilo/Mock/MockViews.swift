@@ -1357,21 +1357,67 @@ struct MockSeenLog: View {
                 mt("오늘 \(n)번 · 7일 \(xs.count)번").appFont(12).foregroundStyle(n >= 2 ? Theme.up : Theme.muted)
             }
             if xs.isEmpty { mt("아직 관찰에 걸린 기록이 없어요").appFont(13).foregroundStyle(Theme.muted) }
-            ForEach(xs.indices, id: \.self) { i in
-                let x = xs[i]
+            ForEach(xs, id: \.at) { x in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     mt(MockFmt.stamp(x.at)).appFont(11).foregroundStyle(Theme.muted).monospacedDigit().fixedSize()
                     mt(MockFmt.uniq(x.why)).appFont(12).foregroundStyle(Theme.sub).lineLimit(2)
                     Spacer(minLength: 4)
                     mt(MockFmt.won(x.price)).appFont(12, .semibold).monospacedDigit().fixedSize()
                 }
+                .mockSwipe("지우기") { MockDesk.shared.deleteSeen(code, at: x.at) }
             }
         }
     }
 }
 
+/// 줄을 왼쪽으로 밀면 오른쪽에 빨간 단추 (지우기 · 숨기기). 세로 스크롤과 함께 받는다
+struct MockSwipe: ViewModifier {
+    let title: String
+    let action: () -> Void
+    @State private var dx: CGFloat = 0
+    @State private var base: CGFloat = 0
+    private let w: CGFloat = 76
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .offset(x: dx)
+            .background(alignment: .trailing) {
+                if dx < 0 {
+                    Button {
+                        withAnimation(.snappy) { dx = 0; base = 0 }
+                        action()
+                    } label: {
+                        mt(title).appFont(13, .bold).foregroundStyle(.white)
+                            .frame(width: max(w, -dx)).frame(maxHeight: .infinity)
+                            .background(Theme.up)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .clipped()
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 20)
+                    .onChanged { g in
+                        guard abs(g.translation.width) > abs(g.translation.height) * 1.5 else { return }
+                        dx = min(0, max(-w * 1.6, base + g.translation.width))
+                    }
+                    .onEnded { _ in
+                        withAnimation(.snappy) { dx = dx < -w / 2 ? -w : 0 }
+                        base = dx < -w / 2 ? -w : 0
+                    }
+            )
+    }
+}
+
+extension View {
+    func mockSwipe(_ title: String, _ action: @escaping () -> Void) -> some View { modifier(MockSwipe(title: title, action: action)) }
+}
+
 /// 선정·매도 흐름 한 줄: 선정만 · 선정 → 예외 · 선정 → 주문 · 선정 → 주문 → 체결 (매도는 매도 신호부터)
 struct MockFlow {
+    var id: UUID                  // 흐름 첫 기록 (숨길 때 이 id)
+    var ids: [UUID] = []          // 같은 날 같은 결과로 합친 흐름들
     var at: Date
     var sell = false
     var who: MockWho = .rule
@@ -1409,10 +1455,10 @@ extension MockDesk {
             switch e.kind {
             case .select where e.who == .rule:
                 head[e.id] = flows.count
-                flows.append(MockFlow(at: e.at, test: e.test, steps: ["선정"]))
+                flows.append(MockFlow(id: e.id, at: e.at, test: e.test, steps: ["선정"]))
             case .sell:
                 head[e.id] = flows.count
-                flows.append(MockFlow(at: e.at, sell: true, test: e.test, steps: ["매도 신호 (" + reason(e) + ")"]))
+                flows.append(MockFlow(id: e.id, at: e.at, sell: true, test: e.test, steps: ["매도 신호 (" + reason(e) + ")"]))
             case .order where e.side != nil:
                 if let r = e.ref, let i = head[r] {
                     flows[i].steps.append("주문"); flows[i].test = flows[i].test || e.test
@@ -1420,7 +1466,7 @@ extension MockDesk {
                 } else {
                     // 손 주문 (앞 단계 없음)
                     orderOf[e.id] = flows.count
-                    flows.append(MockFlow(at: e.at, sell: e.side == .sell, who: e.who ?? .hand, test: e.test,
+                    flows.append(MockFlow(id: e.id, at: e.at, sell: e.side == .sell, who: e.who ?? .hand, test: e.test,
                                           steps: [(e.who ?? .hand).name + " " + (e.side == .sell ? "매도" : "매수") + " 주문"]))
                 }
             case .fill:
@@ -1438,17 +1484,19 @@ extension MockDesk {
                 if let r = e.ref, let i = head[r] {
                     if flows[i].why == nil { flows[i].steps.append("예외"); flows[i].why = reason(e) }
                 } else if e.kind != .select && e.kind != .order && e.code != nil {
-                    flows.append(MockFlow(at: e.at, test: e.test, steps: ["선정", "예외"], why: reason(e)))
+                    flows.append(MockFlow(id: e.id, at: e.at, test: e.test, steps: ["선정", "예외"], why: reason(e)))
                 }
             default:
                 break
             }
         }
         var days: [String: [MockFlow]] = [:], keys: [String: [String: Int]] = [:]
-        for f in flows {
+        let hid = hiddenIds
+        for var f in flows where !hid.contains(f.id) {
+            f.ids = [f.id]
             let day = MockFmt.day(f.at)
             let key = (f.sell ? "s" : "b") + (f.test ? "t" : "") + f.text + (f.pnl.map { MockFmt.signedWon($0) } ?? "")
-            if f.qty == 0, let i = keys[day]?[key] { days[day]![i].n += 1; continue }
+            if f.qty == 0, let i = keys[day]?[key] { days[day]![i].n += 1; days[day]![i].ids.append(f.id); continue }
             keys[day, default: [:]][key] = days[day, default: []].count
             days[day, default: []].append(f)
         }
@@ -1474,7 +1522,9 @@ struct MockTradeLog: View {
                 if i > 0 { Divider().overlay(Theme.line) }
                 mt(x.day == today ? "오늘" : (i == 0 ? MockFmt.md(x.day) : "지난 선정 · " + MockFmt.md(x.day)))
                     .appFont(13, .bold).foregroundStyle(i == 0 ? Theme.ink : Theme.sub)
-                ForEach(x.lines.indices, id: \.self) { line(x.lines[$0]) }
+                ForEach(x.lines, id: \.id) { f in
+                    line(f).mockSwipe("숨기기") { MockDesk.shared.hide(f.ids) }
+                }
             }
         }
     }
@@ -1497,7 +1547,8 @@ struct MockFillLog: View {
     let code: String
     var body: some View {
         let d = MockDesk.shared
-        let fs = d.events.filter { $0.code == code && $0.book == .rule && $0.kind == .fill }
+        let hid = d.hiddenIds
+        let fs = d.events.filter { $0.code == code && $0.book == .rule && $0.kind == .fill && !hid.contains($0.id) }
         let days = Dictionary(grouping: fs) { MockFmt.day($0.at) }
         let keys = days.keys.sorted(by: >)
         let pnl = fs.compactMap(\.pnl).reduce(0, +)
@@ -1513,7 +1564,9 @@ struct MockFillLog: View {
             ForEach(keys.indices, id: \.self) { i in
                 if i > 0 { Divider().overlay(Theme.line) }
                 mt(MockFmt.md(keys[i])).appFont(13, .bold)
-                ForEach(days[keys[i]] ?? []) { line($0) }
+                ForEach(days[keys[i]] ?? []) { e in
+                    line(e).mockSwipe("숨기기") { d.hide([e.id]) }
+                }
             }
         }
     }

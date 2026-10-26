@@ -41,6 +41,7 @@ struct MockState: Codable {
     var aiPurged: Bool? = nil                 // AI 장부 매매 데이터를 한 번 지웠는지 (2026-10-25)
     var surgeAdded: Bool? = nil               // 폭등 거르기 기본 조건을 한 번 넣었는지 (2026-10-25)
     var seen: [String: [MockSeen]]? = nil     // 종목별 관찰 기록 (7일 · 종목당 20번까지)
+    var hidden: [UUID]? = nil                 // 화면에서 숨긴 기록 줄 (손익·장부 계산 원본은 남긴다)
 
     static func fresh(_ now: Date) -> MockState {
         let a = MockBundle(name: "A · 거래량 급증", pieces: [MockPiece(kind: .volume, lo: 2, days: 20), MockPiece(kind: .change, lo: 2, hi: 8), MockPiece(kind: .ma, days: 20)])
@@ -669,6 +670,30 @@ final class MockDesk {
         if let i = s.ledgers.firstIndex(where: { $0.id == l.id }) { s.ledgers[i] = l }
     }
 
+    // MARK: 기록 줄 지우기·숨기기 (줄을 왼쪽으로 밀어서)
+
+    var hiddenIds: Set<UUID> { Set(s.hidden ?? []) }
+
+    /// 체결·주문 등 계산에 쓰는 기록은 화면에서만 숨긴다
+    func hide(_ ids: [UUID]) {
+        s.hidden = Array(hiddenIds.union(ids))
+        save()
+    }
+
+    /// 오류·규칙 바뀜 줄은 계산에 쓰지 않아 기록 파일에서 실제로 지운다
+    func deleteNotes(_ ids: Set<UUID>) {
+        let n = events.count
+        events.removeAll { ($0.kind == .error || $0.kind == .rules) && ids.contains($0.id) }
+        if events.count != n { Self.rewriteLines(events) }
+    }
+
+    /// 관찰 기록 한 줄 지우기 (빨간 점 셈에서도 빠진다)
+    func deleteSeen(_ code: String, at: Date) {
+        s.seen?[code]?.removeAll { $0.at == at }
+        if s.seen?[code]?.isEmpty == true { s.seen?[code] = nil }
+        save()
+    }
+
     // MARK: 파일 (기기 안, 앱 전용 폴더. 위젯·동기화와 나누지 않는다)
 
     private static var dir: URL {
@@ -693,7 +718,7 @@ final class MockDesk {
         guard let d = try? Data(contentsOf: dir.appendingPathComponent("journal.jsonl")) else { return [] }
         return d.split(separator: UInt8(ascii: "\n")).compactMap { try? dec.decode(MockEvent.self, from: Data($0)) }
     }
-    /// 기록 파일을 통째로 다시 쓴다 (AI 기록 지우기에만 쓴다)
+    /// 기록 파일을 통째로 다시 쓴다 (AI 기록 지우기 · 오류·규칙 줄 지우기)
     private static func rewriteLines(_ es: [MockEvent]) {
         var d = Data()
         for e in es { if let x = try? enc.encode(e) { d.append(x); d.append(UInt8(ascii: "\n")) } }

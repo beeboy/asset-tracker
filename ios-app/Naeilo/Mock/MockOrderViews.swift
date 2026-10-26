@@ -324,14 +324,15 @@ struct MockJournalView: View {
         }
     }
 
-    /// 오류: 한 줄씩 (최근부터, 처음엔 접어 둔다)
+    /// 오류 · 규칙 바뀜: 한 줄씩 (최근부터, 처음엔 접어 둔다. 규칙 줄 앞엔 작게 '규칙')
     private func noteCard(_ d: MockDesk) -> some View {
-        let all = d.events.reversed().filter { $0.book == .rule && $0.kind == .error }
+        let all = d.events.reversed().filter { $0.book == .rule && ($0.kind == .error || $0.kind == .rules) }
+        let errN = all.filter { $0.kind == .error }.count
         let shown = noteOpen ? Array(all.prefix(noteMore ? 60 : 8)) : []
         return MockListCard {
             Button { withAnimation(.snappy) { noteOpen.toggle() } } label: {
                 HStack {
-                    mt("오류 \(all.count)").appFont(14, .bold)
+                    mt("오류 \(errN)").appFont(14, .bold)
                     Spacer()
                     Image(systemName: noteOpen ? "chevron.down" : "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
                 }
@@ -345,10 +346,12 @@ struct MockJournalView: View {
                     Divider().overlay(Theme.line)
                     HStack(spacing: 6) {
                         mt(MockFmt.stamp(e.at)).appFont(11).foregroundStyle(Theme.muted).monospacedDigit().fixedSize()
+                        if e.kind == .rules { mt("규칙").appFont(10, .bold).foregroundStyle(Theme.rule).fixedSize() }
                         mt(e.text).appFont(12).foregroundStyle(Theme.sub).lineLimit(1).truncationMode(.tail)
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 14).frame(minHeight: 40)
+                    .mockSwipe("지우기") { d.deleteNotes([e.id]) }
                 }
             }
             if noteOpen && all.count > 8 {
