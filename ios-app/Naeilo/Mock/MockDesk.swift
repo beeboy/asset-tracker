@@ -547,7 +547,8 @@ final class MockDesk {
             }
         }
         // 팔기 규칙 (규칙 장부, 장중 가격)
-        if ph != .unknown && s.sell.on && autoSell {
+        // 자동 팔기는 돌리기가 켜져 있고(간격 > 0) 돌리기 팔기 알약이 켜져 있을 때만 (2026-10-26)
+        if ph != .unknown && s.sell.on && s.auto > 0 && autoSell {
             let today = MockFmt.day(Date())
             let sigs = MockCalc.sellSignals(ledger(.rule), rule: s.sell, prices: s.prices, excluded: excluded(), today: today)
             var n = 0

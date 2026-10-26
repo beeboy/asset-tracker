@@ -125,7 +125,7 @@ struct MockJournalView: View {
         }
     }
 
-    // 팔기 조건: 켠 알약에 맞는 내 종목을 판다 (선정의 고르기 반대). 1분 주기도 같은 조건으로 장중 가격을 본다
+    // 팔기 조건: 켠 알약에 맞는 내 종목을 판다 (선정의 고르기 반대). 돌리기가 켜져 있고 팔기 알약이 켜져 있으면 1분 주기도 같은 조건으로 장중 가격을 본다
     private func sellCard(_ d: MockDesk) -> some View {
         Card {
             FlowRow(spacing: 6) {
