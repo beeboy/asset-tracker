@@ -833,21 +833,33 @@ struct MockScreen<Content: View>: View {
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .task { await MockDesk.shared.refreshPhase() }
-        .sheet(isPresented: $live) { MockLiveSheet() }
+        .sheet(isPresented: $live) { MockLiveSheet(tab: tab) }
     }
 }
 
-/// 실전 규칙: 규칙 · 반영 방식 · 아직 다른 점 (목록은 MockLive.rules 한 곳)
+/// 실전 규칙: 규칙 · 반영 방식 · 아직 다른 점 (목록은 MockLive.rules 한 곳). 탭마다 그 탭에 걸린 규칙만
 struct MockLiveSheet: View {
+    let tab: MockTab
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        let br = MockDesk.shared.broker
+        let d = MockDesk.shared, br = d.broker
+        let t: MockLive.Tab = tab == .observe ? .observe : tab == .select ? .select : .journal
         VStack(spacing: 0) {
-            MockSheetBar(title: "실전 규칙") { dismiss() }
+            MockSheetBar(title: tab.name + " · 실전 규칙") { dismiss() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     mt("주문층: " + br.name + (br.live ? " · 실전" : " · 실제 주문 없음")).appFont(13, .semibold).foregroundStyle(br.live ? Theme.up : Theme.sub)
-                    ForEach(MockLive.rules) { r in
+                    if t == .observe {
+                        // 지금 관찰 조건 (켠 알약) — 아래는 실전에 더 볼 조건
+                        VStack(alignment: .leading, spacing: 4) {
+                            mt("지금 관찰 조건").appFont(15, .bold)
+                            let on = d.conds.filter(\.on)
+                            mt(on.isEmpty ? "켠 조건 없음" : on.map(\.piece.text).joined(separator: " · ")).appFont(13).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
+                        }
+                        Divider().overlay(Theme.line)
+                        mt("실전에 더 볼 조건").appFont(13, .semibold).foregroundStyle(Theme.sub)
+                    }
+                    ForEach(MockLive.rules(t)) { r in
                         VStack(alignment: .leading, spacing: 4) {
                             mt(r.name).appFont(15, .bold)
                             if r.how != "—" { mt(r.how).appFont(13).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true) }
