@@ -21,8 +21,12 @@ struct HomeView: View {
                     }
                 SampleNote()
                 summary
-                // 회복 루트: 매달 더 넣으면 본전이 언제인지 (원인 진단·내 계획을 마친 뒤)
-                if !m.isGoal, m.done.contains(3), m.cost > m.total, !m.rows.isEmpty { DepositLeverCard(plan: m.keepPlan) }
+                // 회복 루트: '매달 더 넣으면?'은 한 줄 안내만, 누르면 미션 3 결과의 카드로 (2026-10-26)
+                if !m.isGoal, m.done.contains(3), m.cost > m.total, !m.rows.isEmpty {
+                    stripRow(tag: String(localized: "적립"), text: String(localized: "매달 더 넣으면 본전이 당겨져요"), hint: String(localized: "미션 3 결과 열기")) {
+                        m.tab = .board; m.boardPath = [.m3r]
+                    }
+                }
                 shelterBox
                 // 말풍선은 한 줄 해석, 바로 아래 '오늘 많이 움직인 종목'이 그 근거 (2026-10-23)
                 HoldingsNews(moversOnly: true)
@@ -293,8 +297,8 @@ struct HomeView: View {
             stripRow(tag: String(localized: "리마인드"), text: d.text)
         }
     }
-    private func stripRow(tag: String, text: String) -> some View {
-        Button { inbox = true } label: {
+    private func stripRow(tag: String, text: String, hint: String = String(localized: "소식함 열기"), action: (() -> Void)? = nil) -> some View {
+        Button { if let action { action() } else { inbox = true } } label: {
             HStack(spacing: 8) {
                 Text(tag).appFont(11, .bold).foregroundStyle(Theme.inkFixed).padding(.horizontal, 8).padding(.vertical, 2)
                     .background(Theme.yellow, in: Capsule())
@@ -307,7 +311,7 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(tag): \(text). 소식함 열기")
+        .accessibilityLabel("\(tag): \(text). \(hint)")
     }
 
     /// 작은 알약 두 개를 가운데에 (꽉 찬 버튼은 거슬려 줄였다, 2026-10-23). 누르는 자리는 44 높이 그대로
