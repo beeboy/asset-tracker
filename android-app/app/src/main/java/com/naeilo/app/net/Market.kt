@@ -11,6 +11,7 @@ import com.naeilo.app.core.AlpacaKeys
 import com.naeilo.app.core.Config
 import com.naeilo.app.core.Day
 import com.naeilo.app.core.FeedReq
+import com.naeilo.app.core.GoodQuotes
 import com.naeilo.app.core.LongbridgeFeed
 import com.naeilo.app.core.LongbridgeKeys
 import com.naeilo.app.core.QuoteFeed
@@ -137,8 +138,31 @@ class Market {   // ios: Data/Market.swift:13,14
     /** 공개 베타·출시 번들의 자료는 가상 샘플이라 '예시 값' */
     val source: String get() = if (site != null) "naeilo 사이트" else if (YahooSample.quotes.isEmpty() || !Config.usesCollectedData) "예시 값" else "Yahoo 중계 (테스트)"   // ios: Data/Market.swift:55
 
-    fun quote(s: Symbol): Quote {   // ios: Data/Market.swift:60
-        val b = yahooQuote(s)   // ios: Data/Market.swift:61
+    /** 종목마다 마지막으로 받은 0보다 큰 시세 (GoodQuotes, 기기에 남는다). 바뀐 값만 표시해 두고 시세 갱신 끝에 한 번 쓴다 */
+    private var good: MutableMap<String, List<Double>> = GoodQuotes.read().toMutableMap()   // ios: Data/Market.swift:62
+    private var goodDirty = false   // ios: Data/Market.swift:63
+    private val goodLock = Any()   // ios: Data/Market.swift:64
+    /** 바뀐 좋은 값이 있으면 기기에 쓴다 (시세 갱신 끝, 처음 값을 받은 종목) */
+    fun saveGood() {   // ios: Data/Market.swift:66
+        val d = synchronized(goodLock) { val x = if (goodDirty) good.toMap() else null; goodDirty = false; x }   // ios: Data/Market.swift:67,68,69,70
+        if (d != null) GoodQuotes.write(d)   // ios: Data/Market.swift:71
+    }
+    /** 모든 시세(토스·Alpaca·Longbridge·사이트·Yahoo)가 모이는 곳. 합친 값이 0이면 마지막 좋은 값을 쓴다 (실패·0·null 은 좋은 값을 덮지 않는다) */
+    fun quote(s: Symbol): Quote {   // ios: Data/Market.swift:74
+        val q = mergedQuote(s)   // ios: Data/Market.swift:75
+        if (s.id == KoreaEstimate.sumId) return q   // 국내 주식 합계 0 = 다 팔았어요 (실제 값)   // ios: Data/Market.swift:76
+        val old = synchronized(goodLock) {   // ios: Data/Market.swift:77
+            val o = good[s.id]   // ios: Data/Market.swift:78
+            if (q.last > 0 && (o == null || o[0] != q.last || o[1] != q.prevClose)) {   // ios: Data/Market.swift:79
+                good[s.id] = listOf(q.last, q.prevClose, if (q.live) 1.0 else 0.0, nowSec()); goodDirty = true   // ios: Data/Market.swift:80,81
+            }
+            o
+        }
+        if (q.last > 0) { if (old == null) saveGood(); return q }   // ios: Data/Market.swift:84
+        return old?.let { Quote(last = it[0], prevClose = it[1], live = it[2] > 0) } ?: q   // ios: Data/Market.swift:85
+    }
+    private fun mergedQuote(s: Symbol): Quote {   // ios: Data/Market.swift:87
+        val b = yahooQuote(s)   // ios: Data/Market.swift:88
         tossLast(s)?.let { t -> return Quote(last = t, prevClose = tossPrev(s, b) ?: t, live = true) }   // ios: Data/Market.swift:62
         // Alpaca·Longbridge: 전일 종가는 사이트(공식 종가)가 먼저, 없으면 받은 전일 종가
         val a = alpacaQ(s) ?: lbQ(s) ?: return tossReg(s, b) ?: b   // ios: Data/Market.swift:64
@@ -313,6 +337,7 @@ class Market {   // ios: Data/Market.swift:13,14
         tossWait.await()   // ios: Data/Market.swift:221
         alpacaWait.await()   // ios: Data/Market.swift:222
         lbWait.await()   // ios: Data/Market.swift:223
+        saveGood()   // ios: Data/Market.swift:261
         updatedAt = Instant.now()   // ios: Data/Market.swift:224
     }
 

@@ -1369,17 +1369,16 @@ struct HoldingsNews: View {
         .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    // MARK: 오늘 많이 움직인 종목: 내 평가액에 준 영향(원화 금액) 크기순 3개. 홈 말풍선 한 줄 해석의 근거
+    // MARK: 오늘 손익 큰 종목: 오늘 손익(원화 금액) 크기순 3개. 오늘 넣은 종목은 구매가 기준 (AppModel.todayPL). 홈 말풍선 한 줄 해석의 근거
     private func moversCard(_ rows: [AppModel.Row]) -> some View {
-        let fx = Market.shared.valFx
         let top = rows.filter { $0.id != KoreaEstimate.sumId }
-            .map { r in (r: r, w: r.h.qty * r.sym.quote.prevClose * (r.sym.currency == .usd ? fx : 1) * r.sym.quote.change) }
+            .map { r in let p = m.todayPL(r); return (r: r, w: p.w, d: p.d) }
             .sorted { abs($0.w) > abs($1.w) }.prefix(3)
         return VStack(alignment: .leading, spacing: 0) {
-            Text("오늘 많이 움직인 종목").appFont(15, .bold).padding(.bottom, 6)
+            Text("오늘 손익 큰 종목").appFont(15, .bold).padding(.bottom, 6)
             if top.isEmpty { Text("종목을 넣으면 보여요").appFont(13).foregroundStyle(Theme.sub) }
             ForEach(Array(top), id: \.r.id) { x in
-                let d = x.r.sym.quote.change
+                let d = x.d
                 line(x.r, Text(AppModel.sgn2(d) + " · " + AppModel.eokS(x.w)).foregroundColor(Theme.change(d)))
             }
         }

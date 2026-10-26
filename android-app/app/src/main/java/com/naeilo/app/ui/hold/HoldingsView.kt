@@ -102,6 +102,7 @@ import com.naeilo.app.data.Period
 import com.naeilo.app.data.Symbol
 import com.naeilo.app.data.friendName
 import com.naeilo.app.data.recordDay
+import com.naeilo.app.data.todayPL
 import com.naeilo.app.data.voice
 import com.naeilo.app.net.Market
 import com.naeilo.app.net.PriceHistory
@@ -1042,17 +1043,15 @@ private fun androidx.compose.foundation.layout.RowScope.Cell(t: String, v: Doubl
 // ios: Views/HoldingsView.swift:1247
 @Composable
 private fun MoversCard(m: AppModel, rows: List<AppModel.Row>) {
-    val fx = Market.shared.valFx   // ios: Views/HoldingsView.swift:1248
-    val top = rows.filter { it.id != KoreaEstimate.sumId }   // ios: Views/HoldingsView.swift:1249
-        .map { r -> Pair(r, r.h.qty * r.sym.quote.prevClose * (if (r.sym.currency == Currency.usd) fx else 1.0) * r.sym.quote.change) }   // ios: Views/HoldingsView.swift:1250 (r, w)
-        .sortedByDescending { abs(it.second) }.take(3)   // ios: Views/HoldingsView.swift:1251
+    val top = rows.filter { it.id != KoreaEstimate.sumId }   // ios: Views/HoldingsView.swift:1372
+        .map { r -> val p = m.todayPL(r); Triple(r, p.first, p.second) }   // ios: Views/HoldingsView.swift:1373 (r, w, d)
+        .sortedByDescending { abs(it.second) }.take(3)   // ios: Views/HoldingsView.swift:1374
     // ios: Views/HoldingsView.swift:1252,1260
     Column(Modifier.newsCard(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        T("오늘 많이 움직인 종목", Modifier.padding(bottom = 6.dp), style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:1253
+        T("오늘 손익 큰 종목", Modifier.padding(bottom = 6.dp), style = appFont(15f, FontWeight.Bold))   // ios: Views/HoldingsView.swift:1253
         if (top.isEmpty()) T("종목을 넣으면 보여요", style = appFont(13f), color = Theme.sub)   // ios: Views/HoldingsView.swift:1254
         // ios: Views/HoldingsView.swift:1255
-        top.forEach { (r, w) ->
-            val d = r.sym.quote.change   // ios: Views/HoldingsView.swift:1256
+        top.forEach { (r, w, d) ->   // ios: Views/HoldingsView.swift:1379
             Line(m, r, AppModel.sgn2(d) + " · " + AppModel.eokS(w), Theme.change(d))   // ios: Views/HoldingsView.swift:1257
         }
     }

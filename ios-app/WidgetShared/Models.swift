@@ -773,6 +773,14 @@ enum LongbridgeKeys {
 }
 
 // 지금 가격·원/달러 백업: 토스가 못 받는 내 종목(Store.quoteSyms)을 Yahoo 에서 직접 받는다. 그것도 못 받은 종목만 사이트(naeilo.com/data/quotes.json, 평일 30분마다 모음)로 채운다.
+/// 종목마다 마지막으로 받은 0보다 큰 시세 (앱·위젯 공용). 종목 id → [지금 가격, 전일 종가, 실시간 1/0, 받은 시각(초)].
+/// 어느 시세에서 왔든 같은 규칙: 한 번이라도 받은 종목은 받기 실패·0·앱 재시작에도 이 값 밑으로 (0원으로) 내려가지 않는다
+enum GoodQuotes {
+    static let name = "good_quotes.json"
+    static func read() -> [String: [Double]] { (Store.read([String: [Double]].self, name) ?? [:]).filter { $0.value.count == 4 && $0.value[0] > 0 } }
+    static func write(_ d: [String: [Double]]) { Store.write(d, name) }
+}
+
 enum QuoteFeed {
     struct Q: Codable {
         var last: Double; var prev: Double; var at: Double   // 지금 가격, 전일 종가, 가격 시각(초)
