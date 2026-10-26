@@ -175,7 +175,7 @@ struct MockCond: Codable, Equatable, Identifiable {
 /// 고르기 조건 하나 (알약): 순서·상위 · 종목당 한도 · 현금 남김
 struct MockRuleCond: Codable, Equatable, Identifiable {
     enum Kind: String, Codable, CaseIterable, Identifiable {
-        case top, per, cash, cap
+        case top, per, cash, cap, slip
         var id: String { rawValue }
         var name: String {
             switch self {
@@ -183,6 +183,7 @@ struct MockRuleCond: Codable, Equatable, Identifiable {
             case .per: return "종목당 한도"
             case .cash: return "현금 남김"
             case .cap: return "폭등 거르기"
+            case .slip: return "미끄러짐 한도"
             }
         }
     }
@@ -200,6 +201,7 @@ struct MockRuleCond: Codable, Equatable, Identifiable {
         case .per: return "종목당 ≤\(Int((pct * 100).rounded()))%"
         case .cash: return "현금 \(Int((pct * 100).rounded()))% 남김"
         case .cap: return capKind == .rise ? "최근 5일 ≤ +\(MockFmt.num(lim))%" : "거래량 ≤ \(MockFmt.num(lim))배"
+        case .slip: return "미끄러짐 ≤\(MockFmt.num(pct * 100))%"
         }
     }
     /// cap: 걸린 종목이 이 조건을 넘나 (값이 없으면 넘지 않은 것으로 본다)
@@ -263,6 +265,8 @@ struct MockSelectRule: Codable, Equatable {
     var keepCash: Double = 0.20   // 남길 현금 (평가액 대비)
     /// 검토 문: 기본은 닫는다(켬 = 고른 뒤 내가 보고 주문, 끔 = 고르면 바로 주문)
     var review: Bool = true
+    /// 미끄러짐 한도 (0.005 = 0.5%). 시장가를 끝까지 채우면 평균 단가가 1호가에서 이만큼 넘게 벗어날 때 나눠 산다·판다 (없으면 끔)
+    var slip: Double? = nil
 }
 
 /// 팔기 규칙 (값이 없으면 끔). 관찰 주기마다 장중 가격으로 판단한다
@@ -327,6 +331,7 @@ struct MockOrder: Codable, Equatable, Identifiable {
     var reserved: Double = 0     // 묶어 둔 현금 (매수)
     var ref: UUID? = nil         // 이 주문을 낸 선정 기록
     var waitWhy: String? = nil   // 왜 대기 중인가 (마지막 확인)
+    var until: Date? = nil       // 나눈 남은 몫: 이때까지 다 못 채우면 취소
 }
 
 /// 가상 계좌 하나

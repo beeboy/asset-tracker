@@ -45,6 +45,7 @@ struct MockState: Codable {
     var cycleSell: Bool? = nil                // 지금 한 바퀴에 팔기까지 (없으면 켬)
     var cycleOrder: Bool? = nil               // 지금 한 바퀴에 주문까지 (없으면 켬)
     var autoOrder: Bool? = nil                // 돌리기에 주문까지 (처음 한 번 옛 직접 검토 값에서 옮긴다: 검토 켬 → 끔)
+    var slipAdded: Bool? = nil                // 미끄러짐 한도 알약을 한 번 넣었는지 (2026-10-26)
     var autoSell: Bool? = nil                 // 돌리기(1분 주기)에 팔기까지 (없으면 켬)
 
     static func fresh(_ now: Date) -> MockState {
@@ -126,6 +127,13 @@ final class MockDesk {
             s.rconds = (s.rconds ?? []) + [MockRuleCond(kind: .cap, capKind: .volume, lim: 20),
                                            MockRuleCond(kind: .cap, capKind: .rise, lim: 20)]
             s.surgeAdded = true
+            changed = true
+        }
+        // 미끄러짐 한도 0.5% (켠 채로 한 번만 넣는다)
+        if s.slipAdded != true {
+            s.rconds = (s.rconds ?? []) + [MockRuleCond(kind: .slip, pct: 0.005)]
+            s.select.slip = 0.005
+            s.slipAdded = true
             changed = true
         }
         // 직접 검토 설정을 뺐다 (2026-10-26). 옛 검토 켬 사용자가 돌리기에서 갑자기 자동 주문되지 않게 한 번 옮긴다
@@ -445,13 +453,15 @@ final class MockDesk {
                 text: l.cash < px ? "현금 부족 · 남은 " + MockFmt.won(l.cash) : "0주 · 주문 안 냄 (정상)", test: test, ref: ref)
             return false
         }
-        let r = MockCalc.reserve(type: type, qty: q, limit: lim, bestAsk: ask, fees: s.fees, cash: l.cash)
-        let o = MockOrder(code: code, name: name, side: .buy, type: type, qty: q, limit: lim, at: Date(), who: who, reason: reason, reserved: r, ref: ref)
+        // 미끄러짐 한도: 다 채우면 평균 단가가 1호가 + 한도를 넘을 때, 한도 값까지만 지금 채우고 남은 몫은 지정가로 30분 기다린다
+        let (oType, oLim, until) = split(.buy, type: type, limit: lim, qty: q, book: book, reason: reason)
+        let r = MockCalc.reserve(type: oType, qty: q, limit: oLim, bestAsk: ask, fees: s.fees, cash: l.cash)
+        let o = MockOrder(code: code, name: name, side: .buy, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, reserved: r, ref: ref, until: until)
         l.cash -= r
         l.pending.append(o)
         set(l)
         log(.order, id: o.id, book: b, who: who, code: code, name: name,
-            text: "\(type.name) \(q)주" + (lim.map { " · " + MockFmt.won($0) } ?? "") + " · 묶은 돈 " + MockFmt.won(r) + (reason.isEmpty ? "" : " · " + reason), test: test, side: .buy, qty: q, ref: ref)
+            text: "\(oType.name) \(q)주" + (oLim.map { " · " + MockFmt.won($0) } ?? "") + (until != nil ? " · 나눔 (미끄러짐 한도)" : "") + " · 묶은 돈 " + MockFmt.won(r) + (reason.isEmpty ? "" : " · " + reason), test: test, side: .buy, qty: q, ref: ref)
         fill(b, orderId: o.id, book: book, test: test)
         return true
     }
@@ -473,13 +483,38 @@ final class MockDesk {
         let lim = limit.map { MockCalc.snap($0, side: .sell) }
         guard var l = s.ledgers.first(where: { $0.book == b }), let p2 = l.positions[code],
               p2.qty - l.pending.filter({ $0.code == code && $0.side == .sell }).reduce(0, { $0 + $1.qty }) >= q else { return false }
-        let o = MockOrder(code: code, name: p.name, side: .sell, type: type, qty: q, limit: lim, at: Date(), who: who, reason: reason, ref: ref ?? p.buyRef)
+        let (oType, oLim, until) = split(.sell, type: type, limit: lim, qty: q, book: book, reason: reason)
+        let o = MockOrder(code: code, name: p.name, side: .sell, type: oType, qty: q, limit: oLim, at: Date(), who: who, reason: reason, ref: ref ?? p.buyRef, until: until)
         l.pending.append(o)
         set(l)
         log(.order, id: o.id, book: b, who: who, code: code, name: p.name,
-            text: "\(type.name) 매도 \(q)주" + (lim.map { " · " + MockFmt.won($0) } ?? "") + (reason.isEmpty ? "" : " · " + reason), test: test, side: .sell, qty: q, ref: o.ref)
+            text: "\(oType.name) 매도 \(q)주" + (oLim.map { " · " + MockFmt.won($0) } ?? "") + (until != nil ? " · 나눔 (미끄러짐 한도)" : "") + (reason.isEmpty ? "" : " · " + reason), test: test, side: .sell, qty: q, ref: o.ref)
         fill(b, orderId: o.id, book: book, test: test)
         return true
+    }
+
+    /// 미끄러짐 한도로 나눌지: 시장가를 지금 호가로 끝까지 채운 평균 단가가 1호가에서 한도보다 더 벗어나면
+    /// 한도 값의 지정가로 바꾸고 30분 기한을 둔다 (한도까지는 지금 채우고, 남은 몫은 1분 주기가 새 호가로 채워 본다). 손절 매도는 한 번에
+    private func split(_ side: MockSide, type: MockOrderType, limit: Double?, qty: Int, book: MockCalc.Book, reason: String) -> (MockOrderType, Double?, Date?) {
+        guard type == .market, let sl = s.select.slip, sl > 0, !reason.hasPrefix("손절") else { return (type, limit, nil) }
+        let f = MockCalc.walk(side: side, type: .market, qty: qty, limit: nil, book: book, fees: s.fees)
+        guard f.qty > 0 else { return (type, limit, nil) }
+        if side == .buy, let a = book.bestAsk, f.avg > a * (1 + sl) {
+            return (.limit, max(a, MockCalc.snap(a * (1 + sl), side: .buy)), Date().addingTimeInterval(1800))
+        }
+        if side == .sell, let b = book.bestBid, f.avg < b * (1 - sl) {
+            return (.limit, min(b, MockCalc.snap(b * (1 - sl), side: .sell)), Date().addingTimeInterval(1800))
+        }
+        return (type, limit, nil)
+    }
+
+    /// 나눈 남은 몫이 기한까지 다 못 채워졌으면 취소하고 묶은 돈을 돌려준다
+    private func expire(_ b: MockBook, orderId: UUID) {
+        guard var l = s.ledgers.first(where: { $0.book == b }), let i = l.pending.firstIndex(where: { $0.id == orderId }) else { return }
+        let o = l.pending.remove(at: i)
+        l.cash += max(0, o.reserved)
+        set(l)
+        log(.cancel, book: b, who: o.who, code: o.code, name: o.name, text: "남은 \(o.qty)주 취소 · 30분 안에 다 못 채움", ref: o.id)
     }
 
     /// 대기 주문 하나를 호가로 채워 본다. 남으면 왜 기다리는지 (바뀌었을 때만) 남긴다
@@ -540,6 +575,7 @@ final class MockDesk {
         // 대기 주문: 지금 가격이 지정가를 넘었거나 시장가 남은 몫일 때만 호가를 묻는다
         for l in s.ledgers {
             for o in l.pending {
+                if let u = o.until, Date() >= u { expire(l.book, orderId: o.id); continue }
                 let px = s.prices[o.code]
                 let cross: Bool = o.type == .market || px == nil || (o.side == .buy ? px! <= (o.limit ?? 0) : px! >= (o.limit ?? .infinity))
                 guard cross, let book = try? await MockFeed.book(o.code) else { continue }
@@ -645,6 +681,7 @@ final class MockDesk {
             st.select.count = on.first { $0.kind == .top }?.n ?? 10
             st.select.maxPer = on.filter { $0.kind == .per }.map(\.pct).min() ?? 1
             st.select.keepCash = on.filter { $0.kind == .cash }.map(\.pct).max() ?? 0
+            st.select.slip = on.filter { $0.kind == .slip }.map(\.pct).min()
             st.select.name = on.map(\.text).joined(separator: " · ").isEmpty ? "조건 없음" : on.map(\.text).joined(separator: " · ")
         }
     }

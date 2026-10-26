@@ -160,6 +160,12 @@ struct MockTabBox: View {
         .boxScheme()
     }
 
+    /// 꼬리 줄용 만원 (끝 '원' 뺌): "1,024만"
+    private static func man(_ x: Double) -> String {
+        let t = MockFmt.man(x)
+        return t.hasSuffix("만원") ? String(t.dropLast()) : t
+    }
+
     private func observe(_ d: MockDesk) -> some View {
         let n = d.conds.filter(\.on).count
         let sc = d.s.scan
@@ -203,7 +209,7 @@ struct MockTabBox: View {
                        big: (mt(tri).font(.system(size: 21, weight: .heavy)) + mt(MockFmt.man(abs(mv)))).foregroundColor(c),
                        side: MockFmt.pct(pct), sideColor: c,
                        tailL: mt("오른 \(m.counts[0]) · 그대로 \(m.counts[1]) · 내린 \(m.counts[2])").foregroundColor(BoxInk.sub),
-                       tailR: "평가액 " + MockFmt.man(eq)) {
+                       tailR: "평가액 " + Self.man(eq) + " · 현금 " + Self.man(d.ledger(.rule).cash)) {
             MoodBand(look: look, shares: shares, up: mv >= 0)
         }
     }
@@ -462,7 +468,7 @@ struct MockRuleDraft: Equatable {
     init() {}
     init(_ c: MockRuleCond) {
         edit = c.id; kind = c.kind; sort = c.sort; capKind = c.capKind
-        n = "\(c.n)"; pct = MockFmt.num((c.pct * 100).rounded()); lim = MockFmt.num(c.lim)
+        n = "\(c.n)"; pct = MockFmt.num(c.kind == .slip ? c.pct * 100 : (c.pct * 100).rounded()); lim = MockFmt.num(c.lim)
     }
 
     var cond: MockRuleCond? {
@@ -477,6 +483,9 @@ struct MockRuleDraft: Equatable {
         case .cap:
             guard let x = MockNum.parse(lim), x > 0 else { return nil }
             c.capKind = capKind; c.lim = x
+        case .slip:
+            guard let x = MockNum.parse(pct), x > 0, x <= 10 else { return nil }
+            c.pct = x / 100
         }
         return c
     }
@@ -535,6 +544,12 @@ struct MockRuleForm: View {
                 mt("≤").appFont(14)
                 MockNumField(text: $draft.lim, width: 56)
                 mt(draft.capKind == .rise ? "% 넘으면 거름" : "배 넘으면 거름").appFont(14)
+            }
+        case .slip:
+            HStack(spacing: 6) {
+                mt("평균 단가가 1호가에서").appFont(14)
+                MockNumField(text: $draft.pct, width: 56)
+                mt("% 넘게 벗어나면 나눔").appFont(14)
             }
         }
     }
@@ -1462,6 +1477,8 @@ struct MockFlow {
     var steps: [String]           // "선정" · "주문" · "체결" …
     var why: String? = nil        // 예외 이유
     var qty = 0                   // 체결 주수
+    var ordered = 0               // 주문 주수
+    var split = false             // 미끄러짐 한도로 나눔
     var amount = 0.0              // 체결 금액
     var pnl: Double? = nil        // 매도 손익
     var n = 1                     // 같은 날 같은 결과 횟수
@@ -1470,6 +1487,7 @@ struct MockFlow {
         var t = steps.joined(separator: " → ")
         if let why { t += " (" + why + ")" }
         if qty > 0 { t += " \(qty)주 · " + MockFmt.won(amount / Double(qty)) }
+        if split { t += qty > 0 && qty < ordered ? " (나눔 · 남은 \(ordered - qty)주)" : " (나눔)" }
         return t
     }
 }
@@ -1499,12 +1517,14 @@ extension MockDesk {
             case .order where e.side != nil:
                 if let r = e.ref, let i = head[r] {
                     flows[i].steps.append("주문"); flows[i].test = flows[i].test || e.test
+                    flows[i].ordered = e.qty ?? 0; flows[i].split = e.text.contains("나눔")
                     orderOf[e.id] = i
                 } else {
                     // 손 주문 (앞 단계 없음)
                     orderOf[e.id] = flows.count
                     flows.append(MockFlow(id: e.id, at: e.at, sell: e.side == .sell, who: e.who ?? .hand, test: e.test,
-                                          steps: [(e.who ?? .hand).name + " " + (e.side == .sell ? "매도" : "매수") + " 주문"]))
+                                          steps: [(e.who ?? .hand).name + " " + (e.side == .sell ? "매도" : "매수") + " 주문"],
+                                          ordered: e.qty ?? 0, split: e.text.contains("나눔")))
                 }
             case .fill:
                 guard let r = e.ref, let i = orderOf[r] else { continue }
