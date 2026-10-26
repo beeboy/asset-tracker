@@ -174,19 +174,28 @@ struct MockJournalView: View {
         sadding = false
     }
 
-    // 내 수익률: 칸마다 마지막 평가액으로 누적 수익률 (출발점은 속 빈 점, 오늘 점은 숨쉬기)
+    // 평가액 그래프: 종목 탭 그래프와 같은 모양 (오른쪽 세로 축 꼬리표 = 지금 평가액 · 달라진 금액 · 시작 평가액, 아래 가로 축 = 처음 칸 · 지금, 기간 단추는 아래)
     private func retCard(_ d: MockDesk) -> some View {
-        let pts = series(d)
+        let (left, pts) = series(d)
+        let S = pts.first ?? 0, E = pts.last ?? 0, up = E >= S
         return Card {
-            HStack {
-                Spacer()
-                HoldSeg(items: MockCalc.Unit.allCases.map { ($0, $0.name) }, selection: $unit)
+            if pts.count < 2 {
+                mt("평가액 점이 쌓이면 그려요").appFont(14, .bold).foregroundStyle(Theme.sub)
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                TagChart(points: pts, height: 120, tags: [
+                    .init(at: E, text: MockFmt.man(E), bg: Theme.ink, fg: Theme.card),
+                    .init(at: E, dy: 20, text: (up ? "+" : "−") + MockFmt.man(abs(E - S)) + " · " + MockFmt.pct(S > 0 ? E / S - 1 : 0),
+                          bg: up ? Color(hex: 0xFF8A80) : Color(hex: 0x8CC4F2)),
+                    .init(at: S, text: MockFmt.man(S), bg: TagChart.gray),
+                ], left: left, right: "지금")
             }
-            MockRetChart(points: pts).frame(height: 120)
+            ChipRow(items: MockCalc.Unit.allCases.map { ($0, $0.name) }, selection: $unit, fill: true)
         }
     }
 
-    private func series(_ d: MockDesk) -> [Double] {
+    /// 칸마다 마지막 평가액 (지금 칸은 지금 평가액). 기록이 다 들어가면 장부 시작 현금부터. 첫 칸 이름도 함께
+    private func series(_ d: MockDesk) -> (String, [Double]) {
         let l = d.ledger(.rule)
         let take: Int
         switch unit {
@@ -202,14 +211,14 @@ struct MockJournalView: View {
             if last[k] == nil { order.append(k) }
             last[k] = m.eq
         }
-        // 지금 칸은 지금 평가액으로
         let nowKey = MockCalc.bucket(Date(), unit)
         if last[nowKey] == nil { order.append(nowKey) }
         last[nowKey] = d.equity(.rule)
-        var eqs = order.suffix(take).compactMap { last[$0] }
-        // 기록이 다 들어가면 장부 시작(0%)부터
-        if order.count < take { eqs.insert(l.startCash, at: 0) }
-        return eqs.map { l.startCash > 0 ? $0 / l.startCash - 1 : 0 }
+        let keys = Array(order.suffix(take))
+        var eqs = keys.compactMap { last[$0] }
+        var left = keys.first ?? ""
+        if order.count < take { eqs.insert(l.startCash, at: 0); left = "시작" }
+        return (left, eqs)
     }
 
     private func mineCard(_ d: MockDesk) -> some View {
@@ -361,44 +370,6 @@ struct MockJournalView: View {
                 }
             }
         }
-    }
-}
-
-/// 누적 수익률 꺾은선: 0% 점선, 출발점은 속 빈 점, 오늘 점은 숨쉬기 동심원
-struct MockRetChart: View {
-    let points: [Double]
-    var body: some View {
-        GeometryReader { g in
-            let w = g.size.width, h = g.size.height, pad: CGFloat = 10
-            let lo = min(points.min() ?? 0, 0), hi = max(points.max() ?? 0, 0)
-            let span = max(hi - lo, 0.002)
-            let n = points.count
-            let xy: (Int) -> CGPoint = { i in
-                CGPoint(x: n > 1 ? pad + (w - pad * 2) * CGFloat(i) / CGFloat(n - 1) : w / 2,
-                        y: pad + (h - pad * 2) * CGFloat((hi - points[i]) / span))
-            }
-            let zero = pad + (h - pad * 2) * CGFloat(hi / span)
-            let c = (points.last ?? 0) > 0 ? Theme.up : (points.last ?? 0) < 0 ? Theme.down : Theme.sub
-            ZStack(alignment: .topLeading) {
-                Path { p in
-                    p.move(to: CGPoint(x: 0, y: zero))
-                    p.addLine(to: CGPoint(x: w, y: zero))
-                }
-                .stroke(Theme.dash, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                if n > 1 {
-                    Path { p in
-                        p.move(to: xy(0))
-                        for i in 1..<n { p.addLine(to: xy(i)) }
-                    }
-                    .stroke(c, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
-                    Circle().fill(Theme.card).overlay(Circle().stroke(c, lineWidth: 2))
-                        .frame(width: 8, height: 8).position(xy(0))
-                }
-                if n > 0 { PulseDot(color: c, dot: 8).position(xy(n - 1)) }
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(verbatim: "누적 수익률 " + MockFmt.pct(points.last ?? 0)))
     }
 }
 
