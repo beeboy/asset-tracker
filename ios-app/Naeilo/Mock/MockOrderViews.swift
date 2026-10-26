@@ -66,7 +66,7 @@ extension MockDesk {
 // MARK: 일지 (분석 대신)
 
 struct MockJournalView: View {
-    @State private var unit = MockCalc.Unit.day
+    @State private var unit = MockCalc.Unit.hour   // 그래프 기본은 시간 (2026-10-26)
     @State private var downFirst = false
     @State private var settings = false
     @State private var pastOpen = false
