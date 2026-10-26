@@ -686,7 +686,8 @@ def account_view() -> tuple[int, dict]:
         items.append({"code": x.get("symbol"), "name": x.get("name"), "qty": num(x.get("quantity")), "avg": num(x.get("averagePurchasePrice")),
                       "last": num(x.get("lastPrice")), "plAfterCost": num(pl.get("amountAfterCost")), "rateAfterCost": num(pl.get("rateAfterCost"))})
     out = {"cash": num((bp.get("result") or {}).get("cashBuyingPower")), "holdings": items,
-           "plAfterCost": num(((r.get("profitLoss") or {}).get("amountAfterCost") or {}).get("krw"))}
+           "plAfterCost": num(((r.get("profitLoss") or {}).get("amountAfterCost") or {}).get("krw")),
+           "dayPl": num(((r.get("dailyProfitLoss") or {}).get("amount") or {}).get("krw"))}  # 국내 종목 오늘 손익 (앱 [실전] 하루 기준 = 지금 평가액 − 이 값)
     _acct_cache = (time.time(), out)
     return 200, out
 

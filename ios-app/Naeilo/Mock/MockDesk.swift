@@ -132,9 +132,14 @@ final class MockDesk {
         let (a, why) = await TossOrderAPI.account()
         if let a {
             account = a
-            // [실전] 하루 손실 한도 기준: 오늘 처음 읽은 토스 계좌 평가액
+            // [실전] 하루 손실 한도 기준: 어제 마감 기준 = 지금 평가액 − 토스 오늘 손익 (몇 시에 열어도 같다)
+            // 옛 서버라 오늘 손익이 없으면 그날 처음 읽은 토스 계좌 평가액
             let today = MockFmt.day(Date())
-            if s.realBaseDay != today, let eq = realEquity { s.realBaseDay = today; s.realBase = eq; save() }
+            if let eq = realEquity {
+                if let pl = a.dayPl {
+                    if s.realBaseDay != today || s.realBase != eq - pl { s.realBaseDay = today; s.realBase = eq - pl; save() }
+                } else if s.realBaseDay != today { s.realBaseDay = today; s.realBase = eq; save() }
+            }
         }
         accountWhy = why
     }

@@ -336,6 +336,7 @@ enum TossOrderAPI {
         var cash: Double?
         var items: [Item]
         var plAfterCost: Double?
+        var dayPl: Double? = nil      // 토스 오늘 손익 (국내 합). 옛 서버는 없음
         var at: Date
     }
     static func account() async -> (Account?, String?) {
@@ -347,7 +348,7 @@ enum TossOrderAPI {
             guard let c = x["code"] as? String else { return nil }
             return Account.Item(code: c, qty: Int(MockFeed.num(x["qty"]) ?? 0), avg: MockFeed.num(x["avg"]), plAfterCost: MockFeed.num(x["plAfterCost"]))
         }
-        return (Account(cash: MockFeed.num(j["cash"]), items: items, plAfterCost: MockFeed.num(j["plAfterCost"]), at: Date()), nil)
+        return (Account(cash: MockFeed.num(j["cash"]), items: items, plAfterCost: MockFeed.num(j["plAfterCost"]), dayPl: MockFeed.num(j["dayPl"]), at: Date()), nil)
     }
 
     /// 서버 실전 준비 (toss_live.json 켜짐·계좌·키). 준비가 덜 됐으면 이유, 다 됐으면 nil
