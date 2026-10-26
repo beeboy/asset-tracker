@@ -74,3 +74,16 @@
 - 기록: `~/asset-tracker/toss_orders.log` (한 줄 JSON: 시각·종목·방향·수량·가격·clientOrderId·결과·토스 오류 코드). 키·토큰·계좌는 안 남긴다.
 - 앱 실전 스위치는 서버가 `ready` 로 준비됐다고 답할 때만 켜진다.
 - 남은 일: 계좌 잔고 맞추기·정정·웹소켓 체결 알림. 토스 주문 경로·머리글은 앱 `TossOrderAPI`(토스 문서 2026-10-26 읽음)를 따랐고, 실주문으로는 아직 확인하지 않았다.
+
+## 실전 화면용 경로 (개발자 전용, 2026-10-26)
+근거: `~/Developer/toss-api/docs` (beeboy/toss-api). 모두 머리글 `X-Naeilo-Dev` 필요.
+| 앱 | 서버가 부르는 토스 | 캐시 · 한도 묶음 |
+|---|---|---|
+| `GET /api/mock/warnings?symbols=` (최대 30) | `GET /api/v1/stocks/{symbol}/warnings` 종목마다. 오늘 걸린 `warningType` 만 (VI_STATIC·VI_DYNAMIC·INVESTMENT_WARNING·INVESTMENT_RISK·OVERHEATED·LIQUIDATION_TRADING…) | 장중 15초 · 장 밖 1시간 · STOCK |
+| `GET /api/mock/suspended?symbols=` | `GET /api/v1/stocks?symbols=` 200개씩 → `krxTradingSuspended`·`liquidationTrading` | 10분 · STOCK |
+| `GET /api/mock/limits?symbol=` | `GET /api/v1/price-limits` → `upperLimitPrice`·`lowerLimitPrice` | 하루 · MARKET_DATA |
+| `POST /api/mock/order/{orderId}/modify` | `POST /api/v1/orders/{orderId}/modify` (국내: quantity 필수, LIMIT 면 price). 새 주문처럼 armed·max_krw 검사, `toss_orders.log` 에 `modify` | ORDER |
+| `GET /api/mock/account` | `GET /api/v1/buying-power?currency=KRW` (`cashBuyingPower`) + `GET /api/v1/holdings` (국내 종목만: 수량·평균가·현재가·세후 손익) | 5초 · ORDER_INFO · ASSET |
+| `GET /api/mock/sellable?symbol=` | `GET /api/v1/sellable-quantity` (`sellableQuantity`) | 없음 · ORDER_INFO |
+- 계좌 경로는 읽기라 `armed` 와 상관없이 답한다 (계좌 `account_seq` 만 있으면). 계좌 번호는 앱에 보내지 않는다.
+- 토스 문서에 없는 것: VI 기준가(정적·동적), 같은 가격 안 대기 순번, 예수금·결제 대기 돈만 따로 주는 경로.

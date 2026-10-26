@@ -420,6 +420,90 @@ def mock_calendar(market: str) -> dict:
     return j
 
 
+TOSS_GATES.update({"stock": TossGate(4)})  # 문서: STOCK 5 (초당)
+_mock_warn: dict[str, tuple[float, list]] = {}  # 코드 → (받은 시각, 지금 걸린 유의사항 종류)
+_mock_susp: dict[str, tuple[float, dict]] = {}  # 코드 → (받은 시각, {"suspended", "liquidation"})
+_mock_lim: dict[str, tuple[str, dict]] = {}  # 코드 → (한국 날짜, {"upper", "lower"})
+
+
+def kst_today() -> str:
+    return (datetime.now(timezone.utc) + timedelta(hours=9)).strftime("%Y-%m-%d")
+
+
+def mock_warn_one(code: str) -> list:
+    """한 종목의 지금 걸린 유의사항 (VI·투자경고·투자위험·단기과열·정리매매…). VI 는 몇 초 안에 바뀌어 장중 15초, 장 밖 1시간 다시 쓰기"""
+    ttl = 15 if mock_kr_busy() else 3600
+    with MOCK_LOCK:
+        c = _mock_warn.get(code)
+        if c and time.time() - c[0] < ttl:
+            return c[1]
+    j = toss_call("/api/v1/stocks/" + urllib.parse.quote(code) + "/warnings", "stock")
+    today = kst_today()
+    out = sorted({str(w.get("warningType")) for w in j.get("result") or []
+                  if w.get("warningType") and (w.get("endDate") is None or str(w.get("endDate")) >= today)
+                  and (w.get("startDate") is None or str(w.get("startDate")) <= today)})
+    with MOCK_LOCK:
+        _mock_warn[code] = (time.time(), out)
+    return out
+
+
+def mock_warnings(codes: list[str]) -> dict:
+    """여러 종목 유의사항을 한 번에 (최대 30종목. 걸린 것만 돌려준다)"""
+    out, errs = {}, {}
+    for c in codes[:30]:
+        try:
+            w = mock_warn_one(c)
+        except Exception as e:  # noqa: BLE001
+            errs[c] = mock_err(e)
+            continue
+        if w:
+            out[c] = w
+    return {"warnings": out, "errors": errs}
+
+
+def mock_suspended(codes: list[str]) -> dict:
+    """거래정지·정리매매 (종목 정보 200개씩, 10분 다시 쓰기). 걸린 종목만 돌려준다"""
+    now = time.time()
+    with MOCK_LOCK:
+        need = [c for c in codes if not (c in _mock_susp and now - _mock_susp[c][0] < 600)]
+    err = None
+    for i in range(0, len(need), 200):
+        part = need[i:i + 200]
+        try:
+            j = toss_call("/api/v1/stocks?symbols=" + urllib.parse.quote(",".join(part), safe=","), "stock")
+        except Exception as e:  # noqa: BLE001
+            err = mock_err(e)
+            continue
+        with MOCK_LOCK:
+            for x in j.get("result") or []:
+                d = x.get("koreanMarketDetail") or {}
+                _mock_susp[str(x.get("symbol"))] = (now, {"suspended": d.get("krxTradingSuspended") is True,
+                                                          "liquidation": d.get("liquidationTrading") is True})
+    with MOCK_LOCK:
+        out = {c: _mock_susp[c][1] for c in codes if c in _mock_susp and any(_mock_susp[c][1].values())}
+    r = {"info": out}
+    if err:
+        r["error"] = err
+    return r
+
+
+def mock_limits(code: str) -> dict:
+    """오늘 상한가·하한가 (하루 한 번)"""
+    today = kst_today()
+    with MOCK_LOCK:
+        c = _mock_lim.get(code)
+        if c and c[0] == today:
+            return c[1]
+    r = toss_call("/api/v1/price-limits?symbol=" + urllib.parse.quote(code), "data").get("result") or {}
+    try:
+        out = {"upper": float(r["upperLimitPrice"]), "lower": float(r["lowerLimitPrice"])}
+    except (KeyError, TypeError, ValueError):
+        return {"error": "상하한가 없음"}
+    with MOCK_LOCK:
+        _mock_lim[code] = (today, out)
+    return out
+
+
 def mock_get(path: str) -> dict | None:
     """모의투자 GET 경로. 없으면 None"""
     u = urllib.parse.urlparse(path)
@@ -437,6 +521,13 @@ def mock_get(path: str) -> dict | None:
         if u.path == "/api/mock/book":
             c = one("symbol")
             return mock_book(c) if MOCK_CODE.fullmatch(c) else {"error": "잘못된 종목"}
+        if u.path == "/api/mock/warnings":  # 유의사항 (관찰 걸린 종목 위쪽)
+            return mock_warnings(codes)
+        if u.path == "/api/mock/suspended":  # 거래정지·정리매매
+            return mock_suspended(codes)
+        if u.path == "/api/mock/limits":  # 상한가·하한가 (종목 상세)
+            c = one("symbol")
+            return mock_limits(c) if MOCK_CODE.fullmatch(c) else {"error": "잘못된 종목"}
         if u.path == "/api/mock/calendar":
             return mock_calendar(one("market") or "KR")
         if u.path == "/api/mock/wallet":  # AI 쓴 돈·한도 (앱 요약 박스)
@@ -455,7 +546,7 @@ TOSS_ORDERS_LOG = ROOT / "toss_orders.log"
 ORDER_ID = re.compile(r"[A-Za-z0-9_\-]{1,64}")
 CLIENT_ID = re.compile(r"[A-Za-z0-9\-]{8,64}")
 ORDER_LOG_LOCK = threading.Lock()
-TOSS_GATES.update({"order": TossGate(9), "order_history": TossGate(4)})  # 문서: ORDER 10 · ORDER_HISTORY 5 (초당)
+TOSS_GATES.update({"order": TossGate(9), "order_history": TossGate(4), "order_info": TossGate(2), "asset": TossGate(4)})  # 문서: ORDER 10 · ORDER_HISTORY 5 · ORDER_INFO 6(9:00~9:10 은 3) · ASSET 5 (초당)
 
 
 def live_conf() -> dict:
@@ -541,6 +632,74 @@ def order_create(b: dict) -> tuple[int, dict]:
     return st, j
 
 
+def order_modify(oid: str, b: dict) -> tuple[int, dict]:
+    """대기 주문 정정 (국내: 수량 필수, 지정가면 가격). 새 주문처럼 서버 스위치·한 번 주문 상한을 본다"""
+    c = live_conf()
+    if not c["armed"]:
+        return relay_err(403, "relay-off", "서버 실전 꺼짐")
+    if not c["account"]:
+        return relay_err(503, "relay-no-account", "서버에 계좌 없음")
+    sym, kind = str(b.get("symbol", "")), b.get("orderType")
+    qty, price = str(b.get("quantity", "")), str(b.get("price", ""))
+    if not (MOCK_CODE.fullmatch(sym) and kind in ("LIMIT", "MARKET") and qty.isdigit() and int(qty) > 0
+            and (kind == "MARKET" or price.isdigit())):
+        return relay_err(400, "invalid-request", "요청이 올바르지 않음")
+    if kind == "LIMIT":
+        unit = float(price)
+    else:
+        unit = float(((mock_last([sym]).get("quotes") or {}).get(sym) or {}).get("last") or 0)
+        if unit <= 0:
+            return relay_err(503, "relay-no-price", "지금 가격을 몰라 시장가 정정 안 함")
+    if c["max_krw"] <= 0 or unit * int(qty) > c["max_krw"]:
+        return relay_err(403, "relay-over-cap", "서버 한 번 주문 상한 넘음")
+    out = {"orderType": kind, "quantity": qty}
+    if kind == "LIMIT":
+        out["price"] = price
+    st, j = toss_order("POST", "/api/v1/orders/" + oid + "/modify", out, "order", c["account"])
+    order_log("modify", {"orderId": oid, "symbol": sym, "type": kind, "qty": int(qty), "price": price or None}, st, j)
+    return st, j
+
+
+_acct_cache: tuple[float, dict] | None = None
+
+
+def account_view() -> tuple[int, dict]:
+    """주문가능금액(원)·보유 종목 (읽기만, 서버 스위치와 상관없이). 5초 다시 쓰기. 계좌 번호는 앱에 안 보낸다"""
+    global _acct_cache
+    c = live_conf()
+    if not c["account"]:
+        return relay_err(503, "relay-no-account", "서버에 계좌 없음")
+    if _acct_cache and time.time() - _acct_cache[0] < 5:
+        return 200, _acct_cache[1]
+    st, bp = toss_order("GET", "/api/v1/buying-power?currency=KRW", None, "order_info", c["account"])
+    if st != 200:
+        return st, bp
+    st, h = toss_order("GET", "/api/v1/holdings", None, "asset", c["account"])
+    if st != 200:
+        return st, h
+    num = lambda v: float(v) if v not in (None, "") else None  # noqa: E731
+    r, items = h.get("result") or {}, []
+    for x in r.get("items") or []:
+        if x.get("marketCountry") != "KR":
+            continue
+        pl = x.get("profitLoss") or {}
+        items.append({"code": x.get("symbol"), "name": x.get("name"), "qty": num(x.get("quantity")), "avg": num(x.get("averagePurchasePrice")),
+                      "last": num(x.get("lastPrice")), "plAfterCost": num(pl.get("amountAfterCost")), "rateAfterCost": num(pl.get("rateAfterCost"))})
+    out = {"cash": num((bp.get("result") or {}).get("cashBuyingPower")), "holdings": items,
+           "plAfterCost": num(((r.get("profitLoss") or {}).get("amountAfterCost") or {}).get("krw"))}
+    _acct_cache = (time.time(), out)
+    return 200, out
+
+
+def sellable(sym: str) -> tuple[int, dict]:
+    c = live_conf()
+    if not c["account"]:
+        return relay_err(503, "relay-no-account", "서버에 계좌 없음")
+    if not MOCK_CODE.fullmatch(sym):
+        return relay_err(400, "invalid-request", "잘못된 종목")
+    return toss_order("GET", "/api/v1/sellable-quantity?symbol=" + urllib.parse.quote(sym), None, "order_info", c["account"])
+
+
 def order_route(method: str, path: str, b: dict | None = None) -> tuple[int, dict] | None:
     """/api/mock/order… 경로. 아니면 None"""
     p = urllib.parse.urlparse(path).path
@@ -549,7 +708,11 @@ def order_route(method: str, path: str, b: dict | None = None) -> tuple[int, dic
         return 200, {"armed": c["armed"], "account": bool(c["account"]), "keys": toss_keys() is not None, "max_krw": c["max_krw"]}
     if method == "POST" and p == "/api/mock/order":
         return order_create(b or {})
-    m = re.fullmatch(r"/api/mock/order/([^/]+)(/cancel)?", p)
+    if method == "GET" and p == "/api/mock/account":  # 주문가능금액·보유 (실전 장부 대조)
+        return account_view()
+    if method == "GET" and p == "/api/mock/sellable":
+        return sellable((urllib.parse.parse_qs(urllib.parse.urlparse(path).query).get("symbol") or [""])[0])
+    m = re.fullmatch(r"/api/mock/order/([^/]+)(/cancel|/modify)?", p)
     if not m or not ORDER_ID.fullmatch(m.group(1)) or m.group(1) == "ready":
         return None
     c = live_conf()
@@ -558,6 +721,8 @@ def order_route(method: str, path: str, b: dict | None = None) -> tuple[int, dic
     oid = m.group(1)
     if method == "GET" and not m.group(2):
         return toss_order("GET", "/api/v1/orders/" + oid, None, "order_history", c["account"])
+    if method == "POST" and m.group(2) == "/modify":
+        return order_modify(oid, b or {})
     if method == "POST" and m.group(2):
         st, j = toss_order("POST", "/api/v1/orders/" + oid + "/cancel", {}, "order", c["account"])
         order_log("cancel", {"orderId": oid}, st, j)
