@@ -327,6 +327,13 @@ struct FlowBars: Codable {
     static func read(_ name: String) -> FlowBars { Store.read(FlowBars.self, name) ?? FlowBars() }
     static func write(_ f: FlowBars, _ name: String) { Store.write(f, name) }
 
+    /// 분할·병합 확인 (모든 일봉 출처가 같이 쓴다): 받아 둔 종가(ds·cs, 끝 skipLast 날 빼고)와 새로 받은 같은 날 종가가 tol 넘게 다르면
+    /// 출처가 지난 값을 다시 맞춘 것이다. 그러면 이어 붙이지 말고 3년치를 다시 받는다
+    static func rescaled(_ ds: [String], _ cs: [Double], _ new: [String: Double], skipLast: Int = 0, tol: Double = 0.001) -> Bool {
+        let n = max(0, min(ds.count, cs.count) - skipLast)
+        return (0..<n).contains { i in new[ds[i]].map { cs[i] > 0 && abs($0 / cs[i] - 1) > tol } ?? false }
+    }
+
     /// 새로 받은 줄을 잇는다. full 이면 갈아 끼우고, keep 에 맞는 날만 남긴다 (끝나기 전 오늘 일봉·3년 넘은 날 빼기)
     mutating func merge(_ k: String, _ rows: [String: Row], full: Bool, keep: (String) -> Bool) {
         var all: [String: Row] = [:]
@@ -398,7 +405,7 @@ enum FlowAlpaca {
         guard got else { return false }
         for key in need.keys {
             // 겹친 날 종가가 0.1% 넘게 다르면 새 분할: 지운다 (다음 받기에 3년치를 다시)
-            if let s = f.b[key], s.d.count >= 30, let r = rows[key], zip(s.d, s.c).contains(where: { d, c in r[d].map { abs($0.c / c - 1) > 0.001 } ?? false }) {
+            if let s = f.b[key], s.d.count >= 30, let r = rows[key], FlowBars.rescaled(s.d, s.c, r.mapValues(\.c)) {
                 f.b[key] = nil; f.day[key] = nil; continue
             }
             f.merge(key, rows[key] ?? [:], full: fresh && (f.b[key]?.d.count ?? 0) < 30, keep: { $0 >= from && ($0 < md || ($0 == md && closed)) })
@@ -449,7 +456,7 @@ enum FlowLongbridge {
             var full = (f.b[key]?.d.count ?? 0) < 30
             guard var rows = await ask(full ? 800 : 15) else { continue }
             // 겹친 날 종가가 0.1% 넘게 다르면 수정 기준이 바뀐 것: 전부 다시
-            if !full, let s = f.b[key], zip(s.d, s.c).contains(where: { d, c in rows[d].map { abs($0.c / c - 1) > 0.001 } ?? false }) {
+            if !full, let s = f.b[key], FlowBars.rescaled(s.d, s.c, rows.mapValues(\.c)) {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 last = Date()
                 guard let all = await ask(800) else { continue }

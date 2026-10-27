@@ -295,7 +295,8 @@ def mock_daily_one(code: str, count: int) -> list:
         c = _mock_daily.get(code)
         if c and c[1] >= count and time.time() - c[0] < ttl:
             return c[2][-count:]
-    q = urllib.parse.urlencode({"symbol": code, "interval": "1d", "count": str(count), "adjusted": "false"})
+    # 수정주가: 분할·병합 전 날도 지금 주식 수 기준 (앱 TossHistory 와 같은 기준)
+    q = urllib.parse.urlencode({"symbol": code, "interval": "1d", "count": str(count), "adjusted": "true"})
     j = toss_call("/api/v1/candles?" + q, "chart")
     rows = []
     for v in (j.get("result") or {}).get("candles") or []:

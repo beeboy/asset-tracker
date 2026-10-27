@@ -461,7 +461,9 @@ enum SitePrices {
     /// 한 종목: 받아 둔 3년 종가가 있으면 최근 한 달만 받아 끝을 바꾸고, 없으면 3년을 받는다
     private static func direct(_ k: String, _ had: YahooSample.Hist?) async -> YahooSample.Hist? {
         if let h = had, let last = h.dates.last, h.dates.count > 200, Day.dday(last) >= -20,
-           let n = await daily(k, range: "1mo"), let first = n.dates.first {
+           let n = await daily(k, range: "1mo"), let first = n.dates.first,
+           // 새 분할이면 Yahoo 는 지난 값을 다 바꾼다: 겹친 날이 다르면 3년치를 다시 (마지막 날은 장중 값일 수 있어 빼고 본다)
+           !FlowBars.rescaled(h.dates, h.closes, Dictionary(zip(n.dates, n.closes), uniquingKeysWith: { _, b in b }), skipLast: 1, tol: 0.01) {
             let keep = h.dates.firstIndex { $0 >= first } ?? h.dates.count
             let ds = Array(h.dates[..<keep]) + n.dates, cs = Array(h.closes[..<keep]) + n.closes
             let cut = max(0, ds.count - 800)   // 3년 남짓만 둔다
@@ -497,7 +499,8 @@ enum SitePrices {
 }
 
 /// 내 토스 키로 받는 지난 종가(일봉)와 원/달러. 키를 넣은 기기만 (공개 버전은 사용자 키로만 시세를 보여 준다).
-/// 일봉은 수정 안 한 종가(adjusted=false): 사이트 data/prices 의 close 와 같은 기준. 받은 종목은 사이트 값 대신 쓰고, 못 받은 종목은 사이트 값 그대로.
+/// 일봉은 수정주가(adjusted=true): 분할·병합을 토스가 지난 값에 반영한다(미국은 5% 넘는 차이만, 배당은 거의 안 바뀜). 사이트 data/prices 의 close(분할 반영)와 같은 기준.
+/// 받은 종목은 사이트 값 대신 쓰고, 못 받은 종목은 사이트 값 그대로.
 /// 원/달러 지난 흐름(KRW=X)은 토스에 일봉이 없어 아직 사이트 값이다.
 enum TossHistory {
     struct FX: Codable { var rate: Double; var prev: Double; var got: Double }   // 지금, 24시간 전, 받은 시각(초)
@@ -510,7 +513,7 @@ enum TossHistory {
     static func merged(_ p: SitePrices.File?, _ t: File?) -> SitePrices.File? {
         guard let t, TossKeys.on, !t.h.isEmpty else { return p }
         var out = p ?? SitePrices.File(got: 0, updated: "", asked: [], h: [:])
-        for (k, v) in t.h { out.h[k] = TossSplit.fit(v, p?.h[k]) }   // 수정 안 한 종가라 분할 전 날은 사이트(분할 반영) 기준으로 맞춘다
+        for (k, v) in t.h { out.h[k] = v }
         return out
     }
 
@@ -539,6 +542,11 @@ enum TossHistory {
         if !Store.defaults.bool(forKey: "toss_hist_miss_reset_relay") { miss = [:]; Store.defaults.set(true, forKey: "toss_hist_miss_reset_relay") }
         var stop = false
         var ohlc = FlowBars.read(FlowBars.tossName), ohlcDirty = false   // 차트 탭 캔들: 같은 응답에서 시가·고가·저가·거래량도 남긴다
+        // 한 번만: 예전 판은 수정 안 한 일봉(adjusted=false)을 남겼다 (엔비디아 2024-06 분할 전이 10배). 지우고 수정주가로 3년치를 다시 받는다
+        if !Store.defaults.bool(forKey: "toss_hist_adjusted") {
+            f.h = [:]; f.day = [:]; f.krx = nil; f.krxTry = nil; ohlc = FlowBars(); ohlcDirty = true
+            Store.defaults.set(true, forKey: "toss_hist_adjusted")
+        }
         for (k, y) in keys.sorted(by: { $0.key < $1.key }) where !stop {
             // 하루 한 번, 장이 끝난 뒤 한 번 더 (그날 종가가 정규장 종가·다음 날 전일 종가가 된다)
             let (md, closed) = marketDay(kr: y.hasSuffix(".KS") || y.hasSuffix(".KQ"))
@@ -552,7 +560,7 @@ enum TossHistory {
             var bars: [String: Double] = [:], before: String? = nil, ok = false
             var rows: [String: FlowBars.Row] = [:]
             for _ in 0..<(full ? 5 : 1) {
-                var path = "/api/toss/v1/candles?symbol=\(enc(c))&interval=1d&adjusted=false&count=\(full ? 200 : 30)"
+                var path = "/api/toss/v1/candles?symbol=\(enc(c))&interval=1d&adjusted=true&count=\(full ? 200 : 30)"
                 if let b = before { path += "&before=" + enc(b) }
                 let (code, o, e) = await TossFeed.userGet(path)
                 // 404 가 중계 쪽(없는 경로)이면 종목 탓이 아니다: 막지 않고 이번엔 그만 (중계를 고치면 다음 갱신에 받는다)
@@ -574,6 +582,10 @@ enum TossHistory {
                 if before == nil || oldest <= from { break }
             }
             guard ok, !bars.isEmpty else { continue }
+            // 새 분할·병합이면 겹친 날 종가가 달라진다: 지우고 다음 갱신에 3년치를 다시 (국내 최근 두 날은 NXT·15:31 값이 바뀌어 빼고 본다)
+            if !full, let s = ohlc.b[k], FlowBars.rescaled(s.d, s.c, bars, skipLast: 2, tol: 0.01) {
+                f.h[k] = nil; f.day[k] = nil; ohlc.b[k] = nil; ohlc.day[k] = nil; ohlcDirty = true; continue
+            }
             var all: [String: Double] = full ? [:] : Dictionary(zip(have!.dates, have!.closes), uniquingKeysWith: { _, b in b })
             for (d, v) in bars { all[d] = v }
             let ds = all.keys.filter { $0 >= from && ($0 < md || ($0 == md && closed)) }.sorted()
@@ -692,22 +704,6 @@ enum MarFeed {
         // 사이트·중계가 앞 날짜 고시도 주면 같이 둔다 (앱을 처음 깔았거나 저녁에 새 고시만 받은 때도 오전 8시 59분 전엔 앞 고시)
         let pv = (o["USD_prev"] as? [String: Any]).flatMap { p in num(p["rate"]).flatMap { r in (p["date"] as? String).map { Prev(rate: r, date: $0) } } }
         return File(rate: rate, date: date, got: Date().timeIntervalSince1970, prev: pv.flatMap { $0.rate > 0 && $0.date < date ? $0 : nil })
-    }
-}
-
-/// 토스 일봉(adjusted=false)은 주식 분할 전 날이 분할 전 가격이다 (엔비디아 2024-06-10 1→10: 분할 전 약 1,200달러).
-/// 사이트 종가는 분할을 반영하므로, 같은 날 둘의 비가 30% 넘게 어긋나는 곳부터 그 앞은 사이트 비로 맞춘다. 사이트에 없는 종목은 그대로
-enum TossSplit {
-    static func fit(_ t: YahooSample.Hist, _ site: YahooSample.Hist?) -> YahooSample.Hist {
-        guard let site, !site.dates.isEmpty else { return t }
-        let ref = Dictionary(zip(site.dates, site.closes), uniquingKeysWith: { _, b in b })
-        var f = 1.0, out = t.closes
-        for i in out.indices.reversed() {
-            let c = out[i]
-            if c > 0, let s = ref[t.dates[i]], s > 0, abs(s / c / f - 1) > 0.3 { f = s / c }
-            out[i] = c * f
-        }
-        return .init(dates: t.dates, closes: out)
     }
 }
 
