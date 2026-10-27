@@ -49,6 +49,8 @@ struct RemindItem: Identifiable, Equatable {
     struct Check: Equatable { let text: String; let ok: Bool }
     /// 소식함 '할 일': 행동 버튼이 있거나 조건이 풀릴 때까지 남는 진행 중 소식
     var isTodo: Bool { cat != .event && (action != nil || !once) }
+    /// 미션 탭 소식 (앱 시작 3단계·인터미션·1000칸·주간 예보·맞혀보기 배지)
+    var mission: Bool { id == "start" || ["inter.", "cells.", "wk.", "badge.", "do.inter", "do.week"].contains { id.hasPrefix($0) } }
 }
 
 /// 기기에 남는 기록 (다른 기기와 맞추지 않는다)
@@ -137,7 +139,10 @@ final class Remind {
 
     func isOn(_ c: RemindCat) -> Bool { !log.off.contains(c) }
     func setOn(_ c: RemindCat, _ on: Bool) { if on { log.off.remove(c) } else { log.off.insert(c) } }
-    private var shown: [RemindItem] { items.filter { isOn($0.cat) } }
+    // 미션 소식은 홈(말풍선·소식함·새 소식 수)에 두지 않는다. 미션에만 (2026-10-27)
+    private var shown: [RemindItem] { items.filter { isOn($0.cat) && !$0.mission } }
+    /// 소식함에 보일 것이 있는지
+    var any: Bool { !shown.isEmpty }
     func isSeen(_ i: RemindItem) -> Bool { log.seen[i.id] != nil }
     /// 안 본 소식 (말풍선·‘새 소식 n’)
     var fresh: [RemindItem] { shown.filter { $0.once && $0.cat != .event && !isSeen($0) } }

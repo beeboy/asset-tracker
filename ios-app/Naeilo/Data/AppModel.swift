@@ -642,9 +642,7 @@ final class AppModel {
     }
     var homeSay: String {
         let who = voice(homeFriendShown)
-        if !playUnlocked {
-            return Lines.pick("home.locked.\(who)") ?? (String(localized: "앱 시작 3단계를 마치면 매일 오늘 숫자를 하나 가져올게요.") + (who == "seri" ? String(localized: " 거기까지만요.") : ""))
-        }
+        // 앱 시작 3단계 안내는 홈 말풍선에 두지 않는다. 미션에만 (2026-10-27)
         if today.answer != nil {
             let n = itemsOn
             let info = n < 10 ? String(localized: "내일 또 오면 쉼터에 물건(\(String(describing: Shelter.items[n].name)))이 돌아와요.") : ""

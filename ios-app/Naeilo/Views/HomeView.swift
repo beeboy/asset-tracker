@@ -86,23 +86,9 @@ struct HomeView: View {
     }
 
     private func sceneSummary(_ look: BoxLook) -> some View {
-        let reached = m.isGoal ? m.goalReached : m.cost <= m.total
-        let setMonthly = m.isGoal && !m.goalReached && !m.bare && m.gM <= 0
-        return VStack(spacing: 0) {
+        // 적립 정하기·목표 루트로·다음 목표 정하기는 홈에 두지 않는다. 미션에만 (2026-10-27)
+        VStack(spacing: 0) {
             SceneBox(look: look, s: scene, hide: $hideAmt)
-                .overlay(alignment: .bottomTrailing) {
-                    if setMonthly {
-                        HomeLink(value: "goal") { Text("적립 정하기 ›").appFont(12, .bold).foregroundStyle(Theme.yellow).frame(minHeight: 32) }
-                            .buttonStyle(.plain).padding(.trailing, 14).accessibilityLabel("다음달 적립 정하기")
-                    }
-                }
-            if reached && !m.rows.isEmpty || m.goalReached {
-                Group {
-                    if m.isGoal { darkButton(String(localized: "다음 목표 정하기")) { m.suggestNextGoal(); m.homePath.append("goal") } }
-                    else { darkButton(String(localized: "목표 루트로")) { m.graduateToGoal(); m.tab = .board } }
-                }
-                .padding(12)
-            }
         }
         .frame(maxWidth: .infinity)
         .background(BoxInk.card)
@@ -141,13 +127,7 @@ struct HomeView: View {
                      : m.bare ? String(localized: "매달 \(String(describing: AppModel.wonK(m.gM))) 적립 · 다음 적립일 +\(String(describing: AppModel.wonK(m.gM)))")
                      : AppModel.paceText(m.goalPace()) + (m.gM > 0 ? String(localized: " · 다음달 \(String(describing: AppModel.wonK(m.gM))) 적립") : String(localized: " · 추가 적립 미정")))
                     .appFont(13).foregroundStyle(BoxInk.sub).fixedSize(horizontal: false, vertical: true)
-                if !m.goalReached && !m.bare && m.gM <= 0 {
-                    Spacer(minLength: 8)
-                    HomeLink(value: "goal") { Text("정하기 ›").appFont(13, .bold).foregroundStyle(BoxInk.gold).frame(minHeight: 32) }
-                        .buttonStyle(.plain).accessibilityLabel("다음달 적립 정하기")
-                }
             }
-            if m.goalReached { darkButton(String(localized: "다음 목표 정하기")) { m.suggestNextGoal(); m.homePath.append("goal") } }
         }
         .foregroundStyle(BoxInk.ink)
         .padding(18)
@@ -185,7 +165,6 @@ struct HomeView: View {
                  ? String(localized: "어제 \(String(describing: String(format: "%.1f", needY * 100)))% → 오늘 \(String(describing: String(format: "%.1f", need * 100)))%")
                  : String(localized: "본전 넘음 · 종목·친구 그대로"))
                 .appFont(13).foregroundStyle(BoxInk.sub).fixedSize(horizontal: false, vertical: true)
-            if need <= 0 { darkButton(String(localized: "목표 루트로")) { m.graduateToGoal(); m.tab = .board } }
         }
         .foregroundStyle(BoxInk.ink)
         .padding(18)
@@ -199,15 +178,6 @@ struct HomeView: View {
         let mv = m.todayMove, diff = m.stockTotal - m.stockTotal / (1 + mv)
         return Text(String(localized: "오늘 ") + (mv >= 0 ? "▲ " : "▼ ") + String(format: "%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)))
             .appFont(13).foregroundStyle(mv >= 0 ? BoxInk.up : BoxInk.down)
-    }
-
-    // 어두운 요약 카드 안의 노란 버튼 (목표 루트로 · 다음 목표)
-    private func darkButton(_ t: String, _ act: @escaping () -> Void) -> some View {
-        Button(action: act) {
-            Text(t + " ›").appFont(15, .bold).foregroundStyle(Theme.inkFixed)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(Theme.yellow, in: RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain)
     }
 
     // 쉼터 박스: 홈에 둔 친구 + 말풍선 (리마인드 소식이 있으면 그 소식) + 새 소식 + 다른 친구 칸
@@ -246,7 +216,7 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(b.map { String(localized: "\(String(describing: $0.cat.label)) 소식: \(String(describing: $0.text))") } ?? String(localized: "쉼터 보기"))
-            if !r.items.isEmpty {
+            if r.any {
                 HStack {
                     Spacer()
                     Button { inbox = true } label: {
@@ -283,13 +253,10 @@ struct HomeView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border))
     }
 
-    /// 노란 띠: 3일 안의 일정 (내 종목 먼저). 없으면 인터미션 이번 할 일. 누르면 소식함
+    /// 노란 띠: 3일 안의 일정 (내 종목 먼저). 누르면 소식함. 인터미션 할 일은 미션에만 (2026-10-27)
     @ViewBuilder private var reminder: some View {
-        let r = Remind.shared
-        if let e = r.strip {
+        if let e = Remind.shared.strip {
             stripRow(tag: String(localized: "일정"), text: "\(MarketEvents.when(e.day ?? "")) \(e.text) · \(e.sub ?? "")")
-        } else if r.isOn(.doing), let d = r.doing.first(where: { $0.id == "do.inter" }) {
-            stripRow(tag: String(localized: "리마인드"), text: d.text)
         }
     }
     private func stripRow(tag: String, text: String) -> some View {
