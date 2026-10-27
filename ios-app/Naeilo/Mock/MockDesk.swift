@@ -548,7 +548,7 @@ final class MockDesk {
         s.aiViews = [:]
         lastPicks = picks
         let shortN = skips.filter(\.short).count + picks.filter { $0.short == true }.count
-        s.runs["select"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 고름 · \(picks.count)종목 · 현금 부족 \(shortN)건")
+        s.runs["select"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 고름 · \(picks.count)종목 · 한 번 ≤\(MockFmt.num((s.select.roundMax ?? 0.10) * 100))% · 현금 부족 \(shortN)건")
         if buy { await order() }
     }
 

@@ -193,6 +193,9 @@ enum MockCalc {
         var slots = rule.count
         let avail = l.cash - rule.keepCash * eq
         var planned = 0.0
+        // 한 번 고를 때 모두 합쳐 평가액의 roundMax 까지 (처음부터 다 사지 않는다). 종목마다 그 몫을 고를 수로 나눈다
+        let round = (rule.roundMax ?? 0.10) * eq
+        let perRound = round / Double(max(1, rule.count))
         var picks: [Pick] = [], skips: [Skip] = []
         for (i, h) in scan.hits.enumerated() {
             if let why = excluded[h.code] { skips.append(Skip(code: h.code, name: h.name, why: "예외 · " + why)); continue }
@@ -207,9 +210,10 @@ enum MockCalc {
             // 보유 종목도 조건에 맞으면 고른다 (추가 주문). 종목당 한도는 보유까지 합쳐서 본다
             let held = l.positions[h.code]
             let heldVal = Double(held?.qty ?? 0) * px
-            let budget = rule.maxPer * eq - heldVal
+            let room = rule.maxPer * eq - heldVal
+            let budget = min(room, perRound, round - planned)
             let qty = Int((budget / one).rounded(.down))
-            if let held, qty < 1 {
+            if let held, room < one {
                 skips.append(Skip(code: h.code, name: h.name, why: "종목당 한도 참 · 보유 " + String(format: "%.0f%%", eq > 0 ? heldVal / eq * 100 : 0) + " · \(held.qty)주"))
                 continue
             }

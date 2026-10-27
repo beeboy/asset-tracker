@@ -283,6 +283,7 @@ struct MockSelectRule: Codable, Equatable {
     var count: Int = 5            // 한 번 고를 때 새로 고를 종목 수 (보유 수와 따로)
     var maxPer: Double = 0.20     // 한 종목 최대 (평가액 대비)
     var keepCash: Double = 0.20   // 남길 현금 (평가액 대비)
+    var roundMax: Double? = nil   // 한 번 고를 때 모두 합쳐 살 몫 (평가액 대비, 없으면 10%)
     /// 검토 문: 기본은 닫는다(켬 = 고른 뒤 내가 보고 주문, 끔 = 고르면 바로 주문)
     var review: Bool = true
     /// 미끄러짐 한도 (0.005 = 0.5%). 시장가를 끝까지 채우면 평균 단가가 1호가에서 이만큼 넘게 벗어날 때 나눠 산다·판다 (없으면 끔)
