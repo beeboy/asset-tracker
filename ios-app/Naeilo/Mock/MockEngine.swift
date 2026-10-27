@@ -175,6 +175,7 @@ enum MockCalc {
         var why: String
         var weight: Double           // 평가액 대비
         var who: MockWho = .rule
+        var short: Bool? = nil       // 고를 때 현금이 모자랐음 (주문할 때 현금으로 줄이거나 거부)
     }
     struct Skip: Codable, Equatable {
         var code: String
@@ -183,7 +184,7 @@ enum MockCalc {
         var short: Bool = false      // 현금 부족 (못 산 신호로 센다)
     }
 
-    /// 관찰 결과에서 고른다. 순위 차례대로 (가나다순 같은 우연한 순서가 아니다), 남은 현금에서 하나씩 뺀다
+    /// 관찰 결과에서 고른다. 순위 차례대로 (가나다순 같은 우연한 순서가 아니다), 남은 현금에서 하나씩 뺀다. 현금이 모자라도 고르고 현금 부족으로 표시한다
     static func select(_ scan: MockScan, ledger l: MockLedger, rule: MockSelectRule, fees: MockFees,
                        prices: [String: Double], excluded: [String: String], soldToday: Set<String> = []) -> (picks: [Pick], skips: [Skip]) {
         let eq = equity(l, prices: prices)
@@ -202,13 +203,10 @@ enum MockCalc {
             let px = prices[h.code] ?? h.price
             let one = px * (1 + fees.commission)
             guard px > 0 else { skips.append(Skip(code: h.code, name: h.name, why: "가격 확인 못 함")); continue }
-            if avail < one {
-                // 현금이 한 주 값도 안 남으면 남은 자리 몫은 모두 현금 부족
-                skips.append(Skip(code: h.code, name: h.name, why: "현금 부족 · 남은 " + MockFmt.won(max(0, avail)), short: true))
-                slots -= 1
-                continue
-            }
-            let budget = min(rule.maxPer * eq, avail / Double(slots))
+            // 고르기는 현금을 보지 않는다. 현금은 주문할 때 본다 (모자라면 그때 줄이거나 거부)
+            let share = avail / Double(slots)
+            let short = share < one
+            let budget = short ? rule.maxPer * eq : min(rule.maxPer * eq, share)
             let qty = Int((budget / one).rounded(.down))
             if qty < 1 {
                 // 한 주가 쓸 돈보다 비싸면 0주. 오류가 아니라 정상 결과로 남긴다
@@ -217,8 +215,9 @@ enum MockCalc {
             }
             let spend = Double(qty) * one
             picks.append(Pick(code: h.code, name: h.name, price: px, budget: spend, qty: qty, rank: i + 1,
-                              why: "\(i + 1)위 · " + h.why, weight: eq > 0 ? spend / eq : 0))
-            avail -= spend
+                              why: "\(i + 1)위 · " + h.why + (short ? " · 현금 부족" : ""), weight: eq > 0 ? spend / eq : 0,
+                              short: short ? true : nil))
+            avail = max(0, avail - spend)
             slots -= 1
         }
         return (picks, skips)

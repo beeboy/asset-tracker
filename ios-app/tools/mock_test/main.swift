@@ -65,8 +65,11 @@ check(sel.picks[0].qty == Int((1_600_000 / (8_336 * 1.00015)).rounded(.down)), "
 check(sel.picks.allSatisfy { $0.budget <= 1_600_000 }, "예산 안")
 // 현금 부족
 var poor = L; poor.cash = 9_000
+// 오늘 장부처럼: 보유 종목으로 평가액은 크고 현금만 적다
+poor.positions["Z"] = MockPosition(code: "Z", name: "Z", qty: 1_000, cost: 10_001_500, gross: 10_000_000, opened: t0, openedDay: "2026-10-20", who: .rule, test: false)
 let selPoor = MockCalc.select(scan, ledger: poor, rule: rule, fees: fees, prices: [:], excluded: [:])
-check(selPoor.picks.isEmpty && selPoor.skips.contains { $0.short }, "현금 부족: \(selPoor.skips)")
+// 고르기는 현금을 보지 않는다: 현금이 없어도 고르고 현금 부족으로 표시한다
+check(selPoor.picks.count == 2 && selPoor.picks.allSatisfy { $0.short == true && $0.why.hasSuffix("현금 부족") }, "현금 부족도 고름: \(selPoor.picks)")
 // 0주
 let pricey = MockScan(at: t0, bundleId: bundle.id, bundleName: "A", pieceTexts: [], barDay: "", total: 1,
                       hits: [MockHit(code: "9", name: "비싼", price: 3_000_000, change: nil, score: 1, why: "")], dropped: [:])

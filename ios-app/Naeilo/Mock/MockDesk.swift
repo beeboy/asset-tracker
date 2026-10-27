@@ -547,7 +547,7 @@ final class MockDesk {
         s.picks = picks; s.picksBook = b; s.pickEvents = pe; s.skips = skips; s.pickedAt = Date(); s.dropped = []
         s.aiViews = [:]
         lastPicks = picks
-        let shortN = skips.filter(\.short).count
+        let shortN = skips.filter(\.short).count + picks.filter { $0.short == true }.count
         s.runs["select"] = MockRun(at: Date(), ok: true, text: "\(MockFmt.time(Date())) 고름 · \(picks.count)종목 · 현금 부족 \(shortN)건")
         if buy { await order() }
     }
