@@ -105,7 +105,8 @@ struct BoardView: View {
                             Text(goal ? String(localized: "\(String(describing: i + 1))달") : String(localized: "\(i + 1)주째")).appFont(11)
                             Text(pick?.0 ?? (cur ? (goal ? String(localized: "이번 달") : String(localized: "이번 주")) : "–")).appFont(13, .bold)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 60)
+                        // 설명 줄이 빠지면 칸을 키워 박스 높이를 다른 탭 박스와 맞춘다 (2026-10-27)
+                        .frame(maxWidth: .infinity, minHeight: done || n >= total ? 90 : 60)
                         // 고른 칸: 테마 바탕이 비치는 반투명 칸 + 결과 색 테두리 (계획대로·더·덜 구분은 테두리 색으로)
                         .foregroundStyle(pick != nil ? BoxInk.ink : cur ? BoxInk.gold : BoxInk.dim)
                         .background(pick != nil ? bx(0xFFFFFF, 0.72, 0xFFFFFF, 0.10) : .clear, in: RoundedRectangle(cornerRadius: 10))
