@@ -118,7 +118,7 @@ struct FlowView: View {
                     .padding(.horizontal, 18)
             }
             .mask(LinearGradient(stops: [.init(color: .black, location: 0.84), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
-            .padding(.horizontal, -18).padding(.top, 14)
+            .padding(.horizontal, -18).padding(.top, 10)
         }
         .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -131,11 +131,12 @@ struct FlowView: View {
         let on = cur == id
         return Button { sel = id; term = nil } label: {
             HStack(spacing: 6) {
-                Circle().fill(dot).frame(width: 8, height: 8)
-                Text(id == "DRNK" ? "DRNK" : name(id)).appFont(15, on ? .bold : .regular).lineLimit(1)
+                // 알약은 작게: 박스 높이를 종목 탭 박스에 맞춘다 (2026-10-27)
+                Circle().fill(dot).frame(width: 6, height: 6)
+                Text(id == "DRNK" ? "DRNK" : name(id)).appFont(13, on ? .bold : .regular).lineLimit(1)
             }
             .foregroundStyle(on ? BoxInk.ink : BoxInk.sub)
-            .padding(.horizontal, 14).frame(minHeight: 34)
+            .padding(.horizontal, 10).frame(minHeight: 24)
             .background(bx(0xFFFFFF, 0.55, 0xFFFFFF, 0), in: Capsule())
             .overlay(Capsule().stroke(on ? BoxInk.ink : bx(0x16181D, 0.16, 0xFFFFFF, 0.22)))
             .contentShape(Capsule())

@@ -565,15 +565,9 @@ struct ChanceBox: View {
             .font(.system(size: 14)).foregroundStyle(Self.dim)
             title.padding(.top, 6)
             bar.frame(height: 62).padding(.top, 10)
-            HStack {
-                Text(d.foot)
-                Spacer(minLength: 8)
-                Text(d.nowText)
-            }
-            .font(.system(size: 15)).foregroundStyle(Self.dim).lineLimit(1).minimumScaleFactor(0.8)
-            .padding(.top, 8)
+            // 맨 아래 '셋 중 … 선을 넘음 · 지금 …' 줄은 뺀다. 박스 높이를 종목 탭 박스에 맞춘다 (2026-10-27)
         }
-        .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 12)
+        .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { MoodBackdrop(look: look) }
         .clipShape(RoundedRectangle(cornerRadius: 20))
