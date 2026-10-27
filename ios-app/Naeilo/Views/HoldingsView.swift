@@ -462,12 +462,8 @@ struct MoodBand: View {
             band(height: 7, radius: 3)
                 .padding(2).background(ThemeBand.wood, in: ThemeBand.pinoShape)
         case .mug:
-            VStack(spacing: 0) {
-                ThemeBand.chalk.frame(height: 2)
-                band(height: 4, radius: 0).padding(.vertical, 3).background(ThemeBand.dirt)
-                ThemeBand.chalk.frame(height: 2)
-            }
-            .overlay(Rectangle().stroke(ThemeBand.dirtRim, lineWidth: 1))
+            band(height: 6, radius: 3)
+                .padding(2).background(ThemeBand.sphereTrack, in: Capsule())
         }
     }
 

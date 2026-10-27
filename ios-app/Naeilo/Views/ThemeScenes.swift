@@ -825,7 +825,7 @@ struct BandBuddy: View {
             switch look {
             case .dory: if up { m.dory } else { m.octo }
             case .pino: if up { m.leaf; m.bird(false) } else { m.note; m.bird(true) }
-            case .mug: if up { m.gihun; m.exit } else { Dot(img: MugArt.younghi(.open), w: 21, h: 24.5) }
+            case .mug: m.sphere(ripple: !up)
             case .jump: if up { m.fire; m.car } else { m.car }
             case .horizon: if up { m.glow } else { m.wave; m.glow }
             case .tub: if up { m.duck } else { m.splash; m.duck }
@@ -847,7 +847,7 @@ struct TrackBuddy: View {
             if goal {
                 switch look {
                 case .dory: m.opera
-                case .mug: m.exit
+                case .mug: m.sphere(inside: true)
                 case .jump: m.portal
                 case .horizon: m.sun
                 case .tub: m.foam
@@ -857,7 +857,7 @@ struct TrackBuddy: View {
                 switch look {
                 case .dory: m.dory
                 case .pino: m.bird(false)
-                case .mug: m.gihun
+                case .mug: m.sphere()
                 case .jump: m.car
                 case .horizon: m.glow
                 case .tub: m.duck
@@ -897,6 +897,22 @@ private struct Mini {
     }
     var exit: some View { Canvas { c, _ in ThemeArt.miniExit(c) }.frame(width: 18, height: 22) }
     var gihun: some View { Dot(img: MugArt.gihun(MeChar.current ?? MeChar()), w: 16, h: 24) }
+    /// 구면 뒤집기: 작은 구. ripple = 떨어진 날 테두리 물결, inside = 안쪽 면 색(목표 자리)
+    func sphere(ripple: Bool = false, inside: Bool = false) -> some View {
+        Canvas { [dk] c, _ in
+            let col: UInt32 = inside ? (dk ? 0xE9C46A : 0xE2B44A) : (dk ? 0x4FB3A5 : 0x3E9C8F)
+            var p = Path()
+            for i in 0..<48 {
+                let t = 2 * Double.pi * Double(i) / 48, r = 8 * (1 + (ripple ? 0.1 * sin(6 * t) : 0))
+                let q = pt(9 + CGFloat(r * cos(t)), 9 + CGFloat(r * sin(t)))
+                i == 0 ? p.move(to: q) : p.addLine(to: q)
+            }
+            p.closeSubpath()
+            c.fill(p, with: hex(col))
+            c.fill(circle(6.5, 6, 2.2), with: .color(.white.opacity(0.25)))
+        }
+        .frame(width: 18, height: 18)
+    }
     var car: some View { Car().frame(width: 95, height: 35).scaleEffect(36.0 / 95).frame(width: 36, height: 13.3) }
     var fire: some View {
         VStack(alignment: .trailing, spacing: 1.6) {
@@ -978,6 +994,9 @@ struct ThemeBackdrop: View {
                     }
                 }
                 .overlay { RadialGradient(colors: [bx(0xFFCE78, 0.4, 0xFFD58A, 0.28), bx(0xFFCE78, 0, 0xFFD58A, 0)], center: UnitPoint(x: 0.1, y: 0.8), startRadius: 0, endRadius: 200) }
+        case .mug:
+            // 구면 뒤집기: 홈 박스와 같은 바탕 (소품 없이 고요하게)
+            LinearGradient(colors: [bx(0xEAF3F4, 0x0F1A24), bx(0xF7F3E8, 0x172634)], startPoint: .top, endPoint: .bottom)
         default:
             LinearGradient(colors: [bx(0xBCE0F8, 0x14304F), bx(0xE8F5FD, 0x2C5F8F)], startPoint: .top, endPoint: .bottom)
                 .overlay(alignment: .bottom) { bx(0xE2C595, 0x8F7550).frame(height: 12) }
@@ -994,6 +1013,7 @@ enum ThemeBand {
     static let chalk = bx(0xFFFFFF, 0xFBF6EA), dirt = bx(0xD9BB8C, 0x8F7550)
     static let dirtRim = bx(0xC4A374, 1, 0xC4A374, 0)
     static let noseDash = bx(0xB47B44, 0.6, 0xECBC82, 0.45)
+    static let sphereTrack = bx(0xD5E6E2, 0x23343C)
 }
 
 /// 분석 막대 (새 테마). fill = 지금 자리 0~1, 채운 만큼 노랑 (피노키오는 나무 코)
@@ -1017,6 +1037,12 @@ struct ThemeTrack: View {
                     ThemeBand.pinoShape.fill(ThemeBand.wood).frame(width: max(0, w * f))
                 }
                 .frame(height: 10).padding(.vertical, 2)
+            case .mug:
+                ZStack(alignment: .leading) {
+                    Capsule().fill(ThemeBand.sphereTrack)
+                    Capsule().fill(on).frame(width: max(0, w * f))
+                }
+                .frame(height: 8).padding(.vertical, 3)
             default:
                 VStack(spacing: 0) {
                     ThemeBand.chalk.frame(height: 2)
