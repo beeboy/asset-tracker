@@ -338,7 +338,6 @@ private fun GoalSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit) {
                     FitText(AppModel.sgn(m.ret), appFont(14f, FontWeight.Bold), 0.6f, Modifier.alignByBaseline(), maxLines = 1, color = if (m.ret >= 0) ink.up else ink.down)
                 }
             }
-            if (value && m.route == Route.plus && m.total > 0) TodayLine(m)   // ios: Views/HomeView.swift:138
             // ios: Views/HomeView.swift:139
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T("목표 ${AppModel.wonK(m.gK)} · ${m.gY}년", Modifier.weight(1f), style = appFont(13f), color = ink.sub)   // ios: Views/HomeView.swift:140,143
@@ -380,7 +379,6 @@ private fun RecoverSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit
                 // ios: Views/HomeView.swift:177,178
                 T(AppModel.sgn(m.ret), Modifier.alignByBaseline(), style = appFont(16f, FontWeight.Bold), maxLines = 1, color = if (m.ret >= 0) ink.up else ink.down)
             }
-            if (m.total > 0) TodayLine(m)   // ios: Views/HomeView.swift:180
             // ios: Views/HomeView.swift:181
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 T("본전까지", Modifier.weight(1f), style = appFont(13f), color = ink.sub)   // ios: Views/HomeView.swift:182,183,187
@@ -393,17 +391,6 @@ private fun RecoverSummary(m: AppModel, hideAmt: Boolean, toggleHide: () -> Unit
               else "본전 넘음 · 종목·친구 그대로", style = appFont(13f), color = ink.sub)
         }
     }
-}
-
-// 오늘 등락: 부호는 한 번만 (▲/▼ 뒤 퍼센트·금액은 부호 없이). 목표·회복 카드 공통
-// ios: Views/HomeView.swift:202
-@Composable
-private fun TodayLine(m: AppModel) {
-    val ink = boxInk()
-    val mv = m.todayMove; val diff = m.stockTotal - m.stockTotal / (1 + mv)   // ios: Views/HomeView.swift:203
-    // ios: Views/HomeView.swift:204,205
-    T("오늘 " + (if (mv >= 0) "▲ " else "▼ ") + cformat("%.1f%%", abs(mv) * 100) + " · " + AppModel.won(abs(diff)),
-      style = appFont(13f), color = if (mv >= 0) ink.up else ink.down)
 }
 
 // 쉼터 박스: 홈에 둔 친구 + 말풍선 (리마인드 소식이 있으면 그 소식) + 새 소식 + 다른 친구 칸
@@ -912,8 +899,6 @@ internal object Sk {
         }
     }
     /** 오늘 등락 글: ▼4.3% */
-    fun today(v: Double): String = tr("오늘 ") + (if (v >= 0) "▲" else "▼") + cformat("%.1f%%", abs(v) * 100)   // ios: Views/HomeView.swift:705
-    fun todayColor(v: Double, dk: Boolean = true): Color = if (v >= 0) hex(if (dk) 0xFF8A80 else 0xC0392B) else hex(if (dk) 0x9EC1FF else 0x1B5E96)   // ios: Views/HomeView.swift:706
 }
 
 /** 판 한 층: 300×170 판 좌표로 그리고 박스 폭에 맞춰 늘린다 */
@@ -983,9 +968,6 @@ private fun HorizonScene(s: BoxScene) {
     }
     // 숨 쉬는 내 불빛
     val glow = Loop(1.5)   // ios: Views/HomeView.swift:755
-    val v = s.today
-    val bob = if (v != null) Loop(2.0) else ({ 0f })   // ios: Views/HomeView.swift:761,763
-    val todayText = v?.let { Sk.today(it) }
     Plate(Modifier.graphicsLayer()) {
         val on = glow()
         val d = Size(32f, 32f); val k = lerp(1f, 1.25f, on); val op = lerp(1f, 0.35f, on)   // ios: Views/HomeView.swift:757
@@ -994,30 +976,7 @@ private fun HorizonScene(s: BoxScene) {
         drawCircle(Brush.radialGradient(0f to halo.copy(alpha = if (dk) 0.7f else 0.75f), 1f to halo.copy(alpha = 0f), center = Offset(me, y), radius = 16f * k), radius = d.width / 2 * k, center = Offset(me, y), alpha = op)
         val dot = Size(9f, 9f); drawCircle(hex(if (dk) 0xFFF4D6 else 0xE8A417), radius = dot.width / 2, center = Offset(me, y))   // ios: Views/HomeView.swift:760
         if (!dk) drawCircle(Color.White, radius = dot.width / 2, center = Offset(me, y), style = Stroke(1.5f))   // ios: Views/HomeView.swift:734
-        // 오늘 등락: 내 불빛 위 작은 물결
-        if (v != null && todayText != null) {
-            val c = Sk.todayColor(v, dk)
-            val r = tm.measure(todayText, TextStyle(fontSize = (9.5f / (density * fontScale)).sp, color = c), softWrap = false)   // ios: Views/HomeView.swift:766
-            val w = 18f + 3f + r.size.width   // ios: Views/HomeView.swift:764 (spacing: 3)
-            val cx = min(250f, max(50f, me + 20)); val cy = 112f + lerp(0f, -2f, bob())   // ios: Views/HomeView.swift:768,770
-            val left = cx - w / 2; val ws = Size(18f, 4f)   // ios: Views/HomeView.swift:765
-            drawPath(wave(Rect(Offset(left, cy - ws.height / 2), ws)), c, style = Stroke(1.3f))
-            drawText(r, topLeft = Offset(left + ws.width + 3f, cy - r.size.height / 2f))
-        }
     }
-}
-
-/** 물결 한 줄 (지평선 오늘 등락) */
-// ios: Views/HomeView.swift:777,778
-private fun wave(r: Rect): Path {
-    val p = Path(); val n = 3; val w = r.width / n   // ios: Views/HomeView.swift:779
-    p.moveTo(r.left, r.center.y)   // ios: Views/HomeView.swift:780
-    // ios: Views/HomeView.swift:781
-    for (i in 0 until n) {
-        val a = r.left + w * i   // ios: Views/HomeView.swift:782
-        p.quadraticTo(a + w / 2, if (i % 2 == 0) r.top else r.bottom, a + w, r.center.y)   // ios: Views/HomeView.swift:783
-    }
-    return p   // ios: Views/HomeView.swift:785
 }
 
 // 시안 3 욕조와 오리: 남색 타일 벽 앞 흰 욕조. 욕조 안쪽 맨 위 눈금이 목표, 그 위로 넘칠 여유. 노란 오리가 나, 금색 줄이 계획
@@ -1097,9 +1056,6 @@ listOf(hex(if (dk) 0x7CC8F0 else 0x8CCFF2).copy(alpha = if (dk) 0.85f else 0.9f)
         translate(cx - Duck.size.width / 2, cy - Duck.size.height / 2 + dy) { rotate(turn, pivot = Offset(Duck.size.width / 2, Duck.size.height / 2)) { duck() } }
     }
     // ios: Views/HomeView.swift:849
-    s.today?.let { v ->
-        Plate { Sk.text(this, tm, Sk.today(v), 100f, w - 21, Sk.todayColor(v, dk), size = 9.5f, anchor = Anchor.center) }   // ios: Views/HomeView.swift:850,851
-    }
 }
 
 // ios: Views/HomeView.swift:857,858
@@ -1159,7 +1115,6 @@ private fun JumpScene(s: BoxScene) {
             drawPath(Sk.line(Offset(x1, 128f), Offset(x1, 134f)), hex(if (dk) 0x6B7489 else 0xAEB6C6), style = Stroke(1f))   // ios: Views/HomeView.swift:852
             Sk.text(this, tm, s.target, x1, 166f, hex(if (dk) 0x9FDCFF else 0x1E5FA8), size = 8.5f, bold = true, anchor = Anchor.center)   // ios: Views/HomeView.swift:853
             // ios: Views/HomeView.swift:906
-            s.today?.let { v -> Sk.text(this, tm, Sk.today(v), 6f, 120f, Sk.todayColor(v, dk)) }   // ios: Views/HomeView.swift:913
         }
         // 목표: 파란 일렁임
         val ripple = Loop(1.2)   // ios: Views/HomeView.swift:916
