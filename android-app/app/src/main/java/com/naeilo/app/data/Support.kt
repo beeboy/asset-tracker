@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Build
+import com.naeilo.app.core.Channel
+import com.naeilo.app.core.Config
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -114,7 +116,9 @@ class Support private constructor() {
 
     /** 개발자 빌드에서 개발자 동기화로 연결한 기기 (서버가 토큰으로 확인) */
     val dev: Boolean get() = testBuild && Sync.shared.isDev   // ios: Data/Support.swift:65
-    val subscribed: Boolean get() = plan != null || dev   // ios: Data/Support.swift:66
+    /** 내부 베타 빌드: 7일 무료 뒤에도 기능을 모두 연다 (2026-10-25 Drinker 결정) */
+    val internalBuild: Boolean get() = Config.channel == Channel.internalBeta   // ios: Data/Support.swift:67
+    val subscribed: Boolean get() = plan != null || dev || internalBuild   // ios: Data/Support.swift:68
     val inTrial: Boolean get() = dayN <= trialDays   // ios: Data/Support.swift:67
     /** 7일 무료 남은 날 (오늘 포함) */
     val trialLeft: Int get() = max(0, trialDays - dayN + 1)   // ios: Data/Support.swift:69
@@ -123,7 +127,7 @@ class Support private constructor() {
     /** 외전 6장부터 끝까지: 구독 중 (7일 무료에는 서재가 안 열린다) */
     val sideOpen: Boolean get() = subscribed   // ios: Data/Support.swift:73
     /** 앱 연재판 1권: 연 구독, 또는 월 구독 9번 이상 결제 */
-    val vol1Open: Boolean get() = dev || plan == SubPlan.yearly || monthsPaid >= vol1Months   // ios: Data/Support.swift:75
+    val vol1Open: Boolean get() = dev || internalBuild || plan == SubPlan.yearly || monthsPaid >= vol1Months   // ios: Data/Support.swift:75
     fun open(b: StoryBook): Boolean = if (b == StoryBook.side) sideOpen else vol1Open   // ios: Data/Support.swift:76
 
     fun product(p: SubPlan): ProductDetails? = products.firstOrNull { it.id == p.productID }   // ios: Data/Support.swift:78

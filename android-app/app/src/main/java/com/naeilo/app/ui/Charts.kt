@@ -234,6 +234,11 @@ fun LogoTile(
     }
 }
 
+object LogoTile {
+    /** 그림 로고가 있나 (없으면 이름 첫 글자 로고. 종목 탭은 글자 로고를 쓰지 않는다) */
+    fun has(symbol: String): Boolean = Sample.profiles[symbol]?.logoImage != null   // ios: Views/Charts.swift:91
+}
+
 // 현재 점 심장 박동: 점에서 점 색 동심원이 두 번(두근) 살짝 퍼지다 사라지고 잠깐 쉰다.
 // 원만 그리기 단계에서 그려서, 움직이는 동안 그래프(안쪽 층)는 다시 그리지 않는다
 // ios: Views/Charts.swift:110

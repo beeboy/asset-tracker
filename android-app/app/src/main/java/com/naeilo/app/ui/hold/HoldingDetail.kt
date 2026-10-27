@@ -526,7 +526,7 @@ fun AddHoldingView(m: AppModel,
                 // ios: Views/HoldingsView.swift:917,918,929,931,932
                 Row(Modifier.fillMaxWidth().then(if (loading == null) Modifier.plainClickable { scope.launch { pick(h) } } else Modifier.semantics { disabled() })
                     .defaultMinSize(minHeight = 56.dp).padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    LogoTile(symbol = h.id, size = 32.dp)   // ios: Views/HoldingsView.swift:919
+                    if (LogoTile.has(h.id)) LogoTile(symbol = h.id, size = 32.dp)   // ios: Views/HoldingsView.swift:1052
                     // ios: Views/HoldingsView.swift:920,924
                     Column(Modifier.weight(1f)) {
                         T(h.name, style = appFont(15f, FontWeight.Bold), maxLines = 1)   // ios: Views/HoldingsView.swift:921

@@ -447,14 +447,14 @@ private fun HoldRow(m: AppModel, r: AppModel.Row, inUsd: Boolean, v: Boolean, bi
     val small = if (v) 13f else 14f   // ios: Views/HoldingsView.swift:233
     // ios: Views/HoldingsView.swift:234
     @Composable fun Name(mod: Modifier) = Row(mod, horizontalArrangement = Arrangement.spacedBy(if (v) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        // ios: Views/HoldingsView.swift:235,236
-        Box {
-            LogoTile(symbol = r.id, size = 28.dp)
-            // ios: Views/HoldingsView.swift:237,238,239,240
-            if (es?.fresh == true) Box(Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-3).dp).size(9.dp, 9.dp).background(Theme.card, CircleShape).padding(2.dp).background(HoldingsView.gold, CircleShape)
+        // 글자 로고는 쓰지 않는다 (그림 로고만). 오늘 실적 금색 점은 이름 오른쪽 위
+        if (LogoTile.has(r.id)) LogoTile(symbol = r.id, size = 28.dp)   // ios: Views/HoldingsView.swift:242
+        Box(Modifier.weight(1f, fill = false)) {
+            T(r.sym.name, style = appFont(15f, FontWeight.Bold), maxLines = 1)   // ios: Views/HoldingsView.swift:243
+            // ios: Views/HoldingsView.swift:245,246,247,248,249
+            if (es?.fresh == true) Box(Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp).size(9.dp, 9.dp).background(Theme.card, CircleShape).padding(2.dp).background(HoldingsView.gold, CircleShape)
                 .semantics { contentDescription = tr("오늘 실적") })
         }
-        T(r.sym.name, Modifier.weight(1f, fill = false), style = appFont(15f, FontWeight.Bold), maxLines = 1)   // ios: Views/HoldingsView.swift:243
     }
     // ios: Views/HoldingsView.swift:245
     @Composable fun Mid(mod: Modifier) = T(if (v) "${r.h.qty.swFmt()}주" else px(inUsd, r, r.h.avg), mod, style = appFont(12f).tnum(), color = Theme.sub, maxLines = 1)
@@ -1088,7 +1088,7 @@ private fun Line(m: AppModel, r: AppModel.Row, right: String, color: Color) {
     // ios: Views/HoldingsView.swift:1281,1282,1288,1290
     val open = openDetail(m)   // ios: Views/HoldingsView.swift:1403 (DetailLink)
     Row(Modifier.fillMaxWidth().plainClickable { open(r.sym) }.defaultMinSize(minHeight = 44.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        LogoTile(symbol = r.id, size = 28.dp)   // ios: Views/HoldingsView.swift:1283
+        if (LogoTile.has(r.id)) LogoTile(symbol = r.id, size = 28.dp)   // ios: Views/HoldingsView.swift:1421
         T(r.sym.name, Modifier.weight(1f).padding(end = 4.dp), style = appFont(14f, FontWeight.SemiBold), maxLines = 1)   // ios: Views/HoldingsView.swift:1284,1285
         T(right, style = appFont(14f, FontWeight.Bold).tnum(), color = color)   // ios: Views/HoldingsView.swift:1286
     }

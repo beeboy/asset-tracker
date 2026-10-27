@@ -601,7 +601,7 @@ class Remind private constructor() {
         // ios: Data/Remind.swift:446
         if (p != null) {
             a.add(RemindItem(id = "sub.${p.name}", cat = RemindCat.news, text = "${p.nameText} 고마워요! 위젯, 목표·확률 전망, 서재 외전이 열려 있어요.", go = RemindGo.support))   // Data/Remind.swift:450 (검사 예외: 같은 글)
-        } else if (sub.trialLeft == 1 && !sub.dev) {   // ios: Data/Remind.swift:448
+        } else if (sub.trialLeft == 1 && !sub.subscribed) {   // ios: Data/Remind.swift:448
             a.add(RemindItem(id = "trial.last", cat = RemindCat.news, text = "7일 무료가 오늘 끝나요. 내일부터 위젯과 목표·확률 전망은 구독하면 볼 수 있어요.", go = RemindGo.support))   // ios: Data/Remind.swift:449
         }
         // ios: Data/Remind.swift:451
