@@ -727,7 +727,7 @@ private struct GameThumb: View {
     var body: some View {
         Canvas { ctx, sz in
             let W = sz.width, H = sz.height
-            ctx.fill(Path(CGRect(origin: .zero, size: sz)), with: .color(Theme.mintBg))
+            // 바탕·벽돌·파도는 외곽선만. 채우는 것은 졸라맨·패들·공 / 졸라맨·보드·별 (2026-10-27)
             if kind == .brick { brick(ctx, W, H) } else { wave(ctx, W, H) }
         }
         .accessibilityHidden(true)
@@ -747,8 +747,8 @@ private struct GameThumb: View {
             // 깨진 자리: 공은 위에서 오니 위 칸이 깨진 곳만 아래도 깨진다. 공 밑 칸과 그 오른쪽 칸도 비운다
             if (r == 0 && (k % 5 == 2 || k == kb || k == kb + 1)) || (r == 1 && k == 2) { continue }
             let y = H - 8 - CGFloat(rows - r) * (ch + gap)
-            c.fill(Path(roundedRect: CGRect(x: 8 + CGFloat(k) * (cw + gap), y: y, width: cw, height: ch), cornerRadius: 2),
-                   with: .color(r < 2 ? Theme.teal : GoalCellsCard.mintC))
+            c.stroke(Path(roundedRect: CGRect(x: 8 + CGFloat(k) * (cw + gap), y: y, width: cw, height: ch), cornerRadius: 2),
+                     with: .color(Theme.muted), lineWidth: 1)
         } }
         let px = W * 0.38, pw = W * 0.24, py: CGFloat = 30
         c.fill(Path(roundedRect: CGRect(x: px, y: py, width: pw, height: 6), cornerRadius: 3), with: .color(Theme.ink))
@@ -768,9 +768,7 @@ private struct GameThumb: View {
             return CGPoint(x: t * W, y: H * 0.62 - sin(t * 6.5) * H * 0.14 - t * H * 0.22 + sin(t * 19) * 3)
         }
         var top = Path(); top.addLines(pts)
-        var fill = top; fill.addLine(to: CGPoint(x: W, y: H)); fill.addLine(to: CGPoint(x: 0, y: H)); fill.closeSubpath()
-        c.fill(fill, with: .color(GoalCellsCard.mintC))
-        c.stroke(top, with: .color(Theme.teal), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+        c.stroke(top, with: .color(Theme.muted), style: StrokeStyle(lineWidth: 2, lineCap: .round))
         // 졸라맨: 무릎 굽혀 보드 위에, 두 팔을 넓게
         var s = c
         s.translateBy(x: pts[17].x, y: pts[17].y - 3); s.rotate(by: .radians(-0.35))
