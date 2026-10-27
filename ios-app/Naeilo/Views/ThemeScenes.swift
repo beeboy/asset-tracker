@@ -1139,9 +1139,10 @@ struct SphereScene: View {
             ctx.fill(blob { core($0, 0.72 * (1 - u), 0.18 * (1 - u), off) }, with: .color(outC.opacity(0.8 * (1 - u))))
         }
 
-        // 진행률은 구 아래 가는 막대 하나 (숫자 없음, 반환점을 지나면 안쪽 색)
-        let barC = f < 0.5 ? outC : inC, x0: CGFloat = 186, w: CGFloat = 78
+        // 진행률: 구 아래 짧은 막대 + 오른쪽 숫자 (둘을 묶어 구 가운데에 맞춤, 반환점을 지나면 안쪽 색)
+        let barC = f < 0.5 ? outC : inC, x0: CGFloat = 182, w: CGFloat = 56
         ctx.fill(Path(roundedRect: CGRect(x: x0, y: 148, width: w, height: 3), cornerRadius: 1.5), with: hex(dk, 0xC9D9D6, 0x2A3C48))
         ctx.fill(Path(roundedRect: CGRect(x: x0, y: 148, width: w * CGFloat(f), height: 3), cornerRadius: 1.5), with: .color(barC))
+        Sk.text(ctx, AppModel.pct(f), x0 + w + 6, 149.5, Color(hex: dk ? 0xFFD98A : 0x2F5F59), size: 12, bold: true)
     }
 }
